@@ -15,6 +15,7 @@ import (
 	"github.com/rs/cors"
 	dbm "github.com/tendermint/tm-db"
 
+	_ "github.com/lib/pq" // provide the psql db driver
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cs "github.com/tendermint/tendermint/consensus"

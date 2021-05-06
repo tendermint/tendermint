@@ -3,6 +3,7 @@ package node
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"math"
@@ -78,33 +79,38 @@ func createAndStartIndexerService(
 ) (*indexer.Service, []indexer.EventSink, error) {
 
 	eventSinks := []indexer.EventSink{}
-
+	var sqlDB *sql.DB
+loop:
 	for _, db := range config.TxIndex.Indexer {
 		switch strings.ToLower(db) {
 		case string(indexer.NULL):
 			// when we see null in the config, the eventsinks will be reset with the nullEventSink.
 			eventSinks = append([]indexer.EventSink{}, nullSink.NewNullEventSink())
+			break loop
 		case string(indexer.KV):
 			store, err := dbProvider(&DBContext{"tx_index", config})
 			if err != nil {
 				return nil, nil, err
 			}
-
 			eventSinks = append(eventSinks, kvSink.NewKVEventSink(store))
 		case string(indexer.PSQL):
 			conn := config.TxIndex.PsqlConn
-			es, _, err := psqlSink.NewPSQLEventSink(conn)
+			if conn == "" {
+				return nil, nil, errors.New("the psql connection settings cannot be empty")
+			}
+
+			es, db, err := psqlSink.NewPSQLEventSink(conn)
 			if err != nil {
 				return nil, nil, err
 			}
-
 			eventSinks = append(eventSinks, es)
+			sqlDB = db
 		default:
 			return nil, nil, errors.New("unsupported event sink type")
 		}
 	}
 
-	indexerService := indexer.NewIndexerService(eventSinks, eventBus)
+	indexerService := indexer.NewIndexerService(eventSinks, eventBus, sqlDB)
 	indexerService.SetLogger(logger.With("module", "txindex"))
 
 	if err := indexerService.Start(); err != nil {

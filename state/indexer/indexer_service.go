@@ -2,6 +2,7 @@ package indexer
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
@@ -20,15 +21,17 @@ type Service struct {
 
 	eventSinks []EventSink
 	eventBus   *types.EventBus
+	sqlDB      *sql.DB
 }
 
 // NewIndexerService returns a new service instance.
 func NewIndexerService(
 	es []EventSink,
 	eventBus *types.EventBus,
+	sqlDB *sql.DB,
 ) *Service {
 
-	is := &Service{eventSinks: es, eventBus: eventBus}
+	is := &Service{eventSinks: es, eventBus: eventBus, sqlDB: sqlDB}
 	is.BaseService = *service.NewBaseService(nil, "IndexerService", is)
 	return is
 }
@@ -92,9 +95,15 @@ func (is *Service) OnStart() error {
 	return nil
 }
 
-// OnStop implements service.Service by unsubscribing from all transactions.
+// OnStop implements service.Service by unsubscribing from all transactions and
+// close the sqlDB if the service is using the psqlEventSink
 func (is *Service) OnStop() {
 	if is.eventBus.IsRunning() {
 		_ = is.eventBus.UnsubscribeAll(context.Background(), subscriber)
+	}
+
+	if is.sqlDB != nil {
+		err := is.sqlDB.Close()
+		is.Logger.Error("failed to close the sqlDB", "err", err)
 	}
 }

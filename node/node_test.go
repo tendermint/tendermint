@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -29,6 +30,7 @@ import (
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -525,6 +527,59 @@ func TestNodeNewSeedNode(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.True(t, n.pexReactor.IsRunning())
+}
+
+func TestNodeSetEventSink(t *testing.T) {
+	config := cfg.ResetTestRoot("node_app_version_test")
+	defer os.RemoveAll(config.RootDir)
+
+	// create & start node
+	n, err := DefaultNewNode(config, log.TestingLogger())
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, len(n.eventSinks))
+	assert.Equal(t, indexer.KV, n.eventSinks[0].Type())
+
+	config.TxIndex.Indexer = []string{"null"}
+	n, err = DefaultNewNode(config, log.TestingLogger())
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, len(n.eventSinks))
+	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
+
+	config.TxIndex.Indexer = []string{"null", "kv"}
+	n, err = DefaultNewNode(config, log.TestingLogger())
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, len(n.eventSinks))
+	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
+
+	config.TxIndex.Indexer = []string{"kvv"}
+	n, err = DefaultNewNode(config, log.TestingLogger())
+	assert.Nil(t, n)
+	assert.Equal(t, errors.New("unsupported event sink type"), err)
+
+	config.TxIndex.Indexer = []string{"psql"}
+	n, err = DefaultNewNode(config, log.TestingLogger())
+	assert.Nil(t, n)
+	assert.Equal(t, errors.New("the psql connection settings cannot be empty"), err)
+
+	config.TxIndex.Indexer = []string{"psql"}
+	config.TxIndex.PsqlConn = "test"
+	n, err = DefaultNewNode(config, log.TestingLogger())
+	require.NoError(t, err)
+	assert.Equal(t, 1, len(n.eventSinks))
+	assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
+	n.OnStop()
+
+	config.TxIndex.Indexer = []string{"psql", "kv"}
+	config.TxIndex.PsqlConn = "test"
+	n, err = DefaultNewNode(config, log.TestingLogger())
+	require.NoError(t, err)
+	assert.Equal(t, 2, len(n.eventSinks))
+	assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
+	assert.Equal(t, indexer.KV, n.eventSinks[1].Type())
+	n.OnStop()
 }
 
 func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
