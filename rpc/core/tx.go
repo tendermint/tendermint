@@ -17,7 +17,7 @@ import (
 // transaction is in the mempool, invalidated, or was not sent in the first
 // place.
 // More: https://docs.tendermint.com/master/rpc/#/Info/tx
-func Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error) {
+func (env *Environment) Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	// if index is disabled, return error
 	if _, ok := env.TxIndexer.(*null.TxIndex); ok {
 		return nil, fmt.Errorf("transaction indexing is disabled")
@@ -54,7 +54,7 @@ func Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error
 // TxSearch allows you to query for multiple transactions results. It returns a
 // list of transactions (maximum ?per_page entries) and the total count.
 // More: https://docs.tendermint.com/master/rpc/#/Info/tx_search
-func TxSearch(
+func (env *Environment) TxSearch(
 	ctx *rpctypes.Context,
 	query string,
 	prove bool,
@@ -99,7 +99,7 @@ func TxSearch(
 
 	// paginate results
 	totalCount := len(results)
-	perPage := validatePerPage(perPagePtr)
+	perPage := env.validatePerPage(perPagePtr)
 
 	page, err := validatePage(pagePtr, perPage, totalCount)
 	if err != nil {
