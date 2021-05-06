@@ -1178,7 +1178,10 @@ func NewNode(config *cfg.Config,
 		proxyApp.Query(),
 		channels[statesync.SnapshotChannel],
 		channels[statesync.ChunkChannel],
+		channels[statesync.LightBlockChannel],
 		peerUpdates,
+		stateStore,
+		blockStore,
 		config.StateSync.TempDir,
 	)
 
