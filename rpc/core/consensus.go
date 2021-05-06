@@ -15,7 +15,11 @@ import (
 // for the validators in the set as used in computing their Merkle root.
 //
 // More: https://docs.tendermint.com/master/rpc/#/Info/validators
-func (env *Environment) Validators(ctx *rpctypes.Context, heightPtr *int64, pagePtr, perPagePtr *int) (*ctypes.ResultValidators, error) {
+func (env *Environment) Validators(
+	ctx *rpctypes.Context,
+	heightPtr *int64,
+	pagePtr, perPagePtr *int) (*ctypes.ResultValidators, error) {
+
 	// The latest validator that we know is the NextValidator of the last block.
 	height, err := env.getHeight(env.latestUncommittedHeight(), heightPtr)
 	if err != nil {
@@ -90,7 +94,10 @@ func (env *Environment) GetConsensusState(ctx *rpctypes.Context) (*ctypes.Result
 // ConsensusParams gets the consensus parameters at the given block height.
 // If no height is provided, it will fetch the latest consensus params.
 // More: https://docs.tendermint.com/master/rpc/#/Info/consensus_params
-func (env *Environment) ConsensusParams(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultConsensusParams, error) {
+func (env *Environment) ConsensusParams(
+	ctx *rpctypes.Context,
+	heightPtr *int64) (*ctypes.ResultConsensusParams, error) {
+
 	// The latest consensus params that we know is the consensus params after the
 	// last block.
 	height, err := env.getHeight(env.latestUncommittedHeight(), heightPtr)

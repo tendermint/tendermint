@@ -47,8 +47,11 @@ func (env *Environment) UnsafeDialSeeds(ctx *rpctypes.Context, seeds []string) (
 
 // UnsafeDialPeers dials the given peers (comma-separated id@IP:PORT),
 // optionally making them persistent.
-func (env *Environment) UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent, unconditional, private bool) (
-	*ctypes.ResultDialPeers, error) {
+func (env *Environment) UnsafeDialPeers(
+	ctx *rpctypes.Context,
+	peers []string,
+	persistent, unconditional, private bool) (*ctypes.ResultDialPeers, error) {
+
 	if len(peers) == 0 {
 		return &ctypes.ResultDialPeers{}, fmt.Errorf("%w: no peers provided", ctypes.ErrInvalidRequest)
 	}
