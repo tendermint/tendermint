@@ -573,7 +573,9 @@ func TestRouter_DialPeers(t *testing.T) {
 			require.NoError(t, err)
 			defer peerManager.Close()
 
-			require.NoError(t, peerManager.Add(address))
+			added, err := peerManager.Add(address)
+			require.NoError(t, err)
+			require.True(t, added)
 			sub := peerManager.Subscribe()
 			defer sub.Close()
 
@@ -648,9 +650,17 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 	require.NoError(t, err)
 	defer peerManager.Close()
 
-	require.NoError(t, peerManager.Add(a))
-	require.NoError(t, peerManager.Add(b))
-	require.NoError(t, peerManager.Add(c))
+	added, err := peerManager.Add(a)
+	require.NoError(t, err)
+	require.True(t, added)
+
+	added, err = peerManager.Add(b)
+	require.NoError(t, err)
+	require.True(t, added)
+
+	added, err = peerManager.Add(c)
+	require.NoError(t, err)
+	require.True(t, added)
 
 	router, err := p2p.NewRouter(
 		log.TestingLogger(),

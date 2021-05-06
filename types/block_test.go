@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"math"
+	mrand "math/rand"
 	"os"
 	"reflect"
 	"testing"
@@ -643,7 +644,7 @@ func TestBlockIDValidateBasic(t *testing.T) {
 }
 
 func TestBlockProtoBuf(t *testing.T) {
-	h := tmrand.Int63()
+	h := mrand.Int63()
 	c1 := randCommit(time.Now())
 	b1 := MakeBlock(h, []Tx{Tx([]byte{1})}, &Commit{Signatures: []CommitSig{}}, []Evidence{})
 	b1.ProposerAddress = tmrand.Bytes(crypto.AddressSize)
@@ -751,7 +752,7 @@ func TestEvidenceDataProtoBuf(t *testing.T) {
 func makeRandHeader() Header {
 	chainID := "test"
 	t := time.Now()
-	height := tmrand.Int63()
+	height := mrand.Int63()
 	randBytes := tmrand.Bytes(tmhash.Size)
 	randAddress := tmrand.Bytes(crypto.AddressSize)
 	h := Header{

@@ -113,7 +113,7 @@ func TestTransport_DialEndpoints(t *testing.T) {
 		require.Error(t, err)
 
 		// Tests for networked endpoints (with IP).
-		if len(endpoint.IP) > 0 {
+		if len(endpoint.IP) > 0 && endpoint.Protocol != p2p.MemoryProtocol {
 			for _, tc := range ipTestCases {
 				tc := tc
 				t.Run(tc.ip.String(), func(t *testing.T) {
@@ -124,7 +124,7 @@ func TestTransport_DialEndpoints(t *testing.T) {
 						require.NoError(t, conn.Close())
 						require.NoError(t, err)
 					} else {
-						require.Error(t, err)
+						require.Error(t, err, "endpoint=%s", e)
 					}
 				})
 			}

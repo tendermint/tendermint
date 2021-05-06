@@ -177,12 +177,41 @@ func (p *snapshotPool) Ranked() []*snapshot {
 	p.Lock()
 	defer p.Unlock()
 
-	candidates := make([]*snapshot, 0, len(p.snapshots))
-	for key := range p.snapshots {
-		candidates = append(candidates, p.snapshots[key])
+	if len(p.snapshots) == 0 {
+		return []*snapshot{}
 	}
 
-	sort.Slice(candidates, func(i, j int) bool {
+	numPeers := make([]int, 0, len(p.snapshots))
+	for key := range p.snapshots {
+		numPeers = append(numPeers, len(p.snapshotPeers[key]))
+	}
+	sort.Ints(numPeers)
+	median := len(numPeers) / 2
+	if len(numPeers)%2 == 0 {
+		median = (numPeers[median-1] + numPeers[median]) / 2
+	} else {
+		median = numPeers[median]
+	}
+
+	commonCandidates := make([]*snapshot, 0, len(p.snapshots)/2)
+	uncommonCandidates := make([]*snapshot, 0, len(p.snapshots)/2)
+	for key := range p.snapshots {
+		if len(p.snapshotPeers[key]) > median {
+			commonCandidates = append(commonCandidates, p.snapshots[key])
+			continue
+		}
+
+		uncommonCandidates = append(uncommonCandidates, p.snapshots[key])
+	}
+
+	sort.Slice(commonCandidates, p.sorterFactory(commonCandidates))
+	sort.Slice(uncommonCandidates, p.sorterFactory(uncommonCandidates))
+
+	return append(commonCandidates, uncommonCandidates...)
+}
+
+func (p *snapshotPool) sorterFactory(candidates []*snapshot) func(int, int) bool {
+	return func(i, j int) bool {
 		a := candidates[i]
 		b := candidates[j]
 
@@ -191,18 +220,16 @@ func (p *snapshotPool) Ranked() []*snapshot {
 			return true
 		case a.Height < b.Height:
 			return false
+		case len(p.snapshotPeers[a.Key()]) > len(p.snapshotPeers[b.Key()]):
+			return true
 		case a.Format > b.Format:
 			return true
 		case a.Format < b.Format:
 			return false
-		case len(p.snapshotPeers[a.Key()]) > len(p.snapshotPeers[b.Key()]):
-			return true
 		default:
 			return false
 		}
-	})
-
-	return candidates
+	}
 }
 
 // Reject rejects a snapshot. Rejected snapshots will never be used again.

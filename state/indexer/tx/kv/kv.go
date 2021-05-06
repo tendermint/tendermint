@@ -13,12 +13,11 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
-	"github.com/tendermint/tendermint/state/indexer"
-	"github.com/tendermint/tendermint/state/txindex"
+	indexer "github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/types"
 )
 
-var _ txindex.TxIndexer = (*TxIndex)(nil)
+var _ indexer.TxIndexer = (*TxIndex)(nil)
 
 // TxIndex is the simplest possible indexer
 // It is backed by two kv stores:
@@ -39,7 +38,7 @@ func NewTxIndex(store dbm.DB) *TxIndex {
 // transaction is not found.
 func (txi *TxIndex) Get(hash []byte) (*abci.TxResult, error) {
 	if len(hash) == 0 {
-		return nil, txindex.ErrorEmptyHash
+		return nil, indexer.ErrorEmptyHash
 	}
 
 	rawBytes, err := txi.store.Get(primaryKey(hash))
@@ -63,7 +62,7 @@ func (txi *TxIndex) Get(hash []byte) (*abci.TxResult, error) {
 // key that indexed from the tx's events is a composite of the event type and
 // the respective attribute's key delimited by a "." (eg. "account.number").
 // Any event with an empty type is not indexed.
-func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
+func (txi *TxIndex) AddBatch(b *indexer.Batch) error {
 	storeBatch := txi.store.NewBatch()
 	defer storeBatch.Close()
 
@@ -144,7 +143,7 @@ func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.Ba
 			}
 
 			// index if `index: true` is set
-			compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
+			compositeTag := fmt.Sprintf("%s.%s", event.Type, attr.Key)
 			// ensure event does not conflict with a reserved prefix key
 			if compositeTag == types.TxHashKey || compositeTag == types.TxHeightKey {
 				return fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeTag)
@@ -581,8 +580,8 @@ func parseValueFromKey(key []byte) (string, error) {
 	return value, nil
 }
 
-func keyFromEvent(compositeKey string, value []byte, result *abci.TxResult) []byte {
-	return secondaryKey(compositeKey, string(value), result.Height, result.Index)
+func keyFromEvent(compositeKey string, value string, result *abci.TxResult) []byte {
+	return secondaryKey(compositeKey, value, result.Height, result.Index)
 }
 
 func keyFromHeight(result *abci.TxResult) []byte {

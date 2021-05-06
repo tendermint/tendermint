@@ -2,6 +2,7 @@ package v0
 
 import (
 	"fmt"
+	mrand "math/rand"
 	"testing"
 	"time"
 
@@ -67,7 +68,7 @@ func makePeers(numPeers int, minHeight, maxHeight int64) testPeers {
 	peers := make(testPeers, numPeers)
 	for i := 0; i < numPeers; i++ {
 		peerID := p2p.NodeID(tmrand.Str(12))
-		height := minHeight + tmrand.Int63n(maxHeight-minHeight)
+		height := minHeight + mrand.Int63n(maxHeight-minHeight)
 		base := minHeight + int64(i)
 		if base > height {
 			base = height
