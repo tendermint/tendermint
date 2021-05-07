@@ -76,6 +76,11 @@ overlap or conflict with the upcoming introduction of [ABCI++](https://github.co
 For more information on the various approaches and proposals, please see the
 [mempool discussion](https://github.com/tendermint/tendermint/discussions/6295).
 
+## Prior Art
+
+TODO: Reference, at a high level, mempool designs from other major protocols,
+e.g. Ethereum, AVA, and Diem.
+
 ## Decision
 
 To incorporate a priority-based flexible and performant mempool in Tendermint Core,
@@ -177,6 +182,12 @@ In order to facilitate this, we must also keep an ephemeral cache, mapping from
 identifier is removed from this cache once it is either committed in a block or
 gossiped to a peer. Note, if the `Tx` is committed in a block, this requires that
 we iterates over the entire cache, i.e. each peer's list.
+
+### Performance
+
+TODO: Reference current bottlenecks, specifically around locking behavior and
+detail how/where new potential locking bottlenecks can occur in the proposed
+design.
 
 ## Consequences
 
