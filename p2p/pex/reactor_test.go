@@ -2,10 +2,12 @@ package pex_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -61,25 +63,53 @@ func TestReactorConnectFullNetwork(t *testing.T) {
 }
 
 func TestReactorSendsRequestsTooOften(t *testing.T) {
-	testNet := setup(t, testOptions{
-		MockNodes:  1,
-		TotalNodes: 3,
-	})
-	testNet.connectAll(t)
-	testNet.start(t)
+	nodeID, err := p2p.NewNodeID(strings.Repeat("a", 2*p2p.NodeIDByteLength))
+	require.NoError(t, err)
+	chBuf := 2
+	pexInCh := make(chan p2p.Envelope, chBuf)
+	pexOutCh := make(chan p2p.Envelope, chBuf)
+	pexErrCh := make(chan p2p.PeerError, chBuf)
+	pexCh := p2p.NewChannel(
+		p2p.ChannelID(pex.PexChannel),
+		new(proto.PexMessage),
+		pexInCh,
+		pexOutCh,
+		pexErrCh,
+	)
+	defer pexCh.Close()
+	peerUpdates := p2p.NewPeerUpdates(make(chan p2p.PeerUpdate), chBuf)
+	defer peerUpdates.Close()
+	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
 
-	// firstNode sends two requests to the secondNode
-	testNet.sendRequest(t, firstNode, secondNode, true)
-	testNet.sendRequest(t, firstNode, secondNode, true)
+	reactor := pex.NewReactorV2(log.TestingLogger(), peerManager, pexCh, peerUpdates)
 
-	// assert that the secondNode evicts the first node (although they reconnect
-	// straight away again)
-	testNet.listenForPeerUpdate(t, secondNode, firstNode, p2p.PeerStatusDown, shortWait)
+	require.NoError(t, reactor.Start())
+	defer reactor.Stop()
 
-	// firstNode should still receive the address of the thirdNode by the secondNode
-	expectedAddrs := testNet.getV2AddressesFor([]int{thirdNode})
-	testNet.listenForResponse(t, secondNode, firstNode, shortWait, expectedAddrs)
+	badNode, err := p2p.NewNodeID(strings.Repeat("b", 2*p2p.NodeIDByteLength))
+	require.NoError(t, err)
 
+	pexInCh <- p2p.Envelope{
+		From:    badNode,
+		Message: &proto.PexRequestV2{},
+	}
+
+	resp := <-pexOutCh
+	msg, ok := resp.Message.(*proto.PexResponseV2)
+	require.True(t, ok)
+	require.Empty(t, msg.Addresses)
+
+	pexInCh <- p2p.Envelope{
+		From:    badNode,
+		Message: &proto.PexRequestV2{},
+	}
+
+	peerErr := <-pexErrCh
+	require.Error(t, peerErr.Err)
+	require.Empty(t, pexOutCh)
+	require.Contains(t, peerErr.Err.Error(), "peer sent a request too close after a prior one")
+	require.Equal(t, badNode, peerErr.NodeID)
 }
 
 func TestReactorSendsResponseWithoutRequest(t *testing.T) {
