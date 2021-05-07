@@ -416,19 +416,12 @@ func (cs *State) loadWalFile() error {
 // OnStop implements service.Service.
 func (cs *State) OnStop() {
 
-	// If the node is committing the new block, wait until it finished!
+	// If the node is committing a new block, wait until it is finished!
 	if cs.GetRoundState().Step == cstypes.RoundStepCommit {
-	wait:
-		for {
-			select {
-			case rs := <-cs.onStopCh:
-				if rs != nil && rs.Step == cstypes.RoundStepNewHeight && rs.Round == 0 {
-					break wait
-				}
-			case <-time.After(time.Duration(cs.config.TimeoutCommit.Seconds())):
-				cs.Logger.Error(fmt.Sprintf("the %v secs block commit timeout!", cs.config.TimeoutCommit.Seconds()))
-				break wait
-			}
+		select {
+		case <-cs.onStopCh:
+		case <-time.After(cs.config.TimeoutCommit):
+			cs.Logger.Error("OnStop: timeout waiting for commit to finish", "time", cs.config.TimeoutCommit)
 		}
 	}
 

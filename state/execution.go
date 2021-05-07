@@ -565,6 +565,7 @@ func ExecCommitBlock(
 		return nil, err
 	}
 
+	// the BlockExecutor condition is using for the final block replay process.
 	if be != nil {
 		abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
 		err = validateValidatorUpdates(abciValUpdates, s.ConsensusParams.Validator)
