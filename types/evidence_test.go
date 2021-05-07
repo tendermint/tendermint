@@ -3,6 +3,7 @@ package types
 import (
 	"context"
 	"math"
+	mrand "math/rand"
 	"testing"
 	"time"
 
@@ -97,7 +98,7 @@ func TestLightClientAttackEvidenceBasic(t *testing.T) {
 	header := makeHeaderRandom()
 	header.Height = height
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
-	commit, err := MakeCommit(blockID, height, 1, voteSet, privVals, defaultVoteTime)
+	commit, err := makeCommit(blockID, height, 1, voteSet, privVals, defaultVoteTime)
 	require.NoError(t, err)
 	lcae := &LightClientAttackEvidence{
 		ConflictingBlock: &LightBlock{
@@ -157,7 +158,7 @@ func TestLightClientAttackEvidenceValidation(t *testing.T) {
 	header.Height = height
 	header.ValidatorsHash = valSet.Hash()
 	blockID := makeBlockID(header.Hash(), math.MaxInt32, tmhash.Sum([]byte("partshash")))
-	commit, err := MakeCommit(blockID, height, 1, voteSet, privVals, time.Now())
+	commit, err := makeCommit(blockID, height, 1, voteSet, privVals, time.Now())
 	require.NoError(t, err)
 	lcae := &LightClientAttackEvidence{
 		ConflictingBlock: &LightBlock{
@@ -256,7 +257,7 @@ func makeHeaderRandom() *Header {
 	return &Header{
 		Version:            version.Consensus{Block: version.BlockProtocol, App: 1},
 		ChainID:            tmrand.Str(12),
-		Height:             int64(tmrand.Uint16()) + 1,
+		Height:             int64(mrand.Uint32() + 1),
 		Time:               time.Now(),
 		LastBlockID:        makeBlockIDRandom(),
 		LastCommitHash:     crypto.CRandBytes(tmhash.Size),

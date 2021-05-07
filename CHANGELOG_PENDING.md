@@ -21,6 +21,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
     startup (@cmwaters)
 
 - Apps
+  - [ABCI] \#6408 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)
   - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
   - [ABCI] \#5447 Reset `Oneof` indexes for  `Request` and `Response`.
   - [ABCI] \#5818 Use protoio for msg length delimitation. Migrates from int64 to uint64 length delimiters.
@@ -46,16 +47,21 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [rpc/client/http] \#6176 Remove `endpoint` arg from `New`, `NewWithTimeout` and `NewWithClient` (@melekes)
   - [rpc/client/http] \#6176 Unexpose `WSEvents` (@melekes)
   - [rpc/jsonrpc/client/ws_client] \#6176 `NewWS` no longer accepts options (use `NewWSWithOptions` and `OnReconnect` funcs to configure the client) (@melekes)
+  - [libs/rand] \#6364 Removed most of libs/rand in favour of standard lib's `math/rand` (@liamsi)
 
 - Blockchain Protocol
 
 - Data Storage
   - [store/state/evidence/light] \#5771 Use an order-preserving varint key encoding (@cmwaters)
+  - [mempool] \#6396 Remove mempool's write ahead log (WAL), (previously unused by the tendermint code). (@tychoish)
 
 ### FEATURES
 
 - [config] Add `--mode` flag and config variable. See [ADR-52](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md) @dongsam
 - [rpc] \#6329 Don't cap page size in unsafe mode (@gotjoshua, @cmwaters)
+- [pex] \#6305 v2 pex reactor with backwards compatability. Introduces two new pex messages to
+  accomodate for the new p2p stack. Removes the notion of seeds and crawling. All peer
+  exchange reactors behave the same. (@cmwaters)
 - [crypto] \#6376 Enable sr25519 as a validator key
 
 ### IMPROVEMENTS
