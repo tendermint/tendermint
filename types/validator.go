@@ -174,22 +174,4 @@ func ValidatorFromProto(vp *tmproto.Validator) (*Validator, error) {
 	return v, nil
 }
 
-//----------------------------------------
-// RandValidator
 
-// RandValidator returns a randomized validator, useful for testing.
-// UNSTABLE
-func RandValidator(randPower bool, minPower int64) (*Validator, PrivValidator) {
-	privVal := NewMockPV()
-	votePower := minPower
-	if randPower {
-		// nolint:gosec // G404: Use of weak random number generator
-		votePower += int64(mrand.Uint32())
-	}
-	pubKey, err := privVal.GetPubKey(context.Background())
-	if err != nil {
-		panic(fmt.Errorf("could not retrieve pubkey %w", err))
-	}
-	val := NewValidator(pubKey, votePower)
-	return val, privVal
-}
