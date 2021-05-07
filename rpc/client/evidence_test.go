@@ -114,6 +114,11 @@ func makeEvidences(
 func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 	n := NodeSuite(t)
 
+	// previous versions of this test used a shared fixture with
+	// other tests, and in this version we give it a little time
+	// for the node to make progress before running the test
+	time.Sleep(10 * time.Millisecond)
+
 	var (
 		config  = n.Config()
 		chainID = config.ChainID()

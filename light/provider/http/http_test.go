@@ -12,6 +12,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/light/provider"
 	lighthttp "github.com/tendermint/tendermint/light/provider/http"
+	"github.com/tendermint/tendermint/node"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
@@ -32,20 +33,22 @@ func TestNewProvider(t *testing.T) {
 	require.Equal(t, fmt.Sprintf("%s", c), "http{http://153.200.0.1}")
 }
 
-func TestMain(m *testing.M) {
+func NodeSuite(t *testing.T) *node.Node {
+	t.Helper()
+
+	// start a tendermint node in the background to test against
 	app := kvstore.NewApplication()
-	app.RetainBlocks = 9
 	node := rpctest.StartTendermint(app)
-
-	code := m.Run()
-
-	rpctest.StopTendermint(node)
-	os.Exit(code)
+	t.Cleanup(func() {
+		rpctest.StopTendermint(node)
+		os.RemoveAll(node.Config().RootDir)
+	})
+	return node
 }
 
 func TestProvider(t *testing.T) {
-	cfg := rpctest.GetConfig()
-	defer os.RemoveAll(cfg.RootDir)
+	n := NodeSuite(t)
+	cfg := n.Config()
 	rpcAddr := cfg.RPC.ListenAddress
 	genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
 	if err != nil {

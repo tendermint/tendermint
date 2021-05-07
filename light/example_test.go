@@ -22,6 +22,12 @@ import (
 
 // Automatically getting new headers and verifying them.
 func ExampleClient_Update() {
+	// Start a test application
+	app := kvstore.NewApplication()
+	n := rpctest.StartTendermint(app)
+	rpctest.StartTendermint(app)
+	defer func() { rpctest.StopTendermint(n) }()
+
 	// give Tendermint time to generate some blocks
 	time.Sleep(5 * time.Second)
 
@@ -32,7 +38,7 @@ func ExampleClient_Update() {
 	defer os.RemoveAll(dbDir)
 
 	var (
-		config  = rpctest.GetConfig()
+		config  = n.Config()
 		chainID = config.ChainID()
 	)
 
@@ -90,6 +96,12 @@ func ExampleClient_Update() {
 
 // Manually getting light blocks and verifying them.
 func ExampleClient_VerifyLightBlockAtHeight() {
+	// Start a test application
+	app := kvstore.NewApplication()
+	n := rpctest.StartTendermint(app)
+	rpctest.StartTendermint(app)
+	defer func() { rpctest.StopTendermint(n) }()
+
 	// give Tendermint time to generate some blocks
 	time.Sleep(5 * time.Second)
 
@@ -100,7 +112,7 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 	defer os.RemoveAll(dbDir)
 
 	var (
-		config  = rpctest.GetConfig()
+		config  = n.Config()
 		chainID = config.ChainID()
 	)
 
