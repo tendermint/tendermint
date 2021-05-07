@@ -184,7 +184,6 @@ we iterates over the entire cache, i.e. each peer's list.
 
 - Transactions are allowed to be prioritized by the application.
 - Transactions are allowed to be gossiped by priority.
-- Allows future replace-by-priority functionality.
 
 ### Negative
 
