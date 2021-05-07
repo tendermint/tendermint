@@ -120,7 +120,8 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 	pv, err := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	require.NoError(t, err)
 
-	for i, c := range GetClients() {
+	n := NodeSuite(t)
+	for i, c := range GetClients(t, n) {
 		correct, fakes := makeEvidences(t, pv, chainID)
 		t.Logf("client %d", i)
 
@@ -158,7 +159,7 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 }
 
 func TestBroadcastEmptyEvidence(t *testing.T) {
-	for _, c := range GetClients() {
+	for _, c := range GetClients(t, NodeSuite(t)) {
 		_, err := c.BroadcastEvidence(context.Background(), nil)
 		assert.Error(t, err)
 	}

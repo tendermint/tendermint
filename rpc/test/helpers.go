@@ -29,7 +29,6 @@ type Options struct {
 	recreateConfig bool
 }
 
-var globalConfig *cfg.Config
 var defaultOptions = Options{
 	suppressStdout: false,
 	recreateConfig: false,
@@ -102,16 +101,8 @@ func createConfig() *cfg.Config {
 	return c
 }
 
-// GetConfig returns a config for the test cases as a singleton
-func GetConfig(forceCreate ...bool) *cfg.Config {
-	if globalConfig == nil || (len(forceCreate) > 0 && forceCreate[0]) {
-		globalConfig = createConfig()
-	}
-	return globalConfig
-}
-
-func GetGRPCClient() core_grpc.BroadcastAPIClient {
-	grpcAddr := globalConfig.RPC.GRPCListenAddress
+func GetGRPCClient(conf *cfg.Config) core_grpc.BroadcastAPIClient {
+	grpcAddr := conf.RPC.GRPCListenAddress
 	return core_grpc.StartGRPCClient(grpcAddr)
 }
 
