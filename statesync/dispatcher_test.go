@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/p2p"
@@ -37,6 +38,35 @@ func TestDispatcher(t *testing.T) {
 			require.Equal(t, lb.Height, height)
 			require.Contains(t, peers, peer)
 		}(int64(i))
+	}
+}
+
+func TestDispatcherProviders(t *testing.T) {
+	t.TempDir()
+
+	ch := make(chan p2p.Envelope)
+	chainID := "state-sync-test"
+	closeCh := make(chan struct{})
+	defer close(closeCh)
+
+	d := newDispatcher(ch)
+
+	go handleRequests(d, ch, closeCh)
+
+	peers := createPeerSet(5)
+	for _, peer := range peers {
+		d.addPeer(peer)
+	}
+
+	providers := d.Providers(chainID)
+	assert.Len(t, providers, 5)
+	for i, p := range providers {
+		bp, ok := p.(*blockProvider)
+		require.True(t, ok)
+		assert.Equal(t, bp.String(), string(peers[i]))
+		lb, err := p.LightBlock(context.Background(), 10)
+		assert.Error(t, err)
+		assert.Nil(t, lb)
 	}
 }
 

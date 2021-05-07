@@ -748,7 +748,8 @@ func TestEvidenceDataProtoBuf(t *testing.T) {
 	}
 }
 
-func makeRandHeader() Header {
+// exposed for testing
+func MakeRandHeader() Header {
 	chainID := "test"
 	t := time.Now()
 	height := tmrand.Int63()
@@ -777,7 +778,7 @@ func makeRandHeader() Header {
 }
 
 func TestHeaderProto(t *testing.T) {
-	h1 := makeRandHeader()
+	h1 := MakeRandHeader()
 	tc := []struct {
 		msg     string
 		h1      *Header
@@ -829,7 +830,7 @@ func TestBlockIDProtoBuf(t *testing.T) {
 
 func TestSignedHeaderProtoBuf(t *testing.T) {
 	commit := randCommit(time.Now())
-	h := makeRandHeader()
+	h := MakeRandHeader()
 
 	sh := SignedHeader{Header: &h, Commit: commit}
 

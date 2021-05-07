@@ -37,15 +37,15 @@ func newDispatcher(requestCh chan<- p2p.Envelope) *dispatcher {
 func (d *dispatcher) LightBlock(ctx context.Context, height int64) (*types.LightBlock, p2p.NodeID, error) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	
+
 	if d.connectedPeers.Len() == 0 {
 		return nil, "", noConnectedPeers
 	}
 	// fetch the next peer id in the list and request a light block from that
 	// peer
 	peer := d.nextPeer()
-	lb, err := d.lightBlock(ctx, height, peer)
-	return lb, peer, err
+	lb := d.lightBlock(ctx, height, peer)
+	return lb, peer, nil
 }
 
 func (d *dispatcher) Providers(chainID string) []provider.Provider {
@@ -59,11 +59,12 @@ func (d *dispatcher) Providers(chainID string) []provider.Provider {
 			peer:       e.Value.(p2p.NodeID),
 			dispatcher: d,
 		}
+		index++
 	}
 	return providers
 }
 
-func (d *dispatcher) lightBlock(ctx context.Context, height int64, peer p2p.NodeID) (*types.LightBlock, error) {
+func (d *dispatcher) lightBlock(ctx context.Context, height int64, peer p2p.NodeID) (*types.LightBlock) {
 	d.requestCh <- p2p.Envelope{
 		To: peer,
 		Message: &ssproto.LightBlockRequest{
@@ -74,10 +75,10 @@ func (d *dispatcher) lightBlock(ctx context.Context, height int64, peer p2p.Node
 
 	select {
 	case resp := <-d.calls[peer]:
-		return resp, nil
+		return resp
 
 	case <-ctx.Done():
-		return nil, nil
+		return nil
 	}
 }
 
@@ -144,11 +145,7 @@ func (p *blockProvider) LightBlock(ctx context.Context, height int64) (*types.Li
 	// return ErrConnectionClosed instead of ErrNoResponse
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
-	lb, err := p.dispatcher.lightBlock(ctx, height, p.peer)
-	if err != nil {
-		return nil, provider.ErrBadLightBlock{Reason: err}
-	}
-
+	lb := p.dispatcher.lightBlock(ctx, height, p.peer)
 	if lb == nil {
 		return nil, provider.ErrNoResponse
 	}

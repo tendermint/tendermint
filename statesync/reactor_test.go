@@ -9,13 +9,17 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	proxymocks "github.com/tendermint/tendermint/proxy/mocks"
 	smmocks "github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/statesync/mocks"
 	"github.com/tendermint/tendermint/store"
+	"github.com/tendermint/tendermint/types"
 )
 
 type reactorTestSuite struct {
@@ -42,6 +46,9 @@ type reactorTestSuite struct {
 	blockPeerErrCh chan p2p.PeerError
 
 	peerUpdates *p2p.PeerUpdates
+
+	stateStore *smmocks.Store
+	blockStore *store.BlockStore
 }
 
 func setup(
@@ -70,6 +77,9 @@ func setup(
 		chunkInCh:         make(chan p2p.Envelope, chBuf),
 		chunkOutCh:        make(chan p2p.Envelope, chBuf),
 		chunkPeerErrCh:    make(chan p2p.PeerError, chBuf),
+		blockInCh:         make(chan p2p.Envelope, chBuf),
+		blockOutCh:        make(chan p2p.Envelope, chBuf),
+		blockPeerErrCh:    make(chan p2p.PeerError, chBuf),
 		peerUpdates:       p2p.NewPeerUpdates(make(chan p2p.PeerUpdate), int(chBuf)),
 		conn:              conn,
 		connQuery:         connQuery,
@@ -93,12 +103,15 @@ func setup(
 	)
 
 	rts.blockChannel = p2p.NewChannel(
-		ChunkChannel,
+		LightBlockChannel,
 		new(ssproto.Message),
-		rts.chunkInCh,
-		rts.chunkOutCh,
-		rts.chunkPeerErrCh,
+		rts.blockInCh,
+		rts.blockOutCh,
+		rts.blockPeerErrCh,
 	)
+
+	rts.stateStore = &smmocks.Store{}
+	rts.blockStore = store.NewBlockStore(dbm.NewMemDB())
 
 	rts.reactor = NewReactor(
 		log.NewNopLogger(),
@@ -108,8 +121,8 @@ func setup(
 		rts.chunkChannel,
 		rts.blockChannel,
 		rts.peerUpdates,
-		&smmocks.Store{},
-		store.NewBlockStore(dbm.NewMemDB()),
+		rts.stateStore,
+		rts.blockStore,
 		"",
 	)
 
@@ -289,6 +302,54 @@ func TestReactor_SnapshotsRequest(t *testing.T) {
 	}
 }
 
+func TestReactor_LightBlockResponse(t *testing.T) {
+	rts := setup(t, nil, nil, nil, 2)
+
+	h := types.MakeRandHeader()
+	blockID := randBlockID()
+	vals, pv := types.RandValidatorSet(1, 10)
+	vote := makeVote(t, pv[0], h.ChainID, 0, h.Height, 0, 2, blockID, time.Now())
+
+	sh := &types.SignedHeader{
+		Header: &h,
+		Commit: &types.Commit{
+			Height: h.Height,
+			BlockID: blockID, 
+			Signatures: []types.CommitSig{
+				vote.CommitSig(),
+			},
+		},
+	}
+
+	lb := &types.LightBlock{
+		SignedHeader: sh,
+		ValidatorSet: vals,
+	}
+
+	require.NoError(t, rts.blockStore.SaveSignedHeader(sh, types.BlockID{}))
+
+	rts.stateStore.On("LoadValidators").Return(vals)
+
+	rts.blockInCh <- p2p.Envelope{
+		From:    p2p.NodeID("aa"),
+		Message: &ssproto.LightBlockRequest{
+			Height: 10, 
+		},
+	}
+	require.Empty(t, rts.blockPeerErrCh)
+
+	response := <- rts.blockOutCh
+	t.Log("response")
+	require.Equal(t, p2p.NodeID("aa"), response.To)
+	res, ok := response.Message.(*ssproto.LightBlockResponse)
+	require.True(t, ok)
+	require.Equal(t, lb, res)
+}
+
+func TestReactor_Backfill(t *testing.T) {
+	rts := setup(t, nil, nil, nil, 2)
+}
+
 // retryUntil will continue to evaluate fn and will return successfully when true
 // or fail when the timeout is reached.
 func retryUntil(t *testing.T, fn func() bool, timeout time.Duration) {
@@ -302,4 +363,38 @@ func retryUntil(t *testing.T, fn func() bool, timeout time.Duration) {
 
 		require.NoError(t, ctx.Err())
 	}
+}
+
+func randBlockID() types.BlockID {
+	return types.BlockID{
+		Hash: tmrand.Bytes(tmhash.Size),
+		PartSetHeader: types.PartSetHeader{
+			Total: 1,
+			Hash:  tmrand.Bytes(tmhash.Size),
+		},
+	}
+}
+
+func makeVote(
+	t *testing.T, val types.PrivValidator, chainID string, valIndex int32, height int64,
+	round int32, step int, blockID types.BlockID, time time.Time) *types.Vote {
+	pubKey, err := val.GetPubKey(context.Background())
+	require.NoError(t, err)
+	v := &types.Vote{
+		ValidatorAddress: pubKey.Address(),
+		ValidatorIndex:   valIndex,
+		Height:           height,
+		Round:            round,
+		Type:             tmproto.SignedMsgType(step),
+		BlockID:          blockID,
+		Timestamp:        time,
+	}
+
+	vpb := v.ToProto()
+	err = val.SignVote(context.Background(), chainID, vpb)
+	if err != nil {
+		panic(err)
+	}
+	v.Signature = vpb.Signature
+	return v
 }
