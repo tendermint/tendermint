@@ -11,6 +11,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -142,7 +143,7 @@ func generateLightClientAttackEvidence(
 	// create a commit for the forged header
 	blockID := makeBlockID(header.Hash(), 1000, []byte("partshash"))
 	voteSet := types.NewVoteSet(chainID, forgedHeight, 0, tmproto.SignedMsgType(2), conflictingVals)
-	commit, err := types.MakeCommit(blockID, forgedHeight, 0, voteSet, pv, forgedTime)
+	commit, err := factory.MakeCommit(blockID, forgedHeight, 0, voteSet, pv, forgedTime)
 	if err != nil {
 		return nil, err
 	}
@@ -176,11 +177,13 @@ func generateDuplicateVoteEvidence(
 ) (*types.DuplicateVoteEvidence, error) {
 	// nolint:gosec // G404: Use of weak random number generator
 	privVal := privVals[rand.Intn(len(privVals))]
-	voteA, err := types.MakeVote(height, makeRandomBlockID(), vals, privVal, chainID, time)
+
+	valIdx, _ := vals.GetByAddress(privVal.PrivKey.PubKey().Address())
+	voteA, err := factory.MakeVote(privVal, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
 	if err != nil {
 		return nil, err
 	}
-	voteB, err := types.MakeVote(height, makeRandomBlockID(), vals, privVal, chainID, time)
+	voteB, err := factory.MakeVote(privVal, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +245,7 @@ func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.Bloc
 
 func mutateValidatorSet(privVals []types.MockPV, vals *types.ValidatorSet,
 ) ([]types.PrivValidator, *types.ValidatorSet, error) {
-	newVal, newPrivVal := types.RandValidator(false, 10)
+	newVal, newPrivVal := factory.RandValidator(false, 10)
 
 	var newVals *types.ValidatorSet
 	if vals.Size() > 2 {

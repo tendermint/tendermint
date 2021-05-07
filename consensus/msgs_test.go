@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"context"
 	"encoding/hex"
 	"fmt"
 	"math"
@@ -15,6 +14,7 @@ import (
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/bits"
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -63,13 +63,8 @@ func TestMsgToProto(t *testing.T) {
 	pbProposal := proposal.ToProto()
 
 	pv := types.NewMockPV()
-	pk, err := pv.GetPubKey(context.Background())
-	require.NoError(t, err)
-	val := types.NewValidator(pk, 100)
-
-	vote, err := types.MakeVote(
-		1, types.BlockID{}, &types.ValidatorSet{Proposer: val, Validators: []*types.Validator{val}},
-		pv, "chainID", time.Now())
+	vote, err := factory.MakeVote(pv, factory.DefaultTestChainID,
+		0, 1, 0, 2, types.BlockID{}, time.Now())
 	require.NoError(t, err)
 	pbVote := vote.ToProto()
 
