@@ -20,7 +20,7 @@ import (
 func (env *Environment) Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	// if index is disabled, return error
 
-	if isTxIndexingDisabled() {
+	if isTxIndexingDisabled(env) {
 		return nil, errors.New("transaction indexing is disabled")
 	}
 
@@ -69,7 +69,7 @@ func (env *Environment) TxSearch(
 	orderBy string,
 ) (*ctypes.ResultTxSearch, error) {
 
-	if isTxIndexingDisabled() {
+	if isTxIndexingDisabled(env) {
 		return nil, errors.New("transaction indexing is disabled")
 	}
 
@@ -143,6 +143,6 @@ func (env *Environment) TxSearch(
 	return nil, errors.New("could not find the event sink to support the TxSearch")
 }
 
-func isTxIndexingDisabled() bool {
+func isTxIndexingDisabled(env *Environment) bool {
 	return len(env.EventSinks) == 0 || env.EventSinks[0].Type() == indexer.NULL
 }
