@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"context"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -494,7 +495,7 @@ func randValidatorPrivValSet(numValidators int, votingPower int64) (*ValidatorSe
 	)
 
 	for i := 0; i < numValidators; i++ {
-		val, privValidator := randValidator(votingPower)
+		val, privValidator := randValidator(false, votingPower)
 		valz[i] = val
 		privValidators[i] = privValidator
 	}

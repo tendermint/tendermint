@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -26,6 +25,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -709,7 +709,7 @@ func randConsensusState(
 	configOpts ...func(*cfg.Config),
 ) ([]*State, cleanupFunc) {
 
-	genDoc, privVals := randGenesisDoc(config, nValidators, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(config, nValidators, false, 30)
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
 
@@ -763,7 +763,7 @@ func randConsensusNetWithPeers(
 	tickerFunc func() TimeoutTicker,
 	appFunc func(string) abci.Application,
 ) ([]*State, *types.GenesisDoc, *cfg.Config, cleanupFunc) {
-	genDoc, privVals := randGenesisDoc(config, nValidators, false, testMinPower)
+	genDoc, privVals := factory.RandGenesisDoc(config, nValidators, false, testMinPower)
 	css := make([]*State, nPeers)
 	logger := consensusLogger()
 
@@ -824,7 +824,7 @@ func randGenesisState(
 	randPower bool,
 	minPower int64) (sm.State, []types.PrivValidator) {
 
-	genDoc, privValidators := randGenesisDoc(config, numValidators, randPower, minPower)
+	genDoc, privValidators := factory.RandGenesisDoc(config, numValidators, randPower, minPower)
 	s0, _ := sm.MakeGenesisState(genDoc)
 	return s0, privValidators
 }

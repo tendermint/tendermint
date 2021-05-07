@@ -2,10 +2,8 @@ package types
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
-	mrand "math/rand"
 	"strings"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -173,5 +171,3 @@ func ValidatorFromProto(vp *tmproto.Validator) (*Validator, error) {
 
 	return v, nil
 }
-
-

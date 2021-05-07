@@ -18,6 +18,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -281,7 +282,7 @@ func TestReactorWithEvidence(t *testing.T) {
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newCounter
 
-	genDoc, privVals := randGenesisDoc(config, n, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(config, n, false, 30)
 	states := make([]*State, n)
 	logger := consensusLogger()
 

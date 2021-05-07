@@ -6,11 +6,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 )
 
 func TestValidatorProtoBuf(t *testing.T) {
-	val := randValidator(100)
+	val, _ := randValidator(true, 100)
 	testCases := []struct {
 		msg      string
 		v1       *Validator

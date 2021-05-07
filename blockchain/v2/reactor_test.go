@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -28,7 +27,6 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 type mockPeer struct {
@@ -367,7 +365,7 @@ func TestReactorHelperMode(t *testing.T) {
 
 	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
 	defer os.RemoveAll(config.RootDir)
-	genDoc, privVals := randGenesisDoc(config.ChainID(), 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
 
 	params := testReactorParams{
 		logger:      log.TestingLogger(),
@@ -457,7 +455,7 @@ func TestReactorHelperMode(t *testing.T) {
 func TestReactorSetSwitchNil(t *testing.T) {
 	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
 	defer os.RemoveAll(config.RootDir)
-	genDoc, privVals := randGenesisDoc(config.ChainID(), 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
 
 	reactor := newTestReactor(testReactorParams{
 		logger:   log.TestingLogger(),
@@ -528,12 +526,11 @@ func newReactorStore(
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
-			vote, err := types.MakeVote(
-				lastBlock.Header.Height,
-				lastBlockMeta.BlockID,
-				state.Validators,
+			vote, err := factory.MakeVote(
 				privVals[0],
-				lastBlock.Header.ChainID,
+				lastBlock.Header.ChainID, 0,
+				lastBlock.Header.Height, 0, 2,
+				lastBlockMeta.BlockID,
 				time.Now(),
 			)
 			if err != nil {

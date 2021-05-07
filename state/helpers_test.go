@@ -11,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -77,7 +78,7 @@ func makeValidCommit(
 	sigs := make([]types.CommitSig, 0)
 	for i := 0; i < vals.Size(); i++ {
 		_, val := vals.GetByIndex(int32(i))
-		vote, err := types.MakeVote(height, blockID, vals, privVals[val.Address.String()], chainID, time.Now())
+		vote, err := factory.MakeVote(privVals[val.Address.String()], chainID, int32(i), height, 0, 2, blockID, time.Now())
 		if err != nil {
 			return nil, err
 		}
@@ -261,7 +262,7 @@ func makeRandomStateFromValidatorSet(
 
 func makeRandomStateFromConsensusParams(consensusParams *types.ConsensusParams,
 	height, lastHeightConsensusParamsChanged int64) sm.State {
-	val, _ := types.RandValidator(true, 10)
+	val, _ := factory.RandValidator(true, 10)
 	valSet := types.NewValidatorSet([]*types.Validator{val})
 	return sm.State{
 		LastBlockHeight:                  height - 1,

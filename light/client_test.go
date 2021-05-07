@@ -11,6 +11,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
@@ -120,7 +121,7 @@ func TestMock(t *testing.T) {
 func TestClient_SequentialVerification(t *testing.T) {
 	newKeys := genPrivKeys(4)
 	newVals := newKeys.ToValidators(10, 1)
-	differentVals, _ := types.RandValidatorSet(10, 100)
+	differentVals, _ := factory.RandValidatorSet(10, 100)
 
 	testCases := []struct {
 		name         string
@@ -971,7 +972,7 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 }
 
 func TestClient_TrustedValidatorSet(t *testing.T) {
-	differentVals, _ := types.RandValidatorSet(10, 100)
+	differentVals, _ := factory.RandValidatorSet(10, 100)
 	badValSetNode := mockp.New(
 		chainID,
 		map[int64]*types.SignedHeader{

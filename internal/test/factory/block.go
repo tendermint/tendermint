@@ -86,7 +86,7 @@ func MakeHeader(h *types.Header) (*types.Header, error) {
 	return h, h.ValidateBasic()
 }
 
-func MakeDefaultHeader() *types.Header {
+func MakeRandomHeader() *types.Header {
 	h, err := MakeHeader(&types.Header{})
 	if err != nil {
 		panic(err)
