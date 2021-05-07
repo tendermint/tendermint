@@ -15,11 +15,11 @@ import (
 func ExampleHTTP_simple() {
 	// Start a tendermint node (and kvstore) in the background to test against
 	app := kvstore.NewApplication()
-	node := rpctest.StartTendermint(app, rpctest.SuppressStdout, rpctest.RecreateConfig)
+	node := rpctest.StartTendermint(app, rpctest.SuppressStdout)
 	defer rpctest.StopTendermint(node)
 
 	// Create our RPC client
-	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
+	rpcAddr := node.Config().RPC.ListenAddress
 	c, err := rpchttp.New(rpcAddr)
 	if err != nil {
 		log.Fatal(err) //nolint:gocritic
@@ -68,10 +68,10 @@ func ExampleHTTP_simple() {
 func ExampleHTTP_batching() {
 	// Start a tendermint node (and kvstore) in the background to test against
 	app := kvstore.NewApplication()
-	node := rpctest.StartTendermint(app, rpctest.SuppressStdout, rpctest.RecreateConfig)
+	node := rpctest.StartTendermint(app, rpctest.SuppressStdout)
 
 	// Create our RPC client
-	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
+	rpcAddr := node.Config().RPC.ListenAddress
 	c, err := rpchttp.New(rpcAddr)
 	if err != nil {
 		log.Fatal(err)

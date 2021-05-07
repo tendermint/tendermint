@@ -23,7 +23,6 @@ import (
 	rpclocal "github.com/tendermint/tendermint/rpc/client/local"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
-	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -42,9 +41,9 @@ func getHTTPClient(t *testing.T, n *node.Node) *rpchttp.HTTP {
 	return c
 }
 
-func getHTTPClientWithTimeout(t *testing.T, timeout time.Duration) *rpchttp.HTTP {
+func getHTTPClientWithTimeout(t *testing.T, n *node.Node, timeout time.Duration) *rpchttp.HTTP {
 	t.Helper()
-	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
+	rpcAddr := n.Config().RPC.ListenAddress
 	c, err := rpchttp.NewWithTimeout(rpcAddr, timeout)
 	require.NoError(t, err)
 
@@ -71,7 +70,8 @@ func TestNilCustomHTTPClient(t *testing.T) {
 }
 
 func TestCustomHTTPClient(t *testing.T) {
-	remote := rpctest.GetConfig().RPC.ListenAddress
+	conf := NodeSuite(t).Config()
+	remote := conf.RPC.ListenAddress
 	c, err := rpchttp.NewWithClient(remote, http.DefaultClient)
 	require.Nil(t, err)
 	status, err := c.Status(context.Background())
@@ -80,8 +80,9 @@ func TestCustomHTTPClient(t *testing.T) {
 }
 
 func TestCorsEnabled(t *testing.T) {
-	origin := rpctest.GetConfig().RPC.CORSAllowedOrigins[0]
-	remote := strings.ReplaceAll(rpctest.GetConfig().RPC.ListenAddress, "tcp", "http")
+	conf := NodeSuite(t).Config()
+	origin := conf.RPC.CORSAllowedOrigins[0]
+	remote := strings.ReplaceAll(conf.RPC.ListenAddress, "tcp", "http")
 
 	req, err := http.NewRequest("GET", remote, nil)
 	require.Nil(t, err, "%+v", err)
@@ -96,9 +97,13 @@ func TestCorsEnabled(t *testing.T) {
 
 // Make sure status is correct (we connect properly)
 func TestStatus(t *testing.T) {
-	for i, c := range GetClients(t, NodeSuite(t)) {
-		moniker := rpctest.GetConfig().Moniker
-		status, err := c.Status(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	n := NodeSuite(t)
+	for i, c := range GetClients(t, n) {
+		moniker := n.Config().Moniker
+		status, err := c.Status(ctx)
 		require.Nil(t, err, "%d: %+v", i, err)
 		assert.Equal(t, moniker, status.NodeInfo.Moniker)
 	}
@@ -106,10 +111,13 @@ func TestStatus(t *testing.T) {
 
 // Make sure info is correct (we connect properly)
 func TestInfo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for i, c := range GetClients(t, NodeSuite(t)) {
 		// status, err := c.Status()
 		// require.Nil(t, err, "%+v", err)
-		info, err := c.ABCIInfo(context.Background())
+		info, err := c.ABCIInfo(ctx)
 		require.Nil(t, err, "%d: %+v", i, err)
 		// TODO: this is not correct - fix merkleeyes!
 		// assert.EqualValues(t, status.SyncInfo.LatestBlockHeight, info.Response.LastBlockHeight)
@@ -446,7 +454,7 @@ func TestCheckTx(t *testing.T) {
 	for _, c := range GetClients(t, n) {
 		_, _, tx := MakeTxKV()
 
-		res, err := c.CheckTx(t, tx)
+		res, err := c.CheckTx(ctx, tx)
 		require.NoError(t, err)
 		assert.Equal(t, abci.CodeTypeOK, res.Code)
 
@@ -516,7 +524,8 @@ func TestTxSearchWithTimeout(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	timeoutClient := getHTTPClientWithTimeout(t, 10*time.Second)
+	n := NodeSuite(t)
+	timeoutClient := getHTTPClientWithTimeout(t, n, 10*time.Second)
 
 	_, _, tx := MakeTxKV()
 	_, err := timeoutClient.BroadcastTxCommit(ctx, tx)
@@ -529,7 +538,8 @@ func TestTxSearchWithTimeout(t *testing.T) {
 }
 
 func TestTxSearch(t *testing.T) {
-	c := getHTTPClient()
+	n := NodeSuite(t)
+	c := getHTTPClient(t, n)
 
 	// first we broadcast a few txs
 	for i := 0; i < 10; i++ {
@@ -548,7 +558,7 @@ func TestTxSearch(t *testing.T) {
 	find := result.Txs[len(result.Txs)-1]
 	anotherTxHash := types.Tx("a different tx").Hash()
 
-	for i, c := range GetClients() {
+	for i, c := range GetClients(t, n) {
 		t.Logf("client %d", i)
 
 		// now we query for the tx.
@@ -652,7 +662,7 @@ func TestTxSearch(t *testing.T) {
 }
 
 func TestBatchedJSONRPCCalls(t *testing.T) {
-	c := getHTTPClient()
+	c := getHTTPClient(t, NodeSuite(t))
 	testBatchedJSONRPCCalls(t, c)
 }
 
@@ -706,7 +716,7 @@ func testBatchedJSONRPCCalls(t *testing.T, c *rpchttp.HTTP) {
 }
 
 func TestBatchedJSONRPCCallsCancellation(t *testing.T) {
-	c := getHTTPClient()
+	c := getHTTPClient(t, NodeSuite(t))
 	_, _, tx1 := MakeTxKV()
 	_, _, tx2 := MakeTxKV()
 
@@ -724,21 +734,22 @@ func TestBatchedJSONRPCCallsCancellation(t *testing.T) {
 }
 
 func TestSendingEmptyRequestBatch(t *testing.T) {
-	c := getHTTPClient()
+	c := getHTTPClient(t, NodeSuite(t))
 	batch := c.NewBatch()
 	_, err := batch.Send(ctx)
 	require.Error(t, err, "sending an empty batch of JSON RPC requests should result in an error")
 }
 
 func TestClearingEmptyRequestBatch(t *testing.T) {
-	c := getHTTPClient()
+	c := getHTTPClient(t, NodeSuite(t))
 	batch := c.NewBatch()
 	require.Zero(t, batch.Clear(), "clearing an empty batch of JSON RPC requests should result in a 0 result")
 }
 
 func TestConcurrentJSONRPCBatching(t *testing.T) {
+	n := NodeSuite(t)
 	var wg sync.WaitGroup
-	c := getHTTPClient()
+	c := getHTTPClient(t, n)
 	for i := 0; i < 50; i++ {
 		wg.Add(1)
 		go func() {
