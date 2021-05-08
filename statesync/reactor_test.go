@@ -9,9 +9,8 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -114,7 +113,7 @@ func setup(
 	rts.blockStore = store.NewBlockStore(dbm.NewMemDB())
 
 	rts.reactor = NewReactor(
-		log.NewNopLogger(),
+		log.TestingLogger(),
 		conn,
 		connQuery,
 		rts.snapshotChannel,
@@ -305,13 +304,17 @@ func TestReactor_SnapshotsRequest(t *testing.T) {
 func TestReactor_LightBlockResponse(t *testing.T) {
 	rts := setup(t, nil, nil, nil, 2)
 
-	h := types.MakeRandHeader()
-	blockID := randBlockID()
-	vals, pv := types.RandValidatorSet(1, 10)
-	vote := makeVote(t, pv[0], h.ChainID, 0, h.Height, 0, 2, blockID, time.Now())
+	var height int64 = 10
+	h := factory.MakeRandomHeader()
+	h.Height = height
+	blockID := factory.MakeBlockIDWithHash(h.Hash())
+	vals, pv := factory.RandValidatorSet(1, 10)
+	vote, err := factory.MakeVote(pv[0], h.ChainID, 0, h.Height, 0, 2, 
+		blockID, factory.DefaultTestTime)
+	require.NoError(t, err)
 
 	sh := &types.SignedHeader{
-		Header: &h,
+		Header: h,
 		Commit: &types.Commit{
 			Height: h.Height,
 			BlockID: blockID, 
@@ -326,9 +329,9 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 		ValidatorSet: vals,
 	}
 
-	require.NoError(t, rts.blockStore.SaveSignedHeader(sh, types.BlockID{}))
+	require.NoError(t, rts.blockStore.SaveSignedHeader(sh, blockID))
 
-	rts.stateStore.On("LoadValidators").Return(vals)
+	rts.stateStore.On("LoadValidators", height).Return(vals, nil)
 
 	rts.blockInCh <- p2p.Envelope{
 		From:    p2p.NodeID("aa"),
@@ -343,11 +346,36 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 	require.Equal(t, p2p.NodeID("aa"), response.To)
 	res, ok := response.Message.(*ssproto.LightBlockResponse)
 	require.True(t, ok)
-	require.Equal(t, lb, res)
+	receivedLB, err := types.LightBlockFromProto(res.LightBlock)
+	require.NoError(t, err)
+	require.Equal(t, lb, receivedLB)
 }
 
 func TestReactor_Backfill(t *testing.T) {
 	rts := setup(t, nil, nil, nil, 2)
+
+	var (
+		startHeight int64 = 20
+		endHeight int64 = 10
+		// startTime = time.Date(2020, 1, 1, 0, 200, 0, 0, time.UTC)
+		stopTime = time.Date(2020, 1, 1, 0, 100, 0, 0, time.UTC)
+	)
+
+	closeCh := make(chan struct{})
+	defer close(closeCh)
+
+	chain := buildLightBlockChain(t, endHeight, startHeight + 1, stopTime)
+
+	go handleLightBlockRequests(chain, rts.blockOutCh, rts.blockInCh, closeCh)
+
+	err := rts.reactor.Backfill(
+		factory.DefaultTestChainID,
+		startHeight,
+		stopHeight,
+		factory.MakeBlockIDWithHash(chain[startHeight].Header.Hash()),
+		stopTime,
+	)
+	require.NoError(t, err)
 }
 
 // retryUntil will continue to evaluate fn and will return successfully when true
@@ -365,36 +393,49 @@ func retryUntil(t *testing.T, fn func() bool, timeout time.Duration) {
 	}
 }
 
-func randBlockID() types.BlockID {
-	return types.BlockID{
-		Hash: tmrand.Bytes(tmhash.Size),
-		PartSetHeader: types.PartSetHeader{
-			Total: 1,
-			Hash:  tmrand.Bytes(tmhash.Size),
-		},
+func handleLightBlockRequests(chain map[int64]*types.LightBlock, receiving chan p2p.Envelope, sending chan p2p.Envelope, close chan struct{}) {
+	for {
+		select {
+		case envelope := <- receiving:
+			if msg, ok := envelope.Message.(*ssproto.LightBlockRequest); ok {
+				lb, _ := chain[int64(msg.Height)].ToProto()
+				sending <- p2p.Envelope{
+					From: envelope.To,
+					Message: &ssproto.LightBlockResponse{
+						LightBlock: lb,
+					},
+				}
+			}
+		case <- close:
+			return
+		}
 	}
 }
 
-func makeVote(
-	t *testing.T, val types.PrivValidator, chainID string, valIndex int32, height int64,
-	round int32, step int, blockID types.BlockID, time time.Time) *types.Vote {
-	pubKey, err := val.GetPubKey(context.Background())
-	require.NoError(t, err)
-	v := &types.Vote{
-		ValidatorAddress: pubKey.Address(),
-		ValidatorIndex:   valIndex,
-		Height:           height,
-		Round:            round,
-		Type:             tmproto.SignedMsgType(step),
-		BlockID:          blockID,
-		Timestamp:        time,
+func buildLightBlockChain(t *testing.T, fromHeight, toHeight int64, startTime time.Time) map[int64]*types.LightBlock {
+	chain := make(map[int64]*types.LightBlock, toHeight - fromHeight)
+	lastBlockID := factory.MakeBlockID()
+	blockTime := startTime
+	for height := fromHeight; height < toHeight; height++ {
+		header, err := factory.MakeHeader(&types.Header{
+			Height: height,
+			LastBlockID: lastBlockID,
+			Time: blockTime,
+		})
+		require.NoError(t, err)
+		blockTime = blockTime.Add(1 * time.Minute)
+		lastBlockID = factory.MakeBlockIDWithHash(header.Hash())
+		vals, pv := factory.RandValidatorSet(3, 10)
+		voteSet := types.NewVoteSet(factory.DefaultTestChainID, height, 0, tmproto.PrecommitType, vals)
+		commit, err := factory.MakeCommit(lastBlockID, height, 0, voteSet, pv, blockTime)
+		require.NoError(t, err)
+		chain[height] = &types.LightBlock{
+			SignedHeader: &types.SignedHeader{
+				Header: header,
+				Commit: commit, 
+			},
+			ValidatorSet: vals,
+		}
 	}
-
-	vpb := v.ToProto()
-	err = val.SignVote(context.Background(), chainID, vpb)
-	if err != nil {
-		panic(err)
-	}
-	v.Signature = vpb.Signature
-	return v
+	return chain
 }
