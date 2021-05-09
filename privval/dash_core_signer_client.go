@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"runtime/debug"
 	"strings"
 
 	"github.com/dashevo/dashd-go/btcjson"
@@ -160,7 +161,23 @@ func (sc *DashCoreSignerClient) GetProTxHash() (crypto.ProTxHash, error) {
 		return nil, fmt.Errorf("error decoding proTxHash : %v", err)
 	}
 	if len(decodedProTxHash) != crypto.DefaultHashSize {
-		return nil, fmt.Errorf("decoding proTxHash %d is incorrect size when signing proposal : %v", len(decodedProTxHash), err)
+		// We are proof of service banned. Get the proTxHash from our IP Address
+		networkInfo, err := sc.endpoint.GetNetworkInfo()
+		if err == nil && len(networkInfo.LocalAddresses) > 0 {
+			localAddress := networkInfo.LocalAddresses[0].Address
+			localPort := networkInfo.LocalAddresses[0].Port
+			localHost := fmt.Sprintf("%s:%d", localAddress, localPort)
+			results, err := sc.endpoint.MasternodeListJSON(localHost)
+			if err == nil {
+				for _, v := range results {
+					decodedProTxHash, err = hex.DecodeString(v.ProTxHash)
+				}
+			}
+		}
+		if len(decodedProTxHash) != crypto.DefaultHashSize {
+			debug.PrintStack()
+			return nil, fmt.Errorf("decoding proTxHash %d is incorrect size when signing proposal : %v", len(decodedProTxHash), err)
+		}
 	}
 
 	sc.cachedProTxHash = decodedProTxHash

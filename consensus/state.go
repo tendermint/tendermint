@@ -623,11 +623,13 @@ func (cs *State) updateToState(state sm.State) {
 		// signal the new round step, because other services (eg. txNotifier)
 		// depend on having an up-to-date peer state!
 		if state.LastBlockHeight <= cs.state.LastBlockHeight {
-			cs.Logger.Debug(
-				"ignoring updateToState()",
-				"new_height", state.LastBlockHeight+1,
-				"old_height", cs.state.LastBlockHeight+1,
-			)
+			if cs.Logger != nil {
+				cs.Logger.Debug(
+					"ignoring updateToState()",
+					"new_height", state.LastBlockHeight+1,
+					"old_height", cs.state.LastBlockHeight+1,
+				)
+			}
 			cs.newStep()
 			return
 		}
@@ -679,7 +681,12 @@ func (cs *State) updateToState(state sm.State) {
 		cs.StartTime = cs.config.Commit(cs.CommitTime)
 	}
 
-	// fmt.Printf("updating validators at height %v from %v to %v \n", height, cs.Validators, validators)
+	if cs.Validators == nil || !bytes.Equal(cs.Validators.QuorumHash, validators.QuorumHash) {
+		fmt.Printf("updating validators at height %v from %v to %v \n", height, cs.Validators, validators)
+		if cs.Logger != nil {
+			cs.Logger.Info("updating validators", "from", cs.Validators, "to", validators)
+		}
+	}
 	cs.Validators = validators
 	cs.Proposal = nil
 	cs.ProposalBlock = nil
