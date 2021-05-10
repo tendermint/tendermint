@@ -92,6 +92,14 @@ func makeGenesisFunc(c *lrpc.Client) rpcGenesisFunc {
 	}
 }
 
+type rpcGenesisChunkedFunc func(ctx *rpctypes.Context, chunkID uint) (*ctypes.ResultGenesisChunk, error)
+
+func makeGenesisChunkedFunc(c *lrpc.Client) rpcGenesisChunkedFunc {
+	return func(ctx *rpctypes.Context, chunkID uint) (*ctypes.ResultGenesisChunk, error) {
+		return c.GenesisChunked(ctx.Context(), chunkID)
+	}
+}
+
 type rpcBlockFunc func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBlock, error)
 
 func makeBlockFunc(c *lrpc.Client) rpcBlockFunc {

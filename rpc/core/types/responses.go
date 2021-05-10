@@ -36,6 +36,13 @@ type ResultGenesis struct {
 	Genesis *types.GenesisDoc `json:"genesis"`
 }
 
+// ResultGenesisChunk 
+type ResultGenesisChunk struct {
+	ChunkNumber int    `json:"chunk"`
+	TotalChunks int    `json:"total"`
+	Data        string `json:"data"`
+}
+
 // Single block (with meta)
 type ResultBlock struct {
 	BlockID types.BlockID `json:"block_id"`

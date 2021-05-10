@@ -95,6 +95,20 @@ func (env *Environment) Genesis(ctx *rpctypes.Context) (*ctypes.ResultGenesis, e
 	return &ctypes.ResultGenesis{Genesis: env.GenDoc}, nil
 }
 
+func (env *Environment) GenesisChunked(ctx *rpctypes.Context, chunkID uint) (*ctypes.ResultGenesisChunk, error) {
+	id := int(chunkID)
+
+	if id > len(env.genChunks) {
+		return nil, fmt.Errorf("there are %d chunks, %d is invalid", len(env.genChunks), id)
+	}
+
+	return &ctypes.ResultGenesisChunk{
+		TotalChunks: len(env.genChunks),
+		ChunkNumber: id,
+		Data:        env.genChunks[id-1],
+	}, nil
+}
+
 func getIDs(peers []string) ([]string, error) {
 	ids := make([]string, 0, len(peers))
 

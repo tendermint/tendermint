@@ -1,6 +1,8 @@
 package core
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -79,6 +81,8 @@ type Environment struct {
 
 	Logger log.Logger
 
+	genChunks []string
+
 	Config cfg.RPCConfig
 }
 
@@ -120,6 +124,37 @@ func (env *Environment) validatePerPage(perPagePtr *int) int {
 		return maxPerPage
 	}
 	return perPage
+}
+
+// Setup configures the environment and should be called on service
+// startup.
+func (env *Environment) Setup() error {
+	if env.genChunks != nil {
+		return nil
+	}
+
+	if env.GenDoc == nil {
+		return nil
+	}
+
+	data, err := json.Marshal(env.GenDoc)
+	if err != nil {
+		return err
+	}
+
+	const chunkSize = 1024
+
+	for i := 0; i < len(data); i += chunkSize {
+		end := i + chunkSize
+
+		if end > len(data) {
+			end = len(data)
+		}
+
+		env.genChunks = append(env.genChunks, base64.StdEncoding.EncodeToString(data[i:end]))
+	}
+
+	return nil
 }
 
 func validateSkipCount(page, perPage int) int {

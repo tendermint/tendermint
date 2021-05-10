@@ -1552,6 +1552,10 @@ func (n *Node) ConfigureRPC() (*rpccore.Environment, error) {
 		}
 		rpcCoreEnv.PubKey = pubKey
 	}
+	if err := rpcCoreEnv.Setup(); err != nil {
+		return nil, err
+	}
+
 	return &rpcCoreEnv, nil
 }
 
