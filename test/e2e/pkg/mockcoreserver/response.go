@@ -1,4 +1,4 @@
-package fakeserver
+package mockcoreserver
 
 import (
 	"bytes"
