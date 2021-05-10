@@ -180,8 +180,9 @@ func (env *Environment) BlockSearch(
 	pagePtr, perPagePtr *int,
 	orderBy string,
 ) (*ctypes.ResultBlockSearch, error) {
-	if len(env.EventSinks) == 0 || env.EventSinks[0].Type() == indexer.NULL {
-		return nil, errors.New("block indexing is disabled")
+
+	if !indexer.KVSinkEnabled(env.EventSinks) {
+		return nil, errors.New("block searching is disabled due to no kvEventSink")
 	}
 
 	q, err := tmquery.New(query)
@@ -238,5 +239,6 @@ func (env *Environment) BlockSearch(
 		}
 	}
 
-	return nil, errors.New("could not find the event sink to support the BlockSearch")
+	return nil, errors.New("block querying is not supported on this node by the current settings." +
+		"please check the tx-index section in the config.toml file if you don't expect to see this error")
 }

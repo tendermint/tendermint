@@ -58,6 +58,7 @@ func (is *Service) OnStart() error {
 	go func() {
 		for {
 			msg := <-blockHeadersSub.Out()
+
 			eventDataHeader := msg.Data().(types.EventDataNewBlockHeader)
 			height := eventDataHeader.Header.Height
 			batch := NewBatch(eventDataHeader.NumTxs)
@@ -74,6 +75,10 @@ func (is *Service) OnStart() error {
 						"err", err,
 					)
 				}
+			}
+
+			if !is.indexingEnabled() {
+				continue
 			}
 
 			for _, sink := range is.eventSinks {
@@ -106,4 +111,25 @@ func (is *Service) OnStop() {
 		err := is.sqlDB.Close()
 		is.Logger.Error("failed to close the sqlDB", "err", err)
 	}
+}
+
+// KVSinkEnabled returns the given eventSinks is containing KVEventSink.
+func KVSinkEnabled(sinks []EventSink) bool {
+	for _, sink := range sinks {
+		if sink.Type() == KV {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (is *Service) indexingEnabled() bool {
+	for _, sink := range is.eventSinks {
+		if sink.Type() == KV || sink.Type() == PSQL {
+			return true
+		}
+	}
+
+	return false
 }

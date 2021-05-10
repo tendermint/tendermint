@@ -20,8 +20,8 @@ import (
 func (env *Environment) Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	// if index is disabled, return error
 
-	if isTxIndexingDisabled(env) {
-		return nil, errors.New("transaction indexing is disabled")
+	if !indexer.KVSinkEnabled(env.EventSinks) {
+		return nil, errors.New("transaction querying is disabled due to no kvEventSink")
 	}
 
 	for _, sink := range env.EventSinks {
@@ -70,8 +70,8 @@ func (env *Environment) TxSearch(
 	orderBy string,
 ) (*ctypes.ResultTxSearch, error) {
 
-	if isTxIndexingDisabled(env) {
-		return nil, errors.New("transaction indexing is disabled")
+	if !indexer.KVSinkEnabled(env.EventSinks) {
+		return nil, errors.New("transaction searching is disabled due to no kvEventSink")
 	}
 
 	q, err := tmquery.New(query)
@@ -141,9 +141,6 @@ func (env *Environment) TxSearch(
 			return &ctypes.ResultTxSearch{Txs: apiResults, TotalCount: totalCount}, nil
 		}
 	}
-	return nil, errors.New("could not find the event sink to support the TxSearch")
-}
-
-func isTxIndexingDisabled(env *Environment) bool {
-	return len(env.EventSinks) == 0 || env.EventSinks[0].Type() == indexer.NULL
+	return nil, errors.New("transaction searching is not supported on this node by the current settings." +
+		"please check the tx-index section in the config.toml file if you don't expect to see this error")
 }
