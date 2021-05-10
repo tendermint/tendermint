@@ -203,11 +203,6 @@ block writes on any index
 ### Negative
 
 - Increased size of the `ResponseCheckTx` Protocol Buffer type.
-- A transaction that passed `CheckTx` and entered the mempool can later be evicted
-  at a future point in time if a higher priority transaction entered while the
-  mempool was full.
-- Possible decreased throughput performance due to the necessity of various read
-  and write locks, e.g. sorting when either gossiping or evicting transactions.
 - It is possible that certain transactions broadcasted in a particular order may
   pass `CheckTx` but not end up being committed in a block because they fail
   `CheckTx` later. e.g. Consider Tx<sub>1</sub> that sends funds from existing
@@ -222,6 +217,10 @@ block writes on any index
   "child" priority is lower than the "parent" priority.
 
 ### Neutral
+
+- A transaction that passed `CheckTx` and entered the mempool can later be evicted
+  at a future point in time if a higher priority transaction entered while the
+  mempool was full.
 
 ## References
 
