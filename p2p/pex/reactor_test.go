@@ -30,7 +30,7 @@ const (
 
 func TestReactorBasic(t *testing.T) {
 	// start a network with one mock reactor and one "real" reactor
-	testNet := setup(t, testOptions{
+	testNet := setupNetwork(t, testOptions{
 		MockNodes:  1,
 		TotalNodes: 2,
 	})
@@ -47,7 +47,7 @@ func TestReactorBasic(t *testing.T) {
 }
 
 func TestReactorConnectFullNetwork(t *testing.T) {
-	testNet := setup(t, testOptions{
+	testNet := setupNetwork(t, testOptions{
 		TotalNodes: 8,
 	})
 
@@ -63,57 +63,34 @@ func TestReactorConnectFullNetwork(t *testing.T) {
 }
 
 func TestReactorSendsRequestsTooOften(t *testing.T) {
-	nodeID, err := p2p.NewNodeID(strings.Repeat("a", 2*p2p.NodeIDByteLength))
-	require.NoError(t, err)
-	chBuf := 2
-	pexInCh := make(chan p2p.Envelope, chBuf)
-	pexOutCh := make(chan p2p.Envelope, chBuf)
-	pexErrCh := make(chan p2p.PeerError, chBuf)
-	pexCh := p2p.NewChannel(
-		p2p.ChannelID(pex.PexChannel),
-		new(proto.PexMessage),
-		pexInCh,
-		pexOutCh,
-		pexErrCh,
-	)
-	defer pexCh.Close()
-	peerUpdates := p2p.NewPeerUpdates(make(chan p2p.PeerUpdate), chBuf)
-	defer peerUpdates.Close()
-	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
-	require.NoError(t, err)
+	r := setupSingle(t)
 
-	reactor := pex.NewReactorV2(log.TestingLogger(), peerManager, pexCh, peerUpdates)
+	badNode := newNodeID(t, "b")
 
-	require.NoError(t, reactor.Start())
-	defer reactor.Stop()
-
-	badNode, err := p2p.NewNodeID(strings.Repeat("b", 2*p2p.NodeIDByteLength))
-	require.NoError(t, err)
-
-	pexInCh <- p2p.Envelope{
+	r.pexInCh <- p2p.Envelope{
 		From:    badNode,
 		Message: &proto.PexRequestV2{},
 	}
 
-	resp := <-pexOutCh
+	resp := <-r.pexOutCh
 	msg, ok := resp.Message.(*proto.PexResponseV2)
 	require.True(t, ok)
 	require.Empty(t, msg.Addresses)
 
-	pexInCh <- p2p.Envelope{
+	r.pexInCh <- p2p.Envelope{
 		From:    badNode,
 		Message: &proto.PexRequestV2{},
 	}
 
-	peerErr := <-pexErrCh
+	peerErr := <-r.pexErrCh
 	require.Error(t, peerErr.Err)
-	require.Empty(t, pexOutCh)
+	require.Empty(t, r.pexOutCh)
 	require.Contains(t, peerErr.Err.Error(), "peer sent a request too close after a prior one")
 	require.Equal(t, badNode, peerErr.NodeID)
 }
 
 func TestReactorSendsResponseWithoutRequest(t *testing.T) {
-	testNet := setup(t, testOptions{
+	testNet := setupNetwork(t, testOptions{
 		MockNodes:  1,
 		TotalNodes: 3,
 	})
@@ -131,7 +108,7 @@ func TestReactorSendsResponseWithoutRequest(t *testing.T) {
 }
 
 func TestReactorNeverSendsTooManyPeers(t *testing.T) {
-	testNet := setup(t, testOptions{
+	testNet := setupNetwork(t, testOptions{
 		MockNodes:  1,
 		TotalNodes: 2,
 	})
@@ -151,7 +128,7 @@ func TestReactorNeverSendsTooManyPeers(t *testing.T) {
 }
 
 func TestReactorErrorsOnReceivingTooManyPeers(t *testing.T) {
-	testNet := setup(t, testOptions{
+	testNet := setupNetwork(t, testOptions{
 		MockNodes:  1,
 		TotalNodes: 2,
 	})
@@ -171,7 +148,7 @@ func TestReactorErrorsOnReceivingTooManyPeers(t *testing.T) {
 }
 
 func TestReactorSmallPeerStoreInALargeNetwork(t *testing.T) {
-	testNet := setup(t, testOptions{
+	testNet := setupNetwork(t, testOptions{
 		TotalNodes:   16,
 		MaxPeers:     8,
 		MaxConnected: 6,
@@ -190,7 +167,7 @@ func TestReactorSmallPeerStoreInALargeNetwork(t *testing.T) {
 }
 
 func TestReactorLargePeerStoreInASmallNetwork(t *testing.T) {
-	testNet := setup(t, testOptions{
+	testNet := setupNetwork(t, testOptions{
 		TotalNodes:   10,
 		MaxPeers:     100,
 		MaxConnected: 100,
@@ -206,7 +183,7 @@ func TestReactorLargePeerStoreInASmallNetwork(t *testing.T) {
 }
 
 func TestReactorWithNetworkGrowth(t *testing.T) {
-	testNet := setup(t, testOptions{
+	testNet := setupNetwork(t, testOptions{
 		TotalNodes: 5,
 		BufferSize: 5,
 	})
@@ -237,7 +214,7 @@ func TestReactorWithNetworkGrowth(t *testing.T) {
 }
 
 func TestReactorIntegrationWithLegacyHandleRequest(t *testing.T) {
-	testNet := setup(t, testOptions{
+	testNet := setupNetwork(t, testOptions{
 		MockNodes:  1,
 		TotalNodes: 3,
 	})
@@ -252,7 +229,7 @@ func TestReactorIntegrationWithLegacyHandleRequest(t *testing.T) {
 }
 
 func TestReactorIntegrationWithLegacyHandleResponse(t *testing.T) {
-	testNet := setup(t, testOptions{
+	testNet := setupNetwork(t, testOptions{
 		MockNodes:  1,
 		TotalNodes: 4,
 		BufferSize: 4,
@@ -266,6 +243,53 @@ func TestReactorIntegrationWithLegacyHandleResponse(t *testing.T) {
 	// send a v1 response instead
 	testNet.sendResponse(t, firstNode, secondNode, []int{thirdNode, fourthNode}, false)
 	testNet.requireNumberOfPeers(t, secondNode, len(testNet.nodes)-1, shortWait)
+}
+
+type singleTestReactor struct {
+	reactor  *pex.ReactorV2
+	pexInCh  chan p2p.Envelope
+	pexOutCh chan p2p.Envelope
+	pexErrCh chan p2p.PeerError
+	pexCh    *p2p.Channel
+}
+
+func setupSingle(t *testing.T) *singleTestReactor {
+	t.Helper()
+	nodeID := newNodeID(t, "a")
+	chBuf := 2
+	pexInCh := make(chan p2p.Envelope, chBuf)
+	pexOutCh := make(chan p2p.Envelope, chBuf)
+	pexErrCh := make(chan p2p.PeerError, chBuf)
+	pexCh := p2p.NewChannel(
+		p2p.ChannelID(pex.PexChannel),
+		new(proto.PexMessage),
+		pexInCh,
+		pexOutCh,
+		pexErrCh,
+	)
+
+	peerUpdates := p2p.NewPeerUpdates(make(chan p2p.PeerUpdate), chBuf)
+	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+
+	reactor := pex.NewReactorV2(log.TestingLogger(), peerManager, pexCh, peerUpdates)
+	require.NoError(t, reactor.Start())
+	t.Cleanup(func() {
+		err := reactor.Stop()
+		if err != nil {
+			t.Fatal(err)
+		}
+		pexCh.Close()
+		peerUpdates.Close()
+	})
+
+	return &singleTestReactor{
+		reactor:  reactor,
+		pexInCh:  pexInCh,
+		pexOutCh: pexOutCh,
+		pexErrCh: pexErrCh,
+		pexCh:    pexCh,
+	}
 }
 
 type reactorTestSuite struct {
@@ -294,7 +318,7 @@ type testOptions struct {
 
 // setup setups a test suite with a network of nodes. Mocknodes represent the
 // hollow nodes that the test can listen and send on
-func setup(t *testing.T, opts testOptions) *reactorTestSuite {
+func setupNetwork(t *testing.T, opts testOptions) *reactorTestSuite {
 	t.Helper()
 
 	require.Greater(t, opts.TotalNodes, opts.MockNodes)
@@ -749,4 +773,10 @@ func (r *reactorTestSuite) addAddresses(t *testing.T, node int, addrs []int) {
 		require.NoError(t, err)
 		require.True(t, added)
 	}
+}
+
+func newNodeID(t *testing.T, id string) p2p.NodeID {
+	nodeID, err := p2p.NewNodeID(strings.Repeat(id, 2*p2p.NodeIDByteLength))
+	require.NoError(t, err)
+	return nodeID
 }
