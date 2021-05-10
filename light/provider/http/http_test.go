@@ -38,6 +38,7 @@ func NodeSuite(t *testing.T) *node.Node {
 
 	// start a tendermint node in the background to test against
 	app := kvstore.NewApplication()
+	app.RetainBlocks = 9
 	node := rpctest.StartTendermint(app)
 	t.Cleanup(func() {
 		rpctest.StopTendermint(node)
@@ -51,9 +52,8 @@ func TestProvider(t *testing.T) {
 	cfg := n.Config()
 	rpcAddr := cfg.RPC.ListenAddress
 	genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
+
 	chainID := genDoc.ChainID
 	t.Log("chainID:", chainID)
 
@@ -71,7 +71,7 @@ func TestProvider(t *testing.T) {
 	// let's get the highest block
 	lb, err := p.LightBlock(context.Background(), 0)
 	require.NoError(t, err)
-	assert.True(t, lb.Height < 1000)
+	assert.True(t, lb.Height < 9001, "height=%d", lb.Height)
 
 	// let's check this is valid somehow
 	assert.Nil(t, lb.ValidateBasic(chainID))
@@ -83,7 +83,7 @@ func TestProvider(t *testing.T) {
 	assert.Equal(t, lower, lb.Height)
 
 	// fetching missing heights (both future and pruned) should return appropriate errors
-	lb, err = p.LightBlock(context.Background(), 1000)
+	lb, err = p.LightBlock(context.Background(), 9001)
 	require.Error(t, err)
 	require.Nil(t, lb)
 	assert.Equal(t, provider.ErrHeightTooHigh, err)

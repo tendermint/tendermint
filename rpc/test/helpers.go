@@ -121,9 +121,10 @@ func StartTendermint(app abci.Application, opts ...func(*Options)) *nm.Node {
 		panic(err)
 	}
 
+	cfg := node.Config()
 	// wait for rpc
-	waitForRPC(ctx, node.Config())
-	waitForGRPC(ctx, node.Config())
+	waitForRPC(ctx, cfg)
+	waitForGRPC(ctx, cfg)
 
 	if !nodeOpts.suppressStdout {
 		fmt.Println("Tendermint running!")
