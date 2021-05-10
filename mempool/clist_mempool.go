@@ -49,6 +49,7 @@ type CListMempool struct {
 
 	wal          *auto.AutoFile // a log of mempool txs
 	txs          *clist.CList   // concurrent linked-list of good txs
+	bcTxsList    *clist.CList   // only for tx sort model
 	proxyAppConn proxy.AppConnMempool
 
 	// Track whether we're rechecking txs.
@@ -59,7 +60,8 @@ type CListMempool struct {
 
 	// Map for quick access to txs to record sender in CheckTx.
 	// txsMap: txKey -> CElement
-	txsMap sync.Map
+	txsMap   sync.Map
+	bcTxsMap sync.Map // only for tx sort model
 
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
@@ -91,6 +93,7 @@ func NewCListMempool(
 		config:        config,
 		proxyAppConn:  proxyAppConn,
 		txs:           clist.New(),
+		bcTxsList:     clist.New(),
 		height:        height,
 		recheckCursor: nil,
 		recheckEnd:    nil,
@@ -207,16 +210,17 @@ func (mem *CListMempool) Flush() {
 	mem.addrMapMtx.Lock()
 	defer mem.addrMapMtx.Unlock()
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
-		mem.txs.Remove(e)
-		e.DetachPrev()
-
-		mem.deleteAddrRecord(e)
+		mem.removeTx(e.Value.(*mempoolTx).tx, e, false)
+		//mem.txs.Remove(e)
+		//e.DetachPrev()
+		//
+		//mem.deleteAddrRecord(e)
 	}
 
-	mem.txsMap.Range(func(key, _ interface{}) bool {
-		mem.txsMap.Delete(key)
-		return true
-	})
+	//mem.txsMap.Range(func(key, _ interface{}) bool {
+	//	mem.txsMap.Delete(key)
+	//	return true
+	//})
 }
 
 // TxsFront returns the first transaction in the ordered list for peer
@@ -225,6 +229,13 @@ func (mem *CListMempool) Flush() {
 //
 // Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) TxsFront() *clist.CElement {
+	return mem.txs.Front()
+}
+
+func (mem *CListMempool) BroadcastTxsFront() *clist.CElement {
+	if mem.config.SortTxByGp {
+		return mem.bcTxsList.Front()
+	}
 	return mem.txs.Front()
 }
 
@@ -367,12 +378,18 @@ func (mem *CListMempool) reqResCb(
 
 // Called from:
 //  - resCbFirstTime (lock not held) if tx is valid
-func (mem *CListMempool) addAndSortTx(memTx *mempoolTx, info ExTxInfo) {
+func (mem *CListMempool) addAndSortTx(memTx *mempoolTx, info ExTxInfo) bool {
 	mem.addrMapMtx.Lock()
 	defer mem.addrMapMtx.Unlock()
 
 	// Delete the same Nonce transaction from the same account
-	mem.checkRepeatedElement(info)
+	if res := mem.checkRepeatedElement(info); res == -1 {
+		return false
+	}
+
+	ele := mem.bcTxsList.PushBack(memTx)
+	mem.bcTxsMap.Store(txKey(memTx.tx), ele)
+
 	e := mem.txs.AddTxWithExInfo(memTx, info.Sender, info.GasPrice, info.Nonce)
 
 	if _, ok := mem.addressRecord[info.Sender]; !ok {
@@ -387,11 +404,13 @@ func (mem *CListMempool) addAndSortTx(memTx *mempoolTx, info ExTxInfo) {
 		Height: memTx.height,
 		Tx:     memTx.tx,
 	}})
+
+	return true
 }
 
 // Called from:
 //  - resCbFirstTime (lock not held) if tx is valid
-func (mem *CListMempool) addTx(memTx *mempoolTx, info ExTxInfo) {
+func (mem *CListMempool) addTx(memTx *mempoolTx, info ExTxInfo) bool {
 	e := mem.txs.PushBack(memTx)
 	e.Address = info.Sender
 
@@ -409,12 +428,23 @@ func (mem *CListMempool) addTx(memTx *mempoolTx, info ExTxInfo) {
 		Height: memTx.height,
 		Tx:     memTx.tx,
 	}})
+
+	return true
 }
 
 // Called from:
 //  - Update (lock held) if tx was committed
 // 	- resCbRecheck (lock not held) if tx was invalidated
 func (mem *CListMempool) removeTx(tx types.Tx, elem *clist.CElement, removeFromCache bool) {
+	if mem.config.SortTxByGp {
+		if e, ok := mem.bcTxsMap.Load(txKey(tx)); ok {
+			tmpEle := e.(*clist.CElement)
+			mem.bcTxsList.Remove(tmpEle)
+			mem.bcTxsMap.Delete(txKey(tx))
+			tmpEle.DetachPrev()
+		}
+	}
+
 	mem.txs.Remove(elem)
 	elem.DetachPrev()
 
@@ -491,19 +521,32 @@ func (mem *CListMempool) resCbFirstTime(
 				return
 			}
 
+			addGoodTx := true
 			if mem.config.SortTxByGp {
-				mem.addAndSortTx(memTx, exTxInfo)
+				addGoodTx = mem.addAndSortTx(memTx, exTxInfo)
 			} else {
-				mem.addTx(memTx, exTxInfo)
+				addGoodTx = mem.addTx(memTx, exTxInfo)
 			}
 
-			mem.logger.Info("Added good transaction",
-				"tx", txID(tx),
-				"res", r,
-				"height", memTx.height,
-				"total", mem.Size(),
-			)
-			mem.notifyTxsAvailable()
+			if addGoodTx {
+				mem.logger.Info("Added good transaction",
+					"tx", txID(tx),
+					"res", r,
+					"height", memTx.height,
+					"total", mem.Size(),
+				)
+				mem.notifyTxsAvailable()
+			} else {
+				// ignore bad transaction
+				mem.logger.Info("Fail to add transaction into mempool, rejected it",
+					"tx", txID(tx), "peerID", peerP2PID, "res", r, "err", postCheckErr)
+				mem.metrics.FailedTxs.Add(1)
+				// remove from cache (it might be good later)
+				mem.cache.Remove(tx)
+
+				r.CheckTx.Code = 1
+				r.CheckTx.Log = "Fail to add transaction into mempool, rejected it"
+			}
 		} else {
 			// ignore bad transaction
 			mem.logger.Info("Rejected bad transaction",
@@ -752,6 +795,9 @@ func (mem *CListMempool) Update(
 		} else {
 			mem.notifyTxsAvailable()
 		}
+	} else if height%mem.config.ForceRecheckGap == 0 {
+		// saftly clean dirty data that stucks in the cache
+		mem.cache.Reset()
 	}
 
 	// Update metrics
@@ -817,22 +863,27 @@ func (mem *CListMempool) reOrgTxs(addr string) *CListMempool {
 	return mem
 }
 
-func (mem *CListMempool) checkRepeatedElement(info ExTxInfo) bool {
-	repeatElement := false
+func (mem *CListMempool) checkRepeatedElement(info ExTxInfo) int {
+	repeatElement := 0
 
 	if userMap, ok := mem.addressRecord[info.Sender]; ok {
 		for _, node := range userMap {
 			if node.Nonce == info.Nonce {
-				mem.removeTx(node.Value.(*mempoolTx).tx, node, false)
+				// only replace tx for bigger gas price
+				if info.GasPrice.Cmp(node.GasPrice) <= 0 {
+					return -1
+				}
 
-				repeatElement = true
+				mem.removeTx(node.Value.(*mempoolTx).tx, node, true)
+
+				repeatElement = 1
 				break
 			}
 		}
 	}
 
 	// If the tx nonce of the same address is duplicated, should delete the duplicate tx, and reorg all other tx
-	if repeatElement {
+	if repeatElement > 0 {
 		mem.reOrgTxs(info.Sender)
 	}
 

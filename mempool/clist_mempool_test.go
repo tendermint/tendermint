@@ -623,6 +623,7 @@ func TestAddAndSortTx(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	config := cfg.ResetTestRoot("mempool_test")
+	config.Mempool.SortTxByGp = true
 	mempool, cleanup := newMempoolWithAppAndConfig(cc, config)
 	defer cleanup()
 
@@ -631,14 +632,14 @@ func TestAddAndSortTx(t *testing.T) {
 		Tx   *mempoolTx
 		Info ExTxInfo
 	}{
-		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("1")}, ExTxInfo{"18", big.NewInt(9740), 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("1")}, ExTxInfo{"18", big.NewInt(3780), 0}},
 		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("2")}, ExTxInfo{"6", big.NewInt(5853), 0}},
 		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("3")}, ExTxInfo{"7", big.NewInt(8315), 0}},
 		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("4")}, ExTxInfo{"10", big.NewInt(9526), 0}},
 		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("5")}, ExTxInfo{"15", big.NewInt(9140), 0}},
 		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("6")}, ExTxInfo{"9", big.NewInt(9227), 0}},
 		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("7")}, ExTxInfo{"3", big.NewInt(761), 0}},
-		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("8")}, ExTxInfo{"18", big.NewInt(3780), 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("8")}, ExTxInfo{"18", big.NewInt(9740), 0}},
 		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("9")}, ExTxInfo{"1", big.NewInt(6574), 0}},
 		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("10")}, ExTxInfo{"8", big.NewInt(9656), 0}},
 		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("11")}, ExTxInfo{"12", big.NewInt(6554), 0}},
@@ -651,6 +652,7 @@ func TestAddAndSortTx(t *testing.T) {
 		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("18")}, ExTxInfo{"19", big.NewInt(2484), 0}},
 		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("19")}, ExTxInfo{"13", big.NewInt(9722), 0}},
 		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("20")}, ExTxInfo{"7", big.NewInt(4236), 1}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("21")}, ExTxInfo{"18", big.NewInt(1780), 0}},
 	}
 
 	for _, exInfo := range testCases {
@@ -660,6 +662,7 @@ func TestAddAndSortTx(t *testing.T) {
 
 	// The txs in mempool should sorted, the output should be (head -> tail):
 	//
+	//Address:  18  , GasPrice:  9740  , Nonce:  0
 	//Address:  13  , GasPrice:  9722  , Nonce:  0
 	//Address:  8  , GasPrice:  9656  , Nonce:  0
 	//Address:  10  , GasPrice:  9526  , Nonce:  0
@@ -672,7 +675,6 @@ func TestAddAndSortTx(t *testing.T) {
 	//Address:  6  , GasPrice:  5853  , Nonce:  0
 	//Address:  16  , GasPrice:  5609  , Nonce:  0
 	//Address:  7  , GasPrice:  4236  , Nonce:  1
-	//Address:  18  , GasPrice:  3780  , Nonce:  0
 	//Address:  3  , GasPrice:  3171  , Nonce:  0
 	//Address:  1  , GasPrice:  2965  , Nonce:  2
 	//Address:  6  , GasPrice:  2791  , Nonce:  1
@@ -683,8 +685,8 @@ func TestAddAndSortTx(t *testing.T) {
 	require.Equal(t, 1, len(mempool.addressRecord["15"]))
 	require.Equal(t, 2, len(mempool.addressRecord["18"]))
 
-	require.Equal(t, "13", mempool.txs.Front().Address)
-	require.Equal(t, big.NewInt(9722), mempool.txs.Front().GasPrice)
+	require.Equal(t, "18", mempool.txs.Front().Address)
+	require.Equal(t, big.NewInt(9740), mempool.txs.Front().GasPrice)
 	require.Equal(t, uint64(0), mempool.txs.Front().Nonce)
 
 	require.Equal(t, "19", mempool.txs.Back().Address)
@@ -702,6 +704,7 @@ func TestAddAndSortTx(t *testing.T) {
 
 	mempool.Flush()
 	require.Equal(t, 0, mempool.txs.Len())
+	require.Equal(t, 0, mempool.bcTxsList.Len())
 	require.Equal(t, 0, len(mempool.addressRecord))
 }
 

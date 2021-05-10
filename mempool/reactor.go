@@ -208,7 +208,7 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 		if next == nil {
 			select {
 			case <-memR.mempool.TxsWaitChan(): // Wait until a tx is available
-				if next = memR.mempool.TxsFront(); next == nil {
+				if next = memR.mempool.BroadcastTxsFront(); next == nil {
 					continue
 				}
 			case <-peer.Quit():
