@@ -11,6 +11,7 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/p2p/conn"
 	protop2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
@@ -40,6 +41,23 @@ const (
 	fullCapacityInterval = 10 * time.Minute
 )
 
+// TODO: We should decide whether we want channel descriptors to be housed
+// within each reactor (as they are now) or, considering that the reactor doesn't
+// really need to care about the channel descriptors, if they should be housed
+// in the node module.
+func ChannelDescriptors() []*conn.ChannelDescriptor {
+	return []*conn.ChannelDescriptor{
+		{
+			ID:                  PexChannel,
+			Priority:            1,
+			SendQueueCapacity:   10,
+			RecvMessageCapacity: maxMsgSize,
+
+			MaxSendBytes: 200,
+		},
+	}
+}
+
 // ReactorV2 is a PEX reactor for the new P2P stack. The legacy reactor
 // is Reactor.
 //
@@ -65,6 +83,7 @@ type ReactorV2 struct {
 	availablePeers *clist.CList
 
 	mtx sync.RWMutex
+
 	// requestsSent keeps track of which peers the PEX reactor has sent requests
 	// to. This prevents the sending of spurious responses.
 	// NOTE: If a node never responds, they will remain in this map until a
@@ -83,6 +102,7 @@ type ReactorV2 struct {
 	// extrapolate the size of the network
 	newPeers   uint32
 	totalPeers uint32
+
 	// discoveryRatio is the inverse ratio of new peers to old peers squared.
 	// This is multiplied by the minimum duration to calculate how long to wait
 	// between each request.
@@ -96,6 +116,7 @@ func NewReactorV2(
 	pexCh *p2p.Channel,
 	peerUpdates *p2p.PeerUpdates,
 ) *ReactorV2 {
+
 	r := &ReactorV2{
 		peerManager:          peerManager,
 		pexCh:                pexCh,
@@ -188,8 +209,8 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 	switch msg := envelope.Message.(type) {
 
 	case *protop2p.PexRequest:
-		// check if the peer hasn't sent a prior request too close to this one
-		// in time
+		// Check if the peer hasn't sent a prior request too close to this one
+		// in time.
 		if err := r.markPeerRequest(envelope.From); err != nil {
 			return err
 		}
@@ -304,15 +325,18 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 func (r *ReactorV2) resolve(addresses []p2p.NodeAddress) []protop2p.PexAddress {
 	limit := len(addresses)
 	pexAddresses := make([]protop2p.PexAddress, 0, limit)
+
 	for _, address := range addresses {
 		ctx, cancel := context.WithTimeout(context.Background(), resolveTimeout)
 		endpoints, err := address.Resolve(ctx)
 		r.Logger.Debug("resolved node address", "endpoints", endpoints)
 		cancel()
+
 		if err != nil {
 			r.Logger.Debug("failed to resolve address", "address", address, "err", err)
 			continue
 		}
+
 		for _, endpoint := range endpoints {
 			r.Logger.Debug("checking endpint", "IP", endpoint.IP, "Port", endpoint.Port)
 			if len(pexAddresses) >= limit {
@@ -334,6 +358,7 @@ func (r *ReactorV2) resolve(addresses []p2p.NodeAddress) []protop2p.PexAddress {
 			}
 		}
 	}
+
 	return pexAddresses
 }
 
@@ -382,6 +407,8 @@ func (r *ReactorV2) waitUntilNextRequest() <-chan time.Time {
 // peer into the requestsSent bucket and calculates when the next request
 // time should be
 func (r *ReactorV2) sendRequestForPeers() {
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
 	peer := r.availablePeers.Front()
 	if peer == nil {
 		// no peers are available
@@ -407,9 +434,7 @@ func (r *ReactorV2) sendRequestForPeers() {
 	// remove the peer from the available peers list and mark it in the requestsSent map
 	r.availablePeers.Remove(peer)
 	peer.DetachPrev()
-	r.mtx.Lock()
 	r.requestsSent[peerID] = struct{}{}
-	r.mtx.Unlock()
 
 	r.calculateNextRequestTime()
 	r.Logger.Debug("peer request sent", "next_request_time", r.nextRequestTime)

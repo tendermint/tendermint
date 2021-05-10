@@ -150,7 +150,7 @@ func TestSnapshotPool_Ranked_Best(t *testing.T) {
 	}{
 		{&snapshot{Height: 2, Format: 2, Chunks: 4, Hash: []byte{1, 3}}, []p2p.NodeID{"AA", "BB", "CC", "DD"}},
 		{&snapshot{Height: 1, Format: 1, Chunks: 4, Hash: []byte{1, 2}}, []p2p.NodeID{"AA", "BB", "CC", "DD"}},
-		{&snapshot{Height: 2, Format: 2, Chunks: 5, Hash: []byte{1, 2}}, []p2p.NodeID{"AA", "BB"}},
+		{&snapshot{Height: 2, Format: 2, Chunks: 5, Hash: []byte{1, 2}}, []p2p.NodeID{"AA", "BB", "CC"}},
 		{&snapshot{Height: 2, Format: 1, Chunks: 3, Hash: []byte{1, 2}}, []p2p.NodeID{"AA", "BB", "CC"}},
 		{&snapshot{Height: 1, Format: 2, Chunks: 5, Hash: []byte{1, 2}}, []p2p.NodeID{"AA", "BB", "CC"}},
 	}

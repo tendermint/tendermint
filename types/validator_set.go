@@ -1097,27 +1097,6 @@ func ValidatorSetFromExistingValidators(valz []*Validator) (*ValidatorSet, error
 
 //----------------------------------------
 
-// RandValidatorSet returns a randomized validator set (size: +numValidators+),
-// where each validator has a voting power of +votingPower+.
-//
-// EXPOSED FOR TESTING.
-func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []PrivValidator) {
-	var (
-		valz           = make([]*Validator, numValidators)
-		privValidators = make([]PrivValidator, numValidators)
-	)
-
-	for i := 0; i < numValidators; i++ {
-		val, privValidator := RandValidator(false, votingPower)
-		valz[i] = val
-		privValidators[i] = privValidator
-	}
-
-	sort.Sort(PrivValidatorsByAddress(privValidators))
-
-	return NewValidatorSet(valz), privValidators
-}
-
 // safe addition/subtraction/multiplication
 
 func safeAdd(a, b int64) (int64, bool) {

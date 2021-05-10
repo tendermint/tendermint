@@ -489,7 +489,10 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	mem.updateMtx.RLock()
 	defer mem.updateMtx.RUnlock()
 
-	var totalGas int64
+	var (
+		totalGas    int64
+		runningSize int64
+	)
 
 	// TODO: we will get a performance boost if we have a good estimate of avg
 	// size per tx, and set the initial capacity based off of that.
@@ -498,22 +501,26 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
 
-		dataSize := types.ComputeProtoSizeForTxs(append(txs, memTx.tx))
+		txs = append(txs, memTx.tx)
+
+		dataSize := types.ComputeProtoSizeForTxs([]types.Tx{memTx.tx})
 
 		// Check total size requirement
-		if maxBytes > -1 && dataSize > maxBytes {
-			return txs
+		if maxBytes > -1 && runningSize+dataSize > maxBytes {
+			return txs[:len(txs)-1]
 		}
+
+		runningSize += dataSize
+
 		// Check total gas requirement.
 		// If maxGas is negative, skip this check.
 		// Since newTotalGas < masGas, which
 		// must be non-negative, it follows that this won't overflow.
 		newTotalGas := totalGas + memTx.gasWanted
 		if maxGas > -1 && newTotalGas > maxGas {
-			return txs
+			return txs[:len(txs)-1]
 		}
 		totalGas = newTotalGas
-		txs = append(txs, memTx.tx)
 	}
 	return txs
 }
