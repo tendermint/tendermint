@@ -3,10 +3,10 @@ package statesync
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
-	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/p2p"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
@@ -14,86 +14,91 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var noConnectedPeers = errors.New("no available peers to dispatch request to")
+var (
+	errNoConnectedPeers    = errors.New("no available peers to dispatch request to")
+	errUnsolicitedResponse = errors.New("unsolicited light block response")
+	errNoResponse          = errors.New("peer failed to respond within timeout")
+	errPeerAlreadyBusy     = errors.New("peer is already processing a request")
+)
 
 // dispatcher keeps a list of peers and allows concurrent requests for light
 // blocks. NOTE: It is not the responsibility of the dispatcher to verify the
 // light blocks.
 type dispatcher struct {
-	mtx sync.Mutex
-	connectedPeers *clist.CList
+	availablePeers *peerlist
 	requestCh      chan<- p2p.Envelope
-	calls          map[p2p.NodeID]chan *types.LightBlock
+	timeout        time.Duration
+
+	mtx   sync.Mutex
+	calls map[p2p.NodeID]chan *types.LightBlock
 }
 
-func newDispatcher(requestCh chan<- p2p.Envelope) *dispatcher {
+func newDispatcher(requestCh chan<- p2p.Envelope, timeout time.Duration) *dispatcher {
 	return &dispatcher{
-		connectedPeers: clist.New(),
+		availablePeers: newPeerList(),
+		timeout:        timeout,
 		requestCh:      requestCh,
 		calls:          make(map[p2p.NodeID]chan *types.LightBlock),
 	}
 }
 
 func (d *dispatcher) LightBlock(ctx context.Context, height int64) (*types.LightBlock, p2p.NodeID, error) {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
 
-	if d.connectedPeers.Len() == 0 {
-		return nil, "", noConnectedPeers
+	if d.availablePeers.Len() == 0 && len(d.calls) == 0 {
+		return nil, "", errNoConnectedPeers
 	}
 	// fetch the next peer id in the list and request a light block from that
 	// peer
-	peer := d.nextPeer()
-	lb := d.lightBlock(ctx, height, peer)
-	return lb, peer, nil
+	peer := d.availablePeers.Pop()
+	lb, err := d.lightBlock(ctx, height, peer)
+	return lb, peer, err
 }
 
 func (d *dispatcher) Providers(chainID string) []provider.Provider {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 
-	providers := make([]provider.Provider, d.connectedPeers.Len())
-	index := 0
-	for e := d.connectedPeers.Front(); e != nil; e = e.Next() {
+	providers := make([]provider.Provider, d.availablePeers.Len())
+	peers := d.availablePeers.Peers()
+	for index, peer := range peers {
 		providers[index] = &blockProvider{
-			peer:       e.Value.(p2p.NodeID),
+			peer:       peer,
 			dispatcher: d,
 		}
-		index++
 	}
 	return providers
 }
 
-func (d *dispatcher) lightBlock(ctx context.Context, height int64, peer p2p.NodeID) (*types.LightBlock) {
-	d.requestCh <- p2p.Envelope{
-		To: peer,
-		Message: &ssproto.LightBlockRequest{
-			Height: uint64(height),
-		},
-	}
-	d.calls[peer] = make(chan *types.LightBlock, 1)
+func (d *dispatcher) lightBlock(ctx context.Context, height int64, peer p2p.NodeID) (*types.LightBlock, error) {
+	callCh := d.dispatch(peer, height)
 
 	select {
-	case resp := <-d.calls[peer]:
-		return resp
+	case resp := <-callCh:
+		return resp, nil
 
 	case <-ctx.Done():
-		return nil
-	}
-}
+		return nil, nil
 
-func (d *dispatcher) Len() int {
-	return d.connectedPeers.Len()
+	case <-time.After(d.timeout):
+		return nil, errNoResponse
+	}
 }
 
 func (d *dispatcher) respond(lb *proto.LightBlock, peer p2p.NodeID) error {
+	// check that the response came from a request
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-
-	// check that the response came from a request
 	receiveCh, ok := d.calls[peer]
 	if !ok {
-		return errors.New("unsolicited light block response")
+		return errUnsolicitedResponse
+	}
+	defer d.availablePeers.Append(peer)
+	defer close(receiveCh)
+	defer delete(d.calls, peer)
+
+	if lb == nil {
+		receiveCh <- nil
+		return nil
 	}
 
 	block, err := types.LightBlockFromProto(lb)
@@ -102,28 +107,41 @@ func (d *dispatcher) respond(lb *proto.LightBlock, peer p2p.NodeID) error {
 	}
 
 	receiveCh <- block
-	close(receiveCh)
-	delete(d.calls, peer)
 	return nil
 }
 
 func (d *dispatcher) addPeer(peer p2p.NodeID) {
-	d.connectedPeers.PushBack(peer)
+	d.availablePeers.Append(peer)
 }
 
-func (d *dispatcher) removePeer(peerID p2p.NodeID) {
-	for e := d.connectedPeers.Front(); e != nil; e = e.Next() {
-		if e.Value == peerID {
-			d.connectedPeers.Remove(e)
-			e.DetachPrev()
-			break
-		}
+func (d *dispatcher) removePeer(peer p2p.NodeID) {
+	if _, ok := d.calls[peer]; ok {
+		delete(d.calls, peer)
+	} else {
+		d.availablePeers.Remove(peer)
 	}
 }
 
-func (d *dispatcher) nextPeer() p2p.NodeID {
-	// NOTE: this should never be nil
-	return d.connectedPeers.FrontWait().Value.(p2p.NodeID)
+func (d *dispatcher) dispatch(peer p2p.NodeID, height int64) chan *types.LightBlock {
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
+
+	ch := make(chan *types.LightBlock, 1)
+	// this should never happen (only if we add the same peer twice somehow)
+	if _, ok := d.calls[peer]; ok {
+		close(ch)
+		return ch
+	}
+
+	fmt.Printf("Sending request for light block at height %d\n", height)
+	d.requestCh <- p2p.Envelope{
+		To: peer,
+		Message: &ssproto.LightBlockRequest{
+			Height: uint64(height),
+		},
+	}
+	d.calls[peer] = ch
+	return ch
 }
 
 // blockProvider is a p2p based light provider which uses a dispatcher connected
@@ -145,7 +163,7 @@ func (p *blockProvider) LightBlock(ctx context.Context, height int64) (*types.Li
 	// return ErrConnectionClosed instead of ErrNoResponse
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
-	lb := p.dispatcher.lightBlock(ctx, height, p.peer)
+	lb, _ := p.dispatcher.lightBlock(ctx, height, p.peer)
 	if lb == nil {
 		return nil, provider.ErrNoResponse
 	}
@@ -166,3 +184,71 @@ func (p *blockProvider) ReportEvidence(ctx context.Context, ev types.Evidence) e
 
 // String implements stringer interface
 func (p *blockProvider) String() string { return string(p.peer) }
+
+type peerlist struct {
+	mtx     sync.Mutex
+	peers   []p2p.NodeID
+	waiting []chan p2p.NodeID
+}
+
+func newPeerList() *peerlist {
+	return &peerlist{
+		peers:   make([]p2p.NodeID, 0),
+		waiting: make([]chan p2p.NodeID, 0),
+	}
+}
+
+func (l *peerlist) Len() int {
+	l.mtx.Lock()
+	defer l.mtx.Unlock()
+	return len(l.peers)
+}
+
+func (l *peerlist) Pop() p2p.NodeID {
+	l.mtx.Lock()
+	if len(l.peers) == 0 {
+		// if we don't have any peers in the list we block until a peer is
+		// appended
+		wait := make(chan p2p.NodeID, 1)
+		l.waiting = append(l.waiting, wait)
+		// unlock whilst waiting so that the list can be appended to
+		l.mtx.Unlock()
+		peer := <-wait
+		return peer
+	}
+
+	peer := l.peers[0]
+	l.peers = l.peers[1:]
+	l.mtx.Unlock()
+	return peer
+}
+
+func (l *peerlist) Append(peer p2p.NodeID) {
+	l.mtx.Lock()
+	defer l.mtx.Unlock()
+	if len(l.waiting) > 0 {
+		wait := l.waiting[0]
+		l.waiting = l.waiting[1:]
+		wait <- peer
+		close(wait)
+	} else {
+		l.peers = append(l.peers, peer)
+	}
+}
+
+func (l *peerlist) Remove(peer p2p.NodeID) {
+	l.mtx.Lock()
+	defer l.mtx.Unlock()
+	for i, p := range l.peers {
+		if p == peer {
+			l.peers = append(l.peers[:i], l.peers[i+1:]...)
+			return
+		}
+	}
+}
+
+func (l *peerlist) Peers() []p2p.NodeID {
+	l.mtx.Lock()
+	defer l.mtx.Unlock()
+	return l.peers
+}

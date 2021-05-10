@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,13 +15,13 @@ import (
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 )
 
-func TestDispatcher(t *testing.T) {
+func TestDispatcherBasic(t *testing.T) {
 
 	ch := make(chan p2p.Envelope)
 	closeCh := make(chan struct{})
 	defer close(closeCh)
 
-	d := newDispatcher(ch)
+	d := newDispatcher(ch, 1*time.Second)
 
 	go handleRequests(d, ch, closeCh)
 
@@ -35,6 +36,7 @@ func TestDispatcher(t *testing.T) {
 		go func(height int64) {
 			lb, peer, err := d.LightBlock(context.Background(), height)
 			require.NoError(t, err)
+			require.NotNil(t, lb)
 			require.Equal(t, lb.Height, height)
 			require.Contains(t, peers, peer)
 		}(int64(i))
@@ -42,14 +44,13 @@ func TestDispatcher(t *testing.T) {
 }
 
 func TestDispatcherProviders(t *testing.T) {
-	t.TempDir()
 
 	ch := make(chan p2p.Envelope)
 	chainID := "state-sync-test"
 	closeCh := make(chan struct{})
 	defer close(closeCh)
 
-	d := newDispatcher(ch)
+	d := newDispatcher(ch, 1*time.Second)
 
 	go handleRequests(d, ch, closeCh)
 
@@ -70,18 +71,68 @@ func TestDispatcherProviders(t *testing.T) {
 	}
 }
 
+func TestPeerListBasic(t *testing.T) {
+	peerList := newPeerList()
+	assert.Zero(t, peerList.Len())
+	numPeers := 10
+	peerSet := createPeerSet(numPeers)
+
+	for _, peer := range peerSet {
+		peerList.Append(peer)
+	}
+
+	for idx, peer := range peerList.Peers() {
+		assert.Equal(t, peer, peerSet[idx])
+	}
+
+	assert.Equal(t, numPeers, peerList.Len())
+
+	half := numPeers / 2
+	for i := 0; i < half; i++ {
+		assert.Equal(t, peerSet[i], peerList.Pop())
+	}
+	assert.Equal(t, half, peerList.Len())
+
+	peerList.Remove(p2p.NodeID("lp"))
+	assert.Equal(t, half, peerList.Len())
+
+	peerList.Remove(peerSet[half])
+	half++
+	assert.Equal(t, peerSet[half], peerList.Pop())
+
+}
+
+func TestPeerListConcurrent(t *testing.T) {
+	peerList := newPeerList()
+	numPeers := 5
+
+	wg := sync.WaitGroup{}
+	for i := 0; i < numPeers; i++ {
+		go func() {
+			_ = peerList.Pop()
+			wg.Done()
+		}()
+	}
+
+	for _, peer := range createPeerSet(numPeers) {
+		wg.Add(1)
+		peerList.Append(peer)
+	}
+
+	wg.Wait()
+}
 
 func handleRequests(d *dispatcher, ch chan p2p.Envelope, closeCh chan struct{}) {
 	for {
 		select {
-		case request := <- ch:
+		case request := <-ch:
 			height := request.Message.(*ssproto.LightBlockRequest).Height
 			peer := request.To
 			resp := mocklb(peer, int64(height), time.Now())
 			block, _ := resp.block.ToProto()
 			d.respond(block, resp.peer)
-		case <- closeCh:
-			return 
+		case <-closeCh:
+			return
 		}
 	}
 }

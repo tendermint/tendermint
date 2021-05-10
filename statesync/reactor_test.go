@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
@@ -44,7 +45,8 @@ type reactorTestSuite struct {
 	blockOutCh     chan p2p.Envelope
 	blockPeerErrCh chan p2p.PeerError
 
-	peerUpdates *p2p.PeerUpdates
+	peerUpdateCh chan p2p.PeerUpdate
+	peerUpdates  *p2p.PeerUpdates
 
 	stateStore *smmocks.Store
 	blockStore *store.BlockStore
@@ -79,11 +81,13 @@ func setup(
 		blockInCh:         make(chan p2p.Envelope, chBuf),
 		blockOutCh:        make(chan p2p.Envelope, chBuf),
 		blockPeerErrCh:    make(chan p2p.PeerError, chBuf),
-		peerUpdates:       p2p.NewPeerUpdates(make(chan p2p.PeerUpdate), int(chBuf)),
 		conn:              conn,
 		connQuery:         connQuery,
 		stateProvider:     stateProvider,
 	}
+
+	rts.peerUpdateCh = make(chan p2p.PeerUpdate, chBuf)
+	rts.peerUpdates = p2p.NewPeerUpdates(rts.peerUpdateCh, int(chBuf))
 
 	rts.snapshotChannel = p2p.NewChannel(
 		SnapshotChannel,
@@ -309,15 +313,15 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 	h.Height = height
 	blockID := factory.MakeBlockIDWithHash(h.Hash())
 	vals, pv := factory.RandValidatorSet(1, 10)
-	vote, err := factory.MakeVote(pv[0], h.ChainID, 0, h.Height, 0, 2, 
+	vote, err := factory.MakeVote(pv[0], h.ChainID, 0, h.Height, 0, 2,
 		blockID, factory.DefaultTestTime)
 	require.NoError(t, err)
 
 	sh := &types.SignedHeader{
 		Header: h,
 		Commit: &types.Commit{
-			Height: h.Height,
-			BlockID: blockID, 
+			Height:  h.Height,
+			BlockID: blockID,
 			Signatures: []types.CommitSig{
 				vote.CommitSig(),
 			},
@@ -334,14 +338,14 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 	rts.stateStore.On("LoadValidators", height).Return(vals, nil)
 
 	rts.blockInCh <- p2p.Envelope{
-		From:    p2p.NodeID("aa"),
+		From: p2p.NodeID("aa"),
 		Message: &ssproto.LightBlockRequest{
-			Height: 10, 
+			Height: 10,
 		},
 	}
 	require.Empty(t, rts.blockPeerErrCh)
 
-	response := <- rts.blockOutCh
+	response := <-rts.blockOutCh
 	require.Equal(t, p2p.NodeID("aa"), response.To)
 	res, ok := response.Message.(*ssproto.LightBlockResponse)
 	require.True(t, ok)
@@ -359,22 +363,31 @@ func TestReactor_Backfill(t *testing.T) {
 
 	var (
 		startHeight int64 = 20
-		endHeight int64 = 10
+		endHeight   int64 = 10
 		// startTime = time.Date(2020, 1, 1, 0, 200, 0, 0, time.UTC)
 		stopTime = time.Date(2020, 1, 1, 0, 100, 0, 0, time.UTC)
 	)
 
+	rts.peerUpdateCh <- p2p.PeerUpdate{
+		NodeID: p2p.NodeID("aa"),
+		Status: p2p.PeerStatusUp,
+	}
+
+	trackingHeight := startHeight
+	rts.stateStore.On("SaveValidatorSet", mock.AnythingOfType("int64"),
+		mock.AnythingOfType("*types.ValidatorSet")).Return(func(h int64, vals *types.ValidatorSet) error {
+		require.Equal(t, trackingHeight, h)
+		require.GreaterOrEqual(t, h, endHeight)
+		trackingHeight--
+		return nil
+	})
+
 	closeCh := make(chan struct{})
 	defer close(closeCh)
 
-	chain := buildLightBlockChain(t, endHeight, startHeight + 1, stopTime)
+	chain := buildLightBlockChain(t, endHeight, startHeight+1, stopTime)
 
 	go handleLightBlockRequests(t, chain, rts.blockOutCh, rts.blockInCh, closeCh)
-	
-	rts.peerUpdates.SendUpdate(p2p.PeerUpdate{
-		NodeID: p2p.NodeID("aa"),
-		Status: p2p.PeerStatusUp,
-	})
 
 	err := rts.reactor.Backfill(
 		factory.DefaultTestChainID,
@@ -384,6 +397,14 @@ func TestReactor_Backfill(t *testing.T) {
 		stopTime,
 	)
 	require.NoError(t, err)
+
+	for height := startHeight; height <= endHeight; height++ {
+		blockMeta := rts.blockStore.LoadBlockMeta(height)
+		require.NotNil(t, blockMeta)
+	}
+
+	require.Nil(t, rts.blockStore.LoadBlockMeta(endHeight - 1))
+	require.Nil(t, rts.blockStore.LoadBlockMeta(startHeight + 1))
 }
 
 // retryUntil will continue to evaluate fn and will return successfully when true
@@ -404,7 +425,7 @@ func retryUntil(t *testing.T, fn func() bool, timeout time.Duration) {
 func handleLightBlockRequests(t *testing.T, chain map[int64]*types.LightBlock, receiving chan p2p.Envelope, sending chan p2p.Envelope, close chan struct{}) {
 	for {
 		select {
-		case envelope := <- receiving:
+		case envelope := <-receiving:
 			if msg, ok := envelope.Message.(*ssproto.LightBlockRequest); ok {
 				lb, err := chain[int64(msg.Height)].ToProto()
 				require.NoError(t, err)
@@ -416,33 +437,34 @@ func handleLightBlockRequests(t *testing.T, chain map[int64]*types.LightBlock, r
 					},
 				}
 			}
-		case <- close:
+		case <-close:
 			return
 		}
 	}
 }
 
 func buildLightBlockChain(t *testing.T, fromHeight, toHeight int64, startTime time.Time) map[int64]*types.LightBlock {
-	chain := make(map[int64]*types.LightBlock, toHeight - fromHeight)
+	chain := make(map[int64]*types.LightBlock, toHeight-fromHeight)
 	lastBlockID := factory.MakeBlockID()
-	blockTime := startTime
+	blockTime := startTime.Add(-1 * time.Minute)
 	for height := fromHeight; height < toHeight; height++ {
 		header, err := factory.MakeHeader(&types.Header{
-			Height: height,
+			Height:      height,
 			LastBlockID: lastBlockID,
-			Time: blockTime,
+			Time:        blockTime,
 		})
 		require.NoError(t, err)
 		blockTime = blockTime.Add(1 * time.Minute)
-		lastBlockID = factory.MakeBlockIDWithHash(header.Hash())
 		vals, pv := factory.RandValidatorSet(3, 10)
+		header.ValidatorsHash = vals.Hash()
+		lastBlockID = factory.MakeBlockIDWithHash(header.Hash())
 		voteSet := types.NewVoteSet(factory.DefaultTestChainID, height, 0, tmproto.PrecommitType, vals)
 		commit, err := factory.MakeCommit(lastBlockID, height, 0, voteSet, pv, blockTime)
 		require.NoError(t, err)
 		chain[height] = &types.LightBlock{
 			SignedHeader: &types.SignedHeader{
 				Header: header,
-				Commit: commit, 
+				Commit: commit,
 			},
 			ValidatorSet: vals,
 		}

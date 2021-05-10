@@ -140,7 +140,7 @@ func NewReactor(
 		peerUpdates: peerUpdates,
 		closeCh:     make(chan struct{}),
 		tempDir:     tempDir,
-		dispatcher:  newDispatcher(blockCh.Out),
+		dispatcher:  newDispatcher(blockCh.Out, 10*time.Second),
 		stateStore:  stateStore,
 		blockStore:  blockStore,
 	}
@@ -254,11 +254,17 @@ func (r *Reactor) Backfill(
 			for {
 				select {
 				case height := <-queue.NextHeight():
+					r.Logger.Debug("fetching next block", "height", height)
 					lb, peer, err := r.dispatcher.LightBlock(context.Background(), height)
 					if err != nil {
 						// we don't punish the peer as it might just not have the block
 						// at that height
 						r.Logger.Info("error with fetching light block", "err", err)
+						queue.Retry(height)
+						continue
+					}
+					if lb == nil {
+						r.Logger.Info("peer didn't have block, fetching from another peer")
 						queue.Retry(height)
 						continue
 					}
@@ -271,6 +277,7 @@ func (r *Reactor) Backfill(
 					// hashes line up
 					err = lb.ValidateBasic(chainID)
 					if err != nil {
+						r.Logger.Info("fetched light block failed validate basic", "err", err)
 						queue.Retry(height)
 					}
 
@@ -278,6 +285,7 @@ func (r *Reactor) Backfill(
 						block: lb,
 						peer:  peer,
 					})
+					r.Logger.Debug("added light block to processing queue", "height", height)
 
 				case <-queue.Done():
 					return
@@ -287,34 +295,38 @@ func (r *Reactor) Backfill(
 	}
 
 	// verify all light blocks
-	for resp := range queue.VerifyNext() {
-
-		// validate the hash
-		if w, g := trustedBlockID.Hash, resp.block.Hash(); !bytes.Equal(w, g) {
-			r.Logger.Info("received invalid light block. header hash doesn't match trusted LastBlockID",
-				"trustedHash", w, "receivedHash", g)
-			r.blockCh.Error <- p2p.PeerError{
-				NodeID: resp.peer,
-				Err:    fmt.Errorf("received invalid light block. Expected hash %v, got: %v", w, g),
+	for {
+		select {
+		case resp := <- queue.VerifyNext():
+			// validate the hash
+			if w, g := trustedBlockID.Hash, resp.block.Hash(); !bytes.Equal(w, g) {
+				r.Logger.Info("received invalid light block. header hash doesn't match trusted LastBlockID",
+					"trustedHash", w, "receivedHash", g)
+				r.blockCh.Error <- p2p.PeerError{
+					NodeID: resp.peer,
+					Err:    fmt.Errorf("received invalid light block. Expected hash %v, got: %v", w, g),
+				}
+				queue.Retry(resp.block.Height)
 			}
-			queue.Retry(resp.block.Height)
+	
+			// save the light blocks
+			err := r.blockStore.SaveSignedHeader(resp.block.SignedHeader, trustedBlockID)
+			if err != nil {
+				return err
+			}
+	
+			err = r.stateStore.SaveValidatorSet(resp.block.Height, resp.block.ValidatorSet)
+			if err != nil {
+				return err
+			}
+	
+			trustedBlockID = resp.block.LastBlockID
+			queue.Success(resp.block.Height)
+
+		case <-queue.Done():
+			return nil
 		}
-
-		// save the light blocks
-		err := r.blockStore.SaveSignedHeader(resp.block.SignedHeader, trustedBlockID)
-		if err != nil {
-			return err
-		}
-
-		err = r.stateStore.SaveValidatorSet(resp.block.Height, resp.block.ValidatorSet)
-		if err != nil {
-			return err
-		}
-
-		trustedBlockID = resp.block.LastBlockID
-	}
-
-	return nil
+	} 
 }
 
 func (r *Reactor) Dispatcher() *dispatcher {
@@ -503,9 +515,12 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 		}
 
 	case *ssproto.LightBlockResponse:
+		r.Logger.Info("received light block")
 		if err := r.dispatcher.respond(msg.LightBlock, envelope.From); err != nil {
+			r.Logger.Error("error processing light block response", "err", err)
 			return err
 		}
+		r.Logger.Info("successfully processed block")
 
 	default:
 		return fmt.Errorf("received unknown message: %T", msg)
@@ -518,11 +533,11 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
 func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
-	// defer func() {
-	// 	if e := recover(); e != nil {
-	// 		err = fmt.Errorf("panic in processing message: %v", e)
-	// 	}
-	// }()
+	defer func() {
+		if e := recover(); e != nil {
+			err = fmt.Errorf("panic in processing message: %v", e)
+		}
+	}()
 
 	r.Logger.Debug("received message", "message", envelope.Message, "peer", envelope.From)
 

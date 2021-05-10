@@ -46,19 +46,20 @@ func TestBlockQueueBasic(t *testing.T) {
 
 	trackingHeight := startHeight
 	wg.Add(1)
-	loop:for {
+loop:
+	for {
 		select {
 		case <-queue.Done():
 			wg.Done()
 			break loop
-			
-		case resp := <- queue.VerifyNext():
+
+		case resp := <-queue.VerifyNext():
 			// assert that the queue serializes the blocks
 			assert.Equal(t, resp.block.Height, trackingHeight)
 			trackingHeight--
 			queue.Success(resp.block.Height)
 		}
-			
+
 	}
 
 	wg.Wait()
@@ -98,12 +99,12 @@ func TestBlockQueueWithFailures(t *testing.T) {
 				}
 			}
 		}()
-	}	
+	}
 
 	trackingHeight := startHeight
 	for {
 		select {
-		case resp := <- queue.VerifyNext():
+		case resp := <-queue.VerifyNext():
 			// assert that the queue serializes the blocks
 			assert.Equal(t, resp.block.Height, trackingHeight)
 			if rand.Intn(failureRate) == 0 {
@@ -152,7 +153,7 @@ func TestBlockQueueStopTime(t *testing.T) {
 	trackingHeight := startHeight
 	for {
 		select {
-		case resp := <- queue.VerifyNext():
+		case resp := <-queue.VerifyNext():
 			// assert that the queue serializes the blocks
 			assert.Equal(t, resp.block.Height, trackingHeight)
 			trackingHeight--
@@ -160,10 +161,10 @@ func TestBlockQueueStopTime(t *testing.T) {
 
 		case <-queue.Done():
 			wg.Wait()
-			assert.Less(t, trackingHeight, stopHeight - 50)
+			assert.Less(t, trackingHeight, stopHeight-50)
 			return
 		}
-	}	
+	}
 }
 
 func mocklb(peer p2p.NodeID, height int64, time time.Time) lightBlockResponse {

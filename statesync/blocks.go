@@ -40,7 +40,7 @@ type blockQueue struct {
 	waiters []chan int64
 
 	// this channel is closed once the verification process is complete
-	doneCh   chan struct{}
+	doneCh chan struct{}
 }
 
 func newBlockQueue(
@@ -56,7 +56,7 @@ func newBlockQueue(
 		pending:      make(map[int64]lightBlockResponse),
 		failed:       make([]int64, 0),
 		waiters:      make([]chan int64, 0),
-		doneCh:		  make(chan struct{}),
+		doneCh:       make(chan struct{}),
 	}
 }
 
@@ -68,11 +68,11 @@ func (q *blockQueue) Add(l lightBlockResponse) {
 
 	// return early if the process has already finished
 	select {
-		case <- q.doneCh:
-			return
-		default:
+	case <-q.doneCh:
+		return
+	default:
 	}
-	
+
 	// sometimes more blocks are fetched then what is necessary. If we already
 	// have what we need then ignore this
 	if q.hasFinalBlock() && l.block.Height < q.terminal.Height {
@@ -92,7 +92,7 @@ func (q *blockQueue) Add(l lightBlockResponse) {
 
 	// Lastly, if the incoming block is past the stop time and stop height then
 	// we mark it as the terminal block
-	if l.block.Height < q.stopHeight && l.block.Time.Before(q.stopTime) {
+	if l.block.Height <= q.stopHeight && l.block.Time.Before(q.stopTime) {
 		q.terminal = l.block
 	}
 }
@@ -142,9 +142,9 @@ func (q *blockQueue) VerifyNext() <-chan lightBlockResponse {
 	ch := make(chan lightBlockResponse, 1)
 
 	select {
-		case <- q.doneCh:
-			return ch
-		default:
+	case <-q.doneCh:
+		return ch
+	default:
 	}
 
 	if lb, ok := q.pending[q.verifyHeight]; ok {
@@ -166,11 +166,11 @@ func (q *blockQueue) Retry(height int64) {
 	defer q.mtx.Unlock()
 
 	select {
-		case <- q.doneCh:
-			return 
-		default:
+	case <-q.doneCh:
+		return
+	default:
 	}
-	
+
 	if len(q.waiters) > 0 {
 		q.waiters[0] <- height
 		close(q.waiters[0])
