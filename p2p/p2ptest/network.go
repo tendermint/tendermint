@@ -279,7 +279,8 @@ func (n *Network) MakeNode(t *testing.T, opts NodeOptions) *Node {
 // MakeChannel opens a channel, with automatic error handling and cleanup. On
 // test cleanup, it also checks that the channel is empty, to make sure
 // all expected messages have been asserted.
-func (n *Node) MakeChannel(t *testing.T, chDesc p2p.ChannelDescriptor, messageType proto.Message, size int) *p2p.Channel {
+func (n *Node) MakeChannel(t *testing.T, chDesc p2p.ChannelDescriptor,
+	messageType proto.Message, size int) *p2p.Channel {
 	channel, err := n.Router.OpenChannel(chDesc, messageType, size)
 	require.NoError(t, err)
 	t.Cleanup(func() {
