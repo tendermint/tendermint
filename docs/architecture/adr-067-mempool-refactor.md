@@ -4,13 +4,16 @@
   - [Changelog](#changelog)
   - [Status](#status)
   - [Context](#context)
+    - [Curren Design](#curren-design)
   - [Alternative Approaches](#alternative-approaches)
+  - [Prior Art](#prior-art)
   - [Decision](#decision)
   - [Detailed Design](#detailed-design)
     - [CheckTx](#checktx)
     - [Mempool](#mempool)
     - [Eviction](#eviction)
     - [Gossiping](#gossiping)
+    - [Performance](#performance)
   - [Consequences](#consequences)
     - [Positive](#positive)
     - [Negative](#negative)
@@ -89,10 +92,14 @@ e.g. Ethereum, AVA, and Diem.
 
 To incorporate a priority-based flexible and performant mempool in Tendermint Core,
 we will introduce new fields, `priority` and `sender`, into the `ResponseCheckTx`
-type and augment the existing mempool data structure to facilitate prioritization
-of uncommitted transactions in addition to extended functionality such as
-replace-by-priority and allowing multiple transactions to exist from the same
-sender with varying priorities.
+type.
+
+We will introduce a new versioned mempool reactor, `v1` and assume an implicit
+version of the current mempool reactor as `v0`. In the new `v1` mempool reactor,
+we largely keep the functionality the same as `v0` except we augment the underlying
+data structures. Specifically, we keep a mapping of senders to transaction objects.
+On top of this mapping, we index transactions to provide the ability to efficiently
+gossip and reap transactions by priority.
 
 ## Detailed Design
 
@@ -124,10 +131,9 @@ using the default value of zero.
 
 ### Mempool
 
-The existing concurrent-safe linked-list will be removed entirely in favor of a
-thread-safe map of `<sender:*Tx>`, i.e a mapping from `sender` to a single `*Tx`
-object, where each `*Tx` is the next valid and processable transaction from the
-given `sender`.
+The existing concurrent-safe linked-list will be replaced by a thread-safe map
+of `<sender:*Tx>`, i.e a mapping from `sender` to a single `*Tx` object, where
+each `*Tx` is the next valid and processable transaction from the given `sender`.
 
 On top of this mapping, we index all transactions by priority using a thread-safe
 priority queue, i.e. a [max heap](https://en.wikipedia.org/wiki/Min-max_heap).
@@ -175,34 +181,28 @@ This will require additional `O(n)` space and `O(n*log(n))` runtime complexity.
 
 ### Gossiping
 
-When gossiping new transactions to peers, we first obtain a read lock on the
-priority queue index. If we have not gossiped the top priority `Tx` for the
-given peer, we return this `Tx` as the next transaction to gossip. Otherwise,
-we sort the priority queue index and traverse in descending priority order until
-we find the first non-sent `Tx` to the peer.
+We keep the existing thread-safe linked list as an additional index. Using this
+index, we can efficiently gossip transactions in the same manner as they are
+gossiped now (FIFO).
 
-In order to facilitate this, we must also keep an ephemeral cache, mapping from
-`sender` to a list of unique `Tx` identifiers (e.g. the `Tx` hash). A `Tx`
-identifier is removed from this cache once it is either committed in a block or
-gossiped to a peer. Note, if the `Tx` is committed in a block, this requires that
-we iterates over the entire cache, i.e. each peer's list.
+Gossiping transactions will not require locking any other indexes.
 
 ### Performance
 
-TODO: Reference current bottlenecks, specifically around locking behavior and
-detail how/where new potential locking bottlenecks can occur in the proposed
-design.
+Performance should largely remain unaffected apart from the space overhead of
+keeping an additional priority queue index and the case where we need to evict
+transactions from the priority queue index. There should be no reads which
+block writes on any index
 
 ## Consequences
 
 ### Positive
 
 - Transactions are allowed to be prioritized by the application.
-- Transactions are allowed to be gossiped by priority.
 
 ### Negative
 
-- Additional bytes sent over the wire due to new fields added to `ResponseCheckTx`.
+- Increased size of the `ResponseCheckTx` Protocol Buffer type.
 - A transaction that passed `CheckTx` and entered the mempool can later be evicted
   at a future point in time if a higher priority transaction entered while the
   mempool was full.
