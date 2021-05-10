@@ -342,7 +342,6 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 	require.Empty(t, rts.blockPeerErrCh)
 
 	response := <- rts.blockOutCh
-	t.Log("response")
 	require.Equal(t, p2p.NodeID("aa"), response.To)
 	res, ok := response.Message.(*ssproto.LightBlockResponse)
 	require.True(t, ok)
@@ -350,6 +349,10 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, lb, receivedLB)
 }
+
+// func TestReactor_Dispatcher(t *testing.T) {
+// 	dispatcher := newDispatcher()
+// }
 
 func TestReactor_Backfill(t *testing.T) {
 	rts := setup(t, nil, nil, nil, 2)
@@ -366,7 +369,12 @@ func TestReactor_Backfill(t *testing.T) {
 
 	chain := buildLightBlockChain(t, endHeight, startHeight + 1, stopTime)
 
-	go handleLightBlockRequests(chain, rts.blockOutCh, rts.blockInCh, closeCh)
+	go handleLightBlockRequests(t, chain, rts.blockOutCh, rts.blockInCh, closeCh)
+	
+	rts.peerUpdates.SendUpdate(p2p.PeerUpdate{
+		NodeID: p2p.NodeID("aa"),
+		Status: p2p.PeerStatusUp,
+	})
 
 	err := rts.reactor.Backfill(
 		factory.DefaultTestChainID,
@@ -393,12 +401,14 @@ func retryUntil(t *testing.T, fn func() bool, timeout time.Duration) {
 	}
 }
 
-func handleLightBlockRequests(chain map[int64]*types.LightBlock, receiving chan p2p.Envelope, sending chan p2p.Envelope, close chan struct{}) {
+func handleLightBlockRequests(t *testing.T, chain map[int64]*types.LightBlock, receiving chan p2p.Envelope, sending chan p2p.Envelope, close chan struct{}) {
 	for {
 		select {
 		case envelope := <- receiving:
 			if msg, ok := envelope.Message.(*ssproto.LightBlockRequest); ok {
-				lb, _ := chain[int64(msg.Height)].ToProto()
+				lb, err := chain[int64(msg.Height)].ToProto()
+				require.NoError(t, err)
+				t.Log("sending response", "height", msg.Height)
 				sending <- p2p.Envelope{
 					From: envelope.To,
 					Message: &ssproto.LightBlockResponse{
