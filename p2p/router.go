@@ -344,21 +344,13 @@ func (r *Router) createQueueFactory() (func(int) queue, error) {
 	}
 }
 
-// AddChannelDescriptors adds a set of ChannelDescriptors to the reactor. Note,
-// this should be called before the router is started and any connections are made.
-func (r *Router) AddChannelDescriptors(chDescs []*ChannelDescriptor) {
-	for _, chDesc := range chDescs {
-		r.chDescs = append(r.chDescs, *chDesc)
-	}
-}
-
 // OpenChannel opens a new channel for the given message type. The caller must
 // close the channel when done, before stopping the Router. messageType is the
 // type of message passed through the channel (used for unmarshaling), which can
 // implement Wrapper to automatically (un)wrap multiple message types in a
 // wrapper message. The caller may provide a size to make the channel buffered,
 // which internally makes the inbound, outbound, and error channel buffered.
-func (r *Router) OpenChannel(id ChannelID, messageType proto.Message, size int) (*Channel, error) {
+func (r *Router) OpenChannel(chDesc ChannelDescriptor, messageType proto.Message, size int) (*Channel, error) {
 	if size == 0 {
 		size = queueBufferDefault
 	}
@@ -366,9 +358,11 @@ func (r *Router) OpenChannel(id ChannelID, messageType proto.Message, size int) 
 	r.channelMtx.Lock()
 	defer r.channelMtx.Unlock()
 
+	id := ChannelID(chDesc.ID)
 	if _, ok := r.channelQueues[id]; ok {
 		return nil, fmt.Errorf("channel %v already exists", id)
 	}
+	r.chDescs = append(r.chDescs, chDesc)
 
 	queue := r.queueFactory(size)
 	outCh := make(chan Envelope, size)
