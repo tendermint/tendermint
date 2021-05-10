@@ -1435,7 +1435,6 @@ func (n *Node) OnStart() error {
 
 // OnStop stops the Node. It implements service.Service.
 func (n *Node) OnStop() {
-	n.BaseService.OnStop()
 
 	n.Logger.Info("Stopping Node")
 
