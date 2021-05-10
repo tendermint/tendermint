@@ -1,4 +1,4 @@
-package nullsink
+package null
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 )
 
 func TestNullEventSink(t *testing.T) {
-	nullIndexer := NewNullEventSink()
+	nullIndexer := NewEventSink()
 
 	assert.Nil(t, nullIndexer.IndexTxEvents(nil))
 	assert.Nil(t, nullIndexer.IndexBlockEvents(types.EventDataNewBlockHeader{}))
@@ -29,6 +29,6 @@ func TestNullEventSink(t *testing.T) {
 }
 
 func TestType(t *testing.T) {
-	nullIndexer := NewNullEventSink()
+	nullIndexer := NewEventSink()
 	assert.Equal(t, indexer.NULL, nullIndexer.Type())
 }

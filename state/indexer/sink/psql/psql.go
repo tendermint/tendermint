@@ -1,4 +1,4 @@
-package psqlsink
+package psql
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var _ indexer.EventSink = (*PSQLEventSink)(nil)
+var _ indexer.EventSink = (*EventSink)(nil)
 
 const (
 	TableEventBlock = "block_events"
@@ -23,41 +23,40 @@ const (
 	DriverName      = "postgres"
 )
 
-// PSQLEventSink is an indexer backend providing the tx/block index services.
-type PSQLEventSink struct {
+// EventSink is an indexer backend providing the tx/block index services.
+type EventSink struct {
 	store *sql.DB
 }
 
-func NewPSQLEventSink(connStr string) (indexer.EventSink, *sql.DB, error) {
+func NewEventSink(connStr string) (indexer.EventSink, *sql.DB, error) {
 	db, err := sql.Open(DriverName, connStr)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return &PSQLEventSink{
+	return &EventSink{
 		store: db,
 	}, db, nil
 }
 
-func (es *PSQLEventSink) Type() indexer.EventSinkType {
+func (es *EventSink) Type() indexer.EventSinkType {
 	return indexer.PSQL
 }
 
-func (es *PSQLEventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error {
-
+func (es *EventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error {
 	sqlStmt := sq.Insert(TableEventBlock).Columns("key", "value", "height", "type").PlaceholderFormat(sq.Dollar)
 
 	// index the reserved block height index
 	sqlStmt = sqlStmt.Values(types.BlockHeightKey, fmt.Sprint(h.Header.Height), h.Header.Height, "")
 
 	// index begin_block events
-	err := indexEvents(&sqlStmt, h.ResultBeginBlock.Events, types.EventTypeBeginBlock, h.Header.Height)
+	err := indexBlockEvents(&sqlStmt, h.ResultBeginBlock.Events, types.EventTypeBeginBlock, h.Header.Height)
 	if err != nil {
 		return err
 	}
 
 	// index end_block events
-	err = indexEvents(&sqlStmt, h.ResultEndBlock.Events, types.EventTypeEndBlock, h.Header.Height)
+	err = indexBlockEvents(&sqlStmt, h.ResultEndBlock.Events, types.EventTypeEndBlock, h.Header.Height)
 	if err != nil {
 		return err
 	}
@@ -66,8 +65,7 @@ func (es *PSQLEventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error
 	return err
 }
 
-func (es *PSQLEventSink) IndexTxEvents(txr *abci.TxResult) error {
-
+func (es *EventSink) IndexTxEvents(txr *abci.TxResult) error {
 	// index the tx result
 	var txid uint32
 	sqlStmtTxResult := sq.
@@ -98,34 +96,29 @@ func (es *PSQLEventSink) IndexTxEvents(txr *abci.TxResult) error {
 		PlaceholderFormat(sq.Dollar)
 	sqlStmtEvents = sqlStmtEvents.Values(types.TxHashKey, hash, txr.Height, hash, txid)
 	sqlStmtEvents = sqlStmtEvents.Values(types.TxHeightKey, fmt.Sprint(txr.Height), txr.Height, hash, txid)
-	fmt.Println(sqlStmtEvents.ToSql())
 
 	// execute sqlStmtEvents db query...
 	_, err = sqlStmtEvents.RunWith(es.store).Exec()
 	return err
 }
 
-func (es *PSQLEventSink) SearchBlockEvents(ctx context.Context, q *query.Query) ([]int64, error) {
+func (es *EventSink) SearchBlockEvents(ctx context.Context, q *query.Query) ([]int64, error) {
 	return nil, errors.New("block search is not supported via the postgres event sink")
 }
 
-func (es *PSQLEventSink) SearchTxEvents(ctx context.Context, q *query.Query) ([]*abci.TxResult, error) {
+func (es *EventSink) SearchTxEvents(ctx context.Context, q *query.Query) ([]*abci.TxResult, error) {
 	return nil, errors.New("tx search is not supported via the postgres event sink")
 }
 
-func (es *PSQLEventSink) GetTxByHash(hash []byte) (*abci.TxResult, error) {
+func (es *EventSink) GetTxByHash(hash []byte) (*abci.TxResult, error) {
 	return nil, errors.New("getTxByHash is not supported via the postgres event sink")
 }
 
-func (es *PSQLEventSink) HasBlock(h int64) (bool, error) {
+func (es *EventSink) HasBlock(h int64) (bool, error) {
 	return false, errors.New("hasBlock is not supported via the postgres event sink")
 }
 
-func indexEvents(
-	sqlStmt *sq.InsertBuilder,
-	events []abci.Event,
-	ty string,
-	height int64) error {
+func indexBlockEvents(sqlStmt *sq.InsertBuilder, events []abci.Event, ty string, height int64) error {
 
 	for _, event := range events {
 		// only index events with a non-empty type

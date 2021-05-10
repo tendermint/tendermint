@@ -70,7 +70,7 @@ func TestMain(m *testing.M) {
 	if err = pool.Retry(func() error {
 		var err error
 
-		pSink, psqldb, err = psqlsink.NewPSQLEventSink(dsn)
+		pSink, psqldb, err = psqlsink.NewEventSink(dsn)
 		if err != nil {
 			return err
 		}
@@ -120,7 +120,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 
 	// event sink setup
 	store := db.NewMemDB()
-	eventSinks := []indexer.EventSink{kvsink.NewKVEventSink(store), pSink}
+	eventSinks := []indexer.EventSink{kvsink.NewEventSink(store), pSink}
 
 	service := indexer.NewIndexerService(eventSinks, eventBus, nil)
 	service.SetLogger(tmlog.TestingLogger())

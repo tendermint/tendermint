@@ -1,4 +1,4 @@
-package psqlsink
+package psql
 
 import (
 	"context"
@@ -68,7 +68,7 @@ func TestMain(m *testing.M) {
 	if err = pool.Retry(func() error {
 		var err error
 
-		_, db, err = NewPSQLEventSink(dsn)
+		_, db, err = NewEventSink(dsn)
 		if err != nil {
 			return err
 		}
@@ -105,12 +105,12 @@ func TestMain(m *testing.M) {
 }
 
 func TestType(t *testing.T) {
-	psqlSink := &PSQLEventSink{store: db}
+	psqlSink := &EventSink{store: db}
 	assert.Equal(t, indexer.PSQL, psqlSink.Type())
 }
 
 func TestBlockFuncs(t *testing.T) {
-	indexer := &PSQLEventSink{store: db}
+	indexer := &EventSink{store: db}
 	assert.NoError(t, indexer.IndexBlockEvents(getTestBlockHeader()))
 
 	r, err := verifyBlock(1)
@@ -135,7 +135,7 @@ func TestBlockFuncs(t *testing.T) {
 }
 
 func TestTxFuncs(t *testing.T) {
-	indexer := &PSQLEventSink{store: db}
+	indexer := &EventSink{store: db}
 
 	txResult := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "number", Value: "1", Index: true}}},

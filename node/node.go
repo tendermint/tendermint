@@ -1038,8 +1038,8 @@ func (n *Node) Config() *cfg.Config {
 	return n.config
 }
 
-// EventSink returns the Node's Indexer.
-func (n *Node) EventSink() []indexer.EventSink {
+// EventSinks returns the Node's event indexing sinks.
+func (n *Node) EventSinks() []indexer.EventSink {
 	return n.eventSinks
 }
 

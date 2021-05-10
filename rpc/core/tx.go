@@ -55,7 +55,8 @@ func (env *Environment) Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*cty
 		}
 	}
 
-	return nil, errors.New("could not find the event sink to support the tx query")
+	return nil, errors.New("transaction querying is not supported on this node by the current settings." +
+		"please check the tx-index section in the config.toml file if you don't expect to see this error")
 }
 
 // TxSearch allows you to query for multiple transactions results. It returns a

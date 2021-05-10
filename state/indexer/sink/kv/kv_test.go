@@ -1,4 +1,4 @@
-package kvsink
+package kv
 
 import (
 	"context"
@@ -17,13 +17,13 @@ import (
 )
 
 func TestType(t *testing.T) {
-	kvSink := NewKVEventSink(db.NewMemDB())
+	kvSink := NewEventSink(db.NewMemDB())
 	assert.Equal(t, indexer.KV, kvSink.Type())
 }
 
 func TestBlockFuncs(t *testing.T) {
 	store := db.NewPrefixDB(db.NewMemDB(), []byte("block_events"))
-	indexer := NewKVEventSink(store)
+	indexer := NewEventSink(store)
 
 	require.NoError(t, indexer.IndexBlockEvents(types.EventDataNewBlockHeader{
 		Header: types.Header{Height: 1},
@@ -149,7 +149,7 @@ func TestBlockFuncs(t *testing.T) {
 }
 
 func TestTxSearchWithCancelation(t *testing.T) {
-	indexer := NewKVEventSink(db.NewMemDB())
+	indexer := NewEventSink(db.NewMemDB())
 
 	txResult := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "number", Value: "1", Index: true}}},
@@ -168,7 +168,7 @@ func TestTxSearchWithCancelation(t *testing.T) {
 
 func TestTxSearchDeprecatedIndexing(t *testing.T) {
 	esdb := db.NewMemDB()
-	indexer := NewKVEventSink(esdb)
+	indexer := NewEventSink(esdb)
 
 	// index tx using events indexing (composite key)
 	txResult1 := txResultWithEvents([]abci.Event{
@@ -247,7 +247,7 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 }
 
 func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
-	indexer := NewKVEventSink(db.NewMemDB())
+	indexer := NewEventSink(db.NewMemDB())
 
 	txResult := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "number", Value: "1", Index: true}}},
@@ -269,7 +269,7 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 }
 
 func TestTxSearchMultipleTxs(t *testing.T) {
-	indexer := NewKVEventSink(db.NewMemDB())
+	indexer := NewEventSink(db.NewMemDB())
 
 	// indexed first, but bigger height (to test the order of transactions)
 	txResult := txResultWithEvents([]abci.Event{
