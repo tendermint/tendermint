@@ -437,7 +437,7 @@ func (p *QueryParser) Init() {
 		p.buffer = append(p.buffer, endSymbol)
 	}
 
-	tree := tokens32{tree: make([]token32, math.MaxInt16)}
+	tree := tokens32{tree: make([]token32, 16)}
 	var max token32
 	position, depth, tokenIndex, buffer, _rules := uint32(0), uint32(0), 0, p.buffer, p.rules
 
