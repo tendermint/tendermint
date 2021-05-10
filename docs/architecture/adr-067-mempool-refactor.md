@@ -68,7 +68,7 @@ can be addressed in an easy and extensible manner in the future.
 
 ### Curren Design
 
-TODO: Depict, preferably in a diagram, the current mempool data structure(s).
+![mempool](./img/mempool-v0.jpeg)
 
 ## Alternative Approaches
 
