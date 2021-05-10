@@ -45,16 +45,14 @@ const (
 // within each reactor (as they are now) or, considering that the reactor doesn't
 // really need to care about the channel descriptors, if they should be housed
 // in the node module.
-func ChannelDescriptors() []*conn.ChannelDescriptor {
-	return []*conn.ChannelDescriptor{
-		{
-			ID:                  PexChannel,
-			Priority:            1,
-			SendQueueCapacity:   10,
-			RecvMessageCapacity: maxMsgSize,
+func ChannelDescriptor() conn.ChannelDescriptor {
+	return conn.ChannelDescriptor{
+		ID:                  PexChannel,
+		Priority:            1,
+		SendQueueCapacity:   10,
+		RecvMessageCapacity: maxMsgSize,
 
-			MaxSendBytes: 200,
-		},
+		MaxSendBytes: 200,
 	}
 }
 
