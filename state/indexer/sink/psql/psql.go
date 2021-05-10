@@ -97,6 +97,31 @@ func (es *EventSink) IndexTxEvents(txr *abci.TxResult) error {
 	sqlStmtEvents = sqlStmtEvents.Values(types.TxHashKey, hash, txr.Height, hash, txid)
 	sqlStmtEvents = sqlStmtEvents.Values(types.TxHeightKey, fmt.Sprint(txr.Height), txr.Height, hash, txid)
 
+	for _, event := range txr.Result.Events {
+		// only index events with a non-empty type
+		if len(event.Type) == 0 {
+			continue
+		}
+
+		for _, attr := range event.Attributes {
+			if len(attr.Key) == 0 {
+				continue
+			}
+
+			// index if `index: true` is set
+			compositeTag := fmt.Sprintf("%s.%s", event.Type, attr.Key)
+
+			// ensure event does not conflict with a reserved prefix key
+			if compositeTag == types.TxHashKey || compositeTag == types.TxHeightKey {
+				return fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeTag)
+			}
+
+			if attr.GetIndex() {
+				sqlStmtEvents = sqlStmtEvents.Values(compositeTag, attr.Value, txr.Height, hash, txid)
+			}
+		}
+	}
+
 	// execute sqlStmtEvents db query...
 	_, err = sqlStmtEvents.RunWith(es.store).Exec()
 	return err
