@@ -29,21 +29,20 @@ type Options struct {
 	recreateConfig bool
 }
 
-var globalConfig *cfg.Config
 var defaultOptions = Options{
 	suppressStdout: false,
 	recreateConfig: false,
 }
 
-func waitForRPC() {
-	laddr := GetConfig().RPC.ListenAddress
+func waitForRPC(ctx context.Context, conf *cfg.Config) {
+	laddr := conf.RPC.ListenAddress
 	client, err := rpcclient.New(laddr)
 	if err != nil {
 		panic(err)
 	}
 	result := new(ctypes.ResultStatus)
 	for {
-		_, err := client.Call(context.Background(), "status", map[string]interface{}{}, result)
+		_, err := client.Call(ctx, "status", map[string]interface{}{}, result)
 		if err == nil {
 			return
 		}
@@ -53,10 +52,10 @@ func waitForRPC() {
 	}
 }
 
-func waitForGRPC() {
-	client := GetGRPCClient()
+func waitForGRPC(ctx context.Context, conf *cfg.Config) {
+	client := GetGRPCClient(conf)
 	for {
-		_, err := client.Ping(context.Background(), &core_grpc.RequestPing{})
+		_, err := client.Ping(ctx, &core_grpc.RequestPing{})
 		if err == nil {
 			return
 		}
@@ -102,21 +101,16 @@ func createConfig() *cfg.Config {
 	return c
 }
 
-// GetConfig returns a config for the test cases as a singleton
-func GetConfig(forceCreate ...bool) *cfg.Config {
-	if globalConfig == nil || (len(forceCreate) > 0 && forceCreate[0]) {
-		globalConfig = createConfig()
-	}
-	return globalConfig
-}
-
-func GetGRPCClient() core_grpc.BroadcastAPIClient {
-	grpcAddr := globalConfig.RPC.GRPCListenAddress
+func GetGRPCClient(conf *cfg.Config) core_grpc.BroadcastAPIClient {
+	grpcAddr := conf.RPC.GRPCListenAddress
 	return core_grpc.StartGRPCClient(grpcAddr)
 }
 
 // StartTendermint starts a test tendermint server in a go routine and returns when it is initialized
 func StartTendermint(app abci.Application, opts ...func(*Options)) *nm.Node {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	nodeOpts := defaultOptions
 	for _, opt := range opts {
 		opt(&nodeOpts)
@@ -127,9 +121,10 @@ func StartTendermint(app abci.Application, opts ...func(*Options)) *nm.Node {
 		panic(err)
 	}
 
+	cfg := node.Config()
 	// wait for rpc
-	waitForRPC()
-	waitForGRPC()
+	waitForRPC(ctx, cfg)
+	waitForGRPC(ctx, cfg)
 
 	if !nodeOpts.suppressStdout {
 		fmt.Println("Tendermint running!")
@@ -151,7 +146,7 @@ func StopTendermint(node *nm.Node) {
 // NewTendermint creates a new tendermint server and sleeps forever
 func NewTendermint(app abci.Application, opts *Options) *nm.Node {
 	// Create & start node
-	config := GetConfig(opts.recreateConfig)
+	config := createConfig()
 	var logger log.Logger
 	if opts.suppressStdout {
 		logger = log.NewNopLogger()
@@ -185,10 +180,4 @@ func NewTendermint(app abci.Application, opts *Options) *nm.Node {
 // node doesn't log anything to stdout.
 func SuppressStdout(o *Options) {
 	o.suppressStdout = true
-}
-
-// RecreateConfig instructs the RPC test to recreate the configuration each
-// time, instead of treating it as a global singleton.
-func RecreateConfig(o *Options) {
-	o.recreateConfig = true
 }
