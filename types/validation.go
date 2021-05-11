@@ -320,7 +320,7 @@ func verifyCommitSingle(
 			talliedVotingPower += val.VotingPower
 		}
 
-		// check if we have enought signatures and can exit early
+		// check if we have enough signatures and can thus exit early
 		if !countAllSignatures && talliedVotingPower > votingPowerNeeded {
 			return nil
 		}
