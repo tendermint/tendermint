@@ -250,7 +250,7 @@ block writes on any index
 ### Negative
 
 - Increased size of the `ResponseCheckTx` Protocol Buffer type.
-- Causal ordering is NOT maintained as it is currently.
+- Causal ordering is NOT maintained.
   - It is possible that certain transactions broadcasted in a particular order may
   pass `CheckTx` but not end up being committed in a block because they fail
   `CheckTx` later. e.g. Consider Tx<sub>1</sub> that sends funds from existing
