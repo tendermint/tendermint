@@ -16,6 +16,11 @@ const (
 	PSQL EventSinkType = "psql"
 )
 
+// EventSink interface is defined the APIs for the IndexerService to interact with the data store,
+// including the block/transaction indexing and the search functions.
+//
+// The IndexerService will accept a list of one or more EventSink types. During the OnStart method
+// it will call the appropriate APIs on each EventSink to index both block and transaction events.
 type EventSink interface {
 	IndexBlockEvents(types.EventDataNewBlockHeader) error
 	IndexTxEvents(*abci.TxResult) error
