@@ -73,7 +73,7 @@ func (es *EventSink) IndexTxEvents(txr *abci.TxResult) error {
 		Columns("tx_result").
 		PlaceholderFormat(sq.Dollar).
 		RunWith(es.store).
-		Suffix("RETURNING \"tx_result_id\"")
+		Suffix("RETURNING \"id\"")
 	txBz, err := proto.Marshal(txr)
 	if err != nil {
 		return err
@@ -92,7 +92,7 @@ func (es *EventSink) IndexTxEvents(txr *abci.TxResult) error {
 
 	sqlStmtEvents := sq.
 		Insert(TableEventTx).
-		Columns("key", "value", "height", "hash", "txid").
+		Columns("key", "value", "height", "hash", "tx_result_id").
 		PlaceholderFormat(sq.Dollar)
 	sqlStmtEvents = sqlStmtEvents.Values(types.TxHashKey, hash, txr.Height, hash, txid)
 	sqlStmtEvents = sqlStmtEvents.Values(types.TxHeightKey, fmt.Sprint(txr.Height), txr.Height, hash, txid)
