@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	stdlog "log"
 	"os"
-	"testing"
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
@@ -22,6 +21,11 @@ import (
 
 // Automatically getting new headers and verifying them.
 func ExampleClient_Update() {
+	// Start a test application
+	app := kvstore.NewApplication()
+	n := rpctest.StartTendermint(app, rpctest.SuppressStdout)
+	defer func() { rpctest.StopTendermint(n) }()
+
 	// give Tendermint time to generate some blocks
 	time.Sleep(5 * time.Second)
 
@@ -32,7 +36,7 @@ func ExampleClient_Update() {
 	defer os.RemoveAll(dbDir)
 
 	var (
-		config  = rpctest.GetConfig()
+		config  = n.Config()
 		chainID = config.ChainID()
 	)
 
@@ -90,6 +94,11 @@ func ExampleClient_Update() {
 
 // Manually getting light blocks and verifying them.
 func ExampleClient_VerifyLightBlockAtHeight() {
+	// Start a test application
+	app := kvstore.NewApplication()
+	n := rpctest.StartTendermint(app, rpctest.SuppressStdout)
+	defer func() { rpctest.StopTendermint(n) }()
+
 	// give Tendermint time to generate some blocks
 	time.Sleep(5 * time.Second)
 
@@ -100,7 +109,7 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 	defer os.RemoveAll(dbDir)
 
 	var (
-		config  = rpctest.GetConfig()
+		config  = n.Config()
 		chainID = config.ChainID()
 	)
 
@@ -153,16 +162,4 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 
 	fmt.Println("got header", h.Height)
 	// Output: got header 3
-}
-
-func TestMain(m *testing.M) {
-	// start a tendermint node (and kvstore) in the background to test against
-	app := kvstore.NewApplication()
-	node := rpctest.StartTendermint(app, rpctest.SuppressStdout)
-
-	code := m.Run()
-
-	// and shut down proper at the end
-	rpctest.StopTendermint(node)
-	os.Exit(code)
 }
