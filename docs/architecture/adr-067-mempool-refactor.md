@@ -110,12 +110,20 @@ For more information on the various approaches and proposals, please see the
 
 ## Prior Art
 
-TODO: Reference, at a high level, mempool designs from other major protocols,
-e.g. Ethereum, AVA, and Diem.
 ### Ethereum
 
 ### Diem
 
+The [Diem mempool](https://github.com/diem/diem/blob/master/mempool/README.md#implementation-details)
+contains a similar approach to the one we propose. Specifically, the Diem mempool
+contains a mapping from `Account:[]Tx`. On top of this primary mapping from account
+to a list of transactions, are various indexes used to perform certain actions.
+
+The main index, `PriorityIndex`. is an ordered queue of transactions that are
+“consensus-ready” (i.e., they have a sequence number which is sequential to the
+current sequence number for the account). This queue is ordered by gas price so
+that if a client is willing to pay more (than other clients) per unit of
+execution, then they can enter consensus earlier.
 
 ## Decision
 
