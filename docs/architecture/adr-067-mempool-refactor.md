@@ -112,6 +112,14 @@ For more information on the various approaches and proposals, please see the
 
 ### Ethereum
 
+The Ethereum mempool, specifically [Geth](https://github.com/ethereum/go-ethereum),
+contains a mempool, `*TxPool`, that contains various mappings indexed by account,
+such as a `pending` which contains all processable transactions for accounts
+prioritized by nonce. It also contains a `queue` which is the exact same mapping
+except it contains not currently processable transactions. The mempool also
+contains a `priced` index of type `*txPricedList` that is a priority queue based
+on transaction price.
+
 ### Diem
 
 The [Diem mempool](https://github.com/diem/diem/blob/master/mempool/README.md#implementation-details)
