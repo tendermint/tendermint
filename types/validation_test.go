@@ -139,7 +139,7 @@ func TestValidatorSet_VerifyCommit_CheckAllSignatures(t *testing.T) {
 	)
 
 	voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, 4, 10)
-	commit, err := MakeCommit(blockID, h, 0, voteSet, vals, time.Now())
+	commit, err := makeCommit(blockID, h, 0, voteSet, vals, time.Now())
 	require.NoError(t, err)
 	require.NoError(t, valSet.VerifyCommit(chainID, blockID, h, commit))
 
@@ -165,7 +165,7 @@ func TestValidatorSet_VerifyCommitLight_ReturnsAsSoonAsMajorityOfVotingPowerSign
 	)
 
 	voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, 4, 10)
-	commit, err := MakeCommit(blockID, h, 0, voteSet, vals, time.Now())
+	commit, err := makeCommit(blockID, h, 0, voteSet, vals, time.Now())
 	require.NoError(t, err)
 	require.NoError(t, valSet.VerifyCommit(chainID, blockID, h, commit))
 
@@ -189,7 +189,7 @@ func TestValidatorSet_VerifyCommitLightTrusting_ReturnsAsSoonAsTrustLevelOfVotin
 	)
 
 	voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, 4, 10)
-	commit, err := MakeCommit(blockID, h, 0, voteSet, vals, time.Now())
+	commit, err := makeCommit(blockID, h, 0, voteSet, vals, time.Now())
 	require.NoError(t, err)
 	require.NoError(t, valSet.VerifyCommit(chainID, blockID, h, commit))
 
@@ -209,8 +209,8 @@ func TestValidatorSet_VerifyCommitLightTrusting(t *testing.T) {
 	var (
 		blockID                       = makeBlockIDRandom()
 		voteSet, originalValset, vals = randVoteSet(1, 1, tmproto.PrecommitType, 6, 1)
-		commit, err                   = MakeCommit(blockID, 1, 1, voteSet, vals, time.Now())
-		newValSet, _                  = RandValidatorSet(2, 1)
+		commit, err                   = makeCommit(blockID, 1, 1, voteSet, vals, time.Now())
+		newValSet, _                  = randValidatorPrivValSet(2, 1)
 	)
 	require.NoError(t, err)
 
@@ -250,7 +250,7 @@ func TestValidatorSet_VerifyCommitLightTrustingErrorsOnOverflow(t *testing.T) {
 	var (
 		blockID               = makeBlockIDRandom()
 		voteSet, valSet, vals = randVoteSet(1, 1, tmproto.PrecommitType, 1, MaxTotalVotingPower)
-		commit, err           = MakeCommit(blockID, 1, 1, voteSet, vals, time.Now())
+		commit, err           = makeCommit(blockID, 1, 1, voteSet, vals, time.Now())
 	)
 	require.NoError(t, err)
 
