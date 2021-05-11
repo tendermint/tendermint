@@ -199,7 +199,7 @@ func TestGenesisChunked(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for _, c := range GetClients() {
+	for _, c := range GetClients(t, NodeSuite(t)) {
 		first, err := c.GenesisChunked(ctx, 1)
 		require.NoError(t, err)
 
