@@ -304,10 +304,10 @@ func verifyCommitSingle(
 		}
 
 		// Check if we have the validator in the cache
-		if val, ok := cachedVals[string(val.PubKey.Bytes())]; !ok {
+		if cachedVote, ok := cachedVals[string(val.PubKey.Bytes())]; !ok {
 			voteSignBytes = commit.VoteSignBytes(chainID, int32(idx))
 		} else {
-			voteSignBytes = val
+			voteSignBytes = cachedVote
 		}
 
 		if !val.PubKey.VerifySignature(voteSignBytes, commitSig.Signature) {
