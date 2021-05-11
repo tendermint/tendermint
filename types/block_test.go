@@ -40,7 +40,7 @@ func TestBlockAddEvidence(t *testing.T) {
 	h := int64(3)
 
 	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
+	commit, err := makeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
 	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
@@ -60,7 +60,7 @@ func TestBlockValidateBasic(t *testing.T) {
 	h := int64(3)
 
 	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
+	commit, err := makeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
 	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
@@ -137,7 +137,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	h := int64(3)
 
 	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
+	commit, err := makeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
 	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
@@ -154,7 +154,7 @@ func TestBlockHashesTo(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
+	commit, err := makeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
 	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
@@ -232,7 +232,7 @@ func TestCommit(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
+	commit, err := makeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
 	assert.Equal(t, h-1, commit.Height)
@@ -444,7 +444,7 @@ func randCommit(now time.Time) *Commit {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, now)
+	commit, err := makeCommit(lastID, h-1, 1, voteSet, vals, now)
 	if err != nil {
 		panic(err)
 	}
@@ -525,7 +525,7 @@ func TestCommitToVoteSet(t *testing.T) {
 	h := int64(3)
 
 	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
+	commit, err := makeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	assert.NoError(t, err)
 
 	chainID := voteSet.ChainID()
