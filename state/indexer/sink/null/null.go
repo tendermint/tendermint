@@ -26,7 +26,7 @@ func (nes *EventSink) IndexBlockEvents(bh types.EventDataNewBlockHeader) error {
 	return nil
 }
 
-func (nes *EventSink) IndexTxEvents(result *abci.TxResult) error {
+func (nes *EventSink) IndexTxEvents(results []*abci.TxResult) error {
 	return nil
 }
 

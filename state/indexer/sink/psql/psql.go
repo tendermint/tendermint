@@ -65,7 +65,7 @@ func (es *EventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error {
 	return err
 }
 
-func (es *EventSink) IndexTxEvents(txr *abci.TxResult) error {
+func (es *EventSink) IndexTxEvents(txr []*abci.TxResult) error {
 	// index the tx result
 	var txid uint32
 	sqlStmtTxResult := sq.
@@ -74,56 +74,60 @@ func (es *EventSink) IndexTxEvents(txr *abci.TxResult) error {
 		PlaceholderFormat(sq.Dollar).
 		RunWith(es.store).
 		Suffix("RETURNING \"id\"")
-	txBz, err := proto.Marshal(txr)
-	if err != nil {
-		return err
-	}
-
-	sqlStmtTxResult = sqlStmtTxResult.Values(txBz)
-
-	// execute sqlStmtTxResult db query and retrieve the txid
-	err = sqlStmtTxResult.QueryRow().Scan(&txid)
-	if err != nil {
-		return err
-	}
-
-	// index the reserved height and hash indices
-	hash := fmt.Sprintf("%X", types.Tx(txr.Tx).Hash())
 
 	sqlStmtEvents := sq.
 		Insert(TableEventTx).
 		Columns("key", "value", "height", "hash", "tx_result_id").
 		PlaceholderFormat(sq.Dollar)
-	sqlStmtEvents = sqlStmtEvents.Values(types.TxHashKey, hash, txr.Height, hash, txid)
-	sqlStmtEvents = sqlStmtEvents.Values(types.TxHeightKey, fmt.Sprint(txr.Height), txr.Height, hash, txid)
 
-	for _, event := range txr.Result.Events {
-		// only index events with a non-empty type
-		if len(event.Type) == 0 {
-			continue
+	for _, tx := range txr {
+		txBz, err := proto.Marshal(tx)
+		if err != nil {
+			return err
 		}
 
-		for _, attr := range event.Attributes {
-			if len(attr.Key) == 0 {
+		sqlStmtTxResult = sqlStmtTxResult.Values(txBz)
+
+		// execute sqlStmtTxResult db query and retrieve the txid
+		err = sqlStmtTxResult.QueryRow().Scan(&txid)
+		if err != nil {
+			return err
+		}
+
+		// index the reserved height and hash indices
+		hash := fmt.Sprintf("%X", types.Tx(tx.Tx).Hash())
+
+		sqlStmtEvents = sqlStmtEvents.Values(types.TxHashKey, hash, tx.Height, hash, txid)
+		sqlStmtEvents = sqlStmtEvents.Values(types.TxHeightKey, fmt.Sprint(tx.Height), tx.Height, hash, txid)
+
+		for _, event := range tx.Result.Events {
+			// only index events with a non-empty type
+			if len(event.Type) == 0 {
 				continue
 			}
 
-			// index if `index: true` is set
-			compositeTag := fmt.Sprintf("%s.%s", event.Type, attr.Key)
+			for _, attr := range event.Attributes {
+				if len(attr.Key) == 0 {
+					continue
+				}
 
-			// ensure event does not conflict with a reserved prefix key
-			if compositeTag == types.TxHashKey || compositeTag == types.TxHeightKey {
-				return fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeTag)
-			}
+				// index if `index: true` is set
+				compositeTag := fmt.Sprintf("%s.%s", event.Type, attr.Key)
 
-			if attr.GetIndex() {
-				sqlStmtEvents = sqlStmtEvents.Values(compositeTag, attr.Value, txr.Height, hash, txid)
+				// ensure event does not conflict with a reserved prefix key
+				if compositeTag == types.TxHashKey || compositeTag == types.TxHeightKey {
+					return fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeTag)
+				}
+
+				if attr.GetIndex() {
+					sqlStmtEvents = sqlStmtEvents.Values(compositeTag, attr.Value, tx.Height, hash, txid)
+				}
 			}
 		}
 	}
 
 	// execute sqlStmtEvents db query...
-	_, err = sqlStmtEvents.RunWith(es.store).Exec()
+	_, err := sqlStmtEvents.RunWith(es.store).Exec()
 	return err
 }
 

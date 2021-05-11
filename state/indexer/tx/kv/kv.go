@@ -95,36 +95,39 @@ func (txi *TxIndex) AddBatch(b *indexer.Batch) error {
 	return storeBatch.WriteSync()
 }
 
-// Index indexes a single transaction using the given list of events. Each key
+// Index indexes transactions using the given list of events. Each key
 // that indexed from the tx's events is a composite of the event type and the
 // respective attribute's key delimited by a "." (eg. "account.number").
 // Any event with an empty type is not indexed.
-func (txi *TxIndex) Index(result *abci.TxResult) error {
+//
+func (txi *TxIndex) Index(results []*abci.TxResult) error {
 	b := txi.store.NewBatch()
 	defer b.Close()
 
-	hash := types.Tx(result.Tx).Hash()
+	for _, result := range results {
+		hash := types.Tx(result.Tx).Hash()
 
-	// index tx by events
-	err := txi.indexEvents(result, hash, b)
-	if err != nil {
-		return err
-	}
+		// index tx by events
+		err := txi.indexEvents(result, hash, b)
+		if err != nil {
+			return err
+		}
 
-	// index by height (always)
-	err = b.Set(KeyFromHeight(result), hash)
-	if err != nil {
-		return err
-	}
+		// index by height (always)
+		err = b.Set(KeyFromHeight(result), hash)
+		if err != nil {
+			return err
+		}
 
-	rawBytes, err := proto.Marshal(result)
-	if err != nil {
-		return err
-	}
-	// index by hash (always)
-	err = b.Set(primaryKey(hash), rawBytes)
-	if err != nil {
-		return err
+		rawBytes, err := proto.Marshal(result)
+		if err != nil {
+			return err
+		}
+		// index by hash (always)
+		err = b.Set(primaryKey(hash), rawBytes)
+		if err != nil {
+			return err
+		}
 	}
 
 	return b.WriteSync()

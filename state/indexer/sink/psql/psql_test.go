@@ -84,7 +84,7 @@ func TestTxFuncs(t *testing.T) {
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "owner", Value: "Ivan", Index: true}}},
 		{Type: "", Attributes: []abci.EventAttribute{{Key: "not_allowed", Value: "Vlad", Index: true}}},
 	})
-	err = indexer.IndexTxEvents(txResult)
+	err = indexer.IndexTxEvents([]*abci.TxResult{txResult})
 	assert.NoError(t, err)
 
 	tx, err := verifyTx(types.Tx(txResult.Tx).Hash())

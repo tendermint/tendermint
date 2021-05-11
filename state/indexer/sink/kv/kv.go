@@ -36,8 +36,8 @@ func (kves *EventSink) IndexBlockEvents(bh types.EventDataNewBlockHeader) error 
 	return kves.bi.Index(bh)
 }
 
-func (kves *EventSink) IndexTxEvents(result *abci.TxResult) error {
-	return kves.txi.Index(result)
+func (kves *EventSink) IndexTxEvents(results []*abci.TxResult) error {
+	return kves.txi.Index(results)
 }
 
 func (kves *EventSink) SearchBlockEvents(ctx context.Context, q *query.Query) ([]int64, error) {

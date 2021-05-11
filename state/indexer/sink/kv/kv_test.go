@@ -161,7 +161,7 @@ func TestTxSearchWithCancelation(t *testing.T) {
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "owner", Value: "Ivan", Index: true}}},
 		{Type: "", Attributes: []abci.EventAttribute{{Key: "not_allowed", Value: "Vlad", Index: true}}},
 	})
-	err := indexer.IndexTxEvents(txResult)
+	err := indexer.IndexTxEvents([]*abci.TxResult{txResult})
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -181,7 +181,7 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 	})
 	hash1 := types.Tx(txResult1.Tx).Hash()
 
-	err := indexer.IndexTxEvents(txResult1)
+	err := indexer.IndexTxEvents([]*abci.TxResult{txResult1})
 	require.NoError(t, err)
 
 	// index tx also using deprecated indexing (event as key)
@@ -259,7 +259,7 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "number", Value: "2", Index: true}}},
 	})
 
-	err := indexer.IndexTxEvents(txResult)
+	err := indexer.IndexTxEvents([]*abci.TxResult{txResult})
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -284,7 +284,7 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	txResult.Tx = types.Tx("Bob's account")
 	txResult.Height = 2
 	txResult.Index = 1
-	err := indexer.IndexTxEvents(txResult)
+	err := indexer.IndexTxEvents([]*abci.TxResult{txResult})
 	require.NoError(t, err)
 
 	// indexed second, but smaller height (to test the order of transactions)
@@ -295,7 +295,7 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	txResult2.Height = 1
 	txResult2.Index = 2
 
-	err = indexer.IndexTxEvents(txResult2)
+	err = indexer.IndexTxEvents([]*abci.TxResult{txResult2})
 	require.NoError(t, err)
 
 	// indexed third (to test the order of transactions)
@@ -305,7 +305,7 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	txResult3.Tx = types.Tx("Jack's account")
 	txResult3.Height = 1
 	txResult3.Index = 1
-	err = indexer.IndexTxEvents(txResult3)
+	err = indexer.IndexTxEvents([]*abci.TxResult{txResult3})
 	require.NoError(t, err)
 
 	// indexed fourth (to test we don't include txs with similar events)
@@ -316,7 +316,7 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	txResult4.Tx = types.Tx("Mike's account")
 	txResult4.Height = 2
 	txResult4.Index = 2
-	err = indexer.IndexTxEvents(txResult4)
+	err = indexer.IndexTxEvents([]*abci.TxResult{txResult4})
 	require.NoError(t, err)
 
 	ctx := context.Background()

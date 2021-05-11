@@ -14,8 +14,10 @@ type TxIndexer interface {
 	// AddBatch analyzes, indexes and stores a batch of transactions.
 	AddBatch(b *Batch) error
 
-	// Index analyzes, indexes and stores a single transaction.
-	Index(result *abci.TxResult) error
+	// Index analyzes, indexes and stores transactions. For indexing multiple
+	// Transacions must guarantee the Index of the TxResult is in order.
+	// See Batch struct.
+	Index(results []*abci.TxResult) error
 
 	// Get returns the transaction specified by hash or nil if the transaction is not indexed
 	// or stored.
