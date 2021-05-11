@@ -23,6 +23,7 @@ func RPCRoutes(c *lrpc.Client) map[string]*rpcserver.RPCFunc {
 		"net_info":             rpcserver.NewRPCFunc(makeNetInfoFunc(c), "", false),
 		"blockchain":           rpcserver.NewRPCFunc(makeBlockchainInfoFunc(c), "minHeight,maxHeight", true),
 		"genesis":              rpcserver.NewRPCFunc(makeGenesisFunc(c), "", true),
+		"genesis_chunked":      rpcserver.NewRPCFunc(makeGenesisChunkedFunc(c), "", true),
 		"block":                rpcserver.NewRPCFunc(makeBlockFunc(c), "height", true),
 		"block_by_hash":        rpcserver.NewRPCFunc(makeBlockByHashFunc(c), "hash", true),
 		"block_results":        rpcserver.NewRPCFunc(makeBlockResultsFunc(c), "height", true),

@@ -27,6 +27,9 @@ const (
 	// SubscribeTimeout is the maximum time we wait to subscribe for an event.
 	// must be less than the server's write timeout (see rpcserver.DefaultConfig)
 	SubscribeTimeout = 5 * time.Second
+
+	// genesisChunkSize is the size, in bytes of each chunk in
+	genesisChunkSize = 16 * 1024 * 1024 // 16
 )
 
 //----------------------------------------------
@@ -81,9 +84,10 @@ type Environment struct {
 
 	Logger log.Logger
 
-	genChunks []string
-
 	Config cfg.RPCConfig
+
+	// cache of chunked genesis data.
+	genChunks []string
 }
 
 //----------------------------------------------
@@ -126,9 +130,9 @@ func (env *Environment) validatePerPage(perPagePtr *int) int {
 	return perPage
 }
 
-// Setup configures the environment and should be called on service
+// InitGenesisChunks configures the environment and should be called on service
 // startup.
-func (env *Environment) Setup() error {
+func (env *Environment) InitGenesisChunks() error {
 	if env.genChunks != nil {
 		return nil
 	}
@@ -142,10 +146,8 @@ func (env *Environment) Setup() error {
 		return err
 	}
 
-	const chunkSize = 1024
-
-	for i := 0; i < len(data); i += chunkSize {
-		end := i + chunkSize
+	for i := 0; i < len(data); i += genesisChunkSize {
+		end := i + genesisChunkSize
 
 		if end > len(data) {
 			end = len(data)

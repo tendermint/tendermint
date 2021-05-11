@@ -1547,7 +1547,7 @@ func (n *Node) ConfigureRPC() (*rpccore.Environment, error) {
 		}
 		rpcCoreEnv.PubKey = pubKey
 	}
-	if err := rpcCoreEnv.Setup(); err != nil {
+	if err := rpcCoreEnv.InitGenesisChunks(); err != nil {
 		return nil, err
 	}
 
