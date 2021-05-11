@@ -70,6 +70,31 @@ can be addressed in an easy and extensible manner in the future.
 
 ![mempool](./img/mempool-v0.jpeg)
 
+At the core of the `v0` mempool reactor is a concurrent linked-list. This is the
+primary data structure that contains `Tx` objects that have passed `CheckTx`.
+When a node receives a transaction from another peer, it executes `CheckTx`, which
+obtains a read-lock on the `*CListMempool`. If the transaction passes `CheckTx`
+locally on the node, it is added to the `*CList` by obtaining a write-lock. It
+is also added to the `cache` and `txsMap`, both of which obtain their own respective
+write-locks and map a reference from the transaction hash to the `Tx` itself.
+
+Transactions are continuously gossiped to peers whenever a new transaction is added
+to a local node's `*CList`, where the node at the front of the `*CList` is selected.
+Another transaction will not be gossiped until the `*CList` notifies the reader
+that there are more transactions to gossip.
+
+When a proposer attempts to propose a block, they will execute `ReapMaxBytesMaxGas`
+on the reactor's `*CListMempool`. This call obtains a read-lock on the `*CListMempool`
+and selects as many transactions as possible starting from the front of the `*CList`
+moving to the back of the list.
+
+When a block is finally committed, a caller invokes `Update` on the reactor's
+`*CListMempool` with all the selected transactions. Note, the caller must also
+explicitly obtain a write-lock on the reactor's `*CListMempool`. This call
+will remove all the supplied transactions from the `txsMap` and the `*CList`, both
+of which obtain their own respective write-locks. In addition, the transaction
+may also be removed from the `cache` which obtains it's own write-lock.
+
 ## Alternative Approaches
 
 When considering which approach to take for a priority-based flexible and
