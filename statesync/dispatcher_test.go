@@ -64,7 +64,7 @@ func TestDispatcherProviders(t *testing.T) {
 		d.addPeer(peer)
 	}
 
-	providers := d.Providers(chainID)
+	providers := d.Providers(chainID, 5 *time.Second)
 	assert.Len(t, providers, 5)
 	for i, p := range providers {
 		bp, ok := p.(*blockProvider)
@@ -136,9 +136,7 @@ func handleRequests(t *testing.T, d *dispatcher, ch chan p2p.Envelope, closeCh c
 			peer := request.To
 			resp := mockLBResp(t, peer, int64(height), time.Now())
 			block, _ := resp.block.ToProto()
-			fmt.Printf("responding to request at height %d", height)
 			d.respond(block, resp.peer)
-			fmt.Printf("responded to request")
 		case <-closeCh:
 			return
 		}

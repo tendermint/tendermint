@@ -504,8 +504,31 @@ func (store dbStore) saveABCIResponses(height int64, abciResponses *tmstate.ABCI
 	return store.db.SetSync(abciResponsesKey(height), bz)
 }
 
+// SaveValidatorSet is used to save a single validator set. It is exposed so
+// that a backfill operation during state sync can populate the store with the
+// necessary amount of validator sets to verify any evidence it may encounter.
+//
+// FIXME: Usually when saving validator sets we only save them when they change
+// and use a pointer likey system instead. This doesn't work when saving them in
+// reverse order so instead we are going to save every validator set regardless
+// if they changed or not. In the future we should look to optimize this
 func (store dbStore) SaveValidatorSet(height int64, vals *types.ValidatorSet) error {
-	return nil
+	valInfo := &tmstate.ValidatorsInfo{
+		LastHeightChanged: height,
+	}
+
+	pv, err := vals.ToProto()
+	if err != nil {
+		return err
+	}
+	valInfo.ValidatorSet = pv
+
+	bz, err := valInfo.Marshal()
+	if err != nil {
+		return err
+	}
+
+	return store.db.Set(validatorsKey(height), bz)
 }
 
 //-----------------------------------------------------------------------------
@@ -612,12 +635,7 @@ func (store dbStore) saveValidatorsInfo(
 		return err
 	}
 
-	err = batch.Set(validatorsKey(height), bz)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return batch.Set(validatorsKey(height), bz)
 }
 
 //-----------------------------------------------------------------------------

@@ -239,8 +239,12 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 	return r.backfill(state)
 }
 
-// TODO: add a context so that this request can be cancelled
+// Backfill sequentially fetches, verifies and stores light blocks in reverse
+// order. It does not stop verifying blocks until reaching a block with a height
+// and time that is less or equal to the stopHeight and stopTime. The
+// trustedBlockID should be of the header at startHeight.
 func (r *Reactor) Backfill(
+	ctx context.Context,
 	chainID string,
 	startHeight, stopHeight int64,
 	trustedBlockID types.BlockID,
@@ -249,7 +253,11 @@ func (r *Reactor) Backfill(
 
 	queue := newBlockQueue(startHeight, stopHeight, stopTime)
 
-	// fetch light blocks across four workers
+	// fetch light blocks across four workers. The aim with deploying concurrent
+	// workers is to equate the network messaging time with the verification
+	// time. Ideally we want the verification process to never have to be
+	// waiting on blocks. If it takes 4s to retrieve a block and 1s to verify
+	// it, then steady state involves four workers. 
 	for i := 0; i < 4; i++ {
 		go func() {
 			for {
@@ -298,8 +306,14 @@ func (r *Reactor) Backfill(
 	// verify all light blocks
 	for {
 		select {
+		case <- ctx.Done():
+			queue.Close()
+			return nil
 		case resp := <- queue.VerifyNext():
-			// validate the hash
+			// validate the header hash. We take the last block id of the
+			// previous header (i.e. one height above) as the trusted hash which
+			// we equate to. ValidatorsHash and CommitHash have already been
+			// checked in the `ValidateBasic` 
 			if w, g := trustedBlockID.Hash, resp.block.Hash(); !bytes.Equal(w, g) {
 				r.Logger.Info("received invalid light block. header hash doesn't match trusted LastBlockID",
 					"trustedHash", w, "receivedHash", g)
@@ -327,6 +341,7 @@ func (r *Reactor) Backfill(
 
 		case <-queue.Done():
 			return nil
+
 		}
 	} 
 }
@@ -721,6 +736,7 @@ func (r *Reactor) backfill(state sm.State) error {
 	stopHeight := tmmath.MinInt64(state.LastBlockHeight-params.MaxAgeNumBlocks, state.InitialHeight)
 	stopTime := state.LastBlockTime.Add(-params.MaxAgeDuration)
 	return r.Backfill(
+		context.Background(),
 		state.ChainID,
 		state.LastBlockHeight, stopHeight,
 		state.LastBlockID,

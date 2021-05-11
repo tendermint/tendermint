@@ -1,5 +1,10 @@
 [node.validator01]
+snapshot_interval = 3
 [node.validator02]
+snapshot_interval = 3
 [node.validator03]
+snapshot_interval = 3
 [node.validator04]
+start_at = 10
+state_sync = true
 

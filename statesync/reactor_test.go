@@ -2,9 +2,11 @@ package statesync
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
@@ -374,27 +376,33 @@ func TestReactor_Dispatcher(t *testing.T) {
 
 
 	dispatcher := rts.reactor.Dispatcher()
-	providers := dispatcher.Providers(factory.DefaultTestChainID)
+	providers := dispatcher.Providers(factory.DefaultTestChainID, 5 *time.Second)
 	require.Len(t, providers, 2)
 
+	wg := sync.WaitGroup{}
+
 	for _, p := range providers {
-		go func(p provider.Provider) {
-			for height := 1; height < 10; height++ {
+		wg.Add(1)
+		go func(t *testing.T, p provider.Provider) {
+			for height := 2; height < 10; height++ {
+				t.Log("height", height)
 				lb, err := p.LightBlock(context.Background(), int64(height))
 				require.NoError(t, err)
 				require.NotNil(t, lb)
 			}
-		}(p)
+			wg.Done()
+		}(t, p)
 	}
+	wg.Wait()
 }
 
 func TestReactor_Backfill(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
 	rts := setup(t, nil, nil, nil, 2)
 
 	var (
 		startHeight int64 = 20
 		endHeight   int64 = 10
-		// startTime = time.Date(2020, 1, 1, 0, 200, 0, 0, time.UTC)
 		stopTime = time.Date(2020, 1, 1, 0, 100, 0, 0, time.UTC)
 	)
 
@@ -420,6 +428,7 @@ func TestReactor_Backfill(t *testing.T) {
 	go handleLightBlockRequests(t, chain, rts.blockOutCh, rts.blockInCh, closeCh)
 
 	err := rts.reactor.Backfill(
+		context.Background(),
 		factory.DefaultTestChainID,
 		startHeight,
 		stopHeight,

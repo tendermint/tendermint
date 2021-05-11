@@ -43,8 +43,11 @@ func newDispatcher(requestCh chan<- p2p.Envelope, timeout time.Duration) *dispat
 }
 
 func (d *dispatcher) LightBlock(ctx context.Context, height int64) (*types.LightBlock, p2p.NodeID, error) {
+	d.mtx.Lock()
+	outgoingCalls := len(d.calls)
+	d.mtx.Unlock() 
 
-	if d.availablePeers.Len() == 0 && len(d.calls) == 0 {
+	if d.availablePeers.Len() == 0 && outgoingCalls == 0 {
 		return nil, "", errNoConnectedPeers
 	}
 	// fetch the next peer id in the list and request a light block from that
@@ -54,7 +57,7 @@ func (d *dispatcher) LightBlock(ctx context.Context, height int64) (*types.Light
 	return lb, peer, err
 }
 
-func (d *dispatcher) Providers(chainID string) []provider.Provider {
+func (d *dispatcher) Providers(chainID string, timeout time.Duration) []provider.Provider {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 
@@ -64,6 +67,8 @@ func (d *dispatcher) Providers(chainID string) []provider.Provider {
 		providers[index] = &blockProvider{
 			peer:       peer,
 			dispatcher: d,
+			chainID: chainID,
+			timeout: timeout,
 		}
 	}
 	return providers
@@ -85,10 +90,10 @@ func (d *dispatcher) lightBlock(ctx context.Context, height int64, peer p2p.Node
 }
 
 func (d *dispatcher) respond(lb *proto.LightBlock, peer p2p.NodeID) error {
-	// check that the response came from a request
-	fmt.Println("1")
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
+
+	// check that the response came from a request
 	answerCh, ok := d.calls[peer]
 	if !ok {
 		return errUnsolicitedResponse
@@ -96,8 +101,6 @@ func (d *dispatcher) respond(lb *proto.LightBlock, peer p2p.NodeID) error {
 	defer d.availablePeers.Append(peer)
 	defer close(answerCh)
 	defer delete(d.calls, peer)
-
-	fmt.Println("2")
 
 	if lb == nil {
 		answerCh <- nil
@@ -109,8 +112,6 @@ func (d *dispatcher) respond(lb *proto.LightBlock, peer p2p.NodeID) error {
 		fmt.Println("error with converting light block")
 		return err
 	}
-
-	fmt.Println("3")
 
 	answerCh <- block
 	return nil
@@ -139,7 +140,7 @@ func (d *dispatcher) dispatch(peer p2p.NodeID, height int64) chan *types.LightBl
 	}
 	d.calls[peer] = ch
 
-	fmt.Printf("Sending request for light block at height %d\n", height)
+	// run in a separate goroutine to not block
 	go func() {
 		d.requestCh <- p2p.Envelope{
 			To: peer,
@@ -192,6 +193,11 @@ func (p *blockProvider) ReportEvidence(ctx context.Context, ev types.Evidence) e
 // String implements stringer interface
 func (p *blockProvider) String() string { return string(p.peer) }
 
+
+//----------------------------------------------------------------
+
+// peerList is a rolling list of peers. This is used to distribute the load of
+// retrieving blocks over all the peers the reactor is connected to
 type peerlist struct {
 	mtx     sync.Mutex
 	peers   []p2p.NodeID
