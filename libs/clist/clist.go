@@ -13,7 +13,6 @@ to ensure garbage collection of removed elements.
 
 import (
 	"fmt"
-	"sync"
 
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
@@ -28,14 +27,6 @@ const MaxLength = int(^uint(0) >> 1)
 CElement is an element of a linked-list
 Traversal from a CElement is goroutine-safe.
 
-We can't avoid using WaitGroups or for-loops given the documentation
-spec without re-implementing the primitives that already exist in
-golang/sync. Notice that WaitGroup allows many go-routines to be
-simultaneously released, which is what we want. Mutex doesn't do
-this. RWMutex does this, but it's clumsy to use in the way that a
-WaitGroup would be used -- and we'd end up having two RWMutex's for
-prev/next each, which is doubly confusing.
-
 sync.Cond would be sort-of useful, but we don't need a write-lock in
 the for-loop. Use sync.Cond when you need serial access to the
 "condition". In our case our condition is if `next != nil || removed`,
@@ -46,10 +37,8 @@ waiting on NextWait() (since it's just a read operation).
 type CElement struct {
 	mtx        tmsync.RWMutex
 	prev       *CElement
-	prevWg     *sync.WaitGroup
 	prevWaitCh chan struct{}
 	next       *CElement
-	nextWg     *sync.WaitGroup
 	nextWaitCh chan struct{}
 	removed    bool
 
@@ -62,7 +51,7 @@ func (e *CElement) NextWait() *CElement {
 	for {
 		e.mtx.RLock()
 		next := e.next
-		nextWg := e.nextWg
+		nextWaitCh := e.nextWaitCh
 		removed := e.removed
 		e.mtx.RUnlock()
 
@@ -70,7 +59,7 @@ func (e *CElement) NextWait() *CElement {
 			return next
 		}
 
-		nextWg.Wait()
+		<-nextWaitCh
 		// e.next doesn't necessarily exist here.
 		// That's why we need to continue a for-loop.
 	}
@@ -82,7 +71,7 @@ func (e *CElement) PrevWait() *CElement {
 	for {
 		e.mtx.RLock()
 		prev := e.prev
-		prevWg := e.prevWg
+		prevWaitCh := e.prevWaitCh
 		removed := e.removed
 		e.mtx.RUnlock()
 
@@ -90,7 +79,7 @@ func (e *CElement) PrevWait() *CElement {
 			return prev
 		}
 
-		prevWg.Wait()
+		<-prevWaitCh
 	}
 }
 
@@ -163,16 +152,9 @@ func (e *CElement) SetNext(newNext *CElement) {
 	oldNext := e.next
 	e.next = newNext
 	if oldNext != nil && newNext == nil {
-		// See https://golang.org/pkg/sync/:
-		//
-		// If a WaitGroup is reused to wait for several independent sets of
-		// events, new Add calls must happen after all previous Wait calls have
-		// returned.
-		e.nextWg = waitGroup1() // WaitGroups are difficult to re-use.
 		e.nextWaitCh = make(chan struct{})
 	}
 	if oldNext == nil && newNext != nil {
-		e.nextWg.Done()
 		close(e.nextWaitCh)
 	}
 	e.mtx.Unlock()
@@ -186,11 +168,9 @@ func (e *CElement) SetPrev(newPrev *CElement) {
 	oldPrev := e.prev
 	e.prev = newPrev
 	if oldPrev != nil && newPrev == nil {
-		e.prevWg = waitGroup1() // WaitGroups are difficult to re-use.
 		e.prevWaitCh = make(chan struct{})
 	}
 	if oldPrev == nil && newPrev != nil {
-		e.prevWg.Done()
 		close(e.prevWaitCh)
 	}
 	e.mtx.Unlock()
@@ -203,11 +183,9 @@ func (e *CElement) SetRemoved() {
 
 	// This wakes up anyone waiting in either direction.
 	if e.prev == nil {
-		e.prevWg.Done()
 		close(e.prevWaitCh)
 	}
 	if e.next == nil {
-		e.nextWg.Done()
 		close(e.nextWaitCh)
 	}
 	e.mtx.Unlock()
@@ -221,7 +199,6 @@ func (e *CElement) SetRemoved() {
 // Panics if length grows beyond the max.
 type CList struct {
 	mtx    tmsync.RWMutex
-	wg     *sync.WaitGroup
 	waitCh chan struct{}
 	head   *CElement // first element
 	tail   *CElement // last element
@@ -238,7 +215,6 @@ func newWithMax(maxLength int) *CList {
 	l := new(CList)
 	l.maxLen = maxLength
 
-	l.wg = waitGroup1()
 	l.waitCh = make(chan struct{})
 	l.head = nil
 	l.tail = nil
@@ -266,13 +242,13 @@ func (l *CList) FrontWait() *CElement {
 	for {
 		l.mtx.RLock()
 		head := l.head
-		wg := l.wg
+		waitCh := l.waitCh
 		l.mtx.RUnlock()
 
 		if head != nil {
 			return head
 		}
-		wg.Wait()
+		<-waitCh
 		// NOTE: If you think l.head exists here, think harder.
 	}
 }
@@ -288,13 +264,13 @@ func (l *CList) BackWait() *CElement {
 	for {
 		l.mtx.RLock()
 		tail := l.tail
-		wg := l.wg
+		waitCh := l.waitCh
 		l.mtx.RUnlock()
 
 		if tail != nil {
 			return tail
 		}
-		wg.Wait()
+		<-waitCh
 		// l.tail doesn't necessarily exist here.
 		// That's why we need to continue a for-loop.
 	}
@@ -316,10 +292,8 @@ func (l *CList) PushBack(v interface{}) *CElement {
 	// Construct a new element
 	e := &CElement{
 		prev:       nil,
-		prevWg:     waitGroup1(),
 		prevWaitCh: make(chan struct{}),
 		next:       nil,
-		nextWg:     waitGroup1(),
 		nextWaitCh: make(chan struct{}),
 		removed:    false,
 		Value:      v,
@@ -327,7 +301,6 @@ func (l *CList) PushBack(v interface{}) *CElement {
 
 	// Release waiters on FrontWait/BackWait maybe
 	if l.len == 0 {
-		l.wg.Done()
 		close(l.waitCh)
 	}
 	if l.len >= l.maxLen {
@@ -371,7 +344,6 @@ func (l *CList) Remove(e *CElement) interface{} {
 
 	// If we're removing the only item, make CList FrontWait/BackWait wait.
 	if l.len == 1 {
-		l.wg = waitGroup1() // WaitGroups are difficult to re-use.
 		l.waitCh = make(chan struct{})
 	}
 
@@ -395,10 +367,4 @@ func (l *CList) Remove(e *CElement) interface{} {
 
 	l.mtx.Unlock()
 	return e.Value
-}
-
-func waitGroup1() (wg *sync.WaitGroup) {
-	wg = &sync.WaitGroup{}
-	wg.Add(1)
-	return
 }
