@@ -17,16 +17,14 @@ var _ indexer.EventSink = (*EventSink)(nil)
 // The EventSink is an aggregator for redirecting the call path of the tx/block kvIndexer.
 // For the implementation details please see the kv.go in the indexer/block and indexer/tx folder.
 type EventSink struct {
-	store dbm.DB
-	txi   *kvt.TxIndex
-	bi    *kvb.BlockerIndexer
+	txi *kvt.TxIndex
+	bi  *kvb.BlockerIndexer
 }
 
 func NewEventSink(store dbm.DB) indexer.EventSink {
 	return &EventSink{
-		store: store,
-		txi:   kvt.NewTxIndex(store),
-		bi:    kvb.New(store),
+		txi: kvt.NewTxIndex(store),
+		bi:  kvb.New(store),
 	}
 }
 
