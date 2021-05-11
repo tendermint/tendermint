@@ -7,6 +7,8 @@
     - [Curren Design](#curren-design)
   - [Alternative Approaches](#alternative-approaches)
   - [Prior Art](#prior-art)
+    - [Ethereum](#ethereum)
+    - [Diem](#diem)
   - [Decision](#decision)
   - [Detailed Design](#detailed-design)
     - [CheckTx](#checktx)
