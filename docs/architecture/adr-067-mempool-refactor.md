@@ -87,6 +87,10 @@ For more information on the various approaches and proposals, please see the
 
 TODO: Reference, at a high level, mempool designs from other major protocols,
 e.g. Ethereum, AVA, and Diem.
+### Ethereum
+
+### Diem
+
 
 ## Decision
 
