@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"sort"
 	"time"
 
@@ -319,9 +320,10 @@ func (r *Reactor) Backfill(
 			if err != nil {
 				return err
 			}
-	
+			
 			trustedBlockID = resp.block.LastBlockID
 			queue.Success(resp.block.Height)
+			r.Logger.Info("verified and stored light block", "height", resp.block.Height)
 
 		case <-queue.Done():
 			return nil
@@ -515,12 +517,10 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 		}
 
 	case *ssproto.LightBlockResponse:
-		r.Logger.Info("received light block")
 		if err := r.dispatcher.respond(msg.LightBlock, envelope.From); err != nil {
 			r.Logger.Error("error processing light block response", "err", err)
 			return err
 		}
-		r.Logger.Info("successfully processed block")
 
 	default:
 		return fmt.Errorf("received unknown message: %T", msg)
@@ -539,7 +539,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 		}
 	}()
 
-	r.Logger.Debug("received message", "message", envelope.Message, "peer", envelope.From)
+	r.Logger.Debug("received message", "message", reflect.TypeOf(envelope.Message), "peer", envelope.From)
 
 	switch chID {
 	case SnapshotChannel:

@@ -12,6 +12,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/p2p"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -354,9 +355,38 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 	require.Equal(t, lb, receivedLB)
 }
 
-// func TestReactor_Dispatcher(t *testing.T) {
-// 	dispatcher := newDispatcher()
-// }
+func TestReactor_Dispatcher(t *testing.T) {
+	rts := setup(t, nil, nil, nil, 2)
+	rts.peerUpdateCh <- p2p.PeerUpdate{
+		NodeID: p2p.NodeID("aa"),
+		Status: p2p.PeerStatusUp,
+	}
+	rts.peerUpdateCh <- p2p.PeerUpdate{
+		NodeID: p2p.NodeID("bb"),
+		Status: p2p.PeerStatusUp,
+	}
+
+	closeCh := make(chan struct{})
+	defer close(closeCh)
+	
+	chain := buildLightBlockChain(t, 1, 10, time.Now())
+	go handleLightBlockRequests(t, chain, rts.blockOutCh, rts.blockInCh, closeCh)
+
+
+	dispatcher := rts.reactor.Dispatcher()
+	providers := dispatcher.Providers(factory.DefaultTestChainID)
+	require.Len(t, providers, 2)
+
+	for _, p := range providers {
+		go func(p provider.Provider) {
+			for height := 1; height < 10; height++ {
+				lb, err := p.LightBlock(context.Background(), int64(height))
+				require.NoError(t, err)
+				require.NotNil(t, lb)
+			}
+		}(p)
+	}
+}
 
 func TestReactor_Backfill(t *testing.T) {
 	rts := setup(t, nil, nil, nil, 2)
@@ -385,7 +415,7 @@ func TestReactor_Backfill(t *testing.T) {
 	closeCh := make(chan struct{})
 	defer close(closeCh)
 
-	chain := buildLightBlockChain(t, endHeight, startHeight+1, stopTime)
+	chain := buildLightBlockChain(t, endHeight-1, startHeight+1, stopTime)
 
 	go handleLightBlockRequests(t, chain, rts.blockOutCh, rts.blockInCh, closeCh)
 
@@ -446,28 +476,34 @@ func handleLightBlockRequests(t *testing.T, chain map[int64]*types.LightBlock, r
 func buildLightBlockChain(t *testing.T, fromHeight, toHeight int64, startTime time.Time) map[int64]*types.LightBlock {
 	chain := make(map[int64]*types.LightBlock, toHeight-fromHeight)
 	lastBlockID := factory.MakeBlockID()
-	blockTime := startTime.Add(-1 * time.Minute)
+	blockTime := startTime.Add(-5 * time.Minute)
 	for height := fromHeight; height < toHeight; height++ {
+		chain[height] = mockLB(t, height, blockTime, lastBlockID)
+		lastBlockID = factory.MakeBlockIDWithHash(chain[height].Header.Hash())
+		blockTime = blockTime.Add(1 * time.Minute)
+	}
+	return chain
+}
+
+func mockLB(t *testing.T, height int64, time time.Time, 
+	lastBlockID types.BlockID) *types.LightBlock {
 		header, err := factory.MakeHeader(&types.Header{
 			Height:      height,
 			LastBlockID: lastBlockID,
-			Time:        blockTime,
+			Time:        time,
 		})
-		require.NoError(t, err)
-		blockTime = blockTime.Add(1 * time.Minute)
+		require.NoError(t, err)	
 		vals, pv := factory.RandValidatorSet(3, 10)
 		header.ValidatorsHash = vals.Hash()
 		lastBlockID = factory.MakeBlockIDWithHash(header.Hash())
 		voteSet := types.NewVoteSet(factory.DefaultTestChainID, height, 0, tmproto.PrecommitType, vals)
-		commit, err := factory.MakeCommit(lastBlockID, height, 0, voteSet, pv, blockTime)
+		commit, err := factory.MakeCommit(lastBlockID, height, 0, voteSet, pv, time)
 		require.NoError(t, err)
-		chain[height] = &types.LightBlock{
+		return &types.LightBlock{
 			SignedHeader: &types.SignedHeader{
 				Header: header,
 				Commit: commit,
 			},
 			ValidatorSet: vals,
 		}
-	}
-	return chain
 }

@@ -86,27 +86,33 @@ func (d *dispatcher) lightBlock(ctx context.Context, height int64, peer p2p.Node
 
 func (d *dispatcher) respond(lb *proto.LightBlock, peer p2p.NodeID) error {
 	// check that the response came from a request
+	fmt.Println("1")
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	receiveCh, ok := d.calls[peer]
+	answerCh, ok := d.calls[peer]
 	if !ok {
 		return errUnsolicitedResponse
 	}
 	defer d.availablePeers.Append(peer)
-	defer close(receiveCh)
+	defer close(answerCh)
 	defer delete(d.calls, peer)
 
+	fmt.Println("2")
+
 	if lb == nil {
-		receiveCh <- nil
+		answerCh <- nil
 		return nil
 	}
 
 	block, err := types.LightBlockFromProto(lb)
 	if err != nil {
+		fmt.Println("error with converting light block")
 		return err
 	}
 
-	receiveCh <- block
+	fmt.Println("3")
+
+	answerCh <- block
 	return nil
 }
 
@@ -125,22 +131,23 @@ func (d *dispatcher) removePeer(peer p2p.NodeID) {
 func (d *dispatcher) dispatch(peer p2p.NodeID, height int64) chan *types.LightBlock {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-
 	ch := make(chan *types.LightBlock, 1)
 	// this should never happen (only if we add the same peer twice somehow)
 	if _, ok := d.calls[peer]; ok {
 		close(ch)
 		return ch
 	}
+	d.calls[peer] = ch
 
 	fmt.Printf("Sending request for light block at height %d\n", height)
-	d.requestCh <- p2p.Envelope{
-		To: peer,
-		Message: &ssproto.LightBlockRequest{
-			Height: uint64(height),
-		},
-	}
-	d.calls[peer] = ch
+	go func() {
+		d.requestCh <- p2p.Envelope{
+			To: peer,
+			Message: &ssproto.LightBlockRequest{
+				Height: uint64(height),
+			},
+		}
+	}()
 	return ch
 }
 

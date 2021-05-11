@@ -18,9 +18,8 @@ type lightBlockResponse struct {
 type blockQueue struct {
 	mtx sync.Mutex
 
-	// cursors to keep track of which heights need to be fetched, added and verified
+	// cursors to keep track of which heights need to be fetched and verified
 	fetchHeight  int64
-	addHeight    int64
 	verifyHeight int64
 
 	// termination conditions
@@ -51,7 +50,6 @@ func newBlockQueue(
 		stopHeight:   stopHeight,
 		stopTime:     stopTime,
 		fetchHeight:  startHeight,
-		addHeight:    startHeight,
 		verifyHeight: startHeight,
 		pending:      make(map[int64]lightBlockResponse),
 		failed:       make([]int64, 0),
@@ -106,7 +104,8 @@ func (q *blockQueue) NextHeight() <-chan int64 {
 	ch := make(chan int64, 1)
 	// if a previous process failed then we pick up this one
 	if len(q.failed) > 0 {
-		ch <- q.nextFailed()
+		failedHeight := q.nextFailed()
+		ch <- failedHeight
 		close(ch)
 		return ch
 	}
@@ -200,6 +199,14 @@ func (q *blockQueue) Close() {
 
 func (q *blockQueue) close() {
 	close(q.doneCh)
+
+	// wait for the channel to be drained
+	select {
+	case <-q.doneCh:
+		return
+	default:
+	}
+
 	for _, ch := range q.waiters {
 		close(ch)
 	}

@@ -18,29 +18,34 @@ import (
 func TestDispatcherBasic(t *testing.T) {
 
 	ch := make(chan p2p.Envelope)
-	closeCh := make(chan struct{})
+	closeCh := make(chan struct{}, 5)
 	defer close(closeCh)
 
 	d := newDispatcher(ch, 1*time.Second)
 
-	go handleRequests(d, ch, closeCh)
+	go handleRequests(t, d, ch, closeCh)
 
 	peers := createPeerSet(5)
 	for _, peer := range peers {
 		d.addPeer(peer)
 	}
 
+	wg := sync.WaitGroup{}
+
 	// make a bunch of async requests and require that the correct responses are
 	// given
 	for i := 1; i < 10; i++ {
+		wg.Add(1)
 		go func(height int64) {
 			lb, peer, err := d.LightBlock(context.Background(), height)
 			require.NoError(t, err)
 			require.NotNil(t, lb)
 			require.Equal(t, lb.Height, height)
 			require.Contains(t, peers, peer)
+			wg.Done()
 		}(int64(i))
 	}
+	wg.Wait()
 }
 
 func TestDispatcherProviders(t *testing.T) {
@@ -52,7 +57,7 @@ func TestDispatcherProviders(t *testing.T) {
 
 	d := newDispatcher(ch, 1*time.Second)
 
-	go handleRequests(d, ch, closeCh)
+	go handleRequests(t, d, ch, closeCh)
 
 	peers := createPeerSet(5)
 	for _, peer := range peers {
@@ -122,15 +127,18 @@ func TestPeerListConcurrent(t *testing.T) {
 	wg.Wait()
 }
 
-func handleRequests(d *dispatcher, ch chan p2p.Envelope, closeCh chan struct{}) {
+func handleRequests(t *testing.T, d *dispatcher, ch chan p2p.Envelope, closeCh chan struct{}) {
+	t.Helper()
 	for {
 		select {
 		case request := <-ch:
 			height := request.Message.(*ssproto.LightBlockRequest).Height
 			peer := request.To
-			resp := mocklb(peer, int64(height), time.Now())
+			resp := mockLBResp(t, peer, int64(height), time.Now())
 			block, _ := resp.block.ToProto()
+			fmt.Printf("responding to request at height %d", height)
 			d.respond(block, resp.peer)
+			fmt.Printf("responded to request")
 		case <-closeCh:
 			return
 		}
