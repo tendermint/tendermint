@@ -264,7 +264,9 @@ block writes on any index
   Tx<sub>1</sub> ➝ Tx<sub>2</sub>. These types of situations should be rare as
   most transactions are not causally ordered and can be circumvented by simply
   trying again at a later point in time or by ensuring the "child" priority is
-  lower than the "parent" priority.
+  lower than the "parent" priority. In other words, if parents always have
+  priories that are higher than their children, then the new mempool design will
+  maintain causal ordering.  
 
 ### Neutral
 
