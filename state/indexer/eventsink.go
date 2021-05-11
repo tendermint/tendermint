@@ -27,4 +27,6 @@ type EventSink interface {
 	HasBlock(int64) (bool, error)
 
 	Type() EventSinkType
+
+	Stop() error
 }

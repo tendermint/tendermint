@@ -32,3 +32,8 @@ func TestType(t *testing.T) {
 	nullIndexer := NewEventSink()
 	assert.Equal(t, indexer.NULL, nullIndexer.Type())
 }
+
+func TestStop(t *testing.T) {
+	nullIndexer := NewEventSink()
+	assert.Nil(t, nullIndexer.Stop())
+}

@@ -57,3 +57,7 @@ func (kves *EventSink) GetTxByHash(hash []byte) (*abci.TxResult, error) {
 func (kves *EventSink) HasBlock(h int64) (bool, error) {
 	return kves.bi.Has(h)
 }
+
+func (kves *EventSink) Stop() error {
+	return nil
+}

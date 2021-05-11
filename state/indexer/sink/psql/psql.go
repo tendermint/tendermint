@@ -169,3 +169,7 @@ func indexBlockEvents(sqlStmt *sq.InsertBuilder, events []abci.Event, ty string,
 	}
 	return nil
 }
+
+func (es *EventSink) Stop() error {
+	return es.store.Close()
+}

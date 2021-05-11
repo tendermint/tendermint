@@ -3,7 +3,6 @@ package node
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"math"
@@ -79,7 +78,6 @@ func createAndStartIndexerService(
 ) (*indexer.Service, []indexer.EventSink, error) {
 
 	eventSinks := []indexer.EventSink{}
-	var sqlDB *sql.DB
 loop:
 	for _, db := range config.TxIndex.Indexer {
 		switch strings.ToLower(db) {
@@ -99,18 +97,17 @@ loop:
 				return nil, nil, errors.New("the psql connection settings cannot be empty")
 			}
 
-			es, db, err := psql.NewEventSink(conn)
+			es, _, err := psql.NewEventSink(conn)
 			if err != nil {
 				return nil, nil, err
 			}
 			eventSinks = append(eventSinks, es)
-			sqlDB = db
 		default:
 			return nil, nil, errors.New("unsupported event sink type")
 		}
 	}
 
-	indexerService := indexer.NewIndexerService(eventSinks, eventBus, sqlDB)
+	indexerService := indexer.NewIndexerService(eventSinks, eventBus)
 	indexerService.SetLogger(logger.With("module", "txindex"))
 
 	if err := indexerService.Start(); err != nil {

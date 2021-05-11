@@ -21,6 +21,11 @@ func TestType(t *testing.T) {
 	assert.Equal(t, indexer.KV, kvSink.Type())
 }
 
+func TestStop(t *testing.T) {
+	kvSink := NewEventSink(db.NewMemDB())
+	assert.Nil(t, kvSink.Stop())
+}
+
 func TestBlockFuncs(t *testing.T) {
 	store := db.NewPrefixDB(db.NewMemDB(), []byte("block_events"))
 	indexer := NewEventSink(store)

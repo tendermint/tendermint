@@ -18,8 +18,8 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmlog "github.com/tendermint/tendermint/libs/log"
 	indexer "github.com/tendermint/tendermint/state/indexer"
-	kvsink "github.com/tendermint/tendermint/state/indexer/sink/kv"
-	psqlsink "github.com/tendermint/tendermint/state/indexer/sink/psql"
+	kv "github.com/tendermint/tendermint/state/indexer/sink/kv"
+	psql "github.com/tendermint/tendermint/state/indexer/sink/psql"
 	"github.com/tendermint/tendermint/types"
 	db "github.com/tendermint/tm-db"
 )
@@ -42,7 +42,7 @@ func TestMain(m *testing.M) {
 	}
 
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: psqlsink.DriverName,
+		Repository: psql.DriverName,
 		Tag:        "13",
 		Env: []string{
 			"POSTGRES_USER=" + user,
@@ -70,7 +70,7 @@ func TestMain(m *testing.M) {
 	if err = pool.Retry(func() error {
 		var err error
 
-		pSink, psqldb, err = psqlsink.NewEventSink(dsn)
+		pSink, psqldb, err = psql.NewEventSink(dsn)
 		if err != nil {
 			return err
 		}
@@ -120,9 +120,9 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 
 	// event sink setup
 	store := db.NewMemDB()
-	eventSinks := []indexer.EventSink{kvsink.NewEventSink(store), pSink}
+	eventSinks := []indexer.EventSink{kv.NewEventSink(store), pSink}
 
-	service := indexer.NewIndexerService(eventSinks, eventBus, nil)
+	service := indexer.NewIndexerService(eventSinks, eventBus)
 	service.SetLogger(tmlog.TestingLogger())
 	err = service.Start()
 	require.NoError(t, err)

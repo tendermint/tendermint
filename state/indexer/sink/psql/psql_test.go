@@ -24,6 +24,7 @@ import (
 )
 
 var db *sql.DB
+var resource *dockertest.Resource
 
 var (
 	user     = "postgres"
@@ -33,83 +34,19 @@ var (
 	dbName   = "postgres"
 )
 
-func TestMain(m *testing.M) {
-	pool, err := dockertest.NewPool(os.Getenv("DOCKER_URL"))
-	if err != nil {
-		log.Fatalf("Could not connect to docker: %s", err)
-	}
-
-	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: DriverName,
-		Tag:        "13",
-		Env: []string{
-			"POSTGRES_USER=" + user,
-			"POSTGRES_PASSWORD=" + password,
-			"POSTGRES_DB=" + dbName,
-			"listen_addresses = '*'",
-		},
-		ExposedPorts: []string{port},
-	}, func(config *docker.HostConfig) {
-		// set AutoRemove to true so that stopped container goes away by itself
-		config.AutoRemove = true
-		config.RestartPolicy = docker.RestartPolicy{
-			Name: "no",
-		}
-	})
-	if err != nil {
-		log.Fatalf("Could not start resource: %s", err)
-	}
-
-	// Set the container to expire in a minute to avoid orphaned containers
-	// hanging around
-	_ = resource.Expire(60)
-
-	dsn = fmt.Sprintf(dsn, user, password, resource.GetPort(port+"/tcp"), dbName)
-	if err = pool.Retry(func() error {
-		var err error
-
-		_, db, err = NewEventSink(dsn)
-		if err != nil {
-			return err
-		}
-
-		return db.Ping()
-	}); err != nil {
-		log.Fatalf("Could not connect to docker: %s", err)
-	}
-
-	resetDB()
-
-	sm, err := readSchema()
-	if err != nil {
-		db.Close()
-		log.Fatalf("Could not read schema: %s", err)
-	}
-
-	err = schema.NewMigrator().Apply(db, sm)
-	if err != nil {
-		db.Close()
-		log.Fatalf("Could not apply schema to db: %s", err)
-	}
-
-	code := m.Run()
-
-	// When you're done, kill and remove the container
-	if err = pool.Purge(resource); err != nil {
-		db.Close()
-		log.Fatalf("Could not purge resource: %s", err)
-	}
-
-	db.Close()
-	os.Exit(code)
-}
-
 func TestType(t *testing.T) {
+	pool, err := setup()
+	assert.Nil(t, err)
+
 	psqlSink := &EventSink{store: db}
 	assert.Equal(t, indexer.PSQL, psqlSink.Type())
+	assert.Nil(t, teardown(pool))
 }
 
 func TestBlockFuncs(t *testing.T) {
+	pool, err := setup()
+	assert.Nil(t, err)
+
 	indexer := &EventSink{store: db}
 	assert.NoError(t, indexer.IndexBlockEvents(getTestBlockHeader()))
 
@@ -132,9 +69,14 @@ func TestBlockFuncs(t *testing.T) {
 	r2, err := indexer.SearchBlockEvents(context.TODO(), nil)
 	assert.Nil(t, r2)
 	assert.Equal(t, errors.New("block search is not supported via the postgres event sink"), err)
+
+	assert.Nil(t, teardown(pool))
 }
 
 func TestTxFuncs(t *testing.T) {
+	pool, err := setup()
+	assert.Nil(t, err)
+
 	indexer := &EventSink{store: db}
 
 	txResult := txResultWithEvents([]abci.Event{
@@ -142,7 +84,7 @@ func TestTxFuncs(t *testing.T) {
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "owner", Value: "Ivan", Index: true}}},
 		{Type: "", Attributes: []abci.EventAttribute{{Key: "not_allowed", Value: "Vlad", Index: true}}},
 	})
-	err := indexer.IndexTxEvents(txResult)
+	err = indexer.IndexTxEvents(txResult)
 	assert.NoError(t, err)
 
 	tx, err := verifyTx(types.Tx(txResult.Tx).Hash())
@@ -156,6 +98,21 @@ func TestTxFuncs(t *testing.T) {
 	r2, err := indexer.SearchTxEvents(context.TODO(), nil)
 	assert.Nil(t, r2)
 	assert.Equal(t, errors.New("tx search is not supported via the postgres event sink"), err)
+
+	assert.Nil(t, teardown(pool))
+}
+
+func TestStop(t *testing.T) {
+	pool, err := setup()
+	assert.Nil(t, err)
+
+	indexer := &EventSink{store: db}
+	assert.Nil(t, indexer.Stop())
+
+	if err := pool.Purge(resource); err != nil {
+		db.Close()
+		log.Fatalf("Could not purge resource: %s", err)
+	}
 }
 
 func getTestBlockHeader() types.EventDataNewBlockHeader {
@@ -287,4 +244,78 @@ func verifyBlock(h int64) (bool, error) {
 	defer rows.Close()
 
 	return rows.Next(), nil
+}
+
+func setup() (*dockertest.Pool, error) {
+	pool, err := dockertest.NewPool(os.Getenv("DOCKER_URL"))
+	if err != nil {
+		log.Fatalf("Could not connect to docker: %s", err)
+	}
+
+	resource, err = pool.RunWithOptions(&dockertest.RunOptions{
+		Repository: DriverName,
+		Tag:        "13",
+		Env: []string{
+			"POSTGRES_USER=" + user,
+			"POSTGRES_PASSWORD=" + password,
+			"POSTGRES_DB=" + dbName,
+			"listen_addresses = '*'",
+		},
+		ExposedPorts: []string{port},
+	}, func(config *docker.HostConfig) {
+		// set AutoRemove to true so that stopped container goes away by itself
+		config.AutoRemove = true
+		config.RestartPolicy = docker.RestartPolicy{
+			Name: "no",
+		}
+	})
+	if err != nil {
+		log.Fatalf("Could not start resource: %s", err)
+	}
+
+	// Set the container to expire in a minute to avoid orphaned containers
+	// hanging around
+	_ = resource.Expire(60)
+
+	conn := fmt.Sprintf(dsn, user, password, resource.GetPort(port+"/tcp"), dbName)
+
+	if err = pool.Retry(func() error {
+		var err error
+
+		_, db, err = NewEventSink(conn)
+
+		if err != nil {
+			return err
+		}
+
+		return db.Ping()
+	}); err != nil {
+		log.Fatalf("Could not connect to docker: %s", err)
+	}
+
+	resetDB()
+
+	sm, err := readSchema()
+	if err != nil {
+		db.Close()
+		log.Fatalf("Could not read schema: %s", err)
+	}
+
+	err = schema.NewMigrator().Apply(db, sm)
+	if err != nil {
+		db.Close()
+		log.Fatalf("Could not apply schema to db: %s", err)
+	}
+
+	return pool, nil
+}
+
+func teardown(pool *dockertest.Pool) error {
+	// When you're done, kill and remove the container
+	if err := pool.Purge(resource); err != nil {
+		db.Close()
+		log.Fatalf("Could not purge resource: %s", err)
+	}
+
+	return db.Close()
 }

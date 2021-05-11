@@ -45,3 +45,7 @@ func (nes *EventSink) GetTxByHash(hash []byte) (*abci.TxResult, error) {
 func (nes *EventSink) HasBlock(h int64) (bool, error) {
 	return false, nil
 }
+
+func (nes *EventSink) Stop() error {
+	return nil
+}
