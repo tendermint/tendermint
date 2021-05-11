@@ -15,12 +15,12 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/evidence"
 	"github.com/tendermint/tendermint/evidence/mocks"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	smmocks "github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 const (
@@ -190,23 +190,32 @@ func TestVerify_ForwardLunaticAttack(t *testing.T) {
 }
 
 func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
-	conflictingVals, conflictingPrivVals := types.RandValidatorSet(5, 10)
-	trustedHeader := makeHeaderRandom(10)
+	conflictingVals, conflictingPrivVals := factory.RandValidatorSet(5, 10)
 
-	conflictingHeader := makeHeaderRandom(10)
-	conflictingHeader.ValidatorsHash = conflictingVals.Hash()
+	conflictingHeader, err := factory.MakeHeader(&types.Header{
+		ChainID:        evidenceChainID,
+		Height:         10,
+		Time:           defaultEvidenceTime,
+		ValidatorsHash: conflictingVals.Hash(),
+	})
+	require.NoError(t, err)
 
-	trustedHeader.ValidatorsHash = conflictingHeader.ValidatorsHash
-	trustedHeader.NextValidatorsHash = conflictingHeader.NextValidatorsHash
-	trustedHeader.ConsensusHash = conflictingHeader.ConsensusHash
-	trustedHeader.AppHash = conflictingHeader.AppHash
-	trustedHeader.LastResultsHash = conflictingHeader.LastResultsHash
+	trustedHeader, _ := factory.MakeHeader(&types.Header{
+		ChainID:            evidenceChainID,
+		Height:             10,
+		Time:               defaultEvidenceTime,
+		ValidatorsHash:     conflictingHeader.ValidatorsHash,
+		NextValidatorsHash: conflictingHeader.NextValidatorsHash,
+		ConsensusHash:      conflictingHeader.ConsensusHash,
+		AppHash:            conflictingHeader.AppHash,
+		LastResultsHash:    conflictingHeader.LastResultsHash,
+	})
 
 	// we are simulating a duplicate vote attack where all the validators in the conflictingVals set
 	// except the last validator vote twice
-	blockID := makeBlockID(conflictingHeader.Hash(), 1000, []byte("partshash"))
+	blockID := factory.MakeBlockIDWithHash(conflictingHeader.Hash())
 	voteSet := types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), conflictingVals)
-	commit, err := types.MakeCommit(blockID, 10, 1, voteSet, conflictingPrivVals[:4], defaultEvidenceTime)
+	commit, err := factory.MakeCommit(blockID, 10, 1, voteSet, conflictingPrivVals[:4], defaultEvidenceTime)
 	require.NoError(t, err)
 	ev := &types.LightClientAttackEvidence{
 		ConflictingBlock: &types.LightBlock{
@@ -224,7 +233,8 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 
 	trustedBlockID := makeBlockID(trustedHeader.Hash(), 1000, []byte("partshash"))
 	trustedVoteSet := types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), conflictingVals)
-	trustedCommit, err := types.MakeCommit(trustedBlockID, 10, 1, trustedVoteSet, conflictingPrivVals, defaultEvidenceTime)
+	trustedCommit, err := factory.MakeCommit(trustedBlockID, 10, 1,
+		trustedVoteSet, conflictingPrivVals, defaultEvidenceTime)
 	require.NoError(t, err)
 	trustedSignedHeader := &types.SignedHeader{
 		Header: trustedHeader,
@@ -274,22 +284,33 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 }
 
 func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
-	conflictingVals, conflictingPrivVals := types.RandValidatorSet(5, 10)
+	var height int64 = 10
+	conflictingVals, conflictingPrivVals := factory.RandValidatorSet(5, 10)
 
-	conflictingHeader := makeHeaderRandom(10)
-	conflictingHeader.ValidatorsHash = conflictingVals.Hash()
-	trustedHeader := makeHeaderRandom(10)
-	trustedHeader.ValidatorsHash = conflictingHeader.ValidatorsHash
-	trustedHeader.NextValidatorsHash = conflictingHeader.NextValidatorsHash
-	trustedHeader.AppHash = conflictingHeader.AppHash
-	trustedHeader.ConsensusHash = conflictingHeader.ConsensusHash
-	trustedHeader.LastResultsHash = conflictingHeader.LastResultsHash
+	conflictingHeader, err := factory.MakeHeader(&types.Header{
+		ChainID:        evidenceChainID,
+		Height:         height,
+		Time:           defaultEvidenceTime,
+		ValidatorsHash: conflictingVals.Hash(),
+	})
+	require.NoError(t, err)
+
+	trustedHeader, _ := factory.MakeHeader(&types.Header{
+		ChainID:            evidenceChainID,
+		Height:             height,
+		Time:               defaultEvidenceTime,
+		ValidatorsHash:     conflictingHeader.ValidatorsHash,
+		NextValidatorsHash: conflictingHeader.NextValidatorsHash,
+		ConsensusHash:      conflictingHeader.ConsensusHash,
+		AppHash:            conflictingHeader.AppHash,
+		LastResultsHash:    conflictingHeader.LastResultsHash,
+	})
 
 	// we are simulating an amnesia attack where all the validators in the conflictingVals set
 	// except the last validator vote twice. However this time the commits are of different rounds.
 	blockID := makeBlockID(conflictingHeader.Hash(), 1000, []byte("partshash"))
-	voteSet := types.NewVoteSet(evidenceChainID, 10, 0, tmproto.SignedMsgType(2), conflictingVals)
-	commit, err := types.MakeCommit(blockID, 10, 0, voteSet, conflictingPrivVals, defaultEvidenceTime)
+	voteSet := types.NewVoteSet(evidenceChainID, height, 0, tmproto.SignedMsgType(2), conflictingVals)
+	commit, err := factory.MakeCommit(blockID, height, 0, voteSet, conflictingPrivVals, defaultEvidenceTime)
 	require.NoError(t, err)
 	ev := &types.LightClientAttackEvidence{
 		ConflictingBlock: &types.LightBlock{
@@ -299,15 +320,16 @@ func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
 			},
 			ValidatorSet: conflictingVals,
 		},
-		CommonHeight:        10,
+		CommonHeight:        height,
 		ByzantineValidators: nil, // with amnesia evidence no validators are submitted as abci evidence
 		TotalVotingPower:    50,
 		Timestamp:           defaultEvidenceTime,
 	}
 
 	trustedBlockID := makeBlockID(trustedHeader.Hash(), 1000, []byte("partshash"))
-	trustedVoteSet := types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), conflictingVals)
-	trustedCommit, err := types.MakeCommit(trustedBlockID, 10, 1, trustedVoteSet, conflictingPrivVals, defaultEvidenceTime)
+	trustedVoteSet := types.NewVoteSet(evidenceChainID, height, 1, tmproto.SignedMsgType(2), conflictingVals)
+	trustedCommit, err := factory.MakeCommit(trustedBlockID, height, 1,
+		trustedVoteSet, conflictingPrivVals, defaultEvidenceTime)
 	require.NoError(t, err)
 	trustedSignedHeader := &types.SignedHeader{
 		Header: trustedHeader,
@@ -452,14 +474,14 @@ func makeLunaticEvidence(
 	totalVals, byzVals, phantomVals int,
 	commonTime, attackTime time.Time,
 ) (ev *types.LightClientAttackEvidence, trusted *types.LightBlock, common *types.LightBlock) {
-	commonValSet, commonPrivVals := types.RandValidatorSet(totalVals, defaultVotingPower)
+	commonValSet, commonPrivVals := factory.RandValidatorSet(totalVals, defaultVotingPower)
 
 	require.Greater(t, totalVals, byzVals)
 
 	// extract out the subset of byzantine validators in the common validator set
 	byzValSet, byzPrivVals := commonValSet.Validators[:byzVals], commonPrivVals[:byzVals]
 
-	phantomValSet, phantomPrivVals := types.RandValidatorSet(phantomVals, defaultVotingPower)
+	phantomValSet, phantomPrivVals := factory.RandValidatorSet(phantomVals, defaultVotingPower)
 
 	conflictingVals := phantomValSet.Copy()
 	require.NoError(t, conflictingVals.UpdateWithChangeSet(byzValSet))
@@ -467,17 +489,30 @@ func makeLunaticEvidence(
 
 	conflictingPrivVals = orderPrivValsByValSet(t, conflictingVals, conflictingPrivVals)
 
-	commonHeader := makeHeaderRandom(commonHeight)
-	commonHeader.Time = commonTime
-	trustedHeader := makeHeaderRandom(height)
+	commonHeader, err := factory.MakeHeader(&types.Header{
+		ChainID: evidenceChainID,
+		Height:  commonHeight,
+		Time:    commonTime,
+	})
+	require.NoError(t, err)
+	trustedHeader, err := factory.MakeHeader(&types.Header{
+		ChainID: evidenceChainID,
+		Height:  height,
+		Time:    defaultEvidenceTime,
+	})
+	require.NoError(t, err)
 
-	conflictingHeader := makeHeaderRandom(height)
-	conflictingHeader.Time = attackTime
-	conflictingHeader.ValidatorsHash = conflictingVals.Hash()
+	conflictingHeader, err := factory.MakeHeader(&types.Header{
+		ChainID:        evidenceChainID,
+		Height:         height,
+		Time:           attackTime,
+		ValidatorsHash: conflictingVals.Hash(),
+	})
+	require.NoError(t, err)
 
-	blockID := makeBlockID(conflictingHeader.Hash(), 1000, []byte("partshash"))
+	blockID := factory.MakeBlockIDWithHash(conflictingHeader.Hash())
 	voteSet := types.NewVoteSet(evidenceChainID, height, 1, tmproto.SignedMsgType(2), conflictingVals)
-	commit, err := types.MakeCommit(blockID, height, 1, voteSet, conflictingPrivVals, defaultEvidenceTime)
+	commit, err := factory.MakeCommit(blockID, height, 1, voteSet, conflictingPrivVals, defaultEvidenceTime)
 	require.NoError(t, err)
 	ev = &types.LightClientAttackEvidence{
 		ConflictingBlock: &types.LightBlock{
@@ -501,10 +536,10 @@ func makeLunaticEvidence(
 		},
 		ValidatorSet: commonValSet,
 	}
-	trustedBlockID := makeBlockID(trustedHeader.Hash(), 1000, []byte("partshash"))
-	trustedVals, privVals := types.RandValidatorSet(totalVals, defaultVotingPower)
+	trustedBlockID := factory.MakeBlockIDWithHash(trustedHeader.Hash())
+	trustedVals, privVals := factory.RandValidatorSet(totalVals, defaultVotingPower)
 	trustedVoteSet := types.NewVoteSet(evidenceChainID, height, 1, tmproto.SignedMsgType(2), trustedVals)
-	trustedCommit, err := types.MakeCommit(trustedBlockID, height, 1, trustedVoteSet, privVals, defaultEvidenceTime)
+	trustedCommit, err := factory.MakeCommit(trustedBlockID, height, 1, trustedVoteSet, privVals, defaultEvidenceTime)
 	require.NoError(t, err)
 	trusted = &types.LightBlock{
 		SignedHeader: &types.SignedHeader{
@@ -515,14 +550,6 @@ func makeLunaticEvidence(
 	}
 	return ev, trusted, common
 }
-
-// func makeEquivocationEvidence() *types.LightClientAttackEvidence {
-
-// }
-
-// func makeAmnesiaEvidence() *types.LightClientAttackEvidence {
-
-// }
 
 func makeVote(
 	t *testing.T, val types.PrivValidator, chainID string, valIndex int32, height int64,
@@ -546,25 +573,6 @@ func makeVote(
 	}
 	v.Signature = vpb.Signature
 	return v
-}
-
-func makeHeaderRandom(height int64) *types.Header {
-	return &types.Header{
-		Version:            version.Consensus{Block: version.BlockProtocol, App: 1},
-		ChainID:            evidenceChainID,
-		Height:             height,
-		Time:               defaultEvidenceTime,
-		LastBlockID:        makeBlockID([]byte("headerhash"), 1000, []byte("partshash")),
-		LastCommitHash:     crypto.CRandBytes(tmhash.Size),
-		DataHash:           crypto.CRandBytes(tmhash.Size),
-		ValidatorsHash:     crypto.CRandBytes(tmhash.Size),
-		NextValidatorsHash: crypto.CRandBytes(tmhash.Size),
-		ConsensusHash:      crypto.CRandBytes(tmhash.Size),
-		AppHash:            crypto.CRandBytes(tmhash.Size),
-		LastResultsHash:    crypto.CRandBytes(tmhash.Size),
-		EvidenceHash:       crypto.CRandBytes(tmhash.Size),
-		ProposerAddress:    crypto.CRandBytes(crypto.AddressSize),
-	}
 }
 
 func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.BlockID {

@@ -770,9 +770,6 @@ func createSwitch(
 	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
 
-	// XXX: needed to support old/new P2P stacks
-	sw.PutChannelDescsIntoTransport()
-
 	p2pLogger.Info("P2P Node ID", "ID", nodeKey.ID, "file", config.NodeKeyFile())
 	return sw
 }
@@ -832,7 +829,7 @@ func createPEXReactorV2(
 	router *p2p.Router,
 ) (*pex.ReactorV2, error) {
 
-	channel, err := router.OpenChannel(p2p.ChannelID(pex.PexChannel), &protop2p.PexMessage{}, 4096)
+	channel, err := router.OpenChannel(pex.ChannelDescriptor(), &protop2p.PexMessage{}, 4096)
 	if err != nil {
 		return nil, err
 	}
@@ -955,11 +952,24 @@ func NewSeedNode(config *cfg.Config,
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
 
-	// start the pex reactor
-	pexReactor := createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
-	pexReactorV2, err := createPEXReactorV2(config, logger, peerManager, router)
-	if err != nil {
-		return nil, err
+	var (
+		pexReactor   *pex.Reactor
+		pexReactorV2 *pex.ReactorV2
+	)
+
+	// add the pex reactor
+	// FIXME: we add channel descriptors to both the router and the transport but only the router
+	// should be aware of channel info. We should remove this from transport once the legacy
+	// p2p stack is removed.
+	pexCh := pex.ChannelDescriptor()
+	transport.AddChannelDescriptors([]*p2p.ChannelDescriptor{&pexCh})
+	if config.P2P.DisableLegacy {
+		pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
 	}
 
 	if config.RPC.PprofListenAddress != "" {
@@ -1203,11 +1213,15 @@ func NewNode(config *cfg.Config,
 		config.StateSync.TempDir,
 	)
 
-	router.AddChannelDescriptors(mpReactorShim.GetChannels())
-	router.AddChannelDescriptors(bcReactorForSwitch.GetChannels())
-	router.AddChannelDescriptors(csReactorShim.GetChannels())
-	router.AddChannelDescriptors(evReactorShim.GetChannels())
-	router.AddChannelDescriptors(stateSyncReactorShim.GetChannels())
+	// add the channel descriptors to both the transports
+	// FIXME: This should be removed when the legacy p2p stack is removed and
+	// transports can either be agnostic to channel descriptors or can be
+	// declared in the constructor.
+	transport.AddChannelDescriptors(mpReactorShim.GetChannels())
+	transport.AddChannelDescriptors(bcReactorForSwitch.GetChannels())
+	transport.AddChannelDescriptors(csReactorShim.GetChannels())
+	transport.AddChannelDescriptors(evReactorShim.GetChannels())
+	transport.AddChannelDescriptors(stateSyncReactorShim.GetChannels())
 
 	// setup Transport and Switch
 	sw := createSwitch(
@@ -1248,13 +1262,16 @@ func NewNode(config *cfg.Config,
 	)
 
 	if config.P2P.PexReactor {
-		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
-		pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
-		if err != nil {
-			return nil, err
+		pexCh := pex.ChannelDescriptor()
+		transport.AddChannelDescriptors([]*p2p.ChannelDescriptor{&pexCh})
+		if config.P2P.DisableLegacy {
+			pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
 		}
-
-		router.AddChannelDescriptors(pexReactor.GetChannels())
 	}
 
 	if config.RPC.PprofListenAddress != "" {
@@ -1414,7 +1431,6 @@ func (n *Node) OnStart() error {
 
 // OnStop stops the Node. It implements service.Service.
 func (n *Node) OnStop() {
-	n.BaseService.OnStop()
 
 	n.Logger.Info("Stopping Node")
 
@@ -1428,7 +1444,7 @@ func (n *Node) OnStop() {
 
 	if n.config.Mode != cfg.ModeSeed {
 		// now stop the reactors
-		if n.config.FastSync.Version == "v0" {
+		if n.config.FastSync.Version == cfg.BlockchainV0 {
 			// Stop the real blockchain reactor separately since the switch uses the shim.
 			if err := n.bcReactor.Stop(); err != nil {
 				n.Logger.Error("failed to stop the blockchain reactor", "err", err)
@@ -1501,7 +1517,7 @@ func (n *Node) OnStop() {
 }
 
 // ConfigureRPC makes sure RPC has all the objects it needs to operate.
-func (n *Node) ConfigureRPC() error {
+func (n *Node) ConfigureRPC() (*rpccore.Environment, error) {
 	rpcCoreEnv := rpccore.Environment{
 		ProxyAppQuery:   n.proxyApp.Query(),
 		ProxyAppMempool: n.proxyApp.Mempool(),
@@ -1527,24 +1543,24 @@ func (n *Node) ConfigureRPC() error {
 	if n.config.Mode == cfg.ModeValidator {
 		pubKey, err := n.privValidator.GetPubKey(context.TODO())
 		if pubKey == nil || err != nil {
-			return fmt.Errorf("can't get pubkey: %w", err)
+			return nil, fmt.Errorf("can't get pubkey: %w", err)
 		}
 		rpcCoreEnv.PubKey = pubKey
 	}
-	rpccore.SetEnvironment(&rpcCoreEnv)
-	return nil
+	return &rpcCoreEnv, nil
 }
 
 func (n *Node) startRPC() ([]net.Listener, error) {
-	err := n.ConfigureRPC()
+	env, err := n.ConfigureRPC()
 	if err != nil {
 		return nil, err
 	}
 
 	listenAddrs := strings.SplitAndTrimEmpty(n.config.RPC.ListenAddress, ",", " ")
+	routes := env.GetRoutes()
 
 	if n.config.RPC.Unsafe {
-		rpccore.AddUnsafeRoutes()
+		env.AddUnsafe(routes)
 	}
 
 	config := rpcserver.DefaultConfig()
@@ -1564,7 +1580,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		mux := http.NewServeMux()
 		rpcLogger := n.Logger.With("module", "rpc-server")
 		wmLogger := rpcLogger.With("protocol", "websocket")
-		wm := rpcserver.NewWebsocketManager(rpccore.Routes,
+		wm := rpcserver.NewWebsocketManager(routes,
 			rpcserver.OnDisconnect(func(remoteAddr string) {
 				err := n.eventBus.UnsubscribeAll(context.Background(), remoteAddr)
 				if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
@@ -1575,7 +1591,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		)
 		wm.SetLogger(wmLogger)
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
-		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, rpcLogger)
+		rpcserver.RegisterRPCFuncs(mux, routes, rpcLogger)
 		listener, err := rpcserver.Listen(
 			listenAddr,
 			config,
@@ -1641,7 +1657,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 			return nil, err
 		}
 		go func() {
-			if err := grpccore.StartGRPCServer(listener); err != nil {
+			if err := grpccore.StartGRPCServer(env, listener); err != nil {
 				n.Logger.Error("Error starting gRPC server", "err", err)
 			}
 		}()
@@ -2038,7 +2054,7 @@ func makeChannelsFromShims(
 
 	channels := map[p2p.ChannelID]*p2p.Channel{}
 	for chID, chShim := range chShims {
-		ch, err := router.OpenChannel(chID, chShim.MsgType, chShim.Descriptor.RecvBufferCapacity)
+		ch, err := router.OpenChannel(*chShim.Descriptor, chShim.MsgType, chShim.Descriptor.RecvBufferCapacity)
 		if err != nil {
 			panic(fmt.Sprintf("failed to open channel %v: %v", chID, err))
 		}
