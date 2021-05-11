@@ -829,7 +829,7 @@ func createPEXReactorV2(
 	router *p2p.Router,
 ) (*pex.ReactorV2, error) {
 
-	channel, err := router.OpenChannel(p2p.ChannelID(pex.PexChannel), &protop2p.PexMessage{}, 4096)
+	channel, err := router.OpenChannel(pex.ChannelDescriptor(), &protop2p.PexMessage{}, 4096)
 	if err != nil {
 		return nil, err
 	}
@@ -961,8 +961,8 @@ func NewSeedNode(config *cfg.Config,
 	// FIXME: we add channel descriptors to both the router and the transport but only the router
 	// should be aware of channel info. We should remove this from transport once the legacy
 	// p2p stack is removed.
-	router.AddChannelDescriptors(pex.ChannelDescriptors())
-	transport.AddChannelDescriptors(pex.ChannelDescriptors())
+	pexCh := pex.ChannelDescriptor()
+	transport.AddChannelDescriptors([]*p2p.ChannelDescriptor{&pexCh})
 	if config.P2P.DisableLegacy {
 		pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
 		if err != nil {
@@ -1213,14 +1213,10 @@ func NewNode(config *cfg.Config,
 		config.StateSync.TempDir,
 	)
 
-	// add the channel descriptors to both the router and the underlying
-	// transports
-	router.AddChannelDescriptors(mpReactorShim.GetChannels())
-	router.AddChannelDescriptors(bcReactorForSwitch.GetChannels())
-	router.AddChannelDescriptors(csReactorShim.GetChannels())
-	router.AddChannelDescriptors(evReactorShim.GetChannels())
-	router.AddChannelDescriptors(stateSyncReactorShim.GetChannels())
-
+	// add the channel descriptors to both the transports
+	// FIXME: This should be removed when the legacy p2p stack is removed and
+	// transports can either be agnostic to channel descriptors or can be
+	// declared in the constructor.
 	transport.AddChannelDescriptors(mpReactorShim.GetChannels())
 	transport.AddChannelDescriptors(bcReactorForSwitch.GetChannels())
 	transport.AddChannelDescriptors(csReactorShim.GetChannels())
@@ -1266,8 +1262,8 @@ func NewNode(config *cfg.Config,
 	)
 
 	if config.P2P.PexReactor {
-		router.AddChannelDescriptors(pex.ChannelDescriptors())
-		transport.AddChannelDescriptors(pex.ChannelDescriptors())
+		pexCh := pex.ChannelDescriptor()
+		transport.AddChannelDescriptors([]*p2p.ChannelDescriptor{&pexCh})
 		if config.P2P.DisableLegacy {
 			pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
 			if err != nil {
@@ -2058,7 +2054,7 @@ func makeChannelsFromShims(
 
 	channels := map[p2p.ChannelID]*p2p.Channel{}
 	for chID, chShim := range chShims {
-		ch, err := router.OpenChannel(chID, chShim.MsgType, chShim.Descriptor.RecvBufferCapacity)
+		ch, err := router.OpenChannel(*chShim.Descriptor, chShim.MsgType, chShim.Descriptor.RecvBufferCapacity)
 		if err != nil {
 			panic(fmt.Sprintf("failed to open channel %v: %v", chID, err))
 		}

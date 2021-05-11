@@ -62,7 +62,8 @@ func setup(
 		fastSync:           true,
 	}
 
-	rts.blockchainChannels = rts.network.MakeChannelsNoCleanup(t, BlockchainChannel, new(bcproto.Message), int(chBuf))
+	chDesc := p2p.ChannelDescriptor{ID: byte(BlockchainChannel)}
+	rts.blockchainChannels = rts.network.MakeChannelsNoCleanup(t, chDesc, new(bcproto.Message), int(chBuf))
 
 	i := 0
 	for nodeID := range rts.network.Nodes {

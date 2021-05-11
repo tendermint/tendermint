@@ -350,7 +350,7 @@ func setupNetwork(t *testing.T, opts testOptions) *reactorTestSuite {
 	// NOTE: we don't assert that the channels get drained after stopping the
 	// reactor
 	rts.pexChannels = rts.network.MakeChannelsNoCleanup(
-		t, p2p.ChannelID(pex.PexChannel), new(proto.PexMessage), chBuf,
+		t, pex.ChannelDescriptor(), new(proto.PexMessage), chBuf,
 	)
 
 	idx := 0
@@ -416,7 +416,7 @@ func (r *reactorTestSuite) addNodes(t *testing.T, nodes int) {
 		r.network.Nodes[node.NodeID] = node
 		nodeID := node.NodeID
 		r.pexChannels[nodeID] = node.MakeChannelNoCleanup(
-			t, p2p.ChannelID(pex.PexChannel), new(proto.PexMessage), r.opts.BufferSize,
+			t, pex.ChannelDescriptor(), new(proto.PexMessage), r.opts.BufferSize,
 		)
 		r.peerChans[nodeID] = make(chan p2p.PeerUpdate, r.opts.BufferSize)
 		r.peerUpdates[nodeID] = p2p.NewPeerUpdates(r.peerChans[nodeID], r.opts.BufferSize)
