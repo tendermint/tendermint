@@ -248,7 +248,8 @@ block writes on any index
 ### Negative
 
 - Increased size of the `ResponseCheckTx` Protocol Buffer type.
-- It is possible that certain transactions broadcasted in a particular order may
+- Causal ordering is NOT maintained as it is currently.
+  - It is possible that certain transactions broadcasted in a particular order may
   pass `CheckTx` but not end up being committed in a block because they fail
   `CheckTx` later. e.g. Consider Tx<sub>1</sub> that sends funds from existing
   account Alice to a _new_ account Bob with priority P<sub>1</sub> and then later
@@ -257,9 +258,11 @@ block writes on any index
   transactions will pass `CheckTx`. However, when a proposer is ready to select
   transactions for the next block proposal, they will select Tx<sub>2</sub> before
   Tx<sub>1</sub> and thus Tx<sub>2</sub> will _fail_ because Tx<sub>1</sub> must
-  be executed first. These types of situations should be rare and can be
-  circumvented by simply trying again at a later point in time or by ensuring the
-  "child" priority is lower than the "parent" priority.
+  be executed first. This is because there is a _causal ordering_,
+  Tx<sub>1</sub> ➝ Tx<sub>2</sub>. These types of situations should be rare as
+  most transactions are not causally ordered and can be circumvented by simply
+  trying again at a later point in time or by ensuring the "child" priority is
+  lower than the "parent" priority.
 
 ### Neutral
 
