@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/p2ptest"
@@ -128,23 +129,47 @@ func TestReactorNeverSendsTooManyPeers(t *testing.T) {
 }
 
 func TestReactorErrorsOnReceivingTooManyPeers(t *testing.T) {
-	testNet := setupNetwork(t, testOptions{
-		MockNodes:  1,
-		TotalNodes: 2,
-	})
-	testNet.connectAll(t)
-	testNet.start(t)
+	r := setupSingle(t)
+	peer := p2p.NodeAddress{Protocol: p2p.MemoryProtocol, NodeID: randomNodeID(t)}
+	added, err := r.manager.Add(peer)
+	require.NoError(t, err)
+	require.True(t, added)
 
-	testNet.addNodes(t, 110)
-	nodes := make([]int, 110)
-	for i := 0; i < len(nodes); i++ {
-		nodes[i] = i + 2
+	addresses := make([]proto.PexAddressV2, 101)
+	for i := 0; i < len(addresses); i++ {
+		nodeAddress := p2p.NodeAddress{Protocol: p2p.MemoryProtocol, NodeID: randomNodeID(t)}
+		addresses[i] = proto.PexAddressV2{
+			URL: nodeAddress.String(),
+		}
 	}
 
-	// now we send a response with more than 100 peers
-	testNet.sendResponse(t, firstNode, secondNode, nodes, true)
-	// secondNode should evict the firstNode
-	testNet.listenForPeerUpdate(t, secondNode, firstNode, p2p.PeerStatusDown, shortWait)
+	r.peerCh <- p2p.PeerUpdate{
+		NodeID: peer.NodeID,
+		Status: p2p.PeerStatusUp,
+	}
+
+	select {
+	// wait for a request and then send a response with too many addresses
+	case req := <-r.pexOutCh:
+		if _, ok := req.Message.(*proto.PexRequestV2); !ok {
+			t.Fatal("expected v2 pex request")
+		}
+		r.pexInCh <- p2p.Envelope{
+			From: peer.NodeID,
+			Message: &proto.PexResponseV2{
+				Addresses: addresses,
+			},
+		}
+
+	case <-time.After(10 * time.Second):
+		t.Fatal("pex failed to send a request within 10 seconds")
+	}
+
+	peerErr := <-r.pexErrCh
+	require.Error(t, peerErr.Err)
+	require.Empty(t, r.pexOutCh)
+	require.Contains(t, peerErr.Err.Error(), "peer sent too many addresses")
+	require.Equal(t, peer.NodeID, peerErr.NodeID)
 }
 
 func TestReactorSmallPeerStoreInALargeNetwork(t *testing.T) {
@@ -251,6 +276,8 @@ type singleTestReactor struct {
 	pexOutCh chan p2p.Envelope
 	pexErrCh chan p2p.PeerError
 	pexCh    *p2p.Channel
+	peerCh   chan p2p.PeerUpdate
+	manager  *p2p.PeerManager
 }
 
 func setupSingle(t *testing.T) *singleTestReactor {
@@ -268,7 +295,8 @@ func setupSingle(t *testing.T) *singleTestReactor {
 		pexErrCh,
 	)
 
-	peerUpdates := p2p.NewPeerUpdates(make(chan p2p.PeerUpdate), chBuf)
+	peerCh := make(chan p2p.PeerUpdate, chBuf)
+	peerUpdates := p2p.NewPeerUpdates(peerCh, chBuf)
 	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 
@@ -289,6 +317,8 @@ func setupSingle(t *testing.T) *singleTestReactor {
 		pexOutCh: pexOutCh,
 		pexErrCh: pexErrCh,
 		pexCh:    pexCh,
+		peerCh:   peerCh,
+		manager:  peerManager,
 	}
 }
 
@@ -779,4 +809,8 @@ func newNodeID(t *testing.T, id string) p2p.NodeID {
 	nodeID, err := p2p.NewNodeID(strings.Repeat(id, 2*p2p.NodeIDByteLength))
 	require.NoError(t, err)
 	return nodeID
+}
+
+func randomNodeID(t *testing.T) p2p.NodeID {
+	return p2p.NodeIDFromPubKey(ed25519.GenPrivKey().PubKey())
 }
