@@ -2,11 +2,14 @@ package mockcoreserver
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
+
+	"github.com/dashevo/dashd-go/btcjson"
 )
 
 // BodyShouldBeSame compares a body from received request and passed byte slice
@@ -29,6 +32,7 @@ func BodyShouldBeSame(v interface{}) ExpectFunc {
 		if err != nil {
 			return err
 		}
+		req.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
 		if bytes.Compare(body, buf) != 0 {
 			return fmt.Errorf("the request body retried by URL %s is not equal\nexpected: %s\nactual: %s", req.URL.String(), buf, body)
 		}
@@ -71,4 +75,31 @@ func And(fns ...ExpectFunc) ExpectFunc {
 		}
 		return nil
 	}
+}
+
+// JRPCRequest ...
+func JRPCRequest(fns ...func(req btcjson.Request) error) ExpectFunc {
+	return func(req *http.Request) error {
+		jReq, ok := req.Context().Value(jRPCRequestKey).(btcjson.Request)
+		if !ok {
+			return errors.New("missed btcjson.Request in a context")
+		}
+		for _, fn := range fns {
+			err := fn(jReq)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+// JRPCParamsEmpty ...
+func JRPCParamsEmpty() ExpectFunc {
+	return JRPCRequest(func(req btcjson.Request) error {
+		if req.Params != nil && len(req.Params) > 0 {
+			return errors.New("jRPC request params should be empty")
+		}
+		return nil
+	})
 }

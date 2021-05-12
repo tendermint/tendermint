@@ -19,12 +19,28 @@ func mustMarshal(v interface{}) []byte {
 	return j
 }
 
+func mustUnmarshal(data []byte, out interface{}) {
+	err := json.Unmarshal(data, out)
+	if err != nil {
+		log.Panicf("unable to encode: %v", err)
+	}
+}
+
 // Body ...
 func Body(body []byte) HandlerOptionFunc {
 	return func(opts *respOption) {
-		resp := &response{Result: body}
-		opts.body = bytes.NewBuffer(mustMarshal(resp))
+		opts.body = bytes.NewBuffer(body)
 	}
+}
+
+// JsonBody ...
+func JsonBody(v interface{}) HandlerOptionFunc {
+	return Body(mustMarshal(v))
+}
+
+// JRPCResult ..
+func JRPCResult(v interface{}) HandlerOptionFunc {
+	return JsonBody(&response{Result: mustMarshal(v)})
 }
 
 // Header ...

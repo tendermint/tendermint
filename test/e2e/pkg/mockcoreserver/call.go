@@ -1,9 +1,14 @@
 package mockcoreserver
 
 import (
+	"bytes"
 	"io"
 	"net/http"
 	"sync"
+)
+
+var (
+	jsonEmptyString = mustMarshal("")
 )
 
 type (
@@ -24,7 +29,6 @@ type Call struct {
 	expectFunc  ExpectFunc
 	actualCnt   int
 	expectedCnt int
-	isStopped   bool
 	guard       sync.Mutex
 }
 
@@ -32,6 +36,7 @@ type Call struct {
 func (c *Call) Respond(opts ...HandlerOptionFunc) *Call {
 	ro := &respOption{
 		status: http.StatusOK,
+		body:   bytes.NewBuffer(jsonEmptyString),
 		header: make(map[string][]string),
 	}
 	for _, opt := range opts {
@@ -50,11 +55,9 @@ func (c *Call) Respond(opts ...HandlerOptionFunc) *Call {
 			}
 			w.WriteHeader(ro.status)
 		}
-		if ro.body != nil {
-			_, err := io.Copy(w, ro.body)
-			if err != nil {
-				return err
-			}
+		_, err := io.Copy(w, ro.body)
+		if err != nil {
+			return err
 		}
 		return nil
 	}
@@ -76,6 +79,12 @@ func (c *Call) Times(cnt int) *Call {
 // Once ...
 func (c *Call) Once() *Call {
 	c.Times(1)
+	return c
+}
+
+// Forever ...
+func (c *Call) Forever() *Call {
+	c.Times(-1)
 	return c
 }
 

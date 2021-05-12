@@ -2,7 +2,6 @@ package mockcoreserver
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -11,15 +10,12 @@ import (
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/stretchr/testify/assert"
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/types"
 )
 
 func TestServer(t *testing.T) {
 	ctx := context.Background()
-	srv := HTTPServer(t, ":9981")
+	srv := NewHTTPServer(t, ":9981")
 	go func() {
 		srv.Start()
 	}()
@@ -51,53 +47,46 @@ func TestServer(t *testing.T) {
 			}).
 			Expect(And(BodyShouldBeEmpty(), QueryShouldHave(tc.query))).
 			Once().
-			Respond(Body([]byte(tc.e)), JsonContentType())
+			Respond(JsonBody(tc.e), JsonContentType())
 		resp, err := http.Get(tc.url)
 		if err != nil {
 			panic(err)
 		}
 		data, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Printf("%s\n", data)
+		_ = resp.Body.Close()
+		assert.NoError(t, err)
+		s := ""
+		mustUnmarshal(data, &s)
+		assert.Equal(t, tc.e, s)
 	}
 	srv.Stop(ctx)
 }
 
-func TestPrivValidator(t *testing.T) {
-	host := "localhost:19998"
-	total := 10
-	mockPV := types.NewMockPV()
-	conf := PrivValidConfig{
-		QuorumType:    btcjson.LLMQType_5_60,
-		QuorumHash:    crypto.RandQuorumHash(),
-		PrivValidator: mockPV,
-	}
-	conf.PrivKey, conf.ProTxHash, conf.PubKey = bls12381.CreatePrivLLMQDataDefaultThreshold(total)
+func TestDashCoreSignerPingMethod(t *testing.T) {
+	addr := "localhost:19998"
 	ctx := context.Background()
-	srv := HTTPServer(t, host)
+	srv := NewJRPCServer(t, addr, "/")
 	go func() {
 		srv.Start()
 	}()
 	pingRequest(srv)
-	client, err := privval.NewDashCoreSignerClient(host, "root", "root", btcjson.LLMQType_5_60, "chain-123456")
+	client, err := privval.NewDashCoreSignerClient(addr, "root", "root", btcjson.LLMQType_5_60, "chain-123456")
 	assert.NoError(t, err)
 	err = client.Ping()
 	assert.NoError(t, err)
 	srv.Stop(ctx)
 }
 
-func pingRequest(srv *Server) {
+func pingRequest(srv *JRPCServer) {
 	result := []btcjson.GetPeerInfoResult{{}}
 	srv.
-		On("/").
-		Expect(And(BodyShouldBeSame(`{"jsonrpc":"1.0","method":"ping","params":[],"id":1}`))).
+		On("ping").
+		Expect(JRPCParamsEmpty()).
 		Once().
-		Respond(Body([]byte(`"hello"`)), JsonContentType())
+		Respond(JRPCResult(""), JsonContentType())
 	srv.
-		On("/").
-		Expect(And(BodyShouldBeSame(`{"jsonrpc":"1.0","method":"getpeerinfo","params":[],"id":2}`))).
+		On("getpeerinfo").
+		Expect(And(JRPCParamsEmpty())).
 		Once().
-		Respond(Body(mustMarshal(result)), JsonContentType())
+		Respond(JRPCResult(result), JsonContentType())
 }

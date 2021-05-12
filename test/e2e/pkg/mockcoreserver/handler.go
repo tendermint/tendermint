@@ -31,7 +31,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 func (h *handler) findCall() *Call {
 	for _, c := range h.calls {
-		if c.expectedCnt >= c.actualCnt {
+		if c.expectedCnt == -1 || c.expectedCnt >= c.actualCnt {
 			return c
 		}
 	}
