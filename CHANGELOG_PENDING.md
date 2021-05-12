@@ -27,6 +27,8 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [ABCI] \#5818 Use protoio for msg length delimitation. Migrates from int64 to uint64 length delimiters.
 
 - P2P Protocol
+  - [consensus] \#6287 Rename `HasVote` to `ReceivedVote` to avoid namespace
+    clashes when using cpp (@luohaha) (@cmwaters)
 
 - Go API
   - [abci/client, proxy] \#5673 `Async` funcs return an error, `Sync` and `Async` funcs accept `context.Context` (@melekes)
