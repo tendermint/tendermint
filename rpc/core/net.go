@@ -95,17 +95,17 @@ func (env *Environment) Genesis(ctx *rpctypes.Context) (*ctypes.ResultGenesis, e
 	return &ctypes.ResultGenesis{Genesis: env.GenDoc}, nil
 }
 
-func (env *Environment) GenesisChunked(ctx *rpctypes.Context, chunkID uint) (*ctypes.ResultGenesisChunk, error) {
-	id := int(chunkID)
+func (env *Environment) GenesisChunked(ctx *rpctypes.Context, chunk uint) (*ctypes.ResultGenesisChunk, error) {
+	id := int(chunk)
 
-	if id > len(env.genChunks) {
-		return nil, fmt.Errorf("there are %d chunks, %d is invalid", len(env.genChunks), id)
+	if id > len(env.genChunks)-1 {
+		return nil, fmt.Errorf("there are %d chunks, %d is invalid", len(env.genChunks)-1, id)
 	}
 
 	return &ctypes.ResultGenesisChunk{
 		TotalChunks: len(env.genChunks),
 		ChunkNumber: id,
-		Data:        env.genChunks[id-1],
+		Data:        env.genChunks[id],
 	}, nil
 }
 

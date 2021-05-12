@@ -399,7 +399,7 @@ func (c *baseRPCClient) Genesis(ctx context.Context) (*ctypes.ResultGenesis, err
 
 func (c *baseRPCClient) GenesisChunked(ctx context.Context, id uint) (*ctypes.ResultGenesisChunk, error) {
 	result := new(ctypes.ResultGenesisChunk)
-	_, err := c.caller.Call(ctx, "genesis_chunked", map[string]interface{}{"chunkID": id}, result)
+	_, err := c.caller.Call(ctx, "genesis_chunked", map[string]interface{}{"chunk": id}, result)
 	if err != nil {
 		return nil, err
 	}
