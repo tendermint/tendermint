@@ -4,7 +4,7 @@
   - [Changelog](#changelog)
   - [Status](#status)
   - [Context](#context)
-    - [Curren Design](#curren-design)
+    - [Current Design](#current-design)
   - [Alternative Approaches](#alternative-approaches)
   - [Prior Art](#prior-art)
     - [Ethereum](#ethereum)
@@ -16,6 +16,7 @@
     - [Eviction](#eviction)
     - [Gossiping](#gossiping)
     - [Performance](#performance)
+  - [Future Improvements](#future-improvements)
   - [Consequences](#consequences)
     - [Positive](#positive)
     - [Negative](#negative)
@@ -240,6 +241,28 @@ Performance should largely remain unaffected apart from the space overhead of
 keeping an additional priority queue index and the case where we need to evict
 transactions from the priority queue index. There should be no reads which
 block writes on any index
+
+## Future Improvements
+
+There are a few considerable ways in which the proposed design can be improved or
+expanded upon. Namely, transaction gossiping and for the ability to support
+multiple transactions from the same `sender`.
+
+With regards to transaction gossiping, we need empirically validate whether we
+need to gossip by priority. In addition, the current method of gossiping may not
+be the most efficient. Specifically, broadcasting all the transactions a node
+has in it's mempool to it's peers. Rather, we should explore for the ability to
+gossip transactions on a request/response basis similar to Ethereum and other
+protocols. Not only does this reduce bandwidth and complexity, but also allows
+for us to explore gossiping by priority or other dimensions more efficiently.
+
+Allowing for multiple transactions from the same `sender` is important and will
+most likely be a needed feature in the future development of the mempool, but for
+now it suffices to have the preliminary design agreed upon. Having the ability
+to support multiple transactions per `sender` will require careful thought with
+regards to the interplay of the corresponding ABCI application. Regardless, the
+proposed design should allow for adaptations to support this feature in a
+non-contentious and backwards compatible manner.
 
 ## Consequences
 
