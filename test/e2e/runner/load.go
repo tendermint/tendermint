@@ -81,7 +81,7 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, multiplier int) {
 
 		select {
 		case chTx <- tx:
-			time.Sleep(time.Second/time.Duration(multiplier))
+			time.Sleep(time.Second / time.Duration(multiplier))
 
 		case <-ctx.Done():
 			close(chTx)

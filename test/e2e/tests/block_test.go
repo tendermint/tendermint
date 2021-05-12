@@ -34,7 +34,7 @@ func TestBlock_Header(t *testing.T) {
 			}
 			// the first blocks after state sync come from the backfill process
 			// and are therefore not complete
-			if node.StateSync && block.Header.Height <= first + e2e.EvidenceAgeHeight + 3 {
+			if node.StateSync && block.Header.Height <= first+e2e.EvidenceAgeHeight+3 {
 				continue
 			}
 			if block.Header.Height > last {
@@ -89,7 +89,7 @@ func TestBlock_Range(t *testing.T) {
 				continue
 			}
 			require.NoError(t, err)
-			if node.StateSync && h <= first + e2e.EvidenceAgeHeight + 3 {
+			if node.StateSync && h <= first+e2e.EvidenceAgeHeight+3 {
 				continue
 			}
 			require.NotNil(t, resp.Block)
