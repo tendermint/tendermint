@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"testing"
 	"time"
@@ -35,16 +34,16 @@ var (
 )
 
 func TestType(t *testing.T) {
-	pool, err := setup()
+	pool, err := setupDB(t)
 	assert.Nil(t, err)
 
 	psqlSink := &EventSink{store: db}
 	assert.Equal(t, indexer.PSQL, psqlSink.Type())
-	assert.Nil(t, teardown(pool))
+	assert.Nil(t, teardown(t, pool))
 }
 
 func TestBlockFuncs(t *testing.T) {
-	pool, err := setup()
+	pool, err := setupDB(t)
 	assert.Nil(t, err)
 
 	indexer := &EventSink{store: db}
@@ -70,11 +69,11 @@ func TestBlockFuncs(t *testing.T) {
 	assert.Nil(t, r2)
 	assert.Equal(t, errors.New("block search is not supported via the postgres event sink"), err)
 
-	assert.Nil(t, teardown(pool))
+	assert.Nil(t, teardown(t, pool))
 }
 
 func TestTxFuncs(t *testing.T) {
-	pool, err := setup()
+	pool, err := setupDB(t)
 	assert.Nil(t, err)
 
 	indexer := &EventSink{store: db}
@@ -99,20 +98,18 @@ func TestTxFuncs(t *testing.T) {
 	assert.Nil(t, r2)
 	assert.Equal(t, errors.New("tx search is not supported via the postgres event sink"), err)
 
-	assert.Nil(t, teardown(pool))
+	assert.Nil(t, teardown(t, pool))
 }
 
 func TestStop(t *testing.T) {
-	pool, err := setup()
+	pool, err := setupDB(t)
 	assert.Nil(t, err)
 
 	indexer := &EventSink{store: db}
 	assert.Nil(t, indexer.Stop())
 
-	if err := pool.Purge(resource); err != nil {
-		db.Close()
-		log.Fatalf("Could not purge resource: %s", err)
-	}
+	defer db.Close()
+	assert.Nil(t, pool.Purge(resource))
 }
 
 func getTestBlockHeader() types.EventDataNewBlockHeader {
@@ -163,20 +160,15 @@ func readSchema() ([]*schema.Migration, error) {
 	return append([]*schema.Migration{}, mg), nil
 }
 
-func resetDB() {
+func resetDB(t *testing.T) {
 	q := "DROP TABLE IF EXISTS block_events,tx_events,tx_results"
 	_, err := db.Exec(q)
-	if err != nil {
-		db.Close()
-		log.Fatalf("Could not reset TABLE: %s", err)
-	}
+
+	assert.Nil(t, err)
 
 	q = "DROP TYPE IF EXISTS block_event_type"
 	_, err = db.Exec(q)
-	if err != nil {
-		db.Close()
-		log.Fatalf("Could not reset TYPE: %s", err)
-	}
+	assert.Nil(t, err)
 }
 
 func txResultWithEvents(events []abci.Event) *abci.TxResult {
@@ -246,11 +238,11 @@ func verifyBlock(h int64) (bool, error) {
 	return rows.Next(), nil
 }
 
-func setup() (*dockertest.Pool, error) {
+func setupDB(t *testing.T) (*dockertest.Pool, error) {
+	t.Helper()
 	pool, err := dockertest.NewPool(os.Getenv("DOCKER_URL"))
-	if err != nil {
-		log.Fatalf("Could not connect to docker: %s", err)
-	}
+
+	assert.Nil(t, err)
 
 	resource, err = pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: DriverName,
@@ -269,9 +261,8 @@ func setup() (*dockertest.Pool, error) {
 			Name: "no",
 		}
 	})
-	if err != nil {
-		log.Fatalf("Could not start resource: %s", err)
-	}
+
+	assert.Nil(t, err)
 
 	// Set the container to expire in a minute to avoid orphaned containers
 	// hanging around
@@ -290,32 +281,20 @@ func setup() (*dockertest.Pool, error) {
 
 		return db.Ping()
 	}); err != nil {
-		log.Fatalf("Could not connect to docker: %s", err)
+		assert.Error(t, err)
 	}
 
-	resetDB()
+	resetDB(t)
 
 	sm, err := readSchema()
-	if err != nil {
-		db.Close()
-		log.Fatalf("Could not read schema: %s", err)
-	}
-
-	err = schema.NewMigrator().Apply(db, sm)
-	if err != nil {
-		db.Close()
-		log.Fatalf("Could not apply schema to db: %s", err)
-	}
-
+	assert.Nil(t, err)
+	assert.Nil(t, schema.NewMigrator().Apply(db, sm))
 	return pool, nil
 }
 
-func teardown(pool *dockertest.Pool) error {
+func teardown(t *testing.T, pool *dockertest.Pool) error {
+	t.Helper()
 	// When you're done, kill and remove the container
-	if err := pool.Purge(resource); err != nil {
-		db.Close()
-		log.Fatalf("Could not purge resource: %s", err)
-	}
-
+	assert.Nil(t, pool.Purge(resource))
 	return db.Close()
 }
