@@ -564,8 +564,10 @@ func TestNodeSetEventSink(t *testing.T) {
 	assert.Nil(t, n)
 	assert.Equal(t, errors.New("the psql connection settings cannot be empty"), err)
 
+	var psqlConn = "test"
+
 	config.TxIndex.Indexer = []string{"psql"}
-	config.TxIndex.PsqlConn = "test"
+	config.TxIndex.PsqlConn = psqlConn
 	n, err = DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
 	assert.Equal(t, 1, len(n.eventSinks))
@@ -573,7 +575,25 @@ func TestNodeSetEventSink(t *testing.T) {
 	n.OnStop()
 
 	config.TxIndex.Indexer = []string{"psql", "kv"}
-	config.TxIndex.PsqlConn = "test"
+	config.TxIndex.PsqlConn = psqlConn
+	n, err = DefaultNewNode(config, log.TestingLogger())
+	require.NoError(t, err)
+	assert.Equal(t, 2, len(n.eventSinks))
+	assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
+	assert.Equal(t, indexer.KV, n.eventSinks[1].Type())
+	n.OnStop()
+
+	config.TxIndex.Indexer = []string{"psql", "kv", "kv"}
+	config.TxIndex.PsqlConn = psqlConn
+	n, err = DefaultNewNode(config, log.TestingLogger())
+	require.NoError(t, err)
+	assert.Equal(t, 2, len(n.eventSinks))
+	assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
+	assert.Equal(t, indexer.KV, n.eventSinks[1].Type())
+	n.OnStop()
+
+	config.TxIndex.Indexer = []string{"psql", "kv", "kv", "psql"}
+	config.TxIndex.PsqlConn = psqlConn
 	n, err = DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
 	assert.Equal(t, 2, len(n.eventSinks))

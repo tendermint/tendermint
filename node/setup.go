@@ -85,22 +85,40 @@ loop:
 			eventSinks = []indexer.EventSink{null.NewEventSink()}
 			break loop
 		case string(indexer.KV):
-			store, err := dbProvider(&DBContext{"tx_index", config})
-			if err != nil {
-				return nil, nil, err
-			}
-			eventSinks = append(eventSinks, kv.NewEventSink(store))
-		case string(indexer.PSQL):
-			conn := config.TxIndex.PsqlConn
-			if conn == "" {
-				return nil, nil, errors.New("the psql connection settings cannot be empty")
+			var hadKVSink = false
+			for _, sink := range eventSinks {
+				if sink.Type() == indexer.KV {
+					hadKVSink = true
+				}
 			}
 
-			es, _, err := psql.NewEventSink(conn)
-			if err != nil {
-				return nil, nil, err
+			if !hadKVSink {
+				store, err := dbProvider(&DBContext{"tx_index", config})
+				if err != nil {
+					return nil, nil, err
+				}
+				eventSinks = append(eventSinks, kv.NewEventSink(store))
 			}
-			eventSinks = append(eventSinks, es)
+		case string(indexer.PSQL):
+			var hadPSQLSink = false
+			for _, sink := range eventSinks {
+				if sink.Type() == indexer.KV {
+					hadPSQLSink = true
+				}
+			}
+
+			if !hadPSQLSink {
+				conn := config.TxIndex.PsqlConn
+				if conn == "" {
+					return nil, nil, errors.New("the psql connection settings cannot be empty")
+				}
+
+				es, _, err := psql.NewEventSink(conn)
+				if err != nil {
+					return nil, nil, err
+				}
+				eventSinks = append(eventSinks, es)
+			}
 		default:
 			return nil, nil, errors.New("unsupported event sink type")
 		}
