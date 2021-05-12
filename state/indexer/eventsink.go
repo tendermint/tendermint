@@ -27,7 +27,7 @@ type EventSink interface {
 	IndexBlockEvents(types.EventDataNewBlockHeader) error
 
 	// IndexTxEvents indexes the given result of transactions. To call it with multi transactions,
-	// must guarant the index of these transactions are in order.
+	// must guarantee the index of given transactions are in order.
 	IndexTxEvents([]*abci.TxResult) error
 
 	// SearchBlockEvents provides the block search by given query conditions. This function only
