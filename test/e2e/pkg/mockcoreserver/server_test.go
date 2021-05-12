@@ -8,6 +8,13 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+
+	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/stretchr/testify/assert"
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
+	"github.com/tendermint/tendermint/privval"
+	"github.com/tendermint/tendermint/types"
 )
 
 func TestServer(t *testing.T) {
@@ -56,4 +63,41 @@ func TestServer(t *testing.T) {
 		fmt.Printf("%s\n", data)
 	}
 	srv.Stop(ctx)
+}
+
+func TestPrivValidator(t *testing.T) {
+	host := "localhost:19998"
+	total := 10
+	mockPV := types.NewMockPV()
+	conf := PrivValidConfig{
+		QuorumType:    btcjson.LLMQType_5_60,
+		QuorumHash:    crypto.RandQuorumHash(),
+		PrivValidator: mockPV,
+	}
+	conf.PrivKey, conf.ProTxHash, conf.PubKey = bls12381.CreatePrivLLMQDataDefaultThreshold(total)
+	ctx := context.Background()
+	srv := HTTPServer(t, host)
+	go func() {
+		srv.Start()
+	}()
+	pingRequest(srv)
+	client, err := privval.NewDashCoreSignerClient(host, "root", "root", btcjson.LLMQType_5_60, "chain-123456")
+	assert.NoError(t, err)
+	err = client.Ping()
+	assert.NoError(t, err)
+	srv.Stop(ctx)
+}
+
+func pingRequest(srv *Server) {
+	result := []btcjson.GetPeerInfoResult{{}}
+	srv.
+		On("/").
+		Expect(And(BodyShouldBeSame(`{"jsonrpc":"1.0","method":"ping","params":[],"id":1}`))).
+		Once().
+		Respond(Body([]byte(`"hello"`)), JsonContentType())
+	srv.
+		On("/").
+		Expect(And(BodyShouldBeSame(`{"jsonrpc":"1.0","method":"getpeerinfo","params":[],"id":2}`))).
+		Once().
+		Respond(Body(mustMarshal(result)), JsonContentType())
 }

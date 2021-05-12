@@ -1,6 +1,7 @@
 package mockcoreserver
 
 import (
+	"log"
 	"net/http"
 	"sync"
 	"testing"
@@ -19,8 +20,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	defer h.guard.Unlock()
 	c := h.findCall()
 	if c == nil {
-		// todo panic or error
-		panic("call not found")
+		log.Panic("call not found")
 	}
 	err := c.execute(w, req)
 	if err != nil {

@@ -10,7 +10,7 @@ import (
 )
 
 // BodyShouldBeSame compares a body from received request and passed byte slice
-func BodyShouldBeSame(v interface{}) ExpectedRequestFunc {
+func BodyShouldBeSame(v interface{}) ExpectFunc {
 	var body []byte
 	switch t := v.(type) {
 	case []byte:
@@ -21,10 +21,11 @@ func BodyShouldBeSame(v interface{}) ExpectedRequestFunc {
 		log.Panicf("unsupported type %s", t)
 	}
 	return func(req *http.Request) error {
-		if req.Body != nil {
-			_ = req.Body.Close()
-		}
 		buf, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			return err
+		}
+		err = req.Body.Close()
 		if err != nil {
 			return err
 		}
@@ -36,12 +37,12 @@ func BodyShouldBeSame(v interface{}) ExpectedRequestFunc {
 }
 
 // BodyShouldBeEmpty ...
-func BodyShouldBeEmpty() ExpectedRequestFunc {
+func BodyShouldBeEmpty() ExpectFunc {
 	return BodyShouldBeSame("")
 }
 
 // QueryShouldHave ...
-func QueryShouldHave(expectedVales url.Values) ExpectedRequestFunc {
+func QueryShouldHave(expectedVales url.Values) ExpectFunc {
 	return func(req *http.Request) error {
 		actuallyVales := req.URL.Query()
 		for k, eVals := range expectedVales {
@@ -60,7 +61,7 @@ func QueryShouldHave(expectedVales url.Values) ExpectedRequestFunc {
 }
 
 // And ...
-func And(fns ...ExpectedRequestFunc) ExpectedRequestFunc {
+func And(fns ...ExpectFunc) ExpectFunc {
 	return func(req *http.Request) error {
 		for _, fn := range fns {
 			err := fn(req)

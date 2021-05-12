@@ -7,21 +7,21 @@ import (
 )
 
 type (
-	ExpectedRequestFunc func(req *http.Request) error
-	ResponseFunc        func(w http.ResponseWriter) error
-	ResponseOptionFunc  func(opt *respOption)
+	ExpectFunc        func(req *http.Request) error
+	HandlerFunc       func(w http.ResponseWriter, req *http.Request) error
+	HandlerOptionFunc func(opt *respOption)
 )
 
 type respOption struct {
 	status int
 	body   io.Reader
-	header http.Header
+	header map[string][]string
 }
 
 // Call is a call expectation structure
 type Call struct {
-	respFunc    ResponseFunc
-	expectFunc  ExpectedRequestFunc
+	handlerFunc HandlerFunc
+	expectFunc  ExpectFunc
 	actualCnt   int
 	expectedCnt int
 	isStopped   bool
@@ -29,20 +29,26 @@ type Call struct {
 }
 
 // Respond sets a response by a request
-func (c *Call) Respond(opts ...ResponseOptionFunc) *Call {
+func (c *Call) Respond(opts ...HandlerOptionFunc) *Call {
 	ro := &respOption{
 		status: http.StatusOK,
-		header: http.Header{},
+		header: make(map[string][]string),
 	}
 	for _, opt := range opts {
 		opt(ro)
 	}
-	c.respFunc = func(w http.ResponseWriter) error {
+	c.handlerFunc = func(w http.ResponseWriter, req *http.Request) error {
 		if len(ro.header) > 0 {
-			err := ro.header.Write(w)
-			if err != nil {
-				return err
+			for k, vals := range ro.header {
+				if len(vals) == 1 {
+					w.Header().Set(k, vals[0])
+				} else {
+					for _, v := range vals {
+						w.Header().Add(k, v)
+					}
+				}
 			}
+			w.WriteHeader(ro.status)
 		}
 		if ro.body != nil {
 			_, err := io.Copy(w, ro.body)
@@ -56,7 +62,7 @@ func (c *Call) Respond(opts ...ResponseOptionFunc) *Call {
 }
 
 // Expect sets an expectation on a request
-func (c *Call) Expect(fn ExpectedRequestFunc) *Call {
+func (c *Call) Expect(fn ExpectFunc) *Call {
 	c.expectFunc = fn
 	return c
 }
@@ -80,8 +86,8 @@ func (c *Call) execute(w http.ResponseWriter, req *http.Request) error {
 			return err
 		}
 	}
-	if c.respFunc != nil {
-		err := c.respFunc(w)
+	if c.handlerFunc != nil {
+		err := c.handlerFunc(w, req)
 		if err != nil {
 			return err
 		}

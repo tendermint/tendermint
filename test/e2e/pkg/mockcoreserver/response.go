@@ -2,46 +2,59 @@ package mockcoreserver
 
 import (
 	"bytes"
+	"encoding/json"
+	"log"
 	"net/http"
 )
 
+type response struct {
+	Result json.RawMessage `json:"result"`
+}
+
+func mustMarshal(v interface{}) []byte {
+	j, err := json.Marshal(v)
+	if err != nil {
+		log.Panicf("unable to encode: %v", err)
+	}
+	return j
+}
+
 // Body ...
-func Body(body []byte) ResponseOptionFunc {
+func Body(body []byte) HandlerOptionFunc {
 	return func(opts *respOption) {
-		opts.body = bytes.NewBuffer(body)
+		resp := &response{Result: body}
+		opts.body = bytes.NewBuffer(mustMarshal(resp))
 	}
 }
 
 // Header ...
-func Header(key string, values ...string) ResponseOptionFunc {
+func Header(key string, values ...string) HandlerOptionFunc {
 	return func(opts *respOption) {
-		for _, v := range values {
-			opts.header.Add(key, v)
-		}
+		opts.header[key] = values
 	}
 }
 
 // ContentType ...
-func ContentType(val string) ResponseOptionFunc {
+func ContentType(val string) HandlerOptionFunc {
 	return Header("content-type", val)
 }
 
 // JsonContentType ...
-func JsonContentType() ResponseOptionFunc {
+func JsonContentType() HandlerOptionFunc {
 	return ContentType("application/json")
 }
 
-// EmptyResponse ...
-func NotContent() ResponseFunc {
-	return func(w http.ResponseWriter) error {
+// NotContent ...
+func NotContent() HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
 }
 
 // BadRequest ...
-func BadRequest() ResponseFunc {
-	return func(w http.ResponseWriter) error {
+func BadRequest() HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) error {
 		w.WriteHeader(http.StatusBadRequest)
 		return nil
 	}
