@@ -94,11 +94,3 @@ func lookForHeight(conditions []query.Condition) (int64, bool) {
 
 	return 0, false
 }
-
-func LookForHeight(conditions []query.Condition) (int64, bool) {
-	return lookForHeight(conditions)
-}
-
-func IntInSlice(a int, list []int) bool {
-	return intInSlice(a, list)
-}
