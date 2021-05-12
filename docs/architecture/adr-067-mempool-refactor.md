@@ -224,7 +224,7 @@ size such that the new `Tx` would fit within the mempool's size limit. We then
 remove this `Tx` from the priority queue index as well as the `<sender:*Tx>`
 mapping.
 
-This will require additional `O(n)` space and `O(n*log(n))` runtime complexity.
+This will require additional `O(n)` space and `O(n*log(n))` runtime complexity. Note that the space complexity does not depend on the size of the tx.
 
 ### Gossiping
 
