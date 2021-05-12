@@ -200,11 +200,11 @@ func TestGenesisChunked(t *testing.T) {
 	defer cancel()
 
 	for _, c := range GetClients(t, NodeSuite(t)) {
-		first, err := c.GenesisChunked(ctx, 1)
+		first, err := c.GenesisChunked(ctx, 0)
 		require.NoError(t, err)
 
 		decoded := make([]string, 0, first.TotalChunks)
-		for i := first.ChunkNumber; i < first.TotalChunks+1; i++ {
+		for i := 0; i < first.TotalChunks; i++ {
 			chunk, err := c.GenesisChunked(ctx, uint(i))
 			require.NoError(t, err)
 			data, err := base64.StdEncoding.DecodeString(chunk.Data)
