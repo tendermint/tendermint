@@ -64,7 +64,7 @@ func TestDispatcherProviders(t *testing.T) {
 		d.addPeer(peer)
 	}
 
-	providers := d.Providers(chainID, 5 *time.Second)
+	providers := d.Providers(chainID, 5*time.Second)
 	assert.Len(t, providers, 5)
 	for i, p := range providers {
 		bp, ok := p.(*blockProvider)
@@ -109,10 +109,10 @@ func TestPeerListBasic(t *testing.T) {
 
 func TestPeerListConcurrent(t *testing.T) {
 	peerList := newPeerList()
-	numPeers := 5
+	numPeers := 10
 
 	wg := sync.WaitGroup{}
-	for i := 0; i < numPeers; i++ {
+	for i := 0; i < numPeers/2; i++ {
 		go func() {
 			_ = peerList.Pop()
 			wg.Done()
@@ -124,7 +124,15 @@ func TestPeerListConcurrent(t *testing.T) {
 		peerList.Append(peer)
 	}
 
+	for i := 0; i < numPeers/2; i++ {
+		go func() {
+			_ = peerList.Pop()
+			wg.Done()
+		}()
+	}
+
 	wg.Wait()
+
 }
 
 func handleRequests(t *testing.T, d *dispatcher, ch chan p2p.Envelope, closeCh chan struct{}) {

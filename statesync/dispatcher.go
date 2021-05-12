@@ -19,6 +19,7 @@ var (
 	errUnsolicitedResponse = errors.New("unsolicited light block response")
 	errNoResponse          = errors.New("peer failed to respond within timeout")
 	errPeerAlreadyBusy     = errors.New("peer is already processing a request")
+	errDisconnected        = errors.New("dispatcher has been disconnected")
 )
 
 // dispatcher keeps a list of peers and allows concurrent requests for light
@@ -29,8 +30,9 @@ type dispatcher struct {
 	requestCh      chan<- p2p.Envelope
 	timeout        time.Duration
 
-	mtx   sync.Mutex
-	calls map[p2p.NodeID]chan *types.LightBlock
+	mtx     sync.Mutex
+	calls   map[p2p.NodeID]chan *types.LightBlock
+	running bool
 }
 
 func newDispatcher(requestCh chan<- p2p.Envelope, timeout time.Duration) *dispatcher {
@@ -39,17 +41,20 @@ func newDispatcher(requestCh chan<- p2p.Envelope, timeout time.Duration) *dispat
 		timeout:        timeout,
 		requestCh:      requestCh,
 		calls:          make(map[p2p.NodeID]chan *types.LightBlock),
+		running:        true,
 	}
 }
 
 func (d *dispatcher) LightBlock(ctx context.Context, height int64) (*types.LightBlock, p2p.NodeID, error) {
 	d.mtx.Lock()
 	outgoingCalls := len(d.calls)
-	d.mtx.Unlock() 
+	d.mtx.Unlock()
 
+	// check to see that the dispatcher is connected to at least one peer
 	if d.availablePeers.Len() == 0 && outgoingCalls == 0 {
 		return nil, "", errNoConnectedPeers
 	}
+
 	// fetch the next peer id in the list and request a light block from that
 	// peer
 	peer := d.availablePeers.Pop()
@@ -67,24 +72,56 @@ func (d *dispatcher) Providers(chainID string, timeout time.Duration) []provider
 		providers[index] = &blockProvider{
 			peer:       peer,
 			dispatcher: d,
-			chainID: chainID,
-			timeout: timeout,
+			chainID:    chainID,
+			timeout:    timeout,
 		}
 	}
 	return providers
 }
 
-func (d *dispatcher) lightBlock(ctx context.Context, height int64, peer p2p.NodeID) (*types.LightBlock, error) {
-	callCh := d.dispatch(peer, height)
+func (d *dispatcher) stop() {
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
+	d.running = false
+	for peer, call := range d.calls {
+		close(call)
+		delete(d.calls, peer)
+	}
+}
 
+func (d *dispatcher) start() {
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
+	d.running = true
+}
+
+func (d *dispatcher) lightBlock(ctx context.Context, height int64, peer p2p.NodeID) (*types.LightBlock, error) {
+	// allocate the peer to the request
+	callCh, err := d.allocate(peer, height)
+	if err != nil {
+		return nil, err
+	}
+
+	// send request. We can't have a mutex over this else if this blocks the
+	// entire dispatcher locks up
+	d.requestCh <- p2p.Envelope{
+		To: peer,
+		Message: &ssproto.LightBlockRequest{
+			Height: uint64(height),
+		},
+	}
+
+	// wait for a response, cancel or timeout
 	select {
 	case resp := <-callCh:
 		return resp, nil
 
 	case <-ctx.Done():
+		d.release(peer)
 		return nil, nil
 
 	case <-time.After(d.timeout):
+		d.release(peer)
 		return nil, errNoResponse
 	}
 }
@@ -96,8 +133,10 @@ func (d *dispatcher) respond(lb *proto.LightBlock, peer p2p.NodeID) error {
 	// check that the response came from a request
 	answerCh, ok := d.calls[peer]
 	if !ok {
+		// this can also happen if the response came in after the timeout
 		return errUnsolicitedResponse
 	}
+	// release the peer after returning the response
 	defer d.availablePeers.Append(peer)
 	defer close(answerCh)
 	defer delete(d.calls, peer)
@@ -122,6 +161,8 @@ func (d *dispatcher) addPeer(peer p2p.NodeID) {
 }
 
 func (d *dispatcher) removePeer(peer p2p.NodeID) {
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
 	if _, ok := d.calls[peer]; ok {
 		delete(d.calls, peer)
 	} else {
@@ -129,27 +170,38 @@ func (d *dispatcher) removePeer(peer p2p.NodeID) {
 	}
 }
 
-func (d *dispatcher) dispatch(peer p2p.NodeID, height int64) chan *types.LightBlock {
+// allocate takes a peer and allocates it a channel so long as it's not already
+// busy and the receiving channel is still running
+func (d *dispatcher) allocate(peer p2p.NodeID, height int64) (chan *types.LightBlock, error) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	ch := make(chan *types.LightBlock, 1)
-	// this should never happen (only if we add the same peer twice somehow)
+
+	// check if the dispatcher is running or not
+	if !d.running {
+		close(ch)
+		return ch, errDisconnected
+	}
+
+	// this should happen only if we add the same peer twice (somehow)
 	if _, ok := d.calls[peer]; ok {
 		close(ch)
-		return ch
+		return ch, errPeerAlreadyBusy
 	}
 	d.calls[peer] = ch
+	return ch, nil
+}
 
-	// run in a separate goroutine to not block
-	go func() {
-		d.requestCh <- p2p.Envelope{
-			To: peer,
-			Message: &ssproto.LightBlockRequest{
-				Height: uint64(height),
-			},
-		}
-	}()
-	return ch
+// release appends the peer back to the list and deletes the allocated call so
+// that a new call can be made to that peer
+func (d *dispatcher) release(peer p2p.NodeID) {
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
+	if call, ok := d.calls[peer]; ok {
+		close(call)
+		delete(d.calls, peer)
+	}
+	d.availablePeers.Append(peer)
 }
 
 // blockProvider is a p2p based light provider which uses a dispatcher connected
@@ -185,14 +237,14 @@ func (p *blockProvider) LightBlock(ctx context.Context, height int64) (*types.Li
 
 // ReportEvidence should allow for the light client to report any light client
 // attacks. This is a no op as there currently isn't a way to wire this up to
-// the evidence reactor (we should endeavour to do this in the future)
+// the evidence reactor (we should endeavor to do this in the future but for now
+// it's not critical for backwards verification)
 func (p *blockProvider) ReportEvidence(ctx context.Context, ev types.Evidence) error {
 	return nil
 }
 
 // String implements stringer interface
 func (p *blockProvider) String() string { return string(p.peer) }
-
 
 //----------------------------------------------------------------
 

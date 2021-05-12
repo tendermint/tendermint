@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/internal/test/factory"
+	"github.com/tendermint/tendermint/p2p"
 )
 
 var (
@@ -135,7 +135,7 @@ func TestBlockQueueBlocks(t *testing.T) {
 loop:
 	for {
 		select {
-		case height := <- queue.NextHeight():
+		case height := <-queue.NextHeight():
 			require.Equal(t, height, expectedHeight)
 			require.GreaterOrEqual(t, height, stopHeight)
 			expectedHeight--
@@ -144,7 +144,7 @@ loop:
 			if expectedHeight >= stopHeight {
 				t.Fatalf("expected next height %d", expectedHeight)
 			}
-			break loop 
+			break loop
 		}
 	}
 
@@ -181,18 +181,18 @@ func TestBlockQueueAcceptsNoMoreBlocks(t *testing.T) {
 loop:
 	for {
 		select {
-		case height := <- queue.NextHeight():
+		case height := <-queue.NextHeight():
 			require.GreaterOrEqual(t, height, stopHeight)
 			queue.Add(mockLBResp(t, peerID, height, endTime))
 		case <-time.After(1 * time.Second):
-			break loop 
+			break loop
 		}
 	}
 
-	require.Len(t, queue.pending, int(startHeight - stopHeight) + 1)
+	require.Len(t, queue.pending, int(startHeight-stopHeight)+1)
 
-	queue.Add(mockLBResp(t, peerID, stopHeight - 1, endTime))
-	require.Len(t, queue.pending, int(startHeight - stopHeight) + 1)
+	queue.Add(mockLBResp(t, peerID, stopHeight-1, endTime))
+	require.Len(t, queue.pending, int(startHeight-stopHeight)+1)
 }
 
 // Test a scenario where more blocks are needed then just the stopheight because
@@ -243,8 +243,6 @@ func TestBlockQueueStopTime(t *testing.T) {
 func mockLBResp(t *testing.T, peer p2p.NodeID, height int64, time time.Time) lightBlockResponse {
 	return lightBlockResponse{
 		block: mockLB(t, height, time, factory.MakeBlockID()),
-		peer: peer,
+		peer:  peer,
 	}
 }
-
-

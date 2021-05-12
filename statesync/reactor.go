@@ -91,6 +91,8 @@ const (
 
 	// lightBlockMsgSize is the maximum size of a lightBlockResponseMessage
 	lightBlockMsgSize = int(1e7)
+
+	lightBlockResponseTimeout = 1 * time.Second
 )
 
 // Reactor handles state sync, both restoring snapshots for the local node and
@@ -141,7 +143,7 @@ func NewReactor(
 		peerUpdates: peerUpdates,
 		closeCh:     make(chan struct{}),
 		tempDir:     tempDir,
-		dispatcher:  newDispatcher(blockCh.Out, 10*time.Second),
+		dispatcher:  newDispatcher(blockCh.Out, lightBlockResponseTimeout),
 		stateStore:  stateStore,
 		blockStore:  blockStore,
 	}
@@ -171,6 +173,8 @@ func (r *Reactor) OnStart() error {
 
 	go r.processPeerUpdates()
 
+	r.dispatcher.start()
+
 	return nil
 }
 
@@ -180,6 +184,9 @@ func (r *Reactor) OnStop() {
 	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
 	// p2p Channels should execute Close().
 	close(r.closeCh)
+
+	// tell the dispatcher to stop sending any more requests
+	r.dispatcher.stop()
 
 	// Wait for all p2p Channels to be closed before returning. This ensures we
 	// can easily reason about synchronization of all p2p Channels and ensure no
@@ -257,28 +264,30 @@ func (r *Reactor) Backfill(
 	// workers is to equate the network messaging time with the verification
 	// time. Ideally we want the verification process to never have to be
 	// waiting on blocks. If it takes 4s to retrieve a block and 1s to verify
-	// it, then steady state involves four workers. 
+	// it, then steady state involves four workers.
 	for i := 0; i < 4; i++ {
 		go func() {
 			for {
 				select {
 				case height := <-queue.NextHeight():
 					r.Logger.Debug("fetching next block", "height", height)
-					lb, peer, err := r.dispatcher.LightBlock(context.Background(), height)
+					lb, peer, err := r.dispatcher.LightBlock(ctx, height)
 					if err != nil {
 						// we don't punish the peer as it might just not have the block
 						// at that height
-						r.Logger.Info("error with fetching light block", "err", err)
+						r.Logger.Info("error with fetching light block",
+							"height", height, "err", err)
 						queue.Retry(height)
 						continue
 					}
 					if lb == nil {
-						r.Logger.Info("peer didn't have block, fetching from another peer")
+						r.Logger.Info("peer didn't have block, fetching from another peer", "height", height)
 						queue.Retry(height)
 						continue
 					}
 
 					if lb.Height != height {
+						r.Logger.Info("peer provided wrong height, retrying...", "height", height)
 						queue.Retry(height)
 					}
 
@@ -306,14 +315,17 @@ func (r *Reactor) Backfill(
 	// verify all light blocks
 	for {
 		select {
-		case <- ctx.Done():
+		case <-r.closeCh:
 			queue.Close()
 			return nil
-		case resp := <- queue.VerifyNext():
+		case <-ctx.Done():
+			queue.Close()
+			return nil
+		case resp := <-queue.VerifyNext():
 			// validate the header hash. We take the last block id of the
 			// previous header (i.e. one height above) as the trusted hash which
 			// we equate to. ValidatorsHash and CommitHash have already been
-			// checked in the `ValidateBasic` 
+			// checked in the `ValidateBasic`
 			if w, g := trustedBlockID.Hash, resp.block.Hash(); !bytes.Equal(w, g) {
 				r.Logger.Info("received invalid light block. header hash doesn't match trusted LastBlockID",
 					"trustedHash", w, "receivedHash", g)
@@ -323,18 +335,18 @@ func (r *Reactor) Backfill(
 				}
 				queue.Retry(resp.block.Height)
 			}
-	
+
 			// save the light blocks
 			err := r.blockStore.SaveSignedHeader(resp.block.SignedHeader, trustedBlockID)
 			if err != nil {
 				return err
 			}
-	
+
 			err = r.stateStore.SaveValidatorSet(resp.block.Height, resp.block.ValidatorSet)
 			if err != nil {
 				return err
 			}
-			
+
 			trustedBlockID = resp.block.LastBlockID
 			queue.Success(resp.block.Height)
 			r.Logger.Info("verified and stored light block", "height", resp.block.Height)
@@ -343,9 +355,11 @@ func (r *Reactor) Backfill(
 			return nil
 
 		}
-	} 
+	}
 }
 
+// Dispatcher exposes the dispatcher so that a state provider can use it for
+// light client verification
 func (r *Reactor) Dispatcher() *dispatcher {
 	return r.dispatcher
 }

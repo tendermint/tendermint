@@ -2,11 +2,13 @@ package statesync
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/fortytw2/leaktest"
+	// "github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
@@ -370,13 +372,12 @@ func TestReactor_Dispatcher(t *testing.T) {
 
 	closeCh := make(chan struct{})
 	defer close(closeCh)
-	
-	chain := buildLightBlockChain(t, 1, 10, time.Now())
-	go handleLightBlockRequests(t, chain, rts.blockOutCh, rts.blockInCh, closeCh)
 
+	chain := buildLightBlockChain(t, 1, 10, time.Now())
+	go handleLightBlockRequests(t, chain, rts.blockOutCh, rts.blockInCh, closeCh, 0)
 
 	dispatcher := rts.reactor.Dispatcher()
-	providers := dispatcher.Providers(factory.DefaultTestChainID, 5 *time.Second)
+	providers := dispatcher.Providers(factory.DefaultTestChainID, 5*time.Second)
 	require.Len(t, providers, 2)
 
 	wg := sync.WaitGroup{}
@@ -397,53 +398,59 @@ func TestReactor_Dispatcher(t *testing.T) {
 }
 
 func TestReactor_Backfill(t *testing.T) {
-	t.Cleanup(leaktest.Check(t))
-	rts := setup(t, nil, nil, nil, 2)
+	// test backfill algorithm with varying failure rates
+	failureRates := []float64{0.3}
+	for _, failureRate := range failureRates {
+		t.Run(fmt.Sprintf("failure rate: %f", failureRate), func(t *testing.T) {
+			// t.Cleanup(leaktest.Check(t))
+			rts := setup(t, nil, nil, nil, 2)
 
-	var (
-		startHeight int64 = 20
-		endHeight   int64 = 10
-		stopTime = time.Date(2020, 1, 1, 0, 100, 0, 0, time.UTC)
-	)
+			var (
+				startHeight int64 = 20
+				endHeight   int64 = 10
+				stopTime          = time.Date(2020, 1, 1, 0, 100, 0, 0, time.UTC)
+			)
 
-	rts.peerUpdateCh <- p2p.PeerUpdate{
-		NodeID: p2p.NodeID("aa"),
-		Status: p2p.PeerStatusUp,
+			rts.peerUpdateCh <- p2p.PeerUpdate{
+				NodeID: p2p.NodeID("aa"),
+				Status: p2p.PeerStatusUp,
+			}
+
+			trackingHeight := startHeight
+			rts.stateStore.On("SaveValidatorSet", mock.AnythingOfType("int64"),
+				mock.AnythingOfType("*types.ValidatorSet")).Return(func(h int64, vals *types.ValidatorSet) error {
+				require.Equal(t, trackingHeight, h)
+				require.GreaterOrEqual(t, h, endHeight)
+				trackingHeight--
+				return nil
+			})
+
+			chain := buildLightBlockChain(t, endHeight-1, startHeight+1, stopTime)
+
+			closeCh := make(chan struct{})
+			defer close(closeCh)
+			go handleLightBlockRequests(t, chain, rts.blockOutCh,
+				rts.blockInCh, closeCh, failureRate)
+
+			err := rts.reactor.Backfill(
+				context.Background(),
+				factory.DefaultTestChainID,
+				startHeight,
+				stopHeight,
+				factory.MakeBlockIDWithHash(chain[startHeight].Header.Hash()),
+				stopTime,
+			)
+			require.NoError(t, err)
+
+			for height := startHeight; height <= endHeight; height++ {
+				blockMeta := rts.blockStore.LoadBlockMeta(height)
+				require.NotNil(t, blockMeta)
+			}
+
+			require.Nil(t, rts.blockStore.LoadBlockMeta(endHeight-1))
+			require.Nil(t, rts.blockStore.LoadBlockMeta(startHeight+1))
+		})
 	}
-
-	trackingHeight := startHeight
-	rts.stateStore.On("SaveValidatorSet", mock.AnythingOfType("int64"),
-		mock.AnythingOfType("*types.ValidatorSet")).Return(func(h int64, vals *types.ValidatorSet) error {
-		require.Equal(t, trackingHeight, h)
-		require.GreaterOrEqual(t, h, endHeight)
-		trackingHeight--
-		return nil
-	})
-
-	closeCh := make(chan struct{})
-	defer close(closeCh)
-
-	chain := buildLightBlockChain(t, endHeight-1, startHeight+1, stopTime)
-
-	go handleLightBlockRequests(t, chain, rts.blockOutCh, rts.blockInCh, closeCh)
-
-	err := rts.reactor.Backfill(
-		context.Background(),
-		factory.DefaultTestChainID,
-		startHeight,
-		stopHeight,
-		factory.MakeBlockIDWithHash(chain[startHeight].Header.Hash()),
-		stopTime,
-	)
-	require.NoError(t, err)
-
-	for height := startHeight; height <= endHeight; height++ {
-		blockMeta := rts.blockStore.LoadBlockMeta(height)
-		require.NotNil(t, blockMeta)
-	}
-
-	require.Nil(t, rts.blockStore.LoadBlockMeta(endHeight - 1))
-	require.Nil(t, rts.blockStore.LoadBlockMeta(startHeight + 1))
 }
 
 // retryUntil will continue to evaluate fn and will return successfully when true
@@ -461,19 +468,46 @@ func retryUntil(t *testing.T, fn func() bool, timeout time.Duration) {
 	}
 }
 
-func handleLightBlockRequests(t *testing.T, chain map[int64]*types.LightBlock, receiving chan p2p.Envelope, sending chan p2p.Envelope, close chan struct{}) {
+func handleLightBlockRequests(t *testing.T,
+	chain map[int64]*types.LightBlock,
+	receiving chan p2p.Envelope,
+	sending chan p2p.Envelope,
+	close chan struct{},
+	failureRate float64) {
 	for {
 		select {
 		case envelope := <-receiving:
 			if msg, ok := envelope.Message.(*ssproto.LightBlockRequest); ok {
-				lb, err := chain[int64(msg.Height)].ToProto()
-				require.NoError(t, err)
-				t.Log("sending response", "height", msg.Height)
-				sending <- p2p.Envelope{
-					From: envelope.To,
-					Message: &ssproto.LightBlockResponse{
-						LightBlock: lb,
-					},
+				if rand.Float64() >= failureRate {
+					lb, err := chain[int64(msg.Height)].ToProto()
+					require.NoError(t, err)
+					t.Log("sending response", "height", msg.Height)
+					sending <- p2p.Envelope{
+						From: envelope.To,
+						Message: &ssproto.LightBlockResponse{
+							LightBlock: lb,
+						},
+					}
+				} else {
+					switch rand.Intn(3) {
+					case 0: // send a different block
+						differntLB, err := mockLB(t, int64(msg.Height), factory.DefaultTestTime, factory.MakeBlockID()).ToProto()
+						require.NoError(t, err)
+						sending <- p2p.Envelope{
+							From: envelope.To,
+							Message: &ssproto.LightBlockResponse{
+								LightBlock: differntLB,
+							},
+						}
+					case 1: // send nil block i.e. pretend we don't have it
+						sending <- p2p.Envelope{
+							From: envelope.To,
+							Message: &ssproto.LightBlockResponse{
+								LightBlock: nil,
+							},
+						}
+					case 2: // don't do anything
+					}
 				}
 			}
 		case <-close:
@@ -494,25 +528,25 @@ func buildLightBlockChain(t *testing.T, fromHeight, toHeight int64, startTime ti
 	return chain
 }
 
-func mockLB(t *testing.T, height int64, time time.Time, 
+func mockLB(t *testing.T, height int64, time time.Time,
 	lastBlockID types.BlockID) *types.LightBlock {
-		header, err := factory.MakeHeader(&types.Header{
-			Height:      height,
-			LastBlockID: lastBlockID,
-			Time:        time,
-		})
-		require.NoError(t, err)	
-		vals, pv := factory.RandValidatorSet(3, 10)
-		header.ValidatorsHash = vals.Hash()
-		lastBlockID = factory.MakeBlockIDWithHash(header.Hash())
-		voteSet := types.NewVoteSet(factory.DefaultTestChainID, height, 0, tmproto.PrecommitType, vals)
-		commit, err := factory.MakeCommit(lastBlockID, height, 0, voteSet, pv, time)
-		require.NoError(t, err)
-		return &types.LightBlock{
-			SignedHeader: &types.SignedHeader{
-				Header: header,
-				Commit: commit,
-			},
-			ValidatorSet: vals,
-		}
+	header, err := factory.MakeHeader(&types.Header{
+		Height:      height,
+		LastBlockID: lastBlockID,
+		Time:        time,
+	})
+	require.NoError(t, err)
+	vals, pv := factory.RandValidatorSet(3, 10)
+	header.ValidatorsHash = vals.Hash()
+	lastBlockID = factory.MakeBlockIDWithHash(header.Hash())
+	voteSet := types.NewVoteSet(factory.DefaultTestChainID, height, 0, tmproto.PrecommitType, vals)
+	commit, err := factory.MakeCommit(lastBlockID, height, 0, voteSet, pv, time)
+	require.NoError(t, err)
+	return &types.LightBlock{
+		SignedHeader: &types.SignedHeader{
+			Header: header,
+			Commit: commit,
+		},
+		ValidatorSet: vals,
+	}
 }
