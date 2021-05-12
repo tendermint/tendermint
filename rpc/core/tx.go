@@ -55,8 +55,8 @@ func (env *Environment) Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*cty
 		}
 	}
 
-	return nil, errors.New("transaction querying is not supported on this node by the current settings." +
-		"please check the tx-index section in the config.toml file if you don't expect to see this error")
+	return nil, errors.New("transaction querying is disabled on this node due to the KV event sink being disabled;" +
+		" please see config.toml if this is unexpected")
 }
 
 // TxSearch allows you to query for multiple transactions results. It returns a
@@ -141,6 +141,7 @@ func (env *Environment) TxSearch(
 			return &ctypes.ResultTxSearch{Txs: apiResults, TotalCount: totalCount}, nil
 		}
 	}
-	return nil, errors.New("transaction searching is not supported on this node by the current settings." +
-		"please check the tx-index section in the config.toml file if you don't expect to see this error")
+
+	return nil, errors.New("transaction searching is disabled on this node due to the KV event sink being disabled;" +
+		" please see config.toml if this is unexpected")
 }

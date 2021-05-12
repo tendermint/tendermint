@@ -239,6 +239,6 @@ func (env *Environment) BlockSearch(
 		}
 	}
 
-	return nil, errors.New("block querying is not supported on this node by the current settings." +
-		"please check the tx-index section in the config.toml file if you don't expect to see this error")
+	return nil, errors.New("block querying is disabled on this node due to the KV event sink being disabled;" +
+		" please see config.toml if this is unexpected")
 }
