@@ -39,7 +39,7 @@ func TestTxIndex(t *testing.T) {
 	if err := batch.Add(txResult); err != nil {
 		t.Error(err)
 	}
-	err := txIndexer.AddBatch(batch)
+	err := txIndexer.Index(batch.Ops)
 	require.NoError(t, err)
 
 	loadedTxResult, err := txIndexer.Get(hash)
@@ -367,7 +367,7 @@ func benchmarkTxIndex(txsCount int64, b *testing.B) {
 	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
-		err = txIndexer.AddBatch(batch)
+		err = txIndexer.Index(batch.Ops)
 	}
 	if err != nil {
 		b.Fatal(err)

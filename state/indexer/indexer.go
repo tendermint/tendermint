@@ -11,9 +11,6 @@ import (
 
 // TxIndexer interface defines methods to index and search transactions.
 type TxIndexer interface {
-	// AddBatch analyzes, indexes and stores a batch of transactions.
-	AddBatch(b *Batch) error
-
 	// Index analyzes, indexes and stores transactions. For indexing multiple
 	// Transacions must guarantee the Index of the TxResult is in order.
 	// See Batch struct.
