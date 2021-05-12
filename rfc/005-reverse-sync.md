@@ -40,6 +40,7 @@ other data retrieving protocols (i.e. fast sync and state sync), we
 call this method **ReverseSync**.
 
 We will define the mechanism in four sections:
+
 - Usage
 - Design
 - Verification
@@ -107,6 +108,7 @@ also doesn't need to rely on RPC.
 ### Verification
 
 ReverseSync is used to fetch the following data structures:
+
 - `Header`
 - `Commit`
 - `ValidatorSet`
@@ -115,21 +117,24 @@ Nodes will also need to be able to verify these. This can be achieved by first
 retrieving the header at the base height from the block store. From this trusted
 header, the node hashes each of the three data structures and checks that they are correct.
 
-1. The trusted header's last block ID matches the hash of the new header 
-```go
-header[height].LastBlockID == hash(header[height-1])
-```
+1. The trusted header's last block ID matches the hash of the new header
+
+   ```go
+   header[height].LastBlockID == hash(header[height-1])
+   ```
 
 2. The trusted header's last commit hash matches the hash of the new commit
-```go
-header[height].LastCommitHash == hash(commit[height-1])
-```
+
+	```go
+	header[height].LastCommitHash == hash(commit[height-1])
+	```
 
 3. Given that the node now trusts the new header, check that the header's validator set
-hash matches the hash of the validator set
-```go
-header[height-1].ValidatorsHash == hash(validatorSet[height-1])
-```
+   hash matches the hash of the validator set
+
+	```go
+	header[height-1].ValidatorsHash == hash(validatorSet[height-1])
+	```
 
 ### Termination
 
@@ -145,7 +150,7 @@ processes current block.
 
 This implies that we can't guarantee adequate history and thus the term
 "invariant" can't be used in the strictest sense. In the case that the first
-condition isn't met, the node will log an error and optimistically attempt 
+condition isn't met, the node will log an error and optimistically attempt
 to continue with either fast sync or consensus.
 
 ## Alternative Solutions
@@ -161,13 +166,13 @@ As it stands, if 2/3+ vote on evidence you can't verify, in the same manner if
 app hash), the node will halt.
 
 Another alternative is the method with which the relevant data is retrieved.
-Instead of introducing new messages to the P2P layer, RPC could have been used 
+Instead of introducing new messages to the P2P layer, RPC could have been used
 instead.
 
 The aforementioned data is already available via the following RPC endpoints:
 `/commit` for `Header`'s' and `/validators` for `ValidatorSet`'s'. It was
 decided predominantly due to the instability of the current RPC infrastructure
-that P2P be used instead. 
+that P2P be used instead.
 
 ## Status
 

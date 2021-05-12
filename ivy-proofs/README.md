@@ -1,9 +1,14 @@
-```
+# Ivy Proofs
+
+```copyright
 Copyright (c) 2020 Galois, Inc.
 SPDX-License-Identifier: Apache-2.0
 ```
 
+## Contents
+
 This folder contains:
+
 * `tendermint.ivy`, a specification of Tendermint algorithm as described in *The latest gossip on BFT consensus* by E. Buchman, J. Kwon, Z. Milosevic.
 * `abstract_tendermint.ivy`, a more abstract specification of Tendermint that is more verification-friendly.
 * `classic_safety.ivy`, a proof that Tendermint satisfies the classic safety property of BFT consensus: if every two quorums have a well-behaved node in common, then no two well-behaved nodes ever disagree.
@@ -17,7 +22,8 @@ All specifications and proofs are written in [Ivy](https://github.com/kenmcmil/i
 The license above applies to all files in this folder.
 
 
-# Building and running
+## Building and running
+
 The easiest way to check the proofs is to use [Docker](https://www.docker.com/).
 
 1. Install [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/).

@@ -41,7 +41,7 @@ limit on the number of votes in a commit.
 
 Further information on [`Validator`'s](./data_structures.md#validator),
 [`ValidatorSet`'s](./data_structures.md#validatorset) and
-[`ConsensusParams`'s](./data_structures.md#consensusparams) can 
+[`ConsensusParams`'s](./data_structures.md#consensusparams) can
 be found in [data structures](./data_structures.md)
 
 ## Execution

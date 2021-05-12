@@ -1,22 +1,23 @@
 # Proposer-Based Time
 
-## Current BFTTime 
+## Current BFTTime
 
 ### Description
 
 In Tendermint consensus, the first version of how time is computed and stored in a block works as follows:
+
 - validators send their current local time as part of `precommit` messages
 - upon collecting the `precommit` messages that the proposer uses to build a commit to be put in the next block, the proposer computes the `time` of the next block as the median (weighted over voting power) of the times in the `precommit` messages.
 
 ### Analysis
 
 1. **Fault tolerance.** The computed median time is called [`bfttime`][bfttime] as it is indeed fault-tolerant: if **less than a third** of the validators is faulty (counted in voting power), it is guaranteed that the computed time lies between the minimum and the maximum times sent by correct validators.
-2. **Effect of faulty validators.** If more than `1/2` of the voting power (which is in fact more than one third and less than two thirds of the voting power) is held by faulty validators, then the time is under total control of the faulty validators. (This is particularly challenging in the context of [lightclient][lcspec] security.)
-3. **Proposer influence on block time.** The proposer of the next block has a degree of freedom in choosing the `bfttime`, since it computes the median time based on the timestamps from `precommit` messages sent by 
-`2f + 1` correct validators.
-   1. If there are `n` different timestamps in the  `precommit` messages, the proposer can use any subset of timestamps that add up to `2f + 1` 
-   of the voting power in order to compute the median.
-   1. If the validators decide in different rounds, the proposer can decide on which round the median computation is based. 
+1. **Effect of faulty validators.** If more than `1/2` of the voting power (which is in fact more than one third and less than two thirds of the voting power) is held by faulty validators, then the time is under total control of the faulty validators. (This is particularly challenging in the context of [lightclient][lcspec] security.)
+1. **Proposer influence on block time.** The proposer of the next block has a degree of freedom in choosing the `bfttime`, since it computes the median time based on the timestamps from `precommit` messages sent by
+   `2f + 1` correct validators.
+   1. If there are `n` different timestamps in the  `precommit` messages, the proposer can use any subset of timestamps that add up to `2f + 1`
+	  of the voting power in order to compute the median.
+   1. If the validators decide in different rounds, the proposer can decide on which round the median computation is based.
 1. **Liveness.** The liveness of the protocol:
    1. does not depend on clock synchronization,
    1. depends on bounded message delays.
@@ -27,18 +28,18 @@ In Tendermint consensus, the first version of how time is computed and stored in
 
 ### Outline
 
-An alternative approach to time has been discussed: Rather than having the validators send the time in the `precommit` messages, the proposer in the consensus algorithm sends its time in the `propose` message, and the validators locally check whether the time is OK (by comparing to their local clock). 
+An alternative approach to time has been discussed: Rather than having the validators send the time in the `precommit` messages, the proposer in the consensus algorithm sends its time in the `propose` message, and the validators locally check whether the time is OK (by comparing to their local clock).
 
 This proposed solution adds the requirement of having synchronized clocks, and other implicit assumptions.
 
 ### Comparison of the Suggested Method to the Old One
 
-1. **Fault tolerance.** Maintained in the suggested protocol. 
-2. **Effect of faulty validators.** Eliminated in the suggested protocol, 
-that is, the block `time` can be corrupted only in the extreme case when 
-`>2/3` of the validators are faulty.
+1. **Fault tolerance.** Maintained in the suggested protocol.
+1. **Effect of faulty validators.** Eliminated in the suggested protocol,
+   that is, the block `time` can be corrupted only in the extreme case when
+   `>2/3` of the validators are faulty.
 1. **Proposer influence on block time.** The proposer of the next block
-has less freedom when choosing the block time.
+   has less freedom when choosing the block time.
    1. This scenario is eliminated in the suggested protocol, provided that there are `<1/3` faulty validators.
    1. This scenario is still there.
 1. **Liveness.** The liveness of the suggested protocol:
@@ -50,17 +51,21 @@ has less freedom when choosing the block time.
 ### Protocol Overview
 
 #### Proposed Time
-We assume that the field `proposal` in the `PROPOSE` message is a pair `(v, time)`, of the proposed consensus value `v` and the proposed time `time`. 
+
+We assume that the field `proposal` in the `PROPOSE` message is a pair `(v, time)`, of the proposed consensus value `v` and the proposed time `time`.
 
 #### Reception Step
+
 In the reception step at node `p` at local time `now_p`, upon receiving a message `m`:
+
 - **if** the message `m` is of type `PROPOSE` and satisfies `now_p - PRECISION <  m.time < now_p + PRECISION + MSGDELAY`, then mark the message as `timely`.  
 (`PRECISION` and `MSGDELAY` being system parameters, see [below](#safety-and-liveness))
+
 > after the presentation in the dev session, we realized that different semantics for the reception step is closer aligned to the implementation. Instead of dropping propose messages, we keep all of them, and mark timely ones.
 
 #### Processing Step
 
-- Start round 
+- Start round
 
 <table>
 <tr>
@@ -228,7 +233,7 @@ upon ⟨PROPOSAL, h_p, r, (v,t), ∗⟩ from proposer(h_p, r)
 For safety (Point 1, Point 2, Point 3i) and liveness (Point 4) we need
 the following assumptions:
 
-- There exists a system parameter `PRECISION` such that for any two correct validators `V` and `W`, and at any real-time `t`, their local times `C_V(t)` and `C_W(t)` differ by less than `PRECISION` time units, 
+- There exists a system parameter `PRECISION` such that for any two correct validators `V` and `W`, and at any real-time `t`, their local times `C_V(t)` and `C_W(t)` differ by less than `PRECISION` time units,
 i.e., `|C_V(t) - C_W(t)| < PRECISION`
 - The message end-to-end delay between a correct proposer and a correct validator (for `PROPOSE` messages) is less than `MSGDELAY`.
 
@@ -237,8 +242,8 @@ i.e., `|C_V(t) - C_W(t)| < PRECISION`
 For analyzing real-time safety (Point 5), we use a system parameter `ACCURACY`, such that for all real-times `t` and all correct validators `V`, we have `| C_V(t) - t | < ACCURACY`.
 
 > `ACCURACY` is not necessarily visible at the code level.  We might even view `ACCURACY` as variable over time. The smaller it is during a consensus instance, the closer the block time will be to real-time.
-
-> Note that `PRECISION` and `MSGDELAY` show up in the code. 
+>
+> Note that `PRECISION` and `MSGDELAY` show up in the code.
 
 ### Detailed Specification
 
@@ -247,9 +252,6 @@ This specification describes the changes needed to be done to the Tendermint con
 - [Part I - System Model and Properties][sysmodel]
 - [Part II - Protocol specification][algorithm]
 - [TLA+ Specification][proposertla]
-
-
-
 
 [arXiv]: https://arxiv.org/abs/1807.04938
 

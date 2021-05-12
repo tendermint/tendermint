@@ -42,6 +42,7 @@ This phase aims to allow applications to require their validators do more than j
 Example usecases of this include validator determined price oracles, validator guaranteed IBC connection attempts, and validator based threshold crypto.
 
 This adds an app-determined data field that every validator must include with their vote, and these will thus appear in the header.
+
 #### Rename {BeginBlock, [DeliverTx], EndBlock} to FinalizeBlock
 
 The prior phases gives the application more flexibility in their execution model for a block, and they obsolete the current methods for how the consensus engine relates the block data to the state machine. Thus we refactor the existing methods to better reflect what is happening in the new ABCI model.
@@ -185,7 +186,7 @@ We go through this phase by phase.
 
 ##### Prepare proposal IPC overhead
 
-This requires a round of IPC communication, where both directions are quite large. Namely the proposer communicating an entire block to the application. 
+This requires a round of IPC communication, where both directions are quite large. Namely the proposer communicating an entire block to the application.
 However, this can be mitigated by splitting up `PrepareProposal` into two distinct, async methods, one for the block IPC communication, and one for the Header IPC communication.
 
 Then for chains where the block data does not depend on the header data, the block data IPC communication can proceed in parallel to the prior block's voting phase. (As a node can know whether or not its the leader in the next round)

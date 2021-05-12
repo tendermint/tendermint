@@ -6,3 +6,6 @@ MD024: { siblings_only: true }
 MD025: false
 MD033: false
 MD036: false
+MD010: false
+MD012: false
+MD028: false

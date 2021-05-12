@@ -5,11 +5,13 @@
 ### Time and Clocks
 
 #### **[PBTS-CLOCK-NEWTON.0]**
+
 There is a reference Newtonian real-time `t` (UTC).
 
 Every correct validator `V` maintains a synchronized clock `C_V` that ensures:
 
 #### **[PBTS-CLOCK-PRECISION.0]**
+
 There exists a system parameter `PRECISION` such that for any two correct validators `V` and `W`, and at any real-time `t`,  
 `|C_V(t) - C_W(t)| < PRECISION`
 
@@ -22,6 +24,7 @@ In general the local clock may drift from the global time. (It may progress fast
 
 
 #### **[PBTS-MSG-D.0]**
+
 There exists a system parameter `MSGDELAY` for message end-to-end delays **counted in clock-time**.
 
 > Observe that [PBTS-MSG-D.0] imposes constraints on message delays as well as on the clock.
@@ -36,32 +39,37 @@ The message end-to-end delay between a correct proposer and a correct validator 
 In this section we define the properties of Tendermint consensus (cf. the [arXiv paper][arXiv]) in this new system model.
 
 #### **[PBTS-PROPOSE.0]**
+
 A proposer proposes a pair `(v,t)` of consensus value `v` and time `t`.
 
 > We then restrict the allowed decisions along the following lines:
 
 #### **[PBTS-INV-AGREEMENT.0]**
-[Agreement] No two correct validators decide on different values `v`. 
+
+[Agreement] No two correct validators decide on different values `v`.
 
 #### **[PBTS-INV-TIME-VAL.0]**
+
 [Time-Validity] If a correct validator decides on `t` then `t` is "OK" (we will formalize this below), even if up to `2f` validators are faulty.
 
 However, the properties of Tendermint consensus are of more interest with respect to the blocks, that is, what is written into a block and when. We therefore, in the following, will give the safety and liveness properties from this block-centric viewpoint.  
 For this, observe that the time `t` decided at consensus height `k` will be written in the block of height `k+1`, and will be supported by `2f + 1` `PRECOMMIT` messages of the same consensus round `r`. The time written in the block, we will denote by `b.time` (to distinguish it from the term `bfttime` used for median-based time). For this, it is important to have the following consensus algorithm property:
 
 #### **[PBTS-INV-TIME-AGR.0]**
+
 [Time-Agreement] If two correct validators decide in the same round, then they decide on the same `t`.
 
 #### **[PBTS-DECISION-ROUND.0]**
+
 Note that the relation between consensus decisions, on the one hand, and blocks, on the other hand, is not immediate; in particular if we consider time: In the proposed solution,
 as validators may decide in different rounds, they may decide on different times.
-The proposer of the next block, may pick a commit (at least `2f + 1` `PRECOMMIT` messages from one round), and thus it picks a decision round that is going to become "canonic". 
-As a result, the proposer implicitly has a choice of one of the times that belong to rounds in which validators decided. Observe that this choice was implicitly the case already in the median-based `bfttime`. 
+The proposer of the next block, may pick a commit (at least `2f + 1` `PRECOMMIT` messages from one round), and thus it picks a decision round that is going to become "canonic".
+As a result, the proposer implicitly has a choice of one of the times that belong to rounds in which validators decided. Observe that this choice was implicitly the case already in the median-based `bfttime`.
 However, as most consensus instances terminate within one round on the Cosmos hub, this is hardly ever observed in practice.
 
 
 
-Finally, observe that the agreement ([Agreement] and [Time-Agreement]) properties are based on the Tendermint security model [TMBC-FM-2THIRDS.0] of more than 2/3 correct validators, while [Time-Validity] is based on more than 1/3 correct validators. 
+Finally, observe that the agreement ([Agreement] and [Time-Agreement]) properties are based on the Tendermint security model [TMBC-FM-2THIRDS.0] of more than 2/3 correct validators, while [Time-Validity] is based on more than 1/3 correct validators.
 
 ### SAFETY
 
@@ -69,10 +77,11 @@ Here we will provide specifications that relate local time to block time. Howeve
 
 For a correct validator `V`, let `beginConsensus(V,k)` be the local time when it sets its height to `k`, and let `endConsensus(V,k)` be the time when it sets its height to `k + 1`.
 
-Let 
-- `beginConsensus(k)` be the minimum over `beginConsensus(V,k)`, and 
-- `last-beginConsensus(k)` be the maximum over `beginConsensus(V,k)`, and 
-- `endConsensus(k)` the maximum over `endConsensus(V,k)` 
+Let
+
+- `beginConsensus(k)` be the minimum over `beginConsensus(V,k)`, and
+- `last-beginConsensus(k)` be the maximum over `beginConsensus(V,k)`, and
+- `endConsensus(k)` the maximum over `endConsensus(V,k)`
 
 for all correct validators `V`.
 
@@ -84,27 +93,34 @@ We assume that during one consensus instance, local clocks are not set back, in 
 
 
 #### **[PBTS-CONSENSUS-TIME-VALID.0]**
-If 
+
+If
+
 - there is a valid commit `c` for height `k`, and
 - `c` contains a `PRECOMMIT` message by at least one correct validator,
 
-then the time `b.time` in the block `b` that is signed by `c` satisfies 
+then the time `b.time` in the block `b` that is signed by `c` satisfies
+
 - `beginConsensus(k) - PRECISION <= b.time < endConsensus(k) + PRECISION + MSGDELAY`.
 
 
 > [PBTS-CONSENSUS-TIME-VALID.0] is based on an analysis where the proposer is faulty (and does does not count towards `beginConsensus(k)` and `endConsensus(k)`), and we estimate the times at which correct validators receive and `accept` the `propose` message. If the proposer is correct we obtain
 
 #### **[PBTS-CONSENSUS-LIVE-VALID-CORR-PROP.0]**
-If the proposer of round 1 is correct, and 
+
+If the proposer of round 1 is correct, and
+
 - [TMBC-FM-2THIRDS.0] holds for a block of height `k - 1`, and
 - [PBTS-MSG-FAIR.0], and
 - [PBTS-CLOCK-PRECISION.0], and
 - [PBTS-CLOCK-GROW.0] (**TODO:** is that enough?)
 
-then eventually (within bounded time) every correct validator decides in round 1. 
+then eventually (within bounded time) every correct validator decides in round 1.
 
 #### **[PBTS-CONSENSUS-SAFE-VALID-CORR-PROP.0]**
-If the proposer of round 1 is correct, and 
+
+If the proposer of round 1 is correct, and
+
 - [TMBC-FM-2THIRDS.0] holds for a block of height `k - 1`, and
 - [PBTS-MSG-FAIR.0], and
 - [PBTS-CLOCK-PRECISION.0], and
@@ -117,7 +133,8 @@ then `beginConsensus_k <= b.time <= last-beginConsensus_k`.
 
 ### LIVENESS
 
-If 
+If
+
 - [TMBC-FM-2THIRDS.0] holds for a block of height `k - 1`, and
 - [PBTS-MSG-FAIR.0],
 - [PBTS-CLOCK.0], and
@@ -132,7 +149,8 @@ then eventually there is a valid commit `c` for height `k`.
 
 #### **[PBTS-CLOCKSYNC-EXTERNAL.0]**
 
-There is a system parameter `ACCURACY`, such that for all real-times `t` and all correct validators `V`, 
+There is a system parameter `ACCURACY`, such that for all real-times `t` and all correct validators `V`,
+
 - `| C_V(t) - t | < ACCURACY`.
 
 > `ACCURACY` is not necessarily visible at the code level. The properties below just show that the smaller
@@ -141,6 +159,7 @@ its value, the closer the block time will be to real-time
 #### **[PBTS-CONSENSUS-PTIME.0]**
 
 LET `m` be a propose message. We consider the following two real-times `proposalTime(m)` and `propRecvTime(m)`:
+
 - if the proposer is correct and sends `m` at time `t`, we write `proposalTime(m)` for real-time `t`.
 - if first correct validator receives `m` at time `t`, we write `propRecvTime(m)` for real-time `t`.
 
@@ -158,7 +177,7 @@ Let `b` be a block with a valid commit that contains at least one `precommit` me
 
 `proposalTime(m) - ACCURACY < b.time < proposalTime(m) + ACCURACY`
 
-> by the algorithm at time `proposalTime(m)` the proposer fixes `m.time <- now_p(proposalTime(m))` 
+> by the algorithm at time `proposalTime(m)` the proposer fixes `m.time <- now_p(proposalTime(m))`
 
 > "triggered the `PRECOMMIT`" implies that the data in `m` and `b` are "matching", that is, `m` proposed the values that are actually stored in `b`.
 

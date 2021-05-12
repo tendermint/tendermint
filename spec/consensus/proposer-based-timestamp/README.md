@@ -3,7 +3,8 @@
 This section describes a version of the Tendermint consensus protocol,
 which uses proposer-based timestamps.
 
-## Contents 
+## Contents
+
 - [Proposer-Based Time][main] (entry point)
 - [Part I - System Model and Properties][sysmodel]
 - [Part II - Protocol Specification][algorithm]
