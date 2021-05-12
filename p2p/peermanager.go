@@ -33,13 +33,15 @@ type PeerStatus string
 const (
 	PeerStatusUp   PeerStatus = "up"   // connected and ready
 	PeerStatusDown PeerStatus = "down" // disconnected
+	PeerStatusGood PeerStatus = "good" // peer observed as good
+	PeerStatusBad  PeerStatus = "bad"  // peer observed as bad
 )
 
 // PeerScore is a numeric score assigned to a peer (higher is better).
 type PeerScore uint8
 
 const (
-	PeerScorePersistent PeerScore = 100 // persistent peers
+	PeerScorePersistent PeerScore = math.MaxUint8 // persistent peers
 )
 
 // PeerUpdate is a peer update event sent via PeerUpdates.
@@ -51,24 +53,35 @@ type PeerUpdate struct {
 // PeerUpdates is a peer update subscription with notifications about peer
 // events (currently just status changes).
 type PeerUpdates struct {
-	updatesCh chan PeerUpdate
-	closeCh   chan struct{}
-	closeOnce sync.Once
+	routerUpdatesCh  chan PeerUpdate
+	reactorUpdatesCh chan PeerUpdate
+	closeCh          chan struct{}
+	closeOnce        sync.Once
 }
 
 // NewPeerUpdates creates a new PeerUpdates subscription. It is primarily for
 // internal use, callers should typically use PeerManager.Subscribe(). The
 // subscriber must call Close() when done.
-func NewPeerUpdates(updatesCh chan PeerUpdate) *PeerUpdates {
+func NewPeerUpdates(updatesCh chan PeerUpdate, buf int) *PeerUpdates {
 	return &PeerUpdates{
-		updatesCh: updatesCh,
-		closeCh:   make(chan struct{}),
+		reactorUpdatesCh: updatesCh,
+		routerUpdatesCh:  make(chan PeerUpdate, buf),
+		closeCh:          make(chan struct{}),
 	}
 }
 
 // Updates returns a channel for consuming peer updates.
 func (pu *PeerUpdates) Updates() <-chan PeerUpdate {
-	return pu.updatesCh
+	return pu.reactorUpdatesCh
+}
+
+// SendUpdate pushes information about a peer into the routing layer,
+// presumably from a peer.
+func (pu *PeerUpdates) SendUpdate(update PeerUpdate) {
+	select {
+	case <-pu.closeCh:
+	case pu.routerUpdatesCh <- update:
+	}
 }
 
 // Close closes the peer updates subscription.
@@ -136,6 +149,10 @@ type PeerManagerOptions struct {
 	// for testing. A score of 0 is ignored.
 	PeerScores map[NodeID]PeerScore
 
+	// PrivatePeerIDs defines a set of NodeID objects which the PEX reactor will
+	// consider private and never gossip.
+	PrivatePeers map[NodeID]struct{}
+
 	// persistentPeers provides fast PersistentPeers lookups. It is built
 	// by optimize().
 	persistentPeers map[NodeID]bool
@@ -148,6 +165,13 @@ func (o *PeerManagerOptions) Validate() error {
 			return fmt.Errorf("invalid PersistentPeer ID %q: %w", id, err)
 		}
 	}
+
+	for id := range o.PrivatePeers {
+		if err := id.Validate(); err != nil {
+			return fmt.Errorf("invalid private peer ID %q: %w", id, err)
+		}
+	}
+
 	if o.MaxConnected > 0 && len(o.PersistentPeers) > int(o.MaxConnected) {
 		return fmt.Errorf("number of persistent peers %v can't exceed MaxConnected %v",
 			len(o.PersistentPeers), o.MaxConnected)
@@ -169,6 +193,7 @@ func (o *PeerManagerOptions) Validate() error {
 				o.MinRetryTime, o.MaxRetryTime)
 		}
 	}
+
 	if o.MaxRetryTimePersistent > 0 {
 		if o.MinRetryTime == 0 {
 			return errors.New("can't set MaxRetryTimePersistent without MinRetryTime")
@@ -244,11 +269,6 @@ func (o *PeerManagerOptions) optimize() {
 //   lower-scored to evict.
 // - EvictNext: pick peer from evict, mark as evicting.
 // - Disconnected: unmark connected, upgrading[from]=to, evict, evicting.
-//
-// FIXME: The old stack supports ABCI-based peer ID filtering via
-// /p2p/filter/id/<ID> queries, we should implement this here as well by taking
-// a peer ID filtering callback in PeerManagerOptions and configuring it during
-// Node setup.
 type PeerManager struct {
 	selfID     NodeID
 	options    PeerManagerOptions
@@ -277,6 +297,7 @@ func NewPeerManager(selfID NodeID, peerDB dbm.DB, options PeerManagerOptions) (*
 	if err := options.Validate(); err != nil {
 		return nil, err
 	}
+
 	options.optimize()
 
 	store, err := newPeerStore(peerDB)
@@ -376,13 +397,14 @@ func (m *PeerManager) prunePeers() error {
 }
 
 // Add adds a peer to the manager, given as an address. If the peer already
-// exists, the address is added to it if not already present.
-func (m *PeerManager) Add(address NodeAddress) error {
+// exists, the address is added to it if it isn't already present. This will push
+// low scoring peers out of the address book if it exceeds the maximum size.
+func (m *PeerManager) Add(address NodeAddress) (bool, error) {
 	if err := address.Validate(); err != nil {
-		return err
+		return false, err
 	}
 	if address.NodeID == m.selfID {
-		return fmt.Errorf("can't add self (%v) to peer store", m.selfID)
+		return false, fmt.Errorf("can't add self (%v) to peer store", m.selfID)
 	}
 
 	m.mtx.Lock()
@@ -392,17 +414,32 @@ func (m *PeerManager) Add(address NodeAddress) error {
 	if !ok {
 		peer = m.newPeerInfo(address.NodeID)
 	}
-	if _, ok := peer.AddressInfo[address]; !ok {
-		peer.AddressInfo[address] = &peerAddressInfo{Address: address}
+	_, ok = peer.AddressInfo[address]
+	// if we already have the peer address, there's no need to continue
+	if ok {
+		return false, nil
 	}
+
+	// else add the new address
+	peer.AddressInfo[address] = &peerAddressInfo{Address: address}
 	if err := m.store.Set(peer); err != nil {
-		return err
+		return false, err
 	}
 	if err := m.prunePeers(); err != nil {
-		return err
+		return true, err
 	}
 	m.dialWaker.Wake()
-	return nil
+	return true, nil
+}
+
+// PeerRatio returns the ratio of peer addresses stored to the maximum size.
+func (m *PeerManager) PeerRatio() float64 {
+	if m.options.MaxPeers == 0 {
+		return 0
+	}
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	return float64(m.store.Size()) / float64(m.options.MaxPeers)
 }
 
 // DialNext finds an appropriate peer address to dial, and marks it as dialing.
@@ -771,13 +808,19 @@ func (m *PeerManager) Advertise(peerID NodeID, limit uint16) []NodeAddress {
 		if peer.ID == peerID {
 			continue
 		}
-		for _, addressInfo := range peer.AddressInfo {
+
+		for nodeAddr, addressInfo := range peer.AddressInfo {
 			if len(addresses) >= int(limit) {
 				return addresses
 			}
-			addresses = append(addresses, addressInfo.Address)
+
+			// only add non-private NodeIDs
+			if _, ok := m.options.PrivatePeers[nodeAddr.NodeID]; !ok {
+				addresses = append(addresses, addressInfo.Address)
+			}
 		}
 	}
+
 	return addresses
 }
 
@@ -791,7 +834,7 @@ func (m *PeerManager) Subscribe() *PeerUpdates {
 	// to the next subscriptions. This also prevents tail latencies from
 	// compounding. Limiting it to 1 means that the subscribers are still
 	// reasonably in sync. However, this should probably be benchmarked.
-	peerUpdates := NewPeerUpdates(make(chan PeerUpdate, 1))
+	peerUpdates := NewPeerUpdates(make(chan PeerUpdate, 1), 1)
 	m.Register(peerUpdates)
 	return peerUpdates
 }
@@ -810,6 +853,19 @@ func (m *PeerManager) Register(peerUpdates *PeerUpdates) {
 	m.mtx.Unlock()
 
 	go func() {
+		for {
+			select {
+			case <-peerUpdates.closeCh:
+				return
+			case <-m.closeCh:
+				return
+			case pu := <-peerUpdates.routerUpdatesCh:
+				m.processPeerEvent(pu)
+			}
+		}
+	}()
+
+	go func() {
 		select {
 		case <-peerUpdates.Done():
 			m.mtx.Lock()
@@ -818,6 +874,22 @@ func (m *PeerManager) Register(peerUpdates *PeerUpdates) {
 		case <-m.closeCh:
 		}
 	}()
+}
+
+func (m *PeerManager) processPeerEvent(pu PeerUpdate) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	if _, ok := m.store.peers[pu.NodeID]; !ok {
+		m.store.peers[pu.NodeID] = &peerInfo{}
+	}
+
+	switch pu.Status {
+	case PeerStatusBad:
+		m.store.peers[pu.NodeID].MutableScore--
+	case PeerStatusGood:
+		m.store.peers[pu.NodeID].MutableScore++
+	}
 }
 
 // broadcast broadcasts a peer update to all subscriptions. The caller must
@@ -837,7 +909,7 @@ func (m *PeerManager) broadcast(peerUpdate PeerUpdate) {
 		default:
 		}
 		select {
-		case sub.updatesCh <- peerUpdate:
+		case sub.reactorUpdatesCh <- peerUpdate:
 		case <-sub.closeCh:
 		}
 	}
@@ -1149,6 +1221,8 @@ type peerInfo struct {
 	Persistent bool
 	Height     int64
 	FixedScore PeerScore // mainly for tests
+
+	MutableScore int64 // updated by router
 }
 
 // peerInfoFromProto converts a Protobuf PeerInfo message to a peerInfo,
@@ -1205,14 +1279,22 @@ func (p *peerInfo) Copy() peerInfo {
 // Score calculates a score for the peer. Higher-scored peers will be
 // preferred over lower scores.
 func (p *peerInfo) Score() PeerScore {
-	var score PeerScore
 	if p.FixedScore > 0 {
 		return p.FixedScore
 	}
 	if p.Persistent {
-		score += PeerScorePersistent
+		return PeerScorePersistent
 	}
-	return score
+
+	if p.MutableScore <= 0 {
+		return 0
+	}
+
+	if p.MutableScore >= math.MaxUint8 {
+		return PeerScore(math.MaxUint8)
+	}
+
+	return PeerScore(p.MutableScore)
 }
 
 // Validate validates the peer info.

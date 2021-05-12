@@ -1,31 +1,33 @@
 package client_test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
-	nm "github.com/tendermint/tendermint/node"
+	"github.com/tendermint/tendermint/node"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 )
 
-var node *nm.Node
+func NodeSuite(t *testing.T) *node.Node {
+	t.Helper()
 
-func TestMain(m *testing.M) {
-	// start a tendermint node (and kvstore) in the background to test against
-	dir, err := ioutil.TempDir("/tmp", "rpc-client-test")
-	if err != nil {
-		panic(err)
-	}
+	dir, err := ioutil.TempDir("/tmp", fmt.Sprint("rpc-client-test-", t.Name()))
+	require.NoError(t, err)
 
 	app := kvstore.NewPersistentKVStoreApplication(dir)
-	node = rpctest.StartTendermint(app)
+	n := rpctest.StartTendermint(app)
 
-	code := m.Run()
+	t.Cleanup(func() {
+		// and shut down proper at the end
+		rpctest.StopTendermint(n)
+		app.Close()
 
-	// and shut down proper at the end
-	rpctest.StopTendermint(node)
-	_ = os.RemoveAll(dir)
-	os.Exit(code)
+		_ = os.RemoveAll(dir)
+	})
+
+	return n
 }

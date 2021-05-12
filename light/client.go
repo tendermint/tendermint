@@ -35,6 +35,9 @@ const (
 	// - http://vancouver-webpages.com/time/web.html
 	// - https://blog.codinghorror.com/keeping-time-on-the-pc/
 	defaultMaxClockDrift = 10 * time.Second
+
+	// 10s is sufficient for most networks.
+	defaultMaxBlockLag = 10 * time.Second
 )
 
 // Option sets a parameter for the light client.
@@ -92,10 +95,24 @@ func Logger(l log.Logger) Option {
 }
 
 // MaxClockDrift defines how much new header's time can drift into
-// the future. Default: 10s.
+// the future relative to the light clients local time. Default: 10s.
 func MaxClockDrift(d time.Duration) Option {
 	return func(c *Client) {
 		c.maxClockDrift = d
+	}
+}
+
+// MaxBlockLag represents the maximum time difference between the realtime
+// that a block is received and the timestamp of that block.
+// One can approximate it to the maximum block production time
+//
+// As an example, say the light client received block B at a time
+// 12:05 (this is the real time) and the time on the block
+// was 12:00. Then the lag here is 5 minutes.
+// Default: 10s
+func MaxBlockLag(d time.Duration) Option {
+	return func(c *Client) {
+		c.maxBlockLag = d
 	}
 }
 
@@ -110,6 +127,7 @@ type Client struct {
 	verificationMode mode
 	trustLevel       tmmath.Fraction
 	maxClockDrift    time.Duration
+	maxBlockLag      time.Duration
 
 	// Mutex for locking during changes of the light clients providers
 	providerMutex tmsync.Mutex
@@ -197,6 +215,7 @@ func NewClientFromTrustedStore(
 		verificationMode: skipping,
 		trustLevel:       DefaultTrustLevel,
 		maxClockDrift:    defaultMaxClockDrift,
+		maxBlockLag:      defaultMaxBlockLag,
 		primary:          primary,
 		witnesses:        witnesses,
 		trustedStore:     trustedStore,
@@ -712,7 +731,7 @@ func (c *Client) verifySkipping(
 					blockCache = append(blockCache, interimBlock)
 
 				// if the error is benign, the client does not need to replace the primary
-				case provider.ErrLightBlockNotFound, provider.ErrNoResponse:
+				case provider.ErrLightBlockNotFound, provider.ErrNoResponse, provider.ErrHeightTooHigh:
 					return nil, err
 
 				// all other errors such as ErrBadLightBlock or ErrUnreliableProvider are seen as malevolent and the
@@ -950,15 +969,17 @@ func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*type
 		// Everything went smoothly. We reset the lightBlockRequests and return the light block
 		return l, nil
 
-	case provider.ErrNoResponse, provider.ErrLightBlockNotFound:
+	case provider.ErrNoResponse, provider.ErrLightBlockNotFound, provider.ErrHeightTooHigh:
 		// we find a new witness to replace the primary
-		c.logger.Debug("error from light block request from primary, replacing...", "error", err, "primary", c.primary)
+		c.logger.Debug("error from light block request from primary, replacing...",
+			"error", err, "height", height, "primary", c.primary)
 		return c.findNewPrimary(ctx, height, false)
 
 	default:
 		// The light client has most likely received either provider.ErrUnreliableProvider or provider.ErrBadLightBlock
 		// These errors mean that the light client should drop the primary and try with another provider instead
-		c.logger.Error("error from light block request from primary, removing...", "error", err, "primary", c.primary)
+		c.logger.Error("error from light block request from primary, removing...",
+			"error", err, "height", height, "primary", c.primary)
 		return c.findNewPrimary(ctx, height, true)
 	}
 }
@@ -1051,7 +1072,7 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 			return response.lb, nil
 
 		// process benign errors by logging them only
-		case provider.ErrNoResponse, provider.ErrLightBlockNotFound:
+		case provider.ErrNoResponse, provider.ErrLightBlockNotFound, provider.ErrHeightTooHigh:
 			lastError = response.err
 			c.logger.Debug("error on light block request from witness",
 				"error", response.err, "primary", c.witnesses[response.witnessIndex])

@@ -58,25 +58,33 @@ func TestPaginationPage(t *testing.T) {
 
 func TestPaginationPerPage(t *testing.T) {
 	cases := []struct {
-		totalCount int
 		perPage    int
 		newPerPage int
 	}{
-		{5, 0, defaultPerPage},
-		{5, 1, 1},
-		{5, 2, 2},
-		{5, defaultPerPage, defaultPerPage},
-		{5, maxPerPage - 1, maxPerPage - 1},
-		{5, maxPerPage, maxPerPage},
-		{5, maxPerPage + 1, maxPerPage},
+		{0, defaultPerPage},
+		{1, 1},
+		{2, 2},
+		{defaultPerPage, defaultPerPage},
+		{maxPerPage - 1, maxPerPage - 1},
+		{maxPerPage, maxPerPage},
+		{maxPerPage + 1, maxPerPage},
 	}
 
+	env := &Environment{}
+
 	for _, c := range cases {
-		p := validatePerPage(&c.perPage)
+		p := env.validatePerPage(&c.perPage)
 		assert.Equal(t, c.newPerPage, p, fmt.Sprintf("%v", c))
 	}
 
 	// nil case
-	p := validatePerPage(nil)
+	p := env.validatePerPage(nil)
 	assert.Equal(t, defaultPerPage, p)
+
+	// test in unsafe mode
+	env.Config.Unsafe = true
+	perPage := 1000
+	p = env.validatePerPage(&perPage)
+	assert.Equal(t, perPage, p)
+	env.Config.Unsafe = false
 }

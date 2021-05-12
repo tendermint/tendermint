@@ -13,6 +13,7 @@ import (
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/evidence"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -28,7 +29,7 @@ import (
 // Byzantine node sends two different prevotes (nil and blockID) to the same
 // validator.
 func TestByzantinePrevoteEquivocation(t *testing.T) {
-	configSetup(t)
+	config := configSetup(t)
 
 	nValidators := 4
 	prevoteHeight := int64(2)
@@ -36,7 +37,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newCounter
 
-	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(config, nValidators, false, 30)
 	states := make([]*State, nValidators)
 
 	for i := 0; i < nValidators; i++ {
@@ -58,7 +59,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			blockStore := store.NewBlockStore(blockDB)
 
 			// one for mempool, one for consensus
-			mtx := new(tmsync.Mutex)
+			mtx := new(tmsync.RWMutex)
 			proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
 			proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 

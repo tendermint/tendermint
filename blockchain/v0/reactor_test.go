@@ -9,6 +9,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mempool/mock"
 	"github.com/tendermint/tendermint/p2p"
@@ -61,7 +62,8 @@ func setup(
 		fastSync:           true,
 	}
 
-	rts.blockchainChannels = rts.network.MakeChannelsNoCleanup(t, BlockchainChannel, new(bcproto.Message), int(chBuf))
+	chDesc := p2p.ChannelDescriptor{ID: byte(BlockchainChannel)}
+	rts.blockchainChannels = rts.network.MakeChannelsNoCleanup(t, chDesc, new(bcproto.Message), int(chBuf))
 
 	i := 0
 	for nodeID := range rts.network.Nodes {
@@ -123,12 +125,11 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
 
-			vote, err := types.MakeVote(
-				lastBlock.Header.Height,
-				lastBlockMeta.BlockID,
-				state.Validators,
+			vote, err := factory.MakeVote(
 				privVal,
-				lastBlock.Header.ChainID,
+				lastBlock.Header.ChainID, 0,
+				lastBlock.Header.Height, 0, 2,
+				lastBlockMeta.BlockID,
 				time.Now(),
 			)
 			require.NoError(t, err)
@@ -152,7 +153,7 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 	}
 
 	rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
-	rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID])
+	rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)
 	rts.network.Nodes[nodeID].PeerManager.Register(rts.peerUpdates[nodeID])
 	rts.reactors[nodeID], err = NewReactor(
 		rts.logger.With("nodeID", nodeID),
@@ -182,7 +183,7 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 
-	genDoc, privVals := randGenesisDoc(config, 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
 	maxBlockHeight := int64(64)
 
 	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
@@ -217,7 +218,7 @@ func TestReactor_NoBlockResponse(t *testing.T) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 
-	genDoc, privVals := randGenesisDoc(config, 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
 	maxBlockHeight := int64(65)
 
 	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
@@ -265,7 +266,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 
 	maxBlockHeight := int64(48)
-	genDoc, privVals := randGenesisDoc(config, 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
 
 	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0, 0, 0, 0}, 1000)
 
@@ -299,8 +300,11 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	//
 	// XXX: This causes a potential race condition.
 	// See: https://github.com/tendermint/tendermint/issues/6005
-	otherGenDoc, otherPrivVals := randGenesisDoc(config, 1, false, 30)
-	newNode := rts.network.MakeNode(t)
+	otherGenDoc, otherPrivVals := factory.RandGenesisDoc(config, 1, false, 30)
+	newNode := rts.network.MakeNode(t, p2ptest.NodeOptions{
+		MaxPeers:     uint16(len(rts.nodes) + 1),
+		MaxConnected: uint16(len(rts.nodes) + 1),
+	})
 	rts.addNode(t, newNode.NodeID, otherGenDoc, otherPrivVals[0], maxBlockHeight)
 
 	// add a fake peer just so we do not wait for the consensus ticker to timeout

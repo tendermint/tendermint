@@ -48,7 +48,8 @@ func setup(t *testing.T, cfg *cfg.MempoolConfig, numNodes int, chBuf uint) *reac
 		peerUpdates:    make(map[p2p.NodeID]*p2p.PeerUpdates, numNodes),
 	}
 
-	rts.mempoolChnnels = rts.network.MakeChannelsNoCleanup(t, MempoolChannel, new(protomem.Message), int(chBuf))
+	chDesc := p2p.ChannelDescriptor{ID: byte(MempoolChannel)}
+	rts.mempoolChnnels = rts.network.MakeChannelsNoCleanup(t, chDesc, new(protomem.Message), int(chBuf))
 
 	for nodeID := range rts.network.Nodes {
 		rts.kvstores[nodeID] = kvstore.NewApplication()
@@ -60,13 +61,13 @@ func setup(t *testing.T, cfg *cfg.MempoolConfig, numNodes int, chBuf uint) *reac
 		rts.mempools[nodeID] = mempool
 
 		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
-		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID])
+		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)
 		rts.network.Nodes[nodeID].PeerManager.Register(rts.peerUpdates[nodeID])
 
 		rts.reactors[nodeID] = NewReactor(
 			rts.logger.With("nodeID", nodeID),
 			cfg,
-			rts.network.RandomNode().PeerManager,
+			rts.network.Nodes[nodeID].PeerManager,
 			mempool,
 			rts.mempoolChnnels[nodeID],
 			rts.peerUpdates[nodeID],

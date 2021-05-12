@@ -93,6 +93,13 @@ func DefaultConfig() *Config {
 	}
 }
 
+// DefaultValidatorConfig returns default config with mode as validator
+func DefaultValidatorConfig() *Config {
+	cfg := DefaultConfig()
+	cfg.Mode = ModeValidator
+	return cfg
+}
+
 // TestConfig returns a configuration that can be used for testing
 func TestConfig() *Config {
 	return &Config{
@@ -167,13 +174,13 @@ type BaseConfig struct { //nolint: maligned
 	// A custom human readable name for this node
 	Moniker string `mapstructure:"moniker"`
 
-	// Mode of Node: full | validator | seed (default: "full")
-	// * full (default)
-	//   - all reactors
-	//   - No priv_validator_key.json, priv_validator_state.json
+	// Mode of Node: full | validator | seed
 	// * validator
 	//   - all reactors
 	//   - with priv_validator_key.json, priv_validator_state.json
+	// * full
+	//   - all reactors
+	//   - No priv_validator_key.json, priv_validator_state.json
 	// * seed
 	//   - only P2P, PEX Reactor
 	//   - No priv_validator_key.json, priv_validator_state.json
@@ -346,6 +353,8 @@ func (cfg BaseConfig) ValidateBasic() error {
 	}
 	switch cfg.Mode {
 	case ModeFull, ModeValidator, ModeSeed:
+	case "":
+		return errors.New("no mode has been set")
 	default:
 		return fmt.Errorf("unknown mode: %v", cfg.Mode)
 	}
@@ -542,7 +551,15 @@ type P2PConfig struct { //nolint: maligned
 
 	// Comma separated list of seed nodes to connect to
 	// We only use these if we can’t connect to peers in the addrbook
+	// NOTE: not used by the new PEX reactor. Please use BootstrapPeers instead.
+	// TODO: Remove once p2p refactor is complete
+	// ref: https://github.com/tendermint/tendermint/issues/5670
 	Seeds string `mapstructure:"seeds"`
+
+	// Comma separated list of peers to be added to the peer store
+	// on startup. Either BootstrapPeers or PersistentPeers are
+	// needed for peer discovery
+	BootstrapPeers string `mapstructure:"bootstrap-peers"`
 
 	// Comma separated list of nodes to keep persistent connections to
 	PersistentPeers string `mapstructure:"persistent-peers"`
@@ -558,10 +575,24 @@ type P2PConfig struct { //nolint: maligned
 	AddrBookStrict bool `mapstructure:"addr-book-strict"`
 
 	// Maximum number of inbound peers
+	//
+	// TODO: Remove once p2p refactor is complete in favor of MaxConnections.
+	// ref: https://github.com/tendermint/tendermint/issues/5670
 	MaxNumInboundPeers int `mapstructure:"max-num-inbound-peers"`
 
-	// Maximum number of outbound peers to connect to, excluding persistent peers
+	// Maximum number of outbound peers to connect to, excluding persistent peers.
+	//
+	// TODO: Remove once p2p refactor is complete in favor of MaxConnections.
+	// ref: https://github.com/tendermint/tendermint/issues/5670
 	MaxNumOutboundPeers int `mapstructure:"max-num-outbound-peers"`
+
+	// MaxConnections defines the maximum number of connected peers (inbound and
+	// outbound).
+	MaxConnections uint16 `mapstructure:"max-connections"`
+
+	// MaxIncomingConnectionAttempts rate limits the number of incoming connection
+	// attempts per IP address.
+	MaxIncomingConnectionAttempts uint `mapstructure:"max-incoming-connection-attempts"`
 
 	// List of node IDs, to which a connection will be (re)established ignoring any existing limits
 	UnconditionalPeerIDs string `mapstructure:"unconditional-peer-ids"`
@@ -598,20 +629,31 @@ type P2PConfig struct { //nolint: maligned
 	// Testing params.
 	// Force dial to fail
 	TestDialFail bool `mapstructure:"test-dial-fail"`
+
+	// DisableLegacy is used mostly for testing to enable or disable the legacy
+	// P2P stack.
+	DisableLegacy bool `mapstructure:"disable-legacy"`
+
+	// Makes it possible to configure which queue backend the p2p
+	// layer uses. Options are: "fifo", "priority" and "wdrr",
+	// with the default being "fifo".
+	QueueType string `mapstructure:"queue-type"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
 func DefaultP2PConfig() *P2PConfig {
 	return &P2PConfig{
-		ListenAddress:                "tcp://0.0.0.0:26656",
-		ExternalAddress:              "",
-		UPNP:                         false,
-		AddrBook:                     defaultAddrBookPath,
-		AddrBookStrict:               true,
-		MaxNumInboundPeers:           40,
-		MaxNumOutboundPeers:          10,
-		PersistentPeersMaxDialPeriod: 0 * time.Second,
-		FlushThrottleTimeout:         100 * time.Millisecond,
+		ListenAddress:                 "tcp://0.0.0.0:26656",
+		ExternalAddress:               "",
+		UPNP:                          false,
+		AddrBook:                      defaultAddrBookPath,
+		AddrBookStrict:                true,
+		MaxNumInboundPeers:            40,
+		MaxNumOutboundPeers:           10,
+		MaxConnections:                64,
+		MaxIncomingConnectionAttempts: 100,
+		PersistentPeersMaxDialPeriod:  0 * time.Second,
+		FlushThrottleTimeout:          100 * time.Millisecond,
 		// The MTU (Maximum Transmission Unit) for Ethernet is 1500 bytes.
 		// The IP header and the TCP header take up 20 bytes each at least (unless
 		// optional header fields are used) and thus the max for (non-Jumbo frame)
@@ -625,6 +667,7 @@ func DefaultP2PConfig() *P2PConfig {
 		HandshakeTimeout:        20 * time.Second,
 		DialTimeout:             3 * time.Second,
 		TestDialFail:            false,
+		QueueType:               "priority",
 	}
 }
 
@@ -677,7 +720,6 @@ type MempoolConfig struct {
 	RootDir   string `mapstructure:"home"`
 	Recheck   bool   `mapstructure:"recheck"`
 	Broadcast bool   `mapstructure:"broadcast"`
-	WalPath   string `mapstructure:"wal-dir"`
 	// Maximum number of transactions in the mempool
 	Size int `mapstructure:"size"`
 	// Limit the total size of all txs in the mempool.
@@ -704,7 +746,6 @@ func DefaultMempoolConfig() *MempoolConfig {
 	return &MempoolConfig{
 		Recheck:   true,
 		Broadcast: true,
-		WalPath:   "",
 		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck
 		Size:        5000,
@@ -719,16 +760,6 @@ func TestMempoolConfig() *MempoolConfig {
 	cfg := DefaultMempoolConfig()
 	cfg.CacheSize = 1000
 	return cfg
-}
-
-// WalDir returns the full path to the mempool's write-ahead log
-func (cfg *MempoolConfig) WalDir() string {
-	return rootify(cfg.WalPath, cfg.RootDir)
-}
-
-// WalEnabled returns true if the WAL is enabled.
-func (cfg *MempoolConfig) WalEnabled() bool {
-	return cfg.WalPath != ""
 }
 
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
@@ -799,6 +830,10 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 				return errors.New("found empty rpc-servers entry")
 			}
 		}
+		if cfg.DiscoveryTime != 0 && cfg.DiscoveryTime < 5*time.Second {
+			return errors.New("discovery time must be 0s or greater than five seconds")
+		}
+
 		if cfg.TrustPeriod <= 0 {
 			return errors.New("trusted-period is required")
 		}

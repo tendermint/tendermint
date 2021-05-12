@@ -64,7 +64,7 @@ func NewReactorShim(logger log.Logger, name string, descriptors map[ChannelID]*C
 
 	rs := &ReactorShim{
 		Name:        name,
-		PeerUpdates: NewPeerUpdates(make(chan PeerUpdate)),
+		PeerUpdates: NewPeerUpdates(make(chan PeerUpdate), 0),
 		Channels:    channels,
 	}
 
@@ -144,7 +144,10 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 					}
 
 					if !src.Send(cs.Descriptor.ID, bz) {
-						rs.Logger.Error(
+						// This usually happens when we try to send across a channel
+						// that the peer doesn't have open. To avoid bloating the
+						// logs we set this to be Debug
+						rs.Logger.Debug(
 							"failed to proxy message to peer",
 							"ch_id", cs.Descriptor.ID,
 							"peer", e.To,
@@ -230,7 +233,7 @@ func (rs *ReactorShim) GetChannels() []*ChannelDescriptor {
 // handle adding a peer.
 func (rs *ReactorShim) AddPeer(peer Peer) {
 	select {
-	case rs.PeerUpdates.updatesCh <- PeerUpdate{NodeID: peer.ID(), Status: PeerStatusUp}:
+	case rs.PeerUpdates.reactorUpdatesCh <- PeerUpdate{NodeID: peer.ID(), Status: PeerStatusUp}:
 		rs.Logger.Debug("sent peer update", "reactor", rs.Name, "peer", peer.ID(), "status", PeerStatusUp)
 
 	case <-rs.PeerUpdates.Done():
@@ -249,7 +252,7 @@ func (rs *ReactorShim) AddPeer(peer Peer) {
 // handle removing a peer.
 func (rs *ReactorShim) RemovePeer(peer Peer, reason interface{}) {
 	select {
-	case rs.PeerUpdates.updatesCh <- PeerUpdate{NodeID: peer.ID(), Status: PeerStatusDown}:
+	case rs.PeerUpdates.reactorUpdatesCh <- PeerUpdate{NodeID: peer.ID(), Status: PeerStatusDown}:
 		rs.Logger.Debug(
 			"sent peer update",
 			"reactor", rs.Name,

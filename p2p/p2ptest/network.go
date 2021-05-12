@@ -30,6 +30,12 @@ type Network struct {
 type NetworkOptions struct {
 	NumNodes   int
 	BufferSize int
+	NodeOpts   NodeOptions
+}
+
+type NodeOptions struct {
+	MaxPeers     uint16
+	MaxConnected uint16
 }
 
 func (opts *NetworkOptions) setDefaults() {
@@ -50,7 +56,7 @@ func MakeNetwork(t *testing.T, opts NetworkOptions) *Network {
 	}
 
 	for i := 0; i < opts.NumNodes; i++ {
-		node := network.MakeNode(t)
+		node := network.MakeNode(t, opts.NodeOpts)
 		network.Nodes[node.NodeID] = node
 	}
 
@@ -81,7 +87,9 @@ func (n *Network) Start(t *testing.T) {
 		for _, targetAddress := range dialQueue[i+1:] { // nodes <i already connected
 			targetNode := n.Nodes[targetAddress.NodeID]
 			targetSub := subs[targetAddress.NodeID]
-			require.NoError(t, sourceNode.PeerManager.Add(targetAddress))
+			added, err := sourceNode.PeerManager.Add(targetAddress)
+			require.NoError(t, err)
+			require.True(t, added)
 
 			select {
 			case peerUpdate := <-sourceSub.Updates():
@@ -107,7 +115,9 @@ func (n *Network) Start(t *testing.T) {
 
 			// Add the address to the target as well, so it's able to dial the
 			// source back if that's even necessary.
-			require.NoError(t, targetNode.PeerManager.Add(sourceAddress))
+			added, err = targetNode.PeerManager.Add(sourceAddress)
+			require.NoError(t, err)
+			require.True(t, added)
 		}
 	}
 }
@@ -125,13 +135,13 @@ func (n *Network) NodeIDs() []p2p.NodeID {
 // doing error checks and cleanups.
 func (n *Network) MakeChannels(
 	t *testing.T,
-	chID p2p.ChannelID,
+	chDesc p2p.ChannelDescriptor,
 	messageType proto.Message,
 	size int,
 ) map[p2p.NodeID]*p2p.Channel {
 	channels := map[p2p.NodeID]*p2p.Channel{}
 	for _, node := range n.Nodes {
-		channels[node.NodeID] = node.MakeChannel(t, chID, messageType, size)
+		channels[node.NodeID] = node.MakeChannel(t, chDesc, messageType, size)
 	}
 	return channels
 }
@@ -141,13 +151,13 @@ func (n *Network) MakeChannels(
 // all the channels.
 func (n *Network) MakeChannelsNoCleanup(
 	t *testing.T,
-	chID p2p.ChannelID,
+	chDesc p2p.ChannelDescriptor,
 	messageType proto.Message,
 	size int,
 ) map[p2p.NodeID]*p2p.Channel {
 	channels := map[p2p.NodeID]*p2p.Channel{}
 	for _, node := range n.Nodes {
-		channels[node.NodeID] = node.MakeChannelNoCleanup(t, chID, messageType, size)
+		channels[node.NodeID] = node.MakeChannelNoCleanup(t, chDesc, messageType, size)
 	}
 	return channels
 }
@@ -214,7 +224,7 @@ type Node struct {
 // MakeNode creates a new Node configured for the network with a
 // running peer manager, but does not add it to the existing
 // network. Callers are responsible for updating peering relationships.
-func (n *Network) MakeNode(t *testing.T) *Node {
+func (n *Network) MakeNode(t *testing.T, opts NodeOptions) *Node {
 	privKey := ed25519.GenPrivKey()
 	nodeID := p2p.NodeIDFromPubKey(privKey.PubKey())
 	nodeInfo := p2p.NodeInfo{
@@ -230,6 +240,8 @@ func (n *Network) MakeNode(t *testing.T) *Node {
 		MinRetryTime:    10 * time.Millisecond,
 		MaxRetryTime:    100 * time.Millisecond,
 		RetryTimeJitter: time.Millisecond,
+		MaxPeers:        opts.MaxPeers,
+		MaxConnected:    opts.MaxConnected,
 	})
 	require.NoError(t, err)
 
@@ -267,8 +279,9 @@ func (n *Network) MakeNode(t *testing.T) *Node {
 // MakeChannel opens a channel, with automatic error handling and cleanup. On
 // test cleanup, it also checks that the channel is empty, to make sure
 // all expected messages have been asserted.
-func (n *Node) MakeChannel(t *testing.T, chID p2p.ChannelID, messageType proto.Message, size int) *p2p.Channel {
-	channel, err := n.Router.OpenChannel(chID, messageType, size)
+func (n *Node) MakeChannel(t *testing.T, chDesc p2p.ChannelDescriptor,
+	messageType proto.Message, size int) *p2p.Channel {
+	channel, err := n.Router.OpenChannel(chDesc, messageType, size)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		RequireEmpty(t, channel)
@@ -281,12 +294,12 @@ func (n *Node) MakeChannel(t *testing.T, chID p2p.ChannelID, messageType proto.M
 // caller must ensure proper cleanup of the channel.
 func (n *Node) MakeChannelNoCleanup(
 	t *testing.T,
-	chID p2p.ChannelID,
+	chDesc p2p.ChannelDescriptor,
 	messageType proto.Message,
 	size int,
 ) *p2p.Channel {
 
-	channel, err := n.Router.OpenChannel(chID, messageType, size)
+	channel, err := n.Router.OpenChannel(chDesc, messageType, size)
 	require.NoError(t, err)
 	return channel
 }
@@ -294,11 +307,35 @@ func (n *Node) MakeChannelNoCleanup(
 // MakePeerUpdates opens a peer update subscription, with automatic cleanup.
 // It checks that all updates have been consumed during cleanup.
 func (n *Node) MakePeerUpdates(t *testing.T) *p2p.PeerUpdates {
+	t.Helper()
 	sub := n.PeerManager.Subscribe()
 	t.Cleanup(func() {
+		t.Helper()
 		RequireNoUpdates(t, sub)
 		sub.Close()
 	})
 
 	return sub
+}
+
+// MakePeerUpdatesNoRequireEmpty opens a peer update subscription, with automatic cleanup.
+// It does *not* check that all updates have been consumed, but will
+// close the update channel.
+func (n *Node) MakePeerUpdatesNoRequireEmpty(t *testing.T) *p2p.PeerUpdates {
+	sub := n.PeerManager.Subscribe()
+	t.Cleanup(func() {
+		sub.Close()
+	})
+
+	return sub
+}
+
+func MakeChannelDesc(chID p2p.ChannelID) p2p.ChannelDescriptor {
+	return p2p.ChannelDescriptor{
+		ID:                  byte(chID),
+		Priority:            5,
+		SendQueueCapacity:   10,
+		RecvMessageCapacity: 10,
+		MaxSendBytes:        1000,
+	}
 }

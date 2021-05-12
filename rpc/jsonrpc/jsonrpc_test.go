@@ -6,6 +6,7 @@ import (
 	crand "crypto/rand"
 	"encoding/json"
 	"fmt"
+	mrand "math/rand"
 	"net/http"
 	"os"
 	"os/exec"
@@ -18,8 +19,6 @@ import (
 
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
-	tmrand "github.com/tendermint/tendermint/libs/rand"
-
 	client "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 	server "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
@@ -59,11 +58,11 @@ type ResultEchoDataBytes struct {
 
 // Define some routes
 var Routes = map[string]*server.RPCFunc{
-	"echo":            server.NewRPCFunc(EchoResult, "arg"),
+	"echo":            server.NewRPCFunc(EchoResult, "arg", false),
 	"echo_ws":         server.NewWSRPCFunc(EchoWSResult, "arg"),
-	"echo_bytes":      server.NewRPCFunc(EchoBytesResult, "arg"),
-	"echo_data_bytes": server.NewRPCFunc(EchoDataBytesResult, "arg"),
-	"echo_int":        server.NewRPCFunc(EchoIntResult, "arg"),
+	"echo_bytes":      server.NewRPCFunc(EchoBytesResult, "arg", false),
+	"echo_data_bytes": server.NewRPCFunc(EchoDataBytesResult, "arg", false),
+	"echo_int":        server.NewRPCFunc(EchoIntResult, "arg", false),
 }
 
 func EchoResult(ctx *types.Context, v string) (*ResultEcho, error) {
@@ -215,7 +214,7 @@ func testWithHTTPClient(t *testing.T, cl client.HTTPClient) {
 	require.Nil(t, err)
 	assert.Equal(t, got3, val3)
 
-	val4 := tmrand.Intn(10000)
+	val4 := mrand.Intn(10000)
 	got4, err := echoIntViaHTTP(cl, val4)
 	require.Nil(t, err)
 	assert.Equal(t, got4, val4)
@@ -400,7 +399,7 @@ func TestWSClientPingPong(t *testing.T) {
 }
 
 func randBytes(t *testing.T) []byte {
-	n := tmrand.Intn(10) + 2
+	n := mrand.Intn(10) + 2
 	buf := make([]byte, n)
 	_, err := crand.Read(buf)
 	require.Nil(t, err)

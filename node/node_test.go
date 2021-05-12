@@ -77,25 +77,6 @@ func TestNodeStartStop(t *testing.T) {
 	}
 }
 
-func TestSplitAndTrimEmpty(t *testing.T) {
-	testCases := []struct {
-		s        string
-		sep      string
-		cutset   string
-		expected []string
-	}{
-		{"a,b,c", ",", " ", []string{"a", "b", "c"}},
-		{" a , b , c ", ",", " ", []string{"a", "b", "c"}},
-		{" a, b, c ", ",", " ", []string{"a", "b", "c"}},
-		{" a, ", ",", " ", []string{"a"}},
-		{"   ", ",", " ", []string{}},
-	}
-
-	for _, tc := range testCases {
-		assert.Equal(t, tc.expected, splitAndTrimEmpty(tc.s, tc.sep, tc.cutset), "%s", tc.s)
-	}
-}
-
 func TestNodeDelayedStart(t *testing.T) {
 	config := cfg.ResetTestRoot("node_delayed_start_test")
 	defer os.RemoveAll(config.RootDir)
@@ -499,10 +480,12 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 	pval, err := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	require.NoError(t, err)
 
+	appClient, closer := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
+	t.Cleanup(func() { closer.Close() })
 	n, err := NewNode(config,
 		pval,
 		nodeKey,
-		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
+		appClient,
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
@@ -531,6 +514,7 @@ func TestNodeNewSeedNode(t *testing.T) {
 	require.NoError(t, err)
 
 	n, err := NewSeedNode(config,
+		DefaultDBProvider,
 		nodeKey,
 		DefaultGenesisDocProviderFunc(config),
 		log.TestingLogger(),

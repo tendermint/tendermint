@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -86,7 +85,7 @@ func Setup(testnet *e2e.Testnet) error {
 		if err != nil {
 			return err
 		}
-		config.WriteConfigFile(filepath.Join(nodeDir, "config", "config.toml"), cfg) // panics
+		config.WriteConfigFile(nodeDir, cfg) // panics
 
 		appCfg, err := MakeAppConfig(node)
 		if err != nil {
@@ -132,28 +131,6 @@ func Setup(testnet *e2e.Testnet) error {
 func MakeDockerCompose(testnet *e2e.Testnet) ([]byte, error) {
 	// Must use version 2 Docker Compose format, to support IPv6.
 	tmpl, err := template.New("docker-compose").Funcs(template.FuncMap{
-		"startCommands": func(misbehaviors map[int64]string, logLevel string) string {
-			command := "start"
-
-			// FIXME: Temporarily disable behaviors until maverick is redesigned
-			// misbehaviorString := ""
-			// for height, misbehavior := range misbehaviors {
-			// 	// after the first behavior set, a comma must be prepended
-			// 	if misbehaviorString != "" {
-			// 		misbehaviorString += ","
-			// 	}
-			// 	heightString := strconv.Itoa(int(height))
-			// 	misbehaviorString += misbehavior + "," + heightString
-			// }
-
-			// if misbehaviorString != "" {
-			// 	command += " --misbehaviors " + misbehaviorString
-			// }
-			if logLevel != "" && logLevel != config.DefaultLogLevel {
-				command += " --log-level " + logLevel
-			}
-			return command
-		},
 		"addUint32": func(x, y uint32) uint32 {
 			return x + y
 		},
@@ -181,8 +158,8 @@ services:
     image: tendermint/e2e-node
 {{- if eq .ABCIProtocol "builtin" }}
     entrypoint: /usr/bin/entrypoint-builtin
-{{- else }}
-    command: {{ startCommands .Misbehaviors .LogLevel }}
+{{- else if .LogLevel }}
+    command: start --log-level {{ .LogLevel }}
 {{- end }}
     init: true
     ports:
@@ -223,6 +200,8 @@ func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
 	default:
 		return genesis, errors.New("unsupported KeyType")
 	}
+	genesis.ConsensusParams.Evidence.MaxAgeNumBlocks = e2e.EvidenceAgeHeight
+	genesis.ConsensusParams.Evidence.MaxAgeDuration = e2e.EvidenceAgeTime
 	for validator, power := range testnet.Validators {
 		genesis.Validators = append(genesis.Validators, types.GenesisValidator{
 			Name:    validator.Name,
@@ -260,6 +239,8 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.RPC.PprofListenAddress = ":6060"
 	cfg.P2P.ExternalAddress = fmt.Sprintf("tcp://%v", node.AddressP2P(false))
 	cfg.P2P.AddrBookStrict = false
+	cfg.P2P.DisableLegacy = node.DisableLegacyP2P
+	cfg.P2P.QueueType = node.QueueType
 	cfg.DBBackend = node.Database
 	cfg.StateSync.DiscoveryTime = 5 * time.Second
 	if node.Mode != e2e.ModeLight {
@@ -402,12 +383,6 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 			return nil, fmt.Errorf("unexpected privval protocol setting %q", node.PrivvalProtocol)
 		}
 	}
-
-	misbehaviors := make(map[string]string)
-	for height, misbehavior := range node.Misbehaviors {
-		misbehaviors[strconv.Itoa(int(height))] = misbehavior
-	}
-	cfg["misbehaviors"] = misbehaviors
 
 	if len(node.Testnet.ValidatorUpdates) > 0 {
 		validatorUpdates := map[string]map[string]int64{}

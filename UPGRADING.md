@@ -21,12 +21,18 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 * Added `--mode` flag and `mode` config variable on `config.toml` for setting Mode of the Node: `full` | `validator` | `seed` (default: `full`)
   [ADR-52](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md)
+  
+* `BootstrapPeers` has been added as part of the new p2p stack. This will eventually replace
+  `Seeds`. Bootstrap peers are connected with on startup if needed for peer discovery. Unlike
+  persistent peers, there's no gaurantee that the node will remain connected with these peers. 
 
 ### CLI Changes
 
+* You must now specify the node mode (validator|full|seed) in `tendermint init [mode]`
+
 * If you had previously used `tendermint gen_node_key` to generate a new node
   key, keep in mind that it no longer saves the output to a file. You can use
-  `tendermint init` or pipe the output of `tendermint gen_node_key` to
+  `tendermint init validator` or pipe the output of `tendermint gen_node_key` to
   `$TMHOME/config/node_key.json`:
 
   ```

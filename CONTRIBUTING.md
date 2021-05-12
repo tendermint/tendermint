@@ -26,7 +26,8 @@ will indicate their support with a heartfelt emoji.
 
 If the issue would benefit from thorough discussion, maintainers may
 request that you create a [Request For
-Comment](https://github.com/tendermint/spec/tree/master/rfc). Discussion
+Comment](https://github.com/tendermint/spec/tree/master/rfc)
+in the Tendermint spec repo. Discussion
 at the RFC stage will build collective understanding of the dimensions
 of the problems and help structure conversations around trade-offs.
 
@@ -365,15 +366,6 @@ cd test/e2e && \
   make && \
   ./build/runner -f networks/ci.toml
 ```
-
-### Maverick
-
-**If you're changing the code in `consensus` package, please make sure to
-replicate all the changes in `./test/maverick/consensus`**. Maverick is a
-byzantine node used to assert that the validator gets punished for malicious
-behavior.
-
-See [README](./test/maverick/README.md) for details.
 
 ### Model-based tests (ADVANCED)
 

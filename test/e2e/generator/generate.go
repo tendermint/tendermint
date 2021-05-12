@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
-	"strconv"
 	"strings"
 
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
@@ -17,6 +16,8 @@ var (
 	testnetCombinations = map[string][]interface{}{
 		"topology":      {"single", "quad", "large"},
 		"ipv6":          {false, true},
+		"p2p":           {NewP2PMode, LegacyP2PMode, HybridP2PMode},
+		"queueType":     {"priority"}, // "fifo", "wdrr"
 		"initialHeight": {0, 1000},
 		"initialState": {
 			map[string]string{},
@@ -36,25 +37,26 @@ var (
 	nodeStateSyncs        = uniformChoice{false, true}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 3}
-	nodeRetainBlocks      = uniformChoice{0, 1, 5}
+	nodeRetainBlocks      = uniformChoice{0, int(e2e.EvidenceAgeHeight), int(e2e.EvidenceAgeHeight) + 5}
 	nodePerturbations     = probSetChoice{
 		"disconnect": 0.1,
 		"pause":      0.1,
 		"kill":       0.1,
 		"restart":    0.1,
 	}
-	nodeMisbehaviors = weightedChoice{
-		// FIXME: evidence disabled due to node panicing when not
-		// having sufficient block history to process evidence.
-		// https://github.com/tendermint/tendermint/issues/5617
-		// misbehaviorOption{"double-prevote"}: 1,
-		misbehaviorOption{}: 9,
-	}
+	evidence = uniformChoice{0, 1, 10}
 )
 
 // Generate generates random testnets using the given RNG.
-func Generate(r *rand.Rand) ([]e2e.Manifest, error) {
+func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 	manifests := []e2e.Manifest{}
+	switch opts.P2P {
+	case NewP2PMode, LegacyP2PMode, HybridP2PMode:
+		testnetCombinations["p2p"] = []interface{}{opts.P2P}
+	default:
+		testnetCombinations["p2p"] = []interface{}{NewP2PMode, LegacyP2PMode, HybridP2PMode}
+	}
+
 	for _, opt := range combinations(testnetCombinations) {
 		manifest, err := generateTestnet(r, opt)
 		if err != nil {
@@ -64,6 +66,20 @@ func Generate(r *rand.Rand) ([]e2e.Manifest, error) {
 	}
 	return manifests, nil
 }
+
+type Options struct {
+	P2P P2PMode
+}
+
+type P2PMode string
+
+const (
+	NewP2PMode    P2PMode = "new"
+	LegacyP2PMode P2PMode = "legacy"
+	HybridP2PMode P2PMode = "hybrid"
+	// mixed means that all combination are generated
+	MixedP2PMode P2PMode = "mixed"
+)
 
 // generateTestnet generates a single testnet with the given options.
 func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, error) {
@@ -75,6 +91,22 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		ValidatorUpdates: map[string]map[string]int64{},
 		Nodes:            map[string]*e2e.ManifestNode{},
 		KeyType:          opt["keyType"].(string),
+		Evidence:         evidence.Choose(r).(int),
+		QueueType:        opt["queueType"].(string),
+	}
+
+	var p2pNodeFactor int
+
+	switch opt["p2p"].(P2PMode) {
+	case NewP2PMode:
+		manifest.DisableLegacyP2P = true
+	case LegacyP2PMode:
+		manifest.DisableLegacyP2P = false
+	case HybridP2PMode:
+		manifest.DisableLegacyP2P = false
+		p2pNodeFactor = 2
+	default:
+		return manifest, fmt.Errorf("unknown p2p mode %s", opt["p2p"])
 	}
 
 	var numSeeds, numValidators, numFulls, numLightClients int
@@ -85,18 +117,26 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		numValidators = 4
 	case "large":
 		// FIXME Networks are kept small since large ones use too much CPU.
-		numSeeds = r.Intn(3)
+		numSeeds = r.Intn(2)
 		numLightClients = r.Intn(3)
-		numValidators = 4 + r.Intn(7)
-		numFulls = r.Intn(5)
+		numValidators = 4 + r.Intn(4)
+		numFulls = r.Intn(4)
 	default:
 		return manifest, fmt.Errorf("unknown topology %q", opt["topology"])
 	}
 
 	// First we generate seed nodes, starting at the initial height.
 	for i := 1; i <= numSeeds; i++ {
-		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = generateNode(
-			r, e2e.ModeSeed, 0, manifest.InitialHeight, false)
+		node := generateNode(r, e2e.ModeSeed, 0, manifest.InitialHeight, false)
+		node.QueueType = manifest.QueueType
+
+		if p2pNodeFactor == 0 {
+			node.DisableLegacyP2P = manifest.DisableLegacyP2P
+		} else if p2pNodeFactor%i == 0 {
+			node.DisableLegacyP2P = !manifest.DisableLegacyP2P
+		}
+
+		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = node
 	}
 
 	// Next, we generate validators. We make sure a BFT quorum of validators start
@@ -111,8 +151,17 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			nextStartAt += 5
 		}
 		name := fmt.Sprintf("validator%02d", i)
-		manifest.Nodes[name] = generateNode(
+		node := generateNode(
 			r, e2e.ModeValidator, startAt, manifest.InitialHeight, i <= 2)
+
+		node.QueueType = manifest.QueueType
+		if p2pNodeFactor == 0 {
+			node.DisableLegacyP2P = manifest.DisableLegacyP2P
+		} else if p2pNodeFactor%i == 0 {
+			node.DisableLegacyP2P = !manifest.DisableLegacyP2P
+		}
+
+		manifest.Nodes[name] = node
 
 		if startAt == 0 {
 			(*manifest.Validators)[name] = int64(30 + r.Intn(71))
@@ -140,8 +189,14 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			startAt = nextStartAt
 			nextStartAt += 5
 		}
-		manifest.Nodes[fmt.Sprintf("full%02d", i)] = generateNode(
-			r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
+		node := generateNode(r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
+		node.QueueType = manifest.QueueType
+		if p2pNodeFactor == 0 {
+			node.DisableLegacyP2P = manifest.DisableLegacyP2P
+		} else if p2pNodeFactor%i == 0 {
+			node.DisableLegacyP2P = !manifest.DisableLegacyP2P
+		}
+		manifest.Nodes[fmt.Sprintf("full%02d", i)] = node
 	}
 
 	// We now set up peer discovery for nodes. Seed nodes are fully meshed with
@@ -227,17 +282,6 @@ func generateNode(
 		node.SnapshotInterval = 3
 	}
 
-	if node.Mode == string(e2e.ModeValidator) {
-		misbehaveAt := startAt + 5 + int64(r.Intn(10))
-		if startAt == 0 {
-			misbehaveAt += initialHeight - 1
-		}
-		node.Misbehaviors = nodeMisbehaviors.Choose(r).(misbehaviorOption).atHeight(misbehaveAt)
-		if len(node.Misbehaviors) != 0 {
-			node.PrivvalProtocol = "file"
-		}
-	}
-
 	// If a node which does not persist state also does not retain blocks, randomly
 	// choose to either persist state or retain all blocks.
 	if node.PersistInterval != nil && *node.PersistInterval == 0 && node.RetainBlocks > 0 {
@@ -275,17 +319,4 @@ func generateLightNode(r *rand.Rand, startAt int64, providers []string) *e2e.Man
 
 func ptrUint64(i uint64) *uint64 {
 	return &i
-}
-
-type misbehaviorOption struct {
-	misbehavior string
-}
-
-func (m misbehaviorOption) atHeight(height int64) map[string]string {
-	misbehaviorMap := make(map[string]string)
-	if m.misbehavior == "" {
-		return misbehaviorMap
-	}
-	misbehaviorMap[strconv.Itoa(int(height))] = m.misbehavior
-	return misbehaviorMap
 }

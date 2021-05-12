@@ -1,10 +1,10 @@
-# RFC 001: End-to-End Testing
+# ADR 66: End-to-End Testing
 
 ## Changelog
 
 - 2020-09-07: Initial draft (@erikgrinaker)
-
 - 2020-09-08: Minor improvements (@erikgrinaker)
+- 2021-04-12: Renamed from RFC 001 (@tessr)
 
 ## Authors
 
@@ -14,9 +14,9 @@
 
 The current set of end-to-end tests under `test/` are very limited, mostly focusing on P2P testing in a standard configuration. They do not test various configurations (e.g. fast sync reactor versions, state sync, block pruning, genesis vs InitChain setup), nor do they test various network topologies (e.g. sentry node architecture). This leads to poor test coverage, which has caused several serious bugs to go unnoticed.
 
-We need an end-to-end test suite that can run a large number of combinations of configuration options, genesis settings, network topologies, ABCI interactions, and failure scenarios and check that the network is still functional. This RFC outlines the basic requirements and design considerations, but does not propose a specific implementation - a later ADR will be submitted for this.
+We need an end-to-end test suite that can run a large number of combinations of configuration options, genesis settings, network topologies, ABCI interactions, and failure scenarios and check that the network is still functional. This ADR outlines the basic requirements and design for such a system.
 
-This RFC will not cover comprehensive chaos testing, only a few simple scenarios (e.g. abrupt process termination and network partitioning). Chaos testing of the core consensus algorithm should be implemented e.g. via Jepsen tests or a similar framework, or alternatively be added to these end-to-end tests at a later time. Similarly, malicious or adversarial behavior is out of scope for the first implementation, but may be added later.
+This ADR will not cover comprehensive chaos testing, only a few simple scenarios (e.g. abrupt process termination and network partitioning). Chaos testing of the core consensus algorithm should be implemented e.g. via Jepsen tests or a similar framework, or alternatively be added to these end-to-end tests at a later time. Similarly, malicious or adversarial behavior is out of scope for the first implementation, but may be added later.
 
 ## Proposal
 
@@ -34,11 +34,12 @@ The following lists the functionality we would like to test:
 #### Node/App Configurations
 
 - **Database:** goleveldb, cleveldb, boltdb, rocksdb, badgerdb
-- **Fast sync:** disabled, v0, v1, v2
+- **Fast sync:** disabled, v0, v2
 - **State sync:** disabled, enabled
 - **Block pruning:** none, keep 20, keep 1, keep random
 - **Role:** validator, full node
 - **App persistence:** enabled, disabled
+- **Node modes:** validator, full, light, seed
 
 #### Geneses
 
@@ -50,6 +51,7 @@ The following lists the functionality we would like to test:
 
 - **Recovery:** stop/start, power cycling, validator outage, network partition, total network loss
 - **Validators:** add, remove, change power
+- **Evidence:** injection of DuplicateVoteEvidence and LightClientAttackEvidence
 
 ### Functional Combinations
 
@@ -73,7 +75,7 @@ Given a test configuration, the test runner has the following stages:
 
 - **Setup:** configures the Docker containers and networks, but does not start them.
 
-- **Initialization:** starts the Docker containers, performs fast sync/state sync.
+- **Initialization:** starts the Docker containers, performs fast sync/state sync. Accomodates for different start heights.
 
 - **Perturbation:** adds/removes validators, restarts nodes, perturbs networking, etc - liveness and readiness checked between each operation.
 

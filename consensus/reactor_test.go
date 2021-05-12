@@ -18,6 +18,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -46,6 +47,12 @@ type reactorTestSuite struct {
 	voteSetBitsChannels map[p2p.NodeID]*p2p.Channel
 }
 
+func chDesc(chID p2p.ChannelID) p2p.ChannelDescriptor {
+	return p2p.ChannelDescriptor{
+		ID: byte(chID),
+	}
+}
+
 func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSuite {
 	t.Helper()
 
@@ -56,10 +63,10 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 		subs:     make(map[p2p.NodeID]types.Subscription, numNodes),
 	}
 
-	rts.stateChannels = rts.network.MakeChannelsNoCleanup(t, StateChannel, new(tmcons.Message), size)
-	rts.dataChannels = rts.network.MakeChannelsNoCleanup(t, DataChannel, new(tmcons.Message), size)
-	rts.voteChannels = rts.network.MakeChannelsNoCleanup(t, VoteChannel, new(tmcons.Message), size)
-	rts.voteSetBitsChannels = rts.network.MakeChannelsNoCleanup(t, VoteSetBitsChannel, new(tmcons.Message), size)
+	rts.stateChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(StateChannel), new(tmcons.Message), size)
+	rts.dataChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(DataChannel), new(tmcons.Message), size)
+	rts.voteChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteChannel), new(tmcons.Message), size)
+	rts.voteSetBitsChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteSetBitsChannel), new(tmcons.Message), size)
 
 	i := 0
 	for nodeID, node := range rts.network.Nodes {
@@ -246,10 +253,10 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 }
 
 func TestReactorBasic(t *testing.T) {
-	configSetup(t)
+	config := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(n, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	states, cleanup := randConsensusState(config, n, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
 	t.Cleanup(cleanup)
 
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
@@ -274,14 +281,14 @@ func TestReactorBasic(t *testing.T) {
 }
 
 func TestReactorWithEvidence(t *testing.T) {
-	configSetup(t)
+	config := configSetup(t)
 
 	n := 4
 	testName := "consensus_reactor_test"
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newCounter
 
-	genDoc, privVals := randGenesisDoc(n, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(config, n, false, 30)
 	states := make([]*State, n)
 	logger := consensusLogger()
 
@@ -303,7 +310,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		blockStore := store.NewBlockStore(blockDB)
 
 		// one for mempool, one for consensus
-		mtx := new(tmsync.Mutex)
+		mtx := new(tmsync.RWMutex)
 		proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
 		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 
@@ -369,10 +376,11 @@ func TestReactorWithEvidence(t *testing.T) {
 }
 
 func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
-	configSetup(t)
+	config := configSetup(t)
 
 	n := 4
 	states, cleanup := randConsensusState(
+		config,
 		n,
 		"consensus_reactor_test",
 		newMockTickerFunc(true),
@@ -409,10 +417,10 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 }
 
 func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
-	configSetup(t)
+	config := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(n, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	states, cleanup := randConsensusState(config, n, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
 	t.Cleanup(cleanup)
 
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
@@ -466,10 +474,11 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 }
 
 func TestReactorVotingPowerChange(t *testing.T) {
-	configSetup(t)
+	config := configSetup(t)
 
 	n := 4
 	states, cleanup := randConsensusState(
+		config,
 		n,
 		"consensus_voting_power_changes_test",
 		newMockTickerFunc(true),
@@ -565,11 +574,12 @@ func TestReactorVotingPowerChange(t *testing.T) {
 }
 
 func TestReactorValidatorSetChanges(t *testing.T) {
-	configSetup(t)
+	config := configSetup(t)
 
 	nPeers := 7
 	nVals := 4
 	states, _, _, cleanup := randConsensusNetWithPeers(
+		config,
 		nVals,
 		nPeers,
 		"consensus_val_set_changes_test",

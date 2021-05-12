@@ -62,7 +62,7 @@ func setup(
 		chunkInCh:         make(chan p2p.Envelope, chBuf),
 		chunkOutCh:        make(chan p2p.Envelope, chBuf),
 		chunkPeerErrCh:    make(chan p2p.PeerError, chBuf),
-		peerUpdates:       p2p.NewPeerUpdates(make(chan p2p.PeerUpdate)),
+		peerUpdates:       p2p.NewPeerUpdates(make(chan p2p.PeerUpdate), int(chBuf)),
 		conn:              conn,
 		connQuery:         connQuery,
 		stateProvider:     stateProvider,

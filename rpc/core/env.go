@@ -14,7 +14,6 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
-	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -27,17 +26,6 @@ const (
 	// must be less than the server's write timeout (see rpcserver.DefaultConfig)
 	SubscribeTimeout = 5 * time.Second
 )
-
-var (
-	// set by Node
-	env *Environment
-)
-
-// SetEnvironment sets up the given Environment.
-// It will race if multiple Node call SetEnvironment.
-func SetEnvironment(e *Environment) {
-	env = e
-}
 
 //----------------------------------------------
 // These interfaces are used by RPC and must be thread safe
@@ -83,7 +71,7 @@ type Environment struct {
 	// objects
 	PubKey           crypto.PubKey
 	GenDoc           *types.GenesisDoc // cache the genesis structure
-	TxIndexer        txindex.TxIndexer
+	TxIndexer        indexer.TxIndexer
 	BlockIndexer     indexer.BlockIndexer
 	ConsensusReactor *consensus.Reactor
 	EventBus         *types.EventBus // thread safe
@@ -118,7 +106,7 @@ func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	return page, nil
 }
 
-func validatePerPage(perPagePtr *int) int {
+func (env *Environment) validatePerPage(perPagePtr *int) int {
 	if perPagePtr == nil { // no per_page parameter
 		return defaultPerPage
 	}
@@ -126,7 +114,9 @@ func validatePerPage(perPagePtr *int) int {
 	perPage := *perPagePtr
 	if perPage < 1 {
 		return defaultPerPage
-	} else if perPage > maxPerPage {
+		// in unsafe mode there is no max on the page size but in safe mode
+		// we cap it to maxPerPage
+	} else if perPage > maxPerPage && !env.Config.Unsafe {
 		return maxPerPage
 	}
 	return perPage
@@ -142,7 +132,7 @@ func validateSkipCount(page, perPage int) int {
 }
 
 // latestHeight can be either latest committed or uncommitted (+1) height.
-func getHeight(latestHeight int64, heightPtr *int64) (int64, error) {
+func (env *Environment) getHeight(latestHeight int64, heightPtr *int64) (int64, error) {
 	if heightPtr != nil {
 		height := *heightPtr
 		if height <= 0 {
@@ -154,14 +144,14 @@ func getHeight(latestHeight int64, heightPtr *int64) (int64, error) {
 		}
 		base := env.BlockStore.Base()
 		if height < base {
-			return 0, fmt.Errorf("%w (requested height: %d, base height: %d)", ctypes.ErrHeightExceedsChainHead, height, base)
+			return 0, fmt.Errorf("%w (requested height: %d, base height: %d)", ctypes.ErrHeightNotAvailable, height, base)
 		}
 		return height, nil
 	}
 	return latestHeight, nil
 }
 
-func latestUncommittedHeight() int64 {
+func (env *Environment) latestUncommittedHeight() int64 {
 	nodeIsSyncing := env.ConsensusReactor.WaitSync()
 	if nodeIsSyncing {
 		return env.BlockStore.Height()
