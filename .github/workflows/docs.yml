@@ -14,7 +14,7 @@ jobs:
       image: tendermintdev/docker-website-deployment
     steps:
       - name: Checkout 🛎️
-        uses: actions/checkout@v2.3.1
+        uses: actions/checkout@v2.3.4
         with:
           persist-credentials: false
           fetch-depth: 0
@@ -25,7 +25,7 @@ jobs:
           make build-docs
 
       - name: Deploy 🚀
-        uses: JamesIves/github-pages-deploy-action@4.1.1
+        uses: JamesIves/github-pages-deploy-action@4.1.2
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH: gh-pages
