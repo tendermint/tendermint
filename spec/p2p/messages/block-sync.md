@@ -62,7 +62,7 @@ Message is a [`oneof` protobuf type](https://developers.google.com/protocol-buff
 | Name              | Type                             | Description                                                  | Field Number |
 |-------------------|----------------------------------|--------------------------------------------------------------|--------------|
 | block_request     | [BlockRequest](#blockrequest)    | Request a block from a peer                                  | 1            |
-| no_block_response | [BlockRequest](#noblockresponse) | Response saying it doe snot have the requested block         | 2            |
-| block_response    | [BlockRequest](#blockresponse)   | Response with requested block                                | 3            |
-| status_request    | [BlockRequest](#statusrequest)   | Request the highest and lowest block numbers from a peer     | 4            |
-| status_response   | [BlockRequest](#statusresponse)  | Response with the highest and lowest block numbers the store | 5            |
+| no_block_response | [NoBlockResponse](#noblockresponse) | Response saying it doe snot have the requested block         | 2            |
+| block_response    | [BlockResponse](#blockresponse)   | Response with requested block                                | 3            |
+| status_request    | [StatusRequest](#statusrequest)   | Request the highest and lowest block numbers from a peer     | 4            |
+| status_response   | [StatusResponse](#statusresponse)  | Response with the highest and lowest block numbers the store | 5            |
