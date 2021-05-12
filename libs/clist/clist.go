@@ -290,9 +290,8 @@ func (l *CList) BackWait() *CElement {
 // WaitChan can be used to wait until Front or Back becomes not nil. Once it
 // does, channel will be closed.
 func (l *CList) WaitChan() <-chan struct{} {
-	l.mtx.Lock()
-	defer l.mtx.Unlock()
-
+	l.mtx.RLock()
+	defer l.mtx.RUnlock()
 	wg := l.wg
 
 	ret := make(chan struct{})
