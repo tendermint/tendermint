@@ -187,9 +187,9 @@ func txResultWithEvents(events []abci.Event) *abci.TxResult {
 }
 
 func verifyTx(hash []byte) (*abci.TxResult, error) {
-	join := fmt.Sprintf("%s ON id = tx_result_id", TableEventTx)
+	join := fmt.Sprintf("%s ON %s.id = tx_result_id", TableEventTx, TableResultTx)
 	sqlStmt := sq.
-		Select("tx_result", "id", "tx_result_id", "hash").
+		Select("tx_result", fmt.Sprintf("%s.id", TableResultTx), "tx_result_id", "hash").
 		Distinct().From(TableResultTx).
 		InnerJoin(join).
 		Where("hash = $1", fmt.Sprintf("%X", hash))

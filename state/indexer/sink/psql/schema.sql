@@ -1,6 +1,6 @@
 CREATE TYPE block_event_type AS ENUM ('begin_block', 'end_block', '');
 CREATE TABLE block_events (
-    block_event_id SERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     key VARCHAR NOT NULL,
     value VARCHAR NOT NULL,
     height INTEGER NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE tx_results (
     tx_result BYTEA NOT NULL
 );
 CREATE TABLE tx_events (
-    tx_event_id SERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     key VARCHAR NOT NULL,
     value VARCHAR NOT NULL,
     height INTEGER NOT NULL,
