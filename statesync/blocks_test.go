@@ -79,7 +79,7 @@ func TestBlockQueueWithFailures(t *testing.T) {
 	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
-	queue := newBlockQueue(startHeight, stopHeight, stopTime, 100)
+	queue := newBlockQueue(startHeight, stopHeight, stopTime, 200)
 	wg := &sync.WaitGroup{}
 
 	failureRate := 4
