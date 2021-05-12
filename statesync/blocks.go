@@ -1,6 +1,7 @@
 package statesync
 
 import (
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -29,7 +30,9 @@ type blockQueue struct {
 
 	// track failed heights (ordered from highest to lowest) so we know what
 	// blocks to try fetch again
-	failed []int64
+	failed     []int64
+	retries    int
+	maxRetries int
 
 	// store inbound blocks and serve them to a verifying thread via a channel
 	pending  map[int64]lightBlockResponse
@@ -45,6 +48,7 @@ type blockQueue struct {
 func newBlockQueue(
 	startHeight, stopHeight int64,
 	stopTime time.Time,
+	maxRetries int,
 ) *blockQueue {
 	return &blockQueue{
 		stopHeight:   stopHeight,
@@ -53,6 +57,8 @@ func newBlockQueue(
 		verifyHeight: startHeight,
 		pending:      make(map[int64]lightBlockResponse),
 		failed:       make([]int64, 0),
+		retries:      0,
+		maxRetries:   maxRetries,
 		waiters:      make([]chan int64, 0),
 		doneCh:       make(chan struct{}),
 	}
@@ -170,6 +176,17 @@ func (q *blockQueue) Retry(height int64) {
 	default:
 	}
 
+	// we don't need to retry if this is below the terminal height
+	if q.terminal != nil && height < q.terminal.Height {
+		return
+	}
+
+	q.retries++
+	if q.retries >= q.maxRetries {
+		q.close()
+		return
+	}
+
 	if len(q.waiters) > 0 {
 		q.waiters[0] <- height
 		close(q.waiters[0])
@@ -195,6 +212,16 @@ func (q *blockQueue) Close() {
 	q.mtx.Lock()
 	defer q.mtx.Unlock()
 	q.close()
+}
+
+func (q *blockQueue) Error() error {
+	q.mtx.Lock()
+	defer q.mtx.Unlock()
+	if q.retries >= q.maxRetries {
+		return fmt.Errorf("failed to backfill blocks following reverse sync. Max retries exceeded (%d). "+
+			"Target height: %d, height reached: %d", q.maxRetries, q.stopHeight, q.verifyHeight)
+	}
+	return nil
 }
 
 func (q *blockQueue) close() {

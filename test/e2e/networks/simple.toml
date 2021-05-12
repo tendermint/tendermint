@@ -4,7 +4,15 @@ snapshot_interval = 3
 snapshot_interval = 3
 [node.validator03]
 snapshot_interval = 3
+perturb = ["restart"]
 [node.validator04]
 start_at = 10
 state_sync = true
-
+[node.full01]
+mode = "full"
+start_at = 11
+state_sync = true
+[node.full02]
+mode = "full"
+start_at = 12
+state_sync = true

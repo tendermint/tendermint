@@ -17,8 +17,8 @@ import (
 
 func TestDispatcherBasic(t *testing.T) {
 
-	ch := make(chan p2p.Envelope)
-	closeCh := make(chan struct{}, 5)
+	ch := make(chan p2p.Envelope, 100)
+	closeCh := make(chan struct{})
 	defer close(closeCh)
 
 	d := newDispatcher(ch, 1*time.Second)
@@ -50,7 +50,7 @@ func TestDispatcherBasic(t *testing.T) {
 
 func TestDispatcherProviders(t *testing.T) {
 
-	ch := make(chan p2p.Envelope)
+	ch := make(chan p2p.Envelope, 100)
 	chainID := "state-sync-test"
 	closeCh := make(chan struct{})
 	defer close(closeCh)

@@ -868,6 +868,11 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 			return
 		}
 
+		state, err := stateStore.Load()
+		if err != nil {
+			ssR.Logger.Error("Failed to load state", "err", err)
+		}
+
 		if fastSync {
 			// FIXME Very ugly to have these metrics bleed through here.
 			conR.Metrics.StateSyncing.Set(0)
@@ -1819,6 +1824,7 @@ func makeNodeInfo(
 			byte(evidence.EvidenceChannel),
 			byte(statesync.SnapshotChannel),
 			byte(statesync.ChunkChannel),
+			byte(statesync.LightBlockChannel),
 		},
 		Moniker: config.Moniker,
 		Other: p2p.NodeInfoOther{

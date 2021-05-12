@@ -25,7 +25,7 @@ func TestBlockQueueBasic(t *testing.T) {
 	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
-	queue := newBlockQueue(startHeight, stopHeight, stopTime)
+	queue := newBlockQueue(startHeight, stopHeight, stopTime, 1)
 	wg := &sync.WaitGroup{}
 
 	// asynchronously fetch blocks and add it to the queue
@@ -79,7 +79,7 @@ func TestBlockQueueWithFailures(t *testing.T) {
 	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
-	queue := newBlockQueue(startHeight, stopHeight, stopTime)
+	queue := newBlockQueue(startHeight, stopHeight, stopTime, 100)
 	wg := &sync.WaitGroup{}
 
 	failureRate := 4
@@ -128,7 +128,7 @@ func TestBlockQueueWithFailures(t *testing.T) {
 func TestBlockQueueBlocks(t *testing.T) {
 	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
-	queue := newBlockQueue(startHeight, stopHeight, stopTime)
+	queue := newBlockQueue(startHeight, stopHeight, stopTime, 2)
 	expectedHeight := startHeight
 	retryHeight := stopHeight + 2
 
@@ -175,7 +175,7 @@ loop:
 func TestBlockQueueAcceptsNoMoreBlocks(t *testing.T) {
 	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
-	queue := newBlockQueue(startHeight, stopHeight, stopTime)
+	queue := newBlockQueue(startHeight, stopHeight, stopTime, 1)
 	defer queue.Close()
 
 loop:
@@ -201,7 +201,7 @@ func TestBlockQueueStopTime(t *testing.T) {
 	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
-	queue := newBlockQueue(startHeight, stopHeight, stopTime)
+	queue := newBlockQueue(startHeight, stopHeight, stopTime, 1)
 	wg := &sync.WaitGroup{}
 
 	baseTime := stopTime.Add(-50 * time.Second)

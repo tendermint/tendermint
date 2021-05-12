@@ -96,19 +96,10 @@ func (d *dispatcher) start() {
 }
 
 func (d *dispatcher) lightBlock(ctx context.Context, height int64, peer p2p.NodeID) (*types.LightBlock, error) {
-	// allocate the peer to the request
-	callCh, err := d.allocate(peer, height)
+	// dispatch the request to the peer
+	callCh, err := d.dispatch(peer, height)
 	if err != nil {
 		return nil, err
-	}
-
-	// send request. We can't have a mutex over this else if this blocks the
-	// entire dispatcher locks up
-	d.requestCh <- p2p.Envelope{
-		To: peer,
-		Message: &ssproto.LightBlockRequest{
-			Height: uint64(height),
-		},
 	}
 
 	// wait for a response, cancel or timeout
@@ -126,6 +117,8 @@ func (d *dispatcher) lightBlock(ctx context.Context, height int64, peer p2p.Node
 	}
 }
 
+// respond allows the underlying process which receives requests on the
+// requestCh to respond with the respective light block
 func (d *dispatcher) respond(lb *proto.LightBlock, peer p2p.NodeID) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
@@ -170,9 +163,9 @@ func (d *dispatcher) removePeer(peer p2p.NodeID) {
 	}
 }
 
-// allocate takes a peer and allocates it a channel so long as it's not already
-// busy and the receiving channel is still running
-func (d *dispatcher) allocate(peer p2p.NodeID, height int64) (chan *types.LightBlock, error) {
+// dispatch takes a peer and allocates it a channel so long as it's not already
+// busy and the receiving channel is still running. It then dispatches the message
+func (d *dispatcher) dispatch(peer p2p.NodeID, height int64) (chan *types.LightBlock, error) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	ch := make(chan *types.LightBlock, 1)
@@ -189,6 +182,14 @@ func (d *dispatcher) allocate(peer p2p.NodeID, height int64) (chan *types.LightB
 		return ch, errPeerAlreadyBusy
 	}
 	d.calls[peer] = ch
+
+	// send request
+	d.requestCh <- p2p.Envelope{
+		To: peer,
+		Message: &ssproto.LightBlockRequest{
+			Height: uint64(height),
+		},
+	}
 	return ch, nil
 }
 
@@ -203,6 +204,8 @@ func (d *dispatcher) release(peer p2p.NodeID) {
 	}
 	d.availablePeers.Append(peer)
 }
+
+//----------------------------------------------------------------
 
 // blockProvider is a p2p based light provider which uses a dispatcher connected
 // to the state sync reactor to serve light blocks to the light client

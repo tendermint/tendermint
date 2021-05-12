@@ -134,6 +134,9 @@ func setup(
 		"",
 	)
 
+	// override the dispatcher with one with a shorter timeout
+	rts.reactor.dispatcher = newDispatcher(rts.blockChannel.Out, 1*time.Second)
+
 	rts.syncer = newSyncer(
 		log.NewNopLogger(),
 		conn,
@@ -398,34 +401,37 @@ func TestReactor_Dispatcher(t *testing.T) {
 }
 
 func TestReactor_Backfill(t *testing.T) {
-	// test backfill algorithm with varying failure rates
-	failureRates := []float64{0.3}
+	// test backfill algorithm with varying failure rates [0, 10]
+	failureRates := []int{0, 3, 9}
 	for _, failureRate := range failureRates {
-		t.Run(fmt.Sprintf("failure rate: %f", failureRate), func(t *testing.T) {
+		t.Run(fmt.Sprintf("failure rate: %d", failureRate), func(t *testing.T) {
 			// t.Cleanup(leaktest.Check(t))
-			rts := setup(t, nil, nil, nil, 2)
+			rts := setup(t, nil, nil, nil, 21)
 
 			var (
 				startHeight int64 = 20
-				endHeight   int64 = 10
+				stopHeight  int64 = 10
 				stopTime          = time.Date(2020, 1, 1, 0, 100, 0, 0, time.UTC)
 			)
 
-			rts.peerUpdateCh <- p2p.PeerUpdate{
-				NodeID: p2p.NodeID("aa"),
-				Status: p2p.PeerStatusUp,
+			peers := []string{"a", "b", "c", "d"}
+			for _, peer := range peers {
+				rts.peerUpdateCh <- p2p.PeerUpdate{
+					NodeID: p2p.NodeID(peer),
+					Status: p2p.PeerStatusUp,
+				}
 			}
 
 			trackingHeight := startHeight
 			rts.stateStore.On("SaveValidatorSet", mock.AnythingOfType("int64"),
 				mock.AnythingOfType("*types.ValidatorSet")).Return(func(h int64, vals *types.ValidatorSet) error {
 				require.Equal(t, trackingHeight, h)
-				require.GreaterOrEqual(t, h, endHeight)
+				require.GreaterOrEqual(t, h, stopHeight)
 				trackingHeight--
 				return nil
 			})
 
-			chain := buildLightBlockChain(t, endHeight-1, startHeight+1, stopTime)
+			chain := buildLightBlockChain(t, stopHeight-1, startHeight+1, stopTime)
 
 			closeCh := make(chan struct{})
 			defer close(closeCh)
@@ -440,15 +446,19 @@ func TestReactor_Backfill(t *testing.T) {
 				factory.MakeBlockIDWithHash(chain[startHeight].Header.Hash()),
 				stopTime,
 			)
-			require.NoError(t, err)
+			if failureRate > 5 {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 
-			for height := startHeight; height <= endHeight; height++ {
-				blockMeta := rts.blockStore.LoadBlockMeta(height)
-				require.NotNil(t, blockMeta)
+				for height := startHeight; height <= stopHeight; height++ {
+					blockMeta := rts.blockStore.LoadBlockMeta(height)
+					require.NotNil(t, blockMeta)
+				}
+
+				require.Nil(t, rts.blockStore.LoadBlockMeta(stopHeight-1))
+				require.Nil(t, rts.blockStore.LoadBlockMeta(startHeight+1))
 			}
-
-			require.Nil(t, rts.blockStore.LoadBlockMeta(endHeight-1))
-			require.Nil(t, rts.blockStore.LoadBlockMeta(startHeight+1))
 		})
 	}
 }
@@ -473,15 +483,15 @@ func handleLightBlockRequests(t *testing.T,
 	receiving chan p2p.Envelope,
 	sending chan p2p.Envelope,
 	close chan struct{},
-	failureRate float64) {
+	failureRate int) {
+	requests := 0
 	for {
 		select {
 		case envelope := <-receiving:
 			if msg, ok := envelope.Message.(*ssproto.LightBlockRequest); ok {
-				if rand.Float64() >= failureRate {
+				if requests%10 >= failureRate {
 					lb, err := chain[int64(msg.Height)].ToProto()
 					require.NoError(t, err)
-					t.Log("sending response", "height", msg.Height)
 					sending <- p2p.Envelope{
 						From: envelope.To,
 						Message: &ssproto.LightBlockResponse{
@@ -513,6 +523,7 @@ func handleLightBlockRequests(t *testing.T,
 		case <-close:
 			return
 		}
+		requests++
 	}
 }
 

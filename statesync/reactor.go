@@ -11,7 +11,6 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
-	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
@@ -92,7 +91,13 @@ const (
 	// lightBlockMsgSize is the maximum size of a lightBlockResponseMessage
 	lightBlockMsgSize = int(1e7)
 
-	lightBlockResponseTimeout = 1 * time.Second
+	// lightBlockResponseTimeout is how long the dispatcher waits for a peer to
+	// return a light block
+	lightBlockResponseTimeout = 10 * time.Second
+
+	// maxLightBlockRequestRetries is the amount of retries acceptable before
+	// the backfill process aborts
+	maxLightBlockRequestRetries = 20
 )
 
 // Reactor handles state sync, both restoring snapshots for the local node and
@@ -181,12 +186,12 @@ func (r *Reactor) OnStart() error {
 // OnStop stops the reactor by signaling to all spawned goroutines to exit and
 // blocking until they all exit.
 func (r *Reactor) OnStop() {
+	// tell the dispatcher to stop sending any more requests
+	r.dispatcher.stop()
+
 	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
 	// p2p Channels should execute Close().
 	close(r.closeCh)
-
-	// tell the dispatcher to stop sending any more requests
-	r.dispatcher.stop()
 
 	// Wait for all p2p Channels to be closed before returning. This ensures we
 	// can easily reason about synchronization of all p2p Channels and ensure no
@@ -257,8 +262,9 @@ func (r *Reactor) Backfill(
 	trustedBlockID types.BlockID,
 	stopTime time.Time,
 ) error {
+	r.Logger.Info("starting backfill process...", "startHeight", startHeight, "stopHeight", stopHeight, "trustedBlockID", trustedBlockID)
 
-	queue := newBlockQueue(startHeight, stopHeight, stopTime)
+	queue := newBlockQueue(startHeight, stopHeight, stopTime, maxLightBlockRequestRetries)
 
 	// fetch light blocks across four workers. The aim with deploying concurrent
 	// workers is to equate the network messaging time with the verification
@@ -289,16 +295,23 @@ func (r *Reactor) Backfill(
 					if lb.Height != height {
 						r.Logger.Info("peer provided wrong height, retrying...", "height", height)
 						queue.Retry(height)
+						continue
 					}
 
 					// run a validate basic. This checks the validator set and commit
 					// hashes line up
 					err = lb.ValidateBasic(chainID)
 					if err != nil {
-						r.Logger.Info("fetched light block failed validate basic", "err", err)
+						r.Logger.Info("fetched light block failed validate basic, removing peer...", "err", err)
 						queue.Retry(height)
+						r.blockCh.Error <- p2p.PeerError{
+							NodeID: peer,
+							Err:    fmt.Errorf("received invalid light block: %w", err),
+						}
+						continue
 					}
 
+					// add block to queue to be verified
 					queue.Add(lightBlockResponse{
 						block: lb,
 						peer:  peer,
@@ -328,12 +341,13 @@ func (r *Reactor) Backfill(
 			// checked in the `ValidateBasic`
 			if w, g := trustedBlockID.Hash, resp.block.Hash(); !bytes.Equal(w, g) {
 				r.Logger.Info("received invalid light block. header hash doesn't match trusted LastBlockID",
-					"trustedHash", w, "receivedHash", g)
+					"trustedHash", w, "receivedHash", g, "height", resp.block.Height)
 				r.blockCh.Error <- p2p.PeerError{
 					NodeID: resp.peer,
 					Err:    fmt.Errorf("received invalid light block. Expected hash %v, got: %v", w, g),
 				}
 				queue.Retry(resp.block.Height)
+				continue
 			}
 
 			// save the light blocks
@@ -352,7 +366,7 @@ func (r *Reactor) Backfill(
 			r.Logger.Info("verified and stored light block", "height", resp.block.Height)
 
 		case <-queue.Done():
-			return nil
+			return queue.Error()
 
 		}
 	}
@@ -524,6 +538,7 @@ func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 	switch msg := envelope.Message.(type) {
 	case *ssproto.LightBlockRequest:
+		r.Logger.Info("received light block request", "height", msg.Height)
 		lb, err := r.fetchLightBlock(msg.Height)
 		if err != nil {
 			r.Logger.Error("failed to retrieve light block", "err", err, "height", msg.Height)
@@ -747,8 +762,14 @@ func (r *Reactor) fetchLightBlock(height uint64) (*types.LightBlock, error) {
 // state to work out how many prior blocks need to be verified
 func (r *Reactor) backfill(state sm.State) error {
 	params := state.ConsensusParams.Evidence
-	stopHeight := tmmath.MinInt64(state.LastBlockHeight-params.MaxAgeNumBlocks, state.InitialHeight)
+	stopHeight := state.LastBlockHeight - params.MaxAgeNumBlocks
 	stopTime := state.LastBlockTime.Add(-params.MaxAgeDuration)
+	// ensure that stop height doesn't go below the initial height
+	if stopHeight < state.InitialHeight {
+		stopHeight = state.InitialHeight
+		// this essentially makes stop time a void criteria for termination
+		stopTime = state.LastBlockTime
+	}
 	return r.Backfill(
 		context.Background(),
 		state.ChainID,
