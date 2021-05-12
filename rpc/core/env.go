@@ -28,7 +28,8 @@ const (
 	// must be less than the server's write timeout (see rpcserver.DefaultConfig)
 	SubscribeTimeout = 5 * time.Second
 
-	// genesisChunkSize is the size, in bytes of each chunk in
+	// genesisChunkSize is the maximum size, in bytes, of each
+	// chunk in the genesis structure for the chunked API
 	genesisChunkSize = 16 * 1024 * 1024 // 16
 )
 

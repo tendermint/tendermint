@@ -101,6 +101,14 @@ func (env *Environment) Genesis(ctx *rpctypes.Context) (*ctypes.ResultGenesis, e
 }
 
 func (env *Environment) GenesisChunked(ctx *rpctypes.Context, chunk uint) (*ctypes.ResultGenesisChunk, error) {
+	if env.genChunks == nil {
+		return nil, fmt.Errorf("service configuration error, genesis chunks are not initialized")
+	}
+
+	if len(env.genChunks) == 0 {
+		return nil, fmt.Errorf("service configuration error, there are no chunks")
+	}
+
 	id := int(chunk)
 
 	if id > len(env.genChunks)-1 {
