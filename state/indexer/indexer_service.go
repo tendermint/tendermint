@@ -71,7 +71,7 @@ func (is *Service) OnStart() error {
 				}
 			}
 
-			if !is.indexingEnabled() {
+			if !IndexingEnabled(is.eventSinks) {
 				continue
 			}
 
@@ -118,8 +118,9 @@ func KVSinkEnabled(sinks []EventSink) bool {
 	return false
 }
 
-func (is *Service) indexingEnabled() bool {
-	for _, sink := range is.eventSinks {
+// IndexingEnabled returns the given eventSinks is supporting the indexing services.
+func IndexingEnabled(sinks []EventSink) bool {
+	for _, sink := range sinks {
 		if sink.Type() == KV || sink.Type() == PSQL {
 			return true
 		}

@@ -8,7 +8,6 @@ import (
 	"math"
 	"net"
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
-	"reflect"
 	"strings"
 	"time"
 
@@ -664,9 +663,10 @@ func makeNodeInfo(
 	genDoc *types.GenesisDoc,
 	state sm.State,
 ) (p2p.NodeInfo, error) {
-	txIndexerStatus := "on"
-	if len(eventSinks) == 0 || reflect.ValueOf(eventSinks[0]).Elem().Type().Name() == "NullEventSink" {
-		txIndexerStatus = "off"
+	txIndexerStatus := "off"
+
+	if indexer.IndexingEnabled(eventSinks) {
+		txIndexerStatus = "on"
 	}
 
 	var bcChannel byte
