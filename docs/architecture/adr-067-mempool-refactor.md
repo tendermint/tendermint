@@ -29,7 +29,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
