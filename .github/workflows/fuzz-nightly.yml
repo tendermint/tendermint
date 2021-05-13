@@ -17,7 +17,7 @@ jobs:
         with:
           go-version: '1.16'
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2.3.4
 
       - name: Install go-fuzz
         working-directory: test/fuzz
