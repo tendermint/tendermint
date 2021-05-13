@@ -218,12 +218,17 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo me
 	}
 
 	if txSize > mem.config.MaxTxBytes {
-		return mempool.ErrTxTooLarge{mem.config.MaxTxBytes, txSize}
+		return mempool.ErrTxTooLarge{
+			Max:    mem.config.MaxTxBytes,
+			Actual: txSize,
+		}
 	}
 
 	if mem.preCheck != nil {
 		if err := mem.preCheck(tx); err != nil {
-			return mempool.ErrPreCheck{err}
+			return mempool.ErrPreCheck{
+				Reason: err,
+			}
 		}
 	}
 
