@@ -1,4 +1,4 @@
-package mempool
+package v0
 
 import (
 	"errors"
@@ -12,6 +12,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
+	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	protomem "github.com/tendermint/tendermint/proto/tendermint/mempool"
 	"github.com/tendermint/tendermint/types"
@@ -175,7 +176,7 @@ func (r *Reactor) handleMempoolMessage(envelope p2p.Envelope) error {
 			return errors.New("empty txs received from peer")
 		}
 
-		txInfo := TxInfo{SenderID: r.ids.GetForPeer(envelope.From)}
+		txInfo := mempool.TxInfo{SenderID: r.ids.GetForPeer(envelope.From)}
 		if len(envelope.From) != 0 {
 			txInfo.SenderP2PID = envelope.From
 		}

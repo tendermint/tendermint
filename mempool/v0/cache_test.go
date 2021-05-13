@@ -1,4 +1,4 @@
-package mempool
+package v0
 
 import (
 	"crypto/rand"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -39,7 +40,7 @@ func TestCacheRemove(t *testing.T) {
 func TestCacheAfterUpdate(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mempool, cleanup := newMempoolWithApp(cc)
+	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
 	// reAddIndices & txsInCache can have elements > numTxsToCreate
@@ -59,7 +60,7 @@ func TestCacheAfterUpdate(t *testing.T) {
 	for tcIndex, tc := range tests {
 		for i := 0; i < tc.numTxsToCreate; i++ {
 			tx := types.Tx{byte(i)}
-			err := mempool.CheckTx(tx, nil, TxInfo{})
+			err := mp.CheckTx(tx, nil, mempool.TxInfo{})
 			require.NoError(t, err)
 		}
 
@@ -68,15 +69,15 @@ func TestCacheAfterUpdate(t *testing.T) {
 			tx := types.Tx{byte(v)}
 			updateTxs = append(updateTxs, tx)
 		}
-		err := mempool.Update(int64(tcIndex), updateTxs, abciResponses(len(updateTxs), abci.CodeTypeOK), nil, nil)
+		err := mp.Update(int64(tcIndex), updateTxs, abciResponses(len(updateTxs), abci.CodeTypeOK), nil, nil)
 		require.NoError(t, err)
 
 		for _, v := range tc.reAddIndices {
 			tx := types.Tx{byte(v)}
-			_ = mempool.CheckTx(tx, nil, TxInfo{})
+			_ = mp.CheckTx(tx, nil, mempool.TxInfo{})
 		}
 
-		cache := mempool.cache.(*mapTxCache)
+		cache := mp.cache.(*mapTxCache)
 		node := cache.list.Front()
 		counter := 0
 		for node != nil {
@@ -99,6 +100,6 @@ func TestCacheAfterUpdate(t *testing.T) {
 		}
 		require.Equal(t, len(tc.txsInCache), counter,
 			"cache smaller than expected on testcase %d", tcIndex)
-		mempool.Flush()
+		mp.Flush()
 	}
 }

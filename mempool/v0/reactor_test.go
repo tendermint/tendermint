@@ -1,4 +1,4 @@
-package mempool
+package v0
 
 import (
 	"sync"
@@ -12,6 +12,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/p2ptest"
 	protomem "github.com/tendermint/tendermint/proto/tendermint/mempool"
@@ -290,7 +291,7 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	// Broadcast a tx, which has the max size and ensure it's received by the
 	// second reactor.
 	tx1 := tmrand.Bytes(config.Mempool.MaxTxBytes)
-	err := rts.reactors[primary].mempool.CheckTx(tx1, nil, TxInfo{SenderID: UnknownPeerID})
+	err := rts.reactors[primary].mempool.CheckTx(tx1, nil, mempool.TxInfo{SenderID: UnknownPeerID})
 	require.NoError(t, err)
 
 	rts.start(t)
@@ -304,7 +305,7 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 
 	// broadcast a tx, which is beyond the max size and ensure it's not sent
 	tx2 := tmrand.Bytes(config.Mempool.MaxTxBytes + 1)
-	err = rts.mempools[primary].CheckTx(tx2, nil, TxInfo{SenderID: UnknownPeerID})
+	err = rts.mempools[primary].CheckTx(tx2, nil, mempool.TxInfo{SenderID: UnknownPeerID})
 	require.Error(t, err)
 
 	rts.assertMempoolChannelsDrained(t)

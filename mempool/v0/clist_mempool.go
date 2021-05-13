@@ -1,4 +1,4 @@
-package mempool
+package v0
 
 import (
 	"bytes"
@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
+	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
@@ -44,8 +45,8 @@ type CListMempool struct {
 	// Exclusive mutex for Update method to prevent concurrent execution of
 	// CheckTx or ReapMaxBytesMaxGas(ReapMaxTxs) methods.
 	updateMtx tmsync.RWMutex
-	preCheck  PreCheckFunc
-	postCheck PostCheckFunc
+	preCheck  mempool.PreCheckFunc
+	postCheck mempool.PostCheckFunc
 
 	txs          *clist.CList // concurrent linked-list of good txs
 	proxyAppConn proxy.AppConnMempool
@@ -69,7 +70,7 @@ type CListMempool struct {
 	metrics *Metrics
 }
 
-var _ Mempool = &CListMempool{}
+var _ mempool.Mempool = &CListMempool{}
 
 // CListMempoolOption sets an optional parameter on the mempool.
 type CListMempoolOption func(*CListMempool)
@@ -116,14 +117,14 @@ func (mem *CListMempool) SetLogger(l log.Logger) {
 // WithPreCheck sets a filter for the mempool to reject a tx if f(tx) returns
 // false. This is ran before CheckTx. Only applies to the first created block.
 // After that, Update overwrites the existing value.
-func WithPreCheck(f PreCheckFunc) CListMempoolOption {
+func WithPreCheck(f mempool.PreCheckFunc) CListMempoolOption {
 	return func(mem *CListMempool) { mem.preCheck = f }
 }
 
 // WithPostCheck sets a filter for the mempool to reject a tx if f(tx) returns
 // false. This is ran after CheckTx. Only applies to the first created block.
 // After that, Update overwrites the existing value.
-func WithPostCheck(f PostCheckFunc) CListMempoolOption {
+func WithPostCheck(f mempool.PostCheckFunc) CListMempoolOption {
 	return func(mem *CListMempool) { mem.postCheck = f }
 }
 
@@ -200,7 +201,7 @@ func (mem *CListMempool) TxsWaitChan() <-chan struct{} {
 // CONTRACT: Either cb will get called, or err returned.
 //
 // Safe for concurrent use by multiple goroutines.
-func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo TxInfo) error {
+func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo mempool.TxInfo) error {
 	mem.updateMtx.RLock()
 	// use defer to unlock mutex because application (*local client*) might panic
 	defer mem.updateMtx.RUnlock()
@@ -212,12 +213,12 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 	}
 
 	if txSize > mem.config.MaxTxBytes {
-		return ErrTxTooLarge{mem.config.MaxTxBytes, txSize}
+		return mempool.ErrTxTooLarge{mem.config.MaxTxBytes, txSize}
 	}
 
 	if mem.preCheck != nil {
 		if err := mem.preCheck(tx); err != nil {
-			return ErrPreCheck{err}
+			return mempool.ErrPreCheck{err}
 		}
 	}
 
@@ -238,7 +239,7 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 			// its non-trivial since invalid txs can become valid,
 			// but they can spam the same tx with little cost to them atm.
 			if loaded {
-				return ErrTxInCache
+				return mempool.ErrTxInCache
 			}
 		}
 
@@ -355,9 +356,11 @@ func (mem *CListMempool) isFull(txSize int) error {
 	)
 
 	if memSize >= mem.config.Size || int64(txSize)+txsBytes > mem.config.MaxTxsBytes {
-		return ErrMempoolIsFull{
-			memSize, mem.config.Size,
-			txsBytes, mem.config.MaxTxsBytes,
+		return mempool.ErrMempoolIsFull{
+			NumTxs:      memSize,
+			MaxTxs:      mem.config.Size,
+			TxsBytes:    txsBytes,
+			MaxTxsBytes: mem.config.MaxTxsBytes,
 		}
 	}
 
@@ -547,8 +550,8 @@ func (mem *CListMempool) Update(
 	height int64,
 	txs types.Txs,
 	deliverTxResponses []*abci.ResponseDeliverTx,
-	preCheck PreCheckFunc,
-	postCheck PostCheckFunc,
+	preCheck mempool.PreCheckFunc,
+	postCheck mempool.PostCheckFunc,
 ) error {
 	// Set height
 	mem.height = height
