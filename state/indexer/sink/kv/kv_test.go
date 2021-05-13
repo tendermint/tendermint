@@ -62,6 +62,10 @@ func TestBlockFuncs(t *testing.T) {
 		},
 	}))
 
+	b, e := indexer.HasBlock(1)
+	assert.Nil(t, e)
+	assert.True(t, b)
+
 	for i := 2; i < 12; i++ {
 		var index bool
 		if i%2 == 0 {
@@ -163,6 +167,10 @@ func TestTxSearchWithCancelation(t *testing.T) {
 	})
 	err := indexer.IndexTxEvents([]*abci.TxResult{txResult})
 	require.NoError(t, err)
+
+	r, e := indexer.GetTxByHash(types.Tx("HELLO WORLD").Hash())
+	assert.Nil(t, e)
+	assert.Equal(t, r, txResult)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

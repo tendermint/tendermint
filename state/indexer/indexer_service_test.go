@@ -48,12 +48,17 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 		}
 	})
 
+	assert.False(t, indexer.KVSinkEnabled([]indexer.EventSink{}))
+	assert.False(t, indexer.IndexingEnabled([]indexer.EventSink{}))
+
 	// event sink setup
 	pool, err := setupDB(t)
 	assert.Nil(t, err)
 
 	store := db.NewMemDB()
 	eventSinks := []indexer.EventSink{kv.NewEventSink(store), pSink}
+	assert.True(t, indexer.KVSinkEnabled(eventSinks))
+	assert.True(t, indexer.IndexingEnabled(eventSinks))
 
 	service := indexer.NewIndexerService(eventSinks, eventBus)
 	service.SetLogger(tmlog.TestingLogger())
