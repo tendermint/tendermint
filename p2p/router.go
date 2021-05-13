@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -9,8 +10,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/pkg/errors"
-
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -784,11 +783,11 @@ func (r *Router) routePeer(peerID NodeID, conn Connection, sendQueue queue) {
 	errCh := make(chan error, 2)
 
 	go func() {
-		errCh <- errors.Wrap(r.receivePeer(peerID, conn), "recieve")
+		errCh <- r.receivePeer(peerID, conn)
 	}()
 
 	go func() {
-		errCh <- errors.Wrap(r.sendPeer(peerID, conn, sendQueue), "send")
+		errCh <- r.sendPeer(peerID, conn, sendQueue)
 	}()
 
 	e1 := <-errCh
