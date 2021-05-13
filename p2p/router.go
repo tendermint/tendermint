@@ -803,7 +803,7 @@ func (r *Router) routePeer(peerID NodeID, conn Connection, sendQueue queue) {
 		err = e2
 	}
 
-	switch errors.Cause(err) {
+	switch err {
 	case nil, io.EOF:
 		r.logger.Info("peer disconnected",
 			"peer", peerID,
