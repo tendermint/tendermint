@@ -65,9 +65,8 @@ type CListMempool struct {
 	// This reduces the pressure on the proxyApp.
 	cache txCache
 
-	logger log.Logger
-
-	metrics *Metrics
+	logger  log.Logger
+	metrics *mempool.Metrics
 }
 
 var _ mempool.Mempool = &CListMempool{}
@@ -75,14 +74,16 @@ var _ mempool.Mempool = &CListMempool{}
 // CListMempoolOption sets an optional parameter on the mempool.
 type CListMempoolOption func(*CListMempool)
 
-// NewCListMempool returns a new mempool with the given configuration and connection to an application.
+// NewCListMempool returns a new mempool with the given configuration and
+// connection to an application.
 func NewCListMempool(
 	config *cfg.MempoolConfig,
 	proxyAppConn proxy.AppConnMempool,
 	height int64,
 	options ...CListMempoolOption,
 ) *CListMempool {
-	mempool := &CListMempool{
+
+	mp := &CListMempool{
 		config:        config,
 		proxyAppConn:  proxyAppConn,
 		txs:           clist.New(),
@@ -90,18 +91,22 @@ func NewCListMempool(
 		recheckCursor: nil,
 		recheckEnd:    nil,
 		logger:        log.NewNopLogger(),
-		metrics:       NopMetrics(),
+		metrics:       mempool.NopMetrics(),
 	}
+
 	if config.CacheSize > 0 {
-		mempool.cache = newMapTxCache(config.CacheSize)
+		mp.cache = newMapTxCache(config.CacheSize)
 	} else {
-		mempool.cache = nopTxCache{}
+		mp.cache = nopTxCache{}
 	}
-	proxyAppConn.SetResponseCallback(mempool.globalCb)
+
+	proxyAppConn.SetResponseCallback(mp.globalCb)
+
 	for _, option := range options {
-		option(mempool)
+		option(mp)
 	}
-	return mempool
+
+	return mp
 }
 
 // NOTE: not thread safe - should only be called once, on startup
@@ -129,7 +134,7 @@ func WithPostCheck(f mempool.PostCheckFunc) CListMempoolOption {
 }
 
 // WithMetrics sets the metrics.
-func WithMetrics(metrics *Metrics) CListMempoolOption {
+func WithMetrics(metrics *mempool.Metrics) CListMempoolOption {
 	return func(mem *CListMempool) { mem.metrics = metrics }
 }
 

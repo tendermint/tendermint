@@ -1,4 +1,4 @@
-package v0
+package mempool
 
 import (
 	"github.com/go-kit/kit/metrics"
