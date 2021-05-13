@@ -69,6 +69,8 @@ func TestBlockFuncs(t *testing.T) {
 	assert.Nil(t, r2)
 	assert.Equal(t, errors.New("block search is not supported via the postgres event sink"), err)
 
+	assert.NoError(t, verifyTimeStamp(TableEventBlock))
+
 	assert.Nil(t, teardown(t, pool))
 }
 
@@ -89,6 +91,9 @@ func TestTxFuncs(t *testing.T) {
 	tx, err := verifyTx(types.Tx(txResult.Tx).Hash())
 	assert.NoError(t, err)
 	assert.Equal(t, txResult, tx)
+
+	assert.NoError(t, verifyTimeStamp(TableEventTx))
+	assert.NoError(t, verifyTimeStamp(TableResultTx))
 
 	tx, err = indexer.GetTxByHash(types.Tx(txResult.Tx).Hash())
 	assert.Nil(t, tx)
@@ -220,6 +225,36 @@ func verifyTx(hash []byte) (*abci.TxResult, error) {
 
 	// No result
 	return nil, nil
+}
+
+func verifyTimeStamp(tb string) error {
+
+	// We assume the tx indexing time would not exceed 2 second from now
+	sqlStmt := sq.
+		Select(fmt.Sprintf("%s.created_at", tb)).
+		Distinct().From(tb).
+		Where(fmt.Sprintf("%s.created_at >= $1", tb), time.Now().Add(-2*time.Second))
+
+	fmt.Println(sqlStmt.ToSql())
+
+	rows, err := sqlStmt.RunWith(db).Query()
+	if err != nil {
+		return err
+	}
+
+	defer rows.Close()
+
+	if rows.Next() {
+		var ts string
+		err = rows.Scan(&ts)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	return errors.New("no result")
 }
 
 func verifyBlock(h int64) (bool, error) {

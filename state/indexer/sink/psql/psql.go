@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	proto "github.com/gogo/protobuf/proto"
@@ -44,19 +45,21 @@ func (es *EventSink) Type() indexer.EventSinkType {
 }
 
 func (es *EventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error {
-	sqlStmt := sq.Insert(TableEventBlock).Columns("key", "value", "height", "type").PlaceholderFormat(sq.Dollar)
+	sqlStmt := sq.
+		Insert(TableEventBlock).Columns("key", "value", "height", "type", "created_at").PlaceholderFormat(sq.Dollar)
 
+	ts := time.Now()
 	// index the reserved block height index
-	sqlStmt = sqlStmt.Values(types.BlockHeightKey, fmt.Sprint(h.Header.Height), h.Header.Height, "")
+	sqlStmt = sqlStmt.Values(types.BlockHeightKey, fmt.Sprint(h.Header.Height), h.Header.Height, "", ts)
 
 	// index begin_block events
-	err := indexBlockEvents(&sqlStmt, h.ResultBeginBlock.Events, types.EventTypeBeginBlock, h.Header.Height)
+	err := indexBlockEvents(&sqlStmt, h.ResultBeginBlock.Events, types.EventTypeBeginBlock, h.Header.Height, ts)
 	if err != nil {
 		return err
 	}
 
 	// index end_block events
-	err = indexBlockEvents(&sqlStmt, h.ResultEndBlock.Events, types.EventTypeEndBlock, h.Header.Height)
+	err = indexBlockEvents(&sqlStmt, h.ResultEndBlock.Events, types.EventTypeEndBlock, h.Header.Height, ts)
 	if err != nil {
 		return err
 	}
@@ -70,23 +73,24 @@ func (es *EventSink) IndexTxEvents(txr []*abci.TxResult) error {
 	var txid uint32
 	sqlStmtTxResult := sq.
 		Insert(TableResultTx).
-		Columns("tx_result").
+		Columns("tx_result", "created_at").
 		PlaceholderFormat(sq.Dollar).
 		RunWith(es.store).
 		Suffix("RETURNING \"id\"")
 
 	sqlStmtEvents := sq.
 		Insert(TableEventTx).
-		Columns("key", "value", "height", "hash", "tx_result_id").
+		Columns("key", "value", "height", "hash", "tx_result_id", "created_at").
 		PlaceholderFormat(sq.Dollar)
 
+	ts := time.Now()
 	for _, tx := range txr {
 		txBz, err := proto.Marshal(tx)
 		if err != nil {
 			return err
 		}
 
-		sqlStmtTxResult = sqlStmtTxResult.Values(txBz)
+		sqlStmtTxResult = sqlStmtTxResult.Values(txBz, ts)
 
 		// execute sqlStmtTxResult db query and retrieve the txid
 		err = sqlStmtTxResult.QueryRow().Scan(&txid)
@@ -97,8 +101,8 @@ func (es *EventSink) IndexTxEvents(txr []*abci.TxResult) error {
 		// index the reserved height and hash indices
 		hash := fmt.Sprintf("%X", types.Tx(tx.Tx).Hash())
 
-		sqlStmtEvents = sqlStmtEvents.Values(types.TxHashKey, hash, tx.Height, hash, txid)
-		sqlStmtEvents = sqlStmtEvents.Values(types.TxHeightKey, fmt.Sprint(tx.Height), tx.Height, hash, txid)
+		sqlStmtEvents = sqlStmtEvents.Values(types.TxHashKey, hash, tx.Height, hash, txid, ts)
+		sqlStmtEvents = sqlStmtEvents.Values(types.TxHeightKey, fmt.Sprint(tx.Height), tx.Height, hash, txid, ts)
 
 		for _, event := range tx.Result.Events {
 			// only index events with a non-empty type
@@ -120,7 +124,7 @@ func (es *EventSink) IndexTxEvents(txr []*abci.TxResult) error {
 				}
 
 				if attr.GetIndex() {
-					sqlStmtEvents = sqlStmtEvents.Values(compositeTag, attr.Value, tx.Height, hash, txid)
+					sqlStmtEvents = sqlStmtEvents.Values(compositeTag, attr.Value, tx.Height, hash, txid, ts)
 				}
 			}
 		}
@@ -147,7 +151,7 @@ func (es *EventSink) HasBlock(h int64) (bool, error) {
 	return false, errors.New("hasBlock is not supported via the postgres event sink")
 }
 
-func indexBlockEvents(sqlStmt *sq.InsertBuilder, events []abci.Event, ty string, height int64) error {
+func indexBlockEvents(sqlStmt *sq.InsertBuilder, events []abci.Event, ty string, height int64, ts time.Time) error {
 
 	for _, event := range events {
 		// only index events with a non-empty type
@@ -167,7 +171,7 @@ func indexBlockEvents(sqlStmt *sq.InsertBuilder, events []abci.Event, ty string,
 			}
 
 			if attr.GetIndex() {
-				*sqlStmt = sqlStmt.Values(compositeKey, attr.Value, height, ty)
+				*sqlStmt = sqlStmt.Values(compositeKey, attr.Value, height, ty, ts)
 			}
 		}
 	}
