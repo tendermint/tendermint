@@ -1,5 +1,16 @@
-[node.validator01]
-[node.validator02]
-[node.validator03]
-[node.validator04]
+# ipv6 = false
+# initial_height = 0
+# key_type = "ed25519"
+# evidence = 10
+# log_level = ""
+# queue_type = "priority"
+disable_legacy_p2p = true
 
+[node.validator01]
+  disable_legacy_p2p = true
+[node.validator02]
+  disable_legacy_p2p = true
+[node.validator03]
+  disable_legacy_p2p = true
+[node.validator04]
+  disable_legacy_p2p = true

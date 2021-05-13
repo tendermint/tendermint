@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
@@ -176,14 +176,14 @@ func (o *RouterOptions) Validate() error {
 
 	switch {
 	case o.IncomingConnectionWindow == 0:
-		o.IncomingConnectionWindow = 100 * time.Millisecond
+		o.IncomingConnectionWindow = time.Second
 	case o.IncomingConnectionWindow < time.Millisecond:
 		return fmt.Errorf("incomming connection window must be grater than 1m [%s]",
 			o.IncomingConnectionWindow)
 	}
 
 	if o.MaxIncomingConnectionAttempts == 0 {
-		o.MaxIncomingConnectionAttempts = 100
+		o.MaxIncomingConnectionAttempts = 10000
 	}
 
 	return nil
@@ -784,26 +784,34 @@ func (r *Router) routePeer(peerID NodeID, conn Connection, sendQueue queue) {
 	errCh := make(chan error, 2)
 
 	go func() {
-		errCh <- r.receivePeer(peerID, conn)
+		errCh <- errors.Wrap(r.receivePeer(peerID, conn), "recieve")
 	}()
 
 	go func() {
-		errCh <- r.sendPeer(peerID, conn, sendQueue)
+		errCh <- errors.Wrap(r.sendPeer(peerID, conn, sendQueue), "send")
 	}()
 
-	err := <-errCh
+	e1 := <-errCh
+	err := e1
 	_ = conn.Close()
 	sendQueue.close()
 
-	if e := <-errCh; err == nil {
+	e2 := <-errCh
+
+	if err == nil {
 		// The first err was nil, so we update it with the second err, which may
 		// or may not be nil.
-		err = e
+		err = e2
 	}
 
-	switch err {
+	switch errors.Cause(err) {
 	case nil, io.EOF:
-		r.logger.Info("peer disconnected", "peer", peerID, "endpoint", conn)
+		r.logger.Info("peer disconnected",
+			"peer", peerID,
+			"endpoint", conn,
+			"err", e1,
+			"err2", e2,
+		)
 
 	default:
 		r.logger.Error("peer failure", "peer", peerID, "endpoint", conn, "err", err)
