@@ -69,7 +69,7 @@ type Node struct {
 	stateStore        sm.Store
 	blockStore        *store.BlockStore // store the blockchain to disk
 	bcReactor         service.Service   // for fast-syncing
-	mempoolReactor    *mempl.Reactor    // for gossipping transactions
+	mempoolReactor    service.Service   // for gossipping transactions
 	mempool           mempl.Mempool
 	stateSync         bool                    // whether the node should state sync on startup
 	stateSyncReactor  *statesync.Reactor      // for hosting and restoring state sync snapshots
@@ -988,7 +988,7 @@ func (n *Node) ConsensusReactor() *cs.Reactor {
 }
 
 // MempoolReactor returns the Node's mempool reactor.
-func (n *Node) MempoolReactor() *mempl.Reactor {
+func (n *Node) MempoolReactor() service.Service {
 	return n.mempoolReactor
 }
 
