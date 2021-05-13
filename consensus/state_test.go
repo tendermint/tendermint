@@ -349,7 +349,7 @@ func TestStateFullRoundNil(t *testing.T) {
 
 	voteCh := subscribeUnBuffered(cs.eventBus, types.EventQueryVote)
 
-	cs.enterPrevote(height, round)
+	cs.enterPrevote(height, round, false)
 	cs.startRoutines(4)
 
 	ensurePrevote(voteCh, height, round)   // prevote
@@ -1808,26 +1808,26 @@ func TestStateOutputsBlockPartsStats(t *testing.T) {
 	}
 
 	cs.ProposalBlockParts = types.NewPartSetFromHeader(parts.Header())
-	cs.handleMsg(msgInfo{msg, peer.ID()})
+	cs.handleMsg(msgInfo{msg, peer.ID()}, false)
 
 	statsMessage := <-cs.statsMsgQueue
 	require.Equal(t, msg, statsMessage.Msg, "")
 	require.Equal(t, peer.ID(), statsMessage.PeerID, "")
 
 	// sending the same part from different peer
-	cs.handleMsg(msgInfo{msg, "peer2"})
+	cs.handleMsg(msgInfo{msg, "peer2"}, false)
 
 	// sending the part with the same height, but different round
 	msg.Round = 1
-	cs.handleMsg(msgInfo{msg, peer.ID()})
+	cs.handleMsg(msgInfo{msg, peer.ID()}, false)
 
 	// sending the part from the smaller height
 	msg.Height = 0
-	cs.handleMsg(msgInfo{msg, peer.ID()})
+	cs.handleMsg(msgInfo{msg, peer.ID()}, false)
 
 	// sending the part from the bigger height
 	msg.Height = 3
-	cs.handleMsg(msgInfo{msg, peer.ID()})
+	cs.handleMsg(msgInfo{msg, peer.ID()}, false)
 
 	select {
 	case <-cs.statsMsgQueue:
@@ -1848,21 +1848,21 @@ func TestStateOutputVoteStats(t *testing.T) {
 		cs.state.Validators.QuorumHash, types.PartSetHeader{})
 
 	voteMessage := &VoteMessage{vote}
-	cs.handleMsg(msgInfo{voteMessage, peer.ID()})
+	cs.handleMsg(msgInfo{voteMessage, peer.ID()}, false)
 
 	statsMessage := <-cs.statsMsgQueue
 	require.Equal(t, voteMessage, statsMessage.Msg, "")
 	require.Equal(t, peer.ID(), statsMessage.PeerID, "")
 
 	// sending the same part from different peer
-	cs.handleMsg(msgInfo{&VoteMessage{vote}, "peer2"})
+	cs.handleMsg(msgInfo{&VoteMessage{vote}, "peer2"}, false)
 
 	// sending the vote for the bigger height
 	incrementHeight(vss[1])
 	vote = signVote(vss[1], tmproto.PrecommitType, randBytes, cs.state.AppHash, cs.state.Validators.QuorumType,
 		cs.state.Validators.QuorumHash, types.PartSetHeader{})
 
-	cs.handleMsg(msgInfo{&VoteMessage{vote}, peer.ID()})
+	cs.handleMsg(msgInfo{&VoteMessage{vote}, peer.ID()}, false)
 
 	select {
 	case <-cs.statsMsgQueue:

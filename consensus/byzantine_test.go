@@ -130,7 +130,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	bcs := css[byzantineNode]
 
 	// alter prevote so that the byzantine node double votes when height is 2
-	bcs.doPrevote = func(height int64, round int32) {
+	bcs.doPrevote = func(height int64, round int32, allowOldBlocks bool) {
 		// allow first height to happen normally so that byzantine validator is no longer proposer
 		if height == prevoteHeight {
 			bcs.Logger.Info("Sending two votes")
@@ -152,7 +152,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			}
 		} else {
 			bcs.Logger.Info("Behaving normally")
-			bcs.defaultDoPrevote(height, round)
+			bcs.defaultDoPrevote(height, round, false)
 		}
 	}
 
@@ -323,7 +323,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 			}(int32(i))
 			// We are setting the prevote function to do nothing because the prevoting
 			// and precommitting are done alongside the proposal.
-			css[i].doPrevote = func(height int64, round int32) {}
+			css[i].doPrevote = func(height int64, round int32, allowOldBlocks bool) {}
 		}
 
 		eventBus := css[i].eventBus

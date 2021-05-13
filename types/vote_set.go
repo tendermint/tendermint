@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"runtime/debug"
 	"strings"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
@@ -189,7 +190,7 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 			valIndex, voteSet.valSet.Size(), ErrVoteInvalidValidatorIndex)
 	}
 
-	// Ensure that the signer has the right address.
+	// Ensure that the signer has the right proTxHash.
 	if !bytes.Equal(valProTxHash, lookupProTxHash) {
 		return false, fmt.Errorf(
 			"vote.ValidatorProTxHash (%X) does not match proTxHash (%X) for vote.ValidatorIndex (%d)\n"+
@@ -215,6 +216,9 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	// Add vote and get conflicting vote if any.
 	added, conflicting := voteSet.addVerifiedVote(vote, blockKey, val.VotingPower)
 	if conflicting != nil {
+		fmt.Printf("-----\n")
+		debug.PrintStack()
+		fmt.Printf("-----\n")
 		return added, NewConflictingVoteError(conflicting, vote)
 	}
 	if !added {

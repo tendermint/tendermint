@@ -3,12 +3,10 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"os"
-	"runtime/debug"
-
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
+	"os"
 )
 
 func startClient(abciType string) abcicli.Client {
@@ -39,7 +37,6 @@ func commit(client abcicli.Client, hashExp []byte) {
 		panicf("client error: %v", err)
 	}
 	if !bytes.Equal(res.Data, hashExp) {
-		debug.PrintStack()
 		panicf("Commit hash was unexpected in test app. Got %X expected %X", res.Data, hashExp)
 	}
 }

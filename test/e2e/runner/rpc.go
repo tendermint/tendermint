@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"runtime/debug"
 	"time"
 
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
@@ -78,9 +77,6 @@ func waitForNode(node *e2e.Node, height int64, timeout time.Duration) (*rpctypes
 		status, err := client.Status(ctx)
 		switch {
 		case errors.Is(err, context.DeadlineExceeded):
-			if height == 0 {
-				debug.PrintStack()
-			}
 			return nil, fmt.Errorf("timed out waiting for %v to reach height %v", node.Name, height)
 		case errors.Is(err, context.Canceled):
 			return nil, err

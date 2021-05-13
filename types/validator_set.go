@@ -15,7 +15,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 
-	"github.com/tendermint/tendermint/crypto/merkle"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
@@ -531,11 +530,10 @@ func (vals *ValidatorSet) findProposer() *Validator {
 // Hash returns the Merkle root hash build using validators (as leaves) in the
 // set.
 func (vals *ValidatorSet) Hash() []byte {
-	bzs := make([][]byte, len(vals.Validators))
-	for i, val := range vals.Validators {
-		bzs[i] = val.Bytes()
+	if vals.QuorumHash == nil {
+		panic("quorum hash should not be nil")
 	}
-	return merkle.HashFromByteSlices(bzs)
+	return vals.QuorumHash
 }
 
 // Iterate will run the given function over the set.
@@ -1224,10 +1222,12 @@ func (vals *ValidatorSet) StringIndented(indent string) string {
 	})
 	return fmt.Sprintf(`ValidatorSet{
 %s  Proposer: %v
+%s  QuorumHash: %v
 %s  Validators:
 %s    %v
 %s}`,
 		indent, vals.GetProposer().String(),
+		indent, vals.QuorumHash.String(),
 		indent,
 		indent, strings.Join(valStrings, "\n"+indent+"    "),
 		indent)

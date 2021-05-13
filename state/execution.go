@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -475,6 +476,16 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 		if !types.IsValidPubkeyType(params, pk.Type()) {
 			return fmt.Errorf("validator %v is using pubkey %s, which is unsupported for consensus",
 				valUpdate, pk.Type())
+		}
+
+		if len(pk.Bytes()) != bls12381.PubKeySize {
+			return fmt.Errorf("validator %X has incorrect public key size %v",
+				valUpdate.ProTxHash, pk.String())
+		}
+
+		if pk.String() == "PubKeyBLS12381{000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}" {
+			return fmt.Errorf("validator %X public key should not be empty %v",
+				valUpdate.ProTxHash, pk.String())
 		}
 
 		if valUpdate.ProTxHash == nil {

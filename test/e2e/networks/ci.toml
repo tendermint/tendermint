@@ -24,9 +24,6 @@ validator04 = 100
 [validator_update.1010]
 validator05 = 100
 
-[validator_update.1012]
-validator06 = 100
-
 [node.seed01]
 mode = "seed"
 seeds = ["seed02"]

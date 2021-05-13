@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/dashevo/dashd-go/btcjson"
 	"io/ioutil"
-	"runtime/debug"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
@@ -91,6 +90,10 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		genDoc.InitialHeight = 1
 	}
 
+	if genDoc.QuorumType == 0 {
+		genDoc.QuorumType = 100
+	}
+
 	if genDoc.InitialProposalCoreChainLock != nil &&
 		genDoc.InitialProposalCoreChainLock.CoreBlockHeight <= genDoc.InitialCoreChainLockedHeight {
 		return fmt.Errorf("if set the initial proposal core chain locked block height %d"+
@@ -126,9 +129,12 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 	if genDoc.Validators != nil && len(genDoc.ThresholdPublicKey.Bytes()) != bls12381.PubKeySize {
 		return fmt.Errorf("the threshold public key must be 48 bytes for BLS")
 	}
-	if genDoc.Validators != nil && len(genDoc.QuorumHash.Bytes()) != crypto.DefaultHashSize {
-		debug.PrintStack()
-		return fmt.Errorf("the quorum hash must be 32 bytes long (%d Validator(s))", len(genDoc.Validators))
+	if genDoc.Validators != nil && len(genDoc.QuorumHash.Bytes()) < crypto.SmallAppHashSize {
+		return fmt.Errorf("the quorum hash must be at least 20 bytes long (%d Validator(s))", len(genDoc.Validators))
+	}
+
+	if genDoc.Validators != nil && genDoc.QuorumType == 0 {
+		return fmt.Errorf("the quorum type must not be 0 (%d Validator(s))", len(genDoc.Validators))
 	}
 
 	if genDoc.GenesisTime.IsZero() {
@@ -164,6 +170,7 @@ func GenesisDocFromFile(genDocFile string) (*GenesisDoc, error) {
 	}
 	genDoc, err := GenesisDocFromJSON(jsonBlob)
 	if err != nil {
+		fmt.Printf("gendoc %v\n", genDoc)
 		return nil, fmt.Errorf("error reading GenesisDoc at %s: %w", genDocFile, err)
 	}
 	return genDoc, nil
