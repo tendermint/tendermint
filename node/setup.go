@@ -21,7 +21,8 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/libs/strings"
-	mempl "github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/mempool"
+	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
 	protop2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
@@ -165,54 +166,63 @@ func createMempoolReactor(
 	config *cfg.Config,
 	proxyApp proxy.AppConns,
 	state sm.State,
-	memplMetrics *mempl.Metrics,
+	memplMetrics *mempool.Metrics,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	logger log.Logger,
-) (*p2p.ReactorShim, *mempl.Reactor, *mempl.CListMempool) {
+) (*p2p.ReactorShim, service.Service, mempool.Mempool, error) {
 
 	logger = logger.With("module", "mempool")
-	mempool := mempl.NewCListMempool(
-		config.Mempool,
-		proxyApp.Mempool(),
-		state.LastBlockHeight,
-		mempl.WithMetrics(memplMetrics),
-		mempl.WithPreCheck(sm.TxPreCheck(state)),
-		mempl.WithPostCheck(sm.TxPostCheck(state)),
-	)
 
-	mempool.SetLogger(logger)
+	switch config.Mempool.Version {
+	case cfg.MempoolV0:
+		mp := mempoolv0.NewCListMempool(
+			config.Mempool,
+			proxyApp.Mempool(),
+			state.LastBlockHeight,
+			mempoolv0.WithMetrics(memplMetrics),
+			mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
+			mempoolv0.WithPostCheck(sm.TxPostCheck(state)),
+		)
 
-	channelShims := mempl.GetChannelShims(config.Mempool)
-	reactorShim := p2p.NewReactorShim(logger, "MempoolShim", channelShims)
+		mp.SetLogger(logger)
 
-	var (
-		channels    map[p2p.ChannelID]*p2p.Channel
-		peerUpdates *p2p.PeerUpdates
-	)
+		channelShims := mempoolv0.GetChannelShims(config.Mempool)
+		reactorShim := p2p.NewReactorShim(logger, "MempoolShim", channelShims)
 
-	if config.P2P.DisableLegacy {
-		channels = makeChannelsFromShims(router, channelShims)
-		peerUpdates = peerManager.Subscribe()
-	} else {
-		channels = getChannelsFromShim(reactorShim)
-		peerUpdates = reactorShim.PeerUpdates
+		var (
+			channels    map[p2p.ChannelID]*p2p.Channel
+			peerUpdates *p2p.PeerUpdates
+		)
+
+		if config.P2P.DisableLegacy {
+			channels = makeChannelsFromShims(router, channelShims)
+			peerUpdates = peerManager.Subscribe()
+		} else {
+			channels = getChannelsFromShim(reactorShim)
+			peerUpdates = reactorShim.PeerUpdates
+		}
+
+		reactor := mempoolv0.NewReactor(
+			logger,
+			config.Mempool,
+			peerManager,
+			mp,
+			channels[mempoolv0.MempoolChannel],
+			peerUpdates,
+		)
+
+		if config.Consensus.WaitForTxs() {
+			mp.EnableTxsAvailable()
+		}
+
+		return reactorShim, reactor, mp, nil
+	case cfg.MempoolV1:
+		panic("not implemented yet!")
+
+	default:
+		return nil, nil, nil, fmt.Errorf("unknown mempool version: %s", config.Mempool.Version)
 	}
-
-	reactor := mempl.NewReactor(
-		logger,
-		config.Mempool,
-		peerManager,
-		mempool,
-		channels[mempl.MempoolChannel],
-		peerUpdates,
-	)
-
-	if config.Consensus.WaitForTxs() {
-		mempool.EnableTxsAvailable()
-	}
-
-	return reactorShim, reactor, mempool
 }
 
 func createEvidenceReactor(
@@ -317,7 +327,7 @@ func createConsensusReactor(
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
-	mempool *mempl.CListMempool,
+	mp mempool.Mempool,
 	evidencePool *evidence.Pool,
 	privValidator types.PrivValidator,
 	csMetrics *cs.Metrics,
@@ -333,7 +343,7 @@ func createConsensusReactor(
 		state.Copy(),
 		blockExec,
 		blockStore,
-		mempool,
+		mp,
 		evidencePool,
 		cs.StateMetrics(csMetrics),
 	)
@@ -668,6 +678,18 @@ func makeNodeInfo(
 		return p2p.NodeInfo{}, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}
 
+	var mpChannel byte
+	switch config.Mempool.Version {
+	case cfg.MempoolV0:
+		mpChannel = byte(mempoolv0.MempoolChannel)
+
+	case cfg.MempoolV1:
+		panic("not implemented!")
+
+	default:
+		return p2p.NodeInfo{}, fmt.Errorf("unknown mempool version %s", config.Mempool.Version)
+	}
+
 	nodeInfo := p2p.NodeInfo{
 		ProtocolVersion: p2p.NewProtocolVersion(
 			version.P2PProtocol, // global
@@ -683,7 +705,7 @@ func makeNodeInfo(
 			byte(cs.DataChannel),
 			byte(cs.VoteChannel),
 			byte(cs.VoteSetBitsChannel),
-			byte(mempl.MempoolChannel),
+			mpChannel,
 			byte(evidence.EvidenceChannel),
 			byte(statesync.SnapshotChannel),
 			byte(statesync.ChunkChannel),
