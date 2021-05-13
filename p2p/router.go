@@ -175,14 +175,14 @@ func (o *RouterOptions) Validate() error {
 
 	switch {
 	case o.IncomingConnectionWindow == 0:
-		o.IncomingConnectionWindow = time.Second
+		o.IncomingConnectionWindow = 100 * time.Millisecond
 	case o.IncomingConnectionWindow < time.Millisecond:
 		return fmt.Errorf("incomming connection window must be grater than 1m [%s]",
 			o.IncomingConnectionWindow)
 	}
 
 	if o.MaxIncomingConnectionAttempts == 0 {
-		o.MaxIncomingConnectionAttempts = 10000
+		o.MaxIncomingConnectionAttempts = 100
 	}
 
 	return nil
