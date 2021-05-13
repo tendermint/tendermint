@@ -77,48 +77,40 @@ func createAndStartIndexerService(
 ) (*indexer.Service, []indexer.EventSink, error) {
 
 	eventSinks := []indexer.EventSink{}
+
+	// Check duplicated sinks.
+	sinks := map[string]bool{}
+	for _, s := range config.TxIndex.Indexer {
+		sl := strings.ToLower(s)
+		if sinks[sl] {
+			return nil, nil, errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
+		}
+		sinks[sl] = true
+	}
+
 loop:
-	for _, db := range config.TxIndex.Indexer {
-		switch strings.ToLower(db) {
+	for k := range sinks {
+		switch k {
 		case string(indexer.NULL):
 			// when we see null in the config, the eventsinks will be reset with the nullEventSink.
 			eventSinks = []indexer.EventSink{null.NewEventSink()}
 			break loop
 		case string(indexer.KV):
-			var hadKVSink = false
-			for _, sink := range eventSinks {
-				if sink.Type() == indexer.KV {
-					hadKVSink = true
-				}
+			store, err := dbProvider(&DBContext{"tx_index", config})
+			if err != nil {
+				return nil, nil, err
 			}
-
-			if !hadKVSink {
-				store, err := dbProvider(&DBContext{"tx_index", config})
-				if err != nil {
-					return nil, nil, err
-				}
-				eventSinks = append(eventSinks, kv.NewEventSink(store))
-			}
+			eventSinks = append(eventSinks, kv.NewEventSink(store))
 		case string(indexer.PSQL):
-			var hadPSQLSink = false
-			for _, sink := range eventSinks {
-				if sink.Type() == indexer.KV {
-					hadPSQLSink = true
-				}
+			conn := config.TxIndex.PsqlConn
+			if conn == "" {
+				return nil, nil, errors.New("the psql connection settings cannot be empty")
 			}
-
-			if !hadPSQLSink {
-				conn := config.TxIndex.PsqlConn
-				if conn == "" {
-					return nil, nil, errors.New("the psql connection settings cannot be empty")
-				}
-
-				es, _, err := psql.NewEventSink(conn)
-				if err != nil {
-					return nil, nil, err
-				}
-				eventSinks = append(eventSinks, es)
+			es, _, err := psql.NewEventSink(conn)
+			if err != nil {
+				return nil, nil, err
 			}
+			eventSinks = append(eventSinks, es)
 		default:
 			return nil, nil, errors.New("unsupported event sink type")
 		}

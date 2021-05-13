@@ -579,27 +579,40 @@ func TestNodeSetEventSink(t *testing.T) {
 	n, err = DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
 	assert.Equal(t, 2, len(n.eventSinks))
-	assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
-	assert.Equal(t, indexer.KV, n.eventSinks[1].Type())
+	// we use map to filter the duplicated sinks, so it's not guarantee the order when append sinks.
+	if n.eventSinks[0].Type() == indexer.KV {
+		assert.Equal(t, indexer.PSQL, n.eventSinks[1].Type())
+	} else {
+		assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
+		assert.Equal(t, indexer.KV, n.eventSinks[1].Type())
+	}
 	n.OnStop()
 
-	config.TxIndex.Indexer = []string{"psql", "kv", "kv"}
+	config.TxIndex.Indexer = []string{"kv", "psql"}
 	config.TxIndex.PsqlConn = psqlConn
 	n, err = DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
 	assert.Equal(t, 2, len(n.eventSinks))
-	assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
-	assert.Equal(t, indexer.KV, n.eventSinks[1].Type())
+	if n.eventSinks[0].Type() == indexer.KV {
+		assert.Equal(t, indexer.PSQL, n.eventSinks[1].Type())
+	} else {
+		assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
+		assert.Equal(t, indexer.KV, n.eventSinks[1].Type())
+	}
 	n.OnStop()
 
-	config.TxIndex.Indexer = []string{"psql", "kv", "kv", "psql"}
+	var e = errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
+	config.TxIndex.Indexer = []string{"psql", "kv", "Kv"}
 	config.TxIndex.PsqlConn = psqlConn
-	n, err = DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
-	assert.Equal(t, 2, len(n.eventSinks))
-	assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
-	assert.Equal(t, indexer.KV, n.eventSinks[1].Type())
-	n.OnStop()
+	_, err = DefaultNewNode(config, log.TestingLogger())
+	require.Error(t, err)
+	assert.Equal(t, e, err)
+
+	config.TxIndex.Indexer = []string{"Psql", "kV", "kv", "pSql"}
+	config.TxIndex.PsqlConn = psqlConn
+	_, err = DefaultNewNode(config, log.TestingLogger())
+	require.Error(t, err)
+	assert.Equal(t, e, err)
 }
 
 func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
