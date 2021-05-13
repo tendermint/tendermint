@@ -262,7 +262,8 @@ func (r *Reactor) Backfill(
 	trustedBlockID types.BlockID,
 	stopTime time.Time,
 ) error {
-	r.Logger.Info("starting backfill process...", "startHeight", startHeight, "stopHeight", stopHeight, "trustedBlockID", trustedBlockID)
+	r.Logger.Info("starting backfill process...", "startHeight", startHeight,
+		"stopHeight", stopHeight, "trustedBlockID", trustedBlockID)
 
 	queue := newBlockQueue(startHeight, stopHeight, stopTime, maxLightBlockRequestRetries)
 
@@ -374,7 +375,7 @@ func (r *Reactor) Backfill(
 
 // Dispatcher exposes the dispatcher so that a state provider can use it for
 // light client verification
-func (r *Reactor) Dispatcher() *dispatcher {
+func (r *Reactor) Dispatcher() *dispatcher { //nolint:golint
 	return r.dispatcher
 }
 
@@ -547,7 +548,7 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 
 		lbproto, err := lb.ToProto()
 		if err != nil {
-			r.Logger.Error("marshalling light block to proto", "err", err)
+			r.Logger.Error("marshaling light block to proto", "err", err)
 			return nil
 		}
 
@@ -631,7 +632,8 @@ func (r *Reactor) processCh(ch *p2p.Channel, chName string) {
 		select {
 		case envelope := <-ch.In:
 			if err := r.handleMessage(ch.ID, envelope); err != nil {
-				r.Logger.Error(fmt.Sprintf("failed to process %s message", chName), "ch_id", ch.ID, "envelope", envelope, "err", err)
+				r.Logger.Error(fmt.Sprintf("failed to process %s message", chName),
+					"ch_id", ch.ID, "envelope", envelope, "err", err)
 				ch.Error <- p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,

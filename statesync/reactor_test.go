@@ -404,6 +404,7 @@ func TestReactor_Backfill(t *testing.T) {
 	// test backfill algorithm with varying failure rates [0, 10]
 	failureRates := []int{0, 3, 9}
 	for _, failureRate := range failureRates {
+		failureRate := failureRate
 		t.Run(fmt.Sprintf("failure rate: %d", failureRate), func(t *testing.T) {
 			// t.Cleanup(leaktest.Check(t))
 			rts := setup(t, nil, nil, nil, 21)

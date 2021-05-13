@@ -144,7 +144,7 @@ func handleRequests(t *testing.T, d *dispatcher, ch chan p2p.Envelope, closeCh c
 			peer := request.To
 			resp := mockLBResp(t, peer, int64(height), time.Now())
 			block, _ := resp.block.ToProto()
-			d.respond(block, resp.peer)
+			require.NoError(t, d.respond(block, resp.peer))
 		case <-closeCh:
 			return
 		}
