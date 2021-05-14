@@ -2,11 +2,11 @@ package consensus_test
 
 import (
 	"encoding/hex"
-	math "math"
+	"math"
 	"testing"
 
-	proto "github.com/gogo/protobuf/proto"
-	"github.com/stretchr/testify/assert"
+	"github.com/gogo/protobuf/proto"
+	"github.com/stretchr/testify/require"
 
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -27,7 +27,7 @@ func TestHasVoteVector(t *testing.T) {
 	for i, tc :=range  testcases {
 		msg := tmcons.Message{&tmcons.Message_HasVote{HasVote: &tc.hasVote}}
 		bz, err := proto.Marshal(&msg)
-		assert.NoError(t, err)
-		assert.Equal(t, tc.expBytes, hex.EncodeToString(bz), "test vector failed", i)
+		require.NoError(t, err)
+		require.Equal(t, tc.expBytes, hex.EncodeToString(bz), "test vector failed", i)
 	}
 }
