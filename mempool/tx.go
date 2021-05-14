@@ -1,8 +1,10 @@
 package mempool
 
 import (
+	"context"
 	"crypto/sha256"
 
+	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -17,4 +19,18 @@ func TxKey(tx types.Tx) [TxKeySize]byte {
 // TxHashFromBytes returns the hash of a transaction from raw bytes.
 func TxHashFromBytes(tx []byte) []byte {
 	return types.Tx(tx).Hash()
+}
+
+// TxInfo are parameters that get passed when attempting to add a tx to the
+// mempool.
+type TxInfo struct {
+	// SenderID is the internal peer ID used in the mempool to identify the
+	// sender, storing 2 bytes with each tx instead of 20 bytes for the p2p.ID.
+	SenderID uint16
+
+	// SenderP2PID is the actual p2p.ID of the sender, used e.g. for logging.
+	SenderP2PID p2p.NodeID
+
+	// Context is the optional context to cancel CheckTx
+	Context context.Context
 }

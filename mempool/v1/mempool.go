@@ -2,12 +2,13 @@ package v1
 
 import (
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 )
 
-var _ mempool.Mempool = (*Mempool)(nil)
+// var _ mempool.Mempool = (*Mempool)(nil)
 
 // TxMempoolOption sets an optional parameter on the TxMempool.
 type TxMempoolOption func(*TxMempool)
@@ -35,6 +36,12 @@ type TxMempool struct {
 	// cache defines a fixed-size cache of already seen transactions as this
 	// reduces pressure on the proxyApp.
 	cache mempool.TxCache
+
+	// gossipIndex defines the gossiping index of valid transactions
+	gossipIndex *clist.CList
+
+	// priorityIndex defines the priority index of valid transactions
+	priorityIndex *TxPriorityQueue
 }
 
 func NewTxMempool(
@@ -46,11 +53,13 @@ func NewTxMempool(
 ) *TxMempool {
 
 	mp := &TxMempool{
-		logger:       logger,
-		config:       cfg,
-		proxyAppConn: proxyAppConn,
-		height:       height,
-		metrics:      mempool.NopMetrics(),
+		logger:        logger,
+		config:        cfg,
+		proxyAppConn:  proxyAppConn,
+		height:        height,
+		metrics:       mempool.NopMetrics(),
+		gossipIndex:   clist.New(),
+		priorityIndex: NewTxPriorityQueue(),
 	}
 
 	if cfg.CacheSize > 0 {
