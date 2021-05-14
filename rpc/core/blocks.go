@@ -190,55 +190,55 @@ func (env *Environment) BlockSearch(
 		return nil, err
 	}
 
+	var kvsink indexer.EventSink
 	for _, sink := range env.EventSinks {
 		if sink.Type() == indexer.KV {
-			results, err := sink.SearchBlockEvents(ctx.Context(), q)
-			if err != nil {
-				return nil, err
-			}
-
-			// sort results (must be done before pagination)
-			switch orderBy {
-			case "desc", "":
-				sort.Slice(results, func(i, j int) bool { return results[i] > results[j] })
-
-			case "asc":
-				sort.Slice(results, func(i, j int) bool { return results[i] < results[j] })
-
-			default:
-				return nil, fmt.Errorf("%w: expected order_by to be either `asc` or `desc` or empty", ctypes.ErrInvalidRequest)
-			}
-
-			// paginate results
-			totalCount := len(results)
-			perPage := env.validatePerPage(perPagePtr)
-
-			page, err := validatePage(pagePtr, perPage, totalCount)
-			if err != nil {
-				return nil, err
-			}
-
-			skipCount := validateSkipCount(page, perPage)
-			pageSize := tmmath.MinInt(perPage, totalCount-skipCount)
-
-			apiResults := make([]*ctypes.ResultBlock, 0, pageSize)
-			for i := skipCount; i < skipCount+pageSize; i++ {
-				block := env.BlockStore.LoadBlock(results[i])
-				if block != nil {
-					blockMeta := env.BlockStore.LoadBlockMeta(block.Height)
-					if blockMeta != nil {
-						apiResults = append(apiResults, &ctypes.ResultBlock{
-							Block:   block,
-							BlockID: blockMeta.BlockID,
-						})
-					}
-				}
-			}
-
-			return &ctypes.ResultBlockSearch{Blocks: apiResults, TotalCount: totalCount}, nil
+			kvsink = sink
 		}
 	}
 
-	return nil, errors.New("block querying is disabled on this node due to the KV event sink being disabled;" +
-		" please see config.toml if this is unexpected")
+	results, err := kvsink.SearchBlockEvents(ctx.Context(), q)
+	if err != nil {
+		return nil, err
+	}
+
+	// sort results (must be done before pagination)
+	switch orderBy {
+	case "desc", "":
+		sort.Slice(results, func(i, j int) bool { return results[i] > results[j] })
+
+	case "asc":
+		sort.Slice(results, func(i, j int) bool { return results[i] < results[j] })
+
+	default:
+		return nil, fmt.Errorf("%w: expected order_by to be either `asc` or `desc` or empty", ctypes.ErrInvalidRequest)
+	}
+
+	// paginate results
+	totalCount := len(results)
+	perPage := env.validatePerPage(perPagePtr)
+
+	page, err := validatePage(pagePtr, perPage, totalCount)
+	if err != nil {
+		return nil, err
+	}
+
+	skipCount := validateSkipCount(page, perPage)
+	pageSize := tmmath.MinInt(perPage, totalCount-skipCount)
+
+	apiResults := make([]*ctypes.ResultBlock, 0, pageSize)
+	for i := skipCount; i < skipCount+pageSize; i++ {
+		block := env.BlockStore.LoadBlock(results[i])
+		if block != nil {
+			blockMeta := env.BlockStore.LoadBlockMeta(block.Height)
+			if blockMeta != nil {
+				apiResults = append(apiResults, &ctypes.ResultBlock{
+					Block:   block,
+					BlockID: blockMeta.BlockID,
+				})
+			}
+		}
+	}
+
+	return &ctypes.ResultBlockSearch{Blocks: apiResults, TotalCount: totalCount}, nil
 }
