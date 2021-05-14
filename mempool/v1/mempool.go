@@ -1,6 +1,9 @@
 package v1
 
 import (
+	"context"
+	"sync/atomic"
+
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
@@ -123,4 +126,24 @@ func (txmp *TxMempool) Lock() {
 // Unlock releases a write-lock on the mempool.
 func (txmp *TxMempool) Unlock() {
 	txmp.mtx.Unlock()
+}
+
+// Size returns the number of valid transactions in the mempool. It is
+// thread-safe and uses the underlying gossip index to infer the total number of
+// transactions.
+func (txmp *TxMempool) Size() int {
+	return txmp.gossipIndex.Len()
+}
+
+// SizeBytes return the total sum in bytes of all the valid transactions in the
+// mempool. It is thread-safe.
+func (txmp *TxMempool) SizeBytes() int64 {
+	return atomic.LoadInt64(&txmp.sizeBytes)
+}
+
+// FlushAppConn executes FlushSync on the mempool's proxyAppConn.
+//
+// NOTE: The caller must obtain a write-lock via Lock() prior to execution.
+func (txmp *TxMempool) FlushAppConn() error {
+	return txmp.proxyAppConn.FlushSync(context.Background())
 }
