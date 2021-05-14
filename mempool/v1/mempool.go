@@ -147,3 +147,16 @@ func (txmp *TxMempool) SizeBytes() int64 {
 func (txmp *TxMempool) FlushAppConn() error {
 	return txmp.proxyAppConn.FlushSync(context.Background())
 }
+
+// WaitForNextTx returns a blocking channel that will be closed when the next
+// valid transaction is available to gossip. It is thread-safe.
+func (txmp *TxMempool) WaitForNextTx() <-chan struct{} {
+	return txmp.gossipIndex.WaitChan()
+}
+
+// NextGossipTx returns the next valid transaction to gossip. A caller must wait
+// for WaitForNextTx to signal a transaction is available to gossip first. It is
+// thread-safe.
+func (txmp *TxMempool) NextGossipTx() *WrappedTx {
+	return txmp.gossipIndex.Front().Value.(*WrappedTx)
+}
