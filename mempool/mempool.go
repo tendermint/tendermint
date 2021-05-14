@@ -74,8 +74,8 @@ type Mempool interface {
 	// Size returns the number of transactions in the mempool.
 	Size() int
 
-	// TxsBytes returns the total size of all txs in the mempool.
-	TxsBytes() int64
+	// SizeBytes returns the total size of all txs in the mempool.
+	SizeBytes() int64
 }
 
 // PreCheckFunc is an optional filter executed before CheckTx and rejects

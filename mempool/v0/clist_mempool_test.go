@@ -472,25 +472,25 @@ func TestMempoolTxsBytes(t *testing.T) {
 	defer cleanup()
 
 	// 1. zero by default
-	assert.EqualValues(t, 0, mp.TxsBytes())
+	assert.EqualValues(t, 0, mp.SizeBytes())
 
 	// 2. len(tx) after CheckTx
 	err := mp.CheckTx([]byte{0x01}, nil, mempool.TxInfo{})
 	require.NoError(t, err)
-	assert.EqualValues(t, 1, mp.TxsBytes())
+	assert.EqualValues(t, 1, mp.SizeBytes())
 
 	// 3. zero again after tx is removed by Update
 	err = mp.Update(1, []types.Tx{[]byte{0x01}}, abciResponses(1, abci.CodeTypeOK), nil, nil)
 	require.NoError(t, err)
-	assert.EqualValues(t, 0, mp.TxsBytes())
+	assert.EqualValues(t, 0, mp.SizeBytes())
 
 	// 4. zero after Flush
 	err = mp.CheckTx([]byte{0x02, 0x03}, nil, mempool.TxInfo{})
 	require.NoError(t, err)
-	assert.EqualValues(t, 2, mp.TxsBytes())
+	assert.EqualValues(t, 2, mp.SizeBytes())
 
 	mp.Flush()
-	assert.EqualValues(t, 0, mp.TxsBytes())
+	assert.EqualValues(t, 0, mp.SizeBytes())
 
 	// 5. ErrMempoolIsFull is returned when/if MaxTxsBytes limit is reached.
 	err = mp.CheckTx([]byte{0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04}, nil, mempool.TxInfo{})
@@ -511,7 +511,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 
 	err = mp.CheckTx(txBytes, nil, mempool.TxInfo{})
 	require.NoError(t, err)
-	assert.EqualValues(t, 8, mp.TxsBytes())
+	assert.EqualValues(t, 8, mp.SizeBytes())
 
 	appConnCon, _ := cc.NewABCIClient()
 	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
@@ -533,16 +533,16 @@ func TestMempoolTxsBytes(t *testing.T) {
 	// Pretend like we committed nothing so txBytes gets rechecked and removed.
 	err = mp.Update(1, []types.Tx{}, abciResponses(0, abci.CodeTypeOK), nil, nil)
 	require.NoError(t, err)
-	assert.EqualValues(t, 0, mp.TxsBytes())
+	assert.EqualValues(t, 0, mp.SizeBytes())
 
 	// 7. Test RemoveTxByKey function
 	err = mp.CheckTx([]byte{0x06}, nil, mempool.TxInfo{})
 	require.NoError(t, err)
-	assert.EqualValues(t, 1, mp.TxsBytes())
+	assert.EqualValues(t, 1, mp.SizeBytes())
 	mp.RemoveTxByKey(mempool.TxKey([]byte{0x07}), true)
-	assert.EqualValues(t, 1, mp.TxsBytes())
+	assert.EqualValues(t, 1, mp.SizeBytes())
 	mp.RemoveTxByKey(mempool.TxKey([]byte{0x06}), true)
-	assert.EqualValues(t, 0, mp.TxsBytes())
+	assert.EqualValues(t, 0, mp.SizeBytes())
 
 }
 

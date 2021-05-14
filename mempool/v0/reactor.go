@@ -178,7 +178,7 @@ func (r *Reactor) handleMempoolMessage(envelope p2p.Envelope) error {
 
 		txInfo := mempool.TxInfo{SenderID: r.ids.GetForPeer(envelope.From)}
 		if len(envelope.From) != 0 {
-			txInfo.SenderP2PID = envelope.From
+			txInfo.SenderNodeID = envelope.From
 		}
 
 		for _, tx := range protoTxs {

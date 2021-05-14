@@ -147,7 +147,7 @@ func (mem *CListMempool) Size() int {
 }
 
 // Safe for concurrent use by multiple goroutines.
-func (mem *CListMempool) TxsBytes() int64 {
+func (mem *CListMempool) SizeBytes() int64 {
 	return atomic.LoadInt64(&mem.txsBytes)
 }
 
@@ -230,7 +230,7 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo me
 		return err
 	}
 
-	if !mem.cache.Push(tx) {
+	if !mem.cache.Push(tx) { // if the transaction already exists in the cache
 		// Record a new sender for a tx we've already seen.
 		// Note it's possible a tx is still in the cache but no longer in the mempool
 		// (eg. after committing a block, txs are removed from mempool but not cache),
@@ -260,7 +260,7 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo me
 		mem.cache.Remove(tx)
 		return err
 	}
-	reqRes.SetCallback(mem.reqResCb(tx, txInfo.SenderID, txInfo.SenderP2PID, cb))
+	reqRes.SetCallback(mem.reqResCb(tx, txInfo.SenderID, txInfo.SenderNodeID, cb))
 
 	return nil
 }
@@ -355,7 +355,7 @@ func (mem *CListMempool) RemoveTxByKey(txKey [mempool.TxKeySize]byte, removeFrom
 func (mem *CListMempool) isFull(txSize int) error {
 	var (
 		memSize  = mem.Size()
-		txsBytes = mem.TxsBytes()
+		txsBytes = mem.SizeBytes()
 	)
 
 	if memSize >= mem.config.Size || int64(txSize)+txsBytes > mem.config.MaxTxsBytes {

@@ -4,15 +4,17 @@ import (
 	"context"
 	"sync/atomic"
 
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/types"
 )
 
-var _ mempool.Mempool = (*Mempool)(nil)
+var _ mempool.Mempool = (*TxMempool)(nil)
 
 // TxMempoolOption sets an optional parameter on the TxMempool.
 type TxMempoolOption func(*TxMempool)
@@ -36,6 +38,10 @@ type TxMempool struct {
 
 	// sizeBytes defines the total size of the mempool (sum of all tx bytes)
 	sizeBytes int64
+
+	// txsMap defines the main storage of valid transactions. Indexes are built
+	// on top of this map.
+	txsMap *TxMap
 
 	// cache defines a fixed-size cache of already seen transactions as this
 	// reduces pressure on the proxyApp.
@@ -159,4 +165,36 @@ func (txmp *TxMempool) WaitForNextTx() <-chan struct{} {
 // thread-safe.
 func (txmp *TxMempool) NextGossipTx() *WrappedTx {
 	return txmp.gossipIndex.Front().Value.(*WrappedTx)
+}
+
+// TxsAvailable returns a channel which fires once for every height, and only
+// when transactions are available in the mempool. It is thread-safe.
+func (txmp *TxMempool) TxsAvailable() <-chan struct{} {
+	return txmp.txsAvailable
+}
+
+func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo mempool.TxInfo) error {
+	panic("not implemented")
+}
+
+func (txmp *TxMempool) Flush() {
+	panic("not implemented")
+}
+
+func (txmp *TxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
+	panic("not implemented")
+}
+
+func (txmp *TxMempool) ReapMaxTxs(max int) types.Txs {
+	panic("not implemented")
+}
+
+func (txmp *TxMempool) Update(
+	blockHeight int64,
+	blockTxs types.Txs,
+	deliverTxResponses []*abci.ResponseDeliverTx,
+	newPreFn mempool.PreCheckFunc,
+	newPostFn mempool.PostCheckFunc,
+) error {
+	panic("not implemented")
 }
