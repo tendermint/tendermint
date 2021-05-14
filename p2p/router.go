@@ -469,11 +469,11 @@ func (r *Router) routeChannel(
 				return
 			}
 
-			r.logger.Error("peer error, evicting", "peer", peerError.NodeID, "err", peerError.Err)
+			r.logger.Error("peer error, evicting",
+				"peer", peerError.NodeID,
+				"err", peerError.Err)
 
-			if err := r.peerManager.Errored(peerError.NodeID, peerError.Err); err != nil {
-				r.logger.Error("failed to report peer error", "peer", peerError.NodeID, "err", err)
-			}
+			r.peerManager.Errored(peerError.NodeID, peerError.Err)
 
 		case <-r.stopCh:
 			return
@@ -573,38 +573,7 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 		return
 	}
 
-	if err := r.peerManager.Accepted(peerInfo.NodeID); err != nil {
-		r.logger.Error("failed to accept connection", "peer", peerInfo.NodeID, "err", err)
-		return
-	}
-
-	r.metrics.Peers.Add(1)
-	queue := r.queueFactory(queueBufferDefault)
-
-	r.peerMtx.Lock()
-	r.peerQueues[peerInfo.NodeID] = queue
-	r.peerMtx.Unlock()
-
-	defer func() {
-		r.peerMtx.Lock()
-		delete(r.peerQueues, peerInfo.NodeID)
-		r.peerMtx.Unlock()
-
-		queue.close()
-
-		if err := r.peerManager.Disconnected(peerInfo.NodeID); err != nil {
-			r.logger.Error("failed to disconnect peer", "peer", peerInfo.NodeID, "err", err)
-		} else {
-			r.metrics.Peers.Add(-1)
-		}
-	}()
-
-	if err := r.peerManager.Ready(peerInfo.NodeID); err != nil {
-		r.logger.Error("failed to mark peer as ready", "peer", peerInfo.NodeID, "err", err)
-		return
-	}
-
-	r.routePeer(peerInfo.NodeID, conn, queue)
+	r.routePeer(peerInfo.NodeID, conn, func() error { return r.peerManager.Accepted(peerInfo.NodeID) })
 }
 
 // dialPeers maintains outbound connections to peers by dialing them.
@@ -651,34 +620,7 @@ func (r *Router) dialPeers() {
 				return
 			}
 
-			if err = r.peerManager.Dialed(address); err != nil {
-				r.logger.Error("failed to dial peer", "peer", address, "err", err)
-				return
-			}
-
-			r.metrics.Peers.Add(1)
-
-			peerQueue := r.getOrMakeQueue(peerID)
-			defer func() {
-				r.peerMtx.Lock()
-				delete(r.peerQueues, peerID)
-				r.peerMtx.Unlock()
-
-				peerQueue.close()
-
-				if err := r.peerManager.Disconnected(peerID); err != nil {
-					r.logger.Error("failed to disconnect peer", "peer", address, "err", err)
-				} else {
-					r.metrics.Peers.Add(-1)
-				}
-			}()
-
-			if err := r.peerManager.Ready(peerID); err != nil {
-				r.logger.Error("failed to mark peer as ready", "peer", address, "err", err)
-				return
-			}
-
-			r.routePeer(peerID, conn, peerQueue)
+			r.routePeer(peerID, conn, func() error { return r.peerManager.Dialed(address) })
 		}()
 	}
 }
@@ -774,11 +716,37 @@ func (r *Router) handshakePeer(ctx context.Context, conn Connection, expectID No
 	return peerInfo, peerKey, nil
 }
 
+func (r *Router) runWithPeerLock(setup func() error) error {
+	r.peerMtx.Lock()
+	defer r.peerMtx.Lock()
+	return setup()
+}
+
 // routePeer routes inbound and outbound messages between a peer and the reactor
 // channels. It will close the given connection and send queue when done, or if
 // they are closed elsewhere it will cause this method to shut down and return.
-func (r *Router) routePeer(peerID NodeID, conn Connection, sendQueue queue) {
+func (r *Router) routePeer(peerID NodeID, conn Connection, mgrsetup func() error) {
+	if err := r.runWithPeerLock(mgrsetup); err != nil {
+		r.logger.Error("failed registering peer connection, not routing", "err", err)
+		return
+	}
+
 	r.logger.Info("peer connected", "peer", peerID, "endpoint", conn)
+
+	r.peerManager.Ready(peerID)
+	r.metrics.Peers.Add(1)
+
+	defer func() {
+		r.peerMtx.Lock()
+		delete(r.peerQueues, peerID)
+		r.peerMtx.Unlock()
+
+		r.peerManager.Disconnected(peerID)
+		r.metrics.Peers.Add(-1)
+	}()
+
+	sendQueue := r.getOrMakeQueue(peerID)
+	defer sendQueue.close()
 
 	errCh := make(chan error, 2)
 
@@ -792,10 +760,9 @@ func (r *Router) routePeer(peerID NodeID, conn Connection, sendQueue queue) {
 
 	e1 := <-errCh
 	err := e1
-	_ = conn.Close()
-	sendQueue.close()
-
 	e2 := <-errCh
+
+	_ = conn.Close()
 
 	if err == nil {
 		// The first err was nil, so we update it with the second err, which may
@@ -808,12 +775,14 @@ func (r *Router) routePeer(peerID NodeID, conn Connection, sendQueue queue) {
 		r.logger.Info("peer disconnected",
 			"peer", peerID,
 			"endpoint", conn,
-			"err", e1,
-			"err2", e2,
-		)
-
+			"err1", e1,
+			"err2", e2)
 	default:
-		r.logger.Error("peer failure", "peer", peerID, "endpoint", conn, "err", err)
+		r.logger.Error("peer failure",
+			"peer", peerID,
+			"endpoint", conn,
+			"err1", e1,
+			"err2", e2)
 	}
 }
 
