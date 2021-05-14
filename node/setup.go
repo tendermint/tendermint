@@ -116,6 +116,10 @@ loop:
 		}
 	}
 
+	if len(eventSinks) == 0 {
+		eventSinks = []indexer.EventSink{null.NewEventSink()}
+	}
+
 	indexerService := indexer.NewIndexerService(eventSinks, eventBus)
 	indexerService.SetLogger(logger.With("module", "txindex"))
 

@@ -559,6 +559,13 @@ func TestNodeSetEventSink(t *testing.T) {
 	assert.Nil(t, n)
 	assert.Equal(t, errors.New("unsupported event sink type"), err)
 
+	config.TxIndex.Indexer = []string{}
+	n, err = DefaultNewNode(config, log.TestingLogger())
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, len(n.eventSinks))
+	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
+
 	config.TxIndex.Indexer = []string{"psql"}
 	n, err = DefaultNewNode(config, log.TestingLogger())
 	assert.Nil(t, n)
