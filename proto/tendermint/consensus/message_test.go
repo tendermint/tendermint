@@ -13,19 +13,18 @@ import (
 )
 
 func TestHasVoteVector(t *testing.T) {
-	testcases := []struct{
-		hasVote tmcons.HasVote
+	testCases := []struct {
+		msg      tmcons.HasVote
 		expBytes string
-		Err bool
 	}{
-		{tmcons.HasVote{1,3,tmproto.PrevoteType,1},"3a080801100318012001", false},
-		{tmcons.HasVote{2,2,tmproto.PrecommitType,2},"3a080802100218022002", false},
-		{tmcons.HasVote{math.MaxInt64,math.MaxInt32,tmproto.ProposalType,math.MaxInt32},
-		"3a1808ffffffffffffffff7f10ffffffff07182020ffffffff07", false},
+		{tmcons.HasVote{1, 3, tmproto.PrevoteType, 1}, "3a080801100318012001"},
+		{tmcons.HasVote{2, 2, tmproto.PrecommitType, 2}, "3a080802100218022002"},
+		{tmcons.HasVote{math.MaxInt64, math.MaxInt32, tmproto.ProposalType, math.MaxInt32},
+			"3a1808ffffffffffffffff7f10ffffffff07182020ffffffff07"},
 	}
 
-	for i, tc :=range  testcases {
-		msg := tmcons.Message{&tmcons.Message_HasVote{HasVote: &tc.hasVote}}
+	for i, tc := range testCases {
+		msg := tmcons.Message{&tmcons.Message_HasVote{HasVote: &tc.msg}}
 		bz, err := proto.Marshal(&msg)
 		require.NoError(t, err)
 		require.Equal(t, tc.expBytes, hex.EncodeToString(bz), "test vector failed", i)
