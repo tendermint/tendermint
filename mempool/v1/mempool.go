@@ -4,11 +4,12 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 )
 
-// var _ mempool.Mempool = (*Mempool)(nil)
+var _ mempool.Mempool = (*Mempool)(nil)
 
 // TxMempoolOption sets an optional parameter on the TxMempool.
 type TxMempoolOption func(*TxMempool)
@@ -42,6 +43,14 @@ type TxMempool struct {
 
 	// priorityIndex defines the priority index of valid transactions
 	priorityIndex *TxPriorityQueue
+
+	// A read/write lock is used to safe guard updates, insertions and deletions
+	// from the mempool. A read-lock is implicitly acquired when executing CheckTx,
+	// however, a caller must explicitly grab a write-lock via Lock when updating
+	// the mempool via Update().
+	mtx       tmsync.RWMutex
+	preCheck  mempool.PreCheckFunc
+	postCheck mempool.PostCheckFunc
 }
 
 func NewTxMempool(
@@ -76,4 +85,42 @@ func NewTxMempool(
 	}
 
 	return mp
+}
+
+// EnableTxsAvailable enables the mempool to trigger events when transactions
+// are available on a block by block basis.
+//
+// NOTE: It is NOT thread-safe and should only be called once on startup.
+func (txmp *TxMempool) EnableTxsAvailable() {
+	txmp.txsAvailable = make(chan struct{}, 1)
+}
+
+// WithPreCheck sets a filter for the mempool to reject a transaction if f(tx)
+// returns an error. This is executed before CheckTx. It only applies to the
+// first created block. After that, Update() overwrites the existing value.
+func WithPreCheck(f mempool.PreCheckFunc) TxMempoolOption {
+	return func(txmp *TxMempool) { txmp.preCheck = f }
+}
+
+// WithPostCheck sets a filter for the mempool to reject a transaction if
+// f(tx, resp) returns an error. This is executed after CheckTx. It only applies
+// to the first created block. After that, Update overwrites the existing value.
+func WithPostCheck(f mempool.PostCheckFunc) TxMempoolOption {
+	return func(txmp *TxMempool) { txmp.postCheck = f }
+}
+
+// WithMetrics sets the mempool's metrics collector.
+func WithMetrics(metrics *mempool.Metrics) TxMempoolOption {
+	return func(txmp *TxMempool) { txmp.metrics = metrics }
+}
+
+// Lock obtains a write-lock on the mempool. A caller must be sure to explicitly
+// release the lock when finished.
+func (txmp *TxMempool) Lock() {
+	txmp.mtx.Lock()
+}
+
+// Unlock releases a write-lock on the mempool.
+func (txmp *TxMempool) Unlock() {
+	txmp.mtx.Unlock()
 }
