@@ -79,12 +79,16 @@ func (is *Service) OnStart() error {
 				if err := sink.IndexBlockEvents(eventDataHeader); err != nil {
 					is.Logger.Error("failed to index block", "height", height, "err", err)
 				} else {
-					is.Logger.Info("indexed block", "height", height)
+					is.Logger.Info("indexed block", "height", height, "sink", sink.Type())
 				}
 
-				err := sink.IndexTxEvents(batch.Ops)
-				if err != nil {
-					is.Logger.Error("failed to index block txs", "height", height, "err", err)
+				if len(batch.Ops) > 0 {
+					err := sink.IndexTxEvents(batch.Ops)
+					if err != nil {
+						is.Logger.Error("failed to index block txs", "height", height, "err", err)
+					} else {
+						is.Logger.Info("indexed txs", "height", height, "sink", sink.Type())
+					}
 				}
 			}
 		}
