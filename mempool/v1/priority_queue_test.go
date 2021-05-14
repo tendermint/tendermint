@@ -4,6 +4,7 @@ import (
 	"sort"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -21,7 +22,8 @@ func TestTxPriorityQueue(t *testing.T) {
 
 		go func(i int) {
 			pq.PushTx(&WrappedTx{
-				Priority: int64(i),
+				Priority:  int64(i),
+				Timestamp: time.Now(),
 			})
 
 			wg.Done()
@@ -33,14 +35,19 @@ func TestTxPriorityQueue(t *testing.T) {
 	wg.Wait()
 	require.Equal(t, numTxs, pq.NumTxs())
 
+	// Wait a second and push a tx with a duplicate priority
+	time.Sleep(time.Second)
+	now := time.Now()
 	pq.PushTx(&WrappedTx{
-		Priority: 1000,
+		Priority:  1000,
+		Timestamp: now,
 	})
 	require.Equal(t, 1001, pq.NumTxs())
 
 	tx := pq.PopTx()
 	require.Equal(t, 1000, pq.NumTxs())
 	require.Equal(t, int64(1000), tx.Priority)
+	require.NotEqual(t, now, tx.Timestamp)
 
 	gotPriorities := make([]int, 0)
 	for pq.NumTxs() > 0 {

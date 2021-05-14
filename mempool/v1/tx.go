@@ -1,6 +1,8 @@
 package v1
 
 import (
+	"time"
+
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -20,4 +22,9 @@ type WrappedTx struct {
 
 	// heapIndex defines the index of the item in the heap
 	heapIndex int
+
+	// Timestamp is the time at which the node first received the transaction from
+	// a peer. It is used as a second dimension is prioritizing transactions when
+	// two transactions have the same priority.
+	Timestamp time.Time
 }

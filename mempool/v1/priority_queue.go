@@ -84,15 +84,19 @@ func (pq *TxPriorityQueue) Len() int {
 	return len(pq.txs)
 }
 
-// Less returns true if the transaction at position i in the queue is of less
-// priority than the transaction at position j.
+// Less implements the Heap interface. It returns true if the transaction at
+// position i in the queue is of less priority than the transaction at position j.
 func (pq *TxPriorityQueue) Less(i, j int) bool {
+	if pq.txs[i].Priority == pq.txs[j].Priority {
+		return pq.txs[i].Timestamp.Unix() < pq.txs[j].Timestamp.Unix()
+	}
+
 	// We want Pop to give us the highest, not lowest, priority so we use greater
 	// than here.
 	return pq.txs[i].Priority > pq.txs[j].Priority
 }
 
-// Swap swaps two transactions in the queue.
+// Swap implements the Heap interface. It swaps two transactions in the queue.
 func (pq *TxPriorityQueue) Swap(i, j int) {
 	pq.txs[i], pq.txs[j] = pq.txs[j], pq.txs[i]
 	pq.txs[i].heapIndex = i
