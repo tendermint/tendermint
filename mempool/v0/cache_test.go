@@ -1,7 +1,6 @@
 package v0
 
 import (
-	"crypto/rand"
 	"crypto/sha256"
 	"testing"
 
@@ -13,29 +12,6 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
-
-func TestCacheRemove(t *testing.T) {
-	cache := newMapTxCache(100)
-	numTxs := 10
-	txs := make([][]byte, numTxs)
-	for i := 0; i < numTxs; i++ {
-		// probability of collision is 2**-256
-		txBytes := make([]byte, 32)
-		_, err := rand.Read(txBytes)
-		require.NoError(t, err)
-		txs[i] = txBytes
-		cache.Push(txBytes)
-		// make sure its added to both the linked list and the map
-		require.Equal(t, i+1, len(cache.cacheMap))
-		require.Equal(t, i+1, cache.list.Len())
-	}
-	for i := 0; i < numTxs; i++ {
-		cache.Remove(txs[i])
-		// make sure its removed from both the map and the linked list
-		require.Equal(t, numTxs-(i+1), len(cache.cacheMap))
-		require.Equal(t, numTxs-(i+1), cache.list.Len())
-	}
-}
 
 func TestCacheAfterUpdate(t *testing.T) {
 	app := kvstore.NewApplication()
@@ -77,8 +53,8 @@ func TestCacheAfterUpdate(t *testing.T) {
 			_ = mp.CheckTx(tx, nil, mempool.TxInfo{})
 		}
 
-		cache := mp.cache.(*mapTxCache)
-		node := cache.list.Front()
+		cache := mp.cache.(*mempool.LRUTxCache)
+		node := cache.GetList().Front()
 		counter := 0
 		for node != nil {
 			require.NotEqual(t, len(tc.txsInCache), counter,
