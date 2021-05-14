@@ -49,6 +49,6 @@ type EventSink interface {
 	// Type checks the eventsink structure type.
 	Type() EventSinkType
 
-	// Stop will close the data store connection if the eventsink support it.
+	// Stop will close the data store connection, if the eventsink supports it.
 	Stop() error
 }
