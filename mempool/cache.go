@@ -9,8 +9,14 @@ import (
 
 // TxCache defines an interface for raw transaction caching.
 type TxCache interface {
+	// Reset resets the cache to an empty state.
 	Reset()
+
+	// Push adds the given raw transaction to the cache and returns true if it was
+	// newly added. Otherwise, it returns false.
 	Push(tx types.Tx) bool
+
+	// Remove removes the given raw transaction from the cache.
 	Remove(tx types.Tx)
 }
 
@@ -39,7 +45,6 @@ func (c *LRUTxCache) GetList() *list.List {
 	return c.list
 }
 
-// Reset resets the cache to an empty state.
 func (c *LRUTxCache) Reset() {
 	c.mtx.Lock()
 	c.cacheMap = make(map[[TxKeySize]byte]*list.Element, c.size)
@@ -47,8 +52,6 @@ func (c *LRUTxCache) Reset() {
 	c.mtx.Unlock()
 }
 
-// Push adds the given raw transaction to the cache and returns true if it was
-// newly added. Otherwise, it returns false.
 func (c *LRUTxCache) Push(tx types.Tx) bool {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
@@ -70,21 +73,21 @@ func (c *LRUTxCache) Push(tx types.Tx) bool {
 
 	e := c.list.PushBack(key)
 	c.cacheMap[key] = e
+
 	return true
 }
 
-// Remove removes the given raw transaction from the cache.
 func (c *LRUTxCache) Remove(tx types.Tx) {
 	c.mtx.Lock()
+	defer c.mtx.Unlock()
 
 	key := TxKey(tx)
 	popped := c.cacheMap[key]
 	delete(c.cacheMap, key)
+
 	if popped != nil {
 		c.list.Remove(popped)
 	}
-
-	c.mtx.Unlock()
 }
 
 // NopTxCache defines a no-op raw transaction cache.

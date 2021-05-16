@@ -39,13 +39,13 @@ type TxMempool struct {
 	// sizeBytes defines the total size of the mempool (sum of all tx bytes)
 	sizeBytes int64
 
-	// txsMap defines the main storage of valid transactions. Indexes are built
-	// on top of this map.
-	txsMap *TxMap
-
 	// cache defines a fixed-size cache of already seen transactions as this
 	// reduces pressure on the proxyApp.
 	cache mempool.TxCache
+
+	// txStore defines the main storage of valid transactions. Indexes are built
+	// on top of this store.
+	txStore *TxMap
 
 	// gossipIndex defines the gossiping index of valid transactions
 	gossipIndex *clist.CList
@@ -76,6 +76,7 @@ func NewTxMempool(
 		proxyAppConn:  proxyAppConn,
 		height:        height,
 		metrics:       mempool.NopMetrics(),
+		txStore:       NewTxMap(),
 		gossipIndex:   clist.New(),
 		priorityIndex: NewTxPriorityQueue(),
 	}
@@ -94,14 +95,6 @@ func NewTxMempool(
 	}
 
 	return mp
-}
-
-// EnableTxsAvailable enables the mempool to trigger events when transactions
-// are available on a block by block basis.
-//
-// NOTE: It is NOT thread-safe and should only be called once on startup.
-func (txmp *TxMempool) EnableTxsAvailable() {
-	txmp.txsAvailable = make(chan struct{}, 1)
 }
 
 // WithPreCheck sets a filter for the mempool to reject a transaction if f(tx)
@@ -167,14 +160,80 @@ func (txmp *TxMempool) NextGossipTx() *WrappedTx {
 	return txmp.gossipIndex.Front().Value.(*WrappedTx)
 }
 
+// EnableTxsAvailable enables the mempool to trigger events when transactions
+// are available on a block by block basis.
+//
+// NOTE: It is NOT thread-safe and should only be called once on startup.
+func (txmp *TxMempool) EnableTxsAvailable() {
+	txmp.txsAvailable = make(chan struct{}, 1)
+}
+
 // TxsAvailable returns a channel which fires once for every height, and only
 // when transactions are available in the mempool. It is thread-safe.
 func (txmp *TxMempool) TxsAvailable() <-chan struct{} {
 	return txmp.txsAvailable
 }
 
+// CheckTx executes the ABCI CheckTx method for a given transaction. It acquires
+// a read-lock attempts to execute the application's CheckTx ABCI method via
+// CheckTxAsync. We return an error if any of the following happen:
+//
+// - The CheckTxAsync execution fails.
+// - The transaction already exists in the cache and we've already received the
+//   transaction from the peer. Otherwise, if it solely exists in the cache, we
+//   return nil.
+// - The transaction size exceeds the maximum transaction size as defined by the
+//   configuration provided to the mempool.
+// - The transaction fails Pre-Check (if it is defined).
+// - The proxyAppConn fails, e.g. the buffer is full.
+//
+// If the mempool is full, we still execute CheckTx and attempt to find a lower
+// priority transaction to evict. If such a transaction exists, we remove the
+// lower priority transaction and add the new one with higher priority.
+//
+// NOTE:
+// - The applications' CheckTx implementation may panic.
+// - The caller is not to explicitly require any locks for executing CheckTx.
 func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo mempool.TxInfo) error {
-	panic("not implemented")
+	txmp.mtx.RLock()
+	defer txmp.mtx.RUnlock()
+
+	txSize := len(tx)
+	if txSize > txmp.config.MaxTxBytes {
+		return mempool.ErrTxTooLarge{
+			Max:    txmp.config.MaxTxBytes,
+			Actual: txSize,
+		}
+	}
+
+	if txmp.preCheck != nil {
+		if err := txmp.preCheck(tx); err != nil {
+			return mempool.ErrPreCheck{
+				Reason: err,
+			}
+		}
+	}
+
+	if err := txmp.proxyAppConn.Error(); err != nil {
+		return err
+	}
+
+	// We add the transaction to the mempool's cache and if the transaction already
+	// exists, i.e. false is returned, then we check if we've seen this transaction
+	// from the same sender and error if we have. Otherwise, we return nil.
+	if !txmp.cache.Push(tx) {
+		wtx, ok := txmp.txStore.GetOrSetPeerByTxHash(mempool.TxKey(tx), txInfo.SenderID)
+		if wtx != nil && ok {
+			// We already have the transaction stored and the we've already seen this
+			// transaction from txInfo.SenderID.
+			return mempool.ErrTxInCache
+		}
+
+		txmp.logger.Debug("tx exists already in cache", "tx_hash", tx.Hash())
+		return nil
+	}
+
+	return nil
 }
 
 func (txmp *TxMempool) Flush() {

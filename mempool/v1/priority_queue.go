@@ -56,7 +56,7 @@ func (pq *TxPriorityQueue) PopTx() *WrappedTx {
 
 // Push implements the Heap interface.
 //
-// NOTE: A caller should never call this. Use PushTx instead.
+// NOTE: A caller should never call Push. Use PushTx instead.
 func (pq *TxPriorityQueue) Push(x interface{}) {
 	n := len(pq.txs)
 	item := x.(*WrappedTx)
@@ -66,7 +66,7 @@ func (pq *TxPriorityQueue) Push(x interface{}) {
 
 // Pop implements the Heap interface.
 //
-// NOTE: A caller should never call this. Use PopTx instead.
+// NOTE: A caller should never call Pop. Use PopTx instead.
 func (pq *TxPriorityQueue) Pop() interface{} {
 	old := pq.txs
 	n := len(old)
@@ -87,6 +87,8 @@ func (pq *TxPriorityQueue) Len() int {
 // Less implements the Heap interface. It returns true if the transaction at
 // position i in the queue is of less priority than the transaction at position j.
 func (pq *TxPriorityQueue) Less(i, j int) bool {
+	// If there exists two transactions with the same priority, consider the one
+	// that we saw the earliest as the higher priority transaction.
 	if pq.txs[i].Priority == pq.txs[j].Priority {
 		return pq.txs[i].Timestamp.Unix() < pq.txs[j].Timestamp.Unix()
 	}
