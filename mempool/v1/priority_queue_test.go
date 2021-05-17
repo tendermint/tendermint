@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"math/rand"
 	"sort"
 	"sync"
 	"testing"
@@ -55,4 +56,30 @@ func TestTxPriorityQueue(t *testing.T) {
 	}
 
 	require.Equal(t, priorities, gotPriorities)
+}
+
+func TestTxPriorityQueue_GetEvictableTx(t *testing.T) {
+	pq := NewTxPriorityQueue()
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	values := make([]int, 1000)
+
+	for i := 0; i < 1000; i++ {
+		x := rng.Intn(10000)
+		pq.PushTx(&WrappedTx{
+			Priority: int64(x),
+		})
+
+		values[i] = x
+	}
+
+	sort.Ints(values)
+
+	max := values[len(values)-1]
+	min := values[0]
+
+	require.NotNil(t, pq.GetEvictableTx(int64(max+1)))
+	require.NotNil(t, pq.GetEvictableTx(int64(min+1)))
+	require.Nil(t, pq.GetEvictableTx(int64(min-1)))
+	require.Nil(t, pq.GetEvictableTx(int64(min)))
 }

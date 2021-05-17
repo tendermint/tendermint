@@ -34,40 +34,47 @@ type WrappedTx struct {
 	peers map[uint16]struct{}
 }
 
-// TxMap implements a thread-safe mapping of valid transaction(s).
-type TxMap struct {
+func (wtx *WrappedTx) Size() int {
+	return len(wtx.Tx)
+}
+
+// TxStore implements a thread-safe mapping of valid transaction(s).
+type TxStore struct {
 	mtx       tmsync.RWMutex
 	senderTxs map[string]*WrappedTx // sender is defined by the ABCI application
 	hashTxs   map[[mempool.TxKeySize]byte]*WrappedTx
 }
 
-func NewTxMap() *TxMap {
-	return &TxMap{
+func NewTxStore() *TxStore {
+	return &TxStore{
 		senderTxs: make(map[string]*WrappedTx),
 		hashTxs:   make(map[[mempool.TxKeySize]byte]*WrappedTx),
 	}
 }
 
-func (txm *TxMap) GetTxBySender(sender string) *WrappedTx {
-	txm.mtx.RLock()
-	defer txm.mtx.RUnlock()
+func (txs *TxStore) GetTxBySender(sender string) *WrappedTx {
+	txs.mtx.RLock()
+	defer txs.mtx.RUnlock()
 
-	return txm.senderTxs[sender]
+	return txs.senderTxs[sender]
 }
 
-func (txm *TxMap) GetTxByHash(hash [mempool.TxKeySize]byte) *WrappedTx {
-	txm.mtx.RLock()
-	defer txm.mtx.RUnlock()
+func (txs *TxStore) GetTxByHash(hash [mempool.TxKeySize]byte) *WrappedTx {
+	txs.mtx.RLock()
+	defer txs.mtx.RUnlock()
 
-	return txm.hashTxs[hash]
+	return txs.hashTxs[hash]
 }
 
-func (txm *TxMap) SetTx(wtx *WrappedTx) {
-	txm.mtx.Lock()
-	defer txm.mtx.Unlock()
+func (txs *TxStore) SetTx(wtx *WrappedTx) {
+	txs.mtx.Lock()
+	defer txs.mtx.Unlock()
 
-	txm.senderTxs[wtx.Sender] = wtx
-	txm.hashTxs[mempool.TxKey(wtx.Tx)] = wtx
+	if len(wtx.Sender) > 0 {
+		txs.senderTxs[wtx.Sender] = wtx
+	}
+
+	txs.hashTxs[mempool.TxKey(wtx.Tx)] = wtx
 }
 
 // GetOrSetPeerByTxHash looks up a WrappedTx by transaction hash and adds the
@@ -75,11 +82,11 @@ func (txm *TxMap) SetTx(wtx *WrappedTx) {
 // We return true if we've already recorded the given peer for this transaction
 // and false otherwise. If the transaction does not exist by hash, we return
 // (nil, false).
-func (txm *TxMap) GetOrSetPeerByTxHash(hash [mempool.TxKeySize]byte, peerID uint16) (*WrappedTx, bool) {
-	txm.mtx.Lock()
-	defer txm.mtx.Unlock()
+func (txs *TxStore) GetOrSetPeerByTxHash(hash [mempool.TxKeySize]byte, peerID uint16) (*WrappedTx, bool) {
+	txs.mtx.Lock()
+	defer txs.mtx.Unlock()
 
-	wtx := txm.hashTxs[hash]
+	wtx := txs.hashTxs[hash]
 	if wtx == nil {
 		return nil, false
 	}

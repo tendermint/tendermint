@@ -2,6 +2,7 @@ package v1
 
 import (
 	"container/heap"
+	"sort"
 
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
@@ -22,6 +23,27 @@ func NewTxPriorityQueue() *TxPriorityQueue {
 	heap.Init(pq)
 
 	return pq
+}
+
+// GetEvictableTx attempts to find and return a *WrappedTx than can be evicted
+// to make room for another *WrappedTx with higher priority. If no such *WrappedTx
+// is found, nil will be returned.
+func (pq *TxPriorityQueue) GetEvictableTx(priority int64) *WrappedTx {
+	pq.mtx.RLock()
+	defer pq.mtx.RUnlock()
+
+	txs := make([]*WrappedTx, len(pq.txs))
+	copy(txs[:], pq.txs)
+
+	sort.Slice(txs, func(i, j int) bool {
+		return txs[i].Priority < txs[j].Priority
+	})
+
+	if len(txs) > 0 && txs[0].Priority < priority {
+		return txs[0]
+	}
+
+	return nil
 }
 
 // NumTxs returns the number of transactions in the priority queue. It is

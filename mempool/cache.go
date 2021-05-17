@@ -82,11 +82,11 @@ func (c *LRUTxCache) Remove(tx types.Tx) {
 	defer c.mtx.Unlock()
 
 	key := TxKey(tx)
-	popped := c.cacheMap[key]
+	e := c.cacheMap[key]
 	delete(c.cacheMap, key)
 
-	if popped != nil {
-		c.list.Remove(popped)
+	if e != nil {
+		c.list.Remove(e)
 	}
 }
 

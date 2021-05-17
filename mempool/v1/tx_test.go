@@ -8,8 +8,8 @@ import (
 	"github.com/tendermint/tendermint/mempool"
 )
 
-func TestTxMap_GetTxBySender(t *testing.T) {
-	txm := NewTxMap()
+func Testtxsap_GetTxBySender(t *testing.T) {
+	txs := NewTxStore()
 	wtx := &WrappedTx{
 		Tx:        []byte("test_tx"),
 		Sender:    "foo",
@@ -17,18 +17,18 @@ func TestTxMap_GetTxBySender(t *testing.T) {
 		Timestamp: time.Now(),
 	}
 
-	res := txm.GetTxBySender(wtx.Sender)
+	res := txs.GetTxBySender(wtx.Sender)
 	require.Nil(t, res)
 
-	txm.SetTx(wtx)
+	txs.SetTx(wtx)
 
-	res = txm.GetTxBySender(wtx.Sender)
+	res = txs.GetTxBySender(wtx.Sender)
 	require.NotNil(t, res)
 	require.Equal(t, wtx, res)
 }
 
-func TestTxMap_GetTxByHash(t *testing.T) {
-	txm := NewTxMap()
+func Testtxsap_GetTxByHash(t *testing.T) {
+	txs := NewTxStore()
 	wtx := &WrappedTx{
 		Tx:        []byte("test_tx"),
 		Sender:    "foo",
@@ -37,18 +37,18 @@ func TestTxMap_GetTxByHash(t *testing.T) {
 	}
 	key := mempool.TxKey(wtx.Tx)
 
-	res := txm.GetTxByHash(key)
+	res := txs.GetTxByHash(key)
 	require.Nil(t, res)
 
-	txm.SetTx(wtx)
+	txs.SetTx(wtx)
 
-	res = txm.GetTxByHash(key)
+	res = txs.GetTxByHash(key)
 	require.NotNil(t, res)
 	require.Equal(t, wtx, res)
 }
 
-func TestTxMap_SetTx(t *testing.T) {
-	txm := NewTxMap()
+func Testtxsap_SetTx(t *testing.T) {
+	txs := NewTxStore()
 	wtx := &WrappedTx{
 		Tx:        []byte("test_tx"),
 		Priority:  1,
@@ -56,22 +56,22 @@ func TestTxMap_SetTx(t *testing.T) {
 	}
 	key := mempool.TxKey(wtx.Tx)
 
-	txm.SetTx(wtx)
+	txs.SetTx(wtx)
 
-	res := txm.GetTxByHash(key)
+	res := txs.GetTxByHash(key)
 	require.NotNil(t, res)
 	require.Equal(t, wtx, res)
 
 	wtx.Sender = "foo"
-	txm.SetTx(wtx)
+	txs.SetTx(wtx)
 
-	res = txm.GetTxByHash(key)
+	res = txs.GetTxByHash(key)
 	require.NotNil(t, res)
 	require.Equal(t, wtx, res)
 }
 
-func TestTxMap_GetOrSetPeerByTxHash(t *testing.T) {
-	txm := NewTxMap()
+func Testtxsap_GetOrSetPeerByTxHash(t *testing.T) {
+	txs := NewTxStore()
 	wtx := &WrappedTx{
 		Tx:        []byte("test_tx"),
 		Priority:  1,
@@ -79,17 +79,17 @@ func TestTxMap_GetOrSetPeerByTxHash(t *testing.T) {
 	}
 	key := mempool.TxKey(wtx.Tx)
 
-	txm.SetTx(wtx)
+	txs.SetTx(wtx)
 
-	res, ok := txm.GetOrSetPeerByTxHash(mempool.TxKey([]byte("test_tx_2")), 15)
+	res, ok := txs.GetOrSetPeerByTxHash(mempool.TxKey([]byte("test_tx_2")), 15)
 	require.Nil(t, res)
 	require.False(t, ok)
 
-	res, ok = txm.GetOrSetPeerByTxHash(key, 15)
+	res, ok = txs.GetOrSetPeerByTxHash(key, 15)
 	require.NotNil(t, res)
 	require.False(t, ok)
 
-	res, ok = txm.GetOrSetPeerByTxHash(key, 15)
+	res, ok = txs.GetOrSetPeerByTxHash(key, 15)
 	require.NotNil(t, res)
 	require.True(t, ok)
 }

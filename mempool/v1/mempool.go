@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"sync/atomic"
+	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
@@ -45,12 +46,21 @@ type TxMempool struct {
 
 	// txStore defines the main storage of valid transactions. Indexes are built
 	// on top of this store.
-	txStore *TxMap
+	txStore *TxStore
 
-	// gossipIndex defines the gossiping index of valid transactions
+	// gossipIndex defines the gossiping index of valid transactions via a
+	// thread-safe linked-list. We also use the gossip index as a cursor for
+	// rechecking transactions already in the mempool.
 	gossipIndex *clist.CList
 
-	// priorityIndex defines the priority index of valid transactions
+	// recheckCursor and recheckEnd are used as cursors based on the gossip index
+	// to recheck transactions that are already in the mempool. Iteration is not
+	// thread-safe and transaction may be mutated in serial.
+	recheckCursor *clist.CElement // next expected response
+	recheckEnd    *clist.CElement // re-checking stops here
+
+	// priorityIndex defines the priority index of valid transactions via a
+	// thread-safe priority queue.
 	priorityIndex *TxPriorityQueue
 
 	// A read/write lock is used to safe guard updates, insertions and deletions
@@ -75,16 +85,15 @@ func NewTxMempool(
 		config:        cfg,
 		proxyAppConn:  proxyAppConn,
 		height:        height,
+		cache:         mempool.NopTxCache{},
 		metrics:       mempool.NopMetrics(),
-		txStore:       NewTxMap(),
+		txStore:       NewTxStore(),
 		gossipIndex:   clist.New(),
 		priorityIndex: NewTxPriorityQueue(),
 	}
 
 	if cfg.CacheSize > 0 {
 		mp.cache = mempool.NewLRUTxCache(cfg.CacheSize)
-	} else {
-		mp.cache = mempool.NopTxCache{}
 	}
 
 	// TODO:
@@ -244,8 +253,21 @@ func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo memp
 		return err
 	}
 
-	// TODO: Set callback and attempt eviction if mempool is full
-	// reqRes.SetCallback(mem.reqResCb(tx, txInfo.SenderID, txInfo.SenderNodeID, cb))
+	reqRes.SetCallback(func(res *abci.Response) {
+		if txmp.recheckCursor != nil {
+			panic("recheck cursor is non-nil in CheckTx callback")
+		}
+
+		wtx := &WrappedTx{
+			Tx:        tx,
+			Timestamp: time.Now(),
+		}
+		txmp.initTxCallback(wtx, res, txInfo)
+
+		if cb != nil {
+			cb(res)
+		}
+	})
 
 	return nil
 }
@@ -270,4 +292,78 @@ func (txmp *TxMempool) Update(
 	newPostFn mempool.PostCheckFunc,
 ) error {
 	panic("not implemented")
+}
+
+func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo mempool.TxInfo) {
+	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
+	if ok {
+		var err error
+		if txmp.postCheck != nil {
+			err = txmp.postCheck(wtx.Tx, checkTxRes.CheckTx)
+		}
+
+		if checkTxRes.CheckTx.Code == abci.CodeTypeOK && err == nil {
+			if err := txmp.canAddTx(wtx); err != nil {
+				toEvict := txmp.priorityIndex.GetEvictableTx(checkTxRes.CheckTx.Priority)
+				if toEvict == nil {
+					// no remove for the incoming transaction
+					txmp.cache.Remove(wtx.Tx)
+					txmp.logger.Error("rejected good transaction; mempool full", "err", err.Error())
+					return
+				} else {
+					// we have the ability to evict an existing transaction
+					// TODO: ...
+				}
+			}
+
+			wtx.Priority = checkTxRes.CheckTx.Priority
+			wtx.Sender = checkTxRes.CheckTx.Sender
+
+			// txmp.insertTx(wtx)
+			txmp.logger.Debug(
+				"added good transaction",
+				"tx", mempool.TxHashFromBytes(wtx.Tx),
+				"checktx_response", checkTxRes,
+				"height", txmp.height,
+				"num_txs", txmp.Size(),
+			)
+			// txmp.notifyTxsAvailable()
+
+		} else {
+			// ignore bad transactions
+			txmp.logger.Debug(
+				"rejected bad transaction",
+				"tx", mempool.TxHashFromBytes(wtx.Tx),
+				"peer_id", txInfo.SenderNodeID,
+				"res", checkTxRes,
+				"post_check_err", err,
+			)
+
+			txmp.metrics.FailedTxs.Add(1)
+
+			if !txmp.config.KeepInvalidTxsInCache {
+				txmp.cache.Remove(wtx.Tx)
+			}
+		}
+	}
+
+	txmp.metrics.Size.Set(float64(txmp.Size()))
+}
+
+func (txmp *TxMempool) canAddTx(wtx *WrappedTx) error {
+	var (
+		numTxs    = txmp.Size()
+		sizeBytes = txmp.SizeBytes()
+	)
+
+	if numTxs >= txmp.config.Size || int64(wtx.Size())+sizeBytes > txmp.config.MaxTxsBytes {
+		return mempool.ErrMempoolIsFull{
+			NumTxs:      numTxs,
+			MaxTxs:      txmp.config.Size,
+			TxsBytes:    sizeBytes,
+			MaxTxsBytes: txmp.config.MaxTxsBytes,
+		}
+	}
+
+	return nil
 }
