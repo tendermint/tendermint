@@ -319,15 +319,8 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			wtx.Priority = checkTxRes.CheckTx.Priority
 			wtx.Sender = checkTxRes.CheckTx.Sender
 
-			// txmp.insertTx(wtx)
-			txmp.logger.Debug(
-				"added good transaction",
-				"tx", mempool.TxHashFromBytes(wtx.Tx),
-				"checktx_response", checkTxRes,
-				"height", txmp.height,
-				"num_txs", txmp.Size(),
-			)
-			// txmp.notifyTxsAvailable()
+			txmp.insertTx(wtx)
+			txmp.notifyTxsAvailable()
 
 		} else {
 			// ignore bad transactions
@@ -366,4 +359,37 @@ func (txmp *TxMempool) canAddTx(wtx *WrappedTx) error {
 	}
 
 	return nil
+}
+
+func (txmp *TxMempool) insertTx(wtx *WrappedTx) {
+	// insert the transaction into the main store and set indices
+	txmp.txStore.SetTx(wtx)
+	txmp.gossipIndex.PushBack(wtx)
+	txmp.priorityIndex.PushTx(wtx)
+
+	atomic.AddInt64(&txmp.sizeBytes, int64(wtx.Size()))
+	txmp.metrics.TxSizeBytes.Observe(float64(wtx.Size()))
+
+	txmp.logger.Debug(
+		"added good transaction",
+		"tx", mempool.TxHashFromBytes(wtx.Tx),
+		"height", txmp.height,
+		"num_txs", txmp.Size(),
+	)
+}
+
+func (txmp *TxMempool) notifyTxsAvailable() {
+	if txmp.Size() == 0 {
+		panic("attempt to notify txs available but mempool is empty!")
+	}
+
+	if txmp.txsAvailable != nil && !txmp.notifiedTxsAvailable {
+		// channel cap is 1, so this will send once
+		txmp.notifiedTxsAvailable = true
+
+		select {
+		case txmp.txsAvailable <- struct{}{}:
+		default:
+		}
+	}
 }
