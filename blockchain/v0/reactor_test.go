@@ -211,7 +211,7 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 		Status: p2p.PeerStatusDown,
 		NodeID: rts.nodes[0],
 	}
-	require.NoError(t, rts.network.Nodes[rts.nodes[1]].PeerManager.Disconnected(rts.nodes[0]))
+	rts.network.Nodes[rts.nodes[1]].PeerManager.Disconnected(rts.nodes[0])
 }
 
 func TestReactor_NoBlockResponse(t *testing.T) {
