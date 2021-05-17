@@ -107,6 +107,11 @@ func AddNodeFlags(cmd *cobra.Command) {
 		config.Mempool.SortTxByGp,
 		"Sort tx by gas price in mempool",
 	)
+	cmd.Flags().Uint64(
+		"mempool.tx_price_bump",
+		config.Mempool.TxPriceBump,
+		"Minimum price bump percentage to replace an already existing transaction with same nonce",
+	)
 
 	// db flags
 	cmd.Flags().String(

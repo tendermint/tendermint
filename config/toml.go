@@ -322,6 +322,9 @@ max_tx_num_per_block = {{ .Mempool.MaxTxNumPerBlock }}
 # Enable sort txs in mempool by gas price.
 sort_tx_by_gp = {{ .Mempool.SortTxByGp }}
 
+# Minimum price bump percentage to replace an already existing transaction (nonce)
+tx_price_bump = {{ .Mempool.TxPriceBump }}
+
 ##### fast sync configuration options #####
 [fastsync]
 

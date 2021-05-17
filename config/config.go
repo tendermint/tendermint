@@ -669,6 +669,7 @@ type MempoolConfig struct {
 	MaxTxNumPerBlock int64  `mapstructure:"max_tx_num_per_block"`
 	SortTxByGp       bool   `mapstructure:"sort_tx_by_gp"`
 	ForceRecheckGap  int64  `mapstructure:"force_recheck_gap"`
+	TxPriceBump      uint64 `mapstructure:"tx_price_bump"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
@@ -686,6 +687,7 @@ func DefaultMempoolConfig() *MempoolConfig {
 		MaxTxNumPerBlock: 150,
 		SortTxByGp:       false,
 		ForceRecheckGap:  200,
+		TxPriceBump:      10,
 	}
 }
 

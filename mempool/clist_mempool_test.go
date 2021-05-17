@@ -880,3 +880,21 @@ func checkTx(head *clist.CElement) bool {
 
 	return true
 }
+
+func TestMultiPriceBump(t *testing.T) {
+	tests := []struct {
+		rawPrice    *big.Int
+		priceBump   uint64
+		targetPrice *big.Int
+	}{
+		{big.NewInt(1), 0, big.NewInt(1)},
+		{big.NewInt(10), 1, big.NewInt(10)},
+		{big.NewInt(100), 0, big.NewInt(100)},
+		{big.NewInt(100), 5, big.NewInt(105)},
+		{big.NewInt(100), 50, big.NewInt(150)},
+		{big.NewInt(100), 150, big.NewInt(250)},
+	}
+	for _, tt := range tests {
+		require.True(t, tt.targetPrice.Cmp(MultiPriceBump(tt.rawPrice, int64(tt.priceBump))) == 0)
+	}
+}

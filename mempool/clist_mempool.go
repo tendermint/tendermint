@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"math/big"
 	"sort"
 	"sync"
@@ -378,13 +379,14 @@ func (mem *CListMempool) reqResCb(
 
 // Called from:
 //  - resCbFirstTime (lock not held) if tx is valid
-func (mem *CListMempool) addAndSortTx(memTx *mempoolTx, info ExTxInfo) bool {
+func (mem *CListMempool) addAndSortTx(memTx *mempoolTx, info ExTxInfo) error {
 	mem.addrMapMtx.Lock()
 	defer mem.addrMapMtx.Unlock()
 
 	// Delete the same Nonce transaction from the same account
 	if res := mem.checkRepeatedElement(info); res == -1 {
-		return false
+		return errors.New(fmt.Sprintf("Failed to replace tx for acccount %s with nonce %d, "+
+			"the provided gas price %d is not bigger enough", info.Sender, info.Nonce, info.GasPrice))
 	}
 
 	ele := mem.bcTxsList.PushBack(memTx)
@@ -405,12 +407,12 @@ func (mem *CListMempool) addAndSortTx(memTx *mempoolTx, info ExTxInfo) bool {
 		Tx:     memTx.tx,
 	}})
 
-	return true
+	return nil
 }
 
 // Called from:
 //  - resCbFirstTime (lock not held) if tx is valid
-func (mem *CListMempool) addTx(memTx *mempoolTx, info ExTxInfo) bool {
+func (mem *CListMempool) addTx(memTx *mempoolTx, info ExTxInfo) error {
 	e := mem.txs.PushBack(memTx)
 	e.Address = info.Sender
 
@@ -429,7 +431,7 @@ func (mem *CListMempool) addTx(memTx *mempoolTx, info ExTxInfo) bool {
 		Tx:     memTx.tx,
 	}})
 
-	return true
+	return nil
 }
 
 // Called from:
@@ -521,14 +523,14 @@ func (mem *CListMempool) resCbFirstTime(
 				return
 			}
 
-			addGoodTx := true
+			var err error
 			if mem.config.SortTxByGp {
-				addGoodTx = mem.addAndSortTx(memTx, exTxInfo)
+				err = mem.addAndSortTx(memTx, exTxInfo)
 			} else {
-				addGoodTx = mem.addTx(memTx, exTxInfo)
+				err = mem.addTx(memTx, exTxInfo)
 			}
 
-			if addGoodTx {
+			if err == nil {
 				mem.logger.Info("Added good transaction",
 					"tx", txID(tx),
 					"res", r,
@@ -545,7 +547,7 @@ func (mem *CListMempool) resCbFirstTime(
 				mem.cache.Remove(tx)
 
 				r.CheckTx.Code = 1
-				r.CheckTx.Log = "Fail to add transaction into mempool, rejected it"
+				r.CheckTx.Log = err.Error()
 			}
 		} else {
 			// ignore bad transaction
@@ -870,7 +872,9 @@ func (mem *CListMempool) checkRepeatedElement(info ExTxInfo) int {
 		for _, node := range userMap {
 			if node.Nonce == info.Nonce {
 				// only replace tx for bigger gas price
-				if info.GasPrice.Cmp(node.GasPrice) <= 0 {
+				expectedGasPrice := MultiPriceBump(node.GasPrice, int64(mem.config.TxPriceBump))
+				if info.GasPrice.Cmp(expectedGasPrice) < 0 {
+					mem.logger.Debug("Failed to replace tx", "rawGasPrice", node.GasPrice, "newGasPrice", info.GasPrice, "expectedGasPrice", expectedGasPrice)
 					return -1
 				}
 
@@ -905,6 +909,13 @@ func (mem *CListMempool) deleteAddrRecord(e *clist.CElement) {
 
 func (mem *CListMempool) GetConfig() *cfg.MempoolConfig {
 	return mem.config
+}
+
+func MultiPriceBump(rawPrice *big.Int, priceBump int64) *big.Int {
+	tmpPrice := new(big.Int).Div(rawPrice, big.NewInt(100))
+	inc := new(big.Int).Mul(tmpPrice, big.NewInt(priceBump))
+
+	return new(big.Int).Add(inc, rawPrice)
 }
 
 //--------------------------------------------------------------------------------
