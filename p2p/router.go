@@ -472,9 +472,7 @@ func (r *Router) routeChannel(
 
 			r.logger.Error("peer error, evicting", "peer", peerError.NodeID, "err", peerError.Err)
 
-			if err := r.peerManager.Errored(peerError.NodeID, peerError.Err); err != nil {
-				r.logger.Error("failed to report peer error", "peer", peerError.NodeID, "err", err)
-			}
+			r.peerManager.Errored(peerError.NodeID, peerError.Err)
 
 		case <-r.stopCh:
 			return
@@ -579,31 +577,7 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 		return
 	}
 
-	r.metrics.Peers.Add(1)
-	queue := r.queueFactory(queueBufferDefault)
-
-	r.peerMtx.Lock()
-	r.peerQueues[peerInfo.NodeID] = queue
-	r.peerMtx.Unlock()
-
-	defer func() {
-		r.peerMtx.Lock()
-		delete(r.peerQueues, peerInfo.NodeID)
-		r.peerMtx.Unlock()
-
-		queue.close()
-
-		if err := r.peerManager.Disconnected(peerInfo.NodeID); err != nil {
-			r.logger.Error("failed to disconnect peer", "peer", peerInfo.NodeID, "err", err)
-		} else {
-			r.metrics.Peers.Add(-1)
-		}
-	}()
-
-	if err := r.peerManager.Ready(peerInfo.NodeID); err != nil {
-		r.logger.Error("failed to mark peer as ready", "peer", peerInfo.NodeID, "err", err)
-		return
-	}
+	queue := r.getOrMakeQueue(peerInfo.NodeID)
 
 	r.routePeer(peerInfo.NodeID, conn, queue)
 }
@@ -657,27 +631,7 @@ func (r *Router) dialPeers() {
 				return
 			}
 
-			r.metrics.Peers.Add(1)
-
 			peerQueue := r.getOrMakeQueue(peerID)
-			defer func() {
-				r.peerMtx.Lock()
-				delete(r.peerQueues, peerID)
-				r.peerMtx.Unlock()
-
-				peerQueue.close()
-
-				if err := r.peerManager.Disconnected(peerID); err != nil {
-					r.logger.Error("failed to disconnect peer", "peer", address, "err", err)
-				} else {
-					r.metrics.Peers.Add(-1)
-				}
-			}()
-
-			if err := r.peerManager.Ready(peerID); err != nil {
-				r.logger.Error("failed to mark peer as ready", "peer", address, "err", err)
-				return
-			}
 
 			r.routePeer(peerID, conn, peerQueue)
 		}()
@@ -779,6 +733,20 @@ func (r *Router) handshakePeer(ctx context.Context, conn Connection, expectID No
 // channels. It will close the given connection and send queue when done, or if
 // they are closed elsewhere it will cause this method to shut down and return.
 func (r *Router) routePeer(peerID NodeID, conn Connection, sendQueue queue) {
+	r.metrics.Peers.Add(1)
+	r.peerManager.Ready(peerID)
+
+	defer func() {
+		r.peerMtx.Lock()
+		delete(r.peerQueues, peerID)
+		r.peerMtx.Unlock()
+
+		sendQueue.close()
+
+		r.peerManager.Disconnected(peerID)
+		r.metrics.Peers.Add(-1)
+	}()
+
 	r.logger.Info("peer connected", "peer", peerID, "endpoint", conn)
 
 	errCh := make(chan error, 2)
