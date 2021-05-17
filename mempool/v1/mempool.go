@@ -233,6 +233,20 @@ func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo memp
 		return nil
 	}
 
+	ctx := txInfo.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	reqRes, err := txmp.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{Tx: tx})
+	if err != nil {
+		txmp.cache.Remove(tx)
+		return err
+	}
+
+	// TODO: Set callback and attempt eviction if mempool is full
+	// reqRes.SetCallback(mem.reqResCb(tx, txInfo.SenderID, txInfo.SenderNodeID, cb))
+
 	return nil
 }
 
