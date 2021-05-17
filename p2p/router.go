@@ -572,14 +572,13 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 		return
 	}
 
-	if err := r.peerManager.Accepted(peerInfo.NodeID); err != nil {
-		r.logger.Error("failed to accept connection", "peer", peerInfo.NodeID, "err", err)
+	if err := r.runWithPeerMutex(func() error { return r.peerManager.Accepted(peerInfo.NodeID) }); err != nil {
+		r.logger.Error("failed to accept connection",
+			"op", "incoming/accpeted", "peer", peerInfo.NodeID, "err", err)
 		return
 	}
 
-	queue := r.getOrMakeQueue(peerInfo.NodeID)
-
-	r.routePeer(peerInfo.NodeID, conn, queue)
+	r.routePeer(peerInfo.NodeID, conn)
 }
 
 // dialPeers maintains outbound connections to peers by dialing them.
@@ -626,14 +625,13 @@ func (r *Router) dialPeers() {
 				return
 			}
 
-			if err = r.peerManager.Dialed(address); err != nil {
-				r.logger.Error("failed to dial peer", "peer", address, "err", err)
+			if err := r.runWithPeerMutex(func() error { return r.peerManager.Dialed(address) }); err != nil {
+				r.logger.Error("failed to accept connection",
+					"op", "outgoing/dialing", "peer", address.NodeID, "err", err)
 				return
 			}
 
-			peerQueue := r.getOrMakeQueue(peerID)
-
-			r.routePeer(peerID, conn, peerQueue)
+			r.routePeer(peerID, conn)
 		}()
 	}
 }
@@ -729,13 +727,20 @@ func (r *Router) handshakePeer(ctx context.Context, conn Connection, expectID No
 	return peerInfo, peerKey, nil
 }
 
+func (r *Router) runWithPeerMutex(fn func() error) error {
+	r.peerMtx.Lock()
+	defer r.peerMtx.Unlock()
+	return fn()
+}
+
 // routePeer routes inbound and outbound messages between a peer and the reactor
 // channels. It will close the given connection and send queue when done, or if
 // they are closed elsewhere it will cause this method to shut down and return.
-func (r *Router) routePeer(peerID NodeID, conn Connection, sendQueue queue) {
+func (r *Router) routePeer(peerID NodeID, conn Connection) {
 	r.metrics.Peers.Add(1)
 	r.peerManager.Ready(peerID)
 
+	sendQueue := r.getOrMakeQueue(peerID)
 	defer func() {
 		r.peerMtx.Lock()
 		delete(r.peerQueues, peerID)
