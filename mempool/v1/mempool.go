@@ -294,6 +294,7 @@ func (txmp *TxMempool) Update(
 	panic("not implemented")
 }
 
+// TODO: ... initTxCallback
 func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo mempool.TxInfo) {
 	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
 	if ok {
@@ -306,13 +307,20 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			if err := txmp.canAddTx(wtx); err != nil {
 				toEvict := txmp.priorityIndex.GetEvictableTx(checkTxRes.CheckTx.Priority)
 				if toEvict == nil {
-					// no remove for the incoming transaction
+					// No room for the new incoming transaction so we just remove it from
+					// the cache.
 					txmp.cache.Remove(wtx.Tx)
 					txmp.logger.Error("rejected good transaction; mempool full", "err", err.Error())
+					txmp.metrics.RejectedTxs.Add(1)
 					return
 				} else {
 					// we have the ability to evict an existing transaction
-					// TODO: ...
+					txmp.removeTx(toEvict, true)
+					txmp.logger.Debug(
+						"evicted good transaction; mempool full",
+						"tx", mempool.TxHashFromBytes(toEvict.Tx),
+					)
+					txmp.metrics.EvictedTxs.Add(1)
 				}
 			}
 
@@ -328,7 +336,6 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 				"rejected bad transaction",
 				"tx", mempool.TxHashFromBytes(wtx.Tx),
 				"peer_id", txInfo.SenderNodeID,
-				"res", checkTxRes,
 				"post_check_err", err,
 			)
 
@@ -371,11 +378,23 @@ func (txmp *TxMempool) insertTx(wtx *WrappedTx) {
 	txmp.metrics.TxSizeBytes.Observe(float64(wtx.Size()))
 
 	txmp.logger.Debug(
-		"added good transaction",
+		"inserted good transaction",
 		"tx", mempool.TxHashFromBytes(wtx.Tx),
 		"height", txmp.height,
 		"num_txs", txmp.Size(),
 	)
+}
+
+func (txmp *TxMempool) removeTx(wtx *WrappedTx, removeFromCache bool) {
+	txmp.txStore.RemoveTx(wtx)
+	txmp.gossipIndex.Remove(wtx.gossipEl)
+	txmp.priorityIndex.RemoveTx()
+
+	atomic.AddInt64(&txmp.sizeBytes, int64(-wtx.Size()))
+
+	if removeFromCache {
+		txmp.cache.Remove(wtx.Tx)
+	}
 }
 
 func (txmp *TxMempool) notifyTxsAvailable() {
