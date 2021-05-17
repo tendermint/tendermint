@@ -668,6 +668,7 @@ func (r *reactorTestSuite) requireNumberOfPeers(
 	nodeIndex, numPeers int,
 	waitPeriod time.Duration,
 ) {
+	t.Helper()
 	require.Eventuallyf(t, func() bool {
 		actualNumPeers := len(r.network.Nodes[r.nodes[nodeIndex]].PeerManager.Peers())
 		return actualNumPeers >= numPeers

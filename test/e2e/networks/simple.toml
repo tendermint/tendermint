@@ -1,5 +1,11 @@
+disable_legacy_p2p = true
+
 [node.validator01]
+    disable_legacy_p2p = true
 [node.validator02]
+    disable_legacy_p2p = true
 [node.validator03]
+    disable_legacy_p2p = true
 [node.validator04]
+    disable_legacy_p2p = true
 
