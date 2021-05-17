@@ -166,6 +166,8 @@ func (dve *DuplicateVoteEvidence) ValidateABCI(
 	return nil
 }
 
+// GenerateABCI populates the ABCI component of the evidence. This includes the
+// validator power, timestamp and total voting power.
 func (dve *DuplicateVoteEvidence) GenerateABCI(
 	val *Validator,
 	valSet *ValidatorSet,
@@ -403,7 +405,10 @@ func (l *LightClientAttackEvidence) ValidateBasic() error {
 	return nil
 }
 
-// ValidateABCI
+// ValidateABCI validates the ABCI component of the evidence by checking the
+// timestamp, byzantine validators and total voting power all match. ABCI
+// components are validated separately because they can be re generated if 
+// invalid.
 func (l *LightClientAttackEvidence) ValidateABCI(
 	commonVals *ValidatorSet,
 	trustedHeader *SignedHeader,
@@ -458,6 +463,8 @@ func (l *LightClientAttackEvidence) ValidateABCI(
 	return nil
 }
 
+// GenerateABCI populates the ABCI component of the evidence: the timestamp, 
+// total voting power and byantine validators 
 func (l *LightClientAttackEvidence) GenerateABCI(
 	commonVals *ValidatorSet,
 	trustedHeader *SignedHeader,
