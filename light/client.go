@@ -721,6 +721,8 @@ func (c *Client) verifySkipping(
 			"newHeight", blockCache[depth].Height,
 			"newHash", blockCache[depth].Hash())
 
+		// Verify the untrusted header. This function is equivalent to
+		// ValidAndVerified in the spec
 		err := Verify(verifiedBlock.SignedHeader, verifiedBlock.ValidatorSet, blockCache[depth].SignedHeader,
 			blockCache[depth].ValidatorSet, c.trustingPeriod, now, c.maxClockDrift, c.trustLevel)
 		switch err.(type) {
