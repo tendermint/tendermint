@@ -34,7 +34,7 @@ const (
 	// isn't optimal to take the halfway point. Take this simple example. Say
 	// you failed to verify 64 but were able to verify block 32. Following this
 	// you would start over again and try verify to block 128. If this failed
-	// then the halfway point betwen 32 and 128 is 80. But you already have
+	// then the halfway point between 32 and 128 is 80. But you already have
 	// block 64. Instead of requesting and waiting for another block it is far
 	// better to try again with block 64. This is of course not directly in the
 	// middle. In fact, no matter how the algrorithm plays out, the blocks in
@@ -705,7 +705,7 @@ func (c *Client) verifySkipping(
 
 	var (
 		// The block cache is ordered in height from highest to lowest. We start
-		// with the newLightBlock and for any height requested inbetween we add
+		// with the newLightBlock and for any height requested in between we add
 		// it.
 		blockCache = []*types.LightBlock{newLightBlock}
 		depth      = 0
