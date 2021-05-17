@@ -35,27 +35,27 @@ var (
 
 func TestType(t *testing.T) {
 	pool, err := setupDB(t)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	psqlSink := &EventSink{store: db}
 	assert.Equal(t, indexer.PSQL, psqlSink.Type())
-	assert.Nil(t, teardown(t, pool))
+	assert.NoError(t, teardown(t, pool))
 }
 
 func TestBlockFuncs(t *testing.T) {
 	pool, err := setupDB(t)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	indexer := &EventSink{store: db}
 	assert.NoError(t, indexer.IndexBlockEvents(getTestBlockHeader()))
 
 	r, err := verifyBlock(1)
 	assert.True(t, r)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	r, err = verifyBlock(2)
 	assert.False(t, r)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	r, err = indexer.HasBlock(1)
 	assert.False(t, r)
@@ -71,7 +71,7 @@ func TestBlockFuncs(t *testing.T) {
 
 	assert.NoError(t, verifyTimeStamp(TableEventBlock))
 
-	assert.Nil(t, teardown(t, pool))
+	assert.NoError(t, teardown(t, pool))
 }
 
 func TestTxFuncs(t *testing.T) {
@@ -108,13 +108,13 @@ func TestTxFuncs(t *testing.T) {
 
 func TestStop(t *testing.T) {
 	pool, err := setupDB(t)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	indexer := &EventSink{store: db}
-	assert.Nil(t, indexer.Stop())
+	assert.NoError(t, indexer.Stop())
 
 	defer db.Close()
-	assert.Nil(t, pool.Purge(resource))
+	assert.NoError(t, pool.Purge(resource))
 }
 
 func getTestBlockHeader() types.EventDataNewBlockHeader {
@@ -169,11 +169,11 @@ func resetDB(t *testing.T) {
 	q := "DROP TABLE IF EXISTS block_events,tx_events,tx_results"
 	_, err := db.Exec(q)
 
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	q = "DROP TYPE IF EXISTS block_event_type"
 	_, err = db.Exec(q)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 func txResultWithEvents(events []abci.Event) *abci.TxResult {
@@ -270,6 +270,38 @@ func verifyBlock(h int64) (bool, error) {
 
 	defer rows.Close()
 
+	if !rows.Next() {
+		return false, nil
+	}
+
+	sqlStmt = sq.
+		Select("type, height").
+		Distinct().
+		From(TableEventBlock).
+		Where(fmt.Sprintf("height = %d AND type = '%s'", h, types.EventTypeBeginBlock))
+
+	fmt.Println(sqlStmt.ToSql())
+
+	rows, err = sqlStmt.RunWith(db).Query()
+	if err != nil {
+		return false, err
+	}
+
+	if !rows.Next() {
+		return false, nil
+	}
+
+	sqlStmt = sq.
+		Select("type, height").
+		Distinct().
+		From(TableEventBlock).
+		Where(fmt.Sprintf("height = %d AND type = '%s'", h, types.EventTypeEndBlock))
+	rows, err = sqlStmt.RunWith(db).Query()
+
+	if err != nil {
+		return false, err
+	}
+
 	return rows.Next(), nil
 }
 
@@ -277,7 +309,7 @@ func setupDB(t *testing.T) (*dockertest.Pool, error) {
 	t.Helper()
 	pool, err := dockertest.NewPool(os.Getenv("DOCKER_URL"))
 
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	resource, err = pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: DriverName,
@@ -297,7 +329,7 @@ func setupDB(t *testing.T) (*dockertest.Pool, error) {
 		}
 	})
 
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// Set the container to expire in a minute to avoid orphaned containers
 	// hanging around
@@ -316,7 +348,7 @@ func setupDB(t *testing.T) (*dockertest.Pool, error) {
 
 		return db.Ping()
 	}); err != nil {
-		assert.Error(t, err)
+		assert.NoError(t, err)
 	}
 
 	resetDB(t)
