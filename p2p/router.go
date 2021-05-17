@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -790,27 +791,19 @@ func (r *Router) routePeer(peerID NodeID, conn Connection, sendQueue queue) {
 		errCh <- r.sendPeer(peerID, conn, sendQueue)
 	}()
 
-	e1 := <-errCh
-	err := e1
+	err := <-errCh
 	_ = conn.Close()
 	sendQueue.close()
 
-	e2 := <-errCh
-
-	if err == nil {
+	if e := <-errCh; err == nil {
 		// The first err was nil, so we update it with the second err, which may
 		// or may not be nil.
-		err = e2
+		err = e
 	}
 
 	switch err {
 	case nil, io.EOF:
-		r.logger.Info("peer disconnected",
-			"peer", peerID,
-			"endpoint", conn,
-			"err", e1,
-			"err2", e2,
-		)
+		r.logger.Info("peer disconnected", "peer", peerID, "endpoint", conn)
 
 	default:
 		r.logger.Error("peer failure", "peer", peerID, "endpoint", conn, "err", err)
