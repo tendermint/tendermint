@@ -233,7 +233,7 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 		// so we only record the sender for txs still in the mempool.
 		if e, ok := mem.txsMap.Load(TxKey(tx)); ok {
 			memTx := e.(*clist.CElement).Value.(*mempoolTx)
-			_, loaded := memTx.senders.LoadOrStore(txInfo.SenderID, true)
+			loaded := memTx.LoadOrStoreSender(txInfo.SenderID)
 			// TODO: consider punishing peer for dups,
 			// its non-trivial since invalid txs can become valid,
 			// but they can spam the same tx with little cost to them atm.
@@ -394,8 +394,9 @@ func (mem *CListMempool) resCbFirstTime(
 				height:    mem.height,
 				gasWanted: r.CheckTx.GasWanted,
 				tx:        tx,
+				senders:   make(map[uint16]struct{}),
 			}
-			memTx.senders.Store(peerID, true)
+			memTx.AddSender(peerID)
 			mem.addTx(memTx)
 			mem.logger.Debug("added good transaction",
 				"tx", txID(tx),
@@ -643,9 +644,37 @@ type mempoolTx struct {
 	gasWanted int64    // amount of gas this tx states it will require
 	tx        types.Tx //
 
+	// mu guards following fields
+	mu sync.Mutex
 	// ids of peers who've sent us this tx (as a map for quick lookups).
-	// senders: PeerID -> bool
-	senders sync.Map
+	senders map[uint16]struct{}
+}
+
+func (memTx *mempoolTx) LoadOrStoreSender(senderID uint16) bool {
+	memTx.mu.Lock()
+	defer memTx.mu.Unlock()
+
+	_, existed := memTx.senders[senderID]
+	if existed {
+		return true
+	}
+	memTx.senders[senderID] = struct{}{}
+	return false
+}
+
+func (memTx *mempoolTx) AddSender(senderID uint16) {
+	memTx.mu.Lock()
+	defer memTx.mu.Unlock()
+
+	memTx.senders[senderID] = struct{}{}
+}
+
+func (memTx *mempoolTx) HasSender(senderID uint16) bool {
+	memTx.mu.Lock()
+	defer memTx.mu.Unlock()
+
+	_, existed := memTx.senders[senderID]
+	return existed
 }
 
 // Height returns the height for this transaction

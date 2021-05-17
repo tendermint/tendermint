@@ -2,6 +2,7 @@ package mempool
 
 import (
 	"encoding/binary"
+	"math"
 	"sync/atomic"
 	"testing"
 
@@ -83,11 +84,11 @@ func BenchmarkCheckDuplicateTx(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		tx := make([]byte, 8)
 		binary.BigEndian.PutUint64(tx, uint64(i))
-		if err := mempool.CheckTx(tx, nil, TxInfo{}); err != nil {
+		if err := mempool.CheckTx(tx, nil, TxInfo{SenderID: math.MaxUint16}); err != nil {
 			b.Fatal(err)
 		}
 
-		if err := mempool.CheckTx(tx, nil, TxInfo{}); err == nil {
+		if err := mempool.CheckTx(tx, nil, TxInfo{SenderID: math.MaxUint16}); err == nil {
 			b.Fatal("tx should be duplicate")
 		}
 	}
