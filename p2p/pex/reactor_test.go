@@ -686,7 +686,7 @@ func (r *reactorTestSuite) connectAll(t *testing.T) {
 // connects all nodes with n other nodes
 func (r *reactorTestSuite) connectN(t *testing.T, n int) {
 	if n >= r.total {
-		require.Fail(t, "connectN: n must be less than the size of the network - 1")
+		require.Fail(t, "connectN: n must be less than the sigit aze of the network - 1")
 	}
 
 	for i := 0; i < r.total; i++ {
