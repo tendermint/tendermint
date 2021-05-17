@@ -193,10 +193,10 @@ func TestReactorSmallPeerStoreInALargeNetwork(t *testing.T) {
 
 func TestReactorLargePeerStoreInASmallNetwork(t *testing.T) {
 	testNet := setupNetwork(t, testOptions{
-		TotalNodes:   10,
-		MaxPeers:     100,
-		MaxConnected: 100,
-		BufferSize:   10,
+		TotalNodes:   5,
+		MaxPeers:     50,
+		MaxConnected: 50,
+		BufferSize:   5,
 	})
 	testNet.connectN(t, 1)
 	testNet.start(t)
