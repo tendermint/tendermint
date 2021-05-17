@@ -574,7 +574,7 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 
 	if err := r.runWithPeerMutex(func() error { return r.peerManager.Accepted(peerInfo.NodeID) }); err != nil {
 		r.logger.Error("failed to accept connection",
-			"op", "incoming/accpeted", "peer", peerInfo.NodeID, "err", err)
+			"op", "incoming/accepted", "peer", peerInfo.NodeID, "err", err)
 		return
 	}
 
@@ -624,7 +624,7 @@ func (r *Router) dialPeers() {
 				}
 				return
 			}
-
+			gs
 			if err := r.runWithPeerMutex(func() error { return r.peerManager.Dialed(address) }); err != nil {
 				r.logger.Error("failed to accept connection",
 					"op", "outgoing/dialing", "peer", address.NodeID, "err", err)
