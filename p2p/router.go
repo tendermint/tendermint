@@ -624,7 +624,7 @@ func (r *Router) dialPeers() {
 				}
 				return
 			}
-			gs
+
 			if err := r.runWithPeerMutex(func() error { return r.peerManager.Dialed(address) }); err != nil {
 				r.logger.Error("failed to accept connection",
 					"op", "outgoing/dialing", "peer", address.NodeID, "err", err)
