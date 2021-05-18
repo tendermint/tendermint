@@ -36,10 +36,10 @@ func (pq *TxPriorityQueue) GetEvictableTx(priority int64) *WrappedTx {
 	copy(txs[:], pq.txs)
 
 	sort.Slice(txs, func(i, j int) bool {
-		return txs[i].Priority < txs[j].Priority
+		return txs[i].priority < txs[j].priority
 	})
 
-	if len(txs) > 0 && txs[0].Priority < priority {
+	if len(txs) > 0 && txs[0].priority < priority {
 		return txs[0]
 	}
 
@@ -55,13 +55,14 @@ func (pq *TxPriorityQueue) NumTxs() int {
 	return len(pq.txs)
 }
 
-// RemoveTx removes a specific transaction from the priority queue. The
-// transaction must exist in the priority queue, otherwise it will panic.
+// RemoveTx removes a specific transaction from the priority queue.
 func (pq *TxPriorityQueue) RemoveTx(tx *WrappedTx) {
 	pq.mtx.Lock()
 	defer pq.mtx.Unlock()
 
-	heap.Remove(pq, tx.heapIndex)
+	if tx.heapIndex < len(pq.txs) {
+		heap.Remove(pq, tx.heapIndex)
+	}
 }
 
 // PushTx adds a valid transaction to the priority queue. It is thread safe.
@@ -120,13 +121,13 @@ func (pq *TxPriorityQueue) Len() int {
 func (pq *TxPriorityQueue) Less(i, j int) bool {
 	// If there exists two transactions with the same priority, consider the one
 	// that we saw the earliest as the higher priority transaction.
-	if pq.txs[i].Priority == pq.txs[j].Priority {
-		return pq.txs[i].Timestamp.Unix() < pq.txs[j].Timestamp.Unix()
+	if pq.txs[i].priority == pq.txs[j].priority {
+		return pq.txs[i].timestamp.Unix() < pq.txs[j].timestamp.Unix()
 	}
 
 	// We want Pop to give us the highest, not lowest, priority so we use greater
 	// than here.
-	return pq.txs[i].Priority > pq.txs[j].Priority
+	return pq.txs[i].priority > pq.txs[j].priority
 }
 
 // Swap implements the Heap interface. It swaps two transactions in the queue.

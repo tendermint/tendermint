@@ -12,21 +12,21 @@ import (
 // WrappedTx defines a wrapper around a raw transaction with additional metadata
 // that is used for indexing.
 type WrappedTx struct {
-	// Tx represents the raw binary transaction data.
-	Tx types.Tx
+	// tx represents the raw binary transaction data.
+	tx types.Tx
 
-	// Priority defines the transaction's priority as specified by the application
+	// priority defines the transaction's priority as specified by the application
 	// in the ResponseCheckTx response.
-	Priority int64
+	priority int64
 
-	// Sender defines the transaction's sender as specified by the application in
+	// sender defines the transaction's sender as specified by the application in
 	// the ResponseCheckTx response.
-	Sender string
+	sender string
 
-	// Timestamp is the time at which the node first received the transaction from
+	// timestamp is the time at which the node first received the transaction from
 	// a peer. It is used as a second dimension is prioritizing transactions when
 	// two transactions have the same priority.
-	Timestamp time.Time
+	timestamp time.Time
 
 	// peers records a mapping of all peers that sent a given transaction
 	peers map[uint16]struct{}
@@ -39,7 +39,7 @@ type WrappedTx struct {
 }
 
 func (wtx *WrappedTx) Size() int {
-	return len(wtx.Tx)
+	return len(wtx.tx)
 }
 
 // TxStore implements a thread-safe mapping of valid transaction(s).
@@ -80,11 +80,11 @@ func (txs *TxStore) SetTx(wtx *WrappedTx) {
 	txs.mtx.Lock()
 	defer txs.mtx.Unlock()
 
-	if len(wtx.Sender) > 0 {
-		txs.senderTxs[wtx.Sender] = wtx
+	if len(wtx.sender) > 0 {
+		txs.senderTxs[wtx.sender] = wtx
 	}
 
-	txs.hashTxs[mempool.TxKey(wtx.Tx)] = wtx
+	txs.hashTxs[mempool.TxKey(wtx.tx)] = wtx
 }
 
 // RemoveTx removes a *WrappedTx from the transaction store. It deletes all
@@ -93,11 +93,11 @@ func (txs *TxStore) RemoveTx(wtx *WrappedTx) {
 	txs.mtx.Lock()
 	defer txs.mtx.Unlock()
 
-	if len(wtx.Sender) > 0 {
-		delete(txs.senderTxs, wtx.Sender)
+	if len(wtx.sender) > 0 {
+		delete(txs.senderTxs, wtx.sender)
 	}
 
-	delete(txs.hashTxs, mempool.TxKey(wtx.Tx))
+	delete(txs.hashTxs, mempool.TxKey(wtx.tx))
 }
 
 // GetOrSetPeerByTxHash looks up a WrappedTx by transaction hash and adds the

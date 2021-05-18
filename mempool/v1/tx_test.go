@@ -11,18 +11,18 @@ import (
 func TestTxStore_GetTxBySender(t *testing.T) {
 	txs := NewTxStore()
 	wtx := &WrappedTx{
-		Tx:        []byte("test_tx"),
-		Sender:    "foo",
-		Priority:  1,
-		Timestamp: time.Now(),
+		tx:        []byte("test_tx"),
+		sender:    "foo",
+		priority:  1,
+		timestamp: time.Now(),
 	}
 
-	res := txs.GetTxBySender(wtx.Sender)
+	res := txs.GetTxBySender(wtx.sender)
 	require.Nil(t, res)
 
 	txs.SetTx(wtx)
 
-	res = txs.GetTxBySender(wtx.Sender)
+	res = txs.GetTxBySender(wtx.sender)
 	require.NotNil(t, res)
 	require.Equal(t, wtx, res)
 }
@@ -30,13 +30,13 @@ func TestTxStore_GetTxBySender(t *testing.T) {
 func TestTxStore_GetTxByHash(t *testing.T) {
 	txs := NewTxStore()
 	wtx := &WrappedTx{
-		Tx:        []byte("test_tx"),
-		Sender:    "foo",
-		Priority:  1,
-		Timestamp: time.Now(),
+		tx:        []byte("test_tx"),
+		sender:    "foo",
+		priority:  1,
+		timestamp: time.Now(),
 	}
 
-	key := mempool.TxKey(wtx.Tx)
+	key := mempool.TxKey(wtx.tx)
 	res := txs.GetTxByHash(key)
 	require.Nil(t, res)
 
@@ -50,19 +50,19 @@ func TestTxStore_GetTxByHash(t *testing.T) {
 func TestTxStore_SetTx(t *testing.T) {
 	txs := NewTxStore()
 	wtx := &WrappedTx{
-		Tx:        []byte("test_tx"),
-		Priority:  1,
-		Timestamp: time.Now(),
+		tx:        []byte("test_tx"),
+		priority:  1,
+		timestamp: time.Now(),
 	}
 
-	key := mempool.TxKey(wtx.Tx)
+	key := mempool.TxKey(wtx.tx)
 	txs.SetTx(wtx)
 
 	res := txs.GetTxByHash(key)
 	require.NotNil(t, res)
 	require.Equal(t, wtx, res)
 
-	wtx.Sender = "foo"
+	wtx.sender = "foo"
 	txs.SetTx(wtx)
 
 	res = txs.GetTxByHash(key)
@@ -73,12 +73,12 @@ func TestTxStore_SetTx(t *testing.T) {
 func TestTxStore_GetOrSetPeerByTxHash(t *testing.T) {
 	txs := NewTxStore()
 	wtx := &WrappedTx{
-		Tx:        []byte("test_tx"),
-		Priority:  1,
-		Timestamp: time.Now(),
+		tx:        []byte("test_tx"),
+		priority:  1,
+		timestamp: time.Now(),
 	}
 
-	key := mempool.TxKey(wtx.Tx)
+	key := mempool.TxKey(wtx.tx)
 	txs.SetTx(wtx)
 
 	res, ok := txs.GetOrSetPeerByTxHash(mempool.TxKey([]byte("test_tx_2")), 15)
@@ -97,14 +97,14 @@ func TestTxStore_GetOrSetPeerByTxHash(t *testing.T) {
 func TestTxStore_RemoveTx(t *testing.T) {
 	txs := NewTxStore()
 	wtx := &WrappedTx{
-		Tx:        []byte("test_tx"),
-		Priority:  1,
-		Timestamp: time.Now(),
+		tx:        []byte("test_tx"),
+		priority:  1,
+		timestamp: time.Now(),
 	}
 
 	txs.SetTx(wtx)
 
-	key := mempool.TxKey(wtx.Tx)
+	key := mempool.TxKey(wtx.tx)
 	res := txs.GetTxByHash(key)
 	require.NotNil(t, res)
 

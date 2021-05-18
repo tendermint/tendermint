@@ -259,8 +259,8 @@ func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo memp
 		}
 
 		wtx := &WrappedTx{
-			Tx:        tx,
-			Timestamp: time.Now(),
+			tx:        tx,
+			timestamp: time.Now(),
 		}
 		txmp.initTxCallback(wtx, res, txInfo)
 
@@ -321,7 +321,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 	if ok {
 		var err error
 		if txmp.postCheck != nil {
-			err = txmp.postCheck(wtx.Tx, checkTxRes.CheckTx)
+			err = txmp.postCheck(wtx.tx, checkTxRes.CheckTx)
 		}
 
 		if checkTxRes.CheckTx.Code == abci.CodeTypeOK && err == nil {
@@ -330,7 +330,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 				if toEvict == nil {
 					// No room for the new incoming transaction so we just remove it from
 					// the cache.
-					txmp.cache.Remove(wtx.Tx)
+					txmp.cache.Remove(wtx.tx)
 					txmp.logger.Error("rejected good transaction; mempool full", "err", err.Error())
 					txmp.metrics.RejectedTxs.Add(1)
 					return
@@ -339,8 +339,8 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 					txmp.removeTx(toEvict, true)
 					txmp.logger.Debug(
 						"evicted good transaction; mempool full",
-						"old_tx", mempool.TxHashFromBytes(toEvict.Tx),
-						"new_tx", mempool.TxHashFromBytes(wtx.Tx),
+						"old_tx", mempool.TxHashFromBytes(toEvict.tx),
+						"new_tx", mempool.TxHashFromBytes(wtx.tx),
 					)
 					txmp.metrics.EvictedTxs.Add(1)
 
@@ -350,8 +350,8 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 				}
 			}
 
-			wtx.Priority = checkTxRes.CheckTx.Priority
-			wtx.Sender = checkTxRes.CheckTx.Sender
+			wtx.priority = checkTxRes.CheckTx.Priority
+			wtx.sender = checkTxRes.CheckTx.Sender
 
 			txmp.metrics.TxSizeBytes.Observe(float64(wtx.Size()))
 			txmp.metrics.Size.Set(float64(txmp.Size()))
@@ -359,7 +359,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			txmp.insertTx(wtx)
 			txmp.logger.Debug(
 				"inserted good transaction",
-				"tx", mempool.TxHashFromBytes(wtx.Tx),
+				"tx", mempool.TxHashFromBytes(wtx.tx),
 				"height", txmp.height,
 				"num_txs", txmp.Size(),
 			)
@@ -369,7 +369,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			// ignore bad transactions
 			txmp.logger.Debug(
 				"rejected bad transaction",
-				"tx", mempool.TxHashFromBytes(wtx.Tx),
+				"tx", mempool.TxHashFromBytes(wtx.tx),
 				"peer_id", txInfo.SenderNodeID,
 				"post_check_err", err,
 			)
@@ -377,12 +377,19 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			txmp.metrics.FailedTxs.Add(1)
 
 			if !txmp.config.KeepInvalidTxsInCache {
-				txmp.cache.Remove(wtx.Tx)
+				txmp.cache.Remove(wtx.tx)
 			}
 		}
 	}
 }
 
+func (txmp *TxMempool) recheckTxCallback(req *abci.Request, res *abci.Response) {
+
+}
+
+// canAddTx returns an error if we cannot insert the provided *WrappedTx into
+// the mempool due to mempool configured constraints. Otherwise, nil is returned
+// and the transaction can be inserted into the mempool.
 func (txmp *TxMempool) canAddTx(wtx *WrappedTx) error {
 	var (
 		numTxs    = txmp.Size()
@@ -426,7 +433,7 @@ func (txmp *TxMempool) removeTx(wtx *WrappedTx, removeFromCache bool) {
 	atomic.AddInt64(&txmp.sizeBytes, int64(-wtx.Size()))
 
 	if removeFromCache {
-		txmp.cache.Remove(wtx.Tx)
+		txmp.cache.Remove(wtx.tx)
 	}
 }
 

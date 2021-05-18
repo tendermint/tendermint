@@ -23,8 +23,8 @@ func TestTxPriorityQueue(t *testing.T) {
 
 		go func(i int) {
 			pq.PushTx(&WrappedTx{
-				Priority:  int64(i),
-				Timestamp: time.Now(),
+				priority:  int64(i),
+				timestamp: time.Now(),
 			})
 
 			wg.Done()
@@ -40,19 +40,19 @@ func TestTxPriorityQueue(t *testing.T) {
 	time.Sleep(time.Second)
 	now := time.Now()
 	pq.PushTx(&WrappedTx{
-		Priority:  1000,
-		Timestamp: now,
+		priority:  1000,
+		timestamp: now,
 	})
 	require.Equal(t, 1001, pq.NumTxs())
 
 	tx := pq.PopTx()
 	require.Equal(t, 1000, pq.NumTxs())
-	require.Equal(t, int64(1000), tx.Priority)
-	require.NotEqual(t, now, tx.Timestamp)
+	require.Equal(t, int64(1000), tx.priority)
+	require.NotEqual(t, now, tx.timestamp)
 
 	gotPriorities := make([]int, 0)
 	for pq.NumTxs() > 0 {
-		gotPriorities = append(gotPriorities, int(pq.PopTx().Priority))
+		gotPriorities = append(gotPriorities, int(pq.PopTx().priority))
 	}
 
 	require.Equal(t, priorities, gotPriorities)
@@ -67,7 +67,7 @@ func TestTxPriorityQueue_GetEvictableTx(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		x := rng.Intn(100000)
 		pq.PushTx(&WrappedTx{
-			Priority: int64(x),
+			priority: int64(x),
 		})
 
 		values[i] = x
@@ -94,7 +94,7 @@ func TestTxPriorityQueue_RemoveTx(t *testing.T) {
 	for i := 0; i < numTxs; i++ {
 		x := rng.Intn(100000)
 		pq.PushTx(&WrappedTx{
-			Priority: int64(x),
+			priority: int64(x),
 		})
 
 		values[i] = x
@@ -108,5 +108,12 @@ func TestTxPriorityQueue_RemoveTx(t *testing.T) {
 	wtx := pq.txs[pq.NumTxs()/2]
 	pq.RemoveTx(wtx)
 	require.Equal(t, numTxs-1, pq.NumTxs())
-	require.Equal(t, int64(max), pq.PopTx().Priority)
+	require.Equal(t, int64(max), pq.PopTx().priority)
+	require.Equal(t, numTxs-2, pq.NumTxs())
+
+	require.NotPanics(t, func() {
+		pq.RemoveTx(&WrappedTx{heapIndex: numTxs})
+		pq.RemoveTx(&WrappedTx{heapIndex: numTxs + 1})
+	})
+	require.Equal(t, numTxs-2, pq.NumTxs())
 }
