@@ -314,13 +314,18 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 					txmp.metrics.RejectedTxs.Add(1)
 					return
 				} else {
-					// we have the ability to evict an existing transaction
+					// evict an existing transaction
 					txmp.removeTx(toEvict, true)
 					txmp.logger.Debug(
 						"evicted good transaction; mempool full",
-						"tx", mempool.TxHashFromBytes(toEvict.Tx),
+						"old_tx", mempool.TxHashFromBytes(toEvict.Tx),
+						"new_tx", mempool.TxHashFromBytes(wtx.Tx),
 					)
 					txmp.metrics.EvictedTxs.Add(1)
+
+					// TODO: Since we now evict transactions, we may need to mark the
+					// evicted node so that during re-CheckTx, we don't recheck an evicted
+					// node.
 				}
 			}
 
@@ -329,6 +334,14 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 
 			txmp.insertTx(wtx)
 			txmp.metrics.TxSizeBytes.Observe(float64(wtx.Size()))
+
+			txmp.logger.Debug(
+				"inserted good transaction",
+				"tx", mempool.TxHashFromBytes(wtx.Tx),
+				"height", txmp.height,
+				"num_txs", txmp.Size(),
+			)
+
 			txmp.notifyTxsAvailable()
 
 		} else {
@@ -380,13 +393,6 @@ func (txmp *TxMempool) insertTx(wtx *WrappedTx) {
 	wtx.gossipEl = gossipEl
 
 	atomic.AddInt64(&txmp.sizeBytes, int64(wtx.Size()))
-
-	txmp.logger.Debug(
-		"inserted good transaction",
-		"tx", mempool.TxHashFromBytes(wtx.Tx),
-		"height", txmp.height,
-		"num_txs", txmp.Size(),
-	)
 }
 
 func (txmp *TxMempool) removeTx(wtx *WrappedTx, removeFromCache bool) {
