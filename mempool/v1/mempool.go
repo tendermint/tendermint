@@ -370,12 +370,15 @@ func (txmp *TxMempool) canAddTx(wtx *WrappedTx) error {
 }
 
 func (txmp *TxMempool) insertTx(wtx *WrappedTx) {
-	// insert the transaction into the main store and set indices
 	txmp.txStore.SetTx(wtx)
 	txmp.priorityIndex.PushTx(wtx)
-	gossipEl := txmp.gossipIndex.PushBack(wtx)
 
+	// Insert the transaction into the gossip index and mark the reference to the
+	// linked-list element, which will be needed at a later point when the
+	// transaction is removed.
+	gossipEl := txmp.gossipIndex.PushBack(wtx)
 	wtx.gossipEl = gossipEl
+
 	atomic.AddInt64(&txmp.sizeBytes, int64(wtx.Size()))
 
 	txmp.logger.Debug(
@@ -388,9 +391,12 @@ func (txmp *TxMempool) insertTx(wtx *WrappedTx) {
 
 func (txmp *TxMempool) removeTx(wtx *WrappedTx, removeFromCache bool) {
 	txmp.txStore.RemoveTx(wtx)
+	txmp.priorityIndex.RemoveTx(wtx)
+
+	// Remove the transaction from the gossip index and cleanup the linked-list
+	// element so it can be garbage collected.
 	txmp.gossipIndex.Remove(wtx.gossipEl)
 	wtx.gossipEl.DetachPrev()
-	txmp.priorityIndex.RemoveTx()
 
 	atomic.AddInt64(&txmp.sizeBytes, int64(-wtx.Size()))
 

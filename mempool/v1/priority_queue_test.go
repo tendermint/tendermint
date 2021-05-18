@@ -65,7 +65,7 @@ func TestTxPriorityQueue_GetEvictableTx(t *testing.T) {
 	values := make([]int, 1000)
 
 	for i := 0; i < 1000; i++ {
-		x := rng.Intn(10000)
+		x := rng.Intn(100000)
 		pq.PushTx(&WrappedTx{
 			Priority: int64(x),
 		})
@@ -82,4 +82,31 @@ func TestTxPriorityQueue_GetEvictableTx(t *testing.T) {
 	require.NotNil(t, pq.GetEvictableTx(int64(min+1)))
 	require.Nil(t, pq.GetEvictableTx(int64(min-1)))
 	require.Nil(t, pq.GetEvictableTx(int64(min)))
+}
+
+func TestTxPriorityQueue_RemoveTx(t *testing.T) {
+	pq := NewTxPriorityQueue()
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	numTxs := 1000
+
+	values := make([]int, numTxs)
+
+	for i := 0; i < numTxs; i++ {
+		x := rng.Intn(100000)
+		pq.PushTx(&WrappedTx{
+			Priority: int64(x),
+		})
+
+		values[i] = x
+	}
+
+	require.Equal(t, numTxs, pq.NumTxs())
+
+	sort.Ints(values)
+	max := values[len(values)-1]
+
+	wtx := pq.txs[pq.NumTxs()/2]
+	pq.RemoveTx(wtx)
+	require.Equal(t, numTxs-1, pq.NumTxs())
+	require.Equal(t, int64(max), pq.PopTx().Priority)
 }

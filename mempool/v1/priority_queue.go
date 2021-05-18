@@ -55,6 +55,15 @@ func (pq *TxPriorityQueue) NumTxs() int {
 	return len(pq.txs)
 }
 
+// RemoveTx removes a specific transaction from the priority queue. The
+// transaction must exist in the priority queue, otherwise it will panic.
+func (pq *TxPriorityQueue) RemoveTx(tx *WrappedTx) {
+	pq.mtx.Lock()
+	defer pq.mtx.Unlock()
+
+	heap.Remove(pq, tx.heapIndex)
+}
+
 // PushTx adds a valid transaction to the priority queue. It is thread safe.
 func (pq *TxPriorityQueue) PushTx(tx *WrappedTx) {
 	pq.mtx.Lock()
