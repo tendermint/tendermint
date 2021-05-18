@@ -167,7 +167,7 @@ func setupDB(t *testing.T) (*dockertest.Pool, error) {
 	if err = pool.Retry(func() error {
 		var err error
 
-		pSink, psqldb, err = psql.NewEventSink(conn)
+		pSink, psqldb, err = psql.NewEventSink(conn, "test-chainID")
 
 		if err != nil {
 			return err

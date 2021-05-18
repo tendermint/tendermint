@@ -166,7 +166,7 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	indexerService, eventSinks, err := createAndStartIndexerService(config, dbProvider, eventBus, logger)
+	indexerService, eventSinks, err := createAndStartIndexerService(config, dbProvider, eventBus, logger, genDoc.ChainID)
 	if err != nil {
 		return nil, err
 	}

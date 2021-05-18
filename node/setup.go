@@ -74,6 +74,7 @@ func createAndStartIndexerService(
 	dbProvider DBProvider,
 	eventBus *types.EventBus,
 	logger log.Logger,
+	chainID string,
 ) (*indexer.Service, []indexer.EventSink, error) {
 
 	eventSinks := []indexer.EventSink{}
@@ -106,7 +107,7 @@ loop:
 			if conn == "" {
 				return nil, nil, errors.New("the psql connection settings cannot be empty")
 			}
-			es, _, err := psql.NewEventSink(conn)
+			es, _, err := psql.NewEventSink(conn, chainID)
 			if err != nil {
 				return nil, nil, err
 			}

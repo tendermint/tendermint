@@ -24,6 +24,7 @@ import (
 
 var db *sql.DB
 var resource *dockertest.Resource
+var chainID = "test-chainID"
 
 var (
 	user     = "postgres"
@@ -37,7 +38,7 @@ func TestType(t *testing.T) {
 	pool, err := setupDB(t)
 	assert.NoError(t, err)
 
-	psqlSink := &EventSink{store: db}
+	psqlSink := &EventSink{store: db, chainID: chainID}
 	assert.Equal(t, indexer.PSQL, psqlSink.Type())
 	assert.NoError(t, teardown(t, pool))
 }
@@ -46,7 +47,7 @@ func TestBlockFuncs(t *testing.T) {
 	pool, err := setupDB(t)
 	assert.NoError(t, err)
 
-	indexer := &EventSink{store: db}
+	indexer := &EventSink{store: db, chainID: chainID}
 	assert.NoError(t, indexer.IndexBlockEvents(getTestBlockHeader()))
 
 	r, err := verifyBlock(1)
@@ -78,7 +79,7 @@ func TestTxFuncs(t *testing.T) {
 	pool, err := setupDB(t)
 	assert.Nil(t, err)
 
-	indexer := &EventSink{store: db}
+	indexer := &EventSink{store: db, chainID: chainID}
 
 	txResult := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "number", Value: "1", Index: true}}},
@@ -194,10 +195,11 @@ func txResultWithEvents(events []abci.Event) *abci.TxResult {
 func verifyTx(hash []byte) (*abci.TxResult, error) {
 	join := fmt.Sprintf("%s ON %s.id = tx_result_id", TableEventTx, TableResultTx)
 	sqlStmt := sq.
-		Select("tx_result", fmt.Sprintf("%s.id", TableResultTx), "tx_result_id", "hash").
+		Select("tx_result", fmt.Sprintf("%s.id", TableResultTx), "tx_result_id", "hash", "chain_id").
 		Distinct().From(TableResultTx).
 		InnerJoin(join).
-		Where("hash = $1", fmt.Sprintf("%X", hash))
+		Where(fmt.Sprintf("hash = $1 AND chain_id = '%s'", chainID), fmt.Sprintf("%X", hash))
+
 	rows, err := sqlStmt.RunWith(db).Query()
 	if err != nil {
 		return nil, err
@@ -208,8 +210,8 @@ func verifyTx(hash []byte) (*abci.TxResult, error) {
 	if rows.Next() {
 		var txResult []byte
 		var txResultID, txid int
-		var h string
-		err = rows.Scan(&txResult, &txResultID, &txid, &h)
+		var h, cid string
+		err = rows.Scan(&txResult, &txResultID, &txid, &h, &cid)
 		if err != nil {
 			return nil, nil
 		}
@@ -234,8 +236,6 @@ func verifyTimeStamp(tb string) error {
 		Select(fmt.Sprintf("%s.created_at", tb)).
 		Distinct().From(tb).
 		Where(fmt.Sprintf("%s.created_at >= $1", tb), time.Now().Add(-2*time.Second))
-
-	fmt.Println(sqlStmt.ToSql())
 
 	rows, err := sqlStmt.RunWith(db).Query()
 	if err != nil {
@@ -275,12 +275,10 @@ func verifyBlock(h int64) (bool, error) {
 	}
 
 	sqlStmt = sq.
-		Select("type, height").
+		Select("type, height", "chain_id").
 		Distinct().
 		From(TableEventBlock).
-		Where(fmt.Sprintf("height = %d AND type = '%s'", h, types.EventTypeBeginBlock))
-
-	fmt.Println(sqlStmt.ToSql())
+		Where(fmt.Sprintf("height = %d AND type = '%s' AND chain_id = '%s'", h, types.EventTypeBeginBlock, chainID))
 
 	rows, err = sqlStmt.RunWith(db).Query()
 	if err != nil {
@@ -340,7 +338,7 @@ func setupDB(t *testing.T) (*dockertest.Pool, error) {
 	if err = pool.Retry(func() error {
 		var err error
 
-		_, db, err = NewEventSink(conn)
+		_, db, err = NewEventSink(conn, chainID)
 
 		if err != nil {
 			return err
