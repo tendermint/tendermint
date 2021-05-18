@@ -294,7 +294,28 @@ func (txmp *TxMempool) Update(
 	panic("not implemented")
 }
 
-// TODO: ... initTxCallback
+// initTxCallback performs the initial, i.e. the first, callback after CheckTx
+// has been executed by the ABCI application. In other words, initTxCallback is
+// called after executing CheckTx when we see a unique transaction for the first
+// time. CheckTx can be called again for the same transaction at a later point
+// in time when re-checking, however, this callback will not be called.
+//
+// After the ABCI application executes CheckTx, initTxCallback is called with
+// the ABCI *Response object and TxInfo. If postCheck is defined on the mempool,
+// we execute that first. If there is no error from postCheck (if defined) and
+// the ABCI CheckTx response code is OK, we attempt to insert the transaction.
+//
+// When attempting to insert the transaction, we first check if there is
+// sufficient capacity. If there is sufficient capacity, the transaction is
+// inserted into the txStore and indexed across all indexes. Otherwise, if the
+// mempool is full, we attempt to find a lower priority transaction to evict in
+// place of the new incoming transaction. If no such transaction exists, the
+// new incoming transaction is rejected.
+//
+// If the new incoming transaction fails CheckTx or postCheck fails, we reject
+// the new incoming transaction.
+//
+// Note, an explicit lock is NOT required.
 func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo mempool.TxInfo) {
 	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
 	if ok {
@@ -325,23 +346,23 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 
 					// TODO: Since we now evict transactions, we may need to mark the
 					// evicted *WrappedTx so that during re-CheckTx, we don't recheck an
-					// evicted node.
+					// evicted transaction.
 				}
 			}
 
 			wtx.Priority = checkTxRes.CheckTx.Priority
 			wtx.Sender = checkTxRes.CheckTx.Sender
 
-			txmp.insertTx(wtx)
 			txmp.metrics.TxSizeBytes.Observe(float64(wtx.Size()))
+			txmp.metrics.Size.Set(float64(txmp.Size()))
 
+			txmp.insertTx(wtx)
 			txmp.logger.Debug(
 				"inserted good transaction",
 				"tx", mempool.TxHashFromBytes(wtx.Tx),
 				"height", txmp.height,
 				"num_txs", txmp.Size(),
 			)
-
 			txmp.notifyTxsAvailable()
 
 		} else {
@@ -360,8 +381,6 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			}
 		}
 	}
-
-	txmp.metrics.Size.Set(float64(txmp.Size()))
 }
 
 func (txmp *TxMempool) canAddTx(wtx *WrappedTx) error {
