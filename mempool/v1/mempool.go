@@ -328,6 +328,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			wtx.Sender = checkTxRes.CheckTx.Sender
 
 			txmp.insertTx(wtx)
+			txmp.metrics.TxSizeBytes.Observe(float64(wtx.Size()))
 			txmp.notifyTxsAvailable()
 
 		} else {
@@ -371,11 +372,11 @@ func (txmp *TxMempool) canAddTx(wtx *WrappedTx) error {
 func (txmp *TxMempool) insertTx(wtx *WrappedTx) {
 	// insert the transaction into the main store and set indices
 	txmp.txStore.SetTx(wtx)
-	txmp.gossipIndex.PushBack(wtx)
 	txmp.priorityIndex.PushTx(wtx)
+	gossipEl := txmp.gossipIndex.PushBack(wtx)
 
+	wtx.gossipEl = gossipEl
 	atomic.AddInt64(&txmp.sizeBytes, int64(wtx.Size()))
-	txmp.metrics.TxSizeBytes.Observe(float64(wtx.Size()))
 
 	txmp.logger.Debug(
 		"inserted good transaction",
@@ -388,6 +389,7 @@ func (txmp *TxMempool) insertTx(wtx *WrappedTx) {
 func (txmp *TxMempool) removeTx(wtx *WrappedTx, removeFromCache bool) {
 	txmp.txStore.RemoveTx(wtx)
 	txmp.gossipIndex.Remove(wtx.gossipEl)
+	wtx.gossipEl.DetachPrev()
 	txmp.priorityIndex.RemoveTx()
 
 	atomic.AddInt64(&txmp.sizeBytes, int64(-wtx.Size()))

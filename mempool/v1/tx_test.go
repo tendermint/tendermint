@@ -8,7 +8,7 @@ import (
 	"github.com/tendermint/tendermint/mempool"
 )
 
-func Testtxsap_GetTxBySender(t *testing.T) {
+func TestTxStore_GetTxBySender(t *testing.T) {
 	txs := NewTxStore()
 	wtx := &WrappedTx{
 		Tx:        []byte("test_tx"),
@@ -27,7 +27,7 @@ func Testtxsap_GetTxBySender(t *testing.T) {
 	require.Equal(t, wtx, res)
 }
 
-func Testtxsap_GetTxByHash(t *testing.T) {
+func TestTxStore_GetTxByHash(t *testing.T) {
 	txs := NewTxStore()
 	wtx := &WrappedTx{
 		Tx:        []byte("test_tx"),
@@ -35,8 +35,8 @@ func Testtxsap_GetTxByHash(t *testing.T) {
 		Priority:  1,
 		Timestamp: time.Now(),
 	}
-	key := mempool.TxKey(wtx.Tx)
 
+	key := mempool.TxKey(wtx.Tx)
 	res := txs.GetTxByHash(key)
 	require.Nil(t, res)
 
@@ -47,15 +47,15 @@ func Testtxsap_GetTxByHash(t *testing.T) {
 	require.Equal(t, wtx, res)
 }
 
-func Testtxsap_SetTx(t *testing.T) {
+func TestTxStore_SetTx(t *testing.T) {
 	txs := NewTxStore()
 	wtx := &WrappedTx{
 		Tx:        []byte("test_tx"),
 		Priority:  1,
 		Timestamp: time.Now(),
 	}
-	key := mempool.TxKey(wtx.Tx)
 
+	key := mempool.TxKey(wtx.Tx)
 	txs.SetTx(wtx)
 
 	res := txs.GetTxByHash(key)
@@ -70,15 +70,15 @@ func Testtxsap_SetTx(t *testing.T) {
 	require.Equal(t, wtx, res)
 }
 
-func Testtxsap_GetOrSetPeerByTxHash(t *testing.T) {
+func TestTxStore_GetOrSetPeerByTxHash(t *testing.T) {
 	txs := NewTxStore()
 	wtx := &WrappedTx{
 		Tx:        []byte("test_tx"),
 		Priority:  1,
 		Timestamp: time.Now(),
 	}
-	key := mempool.TxKey(wtx.Tx)
 
+	key := mempool.TxKey(wtx.Tx)
 	txs.SetTx(wtx)
 
 	res, ok := txs.GetOrSetPeerByTxHash(mempool.TxKey([]byte("test_tx_2")), 15)
@@ -92,4 +92,24 @@ func Testtxsap_GetOrSetPeerByTxHash(t *testing.T) {
 	res, ok = txs.GetOrSetPeerByTxHash(key, 15)
 	require.NotNil(t, res)
 	require.True(t, ok)
+}
+
+func TestTxStore_RemoveTx(t *testing.T) {
+	txs := NewTxStore()
+	wtx := &WrappedTx{
+		Tx:        []byte("test_tx"),
+		Priority:  1,
+		Timestamp: time.Now(),
+	}
+
+	txs.SetTx(wtx)
+
+	key := mempool.TxKey(wtx.Tx)
+	res := txs.GetTxByHash(key)
+	require.NotNil(t, res)
+
+	txs.RemoveTx(res)
+
+	res = txs.GetTxByHash(key)
+	require.Nil(t, res)
 }
