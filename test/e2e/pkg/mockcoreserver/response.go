@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+
+	"github.com/dashevo/dashd-go/btcjson"
 )
 
 type response struct {
@@ -28,7 +30,7 @@ func mustUnmarshal(data []byte, out interface{}) {
 
 // Body ...
 func Body(body []byte) HandlerOptionFunc {
-	return func(opts *respOption) {
+	return func(opts *respOption, _ *http.Request) {
 		opts.body = bytes.NewBuffer(body)
 	}
 }
@@ -45,7 +47,7 @@ func JRPCResult(v interface{}) HandlerOptionFunc {
 
 // Header ...
 func Header(key string, values ...string) HandlerOptionFunc {
-	return func(opts *respOption) {
+	return func(opts *respOption, _ *http.Request) {
 		opts.header[key] = values
 	}
 }
@@ -60,18 +62,16 @@ func JsonContentType() HandlerOptionFunc {
 	return ContentType("application/json")
 }
 
-// NotContent ...
-func NotContent() HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) error {
-		w.WriteHeader(http.StatusNoContent)
-		return nil
-	}
-}
-
-// BadRequest ...
-func BadRequest() HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) error {
-		w.WriteHeader(http.StatusBadRequest)
-		return nil
+// OnMethod ...
+func OnMethod(fn func(req btcjson.Request) (interface{}, error)) HandlerOptionFunc {
+	return func(opt *respOption, req *http.Request) {
+		_ = JRPCRequest(func(btcReq btcjson.Request) error {
+			val, err := fn(btcReq)
+			if err != nil {
+				return err
+			}
+			JRPCResult(val)(opt, req)
+			return nil
+		})(req)
 	}
 }

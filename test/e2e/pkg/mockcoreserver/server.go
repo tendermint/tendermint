@@ -25,7 +25,6 @@ type MockServer interface {
 // HTTPServer is a mock http server
 // the idea is to use this server in a test flow to check requests and passed response
 type HTTPServer struct {
-	t        *testing.T
 	mux      *http.ServeMux
 	addr     string
 	guard    sync.Mutex
@@ -40,7 +39,6 @@ func (s *HTTPServer) On(pattern string) *Call {
 	h, ok := s.handlers[pattern]
 	if !ok {
 		h = &handler{
-			t:       s.t,
 			pattern: pattern,
 		}
 		s.handlers[pattern] = h
@@ -76,10 +74,9 @@ func (s *HTTPServer) Stop(ctx context.Context) {
 }
 
 // NewHTTPServer returns a mock http server
-func NewHTTPServer(t *testing.T, addr string) *HTTPServer {
+func NewHTTPServer(addr string) *HTTPServer {
 	mux := http.NewServeMux()
 	srv := &HTTPServer{
-		t:        t,
 		mux:      mux,
 		addr:     addr,
 		handlers: make(map[string]*handler),
@@ -97,10 +94,9 @@ type JRPCServer struct {
 }
 
 // NewJRPCServer ...
-func NewJRPCServer(t *testing.T, addr, endpointURL string) *JRPCServer {
+func NewJRPCServer(addr, endpointURL string) *JRPCServer {
 	return &JRPCServer{
-		t:           t,
-		httpSrv:     NewHTTPServer(t, addr),
+		httpSrv:     NewHTTPServer(addr),
 		endpointURL: endpointURL,
 		calls:       make(map[string][]*Call),
 	}
@@ -138,7 +134,7 @@ func (s *JRPCServer) Start() {
 func (s *JRPCServer) findCall(req btcjson.Request) (*Call, error) {
 	calls, ok := s.calls[req.Method]
 	if !ok {
-		s.t.Fatalf("the expectation for a method %s was not registered", req.Method)
+		s.t.Fatalf("the expectation for a method %q was not registered", req.Method)
 	}
 	for _, call := range calls {
 		if call.expectedCnt == -1 || call.actualCnt < call.expectedCnt {

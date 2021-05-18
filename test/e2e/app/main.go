@@ -32,11 +32,31 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
+	"github.com/tendermint/tendermint/test/e2e/pkg/mockcoreserver"
 	mcs "github.com/tendermint/tendermint/test/maverick/consensus"
 	maverick "github.com/tendermint/tendermint/test/maverick/node"
 )
 
 var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+
+var (
+	tmhome     string
+	tmcfg      *config.Config
+	loggerNode log.Logger
+	nodeKey    *p2p.NodeKey
+)
+
+func init() {
+	tmhome = os.Getenv("TMHOME")
+	if tmhome == "" {
+		panic("TMHOME is missed")
+	}
+	var err error
+	tmcfg, loggerNode, nodeKey, err = setupNode()
+	if err != nil {
+		panic("failed to setup config: " + err.Error())
+	}
+}
 
 // main is the binary entrypoint.
 func main() {
@@ -71,6 +91,15 @@ func run(configFile string) error {
 			time.Sleep(1 * time.Second)
 		}
 	}
+
+	// Start mock core-server
+	coreSrv, err := setupCoreServer(cfg)
+	if err != nil {
+		return fmt.Errorf("unable to setup mock core server: %w", err)
+	}
+	go func() {
+		coreSrv.Start()
+	}()
 
 	// Start app server.
 	switch cfg.Protocol {
@@ -265,6 +294,26 @@ func startSigner(cfg *Config) error {
 	}
 	logger.Info(fmt.Sprintf("Remote signer connecting to %v", cfg.PrivValServer))
 	return nil
+}
+
+func setupCoreServer(cfg *Config) (*mockcoreserver.JRPCServer, error) {
+	srv := mockcoreserver.NewJRPCServer(tmcfg.PrivValidatorCoreRPCHost, "/")
+	privValKeyPath := filepath.Clean(tmhome + "/" + tmcfg.PrivValidatorKey)
+	privValStatePath := filepath.Clean(tmhome + "/" + tmcfg.PrivValidatorState)
+	filePV := privval.LoadFilePV(privValKeyPath, privValStatePath)
+	coreServer := &mockcoreserver.MockCoreServer{
+		ChainID:    cfg.ChainID,
+		LLMQType:   btcjson.LLMQType_5_60,
+		QuorumHash: crypto.RandQuorumHash(),
+		FilePV:     filePV,
+	}
+	srv = mockcoreserver.WithMethods(
+		srv,
+		mockcoreserver.WithQuorumInfoMethod(coreServer, mockcoreserver.Endless),
+		mockcoreserver.WithMasternodeMethod(coreServer, mockcoreserver.Endless),
+		mockcoreserver.WithGetNetworkInfoMethod(coreServer, mockcoreserver.Endless),
+	)
+	return srv, nil
 }
 
 func setupNode() (*config.Config, log.Logger, *p2p.NodeKey, error) {

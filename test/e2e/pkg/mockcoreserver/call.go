@@ -14,13 +14,14 @@ var (
 type (
 	ExpectFunc        func(req *http.Request) error
 	HandlerFunc       func(w http.ResponseWriter, req *http.Request) error
-	HandlerOptionFunc func(opt *respOption)
+	HandlerOptionFunc func(opt *respOption, req *http.Request)
 )
 
 type respOption struct {
-	status int
-	body   io.Reader
-	header map[string][]string
+	status      int
+	body        io.Reader
+	header      map[string][]string
+	handlerFunc func(w http.ResponseWriter, req *http.Request)
 }
 
 // Call is a call expectation structure
@@ -39,10 +40,10 @@ func (c *Call) Respond(opts ...HandlerOptionFunc) *Call {
 		body:   bytes.NewBuffer(jsonEmptyString),
 		header: make(map[string][]string),
 	}
-	for _, opt := range opts {
-		opt(ro)
-	}
 	c.handlerFunc = func(w http.ResponseWriter, req *http.Request) error {
+		for _, opt := range opts {
+			opt(ro, req)
+		}
 		if len(ro.header) > 0 {
 			for k, vals := range ro.header {
 				if len(vals) == 1 {
@@ -70,19 +71,19 @@ func (c *Call) Expect(fn ExpectFunc) *Call {
 	return c
 }
 
-// Times ...
+// Times sets the expected number of calls
 func (c *Call) Times(cnt int) *Call {
 	c.expectedCnt = cnt
 	return c
 }
 
-// Once ...
+// Once sets only one expected call
 func (c *Call) Once() *Call {
 	c.Times(1)
 	return c
 }
 
-// Forever ...
+// Forever do not use number expected calls for a mock
 func (c *Call) Forever() *Call {
 	c.Times(-1)
 	return c

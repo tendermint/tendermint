@@ -4,27 +4,25 @@ import (
 	"log"
 	"net/http"
 	"sync"
-	"testing"
 )
 
 type handler struct {
 	pattern string
 	calls   []*Call
 	guard   sync.Mutex
-	t       *testing.T
 }
 
-// ServeHTTP ...
+// ServeHTTP is an entrypoint of a server request
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	h.guard.Lock()
 	defer h.guard.Unlock()
 	c := h.findCall()
 	if c == nil {
-		log.Panic("call not found")
+		log.Fatal("call not found")
 	}
 	err := c.execute(w, req)
 	if err != nil {
-		h.t.Fatalf("URL %s: %s", req.URL.String(), err.Error())
+		log.Fatalf("URL %s: %s", req.URL.String(), err.Error())
 	}
 	c.actualCnt++
 }

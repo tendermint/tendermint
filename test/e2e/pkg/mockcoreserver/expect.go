@@ -40,12 +40,12 @@ func BodyShouldBeSame(v interface{}) ExpectFunc {
 	}
 }
 
-// BodyShouldBeEmpty ...
+// BodyShouldBeEmpty expects that a request body should be empty
 func BodyShouldBeEmpty() ExpectFunc {
 	return BodyShouldBeSame("")
 }
 
-// QueryShouldHave ...
+// QueryShouldHave expects that a request query values should match on passed values
 func QueryShouldHave(expectedVales url.Values) ExpectFunc {
 	return func(req *http.Request) error {
 		actuallyVales := req.URL.Query()
@@ -77,7 +77,7 @@ func And(fns ...ExpectFunc) ExpectFunc {
 	}
 }
 
-// JRPCRequest ...
+// JRPCRequest transforms http.Request into btcjson.Request and executes passed list of functions
 func JRPCRequest(fns ...func(req btcjson.Request) error) ExpectFunc {
 	return func(req *http.Request) error {
 		jReq, ok := req.Context().Value(jRPCRequestKey).(btcjson.Request)
@@ -94,12 +94,20 @@ func JRPCRequest(fns ...func(req btcjson.Request) error) ExpectFunc {
 	}
 }
 
-// JRPCParamsEmpty ...
+// JRPCParamsEmpty is a request expectation of empty JRPC params
 func JRPCParamsEmpty() ExpectFunc {
 	return JRPCRequest(func(req btcjson.Request) error {
 		if req.Params != nil && len(req.Params) > 0 {
 			return errors.New("jRPC request params should be empty")
 		}
+		return nil
+	})
+}
+
+// Debug is a debug JRPC request handler
+func Debug() ExpectFunc {
+	return JRPCRequest(func(req btcjson.Request) error {
+		log.Printf("[DEBUG] %#v, %s\n", req, req.Params)
 		return nil
 	})
 }
