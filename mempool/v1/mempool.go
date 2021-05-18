@@ -324,8 +324,8 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 					txmp.metrics.EvictedTxs.Add(1)
 
 					// TODO: Since we now evict transactions, we may need to mark the
-					// evicted node so that during re-CheckTx, we don't recheck an evicted
-					// node.
+					// evicted *WrappedTx so that during re-CheckTx, we don't recheck an
+					// evicted node.
 				}
 			}
 
