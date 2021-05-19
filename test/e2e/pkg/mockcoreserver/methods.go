@@ -23,11 +23,11 @@ func WithQuorumInfoMethod(cs CoreServer, times int) MethodFunc {
 				return err, nil
 			}
 		}
-		return cs.Quorum(cmd), nil
+		return cs.QuorumInfo(cmd), nil
 	})
 	return func(srv *JRPCServer) {
 		srv.
-			On("quorum").
+			On("quorum info").
 			Expect(And(Debug())).
 			Times(times).
 			Respond(call, JsonContentType())
@@ -49,7 +49,7 @@ func WithMasternodeMethod(cs CoreServer, times int) MethodFunc {
 	})
 	return func(srv *JRPCServer) {
 		srv.
-			On("masternode").
+			On("masternode status").
 			Expect(And(Debug())).
 			Times(times).
 			Respond(call, JsonContentType())

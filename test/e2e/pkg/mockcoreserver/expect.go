@@ -21,7 +21,7 @@ func BodyShouldBeSame(v interface{}) ExpectFunc {
 	case string:
 		body = []byte(t)
 	default:
-		log.Panicf("unsupported type %s", t)
+		log.Panicf("unsupported type %q", t)
 	}
 	return func(req *http.Request) error {
 		buf, err := ioutil.ReadAll(req.Body)

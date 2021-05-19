@@ -8,7 +8,7 @@ import (
 
 // CoreServer is an interface of a mock core-server
 type CoreServer interface {
-	Quorum(cmd btcjson.QuorumCmd) btcjson.QuorumInfoResult
+	QuorumInfo(cmd btcjson.QuorumCmd) btcjson.QuorumInfoResult
 	MasternodeStatus(cmd btcjson.MasternodeCmd) btcjson.MasternodeStatusResult
 	GetNetworkInfo(cmd btcjson.GetNetworkInfoCmd) btcjson.GetNetworkInfoResult
 }
@@ -22,7 +22,7 @@ type MockCoreServer struct {
 }
 
 // Quorum returns a quorum info result
-func (c *MockCoreServer) Quorum(cmd btcjson.QuorumCmd) btcjson.QuorumInfoResult {
+func (c *MockCoreServer) QuorumInfo(cmd btcjson.QuorumCmd) btcjson.QuorumInfoResult {
 	// todo needs to use config data for a result
 	return btcjson.QuorumInfoResult{
 		Height:     1010,
@@ -63,7 +63,7 @@ type StaticCoreServer struct {
 }
 
 // Quorum returns constant quorum-info result
-func (c *StaticCoreServer) Quorum(_ btcjson.QuorumCmd) btcjson.QuorumInfoResult {
+func (c *StaticCoreServer) QuorumInfo(_ btcjson.QuorumCmd) btcjson.QuorumInfoResult {
 	return c.QuorumInfoResult
 }
 

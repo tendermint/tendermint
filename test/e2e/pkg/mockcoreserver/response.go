@@ -24,14 +24,15 @@ func mustMarshal(v interface{}) []byte {
 func mustUnmarshal(data []byte, out interface{}) {
 	err := json.Unmarshal(data, out)
 	if err != nil {
-		log.Panicf("unable to encode: %v", err)
+		log.Panicf("unable to decode: %v", err)
 	}
 }
 
 // Body ...
 func Body(body []byte) HandlerOptionFunc {
-	return func(opts *respOption, _ *http.Request) {
+	return func(opts *respOption, _ *http.Request) error {
 		opts.body = bytes.NewBuffer(body)
+		return nil
 	}
 }
 
@@ -47,8 +48,9 @@ func JRPCResult(v interface{}) HandlerOptionFunc {
 
 // Header ...
 func Header(key string, values ...string) HandlerOptionFunc {
-	return func(opts *respOption, _ *http.Request) {
+	return func(opts *respOption, _ *http.Request) error {
 		opts.header[key] = values
+		return nil
 	}
 }
 
@@ -64,14 +66,13 @@ func JsonContentType() HandlerOptionFunc {
 
 // OnMethod ...
 func OnMethod(fn func(req btcjson.Request) (interface{}, error)) HandlerOptionFunc {
-	return func(opt *respOption, req *http.Request) {
-		_ = JRPCRequest(func(btcReq btcjson.Request) error {
+	return func(opt *respOption, req *http.Request) error {
+		return JRPCRequest(func(btcReq btcjson.Request) error {
 			val, err := fn(btcReq)
 			if err != nil {
 				return err
 			}
-			JRPCResult(val)(opt, req)
-			return nil
+			return JRPCResult(val)(opt, req)
 		})(req)
 	}
 }

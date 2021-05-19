@@ -3,12 +3,12 @@ package mockcoreserver
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"sync"
-	"testing"
 
 	"github.com/dashevo/dashd-go/btcjson"
 )
@@ -59,8 +59,8 @@ func (s *HTTPServer) Start() {
 	}
 	s.guard.Unlock()
 	err := s.httpSrv.ListenAndServe()
-	if err != http.ErrServerClosed {
-		log.Panic(err)
+	if err != nil && err != http.ErrServerClosed {
+		log.Fatalf("unexpected stop a server: %v", err)
 	}
 }
 
@@ -69,7 +69,7 @@ func (s *HTTPServer) Stop(ctx context.Context) {
 	s.guard.Lock()
 	defer s.guard.Unlock()
 	if err := s.httpSrv.Shutdown(ctx); err != nil {
-		log.Panic(err)
+		log.Fatalf("unable to stop a server graceful: %v", err)
 	}
 }
 
@@ -84,16 +84,15 @@ func NewHTTPServer(addr string) *HTTPServer {
 	return srv
 }
 
-// JRPCServer ...
+// JRPCServer is a mock JRPC server implementation
 type JRPCServer struct {
-	t           *testing.T
 	httpSrv     *HTTPServer
 	guard       sync.Mutex
 	endpointURL string
 	calls       map[string][]*Call
 }
 
-// NewJRPCServer ...
+// NewJRPCServer creates and returns a new mock of JRPC server
 func NewJRPCServer(addr, endpointURL string) *JRPCServer {
 	return &JRPCServer{
 		httpSrv:     NewHTTPServer(addr),
@@ -102,7 +101,7 @@ func NewJRPCServer(addr, endpointURL string) *JRPCServer {
 	}
 }
 
-// Start ...
+// Start starts listening and handling JRPC requests
 func (s *JRPCServer) Start() {
 	httpCall := s.httpSrv.On(s.endpointURL)
 	httpCall.Forever()
@@ -113,7 +112,7 @@ func (s *JRPCServer) Start() {
 		jReq := btcjson.Request{}
 		buf, err := ioutil.ReadAll(req.Body)
 		if err != nil {
-			s.t.Fatalf("unable to decode jRPC request: %v", err)
+			return fmt.Errorf("unable to decode jRPC request: %v", err)
 		}
 		err = req.Body.Close()
 		if err != nil {
@@ -125,6 +124,7 @@ func (s *JRPCServer) Start() {
 		if err != nil {
 			return err
 		}
+		// put unmarshalled JRPC request into a context
 		ctx = context.WithValue(req.Context(), jRPCRequestKey, jReq)
 		return call.execute(w, req.WithContext(ctx))
 	}
@@ -132,9 +132,13 @@ func (s *JRPCServer) Start() {
 }
 
 func (s *JRPCServer) findCall(req btcjson.Request) (*Call, error) {
-	calls, ok := s.calls[req.Method]
+	name, err := callName(req)
+	if err != nil {
+		return nil, err
+	}
+	calls, ok := s.calls[name]
 	if !ok {
-		s.t.Fatalf("the expectation for a method %q was not registered", req.Method)
+		return nil, fmt.Errorf("the expectation for a method %q was not registered", req.Method)
 	}
 	for _, call := range calls {
 		if call.expectedCnt == -1 || call.actualCnt < call.expectedCnt {
@@ -158,4 +162,17 @@ func (s *JRPCServer) On(pattern string) *Call {
 	call := &Call{}
 	s.calls[pattern] = append(s.calls[pattern], call)
 	return call
+}
+
+func callName(req btcjson.Request) (string, error) {
+	name := req.Method
+	if len(req.Params) == 0 {
+		return name, nil
+	}
+	s := ""
+	err := json.Unmarshal(req.Params[0], &s)
+	if err != nil {
+		return "", err
+	}
+	return name + " " + s, nil
 }

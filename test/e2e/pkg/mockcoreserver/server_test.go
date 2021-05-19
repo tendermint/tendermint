@@ -52,9 +52,7 @@ func TestServer(t *testing.T) {
 			Once().
 			Respond(JsonBody(tc.e), JsonContentType())
 		resp, err := http.Get(tc.url)
-		if err != nil {
-			panic(err)
-		}
+		assert.NoError(t, err)
 		data, err := ioutil.ReadAll(resp.Body)
 		_ = resp.Body.Close()
 		assert.NoError(t, err)
