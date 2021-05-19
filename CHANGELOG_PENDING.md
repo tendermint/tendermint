@@ -16,7 +16,6 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [rpc] \#6019 standardise RPC errors and return the correct status code (@bipulprasad & @cmwaters)
   - [rpc] \#6168 Change default sorting to desc for `/tx_search` results (@melekes)
   - [cli] \#6282 User must specify the node mode when using `tendermint init` (@cmwaters)
-  - [state/indexer] \#6382 reconstruct indexer, move txindex into the indexer package (@JayT106)
   - [cli] \#6372 Introduce `BootstrapPeers` as part of the new p2p stack. Peers to be connected on
     startup (@cmwaters)
 
@@ -64,6 +63,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   accomodate for the new p2p stack. Removes the notion of seeds and crawling. All peer
   exchange reactors behave the same. (@cmwaters)
 - [crypto] \#6376 Enable sr25519 as a validator key
+- [config/indexer] \#6411  custom event indexing (@JayT106)
 
 ### IMPROVEMENTS
 
@@ -95,6 +95,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [statesync] \#6378 Retry requests for snapshots and add a minimum discovery time (5s) for new snapshots.
 - [node/state] \#6370 graceful shutdown in the consensus reactor (@JayT106)
 - [crypto/merkle] \#6443 Improve HashAlternatives performance (@cuonglm)
+- [state/indexer] \#6382 reconstruct indexer, move txindex into the indexer package (@JayT106)
 
 ### BUG FIXES
 
