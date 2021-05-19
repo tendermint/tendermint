@@ -280,8 +280,27 @@ func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo memp
 	return nil
 }
 
+// Flush flushes out the mempool. It acquires a read-lock, fetches all the
+// transactions currently in the transaction store and removes each transaction
+// from the store and all indexes and finally resets the cache.
+//
+// NOTE:
+// - Flushing the mempool may leave the mempool in an inconsistent state.
 func (txmp *TxMempool) Flush() {
-	panic("not implemented")
+	txmp.mtx.RLock()
+	defer txmp.mtx.RUnlock()
+
+	for _, wtx := range txmp.txStore.GetAllTxs() {
+		if !txmp.txStore.IsTxRemoved(mempool.TxKey(wtx.tx)) {
+			txmp.txStore.RemoveTx(wtx)
+			txmp.priorityIndex.RemoveTx(wtx)
+			txmp.gossipIndex.Remove(wtx.gossipEl)
+			wtx.gossipEl.DetachPrev()
+		}
+	}
+
+	atomic.SwapInt64(&txmp.sizeBytes, 0)
+	txmp.cache.Reset()
 }
 
 func (txmp *TxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {

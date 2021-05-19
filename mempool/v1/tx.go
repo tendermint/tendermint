@@ -67,6 +67,21 @@ func NewTxStore() *TxStore {
 	}
 }
 
+// GetAllTxs returns all the transactions currently in the store.
+func (txs *TxStore) GetAllTxs() []*WrappedTx {
+	txs.mtx.RLock()
+	defer txs.mtx.RUnlock()
+
+	wTxs := make([]*WrappedTx, len(txs.hashTxs))
+	i := 0
+	for _, wtx := range txs.hashTxs {
+		wTxs[i] = wtx
+		i++
+	}
+
+	return wTxs
+}
+
 // GetTxBySender returns a *WrappedTx by the transaction's sender property
 // defined by the ABCI application.
 func (txs *TxStore) GetTxBySender(sender string) *WrappedTx {
