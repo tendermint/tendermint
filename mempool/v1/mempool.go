@@ -11,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
@@ -303,12 +304,93 @@ func (txmp *TxMempool) Flush() {
 	txmp.cache.Reset()
 }
 
+// ReapMaxBytesMaxGas returns a list of transactions within the provided size
+// and gas constraints. Transaction are retrieved in priority order.
+//
+// NOTE:
+// - A read-lock is acquired.
+// - Transactions returned are not actually removed from the mempool transaction
+//   store or indexes.
 func (txmp *TxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
-	panic("not implemented")
+	txmp.mtx.RLock()
+	defer txmp.mtx.RUnlock()
+
+	var (
+		totalGas  int64
+		totalSize int64
+	)
+
+	// wTxs contains a list of *WrappedTx retrieved from the priority queue that
+	// need to be re-enqueued prior to returning.
+	wTxs := make([]*WrappedTx, 0, txmp.priorityIndex.NumTxs())
+	defer func() {
+		for _, wtx := range wTxs {
+			txmp.priorityIndex.PushTx(wtx)
+		}
+	}()
+
+	txs := make([]types.Tx, 0, txmp.priorityIndex.NumTxs())
+	for txmp.priorityIndex.NumTxs() > 0 {
+		wtx := txmp.priorityIndex.PopTx()
+		txs = append(txs, wtx.tx)
+		wTxs = append(wTxs, wtx)
+		size := types.ComputeProtoSizeForTxs([]types.Tx{wtx.tx})
+
+		// Ensure we have capacity for the transaction with respect to the
+		// transaction size.
+		if maxBytes > -1 && totalSize+size > maxBytes {
+			return txs[:len(txs)-1]
+		}
+
+		totalSize += size
+
+		// ensure we have capacity for the transaction with respect to total gas
+		gas := totalGas + wtx.gasWanted
+		if maxGas > -1 && gas > maxGas {
+			return txs[:len(txs)-1]
+		}
+
+		totalGas += gas
+	}
+
+	return txs
 }
 
+// ReapMaxTxs returns a list of transactions within the provided number of
+// transactions bound. Transaction are retrieved in priority order.
+//
+// NOTE:
+// - A read-lock is acquired.
+// - Transactions returned are not actually removed from the mempool transaction
+//   store or indexes.
 func (txmp *TxMempool) ReapMaxTxs(max int) types.Txs {
-	panic("not implemented")
+	txmp.mtx.RLock()
+	defer txmp.mtx.RUnlock()
+
+	numTxs := txmp.priorityIndex.NumTxs()
+	if max < 0 {
+		max = numTxs
+	}
+
+	cap := tmmath.MinInt(numTxs, max)
+
+	// wTxs contains a list of *WrappedTx retrieved from the priority queue that
+	// need to be re-enqueued prior to returning.
+	wTxs := make([]*WrappedTx, 0, cap)
+	defer func() {
+		for _, wtx := range wTxs {
+			txmp.priorityIndex.PushTx(wtx)
+		}
+	}()
+
+	txs := make([]types.Tx, 0, cap)
+	for txmp.priorityIndex.NumTxs() > 0 && len(txs) <= max {
+		wtx := txmp.priorityIndex.PopTx()
+		txs = append(txs, wtx.tx)
+		wTxs = append(wTxs, wtx)
+	}
+
+	return txs
 }
 
 func (txmp *TxMempool) Update(
@@ -378,6 +460,8 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 				}
 			}
 
+			wtx.gasWanted = checkTxRes.CheckTx.GasWanted
+			wtx.height = txmp.height
 			wtx.priority = checkTxRes.CheckTx.Priority
 			wtx.sender = checkTxRes.CheckTx.Sender
 

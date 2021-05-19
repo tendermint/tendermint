@@ -12,8 +12,14 @@ import (
 // WrappedTx defines a wrapper around a raw transaction with additional metadata
 // that is used for indexing.
 type WrappedTx struct {
-	// tx represents the raw binary transaction data.
+	// tx represents the raw binary transaction data
 	tx types.Tx
+
+	// height defines the height at which the transaction was validated at
+	height int64
+
+	// gasWanted defines the amount of gas the transaction sender requires
+	gasWanted int64
 
 	// priority defines the transaction's priority as specified by the application
 	// in the ResponseCheckTx response.
