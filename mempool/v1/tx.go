@@ -36,6 +36,12 @@ type WrappedTx struct {
 
 	// gossipEl references the linked-list element in the gossip index
 	gossipEl *clist.CElement
+
+	// removed marks the transaction as removed from the mempool. This is set
+	// during RemoveTx and is needed due to the fact that a given existing
+	// transaction in the mempool can be evicted when it is simultaneously having
+	// a reCheckTx callback executed.
+	removed bool
 }
 
 func (wtx *WrappedTx) Size() int {
@@ -43,10 +49,15 @@ func (wtx *WrappedTx) Size() int {
 }
 
 // TxStore implements a thread-safe mapping of valid transaction(s).
+//
+// NOTE:
+// - Concurrent read-only access to a *WrappedTx object is OK. However, mutative
+//   access is not allowed. Regardless, it is not expected for the mempool to
+//   need mutative access.
 type TxStore struct {
 	mtx       tmsync.RWMutex
-	senderTxs map[string]*WrappedTx // sender is defined by the ABCI application
-	hashTxs   map[[mempool.TxKeySize]byte]*WrappedTx
+	hashTxs   map[[mempool.TxKeySize]byte]*WrappedTx // primary index
+	senderTxs map[string]*WrappedTx                  // sender is defined by the ABCI application
 }
 
 func NewTxStore() *TxStore {
@@ -71,6 +82,20 @@ func (txs *TxStore) GetTxByHash(hash [mempool.TxKeySize]byte) *WrappedTx {
 	defer txs.mtx.RUnlock()
 
 	return txs.hashTxs[hash]
+}
+
+// IsTxRemoved returns true if a transaction by hash is marked as removed and
+// false otherwise.
+func (txs *TxStore) IsTxRemoved(hash [mempool.TxKeySize]byte) bool {
+	txs.mtx.RLock()
+	defer txs.mtx.RUnlock()
+
+	wtx, ok := txs.hashTxs[hash]
+	if ok {
+		return wtx.removed
+	}
+
+	return false
 }
 
 // SetTx stores a *WrappedTx by it's hash. If the transaction also contains a
@@ -98,6 +123,7 @@ func (txs *TxStore) RemoveTx(wtx *WrappedTx) {
 	}
 
 	delete(txs.hashTxs, mempool.TxKey(wtx.tx))
+	wtx.removed = true
 }
 
 // GetOrSetPeerByTxHash looks up a WrappedTx by transaction hash and adds the

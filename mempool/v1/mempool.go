@@ -1,7 +1,9 @@
 package v1
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -55,7 +57,14 @@ type TxMempool struct {
 
 	// recheckCursor and recheckEnd are used as cursors based on the gossip index
 	// to recheck transactions that are already in the mempool. Iteration is not
-	// thread-safe and transaction may be mutated in serial.
+	// thread-safe and transaction may be mutated in serial order.
+	//
+	// XXX/TODO: It might be somewhat of a codesmell to use the gossip index for
+	// iterator and cursor management when rechecking transactions. If the gossip
+	// index changes or is removed in a future refactor, this will have to be
+	// refactored. Instead, we should consider just keeping a slice of a snapshot
+	// of the mempool's current transactions during Update and an integer cursor
+	// into that slice. This, however, requires additional O(n) space complexity.
 	recheckCursor *clist.CElement // next expected response
 	recheckEnd    *clist.CElement // re-checking stops here
 
@@ -80,7 +89,7 @@ func NewTxMempool(
 	options ...TxMempoolOption,
 ) *TxMempool {
 
-	mp := &TxMempool{
+	txmp := &TxMempool{
 		logger:        logger,
 		config:        cfg,
 		proxyAppConn:  proxyAppConn,
@@ -93,17 +102,16 @@ func NewTxMempool(
 	}
 
 	if cfg.CacheSize > 0 {
-		mp.cache = mempool.NewLRUTxCache(cfg.CacheSize)
+		txmp.cache = mempool.NewLRUTxCache(cfg.CacheSize)
 	}
 
-	// TODO:
-	// proxyAppConn.SetResponseCallback(mp.globalCb)
+	proxyAppConn.SetResponseCallback(txmp.defaultTxCallback)
 
 	for _, opt := range options {
-		opt(mp)
+		opt(txmp)
 	}
 
-	return mp
+	return txmp
 }
 
 // WithPreCheck sets a filter for the mempool to reject a transaction if f(tx)
@@ -315,7 +323,8 @@ func (txmp *TxMempool) Update(
 // If the new incoming transaction fails CheckTx or postCheck fails, we reject
 // the new incoming transaction.
 //
-// Note, an explicit lock is NOT required.
+// NOTE:
+// - An explicit lock is NOT required.
 func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo mempool.TxInfo) {
 	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
 	if ok {
@@ -336,6 +345,10 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 					return
 				} else {
 					// evict an existing transaction
+					//
+					// NOTE:
+					// - The transaction, toEvict, can be removed while a concurrent
+					// reCheckTx callback is being executed for the same transaction.
 					txmp.removeTx(toEvict, true)
 					txmp.logger.Debug(
 						"evicted good transaction; mempool full",
@@ -343,10 +356,6 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 						"new_tx", mempool.TxHashFromBytes(wtx.tx),
 					)
 					txmp.metrics.EvictedTxs.Add(1)
-
-					// TODO: Since we now evict transactions, we may need to mark the
-					// evicted *WrappedTx so that during re-CheckTx, we don't recheck an
-					// evicted transaction.
 				}
 			}
 
@@ -383,8 +392,111 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 	}
 }
 
-func (txmp *TxMempool) recheckTxCallback(req *abci.Request, res *abci.Response) {
+// defaultTxCallback performs the default CheckTx application callback. This is
+// NOT executed when a transaction is first seen/received. Instead, this callback
+// is executed during re-checking transactions (if enabled). A caller, i.e a
+// block proposer, acquires a mempool write-lock via Lock() and when executing
+// Update(), if the mempool is non-empty and Recheck is enabled, then all
+// remaining transactions will be rechecked via CheckTxAsync. The order in which
+// they are rechecked must be the same order in which this callback is called
+// per transaction.
+func (txmp *TxMempool) defaultTxCallback(req *abci.Request, res *abci.Response) {
+	if txmp.recheckCursor == nil {
+		return
+	}
 
+	txmp.metrics.RecheckTimes.Add(1)
+
+	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
+	if ok {
+		tx := req.GetCheckTx().Tx
+		wtx := txmp.recheckCursor.Value.(*WrappedTx)
+		if !bytes.Equal(tx, wtx.tx) {
+			panic(fmt.Sprintf("re-CheckTx transaction mismatch; got: %X, expected: %X", wtx.tx.Hash(), mempool.TxKey(tx)))
+		}
+
+		// Only evaluate transactions that have not been removed. This can happen
+		// if an existing transaction is evicted during CheckTx and while this
+		// callback is being executed for the same evicted transaction.
+		if !txmp.txStore.IsTxRemoved(mempool.TxKey(tx)) {
+			var err error
+			if txmp.postCheck != nil {
+				err = txmp.postCheck(tx, checkTxRes.CheckTx)
+			}
+
+			if checkTxRes.CheckTx.Code == abci.CodeTypeOK && err == nil {
+				wtx.priority = checkTxRes.CheckTx.Priority
+			} else {
+				txmp.logger.Debug(
+					"existing transaction no longer valid; failed re-CheckTx callback",
+					"tx", mempool.TxHashFromBytes(wtx.tx),
+					"err", err,
+					"code", checkTxRes.CheckTx.Code,
+				)
+
+				if wtx.gossipEl != txmp.recheckCursor {
+					panic("corrupted reCheckTx cursor")
+				}
+
+				txmp.removeTx(wtx, !txmp.config.KeepInvalidTxsInCache)
+			}
+		}
+
+		// move reCheckTx cursor to next element
+		if txmp.recheckCursor == txmp.recheckEnd {
+			txmp.recheckCursor = nil
+		} else {
+			txmp.recheckCursor = txmp.recheckCursor.Next()
+		}
+
+		if txmp.recheckCursor == nil {
+			txmp.logger.Debug("finished rechecking transactions")
+
+			if txmp.Size() > 0 {
+				txmp.notifyTxsAvailable()
+			}
+		}
+
+		txmp.metrics.Size.Set(float64(txmp.Size()))
+	}
+}
+
+// updateReCheckTxs updates the recheck cursors by using the gossipIndex. For
+// each transaction, it executes CheckTxAsync. The global callback defined on
+// the proxyAppConn will be executed for each transaction after CheckTx is
+// executed.
+//
+// NOTE:
+// - The caller must have a write-lock when executing updateReCheckTxs.
+func (txmp *TxMempool) updateReCheckTxs() {
+	if txmp.Size() == 0 {
+		panic("attempted to update re-CheckTx txs when mempool is empty")
+	}
+
+	txmp.recheckCursor = txmp.gossipIndex.Front()
+	txmp.recheckEnd = txmp.gossipIndex.Back()
+	ctx := context.Background()
+
+	for e := txmp.gossipIndex.Front(); e != nil; e = e.Next() {
+		wtx := e.Value.(*WrappedTx)
+
+		// Only execute CheckTx if the transaction is not marked as removed which
+		// could happen if the transaction was evicted.
+		if !txmp.txStore.IsTxRemoved(mempool.TxKey(wtx.tx)) {
+			_, err := txmp.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{
+				Tx:   wtx.tx,
+				Type: abci.CheckTxType_Recheck,
+			})
+			if err != nil {
+				// no need in retrying since the tx will be rechecked after the next block
+				txmp.logger.Error("failed to execute CheckTx during rechecking", "err", err)
+			}
+		}
+	}
+
+	if _, err := txmp.proxyAppConn.FlushAsync(ctx); err != nil {
+		txmp.logger.Error("failed to flush transactions during rechecking", "err", err)
+	}
 }
 
 // canAddTx returns an error if we cannot insert the provided *WrappedTx into
@@ -422,6 +534,10 @@ func (txmp *TxMempool) insertTx(wtx *WrappedTx) {
 }
 
 func (txmp *TxMempool) removeTx(wtx *WrappedTx, removeFromCache bool) {
+	if txmp.txStore.IsTxRemoved(mempool.TxKey(wtx.tx)) {
+		return
+	}
+
 	txmp.txStore.RemoveTx(wtx)
 	txmp.priorityIndex.RemoveTx(wtx)
 
