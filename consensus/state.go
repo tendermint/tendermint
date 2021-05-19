@@ -1907,6 +1907,10 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.NodeID) 
 		}
 
 		cs.ProposalBlock = block
+		stateMachineValidBlock, err := cs.blockExec.ProcessProposal(height, cs.ProposalBlock)
+		if err != nil {
+			cs.Logger.Error("State machine returned an error when trying to process proposal block", "err", err)
+		}
 
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
@@ -1919,7 +1923,7 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.NodeID) 
 		// and this block is valid, Update Valid* immediately.
 		prevotes := cs.Votes.Prevotes(cs.Round)
 		blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
-		if hasTwoThirds && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
+		if hasTwoThirds && !blockID.IsZero() && (cs.ValidRound < cs.Round) && stateMachineValidBlock {
 			correctBlockHash := cs.ProposalBlock.HashesTo(blockID.Hash)
 			if correctBlockHash {
 				cs.Logger.Debug(

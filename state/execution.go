@@ -119,8 +119,20 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 func (blockExec *BlockExecutor) ProcessProposal(
 	height int64,
 	block *types.Block,
-) bool {
-	return true
+) (bool, error) {
+	ctx := context.Background()
+	req := abci.RequestProcessProposal{Txs: block.Data.Txs.ToSliceOfBytes()}
+	resp, err := blockExec.proxyApp.ProcessProposalSync(ctx, req)
+	if err != nil {
+		return false, ErrInvalidBlock(err)
+	}
+
+	// TODO: Need to implement deserialization of evidence bytes
+	// for _, ev := range resp.Evidence {
+	// 	blockExec.evpool.AddEvidence()
+	// }
+
+	return resp.AcceptBlock, nil
 }
 
 // ValidateBlock validates the given block against the given state.
