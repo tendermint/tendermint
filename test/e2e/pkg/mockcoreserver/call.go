@@ -14,7 +14,7 @@ var (
 type (
 	ExpectFunc        func(req *http.Request) error
 	HandlerFunc       func(w http.ResponseWriter, req *http.Request) error
-	HandlerOptionFunc func(opt *respOption, req *http.Request)
+	HandlerOptionFunc func(opt *respOption, req *http.Request) error
 )
 
 type respOption struct {
@@ -42,7 +42,10 @@ func (c *Call) Respond(opts ...HandlerOptionFunc) *Call {
 	}
 	c.handlerFunc = func(w http.ResponseWriter, req *http.Request) error {
 		for _, opt := range opts {
-			opt(ro, req)
+			err := opt(ro, req)
+			if err != nil {
+				return err
+			}
 		}
 		if len(ro.header) > 0 {
 			for k, vals := range ro.header {
