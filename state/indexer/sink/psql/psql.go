@@ -158,7 +158,13 @@ func (es *EventSink) HasBlock(h int64) (bool, error) {
 }
 
 func indexBlockEvents(
-	sqlStmt *sq.InsertBuilder, events []abci.Event, ty string, height int64, ts time.Time, chainID string) error {
+	sqlStmt *sq.InsertBuilder,
+	events []abci.Event,
+	ty string,
+	height int64,
+	ts time.Time,
+	chainID string,
+) error {
 	for _, event := range events {
 		// only index events with a non-empty type
 		if len(event.Type) == 0 {

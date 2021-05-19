@@ -104,8 +104,7 @@ func (is *Service) OnStop() {
 	}
 
 	for _, sink := range is.eventSinks {
-		err := sink.Stop()
-		if err != nil {
+		if err := sink.Stop(); err != nil {
 			is.Logger.Error("failed to close eventsink", "eventsink", sink.Type(), "err", err)
 		}
 	}
