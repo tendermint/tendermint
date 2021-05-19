@@ -1915,11 +1915,13 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.NodeID) 
 			cs.Logger.Error("failed publishing event complete proposal", "err", err)
 		}
 
-		// Update Valid* if we can.
+		// If we've already received 2/3rds of prevotes for this block,
+		// and this block is valid, Update Valid* immediately.
 		prevotes := cs.Votes.Prevotes(cs.Round)
 		blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
 		if hasTwoThirds && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
-			if cs.ProposalBlock.HashesTo(blockID.Hash) {
+			correctBlockHash := cs.ProposalBlock.HashesTo(blockID.Hash)
+			if correctBlockHash {
 				cs.Logger.Debug(
 					"updating valid block to new proposal block",
 					"valid_round", cs.Round,

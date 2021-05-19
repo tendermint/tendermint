@@ -18,6 +18,7 @@ type AppConnConsensus interface {
 
 	InitChainSync(context.Context, types.RequestInitChain) (*types.ResponseInitChain, error)
 
+	ProcessProposalSync(context.Context, types.RequestProcessProposal) (*types.ResponseProcessProposal, error)
 	BeginBlockSync(context.Context, types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	DeliverTxAsync(context.Context, types.RequestDeliverTx) (*abcicli.ReqRes, error)
 	EndBlockSync(context.Context, types.RequestEndBlock) (*types.ResponseEndBlock, error)
@@ -78,6 +79,13 @@ func (app *appConnConsensus) InitChainSync(
 	req types.RequestInitChain,
 ) (*types.ResponseInitChain, error) {
 	return app.appConn.InitChainSync(ctx, req)
+}
+
+func (app *appConnConsensus) ProcessProposalSync(
+	ctx context.Context,
+	req types.RequestProcessProposal,
+) (*types.ResponseProcessProposal, error) {
+	return app.appConn.ProcessProposalSync(ctx, req)
 }
 
 func (app *appConnConsensus) BeginBlockSync(

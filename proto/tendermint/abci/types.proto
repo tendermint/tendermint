@@ -35,6 +35,7 @@ message Request {
     RequestOfferSnapshot      offer_snapshot       = 12;
     RequestLoadSnapshotChunk  load_snapshot_chunk  = 13;
     RequestApplySnapshotChunk apply_snapshot_chunk = 14;
+    RequestProcessProposal    process_proposal     = 15;
   }
 }
 
@@ -117,6 +118,12 @@ message RequestApplySnapshotChunk {
   string sender = 3;
 }
 
+// Gives the state machine the proposal (implements single-threaded, v3 of the spec)
+message RequestProcessProposal {
+  tendermint.types.Header header               = 1 [(gogoproto.nullable) = false];
+  repeated bytes          txs                  = 2;
+}
+
 //----------------------------------------
 // Response types
 
@@ -137,6 +144,7 @@ message Response {
     ResponseOfferSnapshot      offer_snapshot       = 13;
     ResponseLoadSnapshotChunk  load_snapshot_chunk  = 14;
     ResponseApplySnapshotChunk apply_snapshot_chunk = 15;
+    ResponseProcessProposal    process_proposal     = 16;
   }
 }
 
@@ -255,6 +263,13 @@ message ResponseApplySnapshotChunk {
     REJECT_SNAPSHOT = 5;  // Reject this snapshot, try others
   }
 }
+
+message ResponseProcessProposal {
+  bool          accept_block         = 1;
+  // Optional slashing evidence the state machine can create for a failed block
+  repeated bytes evidence = 2;
+}
+
 
 //----------------------------------------
 // Misc.

@@ -204,6 +204,17 @@ func (app *localClient) ApplySnapshotChunkAsync(
 	), nil
 }
 
+func (app *localClient) ProcessProposalAsync(ctx context.Context, params types.RequestProcessProposal) (*ReqRes, error) {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res := app.Application.ProcessProposal(params)
+	return app.callback(
+		types.ToRequestProcessProposal(params),
+		types.ToResponseProcessProposal(res),
+	), nil
+}
+
 //-------------------------------------------------------
 
 func (app *localClient) FlushSync(ctx context.Context) error {
@@ -343,6 +354,18 @@ func (app *localClient) ApplySnapshotChunkSync(
 	defer app.mtx.Unlock()
 
 	res := app.Application.ApplySnapshotChunk(req)
+	return &res, nil
+}
+
+func (app *localClient) ProcessProposalSync(
+	ctx context.Context,
+	req types.RequestProcessProposal,
+) (*types.ResponseProcessProposal, error) {
+
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res := app.Application.ProcessProposal(req)
 	return &res, nil
 }
 

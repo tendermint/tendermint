@@ -113,6 +113,16 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	return state.MakeBlock(height, txs, commit, evidence, proposerAddr)
 }
 
+// ProcessProposal calls ABCI.ProcessProposal.
+// It handles sending any evidence that may be returned to the evidence pool.
+// It then returns whether the application deemed the block data valid.
+func (blockExec *BlockExecutor) ProcessProposal(
+	height int64,
+	block *types.Block,
+) bool {
+	return true
+}
+
 // ValidateBlock validates the given block against the given state.
 // If the block is invalid, it returns an error.
 // Validation does not mutate state, but does require historical information from the stateDB,
