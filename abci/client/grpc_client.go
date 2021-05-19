@@ -317,11 +317,11 @@ func (cli *grpcClient) ApplySnapshotChunkAsync(
 // NOTE: call is synchronous, use ctx to break early if needed
 func (cli *grpcClient) processProposalAsync(ctx context.Context, params types.RequestProcessProposal) (*ReqRes, error) {
 	req := types.ToRequestProcessProposal(params)
-	res, err := cli.client.DeliverTx(ctx, req.GetDeliverTx(), grpc.WaitForReady(true))
+	res, err := cli.client.ProcessProposal(ctx, req.GetProcessProposal(), grpc.WaitForReady(true))
 	if err != nil {
 		return nil, err
 	}
-	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_DeliverTx{DeliverTx: res}})
+	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_ProcessProposal{ProcessProposal: res}})
 }
 
 // finishAsyncCall creates a ReqRes for an async call, and immediately populates it
