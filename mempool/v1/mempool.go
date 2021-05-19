@@ -393,6 +393,15 @@ func (txmp *TxMempool) ReapMaxTxs(max int) types.Txs {
 	return txs
 }
 
+// Update iterates over all the transactions provided by the caller, i.e. the
+// block producer, and removes them from the cache (if applicable) and removes
+// the transactions from the main transaction store and associated indexes.
+// Finally, if there are trainsactions remaining in the mempool, we initiate a
+// re-CheckTx for them (if applicable), otherwise, we notify the caller more
+// transactions are available.
+//
+// NOTE:
+// - The caller must explicitly acquire a write-lock via Lock().
 func (txmp *TxMempool) Update(
 	blockHeight int64,
 	blockTxs types.Txs,
@@ -400,7 +409,50 @@ func (txmp *TxMempool) Update(
 	newPreFn mempool.PreCheckFunc,
 	newPostFn mempool.PostCheckFunc,
 ) error {
-	panic("not implemented")
+
+	txmp.height = blockHeight
+	txmp.notifiedTxsAvailable = false
+
+	if newPreFn != nil {
+		txmp.preCheck = newPreFn
+	}
+	if newPostFn != nil {
+		txmp.postCheck = newPostFn
+	}
+
+	for i, tx := range blockTxs {
+		if deliverTxResponses[i].Code == abci.CodeTypeOK {
+			// add the valid committed transaction to the cache (if missing)
+			_ = txmp.cache.Push(tx)
+		} else if !txmp.config.KeepInvalidTxsInCache {
+			// allow invalid transactions to be re-submitted
+			txmp.cache.Remove(tx)
+		}
+
+		// remove the committed transaction from the transaction store and indexes
+		if wtx := txmp.txStore.GetTxByHash(mempool.TxKey(tx)); wtx != nil {
+			txmp.removeTx(wtx, false)
+		}
+	}
+
+	// If there any uncommitted transactions left in the mempool, we either
+	// initiate re-CheckTx per remaining transaction or notify that remaining
+	// transactions are left.
+	if txmp.Size() > 0 {
+		if txmp.config.Recheck {
+			txmp.logger.Debug(
+				"executing re-CheckTx for all remaining transactions",
+				"num_txs", txmp.Size(),
+				"height", blockHeight,
+			)
+			txmp.updateReCheckTxs()
+		} else {
+			txmp.notifyTxsAvailable()
+		}
+	}
+
+	txmp.metrics.Size.Set(float64(txmp.Size()))
+	return nil
 }
 
 // initTxCallback performs the initial, i.e. the first, callback after CheckTx
