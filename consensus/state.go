@@ -1907,7 +1907,7 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.NodeID) 
 		}
 
 		cs.ProposalBlock = block
-		stateMachineValidBlock, err := cs.blockExec.ProcessProposal(height, cs.ProposalBlock)
+		stateMachineValidBlock, err := cs.blockExec.ProcessProposal(cs.ProposalBlock)
 		if err != nil {
 			cs.Logger.Error("State machine returned an error when trying to process proposal block", "err", err)
 		}

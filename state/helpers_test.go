@@ -298,6 +298,15 @@ func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlo
 	return abci.ResponseBeginBlock{}
 }
 
+func (app *testApp) ProcessProposal(req abci.RequestProcessProposal) abci.ResponseProcessProposal {
+	for _, tx := range req.Txs {
+		if len(tx) == 0 {
+			return abci.ResponseProcessProposal{AcceptBlock: false}
+		}
+	}
+	return abci.ResponseProcessProposal{AcceptBlock: true}
+}
+
 func (app *testApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
 	return abci.ResponseEndBlock{
 		ValidatorUpdates: app.ValidatorUpdates,

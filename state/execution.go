@@ -113,15 +113,21 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	return state.MakeBlock(height, txs, commit, evidence, proposerAddr)
 }
 
-// ProcessProposal calls ABCI.ProcessProposal.
-// It handles sending any evidence that may be returned to the evidence pool.
-// It then returns whether the application deemed the block data valid.
+// ProcessProposal calls ABCI.ProcessProposal, which allows the application
+// to check if it thinks the block is valid, and add any evidence to the
+// local evidence pool in the event of fraudulent activity.
+//
+// This method returns whether the application deems this block valid.
+// TODO: In the future, pending spec work, this may become an async method.
 func (blockExec *BlockExecutor) ProcessProposal(
-	height int64,
 	block *types.Block,
 ) (bool, error) {
 	ctx := context.Background()
-	req := abci.RequestProcessProposal{Txs: block.Data.Txs.ToSliceOfBytes()}
+	req := abci.RequestProcessProposal{
+		Txs:    block.Data.Txs.ToSliceOfBytes(),
+		Header: *block.Header.ToProto(),
+	}
+
 	resp, err := blockExec.proxyApp.ProcessProposalSync(ctx, req)
 	if err != nil {
 		return false, ErrInvalidBlock(err)
