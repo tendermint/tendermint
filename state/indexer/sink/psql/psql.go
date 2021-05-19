@@ -58,14 +58,15 @@ func (es *EventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error {
 		Values(types.BlockHeightKey, fmt.Sprint(h.Header.Height), h.Header.Height, "", ts, es.chainID)
 
 	// index begin_block events
-	err := indexBlockEvents(
-		&sqlStmt, h.ResultBeginBlock.Events, types.EventTypeBeginBlock, h.Header.Height, ts, es.chainID)
+	sqlStmt, err := indexBlockEvents(
+		sqlStmt, h.ResultBeginBlock.Events, types.EventTypeBeginBlock, h.Header.Height, ts, es.chainID)
 	if err != nil {
 		return err
 	}
 
 	// index end_block events
-	err = indexBlockEvents(&sqlStmt, h.ResultEndBlock.Events, types.EventTypeEndBlock, h.Header.Height, ts, es.chainID)
+	sqlStmt, err = indexBlockEvents(
+		sqlStmt, h.ResultEndBlock.Events, types.EventTypeEndBlock, h.Header.Height, ts, es.chainID)
 	if err != nil {
 		return err
 	}
@@ -158,13 +159,13 @@ func (es *EventSink) HasBlock(h int64) (bool, error) {
 }
 
 func indexBlockEvents(
-	sqlStmt *sq.InsertBuilder,
+	sqlStmt sq.InsertBuilder,
 	events []abci.Event,
 	ty string,
 	height int64,
 	ts time.Time,
 	chainID string,
-) error {
+) (sq.InsertBuilder, error) {
 	for _, event := range events {
 		// only index events with a non-empty type
 		if len(event.Type) == 0 {
@@ -179,15 +180,16 @@ func indexBlockEvents(
 			// index iff the event specified index:true and it's not a reserved event
 			compositeKey := fmt.Sprintf("%s.%s", event.Type, attr.Key)
 			if compositeKey == types.BlockHeightKey {
-				return fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeKey)
+				return sqlStmt, fmt.Errorf(
+					"event type and attribute key \"%s\" is reserved; please use a different key", compositeKey)
 			}
 
 			if attr.GetIndex() {
-				*sqlStmt = sqlStmt.Values(compositeKey, attr.Value, height, ty, ts, chainID)
+				sqlStmt = sqlStmt.Values(compositeKey, attr.Value, height, ty, ts, chainID)
 			}
 		}
 	}
-	return nil
+	return sqlStmt, nil
 }
 
 func (es *EventSink) Stop() error {
