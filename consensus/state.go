@@ -128,7 +128,7 @@ type State struct {
 
 	// some functions can be overwritten for testing
 	decideProposal func(height int64, round int32)
-	doPrevote      func(height int64, round int32)
+	doPrevote      func(height int64, round int32, mustVoteNil bool)
 	setProposal    func(proposal *types.Proposal) error
 
 	// closed when we finish shutting down
@@ -916,7 +916,7 @@ func (cs *State) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
 			cs.Logger.Error("failed publishing timeout propose", "err", err)
 		}
 
-		cs.enterPrevote(ti.Height, ti.Round)
+		cs.enterPrevote(ti.Height, ti.Round, false)
 
 	case cstypes.RoundStepPrevoteWait:
 		if err := cs.eventBus.PublishEventTimeoutWait(cs.RoundStateEvent()); err != nil {
@@ -1078,7 +1078,7 @@ func (cs *State) enterPropose(height int64, round int32) {
 		// else, we'll enterPrevote when the rest of the proposal is received (in AddProposalBlockPart),
 		// or else after timeoutPropose
 		if cs.isProposalComplete() {
-			cs.enterPrevote(height, cs.Round)
+			cs.enterPrevote(height, cs.Round, false)
 		}
 	}()
 
@@ -1234,7 +1234,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 // Enter: proposal block and POL is ready.
 // Prevote for LockedBlock if we're locked, or ProposalBlock if valid.
 // Otherwise vote nil.
-func (cs *State) enterPrevote(height int64, round int32) {
+func (cs *State) enterPrevote(height int64, round int32, mustVoteNil bool) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPrevote <= cs.Step) {
@@ -1254,13 +1254,13 @@ func (cs *State) enterPrevote(height int64, round int32) {
 	logger.Debug("entering prevote step", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
 
 	// Sign and broadcast vote as necessary
-	cs.doPrevote(height, round)
+	cs.doPrevote(height, round, mustVoteNil)
 
 	// Once `addVote` hits any +2/3 prevotes, we will go to PrevoteWait
 	// (so we have more time to try and collect +2/3 prevotes for a single block)
 }
 
-func (cs *State) defaultDoPrevote(height int64, round int32) {
+func (cs *State) defaultDoPrevote(height int64, round int32, mustVoteNil bool) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	// If a block is locked, prevote that.
@@ -1278,10 +1278,18 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 	}
 
 	// Validate proposal block
+	// TODO: Should we move this to prior logic, and embed into must vote nil?
 	err := cs.blockExec.ValidateBlock(cs.state, cs.ProposalBlock)
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
 		logger.Error("prevote step: ProposalBlock is invalid", "err", err)
+		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
+		return
+	}
+
+	if mustVoteNil {
+		// Consensus says we must vote nil
+		logger.Error("prevote step: consensus deems this block to be mustVoteNil", "err", err)
 		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
@@ -1945,7 +1953,8 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.NodeID) 
 
 		if cs.Step <= cstypes.RoundStepPropose && cs.isProposalComplete() {
 			// Move onto the next step
-			cs.enterPrevote(height, cs.Round)
+			mustVoteNil := !stateMachineValidBlock
+			cs.enterPrevote(height, cs.Round, mustVoteNil)
 			if hasTwoThirds { // this is optimisation as this will be triggered when prevote is added
 				cs.enterPrecommit(height, cs.Round)
 			}
@@ -2144,7 +2153,7 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.NodeID) (added bool, err e
 		case cs.Proposal != nil && 0 <= cs.Proposal.POLRound && cs.Proposal.POLRound == vote.Round:
 			// If the proposal is now complete, enter prevote of cs.Round.
 			if cs.isProposalComplete() {
-				cs.enterPrevote(height, cs.Round)
+				cs.enterPrevote(height, cs.Round, false)
 			}
 		}
 
