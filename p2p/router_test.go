@@ -738,7 +738,7 @@ func TestRouter_EvictPeers(t *testing.T) {
 		Status: p2p.PeerStatusUp,
 	})
 
-	require.NoError(t, peerManager.Errored(peerInfo.NodeID, errors.New("boom")))
+	peerManager.Errored(peerInfo.NodeID, errors.New("boom"))
 
 	p2ptest.RequireUpdate(t, sub, p2p.PeerUpdate{
 		NodeID: peerInfo.NodeID,
