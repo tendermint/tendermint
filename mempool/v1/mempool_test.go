@@ -2,10 +2,10 @@ package v1
 
 import (
 	"bytes"
-	"encoding/binary"
 	"fmt"
 	"math/rand"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -32,7 +32,7 @@ func (app *application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 	// infer the priority from the raw transaction value
 	parts := bytes.Split(req.Tx, []byte("="))
 	if len(parts) == 2 {
-		v, err := binary.ReadVarint(bytes.NewBuffer(parts[1]))
+		v, err := strconv.ParseInt(string(parts[1]), 10, 64)
 		if err != nil {
 			return abci.ResponseCheckTx{
 				Priority:  priority,
@@ -158,4 +158,23 @@ func TestTxMempool_Size(t *testing.T) {
 	txmp.Unlock()
 
 	require.Equal(t, len(txs)/2, txmp.Size())
+}
+
+func TestTxMempool_Flush(t *testing.T) {
+	txmp := setup(t)
+
+	txs := checkTxs(t, txmp, 100, 0)
+	require.Equal(t, len(txs), txmp.Size())
+
+	responses := make([]*abci.ResponseDeliverTx, len(txs[:50]))
+	for i := 0; i < len(responses); i++ {
+		responses[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
+	}
+
+	txmp.Lock()
+	require.NoError(t, txmp.Update(1, txs[:50], responses, nil, nil))
+	txmp.Unlock()
+
+	txmp.Flush()
+	require.Zero(t, txmp.Size())
 }
