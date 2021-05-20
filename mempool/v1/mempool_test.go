@@ -1,12 +1,16 @@
 package v1
 
 import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
 	"math/rand"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
@@ -16,10 +20,47 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// application extends the KV store application by overriding CheckTx to provide
+// transaction priority based on the value in the key/value pair.
+type application struct {
+	*kvstore.Application
+}
+
+func (app *application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
+	var priority int64
+
+	// infer the priority from the raw transaction value
+	parts := bytes.Split(req.Tx, []byte("="))
+	if len(parts) == 2 {
+		v, err := binary.ReadVarint(bytes.NewBuffer(parts[1]))
+		if err != nil {
+			return abci.ResponseCheckTx{
+				Priority:  priority,
+				Code:      100,
+				GasWanted: 1,
+			}
+		}
+
+		priority = v
+	} else {
+		return abci.ResponseCheckTx{
+			Priority:  priority,
+			Code:      101,
+			GasWanted: 1,
+		}
+	}
+
+	return abci.ResponseCheckTx{
+		Priority:  priority,
+		Code:      code.CodeTypeOK,
+		GasWanted: 1,
+	}
+}
+
 func setup(t *testing.T) *TxMempool {
 	t.Helper()
 
-	app := kvstore.NewApplication()
+	app := &application{kvstore.NewApplication()}
 	cc := proxy.NewLocalClientCreator(app)
 	cfg := config.ResetTestRoot(t.Name())
 
@@ -41,12 +82,12 @@ func checkTxs(t *testing.T, txmp *TxMempool, numTxs int, peerID uint16) types.Tx
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	for i := 0; i < numTxs; i++ {
-		txBytes := make([]byte, 20)
-		_, err := rng.Read(txBytes)
+		prefix := make([]byte, 20)
+		_, err := rng.Read(prefix)
 		require.NoError(t, err)
 
-		txs[i] = txBytes
-		require.NoError(t, txmp.CheckTx(txBytes, nil, txInfo))
+		txs[i] = []byte(fmt.Sprintf("%X=%d", prefix, i))
+		require.NoError(t, txmp.CheckTx(txs[i], nil, txInfo))
 	}
 
 	return txs
@@ -99,4 +140,22 @@ func TestTxMempool_TxsAvailable(t *testing.T) {
 	// event as we're still on the same height (1).
 	_ = checkTxs(t, txmp, 100, 0)
 	ensureNoTxFire()
+}
+
+func TestTxMempool_Size(t *testing.T) {
+	txmp := setup(t)
+
+	txs := checkTxs(t, txmp, 100, 0)
+	require.Equal(t, len(txs), txmp.Size())
+
+	responses := make([]*abci.ResponseDeliverTx, len(txs[:50]))
+	for i := 0; i < len(responses); i++ {
+		responses[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
+	}
+
+	txmp.Lock()
+	require.NoError(t, txmp.Update(1, txs[:50], responses, nil, nil))
+	txmp.Unlock()
+
+	require.Equal(t, len(txs)/2, txmp.Size())
 }
