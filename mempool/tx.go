@@ -12,7 +12,7 @@ import (
 const TxKeySize = sha256.Size
 
 // TxKey is the fixed length array key used as an index.
-func TxKey(tx types.Tx) [mempool.TxKeySize]byte {
+func TxKey(tx types.Tx) [TxKeySize]byte {
 	return sha256.Sum256(tx)
 }
 

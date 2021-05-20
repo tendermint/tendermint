@@ -146,10 +146,9 @@ func (txmp *TxMempool) Unlock() {
 }
 
 // Size returns the number of valid transactions in the mempool. It is
-// thread-safe and uses the underlying gossip index to infer the total number of
-// transactions.
+// thread-safe.
 func (txmp *TxMempool) Size() int {
-	return txmp.gossipIndex.Len()
+	return txmp.txStore.Size()
 }
 
 // SizeBytes return the total sum in bytes of all the valid transactions in the

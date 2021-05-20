@@ -73,6 +73,14 @@ func NewTxStore() *TxStore {
 	}
 }
 
+// Size returns the total number of transactions in the store.
+func (txs *TxStore) Size() int {
+	txs.mtx.RLock()
+	defer txs.mtx.RUnlock()
+
+	return len(txs.hashTxs)
+}
+
 // GetAllTxs returns all the transactions currently in the store.
 func (txs *TxStore) GetAllTxs() []*WrappedTx {
 	txs.mtx.RLock()

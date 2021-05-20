@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -112,4 +113,19 @@ func TestTxStore_RemoveTx(t *testing.T) {
 
 	res = txs.GetTxByHash(key)
 	require.Nil(t, res)
+}
+
+func TestTxStore_Size(t *testing.T) {
+	txStore := NewTxStore()
+	numTxs := 1000
+
+	for i := 0; i < numTxs; i++ {
+		txStore.SetTx(&WrappedTx{
+			tx:        []byte(fmt.Sprintf("test_tx_%d", i)),
+			priority:  int64(i),
+			timestamp: time.Now(),
+		})
+	}
+
+	require.Equal(t, numTxs, txStore.Size())
 }
