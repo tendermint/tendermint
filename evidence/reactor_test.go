@@ -256,11 +256,11 @@ func TestReactorMultiDisconnect(t *testing.T) {
 	// Ensure "disconnecting" the secondary peer from the primary more than once
 	// is handled gracefully.
 
-	require.NoError(t, primary.PeerManager.Disconnected(secondary.NodeID))
+	primary.PeerManager.Disconnected(secondary.NodeID)
 	require.Equal(t, primary.PeerManager.Status(secondary.NodeID), p2p.PeerStatusDown)
 	_, err := primary.PeerManager.TryEvictNext()
 	require.NoError(t, err)
-	require.NoError(t, primary.PeerManager.Disconnected(secondary.NodeID))
+	primary.PeerManager.Disconnected(secondary.NodeID)
 
 	require.Equal(t, primary.PeerManager.Status(secondary.NodeID), p2p.PeerStatusDown)
 	require.Equal(t, secondary.PeerManager.Status(primary.NodeID), p2p.PeerStatusUp)

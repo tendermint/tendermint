@@ -446,7 +446,7 @@ func TestPeerManager_DialNext_WakeOnDisconnected(t *testing.T) {
 
 	go func() {
 		time.Sleep(200 * time.Millisecond)
-		require.NoError(t, peerManager.Disconnected(a.NodeID))
+		peerManager.Disconnected(a.NodeID)
 	}()
 
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
@@ -558,7 +558,7 @@ func TestPeerManager_TryDialNext_MaxConnectedUpgrade(t *testing.T) {
 
 	// Now, if we disconnect a, we should be allowed to dial d because we have a
 	// free upgrade slot.
-	require.NoError(t, peerManager.Disconnected(a.NodeID))
+	peerManager.Disconnected(a.NodeID)
 	dial, err = peerManager.TryDialNext()
 	require.NoError(t, err)
 	require.Equal(t, d, dial)
@@ -567,7 +567,7 @@ func TestPeerManager_TryDialNext_MaxConnectedUpgrade(t *testing.T) {
 	// However, if we disconnect b (such that only c and d are connected), we
 	// should not be allowed to dial e even though there are upgrade slots,
 	// because there are no lower-scored nodes that can be upgraded.
-	require.NoError(t, peerManager.Disconnected(b.NodeID))
+	peerManager.Disconnected(b.NodeID)
 	added, err = peerManager.Add(e)
 	require.NoError(t, err)
 	require.True(t, added)
@@ -979,7 +979,7 @@ func TestPeerManager_Dialed_UpgradeEvenLower(t *testing.T) {
 
 	// In the meanwhile, a disconnects and d connects. d is even lower-scored
 	// than b (1 vs 2), which is currently being upgraded.
-	require.NoError(t, peerManager.Disconnected(a.NodeID))
+	peerManager.Disconnected(a.NodeID)
 	added, err = peerManager.Add(d)
 	require.NoError(t, err)
 	require.True(t, added)
@@ -1029,7 +1029,7 @@ func TestPeerManager_Dialed_UpgradeNoEvict(t *testing.T) {
 	require.Equal(t, c, dial)
 
 	// In the meanwhile, b disconnects.
-	require.NoError(t, peerManager.Disconnected(b.NodeID))
+	peerManager.Disconnected(b.NodeID)
 
 	// Once c completes the upgrade of b, there is no longer a need to
 	// evict anything since we're at capacity.
@@ -1198,7 +1198,7 @@ func TestPeerManager_Accepted_Upgrade(t *testing.T) {
 	evict, err := peerManager.TryEvictNext()
 	require.NoError(t, err)
 	require.Equal(t, a.NodeID, evict)
-	require.NoError(t, peerManager.Disconnected(a.NodeID))
+	peerManager.Disconnected(a.NodeID)
 
 	// c still cannot get accepted, since it's not scored above b.
 	require.Error(t, peerManager.Accepted(c.NodeID))
@@ -1269,7 +1269,7 @@ func TestPeerManager_Ready(t *testing.T) {
 	require.Equal(t, p2p.PeerStatusDown, peerManager.Status(a.NodeID))
 
 	// Marking a as ready should transition it to PeerStatusUp and send an update.
-	require.NoError(t, peerManager.Ready(a.NodeID))
+	peerManager.Ready(a.NodeID)
 	require.Equal(t, p2p.PeerStatusUp, peerManager.Status(a.NodeID))
 	require.Equal(t, p2p.PeerUpdate{
 		NodeID: a.NodeID,
@@ -1281,7 +1281,7 @@ func TestPeerManager_Ready(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, added)
 	require.Equal(t, p2p.PeerStatusDown, peerManager.Status(b.NodeID))
-	require.NoError(t, peerManager.Ready(b.NodeID))
+	peerManager.Ready(b.NodeID)
 	require.Equal(t, p2p.PeerStatusDown, peerManager.Status(b.NodeID))
 	require.Empty(t, sub.Updates())
 }
@@ -1297,7 +1297,7 @@ func TestPeerManager_EvictNext(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, added)
 	require.NoError(t, peerManager.Accepted(a.NodeID))
-	require.NoError(t, peerManager.Ready(a.NodeID))
+	peerManager.Ready(a.NodeID)
 
 	// Since there are no peers to evict, EvictNext should block until timeout.
 	timeoutCtx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
@@ -1307,7 +1307,7 @@ func TestPeerManager_EvictNext(t *testing.T) {
 	require.Equal(t, context.DeadlineExceeded, err)
 
 	// Erroring the peer will return it from EvictNext().
-	require.NoError(t, peerManager.Errored(a.NodeID, errors.New("foo")))
+	peerManager.Errored(a.NodeID, errors.New("foo"))
 	evict, err := peerManager.EvictNext(timeoutCtx)
 	require.NoError(t, err)
 	require.Equal(t, a.NodeID, evict)
@@ -1330,12 +1330,12 @@ func TestPeerManager_EvictNext_WakeOnError(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, added)
 	require.NoError(t, peerManager.Accepted(a.NodeID))
-	require.NoError(t, peerManager.Ready(a.NodeID))
+	peerManager.Ready(a.NodeID)
 
 	// Spawn a goroutine to error a peer after a delay.
 	go func() {
 		time.Sleep(200 * time.Millisecond)
-		require.NoError(t, peerManager.Errored(a.NodeID, errors.New("foo")))
+		peerManager.Errored(a.NodeID, errors.New("foo"))
 	}()
 
 	// This will block until peer errors above.
@@ -1362,7 +1362,7 @@ func TestPeerManager_EvictNext_WakeOnUpgradeDialed(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, added)
 	require.NoError(t, peerManager.Accepted(a.NodeID))
-	require.NoError(t, peerManager.Ready(a.NodeID))
+	peerManager.Ready(a.NodeID)
 
 	// Spawn a goroutine to upgrade to b with a delay.
 	go func() {
@@ -1400,7 +1400,7 @@ func TestPeerManager_EvictNext_WakeOnUpgradeAccepted(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, added)
 	require.NoError(t, peerManager.Accepted(a.NodeID))
-	require.NoError(t, peerManager.Ready(a.NodeID))
+	peerManager.Ready(a.NodeID)
 
 	// Spawn a goroutine to upgrade b with a delay.
 	go func() {
@@ -1432,10 +1432,10 @@ func TestPeerManager_TryEvictNext(t *testing.T) {
 
 	// Connecting to a won't evict anything either.
 	require.NoError(t, peerManager.Accepted(a.NodeID))
-	require.NoError(t, peerManager.Ready(a.NodeID))
+	peerManager.Ready(a.NodeID)
 
 	// But if a errors it should be evicted.
-	require.NoError(t, peerManager.Errored(a.NodeID, errors.New("foo")))
+	peerManager.Errored(a.NodeID, errors.New("foo"))
 	evict, err = peerManager.TryEvictNext()
 	require.NoError(t, err)
 	require.Equal(t, a.NodeID, evict)
@@ -1445,7 +1445,7 @@ func TestPeerManager_TryEvictNext(t *testing.T) {
 	require.NoError(t, err)
 	require.Zero(t, evict)
 
-	require.NoError(t, peerManager.Errored(a.NodeID, errors.New("foo")))
+	peerManager.Errored(a.NodeID, errors.New("foo"))
 	evict, err = peerManager.TryEvictNext()
 	require.NoError(t, err)
 	require.Zero(t, evict)
@@ -1461,7 +1461,7 @@ func TestPeerManager_Disconnected(t *testing.T) {
 	defer sub.Close()
 
 	// Disconnecting an unknown peer does nothing.
-	require.NoError(t, peerManager.Disconnected(a.NodeID))
+	peerManager.Disconnected(a.NodeID)
 	require.Empty(t, peerManager.Peers())
 	require.Empty(t, sub.Updates())
 
@@ -1470,14 +1470,14 @@ func TestPeerManager_Disconnected(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, added)
 	require.NoError(t, peerManager.Accepted(a.NodeID))
-	require.NoError(t, peerManager.Disconnected(a.NodeID))
+	peerManager.Disconnected(a.NodeID)
 	require.Empty(t, sub.Updates())
 
 	// Disconnecting a ready peer sends a status update.
 	_, err = peerManager.Add(a)
 	require.NoError(t, err)
 	require.NoError(t, peerManager.Accepted(a.NodeID))
-	require.NoError(t, peerManager.Ready(a.NodeID))
+	peerManager.Ready(a.NodeID)
 	require.Equal(t, p2p.PeerStatusUp, peerManager.Status(a.NodeID))
 	require.NotEmpty(t, sub.Updates())
 	require.Equal(t, p2p.PeerUpdate{
@@ -1485,7 +1485,7 @@ func TestPeerManager_Disconnected(t *testing.T) {
 		Status: p2p.PeerStatusUp,
 	}, <-sub.Updates())
 
-	require.NoError(t, peerManager.Disconnected(a.NodeID))
+	peerManager.Disconnected(a.NodeID)
 	require.Equal(t, p2p.PeerStatusDown, peerManager.Status(a.NodeID))
 	require.NotEmpty(t, sub.Updates())
 	require.Equal(t, p2p.PeerUpdate{
@@ -1499,7 +1499,7 @@ func TestPeerManager_Disconnected(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, a, dial)
 
-	require.NoError(t, peerManager.Disconnected(a.NodeID))
+	peerManager.Disconnected(a.NodeID)
 	dial, err = peerManager.TryDialNext()
 	require.NoError(t, err)
 	require.Zero(t, dial)
@@ -1512,7 +1512,7 @@ func TestPeerManager_Errored(t *testing.T) {
 	require.NoError(t, err)
 
 	// Erroring an unknown peer does nothing.
-	require.NoError(t, peerManager.Errored(a.NodeID, errors.New("foo")))
+	peerManager.Errored(a.NodeID, errors.New("foo"))
 	require.Empty(t, peerManager.Peers())
 	evict, err := peerManager.TryEvictNext()
 	require.NoError(t, err)
@@ -1523,19 +1523,19 @@ func TestPeerManager_Errored(t *testing.T) {
 	added, err := peerManager.Add(a)
 	require.NoError(t, err)
 	require.True(t, added)
-	require.NoError(t, peerManager.Errored(a.NodeID, errors.New("foo")))
+	peerManager.Errored(a.NodeID, errors.New("foo"))
 	evict, err = peerManager.TryEvictNext()
 	require.NoError(t, err)
 	require.Zero(t, evict)
 
 	require.NoError(t, peerManager.Accepted(a.NodeID))
-	require.NoError(t, peerManager.Ready(a.NodeID))
+	peerManager.Ready(a.NodeID)
 	evict, err = peerManager.TryEvictNext()
 	require.NoError(t, err)
 	require.Zero(t, evict)
 
 	// However, erroring once connected will evict it.
-	require.NoError(t, peerManager.Errored(a.NodeID, errors.New("foo")))
+	peerManager.Errored(a.NodeID, errors.New("foo"))
 	evict, err = peerManager.TryEvictNext()
 	require.NoError(t, err)
 	require.Equal(t, a.NodeID, evict)
@@ -1560,11 +1560,11 @@ func TestPeerManager_Subscribe(t *testing.T) {
 	require.NoError(t, peerManager.Accepted(a.NodeID))
 	require.Empty(t, sub.Updates())
 
-	require.NoError(t, peerManager.Ready(a.NodeID))
+	peerManager.Ready(a.NodeID)
 	require.NotEmpty(t, sub.Updates())
 	require.Equal(t, p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusUp}, <-sub.Updates())
 
-	require.NoError(t, peerManager.Disconnected(a.NodeID))
+	peerManager.Disconnected(a.NodeID)
 	require.NotEmpty(t, sub.Updates())
 	require.Equal(t, p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusDown}, <-sub.Updates())
 
@@ -1577,18 +1577,18 @@ func TestPeerManager_Subscribe(t *testing.T) {
 	require.NoError(t, peerManager.Dialed(a))
 	require.Empty(t, sub.Updates())
 
-	require.NoError(t, peerManager.Ready(a.NodeID))
+	peerManager.Ready(a.NodeID)
 	require.NotEmpty(t, sub.Updates())
 	require.Equal(t, p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusUp}, <-sub.Updates())
 
-	require.NoError(t, peerManager.Errored(a.NodeID, errors.New("foo")))
+	peerManager.Errored(a.NodeID, errors.New("foo"))
 	require.Empty(t, sub.Updates())
 
 	evict, err := peerManager.TryEvictNext()
 	require.NoError(t, err)
 	require.Equal(t, a.NodeID, evict)
 
-	require.NoError(t, peerManager.Disconnected(a.NodeID))
+	peerManager.Disconnected(a.NodeID)
 	require.NotEmpty(t, sub.Updates())
 	require.Equal(t, p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusDown}, <-sub.Updates())
 
@@ -1617,13 +1617,13 @@ func TestPeerManager_Subscribe_Close(t *testing.T) {
 	require.NoError(t, peerManager.Accepted(a.NodeID))
 	require.Empty(t, sub.Updates())
 
-	require.NoError(t, peerManager.Ready(a.NodeID))
+	peerManager.Ready(a.NodeID)
 	require.NotEmpty(t, sub.Updates())
 	require.Equal(t, p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusUp}, <-sub.Updates())
 
 	// Closing the subscription should not send us the disconnected update.
 	sub.Close()
-	require.NoError(t, peerManager.Disconnected(a.NodeID))
+	peerManager.Disconnected(a.NodeID)
 	require.Empty(t, sub.Updates())
 }
 
@@ -1647,7 +1647,7 @@ func TestPeerManager_Subscribe_Broadcast(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, added)
 	require.NoError(t, peerManager.Accepted(a.NodeID))
-	require.NoError(t, peerManager.Ready(a.NodeID))
+	peerManager.Ready(a.NodeID)
 
 	expectUp := p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusUp}
 	require.NotEmpty(t, s1)
@@ -1660,7 +1660,7 @@ func TestPeerManager_Subscribe_Broadcast(t *testing.T) {
 	// We now close s2. Disconnecting the peer should only send updates
 	// on s1 and s3.
 	s2.Close()
-	require.NoError(t, peerManager.Disconnected(a.NodeID))
+	peerManager.Disconnected(a.NodeID)
 
 	expectDown := p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusDown}
 	require.NotEmpty(t, s1)
