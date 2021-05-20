@@ -119,9 +119,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 //
 // This method returns whether the application deems this block valid.
 // TODO: In the future, pending spec work, this may become an async method.
-func (blockExec *BlockExecutor) ProcessProposal(
-	block *types.Block,
-) (bool, error) {
+func (blockExec *BlockExecutor) ProcessProposal(block *types.Block,) (bool, error) {
 	ctx := context.Background()
 	req := abci.RequestProcessProposal{
 		Txs:    block.Data.Txs.ToSliceOfBytes(),

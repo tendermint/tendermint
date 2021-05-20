@@ -44,7 +44,7 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	// block and otherwise disable the priv validator.
 	byzState.mtx.Lock()
 	privVal := byzState.privValidator
-	byzState.doPrevote = func(height int64, round int32, mustVoteNil bool) {
+	byzState.doPrevote = func(height int64, round int32, _ bool) {
 		invalidDoPrevoteFunc(t, height, round, byzState, byzReactor, privVal)
 	}
 	byzState.mtx.Unlock()

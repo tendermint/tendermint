@@ -113,7 +113,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	bzReactor := rts.reactors[bzNodeID]
 
 	// alter prevote so that the byzantine node double votes when height is 2
-	bzNodeState.doPrevote = func(height int64, round int32, mustVoteNil bool) {
+	bzNodeState.doPrevote = func(height int64, round int32, _ bool) {
 		// allow first height to happen normally so that byzantine validator is no longer proposer
 		if height == prevoteHeight {
 			prevote1, err := bzNodeState.signVote(

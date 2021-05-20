@@ -1917,7 +1917,7 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.NodeID) 
 		cs.ProposalBlock = block
 		stateMachineValidBlock, err := cs.blockExec.ProcessProposal(cs.ProposalBlock)
 		if err != nil {
-			cs.Logger.Error("State machine returned an error when trying to process proposal block", "err", err)
+			cs.Logger.Error("state machine returned an error when trying to process proposal block", "err", err)
 		}
 
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
