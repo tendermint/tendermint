@@ -144,7 +144,6 @@ func TestTxMempool_TxsAvailable(t *testing.T) {
 
 func TestTxMempool_Size(t *testing.T) {
 	txmp := setup(t)
-
 	txs := checkTxs(t, txmp, 100, 0)
 	require.Equal(t, len(txs), txmp.Size())
 
@@ -162,7 +161,6 @@ func TestTxMempool_Size(t *testing.T) {
 
 func TestTxMempool_Flush(t *testing.T) {
 	txmp := setup(t)
-
 	txs := checkTxs(t, txmp, 100, 0)
 	require.Equal(t, len(txs), txmp.Size())
 
@@ -177,4 +175,29 @@ func TestTxMempool_Flush(t *testing.T) {
 
 	txmp.Flush()
 	require.Zero(t, txmp.Size())
+}
+
+func TestMempool_ReapMaxBytesMaxGas(t *testing.T) {
+	txmp := setup(t)
+	txs := checkTxs(t, txmp, 100, 0) // all txs request 1 gas unit
+	require.Equal(t, len(txs), txmp.Size())
+
+	// reap by gas capacity only
+	reapedTxs := txmp.ReapMaxBytesMaxGas(-1, 50)
+	require.Equal(t, len(txs), txmp.Size())
+	require.Len(t, reapedTxs, 50)
+	require.Equal(t, len(txs), txmp.Size())
+
+	// reap by transaction bytes only
+	reapedTxs = txmp.ReapMaxBytesMaxGas(1000, -1)
+	require.Equal(t, len(txs), txmp.Size())
+	require.Len(t, reapedTxs, 22)
+	require.Equal(t, len(txs), txmp.Size())
+
+	// Reap by both transaction bytes and gas, where the size yields 33 reaped
+	// transactions and the gas limit reaps 30 transactions.
+	reapedTxs = txmp.ReapMaxBytesMaxGas(1500, 30)
+	require.Equal(t, len(txs), txmp.Size())
+	require.Len(t, reapedTxs, 30)
+	require.Equal(t, len(txs), txmp.Size())
 }

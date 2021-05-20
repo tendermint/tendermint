@@ -15,6 +15,9 @@ type WrappedTx struct {
 	// tx represents the raw binary transaction data
 	tx types.Tx
 
+	// hash defines the transaction hash and the primary key used in the mempool
+	hash [mempool.TxKeySize]byte
+
 	// height defines the height at which the transaction was validated at
 	height int64
 

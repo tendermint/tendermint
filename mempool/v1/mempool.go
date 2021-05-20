@@ -235,11 +235,13 @@ func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo memp
 		return err
 	}
 
+	txHash := mempool.TxKey(tx)
+
 	// We add the transaction to the mempool's cache and if the transaction already
 	// exists, i.e. false is returned, then we check if we've seen this transaction
 	// from the same sender and error if we have. Otherwise, we return nil.
 	if !txmp.cache.Push(tx) {
-		wtx, ok := txmp.txStore.GetOrSetPeerByTxHash(mempool.TxKey(tx), txInfo.SenderID)
+		wtx, ok := txmp.txStore.GetOrSetPeerByTxHash(txHash, txInfo.SenderID)
 		if wtx != nil && ok {
 			// We already have the transaction stored and the we've already seen this
 			// transaction from txInfo.SenderID.
@@ -268,6 +270,7 @@ func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo memp
 
 		wtx := &WrappedTx{
 			tx:        tx,
+			hash:      txHash,
 			timestamp: time.Now(),
 		}
 		txmp.initTxCallback(wtx, res, txInfo)
@@ -291,7 +294,7 @@ func (txmp *TxMempool) Flush() {
 	defer txmp.mtx.RUnlock()
 
 	for _, wtx := range txmp.txStore.GetAllTxs() {
-		if !txmp.txStore.IsTxRemoved(mempool.TxKey(wtx.tx)) {
+		if !txmp.txStore.IsTxRemoved(wtx.hash) {
 			txmp.txStore.RemoveTx(wtx)
 			txmp.priorityIndex.RemoveTx(wtx)
 			txmp.gossipIndex.Remove(wtx.gossipEl)
@@ -349,7 +352,7 @@ func (txmp *TxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 			return txs[:len(txs)-1]
 		}
 
-		totalGas += gas
+		totalGas = gas
 	}
 
 	return txs
@@ -572,7 +575,7 @@ func (txmp *TxMempool) defaultTxCallback(req *abci.Request, res *abci.Response) 
 		// Only evaluate transactions that have not been removed. This can happen
 		// if an existing transaction is evicted during CheckTx and while this
 		// callback is being executed for the same evicted transaction.
-		if !txmp.txStore.IsTxRemoved(mempool.TxKey(tx)) {
+		if !txmp.txStore.IsTxRemoved(wtx.hash) {
 			var err error
 			if txmp.postCheck != nil {
 				err = txmp.postCheck(tx, checkTxRes.CheckTx)
@@ -636,7 +639,7 @@ func (txmp *TxMempool) updateReCheckTxs() {
 
 		// Only execute CheckTx if the transaction is not marked as removed which
 		// could happen if the transaction was evicted.
-		if !txmp.txStore.IsTxRemoved(mempool.TxKey(wtx.tx)) {
+		if !txmp.txStore.IsTxRemoved(wtx.hash) {
 			_, err := txmp.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{
 				Tx:   wtx.tx,
 				Type: abci.CheckTxType_Recheck,
@@ -688,7 +691,7 @@ func (txmp *TxMempool) insertTx(wtx *WrappedTx) {
 }
 
 func (txmp *TxMempool) removeTx(wtx *WrappedTx, removeFromCache bool) {
-	if txmp.txStore.IsTxRemoved(mempool.TxKey(wtx.tx)) {
+	if txmp.txStore.IsTxRemoved(wtx.hash) {
 		return
 	}
 
