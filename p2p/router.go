@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"runtime"
 	"sync"
 	"time"
 
@@ -589,7 +590,7 @@ func (r *Router) dialPeers() {
 	addresses := make(chan NodeAddress)
 	wg := &sync.WaitGroup{}
 
-	for i := 0; i < 4; i++ {
+	for i := 0; i < runtime.NumCPU(); i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
