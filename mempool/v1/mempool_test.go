@@ -207,7 +207,7 @@ func TestTxMempool_Flush(t *testing.T) {
 	require.Equal(t, int64(0), txmp.SizeBytes())
 }
 
-func TestMempool_ReapMaxBytesMaxGas(t *testing.T) {
+func TestTxMempool_ReapMaxBytesMaxGas(t *testing.T) {
 	txmp := setup(t)
 	tTxs := checkTxs(t, txmp, 100, 0) // all txs request 1 gas unit
 	require.Equal(t, len(tTxs), txmp.Size())
@@ -304,4 +304,15 @@ func TestTxMempool_ReapMaxTxs(t *testing.T) {
 	require.Equal(t, len(tTxs), txmp.Size())
 	require.Equal(t, int64(4500), txmp.SizeBytes())
 	require.Len(t, reapedTxs, len(tTxs)/2)
+}
+
+func TestTxMempool_CheckTxExceedsMaxSize(t *testing.T) {
+	txmp := setup(t)
+
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	tx := make([]byte, txmp.config.MaxTxsBytes+1)
+	_, err := rng.Read(tx)
+	require.NoError(t, err)
+
+	require.Error(t, txmp.CheckTx(tx, nil, mempool.TxInfo{SenderID: 0}))
 }
