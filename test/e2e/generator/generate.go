@@ -303,7 +303,7 @@ func generateNode(
 		}
 	}
 
-	if node.StateSync && !node.DisableLegacyP2P {
+	if node.StateSync {
 		node.FastSync = "v0"
 	}
 
