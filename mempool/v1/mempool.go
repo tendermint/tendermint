@@ -386,7 +386,7 @@ func (txmp *TxMempool) ReapMaxTxs(max int) types.Txs {
 	}()
 
 	txs := make([]types.Tx, 0, cap)
-	for txmp.priorityIndex.NumTxs() > 0 && len(txs) <= max {
+	for txmp.priorityIndex.NumTxs() > 0 && len(txs) < max {
 		wtx := txmp.priorityIndex.PopTx()
 		txs = append(txs, wtx.tx)
 		wTxs = append(wTxs, wtx)

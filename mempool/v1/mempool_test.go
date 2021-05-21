@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"sort"
 	"strconv"
 	"testing"
 	"time"
@@ -24,6 +25,11 @@ import (
 // transaction priority based on the value in the key/value pair.
 type application struct {
 	*kvstore.Application
+}
+
+type testTx struct {
+	tx       types.Tx
+	priority int64
 }
 
 func (app *application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
@@ -75,8 +81,8 @@ func setup(t *testing.T) *TxMempool {
 	return NewTxMempool(log.TestingLogger().With("test", t.Name()), cfg.Mempool, appConnMem, 0)
 }
 
-func checkTxs(t *testing.T, txmp *TxMempool, numTxs int, peerID uint16) types.Txs {
-	txs := make(types.Txs, numTxs)
+func checkTxs(t *testing.T, txmp *TxMempool, numTxs int, peerID uint16) []testTx {
+	txs := make([]testTx, numTxs)
 	txInfo := mempool.TxInfo{SenderID: peerID}
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -86,8 +92,13 @@ func checkTxs(t *testing.T, txmp *TxMempool, numTxs int, peerID uint16) types.Tx
 		_, err := rng.Read(prefix)
 		require.NoError(t, err)
 
-		txs[i] = []byte(fmt.Sprintf("%X=%d", prefix, i))
-		require.NoError(t, txmp.CheckTx(txs[i], nil, txInfo))
+		priority := int64(rng.Intn(9999-1000) + 1000)
+
+		txs[i] = testTx{
+			tx:       []byte(fmt.Sprintf("%X=%d", prefix, priority)),
+			priority: priority,
+		}
+		require.NoError(t, txmp.CheckTx(txs[i].tx, nil, txInfo))
 	}
 
 	return txs
@@ -124,14 +135,19 @@ func TestTxMempool_TxsAvailable(t *testing.T) {
 	ensureTxFire()
 	ensureNoTxFire()
 
-	responses := make([]*abci.ResponseDeliverTx, len(txs[:50]))
+	rawTxs := make([]types.Tx, len(txs))
+	for i, tx := range txs {
+		rawTxs[i] = tx.tx
+	}
+
+	responses := make([]*abci.ResponseDeliverTx, len(rawTxs[:50]))
 	for i := 0; i < len(responses); i++ {
 		responses[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
 	}
 
 	// commit half the transactions and ensure we fire an event
 	txmp.Lock()
-	require.NoError(t, txmp.Update(1, txs[:50], responses, nil, nil))
+	require.NoError(t, txmp.Update(1, rawTxs[:50], responses, nil, nil))
 	txmp.Unlock()
 	ensureTxFire()
 	ensureNoTxFire()
@@ -147,16 +163,21 @@ func TestTxMempool_Size(t *testing.T) {
 	txs := checkTxs(t, txmp, 100, 0)
 	require.Equal(t, len(txs), txmp.Size())
 
-	responses := make([]*abci.ResponseDeliverTx, len(txs[:50]))
+	rawTxs := make([]types.Tx, len(txs))
+	for i, tx := range txs {
+		rawTxs[i] = tx.tx
+	}
+
+	responses := make([]*abci.ResponseDeliverTx, len(rawTxs[:50]))
 	for i := 0; i < len(responses); i++ {
 		responses[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
 	}
 
 	txmp.Lock()
-	require.NoError(t, txmp.Update(1, txs[:50], responses, nil, nil))
+	require.NoError(t, txmp.Update(1, rawTxs[:50], responses, nil, nil))
 	txmp.Unlock()
 
-	require.Equal(t, len(txs)/2, txmp.Size())
+	require.Equal(t, len(rawTxs)/2, txmp.Size())
 }
 
 func TestTxMempool_Flush(t *testing.T) {
@@ -164,13 +185,18 @@ func TestTxMempool_Flush(t *testing.T) {
 	txs := checkTxs(t, txmp, 100, 0)
 	require.Equal(t, len(txs), txmp.Size())
 
-	responses := make([]*abci.ResponseDeliverTx, len(txs[:50]))
+	rawTxs := make([]types.Tx, len(txs))
+	for i, tx := range txs {
+		rawTxs[i] = tx.tx
+	}
+
+	responses := make([]*abci.ResponseDeliverTx, len(rawTxs[:50]))
 	for i := 0; i < len(responses); i++ {
 		responses[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
 	}
 
 	txmp.Lock()
-	require.NoError(t, txmp.Update(1, txs[:50], responses, nil, nil))
+	require.NoError(t, txmp.Update(1, rawTxs[:50], responses, nil, nil))
 	txmp.Unlock()
 
 	txmp.Flush()
@@ -179,25 +205,91 @@ func TestTxMempool_Flush(t *testing.T) {
 
 func TestMempool_ReapMaxBytesMaxGas(t *testing.T) {
 	txmp := setup(t)
-	txs := checkTxs(t, txmp, 100, 0) // all txs request 1 gas unit
-	require.Equal(t, len(txs), txmp.Size())
+	tTxs := checkTxs(t, txmp, 100, 0) // all txs request 1 gas unit
+	require.Equal(t, len(tTxs), txmp.Size())
+
+	txMap := make(map[[mempool.TxKeySize]byte]testTx)
+	priorities := make([]int64, len(tTxs))
+	for i, tTx := range tTxs {
+		txMap[mempool.TxKey(tTx.tx)] = tTx
+		priorities[i] = tTx.priority
+	}
+
+	sort.Slice(priorities, func(i, j int) bool {
+		// sort by priority, i.e. decreasing order
+		return priorities[i] > priorities[j]
+	})
+
+	ensurePrioritized := func(reapedTxs types.Txs) {
+		reapedPriorities := make([]int64, len(reapedTxs))
+		for i, rTx := range reapedTxs {
+			reapedPriorities[i] = txMap[mempool.TxKey(rTx)].priority
+		}
+
+		require.Equal(t, priorities[:len(reapedPriorities)], reapedPriorities)
+	}
 
 	// reap by gas capacity only
 	reapedTxs := txmp.ReapMaxBytesMaxGas(-1, 50)
-	require.Equal(t, len(txs), txmp.Size())
+	ensurePrioritized(reapedTxs)
+	require.Equal(t, len(tTxs), txmp.Size())
 	require.Len(t, reapedTxs, 50)
-	require.Equal(t, len(txs), txmp.Size())
 
 	// reap by transaction bytes only
 	reapedTxs = txmp.ReapMaxBytesMaxGas(1000, -1)
-	require.Equal(t, len(txs), txmp.Size())
-	require.Len(t, reapedTxs, 22)
-	require.Equal(t, len(txs), txmp.Size())
+	ensurePrioritized(reapedTxs)
+	require.Equal(t, len(tTxs), txmp.Size())
+	require.Len(t, reapedTxs, 21)
 
-	// Reap by both transaction bytes and gas, where the size yields 33 reaped
+	// Reap by both transaction bytes and gas, where the size yields 31 reaped
 	// transactions and the gas limit reaps 30 transactions.
 	reapedTxs = txmp.ReapMaxBytesMaxGas(1500, 30)
-	require.Equal(t, len(txs), txmp.Size())
+	ensurePrioritized(reapedTxs)
+	require.Equal(t, len(tTxs), txmp.Size())
 	require.Len(t, reapedTxs, 30)
-	require.Equal(t, len(txs), txmp.Size())
+}
+
+func TestTxMempool_ReapMaxTxs(t *testing.T) {
+	txmp := setup(t)
+	tTxs := checkTxs(t, txmp, 100, 0)
+	require.Equal(t, len(tTxs), txmp.Size())
+
+	txMap := make(map[[mempool.TxKeySize]byte]testTx)
+	priorities := make([]int64, len(tTxs))
+	for i, tTx := range tTxs {
+		txMap[mempool.TxKey(tTx.tx)] = tTx
+		priorities[i] = tTx.priority
+	}
+
+	sort.Slice(priorities, func(i, j int) bool {
+		// sort by priority, i.e. decreasing order
+		return priorities[i] > priorities[j]
+	})
+
+	ensurePrioritized := func(reapedTxs types.Txs) {
+		reapedPriorities := make([]int64, len(reapedTxs))
+		for i, rTx := range reapedTxs {
+			reapedPriorities[i] = txMap[mempool.TxKey(rTx)].priority
+		}
+
+		require.Equal(t, priorities[:len(reapedPriorities)], reapedPriorities)
+	}
+
+	// reap all transactions
+	reapedTxs := txmp.ReapMaxTxs(-1)
+	ensurePrioritized(reapedTxs)
+	require.Equal(t, len(tTxs), txmp.Size())
+	require.Len(t, reapedTxs, len(tTxs))
+
+	// reap a single transaction
+	reapedTxs = txmp.ReapMaxTxs(1)
+	ensurePrioritized(reapedTxs)
+	require.Equal(t, len(tTxs), txmp.Size())
+	require.Len(t, reapedTxs, 1)
+
+	// reap half of the transactions
+	reapedTxs = txmp.ReapMaxTxs(len(tTxs) / 2)
+	ensurePrioritized(reapedTxs)
+	require.Equal(t, len(tTxs), txmp.Size())
+	require.Len(t, reapedTxs, len(tTxs)/2)
 }
