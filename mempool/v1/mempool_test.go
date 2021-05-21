@@ -7,6 +7,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -333,4 +334,60 @@ func TestTxMempool_CheckTxSamePeer(t *testing.T) {
 
 	require.NoError(t, txmp.CheckTx(tx, nil, mempool.TxInfo{SenderID: peerID}))
 	require.Error(t, txmp.CheckTx(tx, nil, mempool.TxInfo{SenderID: peerID}))
+}
+
+func TestTxMempool_ConcurrentTxs(t *testing.T) {
+	txmp := setup(t, 100)
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		for i := 0; i < 20; i++ {
+			_ = checkTxs(t, txmp, 100, 0)
+			dur := rng.Intn(1000-500) + 500
+			time.Sleep(time.Duration(dur) * time.Millisecond)
+		}
+
+		wg.Done()
+	}()
+
+	go func() {
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		defer wg.Done()
+
+		var height int64 = 1
+
+		for range ticker.C {
+			reapedTxs := txmp.ReapMaxTxs(200)
+			if len(reapedTxs) > 0 {
+				responses := make([]*abci.ResponseDeliverTx, len(reapedTxs))
+				for i := 0; i < len(responses); i++ {
+					var code uint32
+
+					if i%10 == 0 {
+						code = 100
+					} else {
+						code = abci.CodeTypeOK
+					}
+
+					responses[i] = &abci.ResponseDeliverTx{Code: code}
+				}
+
+				txmp.Lock()
+				require.NoError(t, txmp.Update(height, reapedTxs, responses, nil, nil))
+				txmp.Unlock()
+
+				height++
+			} else {
+				return
+			}
+		}
+	}()
+
+	wg.Wait()
+	require.Zero(t, txmp.Size())
+	require.Zero(t, txmp.SizeBytes())
 }
