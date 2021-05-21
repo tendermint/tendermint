@@ -523,6 +523,8 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			txmp.metrics.Size.Set(float64(txmp.Size()))
 
 			txmp.insertTx(wtx)
+			_, _ = txmp.txStore.GetOrSetPeerByTxHash(wtx.hash, txInfo.SenderID)
+
 			txmp.logger.Debug(
 				"inserted good transaction",
 				"tx", mempool.TxHashFromBytes(wtx.tx),

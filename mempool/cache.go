@@ -57,7 +57,9 @@ func (c *LRUTxCache) Push(tx types.Tx) bool {
 	defer c.mtx.Unlock()
 
 	key := TxKey(tx)
-	if moved, exists := c.cacheMap[key]; exists {
+
+	moved, ok := c.cacheMap[key]
+	if ok {
 		c.list.MoveToBack(moved)
 		return false
 	}

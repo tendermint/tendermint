@@ -63,12 +63,14 @@ func (app *application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 	}
 }
 
-func setup(t *testing.T) *TxMempool {
+func setup(t *testing.T, cacheSize int) *TxMempool {
 	t.Helper()
 
 	app := &application{kvstore.NewApplication()}
 	cc := proxy.NewLocalClientCreator(app)
+
 	cfg := config.ResetTestRoot(t.Name())
+	cfg.Mempool.CacheSize = cacheSize
 
 	appConnMem, err := cc.NewABCIClient()
 	require.NoError(t, err)
@@ -76,6 +78,7 @@ func setup(t *testing.T) *TxMempool {
 
 	t.Cleanup(func() {
 		os.RemoveAll(cfg.RootDir)
+		require.NoError(t, appConnMem.Stop())
 	})
 
 	return NewTxMempool(log.TestingLogger().With("test", t.Name()), cfg.Mempool, appConnMem, 0)
@@ -105,7 +108,7 @@ func checkTxs(t *testing.T, txmp *TxMempool, numTxs int, peerID uint16) []testTx
 }
 
 func TestTxMempool_TxsAvailable(t *testing.T) {
-	txmp := setup(t)
+	txmp := setup(t, 0)
 	txmp.EnableTxsAvailable()
 
 	ensureNoTxFire := func() {
@@ -159,7 +162,7 @@ func TestTxMempool_TxsAvailable(t *testing.T) {
 }
 
 func TestTxMempool_Size(t *testing.T) {
-	txmp := setup(t)
+	txmp := setup(t, 0)
 	txs := checkTxs(t, txmp, 100, 0)
 	require.Equal(t, len(txs), txmp.Size())
 	require.Equal(t, int64(4500), txmp.SizeBytes())
@@ -183,7 +186,7 @@ func TestTxMempool_Size(t *testing.T) {
 }
 
 func TestTxMempool_Flush(t *testing.T) {
-	txmp := setup(t)
+	txmp := setup(t, 0)
 	txs := checkTxs(t, txmp, 100, 0)
 	require.Equal(t, len(txs), txmp.Size())
 	require.Equal(t, int64(4500), txmp.SizeBytes())
@@ -208,7 +211,7 @@ func TestTxMempool_Flush(t *testing.T) {
 }
 
 func TestTxMempool_ReapMaxBytesMaxGas(t *testing.T) {
-	txmp := setup(t)
+	txmp := setup(t, 0)
 	tTxs := checkTxs(t, txmp, 100, 0) // all txs request 1 gas unit
 	require.Equal(t, len(tTxs), txmp.Size())
 	require.Equal(t, int64(4500), txmp.SizeBytes())
@@ -258,7 +261,7 @@ func TestTxMempool_ReapMaxBytesMaxGas(t *testing.T) {
 }
 
 func TestTxMempool_ReapMaxTxs(t *testing.T) {
-	txmp := setup(t)
+	txmp := setup(t, 0)
 	tTxs := checkTxs(t, txmp, 100, 0)
 	require.Equal(t, len(tTxs), txmp.Size())
 	require.Equal(t, int64(4500), txmp.SizeBytes())
@@ -307,7 +310,7 @@ func TestTxMempool_ReapMaxTxs(t *testing.T) {
 }
 
 func TestTxMempool_CheckTxExceedsMaxSize(t *testing.T) {
-	txmp := setup(t)
+	txmp := setup(t, 0)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	tx := make([]byte, txmp.config.MaxTxsBytes+1)
@@ -315,4 +318,19 @@ func TestTxMempool_CheckTxExceedsMaxSize(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Error(t, txmp.CheckTx(tx, nil, mempool.TxInfo{SenderID: 0}))
+}
+
+func TestTxMempool_CheckTxSamePeer(t *testing.T) {
+	txmp := setup(t, 100)
+	peerID := uint16(1)
+
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	prefix := make([]byte, 20)
+	_, err := rng.Read(prefix)
+	require.NoError(t, err)
+
+	tx := []byte(fmt.Sprintf("%X=%d", prefix, 50))
+
+	require.NoError(t, txmp.CheckTx(tx, nil, mempool.TxInfo{SenderID: peerID}))
+	require.Error(t, txmp.CheckTx(tx, nil, mempool.TxInfo{SenderID: peerID}))
 }
