@@ -94,6 +94,7 @@ type SignClient interface {
 // HistoryClient provides access to data from genesis to now in large chunks.
 type HistoryClient interface {
 	Genesis(context.Context) (*ctypes.ResultGenesis, error)
+	GenesisChunked(context.Context, uint) (*ctypes.ResultGenesisChunk, error)
 	BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error)
 }
 

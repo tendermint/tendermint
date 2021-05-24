@@ -304,6 +304,10 @@ func (c *Client) Genesis(ctx context.Context) (*ctypes.ResultGenesis, error) {
 	return c.next.Genesis(ctx)
 }
 
+func (c *Client) GenesisChunked(ctx context.Context, id uint) (*ctypes.ResultGenesisChunk, error) {
+	return c.next.GenesisChunked(ctx, id)
+}
+
 // Block calls rpcclient#Block and then verifies the result.
 func (c *Client) Block(ctx context.Context, height *int64) (*ctypes.ResultBlock, error) {
 	res, err := c.next.Block(ctx, height)

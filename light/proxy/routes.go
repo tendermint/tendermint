@@ -18,6 +18,7 @@ func RPCRoutes(c *lrpc.Client) map[string]*rpcserver.RPCFunc {
 		"unsubscribe_all": rpcserver.NewWSRPCFunc(c.UnsubscribeAllWS, ""),
 
 		// info API
+<<<<<<< HEAD
 		"health":               rpcserver.NewRPCFunc(makeHealthFunc(c), ""),
 		"status":               rpcserver.NewRPCFunc(makeStatusFunc(c), ""),
 		"net_info":             rpcserver.NewRPCFunc(makeNetInfoFunc(c), ""),
@@ -36,6 +37,27 @@ func RPCRoutes(c *lrpc.Client) map[string]*rpcserver.RPCFunc {
 		"consensus_params":     rpcserver.NewRPCFunc(makeConsensusParamsFunc(c), "height"),
 		"unconfirmed_txs":      rpcserver.NewRPCFunc(makeUnconfirmedTxsFunc(c), "limit"),
 		"num_unconfirmed_txs":  rpcserver.NewRPCFunc(makeNumUnconfirmedTxsFunc(c), ""),
+=======
+		"health":               rpcserver.NewRPCFunc(makeHealthFunc(c), "", false),
+		"status":               rpcserver.NewRPCFunc(makeStatusFunc(c), "", false),
+		"net_info":             rpcserver.NewRPCFunc(makeNetInfoFunc(c), "", false),
+		"blockchain":           rpcserver.NewRPCFunc(makeBlockchainInfoFunc(c), "minHeight,maxHeight", true),
+		"genesis":              rpcserver.NewRPCFunc(makeGenesisFunc(c), "", true),
+		"genesis_chunked":      rpcserver.NewRPCFunc(makeGenesisChunkedFunc(c), "", true),
+		"block":                rpcserver.NewRPCFunc(makeBlockFunc(c), "height", true),
+		"block_by_hash":        rpcserver.NewRPCFunc(makeBlockByHashFunc(c), "hash", true),
+		"block_results":        rpcserver.NewRPCFunc(makeBlockResultsFunc(c), "height", true),
+		"commit":               rpcserver.NewRPCFunc(makeCommitFunc(c), "height", true),
+		"tx":                   rpcserver.NewRPCFunc(makeTxFunc(c), "hash,prove", true),
+		"tx_search":            rpcserver.NewRPCFunc(makeTxSearchFunc(c), "query,prove,page,per_page,order_by", false),
+		"block_search":         rpcserver.NewRPCFunc(makeBlockSearchFunc(c), "query,page,per_page,order_by", false),
+		"validators":           rpcserver.NewRPCFunc(makeValidatorsFunc(c), "height,page,per_page", true),
+		"dump_consensus_state": rpcserver.NewRPCFunc(makeDumpConsensusStateFunc(c), "", false),
+		"consensus_state":      rpcserver.NewRPCFunc(makeConsensusStateFunc(c), "", false),
+		"consensus_params":     rpcserver.NewRPCFunc(makeConsensusParamsFunc(c), "height", true),
+		"unconfirmed_txs":      rpcserver.NewRPCFunc(makeUnconfirmedTxsFunc(c), "limit", false),
+		"num_unconfirmed_txs":  rpcserver.NewRPCFunc(makeNumUnconfirmedTxsFunc(c), "", false),
+>>>>>>> d9134063e (rpc: add chunked rpc interface (#6445))
 
 		// tx broadcast API
 		"broadcast_tx_commit": rpcserver.NewRPCFunc(makeBroadcastTxCommitFunc(c), "tx"),
@@ -89,6 +111,14 @@ type rpcGenesisFunc func(ctx *rpctypes.Context) (*ctypes.ResultGenesis, error)
 func makeGenesisFunc(c *lrpc.Client) rpcGenesisFunc {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultGenesis, error) {
 		return c.Genesis(ctx.Context())
+	}
+}
+
+type rpcGenesisChunkedFunc func(ctx *rpctypes.Context, chunk uint) (*ctypes.ResultGenesisChunk, error)
+
+func makeGenesisChunkedFunc(c *lrpc.Client) rpcGenesisChunkedFunc {
+	return func(ctx *rpctypes.Context, chunk uint) (*ctypes.ResultGenesisChunk, error) {
+		return c.GenesisChunked(ctx.Context(), chunk)
 	}
 }
 

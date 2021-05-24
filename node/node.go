@@ -1027,8 +1027,24 @@ func (n *Node) ConfigureRPC() error {
 		Logger: n.Logger.With("module", "rpc"),
 
 		Config: *n.config.RPC,
+<<<<<<< HEAD
 	})
 	return nil
+=======
+	}
+	if n.config.Mode == cfg.ModeValidator {
+		pubKey, err := n.privValidator.GetPubKey(context.TODO())
+		if pubKey == nil || err != nil {
+			return nil, fmt.Errorf("can't get pubkey: %w", err)
+		}
+		rpcCoreEnv.PubKey = pubKey
+	}
+	if err := rpcCoreEnv.InitGenesisChunks(); err != nil {
+		return nil, err
+	}
+
+	return &rpcCoreEnv, nil
+>>>>>>> d9134063e (rpc: add chunked rpc interface (#6445))
 }
 
 func (n *Node) startRPC() ([]net.Listener, error) {

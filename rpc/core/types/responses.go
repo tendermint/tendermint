@@ -23,6 +23,16 @@ type ResultGenesis struct {
 	Genesis *types.GenesisDoc `json:"genesis"`
 }
 
+// ResultGenesisChunk is the output format for the chunked/paginated
+// interface. These chunks are produced by converting the genesis
+// document to JSON and then splitting the resulting payload into
+// 16 megabyte blocks and then base64 encoding each block.
+type ResultGenesisChunk struct {
+	ChunkNumber int    `json:"chunk"`
+	TotalChunks int    `json:"total"`
+	Data        string `json:"data"`
+}
+
 // Single block (with meta)
 type ResultBlock struct {
 	BlockID types.BlockID `json:"block_id"`
