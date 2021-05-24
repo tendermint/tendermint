@@ -173,7 +173,7 @@ func createMempoolReactor(
 	logger log.Logger,
 ) (*p2p.ReactorShim, service.Service, mempool.Mempool, error) {
 
-	logger = logger.With("module", "mempool")
+	logger = logger.With("module", "mempool", "version", config.Mempool.Version)
 	channelShims := mempoolv0.GetChannelShims(config.Mempool)
 	reactorShim := p2p.NewReactorShim(logger, "MempoolShim", channelShims)
 
