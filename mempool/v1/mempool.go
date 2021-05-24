@@ -518,13 +518,14 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			wtx.height = txmp.height
 			wtx.priority = checkTxRes.CheckTx.Priority
 			wtx.sender = checkTxRes.CheckTx.Sender
+			wtx.peers = map[uint16]struct{}{
+				txInfo.SenderID: {},
+			}
 
 			txmp.metrics.TxSizeBytes.Observe(float64(wtx.Size()))
 			txmp.metrics.Size.Set(float64(txmp.Size()))
 
 			txmp.insertTx(wtx)
-			_, _ = txmp.txStore.GetOrSetPeerByTxHash(wtx.hash, txInfo.SenderID)
-
 			txmp.logger.Debug(
 				"inserted good transaction",
 				"tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(wtx.tx)),
