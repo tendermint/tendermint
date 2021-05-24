@@ -3,7 +3,6 @@ package v0
 import (
 	"errors"
 	"fmt"
-	"math"
 	"sync"
 	"time"
 
@@ -23,19 +22,6 @@ var (
 	_ p2p.Wrapper     = (*protomem.Message)(nil)
 )
 
-const (
-	MempoolChannel = p2p.ChannelID(0x30)
-
-	// peerCatchupSleepIntervalMS defines how much time to sleep if a peer is behind
-	peerCatchupSleepIntervalMS = 100
-
-	// UnknownPeerID is the peer ID to use when running CheckTx when there is
-	// no peer (e.g. RPC)
-	UnknownPeerID uint16 = 0
-
-	maxActiveIDs = math.MaxUint16
-)
-
 // PeerManager defines the interface contract required for getting necessary
 // peer information. This should eventually be replaced with a message-oriented
 // approach utilizing the p2p stack.
@@ -51,7 +37,7 @@ type Reactor struct {
 
 	config  *cfg.MempoolConfig
 	mempool *CListMempool
-	ids     *mempoolIDs
+	ids     *mempool.MempoolIDs
 
 	// XXX: Currently, this is the only way to get information about a peer. Ideally,
 	// we rely on message-oriented communication to get necessary peer data.
@@ -75,7 +61,7 @@ func NewReactor(
 	logger log.Logger,
 	config *cfg.MempoolConfig,
 	peerMgr PeerManager,
-	mempool *CListMempool,
+	mp *CListMempool,
 	mempoolCh *p2p.Channel,
 	peerUpdates *p2p.PeerUpdates,
 ) *Reactor {
@@ -83,8 +69,8 @@ func NewReactor(
 	r := &Reactor{
 		config:       config,
 		peerMgr:      peerMgr,
-		mempool:      mempool,
-		ids:          newMempoolIDs(),
+		mempool:      mp,
+		ids:          mempool.NewMempoolIDs(),
 		mempoolCh:    mempoolCh,
 		peerUpdates:  peerUpdates,
 		closeCh:      make(chan struct{}),
@@ -111,10 +97,10 @@ func GetChannelShims(config *cfg.MempoolConfig) map[p2p.ChannelID]*p2p.ChannelDe
 	}
 
 	return map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
-		MempoolChannel: {
+		mempool.MempoolChannel: {
 			MsgType: new(protomem.Message),
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(MempoolChannel),
+				ID:                  byte(mempool.MempoolChannel),
 				Priority:            5,
 				RecvMessageCapacity: batchMsg.Size(),
 
@@ -207,7 +193,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	r.Logger.Debug("received message", "peer", envelope.From)
 
 	switch chID {
-	case MempoolChannel:
+	case mempool.MempoolChannel:
 		err = r.handleMempoolMessage(envelope)
 
 	default:
@@ -362,7 +348,7 @@ func (r *Reactor) broadcastTxRoutine(peerID p2p.NodeID, closer *tmsync.Closer) {
 			height := r.peerMgr.GetHeight(peerID)
 			if height > 0 && height < memTx.Height()-1 {
 				// allow for a lag of one block
-				time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
+				time.Sleep(mempool.PeerCatchupSleepIntervalMS * time.Millisecond)
 				continue
 			}
 		}

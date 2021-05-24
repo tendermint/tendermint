@@ -98,7 +98,7 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 	defer cleanup()
 
 	// Ensure gas calculation behaves as expected
-	checkTxs(t, mp, 1, UnknownPeerID)
+	checkTxs(t, mp, 1, mempool.UnknownPeerID)
 	tx0 := mp.TxsFront().Value.(*mempoolTx)
 	// assert that kv store has gas wanted = 1.
 	require.Equal(t, app.CheckTx(abci.RequestCheckTx{Tx: tx0.tx}).GasWanted, int64(1), "KVStore had a gas value neq to 1")
@@ -132,7 +132,7 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 		{20, 20000, 30, 20},
 	}
 	for tcIndex, tt := range tests {
-		checkTxs(t, mp, tt.numTxsToCreate, UnknownPeerID)
+		checkTxs(t, mp, tt.numTxsToCreate, mempool.UnknownPeerID)
 		got := mp.ReapMaxBytesMaxGas(tt.maxBytes, tt.maxGas)
 		assert.Equal(t, tt.expectedNumTxs, len(got), "Got %d txs, expected %d, tc #%d",
 			len(got), tt.expectedNumTxs, tcIndex)
@@ -173,7 +173,7 @@ func TestMempoolFilters(t *testing.T) {
 	for tcIndex, tt := range tests {
 		err := mp.Update(1, emptyTxArr, abciResponses(len(emptyTxArr), abci.CodeTypeOK), tt.preFilter, tt.postFilter)
 		require.NoError(t, err)
-		checkTxs(t, mp, tt.numTxsToCreate, UnknownPeerID)
+		checkTxs(t, mp, tt.numTxsToCreate, mempool.UnknownPeerID)
 		require.Equal(t, tt.expectedNumTxs, mp.Size(), "mempool had the incorrect size, on test case %d", tcIndex)
 		mp.Flush()
 	}
@@ -276,7 +276,7 @@ func TestTxsAvailable(t *testing.T) {
 	ensureNoFire(t, mp.TxsAvailable(), timeoutMS)
 
 	// send a bunch of txs, it should only fire once
-	txs := checkTxs(t, mp, 100, UnknownPeerID)
+	txs := checkTxs(t, mp, 100, mempool.UnknownPeerID)
 	ensureFire(t, mp.TxsAvailable(), timeoutMS)
 	ensureNoFire(t, mp.TxsAvailable(), timeoutMS)
 
@@ -291,7 +291,7 @@ func TestTxsAvailable(t *testing.T) {
 	ensureNoFire(t, mp.TxsAvailable(), timeoutMS)
 
 	// send a bunch more txs. we already fired for this height so it shouldnt fire again
-	moreTxs := checkTxs(t, mp, 50, UnknownPeerID)
+	moreTxs := checkTxs(t, mp, 50, mempool.UnknownPeerID)
 	ensureNoFire(t, mp.TxsAvailable(), timeoutMS)
 
 	// now call update with all the txs. it should not fire as there are no txs left
@@ -302,7 +302,7 @@ func TestTxsAvailable(t *testing.T) {
 	ensureNoFire(t, mp.TxsAvailable(), timeoutMS)
 
 	// send a bunch more txs, it should only fire once
-	checkTxs(t, mp, 100, UnknownPeerID)
+	checkTxs(t, mp, 100, mempool.UnknownPeerID)
 	ensureFire(t, mp.TxsAvailable(), timeoutMS)
 	ensureNoFire(t, mp.TxsAvailable(), timeoutMS)
 }
