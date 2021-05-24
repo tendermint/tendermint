@@ -498,20 +498,20 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 					txmp.logger.Error("rejected good transaction; mempool full", "err", err.Error())
 					txmp.metrics.RejectedTxs.Add(1)
 					return
-				} else {
-					// evict an existing transaction
-					//
-					// NOTE:
-					// - The transaction, toEvict, can be removed while a concurrent
-					// reCheckTx callback is being executed for the same transaction.
-					txmp.removeTx(toEvict, true)
-					txmp.logger.Debug(
-						"evicted good transaction; mempool full",
-						"old_tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(toEvict.tx)),
-						"new_tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(wtx.tx)),
-					)
-					txmp.metrics.EvictedTxs.Add(1)
 				}
+
+				// evict an existing transaction
+				//
+				// NOTE:
+				// - The transaction, toEvict, can be removed while a concurrent
+				// reCheckTx callback is being executed for the same transaction.
+				txmp.removeTx(toEvict, true)
+				txmp.logger.Debug(
+					"evicted good transaction; mempool full",
+					"old_tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(toEvict.tx)),
+					"new_tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(wtx.tx)),
+				)
+				txmp.metrics.EvictedTxs.Add(1)
 			}
 
 			wtx.gasWanted = checkTxRes.CheckTx.GasWanted
