@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"runtime"
 	"sync"
@@ -627,7 +628,7 @@ func (r *Router) dialPeers() {
 					}
 
 					if err := r.runWithPeerMutex(func() error { return r.peerManager.Dialed(address) }); err != nil {
-						r.logger.Error("failed to accept connection",
+						r.logger.Error("failed to dial peer",
 							"op", "outgoing/dialing", "peer", address.NodeID, "err", err)
 						return
 					}
@@ -654,6 +655,7 @@ LOOP:
 		// dial multiple peers in parallel.
 		select {
 		case addresses <- address:
+			time.Sleep(time.Duration(rand.Int63n(dialRandomizerIntervalMilliseconds)) * 2 * time.Millisecond)
 			continue
 		case <-ctx.Done():
 			close(addresses)
