@@ -64,7 +64,7 @@ func (app *application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 	}
 }
 
-func setup(t *testing.T, cacheSize int) *TxMempool {
+func setup(t testing.TB, cacheSize int) *TxMempool {
 	t.Helper()
 
 	app := &application{kvstore.NewApplication()}
@@ -339,10 +339,11 @@ func TestTxMempool_CheckTxSamePeer(t *testing.T) {
 func TestTxMempool_ConcurrentTxs(t *testing.T) {
 	txmp := setup(t, 100)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	checkTxDone := make(chan struct{})
 
 	var wg sync.WaitGroup
-	wg.Add(2)
 
+	wg.Add(1)
 	go func() {
 		for i := 0; i < 20; i++ {
 			_ = checkTxs(t, txmp, 100, 0)
@@ -351,8 +352,10 @@ func TestTxMempool_ConcurrentTxs(t *testing.T) {
 		}
 
 		wg.Done()
+		close(checkTxDone)
 	}()
 
+	wg.Add(1)
 	go func() {
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
@@ -382,7 +385,12 @@ func TestTxMempool_ConcurrentTxs(t *testing.T) {
 
 				height++
 			} else {
-				return
+				// only return once we know we finished the CheckTx loop
+				select {
+				case <-checkTxDone:
+					return
+				default:
+				}
 			}
 		}
 	}()

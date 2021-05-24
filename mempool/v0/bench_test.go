@@ -39,9 +39,14 @@ func BenchmarkCheckTx(b *testing.B) {
 
 	mp.config.Size = 1000000
 
+	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
+		b.StopTimer()
 		tx := make([]byte, 8)
 		binary.BigEndian.PutUint64(tx, uint64(i))
+		b.StartTimer()
+
 		if err := mp.CheckTx(tx, nil, mempool.TxInfo{}); err != nil {
 			b.Fatal(err)
 		}
