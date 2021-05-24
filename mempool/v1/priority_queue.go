@@ -33,7 +33,7 @@ func (pq *TxPriorityQueue) GetEvictableTx(priority int64) *WrappedTx {
 	defer pq.mtx.RUnlock()
 
 	txs := make([]*WrappedTx, len(pq.txs))
-	copy(txs[:], pq.txs)
+	copy(txs, pq.txs)
 
 	sort.Slice(txs, func(i, j int) bool {
 		return txs[i].priority < txs[j].priority

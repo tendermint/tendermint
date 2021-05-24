@@ -7,6 +7,8 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
+// nolint: golint
+// TODO: Rename type.
 type MempoolIDs struct {
 	mtx       tmsync.RWMutex
 	peerMap   map[p2p.NodeID]uint16
