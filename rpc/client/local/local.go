@@ -152,7 +152,7 @@ func (c *Local) Genesis(ctx context.Context) (*ctypes.ResultGenesis, error) {
 }
 
 func (c *Local) GenesisChunked(ctx context.Context, id uint) (*ctypes.ResultGenesisChunk, error) {
-	return core.GenesisChunked(c.ctx, id)
+	return c.env.GenesisChunked(c.ctx, id)
 }
 
 func (c *Local) Block(ctx context.Context, height *int64) (*ctypes.ResultBlock, error) {

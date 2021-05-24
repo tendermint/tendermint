@@ -130,7 +130,7 @@ func (env *Environment) validatePerPage(perPagePtr *int) int {
 
 // InitGenesisChunks configures the environment and should be called on service
 // startup.
-func InitGenesisChunks() error {
+func (env *Environment) InitGenesisChunks() error {
 	if env.genChunks != nil {
 		return nil
 	}
