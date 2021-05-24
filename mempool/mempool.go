@@ -1,12 +1,25 @@
 package mempool
 
 import (
-	"context"
 	"fmt"
+	"math"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
+)
+
+const (
+	MempoolChannel = p2p.ChannelID(0x30)
+
+	// PeerCatchupSleepIntervalMS defines how much time to sleep if a peer is behind
+	PeerCatchupSleepIntervalMS = 100
+
+	// UnknownPeerID is the peer ID to use when running CheckTx when there is
+	// no peer (e.g. RPC)
+	UnknownPeerID uint16 = 0
+
+	MaxActiveIDs = math.MaxUint16
 )
 
 // Mempool defines the mempool interface.
@@ -76,8 +89,8 @@ type Mempool interface {
 	// Size returns the number of transactions in the mempool.
 	Size() int
 
-	// TxsBytes returns the total size of all txs in the mempool.
-	TxsBytes() int64
+	// SizeBytes returns the total size of all txs in the mempool.
+	SizeBytes() int64
 }
 
 // PreCheckFunc is an optional filter executed before CheckTx and rejects
@@ -89,18 +102,6 @@ type PreCheckFunc func(types.Tx) error
 // transaction if false is returned. An example would be to ensure a
 // transaction doesn't require more gas than available for the block.
 type PostCheckFunc func(types.Tx, *abci.ResponseCheckTx) error
-
-// TxInfo are parameters that get passed when attempting to add a tx to the
-// mempool.
-type TxInfo struct {
-	// SenderID is the internal peer ID used in the mempool to identify the
-	// sender, storing 2 bytes with each tx instead of 20 bytes for the p2p.ID.
-	SenderID uint16
-	// SenderP2PID is the actual p2p.ID of the sender, used e.g. for logging.
-	SenderP2PID p2p.NodeID
-	// Context is the optional context to cancel CheckTx
-	Context context.Context
-}
 
 // PreCheckMaxBytes checks that the size of the transaction is smaller or equal
 // to the expected maxBytes.

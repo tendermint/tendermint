@@ -39,9 +39,14 @@ func BenchmarkCheckTx(b *testing.B) {
 
 	mp.config.Size = 1000000
 
+	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
+		b.StopTimer()
 		tx := make([]byte, 8)
 		binary.BigEndian.PutUint64(tx, uint64(i))
+		b.StartTimer()
+
 		if err := mp.CheckTx(tx, nil, mempool.TxInfo{}); err != nil {
 			b.Fatal(err)
 		}
@@ -91,34 +96,5 @@ func BenchmarkCheckDuplicateTx(b *testing.B) {
 		if err := mp.CheckTx(tx, nil, mempool.TxInfo{}); err == nil {
 			b.Fatal("tx should be duplicate")
 		}
-	}
-}
-
-func BenchmarkCacheInsertTime(b *testing.B) {
-	cache := newMapTxCache(b.N)
-	txs := make([][]byte, b.N)
-	for i := 0; i < b.N; i++ {
-		txs[i] = make([]byte, 8)
-		binary.BigEndian.PutUint64(txs[i], uint64(i))
-	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		cache.Push(txs[i])
-	}
-}
-
-// This benchmark is probably skewed, since we actually will be removing
-// txs in parallel, which may cause some overhead due to mutex locking.
-func BenchmarkCacheRemoveTime(b *testing.B) {
-	cache := newMapTxCache(b.N)
-	txs := make([][]byte, b.N)
-	for i := 0; i < b.N; i++ {
-		txs[i] = make([]byte, 8)
-		binary.BigEndian.PutUint64(txs[i], uint64(i))
-		cache.Push(txs[i])
-	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		cache.Remove(txs[i])
 	}
 }
