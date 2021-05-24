@@ -509,7 +509,9 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 				txmp.logger.Debug(
 					"evicted good transaction; mempool full",
 					"old_tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(toEvict.tx)),
+					"old_priority", toEvict.priority,
 					"new_tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(wtx.tx)),
+					"new_priority", wtx.priority,
 				)
 				txmp.metrics.EvictedTxs.Add(1)
 			}
@@ -539,6 +541,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			// ignore bad transactions
 			txmp.logger.Debug(
 				"rejected bad transaction",
+				"priority", wtx.priority,
 				"tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(wtx.tx)),
 				"peer_id", txInfo.SenderNodeID,
 				"post_check_err", err,
@@ -590,6 +593,7 @@ func (txmp *TxMempool) defaultTxCallback(req *abci.Request, res *abci.Response) 
 			} else {
 				txmp.logger.Debug(
 					"existing transaction no longer valid; failed re-CheckTx callback",
+					"priority", wtx.priority,
 					"tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(wtx.tx)),
 					"err", err,
 					"code", checkTxRes.CheckTx.Code,
