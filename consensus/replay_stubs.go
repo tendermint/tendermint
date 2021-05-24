@@ -36,7 +36,7 @@ func (emptyMempool) Flush()                        {}
 func (emptyMempool) FlushAppConn() error           { return nil }
 func (emptyMempool) TxsAvailable() <-chan struct{} { return make(chan struct{}) }
 func (emptyMempool) EnableTxsAvailable()           {}
-func (emptyMempool) TxsBytes() int64               { return 0 }
+func (emptyMempool) SizeBytes() int64              { return 0 }
 
 func (emptyMempool) TxsFront() *clist.CElement    { return nil }
 func (emptyMempool) TxsWaitChan() <-chan struct{} { return nil }
