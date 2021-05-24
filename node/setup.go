@@ -23,6 +23,7 @@ import (
 	"github.com/tendermint/tendermint/libs/strings"
 	"github.com/tendermint/tendermint/mempool"
 	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
+	mempoolv1 "github.com/tendermint/tendermint/mempool/v1"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
 	protop2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
@@ -173,6 +174,21 @@ func createMempoolReactor(
 ) (*p2p.ReactorShim, service.Service, mempool.Mempool, error) {
 
 	logger = logger.With("module", "mempool")
+	channelShims := mempoolv0.GetChannelShims(config.Mempool)
+	reactorShim := p2p.NewReactorShim(logger, "MempoolShim", channelShims)
+
+	var (
+		channels    map[p2p.ChannelID]*p2p.Channel
+		peerUpdates *p2p.PeerUpdates
+	)
+
+	if config.P2P.DisableLegacy {
+		channels = makeChannelsFromShims(router, channelShims)
+		peerUpdates = peerManager.Subscribe()
+	} else {
+		channels = getChannelsFromShim(reactorShim)
+		peerUpdates = reactorShim.PeerUpdates
+	}
 
 	switch config.Mempool.Version {
 	case cfg.MempoolV0:
@@ -187,28 +203,12 @@ func createMempoolReactor(
 
 		mp.SetLogger(logger)
 
-		channelShims := mempoolv0.GetChannelShims(config.Mempool)
-		reactorShim := p2p.NewReactorShim(logger, "MempoolShim", channelShims)
-
-		var (
-			channels    map[p2p.ChannelID]*p2p.Channel
-			peerUpdates *p2p.PeerUpdates
-		)
-
-		if config.P2P.DisableLegacy {
-			channels = makeChannelsFromShims(router, channelShims)
-			peerUpdates = peerManager.Subscribe()
-		} else {
-			channels = getChannelsFromShim(reactorShim)
-			peerUpdates = reactorShim.PeerUpdates
-		}
-
 		reactor := mempoolv0.NewReactor(
 			logger,
 			config.Mempool,
 			peerManager,
 			mp,
-			channels[mempoolv0.MempoolChannel],
+			channels[mempool.MempoolChannel],
 			peerUpdates,
 		)
 
@@ -217,8 +217,32 @@ func createMempoolReactor(
 		}
 
 		return reactorShim, reactor, mp, nil
+
 	case cfg.MempoolV1:
-		panic("not implemented yet!")
+		mp := mempoolv1.NewTxMempool(
+			logger,
+			config.Mempool,
+			proxyApp.Mempool(),
+			state.LastBlockHeight,
+			mempoolv1.WithMetrics(memplMetrics),
+			mempoolv1.WithPreCheck(sm.TxPreCheck(state)),
+			mempoolv1.WithPostCheck(sm.TxPostCheck(state)),
+		)
+
+		reactor := mempoolv1.NewReactor(
+			logger,
+			config.Mempool,
+			peerManager,
+			mp,
+			channels[mempool.MempoolChannel],
+			peerUpdates,
+		)
+
+		if config.Consensus.WaitForTxs() {
+			mp.EnableTxsAvailable()
+		}
+
+		return reactorShim, reactor, mp, nil
 
 	default:
 		return nil, nil, nil, fmt.Errorf("unknown mempool version: %s", config.Mempool.Version)
@@ -678,18 +702,6 @@ func makeNodeInfo(
 		return p2p.NodeInfo{}, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}
 
-	var mpChannel byte
-	switch config.Mempool.Version {
-	case cfg.MempoolV0:
-		mpChannel = byte(mempoolv0.MempoolChannel)
-
-	case cfg.MempoolV1:
-		panic("not implemented!")
-
-	default:
-		return p2p.NodeInfo{}, fmt.Errorf("unknown mempool version %s", config.Mempool.Version)
-	}
-
 	nodeInfo := p2p.NodeInfo{
 		ProtocolVersion: p2p.NewProtocolVersion(
 			version.P2PProtocol, // global
@@ -705,7 +717,7 @@ func makeNodeInfo(
 			byte(cs.DataChannel),
 			byte(cs.VoteChannel),
 			byte(cs.VoteSetBitsChannel),
-			mpChannel,
+			byte(mempool.MempoolChannel),
 			byte(evidence.EvidenceChannel),
 			byte(statesync.SnapshotChannel),
 			byte(statesync.ChunkChannel),

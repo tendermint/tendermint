@@ -528,6 +528,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			txmp.insertTx(wtx)
 			txmp.logger.Debug(
 				"inserted good transaction",
+				"priority", wtx.priority,
 				"tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(wtx.tx)),
 				"height", txmp.height,
 				"num_txs", txmp.Size(),

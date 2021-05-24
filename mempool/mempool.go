@@ -2,9 +2,24 @@ package mempool
 
 import (
 	"fmt"
+	"math"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
+)
+
+const (
+	MempoolChannel = p2p.ChannelID(0x30)
+
+	// PeerCatchupSleepIntervalMS defines how much time to sleep if a peer is behind
+	PeerCatchupSleepIntervalMS = 100
+
+	// UnknownPeerID is the peer ID to use when running CheckTx when there is
+	// no peer (e.g. RPC)
+	UnknownPeerID uint16 = 0
+
+	MaxActiveIDs = math.MaxUint16
 )
 
 // Mempool defines the mempool interface.

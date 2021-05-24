@@ -93,6 +93,9 @@ func TestTxStore_GetOrSetPeerByTxHash(t *testing.T) {
 	res, ok = txs.GetOrSetPeerByTxHash(key, 15)
 	require.NotNil(t, res)
 	require.True(t, ok)
+
+	require.True(t, txs.TxHasPeer(key, 15))
+	require.False(t, txs.TxHasPeer(key, 16))
 }
 
 func TestTxStore_RemoveTx(t *testing.T) {

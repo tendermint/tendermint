@@ -158,6 +158,21 @@ func (txs *TxStore) RemoveTx(wtx *WrappedTx) {
 	wtx.removed = true
 }
 
+// TxHasPeer returns true if a transaction by hash has a given peer ID and false
+// otherwise. If the transaction does not exist, false is returned.
+func (txs *TxStore) TxHasPeer(hash [mempool.TxKeySize]byte, peerID uint16) bool {
+	txs.mtx.RLock()
+	defer txs.mtx.RUnlock()
+
+	wtx := txs.hashTxs[hash]
+	if wtx == nil {
+		return false
+	}
+
+	_, ok := wtx.peers[peerID]
+	return ok
+}
+
 // GetOrSetPeerByTxHash looks up a WrappedTx by transaction hash and adds the
 // given peerID to the WrappedTx's set of peers that sent us this transaction.
 // We return true if we've already recorded the given peer for this transaction
