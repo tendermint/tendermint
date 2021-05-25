@@ -591,6 +591,12 @@ func (r *Router) dialPeers() {
 	addresses := make(chan NodeAddress)
 	wg := &sync.WaitGroup{}
 
+	// start a limited number of goroutines to dial peers in
+	// parallel. the goal is to avoid starting an unbounded number
+	// of goroutines thereby spamming the network, but also being
+	// able to add peers at a reasonable pace, though the number
+	// is somewhat arbitrary. The action is further throttled by a
+	// sleep after sending to the addresses channel.
 	for i := 0; i < runtime.NumCPU(); i++ {
 		wg.Add(1)
 		go func() {
@@ -651,10 +657,11 @@ LOOP:
 			break LOOP
 		}
 
-		// Spawn off a goroutine to actually dial the peer, so that we can
-		// dial multiple peers in parallel.
 		select {
 		case addresses <- address:
+			// this jitters the frequency that we call
+			// DialNext and prevents us from attempting to
+			// create connections too quickly.
 			time.Sleep(time.Duration(rand.Int63n(dialRandomizerIntervalMilliseconds)) * 2 * time.Millisecond)
 			continue
 		case <-ctx.Done():
