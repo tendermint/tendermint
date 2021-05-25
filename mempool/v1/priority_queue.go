@@ -122,7 +122,7 @@ func (pq *TxPriorityQueue) Less(i, j int) bool {
 	// If there exists two transactions with the same priority, consider the one
 	// that we saw the earliest as the higher priority transaction.
 	if pq.txs[i].priority == pq.txs[j].priority {
-		return pq.txs[i].timestamp.Unix() < pq.txs[j].timestamp.Unix()
+		return pq.txs[i].timestamp.Before(pq.txs[j].timestamp)
 	}
 
 	// We want Pop to give us the highest, not lowest, priority so we use greater

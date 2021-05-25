@@ -271,7 +271,7 @@ func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo memp
 		wtx := &WrappedTx{
 			tx:        tx,
 			hash:      txHash,
-			timestamp: time.Now(),
+			timestamp: time.Now().UTC(),
 		}
 		txmp.initTxCallback(wtx, res, txInfo)
 
