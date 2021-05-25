@@ -510,7 +510,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 				// - The transaction, toEvict, can be removed while a concurrent
 				//   reCheckTx callback is being executed for the same transaction.
 				txmp.removeTx(toEvict, true)
-				txmp.logger.Info(
+				txmp.logger.Debug(
 					"evicted existing good transaction; mempool full",
 					"old_tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(toEvict.tx)),
 					"old_priority", toEvict.priority,
@@ -532,7 +532,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			txmp.metrics.Size.Set(float64(txmp.Size()))
 
 			txmp.insertTx(wtx)
-			txmp.logger.Info(
+			txmp.logger.Debug(
 				"inserted good transaction",
 				"priority", wtx.priority,
 				"tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(wtx.tx)),
