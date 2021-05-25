@@ -677,9 +677,9 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 
 	require.Eventually(t, func() bool {
 		return len(dialCh) == 3
-	}, time.Second, 10*time.Millisecond)
+	}, 3*time.Second, 10*time.Millisecond)
 	close(closeCh)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
 	require.NoError(t, router.Stop())
 	mockTransport.AssertExpectations(t)
