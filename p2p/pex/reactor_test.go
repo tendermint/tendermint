@@ -193,10 +193,10 @@ func TestReactorSmallPeerStoreInALargeNetwork(t *testing.T) {
 
 func TestReactorLargePeerStoreInASmallNetwork(t *testing.T) {
 	testNet := setupNetwork(t, testOptions{
-		TotalNodes:   10,
-		MaxPeers:     100,
-		MaxConnected: 100,
-		BufferSize:   10,
+		TotalNodes:   5,
+		MaxPeers:     50,
+		MaxConnected: 50,
+		BufferSize:   5,
 	})
 	testNet.connectN(t, 1)
 	testNet.start(t)
@@ -668,6 +668,7 @@ func (r *reactorTestSuite) requireNumberOfPeers(
 	nodeIndex, numPeers int,
 	waitPeriod time.Duration,
 ) {
+	t.Helper()
 	require.Eventuallyf(t, func() bool {
 		actualNumPeers := len(r.network.Nodes[r.nodes[nodeIndex]].PeerManager.Peers())
 		return actualNumPeers >= numPeers
