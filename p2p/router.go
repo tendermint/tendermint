@@ -665,6 +665,8 @@ LOOP:
 			// this jitters the frequency that we call
 			// DialNext and prevents us from attempting to
 			// create connections too quickly.
+
+			// nolint:gosec // G404: Use of weak random number generator
 			time.Sleep(time.Duration(rand.Int63n(dialRandomizerIntervalMilliseconds)) * 2 * time.Millisecond)
 			continue
 		case <-ctx.Done():
