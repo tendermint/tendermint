@@ -3,7 +3,7 @@ package mempool
 import (
 	"fmt"
 
-	tmsync "github.com/tendermint/tendermint/libs/sync"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 )
 
