@@ -632,7 +632,7 @@ LOOP:
 			// create connections too quickly.
 
 			// nolint:gosec // G404: Use of weak random number generator
-			time.Sleep(time.Duration(rand.Int63n(dialRandomizerIntervalMilliseconds)) * 2 * time.Millisecond)
+			time.Sleep(time.Duration(rand.Int63n(dialRandomizerIntervalMilliseconds)) * time.Millisecond)
 			continue
 		case <-ctx.Done():
 			close(addresses)
@@ -655,28 +655,31 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 		}
 		return
 	}
-	defer conn.Close()
 
 	_, _, err = r.handshakePeer(ctx, conn, address.NodeID)
 	switch {
 	case errors.Is(err, context.Canceled):
+		conn.Close()
 		return
 	case err != nil:
 		r.logger.Error("failed to handshake with peer", "peer", address, "err", err)
 		if err = r.peerManager.DialFailed(address); err != nil {
 			r.logger.Error("failed to report dial failure", "peer", address, "err", err)
 		}
+		conn.Close()
 		return
 	}
 
 	if err := r.runWithPeerMutex(func() error { return r.peerManager.Dialed(address) }); err != nil {
 		r.logger.Error("failed to dial peer",
 			"op", "outgoing/dialing", "peer", address.NodeID, "err", err)
+		conn.Close()
 		return
+
 	}
 
 	// routePeer (also) calls connection close
-	r.routePeer(address.NodeID, conn)
+	go r.routePeer(address.NodeID, conn)
 }
 
 func (r *Router) getOrMakeQueue(peerID NodeID) queue {
