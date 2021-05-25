@@ -740,7 +740,7 @@ func (r *reactorTestSuite) connectPeers(t *testing.T, sourceNode, targetNode int
 			Status: p2p.PeerStatusUp,
 		}, peerUpdate)
 		r.logger.Debug("target connected with source")
-	case <-time.After(time.Second):
+	case <-time.After(2 * time.Second):
 		require.Fail(t, "timed out waiting for peer", "%v accepting %v",
 			targetNode, sourceNode)
 	}
@@ -752,7 +752,7 @@ func (r *reactorTestSuite) connectPeers(t *testing.T, sourceNode, targetNode int
 			Status: p2p.PeerStatusUp,
 		}, peerUpdate)
 		r.logger.Debug("source connected with target")
-	case <-time.After(time.Second):
+	case <-time.After(2 * time.Second):
 		require.Fail(t, "timed out waiting for peer", "%v dialing %v",
 			sourceNode, targetNode)
 	}
