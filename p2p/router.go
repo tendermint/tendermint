@@ -616,29 +616,32 @@ func (r *Router) dialPeers() {
 						if err = r.peerManager.DialFailed(address); err != nil {
 							r.logger.Error("failed to report dial failure", "peer", address, "err", err)
 						}
-						return
+						continue
 					}
-					defer conn.Close()
 
 					peerID := address.NodeID
 					_, _, err = r.handshakePeer(ctx, conn, peerID)
 					switch {
 					case errors.Is(err, context.Canceled):
+						conn.Close()
 						return
 					case err != nil:
 						r.logger.Error("failed to handshake with peer", "peer", address, "err", err)
 						if err = r.peerManager.DialFailed(address); err != nil {
 							r.logger.Error("failed to report dial failure", "peer", address, "err", err)
 						}
-						return
+						conn.Close()
+						continue
 					}
 
 					if err := r.runWithPeerMutex(func() error { return r.peerManager.Dialed(address) }); err != nil {
 						r.logger.Error("failed to dial peer",
 							"op", "outgoing/dialing", "peer", address.NodeID, "err", err)
-						return
+						conn.Close()
+						continue
 					}
 
+					// routePeer calls connection close
 					r.routePeer(peerID, conn)
 				}
 			}
