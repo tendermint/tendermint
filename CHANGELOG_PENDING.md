@@ -19,6 +19,10 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [state/indexer] \#6382 reconstruct indexer, move txindex into the indexer package (@JayT106)
   - [cli] \#6372 Introduce `BootstrapPeers` as part of the new p2p stack. Peers to be connected on
     startup (@cmwaters)
+  - [mempool] \#6466 When mempool `v1` is enabled, transactions broadcasted via `sync` mode may return a successful response with a
+    transaction hash indicating that the transaction was successfully inserted into the mempool. While this is true for `v0`, the
+    `v1` mempool reactor may at a later point in time evict or even drop this transaction after a hash has been returned. Thus,
+    the user or client must query for that transaction to check if it is still in the mempool. (@alexanderbez)
 
 - Apps
   - [ABCI] \#6408 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)
@@ -48,6 +52,9 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [rpc/client/http] \#6176 Unexpose `WSEvents` (@melekes)
   - [rpc/jsonrpc/client/ws_client] \#6176 `NewWS` no longer accepts options (use `NewWSWithOptions` and `OnReconnect` funcs to configure the client) (@melekes)
   - [libs/rand] \#6364 Removed most of libs/rand in favour of standard lib's `math/rand` (@liamsi)
+  - [mempool] \#6466 The original mempool reactor has been versioned as `v0` and moved to a sub-package under the root `mempool` package.
+    Some core types have been kept in the `mempool` package such as `TxCache` and it's implementations, the `Mempool` interface itself
+    and `TxInfo`. (@alexanderbez)
 
 - Blockchain Protocol
 
@@ -63,6 +70,13 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   accomodate for the new p2p stack. Removes the notion of seeds and crawling. All peer
   exchange reactors behave the same. (@cmwaters)
 - [crypto] \#6376 Enable sr25519 as a validator key
+- [mempool] \#6466 Introduction of a prioritized mempool. (@alexanderbez)
+  - `Priority` and `Sender` have been introduced into the `ResponseCheckTx` type, where the `priority` will determine the prioritization of
+  the transaction when a proposer reaps transactions for a block proposal. The `sender` field acts as an index.
+  - Operators may toggle between the legacy mempool reactor, `v0`, and the new prioritized reactor, `v1`, by setting the
+  `mempool.version` configuration, where `v1` is the default configuration.
+  - Applications that do not specify a priority, i.e. zero, will have transactions reaped by the order in which they are received by the node.
+  - Transactions are gossiped in FIFO order as they are in `v0`.
 
 ### IMPROVEMENTS
 
