@@ -27,7 +27,7 @@ func (env *Environment) Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*cty
 	for _, sink := range env.EventSinks {
 		if sink.Type() == indexer.KV {
 			r, err := sink.GetTxByHash(hash)
-			if err != nil {
+			if r == nil {
 				return nil, fmt.Errorf("tx (%X) not found, err: %w", hash, err)
 			}
 
