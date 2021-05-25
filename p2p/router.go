@@ -657,8 +657,7 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 	}
 	defer conn.Close()
 
-	peerID := address.NodeID
-	_, _, err = r.handshakePeer(ctx, conn, peerID)
+	_, _, err = r.handshakePeer(ctx, conn, address.NodeID)
 	switch {
 	case errors.Is(err, context.Canceled):
 		return
@@ -677,7 +676,7 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 	}
 
 	// routePeer (also) calls connection close
-	r.routePeer(peerID, conn)
+	r.routePeer(address.NodeID, conn)
 }
 
 func (r *Router) getOrMakeQueue(peerID NodeID) queue {
