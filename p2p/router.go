@@ -591,7 +591,7 @@ func (r *Router) dialPeers() {
 	addresses := make(chan NodeAddress)
 	wg := &sync.WaitGroup{}
 
-	// start a limited number of goroutines to dial peers in
+	// Start a limited number of goroutines to dial peers in
 	// parallel. the goal is to avoid starting an unbounded number
 	// of goroutines thereby spamming the network, but also being
 	// able to add peers at a reasonable pace, though the number
