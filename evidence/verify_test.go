@@ -54,7 +54,8 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 	ev.TotalVotingPower = 1 * defaultVotingPower
 	err = evidence.VerifyLightClientAttack(ev, common.SignedHeader, trusted.SignedHeader, common.ValidatorSet,
 		defaultEvidenceTime.Add(2*time.Hour), 3*time.Hour)
-	assert.Error(t, err)
+	assert.NoError(t, err)
+	assert.Error(t, ev.ValidateABCI(common.ValidatorSet, trusted.SignedHeader, defaultEvidenceTime))
 
 	// evidence without enough malicious votes should fail
 	ev, trusted, common = makeLunaticEvidence(

@@ -42,16 +42,6 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 
 	// verify the time of the evidence
 	evTime := blockMeta.Header.Time
-	if evidence.Time() != evTime {
-		return types.NewErrInvalidEvidence(
-			evidence,
-			fmt.Errorf(
-				"evidence has a different time to the block it is associated with (%v != %v)",
-				evidence.Time(), evTime,
-			),
-		)
-	}
-
 	ageDuration := state.LastBlockTime.Sub(evTime)
 
 	// check that the evidence hasn't expired
@@ -78,6 +68,16 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 
 		if err := VerifyDuplicateVote(ev, state.ChainID, valSet); err != nil {
 			return types.NewErrInvalidEvidence(evidence, err)
+		}
+
+		_, val := valSet.GetByAddress(ev.VoteA.ValidatorAddress)
+
+		if err := ev.ValidateABCI(val, valSet, evTime); err != nil {
+			ev.GenerateABCI(val, valSet, evTime)
+			if addErr := evpool.addPendingEvidence(ev); addErr != nil {
+				evpool.logger.Error("adding pending duplicate vote evidence failed", "err", addErr)
+			}
+			return err
 		}
 
 		return nil
@@ -128,6 +128,18 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 		if err != nil {
 			return types.NewErrInvalidEvidence(evidence, err)
 		}
+
+		// validate the ABCI component of evidence. If this fails but the rest
+		// is valid then we regenerate the ABCI component, save the rectified
+		// evidence and return an error
+		if err := ev.ValidateABCI(commonVals, trustedHeader, evTime); err != nil {
+			ev.GenerateABCI(commonVals, trustedHeader, evTime)
+			if addErr := evpool.addPendingEvidence(ev); addErr != nil {
+				evpool.logger.Error("adding pending light client attack evidence failed", "err", addErr)
+			}
+			return err
+
+		}
 		return nil
 
 	default:
@@ -166,12 +178,6 @@ func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, t
 		return fmt.Errorf("invalid commit from conflicting block: %w", err)
 	}
 
-	// Assert the correct amount of voting power of the validator set
-	if evTotal, valsTotal := e.TotalVotingPower, commonVals.TotalVotingPower(); evTotal != valsTotal {
-		return fmt.Errorf("total voting power from the evidence and our validator set does not match (%d != %d)",
-			evTotal, valsTotal)
-	}
-
 	// check in the case of a forward lunatic attack that monotonically increasing time has been violated
 	if e.ConflictingBlock.Height > trustedHeader.Height && e.ConflictingBlock.Time.After(trustedHeader.Time) {
 		return fmt.Errorf("conflicting block doesn't violate monotonically increasing time (%v is after %v)",
@@ -184,7 +190,7 @@ func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, t
 			trustedHeader.Hash())
 	}
 
-	return validateABCIEvidence(e, commonVals, trustedHeader)
+	return nil
 }
 
 // VerifyDuplicateVote verifies DuplicateVoteEvidence against the state of full node. This involves the
@@ -232,16 +238,6 @@ func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string, valSet 
 			addr, pubKey, pubKey.Address())
 	}
 
-	// validator voting power and total voting power must match
-	if val.VotingPower != e.ValidatorPower {
-		return fmt.Errorf("validator power from evidence and our validator set does not match (%d != %d)",
-			e.ValidatorPower, val.VotingPower)
-	}
-	if valSet.TotalVotingPower() != e.TotalVotingPower {
-		return fmt.Errorf("total voting power from the evidence and our validator set does not match (%d != %d)",
-			e.TotalVotingPower, valSet.TotalVotingPower())
-	}
-
 	va := e.VoteA.ToProto()
 	vb := e.VoteB.ToProto()
 	// Signatures must be valid
@@ -250,55 +246,6 @@ func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string, valSet 
 	}
 	if !pubKey.VerifySignature(types.VoteSignBytes(chainID, vb), e.VoteB.Signature) {
 		return fmt.Errorf("verifying VoteB: %w", types.ErrVoteInvalidSignature)
-	}
-
-	return nil
-}
-
-// validateABCIEvidence validates the ABCI component of the light client attack
-// evidence i.e voting power and byzantine validators
-func validateABCIEvidence(
-	ev *types.LightClientAttackEvidence,
-	commonVals *types.ValidatorSet,
-	trustedHeader *types.SignedHeader,
-) error {
-	if evTotal, valsTotal := ev.TotalVotingPower, commonVals.TotalVotingPower(); evTotal != valsTotal {
-		return fmt.Errorf("total voting power from the evidence and our validator set does not match (%d != %d)",
-			evTotal, valsTotal)
-	}
-
-	// Find out what type of attack this was and thus extract the malicious
-	// validators. Note, in the case of an Amnesia attack we don't have any
-	// malicious validators.
-	validators := ev.GetByzantineValidators(commonVals, trustedHeader)
-
-	// Ensure this matches the validators that are listed in the evidence. They
-	// should be ordered based on power.
-	if validators == nil && ev.ByzantineValidators != nil {
-		return fmt.Errorf(
-			"expected nil validators from an amnesia light client attack but got %d",
-			len(ev.ByzantineValidators),
-		)
-	}
-
-	if exp, got := len(validators), len(ev.ByzantineValidators); exp != got {
-		return fmt.Errorf("expected %d byzantine validators from evidence but got %d", exp, got)
-	}
-
-	for idx, val := range validators {
-		if !bytes.Equal(ev.ByzantineValidators[idx].Address, val.Address) {
-			return fmt.Errorf(
-				"evidence contained an unexpected byzantine validator address; expected: %v, got: %v",
-				val.Address, ev.ByzantineValidators[idx].Address,
-			)
-		}
-
-		if ev.ByzantineValidators[idx].VotingPower != val.VotingPower {
-			return fmt.Errorf(
-				"evidence contained unexpected byzantine validator power; expected %d, got %d",
-				val.VotingPower, ev.ByzantineValidators[idx].VotingPower,
-			)
-		}
 	}
 
 	return nil
