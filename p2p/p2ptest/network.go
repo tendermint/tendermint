@@ -97,7 +97,7 @@ func (n *Network) Start(t *testing.T) {
 					NodeID: targetNode.NodeID,
 					Status: p2p.PeerStatusUp,
 				}, peerUpdate)
-			case <-time.After(time.Second):
+			case <-time.After(3 * time.Second):
 				require.Fail(t, "timed out waiting for peer", "%v dialing %v",
 					sourceNode.NodeID, targetNode.NodeID)
 			}
@@ -108,7 +108,7 @@ func (n *Network) Start(t *testing.T) {
 					NodeID: sourceNode.NodeID,
 					Status: p2p.PeerStatusUp,
 				}, peerUpdate)
-			case <-time.After(time.Second):
+			case <-time.After(3 * time.Second):
 				require.Fail(t, "timed out waiting for peer", "%v accepting %v",
 					targetNode.NodeID, sourceNode.NodeID)
 			}
