@@ -17,6 +17,7 @@ import (
 	dockertest "github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/types"
@@ -36,27 +37,27 @@ var (
 
 func TestType(t *testing.T) {
 	pool, err := setupDB(t)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	psqlSink := &EventSink{store: db, chainID: chainID}
 	assert.Equal(t, indexer.PSQL, psqlSink.Type())
-	assert.NoError(t, teardown(t, pool))
+	require.NoError(t, teardown(t, pool))
 }
 
 func TestBlockFuncs(t *testing.T) {
 	pool, err := setupDB(t)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	indexer := &EventSink{store: db, chainID: chainID}
-	assert.NoError(t, indexer.IndexBlockEvents(getTestBlockHeader()))
+	require.NoError(t, indexer.IndexBlockEvents(getTestBlockHeader()))
 
 	r, err := verifyBlock(1)
 	assert.True(t, r)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	r, err = verifyBlock(2)
 	assert.False(t, r)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	r, err = indexer.HasBlock(1)
 	assert.False(t, r)
@@ -70,9 +71,8 @@ func TestBlockFuncs(t *testing.T) {
 	assert.Nil(t, r2)
 	assert.Equal(t, errors.New("block search is not supported via the postgres event sink"), err)
 
-	assert.NoError(t, verifyTimeStamp(TableEventBlock))
-
-	assert.NoError(t, teardown(t, pool))
+	require.NoError(t, verifyTimeStamp(TableEventBlock))
+	require.NoError(t, teardown(t, pool))
 }
 
 func TestTxFuncs(t *testing.T) {
@@ -87,14 +87,14 @@ func TestTxFuncs(t *testing.T) {
 		{Type: "", Attributes: []abci.EventAttribute{{Key: "not_allowed", Value: "Vlad", Index: true}}},
 	})
 	err = indexer.IndexTxEvents([]*abci.TxResult{txResult})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err := verifyTx(types.Tx(txResult.Tx).Hash())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, txResult, tx)
 
-	assert.NoError(t, verifyTimeStamp(TableEventTx))
-	assert.NoError(t, verifyTimeStamp(TableResultTx))
+	require.NoError(t, verifyTimeStamp(TableEventTx))
+	require.NoError(t, verifyTimeStamp(TableResultTx))
 
 	tx, err = indexer.GetTxByHash(types.Tx(txResult.Tx).Hash())
 	assert.Nil(t, tx)
@@ -109,13 +109,13 @@ func TestTxFuncs(t *testing.T) {
 
 func TestStop(t *testing.T) {
 	pool, err := setupDB(t)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	indexer := &EventSink{store: db}
-	assert.NoError(t, indexer.Stop())
+	require.NoError(t, indexer.Stop())
 
 	defer db.Close()
-	assert.NoError(t, pool.Purge(resource))
+	require.NoError(t, pool.Purge(resource))
 }
 
 func getTestBlockHeader() types.EventDataNewBlockHeader {
@@ -170,11 +170,11 @@ func resetDB(t *testing.T) {
 	q := "DROP TABLE IF EXISTS block_events,tx_events,tx_results"
 	_, err := db.Exec(q)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	q = "DROP TYPE IF EXISTS block_event_type"
 	_, err = db.Exec(q)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func txResultWithEvents(events []abci.Event) *abci.TxResult {
@@ -307,7 +307,7 @@ func setupDB(t *testing.T) (*dockertest.Pool, error) {
 	t.Helper()
 	pool, err := dockertest.NewPool(os.Getenv("DOCKER_URL"))
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	resource, err = pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: DriverName,
@@ -327,7 +327,7 @@ func setupDB(t *testing.T) (*dockertest.Pool, error) {
 		}
 	})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Set the container to expire in a minute to avoid orphaned containers
 	// hanging around
@@ -346,7 +346,7 @@ func setupDB(t *testing.T) (*dockertest.Pool, error) {
 
 		return db.Ping()
 	}); err != nil {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	resetDB(t)
