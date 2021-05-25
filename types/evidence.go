@@ -407,7 +407,7 @@ func (l *LightClientAttackEvidence) ValidateBasic() error {
 
 // ValidateABCI validates the ABCI component of the evidence by checking the
 // timestamp, byzantine validators and total voting power all match. ABCI
-// components are validated separately because they can be re generated if 
+// components are validated separately because they can be re generated if
 // invalid.
 func (l *LightClientAttackEvidence) ValidateABCI(
 	commonVals *ValidatorSet,
@@ -463,8 +463,8 @@ func (l *LightClientAttackEvidence) ValidateABCI(
 	return nil
 }
 
-// GenerateABCI populates the ABCI component of the evidence: the timestamp, 
-// total voting power and byantine validators 
+// GenerateABCI populates the ABCI component of the evidence: the timestamp,
+// total voting power and byantine validators
 func (l *LightClientAttackEvidence) GenerateABCI(
 	commonVals *ValidatorSet,
 	trustedHeader *SignedHeader,
