@@ -10,7 +10,7 @@ import (
 	"math"
 	"time"
 
-	tmsync "github.com/tendermint/tendermint/libs/sync"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 )
 
 // Monitor monitors and limits the transfer rate of a data stream.
