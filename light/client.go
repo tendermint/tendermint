@@ -30,9 +30,9 @@ const (
 	// intuitive method is to take the halfway point i.e. if you trusted block
 	// 1 and were not able to verify block 128 then your next try would be 64.
 	//
-	// However this implementation caches all the prior results which means it
-	// isn't optimal to take the halfway point. Take this simple example. Say
-	// you failed to verify 64 but were able to verify block 32. Following this
+	// However, because this implementation caches all the prior results, instead of always taking halfpoints
+	// it is more efficient to re-check cached blocks. Take this simple example. Say
+	// you failed to verify 64 but were able to verify block 32. Following a strict half-way policy,
 	// you would start over again and try verify to block 128. If this failed
 	// then the halfway point between 32 and 128 is 80. But you already have
 	// block 64. Instead of requesting and waiting for another block it is far
@@ -587,7 +587,7 @@ func (c *Client) verifyLightBlock(ctx context.Context, newLightBlock *types.Ligh
 		err = c.backwards(ctx, firstBlock.Header, newLightBlock.Header)
 
 	// Verifying between first and last trusted light block. In this situation
-	// we find the closes block prior to the target height then perform
+	// we find the closest block prior to the target height then perform
 	// verification forwards.
 	default:
 		var closestBlock *types.LightBlock
