@@ -543,7 +543,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 
 		} else {
 			// ignore bad transactions
-			txmp.logger.Debug(
+			txmp.logger.Info(
 				"rejected bad transaction",
 				"priority", wtx.priority,
 				"tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(wtx.tx)),
