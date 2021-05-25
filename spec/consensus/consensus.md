@@ -110,7 +110,7 @@ example,
 - Nodes gossip to nodes lagging in blockchain height with block
   [commits](https://godoc.org/github.com/tendermint/tendermint/types#Commit)
   for older blocks.
-- Nodes opportunistically gossip `HasVote` messages to hint peers what
+- Nodes opportunistically gossip `ReceivedVote` messages to hint peers what
   votes it already has.
 - Nodes broadcast their current state to all neighboring peers. (but
   is not gossiped further)

@@ -95,9 +95,9 @@ and what prevotes for the re-proposed block the process has.
 | proposal_pol_round | int32    |                               | 2            |
 | proposal_pol       | bitarray |                               | 3            |
 
-### HasVote
+### ReceivedVote
 
-HasVote is sent to indicate that a particular vote has been received. It contains height,
+ReceivedVote is sent to indicate that a particular vote has been received. It contains height,
 round, vote type and the index of the validator that is the originator of the corresponding vote.
 
 | Name   | Type                                                             | Description                            | Field Number |
@@ -144,6 +144,6 @@ Message is a [`oneof` protobuf type](https://developers.google.com/protocol-buff
 | proposal_pol    | [ProposalPOL](#proposalpol)     |                                        | 4            |
 | block_part      | [BlockPart](#blockpart)         |                                        | 5            |
 | vote            | [Vote](#vote)                   |                                        | 6            |
-| has_vote        | [HasVote](#hasvote)             |                                        | 7            |
+| received_vote       | [ReceivedVote](#ReceivedVote)           |                                        | 7            |
 | vote_set_maj23  | [VoteSetMaj23](#votesetmaj23)   |                                        | 8            |
 | vote_set_bits   | [VoteSetBits](#votesetbits)     |                                        | 9            |
