@@ -607,42 +607,7 @@ func (r *Router) dialPeers() {
 				case <-ctx.Done():
 					return
 				case address := <-addresses:
-					conn, err := r.dialPeer(ctx, address)
-					switch {
-					case errors.Is(err, context.Canceled):
-						return
-					case err != nil:
-						r.logger.Error("failed to dial peer", "peer", address, "err", err)
-						if err = r.peerManager.DialFailed(address); err != nil {
-							r.logger.Error("failed to report dial failure", "peer", address, "err", err)
-						}
-						continue
-					}
-
-					peerID := address.NodeID
-					_, _, err = r.handshakePeer(ctx, conn, peerID)
-					switch {
-					case errors.Is(err, context.Canceled):
-						conn.Close()
-						return
-					case err != nil:
-						r.logger.Error("failed to handshake with peer", "peer", address, "err", err)
-						if err = r.peerManager.DialFailed(address); err != nil {
-							r.logger.Error("failed to report dial failure", "peer", address, "err", err)
-						}
-						conn.Close()
-						continue
-					}
-
-					if err := r.runWithPeerMutex(func() error { return r.peerManager.Dialed(address) }); err != nil {
-						r.logger.Error("failed to dial peer",
-							"op", "outgoing/dialing", "peer", address.NodeID, "err", err)
-						conn.Close()
-						continue
-					}
-
-					// routePeer calls connection close
-					r.routePeer(peerID, conn)
+					r.connectPeer(ctx, address)
 				}
 			}
 		}()
@@ -676,6 +641,43 @@ LOOP:
 	}
 
 	wg.Wait()
+}
+
+func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
+	conn, err := r.dialPeer(ctx, address)
+	switch {
+	case errors.Is(err, context.Canceled):
+		return
+	case err != nil:
+		r.logger.Error("failed to dial peer", "peer", address, "err", err)
+		if err = r.peerManager.DialFailed(address); err != nil {
+			r.logger.Error("failed to report dial failure", "peer", address, "err", err)
+		}
+		return
+	}
+	defer conn.Close()
+
+	peerID := address.NodeID
+	_, _, err = r.handshakePeer(ctx, conn, peerID)
+	switch {
+	case errors.Is(err, context.Canceled):
+		return
+	case err != nil:
+		r.logger.Error("failed to handshake with peer", "peer", address, "err", err)
+		if err = r.peerManager.DialFailed(address); err != nil {
+			r.logger.Error("failed to report dial failure", "peer", address, "err", err)
+		}
+		return
+	}
+
+	if err := r.runWithPeerMutex(func() error { return r.peerManager.Dialed(address) }); err != nil {
+		r.logger.Error("failed to dial peer",
+			"op", "outgoing/dialing", "peer", address.NodeID, "err", err)
+		return
+	}
+
+	// routePeer (also) calls connection close
+	r.routePeer(peerID, conn)
 }
 
 func (r *Router) getOrMakeQueue(peerID NodeID) queue {
