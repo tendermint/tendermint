@@ -54,7 +54,8 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 	ev.TotalVotingPower = 1 * defaultVotingPower
 	err = evidence.VerifyLightClientAttack(ev, common.SignedHeader, trusted.SignedHeader, common.ValidatorSet,
 		defaultEvidenceTime.Add(2*time.Hour), 3*time.Hour)
-	assert.Error(t, err)
+	assert.NoError(t, err)
+	assert.Error(t, ev.ValidateABCI(common.ValidatorSet, trusted.SignedHeader, defaultEvidenceTime))
 
 	// evidence without enough malicious votes should fail
 	ev, trusted, common = makeLunaticEvidence(
@@ -193,6 +194,7 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 	conflictingVals, conflictingPrivVals := factory.RandValidatorSet(5, 10)
 
 	conflictingHeader, err := factory.MakeHeader(&types.Header{
+		ChainID:        evidenceChainID,
 		Height:         10,
 		Time:           defaultEvidenceTime,
 		ValidatorsHash: conflictingVals.Hash(),
@@ -200,6 +202,7 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 	require.NoError(t, err)
 
 	trustedHeader, _ := factory.MakeHeader(&types.Header{
+		ChainID:            evidenceChainID,
 		Height:             10,
 		Time:               defaultEvidenceTime,
 		ValidatorsHash:     conflictingHeader.ValidatorsHash,
@@ -286,6 +289,7 @@ func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
 	conflictingVals, conflictingPrivVals := factory.RandValidatorSet(5, 10)
 
 	conflictingHeader, err := factory.MakeHeader(&types.Header{
+		ChainID:        evidenceChainID,
 		Height:         height,
 		Time:           defaultEvidenceTime,
 		ValidatorsHash: conflictingVals.Hash(),
@@ -293,6 +297,7 @@ func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
 	require.NoError(t, err)
 
 	trustedHeader, _ := factory.MakeHeader(&types.Header{
+		ChainID:            evidenceChainID,
 		Height:             height,
 		Time:               defaultEvidenceTime,
 		ValidatorsHash:     conflictingHeader.ValidatorsHash,
@@ -485,16 +490,26 @@ func makeLunaticEvidence(
 
 	conflictingPrivVals = orderPrivValsByValSet(t, conflictingVals, conflictingPrivVals)
 
-	commonHeader := factory.MakeRandomHeader()
-	commonHeader.Height = commonHeight
-	commonHeader.Time = commonTime
-	trustedHeader := factory.MakeRandomHeader()
-	trustedHeader.Height = height
+	commonHeader, err := factory.MakeHeader(&types.Header{
+		ChainID: evidenceChainID,
+		Height:  commonHeight,
+		Time:    commonTime,
+	})
+	require.NoError(t, err)
+	trustedHeader, err := factory.MakeHeader(&types.Header{
+		ChainID: evidenceChainID,
+		Height:  height,
+		Time:    defaultEvidenceTime,
+	})
+	require.NoError(t, err)
 
-	conflictingHeader := factory.MakeRandomHeader()
-	conflictingHeader.Height = height
-	conflictingHeader.Time = attackTime
-	conflictingHeader.ValidatorsHash = conflictingVals.Hash()
+	conflictingHeader, err := factory.MakeHeader(&types.Header{
+		ChainID:        evidenceChainID,
+		Height:         height,
+		Time:           attackTime,
+		ValidatorsHash: conflictingVals.Hash(),
+	})
+	require.NoError(t, err)
 
 	blockID := factory.MakeBlockIDWithHash(conflictingHeader.Hash())
 	voteSet := types.NewVoteSet(evidenceChainID, height, 1, tmproto.SignedMsgType(2), conflictingVals)

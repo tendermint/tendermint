@@ -684,7 +684,7 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 // peer must already be marked as connected. This is separate from Dialed() and
 // Accepted() to allow the router to set up its internal queues before reactors
 // start sending messages.
-func (m *PeerManager) Ready(peerID NodeID) error {
+func (m *PeerManager) Ready(peerID NodeID) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -695,7 +695,6 @@ func (m *PeerManager) Ready(peerID NodeID) error {
 			Status: PeerStatusUp,
 		})
 	}
-	return nil
 }
 
 // EvictNext returns the next peer to evict (i.e. disconnect). If no evictable
@@ -752,7 +751,7 @@ func (m *PeerManager) TryEvictNext() (NodeID, error) {
 
 // Disconnected unmarks a peer as connected, allowing it to be dialed or
 // accepted again as appropriate.
-func (m *PeerManager) Disconnected(peerID NodeID) error {
+func (m *PeerManager) Disconnected(peerID NodeID) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -772,7 +771,6 @@ func (m *PeerManager) Disconnected(peerID NodeID) error {
 	}
 
 	m.dialWaker.Wake()
-	return nil
 }
 
 // Errored reports a peer error, causing the peer to be evicted if it's
@@ -783,7 +781,7 @@ func (m *PeerManager) Disconnected(peerID NodeID) error {
 //
 // FIXME: This will cause the peer manager to immediately try to reconnect to
 // the peer, which is probably not always what we want.
-func (m *PeerManager) Errored(peerID NodeID, err error) error {
+func (m *PeerManager) Errored(peerID NodeID, err error) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -792,7 +790,6 @@ func (m *PeerManager) Errored(peerID NodeID, err error) error {
 	}
 
 	m.evictWaker.Wake()
-	return nil
 }
 
 // Advertise returns a list of peer addresses to advertise to a peer.

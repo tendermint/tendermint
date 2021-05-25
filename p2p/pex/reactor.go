@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tendermint/tendermint/internal/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/service"
@@ -24,7 +23,7 @@ var (
 // See https://github.com/tendermint/tendermint/issues/6371
 const (
 	// the minimum time one peer can send another request to the same peer
-	minReceiveRequestInterval = 300 * time.Millisecond
+	minReceiveRequestInterval = 100 * time.Millisecond
 
 	// the maximum amount of addresses that can be included in a response
 	maxAddresses uint16 = 100
@@ -45,16 +44,14 @@ const (
 // within each reactor (as they are now) or, considering that the reactor doesn't
 // really need to care about the channel descriptors, if they should be housed
 // in the node module.
-func ChannelDescriptors() []*conn.ChannelDescriptor {
-	return []*conn.ChannelDescriptor{
-		{
-			ID:                  PexChannel,
-			Priority:            1,
-			SendQueueCapacity:   10,
-			RecvMessageCapacity: maxMsgSize,
+func ChannelDescriptor() conn.ChannelDescriptor {
+	return conn.ChannelDescriptor{
+		ID:                  PexChannel,
+		Priority:            1,
+		SendQueueCapacity:   10,
+		RecvMessageCapacity: maxMsgSize,
 
-			MaxSendBytes: 200,
-		},
+		MaxSendBytes: 200,
 	}
 }
 
@@ -80,7 +77,7 @@ type ReactorV2 struct {
 	closeCh     chan struct{}
 
 	// list of available peers to loop through and send peer requests to
-	availablePeers *clist.CList
+	availablePeers map[p2p.NodeID]struct{}
 
 	mtx sync.RWMutex
 
@@ -122,7 +119,7 @@ func NewReactorV2(
 		pexCh:                pexCh,
 		peerUpdates:          peerUpdates,
 		closeCh:              make(chan struct{}),
-		availablePeers:       clist.New(),
+		availablePeers:       make(map[p2p.NodeID]struct{}),
 		requestsSent:         make(map[p2p.NodeID]struct{}),
 		lastReceivedRequests: make(map[p2p.NodeID]time.Time),
 	}
@@ -389,11 +386,17 @@ func (r *ReactorV2) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (er
 // send a request for addresses.
 func (r *ReactorV2) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	r.Logger.Debug("received PEX peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
+
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
+
 	switch peerUpdate.Status {
 	case p2p.PeerStatusUp:
-		r.availablePeers.PushBack(peerUpdate.NodeID)
+		r.availablePeers[peerUpdate.NodeID] = struct{}{}
 	case p2p.PeerStatusDown:
-		r.removePeer(peerUpdate.NodeID)
+		delete(r.availablePeers, peerUpdate.NodeID)
+		delete(r.requestsSent, peerUpdate.NodeID)
+		delete(r.lastReceivedRequests, peerUpdate.NodeID)
 	default:
 	}
 }
@@ -409,14 +412,18 @@ func (r *ReactorV2) waitUntilNextRequest() <-chan time.Time {
 func (r *ReactorV2) sendRequestForPeers() {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
-	peer := r.availablePeers.Front()
-	if peer == nil {
+	if len(r.availablePeers) == 0 {
 		// no peers are available
 		r.Logger.Debug("no available peers to send request to, waiting...")
 		r.nextRequestTime = time.Now().Add(noAvailablePeersWaitPeriod)
 		return
 	}
-	peerID := peer.Value.(p2p.NodeID)
+	var peerID p2p.NodeID
+
+	// use range to get a random peer.
+	for peerID = range r.availablePeers {
+		break
+	}
 
 	// The node accommodates for both pex systems
 	if r.isLegacyPeer(peerID) {
@@ -431,9 +438,10 @@ func (r *ReactorV2) sendRequestForPeers() {
 		}
 	}
 
-	// remove the peer from the available peers list and mark it in the requestsSent map
-	r.availablePeers.Remove(peer)
-	peer.DetachPrev()
+	// remove the peer from the abvailable peers list and mark it in the requestsSent map
+	// WAT(tychoish): do we actually want to do this? doesn't this
+	// just make churn?
+	delete(r.availablePeers, peerID)
 	r.requestsSent[peerID] = struct{}{}
 
 	r.calculateNextRequestTime()
@@ -464,7 +472,7 @@ func (r *ReactorV2) calculateNextRequestTime() {
 	// in. For example if we have 10 peers and we can't send a message to the
 	// same peer every 500ms, then we can send a request every 50ms. In practice
 	// we use a safety margin of 2, ergo 100ms
-	peers := tmmath.MinInt(r.availablePeers.Len(), 50)
+	peers := tmmath.MinInt(len(r.availablePeers), 50)
 	baseTime := minReceiveRequestInterval
 	if peers > 0 {
 		baseTime = minReceiveRequestInterval * 2 / time.Duration(peers)
@@ -484,20 +492,6 @@ func (r *ReactorV2) calculateNextRequestTime() {
 	// NOTE: As ratio is always >= 1, discovery ratio is >= 1. Therefore we don't need to worry
 	// about the next request time being less than the minimum time
 	r.nextRequestTime = time.Now().Add(baseTime * time.Duration(r.discoveryRatio))
-}
-
-func (r *ReactorV2) removePeer(id p2p.NodeID) {
-	for e := r.availablePeers.Front(); e != nil; e = e.Next() {
-		if e.Value == id {
-			r.availablePeers.Remove(e)
-			e.DetachPrev()
-			break
-		}
-	}
-	r.mtx.Lock()
-	defer r.mtx.Unlock()
-	delete(r.requestsSent, id)
-	delete(r.lastReceivedRequests, id)
 }
 
 func (r *ReactorV2) markPeerRequest(peer p2p.NodeID) error {
@@ -523,7 +517,8 @@ func (r *ReactorV2) markPeerResponse(peer p2p.NodeID) error {
 	delete(r.requestsSent, peer)
 	// attach to the back of the list so that the peer can be used again for
 	// future requests
-	r.availablePeers.PushBack(peer)
+
+	r.availablePeers[peer] = struct{}{}
 	return nil
 }
 

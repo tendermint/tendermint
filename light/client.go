@@ -24,9 +24,23 @@ const (
 	skipping
 
 	defaultPruningSize = 1000
-	// For verifySkipping, when using the cache of headers from the previous batch,
-	// they will always be at a height greater than 1/2 (normal verifySkipping) so to
-	// find something in between the range, 9/16 is used.
+
+	// For verifySkipping, we need an algorithm to find what height to check
+	// next to see if it has sufficient validator set overlap. The most
+	// intuitive method is to take the halfway point i.e. if you trusted block
+	// 1 and were not able to verify block 128 then your next try would be 64.
+	//
+	// However, because this implementation caches all the prior results, instead of always taking halfpoints
+	// it is more efficient to re-check cached blocks. Take this simple example. Say
+	// you failed to verify 64 but were able to verify block 32. Following a strict half-way policy,
+	// you would start over again and try verify to block 128. If this failed
+	// then the halfway point between 32 and 128 is 80. But you already have
+	// block 64. Instead of requesting and waiting for another block it is far
+	// better to try again with block 64. This is of course not directly in the
+	// middle. In fact, no matter how the algrorithm plays out, the blocks in
+	// cache are always going to be a little less than the halfway point (
+	// maximum 1/8 less). To account for this we add a heuristic, bumping the
+	// next height to 9/16 instead of 1/2
 	verifySkippingNumerator   = 9
 	verifySkippingDenominator = 16
 
@@ -572,7 +586,9 @@ func (c *Client) verifyLightBlock(ctx context.Context, newLightBlock *types.Ligh
 		}
 		err = c.backwards(ctx, firstBlock.Header, newLightBlock.Header)
 
-	// Verifying between first and last trusted light block
+	// Verifying between first and last trusted light block. In this situation
+	// we find the closest block prior to the target height then perform
+	// verification forwards.
 	default:
 		var closestBlock *types.LightBlock
 		closestBlock, err = c.trustedStore.LightBlockBefore(newLightBlock.Height)
@@ -688,6 +704,9 @@ func (c *Client) verifySkipping(
 	now time.Time) ([]*types.LightBlock, error) {
 
 	var (
+		// The block cache is ordered in height from highest to lowest. We start
+		// with the newLightBlock and for any height requested in between we add
+		// it.
 		blockCache = []*types.LightBlock{newLightBlock}
 		depth      = 0
 
@@ -702,11 +721,14 @@ func (c *Client) verifySkipping(
 			"newHeight", blockCache[depth].Height,
 			"newHash", blockCache[depth].Hash())
 
+		// Verify the untrusted header. This function is equivalent to
+		// ValidAndVerified in the spec
 		err := Verify(verifiedBlock.SignedHeader, verifiedBlock.ValidatorSet, blockCache[depth].SignedHeader,
 			blockCache[depth].ValidatorSet, c.trustingPeriod, now, c.maxClockDrift, c.trustLevel)
 		switch err.(type) {
 		case nil:
-			// Have we verified the last header
+			// If we have verified the last header then depth will be 0 and we
+			// can return a success along with the trace of intermediate headers
 			if depth == 0 {
 				trace = append(trace, newLightBlock)
 				return trace, nil
@@ -721,10 +743,18 @@ func (c *Client) verifySkipping(
 			trace = append(trace, verifiedBlock)
 
 		case ErrNewValSetCantBeTrusted:
-			// do add another header to the end of the cache
+			// the light block current passed validation, but the validator
+			// set is too different to verify it. We keep the block because it
+			// may become valuable later on.
+			//
+			// If we have reached the end of the cache we need to request a
+			// completely new block else we recycle a previously requested one.
+			// In both cases we are taking a block with a closer height to the
+			// previously verified one in the hope that it has a better chance
+			// of having a similar validator set
 			if depth == len(blockCache)-1 {
-				pivotHeight := verifiedBlock.Height + (blockCache[depth].Height-verifiedBlock.
-					Height)*verifySkippingNumerator/verifySkippingDenominator
+				// schedule what the next height we need to fetch is
+				pivotHeight := c.schedule(verifiedBlock.Height, blockCache[depth].Height)
 				interimBlock, providerErr := source.LightBlock(ctx, pivotHeight)
 				switch providerErr {
 				case nil:
@@ -743,10 +773,17 @@ func (c *Client) verifySkipping(
 			}
 			depth++
 
+		// for any verification error we abort the operation and return the error
 		default:
 			return nil, ErrVerificationFailed{From: verifiedBlock.Height, To: blockCache[depth].Height, Reason: err}
 		}
 	}
+}
+
+// schedule works out the next height to attempt sequential verification
+func (c *Client) schedule(lastVerifiedHeight, lastFailedHeight int64) int64 {
+	return lastVerifiedHeight +
+		(lastFailedHeight-lastVerifiedHeight)*verifySkippingNumerator/verifySkippingDenominator
 }
 
 // verifySkippingAgainstPrimary does verifySkipping plus it compares new header with

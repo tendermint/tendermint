@@ -196,6 +196,7 @@ func (r *Reactor) OnStart() error {
 // blocking until they all exit, as well as unsubscribing from events and stopping
 // state.
 func (r *Reactor) OnStop() {
+
 	r.unsubscribeFromBroadcastEvents()
 
 	if err := r.state.Stop(); err != nil {
@@ -368,6 +369,10 @@ func (r *Reactor) subscribeToBroadcastEvents() {
 		types.EventNewRoundStep,
 		func(data tmevents.EventData) {
 			r.broadcastNewRoundStepMessage(data.(*cstypes.RoundState))
+			select {
+			case r.state.onStopCh <- data.(*cstypes.RoundState):
+			default:
+			}
 		},
 	)
 	if err != nil {

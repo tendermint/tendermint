@@ -344,21 +344,13 @@ func (r *Router) createQueueFactory() (func(int) queue, error) {
 	}
 }
 
-// AddChannelDescriptors adds a set of ChannelDescriptors to the reactor. Note,
-// this should be called before the router is started and any connections are made.
-func (r *Router) AddChannelDescriptors(chDescs []*ChannelDescriptor) {
-	for _, chDesc := range chDescs {
-		r.chDescs = append(r.chDescs, *chDesc)
-	}
-}
-
 // OpenChannel opens a new channel for the given message type. The caller must
 // close the channel when done, before stopping the Router. messageType is the
 // type of message passed through the channel (used for unmarshaling), which can
 // implement Wrapper to automatically (un)wrap multiple message types in a
 // wrapper message. The caller may provide a size to make the channel buffered,
 // which internally makes the inbound, outbound, and error channel buffered.
-func (r *Router) OpenChannel(id ChannelID, messageType proto.Message, size int) (*Channel, error) {
+func (r *Router) OpenChannel(chDesc ChannelDescriptor, messageType proto.Message, size int) (*Channel, error) {
 	if size == 0 {
 		size = queueBufferDefault
 	}
@@ -366,9 +358,11 @@ func (r *Router) OpenChannel(id ChannelID, messageType proto.Message, size int) 
 	r.channelMtx.Lock()
 	defer r.channelMtx.Unlock()
 
+	id := ChannelID(chDesc.ID)
 	if _, ok := r.channelQueues[id]; ok {
 		return nil, fmt.Errorf("channel %v already exists", id)
 	}
+	r.chDescs = append(r.chDescs, chDesc)
 
 	queue := r.queueFactory(size)
 	outCh := make(chan Envelope, size)
@@ -478,9 +472,7 @@ func (r *Router) routeChannel(
 
 			r.logger.Error("peer error, evicting", "peer", peerError.NodeID, "err", peerError.Err)
 
-			if err := r.peerManager.Errored(peerError.NodeID, peerError.Err); err != nil {
-				r.logger.Error("failed to report peer error", "peer", peerError.NodeID, "err", err)
-			}
+			r.peerManager.Errored(peerError.NodeID, peerError.Err)
 
 		case <-r.stopCh:
 			return
@@ -580,38 +572,13 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 		return
 	}
 
-	if err := r.peerManager.Accepted(peerInfo.NodeID); err != nil {
-		r.logger.Error("failed to accept connection", "peer", peerInfo.NodeID, "err", err)
+	if err := r.runWithPeerMutex(func() error { return r.peerManager.Accepted(peerInfo.NodeID) }); err != nil {
+		r.logger.Error("failed to accept connection",
+			"op", "incoming/accepted", "peer", peerInfo.NodeID, "err", err)
 		return
 	}
 
-	r.metrics.Peers.Add(1)
-	queue := r.queueFactory(queueBufferDefault)
-
-	r.peerMtx.Lock()
-	r.peerQueues[peerInfo.NodeID] = queue
-	r.peerMtx.Unlock()
-
-	defer func() {
-		r.peerMtx.Lock()
-		delete(r.peerQueues, peerInfo.NodeID)
-		r.peerMtx.Unlock()
-
-		queue.close()
-
-		if err := r.peerManager.Disconnected(peerInfo.NodeID); err != nil {
-			r.logger.Error("failed to disconnect peer", "peer", peerInfo.NodeID, "err", err)
-		} else {
-			r.metrics.Peers.Add(-1)
-		}
-	}()
-
-	if err := r.peerManager.Ready(peerInfo.NodeID); err != nil {
-		r.logger.Error("failed to mark peer as ready", "peer", peerInfo.NodeID, "err", err)
-		return
-	}
-
-	r.routePeer(peerInfo.NodeID, conn, queue)
+	r.routePeer(peerInfo.NodeID, conn)
 }
 
 // dialPeers maintains outbound connections to peers by dialing them.
@@ -658,34 +625,13 @@ func (r *Router) dialPeers() {
 				return
 			}
 
-			if err = r.peerManager.Dialed(address); err != nil {
-				r.logger.Error("failed to dial peer", "peer", address, "err", err)
+			if err := r.runWithPeerMutex(func() error { return r.peerManager.Dialed(address) }); err != nil {
+				r.logger.Error("failed to accept connection",
+					"op", "outgoing/dialing", "peer", address.NodeID, "err", err)
 				return
 			}
 
-			r.metrics.Peers.Add(1)
-
-			peerQueue := r.getOrMakeQueue(peerID)
-			defer func() {
-				r.peerMtx.Lock()
-				delete(r.peerQueues, peerID)
-				r.peerMtx.Unlock()
-
-				peerQueue.close()
-
-				if err := r.peerManager.Disconnected(peerID); err != nil {
-					r.logger.Error("failed to disconnect peer", "peer", address, "err", err)
-				} else {
-					r.metrics.Peers.Add(-1)
-				}
-			}()
-
-			if err := r.peerManager.Ready(peerID); err != nil {
-				r.logger.Error("failed to mark peer as ready", "peer", address, "err", err)
-				return
-			}
-
-			r.routePeer(peerID, conn, peerQueue)
+			r.routePeer(peerID, conn)
 		}()
 	}
 }
@@ -781,10 +727,31 @@ func (r *Router) handshakePeer(ctx context.Context, conn Connection, expectID No
 	return peerInfo, peerKey, nil
 }
 
+func (r *Router) runWithPeerMutex(fn func() error) error {
+	r.peerMtx.Lock()
+	defer r.peerMtx.Unlock()
+	return fn()
+}
+
 // routePeer routes inbound and outbound messages between a peer and the reactor
 // channels. It will close the given connection and send queue when done, or if
 // they are closed elsewhere it will cause this method to shut down and return.
-func (r *Router) routePeer(peerID NodeID, conn Connection, sendQueue queue) {
+func (r *Router) routePeer(peerID NodeID, conn Connection) {
+	r.metrics.Peers.Add(1)
+	r.peerManager.Ready(peerID)
+
+	sendQueue := r.getOrMakeQueue(peerID)
+	defer func() {
+		r.peerMtx.Lock()
+		delete(r.peerQueues, peerID)
+		r.peerMtx.Unlock()
+
+		sendQueue.close()
+
+		r.peerManager.Disconnected(peerID)
+		r.metrics.Peers.Add(-1)
+	}()
+
 	r.logger.Info("peer connected", "peer", peerID, "endpoint", conn)
 
 	errCh := make(chan error, 2)
