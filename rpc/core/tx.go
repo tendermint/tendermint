@@ -28,11 +28,7 @@ func (env *Environment) Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*cty
 		if sink.Type() == indexer.KV {
 			r, err := sink.GetTxByHash(hash)
 			if err != nil {
-				return nil, err
-			}
-
-			if r == nil {
-				return nil, fmt.Errorf("tx (%X) not found", hash)
+				return nil, fmt.Errorf("tx (%X) not found, err: %w", hash, err)
 			}
 
 			height := r.Height
@@ -55,8 +51,7 @@ func (env *Environment) Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*cty
 		}
 	}
 
-	return nil, errors.New("transaction querying is disabled on this node due to the KV event sink being disabled;" +
-		" please see config.toml if this is unexpected")
+	return nil, fmt.Errorf("transaction querying is disabled on this node due to the KV event sink being disabled")
 }
 
 // TxSearch allows you to query for multiple transactions results. It returns a
@@ -71,7 +66,7 @@ func (env *Environment) TxSearch(
 ) (*ctypes.ResultTxSearch, error) {
 
 	if !indexer.KVSinkEnabled(env.EventSinks) {
-		return nil, errors.New("transaction searching is disabled due to no kvEventSink")
+		return nil, fmt.Errorf("transaction searching is disabled due to no kvEventSink")
 	}
 
 	q, err := tmquery.New(query)
@@ -103,7 +98,7 @@ func (env *Environment) TxSearch(
 					return results[i].Height < results[j].Height
 				})
 			default:
-				return nil, fmt.Errorf("%w: expected order_by to be either `asc` or `desc` or empty", ctypes.ErrInvalidRequest)
+				return nil, fmt.Errorf("expected order_by to be either `asc` or `desc` or empty: %w", ctypes.ErrInvalidRequest)
 			}
 
 			// paginate results
@@ -142,6 +137,5 @@ func (env *Environment) TxSearch(
 		}
 	}
 
-	return nil, errors.New("transaction searching is disabled on this node due to the KV event sink being disabled;" +
-		" please see config.toml if this is unexpected")
+	return nil, fmt.Errorf("transaction searching is disabled on this node due to the KV event sink being disabled")
 }

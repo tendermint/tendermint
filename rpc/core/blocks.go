@@ -1,7 +1,6 @@
 package core
 
 import (
-	"errors"
 	"fmt"
 	"sort"
 
@@ -182,7 +181,7 @@ func (env *Environment) BlockSearch(
 ) (*ctypes.ResultBlockSearch, error) {
 
 	if !indexer.KVSinkEnabled(env.EventSinks) {
-		return nil, errors.New("block searching is disabled due to no kvEventSink")
+		return nil, fmt.Errorf("block searching is disabled due to no kvEventSink")
 	}
 
 	q, err := tmquery.New(query)
@@ -211,7 +210,7 @@ func (env *Environment) BlockSearch(
 		sort.Slice(results, func(i, j int) bool { return results[i] < results[j] })
 
 	default:
-		return nil, fmt.Errorf("%w: expected order_by to be either `asc` or `desc` or empty", ctypes.ErrInvalidRequest)
+		return nil, fmt.Errorf("expected order_by to be either `asc` or `desc` or empty: %w", ctypes.ErrInvalidRequest)
 	}
 
 	// paginate results
