@@ -495,7 +495,11 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 					// No room for the new incoming transaction so we just remove it from
 					// the cache.
 					txmp.cache.Remove(wtx.tx)
-					txmp.logger.Error("rejected good transaction; mempool full", "err", err.Error())
+					txmp.logger.Error(
+						"rejected incoming good transaction; mempool full",
+						"tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(wtx.tx)),
+						"err", err.Error(),
+					)
 					txmp.metrics.RejectedTxs.Add(1)
 					return
 				}
@@ -504,10 +508,10 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 				//
 				// NOTE:
 				// - The transaction, toEvict, can be removed while a concurrent
-				// reCheckTx callback is being executed for the same transaction.
+				//   reCheckTx callback is being executed for the same transaction.
 				txmp.removeTx(toEvict, true)
-				txmp.logger.Debug(
-					"evicted good transaction; mempool full",
+				txmp.logger.Info(
+					"evicted existing good transaction; mempool full",
 					"old_tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(toEvict.tx)),
 					"old_priority", toEvict.priority,
 					"new_tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(wtx.tx)),
