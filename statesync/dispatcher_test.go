@@ -37,12 +37,12 @@ func TestDispatcherBasic(t *testing.T) {
 	for i := 1; i < 10; i++ {
 		wg.Add(1)
 		go func(height int64) {
+			defer wg.Done()
 			lb, peer, err := d.LightBlock(context.Background(), height)
 			require.NoError(t, err)
 			require.NotNil(t, lb)
 			require.Equal(t, lb.Height, height)
 			require.Contains(t, peers, peer)
-			wg.Done()
 		}(int64(i))
 	}
 	wg.Wait()
@@ -65,7 +65,7 @@ func TestDispatcherProviders(t *testing.T) {
 	}
 
 	providers := d.Providers(chainID, 5*time.Second)
-	assert.Len(t, providers, 5)
+	require.Len(t, providers, 5)
 	for i, p := range providers {
 		bp, ok := p.(*blockProvider)
 		require.True(t, ok)

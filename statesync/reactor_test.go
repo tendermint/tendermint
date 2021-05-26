@@ -353,13 +353,17 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 	}
 	require.Empty(t, rts.blockPeerErrCh)
 
-	response := <-rts.blockOutCh
-	require.Equal(t, p2p.NodeID("aa"), response.To)
-	res, ok := response.Message.(*ssproto.LightBlockResponse)
-	require.True(t, ok)
-	receivedLB, err := types.LightBlockFromProto(res.LightBlock)
-	require.NoError(t, err)
-	require.Equal(t, lb, receivedLB)
+	select {
+	case response := <-rts.blockOutCh:
+		require.Equal(t, p2p.NodeID("aa"), response.To)
+		res, ok := response.Message.(*ssproto.LightBlockResponse)
+		require.True(t, ok)
+		receivedLB, err := types.LightBlockFromProto(res.LightBlock)
+		require.NoError(t, err)
+		require.Equal(t, lb, receivedLB)
+	case <- time.After(1 * time.Second): 
+		t.Fatal("expected light block response")
+	}
 }
 
 func TestReactor_Dispatcher(t *testing.T) {
@@ -388,13 +392,13 @@ func TestReactor_Dispatcher(t *testing.T) {
 	for _, p := range providers {
 		wg.Add(1)
 		go func(t *testing.T, p provider.Provider) {
+			defer wg.Done()
 			for height := 2; height < 10; height++ {
-				t.Log("height", height)
 				lb, err := p.LightBlock(context.Background(), int64(height))
 				require.NoError(t, err)
 				require.NotNil(t, lb)
+				require.Equal(t, height, lb.Height)
 			}
-			wg.Done()
 		}(t, p)
 	}
 	wg.Wait()

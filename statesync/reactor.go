@@ -276,7 +276,7 @@ func (r *Reactor) Backfill(
 		go func() {
 			for {
 				select {
-				case height := <-queue.NextHeight():
+				case height := <-queue.nextHeight():
 					r.Logger.Debug("fetching next block", "height", height)
 					lb, peer, err := r.dispatcher.LightBlock(ctx, height)
 					if err != nil {
@@ -284,18 +284,18 @@ func (r *Reactor) Backfill(
 						// at that height
 						r.Logger.Info("error with fetching light block",
 							"height", height, "err", err)
-						queue.Retry(height)
+						queue.retry(height)
 						continue
 					}
 					if lb == nil {
 						r.Logger.Info("peer didn't have block, fetching from another peer", "height", height)
-						queue.Retry(height)
+						queue.retry(height)
 						continue
 					}
 
 					if lb.Height != height {
 						r.Logger.Info("peer provided wrong height, retrying...", "height", height)
-						queue.Retry(height)
+						queue.retry(height)
 						continue
 					}
 
@@ -304,7 +304,7 @@ func (r *Reactor) Backfill(
 					err = lb.ValidateBasic(chainID)
 					if err != nil {
 						r.Logger.Info("fetched light block failed validate basic, removing peer...", "err", err)
-						queue.Retry(height)
+						queue.retry(height)
 						r.blockCh.Error <- p2p.PeerError{
 							NodeID: peer,
 							Err:    fmt.Errorf("received invalid light block: %w", err),
@@ -313,13 +313,13 @@ func (r *Reactor) Backfill(
 					}
 
 					// add block to queue to be verified
-					queue.Add(lightBlockResponse{
+					queue.add(lightBlockResponse{
 						block: lb,
 						peer:  peer,
 					})
 					r.Logger.Debug("added light block to processing queue", "height", height)
 
-				case <-queue.Done():
+				case <-queue.done():
 					return
 				}
 			}
@@ -330,12 +330,12 @@ func (r *Reactor) Backfill(
 	for {
 		select {
 		case <-r.closeCh:
-			queue.Close()
+			queue.close()
 			return nil
 		case <-ctx.Done():
-			queue.Close()
+			queue.close()
 			return nil
-		case resp := <-queue.VerifyNext():
+		case resp := <-queue.verifyNext():
 			// validate the header hash. We take the last block id of the
 			// previous header (i.e. one height above) as the trusted hash which
 			// we equate to. ValidatorsHash and CommitHash have already been
@@ -347,7 +347,7 @@ func (r *Reactor) Backfill(
 					NodeID: resp.peer,
 					Err:    fmt.Errorf("received invalid light block. Expected hash %v, got: %v", w, g),
 				}
-				queue.Retry(resp.block.Height)
+				queue.retry(resp.block.Height)
 				continue
 			}
 
@@ -363,11 +363,11 @@ func (r *Reactor) Backfill(
 			}
 
 			trustedBlockID = resp.block.LastBlockID
-			queue.Success(resp.block.Height)
+			queue.success(resp.block.Height)
 			r.Logger.Info("verified and stored light block", "height", resp.block.Height)
 
-		case <-queue.Done():
-			return queue.Error()
+		case <-queue.done():
+			return queue.error()
 
 		}
 	}

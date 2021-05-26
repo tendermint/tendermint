@@ -66,7 +66,7 @@ func newBlockQueue(
 
 // Add adds a block to the queue to be verified and stored
 // CONTRACT: light blocks should have passed basic validation
-func (q *blockQueue) Add(l lightBlockResponse) {
+func (q *blockQueue) add(l lightBlockResponse) {
 	q.mtx.Lock()
 	defer q.mtx.Unlock()
 
@@ -104,7 +104,7 @@ func (q *blockQueue) Add(l lightBlockResponse) {
 // NextHeight returns the next height that needs to be retrieved.
 // We assume that for every height allocated that the peer will eventually add
 // the block or signal that it needs to be retried
-func (q *blockQueue) NextHeight() <-chan int64 {
+func (q *blockQueue) nextHeight() <-chan int64 {
 	q.mtx.Lock()
 	defer q.mtx.Unlock()
 	ch := make(chan int64, 1)
@@ -133,7 +133,7 @@ func (q *blockQueue) NextHeight() <-chan int64 {
 
 // Finished returns true when the block queue has has all light blocks retrieved,
 // verified and stored. There is no more work left to be done
-func (q *blockQueue) Done() <-chan struct{} {
+func (q *blockQueue) done() <-chan struct{} {
 	return q.doneCh
 }
 
@@ -141,7 +141,7 @@ func (q *blockQueue) Done() <-chan struct{} {
 // channel if it's already there or creates a waiter to add it to the
 // channel once it comes in. NOTE: This is assumed to
 // be a single thread as light blocks need to be sequentially verified.
-func (q *blockQueue) VerifyNext() <-chan lightBlockResponse {
+func (q *blockQueue) verifyNext() <-chan lightBlockResponse {
 	q.mtx.Lock()
 	defer q.mtx.Unlock()
 	ch := make(chan lightBlockResponse, 1)
@@ -166,7 +166,7 @@ func (q *blockQueue) VerifyNext() <-chan lightBlockResponse {
 // Retry is called when a dispatcher failed to fetch a light block or the
 // fetched light block failed verification. It signals to the queue to add the
 // height back to the request queue
-func (q *blockQueue) Retry(height int64) {
+func (q *blockQueue) retry(height int64) {
 	q.mtx.Lock()
 	defer q.mtx.Unlock()
 
@@ -198,23 +198,16 @@ func (q *blockQueue) Retry(height int64) {
 
 // Success is called when a light block has been successfully verified and
 // processed
-func (q *blockQueue) Success(height int64) {
+func (q *blockQueue) success(height int64) {
 	q.mtx.Lock()
 	defer q.mtx.Unlock()
 	if q.hasFinalBlock() && q.verifyHeight == q.terminal.Height {
-		q.close()
+		q.closeChannels()
 	}
 	q.verifyHeight--
 }
 
-// Close closes all channels associated with the queue
-func (q *blockQueue) Close() {
-	q.mtx.Lock()
-	defer q.mtx.Unlock()
-	q.close()
-}
-
-func (q *blockQueue) Error() error {
+func (q *blockQueue) error() error {
 	q.mtx.Lock()
 	defer q.mtx.Unlock()
 	if q.retries >= q.maxRetries {
@@ -224,7 +217,15 @@ func (q *blockQueue) Error() error {
 	return nil
 }
 
+// close the queue and respective channels
 func (q *blockQueue) close() {
+	q.mtx.Lock()
+	defer q.mtx.Unlock()
+	q.closeChannels()
+}
+
+// CONTRACT: must have a write lock. Use close instead
+func (q *blockQueue) closeChannels() {
 	close(q.doneCh)
 
 	// wait for the channel to be drained

@@ -34,9 +34,9 @@ func TestBlockQueueBasic(t *testing.T) {
 		go func() {
 			for {
 				select {
-				case height := <-queue.NextHeight():
-					queue.Add(mockLBResp(t, peerID, height, endTime))
-				case <-queue.Done():
+				case height := <-queue.nextHeight():
+					queue.add(mockLBResp(t, peerID, height, endTime))
+				case <-queue.done():
 					wg.Done()
 					return
 				}
@@ -50,28 +50,21 @@ func TestBlockQueueBasic(t *testing.T) {
 loop:
 	for {
 		select {
-		case <-queue.Done():
+		case <-queue.done():
 			wg.Done()
 			break loop
 
-		case resp := <-queue.VerifyNext():
+		case resp := <-queue.verifyNext():
 			// assert that the queue serializes the blocks
-			assert.Equal(t, resp.block.Height, trackingHeight)
+			require.Equal(t, resp.block.Height, trackingHeight)
 			trackingHeight--
-			queue.Success(resp.block.Height)
+			queue.success(resp.block.Height)
 		}
 
 	}
 
 	wg.Wait()
 	assert.Less(t, trackingHeight, stopHeight)
-
-	select {
-	case <-queue.doneCh:
-	default:
-		t.Fatal("queue's done channel is not closed")
-	}
-
 }
 
 // Test with spurious failures and retries
@@ -88,13 +81,13 @@ func TestBlockQueueWithFailures(t *testing.T) {
 		go func() {
 			for {
 				select {
-				case height := <-queue.NextHeight():
+				case height := <-queue.nextHeight():
 					if rand.Intn(failureRate) == 0 {
-						queue.Retry(height)
+						queue.retry(height)
 					} else {
-						queue.Add(mockLBResp(t, peerID, height, endTime))
+						queue.add(mockLBResp(t, peerID, height, endTime))
 					}
-				case <-queue.Done():
+				case <-queue.done():
 					wg.Done()
 					return
 				}
@@ -105,17 +98,17 @@ func TestBlockQueueWithFailures(t *testing.T) {
 	trackingHeight := startHeight
 	for {
 		select {
-		case resp := <-queue.VerifyNext():
+		case resp := <-queue.verifyNext():
 			// assert that the queue serializes the blocks
 			assert.Equal(t, resp.block.Height, trackingHeight)
 			if rand.Intn(failureRate) == 0 {
-				queue.Retry(resp.block.Height)
+				queue.retry(resp.block.Height)
 			} else {
 				trackingHeight--
-				queue.Success(resp.block.Height)
+				queue.success(resp.block.Height)
 			}
 
-		case <-queue.Done():
+		case <-queue.done():
 			wg.Wait()
 			assert.Less(t, trackingHeight, stopHeight)
 			return
@@ -135,11 +128,11 @@ func TestBlockQueueBlocks(t *testing.T) {
 loop:
 	for {
 		select {
-		case height := <-queue.NextHeight():
+		case height := <-queue.nextHeight():
 			require.Equal(t, height, expectedHeight)
 			require.GreaterOrEqual(t, height, stopHeight)
 			expectedHeight--
-			queue.Add(mockLBResp(t, peerID, height, endTime))
+			queue.add(mockLBResp(t, peerID, height, endTime))
 		case <-time.After(1 * time.Second):
 			if expectedHeight >= stopHeight {
 				t.Fatalf("expected next height %d", expectedHeight)
@@ -161,13 +154,13 @@ loop:
 	go func(t *testing.T) {
 		defer wg.Done()
 		select {
-		case height := <-queue.NextHeight():
+		case height := <-queue.nextHeight():
 			require.Equal(t, retryHeight, height)
 		case <-time.After(1 * time.Second):
 			require.Fail(t, "queue didn't ask worker to fetch failed height")
 		}
 	}(t)
-	queue.Retry(retryHeight)
+	queue.retry(retryHeight)
 	wg.Wait()
 
 }
@@ -176,14 +169,14 @@ func TestBlockQueueAcceptsNoMoreBlocks(t *testing.T) {
 	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 	queue := newBlockQueue(startHeight, stopHeight, stopTime, 1)
-	defer queue.Close()
+	defer queue.close()
 
 loop:
 	for {
 		select {
-		case height := <-queue.NextHeight():
+		case height := <-queue.nextHeight():
 			require.GreaterOrEqual(t, height, stopHeight)
-			queue.Add(mockLBResp(t, peerID, height, endTime))
+			queue.add(mockLBResp(t, peerID, height, endTime))
 		case <-time.After(1 * time.Second):
 			break loop
 		}
@@ -191,7 +184,7 @@ loop:
 
 	require.Len(t, queue.pending, int(startHeight-stopHeight)+1)
 
-	queue.Add(mockLBResp(t, peerID, stopHeight-1, endTime))
+	queue.add(mockLBResp(t, peerID, stopHeight-1, endTime))
 	require.Len(t, queue.pending, int(startHeight-stopHeight)+1)
 }
 
@@ -212,10 +205,10 @@ func TestBlockQueueStopTime(t *testing.T) {
 		go func() {
 			for {
 				select {
-				case height := <-queue.NextHeight():
+				case height := <-queue.nextHeight():
 					blockTime := baseTime.Add(time.Duration(height) * time.Second)
-					queue.Add(mockLBResp(t, peerID, height, blockTime))
-				case <-queue.Done():
+					queue.add(mockLBResp(t, peerID, height, blockTime))
+				case <-queue.done():
 					wg.Done()
 					return
 				}
@@ -226,13 +219,13 @@ func TestBlockQueueStopTime(t *testing.T) {
 	trackingHeight := startHeight
 	for {
 		select {
-		case resp := <-queue.VerifyNext():
+		case resp := <-queue.verifyNext():
 			// assert that the queue serializes the blocks
 			assert.Equal(t, resp.block.Height, trackingHeight)
 			trackingHeight--
-			queue.Success(resp.block.Height)
+			queue.success(resp.block.Height)
 
-		case <-queue.Done():
+		case <-queue.done():
 			wg.Wait()
 			assert.Less(t, trackingHeight, stopHeight-50)
 			return
