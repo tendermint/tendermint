@@ -60,6 +60,8 @@ Make the following changes:
 
 ## Status
 
+Accepted
+
 ## Consequences
 
 ### Positive

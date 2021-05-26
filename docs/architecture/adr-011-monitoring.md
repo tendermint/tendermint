@@ -99,7 +99,7 @@ will need to write interfaces ourselves.
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Consequences
 
