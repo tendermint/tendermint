@@ -370,10 +370,14 @@ func (r *Reactor) broadcastTxRoutine(peerID p2p.NodeID, closer *tmsync.Closer) {
 
 		select {
 		case <-memTx.gossipEl.NextWaitChan():
-			// see the start of the for loop for nil check
+			// If there is a next element in gossip index, we point memTx to that node's
+			// value, otherwise we reset memTx to nil which will be checked at the
+			// parent for loop.
 			next := memTx.gossipEl.Next()
 			if next != nil {
 				memTx = next.Value.(*WrappedTx)
+			} else {
+				memTx = nil
 			}
 
 		case <-closer.Done():
