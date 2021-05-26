@@ -506,6 +506,7 @@ func (r *Router) filterPeersID(ctx context.Context, id NodeID) error {
 
 func (r *Router) dialSleep(ctx context.Context) {
 	if r.options.DialSleep == nil {
+		// nolint:gosec // G404: Use of weak random number generator
 		timer := time.NewTimer(time.Duration(rand.Int63n(dialRandomizerIntervalMilliseconds)) * time.Millisecond)
 		defer timer.Stop()
 
@@ -653,7 +654,6 @@ LOOP:
 			// DialNext and prevents us from attempting to
 			// create connections too quickly.
 
-			// nolint:gosec // G404: Use of weak random number generator
 			r.dialSleep(ctx)
 			continue
 		case <-ctx.Done():

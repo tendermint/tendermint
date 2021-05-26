@@ -671,7 +671,7 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 		selfKey,
 		peerManager,
 		[]p2p.Transport{mockTransport},
-		p2p.RouterOptions{DialSleep: func(_ context.Context) { return }},
+		p2p.RouterOptions{DialSleep: func(_ context.Context) {}},
 	)
 
 	require.NoError(t, err)
