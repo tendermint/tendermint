@@ -163,6 +163,11 @@ type RouterOptions struct {
 	// is used that sleeps for a (random) amount of time up to 3
 	// seconds between submitting each peer to be dialed.
 	DialSleep func(context.Context)
+
+	// NumConcrruentDials controls how many parallel go routines
+	// are used to dial peers. This defaults to the value of
+	// runtime.NumCPU.
+	NumConcurrentDials func() int
 }
 
 const (
@@ -177,7 +182,7 @@ func (o *RouterOptions) Validate() error {
 	case "":
 		o.QueueType = queueTypeFifo
 	case queueTypeFifo, queueTypeWDRR, queueTypePriority:
-		// pass
+		// passI me
 	default:
 		return fmt.Errorf("queue type %q is not supported", o.QueueType)
 	}
@@ -488,6 +493,14 @@ func (r *Router) routeChannel(
 	}
 }
 
+func (r *Router) numConccurentDials() int {
+	if r.options.NumConcurrentDials == nil {
+		return runtime.NumCPU()
+	}
+
+	return r.options.NumConcurrentDials()
+}
+
 func (r *Router) filterPeersIP(ctx context.Context, ip net.IP, port uint16) error {
 	if r.options.FilterPeerByIP == nil {
 		return nil
@@ -620,7 +633,7 @@ func (r *Router) dialPeers() {
 	// able to add peers at a reasonable pace, though the number
 	// is somewhat arbitrary. The action is further throttled by a
 	// sleep after sending to the addresses channel.
-	for i := 0; i < runtime.NumCPU(); i++ {
+	for i := 0; i < r.numConccurentDials(); i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
