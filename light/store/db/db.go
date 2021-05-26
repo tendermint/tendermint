@@ -7,7 +7,7 @@ import (
 	"github.com/google/orderedcode"
 	dbm "github.com/tendermint/tm-db"
 
-	tmsync "github.com/tendermint/tendermint/libs/sync"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/light/store"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
