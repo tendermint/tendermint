@@ -51,5 +51,5 @@ func (e ErrPreCheck) Error() string {
 
 // IsPreCheckError returns true if err is due to pre check failure.
 func IsPreCheckError(err error) bool {
-	return errors.Is(err, ErrPreCheck{})
+	return errors.As(err, &ErrPreCheck{})
 }
