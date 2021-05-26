@@ -48,8 +48,13 @@ Note the context/background should be written in the present tense.
 - [ADR-018: ABCI-Validators](./adr-018-ABCI-Validators.md)
 - [ADR-019: Multisigs](./adr-019-multisigs.md)
 - [ADR-020: Block-Size](./adr-020-block-size.md)
+- [ADR-021: ABCI-Events](./adr-021-abci-events.md)
+- [ADR-024: Sign-Bytes](./adr-024-sign-bytes.md)
 - [ADR-025: Commit](./adr-025-commit.md)
+- [ADR-026: General-Merkle-Proof](./adr-026-general-merkle-proof.md)
+- [ADR-033: Pubsub](./adr-033-pubsub.md)
 - [ADR-034: Priv-Validator-File-Structure](./adr-034-priv-validator-file-structure.md)
+- [ADR-035: Documentation](./adr-035-documentation.md)
 - [ADR-039: Peer-Behaviour](./adr-039-peer-behaviour.md)
 - [ADR-044: Lite-Client-With-Weak-Subjectivity](./adr-044-lite-client-with-weak-subjectivity.md)
 - [ADR-046: Light-Client-Implementation](./adr-046-light-client-implementation.md)
@@ -68,7 +73,10 @@ Note the context/background should be written in the present tense.
 
 ### Rejected
 
+- [ADR-023: ABCI-Propose-tx](./adr-023-ABCI-propose-tx.md)
+- [ADR-028: libp2p](./adr-028-libp2p.md)
 - [ADR-029: Check-Tx-Consensus](./adr-029-check-tx-consensus.md)
+- [ADR-031: Changelog-structure](./adr-031-changelog.md)
 - [ADR-058: Event-Hashing](./adr-058-event-hashing.md)
 
 
@@ -77,17 +85,8 @@ Note the context/background should be written in the present tense.
 - [ADR-007: Trust-Metric-Usage](./adr-007-trust-metric-usage.md)
 - [ADR-012: Peer-Transport](./adr-012-peer-transport.md)
 - [ADR-013: Symmetric-Crypto](./adr-013-symmetric-crypto.md)
-- 
-- [ADR-021: ABCI-Events](./adr-021-abci-events.md)
 - [ADR-022: ABCI-Errors](./adr-022-abci-errors.md)
-- [ADR-023: ABCI-Propose-tx](./adr-023-ABCI-propose-tx.md)
-- [ADR-024: Sign-Bytes](./adr-024-sign-bytes.md)
-- [ADR-026: General-Merkle-Proof](./adr-026-general-merkle-proof.md)
-- [ADR-028: libp2p](./adr-028-libp2p.md)
 - [ADR-030: Consensus-Refactor](./adr-030-consensus-refactor.md)
-- [ADR-030: Changelog-structure](./adr-031-changelog.md)
-- [ADR-033: Pubsub](./adr-033-pubsub.md)
-- [ADR-035: Documentation](./adr-035-documentation.md)
 - [ADR-037: Deliver-Block](./adr-037-deliver-block.md)
 - [ADR-038: Non-Zero-Start-Height](./adr-038-non-zero-start-height.md)
 - [ADR-041: Proposer-Selection-via-ABCI](./adr-041-proposer-selection-via-abci.md)
