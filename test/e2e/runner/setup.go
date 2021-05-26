@@ -339,16 +339,17 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 // MakeAppConfig generates an ABCI application config for a node.
 func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 	cfg := map[string]interface{}{
-		"chain_id":          node.Testnet.Name,
-		"dir":               "data/app",
-		"listen":            AppAddressUNIX,
-		"mode":              node.Mode,
-		"proxy_port":        node.ProxyPort,
-		"protocol":          "socket",
-		"persist_interval":  node.PersistInterval,
-		"snapshot_interval": node.SnapshotInterval,
-		"retain_blocks":     node.RetainBlocks,
-		"key_type":          node.PrivvalKey.Type(),
+		"chain_id":           node.Testnet.Name,
+		"dir":                "data/app",
+		"listen":             AppAddressUNIX,
+		"mode":               node.Mode,
+		"proxy_port":         node.ProxyPort,
+		"protocol":           "socket",
+		"persist_interval":   node.PersistInterval,
+		"snapshot_interval":  node.SnapshotInterval,
+		"retain_blocks":      node.RetainBlocks,
+		"key_type":           node.PrivvalKey.Type(),
+		"disable_legacy_p2p": node.DisableLegacyP2P,
 	}
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:
