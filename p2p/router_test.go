@@ -679,7 +679,7 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 
 	require.Eventually(t, func() bool {
 		return len(dialCh) == 3
-	}, time.Second, 10*time.Millisecond)
+	}, 5*time.Second, 100*time.Millisecond)
 	close(closeCh)
 	time.Sleep(500 * time.Millisecond)
 
