@@ -21,7 +21,7 @@ const (
 	checkFrequency    = 500 * time.Millisecond
 	defaultBufferSize = 2
 	shortWait         = 10 * time.Second
-	longWait          = 60 * time.Second
+	longWait          = 2 * time.Minute
 
 	firstNode  = 0
 	secondNode = 1
@@ -49,7 +49,7 @@ func TestReactorBasic(t *testing.T) {
 
 func TestReactorConnectFullNetwork(t *testing.T) {
 	testNet := setupNetwork(t, testOptions{
-		TotalNodes: 8,
+		TotalNodes: 6,
 	})
 
 	// make every node be only connected with one other node (it actually ends up
@@ -174,12 +174,12 @@ func TestReactorErrorsOnReceivingTooManyPeers(t *testing.T) {
 
 func TestReactorSmallPeerStoreInALargeNetwork(t *testing.T) {
 	testNet := setupNetwork(t, testOptions{
-		TotalNodes:   16,
-		MaxPeers:     8,
-		MaxConnected: 6,
-		BufferSize:   8,
+		TotalNodes:   10,
+		MaxPeers:     5,
+		MaxConnected: 4,
+		BufferSize:   5,
 	})
-	testNet.connectN(t, 1)
+	testNet.connectN(t, 2)
 	testNet.start(t)
 
 	// test that all nodes reach full capacity
@@ -198,7 +198,7 @@ func TestReactorLargePeerStoreInASmallNetwork(t *testing.T) {
 		MaxConnected: 50,
 		BufferSize:   5,
 	})
-	testNet.connectN(t, 1)
+	testNet.connectN(t, 2)
 	testNet.start(t)
 
 	// assert that all nodes add each other in the network
