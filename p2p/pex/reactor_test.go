@@ -174,9 +174,9 @@ func TestReactorErrorsOnReceivingTooManyPeers(t *testing.T) {
 
 func TestReactorSmallPeerStoreInALargeNetwork(t *testing.T) {
 	testNet := setupNetwork(t, testOptions{
-		TotalNodes:   16,
-		MaxPeers:     8,
-		MaxConnected: 6,
+		TotalNodes:   8,
+		MaxPeers:     4,
+		MaxConnected: 3,
 		BufferSize:   8,
 	})
 	testNet.connectN(t, 1)
@@ -193,9 +193,9 @@ func TestReactorSmallPeerStoreInALargeNetwork(t *testing.T) {
 
 func TestReactorLargePeerStoreInASmallNetwork(t *testing.T) {
 	testNet := setupNetwork(t, testOptions{
-		TotalNodes:   5,
-		MaxPeers:     50,
-		MaxConnected: 50,
+		TotalNodes:   3,
+		MaxPeers:     25,
+		MaxConnected: 25,
 		BufferSize:   5,
 	})
 	testNet.connectN(t, 1)
