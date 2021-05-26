@@ -1,7 +1,7 @@
 package p2p
 
 import (
-	tmsync "github.com/tendermint/tendermint/libs/sync"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 )
 
 // queue does QoS scheduling for Envelopes, enqueueing and dequeueing according

@@ -140,6 +140,44 @@ func (dve *DuplicateVoteEvidence) ValidateBasic() error {
 	return nil
 }
 
+// ValidateABCI validates the ABCI component of the evidence by checking the
+// timestamp, validator power and total voting power.
+func (dve *DuplicateVoteEvidence) ValidateABCI(
+	val *Validator,
+	valSet *ValidatorSet,
+	evidenceTime time.Time,
+) error {
+
+	if dve.Timestamp != evidenceTime {
+		return fmt.Errorf(
+			"evidence has a different time to the block it is associated with (%v != %v)",
+			dve.Timestamp, evidenceTime)
+	}
+
+	if val.VotingPower != dve.ValidatorPower {
+		return fmt.Errorf("validator power from evidence and our validator set does not match (%d != %d)",
+			dve.ValidatorPower, val.VotingPower)
+	}
+	if valSet.TotalVotingPower() != dve.TotalVotingPower {
+		return fmt.Errorf("total voting power from the evidence and our validator set does not match (%d != %d)",
+			dve.TotalVotingPower, valSet.TotalVotingPower())
+	}
+
+	return nil
+}
+
+// GenerateABCI populates the ABCI component of the evidence. This includes the
+// validator power, timestamp and total voting power.
+func (dve *DuplicateVoteEvidence) GenerateABCI(
+	val *Validator,
+	valSet *ValidatorSet,
+	evidenceTime time.Time,
+) {
+	dve.ValidatorPower = val.VotingPower
+	dve.TotalVotingPower = valSet.TotalVotingPower()
+	dve.Timestamp = evidenceTime
+}
+
 // ToProto encodes DuplicateVoteEvidence to protobuf
 func (dve *DuplicateVoteEvidence) ToProto() *tmproto.DuplicateVoteEvidence {
 	voteB := dve.VoteB.ToProto()
@@ -258,12 +296,12 @@ func (l *LightClientAttackEvidence) GetByzantineValidators(commonVals *Validator
 		// only need a single loop to find the validators that voted twice.
 		for i := 0; i < len(l.ConflictingBlock.Commit.Signatures); i++ {
 			sigA := l.ConflictingBlock.Commit.Signatures[i]
-			if sigA.Absent() {
+			if !sigA.ForBlock() {
 				continue
 			}
 
 			sigB := trusted.Commit.Signatures[i]
-			if sigB.Absent() {
+			if !sigB.ForBlock() {
 				continue
 			}
 
@@ -365,6 +403,76 @@ func (l *LightClientAttackEvidence) ValidateBasic() error {
 	}
 
 	return nil
+}
+
+// ValidateABCI validates the ABCI component of the evidence by checking the
+// timestamp, byzantine validators and total voting power all match. ABCI
+// components are validated separately because they can be re generated if
+// invalid.
+func (l *LightClientAttackEvidence) ValidateABCI(
+	commonVals *ValidatorSet,
+	trustedHeader *SignedHeader,
+	evidenceTime time.Time,
+) error {
+
+	if evTotal, valsTotal := l.TotalVotingPower, commonVals.TotalVotingPower(); evTotal != valsTotal {
+		return fmt.Errorf("total voting power from the evidence and our validator set does not match (%d != %d)",
+			evTotal, valsTotal)
+	}
+
+	if l.Timestamp != evidenceTime {
+		return fmt.Errorf(
+			"evidence has a different time to the block it is associated with (%v != %v)",
+			l.Timestamp, evidenceTime)
+	}
+
+	// Find out what type of attack this was and thus extract the malicious
+	// validators. Note, in the case of an Amnesia attack we don't have any
+	// malicious validators.
+	validators := l.GetByzantineValidators(commonVals, trustedHeader)
+
+	// Ensure this matches the validators that are listed in the evidence. They
+	// should be ordered based on power.
+	if validators == nil && l.ByzantineValidators != nil {
+		return fmt.Errorf(
+			"expected nil validators from an amnesia light client attack but got %d",
+			len(l.ByzantineValidators),
+		)
+	}
+
+	if exp, got := len(validators), len(l.ByzantineValidators); exp != got {
+		return fmt.Errorf("expected %d byzantine validators from evidence but got %d", exp, got)
+	}
+
+	for idx, val := range validators {
+		if !bytes.Equal(l.ByzantineValidators[idx].Address, val.Address) {
+			return fmt.Errorf(
+				"evidence contained an unexpected byzantine validator address; expected: %v, got: %v",
+				val.Address, l.ByzantineValidators[idx].Address,
+			)
+		}
+
+		if l.ByzantineValidators[idx].VotingPower != val.VotingPower {
+			return fmt.Errorf(
+				"evidence contained unexpected byzantine validator power; expected %d, got %d",
+				val.VotingPower, l.ByzantineValidators[idx].VotingPower,
+			)
+		}
+	}
+
+	return nil
+}
+
+// GenerateABCI populates the ABCI component of the evidence: the timestamp,
+// total voting power and byantine validators
+func (l *LightClientAttackEvidence) GenerateABCI(
+	commonVals *ValidatorSet,
+	trustedHeader *SignedHeader,
+	evidenceTime time.Time,
+) {
+	l.Timestamp = evidenceTime
+	l.TotalVotingPower = commonVals.TotalVotingPower()
+	l.ByzantineValidators = l.GetByzantineValidators(commonVals, trustedHeader)
 }
 
 // ToProto encodes LightClientAttackEvidence to protobuf
