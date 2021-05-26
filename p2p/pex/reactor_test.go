@@ -49,7 +49,7 @@ func TestReactorBasic(t *testing.T) {
 
 func TestReactorConnectFullNetwork(t *testing.T) {
 	testNet := setupNetwork(t, testOptions{
-		TotalNodes: 8,
+		TotalNodes: 4,
 	})
 
 	// make every node be only connected with one other node (it actually ends up
