@@ -157,6 +157,12 @@ type RouterOptions struct {
 	// IP address to filter before the handshake. Functions should
 	// return an error to reject the peer.
 	FilterPeerByID func(context.Context, NodeID) error
+
+	// DialSleep controls the amount of time that the router
+	// sleeps between dialing peers. If not set, a default value
+	// is used that sleeps for a (random) amount of time up to 3
+	// seconds between submitting each peer to be dialed.
+	DialSleep func(context.Context)
 }
 
 const (
@@ -498,6 +504,22 @@ func (r *Router) filterPeersID(ctx context.Context, id NodeID) error {
 	return r.options.FilterPeerByID(ctx, id)
 }
 
+func (r *Router) dialSleep(ctx context.Context) {
+	if r.options.DialSleep == nil {
+		timer := time.NewTimer(time.Duration(rand.Int63n(dialRandomizerIntervalMilliseconds)) * time.Millisecond)
+		defer timer.Stop()
+
+		select {
+		case <-ctx.Done():
+		case <-timer.C:
+		}
+
+		return
+	}
+
+	r.options.DialSleep(ctx)
+}
+
 // acceptPeers accepts inbound connections from peers on the given transport,
 // and spawns goroutines that route messages to/from them.
 func (r *Router) acceptPeers(transport Transport) {
@@ -632,7 +654,7 @@ LOOP:
 			// create connections too quickly.
 
 			// nolint:gosec // G404: Use of weak random number generator
-			time.Sleep(time.Duration(rand.Int63n(dialRandomizerIntervalMilliseconds)) * time.Millisecond)
+			r.dialSleep(ctx)
 			continue
 		case <-ctx.Done():
 			close(addresses)

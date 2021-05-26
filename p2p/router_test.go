@@ -1,6 +1,7 @@
 package p2p_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -670,7 +671,7 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 		selfKey,
 		peerManager,
 		[]p2p.Transport{mockTransport},
-		p2p.RouterOptions{},
+		p2p.RouterOptions{DialSleep: func(_ context.Context) { return }},
 	)
 
 	require.NoError(t, err)
@@ -678,7 +679,7 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 
 	require.Eventually(t, func() bool {
 		return len(dialCh) == 3
-	}, 20*time.Second, 100*time.Millisecond)
+	}, time.Second, 10*time.Millisecond)
 	close(closeCh)
 	time.Sleep(500 * time.Millisecond)
 
