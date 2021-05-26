@@ -439,8 +439,6 @@ func (r *ReactorV2) sendRequestForPeers() {
 	}
 
 	// remove the peer from the abvailable peers list and mark it in the requestsSent map
-	// WAT(tychoish): do we actually want to do this? doesn't this
-	// just make churn?
 	delete(r.availablePeers, peerID)
 	r.requestsSent[peerID] = struct{}{}
 
