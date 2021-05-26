@@ -672,12 +672,13 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 		[]p2p.Transport{mockTransport},
 		p2p.RouterOptions{},
 	)
+
 	require.NoError(t, err)
 	require.NoError(t, router.Start())
 
 	require.Eventually(t, func() bool {
 		return len(dialCh) == 3
-	}, 8*time.Second, 12*time.Millisecond)
+	}, 20*time.Second, 100*time.Millisecond)
 	close(closeCh)
 	time.Sleep(500 * time.Millisecond)
 
