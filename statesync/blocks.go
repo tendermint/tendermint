@@ -183,7 +183,7 @@ func (q *blockQueue) retry(height int64) {
 
 	q.retries++
 	if q.retries >= q.maxRetries {
-		q.close()
+		q.closeChannels()
 		return
 	}
 

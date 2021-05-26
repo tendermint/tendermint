@@ -397,7 +397,7 @@ func TestReactor_Dispatcher(t *testing.T) {
 				lb, err := p.LightBlock(context.Background(), int64(height))
 				require.NoError(t, err)
 				require.NotNil(t, lb)
-				require.Equal(t, height, lb.Height)
+				require.Equal(t, height, int(lb.Height))
 			}
 		}(t, p)
 	}
