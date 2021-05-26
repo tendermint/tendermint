@@ -361,7 +361,7 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 		receivedLB, err := types.LightBlockFromProto(res.LightBlock)
 		require.NoError(t, err)
 		require.Equal(t, lb, receivedLB)
-	case <- time.After(1 * time.Second): 
+	case <-time.After(1 * time.Second):
 		t.Fatal("expected light block response")
 	}
 }
