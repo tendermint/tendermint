@@ -326,6 +326,11 @@ func (r *Reactor) Backfill(
 		}()
 	}
 
+	var (
+		lastValidatorSet *types.ValidatorSet
+		lastChangeHeight int64 = startHeight
+	)
+
 	// verify all light blocks
 	for {
 		select {
@@ -351,24 +356,40 @@ func (r *Reactor) Backfill(
 				continue
 			}
 
-			// save the light blocks
+			// save the signed headers
 			err := r.blockStore.SaveSignedHeader(resp.block.SignedHeader, trustedBlockID)
 			if err != nil {
 				return err
 			}
 
-			err = r.stateStore.SaveValidatorSet(resp.block.Height, resp.block.ValidatorSet)
-			if err != nil {
-				return err
+			// check if there has been a change in the validator set
+			if lastValidatorSet != nil && !bytes.Equal(resp.block.Header.ValidatorsHash, resp.block.Header.NextValidatorsHash) {
+				// save all the heights that the last validator set was the same
+				err = r.stateStore.SaveValidatorSets(resp.block.Height+1, lastChangeHeight, lastValidatorSet)
+				if err != nil {
+					return err
+				}
+
+				// update the lastValidatorSet and lastChangeHeight
+				lastValidatorSet = resp.block.ValidatorSet
+				lastChangeHeight = resp.block.Height
 			}
 
 			trustedBlockID = resp.block.LastBlockID
 			queue.success(resp.block.Height)
 			r.Logger.Info("verified and stored light block", "height", resp.block.Height)
 
-		case <-queue.done():
-			return queue.error()
+			if lastValidatorSet == nil {
+				lastValidatorSet = resp.block.ValidatorSet
+			}
 
+		case <-queue.done():
+			if err := queue.error(); err != nil {
+				return err
+			}
+
+			// save the final batch of validators
+			return r.stateStore.SaveValidatorSets(queue.terminal.Height, lastChangeHeight, lastValidatorSet)
 		}
 	}
 }

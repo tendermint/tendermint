@@ -79,7 +79,7 @@ func (q *blockQueue) add(l lightBlockResponse) {
 
 	// sometimes more blocks are fetched then what is necessary. If we already
 	// have what we need then ignore this
-	if q.hasFinalBlock() && l.block.Height < q.terminal.Height {
+	if q.terminal != nil && l.block.Height < q.terminal.Height {
 		return
 	}
 
@@ -110,13 +110,13 @@ func (q *blockQueue) nextHeight() <-chan int64 {
 	ch := make(chan int64, 1)
 	// if a previous process failed then we pick up this one
 	if len(q.failed) > 0 {
-		failedHeight := q.nextFailed()
+		failedHeight := q._nextFailed()
 		ch <- failedHeight
 		close(ch)
 		return ch
 	}
 
-	if !q.hasFinalBlock() {
+	if q.terminal == nil {
 		// return and decrement the fetch height
 		ch <- q.fetchHeight
 		q.fetchHeight--
@@ -183,7 +183,7 @@ func (q *blockQueue) retry(height int64) {
 
 	q.retries++
 	if q.retries >= q.maxRetries {
-		q.closeChannels()
+		q._closeChannels()
 		return
 	}
 
@@ -201,8 +201,8 @@ func (q *blockQueue) retry(height int64) {
 func (q *blockQueue) success(height int64) {
 	q.mtx.Lock()
 	defer q.mtx.Unlock()
-	if q.hasFinalBlock() && q.verifyHeight == q.terminal.Height {
-		q.closeChannels()
+	if q.terminal != nil && q.verifyHeight == q.terminal.Height {
+		q._closeChannels()
 	}
 	q.verifyHeight--
 }
@@ -221,11 +221,11 @@ func (q *blockQueue) error() error {
 func (q *blockQueue) close() {
 	q.mtx.Lock()
 	defer q.mtx.Unlock()
-	q.closeChannels()
+	q._closeChannels()
 }
 
 // CONTRACT: must have a write lock. Use close instead
-func (q *blockQueue) closeChannels() {
+func (q *blockQueue) _closeChannels() {
 	close(q.doneCh)
 
 	// wait for the channel to be drained
@@ -244,7 +244,8 @@ func (q *blockQueue) closeChannels() {
 }
 
 // nextFailed pops the next height in the list of failed heights
-func (q *blockQueue) nextFailed() int64 {
+// CONTRACT: must have a write lock
+func (q *blockQueue) _nextFailed() int64 {
 	height := q.failed[0]
 	if len(q.failed) > 1 {
 		q.failed = q.failed[1:]
@@ -252,12 +253,6 @@ func (q *blockQueue) nextFailed() int64 {
 		q.failed = []int64{}
 	}
 	return height
-}
-
-// hasFinalBlock check if the earliest block received has a height that is less than or equal to
-// the stop height and the last block time is before the stop time.
-func (q *blockQueue) hasFinalBlock() bool {
-	return q.terminal != nil
 }
 
 // insertAt inserts v into s at index i and returns the new slice.

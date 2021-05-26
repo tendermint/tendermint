@@ -94,7 +94,7 @@ type Store interface {
 	// SaveABCIResponses saves ABCIResponses for a given height
 	SaveABCIResponses(int64, *tmstate.ABCIResponses) error
 	// SaveValidatorSet saves the validator set at a given height
-	SaveValidatorSet(int64, *types.ValidatorSet) error
+	SaveValidatorSets(int64, int64, *types.ValidatorSet) error
 	// Bootstrap is used for bootstrapping state when not starting from a initial height.
 	Bootstrap(State) error
 	// PruneStates takes the height from which to prune up to (exclusive)
@@ -504,31 +504,22 @@ func (store dbStore) saveABCIResponses(height int64, abciResponses *tmstate.ABCI
 	return store.db.SetSync(abciResponsesKey(height), bz)
 }
 
-// SaveValidatorSet is used to save a single validator set. It is exposed so
-// that a backfill operation during state sync can populate the store with the
-// necessary amount of validator sets to verify any evidence it may encounter.
-//
-// FIXME: Usually when saving validator sets we only save them when they change
-// and use a pointer likey system instead. This doesn't work when saving them in
-// reverse order so instead we are going to save every validator set regardless
-// if they changed or not. In the future we should look to optimize this
-func (store dbStore) SaveValidatorSet(height int64, vals *types.ValidatorSet) error {
-	valInfo := &tmstate.ValidatorsInfo{
-		LastHeightChanged: height,
+// SaveValidatorSets is used to save the validator set over multiple heights.
+// It is exposed so that a backfill operation during state sync can populate
+// the store with the necessary amount of validator sets to verify any evidence
+// it may encounter.
+func (store dbStore) SaveValidatorSets(lowerHeight, upperHeight int64, vals *types.ValidatorSet) error {
+	batch := store.db.NewBatch()
+	defer batch.Close()
+
+	// batch together all the validator sets from lowerHeight to upperHeight
+	for height := lowerHeight; height <= upperHeight; height++ {
+		if err := store.saveValidatorsInfo(height, lowerHeight, vals, batch); err != nil {
+			return err
+		}
 	}
 
-	pv, err := vals.ToProto()
-	if err != nil {
-		return err
-	}
-	valInfo.ValidatorSet = pv
-
-	bz, err := valInfo.Marshal()
-	if err != nil {
-		return err
-	}
-
-	return store.db.Set(validatorsKey(height), bz)
+	return batch.WriteSync()
 }
 
 //-----------------------------------------------------------------------------
