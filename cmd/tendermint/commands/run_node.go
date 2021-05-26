@@ -118,7 +118,7 @@ func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
 				return fmt.Errorf("failed to start node: %w", err)
 			}
 
-			logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
+			logger.Info("Started node", "nodeInfo", n.NodeInfo())
 
 			// Stop upon receiving SIGTERM or CTRL-C.
 			tmos.TrapSignal(logger, func() {
