@@ -15,7 +15,7 @@ import (
 	"fmt"
 	"sync"
 
-	tmsync "github.com/tendermint/tendermint/libs/sync"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 )
 
 // MaxLength is the max allowed number of elements a linked list is

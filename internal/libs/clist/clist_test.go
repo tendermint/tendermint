@@ -4,7 +4,6 @@ import (
 	"fmt"
 	mrand "math/rand"
 	"runtime"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -65,62 +64,7 @@ func TestSmall(t *testing.T) {
 
 }
 
-// This test is quite hacky because it relies on SetFinalizer
-// which isn't guaranteed to run at all.
-//nolint:unused,deadcode
-func _TestGCFifo(t *testing.T) {
-	if runtime.GOARCH != "amd64" {
-		t.Skipf("Skipping on non-amd64 machine")
-	}
-
-	const numElements = 1000000
-	l := New()
-	gcCount := new(uint64)
-
-	// SetFinalizer doesn't work well with circular structures,
-	// so we construct a trivial non-circular structure to
-	// track.
-	type value struct {
-		Int int
-	}
-	done := make(chan struct{})
-
-	for i := 0; i < numElements; i++ {
-		v := new(value)
-		v.Int = i
-		l.PushBack(v)
-		runtime.SetFinalizer(v, func(v *value) {
-			atomic.AddUint64(gcCount, 1)
-		})
-	}
-
-	for el := l.Front(); el != nil; {
-		l.Remove(el)
-		// oldEl := el
-		el = el.Next()
-		// oldEl.DetachPrev()
-		// oldEl.DetachNext()
-	}
-
-	runtime.GC()
-	time.Sleep(time.Second * 3)
-	runtime.GC()
-	time.Sleep(time.Second * 3)
-	_ = done
-
-	if *gcCount != numElements {
-		t.Errorf("expected gcCount to be %v, got %v", numElements,
-			*gcCount)
-	}
-}
-
-// This test is quite hacky because it relies on SetFinalizer
-// which isn't guaranteed to run at all.
-//nolint:unused,deadcode
-func _TestGCRandom(t *testing.T) {
-	if runtime.GOARCH != "amd64" {
-		t.Skipf("Skipping on non-amd64 machine")
-	}
+func TestGCFifo(t *testing.T) {
 
 	const numElements = 1000000
 	l := New()
@@ -133,12 +77,73 @@ func _TestGCRandom(t *testing.T) {
 		Int int
 	}
 
+	gcCh := make(chan struct{})
 	for i := 0; i < numElements; i++ {
 		v := new(value)
 		v.Int = i
 		l.PushBack(v)
 		runtime.SetFinalizer(v, func(v *value) {
-			gcCount++
+			gcCh <- struct{}{}
+		})
+	}
+
+	for el := l.Front(); el != nil; {
+		l.Remove(el)
+		// oldEl := el
+		el = el.Next()
+		// oldEl.DetachPrev()
+		// oldEl.DetachNext()
+	}
+
+	tickerQuitCh := make(chan struct{})
+	tickerDoneCh := make(chan struct{})
+	go func() {
+		defer close(tickerDoneCh)
+		ticker := time.NewTicker(time.Second)
+		for {
+			select {
+			case <-ticker.C:
+				runtime.GC()
+			case <-tickerQuitCh:
+				return
+			}
+		}
+	}()
+
+	for i := 0; i < numElements; i++ {
+		<-gcCh
+		gcCount++
+	}
+
+	close(tickerQuitCh)
+	<-tickerDoneCh
+
+	if gcCount != numElements {
+		t.Errorf("expected gcCount to be %v, got %v", numElements,
+			gcCount)
+	}
+}
+
+func TestGCRandom(t *testing.T) {
+
+	const numElements = 1000000
+	l := New()
+	gcCount := 0
+
+	// SetFinalizer doesn't work well with circular structures,
+	// so we construct a trivial non-circular structure to
+	// track.
+	type value struct {
+		Int int
+	}
+
+	gcCh := make(chan struct{})
+	for i := 0; i < numElements; i++ {
+		v := new(value)
+		v.Int = i
+		l.PushBack(v)
+		runtime.SetFinalizer(v, func(v *value) {
+			gcCh <- struct{}{}
 		})
 	}
 
@@ -153,8 +158,28 @@ func _TestGCRandom(t *testing.T) {
 		_ = el.Next()
 	}
 
-	runtime.GC()
-	time.Sleep(time.Second * 3)
+	tickerQuitCh := make(chan struct{})
+	tickerDoneCh := make(chan struct{})
+	go func() {
+		defer close(tickerDoneCh)
+		ticker := time.NewTicker(time.Second)
+		for {
+			select {
+			case <-ticker.C:
+				runtime.GC()
+			case <-tickerQuitCh:
+				return
+			}
+		}
+	}()
+
+	for i := 0; i < numElements; i++ {
+		<-gcCh
+		gcCount++
+	}
+
+	close(tickerQuitCh)
+	<-tickerDoneCh
 
 	if gcCount != numElements {
 		t.Errorf("expected gcCount to be %v, got %v", numElements,
