@@ -77,8 +77,7 @@ type Environment struct {
 	// objects
 	PubKey           crypto.PubKey
 	GenDoc           *types.GenesisDoc // cache the genesis structure
-	TxIndexer        indexer.TxIndexer
-	BlockIndexer     indexer.BlockIndexer
+	EventSinks       []indexer.EventSink
 	ConsensusReactor *consensus.Reactor
 	EventBus         *types.EventBus // thread safe
 	Mempool          mempl.Mempool

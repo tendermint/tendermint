@@ -64,9 +64,11 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   accomodate for the new p2p stack. Removes the notion of seeds and crawling. All peer
   exchange reactors behave the same. (@cmwaters)
 - [crypto] \#6376 Enable sr25519 as a validator key
+- [config/indexer] \#6411 Introduce support for custom event indexing data sources, specifically PostgreSQL. (@JayT106)
 
 ### IMPROVEMENTS
 
+- [types] \#6478 Add `block_id` to `newblock` event (@jeebster)
 - [crypto/ed25519] \#5632 Adopt zip215 `ed25519` verification. (@marbar3778)
 - [privval] \#5603 Add `--key` to `init`, `gen_validator`, `testnet` & `unsafe_reset_priv_validator` for use in generating `secp256k1` keys.
 - [privval] \#5725 Add gRPC support to private validator.

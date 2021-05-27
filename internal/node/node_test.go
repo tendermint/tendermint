@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -29,6 +30,7 @@ import (
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -535,6 +537,91 @@ func TestNodeNewSeedNode(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.True(t, n.pexReactor.IsRunning())
+}
+
+func TestNodeSetEventSink(t *testing.T) {
+	config := cfg.ResetTestRoot("node_app_version_test")
+	defer os.RemoveAll(config.RootDir)
+
+	n := GetTestNode(t, config, log.TestingLogger())
+
+	assert.Equal(t, 1, len(n.eventSinks))
+	assert.Equal(t, indexer.KV, n.eventSinks[0].Type())
+
+	config.TxIndex.Indexer = []string{"null"}
+	n = GetTestNode(t, config, log.TestingLogger())
+
+	assert.Equal(t, 1, len(n.eventSinks))
+	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
+
+	config.TxIndex.Indexer = []string{"null", "kv"}
+	n = GetTestNode(t, config, log.TestingLogger())
+
+	assert.Equal(t, 1, len(n.eventSinks))
+	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
+
+	config.TxIndex.Indexer = []string{"kvv"}
+	ns, err := DefaultNewNode(config, log.TestingLogger())
+	assert.Nil(t, ns)
+	assert.Equal(t, errors.New("unsupported event sink type"), err)
+
+	config.TxIndex.Indexer = []string{}
+	n = GetTestNode(t, config, log.TestingLogger())
+
+	assert.Equal(t, 1, len(n.eventSinks))
+	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
+
+	config.TxIndex.Indexer = []string{"psql"}
+	ns, err = DefaultNewNode(config, log.TestingLogger())
+	assert.Nil(t, n)
+	assert.Equal(t, errors.New("the psql connection settings cannot be empty"), err)
+
+	var psqlConn = "test"
+
+	config.TxIndex.Indexer = []string{"psql"}
+	config.TxIndex.PsqlConn = psqlConn
+	n = GetTestNode(t, config, log.TestingLogger())
+	assert.Equal(t, 1, len(n.eventSinks))
+	assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
+	n.OnStop()
+
+	config.TxIndex.Indexer = []string{"psql", "kv"}
+	config.TxIndex.PsqlConn = psqlConn
+	n = GetTestNode(t, config, log.TestingLogger())
+	assert.Equal(t, 2, len(n.eventSinks))
+	// we use map to filter the duplicated sinks, so it's not guarantee the order when append sinks.
+	if n.eventSinks[0].Type() == indexer.KV {
+		assert.Equal(t, indexer.PSQL, n.eventSinks[1].Type())
+	} else {
+		assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
+		assert.Equal(t, indexer.KV, n.eventSinks[1].Type())
+	}
+	n.OnStop()
+
+	config.TxIndex.Indexer = []string{"kv", "psql"}
+	config.TxIndex.PsqlConn = psqlConn
+	n = GetTestNode(t, config, log.TestingLogger())
+	assert.Equal(t, 2, len(n.eventSinks))
+	if n.eventSinks[0].Type() == indexer.KV {
+		assert.Equal(t, indexer.PSQL, n.eventSinks[1].Type())
+	} else {
+		assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
+		assert.Equal(t, indexer.KV, n.eventSinks[1].Type())
+	}
+	n.OnStop()
+
+	var e = errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
+	config.TxIndex.Indexer = []string{"psql", "kv", "Kv"}
+	config.TxIndex.PsqlConn = psqlConn
+	_, err = DefaultNewNode(config, log.TestingLogger())
+	require.Error(t, err)
+	assert.Equal(t, e, err)
+
+	config.TxIndex.Indexer = []string{"Psql", "kV", "kv", "pSql"}
+	config.TxIndex.PsqlConn = psqlConn
+	_, err = DefaultNewNode(config, log.TestingLogger())
+	require.Error(t, err)
+	assert.Equal(t, e, err)
 }
 
 func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {

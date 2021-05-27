@@ -3,10 +3,12 @@ package node
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net"
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
+	"strings"
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
@@ -14,25 +16,24 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/internal/evidence"
 	bcv0 "github.com/tendermint/tendermint/internal/blockchain/v0"
 	bcv2 "github.com/tendermint/tendermint/internal/blockchain/v2"
 	cs "github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/evidence"
 	mempl "github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/pex"
 	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/libs/strings"
+	tmStrings "github.com/tendermint/tendermint/libs/strings"
 	protop2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
-	blockidxkv "github.com/tendermint/tendermint/state/indexer/block/kv"
-	blockidxnull "github.com/tendermint/tendermint/state/indexer/block/null"
-	"github.com/tendermint/tendermint/state/indexer/tx/kv"
-	"github.com/tendermint/tendermint/state/indexer/tx/null"
+	kv "github.com/tendermint/tendermint/state/indexer/sink/kv"
+	null "github.com/tendermint/tendermint/state/indexer/sink/null"
+	psql "github.com/tendermint/tendermint/state/indexer/sink/psql"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
@@ -73,35 +74,61 @@ func createAndStartIndexerService(
 	dbProvider DBProvider,
 	eventBus *types.EventBus,
 	logger log.Logger,
-) (*indexer.Service, indexer.TxIndexer, indexer.BlockIndexer, error) {
+	chainID string,
+) (*indexer.Service, []indexer.EventSink, error) {
 
-	var (
-		txIndexer    indexer.TxIndexer
-		blockIndexer indexer.BlockIndexer
-	)
+	eventSinks := []indexer.EventSink{}
 
-	switch config.TxIndex.Indexer {
-	case "kv":
-		store, err := dbProvider(&DBContext{"tx_index", config})
-		if err != nil {
-			return nil, nil, nil, err
+	// Check duplicated sinks.
+	sinks := map[string]bool{}
+	for _, s := range config.TxIndex.Indexer {
+		sl := strings.ToLower(s)
+		if sinks[sl] {
+			return nil, nil, errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
 		}
-
-		txIndexer = kv.NewTxIndex(store)
-		blockIndexer = blockidxkv.New(dbm.NewPrefixDB(store, []byte("block_events")))
-	default:
-		txIndexer = &null.TxIndex{}
-		blockIndexer = &blockidxnull.BlockerIndexer{}
+		sinks[sl] = true
 	}
 
-	indexerService := indexer.NewIndexerService(txIndexer, blockIndexer, eventBus)
+loop:
+	for k := range sinks {
+		switch k {
+		case string(indexer.NULL):
+			// when we see null in the config, the eventsinks will be reset with the nullEventSink.
+			eventSinks = []indexer.EventSink{null.NewEventSink()}
+			break loop
+		case string(indexer.KV):
+			store, err := dbProvider(&DBContext{"tx_index", config})
+			if err != nil {
+				return nil, nil, err
+			}
+			eventSinks = append(eventSinks, kv.NewEventSink(store))
+		case string(indexer.PSQL):
+			conn := config.TxIndex.PsqlConn
+			if conn == "" {
+				return nil, nil, errors.New("the psql connection settings cannot be empty")
+			}
+			es, _, err := psql.NewEventSink(conn, chainID)
+			if err != nil {
+				return nil, nil, err
+			}
+			eventSinks = append(eventSinks, es)
+		default:
+			return nil, nil, errors.New("unsupported event sink type")
+		}
+	}
+
+	if len(eventSinks) == 0 {
+		eventSinks = []indexer.EventSink{null.NewEventSink()}
+	}
+
+	indexerService := indexer.NewIndexerService(eventSinks, eventBus)
 	indexerService.SetLogger(logger.With("module", "txindex"))
 
 	if err := indexerService.Start(); err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
-	return indexerService, txIndexer, blockIndexer, nil
+	return indexerService, eventSinks, nil
 }
 
 func doHandshake(
@@ -381,7 +408,7 @@ func createTransport(logger log.Logger, config *cfg.Config) *p2p.MConnTransport 
 		logger, p2p.MConnConfig(config.P2P), []*p2p.ChannelDescriptor{},
 		p2p.MConnTransportOptions{
 			MaxAcceptedConnections: uint32(config.P2P.MaxNumInboundPeers +
-				len(strings.SplitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " ")),
+				len(tmStrings.SplitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " ")),
 			),
 		},
 	)
@@ -418,7 +445,7 @@ func createPeerManager(
 	}
 
 	privatePeerIDs := make(map[p2p.NodeID]struct{})
-	for _, id := range strings.SplitAndTrimEmpty(config.P2P.PrivatePeerIDs, ",", " ") {
+	for _, id := range tmStrings.SplitAndTrimEmpty(config.P2P.PrivatePeerIDs, ",", " ") {
 		privatePeerIDs[p2p.NodeID(id)] = struct{}{}
 	}
 
@@ -434,7 +461,7 @@ func createPeerManager(
 	}
 
 	peers := []p2p.NodeAddress{}
-	for _, p := range strings.SplitAndTrimEmpty(config.P2P.PersistentPeers, ",", " ") {
+	for _, p := range tmStrings.SplitAndTrimEmpty(config.P2P.PersistentPeers, ",", " ") {
 		address, err := p2p.ParseNodeAddress(p)
 		if err != nil {
 			return nil, fmt.Errorf("invalid peer address %q: %w", p, err)
@@ -444,7 +471,7 @@ func createPeerManager(
 		options.PersistentPeers = append(options.PersistentPeers, address.NodeID)
 	}
 
-	for _, p := range strings.SplitAndTrimEmpty(config.P2P.BootstrapPeers, ",", " ") {
+	for _, p := range tmStrings.SplitAndTrimEmpty(config.P2P.BootstrapPeers, ",", " ") {
 		address, err := p2p.ParseNodeAddress(p)
 		if err != nil {
 			return nil, fmt.Errorf("invalid peer address %q: %w", p, err)
@@ -611,7 +638,7 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 	sw *p2p.Switch, logger log.Logger) *pex.Reactor {
 
 	reactorConfig := &pex.ReactorConfig{
-		Seeds:    strings.SplitAndTrimEmpty(config.P2P.Seeds, ",", " "),
+		Seeds:    tmStrings.SplitAndTrimEmpty(config.P2P.Seeds, ",", " "),
 		SeedMode: config.Mode == cfg.ModeSeed,
 		// See consensus/reactor.go: blocksToContributeToBecomeGoodPeer 10000
 		// blocks assuming 10s blocks ~ 28 hours.
@@ -647,13 +674,14 @@ func createPEXReactorV2(
 func makeNodeInfo(
 	config *cfg.Config,
 	nodeKey p2p.NodeKey,
-	txIndexer indexer.TxIndexer,
+	eventSinks []indexer.EventSink,
 	genDoc *types.GenesisDoc,
 	state sm.State,
 ) (p2p.NodeInfo, error) {
-	txIndexerStatus := "on"
-	if _, ok := txIndexer.(*null.TxIndex); ok {
-		txIndexerStatus = "off"
+	txIndexerStatus := "off"
+
+	if indexer.IndexingEnabled(eventSinks) {
+		txIndexerStatus = "on"
 	}
 
 	var bcChannel byte
