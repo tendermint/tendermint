@@ -29,14 +29,13 @@ Note the context/background should be written in the present tense.
 
 ## Table of Contents
 
-### Accepted
+### Implemented
 
 - [ADR-001: Logging](./adr-001-logging.md)
 - [ADR-002: Event-Subscription](./adr-002-event-subscription.md)
 - [ADR-003: ABCI-APP-RPC](./adr-003-abci-app-rpc.md)
 - [ADR-004: Historical-Validators](./adr-004-historical-validators.md)
 - [ADR-005: Consensus-Params](./adr-005-consensus-params.md)
-- [ADR-006: Trust-Metric](./adr-006-trust-metric.md)
 - [ADR-008: Priv-Validator](./adr-008-priv-validator.md)
 - [ADR-009: ABCI-Design](./adr-009-ABCI-design.md)
 - [ADR-010: Crypto-Changes](./adr-010-crypto-changes.md)
@@ -54,8 +53,6 @@ Note the context/background should be written in the present tense.
 - [ADR-026: General-Merkle-Proof](./adr-026-general-merkle-proof.md)
 - [ADR-033: Pubsub](./adr-033-pubsub.md)
 - [ADR-034: Priv-Validator-File-Structure](./adr-034-priv-validator-file-structure.md)
-- [ADR-035: Documentation](./adr-035-documentation.md)
-- [ADR-039: Peer-Behaviour](./adr-039-peer-behaviour.md)
 - [ADR-043: Blockchain-RiRi-Org](./adr-043-blockchain-riri-org.md)
 - [ADR-044: Lite-Client-With-Weak-Subjectivity](./adr-044-lite-client-with-weak-subjectivity.md)
 - [ADR-046: Light-Client-Implementation](./adr-046-light-client-implementation.md)
@@ -67,12 +64,17 @@ Note the context/background should be written in the present tense.
 - [ADR-055: Protobuf-Design](./adr-055-protobuf-design.md)
 - [ADR-056: Light-Client-Amnesia-Attacks](./adr-056-light-client-amnesia-attacks)
 - [ADR-059: Evidence-Composition-and-Lifecycle](./adr-059-evidence-composition-and-lifecycle.md)
-- [ADR-060: Go-API-Stability](./adr-060-go-api-stability.md)
-- [ADR-061: P2P-Refactor-Scope](./adr-061-p2p-refactor-scope.md)
 - [ADR-062: P2P-Architecture](./adr-062-p2p-architecture.md)
 - [ADR-063: Privval-gRPC](./adr-063-privval-grpc.md)
-- [ADR-065: Custom Event Indexing](./adr-065-custom-event-indexing.md)
 - [ADR-066-E2E-Testing](./adr-066-e2e-testing.md)
+### Accepted
+
+- [ADR-006: Trust-Metric](./adr-006-trust-metric.md)
+- [ADR-035: Documentation](./adr-035-documentation.md)
+- [ADR-039: Peer-Behaviour](./adr-039-peer-behaviour.md)
+- [ADR-060: Go-API-Stability](./adr-060-go-api-stability.md)
+- [ADR-061: P2P-Refactor-Scope](./adr-061-p2p-refactor-scope.md)
+- [ADR-065: Custom Event Indexing](./adr-065-custom-event-indexing.md)
 - [ADR-068: Reverse-Sync](./adr-068-reverse-sync.md)
 - [ADR-067: Mempool Refactor](./adr-067-mempool-refactor.md)
 
