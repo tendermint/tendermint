@@ -18,11 +18,12 @@ import (
 const (
 	defaultAcceptRetries    = 100
 	defaultBindAddr         = "tcp://127.0.0.1:0"
-	defaultTMHome           = "~/.tendermint"
 	defaultAcceptDeadline   = 1
 	defaultConnDeadline     = 3
 	defaultExtractKeyOutput = "./signing.key"
 )
+
+var defaultTMHome string
 
 var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
@@ -59,6 +60,8 @@ Available Commands:
 Use "tm-signer-harness help <command>" for more information about that command.`)
 		fmt.Println("")
 	}
+
+	setDefaultHome()
 
 	runCmd = flag.NewFlagSet("run", flag.ExitOnError)
 	runCmd.IntVar(&flagAcceptRetries,
@@ -145,6 +148,16 @@ func extractKey(tmhome, outputPath string) {
 		os.Exit(1)
 	}
 	logger.Info("Successfully wrote private key", "output", outputPath)
+}
+
+func setDefaultHome() {
+	hd, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Println("The UserHomeDir is not defined, use the default TM Home PATH \"~/.tendermint\".")
+		defaultTMHome = "~/.tendermint"
+	} else {
+		defaultTMHome = fmt.Sprintf("%s/.tendermint", hd)
+	}
 }
 
 func main() {
