@@ -185,7 +185,7 @@ func main() {
 		}
 		extractKey(flagTMHome, flagKeyOutputPath)
 	case "version":
-		fmt.Println(version.TMCoreSemVer)
+		fmt.Println(version.TMVersion)
 	default:
 		fmt.Printf("Unrecognized command: %s\n", flag.Arg(0))
 		os.Exit(1)
