@@ -56,6 +56,9 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [store/state/evidence/light] \#5771 Use an order-preserving varint key encoding (@cmwaters)
   - [mempool] \#6396 Remove mempool's write ahead log (WAL), (previously unused by the tendermint code). (@tychoish)
 
+- Tooling
+  - [tools] \#6498 Set OS home dir to instead of the hardcoded PATH. (@JayT106)
+
 ### FEATURES
 
 - [config] Add `--mode` flag and config variable. See [ADR-52](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md) @dongsam
