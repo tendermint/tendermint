@@ -265,6 +265,11 @@ func (r *Reactor) Backfill(
 	r.Logger.Info("starting backfill process...", "startHeight", startHeight,
 		"stopHeight", stopHeight, "trustedBlockID", trustedBlockID)
 
+	var (
+		lastValidatorSet *types.ValidatorSet
+		lastChangeHeight int64 = startHeight
+	)
+
 	queue := newBlockQueue(startHeight, stopHeight, stopTime, maxLightBlockRequestRetries)
 
 	// fetch light blocks across four workers. The aim with deploying concurrent
@@ -325,11 +330,6 @@ func (r *Reactor) Backfill(
 			}
 		}()
 	}
-
-	var (
-		lastValidatorSet *types.ValidatorSet
-		lastChangeHeight int64 = startHeight
-	)
 
 	// verify all light blocks
 	for {

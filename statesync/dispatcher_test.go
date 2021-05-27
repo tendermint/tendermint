@@ -112,6 +112,8 @@ func TestPeerListConcurrent(t *testing.T) {
 	numPeers := 10
 
 	wg := sync.WaitGroup{}
+	// we run a set of goroutines requesting the next peer in the list. As the
+	// peer list hasn't been populated each these go routines should block
 	for i := 0; i < numPeers/2; i++ {
 		go func() {
 			_ = peerList.Pop()
@@ -119,11 +121,14 @@ func TestPeerListConcurrent(t *testing.T) {
 		}()
 	}
 
+	// now we add the peers to the list, this should allow the previously
+	// blocked go routines to unblock
 	for _, peer := range createPeerSet(numPeers) {
 		wg.Add(1)
 		peerList.Append(peer)
 	}
 
+	// we request the second half of the peer set
 	for i := 0; i < numPeers/2; i++ {
 		go func() {
 			_ = peerList.Pop()
@@ -131,10 +136,24 @@ func TestPeerListConcurrent(t *testing.T) {
 		}()
 	}
 
-	wg.Wait()
+	// we use a context with cancel and a separate go routine to wait for all
+	// the other goroutines to close.
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() { wg.Wait(); cancel() }()
 
+	select {
+	case <-time.After(time.Second):
+		// not all of the blocked go routines waiting on peers have closed after
+		// one second. This likely means the list got blocked.
+		t.Failed()
+	case <-ctx.Done():
+		// there should be no peers remaining
+		require.Equal(t, 0, peerList.Len())
+	}
 }
 
+// handleRequests is a helper function usually run in a separate go routine to
+// imitate the expected responses of the reactor wired to the dispatcher
 func handleRequests(t *testing.T, d *dispatcher, ch chan p2p.Envelope, closeCh chan struct{}) {
 	t.Helper()
 	for {

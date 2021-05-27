@@ -1,8 +1,8 @@
 package statesync
 
 import (
+	"container/heap"
 	"fmt"
-	"sort"
 	"sync"
 	"time"
 
@@ -28,9 +28,9 @@ type blockQueue struct {
 	stopTime   time.Time
 	terminal   *types.LightBlock
 
-	// track failed heights (ordered from highest to lowest) so we know what
-	// blocks to try fetch again
-	failed     []int64
+	// track failed heights so we know what blocks to try fetch again
+	failed     *maxIntHeap
+	// also count retries to know when to give up
 	retries    int
 	maxRetries int
 
@@ -56,7 +56,7 @@ func newBlockQueue(
 		fetchHeight:  startHeight,
 		verifyHeight: startHeight,
 		pending:      make(map[int64]lightBlockResponse),
-		failed:       make([]int64, 0),
+		failed:       &maxIntHeap{},
 		retries:      0,
 		maxRetries:   maxRetries,
 		waiters:      make([]chan int64, 0),
@@ -109,9 +109,9 @@ func (q *blockQueue) nextHeight() <-chan int64 {
 	defer q.mtx.Unlock()
 	ch := make(chan int64, 1)
 	// if a previous process failed then we pick up this one
-	if len(q.failed) > 0 {
-		failedHeight := q._nextFailed()
-		ch <- failedHeight
+	if q.failed.Len() > 0 {
+		failedHeight := heap.Pop(q.failed)
+		ch <- failedHeight.(int64)
 		close(ch)
 		return ch
 	}
@@ -192,7 +192,7 @@ func (q *blockQueue) retry(height int64) {
 		close(q.waiters[0])
 		q.waiters = q.waiters[1:]
 	} else {
-		q.failed = insertSorted(q.failed, height)
+		heap.Push(q.failed, height)
 	}
 }
 
@@ -243,36 +243,21 @@ func (q *blockQueue) _closeChannels() {
 	}
 }
 
-// nextFailed pops the next height in the list of failed heights
-// CONTRACT: must have a write lock
-func (q *blockQueue) _nextFailed() int64 {
-	height := q.failed[0]
-	if len(q.failed) > 1 {
-		q.failed = q.failed[1:]
-	} else {
-		q.failed = []int64{}
-	}
-	return height
+// A max-heap of ints.
+type maxIntHeap []int64
+
+func (h maxIntHeap) Len() int           { return len(h) }
+func (h maxIntHeap) Less(i, j int) bool { return h[i] < h[j] }
+func (h maxIntHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+
+func (h *maxIntHeap) Push(x interface{}) {
+	*h = append(*h, x.(int64))
 }
 
-// insertAt inserts v into s at index i and returns the new slice.
-func insertAt(list []int64, i int, v int64) []int64 {
-	if i == len(list) {
-		// Insert at end is the easy case.
-		return append(list, v)
-	}
-
-	// Make space for the new element
-	list = append(list[:i+1], list[i:]...)
-
-	// Insert the new element.
-	list[i] = v
-
-	// Return the updated slice.
-	return list
-}
-
-func insertSorted(list []int64, v int64) []int64 {
-	i := sort.Search(len(list), func(i int) bool { return list[i] >= v })
-	return insertAt(list, i, v)
+func (h *maxIntHeap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[0 : n-1]
+	return x
 }
