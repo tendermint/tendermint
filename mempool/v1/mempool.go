@@ -179,9 +179,10 @@ func (txmp *TxMempool) NextGossipTx() *WrappedTx {
 
 // EnableTxsAvailable enables the mempool to trigger events when transactions
 // are available on a block by block basis.
-//
-// NOTE: It is NOT thread-safe and should only be called once on startup.
 func (txmp *TxMempool) EnableTxsAvailable() {
+	txmp.mtx.Lock()
+	defer txmp.mtx.Unlock()
+
 	txmp.txsAvailable = make(chan struct{}, 1)
 }
 
