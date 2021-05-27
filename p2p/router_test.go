@@ -1,9 +1,11 @@
 package p2p_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -670,16 +672,31 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 		selfKey,
 		peerManager,
 		[]p2p.Transport{mockTransport},
-		p2p.RouterOptions{},
+		p2p.RouterOptions{
+			DialSleep: func(_ context.Context) {},
+			NumConcurrentDials: func() int {
+				ncpu := runtime.NumCPU()
+				if ncpu <= 3 {
+					return 3
+				}
+				return ncpu
+			},
+		},
 	)
+
 	require.NoError(t, err)
 	require.NoError(t, router.Start())
 
-	require.Eventually(t, func() bool {
-		return len(dialCh) == 3
-	}, time.Second, 10*time.Millisecond)
+	require.Eventually(t,
+		func() bool {
+			return len(dialCh) == 3
+		},
+		5*time.Second,
+		100*time.Millisecond,
+		"reached %d rather than 3", len(dialCh))
+
 	close(closeCh)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
 	require.NoError(t, router.Stop())
 	mockTransport.AssertExpectations(t)
