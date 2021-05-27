@@ -47,9 +47,10 @@ func (c *LRUTxCache) GetList() *list.List {
 
 func (c *LRUTxCache) Reset() {
 	c.mtx.Lock()
+	defer c.mtx.Unlock()
+
 	c.cacheMap = make(map[[TxKeySize]byte]*list.Element, c.size)
 	c.list.Init()
-	c.mtx.Unlock()
 }
 
 func (c *LRUTxCache) Push(tx types.Tx) bool {
