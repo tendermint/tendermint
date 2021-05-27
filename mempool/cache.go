@@ -7,7 +7,11 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// TxCache defines an interface for raw transaction caching.
+// TxCache defines an interface for raw transaction caching in a mempool.
+// Currently, a TxCache does not allow direct reading or getting of transaction
+// values. A TxCache is used primarily to push transactions and removing
+// transactions. Pushing via Push returns a boolean telling the caller if the
+// transaction already exists in the cache or not.
 type TxCache interface {
 	// Reset resets the cache to an empty state.
 	Reset()
