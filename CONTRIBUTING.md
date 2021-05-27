@@ -245,7 +245,7 @@ If there were no release candidates, and you'd like to cut a major release direc
      all PRs
    - Ensure that UPGRADING.md is up-to-date and includes notes on any breaking changes
       or other upgrading flows.
-   - Bump TMCoreSemVer version in  `version.go`
+   - Bump TMVersionDefault version in  `version.go`
    - Bump P2P and block protocol versions in  `version.go`, if necessary
    - Bump ABCI protocol version in `version.go`, if necessary
    - Add any release notes you would like to be added to the body of the release to `release_notes.md`.
