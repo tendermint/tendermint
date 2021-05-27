@@ -12,8 +12,8 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 

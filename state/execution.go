@@ -8,7 +8,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
-	"github.com/tendermint/tendermint/libs/fail"
+	"github.com/tendermint/tendermint/internal/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -216,7 +216,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
-	fireEvents(blockExec.logger, blockExec.eventBus, block, abciResponses, validatorUpdates)
+	fireEvents(blockExec.logger, blockExec.eventBus, block, blockID, abciResponses, validatorUpdates)
 
 	return state, retainHeight, nil
 }
@@ -495,11 +495,13 @@ func fireEvents(
 	logger log.Logger,
 	eventBus types.BlockEventPublisher,
 	block *types.Block,
+	blockID types.BlockID,
 	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 ) {
 	if err := eventBus.PublishEventNewBlock(types.EventDataNewBlock{
 		Block:            block,
+		BlockID:          blockID,
 		ResultBeginBlock: *abciResponses.BeginBlock,
 		ResultEndBlock:   *abciResponses.EndBlock,
 	}); err != nil {
@@ -579,7 +581,8 @@ func ExecCommitBlock(
 			return nil, err
 		}
 
-		fireEvents(be.logger, be.eventBus, block, abciResponses, validatorUpdates)
+		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(types.BlockPartSizeBytes).Header()}
+		fireEvents(be.logger, be.eventBus, block, blockID, abciResponses, validatorUpdates)
 	}
 
 	// Commit block, get hash back

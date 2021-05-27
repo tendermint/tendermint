@@ -183,7 +183,7 @@ func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan erro
 		return
 	}
 
-	if !bytes.Equal(h.Hash(), lightBlock.Hash()) {
+	if !bytes.Equal(h.Header.Hash(), lightBlock.Header.Hash()) {
 		errc <- errConflictingHeaders{Block: lightBlock, WitnessIndex: witnessIndex}
 	}
 

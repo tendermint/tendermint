@@ -11,7 +11,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 
-	auto "github.com/tendermint/tendermint/libs/autofile"
+	auto "github.com/tendermint/tendermint/internal/libs/autofile"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"

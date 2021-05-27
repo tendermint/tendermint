@@ -8,8 +8,8 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/light"
 	lightprovider "github.com/tendermint/tendermint/light/provider"
 	lighthttp "github.com/tendermint/tendermint/light/provider/http"

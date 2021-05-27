@@ -54,6 +54,7 @@ Note the context/background should be written in the present tense.
 - [ADR-065: Custom Event Indexing](./adr-065-custom-event-indexing.md)
 - [ADR-066-E2E-Testing](./adr-066-e2e-testing.md)
 - [ADR-068: Reverse-Sync](./adr-068-reverse-sync.md)
+- [ADR-067: Mempool Refactor](./adr-067-mempool-refactor.md)
 
 ### Rejected
 

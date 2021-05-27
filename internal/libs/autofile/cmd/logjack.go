@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	auto "github.com/tendermint/tendermint/libs/autofile"
+	auto "github.com/tendermint/tendermint/internal/libs/autofile"
 	tmos "github.com/tendermint/tendermint/libs/os"
 )
 

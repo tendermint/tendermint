@@ -38,15 +38,16 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [store] \#5848 Remove block store state in favor of using the db iterators directly (@cmwaters)
   - [state] \#5864 Use an iterator when pruning state (@cmwaters)
   - [types] \#6023 Remove `tm2pb.Header`, `tm2pb.BlockID`, `tm2pb.PartSetHeader` and `tm2pb.NewValidatorUpdate`.
-	- Each of the above types has a `ToProto` and `FromProto` method or function which replaced this logic.
+    - Each of the above types has a `ToProto` and `FromProto` method or function which replaced this logic.
   - [light] \#6054 Move `MaxRetryAttempt` option from client to provider.
-	- `NewWithOptions` now sets the max retry attempts and timeouts (@cmwaters)
+    - `NewWithOptions` now sets the max retry attempts and timeouts (@cmwaters)
   - [all] \#6077 Change spelling from British English to American (@cmwaters)
-	- Rename "Subscription.Cancelled()" to "Subscription.Canceled()" in libs/pubsub
-	- Rename "behaviour" pkg to "behavior" and internalized it in blockchain v2
+    - Rename "Subscription.Cancelled()" to "Subscription.Canceled()" in libs/pubsub
+    - Rename "behaviour" pkg to "behavior" and internalized it in blockchain v2
   - [rpc/client/http] \#6176 Remove `endpoint` arg from `New`, `NewWithTimeout` and `NewWithClient` (@melekes)
   - [rpc/client/http] \#6176 Unexpose `WSEvents` (@melekes)
   - [rpc/jsonrpc/client/ws_client] \#6176 `NewWS` no longer accepts options (use `NewWSWithOptions` and `OnReconnect` funcs to configure the client) (@melekes)
+  - [internal/libs] \#6366 Move `autofile`, `clist`,`fail`,`flowrate`, `protoio`, `sync`, `tempfile`, `test` and `timer` lib packages to an internal folder
   - [libs/rand] \#6364 Removed most of libs/rand in favour of standard lib's `math/rand` (@liamsi)
 
 - Blockchain Protocol
@@ -66,6 +67,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS
 
+- [types] \#6478 Add `block_id` to `newblock` event (@jeebster)
 - [crypto/ed25519] \#5632 Adopt zip215 `ed25519` verification. (@marbar3778)
 - [privval] \#5603 Add `--key` to `init`, `gen_validator`, `testnet` & `unsafe_reset_priv_validator` for use in generating `secp256k1` keys.
 - [privval] \#5725 Add gRPC support to private validator.

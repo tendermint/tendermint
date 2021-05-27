@@ -1,9 +1,11 @@
 package p2p_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -17,8 +19,8 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/crypto"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/mocks"
 	"github.com/tendermint/tendermint/p2p/p2ptest"
@@ -670,16 +672,31 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 		selfKey,
 		peerManager,
 		[]p2p.Transport{mockTransport},
-		p2p.RouterOptions{},
+		p2p.RouterOptions{
+			DialSleep: func(_ context.Context) {},
+			NumConcurrentDials: func() int {
+				ncpu := runtime.NumCPU()
+				if ncpu <= 3 {
+					return 3
+				}
+				return ncpu
+			},
+		},
 	)
+
 	require.NoError(t, err)
 	require.NoError(t, router.Start())
 
-	require.Eventually(t, func() bool {
-		return len(dialCh) == 3
-	}, time.Second, 10*time.Millisecond)
+	require.Eventually(t,
+		func() bool {
+			return len(dialCh) == 3
+		},
+		5*time.Second,
+		100*time.Millisecond,
+		"reached %d rather than 3", len(dialCh))
+
 	close(closeCh)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
 	require.NoError(t, router.Stop())
 	mockTransport.AssertExpectations(t)
@@ -738,7 +755,7 @@ func TestRouter_EvictPeers(t *testing.T) {
 		Status: p2p.PeerStatusUp,
 	})
 
-	require.NoError(t, peerManager.Errored(peerInfo.NodeID, errors.New("boom")))
+	peerManager.Errored(peerInfo.NodeID, errors.New("boom"))
 
 	p2ptest.RequireUpdate(t, sub, p2p.PeerUpdate{
 		NodeID: peerInfo.NodeID,
