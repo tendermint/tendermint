@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
+	"runtime"
 	"sync"
 	"time"
 
@@ -155,6 +157,17 @@ type RouterOptions struct {
 	// IP address to filter before the handshake. Functions should
 	// return an error to reject the peer.
 	FilterPeerByID func(context.Context, NodeID) error
+
+	// DialSleep controls the amount of time that the router
+	// sleeps between dialing peers. If not set, a default value
+	// is used that sleeps for a (random) amount of time up to 3
+	// seconds between submitting each peer to be dialed.
+	DialSleep func(context.Context)
+
+	// NumConcrruentDials controls how many parallel go routines
+	// are used to dial peers. This defaults to the value of
+	// runtime.NumCPU.
+	NumConcurrentDials func() int
 }
 
 const (
@@ -169,7 +182,7 @@ func (o *RouterOptions) Validate() error {
 	case "":
 		o.QueueType = queueTypeFifo
 	case queueTypeFifo, queueTypeWDRR, queueTypePriority:
-		// pass
+		// passI me
 	default:
 		return fmt.Errorf("queue type %q is not supported", o.QueueType)
 	}
@@ -480,6 +493,14 @@ func (r *Router) routeChannel(
 	}
 }
 
+func (r *Router) numConccurentDials() int {
+	if r.options.NumConcurrentDials == nil {
+		return runtime.NumCPU()
+	}
+
+	return r.options.NumConcurrentDials()
+}
+
 func (r *Router) filterPeersIP(ctx context.Context, ip net.IP, port uint16) error {
 	if r.options.FilterPeerByIP == nil {
 		return nil
@@ -494,6 +515,23 @@ func (r *Router) filterPeersID(ctx context.Context, id NodeID) error {
 	}
 
 	return r.options.FilterPeerByID(ctx, id)
+}
+
+func (r *Router) dialSleep(ctx context.Context) {
+	if r.options.DialSleep == nil {
+		// nolint:gosec // G404: Use of weak random number generator
+		timer := time.NewTimer(time.Duration(rand.Int63n(dialRandomizerIntervalMilliseconds)) * time.Millisecond)
+		defer timer.Stop()
+
+		select {
+		case <-ctx.Done():
+		case <-timer.C:
+		}
+
+		return
+	}
+
+	r.options.DialSleep(ctx)
 }
 
 // acceptPeers accepts inbound connections from peers on the given transport,
@@ -585,55 +623,98 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 func (r *Router) dialPeers() {
 	r.logger.Debug("starting dial routine")
 	ctx := r.stopCtx()
+
+	addresses := make(chan NodeAddress)
+	wg := &sync.WaitGroup{}
+
+	// Start a limited number of goroutines to dial peers in
+	// parallel. the goal is to avoid starting an unbounded number
+	// of goroutines thereby spamming the network, but also being
+	// able to add peers at a reasonable pace, though the number
+	// is somewhat arbitrary. The action is further throttled by a
+	// sleep after sending to the addresses channel.
+	for i := 0; i < r.numConccurentDials(); i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case address := <-addresses:
+					r.connectPeer(ctx, address)
+				}
+			}
+		}()
+	}
+
+LOOP:
 	for {
 		address, err := r.peerManager.DialNext(ctx)
 		switch {
 		case errors.Is(err, context.Canceled):
 			r.logger.Debug("stopping dial routine")
-			return
+			break LOOP
 		case err != nil:
 			r.logger.Error("failed to find next peer to dial", "err", err)
-			return
+			break LOOP
 		}
 
-		// Spawn off a goroutine to actually dial the peer, so that we can
-		// dial multiple peers in parallel.
-		go func() {
-			conn, err := r.dialPeer(ctx, address)
-			switch {
-			case errors.Is(err, context.Canceled):
-				return
-			case err != nil:
-				r.logger.Error("failed to dial peer", "peer", address, "err", err)
-				if err = r.peerManager.DialFailed(address); err != nil {
-					r.logger.Error("failed to report dial failure", "peer", address, "err", err)
-				}
-				return
-			}
-			defer conn.Close()
+		select {
+		case addresses <- address:
+			// this jitters the frequency that we call
+			// DialNext and prevents us from attempting to
+			// create connections too quickly.
 
-			peerID := address.NodeID
-			_, _, err = r.handshakePeer(ctx, conn, peerID)
-			switch {
-			case errors.Is(err, context.Canceled):
-				return
-			case err != nil:
-				r.logger.Error("failed to handshake with peer", "peer", address, "err", err)
-				if err = r.peerManager.DialFailed(address); err != nil {
-					r.logger.Error("failed to report dial failure", "peer", address, "err", err)
-				}
-				return
-			}
-
-			if err := r.runWithPeerMutex(func() error { return r.peerManager.Dialed(address) }); err != nil {
-				r.logger.Error("failed to accept connection",
-					"op", "outgoing/dialing", "peer", address.NodeID, "err", err)
-				return
-			}
-
-			r.routePeer(peerID, conn)
-		}()
+			r.dialSleep(ctx)
+			continue
+		case <-ctx.Done():
+			close(addresses)
+			break LOOP
+		}
 	}
+
+	wg.Wait()
+}
+
+func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
+	conn, err := r.dialPeer(ctx, address)
+	switch {
+	case errors.Is(err, context.Canceled):
+		return
+	case err != nil:
+		r.logger.Error("failed to dial peer", "peer", address, "err", err)
+		if err = r.peerManager.DialFailed(address); err != nil {
+			r.logger.Error("failed to report dial failure", "peer", address, "err", err)
+		}
+		return
+	}
+
+	_, _, err = r.handshakePeer(ctx, conn, address.NodeID)
+	switch {
+	case errors.Is(err, context.Canceled):
+		conn.Close()
+		return
+	case err != nil:
+		r.logger.Error("failed to handshake with peer", "peer", address, "err", err)
+		if err = r.peerManager.DialFailed(address); err != nil {
+			r.logger.Error("failed to report dial failure", "peer", address, "err", err)
+		}
+		conn.Close()
+		return
+	}
+
+	if err := r.runWithPeerMutex(func() error { return r.peerManager.Dialed(address) }); err != nil {
+		r.logger.Error("failed to dial peer",
+			"op", "outgoing/dialing", "peer", address.NodeID, "err", err)
+		conn.Close()
+		return
+
+	}
+
+	// routePeer (also) calls connection close
+	go r.routePeer(address.NodeID, conn)
 }
 
 func (r *Router) getOrMakeQueue(peerID NodeID) queue {
