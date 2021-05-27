@@ -174,7 +174,7 @@ func TestReactorErrorsOnReceivingTooManyPeers(t *testing.T) {
 
 func TestReactorSmallPeerStoreInALargeNetwork(t *testing.T) {
 	testNet := setupNetwork(t, testOptions{
-		TotalNodes:   10,
+		TotalNodes:   8,
 		MaxPeers:     5,
 		MaxConnected: 4,
 		BufferSize:   5,
@@ -193,9 +193,9 @@ func TestReactorSmallPeerStoreInALargeNetwork(t *testing.T) {
 
 func TestReactorLargePeerStoreInASmallNetwork(t *testing.T) {
 	testNet := setupNetwork(t, testOptions{
-		TotalNodes:   5,
-		MaxPeers:     50,
-		MaxConnected: 50,
+		TotalNodes:   4,
+		MaxPeers:     25,
+		MaxConnected: 20,
 		BufferSize:   5,
 	})
 	testNet.connectN(t, 2)
@@ -740,7 +740,7 @@ func (r *reactorTestSuite) connectPeers(t *testing.T, sourceNode, targetNode int
 			Status: p2p.PeerStatusUp,
 		}, peerUpdate)
 		r.logger.Debug("target connected with source")
-	case <-time.After(time.Second):
+	case <-time.After(2 * time.Second):
 		require.Fail(t, "timed out waiting for peer", "%v accepting %v",
 			targetNode, sourceNode)
 	}
@@ -752,7 +752,7 @@ func (r *reactorTestSuite) connectPeers(t *testing.T, sourceNode, targetNode int
 			Status: p2p.PeerStatusUp,
 		}, peerUpdate)
 		r.logger.Debug("source connected with target")
-	case <-time.After(time.Second):
+	case <-time.After(2 * time.Second):
 		require.Fail(t, "timed out waiting for peer", "%v dialing %v",
 			sourceNode, targetNode)
 	}
