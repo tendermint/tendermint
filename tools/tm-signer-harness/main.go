@@ -155,9 +155,10 @@ func setDefaultHome() {
 	if err != nil {
 		fmt.Println("The UserHomeDir is not defined, use the default TM Home PATH \"~/.tendermint\".")
 		defaultTMHome = "~/.tendermint"
-	} else {
-		defaultTMHome = fmt.Sprintf("%s/.tendermint", hd)
+		return
 	}
+
+	defaultTMHome = fmt.Sprintf("%s/.tendermint", hd)
 }
 
 func main() {
