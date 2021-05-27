@@ -92,7 +92,7 @@ type Node struct {
 // DefaultNewNode returns a Tendermint node with default settings for the
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
 // It implements NodeProvider.
-func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
+func DefaultNewNode(config *cfg.Config, logger log.Logger) (service.Service, error) {
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	if err != nil {
 		return nil, fmt.Errorf("failed to load or gen node key %s: %w", config.NodeKeyFile(), err)
@@ -137,7 +137,7 @@ func NewNode(config *cfg.Config,
 	dbProvider DBProvider,
 	metricsProvider MetricsProvider,
 	logger log.Logger,
-	options ...Option) (*Node, error) {
+	options ...Option) (service.Service, error) {
 
 	blockStore, stateDB, err := initDBs(config, dbProvider)
 	if err != nil {
@@ -457,7 +457,7 @@ func NewSeedNode(config *cfg.Config,
 	nodeKey p2p.NodeKey,
 	genesisDocProvider GenesisDocProvider,
 	logger log.Logger,
-	options ...Option) (*Node, error) {
+	options ...Option) (service.Service, error) {
 
 	genDoc, err := genesisDocProvider()
 	if err != nil {
@@ -1148,7 +1148,7 @@ func DefaultGenesisDocProviderFunc(config *cfg.Config) GenesisDocProvider {
 }
 
 // Provider takes a config and a logger and returns a ready to go Node.
-type Provider func(*cfg.Config, log.Logger) (*Node, error)
+type Provider func(*cfg.Config, log.Logger) (service.Service, error)
 
 // MetricsProvider returns a consensus, p2p and mempool Metrics.
 type MetricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics)
