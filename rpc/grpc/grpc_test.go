@@ -7,27 +7,36 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
-	"github.com/tendermint/tendermint/node"
+	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/service"
 	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 )
 
-func NodeSuite(t *testing.T) *node.Node {
+func NodeSuite(t *testing.T) (service.Service, *config.Config) {
 	t.Helper()
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	conf := rpctest.CreateConfig()
 
 	// start a tendermint node in the background to test against
 	app := kvstore.NewApplication()
-	node := rpctest.StartTendermint(app)
+	app.RetainBlocks = 9
+
+	node, closer, err := rpctest.StartTendermint(ctx, conf, app)
+	require.NoError(t, err)
 	t.Cleanup(func() {
-		rpctest.StopTendermint(node)
+		closer(ctx)
+		cancel()
 	})
-	return node
+	return node, conf
 }
 
 func TestBroadcastTx(t *testing.T) {
-	n := NodeSuite(t)
+	_, conf := NodeSuite(t)
 
-	res, err := rpctest.GetGRPCClient(n.Config()).BroadcastTx(
+	res, err := rpctest.GetGRPCClient(conf).BroadcastTx(
 		context.Background(),
 		&core_grpc.RequestBroadcastTx{Tx: []byte("this is a tx")},
 	)

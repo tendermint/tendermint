@@ -34,7 +34,7 @@ type reqResWithContext struct {
 // This is goroutine-safe, but users should beware that the application in
 // general is not meant to be interfaced with concurrent callers.
 type socketClient struct {
-	service.BaseService
+	*service.BaseService
 
 	addr        string
 	mustConnect bool
@@ -64,7 +64,7 @@ func NewSocketClient(addr string, mustConnect bool) Client {
 		reqSent: list.New(),
 		resCb:   nil,
 	}
-	cli.BaseService = *service.NewBaseService(nil, "socketClient", cli)
+	cli.BaseService = service.NewBaseService(nil, "socketClient", cli)
 	return cli
 }
 

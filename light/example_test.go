@@ -21,10 +21,21 @@ import (
 
 // Automatically getting new headers and verifying them.
 func ExampleClient_Update() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	conf := rpctest.CreateConfig()
+
 	// Start a test application
 	app := kvstore.NewApplication()
-	n := rpctest.StartTendermint(app, rpctest.SuppressStdout)
-	defer func() { rpctest.StopTendermint(n) }()
+	n, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+	defer closer(ctx)
+
+	if err := n.Start(); err != nil {
+		stdlog.Fatal(err)
+	}
 
 	// give Tendermint time to generate some blocks
 	time.Sleep(5 * time.Second)
@@ -35,17 +46,14 @@ func ExampleClient_Update() {
 	}
 	defer os.RemoveAll(dbDir)
 
-	var (
-		config  = n.Config()
-		chainID = config.ChainID()
-	)
+	chainID := conf.ChainID()
 
-	primary, err := httpp.New(chainID, config.RPC.ListenAddress)
+	primary, err := httpp.New(chainID, conf.RPC.ListenAddress)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
 
-	block, err := primary.LightBlock(context.Background(), 2)
+	block, err := primary.LightBlock(ctx, 2)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -56,7 +64,7 @@ func ExampleClient_Update() {
 	}
 
 	c, err := light.NewClient(
-		context.Background(),
+		ctx,
 		chainID,
 		light.TrustOptions{
 			Period: 504 * time.Hour, // 21 days
@@ -79,7 +87,7 @@ func ExampleClient_Update() {
 
 	time.Sleep(2 * time.Second)
 
-	h, err := c.Update(context.Background(), time.Now())
+	h, err := c.Update(ctx, time.Now())
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -94,10 +102,22 @@ func ExampleClient_Update() {
 
 // Manually getting light blocks and verifying them.
 func ExampleClient_VerifyLightBlockAtHeight() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	conf := rpctest.CreateConfig()
+
 	// Start a test application
 	app := kvstore.NewApplication()
-	n := rpctest.StartTendermint(app, rpctest.SuppressStdout)
-	defer func() { rpctest.StopTendermint(n) }()
+
+	n, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+	defer closer(ctx)
+
+	if err := n.Start(); err != nil {
+		stdlog.Fatal(err)
+	}
 
 	// give Tendermint time to generate some blocks
 	time.Sleep(5 * time.Second)
@@ -108,17 +128,14 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 	}
 	defer os.RemoveAll(dbDir)
 
-	var (
-		config  = n.Config()
-		chainID = config.ChainID()
-	)
+	chainID := conf.ChainID()
 
-	primary, err := httpp.New(chainID, config.RPC.ListenAddress)
+	primary, err := httpp.New(chainID, conf.RPC.ListenAddress)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
 
-	block, err := primary.LightBlock(context.Background(), 2)
+	block, err := primary.LightBlock(ctx, 2)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -128,8 +145,7 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 		stdlog.Fatal(err)
 	}
 
-	c, err := light.NewClient(
-		context.Background(),
+	c, err := light.NewClient(ctx,
 		chainID,
 		light.TrustOptions{
 			Period: 504 * time.Hour, // 21 days

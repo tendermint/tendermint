@@ -13,13 +13,25 @@ import (
 )
 
 func ExampleHTTP_simple() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Start a tendermint node (and kvstore) in the background to test against
 	app := kvstore.NewApplication()
-	node := rpctest.StartTendermint(app, rpctest.SuppressStdout)
-	defer rpctest.StopTendermint(node)
+	conf := rpctest.CreateConfig()
+
+	node, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
+	if err != nil {
+		log.Fatal(err) //nolint:gocritic
+	}
+	defer closer(ctx)
+
+	if err := node.Start(); err != nil {
+		log.Fatal(err) //nolint:gocritic
+	}
 
 	// Create our RPC client
-	rpcAddr := node.Config().RPC.ListenAddress
+	rpcAddr := conf.RPC.ListenAddress
 	c, err := rpchttp.New(rpcAddr)
 	if err != nil {
 		log.Fatal(err) //nolint:gocritic
@@ -66,18 +78,27 @@ func ExampleHTTP_simple() {
 }
 
 func ExampleHTTP_batching() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Start a tendermint node (and kvstore) in the background to test against
 	app := kvstore.NewApplication()
-	node := rpctest.StartTendermint(app, rpctest.SuppressStdout)
+	conf := rpctest.CreateConfig()
 
-	// Create our RPC client
-	rpcAddr := node.Config().RPC.ListenAddress
+	node, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
+	if err != nil {
+		log.Fatal(err) //nolint:gocritic
+	}
+	defer closer(ctx)
+	if err := node.Start(); err != nil {
+		log.Fatal(err) //nolint:gocritic
+	}
+
+	rpcAddr := conf.RPC.ListenAddress
 	c, err := rpchttp.New(rpcAddr)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	defer rpctest.StopTendermint(node)
 
 	// Create our two transactions
 	k1 := []byte("firstName")

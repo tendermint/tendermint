@@ -39,10 +39,12 @@ func TestNodeStartStop(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 
 	// create & start node
-	n, err := DefaultNewNode(config, log.TestingLogger())
+	ns, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
-	err = n.Start()
-	require.NoError(t, err)
+	require.NoError(t, ns.Start())
+
+	n, ok := ns.(*Node)
+	require.True(t, ok)
 
 	t.Logf("Started node %v", n.sw.NodeInfo())
 
@@ -77,18 +79,26 @@ func TestNodeStartStop(t *testing.T) {
 	}
 }
 
+func GetTestNode(t *testing.T, conf *cfg.Config, logger log.Logger) *Node {
+	t.Helper()
+	ns, err := DefaultNewNode(conf, logger)
+	require.NoError(t, err)
+
+	n, ok := ns.(*Node)
+	require.True(t, ok)
+	return n
+}
+
 func TestNodeDelayedStart(t *testing.T) {
 	config := cfg.ResetTestRoot("node_delayed_start_test")
 	defer os.RemoveAll(config.RootDir)
 	now := tmtime.Now()
 
 	// create & start node
-	n, err := DefaultNewNode(config, log.TestingLogger())
+	n := GetTestNode(t, config, log.TestingLogger())
 	n.GenesisDoc().GenesisTime = now.Add(2 * time.Second)
-	require.NoError(t, err)
 
-	err = n.Start()
-	require.NoError(t, err)
+	require.NoError(t, n.Start())
 	defer n.Stop() //nolint:errcheck // ignore for tests
 
 	startTime := tmtime.Now()
@@ -99,9 +109,8 @@ func TestNodeSetAppVersion(t *testing.T) {
 	config := cfg.ResetTestRoot("node_app_version_test")
 	defer os.RemoveAll(config.RootDir)
 
-	// create & start node
-	n, err := DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	// create node
+	n := GetTestNode(t, config, log.TestingLogger())
 
 	// default config uses the kvstore app
 	var appVersion uint64 = kvstore.ProtocolVersion
@@ -143,8 +152,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	}()
 	defer signerServer.Stop() //nolint:errcheck // ignore for tests
 
-	n, err := DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	n := GetTestNode(t, config, log.TestingLogger())
 	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
 }
 
@@ -186,9 +194,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 		require.NoError(t, err)
 	}()
 	defer pvsc.Stop() //nolint:errcheck // ignore for tests
-
-	n, err := DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	n := GetTestNode(t, config, log.TestingLogger())
 	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
 }
 
@@ -482,7 +488,7 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 
 	appClient, closer := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
 	t.Cleanup(func() { closer.Close() })
-	n, err := NewNode(config,
+	ns, err := NewNode(config,
 		pval,
 		nodeKey,
 		appClient,
@@ -493,6 +499,8 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 		CustomReactors(map[string]p2p.Reactor{"FOO": cr, "BLOCKCHAIN": customBlockchainReactor}),
 	)
 	require.NoError(t, err)
+	n, ok := ns.(*Node)
+	require.True(t, ok)
 
 	err = n.Start()
 	require.NoError(t, err)
@@ -513,13 +521,15 @@ func TestNodeNewSeedNode(t *testing.T) {
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	require.NoError(t, err)
 
-	n, err := NewSeedNode(config,
+	ns, err := NewSeedNode(config,
 		DefaultDBProvider,
 		nodeKey,
 		DefaultGenesisDocProviderFunc(config),
 		log.TestingLogger(),
 	)
 	require.NoError(t, err)
+	n, ok := ns.(*Node)
+	require.True(t, ok)
 
 	err = n.Start()
 	require.NoError(t, err)
