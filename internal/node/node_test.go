@@ -573,7 +573,7 @@ func TestNodeSetEventSink(t *testing.T) {
 
 	config.TxIndex.Indexer = []string{"psql"}
 	ns, err = DefaultNewNode(config, log.TestingLogger())
-	assert.Nil(t, n)
+	assert.Nil(t, ns)
 	assert.Equal(t, errors.New("the psql connection settings cannot be empty"), err)
 
 	var psqlConn = "test"

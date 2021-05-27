@@ -109,7 +109,11 @@ func GetGRPCClient(conf *cfg.Config) core_grpc.BroadcastAPIClient {
 
 type ServiceCloser func(context.Context) error
 
-func StartTendermint(ctx context.Context, conf *cfg.Config, app abci.Application, opts ...func(*Options)) (service.Service, ServiceCloser, error) {
+func StartTendermint(ctx context.Context,
+	conf *cfg.Config,
+	app abci.Application,
+	opts ...func(*Options)) (service.Service, ServiceCloser, error) {
+
 	nodeOpts := defaultOptions
 	for _, opt := range opts {
 		opt(&nodeOpts)

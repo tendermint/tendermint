@@ -747,10 +747,10 @@ func TestBatchedJSONRPCCalls(t *testing.T) {
 
 	_, conf := NodeSuite(t)
 	c := getHTTPClient(t, conf)
-	testBatchedJSONRPCCalls(t, ctx, c)
+	testBatchedJSONRPCCalls(ctx, t, c)
 }
 
-func testBatchedJSONRPCCalls(t *testing.T, ctx context.Context, c *rpchttp.HTTP) {
+func testBatchedJSONRPCCalls(ctx context.Context, t *testing.T, c *rpchttp.HTTP) {
 	k1, v1, tx1 := MakeTxKV()
 	k2, v2, tx2 := MakeTxKV()
 
@@ -850,7 +850,7 @@ func TestConcurrentJSONRPCBatching(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			testBatchedJSONRPCCalls(t, ctx, c)
+			testBatchedJSONRPCCalls(ctx, t, c)
 		}()
 	}
 	wg.Wait()

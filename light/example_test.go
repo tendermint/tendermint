@@ -31,7 +31,7 @@ func ExampleClient_Update() {
 	if err != nil {
 		stdlog.Fatal(err)
 	}
-	defer closer(ctx)
+	defer func() { _ = closer(ctx) }()
 
 	if err := n.Start(); err != nil {
 		stdlog.Fatal(err)
@@ -113,7 +113,7 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 	if err != nil {
 		stdlog.Fatal(err)
 	}
-	defer closer(ctx)
+	defer func() { _ = closer(ctx) }()
 
 	if err := n.Start(); err != nil {
 		stdlog.Fatal(err)

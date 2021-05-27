@@ -30,7 +30,7 @@ func NodeSuite(t *testing.T) (service.Service, *config.Config) {
 	node, closer, err := rpctest.StartTendermint(ctx, conf, app)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		closer(ctx)
+		_ = closer(ctx)
 		cancel()
 		app.Close()
 		_ = os.RemoveAll(dir)
