@@ -125,7 +125,7 @@ func doHandshake(
 func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusLogger log.Logger, mode string) {
 	// Log the version info.
 	logger.Info("Version info",
-		"software", version.Version,
+		"tmVersion", version.TMVersion,
 		"block", version.BlockProtocol,
 		"p2p", version.P2PProtocol,
 		"mode", mode,
@@ -676,7 +676,7 @@ func makeNodeInfo(
 		),
 		NodeID:  nodeKey.ID,
 		Network: genDoc.ChainID,
-		Version: version.Version,
+		Version: version.TMVersion,
 		Channels: []byte{
 			bcChannel,
 			byte(cs.StateChannel),
@@ -725,7 +725,7 @@ func makeSeedNodeInfo(
 		),
 		NodeID:   nodeKey.ID,
 		Network:  genDoc.ChainID,
-		Version:  version.Version,
+		Version:  version.TMVersion,
 		Channels: []byte{},
 		Moniker:  config.Moniker,
 		Other: p2p.NodeInfoOther{
