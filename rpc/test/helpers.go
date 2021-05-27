@@ -14,8 +14,8 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	nm "github.com/tendermint/tendermint/internal/node"
+	"github.com/tendermint/tendermint/internal/p2p"
 	tmnet "github.com/tendermint/tendermint/libs/net"
-	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
