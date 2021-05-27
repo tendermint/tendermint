@@ -1,9 +1,9 @@
 package mock
 
 import (
-	mempl "github.com/tendermint/tendermint/internal/mempool"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/libs/clist"
+	mempl "github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/types"
 )
 

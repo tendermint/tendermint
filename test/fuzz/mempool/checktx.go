@@ -1,9 +1,9 @@
 package checktx
 
 import (
-	mempl "github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/config"
+	mempl "github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/proxy"
 )
 

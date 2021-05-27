@@ -12,9 +12,9 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	mempl "github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
+	mempl "github.com/tendermint/tendermint/internal/mempool"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
