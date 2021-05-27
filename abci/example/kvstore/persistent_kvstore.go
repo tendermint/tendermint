@@ -119,6 +119,17 @@ func (app *PersistentKVStoreApplication) InitChain(req types.RequestInitChain) t
 	return types.ResponseInitChain{}
 }
 
+// Ensure no 0 byte txs were serialized
+func (app *PersistentKVStoreApplication) ProcessProposal(req types.RequestProcessProposal) types.ResponseProcessProposal {
+	for _, tx := range req.Txs {
+		if len(tx) <= 0 {
+			return types.ResponseProcessProposal{AcceptBlock: false}
+		}
+	}
+
+	return types.ResponseProcessProposal{AcceptBlock: true}
+}
+
 // Track the block hash and header information
 func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
 	// reset valset changes

@@ -363,7 +363,7 @@ func TestStateFullRoundNil(t *testing.T) {
 
 	voteCh := subscribeUnBuffered(cs.eventBus, types.EventQueryVote)
 
-	cs.enterPrevote(height, round)
+	cs.enterPrevote(height, round, false)
 	cs.startRoutines(4)
 
 	ensurePrevote(voteCh, height, round)   // prevote

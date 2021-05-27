@@ -212,6 +212,36 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	assert.Equal(t, abciEv, app.ByzantineValidators)
 }
 
+func TestProcessProposal(t *testing.T) {
+	height := 1
+	runTest := func(txs types.Txs, expectAccept bool) {
+		app := &testApp{}
+		cc := proxy.NewLocalClientCreator(app)
+		proxyApp := proxy.NewAppConns(cc)
+		err := proxyApp.Start()
+		require.Nil(t, err)
+		defer proxyApp.Stop() //nolint:errcheck // ignore for tests
+
+		state, stateDB, _ := makeState(1, height)
+		stateStore := sm.NewStore(stateDB)
+
+		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
+			mmock.Mempool{}, sm.EmptyEvidencePool{})
+
+		block := makeBlock(state, int64(height))
+		block.Txs = txs
+		acceptBlock, err := blockExec.ProcessProposal(block)
+		require.Nil(t, err)
+		require.Equal(t, expectAccept, acceptBlock)
+	}
+	goodTxs := makeTxs(int64(height))
+	runTest(goodTxs, true)
+	// testApp has process proposal fail if any tx is 0-len
+	badTxs := makeTxs(int64(height))
+	badTxs[0] = types.Tx{}
+	runTest(badTxs, false)
+}
+
 func TestValidateValidatorUpdates(t *testing.T) {
 	pubkey1 := ed25519.GenPrivKey().PubKey()
 	pubkey2 := ed25519.GenPrivKey().PubKey()
