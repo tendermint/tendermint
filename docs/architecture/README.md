@@ -48,7 +48,6 @@ Note the context/background should be written in the present tense.
 - [ADR-019: Multisigs](./adr-019-multisigs.md)
 - [ADR-020: Block-Size](./adr-020-block-size.md)
 - [ADR-021: ABCI-Events](./adr-021-abci-events.md)
-- [ADR-024: Sign-Bytes](./adr-024-sign-bytes.md)
 - [ADR-025: Commit](./adr-025-commit.md)
 - [ADR-026: General-Merkle-Proof](./adr-026-general-merkle-proof.md)
 - [ADR-033: Pubsub](./adr-033-pubsub.md)
@@ -70,6 +69,7 @@ Note the context/background should be written in the present tense.
 ### Accepted
 
 - [ADR-006: Trust-Metric](./adr-006-trust-metric.md)
+- [ADR-024: Sign-Bytes](./adr-024-sign-bytes.md)
 - [ADR-035: Documentation](./adr-035-documentation.md)
 - [ADR-039: Peer-Behaviour](./adr-039-peer-behaviour.md)
 - [ADR-060: Go-API-Stability](./adr-060-go-api-stability.md)
