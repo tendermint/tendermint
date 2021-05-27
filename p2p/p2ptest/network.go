@@ -1,6 +1,7 @@
 package p2ptest
 
 import (
+	"context"
 	"math/rand"
 	"testing"
 	"time"
@@ -97,7 +98,7 @@ func (n *Network) Start(t *testing.T) {
 					NodeID: targetNode.NodeID,
 					Status: p2p.PeerStatusUp,
 				}, peerUpdate)
-			case <-time.After(time.Second):
+			case <-time.After(3 * time.Second):
 				require.Fail(t, "timed out waiting for peer", "%v dialing %v",
 					sourceNode.NodeID, targetNode.NodeID)
 			}
@@ -108,7 +109,7 @@ func (n *Network) Start(t *testing.T) {
 					NodeID: sourceNode.NodeID,
 					Status: p2p.PeerStatusUp,
 				}, peerUpdate)
-			case <-time.After(time.Second):
+			case <-time.After(3 * time.Second):
 				require.Fail(t, "timed out waiting for peer", "%v accepting %v",
 					targetNode.NodeID, sourceNode.NodeID)
 			}
@@ -252,7 +253,7 @@ func (n *Network) MakeNode(t *testing.T, opts NodeOptions) *Node {
 		privKey,
 		peerManager,
 		[]p2p.Transport{transport},
-		p2p.RouterOptions{},
+		p2p.RouterOptions{DialSleep: func(_ context.Context) {}},
 	)
 	require.NoError(t, err)
 	require.NoError(t, router.Start())

@@ -14,7 +14,7 @@ import (
 
 	"github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
-	"github.com/tendermint/tendermint/libs/autofile"
+	"github.com/tendermint/tendermint/internal/libs/autofile"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtypes "github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"

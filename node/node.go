@@ -15,6 +15,7 @@ import (
 	"github.com/rs/cors"
 	dbm "github.com/tendermint/tm-db"
 
+	_ "github.com/lib/pq" // provide the psql db driver
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cs "github.com/tendermint/tendermint/consensus"
@@ -83,8 +84,7 @@ type Node struct {
 	evidencePool      *evidence.Pool // tracking evidence
 	proxyApp          proxy.AppConns // connection to the application
 	rpcListeners      []net.Listener // rpc servers
-	txIndexer         indexer.TxIndexer
-	blockIndexer      indexer.BlockIndexer
+	eventSinks        []indexer.EventSink
 	indexerService    *indexer.Service
 	prometheusSrv     *http.Server
 }
@@ -166,7 +166,7 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	indexerService, txIndexer, blockIndexer, err := createAndStartIndexerService(config, dbProvider, eventBus, logger)
+	indexerService, eventSinks, err := createAndStartIndexerService(config, dbProvider, eventBus, logger, genDoc.ChainID)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +232,7 @@ func NewNode(config *cfg.Config,
 
 	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
 	// TODO: Use a persistent peer database.
-	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state)
+	nodeInfo, err := makeNodeInfo(config, nodeKey, eventSinks, genDoc, state)
 	if err != nil {
 		return nil, err
 	}
@@ -348,27 +348,6 @@ func NewNode(config *cfg.Config,
 	transport.AddChannelDescriptors(evReactorShim.GetChannels())
 	transport.AddChannelDescriptors(stateSyncReactorShim.GetChannels())
 
-	// setup Transport and Switch
-	sw := createSwitch(
-		config, transport, p2pMetrics, mpReactorShim, bcReactorForSwitch,
-		stateSyncReactorShim, csReactorShim, evReactorShim, proxyApp, nodeInfo, nodeKey, p2pLogger,
-	)
-
-	err = sw.AddPersistentPeers(strings.SplitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
-	if err != nil {
-		return nil, fmt.Errorf("could not add peers from persistent-peers field: %w", err)
-	}
-
-	err = sw.AddUnconditionalPeerIDs(strings.SplitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
-	if err != nil {
-		return nil, fmt.Errorf("could not add peer ids from unconditional_peer_ids field: %w", err)
-	}
-
-	addrBook, err := createAddrBookAndSetOnSwitch(config, sw, p2pLogger, nodeKey)
-	if err != nil {
-		return nil, fmt.Errorf("could not create addrbook: %w", err)
-	}
-
 	// Optionally, start the pex reactor
 	//
 	// TODO:
@@ -381,22 +360,46 @@ func NewNode(config *cfg.Config,
 	//
 	// If PEX is on, it should handle dialing the seeds. Otherwise the switch does it.
 	// Note we currently use the addrBook regardless at least for AddOurAddress
+
 	var (
 		pexReactor   *pex.Reactor
 		pexReactorV2 *pex.ReactorV2
+		sw           *p2p.Switch
+		addrBook     pex.AddrBook
 	)
 
-	if config.P2P.PexReactor {
-		pexCh := pex.ChannelDescriptor()
-		transport.AddChannelDescriptors([]*p2p.ChannelDescriptor{&pexCh})
-		if config.P2P.DisableLegacy {
-			pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
+	pexCh := pex.ChannelDescriptor()
+	transport.AddChannelDescriptors([]*p2p.ChannelDescriptor{&pexCh})
+
+	if config.P2P.DisableLegacy {
+		addrBook = nil
+		pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
+		if err != nil {
+			return nil, err
 		}
+	} else {
+		// setup Transport and Switch
+		sw = createSwitch(
+			config, transport, p2pMetrics, mpReactorShim, bcReactorForSwitch,
+			stateSyncReactorShim, csReactorShim, evReactorShim, proxyApp, nodeInfo, nodeKey, p2pLogger,
+		)
+
+		err = sw.AddPersistentPeers(strings.SplitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
+		if err != nil {
+			return nil, fmt.Errorf("could not add peers from persistent-peers field: %w", err)
+		}
+
+		err = sw.AddUnconditionalPeerIDs(strings.SplitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
+		if err != nil {
+			return nil, fmt.Errorf("could not add peer ids from unconditional_peer_ids field: %w", err)
+		}
+
+		addrBook, err = createAddrBookAndSetOnSwitch(config, sw, p2pLogger, nodeKey)
+		if err != nil {
+			return nil, fmt.Errorf("could not create addrbook: %w", err)
+		}
+
+		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
 	}
 
 	if config.RPC.PprofListenAddress != "" {
@@ -434,10 +437,9 @@ func NewNode(config *cfg.Config,
 		evidenceReactor:  evReactor,
 		evidencePool:     evPool,
 		proxyApp:         proxyApp,
-		txIndexer:        txIndexer,
 		indexerService:   indexerService,
-		blockIndexer:     blockIndexer,
 		eventBus:         eventBus,
+		eventSinks:       eventSinks,
 	}
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
 
@@ -609,9 +611,6 @@ func (n *Node) OnStart() error {
 		time.Sleep(genTime.Sub(now))
 	}
 
-	// Add private IDs to addrbook to block those peers being added
-	n.addrBook.AddPrivateIDs(strings.SplitAndTrimEmpty(n.config.P2P.PrivatePeerIDs, ",", " "))
-
 	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
 	if n.config.RPC.ListenAddress != "" && n.config.Mode != cfg.ModeSeed {
@@ -643,6 +642,8 @@ func (n *Node) OnStart() error {
 	if n.config.P2P.DisableLegacy {
 		err = n.router.Start()
 	} else {
+		// Add private IDs to addrbook to block those peers being added
+		n.addrBook.AddPrivateIDs(strings.SplitAndTrimEmpty(n.config.P2P.PrivatePeerIDs, ",", " "))
 		err = n.sw.Start()
 	}
 	if err != nil {
@@ -682,12 +683,13 @@ func (n *Node) OnStart() error {
 		if err := n.pexReactorV2.Start(); err != nil {
 			return err
 		}
-	}
+	} else {
+		// Always connect to persistent peers
+		err = n.sw.DialPeersAsync(strings.SplitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
+		if err != nil {
+			return fmt.Errorf("could not dial peers from persistent-peers field: %w", err)
+		}
 
-	// Always connect to persistent peers
-	err = n.sw.DialPeersAsync(strings.SplitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
-	if err != nil {
-		return fmt.Errorf("could not dial peers from persistent-peers field: %w", err)
 	}
 
 	// Run state sync
@@ -807,8 +809,7 @@ func (n *Node) ConfigureRPC() (*rpccore.Environment, error) {
 		P2PTransport:   n,
 
 		GenDoc:           n.genesisDoc,
-		TxIndexer:        n.txIndexer,
-		BlockIndexer:     n.blockIndexer,
+		EventSinks:       n.eventSinks,
 		ConsensusReactor: n.consensusReactor,
 		EventBus:         n.eventBus,
 		Mempool:          n.mempool,
@@ -824,6 +825,10 @@ func (n *Node) ConfigureRPC() (*rpccore.Environment, error) {
 		}
 		rpcCoreEnv.PubKey = pubKey
 	}
+	if err := rpcCoreEnv.InitGenesisChunks(); err != nil {
+		return nil, err
+	}
+
 	return &rpcCoreEnv, nil
 }
 
@@ -1033,9 +1038,9 @@ func (n *Node) Config() *cfg.Config {
 	return n.config
 }
 
-// TxIndexer returns the Node's TxIndexer.
-func (n *Node) TxIndexer() indexer.TxIndexer {
-	return n.txIndexer
+// EventSinks returns the Node's event indexing sinks.
+func (n *Node) EventSinks() []indexer.EventSink {
+	return n.eventSinks
 }
 
 //------------------------------------------------------------------------------

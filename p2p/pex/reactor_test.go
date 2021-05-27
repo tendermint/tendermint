@@ -49,7 +49,7 @@ func TestReactorBasic(t *testing.T) {
 
 func TestReactorConnectFullNetwork(t *testing.T) {
 	testNet := setupNetwork(t, testOptions{
-		TotalNodes: 8,
+		TotalNodes: 4,
 	})
 
 	// make every node be only connected with one other node (it actually ends up
@@ -174,9 +174,9 @@ func TestReactorErrorsOnReceivingTooManyPeers(t *testing.T) {
 
 func TestReactorSmallPeerStoreInALargeNetwork(t *testing.T) {
 	testNet := setupNetwork(t, testOptions{
-		TotalNodes:   16,
-		MaxPeers:     8,
-		MaxConnected: 6,
+		TotalNodes:   8,
+		MaxPeers:     4,
+		MaxConnected: 3,
 		BufferSize:   8,
 	})
 	testNet.connectN(t, 1)
@@ -193,10 +193,10 @@ func TestReactorSmallPeerStoreInALargeNetwork(t *testing.T) {
 
 func TestReactorLargePeerStoreInASmallNetwork(t *testing.T) {
 	testNet := setupNetwork(t, testOptions{
-		TotalNodes:   10,
-		MaxPeers:     100,
-		MaxConnected: 100,
-		BufferSize:   10,
+		TotalNodes:   3,
+		MaxPeers:     25,
+		MaxConnected: 25,
+		BufferSize:   5,
 	})
 	testNet.connectN(t, 1)
 	testNet.start(t)
@@ -668,6 +668,7 @@ func (r *reactorTestSuite) requireNumberOfPeers(
 	nodeIndex, numPeers int,
 	waitPeriod time.Duration,
 ) {
+	t.Helper()
 	require.Eventuallyf(t, func() bool {
 		actualNumPeers := len(r.network.Nodes[r.nodes[nodeIndex]].PeerManager.Peers())
 		return actualNumPeers >= numPeers
@@ -739,7 +740,7 @@ func (r *reactorTestSuite) connectPeers(t *testing.T, sourceNode, targetNode int
 			Status: p2p.PeerStatusUp,
 		}, peerUpdate)
 		r.logger.Debug("target connected with source")
-	case <-time.After(time.Second):
+	case <-time.After(2 * time.Second):
 		require.Fail(t, "timed out waiting for peer", "%v accepting %v",
 			targetNode, sourceNode)
 	}
@@ -751,7 +752,7 @@ func (r *reactorTestSuite) connectPeers(t *testing.T, sourceNode, targetNode int
 			Status: p2p.PeerStatusUp,
 		}, peerUpdate)
 		r.logger.Debug("source connected with target")
-	case <-time.After(time.Second):
+	case <-time.After(2 * time.Second):
 		require.Fail(t, "timed out waiting for peer", "%v dialing %v",
 			sourceNode, targetNode)
 	}

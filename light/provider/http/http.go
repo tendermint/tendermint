@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/url"
@@ -119,6 +120,12 @@ func (p *http) LightBlock(ctx context.Context, height int64) (*types.LightBlock,
 	if height != 0 && sh.Height != height {
 		return nil, provider.ErrBadLightBlock{
 			Reason: fmt.Errorf("height %d responded doesn't match height %d requested", sh.Height, height),
+		}
+	}
+
+	if sh.Header == nil {
+		return nil, provider.ErrBadLightBlock{
+			Reason: errors.New("header is nil unexpectedly"),
 		}
 	}
 

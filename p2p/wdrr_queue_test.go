@@ -8,8 +8,8 @@ import (
 
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 type testMessage = gogotypes.StringValue
