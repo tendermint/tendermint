@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/evidence"
+	"github.com/tendermint/tendermint/internal/evidence"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	mempl "github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"

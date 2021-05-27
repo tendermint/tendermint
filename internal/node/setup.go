@@ -14,7 +14,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/evidence"
+	"github.com/tendermint/tendermint/internal/evidence"
 	bcv0 "github.com/tendermint/tendermint/internal/blockchain/v0"
 	bcv2 "github.com/tendermint/tendermint/internal/blockchain/v2"
 	cs "github.com/tendermint/tendermint/internal/consensus"

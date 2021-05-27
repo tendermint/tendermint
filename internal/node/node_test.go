@@ -20,7 +20,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	"github.com/tendermint/tendermint/evidence"
+	"github.com/tendermint/tendermint/internal/evidence"
 	mempl "github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	p2pmock "github.com/tendermint/tendermint/internal/p2p/mock"

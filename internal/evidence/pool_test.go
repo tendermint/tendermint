@@ -11,8 +11,8 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	"github.com/tendermint/tendermint/evidence"
-	"github.com/tendermint/tendermint/evidence/mocks"
+	"github.com/tendermint/tendermint/internal/evidence"
+	"github.com/tendermint/tendermint/internal/evidence/mocks"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	sm "github.com/tendermint/tendermint/state"
