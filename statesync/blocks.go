@@ -29,7 +29,7 @@ type blockQueue struct {
 	terminal   *types.LightBlock
 
 	// track failed heights so we know what blocks to try fetch again
-	failed     *maxIntHeap
+	failed *maxIntHeap
 	// also count retries to know when to give up
 	retries    int
 	maxRetries int

@@ -406,11 +406,11 @@ func TestReactor_Dispatcher(t *testing.T) {
 	go func() { wg.Wait(); cancel() }()
 
 	select {
-		case <-time.After(time.Second):
-			// not all of the requests to the dispatcher were responded to
-			// within the timeout
-			t.Fail()
-		case <-ctx.Done():
+	case <-time.After(time.Second):
+		// not all of the requests to the dispatcher were responded to
+		// within the timeout
+		t.Fail()
+	case <-ctx.Done():
 	}
 }
 
