@@ -245,6 +245,7 @@ If there were no release candidates, and you'd like to cut a major release direc
      all PRs
    - Ensure that UPGRADING.md is up-to-date and includes notes on any breaking changes
       or other upgrading flows.
+   - Bump TMVersionDefault version in  `version.go`
    - Bump P2P and block protocol versions in  `version.go`, if necessary
    - Bump ABCI protocol version in `version.go`, if necessary
    - Add any release notes you would like to be added to the body of the release to `release_notes.md`.
@@ -272,6 +273,7 @@ If there were no release candidates, and you'd like to cut a major release direc
      release, and add the github aliases of external contributors to the top of
      the changelog. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
    - Reset the `CHANGELOG_PENDING.md`
+   - Bump TMVersionDefault version in  `version.go`
    - Bump P2P and block protocol versions in  `version.go`, if necessary
    - Bump ABCI protocol version in `version.go`, if necessary
    - Make sure all significant breaking changes are covered in `UPGRADING.md`
