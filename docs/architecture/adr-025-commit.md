@@ -127,7 +127,7 @@ basis.
 
 ## Status
 
-Accepted
+Implemented
 
 ## Consequences
 

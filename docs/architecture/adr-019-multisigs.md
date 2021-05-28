@@ -143,7 +143,7 @@ Aggregation of pubkeys / sigs in Schnorr sigs / BLS sigs is not backwards compat
 
 ## Status
 
-Accepted.
+Implemented (moved to cosmos-sdk)
 
 ## Consequences
 
