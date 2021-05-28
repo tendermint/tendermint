@@ -105,3 +105,4 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [blockchain/v1] [\#5701](https://github.com/tendermint/tendermint/pull/5701) Handle peers without blocks (@melekes)
 - [blockchain/v1] \#5711 Fix deadlock (@melekes)
 - [evidence] \#6375 Fix bug with inconsistent LightClientAttackEvidence hashing (cmwaters)
+- [rpc] \#6507 fix RPC client doesn't handle url's without ports (@JayT106)
