@@ -235,7 +235,7 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 func (app *Application) validatorSetUpdates(height uint64) (*abci.ValidatorSetUpdate, error) {
 	updates := app.cfg.ValidatorUpdates[fmt.Sprintf("%v", height)]
 	if len(updates) == 0 {
-		return nil, nil
+		return nil, fmt.Errorf("validator-updates must be set")
 	}
 
 	thresholdPublicKeyUpdateString := app.cfg.ThesholdPublicKeyUpdate[fmt.Sprintf("%v", height)]
