@@ -1,50 +1,104 @@
 package mockcoreserver
 
 import (
+	"encoding/hex"
+	"strconv"
+
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
+	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/privval"
 )
 
 // CoreServer is an interface of a mock core-server
 type CoreServer interface {
 	QuorumInfo(cmd btcjson.QuorumCmd) btcjson.QuorumInfoResult
+	QuorumSign(cmd btcjson.QuorumCmd) btcjson.QuorumSignResult
 	MasternodeStatus(cmd btcjson.MasternodeCmd) btcjson.MasternodeStatusResult
 	GetNetworkInfo(cmd btcjson.GetNetworkInfoCmd) btcjson.GetNetworkInfoResult
 }
 
 // MockCoreServer is an implementation of a mock core-server
 type MockCoreServer struct {
-	ChainID    string
-	LLMQType   btcjson.LLMQType
-	QuorumHash crypto.QuorumHash
-	FilePV     *privval.FilePV
+	ChainID  string
+	LLMQType btcjson.LLMQType
+	FilePV   *privval.FilePV
 }
 
-// Quorum returns a quorum info result
+// QuorumInfo returns a quorum-info result
 func (c *MockCoreServer) QuorumInfo(cmd btcjson.QuorumCmd) btcjson.QuorumInfoResult {
-	// todo needs to use config data for a result
-	return btcjson.QuorumInfoResult{
-		Height:     1010,
-		Type:       "llmq_50_60",
-		QuorumHash: c.QuorumHash.String(),
-		MinedBlock: "",
-		Members: []btcjson.QuorumMember{
-			{
-				ProTxHash:      "6c91363d97b286e921afb5cf7672c88a2f1614d36d32058c34bef8b44e026007",
-				PubKeyOperator: "81749ba8363e5c03e9d6318b0491e38305cf59d9d57cea2295a86ecfa696622571f266c28bacc78666e8b9b0fb2b3121",
-				Valid:          true,
-				PubKeyShare:    "83349ba8363e5c03e9d6318b0491e38305cf59d9d57cea2295a86ecfa696622571f266c28bacc78666e8b9b0fb2b3123",
-			},
-		},
-		QuorumPublicKey: "0644ff153b9b92c6a59e2adf4ef0b9836f7f6af05fe432ffdcb69bc9e300a2a70af4a8d9fc61323f6b81074d740033d2",
-		SecretKeyShare:  "3da0d8f532309660f7f44aa0ed42c1569773b39c70f5771ce5604be77e50759e",
+	var members []btcjson.QuorumMember
+	proTxHash, err := c.FilePV.GetProTxHash()
+	if err != nil {
+		panic(err)
 	}
+	quorumHash := strVal(cmd.QuorumHash)
+	qq := bytes.HexBytes(quorumHash)
+	pk, err := c.FilePV.GetPubKey(qq)
+	if err != nil {
+		panic(err)
+	}
+	if pk != nil {
+		members = append(members, btcjson.QuorumMember{
+			ProTxHash:      proTxHash.String(),
+			PubKeyOperator: crypto.CRandHex(96),
+			Valid:          true,
+			PubKeyShare:    hex.EncodeToString(pk.Bytes()),
+		})
+	}
+	pk.String()
+	tpk, err := c.FilePV.GetThresholdPublicKey(qq)
+	if err != nil {
+		panic(err)
+	}
+	return btcjson.QuorumInfoResult{
+		Height:          uint32(c.FilePV.GetHeight(qq)),
+		Type:            strconv.Itoa(int(c.LLMQType)),
+		QuorumHash:      quorumHash,
+		Members:         members,
+		QuorumPublicKey: tpk.String(),
+	}
+}
+
+// QuorumSign returns a quorum-sign result
+func (c *MockCoreServer) QuorumSign(cmd btcjson.QuorumCmd) btcjson.QuorumSignResult {
+	reqID, err := hex.DecodeString(strVal(cmd.RequestID))
+	if err != nil {
+		panic(err)
+	}
+	msgHash, err := hex.DecodeString(strVal(cmd.MessageHash))
+	if err != nil {
+		panic(err)
+	}
+	qh := c.FilePV.Key.QuorumHash
+	signID := crypto.SignId(
+		*cmd.LLMQType,
+		bls12381.ReverseBytes(qh),
+		bls12381.ReverseBytes(reqID),
+		bls12381.ReverseBytes(msgHash),
+	)
+	sign, err := c.FilePV.Key.PrivKey.SignDigest(signID)
+	if err != nil {
+		panic(err)
+	}
+	res := btcjson.QuorumSignResult{
+		LLMQType:   int(c.LLMQType),
+		QuorumHash: c.FilePV.Key.QuorumHash.String(),
+		ID:         hex.EncodeToString(reqID),
+		MsgHash:    hex.EncodeToString(msgHash),
+		SignHash:   hex.EncodeToString(signID),
+		Signature:  hex.EncodeToString(sign),
+	}
+	return res
 }
 
 // MasternodeStatus returns a masternode-status result
 func (c *MockCoreServer) MasternodeStatus(_ btcjson.MasternodeCmd) btcjson.MasternodeStatusResult {
-	proTxHash, _ := c.FilePV.GetProTxHash()
+	proTxHash, err := c.FilePV.GetProTxHash()
+	if err != nil {
+		panic(err)
+	}
 	return btcjson.MasternodeStatusResult{
 		ProTxHash: proTxHash.String(),
 	}
@@ -58,6 +112,7 @@ func (c *MockCoreServer) GetNetworkInfo(_ btcjson.GetNetworkInfoCmd) btcjson.Get
 // StaticCoreServer is a mock of core-server with static result data
 type StaticCoreServer struct {
 	QuorumInfoResult       btcjson.QuorumInfoResult
+	QuorumSignResult       btcjson.QuorumSignResult
 	MasternodeStatusResult btcjson.MasternodeStatusResult
 	GetNetworkInfoResult   btcjson.GetNetworkInfoResult
 }
@@ -65,6 +120,11 @@ type StaticCoreServer struct {
 // Quorum returns constant quorum-info result
 func (c *StaticCoreServer) QuorumInfo(_ btcjson.QuorumCmd) btcjson.QuorumInfoResult {
 	return c.QuorumInfoResult
+}
+
+// Quorum returns constant quorum-sign result
+func (c *StaticCoreServer) QuorumSign(_ btcjson.QuorumCmd) btcjson.QuorumSignResult {
+	return c.QuorumSignResult
 }
 
 // MasternodeStatus returns constant masternode-status result
@@ -75,4 +135,11 @@ func (c *StaticCoreServer) MasternodeStatus(_ btcjson.MasternodeCmd) btcjson.Mas
 // GetNetworkInfo returns constant network-info result
 func (c *StaticCoreServer) GetNetworkInfo(_ btcjson.GetNetworkInfoCmd) btcjson.GetNetworkInfoResult {
 	return c.GetNetworkInfoResult
+}
+
+func strVal(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

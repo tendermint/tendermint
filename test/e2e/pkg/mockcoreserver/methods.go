@@ -16,12 +16,9 @@ type MethodFunc func(srv *JRPCServer)
 func WithQuorumInfoMethod(cs CoreServer, times int) MethodFunc {
 	call := OnMethod(func(req btcjson.Request) (interface{}, error) {
 		cmd := btcjson.QuorumCmd{}
-		fields := []interface{}{cmd.SubCmd, cmd.LLMQType, cmd.QuorumHash, cmd.IncludeSkShare}
-		for i, field := range fields {
-			err := json.Unmarshal(req.Params[i], &field)
-			if err != nil {
-				return err, nil
-			}
+		err := unmarshalCmd(req, &cmd.SubCmd, &cmd.LLMQType, &cmd.QuorumHash, &cmd.IncludeSkShare)
+		if err != nil {
+			return nil, err
 		}
 		return cs.QuorumInfo(cmd), nil
 	})
@@ -34,16 +31,32 @@ func WithQuorumInfoMethod(cs CoreServer, times int) MethodFunc {
 	}
 }
 
+// WithQuorumSignMethod ...
+func WithQuorumSignMethod(cs CoreServer, times int) MethodFunc {
+	call := OnMethod(func(req btcjson.Request) (interface{}, error) {
+		cmd := btcjson.QuorumCmd{}
+		err := unmarshalCmd(req, &cmd.SubCmd, &cmd.LLMQType, &cmd.RequestID, &cmd.MessageHash, &cmd.QuorumHash, &cmd.Submit)
+		if err != nil {
+			return nil, err
+		}
+		return cs.QuorumSign(cmd), nil
+	})
+	return func(srv *JRPCServer) {
+		srv.
+			On("quorum sign").
+			Expect(And(Debug())).
+			Times(times).
+			Respond(call, JsonContentType())
+	}
+}
+
 // WithMasternodeMethod ...
 func WithMasternodeMethod(cs CoreServer, times int) MethodFunc {
 	call := OnMethod(func(req btcjson.Request) (interface{}, error) {
 		cmd := btcjson.MasternodeCmd{}
-		fields := []interface{}{cmd.SubCmd}
-		for i, field := range fields {
-			err := json.Unmarshal(req.Params[i], &field)
-			if err != nil {
-				return err, nil
-			}
+		err := unmarshalCmd(req, &cmd.SubCmd)
+		if err != nil {
+			return nil, err
 		}
 		return cs.MasternodeStatus(cmd), nil
 	})
@@ -100,4 +113,14 @@ func WithMethods(srv *JRPCServer, methods ...func(srv *JRPCServer)) *JRPCServer 
 		fn(srv)
 	}
 	return srv
+}
+
+func unmarshalCmd(req btcjson.Request, fields ...interface{}) error {
+	for i, field := range fields {
+		err := json.Unmarshal(req.Params[i], field)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

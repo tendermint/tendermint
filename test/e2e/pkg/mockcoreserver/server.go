@@ -138,7 +138,11 @@ func (s *JRPCServer) findCall(req btcjson.Request) (*Call, error) {
 	}
 	calls, ok := s.calls[name]
 	if !ok {
-		return nil, fmt.Errorf("the expectation for a method %q was not registered", req.Method)
+		method := req.Method
+		if len(req.Params) > 0 {
+			method = method + " " + string(req.Params[0])
+		}
+		return nil, fmt.Errorf("the expectation for a method %q was not registered", method)
 	}
 	for _, call := range calls {
 		if call.expectedCnt == -1 || call.actualCnt < call.expectedCnt {
