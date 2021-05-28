@@ -18,19 +18,14 @@ const (
 type Service struct {
 	service.BaseService
 
-	txIdxr    TxIndexer
-	blockIdxr BlockIndexer
-	eventBus  *types.EventBus
+	eventSinks []EventSink
+	eventBus   *types.EventBus
 }
 
 // NewIndexerService returns a new service instance.
-func NewIndexerService(
-	txIdxr TxIndexer,
-	blockIdxr BlockIndexer,
-	eventBus *types.EventBus,
-) *Service {
+func NewIndexerService(es []EventSink, eventBus *types.EventBus) *Service {
 
-	is := &Service{txIdxr: txIdxr, blockIdxr: blockIdxr, eventBus: eventBus}
+	is := &Service{eventSinks: es, eventBus: eventBus}
 	is.BaseService = *service.NewBaseService(nil, "IndexerService", is)
 	return is
 }
@@ -57,6 +52,7 @@ func (is *Service) OnStart() error {
 	go func() {
 		for {
 			msg := <-blockHeadersSub.Out()
+
 			eventDataHeader := msg.Data().(types.EventDataNewBlockHeader)
 			height := eventDataHeader.Header.Height
 			batch := NewBatch(eventDataHeader.NumTxs)
@@ -75,25 +71,63 @@ func (is *Service) OnStart() error {
 				}
 			}
 
-			if err := is.blockIdxr.Index(eventDataHeader); err != nil {
-				is.Logger.Error("failed to index block", "height", height, "err", err)
-			} else {
-				is.Logger.Info("indexed block", "height", height)
+			if !IndexingEnabled(is.eventSinks) {
+				continue
 			}
 
-			if err = is.txIdxr.AddBatch(batch); err != nil {
-				is.Logger.Error("failed to index block txs", "height", height, "err", err)
-			} else {
-				is.Logger.Debug("indexed block txs", "height", height, "num_txs", eventDataHeader.NumTxs)
+			for _, sink := range is.eventSinks {
+				if err := sink.IndexBlockEvents(eventDataHeader); err != nil {
+					is.Logger.Error("failed to index block", "height", height, "err", err)
+				} else {
+					is.Logger.Debug("indexed block", "height", height, "sink", sink.Type())
+				}
+
+				if len(batch.Ops) > 0 {
+					err := sink.IndexTxEvents(batch.Ops)
+					if err != nil {
+						is.Logger.Error("failed to index block txs", "height", height, "err", err)
+					} else {
+						is.Logger.Debug("indexed txs", "height", height, "sink", sink.Type())
+					}
+				}
 			}
 		}
 	}()
 	return nil
 }
 
-// OnStop implements service.Service by unsubscribing from all transactions.
+// OnStop implements service.Service by unsubscribing from all transactions and
+// close the eventsink.
 func (is *Service) OnStop() {
 	if is.eventBus.IsRunning() {
 		_ = is.eventBus.UnsubscribeAll(context.Background(), subscriber)
 	}
+
+	for _, sink := range is.eventSinks {
+		if err := sink.Stop(); err != nil {
+			is.Logger.Error("failed to close eventsink", "eventsink", sink.Type(), "err", err)
+		}
+	}
+}
+
+// KVSinkEnabled returns the given eventSinks is containing KVEventSink.
+func KVSinkEnabled(sinks []EventSink) bool {
+	for _, sink := range sinks {
+		if sink.Type() == KV {
+			return true
+		}
+	}
+
+	return false
+}
+
+// IndexingEnabled returns the given eventSinks is supporting the indexing services.
+func IndexingEnabled(sinks []EventSink) bool {
+	for _, sink := range sinks {
+		if sink.Type() == KV || sink.Type() == PSQL {
+			return true
+		}
+	}
+
+	return false
 }

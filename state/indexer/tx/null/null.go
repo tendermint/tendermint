@@ -25,7 +25,7 @@ func (txi *TxIndex) AddBatch(batch *indexer.Batch) error {
 }
 
 // Index is a noop and always returns nil.
-func (txi *TxIndex) Index(result *abci.TxResult) error {
+func (txi *TxIndex) Index(results []*abci.TxResult) error {
 	return nil
 }
 

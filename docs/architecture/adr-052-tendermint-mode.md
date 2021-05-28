@@ -63,7 +63,7 @@ We would like to suggest a simple Tendermint mode abstraction. These modes will 
 
 ## Status
 
-Proposed
+Implemented
 
 ## Consequences
 
