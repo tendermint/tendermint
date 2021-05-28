@@ -4,6 +4,7 @@ package bls12381
 import (
 	"bytes"
 	"crypto/subtle"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	bls "github.com/dashpay/bls-signatures/go-bindings"
@@ -167,14 +168,14 @@ func GenPrivKeyFromSecret(secret []byte) PrivKey {
 func ReverseBytes(bz []byte) []byte {
 	s := make([]byte, len(bz))
 	copy(s, bz)
-	for i,j := 0, len(s) - 1; i<j; i,j = i+1, j-1 {
-		s[i],s[j] = s[j], s[i]
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
 	}
 	return s
 }
 
 func ReverseProTxHashes(proTxHashes []crypto.ProTxHash) []crypto.ProTxHash {
-	reversedProTxHashes := make([]crypto.ProTxHash,len(proTxHashes))
+	reversedProTxHashes := make([]crypto.ProTxHash, len(proTxHashes))
 	for i := 0; i < len(proTxHashes); i++ {
 		reversedProTxHashes[i] = ReverseBytes(proTxHashes[i])
 	}
@@ -425,10 +426,10 @@ func (pubKey PubKey) VerifySignatureDigest(hash []byte, sig []byte) bool {
 		// fmt.Printf("bls verifying error (publicKey) sig %X from message %X with key %X\n", sig, msg, pubKey.Bytes())
 		return false
 	}
-	publicKeys := make([]*bls.PublicKey,1)
+	publicKeys := make([]*bls.PublicKey, 1)
 	publicKeys[0] = publicKey
 
-	hashes := make([][]byte,1)
+	hashes := make([][]byte, 1)
 	hashes[0] = hash
 
 	blsSignature, err := bls.InsecureSignatureFromBytes(sig)
@@ -505,6 +506,11 @@ func (pubKey PubKey) VerifyAggregateSignature(messages [][]byte, sig []byte) boo
 
 func (pubKey PubKey) String() string {
 	return fmt.Sprintf("PubKeyBLS12381{%X}", []byte(pubKey))
+}
+
+// HexString returns hex-string representation of pubkey
+func (pubKey PubKey) HexString() string {
+	return hex.EncodeToString(pubKey)
 }
 
 func (pubKey PubKey) TypeValue() crypto.KeyType {

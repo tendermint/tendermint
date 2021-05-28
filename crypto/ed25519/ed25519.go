@@ -3,6 +3,7 @@ package ed25519
 import (
 	"bytes"
 	"crypto/subtle"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -59,7 +60,6 @@ func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
 	signatureBytes := ed25519.Sign(ed25519.PrivateKey(privKey), msg)
 	return signatureBytes, nil
 }
-
 
 // Sign produces a signature on the provided message.
 // This assumes the privkey is wellformed in the golang format.
@@ -195,6 +195,11 @@ func (pubKey PubKey) VerifySignature(msg []byte, sig []byte) bool {
 
 func (pubKey PubKey) String() string {
 	return fmt.Sprintf("PubKeyEd25519{%X}", []byte(pubKey))
+}
+
+// HexString returns hex-string representation of pubkey
+func (pubKey PubKey) HexString() string {
+	return hex.EncodeToString(pubKey)
 }
 
 func (pubKey PubKey) Type() string {

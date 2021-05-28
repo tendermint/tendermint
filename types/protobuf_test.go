@@ -70,9 +70,9 @@ func TestABCIConsensusParams(t *testing.T) {
 
 type pubKeyBLS struct{}
 
-func (pubKeyBLS) Address() Address                            { return []byte{} }
-func (pubKeyBLS) Bytes() []byte                               { return []byte{} }
-func (pubKeyBLS) VerifySignature(msg []byte, sig []byte) bool { return false }
+func (pubKeyBLS) Address() Address                                  { return []byte{} }
+func (pubKeyBLS) Bytes() []byte                                     { return []byte{} }
+func (pubKeyBLS) VerifySignature(msg []byte, sig []byte) bool       { return false }
 func (pubKeyBLS) VerifySignatureDigest(msg []byte, sig []byte) bool { return false }
 func (pubKeyBLS) AggregateSignatures(sigSharesData [][]byte, messages [][]byte) ([]byte, error) {
 	return []byte{}, nil
@@ -80,6 +80,7 @@ func (pubKeyBLS) AggregateSignatures(sigSharesData [][]byte, messages [][]byte) 
 func (pubKeyBLS) VerifyAggregateSignature(msgs [][]byte, sig []byte) bool { return false }
 func (pubKeyBLS) Equals(crypto.PubKey) bool                               { return false }
 func (pubKeyBLS) String() string                                          { return "" }
+func (pubKeyBLS) HexString() string                                       { return "" }
 func (pubKeyBLS) Type() string                                            { return "pubKeyBLS12381" }
 func (pubKeyBLS) TypeValue() crypto.KeyType                               { return crypto.BLS12381 }
 

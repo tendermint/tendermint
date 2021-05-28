@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"math/big"
@@ -163,6 +164,11 @@ func (pubKey PubKey) Bytes() []byte {
 
 func (pubKey PubKey) String() string {
 	return fmt.Sprintf("PubKeySecp256k1{%X}", []byte(pubKey))
+}
+
+// HexString returns hex-string representation of pubkey
+func (pubKey PubKey) HexString() string {
+	return hex.EncodeToString(pubKey)
 }
 
 func (pubKey PubKey) Type() string {
