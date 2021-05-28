@@ -20,15 +20,11 @@ func ExampleHTTP_simple() {
 	app := kvstore.NewApplication()
 	conf := rpctest.CreateConfig()
 
-	node, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
+	_, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
 	if err != nil {
 		log.Fatal(err) //nolint:gocritic
 	}
 	defer func() { _ = closer(ctx) }()
-
-	if err := node.Start(); err != nil {
-		log.Fatal(err)
-	}
 
 	// Create our RPC client
 	rpcAddr := conf.RPC.ListenAddress
@@ -85,14 +81,11 @@ func ExampleHTTP_batching() {
 	app := kvstore.NewApplication()
 	conf := rpctest.CreateConfig()
 
-	node, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
+	_, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
 	if err != nil {
 		log.Fatal(err) //nolint:gocritic
 	}
 	defer func() { _ = closer(ctx) }()
-	if err := node.Start(); err != nil {
-		log.Fatal(err)
-	}
 
 	rpcAddr := conf.RPC.ListenAddress
 	c, err := rpchttp.New(rpcAddr)

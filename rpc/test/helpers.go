@@ -30,11 +30,6 @@ type Options struct {
 	recreateConfig bool
 }
 
-var defaultOptions = Options{
-	suppressStdout: false,
-	recreateConfig: false,
-}
-
 func waitForRPC(ctx context.Context, conf *cfg.Config) {
 	laddr := conf.RPC.ListenAddress
 	client, err := rpcclient.New(laddr)
@@ -114,11 +109,10 @@ func StartTendermint(ctx context.Context,
 	app abci.Application,
 	opts ...func(*Options)) (service.Service, ServiceCloser, error) {
 
-	nodeOpts := defaultOptions
+	nodeOpts := &Options{}
 	for _, opt := range opts {
-		opt(&nodeOpts)
+		opt(nodeOpts)
 	}
-
 	var logger log.Logger
 	if nodeOpts.suppressStdout {
 		logger = log.NewNopLogger()

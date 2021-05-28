@@ -27,7 +27,7 @@ func NodeSuite(t *testing.T) (service.Service, *config.Config) {
 
 	app := kvstore.NewPersistentKVStoreApplication(dir)
 
-	node, closer, err := rpctest.StartTendermint(ctx, conf, app)
+	node, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		_ = closer(ctx)

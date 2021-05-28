@@ -59,7 +59,7 @@ When preparing our public API for 1.0, we should keep these principles in mind:
 The following is the minimum set of public APIs that will be included in 1.0, in some form:
 
 - `abci`
-- `node` and related packages (e.g. possibly `config`, `libs/log`, and `version`)
+- packages used for constructing nodes `config`, `libs/log`, and `version`
 - Client APIs, i.e. `rpc/client`, `light`, and `privval`.
 - `crypto` (possibly as a separate repo)
 
