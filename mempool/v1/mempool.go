@@ -549,6 +549,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 				"priority", wtx.priority,
 				"tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(wtx.tx)),
 				"peer_id", txInfo.SenderNodeID,
+				"code", checkTxRes.CheckTx.Code,
 				"post_check_err", err,
 			)
 
