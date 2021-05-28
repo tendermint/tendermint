@@ -124,7 +124,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 	ipGen := newIPGenerator(ipNet)
 	keyGen := newKeyGenerator(randomSeed)
 	proTxHashGen := newProTxHashGenerator(randomSeed + 1)
-	quorumHashGen := newQuorumHashGenerator(randomSeed + 1)
+	quorumHashGen := newQuorumHashGenerator(randomSeed + 2)
 	proxyPortGen := newPortGenerator(proxyPortFirst)
 
 	// Set up nodes, in alphabetical order (IPs and ports get same order).
@@ -366,10 +366,15 @@ func LoadTestnet(file string) (*Testnet, error) {
 				node.NextPrivvalHeights = append(node.NextPrivvalHeights, int64(height+2))
 			}
 		}
-
-		testnet.ValidatorUpdates[int64(height)] = valUpdate
-		testnet.ThresholdPublicKeyUpdates[int64(height)] = thresholdPublicKey
-		testnet.QuorumHashUpdates[int64(height)] = quorumHash
+		if height == 0 {
+			testnet.QuorumHash = quorumHash
+			testnet.ThresholdPublicKey = thresholdPublicKey
+			testnet.Validators = valUpdate
+		} else {
+			testnet.ThresholdPublicKeyUpdates[int64(height)] = thresholdPublicKey
+			testnet.QuorumHashUpdates[int64(height)] = quorumHash
+			testnet.ValidatorUpdates[int64(height)] = valUpdate
+		}
 	}
 
 	chainLockSetHeights := make([]int, len(manifest.ChainLockUpdates))
