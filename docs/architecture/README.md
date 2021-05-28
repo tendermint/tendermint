@@ -81,9 +81,7 @@ Note the context/background should be written in the present tense.
 ### Rejected
 
 - [ADR-023: ABCI-Propose-tx](./adr-023-ABCI-propose-tx.md)
-- [ADR-028: libp2p](./adr-028-libp2p.md)
 - [ADR-029: Check-Tx-Consensus](./adr-029-check-tx-consensus.md)
-- [ADR-031: Changelog-structure](./adr-031-changelog.md)
 - [ADR-058: Event-Hashing](./adr-058-event-hashing.md)
 
 
