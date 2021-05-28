@@ -63,7 +63,7 @@ Use "tm-signer-harness help <command>" for more information about that command.`
 
 	hd, err := os.UserHomeDir()
 	if err != nil {
-		fmt.Println("The UserHomeDir is not defined, use the default TM Home PATH \"~/.tendermint\".")
+		fmt.Println("The UserHomeDir is not defined, setting the default TM Home PATH to \"~/.tendermint\"")
 		defaultTMHome = "~/.tendermint"
 	} else {
 		defaultTMHome = fmt.Sprintf("%s/.tendermint", hd)
