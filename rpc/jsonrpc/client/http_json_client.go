@@ -380,19 +380,13 @@ func makeHTTPDialer(remoteAddr string) (func(string, string) (net.Conn, error), 
 	}
 
 	dialFn := func(proto, addr string) (net.Conn, error) {
+		var timeout = 10 * time.Second
 		if !u.isUnixSocket && strings.LastIndex(u.Host, ":") == -1 {
-			var timeout = 10 * time.Second
-			var host = u.Host
-			u.Host = fmt.Sprintf("%s:%s", host, padding)
-			c, e := net.DialTimeout(protocol, u.GetDialAddress(), timeout)
-			if e == nil {
-				return c, nil
-			}
-
-			return nil, err
+			u.Host = fmt.Sprintf("%s:%s", u.Host, padding)
+			return net.DialTimeout(protocol, u.GetDialAddress(), timeout)
 		}
 
-		return net.Dial(protocol, u.GetDialAddress())
+		return net.DialTimeout(protocol, u.GetDialAddress(), timeout)
 	}
 
 	return dialFn, nil
