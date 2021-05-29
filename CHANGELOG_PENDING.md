@@ -19,10 +19,6 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [state/indexer] \#6382 reconstruct indexer, move txindex into the indexer package (@JayT106)
   - [cli] \#6372 Introduce `BootstrapPeers` as part of the new p2p stack. Peers to be connected on
     startup (@cmwaters)
-  - [mempool] \#6466 When mempool `v1` is enabled, transactions broadcasted via `sync` mode may return a successful response with a
-    transaction hash indicating that the transaction was successfully inserted into the mempool. While this is true for `v0`, the
-    `v1` mempool reactor may at a later point in time evict or even drop this transaction after a hash has been returned. Thus,
-    the user or client must query for that transaction to check if it is still in the mempool. (@alexanderbez)
 
 - Apps
   - [ABCI] \#6408 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)

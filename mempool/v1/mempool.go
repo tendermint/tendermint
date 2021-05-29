@@ -490,7 +490,19 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 		}
 
 		if checkTxRes.CheckTx.Code == abci.CodeTypeOK && err == nil {
+			sender := checkTxRes.CheckTx.Sender
+			if len(sender) > 0 {
+				if wtx := txmp.txStore.GetTxBySender(sender); wtx != nil {
+					txmp.logger.Error(
+						"rejected incoming good transaction; tx already exists for sender",
+						"tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(wtx.tx)),
+						"sender", sender,
+					)
+				}
+			}
+
 			if err := txmp.canAddTx(wtx); err != nil {
+				// TODO: We need to handle size!
 				toEvict := txmp.priorityIndex.GetEvictableTx(checkTxRes.CheckTx.Priority)
 				if toEvict == nil {
 					// No room for the new incoming transaction so we just remove it from
@@ -524,7 +536,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			wtx.gasWanted = checkTxRes.CheckTx.GasWanted
 			wtx.height = txmp.height
 			wtx.priority = checkTxRes.CheckTx.Priority
-			wtx.sender = checkTxRes.CheckTx.Sender
+			wtx.sender = sender
 			wtx.peers = map[uint16]struct{}{
 				txInfo.SenderID: {},
 			}

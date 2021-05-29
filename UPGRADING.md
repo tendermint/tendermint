@@ -7,10 +7,13 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 ### ABCI Changes
 
 * Added `AbciVersion` to `RequestInfo`. Applications should check that the ABCI version they expect is being used in order to avoid unimplemented changes errors.
-
 * The method `SetOption` has been removed from the ABCI.Client interface. This feature was used in the early ABCI implementation's.
-
 * Messages are written to a byte stream using uin64 length delimiters instead of int64.
+* When mempool `v1` is enabled, transactions broadcasted via `sync` mode may return a successful
+  response with a transaction hash indicating that the transaction was successfully inserted into
+  the mempool. While this is true for `v0`, the `v1` mempool reactor may at a later point in time
+  evict or even drop this transaction after a hash has been returned. Thus, the user or client must
+  query for that transaction to check if it is still in the mempool.
 
 ### Config Changes
 
