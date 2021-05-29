@@ -80,12 +80,11 @@ func (app *Application) InitChain(req abci.RequestInitChain) abci.ResponseInitCh
 		AppHash: app.state.Hash,
 	}
 
-	// Temporary Disabled, the initial state is set in setup.go
-	//validatorSetUpdate, err := app.validatorSetUpdates(0)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//resp.ValidatorSetUpdate = *validatorSetUpdate
+	validatorSetUpdate, err := app.validatorSetUpdates(0)
+	if err != nil {
+		panic(err)
+	}
+	resp.ValidatorSetUpdate = *validatorSetUpdate
 
 	if resp.NextCoreChainLockUpdate, err = app.chainLockUpdate(0); err != nil {
 		panic(err)

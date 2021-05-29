@@ -370,11 +370,10 @@ func LoadTestnet(file string) (*Testnet, error) {
 			testnet.QuorumHash = quorumHash
 			testnet.ThresholdPublicKey = thresholdPublicKey
 			testnet.Validators = valUpdate
-		} else {
-			testnet.ThresholdPublicKeyUpdates[int64(height)] = thresholdPublicKey
-			testnet.QuorumHashUpdates[int64(height)] = quorumHash
-			testnet.ValidatorUpdates[int64(height)] = valUpdate
 		}
+		testnet.ValidatorUpdates[int64(height)] = valUpdate
+		testnet.ThresholdPublicKeyUpdates[int64(height)] = thresholdPublicKey
+		testnet.QuorumHashUpdates[int64(height)] = quorumHash
 	}
 
 	chainLockSetHeights := make([]int, len(manifest.ChainLockUpdates))
