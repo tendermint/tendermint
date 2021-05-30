@@ -58,15 +58,20 @@ func TestTxPriorityQueue(t *testing.T) {
 	require.Equal(t, priorities, gotPriorities)
 }
 
-func TestTxPriorityQueue_GetEvictableTx(t *testing.T) {
+func TestTxPriorityQueue_GetEvictableTxs(t *testing.T) {
 	pq := NewTxPriorityQueue()
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	values := make([]int, 1000)
 
 	for i := 0; i < 1000; i++ {
+		tx := make([]byte, 5) // each tx is 5 bytes
+		_, err := rng.Read(tx)
+		require.NoError(t, err)
+
 		x := rng.Intn(100000)
 		pq.PushTx(&WrappedTx{
+			tx:       tx,
 			priority: int64(x),
 		})
 
@@ -77,11 +82,63 @@ func TestTxPriorityQueue_GetEvictableTx(t *testing.T) {
 
 	max := values[len(values)-1]
 	min := values[0]
+	totalSize := int64(len(values) * 5)
 
-	require.NotNil(t, pq.GetEvictableTx(int64(max+1)))
-	require.NotNil(t, pq.GetEvictableTx(int64(min+1)))
-	require.Nil(t, pq.GetEvictableTx(int64(min-1)))
-	require.Nil(t, pq.GetEvictableTx(int64(min)))
+	testCases := []struct {
+		name                             string
+		priority, txSize, totalSize, cap int64
+		expectedLen                      int
+	}{
+		{
+			name:        "larest priority; single tx",
+			priority:    int64(max + 1),
+			txSize:      5,
+			totalSize:   totalSize,
+			cap:         totalSize,
+			expectedLen: 1,
+		},
+		{
+			name:        "larest priority; multi tx",
+			priority:    int64(max + 1),
+			txSize:      17,
+			totalSize:   totalSize,
+			cap:         totalSize,
+			expectedLen: 4,
+		},
+		{
+			name:        "larest priority; out of capacity",
+			priority:    int64(max + 1),
+			txSize:      totalSize + 1,
+			totalSize:   totalSize,
+			cap:         totalSize,
+			expectedLen: 0,
+		},
+		{
+			name:        "smallest priority; no tx",
+			priority:    int64(min - 1),
+			txSize:      5,
+			totalSize:   totalSize,
+			cap:         totalSize,
+			expectedLen: 0,
+		},
+		{
+			name:        "small priority; no tx",
+			priority:    int64(min),
+			txSize:      5,
+			totalSize:   totalSize,
+			cap:         totalSize,
+			expectedLen: 0,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			evictTxs := pq.GetEvictableTxs(tc.priority, tc.txSize, tc.totalSize, tc.cap)
+			require.Len(t, evictTxs, tc.expectedLen)
+		})
+	}
 }
 
 func TestTxPriorityQueue_RemoveTx(t *testing.T) {
