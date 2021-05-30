@@ -25,10 +25,13 @@ func NewTxPriorityQueue() *TxPriorityQueue {
 	return pq
 }
 
-// GetEvictableTx attempts to find and return a *WrappedTx than can be evicted
-// to make room for another *WrappedTx with higher priority. If no such *WrappedTx
-// is found, nil will be returned.
-func (pq *TxPriorityQueue) GetEvictableTx(priority int64) *WrappedTx {
+// GetEvictableTxs attempts to find and return a list of *WrappedTx than can be
+// evicted to make room for another *WrappedTx with higher priority. If no such
+// list of *WrappedTx exists, nil will be returned. The returned list of *WrappedTx
+// indicate that these transactions can be removed due to them being of lower
+// priority and that their total sum in size allows room for the incoming
+// transaction according to the mempool's configured limits.
+func (pq *TxPriorityQueue) GetEvictableTxs(priority, txSize, totalSize, cap int64) []*WrappedTx {
 	pq.mtx.RLock()
 	defer pq.mtx.RUnlock()
 
@@ -39,8 +42,26 @@ func (pq *TxPriorityQueue) GetEvictableTx(priority int64) *WrappedTx {
 		return txs[i].priority < txs[j].priority
 	})
 
-	if len(txs) > 0 && txs[0].priority < priority {
-		return txs[0]
+	var (
+		toEvict []*WrappedTx
+		i       int
+	)
+
+	currSize := totalSize
+
+	// Loop over all transactions in ascending priority order evaluating those
+	// that are only of less priority than the provided argument. We continue
+	// evaluating transactions until there is sufficient capacity for the new
+	// transaction (size) as defined by txSize.
+	for i < len(txs) && txs[i].priority < priority {
+		toEvict = append(toEvict, txs[i])
+		currSize -= int64(txs[i].Size())
+
+		if currSize+txSize <= cap {
+			return toEvict
+		}
+
+		i++
 	}
 
 	return nil

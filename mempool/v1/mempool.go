@@ -497,7 +497,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 				if wtx := txmp.txStore.GetTxBySender(sender); wtx != nil {
 					txmp.logger.Error(
 						"rejected incoming good transaction; tx already exists for sender",
-						"tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(wtx.tx)),
+						"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
 						"sender", sender,
 					)
 					txmp.metrics.RejectedTxs.Add(1)
@@ -506,35 +506,41 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			}
 
 			if err := txmp.canAddTx(wtx); err != nil {
-				// TODO: We need to handle size!
-				toEvict := txmp.priorityIndex.GetEvictableTx(priority)
-				if toEvict == nil {
+				evictTxs := txmp.priorityIndex.GetEvictableTxs(
+					priority,
+					int64(wtx.Size()),
+					txmp.SizeBytes(),
+					txmp.config.MaxTxsBytes,
+				)
+				if len(evictTxs) == 0 {
 					// No room for the new incoming transaction so we just remove it from
 					// the cache.
 					txmp.cache.Remove(wtx.tx)
 					txmp.logger.Error(
 						"rejected incoming good transaction; mempool full",
-						"tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(wtx.tx)),
+						"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
 						"err", err.Error(),
 					)
 					txmp.metrics.RejectedTxs.Add(1)
 					return
 				}
 
-				// evict an existing transaction
+				// evict an existing transaction(s)
 				//
 				// NOTE:
 				// - The transaction, toEvict, can be removed while a concurrent
 				//   reCheckTx callback is being executed for the same transaction.
-				txmp.removeTx(toEvict, true)
-				txmp.logger.Debug(
-					"evicted existing good transaction; mempool full",
-					"old_tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(toEvict.tx)),
-					"old_priority", toEvict.priority,
-					"new_tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(wtx.tx)),
-					"new_priority", wtx.priority,
-				)
-				txmp.metrics.EvictedTxs.Add(1)
+				for _, toEvict := range evictTxs {
+					txmp.removeTx(toEvict, true)
+					txmp.logger.Debug(
+						"evicted existing good transaction; mempool full",
+						"old_tx", fmt.Sprintf("%X", toEvict.tx.Hash()),
+						"old_priority", toEvict.priority,
+						"new_tx", fmt.Sprintf("%X", wtx.tx.Hash()),
+						"new_priority", wtx.priority,
+					)
+					txmp.metrics.EvictedTxs.Add(1)
+				}
 			}
 
 			wtx.gasWanted = checkTxRes.CheckTx.GasWanted
@@ -552,7 +558,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			txmp.logger.Debug(
 				"inserted good transaction",
 				"priority", wtx.priority,
-				"tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(wtx.tx)),
+				"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
 				"height", txmp.height,
 				"num_txs", txmp.Size(),
 			)
@@ -563,7 +569,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			txmp.logger.Info(
 				"rejected bad transaction",
 				"priority", wtx.priority,
-				"tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(wtx.tx)),
+				"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
 				"peer_id", txInfo.SenderNodeID,
 				"code", checkTxRes.CheckTx.Code,
 				"post_check_err", err,
