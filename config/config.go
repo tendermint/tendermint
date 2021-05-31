@@ -128,6 +128,31 @@ func (cfg *Config) SetRoot(root string) *Config {
 	return cfg
 }
 
+// PrivValidatorClientKeyFile returns the full path to the priv_validator_key.json file
+func (cfg Config) PrivValidatorClientKeyFile() string {
+	return rootify(cfg.PrivValidator.ClientKey, cfg.RootDir)
+}
+
+// PrivValidatorClientCertificateFile returns the full path to the priv_validator_key.json file
+func (cfg Config) PrivValidatorClientCertificateFile() string {
+	return rootify(cfg.PrivValidator.ClientCertificate, cfg.RootDir)
+}
+
+// PrivValidatorCertificateAuthorityFile returns the full path to the priv_validator_key.json file
+func (cfg Config) PrivValidatorRootCAFile() string {
+	return rootify(cfg.PrivValidator.RootCA, cfg.RootDir)
+}
+
+// PrivValidatorKeyFile returns the full path to the priv_validator_key.json file
+func (cfg Config) PrivValidatorKeyFile() string {
+	return rootify(cfg.PrivValidator.Key, cfg.RootDir)
+}
+
+// PrivValidatorFile returns the full path to the priv_validator_state.json file
+func (cfg Config) PrivValidatorStateFile() string {
+	return rootify(cfg.PrivValidator.State, cfg.RootDir)
+}
+
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg *Config) ValidateBasic() error {
@@ -238,37 +263,6 @@ type BaseConfig struct { //nolint: maligned
 	FilterPeers bool `mapstructure:"filter-peers"` // false
 }
 
-type PrivValidatorConfig struct {
-	// Path to the JSON file containing the private key to use as a validator in the consensus protocol
-	Key string `mapstructure:"key-file"`
-
-	// Path to the JSON file containing the last sign state of a validator
-	State string `mapstructure:"state-file"`
-
-	// TCP or UNIX socket address for Tendermint to listen on for
-	// connections from an external PrivValidator process
-	ListenAddr string `mapstructure:"laddr"`
-
-	// Client certificate generated while creating needed files for secure connection.
-	// If a remote validator address is provided but no certificate, the connection will be insecure
-	ClientCertificate string `mapstructure:"client-certificate-file"`
-
-	// Client key generated while creating certificates for secure connection
-	ClientKey string `mapstructure:"client-key-file"`
-
-	// Path Root Certificate Authority used to sign both client and server certificates
-	RootCA string `mapstructure:"root-ca-file"`
-}
-
-// DefaultBaseConfig returns a default private validator configuration
-// for a Tendermint node.
-func DefaultPrivValidatorConfig() *PrivValidatorConfig {
-	return &PrivValidatorConfig{
-		Key:   defaultPrivValKeyPath,
-		State: defaultPrivValStatePath,
-	}
-}
-
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
@@ -305,31 +299,6 @@ func (cfg BaseConfig) ChainID() string {
 // GenesisFile returns the full path to the genesis.json file
 func (cfg BaseConfig) GenesisFile() string {
 	return rootify(cfg.Genesis, cfg.RootDir)
-}
-
-// PrivValidatorClientKeyFile returns the full path to the priv_validator_key.json file
-func (cfg Config) PrivValidatorClientKeyFile() string {
-	return rootify(cfg.PrivValidator.ClientKey, cfg.RootDir)
-}
-
-// PrivValidatorClientCertificateFile returns the full path to the priv_validator_key.json file
-func (cfg Config) PrivValidatorClientCertificateFile() string {
-	return rootify(cfg.PrivValidator.ClientCertificate, cfg.RootDir)
-}
-
-// PrivValidatorCertificateAuthorityFile returns the full path to the priv_validator_key.json file
-func (cfg Config) PrivValidatorRootCAFile() string {
-	return rootify(cfg.PrivValidator.RootCA, cfg.RootDir)
-}
-
-// PrivValidatorKeyFile returns the full path to the priv_validator_key.json file
-func (cfg Config) PrivValidatorKeyFile() string {
-	return rootify(cfg.PrivValidator.Key, cfg.RootDir)
-}
-
-// PrivValidatorFile returns the full path to the priv_validator_state.json file
-func (cfg Config) PrivValidatorStateFile() string {
-	return rootify(cfg.PrivValidator.State, cfg.RootDir)
 }
 
 // NodeKeyFile returns the full path to the node_key.json file
@@ -371,6 +340,41 @@ func (cfg BaseConfig) ValidateBasic() error {
 		return fmt.Errorf("unknown mode: %v", cfg.Mode)
 	}
 	return nil
+}
+
+//-----------------------------------------------------------------------------
+// PrivValidatorConfig
+
+// PrivValidatorConfig defines the configuration parameters for running a validator
+type PrivValidatorConfig struct {
+	// Path to the JSON file containing the private key to use as a validator in the consensus protocol
+	Key string `mapstructure:"key-file"`
+
+	// Path to the JSON file containing the last sign state of a validator
+	State string `mapstructure:"state-file"`
+
+	// TCP or UNIX socket address for Tendermint to listen on for
+	// connections from an external PrivValidator process
+	ListenAddr string `mapstructure:"laddr"`
+
+	// Client certificate generated while creating needed files for secure connection.
+	// If a remote validator address is provided but no certificate, the connection will be insecure
+	ClientCertificate string `mapstructure:"client-certificate-file"`
+
+	// Client key generated while creating certificates for secure connection
+	ClientKey string `mapstructure:"client-key-file"`
+
+	// Path Root Certificate Authority used to sign both client and server certificates
+	RootCA string `mapstructure:"root-ca-file"`
+}
+
+// DefaultBaseConfig returns a default private validator configuration
+// for a Tendermint node.
+func DefaultPrivValidatorConfig() *PrivValidatorConfig {
+	return &PrivValidatorConfig{
+		Key:   defaultPrivValKeyPath,
+		State: defaultPrivValStatePath,
+	}
 }
 
 //-----------------------------------------------------------------------------
