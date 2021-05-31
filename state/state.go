@@ -33,7 +33,7 @@ var InitStateVersion = tmstate.Version{
 		Block: version.BlockProtocol,
 		App:   0,
 	},
-	Software: version.TMVersion,
+	Software: version.TMCoreSemVer,
 }
 
 //-----------------------------------------------------------------------------

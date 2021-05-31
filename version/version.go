@@ -1,11 +1,10 @@
 package version
 
 var (
-	TMVersion = TMVersionDefault
+	TMCoreSemVer = TMVersionDefault
 )
 
 const (
-
 	// TMVersionDefault is the used as the fallback version of Tendermint Core
 	// when not using git describe. It is formatted with semantic versioning.
 	TMVersionDefault = "0.34.10"
