@@ -5,7 +5,6 @@
 package pex
 
 import (
-	crand "crypto/rand"
 	"encoding/binary"
 	"fmt"
 	"hash"
@@ -102,7 +101,6 @@ type addrBook struct {
 	filePath          string
 	key               string // random prefix for bucket placement
 	routabilityStrict bool
-	hashKey           []byte
 	hasher            hash.Hash64
 
 	wg sync.WaitGroup
@@ -115,12 +113,6 @@ func mustNewHasher() hash.Hash64 {
 		panic(err)
 	}
 	return hasher
-}
-
-func newHashKey() []byte {
-	result := make([]byte, highwayhash.Size)
-	crand.Read(result) //nolint:errcheck // ignore error
-	return result
 }
 
 // NewAddrBook creates a new address book.
@@ -153,7 +145,6 @@ func (a *addrBook) init() {
 	for i := range a.bucketsOld {
 		a.bucketsOld[i] = make(map[string]*knownAddress)
 	}
-	a.hashKey = newHashKey()
 	a.hasher = mustNewHasher()
 }
 
