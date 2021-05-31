@@ -14,13 +14,13 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 
-	flow "github.com/tendermint/tendermint/libs/flowrate"
+	flow "github.com/tendermint/tendermint/internal/libs/flowrate"
+	"github.com/tendermint/tendermint/internal/libs/protoio"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/internal/libs/timer"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	"github.com/tendermint/tendermint/libs/protoio"
 	"github.com/tendermint/tendermint/libs/service"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
-	"github.com/tendermint/tendermint/libs/timer"
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
@@ -718,11 +718,20 @@ func (c *MConnection) Status() ConnectionStatus {
 //-----------------------------------------------------------------------------
 
 type ChannelDescriptor struct {
-	ID                  byte
-	Priority            int
+	ID       byte
+	Priority int
+
+	// TODO: Remove once p2p refactor is complete.
 	SendQueueCapacity   int
-	RecvBufferCapacity  int
 	RecvMessageCapacity int
+
+	// RecvBufferCapacity defines the max buffer size of inbound messages for a
+	// given p2p Channel queue.
+	RecvBufferCapacity int
+
+	// MaxSendBytes defines the maximum number of bytes that can be sent at any
+	// given moment from a Channel to a peer.
+	MaxSendBytes uint
 }
 
 func (chDesc ChannelDescriptor) FillDefaults() (filled ChannelDescriptor) {

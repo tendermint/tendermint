@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -11,7 +12,8 @@ import (
 
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
-	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 // HTTP + JSON handler
@@ -21,14 +23,12 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 	return func(w http.ResponseWriter, r *http.Request) {
 		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			WriteRPCResponseHTTPError(
-				w,
-				http.StatusBadRequest,
-				types.RPCInvalidRequestError(
-					nil,
-					fmt.Errorf("error reading request body: %w", err),
-				),
+			res := types.RPCInvalidRequestError(nil,
+				fmt.Errorf("error reading request body: %w", err),
 			)
+			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
+				logger.Error("failed to write response", "res", res, "err", wErr)
+			}
 			return
 		}
 
@@ -48,18 +48,20 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			// next, try to unmarshal as a single request
 			var request types.RPCRequest
 			if err := json.Unmarshal(b, &request); err != nil {
-				WriteRPCResponseHTTPError(
-					w,
-					http.StatusInternalServerError,
-					types.RPCParseError(
-						fmt.Errorf("error unmarshalling request: %w", err),
-					),
-				)
+				res := types.RPCParseError(fmt.Errorf("error unmarshaling request: %w", err))
+				if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
+					logger.Error("failed to write response", "res", res, "err", wErr)
+				}
 				return
 			}
 			requests = []types.RPCRequest{request}
 		}
 
+		// Set the default response cache to true unless
+		// 1. Any RPC request rrror.
+		// 2. Any RPC request doesn't allow to be cached.
+		// 3. Any RPC request has the height argument and the value is 0 (the default).
+		var c = true
 		for _, request := range requests {
 			request := request
 
@@ -77,11 +79,13 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 					responses,
 					types.RPCInvalidRequestError(request.ID, fmt.Errorf("path %s is invalid", r.URL.Path)),
 				)
+				c = false
 				continue
 			}
 			rpcFunc, ok := funcMap[request.Method]
 			if !ok || rpcFunc.ws {
 				responses = append(responses, types.RPCMethodNotFoundError(request.ID))
+				c = false
 				continue
 			}
 			ctx := &types.Context{JSONReq: &request, HTTPReq: r}
@@ -93,21 +97,52 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 						responses,
 						types.RPCInvalidParamsError(request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
 					)
+					c = false
 					continue
 				}
 				args = append(args, fnArgs...)
+
 			}
+
+			if hasDefaultHeight(request, args) {
+				c = false
+			}
+
 			returns := rpcFunc.f.Call(args)
-			logger.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
+			logger.Debug("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
 			result, err := unreflectResult(returns)
-			if err != nil {
-				responses = append(responses, types.RPCInternalError(request.ID, err))
-				continue
+			switch e := err.(type) {
+			// if no error then return a success response
+			case nil:
+				responses = append(responses, types.NewRPCSuccessResponse(request.ID, result))
+
+			// if this already of type RPC error then forward that error
+			case *types.RPCError:
+				responses = append(responses, types.NewRPCErrorResponse(request.ID, e.Code, e.Message, e.Data))
+				c = false
+			default: // we need to unwrap the error and parse it accordingly
+				switch errors.Unwrap(err) {
+				// check if the error was due to an invald request
+				case ctypes.ErrZeroOrNegativeHeight, ctypes.ErrZeroOrNegativePerPage,
+					ctypes.ErrPageOutOfRange, ctypes.ErrInvalidRequest:
+					responses = append(responses, types.RPCInvalidRequestError(request.ID, err))
+					c = false
+				// lastly default all remaining errors as internal errors
+				default: // includes ctypes.ErrHeightNotAvailable and ctypes.ErrHeightExceedsChainHead
+					responses = append(responses, types.RPCInternalError(request.ID, err))
+					c = false
+				}
 			}
-			responses = append(responses, types.NewRPCSuccessResponse(request.ID, result))
+
+			if c && !rpcFunc.cache {
+				c = false
+			}
 		}
+
 		if len(responses) > 0 {
-			WriteRPCResponseHTTP(w, responses...)
+			if wErr := WriteRPCResponseHTTP(w, c, responses...); wErr != nil {
+				logger.Error("failed to write responses", "res", responses, "err", wErr)
+			}
 		}
 	}
 }
@@ -240,4 +275,13 @@ func writeListOfEndpoints(w http.ResponseWriter, r *http.Request, funcMap map[st
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(200)
 	w.Write(buf.Bytes()) // nolint: errcheck
+}
+
+func hasDefaultHeight(r types.RPCRequest, h []reflect.Value) bool {
+	switch r.Method {
+	case "block", "block_results", "commit", "consensus_params", "validators":
+		return len(h) < 2 || h[1].IsZero()
+	default:
+		return false
+	}
 }

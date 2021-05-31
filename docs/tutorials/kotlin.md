@@ -177,20 +177,20 @@ mkdir -p \
 
 cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/abci/types.proto \
    $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/abci/types.proto
-cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/version/version.proto \
-   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/version/version.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/version/types.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/version/types.proto
 cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/types/types.proto \
    $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/types/types.proto
 cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/types/evidence.proto \
    $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/types/evidence.proto
 cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/types/params.proto \
    $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/types/params.proto
-cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/crypto/merkle.proto \
-   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/crypto/merkle.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/crypto/proof.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/crypto/proof.proto
 cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/crypto/keys.proto \
    $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/crypto/keys.proto
-cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/libs/types.proto \
-   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/libs/types.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/libs/bits/types.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/libs/bits/types.proto
 cp $GOPATH/src/github.com/gogo/protobuf/gogoproto/gogo.proto \
    $KVSTORE_HOME/src/main/proto/github.com/gogo/protobuf/gogoproto/gogo.proto
 ```
@@ -517,18 +517,19 @@ class GrpcServer(
 ## 1.5 Getting Up and Running
 
 To create a default configuration, nodeKey and private validator files, let's
-execute `tendermint init`. But before we do that, we will need to install
+execute `tendermint init validator`. But before we do that, we will need to install
 Tendermint Core.
 
 ```bash
 rm -rf /tmp/example
 cd $GOPATH/src/github.com/tendermint/tendermint
 make install
-TMHOME="/tmp/example" tendermint init
+TMHOME="/tmp/example" tendermint init validator
 
 I[2019-07-16|18:20:36.480] Generated private validator                  module=main keyFile=/tmp/example/config/priv_validator_key.json stateFile=/tmp/example2/data/priv_validator_state.json
 I[2019-07-16|18:20:36.481] Generated node key                           module=main path=/tmp/example/config/node_key.json
 I[2019-07-16|18:20:36.482] Generated genesis file                       module=main path=/tmp/example/config/genesis.json
+I[2019-07-16|18:20:36.482] Generated config                             module=main mode=validator
 ```
 
 Feel free to explore the generated files, which can be found at

@@ -8,14 +8,13 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/light"
 	lightprovider "github.com/tendermint/tendermint/light/provider"
 	lighthttp "github.com/tendermint/tendermint/light/provider/http"
 	lightrpc "github.com/tendermint/tendermint/light/rpc"
 	lightdb "github.com/tendermint/tendermint/light/store/db"
-	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -38,7 +37,7 @@ type StateProvider interface {
 type lightClientStateProvider struct {
 	tmsync.Mutex  // light.Client is not concurrency-safe
 	lc            *light.Client
-	version       tmstate.Version
+	version       sm.Version
 	initialHeight int64
 	providers     map[lightprovider.Provider]string
 }
@@ -47,7 +46,7 @@ type lightClientStateProvider struct {
 func NewLightClientStateProvider(
 	ctx context.Context,
 	chainID string,
-	version tmstate.Version,
+	version sm.Version,
 	initialHeight int64,
 	servers []string,
 	trustOptions light.TrustOptions,
@@ -72,7 +71,7 @@ func NewLightClientStateProvider(
 	}
 
 	lc, err := light.NewClient(ctx, chainID, trustOptions, providers[0], providers[1:],
-		lightdb.New(dbm.NewMemDB()), light.Logger(logger), light.MaxRetryAttempts(5))
+		lightdb.New(dbm.NewMemDB()), light.Logger(logger))
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +194,7 @@ func rpcClient(server string) (*rpchttp.HTTP, error) {
 	if !strings.Contains(server, "://") {
 		server = "http://" + server
 	}
-	c, err := rpchttp.New(server, "/websocket")
+	c, err := rpchttp.New(server)
 	if err != nil {
 		return nil, err
 	}

@@ -7,10 +7,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	flow "github.com/tendermint/tendermint/libs/flowrate"
+	flow "github.com/tendermint/tendermint/internal/libs/flowrate"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -30,6 +30,7 @@ eg, L = latency = 0.1s
 const (
 	requestIntervalMS         = 2
 	maxTotalRequesters        = 600
+	maxPeerErrBuffer          = 1000
 	maxPendingRequests        = maxTotalRequesters
 	maxPendingRequestsPerPeer = 20
 
@@ -180,6 +181,7 @@ func (pool *BlockPool) IsCaughtUp() bool {
 	if len(pool.peers) == 0 {
 		return false
 	}
+
 	// NOTE: we use maxPeerHeight - 1 because to sync block H requires block H+1
 	// to verify the LastCommit.
 	return pool.height >= (pool.maxPeerHeight - 1)

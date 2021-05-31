@@ -17,20 +17,29 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 * `fast_sync = "v1"` is no longer supported. Please use `v2` instead.
 
 * All config parameters are now hyphen-case (also known as kebab-case) instead of snake_case. Before restarting the node make sure
-  you have updated all the variables in your `config.toml` file. 
+  you have updated all the variables in your `config.toml` file.
+
+* Added `--mode` flag and `mode` config variable on `config.toml` for setting Mode of the Node: `full` | `validator` | `seed` (default: `full`)
+  [ADR-52](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md)
+  
+* `BootstrapPeers` has been added as part of the new p2p stack. This will eventually replace
+  `Seeds`. Bootstrap peers are connected with on startup if needed for peer discovery. Unlike
+  persistent peers, there's no gaurantee that the node will remain connected with these peers. 
 
 ### CLI Changes
 
+* You must now specify the node mode (validator|full|seed) in `tendermint init [mode]`
+
 * If you had previously used `tendermint gen_node_key` to generate a new node
   key, keep in mind that it no longer saves the output to a file. You can use
-  `tendermint init` or pipe the output of `tendermint gen_node_key` to
+  `tendermint init validator` or pipe the output of `tendermint gen_node_key` to
   `$TMHOME/config/node_key.json`:
 
   ```
   $ tendermint gen_node_key > $TMHOME/config/node_key.json
   ```
 
-* CLI commands and flags are all now hyphen-case instead of snake_case. 
+* CLI commands and flags are all now hyphen-case instead of snake_case.
   Make sure to adjust any scripts that calls a cli command with snake_casing
 ## v0.34.0
 
@@ -470,7 +479,7 @@ In this case, the WS client will receive an error with description:
   "error": {
     "code": -32000,
     "msg": "Server error",
-    "data": "subscription was cancelled (reason: client is not pulling messages fast enough)" // or "subscription was cancelled (reason: Tendermint exited)"
+    "data": "subscription was canceled (reason: client is not pulling messages fast enough)" // or "subscription was canceled (reason: Tendermint exited)"
   }
 }
 

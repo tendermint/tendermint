@@ -1,5 +1,142 @@
 # Changelog
 
+## v0.34.10
+
+*April 14, 2021*
+
+This release fixes a bug where peers would sometimes try to send messages 
+on incorrect channels. Special thanks to our friends at Oasis Labs for surfacing
+this issue! 
+
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
+
+- [p2p/node] [\#6339](https://github.com/tendermint/tendermint/issues/6339) Fix bug with using custom channels (@cmwaters)
+- [light] [\#6346](https://github.com/tendermint/tendermint/issues/6346) Correctly handle too high errors to improve client robustness (@cmwaters)
+
+## v0.34.9
+
+*April 8, 2021*
+
+This release fixes a moderate severity security issue, Security Advisory Alderfly, 
+which impacts all networks that rely on Tendermint light clients.
+Further details will be released once networks have upgraded.
+
+This release also includes a small Go API-breaking change, to reduce panics in the RPC layer.
+
+Special thanks to our external contributors on this release: @gchaincl
+
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES
+
+- Go API
+    - [rpc/jsonrpc/server] [\#6204](https://github.com/tendermint/tendermint/issues/6204) Modify `WriteRPCResponseHTTP(Error)` to return an error (@melekes)
+
+### FEATURES
+
+- [rpc] [\#6226](https://github.com/tendermint/tendermint/issues/6226) Index block events and expose a new RPC method, `/block_search`, to allow querying for blocks by `BeginBlock` and `EndBlock` events (@alexanderbez)
+
+### BUG FIXES
+
+- [rpc/jsonrpc/server] [\#6191](https://github.com/tendermint/tendermint/issues/6191) Correctly unmarshal `RPCRequest` when data is `null` (@melekes)
+- [p2p] [\#6289](https://github.com/tendermint/tendermint/issues/6289) Fix "unknown channels" bug on CustomReactors (@gchaincl)
+- [light/evidence] Adds logic to handle forward lunatic attacks (@cmwaters)
+
+## v0.34.8
+
+*February 25, 2021*
+
+This release, in conjunction with [a fix in the Cosmos SDK](https://github.com/cosmos/cosmos-sdk/pull/8641),
+introduces changes that should mean the logs are much, much quieter. 🎉
+
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
+
+### IMPROVEMENTS
+
+- [libs/log] [\#6174](https://github.com/tendermint/tendermint/issues/6174) Include timestamp (`ts` field; `time.RFC3339Nano` format) in JSON logger output (@melekes)
+
+### BUG FIXES
+
+- [abci] [\#6124](https://github.com/tendermint/tendermint/issues/6124) Fixes a panic condition during callback execution in `ReCheckTx` during high tx load. (@alexanderbez)
+
+## v0.34.7
+
+*February 18, 2021*
+
+This release fixes a downstream security issue which impacts Cosmos SDK
+users who are:
+
+* Using Cosmos SDK v0.40.0 or later, AND
+* Running validator nodes, AND
+* Using the file-based `FilePV` implementation for their consensus keys
+
+Users who fulfill all the above criteria were susceptible to leaking
+private key material in the logs. All other users are unaffected.
+
+The root cause was a discrepancy
+between the Tendermint Core (untyped) logger and the Cosmos SDK (typed) logger:
+Tendermint Core's logger automatically stringifies Go interfaces whenever possible;
+however, the Cosmos SDK's logger uses reflection to log the fields within a Go interface.
+
+The introduction of the typed logger meant that previously un-logged fields within
+interfaces are now sometimes logged, including the private key material inside the
+`FilePV` struct.
+
+Tendermint Core v0.34.7 fixes this issue; however, we strongly recommend that all validators
+use remote signer implementations instead of `FilePV` in production.
+
+Thank you to @joe-bowman for his assistance with this vulnerability and a particular
+shout-out to @marbar3778 for diagnosing it quickly.
+
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BUG FIXES
+
+- [consensus] [\#6128](https://github.com/tendermint/tendermint/pull/6128) Remove privValidator from log call (@tessr)
+
+## v0.34.6
+
+*February 18, 2021* 
+
+_Tendermint Core v0.34.5 and v0.34.6 have been recalled due to release tooling problems._
+
+## v0.34.4
+
+*February 11, 2021*
+
+This release includes a fix for a memory leak in the evidence reactor (see #6068, below). 
+All Tendermint clients are recommended to upgrade. 
+Thank you to our friends at Crypto.com for the initial report of this memory leak! 
+
+Special thanks to other external contributors on this release: @yayajacky, @odidev, @laniehei, and @c29r3!
+
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BUG FIXES
+
+- [light] [\#6022](https://github.com/tendermint/tendermint/pull/6022) Fix a bug when the number of validators equals 100 (@melekes)
+- [light] [\#6026](https://github.com/tendermint/tendermint/pull/6026) Fix a bug when height isn't provided for the rpc calls: `/commit` and `/validators` (@cmwaters)
+- [evidence] [\#6068](https://github.com/tendermint/tendermint/pull/6068) Terminate broadcastEvidenceRoutine when peer is stopped (@melekes)
+
+## v0.34.3 
+
+*January 19, 2021*
+
+This release includes a fix for a high-severity security vulnerability, 
+a DoS-vector that impacted Tendermint Core v0.34.0-v0.34.2. For more details, see
+[Security Advisory Mulberry](https://github.com/tendermint/tendermint/security/advisories/GHSA-p658-8693-mhvg) 
+or https://nvd.nist.gov/vuln/detail/CVE-2021-21271. 
+
+Tendermint Core v0.34.3 also updates GoGo Protobuf to 1.3.2 in order to pick up the fix for
+https://nvd.nist.gov/vuln/detail/CVE-2021-3121. 
+
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BUG FIXES
+
+- [evidence] [[security fix]](https://github.com/tendermint/tendermint/security/advisories/GHSA-p658-8693-mhvg) Use correct source of evidence time (@cmwaters)
+- [proto] [\#5886](https://github.com/tendermint/tendermint/pull/5889) Bump gogoproto to 1.3.2 (@marbar3778)
+
 ## v0.34.2
 
 *January 12, 2021*
@@ -1919,7 +2056,7 @@ See [UPGRADING.md](UPGRADING.md) for more details.
 
 - [build] [\#3085](https://github.com/tendermint/tendermint/issues/3085) Fix `Version` field in build scripts (@husio)
 - [crypto/multisig] [\#3102](https://github.com/tendermint/tendermint/issues/3102) Fix multisig keys address length
-- [crypto/encoding] [\#3101](https://github.com/tendermint/tendermint/issues/3101) Fix `PubKeyMultisigThreshold` unmarshalling into `crypto.PubKey` interface
+- [crypto/encoding] [\#3101](https://github.com/tendermint/tendermint/issues/3101) Fix `PubKeyMultisigThreshold` unmarshaling into `crypto.PubKey` interface
 - [p2p/conn] [\#3111](https://github.com/tendermint/tendermint/issues/3111) Make SecretConnection thread safe
 - [rpc] [\#3053](https://github.com/tendermint/tendermint/issues/3053) Fix internal error in `/tx_search` when results are empty
   (@gianfelipe93)
@@ -2370,7 +2507,7 @@ FEATURES:
 - [libs] [\#2286](https://github.com/tendermint/tendermint/issues/2286) Panic if `autofile` or `db/fsdb` permissions change from 0600.
 
 IMPROVEMENTS:
-- [libs/db] [\#2371](https://github.com/tendermint/tendermint/issues/2371) Output error instead of panic when the given `db_backend` is not initialised (@bradyjoestar)
+- [libs/db] [\#2371](https://github.com/tendermint/tendermint/issues/2371) Output error instead of panic when the given `db_backend` is not initialized (@bradyjoestar)
 - [mempool] [\#2399](https://github.com/tendermint/tendermint/issues/2399) Make mempool cache a proper LRU (@bradyjoestar)
 - [p2p] [\#2126](https://github.com/tendermint/tendermint/issues/2126) Introduce PeerTransport interface to improve isolation of concerns
 - [libs/common] [\#2326](https://github.com/tendermint/tendermint/issues/2326) Service returns ErrNotStarted

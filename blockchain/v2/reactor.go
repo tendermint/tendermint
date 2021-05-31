@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tendermint/tendermint/behaviour"
+	proto "github.com/gogo/protobuf/proto"
+
 	bc "github.com/tendermint/tendermint/blockchain"
+	"github.com/tendermint/tendermint/blockchain/v2/internal/behavior"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
 	"github.com/tendermint/tendermint/state"
@@ -42,7 +44,7 @@ type BlockchainReactor struct {
 	syncHeight    int64
 	events        chan Event // non-nil during a fast sync
 
-	reporter behaviour.Reporter
+	reporter behavior.Reporter
 	io       iIO
 	store    blockStore
 }
@@ -52,7 +54,7 @@ type blockApplier interface {
 }
 
 // XXX: unify naming in this package around tmState
-func newReactor(state state.State, store blockStore, reporter behaviour.Reporter,
+func newReactor(state state.State, store blockStore, reporter behavior.Reporter,
 	blockApplier blockApplier, fastSync bool) *BlockchainReactor {
 	initHeight := state.LastBlockHeight + 1
 	if initHeight == 1 {
@@ -80,7 +82,7 @@ func NewBlockchainReactor(
 	blockApplier blockApplier,
 	store blockStore,
 	fastSync bool) *BlockchainReactor {
-	reporter := behaviour.NewMockReporter()
+	reporter := behavior.NewMockReporter()
 	return newReactor(state, store, reporter, blockApplier, fastSync)
 }
 
@@ -124,7 +126,7 @@ func (r *BlockchainReactor) SetLogger(logger log.Logger) {
 
 // Start implements cmn.Service interface
 func (r *BlockchainReactor) Start() error {
-	r.reporter = behaviour.NewSwitchReporter(r.BaseReactor.Switch)
+	r.reporter = behavior.NewSwitchReporter(r.BaseReactor.Switch)
 	if r.fastSync {
 		err := r.startSync(nil)
 		if err != nil {
@@ -134,7 +136,7 @@ func (r *BlockchainReactor) Start() error {
 	return nil
 }
 
-// startSync begins a fast sync, signalled by r.events being non-nil. If state is non-nil,
+// startSync begins a fast sync, signaled by r.events being non-nil. If state is non-nil,
 // the scheduler and processor is updated with this state on startup.
 func (r *BlockchainReactor) startSync(state *state.State) error {
 	r.mtx.Lock()
@@ -374,7 +376,7 @@ func (r *BlockchainReactor) demux(events <-chan Event) {
 				r.processor.send(event)
 			case scPeerError:
 				r.processor.send(event)
-				if err := r.reporter.Report(behaviour.BadMessage(event.peerID, "scPeerError")); err != nil {
+				if err := r.reporter.Report(behavior.BadMessage(event.peerID, "scPeerError")); err != nil {
 					r.logger.Error("Error reporting peer", "err", err)
 				}
 			case scBlockRequest:
@@ -466,52 +468,57 @@ func (r *BlockchainReactor) Stop() error {
 func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	logger := r.logger.With("src", src.ID(), "chID", chID)
 
-	msg, err := bc.DecodeMsg(msgBytes)
-	if err != nil {
+	msgProto := new(bcproto.Message)
+
+	if err := proto.Unmarshal(msgBytes, msgProto); err != nil {
 		logger.Error("error decoding message", "err", err)
-		_ = r.reporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
+		_ = r.reporter.Report(behavior.BadMessage(src.ID(), err.Error()))
 		return
 	}
 
-	if err = bc.ValidateMsg(msg); err != nil {
-		logger.Error("peer sent us invalid msg", "msg", msg, "err", err)
-		_ = r.reporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
+	if err := msgProto.Validate(); err != nil {
+		logger.Error("peer sent us an invalid msg", "msg", msgProto, "err", err)
+		_ = r.reporter.Report(behavior.BadMessage(src.ID(), err.Error()))
 		return
 	}
 
-	r.logger.Debug("Receive", "msg", msg)
+	r.logger.Debug("received", "msg", msgProto)
 
-	switch msg := msg.(type) {
-	case *bcproto.StatusRequest:
+	switch msg := msgProto.Sum.(type) {
+	case *bcproto.Message_StatusRequest:
 		if err := r.io.sendStatusResponse(r.store.Base(), r.store.Height(), src); err != nil {
 			logger.Error("Could not send status message to src peer")
 		}
 
-	case *bcproto.BlockRequest:
-		block := r.store.LoadBlock(msg.Height)
+	case *bcproto.Message_BlockRequest:
+		block := r.store.LoadBlock(msg.BlockRequest.Height)
 		if block != nil {
-			if err = r.io.sendBlockToPeer(block, src); err != nil {
+			if err := r.io.sendBlockToPeer(block, src); err != nil {
 				logger.Error("Could not send block message to src peer", "err", err)
 			}
 		} else {
-			logger.Info("peer asking for a block we don't have", "height", msg.Height)
-			if err = r.io.sendBlockNotFound(msg.Height, src); err != nil {
+			logger.Info("peer asking for a block we don't have", "height", msg.BlockRequest.Height)
+			if err := r.io.sendBlockNotFound(msg.BlockRequest.Height, src); err != nil {
 				logger.Error("Couldn't send block not found msg", "err", err)
 			}
 		}
 
-	case *bcproto.StatusResponse:
+	case *bcproto.Message_StatusResponse:
 		r.mtx.RLock()
 		if r.events != nil {
-			r.events <- bcStatusResponse{peerID: src.ID(), base: msg.Base, height: msg.Height}
+			r.events <- bcStatusResponse{
+				peerID: src.ID(),
+				base:   msg.StatusResponse.Base,
+				height: msg.StatusResponse.Height,
+			}
 		}
 		r.mtx.RUnlock()
 
-	case *bcproto.BlockResponse:
-		bi, err := types.BlockFromProto(msg.Block)
+	case *bcproto.Message_BlockResponse:
+		bi, err := types.BlockFromProto(msg.BlockResponse.Block)
 		if err != nil {
 			logger.Error("error transitioning block from protobuf", "err", err)
-			_ = r.reporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
+			_ = r.reporter.Report(behavior.BadMessage(src.ID(), err.Error()))
 			return
 		}
 		r.mtx.RLock()
@@ -525,10 +532,14 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		}
 		r.mtx.RUnlock()
 
-	case *bcproto.NoBlockResponse:
+	case *bcproto.Message_NoBlockResponse:
 		r.mtx.RLock()
 		if r.events != nil {
-			r.events <- bcNoBlockResponse{peerID: src.ID(), height: msg.Height, time: time.Now()}
+			r.events <- bcNoBlockResponse{
+				peerID: src.ID(),
+				height: msg.NoBlockResponse.Height,
+				time:   time.Now(),
+			}
 		}
 		r.mtx.RUnlock()
 	}

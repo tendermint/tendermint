@@ -19,7 +19,7 @@ We dont expose an RPC server on any of our ABCI-apps.
 
 ## Status
 
-accepted
+Implemented
 
 ## Consequences
 

@@ -33,7 +33,7 @@ type reactorTestSuite struct {
 	chunkOutCh     chan p2p.Envelope
 	chunkPeerErrCh chan p2p.PeerError
 
-	peerUpdates *p2p.PeerUpdatesCh
+	peerUpdates *p2p.PeerUpdates
 }
 
 func setup(
@@ -62,7 +62,7 @@ func setup(
 		chunkInCh:         make(chan p2p.Envelope, chBuf),
 		chunkOutCh:        make(chan p2p.Envelope, chBuf),
 		chunkPeerErrCh:    make(chan p2p.PeerError, chBuf),
-		peerUpdates:       p2p.NewPeerUpdates(make(chan p2p.PeerUpdate)),
+		peerUpdates:       p2p.NewPeerUpdates(make(chan p2p.PeerUpdate), int(chBuf)),
 		conn:              conn,
 		connQuery:         connQuery,
 		stateProvider:     stateProvider,
@@ -127,7 +127,7 @@ func TestReactor_ChunkRequest_InvalidRequest(t *testing.T) {
 	require.Error(t, response.Err)
 	require.Empty(t, rts.chunkOutCh)
 	require.Contains(t, response.Err.Error(), "received unknown message")
-	require.Equal(t, p2p.NodeID("aa"), response.PeerID)
+	require.Equal(t, p2p.NodeID("aa"), response.NodeID)
 }
 
 func TestReactor_ChunkRequest(t *testing.T) {
@@ -198,7 +198,7 @@ func TestReactor_SnapshotsRequest_InvalidRequest(t *testing.T) {
 	require.Error(t, response.Err)
 	require.Empty(t, rts.snapshotOutCh)
 	require.Contains(t, response.Err.Error(), "received unknown message")
-	require.Equal(t, p2p.NodeID("aa"), response.PeerID)
+	require.Equal(t, p2p.NodeID("aa"), response.NodeID)
 }
 
 func TestReactor_SnapshotsRequest(t *testing.T) {

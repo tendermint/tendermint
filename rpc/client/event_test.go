@@ -27,7 +27,9 @@ func MakeTxKV() ([]byte, []byte, []byte) {
 }
 
 func TestHeaderEvents(t *testing.T) {
-	for i, c := range GetClients() {
+	n := NodeSuite(t)
+
+	for i, c := range GetClients(t, n) {
 		i, c := i, c
 		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
 			// start for this test it if it wasn't already running
@@ -54,7 +56,8 @@ func TestHeaderEvents(t *testing.T) {
 
 // subscribe to new blocks and make sure height increments by 1
 func TestBlockEvents(t *testing.T) {
-	for _, c := range GetClients() {
+	n := NodeSuite(t)
+	for _, c := range GetClients(t, n) {
 		c := c
 		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
 
@@ -102,7 +105,8 @@ func TestTxEventsSentWithBroadcastTxAsync(t *testing.T) { testTxEventsSent(t, "a
 func TestTxEventsSentWithBroadcastTxSync(t *testing.T)  { testTxEventsSent(t, "sync") }
 
 func testTxEventsSent(t *testing.T, broadcastMethod string) {
-	for _, c := range GetClients() {
+	n := NodeSuite(t)
+	for _, c := range GetClients(t, n) {
 		c := c
 		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
 
@@ -163,7 +167,9 @@ func TestClientsResubscribe(t *testing.T) {
 }
 
 func TestHTTPReturnsErrorIfClientIsNotRunning(t *testing.T) {
-	c := getHTTPClient()
+	n := NodeSuite(t)
+
+	c := getHTTPClient(t, n)
 
 	// on Subscribe
 	_, err := c.Subscribe(context.Background(), "TestHeaderEvents",

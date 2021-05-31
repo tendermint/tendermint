@@ -34,7 +34,6 @@ Then run
 ```sh
 go get github.com/tendermint/tendermint
 cd $GOPATH/src/github.com/tendermint/tendermint
-make tools
 make install_abci
 ```
 
@@ -64,13 +63,13 @@ Tendermint binary installed. If not, follow the steps from
 before, use:
 
 ```sh
-tendermint init
-tendermint node
+tendermint init validator
+tendermint start
 ```
 
 If you have used Tendermint, you may want to reset the data for a new
 blockchain by running `tendermint unsafe_reset_all`. Then you can run
-`tendermint node` to start Tendermint, and connect to the app. For more
+`tendermint start` to start Tendermint, and connect to the app. For more
 details, see [the guide on using Tendermint](../tendermint-core/using-tendermint.md).
 
 You should see Tendermint making blocks! We can get the status of our
@@ -203,7 +202,7 @@ In another window, reset then start Tendermint:
 
 ```sh
 tendermint unsafe_reset_all
-tendermint node
+tendermint start
 ```
 
 Once again, you can see the blocks streaming by. Let's send some
@@ -278,7 +277,7 @@ In another window, reset and start `tendermint`:
 
 ```sh
 tendermint unsafe_reset_all
-tendermint node
+tendermint start
 ```
 
 Once again, you should see blocks streaming by - but now, our

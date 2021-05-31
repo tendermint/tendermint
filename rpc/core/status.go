@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"time"
 
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -12,7 +13,7 @@ import (
 // Status returns Tendermint status including node info, pubkey, latest block
 // hash, app hash, block height and time.
 // More: https://docs.tendermint.com/master/rpc/#/Info/status
-func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
+func (env *Environment) Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 	var (
 		earliestBlockHeight   int64
 		earliestBlockHash     tmbytes.HexBytes
@@ -46,10 +47,17 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 	// Return the very last voting power, not the voting power of this validator
 	// during the last block.
 	var votingPower int64
-	if val := validatorAtHeight(latestUncommittedHeight()); val != nil {
+	if val := env.validatorAtHeight(env.latestUncommittedHeight()); val != nil {
 		votingPower = val.VotingPower
 	}
-
+	validatorInfo := ctypes.ValidatorInfo{}
+	if env.PubKey != nil {
+		validatorInfo = ctypes.ValidatorInfo{
+			Address:     env.PubKey.Address(),
+			PubKey:      env.PubKey,
+			VotingPower: votingPower,
+		}
+	}
 	result := &ctypes.ResultStatus{
 		NodeInfo: env.P2PTransport.NodeInfo(),
 		SyncInfo: ctypes.SyncInfo{
@@ -63,22 +71,32 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 			EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
 			CatchingUp:          env.ConsensusReactor.WaitSync(),
 		},
-		ValidatorInfo: ctypes.ValidatorInfo{
-			Address:     env.PubKey.Address(),
-			PubKey:      env.PubKey,
-			VotingPower: votingPower,
-		},
+		ValidatorInfo: validatorInfo,
 	}
 
 	return result, nil
 }
 
-func validatorAtHeight(h int64) *types.Validator {
-	vals, err := env.StateStore.LoadValidators(h)
+func (env *Environment) validatorAtHeight(h int64) *types.Validator {
+	valsWithH, err := env.StateStore.LoadValidators(h)
 	if err != nil {
 		return nil
 	}
+	if env.PubKey == nil {
+		return nil
+	}
 	privValAddress := env.PubKey.Address()
-	_, val := vals.GetByAddress(privValAddress)
+
+	// If we're still at height h, search in the current validator set.
+	lastBlockHeight, vals := env.ConsensusState.GetValidators()
+	if lastBlockHeight == h {
+		for _, val := range vals {
+			if bytes.Equal(val.Address, privValAddress) {
+				return val
+			}
+		}
+	}
+
+	_, val := valsWithH.GetByAddress(privValAddress)
 	return val
 }

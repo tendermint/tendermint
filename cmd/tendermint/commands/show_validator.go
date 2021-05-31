@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -36,7 +37,11 @@ func showValidator(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("can't connect to remote validator %w", err)
 		}
-		pubKey, err = pvsc.GetPubKey()
+
+		ctx, cancel := context.WithTimeout(context.TODO(), ctxTimeout)
+		defer cancel()
+
+		pubKey, err = pvsc.GetPubKey(ctx)
 		if err != nil {
 			return fmt.Errorf("can't get pubkey: %w", err)
 		}
@@ -47,9 +52,15 @@ func showValidator(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("private validator file %s does not exist", keyFilePath)
 		}
 
-		pv := privval.LoadFilePV(keyFilePath, config.PrivValidatorStateFile())
+		pv, err := privval.LoadFilePV(keyFilePath, config.PrivValidatorStateFile())
+		if err != nil {
+			return err
+		}
 
-		pubKey, err = pv.GetPubKey()
+		ctx, cancel := context.WithTimeout(context.TODO(), ctxTimeout)
+		defer cancel()
+
+		pubKey, err = pv.GetPubKey(ctx)
 		if err != nil {
 			return fmt.Errorf("can't get pubkey: %w", err)
 		}

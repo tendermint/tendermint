@@ -18,35 +18,37 @@ func RPCRoutes(c *lrpc.Client) map[string]*rpcserver.RPCFunc {
 		"unsubscribe_all": rpcserver.NewWSRPCFunc(c.UnsubscribeAllWS, ""),
 
 		// info API
-		"health":               rpcserver.NewRPCFunc(makeHealthFunc(c), ""),
-		"status":               rpcserver.NewRPCFunc(makeStatusFunc(c), ""),
-		"net_info":             rpcserver.NewRPCFunc(makeNetInfoFunc(c), ""),
-		"blockchain":           rpcserver.NewRPCFunc(makeBlockchainInfoFunc(c), "minHeight,maxHeight"),
-		"genesis":              rpcserver.NewRPCFunc(makeGenesisFunc(c), ""),
-		"block":                rpcserver.NewRPCFunc(makeBlockFunc(c), "height"),
-		"block_by_hash":        rpcserver.NewRPCFunc(makeBlockByHashFunc(c), "hash"),
-		"block_results":        rpcserver.NewRPCFunc(makeBlockResultsFunc(c), "height"),
-		"commit":               rpcserver.NewRPCFunc(makeCommitFunc(c), "height"),
-		"tx":                   rpcserver.NewRPCFunc(makeTxFunc(c), "hash,prove"),
-		"tx_search":            rpcserver.NewRPCFunc(makeTxSearchFunc(c), "query,prove,page,per_page,order_by"),
-		"validators":           rpcserver.NewRPCFunc(makeValidatorsFunc(c), "height,page,per_page"),
-		"dump_consensus_state": rpcserver.NewRPCFunc(makeDumpConsensusStateFunc(c), ""),
-		"consensus_state":      rpcserver.NewRPCFunc(makeConsensusStateFunc(c), ""),
-		"consensus_params":     rpcserver.NewRPCFunc(makeConsensusParamsFunc(c), "height"),
-		"unconfirmed_txs":      rpcserver.NewRPCFunc(makeUnconfirmedTxsFunc(c), "limit"),
-		"num_unconfirmed_txs":  rpcserver.NewRPCFunc(makeNumUnconfirmedTxsFunc(c), ""),
+		"health":               rpcserver.NewRPCFunc(makeHealthFunc(c), "", false),
+		"status":               rpcserver.NewRPCFunc(makeStatusFunc(c), "", false),
+		"net_info":             rpcserver.NewRPCFunc(makeNetInfoFunc(c), "", false),
+		"blockchain":           rpcserver.NewRPCFunc(makeBlockchainInfoFunc(c), "minHeight,maxHeight", true),
+		"genesis":              rpcserver.NewRPCFunc(makeGenesisFunc(c), "", true),
+		"genesis_chunked":      rpcserver.NewRPCFunc(makeGenesisChunkedFunc(c), "", true),
+		"block":                rpcserver.NewRPCFunc(makeBlockFunc(c), "height", true),
+		"block_by_hash":        rpcserver.NewRPCFunc(makeBlockByHashFunc(c), "hash", true),
+		"block_results":        rpcserver.NewRPCFunc(makeBlockResultsFunc(c), "height", true),
+		"commit":               rpcserver.NewRPCFunc(makeCommitFunc(c), "height", true),
+		"tx":                   rpcserver.NewRPCFunc(makeTxFunc(c), "hash,prove", true),
+		"tx_search":            rpcserver.NewRPCFunc(makeTxSearchFunc(c), "query,prove,page,per_page,order_by", false),
+		"block_search":         rpcserver.NewRPCFunc(makeBlockSearchFunc(c), "query,page,per_page,order_by", false),
+		"validators":           rpcserver.NewRPCFunc(makeValidatorsFunc(c), "height,page,per_page", true),
+		"dump_consensus_state": rpcserver.NewRPCFunc(makeDumpConsensusStateFunc(c), "", false),
+		"consensus_state":      rpcserver.NewRPCFunc(makeConsensusStateFunc(c), "", false),
+		"consensus_params":     rpcserver.NewRPCFunc(makeConsensusParamsFunc(c), "height", true),
+		"unconfirmed_txs":      rpcserver.NewRPCFunc(makeUnconfirmedTxsFunc(c), "limit", false),
+		"num_unconfirmed_txs":  rpcserver.NewRPCFunc(makeNumUnconfirmedTxsFunc(c), "", false),
 
 		// tx broadcast API
-		"broadcast_tx_commit": rpcserver.NewRPCFunc(makeBroadcastTxCommitFunc(c), "tx"),
-		"broadcast_tx_sync":   rpcserver.NewRPCFunc(makeBroadcastTxSyncFunc(c), "tx"),
-		"broadcast_tx_async":  rpcserver.NewRPCFunc(makeBroadcastTxAsyncFunc(c), "tx"),
+		"broadcast_tx_commit": rpcserver.NewRPCFunc(makeBroadcastTxCommitFunc(c), "tx", false),
+		"broadcast_tx_sync":   rpcserver.NewRPCFunc(makeBroadcastTxSyncFunc(c), "tx", false),
+		"broadcast_tx_async":  rpcserver.NewRPCFunc(makeBroadcastTxAsyncFunc(c), "tx", false),
 
 		// abci API
-		"abci_query": rpcserver.NewRPCFunc(makeABCIQueryFunc(c), "path,data,height,prove"),
-		"abci_info":  rpcserver.NewRPCFunc(makeABCIInfoFunc(c), ""),
+		"abci_query": rpcserver.NewRPCFunc(makeABCIQueryFunc(c), "path,data,height,prove", false),
+		"abci_info":  rpcserver.NewRPCFunc(makeABCIInfoFunc(c), "", true),
 
 		// evidence API
-		"broadcast_evidence": rpcserver.NewRPCFunc(makeBroadcastEvidenceFunc(c), "evidence"),
+		"broadcast_evidence": rpcserver.NewRPCFunc(makeBroadcastEvidenceFunc(c), "evidence", false),
 	}
 }
 
@@ -91,6 +93,14 @@ func makeGenesisFunc(c *lrpc.Client) rpcGenesisFunc {
 	}
 }
 
+type rpcGenesisChunkedFunc func(ctx *rpctypes.Context, chunk uint) (*ctypes.ResultGenesisChunk, error)
+
+func makeGenesisChunkedFunc(c *lrpc.Client) rpcGenesisChunkedFunc {
+	return func(ctx *rpctypes.Context, chunk uint) (*ctypes.ResultGenesisChunk, error) {
+		return c.GenesisChunked(ctx.Context(), chunk)
+	}
+}
+
 type rpcBlockFunc func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBlock, error)
 
 func makeBlockFunc(c *lrpc.Client) rpcBlockFunc {
@@ -131,13 +141,43 @@ func makeTxFunc(c *lrpc.Client) rpcTxFunc {
 	}
 }
 
-type rpcTxSearchFunc func(ctx *rpctypes.Context, query string, prove bool,
-	page, perPage *int, orderBy string) (*ctypes.ResultTxSearch, error)
+type rpcTxSearchFunc func(
+	ctx *rpctypes.Context,
+	query string,
+	prove bool,
+	page, perPage *int,
+	orderBy string,
+) (*ctypes.ResultTxSearch, error)
 
 func makeTxSearchFunc(c *lrpc.Client) rpcTxSearchFunc {
-	return func(ctx *rpctypes.Context, query string, prove bool, page, perPage *int, orderBy string) (
-		*ctypes.ResultTxSearch, error) {
+	return func(
+		ctx *rpctypes.Context,
+		query string,
+		prove bool,
+		page, perPage *int,
+		orderBy string,
+	) (*ctypes.ResultTxSearch, error) {
 		return c.TxSearch(ctx.Context(), query, prove, page, perPage, orderBy)
+	}
+}
+
+type rpcBlockSearchFunc func(
+	ctx *rpctypes.Context,
+	query string,
+	prove bool,
+	page, perPage *int,
+	orderBy string,
+) (*ctypes.ResultBlockSearch, error)
+
+func makeBlockSearchFunc(c *lrpc.Client) rpcBlockSearchFunc {
+	return func(
+		ctx *rpctypes.Context,
+		query string,
+		prove bool,
+		page, perPage *int,
+		orderBy string,
+	) (*ctypes.ResultBlockSearch, error) {
+		return c.BlockSearch(ctx.Context(), query, page, perPage, orderBy)
 	}
 }
 

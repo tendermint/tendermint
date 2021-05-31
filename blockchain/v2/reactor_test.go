@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"sort"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/behaviour"
-	bc "github.com/tendermint/tendermint/blockchain"
+	"github.com/tendermint/tendermint/blockchain/v2/internal/behavior"
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/mempool/mock"
@@ -27,7 +27,6 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 type mockPeer struct {
@@ -64,14 +63,17 @@ type mockBlockStore struct {
 	blocks map[int64]*types.Block
 }
 
+//nolint:unused
 func (ml *mockBlockStore) Height() int64 {
 	return int64(len(ml.blocks))
 }
 
+//nolint:unused
 func (ml *mockBlockStore) LoadBlock(height int64) *types.Block {
 	return ml.blocks[height]
 }
 
+//nolint:unused
 func (ml *mockBlockStore) SaveBlock(block *types.Block, part *types.PartSet, commit *types.Commit) {
 	ml.blocks[block.Height] = block
 }
@@ -151,7 +153,7 @@ type testReactorParams struct {
 
 func newTestReactor(p testReactorParams) *BlockchainReactor {
 	store, state, _ := newReactorStore(p.genDoc, p.privVals, p.startHeight)
-	reporter := behaviour.NewMockReporter()
+	reporter := behavior.NewMockReporter()
 
 	var appl blockApplier
 
@@ -308,7 +310,7 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 // 		t.Run(tt.name, func(t *testing.T) {
 // 			reactor := newTestReactor(params)
 // 			reactor.Start()
-// 			reactor.reporter = behaviour.NewMockReporter()
+// 			reactor.reporter = behavior.NewMockReporter()
 // 			mockSwitch := &mockSwitchIo{switchedToConsensus: false}
 // 			reactor.io = mockSwitch
 // 			// time for go routines to start
@@ -363,7 +365,7 @@ func TestReactorHelperMode(t *testing.T) {
 
 	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
 	defer os.RemoveAll(config.RootDir)
-	genDoc, privVals := randGenesisDoc(config.ChainID(), 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
 
 	params := testReactorParams{
 		logger:      log.TestingLogger(),
@@ -409,23 +411,37 @@ func TestReactorHelperMode(t *testing.T) {
 				switch ev := step.event.(type) {
 				case bcproto.StatusRequest:
 					old := mockSwitch.numStatusResponse
-					msg, err := bc.EncodeMsg(&ev)
-					assert.NoError(t, err)
-					reactor.Receive(channelID, mockPeer{id: p2p.NodeID(step.peer)}, msg)
+
+					msgProto := new(bcproto.Message)
+					require.NoError(t, msgProto.Wrap(&ev))
+
+					msgBz, err := proto.Marshal(msgProto)
+					require.NoError(t, err)
+
+					reactor.Receive(channelID, mockPeer{id: p2p.NodeID(step.peer)}, msgBz)
 					assert.Equal(t, old+1, mockSwitch.numStatusResponse)
 				case bcproto.BlockRequest:
 					if ev.Height > params.startHeight {
 						old := mockSwitch.numNoBlockResponse
-						msg, err := bc.EncodeMsg(&ev)
-						assert.NoError(t, err)
-						reactor.Receive(channelID, mockPeer{id: p2p.NodeID(step.peer)}, msg)
+
+						msgProto := new(bcproto.Message)
+						require.NoError(t, msgProto.Wrap(&ev))
+
+						msgBz, err := proto.Marshal(msgProto)
+						require.NoError(t, err)
+
+						reactor.Receive(channelID, mockPeer{id: p2p.NodeID(step.peer)}, msgBz)
 						assert.Equal(t, old+1, mockSwitch.numNoBlockResponse)
 					} else {
 						old := mockSwitch.numBlockResponse
-						msg, err := bc.EncodeMsg(&ev)
-						assert.NoError(t, err)
-						assert.NoError(t, err)
-						reactor.Receive(channelID, mockPeer{id: p2p.NodeID(step.peer)}, msg)
+
+						msgProto := new(bcproto.Message)
+						require.NoError(t, msgProto.Wrap(&ev))
+
+						msgBz, err := proto.Marshal(msgProto)
+						require.NoError(t, err)
+
+						reactor.Receive(channelID, mockPeer{id: p2p.NodeID(step.peer)}, msgBz)
 						assert.Equal(t, old+1, mockSwitch.numBlockResponse)
 					}
 				}
@@ -439,7 +455,7 @@ func TestReactorHelperMode(t *testing.T) {
 func TestReactorSetSwitchNil(t *testing.T) {
 	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
 	defer os.RemoveAll(config.RootDir)
-	genDoc, privVals := randGenesisDoc(config.ChainID(), 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
 
 	reactor := newTestReactor(testReactorParams{
 		logger:   log.TestingLogger(),
@@ -469,27 +485,6 @@ func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Bl
 
 type testApp struct {
 	abci.BaseApplication
-}
-
-func randGenesisDoc(chainID string, numValidators int, randPower bool, minPower int64) (
-	*types.GenesisDoc, []types.PrivValidator) {
-	validators := make([]types.GenesisValidator, numValidators)
-	privValidators := make([]types.PrivValidator, numValidators)
-	for i := 0; i < numValidators; i++ {
-		val, privVal := types.RandValidator(randPower, minPower)
-		validators[i] = types.GenesisValidator{
-			PubKey: val.PubKey,
-			Power:  val.VotingPower,
-		}
-		privValidators[i] = privVal
-	}
-	sort.Sort(types.PrivValidatorsByAddress(privValidators))
-
-	return &types.GenesisDoc{
-		GenesisTime: tmtime.Now(),
-		ChainID:     chainID,
-		Validators:  validators,
-	}, privValidators
 }
 
 // Why are we importing the entire blockExecutor dependency graph here
@@ -531,12 +526,11 @@ func newReactorStore(
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
-			vote, err := types.MakeVote(
-				lastBlock.Header.Height,
-				lastBlockMeta.BlockID,
-				state.Validators,
+			vote, err := factory.MakeVote(
 				privVals[0],
-				lastBlock.Header.ChainID,
+				lastBlock.Header.ChainID, 0,
+				lastBlock.Header.Height, 0, 2,
+				lastBlockMeta.BlockID,
 				time.Now(),
 			)
 			if err != nil {

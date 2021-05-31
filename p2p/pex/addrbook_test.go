@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
+	mrand "math/rand"
 	"net"
 	"os"
 	"testing"
@@ -187,12 +188,12 @@ func randNetAddressPairs(t *testing.T, n int) []netAddressPair {
 func randIPv4Address(t *testing.T) *p2p.NetAddress {
 	for {
 		ip := fmt.Sprintf("%v.%v.%v.%v",
-			tmrand.Intn(254)+1,
-			tmrand.Intn(255),
-			tmrand.Intn(255),
-			tmrand.Intn(255),
+			mrand.Intn(254)+1,
+			mrand.Intn(255),
+			mrand.Intn(255),
+			mrand.Intn(255),
 		)
-		port := tmrand.Intn(65535-1) + 1
+		port := mrand.Intn(65535-1) + 1
 		id := p2p.NodeID(hex.EncodeToString(tmrand.Bytes(p2p.NodeIDByteLength)))
 		idAddr := p2p.IDAddressString(id, fmt.Sprintf("%v:%v", ip, port))
 		addr, err := p2p.NewNetAddressString(idAddr)
@@ -554,7 +555,7 @@ func TestMultipleAddrBookAddressSelection(t *testing.T) {
 	ranges := [...][]int{{33, 100}, {100, 175}}
 	bookSizes := make([]int, 0, len(ranges))
 	for _, r := range ranges {
-		bookSizes = append(bookSizes, tmrand.Intn(r[1]-r[0])+r[0])
+		bookSizes = append(bookSizes, mrand.Intn(r[1]-r[0])+r[0])
 	}
 	t.Logf("Testing address selection for the following book sizes %v\n", bookSizes)
 	for _, bookSize := range bookSizes {
@@ -741,7 +742,7 @@ func countOldAndNewAddrsInSelection(addrs []*p2p.NetAddress, book *addrBook) (nO
 	return
 }
 
-// Analyse the layout of the selection specified by 'addrs'
+// Analyze the layout of the selection specified by 'addrs'
 // Returns:
 // - seqLens - the lengths of the sequences of addresses of same type
 // - seqTypes - the types of sequences in selection

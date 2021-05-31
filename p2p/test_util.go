@@ -1,7 +1,9 @@
 package p2p
 
 import (
+	"context"
 	"fmt"
+	mrand "math/rand"
 	"net"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -34,15 +36,16 @@ func CreateRandomPeer(outbound bool) Peer {
 	return p
 }
 
+// nolint:gosec // G404: Use of weak random number generator
 func CreateRoutableAddr() (addr string, netAddr *NetAddress) {
 	for {
 		var err error
 		addr = fmt.Sprintf("%X@%v.%v.%v.%v:26656",
 			tmrand.Bytes(20),
-			tmrand.Int()%256,
-			tmrand.Int()%256,
-			tmrand.Int()%256,
-			tmrand.Int()%256)
+			mrand.Int()%256,
+			mrand.Int()%256,
+			mrand.Int()%256,
+			mrand.Int()%256)
 		netAddr, err = NewNetAddressString(addr)
 		if err != nil {
 			panic(err)
@@ -70,7 +73,7 @@ func MakeConnectedSwitches(cfg *config.P2PConfig,
 ) []*Switch {
 	switches := make([]*Switch, n)
 	for i := 0; i < n; i++ {
-		switches[i] = MakeSwitch(cfg, i, TestHost, "123.123.123", initSwitch)
+		switches[i] = MakeSwitch(cfg, i, TestHost, "123.123.123", initSwitch, log.TestingLogger())
 	}
 
 	if err := StartSwitches(switches); err != nil {
@@ -122,8 +125,16 @@ func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
 		}
 		return err
 	}
+	peerNodeInfo, _, err := pc.conn.Handshake(context.Background(), sw.nodeInfo, sw.nodeKey.PrivKey)
+	if err != nil {
+		if err := conn.Close(); err != nil {
+			sw.Logger.Error("Error closing connection", "err", err)
+		}
+		return err
+	}
 
 	p := newPeer(
+		peerNodeInfo,
 		pc,
 		sw.reactorsByCh,
 		sw.StopPeerForError,
@@ -154,6 +165,7 @@ func MakeSwitch(
 	i int,
 	network, version string,
 	initSwitch func(int, *Switch) *Switch,
+	logger log.Logger,
 	opts ...SwitchOption,
 ) *Switch {
 
@@ -166,12 +178,13 @@ func MakeSwitch(
 		panic(err)
 	}
 
-	logger := log.TestingLogger().With("switch", i)
-	t := NewMConnTransport(logger, nodeInfo, nodeKey.PrivKey, MConnConfig(cfg))
+	swLogger := logger.With("switch", i)
+	t := NewMConnTransport(swLogger, MConnConfig(cfg),
+		[]*ChannelDescriptor{}, MConnTransportOptions{})
 
 	// TODO: let the config be passed in?
 	sw := initSwitch(i, NewSwitch(cfg, t, opts...))
-	sw.SetLogger(log.TestingLogger().With("switch", i))
+	sw.SetLogger(swLogger)
 	sw.SetNodeKey(nodeKey)
 
 	if err := t.Listen(addr.Endpoint()); err != nil {
@@ -187,7 +200,6 @@ func MakeSwitch(
 
 	// TODO: We need to setup reactors ahead of time so the NodeInfo is properly
 	// populated and we don't have to do those awkward overrides and setters.
-	t.nodeInfo = nodeInfo
 	sw.SetNodeInfo(nodeInfo)
 
 	return sw
@@ -206,10 +218,7 @@ func testPeerConn(
 	outbound, persistent bool,
 ) (pc peerConn, err error) {
 
-	conn, err := newMConnConnection(transport, rawConn, "")
-	if err != nil {
-		return pc, fmt.Errorf("error creating peer: %w", err)
-	}
+	conn := newMConnConnection(transport.logger, rawConn, transport.mConnConfig, transport.channelDescs)
 
 	return newPeerConn(outbound, persistent, conn), nil
 }

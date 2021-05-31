@@ -17,7 +17,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -36,8 +35,14 @@ func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 		Timestamp:        timestamp,
 		Signature:        []byte("Signature"),
 	}}
-	return types.NewCommit(height, 0,
-		types.BlockID{Hash: []byte(""), PartSetHeader: types.PartSetHeader{Hash: []byte(""), Total: 2}}, commitSigs)
+	return types.NewCommit(
+		height,
+		0,
+		types.BlockID{
+			Hash:          crypto.CRandBytes(32),
+			PartSetHeader: types.PartSetHeader{Hash: crypto.CRandBytes(32), Total: 2},
+		},
+		commitSigs)
 }
 
 func makeTxs(height int64) (txs []types.Tx) {
@@ -122,7 +127,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	require.Error(t, err)
 
 	header1 := types.Header{
-		Version:         tmversion.Consensus{Block: version.BlockProtocol},
+		Version:         version.Consensus{Block: version.BlockProtocol},
 		Height:          1,
 		ChainID:         "block_test",
 		Time:            tmtime.Now(),
@@ -158,7 +163,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		{
 			block: newBlock( // New block at height 5 in empty block store is fine
 				types.Header{
-					Version:         tmversion.Consensus{Block: version.BlockProtocol},
+					Version:         version.Consensus{Block: version.BlockProtocol},
 					Height:          5,
 					ChainID:         "block_test",
 					Time:            tmtime.Now(),
@@ -461,7 +466,7 @@ func TestLoadBlockMeta(t *testing.T) {
 
 	// 3. A good blockMeta serialized and saved to the DB should be retrievable
 	meta := &types.BlockMeta{Header: types.Header{
-		Version: tmversion.Consensus{
+		Version: version.Consensus{
 			Block: version.BlockProtocol, App: 0}, Height: 1, ProposerAddress: tmrand.Bytes(crypto.AddressSize)}}
 	pbm := meta.ToProto()
 	err = db.Set(blockMetaKey(height), mustEncode(pbm))
@@ -503,6 +508,45 @@ func TestBlockFetchAtHeight(t *testing.T) {
 	require.Nil(t, blockAtHeightPlus1, "expecting an unsuccessful load of Height()+1")
 	blockAtHeightPlus2 := bs.LoadBlock(bs.Height() + 2)
 	require.Nil(t, blockAtHeightPlus2, "expecting an unsuccessful load of Height()+2")
+}
+
+func TestSeenAndCanonicalCommit(t *testing.T) {
+	bs, _ := freshBlockStore()
+	height := int64(2)
+	loadCommit := func() (interface{}, error) {
+		meta := bs.LoadSeenCommit(height)
+		return meta, nil
+	}
+
+	// Initially no contents.
+	// 1. Requesting for a non-existent blockMeta shouldn't fail
+	res, _, panicErr := doFn(loadCommit)
+	require.Nil(t, panicErr, "a non-existent blockMeta shouldn't cause a panic")
+	require.Nil(t, res, "a non-existent blockMeta should return nil")
+
+	// produce a few blocks and check that the correct seen and cannoncial commits
+	// are persisted.
+	for h := int64(3); h <= 5; h++ {
+		c1 := bs.LoadSeenCommit(h)
+		require.Nil(t, c1)
+		c2 := bs.LoadBlockCommit(h - 1)
+		require.Nil(t, c2)
+		blockCommit := makeTestCommit(h-1, tmtime.Now())
+		block := makeBlock(h, state, blockCommit)
+		partSet := block.MakePartSet(2)
+		seenCommit := makeTestCommit(h, tmtime.Now())
+		bs.SaveBlock(block, partSet, seenCommit)
+		c3 := bs.LoadSeenCommit(h)
+		require.Equal(t, seenCommit.Hash(), c3.Hash())
+		// the previous seen commit should be removed
+		c4 := bs.LoadSeenCommit(h - 1)
+		require.Nil(t, c4)
+		c5 := bs.LoadBlockCommit(h)
+		require.Nil(t, c5)
+		c6 := bs.LoadBlockCommit(h - 1)
+		require.Equal(t, blockCommit.Hash(), c6.Hash())
+	}
+
 }
 
 func doFn(fn func() (interface{}, error)) (res interface{}, err error, panicErr error) {

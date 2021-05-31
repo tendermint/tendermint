@@ -1,6 +1,8 @@
 package p2p
 
-import "sync"
+import (
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+)
 
 // queue does QoS scheduling for Envelopes, enqueueing and dequeueing according
 // to some policy. Queues are used at contention points, i.e.:
@@ -26,17 +28,14 @@ type queue interface {
 // fifoQueue is a simple unbuffered lossless queue that passes messages through
 // in the order they were received, and blocks until message is received.
 type fifoQueue struct {
-	queueCh   chan Envelope
-	closeCh   chan struct{}
-	closeOnce sync.Once
+	queueCh chan Envelope
+	closer  *tmsync.Closer
 }
 
-var _ queue = (*fifoQueue)(nil)
-
-func newFIFOQueue() *fifoQueue {
+func newFIFOQueue(size int) queue {
 	return &fifoQueue{
-		queueCh: make(chan Envelope),
-		closeCh: make(chan struct{}),
+		queueCh: make(chan Envelope, size),
+		closer:  tmsync.NewCloser(),
 	}
 }
 
@@ -49,11 +48,9 @@ func (q *fifoQueue) dequeue() <-chan Envelope {
 }
 
 func (q *fifoQueue) close() {
-	q.closeOnce.Do(func() {
-		close(q.closeCh)
-	})
+	q.closer.Close()
 }
 
 func (q *fifoQueue) closed() <-chan struct{} {
-	return q.closeCh
+	return q.closer.Done()
 }

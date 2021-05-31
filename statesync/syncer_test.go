@@ -12,11 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
-	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
-	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/proxy"
 	proxymocks "github.com/tendermint/tendermint/proxy/mocks"
 	sm "github.com/tendermint/tendermint/state"
@@ -30,12 +28,12 @@ var ctx = context.Background()
 func TestSyncer_SyncAny(t *testing.T) {
 	state := sm.State{
 		ChainID: "chain",
-		Version: tmstate.Version{
-			Consensus: tmversion.Consensus{
+		Version: sm.Version{
+			Consensus: version.Consensus{
 				Block: version.BlockProtocol,
 				App:   0,
 			},
-			Software: version.TMCoreSemVer,
+			Software: version.TMVersion,
 		},
 
 		LastBlockHeight: 1,
@@ -70,7 +68,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 
 	peerAID := p2p.NodeID("aa")
 	peerBID := p2p.NodeID("bb")
-
+	peerCID := p2p.NodeID("cc")
 	rts := setup(t, connSnapshot, connQuery, stateProvider, 3)
 
 	// Adding a chunk should error when no sync is in progress
@@ -98,9 +96,14 @@ func TestSyncer_SyncAny(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, new)
 
-	new, err = rts.syncer.AddSnapshot(peerBID, &snapshot{Height: 2, Format: 2, Chunks: 3, Hash: []byte{1}})
+	s2 := &snapshot{Height: 2, Format: 2, Chunks: 3, Hash: []byte{1}}
+	new, err = rts.syncer.AddSnapshot(peerBID, s2)
 	require.NoError(t, err)
 	require.True(t, new)
+
+	new, err = rts.syncer.AddSnapshot(peerCID, s2)
+	require.NoError(t, err)
+	require.False(t, new)
 
 	// We start a sync, with peers sending back chunks when requested. We first reject the snapshot
 	// with height 2 format 2, and accept the snapshot at height 1.
@@ -177,7 +180,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 		LastBlockAppHash: []byte("app_hash"),
 	}, nil)
 
-	newState, lastCommit, err := rts.syncer.SyncAny(0)
+	newState, lastCommit, err := rts.syncer.SyncAny(0, func() {})
 	require.NoError(t, err)
 
 	wg.Wait()
@@ -203,7 +206,7 @@ func TestSyncer_SyncAny_noSnapshots(t *testing.T) {
 
 	rts := setup(t, nil, nil, stateProvider, 2)
 
-	_, _, err := rts.syncer.SyncAny(0)
+	_, _, err := rts.syncer.SyncAny(0, func() {})
 	require.Equal(t, errNoSnapshots, err)
 }
 
@@ -223,7 +226,7 @@ func TestSyncer_SyncAny_abort(t *testing.T) {
 		Snapshot: toABCI(s), AppHash: []byte("app_hash"),
 	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ABORT}, nil)
 
-	_, _, err = rts.syncer.SyncAny(0)
+	_, _, err = rts.syncer.SyncAny(0, func() {})
 	require.Equal(t, errAbort, err)
 	rts.conn.AssertExpectations(t)
 }
@@ -262,7 +265,7 @@ func TestSyncer_SyncAny_reject(t *testing.T) {
 		Snapshot: toABCI(s11), AppHash: []byte("app_hash"),
 	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT}, nil)
 
-	_, _, err = rts.syncer.SyncAny(0)
+	_, _, err = rts.syncer.SyncAny(0, func() {})
 	require.Equal(t, errNoSnapshots, err)
 	rts.conn.AssertExpectations(t)
 }
@@ -297,7 +300,7 @@ func TestSyncer_SyncAny_reject_format(t *testing.T) {
 		Snapshot: toABCI(s11), AppHash: []byte("app_hash"),
 	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ABORT}, nil)
 
-	_, _, err = rts.syncer.SyncAny(0)
+	_, _, err = rts.syncer.SyncAny(0, func() {})
 	require.Equal(t, errAbort, err)
 	rts.conn.AssertExpectations(t)
 }
@@ -343,7 +346,7 @@ func TestSyncer_SyncAny_reject_sender(t *testing.T) {
 		Snapshot: toABCI(sa), AppHash: []byte("app_hash"),
 	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT}, nil)
 
-	_, _, err = rts.syncer.SyncAny(0)
+	_, _, err = rts.syncer.SyncAny(0, func() {})
 	require.Equal(t, errNoSnapshots, err)
 	rts.conn.AssertExpectations(t)
 }
@@ -366,7 +369,7 @@ func TestSyncer_SyncAny_abciError(t *testing.T) {
 		Snapshot: toABCI(s), AppHash: []byte("app_hash"),
 	}).Once().Return(nil, errBoom)
 
-	_, _, err = rts.syncer.SyncAny(0)
+	_, _, err = rts.syncer.SyncAny(0, func() {})
 	require.True(t, errors.Is(err, errBoom))
 	rts.conn.AssertExpectations(t)
 }

@@ -2,8 +2,10 @@ package log
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -80,6 +82,11 @@ func (l tmfmtLogger) Log(keyvals ...interface{}) error {
 			excludeIndexes = append(excludeIndexes, i)
 			module = keyvals[i+1].(string)
 		}
+
+		// Print []byte as a hexadecimal string (uppercased)
+		if b, ok := keyvals[i+1].([]byte); ok {
+			keyvals[i+1] = strings.ToUpper(hex.EncodeToString(b))
+		}
 	}
 
 	// Form a custom Tendermint line
@@ -91,7 +98,7 @@ func (l tmfmtLogger) Log(keyvals ...interface{}) error {
 	//     D										- first character of the level, uppercase (ASCII only)
 	//     [2016-05-02|11:06:44.322]    - our time format (see https://golang.org/src/time/format.go)
 	//     Stopping ...					- message
-	enc.buf.WriteString(fmt.Sprintf("%c[%s] %-44s ", lvl[0]-32, time.Now().Format("2006-01-02|15:04:05.000"), msg))
+	fmt.Fprintf(&enc.buf, "%c[%s] %-44s ", lvl[0]-32, time.Now().Format("2006-01-02|15:04:05.000"), msg)
 
 	if module != unknown {
 		enc.buf.WriteString("module=" + module + " ")

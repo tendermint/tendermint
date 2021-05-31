@@ -5,139 +5,388 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
+	"net"
+	"runtime"
 	"sync"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
+
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
+const queueBufferDefault = 4096
+
+// ChannelID is an arbitrary channel ID.
+type ChannelID uint16
+
+// Envelope contains a message with sender/receiver routing info.
+type Envelope struct {
+	From      NodeID        // sender (empty if outbound)
+	To        NodeID        // receiver (empty if inbound)
+	Broadcast bool          // send to all connected peers (ignores To)
+	Message   proto.Message // message payload
+
+	// channelID is for internal Router use, set on outbound messages to inform
+	// the sendPeer() goroutine which transport channel to use.
+	//
+	// FIXME: If we migrate the Transport API to a byte-oriented multi-stream
+	// API, this will no longer be necessary since each channel will be mapped
+	// onto a stream during channel/peer setup. See:
+	// https://github.com/tendermint/spec/pull/227
+	channelID ChannelID
+}
+
+// PeerError is a peer error reported via Channel.Error.
+//
+// FIXME: This currently just disconnects the peer, which is too simplistic.
+// For example, some errors should be logged, some should cause disconnects,
+// and some should ban the peer.
+//
+// FIXME: This should probably be replaced by a more general PeerBehavior
+// concept that can mark good and bad behavior and contributes to peer scoring.
+// It should possibly also allow reactors to request explicit actions, e.g.
+// disconnection or banning, in addition to doing this based on aggregates.
+type PeerError struct {
+	NodeID NodeID
+	Err    error
+}
+
+// Channel is a bidirectional channel to exchange Protobuf messages with peers,
+// wrapped in Envelope to specify routing info (i.e. sender/receiver).
+type Channel struct {
+	ID    ChannelID
+	In    <-chan Envelope  // inbound messages (peers to reactors)
+	Out   chan<- Envelope  // outbound messages (reactors to peers)
+	Error chan<- PeerError // peer error reporting
+
+	messageType proto.Message // the channel's message type, used for unmarshaling
+	closeCh     chan struct{}
+	closeOnce   sync.Once
+}
+
+// NewChannel creates a new channel. It is primarily for internal and test
+// use, reactors should use Router.OpenChannel().
+func NewChannel(
+	id ChannelID,
+	messageType proto.Message,
+	inCh <-chan Envelope,
+	outCh chan<- Envelope,
+	errCh chan<- PeerError,
+) *Channel {
+	return &Channel{
+		ID:          id,
+		messageType: messageType,
+		In:          inCh,
+		Out:         outCh,
+		Error:       errCh,
+		closeCh:     make(chan struct{}),
+	}
+}
+
+// Close closes the channel. Future sends on Out and Error will panic. The In
+// channel remains open to avoid having to synchronize Router senders, which
+// should use Done() to detect channel closure instead.
+func (c *Channel) Close() {
+	c.closeOnce.Do(func() {
+		close(c.closeCh)
+		close(c.Out)
+		close(c.Error)
+	})
+}
+
+// Done returns a channel that's closed when Channel.Close() is called.
+func (c *Channel) Done() <-chan struct{} {
+	return c.closeCh
+}
+
+// Wrapper is a Protobuf message that can contain a variety of inner messages
+// (e.g. via oneof fields). If a Channel's message type implements Wrapper, the
+// Router will automatically wrap outbound messages and unwrap inbound messages,
+// such that reactors do not have to do this themselves.
+type Wrapper interface {
+	proto.Message
+
+	// Wrap will take a message and wrap it in this one if possible.
+	Wrap(proto.Message) error
+
+	// Unwrap will unwrap the inner message contained in this message.
+	Unwrap() (proto.Message, error)
+}
+
+// RouterOptions specifies options for a Router.
+type RouterOptions struct {
+	// ResolveTimeout is the timeout for resolving NodeAddress URLs.
+	// 0 means no timeout.
+	ResolveTimeout time.Duration
+
+	// DialTimeout is the timeout for dialing a peer. 0 means no timeout.
+	DialTimeout time.Duration
+
+	// HandshakeTimeout is the timeout for handshaking with a peer. 0 means
+	// no timeout.
+	HandshakeTimeout time.Duration
+
+	// QueueType must be "wdrr" (Weighed Deficit Round Robin), "priority", or
+	// "fifo". Defaults to "fifo".
+	QueueType string
+
+	// MaxIncomingConnectionAttempts rate limits the number of incoming connection
+	// attempts per IP address. Defaults to 100.
+	MaxIncomingConnectionAttempts uint
+
+	// IncomingConnectionWindow describes how often an IP address
+	// can attempt to create a new connection. Defaults to 10
+	// milliseconds, and cannot be less than 1 millisecond.
+	IncomingConnectionWindow time.Duration
+
+	// FilterPeerByIP is used by the router to inject filtering
+	// behavior for new incoming connections. The router passes
+	// the remote IP of the incoming connection the port number as
+	// arguments. Functions should return an error to reject the
+	// peer.
+	FilterPeerByIP func(context.Context, net.IP, uint16) error
+
+	// FilterPeerByID is used by the router to inject filtering
+	// behavior for new incoming connections. The router passes
+	// the NodeID of the node before completing the connection,
+	// but this occurs after the handshake is complete. Filter by
+	// IP address to filter before the handshake. Functions should
+	// return an error to reject the peer.
+	FilterPeerByID func(context.Context, NodeID) error
+
+	// DialSleep controls the amount of time that the router
+	// sleeps between dialing peers. If not set, a default value
+	// is used that sleeps for a (random) amount of time up to 3
+	// seconds between submitting each peer to be dialed.
+	DialSleep func(context.Context)
+
+	// NumConcrruentDials controls how many parallel go routines
+	// are used to dial peers. This defaults to the value of
+	// runtime.NumCPU.
+	NumConcurrentDials func() int
+}
+
+const (
+	queueTypeFifo     = "fifo"
+	queueTypePriority = "priority"
+	queueTypeWDRR     = "wdrr"
+)
+
+// Validate validates router options.
+func (o *RouterOptions) Validate() error {
+	switch o.QueueType {
+	case "":
+		o.QueueType = queueTypeFifo
+	case queueTypeFifo, queueTypeWDRR, queueTypePriority:
+		// passI me
+	default:
+		return fmt.Errorf("queue type %q is not supported", o.QueueType)
+	}
+
+	switch {
+	case o.IncomingConnectionWindow == 0:
+		o.IncomingConnectionWindow = 100 * time.Millisecond
+	case o.IncomingConnectionWindow < time.Millisecond:
+		return fmt.Errorf("incomming connection window must be grater than 1m [%s]",
+			o.IncomingConnectionWindow)
+	}
+
+	if o.MaxIncomingConnectionAttempts == 0 {
+		o.MaxIncomingConnectionAttempts = 100
+	}
+
+	return nil
+}
+
 // Router manages peer connections and routes messages between peers and reactor
-// channels. This is an early prototype.
+// channels. It takes a PeerManager for peer lifecycle management (e.g. which
+// peers to dial and when) and a set of Transports for connecting and
+// communicating with peers.
 //
-// Channels are registered via OpenChannel(). When called, we register an input
-// message queue for the channel in channelQueues and spawn off a goroutine for
-// Router.routeChannel(). This goroutine reads off outbound messages and puts
-// them in the appropriate peer message queue, and processes peer errors which
-// will close (and thus disconnect) the appriate peer queue. It runs until
-// either the channel is closed by the caller or the router is stopped, at which
-// point the input message queue is closed and removed.
+// On startup, three main goroutines are spawned to maintain peer connections:
 //
-// On startup, the router spawns off two primary goroutines that maintain
-// connections to peers and run for the lifetime of the router:
+//   dialPeers(): in a loop, calls PeerManager.DialNext() to get the next peer
+//   address to dial and spawns a goroutine that dials the peer, handshakes
+//   with it, and begins to route messages if successful.
 //
-//   Router.dialPeers(): in a loop, asks the peerStore to dispense an
-//   eligible peer to connect to, and attempts to resolve and dial each
-//   address until successful.
+//   acceptPeers(): in a loop, waits for an inbound connection via
+//   Transport.Accept() and spawns a goroutine that handshakes with it and
+//   begins to route messages if successful.
 //
-//   Router.acceptPeers(): in a loop, waits for the next inbound connection
-//   from a peer, and attempts to claim it in the peerStore.
+//   evictPeers(): in a loop, calls PeerManager.EvictNext() to get the next
+//   peer to evict, and disconnects it by closing its message queue.
 //
-// Once either an inbound or outbound connection has been made, an outbound
-// message queue is registered in Router.peerQueues and a goroutine is spawned
-// off for Router.routePeer() which will spawn off additional goroutines for
-// Router.sendPeer() that sends outbound messages from the peer queue over the
-// connection and for Router.receivePeer() that reads inbound messages from
-// the connection and places them in the appropriate channel queue. When either
-// goroutine exits, the connection and peer queue is closed, which will cause
-// the other goroutines to close as well.
+// When a peer is connected, an outbound peer message queue is registered in
+// peerQueues, and routePeer() is called to spawn off two additional goroutines:
 //
-// The peerStore is used to coordinate peer connections, by only allowing a peer
-// to be claimed (owned) by a single caller at a time (both for outbound and
-// inbound connections). This is done either via peerStore.Dispense() which
-// dispenses and claims an eligible peer to dial, or via peerStore.Claim() which
-// attempts to claim a given peer for an inbound connection. Peers must be
-// returned to the peerStore with peerStore.Return() to release the claim. Over
-// time, the peerStore will also do peer scheduling and prioritization, e.g.
-// ensuring we do exponential backoff on dial failures and connecting to
-// more important peers first (such as persistent peers and validators).
+//   sendPeer(): waits for an outbound message from the peerQueues queue,
+//   marshals it, and passes it to the peer transport which delivers it.
 //
-// An additional goroutine Router.broadcastPeerUpdates() is also spawned off
-// on startup, which consumes peer updates from Router.peerUpdatesCh (currently
-// only connections and disconnections), and broadcasts them to all peer update
-// subscriptions registered via SubscribePeerUpdates().
+//   receivePeer(): waits for an inbound message from the peer transport,
+//   unmarshals it, and passes it to the appropriate inbound channel queue
+//   in channelQueues.
 //
-// On router shutdown, we close Router.stopCh which will signal to all
-// goroutines to terminate. This in turn will cause all pending channel/peer
-// queues to close, and we wait for this as a signal that goroutines have ended.
+// When a reactor opens a channel via OpenChannel, an inbound channel message
+// queue is registered in channelQueues, and a channel goroutine is spawned:
 //
-// All message scheduling should be limited to the queue implementations used
-// for channel queues and peer queues. All message sending throughout the router
-// is blocking, and if any messages should be dropped or buffered this is the
-// sole responsibility of the queue, such that we can limit this logic to a
-// single place. There is currently only a FIFO queue implementation that always
-// blocks and never drops messages, but this must be improved with other
-// implementations. The only exception is that all message sending must also
-// select on appropriate channel/queue/router closure signals, to avoid blocking
-// forever on a channel that has no consumer.
+//   routeChannel(): waits for an outbound message from the channel, looks
+//   up the recipient peer's outbound message queue in peerQueues, and submits
+//   the message to it.
+//
+// All channel sends in the router are blocking. It is the responsibility of the
+// queue interface in peerQueues and channelQueues to prioritize and drop
+// messages as appropriate during contention to prevent stalls and ensure good
+// quality of service.
 type Router struct {
 	*service.BaseService
-	logger     log.Logger
-	transports map[Protocol]Transport
-	store      *peerStore
 
-	// FIXME: Consider using sync.Map.
-	peerMtx    sync.RWMutex
-	peerQueues map[NodeID]queue
+	logger             log.Logger
+	metrics            *Metrics
+	options            RouterOptions
+	nodeInfo           NodeInfo
+	privKey            crypto.PrivKey
+	peerManager        *PeerManager
+	chDescs            []ChannelDescriptor
+	transports         []Transport
+	connTracker        connectionTracker
+	protocolTransports map[Protocol]Transport
+	stopCh             chan struct{} // signals Router shutdown
+
+	peerMtx      sync.RWMutex
+	peerQueues   map[NodeID]queue // outbound messages per peer for all channels
+	queueFactory func(int) queue
 
 	// FIXME: We don't strictly need to use a mutex for this if we seal the
 	// channels on router start. This depends on whether we want to allow
 	// dynamic channels in the future.
 	channelMtx      sync.RWMutex
-	channelQueues   map[ChannelID]queue
+	channelQueues   map[ChannelID]queue // inbound messages from all peers to a single channel
 	channelMessages map[ChannelID]proto.Message
-
-	peerUpdatesCh   chan PeerUpdate
-	peerUpdatesMtx  sync.RWMutex
-	peerUpdatesSubs map[*PeerUpdatesCh]*PeerUpdatesCh // keyed by struct identity (address)
-
-	// stopCh is used to signal router shutdown, by closing the channel.
-	stopCh chan struct{}
 }
 
-// NewRouter creates a new Router, dialing the given peers.
-//
-// FIXME: providing protocol/transport maps is cumbersome in tests, we should
-// consider adding Protocols() to the Transport interface instead and register
-// protocol/transport mappings automatically on a first-come basis.
-func NewRouter(logger log.Logger, transports map[Protocol]Transport, peers []PeerAddress) *Router {
-	router := &Router{
-		logger:          logger,
-		transports:      transports,
-		store:           newPeerStore(),
-		stopCh:          make(chan struct{}),
-		channelQueues:   map[ChannelID]queue{},
-		channelMessages: map[ChannelID]proto.Message{},
-		peerQueues:      map[NodeID]queue{},
-		peerUpdatesCh:   make(chan PeerUpdate),
-		peerUpdatesSubs: map[*PeerUpdatesCh]*PeerUpdatesCh{},
+// NewRouter creates a new Router. The given Transports must already be
+// listening on appropriate interfaces, and will be closed by the Router when it
+// stops.
+func NewRouter(
+	logger log.Logger,
+	metrics *Metrics,
+	nodeInfo NodeInfo,
+	privKey crypto.PrivKey,
+	peerManager *PeerManager,
+	transports []Transport,
+	options RouterOptions,
+) (*Router, error) {
+
+	if err := options.Validate(); err != nil {
+		return nil, err
 	}
+
+	router := &Router{
+		logger:   logger,
+		metrics:  metrics,
+		nodeInfo: nodeInfo,
+		privKey:  privKey,
+		connTracker: newConnTracker(
+			options.MaxIncomingConnectionAttempts,
+			options.IncomingConnectionWindow,
+		),
+		chDescs:            make([]ChannelDescriptor, 0),
+		transports:         transports,
+		protocolTransports: map[Protocol]Transport{},
+		peerManager:        peerManager,
+		options:            options,
+		stopCh:             make(chan struct{}),
+		channelQueues:      map[ChannelID]queue{},
+		channelMessages:    map[ChannelID]proto.Message{},
+		peerQueues:         map[NodeID]queue{},
+	}
+
 	router.BaseService = service.NewBaseService(logger, "router", router)
 
-	for _, address := range peers {
-		if err := router.store.Add(address); err != nil {
-			logger.Error("failed to add peer", "address", address, "err", err)
+	qf, err := router.createQueueFactory()
+	if err != nil {
+		return nil, err
+	}
+
+	router.queueFactory = qf
+
+	for _, transport := range transports {
+		for _, protocol := range transport.Protocols() {
+			if _, ok := router.protocolTransports[protocol]; !ok {
+				router.protocolTransports[protocol] = transport
+			}
 		}
 	}
 
-	return router
+	return router, nil
+}
+
+func (r *Router) createQueueFactory() (func(int) queue, error) {
+	switch r.options.QueueType {
+	case queueTypeFifo:
+		return newFIFOQueue, nil
+
+	case queueTypePriority:
+		return func(size int) queue {
+			if size%2 != 0 {
+				size++
+			}
+
+			q := newPQScheduler(r.logger, r.metrics, r.chDescs, uint(size)/2, uint(size)/2, defaultCapacity)
+			q.start()
+			return q
+		}, nil
+
+	case queueTypeWDRR:
+		return func(size int) queue {
+			if size%2 != 0 {
+				size++
+			}
+
+			q := newWDRRScheduler(r.logger, r.metrics, r.chDescs, uint(size)/2, uint(size)/2, defaultCapacity)
+			q.start()
+			return q
+		}, nil
+
+	default:
+		return nil, fmt.Errorf("cannot construct queue of type %q", r.options.QueueType)
+	}
 }
 
 // OpenChannel opens a new channel for the given message type. The caller must
-// close the channel when done, and this must happen before the router stops.
-func (r *Router) OpenChannel(id ChannelID, messageType proto.Message) (*Channel, error) {
-	// FIXME: NewChannel should take directional channels so we can pass
-	// queue.dequeue() instead of reaching inside for queue.queueCh.
-	queue := newFIFOQueue()
-	channel := NewChannel(id, messageType, queue.queueCh, make(chan Envelope), make(chan PeerError))
+// close the channel when done, before stopping the Router. messageType is the
+// type of message passed through the channel (used for unmarshaling), which can
+// implement Wrapper to automatically (un)wrap multiple message types in a
+// wrapper message. The caller may provide a size to make the channel buffered,
+// which internally makes the inbound, outbound, and error channel buffered.
+func (r *Router) OpenChannel(chDesc ChannelDescriptor, messageType proto.Message, size int) (*Channel, error) {
+	if size == 0 {
+		size = queueBufferDefault
+	}
 
 	r.channelMtx.Lock()
 	defer r.channelMtx.Unlock()
 
+	id := ChannelID(chDesc.ID)
 	if _, ok := r.channelQueues[id]; ok {
 		return nil, fmt.Errorf("channel %v already exists", id)
 	}
+	r.chDescs = append(r.chDescs, chDesc)
+
+	queue := r.queueFactory(size)
+	outCh := make(chan Envelope, size)
+	errCh := make(chan PeerError, size)
+	channel := NewChannel(id, messageType, queue.dequeue(), outCh, errCh)
+
+	var wrapper Wrapper
+	if w, ok := messageType.(Wrapper); ok {
+		wrapper = w
+	}
+
 	r.channelQueues[id] = queue
 	r.channelMessages[id] = messageType
 
@@ -149,262 +398,469 @@ func (r *Router) OpenChannel(id ChannelID, messageType proto.Message) (*Channel,
 			r.channelMtx.Unlock()
 			queue.close()
 		}()
-		r.routeChannel(channel)
+
+		r.routeChannel(id, outCh, errCh, wrapper)
 	}()
 
 	return channel, nil
 }
 
-// routeChannel receives outbound messages and errors from a channel and routes
-// them to the appropriate peer. It returns when either the channel is closed or
-// the router is shutting down.
-func (r *Router) routeChannel(channel *Channel) {
+// routeChannel receives outbound channel messages and routes them to the
+// appropriate peer. It also receives peer errors and reports them to the peer
+// manager. It returns when either the outbound channel or error channel is
+// closed, or the Router is stopped. wrapper is an optional message wrapper
+// for messages, see Wrapper for details.
+func (r *Router) routeChannel(
+	chID ChannelID,
+	outCh <-chan Envelope,
+	errCh <-chan PeerError,
+	wrapper Wrapper,
+) {
 	for {
 		select {
-		case envelope, ok := <-channel.outCh:
+		case envelope, ok := <-outCh:
 			if !ok {
 				return
 			}
 
-			// FIXME: This is a bit unergonomic, maybe it'd be better for Wrap()
-			// to return a wrapped copy.
-			if _, ok := channel.messageType.(Wrapper); ok {
-				wrapper := proto.Clone(channel.messageType)
-				if err := wrapper.(Wrapper).Wrap(envelope.Message); err != nil {
-					r.Logger.Error("failed to wrap message", "err", err)
+			// Mark the envelope with the channel ID to allow sendPeer() to pass
+			// it on to Transport.SendMessage().
+			envelope.channelID = chID
+
+			// wrap the message in a wrapper message, if requested
+			if wrapper != nil {
+				msg := proto.Clone(wrapper)
+				if err := msg.(Wrapper).Wrap(envelope.Message); err != nil {
+					r.Logger.Error("failed to wrap message", "channel", chID, "err", err)
 					continue
 				}
-				envelope.Message = wrapper
-			}
-			envelope.channelID = channel.id
 
+				envelope.Message = msg
+			}
+
+			// collect peer queues to pass the message via
+			var queues []queue
 			if envelope.Broadcast {
 				r.peerMtx.RLock()
-				peerQueues := make(map[NodeID]queue, len(r.peerQueues))
-				for peerID, peerQueue := range r.peerQueues {
-					peerQueues[peerID] = peerQueue
+
+				queues = make([]queue, 0, len(r.peerQueues))
+				for _, q := range r.peerQueues {
+					queues = append(queues, q)
 				}
+
 				r.peerMtx.RUnlock()
-
-				for peerID, peerQueue := range peerQueues {
-					e := envelope
-					e.Broadcast = false
-					e.To = peerID
-					select {
-					case peerQueue.enqueue() <- e:
-					case <-peerQueue.closed():
-					case <-r.stopCh:
-						return
-					}
-				}
-
 			} else {
 				r.peerMtx.RLock()
-				peerQueue, ok := r.peerQueues[envelope.To]
+				q, ok := r.peerQueues[envelope.To]
 				r.peerMtx.RUnlock()
+
 				if !ok {
-					r.logger.Error("dropping message for non-connected peer",
-						"peer", envelope.To, "channel", channel.id)
+					r.logger.Debug("dropping message for unconnected peer", "peer", envelope.To, "channel", chID)
 					continue
 				}
 
+				queues = []queue{q}
+			}
+
+			// send message to peers
+			for _, q := range queues {
+				start := time.Now().UTC()
+
 				select {
-				case peerQueue.enqueue() <- envelope:
-				case <-peerQueue.closed():
-					r.logger.Error("dropping message for non-connected peer",
-						"peer", envelope.To, "channel", channel.id)
+				case q.enqueue() <- envelope:
+					r.metrics.RouterPeerQueueSend.Observe(time.Since(start).Seconds())
+
+				case <-q.closed():
+					r.logger.Debug("dropping message for unconnected peer", "peer", envelope.To, "channel", chID)
+
 				case <-r.stopCh:
 					return
 				}
 			}
 
-		case peerError, ok := <-channel.errCh:
+		case peerError, ok := <-errCh:
 			if !ok {
 				return
 			}
-			// FIXME: We just disconnect the peer for now
-			r.logger.Error("peer error, disconnecting", "peer", peerError.PeerID, "err", peerError.Err)
-			r.peerMtx.RLock()
-			peerQueue, ok := r.peerQueues[peerError.PeerID]
-			r.peerMtx.RUnlock()
-			if ok {
-				peerQueue.close()
-			}
 
-		case <-channel.Done():
-			return
+			r.logger.Error("peer error, evicting", "peer", peerError.NodeID, "err", peerError.Err)
+
+			r.peerManager.Errored(peerError.NodeID, peerError.Err)
+
 		case <-r.stopCh:
 			return
 		}
 	}
 }
 
-// acceptPeers accepts inbound connections from peers on the given transport.
-func (r *Router) acceptPeers(transport Transport) {
-	for {
+func (r *Router) numConccurentDials() int {
+	if r.options.NumConcurrentDials == nil {
+		return runtime.NumCPU()
+	}
+
+	return r.options.NumConcurrentDials()
+}
+
+func (r *Router) filterPeersIP(ctx context.Context, ip net.IP, port uint16) error {
+	if r.options.FilterPeerByIP == nil {
+		return nil
+	}
+
+	return r.options.FilterPeerByIP(ctx, ip, port)
+}
+
+func (r *Router) filterPeersID(ctx context.Context, id NodeID) error {
+	if r.options.FilterPeerByID == nil {
+		return nil
+	}
+
+	return r.options.FilterPeerByID(ctx, id)
+}
+
+func (r *Router) dialSleep(ctx context.Context) {
+	if r.options.DialSleep == nil {
+		// nolint:gosec // G404: Use of weak random number generator
+		timer := time.NewTimer(time.Duration(rand.Int63n(dialRandomizerIntervalMilliseconds)) * time.Millisecond)
+		defer timer.Stop()
+
 		select {
-		case <-r.stopCh:
-			return
-		default:
+		case <-ctx.Done():
+		case <-timer.C:
 		}
 
-		conn, err := transport.Accept(context.Background())
+		return
+	}
+
+	r.options.DialSleep(ctx)
+}
+
+// acceptPeers accepts inbound connections from peers on the given transport,
+// and spawns goroutines that route messages to/from them.
+func (r *Router) acceptPeers(transport Transport) {
+	r.logger.Debug("starting accept routine", "transport", transport)
+	ctx := r.stopCtx()
+	for {
+		conn, err := transport.Accept()
 		switch err {
 		case nil:
-		case ErrTransportClosed{}, io.EOF:
-			r.logger.Info("transport closed; stopping accept routine", "transport", transport)
+		case io.EOF:
+			r.logger.Debug("stopping accept routine", "transport", transport)
 			return
 		default:
 			r.logger.Error("failed to accept connection", "transport", transport, "err", err)
+			return
+		}
+
+		incomingIP := conn.RemoteEndpoint().IP
+		if err := r.connTracker.AddConn(incomingIP); err != nil {
+			closeErr := conn.Close()
+			r.logger.Debug("rate limiting incoming peer",
+				"err", err,
+				"ip", incomingIP.String(),
+				"close_err", closeErr,
+			)
+
+			return
+		}
+
+		// Spawn a goroutine for the handshake, to avoid head-of-line blocking.
+		go r.openConnection(ctx, conn)
+
+	}
+}
+
+func (r *Router) openConnection(ctx context.Context, conn Connection) {
+	defer conn.Close()
+	defer r.connTracker.RemoveConn(conn.RemoteEndpoint().IP)
+
+	re := conn.RemoteEndpoint()
+	incomingIP := re.IP
+
+	if err := r.filterPeersIP(ctx, incomingIP, re.Port); err != nil {
+		r.logger.Debug("peer filtered by IP", "ip", incomingIP.String(), "err", err)
+		return
+	}
+
+	// FIXME: The peer manager may reject the peer during Accepted()
+	// after we've handshaked with the peer (to find out which peer it
+	// is). However, because the handshake has no ack, the remote peer
+	// will think the handshake was successful and start sending us
+	// messages.
+	//
+	// This can cause problems in tests, where a disconnection can cause
+	// the local node to immediately redial, while the remote node may
+	// not have completed the disconnection yet and therefore reject the
+	// reconnection attempt (since it thinks we're still connected from
+	// before).
+	//
+	// The Router should do the handshake and have a final ack/fail
+	// message to make sure both ends have accepted the connection, such
+	// that it can be coordinated with the peer manager.
+	peerInfo, _, err := r.handshakePeer(ctx, conn, "")
+	switch {
+	case errors.Is(err, context.Canceled):
+		return
+	case err != nil:
+		r.logger.Error("peer handshake failed", "endpoint", conn, "err", err)
+		return
+	}
+
+	if err := r.filterPeersID(ctx, peerInfo.NodeID); err != nil {
+		r.logger.Debug("peer filtered by node ID", "node", peerInfo.NodeID, "err", err)
+		return
+	}
+
+	if err := r.runWithPeerMutex(func() error { return r.peerManager.Accepted(peerInfo.NodeID) }); err != nil {
+		r.logger.Error("failed to accept connection",
+			"op", "incoming/accepted", "peer", peerInfo.NodeID, "err", err)
+		return
+	}
+
+	r.routePeer(peerInfo.NodeID, conn)
+}
+
+// dialPeers maintains outbound connections to peers by dialing them.
+func (r *Router) dialPeers() {
+	r.logger.Debug("starting dial routine")
+	ctx := r.stopCtx()
+
+	addresses := make(chan NodeAddress)
+	wg := &sync.WaitGroup{}
+
+	// Start a limited number of goroutines to dial peers in
+	// parallel. the goal is to avoid starting an unbounded number
+	// of goroutines thereby spamming the network, but also being
+	// able to add peers at a reasonable pace, though the number
+	// is somewhat arbitrary. The action is further throttled by a
+	// sleep after sending to the addresses channel.
+	for i := 0; i < r.numConccurentDials(); i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case address := <-addresses:
+					r.connectPeer(ctx, address)
+				}
+			}
+		}()
+	}
+
+LOOP:
+	for {
+		address, err := r.peerManager.DialNext(ctx)
+		switch {
+		case errors.Is(err, context.Canceled):
+			r.logger.Debug("stopping dial routine")
+			break LOOP
+		case err != nil:
+			r.logger.Error("failed to find next peer to dial", "err", err)
+			break LOOP
+		}
+
+		select {
+		case addresses <- address:
+			// this jitters the frequency that we call
+			// DialNext and prevents us from attempting to
+			// create connections too quickly.
+
+			r.dialSleep(ctx)
+			continue
+		case <-ctx.Done():
+			close(addresses)
+			break LOOP
+		}
+	}
+
+	wg.Wait()
+}
+
+func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
+	conn, err := r.dialPeer(ctx, address)
+	switch {
+	case errors.Is(err, context.Canceled):
+		return
+	case err != nil:
+		r.logger.Error("failed to dial peer", "peer", address, "err", err)
+		if err = r.peerManager.DialFailed(address); err != nil {
+			r.logger.Error("failed to report dial failure", "peer", address, "err", err)
+		}
+		return
+	}
+
+	_, _, err = r.handshakePeer(ctx, conn, address.NodeID)
+	switch {
+	case errors.Is(err, context.Canceled):
+		conn.Close()
+		return
+	case err != nil:
+		r.logger.Error("failed to handshake with peer", "peer", address, "err", err)
+		if err = r.peerManager.DialFailed(address); err != nil {
+			r.logger.Error("failed to report dial failure", "peer", address, "err", err)
+		}
+		conn.Close()
+		return
+	}
+
+	if err := r.runWithPeerMutex(func() error { return r.peerManager.Dialed(address) }); err != nil {
+		r.logger.Error("failed to dial peer",
+			"op", "outgoing/dialing", "peer", address.NodeID, "err", err)
+		conn.Close()
+		return
+
+	}
+
+	// routePeer (also) calls connection close
+	go r.routePeer(address.NodeID, conn)
+}
+
+func (r *Router) getOrMakeQueue(peerID NodeID) queue {
+	r.peerMtx.Lock()
+	defer r.peerMtx.Unlock()
+
+	if peerQueue, ok := r.peerQueues[peerID]; ok {
+		return peerQueue
+	}
+
+	peerQueue := r.queueFactory(queueBufferDefault)
+	r.peerQueues[peerID] = peerQueue
+	return peerQueue
+}
+
+// dialPeer connects to a peer by dialing it.
+func (r *Router) dialPeer(ctx context.Context, address NodeAddress) (Connection, error) {
+	resolveCtx := ctx
+	if r.options.ResolveTimeout > 0 {
+		var cancel context.CancelFunc
+		resolveCtx, cancel = context.WithTimeout(resolveCtx, r.options.ResolveTimeout)
+		defer cancel()
+	}
+
+	r.logger.Debug("resolving peer address", "peer", address)
+	endpoints, err := address.Resolve(resolveCtx)
+	switch {
+	case err != nil:
+		return nil, fmt.Errorf("failed to resolve address %q: %w", address, err)
+	case len(endpoints) == 0:
+		return nil, fmt.Errorf("address %q did not resolve to any endpoints", address)
+	}
+
+	for _, endpoint := range endpoints {
+		transport, ok := r.protocolTransports[endpoint.Protocol]
+		if !ok {
+			r.logger.Error("no transport found for protocol", "endpoint", endpoint)
 			continue
 		}
 
-		peerID := conn.NodeInfo().NodeID
-		if r.store.Claim(peerID) == nil {
-			r.logger.Error("already connected to peer, rejecting connection", "peer", peerID)
-			_ = conn.Close()
-			continue
+		dialCtx := ctx
+		if r.options.DialTimeout > 0 {
+			var cancel context.CancelFunc
+			dialCtx, cancel = context.WithTimeout(dialCtx, r.options.DialTimeout)
+			defer cancel()
 		}
 
-		queue := newFIFOQueue()
+		// FIXME: When we dial and handshake the peer, we should pass it
+		// appropriate address(es) it can use to dial us back. It can't use our
+		// remote endpoint, since TCP uses different port numbers for outbound
+		// connections than it does for inbound. Also, we may need to vary this
+		// by the peer's endpoint, since e.g. a peer on 192.168.0.0 can reach us
+		// on a private address on this endpoint, but a peer on the public
+		// Internet can't and needs a different public address.
+		conn, err := transport.Dial(dialCtx, endpoint)
+		if err != nil {
+			r.logger.Error("failed to dial endpoint", "peer", address.NodeID, "endpoint", endpoint, "err", err)
+		} else {
+			r.logger.Debug("dialed peer", "peer", address.NodeID, "endpoint", endpoint)
+			return conn, nil
+		}
+	}
+	return nil, errors.New("all endpoints failed")
+}
+
+// handshakePeer handshakes with a peer, validating the peer's information. If
+// expectID is given, we check that the peer's info matches it.
+func (r *Router) handshakePeer(ctx context.Context, conn Connection, expectID NodeID) (NodeInfo, crypto.PubKey, error) {
+	if r.options.HandshakeTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, r.options.HandshakeTimeout)
+		defer cancel()
+	}
+
+	peerInfo, peerKey, err := conn.Handshake(ctx, r.nodeInfo, r.privKey)
+	if err != nil {
+		return peerInfo, peerKey, err
+	}
+
+	if err = peerInfo.Validate(); err != nil {
+		return peerInfo, peerKey, fmt.Errorf("invalid handshake NodeInfo: %w", err)
+	}
+	if NodeIDFromPubKey(peerKey) != peerInfo.NodeID {
+		return peerInfo, peerKey, fmt.Errorf("peer's public key did not match its node ID %q (expected %q)",
+			peerInfo.NodeID, NodeIDFromPubKey(peerKey))
+	}
+	if expectID != "" && expectID != peerInfo.NodeID {
+		return peerInfo, peerKey, fmt.Errorf("expected to connect with peer %q, got %q",
+			expectID, peerInfo.NodeID)
+	}
+	return peerInfo, peerKey, nil
+}
+
+func (r *Router) runWithPeerMutex(fn func() error) error {
+	r.peerMtx.Lock()
+	defer r.peerMtx.Unlock()
+	return fn()
+}
+
+// routePeer routes inbound and outbound messages between a peer and the reactor
+// channels. It will close the given connection and send queue when done, or if
+// they are closed elsewhere it will cause this method to shut down and return.
+func (r *Router) routePeer(peerID NodeID, conn Connection) {
+	r.metrics.Peers.Add(1)
+	r.peerManager.Ready(peerID)
+
+	sendQueue := r.getOrMakeQueue(peerID)
+	defer func() {
 		r.peerMtx.Lock()
-		r.peerQueues[peerID] = queue
+		delete(r.peerQueues, peerID)
 		r.peerMtx.Unlock()
 
-		go func() {
-			defer func() {
-				r.peerMtx.Lock()
-				delete(r.peerQueues, peerID)
-				r.peerMtx.Unlock()
-				queue.close()
-				_ = conn.Close()
-				r.store.Return(peerID)
-			}()
+		sendQueue.close()
 
-			r.routePeer(peerID, conn, queue)
-		}()
-	}
-}
-
-// dialPeers maintains outbound connections to peers.
-func (r *Router) dialPeers() {
-	for {
-		select {
-		case <-r.stopCh:
-			return
-		default:
-		}
-
-		peer := r.store.Dispense()
-		if peer == nil {
-			r.logger.Debug("no eligible peers, sleeping")
-			select {
-			case <-time.After(time.Second):
-				continue
-			case <-r.stopCh:
-				return
-			}
-		}
-
-		go func() {
-			defer r.store.Return(peer.ID)
-			conn, err := r.dialPeer(peer)
-			if err != nil {
-				r.logger.Error("failed to dial peer, will retry", "peer", peer.ID)
-				return
-			}
-			defer conn.Close()
-
-			queue := newFIFOQueue()
-			defer queue.close()
-			r.peerMtx.Lock()
-			r.peerQueues[peer.ID] = queue
-			r.peerMtx.Unlock()
-
-			defer func() {
-				r.peerMtx.Lock()
-				delete(r.peerQueues, peer.ID)
-				r.peerMtx.Unlock()
-			}()
-
-			r.routePeer(peer.ID, conn, queue)
-		}()
-	}
-}
-
-// dialPeer attempts to connect to a peer.
-func (r *Router) dialPeer(peer *peerInfo) (Connection, error) {
-	ctx := context.Background()
-
-	for _, address := range peer.Addresses {
-		resolveCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		defer cancel()
-		r.logger.Info("resolving peer address", "peer", peer.ID, "address", address)
-		endpoints, err := address.Resolve(resolveCtx)
-		if err != nil {
-			r.logger.Error("failed to resolve address", "address", address, "err", err)
-			continue
-		}
-
-		for _, endpoint := range endpoints {
-			t, ok := r.transports[endpoint.Protocol]
-			if !ok {
-				r.logger.Error("no transport found for protocol", "protocol", endpoint.Protocol)
-				continue
-			}
-			dialCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-			defer cancel()
-			conn, err := t.Dial(dialCtx, endpoint)
-			if err != nil {
-				r.logger.Error("failed to dial endpoint", "endpoint", endpoint)
-			} else {
-				r.logger.Info("connected to peer", "peer", peer.ID, "endpoint", endpoint)
-				return conn, nil
-			}
-		}
-	}
-	return nil, errors.New("failed to connect to peer")
-}
-
-// routePeer routes inbound messages from a peer to channels, and also sends
-// outbound queued messages to the peer. It will close the connection and send
-// queue, using this as a signal to coordinate the internal receivePeer() and
-// sendPeer() goroutines. It blocks until the peer is done, e.g. when the
-// connection or queue is closed.
-func (r *Router) routePeer(peerID NodeID, conn Connection, sendQueue queue) {
-	// FIXME: Peer updates should probably be handled by the peer store.
-	r.peerUpdatesCh <- PeerUpdate{
-		PeerID: peerID,
-		Status: PeerStatusUp,
-	}
-	defer func() {
-		r.peerUpdatesCh <- PeerUpdate{
-			PeerID: peerID,
-			Status: PeerStatusDown,
-		}
+		r.peerManager.Disconnected(peerID)
+		r.metrics.Peers.Add(-1)
 	}()
 
-	resultsCh := make(chan error, 2)
+	r.logger.Info("peer connected", "peer", peerID, "endpoint", conn)
+
+	errCh := make(chan error, 2)
+
 	go func() {
-		resultsCh <- r.receivePeer(peerID, conn)
-	}()
-	go func() {
-		resultsCh <- r.sendPeer(peerID, conn, sendQueue)
+		errCh <- r.receivePeer(peerID, conn)
 	}()
 
-	err := <-resultsCh
+	go func() {
+		errCh <- r.sendPeer(peerID, conn, sendQueue)
+	}()
+
+	err := <-errCh
 	_ = conn.Close()
 	sendQueue.close()
-	if e := <-resultsCh; err == nil {
-		// The first err was nil, so we update it with the second result,
-		// which may or may not be nil.
+
+	if e := <-errCh; err == nil {
+		// The first err was nil, so we update it with the second err, which may
+		// or may not be nil.
 		err = e
 	}
+
 	switch err {
-	case nil, io.EOF, ErrTransportClosed{}:
-		r.logger.Info("peer disconnected", "peer", peerID)
+	case nil, io.EOF:
+		r.logger.Info("peer disconnected", "peer", peerID, "endpoint", conn)
+
 	default:
-		r.logger.Error("peer failure", "peer", peerID, "err", err)
+		r.logger.Error("peer failure", "peer", peerID, "endpoint", conn, "err", err)
 	}
 }
 
@@ -418,11 +874,12 @@ func (r *Router) receivePeer(peerID NodeID, conn Connection) error {
 		}
 
 		r.channelMtx.RLock()
-		queue, ok := r.channelQueues[ChannelID(chID)]
-		messageType := r.channelMessages[ChannelID(chID)]
+		queue, ok := r.channelQueues[chID]
+		messageType := r.channelMessages[chID]
 		r.channelMtx.RUnlock()
+
 		if !ok {
-			r.logger.Error("dropping message for unknown channel", "peer", peerID, "channel", chID)
+			r.logger.Debug("dropping message for unknown channel", "peer", peerID, "channel", chID)
 			continue
 		}
 
@@ -431,6 +888,7 @@ func (r *Router) receivePeer(peerID NodeID, conn Connection) error {
 			r.logger.Error("message decoding failed, dropping message", "peer", peerID, "err", err)
 			continue
 		}
+
 		if wrapper, ok := msg.(Wrapper); ok {
 			msg, err = wrapper.Unwrap()
 			if err != nil {
@@ -439,12 +897,19 @@ func (r *Router) receivePeer(peerID NodeID, conn Connection) error {
 			}
 		}
 
+		start := time.Now().UTC()
+
 		select {
-		// FIXME: ReceiveMessage() should return ChannelID.
-		case queue.enqueue() <- Envelope{channelID: ChannelID(chID), From: peerID, Message: msg}:
+		case queue.enqueue() <- Envelope{From: peerID, Message: msg}:
+			r.metrics.PeerReceiveBytesTotal.With(
+				"chID", fmt.Sprint(chID),
+				"peer_id", string(peerID)).Add(float64(proto.Size(msg)))
+			r.metrics.RouterChannelQueueSend.Observe(time.Since(start).Seconds())
 			r.logger.Debug("received message", "peer", peerID, "message", msg)
+
 		case <-queue.closed():
-			r.logger.Error("channel closed, dropping message", "peer", peerID, "channel", chID)
+			r.logger.Debug("channel closed, dropping message", "peer", peerID, "channel", chID)
+
 		case <-r.stopCh:
 			return nil
 		}
@@ -452,24 +917,32 @@ func (r *Router) receivePeer(peerID NodeID, conn Connection) error {
 }
 
 // sendPeer sends queued messages to a peer.
-func (r *Router) sendPeer(peerID NodeID, conn Connection, queue queue) error {
+func (r *Router) sendPeer(peerID NodeID, conn Connection, peerQueue queue) error {
 	for {
+		start := time.Now().UTC()
+
 		select {
-		case envelope := <-queue.dequeue():
+		case envelope := <-peerQueue.dequeue():
+			r.metrics.RouterPeerQueueRecv.Observe(time.Since(start).Seconds())
+			if envelope.Message == nil {
+				r.logger.Error("dropping nil message", "peer", peerID)
+				continue
+			}
+
 			bz, err := proto.Marshal(envelope.Message)
 			if err != nil {
 				r.logger.Error("failed to marshal message", "peer", peerID, "err", err)
 				continue
 			}
 
-			// FIXME: SendMessage() should take ChannelID.
-			_, err = conn.SendMessage(byte(envelope.channelID), bz)
+			_, err = conn.SendMessage(envelope.channelID, bz)
 			if err != nil {
 				return err
 			}
+
 			r.logger.Debug("sent message", "peer", envelope.To, "message", envelope.Message)
 
-		case <-queue.closed():
+		case <-peerQueue.closed():
 			return nil
 
 		case <-r.stopCh:
@@ -478,91 +951,93 @@ func (r *Router) sendPeer(peerID NodeID, conn Connection, queue queue) error {
 	}
 }
 
-// SubscribePeerUpdates creates a new peer updates subscription. The caller must
-// consume the peer updates in a timely fashion, since delivery is guaranteed and
-// will block peer connection/disconnection otherwise.
-func (r *Router) SubscribePeerUpdates() (*PeerUpdatesCh, error) {
-	// FIXME: We may want to use a size 1 buffer here. When the router
-	// broadcasts a peer update it has to loop over all of the
-	// subscriptions, and we want to avoid blocking and waiting for a
-	// context switch before continuing to the next subscription. This also
-	// prevents tail latencies from compounding across updates. We also want
-	// to make sure the subscribers are reasonably in sync, so it should be
-	// kept at 1. However, this should be benchmarked first.
-	peerUpdates := NewPeerUpdates(make(chan PeerUpdate))
-	r.peerUpdatesMtx.Lock()
-	r.peerUpdatesSubs[peerUpdates] = peerUpdates
-	r.peerUpdatesMtx.Unlock()
+// evictPeers evicts connected peers as requested by the peer manager.
+func (r *Router) evictPeers() {
+	r.logger.Debug("starting evict routine")
+	ctx := r.stopCtx()
 
-	go func() {
-		select {
-		case <-peerUpdates.Done():
-			r.peerUpdatesMtx.Lock()
-			delete(r.peerUpdatesSubs, peerUpdates)
-			r.peerUpdatesMtx.Unlock()
-		case <-r.stopCh:
-		}
-	}()
-	return peerUpdates, nil
-}
-
-// broadcastPeerUpdates broadcasts peer updates received from the router
-// to all subscriptions.
-func (r *Router) broadcastPeerUpdates() {
 	for {
-		select {
-		case peerUpdate := <-r.peerUpdatesCh:
-			subs := []*PeerUpdatesCh{}
-			r.peerUpdatesMtx.RLock()
-			for _, sub := range r.peerUpdatesSubs {
-				subs = append(subs, sub)
-			}
-			r.peerUpdatesMtx.RUnlock()
+		peerID, err := r.peerManager.EvictNext(ctx)
 
-			for _, sub := range subs {
-				select {
-				case sub.updatesCh <- peerUpdate:
-				case <-sub.doneCh:
-				case <-r.stopCh:
-					return
-				}
-			}
-
-		case <-r.stopCh:
+		switch {
+		case errors.Is(err, context.Canceled):
+			r.logger.Debug("stopping evict routine")
 			return
+
+		case err != nil:
+			r.logger.Error("failed to find next peer to evict", "err", err)
+			return
+		}
+
+		r.logger.Info("evicting peer", "peer", peerID)
+
+		r.peerMtx.RLock()
+		queue, ok := r.peerQueues[peerID]
+		r.peerMtx.RUnlock()
+
+		if ok {
+			queue.close()
 		}
 	}
 }
 
 // OnStart implements service.Service.
 func (r *Router) OnStart() error {
-	go r.broadcastPeerUpdates()
 	go r.dialPeers()
+	go r.evictPeers()
+
 	for _, transport := range r.transports {
 		go r.acceptPeers(transport)
 	}
+
 	return nil
 }
 
 // OnStop implements service.Service.
+//
+// All channels must be closed by OpenChannel() callers before stopping the
+// router, to prevent blocked channel sends in reactors. Channels are not closed
+// here, since that would cause any reactor senders to panic, so it is the
+// sender's responsibility.
 func (r *Router) OnStop() {
-	// Collect all active queues, so we can wait for them to close.
+	// Signal router shutdown.
+	close(r.stopCh)
+
+	// Close transport listeners (unblocks Accept calls).
+	for _, transport := range r.transports {
+		if err := transport.Close(); err != nil {
+			r.logger.Error("failed to close transport", "transport", transport, "err", err)
+		}
+	}
+
+	// Collect all remaining queues, and wait for them to close.
 	queues := []queue{}
+
 	r.channelMtx.RLock()
 	for _, q := range r.channelQueues {
 		queues = append(queues, q)
 	}
 	r.channelMtx.RUnlock()
+
 	r.peerMtx.RLock()
 	for _, q := range r.peerQueues {
 		queues = append(queues, q)
 	}
 	r.peerMtx.RUnlock()
 
-	// Signal router shutdown, and wait for queues (and thus goroutines)
-	// to complete.
-	close(r.stopCh)
 	for _, q := range queues {
 		<-q.closed()
 	}
+}
+
+// stopCtx returns a new context that is canceled when the router stops.
+func (r *Router) stopCtx() context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		<-r.stopCh
+		cancel()
+	}()
+
+	return ctx
 }

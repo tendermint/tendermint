@@ -11,12 +11,10 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
-	auto "github.com/tendermint/tendermint/libs/autofile"
-	"github.com/tendermint/tendermint/libs/clist"
+	"github.com/tendermint/tendermint/internal/libs/clist"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	tmos "github.com/tendermint/tendermint/libs/os"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
@@ -24,8 +22,6 @@ import (
 
 // TxKeySize is the size of the transaction key index
 const TxKeySize = sha256.Size
-
-var newline = []byte("\n")
 
 //--------------------------------------------------------------------------------
 
@@ -51,8 +47,7 @@ type CListMempool struct {
 	preCheck  PreCheckFunc
 	postCheck PostCheckFunc
 
-	wal          *auto.AutoFile // a log of mempool txs
-	txs          *clist.CList   // concurrent linked-list of good txs
+	txs          *clist.CList // concurrent linked-list of good txs
 	proxyAppConn proxy.AppConnMempool
 
 	// Track whether we're rechecking txs.
@@ -135,33 +130,6 @@ func WithPostCheck(f PostCheckFunc) CListMempoolOption {
 // WithMetrics sets the metrics.
 func WithMetrics(metrics *Metrics) CListMempoolOption {
 	return func(mem *CListMempool) { mem.metrics = metrics }
-}
-
-func (mem *CListMempool) InitWAL() error {
-	var (
-		walDir  = mem.config.WalDir()
-		walFile = walDir + "/wal"
-	)
-
-	const perm = 0700
-	if err := tmos.EnsureDir(walDir, perm); err != nil {
-		return err
-	}
-
-	af, err := auto.OpenAutoFile(walFile)
-	if err != nil {
-		return fmt.Errorf("can't open autofile %s: %w", walFile, err)
-	}
-
-	mem.wal = af
-	return nil
-}
-
-func (mem *CListMempool) CloseWAL() {
-	if err := mem.wal.Close(); err != nil {
-		mem.logger.Error("Error closing WAL", "err", err)
-	}
-	mem.wal = nil
 }
 
 // Safe for concurrent use by multiple goroutines.
@@ -253,18 +221,6 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 		}
 	}
 
-	// NOTE: writing to the WAL and calling proxy must be done before adding tx
-	// to the cache. otherwise, if either of them fails, next time CheckTx is
-	// called with tx, ErrTxInCache will be returned without tx being checked at
-	// all even once.
-	if mem.wal != nil {
-		// TODO: Notify administrators when WAL fails
-		_, err := mem.wal.Write(append([]byte(tx), newline...))
-		if err != nil {
-			return fmt.Errorf("wal.Write: %w", err)
-		}
-	}
-
 	// NOTE: proxyAppConn may error if tx buffer is full
 	if err := mem.proxyAppConn.Error(); err != nil {
 		return err
@@ -277,13 +233,17 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 		// so we only record the sender for txs still in the mempool.
 		if e, ok := mem.txsMap.Load(TxKey(tx)); ok {
 			memTx := e.(*clist.CElement).Value.(*mempoolTx)
-			memTx.senders.LoadOrStore(txInfo.SenderID, true)
+			_, loaded := memTx.senders.LoadOrStore(txInfo.SenderID, true)
 			// TODO: consider punishing peer for dups,
 			// its non-trivial since invalid txs can become valid,
 			// but they can spam the same tx with little cost to them atm.
+			if loaded {
+				return ErrTxInCache
+			}
 		}
 
-		return ErrTxInCache
+		mem.logger.Debug("tx exists already in cache", "tx_hash", tx.Hash())
+		return nil
 	}
 
 	ctx := context.Background()
@@ -437,7 +397,7 @@ func (mem *CListMempool) resCbFirstTime(
 			}
 			memTx.senders.Store(peerID, true)
 			mem.addTx(memTx)
-			mem.logger.Info("Added good transaction",
+			mem.logger.Debug("added good transaction",
 				"tx", txID(tx),
 				"res", r,
 				"height", memTx.height,
@@ -446,7 +406,7 @@ func (mem *CListMempool) resCbFirstTime(
 			mem.notifyTxsAvailable()
 		} else {
 			// ignore bad transaction
-			mem.logger.Info("Rejected bad transaction",
+			mem.logger.Debug("rejected bad transaction",
 				"tx", txID(tx), "peerID", peerP2PID, "res", r, "err", postCheckErr)
 			mem.metrics.FailedTxs.Add(1)
 			if !mem.config.KeepInvalidTxsInCache {
@@ -482,7 +442,7 @@ func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 			// Good, nothing to do.
 		} else {
 			// Tx became invalidated due to newly committed block.
-			mem.logger.Info("Tx is no longer valid", "tx", txID(tx), "res", r, "err", postCheckErr)
+			mem.logger.Debug("tx is no longer valid", "tx", txID(tx), "res", r, "err", postCheckErr)
 			// NOTE: we remove tx from the cache because it might be good later
 			mem.removeTx(tx, mem.recheckCursor, !mem.config.KeepInvalidTxsInCache)
 		}
@@ -493,7 +453,7 @@ func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 		}
 		if mem.recheckCursor == nil {
 			// Done!
-			mem.logger.Info("Done rechecking txs")
+			mem.logger.Debug("done rechecking txs")
 
 			// incase the recheck removed all txs
 			if mem.Size() > 0 {
@@ -529,7 +489,10 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	mem.updateMtx.RLock()
 	defer mem.updateMtx.RUnlock()
 
-	var totalGas int64
+	var (
+		totalGas    int64
+		runningSize int64
+	)
 
 	// TODO: we will get a performance boost if we have a good estimate of avg
 	// size per tx, and set the initial capacity based off of that.
@@ -538,22 +501,26 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
 
-		dataSize := types.ComputeProtoSizeForTxs(append(txs, memTx.tx))
+		txs = append(txs, memTx.tx)
+
+		dataSize := types.ComputeProtoSizeForTxs([]types.Tx{memTx.tx})
 
 		// Check total size requirement
-		if maxBytes > -1 && dataSize > maxBytes {
-			return txs
+		if maxBytes > -1 && runningSize+dataSize > maxBytes {
+			return txs[:len(txs)-1]
 		}
+
+		runningSize += dataSize
+
 		// Check total gas requirement.
 		// If maxGas is negative, skip this check.
 		// Since newTotalGas < masGas, which
 		// must be non-negative, it follows that this won't overflow.
 		newTotalGas := totalGas + memTx.gasWanted
 		if maxGas > -1 && newTotalGas > maxGas {
-			return txs
+			return txs[:len(txs)-1]
 		}
 		totalGas = newTotalGas
-		txs = append(txs, memTx.tx)
 	}
 	return txs
 }
@@ -622,7 +589,7 @@ func (mem *CListMempool) Update(
 	// or just notify there're some txs left.
 	if mem.Size() > 0 {
 		if mem.config.Recheck {
-			mem.logger.Info("Recheck txs", "numtxs", mem.Size(), "height", height)
+			mem.logger.Debug("recheck txs", "numtxs", mem.Size(), "height", height)
 			mem.recheckTxs()
 			// At this point, mem.txs are being rechecked.
 			// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
@@ -776,7 +743,7 @@ func TxKey(tx types.Tx) [TxKeySize]byte {
 	return sha256.Sum256(tx)
 }
 
-// txID is the hex encoded hash of the bytes as a types.Tx.
-func txID(tx []byte) string {
-	return fmt.Sprintf("%X", types.Tx(tx).Hash())
+// txID is a hash of the Tx.
+func txID(tx []byte) []byte {
+	return types.Tx(tx).Hash()
 }

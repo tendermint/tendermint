@@ -18,7 +18,7 @@ RUN go mod download
 COPY . .
 RUN make build && cp build/tendermint /usr/bin/tendermint
 COPY test/e2e/docker/entrypoint* /usr/bin/
-RUN cd test/e2e && make maverick && cp build/maverick /usr/bin/maverick
+
 RUN cd test/e2e && make app && cp build/app /usr/bin/app
 
 # Set up runtime directory. We don't use a separate runtime image since we need
@@ -27,7 +27,7 @@ WORKDIR /tendermint
 VOLUME /tendermint
 ENV TMHOME=/tendermint
 
-EXPOSE 26656 26657 26660
+EXPOSE 26656 26657 26660 6060
 ENTRYPOINT ["/usr/bin/entrypoint"]
 CMD ["start"]
 STOPSIGNAL SIGTERM

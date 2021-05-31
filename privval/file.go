@@ -2,6 +2,7 @@ package privval
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -12,11 +13,11 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
+	"github.com/tendermint/tendermint/internal/libs/protoio"
+	"github.com/tendermint/tendermint/internal/libs/tempfile"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmos "github.com/tendermint/tendermint/libs/os"
-	"github.com/tendermint/tendermint/libs/protoio"
-	"github.com/tendermint/tendermint/libs/tempfile"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -153,6 +154,8 @@ type FilePV struct {
 	LastSignState FilePVLastSignState
 }
 
+var _ types.PrivValidator = (*FilePV)(nil)
+
 // NewFilePV generates a new validator from the given key and paths.
 func NewFilePV(privKey crypto.PrivKey, keyFilePath, stateFilePath string) *FilePV {
 	return &FilePV{
@@ -185,26 +188,26 @@ func GenFilePV(keyFilePath, stateFilePath, keyType string) (*FilePV, error) {
 // LoadFilePV loads a FilePV from the filePaths.  The FilePV handles double
 // signing prevention by persisting data to the stateFilePath.  If either file path
 // does not exist, the program will exit.
-func LoadFilePV(keyFilePath, stateFilePath string) *FilePV {
+func LoadFilePV(keyFilePath, stateFilePath string) (*FilePV, error) {
 	return loadFilePV(keyFilePath, stateFilePath, true)
 }
 
 // LoadFilePVEmptyState loads a FilePV from the given keyFilePath, with an empty LastSignState.
 // If the keyFilePath does not exist, the program will exit.
-func LoadFilePVEmptyState(keyFilePath, stateFilePath string) *FilePV {
+func LoadFilePVEmptyState(keyFilePath, stateFilePath string) (*FilePV, error) {
 	return loadFilePV(keyFilePath, stateFilePath, false)
 }
 
 // If loadState is true, we load from the stateFilePath. Otherwise, we use an empty LastSignState.
-func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
+func loadFilePV(keyFilePath, stateFilePath string, loadState bool) (*FilePV, error) {
 	keyJSONBytes, err := ioutil.ReadFile(keyFilePath)
 	if err != nil {
-		tmos.Exit(err.Error())
+		return nil, err
 	}
 	pvKey := FilePVKey{}
 	err = tmjson.Unmarshal(keyJSONBytes, &pvKey)
 	if err != nil {
-		tmos.Exit(fmt.Sprintf("Error reading PrivValidator key from %v: %v\n", keyFilePath, err))
+		return nil, fmt.Errorf("error reading PrivValidator key from %v: %w", keyFilePath, err)
 	}
 
 	// overwrite pubkey and address for convenience
@@ -217,11 +220,11 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 	if loadState {
 		stateJSONBytes, err := ioutil.ReadFile(stateFilePath)
 		if err != nil {
-			tmos.Exit(err.Error())
+			return nil, err
 		}
 		err = tmjson.Unmarshal(stateJSONBytes, &pvState)
 		if err != nil {
-			tmos.Exit(fmt.Sprintf("Error reading PrivValidator state from %v: %v\n", stateFilePath, err))
+			return nil, fmt.Errorf("error reading PrivValidator state from %v: %w", stateFilePath, err)
 		}
 	}
 
@@ -230,7 +233,7 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 	return &FilePV{
 		Key:           pvKey,
 		LastSignState: pvState,
-	}
+	}, nil
 }
 
 // LoadOrGenFilePV loads a FilePV from the given filePaths
@@ -241,7 +244,7 @@ func LoadOrGenFilePV(keyFilePath, stateFilePath string) (*FilePV, error) {
 		err error
 	)
 	if tmos.FileExists(keyFilePath) {
-		pv = LoadFilePV(keyFilePath, stateFilePath)
+		pv, err = LoadFilePV(keyFilePath, stateFilePath)
 	} else {
 		pv, err = GenFilePV(keyFilePath, stateFilePath, "")
 		pv.Save()
@@ -257,13 +260,13 @@ func (pv *FilePV) GetAddress() types.Address {
 
 // GetPubKey returns the public key of the validator.
 // Implements PrivValidator.
-func (pv *FilePV) GetPubKey() (crypto.PubKey, error) {
+func (pv *FilePV) GetPubKey(ctx context.Context) (crypto.PubKey, error) {
 	return pv.Key.PubKey, nil
 }
 
 // SignVote signs a canonical representation of the vote, along with the
 // chainID. Implements PrivValidator.
-func (pv *FilePV) SignVote(chainID string, vote *tmproto.Vote) error {
+func (pv *FilePV) SignVote(ctx context.Context, chainID string, vote *tmproto.Vote) error {
 	if err := pv.signVote(chainID, vote); err != nil {
 		return fmt.Errorf("error signing vote: %v", err)
 	}
@@ -272,7 +275,7 @@ func (pv *FilePV) SignVote(chainID string, vote *tmproto.Vote) error {
 
 // SignProposal signs a canonical representation of the proposal, along with
 // the chainID. Implements PrivValidator.
-func (pv *FilePV) SignProposal(chainID string, proposal *tmproto.Proposal) error {
+func (pv *FilePV) SignProposal(ctx context.Context, chainID string, proposal *tmproto.Proposal) error {
 	if err := pv.signProposal(chainID, proposal); err != nil {
 		return fmt.Errorf("error signing proposal: %v", err)
 	}

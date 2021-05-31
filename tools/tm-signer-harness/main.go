@@ -134,7 +134,11 @@ func runTestHarness(acceptRetries int, bindAddr, tmhome string) {
 func extractKey(tmhome, outputPath string) {
 	keyFile := filepath.Join(internal.ExpandPath(tmhome), "config", "priv_validator_key.json")
 	stateFile := filepath.Join(internal.ExpandPath(tmhome), "data", "priv_validator_state.json")
-	fpv := privval.LoadFilePV(keyFile, stateFile)
+	fpv, err := privval.LoadFilePV(keyFile, stateFile)
+	if err != nil {
+		logger.Error("Can't load file pv", "err", err)
+		os.Exit(1)
+	}
 	pkb := []byte(fpv.Key.PrivKey.(ed25519.PrivKey))
 	if err := ioutil.WriteFile(internal.ExpandPath(outputPath), pkb[:32], 0600); err != nil {
 		logger.Info("Failed to write private key", "output", outputPath, "err", err)
@@ -181,7 +185,7 @@ func main() {
 		}
 		extractKey(flagTMHome, flagKeyOutputPath)
 	case "version":
-		fmt.Println(version.TMCoreSemVer)
+		fmt.Println(version.TMVersion)
 	default:
 		fmt.Printf("Unrecognized command: %s\n", flag.Arg(0))
 		os.Exit(1)

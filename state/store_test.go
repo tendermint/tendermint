@@ -14,9 +14,9 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -29,9 +29,9 @@ const (
 func TestStoreBootstrap(t *testing.T) {
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	val, _ := types.RandValidator(true, 10)
-	val2, _ := types.RandValidator(true, 10)
-	val3, _ := types.RandValidator(true, 10)
+	val, _ := factory.RandValidator(true, 10)
+	val2, _ := factory.RandValidator(true, 10)
+	val3, _ := factory.RandValidator(true, 10)
 	vals := types.NewValidatorSet([]*types.Validator{val, val2, val3})
 	bootstrapState := makeRandomStateFromValidatorSet(vals, 100, 100)
 	err := stateStore.Bootstrap(bootstrapState)
@@ -55,9 +55,9 @@ func TestStoreBootstrap(t *testing.T) {
 func TestStoreLoadValidators(t *testing.T) {
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	val, _ := types.RandValidator(true, 10)
-	val2, _ := types.RandValidator(true, 10)
-	val3, _ := types.RandValidator(true, 10)
+	val, _ := factory.RandValidator(true, 10)
+	val2, _ := factory.RandValidator(true, 10)
+	val3, _ := factory.RandValidator(true, 10)
 	vals := types.NewValidatorSet([]*types.Validator{val, val2, val3})
 
 	// 1) LoadValidators loads validators using a height where they were last changed
@@ -160,26 +160,28 @@ func TestStoreLoadConsensusParams(t *testing.T) {
 
 func TestPruneStates(t *testing.T) {
 	testcases := map[string]struct {
-		makeHeights  int64
-		pruneHeight  int64
-		expectErr    bool
-		expectVals   []int64
-		expectParams []int64
-		expectABCI   []int64
+		startHeight           int64
+		endHeight             int64
+		pruneHeight           int64
+		expectErr             bool
+		remainingValSetHeight int64
+		remainingParamsHeight int64
 	}{
-		"error when prune height is 0":           {100, 0, true, nil, nil, nil},
-		"error when prune height is negative":    {100, -10, true, nil, nil, nil},
-		"error when prune height does not exist": {100, 101, true, nil, nil, nil},
-		"prune all":                              {100, 100, false, []int64{93, 100}, []int64{95, 100}, []int64{100}},
-		"prune some": {10, 8, false, []int64{3, 8, 9, 10},
-			[]int64{5, 8, 9, 10}, []int64{8, 9, 10}},
-		"prune across checkpoint": {100002, 100002, false, []int64{100000, 100002},
-			[]int64{99995, 100002}, []int64{100002}},
+		"error when prune height is 0":           {1, 100, 0, true, 0, 0},
+		"error when prune height is negative":    {1, 100, -10, true, 0, 0},
+		"error when prune height does not exist": {1, 100, 101, true, 0, 0},
+		"prune all":                              {1, 100, 100, false, 93, 95},
+		"prune from non 1 height":                {10, 50, 40, false, 33, 35},
+		"prune some":                             {1, 10, 8, false, 3, 5},
+		// we test this because we flush to disk every 1000 "states"
+		"prune more than 1000 state": {1, 1010, 1010, false, 1003, 1005},
+		"prune across checkpoint":    {99900, 100002, 100002, false, 100000, 99995},
 	}
 	for name, tc := range testcases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			db := dbm.NewMemDB()
+
 			stateStore := sm.NewStore(db)
 			pk := ed25519.GenPrivKey().PubKey()
 
@@ -193,7 +195,7 @@ func TestPruneStates(t *testing.T) {
 			valsChanged := int64(0)
 			paramsChanged := int64(0)
 
-			for h := int64(1); h <= tc.makeHeights; h++ {
+			for h := tc.startHeight; h <= tc.endHeight; h++ {
 				if valsChanged == 0 || h%10 == 2 {
 					valsChanged = h + 1 // Have to add 1, since NextValidators is what's stored
 				}
@@ -206,8 +208,8 @@ func TestPruneStates(t *testing.T) {
 					LastBlockHeight: h - 1,
 					Validators:      validatorSet,
 					NextValidators:  validatorSet,
-					ConsensusParams: tmproto.ConsensusParams{
-						Block: tmproto.BlockParams{MaxBytes: 10e6},
+					ConsensusParams: types.ConsensusParams{
+						Block: types.BlockParams{MaxBytes: 10e6},
 					},
 					LastHeightValidatorsChanged:      valsChanged,
 					LastHeightConsensusParamsChanged: paramsChanged,
@@ -238,36 +240,44 @@ func TestPruneStates(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			expectVals := sliceToMap(tc.expectVals)
-			expectParams := sliceToMap(tc.expectParams)
-			expectABCI := sliceToMap(tc.expectABCI)
-
-			for h := int64(1); h <= tc.makeHeights; h++ {
+			for h := tc.pruneHeight; h <= tc.endHeight; h++ {
 				vals, err := stateStore.LoadValidators(h)
-				if expectVals[h] {
-					require.NoError(t, err, "validators height %v", h)
-					require.NotNil(t, vals)
+				require.NoError(t, err, h)
+				require.NotNil(t, vals, h)
+
+				params, err := stateStore.LoadConsensusParams(h)
+				require.NoError(t, err, h)
+				require.NotNil(t, params, h)
+
+				abci, err := stateStore.LoadABCIResponses(h)
+				require.NoError(t, err, h)
+				require.NotNil(t, abci, h)
+			}
+
+			emptyParams := types.ConsensusParams{}
+
+			for h := tc.startHeight; h < tc.pruneHeight; h++ {
+				vals, err := stateStore.LoadValidators(h)
+				if h == tc.remainingValSetHeight {
+					require.NoError(t, err, h)
+					require.NotNil(t, vals, h)
 				} else {
-					require.Error(t, err, "validators height %v", h)
-					require.Equal(t, sm.ErrNoValSetForHeight{Height: h}, err)
+					require.Error(t, err, h)
+					require.Nil(t, vals, h)
 				}
 
 				params, err := stateStore.LoadConsensusParams(h)
-				if expectParams[h] {
-					require.NoError(t, err, "params height %v", h)
-					require.False(t, params.Equal(&tmproto.ConsensusParams{}), "params should not be empty")
+				if h == tc.remainingParamsHeight {
+					require.NoError(t, err, h)
+					require.NotEqual(t, emptyParams, params, h)
 				} else {
-					require.Error(t, err, "params height %v", h)
+					require.Error(t, err, h)
+					require.Equal(t, emptyParams, params, h)
 				}
 
 				abci, err := stateStore.LoadABCIResponses(h)
-				if expectABCI[h] {
-					require.NoError(t, err, "abci height %v", h)
-					require.NotNil(t, abci)
-				} else {
-					require.Error(t, err, "abci height %v", h)
-					require.Equal(t, sm.ErrNoABCIResponsesForHeight{Height: h}, err)
-				}
+				require.Error(t, err, h)
+				require.Nil(t, abci, h)
 			}
 		})
 	}
@@ -293,12 +303,4 @@ func TestABCIResponsesResultsHash(t *testing.T) {
 	bz, err := results[0].Marshal()
 	require.NoError(t, err)
 	assert.NoError(t, proof.Verify(root, bz))
-}
-
-func sliceToMap(s []int64) map[int64]bool {
-	m := make(map[int64]bool, len(s))
-	for _, i := range s {
-		m[i] = true
-	}
-	return m
 }

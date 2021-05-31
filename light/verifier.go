@@ -130,7 +130,7 @@ func VerifyAdjacent(
 
 	// Check the validator hashes are the same
 	if !bytes.Equal(untrustedHeader.ValidatorsHash, trustedHeader.NextValidatorsHash) {
-		err := fmt.Errorf("expected old header next validators (%X) to match those from new header (%X)",
+		err := fmt.Errorf("expected old header's next validators (%X) to match those from new header (%X)",
 			trustedHeader.NextValidatorsHash,
 			untrustedHeader.ValidatorsHash,
 		)
@@ -167,10 +167,10 @@ func Verify(
 
 // ValidateTrustLevel checks that trustLevel is within the allowed range [1/3,
 // 1]. If not, it returns an error. 1/3 is the minimum amount of trust needed
-// which does not break the security model.
+// which does not break the security model. Must be strictly less than 1.
 func ValidateTrustLevel(lvl tmmath.Fraction) error {
 	if lvl.Numerator*3 < lvl.Denominator || // < 1/3
-		lvl.Numerator > lvl.Denominator || // > 1
+		lvl.Numerator >= lvl.Denominator || // >= 1
 		lvl.Denominator == 0 {
 		return fmt.Errorf("trustLevel must be within [1/3, 1], given %v", lvl)
 	}

@@ -17,7 +17,6 @@ import (
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/rpc/client"
-	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -113,14 +112,21 @@ func makeEvidences(
 }
 
 func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
+	n := NodeSuite(t)
+
+	// previous versions of this test used a shared fixture with
+	// other tests, and in this version we give it a little time
+	// for the node to make progress before running the test
+	time.Sleep(10 * time.Millisecond)
+
 	var (
-		config  = rpctest.GetConfig()
+		config  = n.Config()
 		chainID = config.ChainID()
 	)
 	pv, err := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	require.NoError(t, err)
 
-	for i, c := range GetClients() {
+	for i, c := range GetClients(t, n) {
 		correct, fakes := makeEvidences(t, pv, chainID)
 		t.Logf("client %d", i)
 
@@ -158,7 +164,7 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 }
 
 func TestBroadcastEmptyEvidence(t *testing.T) {
-	for _, c := range GetClients() {
+	for _, c := range GetClients(t, NodeSuite(t)) {
 		_, err := c.BroadcastEvidence(context.Background(), nil)
 		assert.Error(t, err)
 	}

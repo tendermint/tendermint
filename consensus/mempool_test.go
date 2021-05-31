@@ -25,11 +25,13 @@ func assertMempool(txn txNotifier) mempl.Mempool {
 }
 
 func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
+	baseConfig := configSetup(t)
+
 	config := ResetConfig("consensus_mempool_txs_available_test")
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
 	config.Consensus.CreateEmptyBlocks = false
-	state, privVals := randGenesisState(1, false, 10)
+	state, privVals := randGenesisState(baseConfig, 1, false, 10)
 	cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
@@ -45,11 +47,13 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 }
 
 func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
+	baseConfig := configSetup(t)
+
 	config := ResetConfig("consensus_mempool_txs_available_test")
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
 	config.Consensus.CreateEmptyBlocksInterval = ensureTimeout
-	state, privVals := randGenesisState(1, false, 10)
+	state, privVals := randGenesisState(baseConfig, 1, false, 10)
 	cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
 
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
@@ -63,11 +67,13 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 }
 
 func TestMempoolProgressInHigherRound(t *testing.T) {
+	baseConfig := configSetup(t)
+
 	config := ResetConfig("consensus_mempool_txs_available_test")
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
 	config.Consensus.CreateEmptyBlocks = false
-	state, privVals := randGenesisState(1, false, 10)
+	state, privVals := randGenesisState(baseConfig, 1, false, 10)
 	cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
@@ -113,7 +119,9 @@ func deliverTxsRange(cs *State, start, end int) {
 }
 
 func TestMempoolTxConcurrentWithCommit(t *testing.T) {
-	state, privVals := randGenesisState(1, false, 10)
+	config := configSetup(t)
+
+	state, privVals := randGenesisState(config, 1, false, 10)
 	blockDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(blockDB)
 	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], NewCounterApplication(), blockDB)
@@ -137,7 +145,9 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 }
 
 func TestMempoolRmBadTx(t *testing.T) {
-	state, privVals := randGenesisState(1, false, 10)
+	config := configSetup(t)
+
+	state, privVals := randGenesisState(config, 1, false, 10)
 	app := NewCounterApplication()
 	blockDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(blockDB)

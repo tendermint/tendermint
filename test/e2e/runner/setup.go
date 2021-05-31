@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -65,34 +64,44 @@ func Setup(testnet *e2e.Testnet) error {
 
 	for _, node := range testnet.Nodes {
 		nodeDir := filepath.Join(testnet.Dir, node.Name)
+
 		dirs := []string{
 			filepath.Join(nodeDir, "config"),
 			filepath.Join(nodeDir, "data"),
 			filepath.Join(nodeDir, "data", "app"),
 		}
 		for _, dir := range dirs {
+			// light clients don't need an app directory
+			if node.Mode == e2e.ModeLight && strings.Contains(dir, "app") {
+				continue
+			}
 			err := os.MkdirAll(dir, 0755)
 			if err != nil {
 				return err
 			}
 		}
 
-		err = genesis.SaveAs(filepath.Join(nodeDir, "config", "genesis.json"))
-		if err != nil {
-			return err
-		}
-
 		cfg, err := MakeConfig(node)
 		if err != nil {
 			return err
 		}
-		config.WriteConfigFile(filepath.Join(nodeDir, "config", "config.toml"), cfg) // panics
+		config.WriteConfigFile(nodeDir, cfg) // panics
 
 		appCfg, err := MakeAppConfig(node)
 		if err != nil {
 			return err
 		}
 		err = ioutil.WriteFile(filepath.Join(nodeDir, "config", "app.toml"), appCfg, 0644)
+		if err != nil {
+			return err
+		}
+
+		if node.Mode == e2e.ModeLight {
+			// stop early if a light client
+			continue
+		}
+
+		err = genesis.SaveAs(filepath.Join(nodeDir, "config", "genesis.json"))
 		if err != nil {
 			return err
 		}
@@ -122,17 +131,8 @@ func Setup(testnet *e2e.Testnet) error {
 func MakeDockerCompose(testnet *e2e.Testnet) ([]byte, error) {
 	// Must use version 2 Docker Compose format, to support IPv6.
 	tmpl, err := template.New("docker-compose").Funcs(template.FuncMap{
-		"misbehaviorsToString": func(misbehaviors map[int64]string) string {
-			str := ""
-			for height, misbehavior := range misbehaviors {
-				// after the first behavior set, a comma must be prepended
-				if str != "" {
-					str += ","
-				}
-				heightString := strconv.Itoa(int(height))
-				str += misbehavior + "," + heightString
-			}
-			return str
+		"addUint32": func(x, y uint32) uint32 {
+			return x + y
 		},
 	}).Parse(`version: '2.4'
 
@@ -158,14 +158,15 @@ services:
     image: tendermint/e2e-node
 {{- if eq .ABCIProtocol "builtin" }}
     entrypoint: /usr/bin/entrypoint-builtin
-{{- else if .Misbehaviors }}
-    entrypoint: /usr/bin/entrypoint-maverick
-    command: ["start", "--misbehaviors", "{{ misbehaviorsToString .Misbehaviors }}"]
+{{- else if .LogLevel }}
+    command: start --log-level {{ .LogLevel }}
 {{- end }}
     init: true
     ports:
     - 26656
+    - {{ if .ProxyPort }}{{ addUint32 .ProxyPort 1000 }}:{{ end }}26660
     - {{ if .ProxyPort }}{{ .ProxyPort }}:{{ end }}26657
+    - 6060
     volumes:
     - ./{{ .Name }}:/tendermint
     networks:
@@ -199,6 +200,8 @@ func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
 	default:
 		return genesis, errors.New("unsupported KeyType")
 	}
+	genesis.ConsensusParams.Evidence.MaxAgeNumBlocks = e2e.EvidenceAgeHeight
+	genesis.ConsensusParams.Evidence.MaxAgeDuration = e2e.EvidenceAgeTime
 	for validator, power := range testnet.Validators {
 		genesis.Validators = append(genesis.Validators, types.GenesisValidator{
 			Name:    validator.Name,
@@ -227,11 +230,22 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg := config.DefaultConfig()
 	cfg.Moniker = node.Name
 	cfg.ProxyApp = AppAddressTCP
+
+	if node.LogLevel != "" {
+		cfg.LogLevel = node.LogLevel
+	}
+
 	cfg.RPC.ListenAddress = "tcp://0.0.0.0:26657"
+	cfg.RPC.PprofListenAddress = ":6060"
 	cfg.P2P.ExternalAddress = fmt.Sprintf("tcp://%v", node.AddressP2P(false))
 	cfg.P2P.AddrBookStrict = false
+	cfg.P2P.DisableLegacy = node.DisableLegacyP2P
+	cfg.P2P.QueueType = node.QueueType
 	cfg.DBBackend = node.Database
 	cfg.StateSync.DiscoveryTime = 5 * time.Second
+	if node.Mode != e2e.ModeLight {
+		cfg.Mode = string(node.Mode)
+	}
 
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:
@@ -272,9 +286,8 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 			return nil, fmt.Errorf("invalid privval protocol setting %q", node.PrivvalProtocol)
 		}
 	case e2e.ModeSeed:
-		cfg.P2P.SeedMode = true
 		cfg.P2P.PexReactor = true
-	case e2e.ModeFull:
+	case e2e.ModeFull, e2e.ModeLight:
 		// Don't need to do anything, since we're using a dummy privval key by default.
 	default:
 		return nil, fmt.Errorf("unexpected mode %q", node.Mode)
@@ -289,12 +302,14 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	if node.StateSync {
 		cfg.StateSync.Enable = true
 		cfg.StateSync.RPCServers = []string{}
+
 		for _, peer := range node.Testnet.ArchiveNodes() {
 			if peer.Name == node.Name {
 				continue
 			}
 			cfg.StateSync.RPCServers = append(cfg.StateSync.RPCServers, peer.AddressRPC())
 		}
+
 		if len(cfg.StateSync.RPCServers) < 2 {
 			return nil, errors.New("unable to find 2 suitable state sync RPC servers")
 		}
@@ -307,6 +322,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 		}
 		cfg.P2P.Seeds += seed.AddressP2P(true)
 	}
+
 	cfg.P2P.PersistentPeers = ""
 	for _, peer := range node.PersistentPeers {
 		if len(cfg.P2P.PersistentPeers) > 0 {
@@ -314,20 +330,26 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 		}
 		cfg.P2P.PersistentPeers += peer.AddressP2P(true)
 	}
+
+	cfg.Instrumentation.Prometheus = true
+
 	return cfg, nil
 }
 
 // MakeAppConfig generates an ABCI application config for a node.
 func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 	cfg := map[string]interface{}{
-		"chain_id":          node.Testnet.Name,
-		"dir":               "data/app",
-		"listen":            AppAddressUNIX,
-		"protocol":          "socket",
-		"persist_interval":  node.PersistInterval,
-		"snapshot_interval": node.SnapshotInterval,
-		"retain_blocks":     node.RetainBlocks,
-		"key_type":          node.PrivvalKey.Type(),
+		"chain_id":           node.Testnet.Name,
+		"dir":                "data/app",
+		"listen":             AppAddressUNIX,
+		"mode":               node.Mode,
+		"proxy_port":         node.ProxyPort,
+		"protocol":           "socket",
+		"persist_interval":   node.PersistInterval,
+		"snapshot_interval":  node.SnapshotInterval,
+		"retain_blocks":      node.RetainBlocks,
+		"key_type":           node.PrivvalKey.Type(),
+		"disable_legacy_p2p": node.DisableLegacyP2P,
 	}
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:
@@ -362,12 +384,6 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 			return nil, fmt.Errorf("unexpected privval protocol setting %q", node.PrivvalProtocol)
 		}
 	}
-
-	misbehaviors := make(map[string]string)
-	for height, misbehavior := range node.Misbehaviors {
-		misbehaviors[strconv.Itoa(int(height))] = misbehavior
-	}
-	cfg["misbehaviors"] = misbehaviors
 
 	if len(node.Testnet.ValidatorUpdates) > 0 {
 		validatorUpdates := map[string]map[string]int64{}

@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -22,8 +21,8 @@ import (
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
@@ -187,7 +186,7 @@ func assertMsgReceivedWithTimeout(
 }
 
 func TestSwitchFiltersOutItself(t *testing.T) {
-	s1 := MakeSwitch(cfg, 1, "127.0.0.1", "123.123.123", initSwitchFunc)
+	s1 := MakeSwitch(cfg, 1, "127.0.0.1", "123.123.123", initSwitchFunc, log.TestingLogger())
 
 	// simulate s1 having a public IP by creating a remote peer with the same ID
 	rp := &remotePeer{PrivKey: s1.nodeKey.PrivKey, Config: cfg}
@@ -226,6 +225,7 @@ func TestSwitchPeerFilter(t *testing.T) {
 			"testing",
 			"123.123.123",
 			initSwitchFunc,
+			log.TestingLogger(),
 			SwitchPeerFilters(filters...),
 		)
 	)
@@ -246,7 +246,12 @@ func TestSwitchPeerFilter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	peerInfo, _, err := c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 	p := newPeer(
+		peerInfo,
 		newPeerConn(true, false, c),
 		sw.reactorsByCh,
 		sw.StopPeerForError,
@@ -276,6 +281,7 @@ func TestSwitchPeerFilterTimeout(t *testing.T) {
 			"testing",
 			"123.123.123",
 			initSwitchFunc,
+			log.TestingLogger(),
 			SwitchFilterTimeout(5*time.Millisecond),
 			SwitchPeerFilters(filters...),
 		)
@@ -297,7 +303,12 @@ func TestSwitchPeerFilterTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	peerInfo, _, err := c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 	p := newPeer(
+		peerInfo,
 		newPeerConn(true, false, c),
 		sw.reactorsByCh,
 		sw.StopPeerForError,
@@ -310,7 +321,7 @@ func TestSwitchPeerFilterTimeout(t *testing.T) {
 }
 
 func TestSwitchPeerFilterDuplicate(t *testing.T) {
-	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc, log.TestingLogger())
 	err := sw.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -328,7 +339,12 @@ func TestSwitchPeerFilterDuplicate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	peerInfo, _, err := c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 	p := newPeer(
+		peerInfo,
 		newPeerConn(true, false, c),
 		sw.reactorsByCh,
 		sw.StopPeerForError,
@@ -358,7 +374,7 @@ func assertNoPeersAfterTimeout(t *testing.T, sw *Switch, timeout time.Duration) 
 func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc, log.TestingLogger())
 	err := sw.Start()
 	if err != nil {
 		t.Error(err)
@@ -378,7 +394,12 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	peerInfo, _, err := c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 	p := newPeer(
+		peerInfo,
 		newPeerConn(true, false, c),
 		sw.reactorsByCh,
 		sw.StopPeerForError,
@@ -452,7 +473,7 @@ func TestSwitchStopPeerForError(t *testing.T) {
 }
 
 func TestSwitchReconnectsToOutboundPersistentPeer(t *testing.T) {
-	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc, log.TestingLogger())
 	err := sw.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -502,7 +523,7 @@ func TestSwitchReconnectsToOutboundPersistentPeer(t *testing.T) {
 }
 
 func TestSwitchReconnectsToInboundPersistentPeer(t *testing.T) {
-	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc, log.TestingLogger())
 	err := sw.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -535,7 +556,7 @@ func TestSwitchDialPeersAsync(t *testing.T) {
 		return
 	}
 
-	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc, log.TestingLogger())
 	err := sw.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -601,15 +622,14 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 	}
 
 	// make switch
-	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc, log.TestingLogger())
 	err := sw.AddUnconditionalPeerIDs(unconditionalPeerIDs)
 	require.NoError(t, err)
 	err = sw.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		if err := sw.Stop(); err != nil {
-			t.Error(err)
-		}
+		err := sw.Stop()
+		require.NoError(t, err)
 	})
 
 	// 0. check there are no peers
@@ -634,7 +654,7 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 			}
 		}(c)
 	}
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	assert.Equal(t, cfg.MaxNumInboundPeers, sw.Peers().Size())
 
 	// 2. check we close new connections if we already have MaxNumInboundPeers peers
@@ -644,10 +664,9 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 	require.NoError(t, err)
 	// check conn is closed
 	one := make([]byte, 1)
-	err = conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
-	require.NoError(t, err)
+	_ = conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
 	_, err = conn.Read(one)
-	assert.Equal(t, io.EOF, err)
+	assert.Error(t, err)
 	assert.Equal(t, cfg.MaxNumInboundPeers, sw.Peers().Size())
 	peer.Stop()
 
@@ -681,16 +700,23 @@ type errorTransport struct {
 	acceptErr error
 }
 
-func (et errorTransport) Accept(context.Context) (Connection, error) {
+func (et errorTransport) String() string {
+	return "error"
+}
+
+func (et errorTransport) Protocols() []Protocol {
+	return []Protocol{"error"}
+}
+
+func (et errorTransport) Accept() (Connection, error) {
 	return nil, et.acceptErr
 }
 func (errorTransport) Dial(context.Context, Endpoint) (Connection, error) {
 	panic("not implemented")
 }
-func (errorTransport) Close() error                               { panic("not implemented") }
-func (errorTransport) FlushClose() error                          { panic("not implemented") }
-func (errorTransport) Endpoints() []Endpoint                      { panic("not implemented") }
-func (errorTransport) SetChannelDescriptors([]*ChannelDescriptor) {}
+func (errorTransport) Close() error          { panic("not implemented") }
+func (errorTransport) FlushClose() error     { panic("not implemented") }
+func (errorTransport) Endpoints() []Endpoint { panic("not implemented") }
 
 func TestSwitchAcceptRoutineErrorCases(t *testing.T) {
 	sw := NewSwitch(cfg, errorTransport{ErrFilterTimeout{}})
@@ -761,7 +787,7 @@ func TestSwitchInitPeerIsNotCalledBeforeRemovePeer(t *testing.T) {
 	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", func(i int, sw *Switch) *Switch {
 		sw.AddReactor("mock", reactor)
 		return sw
-	})
+	}, log.TestingLogger())
 	err := sw.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {

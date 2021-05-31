@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -29,6 +30,7 @@ import (
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -51,8 +53,8 @@ func TestNodeStartStop(t *testing.T) {
 	require.NoError(t, err)
 	select {
 	case <-blocksSub.Out():
-	case <-blocksSub.Cancelled():
-		t.Fatal("blocksSub was cancelled")
+	case <-blocksSub.Canceled():
+		t.Fatal("blocksSub was canceled")
 	case <-time.After(10 * time.Second):
 		t.Fatal("timed out waiting for the node to produce a block")
 	}
@@ -74,25 +76,6 @@ func TestNodeStartStop(t *testing.T) {
 		err = p.Signal(syscall.SIGABRT)
 		fmt.Println(err)
 		t.Fatal("timed out waiting for shutdown")
-	}
-}
-
-func TestSplitAndTrimEmpty(t *testing.T) {
-	testCases := []struct {
-		s        string
-		sep      string
-		cutset   string
-		expected []string
-	}{
-		{"a,b,c", ",", " ", []string{"a", "b", "c"}},
-		{" a , b , c ", ",", " ", []string{"a", "b", "c"}},
-		{" a, b, c ", ",", " ", []string{"a", "b", "c"}},
-		{" a, ", ",", " ", []string{"a"}},
-		{"   ", ",", " ", []string{}},
-	}
-
-	for _, tc := range testCases {
-		assert.Equal(t, tc.expected, splitAndTrimEmpty(tc.s, tc.sep, tc.cutset), "%s", tc.s)
 	}
 }
 
@@ -266,8 +249,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	for currentBytes <= maxEvidenceBytes {
 		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain")
 		currentBytes += int64(len(ev.Bytes()))
-		err := evidencePool.AddEvidenceFromConsensus(ev)
-		require.NoError(t, err)
+		evidencePool.ReportConflictingVotes(ev.VoteA, ev.VoteB)
 	}
 
 	evList, size := evidencePool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
@@ -500,10 +482,12 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 	pval, err := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	require.NoError(t, err)
 
+	appClient, closer := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
+	t.Cleanup(func() { closer.Close() })
 	n, err := NewNode(config,
 		pval,
 		nodeKey,
-		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
+		appClient,
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
@@ -521,6 +505,121 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 
 	assert.True(t, customBlockchainReactor.IsRunning())
 	assert.Equal(t, customBlockchainReactor, n.Switch().Reactor("BLOCKCHAIN"))
+}
+
+func TestNodeNewSeedNode(t *testing.T) {
+	config := cfg.ResetTestRoot("node_new_node_custom_reactors_test")
+	config.Mode = cfg.ModeSeed
+	defer os.RemoveAll(config.RootDir)
+
+	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
+	require.NoError(t, err)
+
+	n, err := NewSeedNode(config,
+		DefaultDBProvider,
+		nodeKey,
+		DefaultGenesisDocProviderFunc(config),
+		log.TestingLogger(),
+	)
+	require.NoError(t, err)
+
+	err = n.Start()
+	require.NoError(t, err)
+
+	assert.True(t, n.pexReactor.IsRunning())
+}
+
+func TestNodeSetEventSink(t *testing.T) {
+	config := cfg.ResetTestRoot("node_app_version_test")
+	defer os.RemoveAll(config.RootDir)
+
+	// create & start node
+	n, err := DefaultNewNode(config, log.TestingLogger())
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, len(n.eventSinks))
+	assert.Equal(t, indexer.KV, n.eventSinks[0].Type())
+
+	config.TxIndex.Indexer = []string{"null"}
+	n, err = DefaultNewNode(config, log.TestingLogger())
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, len(n.eventSinks))
+	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
+
+	config.TxIndex.Indexer = []string{"null", "kv"}
+	n, err = DefaultNewNode(config, log.TestingLogger())
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, len(n.eventSinks))
+	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
+
+	config.TxIndex.Indexer = []string{"kvv"}
+	n, err = DefaultNewNode(config, log.TestingLogger())
+	assert.Nil(t, n)
+	assert.Equal(t, errors.New("unsupported event sink type"), err)
+
+	config.TxIndex.Indexer = []string{}
+	n, err = DefaultNewNode(config, log.TestingLogger())
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, len(n.eventSinks))
+	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
+
+	config.TxIndex.Indexer = []string{"psql"}
+	n, err = DefaultNewNode(config, log.TestingLogger())
+	assert.Nil(t, n)
+	assert.Equal(t, errors.New("the psql connection settings cannot be empty"), err)
+
+	var psqlConn = "test"
+
+	config.TxIndex.Indexer = []string{"psql"}
+	config.TxIndex.PsqlConn = psqlConn
+	n, err = DefaultNewNode(config, log.TestingLogger())
+	require.NoError(t, err)
+	assert.Equal(t, 1, len(n.eventSinks))
+	assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
+	n.OnStop()
+
+	config.TxIndex.Indexer = []string{"psql", "kv"}
+	config.TxIndex.PsqlConn = psqlConn
+	n, err = DefaultNewNode(config, log.TestingLogger())
+	require.NoError(t, err)
+	assert.Equal(t, 2, len(n.eventSinks))
+	// we use map to filter the duplicated sinks, so it's not guarantee the order when append sinks.
+	if n.eventSinks[0].Type() == indexer.KV {
+		assert.Equal(t, indexer.PSQL, n.eventSinks[1].Type())
+	} else {
+		assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
+		assert.Equal(t, indexer.KV, n.eventSinks[1].Type())
+	}
+	n.OnStop()
+
+	config.TxIndex.Indexer = []string{"kv", "psql"}
+	config.TxIndex.PsqlConn = psqlConn
+	n, err = DefaultNewNode(config, log.TestingLogger())
+	require.NoError(t, err)
+	assert.Equal(t, 2, len(n.eventSinks))
+	if n.eventSinks[0].Type() == indexer.KV {
+		assert.Equal(t, indexer.PSQL, n.eventSinks[1].Type())
+	} else {
+		assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
+		assert.Equal(t, indexer.KV, n.eventSinks[1].Type())
+	}
+	n.OnStop()
+
+	var e = errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
+	config.TxIndex.Indexer = []string{"psql", "kv", "Kv"}
+	config.TxIndex.PsqlConn = psqlConn
+	_, err = DefaultNewNode(config, log.TestingLogger())
+	require.Error(t, err)
+	assert.Equal(t, e, err)
+
+	config.TxIndex.Indexer = []string{"Psql", "kV", "kv", "pSql"}
+	config.TxIndex.PsqlConn = psqlConn
+	_, err = DefaultNewNode(config, log.TestingLogger())
+	require.Error(t, err)
+	assert.Equal(t, e, err)
 }
 
 func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {

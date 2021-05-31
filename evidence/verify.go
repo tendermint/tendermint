@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/tendermint/tendermint/light"
@@ -43,16 +42,6 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 
 	// verify the time of the evidence
 	evTime := blockMeta.Header.Time
-	if evidence.Time() != evTime {
-		return types.NewErrInvalidEvidence(
-			evidence,
-			fmt.Errorf(
-				"evidence has a different time to the block it is associated with (%v != %v)",
-				evidence.Time(), evTime,
-			),
-		)
-	}
-
 	ageDuration := state.LastBlockTime.Sub(evTime)
 
 	// check that the evidence hasn't expired
@@ -81,6 +70,16 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 			return types.NewErrInvalidEvidence(evidence, err)
 		}
 
+		_, val := valSet.GetByAddress(ev.VoteA.ValidatorAddress)
+
+		if err := ev.ValidateABCI(val, valSet, evTime); err != nil {
+			ev.GenerateABCI(val, valSet, evTime)
+			if addErr := evpool.addPendingEvidence(ev); addErr != nil {
+				evpool.logger.Error("adding pending duplicate vote evidence failed", "err", addErr)
+			}
+			return err
+		}
+
 		return nil
 
 	case *types.LightClientAttackEvidence:
@@ -100,7 +99,21 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 		if evidence.Height() != ev.ConflictingBlock.Height {
 			trustedHeader, err = getSignedHeader(evpool.blockStore, ev.ConflictingBlock.Height)
 			if err != nil {
-				return err
+				// FIXME: This multi step process is a bit unergonomic. We may want to consider a more efficient process
+				// that doesn't require as much io and is atomic.
+
+				// If the node doesn't have a block at the height of the conflicting block, then this could be
+				// a forward lunatic attack. Thus the node must get the latest height it has
+				latestHeight := evpool.blockStore.Height()
+				trustedHeader, err = getSignedHeader(evpool.blockStore, latestHeight)
+				if err != nil {
+					return err
+				}
+				if trustedHeader.Time.Before(ev.ConflictingBlock.Time) {
+					return fmt.Errorf("latest block time (%v) is before conflicting block time (%v)",
+						trustedHeader.Time, ev.ConflictingBlock.Time,
+					)
+				}
 			}
 		}
 
@@ -116,55 +129,17 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 			return types.NewErrInvalidEvidence(evidence, err)
 		}
 
-		// Find out what type of attack this was and thus extract the malicious
-		// validators. Note, in the case of an Amnesia attack we don't have any
-		// malicious validators.
-		validators := ev.GetByzantineValidators(commonVals, trustedHeader)
-
-		// Ensure this matches the validators that are listed in the evidence. They
-		// should be ordered based on power.
-		if validators == nil && ev.ByzantineValidators != nil {
-			return types.NewErrInvalidEvidence(
-				evidence,
-				fmt.Errorf(
-					"expected nil validators from an amnesia light client attack but got %d",
-					len(ev.ByzantineValidators),
-				),
-			)
-		}
-
-		if exp, got := len(validators), len(ev.ByzantineValidators); exp != got {
-			return types.NewErrInvalidEvidence(
-				evidence,
-				fmt.Errorf("expected %d byzantine validators from evidence but got %d", exp, got),
-			)
-		}
-
-		// ensure that both validator arrays are in the same order
-		sort.Sort(types.ValidatorsByVotingPower(ev.ByzantineValidators))
-
-		for idx, val := range validators {
-			if !bytes.Equal(ev.ByzantineValidators[idx].Address, val.Address) {
-				return types.NewErrInvalidEvidence(
-					evidence,
-					fmt.Errorf(
-						"evidence contained an unexpected byzantine validator address; expected: %v, got: %v",
-						val.Address, ev.ByzantineValidators[idx].Address,
-					),
-				)
+		// validate the ABCI component of evidence. If this fails but the rest
+		// is valid then we regenerate the ABCI component, save the rectified
+		// evidence and return an error
+		if err := ev.ValidateABCI(commonVals, trustedHeader, evTime); err != nil {
+			ev.GenerateABCI(commonVals, trustedHeader, evTime)
+			if addErr := evpool.addPendingEvidence(ev); addErr != nil {
+				evpool.logger.Error("adding pending light client attack evidence failed", "err", addErr)
 			}
+			return err
 
-			if ev.ByzantineValidators[idx].VotingPower != val.VotingPower {
-				return types.NewErrInvalidEvidence(
-					evidence,
-					fmt.Errorf(
-						"evidence contained unexpected byzantine validator power; expected %d, got %d",
-						val.VotingPower, ev.ByzantineValidators[idx].VotingPower,
-					),
-				)
-			}
 		}
-
 		return nil
 
 	default:
@@ -176,36 +151,41 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 // the following checks:
 //     - the common header from the full node has at least 1/3 voting power which is also present in
 //       the conflicting header's commit
+//     - 2/3+ of the conflicting validator set correctly signed the conflicting block
 //     - the nodes trusted header at the same height as the conflicting header has a different hash
+//
+// CONTRACT: must run ValidateBasic() on the evidence before verifying
+//           must check that the evidence has not expired (i.e. is outside the maximum age threshold)
 func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, trustedHeader *types.SignedHeader,
 	commonVals *types.ValidatorSet, now time.Time, trustPeriod time.Duration) error {
-	// In the case of lunatic attack we need to perform a single verification jump between the
-	// common header and the conflicting one
-	if commonHeader.Height != trustedHeader.Height {
-		err := light.Verify(commonHeader, commonVals, e.ConflictingBlock.SignedHeader, e.ConflictingBlock.ValidatorSet,
-			trustPeriod, now, 0*time.Second, light.DefaultTrustLevel)
+	// In the case of lunatic attack there will be a different commonHeader height. Therefore the node perform a single
+	// verification jump between the common header and the conflicting one
+	if commonHeader.Height != e.ConflictingBlock.Height {
+		err := commonVals.VerifyCommitLightTrusting(trustedHeader.ChainID, e.ConflictingBlock.Commit, light.DefaultTrustLevel)
 		if err != nil {
-			return fmt.Errorf("skipping verification from common to conflicting header failed: %w", err)
+			return fmt.Errorf("skipping verification of conflicting block failed: %w", err)
 		}
-	} else {
-		// in the case of equivocation and amnesia we expect some header hashes to be correctly derived
-		if isInvalidHeader(trustedHeader.Header, e.ConflictingBlock.Header) {
-			return errors.New("common height is the same as conflicting block height so expected the conflicting" +
-				" block to be correctly derived yet it wasn't")
-		}
-		// ensure that 2/3 of the validator set did vote for this block
-		if err := e.ConflictingBlock.ValidatorSet.VerifyCommitLight(trustedHeader.ChainID, e.ConflictingBlock.Commit.BlockID,
-			e.ConflictingBlock.Height, e.ConflictingBlock.Commit); err != nil {
-			return fmt.Errorf("invalid commit from conflicting block: %w", err)
-		}
+
+		// In the case of equivocation and amnesia we expect all header hashes to be correctly derived
+	} else if e.ConflictingHeaderIsInvalid(trustedHeader.Header) {
+		return errors.New("common height is the same as conflicting block height so expected the conflicting" +
+			" block to be correctly derived yet it wasn't")
 	}
 
-	if evTotal, valsTotal := e.TotalVotingPower, commonVals.TotalVotingPower(); evTotal != valsTotal {
-		return fmt.Errorf("total voting power from the evidence and our validator set does not match (%d != %d)",
-			evTotal, valsTotal)
+	// Verify that the 2/3+ commits from the conflicting validator set were for the conflicting header
+	if err := e.ConflictingBlock.ValidatorSet.VerifyCommitLight(trustedHeader.ChainID, e.ConflictingBlock.Commit.BlockID,
+		e.ConflictingBlock.Height, e.ConflictingBlock.Commit); err != nil {
+		return fmt.Errorf("invalid commit from conflicting block: %w", err)
 	}
 
-	if bytes.Equal(trustedHeader.Hash(), e.ConflictingBlock.Hash()) {
+	// check in the case of a forward lunatic attack that monotonically increasing time has been violated
+	if e.ConflictingBlock.Height > trustedHeader.Height && e.ConflictingBlock.Time.After(trustedHeader.Time) {
+		return fmt.Errorf("conflicting block doesn't violate monotonically increasing time (%v is after %v)",
+			e.ConflictingBlock.Time, trustedHeader.Time,
+		)
+
+		// In all other cases check that the hashes of the conflicting header and the trusted header are different
+	} else if bytes.Equal(trustedHeader.Hash(), e.ConflictingBlock.Hash()) {
 		return fmt.Errorf("trusted header hash matches the evidence's conflicting header hash: %X",
 			trustedHeader.Hash())
 	}
@@ -258,16 +238,6 @@ func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string, valSet 
 			addr, pubKey, pubKey.Address())
 	}
 
-	// validator voting power and total voting power must match
-	if val.VotingPower != e.ValidatorPower {
-		return fmt.Errorf("validator power from evidence and our validator set does not match (%d != %d)",
-			e.ValidatorPower, val.VotingPower)
-	}
-	if valSet.TotalVotingPower() != e.TotalVotingPower {
-		return fmt.Errorf("total voting power from the evidence and our validator set does not match (%d != %d)",
-			e.TotalVotingPower, valSet.TotalVotingPower())
-	}
-
 	va := e.VoteA.ToProto()
 	vb := e.VoteB.ToProto()
 	// Signatures must be valid
@@ -294,16 +264,4 @@ func getSignedHeader(blockStore BlockStore, height int64) (*types.SignedHeader, 
 		Header: &blockMeta.Header,
 		Commit: commit,
 	}, nil
-}
-
-// isInvalidHeader takes a trusted header and matches it againt a conflicting header
-// to determine whether the conflicting header was the product of a valid state transition
-// or not. If it is then all the deterministic fields of the header should be the same.
-// If not, it is an invalid header and constitutes a lunatic attack.
-func isInvalidHeader(trusted, conflicting *types.Header) bool {
-	return !bytes.Equal(trusted.ValidatorsHash, conflicting.ValidatorsHash) ||
-		!bytes.Equal(trusted.NextValidatorsHash, conflicting.NextValidatorsHash) ||
-		!bytes.Equal(trusted.ConsensusHash, conflicting.ConsensusHash) ||
-		!bytes.Equal(trusted.AppHash, conflicting.AppHash) ||
-		!bytes.Equal(trusted.LastResultsHash, conflicting.LastResultsHash)
 }

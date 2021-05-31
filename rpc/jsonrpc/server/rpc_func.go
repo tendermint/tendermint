@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -32,20 +31,22 @@ type RPCFunc struct {
 	returns  []reflect.Type // type of each return arg
 	argNames []string       // name of each argument
 	ws       bool           // websocket only
+	cache    bool           // allow the RPC response can be cached by the proxy cache server
 }
 
 // NewRPCFunc wraps a function for introspection.
 // f is the function, args are comma separated argument names
-func NewRPCFunc(f interface{}, args string) *RPCFunc {
-	return newRPCFunc(f, args, false)
+// cache is a bool value to allow the client proxy server to cache the RPC results
+func NewRPCFunc(f interface{}, args string, cache bool) *RPCFunc {
+	return newRPCFunc(f, args, false, cache)
 }
 
 // NewWSRPCFunc wraps a function for introspection and use in the websockets.
 func NewWSRPCFunc(f interface{}, args string) *RPCFunc {
-	return newRPCFunc(f, args, true)
+	return newRPCFunc(f, args, true, false)
 }
 
-func newRPCFunc(f interface{}, args string, ws bool) *RPCFunc {
+func newRPCFunc(f interface{}, args string, ws bool, c bool) *RPCFunc {
 	var argNames []string
 	if args != "" {
 		argNames = strings.Split(args, ",")
@@ -56,6 +57,7 @@ func newRPCFunc(f interface{}, args string, ws bool) *RPCFunc {
 		returns:  funcReturnTypes(f),
 		argNames: argNames,
 		ws:       ws,
+		cache:    c,
 	}
 }
 
@@ -86,8 +88,8 @@ func funcReturnTypes(f interface{}) []reflect.Type {
 // NOTE: assume returns is result struct and error. If error is not nil, return it
 func unreflectResult(returns []reflect.Value) (interface{}, error) {
 	errV := returns[1]
-	if errV.Interface() != nil {
-		return nil, fmt.Errorf("%v", errV.Interface())
+	if err, ok := errV.Interface().(error); ok && err != nil {
+		return nil, err
 	}
 	rv := returns[0]
 	// the result is a registered interface,

@@ -15,12 +15,12 @@ import (
 func ExampleHTTP_simple() {
 	// Start a tendermint node (and kvstore) in the background to test against
 	app := kvstore.NewApplication()
-	node := rpctest.StartTendermint(app, rpctest.SuppressStdout, rpctest.RecreateConfig)
+	node := rpctest.StartTendermint(app, rpctest.SuppressStdout)
 	defer rpctest.StopTendermint(node)
 
 	// Create our RPC client
-	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	c, err := rpchttp.New(rpcAddr, "/websocket")
+	rpcAddr := node.Config().RPC.ListenAddress
+	c, err := rpchttp.New(rpcAddr)
 	if err != nil {
 		log.Fatal(err) //nolint:gocritic
 	}
@@ -68,11 +68,11 @@ func ExampleHTTP_simple() {
 func ExampleHTTP_batching() {
 	// Start a tendermint node (and kvstore) in the background to test against
 	app := kvstore.NewApplication()
-	node := rpctest.StartTendermint(app, rpctest.SuppressStdout, rpctest.RecreateConfig)
+	node := rpctest.StartTendermint(app, rpctest.SuppressStdout)
 
 	// Create our RPC client
-	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	c, err := rpchttp.New(rpcAddr, "/websocket")
+	rpcAddr := node.Config().RPC.ListenAddress
+	c, err := rpchttp.New(rpcAddr)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func ExampleHTTP_batching() {
 		// Broadcast the transaction and wait for it to commit (rather use
 		// c.BroadcastTxSync though in production).
 		if _, err := batch.BroadcastTxCommit(context.Background(), tx); err != nil {
-			log.Fatal(err) //nolint:gocritic
+			log.Fatal(err) // nolint:gocritic
 		}
 	}
 

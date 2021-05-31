@@ -11,6 +11,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
@@ -120,7 +121,7 @@ func TestMock(t *testing.T) {
 func TestClient_SequentialVerification(t *testing.T) {
 	newKeys := genPrivKeys(4)
 	newVals := newKeys.ToValidators(10, 1)
-	differentVals, _ := types.RandValidatorSet(10, 100)
+	differentVals, _ := factory.RandValidatorSet(10, 100)
 
 	testCases := []struct {
 		name         string
@@ -740,7 +741,7 @@ func TestClient_Concurrency(t *testing.T) {
 			defer wg.Done()
 
 			// NOTE: Cleanup, Stop, VerifyLightBlockAtHeight and Verify are not supposed
-			// to be concurrenly safe.
+			// to be concurrently safe.
 
 			assert.Equal(t, chainID, c.ChainID())
 
@@ -768,15 +769,18 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 		[]provider.Provider{fullNode, fullNode},
 		dbs.New(dbm.NewMemDB()),
 		light.Logger(log.TestingLogger()),
-		light.MaxRetryAttempts(1),
 	)
 
 	require.NoError(t, err)
 	_, err = c.Update(ctx, bTime.Add(2*time.Hour))
 	require.NoError(t, err)
 
+	// the primary should no longer be the deadNode
 	assert.NotEqual(t, c.Primary(), deadNode)
-	assert.Equal(t, 1, len(c.Witnesses()))
+
+	// we should still have the dead node as a witness because it
+	// hasn't repeatedly been unresponsive yet
+	assert.Equal(t, 2, len(c.Witnesses()))
 }
 
 func TestClient_BackwardsVerification(t *testing.T) {
@@ -946,7 +950,6 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 		[]provider.Provider{badProvider1, badProvider2},
 		dbs.New(dbm.NewMemDB()),
 		light.Logger(log.TestingLogger()),
-		light.MaxRetryAttempts(1),
 	)
 	// witness should have behaved properly -> no error
 	require.NoError(t, err)
@@ -969,7 +972,7 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 }
 
 func TestClient_TrustedValidatorSet(t *testing.T) {
-	differentVals, _ := types.RandValidatorSet(10, 100)
+	differentVals, _ := factory.RandValidatorSet(10, 100)
 	badValSetNode := mockp.New(
 		chainID,
 		map[int64]*types.SignedHeader{
@@ -1086,7 +1089,6 @@ func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
 			badNode,
 			[]provider.Provider{badNode, badNode},
 			dbs.New(dbm.NewMemDB()),
-			light.MaxRetryAttempts(1),
 		)
 		require.NoError(t, err)
 

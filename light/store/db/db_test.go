@@ -12,8 +12,8 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
@@ -184,11 +184,11 @@ func Test_Concurrency(t *testing.T) {
 }
 
 func randLightBlock(height int64) *types.LightBlock {
-	vals, _ := types.RandValidatorSet(2, 1)
+	vals, _ := factory.RandValidatorSet(2, 1)
 	return &types.LightBlock{
 		SignedHeader: &types.SignedHeader{
 			Header: &types.Header{
-				Version:            tmversion.Consensus{Block: version.BlockProtocol, App: 0},
+				Version:            version.Consensus{Block: version.BlockProtocol, App: 0},
 				ChainID:            tmrand.Str(12),
 				Height:             height,
 				Time:               time.Now(),

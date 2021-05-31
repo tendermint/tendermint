@@ -29,6 +29,7 @@ type PublicKey struct {
 	// Types that are valid to be assigned to Sum:
 	//	*PublicKey_Ed25519
 	//	*PublicKey_Secp256K1
+	//	*PublicKey_Sr25519
 	Sum isPublicKey_Sum `protobuf_oneof:"sum"`
 }
 
@@ -79,9 +80,13 @@ type PublicKey_Ed25519 struct {
 type PublicKey_Secp256K1 struct {
 	Secp256K1 []byte `protobuf:"bytes,2,opt,name=secp256k1,proto3,oneof" json:"secp256k1,omitempty"`
 }
+type PublicKey_Sr25519 struct {
+	Sr25519 []byte `protobuf:"bytes,3,opt,name=sr25519,proto3,oneof" json:"sr25519,omitempty"`
+}
 
 func (*PublicKey_Ed25519) isPublicKey_Sum()   {}
 func (*PublicKey_Secp256K1) isPublicKey_Sum() {}
+func (*PublicKey_Sr25519) isPublicKey_Sum()   {}
 
 func (m *PublicKey) GetSum() isPublicKey_Sum {
 	if m != nil {
@@ -104,11 +109,19 @@ func (m *PublicKey) GetSecp256K1() []byte {
 	return nil
 }
 
+func (m *PublicKey) GetSr25519() []byte {
+	if x, ok := m.GetSum().(*PublicKey_Sr25519); ok {
+		return x.Sr25519
+	}
+	return nil
+}
+
 // XXX_OneofWrappers is for the internal use of the proto package.
 func (*PublicKey) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
 		(*PublicKey_Ed25519)(nil),
 		(*PublicKey_Secp256K1)(nil),
+		(*PublicKey_Sr25519)(nil),
 	}
 }
 
@@ -119,20 +132,21 @@ func init() {
 func init() { proto.RegisterFile("tendermint/crypto/keys.proto", fileDescriptor_cb048658b234868c) }
 
 var fileDescriptor_cb048658b234868c = []byte{
-	// 199 bytes of a gzipped FileDescriptorProto
+	// 210 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x29, 0x49, 0xcd, 0x4b,
 	0x49, 0x2d, 0xca, 0xcd, 0xcc, 0x2b, 0xd1, 0x4f, 0x2e, 0xaa, 0x2c, 0x28, 0xc9, 0xd7, 0xcf, 0x4e,
 	0xad, 0x2c, 0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x12, 0x44, 0xc8, 0xea, 0x41, 0x64, 0xa5,
-	0x44, 0xd2, 0xf3, 0xd3, 0xf3, 0xc1, 0xb2, 0xfa, 0x20, 0x16, 0x44, 0xa1, 0x52, 0x04, 0x17, 0x67,
+	0x44, 0xd2, 0xf3, 0xd3, 0xf3, 0xc1, 0xb2, 0xfa, 0x20, 0x16, 0x44, 0xa1, 0x52, 0x09, 0x17, 0x67,
 	0x40, 0x69, 0x52, 0x4e, 0x66, 0xb2, 0x77, 0x6a, 0xa5, 0x90, 0x14, 0x17, 0x7b, 0x6a, 0x8a, 0x91,
 	0xa9, 0xa9, 0xa1, 0xa5, 0x04, 0xa3, 0x02, 0xa3, 0x06, 0x8f, 0x07, 0x43, 0x10, 0x4c, 0x40, 0x48,
 	0x8e, 0x8b, 0xb3, 0x38, 0x35, 0xb9, 0xc0, 0xc8, 0xd4, 0x2c, 0xdb, 0x50, 0x82, 0x09, 0x2a, 0x8b,
-	0x10, 0xb2, 0xe2, 0x78, 0xb1, 0x40, 0x9e, 0xf1, 0xc5, 0x42, 0x79, 0x46, 0x27, 0x56, 0x2e, 0xe6,
-	0xe2, 0xd2, 0x5c, 0xa7, 0xa0, 0x13, 0x8f, 0xe4, 0x18, 0x2f, 0x3c, 0x92, 0x63, 0x7c, 0xf0, 0x48,
-	0x8e, 0x71, 0xc2, 0x63, 0x39, 0x86, 0x0b, 0x8f, 0xe5, 0x18, 0x6e, 0x3c, 0x96, 0x63, 0x88, 0xb2,
-	0x48, 0xcf, 0x2c, 0xc9, 0x28, 0x4d, 0xd2, 0x4b, 0xce, 0xcf, 0xd5, 0x47, 0xf2, 0x05, 0x12, 0x13,
-	0xe2, 0x4c, 0x0c, 0x1f, 0x26, 0xb1, 0x81, 0x25, 0x8c, 0x01, 0x01, 0x00, 0x00, 0xff, 0xff, 0xe8,
-	0x1d, 0x1e, 0xe2, 0xfd, 0x00, 0x00, 0x00,
+	0x10, 0x02, 0xe9, 0x2d, 0x2e, 0x82, 0xe8, 0x65, 0x86, 0xe9, 0x85, 0x0a, 0x58, 0x71, 0xbc, 0x58,
+	0x20, 0xcf, 0xf8, 0x62, 0xa1, 0x3c, 0xa3, 0x13, 0x2b, 0x17, 0x73, 0x71, 0x69, 0xae, 0x53, 0xd0,
+	0x89, 0x47, 0x72, 0x8c, 0x17, 0x1e, 0xc9, 0x31, 0x3e, 0x78, 0x24, 0xc7, 0x38, 0xe1, 0xb1, 0x1c,
+	0xc3, 0x85, 0xc7, 0x72, 0x0c, 0x37, 0x1e, 0xcb, 0x31, 0x44, 0x59, 0xa4, 0x67, 0x96, 0x64, 0x94,
+	0x26, 0xe9, 0x25, 0xe7, 0xe7, 0xea, 0x23, 0xf9, 0x10, 0x89, 0x09, 0xf1, 0x02, 0x86, 0xef, 0x93,
+	0xd8, 0xc0, 0x12, 0xc6, 0x80, 0x00, 0x00, 0x00, 0xff, 0xff, 0xaa, 0x12, 0x2c, 0x35, 0x19, 0x01,
+	0x00, 0x00,
 }
 
 func (this *PublicKey) Compare(that interface{}) int {
@@ -173,6 +187,8 @@ func (this *PublicKey) Compare(that interface{}) int {
 			thisType = 0
 		case *PublicKey_Secp256K1:
 			thisType = 1
+		case *PublicKey_Sr25519:
+			thisType = 2
 		default:
 			panic(fmt.Sprintf("compare: unexpected type %T in oneof", this.Sum))
 		}
@@ -182,6 +198,8 @@ func (this *PublicKey) Compare(that interface{}) int {
 			that1Type = 0
 		case *PublicKey_Secp256K1:
 			that1Type = 1
+		case *PublicKey_Sr25519:
+			that1Type = 2
 		default:
 			panic(fmt.Sprintf("compare: unexpected type %T in oneof", that1.Sum))
 		}
@@ -253,6 +271,36 @@ func (this *PublicKey_Secp256K1) Compare(that interface{}) int {
 		return -1
 	}
 	if c := bytes.Compare(this.Secp256K1, that1.Secp256K1); c != 0 {
+		return c
+	}
+	return 0
+}
+func (this *PublicKey_Sr25519) Compare(that interface{}) int {
+	if that == nil {
+		if this == nil {
+			return 0
+		}
+		return 1
+	}
+
+	that1, ok := that.(*PublicKey_Sr25519)
+	if !ok {
+		that2, ok := that.(PublicKey_Sr25519)
+		if ok {
+			that1 = &that2
+		} else {
+			return 1
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return 0
+		}
+		return 1
+	} else if this == nil {
+		return -1
+	}
+	if c := bytes.Compare(this.Sr25519, that1.Sr25519); c != 0 {
 		return c
 	}
 	return 0
@@ -335,6 +383,30 @@ func (this *PublicKey_Secp256K1) Equal(that interface{}) bool {
 	}
 	return true
 }
+func (this *PublicKey_Sr25519) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*PublicKey_Sr25519)
+	if !ok {
+		that2, ok := that.(PublicKey_Sr25519)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !bytes.Equal(this.Sr25519, that1.Sr25519) {
+		return false
+	}
+	return true
+}
 func (m *PublicKey) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -399,6 +471,22 @@ func (m *PublicKey_Secp256K1) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
+func (m *PublicKey_Sr25519) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *PublicKey_Sr25519) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Sr25519 != nil {
+		i -= len(m.Sr25519)
+		copy(dAtA[i:], m.Sr25519)
+		i = encodeVarintKeys(dAtA, i, uint64(len(m.Sr25519)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	return len(dAtA) - i, nil
+}
 func encodeVarintKeys(dAtA []byte, offset int, v uint64) int {
 	offset -= sovKeys(v)
 	base := offset
@@ -442,6 +530,18 @@ func (m *PublicKey_Secp256K1) Size() (n int) {
 	_ = l
 	if m.Secp256K1 != nil {
 		l = len(m.Secp256K1)
+		n += 1 + l + sovKeys(uint64(l))
+	}
+	return n
+}
+func (m *PublicKey_Sr25519) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Sr25519 != nil {
+		l = len(m.Sr25519)
 		n += 1 + l + sovKeys(uint64(l))
 	}
 	return n
@@ -547,6 +647,39 @@ func (m *PublicKey) Unmarshal(dAtA []byte) error {
 			v := make([]byte, postIndex-iNdEx)
 			copy(v, dAtA[iNdEx:postIndex])
 			m.Sum = &PublicKey_Secp256K1{v}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sr25519", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeys
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthKeys
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthKeys
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := make([]byte, postIndex-iNdEx)
+			copy(v, dAtA[iNdEx:postIndex])
+			m.Sum = &PublicKey_Sr25519{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

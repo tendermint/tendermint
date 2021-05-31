@@ -55,8 +55,8 @@ func (cs *State) readReplayMessage(msg *TimedWALMessage, newStepSub types.Subscr
 				if m.Height != m2.Height || m.Round != m2.Round || m.Step != m2.Step {
 					return fmt.Errorf("roundState mismatch. Got %v; Expected %v", m2, m)
 				}
-			case <-newStepSub.Cancelled():
-				return fmt.Errorf("failed to read off newStepSub.Out(). newStepSub was cancelled")
+			case <-newStepSub.Canceled():
+				return fmt.Errorf("failed to read off newStepSub.Out(). newStepSub was canceled")
 			case <-ticker:
 				return fmt.Errorf("failed to read off newStepSub.Out()")
 			}
@@ -255,7 +255,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 
 	h.logger.Info("ABCI Handshake App Info",
 		"height", blockHeight,
-		"hash", fmt.Sprintf("%X", appHash),
+		"hash", appHash,
 		"software-version", res.Version,
 		"protocol-version", res.AppVersion,
 	)
@@ -272,7 +272,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	}
 
 	h.logger.Info("Completed ABCI Handshake - Tendermint and App are synced",
-		"appHeight", blockHeight, "appHash", fmt.Sprintf("%X", appHash))
+		"appHeight", blockHeight, "appHash", appHash)
 
 	// TODO: (on restart) replay mempool
 
@@ -308,12 +308,12 @@ func (h *Handshaker) ReplayBlocks(
 		}
 		validatorSet := types.NewValidatorSet(validators)
 		nextVals := types.TM2PB.ValidatorUpdates(validatorSet)
-		csParams := types.TM2PB.ConsensusParams(h.genDoc.ConsensusParams)
+		pbParams := h.genDoc.ConsensusParams.ToProto()
 		req := abci.RequestInitChain{
 			Time:            h.genDoc.GenesisTime,
 			ChainId:         h.genDoc.ChainID,
 			InitialHeight:   h.genDoc.InitialHeight,
-			ConsensusParams: csParams,
+			ConsensusParams: &pbParams,
 			Validators:      nextVals,
 			AppStateBytes:   h.genDoc.AppState,
 		}
@@ -345,7 +345,7 @@ func (h *Handshaker) ReplayBlocks(
 			}
 
 			if res.ConsensusParams != nil {
-				state.ConsensusParams = types.UpdateConsensusParams(state.ConsensusParams, res.ConsensusParams)
+				state.ConsensusParams = state.ConsensusParams.UpdateConsensusParams(res.ConsensusParams)
 				state.Version.Consensus.App = state.ConsensusParams.Version.AppVersion
 			}
 			// We update the last results hash with the empty hash, to conform with RFC-6962.
@@ -469,9 +469,23 @@ func (h *Handshaker) replayBlocks(
 			assertAppHashEqualsOneFromBlock(appHash, block)
 		}
 
-		appHash, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, h.logger, h.stateStore, h.genDoc.InitialHeight)
-		if err != nil {
-			return nil, err
+		if i == finalBlock && !mutateState {
+			// We emit events for the index services at the final block due to the sync issue when
+			// the node shutdown during the block committing status.
+			blockExec := sm.NewBlockExecutor(
+				h.stateStore, h.logger, proxyApp.Consensus(), emptyMempool{}, sm.EmptyEvidencePool{})
+			blockExec.SetEventBus(h.eventBus)
+			appHash, err = sm.ExecCommitBlock(
+				blockExec, proxyApp.Consensus(), block, h.logger, h.stateStore, h.genDoc.InitialHeight, state)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			appHash, err = sm.ExecCommitBlock(
+				nil, proxyApp.Consensus(), block, h.logger, h.stateStore, h.genDoc.InitialHeight, state)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		h.nBlocks++

@@ -184,6 +184,8 @@ func (r *Reactor) GetChannels() []*conn.ChannelDescriptor {
 			Priority:            1,
 			SendQueueCapacity:   10,
 			RecvMessageCapacity: maxMsgSize,
+
+			MaxSendBytes: 200,
 		},
 	}
 }
@@ -285,9 +287,9 @@ func (r *Reactor) Receive(chID byte, src Peer, msgBytes []byte) {
 			r.SendAddrs(src, r.book.GetSelection())
 		}
 
-	case *tmp2p.PexAddrs:
+	case *tmp2p.PexResponse:
 		// If we asked for addresses, add them to the book
-		addrs, err := p2p.NetAddressesFromProto(msg.Addrs)
+		addrs, err := p2p.NetAddressesFromProto(msg.Addresses)
 		if err != nil {
 			r.Switch.StopPeerForError(src, err)
 			r.book.MarkBad(src.SocketAddr(), defaultBanTime)
@@ -409,7 +411,7 @@ func (r *Reactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 
 // SendAddrs sends addrs to the peer.
 func (r *Reactor) SendAddrs(p Peer, netAddrs []*p2p.NetAddress) {
-	p.Send(PexChannel, mustEncode(&tmp2p.PexAddrs{Addrs: p2p.NetAddressesToProto(netAddrs)}))
+	p.Send(PexChannel, mustEncode(&tmp2p.PexResponse{Addresses: p2p.NetAddressesToProto(netAddrs)}))
 }
 
 // SetEnsurePeersPeriod sets period to ensure peers connected.
@@ -492,7 +494,7 @@ func (r *Reactor) ensurePeers() {
 		}
 		// TODO: consider moving some checks from toDial into here
 		// so we don't even consider dialing peers that we want to wait
-		// before dialling again, or have dialed too many times already
+		// before dialing again, or have dialed too many times already
 		r.Logger.Info("Will dial address", "addr", try)
 		toDial[try.ID] = try
 	}
@@ -523,7 +525,8 @@ func (r *Reactor) ensurePeers() {
 		peers := r.Switch.Peers().List()
 		peersCount := len(peers)
 		if peersCount > 0 {
-			peer := peers[tmrand.Int()%peersCount]
+			rand := tmrand.NewRand()
+			peer := peers[rand.Int()%peersCount]
 			r.Logger.Info("We need more addresses. Sending pexRequest to random peer", "peer", peer)
 			r.RequestAddrs(peer)
 		}
@@ -556,7 +559,8 @@ func (r *Reactor) dialPeer(addr *p2p.NetAddress) error {
 
 	// exponential backoff if it's not our first attempt to dial given address
 	if attempts > 0 {
-		jitter := time.Duration(tmrand.Float64() * float64(time.Second)) // 1s == (1e9 ns)
+		rand := tmrand.NewRand()
+		jitter := time.Duration(rand.Float64() * float64(time.Second)) // 1s == (1e9 ns)
 		backoffDuration := jitter + ((1 << uint(attempts)) * time.Second)
 		backoffDuration = r.maxBackoffDurationForPeer(addr, backoffDuration)
 		sinceLastDialed := time.Since(lastDialed)
@@ -622,7 +626,8 @@ func (r *Reactor) checkSeeds() (numOnline int, netAddrs []*p2p.NetAddress, err e
 
 // randomly dial seeds until we connect to one or exhaust them
 func (r *Reactor) dialSeeds() {
-	perm := tmrand.Perm(len(r.seedAddrs))
+	rand := tmrand.NewRand()
+	perm := rand.Perm(len(r.seedAddrs))
 	// perm := r.Switch.rng.Perm(lSeeds)
 	for _, i := range perm {
 		// dial a random seed
@@ -773,12 +778,12 @@ func markAddrInBookBasedOnErr(addr *p2p.NetAddress, book AddrBook, err error) {
 
 // mustEncode proto encodes a tmp2p.Message
 func mustEncode(pb proto.Message) []byte {
-	msg := tmp2p.Message{}
+	msg := tmp2p.PexMessage{}
 	switch pb := pb.(type) {
 	case *tmp2p.PexRequest:
-		msg.Sum = &tmp2p.Message_PexRequest{PexRequest: pb}
-	case *tmp2p.PexAddrs:
-		msg.Sum = &tmp2p.Message_PexAddrs{PexAddrs: pb}
+		msg.Sum = &tmp2p.PexMessage_PexRequest{PexRequest: pb}
+	case *tmp2p.PexResponse:
+		msg.Sum = &tmp2p.PexMessage_PexResponse{PexResponse: pb}
 	default:
 		panic(fmt.Sprintf("Unknown message type %T", pb))
 	}
@@ -791,7 +796,7 @@ func mustEncode(pb proto.Message) []byte {
 }
 
 func decodeMsg(bz []byte) (proto.Message, error) {
-	pb := &tmp2p.Message{}
+	pb := &tmp2p.PexMessage{}
 
 	err := pb.Unmarshal(bz)
 	if err != nil {
@@ -799,10 +804,10 @@ func decodeMsg(bz []byte) (proto.Message, error) {
 	}
 
 	switch msg := pb.Sum.(type) {
-	case *tmp2p.Message_PexRequest:
+	case *tmp2p.PexMessage_PexRequest:
 		return msg.PexRequest, nil
-	case *tmp2p.Message_PexAddrs:
-		return msg.PexAddrs, nil
+	case *tmp2p.PexMessage_PexResponse:
+		return msg.PexResponse, nil
 	default:
 		return nil, fmt.Errorf("unknown message: %T", msg)
 	}

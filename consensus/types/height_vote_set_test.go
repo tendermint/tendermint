@@ -1,12 +1,14 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -23,7 +25,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestPeerCatchupRounds(t *testing.T) {
-	valSet, privVals := types.RandValidatorSet(10, 1)
+	valSet, privVals := factory.RandValidatorSet(10, 1)
 
 	hvs := NewHeightVoteSet(config.ChainID(), 1, valSet)
 
@@ -57,7 +59,7 @@ func TestPeerCatchupRounds(t *testing.T) {
 
 func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []types.PrivValidator) *types.Vote {
 	privVal := privVals[valIndex]
-	pubKey, err := privVal.GetPubKey()
+	pubKey, err := privVal.GetPubKey(context.Background())
 	if err != nil {
 		panic(err)
 	}
@@ -76,7 +78,7 @@ func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []ty
 	chainID := config.ChainID()
 
 	v := vote.ToProto()
-	err = privVal.SignVote(chainID, v)
+	err = privVal.SignVote(context.Background(), chainID, v)
 	if err != nil {
 		panic(fmt.Sprintf("Error signing vote: %v", err))
 	}

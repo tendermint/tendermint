@@ -61,7 +61,7 @@ func setup(t *testing.T, peers []p2p.Peer) *reactorShimTestSuite {
 
 		sw.AddReactor(rts.shim.Name, rts.shim)
 		return sw
-	})
+	}, log.TestingLogger())
 
 	// start the reactor shim
 	require.NoError(t, rts.shim.Start())
@@ -92,7 +92,7 @@ func TestReactorShim_GetChannel(t *testing.T) {
 
 	p2pCh := rts.shim.GetChannel(p2p.ChannelID(channelID1))
 	require.NotNil(t, p2pCh)
-	require.Equal(t, p2pCh.ID(), p2p.ChannelID(channelID1))
+	require.Equal(t, p2pCh.ID, p2p.ChannelID(channelID1))
 
 	p2pCh = rts.shim.GetChannel(p2p.ChannelID(byte(0x03)))
 	require.Nil(t, p2pCh)
@@ -123,7 +123,7 @@ func TestReactorShim_AddPeer(t *testing.T) {
 	rts.shim.AddPeer(peerA)
 	wg.Wait()
 
-	require.Equal(t, peerIDA, peerUpdate.PeerID)
+	require.Equal(t, peerIDA, peerUpdate.NodeID)
 	require.Equal(t, p2p.PeerStatusUp, peerUpdate.Status)
 }
 
@@ -143,7 +143,7 @@ func TestReactorShim_RemovePeer(t *testing.T) {
 	rts.shim.RemovePeer(peerA, "test reason")
 	wg.Wait()
 
-	require.Equal(t, peerIDA, peerUpdate.PeerID)
+	require.Equal(t, peerIDA, peerUpdate.NodeID)
 	require.Equal(t, p2p.PeerStatusDown, peerUpdate.Status)
 }
 
@@ -178,11 +178,11 @@ func TestReactorShim_Receive(t *testing.T) {
 	// Simulate receiving the envelope in some real reactor and replying back with
 	// the same envelope and then closing the Channel.
 	go func() {
-		e := <-p2pCh.Channel.In()
+		e := <-p2pCh.Channel.In
 		require.Equal(t, peerIDA, e.From)
 		require.NotNil(t, e.Message)
 
-		p2pCh.Channel.Out() <- p2p.Envelope{To: e.From, Message: e.Message}
+		p2pCh.Channel.Out <- p2p.Envelope{To: e.From, Message: e.Message}
 		p2pCh.Channel.Close()
 		wg.Done()
 	}()
@@ -200,7 +200,7 @@ func TestReactorShim_Receive(t *testing.T) {
 	// Since p2pCh was closed in the simulated reactor above, calling Receive
 	// should not block.
 	rts.shim.Receive(channelID1, peerA, bz)
-	require.Empty(t, p2pCh.Channel.In())
+	require.Empty(t, p2pCh.Channel.In)
 
 	peerA.AssertExpectations(t)
 }

@@ -1,7 +1,9 @@
 package types
 
 import (
+	"context"
 	"math"
+	mrand "math/rand"
 	"testing"
 	"time"
 
@@ -12,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -89,13 +90,15 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 	}
 }
 
-func TestLightClientAttackEvidence(t *testing.T) {
+func TestLightClientAttackEvidenceBasic(t *testing.T) {
 	height := int64(5)
-	voteSet, valSet, privVals := randVoteSet(height, 1, tmproto.PrecommitType, 10, 1)
+	commonHeight := height - 1
+	nValidators := 10
+	voteSet, valSet, privVals := randVoteSet(height, 1, tmproto.PrecommitType, nValidators, 1)
 	header := makeHeaderRandom()
 	header.Height = height
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
-	commit, err := MakeCommit(blockID, height, 1, voteSet, privVals, defaultVoteTime)
+	commit, err := makeCommit(blockID, height, 1, voteSet, privVals, defaultVoteTime)
 	require.NoError(t, err)
 	lcae := &LightClientAttackEvidence{
 		ConflictingBlock: &LightBlock{
@@ -105,61 +108,57 @@ func TestLightClientAttackEvidence(t *testing.T) {
 			},
 			ValidatorSet: valSet,
 		},
-		CommonHeight: height - 1,
+		CommonHeight:        commonHeight,
+		TotalVotingPower:    valSet.TotalVotingPower(),
+		Timestamp:           header.Time,
+		ByzantineValidators: valSet.Validators[:nValidators/2],
 	}
 	assert.NotNil(t, lcae.String())
 	assert.NotNil(t, lcae.Hash())
-	// only 7 validators sign
-	differentCommit, err := MakeCommit(blockID, height, 1, voteSet, privVals[:7], defaultVoteTime)
-	require.NoError(t, err)
-	differentEv := &LightClientAttackEvidence{
-		ConflictingBlock: &LightBlock{
-			SignedHeader: &SignedHeader{
-				Header: header,
-				Commit: differentCommit,
-			},
-			ValidatorSet: valSet,
-		},
-		CommonHeight: height - 1,
-	}
-	assert.Equal(t, lcae.Hash(), differentEv.Hash())
-	// different header hash
-	differentHeader := makeHeaderRandom()
-	differentEv = &LightClientAttackEvidence{
-		ConflictingBlock: &LightBlock{
-			SignedHeader: &SignedHeader{
-				Header: differentHeader,
-				Commit: differentCommit,
-			},
-			ValidatorSet: valSet,
-		},
-		CommonHeight: height - 1,
-	}
-	assert.NotEqual(t, lcae.Hash(), differentEv.Hash())
-	// different common height should produce a different header
-	differentEv = &LightClientAttackEvidence{
-		ConflictingBlock: &LightBlock{
-			SignedHeader: &SignedHeader{
-				Header: header,
-				Commit: differentCommit,
-			},
-			ValidatorSet: valSet,
-		},
-		CommonHeight: height - 2,
-	}
-	assert.NotEqual(t, lcae.Hash(), differentEv.Hash())
-	assert.Equal(t, lcae.Height(), int64(4)) // Height should be the common Height
+	assert.Equal(t, lcae.Height(), commonHeight) // Height should be the common Height
 	assert.NotNil(t, lcae.Bytes())
+
+	// maleate evidence to test hash uniqueness
+	testCases := []struct {
+		testName         string
+		malleateEvidence func(*LightClientAttackEvidence)
+	}{
+		{"Different header", func(ev *LightClientAttackEvidence) { ev.ConflictingBlock.Header = makeHeaderRandom() }},
+		{"Different common height", func(ev *LightClientAttackEvidence) {
+			ev.CommonHeight = height + 1
+		}},
+	}
+
+	for _, tc := range testCases {
+		lcae := &LightClientAttackEvidence{
+			ConflictingBlock: &LightBlock{
+				SignedHeader: &SignedHeader{
+					Header: header,
+					Commit: commit,
+				},
+				ValidatorSet: valSet,
+			},
+			CommonHeight:        commonHeight,
+			TotalVotingPower:    valSet.TotalVotingPower(),
+			Timestamp:           header.Time,
+			ByzantineValidators: valSet.Validators[:nValidators/2],
+		}
+		hash := lcae.Hash()
+		tc.malleateEvidence(lcae)
+		assert.NotEqual(t, hash, lcae.Hash(), tc.testName)
+	}
 }
 
 func TestLightClientAttackEvidenceValidation(t *testing.T) {
 	height := int64(5)
-	voteSet, valSet, privVals := randVoteSet(height, 1, tmproto.PrecommitType, 10, 1)
+	commonHeight := height - 1
+	nValidators := 10
+	voteSet, valSet, privVals := randVoteSet(height, 1, tmproto.PrecommitType, nValidators, 1)
 	header := makeHeaderRandom()
 	header.Height = height
 	header.ValidatorsHash = valSet.Hash()
 	blockID := makeBlockID(header.Hash(), math.MaxInt32, tmhash.Sum([]byte("partshash")))
-	commit, err := MakeCommit(blockID, height, 1, voteSet, privVals, time.Now())
+	commit, err := makeCommit(blockID, height, 1, voteSet, privVals, time.Now())
 	require.NoError(t, err)
 	lcae := &LightClientAttackEvidence{
 		ConflictingBlock: &LightBlock{
@@ -169,7 +168,10 @@ func TestLightClientAttackEvidenceValidation(t *testing.T) {
 			},
 			ValidatorSet: valSet,
 		},
-		CommonHeight: height - 1,
+		CommonHeight:        commonHeight,
+		TotalVotingPower:    valSet.TotalVotingPower(),
+		Timestamp:           header.Time,
+		ByzantineValidators: valSet.Validators[:nValidators/2],
 	}
 	assert.NoError(t, lcae.ValidateBasic())
 
@@ -178,15 +180,21 @@ func TestLightClientAttackEvidenceValidation(t *testing.T) {
 		malleateEvidence func(*LightClientAttackEvidence)
 		expectErr        bool
 	}{
-		{"Good DuplicateVoteEvidence", func(ev *LightClientAttackEvidence) {}, false},
+		{"Good LightClientAttackEvidence", func(ev *LightClientAttackEvidence) {}, false},
 		{"Negative height", func(ev *LightClientAttackEvidence) { ev.CommonHeight = -10 }, true},
 		{"Height is greater than divergent block", func(ev *LightClientAttackEvidence) {
 			ev.CommonHeight = height + 1
 		}, true},
+		{"Height is equal to the divergent block", func(ev *LightClientAttackEvidence) {
+			ev.CommonHeight = height
+		}, false},
 		{"Nil conflicting header", func(ev *LightClientAttackEvidence) { ev.ConflictingBlock.Header = nil }, true},
 		{"Nil conflicting blocl", func(ev *LightClientAttackEvidence) { ev.ConflictingBlock = nil }, true},
 		{"Nil validator set", func(ev *LightClientAttackEvidence) {
 			ev.ConflictingBlock.ValidatorSet = &ValidatorSet{}
+		}, true},
+		{"Negative total voting power", func(ev *LightClientAttackEvidence) {
+			ev.TotalVotingPower = -1
 		}, true},
 	}
 	for _, tc := range testCases {
@@ -200,7 +208,10 @@ func TestLightClientAttackEvidenceValidation(t *testing.T) {
 					},
 					ValidatorSet: valSet,
 				},
-				CommonHeight: height - 1,
+				CommonHeight:        commonHeight,
+				TotalVotingPower:    valSet.TotalVotingPower(),
+				Timestamp:           header.Time,
+				ByzantineValidators: valSet.Validators[:nValidators/2],
 			}
 			tc.malleateEvidence(lcae)
 			if tc.expectErr {
@@ -221,7 +232,7 @@ func TestMockEvidenceValidateBasic(t *testing.T) {
 func makeVote(
 	t *testing.T, val PrivValidator, chainID string, valIndex int32, height int64, round int32, step int, blockID BlockID,
 	time time.Time) *Vote {
-	pubKey, err := val.GetPubKey()
+	pubKey, err := val.GetPubKey(context.Background())
 	require.NoError(t, err)
 	v := &Vote{
 		ValidatorAddress: pubKey.Address(),
@@ -234,7 +245,7 @@ func makeVote(
 	}
 
 	vpb := v.ToProto()
-	err = val.SignVote(chainID, vpb)
+	err = val.SignVote(context.Background(), chainID, vpb)
 	if err != nil {
 		panic(err)
 	}
@@ -244,9 +255,9 @@ func makeVote(
 
 func makeHeaderRandom() *Header {
 	return &Header{
-		Version:            tmversion.Consensus{Block: version.BlockProtocol, App: 1},
+		Version:            version.Consensus{Block: version.BlockProtocol, App: 1},
 		ChainID:            tmrand.Str(12),
-		Height:             int64(tmrand.Uint16()) + 1,
+		Height:             int64(mrand.Uint32() + 1),
 		Time:               time.Now(),
 		LastBlockID:        makeBlockIDRandom(),
 		LastCommitHash:     crypto.CRandBytes(tmhash.Size),

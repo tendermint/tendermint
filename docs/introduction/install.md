@@ -25,12 +25,6 @@ git clone https://github.com/tendermint/tendermint.git
 cd tendermint
 ```
 
-### Get Tools & Dependencies
-
-```sh
-make tools
-```
-
 ### Compile
 
 ```sh
@@ -62,8 +56,8 @@ tendermint version
 To start a one-node blockchain with a simple in-process application:
 
 ```sh
-tendermint init
-tendermint node --proxy-app=kvstore
+tendermint init validator
+tendermint start --proxy-app=kvstore
 ```
 
 ## Reinstall

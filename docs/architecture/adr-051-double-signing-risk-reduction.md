@@ -33,7 +33,7 @@ We would like to suggest a double signing risk reduction method.
 
 ## Status
 
-Proposed
+Implemented
 
 ## Consequences
 

@@ -19,7 +19,7 @@ func unmarshalResponseBytes(
 	// into the correct type.
 	response := &types.RPCResponse{}
 	if err := json.Unmarshal(responseBytes, response); err != nil {
-		return nil, fmt.Errorf("error unmarshalling: %w", err)
+		return nil, fmt.Errorf("error unmarshaling: %w", err)
 	}
 
 	if response.Error != nil {
@@ -32,7 +32,7 @@ func unmarshalResponseBytes(
 
 	// Unmarshal the RawMessage into the result.
 	if err := tmjson.Unmarshal(response.Result, result); err != nil {
-		return nil, fmt.Errorf("error unmarshalling result: %w", err)
+		return nil, fmt.Errorf("error unmarshaling result: %w", err)
 	}
 
 	return result, nil
@@ -49,7 +49,7 @@ func unmarshalResponseBytesArray(
 	)
 
 	if err := json.Unmarshal(responseBytes, &responses); err != nil {
-		return nil, fmt.Errorf("error unmarshalling: %w", err)
+		return nil, fmt.Errorf("error unmarshaling: %w", err)
 	}
 
 	// No response error checking here as there may be a mixture of successful
@@ -78,7 +78,7 @@ func unmarshalResponseBytesArray(
 
 	for i := 0; i < len(responses); i++ {
 		if err := tmjson.Unmarshal(responses[i].Result, results[i]); err != nil {
-			return nil, fmt.Errorf("error unmarshalling #%d result: %w", i, err)
+			return nil, fmt.Errorf("error unmarshaling #%d result: %w", i, err)
 		}
 	}
 

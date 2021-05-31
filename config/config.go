@@ -20,6 +20,16 @@ const (
 	LogFormatPlain = "plain"
 	// LogFormatJSON is a format for json output
 	LogFormatJSON = "json"
+
+	// DefaultLogLevel defines a default log level as INFO.
+	DefaultLogLevel = "info"
+
+	ModeFull      = "full"
+	ModeValidator = "validator"
+	ModeSeed      = "seed"
+
+	BlockchainV0 = "v0"
+	BlockchainV2 = "v2"
 )
 
 // NOTE: Most of the structs & relevant comments + the
@@ -36,6 +46,7 @@ var (
 	defaultConfigFileName  = "config.toml"
 	defaultGenesisJSONName = "genesis.json"
 
+	defaultMode             = ModeFull
 	defaultPrivValKeyName   = "priv_validator_key.json"
 	defaultPrivValStateName = "priv_validator_state.json"
 
@@ -80,6 +91,13 @@ func DefaultConfig() *Config {
 		TxIndex:         DefaultTxIndexConfig(),
 		Instrumentation: DefaultInstrumentationConfig(),
 	}
+}
+
+// DefaultValidatorConfig returns default config with mode as validator
+func DefaultValidatorConfig() *Config {
+	cfg := DefaultConfig()
+	cfg.Mode = ModeValidator
+	return cfg
 }
 
 // TestConfig returns a configuration that can be used for testing
@@ -155,6 +173,18 @@ type BaseConfig struct { //nolint: maligned
 
 	// A custom human readable name for this node
 	Moniker string `mapstructure:"moniker"`
+
+	// Mode of Node: full | validator | seed
+	// * validator
+	//   - all reactors
+	//   - with priv_validator_key.json, priv_validator_state.json
+	// * full
+	//   - all reactors
+	//   - No priv_validator_key.json, priv_validator_state.json
+	// * seed
+	//   - only P2P, PEX Reactor
+	//   - No priv_validator_key.json, priv_validator_state.json
+	Mode string `mapstructure:"mode"`
 
 	// If this node is many blocks behind the tip of the chain, FastSync
 	// allows them to catchup quickly by downloading blocks in parallel
@@ -232,10 +262,11 @@ func DefaultBaseConfig() BaseConfig {
 		PrivValidatorKey:   defaultPrivValKeyPath,
 		PrivValidatorState: defaultPrivValStatePath,
 		NodeKey:            defaultNodeKeyPath,
+		Mode:               defaultMode,
 		Moniker:            defaultMoniker,
 		ProxyApp:           "tcp://127.0.0.1:26658",
 		ABCI:               "socket",
-		LogLevel:           DefaultPackageLogLevels(),
+		LogLevel:           DefaultLogLevel,
 		LogFormat:          LogFormatPlain,
 		FastSyncMode:       true,
 		FilterPeers:        false,
@@ -248,6 +279,7 @@ func DefaultBaseConfig() BaseConfig {
 func TestBaseConfig() BaseConfig {
 	cfg := DefaultBaseConfig()
 	cfg.chainID = "tendermint_test"
+	cfg.Mode = ModeValidator
 	cfg.ProxyApp = "kvstore"
 	cfg.FastSyncMode = false
 	cfg.DBBackend = "memdb"
@@ -319,18 +351,14 @@ func (cfg BaseConfig) ValidateBasic() error {
 	default:
 		return errors.New("unknown log format (must be 'plain' or 'json')")
 	}
+	switch cfg.Mode {
+	case ModeFull, ModeValidator, ModeSeed:
+	case "":
+		return errors.New("no mode has been set")
+	default:
+		return fmt.Errorf("unknown mode: %v", cfg.Mode)
+	}
 	return nil
-}
-
-// DefaultLogLevel returns a default log level of "error"
-func DefaultLogLevel() string {
-	return "error"
-}
-
-// DefaultPackageLogLevels returns a default log level setting so all packages
-// log at "error", while the `state` and `main` packages log at "info"
-func DefaultPackageLogLevels() string {
-	return fmt.Sprintf("main:info,state:info,statesync:info,*:%s", DefaultLogLevel())
 }
 
 //-----------------------------------------------------------------------------
@@ -523,7 +551,15 @@ type P2PConfig struct { //nolint: maligned
 
 	// Comma separated list of seed nodes to connect to
 	// We only use these if we can’t connect to peers in the addrbook
+	// NOTE: not used by the new PEX reactor. Please use BootstrapPeers instead.
+	// TODO: Remove once p2p refactor is complete
+	// ref: https://github.com/tendermint/tendermint/issues/5670
 	Seeds string `mapstructure:"seeds"`
+
+	// Comma separated list of peers to be added to the peer store
+	// on startup. Either BootstrapPeers or PersistentPeers are
+	// needed for peer discovery
+	BootstrapPeers string `mapstructure:"bootstrap-peers"`
 
 	// Comma separated list of nodes to keep persistent connections to
 	PersistentPeers string `mapstructure:"persistent-peers"`
@@ -539,10 +575,24 @@ type P2PConfig struct { //nolint: maligned
 	AddrBookStrict bool `mapstructure:"addr-book-strict"`
 
 	// Maximum number of inbound peers
+	//
+	// TODO: Remove once p2p refactor is complete in favor of MaxConnections.
+	// ref: https://github.com/tendermint/tendermint/issues/5670
 	MaxNumInboundPeers int `mapstructure:"max-num-inbound-peers"`
 
-	// Maximum number of outbound peers to connect to, excluding persistent peers
+	// Maximum number of outbound peers to connect to, excluding persistent peers.
+	//
+	// TODO: Remove once p2p refactor is complete in favor of MaxConnections.
+	// ref: https://github.com/tendermint/tendermint/issues/5670
 	MaxNumOutboundPeers int `mapstructure:"max-num-outbound-peers"`
+
+	// MaxConnections defines the maximum number of connected peers (inbound and
+	// outbound).
+	MaxConnections uint16 `mapstructure:"max-connections"`
+
+	// MaxIncomingConnectionAttempts rate limits the number of incoming connection
+	// attempts per IP address.
+	MaxIncomingConnectionAttempts uint `mapstructure:"max-incoming-connection-attempts"`
 
 	// List of node IDs, to which a connection will be (re)established ignoring any existing limits
 	UnconditionalPeerIDs string `mapstructure:"unconditional-peer-ids"`
@@ -565,12 +615,6 @@ type P2PConfig struct { //nolint: maligned
 	// Set true to enable the peer-exchange reactor
 	PexReactor bool `mapstructure:"pex"`
 
-	// Seed mode, in which node constantly crawls the network and looks for
-	// peers. If another node asks it for addresses, it responds and disconnects.
-	//
-	// Does not work if the peer-exchange reactor is disabled.
-	SeedMode bool `mapstructure:"seed-mode"`
-
 	// Comma separated list of peer IDs to keep private (will not be gossiped to
 	// other peers)
 	PrivatePeerIDs string `mapstructure:"private-peer-ids"`
@@ -585,20 +629,31 @@ type P2PConfig struct { //nolint: maligned
 	// Testing params.
 	// Force dial to fail
 	TestDialFail bool `mapstructure:"test-dial-fail"`
+
+	// DisableLegacy is used mostly for testing to enable or disable the legacy
+	// P2P stack.
+	DisableLegacy bool `mapstructure:"disable-legacy"`
+
+	// Makes it possible to configure which queue backend the p2p
+	// layer uses. Options are: "fifo", "priority" and "wdrr",
+	// with the default being "fifo".
+	QueueType string `mapstructure:"queue-type"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
 func DefaultP2PConfig() *P2PConfig {
 	return &P2PConfig{
-		ListenAddress:                "tcp://0.0.0.0:26656",
-		ExternalAddress:              "",
-		UPNP:                         false,
-		AddrBook:                     defaultAddrBookPath,
-		AddrBookStrict:               true,
-		MaxNumInboundPeers:           40,
-		MaxNumOutboundPeers:          10,
-		PersistentPeersMaxDialPeriod: 0 * time.Second,
-		FlushThrottleTimeout:         100 * time.Millisecond,
+		ListenAddress:                 "tcp://0.0.0.0:26656",
+		ExternalAddress:               "",
+		UPNP:                          false,
+		AddrBook:                      defaultAddrBookPath,
+		AddrBookStrict:                true,
+		MaxNumInboundPeers:            40,
+		MaxNumOutboundPeers:           10,
+		MaxConnections:                64,
+		MaxIncomingConnectionAttempts: 100,
+		PersistentPeersMaxDialPeriod:  0 * time.Second,
+		FlushThrottleTimeout:          100 * time.Millisecond,
 		// The MTU (Maximum Transmission Unit) for Ethernet is 1500 bytes.
 		// The IP header and the TCP header take up 20 bytes each at least (unless
 		// optional header fields are used) and thus the max for (non-Jumbo frame)
@@ -608,11 +663,11 @@ func DefaultP2PConfig() *P2PConfig {
 		SendRate:                5120000, // 5 mB/s
 		RecvRate:                5120000, // 5 mB/s
 		PexReactor:              true,
-		SeedMode:                false,
 		AllowDuplicateIP:        false,
 		HandshakeTimeout:        20 * time.Second,
 		DialTimeout:             3 * time.Second,
 		TestDialFail:            false,
+		QueueType:               "priority",
 	}
 }
 
@@ -665,7 +720,6 @@ type MempoolConfig struct {
 	RootDir   string `mapstructure:"home"`
 	Recheck   bool   `mapstructure:"recheck"`
 	Broadcast bool   `mapstructure:"broadcast"`
-	WalPath   string `mapstructure:"wal-dir"`
 	// Maximum number of transactions in the mempool
 	Size int `mapstructure:"size"`
 	// Limit the total size of all txs in the mempool.
@@ -692,7 +746,6 @@ func DefaultMempoolConfig() *MempoolConfig {
 	return &MempoolConfig{
 		Recheck:   true,
 		Broadcast: true,
-		WalPath:   "",
 		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck
 		Size:        5000,
@@ -707,16 +760,6 @@ func TestMempoolConfig() *MempoolConfig {
 	cfg := DefaultMempoolConfig()
 	cfg.CacheSize = 1000
 	return cfg
-}
-
-// WalDir returns the full path to the mempool's write-ahead log
-func (cfg *MempoolConfig) WalDir() string {
-	return rootify(cfg.WalPath, cfg.RootDir)
-}
-
-// WalEnabled returns true if the WAL is enabled.
-func (cfg *MempoolConfig) WalEnabled() bool {
-	return cfg.WalPath != ""
 }
 
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
@@ -787,6 +830,10 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 				return errors.New("found empty rpc-servers entry")
 			}
 		}
+		if cfg.DiscoveryTime != 0 && cfg.DiscoveryTime < 5*time.Second {
+			return errors.New("discovery time must be 0s or greater than five seconds")
+		}
+
 		if cfg.TrustPeriod <= 0 {
 			return errors.New("trusted-period is required")
 		}
@@ -815,7 +862,7 @@ type FastSyncConfig struct {
 // DefaultFastSyncConfig returns a default configuration for the fast sync service
 func DefaultFastSyncConfig() *FastSyncConfig {
 	return &FastSyncConfig{
-		Version: "v0",
+		Version: BlockchainV0,
 	}
 }
 
@@ -827,9 +874,9 @@ func TestFastSyncConfig() *FastSyncConfig {
 // ValidateBasic performs basic validation.
 func (cfg *FastSyncConfig) ValidateBasic() error {
 	switch cfg.Version {
-	case "v0":
+	case BlockchainV0:
 		return nil
-	case "v2":
+	case BlockchainV2:
 		return nil
 	default:
 		return fmt.Errorf("unknown fastsync version %s", cfg.Version)
@@ -846,6 +893,7 @@ type ConsensusConfig struct {
 	WalPath string `mapstructure:"wal-file"`
 	walFile string // overrides WalPath if set
 
+	// TODO: remove timeout configs, these should be global not local
 	// How long we wait for a proposal block before prevoting nil
 	TimeoutPropose time.Duration `mapstructure:"timeout-propose"`
 	// How much timeout-propose increases with each round
@@ -1010,19 +1058,25 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 // TxIndexConfig defines the configuration for the transaction indexer,
 // including composite keys to index.
 type TxIndexConfig struct {
-	// What indexer to use for transactions
+	// The backend database list to back the indexer.
+	// If list contains `null`, meaning no indexer service will be used.
 	//
 	// Options:
-	//   1) "null"
+	//   1) "null" - no indexer services.
 	//   2) "kv" (default) - the simplest possible indexer,
 	//      backed by key-value storage (defaults to levelDB; see DBBackend).
-	Indexer string `mapstructure:"indexer"`
+	//   3) "psql" - the indexer services backed by PostgreSQL.
+	Indexer []string `mapstructure:"indexer"`
+
+	// The PostgreSQL connection configuration, the connection format:
+	// postgresql://<user>:<password>@<host>:<port>/<db>?<opts>
+	PsqlConn string `mapstructure:"psql-conn"`
 }
 
 // DefaultTxIndexConfig returns a default configuration for the transaction indexer.
 func DefaultTxIndexConfig() *TxIndexConfig {
 	return &TxIndexConfig{
-		Indexer: "kv",
+		Indexer: []string{"kv"},
 	}
 }
 

@@ -29,7 +29,7 @@ function getCode() {
 	else
 		# protobuf auto adds `omitempty` to everything so code OK and empty data/log
 		# will not even show when marshalled into json
-		# apparently we can use github.com/golang/protobuf/jsonpb to do the marshalling ...
+		# apparently we can use github.com/golang/protobuf/jsonpb to do the marshaling ...
 		echo 0
 	fi
 }
@@ -109,14 +109,7 @@ if [[ $APPEND_TX_CODE != 0 ]]; then
 	exit 1
 fi
 
-
-echo "... sending tx. expect error"
-
-# second time should get rejected by the mempool (return error and non-zero code)
-sendTx $TX true
-
-
-echo "... sending tx. expect no error"
+echo "... sending new tx. expect no error"
 
 # now, TX=01 should pass, with no error
 TX=01

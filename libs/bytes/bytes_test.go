@@ -3,6 +3,7 @@ package bytes
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,7 +25,6 @@ func TestMarshal(t *testing.T) {
 
 // Test that the hex encoding works.
 func TestJSONMarshal(t *testing.T) {
-
 	type TestStruct struct {
 		B1 []byte
 		B2 HexBytes
@@ -62,5 +62,12 @@ func TestJSONMarshal(t *testing.T) {
 			assert.Equal(t, ts2.B1, tc.input)
 			assert.Equal(t, ts2.B2, HexBytes(tc.input))
 		})
+	}
+}
+
+func TestHexBytes_String(t *testing.T) {
+	hs := HexBytes([]byte("test me"))
+	if _, err := strconv.ParseInt(hs.String(), 16, 64); err != nil {
+		t.Fatal(err)
 	}
 }

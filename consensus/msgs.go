@@ -4,10 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gogo/protobuf/proto"
-
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/bits"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/p2p"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
@@ -15,7 +14,309 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// MsgToProto takes a consensus message type and returns the proto defined consensus message
+// Message defines an interface that the consensus domain types implement. When
+// a proto message is received on a consensus p2p Channel, it is wrapped and then
+// converted to a Message via MsgFromProto.
+type Message interface {
+	ValidateBasic() error
+}
+
+func init() {
+	tmjson.RegisterType(&NewRoundStepMessage{}, "tendermint/NewRoundStepMessage")
+	tmjson.RegisterType(&NewValidBlockMessage{}, "tendermint/NewValidBlockMessage")
+	tmjson.RegisterType(&ProposalMessage{}, "tendermint/Proposal")
+	tmjson.RegisterType(&ProposalPOLMessage{}, "tendermint/ProposalPOL")
+	tmjson.RegisterType(&BlockPartMessage{}, "tendermint/BlockPart")
+	tmjson.RegisterType(&VoteMessage{}, "tendermint/Vote")
+	tmjson.RegisterType(&HasVoteMessage{}, "tendermint/HasVote")
+	tmjson.RegisterType(&VoteSetMaj23Message{}, "tendermint/VoteSetMaj23")
+	tmjson.RegisterType(&VoteSetBitsMessage{}, "tendermint/VoteSetBits")
+}
+
+// NewRoundStepMessage is sent for every step taken in the ConsensusState.
+// For every height/round/step transition
+type NewRoundStepMessage struct {
+	Height                int64
+	Round                 int32
+	Step                  cstypes.RoundStepType
+	SecondsSinceStartTime int64
+	LastCommitRound       int32
+}
+
+// ValidateBasic performs basic validation.
+func (m *NewRoundStepMessage) ValidateBasic() error {
+	if m.Height < 0 {
+		return errors.New("negative Height")
+	}
+	if m.Round < 0 {
+		return errors.New("negative Round")
+	}
+	if !m.Step.IsValid() {
+		return errors.New("invalid Step")
+	}
+
+	// NOTE: SecondsSinceStartTime may be negative
+
+	// LastCommitRound will be -1 for the initial height, but we don't know what height this is
+	// since it can be specified in genesis. The reactor will have to validate this via
+	// ValidateHeight().
+	if m.LastCommitRound < -1 {
+		return errors.New("invalid LastCommitRound (cannot be < -1)")
+	}
+
+	return nil
+}
+
+// ValidateHeight validates the height given the chain's initial height.
+func (m *NewRoundStepMessage) ValidateHeight(initialHeight int64) error {
+	if m.Height < initialHeight {
+		return fmt.Errorf("invalid Height %v (lower than initial height %v)",
+			m.Height, initialHeight)
+	}
+	if m.Height == initialHeight && m.LastCommitRound != -1 {
+		return fmt.Errorf("invalid LastCommitRound %v (must be -1 for initial height %v)",
+			m.LastCommitRound, initialHeight)
+	}
+	if m.Height > initialHeight && m.LastCommitRound < 0 {
+		return fmt.Errorf("LastCommitRound can only be negative for initial height %v", // nolint
+			initialHeight)
+	}
+	return nil
+}
+
+// String returns a string representation.
+func (m *NewRoundStepMessage) String() string {
+	return fmt.Sprintf("[NewRoundStep H:%v R:%v S:%v LCR:%v]",
+		m.Height, m.Round, m.Step, m.LastCommitRound)
+}
+
+// NewValidBlockMessage is sent when a validator observes a valid block B in some round r,
+// i.e., there is a Proposal for block B and 2/3+ prevotes for the block B in the round r.
+// In case the block is also committed, then IsCommit flag is set to true.
+type NewValidBlockMessage struct {
+	Height             int64
+	Round              int32
+	BlockPartSetHeader types.PartSetHeader
+	BlockParts         *bits.BitArray
+	IsCommit           bool
+}
+
+// ValidateBasic performs basic validation.
+func (m *NewValidBlockMessage) ValidateBasic() error {
+	if m.Height < 0 {
+		return errors.New("negative Height")
+	}
+	if m.Round < 0 {
+		return errors.New("negative Round")
+	}
+	if err := m.BlockPartSetHeader.ValidateBasic(); err != nil {
+		return fmt.Errorf("wrong BlockPartSetHeader: %v", err)
+	}
+	if m.BlockParts.Size() == 0 {
+		return errors.New("empty blockParts")
+	}
+	if m.BlockParts.Size() != int(m.BlockPartSetHeader.Total) {
+		return fmt.Errorf("blockParts bit array size %d not equal to BlockPartSetHeader.Total %d",
+			m.BlockParts.Size(),
+			m.BlockPartSetHeader.Total)
+	}
+	if m.BlockParts.Size() > int(types.MaxBlockPartsCount) {
+		return fmt.Errorf("blockParts bit array is too big: %d, max: %d", m.BlockParts.Size(), types.MaxBlockPartsCount)
+	}
+	return nil
+}
+
+// String returns a string representation.
+func (m *NewValidBlockMessage) String() string {
+	return fmt.Sprintf("[ValidBlockMessage H:%v R:%v BP:%v BA:%v IsCommit:%v]",
+		m.Height, m.Round, m.BlockPartSetHeader, m.BlockParts, m.IsCommit)
+}
+
+// ProposalMessage is sent when a new block is proposed.
+type ProposalMessage struct {
+	Proposal *types.Proposal
+}
+
+// ValidateBasic performs basic validation.
+func (m *ProposalMessage) ValidateBasic() error {
+	return m.Proposal.ValidateBasic()
+}
+
+// String returns a string representation.
+func (m *ProposalMessage) String() string {
+	return fmt.Sprintf("[Proposal %v]", m.Proposal)
+}
+
+// ProposalPOLMessage is sent when a previous proposal is re-proposed.
+type ProposalPOLMessage struct {
+	Height           int64
+	ProposalPOLRound int32
+	ProposalPOL      *bits.BitArray
+}
+
+// ValidateBasic performs basic validation.
+func (m *ProposalPOLMessage) ValidateBasic() error {
+	if m.Height < 0 {
+		return errors.New("negative Height")
+	}
+	if m.ProposalPOLRound < 0 {
+		return errors.New("negative ProposalPOLRound")
+	}
+	if m.ProposalPOL.Size() == 0 {
+		return errors.New("empty ProposalPOL bit array")
+	}
+	if m.ProposalPOL.Size() > types.MaxVotesCount {
+		return fmt.Errorf("proposalPOL bit array is too big: %d, max: %d", m.ProposalPOL.Size(), types.MaxVotesCount)
+	}
+	return nil
+}
+
+// String returns a string representation.
+func (m *ProposalPOLMessage) String() string {
+	return fmt.Sprintf("[ProposalPOL H:%v POLR:%v POL:%v]", m.Height, m.ProposalPOLRound, m.ProposalPOL)
+}
+
+// BlockPartMessage is sent when gossipping a piece of the proposed block.
+type BlockPartMessage struct {
+	Height int64
+	Round  int32
+	Part   *types.Part
+}
+
+// ValidateBasic performs basic validation.
+func (m *BlockPartMessage) ValidateBasic() error {
+	if m.Height < 0 {
+		return errors.New("negative Height")
+	}
+	if m.Round < 0 {
+		return errors.New("negative Round")
+	}
+	if err := m.Part.ValidateBasic(); err != nil {
+		return fmt.Errorf("wrong Part: %v", err)
+	}
+	return nil
+}
+
+// String returns a string representation.
+func (m *BlockPartMessage) String() string {
+	return fmt.Sprintf("[BlockPart H:%v R:%v P:%v]", m.Height, m.Round, m.Part)
+}
+
+// VoteMessage is sent when voting for a proposal (or lack thereof).
+type VoteMessage struct {
+	Vote *types.Vote
+}
+
+// ValidateBasic performs basic validation.
+func (m *VoteMessage) ValidateBasic() error {
+	return m.Vote.ValidateBasic()
+}
+
+// String returns a string representation.
+func (m *VoteMessage) String() string {
+	return fmt.Sprintf("[Vote %v]", m.Vote)
+}
+
+// HasVoteMessage is sent to indicate that a particular vote has been received.
+type HasVoteMessage struct {
+	Height int64
+	Round  int32
+	Type   tmproto.SignedMsgType
+	Index  int32
+}
+
+// ValidateBasic performs basic validation.
+func (m *HasVoteMessage) ValidateBasic() error {
+	if m.Height < 0 {
+		return errors.New("negative Height")
+	}
+	if m.Round < 0 {
+		return errors.New("negative Round")
+	}
+	if !types.IsVoteTypeValid(m.Type) {
+		return errors.New("invalid Type")
+	}
+	if m.Index < 0 {
+		return errors.New("negative Index")
+	}
+	return nil
+}
+
+// String returns a string representation.
+func (m *HasVoteMessage) String() string {
+	return fmt.Sprintf("[HasVote VI:%v V:{%v/%02d/%v}]", m.Index, m.Height, m.Round, m.Type)
+}
+
+// VoteSetMaj23Message is sent to indicate that a given BlockID has seen +2/3 votes.
+type VoteSetMaj23Message struct {
+	Height  int64
+	Round   int32
+	Type    tmproto.SignedMsgType
+	BlockID types.BlockID
+}
+
+// ValidateBasic performs basic validation.
+func (m *VoteSetMaj23Message) ValidateBasic() error {
+	if m.Height < 0 {
+		return errors.New("negative Height")
+	}
+	if m.Round < 0 {
+		return errors.New("negative Round")
+	}
+	if !types.IsVoteTypeValid(m.Type) {
+		return errors.New("invalid Type")
+	}
+	if err := m.BlockID.ValidateBasic(); err != nil {
+		return fmt.Errorf("wrong BlockID: %v", err)
+	}
+
+	return nil
+}
+
+// String returns a string representation.
+func (m *VoteSetMaj23Message) String() string {
+	return fmt.Sprintf("[VSM23 %v/%02d/%v %v]", m.Height, m.Round, m.Type, m.BlockID)
+}
+
+// VoteSetBitsMessage is sent to communicate the bit-array of votes seen for the
+// BlockID.
+type VoteSetBitsMessage struct {
+	Height  int64
+	Round   int32
+	Type    tmproto.SignedMsgType
+	BlockID types.BlockID
+	Votes   *bits.BitArray
+}
+
+// ValidateBasic performs basic validation.
+func (m *VoteSetBitsMessage) ValidateBasic() error {
+	if m.Height < 0 {
+		return errors.New("negative Height")
+	}
+	if !types.IsVoteTypeValid(m.Type) {
+		return errors.New("invalid Type")
+	}
+	if err := m.BlockID.ValidateBasic(); err != nil {
+		return fmt.Errorf("wrong BlockID: %v", err)
+	}
+
+	// NOTE: Votes.Size() can be zero if the node does not have any
+	if m.Votes.Size() > types.MaxVotesCount {
+		return fmt.Errorf("votes bit array is too big: %d, max: %d", m.Votes.Size(), types.MaxVotesCount)
+	}
+
+	return nil
+}
+
+// String returns a string representation.
+func (m *VoteSetBitsMessage) String() string {
+	return fmt.Sprintf("[VSB %v/%02d/%v %v %v]", m.Height, m.Round, m.Type, m.BlockID, m.Votes)
+}
+
+// MsgToProto takes a consensus message type and returns the proto defined
+// consensus message.
+//
+// TODO: This needs to be removed, but WALToProto depends on this.
 func MsgToProto(msg Message) (*tmcons.Message, error) {
 	if msg == nil {
 		return nil, errors.New("consensus: message is nil")
@@ -143,7 +444,7 @@ func MsgToProto(msg Message) (*tmcons.Message, error) {
 	return &pb, nil
 }
 
-// MsgFromProto takes a consensus proto message and returns the native go type
+// MsgFromProto takes a consensus proto message and returns the native go type.
 func MsgFromProto(msg *tmcons.Message) (Message, error) {
 	if msg == nil {
 		return nil, errors.New("consensus: nil message")
@@ -269,21 +570,7 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 	return pb, nil
 }
 
-// MustEncode takes the reactors msg, makes it proto and marshals it
-// this mimics `MustMarshalBinaryBare` in that is panics on error
-func MustEncode(msg Message) []byte {
-	pb, err := MsgToProto(msg)
-	if err != nil {
-		panic(err)
-	}
-	enc, err := proto.Marshal(pb)
-	if err != nil {
-		panic(err)
-	}
-	return enc
-}
-
-// WALToProto takes a WAL message and return a proto walMessage and error
+// WALToProto takes a WAL message and return a proto walMessage and error.
 func WALToProto(msg WALMessage) (*tmcons.WALMessage, error) {
 	var pb tmcons.WALMessage
 
@@ -311,6 +598,7 @@ func WALToProto(msg WALMessage) (*tmcons.WALMessage, error) {
 				},
 			},
 		}
+
 	case timeoutInfo:
 		pb = tmcons.WALMessage{
 			Sum: &tmcons.WALMessage_TimeoutInfo{
@@ -322,6 +610,7 @@ func WALToProto(msg WALMessage) (*tmcons.WALMessage, error) {
 				},
 			},
 		}
+
 	case EndHeightMessage:
 		pb = tmcons.WALMessage{
 			Sum: &tmcons.WALMessage_EndHeight{
@@ -330,6 +619,7 @@ func WALToProto(msg WALMessage) (*tmcons.WALMessage, error) {
 				},
 			},
 		}
+
 	default:
 		return nil, fmt.Errorf("to proto: wal message not recognized: %T", msg)
 	}
@@ -337,11 +627,13 @@ func WALToProto(msg WALMessage) (*tmcons.WALMessage, error) {
 	return &pb, nil
 }
 
-// WALFromProto takes a proto wal message and return a consensus walMessage and error
+// WALFromProto takes a proto wal message and return a consensus walMessage and
+// error.
 func WALFromProto(msg *tmcons.WALMessage) (WALMessage, error) {
 	if msg == nil {
 		return nil, errors.New("nil WAL message")
 	}
+
 	var pb WALMessage
 
 	switch msg := msg.Sum.(type) {
@@ -351,6 +643,7 @@ func WALFromProto(msg *tmcons.WALMessage) (WALMessage, error) {
 			Round:  msg.EventDataRoundState.Round,
 			Step:   msg.EventDataRoundState.Step,
 		}
+
 	case *tmcons.WALMessage_MsgInfo:
 		walMsg, err := MsgFromProto(&msg.MsgInfo.Msg)
 		if err != nil {
@@ -367,20 +660,26 @@ func WALFromProto(msg *tmcons.WALMessage) (WALMessage, error) {
 		if err != nil {
 			return nil, fmt.Errorf("denying message due to possible overflow: %w", err)
 		}
+
 		pb = timeoutInfo{
 			Duration: msg.TimeoutInfo.Duration,
 			Height:   msg.TimeoutInfo.Height,
 			Round:    msg.TimeoutInfo.Round,
 			Step:     cstypes.RoundStepType(tis),
 		}
+
 		return pb, nil
+
 	case *tmcons.WALMessage_EndHeight:
 		pb := EndHeightMessage{
 			Height: msg.EndHeight.Height,
 		}
+
 		return pb, nil
+
 	default:
 		return nil, fmt.Errorf("from proto: wal message not recognized: %T", msg)
 	}
+
 	return pb, nil
 }

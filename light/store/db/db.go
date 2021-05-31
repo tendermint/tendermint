@@ -7,15 +7,15 @@ import (
 	"github.com/google/orderedcode"
 	dbm "github.com/tendermint/tm-db"
 
-	tmsync "github.com/tendermint/tendermint/libs/sync"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/light/store"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
 const (
-	prefixLightBlock = int64(0x0a)
-	prefixSize       = int64(0x0b)
+	prefixLightBlock = int64(11)
+	prefixSize       = int64(12)
 )
 
 type dbs struct {
@@ -57,7 +57,7 @@ func (s *dbs) SaveLightBlock(lb *types.LightBlock) error {
 
 	lbBz, err := lbpb.Marshal()
 	if err != nil {
-		return fmt.Errorf("marshalling LightBlock: %w", err)
+		return fmt.Errorf("marshaling LightBlock: %w", err)
 	}
 
 	s.mtx.Lock()
@@ -230,27 +230,11 @@ func (s *dbs) Prune(size uint16) error {
 	}
 	numToPrune := sSize - size
 
-	// 2) Iterate over headers and perform a batch operation.
-	itr, err := s.db.Iterator(
-		s.lbKey(1),
-		append(s.lbKey(1<<63-1), byte(0x00)),
-	)
-	if err != nil {
-		panic(err)
-	}
-	defer itr.Close()
-
 	b := s.db.NewBatch()
 	defer b.Close()
 
-	for itr.Valid() && numToPrune > 0 {
-		if err = b.Delete(itr.Key()); err != nil {
-			return err
-		}
-		itr.Next()
-		numToPrune--
-	}
-	if err = itr.Error(); err != nil {
+	// 2) use an iterator to batch together all the blocks that need to be deleted
+	if err := s.batchDelete(b, numToPrune); err != nil {
 		return err
 	}
 
@@ -261,12 +245,7 @@ func (s *dbs) Prune(size uint16) error {
 	}
 
 	// 4) write batch deletion to disk
-	err = b.WriteSync()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return b.WriteSync()
 }
 
 // Size returns the number of header & validator set pairs.
@@ -276,6 +255,27 @@ func (s *dbs) Size() uint16 {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
 	return s.size
+}
+
+func (s *dbs) batchDelete(batch dbm.Batch, numToPrune uint16) error {
+	itr, err := s.db.Iterator(
+		s.lbKey(1),
+		append(s.lbKey(1<<63-1), byte(0x00)),
+	)
+	if err != nil {
+		return err
+	}
+	defer itr.Close()
+
+	for itr.Valid() && numToPrune > 0 {
+		if err = batch.Delete(itr.Key()); err != nil {
+			return err
+		}
+		itr.Next()
+		numToPrune--
+	}
+
+	return itr.Error()
 }
 
 func (s *dbs) sizeKey() []byte {

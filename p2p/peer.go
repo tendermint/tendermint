@@ -1,15 +1,10 @@
 package p2p
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net"
-	"net/url"
 	"runtime/debug"
-	"strconv"
-	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/cmap"
@@ -17,329 +12,6 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
-
-// PeerAddress is a peer address URL.
-type PeerAddress struct {
-	*url.URL
-}
-
-// ParsePeerAddress parses a peer address URL into a PeerAddress.
-func ParsePeerAddress(address string) (PeerAddress, error) {
-	u, err := url.Parse(address)
-	if err != nil || u == nil {
-		return PeerAddress{}, fmt.Errorf("unable to parse peer address %q: %w", address, err)
-	}
-	if u.Scheme == "" {
-		u.Scheme = string(defaultProtocol)
-	}
-	pa := PeerAddress{URL: u}
-	if err = pa.Validate(); err != nil {
-		return PeerAddress{}, err
-	}
-	return pa, nil
-}
-
-// NodeID returns the address node ID.
-func (a PeerAddress) NodeID() NodeID {
-	return NodeID(a.User.Username())
-}
-
-// Resolve resolves a PeerAddress into a set of Endpoints, by expanding
-// out a DNS name in Host to its IP addresses. Field mapping:
-//
-//   Scheme → Endpoint.Protocol
-//   Host   → Endpoint.IP
-//   User   → Endpoint.PeerID
-//   Port   → Endpoint.Port
-//   Path+Query+Fragment,Opaque → Endpoint.Path
-//
-func (a PeerAddress) Resolve(ctx context.Context) ([]Endpoint, error) {
-	ips, err := net.DefaultResolver.LookupIP(ctx, "ip", a.Host)
-	if err != nil {
-		return nil, err
-	}
-	port, err := a.parsePort()
-	if err != nil {
-		return nil, err
-	}
-
-	path := a.Path
-	if a.RawPath != "" {
-		path = a.RawPath
-	}
-	if a.Opaque != "" { // used for e.g. "about:blank" style URLs
-		path = a.Opaque
-	}
-	if a.RawQuery != "" {
-		path += "?" + a.RawQuery
-	}
-	if a.RawFragment != "" {
-		path += "#" + a.RawFragment
-	}
-
-	endpoints := make([]Endpoint, len(ips))
-	for i, ip := range ips {
-		endpoints[i] = Endpoint{
-			PeerID:   a.NodeID(),
-			Protocol: Protocol(a.Scheme),
-			IP:       ip,
-			Port:     port,
-			Path:     path,
-		}
-	}
-	return endpoints, nil
-}
-
-// Validates validates a PeerAddress.
-func (a PeerAddress) Validate() error {
-	if a.Scheme == "" {
-		return errors.New("no protocol")
-	}
-	if id := a.User.Username(); id == "" {
-		return errors.New("no peer ID")
-	} else if err := NodeID(id).Validate(); err != nil {
-		return fmt.Errorf("invalid peer ID: %w", err)
-	}
-	if a.Hostname() == "" && len(a.Query()) == 0 && a.Opaque == "" {
-		return errors.New("no host or path given")
-	}
-	if port, err := a.parsePort(); err != nil {
-		return err
-	} else if port > 0 && a.Hostname() == "" {
-		return errors.New("cannot specify port without host")
-	}
-	return nil
-}
-
-// parsePort returns the port number as a uint16.
-func (a PeerAddress) parsePort() (uint16, error) {
-	if portString := a.Port(); portString != "" {
-		port64, err := strconv.ParseUint(portString, 10, 16)
-		if err != nil {
-			return 0, fmt.Errorf("invalid port %q: %w", portString, err)
-		}
-		return uint16(port64), nil
-	}
-	return 0, nil
-}
-
-// PeerStatus specifies peer statuses.
-type PeerStatus string
-
-const (
-	PeerStatusNew     = PeerStatus("new")     // New peer which we haven't tried to contact yet.
-	PeerStatusUp      = PeerStatus("up")      // Peer which we have an active connection to.
-	PeerStatusDown    = PeerStatus("down")    // Peer which we're temporarily disconnected from.
-	PeerStatusRemoved = PeerStatus("removed") // Peer which has been removed.
-	PeerStatusBanned  = PeerStatus("banned")  // Peer which is banned for misbehavior.
-)
-
-// PeerPriority specifies peer priorities.
-type PeerPriority int
-
-const (
-	PeerPriorityNormal PeerPriority = iota + 1
-	PeerPriorityValidator
-	PeerPriorityPersistent
-)
-
-// PeerError is a peer error reported by a reactor via the Error channel. The
-// severity may cause the peer to be disconnected or banned depending on policy.
-type PeerError struct {
-	PeerID   NodeID
-	Err      error
-	Severity PeerErrorSeverity
-}
-
-// PeerErrorSeverity determines the severity of a peer error.
-type PeerErrorSeverity string
-
-const (
-	PeerErrorSeverityLow      PeerErrorSeverity = "low"      // Mostly ignored.
-	PeerErrorSeverityHigh     PeerErrorSeverity = "high"     // May disconnect.
-	PeerErrorSeverityCritical PeerErrorSeverity = "critical" // Ban.
-)
-
-// PeerUpdatesCh defines a wrapper around a PeerUpdate go channel that allows
-// a reactor to listen for peer updates and safely close it when stopping.
-type PeerUpdatesCh struct {
-	closeOnce sync.Once
-
-	// updatesCh defines the go channel in which the router sends peer updates to
-	// reactors. Each reactor will have its own PeerUpdatesCh to listen for updates
-	// from.
-	updatesCh chan PeerUpdate
-
-	// doneCh is used to signal that a PeerUpdatesCh is closed. It is the
-	// reactor's responsibility to invoke Close.
-	doneCh chan struct{}
-}
-
-// NewPeerUpdates returns a reference to a new PeerUpdatesCh.
-func NewPeerUpdates(updatesCh chan PeerUpdate) *PeerUpdatesCh {
-	return &PeerUpdatesCh{
-		updatesCh: updatesCh,
-		doneCh:    make(chan struct{}),
-	}
-}
-
-// Updates returns a read-only go channel where a consuming reactor can listen
-// for peer updates sent from the router.
-func (puc *PeerUpdatesCh) Updates() <-chan PeerUpdate {
-	return puc.updatesCh
-}
-
-// Close closes the PeerUpdatesCh channel. It should only be closed by the respective
-// reactor when stopping and ensure nothing is listening for updates.
-//
-// NOTE: After a PeerUpdatesCh is closed, the router may safely assume it can no
-// longer send on the internal updatesCh, however it should NEVER explicitly close
-// it as that could result in panics by sending on a closed channel.
-func (puc *PeerUpdatesCh) Close() {
-	puc.closeOnce.Do(func() {
-		close(puc.doneCh)
-	})
-}
-
-// Done returns a read-only version of the PeerUpdatesCh's internal doneCh go
-// channel that should be used by a router to signal when it is safe to explicitly
-// not send any peer updates.
-func (puc *PeerUpdatesCh) Done() <-chan struct{} {
-	return puc.doneCh
-}
-
-// PeerUpdate is a peer status update for reactors.
-type PeerUpdate struct {
-	PeerID NodeID
-	Status PeerStatus
-}
-
-// peerStore manages information about peers. It is currently a bare-bones
-// in-memory store of peer addresses, and will be fleshed out later.
-//
-// The main function of peerStore is currently to dispense peers to connect to
-// (via peerStore.Dispense), giving the caller exclusive "ownership" of that
-// peer until the peer is returned (via peerStore.Return). This is used to
-// schedule and synchronize peer dialing and accepting in the Router, e.g.
-// making sure we only have a single connection (in either direction) to peers.
-type peerStore struct {
-	mtx     sync.Mutex
-	peers   map[NodeID]*peerInfo
-	claimed map[NodeID]bool
-}
-
-// newPeerStore creates a new peer store.
-func newPeerStore() *peerStore {
-	return &peerStore{
-		peers:   map[NodeID]*peerInfo{},
-		claimed: map[NodeID]bool{},
-	}
-}
-
-// Add adds a peer to the store, given as an address.
-func (s *peerStore) Add(address PeerAddress) error {
-	if err := address.Validate(); err != nil {
-		return err
-	}
-	peerID := address.NodeID()
-
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-
-	peer, ok := s.peers[peerID]
-	if !ok {
-		peer = newStorePeer(peerID)
-		s.peers[peerID] = peer
-	} else if s.claimed[peerID] {
-		// FIXME: We need to handle modifications of claimed peers somehow.
-		return fmt.Errorf("peer %q is claimed", peerID)
-	}
-	peer.AddAddress(address)
-	return nil
-}
-
-// Claim claims a peer. The caller has exclusive ownership of the peer, and must
-// return it by calling Return(). Returns nil if the peer could not be claimed.
-// If the peer is not known to the store, it is registered and claimed.
-func (s *peerStore) Claim(id NodeID) *peerInfo {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-	if s.claimed[id] {
-		return nil
-	}
-	peer, ok := s.peers[id]
-	if !ok {
-		peer = newStorePeer(id)
-		s.peers[id] = peer
-	}
-	s.claimed[id] = true
-	return peer
-}
-
-// Dispense finds an appropriate peer to contact and claims it. The caller has
-// exclusive ownership of the peer, and must return it by calling Return(). The
-// peer will not be dispensed again until returned.
-//
-// Returns nil if no appropriate peers are available.
-func (s *peerStore) Dispense() *peerInfo {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-	for key, peer := range s.peers {
-		switch {
-		case len(peer.Addresses) == 0:
-		case s.claimed[key]:
-		default:
-			s.claimed[key] = true
-			return peer
-		}
-	}
-	return nil
-}
-
-// Return returns a claimed peer, making it available for other
-// callers to claim.
-func (s *peerStore) Return(id NodeID) {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-	delete(s.claimed, id)
-}
-
-// peerInfo is a peer stored in the peerStore.
-//
-// FIXME: This should be renamed peer or something else once the old peer is
-// removed.
-type peerInfo struct {
-	ID        NodeID
-	Addresses []PeerAddress
-}
-
-// newStorePeer creates a new storePeer.
-func newStorePeer(id NodeID) *peerInfo {
-	return &peerInfo{
-		ID:        id,
-		Addresses: []PeerAddress{},
-	}
-}
-
-// AddAddress adds an address to a peer, unless it already exists. It does not
-// validate the address.
-func (p *peerInfo) AddAddress(address PeerAddress) {
-	// We just do a linear search for now.
-	addressString := address.String()
-	for _, a := range p.Addresses {
-		if a.String() == addressString {
-			return
-		}
-	}
-	p.Addresses = append(p.Addresses, address)
-}
-
-// ============================================================================
-// Types and business logic below may be deprecated.
-//
-// TODO: Rename once legacy p2p types are removed.
-// ref: https://github.com/tendermint/tendermint/issues/5670
-// ============================================================================
 
 //go:generate mockery --case underscore --name Peer
 
@@ -388,11 +60,6 @@ func newPeerConn(outbound, persistent bool, conn Connection) peerConn {
 	}
 }
 
-// ID only exists for SecretConnection.
-func (pc peerConn) ID() NodeID {
-	return NodeIDFromPubKey(pc.conn.PubKey())
-}
-
 // Return the IP from the connection RemoteAddr
 func (pc peerConn) RemoteIP() net.IP {
 	if pc.ip == nil {
@@ -428,16 +95,16 @@ type peer struct {
 type PeerOption func(*peer)
 
 func newPeer(
+	nodeInfo NodeInfo,
 	pc peerConn,
 	reactorsByCh map[byte]Reactor,
 	onPeerError func(Peer, interface{}),
 	options ...PeerOption,
 ) *peer {
-	nodeInfo := pc.conn.NodeInfo()
 	p := &peer{
 		peerConn:      pc,
 		nodeInfo:      nodeInfo,
-		channels:      nodeInfo.Channels, // TODO
+		channels:      nodeInfo.Channels,
 		reactors:      reactorsByCh,
 		onPeerError:   onPeerError,
 		Data:          cmap.NewCMap(),
@@ -502,12 +169,12 @@ func (p *peer) processMessages() {
 			p.onError(err)
 			return
 		}
-		reactor, ok := p.reactors[chID]
+		reactor, ok := p.reactors[byte(chID)]
 		if !ok {
 			p.onError(fmt.Errorf("unknown channel %v", chID))
 			return
 		}
-		reactor.Receive(chID, p, msg)
+		reactor.Receive(byte(chID), p, msg)
 	}
 }
 
@@ -559,7 +226,12 @@ func (p *peer) NodeInfo() NodeInfo {
 // For inbound peers, it's the address returned by the underlying connection
 // (not what's reported in the peer's NodeInfo).
 func (p *peer) SocketAddr() *NetAddress {
-	return p.peerConn.conn.RemoteEndpoint().NetAddress()
+	endpoint := p.peerConn.conn.RemoteEndpoint()
+	return &NetAddress{
+		ID:   p.ID(),
+		IP:   endpoint.IP,
+		Port: endpoint.Port,
+	}
 }
 
 // Status returns the peer's ConnectionStatus.
@@ -577,7 +249,7 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	res, err := p.conn.SendMessage(chID, msgBytes)
+	res, err := p.conn.SendMessage(ChannelID(chID), msgBytes)
 	if err == io.EOF {
 		return false
 	} else if err != nil {
@@ -602,7 +274,7 @@ func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	res, err := p.conn.TrySendMessage(chID, msgBytes)
+	res, err := p.conn.TrySendMessage(ChannelID(chID), msgBytes)
 	if err == io.EOF {
 		return false
 	} else if err != nil {
