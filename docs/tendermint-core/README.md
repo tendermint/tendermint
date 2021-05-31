@@ -1,7 +1,7 @@
 ---
 order: 1
 parent:
-  title: Tendermint Core
+  title: System
   order: 4
 ---
 
