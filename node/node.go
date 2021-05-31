@@ -173,8 +173,8 @@ func NewNode(config *cfg.Config,
 
 	// If an address is provided, listen on the socket for a connection from an
 	// external signing process.
-	if config.PrivValidatorListenAddr != "" {
-		protocol, _ := tmnet.ProtocolAndAddress(config.PrivValidatorListenAddr)
+	if config.PrivValidator.ListenAddr != "" {
+		protocol, _ := tmnet.ProtocolAndAddress(config.PrivValidator.ListenAddr)
 		// FIXME: we should start services inside OnStart
 		switch protocol {
 		case "grpc":
@@ -183,7 +183,7 @@ func NewNode(config *cfg.Config,
 				return nil, fmt.Errorf("error with private validator grpc client: %w", err)
 			}
 		default:
-			privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, genDoc.ChainID, logger)
+			privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidator.ListenAddr, genDoc.ChainID, logger)
 			if err != nil {
 				return nil, fmt.Errorf("error with private validator socket client: %w", err)
 			}

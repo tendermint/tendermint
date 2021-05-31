@@ -26,6 +26,9 @@ This guide provides instructions for upgrading to specific versions of Tendermin
   `Seeds`. Bootstrap peers are connected with on startup if needed for peer discovery. Unlike
   persistent peers, there's no gaurantee that the node will remain connected with these peers. 
 
+- configuration values starting with `priv-validator-` have moved to the new
+  `priv-validator` section, without the `priv-validator-` prefix.
+
 ### CLI Changes
 
 * You must now specify the node mode (validator|full|seed) in `tendermint init [mode]`

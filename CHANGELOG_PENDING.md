@@ -19,6 +19,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [state/indexer] \#6382 reconstruct indexer, move txindex into the indexer package (@JayT106)
   - [cli] \#6372 Introduce `BootstrapPeers` as part of the new p2p stack. Peers to be connected on
     startup (@cmwaters)
+  - [config] \#6462 Move `PrivValidator` configuration out of `BaseConfig` into its own section.
 
 - Apps
   - [ABCI] \#6408 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)
