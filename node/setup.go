@@ -168,7 +168,7 @@ func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusL
 	switch {
 	case mode == cfg.ModeFull:
 		consensusLogger.Info("This node is a fullnode")
-	case mode == cfg.ModeValidator:
+	case mode == cfg.ModeValidator || mode == cfg.ModeDevelopment:
 		addr := pubKey.Address()
 		// Log whether this node is a validator or an observer
 		if state.Validators.HasAddress(addr) {
@@ -365,7 +365,7 @@ func createConsensusReactor(
 		cs.StateMetrics(csMetrics),
 	)
 	consensusState.SetLogger(logger)
-	if privValidator != nil && config.Mode == cfg.ModeValidator {
+	if privValidator != nil && config.Mode == cfg.ModeValidator || config.Mode == cfg.ModeDevelopment {
 		consensusState.SetPrivValidator(privValidator)
 	}
 

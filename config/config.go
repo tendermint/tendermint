@@ -24,9 +24,10 @@ const (
 	// DefaultLogLevel defines a default log level as INFO.
 	DefaultLogLevel = "info"
 
-	ModeFull      = "full"
-	ModeValidator = "validator"
-	ModeSeed      = "seed"
+	ModeFull        = "full"
+	ModeValidator   = "validator"
+	ModeSeed        = "seed"
+	ModeDevelopment = "development"
 
 	BlockchainV0 = "v0"
 	BlockchainV2 = "v2"
@@ -46,7 +47,7 @@ var (
 	defaultConfigFileName  = "config.toml"
 	defaultGenesisJSONName = "genesis.json"
 
-	defaultMode             = ModeFull
+	defaultMode             = ModeValidator
 	defaultPrivValKeyName   = "priv_validator_key.json"
 	defaultPrivValStateName = "priv_validator_state.json"
 
@@ -98,7 +99,6 @@ func DefaultConfig() *Config {
 // DefaultValidatorConfig returns default config with mode as validator
 func DefaultValidatorConfig() *Config {
 	cfg := DefaultConfig()
-	cfg.Mode = ModeValidator
 	return cfg
 }
 
@@ -332,8 +332,9 @@ func (cfg BaseConfig) ValidateBasic() error {
 	default:
 		return errors.New("unknown log format (must be 'plain' or 'json')")
 	}
+
 	switch cfg.Mode {
-	case ModeFull, ModeValidator, ModeSeed:
+	case ModeFull, ModeValidator, ModeSeed, ModeDevelopment:
 	case "":
 		return errors.New("no mode has been set")
 	default:

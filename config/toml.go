@@ -85,7 +85,7 @@ proxy-app = "{{ .BaseConfig.ProxyApp }}"
 # A custom human readable name for this node
 moniker = "{{ .BaseConfig.Moniker }}"
 
-# Mode of Node: full | validator | seed
+# Mode of Node: full | validator | seed | dev
 # * validator node
 #   - all reactors
 #   - with priv_validator_key.json, priv_validator_state.json

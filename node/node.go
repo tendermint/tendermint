@@ -107,7 +107,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	}
 
 	var pval *privval.FilePV
-	if config.Mode == cfg.ModeValidator {
+	if config.Mode == cfg.ModeValidator || config.Mode == cfg.ModeDevelopment {
 		pval, err = privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 		if err != nil {
 			return nil, err
@@ -190,7 +190,7 @@ func NewNode(config *cfg.Config,
 		}
 	}
 	var pubKey crypto.PubKey
-	if config.Mode == cfg.ModeValidator {
+	if config.Mode == cfg.ModeValidator || config.Mode == cfg.ModeDevelopment {
 		pubKey, err = privValidator.GetPubKey(context.TODO())
 		if err != nil {
 			return nil, fmt.Errorf("can't get pubkey: %w", err)
@@ -818,7 +818,7 @@ func (n *Node) ConfigureRPC() (*rpccore.Environment, error) {
 
 		Config: *n.config.RPC,
 	}
-	if n.config.Mode == cfg.ModeValidator {
+	if n.config.Mode == cfg.ModeValidator || n.config.Mode == cfg.ModeDevelopment {
 		pubKey, err := n.privValidator.GetPubKey(context.TODO())
 		if pubKey == nil || err != nil {
 			return nil, fmt.Errorf("can't get pubkey: %w", err)
@@ -843,6 +843,10 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 
 	if n.config.RPC.Unsafe {
 		env.AddUnsafe(routes)
+	}
+
+	if n.config.Mode == cfg.ModeDevelopment {
+		env.AddDevMode(routes)
 	}
 
 	config := rpcserver.DefaultConfig()

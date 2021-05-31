@@ -134,6 +134,11 @@ func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
 		},
 	}
 
+	if config.Mode == cfg.ModeDevelopment {
+		logger.Info(`the node is in development mode, if this is a mistake please change it in
+		 /tendermint/config/config.toml`)
+	}
+
 	AddNodeFlags(cmd)
 	return cmd
 }

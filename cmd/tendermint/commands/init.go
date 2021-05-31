@@ -20,7 +20,7 @@ import (
 var InitFilesCmd = &cobra.Command{
 	Use:       "init [full|validator|seed]",
 	Short:     "Initializes a Tendermint node",
-	ValidArgs: []string{"full", "validator", "seed"},
+	ValidArgs: []string{"full", "validator", "seed", "dev"},
 	// We allow for zero args so we can throw a more informative error
 	Args: cobra.MaximumNArgs(1),
 	RunE: initFiles,
@@ -49,7 +49,7 @@ func initFilesWithConfig(config *cfg.Config) error {
 		err error
 	)
 
-	if config.Mode == cfg.ModeValidator {
+	if config.Mode == cfg.ModeValidator || config.Mode == cfg.ModeDevelopment {
 		// private validator
 		privValKeyFile := config.PrivValidatorKeyFile()
 		privValStateFile := config.PrivValidatorStateFile()

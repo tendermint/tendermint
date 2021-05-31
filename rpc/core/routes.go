@@ -39,9 +39,8 @@ func (env *Environment) GetRoutes() RoutesMap {
 		"num_unconfirmed_txs":  rpc.NewRPCFunc(env.NumUnconfirmedTxs, "", false),
 
 		// tx broadcast API
-		"broadcast_tx_commit": rpc.NewRPCFunc(env.BroadcastTxCommit, "tx", false),
-		"broadcast_tx_sync":   rpc.NewRPCFunc(env.BroadcastTxSync, "tx", false),
-		"broadcast_tx_async":  rpc.NewRPCFunc(env.BroadcastTxAsync, "tx", false),
+		"broadcast_tx_sync":  rpc.NewRPCFunc(env.BroadcastTxSync, "tx", false),
+		"broadcast_tx_async": rpc.NewRPCFunc(env.BroadcastTxAsync, "tx", false),
 
 		// abci API
 		"abci_query": rpc.NewRPCFunc(env.ABCIQuery, "path,data,height,prove", false),
@@ -58,4 +57,10 @@ func (env *Environment) AddUnsafe(routes RoutesMap) {
 	routes["dial_seeds"] = rpc.NewRPCFunc(env.UnsafeDialSeeds, "seeds", false)
 	routes["dial_peers"] = rpc.NewRPCFunc(env.UnsafeDialPeers, "peers,persistent,unconditional,private", false)
 	routes["unsafe_flush_mempool"] = rpc.NewRPCFunc(env.UnsafeFlushMempool, "", false)
+}
+
+// AddDevModeRoutes adds development routes.
+func (env *Environment) AddDevMode(routes RoutesMap) {
+	// tx broadcast API
+	routes["broadcast_tx_commit"] = rpc.NewRPCFunc(env.BroadcastTxCommit, "tx", false)
 }
