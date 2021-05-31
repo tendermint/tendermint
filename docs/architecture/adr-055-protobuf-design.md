@@ -40,7 +40,7 @@ By going with this design we will enable future changes to types and allow for a
 
 ## Status
 
-Completed
+Implemented
 
 ## Consequences
 

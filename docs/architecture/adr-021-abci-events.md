@@ -35,7 +35,7 @@ TODO: describe impact on indexing and querying
 
 ## Status
 
-Proposed
+Implemented
 
 ## Consequences
 

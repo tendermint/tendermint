@@ -32,7 +32,7 @@ var InitStateVersion = Version{
 		Block: version.BlockProtocol,
 		App:   0,
 	},
-	Software: version.TMCoreSemVer,
+	Software: version.TMVersion,
 }
 
 func (v *Version) ToProto() tmstate.Version {

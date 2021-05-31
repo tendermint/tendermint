@@ -189,7 +189,7 @@ it for itself before gossiping it to peers and trying to commit it on chain. Thi
 
 ## Status
 
-Implemented.
+Implemented
 
 ## Consequences
 

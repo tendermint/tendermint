@@ -91,7 +91,8 @@ The upgrade of [tmkms](https://github.com/iqlusioninc/tmkms) will be coordinated
 
 ## Status
 
-Proposed
+
+Implemented
 
 ### Positive
 
