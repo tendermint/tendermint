@@ -8,6 +8,7 @@ import (
 	crand "crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"hash"
 	"math"
 	mrand "math/rand"
 	"net"
@@ -102,8 +103,18 @@ type addrBook struct {
 	key               string // random prefix for bucket placement
 	routabilityStrict bool
 	hashKey           []byte
+	hasher            hash.Hash64
 
 	wg sync.WaitGroup
+}
+
+func mustNewHasher() hash.Hash64 {
+	key := crypto.CRandBytes(highwayhash.Size)
+	hasher, err := highwayhash.New64(key)
+	if err != nil {
+		panic(err)
+	}
+	return hasher
 }
 
 func newHashKey() []byte {
@@ -122,7 +133,6 @@ func NewAddrBook(filePath string, routabilityStrict bool) AddrBook {
 		badPeers:          make(map[p2p.NodeID]*knownAddress),
 		filePath:          filePath,
 		routabilityStrict: routabilityStrict,
-		hashKey:           newHashKey(),
 	}
 	am.init()
 	am.BaseService = *service.NewBaseService(nil, "AddrBook", am)
@@ -143,6 +153,8 @@ func (a *addrBook) init() {
 	for i := range a.bucketsOld {
 		a.bucketsOld[i] = make(map[string]*knownAddress)
 	}
+	a.hashKey = newHashKey()
+	a.hasher = mustNewHasher()
 }
 
 // OnStart implements Service.
@@ -938,10 +950,7 @@ func groupKeyFor(na *p2p.NetAddress, routabilityStrict bool) string {
 }
 
 func (a *addrBook) hash(b []byte) ([]byte, error) {
-	hasher, err := highwayhash.New64(a.hashKey)
-	if err != nil {
-		return nil, err
-	}
-	hasher.Write(b)
-	return hasher.Sum(nil), nil
+	a.hasher.Reset()
+	a.hasher.Write(b)
+	return a.hasher.Sum(nil), nil
 }
