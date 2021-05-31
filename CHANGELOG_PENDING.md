@@ -25,6 +25,8 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
   - [ABCI] \#5447 Reset `Oneof` indexes for  `Request` and `Response`.
   - [ABCI] \#5818 Use protoio for msg length delimitation. Migrates from int64 to uint64 length delimiters.
+  - [Version] \#6494 `TMCoreSemVer` has been renamed to `TMVersion`.
+    - It is not required any longer to set ldflags to set version strings
 
 - P2P Protocol
 
