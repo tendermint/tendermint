@@ -20,7 +20,7 @@ import (
 var InitFilesCmd = &cobra.Command{
 	Use:       "init [full|validator|seed]",
 	Short:     "Initializes a Tendermint node",
-	ValidArgs: []string{"full", "validator", "seed", "dev"},
+	ValidArgs: []string{"full", "validator", "seed", "development"},
 	// We allow for zero args so we can throw a more informative error
 	Args: cobra.MaximumNArgs(1),
 	RunE: initFiles,
