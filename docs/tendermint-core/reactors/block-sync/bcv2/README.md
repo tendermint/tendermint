@@ -5,7 +5,7 @@ parent:
   order: 1
 ---
 
-# Fast Sync
+## Fast Sync
 
 This directory contains English and TLA+ specifications for the FastSync
 protocol as it is currently implemented in the Tendermint Core codebase.
@@ -42,16 +42,16 @@ The [scheduler.tla](scheduler.tla) can be model checked in TLC with the followin
 parameters:
 
 - Constants:
-    - numRequests <- 2
-    - PeerIDs <- 0..2
-    - ultimateHeight <- 3
+  - numRequests <- 2
+  - PeerIDs <- 0..2
+  - ultimateHeight <- 3
 - Invariants:
-    - TypeOK
+  - TypeOK
 - Properties:
-    - TerminationWhenNoAdvance
-    - TerminationGoodPeers
-    - TerminationAllCases
+  - TerminationWhenNoAdvance
+  - TerminationGoodPeers
+  - TerminationAllCases
 - Proofs that properties are not vacuously true:
-    - TerminationGoodPeersPre
-    - TerminationAllCases
-    - SchedulerIncreasePre
+  - TerminationGoodPeersPre
+  - TerminationAllCases
+  - SchedulerIncreasePre
