@@ -12,7 +12,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - Apps
 
-    - [Version] \#6494 `TMCoreSemVer` is not required to be set ldflags in order to set version in Tendermint.
+    - [Version] \#6494 `TMCoreSemVer` is not required to be set as a ldflag any longer.
 
 - P2P Protocol
 
