@@ -87,11 +87,12 @@ func TestApp_Tx(t *testing.T) {
 
 		hash := tx.Hash()
 		waitTime := 20 * time.Second
+
 		require.Eventuallyf(t, func() bool {
 			txResp, err := client.Tx(ctx, hash, false)
 			return err == nil && bytes.Equal(txResp.Tx, tx)
 		}, waitTime, time.Second,
-			"submitted tx wasn't committed after %v", waitTime,
+			"submitted tx %X wasn't committed after %v", hash, waitTime,
 		)
 
 		// NOTE: we don't test abci query of the light client
