@@ -371,7 +371,7 @@ func makeHTTPDialer(remoteAddr string) (func(string, string) (net.Conn, error), 
 	}
 
 	protocol := u.Scheme
-	var padding = u.Scheme
+	padding := u.Scheme
 
 	// accept http(s) as an alias for tcp
 	switch protocol {
