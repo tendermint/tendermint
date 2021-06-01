@@ -19,6 +19,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [state/indexer] \#6382 reconstruct indexer, move txindex into the indexer package (@JayT106)
   - [cli] \#6372 Introduce `BootstrapPeers` as part of the new p2p stack. Peers to be connected on
     startup (@cmwaters)
+  - [config] \#6462 Move `PrivValidator` configuration out of `BaseConfig` into its own section.
 
 - Apps
   - [ABCI] \#6408 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)
@@ -57,6 +58,9 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - Data Storage
   - [store/state/evidence/light] \#5771 Use an order-preserving varint key encoding (@cmwaters)
   - [mempool] \#6396 Remove mempool's write ahead log (WAL), (previously unused by the tendermint code). (@tychoish)
+
+- Tooling
+  - [tools] \#6498 Set OS home dir to instead of the hardcoded PATH. (@JayT106)
 
 ### FEATURES
 
