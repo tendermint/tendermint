@@ -19,7 +19,6 @@ import (
 	cs "github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
-	mempl "github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/pex"
 	"github.com/tendermint/tendermint/internal/statesync"
@@ -995,7 +994,7 @@ func (n *Node) ConsensusReactor() *cs.Reactor {
 }
 
 // Mempool returns the Node's mempool.
-func (n *Node) Mempool() mempl.Mempool {
+func (n *Node) Mempool() mempool.Mempool {
 	return n.mempool
 }
 
@@ -1146,19 +1145,19 @@ func DefaultGenesisDocProviderFunc(config *cfg.Config) GenesisDocProvider {
 type Provider func(*cfg.Config, log.Logger) (service.Service, error)
 
 // MetricsProvider returns a consensus, p2p and mempool Metrics.
-type MetricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics)
+type MetricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempool.Metrics, *sm.Metrics)
 
 // DefaultMetricsProvider returns Metrics build using Prometheus client library
 // if Prometheus is enabled. Otherwise, it returns no-op Metrics.
 func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
-	return func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics) {
+	return func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempool.Metrics, *sm.Metrics) {
 		if config.Prometheus {
 			return cs.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				p2p.PrometheusMetrics(config.Namespace, "chain_id", chainID),
-				mempl.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+				mempool.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID)
 		}
-		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics(), sm.NopMetrics()
+		return cs.NopMetrics(), p2p.NopMetrics(), mempool.NopMetrics(), sm.NopMetrics()
 	}
 }
 
