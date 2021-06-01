@@ -88,7 +88,7 @@ MaxXXX stayed the same.
 
 ## Status
 
-Accepted.
+Implemented
 
 ## Consequences
 

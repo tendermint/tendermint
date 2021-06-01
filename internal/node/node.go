@@ -18,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	cs "github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/evidence"
+	"github.com/tendermint/tendermint/internal/mempool"
 	mempl "github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/pex"
@@ -68,8 +69,8 @@ type Node struct {
 	stateStore        sm.Store
 	blockStore        *store.BlockStore // store the blockchain to disk
 	bcReactor         service.Service   // for fast-syncing
-	mempoolReactor    *mempl.Reactor    // for gossipping transactions
-	mempool           mempl.Mempool
+	mempoolReactor    service.Service   // for gossipping transactions
+	mempool           mempool.Mempool
 	stateSync         bool                    // whether the node should state sync on startup
 	stateSyncReactor  *statesync.Reactor      // for hosting and restoring state sync snapshots
 	stateSyncProvider statesync.StateProvider // provides state data for bootstrapping a node
@@ -171,8 +172,8 @@ func NewNode(config *cfg.Config,
 
 	// If an address is provided, listen on the socket for a connection from an
 	// external signing process.
-	if config.PrivValidatorListenAddr != "" {
-		protocol, _ := tmnet.ProtocolAndAddress(config.PrivValidatorListenAddr)
+	if config.PrivValidator.ListenAddr != "" {
+		protocol, _ := tmnet.ProtocolAndAddress(config.PrivValidator.ListenAddr)
 		// FIXME: we should start services inside OnStart
 		switch protocol {
 		case "grpc":
@@ -181,7 +182,7 @@ func NewNode(config *cfg.Config,
 				return nil, fmt.Errorf("error with private validator grpc client: %w", err)
 			}
 		default:
-			privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, genDoc.ChainID, logger)
+			privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidator.ListenAddr, genDoc.ChainID, logger)
 			if err != nil {
 				return nil, fmt.Errorf("error with private validator socket client: %w", err)
 			}
@@ -251,9 +252,12 @@ func NewNode(config *cfg.Config,
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
 
-	mpReactorShim, mpReactor, mempool := createMempoolReactor(
+	mpReactorShim, mpReactor, mp, err := createMempoolReactor(
 		config, proxyApp, state, memplMetrics, peerManager, router, logger,
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	evReactorShim, evReactor, evPool, err := createEvidenceReactor(
 		config, dbProvider, stateDB, blockStore, peerManager, router, logger,
@@ -267,13 +271,13 @@ func NewNode(config *cfg.Config,
 		stateStore,
 		logger.With("module", "state"),
 		proxyApp.Consensus(),
-		mempool,
+		mp,
 		evPool,
 		sm.BlockExecutorWithMetrics(smMetrics),
 	)
 
 	csReactorShim, csReactor, csState := createConsensusReactor(
-		config, state, blockExec, blockStore, mempool, evPool,
+		config, state, blockExec, blockStore, mp, evPool,
 		privValidator, csMetrics, stateSync || fastSync, eventBus,
 		peerManager, router, consensusLogger,
 	)
@@ -424,7 +428,7 @@ func NewNode(config *cfg.Config,
 		blockStore:       blockStore,
 		bcReactor:        bcReactor,
 		mempoolReactor:   mpReactor,
-		mempool:          mempool,
+		mempool:          mp,
 		consensusState:   csState,
 		consensusReactor: csReactor,
 		stateSyncReactor: stateSyncReactor,
@@ -988,11 +992,6 @@ func (n *Node) ConsensusState() *cs.State {
 // ConsensusReactor returns the Node's ConsensusReactor.
 func (n *Node) ConsensusReactor() *cs.Reactor {
 	return n.consensusReactor
-}
-
-// MempoolReactor returns the Node's mempool reactor.
-func (n *Node) MempoolReactor() *mempl.Reactor {
-	return n.mempoolReactor
 }
 
 // Mempool returns the Node's mempool.

@@ -137,27 +137,6 @@ log-format = "{{ .BaseConfig.LogFormat }}"
 # Path to the JSON file containing the initial validator set and other meta data
 genesis-file = "{{ js .BaseConfig.Genesis }}"
 
-# Path to the JSON file containing the private key to use as a validator in the consensus protocol
-priv-validator-key-file = "{{ js .BaseConfig.PrivValidatorKey }}"
-
-# Path to the JSON file containing the last sign state of a validator
-priv-validator-state-file = "{{ js .BaseConfig.PrivValidatorState }}"
-
-# TCP or UNIX socket address for Tendermint to listen on for
-# connections from an external PrivValidator process
-# when the listenAddr is prefixed with grpc instead of tcp it will use the gRPC Client
-priv-validator-laddr = "{{ .BaseConfig.PrivValidatorListenAddr }}"
-
-# Client certificate generated while creating needed files for secure connection.
-# If a remote validator address is provided but no certificate, the connection will be insecure
-priv-validator-client-certificate-file = "{{ js .BaseConfig.PrivValidatorClientCertificate }}"
-
-# Client key generated while creating certificates for secure connection
-priv-validator-client-key-file = "{{ js .BaseConfig.PrivValidatorClientKey }}"
-
-# Path Root Certificate Authority used to sign both client and server certificates
-priv-validator-certificate-authority = "{{ js .BaseConfig.PrivValidatorRootCA }}"
-
 # Path to the JSON file containing the private key to use for node authentication in the p2p protocol
 node-key-file = "{{ js .BaseConfig.NodeKey }}"
 
@@ -167,6 +146,34 @@ abci = "{{ .BaseConfig.ABCI }}"
 # If true, query the ABCI app on connecting to a new peer
 # so the app can decide if we should keep the connection or not
 filter-peers = {{ .BaseConfig.FilterPeers }}
+
+
+#######################################################
+###       Priv Validator Configuration              ###
+#######################################################
+[priv-validator]
+
+# Path to the JSON file containing the private key to use as a validator in the consensus protocol
+key-file = "{{ js .PrivValidator.Key }}"
+
+# Path to the JSON file containing the last sign state of a validator
+state-file = "{{ js .PrivValidator.State }}"
+
+# TCP or UNIX socket address for Tendermint to listen on for
+# connections from an external PrivValidator process
+# when the listenAddr is prefixed with grpc instead of tcp it will use the gRPC Client
+laddr = "{{ .PrivValidator.ListenAddr }}"
+
+# Client certificate generated while creating needed files for secure connection.
+# If a remote validator address is provided but no certificate, the connection will be insecure
+client-certificate-file = "{{ js .PrivValidator.ClientCertificate }}"
+
+# Client key generated while creating certificates for secure connection
+validator-client-key-file = "{{ js .PrivValidator.ClientKey }}"
+
+# Path Root Certificate Authority used to sign both client and server certificates
+certificate-authority = "{{ js .PrivValidator.RootCA }}"
+
 
 #######################################################################
 ###                 Advanced Configuration Options                  ###
@@ -356,6 +363,11 @@ dial-timeout = "{{ .P2P.DialTimeout }}"
 #######################################################
 [mempool]
 
+# Mempool version to use:
+#   1) "v0" - The legacy non-prioritized mempool reactor.
+#   2) "v1" (default) - The prioritized mempool reactor.
+version = "{{ .Mempool.Version }}"
+
 recheck = {{ .Mempool.Recheck }}
 broadcast = {{ .Mempool.Broadcast }}
 
@@ -529,10 +541,10 @@ func ResetTestRootWithChainID(testName string, chainID string) *Config {
 		panic(err)
 	}
 
-	baseConfig := DefaultBaseConfig()
-	genesisFilePath := filepath.Join(rootDir, baseConfig.Genesis)
-	privKeyFilePath := filepath.Join(rootDir, baseConfig.PrivValidatorKey)
-	privStateFilePath := filepath.Join(rootDir, baseConfig.PrivValidatorState)
+	conf := DefaultConfig()
+	genesisFilePath := filepath.Join(rootDir, conf.Genesis)
+	privKeyFilePath := filepath.Join(rootDir, conf.PrivValidator.Key)
+	privStateFilePath := filepath.Join(rootDir, conf.PrivValidator.State)
 
 	// Write default config file if missing.
 	writeDefaultConfigFileIfNone(rootDir)

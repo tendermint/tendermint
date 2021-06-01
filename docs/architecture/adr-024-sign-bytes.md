@@ -208,7 +208,7 @@ func (tp *T) SignBytes() []byte {
 
 ## Status
 
-DRAFT
+Partially Accepted
 
 ## Consequences
 

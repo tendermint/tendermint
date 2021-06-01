@@ -1,4 +1,4 @@
-# ADR 012: ABCI `ProposeTx` Method
+# ADR 023: ABCI `ProposeTx` Method
 
 ## Changelog
 

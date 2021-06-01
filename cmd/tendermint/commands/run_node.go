@@ -30,7 +30,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 	// priv val flags
 	cmd.Flags().String(
 		"priv-validator-laddr",
-		config.PrivValidatorListenAddr,
+		config.PrivValidator.ListenAddr,
 		"socket address to listen on for connections from external priv-validator process")
 
 	// node flags

@@ -14,7 +14,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/evidence"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	mempl "github.com/tendermint/tendermint/internal/mempool"
+	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
@@ -64,7 +64,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 
 			// Make Mempool
-			mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
+			mempool := mempoolv0.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
 			mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
 			if thisConfig.Consensus.WaitForTxs() {
 				mempool.EnableTxsAvailable()

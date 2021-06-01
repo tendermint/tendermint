@@ -1,4 +1,4 @@
-package mempool
+package v0
 
 import (
 	"sync"
@@ -10,6 +10,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
 	"github.com/tendermint/tendermint/libs/log"
@@ -48,7 +49,7 @@ func setup(t *testing.T, cfg *cfg.MempoolConfig, numNodes int, chBuf uint) *reac
 		peerUpdates:    make(map[p2p.NodeID]*p2p.PeerUpdates, numNodes),
 	}
 
-	chDesc := p2p.ChannelDescriptor{ID: byte(MempoolChannel)}
+	chDesc := p2p.ChannelDescriptor{ID: byte(mempool.MempoolChannel)}
 	rts.mempoolChnnels = rts.network.MakeChannelsNoCleanup(t, chDesc, new(protomem.Message), int(chBuf))
 
 	for nodeID := range rts.network.Nodes {
@@ -163,7 +164,7 @@ func TestReactorBroadcastTxs(t *testing.T) {
 	primary := rts.nodes[0]
 	secondaries := rts.nodes[1:]
 
-	txs := checkTxs(t, rts.reactors[primary].mempool, numTxs, UnknownPeerID)
+	txs := checkTxs(t, rts.reactors[primary].mempool, numTxs, mempool.UnknownPeerID)
 
 	// run the router
 	rts.start(t)
@@ -200,7 +201,7 @@ func TestReactorConcurrency(t *testing.T) {
 		// 1. submit a bunch of txs
 		// 2. update the whole mempool
 
-		txs := checkTxs(t, rts.reactors[primary].mempool, numTxs, UnknownPeerID)
+		txs := checkTxs(t, rts.reactors[primary].mempool, numTxs, mempool.UnknownPeerID)
 		go func() {
 			defer wg.Done()
 
@@ -219,7 +220,7 @@ func TestReactorConcurrency(t *testing.T) {
 
 		// 1. submit a bunch of txs
 		// 2. update none
-		_ = checkTxs(t, rts.reactors[secondary].mempool, numTxs, UnknownPeerID)
+		_ = checkTxs(t, rts.reactors[secondary].mempool, numTxs, mempool.UnknownPeerID)
 		go func() {
 			defer wg.Done()
 
@@ -263,21 +264,6 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 	rts.assertMempoolChannelsDrained(t)
 }
 
-func TestMempoolIDsBasic(t *testing.T) {
-	ids := newMempoolIDs()
-
-	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
-	require.NoError(t, err)
-
-	ids.ReserveForPeer(peerID)
-	require.EqualValues(t, 1, ids.GetForPeer(peerID))
-	ids.Reclaim(peerID)
-
-	ids.ReserveForPeer(peerID)
-	require.EqualValues(t, 2, ids.GetForPeer(peerID))
-	ids.Reclaim(peerID)
-}
-
 func TestReactor_MaxTxBytes(t *testing.T) {
 	numNodes := 2
 	config := cfg.TestConfig()
@@ -290,7 +276,7 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	// Broadcast a tx, which has the max size and ensure it's received by the
 	// second reactor.
 	tx1 := tmrand.Bytes(config.Mempool.MaxTxBytes)
-	err := rts.reactors[primary].mempool.CheckTx(tx1, nil, TxInfo{SenderID: UnknownPeerID})
+	err := rts.reactors[primary].mempool.CheckTx(tx1, nil, mempool.TxInfo{SenderID: mempool.UnknownPeerID})
 	require.NoError(t, err)
 
 	rts.start(t)
@@ -304,7 +290,7 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 
 	// broadcast a tx, which is beyond the max size and ensure it's not sent
 	tx2 := tmrand.Bytes(config.Mempool.MaxTxBytes + 1)
-	err = rts.mempools[primary].CheckTx(tx2, nil, TxInfo{SenderID: UnknownPeerID})
+	err = rts.mempools[primary].CheckTx(tx2, nil, mempool.TxInfo{SenderID: mempool.UnknownPeerID})
 	require.Error(t, err)
 
 	rts.assertMempoolChannelsDrained(t)
@@ -315,7 +301,7 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 
 	// we're creating a single node network, but not starting the
 	// network.
-	rts := setup(t, config.Mempool, 1, maxActiveIDs+1)
+	rts := setup(t, config.Mempool, 1, mempool.MaxActiveIDs+1)
 
 	nodeID := rts.nodes[0]
 
@@ -323,7 +309,7 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 	require.NoError(t, err)
 
 	// ensure the reactor does not panic (i.e. exhaust active IDs)
-	for i := 0; i < maxActiveIDs+1; i++ {
+	for i := 0; i < mempool.MaxActiveIDs+1; i++ {
 		rts.peerChans[nodeID] <- p2p.PeerUpdate{
 			Status: p2p.PeerStatusUp,
 			NodeID: peerID,
@@ -361,12 +347,12 @@ func TestMempoolIDsPanicsIfNodeRequestsOvermaxActiveIDs(t *testing.T) {
 	}
 
 	// 0 is already reserved for UnknownPeerID
-	ids := newMempoolIDs()
+	ids := mempool.NewMempoolIDs()
 
 	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
-	for i := 0; i < maxActiveIDs-1; i++ {
+	for i := 0; i < mempool.MaxActiveIDs-1; i++ {
 		ids.ReserveForPeer(peerID)
 	}
 
