@@ -196,7 +196,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 		err = r.handleMempoolMessage(envelope)
 
 	default:
-		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", chID, envelope)
+		err = fmt.Errorf("unknown channel ID (%d) for envelope (%T)", chID, envelope.Message)
 	}
 
 	return err
