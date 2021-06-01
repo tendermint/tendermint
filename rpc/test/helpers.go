@@ -27,7 +27,6 @@ import (
 // control.
 type Options struct {
 	suppressStdout bool
-	recreateConfig bool
 }
 
 func waitForRPC(ctx context.Context, conf *cfg.Config) {
