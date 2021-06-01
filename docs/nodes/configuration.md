@@ -80,7 +80,7 @@ db-dir = "data"
 # Output level for logging, including package level options
 log-level = "main:info,state:info,statesync:info,*:error"
 
-# Output format: 'plain' (colored text) or 'json'
+# Output format: 'plain' (colored text), 'mono' (monochrome text), or 'json'
 log-format = "plain"
 
 ##### additional base config options #####

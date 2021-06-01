@@ -43,6 +43,12 @@ func NewTMLogger(w io.Writer) Logger {
 	return &tmLogger{term.NewLogger(w, NewTMFmtLogger, colorFn)}
 }
 
+// NewTMMonoLogger returns a logger that encodes msg and keyvals to the Writer
+// using go-kit's log as an underlying logger with no color formatter.
+func NewTMMonoLogger(w io.Writer) Logger {
+	return &tmLogger{NewTMFmtLogger(w)}
+}
+
 // NewTMLoggerWithColorFn allows you to provide your own color function. See
 // NewTMLogger for documentation.
 func NewTMLoggerWithColorFn(w io.Writer, colorFn func(keyvals ...interface{}) term.FgBgColor) Logger {

@@ -61,6 +61,8 @@ var RootCmd = &cobra.Command{
 
 		if config.LogFormat == cfg.LogFormatJSON {
 			logger = log.NewTMJSONLogger(log.NewSyncWriter(os.Stdout))
+		} else if config.LogFormat == cfg.LogFormatMono {
+			logger = log.NewTMMonoLogger(log.NewSyncWriter(os.Stdout))
 		}
 
 		logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel)

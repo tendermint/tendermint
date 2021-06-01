@@ -18,6 +18,8 @@ const (
 
 	// LogFormatPlain is a format for colored text
 	LogFormatPlain = "plain"
+	// LogFormatMono is a format for monochrome text
+	LogFormatMono = "mono"
 	// LogFormatJSON is a format for json output
 	LogFormatJSON = "json"
 
@@ -331,7 +333,7 @@ func (cfg Config) ArePrivValidatorClientSecurityOptionsPresent() bool {
 // returns an error if any check fails.
 func (cfg BaseConfig) ValidateBasic() error {
 	switch cfg.LogFormat {
-	case LogFormatPlain, LogFormatJSON:
+	case LogFormatPlain, LogFormatJSON, LogFormatMono:
 	default:
 		return errors.New("unknown log format (must be 'plain' or 'json')")
 	}
