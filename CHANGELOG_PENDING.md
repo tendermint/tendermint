@@ -19,12 +19,15 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [state/indexer] \#6382 reconstruct indexer, move txindex into the indexer package (@JayT106)
   - [cli] \#6372 Introduce `BootstrapPeers` as part of the new p2p stack. Peers to be connected on
     startup (@cmwaters)
+  - [config] \#6462 Move `PrivValidator` configuration out of `BaseConfig` into its own section.
 
 - Apps
   - [ABCI] \#6408 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)
   - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
   - [ABCI] \#5447 Reset `Oneof` indexes for  `Request` and `Response`.
   - [ABCI] \#5818 Use protoio for msg length delimitation. Migrates from int64 to uint64 length delimiters.
+  - [Version] \#6494 `TMCoreSemVer` has been renamed to `TMVersion`.
+    - It is not required any longer to set ldflags to set version strings
 
 - P2P Protocol
 
@@ -59,6 +62,9 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [store/state/evidence/light] \#5771 Use an order-preserving varint key encoding (@cmwaters)
   - [mempool] \#6396 Remove mempool's write ahead log (WAL), (previously unused by the tendermint code). (@tychoish)
 
+- Tooling
+  - [tools] \#6498 Set OS home dir to instead of the hardcoded PATH. (@JayT106)
+
 ### FEATURES
 
 - [config] Add `--mode` flag and config variable. See [ADR-52](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md) @dongsam
@@ -74,9 +80,11 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   `mempool.version` configuration, where `v1` is the default configuration.
   - Applications that do not specify a priority, i.e. zero, will have transactions reaped by the order in which they are received by the node.
   - Transactions are gossiped in FIFO order as they are in `v0`.
+- [config/indexer] \#6411 Introduce support for custom event indexing data sources, specifically PostgreSQL. (@JayT106)
 
 ### IMPROVEMENTS
 
+- [types] \#6478 Add `block_id` to `newblock` event (@jeebster)
 - [crypto/ed25519] \#5632 Adopt zip215 `ed25519` verification. (@marbar3778)
 - [privval] \#5603 Add `--key` to `init`, `gen_validator`, `testnet` & `unsafe_reset_priv_validator` for use in generating `secp256k1` keys.
 - [privval] \#5725 Add gRPC support to private validator.
@@ -105,6 +113,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [statesync] \#6378 Retry requests for snapshots and add a minimum discovery time (5s) for new snapshots.
 - [node/state] \#6370 graceful shutdown in the consensus reactor (@JayT106)
 - [crypto/merkle] \#6443 Improve HashAlternatives performance (@cuonglm)
+- [crypto/merkle] \#6513 Optimize HashAlternatives (@marbar3778)
 
 ### BUG FIXES
 

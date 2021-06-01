@@ -1,8 +1,8 @@
 ---
 order: 1
 parent:
-  title: Tendermint Core
-  order: 4
+  title: System
+  order: 5
 ---
 
 # Overview

@@ -15,6 +15,7 @@ import (
 	"github.com/rs/cors"
 	dbm "github.com/tendermint/tm-db"
 
+	_ "github.com/lib/pq" // provide the psql db driver
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cs "github.com/tendermint/tendermint/consensus"
@@ -83,8 +84,7 @@ type Node struct {
 	evidencePool      *evidence.Pool // tracking evidence
 	proxyApp          proxy.AppConns // connection to the application
 	rpcListeners      []net.Listener // rpc servers
-	txIndexer         indexer.TxIndexer
-	blockIndexer      indexer.BlockIndexer
+	eventSinks        []indexer.EventSink
 	indexerService    *indexer.Service
 	prometheusSrv     *http.Server
 }
@@ -166,15 +166,15 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	indexerService, txIndexer, blockIndexer, err := createAndStartIndexerService(config, dbProvider, eventBus, logger)
+	indexerService, eventSinks, err := createAndStartIndexerService(config, dbProvider, eventBus, logger, genDoc.ChainID)
 	if err != nil {
 		return nil, err
 	}
 
 	// If an address is provided, listen on the socket for a connection from an
 	// external signing process.
-	if config.PrivValidatorListenAddr != "" {
-		protocol, _ := tmnet.ProtocolAndAddress(config.PrivValidatorListenAddr)
+	if config.PrivValidator.ListenAddr != "" {
+		protocol, _ := tmnet.ProtocolAndAddress(config.PrivValidator.ListenAddr)
 		// FIXME: we should start services inside OnStart
 		switch protocol {
 		case "grpc":
@@ -183,7 +183,7 @@ func NewNode(config *cfg.Config,
 				return nil, fmt.Errorf("error with private validator grpc client: %w", err)
 			}
 		default:
-			privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, genDoc.ChainID, logger)
+			privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidator.ListenAddr, genDoc.ChainID, logger)
 			if err != nil {
 				return nil, fmt.Errorf("error with private validator socket client: %w", err)
 			}
@@ -232,7 +232,7 @@ func NewNode(config *cfg.Config,
 
 	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
 	// TODO: Use a persistent peer database.
-	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state)
+	nodeInfo, err := makeNodeInfo(config, nodeKey, eventSinks, genDoc, state)
 	if err != nil {
 		return nil, err
 	}
@@ -440,10 +440,9 @@ func NewNode(config *cfg.Config,
 		evidenceReactor:  evReactor,
 		evidencePool:     evPool,
 		proxyApp:         proxyApp,
-		txIndexer:        txIndexer,
 		indexerService:   indexerService,
-		blockIndexer:     blockIndexer,
 		eventBus:         eventBus,
+		eventSinks:       eventSinks,
 	}
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
 
@@ -813,8 +812,7 @@ func (n *Node) ConfigureRPC() (*rpccore.Environment, error) {
 		P2PTransport:   n,
 
 		GenDoc:           n.genesisDoc,
-		TxIndexer:        n.txIndexer,
-		BlockIndexer:     n.blockIndexer,
+		EventSinks:       n.eventSinks,
 		ConsensusReactor: n.consensusReactor,
 		EventBus:         n.eventBus,
 		Mempool:          n.mempool,
@@ -1043,9 +1041,9 @@ func (n *Node) Config() *cfg.Config {
 	return n.config
 }
 
-// TxIndexer returns the Node's TxIndexer.
-func (n *Node) TxIndexer() indexer.TxIndexer {
-	return n.txIndexer
+// EventSinks returns the Node's event indexing sinks.
+func (n *Node) EventSinks() []indexer.EventSink {
+	return n.eventSinks
 }
 
 //------------------------------------------------------------------------------

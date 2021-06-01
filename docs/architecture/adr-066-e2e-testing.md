@@ -109,7 +109,7 @@ If possible, the existing `testnet` command should be extended to set up the net
 
 ## Status
 
-Accepted
+Implemented
 
 ## Consequences
 

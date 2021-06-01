@@ -69,10 +69,10 @@ func makeStatusFunc(c *lrpc.Client) rpcStatusFunc {
 	}
 }
 
-type rpcNetInfoFunc func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultNetInfo, error)
+type rpcNetInfoFunc func(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, error)
 
 func makeNetInfoFunc(c *lrpc.Client) rpcNetInfoFunc {
-	return func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultNetInfo, error) {
+	return func(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, error) {
 		return c.NetInfo(ctx.Context())
 	}
 }
