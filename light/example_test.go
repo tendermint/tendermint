@@ -27,15 +27,11 @@ func ExampleClient_Update() {
 
 	// Start a test application
 	app := kvstore.NewApplication()
-	n, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
+	_, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
 	defer func() { _ = closer(ctx) }()
-
-	if err := n.Start(); err != nil {
-		stdlog.Fatal(err)
-	}
 
 	// give Tendermint time to generate some blocks
 	time.Sleep(5 * time.Second)
@@ -109,15 +105,11 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 	// Start a test application
 	app := kvstore.NewApplication()
 
-	n, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
+	_, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
 	defer func() { _ = closer(ctx) }()
-
-	if err := n.Start(); err != nil {
-		stdlog.Fatal(err)
-	}
 
 	// give Tendermint time to generate some blocks
 	time.Sleep(5 * time.Second)
