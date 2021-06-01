@@ -62,6 +62,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [mempool] \#6466 The original mempool reactor has been versioned as `v0` and moved to a sub-package under the root `mempool` package.
     Some core types have been kept in the `mempool` package such as `TxCache` and it's implementations, the `Mempool` interface itself
     and `TxInfo`. (@alexanderbez)
+  - [crypto/sr25519] \#6526 Do not re-execute the Ed25519-style key derivation step when doing signing and verification.  The derivation is now done once and only once.  This breaks `sr25519.GenPrivKeyFromSecret` output compatibility. (@Yawning)
 
 - Blockchain Protocol
 
@@ -96,6 +97,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [types] \#6478 Add `block_id` to `newblock` event (@jeebster)
 - [crypto/ed25519] \#5632 Adopt zip215 `ed25519` verification. (@marbar3778)
 - [crypto/ed25519] \#6526 Use [curve25519-voi](https://github.com/oasisprotocol/curve25519-voi) for `ed25519` signing and verification. (@Yawning)
+- [crypto/sr25519] \#6526 Use [curve25519-voi](https://github.com/oasisprotocol/curve25519-voi) for `sr25519` signing and verification. (@Yawning)
 - [privval] \#5603 Add `--key` to `init`, `gen_validator`, `testnet` & `unsafe_reset_priv_validator` for use in generating `secp256k1` keys.
 - [privval] \#5725 Add gRPC support to private validator.
 - [privval] \#5876 `tendermint show-validator` will query the remote signer if gRPC is being used (@marbar3778)

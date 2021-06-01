@@ -1,6 +1,8 @@
 package sr25519_test
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -71,4 +73,26 @@ func TestBatchSafe(t *testing.T) {
 		expected := (i % 2) == 0
 		require.Equalf(t, expected, ok, "sig[%d] should be %v", i, expected)
 	}
+}
+
+func TestJSON(t *testing.T) {
+	privKey := sr25519.GenPrivKey()
+
+	t.Run("PrivKey", func(t *testing.T) {
+		b, err := json.Marshal(privKey)
+		require.NoError(t, err)
+
+		// b should be the base64 encoded MiniSecretKey, enclosed by doublequotes.
+		b64 := base64.StdEncoding.EncodeToString(privKey.Bytes())
+		b64 = "\"" + b64 + "\""
+		require.Equal(t, []byte(b64), b)
+
+		var privKey2 sr25519.PrivKey
+		err = json.Unmarshal(b, &privKey2)
+		require.NoError(t, err)
+		require.Len(t, privKey2.Bytes(), sr25519.PrivKeySize)
+		require.EqualValues(t, privKey.Bytes(), privKey2.Bytes())
+	})
+
+	// PubKeys are just []byte, so there is no special handling.
 }
