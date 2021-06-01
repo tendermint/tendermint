@@ -76,7 +76,7 @@ which is just informational.
 
 ## Status
 
-Proposal.
+Implemented
 
 ## Consequences
 

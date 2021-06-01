@@ -11,7 +11,7 @@
 > "implemented". If a later ADR changes or reverses a decision, it may be marked
 > as "deprecated" or "superseded" with a reference to its replacement.
 
-{Deprecated|Proposed|Accepted|Declined}
+{Deprecated|Declined|Accepted|Implemented}
 
 ## Context
 

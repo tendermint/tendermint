@@ -123,7 +123,7 @@ Check out the formal specification
 
 ## Status
 
-Accepted.
+Implemented
 
 ## Consequences
 
