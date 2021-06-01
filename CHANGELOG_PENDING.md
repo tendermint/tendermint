@@ -114,6 +114,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [node/state] \#6370 graceful shutdown in the consensus reactor (@JayT106)
 - [crypto/merkle] \#6443 Improve HashAlternatives performance (@cuonglm)
 - [crypto/merkle] \#6513 Optimize HashAlternatives (@marbar3778)
+- [p2p/pex] \#6509 Improve addrBook.hash performance (@cuonglm)
 
 ### BUG FIXES
 
