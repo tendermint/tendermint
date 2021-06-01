@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	_ "github.com/lib/pq" // provide the psql db driver
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
