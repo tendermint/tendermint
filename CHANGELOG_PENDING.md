@@ -49,6 +49,9 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [rpc/jsonrpc/client/ws_client] \#6176 `NewWS` no longer accepts options (use `NewWSWithOptions` and `OnReconnect` funcs to configure the client) (@melekes)
   - [internal/libs] \#6366 Move `autofile`, `clist`,`fail`,`flowrate`, `protoio`, `sync`, `tempfile`, `test` and `timer` lib packages to an internal folder
   - [libs/rand] \#6364 Removed most of libs/rand in favour of standard lib's `math/rand` (@liamsi)
+  - [mempool] \#6466 The original mempool reactor has been versioned as `v0` and moved to a sub-package under the root `mempool` package.
+    Some core types have been kept in the `mempool` package such as `TxCache` and it's implementations, the `Mempool` interface itself
+    and `TxInfo`. (@alexanderbez)
 
 - Blockchain Protocol
 
@@ -64,6 +67,13 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   accomodate for the new p2p stack. Removes the notion of seeds and crawling. All peer
   exchange reactors behave the same. (@cmwaters)
 - [crypto] \#6376 Enable sr25519 as a validator key
+- [mempool] \#6466 Introduction of a prioritized mempool. (@alexanderbez)
+  - `Priority` and `Sender` have been introduced into the `ResponseCheckTx` type, where the `priority` will determine the prioritization of
+  the transaction when a proposer reaps transactions for a block proposal. The `sender` field acts as an index.
+  - Operators may toggle between the legacy mempool reactor, `v0`, and the new prioritized reactor, `v1`, by setting the
+  `mempool.version` configuration, where `v1` is the default configuration.
+  - Applications that do not specify a priority, i.e. zero, will have transactions reaped by the order in which they are received by the node.
+  - Transactions are gossiped in FIFO order as they are in `v0`.
 
 ### IMPROVEMENTS
 
