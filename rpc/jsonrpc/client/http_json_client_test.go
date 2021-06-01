@@ -98,4 +98,17 @@ func TestMakeHTTPDialerURL(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, addr)
 	}
+
+	errorURLs := []string{"tcp://foo-bar.com", "ftp://foo-bar.com"}
+
+	for _, errorURL := range errorURLs {
+		u, err := newParsedURL(errorURL)
+		require.NoError(t, err)
+		dialFn, err := makeHTTPDialer(errorURL)
+		require.Nil(t, err)
+
+		addr, err := dialFn(u.Scheme, u.GetHostWithPath())
+		require.Error(t, err)
+		require.Nil(t, addr)
+	}
 }
