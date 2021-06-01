@@ -58,7 +58,8 @@ func New(conf *config.Config,
 			cf,
 			genProvider,
 			tmni.DefaultDBProvider,
-			tmni.DefaultMetricsProvider(conf.Instrumentation), logger)
+			tmni.DefaultMetricsProvider(conf.Instrumentation),
+			logger)
 	case config.ModeSeed:
 		return tmni.NewSeedNode(conf, tmni.DefaultDBProvider, nodeKey, genProvider, logger)
 	default:
