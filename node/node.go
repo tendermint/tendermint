@@ -28,7 +28,7 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/libs/strings"
 	"github.com/tendermint/tendermint/light"
-	mempl "github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
 	"github.com/tendermint/tendermint/privval"
@@ -70,8 +70,8 @@ type Node struct {
 	stateStore        sm.Store
 	blockStore        *store.BlockStore // store the blockchain to disk
 	bcReactor         service.Service   // for fast-syncing
-	mempoolReactor    *mempl.Reactor    // for gossipping transactions
-	mempool           mempl.Mempool
+	mempoolReactor    service.Service   // for gossipping transactions
+	mempool           mempool.Mempool
 	stateSync         bool                    // whether the node should state sync on startup
 	stateSyncReactor  *statesync.Reactor      // for hosting and restoring state sync snapshots
 	stateSyncProvider statesync.StateProvider // provides state data for bootstrapping a node
@@ -253,9 +253,12 @@ func NewNode(config *cfg.Config,
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
 
-	mpReactorShim, mpReactor, mempool := createMempoolReactor(
+	mpReactorShim, mpReactor, mp, err := createMempoolReactor(
 		config, proxyApp, state, memplMetrics, peerManager, router, logger,
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	evReactorShim, evReactor, evPool, err := createEvidenceReactor(
 		config, dbProvider, stateDB, blockStore, peerManager, router, logger,
@@ -269,13 +272,13 @@ func NewNode(config *cfg.Config,
 		stateStore,
 		logger.With("module", "state"),
 		proxyApp.Consensus(),
-		mempool,
+		mp,
 		evPool,
 		sm.BlockExecutorWithMetrics(smMetrics),
 	)
 
 	csReactorShim, csReactor, csState := createConsensusReactor(
-		config, state, blockExec, blockStore, mempool, evPool,
+		config, state, blockExec, blockStore, mp, evPool,
 		privValidator, csMetrics, stateSync || fastSync, eventBus,
 		peerManager, router, consensusLogger,
 	)
@@ -426,7 +429,7 @@ func NewNode(config *cfg.Config,
 		blockStore:       blockStore,
 		bcReactor:        bcReactor,
 		mempoolReactor:   mpReactor,
-		mempool:          mempool,
+		mempool:          mp,
 		consensusState:   csState,
 		consensusReactor: csReactor,
 		stateSyncReactor: stateSyncReactor,
@@ -997,12 +1000,12 @@ func (n *Node) ConsensusReactor() *cs.Reactor {
 }
 
 // MempoolReactor returns the Node's mempool reactor.
-func (n *Node) MempoolReactor() *mempl.Reactor {
+func (n *Node) MempoolReactor() service.Service {
 	return n.mempoolReactor
 }
 
 // Mempool returns the Node's mempool.
-func (n *Node) Mempool() mempl.Mempool {
+func (n *Node) Mempool() mempool.Mempool {
 	return n.mempool
 }
 
@@ -1153,19 +1156,19 @@ func DefaultGenesisDocProviderFunc(config *cfg.Config) GenesisDocProvider {
 type Provider func(*cfg.Config, log.Logger) (*Node, error)
 
 // MetricsProvider returns a consensus, p2p and mempool Metrics.
-type MetricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics)
+type MetricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempool.Metrics, *sm.Metrics)
 
 // DefaultMetricsProvider returns Metrics build using Prometheus client library
 // if Prometheus is enabled. Otherwise, it returns no-op Metrics.
 func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
-	return func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics) {
+	return func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempool.Metrics, *sm.Metrics) {
 		if config.Prometheus {
 			return cs.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				p2p.PrometheusMetrics(config.Namespace, "chain_id", chainID),
-				mempl.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+				mempool.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID)
 		}
-		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics(), sm.NopMetrics()
+		return cs.NopMetrics(), p2p.NopMetrics(), mempool.NopMetrics(), sm.NopMetrics()
 	}
 }
 

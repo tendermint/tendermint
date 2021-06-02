@@ -22,8 +22,10 @@ import (
 	"github.com/tendermint/tendermint/evidence"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	tmStrings "github.com/tendermint/tendermint/libs/strings"
-	mempl "github.com/tendermint/tendermint/mempool"
+	tmstrings "github.com/tendermint/tendermint/libs/strings"
+	"github.com/tendermint/tendermint/mempool"
+	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
+	mempoolv1 "github.com/tendermint/tendermint/mempool/v1"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
 	protop2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
@@ -192,25 +194,14 @@ func createMempoolReactor(
 	config *cfg.Config,
 	proxyApp proxy.AppConns,
 	state sm.State,
-	memplMetrics *mempl.Metrics,
+	memplMetrics *mempool.Metrics,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	logger log.Logger,
-) (*p2p.ReactorShim, *mempl.Reactor, *mempl.CListMempool) {
+) (*p2p.ReactorShim, service.Service, mempool.Mempool, error) {
 
-	logger = logger.With("module", "mempool")
-	mempool := mempl.NewCListMempool(
-		config.Mempool,
-		proxyApp.Mempool(),
-		state.LastBlockHeight,
-		mempl.WithMetrics(memplMetrics),
-		mempl.WithPreCheck(sm.TxPreCheck(state)),
-		mempl.WithPostCheck(sm.TxPostCheck(state)),
-	)
-
-	mempool.SetLogger(logger)
-
-	channelShims := mempl.GetChannelShims(config.Mempool)
+	logger = logger.With("module", "mempool", "version", config.Mempool.Version)
+	channelShims := mempoolv0.GetChannelShims(config.Mempool)
 	reactorShim := p2p.NewReactorShim(logger, "MempoolShim", channelShims)
 
 	var (
@@ -226,20 +217,63 @@ func createMempoolReactor(
 		peerUpdates = reactorShim.PeerUpdates
 	}
 
-	reactor := mempl.NewReactor(
-		logger,
-		config.Mempool,
-		peerManager,
-		mempool,
-		channels[mempl.MempoolChannel],
-		peerUpdates,
-	)
+	switch config.Mempool.Version {
+	case cfg.MempoolV0:
+		mp := mempoolv0.NewCListMempool(
+			config.Mempool,
+			proxyApp.Mempool(),
+			state.LastBlockHeight,
+			mempoolv0.WithMetrics(memplMetrics),
+			mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
+			mempoolv0.WithPostCheck(sm.TxPostCheck(state)),
+		)
 
-	if config.Consensus.WaitForTxs() {
-		mempool.EnableTxsAvailable()
+		mp.SetLogger(logger)
+
+		reactor := mempoolv0.NewReactor(
+			logger,
+			config.Mempool,
+			peerManager,
+			mp,
+			channels[mempool.MempoolChannel],
+			peerUpdates,
+		)
+
+		if config.Consensus.WaitForTxs() {
+			mp.EnableTxsAvailable()
+		}
+
+		return reactorShim, reactor, mp, nil
+
+	case cfg.MempoolV1:
+		mp := mempoolv1.NewTxMempool(
+			logger,
+			config.Mempool,
+			proxyApp.Mempool(),
+			state.LastBlockHeight,
+			mempoolv1.WithMetrics(memplMetrics),
+			mempoolv1.WithPreCheck(sm.TxPreCheck(state)),
+			mempoolv1.WithPostCheck(sm.TxPostCheck(state)),
+		)
+
+		reactor := mempoolv1.NewReactor(
+			logger,
+			config.Mempool,
+			peerManager,
+			mp,
+			channels[mempool.MempoolChannel],
+			peerUpdates,
+		)
+
+		if config.Consensus.WaitForTxs() {
+			mp.EnableTxsAvailable()
+		}
+
+		return reactorShim, reactor, mp, nil
+
+	default:
+		return nil, nil, nil, fmt.Errorf("unknown mempool version: %s", config.Mempool.Version)
 	}
-
-	return reactorShim, reactor, mempool
 }
 
 func createEvidenceReactor(
@@ -344,7 +378,7 @@ func createConsensusReactor(
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
-	mempool *mempl.CListMempool,
+	mp mempool.Mempool,
 	evidencePool *evidence.Pool,
 	privValidator types.PrivValidator,
 	csMetrics *cs.Metrics,
@@ -360,7 +394,7 @@ func createConsensusReactor(
 		state.Copy(),
 		blockExec,
 		blockStore,
-		mempool,
+		mp,
 		evidencePool,
 		cs.StateMetrics(csMetrics),
 	)
@@ -408,7 +442,7 @@ func createTransport(logger log.Logger, config *cfg.Config) *p2p.MConnTransport 
 		logger, p2p.MConnConfig(config.P2P), []*p2p.ChannelDescriptor{},
 		p2p.MConnTransportOptions{
 			MaxAcceptedConnections: uint32(config.P2P.MaxNumInboundPeers +
-				len(tmStrings.SplitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " ")),
+				len(tmstrings.SplitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " ")),
 			),
 		},
 	)
@@ -445,7 +479,7 @@ func createPeerManager(
 	}
 
 	privatePeerIDs := make(map[p2p.NodeID]struct{})
-	for _, id := range tmStrings.SplitAndTrimEmpty(config.P2P.PrivatePeerIDs, ",", " ") {
+	for _, id := range tmstrings.SplitAndTrimEmpty(config.P2P.PrivatePeerIDs, ",", " ") {
 		privatePeerIDs[p2p.NodeID(id)] = struct{}{}
 	}
 
@@ -461,7 +495,7 @@ func createPeerManager(
 	}
 
 	peers := []p2p.NodeAddress{}
-	for _, p := range tmStrings.SplitAndTrimEmpty(config.P2P.PersistentPeers, ",", " ") {
+	for _, p := range tmstrings.SplitAndTrimEmpty(config.P2P.PersistentPeers, ",", " ") {
 		address, err := p2p.ParseNodeAddress(p)
 		if err != nil {
 			return nil, fmt.Errorf("invalid peer address %q: %w", p, err)
@@ -471,7 +505,7 @@ func createPeerManager(
 		options.PersistentPeers = append(options.PersistentPeers, address.NodeID)
 	}
 
-	for _, p := range tmStrings.SplitAndTrimEmpty(config.P2P.BootstrapPeers, ",", " ") {
+	for _, p := range tmstrings.SplitAndTrimEmpty(config.P2P.BootstrapPeers, ",", " ") {
 		address, err := p2p.ParseNodeAddress(p)
 		if err != nil {
 			return nil, fmt.Errorf("invalid peer address %q: %w", p, err)
@@ -638,7 +672,7 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 	sw *p2p.Switch, logger log.Logger) *pex.Reactor {
 
 	reactorConfig := &pex.ReactorConfig{
-		Seeds:    tmStrings.SplitAndTrimEmpty(config.P2P.Seeds, ",", " "),
+		Seeds:    tmstrings.SplitAndTrimEmpty(config.P2P.Seeds, ",", " "),
 		SeedMode: config.Mode == cfg.ModeSeed,
 		// See consensus/reactor.go: blocksToContributeToBecomeGoodPeer 10000
 		// blocks assuming 10s blocks ~ 28 hours.
@@ -711,7 +745,7 @@ func makeNodeInfo(
 			byte(cs.DataChannel),
 			byte(cs.VoteChannel),
 			byte(cs.VoteSetBitsChannel),
-			byte(mempl.MempoolChannel),
+			byte(mempool.MempoolChannel),
 			byte(evidence.EvidenceChannel),
 			byte(statesync.SnapshotChannel),
 			byte(statesync.ChunkChannel),
