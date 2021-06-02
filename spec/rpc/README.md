@@ -41,6 +41,14 @@ This file defines the JSON-RPC spec of Tendermint. This is meant to be implement
   | [BroadcastTxAsync](#broadcasttxasync)   |                             ✅                              |                                 ✅                                 |
   | [BroadcastEvidence](#broadcastevidence) |                             ✅                              |                                 ✅                                 |
 
+## Timestamps
+
+Timestamps in the RPC layer of Tendermint follows RFC3339Nano.  The RFC3339Nano format removes trailing zeros from the seconds field.
+
+This means if a block has a timestamp like: `1985-04-12T23:20:50.5200000Z`, the value returned in the RPC will be `1985-04-12T23:20:50.52Z`.
+
+
+
 ## Info Routes
 
 ### Health
