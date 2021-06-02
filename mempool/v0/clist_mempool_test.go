@@ -493,8 +493,14 @@ func TestMempoolTxsBytes(t *testing.T) {
 	assert.EqualValues(t, 0, mp.SizeBytes())
 
 	// 5. ErrMempoolIsFull is returned when/if MaxTxsBytes limit is reached.
-	err = mp.CheckTx(context.Background(), []byte{0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04}, nil, mempool.TxInfo{})
+	err = mp.CheckTx(
+		context.Background(),
+		[]byte{0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04},
+		nil,
+		mempool.TxInfo{},
+	)
 	require.NoError(t, err)
+
 	err = mp.CheckTx(context.Background(), []byte{0x05}, nil, mempool.TxInfo{})
 	if assert.Error(t, err) {
 		assert.IsType(t, mempool.ErrMempoolIsFull{}, err)

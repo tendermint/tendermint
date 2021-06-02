@@ -401,7 +401,15 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	}
 
 	// send a tx
-	require.NoError(t, assertMempool(states[3].txNotifier).CheckTx(context.Background(), []byte{1, 2, 3}, nil, mempool.TxInfo{}))
+	require.NoError(
+		t,
+		assertMempool(states[3].txNotifier).CheckTx(
+			context.Background(),
+			[]byte{1, 2, 3},
+			nil,
+			mempool.TxInfo{},
+		),
+	)
 
 	var wg sync.WaitGroup
 	for _, sub := range rts.subs {
