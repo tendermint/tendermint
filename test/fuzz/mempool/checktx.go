@@ -1,6 +1,8 @@
 package checktx
 
 import (
+	"context"
+
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -26,7 +28,7 @@ func init() {
 }
 
 func Fuzz(data []byte) int {
-	err := mp.CheckTx(data, nil, mempool.TxInfo{})
+	err := mp.CheckTx(context.Background(), data, nil, mempool.TxInfo{})
 	if err != nil {
 		return 0
 	}

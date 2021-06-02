@@ -1,6 +1,7 @@
 package v0
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
@@ -276,7 +277,14 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	// Broadcast a tx, which has the max size and ensure it's received by the
 	// second reactor.
 	tx1 := tmrand.Bytes(config.Mempool.MaxTxBytes)
-	err := rts.reactors[primary].mempool.CheckTx(tx1, nil, mempool.TxInfo{SenderID: mempool.UnknownPeerID})
+	err := rts.reactors[primary].mempool.CheckTx(
+		context.Background(),
+		tx1,
+		nil,
+		mempool.TxInfo{
+			SenderID: mempool.UnknownPeerID,
+		},
+	)
 	require.NoError(t, err)
 
 	rts.start(t)
@@ -290,7 +298,7 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 
 	// broadcast a tx, which is beyond the max size and ensure it's not sent
 	tx2 := tmrand.Bytes(config.Mempool.MaxTxBytes + 1)
-	err = rts.mempools[primary].CheckTx(tx2, nil, mempool.TxInfo{SenderID: mempool.UnknownPeerID})
+	err = rts.mempools[primary].CheckTx(context.Background(), tx2, nil, mempool.TxInfo{SenderID: mempool.UnknownPeerID})
 	require.Error(t, err)
 
 	rts.assertMempoolChannelsDrained(t)

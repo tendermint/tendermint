@@ -1,6 +1,7 @@
 package v0
 
 import (
+	"context"
 	"crypto/sha256"
 	"testing"
 
@@ -36,7 +37,7 @@ func TestCacheAfterUpdate(t *testing.T) {
 	for tcIndex, tc := range tests {
 		for i := 0; i < tc.numTxsToCreate; i++ {
 			tx := types.Tx{byte(i)}
-			err := mp.CheckTx(tx, nil, mempool.TxInfo{})
+			err := mp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{})
 			require.NoError(t, err)
 		}
 
@@ -50,7 +51,7 @@ func TestCacheAfterUpdate(t *testing.T) {
 
 		for _, v := range tc.reAddIndices {
 			tx := types.Tx{byte(v)}
-			_ = mp.CheckTx(tx, nil, mempool.TxInfo{})
+			_ = mp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{})
 		}
 
 		cache := mp.cache.(*mempool.LRUTxCache)

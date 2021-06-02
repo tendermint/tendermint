@@ -458,13 +458,16 @@ func TestBroadcastTxCommit(t *testing.T) {
 }
 
 func TestUnconfirmedTxs(t *testing.T) {
-	_, _, tx := MakeTxKV()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
+	_, _, tx := MakeTxKV()
 	ch := make(chan *abci.Response, 1)
 
 	n, conf := NodeSuite(t)
 	mempool := getMempool(t, n)
-	err := mempool.CheckTx(tx, func(resp *abci.Response) { ch <- resp }, mempl.TxInfo{})
+	err := mempool.CheckTx(ctx, tx, func(resp *abci.Response) { ch <- resp }, mempl.TxInfo{})
+
 	require.NoError(t, err)
 
 	// wait for tx to arrive in mempoool.
@@ -477,7 +480,7 @@ func TestUnconfirmedTxs(t *testing.T) {
 	for _, c := range GetClients(t, n, conf) {
 		mc := c.(client.MempoolClient)
 		limit := 1
-		res, err := mc.UnconfirmedTxs(context.Background(), &limit)
+		res, err := mc.UnconfirmedTxs(ctx, &limit)
 		require.NoError(t, err)
 
 		assert.Equal(t, 1, res.Count)
@@ -498,7 +501,8 @@ func TestNumUnconfirmedTxs(t *testing.T) {
 	n, conf := NodeSuite(t)
 	ch := make(chan *abci.Response, 1)
 	mempool := getMempool(t, n)
-	err := mempool.CheckTx(tx, func(resp *abci.Response) { ch <- resp }, mempl.TxInfo{})
+
+	err := mempool.CheckTx(ctx, tx, func(resp *abci.Response) { ch <- resp }, mempl.TxInfo{})
 	require.NoError(t, err)
 
 	// wait for tx to arrive in mempoool.

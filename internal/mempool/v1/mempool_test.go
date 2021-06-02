@@ -2,6 +2,7 @@ package v1
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
@@ -111,7 +112,7 @@ func checkTxs(t *testing.T, txmp *TxMempool, numTxs int, peerID uint16) []testTx
 			tx:       []byte(fmt.Sprintf("sender-%d=%X=%d", i, prefix, priority)),
 			priority: priority,
 		}
-		require.NoError(t, txmp.CheckTx(txs[i].tx, nil, txInfo))
+		require.NoError(t, txmp.CheckTx(context.Background(), txs[i].tx, nil, txInfo))
 	}
 
 	return txs
@@ -327,7 +328,7 @@ func TestTxMempool_CheckTxExceedsMaxSize(t *testing.T) {
 	_, err := rng.Read(tx)
 	require.NoError(t, err)
 
-	require.Error(t, txmp.CheckTx(tx, nil, mempool.TxInfo{SenderID: 0}))
+	require.Error(t, txmp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{SenderID: 0}))
 }
 
 func TestTxMempool_CheckTxSamePeer(t *testing.T) {
@@ -341,8 +342,8 @@ func TestTxMempool_CheckTxSamePeer(t *testing.T) {
 
 	tx := []byte(fmt.Sprintf("sender-0=%X=%d", prefix, 50))
 
-	require.NoError(t, txmp.CheckTx(tx, nil, mempool.TxInfo{SenderID: peerID}))
-	require.Error(t, txmp.CheckTx(tx, nil, mempool.TxInfo{SenderID: peerID}))
+	require.NoError(t, txmp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{SenderID: peerID}))
+	require.Error(t, txmp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{SenderID: peerID}))
 }
 
 func TestTxMempool_CheckTxSameSender(t *testing.T) {
@@ -361,9 +362,9 @@ func TestTxMempool_CheckTxSameSender(t *testing.T) {
 	tx1 := []byte(fmt.Sprintf("sender-0=%X=%d", prefix1, 50))
 	tx2 := []byte(fmt.Sprintf("sender-0=%X=%d", prefix2, 50))
 
-	require.NoError(t, txmp.CheckTx(tx1, nil, mempool.TxInfo{SenderID: peerID}))
+	require.NoError(t, txmp.CheckTx(context.Background(), tx1, nil, mempool.TxInfo{SenderID: peerID}))
 	require.Equal(t, 1, txmp.Size())
-	require.NoError(t, txmp.CheckTx(tx2, nil, mempool.TxInfo{SenderID: peerID}))
+	require.NoError(t, txmp.CheckTx(context.Background(), tx2, nil, mempool.TxInfo{SenderID: peerID}))
 	require.Equal(t, 1, txmp.Size())
 }
 

@@ -155,7 +155,7 @@ func waitForAndValidateBlock(
 		require.NoError(t, validateBlock(newBlock, activeVals))
 
 		for _, tx := range txs {
-			require.NoError(t, assertMempool(states[j].txNotifier).CheckTx(tx, nil, mempool.TxInfo{}))
+			require.NoError(t, assertMempool(states[j].txNotifier).CheckTx(context.Background(), tx, nil, mempool.TxInfo{}))
 		}
 	}
 
@@ -401,7 +401,15 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	}
 
 	// send a tx
-	require.NoError(t, assertMempool(states[3].txNotifier).CheckTx([]byte{1, 2, 3}, nil, mempool.TxInfo{}))
+	require.NoError(
+		t,
+		assertMempool(states[3].txNotifier).CheckTx(
+			context.Background(),
+			[]byte{1, 2, 3},
+			nil,
+			mempool.TxInfo{},
+		),
+	)
 
 	var wg sync.WaitGroup
 	for _, sub := range rts.subs {

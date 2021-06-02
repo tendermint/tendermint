@@ -1,6 +1,7 @@
 package v0
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -168,7 +169,7 @@ func (r *Reactor) handleMempoolMessage(envelope p2p.Envelope) error {
 		}
 
 		for _, tx := range protoTxs {
-			if err := r.mempool.CheckTx(types.Tx(tx), nil, txInfo); err != nil {
+			if err := r.mempool.CheckTx(context.Background(), types.Tx(tx), nil, txInfo); err != nil {
 				logger.Error("checktx failed for tx", "tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(tx)), "err", err)
 			}
 		}

@@ -199,7 +199,13 @@ func (mem *CListMempool) TxsWaitChan() <-chan struct{} {
 // CONTRACT: Either cb will get called, or err returned.
 //
 // Safe for concurrent use by multiple goroutines.
-func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo mempool.TxInfo) error {
+func (mem *CListMempool) CheckTx(
+	ctx context.Context,
+	tx types.Tx,
+	cb func(*abci.Response),
+	txInfo mempool.TxInfo,
+) error {
+
 	mem.updateMtx.RLock()
 	// use defer to unlock mutex because application (*local client*) might panic
 	defer mem.updateMtx.RUnlock()
@@ -250,9 +256,8 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo me
 		return nil
 	}
 
-	ctx := context.Background()
-	if txInfo.Context != nil {
-		ctx = txInfo.Context
+	if ctx == nil {
+		ctx = context.Background()
 	}
 
 	reqRes, err := mem.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{Tx: tx})

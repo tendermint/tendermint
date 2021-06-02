@@ -20,11 +20,11 @@ import (
 // CheckTx nor DeliverTx results.
 // More: https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_async
 func (env *Environment) BroadcastTxAsync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	err := env.Mempool.CheckTx(tx, nil, mempl.TxInfo{Context: ctx.Context()})
-
+	err := env.Mempool.CheckTx(ctx.Context(), tx, nil, mempl.TxInfo{})
 	if err != nil {
 		return nil, err
 	}
+
 	return &ctypes.ResultBroadcastTx{Hash: tx.Hash()}, nil
 }
 
@@ -33,14 +33,19 @@ func (env *Environment) BroadcastTxAsync(ctx *rpctypes.Context, tx types.Tx) (*c
 // More: https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_sync
 func (env *Environment) BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	resCh := make(chan *abci.Response, 1)
-	err := env.Mempool.CheckTx(tx, func(res *abci.Response) {
-		resCh <- res
-	}, mempl.TxInfo{Context: ctx.Context()})
+	err := env.Mempool.CheckTx(
+		ctx.Context(),
+		tx,
+		func(res *abci.Response) { resCh <- res },
+		mempl.TxInfo{},
+	)
 	if err != nil {
 		return nil, err
 	}
+
 	res := <-resCh
 	r := res.GetCheckTx()
+
 	return &ctypes.ResultBroadcastTx{
 		Code:      r.Code,
 		Data:      r.Data,
@@ -79,15 +84,20 @@ func (env *Environment) BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*
 
 	// Broadcast tx and wait for CheckTx result
 	checkTxResCh := make(chan *abci.Response, 1)
-	err = env.Mempool.CheckTx(tx, func(res *abci.Response) {
-		checkTxResCh <- res
-	}, mempl.TxInfo{Context: ctx.Context()})
+	err = env.Mempool.CheckTx(
+		ctx.Context(),
+		tx,
+		func(res *abci.Response) { checkTxResCh <- res },
+		mempl.TxInfo{},
+	)
 	if err != nil {
 		env.Logger.Error("Error on broadcastTxCommit", "err", err)
 		return nil, fmt.Errorf("error on broadcastTxCommit: %v", err)
 	}
+
 	checkTxResMsg := <-checkTxResCh
 	checkTxRes := checkTxResMsg.GetCheckTx()
+
 	if checkTxRes.Code != abci.CodeTypeOK {
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:   *checkTxRes,

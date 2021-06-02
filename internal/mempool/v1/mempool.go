@@ -212,7 +212,13 @@ func (txmp *TxMempool) TxsAvailable() <-chan struct{} {
 // NOTE:
 // - The applications' CheckTx implementation may panic.
 // - The caller is not to explicitly require any locks for executing CheckTx.
-func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo mempool.TxInfo) error {
+func (txmp *TxMempool) CheckTx(
+	ctx context.Context,
+	tx types.Tx,
+	cb func(*abci.Response),
+	txInfo mempool.TxInfo,
+) error {
+
 	txmp.mtx.RLock()
 	defer txmp.mtx.RUnlock()
 
@@ -253,7 +259,6 @@ func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo memp
 		return nil
 	}
 
-	ctx := txInfo.Context
 	if ctx == nil {
 		ctx = context.Background()
 	}
