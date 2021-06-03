@@ -45,9 +45,9 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-// Node is the highest level interface to a full Tendermint node.
+// nodeImpl is the highest level interface to a full Tendermint node.
 // It includes all configuration information and running services.
-type Node struct {
+type nodeImpl struct {
 	service.BaseService
 
 	// config
@@ -410,7 +410,7 @@ func NewNode(config *cfg.Config,
 		}()
 	}
 
-	node := &Node{
+	node := &nodeImpl{
 		config:        config,
 		genesisDoc:    genDoc,
 		privValidator: privValidator,
@@ -536,7 +536,7 @@ func NewSeedNode(config *cfg.Config,
 		}()
 	}
 
-	node := &Node{
+	node := &nodeImpl{
 		config:     config,
 		genesisDoc: genDoc,
 
@@ -561,7 +561,7 @@ func NewSeedNode(config *cfg.Config,
 }
 
 // Option sets a parameter for the node.
-type Option func(*Node)
+type Option func(*nodeImpl)
 
 // Temporary interface for switching to fast sync, we should get rid of v0.
 // See: https://github.com/tendermint/tendermint/issues/4595
@@ -582,7 +582,7 @@ type fastSyncReactor interface {
 //  - PEX
 //  - STATESYNC
 func CustomReactors(reactors map[string]p2p.Reactor) Option {
-	return func(n *Node) {
+	return func(n *nodeImpl) {
 		for name, reactor := range reactors {
 			if existingReactor := n.sw.Reactor(name); existingReactor != nil {
 				n.sw.Logger.Info("Replacing existing reactor with a custom one",
@@ -598,13 +598,13 @@ func CustomReactors(reactors map[string]p2p.Reactor) Option {
 // build a State object for bootstrapping the node.
 // WARNING: this interface is considered unstable and subject to change.
 func StateProvider(stateProvider statesync.StateProvider) Option {
-	return func(n *Node) {
+	return func(n *nodeImpl) {
 		n.stateSyncProvider = stateProvider
 	}
 }
 
 // OnStart starts the Node. It implements service.Service.
-func (n *Node) OnStart() error {
+func (n *nodeImpl) OnStart() error {
 	now := tmtime.Now()
 	genTime := n.genesisDoc.GenesisTime
 	if genTime.After(now) {
@@ -710,7 +710,7 @@ func (n *Node) OnStart() error {
 }
 
 // OnStop stops the Node. It implements service.Service.
-func (n *Node) OnStop() {
+func (n *nodeImpl) OnStop() {
 
 	n.Logger.Info("Stopping Node")
 
@@ -797,7 +797,7 @@ func (n *Node) OnStop() {
 }
 
 // ConfigureRPC makes sure RPC has all the objects it needs to operate.
-func (n *Node) ConfigureRPC() (*rpccore.Environment, error) {
+func (n *nodeImpl) ConfigureRPC() (*rpccore.Environment, error) {
 	rpcCoreEnv := rpccore.Environment{
 		ProxyAppQuery:   n.proxyApp.Query(),
 		ProxyAppMempool: n.proxyApp.Mempool(),
@@ -833,7 +833,7 @@ func (n *Node) ConfigureRPC() (*rpccore.Environment, error) {
 	return &rpcCoreEnv, nil
 }
 
-func (n *Node) startRPC() ([]net.Listener, error) {
+func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 	env, err := n.ConfigureRPC()
 	if err != nil {
 		return nil, err
@@ -954,7 +954,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 
 // startPrometheusServer starts a Prometheus HTTP server, listening for metrics
 // collectors on addr.
-func (n *Node) startPrometheusServer(addr string) *http.Server {
+func (n *nodeImpl) startPrometheusServer(addr string) *http.Server {
 	srv := &http.Server{
 		Addr: addr,
 		Handler: promhttp.InstrumentMetricHandler(
@@ -974,90 +974,90 @@ func (n *Node) startPrometheusServer(addr string) *http.Server {
 }
 
 // Switch returns the Node's Switch.
-func (n *Node) Switch() *p2p.Switch {
+func (n *nodeImpl) Switch() *p2p.Switch {
 	return n.sw
 }
 
 // BlockStore returns the Node's BlockStore.
-func (n *Node) BlockStore() *store.BlockStore {
+func (n *nodeImpl) BlockStore() *store.BlockStore {
 	return n.blockStore
 }
 
 // ConsensusState returns the Node's ConsensusState.
-func (n *Node) ConsensusState() *cs.State {
+func (n *nodeImpl) ConsensusState() *cs.State {
 	return n.consensusState
 }
 
 // ConsensusReactor returns the Node's ConsensusReactor.
-func (n *Node) ConsensusReactor() *cs.Reactor {
+func (n *nodeImpl) ConsensusReactor() *cs.Reactor {
 	return n.consensusReactor
 }
 
 // MempoolReactor returns the Node's mempool reactor.
-func (n *Node) MempoolReactor() service.Service {
+func (n *nodeImpl) MempoolReactor() service.Service {
 	return n.mempoolReactor
 }
 
 // Mempool returns the Node's mempool.
-func (n *Node) Mempool() mempool.Mempool {
+func (n *nodeImpl) Mempool() mempool.Mempool {
 	return n.mempool
 }
 
 // PEXReactor returns the Node's PEXReactor. It returns nil if PEX is disabled.
-func (n *Node) PEXReactor() *pex.Reactor {
+func (n *nodeImpl) PEXReactor() *pex.Reactor {
 	return n.pexReactor
 }
 
 // EvidencePool returns the Node's EvidencePool.
-func (n *Node) EvidencePool() *evidence.Pool {
+func (n *nodeImpl) EvidencePool() *evidence.Pool {
 	return n.evidencePool
 }
 
 // EventBus returns the Node's EventBus.
-func (n *Node) EventBus() *types.EventBus {
+func (n *nodeImpl) EventBus() *types.EventBus {
 	return n.eventBus
 }
 
 // PrivValidator returns the Node's PrivValidator.
 // XXX: for convenience only!
-func (n *Node) PrivValidator() types.PrivValidator {
+func (n *nodeImpl) PrivValidator() types.PrivValidator {
 	return n.privValidator
 }
 
 // GenesisDoc returns the Node's GenesisDoc.
-func (n *Node) GenesisDoc() *types.GenesisDoc {
+func (n *nodeImpl) GenesisDoc() *types.GenesisDoc {
 	return n.genesisDoc
 }
 
 // ProxyApp returns the Node's AppConns, representing its connections to the ABCI application.
-func (n *Node) ProxyApp() proxy.AppConns {
+func (n *nodeImpl) ProxyApp() proxy.AppConns {
 	return n.proxyApp
 }
 
 // Config returns the Node's config.
-func (n *Node) Config() *cfg.Config {
+func (n *nodeImpl) Config() *cfg.Config {
 	return n.config
 }
 
 // EventSinks returns the Node's event indexing sinks.
-func (n *Node) EventSinks() []indexer.EventSink {
+func (n *nodeImpl) EventSinks() []indexer.EventSink {
 	return n.eventSinks
 }
 
 //------------------------------------------------------------------------------
 
-func (n *Node) Listeners() []string {
+func (n *nodeImpl) Listeners() []string {
 	return []string{
 		fmt.Sprintf("Listener(@%v)", n.config.P2P.ExternalAddress),
 	}
 }
 
-func (n *Node) IsListening() bool {
+func (n *nodeImpl) IsListening() bool {
 	return n.isListening
 }
 
 // NodeInfo returns the Node's Info from the Switch.
-func (n *Node) NodeInfo() p2p.NodeInfo {
+func (n *nodeImpl) NodeInfo() p2p.NodeInfo {
 	return n.nodeInfo
 }
 

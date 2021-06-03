@@ -46,7 +46,7 @@ func TestNodeStartStop(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, ns.Start())
 
-	n, ok := ns.(*Node)
+	n, ok := ns.(*nodeImpl)
 	require.True(t, ok)
 
 	t.Logf("Started node %v", n.sw.NodeInfo())
@@ -82,12 +82,12 @@ func TestNodeStartStop(t *testing.T) {
 	}
 }
 
-func GetTestNode(t *testing.T, conf *cfg.Config, logger log.Logger) *Node {
+func getTestNode(t *testing.T, conf *cfg.Config, logger log.Logger) *nodeImpl {
 	t.Helper()
 	ns, err := DefaultNewNode(conf, logger)
 	require.NoError(t, err)
 
-	n, ok := ns.(*Node)
+	n, ok := ns.(*nodeImpl)
 	require.True(t, ok)
 	return n
 }
@@ -98,7 +98,7 @@ func TestNodeDelayedStart(t *testing.T) {
 	now := tmtime.Now()
 
 	// create & start node
-	n := GetTestNode(t, config, log.TestingLogger())
+	n := getTestNode(t, config, log.TestingLogger())
 	n.GenesisDoc().GenesisTime = now.Add(2 * time.Second)
 
 	require.NoError(t, n.Start())
@@ -113,7 +113,7 @@ func TestNodeSetAppVersion(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 
 	// create node
-	n := GetTestNode(t, config, log.TestingLogger())
+	n := getTestNode(t, config, log.TestingLogger())
 
 	// default config uses the kvstore app
 	var appVersion uint64 = kvstore.ProtocolVersion
@@ -155,7 +155,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	}()
 	defer signerServer.Stop() //nolint:errcheck // ignore for tests
 
-	n := GetTestNode(t, config, log.TestingLogger())
+	n := getTestNode(t, config, log.TestingLogger())
 	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
 }
 
@@ -197,7 +197,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 		require.NoError(t, err)
 	}()
 	defer pvsc.Stop() //nolint:errcheck // ignore for tests
-	n := GetTestNode(t, config, log.TestingLogger())
+	n := getTestNode(t, config, log.TestingLogger())
 	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
 }
 
@@ -500,7 +500,7 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 		CustomReactors(map[string]p2p.Reactor{"FOO": cr, "BLOCKCHAIN": customBlockchainReactor}),
 	)
 	require.NoError(t, err)
-	n, ok := ns.(*Node)
+	n, ok := ns.(*nodeImpl)
 	require.True(t, ok)
 
 	err = n.Start()
@@ -529,7 +529,7 @@ func TestNodeNewSeedNode(t *testing.T) {
 		log.TestingLogger(),
 	)
 	require.NoError(t, err)
-	n, ok := ns.(*Node)
+	n, ok := ns.(*nodeImpl)
 	require.True(t, ok)
 
 	err = n.Start()
@@ -542,19 +542,19 @@ func TestNodeSetEventSink(t *testing.T) {
 	config := cfg.ResetTestRoot("node_app_version_test")
 	defer os.RemoveAll(config.RootDir)
 
-	n := GetTestNode(t, config, log.TestingLogger())
+	n := getTestNode(t, config, log.TestingLogger())
 
 	assert.Equal(t, 1, len(n.eventSinks))
 	assert.Equal(t, indexer.KV, n.eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"null"}
-	n = GetTestNode(t, config, log.TestingLogger())
+	n = getTestNode(t, config, log.TestingLogger())
 
 	assert.Equal(t, 1, len(n.eventSinks))
 	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"null", "kv"}
-	n = GetTestNode(t, config, log.TestingLogger())
+	n = getTestNode(t, config, log.TestingLogger())
 
 	assert.Equal(t, 1, len(n.eventSinks))
 	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
@@ -565,7 +565,7 @@ func TestNodeSetEventSink(t *testing.T) {
 	assert.Equal(t, errors.New("unsupported event sink type"), err)
 
 	config.TxIndex.Indexer = []string{}
-	n = GetTestNode(t, config, log.TestingLogger())
+	n = getTestNode(t, config, log.TestingLogger())
 
 	assert.Equal(t, 1, len(n.eventSinks))
 	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
@@ -579,14 +579,14 @@ func TestNodeSetEventSink(t *testing.T) {
 
 	config.TxIndex.Indexer = []string{"psql"}
 	config.TxIndex.PsqlConn = psqlConn
-	n = GetTestNode(t, config, log.TestingLogger())
+	n = getTestNode(t, config, log.TestingLogger())
 	assert.Equal(t, 1, len(n.eventSinks))
 	assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
 	n.OnStop()
 
 	config.TxIndex.Indexer = []string{"psql", "kv"}
 	config.TxIndex.PsqlConn = psqlConn
-	n = GetTestNode(t, config, log.TestingLogger())
+	n = getTestNode(t, config, log.TestingLogger())
 	assert.Equal(t, 2, len(n.eventSinks))
 	// we use map to filter the duplicated sinks, so it's not guarantee the order when append sinks.
 	if n.eventSinks[0].Type() == indexer.KV {
@@ -599,7 +599,7 @@ func TestNodeSetEventSink(t *testing.T) {
 
 	config.TxIndex.Indexer = []string{"kv", "psql"}
 	config.TxIndex.PsqlConn = psqlConn
-	n = GetTestNode(t, config, log.TestingLogger())
+	n = getTestNode(t, config, log.TestingLogger())
 	assert.Equal(t, 2, len(n.eventSinks))
 	if n.eventSinks[0].Type() == indexer.KV {
 		assert.Equal(t, indexer.PSQL, n.eventSinks[1].Type())
