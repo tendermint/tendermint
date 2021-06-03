@@ -92,15 +92,6 @@ func PruningSize(h uint16) Option {
 	}
 }
 
-// ConfirmationFunction option can be used to prompt to confirm an action. For
-// example, remove newer headers if the light client is being reset with an
-// older header. No confirmation is required by default!
-func ConfirmationFunction(fn func(action string) bool) Option {
-	return func(c *Client) {
-		c.confirmationFn = fn
-	}
-}
-
 // Logger option can be used to set a logger for the client.
 func Logger(l log.Logger) Option {
 	return func(c *Client) {
@@ -155,14 +146,8 @@ type Client struct {
 	// Highest trusted light block from the store (height=H).
 	latestTrustedBlock *types.LightBlock
 
-	// See RemoveNoLongerTrustedHeadersPeriod option
+	// See PruningSize option
 	pruningSize uint16
-	// See ConfirmationFunction option
-	confirmationFn func(action string) bool
-	// The light client keeps track of how many times it has requested a light
-	// block from it's providers. When this exceeds the amount of witnesses the
-	// light client will just return the last error sent by the providers
-	// repeatRequests uint16
 
 	logger log.Logger
 }
@@ -186,35 +171,62 @@ func NewClient(
 	trustedStore store.Store,
 	options ...Option) (*Client, error) {
 
+	// Check whether the trusted store already has a trusted block. If so, then create
+	// a new client from the trusted store instead of the trust options.
+	lastHeight, err := trustedStore.LastLightBlockHeight()
+	if err != nil {
+		return nil, err
+	}
+	if lastHeight > 0 {
+		return NewClientFromTrustedStore(
+			chainID, trustOptions.Period, primary, witnesses, trustedStore, options...,
+		)
+	}
+
+	// Validate trust options
 	if err := trustOptions.ValidateBasic(); err != nil {
 		return nil, fmt.Errorf("invalid TrustOptions: %w", err)
 	}
 
-	c, err := NewClientFromTrustedStore(chainID, trustOptions.Period, primary, witnesses, trustedStore, options...)
-	if err != nil {
+	// Validate the number of witnesses.
+	if len(witnesses) < 1 {
+		return nil, ErrNoWitnesses
+	}
+
+	c := &Client{
+		chainID:          chainID,
+		trustingPeriod:   trustOptions.Period,
+		verificationMode: skipping,
+		trustLevel:       DefaultTrustLevel,
+		maxClockDrift:    defaultMaxClockDrift,
+		maxBlockLag:      defaultMaxBlockLag,
+		primary:          primary,
+		witnesses:        witnesses,
+		trustedStore:     trustedStore,
+		pruningSize:      defaultPruningSize,
+		logger:           log.NewNopLogger(),
+	}
+
+	for _, o := range options {
+		o(c)
+	}
+
+	// Validate trust level.
+	if err := ValidateTrustLevel(c.trustLevel); err != nil {
 		return nil, err
 	}
 
-	if c.latestTrustedBlock != nil {
-		c.logger.Info("checking trusted light block using options")
-		if err := c.checkTrustedHeaderUsingOptions(ctx, trustOptions); err != nil {
-			return nil, err
-		}
+	// Use the trusted hash and height to fetch the first weakly-trusted block
+	// from the primary provider. Assert that all the witnesses have the same block
+	if err := c.initializeWithTrustOptions(ctx, trustOptions); err != nil {
+		return nil, err
 	}
 
-	if c.latestTrustedBlock == nil || c.latestTrustedBlock.Height < trustOptions.Height {
-		c.logger.Info("downloading trusted light block using options")
-		if err := c.initializeWithTrustOptions(ctx, trustOptions); err != nil {
-			return nil, err
-		}
-	}
-
-	return c, err
+	return c, nil
 }
 
-// NewClientFromTrustedStore initializes existing client from the trusted store.
-//
-// See NewClient
+// NewClientFromTrustedStore initializes an existing client from the trusted store.
+// It does not check that the providers have the same trusted block.
 func NewClientFromTrustedStore(
 	chainID string,
 	trustingPeriod time.Duration,
@@ -234,7 +246,6 @@ func NewClientFromTrustedStore(
 		witnesses:        witnesses,
 		trustedStore:     trustedStore,
 		pruningSize:      defaultPruningSize,
-		confirmationFn:   func(action string) bool { return true },
 		logger:           log.NewNopLogger(),
 	}
 
@@ -252,6 +263,7 @@ func NewClientFromTrustedStore(
 		return nil, err
 	}
 
+	// Check that the trusted store has at least one block and
 	if err := c.restoreTrustedLightBlock(); err != nil {
 		return nil, err
 	}
@@ -265,126 +277,48 @@ func (c *Client) restoreTrustedLightBlock() error {
 	if err != nil {
 		return fmt.Errorf("can't get last trusted light block height: %w", err)
 	}
-
-	if lastHeight > 0 {
-		trustedBlock, err := c.trustedStore.LightBlock(lastHeight)
-		if err != nil {
-			return fmt.Errorf("can't get last trusted light block: %w", err)
-		}
-		c.latestTrustedBlock = trustedBlock
-		c.logger.Info("restored trusted light block", "height", lastHeight)
+	if lastHeight <= 0 {
+		return errors.New("trusted store is empty")
 	}
 
-	return nil
-}
-
-// if options.Height:
-//
-//     1) ahead of trustedLightBlock.Height => fetch light blocks (same height as
-//     trustedLightBlock) from primary provider and check it's hash matches the
-//     trustedLightBlock's hash (if not, remove trustedLightBlock and all the light blocks
-//     before)
-//
-//     2) equals trustedLightBlock.Height => check options.Hash matches the
-//     trustedLightBlock's hash (if not, remove trustedLightBlock and all the light blocks
-//     before)
-//
-//     3) behind trustedLightBlock.Height => remove all the light blocks between
-//     options.Height and trustedLightBlock.Height, update trustedLightBlock, then
-//     check options.Hash matches the trustedLightBlock's hash (if not, remove
-//     trustedLightBlock and all the light blocks before)
-//
-// The intuition here is the user is always right. I.e. if she decides to reset
-// the light client with an older header, there must be a reason for it.
-func (c *Client) checkTrustedHeaderUsingOptions(ctx context.Context, options TrustOptions) error {
-	var primaryHash []byte
-	switch {
-	case options.Height > c.latestTrustedBlock.Height:
-		h, err := c.lightBlockFromPrimary(ctx, c.latestTrustedBlock.Height)
-		if err != nil {
-			return err
-		}
-		primaryHash = h.Hash()
-	case options.Height == c.latestTrustedBlock.Height:
-		primaryHash = options.Hash
-	case options.Height < c.latestTrustedBlock.Height:
-		c.logger.Info("client initialized with old header (trusted is more recent)",
-			"old", options.Height,
-			"trustedHeight", c.latestTrustedBlock.Height,
-			"trustedHash", c.latestTrustedBlock.Hash())
-
-		action := fmt.Sprintf(
-			"Rollback to %d (%X)? Note this will remove newer light blocks up to %d (%X)",
-			options.Height, options.Hash,
-			c.latestTrustedBlock.Height, c.latestTrustedBlock.Hash())
-		if c.confirmationFn(action) {
-			// remove all the headers (options.Height, trustedHeader.Height]
-			err := c.cleanupAfter(options.Height)
-			if err != nil {
-				return fmt.Errorf("cleanupAfter(%d): %w", options.Height, err)
-			}
-
-			c.logger.Info("Rolled back to older header (newer headers were removed)",
-				"old", options.Height)
-		} else {
-			return nil
-		}
-
-		primaryHash = options.Hash
+	trustedBlock, err := c.trustedStore.LightBlock(lastHeight)
+	if err != nil {
+		return fmt.Errorf("can't get last trusted light block: %w", err)
 	}
-
-	if !bytes.Equal(primaryHash, c.latestTrustedBlock.Hash()) {
-		c.logger.Info("previous trusted header's hash (h1) doesn't match hash from primary provider (h2)",
-			"h1", c.latestTrustedBlock.Hash(), "h2", primaryHash)
-
-		action := fmt.Sprintf(
-			"Previous trusted header's hash %X doesn't match hash %X from primary provider. Remove all the stored light blocks?",
-			c.latestTrustedBlock.Hash(), primaryHash)
-		if c.confirmationFn(action) {
-			err := c.Cleanup()
-			if err != nil {
-				return fmt.Errorf("failed to cleanup: %w", err)
-			}
-		} else {
-			return errors.New("refused to remove the stored light blocks despite hashes mismatch")
-		}
-	}
+	c.latestTrustedBlock = trustedBlock
+	c.logger.Info("restored trusted light block", "height", lastHeight)
 
 	return nil
 }
 
 // initializeWithTrustOptions fetches the weakly-trusted light block from
-// primary provider.
+// primary provider, matches it to the trusted hash, and sets it as the
+// lastTrustedBlock. It then asserts that all witnesses have the same light block.
 func (c *Client) initializeWithTrustOptions(ctx context.Context, options TrustOptions) error {
-	// 1) Fetch and verify the light block.
+	// 1) Fetch and verify the light block. Note that we do not verify the time of the first block
 	l, err := c.lightBlockFromPrimary(ctx, options.Height)
 	if err != nil {
 		return err
 	}
 
-	// NOTE: - Verify func will check if it's expired or not.
-	//       - h.Time is not being checked against time.Now() because we don't
-	//         want to add yet another argument to NewClient* functions.
-	if err := l.ValidateBasic(c.chainID); err != nil {
-		return err
-	}
-
-	if !bytes.Equal(l.Hash(), options.Hash) {
+	// 2) Assert that the hashes match
+	if !bytes.Equal(l.Header.Hash(), options.Hash) {
 		return fmt.Errorf("expected header's hash %X, but got %X", options.Hash, l.Hash())
 	}
 
-	// 2) Ensure that +2/3 of validators signed correctly.
+	// 3) Ensure that +2/3 of validators signed correctly. This also sanity checks that the
+	// chain ID is the same.
 	err = l.ValidatorSet.VerifyCommitLight(c.chainID, l.Commit.BlockID, l.Height, l.Commit)
 	if err != nil {
 		return fmt.Errorf("invalid commit: %w", err)
 	}
 
-	// 3) Cross-verify with witnesses to ensure everybody has the same state.
+	// 4) Cross-verify with witnesses to ensure everybody has the same state.
 	if err := c.compareFirstHeaderWithWitnesses(ctx, l.SignedHeader); err != nil {
 		return err
 	}
 
-	// 4) Persist both of them and continue.
+	// 5) Persist both of them and continue.
 	return c.updateTrustedLightBlock(l)
 }
 
@@ -883,37 +817,6 @@ func (c *Client) Cleanup() error {
 	c.logger.Info("removing all light blocks")
 	c.latestTrustedBlock = nil
 	return c.trustedStore.Prune(0)
-}
-
-// cleanupAfter deletes all headers & validator sets after +height+. It also
-// resets latestTrustedBlock to the latest header.
-func (c *Client) cleanupAfter(height int64) error {
-	prevHeight := c.latestTrustedBlock.Height
-
-	for {
-		h, err := c.trustedStore.LightBlockBefore(prevHeight)
-		if err == store.ErrLightBlockNotFound || (h != nil && h.Height <= height) {
-			break
-		} else if err != nil {
-			return fmt.Errorf("failed to get header before %d: %w", prevHeight, err)
-		}
-
-		err = c.trustedStore.DeleteLightBlock(h.Height)
-		if err != nil {
-			c.logger.Error("can't remove a trusted header & validator set", "err", err,
-				"height", h.Height)
-		}
-
-		prevHeight = h.Height
-	}
-
-	c.latestTrustedBlock = nil
-	err := c.restoreTrustedLightBlock()
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (c *Client) updateTrustedLightBlock(l *types.LightBlock) error {
