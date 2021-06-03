@@ -298,7 +298,7 @@ func setupNode() (*config.Config, log.Logger, *p2p.NodeKey, error) {
 		return nil, nil, nil, fmt.Errorf("error in config file: %w", err)
 	}
 
-	nodeLogger, err := log.NewDefaultLogger(tmcfg.LogFormat, tmcfg.LogLevel, false)
+	nodeLogger, err := log.NewDefaultLogger(log.LogFormatJSON, tmcfg.LogLevel, false)
 	if err != nil {
 		return nil, nil, nil, err
 	}
