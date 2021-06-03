@@ -139,7 +139,6 @@ func startNode(cfg *Config) error {
 		proxy.NewLocalClientCreator(app),
 		node.DefaultGenesisDocProviderFunc(tmcfg),
 		node.DefaultDBProvider,
-		node.DefaultMetricsProvider(tmcfg.Instrumentation),
 		nodeLogger,
 	)
 	if err != nil {

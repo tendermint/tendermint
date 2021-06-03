@@ -132,7 +132,6 @@ func StartTendermint(ctx context.Context,
 	node, err := nm.NewNode(conf, pv, nodeKey, papp,
 		nm.DefaultGenesisDocProviderFunc(conf),
 		nm.DefaultDBProvider,
-		nm.DefaultMetricsProvider(conf.Instrumentation),
 		logger)
 	if err != nil {
 		return nil, func(_ context.Context) error { return nil }, err

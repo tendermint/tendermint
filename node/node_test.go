@@ -42,10 +42,12 @@ func TestNodeStartStop(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 
 	// create & start node
-	n, err := DefaultNewNode(config, log.TestingLogger())
+	ns, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
-	err = n.Start()
-	require.NoError(t, err)
+	require.NoError(t, ns.Start())
+
+	n, ok := ns.(*Node)
+	require.True(t, ok)
 
 	t.Logf("Started node %v", n.sw.NodeInfo())
 
@@ -80,18 +82,26 @@ func TestNodeStartStop(t *testing.T) {
 	}
 }
 
+func GetTestNode(t *testing.T, conf *cfg.Config, logger log.Logger) *Node {
+	t.Helper()
+	ns, err := DefaultNewNode(conf, logger)
+	require.NoError(t, err)
+
+	n, ok := ns.(*Node)
+	require.True(t, ok)
+	return n
+}
+
 func TestNodeDelayedStart(t *testing.T) {
 	config := cfg.ResetTestRoot("node_delayed_start_test")
 	defer os.RemoveAll(config.RootDir)
 	now := tmtime.Now()
 
 	// create & start node
-	n, err := DefaultNewNode(config, log.TestingLogger())
+	n := GetTestNode(t, config, log.TestingLogger())
 	n.GenesisDoc().GenesisTime = now.Add(2 * time.Second)
-	require.NoError(t, err)
 
-	err = n.Start()
-	require.NoError(t, err)
+	require.NoError(t, n.Start())
 	defer n.Stop() //nolint:errcheck // ignore for tests
 
 	startTime := tmtime.Now()
@@ -102,9 +112,8 @@ func TestNodeSetAppVersion(t *testing.T) {
 	config := cfg.ResetTestRoot("node_app_version_test")
 	defer os.RemoveAll(config.RootDir)
 
-	// create & start node
-	n, err := DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	// create node
+	n := GetTestNode(t, config, log.TestingLogger())
 
 	// default config uses the kvstore app
 	var appVersion uint64 = kvstore.ProtocolVersion
@@ -146,8 +155,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	}()
 	defer signerServer.Stop() //nolint:errcheck // ignore for tests
 
-	n, err := DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	n := GetTestNode(t, config, log.TestingLogger())
 	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
 }
 
@@ -189,9 +197,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 		require.NoError(t, err)
 	}()
 	defer pvsc.Stop() //nolint:errcheck // ignore for tests
-
-	n, err := DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	n := GetTestNode(t, config, log.TestingLogger())
 	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
 }
 
@@ -484,17 +490,18 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 
 	appClient, closer := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
 	t.Cleanup(func() { closer.Close() })
-	n, err := NewNode(config,
+	ns, err := NewNode(config,
 		pval,
 		nodeKey,
 		appClient,
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
-		DefaultMetricsProvider(config.Instrumentation),
 		log.TestingLogger(),
 		CustomReactors(map[string]p2p.Reactor{"FOO": cr, "BLOCKCHAIN": customBlockchainReactor}),
 	)
 	require.NoError(t, err)
+	n, ok := ns.(*Node)
+	require.True(t, ok)
 
 	err = n.Start()
 	require.NoError(t, err)
@@ -515,13 +522,15 @@ func TestNodeNewSeedNode(t *testing.T) {
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	require.NoError(t, err)
 
-	n, err := NewSeedNode(config,
+	ns, err := NewSeedNode(config,
 		DefaultDBProvider,
 		nodeKey,
 		DefaultGenesisDocProviderFunc(config),
 		log.TestingLogger(),
 	)
 	require.NoError(t, err)
+	n, ok := ns.(*Node)
+	require.True(t, ok)
 
 	err = n.Start()
 	require.NoError(t, err)
@@ -533,58 +542,51 @@ func TestNodeSetEventSink(t *testing.T) {
 	config := cfg.ResetTestRoot("node_app_version_test")
 	defer os.RemoveAll(config.RootDir)
 
-	// create & start node
-	n, err := DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	n := GetTestNode(t, config, log.TestingLogger())
 
 	assert.Equal(t, 1, len(n.eventSinks))
 	assert.Equal(t, indexer.KV, n.eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"null"}
-	n, err = DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	n = GetTestNode(t, config, log.TestingLogger())
 
 	assert.Equal(t, 1, len(n.eventSinks))
 	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"null", "kv"}
-	n, err = DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	n = GetTestNode(t, config, log.TestingLogger())
 
 	assert.Equal(t, 1, len(n.eventSinks))
 	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"kvv"}
-	n, err = DefaultNewNode(config, log.TestingLogger())
-	assert.Nil(t, n)
+	ns, err := DefaultNewNode(config, log.TestingLogger())
+	assert.Nil(t, ns)
 	assert.Equal(t, errors.New("unsupported event sink type"), err)
 
 	config.TxIndex.Indexer = []string{}
-	n, err = DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	n = GetTestNode(t, config, log.TestingLogger())
 
 	assert.Equal(t, 1, len(n.eventSinks))
 	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"psql"}
-	n, err = DefaultNewNode(config, log.TestingLogger())
-	assert.Nil(t, n)
+	ns, err = DefaultNewNode(config, log.TestingLogger())
+	assert.Nil(t, ns)
 	assert.Equal(t, errors.New("the psql connection settings cannot be empty"), err)
 
 	var psqlConn = "test"
 
 	config.TxIndex.Indexer = []string{"psql"}
 	config.TxIndex.PsqlConn = psqlConn
-	n, err = DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	n = GetTestNode(t, config, log.TestingLogger())
 	assert.Equal(t, 1, len(n.eventSinks))
 	assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
 	n.OnStop()
 
 	config.TxIndex.Indexer = []string{"psql", "kv"}
 	config.TxIndex.PsqlConn = psqlConn
-	n, err = DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	n = GetTestNode(t, config, log.TestingLogger())
 	assert.Equal(t, 2, len(n.eventSinks))
 	// we use map to filter the duplicated sinks, so it's not guarantee the order when append sinks.
 	if n.eventSinks[0].Type() == indexer.KV {
@@ -597,8 +599,7 @@ func TestNodeSetEventSink(t *testing.T) {
 
 	config.TxIndex.Indexer = []string{"kv", "psql"}
 	config.TxIndex.PsqlConn = psqlConn
-	n, err = DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	n = GetTestNode(t, config, log.TestingLogger())
 	assert.Equal(t, 2, len(n.eventSinks))
 	if n.eventSinks[0].Type() == indexer.KV {
 		assert.Equal(t, indexer.PSQL, n.eventSinks[1].Type())
