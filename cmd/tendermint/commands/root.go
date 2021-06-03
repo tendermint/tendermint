@@ -56,7 +56,11 @@ var RootCmd = &cobra.Command{
 			return err
 		}
 
-		logger = log.MustNewDefaultLogger(config.LogFormat, config.LogLevel, false)
+		logger, err = log.NewDefaultLogger(config.LogFormat, config.LogLevel, false)
+		if err != nil {
+			return err
+		}
+
 		logger = logger.With("module", "main")
 		return nil
 	},
