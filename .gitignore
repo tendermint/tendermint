@@ -24,6 +24,7 @@ docs/.vuepress/dist
 docs/_build
 docs/dist
 docs/node_modules/
+docs/spec
 index.html.md
 libs/pubsub/query/fuzz_test/output
 profile\.out

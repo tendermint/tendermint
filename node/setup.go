@@ -3,10 +3,12 @@ package node
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net"
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
+	"strings"
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
@@ -20,18 +22,19 @@ import (
 	"github.com/tendermint/tendermint/evidence"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/libs/strings"
-	mempl "github.com/tendermint/tendermint/mempool"
+	tmstrings "github.com/tendermint/tendermint/libs/strings"
+	"github.com/tendermint/tendermint/mempool"
+	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
+	mempoolv1 "github.com/tendermint/tendermint/mempool/v1"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
 	protop2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
-	blockidxkv "github.com/tendermint/tendermint/state/indexer/block/kv"
-	blockidxnull "github.com/tendermint/tendermint/state/indexer/block/null"
-	"github.com/tendermint/tendermint/state/indexer/tx/kv"
-	"github.com/tendermint/tendermint/state/indexer/tx/null"
+	kv "github.com/tendermint/tendermint/state/indexer/sink/kv"
+	null "github.com/tendermint/tendermint/state/indexer/sink/null"
+	psql "github.com/tendermint/tendermint/state/indexer/sink/psql"
 	"github.com/tendermint/tendermint/statesync"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -73,35 +76,61 @@ func createAndStartIndexerService(
 	dbProvider DBProvider,
 	eventBus *types.EventBus,
 	logger log.Logger,
-) (*indexer.Service, indexer.TxIndexer, indexer.BlockIndexer, error) {
+	chainID string,
+) (*indexer.Service, []indexer.EventSink, error) {
 
-	var (
-		txIndexer    indexer.TxIndexer
-		blockIndexer indexer.BlockIndexer
-	)
+	eventSinks := []indexer.EventSink{}
 
-	switch config.TxIndex.Indexer {
-	case "kv":
-		store, err := dbProvider(&DBContext{"tx_index", config})
-		if err != nil {
-			return nil, nil, nil, err
+	// Check duplicated sinks.
+	sinks := map[string]bool{}
+	for _, s := range config.TxIndex.Indexer {
+		sl := strings.ToLower(s)
+		if sinks[sl] {
+			return nil, nil, errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
 		}
-
-		txIndexer = kv.NewTxIndex(store)
-		blockIndexer = blockidxkv.New(dbm.NewPrefixDB(store, []byte("block_events")))
-	default:
-		txIndexer = &null.TxIndex{}
-		blockIndexer = &blockidxnull.BlockerIndexer{}
+		sinks[sl] = true
 	}
 
-	indexerService := indexer.NewIndexerService(txIndexer, blockIndexer, eventBus)
+loop:
+	for k := range sinks {
+		switch k {
+		case string(indexer.NULL):
+			// when we see null in the config, the eventsinks will be reset with the nullEventSink.
+			eventSinks = []indexer.EventSink{null.NewEventSink()}
+			break loop
+		case string(indexer.KV):
+			store, err := dbProvider(&DBContext{"tx_index", config})
+			if err != nil {
+				return nil, nil, err
+			}
+			eventSinks = append(eventSinks, kv.NewEventSink(store))
+		case string(indexer.PSQL):
+			conn := config.TxIndex.PsqlConn
+			if conn == "" {
+				return nil, nil, errors.New("the psql connection settings cannot be empty")
+			}
+			es, _, err := psql.NewEventSink(conn, chainID)
+			if err != nil {
+				return nil, nil, err
+			}
+			eventSinks = append(eventSinks, es)
+		default:
+			return nil, nil, errors.New("unsupported event sink type")
+		}
+	}
+
+	if len(eventSinks) == 0 {
+		eventSinks = []indexer.EventSink{null.NewEventSink()}
+	}
+
+	indexerService := indexer.NewIndexerService(eventSinks, eventBus)
 	indexerService.SetLogger(logger.With("module", "txindex"))
 
 	if err := indexerService.Start(); err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
-	return indexerService, txIndexer, blockIndexer, nil
+	return indexerService, eventSinks, nil
 }
 
 func doHandshake(
@@ -125,7 +154,7 @@ func doHandshake(
 func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusLogger log.Logger, mode string) {
 	// Log the version info.
 	logger.Info("Version info",
-		"software", version.TMCoreSemVer,
+		"tmVersion", version.TMVersion,
 		"block", version.BlockProtocol,
 		"p2p", version.P2PProtocol,
 		"mode", mode,
@@ -165,25 +194,14 @@ func createMempoolReactor(
 	config *cfg.Config,
 	proxyApp proxy.AppConns,
 	state sm.State,
-	memplMetrics *mempl.Metrics,
+	memplMetrics *mempool.Metrics,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	logger log.Logger,
-) (*p2p.ReactorShim, *mempl.Reactor, *mempl.CListMempool) {
+) (*p2p.ReactorShim, service.Service, mempool.Mempool, error) {
 
-	logger = logger.With("module", "mempool")
-	mempool := mempl.NewCListMempool(
-		config.Mempool,
-		proxyApp.Mempool(),
-		state.LastBlockHeight,
-		mempl.WithMetrics(memplMetrics),
-		mempl.WithPreCheck(sm.TxPreCheck(state)),
-		mempl.WithPostCheck(sm.TxPostCheck(state)),
-	)
-
-	mempool.SetLogger(logger)
-
-	channelShims := mempl.GetChannelShims(config.Mempool)
+	logger = logger.With("module", "mempool", "version", config.Mempool.Version)
+	channelShims := mempoolv0.GetChannelShims(config.Mempool)
 	reactorShim := p2p.NewReactorShim(logger, "MempoolShim", channelShims)
 
 	var (
@@ -199,20 +217,63 @@ func createMempoolReactor(
 		peerUpdates = reactorShim.PeerUpdates
 	}
 
-	reactor := mempl.NewReactor(
-		logger,
-		config.Mempool,
-		peerManager,
-		mempool,
-		channels[mempl.MempoolChannel],
-		peerUpdates,
-	)
+	switch config.Mempool.Version {
+	case cfg.MempoolV0:
+		mp := mempoolv0.NewCListMempool(
+			config.Mempool,
+			proxyApp.Mempool(),
+			state.LastBlockHeight,
+			mempoolv0.WithMetrics(memplMetrics),
+			mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
+			mempoolv0.WithPostCheck(sm.TxPostCheck(state)),
+		)
 
-	if config.Consensus.WaitForTxs() {
-		mempool.EnableTxsAvailable()
+		mp.SetLogger(logger)
+
+		reactor := mempoolv0.NewReactor(
+			logger,
+			config.Mempool,
+			peerManager,
+			mp,
+			channels[mempool.MempoolChannel],
+			peerUpdates,
+		)
+
+		if config.Consensus.WaitForTxs() {
+			mp.EnableTxsAvailable()
+		}
+
+		return reactorShim, reactor, mp, nil
+
+	case cfg.MempoolV1:
+		mp := mempoolv1.NewTxMempool(
+			logger,
+			config.Mempool,
+			proxyApp.Mempool(),
+			state.LastBlockHeight,
+			mempoolv1.WithMetrics(memplMetrics),
+			mempoolv1.WithPreCheck(sm.TxPreCheck(state)),
+			mempoolv1.WithPostCheck(sm.TxPostCheck(state)),
+		)
+
+		reactor := mempoolv1.NewReactor(
+			logger,
+			config.Mempool,
+			peerManager,
+			mp,
+			channels[mempool.MempoolChannel],
+			peerUpdates,
+		)
+
+		if config.Consensus.WaitForTxs() {
+			mp.EnableTxsAvailable()
+		}
+
+		return reactorShim, reactor, mp, nil
+
+	default:
+		return nil, nil, nil, fmt.Errorf("unknown mempool version: %s", config.Mempool.Version)
 	}
-
-	return reactorShim, reactor, mempool
 }
 
 func createEvidenceReactor(
@@ -317,7 +378,7 @@ func createConsensusReactor(
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
-	mempool *mempl.CListMempool,
+	mp mempool.Mempool,
 	evidencePool *evidence.Pool,
 	privValidator types.PrivValidator,
 	csMetrics *cs.Metrics,
@@ -333,7 +394,7 @@ func createConsensusReactor(
 		state.Copy(),
 		blockExec,
 		blockStore,
-		mempool,
+		mp,
 		evidencePool,
 		cs.StateMetrics(csMetrics),
 	)
@@ -381,7 +442,7 @@ func createTransport(logger log.Logger, config *cfg.Config) *p2p.MConnTransport 
 		logger, p2p.MConnConfig(config.P2P), []*p2p.ChannelDescriptor{},
 		p2p.MConnTransportOptions{
 			MaxAcceptedConnections: uint32(config.P2P.MaxNumInboundPeers +
-				len(strings.SplitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " ")),
+				len(tmstrings.SplitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " ")),
 			),
 		},
 	)
@@ -418,7 +479,7 @@ func createPeerManager(
 	}
 
 	privatePeerIDs := make(map[p2p.NodeID]struct{})
-	for _, id := range strings.SplitAndTrimEmpty(config.P2P.PrivatePeerIDs, ",", " ") {
+	for _, id := range tmstrings.SplitAndTrimEmpty(config.P2P.PrivatePeerIDs, ",", " ") {
 		privatePeerIDs[p2p.NodeID(id)] = struct{}{}
 	}
 
@@ -434,7 +495,7 @@ func createPeerManager(
 	}
 
 	peers := []p2p.NodeAddress{}
-	for _, p := range strings.SplitAndTrimEmpty(config.P2P.PersistentPeers, ",", " ") {
+	for _, p := range tmstrings.SplitAndTrimEmpty(config.P2P.PersistentPeers, ",", " ") {
 		address, err := p2p.ParseNodeAddress(p)
 		if err != nil {
 			return nil, fmt.Errorf("invalid peer address %q: %w", p, err)
@@ -444,7 +505,7 @@ func createPeerManager(
 		options.PersistentPeers = append(options.PersistentPeers, address.NodeID)
 	}
 
-	for _, p := range strings.SplitAndTrimEmpty(config.P2P.BootstrapPeers, ",", " ") {
+	for _, p := range tmstrings.SplitAndTrimEmpty(config.P2P.BootstrapPeers, ",", " ") {
 		address, err := p2p.ParseNodeAddress(p)
 		if err != nil {
 			return nil, fmt.Errorf("invalid peer address %q: %w", p, err)
@@ -611,7 +672,7 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 	sw *p2p.Switch, logger log.Logger) *pex.Reactor {
 
 	reactorConfig := &pex.ReactorConfig{
-		Seeds:    strings.SplitAndTrimEmpty(config.P2P.Seeds, ",", " "),
+		Seeds:    tmstrings.SplitAndTrimEmpty(config.P2P.Seeds, ",", " "),
 		SeedMode: config.Mode == cfg.ModeSeed,
 		// See consensus/reactor.go: blocksToContributeToBecomeGoodPeer 10000
 		// blocks assuming 10s blocks ~ 28 hours.
@@ -647,13 +708,14 @@ func createPEXReactorV2(
 func makeNodeInfo(
 	config *cfg.Config,
 	nodeKey p2p.NodeKey,
-	txIndexer indexer.TxIndexer,
+	eventSinks []indexer.EventSink,
 	genDoc *types.GenesisDoc,
 	state sm.State,
 ) (p2p.NodeInfo, error) {
-	txIndexerStatus := "on"
-	if _, ok := txIndexer.(*null.TxIndex); ok {
-		txIndexerStatus = "off"
+	txIndexerStatus := "off"
+
+	if indexer.IndexingEnabled(eventSinks) {
+		txIndexerStatus = "on"
 	}
 
 	var bcChannel byte
@@ -676,14 +738,14 @@ func makeNodeInfo(
 		),
 		NodeID:  nodeKey.ID,
 		Network: genDoc.ChainID,
-		Version: version.TMCoreSemVer,
+		Version: version.TMVersion,
 		Channels: []byte{
 			bcChannel,
 			byte(cs.StateChannel),
 			byte(cs.DataChannel),
 			byte(cs.VoteChannel),
 			byte(cs.VoteSetBitsChannel),
-			byte(mempl.MempoolChannel),
+			byte(mempool.MempoolChannel),
 			byte(evidence.EvidenceChannel),
 			byte(statesync.SnapshotChannel),
 			byte(statesync.ChunkChannel),
@@ -725,7 +787,7 @@ func makeSeedNodeInfo(
 		),
 		NodeID:   nodeKey.ID,
 		Network:  genDoc.ChainID,
-		Version:  version.TMCoreSemVer,
+		Version:  version.TMVersion,
 		Channels: []byte{},
 		Moniker:  config.Moniker,
 		Other: p2p.NodeInfoOther{

@@ -23,6 +23,7 @@
 
 - April 1, 2021: Initial Draft (@alexanderbez)
 - April 28, 2021: Specify search capabilities are only supported through the KV indexer (@marbar3778)
+- May 19, 2021: Update the SQL schema and the eventsink interface (@jayt106)
 
 ## Status
 
@@ -96,13 +97,16 @@ The interface is defined as follows:
 ```go
 type EventSink interface {
   IndexBlockEvents(types.EventDataNewBlockHeader) error
-  IndexTxEvents(*abci.TxResult) error
+  IndexTxEvents([]*abci.TxResult) error
 
   SearchBlockEvents(context.Context, *query.Query) ([]int64, error)
   SearchTxEvents(context.Context, *query.Query) ([]*abci.TxResult, error)
 
   GetTxByHash([]byte) (*abci.TxResult, error)
   HasBlock(int64) (bool, error)
+
+  Type() EventSinkType
+  Stop() error
 }
 ```
 
@@ -136,33 +140,41 @@ This type of `EventSink` indexes block and transaction events into a [PostgreSQL
 database. We define and automatically migrate the following schema when the
 `IndexerService` starts.
 
-The postgres eventsink will not support `tx_search` and `block_search`.
+The postgres eventsink will not support `tx_search`, `block_search`, `GetTxByHash` and `HasBlock`.
 
 ```sql
 -- Table Definition ----------------------------------------------
 
-CREATE TYPE IF NOT EXISTS block_event_type AS ENUM ('begin_block', 'end_block');
+CREATE TYPE block_event_type AS ENUM ('begin_block', 'end_block', '');
 
-CREATE TABLE IF NOT EXISTS block_events (
+CREATE TABLE block_events (
     id SERIAL PRIMARY KEY,
     key VARCHAR NOT NULL,
     value VARCHAR NOT NULL,
     height INTEGER NOT NULL,
-    type block_event_type
+    type block_event_type,
+    created_at TIMESTAMPTZ NOT NULL,
+    chain_id VARCHAR NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS tx_results {
-  id SERIAL PRIMARY KEY,
-  tx_result BYTEA NOT NULL
-}
+CREATE TABLE tx_results (
+    id SERIAL PRIMARY KEY,
+    tx_result BYTEA NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL
+);
 
-CREATE TABLE IF NOT EXISTS tx_events (
+CREATE TABLE tx_events (
     id SERIAL PRIMARY KEY,
     key VARCHAR NOT NULL,
     value VARCHAR NOT NULL,
     height INTEGER NOT NULL,
     hash VARCHAR NOT NULL,
-    FOREIGN KEY (tx_result_id) REFERENCES tx_results(id) ON DELETE CASCADE
+    tx_result_id SERIAL,
+    created_at TIMESTAMPTZ NOT NULL,
+    chain_id VARCHAR NOT NULL,
+    FOREIGN KEY (tx_result_id)
+        REFERENCES tx_results(id)
+        ON DELETE CASCADE
 );
 
 -- Indices -------------------------------------------------------
@@ -177,7 +189,7 @@ The `PSQLEventSink` will implement the `EventSink` interface as follows
 
 
 ```go
-func NewPSQLEventSink(connStr string) (*PSQLEventSink, error) {
+func NewPSQLEventSink(connStr string, chainID string) (*PSQLEventSink, error) {
   db, err := sql.Open("postgres", connStr)
   if err != nil {
     return nil, err
@@ -187,10 +199,11 @@ func NewPSQLEventSink(connStr string) (*PSQLEventSink, error) {
 }
 
 func (es *PSQLEventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error {
-  sqlStmt := sq.Insert("block_events").Columns("key", "value", "height", "type")
+  sqlStmt := sq.Insert("block_events").Columns("key", "value", "height", "type", "created_at", "chain_id")
 
   // index the reserved block height index
-  sqlStmt = sqlStmt.Values(types.BlockHeightKey, h.Header.Height, h.Header.Height, "")
+  ts := time.Now()
+  sqlStmt = sqlStmt.Values(types.BlockHeightKey, h.Header.Height, h.Header.Height, "", ts, es.chainID)
 
   for _, event := range h.ResultBeginBlock.Events {
     // only index events with a non-empty type
@@ -210,7 +223,7 @@ func (es *PSQLEventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error
       }
 
       if attr.GetIndex() {
-        sqlStmt = sqlStmt.Values(compositeKey, string(attr.Value), h.Header.Height, BlockEventTypeBeginBlock)
+        sqlStmt = sqlStmt.Values(compositeKey, string(attr.Value), h.Header.Height, BlockEventTypeBeginBlock, ts, es.chainID)
       }
     }
   }
@@ -219,51 +232,58 @@ func (es *PSQLEventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error
   // execute sqlStmt db query...
 }
 
-func (es *PSQLEventSink) IndexTxEvents(txr *abci.TxResult) error {
-  sqlStmtEvents := sq.Insert("tx_events").Columns("key", "value", "height", "hash", "tx_result_id")
-  sqlStmtTxResult := sq.Insert("tx_results").Columns("tx_result")
+func (es *PSQLEventSink) IndexTxEvents(txr []*abci.TxResult) error {
+  sqlStmtEvents := sq.Insert("tx_events").Columns("key", "value", "height", "hash", "tx_result_id", "created_at", "chain_id")
+  sqlStmtTxResult := sq.Insert("tx_results").Columns("tx_result", "created_at")
 
-
-  // store the tx result
-  txBz, err := proto.Marshal(txr)
-  if err != nil {
-    return err
-  }
-
-  sqlStmtTxResult = sqlStmtTxResult.Values(txBz)
-
-  // execute sqlStmtTxResult db query...
-
-  // index the reserved height and hash indices
-  hash := types.Tx(txr.Tx).Hash()
-  sqlStmtEvents = sqlStmtEvents.Values(types.TxHashKey, hash, txr.Height, hash, txrID)
-  sqlStmtEvents = sqlStmtEvents.Values(types.TxHeightKey, txr.Height, txr.Height, hash, txrID)
-
-  for _, event := range result.Result.Events {
-    // only index events with a non-empty type
-    if len(event.Type) == 0 {
-      continue
+  ts := time.Now()
+  for _, tx := range txr {
+    // store the tx result
+    txBz, err := proto.Marshal(tx)
+    if err != nil {
+      return err
     }
 
-    for _, attr := range event.Attributes {
-      if len(attr.Key) == 0 {
+    sqlStmtTxResult = sqlStmtTxResult.Values(txBz, ts)
+
+    // execute sqlStmtTxResult db query...
+    var txID uint32
+    err = sqlStmtTxResult.QueryRow().Scan(&txID)
+		if err != nil {
+			return err
+		}
+
+    // index the reserved height and hash indices
+    hash := types.Tx(tx.Tx).Hash()
+    sqlStmtEvents = sqlStmtEvents.Values(types.TxHashKey, hash, tx.Height, hash, txID, ts, es.chainID)
+    sqlStmtEvents = sqlStmtEvents.Values(types.TxHeightKey, tx.Height, tx.Height, hash, txID, ts, es.chainID)
+
+    for _, event := range result.Result.Events {
+      // only index events with a non-empty type
+      if len(event.Type) == 0 {
         continue
       }
 
-      // index if `index: true` is set
-      compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
+      for _, attr := range event.Attributes {
+        if len(attr.Key) == 0 {
+          continue
+        }
+
+        // index if `index: true` is set
+        compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
 			
-      // ensure event does not conflict with a reserved prefix key
-      if compositeTag == types.TxHashKey || compositeTag == types.TxHeightKey {
-        return fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeTag)
-      }
+        // ensure event does not conflict with a reserved prefix key
+        if compositeTag == types.TxHashKey || compositeTag == types.TxHeightKey {
+          return fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeTag)
+        }
 		
-      if attr.GetIndex() {
-        sqlStmtEvents = sqlStmtEvents.Values(compositeKey, string(attr.Value), txr.Height, hash, txrID)
+        if attr.GetIndex() {
+          sqlStmtEvents = sqlStmtEvents.Values(compositeKey, string(attr.Value), tx.Height, hash, txID, ts, es.chainID)
+        }
       }
     }
   }
-
+  
   // execute sqlStmtEvents db query...
 }
 
@@ -273,6 +293,14 @@ func (es *PSQLEventSink) SearchBlockEvents(ctx context.Context, q *query.Query) 
 
 func (es *PSQLEventSink) SearchTxEvents(ctx context.Context, q *query.Query) ([]*abci.TxResult, error) {
   return nil, errors.New("tx search is not supported via the postgres event sink")
+}
+
+func (es *PSQLEventSink) GetTxByHash(hash []byte) (*abci.TxResult, error) {
+	return nil, errors.New("getTxByHash is not supported via the postgres event sink")
+}
+
+func (es *PSQLEventSink) HasBlock(h int64) (bool, error) {
+	return false, errors.New("hasBlock is not supported via the postgres event sink")
 }
 ```
 

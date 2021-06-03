@@ -69,7 +69,7 @@ Starting out, only ed25519 will support batch verification.
 
 ## Status
 
-Proposed
+Implemented
 
 ### Positive
 

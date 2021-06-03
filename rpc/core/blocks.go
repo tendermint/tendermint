@@ -1,7 +1,6 @@
 package core
 
 import (
-	"errors"
 	"fmt"
 	"sort"
 
@@ -9,7 +8,7 @@ import (
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
-	blockidxnull "github.com/tendermint/tendermint/state/indexer/block/null"
+	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -181,9 +180,8 @@ func (env *Environment) BlockSearch(
 	orderBy string,
 ) (*ctypes.ResultBlockSearch, error) {
 
-	// skip if block indexing is disabled
-	if _, ok := env.BlockIndexer.(*blockidxnull.BlockerIndexer); ok {
-		return nil, errors.New("block indexing is disabled")
+	if !indexer.KVSinkEnabled(env.EventSinks) {
+		return nil, fmt.Errorf("block searching is disabled due to no kvEventSink")
 	}
 
 	q, err := tmquery.New(query)
@@ -191,7 +189,14 @@ func (env *Environment) BlockSearch(
 		return nil, err
 	}
 
-	results, err := env.BlockIndexer.Search(ctx.Context(), q)
+	var kvsink indexer.EventSink
+	for _, sink := range env.EventSinks {
+		if sink.Type() == indexer.KV {
+			kvsink = sink
+		}
+	}
+
+	results, err := kvsink.SearchBlockEvents(ctx.Context(), q)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +210,7 @@ func (env *Environment) BlockSearch(
 		sort.Slice(results, func(i, j int) bool { return results[i] < results[j] })
 
 	default:
-		return nil, fmt.Errorf("%w: expected order_by to be either `asc` or `desc` or empty", ctypes.ErrInvalidRequest)
+		return nil, fmt.Errorf("expected order_by to be either `asc` or `desc` or empty: %w", ctypes.ErrInvalidRequest)
 	}
 
 	// paginate results
