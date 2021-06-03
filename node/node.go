@@ -1097,7 +1097,7 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 
 		state, err := stateStore.Load()
 		if err != nil {
-			ssR.Logger.Error("Failed to load state", "err", err)
+			ssR.Logger.Error("failed to load state", "err", err)
 		}
 
 		if fastSync {
