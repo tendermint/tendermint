@@ -102,7 +102,10 @@ func init() {
 }
 
 func runProxy(cmd *cobra.Command, args []string) error {
-	logger := log.MustNewDefaultLogger(logFormat, logLevel, false)
+	logger, err := log.NewDefaultLogger(logFormat, logLevel, false)
+	if err != nil {
+		return err
+	}
 
 	chainID = args[0]
 	logger.Info("Creating client...", "chainID", chainID)
