@@ -1,30 +1,34 @@
 package log
 
-import (
-	"io"
+const (
+	// LogFormatPlain defines a logging format used for human-readable text-based
+	// logging that is not structured. Typically, this format is used for development
+	// and testing purposes.
+	LogFormatPlain string = "plain"
 
-	kitlog "github.com/go-kit/kit/log"
+	// LogFormatText defines a logging format used for human-readable text-based
+	// logging that is not structured. Typically, this format is used for development
+	// and testing purposes.
+	LogFormatText string = "text"
+
+	// LogFormatJSON defines a logging format for structured JSON-based logging
+	// that is typically used in production environments, which can be sent to
+	// logging facilities that support complex log parsing and querying.
+	LogFormatJSON string = "json"
+
+	// Supported loging levels
+	LogLevelDebug = "debug"
+	LogLevelInfo  = "info"
+	LogLevelWarn  = "warn"
+	LogLevelError = "error"
+	LogLevelFatal = "fatal"
 )
 
-// Logger is what any Tendermint library should take.
+// Logger defines a generic logging interface compatible with Tendermint.
 type Logger interface {
-	Debug(msg string, keyvals ...interface{})
-	Info(msg string, keyvals ...interface{})
-	Error(msg string, keyvals ...interface{})
+	Debug(msg string, keyVals ...interface{})
+	Info(msg string, keyVals ...interface{})
+	Error(msg string, keyVals ...interface{})
 
-	With(keyvals ...interface{}) Logger
-}
-
-// NewSyncWriter returns a new writer that is safe for concurrent use by
-// multiple goroutines. Writes to the returned writer are passed on to w. If
-// another write is already in progress, the calling goroutine blocks until
-// the writer is available.
-//
-// If w implements the following interface, so does the returned writer.
-//
-//    interface {
-//        Fd() uintptr
-//    }
-func NewSyncWriter(w io.Writer) io.Writer {
-	return kitlog.NewSyncWriter(w)
+	With(keyVals ...interface{}) Logger
 }
