@@ -13,17 +13,17 @@ var (
 	testingLogger    Logger
 )
 
-// NewTestingLogger returns a Logger which writes to STDOUT if test(s) are being
+// TestingLogger returns a Logger which writes to STDOUT if test(s) are being
 // run with the verbose (-v) flag, NopLogger otherwise.
 //
 // NOTE:
 // - A call to NewTestingLogger() must be made inside a test (not in the init func)
 // because verbose flag only set at the time of testing.
-func NewTestingLogger() Logger {
-	return NewTestingLoggerWithOutput(os.Stdout)
+func TestingLogger() Logger {
+	return TestingLoggerWithOutput(os.Stdout)
 }
 
-func NewTestingLoggerWithOutput(w io.Writer) Logger {
+func TestingLoggerWithOutput(w io.Writer) Logger {
 	testingLoggerMtx.Lock()
 	defer testingLoggerMtx.Unlock()
 
