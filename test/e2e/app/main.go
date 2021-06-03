@@ -34,7 +34,7 @@ import (
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
-var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 
 // main is the binary entrypoint.
 func main() {
@@ -300,7 +300,7 @@ func setupNode() (*config.Config, log.Logger, *p2p.NodeKey, error) {
 	}
 
 	if tmcfg.LogFormat == config.LogFormatJSON {
-		logger = log.NewTMJSONLogger(log.NewSyncWriter(os.Stdout))
+		logger = log.MustNewDefaultLogger(log.LogFormatJSON, log.LogLevelInfo, false)
 	}
 
 	nodeLogger, err := tmflags.ParseLogLevel(tmcfg.LogLevel, logger, config.DefaultLogLevel)
