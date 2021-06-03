@@ -32,6 +32,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - P2P Protocol
 
 - Go API
+  - [mempool] \#6529 The `Context` field has been removed from the `TxInfo` type. `CheckTx` now requires a `Context` argument. (@alexanderbez)
   - [abci/client, proxy] \#5673 `Async` funcs return an error, `Sync` and `Async` funcs accept `context.Context` (@melekes)
   - [p2p] Removed unused function `MakePoWTarget`. (@erikgrinaker)
   - [libs/bits] \#5720 Validate `BitArray` in `FromProto`, which now returns an error (@melekes)

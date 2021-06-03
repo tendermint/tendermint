@@ -1,7 +1,6 @@
 package mempool
 
 import (
-	"context"
 	"crypto/sha256"
 
 	"github.com/tendermint/tendermint/p2p"
@@ -31,7 +30,4 @@ type TxInfo struct {
 
 	// SenderNodeID is the actual p2p.NodeID of the sender.
 	SenderNodeID p2p.NodeID
-
-	// Context is the optional context to cancel CheckTx
-	Context context.Context
 }
