@@ -1214,6 +1214,44 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /resync:
+    post:
+      summary: Resync block/tx event data (Unsafe)
+      operationId: resync
+      tags:
+        - Unsafe
+      description: |
+        resync block/tx event data to the indexer database, this route in under unsafe, and has to manually enabled to use
+
+          **Example:** curl -X POST "localhost:26657/resync?start_height=1&end_height=2"
+      parameters:
+        - in: query
+          name: start_height
+          description: the block height would like to start for resync.
+          required: true
+          schema:
+            type: integer
+            example: 1
+        - in: query
+          name: end_height
+          description: the block height would like to finish for resync.
+          required: true
+          schema:
+            type: integer
+            example: 2
+      responses:
+        "200":
+          description: Resync finished
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResyncResponse"
+        "500":
+          description: Request error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
 components:
   schemas:
@@ -2744,6 +2782,13 @@ components:
         Log:
           type: string
           example: "Dialing seeds in progress. See /net_info for details"
+
+    ResyncResponse:
+      type: object
+      properties:
+        Log:
+          type: string
+          example: "Resyncing the block/tx events."
 
     BlockSearchResponse:
       type: object

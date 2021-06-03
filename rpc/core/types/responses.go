@@ -263,3 +263,7 @@ type ResultEvent struct {
 	Data           types.TMEventData   `json:"data"`
 	Events         map[string][]string `json:"events"`
 }
+
+type ResultUnsafeResync struct {
+	Result string `json:"result"`
+}
