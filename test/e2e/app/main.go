@@ -298,18 +298,17 @@ func setupNode() (*config.Config, log.Logger, *p2p.NodeKey, error) {
 		return nil, nil, nil, fmt.Errorf("error in config file: %w", err)
 	}
 
-	if tmcfg.LogFormat == config.LogFormatJSON {
-		logger = log.MustNewDefaultLogger(log.LogFormatJSON, log.LogLevelInfo, false)
+	nodeLogger, err := log.NewDefaultLogger(tmcfg.LogFormat, tmcfg.LogLevel, false)
+	if err != nil {
+		return nil, nil, nil, err
 	}
-
-	nodeLogger := logger.With("module", "main")
 
 	nodeKey, err := p2p.LoadOrGenNodeKey(tmcfg.NodeKeyFile())
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to load or gen node key %s: %w", tmcfg.NodeKeyFile(), err)
 	}
 
-	return tmcfg, nodeLogger, &nodeKey, nil
+	return tmcfg, nodeLogger.With("module", "main"), &nodeKey, nil
 }
 
 // rpcEndpoints takes a list of persistent peers and splits them into a list of rpc endpoints
