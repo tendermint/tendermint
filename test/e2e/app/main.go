@@ -17,7 +17,6 @@ import (
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	tmflags "github.com/tendermint/tendermint/libs/cli/flags"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/light"
@@ -303,12 +302,7 @@ func setupNode() (*config.Config, log.Logger, *p2p.NodeKey, error) {
 		logger = log.MustNewDefaultLogger(log.LogFormatJSON, log.LogLevelInfo, false)
 	}
 
-	nodeLogger, err := tmflags.ParseLogLevel(tmcfg.LogLevel, logger, config.DefaultLogLevel)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	nodeLogger = nodeLogger.With("module", "main")
+	nodeLogger := logger.With("module", "main")
 
 	nodeKey, err := p2p.LoadOrGenNodeKey(tmcfg.NodeKeyFile())
 	if err != nil {

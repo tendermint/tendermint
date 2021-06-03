@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -10,14 +9,12 @@ import (
 	"github.com/spf13/viper"
 
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/libs/cli"
-	tmflags "github.com/tendermint/tendermint/libs/cli/flags"
 	"github.com/tendermint/tendermint/libs/log"
 )
 
 var (
 	config     = cfg.DefaultConfig()
-	logger     = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	logger     = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 	ctxTimeout = 4 * time.Second
 )
 
@@ -59,19 +56,7 @@ var RootCmd = &cobra.Command{
 			return err
 		}
 
-		if config.LogFormat == cfg.LogFormatJSON {
-			logger = log.NewTMJSONLogger(log.NewSyncWriter(os.Stdout))
-		}
-
-		logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel)
-		if err != nil {
-			return err
-		}
-
-		if viper.GetBool(cli.TraceFlag) {
-			logger = log.NewTracingLogger(logger)
-		}
-
+		logger = log.MustNewDefaultLogger(config.LogFormat, config.LogLevel, false)
 		logger = logger.With("module", "main")
 		return nil
 	},

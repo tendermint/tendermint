@@ -100,15 +100,12 @@ func init() {
 }
 
 func runProxy(cmd *cobra.Command, args []string) error {
-	// Initialize logger.
-	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-	var option log.Option
+	logLvl := log.LogLevelInfo
 	if verbose {
-		option, _ = log.AllowLevel("debug")
-	} else {
-		option, _ = log.AllowLevel("info")
+		logLvl = log.LogLevelDebug
 	}
-	logger = log.NewFilter(logger, option)
+
+	logger := log.MustNewDefaultLogger(log.LogFormatPlain, logLvl, false)
 
 	chainID = args[0]
 	logger.Info("Creating client...", "chainID", chainID)
