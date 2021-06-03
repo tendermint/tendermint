@@ -594,15 +594,6 @@ func customReactors(reactors map[string]p2p.Reactor) option {
 	}
 }
 
-// stateSyncProvider overrides the state provider used by state sync to retrieve trusted app hashes and
-// build a State object for bootstrapping the node.
-// WARNING: this interface is considered unstable and subject to change.
-func stateSyncProvider(stateProvider statesync.StateProvider) option {
-	return func(n *nodeImpl) {
-		n.stateSyncProvider = stateProvider
-	}
-}
-
 // OnStart starts the Node. It implements service.Service.
 func (n *nodeImpl) OnStart() error {
 	now := tmtime.Now()
