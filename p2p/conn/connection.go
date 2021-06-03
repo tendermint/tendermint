@@ -642,11 +642,7 @@ FOR_LOOP:
 				break FOR_LOOP
 			}
 			if msgBytes != nil {
-<<<<<<< HEAD
-				c.Logger.Debug("Received bytes", "chID", pkt.PacketMsg.ChannelID, "msgBytes", fmt.Sprintf("%X", msgBytes))
-=======
 				c.Logger.Debug("Received bytes", "chID", channelID, "msgBytes", msgBytes)
->>>>>>> 1f46a4c90 (p2p/conn: check for channel id overflow before processing receive msg (#6522))
 				// NOTE: This means the reactor.Receive runs in the same thread as the p2p recv routine
 				c.onReceive(channelID, msgBytes)
 			}

@@ -587,8 +587,6 @@ func TestConnVectors(t *testing.T) {
 		require.Equal(t, tc.expBytes, hex.EncodeToString(bz), tc.testName)
 	}
 }
-<<<<<<< HEAD
-=======
 
 func TestMConnectionChannelOverflow(t *testing.T) {
 	chOnErr := make(chan struct{})
@@ -647,4 +645,3 @@ func closeAll(t *testing.T, closers ...closer) func() {
 		}
 	}
 }
->>>>>>> 1f46a4c90 (p2p/conn: check for channel id overflow before processing receive msg (#6522))
