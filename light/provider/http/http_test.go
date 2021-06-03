@@ -3,16 +3,16 @@ package http_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/light/provider"
 	lighthttp "github.com/tendermint/tendermint/light/provider/http"
-	"github.com/tendermint/tendermint/node"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
@@ -33,23 +33,28 @@ func TestNewProvider(t *testing.T) {
 	require.Equal(t, fmt.Sprintf("%s", c), "http{http://153.200.0.1}")
 }
 
-func NodeSuite(t *testing.T) *node.Node {
+func NodeSuite(t *testing.T) (service.Service, *config.Config) {
 	t.Helper()
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	conf := rpctest.CreateConfig()
 
 	// start a tendermint node in the background to test against
 	app := kvstore.NewApplication()
 	app.RetainBlocks = 9
-	node := rpctest.StartTendermint(app)
+
+	node, closer, err := rpctest.StartTendermint(ctx, conf, app)
+	require.NoError(t, err)
 	t.Cleanup(func() {
-		rpctest.StopTendermint(node)
-		os.RemoveAll(node.Config().RootDir)
+		_ = closer(ctx)
+		cancel()
 	})
-	return node
+	return node, conf
 }
 
 func TestProvider(t *testing.T) {
-	n := NodeSuite(t)
-	cfg := n.Config()
+	_, cfg := NodeSuite(t)
 	rpcAddr := cfg.RPC.ListenAddress
 	genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
 	require.NoError(t, err)
