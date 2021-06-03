@@ -42,7 +42,7 @@ func TestNodeStartStop(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 
 	// create & start node
-	ns, err := DefaultNewNode(config, log.TestingLogger())
+	ns, err := newDefaultNode(config, log.TestingLogger())
 	require.NoError(t, err)
 	require.NoError(t, ns.Start())
 
@@ -84,7 +84,7 @@ func TestNodeStartStop(t *testing.T) {
 
 func getTestNode(t *testing.T, conf *cfg.Config, logger log.Logger) *nodeImpl {
 	t.Helper()
-	ns, err := DefaultNewNode(conf, logger)
+	ns, err := newDefaultNode(conf, logger)
 	require.NoError(t, err)
 
 	n, ok := ns.(*nodeImpl)
@@ -167,7 +167,7 @@ func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 	config.PrivValidator.ListenAddr = addrNoPrefix
 
-	_, err := DefaultNewNode(config, log.TestingLogger())
+	_, err := newDefaultNode(config, log.TestingLogger())
 	assert.Error(t, err)
 }
 
@@ -560,7 +560,7 @@ func TestNodeSetEventSink(t *testing.T) {
 	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"kvv"}
-	ns, err := DefaultNewNode(config, log.TestingLogger())
+	ns, err := newDefaultNode(config, log.TestingLogger())
 	assert.Nil(t, ns)
 	assert.Equal(t, errors.New("unsupported event sink type"), err)
 
@@ -571,7 +571,7 @@ func TestNodeSetEventSink(t *testing.T) {
 	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"psql"}
-	ns, err = DefaultNewNode(config, log.TestingLogger())
+	ns, err = newDefaultNode(config, log.TestingLogger())
 	assert.Nil(t, ns)
 	assert.Equal(t, errors.New("the psql connection settings cannot be empty"), err)
 
@@ -612,13 +612,13 @@ func TestNodeSetEventSink(t *testing.T) {
 	var e = errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
 	config.TxIndex.Indexer = []string{"psql", "kv", "Kv"}
 	config.TxIndex.PsqlConn = psqlConn
-	_, err = DefaultNewNode(config, log.TestingLogger())
+	_, err = newDefaultNode(config, log.TestingLogger())
 	require.Error(t, err)
 	assert.Equal(t, e, err)
 
 	config.TxIndex.Indexer = []string{"Psql", "kV", "kv", "pSql"}
 	config.TxIndex.PsqlConn = psqlConn
-	_, err = DefaultNewNode(config, log.TestingLogger())
+	_, err = newDefaultNode(config, log.TestingLogger())
 	require.Error(t, err)
 	assert.Equal(t, e, err)
 }

@@ -89,10 +89,10 @@ type nodeImpl struct {
 	prometheusSrv     *http.Server
 }
 
-// DefaultNewNode returns a Tendermint node with default settings for the
+// newDefaultNode returns a Tendermint node with default settings for the
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
 // It implements NodeProvider.
-func DefaultNewNode(config *cfg.Config, logger log.Logger) (service.Service, error) {
+func newDefaultNode(config *cfg.Config, logger log.Logger) (service.Service, error) {
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	if err != nil {
 		return nil, fmt.Errorf("failed to load or gen node key %s: %w", config.NodeKeyFile(), err)
