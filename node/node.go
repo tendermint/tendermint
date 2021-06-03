@@ -29,6 +29,7 @@ import (
 	"github.com/tendermint/tendermint/libs/strings"
 	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/mempool"
+	csmetrics "github.com/tendermint/tendermint/metrics/consensus"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
 	"github.com/tendermint/tendermint/privval"
@@ -985,16 +986,6 @@ func (n *Node) BlockStore() *store.BlockStore {
 	return n.blockStore
 }
 
-// ConsensusState returns the Node's ConsensusState.
-func (n *Node) ConsensusState() *cs.State {
-	return n.consensusState
-}
-
-// ConsensusReactor returns the Node's ConsensusReactor.
-func (n *Node) ConsensusReactor() *cs.Reactor {
-	return n.consensusReactor
-}
-
 // MempoolReactor returns the Node's mempool reactor.
 func (n *Node) MempoolReactor() service.Service {
 	return n.mempoolReactor
@@ -1152,19 +1143,19 @@ func DefaultGenesisDocProviderFunc(config *cfg.Config) GenesisDocProvider {
 type Provider func(*cfg.Config, log.Logger) (*Node, error)
 
 // MetricsProvider returns a consensus, p2p and mempool Metrics.
-type MetricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempool.Metrics, *sm.Metrics)
+type MetricsProvider func(chainID string) (*csmetrics.Metrics, *p2p.Metrics, *mempool.Metrics, *sm.Metrics)
 
 // DefaultMetricsProvider returns Metrics build using Prometheus client library
 // if Prometheus is enabled. Otherwise, it returns no-op Metrics.
 func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
-	return func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempool.Metrics, *sm.Metrics) {
+	return func(chainID string) (*csmetrics.Metrics, *p2p.Metrics, *mempool.Metrics, *sm.Metrics) {
 		if config.Prometheus {
-			return cs.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+			return csmetrics.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				p2p.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				mempool.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID)
 		}
-		return cs.NopMetrics(), p2p.NopMetrics(), mempool.NopMetrics(), sm.NopMetrics()
+		return csmetrics.NopMetrics(), p2p.NopMetrics(), mempool.NopMetrics(), sm.NopMetrics()
 	}
 }
 

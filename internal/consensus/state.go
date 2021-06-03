@@ -23,6 +23,7 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/service"
+	csmetrics "github.com/tendermint/tendermint/metrics/consensus"
 	"github.com/tendermint/tendermint/p2p"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -139,7 +140,7 @@ type State struct {
 	evsw tmevents.EventSwitch
 
 	// for reporting metrics
-	metrics *Metrics
+	metrics *csmetrics.Metrics
 
 	// wait the channel event happening for shutting down the state gracefully
 	onStopCh chan *cstypes.RoundState
@@ -172,7 +173,7 @@ func NewState(
 		wal:              nilWAL{},
 		evpool:           evpool,
 		evsw:             tmevents.NewEventSwitch(),
-		metrics:          NopMetrics(),
+		metrics:          csmetrics.NopMetrics(),
 		onStopCh:         make(chan *cstypes.RoundState),
 	}
 
@@ -211,7 +212,7 @@ func (cs *State) SetEventBus(b *types.EventBus) {
 }
 
 // StateMetrics sets the metrics.
-func StateMetrics(metrics *Metrics) StateOption {
+func StateMetrics(metrics *csmetrics.Metrics) StateOption {
 	return func(cs *State) { cs.metrics = metrics }
 }
 

@@ -26,6 +26,7 @@ import (
 	"github.com/tendermint/tendermint/mempool"
 	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
 	mempoolv1 "github.com/tendermint/tendermint/mempool/v1"
+	csmetrics "github.com/tendermint/tendermint/metrics/consensus"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
 	protop2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
@@ -381,7 +382,7 @@ func createConsensusReactor(
 	mp mempool.Mempool,
 	evidencePool *evidence.Pool,
 	privValidator types.PrivValidator,
-	csMetrics *cs.Metrics,
+	csMetrics *csmetrics.Metrics,
 	waitSync bool,
 	eventBus *types.EventBus,
 	peerManager *p2p.PeerManager,

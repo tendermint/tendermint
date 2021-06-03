@@ -10,6 +10,7 @@ import (
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	csmetrics "github.com/tendermint/tendermint/metrics/consensus"
 	"github.com/tendermint/tendermint/p2p"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -104,7 +105,7 @@ type Reactor struct {
 
 	state    *State
 	eventBus *types.EventBus
-	Metrics  *Metrics
+	Metrics  *csmetrics.Metrics
 
 	mtx      tmsync.RWMutex
 	peers    map[p2p.NodeID]*PeerState
@@ -144,7 +145,7 @@ func NewReactor(
 		state:         cs,
 		waitSync:      waitSync,
 		peers:         make(map[p2p.NodeID]*PeerState),
-		Metrics:       NopMetrics(),
+		Metrics:       csmetrics.NopMetrics(),
 		stateCh:       stateCh,
 		dataCh:        dataCh,
 		voteCh:        voteCh,
@@ -252,7 +253,7 @@ func (r *Reactor) WaitSync() bool {
 }
 
 // ReactorMetrics sets the reactor's metrics as an option function.
-func ReactorMetrics(metrics *Metrics) ReactorOption {
+func ReactorMetrics(metrics *csmetrics.Metrics) ReactorOption {
 	return func(r *Reactor) { r.Metrics = metrics }
 }
 
