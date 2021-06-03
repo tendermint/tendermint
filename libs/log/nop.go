@@ -4,8 +4,8 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func NewNopLogger() DefaultLogger {
-	return DefaultLogger{
+func NewNopLogger() Logger {
+	return defaultLogger{
 		Logger: zerolog.Nop(),
 		trace:  false,
 	}
