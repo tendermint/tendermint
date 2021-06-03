@@ -36,10 +36,10 @@ func New(conf *config.Config,
 		return nil, fmt.Errorf("failed to load or gen node key %s: %w", conf.NodeKeyFile(), err)
 	}
 
-	var genProvider GenesisDocProvider
+	var genProvider genesisDocProvider
 	switch gen {
 	case nil:
-		genProvider = DefaultGenesisDocProviderFunc(conf)
+		genProvider = defaultGenesisDocProviderFunc(conf)
 	default:
 		genProvider = func() (*types.GenesisDoc, error) { return gen, nil }
 	}
@@ -51,7 +51,7 @@ func New(conf *config.Config,
 			return nil, err
 		}
 
-		return NewNode(conf,
+		return makeNode(conf,
 			pval,
 			nodeKey,
 			cf,
@@ -59,7 +59,7 @@ func New(conf *config.Config,
 			DefaultDBProvider,
 			logger)
 	case config.ModeSeed:
-		return NewSeedNode(conf, DefaultDBProvider, nodeKey, genProvider, logger)
+		return makeSeedNode(conf, DefaultDBProvider, nodeKey, genProvider, logger)
 	default:
 		return nil, fmt.Errorf("%q is not a valid mode", conf.Mode)
 	}

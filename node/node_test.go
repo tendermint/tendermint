@@ -490,14 +490,14 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 
 	appClient, closer := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
 	t.Cleanup(func() { closer.Close() })
-	ns, err := NewNode(config,
+	ns, err := makeNode(config,
 		pval,
 		nodeKey,
 		appClient,
-		DefaultGenesisDocProviderFunc(config),
+		defaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
 		log.TestingLogger(),
-		CustomReactors(map[string]p2p.Reactor{"FOO": cr, "BLOCKCHAIN": customBlockchainReactor}),
+		customReactors(map[string]p2p.Reactor{"FOO": cr, "BLOCKCHAIN": customBlockchainReactor}),
 	)
 	require.NoError(t, err)
 	n, ok := ns.(*nodeImpl)
@@ -522,10 +522,10 @@ func TestNodeNewSeedNode(t *testing.T) {
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	require.NoError(t, err)
 
-	ns, err := NewSeedNode(config,
+	ns, err := makeSeedNode(config,
 		DefaultDBProvider,
 		nodeKey,
-		DefaultGenesisDocProviderFunc(config),
+		defaultGenesisDocProviderFunc(config),
 		log.TestingLogger(),
 	)
 	require.NoError(t, err)

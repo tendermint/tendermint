@@ -98,10 +98,10 @@ func newDefaultNode(config *cfg.Config, logger log.Logger) (service.Service, err
 		return nil, fmt.Errorf("failed to load or gen node key %s: %w", config.NodeKeyFile(), err)
 	}
 	if config.Mode == cfg.ModeSeed {
-		return NewSeedNode(config,
+		return makeSeedNode(config,
 			DefaultDBProvider,
 			nodeKey,
-			DefaultGenesisDocProviderFunc(config),
+			defaultGenesisDocProviderFunc(config),
 			logger,
 		)
 	}
@@ -117,25 +117,25 @@ func newDefaultNode(config *cfg.Config, logger log.Logger) (service.Service, err
 	}
 
 	appClient, _ := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
-	return NewNode(config,
+	return makeNode(config,
 		pval,
 		nodeKey,
 		appClient,
-		DefaultGenesisDocProviderFunc(config),
+		defaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
 		logger,
 	)
 }
 
-// NewNode returns a new, ready to go, Tendermint Node.
-func NewNode(config *cfg.Config,
+// makeNode returns a new, ready to go, Tendermint Node.
+func makeNode(config *cfg.Config,
 	privValidator types.PrivValidator,
 	nodeKey p2p.NodeKey,
 	clientCreator proxy.ClientCreator,
-	genesisDocProvider GenesisDocProvider,
+	genesisDocProvider genesisDocProvider,
 	dbProvider DBProvider,
 	logger log.Logger,
-	options ...Option) (service.Service, error) {
+	options ...option) (service.Service, error) {
 
 	blockStore, stateDB, err := initDBs(config, dbProvider)
 	if err != nil {
@@ -144,7 +144,7 @@ func NewNode(config *cfg.Config,
 
 	stateStore := sm.NewStore(stateDB)
 
-	state, genDoc, err := LoadStateFromDBOrGenesisDocProvider(stateDB, genesisDocProvider)
+	state, genDoc, err := loadStateFromDBOrGenesisDocProvider(stateDB, genesisDocProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -451,13 +451,13 @@ func NewNode(config *cfg.Config,
 	return node, nil
 }
 
-// NewSeedNode returns a new seed node, containing only p2p, pex reactor
-func NewSeedNode(config *cfg.Config,
+// makeSeedNode returns a new seed node, containing only p2p, pex reactor
+func makeSeedNode(config *cfg.Config,
 	dbProvider DBProvider,
 	nodeKey p2p.NodeKey,
-	genesisDocProvider GenesisDocProvider,
+	genesisDocProvider genesisDocProvider,
 	logger log.Logger,
-	options ...Option) (service.Service, error) {
+	options ...option) (service.Service, error) {
 
 	genDoc, err := genesisDocProvider()
 	if err != nil {
@@ -560,8 +560,8 @@ func NewSeedNode(config *cfg.Config,
 	return node, nil
 }
 
-// Option sets a parameter for the node.
-type Option func(*nodeImpl)
+// option sets a parameter for the node.
+type option func(*nodeImpl)
 
 // Temporary interface for switching to fast sync, we should get rid of v0.
 // See: https://github.com/tendermint/tendermint/issues/4595
@@ -569,7 +569,7 @@ type fastSyncReactor interface {
 	SwitchToFastSync(sm.State) error
 }
 
-// CustomReactors allows you to add custom reactors (name -> p2p.Reactor) to
+// customReactors allows you to add custom reactors (name -> p2p.Reactor) to
 // the node's Switch.
 //
 // WARNING: using any name from the below list of the existing reactors will
@@ -581,7 +581,7 @@ type fastSyncReactor interface {
 //  - EVIDENCE
 //  - PEX
 //  - STATESYNC
-func CustomReactors(reactors map[string]p2p.Reactor) Option {
+func customReactors(reactors map[string]p2p.Reactor) option {
 	return func(n *nodeImpl) {
 		for name, reactor := range reactors {
 			if existingReactor := n.sw.Reactor(name); existingReactor != nil {
@@ -594,10 +594,10 @@ func CustomReactors(reactors map[string]p2p.Reactor) Option {
 	}
 }
 
-// StateProvider overrides the state provider used by state sync to retrieve trusted app hashes and
+// stateSyncProvider overrides the state provider used by state sync to retrieve trusted app hashes and
 // build a State object for bootstrapping the node.
 // WARNING: this interface is considered unstable and subject to change.
-func StateProvider(stateProvider statesync.StateProvider) Option {
+func stateSyncProvider(stateProvider statesync.StateProvider) option {
 	return func(n *nodeImpl) {
 		n.stateSyncProvider = stateProvider
 	}
@@ -1133,14 +1133,14 @@ func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
 	return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBDir())
 }
 
-// GenesisDocProvider returns a GenesisDoc.
+// genesisDocProvider returns a GenesisDoc.
 // It allows the GenesisDoc to be pulled from sources other than the
 // filesystem, for instance from a distributed key-value store cluster.
-type GenesisDocProvider func() (*types.GenesisDoc, error)
+type genesisDocProvider func() (*types.GenesisDoc, error)
 
-// DefaultGenesisDocProviderFunc returns a GenesisDocProvider that loads
+// defaultGenesisDocProviderFunc returns a GenesisDocProvider that loads
 // the GenesisDoc from the config.GenesisFile() on the filesystem.
-func DefaultGenesisDocProviderFunc(config *cfg.Config) GenesisDocProvider {
+func defaultGenesisDocProviderFunc(config *cfg.Config) genesisDocProvider {
 	return func() (*types.GenesisDoc, error) {
 		return types.GenesisDocFromFile(config.GenesisFile())
 	}
@@ -1172,12 +1172,12 @@ var (
 	genesisDocKey = []byte("genesisDoc")
 )
 
-// LoadStateFromDBOrGenesisDocProvider attempts to load the state from the
+// loadStateFromDBOrGenesisDocProvider attempts to load the state from the
 // database, or creates one using the given genesisDocProvider. On success this also
 // returns the genesis doc loaded through the given provider.
-func LoadStateFromDBOrGenesisDocProvider(
+func loadStateFromDBOrGenesisDocProvider(
 	stateDB dbm.DB,
-	genesisDocProvider GenesisDocProvider,
+	genesisDocProvider genesisDocProvider,
 ) (sm.State, *types.GenesisDoc, error) {
 	// Get genesis doc
 	genDoc, err := loadGenesisDoc(stateDB)
