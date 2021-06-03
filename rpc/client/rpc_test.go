@@ -20,7 +20,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/mempool"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
@@ -438,7 +437,7 @@ func TestBroadcastTxSync(t *testing.T) {
 func getMempool(t *testing.T, srv service.Service) mempl.Mempool {
 	t.Helper()
 	n, ok := srv.(interface {
-		Mempool() mempool.Mempool
+		Mempool() mempl.Mempool
 	})
 	require.True(t, ok)
 	return n.Mempool()
