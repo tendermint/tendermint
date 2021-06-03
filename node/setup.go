@@ -17,7 +17,7 @@ import (
 	bcv0 "github.com/tendermint/tendermint/blockchain/v0"
 	bcv2 "github.com/tendermint/tendermint/blockchain/v2"
 	cfg "github.com/tendermint/tendermint/config"
-	cs "github.com/tendermint/tendermint/consensus"
+	cs "github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/evidence"
 	"github.com/tendermint/tendermint/libs/log"

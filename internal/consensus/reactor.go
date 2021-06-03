@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	cstypes "github.com/tendermint/tendermint/consensus/types"
+	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmevents "github.com/tendermint/tendermint/libs/events"
