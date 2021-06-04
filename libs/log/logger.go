@@ -26,7 +26,6 @@ const (
 	LogLevelInfo  = "info"
 	LogLevelWarn  = "warn"
 	LogLevelError = "error"
-	LogLevelFatal = "fatal"
 )
 
 // Logger defines a generic logging interface compatible with Tendermint.
