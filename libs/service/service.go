@@ -58,7 +58,7 @@ type Service interface {
 /*
 Classical-inheritance-style service declarations. Services can be started, then
 stopped, then optionally restarted.
-k
+
 Users can override the OnStart/OnStop methods. In the absence of errors, these
 methods are guaranteed to be called at most once. If OnStart returns an error,
 service won't be marked as started, so the user can call Start again.
