@@ -358,12 +358,12 @@ func (ps *PartSet) StringShort() string {
 }
 
 func (ps *PartSet) MarshalJSON() ([]byte, error) {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
 	if ps == nil {
 		return []byte("{}"), nil
 	}
-
-	ps.mtx.Lock()
-	defer ps.mtx.Unlock()
 
 	return tmjson.Marshal(struct {
 		CountTotal    string         `json:"count/total"`
