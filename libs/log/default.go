@@ -43,6 +43,9 @@ func NewDefaultLogger(format, level string, trace bool) (Logger, error) {
 		return nil, fmt.Errorf("failed to parse log level (%s): %w", level, err)
 	}
 
+	// make the writer thread-safe
+	logWriter = newSyncWriter(logWriter)
+
 	return defaultLogger{
 		Logger: zerolog.New(logWriter).Level(logLevel).With().Timestamp().Logger(),
 		trace:  trace,
