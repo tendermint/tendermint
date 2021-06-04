@@ -17,7 +17,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	mempl "github.com/tendermint/tendermint/internal/mempool"
-	"github.com/tendermint/tendermint/internal/node"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -57,12 +56,15 @@ func getHTTPClientWithTimeout(t *testing.T, conf *config.Config, timeout time.Du
 func GetClients(t *testing.T, ns service.Service, conf *config.Config) []client.Client {
 	t.Helper()
 
-	n, ok := ns.(*node.Node)
+	node, ok := ns.(rpclocal.NodeService)
 	require.True(t, ok)
+
+	ncl, err := rpclocal.New(node)
+	require.NoError(t, err)
 
 	return []client.Client{
 		getHTTPClient(t, conf),
-		rpclocal.New(n),
+		ncl,
 	}
 }
 
@@ -415,7 +417,7 @@ func TestBroadcastTxSync(t *testing.T) {
 	defer cancel()
 
 	// TODO (melekes): use mempool which is set on RPC rather than getting it from node
-	mempool := n.(*node.Node).Mempool()
+	mempool := getMempool(t, n)
 	initMempoolSize := mempool.Size()
 
 	for i, c := range GetClients(t, n, conf) {
@@ -434,7 +436,9 @@ func TestBroadcastTxSync(t *testing.T) {
 
 func getMempool(t *testing.T, srv service.Service) mempl.Mempool {
 	t.Helper()
-	n, ok := srv.(*node.Node)
+	n, ok := srv.(interface {
+		Mempool() mempl.Mempool
+	})
 	require.True(t, ok)
 	return n.Mempool()
 }
@@ -445,7 +449,7 @@ func TestBroadcastTxCommit(t *testing.T) {
 
 	n, conf := NodeSuite(t)
 
-	mempool := n.(*node.Node).Mempool()
+	mempool := getMempool(t, n)
 	for i, c := range GetClients(t, n, conf) {
 		_, _, tx := MakeTxKV()
 		bres, err := c.BroadcastTxCommit(ctx, tx)

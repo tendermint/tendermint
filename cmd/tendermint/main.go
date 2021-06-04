@@ -38,8 +38,8 @@ func main() {
 	//	* Supply a genesis doc file from another source
 	//	* Provide their own DB implementation
 	// can copy this file and use something other than the
-	// DefaultNewNode function
-	nodeFunc := nm.DefaultNewNode
+	// node.NewDefault function
+	nodeFunc := nm.NewDefault
 
 	// Create & start node
 	rootCmd.AddCommand(cmd.NewRunNodeCmd(nodeFunc))

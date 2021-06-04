@@ -9,14 +9,11 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/service"
-
 	cfg "github.com/tendermint/tendermint/config"
-	nm "github.com/tendermint/tendermint/internal/node"
-	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
-	"github.com/tendermint/tendermint/privval"
+	"github.com/tendermint/tendermint/libs/service"
+	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/proxy"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
@@ -119,22 +116,8 @@ func StartTendermint(ctx context.Context,
 		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 		logger = log.NewFilter(logger, log.AllowError())
 	}
-	pvKeyFile := conf.PrivValidatorKeyFile()
-	pvKeyStateFile := conf.PrivValidatorStateFile()
-	pv, err := privval.LoadOrGenFilePV(pvKeyFile, pvKeyStateFile)
-	if err != nil {
-		return nil, func(_ context.Context) error { return nil }, err
-	}
 	papp := proxy.NewLocalClientCreator(app)
-	nodeKey, err := p2p.LoadOrGenNodeKey(conf.NodeKeyFile())
-	if err != nil {
-		return nil, func(_ context.Context) error { return nil }, err
-	}
-	node, err := nm.NewNode(conf, pv, nodeKey, papp,
-		nm.DefaultGenesisDocProviderFunc(conf),
-		nm.DefaultDBProvider,
-		nm.DefaultMetricsProvider(conf.Instrumentation),
-		logger)
+	node, err := nm.New(conf, logger, papp, nil)
 	if err != nil {
 		return nil, func(_ context.Context) error { return nil }, err
 	}
@@ -154,7 +137,7 @@ func StartTendermint(ctx context.Context,
 
 	return node, func(ctx context.Context) error {
 		if err := node.Stop(); err != nil {
-			logger.Error("Error when tryint to stop node", "err", err)
+			logger.Error("Error when trying to stop node", "err", err)
 		}
 		node.Wait()
 		os.RemoveAll(conf.RootDir)

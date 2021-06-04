@@ -22,7 +22,6 @@ func NodeSuite(t *testing.T) (service.Service, *config.Config) {
 
 	// start a tendermint node in the background to test against
 	app := kvstore.NewApplication()
-	app.RetainBlocks = 9
 
 	node, closer, err := rpctest.StartTendermint(ctx, conf, app)
 	require.NoError(t, err)

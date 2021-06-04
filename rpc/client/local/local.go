@@ -11,7 +11,7 @@ import (
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
-	"github.com/tendermint/tendermint/rpc/core"
+	rpccore "github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
@@ -41,21 +41,28 @@ type Local struct {
 	*types.EventBus
 	Logger log.Logger
 	ctx    *rpctypes.Context
-	env    *core.Environment
+	env    *rpccore.Environment
 }
 
-// NewLocal configures a client that calls the Node directly.
-func New(node *nm.Node) *Local {
+// NodeService describes the portion of the node interface that the
+// local RPC client constructor needs to build a local client.
+type NodeService interface {
+	ConfigureRPC() (*rpccore.Environment, error)
+	EventBus() *types.EventBus
+}
+
+// New configures a client that calls the Node directly.
+func New(node NodeService) (*Local, error) {
 	env, err := node.ConfigureRPC()
 	if err != nil {
-		node.Logger.Error("Error configuring RPC", "err", err)
+		return nil, err
 	}
 	return &Local{
 		EventBus: node.EventBus(),
 		Logger:   log.NewNopLogger(),
 		ctx:      &rpctypes.Context{},
 		env:      env,
-	}
+	}, nil
 }
 
 var _ rpcclient.Client = (*Local)(nil)
