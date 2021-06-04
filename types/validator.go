@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -170,4 +171,18 @@ func ValidatorFromProto(vp *tmproto.Validator) (*Validator, error) {
 	v.ProposerPriority = vp.GetProposerPriority()
 
 	return v, nil
+}
+
+// DeterministicValidator returns a deterministic validator, useful for testing.
+// UNSTABLE
+func DeterministicValidator(key crypto.PrivKey) (*Validator, PrivValidator) {
+	privVal := NewMockPV()
+	privVal.PrivKey = key
+	var votePower int64 = 50
+	pubKey, err := privVal.GetPubKey(context.TODO())
+	if err != nil {
+		panic(fmt.Errorf("could not retrieve pubkey %w", err))
+	}
+	val := NewValidator(pubKey, votePower)
+	return val, privVal
 }
