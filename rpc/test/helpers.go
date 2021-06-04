@@ -116,7 +116,6 @@ func StartTendermint(ctx context.Context,
 		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 		logger = log.NewFilter(logger, log.AllowError())
 	}
-
 	papp := proxy.NewLocalClientCreator(app)
 	node, err := nm.New(conf, logger, papp, nil)
 	if err != nil {
