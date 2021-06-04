@@ -283,9 +283,6 @@ func TestEvidenceProto(t *testing.T) {
 	v := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 1, 0x01, blockID, defaultVoteTime)
 	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, blockID2, defaultVoteTime)
 
-	// -------- SignedHeaders --------
-	const height int64 = 37
-
 	tests := []struct {
 		testName     string
 		evidence     Evidence
