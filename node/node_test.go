@@ -27,7 +27,6 @@ import (
 	"github.com/tendermint/tendermint/mempool"
 	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
 	"github.com/tendermint/tendermint/p2p"
-	p2pmock "github.com/tendermint/tendermint/p2p/mock"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -42,10 +41,12 @@ func TestNodeStartStop(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 
 	// create & start node
-	n, err := DefaultNewNode(config, log.TestingLogger())
+	ns, err := newDefaultNode(config, log.TestingLogger())
 	require.NoError(t, err)
-	err = n.Start()
-	require.NoError(t, err)
+	require.NoError(t, ns.Start())
+
+	n, ok := ns.(*nodeImpl)
+	require.True(t, ok)
 
 	t.Logf("Started node %v", n.sw.NodeInfo())
 
@@ -80,18 +81,26 @@ func TestNodeStartStop(t *testing.T) {
 	}
 }
 
+func getTestNode(t *testing.T, conf *cfg.Config, logger log.Logger) *nodeImpl {
+	t.Helper()
+	ns, err := newDefaultNode(conf, logger)
+	require.NoError(t, err)
+
+	n, ok := ns.(*nodeImpl)
+	require.True(t, ok)
+	return n
+}
+
 func TestNodeDelayedStart(t *testing.T) {
 	config := cfg.ResetTestRoot("node_delayed_start_test")
 	defer os.RemoveAll(config.RootDir)
 	now := tmtime.Now()
 
 	// create & start node
-	n, err := DefaultNewNode(config, log.TestingLogger())
+	n := getTestNode(t, config, log.TestingLogger())
 	n.GenesisDoc().GenesisTime = now.Add(2 * time.Second)
-	require.NoError(t, err)
 
-	err = n.Start()
-	require.NoError(t, err)
+	require.NoError(t, n.Start())
 	defer n.Stop() //nolint:errcheck // ignore for tests
 
 	startTime := tmtime.Now()
@@ -102,9 +111,8 @@ func TestNodeSetAppVersion(t *testing.T) {
 	config := cfg.ResetTestRoot("node_app_version_test")
 	defer os.RemoveAll(config.RootDir)
 
-	// create & start node
-	n, err := DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	// create node
+	n := getTestNode(t, config, log.TestingLogger())
 
 	// default config uses the kvstore app
 	var appVersion uint64 = kvstore.ProtocolVersion
@@ -146,8 +154,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	}()
 	defer signerServer.Stop() //nolint:errcheck // ignore for tests
 
-	n, err := DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	n := getTestNode(t, config, log.TestingLogger())
 	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
 }
 
@@ -159,7 +166,7 @@ func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 	config.PrivValidator.ListenAddr = addrNoPrefix
 
-	_, err := DefaultNewNode(config, log.TestingLogger())
+	_, err := newDefaultNode(config, log.TestingLogger())
 	assert.Error(t, err)
 }
 
@@ -189,9 +196,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 		require.NoError(t, err)
 	}()
 	defer pvsc.Stop() //nolint:errcheck // ignore for tests
-
-	n, err := DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	n := getTestNode(t, config, log.TestingLogger())
 	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
 }
 
@@ -470,43 +475,6 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 }
 
-func TestNodeNewNodeCustomReactors(t *testing.T) {
-	config := cfg.ResetTestRoot("node_new_node_custom_reactors_test")
-	defer os.RemoveAll(config.RootDir)
-
-	cr := p2pmock.NewReactor()
-	customBlockchainReactor := p2pmock.NewReactor()
-
-	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
-	require.NoError(t, err)
-	pval, err := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
-	require.NoError(t, err)
-
-	appClient, closer := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
-	t.Cleanup(func() { closer.Close() })
-	n, err := NewNode(config,
-		pval,
-		nodeKey,
-		appClient,
-		DefaultGenesisDocProviderFunc(config),
-		DefaultDBProvider,
-		DefaultMetricsProvider(config.Instrumentation),
-		log.TestingLogger(),
-		CustomReactors(map[string]p2p.Reactor{"FOO": cr, "BLOCKCHAIN": customBlockchainReactor}),
-	)
-	require.NoError(t, err)
-
-	err = n.Start()
-	require.NoError(t, err)
-	defer n.Stop() //nolint:errcheck // ignore for tests
-
-	assert.True(t, cr.IsRunning())
-	assert.Equal(t, cr, n.Switch().Reactor("FOO"))
-
-	assert.True(t, customBlockchainReactor.IsRunning())
-	assert.Equal(t, customBlockchainReactor, n.Switch().Reactor("BLOCKCHAIN"))
-}
-
 func TestNodeNewSeedNode(t *testing.T) {
 	config := cfg.ResetTestRoot("node_new_node_custom_reactors_test")
 	config.Mode = cfg.ModeSeed
@@ -515,13 +483,15 @@ func TestNodeNewSeedNode(t *testing.T) {
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	require.NoError(t, err)
 
-	n, err := NewSeedNode(config,
-		DefaultDBProvider,
+	ns, err := makeSeedNode(config,
+		cfg.DefaultDBProvider,
 		nodeKey,
-		DefaultGenesisDocProviderFunc(config),
+		defaultGenesisDocProviderFunc(config),
 		log.TestingLogger(),
 	)
 	require.NoError(t, err)
+	n, ok := ns.(*nodeImpl)
+	require.True(t, ok)
 
 	err = n.Start()
 	require.NoError(t, err)
@@ -533,58 +503,51 @@ func TestNodeSetEventSink(t *testing.T) {
 	config := cfg.ResetTestRoot("node_app_version_test")
 	defer os.RemoveAll(config.RootDir)
 
-	// create & start node
-	n, err := DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	n := getTestNode(t, config, log.TestingLogger())
 
 	assert.Equal(t, 1, len(n.eventSinks))
 	assert.Equal(t, indexer.KV, n.eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"null"}
-	n, err = DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	n = getTestNode(t, config, log.TestingLogger())
 
 	assert.Equal(t, 1, len(n.eventSinks))
 	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"null", "kv"}
-	n, err = DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	n = getTestNode(t, config, log.TestingLogger())
 
 	assert.Equal(t, 1, len(n.eventSinks))
 	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"kvv"}
-	n, err = DefaultNewNode(config, log.TestingLogger())
-	assert.Nil(t, n)
+	ns, err := newDefaultNode(config, log.TestingLogger())
+	assert.Nil(t, ns)
 	assert.Equal(t, errors.New("unsupported event sink type"), err)
 
 	config.TxIndex.Indexer = []string{}
-	n, err = DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	n = getTestNode(t, config, log.TestingLogger())
 
 	assert.Equal(t, 1, len(n.eventSinks))
 	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"psql"}
-	n, err = DefaultNewNode(config, log.TestingLogger())
-	assert.Nil(t, n)
+	ns, err = newDefaultNode(config, log.TestingLogger())
+	assert.Nil(t, ns)
 	assert.Equal(t, errors.New("the psql connection settings cannot be empty"), err)
 
 	var psqlConn = "test"
 
 	config.TxIndex.Indexer = []string{"psql"}
 	config.TxIndex.PsqlConn = psqlConn
-	n, err = DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	n = getTestNode(t, config, log.TestingLogger())
 	assert.Equal(t, 1, len(n.eventSinks))
 	assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
 	n.OnStop()
 
 	config.TxIndex.Indexer = []string{"psql", "kv"}
 	config.TxIndex.PsqlConn = psqlConn
-	n, err = DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	n = getTestNode(t, config, log.TestingLogger())
 	assert.Equal(t, 2, len(n.eventSinks))
 	// we use map to filter the duplicated sinks, so it's not guarantee the order when append sinks.
 	if n.eventSinks[0].Type() == indexer.KV {
@@ -597,8 +560,7 @@ func TestNodeSetEventSink(t *testing.T) {
 
 	config.TxIndex.Indexer = []string{"kv", "psql"}
 	config.TxIndex.PsqlConn = psqlConn
-	n, err = DefaultNewNode(config, log.TestingLogger())
-	require.NoError(t, err)
+	n = getTestNode(t, config, log.TestingLogger())
 	assert.Equal(t, 2, len(n.eventSinks))
 	if n.eventSinks[0].Type() == indexer.KV {
 		assert.Equal(t, indexer.PSQL, n.eventSinks[1].Type())
@@ -611,13 +573,13 @@ func TestNodeSetEventSink(t *testing.T) {
 	var e = errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
 	config.TxIndex.Indexer = []string{"psql", "kv", "Kv"}
 	config.TxIndex.PsqlConn = psqlConn
-	_, err = DefaultNewNode(config, log.TestingLogger())
+	_, err = newDefaultNode(config, log.TestingLogger())
 	require.Error(t, err)
 	assert.Equal(t, e, err)
 
 	config.TxIndex.Indexer = []string{"Psql", "kV", "kv", "pSql"}
 	config.TxIndex.PsqlConn = psqlConn
-	_, err = DefaultNewNode(config, log.TestingLogger())
+	_, err = newDefaultNode(config, log.TestingLogger())
 	require.Error(t, err)
 	assert.Equal(t, e, err)
 }
