@@ -17,7 +17,7 @@ import (
 
 // A gRPC client.
 type grpcClient struct {
-	*service.BaseService
+	service.BaseService
 	mustConnect bool
 
 	client   types.ABCIApplicationClient
@@ -54,7 +54,7 @@ func NewGRPCClient(addr string, mustConnect bool) Client {
 		// gRPC calls while processing a slow callback at the channel head.
 		chReqRes: make(chan *ReqRes, 64),
 	}
-	cli.BaseService = service.NewBaseService(nil, "grpcClient", cli)
+	cli.BaseService = *service.NewBaseService(nil, "grpcClient", cli)
 	return cli
 }
 

@@ -31,7 +31,7 @@ type Subscription interface {
 // are proxied to underlying pubsub server. All events must be published using
 // EventBus to ensure correct data types.
 type EventBus struct {
-	*service.BaseService
+	service.BaseService
 	pubsub *tmpubsub.Server
 }
 
@@ -45,7 +45,7 @@ func NewEventBusWithBufferCapacity(cap int) *EventBus {
 	// capacity could be exposed later if needed
 	pubsub := tmpubsub.NewServer(tmpubsub.BufferCapacity(cap))
 	b := &EventBus{pubsub: pubsub}
-	b.BaseService = service.NewBaseService(nil, "EventBus", b)
+	b.BaseService = *service.NewBaseService(nil, "EventBus", b)
 	return b
 }
 

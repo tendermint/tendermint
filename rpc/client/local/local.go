@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	nm "github.com/tendermint/tendermint/internal/node"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
