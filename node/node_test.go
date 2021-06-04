@@ -495,7 +495,7 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 		nodeKey,
 		appClient,
 		defaultGenesisDocProviderFunc(config),
-		DefaultDBProvider,
+		cfg.DefaultDBProvider,
 		log.TestingLogger(),
 		customReactors(map[string]p2p.Reactor{"FOO": cr, "BLOCKCHAIN": customBlockchainReactor}),
 	)
@@ -523,7 +523,7 @@ func TestNodeNewSeedNode(t *testing.T) {
 	require.NoError(t, err)
 
 	ns, err := makeSeedNode(config,
-		DefaultDBProvider,
+		cfg.DefaultDBProvider,
 		nodeKey,
 		defaultGenesisDocProviderFunc(config),
 		log.TestingLogger(),

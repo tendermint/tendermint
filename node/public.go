@@ -56,10 +56,10 @@ func New(conf *config.Config,
 			nodeKey,
 			cf,
 			genProvider,
-			DefaultDBProvider,
+			config.DefaultDBProvider,
 			logger)
 	case config.ModeSeed:
-		return makeSeedNode(conf, DefaultDBProvider, nodeKey, genProvider, logger)
+		return makeSeedNode(conf, config.DefaultDBProvider, nodeKey, genProvider, logger)
 	default:
 		return nil, fmt.Errorf("%q is not a valid mode", conf.Mode)
 	}

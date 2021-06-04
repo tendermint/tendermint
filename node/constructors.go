@@ -10,12 +10,10 @@ import (
 	"strconv"
 	"time"
 
+	_ "github.com/lib/pq" // provide the psql db driver
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
-	dbm "github.com/tendermint/tm-db"
-
-	_ "github.com/lib/pq" // provide the psql db driver
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cs "github.com/tendermint/tendermint/consensus"
@@ -43,6 +41,7 @@ import (
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
+	dbm "github.com/tendermint/tm-db"
 )
 
 // nodeImpl is the highest level interface to a full Tendermint node.
@@ -99,7 +98,7 @@ func newDefaultNode(config *cfg.Config, logger log.Logger) (service.Service, err
 	}
 	if config.Mode == cfg.ModeSeed {
 		return makeSeedNode(config,
-			DefaultDBProvider,
+			cfg.DefaultDBProvider,
 			nodeKey,
 			defaultGenesisDocProviderFunc(config),
 			logger,
@@ -122,7 +121,7 @@ func newDefaultNode(config *cfg.Config, logger log.Logger) (service.Service, err
 		nodeKey,
 		appClient,
 		defaultGenesisDocProviderFunc(config),
-		DefaultDBProvider,
+		cfg.DefaultDBProvider,
 		logger,
 	)
 }
@@ -133,7 +132,7 @@ func makeNode(config *cfg.Config,
 	nodeKey p2p.NodeKey,
 	clientCreator proxy.ClientCreator,
 	genesisDocProvider genesisDocProvider,
-	dbProvider DBProvider,
+	dbProvider cfg.DBProvider,
 	logger log.Logger,
 	options ...option) (service.Service, error) {
 
@@ -453,7 +452,7 @@ func makeNode(config *cfg.Config,
 
 // makeSeedNode returns a new seed node, containing only p2p, pex reactor
 func makeSeedNode(config *cfg.Config,
-	dbProvider DBProvider,
+	dbProvider cfg.DBProvider,
 	nodeKey p2p.NodeKey,
 	genesisDocProvider genesisDocProvider,
 	logger log.Logger,
@@ -1108,22 +1107,6 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 	return nil
 }
 
-// DBContext specifies config information for loading a new DB.
-type DBContext struct {
-	ID     string
-	Config *cfg.Config
-}
-
-// DBProvider takes a DBContext and returns an instantiated DB.
-type DBProvider func(*DBContext) (dbm.DB, error)
-
-// DefaultDBProvider returns a database using the DBBackend and DBDir
-// specified in the ctx.Config.
-func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
-	dbType := dbm.BackendType(ctx.Config.DBBackend)
-	return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBDir())
-}
-
 // genesisDocProvider returns a GenesisDoc.
 // It allows the GenesisDoc to be pulled from sources other than the
 // filesystem, for instance from a distributed key-value store cluster.
@@ -1136,9 +1119,6 @@ func defaultGenesisDocProviderFunc(config *cfg.Config) genesisDocProvider {
 		return types.GenesisDocFromFile(config.GenesisFile())
 	}
 }
-
-// Provider takes a config and a logger and returns a ready to go Node.
-type Provider func(*cfg.Config, log.Logger) (service.Service, error)
 
 // metricsProvider returns a consensus, p2p and mempool Metrics.
 type metricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempool.Metrics, *sm.Metrics)

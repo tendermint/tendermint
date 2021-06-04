@@ -161,8 +161,8 @@ func startLightNode(cfg *Config) error {
 		return err
 	}
 
-	dbContext := &node.DBContext{ID: "light", Config: tmcfg}
-	lightDB, err := node.DefaultDBProvider(dbContext)
+	dbContext := &config.DBContext{ID: "light", Config: tmcfg}
+	lightDB, err := config.DefaultDBProvider(dbContext)
 	if err != nil {
 		return err
 	}
