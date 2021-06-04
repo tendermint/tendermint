@@ -133,8 +133,7 @@ func makeNode(config *cfg.Config,
 	clientCreator proxy.ClientCreator,
 	genesisDocProvider genesisDocProvider,
 	dbProvider cfg.DBProvider,
-	logger log.Logger,
-	options ...option) (service.Service, error) {
+	logger log.Logger) (service.Service, error) {
 
 	blockStore, stateDB, err := initDBs(config, dbProvider)
 	if err != nil {
@@ -443,10 +442,6 @@ func makeNode(config *cfg.Config,
 	}
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
 
-	for _, option := range options {
-		option(node)
-	}
-
 	return node, nil
 }
 
@@ -456,7 +451,7 @@ func makeSeedNode(config *cfg.Config,
 	nodeKey p2p.NodeKey,
 	genesisDocProvider genesisDocProvider,
 	logger log.Logger,
-	options ...option) (service.Service, error) {
+) (service.Service, error) {
 
 	genDoc, err := genesisDocProvider()
 	if err != nil {
@@ -552,45 +547,13 @@ func makeSeedNode(config *cfg.Config,
 	}
 	node.BaseService = *service.NewBaseService(logger, "SeedNode", node)
 
-	for _, option := range options {
-		option(node)
-	}
-
 	return node, nil
 }
-
-// option sets a parameter for the node.
-type option func(*nodeImpl)
 
 // Temporary interface for switching to fast sync, we should get rid of v0.
 // See: https://github.com/tendermint/tendermint/issues/4595
 type fastSyncReactor interface {
 	SwitchToFastSync(sm.State) error
-}
-
-// customReactors allows you to add custom reactors (name -> p2p.Reactor) to
-// the node's Switch.
-//
-// WARNING: using any name from the below list of the existing reactors will
-// result in replacing it with the custom one.
-//
-//  - MEMPOOL
-//  - BLOCKCHAIN
-//  - CONSENSUS
-//  - EVIDENCE
-//  - PEX
-//  - STATESYNC
-func customReactors(reactors map[string]p2p.Reactor) option {
-	return func(n *nodeImpl) {
-		for name, reactor := range reactors {
-			if existingReactor := n.sw.Reactor(name); existingReactor != nil {
-				n.sw.Logger.Info("Replacing existing reactor with a custom one",
-					"name", name, "existing", existingReactor, "custom", reactor)
-				n.sw.RemoveReactor(name, existingReactor)
-			}
-			n.sw.AddReactor(name, reactor)
-		}
-	}
 }
 
 // OnStart starts the Node. It implements service.Service.

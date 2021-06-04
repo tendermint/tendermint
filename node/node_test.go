@@ -27,7 +27,6 @@ import (
 	"github.com/tendermint/tendermint/mempool"
 	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
 	"github.com/tendermint/tendermint/p2p"
-	p2pmock "github.com/tendermint/tendermint/p2p/mock"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -474,44 +473,6 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	// less than the pb block size
 	assert.LessOrEqual(t, partSet.ByteSize(), int64(pb.Size()))
 
-}
-
-func TestNodeNewNodeCustomReactors(t *testing.T) {
-	config := cfg.ResetTestRoot("node_new_node_custom_reactors_test")
-	defer os.RemoveAll(config.RootDir)
-
-	cr := p2pmock.NewReactor()
-	customBlockchainReactor := p2pmock.NewReactor()
-
-	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
-	require.NoError(t, err)
-	pval, err := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
-	require.NoError(t, err)
-
-	appClient, closer := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
-	t.Cleanup(func() { closer.Close() })
-	ns, err := makeNode(config,
-		pval,
-		nodeKey,
-		appClient,
-		defaultGenesisDocProviderFunc(config),
-		cfg.DefaultDBProvider,
-		log.TestingLogger(),
-		customReactors(map[string]p2p.Reactor{"FOO": cr, "BLOCKCHAIN": customBlockchainReactor}),
-	)
-	require.NoError(t, err)
-	n, ok := ns.(*nodeImpl)
-	require.True(t, ok)
-
-	err = n.Start()
-	require.NoError(t, err)
-	defer n.Stop() //nolint:errcheck // ignore for tests
-
-	assert.True(t, cr.IsRunning())
-	assert.Equal(t, cr, n.Switch().Reactor("FOO"))
-
-	assert.True(t, customBlockchainReactor.IsRunning())
-	assert.Equal(t, customBlockchainReactor, n.Switch().Reactor("BLOCKCHAIN"))
 }
 
 func TestNodeNewSeedNode(t *testing.T) {
