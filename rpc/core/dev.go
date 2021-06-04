@@ -16,11 +16,11 @@ func (env *Environment) UnsafeFlushMempool(ctx *rpctypes.Context) (*ctypes.Resul
 	return &ctypes.ResultUnsafeFlushMempool{}, nil
 }
 
-// UnsafeResync re-index the block/transaction events into the eventsinks.
-func (env *Environment) UnsafeResync(
+// UnsafeReIndex re-index the block/transaction events into the eventsinks.
+func (env *Environment) UnsafeReIndex(
 	ctx *rpctypes.Context,
 	start int64,
-	end int64) (*ctypes.ResultUnsafeResync, error) {
+	end int64) (*ctypes.ResultUnsafeReIndex, error) {
 
 	base := env.BlockStore.Base()
 
@@ -100,5 +100,5 @@ func (env *Environment) UnsafeResync(
 
 	}
 
-	return &ctypes.ResultUnsafeResync{Result: "resync finished"}, nil
+	return &ctypes.ResultUnsafeReIndex{Result: "re-index finished"}, nil
 }

@@ -21,7 +21,7 @@ const (
 	base   int64 = 1
 )
 
-func TestUnsafeResync(t *testing.T) {
+func TestUnsafeReIndex(t *testing.T) {
 
 	mockBlockStore := &mocks.BlockStore{}
 	mockStateStore := &mocks.Store{}
@@ -77,7 +77,7 @@ func TestUnsafeResync(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		res, err := env.UnsafeResync(&rpctypes.Context{}, tc.startHeight, tc.endHeight)
+		res, err := env.UnsafeReIndex(&rpctypes.Context{}, tc.startHeight, tc.endHeight)
 		if tc.isErr {
 			require.Error(t, err)
 		} else {

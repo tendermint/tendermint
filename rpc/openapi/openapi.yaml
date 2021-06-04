@@ -1214,38 +1214,38 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-  /resync:
+  /re_index:
     post:
-      summary: Resync block/tx event data (Unsafe)
-      operationId: resync
+      summary: Re-index the block/tx event data (Unsafe)
+      operationId: re_index
       tags:
         - Unsafe
       description: |
-        resync block/tx event data to the indexer database, this route in under unsafe, and has to manually enabled to use
+        re-index the  block/tx event data to the indexer database, this route in under unsafe, and has to manually enabled to use
 
-          **Example:** curl -X POST "localhost:26657/resync?start_height=1&end_height=2"
+          **Example:** curl -X POST "localhost:26657/re_index?start_height=1&end_height=2"
       parameters:
         - in: query
           name: start_height
-          description: the block height would like to start for resync.
+          description: the block height would like to start for re-index.
           required: true
           schema:
             type: integer
             example: 1
         - in: query
           name: end_height
-          description: the block height would like to finish for resync.
+          description: the block height would like to finish for re-index.
           required: true
           schema:
             type: integer
             example: 2
       responses:
         "200":
-          description: Resync finished
+          description: Re-index finished
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ResyncResponse"
+                $ref: "#/components/schemas/ReIndexResponse"
         "500":
           description: Request error
           content:
@@ -2783,12 +2783,12 @@ components:
           type: string
           example: "Dialing seeds in progress. See /net_info for details"
 
-    ResyncResponse:
+    ReIndexResponse:
       type: object
       properties:
         Log:
           type: string
-          example: "Resyncing the block/tx events."
+          example: "Finished re-indexing the block/tx events."
 
     BlockSearchResponse:
       type: object

@@ -58,5 +58,5 @@ func (env *Environment) AddUnsafe(routes RoutesMap) {
 	routes["dial_seeds"] = rpc.NewRPCFunc(env.UnsafeDialSeeds, "seeds", false)
 	routes["dial_peers"] = rpc.NewRPCFunc(env.UnsafeDialPeers, "peers,persistent,unconditional,private", false)
 	routes["unsafe_flush_mempool"] = rpc.NewRPCFunc(env.UnsafeFlushMempool, "", false)
-	routes["resync"] = rpc.NewRPCFunc(env.UnsafeResync, "start_height,end_height", false)
+	routes["re_index"] = rpc.NewRPCFunc(env.UnsafeReIndex, "start_height,end_height", false)
 }

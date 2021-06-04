@@ -264,6 +264,6 @@ type ResultEvent struct {
 	Events         map[string][]string `json:"events"`
 }
 
-type ResultUnsafeResync struct {
+type ResultUnsafeReIndex struct {
 	Result string `json:"result"`
 }
