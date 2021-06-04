@@ -112,36 +112,37 @@ func makeEvidences(
 }
 
 func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
-	n := NodeSuite(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	n, config := NodeSuite(t)
 
 	// previous versions of this test used a shared fixture with
 	// other tests, and in this version we give it a little time
 	// for the node to make progress before running the test
 	time.Sleep(10 * time.Millisecond)
 
-	var (
-		config  = n.Config()
-		chainID = config.ChainID()
-	)
+	chainID := config.ChainID()
+
 	pv, err := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	require.NoError(t, err)
 
-	for i, c := range GetClients(t, n) {
+	for i, c := range GetClients(t, n, config) {
 		correct, fakes := makeEvidences(t, pv, chainID)
 		t.Logf("client %d", i)
 
-		result, err := c.BroadcastEvidence(context.Background(), correct)
+		result, err := c.BroadcastEvidence(ctx, correct)
 		require.NoError(t, err, "BroadcastEvidence(%s) failed", correct)
 		assert.Equal(t, correct.Hash(), result.Hash, "expected result hash to match evidence hash")
 
-		status, err := c.Status(context.Background())
+		status, err := c.Status(ctx)
 		require.NoError(t, err)
 		err = client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
 		require.NoError(t, err)
 
 		ed25519pub := pv.Key.PubKey.(ed25519.PubKey)
 		rawpub := ed25519pub.Bytes()
-		result2, err := c.ABCIQuery(context.Background(), "/val", rawpub)
+		result2, err := c.ABCIQuery(ctx, "/val", rawpub)
 		require.NoError(t, err)
 		qres := result2.Response
 		require.True(t, qres.IsOK())
@@ -157,14 +158,15 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 		require.Equal(t, int64(9), v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
 
 		for _, fake := range fakes {
-			_, err := c.BroadcastEvidence(context.Background(), fake)
+			_, err := c.BroadcastEvidence(ctx, fake)
 			require.Error(t, err, "BroadcastEvidence(%s) succeeded, but the evidence was fake", fake)
 		}
 	}
 }
 
 func TestBroadcastEmptyEvidence(t *testing.T) {
-	for _, c := range GetClients(t, NodeSuite(t)) {
+	n, conf := NodeSuite(t)
+	for _, c := range GetClients(t, n, conf) {
 		_, err := c.BroadcastEvidence(context.Background(), nil)
 		assert.Error(t, err)
 	}
