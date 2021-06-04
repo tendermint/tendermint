@@ -33,6 +33,8 @@ func TestNewProvider(t *testing.T) {
 	require.Equal(t, fmt.Sprintf("%s", c), "http{http://153.200.0.1}")
 }
 
+// NodeSuite initiates and runs a full node instance in the background, stopping 
+// it once the test is completed
 func NodeSuite(t *testing.T) (service.Service, *config.Config) {
 	t.Helper()
 

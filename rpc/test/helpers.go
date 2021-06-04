@@ -138,7 +138,7 @@ func StartTendermint(ctx context.Context,
 
 	return node, func(ctx context.Context) error {
 		if err := node.Stop(); err != nil {
-			logger.Error("Error when tryint to stop node", "err", err)
+			logger.Error("Error when trying to stop node", "err", err)
 		}
 		node.Wait()
 		os.RemoveAll(conf.RootDir)
