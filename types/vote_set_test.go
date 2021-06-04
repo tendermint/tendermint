@@ -494,7 +494,7 @@ func deterministicVoteSet(
 	signedMsgType tmproto.SignedMsgType,
 	votingPower int64,
 ) (*VoteSet, *ValidatorSet, []PrivValidator) {
-	valSet, privValidators := DeterministicValidatorSet()
+	valSet, privValidators := deterministicValidatorSet()
 	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
 }
 

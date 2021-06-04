@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -931,26 +930,4 @@ func safeMul(a, b int64) (int64, bool) {
 	}
 
 	return a * b, false
-}
-
-// DeterministicValidatorSet returns a deterministic validator set (size: +numValidators+),
-// where each validator has a power of 50
-//
-// EXPOSED FOR TESTING.
-func DeterministicValidatorSet() (*ValidatorSet, []PrivValidator) {
-	var (
-		valz           = make([]*Validator, 10)
-		privValidators = make([]PrivValidator, 10)
-	)
-
-	for i := 0; i < 10; i++ {
-		// val, privValidator := DeterministicValidator(ed25519.PrivKey([]byte(deterministicKeys[i])))
-		val, privValidator := DeterministicValidator(ed25519.GenPrivKeyFromSecret([]byte(fmt.Sprintf("key: %x", i))))
-		valz[i] = val
-		privValidators[i] = privValidator
-	}
-
-	sort.Sort(PrivValidatorsByAddress(privValidators))
-
-	return NewValidatorSet(valz), privValidators
 }
