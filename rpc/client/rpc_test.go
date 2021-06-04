@@ -71,6 +71,14 @@ func TestNilCustomHTTPClient(t *testing.T) {
 	})
 }
 
+func TestParseInvalidAddress(t *testing.T) {
+	conf := NodeSuite(t).Config()
+	// should remove trailing /
+	invalidRemote := conf.RPC.ListenAddress + "/"
+	_, err := rpchttp.New(invalidRemote)
+	require.NoError(t, err)
+}
+
 func TestCustomHTTPClient(t *testing.T) {
 	conf := NodeSuite(t).Config()
 	remote := conf.RPC.ListenAddress
