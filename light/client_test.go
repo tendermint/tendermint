@@ -57,7 +57,6 @@ var (
 		3: h3,
 	}
 	l1       = &types.LightBlock{SignedHeader: h1, ValidatorSet: vals}
-	l2       = &types.LightBlock{SignedHeader: h2, ValidatorSet: vals}
 	fullNode = mockp.New(
 		chainID,
 		headerSet,
@@ -458,7 +457,7 @@ func TestClient_Cleanup(t *testing.T) {
 }
 
 // trustedHeader.Height == options.Height
-func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
+func TestClientRestoresTrustedHeaderAfterStartup(t *testing.T) {
 	// 1. options.Hash == trustedHeader.Hash
 	{
 		trustedStore := dbs.New(dbm.NewMemDB())
@@ -520,181 +519,10 @@ func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
 		l, err := c.TrustedLightBlock(1)
 		assert.NoError(t, err)
 		if assert.NotNil(t, l) {
-			assert.Equal(t, l.Hash(), header1.Hash())
+			// client take the trusted store and ignores the trusted options
+			assert.Equal(t, l.Hash(), l1.Hash())
 			assert.NoError(t, l.ValidateBasic(chainID))
 		}
-	}
-}
-
-// trustedHeader.Height < options.Height
-func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
-	// 1. options.Hash == trustedHeader.Hash
-	{
-		trustedStore := dbs.New(dbm.NewMemDB())
-		err := trustedStore.SaveLightBlock(l1)
-		require.NoError(t, err)
-
-		c, err := light.NewClient(
-			ctx,
-			chainID,
-			light.TrustOptions{
-				Period: 4 * time.Hour,
-				Height: 2,
-				Hash:   h2.Hash(),
-			},
-			fullNode,
-			[]provider.Provider{fullNode},
-			trustedStore,
-			light.Logger(log.TestingLogger()),
-		)
-		require.NoError(t, err)
-
-		// Check we still have the 1st header (+header+).
-		l, err := c.TrustedLightBlock(1)
-		assert.NoError(t, err)
-		assert.NotNil(t, l)
-		assert.Equal(t, l.Hash(), h1.Hash())
-		assert.NoError(t, l.ValidateBasic(chainID))
-	}
-
-	// 2. options.Hash != trustedHeader.Hash
-	// This could happen if previous provider was lying to us.
-	{
-		trustedStore := dbs.New(dbm.NewMemDB())
-		err := trustedStore.SaveLightBlock(l1)
-		require.NoError(t, err)
-
-		// header1 != header
-		diffHeader1 := keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Hour), nil, vals, vals,
-			hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys))
-
-		diffHeader2 := keys.GenSignedHeader(chainID, 2, bTime.Add(2*time.Hour), nil, vals, vals,
-			hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys))
-
-		primary := mockp.New(
-			chainID,
-			map[int64]*types.SignedHeader{
-				1: diffHeader1,
-				2: diffHeader2,
-			},
-			valSet,
-		)
-
-		c, err := light.NewClient(
-			ctx,
-			chainID,
-			light.TrustOptions{
-				Period: 4 * time.Hour,
-				Height: 2,
-				Hash:   diffHeader2.Hash(),
-			},
-			primary,
-			[]provider.Provider{primary},
-			trustedStore,
-			light.Logger(log.TestingLogger()),
-		)
-		require.NoError(t, err)
-
-		// Check we no longer have the invalid 1st header (+header+).
-		l, err := c.TrustedLightBlock(1)
-		assert.Error(t, err)
-		assert.Nil(t, l)
-	}
-}
-
-// trustedHeader.Height > options.Height
-func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
-	// 1. options.Hash == trustedHeader.Hash
-	{
-		// load the first three headers into the trusted store
-		trustedStore := dbs.New(dbm.NewMemDB())
-		err := trustedStore.SaveLightBlock(l1)
-		require.NoError(t, err)
-
-		err = trustedStore.SaveLightBlock(l2)
-		require.NoError(t, err)
-
-		c, err := light.NewClient(
-			ctx,
-			chainID,
-			trustOptions,
-			fullNode,
-			[]provider.Provider{fullNode},
-			trustedStore,
-			light.Logger(log.TestingLogger()),
-		)
-		require.NoError(t, err)
-
-		// Check we still have the 1st light block.
-		l, err := c.TrustedLightBlock(1)
-		assert.NoError(t, err)
-		assert.NotNil(t, l)
-		assert.Equal(t, l.Hash(), h1.Hash())
-		assert.NoError(t, l.ValidateBasic(chainID))
-
-		// Check we no longer have 2nd light block.
-		l, err = c.TrustedLightBlock(2)
-		assert.Error(t, err)
-		assert.Nil(t, l)
-
-		l, err = c.TrustedLightBlock(3)
-		assert.Error(t, err)
-		assert.Nil(t, l)
-	}
-
-	// 2. options.Hash != trustedHeader.Hash
-	// This could happen if previous provider was lying to us.
-	{
-		trustedStore := dbs.New(dbm.NewMemDB())
-		err := trustedStore.SaveLightBlock(l1)
-		require.NoError(t, err)
-
-		// header1 != header
-		header1 := keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Hour), nil, vals, vals,
-			hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys))
-
-		header2 := keys.GenSignedHeader(chainID, 2, bTime.Add(2*time.Hour), nil, vals, vals,
-			hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys))
-		err = trustedStore.SaveLightBlock(&types.LightBlock{
-			SignedHeader: header2,
-			ValidatorSet: vals,
-		})
-		require.NoError(t, err)
-
-		primary := mockp.New(
-			chainID,
-			map[int64]*types.SignedHeader{
-				1: header1,
-			},
-			valSet,
-		)
-
-		c, err := light.NewClient(
-			ctx,
-			chainID,
-			light.TrustOptions{
-				Period: 4 * time.Hour,
-				Height: 1,
-				Hash:   header1.Hash(),
-			},
-			primary,
-			[]provider.Provider{primary},
-			trustedStore,
-			light.Logger(log.TestingLogger()),
-		)
-		require.NoError(t, err)
-
-		// Check we have swapped invalid 1st light block (+lightblock+) with correct one (+lightblock2+).
-		l, err := c.TrustedLightBlock(1)
-		assert.NoError(t, err)
-		assert.NotNil(t, l)
-		assert.Equal(t, l.Hash(), header1.Hash())
-		assert.NoError(t, l.ValidateBasic(chainID))
-
-		// Check we no longer have invalid 2nd light block (+lightblock2+).
-		l, err = c.TrustedLightBlock(2)
-		assert.Error(t, err)
-		assert.Nil(t, l)
 	}
 }
 
