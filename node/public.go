@@ -13,19 +13,20 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// NewDefault constructs a tendermint node service for use in go process that
-// host their own process-local tendermint node. This is roughly
+// NewDefault constructs a tendermint node service for use in go
+// process that host their own process-local tendermint node. This is
 // equivalent to running tendermint in it's own process communicating
 // to an external ABCI application.
 func NewDefault(conf *config.Config, logger log.Logger) (service.Service, error) {
 	return newDefaultNode(conf, logger)
 }
 
-// New constructs a tendermint node for use in an integrated
-// context. The ClientCreator makes it possible to construct.
-// The final option is a pointer to a Genesis document: if the value
-// is nil, the genesis document is read from the file specified in the
-// config, and otherwise the node uses value of the final argument.
+// New constructs a tendermint node. The ClientCreator makes it
+// possible to construct an ABCI application that runs in the same
+// process as the tendermint node.  The final option is a pointer to a
+// Genesis document: if the value is nil, the genesis document is read
+// from the file specified in the config, and otherwise the node uses
+// value of the final argument.
 func New(conf *config.Config,
 	logger log.Logger,
 	cf proxy.ClientCreator,
