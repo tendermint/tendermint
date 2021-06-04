@@ -342,7 +342,7 @@ func (h *Handshaker) ReplayBlocks(
 		if err != nil {
 			return nil, err
 		}
-		// fmt.Printf("res %s\n", res.String())
+		h.logger.Debug("Response from Init Chain", "res", res.String())
 		appHash = res.AppHash
 
 		if stateBlockHeight == 0 { // we only update state when we are in initial state
@@ -358,10 +358,13 @@ func (h *Handshaker) ReplayBlocks(
 				if err != nil {
 					return nil, err
 				}
-				state.Validators = types.NewValidatorSet(vals, thresholdPublicKey, h.genDoc.QuorumType, quorumHash)
+				newValidatorSet := types.NewValidatorSet(vals, thresholdPublicKey, h.genDoc.QuorumType, quorumHash)
+				h.logger.Debug("Updating validator set", "old", state.Validators, "new", newValidatorSet)
+				state.Validators = newValidatorSet
 				state.NextValidators = types.NewValidatorSet(vals, thresholdPublicKey, h.genDoc.QuorumType, quorumHash).CopyIncrementProposerPriority(1)
 			} else if len(h.genDoc.Validators) == 0 {
 				// If validator set is not set in genesis and still empty after InitChain, exit.
+				h.logger.Debug("Validator set is nil in genesis and still empty after InitChain")
 				return nil, fmt.Errorf("validator set is nil in genesis and still empty after InitChain")
 			}
 

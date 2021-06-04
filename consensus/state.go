@@ -1102,8 +1102,6 @@ func (cs *State) enterPropose(height int64, round int32) {
 		return
 	}
 
-	logger.Debug("node is a validator")
-
 	if cs.privValidatorProTxHash == nil {
 		// If this node is a validator & proposer in the current round, it will
 		// miss the opportunity to create a block.
@@ -1116,6 +1114,8 @@ func (cs *State) enterPropose(height int64, round int32) {
 	if !cs.Validators.HasProTxHash(proTxHash) {
 		logger.Debug("This node is not a validator", "proTxHash", proTxHash, "vals", cs.Validators)
 		return
+	} else {
+		logger.Debug("This node is a validator", "proTxHash", proTxHash)
 	}
 
 	if cs.isProposer(proTxHash) {
