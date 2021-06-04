@@ -824,3 +824,8 @@ func (_m *Client) Validators(ctx context.Context, height *int64, page *int, perP
 
 	return r0, r1
 }
+
+// Wait provides a mock function with given fields:
+func (_m *Client) Wait() {
+	_m.Called()
+}
