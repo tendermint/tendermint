@@ -439,7 +439,7 @@ func (conR *Reactor) broadcastNewValidBlockMessage(rs *cstypes.RoundState) {
 		Round:              rs.Round,
 		BlockPartSetHeader: rs.ProposalBlockParts.Header(),
 		BlockParts:         rs.ProposalBlockParts.BitArray(),
-		IsCommit:           rs.Step == cstypes.RoundStepCommit,
+		IsCommit:           rs.Step == cstypes.RoundStepApplyCommit,
 	}
 	conR.Switch.Broadcast(StateChannel, tmcon.MustEncode(csMsg))
 }

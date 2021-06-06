@@ -1514,7 +1514,7 @@ func (cs *State) enterPrecommitWait(height int64, round int32) {
 func (cs *State) enterCommit(height int64, commitRound int32) {
 	logger := cs.Logger.With("height", height, "commit_round", commitRound)
 
-	if cs.Height != height || cstypes.RoundStepCommit <= cs.Step {
+	if cs.Height != height || cstypes.RoundStepApplyCommit <= cs.Step {
 		logger.Debug(
 			"entering commit step with invalid args",
 			"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
@@ -1527,7 +1527,7 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 	defer func() {
 		// Done enterCommit:
 		// keep cs.Round the same, commitRound points to the right Precommits set.
-		cs.updateRoundStep(cs.Round, cstypes.RoundStepCommit)
+		cs.updateRoundStep(cs.Round, cstypes.RoundStepApplyCommit)
 		cs.CommitRound = commitRound
 		cs.CommitTime = tmtime.Now()
 		cs.newStep()
@@ -1605,7 +1605,7 @@ func (cs *State) tryFinalizeCommit(height int64) {
 func (cs *State) finalizeCommit(height int64) {
 	logger := cs.Logger.With("height", height)
 
-	if cs.Height != height || cs.Step != cstypes.RoundStepCommit {
+	if cs.Height != height || cs.Step != cstypes.RoundStepApplyCommit {
 		logger.Debug(
 			"entering finalize commit step",
 			"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
@@ -1884,7 +1884,7 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 	proposal.Signature = p.Signature
 	cs.Proposal = proposal
 	// We don't update cs.ProposalBlockParts if it is already set.
-	// This happens if we're already in cstypes.RoundStepCommit or if there is a valid block in the current round.
+	// This happens if we're already in cstypes.RoundStepApplyCommit or if there is a valid block in the current round.
 	// TODO: We can check if Proposal is for a different block as this is a sign of misbehavior!
 	if cs.ProposalBlockParts == nil {
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockID.PartSetHeader)
@@ -1992,7 +1992,7 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID, from
 			if hasTwoThirds { // this is optimisation as this will be triggered when prevote is added
 				cs.enterPrecommit(height, cs.Round)
 			}
-		} else if cs.Step == cstypes.RoundStepCommit {
+		} else if cs.Step == cstypes.RoundStepApplyCommit {
 			// If we're waiting on the proposal block...
 			cs.tryFinalizeCommit(height)
 		}

@@ -60,6 +60,20 @@ message HasVote {
   int32                          index  = 4;
 }
 
+// Vote is sent when voting for a proposal (or lack thereof).
+message Commit {
+  tendermint.types.Commit commit = 1;
+}
+
+// HasCommit is sent to indicate that a particular vote has been received.
+message HasCommit {
+  int64                          height = 1;
+  int32                          round  = 2;
+  tendermint.types.SignedMsgType type   = 3;
+  tendermint.types.BlockID       block_id = 4 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
+}
+
+
 // VoteSetMaj23 is sent to indicate that a given BlockID has seen +2/3 votes.
 message VoteSetMaj23 {
   int64                          height   = 1;
@@ -88,5 +102,7 @@ message Message {
     HasVote       has_vote        = 7;
     VoteSetMaj23  vote_set_maj23  = 8;
     VoteSetBits   vote_set_bits   = 9;
+    Commit        commit          = 10;
+    HasCommit     has_commit      = 11;
   }
 }

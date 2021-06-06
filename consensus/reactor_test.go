@@ -614,7 +614,7 @@ func TestNewRoundStepMessageValidateBasic(t *testing.T) {
 		{false, 0, 0, 0, "Valid Message", cstypes.RoundStepNewHeight},
 		{true, -1, 0, 0, "Negative round", cstypes.RoundStepNewHeight},
 		{true, 0, 0, -1, "Negative height", cstypes.RoundStepNewHeight},
-		{true, 0, 0, 0, "Invalid Step", cstypes.RoundStepCommit + 1},
+		{true, 0, 0, 0, "Invalid Step", cstypes.RoundStepApplyCommit + 1},
 		// The following cases will be handled by ValidateHeight
 		{false, 0, 0, 1, "H == 1 but LCR != -1 ", cstypes.RoundStepNewHeight},
 		{false, 0, -1, 2, "H > 1 but LCR < 0", cstypes.RoundStepNewHeight},

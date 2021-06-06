@@ -1356,7 +1356,7 @@ func (cs *State) enterPrecommitWait(height int64, round int32) {
 func (cs *State) enterCommit(height int64, commitRound int32) {
 	logger := cs.Logger.With("height", height, "commitRound", commitRound)
 
-	if cs.Height != height || cstypes.RoundStepCommit <= cs.Step {
+	if cs.Height != height || cstypes.RoundStepApplyCommit <= cs.Step {
 		logger.Debug(fmt.Sprintf(
 			"enterCommit(%v/%v): Invalid args. Current step: %v/%v/%v",
 			height,
@@ -1371,7 +1371,7 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 	defer func() {
 		// Done enterCommit:
 		// keep cs.Round the same, commitRound points to the right Precommits set.
-		cs.updateRoundStep(cs.Round, cstypes.RoundStepCommit)
+		cs.updateRoundStep(cs.Round, cstypes.RoundStepApplyCommit)
 		cs.CommitRound = commitRound
 		cs.CommitTime = tmtime.Now()
 		cs.newStep()
@@ -1448,7 +1448,7 @@ func (cs *State) tryFinalizeCommit(height int64) {
 
 // Increment height and goto cstypes.RoundStepNewHeight
 func (cs *State) finalizeCommit(height int64) {
-	if cs.Height != height || cs.Step != cstypes.RoundStepCommit {
+	if cs.Height != height || cs.Step != cstypes.RoundStepApplyCommit {
 		cs.Logger.Debug(fmt.Sprintf(
 			"finalizeCommit(%v): Invalid args. Current step: %v/%v/%v",
 			height,
@@ -1754,7 +1754,7 @@ func (cs *State) addProposalBlockPart(msg *tmcon.BlockPartMessage, peerID p2p.ID
 			if hasTwoThirds { // this is optimisation as this will be triggered when prevote is added
 				cs.enterPrecommit(height, cs.Round)
 			}
-		} else if cs.Step == cstypes.RoundStepCommit {
+		} else if cs.Step == cstypes.RoundStepApplyCommit {
 			// If we're waiting on the proposal block...
 			cs.tryFinalizeCommit(height)
 		}

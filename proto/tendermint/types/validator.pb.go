@@ -691,7 +691,7 @@ func (m *ValidatorSet) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 5:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field AppHashSize", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field QuorumType", wireType)
 			}
 			m.QuorumType = 0
 			for shift := uint(0); ; shift += 7 {

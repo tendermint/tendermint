@@ -1078,6 +1078,18 @@ func (commit *Commit) ValidateBasic() error {
 		if commit.BlockID.IsZero() {
 			return errors.New("commit cannot be for nil block")
 		}
+	}
+	return nil
+}
+
+// ValidateSignaturesBasic performs basic validation on signatures that doesn't involve state data.
+// Does not actually check the signatures are valid, only that they are well formed and some exist.
+// This should be performed on validator set nodes.
+func (commit *Commit) ValidateSignaturesBasic() error {
+	if commit.Height >= 1 {
+		if commit.BlockID.IsZero() {
+			return errors.New("commit cannot be for nil block")
+		}
 
 		if len(commit.Signatures) == 0 {
 			return errors.New("no signatures in commit")

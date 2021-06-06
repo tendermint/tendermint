@@ -436,7 +436,7 @@ func (conR *Reactor) broadcastNewValidBlockMessage(rs *cstypes.RoundState) {
 		Round:              rs.Round,
 		BlockPartSetHeader: rs.ProposalBlockParts.Header(),
 		BlockParts:         rs.ProposalBlockParts.BitArray(),
-		IsCommit:           rs.Step == cstypes.RoundStepCommit,
+		IsCommit:           rs.Step == cstypes.RoundStepApplyCommit,
 	}
 	conR.Switch.Broadcast(StateChannel, MustEncode(csMsg))
 }
@@ -1655,6 +1655,34 @@ func (m *HasVoteMessage) ValidateBasic() error {
 // String returns a string representation.
 func (m *HasVoteMessage) String() string {
 	return fmt.Sprintf("[HasVote VI:%v V:{%v/%02d/%v}]", m.Index, m.Height, m.Round, m.Type)
+}
+
+
+//-------------------------------------
+
+// CommitMessage is sent to non validators as the result of voting.
+type CommitMessage struct {
+	Commit *types.Commit
+}
+
+// ValidateBasic performs basic validation.
+func (m *CommitMessage) ValidateBasic() error {
+	return m.Commit.ValidateBasic()
+}
+
+// String returns a string representation.
+func (m *CommitMessage) String() string {
+	return fmt.Sprintf("[Commit %v]", m.Commit)
+}
+
+//-------------------------------------
+
+// HasCommitMessage is sent to indicate that a particular commit has been received.
+type HasCommitMessage struct {
+	Height int64
+	Round  int32
+	Type   tmproto.SignedMsgType
+	BlockID types.BlockID
 }
 
 //-------------------------------------

@@ -24,7 +24,7 @@ const (
 	RoundStepPrevoteWait   = RoundStepType(0x05) // Did receive any +2/3 prevotes, start timeout
 	RoundStepPrecommit     = RoundStepType(0x06) // Did precommit, gossip precommits
 	RoundStepPrecommitWait = RoundStepType(0x07) // Did receive any +2/3 precommits, start timeout
-	RoundStepCommit        = RoundStepType(0x08) // Entered commit state machine
+	RoundStepApplyCommit   = RoundStepType(0x08) // Entered commit state machine
 	// NOTE: RoundStepNewHeight acts as RoundStepCommitWait.
 
 	// NOTE: Update IsValid method if you change this!
@@ -52,8 +52,8 @@ func (rs RoundStepType) String() string {
 		return "RoundStepPrecommit"
 	case RoundStepPrecommitWait:
 		return "RoundStepPrecommitWait"
-	case RoundStepCommit:
-		return "RoundStepCommit"
+	case RoundStepApplyCommit:
+		return "RoundStepApplyCommit"
 	default:
 		return "RoundStepUnknown" // Cannot panic.
 	}
