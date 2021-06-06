@@ -751,8 +751,8 @@ func (cs CommitSig) ValidateBasic() error {
 		if len(cs.BlockSignature) == 0 {
 			return errors.New("block signature is missing")
 		}
-		if len(cs.BlockSignature) > MaxSignatureSize {
-			return fmt.Errorf("block signature is too big (max: %d)", MaxSignatureSize)
+		if len(cs.BlockSignature) != SignatureSize {
+			return fmt.Errorf("block signature for flag nil is wrong size (wanted: %d, received: %d)", SignatureSize, len(cs.BlockSignature))
 		}
 	case BlockIDFlagCommit:
 		if len(cs.ValidatorProTxHash) != crypto.DefaultHashSize {
@@ -764,16 +764,16 @@ func (cs CommitSig) ValidateBasic() error {
 		if len(cs.BlockSignature) == 0 {
 			return errors.New("block signature is missing")
 		}
-		if len(cs.BlockSignature) > MaxSignatureSize {
-			return fmt.Errorf("block signature is too big (max: %d)", MaxSignatureSize)
+		if len(cs.BlockSignature) != SignatureSize {
+			return fmt.Errorf("block signature is wrong size (wanted: %d, received: %d)", SignatureSize, len(cs.BlockSignature))
 		}
 		if len(cs.StateSignature) == 0 {
 			return errors.New("state signature is missing")
 		}
-		if len(cs.StateSignature) > MaxSignatureSize {
-			return fmt.Errorf("state signature is too big (max: %d)", MaxSignatureSize)
+		if len(cs.StateSignature) != SignatureSize {
+			return fmt.Errorf("state signature is wrong size (wanted: %d, received: %d)", SignatureSize, len(cs.StateSignature))
 		}
-	default:
+		default:
 		return fmt.Errorf("unknown BlockIDFlag: %v", cs.BlockIDFlag)
 	}
 
@@ -1077,6 +1077,12 @@ func (commit *Commit) ValidateBasic() error {
 	if commit.Height >= 1 {
 		if commit.BlockID.IsZero() {
 			return errors.New("commit cannot be for nil block")
+		}
+		if len(commit.ThresholdBlockSignature) != SignatureSize {
+			return fmt.Errorf("block threshold signature is wrong size (wanted: %d, received: %d)", SignatureSize, len(commit.ThresholdBlockSignature))
+		}
+		if len(commit.ThresholdStateSignature) != SignatureSize {
+			return fmt.Errorf("state threshold signature is wrong size (wanted: %d, received: %d)", SignatureSize, len(commit.ThresholdStateSignature))
 		}
 	}
 	return nil

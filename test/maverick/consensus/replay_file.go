@@ -30,7 +30,7 @@ const (
 //--------------------------------------------------------
 // replay messages interactively or all at once
 
-// replay the wal file
+// RunReplayFile will replay the wal file
 func RunReplayFile(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig, console bool) {
 	consensusState := newConsensusStateForReplay(config, csConfig)
 

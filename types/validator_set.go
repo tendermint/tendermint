@@ -62,6 +62,7 @@ type ValidatorSet struct {
 	ThresholdPublicKey crypto.PubKey     `json:"threshold_public_key"`
 	QuorumHash         crypto.QuorumHash `json:"quorum_hash"`
 	QuorumType		   btcjson.LLMQType  `json:"quorum_type"`
+	HasPublicKeys      bool              `json:"has_public_keys"`
 
 	// cached (unexported)
 	totalVotingPower int64
@@ -77,10 +78,12 @@ type ValidatorSet struct {
 // Note the validator set size has an implied limit equal to that of the
 // MaxVotesCount - commits by a validator set larger than this will fail
 // validation.
-func NewValidatorSet(valz []*Validator, newThresholdPublicKey crypto.PubKey, quorumType	btcjson.LLMQType, quorumHash crypto.QuorumHash) *ValidatorSet {
+func NewValidatorSet(valz []*Validator, newThresholdPublicKey crypto.PubKey, quorumType	btcjson.LLMQType,
+	quorumHash crypto.QuorumHash, hasPublicKeys bool) *ValidatorSet {
 	vals := &ValidatorSet{
 		QuorumHash: quorumHash,
 		QuorumType: quorumType,
+		HasPublicKeys: hasPublicKeys,
 	}
 	err := vals.updateWithChangeSet(valz, false, newThresholdPublicKey)
 	if err != nil {
@@ -88,6 +91,18 @@ func NewValidatorSet(valz []*Validator, newThresholdPublicKey crypto.PubKey, quo
 	}
 	if len(valz) > 0 {
 		vals.IncrementProposerPriority(1)
+	}
+	return vals
+}
+
+// NewValidatorSetWithLocalNodeProTxHash initializes a ValidatorSet the same way as NewValidatorSet does,
+// however it does allows to set the localNodeProTxHash to more easily identify if the validator set should have public
+// keys. If the local node is part of the validator set the public keys must be present
+func NewValidatorSetWithLocalNodeProTxHash(valz []*Validator, newThresholdPublicKey crypto.PubKey, quorumType	btcjson.LLMQType,
+	quorumHash crypto.QuorumHash, localNodeProTxHash crypto.ProTxHash) *ValidatorSet {
+	vals := NewValidatorSet(valz, newThresholdPublicKey, quorumType, quorumHash, false)
+	if localNodeProTxHash != nil && vals.HasProTxHash(localNodeProTxHash) {
+		vals.HasPublicKeys = true
 	}
 	return vals
 }
@@ -100,6 +115,12 @@ func (vals *ValidatorSet) ValidateBasic() error {
 	for idx, val := range vals.Validators {
 		if err := val.ValidateBasic(); err != nil {
 			return fmt.Errorf("invalid validator #%d: %w", idx, err)
+		}
+		// We should only validate the public keys of validators if our local node is in the validator set
+		if vals.HasPublicKeys {
+			if err := val.ValidatePubKey(); err != nil {
+				return fmt.Errorf("invalid validator pub key #%d: %w", idx, err)
+			}
 		}
 	}
 
@@ -152,11 +173,12 @@ func (vals *ValidatorSet) ThresholdPublicKeyValid() error {
 	if len(vals.ThresholdPublicKey.Bytes()) != bls12381.PubKeySize {
 		return errors.New("threshold public key is wrong size")
 	}
-	if len(vals.Validators) == 1 {
+	if len(vals.Validators) == 1 && vals.HasPublicKeys {
 		if !vals.Validators[0].PubKey.Equals(vals.ThresholdPublicKey) {
 			return errors.New("incorrect threshold public key")
 		}
-	} else if len(vals.Validators) > 1 {
+	} else if len(vals.Validators) > 1 && vals.HasPublicKeys {
+		// if we have validators and our node is in the validator set then verify the recovered threshold public key
 		recoveredThresholdPublicKey, err := bls12381.RecoverThresholdPublicKeyFromPublicKeys(vals.GetPublicKeys(),
 			vals.GetProTxHashesAsByteArrays())
 		if err != nil {
@@ -335,7 +357,7 @@ func (vals *ValidatorSet) Copy() *ValidatorSet {
 	}
 }
 
-// HasAddress returns true if address given is in the validator set, false -
+// HasProTxHash returns true if proTxHash given is in the validator set, false -
 // otherwise.
 func (vals *ValidatorSet) HasProTxHash(proTxHash []byte) bool {
 	for _, val := range vals.Validators {
@@ -400,7 +422,7 @@ func (vals *ValidatorSet) GetProTxHashes() []crypto.ProTxHash {
 	return proTxHashes
 }
 
-// GetProTxHashes returns the all validator proTxHashes as byte arrays for convenience
+// GetProTxHashesAsByteArrays returns the all validator proTxHashes as byte arrays for convenience
 func (vals *ValidatorSet) GetProTxHashesAsByteArrays() [][]byte {
 	proTxHashes := make([][]byte, len(vals.Validators))
 	for i, val := range vals.Validators {
@@ -443,7 +465,7 @@ func (vals *ValidatorSet) GetAddressPowers() map[string]int64 {
 	return addresses
 }
 
-// GetProTxHashes returns the all validator proTxHashes
+// GetProTxHashesOrdered returns the all validator proTxHashes in order
 func (vals *ValidatorSet) GetProTxHashesOrdered() []crypto.ProTxHash {
 	proTxHashes := make([]crypto.ProTxHash, len(vals.Validators))
 	for i, val := range vals.Validators {
@@ -475,7 +497,7 @@ func (vals *ValidatorSet) RegenerateWithNewKeys() (*ValidatorSet, []PrivValidato
 	// Just to make sure
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey, vals.QuorumType, crypto.RandQuorumHash()), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, vals.QuorumType, crypto.RandQuorumHash(), vals.HasPublicKeys), privValidators
 }
 
 // Forces recalculation of the set's total voting power.
@@ -1405,7 +1427,7 @@ func GenerateValidatorSet(numValidators int) (*ValidatorSet, []PrivValidator) {
 
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash()), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash(), true), privValidators
 }
 
 func GenerateTestValidatorSetWithAddresses(addresses []crypto.Address, power []int64) (*ValidatorSet, []PrivValidator) {
@@ -1435,7 +1457,7 @@ func GenerateTestValidatorSetWithAddresses(addresses []crypto.Address, power []i
 
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash()), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash(), true), privValidators
 }
 
 func GenerateTestValidatorSetWithAddressesDefaultPower(addresses []crypto.Address) (*ValidatorSet, []PrivValidator) {
@@ -1463,7 +1485,7 @@ func GenerateTestValidatorSetWithAddressesDefaultPower(addresses []crypto.Addres
 
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash()), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash(), true), privValidators
 }
 
 func GenerateMockValidatorSet(numValidators int) (*ValidatorSet, []*MockPV) {
@@ -1482,7 +1504,7 @@ func GenerateMockValidatorSet(numValidators int) (*ValidatorSet, []*MockPV) {
 
 	sort.Sort(MockPrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash()), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash(), true), privValidators
 }
 
 func GenerateGenesisValidators(numValidators int) ([]GenesisValidator, []PrivValidator, crypto.PubKey) {
@@ -1550,7 +1572,7 @@ func GenerateValidatorSetUsingProTxHashes(proTxHashes []crypto.ProTxHash) (*Vali
 
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash()), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash(), true), privValidators
 }
 
 func GenerateMockValidatorSetUsingProTxHashes(proTxHashes []crypto.ProTxHash) (*ValidatorSet, []*MockPV) {
@@ -1572,7 +1594,7 @@ func GenerateMockValidatorSetUsingProTxHashes(proTxHashes []crypto.ProTxHash) (*
 
 	sort.Sort(MockPrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash()), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash(), true), privValidators
 }
 
 func ValidatorUpdatesRegenerateOnProTxHashes(proTxHashes []crypto.ProTxHash) abci.ValidatorSetUpdate {

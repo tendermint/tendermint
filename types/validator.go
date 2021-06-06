@@ -50,26 +50,22 @@ func NewValidatorDefaultVotingPower(pubKey crypto.PubKey, proTxHash []byte) *Val
 
 // NewValidator returns a new validator with the given pubkey and voting power.
 func NewValidator(pubKey crypto.PubKey, votingPower int64, proTxHash []byte) *Validator {
-	return &Validator{
-		Address:          pubKey.Address(),
+	val := &Validator{
 		PubKey:           pubKey,
 		VotingPower:      votingPower,
 		ProposerPriority: 0,
 		ProTxHash:        proTxHash,
 	}
+	if pubKey != nil {
+		val.Address = pubKey.Address()
+	}
+	return val
 }
 
 // ValidateBasic performs basic validation.
 func (v *Validator) ValidateBasic() error {
 	if v == nil {
 		return errors.New("nil validator")
-	}
-	if v.PubKey == nil {
-		return errors.New("validator does not have a public key")
-	}
-
-	if len(v.PubKey.Bytes()) != bls12381.PubKeySize {
-		return fmt.Errorf("validator PubKey is the wrong size: %X", v.PubKey.Bytes())
 	}
 
 	if v.ProTxHash == nil {
@@ -87,14 +83,26 @@ func (v *Validator) ValidateBasic() error {
 	return nil
 }
 
-// Creates a new copy of the validator so we can mutate ProposerPriority.
+// ValidatePubKey performs basic validation on the public key.
+func (v *Validator) ValidatePubKey() error {
+	if v.PubKey == nil {
+		return errors.New("validator does not have a public key")
+	}
+
+	if len(v.PubKey.Bytes()) != bls12381.PubKeySize {
+		return fmt.Errorf("validator PubKey is the wrong size: %X", v.PubKey.Bytes())
+	}
+	return nil
+}
+
+// Copy creates a new copy of the validator so we can mutate ProposerPriority.
 // Panics if the validator is nil.
 func (v *Validator) Copy() *Validator {
 	vCopy := *v
 	return &vCopy
 }
 
-// Returns the one with higher ProposerPriority.
+// CompareProposerPriority Returns the one with higher ProposerPriority.
 func (v *Validator) CompareProposerPriority(other *Validator) *Validator {
 	if v == nil {
 		return other

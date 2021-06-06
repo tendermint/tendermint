@@ -87,7 +87,7 @@ func (pkz privKeys) ToValidators(thresholdPublicKey crypto.PubKey) *types.Valida
 		res[i] = types.NewValidatorDefaultVotingPower(k.PubKey(), crypto.Sha256(k.PubKey().Address()))
 	}
 	// Quorum hash is pseudorandom
-	return types.NewValidatorSet(res, thresholdPublicKey, btcjson.LLMQType_5_60, crypto.Sha256(thresholdPublicKey.Bytes()))
+	return types.NewValidatorSet(res, thresholdPublicKey, btcjson.LLMQType_5_60, crypto.Sha256(thresholdPublicKey.Bytes()), true)
 }
 
 // signHeader properly signs the header with all keys from first to last exclusive.

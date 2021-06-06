@@ -323,7 +323,7 @@ func (h *Handshaker) ReplayBlocks(
 				return nil, fmt.Errorf("replay blocks error when validating validator: %s", err)
 			}
 		}
-		validatorSet := types.NewValidatorSet(validators, h.genDoc.ThresholdPublicKey, h.genDoc.QuorumType, h.genDoc.QuorumHash)
+		validatorSet := types.NewValidatorSetWithLocalNodeProTxHash(validators, h.genDoc.ThresholdPublicKey, h.genDoc.QuorumType, h.genDoc.QuorumHash, h.genDoc.NodeProTxHash)
 		err := validatorSet.ValidateBasic()
 		if err != nil {
 			return nil, fmt.Errorf("replay blocks error when validating validatorSet: %s", err)
@@ -358,10 +358,10 @@ func (h *Handshaker) ReplayBlocks(
 				if err != nil {
 					return nil, err
 				}
-				newValidatorSet := types.NewValidatorSet(vals, thresholdPublicKey, h.genDoc.QuorumType, quorumHash)
+				newValidatorSet := types.NewValidatorSetWithLocalNodeProTxHash(vals, thresholdPublicKey, h.genDoc.QuorumType, quorumHash, h.genDoc.NodeProTxHash)
 				h.logger.Debug("Updating validator set", "old", state.Validators, "new", newValidatorSet)
 				state.Validators = newValidatorSet
-				state.NextValidators = types.NewValidatorSet(vals, thresholdPublicKey, h.genDoc.QuorumType, quorumHash).CopyIncrementProposerPriority(1)
+				state.NextValidators = types.NewValidatorSetWithLocalNodeProTxHash(vals, thresholdPublicKey, h.genDoc.QuorumType, quorumHash, h.genDoc.NodeProTxHash).CopyIncrementProposerPriority(1)
 			} else if len(h.genDoc.Validators) == 0 {
 				// If validator set is not set in genesis and still empty after InitChain, exit.
 				h.logger.Debug("Validator set is nil in genesis and still empty after InitChain")

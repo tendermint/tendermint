@@ -238,7 +238,7 @@ func StateFromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 		}
 		state.LastValidators = lVals
 	} else {
-		state.LastValidators = types.NewValidatorSet(nil, nil, 0, nil)
+		state.LastValidators = types.NewValidatorSet(nil, nil, 0, nil, false)
 	}
 
 	state.LastHeightValidatorsChanged = pb.LastHeightValidatorsChanged
@@ -338,15 +338,19 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 
 	var validatorSet, nextValidatorSet *types.ValidatorSet
 	if genDoc.Validators == nil {
-		validatorSet = types.NewValidatorSet(nil, nil, genDoc.QuorumType, nil)
-		nextValidatorSet = types.NewValidatorSet(nil, nil, genDoc.QuorumType,nil)
+		validatorSet = types.NewValidatorSet(nil, nil, genDoc.QuorumType, nil, false)
+		nextValidatorSet = types.NewValidatorSet(nil, nil, genDoc.QuorumType,nil, false)
 	} else {
 		validators := make([]*types.Validator, len(genDoc.Validators))
+		hasAllPublicKeys := true
 		for i, val := range genDoc.Validators {
 			validators[i] = types.NewValidatorDefaultVotingPower(val.PubKey, val.ProTxHash)
+			if val.PubKey == nil {
+				hasAllPublicKeys = false
+			}
 		}
-		validatorSet = types.NewValidatorSet(validators, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash)
-		nextValidatorSet = types.NewValidatorSet(validators, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash).CopyIncrementProposerPriority(1)
+		validatorSet = types.NewValidatorSet(validators, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash, hasAllPublicKeys)
+		nextValidatorSet = types.NewValidatorSet(validators, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash, hasAllPublicKeys).CopyIncrementProposerPriority(1)
 	}
 
 	return State{
@@ -363,7 +367,7 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 
 		NextValidators:              nextValidatorSet,
 		Validators:                  validatorSet,
-		LastValidators:              types.NewValidatorSet(nil, nil, genDoc.QuorumType, nil),
+		LastValidators:              types.NewValidatorSet(nil, nil, genDoc.QuorumType, nil, false),
 		LastHeightValidatorsChanged: genDoc.InitialHeight,
 
 		ConsensusParams:                  *genDoc.ConsensusParams,

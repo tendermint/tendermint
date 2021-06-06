@@ -44,7 +44,7 @@ func TestABCIValidators(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, tmValExpected, tmVals[0])
 
-	abciVals := TM2PB.ValidatorUpdates(NewValidatorSet(tmVals, tmVal.PubKey, btcjson.LLMQType_5_60, quorumHash))
+	abciVals := TM2PB.ValidatorUpdates(NewValidatorSet(tmVals, tmVal.PubKey, btcjson.LLMQType_5_60, quorumHash, true))
 	assert.Equal(t, abci.ValidatorSetUpdate{
 		ValidatorUpdates:   []abci.ValidatorUpdate{abciVal},
 		ThresholdPublicKey: abciVal.PubKey,

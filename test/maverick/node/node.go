@@ -780,7 +780,7 @@ func NewNode(config *cfg.Config,
 			llmqType = btcjson.LLMQType_100_67
 		}
 		// If a local port is provided for Dash Core rpc into the service to sign.
-		privValidator, err = createAndStartPrivValidatorRPCClient(config.PrivValidatorCoreRPCHost, genDoc.ChainID,
+		privValidator, err = createAndStartPrivValidatorRPCClient(config.PrivValidatorCoreRPCHost,
 			state.Validators.QuorumHash, btcjson.LLMQType(config.LLMQTypeUsed), username, password, logger)
 		if err != nil {
 			return nil, fmt.Errorf("error with private validator socket client: %w", err)
@@ -1475,7 +1475,6 @@ func createAndStartPrivValidatorSocketClient(
 
 func createAndStartPrivValidatorRPCClient(
 	host string,
-	chainID string,
 	initialQuorumHash crypto.QuorumHash,
 	defaultQuorumType btcjson.LLMQType,
 	username string,
@@ -1483,7 +1482,7 @@ func createAndStartPrivValidatorRPCClient(
 	logger log.Logger,
 ) (types.PrivValidator, error) {
 
-	pvsc, err := privval.NewDashCoreSignerClient(host, username, password, defaultQuorumType, chainID)
+	pvsc, err := privval.NewDashCoreSignerClient(host, username, password, defaultQuorumType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}

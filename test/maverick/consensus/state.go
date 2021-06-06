@@ -556,7 +556,7 @@ func (cs *State) SetPrivValidator(priv types.PrivValidator) {
 
 	cs.privValidator = priv
 
-	if err := cs.updatePrivValidatorPubKeyAndProTxHash(); err != nil {
+	if err := cs.updatePrivValidatorPubKey(); err != nil {
 		cs.Logger.Error("Can't get private validator pubkey and proTxHash", "err", err)
 	}
 }
@@ -1556,7 +1556,7 @@ func (cs *State) finalizeCommit(height int64) {
 	fail.Fail() // XXX
 
 	// Private validator might have changed it's key pair => refetch pubkey.
-	if err := cs.updatePrivValidatorPubKeyAndProTxHash(); err != nil {
+	if err := cs.updatePrivValidatorPubKey(); err != nil {
 		cs.Logger.Error("Can't get private validator pubkey", "err", err)
 	}
 
@@ -1903,10 +1903,10 @@ func (cs *State) signAddVote(msgType tmproto.SignedMsgType, hash []byte, header 
 	return nil
 }
 
-// updatePrivValidatorPubKey get's the private validator public key and
+// updatePrivValidatorPubKey gets the private validator public key and
 // memoizes it. This func returns an error if the private validator is not
 // responding or responds with an error.
-func (cs *State) updatePrivValidatorPubKeyAndProTxHash() error {
+func (cs *State) updatePrivValidatorPubKey() error {
 	if cs.privValidator == nil {
 		return nil
 	}
@@ -1915,18 +1915,10 @@ func (cs *State) updatePrivValidatorPubKeyAndProTxHash() error {
 	if err != nil {
 		return err
 	}
-	proTxHash, err := cs.privValidator.GetProTxHash()
-	if err != nil {
-		return err
-	}
 	if len(pubKey.Bytes()) != bls12381.PubKeySize {
 		return fmt.Errorf("maverick pubKey must be 48 bytes")
 	}
 	cs.privValidatorPubKey = pubKey
-	if len(proTxHash.Bytes()) != crypto.ProTxHashSize {
-		return fmt.Errorf("maverick proTxHash must be 32 bytes")
-	}
-	cs.privValidatorProTxHash = proTxHash
 	return nil
 }
 

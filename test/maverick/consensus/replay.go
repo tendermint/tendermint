@@ -199,12 +199,12 @@ func makeHeightSearchFunc(height int64) auto.SearchFunc {
 //---------------------------------------------------
 
 type Handshaker struct {
-	stateStore   sm.Store
-	initialState sm.State
-	store        sm.BlockStore
-	eventBus     types.BlockEventPublisher
-	genDoc       *types.GenesisDoc
-	logger       log.Logger
+	stateStore    sm.Store
+	initialState  sm.State
+	store         sm.BlockStore
+	eventBus      types.BlockEventPublisher
+	genDoc        *types.GenesisDoc
+	logger        log.Logger
 
 	nBlocks int // number of blocks applied to the state
 }
@@ -213,13 +213,13 @@ func NewHandshaker(stateStore sm.Store, state sm.State,
 	store sm.BlockStore, genDoc *types.GenesisDoc) *Handshaker {
 
 	return &Handshaker{
-		stateStore:   stateStore,
-		initialState: state,
-		store:        store,
-		eventBus:     types.NopEventBus{},
-		genDoc:       genDoc,
-		logger:       log.NewNopLogger(),
-		nBlocks:      0,
+		stateStore:    stateStore,
+		initialState:  state,
+		store:         store,
+		eventBus:      types.NopEventBus{},
+		genDoc:        genDoc,
+		logger:        log.NewNopLogger(),
+		nBlocks:       0,
 	}
 }
 
@@ -306,7 +306,8 @@ func (h *Handshaker) ReplayBlocks(
 		for i, val := range h.genDoc.Validators {
 			validators[i] = types.NewValidatorDefaultVotingPower(val.PubKey, val.ProTxHash)
 		}
-		validatorSet := types.NewValidatorSet(validators, h.genDoc.ThresholdPublicKey, h.genDoc.QuorumType, h.genDoc.QuorumHash)
+		validatorSet := types.NewValidatorSetWithLocalNodeProTxHash(validators, h.genDoc.ThresholdPublicKey, h.genDoc.QuorumType,
+			h.genDoc.QuorumHash, h.genDoc.NodeProTxHash)
 		nextVals := types.TM2PB.ValidatorUpdates(validatorSet)
 		csParams := types.TM2PB.ConsensusParams(h.genDoc.ConsensusParams)
 		req := abci.RequestInitChain{
@@ -337,8 +338,8 @@ func (h *Handshaker) ReplayBlocks(
 				if err != nil {
 					return nil, err
 				}
-				state.Validators = types.NewValidatorSet(vals, thresholdPublicKey, h.genDoc.QuorumType, quorumHash)
-				state.NextValidators = types.NewValidatorSet(vals, thresholdPublicKey, h.genDoc.QuorumType, quorumHash).CopyIncrementProposerPriority(1)
+				state.Validators = types.NewValidatorSetWithLocalNodeProTxHash(vals, thresholdPublicKey, h.genDoc.QuorumType, quorumHash, h.genDoc.NodeProTxHash)
+				state.NextValidators = types.NewValidatorSetWithLocalNodeProTxHash(vals, thresholdPublicKey, h.genDoc.QuorumType, quorumHash, h.genDoc.NodeProTxHash).CopyIncrementProposerPriority(1)
 			} else if len(h.genDoc.Validators) == 0 {
 				// If validator set is not set in genesis and still empty after InitChain, exit.
 				return nil, fmt.Errorf("validator set is nil in genesis and still empty after InitChain")

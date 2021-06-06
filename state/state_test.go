@@ -442,7 +442,7 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 	val1 := &types.Validator{ProTxHash: val1ProTxHash, Address: val1PubKey.Address(), PubKey: val1PubKey, VotingPower: val1VotingPower}
 
 	quorumHash := crypto.RandQuorumHash()
-	state.Validators = types.NewValidatorSet([]*types.Validator{val1}, val1PubKey, btcjson.LLMQType_5_60, quorumHash)
+	state.Validators = types.NewValidatorSet([]*types.Validator{val1}, val1PubKey, btcjson.LLMQType_5_60, quorumHash, true)
 	state.NextValidators = state.Validators
 
 	// NewValidatorSet calls IncrementProposerPriority but uses on a copy of val1
@@ -571,7 +571,7 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 
 	// reset state validators to above validator, the threshold key is just the validator key since there is only 1 validator
 	quorumHash := crypto.RandQuorumHash()
-	state.Validators = types.NewValidatorSet([]*types.Validator{val1}, val1PubKey, btcjson.LLMQType_5_60, quorumHash)
+	state.Validators = types.NewValidatorSet([]*types.Validator{val1}, val1PubKey, btcjson.LLMQType_5_60, quorumHash, true)
 	state.NextValidators = state.Validators
 	// we only have one validator:
 	assert.Equal(t, val1ProTxHash, state.Validators.Proposer.ProTxHash)

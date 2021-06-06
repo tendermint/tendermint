@@ -28,7 +28,7 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 	conflictingVals, conflictingPrivVals := types.GenerateValidatorSet(3)
 
 	commonVals := types.NewValidatorSet(conflictingVals.Validators[0:2], conflictingVals.ThresholdPublicKey,
-		conflictingVals.QuorumType, conflictingVals.QuorumHash)
+		conflictingVals.QuorumType, conflictingVals.QuorumHash, true)
 
 	commonHeader := makeHeaderRandom(4)
 	commonHeader.Time = defaultEvidenceTime
@@ -336,7 +336,7 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 	randQuorumHash := crypto.RandQuorumHash()
 	quorumType := btcjson.LLMQType_5_60
 	valSet := types.NewValidatorSet([]*types.Validator{val.ExtractIntoValidator(0, randQuorumHash)},
-		val.PrivKey.PubKey(), quorumType, randQuorumHash)
+		val.PrivKey.PubKey(), quorumType, randQuorumHash, true)
 
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))

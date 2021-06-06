@@ -16,7 +16,7 @@ import (
 	types "github.com/tendermint/tendermint/types"
 )
 
-// SignerClient implements PrivValidator.
+// DashCoreSignerClient implements PrivValidator.
 // Handles remote validator connections that provide signing services
 type DashCoreSignerClient struct {
 	endpoint          *rpc.Client
@@ -25,14 +25,13 @@ type DashCoreSignerClient struct {
 	rpcUsername       string
 	rpcPassword       string
 	defaultQuorumType btcjson.LLMQType
-	chainID           string
 }
 
 var _ types.PrivValidator = (*DashCoreSignerClient)(nil)
 
-// NewSignerClient returns an instance of SignerClient.
+// NewDashCoreSignerClient returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
-func NewDashCoreSignerClient(host string, rpcUsername string, rpcPassword string, defaultQuorumType btcjson.LLMQType, chainID string) (*DashCoreSignerClient, error) {
+func NewDashCoreSignerClient(host string, rpcUsername string, rpcPassword string, defaultQuorumType btcjson.LLMQType) (*DashCoreSignerClient, error) {
 	// Connect to local dash core RPC server using HTTP POST mode.
 	connCfg := &rpc.ConnConfig{
 		Host:         host,
@@ -48,7 +47,7 @@ func NewDashCoreSignerClient(host string, rpcUsername string, rpcPassword string
 		return nil, err
 	}
 
-	return &DashCoreSignerClient{endpoint: client, host: host, rpcUsername: rpcUsername, rpcPassword: rpcPassword, defaultQuorumType: defaultQuorumType, chainID: chainID}, nil
+	return &DashCoreSignerClient{endpoint: client, host: host, rpcUsername: rpcUsername, rpcPassword: rpcPassword, defaultQuorumType: defaultQuorumType}, nil
 }
 
 // Close closes the underlying connection

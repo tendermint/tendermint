@@ -179,7 +179,7 @@ func newValidatorSchedule(testnet e2e.Testnet) *validatorSchedule {
 
 	return &validatorSchedule{
 		height:                    testnet.InitialHeight,
-		Set:                       types.NewValidatorSet(makeVals(valMap), thresholdPublicKey, quorumType, quorumHash),
+		Set:                       types.NewValidatorSet(makeVals(valMap), thresholdPublicKey, quorumType, quorumHash, true),
 		updates:                   testnet.ValidatorUpdates,
 		thresholdPublicKeyUpdates: testnet.ThresholdPublicKeyUpdates,
 		quorumHashUpdates:         testnet.QuorumHashUpdates,
@@ -200,7 +200,8 @@ func (s *validatorSchedule) Increment(heights int64) {
 								panic(err)
 							}
 						} else {
-							s.Set = types.NewValidatorSet(makeVals(update), thresholdPublicKeyUpdate, btcjson.LLMQType_5_60, quorumHashUpdate)
+							s.Set = types.NewValidatorSet(makeVals(update), thresholdPublicKeyUpdate, btcjson.LLMQType_5_60,
+								quorumHashUpdate, true)
 						}
 					}
 				}

@@ -1449,7 +1449,7 @@ func (bs *mockBlockStore) PruneBlocks(height int64) (uint64, error) {
 func TestHandshakeUpdatesValidators(t *testing.T) {
 	val, _ := types.RandValidator()
 	randQuorumHash := crypto.RandQuorumHash()
-	vals := types.NewValidatorSet([]*types.Validator{val}, val.PubKey, btcjson.LLMQType_5_60, randQuorumHash)
+	vals := types.NewValidatorSet([]*types.Validator{val}, val.PubKey, btcjson.LLMQType_5_60, randQuorumHash, true)
 	abciValidatorSetUpdates := types.TM2PB.ValidatorUpdates(vals)
 	app := &initChainApp{vals: &abciValidatorSetUpdates}
 	clientCreator := proxy.NewLocalClientCreator(app)
