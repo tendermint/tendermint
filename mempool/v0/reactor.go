@@ -1,9 +1,9 @@
-package mempool
+package v0
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"math"
 	"sync"
 	"time"
 
@@ -12,6 +12,7 @@ import (
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	protomem "github.com/tendermint/tendermint/proto/tendermint/mempool"
 	"github.com/tendermint/tendermint/types"
@@ -20,19 +21,6 @@ import (
 var (
 	_ service.Service = (*Reactor)(nil)
 	_ p2p.Wrapper     = (*protomem.Message)(nil)
-)
-
-const (
-	MempoolChannel = p2p.ChannelID(0x30)
-
-	// peerCatchupSleepIntervalMS defines how much time to sleep if a peer is behind
-	peerCatchupSleepIntervalMS = 100
-
-	// UnknownPeerID is the peer ID to use when running CheckTx when there is
-	// no peer (e.g. RPC)
-	UnknownPeerID uint16 = 0
-
-	maxActiveIDs = math.MaxUint16
 )
 
 // PeerManager defines the interface contract required for getting necessary
@@ -50,7 +38,7 @@ type Reactor struct {
 
 	config  *cfg.MempoolConfig
 	mempool *CListMempool
-	ids     *mempoolIDs
+	ids     *mempool.MempoolIDs
 
 	// XXX: Currently, this is the only way to get information about a peer. Ideally,
 	// we rely on message-oriented communication to get necessary peer data.
@@ -74,7 +62,7 @@ func NewReactor(
 	logger log.Logger,
 	config *cfg.MempoolConfig,
 	peerMgr PeerManager,
-	mempool *CListMempool,
+	mp *CListMempool,
 	mempoolCh *p2p.Channel,
 	peerUpdates *p2p.PeerUpdates,
 ) *Reactor {
@@ -82,8 +70,8 @@ func NewReactor(
 	r := &Reactor{
 		config:       config,
 		peerMgr:      peerMgr,
-		mempool:      mempool,
-		ids:          newMempoolIDs(),
+		mempool:      mp,
+		ids:          mempool.NewMempoolIDs(),
 		mempoolCh:    mempoolCh,
 		peerUpdates:  peerUpdates,
 		closeCh:      make(chan struct{}),
@@ -110,10 +98,10 @@ func GetChannelShims(config *cfg.MempoolConfig) map[p2p.ChannelID]*p2p.ChannelDe
 	}
 
 	return map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
-		MempoolChannel: {
+		mempool.MempoolChannel: {
 			MsgType: new(protomem.Message),
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(MempoolChannel),
+				ID:                  byte(mempool.MempoolChannel),
 				Priority:            5,
 				RecvMessageCapacity: batchMsg.Size(),
 
@@ -175,14 +163,14 @@ func (r *Reactor) handleMempoolMessage(envelope p2p.Envelope) error {
 			return errors.New("empty txs received from peer")
 		}
 
-		txInfo := TxInfo{SenderID: r.ids.GetForPeer(envelope.From)}
+		txInfo := mempool.TxInfo{SenderID: r.ids.GetForPeer(envelope.From)}
 		if len(envelope.From) != 0 {
-			txInfo.SenderP2PID = envelope.From
+			txInfo.SenderNodeID = envelope.From
 		}
 
 		for _, tx := range protoTxs {
-			if err := r.mempool.CheckTx(types.Tx(tx), nil, txInfo); err != nil {
-				logger.Error("checktx failed for tx", "tx", fmt.Sprintf("%X", txID(tx)), "err", err)
+			if err := r.mempool.CheckTx(context.Background(), types.Tx(tx), nil, txInfo); err != nil {
+				logger.Error("checktx failed for tx", "tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(tx)), "err", err)
 			}
 		}
 
@@ -206,7 +194,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	r.Logger.Debug("received message", "peer", envelope.From)
 
 	switch chID {
-	case MempoolChannel:
+	case mempool.MempoolChannel:
 		err = r.handleMempoolMessage(envelope)
 
 	default:
@@ -361,7 +349,7 @@ func (r *Reactor) broadcastTxRoutine(peerID p2p.NodeID, closer *tmsync.Closer) {
 			height := r.peerMgr.GetHeight(peerID)
 			if height > 0 && height < memTx.Height()-1 {
 				// allow for a lag of one block
-				time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
+				time.Sleep(mempool.PeerCatchupSleepIntervalMS * time.Millisecond)
 				continue
 			}
 		}
@@ -378,7 +366,11 @@ func (r *Reactor) broadcastTxRoutine(peerID p2p.NodeID, closer *tmsync.Closer) {
 					Txs: [][]byte{memTx.tx},
 				},
 			}
-			r.Logger.Debug("gossiped tx to peer", "tx", fmt.Sprintf("%X", txID(memTx.tx)), "peer", peerID)
+			r.Logger.Debug(
+				"gossiped tx to peer",
+				"tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(memTx.tx)),
+				"peer", peerID,
+			)
 		}
 
 		select {

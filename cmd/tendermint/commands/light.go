@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -148,25 +147,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("can't parse trust level: %w", err)
 	}
 
-	options := []light.Option{
-		light.Logger(logger),
-		light.ConfirmationFunction(func(action string) bool {
-			fmt.Println(action)
-			scanner := bufio.NewScanner(os.Stdin)
-			for {
-				scanner.Scan()
-				response := scanner.Text()
-				switch response {
-				case "y", "Y":
-					return true
-				case "n", "N":
-					return false
-				default:
-					fmt.Println("please input 'Y' or 'n' and press ENTER")
-				}
-			}
-		}),
-	}
+	options := []light.Option{light.Logger(logger)}
 
 	if sequential {
 		options = append(options, light.SequentialVerification())
@@ -174,31 +155,21 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		options = append(options, light.SkippingVerification(trustLevel))
 	}
 
-	var c *light.Client
-	if trustedHeight > 0 && len(trustedHash) > 0 { // fresh installation
-		c, err = light.NewHTTPClient(
-			context.Background(),
-			chainID,
-			light.TrustOptions{
-				Period: trustingPeriod,
-				Height: trustedHeight,
-				Hash:   trustedHash,
-			},
-			primaryAddr,
-			witnessesAddrs,
-			dbs.New(db),
-			options...,
-		)
-	} else { // continue from latest state
-		c, err = light.NewHTTPClientFromTrustedStore(
-			chainID,
-			trustingPeriod,
-			primaryAddr,
-			witnessesAddrs,
-			dbs.New(db),
-			options...,
-		)
-	}
+	// Initiate the light client. If the trusted store already has blocks in it, this
+	// will be used else we use the trusted options.
+	c, err := light.NewHTTPClient(
+		context.Background(),
+		chainID,
+		light.TrustOptions{
+			Period: trustingPeriod,
+			Height: trustedHeight,
+			Hash:   trustedHash,
+		},
+		primaryAddr,
+		witnessesAddrs,
+		dbs.New(db),
+		options...,
+	)
 	if err != nil {
 		return err
 	}

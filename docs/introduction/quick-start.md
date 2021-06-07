@@ -7,27 +7,8 @@ order: 2
 ## Overview
 
 This is a quick start guide. If you have a vague idea about how Tendermint
-works and want to get started right away, continue.
-
-## Install
-
-### Quick Install
-
-To quickly get Tendermint installed on a fresh
-Ubuntu 16.04 machine, use [this script](https://git.io/fFfOR).
-
-> :warning: Do not copy scripts to run on your machine without knowing what they do.
-
-```sh
-curl -L https://git.io/fFfOR | bash
-source ~/.profile
-```
-
-The script is also used to facilitate cluster deployment below.
-
-### Manual Install
-
-For manual installation, see the [install instructions](install.md)
+works and want to get started right away, continue. Make sure you've installed the binary.
+Check out [install](./install.md) if you haven't.
 
 ## Initialization
 

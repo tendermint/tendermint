@@ -1,13 +1,16 @@
 package checktx
 
 import (
+	"context"
+
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/config"
-	mempl "github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/mempool"
+	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
 	"github.com/tendermint/tendermint/proxy"
 )
 
-var mempool mempl.Mempool
+var mp mempool.Mempool
 
 func init() {
 	app := kvstore.NewApplication()
@@ -21,11 +24,11 @@ func init() {
 	cfg := config.DefaultMempoolConfig()
 	cfg.Broadcast = false
 
-	mempool = mempl.NewCListMempool(cfg, appConnMem, 0)
+	mp = mempoolv0.NewCListMempool(cfg, appConnMem, 0)
 }
 
 func Fuzz(data []byte) int {
-	err := mempool.CheckTx(data, nil, mempl.TxInfo{})
+	err := mp.CheckTx(context.Background(), data, nil, mempool.TxInfo{})
 	if err != nil {
 		return 0
 	}

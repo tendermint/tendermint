@@ -21,7 +21,8 @@ import (
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
-	mempl "github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/mempool"
+	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/p2ptest"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
@@ -154,7 +155,7 @@ func waitForAndValidateBlock(
 		require.NoError(t, validateBlock(newBlock, activeVals))
 
 		for _, tx := range txs {
-			require.NoError(t, assertMempool(states[j].txNotifier).CheckTx(tx, nil, mempl.TxInfo{}))
+			require.NoError(t, assertMempool(states[j].txNotifier).CheckTx(context.Background(), tx, nil, mempool.TxInfo{}))
 		}
 	}
 
@@ -314,7 +315,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
 		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 
-		mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
+		mempool := mempoolv0.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
 		mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
 		if thisConfig.Consensus.WaitForTxs() {
 			mempool.EnableTxsAvailable()
@@ -400,7 +401,15 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	}
 
 	// send a tx
-	require.NoError(t, assertMempool(states[3].txNotifier).CheckTx([]byte{1, 2, 3}, nil, mempl.TxInfo{}))
+	require.NoError(
+		t,
+		assertMempool(states[3].txNotifier).CheckTx(
+			context.Background(),
+			[]byte{1, 2, 3},
+			nil,
+			mempool.TxInfo{},
+		),
+	)
 
 	var wg sync.WaitGroup
 	for _, sub := range rts.subs {

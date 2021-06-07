@@ -1,8 +1,13 @@
 ---
 order: 1
 parent:
+<<<<<<< HEAD
   title: Core
   order: 4
+=======
+  title: System
+  order: 5
+>>>>>>> master
 ---
 
 # Overview
