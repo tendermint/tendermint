@@ -17,7 +17,6 @@ import (
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	tmflags "github.com/tendermint/tendermint/libs/cli/flags"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/light"
@@ -34,7 +33,7 @@ import (
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
-var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 
 // main is the binary entrypoint.
 func main() {
@@ -287,18 +286,12 @@ func setupNode() (*config.Config, log.Logger, error) {
 		return nil, nil, fmt.Errorf("error in config file: %w", err)
 	}
 
-	if tmcfg.LogFormat == config.LogFormatJSON {
-		logger = log.NewTMJSONLogger(log.NewSyncWriter(os.Stdout))
-	}
-
-	nodeLogger, err := tmflags.ParseLogLevel(tmcfg.LogLevel, logger, config.DefaultLogLevel)
+	nodeLogger, err := log.NewDefaultLogger(tmcfg.LogFormat, tmcfg.LogLevel, false)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	nodeLogger = nodeLogger.With("module", "main")
-
-	return tmcfg, nodeLogger, nil
+	return tmcfg, nodeLogger.With("module", "main"), nil
 }
 
 // rpcEndpoints takes a list of persistent peers and splits them into a list of rpc endpoints
