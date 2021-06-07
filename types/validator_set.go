@@ -99,9 +99,9 @@ func NewValidatorSet(valz []*Validator, newThresholdPublicKey crypto.PubKey, quo
 // however it does allows to set the localNodeProTxHash to more easily identify if the validator set should have public
 // keys. If the local node is part of the validator set the public keys must be present
 func NewValidatorSetWithLocalNodeProTxHash(valz []*Validator, newThresholdPublicKey crypto.PubKey, quorumType	btcjson.LLMQType,
-	quorumHash crypto.QuorumHash, localNodeProTxHash crypto.ProTxHash) *ValidatorSet {
+	quorumHash crypto.QuorumHash, localNodeProTxHash *crypto.ProTxHash) *ValidatorSet {
 	vals := NewValidatorSet(valz, newThresholdPublicKey, quorumType, quorumHash, false)
-	if localNodeProTxHash != nil && vals.HasProTxHash(localNodeProTxHash) {
+	if localNodeProTxHash != nil && vals.HasProTxHash(*localNodeProTxHash) {
 		vals.HasPublicKeys = true
 	}
 	return vals

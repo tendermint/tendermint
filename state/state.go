@@ -64,7 +64,7 @@ type State struct {
 	// It does not go to 0 if a block had no chain lock and should stay the same as the previous block
 	LastCoreChainLockedBlockHeight uint32
 
-	// LastValidators is used to validate block.LastCommit.
+	// LastValidators is used to validate block.LastPrecommits.
 	// Validators are persisted to the database separately every time they change,
 	// so we can query for historical validator sets.
 	// Note that if s.LastBlockHeight causes a valset change,

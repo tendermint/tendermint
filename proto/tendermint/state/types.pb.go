@@ -263,7 +263,7 @@ type State struct {
 	LastBlockTime                  time.Time             `protobuf:"bytes,5,opt,name=last_block_time,json=lastBlockTime,proto3,stdtime" json:"last_block_time"`
 	LastCoreChainLockedBlockHeight uint32                `protobuf:"varint,100,opt,name=last_core_chain_locked_block_height,json=lastCoreChainLockedBlockHeight,proto3" json:"last_core_chain_locked_block_height,omitempty"`
 	NextCoreChainLock              *types1.CoreChainLock `protobuf:"bytes,101,opt,name=next_core_chain_lock,json=nextCoreChainLock,proto3" json:"next_core_chain_lock,omitempty"`
-	// LastValidators is used to validate block.LastCommit.
+	// LastValidators is used to validate block.LastPrecommits.
 	// Validators are persisted to the database separately every time they change,
 	// so we can query for historical validator sets.
 	// Note that if s.LastBlockHeight causes a valset change,

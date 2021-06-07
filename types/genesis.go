@@ -51,7 +51,7 @@ type GenesisDoc struct {
 	ThresholdPublicKey           crypto.PubKey            `json:"threshold_public_key"`
 	QuorumType                   btcjson.LLMQType         `json:"quorum_type"`
 	QuorumHash                   crypto.QuorumHash        `json:"quorum_hash"`
-	NodeProTxHash                crypto.ProTxHash         `json:"node_pro_tx_hash"`
+	NodeProTxHash                *crypto.ProTxHash        `json:"node_pro_tx_hash"`
 	AppHash                      tmbytes.HexBytes         `json:"app_hash"`
 	AppState                     json.RawMessage          `json:"app_state,omitempty"`
 }
@@ -136,8 +136,8 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		return fmt.Errorf("the quorum type must not be 0 (%d Validator(s))", len(genDoc.Validators))
 	}
 
-	if len(genDoc.NodeProTxHash) != 0 && len(genDoc.NodeProTxHash) != crypto.DefaultHashSize {
-		return fmt.Errorf("the node proTxHash must be 32 bytes if it is set (received %d)", len(genDoc.NodeProTxHash))
+	if genDoc.NodeProTxHash != nil && len(*genDoc.NodeProTxHash) != crypto.DefaultHashSize {
+		return fmt.Errorf("the node proTxHash must be 32 bytes if it is set (received %d)", len(*genDoc.NodeProTxHash))
 	}
 
 	if genDoc.GenesisTime.IsZero() {

@@ -94,15 +94,15 @@ func validateBlock(state State, block *types.Block) error {
 		)
 	}
 
-	// Validate block LastCommit.
+	// Validate block LastPrecommits.
 	if block.Height == state.InitialHeight {
 		if len(block.LastCommit.Signatures) != 0 {
-			return errors.New("initial block can't have LastCommit signatures")
+			return errors.New("initial block can't have LastPrecommits signatures")
 		}
 	} else {
 		// fmt.Printf("validating against state with lastBlockId %s lastStateId %s\n", state.LastBlockID.String(),
 		//  state.LastStateID.String())
-		// LastCommit.Signatures length is checked in VerifyCommit.
+		// LastPrecommits.Signatures length is checked in VerifyCommit.
 		if err := state.LastValidators.VerifyCommit(
 			state.ChainID, state.LastBlockID, state.LastStateID, block.Height-1, block.LastCommit); err != nil {
 			return err

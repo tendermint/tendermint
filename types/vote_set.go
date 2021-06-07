@@ -80,11 +80,14 @@ type VoteSet struct {
 	peerMaj23s        map[P2PID]BlockID      // Maj23 for each peer
 }
 
-// Constructs a new VoteSet struct used to accumulate votes for given height/round.
+// NewVoteSet constructs a new VoteSet struct used to accumulate votes for given height/round.
 func NewVoteSet(chainID string, height int64, round int32,
 	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet) *VoteSet {
 	if height == 0 {
 		panic("Cannot make VoteSet for height == 0, doesn't make sense.")
+	}
+	if valSet.HasPublicKeys == false {
+		panic("Cannot make VoteSet when the validator set doesn't have public keys.")
 	}
 	return &VoteSet{
 		chainID:       chainID,

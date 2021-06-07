@@ -76,10 +76,10 @@ func (b *Block) ValidateBasic() error {
 
 	// Validate the last commit and its hash.
 	if b.LastCommit == nil {
-		return errors.New("nil LastCommit")
+		return errors.New("nil LastPrecommits")
 	}
 	if err := b.LastCommit.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong LastCommit: %v", err)
+		return fmt.Errorf("wrong LastPrecommits: %v", err)
 	}
 
 	if !bytes.Equal(b.LastCommitHash, b.LastCommit.Hash()) {
@@ -512,7 +512,7 @@ func (h *Header) StringIndented(indent string) string {
 %s  CoreCLHeight:   %v
 %s  Time:           %v
 %s  LastBlockID:    %v
-%s  LastCommit:     %v
+%s  LastPrecommits:     %v
 %s  Data:           %v
 %s  Validators:     %v
 %s  NextValidators: %v
@@ -851,6 +851,9 @@ func NewCommit(height int64, round int32, blockID BlockID, stateID StateID, comm
 // Panics if signatures from the commit can't be added to the voteset.
 // Inverse of VoteSet.MakeCommit().
 func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSet {
+	if vals.HasPublicKeys == false {
+		panic(fmt.Sprintf("Trying to recreate vote set from commit when not a validator"))
+	}
 	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, tmproto.PrecommitType, vals)
 	for idx, commitSig := range commit.Signatures {
 		if commitSig.Absent() {
@@ -858,7 +861,7 @@ func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSe
 		}
 		added, err := voteSet.AddVote(commit.GetVote(int32(idx)))
 		if !added || err != nil {
-			panic(fmt.Sprintf("Failed to reconstruct LastCommit: %v", err))
+			panic(fmt.Sprintf("Failed to reconstruct LastPrecommits: %v", err))
 		}
 	}
 	return voteSet

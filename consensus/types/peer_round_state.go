@@ -54,7 +54,7 @@ func (prs PeerRoundState) StringIndented(indent string) string {
 %s  POL      %v (round %v)
 %s  Prevotes   %v
 %s  Precommits %v
-%s  LastCommit %v (round %v)
+%s  LastPrecommits %v (round %v)
 %s  Catchup    %v (round %v)
 %s}`,
 		indent, prs.Height, prs.Round, prs.Step, prs.StartTime,

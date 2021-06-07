@@ -36,7 +36,7 @@ provides a precommit for a round greater than mtx.round,
 we create a new entry in roundVoteSets but also remember the
 peer to prevent abuse.
 We let each peer provide us with up to 2 unexpected "catchup" rounds.
-One for their LastCommit round, and another for the official commit round.
+One for their LastPrecommits round, and another for the official commit round.
 */
 type HeightVoteSet struct {
 	chainID string
@@ -112,6 +112,7 @@ func (hvs *HeightVoteSet) addRound(round int32) {
 	}
 }
 
+// AddVote adds a vote of a specific type to the round
 // Duplicate votes return added=false, err=nil.
 // By convention, peerID is "" if origin is self.
 func (hvs *HeightVoteSet) AddVote(vote *types.Vote, peerID p2p.ID) (added bool, err error) {

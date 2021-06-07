@@ -170,7 +170,7 @@ func TestValidateBlockCommit(t *testing.T) {
 				height, err)
 
 			/*
-				#2589: test len(block.LastCommit.Signatures) == state.LastValidators.Size()
+				#2589: test len(block.LastPrecommits.Signatures) == state.LastValidators.Size()
 			*/
 			block, _ = state.MakeBlock(height, nextChainLock, makeTxs(height), wrongSigsCommit, nil, proTxHash)
 			err = blockExec.ValidateBlock(state, block)

@@ -42,6 +42,7 @@ type BlockExecutor struct {
 	evpool  EvidencePool
 	// the next core chain lock that we can propose
 	NextCoreChainLock *types.CoreChainLock
+	NodeProTxHash *crypto.ProTxHash
 
 	logger log.Logger
 
@@ -68,6 +69,7 @@ func BlockExecutorWithAppHashSize(size int) BlockExecutorOption {
 // NewBlockExecutor returns a new BlockExecutor with a NopEventBus.
 // Call SetEventBus to provide one.
 func NewBlockExecutor(
+	nodeProTxHash *crypto.ProTxHash,
 	stateStore Store,
 	logger log.Logger,
 	proxyApp proxy.AppConnConsensus,
@@ -78,6 +80,7 @@ func NewBlockExecutor(
 	options ...BlockExecutorOption,
 ) *BlockExecutor {
 	res := &BlockExecutor{
+		NodeProTxHash:     nodeProTxHash,
 		store:             stateStore,
 		proxyApp:          proxyApp,
 		queryApp:          queryApp,
@@ -226,8 +229,10 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		blockExec.logger.Debug("updates to validators", "updates", types.ValidatorListString(validatorUpdates))
 	}
 
+	blockExec.store.Load()
+
 	// Update the state with the block and responses.
-	state, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates, thresholdPublicKeyUpdate, quorumHash)
+	state, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates, blockExec.NodeProTxHash, thresholdPublicKeyUpdate, quorumHash)
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
@@ -406,7 +411,7 @@ func getBeginBlockValidatorInfo(block *types.Block, store Store,
 	initialHeight int64) abci.LastCommitInfo {
 	voteInfos := make([]abci.VoteInfo, block.LastCommit.Size())
 	// Initial block -> LastCommitInfo.Votes are empty.
-	// Remember that the first LastCommit is intentionally empty, so it makes
+	// Remember that the first LastPrecommits is intentionally empty, so it makes
 	// sense for LastCommitInfo.Votes to also be empty.
 	if block.Height > initialHeight {
 		lastValSet, err := store.LoadValidators(block.Height - 1)
@@ -508,6 +513,7 @@ func updateState(
 	header *types.Header,
 	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
+	nodeProTxHash *crypto.ProTxHash,
 	newThresholdPublicKey crypto.PubKey,
 	quorumHash crypto.QuorumHash,
 ) (State, error) {
@@ -527,7 +533,8 @@ func updateState(
 			// Change results from this height but only applies to the next next height.
 			lastHeightValsChanged = header.Height + 1 + 1
 		} else {
-			nValSet = types.NewValidatorSet(validatorUpdates, newThresholdPublicKey, state.Validators.QuorumType, quorumHash)
+			nValSet = types.NewValidatorSetWithLocalNodeProTxHash(validatorUpdates, newThresholdPublicKey,
+				state.Validators.QuorumType, quorumHash, nodeProTxHash)
 			// Change results from this height but only applies to the next next height.
 			lastHeightValsChanged = header.Height + 1 + 1
 		}

@@ -144,7 +144,7 @@ func NewState(
 	// set function defaults (may be overwritten before calling Start)
 	cs.decideProposal = cs.defaultDecideProposal
 
-	// We have no votes, so reconstruct LastCommit from SeenCommit.
+	// We have no votes, so reconstruct LastPrecommits from SeenCommit.
 	if state.LastBlockHeight > 0 {
 		cs.reconstructLastCommit(state)
 	}
@@ -370,17 +370,17 @@ func (cs *State) addVote(
 			cs.Logger.Debug("Precommit vote came in after commit timeout and has been ignored", "vote", vote)
 			return
 		}
-		added, err = cs.LastCommit.AddVote(vote)
+		added, err = cs.LastPrecommits.AddVote(vote)
 		if !added {
 			return
 		}
 
-		cs.Logger.Info(fmt.Sprintf("Added to lastPrecommits: %v", cs.LastCommit.StringShort()))
+		cs.Logger.Info(fmt.Sprintf("Added to lastPrecommits: %v", cs.LastPrecommits.StringShort()))
 		_ = cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote})
 		cs.evsw.FireEvent(types.EventVote, vote)
 
 		// if we can skip timeoutCommit and have all the votes now,
-		if cs.config.SkipTimeoutCommit && cs.LastCommit.HasAll() {
+		if cs.config.SkipTimeoutCommit && cs.LastPrecommits.HasAll() {
 			// go straight to new round (skip timeout commit)
 			// cs.scheduleTimeout(time.Duration(0), cs.Height, 0, cstypes.RoundStepNewHeight)
 			cs.enterNewRound(cs.Height, 0)
@@ -811,21 +811,25 @@ func (cs *State) sendInternalMessage(mi msgInfo) {
 	}
 }
 
-// Reconstruct LastCommit from SeenCommit, which we saved along with the block,
+// Reconstruct LastPrecommits from SeenCommit, which we saved along with the block,
 // (which happens even before saving the state)
 func (cs *State) reconstructLastCommit(state sm.State) {
 	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
 	if seenCommit == nil {
-		panic(fmt.Sprintf("Failed to reconstruct LastCommit: seen commit for height %v not found",
+		panic(fmt.Sprintf("Failed to reconstruct LastPrecommits: seen commit for height %v not found",
 			state.LastBlockHeight))
 	}
 
-	lastPrecommits := types.CommitToVoteSet(state.ChainID, seenCommit, state.LastValidators)
-	if !lastPrecommits.HasTwoThirdsMajority() {
-		panic("Failed to reconstruct LastCommit: Does not have +2/3 maj")
-	}
+	cs.LastCommit = seenCommit
 
-	cs.LastCommit = lastPrecommits
+	if state.LastValidators.HasProTxHash(cs.privValidatorProTxHash) {
+		lastPrecommits := types.CommitToVoteSet(state.ChainID, seenCommit, state.LastValidators)
+		if !lastPrecommits.HasTwoThirdsMajority() {
+			panic("failed to reconstruct last commit; does not have +2/3 maj")
+		}
+
+		cs.LastPrecommits = lastPrecommits
+	}
 }
 
 // Updates State and increments height to match that of state.
@@ -869,7 +873,7 @@ func (cs *State) updateToState(state sm.State) {
 
 	switch {
 	case state.LastBlockHeight == 0: // Very first commit should be empty.
-		cs.LastCommit = (*types.VoteSet)(nil)
+		cs.LastPrecommits = (*types.VoteSet)(nil)
 	case cs.CommitRound > -1 && cs.Votes != nil: // Otherwise, use cs.Votes
 		if !cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
 			panic(fmt.Sprintf("Wanted to form a Commit, but Precommits (H/R: %d/%d) didn't have 2/3+: %v",
@@ -877,11 +881,11 @@ func (cs *State) updateToState(state sm.State) {
 				cs.CommitRound,
 				cs.Votes.Precommits(cs.CommitRound)))
 		}
-		cs.LastCommit = cs.Votes.Precommits(cs.CommitRound)
-	case cs.LastCommit == nil:
+		cs.LastPrecommits = cs.Votes.Precommits(cs.CommitRound)
+	case cs.LastPrecommits == nil:
 		// NOTE: when Tendermint starts, it has no votes. reconstructLastCommit
-		// must be called to reconstruct LastCommit from SeenCommit.
-		panic(fmt.Sprintf("LastCommit cannot be empty after initial block (H:%d)",
+		// must be called to reconstruct LastPrecommits from SeenCommit.
+		panic(fmt.Sprintf("LastPrecommits cannot be empty after initial block (H:%d)",
 			state.LastBlockHeight+1,
 		))
 	}
@@ -1269,9 +1273,9 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
 		commit = types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil, nil)
-	case cs.LastCommit.HasTwoThirdsMajority():
-		// Make the commit from LastCommit
-		commit = cs.LastCommit.MakeCommit()
+	case cs.LastPrecommits.HasTwoThirdsMajority():
+		// Make the commit from LastPrecommits
+		commit = cs.LastPrecommits.MakeCommit()
 	default: // This shouldn't happen.
 		cs.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block")
 		return
@@ -1487,7 +1491,7 @@ func (cs *State) finalizeCommit(height int64) {
 	// Save to blockStore.
 	if cs.blockStore.Height() < block.Height {
 		// NOTE: the seenCommit is local justification to commit this block,
-		// but may differ from the LastCommit included in the next block
+		// but may differ from the LastPrecommits included in the next block
 		precommits := cs.Votes.Precommits(cs.CommitRound)
 		seenCommit := precommits.MakeCommit()
 		cs.blockStore.SaveBlock(block, blockParts, seenCommit)
@@ -1595,7 +1599,7 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 		missingValidatorsPower int64
 	)
 	// height=0 -> MissingValidators and MissingValidatorsPower are both 0.
-	// Remember that the first LastCommit is intentionally empty, so it's not
+	// Remember that the first LastPrecommits is intentionally empty, so it's not
 	// fair to increment missing validators number.
 	if height > cs.state.InitialHeight {
 		// Sanity check that commit size matches validator set size - only applies

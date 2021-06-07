@@ -77,8 +77,11 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		require.NoError(t, err)
 		evpool.SetLogger(logger.With("module", "evidence"))
 
+		// Get Pro Tx Hash
+		proTxHash, err := privVals[i].GetProTxHash()
+		require.NoError(t, err)
 		// Make State
-		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, proxyAppConnQry,
+		blockExec := sm.NewBlockExecutor(&proTxHash, stateStore, log.TestingLogger(), proxyAppConnCon, proxyAppConnQry,
 			mempool, evpool, nil)
 		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 		cs.SetLogger(cs.Logger)
@@ -173,9 +176,9 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			// We're creating a proposal for the first block.
 			// The commit is empty, but not nil.
 			commit = types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil, nil)
-		case lazyProposer.LastCommit.HasTwoThirdsMajority():
-			// Make the commit from LastCommit
-			commit = lazyProposer.LastCommit.MakeCommit()
+		case lazyProposer.LastPrecommits.HasTwoThirdsMajority():
+			// Make the commit from LastPrecommits
+			commit = lazyProposer.LastPrecommits.MakeCommit()
 		default: // This shouldn't happen.
 			lazyProposer.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block")
 			return
