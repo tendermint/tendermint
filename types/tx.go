@@ -91,7 +91,7 @@ func (txs Txs) ToSliceOfBytes() [][]byte {
 }
 
 func ToTxs(txs [][]byte) Txs {
-	txBzs := make(Txs, 0, len(txs))
+	txBzs := make(Txs, len(txs))
 	for i := 0; i < len(txs); i++ {
 		txBzs[i] = txs[i]
 	}
