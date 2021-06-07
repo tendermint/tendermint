@@ -167,8 +167,6 @@ and/or restore state sync snapshots to a local node being bootstrapped.
 
 ## Transaction Results
 
-`ResponseCheckTx` and `ResponseDeliverTx` contain the same fields.
-
 The `Info` and `Log` fields are non-deterministic values for debugging/convenience purposes
 that are otherwise ignored.
 

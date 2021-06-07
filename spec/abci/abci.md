@@ -377,8 +377,11 @@ via light client.
     | gas_used   | int64                     | Amount of gas consumed by transaction.                                | 6            |
     | events     | repeated [Event](#events) | Type & Key-Value events for indexing transactions (eg. by account).   | 7            |
     | codespace  | string                    | Namespace for the `code`.                                             | 8            |
+    | sender     | string                    | The transaction's sender (e.g. the signer)                            | 9            |
+    | priority   | int64                     | The transaction's priority (for mempool ordering)                     | 10           |
 
 - **Usage**:
+
     - Technically optional - not involved in processing blocks.
     - Guardian of the mempool: every node runs CheckTx before letting a
     transaction into its local mempool.
