@@ -26,7 +26,7 @@
         "round": 1,
         "block_id": {
           "hash": "0D038B1BA2ED7B1EF4D4E250C54D3F8D7186068658FAA53900CA83F4280B1EF2",
-          "part_set_header": {
+          "parts": {
             "total": 1,
             "hash": "0D038B1BA2ED7B1EF4D4E250C54D3F8D7186068658FAA53900CA83F4280B1EF2"
           }
@@ -103,7 +103,7 @@
             "round": 1,
             "block_id": {
               "hash": "734FC4AE3FEEAD34654D611A867E3A4F2F921DD2B8F27289EFC52C90EFC2B8D8",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "734FC4AE3FEEAD34654D611A867E3A4F2F921DD2B8F27289EFC52C90EFC2B8D8"
               }
@@ -176,7 +176,7 @@
             "round": 1,
             "block_id": {
               "hash": "E60D3DC5A38CE0773BF911BE62514F5FE6C12FA574F0571965E8EDE2D8899C01",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "E60D3DC5A38CE0773BF911BE62514F5FE6C12FA574F0571965E8EDE2D8899C01"
               }
@@ -249,7 +249,7 @@
             "round": 1,
             "block_id": {
               "hash": "2EA87BC69EB6739C5A1E06BCA5E7C9B8A5C163EB1ECF01EDD1A4A9B167C313C5",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "2EA87BC69EB6739C5A1E06BCA5E7C9B8A5C163EB1ECF01EDD1A4A9B167C313C5"
               }
