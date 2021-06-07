@@ -189,7 +189,7 @@ c2.SetLogger(log.With(logger, "instance", 2))
 
 ## Status
 
-proposed
+Implemented
 
 ## Consequences
 

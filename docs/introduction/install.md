@@ -8,6 +8,14 @@ order: 3
 
 To download pre-built binaries, see the [releases page](https://github.com/tendermint/tendermint/releases).
 
+## Using Homebrew
+
+You can also install the Tendermint binary by simply using homebrew,
+
+```
+brew install tendermint
+```
+
 ## From Source
 
 You'll need `go` [installed](https://golang.org/doc/install) and the required
@@ -18,14 +26,14 @@ echo export GOPATH=\"\$HOME/go\" >> ~/.bash_profile
 echo export PATH=\"\$PATH:\$GOPATH/bin\" >> ~/.bash_profile
 ```
 
-### Get Source Code
+Get the source code:
 
 ```sh
 git clone https://github.com/tendermint/tendermint.git
 cd tendermint
 ```
 
-### Compile
+Then run:
 
 ```sh
 make install

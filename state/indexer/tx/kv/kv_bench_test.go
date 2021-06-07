@@ -55,7 +55,7 @@ func BenchmarkTxSearch(b *testing.B) {
 			},
 		}
 
-		if err := indexer.Index(txResult); err != nil {
+		if err := indexer.Index([]*abci.TxResult{txResult}); err != nil {
 			b.Errorf("failed to index tx: %s", err)
 		}
 	}

@@ -10,11 +10,10 @@ import (
 	"strconv"
 	"time"
 
+	_ "github.com/lib/pq" // provide the psql db driver
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
-	dbm "github.com/tendermint/tm-db"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cs "github.com/tendermint/tendermint/consensus"
@@ -27,7 +26,7 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/libs/strings"
 	"github.com/tendermint/tendermint/light"
-	mempl "github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
 	"github.com/tendermint/tendermint/privval"
@@ -42,11 +41,12 @@ import (
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
+	dbm "github.com/tendermint/tm-db"
 )
 
-// Node is the highest level interface to a full Tendermint node.
+// nodeImpl is the highest level interface to a full Tendermint node.
 // It includes all configuration information and running services.
-type Node struct {
+type nodeImpl struct {
 	service.BaseService
 
 	// config
@@ -69,8 +69,8 @@ type Node struct {
 	stateStore        sm.Store
 	blockStore        *store.BlockStore // store the blockchain to disk
 	bcReactor         service.Service   // for fast-syncing
-	mempoolReactor    *mempl.Reactor    // for gossipping transactions
-	mempool           mempl.Mempool
+	mempoolReactor    service.Service   // for gossipping transactions
+	mempool           mempool.Mempool
 	stateSync         bool                    // whether the node should state sync on startup
 	stateSyncReactor  *statesync.Reactor      // for hosting and restoring state sync snapshots
 	stateSyncProvider statesync.StateProvider // provides state data for bootstrapping a node
@@ -83,25 +83,24 @@ type Node struct {
 	evidencePool      *evidence.Pool // tracking evidence
 	proxyApp          proxy.AppConns // connection to the application
 	rpcListeners      []net.Listener // rpc servers
-	txIndexer         indexer.TxIndexer
-	blockIndexer      indexer.BlockIndexer
+	eventSinks        []indexer.EventSink
 	indexerService    *indexer.Service
 	prometheusSrv     *http.Server
 }
 
-// DefaultNewNode returns a Tendermint node with default settings for the
+// newDefaultNode returns a Tendermint node with default settings for the
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
 // It implements NodeProvider.
-func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
+func newDefaultNode(config *cfg.Config, logger log.Logger) (service.Service, error) {
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	if err != nil {
 		return nil, fmt.Errorf("failed to load or gen node key %s: %w", config.NodeKeyFile(), err)
 	}
 	if config.Mode == cfg.ModeSeed {
-		return NewSeedNode(config,
-			DefaultDBProvider,
+		return makeSeedNode(config,
+			cfg.DefaultDBProvider,
 			nodeKey,
-			DefaultGenesisDocProviderFunc(config),
+			defaultGenesisDocProviderFunc(config),
 			logger,
 		)
 	}
@@ -117,27 +116,24 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	}
 
 	appClient, _ := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
-	return NewNode(config,
+	return makeNode(config,
 		pval,
 		nodeKey,
 		appClient,
-		DefaultGenesisDocProviderFunc(config),
-		DefaultDBProvider,
-		DefaultMetricsProvider(config.Instrumentation),
+		defaultGenesisDocProviderFunc(config),
+		cfg.DefaultDBProvider,
 		logger,
 	)
 }
 
-// NewNode returns a new, ready to go, Tendermint Node.
-func NewNode(config *cfg.Config,
+// makeNode returns a new, ready to go, Tendermint Node.
+func makeNode(config *cfg.Config,
 	privValidator types.PrivValidator,
 	nodeKey p2p.NodeKey,
 	clientCreator proxy.ClientCreator,
-	genesisDocProvider GenesisDocProvider,
-	dbProvider DBProvider,
-	metricsProvider MetricsProvider,
-	logger log.Logger,
-	options ...Option) (*Node, error) {
+	genesisDocProvider genesisDocProvider,
+	dbProvider cfg.DBProvider,
+	logger log.Logger) (service.Service, error) {
 
 	blockStore, stateDB, err := initDBs(config, dbProvider)
 	if err != nil {
@@ -146,7 +142,7 @@ func NewNode(config *cfg.Config,
 
 	stateStore := sm.NewStore(stateDB)
 
-	state, genDoc, err := LoadStateFromDBOrGenesisDocProvider(stateDB, genesisDocProvider)
+	state, genDoc, err := loadStateFromDBOrGenesisDocProvider(stateDB, genesisDocProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -166,15 +162,15 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	indexerService, txIndexer, blockIndexer, err := createAndStartIndexerService(config, dbProvider, eventBus, logger)
+	indexerService, eventSinks, err := createAndStartIndexerService(config, dbProvider, eventBus, logger, genDoc.ChainID)
 	if err != nil {
 		return nil, err
 	}
 
 	// If an address is provided, listen on the socket for a connection from an
 	// external signing process.
-	if config.PrivValidatorListenAddr != "" {
-		protocol, _ := tmnet.ProtocolAndAddress(config.PrivValidatorListenAddr)
+	if config.PrivValidator.ListenAddr != "" {
+		protocol, _ := tmnet.ProtocolAndAddress(config.PrivValidator.ListenAddr)
 		// FIXME: we should start services inside OnStart
 		switch protocol {
 		case "grpc":
@@ -183,7 +179,7 @@ func NewNode(config *cfg.Config,
 				return nil, fmt.Errorf("error with private validator grpc client: %w", err)
 			}
 		default:
-			privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, genDoc.ChainID, logger)
+			privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidator.ListenAddr, genDoc.ChainID, logger)
 			if err != nil {
 				return nil, fmt.Errorf("error with private validator socket client: %w", err)
 			}
@@ -232,7 +228,7 @@ func NewNode(config *cfg.Config,
 
 	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
 	// TODO: Use a persistent peer database.
-	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state)
+	nodeInfo, err := makeNodeInfo(config, nodeKey, eventSinks, genDoc, state)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +241,7 @@ func NewNode(config *cfg.Config,
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
 
-	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
+	csMetrics, p2pMetrics, memplMetrics, smMetrics := defaultMetricsProvider(config.Instrumentation)(genDoc.ChainID)
 
 	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey,
 		peerManager, transport, getRouterConfig(config, proxyApp))
@@ -253,9 +249,12 @@ func NewNode(config *cfg.Config,
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
 
-	mpReactorShim, mpReactor, mempool := createMempoolReactor(
+	mpReactorShim, mpReactor, mp, err := createMempoolReactor(
 		config, proxyApp, state, memplMetrics, peerManager, router, logger,
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	evReactorShim, evReactor, evPool, err := createEvidenceReactor(
 		config, dbProvider, stateDB, blockStore, peerManager, router, logger,
@@ -269,13 +268,13 @@ func NewNode(config *cfg.Config,
 		stateStore,
 		logger.With("module", "state"),
 		proxyApp.Consensus(),
-		mempool,
+		mp,
 		evPool,
 		sm.BlockExecutorWithMetrics(smMetrics),
 	)
 
 	csReactorShim, csReactor, csState := createConsensusReactor(
-		config, state, blockExec, blockStore, mempool, evPool,
+		config, state, blockExec, blockStore, mp, evPool,
 		privValidator, csMetrics, stateSync || fastSync, eventBus,
 		peerManager, router, consensusLogger,
 	)
@@ -409,7 +408,7 @@ func NewNode(config *cfg.Config,
 		}()
 	}
 
-	node := &Node{
+	node := &nodeImpl{
 		config:        config,
 		genesisDoc:    genDoc,
 		privValidator: privValidator,
@@ -426,7 +425,7 @@ func NewNode(config *cfg.Config,
 		blockStore:       blockStore,
 		bcReactor:        bcReactor,
 		mempoolReactor:   mpReactor,
-		mempool:          mempool,
+		mempool:          mp,
 		consensusState:   csState,
 		consensusReactor: csReactor,
 		stateSyncReactor: stateSyncReactor,
@@ -437,27 +436,22 @@ func NewNode(config *cfg.Config,
 		evidenceReactor:  evReactor,
 		evidencePool:     evPool,
 		proxyApp:         proxyApp,
-		txIndexer:        txIndexer,
 		indexerService:   indexerService,
-		blockIndexer:     blockIndexer,
 		eventBus:         eventBus,
+		eventSinks:       eventSinks,
 	}
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
-
-	for _, option := range options {
-		option(node)
-	}
 
 	return node, nil
 }
 
-// NewSeedNode returns a new seed node, containing only p2p, pex reactor
-func NewSeedNode(config *cfg.Config,
-	dbProvider DBProvider,
+// makeSeedNode returns a new seed node, containing only p2p, pex reactor
+func makeSeedNode(config *cfg.Config,
+	dbProvider cfg.DBProvider,
 	nodeKey p2p.NodeKey,
-	genesisDocProvider GenesisDocProvider,
+	genesisDocProvider genesisDocProvider,
 	logger log.Logger,
-	options ...Option) (*Node, error) {
+) (service.Service, error) {
 
 	genDoc, err := genesisDocProvider()
 	if err != nil {
@@ -536,7 +530,7 @@ func NewSeedNode(config *cfg.Config,
 		}()
 	}
 
-	node := &Node{
+	node := &nodeImpl{
 		config:     config,
 		genesisDoc: genDoc,
 
@@ -553,15 +547,8 @@ func NewSeedNode(config *cfg.Config,
 	}
 	node.BaseService = *service.NewBaseService(logger, "SeedNode", node)
 
-	for _, option := range options {
-		option(node)
-	}
-
 	return node, nil
 }
-
-// Option sets a parameter for the node.
-type Option func(*Node)
 
 // Temporary interface for switching to fast sync, we should get rid of v0.
 // See: https://github.com/tendermint/tendermint/issues/4595
@@ -569,42 +556,8 @@ type fastSyncReactor interface {
 	SwitchToFastSync(sm.State) error
 }
 
-// CustomReactors allows you to add custom reactors (name -> p2p.Reactor) to
-// the node's Switch.
-//
-// WARNING: using any name from the below list of the existing reactors will
-// result in replacing it with the custom one.
-//
-//  - MEMPOOL
-//  - BLOCKCHAIN
-//  - CONSENSUS
-//  - EVIDENCE
-//  - PEX
-//  - STATESYNC
-func CustomReactors(reactors map[string]p2p.Reactor) Option {
-	return func(n *Node) {
-		for name, reactor := range reactors {
-			if existingReactor := n.sw.Reactor(name); existingReactor != nil {
-				n.sw.Logger.Info("Replacing existing reactor with a custom one",
-					"name", name, "existing", existingReactor, "custom", reactor)
-				n.sw.RemoveReactor(name, existingReactor)
-			}
-			n.sw.AddReactor(name, reactor)
-		}
-	}
-}
-
-// StateProvider overrides the state provider used by state sync to retrieve trusted app hashes and
-// build a State object for bootstrapping the node.
-// WARNING: this interface is considered unstable and subject to change.
-func StateProvider(stateProvider statesync.StateProvider) Option {
-	return func(n *Node) {
-		n.stateSyncProvider = stateProvider
-	}
-}
-
 // OnStart starts the Node. It implements service.Service.
-func (n *Node) OnStart() error {
+func (n *nodeImpl) OnStart() error {
 	now := tmtime.Now()
 	genTime := n.genesisDoc.GenesisTime
 	if genTime.After(now) {
@@ -710,7 +663,7 @@ func (n *Node) OnStart() error {
 }
 
 // OnStop stops the Node. It implements service.Service.
-func (n *Node) OnStop() {
+func (n *nodeImpl) OnStop() {
 
 	n.Logger.Info("Stopping Node")
 
@@ -797,7 +750,7 @@ func (n *Node) OnStop() {
 }
 
 // ConfigureRPC makes sure RPC has all the objects it needs to operate.
-func (n *Node) ConfigureRPC() (*rpccore.Environment, error) {
+func (n *nodeImpl) ConfigureRPC() (*rpccore.Environment, error) {
 	rpcCoreEnv := rpccore.Environment{
 		ProxyAppQuery:   n.proxyApp.Query(),
 		ProxyAppMempool: n.proxyApp.Mempool(),
@@ -810,8 +763,7 @@ func (n *Node) ConfigureRPC() (*rpccore.Environment, error) {
 		P2PTransport:   n,
 
 		GenDoc:           n.genesisDoc,
-		TxIndexer:        n.txIndexer,
-		BlockIndexer:     n.blockIndexer,
+		EventSinks:       n.eventSinks,
 		ConsensusReactor: n.consensusReactor,
 		EventBus:         n.eventBus,
 		Mempool:          n.mempool,
@@ -834,7 +786,7 @@ func (n *Node) ConfigureRPC() (*rpccore.Environment, error) {
 	return &rpcCoreEnv, nil
 }
 
-func (n *Node) startRPC() ([]net.Listener, error) {
+func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 	env, err := n.ConfigureRPC()
 	if err != nil {
 		return nil, err
@@ -955,7 +907,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 
 // startPrometheusServer starts a Prometheus HTTP server, listening for metrics
 // collectors on addr.
-func (n *Node) startPrometheusServer(addr string) *http.Server {
+func (n *nodeImpl) startPrometheusServer(addr string) *http.Server {
 	srv := &http.Server{
 		Addr: addr,
 		Handler: promhttp.InstrumentMetricHandler(
@@ -975,90 +927,90 @@ func (n *Node) startPrometheusServer(addr string) *http.Server {
 }
 
 // Switch returns the Node's Switch.
-func (n *Node) Switch() *p2p.Switch {
+func (n *nodeImpl) Switch() *p2p.Switch {
 	return n.sw
 }
 
 // BlockStore returns the Node's BlockStore.
-func (n *Node) BlockStore() *store.BlockStore {
+func (n *nodeImpl) BlockStore() *store.BlockStore {
 	return n.blockStore
 }
 
 // ConsensusState returns the Node's ConsensusState.
-func (n *Node) ConsensusState() *cs.State {
+func (n *nodeImpl) ConsensusState() *cs.State {
 	return n.consensusState
 }
 
 // ConsensusReactor returns the Node's ConsensusReactor.
-func (n *Node) ConsensusReactor() *cs.Reactor {
+func (n *nodeImpl) ConsensusReactor() *cs.Reactor {
 	return n.consensusReactor
 }
 
 // MempoolReactor returns the Node's mempool reactor.
-func (n *Node) MempoolReactor() *mempl.Reactor {
+func (n *nodeImpl) MempoolReactor() service.Service {
 	return n.mempoolReactor
 }
 
 // Mempool returns the Node's mempool.
-func (n *Node) Mempool() mempl.Mempool {
+func (n *nodeImpl) Mempool() mempool.Mempool {
 	return n.mempool
 }
 
 // PEXReactor returns the Node's PEXReactor. It returns nil if PEX is disabled.
-func (n *Node) PEXReactor() *pex.Reactor {
+func (n *nodeImpl) PEXReactor() *pex.Reactor {
 	return n.pexReactor
 }
 
 // EvidencePool returns the Node's EvidencePool.
-func (n *Node) EvidencePool() *evidence.Pool {
+func (n *nodeImpl) EvidencePool() *evidence.Pool {
 	return n.evidencePool
 }
 
 // EventBus returns the Node's EventBus.
-func (n *Node) EventBus() *types.EventBus {
+func (n *nodeImpl) EventBus() *types.EventBus {
 	return n.eventBus
 }
 
 // PrivValidator returns the Node's PrivValidator.
 // XXX: for convenience only!
-func (n *Node) PrivValidator() types.PrivValidator {
+func (n *nodeImpl) PrivValidator() types.PrivValidator {
 	return n.privValidator
 }
 
 // GenesisDoc returns the Node's GenesisDoc.
-func (n *Node) GenesisDoc() *types.GenesisDoc {
+func (n *nodeImpl) GenesisDoc() *types.GenesisDoc {
 	return n.genesisDoc
 }
 
 // ProxyApp returns the Node's AppConns, representing its connections to the ABCI application.
-func (n *Node) ProxyApp() proxy.AppConns {
+func (n *nodeImpl) ProxyApp() proxy.AppConns {
 	return n.proxyApp
 }
 
 // Config returns the Node's config.
-func (n *Node) Config() *cfg.Config {
+func (n *nodeImpl) Config() *cfg.Config {
 	return n.config
 }
 
-// TxIndexer returns the Node's TxIndexer.
-func (n *Node) TxIndexer() indexer.TxIndexer {
-	return n.txIndexer
+// EventSinks returns the Node's event indexing sinks.
+func (n *nodeImpl) EventSinks() []indexer.EventSink {
+	return n.eventSinks
 }
 
 //------------------------------------------------------------------------------
 
-func (n *Node) Listeners() []string {
+func (n *nodeImpl) Listeners() []string {
 	return []string{
 		fmt.Sprintf("Listener(@%v)", n.config.P2P.ExternalAddress),
 	}
 }
 
-func (n *Node) IsListening() bool {
+func (n *nodeImpl) IsListening() bool {
 	return n.isListening
 }
 
 // NodeInfo returns the Node's Info from the Switch.
-func (n *Node) NodeInfo() p2p.NodeInfo {
+func (n *nodeImpl) NodeInfo() p2p.NodeInfo {
 	return n.nodeInfo
 }
 
@@ -1118,52 +1070,33 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 	return nil
 }
 
-// DBContext specifies config information for loading a new DB.
-type DBContext struct {
-	ID     string
-	Config *cfg.Config
-}
-
-// DBProvider takes a DBContext and returns an instantiated DB.
-type DBProvider func(*DBContext) (dbm.DB, error)
-
-// DefaultDBProvider returns a database using the DBBackend and DBDir
-// specified in the ctx.Config.
-func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
-	dbType := dbm.BackendType(ctx.Config.DBBackend)
-	return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBDir())
-}
-
-// GenesisDocProvider returns a GenesisDoc.
+// genesisDocProvider returns a GenesisDoc.
 // It allows the GenesisDoc to be pulled from sources other than the
 // filesystem, for instance from a distributed key-value store cluster.
-type GenesisDocProvider func() (*types.GenesisDoc, error)
+type genesisDocProvider func() (*types.GenesisDoc, error)
 
-// DefaultGenesisDocProviderFunc returns a GenesisDocProvider that loads
+// defaultGenesisDocProviderFunc returns a GenesisDocProvider that loads
 // the GenesisDoc from the config.GenesisFile() on the filesystem.
-func DefaultGenesisDocProviderFunc(config *cfg.Config) GenesisDocProvider {
+func defaultGenesisDocProviderFunc(config *cfg.Config) genesisDocProvider {
 	return func() (*types.GenesisDoc, error) {
 		return types.GenesisDocFromFile(config.GenesisFile())
 	}
 }
 
-// Provider takes a config and a logger and returns a ready to go Node.
-type Provider func(*cfg.Config, log.Logger) (*Node, error)
+// metricsProvider returns a consensus, p2p and mempool Metrics.
+type metricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempool.Metrics, *sm.Metrics)
 
-// MetricsProvider returns a consensus, p2p and mempool Metrics.
-type MetricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics)
-
-// DefaultMetricsProvider returns Metrics build using Prometheus client library
+// defaultMetricsProvider returns Metrics build using Prometheus client library
 // if Prometheus is enabled. Otherwise, it returns no-op Metrics.
-func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
-	return func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics) {
+func defaultMetricsProvider(config *cfg.InstrumentationConfig) metricsProvider {
+	return func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempool.Metrics, *sm.Metrics) {
 		if config.Prometheus {
 			return cs.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				p2p.PrometheusMetrics(config.Namespace, "chain_id", chainID),
-				mempl.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+				mempool.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID)
 		}
-		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics(), sm.NopMetrics()
+		return cs.NopMetrics(), p2p.NopMetrics(), mempool.NopMetrics(), sm.NopMetrics()
 	}
 }
 
@@ -1173,12 +1106,12 @@ var (
 	genesisDocKey = []byte("genesisDoc")
 )
 
-// LoadStateFromDBOrGenesisDocProvider attempts to load the state from the
+// loadStateFromDBOrGenesisDocProvider attempts to load the state from the
 // database, or creates one using the given genesisDocProvider. On success this also
 // returns the genesis doc loaded through the given provider.
-func LoadStateFromDBOrGenesisDocProvider(
+func loadStateFromDBOrGenesisDocProvider(
 	stateDB dbm.DB,
-	genesisDocProvider GenesisDocProvider,
+	genesisDocProvider genesisDocProvider,
 ) (sm.State, *types.GenesisDoc, error) {
 	// Get genesis doc
 	genDoc, err := loadGenesisDoc(stateDB)

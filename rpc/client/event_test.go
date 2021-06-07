@@ -27,9 +27,9 @@ func MakeTxKV() ([]byte, []byte, []byte) {
 }
 
 func TestHeaderEvents(t *testing.T) {
-	n := NodeSuite(t)
+	n, conf := NodeSuite(t)
 
-	for i, c := range GetClients(t, n) {
+	for i, c := range GetClients(t, n, conf) {
 		i, c := i, c
 		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
 			// start for this test it if it wasn't already running
@@ -56,8 +56,8 @@ func TestHeaderEvents(t *testing.T) {
 
 // subscribe to new blocks and make sure height increments by 1
 func TestBlockEvents(t *testing.T) {
-	n := NodeSuite(t)
-	for _, c := range GetClients(t, n) {
+	n, conf := NodeSuite(t)
+	for _, c := range GetClients(t, n, conf) {
 		c := c
 		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
 
@@ -105,8 +105,8 @@ func TestTxEventsSentWithBroadcastTxAsync(t *testing.T) { testTxEventsSent(t, "a
 func TestTxEventsSentWithBroadcastTxSync(t *testing.T)  { testTxEventsSent(t, "sync") }
 
 func testTxEventsSent(t *testing.T, broadcastMethod string) {
-	n := NodeSuite(t)
-	for _, c := range GetClients(t, n) {
+	n, conf := NodeSuite(t)
+	for _, c := range GetClients(t, n, conf) {
 		c := c
 		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
 
@@ -167,21 +167,24 @@ func TestClientsResubscribe(t *testing.T) {
 }
 
 func TestHTTPReturnsErrorIfClientIsNotRunning(t *testing.T) {
-	n := NodeSuite(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	c := getHTTPClient(t, n)
+	_, conf := NodeSuite(t)
+
+	c := getHTTPClient(t, conf)
 
 	// on Subscribe
-	_, err := c.Subscribe(context.Background(), "TestHeaderEvents",
+	_, err := c.Subscribe(ctx, "TestHeaderEvents",
 		types.QueryForEvent(types.EventNewBlockHeader).String())
 	assert.Error(t, err)
 
 	// on Unsubscribe
-	err = c.Unsubscribe(context.Background(), "TestHeaderEvents",
+	err = c.Unsubscribe(ctx, "TestHeaderEvents",
 		types.QueryForEvent(types.EventNewBlockHeader).String())
 	assert.Error(t, err)
 
 	// on UnsubscribeAll
-	err = c.UnsubscribeAll(context.Background(), "TestHeaderEvents")
+	err = c.UnsubscribeAll(ctx, "TestHeaderEvents")
 	assert.Error(t, err)
 }

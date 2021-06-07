@@ -1,10 +1,8 @@
-package mempool
+package v0
 
 import (
 	"bytes"
-	"container/list"
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -15,15 +13,11 @@ import (
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
-
-// TxKeySize is the size of the transaction key index
-const TxKeySize = sha256.Size
-
-//--------------------------------------------------------------------------------
 
 // CListMempool is an ordered in-memory pool for transactions before they are
 // proposed in a consensus round. Transaction validity is checked using the
@@ -44,8 +38,8 @@ type CListMempool struct {
 	// Exclusive mutex for Update method to prevent concurrent execution of
 	// CheckTx or ReapMaxBytesMaxGas(ReapMaxTxs) methods.
 	updateMtx tmsync.RWMutex
-	preCheck  PreCheckFunc
-	postCheck PostCheckFunc
+	preCheck  mempool.PreCheckFunc
+	postCheck mempool.PostCheckFunc
 
 	txs          *clist.CList // concurrent linked-list of good txs
 	proxyAppConn proxy.AppConnMempool
@@ -62,26 +56,27 @@ type CListMempool struct {
 
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
-	cache txCache
+	cache mempool.TxCache
 
-	logger log.Logger
-
-	metrics *Metrics
+	logger  log.Logger
+	metrics *mempool.Metrics
 }
 
-var _ Mempool = &CListMempool{}
+var _ mempool.Mempool = &CListMempool{}
 
 // CListMempoolOption sets an optional parameter on the mempool.
 type CListMempoolOption func(*CListMempool)
 
-// NewCListMempool returns a new mempool with the given configuration and connection to an application.
+// NewCListMempool returns a new mempool with the given configuration and
+// connection to an application.
 func NewCListMempool(
 	config *cfg.MempoolConfig,
 	proxyAppConn proxy.AppConnMempool,
 	height int64,
 	options ...CListMempoolOption,
 ) *CListMempool {
-	mempool := &CListMempool{
+
+	mp := &CListMempool{
 		config:        config,
 		proxyAppConn:  proxyAppConn,
 		txs:           clist.New(),
@@ -89,18 +84,22 @@ func NewCListMempool(
 		recheckCursor: nil,
 		recheckEnd:    nil,
 		logger:        log.NewNopLogger(),
-		metrics:       NopMetrics(),
+		metrics:       mempool.NopMetrics(),
 	}
+
 	if config.CacheSize > 0 {
-		mempool.cache = newMapTxCache(config.CacheSize)
+		mp.cache = mempool.NewLRUTxCache(config.CacheSize)
 	} else {
-		mempool.cache = nopTxCache{}
+		mp.cache = mempool.NopTxCache{}
 	}
-	proxyAppConn.SetResponseCallback(mempool.globalCb)
+
+	proxyAppConn.SetResponseCallback(mp.globalCb)
+
 	for _, option := range options {
-		option(mempool)
+		option(mp)
 	}
-	return mempool
+
+	return mp
 }
 
 // NOTE: not thread safe - should only be called once, on startup
@@ -116,19 +115,19 @@ func (mem *CListMempool) SetLogger(l log.Logger) {
 // WithPreCheck sets a filter for the mempool to reject a tx if f(tx) returns
 // false. This is ran before CheckTx. Only applies to the first created block.
 // After that, Update overwrites the existing value.
-func WithPreCheck(f PreCheckFunc) CListMempoolOption {
+func WithPreCheck(f mempool.PreCheckFunc) CListMempoolOption {
 	return func(mem *CListMempool) { mem.preCheck = f }
 }
 
 // WithPostCheck sets a filter for the mempool to reject a tx if f(tx) returns
 // false. This is ran after CheckTx. Only applies to the first created block.
 // After that, Update overwrites the existing value.
-func WithPostCheck(f PostCheckFunc) CListMempoolOption {
+func WithPostCheck(f mempool.PostCheckFunc) CListMempoolOption {
 	return func(mem *CListMempool) { mem.postCheck = f }
 }
 
 // WithMetrics sets the metrics.
-func WithMetrics(metrics *Metrics) CListMempoolOption {
+func WithMetrics(metrics *mempool.Metrics) CListMempoolOption {
 	return func(mem *CListMempool) { mem.metrics = metrics }
 }
 
@@ -148,7 +147,7 @@ func (mem *CListMempool) Size() int {
 }
 
 // Safe for concurrent use by multiple goroutines.
-func (mem *CListMempool) TxsBytes() int64 {
+func (mem *CListMempool) SizeBytes() int64 {
 	return atomic.LoadInt64(&mem.txsBytes)
 }
 
@@ -200,7 +199,13 @@ func (mem *CListMempool) TxsWaitChan() <-chan struct{} {
 // CONTRACT: Either cb will get called, or err returned.
 //
 // Safe for concurrent use by multiple goroutines.
-func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo TxInfo) error {
+func (mem *CListMempool) CheckTx(
+	ctx context.Context,
+	tx types.Tx,
+	cb func(*abci.Response),
+	txInfo mempool.TxInfo,
+) error {
+
 	mem.updateMtx.RLock()
 	// use defer to unlock mutex because application (*local client*) might panic
 	defer mem.updateMtx.RUnlock()
@@ -212,12 +217,17 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 	}
 
 	if txSize > mem.config.MaxTxBytes {
-		return ErrTxTooLarge{mem.config.MaxTxBytes, txSize}
+		return mempool.ErrTxTooLarge{
+			Max:    mem.config.MaxTxBytes,
+			Actual: txSize,
+		}
 	}
 
 	if mem.preCheck != nil {
 		if err := mem.preCheck(tx); err != nil {
-			return ErrPreCheck{err}
+			return mempool.ErrPreCheck{
+				Reason: err,
+			}
 		}
 	}
 
@@ -226,19 +236,19 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 		return err
 	}
 
-	if !mem.cache.Push(tx) {
+	if !mem.cache.Push(tx) { // if the transaction already exists in the cache
 		// Record a new sender for a tx we've already seen.
 		// Note it's possible a tx is still in the cache but no longer in the mempool
 		// (eg. after committing a block, txs are removed from mempool but not cache),
 		// so we only record the sender for txs still in the mempool.
-		if e, ok := mem.txsMap.Load(TxKey(tx)); ok {
+		if e, ok := mem.txsMap.Load(mempool.TxKey(tx)); ok {
 			memTx := e.(*clist.CElement).Value.(*mempoolTx)
 			_, loaded := memTx.senders.LoadOrStore(txInfo.SenderID, true)
 			// TODO: consider punishing peer for dups,
 			// its non-trivial since invalid txs can become valid,
 			// but they can spam the same tx with little cost to them atm.
 			if loaded {
-				return ErrTxInCache
+				return mempool.ErrTxInCache
 			}
 		}
 
@@ -246,9 +256,8 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 		return nil
 	}
 
-	ctx := context.Background()
-	if txInfo.Context != nil {
-		ctx = txInfo.Context
+	if ctx == nil {
+		ctx = context.Background()
 	}
 
 	reqRes, err := mem.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{Tx: tx})
@@ -256,7 +265,7 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 		mem.cache.Remove(tx)
 		return err
 	}
-	reqRes.SetCallback(mem.reqResCb(tx, txInfo.SenderID, txInfo.SenderP2PID, cb))
+	reqRes.SetCallback(mem.reqResCb(tx, txInfo.SenderID, txInfo.SenderNodeID, cb))
 
 	return nil
 }
@@ -319,7 +328,7 @@ func (mem *CListMempool) reqResCb(
 //  - resCbFirstTime (lock not held) if tx is valid
 func (mem *CListMempool) addTx(memTx *mempoolTx) {
 	e := mem.txs.PushBack(memTx)
-	mem.txsMap.Store(TxKey(memTx.tx), e)
+	mem.txsMap.Store(mempool.TxKey(memTx.tx), e)
 	atomic.AddInt64(&mem.txsBytes, int64(len(memTx.tx)))
 	mem.metrics.TxSizeBytes.Observe(float64(len(memTx.tx)))
 }
@@ -330,7 +339,7 @@ func (mem *CListMempool) addTx(memTx *mempoolTx) {
 func (mem *CListMempool) removeTx(tx types.Tx, elem *clist.CElement, removeFromCache bool) {
 	mem.txs.Remove(elem)
 	elem.DetachPrev()
-	mem.txsMap.Delete(TxKey(tx))
+	mem.txsMap.Delete(mempool.TxKey(tx))
 	atomic.AddInt64(&mem.txsBytes, int64(-len(tx)))
 
 	if removeFromCache {
@@ -339,7 +348,7 @@ func (mem *CListMempool) removeTx(tx types.Tx, elem *clist.CElement, removeFromC
 }
 
 // RemoveTxByKey removes a transaction from the mempool by its TxKey index.
-func (mem *CListMempool) RemoveTxByKey(txKey [TxKeySize]byte, removeFromCache bool) {
+func (mem *CListMempool) RemoveTxByKey(txKey [mempool.TxKeySize]byte, removeFromCache bool) {
 	if e, ok := mem.txsMap.Load(txKey); ok {
 		memTx := e.(*clist.CElement).Value.(*mempoolTx)
 		if memTx != nil {
@@ -351,13 +360,15 @@ func (mem *CListMempool) RemoveTxByKey(txKey [TxKeySize]byte, removeFromCache bo
 func (mem *CListMempool) isFull(txSize int) error {
 	var (
 		memSize  = mem.Size()
-		txsBytes = mem.TxsBytes()
+		txsBytes = mem.SizeBytes()
 	)
 
 	if memSize >= mem.config.Size || int64(txSize)+txsBytes > mem.config.MaxTxsBytes {
-		return ErrMempoolIsFull{
-			memSize, mem.config.Size,
-			txsBytes, mem.config.MaxTxsBytes,
+		return mempool.ErrMempoolIsFull{
+			NumTxs:      memSize,
+			MaxTxs:      mem.config.Size,
+			TxsBytes:    txsBytes,
+			MaxTxsBytes: mem.config.MaxTxsBytes,
 		}
 	}
 
@@ -397,8 +408,9 @@ func (mem *CListMempool) resCbFirstTime(
 			}
 			memTx.senders.Store(peerID, true)
 			mem.addTx(memTx)
-			mem.logger.Debug("added good transaction",
-				"tx", txID(tx),
+			mem.logger.Debug(
+				"added good transaction",
+				"tx", mempool.TxHashFromBytes(tx),
 				"res", r,
 				"height", memTx.height,
 				"total", mem.Size(),
@@ -406,14 +418,21 @@ func (mem *CListMempool) resCbFirstTime(
 			mem.notifyTxsAvailable()
 		} else {
 			// ignore bad transaction
-			mem.logger.Debug("rejected bad transaction",
-				"tx", txID(tx), "peerID", peerP2PID, "res", r, "err", postCheckErr)
+			mem.logger.Debug(
+				"rejected bad transaction",
+				"tx", mempool.TxHashFromBytes(tx),
+				"peerID", peerP2PID,
+				"res", r,
+				"err", postCheckErr,
+			)
 			mem.metrics.FailedTxs.Add(1)
+
 			if !mem.config.KeepInvalidTxsInCache {
 				// remove from cache (it might be good later)
 				mem.cache.Remove(tx)
 			}
 		}
+
 	default:
 		// ignore other messages
 	}
@@ -442,7 +461,7 @@ func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 			// Good, nothing to do.
 		} else {
 			// Tx became invalidated due to newly committed block.
-			mem.logger.Debug("tx is no longer valid", "tx", txID(tx), "res", r, "err", postCheckErr)
+			mem.logger.Debug("tx is no longer valid", "tx", mempool.TxHashFromBytes(tx), "res", r, "err", postCheckErr)
 			// NOTE: we remove tx from the cache because it might be good later
 			mem.removeTx(tx, mem.recheckCursor, !mem.config.KeepInvalidTxsInCache)
 		}
@@ -547,8 +566,8 @@ func (mem *CListMempool) Update(
 	height int64,
 	txs types.Txs,
 	deliverTxResponses []*abci.ResponseDeliverTx,
-	preCheck PreCheckFunc,
-	postCheck PostCheckFunc,
+	preCheck mempool.PreCheckFunc,
+	postCheck mempool.PostCheckFunc,
 ) error {
 	// Set height
 	mem.height = height
@@ -580,7 +599,7 @@ func (mem *CListMempool) Update(
 		// Mempool after:
 		//   100
 		// https://github.com/tendermint/tendermint/issues/3322.
-		if e, ok := mem.txsMap.Load(TxKey(tx)); ok {
+		if e, ok := mem.txsMap.Load(mempool.TxKey(tx)); ok {
 			mem.removeTx(tx, e.(*clist.CElement), false)
 		}
 	}
@@ -651,99 +670,4 @@ type mempoolTx struct {
 // Height returns the height for this transaction
 func (memTx *mempoolTx) Height() int64 {
 	return atomic.LoadInt64(&memTx.height)
-}
-
-//--------------------------------------------------------------------------------
-
-type txCache interface {
-	Reset()
-	Push(tx types.Tx) bool
-	Remove(tx types.Tx)
-}
-
-// mapTxCache maintains a LRU cache of transactions. This only stores the hash
-// of the tx, due to memory concerns.
-type mapTxCache struct {
-	mtx      tmsync.Mutex
-	size     int
-	cacheMap map[[TxKeySize]byte]*list.Element
-	list     *list.List
-}
-
-var _ txCache = (*mapTxCache)(nil)
-
-// newMapTxCache returns a new mapTxCache.
-func newMapTxCache(cacheSize int) *mapTxCache {
-	return &mapTxCache{
-		size:     cacheSize,
-		cacheMap: make(map[[TxKeySize]byte]*list.Element, cacheSize),
-		list:     list.New(),
-	}
-}
-
-// Reset resets the cache to an empty state.
-func (cache *mapTxCache) Reset() {
-	cache.mtx.Lock()
-	cache.cacheMap = make(map[[TxKeySize]byte]*list.Element, cache.size)
-	cache.list.Init()
-	cache.mtx.Unlock()
-}
-
-// Push adds the given tx to the cache and returns true. It returns
-// false if tx is already in the cache.
-func (cache *mapTxCache) Push(tx types.Tx) bool {
-	cache.mtx.Lock()
-	defer cache.mtx.Unlock()
-
-	// Use the tx hash in the cache
-	txHash := TxKey(tx)
-	if moved, exists := cache.cacheMap[txHash]; exists {
-		cache.list.MoveToBack(moved)
-		return false
-	}
-
-	if cache.list.Len() >= cache.size {
-		popped := cache.list.Front()
-		if popped != nil {
-			poppedTxHash := popped.Value.([TxKeySize]byte)
-			delete(cache.cacheMap, poppedTxHash)
-			cache.list.Remove(popped)
-		}
-	}
-	e := cache.list.PushBack(txHash)
-	cache.cacheMap[txHash] = e
-	return true
-}
-
-// Remove removes the given tx from the cache.
-func (cache *mapTxCache) Remove(tx types.Tx) {
-	cache.mtx.Lock()
-	txHash := TxKey(tx)
-	popped := cache.cacheMap[txHash]
-	delete(cache.cacheMap, txHash)
-	if popped != nil {
-		cache.list.Remove(popped)
-	}
-
-	cache.mtx.Unlock()
-}
-
-type nopTxCache struct{}
-
-var _ txCache = (*nopTxCache)(nil)
-
-func (nopTxCache) Reset()             {}
-func (nopTxCache) Push(types.Tx) bool { return true }
-func (nopTxCache) Remove(types.Tx)    {}
-
-//--------------------------------------------------------------------------------
-
-// TxKey is the fixed length array hash used as the key in maps.
-func TxKey(tx types.Tx) [TxKeySize]byte {
-	return sha256.Sum256(tx)
-}
-
-// txID is a hash of the Tx.
-func txID(tx []byte) []byte {
-	return types.Tx(tx).Hash()
 }

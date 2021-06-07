@@ -150,7 +150,7 @@ Specification of the non-recursive bisection can be found
 
 ## Status
 
-Accepted.
+Implemented
 
 ## Consequences
 
