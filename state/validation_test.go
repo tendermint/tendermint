@@ -36,7 +36,9 @@ func TestValidateBlockHeader(t *testing.T) {
 		CoreBlockHash:   tmrand.Bytes(32),
 		Signature:       tmrand.Bytes(96),
 	}
+	proTxHash := state.Validators.Validators[0].ProTxHash
 	blockExec := sm.NewBlockExecutor(
+		&proTxHash,
 		stateStore,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
@@ -121,7 +123,9 @@ func TestValidateBlockCommit(t *testing.T) {
 		Signature:       tmrand.Bytes(96),
 	}
 
+	proTxHash := state.Validators.Validators[0].ProTxHash
 	blockExec := sm.NewBlockExecutor(
+		&proTxHash,
 		stateStore,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
@@ -259,7 +263,9 @@ func TestValidateBlockEvidence(t *testing.T) {
 		mock.AnythingOfType("[]types.Evidence")).Return([]abci.Evidence{})
 
 	state.ConsensusParams.Evidence.MaxBytes = 1000
+	proTxHash := state.Validators.Validators[0].ProTxHash
 	blockExec := sm.NewBlockExecutor(
+		&proTxHash,
 		stateStore,
 		log.TestingLogger(),
 		proxyApp.Consensus(),

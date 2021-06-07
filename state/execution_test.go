@@ -44,7 +44,8 @@ func TestApplyBlock(t *testing.T) {
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)
 
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), proxyApp.Query(),
+	proTxHash := state.Validators.Validators[0].ProTxHash
+	blockExec := sm.NewBlockExecutor(&proTxHash, stateStore, log.TestingLogger(), proxyApp.Consensus(), proxyApp.Query(),
 		mmock.Mempool{}, sm.EmptyEvidencePool{}, nil)
 
 	block := makeBlock(state, 1)
@@ -160,16 +161,16 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	commitSig := []types.CommitSig{{
 		BlockIDFlag:        types.BlockIDFlagNil,
 		ValidatorProTxHash: crypto.ProTxHashFromSeedBytes([]byte("validator_address")),
-		BlockSignature:     crypto.CRandBytes(types.MaxSignatureSize),
-		StateSignature:     crypto.CRandBytes(types.MaxSignatureSize),
+		BlockSignature:     crypto.CRandBytes(types.SignatureSize),
+		StateSignature:     crypto.CRandBytes(types.SignatureSize),
 	}}
 	lcae := &types.LightClientAttackEvidence{
 		ConflictingBlock: &types.LightBlock{
 			SignedHeader: &types.SignedHeader{
 				Header: header,
 				Commit: types.NewCommit(10, 0, makeBlockID(header.Hash(), 100, []byte("partshash")),
-					makeStateID(header.AppHash), commitSig, crypto.RandQuorumHash(), crypto.CRandBytes(types.MaxSignatureSize),
-					crypto.CRandBytes(types.MaxSignatureSize),
+					makeStateID(header.AppHash), commitSig, crypto.RandQuorumHash(), crypto.CRandBytes(types.SignatureSize),
+					crypto.CRandBytes(types.SignatureSize),
 				),
 			},
 			ValidatorSet: state.Validators,
@@ -204,7 +205,8 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	evpool.On("Update", mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
 	evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
 
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), proxyApp.Query(),
+	proTxHash := state.Validators.Validators[0].ProTxHash
+	blockExec := sm.NewBlockExecutor(&proTxHash, stateStore, log.TestingLogger(), proxyApp.Consensus(), proxyApp.Query(),
 		mmock.Mempool{}, evpool, nil)
 
 	block := makeBlock(state, 1)
@@ -383,7 +385,9 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)
 
+	proTxHash := state.Validators.Validators[0].ProTxHash
 	blockExec := sm.NewBlockExecutor(
+		&proTxHash,
 		stateStore,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
@@ -462,7 +466,9 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)
+	proTxHash := state.Validators.Validators[0].ProTxHash
 	blockExec := sm.NewBlockExecutor(
+		&proTxHash,
 		stateStore,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
@@ -475,8 +481,6 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	block := makeBlock(state, 1)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
-	proTxHash := state.Validators.Validators[0].ProTxHash
-	require.NoError(t, err)
 	publicKey, err := cryptoenc.PubKeyToProto(bls12381.GenPrivKey().PubKey())
 	require.NoError(t, err)
 	// Remove the only validator
