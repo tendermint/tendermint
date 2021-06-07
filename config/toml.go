@@ -45,7 +45,7 @@ func EnsureRoot(rootDir string) {
 
 // WriteConfigFile renders config using the template and writes it to configFilePath.
 // This function is called by cmd/tendermint/commands/init.go
-func WriteConfigFile(rootDir string, config *Config) {
+func WriteConfigFile(rootDir string, config *FileConfig) {
 	var buffer bytes.Buffer
 
 	if err := configTemplate.Execute(&buffer, config); err != nil {
@@ -60,7 +60,7 @@ func WriteConfigFile(rootDir string, config *Config) {
 func writeDefaultConfigFileIfNone(rootDir string) {
 	configFilePath := filepath.Join(rootDir, defaultConfigFilePath)
 	if !tmos.FileExists(configFilePath) {
-		WriteConfigFile(rootDir, DefaultConfig())
+		WriteConfigFile(rootDir, DefaultFileConfig())
 	}
 }
 
@@ -523,11 +523,11 @@ namespace = "{{ .Instrumentation.Namespace }}"
 
 /****** these are for test settings ***********/
 
-func ResetTestRoot(testName string) *Config {
+func ResetTestRoot(testName string) *FileConfig {
 	return ResetTestRootWithChainID(testName, "")
 }
 
-func ResetTestRootWithChainID(testName string, chainID string) *Config {
+func ResetTestRootWithChainID(testName string, chainID string) *FileConfig {
 	// create a unique, concurrency-safe test directory under os.TempDir()
 	rootDir, err := ioutil.TempDir("", fmt.Sprintf("%s-%s_", chainID, testName))
 	if err != nil {
@@ -541,7 +541,7 @@ func ResetTestRootWithChainID(testName string, chainID string) *Config {
 		panic(err)
 	}
 
-	conf := DefaultConfig()
+	conf := DefaultFileConfig()
 	genesisFilePath := filepath.Join(rootDir, conf.Genesis)
 	privKeyFilePath := filepath.Join(rootDir, conf.PrivValidator.Key)
 	privStateFilePath := filepath.Join(rootDir, conf.PrivValidator.State)
@@ -559,7 +559,7 @@ func ResetTestRootWithChainID(testName string, chainID string) *Config {
 	mustWriteFile(privKeyFilePath, []byte(testPrivValidatorKey), 0644)
 	mustWriteFile(privStateFilePath, []byte(testPrivValidatorState), 0644)
 
-	config := TestConfig().SetRoot(rootDir)
+	config := TestFileConfig().SetRoot(rootDir)
 	return config
 }
 

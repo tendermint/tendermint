@@ -8,6 +8,10 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/tendermint/tendermint/libs/log"
+	abci "github.com/tendermint/tendermint/abci/client"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -33,36 +37,6 @@ const (
 
 	MempoolV0 = "v0"
 	MempoolV1 = "v1"
-)
-
-// NOTE: Most of the structs & relevant comments + the
-// default configuration options were used to manually
-// generate the config.toml. Please reflect any changes
-// made here in the defaultConfigTemplate constant in
-// config/toml.go
-// NOTE: libs/cli must know to look in the config dir!
-var (
-	DefaultTendermintDir = ".tendermint"
-	defaultConfigDir     = "config"
-	defaultDataDir       = "data"
-
-	defaultConfigFileName  = "config.toml"
-	defaultGenesisJSONName = "genesis.json"
-
-	defaultMode             = ModeFull
-	defaultPrivValKeyName   = "priv_validator_key.json"
-	defaultPrivValStateName = "priv_validator_state.json"
-
-	defaultNodeKeyName  = "node_key.json"
-	defaultAddrBookName = "addrbook.json"
-
-	defaultConfigFilePath   = filepath.Join(defaultConfigDir, defaultConfigFileName)
-	defaultGenesisJSONPath  = filepath.Join(defaultConfigDir, defaultGenesisJSONName)
-	defaultPrivValKeyPath   = filepath.Join(defaultConfigDir, defaultPrivValKeyName)
-	defaultPrivValStatePath = filepath.Join(defaultDataDir, defaultPrivValStateName)
-
-	defaultNodeKeyPath  = filepath.Join(defaultConfigDir, defaultNodeKeyName)
-	defaultAddrBookPath = filepath.Join(defaultConfigDir, defaultAddrBookName)
 )
 
 // Config defines the top level configuration for a Tendermint node
@@ -196,14 +170,13 @@ type BaseConfig struct { //nolint: maligned
 
 	// The root directory for all data.
 	// This should be set in viper so it can unmarshal into this struct
-	RootDir string `mapstructure:"home"`
+	RootDir string
 
-	// TCP or UNIX socket address of the ABCI application,
-	// or the name of an ABCI application compiled in with the Tendermint binary
-	ProxyApp string `mapstructure:"proxy-app"`
+	// Client connection to the application. Can be local or via a socket/grpc
+	ABCI abci.Client 
 
 	// A custom human readable name for this node
-	Moniker string `mapstructure:"moniker"`
+	Moniker string
 
 	// Mode of Node: full | validator | seed
 	// * validator
@@ -215,83 +188,39 @@ type BaseConfig struct { //nolint: maligned
 	// * seed
 	//   - only P2P, PEX Reactor
 	//   - No priv_validator_key.json, priv_validator_state.json
-	Mode string `mapstructure:"mode"`
+	Mode string
 
 	// If this node is many blocks behind the tip of the chain, FastSync
 	// allows them to catchup quickly by downloading blocks in parallel
 	// and verifying their commits
-	FastSyncMode bool `mapstructure:"fast-sync"`
+	FastSyncMode bool
 
-	// Database backend: goleveldb | cleveldb | boltdb | rocksdb
-	// * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
-	//   - pure go
-	//   - stable
-	// * cleveldb (uses levigo wrapper)
-	//   - fast
-	//   - requires gcc
-	//   - use cleveldb build tag (go build -tags cleveldb)
-	// * boltdb (uses etcd's fork of bolt - github.com/etcd-io/bbolt)
-	//   - EXPERIMENTAL
-	//   - may be faster is some use-cases (random reads - indexer)
-	//   - use boltdb build tag (go build -tags boltdb)
-	// * rocksdb (uses github.com/tecbot/gorocksdb)
-	//   - EXPERIMENTAL
-	//   - requires gcc
-	//   - use rocksdb build tag (go build -tags rocksdb)
-	// * badgerdb (uses github.com/dgraph-io/badger)
-	//   - EXPERIMENTAL
-	//   - use badgerdb build tag (go build -tags badgerdb)
-	DBBackend string `mapstructure:"db-backend"`
-
-	// Database directory
-	DBPath string `mapstructure:"db-dir"`
+	// Database provider to initialize the DB backend
+	DBProvider DBProvider
 
 	// Output level for logging
-	LogLevel string `mapstructure:"log-level"`
+	Logger log.Logger
 
-	// Output format: 'plain' (colored text) or 'json'
-	LogFormat string `mapstructure:"log-format"`
-
-	// Path to the JSON file containing the initial validator set and other meta data
-	Genesis string `mapstructure:"genesis-file"`
+	// Genesis of the chain
+	Genesis types.GenesisDoc
 
 	// A JSON file containing the private key to use for p2p authenticated encryption
-	NodeKey string `mapstructure:"node-key-file"`
-
-	// Mechanism to connect to the ABCI application: socket | grpc
-	ABCI string `mapstructure:"abci"`
+	NodeKey string
 
 	// If true, query the ABCI app on connecting to a new peer
 	// so the app can decide if we should keep the connection or not
-	FilterPeers bool `mapstructure:"filter-peers"` // false
+	FilterPeers bool
 }
 
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
-	return BaseConfig{
-		Genesis:      defaultGenesisJSONPath,
-		NodeKey:      defaultNodeKeyPath,
-		Mode:         defaultMode,
-		Moniker:      defaultMoniker,
-		ProxyApp:     "tcp://127.0.0.1:26658",
-		ABCI:         "socket",
-		LogLevel:     DefaultLogLevel,
-		LogFormat:    LogFormatPlain,
-		FastSyncMode: true,
-		FilterPeers:  false,
-		DBBackend:    "goleveldb",
-		DBPath:       "data",
-	}
+	cfg, _ := DefaultBaseFileConfig().Build()
+	return cfg
 }
 
 // TestBaseConfig returns a base configuration for testing a Tendermint node
 func TestBaseConfig() BaseConfig {
-	cfg := DefaultBaseConfig()
-	cfg.chainID = "tendermint_test"
-	cfg.Mode = ModeValidator
-	cfg.ProxyApp = "kvstore"
-	cfg.FastSyncMode = false
-	cfg.DBBackend = "memdb"
+	cfg, _ := TestBaseFileConfig().Build()
 	return cfg
 }
 
@@ -299,42 +228,14 @@ func (cfg BaseConfig) ChainID() string {
 	return cfg.chainID
 }
 
-// GenesisFile returns the full path to the genesis.json file
-func (cfg BaseConfig) GenesisFile() string {
-	return rootify(cfg.Genesis, cfg.RootDir)
-}
-
 // NodeKeyFile returns the full path to the node_key.json file
 func (cfg BaseConfig) NodeKeyFile() string {
 	return rootify(cfg.NodeKey, cfg.RootDir)
 }
 
-// DBDir returns the full path to the database directory
-func (cfg BaseConfig) DBDir() string {
-	return rootify(cfg.DBPath, cfg.RootDir)
-}
-
-func (cfg Config) ArePrivValidatorClientSecurityOptionsPresent() bool {
-	switch {
-	case cfg.PrivValidator.RootCA == "":
-		return false
-	case cfg.PrivValidator.ClientKey == "":
-		return false
-	case cfg.PrivValidator.ClientCertificate == "":
-		return false
-	default:
-		return true
-	}
-}
-
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg BaseConfig) ValidateBasic() error {
-	switch cfg.LogFormat {
-	case LogFormatPlain, LogFormatJSON:
-	default:
-		return errors.New("unknown log format (must be 'plain' or 'json')")
-	}
 	switch cfg.Mode {
 	case ModeFull, ModeValidator, ModeSeed:
 	case "":
@@ -377,6 +278,19 @@ func DefaultPrivValidatorConfig() *PrivValidatorConfig {
 	return &PrivValidatorConfig{
 		Key:   defaultPrivValKeyPath,
 		State: defaultPrivValStatePath,
+	}
+}
+
+func (cfg PrivValidatorConfig) AreSecurityOptionsPresent() bool {
+	switch {
+	case cfg.RootCA == "":
+		return false
+	case cfg.ClientKey == "":
+		return false
+	case cfg.ClientCertificate == "":
+		return false
+	default:
+		return true
 	}
 }
 

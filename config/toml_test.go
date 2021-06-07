@@ -30,7 +30,7 @@ func TestEnsureRoot(t *testing.T) {
 	// create root dir
 	EnsureRoot(tmpDir)
 
-	WriteConfigFile(tmpDir, DefaultConfig())
+	WriteConfigFile(tmpDir, DefaultFileConfig())
 
 	// make sure config is set properly
 	data, err := ioutil.ReadFile(filepath.Join(tmpDir, defaultConfigFilePath))
@@ -62,7 +62,7 @@ func TestEnsureTestRoot(t *testing.T) {
 	}
 
 	// TODO: make sure the cfg returned and testconfig are the same!
-	baseConfig := DefaultBaseConfig()
+	baseConfig := DefaultBaseFileConfig()
 	pvConfig := DefaultPrivValidatorConfig()
 	ensureFiles(t, rootDir, defaultDataDir, baseConfig.Genesis, pvConfig.Key, pvConfig.State)
 }

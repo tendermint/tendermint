@@ -27,11 +27,7 @@ func NewDefault(conf *config.Config, logger log.Logger) (service.Service, error)
 // Genesis document: if the value is nil, the genesis document is read
 // from the file specified in the config, and otherwise the node uses
 // value of the final argument.
-func New(conf *config.Config,
-	logger log.Logger,
-	cf proxy.ClientCreator,
-	gen *types.GenesisDoc,
-) (service.Service, error) {
+func New(conf *config.Config) (service.Service, error) {
 	nodeKey, err := p2p.LoadOrGenNodeKey(conf.NodeKeyFile())
 	if err != nil {
 		return nil, fmt.Errorf("failed to load or gen node key %s: %w", conf.NodeKeyFile(), err)

@@ -9,24 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDefaultConfig(t *testing.T) {
-	assert := assert.New(t)
-
-	// set up some defaults
-	cfg := DefaultConfig()
-	assert.NotNil(cfg.P2P)
-	assert.NotNil(cfg.Mempool)
-	assert.NotNil(cfg.Consensus)
-
-	// check the root dir stuff...
-	cfg.SetRoot("/foo")
-	cfg.Genesis = "bar"
-	cfg.DBPath = "/opt/data"
-
-	assert.Equal("/foo/bar", cfg.GenesisFile())
-	assert.Equal("/opt/data", cfg.DBDir())
-}
-
 func TestConfigValidateBasic(t *testing.T) {
 	cfg := DefaultConfig()
 	assert.NoError(t, cfg.ValidateBasic())
@@ -50,15 +32,6 @@ func TestTLSConfiguration(t *testing.T) {
 	assert.Equal("/abs/path/to/file.crt", cfg.RPC.CertFile())
 	cfg.RPC.TLSKeyFile = "/abs/path/to/file.key"
 	assert.Equal("/abs/path/to/file.key", cfg.RPC.KeyFile())
-}
-
-func TestBaseConfigValidateBasic(t *testing.T) {
-	cfg := TestBaseConfig()
-	assert.NoError(t, cfg.ValidateBasic())
-
-	// tamper with log format
-	cfg.LogFormat = "invalid"
-	assert.Error(t, cfg.ValidateBasic())
 }
 
 func TestRPCConfigValidateBasic(t *testing.T) {
