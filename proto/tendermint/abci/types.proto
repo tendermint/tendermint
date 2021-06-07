@@ -35,6 +35,7 @@ message Request {
     RequestOfferSnapshot      offer_snapshot       = 12;
     RequestLoadSnapshotChunk  load_snapshot_chunk  = 13;
     RequestApplySnapshotChunk apply_snapshot_chunk = 14;
+    RequestFinalizeBlock      finalize_block       = 15;
   }
 }
 
@@ -117,6 +118,14 @@ message RequestApplySnapshotChunk {
   string sender = 3;
 }
 
+message RequestFinalizeBlock {
+  repeated bytes          txs                  = 1;
+  bytes                   hash                 = 2;
+  tendermint.types.Header header               = 3 [(gogoproto.nullable) = false];
+  LastCommitInfo          last_commit_info     = 4 [(gogoproto.nullable) = false];
+  repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
+}
+
 //----------------------------------------
 // Response types
 
@@ -137,6 +146,7 @@ message Response {
     ResponseOfferSnapshot      offer_snapshot       = 13;
     ResponseLoadSnapshotChunk  load_snapshot_chunk  = 14;
     ResponseApplySnapshotChunk apply_snapshot_chunk = 15;
+    ResponseFinalizeBlock      finalize_block       = 16;
   }
 }
 
@@ -213,7 +223,7 @@ message ResponseDeliverTx {
 message ResponseEndBlock {
   repeated ValidatorUpdate         validator_updates       = 1 [(gogoproto.nullable) = false];
   tendermint.types.ConsensusParams consensus_param_updates = 2;
-  repeated Event                   events = 3 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+  repeated Event                   events                  = 3 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
 }
 
 message ResponseCommit {
@@ -256,6 +266,13 @@ message ResponseApplySnapshotChunk {
     RETRY_SNAPSHOT  = 4;  // Retry snapshot (combine with refetch and reject)
     REJECT_SNAPSHOT = 5;  // Reject this snapshot, try others
   }
+}
+
+message ResponseFinalizeBlock {
+  repeated ResponseDeliverTx       txs                     = 1;
+  repeated ValidatorUpdate         validator_updates       = 2 [(gogoproto.nullable) = false];
+  tendermint.types.ConsensusParams consensus_param_updates = 3;
+  repeated Event                   events                  = 4 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
 }
 
 //----------------------------------------
@@ -362,4 +379,5 @@ service ABCIApplication {
   rpc OfferSnapshot(RequestOfferSnapshot) returns (ResponseOfferSnapshot);
   rpc LoadSnapshotChunk(RequestLoadSnapshotChunk) returns (ResponseLoadSnapshotChunk);
   rpc ApplySnapshotChunk(RequestApplySnapshotChunk) returns (ResponseApplySnapshotChunk);
+  rpc FinalizeBlock(RequestFinalizeBlock) returns (ResponseFinalizeBlock);
 }
