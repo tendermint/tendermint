@@ -1,5 +1,8 @@
 ---
-order: 10
+order: 1
+parent:
+  title: Fast Sync
+  order: 6
 ---
 
 # Fast Sync
@@ -45,3 +48,10 @@ version = "v0"
 
 If we're lagging sufficiently, we should go back to fast syncing, but
 this is an [open issue](https://github.com/tendermint/tendermint/issues/129).
+
+## Implementations
+
+There are two implementations of the protocol. The first is `bcv0`, this is the original implementation and `bcv2` which is the most recent implementation. Both versions can be used in a production node.
+
+- [bcv0](./bcv0/README.md)
+- [bcv2](./bcv2/README.md)
