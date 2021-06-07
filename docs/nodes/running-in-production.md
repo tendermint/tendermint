@@ -36,14 +36,14 @@ Applications can use [state sync](state-sync.md) to help nodes bootstrap quickly
 
 ## Logging
 
-Default logging level (`log-level = "main:info,state:info,statesync:info,*:error"`) should suffice for
+Default logging level (`log-level = "info"`) should suffice for
 normal operation mode. Read [this
 post](https://blog.cosmos.network/one-of-the-exciting-new-features-in-0-10-0-release-is-smart-log-level-flag-e2506b4ab756)
 for details on how to configure `log-level` config variable. Some of the
 modules can be found [here](../nodes/logging#list-of-modules). If
 you're trying to debug Tendermint or asked to provide logs with debug
 logging level, you can do so by running Tendermint with
-`--log-level="*:debug"`.
+`--log-level="debug"`.
 
 ### Consensus WAL
 

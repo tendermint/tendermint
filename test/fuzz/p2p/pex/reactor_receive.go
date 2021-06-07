@@ -2,7 +2,6 @@ package pex
 
 import (
 	"net"
-	"os"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -16,7 +15,7 @@ import (
 var (
 	pexR   *pex.Reactor
 	peer   p2p.Peer
-	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 )
 
 func init() {

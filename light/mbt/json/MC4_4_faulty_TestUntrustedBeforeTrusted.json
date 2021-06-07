@@ -26,7 +26,7 @@
         "round": 1,
         "block_id": {
           "hash": "6B68DB34DEF944920D6638B3AA84FE1DF790BC8BDC5189E201F23730D5756A9D",
-          "part_set_header": {
+          "parts": {
             "total": 1,
             "hash": "6B68DB34DEF944920D6638B3AA84FE1DF790BC8BDC5189E201F23730D5756A9D"
           }
@@ -130,7 +130,7 @@
             "round": 1,
             "block_id": {
               "hash": "D1E7988F2C5B176E1AE1D7CA03F17A2734B1A90B154D41D0C01FEE49BA63DBAA",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "D1E7988F2C5B176E1AE1D7CA03F17A2734B1A90B154D41D0C01FEE49BA63DBAA"
               }

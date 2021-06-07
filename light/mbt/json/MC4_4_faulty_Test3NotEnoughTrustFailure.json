@@ -26,7 +26,7 @@
         "round": 1,
         "block_id": {
           "hash": "F7DC6F348F04E01EC7DEA4348A3BFA2F0D7533900986EA66F6006C70BDD52D2E",
-          "part_set_header": {
+          "parts": {
             "total": 1,
             "hash": "F7DC6F348F04E01EC7DEA4348A3BFA2F0D7533900986EA66F6006C70BDD52D2E"
           }
@@ -121,7 +121,7 @@
             "round": 1,
             "block_id": {
               "hash": "A63EEADF3FB32E33B113FF28726100E2ACA295E7C467005BF35FB43ADC0D53C8",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "A63EEADF3FB32E33B113FF28726100E2ACA295E7C467005BF35FB43ADC0D53C8"
               }
@@ -194,7 +194,7 @@
             "round": 1,
             "block_id": {
               "hash": "13C32ED0F2BED33E19B4832CEEB6F949E822449F770B9B3A7F02254F391B7CD0",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "13C32ED0F2BED33E19B4832CEEB6F949E822449F770B9B3A7F02254F391B7CD0"
               }
@@ -276,7 +276,7 @@
             "round": 1,
             "block_id": {
               "hash": "E98C8412BF8736722EEBFF209C5D0AB9F82B599344D043139B4D4747E1FF21EE",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "E98C8412BF8736722EEBFF209C5D0AB9F82B599344D043139B4D4747E1FF21EE"
               }
@@ -406,7 +406,7 @@
             "round": 1,
             "block_id": {
               "hash": "A63EEADF3FB32E33B113FF28726100E2ACA295E7C467005BF35FB43ADC0D53C8",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "A63EEADF3FB32E33B113FF28726100E2ACA295E7C467005BF35FB43ADC0D53C8"
               }
@@ -479,7 +479,7 @@
             "round": 1,
             "block_id": {
               "hash": "13C32ED0F2BED33E19B4832CEEB6F949E822449F770B9B3A7F02254F391B7CD0",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "13C32ED0F2BED33E19B4832CEEB6F949E822449F770B9B3A7F02254F391B7CD0"
               }
