@@ -17,7 +17,6 @@ import (
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	tmflags "github.com/tendermint/tendermint/libs/cli/flags"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/light"
@@ -34,7 +33,7 @@ import (
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
-var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 
 // main is the binary entrypoint.
 func main() {
@@ -124,23 +123,15 @@ func startNode(cfg *Config) error {
 		return err
 	}
 
-	tmcfg, nodeLogger, nodeKey, err := setupNode()
+	tmcfg, nodeLogger, err := setupNode()
 	if err != nil {
 		return fmt.Errorf("failed to setup config: %w", err)
 	}
 
-	pval, err := privval.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile())
-	if err != nil {
-		return err
-	}
-	n, err := node.NewNode(tmcfg,
-		pval,
-		*nodeKey,
-		proxy.NewLocalClientCreator(app),
-		node.DefaultGenesisDocProviderFunc(tmcfg),
-		node.DefaultDBProvider,
-		node.DefaultMetricsProvider(tmcfg.Instrumentation),
+	n, err := node.New(tmcfg,
 		nodeLogger,
+		proxy.NewLocalClientCreator(app),
+		nil,
 	)
 	if err != nil {
 		return err
@@ -149,18 +140,14 @@ func startNode(cfg *Config) error {
 }
 
 func startSeedNode(cfg *Config) error {
-	tmcfg, nodeLogger, nodeKey, err := setupNode()
+	tmcfg, nodeLogger, err := setupNode()
 	if err != nil {
 		return fmt.Errorf("failed to setup config: %w", err)
 	}
 
-	n, err := node.NewSeedNode(
-		tmcfg,
-		node.DefaultDBProvider,
-		*nodeKey,
-		node.DefaultGenesisDocProviderFunc(tmcfg),
-		nodeLogger,
-	)
+	tmcfg.Mode = config.ModeSeed
+
+	n, err := node.New(tmcfg, nodeLogger, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -168,13 +155,13 @@ func startSeedNode(cfg *Config) error {
 }
 
 func startLightNode(cfg *Config) error {
-	tmcfg, nodeLogger, _, err := setupNode()
+	tmcfg, nodeLogger, err := setupNode()
 	if err != nil {
 		return err
 	}
 
-	dbContext := &node.DBContext{ID: "light", Config: tmcfg}
-	lightDB, err := node.DefaultDBProvider(dbContext)
+	dbContext := &config.DBContext{ID: "light", Config: tmcfg}
+	lightDB, err := config.DefaultDBProvider(dbContext)
 	if err != nil {
 		return err
 	}
@@ -272,50 +259,39 @@ func startSigner(cfg *Config) error {
 	return nil
 }
 
-func setupNode() (*config.Config, log.Logger, *p2p.NodeKey, error) {
+func setupNode() (*config.Config, log.Logger, error) {
 	var tmcfg *config.Config
 
 	home := os.Getenv("TMHOME")
 	if home == "" {
-		return nil, nil, nil, errors.New("TMHOME not set")
+		return nil, nil, errors.New("TMHOME not set")
 	}
 
 	viper.AddConfigPath(filepath.Join(home, "config"))
 	viper.SetConfigName("config")
 
 	if err := viper.ReadInConfig(); err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	tmcfg = config.DefaultConfig()
 
 	if err := viper.Unmarshal(tmcfg); err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	tmcfg.SetRoot(home)
 
 	if err := tmcfg.ValidateBasic(); err != nil {
-		return nil, nil, nil, fmt.Errorf("error in config file: %w", err)
+		return nil, nil, fmt.Errorf("error in config file: %w", err)
 	}
 
-	if tmcfg.LogFormat == config.LogFormatJSON {
-		logger = log.NewTMJSONLogger(log.NewSyncWriter(os.Stdout))
-	}
-
-	nodeLogger, err := tmflags.ParseLogLevel(tmcfg.LogLevel, logger, config.DefaultLogLevel)
+	nodeLogger, err := log.NewDefaultLogger(tmcfg.LogFormat, tmcfg.LogLevel, false)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
-	nodeLogger = nodeLogger.With("module", "main")
-
-	nodeKey, err := p2p.LoadOrGenNodeKey(tmcfg.NodeKeyFile())
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to load or gen node key %s: %w", tmcfg.NodeKeyFile(), err)
-	}
-
-	return tmcfg, nodeLogger, &nodeKey, nil
+	return tmcfg, nodeLogger.With("module", "main"), nil
 }
 
 // rpcEndpoints takes a list of persistent peers and splits them into a list of rpc endpoints

@@ -26,7 +26,7 @@
         "round": 1,
         "block_id": {
           "hash": "6B68DB34DEF944920D6638B3AA84FE1DF790BC8BDC5189E201F23730D5756A9D",
-          "part_set_header": {
+          "parts": {
             "total": 1,
             "hash": "6B68DB34DEF944920D6638B3AA84FE1DF790BC8BDC5189E201F23730D5756A9D"
           }
@@ -130,7 +130,7 @@
             "round": 1,
             "block_id": {
               "hash": "23DB6414C50B567947776438FC022CC24EA7489FFBA8025FAD5C4232046BE785",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "23DB6414C50B567947776438FC022CC24EA7489FFBA8025FAD5C4232046BE785"
               }
@@ -212,7 +212,7 @@
             "round": 1,
             "block_id": {
               "hash": "747249C8038E41C91EB3B737BAC2245F5F41B1527ABB7486C02CDF69C6B0DB53",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "747249C8038E41C91EB3B737BAC2245F5F41B1527ABB7486C02CDF69C6B0DB53"
               }
@@ -285,7 +285,7 @@
             "round": 1,
             "block_id": {
               "hash": "8F5D783FEDA6E53A6333DAB6324D567395D9189B4BBB51E3A9F2F360B667E928",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "8F5D783FEDA6E53A6333DAB6324D567395D9189B4BBB51E3A9F2F360B667E928"
               }
@@ -403,7 +403,7 @@
             "round": 1,
             "block_id": {
               "hash": "23DB6414C50B567947776438FC022CC24EA7489FFBA8025FAD5C4232046BE785",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "23DB6414C50B567947776438FC022CC24EA7489FFBA8025FAD5C4232046BE785"
               }

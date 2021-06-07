@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bytes"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -22,8 +21,7 @@ func testMux() *http.ServeMux {
 		"block": NewRPCFunc(func(ctx *types.Context, h int) (string, error) { return "block", nil }, "height", true),
 	}
 	mux := http.NewServeMux()
-	buf := new(bytes.Buffer)
-	logger := log.NewTMLogger(buf)
+	logger := log.NewNopLogger()
 	RegisterRPCFuncs(mux, funcMap, logger)
 
 	return mux
