@@ -93,7 +93,7 @@ func DialRemoteSigner(
 	logger log.Logger,
 ) (*SignerClient, error) {
 	var transportSecurity grpc.DialOption
-	if config.BaseConfig.ArePrivValidatorClientSecurityOptionsPresent() {
+	if config.ArePrivValidatorClientSecurityOptionsPresent() {
 		transportSecurity = GenerateTLS(config.PrivValidatorClientCertificateFile(),
 			config.PrivValidatorClientKeyFile(), config.PrivValidatorRootCAFile(), logger)
 	} else {
@@ -110,7 +110,7 @@ func DialRemoteSigner(
 	dialOptions = append(dialOptions, transportSecurity)
 
 	ctx := context.Background()
-	_, address := tmnet.ProtocolAndAddress(config.PrivValidatorListenAddr)
+	_, address := tmnet.ProtocolAndAddress(config.PrivValidator.ListenAddr)
 	conn, err := grpc.DialContext(ctx, address, dialOptions...)
 	if err != nil {
 		logger.Error("unable to connect to server", "target", address, "err", err)

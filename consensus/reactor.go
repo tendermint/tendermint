@@ -5,11 +5,11 @@ import (
 	"time"
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -196,6 +196,7 @@ func (r *Reactor) OnStart() error {
 // blocking until they all exit, as well as unsubscribing from events and stopping
 // state.
 func (r *Reactor) OnStop() {
+
 	r.unsubscribeFromBroadcastEvents()
 
 	if err := r.state.Stop(); err != nil {
@@ -368,6 +369,10 @@ func (r *Reactor) subscribeToBroadcastEvents() {
 		types.EventNewRoundStep,
 		func(data tmevents.EventData) {
 			r.broadcastNewRoundStepMessage(data.(*cstypes.RoundState))
+			select {
+			case r.state.onStopCh <- data.(*cstypes.RoundState):
+			default:
+			}
 		},
 	)
 	if err != nil {

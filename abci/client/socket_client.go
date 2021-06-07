@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/abci/types"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/internal/libs/timer"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
-	"github.com/tendermint/tendermint/libs/timer"
 )
 
 const (

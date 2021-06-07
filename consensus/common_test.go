@@ -8,12 +8,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"sort"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/go-kit/kit/log/term"
 	"github.com/stretchr/testify/require"
 
 	"path"
@@ -26,12 +24,13 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
-	mempl "github.com/tendermint/tendermint/mempool"
+	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -405,7 +404,7 @@ func newStateWithConfigAndBlockStore(
 	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 
 	// Make Mempool
-	mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
+	mempool := mempoolv0.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
 	mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
 	if thisConfig.Consensus.WaitForTxs() {
 		mempool.EnableTxsAvailable()
@@ -690,14 +689,7 @@ func ensureNewEventOnChannel(ch <-chan tmpubsub.Message) {
 // consensusLogger is a TestingLogger which uses a different
 // color for each validator ("validator" key must exist).
 func consensusLogger() log.Logger {
-	return log.TestingLoggerWithColorFn(func(keyvals ...interface{}) term.FgBgColor {
-		for i := 0; i < len(keyvals)-1; i += 2 {
-			if keyvals[i] == "validator" {
-				return term.FgBgColor{Fg: term.Color(uint8(keyvals[i+1].(int) + 1))}
-			}
-		}
-		return term.FgBgColor{}
-	}).With("module", "consensus")
+	return log.TestingLogger().With("module", "consensus")
 }
 
 func randConsensusState(
@@ -709,7 +701,7 @@ func randConsensusState(
 	configOpts ...func(*cfg.Config),
 ) ([]*State, cleanupFunc) {
 
-	genDoc, privVals := randGenesisDoc(config, nValidators, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(config, nValidators, false, 30)
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
 
@@ -763,7 +755,7 @@ func randConsensusNetWithPeers(
 	tickerFunc func() TimeoutTicker,
 	appFunc func(string) abci.Application,
 ) ([]*State, *types.GenesisDoc, *cfg.Config, cleanupFunc) {
-	genDoc, privVals := randGenesisDoc(config, nValidators, false, testMinPower)
+	genDoc, privVals := factory.RandGenesisDoc(config, nValidators, false, testMinPower)
 	css := make([]*State, nPeers)
 	logger := consensusLogger()
 
@@ -818,39 +810,13 @@ func randConsensusNetWithPeers(
 	}
 }
 
-func randGenesisDoc(
-	config *cfg.Config,
-	numValidators int,
-	randPower bool,
-	minPower int64) (*types.GenesisDoc, []types.PrivValidator) {
-
-	validators := make([]types.GenesisValidator, numValidators)
-	privValidators := make([]types.PrivValidator, numValidators)
-	for i := 0; i < numValidators; i++ {
-		val, privVal := types.RandValidator(randPower, minPower)
-		validators[i] = types.GenesisValidator{
-			PubKey: val.PubKey,
-			Power:  val.VotingPower,
-		}
-		privValidators[i] = privVal
-	}
-	sort.Sort(types.PrivValidatorsByAddress(privValidators))
-
-	return &types.GenesisDoc{
-		GenesisTime:   tmtime.Now(),
-		InitialHeight: 1,
-		ChainID:       config.ChainID(),
-		Validators:    validators,
-	}, privValidators
-}
-
 func randGenesisState(
 	config *cfg.Config,
 	numValidators int,
 	randPower bool,
 	minPower int64) (sm.State, []types.PrivValidator) {
 
-	genDoc, privValidators := randGenesisDoc(config, numValidators, randPower, minPower)
+	genDoc, privValidators := factory.RandGenesisDoc(config, numValidators, randPower, minPower)
 	s0, _ := sm.MakeGenesisState(genDoc)
 	return s0, privValidators
 }

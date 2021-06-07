@@ -23,6 +23,7 @@ func RPCRoutes(c *lrpc.Client) map[string]*rpcserver.RPCFunc {
 		"net_info":             rpcserver.NewRPCFunc(makeNetInfoFunc(c), "", false),
 		"blockchain":           rpcserver.NewRPCFunc(makeBlockchainInfoFunc(c), "minHeight,maxHeight", true),
 		"genesis":              rpcserver.NewRPCFunc(makeGenesisFunc(c), "", true),
+		"genesis_chunked":      rpcserver.NewRPCFunc(makeGenesisChunkedFunc(c), "", true),
 		"block":                rpcserver.NewRPCFunc(makeBlockFunc(c), "height", true),
 		"block_by_hash":        rpcserver.NewRPCFunc(makeBlockByHashFunc(c), "hash", true),
 		"block_results":        rpcserver.NewRPCFunc(makeBlockResultsFunc(c), "height", true),
@@ -68,10 +69,10 @@ func makeStatusFunc(c *lrpc.Client) rpcStatusFunc {
 	}
 }
 
-type rpcNetInfoFunc func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultNetInfo, error)
+type rpcNetInfoFunc func(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, error)
 
 func makeNetInfoFunc(c *lrpc.Client) rpcNetInfoFunc {
-	return func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultNetInfo, error) {
+	return func(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, error) {
 		return c.NetInfo(ctx.Context())
 	}
 }
@@ -89,6 +90,14 @@ type rpcGenesisFunc func(ctx *rpctypes.Context) (*ctypes.ResultGenesis, error)
 func makeGenesisFunc(c *lrpc.Client) rpcGenesisFunc {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultGenesis, error) {
 		return c.Genesis(ctx.Context())
+	}
+}
+
+type rpcGenesisChunkedFunc func(ctx *rpctypes.Context, chunk uint) (*ctypes.ResultGenesisChunk, error)
+
+func makeGenesisChunkedFunc(c *lrpc.Client) rpcGenesisChunkedFunc {
+	return func(ctx *rpctypes.Context, chunk uint) (*ctypes.ResultGenesisChunk, error) {
+		return c.GenesisChunked(ctx.Context(), chunk)
 	}
 }
 

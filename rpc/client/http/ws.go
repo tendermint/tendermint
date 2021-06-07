@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	jsonrpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
@@ -67,6 +67,12 @@ func newWsEvents(remote string, wso WSOptions) (*wsEvents, error) {
 	// validate options
 	if err := wso.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid WSOptions: %w", err)
+	}
+
+	// remove the trailing / from the remote else the websocket endpoint
+	// won't parse correctly
+	if remote[len(remote)-1] == '/' {
+		remote = remote[:len(remote)-1]
 	}
 
 	w := &wsEvents{

@@ -12,6 +12,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	memmock "github.com/tendermint/tendermint/mempool/mock"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -139,12 +140,14 @@ func TestValidateBlockCommit(t *testing.T) {
 				#2589: ensure state.LastValidators.VerifyCommit fails here
 			*/
 			// should be height-1 instead of height
-			wrongHeightVote, err := types.MakeVote(
-				height,
-				state.LastBlockID,
-				state.Validators,
+			wrongHeightVote, err := factory.MakeVote(
 				privVals[proposerAddr.String()],
 				chainID,
+				1,
+				height,
+				0,
+				2,
+				state.LastBlockID,
 				time.Now(),
 			)
 			require.NoError(t, err, "height %d", height)
@@ -191,11 +194,14 @@ func TestValidateBlockCommit(t *testing.T) {
 		/*
 			wrongSigsCommit is fine except for the extra bad precommit
 		*/
-		goodVote, err := types.MakeVote(height,
-			blockID,
-			state.Validators,
+		goodVote, err := factory.MakeVote(
 			privVals[proposerAddr.String()],
 			chainID,
+			1,
+			height,
+			0,
+			2,
+			blockID,
 			time.Now(),
 		)
 		require.NoError(t, err, "height %d", height)

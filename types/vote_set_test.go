@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"context"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -483,8 +484,35 @@ func randVoteSet(
 	numValidators int,
 	votingPower int64,
 ) (*VoteSet, *ValidatorSet, []PrivValidator) {
-	valSet, privValidators := RandValidatorSet(numValidators, votingPower)
+	valSet, privValidators := randValidatorPrivValSet(numValidators, votingPower)
 	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
+}
+
+func deterministicVoteSet(
+	height int64,
+	round int32,
+	signedMsgType tmproto.SignedMsgType,
+	votingPower int64,
+) (*VoteSet, *ValidatorSet, []PrivValidator) {
+	valSet, privValidators := deterministicValidatorSet()
+	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
+}
+
+func randValidatorPrivValSet(numValidators int, votingPower int64) (*ValidatorSet, []PrivValidator) {
+	var (
+		valz           = make([]*Validator, numValidators)
+		privValidators = make([]PrivValidator, numValidators)
+	)
+
+	for i := 0; i < numValidators; i++ {
+		val, privValidator := randValidator(false, votingPower)
+		valz[i] = val
+		privValidators[i] = privValidator
+	}
+
+	sort.Sort(PrivValidatorsByAddress(privValidators))
+
+	return NewValidatorSet(valz), privValidators
 }
 
 // Convenience: Return new vote with different validator address/index

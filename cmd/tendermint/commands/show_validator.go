@@ -30,7 +30,7 @@ func showValidator(cmd *cobra.Command, args []string) error {
 	)
 
 	//TODO: remove once gRPC is the only supported protocol
-	protocol, _ := tmnet.ProtocolAndAddress(config.PrivValidatorListenAddr)
+	protocol, _ := tmnet.ProtocolAndAddress(config.PrivValidator.ListenAddr)
 	switch protocol {
 	case "grpc":
 		pvsc, err := tmgrpc.DialRemoteSigner(config, config.ChainID(), logger)

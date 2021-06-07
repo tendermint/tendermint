@@ -15,14 +15,14 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/internal/libs/fail"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	tmevents "github.com/tendermint/tendermint/libs/events"
-	"github.com/tendermint/tendermint/libs/fail"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/service"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -140,6 +140,9 @@ type State struct {
 
 	// for reporting metrics
 	metrics *Metrics
+
+	// wait the channel event happening for shutting down the state gracefully
+	onStopCh chan *cstypes.RoundState
 }
 
 // StateOption sets an optional parameter on the State.
@@ -170,6 +173,7 @@ func NewState(
 		evpool:           evpool,
 		evsw:             tmevents.NewEventSwitch(),
 		metrics:          NopMetrics(),
+		onStopCh:         make(chan *cstypes.RoundState),
 	}
 
 	// set function defaults (may be overwritten before calling Start)
@@ -411,6 +415,18 @@ func (cs *State) loadWalFile() error {
 
 // OnStop implements service.Service.
 func (cs *State) OnStop() {
+
+	// If the node is committing a new block, wait until it is finished!
+	if cs.GetRoundState().Step == cstypes.RoundStepCommit {
+		select {
+		case <-cs.onStopCh:
+		case <-time.After(cs.config.TimeoutCommit):
+			cs.Logger.Error("OnStop: timeout waiting for commit to finish", "time", cs.config.TimeoutCommit)
+		}
+	}
+
+	close(cs.onStopCh)
+
 	if err := cs.evsw.Stop(); err != nil {
 		cs.Logger.Error("failed trying to stop eventSwitch", "error", err)
 	}

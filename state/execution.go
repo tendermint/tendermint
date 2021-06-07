@@ -8,7 +8,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
-	"github.com/tendermint/tendermint/libs/fail"
+	"github.com/tendermint/tendermint/internal/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -216,7 +216,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
-	fireEvents(blockExec.logger, blockExec.eventBus, block, abciResponses, validatorUpdates)
+	fireEvents(blockExec.logger, blockExec.eventBus, block, blockID, abciResponses, validatorUpdates)
 
 	return state, retainHeight, nil
 }
@@ -495,11 +495,13 @@ func fireEvents(
 	logger log.Logger,
 	eventBus types.BlockEventPublisher,
 	block *types.Block,
+	blockID types.BlockID,
 	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 ) {
 	if err := eventBus.PublishEventNewBlock(types.EventDataNewBlock{
 		Block:            block,
+		BlockID:          blockID,
 		ResultBeginBlock: *abciResponses.BeginBlock,
 		ResultEndBlock:   *abciResponses.EndBlock,
 	}); err != nil {
@@ -551,16 +553,36 @@ func fireEvents(
 // ExecCommitBlock executes and commits a block on the proxyApp without validating or mutating the state.
 // It returns the application root hash (result of abci.Commit).
 func ExecCommitBlock(
+	be *BlockExecutor,
 	appConnConsensus proxy.AppConnConsensus,
 	block *types.Block,
 	logger log.Logger,
 	store Store,
 	initialHeight int64,
+	s State,
 ) ([]byte, error) {
-	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight)
+	abciResponses, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight)
 	if err != nil {
 		logger.Error("failed executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err
+	}
+
+	// the BlockExecutor condition is using for the final block replay process.
+	if be != nil {
+		abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
+		err = validateValidatorUpdates(abciValUpdates, s.ConsensusParams.Validator)
+		if err != nil {
+			logger.Error("err", err)
+			return nil, err
+		}
+		validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciValUpdates)
+		if err != nil {
+			logger.Error("err", err)
+			return nil, err
+		}
+
+		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(types.BlockPartSizeBytes).Header()}
+		fireEvents(be.logger, be.eventBus, block, blockID, abciResponses, validatorUpdates)
 	}
 
 	// Commit block, get hash back

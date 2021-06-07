@@ -13,8 +13,8 @@ import (
 	"golang.org/x/net/netutil"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/internal/libs/protoio"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/protoio"
 	"github.com/tendermint/tendermint/p2p/conn"
 	p2pproto "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
@@ -183,6 +183,17 @@ func (m *MConnTransport) Close() error {
 		}
 	})
 	return err
+}
+
+// SetChannels sets the channel descriptors to be used when
+// establishing a connection.
+//
+// FIXME: To be removed when the legacy p2p stack is removed. Channel
+// descriptors should be managed by the router. The underlying transport and
+// connections should be agnostic to everything but the channel ID's which are
+// initialized in the handshake.
+func (m *MConnTransport) AddChannelDescriptors(channelDesc []*ChannelDescriptor) {
+	m.channelDescs = append(m.channelDescs, channelDesc...)
 }
 
 // validateEndpoint validates an endpoint.

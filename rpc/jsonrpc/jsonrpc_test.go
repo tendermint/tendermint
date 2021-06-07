@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/kit/log/term"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -91,22 +90,9 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-var colorFn = func(keyvals ...interface{}) term.FgBgColor {
-	for i := 0; i < len(keyvals)-1; i += 2 {
-		if keyvals[i] == "socket" {
-			if keyvals[i+1] == "tcp" {
-				return term.FgBgColor{Fg: term.DarkBlue}
-			} else if keyvals[i+1] == "unix" {
-				return term.FgBgColor{Fg: term.DarkCyan}
-			}
-		}
-	}
-	return term.FgBgColor{}
-}
-
 // launch unix and tcp servers
 func setup() {
-	logger := log.NewTMLoggerWithColorFn(log.NewSyncWriter(os.Stdout), colorFn)
+	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 
 	cmd := exec.Command("rm", "-f", unixSocket)
 	err := cmd.Start()

@@ -62,7 +62,8 @@ func init() {
 // but some (an input to a call tx or a receive) are more exotic
 
 type EventDataNewBlock struct {
-	Block *Block `json:"block"`
+	Block   *Block  `json:"block"`
+	BlockID BlockID `json:"block_id"`
 
 	ResultBeginBlock abci.ResponseBeginBlock `json:"result_begin_block"`
 	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
@@ -140,6 +141,9 @@ const (
 	// BlockHeightKey is a reserved key used for indexing BeginBlock and Endblock
 	// events.
 	BlockHeightKey = "block.height"
+
+	EventTypeBeginBlock = "begin_block"
+	EventTypeEndBlock   = "end_block"
 )
 
 var (

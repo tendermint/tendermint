@@ -71,7 +71,7 @@ For historic queries we will need a indexing storage (Postgres, SQLite, ...).
 
 ## Status
 
-proposed
+Implemented
 
 ## Consequences
 

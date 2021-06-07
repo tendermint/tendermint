@@ -19,16 +19,22 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [state/indexer] \#6382 reconstruct indexer, move txindex into the indexer package (@JayT106)
   - [cli] \#6372 Introduce `BootstrapPeers` as part of the new p2p stack. Peers to be connected on
     startup (@cmwaters)
+  - [config] \#6462 Move `PrivValidator` configuration out of `BaseConfig` into its own section.
 
 - Apps
   - [ABCI] \#6408 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)
   - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
   - [ABCI] \#5447 Reset `Oneof` indexes for  `Request` and `Response`.
   - [ABCI] \#5818 Use protoio for msg length delimitation. Migrates from int64 to uint64 length delimiters.
+  - [Version] \#6494 `TMCoreSemVer` has been renamed to `TMVersion`.
+    - It is not required any longer to set ldflags to set version strings
 
 - P2P Protocol
 
 - Go API
+  - [logging] \#6534 Removed the existing custom Tendermint logger backed by go-kit. The logging interface, `Logger`, remains.
+  Tendermint still provides a default logger backed by the performant zerolog logger. (@alexanderbez)
+  - [mempool] \#6529 The `Context` field has been removed from the `TxInfo` type. `CheckTx` now requires a `Context` argument. (@alexanderbez)
   - [abci/client, proxy] \#5673 `Async` funcs return an error, `Sync` and `Async` funcs accept `context.Context` (@melekes)
   - [p2p] Removed unused function `MakePoWTarget`. (@erikgrinaker)
   - [libs/bits] \#5720 Validate `BitArray` in `FromProto`, which now returns an error (@melekes)
@@ -38,22 +44,29 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [store] \#5848 Remove block store state in favor of using the db iterators directly (@cmwaters)
   - [state] \#5864 Use an iterator when pruning state (@cmwaters)
   - [types] \#6023 Remove `tm2pb.Header`, `tm2pb.BlockID`, `tm2pb.PartSetHeader` and `tm2pb.NewValidatorUpdate`.
-	- Each of the above types has a `ToProto` and `FromProto` method or function which replaced this logic.
+    - Each of the above types has a `ToProto` and `FromProto` method or function which replaced this logic.
   - [light] \#6054 Move `MaxRetryAttempt` option from client to provider.
-	- `NewWithOptions` now sets the max retry attempts and timeouts (@cmwaters)
+    - `NewWithOptions` now sets the max retry attempts and timeouts (@cmwaters)
   - [all] \#6077 Change spelling from British English to American (@cmwaters)
-	- Rename "Subscription.Cancelled()" to "Subscription.Canceled()" in libs/pubsub
-	- Rename "behaviour" pkg to "behavior" and internalized it in blockchain v2
+    - Rename "Subscription.Cancelled()" to "Subscription.Canceled()" in libs/pubsub
+    - Rename "behaviour" pkg to "behavior" and internalized it in blockchain v2
   - [rpc/client/http] \#6176 Remove `endpoint` arg from `New`, `NewWithTimeout` and `NewWithClient` (@melekes)
   - [rpc/client/http] \#6176 Unexpose `WSEvents` (@melekes)
   - [rpc/jsonrpc/client/ws_client] \#6176 `NewWS` no longer accepts options (use `NewWSWithOptions` and `OnReconnect` funcs to configure the client) (@melekes)
+  - [internal/libs] \#6366 Move `autofile`, `clist`,`fail`,`flowrate`, `protoio`, `sync`, `tempfile`, `test` and `timer` lib packages to an internal folder
   - [libs/rand] \#6364 Removed most of libs/rand in favour of standard lib's `math/rand` (@liamsi)
+  - [mempool] \#6466 The original mempool reactor has been versioned as `v0` and moved to a sub-package under the root `mempool` package.
+    Some core types have been kept in the `mempool` package such as `TxCache` and it's implementations, the `Mempool` interface itself
+    and `TxInfo`. (@alexanderbez)
 
 - Blockchain Protocol
 
 - Data Storage
   - [store/state/evidence/light] \#5771 Use an order-preserving varint key encoding (@cmwaters)
   - [mempool] \#6396 Remove mempool's write ahead log (WAL), (previously unused by the tendermint code). (@tychoish)
+
+- Tooling
+  - [tools] \#6498 Set OS home dir to instead of the hardcoded PATH. (@JayT106)
 
 ### FEATURES
 
@@ -63,9 +76,18 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   accomodate for the new p2p stack. Removes the notion of seeds and crawling. All peer
   exchange reactors behave the same. (@cmwaters)
 - [crypto] \#6376 Enable sr25519 as a validator key
+- [mempool] \#6466 Introduction of a prioritized mempool. (@alexanderbez)
+  - `Priority` and `Sender` have been introduced into the `ResponseCheckTx` type, where the `priority` will determine the prioritization of
+  the transaction when a proposer reaps transactions for a block proposal. The `sender` field acts as an index.
+  - Operators may toggle between the legacy mempool reactor, `v0`, and the new prioritized reactor, `v1`, by setting the
+  `mempool.version` configuration, where `v1` is the default configuration.
+  - Applications that do not specify a priority, i.e. zero, will have transactions reaped by the order in which they are received by the node.
+  - Transactions are gossiped in FIFO order as they are in `v0`.
+- [config/indexer] \#6411 Introduce support for custom event indexing data sources, specifically PostgreSQL. (@JayT106)
 
 ### IMPROVEMENTS
 
+- [types] \#6478 Add `block_id` to `newblock` event (@jeebster)
 - [crypto/ed25519] \#5632 Adopt zip215 `ed25519` verification. (@marbar3778)
 - [privval] \#5603 Add `--key` to `init`, `gen_validator`, `testnet` & `unsafe_reset_priv_validator` for use in generating `secp256k1` keys.
 - [privval] \#5725 Add gRPC support to private validator.
@@ -92,10 +114,13 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [privval] \#6240 Add `context.Context` to privval interface.
 - [rpc] \#6265 set cache control in http-rpc response header (@JayT106)
 - [statesync] \#6378 Retry requests for snapshots and add a minimum discovery time (5s) for new snapshots.
+- [node/state] \#6370 graceful shutdown in the consensus reactor (@JayT106)
+- [crypto/merkle] \#6443 Improve HashAlternatives performance (@cuonglm)
+- [crypto/merkle] \#6513 Optimize HashAlternatives (@marbar3778)
+- [p2p/pex] \#6509 Improve addrBook.hash performance (@cuonglm)
 
 ### BUG FIXES
 
-- [types] \#5523 Change json naming of `PartSetHeader` within `BlockID` from `parts` to `part_set_header` (@marbar3778)
 - [privval] \#5638 Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
 - [blockchain/v1] [\#5701](https://github.com/tendermint/tendermint/pull/5701) Handle peers without blocks (@melekes)
 - [blockchain/v1] \#5711 Fix deadlock (@melekes)

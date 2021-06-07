@@ -23,7 +23,7 @@ and likely less efficient.
 
 ## Status
 
-Accepted.
+Implemented
 
 ## Consequences
 

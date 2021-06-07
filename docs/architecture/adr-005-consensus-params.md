@@ -66,7 +66,7 @@ Tendermint should have hard-coded upper limits as sanity checks.
 
 ## Status
 
-Proposed.
+Implemented
 
 ## Consequences
 

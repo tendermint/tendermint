@@ -18,9 +18,11 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
-	mempl "github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/mempool"
+	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/p2ptest"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
@@ -46,6 +48,12 @@ type reactorTestSuite struct {
 	voteSetBitsChannels map[p2p.NodeID]*p2p.Channel
 }
 
+func chDesc(chID p2p.ChannelID) p2p.ChannelDescriptor {
+	return p2p.ChannelDescriptor{
+		ID: byte(chID),
+	}
+}
+
 func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSuite {
 	t.Helper()
 
@@ -56,10 +64,10 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 		subs:     make(map[p2p.NodeID]types.Subscription, numNodes),
 	}
 
-	rts.stateChannels = rts.network.MakeChannelsNoCleanup(t, StateChannel, new(tmcons.Message), size)
-	rts.dataChannels = rts.network.MakeChannelsNoCleanup(t, DataChannel, new(tmcons.Message), size)
-	rts.voteChannels = rts.network.MakeChannelsNoCleanup(t, VoteChannel, new(tmcons.Message), size)
-	rts.voteSetBitsChannels = rts.network.MakeChannelsNoCleanup(t, VoteSetBitsChannel, new(tmcons.Message), size)
+	rts.stateChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(StateChannel), new(tmcons.Message), size)
+	rts.dataChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(DataChannel), new(tmcons.Message), size)
+	rts.voteChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteChannel), new(tmcons.Message), size)
+	rts.voteSetBitsChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteSetBitsChannel), new(tmcons.Message), size)
 
 	i := 0
 	for nodeID, node := range rts.network.Nodes {
@@ -147,7 +155,7 @@ func waitForAndValidateBlock(
 		require.NoError(t, validateBlock(newBlock, activeVals))
 
 		for _, tx := range txs {
-			require.NoError(t, assertMempool(states[j].txNotifier).CheckTx(tx, nil, mempl.TxInfo{}))
+			require.NoError(t, assertMempool(states[j].txNotifier).CheckTx(context.Background(), tx, nil, mempool.TxInfo{}))
 		}
 	}
 
@@ -281,7 +289,7 @@ func TestReactorWithEvidence(t *testing.T) {
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newCounter
 
-	genDoc, privVals := randGenesisDoc(config, n, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(config, n, false, 30)
 	states := make([]*State, n)
 	logger := consensusLogger()
 
@@ -307,7 +315,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
 		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 
-		mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
+		mempool := mempoolv0.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
 		mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
 		if thisConfig.Consensus.WaitForTxs() {
 			mempool.EnableTxsAvailable()
@@ -393,7 +401,15 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	}
 
 	// send a tx
-	require.NoError(t, assertMempool(states[3].txNotifier).CheckTx([]byte{1, 2, 3}, nil, mempl.TxInfo{}))
+	require.NoError(
+		t,
+		assertMempool(states[3].txNotifier).CheckTx(
+			context.Background(),
+			[]byte{1, 2, 3},
+			nil,
+			mempool.TxInfo{},
+		),
+	)
 
 	var wg sync.WaitGroup
 	for _, sub := range rts.subs {

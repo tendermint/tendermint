@@ -247,7 +247,7 @@ Snapshots must also be garbage collected after some configurable time, e.g. by k
 
 ## Status
 
-Accepted
+Implemented
 
 ## References
 

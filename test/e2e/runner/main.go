@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 )
 
 func main() {
@@ -97,7 +97,7 @@ func NewCLI() *CLI {
 			if err := <-chLoadResult; err != nil {
 				return err
 			}
-			if err := Wait(cli.testnet, 5); err != nil { // wait for network to settle before tests
+			if err := Wait(cli.testnet, 8); err != nil { // wait for network to settle before tests
 				return err
 			}
 			if err := Test(cli.testnet); err != nil {
@@ -168,6 +168,15 @@ func NewCLI() *CLI {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			logger.Info("Stopping testnet")
 			return execCompose(cli.testnet.Dir, "down")
+		},
+	})
+
+	cli.root.AddCommand(&cobra.Command{
+		Use:   "resume",
+		Short: "Resumes the Docker testnet",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			logger.Info("Resuming testnet")
+			return execCompose(cli.testnet.Dir, "up")
 		},
 	})
 

@@ -5,9 +5,9 @@
 package pex
 
 import (
-	crand "crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"hash"
 	"math"
 	mrand "math/rand"
 	"net"
@@ -16,10 +16,10 @@ import (
 
 	"github.com/minio/highwayhash"
 	"github.com/tendermint/tendermint/crypto"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 )
 
@@ -101,15 +101,18 @@ type addrBook struct {
 	filePath          string
 	key               string // random prefix for bucket placement
 	routabilityStrict bool
-	hashKey           []byte
+	hasher            hash.Hash64
 
 	wg sync.WaitGroup
 }
 
-func newHashKey() []byte {
-	result := make([]byte, highwayhash.Size)
-	crand.Read(result) //nolint:errcheck // ignore error
-	return result
+func mustNewHasher() hash.Hash64 {
+	key := crypto.CRandBytes(highwayhash.Size)
+	hasher, err := highwayhash.New64(key)
+	if err != nil {
+		panic(err)
+	}
+	return hasher
 }
 
 // NewAddrBook creates a new address book.
@@ -122,7 +125,6 @@ func NewAddrBook(filePath string, routabilityStrict bool) AddrBook {
 		badPeers:          make(map[p2p.NodeID]*knownAddress),
 		filePath:          filePath,
 		routabilityStrict: routabilityStrict,
-		hashKey:           newHashKey(),
 	}
 	am.init()
 	am.BaseService = *service.NewBaseService(nil, "AddrBook", am)
@@ -143,6 +145,7 @@ func (a *addrBook) init() {
 	for i := range a.bucketsOld {
 		a.bucketsOld[i] = make(map[string]*knownAddress)
 	}
+	a.hasher = mustNewHasher()
 }
 
 // OnStart implements Service.
@@ -938,10 +941,7 @@ func groupKeyFor(na *p2p.NetAddress, routabilityStrict bool) string {
 }
 
 func (a *addrBook) hash(b []byte) ([]byte, error) {
-	hasher, err := highwayhash.New64(a.hashKey)
-	if err != nil {
-		return nil, err
-	}
-	hasher.Write(b)
-	return hasher.Sum(nil), nil
+	a.hasher.Reset()
+	a.hasher.Write(b)
+	return a.hasher.Sum(nil), nil
 }

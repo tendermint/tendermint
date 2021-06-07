@@ -3,13 +3,14 @@ package http_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/light/provider"
 	lighthttp "github.com/tendermint/tendermint/light/provider/http"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
@@ -32,25 +33,34 @@ func TestNewProvider(t *testing.T) {
 	require.Equal(t, fmt.Sprintf("%s", c), "http{http://153.200.0.1}")
 }
 
-func TestMain(m *testing.M) {
+// NodeSuite initiates and runs a full node instance in the
+// background, stopping it once the test is completed
+func NodeSuite(t *testing.T) (service.Service, *config.Config) {
+	t.Helper()
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	conf := rpctest.CreateConfig()
+
+	// start a tendermint node in the background to test against
 	app := kvstore.NewApplication()
 	app.RetainBlocks = 9
-	node := rpctest.StartTendermint(app)
 
-	code := m.Run()
-
-	rpctest.StopTendermint(node)
-	os.Exit(code)
+	node, closer, err := rpctest.StartTendermint(ctx, conf, app)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = closer(ctx)
+		cancel()
+	})
+	return node, conf
 }
 
 func TestProvider(t *testing.T) {
-	cfg := rpctest.GetConfig()
-	defer os.RemoveAll(cfg.RootDir)
+	_, cfg := NodeSuite(t)
 	rpcAddr := cfg.RPC.ListenAddress
 	genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
+
 	chainID := genDoc.ChainID
 	t.Log("chainID:", chainID)
 
@@ -68,7 +78,7 @@ func TestProvider(t *testing.T) {
 	// let's get the highest block
 	lb, err := p.LightBlock(context.Background(), 0)
 	require.NoError(t, err)
-	assert.True(t, lb.Height < 1000)
+	assert.True(t, lb.Height < 9001, "height=%d", lb.Height)
 
 	// let's check this is valid somehow
 	assert.Nil(t, lb.ValidateBasic(chainID))
@@ -80,7 +90,7 @@ func TestProvider(t *testing.T) {
 	assert.Equal(t, lower, lb.Height)
 
 	// fetching missing heights (both future and pruned) should return appropriate errors
-	lb, err = p.LightBlock(context.Background(), 1000)
+	lb, err = p.LightBlock(context.Background(), 9001)
 	require.Error(t, err)
 	require.Nil(t, lb)
 	assert.Equal(t, provider.ErrHeightTooHigh, err)

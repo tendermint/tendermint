@@ -3,19 +3,21 @@ package mempool
 import (
 	"fmt"
 
-	tmsync "github.com/tendermint/tendermint/libs/sync"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 )
 
-type mempoolIDs struct {
+// nolint: golint
+// TODO: Rename type.
+type MempoolIDs struct {
 	mtx       tmsync.RWMutex
 	peerMap   map[p2p.NodeID]uint16
 	nextID    uint16              // assumes that a node will never have over 65536 active peers
 	activeIDs map[uint16]struct{} // used to check if a given peerID key is used
 }
 
-func newMempoolIDs() *mempoolIDs {
-	return &mempoolIDs{
+func NewMempoolIDs() *MempoolIDs {
+	return &MempoolIDs{
 		peerMap: make(map[p2p.NodeID]uint16),
 
 		// reserve UnknownPeerID for mempoolReactor.BroadcastTx
@@ -26,7 +28,7 @@ func newMempoolIDs() *mempoolIDs {
 
 // ReserveForPeer searches for the next unused ID and assigns it to the provided
 // peer.
-func (ids *mempoolIDs) ReserveForPeer(peerID p2p.NodeID) {
+func (ids *MempoolIDs) ReserveForPeer(peerID p2p.NodeID) {
 	ids.mtx.Lock()
 	defer ids.mtx.Unlock()
 
@@ -36,7 +38,7 @@ func (ids *mempoolIDs) ReserveForPeer(peerID p2p.NodeID) {
 }
 
 // Reclaim returns the ID reserved for the peer back to unused pool.
-func (ids *mempoolIDs) Reclaim(peerID p2p.NodeID) {
+func (ids *MempoolIDs) Reclaim(peerID p2p.NodeID) {
 	ids.mtx.Lock()
 	defer ids.mtx.Unlock()
 
@@ -48,7 +50,7 @@ func (ids *mempoolIDs) Reclaim(peerID p2p.NodeID) {
 }
 
 // GetForPeer returns an ID reserved for the peer.
-func (ids *mempoolIDs) GetForPeer(peerID p2p.NodeID) uint16 {
+func (ids *MempoolIDs) GetForPeer(peerID p2p.NodeID) uint16 {
 	ids.mtx.RLock()
 	defer ids.mtx.RUnlock()
 
@@ -57,9 +59,9 @@ func (ids *mempoolIDs) GetForPeer(peerID p2p.NodeID) uint16 {
 
 // nextPeerID returns the next unused peer ID to use. We assume that the mutex
 // is already held.
-func (ids *mempoolIDs) nextPeerID() uint16 {
-	if len(ids.activeIDs) == maxActiveIDs {
-		panic(fmt.Sprintf("node has maximum %d active IDs and wanted to get one more", maxActiveIDs))
+func (ids *MempoolIDs) nextPeerID() uint16 {
+	if len(ids.activeIDs) == MaxActiveIDs {
+		panic(fmt.Sprintf("node has maximum %d active IDs and wanted to get one more", MaxActiveIDs))
 	}
 
 	_, idExists := ids.activeIDs[ids.nextID]

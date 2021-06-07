@@ -13,10 +13,10 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
@@ -1172,7 +1172,7 @@ func (data *EvidenceData) FromProto(eviData *tmproto.EvidenceList) error {
 // BlockID
 type BlockID struct {
 	Hash          tmbytes.HexBytes `json:"hash"`
-	PartSetHeader PartSetHeader    `json:"part_set_header"`
+	PartSetHeader PartSetHeader    `json:"parts"`
 }
 
 // Equals returns true if the BlockID matches the given BlockID
@@ -1196,10 +1196,10 @@ func (blockID BlockID) Key() string {
 func (blockID BlockID) ValidateBasic() error {
 	// Hash can be empty in case of POLBlockID in Proposal.
 	if err := ValidateHash(blockID.Hash); err != nil {
-		return fmt.Errorf("wrong Hash")
+		return fmt.Errorf("wrong Hash: %w", err)
 	}
 	if err := blockID.PartSetHeader.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong PartSetHeader: %v", err)
+		return fmt.Errorf("wrong PartSetHeader: %w", err)
 	}
 	return nil
 }

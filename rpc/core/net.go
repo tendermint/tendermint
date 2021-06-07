@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -11,7 +12,7 @@ import (
 
 // NetInfo returns network info.
 // More: https://docs.tendermint.com/master/rpc/#/Info/net_info
-func NetInfo(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, error) {
+func (env *Environment) NetInfo(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, error) {
 	peersList := env.P2PPeers.Peers().List()
 	peers := make([]ctypes.Peer, 0, len(peersList))
 	for _, peer := range peersList {
@@ -34,7 +35,7 @@ func NetInfo(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, error) {
 }
 
 // UnsafeDialSeeds dials the given seeds (comma-separated id@IP:PORT).
-func UnsafeDialSeeds(ctx *rpctypes.Context, seeds []string) (*ctypes.ResultDialSeeds, error) {
+func (env *Environment) UnsafeDialSeeds(ctx *rpctypes.Context, seeds []string) (*ctypes.ResultDialSeeds, error) {
 	if len(seeds) == 0 {
 		return &ctypes.ResultDialSeeds{}, fmt.Errorf("%w: no seeds provided", ctypes.ErrInvalidRequest)
 	}
@@ -47,8 +48,11 @@ func UnsafeDialSeeds(ctx *rpctypes.Context, seeds []string) (*ctypes.ResultDialS
 
 // UnsafeDialPeers dials the given peers (comma-separated id@IP:PORT),
 // optionally making them persistent.
-func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent, unconditional, private bool) (
-	*ctypes.ResultDialPeers, error) {
+func (env *Environment) UnsafeDialPeers(
+	ctx *rpctypes.Context,
+	peers []string,
+	persistent, unconditional, private bool) (*ctypes.ResultDialPeers, error) {
+
 	if len(peers) == 0 {
 		return &ctypes.ResultDialPeers{}, fmt.Errorf("%w: no peers provided", ctypes.ErrInvalidRequest)
 	}
@@ -88,8 +92,34 @@ func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent, uncondit
 
 // Genesis returns genesis file.
 // More: https://docs.tendermint.com/master/rpc/#/Info/genesis
-func Genesis(ctx *rpctypes.Context) (*ctypes.ResultGenesis, error) {
+func (env *Environment) Genesis(ctx *rpctypes.Context) (*ctypes.ResultGenesis, error) {
+	if len(env.genChunks) > 1 {
+		return nil, errors.New("genesis response is large, please use the genesis_chunked API instead")
+	}
+
 	return &ctypes.ResultGenesis{Genesis: env.GenDoc}, nil
+}
+
+func (env *Environment) GenesisChunked(ctx *rpctypes.Context, chunk uint) (*ctypes.ResultGenesisChunk, error) {
+	if env.genChunks == nil {
+		return nil, fmt.Errorf("service configuration error, genesis chunks are not initialized")
+	}
+
+	if len(env.genChunks) == 0 {
+		return nil, fmt.Errorf("service configuration error, there are no chunks")
+	}
+
+	id := int(chunk)
+
+	if id > len(env.genChunks)-1 {
+		return nil, fmt.Errorf("there are %d chunks, %d is invalid", len(env.genChunks)-1, id)
+	}
+
+	return &ctypes.ResultGenesisChunk{
+		TotalChunks: len(env.genChunks),
+		ChunkNumber: id,
+		Data:        env.genChunks[id],
+	}, nil
 }
 
 func getIDs(peers []string) ([]string, error) {

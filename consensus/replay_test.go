@@ -24,6 +24,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -97,7 +98,7 @@ func sendTxs(ctx context.Context, cs *State) {
 			return
 		default:
 			tx := []byte{byte(i)}
-			if err := assertMempool(cs.txNotifier).CheckTx(tx, nil, mempl.TxInfo{}); err != nil {
+			if err := assertMempool(cs.txNotifier).CheckTx(context.Background(), tx, nil, mempl.TxInfo{}); err != nil {
 				panic(err)
 			}
 			i++
@@ -357,7 +358,7 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	valPubKey1ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey1)
 	require.NoError(t, err)
 	newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
-	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx1, nil, mempl.TxInfo{})
+	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), newValidatorTx1, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
 	propBlock, _ := css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	propBlockParts := propBlock.MakePartSet(partSize)
@@ -389,7 +390,7 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	updatePubKey1ABCI, err := cryptoenc.PubKeyToProto(updateValidatorPubKey1)
 	require.NoError(t, err)
 	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
-	err = assertMempool(css[0].txNotifier).CheckTx(updateValidatorTx1, nil, mempl.TxInfo{})
+	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), updateValidatorTx1, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
 	propBlock, _ = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	propBlockParts = propBlock.MakePartSet(partSize)
@@ -421,14 +422,14 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	newVal2ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey2)
 	require.NoError(t, err)
 	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
-	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx2, nil, mempl.TxInfo{})
+	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), newValidatorTx2, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
 	newValidatorPubKey3, err := css[nVals+2].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 	newVal3ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey3)
 	require.NoError(t, err)
 	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
-	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx3, nil, mempl.TxInfo{})
+	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), newValidatorTx3, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
 	propBlock, _ = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	propBlockParts = propBlock.MakePartSet(partSize)
@@ -468,7 +469,7 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	ensureNewProposal(proposalCh, height, round)
 
 	removeValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, 0)
-	err = assertMempool(css[0].txNotifier).CheckTx(removeValidatorTx2, nil, mempl.TxInfo{})
+	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), removeValidatorTx2, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
 
 	rs = css[0].GetRoundState()
@@ -507,7 +508,7 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	height++
 	incrementHeight(vss...)
 	removeValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, 0)
-	err = assertMempool(css[0].txNotifier).CheckTx(removeValidatorTx3, nil, mempl.TxInfo{})
+	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), removeValidatorTx3, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
 	propBlock, _ = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	propBlockParts = propBlock.MakePartSet(partSize)
@@ -1023,12 +1024,11 @@ func makeBlock(state sm.State, lastBlock *types.Block, lastBlockMeta *types.Bloc
 
 	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
 	if height > 1 {
-		vote, _ := types.MakeVote(
-			lastBlock.Header.Height,
-			lastBlockMeta.BlockID,
-			state.Validators,
+		vote, _ := factory.MakeVote(
 			privVal,
 			lastBlock.Header.ChainID,
+			1, lastBlock.Header.Height, 0, 2,
+			lastBlockMeta.BlockID,
 			time.Now())
 		lastCommit = types.NewCommit(vote.Height, vote.Round,
 			lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
@@ -1258,7 +1258,7 @@ func (bs *mockBlockStore) PruneBlocks(height int64) (uint64, error) {
 // Test handshake/init chain
 
 func TestHandshakeUpdatesValidators(t *testing.T) {
-	val, _ := types.RandValidator(true, 10)
+	val, _ := factory.RandValidator(true, 10)
 	vals := types.NewValidatorSet([]*types.Validator{val})
 	app := &initChainApp{vals: types.TM2PB.ValidatorUpdates(vals)}
 	clientCreator := proxy.NewLocalClientCreator(app)

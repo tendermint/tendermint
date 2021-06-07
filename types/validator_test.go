@@ -2,14 +2,16 @@ package types
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/crypto"
 )
 
 func TestValidatorProtoBuf(t *testing.T) {
-	val, _ := RandValidator(true, 100)
+	val, _ := randValidator(true, 100)
 	testCases := []struct {
 		msg      string
 		v1       *Validator
@@ -97,4 +99,20 @@ func TestValidatorValidateBasic(t *testing.T) {
 			assert.NoError(t, err)
 		}
 	}
+}
+
+// Testing util functions
+
+// deterministicValidator returns a deterministic validator, useful for testing.
+// UNSTABLE
+func deterministicValidator(key crypto.PrivKey) (*Validator, PrivValidator) {
+	privVal := NewMockPV()
+	privVal.PrivKey = key
+	var votePower int64 = 50
+	pubKey, err := privVal.GetPubKey(context.TODO())
+	if err != nil {
+		panic(fmt.Errorf("could not retrieve pubkey %w", err))
+	}
+	val := NewValidator(pubKey, votePower)
+	return val, privVal
 }

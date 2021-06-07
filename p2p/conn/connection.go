@@ -14,13 +14,13 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 
-	flow "github.com/tendermint/tendermint/libs/flowrate"
+	flow "github.com/tendermint/tendermint/internal/libs/flowrate"
+	"github.com/tendermint/tendermint/internal/libs/protoio"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/internal/libs/timer"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	"github.com/tendermint/tendermint/libs/protoio"
 	"github.com/tendermint/tendermint/libs/service"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
-	"github.com/tendermint/tendermint/libs/timer"
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
@@ -625,8 +625,9 @@ FOR_LOOP:
 				// never block
 			}
 		case *tmp2p.Packet_PacketMsg:
-			channel, ok := c.channelsIdx[byte(pkt.PacketMsg.ChannelID)]
-			if !ok || channel == nil {
+			channelID := byte(pkt.PacketMsg.ChannelID)
+			channel, ok := c.channelsIdx[channelID]
+			if pkt.PacketMsg.ChannelID < 0 || pkt.PacketMsg.ChannelID > math.MaxUint8 || !ok || channel == nil {
 				err := fmt.Errorf("unknown channel %X", pkt.PacketMsg.ChannelID)
 				c.Logger.Debug("Connection failed @ recvRoutine", "conn", c, "err", err)
 				c.stopForError(err)
@@ -642,9 +643,9 @@ FOR_LOOP:
 				break FOR_LOOP
 			}
 			if msgBytes != nil {
-				c.Logger.Debug("Received bytes", "chID", pkt.PacketMsg.ChannelID, "msgBytes", msgBytes)
+				c.Logger.Debug("Received bytes", "chID", channelID, "msgBytes", msgBytes)
 				// NOTE: This means the reactor.Receive runs in the same thread as the p2p recv routine
-				c.onReceive(byte(pkt.PacketMsg.ChannelID), msgBytes)
+				c.onReceive(channelID, msgBytes)
 			}
 		default:
 			err := fmt.Errorf("unknown message type %v", reflect.TypeOf(packet))

@@ -29,6 +29,8 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+//go:generate mockery --case underscore --name Client
+
 // Client wraps most important rpc calls a client would make if you want to
 // listen for events, test if it also implements events.EventSwitch.
 type Client interface {
@@ -94,6 +96,7 @@ type SignClient interface {
 // HistoryClient provides access to data from genesis to now in large chunks.
 type HistoryClient interface {
 	Genesis(context.Context) (*ctypes.ResultGenesis, error)
+	GenesisChunked(context.Context, uint) (*ctypes.ResultGenesisChunk, error)
 	BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error)
 }
 

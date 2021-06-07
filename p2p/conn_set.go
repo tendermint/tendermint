@@ -3,7 +3,7 @@ package p2p
 import (
 	"net"
 
-	tmsync "github.com/tendermint/tendermint/libs/sync"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 )
 
 // ConnSet is a lookup table for connections and all their ips.

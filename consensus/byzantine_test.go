@@ -13,9 +13,10 @@ import (
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/evidence"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
-	mempl "github.com/tendermint/tendermint/mempool"
+	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
 	"github.com/tendermint/tendermint/p2p"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -36,7 +37,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newCounter
 
-	genDoc, privVals := randGenesisDoc(config, nValidators, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(config, nValidators, false, 30)
 	states := make([]*State, nValidators)
 
 	for i := 0; i < nValidators; i++ {
@@ -63,7 +64,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 
 			// Make Mempool
-			mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
+			mempool := mempoolv0.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
 			mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
 			if thisConfig.Consensus.WaitForTxs() {
 				mempool.EnableTxsAvailable()
