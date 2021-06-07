@@ -84,3 +84,8 @@ func (app *Application) Query(reqQuery types.RequestQuery) types.ResponseQuery {
 		return types.ResponseQuery{Log: fmt.Sprintf("Invalid query path. Expected hash or tx, got %v", reqQuery.Path)}
 	}
 }
+
+func (app *Application) PrepareProposal(
+	req types.RequestPrepareProposal) types.ResponsePrepareProposal {
+	return types.ResponsePrepareProposal{BlockData: req.BlockData}
+}
