@@ -170,6 +170,11 @@ func (app *PersistentKVStoreApplication) ApplySnapshotChunk(
 	return types.ResponseApplySnapshotChunk{Result: types.ResponseApplySnapshotChunk_ABORT}
 }
 
+func (app *PersistentKVStoreApplication) PrepareProposal(
+	req types.RequestPrepareProposal) types.ResponsePrepareProposal {
+	return types.ResponsePrepareProposal{BlockData: [][]byte{}} // todo: noop
+}
+
 //---------------------------------------------
 // update validators
 

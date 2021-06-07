@@ -22,6 +22,7 @@ type Application interface {
 	DeliverTx(RequestDeliverTx) ResponseDeliverTx    // Deliver a tx for full processing
 	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
 	Commit() ResponseCommit                          // Commit the state and return the application Merkle root hash
+	PrepareProposal(RequestPrepareProposal) ResponsePrepareProposal
 
 	// State Sync Connection
 	ListSnapshots(RequestListSnapshots) ResponseListSnapshots                // List available snapshots
@@ -88,6 +89,10 @@ func (BaseApplication) LoadSnapshotChunk(req RequestLoadSnapshotChunk) ResponseL
 
 func (BaseApplication) ApplySnapshotChunk(req RequestApplySnapshotChunk) ResponseApplySnapshotChunk {
 	return ResponseApplySnapshotChunk{}
+}
+
+func (BaseApplication) PrepareProposal(req RequestPrepareProposal) ResponsePrepareProposal {
+	return ResponsePrepareProposal{}
 }
 
 //-------------------------------------------------------
@@ -170,5 +175,11 @@ func (app *GRPCApplication) LoadSnapshotChunk(
 func (app *GRPCApplication) ApplySnapshotChunk(
 	ctx context.Context, req *RequestApplySnapshotChunk) (*ResponseApplySnapshotChunk, error) {
 	res := app.app.ApplySnapshotChunk(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) PrepareProposal(
+	ctx context.Context, req *RequestPrepareProposal) (*ResponsePrepareProposal, error) {
+	res := app.app.PrepareProposal(*req)
 	return &res, nil
 }

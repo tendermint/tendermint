@@ -204,3 +204,9 @@ func ToResponseApplySnapshotChunk(res ResponseApplySnapshotChunk) *Response {
 		Value: &Response_ApplySnapshotChunk{&res},
 	}
 }
+
+func ToResponsePrepareProposal(res ResponsePrepareProposal) *Response {
+	return &Response{
+		Value: &Response_PrepareProposal{&res},
+	}
+}
