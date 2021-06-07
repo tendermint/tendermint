@@ -9,13 +9,11 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/log"
-
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
+	"github.com/tendermint/tendermint/libs/service"
 	nm "github.com/tendermint/tendermint/node"
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
@@ -26,12 +24,6 @@ import (
 // control.
 type Options struct {
 	suppressStdout bool
-	recreateConfig bool
-}
-
-var defaultOptions = Options{
-	suppressStdout: false,
-	recreateConfig: false,
 }
 
 func waitForRPC(ctx context.Context, conf *cfg.Config) {
@@ -88,7 +80,7 @@ func makeAddrs() (string, string, string) {
 		fmt.Sprintf("tcp://127.0.0.1:%d", randPort())
 }
 
-func createConfig() *cfg.Config {
+func CreateConfig() *cfg.Config {
 	pathname := makePathname()
 	c := cfg.ResetTestRoot(pathname)
 
@@ -106,74 +98,51 @@ func GetGRPCClient(conf *cfg.Config) core_grpc.BroadcastAPIClient {
 	return core_grpc.StartGRPCClient(grpcAddr)
 }
 
-// StartTendermint starts a test tendermint server in a go routine and returns when it is initialized
-func StartTendermint(app abci.Application, opts ...func(*Options)) *nm.Node {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+type ServiceCloser func(context.Context) error
 
-	nodeOpts := defaultOptions
+func StartTendermint(ctx context.Context,
+	conf *cfg.Config,
+	app abci.Application,
+	opts ...func(*Options)) (service.Service, ServiceCloser, error) {
+
+	nodeOpts := &Options{}
 	for _, opt := range opts {
-		opt(&nodeOpts)
+		opt(nodeOpts)
 	}
-	node := NewTendermint(app, &nodeOpts)
-	err := node.Start()
-	if err != nil {
-		panic(err)
-	}
-
-	cfg := node.Config()
-	// wait for rpc
-	waitForRPC(ctx, cfg)
-	waitForGRPC(ctx, cfg)
-
-	if !nodeOpts.suppressStdout {
-		fmt.Println("Tendermint running!")
-	}
-
-	return node
-}
-
-// StopTendermint stops a test tendermint server, waits until it's stopped and
-// cleans up test/config files.
-func StopTendermint(node *nm.Node) {
-	if err := node.Stop(); err != nil {
-		node.Logger.Error("Error when tryint to stop node", "err", err)
-	}
-	node.Wait()
-	os.RemoveAll(node.Config().RootDir)
-}
-
-// NewTendermint creates a new tendermint server and sleeps forever
-func NewTendermint(app abci.Application, opts *Options) *nm.Node {
-	// Create & start node
-	config := createConfig()
 	var logger log.Logger
-	if opts.suppressStdout {
+	if nodeOpts.suppressStdout {
 		logger = log.NewNopLogger()
 	} else {
 		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 		logger = log.NewFilter(logger, log.AllowError())
 	}
-	pvKeyFile := config.PrivValidatorKeyFile()
-	pvKeyStateFile := config.PrivValidatorStateFile()
-	pv, err := privval.LoadOrGenFilePV(pvKeyFile, pvKeyStateFile)
-	if err != nil {
-		panic(err)
-	}
 	papp := proxy.NewLocalClientCreator(app)
-	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
+	node, err := nm.New(conf, logger, papp, nil)
 	if err != nil {
-		panic(err)
+		return nil, func(_ context.Context) error { return nil }, err
 	}
-	node, err := nm.NewNode(config, pv, nodeKey, papp,
-		nm.DefaultGenesisDocProviderFunc(config),
-		nm.DefaultDBProvider,
-		nm.DefaultMetricsProvider(config.Instrumentation),
-		logger)
+
+	err = node.Start()
 	if err != nil {
-		panic(err)
+		return nil, func(_ context.Context) error { return nil }, err
 	}
-	return node
+
+	// wait for rpc
+	waitForRPC(ctx, conf)
+	waitForGRPC(ctx, conf)
+
+	if !nodeOpts.suppressStdout {
+		fmt.Println("Tendermint running!")
+	}
+
+	return node, func(ctx context.Context) error {
+		if err := node.Stop(); err != nil {
+			logger.Error("Error when trying to stop node", "err", err)
+		}
+		node.Wait()
+		os.RemoveAll(conf.RootDir)
+		return nil
+	}, nil
 }
 
 // SuppressStdout is an option that tries to make sure the RPC test Tendermint

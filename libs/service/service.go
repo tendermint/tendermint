@@ -50,6 +50,9 @@ type Service interface {
 
 	// SetLogger sets a logger.
 	SetLogger(log.Logger)
+
+	// Wait blocks until the service is stopped.
+	Wait()
 }
 
 /*

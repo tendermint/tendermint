@@ -63,6 +63,12 @@ func newWsEvents(remote string, wso WSOptions) (*wsEvents, error) {
 		return nil, fmt.Errorf("invalid WSOptions: %w", err)
 	}
 
+	// remove the trailing / from the remote else the websocket endpoint
+	// won't parse correctly
+	if remote[len(remote)-1] == '/' {
+		remote = remote[:len(remote)-1]
+	}
+
 	w := &wsEvents{
 		subscriptions: make(map[string]chan ctypes.ResultEvent),
 	}
