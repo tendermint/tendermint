@@ -5,8 +5,6 @@ parent:
   order: 5
 ---
 
-# Overview
-
 This section dives into the internals of Go-Tendermint.
 
 - [Using Tendermint](./using-tendermint.md)
