@@ -79,6 +79,25 @@ func (txs Txs) Proof(i int) TxProof {
 	}
 }
 
+// Convert []Txs to [][]Byte
+// This method should become obsolete once Txs is switched to [][]byte,
+// ref #2603
+func (txs Txs) ToSliceOfBytes() [][]byte {
+	txBzs := make([][]byte, len(txs))
+	for i := 0; i < len(txs); i++ {
+		txBzs[i] = txs[i]
+	}
+	return txBzs
+}
+
+func ToTxs(txs [][]byte) Txs {
+	txBzs := make(Txs, 0, len(txs))
+	for i := 0; i < len(txs); i++ {
+		txBzs[i] = txs[i]
+	}
+	return txBzs
+}
+
 // TxProof represents a Merkle proof of the presence of a transaction in the Merkle tree.
 type TxProof struct {
 	RootHash tmbytes.HexBytes `json:"root_hash"`

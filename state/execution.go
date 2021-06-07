@@ -110,7 +110,21 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
 
-	return state.MakeBlock(height, txs, commit, evidence, proposerAddr)
+	prePareProposal, err := blockExec.proxyApp.PrepareProposalSync(context.Background(), abci.RequestPrepareProposal{BlockData: txs.ToSliceOfBytes()})
+	if err != nil {
+		// The App MUST ensure that only valid (and hence 'processable')
+		// Tx enter the mempool. Hence, at this point, we can't have any non-processable
+		// transaction causing an error. Also, the App can simply skip any Tx that could cause any
+		// kind of trouble.
+		// Either way, we can not recover in a meaningful way, unless we skip proposing
+		// this block, repair what caused the error and try again.
+		// Hence we panic on purpose for now.
+		panic(err)
+	}
+
+	modifiedTxs := types.ToTxs(prePareProposal.GetBlockData())
+
+	return state.MakeBlock(height, modifiedTxs, commit, evidence, proposerAddr)
 }
 
 // ValidateBlock validates the given block against the given state.
