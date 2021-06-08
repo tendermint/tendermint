@@ -1681,8 +1681,26 @@ func (m *CommitMessage) String() string {
 type HasCommitMessage struct {
 	Height int64
 	Round  int32
-	Type   tmproto.SignedMsgType
 	BlockID types.BlockID
+}
+
+// ValidateBasic performs basic validation.
+func (m *HasCommitMessage) ValidateBasic() error {
+	if m.Height < 0 {
+		return errors.New("negative Height")
+	}
+	if m.Round < 0 {
+		return errors.New("negative Round")
+	}
+	if err := m.BlockID.ValidateBasic(); err != nil {
+		return fmt.Errorf("wrong BlockID: %v", err)
+	}
+	return nil
+}
+
+// String returns a string representation.
+func (m *HasCommitMessage) String() string {
+	return fmt.Sprintf("[HasCommit %v/%02d/%v]", m.Height, m.Round, m.BlockID)
 }
 
 //-------------------------------------

@@ -112,12 +112,14 @@ func MsgToProto(msg Message) (*tmcons.Message, error) {
 				},
 			},
 		}
-	case *Has:
-		commit := msg.Commit.ToProto()
+	case *HasCommitMessage:
+		bi := msg.BlockID.ToProto()
 		pb = tmcons.Message{
-			Sum: &tmcons.Message_Commit{
-				Commit: &tmcons.Commit{
-					Commit: commit,
+			Sum: &tmcons.Message_HasCommit{
+				HasCommit: &tmcons.HasCommit{
+					Height:  msg.Height,
+					Round:   msg.Round,
+					BlockID: bi,
 				},
 			},
 		}
@@ -258,7 +260,6 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 		pb = &HasCommitMessage{
 			Height: msg.HasCommit.Height,
 			Round:  msg.HasCommit.Round,
-			Type:   msg.HasCommit.Type,
 			BlockID: *bi,
 		}
 	case *tmcons.Message_VoteSetMaj23:
