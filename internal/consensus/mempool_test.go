@@ -192,8 +192,8 @@ func TestMempoolRmBadTx(t *testing.T) {
 	txBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(txBytes, uint64(0))
 
-	resDeliver := app.DeliverTx(abci.RequestDeliverTx{Tx: txBytes})
-	assert.False(t, resDeliver.IsErr(), fmt.Sprintf("expected no error. got %v", resDeliver))
+	resDeliver := app.FinalizeBlock(abci.RequestFinalizeBlock{Txs: [][]byte{txBytes}})
+	assert.False(t, resDeliver.Txs[0].IsErr(), fmt.Sprintf("expected no error. got %v", resDeliver))
 
 	resCommit := app.Commit()
 	assert.True(t, len(resCommit.Data) > 0)
@@ -264,15 +264,16 @@ func (app *CounterApplication) Info(req abci.RequestInfo) abci.ResponseInfo {
 	return abci.ResponseInfo{Data: fmt.Sprintf("txs:%v", app.txCount)}
 }
 
-func (app *CounterApplication) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
-	txValue := txAsUint64(req.Tx)
+func (app *CounterApplication) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
+	txValue := txAsUint64(req.Txs[0])
 	if txValue != uint64(app.txCount) {
-		return abci.ResponseDeliverTx{
+		return abci.ResponseFinalizeBlock{Txs: []*abci.ResponseDeliverTx{{
 			Code: code.CodeTypeBadNonce,
-			Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.txCount, txValue)}
+			Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.txCount, txValue)}},
+		}
 	}
 	app.txCount++
-	return abci.ResponseDeliverTx{Code: code.CodeTypeOK}
+	return abci.ResponseFinalizeBlock{Txs: []*abci.ResponseDeliverTx{{Code: code.CodeTypeOK}}}
 }
 
 func (app *CounterApplication) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {

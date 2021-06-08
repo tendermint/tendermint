@@ -213,9 +213,6 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 	case *types.Request_Info:
 		res := s.app.Info(*r.Info)
 		responses <- types.ToResponseInfo(res)
-	case *types.Request_DeliverTx:
-		res := s.app.DeliverTx(*r.DeliverTx)
-		responses <- types.ToResponseDeliverTx(res)
 	case *types.Request_CheckTx:
 		res := s.app.CheckTx(*r.CheckTx)
 		responses <- types.ToResponseCheckTx(res)
@@ -228,12 +225,6 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 	case *types.Request_InitChain:
 		res := s.app.InitChain(*r.InitChain)
 		responses <- types.ToResponseInitChain(res)
-	case *types.Request_BeginBlock:
-		res := s.app.BeginBlock(*r.BeginBlock)
-		responses <- types.ToResponseBeginBlock(res)
-	case *types.Request_EndBlock:
-		res := s.app.EndBlock(*r.EndBlock)
-		responses <- types.ToResponseEndBlock(res)
 	case *types.Request_ListSnapshots:
 		res := s.app.ListSnapshots(*r.ListSnapshots)
 		responses <- types.ToResponseListSnapshots(res)
@@ -258,6 +249,9 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 	case *types.Request_VerifyVoteExtension:
 		res := s.app.VerifyVoteExtension(*r.VerifyVoteExtension)
 		responses <- types.ToResponseVerifyVoteExtension(res)
+	case *types.Request_FinalizeBlock:
+		res := s.app.FinalizeBlock(*r.FinalizeBlock)
+		responses <- types.ToResponseFinalizeBlock(res)
 	default:
 		responses <- types.ToResponseException("Unknown request")
 	}

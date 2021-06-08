@@ -487,16 +487,18 @@ func cmdDeliverTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	res, err := client.DeliverTx(cmd.Context(), types.RequestDeliverTx{Tx: txBytes})
+	res, err := client.FinalizeBlock(cmd.Context(), types.RequestFinalizeBlock{Txs: [][]byte{txBytes}})
 	if err != nil {
 		return err
 	}
-	printResponse(cmd, args, response{
-		Code: res.Code,
-		Data: res.Data,
-		Info: res.Info,
-		Log:  res.Log,
-	})
+	for _, tx := range res.Txs {
+		printResponse(cmd, args, response{
+			Code: tx.Code,
+			Data: tx.Data,
+			Info: tx.Info,
+			Log:  tx.Log,
+		})
+	}
 	return nil
 }
 

@@ -33,14 +33,12 @@ type Client interface {
 
 	// Asynchronous requests
 	FlushAsync(context.Context) (*ReqRes, error)
-	DeliverTxAsync(context.Context, types.RequestDeliverTx) (*ReqRes, error)
 	CheckTxAsync(context.Context, types.RequestCheckTx) (*ReqRes, error)
 
 	// Synchronous requests
 	Flush(context.Context) error
 	Echo(ctx context.Context, msg string) (*types.ResponseEcho, error)
 	Info(context.Context, types.RequestInfo) (*types.ResponseInfo, error)
-	DeliverTx(context.Context, types.RequestDeliverTx) (*types.ResponseDeliverTx, error)
 	CheckTx(context.Context, types.RequestCheckTx) (*types.ResponseCheckTx, error)
 	Query(context.Context, types.RequestQuery) (*types.ResponseQuery, error)
 	Commit(context.Context) (*types.ResponseCommit, error)
@@ -49,12 +47,11 @@ type Client interface {
 	ProcessProposal(context.Context, types.RequestProcessProposal) (*types.ResponseProcessProposal, error)
 	ExtendVote(context.Context, types.RequestExtendVote) (*types.ResponseExtendVote, error)
 	VerifyVoteExtension(context.Context, types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error)
-	BeginBlock(context.Context, types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
-	EndBlock(context.Context, types.RequestEndBlock) (*types.ResponseEndBlock, error)
 	ListSnapshots(context.Context, types.RequestListSnapshots) (*types.ResponseListSnapshots, error)
 	OfferSnapshot(context.Context, types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error)
 	LoadSnapshotChunk(context.Context, types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error)
 	ApplySnapshotChunk(context.Context, types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error)
+	FinalizeBlock(context.Context, types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error)
 }
 
 //----------------------------------------

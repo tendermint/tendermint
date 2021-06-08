@@ -58,17 +58,6 @@ func (app *localClient) FlushAsync(ctx context.Context) (*ReqRes, error) {
 	return newLocalReqRes(types.ToRequestFlush(), nil), nil
 }
 
-func (app *localClient) DeliverTxAsync(ctx context.Context, params types.RequestDeliverTx) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.DeliverTx(params)
-	return app.callback(
-		types.ToRequestDeliverTx(params),
-		types.ToResponseDeliverTx(res),
-	), nil
-}
-
 func (app *localClient) CheckTxAsync(ctx context.Context, req types.RequestCheckTx) (*ReqRes, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
@@ -95,18 +84,6 @@ func (app *localClient) Info(ctx context.Context, req types.RequestInfo) (*types
 	defer app.mtx.Unlock()
 
 	res := app.Application.Info(req)
-	return &res, nil
-}
-
-func (app *localClient) DeliverTx(
-	ctx context.Context,
-	req types.RequestDeliverTx,
-) (*types.ResponseDeliverTx, error) {
-
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.DeliverTx(req)
 	return &res, nil
 }
 
@@ -149,30 +126,6 @@ func (app *localClient) InitChain(
 	defer app.mtx.Unlock()
 
 	res := app.Application.InitChain(req)
-	return &res, nil
-}
-
-func (app *localClient) BeginBlock(
-	ctx context.Context,
-	req types.RequestBeginBlock,
-) (*types.ResponseBeginBlock, error) {
-
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.BeginBlock(req)
-	return &res, nil
-}
-
-func (app *localClient) EndBlock(
-	ctx context.Context,
-	req types.RequestEndBlock,
-) (*types.ResponseEndBlock, error) {
-
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.EndBlock(req)
 	return &res, nil
 }
 
@@ -263,6 +216,17 @@ func (app *localClient) VerifyVoteExtension(
 	defer app.mtx.Unlock()
 
 	res := app.Application.VerifyVoteExtension(req)
+	return &res, nil
+}
+
+func (app *localClient) FinalizeBlock(
+	ctx context.Context,
+	req types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
+
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res := app.Application.FinalizeBlock(req)
 	return &res, nil
 }
 

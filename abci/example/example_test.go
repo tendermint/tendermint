@@ -82,20 +82,22 @@ func testStream(ctx context.Context, t *testing.T, logger log.Logger, app types.
 	client.SetResponseCallback(func(req *types.Request, res *types.Response) {
 		// Process response
 		switch r := res.Value.(type) {
-		case *types.Response_DeliverTx:
-			counter++
-			if r.DeliverTx.Code != code.CodeTypeOK {
-				t.Error("DeliverTx failed with ret_code", r.DeliverTx.Code)
-			}
-			if counter > numDeliverTxs {
-				t.Fatalf("Too many DeliverTx responses. Got %d, expected %d", counter, numDeliverTxs)
-			}
-			if counter == numDeliverTxs {
-				go func() {
-					time.Sleep(time.Second * 1) // Wait for a bit to allow counter overflow
-					close(done)
-				}()
-				return
+		case *types.Response_FinalizeBlock:
+			for _, tx := range r.FinalizeBlock.Txs {
+				counter++
+				if tx.Code != code.CodeTypeOK {
+					t.Error("DeliverTx failed with ret_code", tx.Code)
+				}
+				if counter > numDeliverTxs {
+					t.Fatalf("Too many DeliverTx responses. Got %d, expected %d", counter, numDeliverTxs)
+				}
+				if counter == numDeliverTxs {
+					go func() {
+						time.Sleep(time.Second * 1) // Wait for a bit to allow counter overflow
+						close(done)
+					}()
+					return
+				}
 			}
 		case *types.Response_Flush:
 			// ignore
@@ -107,7 +109,8 @@ func testStream(ctx context.Context, t *testing.T, logger log.Logger, app types.
 	// Write requests
 	for counter := 0; counter < numDeliverTxs; counter++ {
 		// Send request
-		_, err = client.DeliverTxAsync(ctx, types.RequestDeliverTx{Tx: []byte("test")})
+		tx := []byte("test")
+		_, err = client.FinalizeBlockAsync(ctx, types.RequestFinalizeBlock{Txs: [][]byte{tx}})
 		require.NoError(t, err)
 
 		// Sometimes send flush messages
@@ -162,21 +165,24 @@ func testGRPCSync(ctx context.Context, t *testing.T, logger log.Logger, app type
 	// Write requests
 	for counter := 0; counter < numDeliverTxs; counter++ {
 		// Send request
-		response, err := client.DeliverTx(ctx, &types.RequestDeliverTx{Tx: []byte("test")})
-		require.NoError(t, err, "Error in GRPC DeliverTx")
+		txt := []byte("test")
+		response, err := client.FinalizeBlock(ctx, &types.RequestFinalizeBlock{Txs: [][]byte{txt}})
+		require.NoError(t, err, "Error in GRPC FinalizeBlock")
 
 		counter++
-		if response.Code != code.CodeTypeOK {
-			t.Error("DeliverTx failed with ret_code", response.Code)
-		}
-		if counter > numDeliverTxs {
-			t.Fatal("Too many DeliverTx responses")
-		}
-		t.Log("response", counter)
-		if counter == numDeliverTxs {
-			go func() {
-				time.Sleep(time.Second * 1) // Wait for a bit to allow counter overflow
-			}()
+		for _, tx := range response.Txs {
+			if tx.Code != code.CodeTypeOK {
+				t.Error("DeliverTx failed with ret_code", tx.Code)
+			}
+			if counter > numDeliverTxs {
+				t.Fatal("Too many DeliverTx responses")
+			}
+			t.Log("response", counter)
+			if counter == numDeliverTxs {
+				go func() {
+					time.Sleep(time.Second * 1) // Wait for a bit to allow counter overflow
+				}()
+			}
 		}
 
 	}

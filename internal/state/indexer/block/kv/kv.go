@@ -66,13 +66,8 @@ func (idx *BlockerIndexer) Index(bh types.EventDataNewBlockHeader) error {
 	}
 
 	// 2. index BeginBlock events
-	if err := idx.indexEvents(batch, bh.ResultBeginBlock.Events, "begin_block", height); err != nil {
+	if err := idx.indexEvents(batch, bh.ResultFinalizeBlock.Events, "begin_block", height); err != nil {
 		return fmt.Errorf("failed to index BeginBlock events: %w", err)
-	}
-
-	// 3. index EndBlock events
-	if err := idx.indexEvents(batch, bh.ResultEndBlock.Events, "end_block", height); err != nil {
-		return fmt.Errorf("failed to index EndBlock events: %w", err)
 	}
 
 	return batch.WriteSync()
