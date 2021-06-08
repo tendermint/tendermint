@@ -263,16 +263,11 @@ func validatePrevote(t *testing.T, cs *State, round int32, privVal *validatorStu
 	}
 }
 
-func validateLastPrecommit(t *testing.T, cs *State, privVal *validatorStub, blockHash []byte) {
-	votes := cs.LastPrecommits
-	proTxHash, err := privVal.GetProTxHash()
-	require.NoError(t, err)
-	var vote *types.Vote
-	if vote = votes.GetByProTxHash(proTxHash); vote == nil {
-		panic("Failed to find precommit from validator")
-	}
-	if !bytes.Equal(vote.BlockID.Hash, blockHash) {
-		panic(fmt.Sprintf("Expected precommit to be for %X, got %X", blockHash, vote.BlockID.Hash))
+func validateLastCommit(t *testing.T, cs *State, privVal *validatorStub, blockHash []byte) {
+	commit := cs.LastCommit
+	commit.ValidateBasic()
+	if !bytes.Equal(commit.BlockID.Hash, blockHash) {
+		panic(fmt.Sprintf("Expected commit to be for %X, got %X", blockHash, commit.BlockID.Hash))
 	}
 }
 

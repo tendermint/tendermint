@@ -639,7 +639,7 @@ func (cs *State) updateToState(state sm.State) {
 			))
 		}
 
-		cs.LastCommit = cs.Votes.Precommits()
+		cs.LastCommit = cs.Votes.Precommits(cs.CommitRound).MakeCommit()
 
 	case cs.LastCommit == nil:
 		// NOTE: when Tendermint starts, it has no votes. reconstructLastCommit
@@ -1205,10 +1205,10 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
-		commit = types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil, nil)
-	case cs.LastPrecommits.HasTwoThirdsMajority():
+		commit = types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
+	case cs.LastCommit != nil:
 		// Make the commit from LastPrecommits
-		commit = cs.LastPrecommits.MakeCommit()
+		commit = cs.LastCommit
 
 	default: // This shouldn't happen.
 		cs.Logger.Error("propose step; cannot propose anything without commit for the previous block")
@@ -1753,46 +1753,13 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 	// Remember that the first LastPrecommits is intentionally empty, so it's not
 	// fair to increment missing validators number.
 	if height > cs.state.InitialHeight {
-		// Sanity check that commit size matches validator set size - only applies
-		// after first block.
-		var (
-			commitSize = block.LastCommit.Size()
-			valSetLen  = len(cs.LastValidators.Validators)
-			proTxHash  types.ProTxHash
-		)
-		if commitSize != valSetLen {
-			panic(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
-				commitSize, valSetLen, block.Height, block.LastCommit.Signatures, cs.LastValidators.Validators))
-		}
+
 
 		if cs.privValidator != nil {
 			if cs.privValidatorProTxHash == nil {
 				// Metrics won't be updated, but it's not critical.
 				cs.Logger.Error(fmt.Sprintf("recordMetrics: %v", errProTxHashIsNotSet))
-			} else {
-				proTxHash = cs.privValidatorProTxHash
 			}
-		}
-
-		for i, val := range cs.LastValidators.Validators {
-			commitSig := block.LastCommit.Signatures[i]
-			if commitSig.Absent() {
-				missingValidators++
-				missingValidatorsPower += val.VotingPower
-			}
-
-			if bytes.Equal(val.ProTxHash, proTxHash) {
-				label := []string{
-					"validator_pro_tx_hash", val.ProTxHash.String(),
-				}
-				cs.metrics.ValidatorPower.With(label...).Set(float64(val.VotingPower))
-				if commitSig.ForBlock() {
-					cs.metrics.ValidatorLastSignedHeight.With(label...).Set(float64(height))
-				} else {
-					cs.metrics.ValidatorMissedBlocks.With(label...).Add(float64(1))
-				}
-			}
-
 		}
 	}
 	cs.metrics.MissingValidators.Set(float64(missingValidators))

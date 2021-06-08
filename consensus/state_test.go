@@ -339,7 +339,7 @@ func TestStateFullRound1(t *testing.T) {
 	// we're going to roll right into new height
 	ensureNewRound(newRoundCh, height+1, 0)
 
-	validateLastPrecommit(t, cs, vss[0], propBlockHash)
+	validateLastCommit(t, cs, vss[0], propBlockHash)
 }
 
 // nil is proposed, so prevote and precommit nil

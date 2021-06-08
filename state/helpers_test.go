@@ -73,7 +73,6 @@ func makeValidCommit(
 	vals *types.ValidatorSet,
 	privVals map[string]types.PrivValidator,
 ) (*types.Commit, error) {
-	sigs := make([]types.CommitSig, 0)
 	var blockSigs [][]byte
 	var stateSigs [][]byte
 	var blsIDs [][]byte
@@ -83,7 +82,6 @@ func makeValidCommit(
 		if err != nil {
 			return nil, err
 		}
-		sigs = append(sigs, vote.CommitSig())
 		blockSigs = append(blockSigs, vote.BlockSignature)
 		stateSigs = append(stateSigs, vote.StateSignature)
 		blsIDs = append(blsIDs, vote.ValidatorProTxHash)
@@ -92,7 +90,7 @@ func makeValidCommit(
 	thresholdBlockSig, _ := bls12381.RecoverThresholdSignatureFromShares(blockSigs, blsIDs)
 	thresholdStateSig, _ := bls12381.RecoverThresholdSignatureFromShares(stateSigs, blsIDs)
 
-	return types.NewCommit(height, 0, blockID, stateID, sigs, vals.QuorumHash, thresholdBlockSig, thresholdStateSig), nil
+	return types.NewCommit(height, 0, blockID, stateID, vals.QuorumHash, thresholdBlockSig, thresholdStateSig), nil
 }
 
 // make some bogus txs
@@ -228,7 +226,6 @@ func randomGenesisDoc() *types.GenesisDoc {
 type testApp struct {
 	abci.BaseApplication
 
-	CommitVotes         []abci.VoteInfo
 	ByzantineValidators []abci.Evidence
 	ValidatorSetUpdate  *abci.ValidatorSetUpdate
 }
@@ -240,7 +237,6 @@ func (app *testApp) Info(req abci.RequestInfo) (resInfo abci.ResponseInfo) {
 }
 
 func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlock {
-	app.CommitVotes = req.LastCommitInfo.Votes
 	app.ByzantineValidators = req.ByzantineValidators
 	return abci.ResponseBeginBlock{}
 }

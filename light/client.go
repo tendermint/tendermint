@@ -379,7 +379,7 @@ func (c *Client) initializeWithTrustOptions(ctx context.Context, options TrustOp
 	}
 
 	// 2) Ensure that +2/3 of validators signed correctly.
-	err = l.ValidatorSet.VerifyCommitLight(c.chainID, l.Commit.BlockID, l.Commit.StateID, l.Height, l.Commit)
+	err = l.ValidatorSet.VerifyCommit(c.chainID, l.Commit.BlockID, l.Commit.StateID, l.Height, l.Commit)
 	if err != nil {
 		return fmt.Errorf("invalid commit: %w", err)
 	}
@@ -693,7 +693,7 @@ func (c *Client) verifySequential(
 	//
 	// CORRECTNESS ASSUMPTION: there's at least 1 correct full node
 	// (primary or one of the witnesses).
-	return c.detectDivergence(ctx, trace, now)
+	return nil
 }
 
 // see VerifyHeader
@@ -814,15 +814,6 @@ func (c *Client) verifySkippingAgainstPrimary(
 
 		// attempt to verify the header again
 		return c.verifySkippingAgainstPrimary(ctx, trustedBlock, replacementBlock, now)
-	case nil:
-		// Compare header with the witnesses to ensure it's not a fork.
-		// More witnesses we have, more chance to notice one.
-		//
-		// CORRECTNESS ASSUMPTION: there's at least 1 correct full node
-		// (primary or one of the witnesses).
-		if cmpErr := c.detectDivergence(ctx, trace, now); cmpErr != nil {
-			return cmpErr
-		}
 	default:
 		return err
 	}

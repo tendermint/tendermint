@@ -19,12 +19,10 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	mmock "github.com/tendermint/tendermint/mempool/mock"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 var (
@@ -42,10 +40,11 @@ func TestApplyBlock(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
+	// The state is local, so we just take the first proTxHash
+	state.NodeProTxHash = &state.Validators.Validators[0].ProTxHash
 	stateStore := sm.NewStore(stateDB)
 
-	proTxHash := state.Validators.Validators[0].ProTxHash
-	blockExec := sm.NewBlockExecutor(&proTxHash, stateStore, log.TestingLogger(), proxyApp.Consensus(), proxyApp.Query(),
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), proxyApp.Query(),
 		mmock.Mempool{}, sm.EmptyEvidencePool{}, nil)
 
 	block := makeBlock(state, 1)
@@ -69,62 +68,24 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(1, 1)
+	state.NodeProTxHash = &state.Validators.Validators[0].ProTxHash
 	stateStore := sm.NewStore(stateDB)
 
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	privVal := privVals[state.Validators.Validators[0].ProTxHash.String()]
 	blockID := makeBlockID([]byte("headerhash"), 1000, []byte("partshash"))
-	header := &types.Header{
-		Version:            tmversion.Consensus{Block: version.BlockProtocol, App: 1},
-		ChainID:            state.ChainID,
-		Height:             10,
-		Time:               defaultEvidenceTime,
-		LastBlockID:        blockID,
-		LastCommitHash:     crypto.CRandBytes(tmhash.Size),
-		DataHash:           crypto.CRandBytes(tmhash.Size),
-		ValidatorsHash:     state.Validators.Hash(),
-		NextValidatorsHash: state.Validators.Hash(),
-		ConsensusHash:      crypto.CRandBytes(tmhash.Size),
-		AppHash:            crypto.CRandBytes(tmhash.Size),
-		LastResultsHash:    crypto.CRandBytes(tmhash.Size),
-		EvidenceHash:       crypto.CRandBytes(tmhash.Size),
-		ProposerProTxHash:  crypto.RandProTxHash(),
-	}
 
 	// we don't need to worry about validating the evidence as long as they pass validate basic
 	dve := types.NewMockDuplicateVoteEvidenceWithValidator(3, defaultEvidenceTime, privVal, state.ChainID,
 		state.Validators.QuorumType, state.Validators.QuorumHash)
 	dve.ValidatorPower = types.DefaultDashVotingPower
-	lcae := &types.LightClientAttackEvidence{
-		ConflictingBlock: &types.LightBlock{
-			SignedHeader: &types.SignedHeader{
-				Header: header,
-				Commit: types.NewCommit(10, 0, makeBlockID(header.Hash(), 100, []byte("partshash")),
-					makeStateID(header.AppHash), crypto.RandQuorumHash(), crypto.CRandBytes(types.SignatureSize),
-					crypto.CRandBytes(types.SignatureSize),
-				),
-			},
-			ValidatorSet: state.Validators,
-		},
-		CommonHeight:        8,
-		ByzantineValidators: []*types.Validator{state.Validators.Validators[0]},
-		TotalVotingPower:    types.DefaultDashVotingPower,
-		Timestamp:           defaultEvidenceTime,
-	}
 
-	ev := []types.Evidence{dve, lcae}
+	ev := []types.Evidence{dve}
 
 	abciEv := []abci.Evidence{
 		{
 			Type:             abci.EvidenceType_DUPLICATE_VOTE,
 			Height:           3,
-			Time:             defaultEvidenceTime,
-			Validator:        types.TM2PB.Validator(state.Validators.Validators[0]),
-			TotalVotingPower: types.DefaultDashVotingPower,
-		},
-		{
-			Type:             abci.EvidenceType_LIGHT_CLIENT_ATTACK,
-			Height:           8,
 			Time:             defaultEvidenceTime,
 			Validator:        types.TM2PB.Validator(state.Validators.Validators[0]),
 			TotalVotingPower: types.DefaultDashVotingPower,
@@ -136,8 +97,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	evpool.On("Update", mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
 	evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
 
-	proTxHash := state.Validators.Validators[0].ProTxHash
-	blockExec := sm.NewBlockExecutor(&proTxHash, stateStore, log.TestingLogger(), proxyApp.Consensus(), proxyApp.Query(),
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), proxyApp.Query(),
 		mmock.Mempool{}, evpool, nil)
 
 	block := makeBlock(state, 1)
@@ -314,11 +274,10 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
+	state.NodeProTxHash = &state.Validators.Validators[0].ProTxHash
 	stateStore := sm.NewStore(stateDB)
 
-	proTxHash := state.Validators.Validators[0].ProTxHash
 	blockExec := sm.NewBlockExecutor(
-		&proTxHash,
 		stateStore,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
@@ -396,10 +355,10 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
+	state.NodeProTxHash = &state.Validators.Validators[0].ProTxHash
 	stateStore := sm.NewStore(stateDB)
 	proTxHash := state.Validators.Validators[0].ProTxHash
 	blockExec := sm.NewBlockExecutor(
-		&proTxHash,
 		stateStore,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
