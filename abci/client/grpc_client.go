@@ -314,6 +314,22 @@ func (cli *grpcClient) ApplySnapshotChunkAsync(
 	)
 }
 
+func (cli *grpcClient) FinalizeBlockAsync(
+	ctx context.Context,
+	params types.RequestFinalizeBlock,
+) (*ReqRes, error) {
+	req := types.ToRequestFinalizeBlock(params)
+	res, err := cli.client.FinalizeBlock(ctx, req.GetFinalizeBlock(), grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishAsyncCall(
+		ctx,
+		req,
+		&types.Response{Value: &types.Response_FinalizeBlock{FinalizeBlock: res}},
+	)
+}
+
 // finishAsyncCall creates a ReqRes for an async call, and immediately populates it
 // with the response. We don't complete it until it's been ordered via the channel.
 func (cli *grpcClient) finishAsyncCall(ctx context.Context, req *types.Request, res *types.Response) (*ReqRes, error) {
@@ -503,4 +519,15 @@ func (cli *grpcClient) ApplySnapshotChunkSync(
 		return nil, err
 	}
 	return cli.finishSyncCall(reqres).GetApplySnapshotChunk(), cli.Error()
+}
+
+func (cli *grpcClient) FinalizeBlockSync(
+	ctx context.Context,
+	params types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
+
+	reqres, err := cli.FinalizeBlockAsync(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishSyncCall(reqres).GetFinalizeBlock(), cli.Error()
 }

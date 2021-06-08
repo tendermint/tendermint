@@ -170,6 +170,44 @@ func (app *PersistentKVStoreApplication) ApplySnapshotChunk(
 	return types.ResponseApplySnapshotChunk{Result: types.ResponseApplySnapshotChunk_ABORT}
 }
 
+func (app *PersistentKVStoreApplication) FinalizeBlock(
+	req types.RequestFinalizeBlock) types.ResponseFinalizeBlock {
+	// for i, tx := range req.Txs {
+	// 	// if it starts with "val:", update the validator set
+	// 	// format is "val:pubkey!power"
+	// 	if isValidatorTx(tx) {
+	// 		// update validators in the merkle tree
+	// 		// and in app.ValUpdates
+	// 		return app.execValidatorTx(req.Tx)
+	// 	}
+
+	// 	// otherwise, update the key-value store
+	// 	return app.app.DeliverTx(tx)
+	// }
+	// reset valset changes
+	app.ValUpdates = make([]types.ValidatorUpdate, 0)
+
+	// Punish validators who committed equivocation.
+	for _, ev := range req.ByzantineValidators {
+		if ev.Type == types.EvidenceType_DUPLICATE_VOTE {
+			addr := string(ev.Validator.Address)
+			if pubKey, ok := app.valAddrToPubKeyMap[addr]; ok {
+				app.updateValidator(types.ValidatorUpdate{
+					PubKey: pubKey,
+					Power:  ev.Validator.Power - 1,
+				})
+				app.logger.Info("Decreased val power by 1 because of the equivocation",
+					"val", addr)
+			} else {
+				app.logger.Error("Wanted to punish val, but can't find it",
+					"val", addr)
+			}
+		}
+	}
+
+	return types.ResponseFinalizeBlock{ValidatorUpdates: app.ValUpdates}
+}
+
 //---------------------------------------------
 // update validators
 

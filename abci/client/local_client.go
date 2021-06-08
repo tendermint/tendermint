@@ -204,6 +204,20 @@ func (app *localClient) ApplySnapshotChunkAsync(
 	), nil
 }
 
+func (app *localClient) FinalizeBlockAsync(
+	ctx context.Context,
+	req types.RequestFinalizeBlock,
+) (*ReqRes, error) {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res := app.Application.FinalizeBlock(req)
+	return app.callback(
+		types.ToRequestFinalizeBlock(req),
+		types.ToResponseFinalizeBlock(res),
+	), nil
+}
+
 //-------------------------------------------------------
 
 func (app *localClient) FlushSync(ctx context.Context) error {
@@ -343,6 +357,17 @@ func (app *localClient) ApplySnapshotChunkSync(
 	defer app.mtx.Unlock()
 
 	res := app.Application.ApplySnapshotChunk(req)
+	return &res, nil
+}
+
+func (app *localClient) FinalizeBlockSync(
+	ctx context.Context,
+	req types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
+
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res := app.Application.FinalizeBlock(req)
 	return &res, nil
 }
 

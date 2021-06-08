@@ -46,6 +46,7 @@ type Client interface {
 	OfferSnapshotAsync(context.Context, types.RequestOfferSnapshot) (*ReqRes, error)
 	LoadSnapshotChunkAsync(context.Context, types.RequestLoadSnapshotChunk) (*ReqRes, error)
 	ApplySnapshotChunkAsync(context.Context, types.RequestApplySnapshotChunk) (*ReqRes, error)
+	FinalizeBlockAsync(context.Context, types.RequestFinalizeBlock) (*ReqRes, error)
 
 	// Synchronous requests
 	FlushSync(context.Context) error
@@ -62,6 +63,7 @@ type Client interface {
 	OfferSnapshotSync(context.Context, types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error)
 	LoadSnapshotChunkSync(context.Context, types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error)
 	ApplySnapshotChunkSync(context.Context, types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error)
+	FinalizeBlockSync(context.Context, types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error)
 }
 
 //----------------------------------------

@@ -114,6 +114,12 @@ func ToRequestApplySnapshotChunk(req RequestApplySnapshotChunk) *Request {
 	}
 }
 
+func ToRequestFinalizeBlock(req RequestFinalizeBlock) *Request {
+	return &Request{
+		Value: &Request_FinalizeBlock{&req},
+	}
+}
+
 //----------------------------------------
 
 func ToResponseException(errStr string) *Response {
@@ -202,5 +208,11 @@ func ToResponseLoadSnapshotChunk(res ResponseLoadSnapshotChunk) *Response {
 func ToResponseApplySnapshotChunk(res ResponseApplySnapshotChunk) *Response {
 	return &Response{
 		Value: &Response_ApplySnapshotChunk{&res},
+	}
+}
+
+func ToResponseFinalizeBlock(res ResponseFinalizeBlock) *Response {
+	return &Response{
+		Value: &Response_FinalizeBlock{&res},
 	}
 }

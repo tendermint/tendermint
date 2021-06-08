@@ -21,6 +21,7 @@ type AppConnConsensus interface {
 	BeginBlockSync(context.Context, types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	DeliverTxAsync(context.Context, types.RequestDeliverTx) (*abcicli.ReqRes, error)
 	EndBlockSync(context.Context, types.RequestEndBlock) (*types.ResponseEndBlock, error)
+	FinalizeBlockSync(context.Context, types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error)
 	CommitSync(context.Context) (*types.ResponseCommit, error)
 }
 
@@ -100,6 +101,10 @@ func (app *appConnConsensus) EndBlockSync(
 
 func (app *appConnConsensus) CommitSync(ctx context.Context) (*types.ResponseCommit, error) {
 	return app.appConn.CommitSync(ctx)
+}
+
+func (app *appConnConsensus) FinalizeBlockSync(ctx context.Context, req types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
+	return app.appConn.FinalizeBlockSync(ctx, req)
 }
 
 //------------------------------------------------
