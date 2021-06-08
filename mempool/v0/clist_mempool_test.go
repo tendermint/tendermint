@@ -362,24 +362,29 @@ func TestSerialReap(t *testing.T) {
 	commitRange := func(start, end int) {
 		ctx := context.Background()
 		// Deliver some txs.
+		var txs = make([][]byte, start-end)
 		for i := start; i < end; i++ {
 			txBytes := make([]byte, 8)
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
-			res, err := appConnCon.DeliverTxSync(ctx, abci.RequestDeliverTx{Tx: txBytes})
-			if err != nil {
-				t.Errorf("client error committing tx: %v", err)
-			}
-			if res.IsErr() {
+			txs[i] = txBytes
+		}
+		res, err := appConnCon.FinalizeBlockSync(ctx, abci.RequestFinalizeBlock{Txs: txs})
+		if err != nil {
+			t.Errorf("client error committing tx: %v", err)
+		}
+		for _, tx := range res.Txs {
+			if tx.IsErr() {
 				t.Errorf("error committing tx. Code:%v result:%X log:%v",
-					res.Code, res.Data, res.Log)
+					tx.Code, tx.Data, tx.Log)
 			}
 		}
-		res, err := appConnCon.CommitSync(ctx)
+
+		resCommit, err := appConnCon.CommitSync(ctx)
 		if err != nil {
 			t.Errorf("client error committing: %v", err)
 		}
-		if len(res.Data) != 8 {
-			t.Errorf("error committing. Hash:%X", res.Data)
+		if len(resCommit.Data) != 8 {
+			t.Errorf("error committing. Hash:%X", resCommit.Data)
 		}
 	}
 
@@ -529,9 +534,11 @@ func TestMempoolTxsBytes(t *testing.T) {
 		}
 	})
 	ctx := context.Background()
-	res, err := appConnCon.DeliverTxSync(ctx, abci.RequestDeliverTx{Tx: txBytes})
+	res, err := appConnCon.FinalizeBlockSync(ctx, abci.RequestFinalizeBlock{Txs: [][]byte{txBytes}})
 	require.NoError(t, err)
-	require.EqualValues(t, 0, res.Code)
+	for _, tx := range res.Txs {
+		require.EqualValues(t, 0, tx.Code)
+	}
 	res2, err := appConnCon.CommitSync(ctx)
 	require.NoError(t, err)
 	require.NotEmpty(t, res2.Data)

@@ -27,12 +27,16 @@ const (
 var ctx = context.Background()
 
 func testKVStore(t *testing.T, app types.Application, tx []byte, key, value string) {
-	req := types.RequestDeliverTx{Tx: tx}
-	ar := app.DeliverTx(req)
-	require.False(t, ar.IsErr(), ar)
+	req := types.RequestFinalizeBlock{Txs: [][]byte{tx}}
+	ar := app.FinalizeBlock(req)
+	for _, tx := range ar.Txs {
+		require.False(t, tx.IsErr(), ar)
+	}
 	// repeating tx doesn't raise error
-	ar = app.DeliverTx(req)
-	require.False(t, ar.IsErr(), ar)
+	ar = app.FinalizeBlock(req)
+	for _, tx := range ar.Txs {
+		require.False(t, tx.IsErr(), ar)
+	}
 	// commit
 	app.Commit()
 
@@ -200,16 +204,15 @@ func makeApplyBlock(
 		Height: height,
 	}
 
-	kvstore.BeginBlock(types.RequestBeginBlock{Hash: hash, Header: header})
-	for _, tx := range txs {
-		if r := kvstore.DeliverTx(types.RequestDeliverTx{Tx: tx}); r.IsErr() {
-			t.Fatal(r)
-		}
-	}
-	resEndBlock := kvstore.EndBlock(types.RequestEndBlock{Height: header.Height})
+	resFinalizeBlock := kvstore.FinalizeBlock(types.RequestFinalizeBlock{
+		Hash:   hash,
+		Header: header,
+		Txs:    txs,
+	})
+
 	kvstore.Commit()
 
-	valsEqual(t, diff, resEndBlock.ValidatorUpdates)
+	valsEqual(t, diff, resFinalizeBlock.ValidatorUpdates)
 
 }
 
@@ -326,13 +329,16 @@ func runClientTests(t *testing.T, client abcicli.Client) {
 }
 
 func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) {
-	ar, err := app.DeliverTxSync(ctx, types.RequestDeliverTx{Tx: tx})
+	ar, err := app.FinalizeBlockSync(ctx, types.RequestFinalizeBlock{Txs: [][]byte{tx}})
+	for _, tx := range ar.Txs {
+		require.False(t, tx.IsErr(), ar)
+	}
+
+	ar, err = app.FinalizeBlockSync(ctx, types.RequestFinalizeBlock{Txs: [][]byte{tx}}) // repeating tx doesn't raise error
 	require.NoError(t, err)
-	require.False(t, ar.IsErr(), ar)
-	// repeating tx doesn't raise error
-	ar, err = app.DeliverTxSync(ctx, types.RequestDeliverTx{Tx: tx})
-	require.NoError(t, err)
-	require.False(t, ar.IsErr(), ar)
+	for _, tx := range ar.Txs {
+		require.False(t, tx.IsErr(), ar)
+	}
 	// commit
 	_, err = app.CommitSync(ctx)
 	require.NoError(t, err)

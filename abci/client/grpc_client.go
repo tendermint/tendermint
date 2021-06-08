@@ -195,16 +195,6 @@ func (cli *grpcClient) InfoAsync(ctx context.Context, params types.RequestInfo) 
 }
 
 // NOTE: call is synchronous, use ctx to break early if needed
-func (cli *grpcClient) DeliverTxAsync(ctx context.Context, params types.RequestDeliverTx) (*ReqRes, error) {
-	req := types.ToRequestDeliverTx(params)
-	res, err := cli.client.DeliverTx(ctx, req.GetDeliverTx(), grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_DeliverTx{DeliverTx: res}})
-}
-
-// NOTE: call is synchronous, use ctx to break early if needed
 func (cli *grpcClient) CheckTxAsync(ctx context.Context, params types.RequestCheckTx) (*ReqRes, error) {
 	req := types.ToRequestCheckTx(params)
 	res, err := cli.client.CheckTx(ctx, req.GetCheckTx(), grpc.WaitForReady(true))
@@ -242,26 +232,6 @@ func (cli *grpcClient) InitChainAsync(ctx context.Context, params types.RequestI
 		return nil, err
 	}
 	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_InitChain{InitChain: res}})
-}
-
-// NOTE: call is synchronous, use ctx to break early if needed
-func (cli *grpcClient) BeginBlockAsync(ctx context.Context, params types.RequestBeginBlock) (*ReqRes, error) {
-	req := types.ToRequestBeginBlock(params)
-	res, err := cli.client.BeginBlock(ctx, req.GetBeginBlock(), grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_BeginBlock{BeginBlock: res}})
-}
-
-// NOTE: call is synchronous, use ctx to break early if needed
-func (cli *grpcClient) EndBlockAsync(ctx context.Context, params types.RequestEndBlock) (*ReqRes, error) {
-	req := types.ToRequestEndBlock(params)
-	res, err := cli.client.EndBlock(ctx, req.GetEndBlock(), grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_EndBlock{EndBlock: res}})
 }
 
 // NOTE: call is synchronous, use ctx to break early if needed
@@ -396,18 +366,6 @@ func (cli *grpcClient) InfoSync(
 	return cli.finishSyncCall(reqres).GetInfo(), cli.Error()
 }
 
-func (cli *grpcClient) DeliverTxSync(
-	ctx context.Context,
-	params types.RequestDeliverTx,
-) (*types.ResponseDeliverTx, error) {
-
-	reqres, err := cli.DeliverTxAsync(ctx, params)
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishSyncCall(reqres).GetDeliverTx(), cli.Error()
-}
-
 func (cli *grpcClient) CheckTxSync(
 	ctx context.Context,
 	params types.RequestCheckTx,
@@ -449,30 +407,6 @@ func (cli *grpcClient) InitChainSync(
 		return nil, err
 	}
 	return cli.finishSyncCall(reqres).GetInitChain(), cli.Error()
-}
-
-func (cli *grpcClient) BeginBlockSync(
-	ctx context.Context,
-	params types.RequestBeginBlock,
-) (*types.ResponseBeginBlock, error) {
-
-	reqres, err := cli.BeginBlockAsync(ctx, params)
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishSyncCall(reqres).GetBeginBlock(), cli.Error()
-}
-
-func (cli *grpcClient) EndBlockSync(
-	ctx context.Context,
-	params types.RequestEndBlock,
-) (*types.ResponseEndBlock, error) {
-
-	reqres, err := cli.EndBlockAsync(ctx, params)
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishSyncCall(reqres).GetEndBlock(), cli.Error()
 }
 
 func (cli *grpcClient) ListSnapshotsSync(

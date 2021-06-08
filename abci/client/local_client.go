@@ -77,17 +77,6 @@ func (app *localClient) InfoAsync(ctx context.Context, req types.RequestInfo) (*
 	), nil
 }
 
-func (app *localClient) DeliverTxAsync(ctx context.Context, params types.RequestDeliverTx) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.DeliverTx(params)
-	return app.callback(
-		types.ToRequestDeliverTx(params),
-		types.ToResponseDeliverTx(res),
-	), nil
-}
-
 func (app *localClient) CheckTxAsync(ctx context.Context, req types.RequestCheckTx) (*ReqRes, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
@@ -129,28 +118,6 @@ func (app *localClient) InitChainAsync(ctx context.Context, req types.RequestIni
 	return app.callback(
 		types.ToRequestInitChain(req),
 		types.ToResponseInitChain(res),
-	), nil
-}
-
-func (app *localClient) BeginBlockAsync(ctx context.Context, req types.RequestBeginBlock) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.BeginBlock(req)
-	return app.callback(
-		types.ToRequestBeginBlock(req),
-		types.ToResponseBeginBlock(res),
-	), nil
-}
-
-func (app *localClient) EndBlockAsync(ctx context.Context, req types.RequestEndBlock) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.EndBlock(req)
-	return app.callback(
-		types.ToRequestEndBlock(req),
-		types.ToResponseEndBlock(res),
 	), nil
 }
 
@@ -236,18 +203,6 @@ func (app *localClient) InfoSync(ctx context.Context, req types.RequestInfo) (*t
 	return &res, nil
 }
 
-func (app *localClient) DeliverTxSync(
-	ctx context.Context,
-	req types.RequestDeliverTx,
-) (*types.ResponseDeliverTx, error) {
-
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.DeliverTx(req)
-	return &res, nil
-}
-
 func (app *localClient) CheckTxSync(
 	ctx context.Context,
 	req types.RequestCheckTx,
@@ -287,30 +242,6 @@ func (app *localClient) InitChainSync(
 	defer app.mtx.Unlock()
 
 	res := app.Application.InitChain(req)
-	return &res, nil
-}
-
-func (app *localClient) BeginBlockSync(
-	ctx context.Context,
-	req types.RequestBeginBlock,
-) (*types.ResponseBeginBlock, error) {
-
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.BeginBlock(req)
-	return &res, nil
-}
-
-func (app *localClient) EndBlockSync(
-	ctx context.Context,
-	req types.RequestEndBlock,
-) (*types.ResponseEndBlock, error) {
-
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.EndBlock(req)
 	return &res, nil
 }
 

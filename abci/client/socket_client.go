@@ -245,10 +245,6 @@ func (cli *socketClient) InfoAsync(ctx context.Context, req types.RequestInfo) (
 	return cli.queueRequestAsync(ctx, types.ToRequestInfo(req))
 }
 
-func (cli *socketClient) DeliverTxAsync(ctx context.Context, req types.RequestDeliverTx) (*ReqRes, error) {
-	return cli.queueRequestAsync(ctx, types.ToRequestDeliverTx(req))
-}
-
 func (cli *socketClient) CheckTxAsync(ctx context.Context, req types.RequestCheckTx) (*ReqRes, error) {
 	return cli.queueRequestAsync(ctx, types.ToRequestCheckTx(req))
 }
@@ -263,14 +259,6 @@ func (cli *socketClient) CommitAsync(ctx context.Context) (*ReqRes, error) {
 
 func (cli *socketClient) InitChainAsync(ctx context.Context, req types.RequestInitChain) (*ReqRes, error) {
 	return cli.queueRequestAsync(ctx, types.ToRequestInitChain(req))
-}
-
-func (cli *socketClient) BeginBlockAsync(ctx context.Context, req types.RequestBeginBlock) (*ReqRes, error) {
-	return cli.queueRequestAsync(ctx, types.ToRequestBeginBlock(req))
-}
-
-func (cli *socketClient) EndBlockAsync(ctx context.Context, req types.RequestEndBlock) (*ReqRes, error) {
-	return cli.queueRequestAsync(ctx, types.ToRequestEndBlock(req))
 }
 
 func (cli *socketClient) ListSnapshotsAsync(ctx context.Context, req types.RequestListSnapshots) (*ReqRes, error) {
@@ -348,18 +336,6 @@ func (cli *socketClient) InfoSync(
 	return reqres.Response.GetInfo(), nil
 }
 
-func (cli *socketClient) DeliverTxSync(
-	ctx context.Context,
-	req types.RequestDeliverTx,
-) (*types.ResponseDeliverTx, error) {
-
-	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestDeliverTx(req))
-	if err != nil {
-		return nil, err
-	}
-	return reqres.Response.GetDeliverTx(), nil
-}
-
 func (cli *socketClient) CheckTxSync(
 	ctx context.Context,
 	req types.RequestCheckTx,
@@ -400,30 +376,6 @@ func (cli *socketClient) InitChainSync(
 		return nil, err
 	}
 	return reqres.Response.GetInitChain(), nil
-}
-
-func (cli *socketClient) BeginBlockSync(
-	ctx context.Context,
-	req types.RequestBeginBlock,
-) (*types.ResponseBeginBlock, error) {
-
-	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestBeginBlock(req))
-	if err != nil {
-		return nil, err
-	}
-	return reqres.Response.GetBeginBlock(), nil
-}
-
-func (cli *socketClient) EndBlockSync(
-	ctx context.Context,
-	req types.RequestEndBlock,
-) (*types.ResponseEndBlock, error) {
-
-	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestEndBlock(req))
-	if err != nil {
-		return nil, err
-	}
-	return reqres.Response.GetEndBlock(), nil
 }
 
 func (cli *socketClient) ListSnapshotsSync(
@@ -587,8 +539,6 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_Flush)
 	case *types.Request_Info:
 		_, ok = res.Value.(*types.Response_Info)
-	case *types.Request_DeliverTx:
-		_, ok = res.Value.(*types.Response_DeliverTx)
 	case *types.Request_CheckTx:
 		_, ok = res.Value.(*types.Response_CheckTx)
 	case *types.Request_Commit:
@@ -597,10 +547,6 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_Query)
 	case *types.Request_InitChain:
 		_, ok = res.Value.(*types.Response_InitChain)
-	case *types.Request_BeginBlock:
-		_, ok = res.Value.(*types.Response_BeginBlock)
-	case *types.Request_EndBlock:
-		_, ok = res.Value.(*types.Response_EndBlock)
 	case *types.Request_ApplySnapshotChunk:
 		_, ok = res.Value.(*types.Response_ApplySnapshotChunk)
 	case *types.Request_LoadSnapshotChunk:

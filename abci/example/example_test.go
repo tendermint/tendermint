@@ -103,7 +103,8 @@ func testStream(t *testing.T, app types.Application) {
 	// Write requests
 	for counter := 0; counter < numDeliverTxs; counter++ {
 		// Send request
-		_, err = client.DeliverTxAsync(ctx, types.RequestDeliverTx{Tx: []byte("test")})
+		tx := []byte("test")
+		_, err = client.FinalizeBlockAsync(ctx, types.RequestFinalizeBlock{Txs: [][]byte{tx}})
 		require.NoError(t, err)
 
 		// Sometimes send flush messages
@@ -163,22 +164,25 @@ func testGRPCSync(t *testing.T, app types.ABCIApplicationServer) {
 	// Write requests
 	for counter := 0; counter < numDeliverTxs; counter++ {
 		// Send request
-		response, err := client.DeliverTx(context.Background(), &types.RequestDeliverTx{Tx: []byte("test")})
+		txt := []byte("test")
+		response, err := client.FinalizeBlock(context.Background(), &types.RequestFinalizeBlock{Txs: [][]byte{txt}})
 		if err != nil {
 			t.Fatalf("Error in GRPC DeliverTx: %v", err.Error())
 		}
 		counter++
-		if response.Code != code.CodeTypeOK {
-			t.Error("DeliverTx failed with ret_code", response.Code)
-		}
-		if counter > numDeliverTxs {
-			t.Fatal("Too many DeliverTx responses")
-		}
-		t.Log("response", counter)
-		if counter == numDeliverTxs {
-			go func() {
-				time.Sleep(time.Second * 1) // Wait for a bit to allow counter overflow
-			}()
+		for _, tx := range response.Txs {
+			if tx.Code != code.CodeTypeOK {
+				t.Error("DeliverTx failed with ret_code", tx.Code)
+			}
+			if counter > numDeliverTxs {
+				t.Fatal("Too many DeliverTx responses")
+			}
+			t.Log("response", counter)
+			if counter == numDeliverTxs {
+				go func() {
+					time.Sleep(time.Second * 1) // Wait for a bit to allow counter overflow
+				}()
+			}
 		}
 
 	}

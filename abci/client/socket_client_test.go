@@ -37,11 +37,11 @@ func TestProperSyncCalls(t *testing.T) {
 	resp := make(chan error, 1)
 	go func() {
 		// This is BeginBlockSync unrolled....
-		reqres, err := c.BeginBlockAsync(ctx, types.RequestBeginBlock{})
+		reqres, err := c.FinalizeBlockAsync(ctx, types.RequestFinalizeBlock{})
 		assert.NoError(t, err)
 		err = c.FlushSync(context.Background())
 		assert.NoError(t, err)
-		res := reqres.Response.GetBeginBlock()
+		res := reqres.Response.GetFinalizeBlock()
 		assert.NotNil(t, res)
 		resp <- c.Error()
 	}()
@@ -73,7 +73,7 @@ func TestHangingSyncCalls(t *testing.T) {
 	resp := make(chan error, 1)
 	go func() {
 		// Start BeginBlock and flush it
-		reqres, err := c.BeginBlockAsync(ctx, types.RequestBeginBlock{})
+		reqres, err := c.FinalizeBlockAsync(ctx, types.RequestFinalizeBlock{})
 		assert.NoError(t, err)
 		flush, err := c.FlushAsync(ctx)
 		assert.NoError(t, err)
@@ -84,7 +84,7 @@ func TestHangingSyncCalls(t *testing.T) {
 		err = s.Stop()
 		assert.NoError(t, err)
 
-		// wait for the response from BeginBlock
+		// wait for the response from FinalizeBlock
 		reqres.Wait()
 		flush.Wait()
 		resp <- c.Error()
