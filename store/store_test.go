@@ -58,12 +58,8 @@ func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Bl
 
 func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFunc) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
-	// blockDB := dbm.NewDebugDB("blockDB", dbm.NewMemDB())
-	// stateDB := dbm.NewDebugDB("stateDB", dbm.NewMemDB())
 	blockDB := dbm.NewMemDB()
-	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB)
-	state, err := stateStore.LoadFromDBOrGenesisFile(config.GenesisFile())
+	state, err := sm.MakeGenesisStateFromFile(config.GenesisFile())
 	if err != nil {
 		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}
@@ -309,8 +305,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 func TestLoadBaseMeta(t *testing.T) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
-	stateStore := sm.NewStore(dbm.NewMemDB())
-	state, err := stateStore.LoadFromDBOrGenesisFile(config.GenesisFile())
+	state, err := sm.MakeGenesisStateFromFile(config.GenesisFile())
 	require.NoError(t, err)
 	bs := NewBlockStore(dbm.NewMemDB())
 
@@ -366,8 +361,7 @@ func TestLoadBlockPart(t *testing.T) {
 func TestPruneBlocks(t *testing.T) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
-	stateStore := sm.NewStore(dbm.NewMemDB())
-	state, err := stateStore.LoadFromDBOrGenesisFile(config.GenesisFile())
+	state, err := sm.MakeGenesisStateFromFile(config.GenesisFile())
 	require.NoError(t, err)
 	db := dbm.NewMemDB()
 	bs := NewBlockStore(db)

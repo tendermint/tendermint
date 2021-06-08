@@ -151,8 +151,8 @@ type testReactorParams struct {
 	mockA       bool
 }
 
-func newTestReactor(p testReactorParams) *BlockchainReactor {
-	store, state, _ := newReactorStore(p.genDoc, p.privVals, p.startHeight)
+func newTestReactor(t *testing.T, p testReactorParams) *BlockchainReactor {
+	store, state, _ := newReactorStore(t, p.genDoc, p.privVals, p.startHeight)
 	reporter := behavior.NewMockReporter()
 
 	var appl blockApplier
@@ -164,15 +164,12 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 		cc := proxy.NewLocalClientCreator(app)
 		proxyApp := proxy.NewAppConns(cc)
 		err := proxyApp.Start()
-		if err != nil {
-			panic(fmt.Errorf("error start app: %w", err))
-		}
+		require.NoError(t, err)
 		db := dbm.NewMemDB()
 		stateStore := sm.NewStore(db)
 		appl = sm.NewBlockExecutor(stateStore, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.EmptyEvidencePool{})
-		if err = stateStore.Save(state); err != nil {
-			panic(err)
-		}
+		err = stateStore.Save(state)
+		require.NoError(t, err)
 	}
 
 	r := newReactor(state, store, reporter, appl, true)
@@ -400,7 +397,7 @@ func TestReactorHelperMode(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			reactor := newTestReactor(params)
+			reactor := newTestReactor(t, params)
 			mockSwitch := &mockSwitchIo{switchedToConsensus: false}
 			reactor.io = mockSwitch
 			err := reactor.Start()
@@ -457,7 +454,7 @@ func TestReactorSetSwitchNil(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
 
-	reactor := newTestReactor(testReactorParams{
+	reactor := newTestReactor(t, testReactorParams{
 		logger:   log.TestingLogger(),
 		genDoc:   genDoc,
 		privVals: privVals,
@@ -487,15 +484,14 @@ type testApp struct {
 	abci.BaseApplication
 }
 
-// Why are we importing the entire blockExecutor dependency graph here
-// when we have the facilities to
 func newReactorStore(
+	t *testing.T,
 	genDoc *types.GenesisDoc,
 	privVals []types.PrivValidator,
 	maxBlockHeight int64) (*store.BlockStore, sm.State, *sm.BlockExecutor) {
-	if len(privVals) != 1 {
-		panic("only support one validator")
-	}
+	t.Helper()
+
+	require.Len(t, privVals, 1)
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc)
@@ -507,18 +503,13 @@ func newReactorStore(
 	stateDB := dbm.NewMemDB()
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	stateStore := sm.NewStore(stateDB)
-	state, err := stateStore.LoadFromDBOrGenesisDoc(genDoc)
-	if err != nil {
-		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
-	}
+	state, err := sm.MakeGenesisState(genDoc)
+	require.NoError(t, err)
 
-	db := dbm.NewMemDB()
-	stateStore = sm.NewStore(db)
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
 		mock.Mempool{}, sm.EmptyEvidencePool{})
-	if err = stateStore.Save(state); err != nil {
-		panic(err)
-	}
+	err = stateStore.Save(state)
+	require.NoError(t, err)
 
 	// add blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
@@ -533,9 +524,7 @@ func newReactorStore(
 				lastBlockMeta.BlockID,
 				time.Now(),
 			)
-			if err != nil {
-				panic(err)
-			}
+			require.NoError(t, err)
 			lastCommit = types.NewCommit(vote.Height, vote.Round,
 				lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
 		}
@@ -546,9 +535,7 @@ func newReactorStore(
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
 		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
-		if err != nil {
-			panic(fmt.Errorf("error apply block: %w", err))
-		}
+		require.NoError(t, err)
 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
 	}

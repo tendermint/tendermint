@@ -108,7 +108,7 @@ func BenchmarkLoadValidators(b *testing.B) {
 	stateDB, err := dbm.NewDB("state", dbType, config.DBDir())
 	require.NoError(b, err)
 	stateStore := sm.NewStore(stateDB)
-	state, err := stateStore.LoadFromDBOrGenesisFile(config.GenesisFile())
+	state, err := sm.MakeGenesisStateFromFile(config.GenesisFile())
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -117,6 +117,8 @@ func BenchmarkLoadValidators(b *testing.B) {
 	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
 	err = stateStore.Save(state)
 	require.NoError(b, err)
+
+	b.ResetTimer()
 
 	for i := 10; i < 10000000000; i *= 10 { // 10, 100, 1000, ...
 		i := i

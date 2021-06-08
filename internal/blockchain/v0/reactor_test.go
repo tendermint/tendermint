@@ -103,11 +103,9 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(blockDB)
 
-	state, err := stateStore.LoadFromDBOrGenesisDoc(genDoc)
+	state, err := sm.MakeGenesisState(genDoc)
 	require.NoError(t, err)
-
-	db := dbm.NewMemDB()
-	stateStore = sm.NewStore(db)
+	require.NoError(t, stateStore.Save(state))
 
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
@@ -116,7 +114,6 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 		mock.Mempool{},
 		sm.EmptyEvidencePool{},
 	)
-	require.NoError(t, stateStore.Save(state))
 
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
 		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, nil)
