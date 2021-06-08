@@ -24,6 +24,7 @@ import (
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p/conn"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -38,7 +39,7 @@ func init() {
 }
 
 type PeerMessage struct {
-	PeerID  NodeID
+	PeerID  types.NodeID
 	Bytes   []byte
 	Counter int
 }
@@ -242,7 +243,7 @@ func TestSwitchPeerFilter(t *testing.T) {
 	rp.Start()
 	t.Cleanup(rp.Stop)
 
-	c, err := sw.transport.Dial(ctx, rp.Addr().Endpoint())
+	c, err := sw.transport.Dial(ctx, NewEndpoint(rp.Addr()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -299,7 +300,7 @@ func TestSwitchPeerFilterTimeout(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	c, err := sw.transport.Dial(ctx, rp.Addr().Endpoint())
+	c, err := sw.transport.Dial(ctx, NewEndpoint(rp.Addr()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -335,7 +336,7 @@ func TestSwitchPeerFilterDuplicate(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	c, err := sw.transport.Dial(ctx, rp.Addr().Endpoint())
+	c, err := sw.transport.Dial(ctx, NewEndpoint(rp.Addr()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -390,7 +391,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	c, err := sw.transport.Dial(ctx, rp.Addr().Endpoint())
+	c, err := sw.transport.Dial(ctx, NewEndpoint(rp.Addr()))
 	if err != nil {
 		t.Fatal(err)
 	}

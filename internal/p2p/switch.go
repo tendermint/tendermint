@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/libs/cmap"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -56,7 +57,7 @@ type AddrBook interface {
 	AddPrivateIDs([]string)
 	AddOurAddress(*NetAddress)
 	OurAddress(*NetAddress) bool
-	MarkGood(NodeID)
+	MarkGood(types.NodeID)
 	RemoveAddress(*NetAddress)
 	HasAddress(*NetAddress) bool
 	Save()
@@ -107,7 +108,7 @@ type Switch struct {
 	addrBook     AddrBook
 	// peers addresses with whom we'll maintain constant connection
 	persistentPeersAddrs []*NetAddress
-	unconditionalPeerIDs map[NodeID]struct{}
+	unconditionalPeerIDs map[types.NodeID]struct{}
 
 	transport Transport
 
@@ -153,7 +154,7 @@ func NewSwitch(
 		metrics:              NopMetrics(),
 		transport:            transport,
 		persistentPeersAddrs: make([]*NetAddress, 0),
-		unconditionalPeerIDs: make(map[NodeID]struct{}),
+		unconditionalPeerIDs: make(map[types.NodeID]struct{}),
 		filterTimeout:        defaultFilterTimeout,
 		conns:                NewConnSet(),
 	}
@@ -352,7 +353,7 @@ func (sw *Switch) NumPeers() (outbound, inbound, dialing int) {
 	return
 }
 
-func (sw *Switch) IsPeerUnconditional(id NodeID) bool {
+func (sw *Switch) IsPeerUnconditional(id types.NodeID) bool {
 	_, ok := sw.unconditionalPeerIDs[id]
 	return ok
 }
@@ -510,14 +511,14 @@ func isPrivateAddr(err error) bool {
 // encounter is returned.
 // Nop if there are no peers.
 func (sw *Switch) DialPeersAsync(peers []string) error {
-	netAddrs, errs := NewNetAddressStrings(peers)
+	netAddrs, errs := types.NewNetAddressStrings(peers)
 	// report all the errors
 	for _, err := range errs {
 		sw.Logger.Error("Error in peer's address", "err", err)
 	}
 	// return first non-ErrNetAddressLookup error
 	for _, err := range errs {
-		if _, ok := err.(ErrNetAddressLookup); ok {
+		if _, ok := err.(types.ErrNetAddressLookup); ok {
 			continue
 		}
 		return err
@@ -614,14 +615,14 @@ func (sw *Switch) IsDialingOrExistingAddress(addr *NetAddress) bool {
 // returned.
 func (sw *Switch) AddPersistentPeers(addrs []string) error {
 	sw.Logger.Info("Adding persistent peers", "addrs", addrs)
-	netAddrs, errs := NewNetAddressStrings(addrs)
+	netAddrs, errs := types.NewNetAddressStrings(addrs)
 	// report all the errors
 	for _, err := range errs {
 		sw.Logger.Error("Error in peer's address", "err", err)
 	}
 	// return first non-ErrNetAddressLookup error
 	for _, err := range errs {
-		if _, ok := err.(ErrNetAddressLookup); ok {
+		if _, ok := err.(types.ErrNetAddressLookup); ok {
 			continue
 		}
 		return err
@@ -633,11 +634,11 @@ func (sw *Switch) AddPersistentPeers(addrs []string) error {
 func (sw *Switch) AddUnconditionalPeerIDs(ids []string) error {
 	sw.Logger.Info("Adding unconditional peer ids", "ids", ids)
 	for i, id := range ids {
-		err := NodeID(id).Validate()
+		err := types.NodeID(id).Validate()
 		if err != nil {
 			return fmt.Errorf("wrong ID #%d: %w", i, err)
 		}
-		sw.unconditionalPeerIDs[NodeID(id)] = struct{}{}
+		sw.unconditionalPeerIDs[types.NodeID(id)] = struct{}{}
 	}
 	return nil
 }
@@ -645,7 +646,7 @@ func (sw *Switch) AddUnconditionalPeerIDs(ids []string) error {
 func (sw *Switch) AddPrivatePeerIDs(ids []string) error {
 	validIDs := make([]string, 0, len(ids))
 	for i, id := range ids {
-		err := NodeID(id).Validate()
+		err := types.NodeID(id).Validate()
 		if err != nil {
 			return fmt.Errorf("wrong ID #%d: %w", i, err)
 		}
@@ -855,7 +856,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	return nil
 }
 
-func (sw *Switch) handshakePeer(c Connection, expectPeerID NodeID) (NodeInfo, crypto.PubKey, error) {
+func (sw *Switch) handshakePeer(c Connection, expectPeerID types.NodeID) (NodeInfo, crypto.PubKey, error) {
 	// Moved from transport and hardcoded until legacy P2P stack removal.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -879,7 +880,7 @@ func (sw *Switch) handshakePeer(c Connection, expectPeerID NodeID) (NodeInfo, cr
 
 	// For outgoing conns, ensure connection key matches dialed key.
 	if expectPeerID != "" {
-		peerID := NodeIDFromPubKey(peerKey)
+		peerID := types.NodeIDFromPubKey(peerKey)
 		if expectPeerID != peerID {
 			return peerInfo, peerKey, ErrRejected{
 				conn: c.(*mConnConnection).conn,
@@ -896,7 +897,7 @@ func (sw *Switch) handshakePeer(c Connection, expectPeerID NodeID) (NodeInfo, cr
 
 	if sw.nodeInfo.ID() == peerInfo.ID() {
 		return peerInfo, peerKey, ErrRejected{
-			addr:   *NewNetAddress(peerInfo.ID(), c.(*mConnConnection).conn.RemoteAddr()),
+			addr:   *types.NewNetAddress(peerInfo.ID(), c.(*mConnConnection).conn.RemoteAddr()),
 			conn:   c.(*mConnConnection).conn,
 			id:     peerInfo.ID(),
 			isSelf: true,

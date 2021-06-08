@@ -211,7 +211,7 @@ func (e rProcessBlock) String() string {
 type bcBlockResponse struct {
 	priorityNormal
 	time   time.Time
-	peerID p2p.NodeID
+	peerID types.NodeID
 	size   int64
 	block  *types.Block
 }
@@ -225,7 +225,7 @@ func (resp bcBlockResponse) String() string {
 type bcNoBlockResponse struct {
 	priorityNormal
 	time   time.Time
-	peerID p2p.NodeID
+	peerID types.NodeID
 	height int64
 }
 
@@ -238,7 +238,7 @@ func (resp bcNoBlockResponse) String() string {
 type bcStatusResponse struct {
 	priorityNormal
 	time   time.Time
-	peerID p2p.NodeID
+	peerID types.NodeID
 	base   int64
 	height int64
 }
@@ -251,7 +251,7 @@ func (resp bcStatusResponse) String() string {
 // new peer is connected
 type bcAddNewPeer struct {
 	priorityNormal
-	peerID p2p.NodeID
+	peerID types.NodeID
 }
 
 func (resp bcAddNewPeer) String() string {
@@ -261,7 +261,7 @@ func (resp bcAddNewPeer) String() string {
 // existing peer is removed
 type bcRemovePeer struct {
 	priorityHigh
-	peerID p2p.NodeID
+	peerID types.NodeID
 	reason interface{}
 }
 

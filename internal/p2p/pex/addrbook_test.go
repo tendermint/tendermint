@@ -18,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/types"
 )
 
 // FIXME These tests should not rely on .(*addrBook) assertions
@@ -194,9 +195,9 @@ func randIPv4Address(t *testing.T) *p2p.NetAddress {
 			mrand.Intn(255),
 		)
 		port := mrand.Intn(65535-1) + 1
-		id := p2p.NodeID(hex.EncodeToString(tmrand.Bytes(p2p.NodeIDByteLength)))
-		idAddr := p2p.IDAddressString(id, fmt.Sprintf("%v:%v", ip, port))
-		addr, err := p2p.NewNetAddressString(idAddr)
+		id := types.NodeID(hex.EncodeToString(tmrand.Bytes(types.NodeIDByteLength)))
+		idAddr := id.AddressString(fmt.Sprintf("%v:%v", ip, port))
+		addr, err := types.NewNetAddressString(idAddr)
 		assert.Nil(t, err, "error generating rand network address")
 		if addr.Routable() {
 			return addr
@@ -579,13 +580,13 @@ func TestAddrBookAddDoesNotOverwriteOldIP(t *testing.T) {
 	// to ensure we aren't in a case that got probabilistically ignored
 	numOverrideAttempts := 10
 
-	peerRealAddr, err := p2p.NewNetAddressString(peerID + "@" + peerRealIP)
+	peerRealAddr, err := types.NewNetAddressString(peerID + "@" + peerRealIP)
 	require.Nil(t, err)
 
-	peerOverrideAttemptAddr, err := p2p.NewNetAddressString(peerID + "@" + peerOverrideAttemptIP)
+	peerOverrideAttemptAddr, err := types.NewNetAddressString(peerID + "@" + peerOverrideAttemptIP)
 	require.Nil(t, err)
 
-	src, err := p2p.NewNetAddressString(SrcAddr)
+	src, err := types.NewNetAddressString(SrcAddr)
 	require.Nil(t, err)
 
 	book := NewAddrBook(fname, true)
@@ -649,7 +650,7 @@ func TestAddrBookGroupKey(t *testing.T) {
 
 	for i, tc := range testCases {
 		nip := net.ParseIP(tc.ip)
-		key := groupKeyFor(p2p.NewNetAddressIPPort(nip, 26656), false)
+		key := groupKeyFor(types.NewNetAddressIPPort(nip, 26656), false)
 		assert.Equal(t, tc.expKey, key, "#%d", i)
 	}
 
@@ -679,7 +680,7 @@ func TestAddrBookGroupKey(t *testing.T) {
 
 	for i, tc := range testCases {
 		nip := net.ParseIP(tc.ip)
-		key := groupKeyFor(p2p.NewNetAddressIPPort(nip, 26656), true)
+		key := groupKeyFor(types.NewNetAddressIPPort(nip, 26656), true)
 		assert.Equal(t, tc.expKey, key, "#%d", i)
 	}
 }

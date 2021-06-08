@@ -3,7 +3,6 @@ package v2
 import (
 	"fmt"
 
-	"github.com/tendermint/tendermint/internal/p2p"
 	tmState "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -13,8 +12,8 @@ import (
 type pcBlockVerificationFailure struct {
 	priorityNormal
 	height       int64
-	firstPeerID  p2p.NodeID
-	secondPeerID p2p.NodeID
+	firstPeerID  types.NodeID
+	secondPeerID types.NodeID
 }
 
 func (e pcBlockVerificationFailure) String() string {
@@ -26,7 +25,7 @@ func (e pcBlockVerificationFailure) String() string {
 type pcBlockProcessed struct {
 	priorityNormal
 	height int64
-	peerID p2p.NodeID
+	peerID types.NodeID
 }
 
 func (e pcBlockProcessed) String() string {
@@ -46,7 +45,7 @@ func (p pcFinished) Error() string {
 
 type queueItem struct {
 	block  *types.Block
-	peerID p2p.NodeID
+	peerID types.NodeID
 }
 
 type blockQueue map[int64]queueItem
@@ -95,7 +94,7 @@ func (state *pcState) synced() bool {
 	return len(state.queue) <= 1
 }
 
-func (state *pcState) enqueue(peerID p2p.NodeID, block *types.Block, height int64) {
+func (state *pcState) enqueue(peerID types.NodeID, block *types.Block, height int64) {
 	if item, ok := state.queue[height]; ok {
 		panic(fmt.Sprintf(
 			"duplicate block %d (%X) enqueued by processor (sent by %v; existing block %X from %v)",
@@ -110,7 +109,7 @@ func (state *pcState) height() int64 {
 }
 
 // purgePeer moves all unprocessed blocks from the queue
-func (state *pcState) purgePeer(peerID p2p.NodeID) {
+func (state *pcState) purgePeer(peerID types.NodeID) {
 	// what if height is less than state.height?
 	for height, item := range state.queue {
 		if item.peerID == peerID {

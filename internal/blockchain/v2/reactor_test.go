@@ -32,11 +32,11 @@ import (
 
 type mockPeer struct {
 	service.Service
-	id p2p.NodeID
+	id types.NodeID
 }
 
 func (mp mockPeer) FlushStop()           {}
-func (mp mockPeer) ID() p2p.NodeID       { return mp.id }
+func (mp mockPeer) ID() types.NodeID     { return mp.id }
 func (mp mockPeer) RemoteIP() net.IP     { return net.IP{} }
 func (mp mockPeer) RemoteAddr() net.Addr { return &net.TCPAddr{IP: mp.RemoteIP(), Port: 8800} }
 
@@ -418,7 +418,7 @@ func TestReactorHelperMode(t *testing.T) {
 					msgBz, err := proto.Marshal(msgProto)
 					require.NoError(t, err)
 
-					reactor.Receive(channelID, mockPeer{id: p2p.NodeID(step.peer)}, msgBz)
+					reactor.Receive(channelID, mockPeer{id: types.NodeID(step.peer)}, msgBz)
 					assert.Equal(t, old+1, mockSwitch.numStatusResponse)
 				case bcproto.BlockRequest:
 					if ev.Height > params.startHeight {
@@ -430,7 +430,7 @@ func TestReactorHelperMode(t *testing.T) {
 						msgBz, err := proto.Marshal(msgProto)
 						require.NoError(t, err)
 
-						reactor.Receive(channelID, mockPeer{id: p2p.NodeID(step.peer)}, msgBz)
+						reactor.Receive(channelID, mockPeer{id: types.NodeID(step.peer)}, msgBz)
 						assert.Equal(t, old+1, mockSwitch.numNoBlockResponse)
 					} else {
 						old := mockSwitch.numBlockResponse
@@ -441,7 +441,7 @@ func TestReactorHelperMode(t *testing.T) {
 						msgBz, err := proto.Marshal(msgProto)
 						require.NoError(t, err)
 
-						reactor.Receive(channelID, mockPeer{id: p2p.NodeID(step.peer)}, msgBz)
+						reactor.Receive(channelID, mockPeer{id: types.NodeID(step.peer)}, msgBz)
 						assert.Equal(t, old+1, mockSwitch.numBlockResponse)
 					}
 				}

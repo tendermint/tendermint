@@ -7,6 +7,7 @@ import (
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
+	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -52,8 +53,8 @@ type NodeInfo struct {
 	ProtocolVersion ProtocolVersion `json:"protocol_version"`
 
 	// Authenticate
-	NodeID     NodeID `json:"id"`          // authenticated identifier
-	ListenAddr string `json:"listen_addr"` // accepting incoming
+	NodeID     types.NodeID `json:"id"`          // authenticated identifier
+	ListenAddr string       `json:"listen_addr"` // accepting incoming
 
 	// Check compatibility.
 	// Channels are HexBytes so easier to read as JSON
@@ -73,7 +74,7 @@ type NodeInfoOther struct {
 }
 
 // ID returns the node's peer ID.
-func (info NodeInfo) ID() NodeID {
+func (info NodeInfo) ID() types.NodeID {
 	return info.NodeID
 }
 
@@ -95,7 +96,7 @@ func (info NodeInfo) Validate() error {
 	// ID is already validated.
 
 	// Validate ListenAddr.
-	_, err := NewNetAddressString(IDAddressString(info.ID(), info.ListenAddr))
+	_, err := types.NewNetAddressString(info.ID().AddressString(info.ListenAddr))
 	if err != nil {
 		return err
 	}
@@ -185,8 +186,8 @@ OUTER_LOOP:
 // ListenAddr. Note that the ListenAddr is not authenticated and
 // may not match that address actually dialed if its an outbound peer.
 func (info NodeInfo) NetAddress() (*NetAddress, error) {
-	idAddr := IDAddressString(info.ID(), info.ListenAddr)
-	return NewNetAddressString(idAddr)
+	idAddr := info.ID().AddressString(info.ListenAddr)
+	return types.NewNetAddressString(idAddr)
 }
 
 func (info NodeInfo) ToProto() *tmp2p.NodeInfo {
@@ -222,7 +223,7 @@ func NodeInfoFromProto(pb *tmp2p.NodeInfo) (NodeInfo, error) {
 			Block: pb.ProtocolVersion.Block,
 			App:   pb.ProtocolVersion.App,
 		},
-		NodeID:     NodeID(pb.NodeID),
+		NodeID:     types.NodeID(pb.NodeID),
 		ListenAddr: pb.ListenAddr,
 		Network:    pb.Network,
 		Version:    pb.Version,

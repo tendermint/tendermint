@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
-	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -651,7 +650,7 @@ func WALFromProto(msg *tmcons.WALMessage) (WALMessage, error) {
 		}
 		pb = msgInfo{
 			Msg:    walMsg,
-			PeerID: p2p.NodeID(msg.MsgInfo.PeerID),
+			PeerID: types.NodeID(msg.MsgInfo.PeerID),
 		}
 
 	case *tmcons.WALMessage_TimeoutInfo:

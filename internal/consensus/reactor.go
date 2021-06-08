@@ -107,7 +107,7 @@ type Reactor struct {
 	Metrics  *Metrics
 
 	mtx      tmsync.RWMutex
-	peers    map[p2p.NodeID]*PeerState
+	peers    map[types.NodeID]*PeerState
 	waitSync bool
 
 	stateCh       *p2p.Channel
@@ -143,7 +143,7 @@ func NewReactor(
 	r := &Reactor{
 		state:         cs,
 		waitSync:      waitSync,
-		peers:         make(map[p2p.NodeID]*PeerState),
+		peers:         make(map[types.NodeID]*PeerState),
 		Metrics:       NopMetrics(),
 		stateCh:       stateCh,
 		dataCh:        dataCh,
@@ -319,7 +319,7 @@ func (r *Reactor) StringIndented(indent string) string {
 }
 
 // GetPeerState returns PeerState for a given NodeID.
-func (r *Reactor) GetPeerState(peerID p2p.NodeID) (*PeerState, bool) {
+func (r *Reactor) GetPeerState(peerID types.NodeID) (*PeerState, bool) {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 
@@ -416,7 +416,7 @@ func makeRoundStepMessage(rs *cstypes.RoundState) *tmcons.NewRoundStep {
 	}
 }
 
-func (r *Reactor) sendNewRoundStepMessage(peerID p2p.NodeID) {
+func (r *Reactor) sendNewRoundStepMessage(peerID types.NodeID) {
 	rs := r.state.GetRoundState()
 	msg := makeRoundStepMessage(rs)
 	r.stateCh.Out <- p2p.Envelope{
