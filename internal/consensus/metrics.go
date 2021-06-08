@@ -48,7 +48,7 @@ type Metrics struct {
 	// Number of transactions.
 	NumTxs metrics.Gauge
 	// Size of the block.
-	BlockSizeBytes metrics.Gauge
+	BlockSizeBytes metrics.Histogram
 	// Total number of transactions.
 	TotalTxs metrics.Gauge
 	// The latest block height.
@@ -150,7 +150,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "num_txs",
 			Help:      "Number of transactions.",
 		}, labels).With(labelsAndValues...),
-		BlockSizeBytes: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+		BlockSizeBytes: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "block_size_bytes",
@@ -210,7 +210,7 @@ func NopMetrics() *Metrics {
 		BlockIntervalSeconds: discard.NewHistogram(),
 
 		NumTxs:          discard.NewGauge(),
-		BlockSizeBytes:  discard.NewGauge(),
+		BlockSizeBytes:  discard.NewHistogram(),
 		TotalTxs:        discard.NewGauge(),
 		CommittedHeight: discard.NewGauge(),
 		FastSyncing:     discard.NewGauge(),
