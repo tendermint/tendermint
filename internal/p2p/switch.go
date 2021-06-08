@@ -1037,3 +1037,19 @@ func (sw *Switch) addPeer(p Peer) error {
 
 	return nil
 }
+
+// NewNetAddressStrings returns an array of NetAddress'es build using
+// the provided strings.
+func NewNetAddressStrings(addrs []string) ([]*NetAddress, []error) {
+	netAddrs := make([]*NetAddress, 0)
+	errs := make([]error, 0)
+	for _, addr := range addrs {
+		netAddr, err := types.NewNetAddressString(addr)
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			netAddrs = append(netAddrs, netAddr)
+		}
+	}
+	return netAddrs, errs
+}
