@@ -68,6 +68,10 @@ func TestBlock_Range(t *testing.T) {
 		last := status.SyncInfo.LatestBlockHeight
 
 		switch {
+		// if the node state synced we ignore any assertions because it's hard to know how far back
+		// the node ran reverse sync for
+		case node.StateSync:
+			break
 		case node.RetainBlocks > 0 && int64(node.RetainBlocks) < (last-node.Testnet.InitialHeight+1):
 			// Delta handles race conditions in reading first/last heights.
 			assert.InDelta(t, node.RetainBlocks, last-first+1, 1,
