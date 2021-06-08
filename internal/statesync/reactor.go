@@ -580,7 +580,6 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 		}
 
 	case *ssproto.LightBlockResponse:
-		r.Logger.Info("received light block response")
 		if err := r.dispatcher.respond(msg.LightBlock, envelope.From); err != nil {
 			r.Logger.Error("error processing light block response", "err", err)
 			return err
