@@ -10,7 +10,7 @@ import (
 	"time"
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/internal/p2p"
 )
 
 // snapshotKey is a snapshot key used for lookups.

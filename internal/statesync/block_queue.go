@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/types"
 )
 

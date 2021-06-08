@@ -32,6 +32,8 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - P2P Protocol
 
 - Go API
+  - [logging] \#6534 Removed the existing custom Tendermint logger backed by go-kit. The logging interface, `Logger`, remains.
+  Tendermint still provides a default logger backed by the performant zerolog logger. (@alexanderbez)
   - [mempool] \#6529 The `Context` field has been removed from the `TxInfo` type. `CheckTx` now requires a `Context` argument. (@alexanderbez)
   - [abci/client, proxy] \#5673 `Async` funcs return an error, `Sync` and `Async` funcs accept `context.Context` (@melekes)
   - [p2p] Removed unused function `MakePoWTarget`. (@erikgrinaker)
@@ -116,10 +118,10 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [crypto/merkle] \#6443 Improve HashAlternatives performance (@cuonglm)
 - [crypto/merkle] \#6513 Optimize HashAlternatives (@marbar3778)
 - [p2p/pex] \#6509 Improve addrBook.hash performance (@cuonglm)
+- [consensus/metrics] \#6549 Change block_size gauge to a histogram for better observability over time (@marbar3778)
 
 ### BUG FIXES
 
-- [types] \#5523 Change json naming of `PartSetHeader` within `BlockID` from `parts` to `part_set_header` (@marbar3778)
 - [privval] \#5638 Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
 - [blockchain/v1] [\#5701](https://github.com/tendermint/tendermint/pull/5701) Handle peers without blocks (@melekes)
 - [blockchain/v1] \#5711 Fix deadlock (@melekes)

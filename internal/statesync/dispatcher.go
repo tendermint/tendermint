@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/light/provider"
-	"github.com/tendermint/tendermint/p2p"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	proto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"

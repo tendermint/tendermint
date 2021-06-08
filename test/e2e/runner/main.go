@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 )
 
 func main() {

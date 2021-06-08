@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/internal/p2p"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 )
 
