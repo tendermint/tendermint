@@ -621,24 +621,6 @@ const (
 	MaxCommitSigBytesBLS12381 int64 = 232
 )
 
-// CommitSig is a part of the Vote included in a Commit.
-type CommitSig struct {
-	BlockIDFlag        BlockIDFlag `json:"block_id_flag"`
-	ValidatorProTxHash []byte      `json:"validator_pro_tx_hash"`
-	BlockSignature     []byte      `json:"block_signature"`
-	StateSignature     []byte      `json:"state_signature"`
-}
-
-// NewCommitSigForBlock returns new CommitSig with BlockIDFlagCommit.
-func NewCommitSigForBlock(blockSignature []byte, stateSignature []byte, valProTxHash []byte) CommitSig {
-	return CommitSig{
-		BlockIDFlag:        BlockIDFlagCommit,
-		ValidatorProTxHash: valProTxHash,
-		BlockSignature:     blockSignature,
-		StateSignature:     stateSignature,
-	}
-}
-
 func MaxCommitSigBytesForKeyType(keyType crypto.KeyType) int64 {
 	switch keyType {
 	case crypto.BLS12381:
@@ -662,151 +644,6 @@ func MaxCommitBytes(valCount int, keyType crypto.KeyType) int64 {
 	return MaxCommitOverheadBytes + ((maxCommitBytes + protoEncodingOverhead) * int64(valCount))
 }
 
-// NewCommitSigAbsent returns new CommitSig with BlockIDFlagAbsent. Other
-// fields are all empty.
-func NewCommitSigAbsent() CommitSig {
-	return CommitSig{
-		BlockIDFlag: BlockIDFlagAbsent,
-	}
-}
-
-// ForBlock returns true if CommitSig is for the block.
-func (cs CommitSig) ForBlock() bool {
-	return cs.BlockIDFlag == BlockIDFlagCommit
-}
-
-// Absent returns true if CommitSig is absent.
-func (cs CommitSig) Absent() bool {
-	return cs.BlockIDFlag == BlockIDFlagAbsent
-}
-
-// CommitSig returns a string representation of CommitSig.
-//
-// 1. first 6 bytes of signature
-// 2. first 6 bytes of validator address
-// 3. block ID flag
-// 4. timestamp
-func (cs CommitSig) String() string {
-	return fmt.Sprintf("CommitSig{%X , %X by %X on %v}",
-		tmbytes.Fingerprint(cs.BlockSignature),
-		tmbytes.Fingerprint(cs.StateSignature),
-		tmbytes.Fingerprint(cs.ValidatorProTxHash),
-		cs.BlockIDFlag)
-}
-
-// BlockID returns the Commit's BlockID if CommitSig indicates signing,
-// otherwise - empty BlockID.
-func (cs CommitSig) BlockID(commitBlockID BlockID) BlockID {
-	var blockID BlockID
-	switch cs.BlockIDFlag {
-	case BlockIDFlagAbsent:
-		blockID = BlockID{}
-	case BlockIDFlagCommit:
-		blockID = commitBlockID
-	case BlockIDFlagNil:
-		blockID = BlockID{}
-	default:
-		panic(fmt.Sprintf("Unknown BlockIDFlag: %v", cs.BlockIDFlag))
-	}
-	return blockID
-}
-
-// StateID returns the Commit's StateID if CommitSig indicates signing,
-// otherwise - empty StateID.
-func (cs CommitSig) StateID(commitStateID StateID) StateID {
-	var stateID StateID
-	switch cs.BlockIDFlag {
-	case BlockIDFlagAbsent:
-		stateID = StateID{}
-	case BlockIDFlagCommit:
-		stateID = commitStateID
-	case BlockIDFlagNil:
-		stateID = StateID{}
-	default:
-		panic(fmt.Sprintf("Unknown BlockIDFlag: %v", cs.BlockIDFlag))
-	}
-	return stateID
-}
-
-// ValidateBasic performs basic validation.
-func (cs CommitSig) ValidateBasic() error {
-	switch cs.BlockIDFlag {
-	case BlockIDFlagAbsent:
-		if len(cs.ValidatorProTxHash) != 0 {
-			return errors.New("validator proTxHash is present")
-		}
-		if len(cs.BlockSignature) != 0 {
-			return errors.New("block signature is present")
-		}
-		if len(cs.StateSignature) != 0 {
-			return errors.New("state signature is present")
-		}
-	case BlockIDFlagNil:
-		if len(cs.ValidatorProTxHash) != crypto.DefaultHashSize {
-			return fmt.Errorf("expected ValidatorProTxHash size to be %d bytes, got %d bytes",
-				crypto.DefaultHashSize,
-				len(cs.ValidatorProTxHash),
-			)
-		}
-		if len(cs.BlockSignature) == 0 {
-			return errors.New("block signature is missing")
-		}
-		if len(cs.BlockSignature) != SignatureSize {
-			return fmt.Errorf("block signature for flag nil is wrong size (wanted: %d, received: %d)", SignatureSize, len(cs.BlockSignature))
-		}
-	case BlockIDFlagCommit:
-		if len(cs.ValidatorProTxHash) != crypto.DefaultHashSize {
-			return fmt.Errorf("expected ValidatorProTxHash size to be %d bytes, got %d bytes",
-				crypto.DefaultHashSize,
-				len(cs.ValidatorProTxHash),
-			)
-		}
-		if len(cs.BlockSignature) == 0 {
-			return errors.New("block signature is missing")
-		}
-		if len(cs.BlockSignature) != SignatureSize {
-			return fmt.Errorf("block signature is wrong size (wanted: %d, received: %d)", SignatureSize, len(cs.BlockSignature))
-		}
-		if len(cs.StateSignature) == 0 {
-			return errors.New("state signature is missing")
-		}
-		if len(cs.StateSignature) != SignatureSize {
-			return fmt.Errorf("state signature is wrong size (wanted: %d, received: %d)", SignatureSize, len(cs.StateSignature))
-		}
-		default:
-		return fmt.Errorf("unknown BlockIDFlag: %v", cs.BlockIDFlag)
-	}
-
-	return nil
-}
-
-// ToProto converts CommitSig to protobuf
-func (cs *CommitSig) ToProto() *tmproto.CommitSig {
-	if cs == nil {
-		return nil
-	}
-
-	return &tmproto.CommitSig{
-		BlockIdFlag:        tmproto.BlockIDFlag(cs.BlockIDFlag),
-		ValidatorProTxHash: cs.ValidatorProTxHash,
-		BlockSignature:     cs.BlockSignature,
-		StateSignature:     cs.StateSignature,
-	}
-}
-
-// FromProto sets a protobuf CommitSig to the given pointer.
-// It returns an error if the CommitSig is invalid.
-func (cs *CommitSig) FromProto(csp tmproto.CommitSig) error {
-
-	cs.BlockIDFlag = BlockIDFlag(csp.BlockIdFlag)
-	cs.ValidatorProTxHash = csp.ValidatorProTxHash
-	cs.BlockSignature = csp.BlockSignature
-	cs.StateSignature = csp.StateSignature
-
-	// lets assume if there is no state signature that the commit is for the genesis block
-	return cs.ValidateBasic()
-}
-
 //-------------------------------------
 
 // Commit contains the evidence that a block was committed by a set of validators.
@@ -820,7 +657,6 @@ type Commit struct {
 	Round                   int32       `json:"round"`
 	BlockID                 BlockID     `json:"block_id"`
 	StateID                 StateID     `json:"state_id"`
-	Signatures              []CommitSig `json:"signatures"`
 	QuorumHash              []byte      `json:"quorum_hash"`
 	ThresholdBlockSignature []byte      `json:"threshold_block_signature"`
 	ThresholdStateSignature []byte      `json:"threshold_state_signature"`
@@ -833,58 +669,21 @@ type Commit struct {
 }
 
 // NewCommit returns a new Commit.
-func NewCommit(height int64, round int32, blockID BlockID, stateID StateID, commitSigs []CommitSig, quorumHash []byte,
+func NewCommit(height int64, round int32, blockID BlockID, stateID StateID, quorumHash []byte,
 	thresholdBlockSignature []byte, thresholdStateSignature []byte) *Commit {
 	return &Commit{
 		Height:                  height,
 		Round:                   round,
 		BlockID:                 blockID,
 		StateID:                 stateID,
-		Signatures:              commitSigs,
 		QuorumHash:              quorumHash,
 		ThresholdBlockSignature: thresholdBlockSignature,
 		ThresholdStateSignature: thresholdStateSignature,
 	}
 }
 
-// CommitToVoteSet constructs a VoteSet from the Commit and validator set.
-// Panics if signatures from the commit can't be added to the voteset.
-// Inverse of VoteSet.MakeCommit().
-func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSet {
-	if vals.HasPublicKeys == false {
-		panic(fmt.Sprintf("Trying to recreate vote set from commit when not a validator"))
-	}
-	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, tmproto.PrecommitType, vals)
-	for idx, commitSig := range commit.Signatures {
-		if commitSig.Absent() {
-			continue // OK, some precommits can be missing.
-		}
-		added, err := voteSet.AddVote(commit.GetVote(int32(idx)))
-		if !added || err != nil {
-			panic(fmt.Sprintf("Failed to reconstruct LastPrecommits: %v", err))
-		}
-	}
-	return voteSet
-}
-
-// GetVote converts the CommitSig for the given valIdx to a Vote.
-// Returns nil if the precommit at valIdx is nil.
-// Panics if valIdx >= commit.Size().
-func (commit *Commit) GetVote(valIdx int32) *Vote {
-	commitSig := commit.Signatures[valIdx]
-	return &Vote{
-		Type:               tmproto.PrecommitType,
-		Height:             commit.Height,
-		Round:              commit.Round,
-		BlockID:            commitSig.BlockID(commit.BlockID),
-		StateID:            commitSig.StateID(commit.StateID),
-		ValidatorProTxHash: commitSig.ValidatorProTxHash,
-		ValidatorIndex:     valIdx,
-		BlockSignature:     commitSig.BlockSignature,
-		StateSignature:     commitSig.StateSignature,
-	}
-}
-
+// GetCanonicalVote returns the message that is being voted on in the form of a vote without signatures.
+//
 func (commit *Commit) GetCanonicalVote() *Vote {
 	return &Vote{
 		Type:    tmproto.PrecommitType,
@@ -893,28 +692,6 @@ func (commit *Commit) GetCanonicalVote() *Vote {
 		BlockID: commit.BlockID,
 		StateID: commit.StateID,
 	}
-}
-
-// VoteBlockSignBytes returns the bytes of the Vote corresponding to valIdx for
-// signing.
-//
-// Panics if valIdx >= commit.Size().
-//
-func (commit *Commit) VoteBlockSignBytes(chainID string, valIdx int32) []byte {
-	vote := commit.GetVote(valIdx)
-	v := vote.ToProto()
-	return VoteBlockSignBytes(chainID, v)
-}
-
-// VoteBlockSignId returns the signId bytes of the Vote corresponding to valIdx for
-// signing.
-//
-// Panics if valIdx >= commit.Size().
-//
-func (commit *Commit) VoteBlockSignId(chainID string, valIdx int32, quorumType btcjson.LLMQType, quorumHash []byte)  []byte {
-	vote := commit.GetVote(valIdx)
-	v := vote.ToProto()
-	return VoteBlockSignId(chainID, v, quorumType, quorumHash)
 }
 
 // VoteBlockRequestId returns the requestId Hash of the Vote corresponding to valIdx for
@@ -951,30 +728,13 @@ func (commit *Commit) CanonicalVoteVerifySignId(chainID string, quorumType btcjs
 	return VoteBlockSignId(chainID, vCanonical, quorumType, quorumHash)
 }
 
-// VoteStateSignBytes returns the bytes of the State corresponding to valIdx for
-// signing.
-//
-// Panics if valIdx >= commit.Size().
-//
-// See VoteSignBytes
-func (commit *Commit) VoteStateSignBytes(chainID string, valIdx int32) []byte {
-	v := commit.GetCanonicalVote()
-	// if the block id is absent or nil the state id should be empty
-	commitSig := commit.Signatures[valIdx]
-	v.StateID = commitSig.StateID(commit.StateID)
-	return VoteStateSignBytes(chainID, v.ToProto())
-}
-
 // VoteStateSignId returns the signId bytes of the state for the Vote corresponding to valIdx for
 // signing.
 //
 // Panics if valIdx >= commit.Size().
 //
-func (commit *Commit) VoteStateSignId(chainID string, valIdx int32, quorumType btcjson.LLMQType, quorumHash []byte)  []byte {
+func (commit *Commit) VoteStateSignId(chainID string, quorumType btcjson.LLMQType, quorumHash []byte)  []byte {
 	v := commit.GetCanonicalVote()
-	// if the block id is absent or nil the state id should be empty
-	commitSig := commit.Signatures[valIdx]
-	v.StateID = commitSig.StateID(commit.StateID)
 	return VoteStateSignId(chainID, v.ToProto(), quorumType, quorumHash)
 }
 
@@ -997,7 +757,7 @@ func (commit *Commit) VoteStateRequestId() []byte {
 }
 
 
-// VoteStateSignBytes returns the bytes of the State corresponding to valIdx for
+// CanonicalVoteStateSignBytes returns the bytes of the State corresponding to valIdx for
 // signing.
 //
 // Panics if valIdx >= commit.Size().
@@ -1031,40 +791,10 @@ func (commit *Commit) GetRound() int32 {
 	return commit.Round
 }
 
-// Size returns the number of signatures in the commit.
-// Implements VoteSetReader.
-func (commit *Commit) Size() int {
-	if commit == nil {
-		return 0
-	}
-	return len(commit.Signatures)
-}
-
-// BitArray returns a BitArray of which validators voted for BlockID or nil in this commit.
-// Implements VoteSetReader.
-func (commit *Commit) BitArray() *bits.BitArray {
-	if commit.bitArray == nil {
-		commit.bitArray = bits.NewBitArray(len(commit.Signatures))
-		for i, commitSig := range commit.Signatures {
-			// TODO: need to check the BlockID otherwise we could be counting conflicts,
-			// not just the one with +2/3 !
-			commit.bitArray.SetIndex(i, !commitSig.Absent())
-		}
-	}
-	return commit.bitArray
-}
-
-// GetByIndex returns the vote corresponding to a given validator index.
-// Panics if `index >= commit.Size()`.
-// Implements VoteSetReader.
-func (commit *Commit) GetByIndex(valIdx int32) *Vote {
-	return commit.GetVote(valIdx)
-}
-
 // IsCommit returns true if there is at least one signature.
 // Implements VoteSetReader.
 func (commit *Commit) IsCommit() bool {
-	return len(commit.Signatures) != 0
+	return len(commit.ThresholdBlockSignature) == SignatureSize
 }
 
 // ValidateBasic performs basic validation that doesn't involve state data.
@@ -1091,43 +821,15 @@ func (commit *Commit) ValidateBasic() error {
 	return nil
 }
 
-// ValidateSignaturesBasic performs basic validation on signatures that doesn't involve state data.
-// Does not actually check the signatures are valid, only that they are well formed and some exist.
-// This should be performed on validator set nodes.
-func (commit *Commit) ValidateSignaturesBasic() error {
-	if commit.Height >= 1 {
-		if commit.BlockID.IsZero() {
-			return errors.New("commit cannot be for nil block")
-		}
-
-		if len(commit.Signatures) == 0 {
-			return errors.New("no signatures in commit")
-		}
-		for i, commitSig := range commit.Signatures {
-			if err := commitSig.ValidateBasic(); err != nil {
-				return fmt.Errorf("wrong CommitSig #%d: %v", i, err)
-			}
-		}
-	}
-	return nil
-}
-
 // Hash returns the hash of the commit
 func (commit *Commit) Hash() tmbytes.HexBytes {
 	if commit == nil {
 		return nil
 	}
 	if commit.hash == nil {
-		bs := make([][]byte, len(commit.Signatures))
-		for i, commitSig := range commit.Signatures {
-			pbcs := commitSig.ToProto()
-			bz, err := pbcs.Marshal()
-			if err != nil {
-				panic(err)
-			}
-
-			bs[i] = bz
-		}
+		bs := make([][]byte, 2)
+		bs[0] = commit.ThresholdBlockSignature
+		bs[1] = commit.ThresholdStateSignature
 		commit.hash = merkle.HashFromByteSlices(bs)
 	}
 	return commit.hash
@@ -1138,22 +840,20 @@ func (commit *Commit) StringIndented(indent string) string {
 	if commit == nil {
 		return "nil-Commit"
 	}
-	commitSigStrings := make([]string, len(commit.Signatures))
-	for i, commitSig := range commit.Signatures {
-		commitSigStrings[i] = commitSig.String()
-	}
 	return fmt.Sprintf(`Commit{
 %s  Height:     %d
 %s  Round:      %d
 %s  BlockID:    %v
-%s  Signatures:
-%s    %v
+%s  StateID:    %v
+%s  BlockSignature: %v
+%s  StateSignature: %v
 %s}#%v`,
 		indent, commit.Height,
 		indent, commit.Round,
 		indent, commit.BlockID,
-		indent,
-		indent, strings.Join(commitSigStrings, "\n"+indent+"    "),
+		indent, commit.StateID,
+		indent, commit.ThresholdBlockSignature,
+		indent, commit.ThresholdStateSignature,
 		indent, commit.hash)
 }
 
@@ -1164,11 +864,6 @@ func (commit *Commit) ToProto() *tmproto.Commit {
 	}
 
 	c := new(tmproto.Commit)
-	sigs := make([]tmproto.CommitSig, len(commit.Signatures))
-	for i := range commit.Signatures {
-		sigs[i] = *commit.Signatures[i].ToProto()
-	}
-	c.Signatures = sigs
 
 	c.Height = commit.Height
 	c.Round = commit.Round
@@ -1183,7 +878,7 @@ func (commit *Commit) ToProto() *tmproto.Commit {
 	return c
 }
 
-// FromProto sets a protobuf Commit to the given pointer.
+// CommitFromProto creates a commit from a protobuf commit message.
 // It returns an error if the commit is invalid.
 func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 	if cp == nil {
@@ -1203,14 +898,6 @@ func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	sigs := make([]CommitSig, len(cp.Signatures))
-	for i := range cp.Signatures {
-		if err := sigs[i].FromProto(cp.Signatures[i]); err != nil {
-			return nil, err
-		}
-	}
-	commit.Signatures = sigs
 
 	commit.QuorumHash = cp.QuorumHash
 	commit.ThresholdBlockSignature = cp.ThresholdBlockSignature

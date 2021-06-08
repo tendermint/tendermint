@@ -77,11 +77,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		require.NoError(t, err)
 		evpool.SetLogger(logger.With("module", "evidence"))
 
-		// Get Pro Tx Hash
-		proTxHash, err := privVals[i].GetProTxHash()
-		require.NoError(t, err)
 		// Make State
-		blockExec := sm.NewBlockExecutor(&proTxHash, stateStore, log.TestingLogger(), proxyAppConnCon, proxyAppConnQry,
+		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, proxyAppConnQry,
 			mempool, evpool, nil)
 		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 		cs.SetLogger(cs.Logger)
@@ -175,7 +172,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		case lazyProposer.Height == lazyProposer.state.InitialHeight:
 			// We're creating a proposal for the first block.
 			// The commit is empty, but not nil.
-			commit = types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil, nil)
+			commit = types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
 		case lazyProposer.LastPrecommits.HasTwoThirdsMajority():
 			// Make the commit from LastPrecommits
 			commit = lazyProposer.LastPrecommits.MakeCommit()
@@ -183,9 +180,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			lazyProposer.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block")
 			return
 		}
-
-		// omit the last signature in the commit
-		commit.Signatures[len(commit.Signatures)-1] = types.NewCommitSigAbsent()
 
 		if lazyProposer.privValidatorProTxHash == nil {
 			// If this node is a validator & proposer in the current round, it will

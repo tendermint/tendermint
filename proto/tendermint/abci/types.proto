@@ -303,7 +303,6 @@ message BlockParams {
 
 message LastCommitInfo {
   int32             round = 1;
-  repeated VoteInfo votes = 2 [(gogoproto.nullable) = false];
   bytes quorumHash     = 3;
   bytes blockSignature = 4;
   bytes stateSignature = 5;

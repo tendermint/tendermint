@@ -677,19 +677,7 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 		panic("Cannot MakeCommit() unless a thresholdStateSig has been created")
 	}
 
-	// For every validator, get the precommit
-	commitSigs := make([]CommitSig, len(voteSet.votes))
-	for i, v := range voteSet.votes {
-		commitSig := v.CommitSig()
-		// if block ID exists but doesn't match, exclude sig
-		if commitSig.ForBlock() && !v.BlockID.Equals(*voteSet.maj23) {
-			commitSig = NewCommitSigAbsent()
-		}
-		commitSigs[i] = commitSig
-	}
-
-	return NewCommit(voteSet.GetHeight(), voteSet.GetRound(), *voteSet.maj23, *voteSet.stateMaj23,
-		commitSigs, voteSet.valSet.QuorumHash, voteSet.thresholdBlockSig, voteSet.thresholdStateSig)
+	return NewCommit(voteSet.GetHeight(), voteSet.GetRound(), *voteSet.maj23, *voteSet.stateMaj23, voteSet.valSet.QuorumHash, voteSet.thresholdBlockSig, voteSet.thresholdStateSig)
 }
 
 //--------------------------------------------------------------------------------

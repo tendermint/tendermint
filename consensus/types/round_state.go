@@ -88,7 +88,6 @@ type RoundState struct {
 	ValidBlockParts           *types.PartSet      `json:"valid_block_parts"`
 	Votes                     *HeightVoteSet      `json:"votes"`
 	CommitRound               int32               `json:"commit_round"` //
-	LastPrecommits            *types.VoteSet      `json:"last_precommits"`  // Last precommits at Height-1
 	LastCommit                *types.Commit       `json:"last_commit"`
 	LastValidators            *types.ValidatorSet `json:"last_validators"`
 	TriggeredTimeoutPrecommit bool                `json:"triggered_timeout_precommit"`
@@ -190,7 +189,7 @@ func (rs *RoundState) StringIndented(indent string) string {
 %s  ValidRound:   %v
 %s  ValidBlock:   %v %v
 %s  Votes:         %v
-%s  LastPrecommits:    %v
+%s  LastCommit:    %v
 %s  LastValidators:%v
 %s}`,
 		indent, rs.Height, rs.Round, rs.Step,
@@ -204,7 +203,7 @@ func (rs *RoundState) StringIndented(indent string) string {
 		indent, rs.ValidRound,
 		indent, rs.ValidBlockParts.StringShort(), rs.ValidBlock.StringShort(),
 		indent, rs.Votes.StringIndented(indent+"  "),
-		indent, rs.LastPrecommits.StringShort(),
+		indent, rs.LastCommit.StringIndented(indent+"  "),
 		indent, rs.LastValidators.StringIndented(indent+"  "),
 		indent)
 }

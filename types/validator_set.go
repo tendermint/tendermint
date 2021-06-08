@@ -15,7 +15,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 
-	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -881,10 +880,6 @@ func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator, newThreshold
 func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID StateID,
 	height int64, commit *Commit) error {
 
-	if vals.Size() != len(commit.Signatures) {
-		return NewErrInvalidCommitSignatures(vals.Size(), len(commit.Signatures))
-	}
-
 	// Validate Height and BlockID.
 	if height != commit.Height {
 		return NewErrInvalidCommitHeight(height, commit.Height)
@@ -902,59 +897,6 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 	talliedVotingPower := int64(0)
 
 	votingPowerNeedMoreThan := vals.TotalVotingPower() * 2 / 3
-
-	for idx, commitSig := range commit.Signatures {
-		if commitSig.Absent() {
-			continue // OK, some signatures can be absent.
-		}
-
-		// The vals and commit have a 1-to-1 correspondence.
-		// This means we don't need the validator address or to do any lookup.
-		val := vals.Validators[idx]
-
-		// It is possible that a vote might sign a nil block to indicate it does not agree with the proposer
-
-		// This is why it must be here
-
-		// Validate block signature.
-		voteBlockSignId := commit.VoteBlockSignId(chainID, int32(idx), vals.QuorumType, vals.QuorumHash)
-
-		if !val.PubKey.VerifySignatureDigest(voteBlockSignId, commitSig.BlockSignature) {
-			voteBlockSignBytes := commit.VoteBlockSignBytes(chainID, int32(idx))
-			return fmt.Errorf("wrong block signature (#%d/proTxHash:%X/pubKey:%X) |"+
-				" voteBlockSignBytes : %X | signature : %X | commitBID: %s | vote :%v | commit sig %v", idx,
-				val.ProTxHash, val.PubKey.Bytes(), voteBlockSignBytes, commitSig.BlockSignature,
-				commit.BlockID.String(), commit.GetVote(int32(idx)), commit.Signatures[idx])
-		}
-		// else {
-		//	fmt.Printf("correct block signature  (#%d/proTxHash:%X/pubKey:%X) | voteBlockSignBytes : %X |" +
-		//  	" signature : %X | commitBID: %s | vote :%v | commit sig %v\n", idx, val.ProTxHash, val.PubKey.Bytes(),
-		// 	voteBlockSignBytes, commitSig.BlockSignature, commit.BlockID.String(), commit.GetVote(int32(idx)),
-		//	commit.Signatures[idx])
-		// }
-
-		// Validate state signature.
-		if commitSig.BlockIDFlag == BlockIDFlagCommit {
-			// Only verify signatures that voted to commit the block
-			voteStateSignId := commit.VoteStateSignId(chainID, int32(idx), vals.QuorumType, vals.QuorumHash)
-
-			if !val.PubKey.VerifySignatureDigest(voteStateSignId, commitSig.StateSignature) {
-				voteStateSignBytes := commit.VoteStateSignBytes(chainID, int32(idx))
-				return fmt.Errorf("wrong state signature (#%d/proTxHash:%X/pubKey:%X) |"+
-					" voteStateSignBytes : %X | signature : %X", idx, val.ProTxHash, val.PubKey.Bytes(),
-					voteStateSignBytes, commitSig.StateSignature)
-			}
-		}
-
-		// Good!
-		if commitSig.ForBlock() {
-			talliedVotingPower += val.VotingPower
-		}
-		// else {
-		// It's OK. We include stray signatures (~votes for nil) to measure
-		// validator availability.
-		// }
-	}
 
 	blockSignId := commit.CanonicalVoteVerifySignId(chainID, vals.QuorumType, vals.QuorumHash)
 
@@ -977,193 +919,6 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 	}
 
 	return nil
-}
-
-// LIGHT CLIENT VERIFICATION METHODS
-
-// VerifyCommitLight verifies +2/3 of the set had signed the given commit.
-//
-// This method is primarily used by the light client and does not check all the
-// signatures.
-func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID, stateID StateID,
-	height int64, commit *Commit) error {
-
-	if vals.Size() != len(commit.Signatures) {
-		return NewErrInvalidCommitSignatures(vals.Size(), len(commit.Signatures))
-	}
-
-	// Validate Height and BlockID.
-	if height != commit.Height {
-		return NewErrInvalidCommitHeight(height, commit.Height)
-	}
-	if !blockID.Equals(commit.BlockID) {
-		return fmt.Errorf("invalid commit -- wrong block ID: want %v, got %v",
-			blockID, commit.BlockID)
-	}
-
-	if !stateID.Equals(commit.StateID) {
-		return fmt.Errorf("invalid commit -- wrong state ID: want %v, got %v",
-			stateID, commit.StateID)
-	}
-
-	talliedVotingPower := int64(0)
-
-	votingPowerNeeded := vals.TotalVotingPower() * 2 / 3
-
-	for idx, commitSig := range commit.Signatures {
-		// No need to verify absent or nil votes.
-		if !commitSig.ForBlock() {
-			continue
-		}
-
-		// The vals and commit have a 1-to-1 correspondance.
-		// This means we don't need the validator address or to do any lookup.
-		val := vals.Validators[idx]
-
-		// Validate block signature.
-		voteBlockSignId := commit.VoteBlockSignId(chainID, int32(idx), vals.QuorumType, vals.QuorumHash)
-
-		if !val.PubKey.VerifySignatureDigest(voteBlockSignId, commitSig.BlockSignature) {
-			voteBlockSignBytes := commit.VoteBlockSignBytes(chainID, int32(idx))
-			return fmt.Errorf("wrong block signature for light (#%d/proTxHash:%X/pubKey:%X) |"+
-				" voteBlockSignBytes : %X | signature : %X | commitBID: %s | vote :%v | commit sig %v", idx,
-				val.ProTxHash, val.PubKey.Bytes(), voteBlockSignBytes, commitSig.BlockSignature,
-				commit.BlockID.String(), commit.GetVote(int32(idx)), commit.Signatures[idx])
-		}
-
-		// Validate state signature.
-		if commitSig.BlockIDFlag == BlockIDFlagCommit {
-			// Only verify signatures that voted to commit the block
-			voteStateSignId := commit.VoteStateSignId(chainID, int32(idx), vals.QuorumType, vals.QuorumHash)
-
-			if !val.PubKey.VerifySignatureDigest(voteStateSignId, commitSig.StateSignature) {
-				voteStateSignBytes := commit.VoteStateSignBytes(chainID, int32(idx))
-				return fmt.Errorf("wrong state signature for light (#%d/proTxHash:%X/pubKey:%X) |"+
-					" voteStateSignBytes : %X | signature : %X", idx, val.ProTxHash, val.PubKey.Bytes(),
-					voteStateSignBytes, commitSig.StateSignature)
-			}
-		}
-
-		talliedVotingPower += val.VotingPower
-
-		// return as soon as +2/3 of the signatures are verified
-		if talliedVotingPower > votingPowerNeeded {
-			blockSignId := commit.CanonicalVoteVerifySignId(chainID, vals.QuorumType, vals.QuorumHash)
-
-			if !vals.ThresholdPublicKey.VerifySignatureDigest(blockSignId, commit.ThresholdBlockSignature) {
-				canonicalVoteBlockSignBytes := commit.CanonicalVoteVerifySignBytes(chainID)
-				return fmt.Errorf("incorrect threshold block signature lc %X %X", canonicalVoteBlockSignBytes,
-					commit.ThresholdBlockSignature)
-			}
-
-			stateSignId := commit.CanonicalVoteStateSignId(chainID, vals.QuorumType, vals.QuorumHash)
-
-			if !vals.ThresholdPublicKey.VerifySignatureDigest(stateSignId, commit.ThresholdStateSignature) {
-				canonicalVoteStateSignBytes := commit.CanonicalVoteStateSignBytes(chainID)
-				return fmt.Errorf("incorrect threshold state signature lc %X %X", canonicalVoteStateSignBytes,
-					commit.ThresholdStateSignature)
-			}
-
-			return nil
-		}
-	}
-
-	return ErrNotEnoughVotingPowerSigned{Got: talliedVotingPower, Needed: votingPowerNeeded}
-}
-
-// VerifyCommitLightTrusting verifies that trustLevel of the validator set signed
-// this commit.
-//
-// NOTE the given validators do not necessarily correspond to the validator set
-// for this commit, but there may be some intersection.
-//
-// This method is primarily used by the light client and does not check all the
-// signatures.
-func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Commit, trustLevel tmmath.Fraction) error {
-	// sanity check
-	if trustLevel.Denominator == 0 {
-		return errors.New("trustLevel has zero Denominator")
-	}
-
-	var (
-		talliedVotingPower int64
-		seenVals           = make(map[int32]int, len(commit.Signatures)) // validator index -> commit index
-	)
-
-	// Safely calculate voting power needed.
-	totalVotingPowerMulByNumerator, overflow := safeMul(vals.TotalVotingPower(), int64(trustLevel.Numerator))
-	if overflow {
-		return errors.New("int64 overflow while calculating voting power needed. please provide" +
-			" smaller trustLevel numerator")
-	}
-	votingPowerNeeded := totalVotingPowerMulByNumerator / int64(trustLevel.Denominator)
-
-	for idx, commitSig := range commit.Signatures {
-		// No need to verify absent or nil votes.
-		if !commitSig.ForBlock() {
-			continue
-		}
-
-		// We don't know the validators that committed this block, so we have to
-		// check for each vote if its validator is already known.
-		valIdx, val := vals.GetByProTxHash(commitSig.ValidatorProTxHash)
-
-		if val != nil {
-			// check for double vote of validator on the same commit
-			if firstIndex, ok := seenVals[valIdx]; ok {
-				secondIndex := idx
-				return fmt.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
-			}
-			seenVals[valIdx] = idx
-
-			// Validate block signature.
-			voteBlockSignId := commit.VoteBlockSignId(chainID, int32(idx), vals.QuorumType, vals.QuorumHash)
-
-			if !val.PubKey.VerifySignatureDigest(voteBlockSignId, commitSig.BlockSignature) {
-				voteBlockSignBytes := commit.VoteBlockSignBytes(chainID, int32(idx))
-				return fmt.Errorf("wrong block signature for light trusting (#%d/proTxHash:%X/pubKey:%X) |"+
-					" voteBlockSignBytes : %X | signature : %X | commitBID: %s | vote :%v | commit sig %v", idx,
-					val.ProTxHash, val.PubKey.Bytes(), voteBlockSignBytes, commitSig.BlockSignature,
-					commit.BlockID.String(), commit.GetVote(int32(idx)), commit.Signatures[idx])
-			}
-
-			// Validate state signature.
-			if commitSig.BlockIDFlag == BlockIDFlagCommit {
-				// Only verify signatures that voted to commit the block
-				voteStateSignId := commit.VoteStateSignId(chainID, int32(idx), vals.QuorumType, vals.QuorumHash)
-
-				if !val.PubKey.VerifySignatureDigest(voteStateSignId, commitSig.StateSignature) {
-					voteStateSignBytes := commit.VoteStateSignBytes(chainID, int32(idx))
-					return fmt.Errorf("wrong state signature for light trusting (#%d/proTxHash:%X/pubKey:%X) |"+
-						" voteStateSignBytes : %X | signature : %X", idx, val.ProTxHash, val.PubKey.Bytes(),
-						voteStateSignBytes, commitSig.StateSignature)
-				}
-			}
-
-			talliedVotingPower += val.VotingPower
-
-			if talliedVotingPower > votingPowerNeeded {
-				blockSignId := commit.CanonicalVoteVerifySignId(chainID, vals.QuorumType, vals.QuorumHash)
-
-				if !vals.ThresholdPublicKey.VerifySignatureDigest(blockSignId, commit.ThresholdBlockSignature) {
-					canonicalVoteBlockSignBytes := commit.CanonicalVoteVerifySignBytes(chainID)
-					return fmt.Errorf("incorrect threshold block signature lc %X %X", canonicalVoteBlockSignBytes,
-						commit.ThresholdBlockSignature)
-				}
-
-				stateSignId := commit.CanonicalVoteStateSignId(chainID, vals.QuorumType, vals.QuorumHash)
-
-				if !vals.ThresholdPublicKey.VerifySignatureDigest(stateSignId, commit.ThresholdStateSignature) {
-					canonicalVoteStateSignBytes := commit.CanonicalVoteStateSignBytes(chainID)
-					return fmt.Errorf("incorrect threshold state signature lc %X %X", canonicalVoteStateSignBytes,
-						commit.ThresholdStateSignature)
-				}
-				return nil
-			}
-		}
-	}
-
-	return ErrNotEnoughVotingPowerSigned{Got: talliedVotingPower, Needed: votingPowerNeeded}
 }
 
 // findPreviousProposer reverses the compare proposer priority function to find the validator

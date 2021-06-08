@@ -389,11 +389,6 @@ func (cs *State) OnStart() error {
 		return err
 	}
 
-	// Double Signing Risk Reduction
-	if err := cs.checkDoubleSigningRisk(cs.Height); err != nil {
-		return err
-	}
-
 	// now start the receiveRoutine
 	go cs.receiveRoutine(0)
 
@@ -584,15 +579,6 @@ func (cs *State) reconstructLastCommit(state sm.State) {
 	}
 
 	cs.LastCommit = seenCommit
-
-	if state.LastValidators.HasProTxHash(cs.privValidatorProTxHash) {
-		lastPrecommits := types.CommitToVoteSet(state.ChainID, seenCommit, state.LastValidators)
-		if !lastPrecommits.HasTwoThirdsMajority() {
-			panic("failed to reconstruct last commit; does not have +2/3 maj")
-		}
-
-		cs.LastPrecommits = lastPrecommits
-	}
 }
 
 // Updates State and increments height to match that of state.
@@ -644,7 +630,7 @@ func (cs *State) updateToState(state sm.State) {
 
 	switch {
 	case state.LastBlockHeight == 0: // Very first commit should be empty.
-		cs.LastPrecommits = (*types.VoteSet)(nil)
+		cs.LastCommit = (*types.Commit)(nil)
 	case cs.CommitRound > -1 && cs.Votes != nil: // Otherwise, use cs.Votes
 		if !cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
 			panic(fmt.Sprintf(
@@ -653,9 +639,9 @@ func (cs *State) updateToState(state sm.State) {
 			))
 		}
 
-		cs.LastPrecommits = cs.Votes.Precommits(cs.CommitRound)
+		cs.LastCommit = cs.Votes.Precommits()
 
-	case cs.LastPrecommits == nil:
+	case cs.LastCommit == nil:
 		// NOTE: when Tendermint starts, it has no votes. reconstructLastCommit
 		// must be called to reconstruct LastPrecommits from SeenCommit.
 		panic(fmt.Sprintf(
@@ -2074,24 +2060,9 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 			return
 		}
 
-		added, err = cs.LastPrecommits.AddVote(vote)
-		if !added {
-			return
-		}
-
-		cs.Logger.Debug("added vote to last precommits", "last_commit", cs.LastPrecommits.StringShort())
-		if err := cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote}); err != nil {
-			return added, err
-		}
-
-		cs.evsw.FireEvent(types.EventVote, vote)
-
-		// if we can skip timeoutCommit and have all the votes now,
-		if cs.config.SkipTimeoutCommit && cs.LastPrecommits.HasAll() {
-			// go straight to new round (skip timeout commit)
-			// cs.scheduleTimeout(time.Duration(0), cs.Height, 0, cstypes.RoundStepNewHeight)
-			cs.enterNewRound(cs.Height, 0)
-		}
+		// Because we advance as soon as the threshold has been acquired we will receive a lot of votes at height + 1
+		// Just ignore them
+		// cs.Logger.Debug("precommit vote came in after commit and has been ignored", "vote", vote)
 
 		return
 	}
@@ -2348,32 +2319,6 @@ func (cs *State) updatePrivValidatorProTxHash() error {
 	if len(proTxHash.Bytes()) != crypto.ProTxHashSize {
 		return fmt.Errorf("proTxHash must be 32 bytes")
 	}
-	return nil
-}
-
-// look back to check existence of the node's consensus votes before joining consensus
-func (cs *State) checkDoubleSigningRisk(height int64) error {
-	if cs.privValidator != nil && cs.privValidatorProTxHash != nil && cs.config.DoubleSignCheckHeight > 0 && height > 0 {
-		valProTxHash := cs.privValidatorProTxHash
-		doubleSignCheckHeight := cs.config.DoubleSignCheckHeight
-		if doubleSignCheckHeight > height {
-			doubleSignCheckHeight = height
-		}
-
-		for i := int64(1); i < doubleSignCheckHeight; i++ {
-			lastCommit := cs.blockStore.LoadSeenCommit(height - i)
-			if lastCommit != nil {
-				for sigIdx, s := range lastCommit.Signatures {
-					if s.BlockIDFlag == types.BlockIDFlagCommit && bytes.Equal(s.ValidatorProTxHash, valProTxHash) {
-						cs.Logger.Info("found signature from the same key", "sig", s,
-							"idx", sigIdx, "height", height-i)
-						return ErrSignatureFoundInPastBlocks
-					}
-				}
-			}
-		}
-	}
-
 	return nil
 }
 

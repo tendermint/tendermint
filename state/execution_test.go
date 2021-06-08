@@ -59,69 +59,6 @@ func TestApplyBlock(t *testing.T) {
 	assert.EqualValues(t, 1, state.Version.Consensus.App, "App version wasn't updated")
 }
 
-// TestBeginBlockValidators ensures we send absent validators list.
-func TestBeginBlockValidators(t *testing.T) {
-	app := &testApp{}
-	cc := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(cc)
-	err := proxyApp.Start()
-	require.Nil(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // no need to check error again
-
-	state, stateDB, _ := makeState(2, 2)
-	stateStore := sm.NewStore(stateDB)
-
-	prevHash := state.LastBlockID.Hash
-	prevParts := types.PartSetHeader{}
-	prevBlockID := types.BlockID{Hash: prevHash, PartSetHeader: prevParts}
-	prevStateID := state.LastStateID
-
-	var (
-		commitSig0 = types.NewCommitSigForBlock(
-			[]byte("BlockSignature1"),
-			[]byte("StateSignature1"),
-			state.Validators.Validators[0].Address)
-		commitSig1 = types.NewCommitSigForBlock(
-			[]byte("BlockSignature2"),
-			[]byte("StateSignature2"),
-			state.Validators.Validators[1].Address)
-		absentSig = types.NewCommitSigAbsent()
-	)
-
-	testCases := []struct {
-		desc                     string
-		lastCommitSigs           []types.CommitSig
-		expectedAbsentValidators []int
-	}{
-		{"none absent", []types.CommitSig{commitSig0, commitSig1}, []int{}},
-		{"one absent", []types.CommitSig{commitSig0, absentSig}, []int{1}},
-		{"multiple absent", []types.CommitSig{absentSig, absentSig}, []int{0, 1}},
-	}
-
-	for _, tc := range testCases {
-		lastCommit := types.NewCommit(1, 0, prevBlockID, prevStateID, tc.lastCommitSigs, nil, nil, nil)
-
-		// block for height 2
-		block, _ := state.MakeBlock(2, nil, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().ProTxHash)
-
-		_, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateStore, 1)
-		require.Nil(t, err, tc.desc)
-
-		// -> app receives a list of validators with a bool indicating if they signed
-		ctr := 0
-		for i, v := range app.CommitVotes {
-			if ctr < len(tc.expectedAbsentValidators) &&
-				tc.expectedAbsentValidators[ctr] == i {
-
-				assert.False(t, v.SignedLastBlock)
-				ctr++
-			} else {
-				assert.True(t, v.SignedLastBlock)
-			}
-		}
-	}
-}
-
 // TestBeginBlockByzantineValidators ensures we send byzantine validators list.
 func TestBeginBlockByzantineValidators(t *testing.T) {
 	app := &testApp{}
@@ -158,18 +95,12 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	dve := types.NewMockDuplicateVoteEvidenceWithValidator(3, defaultEvidenceTime, privVal, state.ChainID,
 		state.Validators.QuorumType, state.Validators.QuorumHash)
 	dve.ValidatorPower = types.DefaultDashVotingPower
-	commitSig := []types.CommitSig{{
-		BlockIDFlag:        types.BlockIDFlagNil,
-		ValidatorProTxHash: crypto.ProTxHashFromSeedBytes([]byte("validator_address")),
-		BlockSignature:     crypto.CRandBytes(types.SignatureSize),
-		StateSignature:     crypto.CRandBytes(types.SignatureSize),
-	}}
 	lcae := &types.LightClientAttackEvidence{
 		ConflictingBlock: &types.LightBlock{
 			SignedHeader: &types.SignedHeader{
 				Header: header,
 				Commit: types.NewCommit(10, 0, makeBlockID(header.Hash(), 100, []byte("partshash")),
-					makeStateID(header.AppHash), commitSig, crypto.RandQuorumHash(), crypto.CRandBytes(types.SignatureSize),
+					makeStateID(header.AppHash), crypto.RandQuorumHash(), crypto.CRandBytes(types.SignatureSize),
 					crypto.CRandBytes(types.SignatureSize),
 				),
 			},

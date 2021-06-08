@@ -79,30 +79,6 @@ type Vote struct {
 	StateSignature     []byte                `json:"state_signature"`
 }
 
-// CommitSig converts the Vote to a CommitSig.
-func (vote *Vote) CommitSig() CommitSig {
-	if vote == nil {
-		return NewCommitSigAbsent()
-	}
-
-	var blockIDFlag BlockIDFlag
-	switch {
-	case vote.BlockID.IsComplete():
-		blockIDFlag = BlockIDFlagCommit
-	case vote.BlockID.IsZero():
-		blockIDFlag = BlockIDFlagNil
-	default:
-		panic(fmt.Sprintf("Invalid vote %v - expected BlockID to be either empty or complete", vote))
-	}
-
-	return CommitSig{
-		BlockIDFlag:        blockIDFlag,
-		ValidatorProTxHash: vote.ValidatorProTxHash,
-		BlockSignature:     vote.BlockSignature,
-		StateSignature:     vote.StateSignature,
-	}
-}
-
 // VoteBlockSignBytes returns the proto-encoding of the canonicalized Vote, for
 // signing. Panics is the marshaling fails.
 //
@@ -354,16 +330,16 @@ func (vote *Vote) ValidateBasic() error {
 		return errors.New("block signature is missing")
 	}
 
-	if len(vote.BlockSignature) > MaxSignatureSize {
-		return fmt.Errorf("block signature is too big (max: %d)", MaxSignatureSize)
+	if len(vote.BlockSignature) > SignatureSize {
+		return fmt.Errorf("block signature is too big (max: %d)", SignatureSize)
 	}
 
 	if vote.BlockID.Hash != nil && len(vote.StateSignature) == 0 {
 		return errors.New("state signature is missing for a block not voting nil")
 	}
 
-	if len(vote.StateSignature) > MaxSignatureSize {
-		return fmt.Errorf("state signature is too big (max: %d)", MaxSignatureSize)
+	if len(vote.StateSignature) > SignatureSize {
+		return fmt.Errorf("state signature is too big (max: %d)", SignatureSize)
 	}
 
 	return nil

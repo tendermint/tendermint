@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 	"io/ioutil"
 	"time"
 
@@ -50,6 +51,7 @@ type State struct {
 
 	// immutable
 	ChainID       string
+	NodeProTxHash *crypto.ProTxHash //there might not be a nodeProTxHash
 	InitialHeight int64 // should be 1, not 0, when starting from height 1
 
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
@@ -356,6 +358,7 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 	return State{
 		Version:       InitStateVersion,
 		ChainID:       genDoc.ChainID,
+		NodeProTxHash: genDoc.NodeProTxHash,
 		InitialHeight: genDoc.InitialHeight,
 
 		LastBlockHeight: 0,

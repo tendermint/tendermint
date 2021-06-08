@@ -96,8 +96,8 @@ func validateBlock(state State, block *types.Block) error {
 
 	// Validate block LastPrecommits.
 	if block.Height == state.InitialHeight {
-		if len(block.LastCommit.Signatures) != 0 {
-			return errors.New("initial block can't have LastPrecommits signatures")
+		if len(block.LastCommit.ThresholdBlockSignature) != 0 {
+			return errors.New("initial block can't have ThresholdBlockSignature set")
 		}
 	} else {
 		// fmt.Printf("validating against state with lastBlockId %s lastStateId %s\n", state.LastBlockID.String(),
