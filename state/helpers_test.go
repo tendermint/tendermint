@@ -159,8 +159,7 @@ func makeHeaderPartsResponsesValPubKeyChange(
 
 	block := makeBlock(state, state.LastBlockHeight+1)
 	abciResponses := &tmstate.ABCIResponses{
-		BeginBlock: &abci.ResponseBeginBlock{},
-		EndBlock:   &abci.ResponseEndBlock{ValidatorUpdates: nil},
+		FinalizeBlock: &abci.ResponseFinalizeBlock{ValidatorUpdates: nil},
 	}
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
@@ -173,7 +172,7 @@ func makeHeaderPartsResponsesValPubKeyChange(
 		if err != nil {
 			panic(err)
 		}
-		abciResponses.EndBlock = &abci.ResponseEndBlock{
+		abciResponses.FinalizeBlock = &abci.ResponseFinalizeBlock{
 			ValidatorUpdates: []abci.ValidatorUpdate{
 				{PubKey: vPbPk, Power: 0},
 				{PubKey: pbPk, Power: 10},
@@ -191,8 +190,7 @@ func makeHeaderPartsResponsesValPowerChange(
 
 	block := makeBlock(state, state.LastBlockHeight+1)
 	abciResponses := &tmstate.ABCIResponses{
-		BeginBlock: &abci.ResponseBeginBlock{},
-		EndBlock:   &abci.ResponseEndBlock{ValidatorUpdates: nil},
+		FinalizeBlock: &abci.ResponseFinalizeBlock{ValidatorUpdates: nil},
 	}
 
 	// If the pubkey is new, remove the old and add the new.
@@ -202,7 +200,7 @@ func makeHeaderPartsResponsesValPowerChange(
 		if err != nil {
 			panic(err)
 		}
-		abciResponses.EndBlock = &abci.ResponseEndBlock{
+		abciResponses.FinalizeBlock = &abci.ResponseFinalizeBlock{
 			ValidatorUpdates: []abci.ValidatorUpdate{
 				{PubKey: vPbPk, Power: power},
 			},
@@ -220,8 +218,7 @@ func makeHeaderPartsResponsesParams(
 	block := makeBlock(state, state.LastBlockHeight+1)
 	pbParams := params.ToProto()
 	abciResponses := &tmstate.ABCIResponses{
-		BeginBlock: &abci.ResponseBeginBlock{},
-		EndBlock:   &abci.ResponseEndBlock{ConsensusParamUpdates: &pbParams},
+		FinalizeBlock: &abci.ResponseFinalizeBlock{ConsensusParamUpdates: &pbParams},
 	}
 	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
 }

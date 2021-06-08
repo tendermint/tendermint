@@ -57,16 +57,9 @@ func (es *EventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error {
 	sqlStmt = sqlStmt.
 		Values(types.BlockHeightKey, fmt.Sprint(h.Header.Height), h.Header.Height, "", ts, es.chainID)
 
-	// index begin_block events
+	// index finalize_block events
 	sqlStmt, err := indexBlockEvents(
-		sqlStmt, h.ResultBeginBlock.Events, types.EventTypeBeginBlock, h.Header.Height, ts, es.chainID)
-	if err != nil {
-		return err
-	}
-
-	// index end_block events
-	sqlStmt, err = indexBlockEvents(
-		sqlStmt, h.ResultEndBlock.Events, types.EventTypeEndBlock, h.Header.Height, ts, es.chainID)
+		sqlStmt, h.ResultFinalizeBlock.Events, types.EventTypeBeginBlock, h.Header.Height, ts, es.chainID)
 	if err != nil {
 		return err
 	}
