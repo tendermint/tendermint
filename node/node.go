@@ -1109,18 +1109,14 @@ func defaultMetricsProvider(config *cfg.InstrumentationConfig) metricsProvider {
 
 //------------------------------------------------------------------------------
 
-var (
-	genesisDocKey = []byte("genesisDoc")
-)
-
 // loadStateFromDBOrGenesisDocProvider attempts to load the state from the
 // database, or creates one using the given genesisDocProvider. On success this also
 // returns the genesis doc loaded through the given provider.
 func loadStateFromDBOrGenesisDocProvider(
 	stateStore sm.Store,
-	genDoc  *types.GenesisDoc,
+	genDoc *types.GenesisDoc,
 ) (sm.State, error) {
-	
+
 	// 1. Attempt to load state form the database
 	state, err := stateStore.Load()
 	if err != nil {

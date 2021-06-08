@@ -488,9 +488,8 @@ func newReactorStore(
 	t *testing.T,
 	genDoc *types.GenesisDoc,
 	privVals []types.PrivValidator,
-	maxBlockHeight int64) (*store.BlockStore, sm.State, *sm.BlockExecutor) {	
+	maxBlockHeight int64) (*store.BlockStore, sm.State, *sm.BlockExecutor) {
 	t.Helper()
-
 
 	require.Len(t, privVals, 1)
 	app := &testApp{}

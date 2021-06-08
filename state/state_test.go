@@ -32,6 +32,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, sm.State) {
 	require.NoError(t, err)
 	stateStore := sm.NewStore(stateDB)
 	state, err := stateStore.Load()
+	require.NoError(t, err)
 	require.Empty(t, state)
 	state, err = sm.MakeGenesisStateFromFile(config.GenesisFile())
 	assert.NoError(t, err)

@@ -489,7 +489,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 
 	n := 4
 	states, cleanup := randConsensusState(
-		t, 
+		t,
 		config,
 		n,
 		"consensus_voting_power_changes_test",
