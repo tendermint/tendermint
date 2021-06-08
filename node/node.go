@@ -333,7 +333,10 @@ func makeNode(config *cfg.Config,
 		proxyApp.Query(),
 		channels[statesync.SnapshotChannel],
 		channels[statesync.ChunkChannel],
+		channels[statesync.LightBlockChannel],
 		peerUpdates,
+		stateStore,
+		blockStore,
 		config.StateSync.TempDir,
 	)
 
@@ -1038,20 +1041,15 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 	}
 
 	go func() {
-		state, commit, err := ssR.Sync(stateProvider, config.DiscoveryTime)
+		err := ssR.Sync(stateProvider, config.DiscoveryTime)
 		if err != nil {
 			ssR.Logger.Error("State sync failed", "err", err)
 			return
 		}
-		err = stateStore.Bootstrap(state)
+
+		state, err := stateStore.Load()
 		if err != nil {
-			ssR.Logger.Error("Failed to bootstrap node with new state", "err", err)
-			return
-		}
-		err = blockStore.SaveSeenCommit(state.LastBlockHeight, commit)
-		if err != nil {
-			ssR.Logger.Error("Failed to store last seen commit", "err", err)
-			return
+			ssR.Logger.Error("failed to load state", "err", err)
 		}
 
 		if fastSync {

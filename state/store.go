@@ -93,6 +93,8 @@ type Store interface {
 	Save(State) error
 	// SaveABCIResponses saves ABCIResponses for a given height
 	SaveABCIResponses(int64, *tmstate.ABCIResponses) error
+	// SaveValidatorSet saves the validator set at a given height
+	SaveValidatorSets(int64, int64, *types.ValidatorSet) error
 	// Bootstrap is used for bootstrapping state when not starting from a initial height.
 	Bootstrap(State) error
 	// PruneStates takes the height from which to prune up to (exclusive)
@@ -502,6 +504,24 @@ func (store dbStore) saveABCIResponses(height int64, abciResponses *tmstate.ABCI
 	return store.db.SetSync(abciResponsesKey(height), bz)
 }
 
+// SaveValidatorSets is used to save the validator set over multiple heights.
+// It is exposed so that a backfill operation during state sync can populate
+// the store with the necessary amount of validator sets to verify any evidence
+// it may encounter.
+func (store dbStore) SaveValidatorSets(lowerHeight, upperHeight int64, vals *types.ValidatorSet) error {
+	batch := store.db.NewBatch()
+	defer batch.Close()
+
+	// batch together all the validator sets from lowerHeight to upperHeight
+	for height := lowerHeight; height <= upperHeight; height++ {
+		if err := store.saveValidatorsInfo(height, lowerHeight, vals, batch); err != nil {
+			return err
+		}
+	}
+
+	return batch.WriteSync()
+}
+
 //-----------------------------------------------------------------------------
 
 // LoadValidators loads the ValidatorSet for a given height.
@@ -606,12 +626,7 @@ func (store dbStore) saveValidatorsInfo(
 		return err
 	}
 
-	err = batch.Set(validatorsKey(height), bz)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return batch.Set(validatorsKey(height), bz)
 }
 
 //-----------------------------------------------------------------------------
