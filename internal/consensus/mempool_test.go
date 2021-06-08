@@ -17,6 +17,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	mempl "github.com/tendermint/tendermint/internal/mempool"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -123,9 +124,9 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	config := configSetup(t)
 
 	state, privVals := randGenesisState(config, 1, false, 10)
-	blockDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(blockDB)
-	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], NewCounterApplication(), blockDB)
+	stateStore := sm.NewStore(dbm.NewMemDB())
+	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], NewCounterApplication(), blockStore)
 	err := stateStore.Save(state)
 	require.NoError(t, err)
 	newBlockHeaderCh := subscribe(cs.eventBus, types.EventQueryNewBlockHeader)
@@ -150,9 +151,9 @@ func TestMempoolRmBadTx(t *testing.T) {
 
 	state, privVals := randGenesisState(config, 1, false, 10)
 	app := NewCounterApplication()
-	blockDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(blockDB)
-	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], app, blockDB)
+	stateStore := sm.NewStore(dbm.NewMemDB())
+	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], app, blockStore)
 	err := stateStore.Save(state)
 	require.NoError(t, err)
 

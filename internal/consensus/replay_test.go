@@ -33,6 +33,7 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -54,21 +55,23 @@ import (
 func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Config,
 	lastBlockHeight int64, blockDB dbm.DB, stateStore sm.Store) {
 	logger := log.TestingLogger()
-	state, _ := stateStore.LoadFromDBOrGenesisFile(consensusReplayConfig.GenesisFile())
+	state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
+	require.NoError(t, err)
 	privValidator := loadPrivValidator(consensusReplayConfig)
+	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	cs := newStateWithConfigAndBlockStore(
 		consensusReplayConfig,
 		state,
 		privValidator,
 		kvstore.NewApplication(),
-		blockDB,
+		blockStore,
 	)
 	cs.SetLogger(logger)
 
 	bytes, _ := ioutil.ReadFile(cs.config.WalFile())
 	t.Logf("====== WAL: \n\r%X\n", bytes)
 
-	err := cs.Start()
+	err = cs.Start()
 	require.NoError(t, err)
 	defer func() {
 		if err := cs.Stop(); err != nil {
@@ -147,6 +150,7 @@ LOOP:
 		blockDB := dbm.NewMemDB()
 		stateDB := dbm.NewMemDB()
 		stateStore := sm.NewStore(stateDB)
+		blockStore := store.NewBlockStore(blockDB)
 		state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 		require.NoError(t, err)
 		privValidator := loadPrivValidator(consensusReplayConfig)
@@ -155,7 +159,7 @@ LOOP:
 			state,
 			privValidator,
 			kvstore.NewApplication(),
-			blockDB,
+			blockStore,
 		)
 		cs.SetLogger(logger)
 

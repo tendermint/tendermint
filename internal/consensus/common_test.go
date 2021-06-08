@@ -384,8 +384,8 @@ func newStateWithConfig(
 	pv types.PrivValidator,
 	app abci.Application,
 ) *State {
-	blockDB := dbm.NewMemDB()
-	return newStateWithConfigAndBlockStore(thisConfig, state, pv, app, blockDB)
+	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	return newStateWithConfigAndBlockStore(thisConfig, state, pv, app, blockStore)
 }
 
 func newStateWithConfigAndBlockStore(
@@ -393,11 +393,8 @@ func newStateWithConfigAndBlockStore(
 	state sm.State,
 	pv types.PrivValidator,
 	app abci.Application,
-	blockDB dbm.DB,
+	blockStore *store.BlockStore,
 ) *State {
-	// Get BlockStore
-	blockStore := store.NewBlockStore(blockDB)
-
 	// one for mempool, one for consensus
 	mtx := new(tmsync.RWMutex)
 	proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
@@ -693,6 +690,7 @@ func consensusLogger() log.Logger {
 }
 
 func randConsensusState(
+	t *testing.T,
 	config *cfg.Config,
 	nValidators int,
 	testName string,
@@ -710,9 +708,9 @@ func randConsensusState(
 	configRootDirs := make([]string, 0, nValidators)
 
 	for i := 0; i < nValidators; i++ {
-		stateDB := dbm.NewMemDB() // each state needs its own db
-		stateStore := sm.NewStore(stateDB)
-		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
+		blockStore := store.NewBlockStore(dbm.NewMemDB()) // each state needs its own db
+		state, err := sm.MakeGenesisState(genDoc)
+		require.NoError(t, err)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
 
@@ -731,7 +729,7 @@ func randConsensusState(
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 
-		css[i] = newStateWithConfigAndBlockStore(thisConfig, state, privVals[i], app, stateDB)
+		css[i] = newStateWithConfigAndBlockStore(thisConfig, state, privVals[i], app, blockStore)
 		css[i].SetTimeoutTicker(tickerFunc())
 		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}
@@ -762,9 +760,7 @@ func randConsensusNetWithPeers(
 	var peer0Config *cfg.Config
 	configRootDirs := make([]string, 0, nPeers)
 	for i := 0; i < nPeers; i++ {
-		stateDB := dbm.NewMemDB() // each state needs its own db
-		stateStore := sm.NewStore(stateDB)
-		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
+		state, _ := sm.MakeGenesisState(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
 		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal

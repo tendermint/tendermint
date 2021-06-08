@@ -75,12 +75,6 @@ func init() {
 // It is used to retrieve current state and save and load ABCI responses,
 // validators and consensus parameters
 type Store interface {
-	// LoadFromDBOrGenesisFile loads the most recent state.
-	// If the chain is new it will use the genesis file from the provided genesis file path as the current state.
-	LoadFromDBOrGenesisFile(string) (State, error)
-	// LoadFromDBOrGenesisDoc loads the most recent state.
-	// If the chain is new it will use the genesis doc as the current state.
-	LoadFromDBOrGenesisDoc(*types.GenesisDoc) (State, error)
 	// Load loads the current state of the blockchain
 	Load() (State, error)
 	// LoadValidators loads the validator set at a given height

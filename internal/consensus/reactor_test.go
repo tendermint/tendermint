@@ -257,7 +257,7 @@ func TestReactorBasic(t *testing.T) {
 	config := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(config, n, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	states, cleanup := randConsensusState(t, config, n, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
 	t.Cleanup(cleanup)
 
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
@@ -296,7 +296,8 @@ func TestReactorWithEvidence(t *testing.T) {
 	for i := 0; i < n; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		stateStore := sm.NewStore(stateDB)
-		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
+		state, err := sm.MakeGenesisState(genDoc)
+		require.NoError(t, err)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 
 		defer os.RemoveAll(thisConfig.RootDir)
@@ -341,7 +342,7 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		eventBus := types.NewEventBus()
 		eventBus.SetLogger(log.TestingLogger().With("module", "events"))
-		err := eventBus.Start()
+		err = eventBus.Start()
 		require.NoError(t, err)
 		cs.SetEventBus(eventBus)
 
@@ -381,6 +382,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 
 	n := 4
 	states, cleanup := randConsensusState(
+		t,
 		config,
 		n,
 		"consensus_reactor_test",
@@ -429,7 +431,7 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 	config := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(config, n, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	states, cleanup := randConsensusState(t, config, n, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
 	t.Cleanup(cleanup)
 
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
@@ -487,6 +489,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 
 	n := 4
 	states, cleanup := randConsensusState(
+		t, 
 		config,
 		n,
 		"consensus_voting_power_changes_test",
