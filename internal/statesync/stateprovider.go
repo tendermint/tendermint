@@ -53,7 +53,7 @@ func NewLightClientStateProvider(
 	logger log.Logger,
 ) (StateProvider, error) {
 	if len(servers) < 2 {
-		return nil, fmt.Errorf("at least 2 RPC servers are required, got %v", len(servers))
+		return nil, fmt.Errorf("at least 2 RPC servers are required, got %d", len(servers))
 	}
 
 	providers := make([]lightprovider.Provider, 0, len(servers))
@@ -80,6 +80,41 @@ func NewLightClientStateProvider(
 		version:       version,
 		initialHeight: initialHeight,
 		providers:     providerRemotes,
+	}, nil
+}
+
+// NewLightClientStateProviderFromDispatcher creates a light client state
+// provider but uses a p2p connected dispatched instead of RPC endpoints
+func NewLightClientStateProviderFromDispatcher(
+	ctx context.Context,
+	chainID string,
+	version sm.Version,
+	initialHeight int64,
+	dispatcher *dispatcher,
+	trustOptions light.TrustOptions,
+	logger log.Logger,
+) (StateProvider, error) {
+	providers := dispatcher.Providers(chainID, 10*time.Second)
+	if len(providers) < 2 {
+		return nil, fmt.Errorf("at least 2 peers are required, got %d", len(providers))
+	}
+
+	providersMap := make(map[lightprovider.Provider]string)
+	for _, p := range providers {
+		providersMap[p] = p.(*blockProvider).String()
+	}
+
+	lc, err := light.NewClient(ctx, chainID, trustOptions, providers[0], providers[1:],
+		lightdb.New(dbm.NewMemDB()), light.Logger(logger))
+	if err != nil {
+		return nil, err
+	}
+
+	return &lightClientStateProvider{
+		lc:            lc,
+		version:       version,
+		initialHeight: initialHeight,
+		providers:     providersMap,
 	}, nil
 }
 

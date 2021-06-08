@@ -213,7 +213,7 @@ message ResponseDeliverTx {
 message ResponseEndBlock {
   repeated ValidatorUpdate         validator_updates       = 1 [(gogoproto.nullable) = false];
   tendermint.types.ConsensusParams consensus_param_updates = 2;
-  repeated Event                   events = 3 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+  repeated Event                   events                  = 3 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
 }
 
 message ResponseCommit {
