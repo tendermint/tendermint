@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 const (
@@ -15,11 +17,6 @@ const (
 	FuzzModeDrop = iota
 	// FuzzModeDelay is a mode in which we randomly sleep
 	FuzzModeDelay
-
-	// LogFormatPlain is a format for colored text
-	LogFormatPlain = "plain"
-	// LogFormatJSON is a format for json output
-	LogFormatJSON = "json"
 
 	// DefaultLogLevel defines a default log level as INFO.
 	DefaultLogLevel = "info"
@@ -276,7 +273,7 @@ func DefaultBaseConfig() BaseConfig {
 		ProxyApp:     "tcp://127.0.0.1:26658",
 		ABCI:         "socket",
 		LogLevel:     DefaultLogLevel,
-		LogFormat:    LogFormatPlain,
+		LogFormat:    log.LogFormatPlain,
 		FastSyncMode: true,
 		FilterPeers:  false,
 		DBBackend:    "goleveldb",
@@ -331,18 +328,20 @@ func (cfg Config) ArePrivValidatorClientSecurityOptionsPresent() bool {
 // returns an error if any check fails.
 func (cfg BaseConfig) ValidateBasic() error {
 	switch cfg.LogFormat {
-	case LogFormatPlain, LogFormatJSON:
+	case log.LogFormatJSON, log.LogFormatText, log.LogFormatPlain:
 	default:
-		return errors.New("unknown log format (must be 'plain' or 'json')")
+		return errors.New("unknown log format (must be 'plain', 'text' or 'json')")
 	}
 
 	switch cfg.Mode {
 	case ModeFull, ModeValidator, ModeSeed, ModeDevelopment:
 	case "":
 		return errors.New("no mode has been set")
+
 	default:
 		return fmt.Errorf("unknown mode: %v", cfg.Mode)
 	}
+
 	return nil
 }
 

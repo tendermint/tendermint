@@ -41,15 +41,15 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
+func initDBs(config *cfg.Config, dbProvider cfg.DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
 	var blockStoreDB dbm.DB
-	blockStoreDB, err = dbProvider(&DBContext{"blockstore", config})
+	blockStoreDB, err = dbProvider(&cfg.DBContext{ID: "blockstore", Config: config})
 	if err != nil {
 		return
 	}
 	blockStore = store.NewBlockStore(blockStoreDB)
 
-	stateDB, err = dbProvider(&DBContext{"state", config})
+	stateDB, err = dbProvider(&cfg.DBContext{ID: "state", Config: config})
 	return
 }
 
@@ -73,7 +73,7 @@ func createAndStartEventBus(logger log.Logger) (*types.EventBus, error) {
 
 func createAndStartIndexerService(
 	config *cfg.Config,
-	dbProvider DBProvider,
+	dbProvider cfg.DBProvider,
 	eventBus *types.EventBus,
 	logger log.Logger,
 	chainID string,
@@ -99,7 +99,7 @@ loop:
 			eventSinks = []indexer.EventSink{null.NewEventSink()}
 			break loop
 		case string(indexer.KV):
-			store, err := dbProvider(&DBContext{"tx_index", config})
+			store, err := dbProvider(&cfg.DBContext{ID: "tx_index", Config: config})
 			if err != nil {
 				return nil, nil, err
 			}
@@ -278,14 +278,14 @@ func createMempoolReactor(
 
 func createEvidenceReactor(
 	config *cfg.Config,
-	dbProvider DBProvider,
+	dbProvider cfg.DBProvider,
 	stateDB dbm.DB,
 	blockStore *store.BlockStore,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	logger log.Logger,
 ) (*p2p.ReactorShim, *evidence.Reactor, *evidence.Pool, error) {
-	evidenceDB, err := dbProvider(&DBContext{"evidence", config})
+	evidenceDB, err := dbProvider(&cfg.DBContext{ID: "evidence", Config: config})
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -450,7 +450,7 @@ func createTransport(logger log.Logger, config *cfg.Config) *p2p.MConnTransport 
 
 func createPeerManager(
 	config *cfg.Config,
-	dbProvider DBProvider,
+	dbProvider cfg.DBProvider,
 	p2pLogger log.Logger,
 	nodeID p2p.NodeID,
 ) (*p2p.PeerManager, error) {
@@ -513,7 +513,7 @@ func createPeerManager(
 		peers = append(peers, address)
 	}
 
-	peerDB, err := dbProvider(&DBContext{"peerstore", config})
+	peerDB, err := dbProvider(&cfg.DBContext{ID: "peerstore", Config: config})
 	if err != nil {
 		return nil, err
 	}

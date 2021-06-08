@@ -1592,3 +1592,27 @@ func BenchmarkValidatorSet_VerifyCommitLightTrusting_Ed25519(b *testing.B) {
 		})
 	}
 }
+
+// Testing Utils
+
+// deterministicValidatorSet returns a deterministic validator set (size: +numValidators+),
+// where each validator has a power of 50
+//
+// EXPOSED FOR TESTING.
+func deterministicValidatorSet() (*ValidatorSet, []PrivValidator) {
+	var (
+		valz           = make([]*Validator, 10)
+		privValidators = make([]PrivValidator, 10)
+	)
+
+	for i := 0; i < 10; i++ {
+		// val, privValidator := DeterministicValidator(ed25519.PrivKey([]byte(deterministicKeys[i])))
+		val, privValidator := deterministicValidator(ed25519.GenPrivKeyFromSecret([]byte(fmt.Sprintf("key: %x", i))))
+		valz[i] = val
+		privValidators[i] = privValidator
+	}
+
+	sort.Sort(PrivValidatorsByAddress(privValidators))
+
+	return NewValidatorSet(valz), privValidators
+}

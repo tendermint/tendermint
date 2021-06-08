@@ -11,7 +11,6 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	tmos "github.com/tendermint/tendermint/libs/os"
-	nm "github.com/tendermint/tendermint/node"
 )
 
 var (
@@ -99,7 +98,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 
 // NewRunNodeCmd returns the command that allows the CLI to start a node.
 // It can be used with a custom PrivValidator and in-process ABCI application.
-func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
+func NewRunNodeCmd(nodeProvider cfg.ServiceProvider) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "start",
 		Aliases: []string{"node", "run"},
@@ -118,7 +117,7 @@ func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
 				return fmt.Errorf("failed to start node: %w", err)
 			}
 
-			logger.Info("Started node", "nodeInfo", n.NodeInfo())
+			logger.Info("started node", "node", n.String())
 
 			// Stop upon receiving SIGTERM or CTRL-C.
 			tmos.TrapSignal(logger, func() {
