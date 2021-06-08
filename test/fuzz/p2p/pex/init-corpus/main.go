@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/internal/p2p"
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
