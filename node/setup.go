@@ -749,6 +749,7 @@ func makeNodeInfo(
 			byte(evidence.EvidenceChannel),
 			byte(statesync.SnapshotChannel),
 			byte(statesync.ChunkChannel),
+			byte(statesync.LightBlockChannel),
 		},
 		Moniker: config.Moniker,
 		Other: p2p.NodeInfoOther{

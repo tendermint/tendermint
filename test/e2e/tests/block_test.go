@@ -69,7 +69,7 @@ func TestBlock_Range(t *testing.T) {
 
 		switch {
 		case node.StateSync:
-			assert.Greater(t, first, node.Testnet.InitialHeight,
+			assert.GreaterOrEqual(t, first, node.StartAt-e2e.EvidenceAgeHeight-1,
 				"state synced nodes should not contain network's initial height")
 
 		case node.RetainBlocks > 0 && int64(node.RetainBlocks) < (last-node.Testnet.InitialHeight+1):
@@ -83,15 +83,15 @@ func TestBlock_Range(t *testing.T) {
 		}
 
 		for h := first; h <= last; h++ {
+			if node.StateSync && h <= first+e2e.EvidenceAgeHeight+1 {
+				continue
+			}
 			resp, err := client.Block(ctx, &(h))
 			if err != nil && node.RetainBlocks > 0 && h == first {
 				// Ignore errors in first block if node is pruning blocks due to race conditions.
 				continue
 			}
 			require.NoError(t, err)
-			if node.StateSync && h <= first+e2e.EvidenceAgeHeight+3 {
-				continue
-			}
 			require.NotNil(t, resp.Block)
 			assert.Equal(t, h, resp.Block.Height)
 		}

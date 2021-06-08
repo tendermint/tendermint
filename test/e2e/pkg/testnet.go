@@ -49,7 +49,7 @@ const (
 	PerturbationRestart    Perturbation = "restart"
 
 	EvidenceAgeHeight int64         = 5
-	EvidenceAgeTime   time.Duration = 10 * time.Second
+	EvidenceAgeTime   time.Duration = 1 * time.Second
 )
 
 // Testnet represents a single testnet.

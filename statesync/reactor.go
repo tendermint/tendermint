@@ -370,8 +370,7 @@ func (r *Reactor) Backfill(
 					return err
 				}
 
-				// update the lastValidatorSet and lastChangeHeight
-				lastValidatorSet = resp.block.ValidatorSet
+				// update the lastChangeHeight
 				lastChangeHeight = resp.block.Height
 			}
 
@@ -379,9 +378,7 @@ func (r *Reactor) Backfill(
 			queue.success(resp.block.Height)
 			r.Logger.Info("verified and stored light block", "height", resp.block.Height)
 
-			if lastValidatorSet == nil {
-				lastValidatorSet = resp.block.ValidatorSet
-			}
+			lastValidatorSet = resp.block.ValidatorSet
 
 		case <-queue.done():
 			if err := queue.error(); err != nil {
@@ -583,6 +580,7 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 		}
 
 	case *ssproto.LightBlockResponse:
+		r.Logger.Info("received light block response")
 		if err := r.dispatcher.respond(msg.LightBlock, envelope.From); err != nil {
 			r.Logger.Error("error processing light block response", "err", err)
 			return err
