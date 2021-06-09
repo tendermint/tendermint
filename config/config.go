@@ -217,9 +217,6 @@ type BaseConfig struct { //nolint: maligned
 
 	PrivValidatorCoreRPCPassword string `mapstructure:"priv_validator_core_rpc_password"`
 
-	// The LLMQ type that tenderdash should use when making queries to core
-	LLMQTypeUsed int `mapstructure:"llmq_type_used"`
-
 	// A JSON file containing the private key to use for p2p authenticated encryption
 	NodeKey string `mapstructure:"node_key_file"`
 
@@ -240,7 +237,6 @@ func DefaultBaseConfig() BaseConfig {
 		PrivValidatorCoreRPCHost:     "127.0.0.1:19998",
 		PrivValidatorCoreRPCUsername: "dashrpc",
 		PrivValidatorCoreRPCPassword: "rpcpassword",
-		LLMQTypeUsed:                 int(btcjson.LLMQType_100_67),
 		NodeKey:                      defaultNodeKeyPath,
 		Moniker:                      defaultMoniker,
 		ProxyApp:                     "tcp://127.0.0.1:26658",

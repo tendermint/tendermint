@@ -199,27 +199,30 @@ func makeHeightSearchFunc(height int64) auto.SearchFunc {
 //---------------------------------------------------
 
 type Handshaker struct {
-	stateStore    sm.Store
-	initialState  sm.State
-	store         sm.BlockStore
-	eventBus      types.BlockEventPublisher
-	genDoc        *types.GenesisDoc
-	logger        log.Logger
+	stateStore   sm.Store
+	initialState sm.State
+	store        sm.BlockStore
+	eventBus     types.BlockEventPublisher
+	genDoc       *types.GenesisDoc
+	logger       log.Logger
 
 	nBlocks int // number of blocks applied to the state
+
+	appHashSize int
 }
 
 func NewHandshaker(stateStore sm.Store, state sm.State,
-	store sm.BlockStore, genDoc *types.GenesisDoc) *Handshaker {
+	store sm.BlockStore, genDoc *types.GenesisDoc, appHashSize int) *Handshaker {
 
 	return &Handshaker{
-		stateStore:    stateStore,
-		initialState:  state,
-		store:         store,
-		eventBus:      types.NopEventBus{},
-		genDoc:        genDoc,
-		logger:        log.NewNopLogger(),
-		nBlocks:       0,
+		stateStore:   stateStore,
+		initialState: state,
+		store:        store,
+		eventBus:     types.NopEventBus{},
+		genDoc:       genDoc,
+		logger:       log.NewNopLogger(),
+		nBlocks:      0,
+		appHashSize:  appHashSize,
 	}
 }
 

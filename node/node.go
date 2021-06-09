@@ -674,12 +674,12 @@ func NewNode(config *cfg.Config,
 		logger.Info("Initializing Dash Core Signing", "quorum hash", state.Validators.QuorumHash.String())
 		username := config.BaseConfig.PrivValidatorCoreRPCUsername
 		password := config.BaseConfig.PrivValidatorCoreRPCPassword
-		llmqType := btcjson.LLMQType(config.LLMQTypeUsed)
+		llmqType := config.Consensus.QuorumType
 		if llmqType == 0 {
 			llmqType = btcjson.LLMQType_100_67
 		}
 		// If a local port is provided for Dash Core rpc into the service to sign.
-		privValidator, err = createAndStartPrivValidatorRPCClient(config.PrivValidatorCoreRPCHost, btcjson.LLMQType(config.LLMQTypeUsed), username, password, logger)
+		privValidator, err = createAndStartPrivValidatorRPCClient(config.PrivValidatorCoreRPCHost, config.Consensus.QuorumType, username, password, logger)
 		if err != nil {
 			return nil, fmt.Errorf("error with private validator socket client: %w", err)
 		}
