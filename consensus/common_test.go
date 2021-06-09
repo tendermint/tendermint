@@ -358,26 +358,20 @@ func subscribeToVoter(cs *State, proTxHash []byte) <-chan tmpubsub.Message {
 
 func newState(state sm.State, pv types.PrivValidator, app abci.Application) *State {
 	config := cfg.ResetTestRoot("consensus_state_test")
-	proTxHash, err := pv.GetProTxHash()
-	if err != nil {
-		panic(err)
-	}
-	return newStateWithConfig(&proTxHash, config, state, pv, app)
+	return newStateWithConfig(config, state, pv, app)
 }
 
 func newStateWithConfig(
-	nodeProTxHash *crypto.ProTxHash,
 	thisConfig *cfg.Config,
 	state sm.State,
 	pv types.PrivValidator,
 	app abci.Application,
 ) *State {
 	blockDB := dbm.NewMemDB()
-	return newStateWithConfigAndBlockStore(nodeProTxHash, thisConfig, state, pv, app, blockDB)
+	return newStateWithConfigAndBlockStore(thisConfig, state, pv, app, blockDB)
 }
 
 func newStateWithConfigAndBlockStore(
-	nodeProTxHash *crypto.ProTxHash,
 	thisConfig *cfg.Config,
 	state sm.State,
 	pv types.PrivValidator,
@@ -409,7 +403,7 @@ func newStateWithConfigAndBlockStore(
 		panic(err)
 	}
 
-	blockExec := sm.NewBlockExecutor(nodeProTxHash, stateStore, log.TestingLogger(), proxyAppConnCon, proxyAppConnQry, mempool, evpool, nil)
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, proxyAppConnQry, mempool, evpool, nil)
 
 	cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
@@ -707,12 +701,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{ValidatorSet: vals})
 
-		proTxHash, err := privVals[i].GetProTxHash()
-		if err != nil {
-			panic(err)
-		}
-
-		css[i] = newStateWithConfigAndBlockStore(&proTxHash, thisConfig, state, privVals[i], app, stateDB)
+		css[i] = newStateWithConfigAndBlockStore(thisConfig, state, privVals[i], app, stateDB)
 		css[i].SetTimeoutTicker(tickerFunc())
 		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}
@@ -947,12 +936,7 @@ func randConsensusNetWithPeers(
 		app.InitChain(abci.RequestInitChain{ValidatorSet: vals})
 		// sm.SaveState(stateDB,state)	//height 1's validatorsInfo already saved in LoadStateFromDBOrGenesisDoc above
 
-		proTxHash, err := privVals[i].GetProTxHash()
-		if err != nil {
-			panic(err)
-		}
-
-		css[i] = newStateWithConfig(&proTxHash, thisConfig, state, privVal, app)
+		css[i] = newStateWithConfig(thisConfig, state, privVal, app)
 		css[i].SetTimeoutTicker(tickerFunc())
 		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}

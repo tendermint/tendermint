@@ -2,9 +2,11 @@
 package consensus
 
 import (
+	bytes2 "bytes"
 	"context"
 	"fmt"
 	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/tendermint/tendermint/crypto"
 	"os"
 	"path"
 	"runtime"
@@ -369,7 +371,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	// wait till everyone makes block 6
 	// it includes the commit for block 4, which should have the updated validator set
-	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, blocksSubs, css)
+	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, quorumHash, blocksSubs, css)
 
 	//---------------------------------------------------------------------------
 	logger.Info("---------------------------- Testing adding two validators at once")
@@ -398,7 +400,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	activeVals[string(newValidatorProTxHashes[0])] = struct{}{}
 	activeVals[string(newValidatorProTxHashes[1])] = struct{}{}
 	// block 11
-	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, blocksSubs, css)
+	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, quorumHash, blocksSubs, css)
 
 	//---------------------------------------------------------------------------
 	logger.Info("---------------------------- Testing removing two validators at once")
@@ -429,7 +431,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	delete(activeVals, string(removedValidators[0].ProTxHash))
 	delete(activeVals, string(removedValidators[1].ProTxHash))
 	// block 16
-	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, blocksSubs, css)
+	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, newQuorumHash, blocksSubs, css)
 }
 
 // Check we can make blocks with skip_timeout_commit=false
@@ -464,7 +466,7 @@ func waitForAndValidateBlock(
 		msg := <-blocksSubs[j].Out()
 		newBlock := msg.Data().(types.EventDataNewBlock).Block
 		css[j].Logger.Debug("waitForAndValidateBlock: Got block", "height", newBlock.Height)
-		err := validateBlock(newBlock, activeVals)
+		err := validateBlock(newBlock)
 		assert.Nil(t, err)
 		for _, tx := range txs {
 			err := assertMempool(css[j].txNotifier).CheckTx(tx, nil, mempl.TxInfo{})
@@ -489,7 +491,7 @@ func waitForAndValidateBlockWithTx(
 			msg := <-blocksSubs[j].Out()
 			newBlock := msg.Data().(types.EventDataNewBlock).Block
 			css[j].Logger.Debug("waitForAndValidateBlockWithTx: Got block", "height", newBlock.Height)
-			err := validateBlock(newBlock, activeVals)
+			err := validateBlock(newBlock)
 			assert.Nil(t, err)
 
 			// check that txs match the txs we're waiting for.
@@ -511,7 +513,7 @@ func waitForAndValidateBlockWithTx(
 func waitForBlockWithUpdatedValsAndValidateIt(
 	t *testing.T,
 	n int,
-	updatedVals map[string]struct{},
+	quorumHash crypto.QuorumHash,
 	blocksSubs []types.Subscription,
 	css []*State,
 ) {
@@ -523,7 +525,7 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 			css[j].Logger.Debug("waitForBlockWithUpdatedValsAndValidateIt")
 			msg := <-blocksSubs[j].Out()
 			newBlock = msg.Data().(types.EventDataNewBlock).Block
-			if newBlock.LastCommit.Size() == len(updatedVals) {
+			if bytes2.Equal(newBlock.LastCommit.QuorumHash,quorumHash) {
 				css[j].Logger.Debug("waitForBlockWithUpdatedValsAndValidateIt: Got block", "height", newBlock.Height)
 				break LOOP
 			} else {
@@ -534,26 +536,14 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 			}
 		}
 
-		err := validateBlock(newBlock, updatedVals)
+		err := validateBlock(newBlock)
 		assert.Nil(t, err)
 	}, css)
 }
 
 // expects high synchrony!
-func validateBlock(block *types.Block, activeVals map[string]struct{}) error {
-	if block.LastCommit.Size() != len(activeVals) {
-		return fmt.Errorf(
-			"commit size doesn't match number of active validators. Got %d, expected %d",
-			block.LastCommit.Size(),
-			len(activeVals))
-	}
-
-	for _, commitSig := range block.LastCommit.Signatures {
-		if _, ok := activeVals[string(commitSig.ValidatorProTxHash)]; !ok {
-			return fmt.Errorf("found vote for inactive validator %X", commitSig.ValidatorProTxHash)
-		}
-	}
-	return nil
+func validateBlock(block *types.Block) error {
+	return block.LastCommit.ValidateBasic()
 }
 
 func timeoutWaitGroup(t *testing.T, n int, f func(int), css []*State) {
