@@ -1028,7 +1028,7 @@ func (n *nodeImpl) NodeInfo() p2p.NodeInfo {
 func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reactor,
 	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
 	stateStore sm.Store, blockStore *store.BlockStore, state sm.State) error {
-	ssR.Logger.Info("Starting state sync")
+	ssR.Logger.Info("starting state sync...")
 
 	if stateProvider == nil {
 		var err error
@@ -1050,13 +1050,13 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 	go func() {
 		err := ssR.Sync(stateProvider, config.DiscoveryTime)
 		if err != nil {
-			ssR.Logger.Error("State sync failed", "err", err)
+			ssR.Logger.Error("state sync failed", "err", err)
 			return
 		}
 
 		state, err := stateStore.Load()
 		if err != nil {
-			ssR.Logger.Error("failed to load state", "err", err)
+			ssR.Logger.Error("failed to load state after statesync", "err", err)
 		}
 
 		if fastSync {
@@ -1065,7 +1065,7 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 			conR.Metrics.FastSyncing.Set(1)
 			err = bcR.SwitchToFastSync(state)
 			if err != nil {
-				ssR.Logger.Error("Failed to switch to fast sync", "err", err)
+				ssR.Logger.Error("failed to switch to fast sync", "err", err)
 				return
 			}
 		} else {
@@ -1122,14 +1122,9 @@ func loadStateFromDBOrGenesisDocProvider(
 	}
 
 	if state.IsEmpty() {
-		// 2. If it's not there, load it from the genesis doc
+		// 2. If it's not there, derive it from the genesis doc
 		state, err = sm.MakeGenesisState(genDoc)
 		if err != nil {
-			return sm.State{}, err
-		}
-
-		// 3. Save the new state to disk
-		if err := stateStore.Save(state); err != nil {
 			return sm.State{}, err
 		}
 	}
