@@ -18,7 +18,6 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/gtank/merlin v0.1.1
 	github.com/lib/pq v1.10.2
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/minio/highwayhash v1.0.2
@@ -37,8 +36,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/tendermint/tm-db v0.6.4
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
-	golang.org/x/net v0.0.0-20201021035429-f5854403a974
-	google.golang.org/genproto v0.0.0-20201119123407-9b1e624d6bc4 // indirect
+	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
 	google.golang.org/grpc v1.38.0
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
 )
