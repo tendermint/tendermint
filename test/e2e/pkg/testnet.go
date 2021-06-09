@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"io"
 	"math/rand"
 	"net"
@@ -66,6 +67,7 @@ type Testnet struct {
 	KeyType                   string
 	ThresholdPublicKey        crypto.PubKey
 	ThresholdPublicKeyUpdates map[int64]crypto.PubKey
+	QuorumType                btcjson.LLMQType
 	QuorumHash                crypto.QuorumHash
 	QuorumHashUpdates         map[int64]crypto.QuorumHash
 }
@@ -152,6 +154,11 @@ func LoadTestnet(file string) (*Testnet, error) {
 		}
 	}
 
+	quorumType := manifest.QuorumType
+	if quorumType == 0 {
+		quorumType = 100
+	}
+
 	proTxHashes := make([]crypto.ProTxHash, validatorCount)
 
 	for i := 0; i < validatorCount; i++ {
@@ -180,6 +187,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 		Nodes:                     []*Node{},
 		ThresholdPublicKey:        thresholdPublicKey,
 		ThresholdPublicKeyUpdates: map[int64]crypto.PubKey{},
+		QuorumType:                btcjson.LLMQType(quorumType),
 		QuorumHash:                quorumHash,
 		QuorumHashUpdates:         map[int64]crypto.QuorumHash{},
 	}
