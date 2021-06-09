@@ -12,6 +12,9 @@ type Manifest struct {
 	// IPv6 uses IPv6 networking instead of IPv4. Defaults to IPv4.
 	IPv6 bool `toml:"ipv6"`
 
+	// QuorumType represents the initial quorum type
+	QuorumType uint32 `toml:"quorum_type"`
+
 	// InitialHeight specifies the initial block height, set in genesis. Defaults to 1.
 	InitialHeight int64 `toml:"initial_height"`
 
