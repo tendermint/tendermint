@@ -14,6 +14,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/statesync/mocks"
 	"github.com/tendermint/tendermint/internal/test/factory"
@@ -121,7 +122,10 @@ func setup(
 	rts.stateStore = &smmocks.Store{}
 	rts.blockStore = store.NewBlockStore(dbm.NewMemDB())
 
+	cfg := config.DefaultStateSyncConfig()
+
 	rts.reactor = NewReactor(
+		*cfg,
 		log.TestingLogger(),
 		conn,
 		connQuery,
@@ -138,6 +142,7 @@ func setup(
 	rts.reactor.dispatcher = newDispatcher(rts.blockChannel.Out, 1*time.Second)
 
 	rts.syncer = newSyncer(
+		*cfg,
 		log.NewNopLogger(),
 		conn,
 		connQuery,

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/config"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
@@ -105,6 +106,7 @@ const (
 type Reactor struct {
 	service.BaseService
 
+	cfg        config.StateSyncConfig
 	stateStore sm.Store
 	blockStore *store.BlockStore
 
@@ -130,6 +132,7 @@ type Reactor struct {
 // and querying, references to p2p Channels and a channel to listen for peer
 // updates on. Note, the reactor will close all p2p Channels when stopping.
 func NewReactor(
+	cfg config.StateSyncConfig,
 	logger log.Logger,
 	conn proxy.AppConnSnapshot,
 	connQuery proxy.AppConnQuery,
@@ -140,6 +143,7 @@ func NewReactor(
 	tempDir string,
 ) *Reactor {
 	r := &Reactor{
+		cfg:         cfg,
 		conn:        conn,
 		connQuery:   connQuery,
 		snapshotCh:  snapshotCh,
@@ -213,7 +217,16 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 		return errors.New("a state sync is already in progress")
 	}
 
-	r.syncer = newSyncer(r.Logger, r.conn, r.connQuery, stateProvider, r.snapshotCh.Out, r.chunkCh.Out, r.tempDir)
+	r.syncer = newSyncer(
+		r.cfg,
+		r.Logger,
+		r.conn,
+		r.connQuery,
+		stateProvider,
+		r.snapshotCh.Out,
+		r.chunkCh.Out,
+		r.tempDir,
+	)
 	r.mtx.Unlock()
 
 	hook := func() {

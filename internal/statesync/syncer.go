@@ -8,6 +8,7 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/config"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
@@ -49,6 +50,7 @@ var (
 // sync all snapshots in the pool (pausing to discover new ones), or Sync() to sync a specific
 // snapshot. Snapshots and chunks are fed via AddSnapshot() and AddChunk() as appropriate.
 type syncer struct {
+	cfg           config.StateSyncConfig
 	logger        log.Logger
 	stateProvider StateProvider
 	conn          proxy.AppConnSnapshot
@@ -64,6 +66,7 @@ type syncer struct {
 
 // newSyncer creates a new syncer.
 func newSyncer(
+	cfg config.StateSyncConfig,
 	logger log.Logger,
 	conn proxy.AppConnSnapshot,
 	connQuery proxy.AppConnQuery,
@@ -72,6 +75,7 @@ func newSyncer(
 	tempDir string,
 ) *syncer {
 	return &syncer{
+		cfg:           cfg,
 		logger:        logger,
 		stateProvider: stateProvider,
 		conn:          conn,
@@ -253,7 +257,7 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 	// Spawn chunk fetchers. They will terminate when the chunk queue is closed or context canceled.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	for i := int32(0); i < chunkFetchers; i++ {
+	for i := int32(0); i < s.cfg.ChunkFetchers; i++ {
 		go s.fetchChunks(ctx, snapshot, chunks)
 	}
 
@@ -407,16 +411,21 @@ func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *ch
 		s.logger.Info("Fetching snapshot chunk", "height", snapshot.Height,
 			"format", snapshot.Format, "chunk", index, "total", chunks.Size())
 
-		ticker := time.NewTicker(chunkRequestTimeout)
+		ticker := time.NewTicker(s.cfg.ChunkRequestTimeout)
 		defer ticker.Stop()
+
 		s.requestChunk(snapshot, index)
+
 		select {
 		case <-chunks.WaitFor(index):
+
 		case <-ticker.C:
 			s.requestChunk(snapshot, index)
+
 		case <-ctx.Done():
 			return
 		}
+
 		ticker.Stop()
 	}
 }
