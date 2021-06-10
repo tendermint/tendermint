@@ -71,7 +71,6 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 
 ### FEATURES
 
-- [statesync] \#6566 Allow state sync fetchers and request timeout to be configurable. (@alexanderbez)
 - [config] Add `--mode` flag and config variable. See [ADR-52](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md) @dongsam
 - [rpc] \#6329 Don't cap page size in unsafe mode (@gotjoshua, @cmwaters)
 - [pex] \#6305 v2 pex reactor with backwards compatability. Introduces two new pex messages to
@@ -89,6 +88,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS
 
+- [statesync] \#6566 Allow state sync fetchers and request timeout to be configurable. (@alexanderbez)
 - [types] \#6478 Add `block_id` to `newblock` event (@jeebster)
 - [crypto/ed25519] \#5632 Adopt zip215 `ed25519` verification. (@marbar3778)
 - [privval] \#5603 Add `--key` to `init`, `gen_validator`, `testnet` & `unsafe_reset_priv_validator` for use in generating `secp256k1` keys.
