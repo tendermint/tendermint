@@ -18,12 +18,9 @@ import (
 )
 
 const (
-	// chunkFetchers is the number of concurrent chunk fetchers to run.
-	chunkFetchers = 4
 	// chunkTimeout is the timeout while waiting for the next chunk from the chunk queue.
 	chunkTimeout = 2 * time.Minute
-	// requestTimeout is the timeout before rerequesting a chunk, possibly from a different peer.
-	chunkRequestTimeout = 10 * time.Second
+
 	// minimumDiscoveryTime is the lowest allowable time for a
 	// SyncAny discovery time.
 	minimumDiscoveryTime = 5 * time.Second
