@@ -98,6 +98,10 @@ const (
 	// maxLightBlockRequestRetries is the amount of retries acceptable before
 	// the backfill process aborts
 	maxLightBlockRequestRetries = 20
+
+	// the amount of processes fetching light blocks - this should be roughly calculated
+	// as the time to fetch a block / time to verify a block
+	lightBlockFetchers = 4
 )
 
 // Reactor handles state sync, both restoring snapshots for the local node and
@@ -206,11 +210,11 @@ func (r *Reactor) OnStop() {
 // application. It also saves tendermint state and runs a backfill process to
 // retrieve the necessary amount of headers, commits and validators sets to be
 // able to process evidence and participate in consensus.
-func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration) error {
+func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration) (sm.State, error) {
 	r.mtx.Lock()
 	if r.syncer != nil {
 		r.mtx.Unlock()
-		return errors.New("a state sync is already in progress")
+		return sm.State{}, errors.New("a state sync is already in progress")
 	}
 
 	r.syncer = newSyncer(r.Logger, r.conn, r.connQuery, stateProvider, r.snapshotCh.Out, r.chunkCh.Out, r.tempDir)
@@ -229,7 +233,7 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 
 	state, commit, err := r.syncer.SyncAny(discoveryTime, hook)
 	if err != nil {
-		return err
+		return sm.State{}, err
 	}
 
 	r.mtx.Lock()
@@ -238,24 +242,41 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 
 	err = r.stateStore.Bootstrap(state)
 	if err != nil {
-		return fmt.Errorf("failed to bootstrap node with new state: %w", err)
+		return sm.State{}, fmt.Errorf("failed to bootstrap node with new state: %w", err)
 	}
 
 	err = r.blockStore.SaveSeenCommit(state.LastBlockHeight, commit)
 	if err != nil {
-		return fmt.Errorf("failed to store last seen commit: %w", err)
+		return sm.State{}, fmt.Errorf("failed to store last seen commit: %w", err)
 	}
 
-	// start backfill process to retrieve the necessary headers, commits and
-	// validator sets
-	return r.backfill(state)
+	return state, nil
 }
 
 // Backfill sequentially fetches, verifies and stores light blocks in reverse
 // order. It does not stop verifying blocks until reaching a block with a height
 // and time that is less or equal to the stopHeight and stopTime. The
 // trustedBlockID should be of the header at startHeight.
-func (r *Reactor) Backfill(
+func (r *Reactor) Backfill(state sm.State) error {
+	params := state.ConsensusParams.Evidence
+	stopHeight := state.LastBlockHeight - params.MaxAgeNumBlocks
+	stopTime := state.LastBlockTime.Add(-params.MaxAgeDuration)
+	// ensure that stop height doesn't go below the initial height
+	if stopHeight < state.InitialHeight {
+		stopHeight = state.InitialHeight
+		// this essentially makes stop time a void criteria for termination
+		stopTime = state.LastBlockTime
+	}
+	return r.backfill(
+		context.Background(),
+		state.ChainID,
+		state.LastBlockHeight, stopHeight,
+		state.LastBlockID,
+		stopTime,
+	)
+}
+
+func (r *Reactor) backfill(
 	ctx context.Context,
 	chainID string,
 	startHeight, stopHeight int64,
@@ -265,6 +286,7 @@ func (r *Reactor) Backfill(
 	r.Logger.Info("starting backfill process...", "startHeight", startHeight,
 		"stopHeight", stopHeight, "trustedBlockID", trustedBlockID)
 
+	const sleepTime = 1 * time.Second
 	var (
 		lastValidatorSet *types.ValidatorSet
 		lastChangeHeight int64 = startHeight
@@ -277,7 +299,7 @@ func (r *Reactor) Backfill(
 	// time. Ideally we want the verification process to never have to be
 	// waiting on blocks. If it takes 4s to retrieve a block and 1s to verify
 	// it, then steady state involves four workers.
-	for i := 0; i < 4; i++ {
+	for i := 0; i < lightBlockFetchers; i++ {
 		go func() {
 			for {
 				select {
@@ -285,30 +307,33 @@ func (r *Reactor) Backfill(
 					r.Logger.Debug("fetching next block", "height", height)
 					lb, peer, err := r.dispatcher.LightBlock(ctx, height)
 					if err != nil {
-						// we don't punish the peer as it might just not have the block
-						// at that height
-						r.Logger.Info("error with fetching light block",
-							"height", height, "err", err)
 						queue.retry(height)
+						if err == errNoConnectedPeers {
+							r.Logger.Info("backfill: no connected peers to fetch light blocks from. Sleeping...",
+								"sleepTime", sleepTime)
+							time.Sleep(sleepTime)
+						} else {
+							// we don't punish the peer as it might just have not responded in time
+							r.Logger.Info("backfill: error with fetching light block",
+								"height", height, "err", err)
+						}
 						continue
 					}
 					if lb == nil {
-						r.Logger.Info("peer didn't have block, fetching from another peer", "height", height)
+						r.Logger.Info("backfill: peer didn't have block, fetching from another peer", "height", height)
 						queue.retry(height)
-						continue
-					}
-
-					if lb.Height != height {
-						r.Logger.Info("peer provided wrong height, retrying...", "height", height)
-						queue.retry(height)
+						// as we are fetching blocks backwards, if this node doesn't have the block it likely doesn't
+						// have any prior ones, thus we remove it from the peer list
+						r.dispatcher.removePeer(peer)
 						continue
 					}
 
 					// run a validate basic. This checks the validator set and commit
 					// hashes line up
 					err = lb.ValidateBasic(chainID)
-					if err != nil {
-						r.Logger.Info("fetched light block failed validate basic, removing peer...", "err", err)
+					if err != nil || lb.Height != height {
+						r.Logger.Info("backfill: fetched light block failed validate basic, removing peer...",
+							"err", err, "height", height)
 						queue.retry(height)
 						r.blockCh.Error <- p2p.PeerError{
 							NodeID: peer,
@@ -322,7 +347,7 @@ func (r *Reactor) Backfill(
 						block: lb,
 						peer:  peer,
 					})
-					r.Logger.Debug("added light block to processing queue", "height", height)
+					r.Logger.Debug("backfill: added light block to processing queue", "height", height)
 
 				case <-queue.done():
 					return
@@ -376,7 +401,7 @@ func (r *Reactor) Backfill(
 
 			trustedBlockID = resp.block.LastBlockID
 			queue.success(resp.block.Height)
-			r.Logger.Info("verified and stored light block", "height", resp.block.Height)
+			r.Logger.Info("backfill: verified and stored light block", "height", resp.block.Height)
 
 			lastValidatorSet = resp.block.ValidatorSet
 
@@ -776,25 +801,4 @@ func (r *Reactor) fetchLightBlock(height uint64) (*types.LightBlock, error) {
 		ValidatorSet: vals,
 	}, nil
 
-}
-
-// backfill is a convenience wrapper around the backfill function. It takes
-// state to work out how many prior blocks need to be verified
-func (r *Reactor) backfill(state sm.State) error {
-	params := state.ConsensusParams.Evidence
-	stopHeight := state.LastBlockHeight - params.MaxAgeNumBlocks
-	stopTime := state.LastBlockTime.Add(-params.MaxAgeDuration)
-	// ensure that stop height doesn't go below the initial height
-	if stopHeight < state.InitialHeight {
-		stopHeight = state.InitialHeight
-		// this essentially makes stop time a void criteria for termination
-		stopTime = state.LastBlockTime
-	}
-	return r.Backfill(
-		context.Background(),
-		state.ChainID,
-		state.LastBlockHeight, stopHeight,
-		state.LastBlockID,
-		stopTime,
-	)
 }
