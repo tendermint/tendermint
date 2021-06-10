@@ -72,7 +72,6 @@ type nodeImpl struct {
 	stateSync         bool                    // whether the node should state sync on startup
 	stateSyncReactor  *statesync.Reactor      // for hosting and restoring state sync snapshots
 	stateSyncProvider statesync.StateProvider // provides state data for bootstrapping a node
-	stateSyncGenesis  sm.State                // provides the genesis state for state sync
 	consensusState    *cs.State               // latest consensus state
 	consensusReactor  *cs.Reactor             // for participating in the consensus
 	pexReactor        *pex.Reactor            // for exchanging peer addresses
@@ -440,7 +439,6 @@ func makeNode(config *cfg.Config,
 		consensusReactor: csReactor,
 		stateSyncReactor: stateSyncReactor,
 		stateSync:        stateSync,
-		stateSyncGenesis: state, // Shouldn't be necessary, but need a way to pass the genesis state
 		pexReactor:       pexReactor,
 		pexReactorV2:     pexReactorV2,
 		evidenceReactor:  evReactor,
@@ -662,8 +660,15 @@ func (n *nodeImpl) OnStart() error {
 		if !ok {
 			return fmt.Errorf("this blockchain reactor does not support switching from state sync")
 		}
-		err := startStateSync(n.stateSyncReactor, bcR, n.consensusReactor, n.stateSyncProvider,
-			n.config.StateSync, n.config.FastSyncMode, n.stateStore, n.blockStore, n.stateSyncGenesis)
+
+		// we need to get the genesis state to get parameters such as
+		state, err := sm.MakeGenesisState(n.genesisDoc)
+		if err != nil {
+			return fmt.Errorf("unable to derive state: %w", err)
+		}
+
+		err = startStateSync(n.stateSyncReactor, bcR, n.consensusReactor, n.stateSyncProvider,
+			n.config.StateSync, n.config.FastSyncMode, n.stateStore, n.blockStore, state)
 		if err != nil {
 			return fmt.Errorf("failed to start state sync: %w", err)
 		}
@@ -1028,7 +1033,7 @@ func (n *nodeImpl) NodeInfo() p2p.NodeInfo {
 func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reactor,
 	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
 	stateStore sm.Store, blockStore *store.BlockStore, state sm.State) error {
-	ssR.Logger.Info("Starting state sync")
+	ssR.Logger.Info("starting state sync...")
 
 	if stateProvider == nil {
 		var err error
@@ -1050,13 +1055,13 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 	go func() {
 		err := ssR.Sync(stateProvider, config.DiscoveryTime)
 		if err != nil {
-			ssR.Logger.Error("State sync failed", "err", err)
+			ssR.Logger.Error("state sync failed", "err", err)
 			return
 		}
 
 		state, err := stateStore.Load()
 		if err != nil {
-			ssR.Logger.Error("failed to load state", "err", err)
+			ssR.Logger.Error("failed to load state after statesync", "err", err)
 		}
 
 		if fastSync {
@@ -1065,7 +1070,7 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 			conR.Metrics.FastSyncing.Set(1)
 			err = bcR.SwitchToFastSync(state)
 			if err != nil {
-				ssR.Logger.Error("Failed to switch to fast sync", "err", err)
+				ssR.Logger.Error("failed to switch to fast sync", "err", err)
 				return
 			}
 		} else {
@@ -1122,14 +1127,9 @@ func loadStateFromDBOrGenesisDocProvider(
 	}
 
 	if state.IsEmpty() {
-		// 2. If it's not there, load it from the genesis doc
+		// 2. If it's not there, derive it from the genesis doc
 		state, err = sm.MakeGenesisState(genDoc)
 		if err != nil {
-			return sm.State{}, err
-		}
-
-		// 3. Save the new state to disk
-		if err := stateStore.Save(state); err != nil {
 			return sm.State{}, err
 		}
 	}
