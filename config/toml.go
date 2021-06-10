@@ -147,9 +147,6 @@ priv_validator_core_rpc_username = "{{ .BaseConfig.PrivValidatorCoreRPCUsername 
 # Local Dash Core RPC Password
 priv_validator_core_rpc_password = "{{ .BaseConfig.PrivValidatorCoreRPCPassword }}"
 
-# LLMQ Type used
-llmq_type_used = "{{ .BaseConfig.LLMQTypeUsed }}"
-
 # Path to the JSON file containing the private key to use for node authentication in the p2p protocol
 node_key_file = "{{ js .BaseConfig.NodeKey }}"
 
@@ -436,6 +433,12 @@ create_empty_blocks_interval = "{{ .Consensus.CreateEmptyBlocksInterval }}"
 # Reactor sleep duration parameters
 peer_gossip_sleep_duration = "{{ .Consensus.PeerGossipSleepDuration }}"
 peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
+
+# Signing parameters
+quorum_type = "{{ .Consensus.QuorumType }}"
+
+# State parameters
+app_hash_size = "{{ .Consensus.AppHashSize }}"
 
 #######################################################
 ###   Transaction Indexer Configuration Options     ###
