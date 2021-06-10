@@ -71,6 +71,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 
 ### FEATURES
 
+- [statesync] \#6566 Allow state sync fetchers and request timeout to be configurable. (@alexanderbez)
 - [config] Add `--mode` flag and config variable. See [ADR-52](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md) @dongsam
 - [rpc] \#6329 Don't cap page size in unsafe mode (@gotjoshua, @cmwaters)
 - [pex] \#6305 v2 pex reactor with backwards compatability. Introduces two new pex messages to
