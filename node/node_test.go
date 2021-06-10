@@ -25,6 +25,7 @@ import (
 	"github.com/tendermint/tendermint/internal/mempool"
 	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/privval"
@@ -623,4 +624,23 @@ func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
 		}
 	}
 	return s, stateDB, privVals
+}
+
+func TestLoadStateFromGenesis(t *testing.T) {
+	stateDB := dbm.NewMemDB()
+	stateStore := sm.NewStore(stateDB)
+	config := cfg.ResetTestRoot("load_state_from_genesis")
+
+	loadedState, err := stateStore.Load()
+	require.NoError(t, err)
+	require.True(t, loadedState.IsEmpty())
+
+	genDoc, _ := factory.RandGenesisDoc(config, 0, false, 10)
+
+	state, err := loadStateFromDBOrGenesisDocProvider(
+		stateStore,
+		genDoc,
+	)
+	require.NoError(t, err)
+	require.NotNil(t, state)
 }

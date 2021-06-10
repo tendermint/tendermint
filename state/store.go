@@ -107,43 +107,6 @@ func NewStore(db dbm.DB) Store {
 	return dbStore{db}
 }
 
-// LoadStateFromDBOrGenesisFile loads the most recent state from the database,
-// or creates a new one from the given genesisFilePath.
-func (store dbStore) LoadFromDBOrGenesisFile(genesisFilePath string) (State, error) {
-	state, err := store.Load()
-	if err != nil {
-		return State{}, err
-	}
-	if state.IsEmpty() {
-		var err error
-		state, err = MakeGenesisStateFromFile(genesisFilePath)
-		if err != nil {
-			return state, err
-		}
-	}
-
-	return state, nil
-}
-
-// LoadStateFromDBOrGenesisDoc loads the most recent state from the database,
-// or creates a new one from the given genesisDoc.
-func (store dbStore) LoadFromDBOrGenesisDoc(genesisDoc *types.GenesisDoc) (State, error) {
-	state, err := store.Load()
-	if err != nil {
-		return State{}, err
-	}
-
-	if state.IsEmpty() {
-		var err error
-		state, err = MakeGenesisState(genesisDoc)
-		if err != nil {
-			return state, err
-		}
-	}
-
-	return state, nil
-}
-
 // LoadState loads the State from the database.
 func (store dbStore) Load() (State, error) {
 	return store.loadState(stateKey)
