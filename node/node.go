@@ -72,7 +72,6 @@ type nodeImpl struct {
 	stateSync         bool                    // whether the node should state sync on startup
 	stateSyncReactor  *statesync.Reactor      // for hosting and restoring state sync snapshots
 	stateSyncProvider statesync.StateProvider // provides state data for bootstrapping a node
-	stateSyncGenesis  sm.State                // provides the genesis state for state sync
 	consensusState    *cs.State               // latest consensus state
 	consensusReactor  *cs.Reactor             // for participating in the consensus
 	pexReactor        *pex.Reactor            // for exchanging peer addresses
@@ -440,7 +439,6 @@ func makeNode(config *cfg.Config,
 		consensusReactor: csReactor,
 		stateSyncReactor: stateSyncReactor,
 		stateSync:        stateSync,
-		stateSyncGenesis: state, // Shouldn't be necessary, but need a way to pass the genesis state
 		pexReactor:       pexReactor,
 		pexReactorV2:     pexReactorV2,
 		evidenceReactor:  evReactor,
@@ -662,8 +660,15 @@ func (n *nodeImpl) OnStart() error {
 		if !ok {
 			return fmt.Errorf("this blockchain reactor does not support switching from state sync")
 		}
-		err := startStateSync(n.stateSyncReactor, bcR, n.consensusReactor, n.stateSyncProvider,
-			n.config.StateSync, n.config.FastSyncMode, n.stateStore, n.blockStore, n.stateSyncGenesis)
+
+		// we need to get the genesis state to get parameters such as
+		state, err := sm.MakeGenesisState(n.genesisDoc)
+		if err != nil {
+			return fmt.Errorf("unable to derive state: %w", err)
+		}
+
+		err = startStateSync(n.stateSyncReactor, bcR, n.consensusReactor, n.stateSyncProvider,
+			n.config.StateSync, n.config.FastSyncMode, n.stateStore, n.blockStore, state)
 		if err != nil {
 			return fmt.Errorf("failed to start state sync: %w", err)
 		}
