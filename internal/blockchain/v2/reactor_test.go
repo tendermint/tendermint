@@ -25,7 +25,7 @@ import (
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/store"
+	tmstore "github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -84,9 +84,9 @@ type mockBlockApplier struct {
 // XXX: Add whitelist/blacklist?
 func (mba *mockBlockApplier) ApplyBlock(
 	state sm.State, blockID types.BlockID, block *types.Block,
-) (sm.State, int64, error) {
+) (sm.State, error) {
 	state.LastBlockHeight++
-	return state, 0, nil
+	return state, nil
 }
 
 type mockSwitchIo struct {
@@ -167,7 +167,9 @@ func newTestReactor(t *testing.T, p testReactorParams) *BlockchainReactor {
 		require.NoError(t, err)
 		db := dbm.NewMemDB()
 		stateStore := sm.NewStore(db)
-		appl = sm.NewBlockExecutor(stateStore, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.EmptyEvidencePool{})
+		blockStore := tmstore.NewBlockStore(dbm.NewMemDB())
+		appl = sm.NewBlockExecutor(
+			stateStore, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.EmptyEvidencePool{}, blockStore)
 		err = stateStore.Save(state)
 		require.NoError(t, err)
 	}
@@ -488,7 +490,7 @@ func newReactorStore(
 	t *testing.T,
 	genDoc *types.GenesisDoc,
 	privVals []types.PrivValidator,
-	maxBlockHeight int64) (*store.BlockStore, sm.State, *sm.BlockExecutor) {
+	maxBlockHeight int64) (*tmstore.BlockStore, sm.State, *sm.BlockExecutor) {
 	t.Helper()
 
 	require.Len(t, privVals, 1)
@@ -501,13 +503,13 @@ func newReactorStore(
 	}
 
 	stateDB := dbm.NewMemDB()
-	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	blockStore := tmstore.NewBlockStore(dbm.NewMemDB())
 	stateStore := sm.NewStore(stateDB)
 	state, err := sm.MakeGenesisState(genDoc)
 	require.NoError(t, err)
 
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
-		mock.Mempool{}, sm.EmptyEvidencePool{})
+		mock.Mempool{}, sm.EmptyEvidencePool{}, blockStore)
 	err = stateStore.Save(state)
 	require.NoError(t, err)
 
@@ -534,7 +536,7 @@ func newReactorStore(
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
-		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
+		state, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		require.NoError(t, err)
 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)

@@ -278,6 +278,7 @@ func TestCreateProposalBlock(t *testing.T) {
 		proxyApp.Consensus(),
 		mp,
 		evidencePool,
+		blockStore,
 	)
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
@@ -317,6 +318,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	const height int64 = 1
 	state, stateDB, _ := state(1, height)
 	stateStore := sm.NewStore(stateDB)
+	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	const maxBytes int64 = 16384
 	const partSize uint32 = 256
 	state.ConsensusParams.Block.MaxBytes = maxBytes
@@ -345,6 +347,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 		proxyApp.Consensus(),
 		mp,
 		sm.EmptyEvidencePool{},
+		blockStore,
 	)
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
@@ -376,6 +379,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	state, stateDB, _ := state(types.MaxVotesCount, int64(1))
 	stateStore := sm.NewStore(stateDB)
+	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	const maxBytes int64 = 1024 * 1024 * 2
 	state.ConsensusParams.Block.MaxBytes = maxBytes
 	proposerAddr, _ := state.Validators.GetByIndex(0)
@@ -410,6 +414,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		proxyApp.Consensus(),
 		mp,
 		sm.EmptyEvidencePool{},
+		blockStore,
 	)
 
 	blockID := types.BlockID{
