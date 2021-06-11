@@ -43,7 +43,7 @@ func waitForHeight(testnet *e2e.Testnet, height int64) (*types.Block, *types.Blo
 			if err != nil {
 				continue
 			}
-			if result.Block != nil && (maxResult == nil || result.Block.Height >= maxResult.Block.Height) {
+			if result.Block != nil && (maxResult == nil || result.Block.Height > maxResult.Block.Height) {
 				maxResult = result
 				lastIncrease = time.Now()
 			}
