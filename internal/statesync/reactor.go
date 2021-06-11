@@ -309,7 +309,7 @@ func (r *Reactor) backfill(
 					if err != nil {
 						queue.retry(height)
 						if errors.Is(err, errNoConnectedPeers) {
-							r.Logger.Info("backfill: no connected peers to fetch light blocks from. Sleeping...",
+							r.Logger.Info("backfill: no connected peers to fetch light blocks from; sleeping...",
 								"sleepTime", sleepTime)
 							time.Sleep(sleepTime)
 						} else {

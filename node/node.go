@@ -1061,8 +1061,8 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 
 		err = ssR.Backfill(state)
 		if err != nil {
-			ssR.Logger.Error("backfill failed. Node has insufficient history to verify all evidence."+
-				" Proceeding optimistically...", "err", err)
+			ssR.Logger.Error("backfill failed; node has insufficient history to verify all evidence;"+
+				" proceeding optimistically...", "err", err)
 		}
 
 		conR.Metrics.StateSyncing.Set(0)
