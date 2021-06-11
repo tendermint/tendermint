@@ -411,7 +411,12 @@ func (r *Reactor) backfill(
 			}
 
 			// save the final batch of validators
-			return r.stateStore.SaveValidatorSets(queue.terminal.Height, lastChangeHeight, lastValidatorSet)
+			if err := r.stateStore.SaveValidatorSets(queue.terminal.Height, lastChangeHeight, lastValidatorSet); err != nil {
+				return err
+			}
+
+			r.Logger.Info("successfully completed backfill process", "endHeight", queue.terminal.Height)
+			return nil
 		}
 	}
 }
