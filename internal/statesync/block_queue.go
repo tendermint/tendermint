@@ -211,8 +211,8 @@ func (q *blockQueue) error() error {
 	q.mtx.Lock()
 	defer q.mtx.Unlock()
 	if q.retries >= q.maxRetries {
-		return fmt.Errorf("failed to backfill blocks following reverse sync. Max retries exceeded (%d). "+
-			"Target height: %d, height reached: %d", q.maxRetries, q.stopHeight, q.verifyHeight)
+		return fmt.Errorf("max retries to fetch valid blocks exceeded (%d); "+
+			"target height: %d, height reached: %d", q.maxRetries, q.stopHeight, q.verifyHeight)
 	}
 	return nil
 }

@@ -454,7 +454,7 @@ func TestReactor_Backfill(t *testing.T) {
 			go handleLightBlockRequests(t, chain, rts.blockOutCh,
 				rts.blockInCh, closeCh, failureRate)
 
-			err := rts.reactor.Backfill(
+			err := rts.reactor.backfill(
 				context.Background(),
 				factory.DefaultTestChainID,
 				startHeight,
