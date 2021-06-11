@@ -39,11 +39,12 @@ const (
 	ModeLight     Mode = "light"
 	ModeSeed      Mode = "seed"
 
-	ProtocolBuiltin Protocol = "builtin"
-	ProtocolFile    Protocol = "file"
-	ProtocolGRPC    Protocol = "grpc"
-	ProtocolTCP     Protocol = "tcp"
-	ProtocolUNIX    Protocol = "unix"
+	ProtocolBuiltin  Protocol = "builtin"
+	ProtocolFile     Protocol = "file"
+	ProtocolGRPC     Protocol = "grpc"
+	ProtocolTCP      Protocol = "tcp"
+	ProtocolUNIX     Protocol = "unix"
+	ProtocolDashCore Protocol = "dashcore"
 
 	PerturbationDisconnect Perturbation = "disconnect"
 	PerturbationKill       Perturbation = "kill"
@@ -476,7 +477,7 @@ func (n Node) Validate(testnet Testnet) error {
 		return errors.New("light client must use builtin protocol")
 	}
 	switch n.PrivvalProtocol {
-	case ProtocolFile, ProtocolUNIX, ProtocolTCP:
+	case ProtocolFile, ProtocolUNIX, ProtocolTCP, ProtocolDashCore:
 	default:
 		return fmt.Errorf("invalid privval protocol setting %q", n.PrivvalProtocol)
 	}

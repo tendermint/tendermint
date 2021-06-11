@@ -23,9 +23,6 @@ validator04 = 100
 [validator_update.1010]
 validator05 = 100
 
-[validator_update.1012]
-validator06 = 100
-
 [node.seed01]
 mode = "seed"
 seeds = ["seed02"]
@@ -39,15 +36,13 @@ seeds = ["seed01"]
 snapshot_interval = 5
 perturb = ["disconnect"]
 privval_protocol = "dashcore"
-misbehaviors = { 1018 = "double-prevote" }
 
 [node.validator02]
 seeds = ["seed02"]
 database = "boltdb"
 abci_protocol = "tcp"
-privval_protocol = "tcp"
-persist_interval = 0
 privval_protocol = "dashcore"
+persist_interval = 0
 perturb = ["restart"]
 
 [node.validator03]
@@ -55,10 +50,9 @@ seeds = ["seed01"]
 database = "badgerdb"
 # FIXME: should be grpc, disabled due to https://github.com/tendermint/tendermint/issues/5439
 #abci_protocol = "grpc"
-privval_protocol = "unix"
+privval_protocol = "dashcore"
 persist_interval = 3
 retain_blocks = 3
-privval_protocol = "dashcore"
 perturb = ["kill"]
 
 [node.validator04]

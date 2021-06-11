@@ -217,12 +217,13 @@ func WithNextPrivvalKeys(keys []crypto.PrivKey, heights []int64) FilePVOption {
 }
 
 // WithProTxHash ...
-//func WithQuorumHash(quorumHash crypto.QuorumHash, nextHashes []crypto.QuorumHash, heights []int64) FilePVOption {
 func WithQuorumHash(quorumHash crypto.QuorumHash, nextHashes map[int64]crypto.QuorumHash) FilePVOption {
 	return func(filePV *FilePV) error {
 		filePV.Key.QuorumHash = quorumHash
 		for _, hash := range nextHashes {
-			filePV.Key.NextQuorumHashes = append(filePV.Key.NextQuorumHashes, hash)
+			if !bytes.Equal(quorumHash, hash) {
+				filePV.Key.NextQuorumHashes = append(filePV.Key.NextQuorumHashes, hash)
+			}
 		}
 		return nil
 	}
@@ -232,8 +233,10 @@ func WithQuorumHash(quorumHash crypto.QuorumHash, nextHashes map[int64]crypto.Qu
 func WithThresholdPublicKey(pubKey crypto.PubKey, nextKeys map[int64]crypto.PubKey) FilePVOption {
 	return func(filePV *FilePV) error {
 		filePV.Key.ThresholdPublicKey = pubKey
-		for _, pubKey := range nextKeys {
-			filePV.Key.NextThresholdPublicKeys = append(filePV.Key.NextThresholdPublicKeys, pubKey)
+		for _, nextPubKey := range nextKeys {
+			if !bytes.Equal(pubKey.Bytes(), nextPubKey.Bytes()) {
+				filePV.Key.NextThresholdPublicKeys = append(filePV.Key.NextThresholdPublicKeys, nextPubKey)
+			}
 		}
 		return nil
 	}
@@ -359,6 +362,20 @@ func (pv *FilePV) GetPubKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error)
 	return pv.Key.PubKey, nil
 }
 
+// UpdateKeysByQuorumHash ...
+func (pv *FilePV) UpdateKeysByQuorumHash(quorumHash crypto.QuorumHash) {
+	fmt.Printf("[DEBUG] UpdateKeysByQuorumHash for %s\n", quorumHash.String())
+	if len(pv.Key.NextQuorumHashes) == 0 {
+		return
+	}
+	for i, nqh := range pv.Key.NextQuorumHashes {
+		fmt.Printf("[DEBUG] UpdateKeysByQuorumHash:Compare cur %s, next %s\n", quorumHash.String(), nqh.String())
+		if bytes.Compare(nqh.Bytes(), quorumHash.Bytes()) == 0 {
+			pv.updateKeyIfNeeded(pv.Key.NextPrivKeyHeights[i])
+		}
+	}
+}
+
 // GetThresholdPublicKey ...
 func (pv *FilePV) GetThresholdPublicKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
 	return pv.Key.ThresholdPublicKey, nil
@@ -469,6 +486,16 @@ func (pv *FilePV) updateKeyIfNeeded(height int64) {
 		} else {
 			pv.Key.NextPrivKeys = nil
 			pv.Key.NextPrivKeyHeights = nil
+		}
+		// update quorum hash
+		if len(pv.Key.NextQuorumHashes) > 0 {
+			pv.Key.QuorumHash = pv.Key.NextQuorumHashes[0]
+			pv.Key.NextQuorumHashes = pv.Key.NextQuorumHashes[1:]
+		}
+		// update threshold public key
+		if len(pv.Key.NextThresholdPublicKeys) > 0 {
+			pv.Key.ThresholdPublicKey = pv.Key.NextThresholdPublicKeys[0]
+			pv.Key.NextThresholdPublicKeys = pv.Key.NextThresholdPublicKeys[1:]
 		}
 	}
 	// else {

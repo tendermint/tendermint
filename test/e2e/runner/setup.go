@@ -244,7 +244,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.P2P.AddrBookStrict = false
 	cfg.DBBackend = node.Database
 	cfg.StateSync.DiscoveryTime = 5 * time.Second
-
+	cfg.Consensus.AppHashSize = crypto.DefaultHashSize
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:
 		cfg.ProxyApp = AppAddressUNIX
@@ -278,6 +278,9 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 			cfg.PrivValidatorListenAddr = PrivvalAddressUNIX
 		case e2e.ProtocolTCP:
 			cfg.PrivValidatorListenAddr = PrivvalAddressTCP
+		case e2e.ProtocolDashCore:
+			cfg.PrivValidatorKey = PrivvalKeyFile
+			cfg.PrivValidatorState = PrivvalStateFile
 		default:
 			return nil, fmt.Errorf("invalid privval protocol setting %q", node.PrivvalProtocol)
 		}
@@ -358,6 +361,7 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 	if node.Mode == e2e.ModeValidator {
 		switch node.PrivvalProtocol {
 		case e2e.ProtocolFile:
+		case e2e.ProtocolDashCore:
 		case e2e.ProtocolTCP:
 			cfg["privval_server"] = PrivvalAddressTCP
 			cfg["privval_key"] = PrivvalKeyFile

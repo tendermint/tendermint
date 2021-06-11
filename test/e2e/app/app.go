@@ -116,39 +116,32 @@ func (app *Application) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDelive
 
 // EndBlock implements ABCI.
 func (app *Application) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
-
 	var err error
 	resp := abci.ResponseEndBlock{}
-	if resp.ValidatorSetUpdate, err = app.validatorSetUpdates(uint64(req.Height)); err != nil {
-		panic(err)
-	}
-	if resp.NextCoreChainLockUpdate, err = app.chainLockUpdate(uint64(req.Height)); err != nil {
-		panic(err)
-	}
-
-	validatorSetUpdates, err := app.validatorSetUpdates(uint64(req.Height))
+	resp.ValidatorSetUpdate, err = app.validatorSetUpdates(uint64(req.Height))
 	if err != nil {
 		panic(err)
 	}
-
-	return abci.ResponseEndBlock{
-		ValidatorSetUpdate: validatorSetUpdates,
-		Events: []abci.Event{
-			{
-				Type: "val_updates",
-				Attributes: []abci.EventAttribute{
-					{
-						Key:   []byte("size"),
-						Value: []byte(strconv.Itoa(len(validatorSetUpdates.ValidatorUpdates))),
-					},
-					{
-						Key:   []byte("height"),
-						Value: []byte(strconv.Itoa(int(req.Height))),
-					},
+	resp.NextCoreChainLockUpdate, err = app.chainLockUpdate(uint64(req.Height))
+	if err != nil {
+		panic(err)
+	}
+	resp.Events = []abci.Event{
+		{
+			Type: "val_updates",
+			Attributes: []abci.EventAttribute{
+				{
+					Key:   []byte("size"),
+					Value: []byte(strconv.Itoa(len(resp.ValidatorSetUpdate.ValidatorUpdates))),
+				},
+				{
+					Key:   []byte("height"),
+					Value: []byte(strconv.Itoa(int(req.Height))),
 				},
 			},
 		},
 	}
+	return resp
 }
 
 // Commit implements ABCI.
@@ -236,7 +229,7 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 func (app *Application) validatorSetUpdates(height uint64) (*abci.ValidatorSetUpdate, error) {
 	updates := app.cfg.ValidatorUpdates[fmt.Sprintf("%v", height)]
 	if len(updates) == 0 {
-		return nil, fmt.Errorf("validator-updates must be set")
+		return &abci.ValidatorSetUpdate{}, nil
 	}
 
 	thresholdPublicKeyUpdateString := app.cfg.ThesholdPublicKeyUpdate[fmt.Sprintf("%v", height)]

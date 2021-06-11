@@ -44,10 +44,9 @@ func (c *MockCoreServer) QuorumInfo(cmd btcjson.QuorumCmd) btcjson.QuorumInfoRes
 			ProTxHash:      proTxHash.String(),
 			PubKeyOperator: crypto.CRandHex(96),
 			Valid:          true,
-			PubKeyShare:    hex.EncodeToString(pk.Bytes()),
+			PubKeyShare:    pk.HexString(),
 		})
 	}
-	pk.String()
 	tpk, err := c.FilePV.GetThresholdPublicKey(qq)
 	if err != nil {
 		panic(err)
@@ -71,6 +70,14 @@ func (c *MockCoreServer) QuorumSign(cmd btcjson.QuorumCmd) btcjson.QuorumSignRes
 	if err != nil {
 		panic(err)
 	}
+
+	cmdQuorumHash, err := hex.DecodeString(*cmd.QuorumHash)
+	if err != nil {
+		panic(err)
+	}
+
+	c.FilePV.UpdateKeysByQuorumHash(cmdQuorumHash)
+
 	qh := c.FilePV.Key.QuorumHash
 	signID := crypto.SignId(
 		*cmd.LLMQType,
@@ -82,6 +89,7 @@ func (c *MockCoreServer) QuorumSign(cmd btcjson.QuorumCmd) btcjson.QuorumSignRes
 	if err != nil {
 		panic(err)
 	}
+
 	res := btcjson.QuorumSignResult{
 		LLMQType:   int(c.LLMQType),
 		QuorumHash: c.FilePV.Key.QuorumHash.String(),

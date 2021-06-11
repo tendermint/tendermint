@@ -106,8 +106,13 @@ func JRPCParamsEmpty() ExpectFunc {
 
 // Debug is a debug JRPC request handler
 func Debug() ExpectFunc {
-	return JRPCRequest(func(req btcjson.Request) error {
-		log.Printf("[DEBUG] %#v, %s\n", req, req.Params)
+	return func(req *http.Request) error {
+		buf, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			return err
+		}
+		req.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
+		//log.Printf("[DEBUG] Request Body: %s\n", buf)
 		return nil
-	})
+	}
 }
