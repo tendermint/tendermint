@@ -21,6 +21,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/mocks"
+	sf "github.com/tendermint/tendermint/state/test/factory"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
@@ -29,7 +30,6 @@ import (
 var (
 	chainID             = "execution_chain"
 	testPartSize uint32 = 65536
-	nTxsPerBlock        = 10
 )
 
 func TestApplyBlock(t *testing.T) {
@@ -46,7 +46,7 @@ func TestApplyBlock(t *testing.T) {
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
 		mmock.Mempool{}, sm.EmptyEvidencePool{})
 
-	block := makeBlock(state, 1)
+	block := sf.MakeBlock(state, 1, new(types.Commit))
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
 	state, retainHeight, err := blockExec.ApplyBlock(state, blockID, block)
@@ -100,7 +100,7 @@ func TestBeginBlockValidators(t *testing.T) {
 		lastCommit := types.NewCommit(1, 0, prevBlockID, tc.lastCommitSigs)
 
 		// block for height 2
-		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
+		block := sf.MakeBlock(state, 2, lastCommit)
 
 		_, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateStore, 1)
 		require.Nil(t, err, tc.desc)
@@ -201,7 +201,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
 		mmock.Mempool{}, evpool)
 
-	block := makeBlock(state, 1)
+	block := sf.MakeBlock(state, 1, new(types.Commit))
 	block.Evidence = types.EvidenceData{Evidence: ev}
 	block.Header.EvidenceHash = block.Evidence.Hash()
 	blockID = types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
@@ -378,7 +378,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	block := makeBlock(state, 1)
+	block := sf.MakeBlock(state, 1, new(types.Commit))
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
 	pubkey := ed25519.GenPrivKey().PubKey()
@@ -434,7 +434,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 		sm.EmptyEvidencePool{},
 	)
 
-	block := makeBlock(state, 1)
+	block := sf.MakeBlock(state, 1, new(types.Commit))
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
 	vp, err := cryptoenc.PubKeyToProto(state.Validators.Validators[0].PubKey)

@@ -21,6 +21,7 @@ import (
 	tmstore "github.com/tendermint/tendermint/proto/tendermint/store"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state/test/factory"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
@@ -40,18 +41,6 @@ func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 	}}
 	return types.NewCommit(height, 0,
 		types.BlockID{Hash: []byte(""), PartSetHeader: types.PartSetHeader{Hash: []byte(""), Total: 2}}, commitSigs)
-}
-
-func makeTxs(height int64) (txs []types.Tx) {
-	for i := 0; i < 10; i++ {
-		txs = append(txs, types.Tx([]byte{byte(height), byte(i)}))
-	}
-	return txs
-}
-
-func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Block {
-	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().Address)
-	return block
 }
 
 func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFunc) {
@@ -145,7 +134,7 @@ var (
 func TestMain(m *testing.M) {
 	var cleanup cleanupFunc
 	state, _, cleanup = makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
-	block = makeBlock(1, state, new(types.Commit))
+	block = factory.MakeBlock(state, 1, new(types.Commit))
 	partSet = block.MakePartSet(2)
 	part1 = partSet.GetPart(0)
 	part2 = partSet.GetPart(1)
@@ -172,7 +161,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	}
 
 	// save a block
-	block := makeBlock(bs.Height()+1, state, new(types.Commit))
+	block := factory.MakeBlock(state, bs.Height()+1, new(types.Commit))
 	validPartSet := block.MakePartSet(2)
 	seenCommit := makeTestCommit(10, tmtime.Now())
 	bs.SaveBlock(block, partSet, seenCommit)
@@ -375,7 +364,7 @@ func TestLoadBaseMeta(t *testing.T) {
 	bs := NewBlockStore(dbm.NewMemDB())
 
 	for h := int64(1); h <= 10; h++ {
-		block := makeBlock(h, state, new(types.Commit))
+		block := factory.MakeBlock(state, h, new(types.Commit))
 		partSet := block.MakePartSet(2)
 		seenCommit := makeTestCommit(h, tmtime.Now())
 		bs.SaveBlock(block, partSet, seenCommit)
@@ -443,7 +432,7 @@ func TestPruneBlocks(t *testing.T) {
 
 	// make more than 1000 blocks, to test batch deletions
 	for h := int64(1); h <= 1500; h++ {
-		block := makeBlock(h, state, new(types.Commit))
+		block := factory.MakeBlock(state, h, new(types.Commit))
 		partSet := block.MakePartSet(2)
 		seenCommit := makeTestCommit(h, tmtime.Now())
 		bs.SaveBlock(block, partSet, seenCommit)
@@ -552,7 +541,7 @@ func TestBlockFetchAtHeight(t *testing.T) {
 	state, bs, cleanup := makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
 	defer cleanup()
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
-	block := makeBlock(bs.Height()+1, state, new(types.Commit))
+	block := factory.MakeBlock(state, bs.Height()+1, new(types.Commit))
 
 	partSet := block.MakePartSet(2)
 	seenCommit := makeTestCommit(10, tmtime.Now())
