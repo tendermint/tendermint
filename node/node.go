@@ -276,6 +276,7 @@ func makeNode(config *cfg.Config,
 		proxyApp.Consensus(),
 		mp,
 		evPool,
+		blockStore,
 		sm.BlockExecutorWithMetrics(smMetrics),
 	)
 

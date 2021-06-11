@@ -113,6 +113,7 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 		rts.app[nodeID].Consensus(),
 		mock.Mempool{},
 		sm.EmptyEvidencePool{},
+		blockStore,
 	)
 
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
@@ -143,7 +144,7 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
-		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
+		state, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		require.NoError(t, err)
 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
