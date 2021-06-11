@@ -4,13 +4,13 @@ import "github.com/tendermint/tendermint/types"
 
 // Store is anything that can persistently store headers.
 type Store interface {
-	// SaveSignedHeaderAndValidatorSet saves a SignedHeader (h: sh.Height) and a
+	// SaveLightBlock saves a SignedHeader (h: sh.Height) and a
 	// ValidatorSet (h: sh.Height).
 	//
 	// height must be > 0.
 	SaveLightBlock(lb *types.LightBlock) error
 
-	// DeleteSignedHeaderAndValidatorSet deletes SignedHeader (h: height) and
+	// DeleteLightBlock deletes SignedHeader (h: height) and
 	// ValidatorSet (h: height).
 	//
 	// height must be > 0.

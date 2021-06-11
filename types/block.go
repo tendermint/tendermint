@@ -341,7 +341,7 @@ func MaxDataBytesNoEvidence(maxBytes int64, keyType crypto.KeyType, valsCount in
 
 //-----------------------------------------------------------------------------
 
-// Header defines the structure of a Tendermint block header.
+// Header defines the structure of a Tenderdash block header.
 // NOTE: changes to the Header should be duplicated in:
 // - header.Hash()
 // - abci.Header
