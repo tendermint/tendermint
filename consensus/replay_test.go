@@ -31,6 +31,7 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
+	sf "github.com/tendermint/tendermint/state/test/factory"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -895,7 +896,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
 	state.LastValidators = state.Validators.Copy()
 	// mode = 0 for committing all the blocks
-	blocks := makeBlocks(3, &state, privVal)
+	blocks := sf.MakeBlocks(3, &state, privVal)
 	store.chain = blocks
 
 	// 2. Tendermint must panic if app returns wrong hash for the first block
@@ -945,52 +946,6 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 			}
 		})
 	}
-}
-
-func makeBlocks(n int, state *sm.State, privVal types.PrivValidator) []*types.Block {
-	blocks := make([]*types.Block, 0)
-
-	var (
-		prevBlock     *types.Block
-		prevBlockMeta *types.BlockMeta
-	)
-
-	appHeight := byte(0x01)
-	for i := 0; i < n; i++ {
-		height := int64(i + 1)
-
-		block, parts := makeBlock(*state, prevBlock, prevBlockMeta, privVal, height)
-		blocks = append(blocks, block)
-
-		prevBlock = block
-		prevBlockMeta = types.NewBlockMeta(block, parts)
-
-		// update state
-		state.AppHash = []byte{appHeight}
-		appHeight++
-		state.LastBlockHeight = height
-	}
-
-	return blocks
-}
-
-func makeBlock(state sm.State, lastBlock *types.Block, lastBlockMeta *types.BlockMeta,
-	privVal types.PrivValidator, height int64) (*types.Block, *types.PartSet) {
-
-	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
-	if height > 1 {
-		vote, _ := types.MakeVote(
-			lastBlock.Header.Height,
-			lastBlockMeta.BlockID,
-			state.Validators,
-			privVal,
-			lastBlock.Header.ChainID,
-			time.Now())
-		lastCommit = types.NewCommit(vote.Height, vote.Round,
-			lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
-	}
-
-	return state.MakeBlock(height, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().Address)
 }
 
 type badApp struct {
