@@ -677,6 +677,12 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 	// For every validator, get the precommit
 	commitSigs := make([]CommitSig, len(voteSet.votes))
 	for i, v := range voteSet.votes {
+		if v != nil {
+			err := v.ValidateBasic()
+			if err != nil {
+				panic(err)
+			}
+		}
 		commitSig := v.CommitSig()
 		// if block ID exists but doesn't match, exclude sig
 		if commitSig.ForBlock() && !v.BlockID.Equals(*voteSet.maj23) {

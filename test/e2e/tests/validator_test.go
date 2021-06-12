@@ -196,7 +196,7 @@ func (s *validatorSchedule) Increment(heights int64) {
 				if thresholdPublicKeyUpdate, ok := s.thresholdPublicKeyUpdates[s.height-2]; ok {
 					if quorumHashUpdate, ok := s.quorumHashUpdates[s.height-2]; ok {
 						if bytes.Equal(quorumHashUpdate, s.Set.QuorumHash) {
-							if err := s.Set.UpdateWithChangeSet(makeVals(update), thresholdPublicKeyUpdate); err != nil {
+							if err := s.Set.UpdateWithChangeSet(makeVals(update), thresholdPublicKeyUpdate, quorumHashUpdate); err != nil {
 								panic(err)
 							}
 						} else {

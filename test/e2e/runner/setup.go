@@ -182,6 +182,7 @@ services:
     - 6060
     volumes:
     - ./{{ .Name }}:/tenderdash
+    - /Users/samuelw/Documents/src/go/github.com/dashevo/tenderdash/test/e2e/build/app:/usr/bin/app
     networks:
       {{ $.Name }}:
         ipv{{ if $.IPv6 }}6{{ else }}4{{ end}}_address: {{ .IP }}

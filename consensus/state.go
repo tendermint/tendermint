@@ -149,7 +149,7 @@ type State struct {
 // StateOption sets an optional parameter on the State.
 type StateOption func(*State)
 
-// NewState returns a new State.
+// NewState returns a new State without a logger set.
 func NewState(
 	config *cfg.ConsensusConfig,
 	state sm.State,
@@ -157,6 +157,20 @@ func NewState(
 	blockStore sm.BlockStore,
 	txNotifier txNotifier,
 	evpool evidencePool,
+	options ...StateOption,
+) *State {
+	return NewStateWithLogger(config, state, blockExec, blockStore, txNotifier, evpool, nil, options...)
+}
+
+// NewStateWithLogger returns a new State with the logger set.
+func NewStateWithLogger(
+	config *cfg.ConsensusConfig,
+	state sm.State,
+	blockExec *sm.BlockExecutor,
+	blockStore sm.BlockStore,
+	txNotifier txNotifier,
+	evpool evidencePool,
+	logger log.Logger,
 	options ...StateOption,
 ) *State {
 	cs := &State{
@@ -186,11 +200,11 @@ func NewState(
 		cs.reconstructLastCommit(state)
 	}
 
+	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
+	cs.BaseService = *service.NewBaseService(logger, "State", cs)
+
 	cs.updateToState(state)
 
-	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
-
-	cs.BaseService = *service.NewBaseService(nil, "State", cs)
 	for _, option := range options {
 		option(cs)
 	}
@@ -682,7 +696,6 @@ func (cs *State) updateToState(state sm.State) {
 	}
 
 	if cs.Validators == nil || !bytes.Equal(cs.Validators.QuorumHash, validators.QuorumHash) {
-		fmt.Printf("updating validators at height %v from %v to %v \n", height, cs.Validators, validators)
 		if cs.Logger != nil {
 			cs.Logger.Info("updating validators", "from", cs.Validators, "to", validators)
 		}
