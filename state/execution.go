@@ -484,7 +484,7 @@ func updateState(
 	lastHeightValsChanged := state.LastHeightValidatorsChanged
 	if len(validatorUpdates) > 0 {
 		if bytes.Equal(nValSet.QuorumHash, quorumHash) {
-			err := nValSet.UpdateWithChangeSet(validatorUpdates, newThresholdPublicKey)
+			err := nValSet.UpdateWithChangeSet(validatorUpdates, newThresholdPublicKey, quorumHash)
 			if err != nil {
 				return state, fmt.Errorf("error changing validator set: %v", err)
 			}

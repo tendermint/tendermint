@@ -225,7 +225,7 @@ func NewCLI() *CLI {
 	Min Block Interval
 	Max Block Interval
 over a 100 block sampling period.
-		
+
 Does not run any perbutations.
 		`,
 		RunE: func(cmd *cobra.Command, args []string) error {

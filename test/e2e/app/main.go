@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -12,12 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto"
-
+	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/spf13/viper"
-
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmflags "github.com/tendermint/tendermint/libs/cli/flags"
 	"github.com/tendermint/tendermint/libs/log"
@@ -32,11 +29,31 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
+	"github.com/tendermint/tendermint/test/e2e/pkg/mockcoreserver"
 	mcs "github.com/tendermint/tendermint/test/maverick/consensus"
 	maverick "github.com/tendermint/tendermint/test/maverick/node"
 )
 
 var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+
+var (
+	tmhome     string
+	tmcfg      *config.Config
+	nodeLogger log.Logger
+	nodeKey    *p2p.NodeKey
+)
+
+func init() {
+	tmhome = os.Getenv("TMHOME")
+	if tmhome == "" {
+		panic("TMHOME is missed")
+	}
+	var err error
+	tmcfg, nodeLogger, nodeKey, err = setupNode()
+	if err != nil {
+		panic("failed to setup config: " + err.Error())
+	}
+}
 
 // main is the binary entrypoint.
 func main() {
@@ -72,6 +89,15 @@ func run(configFile string) error {
 		}
 	}
 
+	// Start mock core-server
+	coreSrv, err := setupCoreServer(cfg)
+	if err != nil {
+		return fmt.Errorf("unable to setup mock core server: %w", err)
+	}
+	go func() {
+		coreSrv.Start()
+	}()
+
 	// Start app server.
 	switch cfg.Protocol {
 	case "socket", "grpc":
@@ -105,11 +131,11 @@ func startApp(cfg *Config) error {
 	if err != nil {
 		return err
 	}
-	server, err := server.NewServer(cfg.Listen, cfg.Protocol, app)
+	srv, err := server.NewServer(cfg.Listen, cfg.Protocol, app)
 	if err != nil {
 		return err
 	}
-	err = server.Start()
+	err = srv.Start()
 	if err != nil {
 		return err
 	}
@@ -126,13 +152,8 @@ func startNode(cfg *Config) error {
 	if err != nil {
 		return err
 	}
-
-	tmcfg, nodeLogger, nodeKey, err := setupNode()
-	if err != nil {
-		return fmt.Errorf("failed to setup config: %w", err)
-	}
-
-	n, err := node.NewNode(tmcfg,
+	n, err := node.NewNode(
+		tmcfg,
 		privval.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
 		nodeKey,
 		proxy.NewLocalClientCreator(app),
@@ -148,11 +169,6 @@ func startNode(cfg *Config) error {
 }
 
 func startLightClient(cfg *Config) error {
-	tmcfg, nodeLogger, _, err := setupNode()
-	if err != nil {
-		return err
-	}
-
 	dbContext := &node.DBContext{ID: "light", Config: tmcfg}
 	lightDB, err := node.DefaultDBProvider(dbContext)
 	if err != nil {
@@ -213,11 +229,6 @@ func startMaverick(cfg *Config) error {
 		return err
 	}
 
-	tmcfg, logger, nodeKey, err := setupNode()
-	if err != nil {
-		return fmt.Errorf("failed to setup config: %w", err)
-	}
-
 	misbehaviors := make(map[int64]mcs.Misbehavior, len(cfg.Misbehaviors))
 	for heightString, misbehaviorString := range cfg.Misbehaviors {
 		height, _ := strconv.ParseInt(heightString, 10, 64)
@@ -267,15 +278,30 @@ func startSigner(cfg *Config) error {
 	return nil
 }
 
+func setupCoreServer(cfg *Config) (*mockcoreserver.JRPCServer, error) {
+	srv := mockcoreserver.NewJRPCServer(tmcfg.PrivValidatorCoreRPCHost, "/")
+	privValKeyPath := filepath.Clean(tmhome + "/" + tmcfg.PrivValidatorKey)
+	privValStatePath := filepath.Clean(tmhome + "/" + tmcfg.PrivValidatorState)
+	filePV := privval.LoadFilePV(privValKeyPath, privValStatePath)
+	coreServer := &mockcoreserver.MockCoreServer{
+		ChainID:  cfg.ChainID,
+		LLMQType: btcjson.LLMQType_5_60,
+		FilePV:   filePV,
+	}
+	srv = mockcoreserver.WithMethods(
+		srv,
+		mockcoreserver.WithQuorumInfoMethod(coreServer, mockcoreserver.Endless),
+		mockcoreserver.WithQuorumSignMethod(coreServer, mockcoreserver.Endless),
+		mockcoreserver.WithMasternodeMethod(coreServer, mockcoreserver.Endless),
+		mockcoreserver.WithGetNetworkInfoMethod(coreServer, mockcoreserver.Endless),
+	)
+	return srv, nil
+}
+
 func setupNode() (*config.Config, log.Logger, *p2p.NodeKey, error) {
 	var tmcfg *config.Config
 
-	home := os.Getenv("TMHOME")
-	if home == "" {
-		return nil, nil, nil, errors.New("TMHOME not set")
-	}
-
-	viper.AddConfigPath(filepath.Join(home, "config"))
+	viper.AddConfigPath(filepath.Join(tmhome, "config"))
 	viper.SetConfigName("config")
 
 	if err := viper.ReadInConfig(); err != nil {
@@ -288,7 +314,7 @@ func setupNode() (*config.Config, log.Logger, *p2p.NodeKey, error) {
 		return nil, nil, nil, err
 	}
 
-	tmcfg.SetRoot(home)
+	tmcfg.SetRoot(tmhome)
 
 	if err := tmcfg.ValidateBasic(); err != nil {
 		return nil, nil, nil, fmt.Errorf("error in config file: %w", err)

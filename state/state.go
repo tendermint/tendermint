@@ -240,7 +240,7 @@ func StateFromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 		}
 		state.LastValidators = lVals
 	} else {
-		state.LastValidators = types.NewValidatorSet(nil, nil, 0, nil, false)
+		state.LastValidators = types.NewEmptyValidatorSet()
 	}
 
 	state.LastHeightValidatorsChanged = pb.LastHeightValidatorsChanged
@@ -370,7 +370,8 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 
 		NextValidators:              nextValidatorSet,
 		Validators:                  validatorSet,
-		LastValidators:              types.NewValidatorSet(nil, nil, genDoc.QuorumType, nil, false),
+		// The quorum type must be 0 on an empty validator set
+		LastValidators:              types.NewEmptyValidatorSet(),
 		LastHeightValidatorsChanged: genDoc.InitialHeight,
 
 		ConsensusParams:                  *genDoc.ConsensusParams,

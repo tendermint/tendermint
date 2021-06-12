@@ -54,6 +54,12 @@ type FilePVKey struct {
 	NextPrivKeyHeights []int64          `json:"next_priv_key_height,omitempty"`
 	ProTxHash          crypto.ProTxHash `json:"pro_tx_hash"`
 
+	QuorumHash       crypto.QuorumHash   `json:"quorum_hash"`
+	NextQuorumHashes []crypto.QuorumHash `json:"next_quorum_hashes,omitempty"`
+
+	ThresholdPublicKey      crypto.PubKey   `json:"threshold_public_key"`
+	NextThresholdPublicKeys []crypto.PubKey `json:"next_threshold_public_keys,omitempty"`
+
 	filePath string
 }
 
@@ -165,6 +171,9 @@ type FilePV struct {
 	LastSignState FilePVLastSignState
 }
 
+// FilePVOption ...
+type FilePVOption func(filePV *FilePV) error
+
 // NewFilePV generates a new validator from the given key and paths.
 func NewFilePV(privKey crypto.PrivKey, proTxHash []byte, nextPrivKeys []crypto.PrivKey, nextPrivHeights []int64,
 	keyFilePath, stateFilePath string) *FilePV {
@@ -187,6 +196,83 @@ func NewFilePV(privKey crypto.PrivKey, proTxHash []byte, nextPrivKeys []crypto.P
 			filePath: stateFilePath,
 		},
 	}
+}
+
+// WithKeyAndStateFilePaths ...
+func WithKeyAndStateFilePaths(keyFilePath, stateFilePath string) FilePVOption {
+	return func(filePV *FilePV) error {
+		filePV.Key.filePath = keyFilePath
+		filePV.LastSignState.filePath = stateFilePath
+		return nil
+	}
+}
+
+// WithNextPrivvalKeys ...
+func WithNextPrivvalKeys(keys []crypto.PrivKey, heights []int64) FilePVOption {
+	return func(filePV *FilePV) error {
+		filePV.Key.NextPrivKeys = keys
+		filePV.Key.NextPrivKeyHeights = heights
+		return nil
+	}
+}
+
+// WithProTxHash ...
+func WithQuorumHash(quorumHash crypto.QuorumHash, nextHashes map[int64]crypto.QuorumHash) FilePVOption {
+	return func(filePV *FilePV) error {
+		filePV.Key.QuorumHash = quorumHash
+		for _, hash := range nextHashes {
+			if !bytes.Equal(quorumHash, hash) {
+				filePV.Key.NextQuorumHashes = append(filePV.Key.NextQuorumHashes, hash)
+			}
+		}
+		return nil
+	}
+}
+
+// WithThresholdPublicKey ...
+func WithThresholdPublicKey(pubKey crypto.PubKey, nextKeys map[int64]crypto.PubKey) FilePVOption {
+	return func(filePV *FilePV) error {
+		filePV.Key.ThresholdPublicKey = pubKey
+		for _, nextPubKey := range nextKeys {
+			if !bytes.Equal(pubKey.Bytes(), nextPubKey.Bytes()) {
+				filePV.Key.NextThresholdPublicKeys = append(filePV.Key.NextThresholdPublicKeys, nextPubKey)
+			}
+		}
+		return nil
+	}
+}
+
+// WithProTxHash ...
+func WithProTxHash(proTxHash []byte) FilePVOption {
+	return func(filePV *FilePV) error {
+		if len(proTxHash) != crypto.ProTxHashSize {
+			return fmt.Errorf("error setting incorrect proTxHash size in NewFilePV")
+		}
+		filePV.Key.ProTxHash = proTxHash
+		return nil
+	}
+}
+
+// WithPrivKey ...
+func WithPrivKey(privKey crypto.PrivKey) FilePVOption {
+	return func(filePV *FilePV) error {
+		filePV.Key.Address = privKey.PubKey().Address()
+		filePV.Key.PubKey = privKey.PubKey()
+		filePV.Key.PrivKey = privKey
+		return nil
+	}
+}
+
+// NewFilePVWithOptions ...
+func NewFilePVWithOptions(opts ...FilePVOption) (*FilePV, error) {
+	filePV := &FilePV{}
+	for _, opt := range opts {
+		err := opt(filePV)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return filePV, nil
 }
 
 // GenFilePV generates a new validator with randomly generated private key
@@ -276,6 +362,31 @@ func (pv *FilePV) GetPubKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error)
 	return pv.Key.PubKey, nil
 }
 
+// UpdateKeysByQuorumHash ...
+func (pv *FilePV) UpdateKeysByQuorumHash(quorumHash crypto.QuorumHash) {
+	fmt.Printf("[DEBUG] UpdateKeysByQuorumHash for %s\n", quorumHash.String())
+	if len(pv.Key.NextQuorumHashes) == 0 {
+		return
+	}
+	for i, nqh := range pv.Key.NextQuorumHashes {
+		fmt.Printf("[DEBUG] UpdateKeysByQuorumHash:Compare cur %s, next %s\n", quorumHash.String(), nqh.String())
+		if bytes.Compare(nqh.Bytes(), quorumHash.Bytes()) == 0 {
+			pv.updateKeyIfNeeded(pv.Key.NextPrivKeyHeights[i])
+		}
+	}
+}
+
+// GetThresholdPublicKey ...
+func (pv *FilePV) GetThresholdPublicKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
+	return pv.Key.ThresholdPublicKey, nil
+}
+
+// GetHeight ...
+func (pv *FilePV) GetHeight(quorumHash crypto.QuorumHash) int64 {
+	return 0
+}
+
+// ExtractIntoValidator ...
 func (pv *FilePV) ExtractIntoValidator(height int64, quorumHash crypto.QuorumHash) *types.Validator {
 	var pubKey crypto.PubKey
 	if pv.Key.NextPrivKeys != nil && len(pv.Key.NextPrivKeys) > 0 && height >= pv.Key.NextPrivKeyHeights[0] {
@@ -375,6 +486,16 @@ func (pv *FilePV) updateKeyIfNeeded(height int64) {
 		} else {
 			pv.Key.NextPrivKeys = nil
 			pv.Key.NextPrivKeyHeights = nil
+		}
+		// update quorum hash
+		if len(pv.Key.NextQuorumHashes) > 0 {
+			pv.Key.QuorumHash = pv.Key.NextQuorumHashes[0]
+			pv.Key.NextQuorumHashes = pv.Key.NextQuorumHashes[1:]
+		}
+		// update threshold public key
+		if len(pv.Key.NextThresholdPublicKeys) > 0 {
+			pv.Key.ThresholdPublicKey = pv.Key.NextThresholdPublicKeys[0]
+			pv.Key.NextThresholdPublicKeys = pv.Key.NextThresholdPublicKeys[1:]
 		}
 	}
 	// else {

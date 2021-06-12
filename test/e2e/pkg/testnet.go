@@ -39,11 +39,12 @@ const (
 	ModeLight     Mode = "light"
 	ModeSeed      Mode = "seed"
 
-	ProtocolBuiltin Protocol = "builtin"
-	ProtocolFile    Protocol = "file"
-	ProtocolGRPC    Protocol = "grpc"
-	ProtocolTCP     Protocol = "tcp"
-	ProtocolUNIX    Protocol = "unix"
+	ProtocolBuiltin  Protocol = "builtin"
+	ProtocolFile     Protocol = "file"
+	ProtocolGRPC     Protocol = "grpc"
+	ProtocolTCP      Protocol = "tcp"
+	ProtocolUNIX     Protocol = "unix"
+	ProtocolDashCore Protocol = "dashcore"
 
 	PerturbationDisconnect Perturbation = "disconnect"
 	PerturbationKill       Perturbation = "kill"
@@ -126,7 +127,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 	ipGen := newIPGenerator(ipNet)
 	keyGen := newKeyGenerator(randomSeed)
 	proTxHashGen := newProTxHashGenerator(randomSeed + 1)
-	quorumHashGen := newQuorumHashGenerator(randomSeed + 1)
+	quorumHashGen := newQuorumHashGenerator(randomSeed + 2)
 	proxyPortGen := newPortGenerator(proxyPortFirst)
 
 	// Set up nodes, in alphabetical order (IPs and ports get same order).
@@ -374,7 +375,11 @@ func LoadTestnet(file string) (*Testnet, error) {
 				node.NextPrivvalHeights = append(node.NextPrivvalHeights, int64(height+2))
 			}
 		}
-
+		if height == 0 {
+			testnet.QuorumHash = quorumHash
+			testnet.ThresholdPublicKey = thresholdPublicKey
+			testnet.Validators = valUpdate
+		}
 		testnet.ValidatorUpdates[int64(height)] = valUpdate
 		testnet.ThresholdPublicKeyUpdates[int64(height)] = thresholdPublicKey
 		testnet.QuorumHashUpdates[int64(height)] = quorumHash
@@ -472,7 +477,7 @@ func (n Node) Validate(testnet Testnet) error {
 		return errors.New("light client must use builtin protocol")
 	}
 	switch n.PrivvalProtocol {
-	case ProtocolFile, ProtocolUNIX, ProtocolTCP:
+	case ProtocolFile, ProtocolUNIX, ProtocolTCP, ProtocolDashCore:
 	default:
 		return fmt.Errorf("invalid privval protocol setting %q", n.PrivvalProtocol)
 	}

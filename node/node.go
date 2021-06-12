@@ -398,16 +398,16 @@ func createConsensusReactor(config *cfg.Config,
 	eventBus *types.EventBus,
 	consensusLogger log.Logger) (*cs.Reactor, *cs.State) {
 
-	consensusState := cs.NewState(
+	consensusState := cs.NewStateWithLogger(
 		config.Consensus,
 		state.Copy(),
 		blockExec,
 		blockStore,
 		mempool,
 		evidencePool,
+		consensusLogger,
 		cs.StateMetrics(csMetrics),
 	)
-	consensusState.SetLogger(consensusLogger)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
 	}

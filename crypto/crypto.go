@@ -72,6 +72,7 @@ func (sptxh SortProTxHash) Swap(i, j int) {
 }
 
 type PubKey interface {
+	HexStringer
 	Address() Address
 	Bytes() []byte
 	VerifySignature(msg []byte, sig []byte) bool
@@ -98,4 +99,9 @@ type Symmetric interface {
 	Keygen() []byte
 	Encrypt(plaintext []byte, secret []byte) (ciphertext []byte)
 	Decrypt(ciphertext []byte, secret []byte) (plaintext []byte, err error)
+}
+
+// HexStringer ...
+type HexStringer interface {
+	HexString() string
 }

@@ -46,12 +46,10 @@ func TestValidatorSetBasic(t *testing.T) {
 	assert.Zero(t, vset.Size())
 	assert.Equal(t, int64(0), vset.TotalVotingPower())
 	assert.Nil(t, vset.GetProposer())
-	assert.Equal(t, []byte{0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14, 0x9a, 0xfb, 0xf4,
-		0xc8, 0x99, 0x6f, 0xb9, 0x24, 0x27, 0xae, 0x41, 0xe4, 0x64, 0x9b, 0x93, 0x4c, 0xa4, 0x95,
-		0x99, 0x1b, 0x78, 0x52, 0xb8, 0x55}, vset.Hash())
+	assert.Equal(t, []byte(nil), vset.Hash())
 	// add
 	val = randValidator(vset.TotalVotingPower())
-	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}, val.PubKey))
+	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}, val.PubKey, crypto.RandQuorumHash()))
 
 	assert.True(t, vset.HasProTxHash(val.ProTxHash))
 	idx, _ = vset.GetByProTxHash(val.ProTxHash)
@@ -67,13 +65,13 @@ func TestValidatorSetBasic(t *testing.T) {
 
 	// update
 	val = randValidator(vset.TotalVotingPower())
-	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}, val.PubKey))
+	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}, val.PubKey, crypto.RandQuorumHash()))
 	_, val = vset.GetByProTxHash(val.ProTxHash)
 	val.PubKey = bls12381.GenPrivKey().PubKey()
 	proposerPriority := val.ProposerPriority
 
 	val.ProposerPriority = 0
-	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}, val.PubKey))
+	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}, val.PubKey, crypto.RandQuorumHash()))
 	_, val = vset.GetByProTxHash(val.ProTxHash)
 	assert.Equal(t, proposerPriority, val.ProposerPriority)
 
@@ -242,7 +240,7 @@ func BenchmarkValidatorSetCopy(b *testing.B) {
 		privKey := bls12381.GenPrivKey()
 		pubKey := privKey.PubKey()
 		val := NewValidatorDefaultVotingPower(pubKey, crypto.ProTxHash{})
-		err := vset.UpdateWithChangeSet([]*Validator{val}, nil)
+		err := vset.UpdateWithChangeSet([]*Validator{val}, nil, crypto.RandQuorumHash())
 		if err != nil {
 			panic("Failed to add validator")
 		}
@@ -691,17 +689,17 @@ func TestEmptySet(t *testing.T) {
 	// Add to empty set
 	addresses := []crypto.Address{[]byte("v1"), []byte("v2")}
 	valSetAdd, _ := GenerateTestValidatorSetWithAddressesDefaultPower(addresses)
-	assert.NoError(t, valSet.UpdateWithChangeSet(valSetAdd.Validators, valSetAdd.ThresholdPublicKey))
+	assert.NoError(t, valSet.UpdateWithChangeSet(valSetAdd.Validators, valSetAdd.ThresholdPublicKey, crypto.RandQuorumHash()))
 	verifyValidatorSet(t, valSet)
 
 	// Delete all validators from set
 	v1 := NewTestRemoveValidatorGeneratedFromAddress([]byte("v1"))
 	v2 := NewTestRemoveValidatorGeneratedFromAddress([]byte("v2"))
 	delList := []*Validator{v1, v2}
-	assert.Error(t, valSet.UpdateWithChangeSet(delList, bls12381.PubKey{}))
+	assert.Error(t, valSet.UpdateWithChangeSet(delList, bls12381.PubKey{}, crypto.RandQuorumHash()))
 
 	// Attempt delete from empty set
-	assert.Error(t, valSet.UpdateWithChangeSet(delList, bls12381.PubKey{}))
+	assert.Error(t, valSet.UpdateWithChangeSet(delList, bls12381.PubKey{}, crypto.RandQuorumHash()))
 
 }
 
@@ -888,7 +886,7 @@ func executeValSetErrTestCaseIgnoreThresholdPublicKey(t *testing.T, idx int, tt 
 	valSetCopy := valSet.Copy()
 	valList := createNewValidatorList(tt.updateVals)
 	valListCopy := validatorListCopy(valList)
-	err := valSet.UpdateWithChangeSet(valList, bls12381.GenPrivKey().PubKey())
+	err := valSet.UpdateWithChangeSet(valList, bls12381.GenPrivKey().PubKey(), crypto.RandQuorumHash())
 
 	// for errors check the validator set has not been changed
 	if assert.Error(t, err, "test %d", idx) {
@@ -906,7 +904,7 @@ func executeValSetErrTestCase(t *testing.T, idx int, tt valSetErrTestCase) {
 	valSetCopy := valSet.Copy()
 	valList, thresholdPublicKey := addValidatorsToValidatorSet(valSet, tt.updateVals)
 	valListCopy := validatorListCopy(valList)
-	err := valSet.UpdateWithChangeSet(valList, thresholdPublicKey)
+	err := valSet.UpdateWithChangeSet(valList, thresholdPublicKey, crypto.RandQuorumHash())
 
 	// for errors check the validator set has not been changed
 	assert.Error(t, err, "test %d", idx)
@@ -1043,7 +1041,7 @@ func TestValSetUpdatesBasicTestsExecute(t *testing.T) {
 		// create a new set and apply updates, keeping copies for the checks
 		valSet := createNewValidatorSet(tt.startVals)
 		valList, thresholdPublicKey := addValidatorsToValidatorSet(valSet, tt.updateVals)
-		err := valSet.UpdateWithChangeSet(valList, thresholdPublicKey)
+		err := valSet.UpdateWithChangeSet(valList, thresholdPublicKey, crypto.RandQuorumHash())
 		assert.NoError(t, err, "test %d", i)
 
 		valListCopy := validatorListCopy(valSet.Validators)
@@ -1093,7 +1091,7 @@ func TestValSetUpdatesOrderIndependenceTestsExecute(t *testing.T) {
 		valSet := createNewValidatorSet(tt.startVals)
 		valSetCopy := valSet.Copy()
 		valList, thresholdPublicKey := addValidatorsToValidatorSet(valSet, tt.updateVals)
-		assert.NoError(t, valSetCopy.UpdateWithChangeSet(valList, thresholdPublicKey))
+		assert.NoError(t, valSetCopy.UpdateWithChangeSet(valList, thresholdPublicKey, crypto.RandQuorumHash()))
 
 		// save the result as expected for next updates
 		valSetExp := valSetCopy.Copy()
@@ -1107,7 +1105,7 @@ func TestValSetUpdatesOrderIndependenceTestsExecute(t *testing.T) {
 			valList, thresholdPublicKey := addValidatorsToValidatorSet(valSetCopy, permutation(tt.updateVals))
 
 			// check there was no error and the set is properly scaled and centered.
-			assert.NoError(t, valSetCopy.UpdateWithChangeSet(valList, thresholdPublicKey),
+			assert.NoError(t, valSetCopy.UpdateWithChangeSet(valList, thresholdPublicKey, crypto.RandQuorumHash()),
 				"test %v failed for permutation %v", i, valList)
 			verifyValidatorSet(t, valSetCopy)
 
@@ -1249,7 +1247,7 @@ func applyChangesToValSet(t *testing.T, expErr error, valSet *ValidatorSet, vals
 		changes = append(changes, valsList...)
 	}
 	valList, thresholdPublicKey := addValidatorsToValidatorSet(valSet, changes)
-	err := valSet.UpdateWithChangeSet(valList, thresholdPublicKey)
+	err := valSet.UpdateWithChangeSet(valList, thresholdPublicKey, crypto.RandQuorumHash())
 	if expErr != nil {
 		assert.Equal(t, expErr, err)
 	} else {
@@ -1543,6 +1541,6 @@ func BenchmarkUpdates(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		// Add m validators to valSetCopy
 		valSetCopy := valSet.Copy()
-		assert.NoError(b, valSetCopy.UpdateWithChangeSet(newValList, valSet2.ThresholdPublicKey))
+		assert.NoError(b, valSetCopy.UpdateWithChangeSet(newValList, valSet2.ThresholdPublicKey, crypto.RandQuorumHash()))
 	}
 }

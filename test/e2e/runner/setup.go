@@ -18,12 +18,10 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/BurntSushi/toml"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
-
-	"github.com/BurntSushi/toml"
-
-	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
@@ -115,20 +113,19 @@ func Setup(testnet *e2e.Testnet) error {
 		}
 
 		if node.Mode == e2e.ModeValidator {
-			if len(node.ProTxHash) != crypto.ProTxHashSize {
-				return fmt.Errorf("node proTxHash should be 32 bytes")
+			pv, err := newFilePVFromNode(node, nodeDir)
+			if err != nil {
+				return err
 			}
-			(privval.NewFilePV(node.PrivvalKey, node.ProTxHash.Bytes(), node.NextPrivvalKeys, node.NextPrivvalHeights,
-				filepath.Join(nodeDir, PrivvalKeyFile),
-				filepath.Join(nodeDir, PrivvalStateFile),
-			)).Save()
+			pv.Save()
 		}
 		// Set up a dummy validator. Tenderdash requires a file PV even when not used, so we
 		// give it a dummy such that it will fail if it actually tries to use it.
-		(privval.NewFilePV(bls12381.GenPrivKey(), crypto.RandProTxHash(), nil, nil,
-			filepath.Join(nodeDir, PrivvalDummyKeyFile),
-			filepath.Join(nodeDir, PrivvalDummyStateFile),
-		)).Save()
+		pv, err := newDefaultFilePV(node, nodeDir)
+		if err != nil {
+			return err
+		}
+		pv.Save()
 	}
 
 	return nil
@@ -185,6 +182,7 @@ services:
     - 6060
     volumes:
     - ./{{ .Name }}:/tenderdash
+    - /Users/samuelw/Documents/src/go/github.com/dashevo/tenderdash/test/e2e/build/app:/usr/bin/app
     networks:
       {{ $.Name }}:
         ipv{{ if $.IPv6 }}6{{ else }}4{{ end}}_address: {{ .IP }}
@@ -247,7 +245,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.P2P.AddrBookStrict = false
 	cfg.DBBackend = node.Database
 	cfg.StateSync.DiscoveryTime = 5 * time.Second
-
+	cfg.Consensus.AppHashSize = crypto.DefaultHashSize
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:
 		cfg.ProxyApp = AppAddressUNIX
@@ -281,6 +279,9 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 			cfg.PrivValidatorListenAddr = PrivvalAddressUNIX
 		case e2e.ProtocolTCP:
 			cfg.PrivValidatorListenAddr = PrivvalAddressTCP
+		case e2e.ProtocolDashCore:
+			cfg.PrivValidatorKey = PrivvalKeyFile
+			cfg.PrivValidatorState = PrivvalStateFile
 		default:
 			return nil, fmt.Errorf("invalid privval protocol setting %q", node.PrivvalProtocol)
 		}
@@ -361,6 +362,7 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 	if node.Mode == e2e.ModeValidator {
 		switch node.PrivvalProtocol {
 		case e2e.ProtocolFile:
+		case e2e.ProtocolDashCore:
 		case e2e.ProtocolTCP:
 			cfg["privval_server"] = PrivvalAddressTCP
 			cfg["privval_key"] = PrivvalKeyFile
@@ -434,4 +436,34 @@ func UpdateConfigStateSync(node *e2e.Node, height int64, hash []byte) error {
 	bz = regexp.MustCompile(`(?m)^trust_height =.*`).ReplaceAll(bz, []byte(fmt.Sprintf(`trust_height = %v`, height)))
 	bz = regexp.MustCompile(`(?m)^trust_hash =.*`).ReplaceAll(bz, []byte(fmt.Sprintf(`trust_hash = "%X"`, hash)))
 	return ioutil.WriteFile(cfgPath, bz, 0644)
+}
+
+func newDefaultFilePV(node *e2e.Node, nodeDir string) (*privval.FilePV, error) {
+	tn := node.Testnet
+	return privval.NewFilePVWithOptions(
+		privval.WithPrivKey(bls12381.GenPrivKey()),
+		privval.WithProTxHash(crypto.RandProTxHash()),
+		privval.WithQuorumHash(tn.QuorumHash, tn.QuorumHashUpdates),
+		privval.WithNextPrivvalKeys(node.NextPrivvalKeys, node.NextPrivvalHeights),
+		privval.WithThresholdPublicKey(tn.ThresholdPublicKey, tn.ThresholdPublicKeyUpdates),
+		privval.WithKeyAndStateFilePaths(
+			filepath.Join(nodeDir, PrivvalDummyKeyFile),
+			filepath.Join(nodeDir, PrivvalDummyStateFile),
+		),
+	)
+}
+
+func newFilePVFromNode(node *e2e.Node, nodeDir string) (*privval.FilePV, error) {
+	tn := node.Testnet
+	return privval.NewFilePVWithOptions(
+		privval.WithPrivKey(node.PrivvalKey),
+		privval.WithProTxHash(node.ProTxHash),
+		privval.WithQuorumHash(tn.QuorumHash, tn.QuorumHashUpdates),
+		privval.WithThresholdPublicKey(tn.ThresholdPublicKey, tn.ThresholdPublicKeyUpdates),
+		privval.WithNextPrivvalKeys(node.NextPrivvalKeys, node.NextPrivvalHeights),
+		privval.WithKeyAndStateFilePaths(
+			filepath.Join(nodeDir, PrivvalKeyFile),
+			filepath.Join(nodeDir, PrivvalStateFile),
+		),
+	)
 }

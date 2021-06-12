@@ -84,7 +84,7 @@ func NewValidatorSet(valz []*Validator, newThresholdPublicKey crypto.PubKey, quo
 		QuorumType: quorumType,
 		HasPublicKeys: hasPublicKeys,
 	}
-	err := vals.updateWithChangeSet(valz, false, newThresholdPublicKey)
+	err := vals.updateWithChangeSet(valz, false, newThresholdPublicKey, quorumHash)
 	if err != nil {
 		panic(fmt.Sprintf("Cannot create validator set: %v", err))
 	}
@@ -104,6 +104,11 @@ func NewValidatorSetWithLocalNodeProTxHash(valz []*Validator, newThresholdPublic
 		vals.HasPublicKeys = true
 	}
 	return vals
+}
+
+// NewEmptyValidatorSet initializes a ValidatorSet with no validators
+func NewEmptyValidatorSet() *ValidatorSet {
+	return NewValidatorSet(nil, nil, 0, nil, false)
 }
 
 func (vals *ValidatorSet) ValidateBasic() error {
@@ -548,11 +553,10 @@ func (vals *ValidatorSet) findProposer() *Validator {
 	return proposer
 }
 
-// Hash returns the Merkle root hash build using validators (as leaves) in the
-// set.
+// Hash returns the Quorum Hash.
 func (vals *ValidatorSet) Hash() []byte {
 	if vals.QuorumHash == nil {
-		panic("quorum hash should not be nil")
+		return []byte(nil)
 	}
 	return vals.QuorumHash
 }
@@ -796,13 +800,17 @@ func (vals *ValidatorSet) applyRemovals(deletes []*Validator) {
 // are not allowed and will trigger an error if present in 'changes'.
 // The 'allowDeletes' flag is set to false by NewValidatorSet() and to true by UpdateWithChangeSet().
 func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes bool,
-	newThresholdPublicKey crypto.PubKey) error {
+	newThresholdPublicKey crypto.PubKey, newQuorumHash crypto.QuorumHash) error {
 	if len(changes) == 0 {
 		return nil
 	}
 
 	if newThresholdPublicKey == nil {
-		return errors.New("the threshold public key can not be nil")
+		return errors.New("the new threshold public key can not be nil")
+	}
+
+	if newQuorumHash == nil {
+		return errors.New("the new quorum hash can not be nil")
 	}
 
 	// Check for duplicates within changes, split in 'updates' and 'deletes' lists (sorted).
@@ -850,6 +858,7 @@ func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes
 	sort.Sort(ValidatorsByVotingPower(vals.Validators))
 
 	vals.ThresholdPublicKey = newThresholdPublicKey
+	vals.QuorumHash = newQuorumHash
 
 	return nil
 }
@@ -866,8 +875,8 @@ func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes
 // - performs scaling and centering of priority values
 // If an error is detected during verification steps, it is returned and the validator set
 // is not changed.
-func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator, newThresholdPublicKey crypto.PubKey) error {
-	return vals.updateWithChangeSet(changes, true, newThresholdPublicKey)
+func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator, newThresholdPublicKey crypto.PubKey, newQuorumHash crypto.QuorumHash) error {
+	return vals.updateWithChangeSet(changes, true, newThresholdPublicKey, newQuorumHash)
 }
 
 // VerifyCommit verifies +2/3 of the set had signed the given commit.
