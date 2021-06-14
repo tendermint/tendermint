@@ -64,6 +64,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - Data Storage
   - [store/state/evidence/light] \#5771 Use an order-preserving varint key encoding (@cmwaters)
   - [mempool] \#6396 Remove mempool's write ahead log (WAL), (previously unused by the tendermint code). (@tychoish)
+  - [state] \#6541 Move pruneBlocks from consensus/state to state/execution. (@JayT106)
 
 - Tooling
   - [tools] \#6498 Set OS home dir to instead of the hardcoded PATH. (@JayT106)
@@ -127,3 +128,4 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [blockchain/v1] \#5711 Fix deadlock (@melekes)
 - [evidence] \#6375 Fix bug with inconsistent LightClientAttackEvidence hashing (cmwaters)
 - [rpc] \#6507 fix RPC client doesn't handle url's without ports (@JayT106)
+- [statesync] \#6463 Adds Reverse Sync feature to fetch historical light blocks after state sync in order to verify any evidence (@cmwaters) 

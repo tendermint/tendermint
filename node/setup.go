@@ -295,7 +295,7 @@ func createEvidenceReactor(
 
 	evidencePool, err := evidence.NewPool(logger, evidenceDB, sm.NewStore(stateDB), blockStore)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, fmt.Errorf("creating evidence pool: %w", err)
 	}
 
 	var (
@@ -749,6 +749,7 @@ func makeNodeInfo(
 			byte(evidence.EvidenceChannel),
 			byte(statesync.SnapshotChannel),
 			byte(statesync.ChunkChannel),
+			byte(statesync.LightBlockChannel),
 		},
 		Moniker: config.Moniker,
 		Other: p2p.NodeInfoOther{

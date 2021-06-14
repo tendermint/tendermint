@@ -19,15 +19,17 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/mocks"
+	sf "github.com/tendermint/tendermint/state/test/factory"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
+	dbm "github.com/tendermint/tm-db"
 )
 
 var (
 	chainID             = "execution_chain"
 	testPartSize uint32 = 65536
-	nTxsPerBlock        = 10
 )
 
 func TestApplyBlock(t *testing.T) {
@@ -40,16 +42,15 @@ func TestApplyBlock(t *testing.T) {
 
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)
-
+	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
-		mmock.Mempool{}, sm.EmptyEvidencePool{})
+		mmock.Mempool{}, sm.EmptyEvidencePool{}, blockStore)
 
-	block := makeBlock(state, 1)
+	block := sf.MakeBlock(state, 1, new(types.Commit))
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
-	state, retainHeight, err := blockExec.ApplyBlock(state, blockID, block)
+	state, err = blockExec.ApplyBlock(state, blockID, block)
 	require.Nil(t, err)
-	assert.EqualValues(t, retainHeight, 1)
 
 	// TODO check state and mempool
 	assert.EqualValues(t, 1, state.Version.Consensus.App, "App version wasn't updated")
@@ -98,7 +99,7 @@ func TestBeginBlockValidators(t *testing.T) {
 		lastCommit := types.NewCommit(1, 0, prevBlockID, tc.lastCommitSigs)
 
 		// block for height 2
-		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
+		block := sf.MakeBlock(state, 2, lastCommit)
 
 		_, err = sm.ExecCommitBlock(nil, proxyApp.Consensus(), block, log.TestingLogger(), stateStore, 1, state)
 		require.Nil(t, err, tc.desc)
@@ -196,17 +197,18 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	evpool.On("Update", mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
 	evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
 
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
-		mmock.Mempool{}, evpool)
+	blockStore := store.NewBlockStore(dbm.NewMemDB())
 
-	block := makeBlock(state, 1)
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
+		mmock.Mempool{}, evpool, blockStore)
+
+	block := sf.MakeBlock(state, 1, new(types.Commit))
 	block.Evidence = types.EvidenceData{Evidence: ev}
 	block.Header.EvidenceHash = block.Evidence.Hash()
 	blockID = types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
-	state, retainHeight, err := blockExec.ApplyBlock(state, blockID, block)
+	_, err = blockExec.ApplyBlock(state, blockID, block)
 	require.Nil(t, err)
-	assert.EqualValues(t, retainHeight, 1)
 
 	// TODO check state and mempool
 	assert.Equal(t, abciEv, app.ByzantineValidators)
@@ -353,6 +355,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)
+	blockStore := store.NewBlockStore(dbm.NewMemDB())
 
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
@@ -360,6 +363,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 		proxyApp.Consensus(),
 		mmock.Mempool{},
 		sm.EmptyEvidencePool{},
+		blockStore,
 	)
 
 	eventBus := types.NewEventBus()
@@ -376,7 +380,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	block := makeBlock(state, 1)
+	block := sf.MakeBlock(state, 1, new(types.Commit))
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
 	pubkey := ed25519.GenPrivKey().PubKey()
@@ -386,7 +390,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 		{PubKey: pk, Power: 10},
 	}
 
-	state, _, err = blockExec.ApplyBlock(state, blockID, block)
+	state, err = blockExec.ApplyBlock(state, blockID, block)
 	require.Nil(t, err)
 	// test new validator was added to NextValidators
 	if assert.Equal(t, state.Validators.Size()+1, state.NextValidators.Size()) {
@@ -424,15 +428,17 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)
+	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
 		mmock.Mempool{},
 		sm.EmptyEvidencePool{},
+		blockStore,
 	)
 
-	block := makeBlock(state, 1)
+	block := sf.MakeBlock(state, 1, new(types.Commit))
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
 	vp, err := cryptoenc.PubKeyToProto(state.Validators.Validators[0].PubKey)
@@ -442,7 +448,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 		{PubKey: vp, Power: 0},
 	}
 
-	assert.NotPanics(t, func() { state, _, err = blockExec.ApplyBlock(state, blockID, block) })
+	assert.NotPanics(t, func() { state, err = blockExec.ApplyBlock(state, blockID, block) })
 	assert.NotNil(t, err)
 	assert.NotEmpty(t, state.NextValidators.Validators)
 }

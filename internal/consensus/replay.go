@@ -473,7 +473,7 @@ func (h *Handshaker) replayBlocks(
 			// We emit events for the index services at the final block due to the sync issue when
 			// the node shutdown during the block committing status.
 			blockExec := sm.NewBlockExecutor(
-				h.stateStore, h.logger, proxyApp.Consensus(), emptyMempool{}, sm.EmptyEvidencePool{})
+				h.stateStore, h.logger, proxyApp.Consensus(), emptyMempool{}, sm.EmptyEvidencePool{}, h.store)
 			blockExec.SetEventBus(h.eventBus)
 			appHash, err = sm.ExecCommitBlock(
 				blockExec, proxyApp.Consensus(), block, h.logger, h.stateStore, h.genDoc.InitialHeight, state)
@@ -511,11 +511,11 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 
 	// Use stubs for both mempool and evidence pool since no transactions nor
 	// evidence are needed here - block already exists.
-	blockExec := sm.NewBlockExecutor(h.stateStore, h.logger, proxyApp, emptyMempool{}, sm.EmptyEvidencePool{})
+	blockExec := sm.NewBlockExecutor(h.stateStore, h.logger, proxyApp, emptyMempool{}, sm.EmptyEvidencePool{}, h.store)
 	blockExec.SetEventBus(h.eventBus)
 
 	var err error
-	state, _, err = blockExec.ApplyBlock(state, meta.BlockID, block)
+	state, err = blockExec.ApplyBlock(state, meta.BlockID, block)
 	if err != nil {
 		return sm.State{}, err
 	}

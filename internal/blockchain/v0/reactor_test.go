@@ -17,6 +17,7 @@ import (
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
+	sf "github.com/tendermint/tendermint/state/test/factory"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tm-db"
@@ -103,11 +104,9 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(blockDB)
 
-	state, err := stateStore.LoadFromDBOrGenesisDoc(genDoc)
+	state, err := sm.MakeGenesisState(genDoc)
 	require.NoError(t, err)
-
-	db := dbm.NewMemDB()
-	stateStore = sm.NewStore(db)
+	require.NoError(t, stateStore.Save(state))
 
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
@@ -115,8 +114,8 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 		rts.app[nodeID].Consensus(),
 		mock.Mempool{},
 		sm.EmptyEvidencePool{},
+		blockStore,
 	)
-	require.NoError(t, stateStore.Save(state))
 
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
 		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, nil)
@@ -142,11 +141,11 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 			)
 		}
 
-		thisBlock := makeBlock(blockHeight, state, lastCommit)
+		thisBlock := sf.MakeBlock(state, blockHeight, lastCommit)
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
-		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
+		state, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		require.NoError(t, err)
 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
