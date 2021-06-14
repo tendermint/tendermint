@@ -223,7 +223,7 @@ func makeNode(config *cfg.Config,
 
 	// Determine whether we should do fast sync. This must happen after the handshake, since the
 	// app may modify the validator set, specifying ourself as the only validator.
-	fastSync := config.FastSyncMode && !onlyValidatorIsUs(state, pubKey)
+	fastSync := config.FastSyncMode && !onlyValidatorIsUs(genDoc, pubKey)
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger, config.Mode)
 
