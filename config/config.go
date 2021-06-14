@@ -831,8 +831,8 @@ func DefaultStateSyncConfig() *StateSyncConfig {
 	return &StateSyncConfig{
 		TrustPeriod:         168 * time.Hour,
 		DiscoveryTime:       15 * time.Second,
-		ChunkRequestTimeout: time.Minute,
-		ChunkFetchers:       1,
+		ChunkRequestTimeout: 10 * time.Second,
+		ChunkFetchers:       4,
 	}
 }
 
