@@ -22,7 +22,6 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/pex"
 	"github.com/tendermint/tendermint/internal/statesync"
-	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
@@ -39,7 +38,6 @@ import (
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
-	dbm "github.com/tendermint/tm-db"
 )
 
 // nodeImpl is the highest level interface to a full Tendermint node.
@@ -133,10 +131,19 @@ func makeNode(config *cfg.Config,
 	if err != nil {
 		return nil, err
 	}
-
 	stateStore := sm.NewStore(stateDB)
 
-	state, genDoc, err := loadStateFromDBOrGenesisDocProvider(stateDB, genesisDocProvider)
+	genDoc, err := genesisDocProvider()
+	if err != nil {
+		return nil, err
+	}
+
+	err = genDoc.ValidateAndComplete()
+	if err != nil {
+		return nil, fmt.Errorf("error in genesis doc: %w", err)
+	}
+
+	state, err := loadStateFromDBOrGenesisDocProvider(stateStore, genDoc)
 	if err != nil {
 		return nil, err
 	}
@@ -264,6 +271,7 @@ func makeNode(config *cfg.Config,
 		proxyApp.Consensus(),
 		mp,
 		evPool,
+		blockStore,
 		sm.BlockExecutorWithMetrics(smMetrics),
 	)
 
@@ -327,7 +335,10 @@ func makeNode(config *cfg.Config,
 		proxyApp.Query(),
 		channels[statesync.SnapshotChannel],
 		channels[statesync.ChunkChannel],
+		channels[statesync.LightBlockChannel],
 		peerUpdates,
+		stateStore,
+		blockStore,
 		config.StateSync.TempDir,
 	)
 
@@ -422,7 +433,6 @@ func makeNode(config *cfg.Config,
 		consensusReactor: csReactor,
 		stateSyncReactor: stateSyncReactor,
 		stateSync:        stateSync,
-		stateSyncGenesis: state, // Shouldn't be necessary, but need a way to pass the genesis state
 		pexReactor:       pexReactor,
 		evidenceReactor:  evReactor,
 		indexerService:   indexerService,
@@ -664,8 +674,15 @@ func (n *nodeImpl) OnStart() error {
 		if !ok {
 			return fmt.Errorf("this blockchain reactor does not support switching from state sync")
 		}
-		err := startStateSync(n.stateSyncReactor, bcR, n.consensusReactor, n.stateSyncProvider,
-			n.config.StateSync, n.config.FastSyncMode, n.stateStore, n.blockStore, n.stateSyncGenesis)
+
+		// we need to get the genesis state to get parameters such as
+		state, err := sm.MakeGenesisState(n.genesisDoc)
+		if err != nil {
+			return fmt.Errorf("unable to derive state: %w", err)
+		}
+
+		err = startStateSync(n.stateSyncReactor, bcR, n.consensusReactor, n.stateSyncProvider,
+			n.config.StateSync, n.config.FastSyncMode, n.stateStore, n.blockStore, state)
 		if err != nil {
 			return fmt.Errorf("failed to start state sync: %w", err)
 		}
@@ -957,7 +974,7 @@ func (n *nodeImpl) NodeInfo() p2p.NodeInfo {
 func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reactor,
 	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
 	stateStore sm.Store, blockStore *store.BlockStore, state sm.State) error {
-	ssR.Logger.Info("Starting state sync")
+	ssR.Logger.Info("starting state sync...")
 
 	if stateProvider == nil {
 		var err error
@@ -977,29 +994,25 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 	}
 
 	go func() {
-		state, commit, err := ssR.Sync(stateProvider, config.DiscoveryTime)
+		state, err := ssR.Sync(stateProvider, config.DiscoveryTime)
 		if err != nil {
-			ssR.Logger.Error("State sync failed", "err", err)
-			return
-		}
-		err = stateStore.Bootstrap(state)
-		if err != nil {
-			ssR.Logger.Error("Failed to bootstrap node with new state", "err", err)
-			return
-		}
-		err = blockStore.SaveSeenCommit(state.LastBlockHeight, commit)
-		if err != nil {
-			ssR.Logger.Error("Failed to store last seen commit", "err", err)
+			ssR.Logger.Error("state sync failed", "err", err)
 			return
 		}
 
+		err = ssR.Backfill(state)
+		if err != nil {
+			ssR.Logger.Error("backfill failed; node has insufficient history to verify all evidence;"+
+				" proceeding optimistically...", "err", err)
+		}
+
+		conR.Metrics.StateSyncing.Set(0)
 		if fastSync {
 			// FIXME Very ugly to have these metrics bleed through here.
-			conR.Metrics.StateSyncing.Set(0)
 			conR.Metrics.FastSyncing.Set(1)
 			err = bcR.SwitchToFastSync(state)
 			if err != nil {
-				ssR.Logger.Error("Failed to switch to fast sync", "err", err)
+				ssR.Logger.Error("failed to switch to fast sync", "err", err)
 				return
 			}
 		} else {
@@ -1041,71 +1054,29 @@ func defaultMetricsProvider(config *cfg.InstrumentationConfig) metricsProvider {
 
 //------------------------------------------------------------------------------
 
-var (
-	genesisDocKey = []byte("genesisDoc")
-)
-
 // loadStateFromDBOrGenesisDocProvider attempts to load the state from the
 // database, or creates one using the given genesisDocProvider. On success this also
 // returns the genesis doc loaded through the given provider.
 func loadStateFromDBOrGenesisDocProvider(
-	stateDB dbm.DB,
-	genesisDocProvider genesisDocProvider,
-) (sm.State, *types.GenesisDoc, error) {
-	// Get genesis doc
-	genDoc, err := loadGenesisDoc(stateDB)
+	stateStore sm.Store,
+	genDoc *types.GenesisDoc,
+) (sm.State, error) {
+
+	// 1. Attempt to load state form the database
+	state, err := stateStore.Load()
 	if err != nil {
-		genDoc, err = genesisDocProvider()
+		return sm.State{}, err
+	}
+
+	if state.IsEmpty() {
+		// 2. If it's not there, derive it from the genesis doc
+		state, err = sm.MakeGenesisState(genDoc)
 		if err != nil {
-			return sm.State{}, nil, err
-		}
-
-		err = genDoc.ValidateAndComplete()
-		if err != nil {
-			return sm.State{}, nil, fmt.Errorf("error in genesis doc: %w", err)
-		}
-		// save genesis doc to prevent a certain class of user errors (e.g. when it
-		// was changed, accidentally or not). Also good for audit trail.
-		if err := saveGenesisDoc(stateDB, genDoc); err != nil {
-			return sm.State{}, nil, err
+			return sm.State{}, err
 		}
 	}
-	stateStore := sm.NewStore(stateDB)
-	state, err := stateStore.LoadFromDBOrGenesisDoc(genDoc)
-	if err != nil {
-		return sm.State{}, nil, err
-	}
-	return state, genDoc, nil
-}
 
-// panics if failed to unmarshal bytes
-func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
-	b, err := db.Get(genesisDocKey)
-	if err != nil {
-		panic(err)
-	}
-	if len(b) == 0 {
-		return nil, errors.New("genesis doc not found")
-	}
-	var genDoc *types.GenesisDoc
-	err = tmjson.Unmarshal(b, &genDoc)
-	if err != nil {
-		panic(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, b))
-	}
-	return genDoc, nil
-}
-
-// panics if failed to marshal the given genesis document
-func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) error {
-	b, err := tmjson.Marshal(genDoc)
-	if err != nil {
-		return fmt.Errorf("failed to save genesis doc due to marshaling error: %w", err)
-	}
-	if err := db.SetSync(genesisDocKey, b); err != nil {
-		return err
-	}
-
-	return nil
+	return state, nil
 }
 
 func createAndStartPrivValidatorSocketClient(

@@ -8,8 +8,8 @@ require (
 	github.com/Masterminds/squirrel v1.5.0
 	github.com/Workiva/go-datastructures v1.0.53
 	github.com/adlio/schema v1.1.13
-	github.com/btcsuite/btcd v0.21.0-beta
-	github.com/btcsuite/btcutil v1.0.2
+	github.com/btcsuite/btcd v0.22.0-beta
+	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/go-kit/kit v0.10.0
 	github.com/gogo/protobuf v1.3.2
@@ -26,10 +26,10 @@ require (
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.10.0
+	github.com/prometheus/client_golang v1.11.0
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
 	github.com/rs/cors v1.7.0
-	github.com/rs/zerolog v1.22.0
+	github.com/rs/zerolog v1.23.0
 	github.com/sasha-s/go-deadlock v0.2.1-0.20190427202633-1595213edefa
 	github.com/snikch/goodman v0.0.0-20171125024755-10e37e294daa
 	github.com/spf13/cobra v1.1.3

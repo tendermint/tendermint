@@ -519,6 +519,48 @@ func (bs *BlockStore) SaveSeenCommit(height int64, seenCommit *types.Commit) err
 	return bs.db.Set(seenCommitKey(height), seenCommitBytes)
 }
 
+func (bs *BlockStore) SaveSignedHeader(sh *types.SignedHeader, blockID types.BlockID) error {
+	// first check that the block store doesn't already have the block
+	bz, err := bs.db.Get(blockMetaKey(sh.Height))
+	if err != nil {
+		return err
+	}
+	if bz != nil {
+		return fmt.Errorf("block at height %d already saved", sh.Height)
+	}
+
+	// FIXME: saving signed headers although necessary for proving evidence,
+	// doesn't have complete parity with block meta's thus block size and num
+	// txs are filled with negative numbers. We should aim to find a solution to
+	// this.
+	blockMeta := &types.BlockMeta{
+		BlockID:   blockID,
+		BlockSize: -1,
+		Header:    *sh.Header,
+		NumTxs:    -1,
+	}
+
+	batch := bs.db.NewBatch()
+
+	pbm := blockMeta.ToProto()
+	metaBytes := mustEncode(pbm)
+	if err := batch.Set(blockMetaKey(sh.Height), metaBytes); err != nil {
+		return fmt.Errorf("unable to save block meta: %w", err)
+	}
+
+	pbc := sh.Commit.ToProto()
+	blockCommitBytes := mustEncode(pbc)
+	if err := batch.Set(blockCommitKey(sh.Height), blockCommitBytes); err != nil {
+		return fmt.Errorf("unable to save commit: %w", err)
+	}
+
+	if err := batch.WriteSync(); err != nil {
+		return err
+	}
+
+	return batch.Close()
+}
+
 //---------------------------------- KEY ENCODING -----------------------------------------
 
 // key prefixes

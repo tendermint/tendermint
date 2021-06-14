@@ -32,6 +32,11 @@ func TestBlock_Header(t *testing.T) {
 			if block.Header.Height < first {
 				continue
 			}
+			// the first blocks after state sync come from the backfill process
+			// and are therefore not complete
+			if node.StateSync && block.Header.Height <= first+e2e.EvidenceAgeHeight+1 {
+				continue
+			}
 			if block.Header.Height > last {
 				break
 			}
@@ -63,10 +68,10 @@ func TestBlock_Range(t *testing.T) {
 		last := status.SyncInfo.LatestBlockHeight
 
 		switch {
+		// if the node state synced we ignore any assertions because it's hard to know how far back
+		// the node ran reverse sync for
 		case node.StateSync:
-			assert.Greater(t, first, node.Testnet.InitialHeight,
-				"state synced nodes should not contain network's initial height")
-
+			break
 		case node.RetainBlocks > 0 && int64(node.RetainBlocks) < (last-node.Testnet.InitialHeight+1):
 			// Delta handles race conditions in reading first/last heights.
 			assert.InDelta(t, node.RetainBlocks, last-first+1, 1,
@@ -78,12 +83,16 @@ func TestBlock_Range(t *testing.T) {
 		}
 
 		for h := first; h <= last; h++ {
+			if node.StateSync && h <= first+e2e.EvidenceAgeHeight+1 {
+				continue
+			}
 			resp, err := client.Block(ctx, &(h))
 			if err != nil && node.RetainBlocks > 0 && h == first {
 				// Ignore errors in first block if node is pruning blocks due to race conditions.
 				continue
 			}
 			require.NoError(t, err)
+			require.NotNil(t, resp.Block)
 			assert.Equal(t, h, resp.Block.Height)
 		}
 
