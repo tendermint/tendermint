@@ -39,6 +39,7 @@ linters:
     # - wsl
     # - gocognit
     - nolintlint
+    - asciicheck
 
 issues:
   exclude-rules:

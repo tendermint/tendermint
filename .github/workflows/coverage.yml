@@ -121,7 +121,7 @@ jobs:
       - run: |
           cat ./*profile.out | grep -v "mode: atomic" >> coverage.txt
         if: env.GIT_DIFF
-      - uses: codecov/codecov-action@v1.5.0
+      - uses: codecov/codecov-action@v1.5.2
         with:
           file: ./coverage.txt
         if: env.GIT_DIFF

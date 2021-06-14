@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
@@ -370,6 +371,7 @@ func makeHTTPDialer(remoteAddr string) (func(string, string) (net.Conn, error), 
 	}
 
 	protocol := u.Scheme
+	padding := u.Scheme
 
 	// accept http(s) as an alias for tcp
 	switch protocol {
@@ -378,7 +380,13 @@ func makeHTTPDialer(remoteAddr string) (func(string, string) (net.Conn, error), 
 	}
 
 	dialFn := func(proto, addr string) (net.Conn, error) {
-		return net.Dial(protocol, u.GetDialAddress())
+		var timeout = 10 * time.Second
+		if !u.isUnixSocket && strings.LastIndex(u.Host, ":") == -1 {
+			u.Host = fmt.Sprintf("%s:%s", u.Host, padding)
+			return net.DialTimeout(protocol, u.GetDialAddress(), timeout)
+		}
+
+		return net.DialTimeout(protocol, u.GetDialAddress(), timeout)
 	}
 
 	return dialFn, nil
