@@ -1201,7 +1201,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 		}
 	}()
 
-	// just skip the entire message during syncing so that we can
+	// Just skip the entire message during syncing so that we can
 	// process fewer messages.
 	if r.WaitSync() {
 		return
