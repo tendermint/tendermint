@@ -55,7 +55,7 @@ type FunctionalService struct {
 
 func MakeFunctionalService(logger log.Logger, name string, opts FunctionalService) Service {
 	srv := &funImpl{
-		opts: FunctionalService,
+		ops: opts,
 	}
 
 	srv.BaseService = NewBaseService(logger, name, srv)
@@ -67,6 +67,22 @@ type funImpl struct {
 	ops FunctionalService
 }
 
-func (fs *funImpl) OnStart() error { return fs.ops.Starter() }
-func (fs *funImpl) OnStop()        { fs.ops.Stoper() }
-func (fs *funImpl) OnReset() error { return fs.ops.Reseter() }
+func (fs *funImpl) OnStart() error {
+	if fs.ops.Starter != nil {
+		return fs.ops.Starter()
+	}
+	return nil
+}
+
+func (fs *funImpl) OnStop() {
+	if fs.ops.Stopper != nil {
+		fs.ops.Stopper()
+	}
+}
+
+func (fs *funImpl) OnReset() error {
+	if fs.ops.Reseter != nil {
+		return fs.ops.Reseter()
+	}
+	return nil
+}
