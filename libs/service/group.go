@@ -46,3 +46,27 @@ func (gs *groupImpl) OnReset() error {
 	}
 	return nil
 }
+
+type FunctionalService struct {
+	Starter func() error
+	Stopper func()
+	Reseter func() error
+}
+
+func MakeFunctionalService(logger log.Logger, name string, opts FunctionalService) Service {
+	srv := &funImpl{
+		opts: FunctionalService,
+	}
+
+	srv.BaseService = NewBaseService(logger, name, srv)
+	return srv
+}
+
+type funImpl struct {
+	*BaseService
+	ops FunctionalService
+}
+
+func (fs *funImpl) OnStart() error { return fs.ops.Starter() }
+func (fs *funImpl) OnStop()        { fs.ops.Stoper() }
+func (fs *funImpl) OnReset() error { return fs.ops.Reseter() }

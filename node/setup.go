@@ -182,12 +182,12 @@ func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusL
 	}
 }
 
-func onlyValidatorIsUs(state sm.State, pubKey crypto.PubKey) bool {
-	if state.Validators.Size() > 1 {
+func onlyValidatorIsUs(genDoc *types.GenesisDoc, pubKey crypto.PubKey) bool {
+	if len(genDoc.Validators) > 1 || pubKey == nil {
 		return false
 	}
-	addr, _ := state.Validators.GetByIndex(0)
-	return pubKey != nil && bytes.Equal(pubKey.Address(), addr)
+
+	return bytes.Equal(pubKey.Address(), genDoc.Validators[0].Address)
 }
 
 func createMempoolReactor(
