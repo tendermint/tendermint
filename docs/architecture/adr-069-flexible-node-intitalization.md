@@ -23,11 +23,11 @@ cases.
 
 ## Observations
 
-To prepare for this work I've been playing in [this
-branch](https://github.com/tendermint/tendermint/tree/tychoish/scratch-node-minimize),
-with the node implementation to see if, without making major
-modifications or changing interfaces, what aspects could be
-simplified. My conclusions, generally: 
+To prepare for this work [this
+branch](https://github.com/tendermint/tendermint/tree/tychoish/scratch-node-minimize)
+contains some experimentation with the node implementation to see if,
+without making major modifications or changing interfaces, what
+aspects could be simplified. To summarize, generally:
 
 - The implementation of the `node` service, doesn't really need the
   ability to introspect the implementations of reactors in most
@@ -44,8 +44,8 @@ simplified. My conclusions, generally:
 
 Ideally, it seems like a node instance should be expressable simply as
 a list of `service.Services` and any knowledge of the internals of any
-of these services could be limited to their constructors. I sketched
-out a generic and simple `groupService` implementation, to handle a
+of these services could be limited to their constructors. There is a
+sketch of a generic and simple `groupService` implementation, to handle a
 desecrate stage or sequence of services.  As some services have
 dependencies during construction or initialization and as a starting
 point, a cluster of dependencies can be wrapped as a single
