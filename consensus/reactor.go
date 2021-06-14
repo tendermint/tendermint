@@ -663,9 +663,9 @@ OUTER_LOOP:
 		}
 
 		// Special catchup logic.
-		// If peer is lagging by height 1, send LastPrecommits.
+		// If peer is lagging by height 1, send LastCommit.
 		if prs.Height != 0 && rs.Height == prs.Height+1 {
-			if ps.PickSendVote(rs.LastPrecommits) {
+			if ps.SendCommit(rs.LastCommit) {
 				logger.Debug("Picked rs.LastPrecommits to send", "height", prs.Height)
 				continue OUTER_LOOP
 			}
@@ -678,7 +678,7 @@ OUTER_LOOP:
 			// Load the block commit for prs.Height,
 			// which contains precommit signatures for prs.Height.
 			if commit := conR.conS.blockStore.LoadBlockCommit(prs.Height); commit != nil {
-				if ps.PickSendVote(commit) {
+				if ps.SendCommit(commit) {
 					logger.Debug("Picked Catchup commit to send", "height", prs.Height)
 					continue OUTER_LOOP
 				}
@@ -710,8 +710,8 @@ func (conR *Reactor) gossipVotesForHeight(
 
 	// If there are lastCommits to send...
 	if prs.Step == cstypes.RoundStepNewHeight {
-		if ps.PickSendVote(rs.LastPrecommits) {
-			logger.Debug("Picked rs.LastPrecommits to send")
+		if ps.SendCommit(rs.LastCommit) {
+			logger.Debug("Picked rs.LastCommit to send")
 			return true
 		}
 	}
@@ -1048,6 +1048,18 @@ func (ps *PeerState) SetHasProposalBlockPart(height int64, round int32, index in
 	ps.PRS.ProposalBlockParts.SetIndex(index, true)
 }
 
+func (ps *PeerState) SendCommit(commit *types.Commit) bool {
+	if commit != nil {
+		msg := &CommitMessage{commit}
+		ps.logger.Debug("Sending commit message", "ps", ps, "commit", commit)
+		if ps.peer.Send(VoteChannel, MustEncode(msg)) {
+			ps.SetHasCommit(commit)
+			return true
+		}
+	}
+	return false
+}
+
 // PickSendVote picks a vote and sends it to the peer.
 // Returns true if vote was sent.
 func (ps *PeerState) PickSendVote(votes types.VoteSetReader) bool {
@@ -1131,7 +1143,7 @@ func (ps *PeerState) getVoteBitArray(height int64, round int32, votesType tmprot
 			case tmproto.PrevoteType:
 				return nil
 			case tmproto.PrecommitType:
-				return ps.PRS.LastCommit
+				return ps.PRS.LastPrecommits
 			}
 		}
 		return nil
@@ -1193,8 +1205,8 @@ func (ps *PeerState) ensureVoteBitArrays(height int64, numValidators int) {
 			ps.PRS.ProposalPOL = bits.NewBitArray(numValidators)
 		}
 	} else if ps.PRS.Height == height+1 {
-		if ps.PRS.LastCommit == nil {
-			ps.PRS.LastCommit = bits.NewBitArray(numValidators)
+		if ps.PRS.LastPrecommits == nil {
+			ps.PRS.LastPrecommits = bits.NewBitArray(numValidators)
 		}
 	}
 }
@@ -1260,6 +1272,25 @@ func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.Sign
 	}
 }
 
+// SetHasCommit sets the given vote as known by the peer
+func (ps *PeerState) SetHasCommit(commit *types.Commit) {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	ps.setHasCommit(commit.Height, commit.Round)
+}
+
+func (ps *PeerState) setHasCommit(height int64, round int32) {
+	logger := ps.logger.With(
+		"peerH/R",
+		fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
+		"H/R",
+		fmt.Sprintf("%d/%d", height, round))
+	logger.Debug("setHasCommit")
+
+	ps.PRS.HasCommit = true
+}
+
 // ApplyNewRoundStepMessage updates the peer state for the new round.
 func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 	ps.mtx.Lock()
@@ -1290,6 +1321,7 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 		// We'll update the BitArray capacity later.
 		ps.PRS.Prevotes = nil
 		ps.PRS.Precommits = nil
+		ps.PRS.HasCommit = false
 	}
 	if psHeight == msg.Height && psRound != msg.Round && msg.Round == psCatchupCommitRound {
 		// Peer caught up to CatchupCommitRound.
@@ -1302,10 +1334,10 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 		// Shift Precommits to LastPrecommits.
 		if psHeight+1 == msg.Height && psRound == msg.LastCommitRound {
 			ps.PRS.LastCommitRound = msg.LastCommitRound
-			ps.PRS.LastCommit = ps.PRS.Precommits
+			ps.PRS.LastPrecommits = ps.PRS.Precommits
 		} else {
 			ps.PRS.LastCommitRound = msg.LastCommitRound
-			ps.PRS.LastCommit = nil
+			ps.PRS.LastPrecommits = nil
 		}
 		// We'll update the BitArray capacity later.
 		ps.PRS.CatchupCommitRound = -1

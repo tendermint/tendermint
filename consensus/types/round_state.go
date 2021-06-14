@@ -189,7 +189,7 @@ func (rs *RoundState) StringIndented(indent string) string {
 %s  ValidRound:   %v
 %s  ValidBlock:   %v %v
 %s  Votes:         %v
-%s  LastCommit:    %v
+%s  LastPrecommits:    %v
 %s  LastValidators:%v
 %s}`,
 		indent, rs.Height, rs.Round, rs.Step,

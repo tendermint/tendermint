@@ -2,8 +2,6 @@ package light
 
 import (
 	"context"
-	"time"
-
 	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/light/provider/http"
 	"github.com/tendermint/tendermint/light/store"
@@ -18,7 +16,6 @@ import (
 func NewHTTPClient(
 	ctx context.Context,
 	chainID string,
-	trustOptions TrustOptions,
 	primaryAddress string,
 	witnessesAddresses []string,
 	trustedStore store.Store,
@@ -32,7 +29,6 @@ func NewHTTPClient(
 	return NewClient(
 		ctx,
 		chainID,
-		trustOptions,
 		providers[len(providers)-1],
 		providers[:len(providers)-1],
 		trustedStore,
@@ -47,7 +43,6 @@ func NewHTTPClient(
 // See NewClientFromTrustedStore.
 func NewHTTPClientFromTrustedStore(
 	chainID string,
-	trustingPeriod time.Duration,
 	primaryAddress string,
 	witnessesAddresses []string,
 	trustedStore store.Store,
@@ -60,7 +55,6 @@ func NewHTTPClientFromTrustedStore(
 
 	return NewClientFromTrustedStore(
 		chainID,
-		trustingPeriod,
 		providers[len(providers)-1],
 		providers[:len(providers)-1],
 		trustedStore,
