@@ -4,6 +4,10 @@
 
 - 2021-06-09: Initial Draft (@tychoish)
 
+## Status 
+
+Proposed
+
 ## Context
 
 In an effort to support [Go-API-Stability](./adr-060-go-api-stability.Md),
