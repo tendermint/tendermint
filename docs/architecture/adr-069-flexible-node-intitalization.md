@@ -25,15 +25,15 @@ with the node implementation to see if, without making major
 modifications or changing interfaces, what aspects could be
 simplified. My conclusions, generally: 
 
-- the implementation of the `node` service, doesn't really need the
+- The implementation of the `node` service, doesn't really need the
   ability to introspect the implementations of reactors in most
   cases.
 
-- the exception to this, is the cluster of
+- The exception to this, is the cluster of
   consensus/statesync/blockhain (which depend on eachother,) because
   `node` itself contains some of their specific initialization logic.
 
-- while the RPC environment construction happens in `node`, this can
+- While the RPC environment construction happens in `node`, this can
   happen early during `node` construction rather than at
   initialization time, which reduces the need for the implementation
   of the node object to track this state.
@@ -107,7 +107,7 @@ point, a cluster of dependencies can be wrapped as a single
 - Improve or simplify the `service.Service` interface. There are some
   pretty clear limitations with this interface as written (there's no
   way to timeout slow startup or shut down, the cycle between the
-  `servbice.BaseService` and `service.Service` implementations is
+  `service.BaseService` and `service.Service` implementations is
   troubling, the default panic in `OnReset` seems troubling.)
 
 - Support explicit dependencies between components and allow for
