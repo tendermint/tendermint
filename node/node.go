@@ -70,7 +70,6 @@ type nodeImpl struct {
 	stateSync         bool                    // whether the node should state sync on startup
 	stateSyncReactor  *statesync.Reactor      // for hosting and restoring state sync snapshots
 	stateSyncProvider statesync.StateProvider // provides state data for bootstrapping a node
-	stateSyncGenesis  sm.State                // provides the genesis state for state sync
 	consensusReactor  *cs.Reactor             // for participating in the consensus
 	pexReactor        service.Service         // for exchanging peer addresses
 	evidenceReactor   service.Service
