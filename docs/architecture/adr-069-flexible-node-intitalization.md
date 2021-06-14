@@ -1,5 +1,9 @@
 # ADR 069: Flexible Node Initialization
 
+## Changlog
+
+- 2021-06-09: Initial Draft (@tychoish)
+
 ## Context
 
 In an effort to support [Go-API-Stability](./adr-060-go-api-stability.Md),
