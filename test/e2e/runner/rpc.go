@@ -84,7 +84,7 @@ func waitForNode(node *e2e.Node, height int64, timeout time.Duration) (*rpctypes
 			return status, nil
 		}
 
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(300 * time.Millisecond)
 	}
 }
 
