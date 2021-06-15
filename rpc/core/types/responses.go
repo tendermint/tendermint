@@ -258,7 +258,8 @@ type (
 
 // Event data from a subscription
 type ResultEvent struct {
-	Query  string              `json:"query"`
-	Data   types.TMEventData   `json:"data"`
-	Events map[string][]string `json:"events"`
+	SubscriptionID string              `json:"subscription_id"`
+	Query          string              `json:"query"`
+	Data           types.TMEventData   `json:"data"`
+	Events         map[string][]string `json:"events"`
 }

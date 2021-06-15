@@ -144,7 +144,7 @@ func (s *syncer) RemovePeer(peerID p2p.NodeID) {
 // which the caller must use to bootstrap the node.
 func (s *syncer) SyncAny(discoveryTime time.Duration, retryHook func()) (sm.State, *types.Commit, error) {
 	if discoveryTime != 0 && discoveryTime < minimumDiscoveryTime {
-		discoveryTime = 5 * minimumDiscoveryTime
+		discoveryTime = minimumDiscoveryTime
 	}
 
 	if discoveryTime > 0 {

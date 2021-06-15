@@ -1055,20 +1055,21 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 	}
 
 	go func() {
-		err := ssR.Sync(stateProvider, config.DiscoveryTime)
+		state, err := ssR.Sync(stateProvider, config.DiscoveryTime)
 		if err != nil {
 			ssR.Logger.Error("state sync failed", "err", err)
 			return
 		}
 
-		state, err := stateStore.Load()
+		err = ssR.Backfill(state)
 		if err != nil {
-			ssR.Logger.Error("failed to load state after statesync", "err", err)
+			ssR.Logger.Error("backfill failed; node has insufficient history to verify all evidence;"+
+				" proceeding optimistically...", "err", err)
 		}
 
+		conR.Metrics.StateSyncing.Set(0)
 		if fastSync {
 			// FIXME Very ugly to have these metrics bleed through here.
-			conR.Metrics.StateSyncing.Set(0)
 			conR.Metrics.FastSyncing.Set(1)
 			err = bcR.SwitchToFastSync(state)
 			if err != nil {
