@@ -879,8 +879,8 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 			return fmt.Errorf("invalid trusted-hash: %w", err)
 		}
 
-		if cfg.ChunkRequestTimeout == 0 {
-			return errors.New("chunk-request-timeout is required")
+		if cfg.ChunkRequestTimeout < time.Second {
+			return errors.New("chunk-request-timeout must be least a one second")
 		}
 
 		if cfg.ChunkFetchers <= 0 {
