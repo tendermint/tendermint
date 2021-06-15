@@ -717,14 +717,14 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 // StateSyncConfig defines the configuration for the Tendermint state sync service
 type StateSyncConfig struct {
 	Enable              bool          `mapstructure:"enable"`
-	TempDir             string        `mapstructure:"temp-dir"`
-	RPCServers          []string      `mapstructure:"rpc-servers"`
-	TrustPeriod         time.Duration `mapstructure:"trust-period"`
-	TrustHeight         int64         `mapstructure:"trust-height"`
-	TrustHash           string        `mapstructure:"trust-hash"`
-	DiscoveryTime       time.Duration `mapstructure:"discovery-time"`
-	ChunkRequestTimeout time.Duration `mapstructure:"chunk-request-timeout"`
-	ChunkFetchers       int32         `mapstructure:"chunk-fetchers"`
+	TempDir             string        `mapstructure:"temp_dir"`
+	RPCServers          []string      `mapstructure:"rpc_servers"`
+	TrustPeriod         time.Duration `mapstructure:"trust_period"`
+	TrustHeight         int64         `mapstructure:"trust_height"`
+	TrustHash           string        `mapstructure:"trust_hash"`
+	DiscoveryTime       time.Duration `mapstructure:"discovery_time"`
+	ChunkRequestTimeout time.Duration `mapstructure:"chunk_request_timeout"`
+	ChunkFetchers       int32         `mapstructure:"chunk_fetchers"`
 }
 
 func (cfg *StateSyncConfig) TrustHashBytes() []byte {
