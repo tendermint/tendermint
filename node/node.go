@@ -742,216 +742,15 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-<<<<<<< HEAD
-=======
-	evReactorShim, evReactor, evPool, err := createEvidenceReactor(
-		config, dbProvider, stateDB, blockStore, peerManager, router, logger,
-	)
-	if err != nil {
-		return nil, err
-	}
-
->>>>>>> 7d961b55b (state sync: tune request timeout and chunkers (#6566))
 	// make block executor for consensus and blockchain reactors to execute blocks
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger.With("module", "state"),
 		proxyApp.Consensus(),
-<<<<<<< HEAD
 		mempool,
 		evidencePool,
 		sm.BlockExecutorWithMetrics(smMetrics),
 	)
-=======
-		mp,
-		evPool,
-		blockStore,
-		sm.BlockExecutorWithMetrics(smMetrics),
-	)
-
-	csReactorShim, csReactor, csState := createConsensusReactor(
-		config, state, blockExec, blockStore, mp, evPool,
-		privValidator, csMetrics, stateSync || fastSync, eventBus,
-		peerManager, router, consensusLogger,
-	)
-
-	// Create the blockchain reactor. Note, we do not start fast sync if we're
-	// doing a state sync first.
-	bcReactorShim, bcReactor, err := createBlockchainReactor(
-		logger, config, state, blockExec, blockStore, csReactor,
-		peerManager, router, fastSync && !stateSync,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("could not create blockchain reactor: %w", err)
-	}
-
-	// TODO: Remove this once the switch is removed.
-	var bcReactorForSwitch p2p.Reactor
-	if bcReactorShim != nil {
-		bcReactorForSwitch = bcReactorShim
-	} else {
-		bcReactorForSwitch = bcReactor.(p2p.Reactor)
-	}
-
-	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or fast sync first.
-	// FIXME We need to update metrics here, since other reactors don't have access to them.
-	if stateSync {
-		csMetrics.StateSyncing.Set(1)
-	} else if fastSync {
-		csMetrics.FastSyncing.Set(1)
-	}
-
-	// Set up state sync reactor, and schedule a sync if requested.
-	// FIXME The way we do phased startups (e.g. replay -> fast sync -> consensus) is very messy,
-	// we should clean this whole thing up. See:
-	// https://github.com/tendermint/tendermint/issues/4644
-	var (
-		stateSyncReactor     *statesync.Reactor
-		stateSyncReactorShim *p2p.ReactorShim
-
-		channels    map[p2p.ChannelID]*p2p.Channel
-		peerUpdates *p2p.PeerUpdates
-	)
-
-	stateSyncReactorShim = p2p.NewReactorShim(logger.With("module", "statesync"), "StateSyncShim", statesync.ChannelShims)
-
-	if config.P2P.DisableLegacy {
-		channels = makeChannelsFromShims(router, statesync.ChannelShims)
-		peerUpdates = peerManager.Subscribe()
-	} else {
-		channels = getChannelsFromShim(stateSyncReactorShim)
-		peerUpdates = stateSyncReactorShim.PeerUpdates
-	}
-
-	stateSyncReactor = statesync.NewReactor(
-		*config.StateSync,
-		stateSyncReactorShim.Logger,
-		proxyApp.Snapshot(),
-		proxyApp.Query(),
-		channels[statesync.SnapshotChannel],
-		channels[statesync.ChunkChannel],
-		channels[statesync.LightBlockChannel],
-		peerUpdates,
-		stateStore,
-		blockStore,
-		config.StateSync.TempDir,
-	)
-
-	// add the channel descriptors to both the transports
-	// FIXME: This should be removed when the legacy p2p stack is removed and
-	// transports can either be agnostic to channel descriptors or can be
-	// declared in the constructor.
-	transport.AddChannelDescriptors(mpReactorShim.GetChannels())
-	transport.AddChannelDescriptors(bcReactorForSwitch.GetChannels())
-	transport.AddChannelDescriptors(csReactorShim.GetChannels())
-	transport.AddChannelDescriptors(evReactorShim.GetChannels())
-	transport.AddChannelDescriptors(stateSyncReactorShim.GetChannels())
-
-	// Optionally, start the pex reactor
-	//
-	// TODO:
-	//
-	// We need to set Seeds and PersistentPeers on the switch,
-	// since it needs to be able to use these (and their DNS names)
-	// even if the PEX is off. We can include the DNS name in the NetAddress,
-	// but it would still be nice to have a clear list of the current "PersistentPeers"
-	// somewhere that we can return with net_info.
-	//
-	// If PEX is on, it should handle dialing the seeds. Otherwise the switch does it.
-	// Note we currently use the addrBook regardless at least for AddOurAddress
-
-	var (
-		pexReactor   *pex.Reactor
-		pexReactorV2 *pex.ReactorV2
-		sw           *p2p.Switch
-		addrBook     pex.AddrBook
-	)
-
-	pexCh := pex.ChannelDescriptor()
-	transport.AddChannelDescriptors([]*p2p.ChannelDescriptor{&pexCh})
-
-	if config.P2P.DisableLegacy {
-		addrBook = nil
-		pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		// setup Transport and Switch
-		sw = createSwitch(
-			config, transport, p2pMetrics, mpReactorShim, bcReactorForSwitch,
-			stateSyncReactorShim, csReactorShim, evReactorShim, proxyApp, nodeInfo, nodeKey, p2pLogger,
-		)
-
-		err = sw.AddPersistentPeers(strings.SplitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
-		if err != nil {
-			return nil, fmt.Errorf("could not add peers from persistent-peers field: %w", err)
-		}
-
-		err = sw.AddUnconditionalPeerIDs(strings.SplitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
-		if err != nil {
-			return nil, fmt.Errorf("could not add peer ids from unconditional_peer_ids field: %w", err)
-		}
-
-		addrBook, err = createAddrBookAndSetOnSwitch(config, sw, p2pLogger, nodeKey)
-		if err != nil {
-			return nil, fmt.Errorf("could not create addrbook: %w", err)
-		}
-
-		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
-	}
-
-	if config.RPC.PprofListenAddress != "" {
-		go func() {
-			logger.Info("Starting pprof server", "laddr", config.RPC.PprofListenAddress)
-			logger.Error("pprof server error", "err", http.ListenAndServe(config.RPC.PprofListenAddress, nil))
-		}()
-	}
-
-	node := &nodeImpl{
-		config:        config,
-		genesisDoc:    genDoc,
-		privValidator: privValidator,
-
-		transport:   transport,
-		sw:          sw,
-		peerManager: peerManager,
-		router:      router,
-		addrBook:    addrBook,
-		nodeInfo:    nodeInfo,
-		nodeKey:     nodeKey,
-
-		stateStore:       stateStore,
-		blockStore:       blockStore,
-		bcReactor:        bcReactor,
-		mempoolReactor:   mpReactor,
-		mempool:          mp,
-		consensusState:   csState,
-		consensusReactor: csReactor,
-		stateSyncReactor: stateSyncReactor,
-		stateSync:        stateSync,
-		pexReactor:       pexReactor,
-		pexReactorV2:     pexReactorV2,
-		evidenceReactor:  evReactor,
-		evidencePool:     evPool,
-		proxyApp:         proxyApp,
-		indexerService:   indexerService,
-		eventBus:         eventBus,
-		eventSinks:       eventSinks,
-	}
-	node.BaseService = *service.NewBaseService(logger, "Node", node)
-
-	return node, nil
-}
-
-// makeSeedNode returns a new seed node, containing only p2p, pex reactor
-func makeSeedNode(config *cfg.Config,
-	dbProvider cfg.DBProvider,
-	nodeKey p2p.NodeKey,
-	genesisDocProvider genesisDocProvider,
-	logger log.Logger,
-) (service.Service, error) {
->>>>>>> 7d961b55b (state sync: tune request timeout and chunkers (#6566))
 
 	// Make BlockchainReactor. Don't start fast sync if we're doing a state sync first.
 	bcReactor, err := createBlockchainReactor(config, state, blockExec, blockStore, fastSync && !stateSync, logger)
@@ -975,8 +774,12 @@ func makeSeedNode(config *cfg.Config,
 	// FIXME The way we do phased startups (e.g. replay -> fast sync -> consensus) is very messy,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
-	stateSyncReactor := statesync.NewReactor(proxyApp.Snapshot(), proxyApp.Query(),
-		config.StateSync.TempDir)
+	stateSyncReactor := statesync.NewReactor(
+		*config.StateSync,
+		proxyApp.Snapshot(),
+		proxyApp.Query(),
+		config.StateSync.TempDir,
+	)
 	stateSyncReactor.SetLogger(logger.With("module", "statesync"))
 
 	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state)

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/config"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
@@ -28,6 +29,7 @@ const (
 type Reactor struct {
 	p2p.BaseReactor
 
+	cfg       config.StateSyncConfig
 	conn      proxy.AppConnSnapshot
 	connQuery proxy.AppConnQuery
 	tempDir   string
@@ -39,12 +41,20 @@ type Reactor struct {
 }
 
 // NewReactor creates a new state sync reactor.
-func NewReactor(conn proxy.AppConnSnapshot, connQuery proxy.AppConnQuery, tempDir string) *Reactor {
+func NewReactor(
+	cfg config.StateSyncConfig,
+	conn proxy.AppConnSnapshot,
+	connQuery proxy.AppConnQuery,
+	tempDir string,
+) *Reactor {
+
 	r := &Reactor{
+		cfg:       cfg,
 		conn:      conn,
 		connQuery: connQuery,
 	}
 	r.BaseReactor = *p2p.NewBaseReactor("StateSync", r)
+
 	return r
 }
 
@@ -252,7 +262,7 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 		r.mtx.Unlock()
 		return sm.State{}, nil, errors.New("a state sync is already in progress")
 	}
-	r.syncer = newSyncer(r.Logger, r.conn, r.connQuery, stateProvider, r.tempDir)
+	r.syncer = newSyncer(r.cfg, r.Logger, r.conn, r.connQuery, stateProvider, r.tempDir)
 	r.mtx.Unlock()
 
 	hook := func() {

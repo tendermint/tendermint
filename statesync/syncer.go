@@ -8,12 +8,7 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-<<<<<<< HEAD:statesync/syncer.go
-=======
 	"github.com/tendermint/tendermint/config"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	"github.com/tendermint/tendermint/internal/p2p"
->>>>>>> 7d961b55b (state sync: tune request timeout and chunkers (#6566)):internal/statesync/syncer.go
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
@@ -68,20 +63,15 @@ type syncer struct {
 }
 
 // newSyncer creates a new syncer.
-<<<<<<< HEAD:statesync/syncer.go
-func newSyncer(logger log.Logger, conn proxy.AppConnSnapshot, connQuery proxy.AppConnQuery,
-	stateProvider StateProvider, tempDir string) *syncer {
-=======
 func newSyncer(
 	cfg config.StateSyncConfig,
 	logger log.Logger,
 	conn proxy.AppConnSnapshot,
 	connQuery proxy.AppConnQuery,
 	stateProvider StateProvider,
-	snapshotCh, chunkCh chan<- p2p.Envelope,
 	tempDir string,
 ) *syncer {
->>>>>>> 7d961b55b (state sync: tune request timeout and chunkers (#6566)):internal/statesync/syncer.go
+
 	return &syncer{
 		cfg:           cfg,
 		logger:        logger,
