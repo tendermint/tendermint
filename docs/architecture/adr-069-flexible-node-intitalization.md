@@ -6,7 +6,7 @@
 
 ## Status 
 
-Proposed
+Proposed. 
 
 ## Context
 
@@ -91,24 +91,38 @@ point, a cluster of dependencies can be wrapped as a single
   the legacy p2p stack? Would it be possible to delay a great deal of this
   work to the 0.36 cycle to avoid this complexity? 
   
+  - Answer: _depends on timing_, and the requirement to ship pluggable
+    reactors in 0.35. 
+  
 - There's clear and common interest in injecting some kind of mempool, and
   intuitively this makes sense as the highest priority.
   
   - Does the existing `mempool.Mempool` interface make sense to expose and
     commit to, or should we make a smaller interface? 
     
+	- Answer: _yes_, smaller mempool interface is better. 
+
   - Is it reasonable for users to bring their own mempool without bringing
     their own reactor?
+	
+	- Answer: _probably not_, but this might be a function of how the
+      current implementations work and can be refactored. 
 
 - Are there reactors, other than the mempool, that make sense to support
   ad-hoc replacing (e.g. statesync, blockchain (fastsync),) and if so should
   we provide any first-class support for this?
 
+  - Answer: _defer_. Certainly this shouldn't be attempted until after
+    there is a refactor of the consensus reactor. Is more likely than
+    block/fast sync. 
+
 - There's a dependency (and nearly a cycle), between consensus,
   blockchain (fastsync), which makes it very hard to allow meaningful
   injection of any of these components without allowing injection of
-  all of them (statesync provider as a
-  possible exception.) Is this acceptable? 
+  all of them (statesync provider as a possible exception.) Is this
+  acceptable?
+  
+  - Answer: _yes_. 
 
 ## Future Work
 
