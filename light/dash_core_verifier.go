@@ -18,7 +18,7 @@ type DashCoreVerifier struct {
 
 // NewDashCoreSignerClient returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
-func NewDashCoreSignerClient(host string, rpcUsername string, rpcPassword string, defaultQuorumType btcjson.LLMQType) (*DashCoreVerifier, error) {
+func NewDashCoreVerifierClient(host string, rpcUsername string, rpcPassword string, defaultQuorumType btcjson.LLMQType) (*DashCoreVerifier, error) {
 	// Connect to local dash core RPC server using HTTP POST mode.
 	connCfg := &rpc.ConnConfig{
 		Host:         host,
