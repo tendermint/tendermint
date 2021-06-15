@@ -135,3 +135,22 @@ point, a cluster of dependencies can be wrapped as a single
 - Support explicit dependencies between components and allow for
   parallel startup, so that different reactors can startup at the same
   time, where possible.
+
+## Proposal / Conclusion 
+
+- Wait for e2e tests to stablize, before changing node initialization.
+
+- Continue building on [the experimental branch
+  branch](https://github.com/tendermint/tendermint/tree/tychoish/scratch-node-minimize)
+  to reduce the complexity in the node initialization, and recast
+  `nodeImpl` as a list of `service.Service` objects, modulo
+  requirements for legacy p2p components which will be deleted.
+
+- Add the ability to construct a tendermint node via a new public
+  constructor that will take a list of additional services that will
+  either be appended to the end of the node initialization process
+  (simple,) or (based on name) replace one of the default services
+  (MVP for mempool only.)
+
+- Move components from `p2p` into `types` to support writing
+  novel services/mempool implementations.
