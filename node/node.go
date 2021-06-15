@@ -335,6 +335,7 @@ func makeNode(config *cfg.Config,
 	}
 
 	stateSyncReactor = statesync.NewReactor(
+		*config.StateSync,
 		stateSyncReactorShim.Logger,
 		proxyApp.Snapshot(),
 		proxyApp.Query(),
