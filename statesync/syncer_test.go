@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
@@ -31,7 +32,9 @@ func setupOfferSyncer(t *testing.T) (*syncer, *proxymocks.AppConnSnapshot) {
 	connSnapshot := &proxymocks.AppConnSnapshot{}
 	stateProvider := &mocks.StateProvider{}
 	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
-	syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
+	cfg := config.DefaultStateSyncConfig()
+	syncer := newSyncer(*cfg, log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
+
 	return syncer, connSnapshot
 }
 
@@ -83,7 +86,8 @@ func TestSyncer_SyncAny(t *testing.T) {
 	connSnapshot := &proxymocks.AppConnSnapshot{}
 	connQuery := &proxymocks.AppConnQuery{}
 
-	syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
+	cfg := config.DefaultStateSyncConfig()
+	syncer := newSyncer(*cfg, log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
 
 	// Adding a chunk should error when no sync is in progress
 	_, err := syncer.AddChunk(&chunk{Height: 1, Format: 1, Index: 0, Chunk: []byte{1}})
@@ -406,7 +410,9 @@ func TestSyncer_applyChunks_Results(t *testing.T) {
 			connSnapshot := &proxymocks.AppConnSnapshot{}
 			stateProvider := &mocks.StateProvider{}
 			stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
-			syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
+
+			cfg := config.DefaultStateSyncConfig()
+			syncer := newSyncer(*cfg, log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
 
 			body := []byte{1, 2, 3}
 			chunks, err := newChunkQueue(&snapshot{Height: 1, Format: 1, Chunks: 1}, "")
@@ -457,7 +463,9 @@ func TestSyncer_applyChunks_RefetchChunks(t *testing.T) {
 			connSnapshot := &proxymocks.AppConnSnapshot{}
 			stateProvider := &mocks.StateProvider{}
 			stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
-			syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
+
+			cfg := config.DefaultStateSyncConfig()
+			syncer := newSyncer(*cfg, log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
 
 			chunks, err := newChunkQueue(&snapshot{Height: 1, Format: 1, Chunks: 3}, "")
 			require.NoError(t, err)
@@ -520,7 +528,9 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 			connSnapshot := &proxymocks.AppConnSnapshot{}
 			stateProvider := &mocks.StateProvider{}
 			stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
-			syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
+
+			cfg := config.DefaultStateSyncConfig()
+			syncer := newSyncer(*cfg, log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
 
 			// Set up three peers across two snapshots, and ask for one of them to be banned.
 			// It should be banned from all snapshots.
@@ -633,7 +643,9 @@ func TestSyncer_verifyApp(t *testing.T) {
 			connQuery := &proxymocks.AppConnQuery{}
 			connSnapshot := &proxymocks.AppConnSnapshot{}
 			stateProvider := &mocks.StateProvider{}
-			syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
+
+			cfg := config.DefaultStateSyncConfig()
+			syncer := newSyncer(*cfg, log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
 
 			connQuery.On("InfoSync", proxy.RequestInfo).Return(tc.response, tc.err)
 			version, err := syncer.verifyApp(s)

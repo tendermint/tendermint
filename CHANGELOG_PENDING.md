@@ -24,6 +24,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS
 
+- [statesync] \#6566 Allow state sync fetchers and request timeout to be configurable. (@alexanderbez)
 - [statesync] \#6378 Retry requests for snapshots and add a minimum discovery time (5s) for new snapshots.
 
 ### BUG FIXES
