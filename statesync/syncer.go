@@ -8,6 +8,12 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+<<<<<<< HEAD:statesync/syncer.go
+=======
+	"github.com/tendermint/tendermint/config"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/internal/p2p"
+>>>>>>> 7d961b55b (state sync: tune request timeout and chunkers (#6566)):internal/statesync/syncer.go
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
@@ -18,12 +24,9 @@ import (
 )
 
 const (
-	// chunkFetchers is the number of concurrent chunk fetchers to run.
-	chunkFetchers = 4
 	// chunkTimeout is the timeout while waiting for the next chunk from the chunk queue.
 	chunkTimeout = 2 * time.Minute
-	// requestTimeout is the timeout before rerequesting a chunk, possibly from a different peer.
-	chunkRequestTimeout = 10 * time.Second
+
 	// minimumDiscoveryTime is the lowest allowable time for a
 	// SyncAny discovery time.
 	minimumDiscoveryTime = 5 * time.Second
@@ -52,6 +55,7 @@ var (
 // sync all snapshots in the pool (pausing to discover new ones), or Sync() to sync a specific
 // snapshot. Snapshots and chunks are fed via AddSnapshot() and AddChunk() as appropriate.
 type syncer struct {
+	cfg           config.StateSyncConfig
 	logger        log.Logger
 	stateProvider StateProvider
 	conn          proxy.AppConnSnapshot
@@ -64,9 +68,22 @@ type syncer struct {
 }
 
 // newSyncer creates a new syncer.
+<<<<<<< HEAD:statesync/syncer.go
 func newSyncer(logger log.Logger, conn proxy.AppConnSnapshot, connQuery proxy.AppConnQuery,
 	stateProvider StateProvider, tempDir string) *syncer {
+=======
+func newSyncer(
+	cfg config.StateSyncConfig,
+	logger log.Logger,
+	conn proxy.AppConnSnapshot,
+	connQuery proxy.AppConnQuery,
+	stateProvider StateProvider,
+	snapshotCh, chunkCh chan<- p2p.Envelope,
+	tempDir string,
+) *syncer {
+>>>>>>> 7d961b55b (state sync: tune request timeout and chunkers (#6566)):internal/statesync/syncer.go
 	return &syncer{
+		cfg:           cfg,
 		logger:        logger,
 		stateProvider: stateProvider,
 		conn:          conn,
@@ -243,7 +260,7 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 	// Spawn chunk fetchers. They will terminate when the chunk queue is closed or context cancelled.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	for i := int32(0); i < chunkFetchers; i++ {
+	for i := int32(0); i < s.cfg.ChunkFetchers; i++ {
 		go s.fetchChunks(ctx, snapshot, chunks)
 	}
 
@@ -396,16 +413,21 @@ func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *ch
 		s.logger.Info("Fetching snapshot chunk", "height", snapshot.Height,
 			"format", snapshot.Format, "chunk", index, "total", chunks.Size())
 
-		ticker := time.NewTicker(chunkRequestTimeout)
+		ticker := time.NewTicker(s.cfg.ChunkRequestTimeout)
 		defer ticker.Stop()
+
 		s.requestChunk(snapshot, index)
+
 		select {
 		case <-chunks.WaitFor(index):
+
 		case <-ticker.C:
 			s.requestChunk(snapshot, index)
+
 		case <-ctx.Done():
 			return
 		}
+
 		ticker.Stop()
 	}
 }

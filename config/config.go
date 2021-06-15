@@ -716,6 +716,7 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 
 // StateSyncConfig defines the configuration for the Tendermint state sync service
 type StateSyncConfig struct {
+<<<<<<< HEAD
 	Enable        bool          `mapstructure:"enable"`
 	TempDir       string        `mapstructure:"temp_dir"`
 	RPCServers    []string      `mapstructure:"rpc_servers"`
@@ -723,6 +724,17 @@ type StateSyncConfig struct {
 	TrustHeight   int64         `mapstructure:"trust_height"`
 	TrustHash     string        `mapstructure:"trust_hash"`
 	DiscoveryTime time.Duration `mapstructure:"discovery_time"`
+=======
+	Enable              bool          `mapstructure:"enable"`
+	TempDir             string        `mapstructure:"temp-dir"`
+	RPCServers          []string      `mapstructure:"rpc-servers"`
+	TrustPeriod         time.Duration `mapstructure:"trust-period"`
+	TrustHeight         int64         `mapstructure:"trust-height"`
+	TrustHash           string        `mapstructure:"trust-hash"`
+	DiscoveryTime       time.Duration `mapstructure:"discovery-time"`
+	ChunkRequestTimeout time.Duration `mapstructure:"chunk-request-timeout"`
+	ChunkFetchers       int32         `mapstructure:"chunk-fetchers"`
+>>>>>>> 7d961b55b (state sync: tune request timeout and chunkers (#6566))
 }
 
 func (cfg *StateSyncConfig) TrustHashBytes() []byte {
@@ -737,8 +749,10 @@ func (cfg *StateSyncConfig) TrustHashBytes() []byte {
 // DefaultStateSyncConfig returns a default configuration for the state sync service
 func DefaultStateSyncConfig() *StateSyncConfig {
 	return &StateSyncConfig{
-		TrustPeriod:   168 * time.Hour,
-		DiscoveryTime: 15 * time.Second,
+		TrustPeriod:         168 * time.Hour,
+		DiscoveryTime:       15 * time.Second,
+		ChunkRequestTimeout: 10 * time.Second,
+		ChunkFetchers:       4,
 	}
 }
 
@@ -753,14 +767,17 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 		if len(cfg.RPCServers) == 0 {
 			return errors.New("rpc_servers is required")
 		}
+
 		if len(cfg.RPCServers) < 2 {
 			return errors.New("at least two rpc_servers entries is required")
 		}
+
 		for _, server := range cfg.RPCServers {
 			if len(server) == 0 {
 				return errors.New("found empty rpc_servers entry")
 			}
 		}
+
 		if cfg.DiscoveryTime != 0 && cfg.DiscoveryTime < 5*time.Second {
 			return errors.New("discovery time must be 0s or greater than five seconds")
 		}
@@ -768,17 +785,29 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 		if cfg.TrustPeriod <= 0 {
 			return errors.New("trusted_period is required")
 		}
+
 		if cfg.TrustHeight <= 0 {
 			return errors.New("trusted_height is required")
 		}
+
 		if len(cfg.TrustHash) == 0 {
 			return errors.New("trusted_hash is required")
 		}
+
 		_, err := hex.DecodeString(cfg.TrustHash)
 		if err != nil {
 			return fmt.Errorf("invalid trusted_hash: %w", err)
 		}
+
+		if cfg.ChunkRequestTimeout < time.Second {
+			return errors.New("chunk-request-timeout must be least a one second")
+		}
+
+		if cfg.ChunkFetchers <= 0 {
+			return errors.New("chunk-fetchers is required")
+		}
 	}
+
 	return nil
 }
 
