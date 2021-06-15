@@ -11,6 +11,16 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
+// PrivValidatorType defines the implemtation types.
+type PrivValidatorType uint8
+
+const (
+	MockSignerClient  = PrivValidatorType(0x00) // mock singer
+	FileSignerClient  = PrivValidatorType(0x01) // singer client via file
+	RetrySignerClient = PrivValidatorType(0x02) // singer client via socket
+	SignerClient      = PrivValidatorType(0x03) // singer client via gRPC
+)
+
 // PrivValidator defines the functionality of a local Tendermint validator
 // that signs votes and proposals, and never double signs.
 type PrivValidator interface {

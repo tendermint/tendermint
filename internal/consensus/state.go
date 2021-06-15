@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"runtime/debug"
 	"time"
 
@@ -79,8 +80,9 @@ type State struct {
 	service.BaseService
 
 	// config details
-	config        *cfg.ConsensusConfig
-	privValidator types.PrivValidator // for signing votes
+	config            *cfg.ConsensusConfig
+	privValidator     types.PrivValidator // for signing votes
+	privValidatorType types.PrivValidatorType
 
 	// store blocks and commits
 	blockStore sm.BlockStore
@@ -272,6 +274,23 @@ func (cs *State) SetPrivValidator(priv types.PrivValidator) {
 	defer cs.mtx.Unlock()
 
 	cs.privValidator = priv
+
+	if priv != nil {
+		t := reflect.TypeOf(priv).Name()
+		switch t {
+		case "RetrySignerClient":
+			cs.privValidatorType = types.RetrySignerClient
+		case "FilePV":
+			cs.privValidatorType = types.FileSignerClient
+		case "SignerClient":
+			cs.privValidatorType = types.SignerClient
+		case "MockPV":
+			cs.privValidatorType = types.MockSignerClient
+		default:
+			cs.Logger.Error("unsupported priv validator type", "err",
+				fmt.Errorf("error privValidatorType %s", t))
+		}
+	}
 
 	if err := cs.updatePrivValidatorPubKey(); err != nil {
 		cs.Logger.Error("failed to get private validator pubkey", "err", err)
@@ -2266,8 +2285,8 @@ func (cs *State) updatePrivValidatorPubKey() error {
 		timeout = cs.config.TimeoutPrevote
 	}
 
-	// no GetPubKey retry beyond the proposal/voting
-	if cs.Step >= cstypes.RoundStepPrecommit {
+	// no GetPubKey retry beyond the proposal/voting in RetrySignerClient
+	if cs.Step >= cstypes.RoundStepPrecommit && cs.privValidatorType == types.RetrySignerClient {
 		timeout = 0
 	}
 
