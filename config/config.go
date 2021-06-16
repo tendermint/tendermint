@@ -884,7 +884,7 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 		}
 
 		if cfg.Fetchers <= 0 {
-			return errors.New("chunk-fetchers is required")
+			return errors.New("fetchers is required")
 		}
 	}
 
