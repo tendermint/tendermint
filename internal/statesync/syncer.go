@@ -256,10 +256,10 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 	}
 
 	// Spawn chunk fetchers. They will terminate when the chunk queue is closed or context canceled.
-	ctx, cancel := context.WithCancel(ctx)
+	fetchCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	for i := int32(0); i < s.fetchers; i++ {
-		go s.fetchChunks(ctx, snapshot, chunks)
+		go s.fetchChunks(fetchCtx, snapshot, chunks)
 	}
 
 	pctx, pcancel := context.WithTimeout(ctx, 10*time.Second)
