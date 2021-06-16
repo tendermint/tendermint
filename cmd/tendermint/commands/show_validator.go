@@ -33,7 +33,7 @@ func showValidator(cmd *cobra.Command, args []string) error {
 	protocol, _ := tmnet.ProtocolAndAddress(config.PrivValidator.ListenAddr)
 	switch protocol {
 	case "grpc":
-		pvsc, err := tmgrpc.DialRemoteSigner(config, config.ChainID(), logger)
+		pvsc, err := tmgrpc.DialRemoteSigner(config.PrivValidator, config.ChainID(), logger, config.Instrumentation.Prometheus)
 		if err != nil {
 			return fmt.Errorf("can't connect to remote validator %w", err)
 		}
@@ -47,12 +47,12 @@ func showValidator(cmd *cobra.Command, args []string) error {
 		}
 	default:
 
-		keyFilePath := config.PrivValidatorKeyFile()
+		keyFilePath := config.PrivValidator.KeyFile()
 		if !tmos.FileExists(keyFilePath) {
 			return fmt.Errorf("private validator file %s does not exist", keyFilePath)
 		}
 
-		pv, err := privval.LoadFilePV(keyFilePath, config.PrivValidatorStateFile())
+		pv, err := privval.LoadFilePV(keyFilePath, config.PrivValidator.StateFile())
 		if err != nil {
 			return err
 		}
