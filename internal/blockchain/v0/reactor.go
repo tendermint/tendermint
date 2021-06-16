@@ -61,6 +61,9 @@ type consensusReactor interface {
 	// For when we switch from blockchain reactor and fast sync to the consensus
 	// machine.
 	SwitchToConsensus(state sm.State, skipWAL bool)
+
+	// UpdateMetrics updates the fast sync status to the state metrics.
+	UpdateMetrics(s sm.State, b *types.Block)
 }
 
 type peerError struct {
@@ -558,6 +561,10 @@ FOR_LOOP:
 				if err != nil {
 					// TODO: This is bad, are we zombie?
 					panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
+				}
+
+				if r.consReactor != nil {
+					r.consReactor.UpdateMetrics(state, first)
 				}
 
 				blocksSynced++

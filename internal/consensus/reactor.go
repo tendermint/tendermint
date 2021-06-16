@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"bytes"
 	"fmt"
 	"time"
 
@@ -290,6 +291,95 @@ conS:
 conR:
 %+v`, err, r.state, r))
 	}
+}
+
+// UpdateMetrics the applied block from the block pool updates the state metrics during the fast-sync.
+// Some implementation details please check State.recordMetrics.
+func (r *Reactor) UpdateMetrics(s sm.State, b *types.Block) {
+	rm := r.Metrics
+
+	rm.Validators.Set(float64(s.Validators.Size()))
+	rm.ValidatorsPower.Set(float64(s.Validators.TotalVotingPower()))
+
+	var (
+		missingValidators      int
+		missingValidatorsPower int64
+	)
+
+	if b.Height > s.InitialHeight {
+		var (
+			commitSize = b.LastCommit.Size()
+			valSetLen  = len(s.LastValidators.Validators)
+			address    types.Address
+		)
+		if commitSize != valSetLen {
+			panic(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
+				commitSize, valSetLen, b.Height, b.LastCommit.Signatures, s.LastValidators.Validators))
+		}
+
+		if rs := r.state; rs != nil {
+			if rs.privValidator != nil {
+				if rs.privValidatorPubKey == nil {
+					rs.Logger.Error(fmt.Sprintf("recordMetrics: %v", errPubKeyIsNotSet))
+				} else {
+					address = rs.privValidatorPubKey.Address()
+				}
+			}
+			for i, val := range rs.LastValidators.Validators {
+				commitSig := b.LastCommit.Signatures[i]
+				if commitSig.Absent() {
+					missingValidators++
+					missingValidatorsPower += val.VotingPower
+				}
+
+				if bytes.Equal(val.Address, address) {
+					label := []string{
+						"validator_address", val.Address.String(),
+					}
+					rm.ValidatorPower.With(label...).Set(float64(val.VotingPower))
+					if commitSig.ForBlock() {
+						rm.ValidatorLastSignedHeight.With(label...).Set(float64(b.Height))
+					} else {
+						rm.ValidatorMissedBlocks.With(label...).Add(float64(1))
+					}
+				}
+
+			}
+		}
+
+	}
+
+	rm.MissingValidators.Set(float64(missingValidators))
+	rm.MissingValidatorsPower.Set(float64(missingValidatorsPower))
+
+	var (
+		byzantineValidatorsPower = int64(0)
+		byzantineValidatorsCount = int64(0)
+	)
+	for _, ev := range b.Evidence.Evidence {
+		if dve, ok := ev.(*types.DuplicateVoteEvidence); ok {
+			if _, val := s.Validators.GetByAddress(dve.VoteA.ValidatorAddress); val != nil {
+				byzantineValidatorsCount++
+				byzantineValidatorsPower += val.VotingPower
+			}
+		}
+	}
+	rm.ByzantineValidators.Set(float64(byzantineValidatorsCount))
+	rm.ByzantineValidatorsPower.Set(float64(byzantineValidatorsPower))
+
+	if b.Height > 1 {
+		lastBlockMeta := r.state.blockStore.LoadBlockMeta(b.Height - 1)
+		if lastBlockMeta != nil {
+			rm.BlockIntervalSeconds.Observe(
+				b.Time.Sub(lastBlockMeta.Header.Time).Seconds(),
+			)
+		}
+	}
+
+	rm.NumTxs.Set(float64(len(b.Data.Txs)))
+	rm.TotalTxs.Add(float64(len(b.Data.Txs)))
+	rm.BlockSizeBytes.Observe(float64(b.Size()))
+	rm.CommittedHeight.Set(float64(b.Height))
 }
 
 // String returns a string representation of the Reactor.
