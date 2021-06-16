@@ -351,7 +351,7 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 	rts.stateStore.On("LoadValidators", height).Return(vals, nil)
 
 	rts.blockInCh <- p2p.Envelope{
-		From: p2p.NodeID("aa"),
+		From: types.NodeID("aa"),
 		Message: &ssproto.LightBlockRequest{
 			Height: 10,
 		},
@@ -360,7 +360,7 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 
 	select {
 	case response := <-rts.blockOutCh:
-		require.Equal(t, p2p.NodeID("aa"), response.To)
+		require.Equal(t, types.NodeID("aa"), response.To)
 		res, ok := response.Message.(*ssproto.LightBlockResponse)
 		require.True(t, ok)
 		receivedLB, err := types.LightBlockFromProto(res.LightBlock)
@@ -374,11 +374,11 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 func TestReactor_Dispatcher(t *testing.T) {
 	rts := setup(t, nil, nil, nil, 2)
 	rts.peerUpdateCh <- p2p.PeerUpdate{
-		NodeID: p2p.NodeID("aa"),
+		NodeID: types.NodeID("aa"),
 		Status: p2p.PeerStatusUp,
 	}
 	rts.peerUpdateCh <- p2p.PeerUpdate{
-		NodeID: p2p.NodeID("bb"),
+		NodeID: types.NodeID("bb"),
 		Status: p2p.PeerStatusUp,
 	}
 
@@ -437,7 +437,7 @@ func TestReactor_Backfill(t *testing.T) {
 			peers := []string{"a", "b", "c", "d"}
 			for _, peer := range peers {
 				rts.peerUpdateCh <- p2p.PeerUpdate{
-					NodeID: p2p.NodeID(peer),
+					NodeID: types.NodeID(peer),
 					Status: p2p.PeerStatusUp,
 				}
 			}

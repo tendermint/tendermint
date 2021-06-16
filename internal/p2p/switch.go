@@ -511,7 +511,7 @@ func isPrivateAddr(err error) bool {
 // encounter is returned.
 // Nop if there are no peers.
 func (sw *Switch) DialPeersAsync(peers []string) error {
-	netAddrs, errs := types.NewNetAddressStrings(peers)
+	netAddrs, errs := NewNetAddressStrings(peers)
 	// report all the errors
 	for _, err := range errs {
 		sw.Logger.Error("Error in peer's address", "err", err)
@@ -615,7 +615,7 @@ func (sw *Switch) IsDialingOrExistingAddress(addr *NetAddress) bool {
 // returned.
 func (sw *Switch) AddPersistentPeers(addrs []string) error {
 	sw.Logger.Info("Adding persistent peers", "addrs", addrs)
-	netAddrs, errs := types.NewNetAddressStrings(addrs)
+	netAddrs, errs := NewNetAddressStrings(addrs)
 	// report all the errors
 	for _, err := range errs {
 		sw.Logger.Error("Error in peer's address", "err", err)

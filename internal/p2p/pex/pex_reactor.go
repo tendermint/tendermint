@@ -613,7 +613,7 @@ func (r *Reactor) checkSeeds() (numOnline int, netAddrs []*p2p.NetAddress, err e
 	if lSeeds == 0 {
 		return -1, nil, nil
 	}
-	netAddrs, errs := types.NewNetAddressStrings(r.config.Seeds)
+	netAddrs, errs := p2p.NewNetAddressStrings(r.config.Seeds)
 	numOnline = lSeeds - len(errs)
 	for _, err := range errs {
 		switch e := err.(type) {
