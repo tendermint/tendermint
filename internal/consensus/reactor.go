@@ -313,8 +313,9 @@ func (r *Reactor) UpdateMetrics(s sm.State, b *types.Block) {
 			address    types.Address
 		)
 		if commitSize != valSetLen {
-			panic(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
+			r.state.Logger.Error(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
 				commitSize, valSetLen, b.Height, b.LastCommit.Signatures, s.LastValidators.Validators))
+			return
 		}
 
 		if rs := r.state; rs != nil {
@@ -352,10 +353,7 @@ func (r *Reactor) UpdateMetrics(s sm.State, b *types.Block) {
 	rm.MissingValidators.Set(float64(missingValidators))
 	rm.MissingValidatorsPower.Set(float64(missingValidatorsPower))
 
-	var (
-		byzantineValidatorsPower = int64(0)
-		byzantineValidatorsCount = int64(0)
-	)
+	var byzantineValidatorsPower, byzantineValidatorsCount int64
 	for _, ev := range b.Evidence.Evidence {
 		if dve, ok := ev.(*types.DuplicateVoteEvidence); ok {
 			if _, val := s.Validators.GetByAddress(dve.VoteA.ValidatorAddress); val != nil {

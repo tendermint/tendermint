@@ -1713,8 +1713,9 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 			address    types.Address
 		)
 		if commitSize != valSetLen {
-			panic(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
+			cs.Logger.Error(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
 				commitSize, valSetLen, block.Height, block.LastCommit.Signatures, cs.LastValidators.Validators))
+			return
 		}
 
 		if cs.privValidator != nil {
@@ -1751,10 +1752,8 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 	cs.metrics.MissingValidatorsPower.Set(float64(missingValidatorsPower))
 
 	// NOTE: byzantine validators power and count is only for consensus evidence i.e. duplicate vote
-	var (
-		byzantineValidatorsPower = int64(0)
-		byzantineValidatorsCount = int64(0)
-	)
+	var byzantineValidatorsPower, byzantineValidatorsCount int64
+
 	for _, ev := range block.Evidence.Evidence {
 		if dve, ok := ev.(*types.DuplicateVoteEvidence); ok {
 			if _, val := cs.Validators.GetByAddress(dve.VoteA.ValidatorAddress); val != nil {
