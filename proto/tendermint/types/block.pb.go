@@ -378,7 +378,7 @@ func (m *Block) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LastPrecommits", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field LastCommit", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {

@@ -16,6 +16,7 @@ import (
 type RoundVoteSet struct {
 	Prevotes   *types.VoteSet
 	Precommits *types.VoteSet
+	Commit *types.Commit
 }
 
 var (
@@ -104,11 +105,15 @@ func (hvs *HeightVoteSet) addRound(round int32) {
 		panic("addRound() for an existing round")
 	}
 	// log.Debug("addRound(round)", "round", round)
-	prevotes := types.NewVoteSet(hvs.chainID, hvs.height, round, tmproto.PrevoteType, hvs.valSet)
-	precommits := types.NewVoteSet(hvs.chainID, hvs.height, round, tmproto.PrecommitType, hvs.valSet)
-	hvs.roundVoteSets[round] = RoundVoteSet{
-		Prevotes:   prevotes,
-		Precommits: precommits,
+	if hvs.valSet.HasPublicKeys == true {
+		prevotes := types.NewVoteSet(hvs.chainID, hvs.height, round, tmproto.PrevoteType, hvs.valSet)
+		precommits := types.NewVoteSet(hvs.chainID, hvs.height, round, tmproto.PrecommitType, hvs.valSet)
+		hvs.roundVoteSets[round] = RoundVoteSet{
+			Prevotes:   prevotes,
+			Precommits: precommits,
+		}
+	} else {
+		hvs.roundVoteSets[round] = RoundVoteSet{}
 	}
 }
 
@@ -116,6 +121,9 @@ func (hvs *HeightVoteSet) addRound(round int32) {
 // Duplicate votes return added=false, err=nil.
 // By convention, peerID is "" if origin is self.
 func (hvs *HeightVoteSet) AddVote(vote *types.Vote, peerID p2p.ID) (added bool, err error) {
+	if hvs.valSet.HasPublicKeys == false {
+		return false, nil
+	}
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	if !types.IsVoteTypeValid(vote.Type) {

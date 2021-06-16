@@ -358,6 +358,7 @@ func (vals *ValidatorSet) Copy() *ValidatorSet {
 		ThresholdPublicKey: vals.ThresholdPublicKey,
 		QuorumHash:         vals.QuorumHash,
 		QuorumType:         vals.QuorumType,
+		HasPublicKeys:      vals.HasPublicKeys,
 	}
 }
 
@@ -1096,6 +1097,8 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 
 	vp.QuorumHash = vals.QuorumHash
 
+	vp.HasPublicKeys = vals.HasPublicKeys
+
 	return vp, nil
 }
 
@@ -1138,6 +1141,8 @@ func ValidatorSetFromProto(vp *tmproto.ValidatorSet) (*ValidatorSet, error) {
 	vals.QuorumType = btcjson.LLMQType(vp.QuorumType)
 
 	vals.QuorumHash = vp.QuorumHash
+
+	vals.HasPublicKeys = vp.HasPublicKeys
 
 	return vals, vals.ValidateBasic()
 }
