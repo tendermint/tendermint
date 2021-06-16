@@ -41,14 +41,14 @@ var ResetPrivValidatorCmd = &cobra.Command{
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func resetAll(cmd *cobra.Command, args []string) error {
-	return ResetAll(config.DBDir(), config.P2P.AddrBookFile(), config.PrivValidatorKeyFile(),
-		config.PrivValidatorStateFile(), logger)
+	return ResetAll(config.DBDir(), config.P2P.AddrBookFile(), config.PrivValidator.KeyFile(),
+		config.PrivValidator.StateFile(), logger)
 }
 
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func resetPrivValidator(cmd *cobra.Command, args []string) error {
-	return resetFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile(), logger)
+	return resetFilePV(config.PrivValidator.KeyFile(), config.PrivValidator.StateFile(), logger)
 }
 
 // ResetAll removes address book files plus all data, and resets the privValdiator data.
