@@ -5,7 +5,7 @@ import (
 )
 
 // default capacity for the size of a queue
-const defaultCapacity uint = 1024 * 1024 * 20 // 20MB
+const defaultCapacity uint = 16e6 // ~16MB
 
 // queue does QoS scheduling for Envelopes, enqueueing and dequeueing according
 // to some policy. Queues are used at contention points, i.e.:
