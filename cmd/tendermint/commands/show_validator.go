@@ -33,7 +33,12 @@ func showValidator(cmd *cobra.Command, args []string) error {
 	protocol, _ := tmnet.ProtocolAndAddress(config.PrivValidator.ListenAddr)
 	switch protocol {
 	case "grpc":
-		pvsc, err := tmgrpc.DialRemoteSigner(config.PrivValidator, config.ChainID(), logger, config.Instrumentation.Prometheus)
+		pvsc, err := tmgrpc.DialRemoteSigner(
+			config.PrivValidator,
+			config.ChainID(),
+			logger,
+			config.Instrumentation.Prometheus,
+		)
 		if err != nil {
 			return fmt.Errorf("can't connect to remote validator %w", err)
 		}
