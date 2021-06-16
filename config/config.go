@@ -814,7 +814,7 @@ type StateSyncConfig struct {
 	TrustHash           string        `mapstructure:"trust-hash"`
 	DiscoveryTime       time.Duration `mapstructure:"discovery-time"`
 	ChunkRequestTimeout time.Duration `mapstructure:"chunk-request-timeout"`
-	ChunkFetchers       int32         `mapstructure:"chunk-fetchers"`
+	Fetchers            int32         `mapstructure:"fetchers"`
 }
 
 func (cfg *StateSyncConfig) TrustHashBytes() []byte {
@@ -832,7 +832,7 @@ func DefaultStateSyncConfig() *StateSyncConfig {
 		TrustPeriod:         168 * time.Hour,
 		DiscoveryTime:       15 * time.Second,
 		ChunkRequestTimeout: 10 * time.Second,
-		ChunkFetchers:       4,
+		Fetchers:            4,
 	}
 }
 
@@ -879,11 +879,11 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 			return fmt.Errorf("invalid trusted-hash: %w", err)
 		}
 
-		if cfg.ChunkRequestTimeout < time.Second {
-			return errors.New("chunk-request-timeout must be least a one second")
+		if cfg.ChunkRequestTimeout < 5*time.Second {
+			return errors.New("chunk-request-timeout must be least 5 seconds")
 		}
 
-		if cfg.ChunkFetchers <= 0 {
+		if cfg.Fetchers <= 0 {
 			return errors.New("chunk-fetchers is required")
 		}
 	}

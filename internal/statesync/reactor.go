@@ -38,7 +38,7 @@ var (
 			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  byte(SnapshotChannel),
-				Priority:            5,
+				Priority:            6,
 				SendQueueCapacity:   10,
 				RecvMessageCapacity: snapshotMsgSize,
 
@@ -49,7 +49,7 @@ var (
 			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  byte(ChunkChannel),
-				Priority:            1,
+				Priority:            3,
 				SendQueueCapacity:   4,
 				RecvMessageCapacity: chunkMsgSize,
 
@@ -60,7 +60,7 @@ var (
 			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  byte(LightBlockChannel),
-				Priority:            1,
+				Priority:            2,
 				SendQueueCapacity:   10,
 				RecvMessageCapacity: lightBlockMsgSize,
 
@@ -99,10 +99,6 @@ const (
 	// maxLightBlockRequestRetries is the amount of retries acceptable before
 	// the backfill process aborts
 	maxLightBlockRequestRetries = 20
-
-	// the amount of processes fetching light blocks - this should be roughly calculated
-	// as the time to fetch a block / time to verify a block
-	lightBlockFetchers = 4
 )
 
 // Reactor handles state sync, both restoring snapshots for the local node and
@@ -214,7 +210,7 @@ func (r *Reactor) OnStop() {
 // application. It also saves tendermint state and runs a backfill process to
 // retrieve the necessary amount of headers, commits and validators sets to be
 // able to process evidence and participate in consensus.
-func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration) (sm.State, error) {
+func (r *Reactor) Sync(ctx context.Context, stateProvider StateProvider, discoveryTime time.Duration) (sm.State, error) {
 	r.mtx.Lock()
 	if r.syncer != nil {
 		r.mtx.Unlock()
@@ -233,18 +229,14 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 	)
 	r.mtx.Unlock()
 
-	hook := func() {
-		// request snapshots from all currently connected peers
-		r.Logger.Debug("requesting snapshots from known peers")
-		r.snapshotCh.Out <- p2p.Envelope{
-			Broadcast: true,
-			Message:   &ssproto.SnapshotsRequest{},
-		}
+	// request snapshots from all currently connected peers
+	r.Logger.Debug("requesting snapshots from known peers")
+	r.snapshotCh.Out <- p2p.Envelope{
+		Broadcast: true,
+		Message:   &ssproto.SnapshotsRequest{},
 	}
 
-	hook()
-
-	state, commit, err := r.syncer.SyncAny(discoveryTime, hook)
+	state, commit, err := r.syncer.SyncAny(ctx, discoveryTime)
 	if err != nil {
 		return sm.State{}, err
 	}
@@ -312,7 +304,7 @@ func (r *Reactor) backfill(
 	// time. Ideally we want the verification process to never have to be
 	// waiting on blocks. If it takes 4s to retrieve a block and 1s to verify
 	// it, then steady state involves four workers.
-	for i := 0; i < lightBlockFetchers; i++ {
+	for i := 0; i < int(r.cfg.Fetchers); i++ {
 		go func() {
 			for {
 				select {
