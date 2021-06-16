@@ -210,7 +210,11 @@ func (r *Reactor) OnStop() {
 // application. It also saves tendermint state and runs a backfill process to
 // retrieve the necessary amount of headers, commits and validators sets to be
 // able to process evidence and participate in consensus.
-func (r *Reactor) Sync(ctx context.Context, stateProvider StateProvider, discoveryTime time.Duration) (sm.State, error) {
+func (r *Reactor) Sync(
+	ctx context.Context,
+	stateProvider StateProvider,
+	discoveryTime time.Duration,
+) (sm.State, error) {
 	r.mtx.Lock()
 	if r.syncer != nil {
 		r.mtx.Unlock()

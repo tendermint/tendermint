@@ -84,6 +84,8 @@ func newSyncer(
 		snapshotCh:    snapshotCh,
 		chunkCh:       chunkCh,
 		tempDir:       tempDir,
+		fetchers:      cfg.Fetchers,
+		retryTimeout:  cfg.ChunkRequestTimeout,
 	}
 }
 
@@ -391,9 +393,9 @@ func (s *syncer) applyChunks(ctx context.Context, chunks *chunkQueue) error {
 // will be received from the reactor via syncer.AddChunks() to chunkQueue.Add().
 func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *chunkQueue) {
 	var (
-		next = true
+		next  = true
 		index uint32
-		err error
+		err   error
 	)
 
 	for {
