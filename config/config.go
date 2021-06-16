@@ -880,7 +880,7 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 		}
 
 		if cfg.ChunkRequestTimeout < 5*time.Second {
-			return errors.New("chunk-request-timeout must be least 5 seconds")
+			return errors.New("chunk-request-timeout must be at least 5 seconds")
 		}
 
 		if cfg.Fetchers <= 0 {
