@@ -539,7 +539,7 @@ func (m *PeerManager) DialFailed(address NodeAddress) error {
 	// timeout has elapsed, so that we can consider dialing it again. We
 	// calculate the retry delay outside the goroutine, since it must hold
 	// the mutex lock.
-	if d := m.retryDelay(addressInfo.DialFailures, peer.Persistent); d != retryNever {
+	if d := m.retryDelay(addressInfo.DialFailures, peer.Persistent); d != 0 && d != retryNever {
 		go func() {
 			// Use an explicit timer with deferred cleanup instead of
 			// time.After(), to avoid leaking goroutines on PeerManager.Close().
