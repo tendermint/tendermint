@@ -32,6 +32,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - P2P Protocol
 
 - Go API
+  - [libs/time] \#6495 Move types/time to libs/time to improve consistency. (@tychoish)
   - [logging] \#6534 Removed the existing custom Tendermint logger backed by go-kit. The logging interface, `Logger`, remains.
   Tendermint still provides a default logger backed by the performant zerolog logger. (@alexanderbez)
   - [mempool] \#6529 The `Context` field has been removed from the `TxInfo` type. `CheckTx` now requires a `Context` argument. (@alexanderbez)
