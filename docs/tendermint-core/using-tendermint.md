@@ -2,18 +2,18 @@
 order: 2
 ---
 
-# Using Tendermint
+# Using Tenderdash
 
-This is a guide to using the `tendermint` program from the command line.
-It assumes only that you have the `tendermint` binary installed and have
-some rudimentary idea of what Tendermint and ABCI are.
+This is a guide to using the `tenderdash` program from the command line.
+It assumes only that you have the `tenderdash` binary installed and have
+some rudimentary idea of what Tenderdash and ABCI are.
 
-You can see the help menu with `tendermint --help`, and the version
-number with `tendermint version`.
+You can see the help menu with `tenderdash --help`, and the version
+number with `tenderdash version`.
 
 ## Directory Root
 
-The default directory for blockchain data is `~/.tendermint`. Override
+The default directory for blockchain data is `~/.tenderdash`. Override
 this by setting the `TMHOME` environment variable.
 
 ## Initialize
@@ -21,7 +21,7 @@ this by setting the `TMHOME` environment variable.
 Initialize the root directory by running:
 
 ```sh
-tendermint init
+tenderdash init
 ```
 
 This will create a new private key (`priv_validator_key.json`), and a
@@ -32,14 +32,14 @@ with one validator.
 For more elaborate initialization, see the testnet command:
 
 ```sh
-tendermint testnet --help
+tenderdash testnet --help
 ```
 
 ### Genesis
 
 The `genesis.json` file in `$TMHOME/config/` defines the initial
-TendermintCore state upon genesis of the blockchain ([see
-definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.go)).
+TenderdashCore state upon genesis of the blockchain ([see
+definition](https://github.com/tenderdash/tenderdash/blob/master/types/genesis.go)).
 
 #### Fields
 
@@ -47,9 +47,9 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
 - `chain_id`: ID of the blockchain. **This must be unique for
   every blockchain.** If your testnet blockchains do not have unique
   chain IDs, you will have a bad time. The ChainID must be less than 50 symbols.
-- `initial_height`: Height at which Tendermint should begin at. If a blockchain is conducting a network upgrade, 
-    starting from the stopped height brings uniqueness to previous heights. 
-- `consensus_params` [spec](https://github.com/tendermint/spec/blob/master/spec/core/state.md#consensusparams)
+- `initial_height`: Height at which Tenderdash should begin at. If a blockchain is conducting a network upgrade,
+    starting from the stopped height brings uniqueness to previous heights.
+- `consensus_params` [spec](https://github.com/tenderdash/spec/blob/master/spec/core/state.md#consensusparams)
     - `block`
         - `max_bytes`: Max block size, in bytes.
         - `max_gas`: Max gas per block.
@@ -74,12 +74,12 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
   application, and may be left empty to make explicit that the
   application will initialize the validator set with ResponseInitChain.
     - `pub_key`: The first element specifies the `pub_key` type. 1
-    == Ed25519. The second element are the pubkey bytes.
+    == bls12381. The second element are the pubkey bytes.
     - `power`: The validator's voting power.
     - `name`: Name of the validator (optional).
 - `app_hash`: The expected application hash (as returned by the
   `ResponseInfo` ABCI message) upon genesis. If the app's hash does
-  not match, Tendermint will panic.
+  not match, Tenderdash will panic.
 - `app_state`: The application state (e.g. initial distribution
   of tokens).
 
@@ -92,6 +92,7 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
   "genesis_time": "2020-04-21T11:17:42.341227868Z",
   "chain_id": "test-chain-ROp9KF",
   "initial_height": "0",
+  "initial_core_chain_locked_height": 1,
   "consensus_params": {
     "block": {
       "max_bytes": "22020096",
@@ -105,7 +106,7 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
     },
     "validator": {
       "pub_key_types": [
-        "ed25519"
+        "bls12381"
       ]
     }
   },
@@ -113,53 +114,59 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
     {
       "address": "B547AB87E79F75A4A3198C57A8C2FDAF8628CB47",
       "pub_key": {
-        "type": "tendermint/PubKeyEd25519",
-        "value": "P/V6GHuZrb8rs/k1oBorxc6vyXMlnzhJmv7LmjELDys="
+        "type": "tenderdash/PubKeyBLS25519",
+        "value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"
       },
-      "power": "10",
-      "name": ""
+      "power": "100",
+      "name": "",
+      "pro_tx_hash": "4F01160F58390DA57FE7FE1CCE4DDE452A448E90F4B560C0D788DCEEAD5B5E69"
     }
   ],
+  "quorum_hash": "444F39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C433",
+  "threshold_public_key": {
+    "type": "tendermint/PubKeyBLS12381",
+    "value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"
+  },
   "app_hash": ""
 }
 ```
 
 ## Run
 
-To run a Tendermint node, use:
+To run a Tenderdash node, use:
 
 ```bash
-tendermint node
+tenderdash node
 ```
 
-By default, Tendermint will try to connect to an ABCI application on
+By default, Tenderdash will try to connect to an ABCI application on
 `127.0.0.1:26658`. If you have the `kvstore` ABCI app installed, run it in
-another window. If you don't, kill Tendermint and run an in-process version of
+another window. If you don't, kill Tenderdash and run an in-process version of
 the `kvstore` app:
 
 ```bash
-tendermint node --proxy_app=kvstore
+tenderdash node --proxy_app=kvstore
 ```
 
 After a few seconds, you should see blocks start streaming in. Note that blocks
 are produced regularly, even if there are no transactions. See _No Empty
 Blocks_, below, to modify this setting.
 
-Tendermint supports in-process versions of the `counter`, `kvstore`, and `noop`
+Tenderdash supports in-process versions of the `counter`, `kvstore`, and `noop`
 apps that ship as examples with `abci-cli`. It's easy to compile your app
-in-process with Tendermint if it's written in Go. If your app is not written in
+in-process with Tenderdash if it's written in Go. If your app is not written in
 Go, run it in another process, and use the `--proxy_app` flag to specify the
 address of the socket it is listening on, for instance:
 
 ```bash
-tendermint node --proxy_app=/var/run/abci.sock
+tenderdash node --proxy_app=/var/run/abci.sock
 ```
 
-You can find out what flags are supported by running `tendermint node --help`.
+You can find out what flags are supported by running `tenderdash node --help`.
 
 ## Transactions
 
-To send a transaction, use `curl` to make requests to the Tendermint RPC
+To send a transaction, use `curl` to make requests to the Tenderdash RPC
 server, for example:
 
 ```sh
@@ -183,7 +190,7 @@ endpoints. Some take no arguments (like `/status`), while others specify
 the argument name and use `_` as a placeholder.
 
 
-> TIP: Find the RPC Documentation [here](https://docs.tendermint.com/master/rpc/)
+> TIP: Find the RPC Documentation [here](https://docs.tenderdash.com/master/rpc/)
 
 ### Formatting
 
@@ -242,7 +249,7 @@ afford to lose all blockchain data!
 To reset a blockchain, stop the node and run:
 
 ```sh
-tendermint unsafe_reset_all
+tenderdash unsafe_reset_all
 ```
 
 This command will remove the data directory and reset private validator and
@@ -250,11 +257,11 @@ address book files.
 
 ## Configuration
 
-Tendermint uses a `config.toml` for configuration. For details, see [the
+Tenderdash uses a `config.toml` for configuration. For details, see [the
 config specification](./configuration.md).
 
 Notable options include the socket address of the application
-(`proxy_app`), the listening address of the Tendermint peer
+(`proxy_app`), the listening address of the Tenderdash peer
 (`p2p.laddr`), and the listening address of the RPC server
 (`rpc.laddr`).
 
@@ -262,17 +269,17 @@ Some fields from the config file can be overwritten with flags.
 
 ## No Empty Blocks
 
-While the default behavior of `tendermint` is still to create blocks
+While the default behavior of `tenderdash` is still to create blocks
 approximately once per second, it is possible to disable empty blocks or
 set a block creation interval. In the former case, blocks will be
 created when there are new transactions or when the AppHash changes.
 
-To configure Tendermint to not produce empty blocks unless there are
-transactions or the app hash changes, run Tendermint with this
+To configure Tenderdash to not produce empty blocks unless there are
+transactions or the app hash changes, run Tenderdash with this
 additional flag:
 
 ```sh
-tendermint node --consensus.create_empty_blocks=false
+tenderdash node --consensus.create_empty_blocks=false
 ```
 
 or set the configuration via the `config.toml` file:
@@ -306,7 +313,7 @@ has been produced otherwise, regardless of the value of
 ## Broadcast API
 
 Earlier, we used the `broadcast_tx_commit` endpoint to send a
-transaction. When a transaction is sent to a Tendermint node, it will
+transaction. When a transaction is sent to a Tenderdash node, it will
 run via `CheckTx` against the application. If it passes `CheckTx`, it
 will be included in the mempool, broadcasted to other peers, and
 eventually included in a block.
@@ -341,12 +348,12 @@ Note the mempool does not provide strong guarantees - just because a tx passed
 CheckTx (ie. was accepted into the mempool), doesn't mean it will be committed,
 as nodes with the tx in their mempool may crash before they get to propose.
 For more information, see the [mempool
-write-ahead-log](../tendermint-core/running-in-production.md#mempool-wal)
+write-ahead-log](../tenderdash-core/running-in-production.md#mempool-wal)
 
-## Tendermint Networks
+## Tenderdash Networks
 
-When `tendermint init` is run, both a `genesis.json` and
-`priv_validator_key.json` are created in `~/.tendermint/config`. The
+When `tenderdash init` is run, both a `genesis.json` and
+`priv_validator_key.json` are created in `~/.tenderdash/config`. The
 `genesis.json` might look like:
 
 ```json
@@ -355,7 +362,7 @@ When `tendermint init` is run, both a `genesis.json` and
     {
       "pub_key" : {
         "value" : "h3hk+QE8c6QLTySp8TcfzclJw/BG79ziGB/pIA+DfPE=",
-        "type" : "tendermint/PubKeyEd25519"
+        "type" : "tenderdash/PubKeyEd25519"
       },
       "power" : 10,
       "name" : ""
@@ -376,12 +383,12 @@ And the `priv_validator_key.json`:
   "address" : "B788DEDE4F50AD8BC9462DE76741CCAFF87D51E2",
   "pub_key" : {
     "value" : "h3hk+QE8c6QLTySp8TcfzclJw/BG79ziGB/pIA+DfPE=",
-    "type" : "tendermint/PubKeyEd25519"
+    "type" : "tenderdash/PubKeyEd25519"
   },
   "last_height" : "0",
   "priv_key" : {
     "value" : "JPivl82x+LfVkp8i3ztoTjY6c6GJ4pBxQexErOCyhwqHeGT5ATxzpAtPJKnxNx/NyUnD8Ebv3OIYH+kgD4N88Q==",
-    "type" : "tendermint/PrivKeyEd25519"
+    "type" : "tenderdash/PrivKeyEd25519"
   }
 }
 ```
@@ -399,7 +406,7 @@ in the consensus, and their corresponding voting power. Greater than 2/3
 of the voting power must be active (i.e. the corresponding private keys
 must be producing signatures) for the consensus to make progress. In our
 case, the genesis file contains the public key of our
-`priv_validator_key.json`, so a Tendermint node started with the default
+`priv_validator_key.json`, so a Tenderdash node started with the default
 root directory will be able to make progress. Voting power uses an int64
 but must be positive, thus the range is: 0 through 9223372036854775807.
 Because of how the current proposer selection algorithm works, we do not
@@ -447,7 +454,7 @@ persistent connections with.
 For example,
 
 ```sh
-tendermint node --p2p.seeds "f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656,0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:26656"
+tenderdash node --p2p.seeds "f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656,0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:26656"
 ```
 
 Alternatively, you can use the `/dial_seeds` endpoint of the RPC to
@@ -460,14 +467,14 @@ curl 'localhost:26657/dial_seeds?seeds=\["f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9
 Note, with PeX enabled, you
 should not need seeds after the first start.
 
-If you want Tendermint to connect to specific set of addresses and
+If you want Tenderdash to connect to specific set of addresses and
 maintain a persistent connection with each, you can use the
 `--p2p.persistent_peers` flag or the corresponding setting in the
 `config.toml` or the `/dial_peers` RPC endpoint to do it without
-stopping Tendermint core instance.
+stopping Tenderdash core instance.
 
 ```sh
-tendermint node --p2p.persistent_peers "429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:26656,96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:26656"
+tenderdash node --p2p.persistent_peers "429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:26656,96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:26656"
 
 curl 'localhost:26657/dial_peers?persistent=true&peers=\["429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:26656","96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:26656"\]'
 ```
@@ -475,7 +482,7 @@ curl 'localhost:26657/dial_peers?persistent=true&peers=\["429fcf25974313b95673f5
 ### Adding a Non-Validator
 
 Adding a non-validator is simple. Just copy the original `genesis.json`
-to `~/.tendermint/config` on the new machine and start the node,
+to `~/.tenderdash/config` on the new machine and start the node,
 specifying seeds or persistent peers as necessary. If no seeds or
 persistent peers are specified, the node won't make any blocks, because
 it's not a validator, and it won't hear about any blocks, because it's
@@ -490,7 +497,7 @@ before starting the network. For instance, we could make a new
 We can generate a new `priv_validator_key.json` with the command:
 
 ```sh
-tendermint gen_validator
+tenderdash gen_validator
 ```
 
 Now we can update our genesis file. For instance, if the new
@@ -501,11 +508,11 @@ Now we can update our genesis file. For instance, if the new
   "address" : "5AF49D2A2D4F5AD4C7C8C4CC2FB020131E9C4902",
   "pub_key" : {
     "value" : "l9X9+fjkeBzDfPGbUM7AMIRE6uJN78zN5+lk5OYotek=",
-    "type" : "tendermint/PubKeyEd25519"
+    "type" : "tenderdash/PubKeyEd25519"
   },
   "priv_key" : {
     "value" : "EDJY9W6zlAw+su6ITgTKg2nTZcHAH1NMTW5iwlgmNDuX1f35+OR4HMN88ZtQzsAwhETq4k3vzM3n6WTk5ii16Q==",
-    "type" : "tendermint/PrivKeyEd25519"
+    "type" : "tenderdash/PrivKeyEd25519"
   },
   "last_step" : 0,
   "last_round" : "0",
@@ -520,37 +527,43 @@ then the new `genesis.json` will be:
   "validators" : [
     {
       "pub_key" : {
-        "value" : "h3hk+QE8c6QLTySp8TcfzclJw/BG79ziGB/pIA+DfPE=",
-        "type" : "tendermint/PubKeyEd25519"
+        "value" : "DBPbXPvwnlId5bBdsTYvjTGnpGe7HHAaOkEXn4yrHHgbzz/pfxNgCoASf9l1v5tg",
+        "type" : "tendermint/PubKeyBLS12381"
       },
-      "power" : 10,
-      "name" : ""
+      "power" : 100,
+      "name" : "",
+      "pro_tx_hash": "F4406D978AE15B97976411212E3ABD66515A285D901ACE06758DC1012030DA08"
     },
     {
       "pub_key" : {
-        "value" : "l9X9+fjkeBzDfPGbUM7AMIRE6uJN78zN5+lk5OYotek=",
-        "type" : "tendermint/PubKeyEd25519"
+        "value" : "Dn8Pcl4jm+yRHPDOzCAbYKLc+HB13QKYNjyk73wHLu25MXvif/BmoIz4Rz0mbxRw",
+        "type" : "tendermint/PubKeyBLS12381"
       },
-      "power" : 10,
-      "name" : ""
+      "power" : 100,
+      "name" : "",
+      "pro_tx_hash": "4F01160F58390DA57FE7FE1CCE4DDE452A448E90F4B560C0D788DCEEAD5B5E69"
     }
   ],
+  "threshold_public_key": {
+    "type": "tendermint/PubKeyBLS12381",
+    "value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"
+  },
   "app_hash" : "",
   "chain_id" : "test-chain-rDlYSN",
   "genesis_time" : "0001-01-01T00:00:00Z"
 }
 ```
 
-Update the `genesis.json` in `~/.tendermint/config`. Copy the genesis
-file and the new `priv_validator_key.json` to the `~/.tendermint/config` on
+Update the `genesis.json` in `~/.tenderdash/config`. Copy the genesis
+file and the new `priv_validator_key.json` to the `~/.tenderdash/config` on
 a new machine.
 
-Now run `tendermint node` on both machines, and use either
+Now run `tenderdash node` on both machines, and use either
 `--p2p.persistent_peers` or the `/dial_peers` to get them to peer up.
 They should start making blocks, and will only continue to do so as long
 as both of them are online.
 
-To make a Tendermint network that can tolerate one of the validators
+To make a Tenderdash network that can tolerate one of the validators
 failing, you need at least four validator nodes (e.g., 2/3).
 
 Updating validators in a live network is supported but must be
@@ -562,13 +575,13 @@ developers guide](../app-dev/app-development.md) for more details.
 To run a network locally, say on a single machine, you must change the `_laddr`
 fields in the `config.toml` (or using the flags) so that the listening
 addresses of the various sockets don't conflict. Additionally, you must set
-`addr_book_strict=false` in the `config.toml`, otherwise Tendermint's p2p
+`addr_book_strict=false` in the `config.toml`, otherwise Tenderdash's p2p
 library will deny making connections to peers with the same IP address.
 
 ### Upgrading
 
 See the
-[UPGRADING.md](https://github.com/tendermint/tendermint/blob/master/UPGRADING.md)
+[UPGRADING.md](https://github.com/dashevo/tenderdash/blob/master/UPGRADING.md)
 guide. You may need to reset your chain between major breaking releases.
-Although, we expect Tendermint to have fewer breaking releases in the future
+Although, we expect Tenderdash to have fewer breaking releases in the future
 (especially after 1.0 release).

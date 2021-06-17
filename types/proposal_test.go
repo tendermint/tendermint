@@ -1,9 +1,12 @@
 package types
 
 import (
+	"github.com/dashevo/dashd-go/btcjson"
 	"math"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
@@ -26,8 +29,9 @@ func init() {
 		panic(err)
 	}
 	testProposal = &Proposal{
-		Height: 12345,
-		Round:  23456,
+		Height:                12345,
+		CoreChainLockedHeight: 100,
+		Round:                 23456,
 		BlockID: BlockID{Hash: []byte("--June_15_2020_amino_was_removed"),
 			PartSetHeader: PartSetHeader{Total: 111, Hash: []byte("--June_15_2020_amino_was_removed")}},
 		POLRound:  -1,
@@ -38,7 +42,7 @@ func init() {
 
 func TestProposalSignable(t *testing.T) {
 	chainID := "test_chain_id"
-	signBytes := ProposalSignBytes(chainID, pbp)
+	signBytes := ProposalBlockSignBytes(chainID, pbp)
 	pb := CanonicalizeProposal(chainID, pbp)
 
 	expected, err := protoio.MarshalDelimited(&pb)
@@ -56,22 +60,23 @@ func TestProposalString(t *testing.T) {
 
 func TestProposalVerifySignature(t *testing.T) {
 	privVal := NewMockPV()
-	pubKey, err := privVal.GetPubKey()
+	pubKey, err := privVal.GetPubKey(crypto.QuorumHash{})
 	require.NoError(t, err)
 
 	prop := NewProposal(
-		4, 2, 2,
+		4, 1, 2, 2,
 		BlockID{tmrand.Bytes(tmhash.Size), PartSetHeader{777, tmrand.Bytes(tmhash.Size)}})
 	p := prop.ToProto()
-	signBytes := ProposalSignBytes("test_chain_id", p)
+	quorumHash := crypto.RandQuorumHash()
+	signId := ProposalBlockSignId("test_chain_id", p, btcjson.LLMQType_5_60, quorumHash)
 
 	// sign it
-	err = privVal.SignProposal("test_chain_id", p)
+	err = privVal.SignProposal("test_chain_id", btcjson.LLMQType_5_60, quorumHash, p)
 	require.NoError(t, err)
 	prop.Signature = p.Signature
 
 	// verify the same proposal
-	valid := pubKey.VerifySignature(signBytes, prop.Signature)
+	valid := pubKey.VerifySignatureDigest(signId, prop.Signature)
 	require.True(t, valid)
 
 	// serialize, deserialize and verify again....
@@ -88,22 +93,22 @@ func TestProposalVerifySignature(t *testing.T) {
 	require.NoError(t, err)
 
 	// verify the transmitted proposal
-	newSignBytes := ProposalSignBytes("test_chain_id", pb)
-	require.Equal(t, string(signBytes), string(newSignBytes))
-	valid = pubKey.VerifySignature(newSignBytes, np.Signature)
+	newSignId := ProposalBlockSignId("test_chain_id", pb, btcjson.LLMQType_5_60, quorumHash)
+	require.Equal(t, string(signId), string(newSignId))
+	valid = pubKey.VerifySignatureDigest(newSignId, np.Signature)
 	require.True(t, valid)
 }
 
 func BenchmarkProposalWriteSignBytes(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		ProposalSignBytes("test_chain_id", pbp)
+		ProposalBlockSignBytes("test_chain_id", pbp)
 	}
 }
 
 func BenchmarkProposalSign(b *testing.B) {
 	privVal := NewMockPV()
 	for i := 0; i < b.N; i++ {
-		err := privVal.SignProposal("test_chain_id", pbp)
+		err := privVal.SignProposal("test_chain_id", 0, crypto.QuorumHash{}, pbp)
 		if err != nil {
 			b.Error(err)
 		}
@@ -112,13 +117,13 @@ func BenchmarkProposalSign(b *testing.B) {
 
 func BenchmarkProposalVerifySignature(b *testing.B) {
 	privVal := NewMockPV()
-	err := privVal.SignProposal("test_chain_id", pbp)
+	err := privVal.SignProposal("test_chain_id", 0, crypto.QuorumHash{}, pbp)
 	require.NoError(b, err)
-	pubKey, err := privVal.GetPubKey()
+	pubKey, err := privVal.GetPubKey(crypto.QuorumHash{})
 	require.NoError(b, err)
 
 	for i := 0; i < b.N; i++ {
-		pubKey.VerifySignature(ProposalSignBytes("test_chain_id", pbp), testProposal.Signature)
+		pubKey.VerifySignature(ProposalBlockSignBytes("test_chain_id", pbp), testProposal.Signature)
 	}
 }
 
@@ -151,10 +156,10 @@ func TestProposalValidateBasic(t *testing.T) {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			prop := NewProposal(
-				4, 2, 2,
+				4, 1, 2, 2,
 				blockID)
 			p := prop.ToProto()
-			err := privVal.SignProposal("test_chain_id", p)
+			err := privVal.SignProposal("test_chain_id", 0, crypto.QuorumHash{}, p)
 			prop.Signature = p.Signature
 			require.NoError(t, err)
 			tc.malleateProposal(prop)
@@ -164,9 +169,9 @@ func TestProposalValidateBasic(t *testing.T) {
 }
 
 func TestProposalProtoBuf(t *testing.T) {
-	proposal := NewProposal(1, 2, 3, makeBlockID([]byte("hash"), 2, []byte("part_set_hash")))
+	proposal := NewProposal(1, 1, 2, 3, makeBlockID([]byte("hash"), 2, []byte("part_set_hash")))
 	proposal.Signature = []byte("sig")
-	proposal2 := NewProposal(1, 2, 3, BlockID{})
+	proposal2 := NewProposal(1, 1, 2, 3, BlockID{})
 
 	testCases := []struct {
 		msg     string

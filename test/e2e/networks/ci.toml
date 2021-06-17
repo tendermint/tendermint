@@ -1,28 +1,28 @@
 # This testnet is run by CI, and attempts to cover a broad range of
 # functionality with a single network.
 
+ipv6 = true
 initial_height = 1000
 initial_state = { initial01 = "a", initial02 = "b", initial03 = "c" }
+initial_core_chain_locked_height = 3400
+
+[chainlock_updates]
+1000 = 3450
+1004 = 3451
+1009 = 3452
+1020 = 3454
+1040 = 3500
 
 [validators]
 validator01 = 100
 
 [validator_update.0]
-validator01 = 10
-validator02 = 20
-validator03 = 30
-validator04 = 40
+validator02 = 100
+validator03 = 100
+validator04 = 100
 
 [validator_update.1010]
-validator05 = 50
-
-# validator03 gets killed and validator05 has lots of perturbations, so weight them low.
-[validator_update.1020]
-validator01 = 100
-validator02 = 100
-validator03 = 50
-validator04 = 100
-validator05 = 50
+validator05 = 100
 
 [node.seed01]
 mode = "seed"
@@ -49,7 +49,8 @@ perturb = ["restart"]
 [node.validator03]
 seeds = ["seed01"]
 database = "badgerdb"
-abci_protocol = "grpc"
+# FIXME: should be grpc, disabled due to https://github.com/tendermint/tendermint/issues/5439
+#abci_protocol = "grpc"
 privval_protocol = "unix"
 persist_interval = 3
 retain_blocks = 3
@@ -66,15 +67,15 @@ start_at = 1005 # Becomes part of the validator set at 1010
 seeds = ["seed02"]
 database = "cleveldb"
 fast_sync = "v0"
-abci_protocol = "grpc"
+# FIXME: should be grpc, disabled due to https://github.com/tendermint/tendermint/issues/5439
+#abci_protocol = "grpc"
 privval_protocol = "tcp"
 perturb = ["kill", "pause", "disconnect", "restart"]
 
 [node.full01]
 start_at = 1010
 mode = "full"
-# FIXME Should use v1, but it won't catch up since some nodes don't have all blocks
-# https://github.com/tendermint/tendermint/issues/5444
+# FIXME: should be v2, disabled due to flake
 fast_sync = "v0"
 persistent_peers = ["validator01", "validator02", "validator03", "validator04", "validator05"]
 retain_blocks = 1
@@ -83,10 +84,18 @@ perturb = ["restart"]
 [node.full02]
 start_at = 1015
 mode = "full"
-# FIXME Should use v2, but it has concurrency bugs causing panics or halts
-# https://github.com/tendermint/tendermint/issues/5513
-# https://github.com/tendermint/tendermint/issues/5541
+# FIXME: should be v2, disabled due to flake
 fast_sync = "v0"
 state_sync = true
 seeds = ["seed01"]
 perturb = ["restart"]
+
+[node.light01]
+mode= "light"
+start_at= 1005
+persistent_peers = ["validator01", "validator02", "validator03"]
+
+[node.light02]
+mode= "light"
+start_at= 1015
+persistent_peers = ["validator04", "full01", "validator05"]

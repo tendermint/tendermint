@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"io/ioutil"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto/bls12381"
 
 	"github.com/tendermint/tendermint/crypto"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -29,21 +32,27 @@ const (
 
 // GenesisValidator is an initial validator.
 type GenesisValidator struct {
-	Address Address       `json:"address"`
-	PubKey  crypto.PubKey `json:"pub_key"`
-	Power   int64         `json:"power"`
-	Name    string        `json:"name"`
+	Address   Address          `json:"address"`
+	PubKey    crypto.PubKey    `json:"pub_key"`
+	Power     int64            `json:"power"`
+	Name      string           `json:"name"`
+	ProTxHash crypto.ProTxHash `json:"pro_tx_hash"`
 }
 
 // GenesisDoc defines the initial conditions for a tendermint blockchain, in particular its validator set.
 type GenesisDoc struct {
-	GenesisTime     time.Time                `json:"genesis_time"`
-	ChainID         string                   `json:"chain_id"`
-	InitialHeight   int64                    `json:"initial_height"`
-	ConsensusParams *tmproto.ConsensusParams `json:"consensus_params,omitempty"`
-	Validators      []GenesisValidator       `json:"validators,omitempty"`
-	AppHash         tmbytes.HexBytes         `json:"app_hash"`
-	AppState        json.RawMessage          `json:"app_state,omitempty"`
+	GenesisTime                  time.Time                `json:"genesis_time"`
+	ChainID                      string                   `json:"chain_id"`
+	InitialHeight                int64                    `json:"initial_height"`
+	InitialCoreChainLockedHeight uint32                   `json:"initial_core_chain_locked_height"`
+	InitialProposalCoreChainLock *tmproto.CoreChainLock   `json:"initial_proposal_core_chain_lock"`
+	ConsensusParams              *tmproto.ConsensusParams `json:"consensus_params,omitempty"`
+	Validators                   []GenesisValidator       `json:"validators,omitempty"`
+	ThresholdPublicKey           crypto.PubKey            `json:"threshold_public_key"`
+	QuorumType                   btcjson.LLMQType         `json:"quorum_type"`
+	QuorumHash                   crypto.QuorumHash        `json:"quorum_hash"`
+	AppHash                      tmbytes.HexBytes         `json:"app_hash"`
+	AppState                     json.RawMessage          `json:"app_state,omitempty"`
 }
 
 // SaveAs is a utility method for saving GenensisDoc as a JSON file.
@@ -59,9 +68,9 @@ func (genDoc *GenesisDoc) SaveAs(file string) error {
 func (genDoc *GenesisDoc) ValidatorHash() []byte {
 	vals := make([]*Validator, len(genDoc.Validators))
 	for i, v := range genDoc.Validators {
-		vals[i] = NewValidator(v.PubKey, v.Power)
+		vals[i] = NewValidatorDefaultVotingPower(v.PubKey, v.ProTxHash)
 	}
-	vset := NewValidatorSet(vals)
+	vset := NewValidatorSet(vals, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash)
 	return vset.Hash()
 }
 
@@ -81,6 +90,17 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		genDoc.InitialHeight = 1
 	}
 
+	if genDoc.QuorumType == 0 {
+		genDoc.QuorumType = 100
+	}
+
+	if genDoc.InitialProposalCoreChainLock != nil &&
+		genDoc.InitialProposalCoreChainLock.CoreBlockHeight <= genDoc.InitialCoreChainLockedHeight {
+		return fmt.Errorf("if set the initial proposal core chain locked block height %d"+
+			" must be superior to the initial core chain locked height %d",
+			genDoc.InitialProposalCoreChainLock.CoreBlockHeight, genDoc.InitialCoreChainLockedHeight)
+	}
+
 	if genDoc.ConsensusParams == nil {
 		genDoc.ConsensusParams = DefaultConsensusParams()
 	} else if err := ValidateConsensusParams(*genDoc.ConsensusParams); err != nil {
@@ -97,6 +117,24 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		if len(v.Address) == 0 {
 			genDoc.Validators[i].Address = v.PubKey.Address()
 		}
+		if len(v.ProTxHash) != crypto.ProTxHashSize {
+			return fmt.Errorf("validators must all contain a pro_tx_hash of size 32")
+		}
+	}
+
+	if genDoc.Validators != nil && genDoc.ThresholdPublicKey == nil {
+		return fmt.Errorf("the threshold public key must be set if there are validators (%d Validator(s))",
+			len(genDoc.Validators))
+	}
+	if genDoc.Validators != nil && len(genDoc.ThresholdPublicKey.Bytes()) != bls12381.PubKeySize {
+		return fmt.Errorf("the threshold public key must be 48 bytes for BLS")
+	}
+	if genDoc.Validators != nil && len(genDoc.QuorumHash.Bytes()) < crypto.SmallAppHashSize {
+		return fmt.Errorf("the quorum hash must be at least 20 bytes long (%d Validator(s))", len(genDoc.Validators))
+	}
+
+	if genDoc.Validators != nil && genDoc.QuorumType == 0 {
+		return fmt.Errorf("the quorum type must not be 0 (%d Validator(s))", len(genDoc.Validators))
 	}
 
 	if genDoc.GenesisTime.IsZero() {
@@ -132,6 +170,7 @@ func GenesisDocFromFile(genDocFile string) (*GenesisDoc, error) {
 	}
 	genDoc, err := GenesisDocFromJSON(jsonBlob)
 	if err != nil {
+		fmt.Printf("gendoc %v\n", genDoc)
 		return nil, fmt.Errorf("error reading GenesisDoc at %s: %w", genDocFile, err)
 	}
 	return genDoc, nil

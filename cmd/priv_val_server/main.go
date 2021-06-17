@@ -2,8 +2,11 @@ package main
 
 import (
 	"flag"
+	"github.com/dashevo/dashd-go/btcjson"
 	"os"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
@@ -50,7 +53,7 @@ func main() {
 	}
 
 	sd := privval.NewSignerDialerEndpoint(logger, dialer)
-	ss := privval.NewSignerServer(sd, *chainID, pv)
+	ss := privval.NewSignerServer(sd, *chainID, btcjson.LLMQType_5_60, crypto.RandQuorumHash(), pv)
 
 	err := ss.Start()
 	if err != nil {

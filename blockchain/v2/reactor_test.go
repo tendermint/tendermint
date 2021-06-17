@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"sort"
 	"sync"
 	"testing"
-	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,19 +59,35 @@ func (mp mockPeer) TrySend(byte, []byte) bool { return true }
 func (mp mockPeer) Set(string, interface{}) {}
 func (mp mockPeer) Get(string) interface{}  { return struct{}{} }
 
-//nolint:unused
+// nolint:unused // ignore
 type mockBlockStore struct {
 	blocks map[int64]*types.Block
 }
 
+// nolint:unused // ignore
 func (ml *mockBlockStore) Height() int64 {
 	return int64(len(ml.blocks))
 }
 
+func (ml *mockBlockStore) CoreChainLockedHeight() uint32 {
+	latestHeight := int64(0)
+	for k := range ml.blocks {
+		if latestHeight > k {
+			latestHeight = k
+		}
+	}
+	if latestHeight > 0 {
+		return ml.blocks[latestHeight].CoreChainLockedHeight
+	}
+	return 0
+}
+
+// nolint:unused // ignore
 func (ml *mockBlockStore) LoadBlock(height int64) *types.Block {
 	return ml.blocks[height]
 }
 
+// nolint:unused // ignore
 func (ml *mockBlockStore) SaveBlock(block *types.Block, part *types.PartSet, commit *types.Commit) {
 	ml.blocks[block.Height] = block
 }
@@ -157,7 +173,8 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 		}
 		db := dbm.NewMemDB()
 		stateStore := sm.NewStore(db)
-		appl = sm.NewBlockExecutor(stateStore, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.EmptyEvidencePool{})
+		appl = sm.NewBlockExecutor(stateStore, p.logger, proxyApp.Consensus(), proxyApp.Query(),
+			mock.Mempool{}, sm.EmptyEvidencePool{}, nil)
 		if err = stateStore.Save(state); err != nil {
 			panic(err)
 		}
@@ -353,7 +370,7 @@ func TestReactorHelperMode(t *testing.T) {
 
 	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
 	defer os.RemoveAll(config.RootDir)
-	genDoc, privVals := randGenesisDoc(config.ChainID(), 1, false, 30)
+	genDoc, privVals := randGenesisDoc(config.ChainID(), 1)
 
 	params := testReactorParams{
 		logger:      log.TestingLogger(),
@@ -429,7 +446,7 @@ func TestReactorHelperMode(t *testing.T) {
 func TestReactorSetSwitchNil(t *testing.T) {
 	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
 	defer os.RemoveAll(config.RootDir)
-	genDoc, privVals := randGenesisDoc(config.ChainID(), 1, false, 30)
+	genDoc, privVals := randGenesisDoc(config.ChainID(), 1)
 
 	reactor := newTestReactor(testReactorParams{
 		logger:   log.TestingLogger(),
@@ -452,8 +469,10 @@ func makeTxs(height int64) (txs []types.Tx) {
 	return txs
 }
 
-func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Block {
-	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().Address)
+func makeBlock(height int64, coreChainLock *types.CoreChainLock, state sm.State,
+	lastCommit *types.Commit) *types.Block {
+	block, _ := state.MakeBlock(height, coreChainLock, makeTxs(height), lastCommit,
+		nil, state.Validators.GetProposer().ProTxHash)
 	return block
 }
 
@@ -461,24 +480,15 @@ type testApp struct {
 	abci.BaseApplication
 }
 
-func randGenesisDoc(chainID string, numValidators int, randPower bool, minPower int64) (
+func randGenesisDoc(chainID string, numValidators int) (
 	*types.GenesisDoc, []types.PrivValidator) {
-	validators := make([]types.GenesisValidator, numValidators)
-	privValidators := make([]types.PrivValidator, numValidators)
-	for i := 0; i < numValidators; i++ {
-		val, privVal := types.RandValidator(randPower, minPower)
-		validators[i] = types.GenesisValidator{
-			PubKey: val.PubKey,
-			Power:  val.VotingPower,
-		}
-		privValidators[i] = privVal
-	}
-	sort.Sort(types.PrivValidatorsByAddress(privValidators))
-
+	validators, privValidators, thresholdPublicKey := types.GenerateGenesisValidators(numValidators)
 	return &types.GenesisDoc{
-		GenesisTime: tmtime.Now(),
-		ChainID:     chainID,
-		Validators:  validators,
+		GenesisTime:        tmtime.Now(),
+		ChainID:            chainID,
+		Validators:         validators,
+		ThresholdPublicKey: thresholdPublicKey,
+		QuorumHash:         crypto.RandQuorumHash(),
 	}, privValidators
 }
 
@@ -509,34 +519,37 @@ func newReactorStore(
 
 	db := dbm.NewMemDB()
 	stateStore = sm.NewStore(db)
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
-		mock.Mempool{}, sm.EmptyEvidencePool{})
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), proxyApp.Query(),
+		mock.Mempool{}, sm.EmptyEvidencePool{}, nil)
 	if err = stateStore.Save(state); err != nil {
 		panic(err)
 	}
 
 	// add blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, nil)
+		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, types.StateID{}, nil, nil, nil, nil)
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
 			vote, err := types.MakeVote(
 				lastBlock.Header.Height,
 				lastBlockMeta.BlockID,
+				lastBlockMeta.StateID,
 				state.Validators,
 				privVals[0],
 				lastBlock.Header.ChainID,
-				time.Now(),
 			)
 			if err != nil {
 				panic(err)
 			}
+			// since there is only 1 vote, use it as threshold
+			commitSig := vote.CommitSig()
 			lastCommit = types.NewCommit(vote.Height, vote.Round,
-				lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
+				lastBlockMeta.BlockID, lastBlockMeta.StateID, []types.CommitSig{commitSig}, nil,
+				commitSig.BlockSignature, commitSig.StateSignature)
 		}
 
-		thisBlock := makeBlock(blockHeight, state, lastCommit)
+		thisBlock := makeBlock(blockHeight, nil, state, lastCommit)
 
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}

@@ -50,6 +50,7 @@ type Local struct {
 // don't run in parallel, or try to simulate an entire network in
 // one process...
 func New(node *nm.Node) *Local {
+	node.Logger.Info("New local node")
 	if err := node.ConfigureRPC(); err != nil {
 		node.Logger.Error("Error configuring RPC", "err", err)
 	}
@@ -169,8 +170,9 @@ func (c *Local) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommit
 	return core.Commit(c.ctx, height)
 }
 
-func (c *Local) Validators(ctx context.Context, height *int64, page, perPage *int) (*ctypes.ResultValidators, error) {
-	return core.Validators(c.ctx, height, page, perPage)
+func (c *Local) Validators(ctx context.Context, height *int64, page, perPage *int,
+	requestThresholdPublicKey *bool) (*ctypes.ResultValidators, error) {
+	return core.Validators(c.ctx, height, page, perPage, requestThresholdPublicKey)
 }
 
 func (c *Local) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.ResultTx, error) {
@@ -178,7 +180,7 @@ func (c *Local) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.Result
 }
 
 func (c *Local) TxSearch(
-	ctx context.Context,
+	_ context.Context,
 	query string,
 	prove bool,
 	page,
@@ -186,6 +188,15 @@ func (c *Local) TxSearch(
 	orderBy string,
 ) (*ctypes.ResultTxSearch, error) {
 	return core.TxSearch(c.ctx, query, prove, page, perPage, orderBy)
+}
+
+func (c *Local) BlockSearch(
+	_ context.Context,
+	query string,
+	page, perPage *int,
+	orderBy string,
+) (*ctypes.ResultBlockSearch, error) {
+	return core.BlockSearch(c.ctx, query, page, perPage, orderBy)
 }
 
 func (c *Local) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
@@ -238,7 +249,8 @@ func (c *Local) eventsRoutine(
 				select {
 				case outc <- result:
 				default:
-					c.Logger.Error("wanted to publish ResultEvent, but out channel is full", "result", result, "query", result.Query)
+					c.Logger.Error("wanted to publish ResultEvent, but out channel is full",
+						"result", result, "query", result.Query)
 				}
 			}
 		case <-sub.Cancelled():

@@ -3,12 +3,14 @@ package types
 import (
 	"testing"
 
+	"github.com/tendermint/tendermint/crypto"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestValidatorProtoBuf(t *testing.T) {
-	val, _ := RandValidator(true, 100)
+	val, _ := RandValidator()
 	testCases := []struct {
 		msg      string
 		v1       *Validator
@@ -40,14 +42,14 @@ func TestValidatorProtoBuf(t *testing.T) {
 
 func TestValidatorValidateBasic(t *testing.T) {
 	priv := NewMockPV()
-	pubKey, _ := priv.GetPubKey()
+	pubKey, _ := priv.GetPubKey(crypto.QuorumHash{})
 	testCases := []struct {
 		val *Validator
 		err bool
 		msg string
 	}{
 		{
-			val: NewValidator(pubKey, 1),
+			val: NewValidatorDefaultVotingPower(pubKey, priv.ProTxHash),
 			err: false,
 			msg: "",
 		},
@@ -64,25 +66,36 @@ func TestValidatorValidateBasic(t *testing.T) {
 			msg: "validator does not have a public key",
 		},
 		{
-			val: NewValidator(pubKey, -1),
+			val: NewValidator(pubKey, -1, priv.ProTxHash),
 			err: true,
 			msg: "validator has negative voting power",
 		},
 		{
 			val: &Validator{
-				PubKey:  pubKey,
-				Address: nil,
+				PubKey:    pubKey,
+				Address:   nil,
+				ProTxHash: priv.ProTxHash,
 			},
 			err: true,
 			msg: "validator address is the wrong size: ",
 		},
 		{
 			val: &Validator{
-				PubKey:  pubKey,
-				Address: []byte{'a'},
+				PubKey:    pubKey,
+				Address:   []byte{'a'},
+				ProTxHash: priv.ProTxHash,
 			},
 			err: true,
 			msg: "validator address is the wrong size: 61",
+		},
+		{
+			val: &Validator{
+				PubKey:    pubKey,
+				Address:   pubKey.Address(),
+				ProTxHash: nil,
+			},
+			err: true,
+			msg: "validator does not have a provider transaction hash",
 		},
 	}
 

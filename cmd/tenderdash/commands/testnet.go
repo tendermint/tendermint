@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/tendermint/tendermint/crypto"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -144,9 +146,9 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 		pvStateFile := filepath.Join(nodeDir, config.BaseConfig.PrivValidatorState)
 		pv := privval.LoadFilePV(pvKeyFile, pvStateFile)
 
-		pubKey, err := pv.GetPubKey()
+		pubKey, err := pv.GetPubKey(crypto.QuorumHash{})
 		if err != nil {
-			return fmt.Errorf("can't get pubkey: %w", err)
+			return fmt.Errorf("can't get pubkey in testnet files: %w", err)
 		}
 		genVals[i] = types.GenesisValidator{
 			Address: pubKey.Address(),

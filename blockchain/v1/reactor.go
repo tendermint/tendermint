@@ -253,8 +253,7 @@ func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	msg, err := bc.DecodeMsg(msgBytes)
 	if err != nil {
-		bcR.Logger.Error("error decoding message",
-			"src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
+		bcR.Logger.Error("error decoding message", "src", src, "chId", chID, "err", err)
 		_ = bcR.swReporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
 		return
 	}
@@ -469,11 +468,12 @@ func (bcR *BlockchainReactor) processBlock() error {
 	firstParts := first.MakePartSet(types.BlockPartSizeBytes)
 	firstPartSetHeader := firstParts.Header()
 	firstID := types.BlockID{Hash: first.Hash(), PartSetHeader: firstPartSetHeader}
+	firstStateID := types.StateID{LastAppHash: first.Header.AppHash}
 	// Finally, verify the first block using the second's commit
 	// NOTE: we can probably make this more efficient, but note that calling
 	// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 	// currently necessary.
-	err = bcR.state.Validators.VerifyCommitLight(chainID, firstID, first.Height, second.LastCommit)
+	err = bcR.state.Validators.VerifyCommitLight(chainID, firstID, firstStateID, first.Height, second.LastCommit)
 	if err != nil {
 		bcR.Logger.Error("error during commit verification", "err", err,
 			"first", first.Height, "second", second.Height)

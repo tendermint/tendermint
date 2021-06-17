@@ -173,7 +173,7 @@ func TestGenesisAndValidators(t *testing.T) {
 
 		// get the current validators
 		h := int64(1)
-		vals, err := c.Validators(context.Background(), &h, nil, nil)
+		vals, err := c.Validators(context.Background(), &h, nil, nil, nil)
 		require.Nil(t, err, "%d: %+v", i, err)
 		require.Equal(t, 1, len(vals.Validators))
 		require.Equal(t, 1, vals.Count)

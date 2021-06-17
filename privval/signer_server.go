@@ -1,7 +1,10 @@
 package privval
 
 import (
+	"github.com/dashevo/dashd-go/btcjson"
 	"io"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
@@ -13,23 +16,28 @@ import (
 type ValidationRequestHandlerFunc func(
 	privVal types.PrivValidator,
 	requestMessage privvalproto.Message,
-	chainID string) (privvalproto.Message, error)
+	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) (privvalproto.Message, error)
 
 type SignerServer struct {
 	service.BaseService
 
-	endpoint *SignerDialerEndpoint
-	chainID  string
-	privVal  types.PrivValidator
+	endpoint   *SignerDialerEndpoint
+	chainID    string
+	quorumType btcjson.LLMQType
+	quorumHash crypto.QuorumHash
+	privVal    types.PrivValidator
 
 	handlerMtx               tmsync.Mutex
 	validationRequestHandler ValidationRequestHandlerFunc
 }
 
-func NewSignerServer(endpoint *SignerDialerEndpoint, chainID string, privVal types.PrivValidator) *SignerServer {
+func NewSignerServer(endpoint *SignerDialerEndpoint, chainID string, quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash, privVal types.PrivValidator) *SignerServer {
 	ss := &SignerServer{
 		endpoint:                 endpoint,
 		chainID:                  chainID,
+		quorumType:               quorumType,
+		quorumHash:               quorumHash,
 		privVal:                  privVal,
 		validationRequestHandler: DefaultValidationRequestHandler,
 	}
@@ -76,7 +84,7 @@ func (ss *SignerServer) servicePendingRequest() {
 		// limit the scope of the lock
 		ss.handlerMtx.Lock()
 		defer ss.handlerMtx.Unlock()
-		res, err = ss.validationRequestHandler(ss.privVal, req, ss.chainID)
+		res, err = ss.validationRequestHandler(ss.privVal, req, ss.chainID, ss.quorumType, ss.quorumHash)
 		if err != nil {
 			// only log the error; we'll reply with an error in res
 			ss.Logger.Error("SignerServer: handleMessage", "err", err)

@@ -1,6 +1,7 @@
 package kvstore
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"sort"
@@ -128,67 +129,45 @@ func TestValUpdates(t *testing.T) {
 	// init with some validators
 	total := 10
 	nInit := 5
-	vals := RandVals(total)
+	fullVals := RandValidatorSetUpdate(total)
+	initVals := RandValidatorSetUpdate(nInit)
+
 	// initialize with the first nInit
 	kvstore.InitChain(types.RequestInitChain{
-		Validators: vals[:nInit],
+		ValidatorSet: initVals,
 	})
 
-	vals1, vals2 := vals[:nInit], kvstore.Validators()
-	valsEqual(t, vals1, vals2)
+	kvVals := kvstore.ValidatorSet()
+	valSetEqualTest(t, kvVals, initVals)
 
-	var v1, v2, v3 types.ValidatorUpdate
-
-	// add some validators
-	v1, v2 = vals[nInit], vals[nInit+1]
-	diff := []types.ValidatorUpdate{v1, v2}
-	tx1 := MakeValSetChangeTx(v1.PubKey, v1.Power)
-	tx2 := MakeValSetChangeTx(v2.PubKey, v2.Power)
-
-	makeApplyBlock(t, kvstore, 1, diff, tx1, tx2)
-
-	vals1, vals2 = vals[:nInit+2], kvstore.Validators()
-	valsEqual(t, vals1, vals2)
-
-	// remove some validators
-	v1, v2, v3 = vals[nInit-2], vals[nInit-1], vals[nInit]
-	v1.Power = 0
-	v2.Power = 0
-	v3.Power = 0
-	diff = []types.ValidatorUpdate{v1, v2, v3}
-	tx1 = MakeValSetChangeTx(v1.PubKey, v1.Power)
-	tx2 = MakeValSetChangeTx(v2.PubKey, v2.Power)
-	tx3 := MakeValSetChangeTx(v3.PubKey, v3.Power)
-
-	makeApplyBlock(t, kvstore, 2, diff, tx1, tx2, tx3)
-
-	vals1 = append(vals[:nInit-2], vals[nInit+1]) // nolint: gocritic
-	vals2 = kvstore.Validators()
-	valsEqual(t, vals1, vals2)
-
-	// update some validators
-	v1 = vals[0]
-	if v1.Power == 5 {
-		v1.Power = 6
-	} else {
-		v1.Power = 5
+	// change the validator set to the full validator set
+	txs := make([][]byte, 16)
+	removalUpdates := make([]types.ValidatorUpdate, 5)
+	for i, val := range initVals.ValidatorUpdates {
+		// remove old validators
+		txs[i] = MakeValSetChangeTx(val.ProTxHash, val.PubKey, 0)
+		removalUpdates[i] = initVals.ValidatorUpdates[i]
+		removalUpdates[i].Power = 0
 	}
-	diff = []types.ValidatorUpdate{v1}
-	tx1 = MakeValSetChangeTx(v1.PubKey, v1.Power)
+	for i, val := range fullVals.ValidatorUpdates {
+		txs[i+5] = MakeValSetChangeTx(val.ProTxHash, val.PubKey, val.Power)
+	}
+	txs[15] = MakeThresholdPublicKeyChangeTx(fullVals.ThresholdPublicKey)
+	valUpdates := fullVals
+	removalUpdates = append(removalUpdates, fullVals.ValidatorUpdates...)
+	valUpdates.ValidatorUpdates = removalUpdates
 
-	makeApplyBlock(t, kvstore, 3, diff, tx1)
+	makeApplyBlock(t, kvstore, 1, valUpdates, txs...)
 
-	vals1 = append([]types.ValidatorUpdate{v1}, vals1[1:]...)
-	vals2 = kvstore.Validators()
-	valsEqual(t, vals1, vals2)
-
+	kvVals = kvstore.ValidatorSet()
+	valSetEqualTest(t, kvVals, fullVals)
 }
 
 func makeApplyBlock(
 	t *testing.T,
 	kvstore types.Application,
 	heightInt int,
-	diff []types.ValidatorUpdate,
+	diff types.ValidatorSetUpdate,
 	txs ...[]byte) {
 	// make and apply block
 	height := int64(heightInt)
@@ -206,12 +185,12 @@ func makeApplyBlock(
 	resEndBlock := kvstore.EndBlock(types.RequestEndBlock{Height: header.Height})
 	kvstore.Commit()
 
-	valsEqual(t, diff, resEndBlock.ValidatorUpdates)
+	valSetEqualTest(t, diff, *resEndBlock.ValidatorSetUpdate)
 
 }
 
 // order doesn't matter
-func valsEqual(t *testing.T, vals1, vals2 []types.ValidatorUpdate) {
+func valsEqualTest(t *testing.T, vals1, vals2 []types.ValidatorUpdate) {
 	if len(vals1) != len(vals2) {
 		t.Fatalf("vals dont match in len. got %d, expected %d", len(vals2), len(vals1))
 	}
@@ -223,6 +202,18 @@ func valsEqual(t *testing.T, vals1, vals2 []types.ValidatorUpdate) {
 			v1.Power != v2.Power {
 			t.Fatalf("vals dont match at index %d. got %X/%d , expected %X/%d", i, v2.PubKey, v2.Power, v1.PubKey, v1.Power)
 		}
+	}
+}
+
+func valSetEqualTest(t *testing.T, vals1, vals2 types.ValidatorSetUpdate) {
+	valsEqualTest(t, vals1.ValidatorUpdates, vals2.ValidatorUpdates)
+	if !vals1.ThresholdPublicKey.Equal(vals2.ThresholdPublicKey) {
+		t.Fatalf("val set threshold public key did not match. got %X, expected %X",
+			vals1.ThresholdPublicKey, vals2.ThresholdPublicKey)
+	}
+	if !bytes.Equal(vals1.QuorumHash, vals2.QuorumHash) {
+		t.Fatalf("val set quorum hash did not match. got %X, expected %X",
+			vals1.QuorumHash, vals2.QuorumHash)
 	}
 }
 

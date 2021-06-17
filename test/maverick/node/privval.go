@@ -3,10 +3,11 @@ package node
 import (
 	"errors"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"io/ioutil"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -44,9 +45,12 @@ func voteToStep(vote *tmproto.Vote) int8 {
 
 // FilePVKey stores the immutable part of PrivValidator.
 type FilePVKey struct {
-	Address types.Address  `json:"address"`
-	PubKey  crypto.PubKey  `json:"pub_key"`
-	PrivKey crypto.PrivKey `json:"priv_key"`
+	Address            types.Address    `json:"address"`
+	PubKey             crypto.PubKey    `json:"pub_key"`
+	PrivKey            crypto.PrivKey   `json:"priv_key"`
+	NextPrivKeys       []crypto.PrivKey `json:"next_priv_key,omitempty"`
+	NextPrivKeyHeights []int64          `json:"next_priv_key_height,omitempty"`
+	ProTxHash          crypto.ProTxHash `json:"pro_tx_hash"`
 
 	filePath string
 }
@@ -73,11 +77,13 @@ func (pvKey FilePVKey) Save() {
 
 // FilePVLastSignState stores the mutable part of PrivValidator.
 type FilePVLastSignState struct {
-	Height    int64            `json:"height"`
-	Round     int32            `json:"round"`
-	Step      int8             `json:"step"`
-	Signature []byte           `json:"signature,omitempty"`
-	SignBytes tmbytes.HexBytes `json:"signbytes,omitempty"`
+	Height         int64            `json:"height"`
+	Round          int32            `json:"round"`
+	Step           int8             `json:"step"`
+	BlockSignature []byte           `json:"block_signature,omitempty"`
+	BlockSignBytes tmbytes.HexBytes `json:"block_sign_bytes,omitempty"`
+	StateSignature []byte           `json:"state_signature,omitempty"`
+	StateSignBytes tmbytes.HexBytes `json:"state_sign_bytes,omitempty"`
 
 	filePath string
 }
@@ -110,9 +116,15 @@ func (lss *FilePVLastSignState) CheckHRS(height int64, round int32, step int8) (
 					lss.Step,
 				)
 			} else if lss.Step == step {
-				if lss.SignBytes != nil {
-					if lss.Signature == nil {
+				if lss.BlockSignBytes != nil {
+					if lss.BlockSignature == nil {
 						panic("pv: Signature is nil but SignBytes is not!")
+					}
+					return true, nil
+				}
+				if lss.StateSignBytes != nil {
+					if lss.StateSignature == nil {
+						panic("pv: StateID Signature is nil but StateSignBytes is not!")
 					}
 					return true, nil
 				}
@@ -151,23 +163,34 @@ type FilePV struct {
 	LastSignState FilePVLastSignState
 }
 
-// GenFilePV generates a new validator with randomly generated private key
-// and sets the filePaths, but does not call Save().
-func GenFilePV(keyFilePath, stateFilePath string) *FilePV {
-	privKey := ed25519.GenPrivKey()
+// NewFilePV generates a new validator from the given key and paths.
+func NewFilePV(privKey crypto.PrivKey, proTxHash []byte, nextPrivKeys []crypto.PrivKey,
+	nextPrivHeights []int64, keyFilePath, stateFilePath string) *FilePV {
+	if len(proTxHash) != crypto.ProTxHashSize {
+		panic("maverick error setting incorrect proTxHash size in NewFilePV")
+	}
 
 	return &FilePV{
 		Key: FilePVKey{
-			Address:  privKey.PubKey().Address(),
-			PubKey:   privKey.PubKey(),
-			PrivKey:  privKey,
-			filePath: keyFilePath,
+			Address:            privKey.PubKey().Address(),
+			PubKey:             privKey.PubKey(),
+			PrivKey:            privKey,
+			NextPrivKeys:       nextPrivKeys,
+			NextPrivKeyHeights: nextPrivHeights,
+			ProTxHash:          proTxHash,
+			filePath:           keyFilePath,
 		},
 		LastSignState: FilePVLastSignState{
 			Step:     stepNone,
 			filePath: stateFilePath,
 		},
 	}
+}
+
+// GenFilePV generates a new validator with randomly generated private key
+// and sets the filePaths, but does not call Save().
+func GenFilePV(keyFilePath, stateFilePath string) *FilePV {
+	return NewFilePV(bls12381.GenPrivKey(), crypto.RandProTxHash(), nil, nil, keyFilePath, stateFilePath)
 }
 
 // LoadFilePV loads a FilePV from the filePaths.  The FilePV handles double
@@ -193,6 +216,10 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 	err = tmjson.Unmarshal(keyJSONBytes, &pvKey)
 	if err != nil {
 		tmos.Exit(fmt.Sprintf("Error reading PrivValidator key from %v: %v\n", keyFilePath, err))
+	}
+	// verify proTxHash is 32 bytes if it exists
+	if pvKey.ProTxHash != nil && len(pvKey.ProTxHash) != crypto.ProTxHashSize {
+		tmos.Exit(fmt.Sprintf("maverick loadFilePV proTxHash must be 32 bytes in key file path %s", keyFilePath))
 	}
 
 	// overwrite pubkey and address for convenience
@@ -242,14 +269,23 @@ func (pv *FilePV) GetAddress() types.Address {
 
 // GetPubKey returns the public key of the validator.
 // Implements PrivValidator.
-func (pv *FilePV) GetPubKey() (crypto.PubKey, error) {
+func (pv *FilePV) GetPubKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
 	return pv.Key.PubKey, nil
+}
+
+// GetPubKey returns the public key of the validator.
+// Implements PrivValidator.
+func (pv *FilePV) GetProTxHash() (crypto.ProTxHash, error) {
+	if len(pv.Key.ProTxHash) != crypto.ProTxHashSize {
+		return nil, fmt.Errorf("privval proTxHash is invalid size")
+	}
+	return pv.Key.ProTxHash, nil
 }
 
 // SignVote signs a canonical representation of the vote, along with the
 // chainID. Implements PrivValidator.
-func (pv *FilePV) SignVote(chainID string, vote *tmproto.Vote) error {
-	if err := pv.signVote(chainID, vote); err != nil {
+func (pv *FilePV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
+	if err := pv.signVote(chainID, quorumType, quorumHash, vote); err != nil {
 		return fmt.Errorf("error signing vote: %v", err)
 	}
 	return nil
@@ -257,8 +293,8 @@ func (pv *FilePV) SignVote(chainID string, vote *tmproto.Vote) error {
 
 // SignProposal signs a canonical representation of the proposal, along with
 // the chainID. Implements PrivValidator.
-func (pv *FilePV) SignProposal(chainID string, proposal *tmproto.Proposal) error {
-	if err := pv.signProposal(chainID, proposal); err != nil {
+func (pv *FilePV) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error {
+	if err := pv.signProposal(chainID, quorumType, quorumHash, proposal); err != nil {
 		return fmt.Errorf("error signing proposal: %v", err)
 	}
 	return nil
@@ -273,12 +309,15 @@ func (pv *FilePV) Save() {
 // Reset resets all fields in the FilePV.
 // NOTE: Unsafe!
 func (pv *FilePV) Reset() {
-	var sig []byte
+	var blockSig []byte
+	var stateSig []byte
 	pv.LastSignState.Height = 0
 	pv.LastSignState.Round = 0
 	pv.LastSignState.Step = 0
-	pv.LastSignState.Signature = sig
-	pv.LastSignState.SignBytes = nil
+	pv.LastSignState.BlockSignature = blockSig
+	pv.LastSignState.BlockSignBytes = nil
+	pv.LastSignState.StateSignature = stateSig
+	pv.LastSignState.StateSignBytes = nil
 	pv.Save()
 }
 
@@ -293,37 +332,108 @@ func (pv *FilePV) String() string {
 	)
 }
 
+func (pv *FilePV) UpdatePrivateKey(privateKey crypto.PrivKey, height int64) error {
+	pv.Key.NextPrivKeys = append(pv.Key.NextPrivKeys, privateKey)
+	pv.Key.NextPrivKeyHeights = append(pv.Key.NextPrivKeyHeights, height)
+	return nil
+}
+
+func (pv *FilePV) updateKeyIfNeeded(height int64) {
+	if pv.Key.NextPrivKeys != nil && len(pv.Key.NextPrivKeys) > 0 && pv.Key.NextPrivKeyHeights != nil &&
+		len(pv.Key.NextPrivKeyHeights) > 0 && height >= pv.Key.NextPrivKeyHeights[0] {
+		// fmt.Printf("privval node %X at height %d updating key %X with new key %X\n",
+		//  pv.Key.ProTxHash, height, pv.Key.PrivKey.PubKey().Bytes(), pv.Key.NextPrivKeys[0].PubKey().Bytes())
+		pv.Key.PrivKey = pv.Key.NextPrivKeys[0]
+		if len(pv.Key.NextPrivKeys) > 1 {
+			pv.Key.NextPrivKeys = pv.Key.NextPrivKeys[1:]
+			pv.Key.NextPrivKeyHeights = pv.Key.NextPrivKeyHeights[1:]
+		} else {
+			pv.Key.NextPrivKeys = nil
+			pv.Key.NextPrivKeyHeights = nil
+		}
+	}
+	// else {
+	// fmt.Printf("privval node %X at height %d did not update key %X with next keys %v\n",
+	//  pv.Key.ProTxHash, height, pv.Key.PrivKey.PubKey().Bytes(), pv.Key.NextPrivKeyHeights)
+	// }
+}
+
+func (pv *FilePV) ExtractIntoValidator(height int64, quorumHash crypto.QuorumHash) *types.Validator {
+	var pubKey crypto.PubKey
+	if pv.Key.NextPrivKeys != nil && len(pv.Key.NextPrivKeys) > 0 && height >= pv.Key.NextPrivKeyHeights[0] {
+		for i, nextPrivKeyHeight := range pv.Key.NextPrivKeyHeights {
+			if height >= nextPrivKeyHeight {
+				pubKey = pv.Key.NextPrivKeys[i].PubKey()
+			}
+		}
+	} else {
+		pubKey, _ = pv.GetPubKey(quorumHash)
+	}
+	if len(pv.Key.ProTxHash) != crypto.DefaultHashSize {
+		panic("proTxHash wrong length")
+	}
+	return &types.Validator{
+		Address:     pubKey.Address(),
+		PubKey:      pubKey,
+		VotingPower: types.DefaultDashVotingPower,
+		ProTxHash:   pv.Key.ProTxHash,
+	}
+}
+
 //------------------------------------------------------------------------------------
 
 // signVote checks if the vote is good to sign and sets the vote signature.
 // It may need to set the timestamp as well if the vote is otherwise the same as
 // a previously signed vote (ie. we crashed after signing but before the vote hit the WAL).
-func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
+func (pv *FilePV) signVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
+	pv.updateKeyIfNeeded(vote.Height)
 	height, round, step := vote.Height, vote.Round, voteToStep(vote)
 
 	lss := pv.LastSignState
+
+	// The vote should not have a state ID set if the block ID is set to nil
+
+	if vote.BlockID.Hash == nil && vote.StateID.LastAppHash != nil {
+		return fmt.Errorf("error : vote should not have a state ID set if the block ID for the round (%d/%d) is not set",
+			vote.Height, vote.Round)
+	}
 
 	_, err := lss.CheckHRS(height, round, step)
 	if err != nil {
 		return err
 	}
 
-	signBytes := types.VoteSignBytes(chainID, vote)
+	blockSignId := types.VoteBlockSignId(chainID, vote, quorumType, quorumHash)
 
-	// It passed the checks. Sign the vote
-	sig, err := pv.Key.PrivKey.Sign(signBytes)
+	stateSignId := types.VoteBlockSignId(chainID, vote, quorumType, quorumHash)
+
+	blockSignBytes := types.VoteBlockSignBytes(chainID, vote)
+
+	stateSignBytes := types.VoteStateSignBytes(chainID, vote)
+
+	// It passed the checks. SignDigest the vote
+	blockSig, err := pv.Key.PrivKey.SignDigest(blockSignId)
 	if err != nil {
 		return err
 	}
-	pv.saveSigned(height, round, step, signBytes, sig)
-	vote.Signature = sig
+
+	// It passed the checks. SignDigest the vote
+	stateSig, err := pv.Key.PrivKey.SignDigest(stateSignId)
+	if err != nil {
+		return err
+	}
+
+	pv.saveSigned(height, round, step, blockSignBytes, blockSig, stateSignBytes, stateSig)
+	vote.BlockSignature = blockSig
+	vote.StateSignature = stateSig
 	return nil
 }
 
 // signProposal checks if the proposal is good to sign and sets the proposal signature.
 // It may need to set the timestamp as well if the proposal is otherwise the same as
 // a previously signed proposal ie. we crashed after signing but before the proposal hit the WAL).
-func (pv *FilePV) signProposal(chainID string, proposal *tmproto.Proposal) error {
+func (pv *FilePV) signProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error {
+	pv.updateKeyIfNeeded(proposal.Height)
 	height, round, step := proposal.Height, proposal.Round, stepPropose
 
 	lss := pv.LastSignState
@@ -333,26 +443,31 @@ func (pv *FilePV) signProposal(chainID string, proposal *tmproto.Proposal) error
 		return err
 	}
 
-	signBytes := types.ProposalSignBytes(chainID, proposal)
+	blockSignId := types.ProposalBlockSignId(chainID, proposal, quorumType, quorumHash)
 
-	// It passed the checks. Sign the proposal
-	sig, err := pv.Key.PrivKey.Sign(signBytes)
+	blockSignBytes := types.ProposalBlockSignBytes(chainID, proposal)
+
+	// It passed the checks. SignDigest the proposal
+	blockSig, err := pv.Key.PrivKey.SignDigest(blockSignId)
 	if err != nil {
 		return err
 	}
-	pv.saveSigned(height, round, step, signBytes, sig)
-	proposal.Signature = sig
+	pv.saveSigned(height, round, step, blockSignBytes, blockSig, nil, nil)
+	proposal.Signature = blockSig
 	return nil
 }
 
 // Persist height/round/step and signature
 func (pv *FilePV) saveSigned(height int64, round int32, step int8,
-	signBytes []byte, sig []byte) {
+	blockSignBytes []byte, blockSig []byte,
+	stateSignBytes []byte, stateSig []byte) {
 
 	pv.LastSignState.Height = height
 	pv.LastSignState.Round = round
 	pv.LastSignState.Step = step
-	pv.LastSignState.Signature = sig
-	pv.LastSignState.SignBytes = signBytes
+	pv.LastSignState.BlockSignature = blockSig
+	pv.LastSignState.BlockSignBytes = blockSignBytes
+	pv.LastSignState.StateSignature = stateSig
+	pv.LastSignState.StateSignBytes = stateSignBytes
 	pv.LastSignState.Save()
 }

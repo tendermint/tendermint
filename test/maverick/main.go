@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/tendermint/tendermint/crypto"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -60,20 +62,25 @@ var RootCmd = &cobra.Command{
 		"through a flag. See maverick node --help for how the misbehavior flag is constructured",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
 		fmt.Printf("use: %v, args: %v", cmd.Use, cmd.Args)
+
 		config, err = ParseConfig()
 		if err != nil {
 			return err
 		}
+
 		if config.LogFormat == cfg.LogFormatJSON {
 			logger = log.NewTMJSONLogger(log.NewSyncWriter(os.Stdout))
 		}
-		logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel())
+
+		logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel)
 		if err != nil {
 			return err
 		}
+
 		if viper.GetBool(cli.TraceFlag) {
 			logger = log.NewTracingLogger(logger)
 		}
+
 		logger = logger.With("module", "main")
 		return nil
 	},
@@ -199,17 +206,23 @@ func initFilesWithConfig(config *cfg.Config) error {
 	} else {
 		genDoc := types.GenesisDoc{
 			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
+			QuorumHash:      crypto.RandQuorumHash(),
 			GenesisTime:     tmtime.Now(),
 			ConsensusParams: types.DefaultConsensusParams(),
 		}
-		pubKey, err := pv.GetPubKey()
+		pubKey, err := pv.GetPubKey(genDoc.QuorumHash)
 		if err != nil {
-			return fmt.Errorf("can't get pubkey: %w", err)
+			return fmt.Errorf("can't get pubkey maverick init files with config: %w", err)
+		}
+		proTxHash, err := pv.GetProTxHash()
+		if err != nil {
+			return fmt.Errorf("can't get proTxHash maverick init files with config: %w", err)
 		}
 		genDoc.Validators = []types.GenesisValidator{{
-			Address: pubKey.Address(),
-			PubKey:  pubKey,
-			Power:   10,
+			Address:   pubKey.Address(),
+			PubKey:    pubKey,
+			ProTxHash: proTxHash,
+			Power:     types.DefaultDashVotingPower,
 		}}
 
 		if err := genDoc.SaveAs(genFile); err != nil {

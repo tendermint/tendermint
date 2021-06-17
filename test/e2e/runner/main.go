@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/spf13/cobra"
 
@@ -39,6 +40,7 @@ func NewCLI() *CLI {
 			if err != nil {
 				return err
 			}
+			logger.Info(fmt.Sprintf("Loading testnet %q", file))
 			testnet, err := e2e.LoadTestnet(file)
 			if err != nil {
 				return err
@@ -59,7 +61,7 @@ func NewCLI() *CLI {
 			ctx, loadCancel := context.WithCancel(context.Background())
 			defer loadCancel()
 			go func() {
-				err := Load(ctx, cli.testnet)
+				err := Load(ctx, cli.testnet, 1)
 				if err != nil {
 					logger.Error(fmt.Sprintf("Transaction load failed: %v", err.Error()))
 				}
@@ -165,10 +167,20 @@ func NewCLI() *CLI {
 	})
 
 	cli.root.AddCommand(&cobra.Command{
-		Use:   "load",
-		Short: "Generates transaction load until the command is cancelled",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return Load(context.Background(), cli.testnet)
+		Use:   "load [multiplier]",
+		Args:  cobra.MaximumNArgs(1),
+		Short: "Generates transaction load until the command is canceled",
+		RunE: func(cmd *cobra.Command, args []string) (err error) {
+			m := 1
+
+			if len(args) == 1 {
+				m, err = strconv.Atoi(args[0])
+				if err != nil {
+					return err
+				}
+			}
+
+			return Load(context.Background(), cli.testnet, m)
 		},
 	})
 
@@ -201,6 +213,63 @@ func NewCLI() *CLI {
 		Short: "Tails the testnet logs",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return execComposeVerbose(cli.testnet.Dir, "logs", "--follow")
+		},
+	})
+
+	cli.root.AddCommand(&cobra.Command{
+		Use:   "benchmark",
+		Short: "Benchmarks testnet",
+		Long: `Benchmarks the following metrics:
+	Mean Block Interval
+	Standard Deviation
+	Min Block Interval
+	Max Block Interval
+over a 100 block sampling period.
+
+Does not run any perbutations.
+		`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := Cleanup(cli.testnet); err != nil {
+				return err
+			}
+			if err := Setup(cli.testnet); err != nil {
+				return err
+			}
+
+			chLoadResult := make(chan error)
+			ctx, loadCancel := context.WithCancel(context.Background())
+			defer loadCancel()
+			go func() {
+				err := Load(ctx, cli.testnet, 1)
+				if err != nil {
+					logger.Error(fmt.Sprintf("Transaction load failed: %v", err.Error()))
+				}
+				chLoadResult <- err
+			}()
+
+			if err := Start(cli.testnet); err != nil {
+				return err
+			}
+
+			if err := Wait(cli.testnet, 5); err != nil { // allow some txs to go through
+				return err
+			}
+
+			// we benchmark performance over the next 100 blocks
+			if err := Benchmark(cli.testnet, 100); err != nil {
+				return err
+			}
+
+			loadCancel()
+			if err := <-chLoadResult; err != nil {
+				return err
+			}
+
+			if err := Cleanup(cli.testnet); err != nil {
+				return err
+			}
+
+			return nil
 		},
 	})
 

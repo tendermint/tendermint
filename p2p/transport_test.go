@@ -594,7 +594,7 @@ func TestTransportHandshake(t *testing.T) {
 			)
 
 			protoReader := protoio.NewDelimitedReader(c, MaxNodeInfoSize())
-			err := protoReader.ReadMsg(&pbni)
+			_, err := protoReader.ReadMsg(&pbni)
 			if err != nil {
 				t.Error(err)
 			}
@@ -618,6 +618,21 @@ func TestTransportHandshake(t *testing.T) {
 
 	if have, want := ni, peerNodeInfo; !reflect.DeepEqual(have, want) {
 		t.Errorf("have %v, want %v", have, want)
+	}
+}
+
+func TestTransportAddChannel(t *testing.T) {
+	mt := newMultiplexTransport(
+		emptyNodeInfo(),
+		NodeKey{
+			PrivKey: ed25519.GenPrivKey(),
+		},
+	)
+	testChannel := byte(0x01)
+
+	mt.AddChannel(testChannel)
+	if !mt.nodeInfo.(DefaultNodeInfo).HasChannel(testChannel) {
+		t.Errorf("missing added channel %v. Got %v", testChannel, mt.nodeInfo.(DefaultNodeInfo).Channels)
 	}
 }
 

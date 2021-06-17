@@ -162,10 +162,11 @@ func (state *pcState) handle(event Event) (Event, error) {
 			first, second = firstItem.block, secondItem.block
 			firstParts    = first.MakePartSet(types.BlockPartSizeBytes)
 			firstID       = types.BlockID{Hash: first.Hash(), PartSetHeader: firstParts.Header()}
+			firstStateID  = types.StateID{LastAppHash: first.Header.AppHash}
 		)
 
 		// verify if +second+ last commit "confirms" +first+ block
-		err = state.context.verifyCommit(tmState.ChainID, firstID, first.Height, second.LastCommit)
+		err = state.context.verifyCommit(tmState.ChainID, firstID, firstStateID, first.Height, second.LastCommit)
 		if err != nil {
 			state.purgePeer(firstItem.peerID)
 			if firstItem.peerID != secondItem.peerID {

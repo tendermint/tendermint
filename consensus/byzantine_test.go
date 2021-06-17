@@ -53,7 +53,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		app.InitChain(abci.RequestInitChain{Validators: vals})
+		app.InitChain(abci.RequestInitChain{ValidatorSet: vals})
 
 		blockDB := dbm.NewMemDB()
 		blockStore := store.NewBlockStore(blockDB)
@@ -62,6 +62,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		mtx := new(tmsync.Mutex)
 		proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
 		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+		proxyAppConnQry := abcicli.NewLocalClient(mtx, app)
 
 		// Make Mempool
 		mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
@@ -77,7 +78,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		evpool.SetLogger(logger.With("module", "evidence"))
 
 		// Make State
-		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
+		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, proxyAppConnQry,
+			mempool, evpool, nil)
 		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 		cs.SetLogger(cs.Logger)
 		// set private validator
@@ -108,7 +110,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		eventBuses[i] = css[i].eventBus
 		reactors[i].SetEventBus(eventBuses[i])
 
-		blocksSub, err := eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
+		blocksSub, err := eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, 100)
 		require.NoError(t, err)
 		blocksSubs = append(blocksSubs, blocksSub)
 
@@ -128,7 +130,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	bcs := css[byzantineNode]
 
 	// alter prevote so that the byzantine node double votes when height is 2
-	bcs.doPrevote = func(height int64, round int32) {
+	bcs.doPrevote = func(height int64, round int32, allowOldBlocks bool) {
 		// allow first height to happen normally so that byzantine validator is no longer proposer
 		if height == prevoteHeight {
 			bcs.Logger.Info("Sending two votes")
@@ -150,7 +152,74 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			}
 		} else {
 			bcs.Logger.Info("Behaving normally")
-			bcs.defaultDoPrevote(height, round)
+			bcs.defaultDoPrevote(height, round, false)
+		}
+	}
+
+	// introducing a lazy proposer means that the time of the block committed is different to the
+	// timestamp that the other nodes have. This tests to ensure that the evidence that finally gets
+	// proposed will have a valid timestamp
+	lazyProposer := css[1]
+
+	lazyProposer.decideProposal = func(height int64, round int32) {
+		lazyProposer.Logger.Info("Lazy Proposer proposing condensed commit")
+		if lazyProposer.privValidator == nil {
+			panic("entered createProposalBlock with privValidator being nil")
+		}
+
+		var commit *types.Commit
+		switch {
+		case lazyProposer.Height == lazyProposer.state.InitialHeight:
+			// We're creating a proposal for the first block.
+			// The commit is empty, but not nil.
+			commit = types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil, nil)
+		case lazyProposer.LastCommit.HasTwoThirdsMajority():
+			// Make the commit from LastCommit
+			commit = lazyProposer.LastCommit.MakeCommit()
+		default: // This shouldn't happen.
+			lazyProposer.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block")
+			return
+		}
+
+		// omit the last signature in the commit
+		commit.Signatures[len(commit.Signatures)-1] = types.NewCommitSigAbsent()
+
+		if lazyProposer.privValidatorProTxHash == nil {
+			// If this node is a validator & proposer in the current round, it will
+			// miss the opportunity to create a block.
+			lazyProposer.Logger.Error(fmt.Sprintf("enterPropose: %v", errProTxHashIsNotSet))
+			return
+		}
+		proposerProTxHash := lazyProposer.privValidatorProTxHash
+
+		block, blockParts := lazyProposer.blockExec.CreateProposalBlock(
+			lazyProposer.Height, lazyProposer.state, commit, proposerProTxHash,
+		)
+
+		// Flush the WAL. Otherwise, we may not recompute the same proposal to sign,
+		// and the privValidator will refuse to sign anything.
+		if err := lazyProposer.wal.FlushAndSync(); err != nil {
+			lazyProposer.Logger.Error("Error flushing to disk")
+		}
+
+		// Make proposal
+		propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
+		proposal := types.NewProposal(height, lazyProposer.state.LastCoreChainLockedBlockHeight, round, lazyProposer.ValidRound, propBlockID)
+		p := proposal.ToProto()
+		if err := lazyProposer.privValidator.SignProposal(lazyProposer.state.ChainID, lazyProposer.state.Validators.QuorumType,
+			lazyProposer.state.Validators.QuorumHash, p); err == nil {
+			proposal.Signature = p.Signature
+
+			// send proposal and block parts on internal msg queue
+			lazyProposer.sendInternalMessage(msgInfo{&ProposalMessage{proposal}, ""})
+			for i := 0; i < int(blockParts.Total()); i++ {
+				part := blockParts.GetPart(i)
+				lazyProposer.sendInternalMessage(msgInfo{&BlockPartMessage{lazyProposer.Height, lazyProposer.Round, part}, ""})
+			}
+			lazyProposer.Logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
+			lazyProposer.Logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))
+		} else if !lazyProposer.replayMode {
+			lazyProposer.Logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
 		}
 	}
 
@@ -166,18 +235,18 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	evidenceFromEachValidator := make([]types.Evidence, nValidators)
 
 	wg := new(sync.WaitGroup)
-	wg.Add(4)
-	for height := 1; height < 6; height++ {
-		for i := 0; i < nValidators; i++ {
-			go func(j int) {
-				msg := <-blocksSubs[j].Out()
+	for i := 0; i < nValidators; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			for msg := range blocksSubs[i].Out() {
 				block := msg.Data().(types.EventDataNewBlock).Block
 				if len(block.Evidence.Evidence) != 0 {
-					evidenceFromEachValidator[j] = block.Evidence.Evidence[0]
-					wg.Done()
+					evidenceFromEachValidator[i] = block.Evidence.Evidence[0]
+					return
 				}
-			}(i)
-		}
+			}
+		}(i)
 	}
 
 	done := make(chan struct{})
@@ -186,23 +255,23 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		close(done)
 	}()
 
-	pubkey, _ := bcs.privValidator.GetPubKey()
-
+	proTxHash, err := bcs.privValidator.GetProTxHash()
+	require.NoError(t, err)
 	select {
 	case <-done:
 		for idx, ev := range evidenceFromEachValidator {
 			if assert.NotNil(t, ev, idx) {
 				ev, ok := ev.(*types.DuplicateVoteEvidence)
 				assert.True(t, ok)
-				assert.Equal(t, pubkey.Address(), ev.VoteA.ValidatorAddress)
+				assert.Equal(t, proTxHash, ev.VoteA.ValidatorProTxHash)
 				assert.Equal(t, prevoteHeight, ev.Height())
 			}
 		}
-	case <-time.After(10 * time.Second):
+	case <-time.After(20 * time.Second):
 		for i, reactor := range reactors {
 			t.Logf("Consensus Reactor %d\n%v", i, reactor)
 		}
-		t.Fatalf("Timed out waiting for all validators to commit first block")
+		t.Fatalf("Timed out waiting for validators to commit evidence")
 	}
 }
 
@@ -246,7 +315,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 		if i == 0 {
 			// NOTE: Now, test validators are MockPV, which by default doesn't
 			// do any safety checks.
-			css[i].privValidator.(types.MockPV).DisableChecks()
+			css[i].privValidator.(*types.MockPV).DisableChecks()
 			css[i].decideProposal = func(j int32) func(int64, int32) {
 				return func(height int64, round int32) {
 					byzantineDecideProposalFunc(t, height, round, css[j], switches[j])
@@ -254,7 +323,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 			}(int32(i))
 			// We are setting the prevote function to do nothing because the prevoting
 			// and precommitting are done alongside the proposal.
-			css[i].doPrevote = func(height int64, round int32) {}
+			css[i].doPrevote = func(height int64, round int32, allowOldBlocks bool) {}
 		}
 
 		eventBus := css[i].eventBus
@@ -339,8 +408,8 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	// wait till everyone makes the first new block
 	// (one of them already has)
 	wg := new(sync.WaitGroup)
-	wg.Add(2)
 	for i := 1; i < N-1; i++ {
+		wg.Add(1)
 		go func(j int) {
 			<-blocksSubs[j].Out()
 			wg.Done()
@@ -375,9 +444,9 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *St
 	// Create a new proposal block from state/txs from the mempool.
 	block1, blockParts1 := cs.createProposalBlock()
 	polRound, propBlockID := cs.ValidRound, types.BlockID{Hash: block1.Hash(), PartSetHeader: blockParts1.Header()}
-	proposal1 := types.NewProposal(height, round, polRound, propBlockID)
+	proposal1 := types.NewProposal(height, 1, round, polRound, propBlockID)
 	p1 := proposal1.ToProto()
-	if err := cs.privValidator.SignProposal(cs.state.ChainID, p1); err != nil {
+	if err := cs.privValidator.SignProposal(cs.state.ChainID, cs.Validators.QuorumType, cs.Validators.QuorumHash, p1); err != nil {
 		t.Error(err)
 	}
 
@@ -389,9 +458,9 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *St
 	// Create a new proposal block from state/txs from the mempool.
 	block2, blockParts2 := cs.createProposalBlock()
 	polRound, propBlockID = cs.ValidRound, types.BlockID{Hash: block2.Hash(), PartSetHeader: blockParts2.Header()}
-	proposal2 := types.NewProposal(height, round, polRound, propBlockID)
+	proposal2 := types.NewProposal(height, 1, round, polRound, propBlockID)
 	p2 := proposal2.ToProto()
-	if err := cs.privValidator.SignProposal(cs.state.ChainID, p2); err != nil {
+	if err := cs.privValidator.SignProposal(cs.state.ChainID, cs.Validators.QuorumType,  cs.Validators.QuorumHash, p2); err != nil {
 		t.Error(err)
 	}
 

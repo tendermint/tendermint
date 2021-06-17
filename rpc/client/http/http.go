@@ -468,24 +468,55 @@ func (c *baseRPCClient) TxSearch(
 	page,
 	perPage *int,
 	orderBy string,
-) (
-	*ctypes.ResultTxSearch, error) {
+) (*ctypes.ResultTxSearch, error) {
+
 	result := new(ctypes.ResultTxSearch)
 	params := map[string]interface{}{
 		"query":    query,
 		"prove":    prove,
 		"order_by": orderBy,
 	}
+
 	if page != nil {
 		params["page"] = page
 	}
 	if perPage != nil {
 		params["per_page"] = perPage
 	}
+
 	_, err := c.caller.Call(ctx, "tx_search", params, result)
 	if err != nil {
 		return nil, err
 	}
+
+	return result, nil
+}
+
+func (c *baseRPCClient) BlockSearch(
+	ctx context.Context,
+	query string,
+	page, perPage *int,
+	orderBy string,
+) (*ctypes.ResultBlockSearch, error) {
+
+	result := new(ctypes.ResultBlockSearch)
+	params := map[string]interface{}{
+		"query":    query,
+		"order_by": orderBy,
+	}
+
+	if page != nil {
+		params["page"] = page
+	}
+	if perPage != nil {
+		params["per_page"] = perPage
+	}
+
+	_, err := c.caller.Call(ctx, "block_search", params, result)
+	if err != nil {
+		return nil, err
+	}
+
 	return result, nil
 }
 
@@ -494,6 +525,7 @@ func (c *baseRPCClient) Validators(
 	height *int64,
 	page,
 	perPage *int,
+	requestThresholdPublicKey *bool,
 ) (*ctypes.ResultValidators, error) {
 	result := new(ctypes.ResultValidators)
 	params := make(map[string]interface{})
@@ -505,6 +537,9 @@ func (c *baseRPCClient) Validators(
 	}
 	if height != nil {
 		params["height"] = height
+	}
+	if requestThresholdPublicKey != nil {
+		params["request_threshold_public_key"] = requestThresholdPublicKey
 	}
 	_, err := c.caller.Call(ctx, "validators", params, result)
 	if err != nil {

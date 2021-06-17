@@ -205,7 +205,8 @@ func (store dbStore) Bootstrap(state State) error {
 		return err
 	}
 
-	if err := store.saveConsensusParamsInfo(height, height, state.ConsensusParams); err != nil {
+	if err := store.saveConsensusParamsInfo(height,
+		state.LastHeightConsensusParamsChanged, state.ConsensusParams); err != nil {
 		return err
 	}
 
@@ -451,6 +452,7 @@ func (store dbStore) LoadValidators(height int64) (*types.ValidatorSet, error) {
 	if err != nil {
 		return nil, err
 	}
+	// fmt.Printf("loaded validators at %d %v", height, vip)
 
 	return vip, nil
 }

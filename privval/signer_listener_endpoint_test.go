@@ -1,9 +1,12 @@
 package privval
 
 import (
+	"github.com/dashevo/dashd-go/btcjson"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -69,7 +72,7 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 
 	chainID := tmrand.Str(12)
 	mockPV := types.NewMockPV()
-	signerServer := NewSignerServer(dialerEndpoint, chainID, mockPV)
+	signerServer := NewSignerServer(dialerEndpoint, chainID, btcjson.LLMQType_5_60, crypto.RandQuorumHash(), mockPV)
 
 	err = signerServer.Start()
 	require.NoError(t, err)
@@ -105,7 +108,7 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 		SignerDialerEndpointTimeoutReadWrite(testTimeoutReadWrite)(dialerEndpoint)
 		SignerDialerEndpointConnRetries(10)(dialerEndpoint)
 
-		signerServer := NewSignerServer(dialerEndpoint, chainID, mockPV)
+		signerServer := NewSignerServer(dialerEndpoint, chainID, btcjson.LLMQType_5_60, crypto.RandQuorumHash(), mockPV)
 
 		startListenerEndpointAsync(t, listenerEndpoint, endpointIsOpenCh)
 		t.Cleanup(func() {
@@ -125,7 +128,7 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 			logger,
 			tc.dialer,
 		)
-		signerServer2 := NewSignerServer(dialerEndpoint2, chainID, mockPV)
+		signerServer2 := NewSignerServer(dialerEndpoint2, chainID, btcjson.LLMQType_5_60, crypto.RandQuorumHash(), mockPV)
 
 		// let some pings pass
 		require.NoError(t, signerServer2.Start())

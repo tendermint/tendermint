@@ -3,10 +3,11 @@ package v1
 import (
 	"fmt"
 	"os"
-	"sort"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,23 +29,14 @@ import (
 
 var config *cfg.Config
 
-func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.GenesisDoc, []types.PrivValidator) {
-	validators := make([]types.GenesisValidator, numValidators)
-	privValidators := make([]types.PrivValidator, numValidators)
-	for i := 0; i < numValidators; i++ {
-		val, privVal := types.RandValidator(randPower, minPower)
-		validators[i] = types.GenesisValidator{
-			PubKey: val.PubKey,
-			Power:  val.VotingPower,
-		}
-		privValidators[i] = privVal
-	}
-	sort.Sort(types.PrivValidatorsByAddress(privValidators))
-
+func randGenesisDoc(numValidators int) (*types.GenesisDoc, []types.PrivValidator) {
+	validators, privValidators, thresholdPublicKey := types.GenerateGenesisValidators(numValidators)
 	return &types.GenesisDoc{
-		GenesisTime: tmtime.Now(),
-		ChainID:     config.ChainID(),
-		Validators:  validators,
+		GenesisTime:        tmtime.Now(),
+		ChainID:            config.ChainID(),
+		Validators:         validators,
+		ThresholdPublicKey: thresholdPublicKey,
+		QuorumHash:         crypto.RandQuorumHash(),
 	}, privValidators
 }
 
@@ -52,27 +44,29 @@ func makeVote(
 	t *testing.T,
 	header *types.Header,
 	blockID types.BlockID,
+	stateID types.StateID,
 	valset *types.ValidatorSet,
 	privVal types.PrivValidator) *types.Vote {
 
-	pubKey, err := privVal.GetPubKey()
+	proTxHash, err := privVal.GetProTxHash()
 	require.NoError(t, err)
 
-	valIdx, _ := valset.GetByAddress(pubKey.Address())
+	valIdx, _ := valset.GetByProTxHash(proTxHash)
 	vote := &types.Vote{
-		ValidatorAddress: pubKey.Address(),
-		ValidatorIndex:   valIdx,
-		Height:           header.Height,
-		Round:            1,
-		Timestamp:        tmtime.Now(),
-		Type:             tmproto.PrecommitType,
-		BlockID:          blockID,
+		ValidatorProTxHash: proTxHash,
+		ValidatorIndex:     valIdx,
+		Height:             header.Height,
+		Round:              1,
+		Type:               tmproto.PrecommitType,
+		BlockID:            blockID,
+		StateID:            stateID,
 	}
 
 	vpb := vote.ToProto()
 
-	_ = privVal.SignVote(header.ChainID, vpb)
-	vote.Signature = vpb.Signature
+	_ = privVal.SignVote(header.ChainID, valset.QuorumType, valset.QuorumHash, vpb)
+	vote.BlockSignature = vpb.BlockSignature
+	vote.StateSignature = vpb.StateSignature
 
 	return vote
 }
@@ -116,24 +110,27 @@ func newBlockchainReactor(
 	fastSync := true
 	db := dbm.NewMemDB()
 	stateStore = sm.NewStore(db)
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
-		mock.Mempool{}, sm.EmptyEvidencePool{})
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), proxyApp.Query(),
+		mock.Mempool{}, sm.EmptyEvidencePool{}, nil)
 	if err = stateStore.Save(state); err != nil {
 		panic(err)
 	}
 
 	// let's add some blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastCommit := types.NewCommit(blockHeight-1, 1, types.BlockID{}, nil)
+		lastCommit := types.NewCommit(blockHeight-1, 1, types.BlockID{}, types.StateID{}, nil, nil, nil, nil)
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
 
-			vote := makeVote(t, &lastBlock.Header, lastBlockMeta.BlockID, state.Validators, privVals[0])
-			lastCommit = types.NewCommit(vote.Height, vote.Round, lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
+			vote := makeVote(t, &lastBlock.Header, lastBlockMeta.BlockID, lastBlockMeta.StateID, state.Validators, privVals[0])
+			// since there is only 1 vote, use it as threshold
+			commitSig := vote.CommitSig()
+			lastCommit = types.NewCommit(vote.Height, vote.Round, lastBlockMeta.BlockID, lastBlockMeta.StateID,
+				[]types.CommitSig{commitSig}, nil, commitSig.BlockSignature, commitSig.StateSignature)
 		}
 
-		thisBlock := makeBlock(blockHeight, state, lastCommit)
+		thisBlock := makeBlock(blockHeight, nil, state, lastCommit)
 
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
@@ -183,7 +180,7 @@ func TestFastSyncNoBlockResponse(t *testing.T) {
 
 	config = cfg.ResetTestRoot("blockchain_new_reactor_test")
 	defer os.RemoveAll(config.RootDir)
-	genDoc, privVals := randGenesisDoc(1, false, 30)
+	genDoc, privVals := randGenesisDoc(1)
 
 	maxBlockHeight := int64(65)
 
@@ -253,7 +250,7 @@ func TestFastSyncBadBlockStopsPeer(t *testing.T) {
 
 	config = cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
-	genDoc, privVals := randGenesisDoc(1, false, 30)
+	genDoc, privVals := randGenesisDoc(1)
 
 	otherChain := newBlockchainReactorPair(t, log.TestingLogger(), genDoc, privVals, maxBlockHeight)
 	defer func() {
@@ -355,8 +352,10 @@ func makeTxs(height int64) (txs []types.Tx) {
 	return txs
 }
 
-func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Block {
-	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().Address)
+func makeBlock(height int64, coreChainLock *types.CoreChainLock, state sm.State,
+	lastCommit *types.Commit) *types.Block {
+	block, _ := state.MakeBlock(height, coreChainLock, makeTxs(height), lastCommit,
+		nil, state.Validators.GetProposer().ProTxHash)
 	return block
 }
 

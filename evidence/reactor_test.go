@@ -3,10 +3,14 @@ package evidence_test
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/tendermint/tendermint/crypto/bls12381"
+
+	"github.com/fortytw2/leaktest"
 	"github.com/go-kit/kit/log/term"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -21,6 +25,7 @@ import (
 	"github.com/tendermint/tendermint/evidence/mocks"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
+	p2pmocks "github.com/tendermint/tendermint/p2p/mocks"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -44,8 +49,9 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	val := types.NewMockPV()
 	// we need validators saved for heights at least as high as we have evidence for
 	height := int64(numEvidence) + 10
+	quorumHash := crypto.RandQuorumHash()
 	for i := 0; i < N; i++ {
-		stateDBs[i] = initializeValidatorState(val, height)
+		stateDBs[i] = initializeValidatorState(val, height, btcjson.LLMQType_5_60, quorumHash)
 	}
 
 	// make reactors from statedb
@@ -61,7 +67,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 
 	// send a bunch of valid evidence to the first reactor's evpool
 	// and wait for them all to be received in the others
-	evList := sendEvidence(t, pools[0], val, numEvidence)
+	evList := sendEvidence(t, pools[0], val, numEvidence, btcjson.LLMQType_5_60, quorumHash)
 	waitForEvidence(t, evList, pools)
 }
 
@@ -75,9 +81,11 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	height1 := int64(numEvidence) + 10
 	height2 := int64(numEvidence) / 2
 
+	quorumHash := crypto.RandQuorumHash()
+
 	// DB1 is ahead of DB2
-	stateDB1 := initializeValidatorState(val, height1)
-	stateDB2 := initializeValidatorState(val, height2)
+	stateDB1 := initializeValidatorState(val, height1, btcjson.LLMQType_5_60, quorumHash)
+	stateDB2 := initializeValidatorState(val, height2, btcjson.LLMQType_5_60, quorumHash)
 
 	// make reactors from statedb
 	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2})
@@ -96,7 +104,7 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	peer.Set(types.PeerStateKey, ps)
 
 	// send a bunch of valid evidence to the first reactor's evpool
-	evList := sendEvidence(t, pools[0], val, numEvidence)
+	evList := sendEvidence(t, pools[0], val, numEvidence, btcjson.LLMQType_5_60, quorumHash)
 
 	// only ones less than the peers height should make it through
 	waitForEvidence(t, evList[:numEvidence/2-1], []*evidence.Pool{pools[1]})
@@ -117,9 +125,11 @@ func TestReactorsGossipNoCommittedEvidence(t *testing.T) {
 	val := types.NewMockPV()
 	var height int64 = 10
 
+	quorumHash := crypto.RandQuorumHash()
+
 	// DB1 is ahead of DB2
-	stateDB1 := initializeValidatorState(val, height-1)
-	stateDB2 := initializeValidatorState(val, height-2)
+	stateDB1 := initializeValidatorState(val, height-1, btcjson.LLMQType_5_60, quorumHash)
+	stateDB2 := initializeValidatorState(val, height-2, btcjson.LLMQType_5_60, quorumHash)
 	state, err := stateDB1.Load()
 	require.NoError(t, err)
 	state.LastBlockHeight++
@@ -127,7 +137,7 @@ func TestReactorsGossipNoCommittedEvidence(t *testing.T) {
 	// make reactors from statedb
 	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2})
 
-	evList := sendEvidence(t, pools[0], val, 2)
+	evList := sendEvidence(t, pools[0], val, 2, btcjson.LLMQType_5_60, quorumHash)
 	pools[0].Update(state, evList)
 	require.EqualValues(t, uint32(0), pools[0].Size())
 
@@ -151,7 +161,8 @@ func TestReactorsGossipNoCommittedEvidence(t *testing.T) {
 	evList = make([]types.Evidence, 3)
 	for i := 0; i < 3; i++ {
 		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height-3+int64(i),
-			time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), val, state.ChainID)
+			time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), val,
+			state.ChainID, btcjson.LLMQType_5_60, quorumHash)
 		err := pools[0].AddEvidence(ev)
 		require.NoError(t, err)
 		evList[i] = ev
@@ -181,8 +192,44 @@ func TestReactorsGossipNoCommittedEvidence(t *testing.T) {
 	// wait to see that only two evidence is sent
 	time.Sleep(300 * time.Millisecond)
 
-	peerEv, _ = pools[1].PendingEvidence(1000)
+	peerEv, _ = pools[1].PendingEvidence(2000)
 	assert.EqualValues(t, []types.Evidence{evList[0], evList[1]}, peerEv)
+}
+
+func TestReactorBroadcastEvidenceMemoryLeak(t *testing.T) {
+	evidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+	evidenceDB := dbm.NewMemDB()
+	blockStore := &mocks.BlockStore{}
+	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
+		&types.BlockMeta{Header: types.Header{Time: evidenceTime}},
+	)
+	val := types.NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	stateStore := initializeValidatorState(val, 1, btcjson.LLMQType_5_60, quorumHash)
+	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
+	require.NoError(t, err)
+
+	p := &p2pmocks.Peer{}
+
+	p.On("IsRunning").Once().Return(true)
+	p.On("IsRunning").Return(false)
+	// check that we are not leaking any go-routines
+	// i.e. broadcastEvidenceRoutine finishes when peer is stopped
+	defer leaktest.CheckTimeout(t, 10*time.Second)()
+
+	p.On("Send", evidence.EvidenceChannel, mock.AnythingOfType("[]uint8")).Return(false)
+	quitChan := make(<-chan struct{})
+	p.On("Quit").Return(quitChan)
+	ps := peerState{2}
+	p.On("Get", types.PeerStateKey).Return(ps)
+	p.On("ID").Return("ABC")
+	p.On("String").Return("mock")
+
+	r := evidence.NewReactor(pool)
+	r.SetLogger(log.TestingLogger())
+	r.AddPeer(p)
+
+	_ = sendEvidence(t, pool, val, 2, btcjson.LLMQType_5_60, quorumHash)
 }
 
 // evidenceLogger is a TestingLogger which uses a different
@@ -267,7 +314,7 @@ func _waitForEvidence(
 	var evList []types.Evidence
 	currentPoolSize := 0
 	for currentPoolSize != len(evs) {
-		evList, _ = evpool.PendingEvidence(int64(len(evs) * 500)) // each evidence should not be more than 500 bytes
+		evList, _ = evpool.PendingEvidence(int64(len(evs) * 1000)) // each evidence should not be more than 1000 bytes
 		currentPoolSize = len(evList)
 		time.Sleep(time.Millisecond * 100)
 	}
@@ -287,11 +334,12 @@ func _waitForEvidence(
 	wg.Done()
 }
 
-func sendEvidence(t *testing.T, evpool *evidence.Pool, val types.PrivValidator, n int) types.EvidenceList {
+func sendEvidence(t *testing.T, evpool *evidence.Pool, val types.PrivValidator, n int,
+	quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) types.EvidenceList {
 	evList := make([]types.Evidence, n)
 	for i := 0; i < n; i++ {
 		ev := types.NewMockDuplicateVoteEvidenceWithValidator(int64(i+1),
-			time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), val, evidenceChainID)
+			time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), val, evidenceChainID, quorumType, quorumHash)
 		err := evpool.AddEvidence(ev)
 		require.NoError(t, err)
 		evList[i] = ev
@@ -308,16 +356,10 @@ func (ps peerState) GetHeight() int64 {
 }
 
 func exampleVote(t byte) *types.Vote {
-	var stamp, err = time.Parse(types.TimeFormat, "2017-12-25T03:00:01.234Z")
-	if err != nil {
-		panic(err)
-	}
-
 	return &types.Vote{
-		Type:      tmproto.SignedMsgType(t),
-		Height:    3,
-		Round:     2,
-		Timestamp: stamp,
+		Type:   tmproto.SignedMsgType(t),
+		Height: 3,
+		Round:  2,
 		BlockID: types.BlockID{
 			Hash: tmhash.Sum([]byte("blockID_hash")),
 			PartSetHeader: types.PartSetHeader{
@@ -325,8 +367,11 @@ func exampleVote(t byte) *types.Vote {
 				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
 			},
 		},
-		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
-		ValidatorIndex:   56789,
+		StateID: types.StateID{
+			LastAppHash: tmhash.Sum([]byte("stateID_hash")),
+		},
+		ValidatorProTxHash: crypto.ProTxHashFromSeedBytes([]byte("validator_pro_tx_hash")),
+		ValidatorIndex:     56789,
 	}
 }
 
@@ -334,11 +379,12 @@ func exampleVote(t byte) *types.Vote {
 func TestEvidenceVectors(t *testing.T) {
 
 	val := &types.Validator{
-		Address:     crypto.AddressHash([]byte("validator_address")),
-		VotingPower: 10,
+		ProTxHash:   crypto.ProTxHashFromSeedBytes([]byte("validator_pro_tx_hash")),
+		PubKey:      bls12381.GenPrivKey().PubKey(),
+		VotingPower: types.DefaultDashVotingPower,
 	}
 
-	valSet := types.NewValidatorSet([]*types.Validator{val})
+	valSet := types.NewValidatorSet([]*types.Validator{val}, val.PubKey, btcjson.LLMQType_5_60, crypto.RandQuorumHash())
 
 	dupl := types.NewDuplicateVoteEvidence(
 		exampleVote(1),
@@ -352,7 +398,7 @@ func TestEvidenceVectors(t *testing.T) {
 		evidenceList []types.Evidence
 		expBytes     string
 	}{
-		{"DuplicateVoteEvidence", []types.Evidence{dupl}, "0a85020a82020a79080210031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a2a0b08b1d381d20510809dca6f32146af1f4111082efb388211bc72c55bcd61e9ac3d538d5bb031279080110031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a2a0b08b1d381d20510809dca6f32146af1f4111082efb388211bc72c55bcd61e9ac3d538d5bb03180a200a2a060880dbaae105"},
+		{"DuplicateVoteEvidence", []types.Evidence{dupl}, "0acd020aca020a9c01080210031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a3220959a8f5ef2be68d0ed3a07ed8cff85991ee7995c2ac17030f742c135f9729fbe38d5bb034a220a2062b1d24a04df3db8c9735668e2fc0f9dad612cef4fed678fe07e67388ffd99c6129c01080110031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a3220959a8f5ef2be68d0ed3a07ed8cff85991ee7995c2ac17030f742c135f9729fbe38d5bb034a220a2062b1d24a04df3db8c9735668e2fc0f9dad612cef4fed678fe07e67388ffd99c6186420642a060880dbaae105"},
 	}
 
 	for _, tc := range testCases {

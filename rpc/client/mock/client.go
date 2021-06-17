@@ -170,8 +170,9 @@ func (c Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommit
 	return core.Commit(&rpctypes.Context{}, height)
 }
 
-func (c Client) Validators(ctx context.Context, height *int64, page, perPage *int) (*ctypes.ResultValidators, error) {
-	return core.Validators(&rpctypes.Context{}, height, page, perPage)
+func (c Client) Validators(ctx context.Context, height *int64, page, perPage *int,
+	requestThresholdPublicKey *bool) (*ctypes.ResultValidators, error) {
+	return core.Validators(&rpctypes.Context{}, height, page, perPage, requestThresholdPublicKey)
 }
 
 func (c Client) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {

@@ -3,9 +3,12 @@ package types
 import (
 	"context"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -75,7 +78,7 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 		}
 	})
 
-	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
+	block := MakeBlock(0, 0, nil, []Tx{}, nil, []Evidence{})
 	resultBeginBlock := abci.ResponseBeginBlock{
 		Events: []abci.Event{
 			{Type: "testType", Attributes: []abci.EventAttribute{{Key: []byte("baz"), Value: []byte("1")}}},
@@ -234,7 +237,7 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 		}
 	})
 
-	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
+	block := MakeBlock(0, 0, nil, []Tx{}, nil, []Evidence{})
 	resultBeginBlock := abci.ResponseBeginBlock{
 		Events: []abci.Event{
 			{Type: "testType", Attributes: []abci.EventAttribute{{Key: []byte("baz"), Value: []byte("1")}}},
@@ -285,7 +288,7 @@ func TestEventBusPublishEventNewEvidence(t *testing.T) {
 		}
 	})
 
-	ev := NewMockDuplicateVoteEvidence(1, time.Now(), "test-chain-id")
+	ev := NewMockDuplicateVoteEvidence(1, time.Now(), "test-chain-id", btcjson.LLMQType_5_60, crypto.RandQuorumHash())
 
 	query := "tm.event='NewEvidence'"
 	evSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))

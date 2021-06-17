@@ -12,17 +12,23 @@ type Manifest struct {
 	// IPv6 uses IPv6 networking instead of IPv4. Defaults to IPv4.
 	IPv6 bool `toml:"ipv6"`
 
+	// QuorumType represents the initial quorum type
+	QuorumType uint32 `toml:"quorum_type"`
+
 	// InitialHeight specifies the initial block height, set in genesis. Defaults to 1.
 	InitialHeight int64 `toml:"initial_height"`
+
+	// InitialCoreChainLockedHeight specifies the initial core chain locked block height, set in genesis. Defaults to 1.
+	InitialCoreChainLockedHeight uint32 `toml:"initial_core_chain_locked_height"`
 
 	// InitialState is an initial set of key/value pairs for the application,
 	// set in genesis. Defaults to nothing.
 	InitialState map[string]string `toml:"initial_state"`
 
 	// Validators is the initial validator set in genesis, given as node names
-	// and power:
+	// and power (for Dash power must all be set to default power):
 	//
-	// validators = { validator01 = 10; validator02 = 20; validator03 = 30 }
+	// validators = { validator01 = 100; validator02 = 100; validator03 = 100 }
 	//
 	// Defaults to all nodes that have mode=validator at power 100. Explicitly
 	// specifying an empty set will start with no validators in genesis, and
@@ -30,19 +36,31 @@ type Manifest struct {
 	// setting validator_update.0 (see below).
 	Validators *map[string]int64 `toml:"validators"`
 
-	// ValidatorUpdates is a map of heights to validator names and their power,
+	// ValidatorUpdates is a map of heights to validator proTxHashes and their power,
 	// and will be returned by the ABCI application. For example, the following
-	// changes the power of validator01 and validator02 at height 1000:
+	// adds validator01 and validator02 at height 1000:
 	//
 	// [validator_update.1000]
-	// validator01 = 20
-	// validator02 = 10
+	// validator01 = 100
+	// validator02 = 100
 	//
 	// Specifying height 0 returns the validator update during InitChain. The
 	// application returns the validator updates as-is, i.e. removing a
 	// validator must be done by returning it with power 0, and any validators
 	// not specified are not changed.
 	ValidatorUpdates map[string]map[string]int64 `toml:"validator_update"`
+
+	// ChainLockUpdates is a map of heights at which a new chain lock should be proposed
+	// The first number is the tendermint height, and the second is the
+	//
+	// [chainlock_updates]
+	// 1000 = 3450
+	// 1004 = 3451
+	// 1020 = 3454
+	// 1040 = 3500
+	//
+
+	ChainLockUpdates map[string]int64 `toml:"chainlock_updates"`
 
 	// Nodes specifies the network nodes. At least one node must be given.
 	Nodes map[string]*ManifestNode `toml:"node"`
@@ -54,9 +72,9 @@ type Manifest struct {
 
 // ManifestNode represents a node in a testnet manifest.
 type ManifestNode struct {
-	// Mode specifies the type of node: "validator", "full", or "seed". Defaults to
-	// "validator". Full nodes do not get a signing key (a dummy key is generated),
-	// and seed nodes run in seed mode with the PEX reactor enabled.
+	// Mode specifies the type of node: "validator", "full", "light" or "seed".
+	// Defaults to "validator". Full nodes do not get a signing key (a dummy key
+	// is generated), and seed nodes run in seed mode with the PEX reactor enabled.
 	Mode string `toml:"mode"`
 
 	// Seeds is the list of node names to use as P2P seed nodes. Defaults to none.
@@ -64,7 +82,8 @@ type ManifestNode struct {
 
 	// PersistentPeers is a list of node names to maintain persistent P2P
 	// connections to. If neither seeds nor persistent peers are specified,
-	// this defaults to all other nodes in the network.
+	// this defaults to all other nodes in the network. For light clients,
+	// this relates to the providers the light client is connected to.
 	PersistentPeers []string `toml:"persistent_peers"`
 
 	// Database specifies the database backend: "goleveldb", "cleveldb",
@@ -144,6 +163,7 @@ func (m Manifest) Save(file string) error {
 func LoadManifest(file string) (Manifest, error) {
 	manifest := Manifest{}
 	_, err := toml.DecodeFile(file, &manifest)
+	fmt.Printf("loaded manifest %v", manifest)
 	if err != nil {
 		return manifest, fmt.Errorf("failed to load testnet manifest %q: %w", file, err)
 	}

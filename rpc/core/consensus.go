@@ -1,7 +1,9 @@
 package core
 
 import (
+	"github.com/dashevo/dashd-go/btcjson"
 	cm "github.com/tendermint/tendermint/consensus"
+	"github.com/tendermint/tendermint/crypto"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
@@ -15,7 +17,8 @@ import (
 // for the validators in the set as used in computing their Merkle root.
 //
 // More: https://docs.tendermint.com/master/rpc/#/Info/validators
-func Validators(ctx *rpctypes.Context, heightPtr *int64, pagePtr, perPagePtr *int) (*ctypes.ResultValidators, error) {
+func Validators(ctx *rpctypes.Context, heightPtr *int64, pagePtr, perPagePtr *int,
+	requestThresholdPublicKeyPtr *bool) (*ctypes.ResultValidators, error) {
 	// The latest validator that we know is the NextValidator of the last block.
 	height, err := getHeight(latestUncommittedHeight(), heightPtr)
 	if err != nil {
@@ -34,15 +37,28 @@ func Validators(ctx *rpctypes.Context, heightPtr *int64, pagePtr, perPagePtr *in
 		return nil, err
 	}
 
+	requestThresholdPublicKey := validateRequestThresholdPublicKey(requestThresholdPublicKeyPtr)
+
 	skipCount := validateSkipCount(page, perPage)
 
 	v := validators.Validators[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
+	var thresholdPublicKey crypto.PubKey = nil
+	var quorumHash crypto.QuorumHash = nil
+	var quorumType btcjson.LLMQType = 0
+	if requestThresholdPublicKey {
+		thresholdPublicKey = validators.ThresholdPublicKey
+		quorumHash = validators.QuorumHash
+		quorumType = validators.QuorumType
+	}
 
 	return &ctypes.ResultValidators{
-		BlockHeight: height,
-		Validators:  v,
-		Count:       len(v),
-		Total:       totalCount}, nil
+		BlockHeight:        height,
+		Validators:         v,
+		ThresholdPublicKey: &thresholdPublicKey,
+		QuorumType:         quorumType,
+		QuorumHash:         &quorumHash,
+		Count:              len(v),
+		Total:              totalCount}, nil
 }
 
 // DumpConsensusState dumps consensus state.

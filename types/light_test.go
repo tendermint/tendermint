@@ -14,13 +14,13 @@ import (
 
 func TestLightBlockValidateBasic(t *testing.T) {
 	header := makeRandHeader()
-	commit := randCommit(time.Now())
-	vals, _ := RandValidatorSet(5, 1)
+	commit := randCommit()
+	vals, _ := GenerateValidatorSet(5)
 	header.Height = commit.Height
 	header.LastBlockID = commit.BlockID
 	header.ValidatorsHash = vals.Hash()
 	header.Version.Block = version.BlockProtocol
-	vals2, _ := RandValidatorSet(3, 1)
+	vals2, _ := GenerateValidatorSet(3)
 	vals3 := vals.Copy()
 	vals3.Proposer = &Validator{}
 	commit.BlockID.Hash = header.Hash()
@@ -39,7 +39,7 @@ func TestLightBlockValidateBasic(t *testing.T) {
 		{"valid light block", sh, vals, false},
 		{"hashes don't match", sh, vals2, true},
 		{"invalid validator set", sh, vals3, true},
-		{"invalid signed header", &SignedHeader{Header: &header, Commit: randCommit(time.Now())}, vals, true},
+		{"invalid signed header", &SignedHeader{Header: &header, Commit: randCommit()}, vals, true},
 	}
 
 	for _, tc := range testCases {
@@ -59,8 +59,8 @@ func TestLightBlockValidateBasic(t *testing.T) {
 
 func TestLightBlockProtobuf(t *testing.T) {
 	header := makeRandHeader()
-	commit := randCommit(time.Now())
-	vals, _ := RandValidatorSet(5, 1)
+	commit := randCommit()
+	vals, _ := GenerateValidatorSet(5)
 	header.Height = commit.Height
 	header.LastBlockID = commit.BlockID
 	header.Version.Block = version.BlockProtocol
@@ -68,6 +68,7 @@ func TestLightBlockProtobuf(t *testing.T) {
 	vals3 := vals.Copy()
 	vals3.Proposer = &Validator{}
 	commit.BlockID.Hash = header.Hash()
+	commit.QuorumHash = vals.QuorumHash
 
 	sh := &SignedHeader{
 		Header: &header,
@@ -111,7 +112,7 @@ func TestLightBlockProtobuf(t *testing.T) {
 }
 
 func TestSignedHeaderValidateBasic(t *testing.T) {
-	commit := randCommit(time.Now())
+	commit := randCommit()
 	chainID := "𠜎"
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
 	h := Header{
@@ -128,7 +129,7 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 		AppHash:            commit.Hash(),
 		LastResultsHash:    commit.Hash(),
 		EvidenceHash:       commit.Hash(),
-		ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
+		ProposerProTxHash:  crypto.ProTxHashFromSeedBytes([]byte("proposer_pro_tx_hash")),
 	}
 
 	validSignedHeader := SignedHeader{Header: &h, Commit: commit}

@@ -150,7 +150,7 @@ func (s *lightClientStateProvider) State(ctx context.Context, height uint64) (sm
 	if err != nil {
 		return sm.State{}, err
 	}
-	curLightBlock, err := s.lc.VerifyLightBlockAtHeight(ctx, int64(height+1), time.Now())
+	currentLightBlock, err := s.lc.VerifyLightBlockAtHeight(ctx, int64(height+1), time.Now())
 	if err != nil {
 		return sm.State{}, err
 	}
@@ -160,12 +160,14 @@ func (s *lightClientStateProvider) State(ctx context.Context, height uint64) (sm
 	}
 
 	state.LastBlockHeight = lastLightBlock.Height
+	state.LastCoreChainLockedBlockHeight = lastLightBlock.CoreChainLockedHeight
 	state.LastBlockTime = lastLightBlock.Time
 	state.LastBlockID = lastLightBlock.Commit.BlockID
-	state.AppHash = curLightBlock.AppHash
-	state.LastResultsHash = curLightBlock.LastResultsHash
+	state.LastStateID = lastLightBlock.Commit.StateID
+	state.AppHash = currentLightBlock.AppHash
+	state.LastResultsHash = currentLightBlock.LastResultsHash
 	state.LastValidators = lastLightBlock.ValidatorSet
-	state.Validators = curLightBlock.ValidatorSet
+	state.Validators = currentLightBlock.ValidatorSet
 	state.NextValidators = nextLightBlock.ValidatorSet
 	state.LastHeightValidatorsChanged = nextLightBlock.Height
 
@@ -179,12 +181,13 @@ func (s *lightClientStateProvider) State(ctx context.Context, height uint64) (sm
 		return sm.State{}, fmt.Errorf("unable to create RPC client: %w", err)
 	}
 	rpcclient := lightrpc.NewClient(primaryRPC, s.lc)
-	result, err := rpcclient.ConsensusParams(ctx, &nextLightBlock.Height)
+	result, err := rpcclient.ConsensusParams(ctx, &currentLightBlock.Height)
 	if err != nil {
 		return sm.State{}, fmt.Errorf("unable to fetch consensus parameters for height %v: %w",
 			nextLightBlock.Height, err)
 	}
 	state.ConsensusParams = result.ConsensusParams
+	state.LastHeightConsensusParamsChanged = currentLightBlock.Height
 
 	return state, nil
 }

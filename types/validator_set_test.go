@@ -1,22 +1,20 @@
+//nolint: lll
 package types
 
 import (
 	"bytes"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"math"
 	"sort"
 	"strings"
 	"testing"
 	"testing/quick"
-	"time"
-
-	"github.com/tendermint/tendermint/crypto/bls12381"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -25,64 +23,68 @@ import (
 func TestValidatorSetBasic(t *testing.T) {
 	// empty or nil validator lists are allowed,
 	// but attempting to IncrementProposerPriority on them will panic.
-	vset := NewValidatorSet([]*Validator{})
+	vset := NewValidatorSet([]*Validator{}, nil, btcjson.LLMQType_5_60, nil)
 	assert.Panics(t, func() { vset.IncrementProposerPriority(1) })
 
-	vset = NewValidatorSet(nil)
+	vset = NewValidatorSet(nil, nil, btcjson.LLMQType_5_60, nil)
 	assert.Panics(t, func() { vset.IncrementProposerPriority(1) })
 
 	assert.EqualValues(t, vset, vset.Copy())
-	assert.False(t, vset.HasAddress([]byte("some val")))
-	idx, val := vset.GetByAddress([]byte("some val"))
+	assert.False(t, vset.HasProTxHash([]byte("some val")))
+	idx, val := vset.GetByProTxHash([]byte("some val"))
 	assert.EqualValues(t, -1, idx)
 	assert.Nil(t, val)
-	addr, val := vset.GetByIndex(-100)
-	assert.Nil(t, addr)
+	proTxHash, val := vset.GetByIndex(-100)
+	assert.Nil(t, proTxHash)
 	assert.Nil(t, val)
-	addr, val = vset.GetByIndex(0)
-	assert.Nil(t, addr)
+	proTxHash, val = vset.GetByIndex(0)
+	assert.Nil(t, proTxHash)
 	assert.Nil(t, val)
-	addr, val = vset.GetByIndex(100)
-	assert.Nil(t, addr)
+	proTxHash, val = vset.GetByIndex(100)
+	assert.Nil(t, proTxHash)
 	assert.Nil(t, val)
 	assert.Zero(t, vset.Size())
 	assert.Equal(t, int64(0), vset.TotalVotingPower())
 	assert.Nil(t, vset.GetProposer())
-	assert.Equal(t, []byte{0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14, 0x9a, 0xfb, 0xf4,
-		0xc8, 0x99, 0x6f, 0xb9, 0x24, 0x27, 0xae, 0x41, 0xe4, 0x64, 0x9b, 0x93, 0x4c, 0xa4, 0x95,
-		0x99, 0x1b, 0x78, 0x52, 0xb8, 0x55}, vset.Hash())
+	assert.Equal(t, []byte(nil), vset.Hash())
 	// add
 	val = randValidator(vset.TotalVotingPower())
-	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}))
+	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}, val.PubKey, crypto.RandQuorumHash()))
 
-	assert.True(t, vset.HasAddress(val.Address))
-	idx, _ = vset.GetByAddress(val.Address)
+	assert.True(t, vset.HasProTxHash(val.ProTxHash))
+	idx, _ = vset.GetByProTxHash(val.ProTxHash)
 	assert.EqualValues(t, 0, idx)
-	addr, _ = vset.GetByIndex(0)
-	assert.Equal(t, []byte(val.Address), addr)
+	proTxHash, _ = vset.GetByIndex(0)
+	assert.Equal(t, val.ProTxHash, proTxHash)
 	assert.Equal(t, 1, vset.Size())
 	assert.Equal(t, val.VotingPower, vset.TotalVotingPower())
 	assert.NotNil(t, vset.Hash())
 	assert.NotPanics(t, func() { vset.IncrementProposerPriority(1) })
 	assert.Equal(t, val.Address, vset.GetProposer().Address)
+	assert.Equal(t, val.ProTxHash, vset.GetProposer().ProTxHash)
 
 	// update
 	val = randValidator(vset.TotalVotingPower())
-	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}))
-	_, val = vset.GetByAddress(val.Address)
-	val.VotingPower += 100
+	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}, val.PubKey, crypto.RandQuorumHash()))
+	_, val = vset.GetByProTxHash(val.ProTxHash)
+	val.PubKey = bls12381.GenPrivKey().PubKey()
 	proposerPriority := val.ProposerPriority
 
 	val.ProposerPriority = 0
-	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}))
-	_, val = vset.GetByAddress(val.Address)
+	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}, val.PubKey, crypto.RandQuorumHash()))
+	_, val = vset.GetByProTxHash(val.ProTxHash)
 	assert.Equal(t, proposerPriority, val.ProposerPriority)
 
 }
 
 func TestValidatorSetValidateBasic(t *testing.T) {
-	val, _ := RandValidator(false, 1)
-	badVal := &Validator{}
+	val, _ := RandValidator()
+	badValNoPublicKey := &Validator{ProTxHash: val.ProTxHash}
+	badValNoProTxHash := &Validator{PubKey: val.PubKey}
+
+	goodValSet, _ := GenerateValidatorSet(4)
+	badValSet, _ := GenerateValidatorSet(4)
+	badValSet.ThresholdPublicKey = val.PubKey
 
 	testCases := []struct {
 		vals ValidatorSet
@@ -90,38 +92,104 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 		msg  string
 	}{
 		{
+			vals: ValidatorSet{ThresholdPublicKey: bls12381.GenPrivKey().PubKey()},
+			err:  true,
+			msg:  "validator set is nil or empty",
+		},
+		{
 			vals: ValidatorSet{},
 			err:  true,
 			msg:  "validator set is nil or empty",
 		},
 		{
 			vals: ValidatorSet{
-				Validators: []*Validator{},
+				Validators:         []*Validator{},
+				ThresholdPublicKey: bls12381.GenPrivKey().PubKey(),
+				QuorumHash:         crypto.RandQuorumHash(),
 			},
 			err: true,
 			msg: "validator set is nil or empty",
 		},
 		{
 			vals: ValidatorSet{
-				Validators: []*Validator{val},
+				Validators: []*Validator{},
+				QuorumHash: crypto.RandQuorumHash(),
+			},
+			err: true,
+			msg: "validator set is nil or empty",
+		},
+		{
+			vals: ValidatorSet{
+				Validators:         []*Validator{val},
+				ThresholdPublicKey: val.PubKey,
+				QuorumHash:         crypto.RandQuorumHash(),
 			},
 			err: true,
 			msg: "proposer failed validate basic, error: nil validator",
 		},
 		{
 			vals: ValidatorSet{
-				Validators: []*Validator{badVal},
+				Validators:         []*Validator{val},
+				ThresholdPublicKey: bls12381.GenPrivKey().PubKey(),
+				QuorumHash:         crypto.RandQuorumHash(),
+			},
+			err: true,
+			msg: "thresholdPublicKey error: incorrect threshold public key",
+		},
+		{
+			vals: ValidatorSet{
+				Validators:         []*Validator{badValNoPublicKey},
+				ThresholdPublicKey: bls12381.GenPrivKey().PubKey(),
+				QuorumHash:         crypto.RandQuorumHash(),
 			},
 			err: true,
 			msg: "invalid validator #0: validator does not have a public key",
 		},
 		{
 			vals: ValidatorSet{
-				Validators: []*Validator{val},
-				Proposer:   val,
+				Validators:         []*Validator{badValNoProTxHash},
+				ThresholdPublicKey: bls12381.GenPrivKey().PubKey(),
+				QuorumHash:         crypto.RandQuorumHash(),
+			},
+			err: true,
+			msg: "invalid validator #0: validator does not have a provider transaction hash",
+		},
+		{
+			vals: ValidatorSet{
+				Validators:         []*Validator{val},
+				Proposer:           val,
+				ThresholdPublicKey: val.PubKey,
+			},
+			err: true,
+			msg: "quorumHash error: quorum hash is not set",
+		},
+		{
+			vals: ValidatorSet{
+				Validators:         []*Validator{val},
+				Proposer:           val,
+				ThresholdPublicKey: val.PubKey,
+				QuorumHash:         crypto.RandQuorumHash(),
 			},
 			err: false,
 			msg: "",
+		},
+		{
+			vals: ValidatorSet{
+				Validators: []*Validator{val},
+				Proposer:   val,
+			},
+			err: true,
+			msg: "thresholdPublicKey error: threshold public key is not set",
+		},
+		{
+			vals: *badValSet,
+			err:  true,
+			msg:  "thresholdPublicKey error: incorrect recovered threshold public key",
+		},
+		{
+			vals: *goodValSet,
+			err:  false,
+			msg:  "",
 		},
 	}
 
@@ -129,17 +197,16 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 		err := tc.vals.ValidateBasic()
 		if tc.err {
 			if assert.Error(t, err) {
-				assert.Equal(t, tc.msg, err.Error())
+				assert.True(t, strings.HasPrefix(err.Error(), tc.msg))
 			}
 		} else {
 			assert.NoError(t, err)
 		}
 	}
-
 }
 
 func TestCopy(t *testing.T) {
-	vset := randValidatorSet(10)
+	vset, _ := GenerateValidatorSet(10)
 	vsetHash := vset.Hash()
 	if len(vsetHash) == 0 {
 		t.Fatalf("ValidatorSet had unexpected zero hash")
@@ -156,10 +223,10 @@ func TestCopy(t *testing.T) {
 // Test that IncrementProposerPriority requires positive times.
 func TestIncrementProposerPriorityPositiveTimes(t *testing.T) {
 	vset := NewValidatorSet([]*Validator{
-		newValidator([]byte("foo"), 1000),
-		newValidator([]byte("bar"), 300),
-		newValidator([]byte("baz"), 330),
-	})
+		NewTestValidatorGeneratedFromAddress([]byte("foo")),
+		NewTestValidatorGeneratedFromAddress([]byte("bar")),
+		NewTestValidatorGeneratedFromAddress([]byte("baz")),
+	}, pubKeyBLS{}, btcjson.LLMQType_5_60, crypto.QuorumHash{})
 
 	assert.Panics(t, func() { vset.IncrementProposerPriority(-1) })
 	assert.Panics(t, func() { vset.IncrementProposerPriority(0) })
@@ -168,12 +235,12 @@ func TestIncrementProposerPriorityPositiveTimes(t *testing.T) {
 
 func BenchmarkValidatorSetCopy(b *testing.B) {
 	b.StopTimer()
-	vset := NewValidatorSet([]*Validator{})
+	vset := NewValidatorSet([]*Validator{}, nil, btcjson.LLMQType_5_60, nil)
 	for i := 0; i < 1000; i++ {
 		privKey := bls12381.GenPrivKey()
 		pubKey := privKey.PubKey()
-		val := NewValidator(pubKey, 10)
-		err := vset.UpdateWithChangeSet([]*Validator{val})
+		val := NewValidatorDefaultVotingPower(pubKey, crypto.ProTxHash{})
+		err := vset.UpdateWithChangeSet([]*Validator{val}, nil, crypto.RandQuorumHash())
 		if err != nil {
 			panic("Failed to add validator")
 		}
@@ -189,131 +256,67 @@ func BenchmarkValidatorSetCopy(b *testing.B) {
 
 func TestProposerSelection1(t *testing.T) {
 	vset := NewValidatorSet([]*Validator{
-		newValidator([]byte("foo"), 1000),
-		newValidator([]byte("bar"), 300),
-		newValidator([]byte("baz"), 330),
-	})
+		NewTestValidatorGeneratedFromAddress([]byte("foo")),
+		NewTestValidatorGeneratedFromAddress([]byte("bar")),
+		NewTestValidatorGeneratedFromAddress([]byte("baz")),
+	}, pubKeyBLS{}, btcjson.LLMQType_5_60, crypto.QuorumHash{})
 	var proposers []string
 	for i := 0; i < 99; i++ {
 		val := vset.GetProposer()
 		proposers = append(proposers, string(val.Address))
 		vset.IncrementProposerPriority(1)
 	}
-	expected := `foo baz foo bar foo foo baz foo bar foo foo baz foo foo bar foo baz foo foo bar` +
-		` foo foo baz foo bar foo foo baz foo bar foo foo baz foo foo bar foo baz foo foo bar` +
-		` foo baz foo foo bar foo baz foo foo bar foo baz foo foo foo baz bar foo foo foo baz` +
-		` foo bar foo foo baz foo bar foo foo baz foo bar foo foo baz foo bar foo foo baz foo` +
-		` foo bar foo baz foo foo bar foo baz foo foo bar foo baz foo foo`
+	expected := `foo baz bar foo baz bar foo baz bar foo baz bar foo baz bar foo baz bar foo baz bar foo baz bar foo ` +
+		`baz bar foo baz bar foo baz bar foo baz bar foo baz bar foo baz bar foo baz bar foo baz bar foo baz bar foo ` +
+		`baz bar foo baz bar foo baz bar foo baz bar foo baz bar foo baz bar foo baz bar foo baz bar foo baz bar foo ` +
+		`baz bar foo baz bar foo baz bar foo baz bar foo baz bar foo baz bar foo baz bar`
 	if expected != strings.Join(proposers, " ") {
 		t.Errorf("expected sequence of proposers was\n%v\nbut got \n%v", expected, strings.Join(proposers, " "))
 	}
 }
 
 func TestProposerSelection2(t *testing.T) {
-	addr0 := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-	addr1 := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}
-	addr2 := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2}
+	proTxHashes := make([]crypto.ProTxHash, 3)
+	addresses := make([]crypto.Address, 3)
+	proTxHashes[0] = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}
+	proTxHashes[1] = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2}
+	proTxHashes[2] = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3}
+	addresses[0] = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2}
+	addresses[1] = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}
+	addresses[2] = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 
-	// when all voting power is same, we go in order of addresses
-	val0, val1, val2 := newValidator(addr0, 100), newValidator(addr1, 100), newValidator(addr2, 100)
-	valList := []*Validator{val0, val1, val2}
-	vals := NewValidatorSet(valList)
-	for i := 0; i < len(valList)*5; i++ {
-		ii := (i) % len(valList)
+	vals, _ := GenerateValidatorSetUsingProTxHashes(proTxHashes)
+	for i := 0; i < len(proTxHashes)*5; i++ {
+		ii := (i) % len(proTxHashes)
 		prop := vals.GetProposer()
-		if !bytes.Equal(prop.Address, valList[ii].Address) {
-			t.Fatalf("(%d): Expected %X. Got %X", i, valList[ii].Address, prop.Address)
+		if !bytes.Equal(prop.ProTxHash, vals.Validators[ii].ProTxHash) {
+			t.Fatalf("(%d): Expected %X. Got %X", i, vals.Validators[ii].ProTxHash, prop.ProTxHash)
 		}
 		vals.IncrementProposerPriority(1)
 	}
 
-	// One validator has more than the others, but not enough to propose twice in a row
-	*val2 = *newValidator(addr2, 400)
-	vals = NewValidatorSet(valList)
-	// vals.IncrementProposerPriority(1)
 	prop := vals.GetProposer()
-	if !bytes.Equal(prop.Address, addr2) {
-		t.Fatalf("Expected address with highest voting power to be first proposer. Got %X", prop.Address)
+	if !bytes.Equal(prop.ProTxHash, proTxHashes[0]) {
+		t.Fatalf("Expected proposer with smallest pro_tx_hash to be first proposer. Got %X", prop.ProTxHash)
 	}
 	vals.IncrementProposerPriority(1)
 	prop = vals.GetProposer()
-	if !bytes.Equal(prop.Address, addr0) {
-		t.Fatalf("Expected smallest address to be validator. Got %X", prop.Address)
-	}
-
-	// One validator has more than the others, and enough to be proposer twice in a row
-	*val2 = *newValidator(addr2, 401)
-	vals = NewValidatorSet(valList)
-	prop = vals.GetProposer()
-	if !bytes.Equal(prop.Address, addr2) {
-		t.Fatalf("Expected address with highest voting power to be first proposer. Got %X", prop.Address)
-	}
-	vals.IncrementProposerPriority(1)
-	prop = vals.GetProposer()
-	if !bytes.Equal(prop.Address, addr2) {
-		t.Fatalf("Expected address with highest voting power to be second proposer. Got %X", prop.Address)
-	}
-	vals.IncrementProposerPriority(1)
-	prop = vals.GetProposer()
-	if !bytes.Equal(prop.Address, addr0) {
-		t.Fatalf("Expected smallest address to be validator. Got %X", prop.Address)
-	}
-
-	// each validator should be the proposer a proportional number of times
-	val0, val1, val2 = newValidator(addr0, 4), newValidator(addr1, 5), newValidator(addr2, 3)
-	valList = []*Validator{val0, val1, val2}
-	propCount := make([]int, 3)
-	vals = NewValidatorSet(valList)
-	N := 1
-	for i := 0; i < 120*N; i++ {
-		prop := vals.GetProposer()
-		ii := prop.Address[19]
-		propCount[ii]++
-		vals.IncrementProposerPriority(1)
-	}
-
-	if propCount[0] != 40*N {
-		t.Fatalf(
-			"Expected prop count for validator with 4/12 of voting power to be %d/%d. Got %d/%d",
-			40*N,
-			120*N,
-			propCount[0],
-			120*N,
-		)
-	}
-	if propCount[1] != 50*N {
-		t.Fatalf(
-			"Expected prop count for validator with 5/12 of voting power to be %d/%d. Got %d/%d",
-			50*N,
-			120*N,
-			propCount[1],
-			120*N,
-		)
-	}
-	if propCount[2] != 30*N {
-		t.Fatalf(
-			"Expected prop count for validator with 3/12 of voting power to be %d/%d. Got %d/%d",
-			30*N,
-			120*N,
-			propCount[2],
-			120*N,
-		)
+	if !bytes.Equal(prop.ProTxHash, proTxHashes[1]) {
+		t.Fatalf("Expected proposer with second smallest pro_tx_hash to be second proposer. Got %X", prop.ProTxHash)
 	}
 }
 
 func TestProposerSelection3(t *testing.T) {
-	vset := NewValidatorSet([]*Validator{
-		newValidator([]byte("avalidator_address12"), 1),
-		newValidator([]byte("bvalidator_address12"), 1),
-		newValidator([]byte("cvalidator_address12"), 1),
-		newValidator([]byte("dvalidator_address12"), 1),
-	})
+	addresses := make([]crypto.Address, 4)
+	addresses[0] = []byte("avalidator_address12")
+	addresses[1] = []byte("bvalidator_address12")
+	addresses[2] = []byte("cvalidator_address12")
+	addresses[3] = []byte("dvalidator_address12")
+
+	vset, _ := GenerateTestValidatorSetWithAddressesDefaultPower(addresses)
 
 	proposerOrder := make([]*Validator, 4)
 	for i := 0; i < 4; i++ {
-		// need to give all validators to have keys
-		pk := bls12381.GenPrivKey().PubKey()
-		vset.Validators[i].PubKey = pk
 		proposerOrder[i] = vset.GetProposer()
 		vset.IncrementProposerPriority(1)
 	}
@@ -326,8 +329,8 @@ func TestProposerSelection3(t *testing.T) {
 		j int32
 	)
 	for ; i < 10000; i++ {
-		got := vset.GetProposer().Address
-		expected := proposerOrder[j%4].Address
+		got := vset.GetProposer().ProTxHash
+		expected := proposerOrder[j%4].ProTxHash
 		if !bytes.Equal(got, expected) {
 			t.Fatalf(fmt.Sprintf("vset.Proposer (%X) does not match expected proposer (%X) for (%d, %d)", got, expected, i, j))
 		}
@@ -338,12 +341,12 @@ func TestProposerSelection3(t *testing.T) {
 
 		computed := vset.GetProposer() // findGetProposer()
 		if i != 0 {
-			if !bytes.Equal(got, computed.Address) {
+			if !bytes.Equal(got, computed.ProTxHash) {
 				t.Fatalf(
 					fmt.Sprintf(
 						"vset.Proposer (%X) does not match computed proposer (%X) for (%d, %d)",
 						got,
-						computed.Address,
+						computed.ProTxHash,
 						i,
 						j,
 					),
@@ -364,32 +367,12 @@ func TestProposerSelection3(t *testing.T) {
 	}
 }
 
-func newValidator(address []byte, power int64) *Validator {
-	return &Validator{Address: address, VotingPower: power}
-}
-
-func randPubKey() crypto.PubKey {
-	pubKey := make(bls12381.PubKey, bls12381.PubKeySize)
-	copy(pubKey, tmrand.Bytes(bls12381.PubKeySize))
-	return bls12381.PubKey(tmrand.Bytes(bls12381.PubKeySize))
-}
-
 func randValidator(totalVotingPower int64) *Validator {
 	// this modulo limits the ProposerPriority/VotingPower to stay in the
 	// bounds of MaxTotalVotingPower minus the already existing voting power:
-	val := NewValidator(randPubKey(), int64(tmrand.Uint64()%uint64(MaxTotalVotingPower-totalVotingPower)))
+	val, _ := RandValidator()
 	val.ProposerPriority = tmrand.Int64() % (MaxTotalVotingPower - totalVotingPower)
 	return val
-}
-
-func randValidatorSet(numValidators int) *ValidatorSet {
-	validators := make([]*Validator, numValidators)
-	totalVotingPower := int64(0)
-	for i := 0; i < numValidators; i++ {
-		validators[i] = randValidator(totalVotingPower)
-		totalVotingPower += validators[i].VotingPower
-	}
-	return NewValidatorSet(validators)
 }
 
 func (vals *ValidatorSet) toBytes() []byte {
@@ -420,22 +403,6 @@ func (vals *ValidatorSet) fromBytes(b []byte) *ValidatorSet {
 	}
 
 	return vs
-}
-
-//-------------------------------------------------------------------
-
-func TestValidatorSetTotalVotingPowerPanicsOnOverflow(t *testing.T) {
-	// NewValidatorSet calls IncrementProposerPriority which calls TotalVotingPower()
-	// which should panic on overflows:
-	shouldPanic := func() {
-		NewValidatorSet([]*Validator{
-			{Address: []byte("a"), VotingPower: math.MaxInt64, ProposerPriority: 0},
-			{Address: []byte("b"), VotingPower: math.MaxInt64, ProposerPriority: 0},
-			{Address: []byte("c"), VotingPower: math.MaxInt64, ProposerPriority: 0},
-		})
-	}
-
-	assert.Panics(t, shouldPanic)
 }
 
 func TestAvgProposerPriority(t *testing.T) {
@@ -483,159 +450,31 @@ func TestAveragingInIncrementProposerPriority(t *testing.T) {
 	}{
 		0: {ValidatorSet{
 			Validators: []*Validator{
-				{Address: []byte("a"), ProposerPriority: 1},
-				{Address: []byte("b"), ProposerPriority: 2},
-				{Address: []byte("c"), ProposerPriority: 3}}},
+				{ProTxHash: []byte("a"), ProposerPriority: 1},
+				{ProTxHash: []byte("b"), ProposerPriority: 2},
+				{ProTxHash: []byte("c"), ProposerPriority: 3}}},
 			1, 2},
 		1: {ValidatorSet{
 			Validators: []*Validator{
-				{Address: []byte("a"), ProposerPriority: 10},
-				{Address: []byte("b"), ProposerPriority: -10},
-				{Address: []byte("c"), ProposerPriority: 1}}},
+				{ProTxHash: []byte("a"), ProposerPriority: 10},
+				{ProTxHash: []byte("b"), ProposerPriority: -10},
+				{ProTxHash: []byte("c"), ProposerPriority: 1}}},
 			// this should average twice but the average should be 0 after the first iteration
 			// (voting power is 0 -> no changes)
 			11, 1 / 3},
 		2: {ValidatorSet{
 			Validators: []*Validator{
-				{Address: []byte("a"), ProposerPriority: 100},
-				{Address: []byte("b"), ProposerPriority: -10},
-				{Address: []byte("c"), ProposerPriority: 1}}},
+				{ProTxHash: []byte("a"), ProposerPriority: 100},
+				{ProTxHash: []byte("b"), ProposerPriority: -10},
+				{ProTxHash: []byte("c"), ProposerPriority: 1}}},
 			1, 91 / 3},
 	}
 	for i, tc := range tcs {
 		// work on copy to have the old ProposerPriorities:
 		newVset := tc.vs.CopyIncrementProposerPriority(tc.times)
 		for _, val := range tc.vs.Validators {
-			_, updatedVal := newVset.GetByAddress(val.Address)
+			_, updatedVal := newVset.GetByProTxHash(val.ProTxHash)
 			assert.Equal(t, updatedVal.ProposerPriority, val.ProposerPriority-tc.avg, "test case: %v", i)
-		}
-	}
-}
-
-func TestAveragingInIncrementProposerPriorityWithVotingPower(t *testing.T) {
-	// Other than TestAveragingInIncrementProposerPriority this is a more complete test showing
-	// how each ProposerPriority changes in relation to the validator's voting power respectively.
-	// average is zero in each round:
-	vp0 := int64(10)
-	vp1 := int64(1)
-	vp2 := int64(1)
-	total := vp0 + vp1 + vp2
-	avg := (vp0 + vp1 + vp2 - total) / 3
-	vals := ValidatorSet{Validators: []*Validator{
-		{Address: []byte{0}, ProposerPriority: 0, VotingPower: vp0},
-		{Address: []byte{1}, ProposerPriority: 0, VotingPower: vp1},
-		{Address: []byte{2}, ProposerPriority: 0, VotingPower: vp2}}}
-	tcs := []struct {
-		vals                  *ValidatorSet
-		wantProposerPrioritys []int64
-		times                 int32
-		wantProposer          *Validator
-	}{
-
-		0: {
-			vals.Copy(),
-			[]int64{
-				// Acumm+VotingPower-Avg:
-				0 + vp0 - total - avg, // mostest will be subtracted by total voting power (12)
-				0 + vp1,
-				0 + vp2},
-			1,
-			vals.Validators[0]},
-		1: {
-			vals.Copy(),
-			[]int64{
-				(0 + vp0 - total) + vp0 - total - avg, // this will be mostest on 2nd iter, too
-				(0 + vp1) + vp1,
-				(0 + vp2) + vp2},
-			2,
-			vals.Validators[0]}, // increment twice -> expect average to be subtracted twice
-		2: {
-			vals.Copy(),
-			[]int64{
-				0 + 3*(vp0-total) - avg, // still mostest
-				0 + 3*vp1,
-				0 + 3*vp2},
-			3,
-			vals.Validators[0]},
-		3: {
-			vals.Copy(),
-			[]int64{
-				0 + 4*(vp0-total), // still mostest
-				0 + 4*vp1,
-				0 + 4*vp2},
-			4,
-			vals.Validators[0]},
-		4: {
-			vals.Copy(),
-			[]int64{
-				0 + 4*(vp0-total) + vp0, // 4 iters was mostest
-				0 + 5*vp1 - total,       // now this val is mostest for the 1st time (hence -12==totalVotingPower)
-				0 + 5*vp2},
-			5,
-			vals.Validators[1]},
-		5: {
-			vals.Copy(),
-			[]int64{
-				0 + 6*vp0 - 5*total, // mostest again
-				0 + 6*vp1 - total,   // mostest once up to here
-				0 + 6*vp2},
-			6,
-			vals.Validators[0]},
-		6: {
-			vals.Copy(),
-			[]int64{
-				0 + 7*vp0 - 6*total, // in 7 iters this val is mostest 6 times
-				0 + 7*vp1 - total,   // in 7 iters this val is mostest 1 time
-				0 + 7*vp2},
-			7,
-			vals.Validators[0]},
-		7: {
-			vals.Copy(),
-			[]int64{
-				0 + 8*vp0 - 7*total, // mostest again
-				0 + 8*vp1 - total,
-				0 + 8*vp2},
-			8,
-			vals.Validators[0]},
-		8: {
-			vals.Copy(),
-			[]int64{
-				0 + 9*vp0 - 7*total,
-				0 + 9*vp1 - total,
-				0 + 9*vp2 - total}, // mostest
-			9,
-			vals.Validators[2]},
-		9: {
-			vals.Copy(),
-			[]int64{
-				0 + 10*vp0 - 8*total, // after 10 iters this is mostest again
-				0 + 10*vp1 - total,   // after 6 iters this val is "mostest" once and not in between
-				0 + 10*vp2 - total},  // in between 10 iters this val is "mostest" once
-			10,
-			vals.Validators[0]},
-		10: {
-			vals.Copy(),
-			[]int64{
-				0 + 11*vp0 - 9*total,
-				0 + 11*vp1 - total,  // after 6 iters this val is "mostest" once and not in between
-				0 + 11*vp2 - total}, // after 10 iters this val is "mostest" once
-			11,
-			vals.Validators[0]},
-	}
-	for i, tc := range tcs {
-		tc.vals.IncrementProposerPriority(tc.times)
-
-		assert.Equal(t, tc.wantProposer.Address, tc.vals.GetProposer().Address,
-			"test case: %v",
-			i)
-
-		for valIdx, val := range tc.vals.Validators {
-			assert.Equal(t,
-				tc.wantProposerPrioritys[valIdx],
-				val.ProposerPriority,
-				"test case: %v, validator: %v",
-				i,
-				valIdx)
 		}
 	}
 }
@@ -669,60 +508,77 @@ func TestSafeSubClip(t *testing.T) {
 // verification.
 func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 	var (
-		privKey = ed25519.GenPrivKey()
-		pubKey  = privKey.PubKey()
-		v1      = NewValidator(pubKey, 1000)
-		vset    = NewValidatorSet([]*Validator{v1})
+		proTxHash  = crypto.RandProTxHash()
+		privKey    = bls12381.GenPrivKey()
+		pubKey     = privKey.PubKey()
+		v1         = NewValidatorDefaultVotingPower(pubKey, proTxHash)
+		quorumHash = crypto.RandQuorumHash()
+		vset       = NewValidatorSet([]*Validator{v1}, v1.PubKey, btcjson.LLMQType_5_60, quorumHash)
 
 		chainID = "Lalande21185"
 	)
 
 	vote := examplePrecommit()
-	vote.ValidatorAddress = pubKey.Address()
+	vote.ValidatorProTxHash = proTxHash
 	v := vote.ToProto()
-	sig, err := privKey.Sign(VoteSignBytes(chainID, v))
+	blockSig, err := privKey.SignDigest(VoteBlockSignId(chainID, v, btcjson.LLMQType_5_60, quorumHash))
 	require.NoError(t, err)
-	vote.Signature = sig
+	stateSig, err := privKey.SignDigest(VoteStateSignId(chainID, v, btcjson.LLMQType_5_60, quorumHash))
+	require.NoError(t, err)
+	vote.BlockSignature = blockSig
+	vote.StateSignature = stateSig
 
-	commit := NewCommit(vote.Height, vote.Round, vote.BlockID, []CommitSig{vote.CommitSig()})
+	commit := NewCommit(vote.Height,
+		vote.Round,
+		vote.BlockID,
+		vote.StateID,
+		[]CommitSig{vote.CommitSig()},
+		quorumHash,
+		vote.BlockSignature,
+		vote.StateSignature,
+	)
 
 	vote2 := *vote
-	sig2, err := privKey.Sign(VoteSignBytes("EpsilonEridani", v))
+	blockSig2, err := privKey.SignDigest(VoteBlockSignBytes("EpsilonEridani", v))
 	require.NoError(t, err)
-	vote2.Signature = sig2
+	stateSig2, err := privKey.SignDigest(VoteStateSignBytes("EpsilonEridani", v))
+	require.NoError(t, err)
+	vote2.BlockSignature = blockSig2
+	vote2.StateSignature = stateSig2
 
 	testCases := []struct {
 		description string
 		chainID     string
 		blockID     BlockID
+		stateID     StateID
 		height      int64
 		commit      *Commit
 		expErr      bool
 	}{
-		{"good", chainID, vote.BlockID, vote.Height, commit, false},
+		{"good", chainID, vote.BlockID, vote.StateID, vote.Height, commit, false},
 
-		{"wrong signature (#0)", "EpsilonEridani", vote.BlockID, vote.Height, commit, true},
-		{"wrong block ID", chainID, makeBlockIDRandom(), vote.Height, commit, true},
-		{"wrong height", chainID, vote.BlockID, vote.Height - 1, commit, true},
+		{"wrong block signature", "EpsilonEridani", vote.BlockID, vote.StateID, vote.Height, commit, true},
+		{"wrong block ID", chainID, makeBlockIDRandom(), vote.StateID, vote.Height, commit, true},
+		{"wrong height", chainID, vote.BlockID, vote.StateID, vote.Height - 1, commit, true},
 
-		{"wrong set size: 1 vs 0", chainID, vote.BlockID, vote.Height,
-			NewCommit(vote.Height, vote.Round, vote.BlockID, []CommitSig{}), true},
+		{"wrong set size: 1 vs 0", chainID, vote.BlockID, vote.StateID, vote.Height,
+			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, []CommitSig{}, quorumHash, nil, nil), true},
 
-		{"wrong set size: 1 vs 2", chainID, vote.BlockID, vote.Height,
-			NewCommit(vote.Height, vote.Round, vote.BlockID,
-				[]CommitSig{vote.CommitSig(), {BlockIDFlag: BlockIDFlagAbsent}}), true},
+		{"wrong set size: 1 vs 2", chainID, vote.BlockID, vote.StateID, vote.Height,
+			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID,
+				[]CommitSig{vote.CommitSig(), {BlockIDFlag: BlockIDFlagAbsent}}, quorumHash, nil, nil), true},
 
-		{"insufficient voting power: got 0, needed more than 666", chainID, vote.BlockID, vote.Height,
-			NewCommit(vote.Height, vote.Round, vote.BlockID, []CommitSig{{BlockIDFlag: BlockIDFlagAbsent}}), true},
+		{"insufficient voting power: got 0, needed more than 66", chainID, vote.BlockID, vote.StateID, vote.Height,
+			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, []CommitSig{{BlockIDFlag: BlockIDFlagAbsent}}, quorumHash, vote.BlockSignature, vote.StateSignature), true},
 
-		{"wrong signature (#0)", chainID, vote.BlockID, vote.Height,
-			NewCommit(vote.Height, vote.Round, vote.BlockID, []CommitSig{vote2.CommitSig()}), true},
+		{"wrong block signature", chainID, vote.BlockID, vote.StateID, vote.Height,
+			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, []CommitSig{vote2.CommitSig()}, quorumHash, vote2.BlockSignature, vote2.StateSignature), true},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.description, func(t *testing.T) {
-			err := vset.VerifyCommit(tc.chainID, tc.blockID, tc.height, tc.commit)
+			err := vset.VerifyCommit(tc.chainID, tc.blockID, tc.stateID, tc.height, tc.commit)
 			if tc.expErr {
 				if assert.Error(t, err, "VerifyCommit") {
 					assert.Contains(t, err.Error(), tc.description, "VerifyCommit")
@@ -731,7 +587,7 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 				assert.NoError(t, err, "VerifyCommit")
 			}
 
-			err = vset.VerifyCommitLight(tc.chainID, tc.blockID, tc.height, tc.commit)
+			err = vset.VerifyCommitLight(tc.chainID, tc.blockID, tc.stateID, tc.height, tc.commit)
 			if tc.expErr {
 				if assert.Error(t, err, "VerifyCommitLight") {
 					assert.Contains(t, err.Error(), tc.description, "VerifyCommitLight")
@@ -748,23 +604,25 @@ func TestValidatorSet_VerifyCommit_CheckAllSignatures(t *testing.T) {
 		chainID = "test_chain_id"
 		h       = int64(3)
 		blockID = makeBlockIDRandom()
+		stateID = makeStateIDRandom()
 	)
 
 	voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, 4, 10)
-	commit, err := MakeCommit(blockID, h, 0, voteSet, vals, time.Now())
+	commit, err := MakeCommit(blockID, stateID, h, 0, voteSet, vals)
 	require.NoError(t, err)
 
 	// malleate 4th signature
 	vote := voteSet.GetByIndex(3)
 	v := vote.ToProto()
-	err = vals[3].SignVote("CentaurusA", v)
+	err = vals[3].SignVote("CentaurusA", valSet.QuorumType, valSet.QuorumHash, v)
 	require.NoError(t, err)
-	vote.Signature = v.Signature
+	vote.BlockSignature = v.BlockSignature
+	vote.StateSignature = v.StateSignature
 	commit.Signatures[3] = vote.CommitSig()
 
-	err = valSet.VerifyCommit(chainID, blockID, h, commit)
+	err = valSet.VerifyCommit(chainID, blockID, stateID, h, commit)
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "wrong signature (#3)")
+		assert.Contains(t, err.Error(), "wrong block signature (#3")
 	}
 }
 
@@ -773,21 +631,23 @@ func TestValidatorSet_VerifyCommitLight_ReturnsAsSoonAsMajorityOfVotingPowerSign
 		chainID = "test_chain_id"
 		h       = int64(3)
 		blockID = makeBlockIDRandom()
+		stateID = makeStateIDRandom()
 	)
 
 	voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, 4, 10)
-	commit, err := MakeCommit(blockID, h, 0, voteSet, vals, time.Now())
+	commit, err := MakeCommit(blockID, stateID, h, 0, voteSet, vals)
 	require.NoError(t, err)
 
 	// malleate 4th signature (3 signatures are enough for 2/3+)
 	vote := voteSet.GetByIndex(3)
 	v := vote.ToProto()
-	err = vals[3].SignVote("CentaurusA", v)
+	err = vals[3].SignVote("CentaurusA", valSet.QuorumType, valSet.QuorumHash, v)
 	require.NoError(t, err)
-	vote.Signature = v.Signature
+	vote.BlockSignature = v.BlockSignature
+	vote.StateSignature = v.StateSignature
 	commit.Signatures[3] = vote.CommitSig()
 
-	err = valSet.VerifyCommitLight(chainID, blockID, h, commit)
+	err = valSet.VerifyCommitLight(chainID, blockID, stateID, h, commit)
 	assert.NoError(t, err)
 }
 
@@ -796,18 +656,20 @@ func TestValidatorSet_VerifyCommitLightTrusting_ReturnsAsSoonAsTrustLevelOfVotin
 		chainID = "test_chain_id"
 		h       = int64(3)
 		blockID = makeBlockIDRandom()
+		stateID = makeStateIDRandom()
 	)
 
 	voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, 4, 10)
-	commit, err := MakeCommit(blockID, h, 0, voteSet, vals, time.Now())
+	commit, err := MakeCommit(blockID, stateID, h, 0, voteSet, vals)
 	require.NoError(t, err)
 
 	// malleate 3rd signature (2 signatures are enough for 1/3+ trust level)
 	vote := voteSet.GetByIndex(2)
 	v := vote.ToProto()
-	err = vals[2].SignVote("CentaurusA", v)
+	err = vals[2].SignVote("CentaurusA", valSet.QuorumType, valSet.QuorumHash, v)
 	require.NoError(t, err)
-	vote.Signature = v.Signature
+	vote.BlockSignature = v.BlockSignature
+	vote.StateSignature = v.StateSignature
 	commit.Signatures[2] = vote.CommitSig()
 
 	err = valSet.VerifyCommitLightTrusting(chainID, commit, tmmath.Fraction{Numerator: 1, Denominator: 3})
@@ -817,7 +679,7 @@ func TestValidatorSet_VerifyCommitLightTrusting_ReturnsAsSoonAsTrustLevelOfVotin
 func TestEmptySet(t *testing.T) {
 
 	var valList []*Validator
-	valSet := NewValidatorSet(valList)
+	valSet := NewValidatorSet(valList, bls12381.PubKey{}, btcjson.LLMQType_5_60, crypto.QuorumHash{})
 	assert.Panics(t, func() { valSet.IncrementProposerPriority(1) })
 	assert.Panics(t, func() { valSet.RescalePriorities(100) })
 	assert.Panics(t, func() { valSet.shiftByAvgProposerPriority() })
@@ -825,51 +687,54 @@ func TestEmptySet(t *testing.T) {
 	valSet.GetProposer()
 
 	// Add to empty set
-	v1 := newValidator([]byte("v1"), 100)
-	v2 := newValidator([]byte("v2"), 100)
-	valList = []*Validator{v1, v2}
-	assert.NoError(t, valSet.UpdateWithChangeSet(valList))
+	addresses := []crypto.Address{[]byte("v1"), []byte("v2")}
+	valSetAdd, _ := GenerateTestValidatorSetWithAddressesDefaultPower(addresses)
+	assert.NoError(t, valSet.UpdateWithChangeSet(valSetAdd.Validators, valSetAdd.ThresholdPublicKey, crypto.RandQuorumHash()))
 	verifyValidatorSet(t, valSet)
 
 	// Delete all validators from set
-	v1 = newValidator([]byte("v1"), 0)
-	v2 = newValidator([]byte("v2"), 0)
+	v1 := NewTestRemoveValidatorGeneratedFromAddress([]byte("v1"))
+	v2 := NewTestRemoveValidatorGeneratedFromAddress([]byte("v2"))
 	delList := []*Validator{v1, v2}
-	assert.Error(t, valSet.UpdateWithChangeSet(delList))
+	assert.Error(t, valSet.UpdateWithChangeSet(delList, bls12381.PubKey{}, crypto.RandQuorumHash()))
 
 	// Attempt delete from empty set
-	assert.Error(t, valSet.UpdateWithChangeSet(delList))
+	assert.Error(t, valSet.UpdateWithChangeSet(delList, bls12381.PubKey{}, crypto.RandQuorumHash()))
 
 }
 
 func TestUpdatesForNewValidatorSet(t *testing.T) {
 
-	v1 := newValidator([]byte("v1"), 100)
-	v2 := newValidator([]byte("v2"), 100)
-	valList := []*Validator{v1, v2}
-	valSet := NewValidatorSet(valList)
+	addresses12 := []crypto.Address{[]byte("v1"), []byte("v2")}
+
+	valSet, _ := GenerateTestValidatorSetWithAddressesDefaultPower(addresses12)
 	verifyValidatorSet(t, valSet)
 
 	// Verify duplicates are caught in NewValidatorSet() and it panics
-	v111 := newValidator([]byte("v1"), 100)
-	v112 := newValidator([]byte("v1"), 123)
-	v113 := newValidator([]byte("v1"), 234)
-	valList = []*Validator{v111, v112, v113}
-	assert.Panics(t, func() { NewValidatorSet(valList) })
+	v111 := NewTestValidatorGeneratedFromAddress([]byte("v1"))
+	v112 := NewTestValidatorGeneratedFromAddress([]byte("v1"))
+	v113 := NewTestValidatorGeneratedFromAddress([]byte("v1"))
+	valList := []*Validator{v111, v112, v113}
+	assert.Panics(t, func() { NewValidatorSet(valList, bls12381.PubKey{}, btcjson.LLMQType_5_60, crypto.QuorumHash{}) })
 
 	// Verify set including validator with voting power 0 cannot be created
-	v1 = newValidator([]byte("v1"), 0)
-	v2 = newValidator([]byte("v2"), 22)
-	v3 := newValidator([]byte("v3"), 33)
+	v1 := NewTestRemoveValidatorGeneratedFromAddress([]byte("v1"))
+	v2 := NewTestValidatorGeneratedFromAddress([]byte("v2"))
+	v3 := NewTestValidatorGeneratedFromAddress([]byte("v3"))
 	valList = []*Validator{v1, v2, v3}
-	assert.Panics(t, func() { NewValidatorSet(valList) })
+	assert.Panics(t, func() { NewValidatorSet(valList, bls12381.PubKey{}, btcjson.LLMQType_5_60, crypto.QuorumHash{}) })
 
 	// Verify set including validator with negative voting power cannot be created
-	v1 = newValidator([]byte("v1"), 10)
-	v2 = newValidator([]byte("v2"), -20)
-	v3 = newValidator([]byte("v3"), 30)
+	v1 = NewTestValidatorGeneratedFromAddress([]byte("v1"))
+	v2 = &Validator{
+		Address:          []byte("v2"),
+		VotingPower:      -20,
+		ProposerPriority: 0,
+		ProTxHash:        crypto.Sha256([]byte("v2")),
+	}
+	v3 = NewTestValidatorGeneratedFromAddress([]byte("v3"))
 	valList = []*Validator{v1, v2, v3}
-	assert.Panics(t, func() { NewValidatorSet(valList) })
+	assert.Panics(t, func() { NewValidatorSet(valList, bls12381.PubKey{}, btcjson.LLMQType_5_60, crypto.QuorumHash{}) })
 
 }
 
@@ -893,13 +758,62 @@ func permutation(valList []testVal) []testVal {
 func createNewValidatorList(testValList []testVal) []*Validator {
 	valList := make([]*Validator, 0, len(testValList))
 	for _, val := range testValList {
-		valList = append(valList, newValidator([]byte(val.name), val.power))
+		valList = append(valList, NewTestValidatorGeneratedFromAddress([]byte(val.name)))
 	}
+	sort.Sort(ValidatorsByProTxHashes(valList))
 	return valList
 }
 
 func createNewValidatorSet(testValList []testVal) *ValidatorSet {
-	return NewValidatorSet(createNewValidatorList(testValList))
+	addressList := make([]Address, 0, len(testValList))
+	powers := make([]int64, 0, len(testValList))
+	for _, val := range testValList {
+		addressList = append(addressList, []byte(val.name))
+		powers = append(powers, val.power)
+	}
+	vals, _ := GenerateTestValidatorSetWithAddresses(addressList, powers)
+	return vals
+}
+
+func addValidatorsToValidatorSet(vals *ValidatorSet, testValList []testVal) ([]*Validator, crypto.PubKey) {
+	addedAddresses := make([]Address, 0, len(testValList))
+	removedAddresses := make([]Address, 0, len(testValList))
+	removedVals := make([]*Validator, 0, len(testValList))
+	combinedAddresses := make([]Address, 0, len(testValList)+len(vals.Validators))
+	for _, val := range testValList {
+		if val.power != 0 {
+			_, value := vals.GetByAddress([]byte(val.name))
+			if value == nil {
+				addedAddresses = append(addedAddresses, []byte(val.name))
+			}
+		} else {
+			_, value := vals.GetByAddress([]byte(val.name))
+			if value != nil {
+				removedAddresses = append(removedAddresses, []byte(val.name))
+			}
+			removedVals = append(removedVals, NewTestRemoveValidatorGeneratedFromAddress([]byte(val.name)))
+		}
+	}
+	originalAddresses := vals.GetAddresses()
+	for _, oAddress := range originalAddresses {
+		found := false
+		for _, removedAddresses := range removedAddresses {
+			if bytes.Equal(oAddress.Bytes(), removedAddresses.Bytes()) {
+				found = true
+			}
+		}
+		if !found {
+			combinedAddresses = append(combinedAddresses, oAddress)
+		}
+	}
+	combinedAddresses = append(combinedAddresses, addedAddresses...)
+	if len(combinedAddresses) > 0 {
+		rVals, _ := GenerateTestValidatorSetWithAddressesDefaultPower(combinedAddresses)
+		rValidators := append(rVals.Validators, removedVals...)
+		return rValidators, rVals.ThresholdPublicKey
+	}
+	return removedVals, nil
+
 }
 
 func valSetTotalProposerPriority(valSet *ValidatorSet) int64 {
@@ -932,6 +846,10 @@ func verifyValidatorSet(t *testing.T, valSet *ValidatorSet) {
 	dist := computeMaxMinPriorityDiff(valSet)
 	assert.True(t, dist <= PriorityWindowSizeFactor*tvp,
 		"expected priority distance < %d. Got %d", PriorityWindowSizeFactor*tvp, dist)
+
+	recoveredPublicKey, err := bls12381.RecoverThresholdPublicKeyFromPublicKeys(valSet.GetPublicKeys(), valSet.GetProTxHashesAsByteArrays())
+	assert.NoError(t, err)
+	assert.Equal(t, valSet.ThresholdPublicKey, recoveredPublicKey, "the validator set threshold public key must match the recovered public key")
 }
 
 func toTestValList(valList []*Validator) []testVal {
@@ -943,10 +861,10 @@ func toTestValList(valList []*Validator) []testVal {
 	return testList
 }
 
-func testValSet(nVals int, power int64) []testVal {
+func testValSet(nVals int) []testVal {
 	vals := make([]testVal, nVals)
 	for i := 0; i < nVals; i++ {
-		vals[i] = testVal{fmt.Sprintf("v%d", i+1), power}
+		vals[i] = testVal{fmt.Sprintf("v%d", i+1), DefaultDashVotingPower}
 	}
 	return vals
 }
@@ -956,13 +874,37 @@ type valSetErrTestCase struct {
 	updateVals []testVal
 }
 
-func executeValSetErrTestCase(t *testing.T, idx int, tt valSetErrTestCase) {
+type valSetErrTestCaseWithErr struct {
+	startVals  []testVal
+	updateVals []testVal
+	errString  string
+}
+
+func executeValSetErrTestCaseIgnoreThresholdPublicKey(t *testing.T, idx int, tt valSetErrTestCaseWithErr) {
 	// create a new set and apply updates, keeping copies for the checks
 	valSet := createNewValidatorSet(tt.startVals)
 	valSetCopy := valSet.Copy()
 	valList := createNewValidatorList(tt.updateVals)
 	valListCopy := validatorListCopy(valList)
-	err := valSet.UpdateWithChangeSet(valList)
+	err := valSet.UpdateWithChangeSet(valList, bls12381.GenPrivKey().PubKey(), crypto.RandQuorumHash())
+
+	// for errors check the validator set has not been changed
+	if assert.Error(t, err, "test %d", idx) {
+		assert.Contains(t, err.Error(), tt.errString)
+	}
+	assert.Equal(t, valSet, valSetCopy, "test %v", idx)
+
+	// check the parameter list has not changed
+	assert.Equal(t, valList, valListCopy, "test %v", idx)
+}
+
+func executeValSetErrTestCase(t *testing.T, idx int, tt valSetErrTestCase) {
+	// create a new set and apply updates, keeping copies for the checks
+	valSet := createNewValidatorSet(tt.startVals)
+	valSetCopy := valSet.Copy()
+	valList, thresholdPublicKey := addValidatorsToValidatorSet(valSet, tt.updateVals)
+	valListCopy := validatorListCopy(valList)
+	err := valSet.UpdateWithChangeSet(valList, thresholdPublicKey, crypto.RandQuorumHash())
 
 	// for errors check the validator set has not been changed
 	assert.Error(t, err, "test %d", idx)
@@ -973,112 +915,81 @@ func executeValSetErrTestCase(t *testing.T, idx int, tt valSetErrTestCase) {
 }
 
 func TestValSetUpdatesDuplicateEntries(t *testing.T) {
-	testCases := []valSetErrTestCase{
+	testCases := []valSetErrTestCaseWithErr{
 		// Duplicate entries in changes
 		{ // first entry is duplicated change
-			testValSet(2, 10),
-			[]testVal{{"v1", 11}, {"v1", 22}},
+			testValSet(2),
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v1", DefaultDashVotingPower}},
+			"duplicate entry Validator",
 		},
 		{ // second entry is duplicated change
-			testValSet(2, 10),
-			[]testVal{{"v2", 11}, {"v2", 22}},
+			testValSet(2),
+			[]testVal{{"v2", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}},
+			"duplicate entry Validator",
 		},
 		{ // change duplicates are separated by a valid change
-			testValSet(2, 10),
-			[]testVal{{"v1", 11}, {"v2", 22}, {"v1", 12}},
+			testValSet(2),
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}, {"v1", DefaultDashVotingPower}},
+			"duplicate entry Validator",
 		},
 		{ // change duplicates are separated by a valid change
-			testValSet(3, 10),
-			[]testVal{{"v1", 11}, {"v3", 22}, {"v1", 12}},
+			testValSet(3),
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v3", DefaultDashVotingPower}, {"v1", DefaultDashVotingPower}},
+			"duplicate entry Validator",
 		},
 
 		// Duplicate entries in remove
 		{ // first entry is duplicated remove
-			testValSet(2, 10),
+			testValSet(2),
 			[]testVal{{"v1", 0}, {"v1", 0}},
+			"duplicate entry Validator",
 		},
 		{ // second entry is duplicated remove
-			testValSet(2, 10),
+			testValSet(2),
 			[]testVal{{"v2", 0}, {"v2", 0}},
+			"duplicate entry Validator",
 		},
 		{ // remove duplicates are separated by a valid remove
-			testValSet(2, 10),
+			testValSet(2),
 			[]testVal{{"v1", 0}, {"v2", 0}, {"v1", 0}},
+			"duplicate entry Validator",
 		},
 		{ // remove duplicates are separated by a valid remove
-			testValSet(3, 10),
+			testValSet(3),
 			[]testVal{{"v1", 0}, {"v3", 0}, {"v1", 0}},
+			"duplicate entry Validator",
 		},
 
 		{ // remove and update same val
-			testValSet(2, 10),
-			[]testVal{{"v1", 0}, {"v2", 20}, {"v1", 30}},
+			testValSet(2),
+			[]testVal{{"v1", 0}, {"v2", DefaultDashVotingPower}, {"v1", DefaultDashVotingPower}},
+			"duplicate entry Validator",
 		},
 		{ // duplicate entries in removes + changes
-			testValSet(2, 10),
-			[]testVal{{"v1", 0}, {"v2", 20}, {"v2", 30}, {"v1", 0}},
+			testValSet(2),
+			[]testVal{{"v1", 0}, {"v2", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}, {"v1", 0}},
+			"duplicate entry Validator",
 		},
 		{ // duplicate entries in removes + changes
-			testValSet(3, 10),
-			[]testVal{{"v1", 0}, {"v3", 5}, {"v2", 20}, {"v2", 30}, {"v1", 0}},
+			testValSet(3),
+			[]testVal{{"v1", 0}, {"v3", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}, {"v1", 0}},
+			"duplicate entry Validator",
 		},
 	}
 
 	for i, tt := range testCases {
-		executeValSetErrTestCase(t, i, tt)
-	}
-}
-
-func TestValSetUpdatesOverflows(t *testing.T) {
-	maxVP := MaxTotalVotingPower
-	testCases := []valSetErrTestCase{
-		{ // single update leading to overflow
-			testValSet(2, 10),
-			[]testVal{{"v1", math.MaxInt64}},
-		},
-		{ // single update leading to overflow
-			testValSet(2, 10),
-			[]testVal{{"v2", math.MaxInt64}},
-		},
-		{ // add validator leading to overflow
-			testValSet(1, maxVP),
-			[]testVal{{"v2", math.MaxInt64}},
-		},
-		{ // add validator leading to exceed Max
-			testValSet(1, maxVP-1),
-			[]testVal{{"v2", 5}},
-		},
-		{ // add validator leading to exceed Max
-			testValSet(2, maxVP/3),
-			[]testVal{{"v3", maxVP / 2}},
-		},
-		{ // add validator leading to exceed Max
-			testValSet(1, maxVP),
-			[]testVal{{"v2", maxVP}},
-		},
-	}
-
-	for i, tt := range testCases {
-		executeValSetErrTestCase(t, i, tt)
+		executeValSetErrTestCaseIgnoreThresholdPublicKey(t, i, tt)
 	}
 }
 
 func TestValSetUpdatesOtherErrors(t *testing.T) {
 	testCases := []valSetErrTestCase{
-		{ // update with negative voting power
-			testValSet(2, 10),
-			[]testVal{{"v1", -123}},
-		},
-		{ // update with negative voting power
-			testValSet(2, 10),
-			[]testVal{{"v2", -123}},
-		},
 		{ // remove non-existing validator
-			testValSet(2, 10),
+			testValSet(2),
 			[]testVal{{"v3", 0}},
 		},
 		{ // delete all validators
-			[]testVal{{"v1", 10}, {"v2", 20}, {"v3", 30}},
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}, {"v3", DefaultDashVotingPower}},
 			[]testVal{{"v1", 0}, {"v2", 0}, {"v3", 0}},
 		},
 	}
@@ -1095,42 +1006,42 @@ func TestValSetUpdatesBasicTestsExecute(t *testing.T) {
 		expectedVals []testVal
 	}{
 		{ // no changes
-			testValSet(2, 10),
+			testValSet(2),
 			[]testVal{},
-			testValSet(2, 10),
+			testValSet(2),
 		},
 		{ // voting power changes
-			testValSet(2, 10),
-			[]testVal{{"v2", 22}, {"v1", 11}},
-			[]testVal{{"v2", 22}, {"v1", 11}},
+			testValSet(2),
+			[]testVal{{"v2", DefaultDashVotingPower}, {"v1", DefaultDashVotingPower}},
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}},
 		},
 		{ // add new validators
-			[]testVal{{"v2", 20}, {"v1", 10}},
-			[]testVal{{"v4", 40}, {"v3", 30}},
-			[]testVal{{"v4", 40}, {"v3", 30}, {"v2", 20}, {"v1", 10}},
+			[]testVal{{"v2", DefaultDashVotingPower}, {"v1", DefaultDashVotingPower}},
+			[]testVal{{"v4", DefaultDashVotingPower}, {"v3", DefaultDashVotingPower}},
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v4", DefaultDashVotingPower}, {"v3", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}},
 		},
 		{ // add new validator to middle
-			[]testVal{{"v3", 20}, {"v1", 10}},
-			[]testVal{{"v2", 30}},
-			[]testVal{{"v2", 30}, {"v3", 20}, {"v1", 10}},
+			[]testVal{{"v3", DefaultDashVotingPower}, {"v1", DefaultDashVotingPower}},
+			[]testVal{{"v2", DefaultDashVotingPower}},
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v3", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}},
 		},
 		{ // add new validator to beginning
-			[]testVal{{"v3", 20}, {"v2", 10}},
-			[]testVal{{"v1", 30}},
-			[]testVal{{"v1", 30}, {"v3", 20}, {"v2", 10}},
+			[]testVal{{"v3", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}},
+			[]testVal{{"v1", DefaultDashVotingPower}},
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v3", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}},
 		},
 		{ // delete validators
-			[]testVal{{"v3", 30}, {"v2", 20}, {"v1", 10}},
+			[]testVal{{"v3", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}, {"v1", DefaultDashVotingPower}},
 			[]testVal{{"v2", 0}},
-			[]testVal{{"v3", 30}, {"v1", 10}},
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v3", DefaultDashVotingPower}},
 		},
 	}
 
 	for i, tt := range valSetUpdatesBasicTests {
 		// create a new set and apply updates, keeping copies for the checks
 		valSet := createNewValidatorSet(tt.startVals)
-		valList := createNewValidatorList(tt.updateVals)
-		err := valSet.UpdateWithChangeSet(valList)
+		valList, thresholdPublicKey := addValidatorsToValidatorSet(valSet, tt.updateVals)
+		err := valSet.UpdateWithChangeSet(valList, thresholdPublicKey, crypto.RandQuorumHash())
 		assert.NoError(t, err, "test %d", i)
 
 		valListCopy := validatorListCopy(valSet.Validators)
@@ -1159,19 +1070,19 @@ func TestValSetUpdatesOrderIndependenceTestsExecute(t *testing.T) {
 		updateVals []testVal
 	}{
 		0: { // order of changes should not matter, the final validator sets should be the same
-			[]testVal{{"v4", 40}, {"v3", 30}, {"v2", 10}, {"v1", 10}},
-			[]testVal{{"v4", 44}, {"v3", 33}, {"v2", 22}, {"v1", 11}}},
+			[]testVal{{"v4", DefaultDashVotingPower}, {"v3", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}, {"v1", DefaultDashVotingPower}},
+			[]testVal{{"v4", DefaultDashVotingPower}, {"v3", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}, {"v1", DefaultDashVotingPower}}},
 
 		1: { // order of additions should not matter
-			[]testVal{{"v2", 20}, {"v1", 10}},
-			[]testVal{{"v3", 30}, {"v4", 40}, {"v5", 50}, {"v6", 60}}},
+			[]testVal{{"v2", DefaultDashVotingPower}, {"v1", DefaultDashVotingPower}},
+			[]testVal{{"v3", DefaultDashVotingPower}, {"v4", DefaultDashVotingPower}, {"v5", DefaultDashVotingPower}, {"v6", DefaultDashVotingPower}}},
 
 		2: { // order of removals should not matter
-			[]testVal{{"v4", 40}, {"v3", 30}, {"v2", 20}, {"v1", 10}},
+			[]testVal{{"v4", DefaultDashVotingPower}, {"v3", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}, {"v1", DefaultDashVotingPower}},
 			[]testVal{{"v1", 0}, {"v3", 0}, {"v4", 0}}},
 
 		3: { // order of mixed operations should not matter
-			[]testVal{{"v4", 40}, {"v3", 30}, {"v2", 20}, {"v1", 10}},
+			[]testVal{{"v4", DefaultDashVotingPower}, {"v3", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}, {"v1", DefaultDashVotingPower}},
 			[]testVal{{"v1", 0}, {"v3", 0}, {"v2", 22}, {"v5", 50}, {"v4", 44}}},
 	}
 
@@ -1179,8 +1090,8 @@ func TestValSetUpdatesOrderIndependenceTestsExecute(t *testing.T) {
 		// create a new set and apply updates
 		valSet := createNewValidatorSet(tt.startVals)
 		valSetCopy := valSet.Copy()
-		valList := createNewValidatorList(tt.updateVals)
-		assert.NoError(t, valSetCopy.UpdateWithChangeSet(valList))
+		valList, thresholdPublicKey := addValidatorsToValidatorSet(valSet, tt.updateVals)
+		assert.NoError(t, valSetCopy.UpdateWithChangeSet(valList, thresholdPublicKey, crypto.RandQuorumHash()))
 
 		// save the result as expected for next updates
 		valSetExp := valSetCopy.Copy()
@@ -1191,15 +1102,15 @@ func TestValSetUpdatesOrderIndependenceTestsExecute(t *testing.T) {
 		for j := 0; j < maxNumPerms; j++ {
 			// create a copy of original set and apply a random permutation of updates
 			valSetCopy := valSet.Copy()
-			valList := createNewValidatorList(permutation(tt.updateVals))
+			valList, thresholdPublicKey := addValidatorsToValidatorSet(valSetCopy, permutation(tt.updateVals))
 
 			// check there was no error and the set is properly scaled and centered.
-			assert.NoError(t, valSetCopy.UpdateWithChangeSet(valList),
+			assert.NoError(t, valSetCopy.UpdateWithChangeSet(valList, thresholdPublicKey, crypto.RandQuorumHash()),
 				"test %v failed for permutation %v", i, valList)
 			verifyValidatorSet(t, valSetCopy)
 
 			// verify the resulting test is same as the expected
-			assert.Equal(t, valSetCopy, valSetExp,
+			assert.Equal(t, valSetCopy.GetProTxHashes(), valSetExp.GetProTxHashes(),
 				"test %v failed for permutation %v", i, valList)
 		}
 	}
@@ -1208,6 +1119,7 @@ func TestValSetUpdatesOrderIndependenceTestsExecute(t *testing.T) {
 // This tests the private function validator_set.go:applyUpdates() function, used only for additions and changes.
 // Should perform a proper merge of updatedVals and startVals
 func TestValSetApplyUpdatesTestsExecute(t *testing.T) {
+
 	valSetUpdatesBasicTests := []struct {
 		startVals    []testVal
 		updateVals   []testVal
@@ -1215,51 +1127,51 @@ func TestValSetApplyUpdatesTestsExecute(t *testing.T) {
 	}{
 		// additions
 		0: { // prepend
-			[]testVal{{"v4", 44}, {"v5", 55}},
-			[]testVal{{"v1", 11}},
-			[]testVal{{"v1", 11}, {"v4", 44}, {"v5", 55}}},
+			[]testVal{{"v4", DefaultDashVotingPower}, {"v5", DefaultDashVotingPower}},
+			[]testVal{{"v1", DefaultDashVotingPower}},
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v4", DefaultDashVotingPower}, {"v5", DefaultDashVotingPower}}},
 		1: { // append
-			[]testVal{{"v4", 44}, {"v5", 55}},
-			[]testVal{{"v6", 66}},
-			[]testVal{{"v4", 44}, {"v5", 55}, {"v6", 66}}},
+			[]testVal{{"v4", DefaultDashVotingPower}, {"v5", DefaultDashVotingPower}},
+			[]testVal{{"v6", DefaultDashVotingPower}},
+			[]testVal{{"v6", DefaultDashVotingPower}, {"v4", DefaultDashVotingPower}, {"v5", DefaultDashVotingPower}}},
 		2: { // insert
-			[]testVal{{"v4", 44}, {"v6", 66}},
-			[]testVal{{"v5", 55}},
-			[]testVal{{"v4", 44}, {"v5", 55}, {"v6", 66}}},
+			[]testVal{{"v4", DefaultDashVotingPower}, {"v6", DefaultDashVotingPower}},
+			[]testVal{{"v5", DefaultDashVotingPower}},
+			[]testVal{{"v6", DefaultDashVotingPower}, {"v4", DefaultDashVotingPower}, {"v5", DefaultDashVotingPower}}},
 		3: { // insert multi
-			[]testVal{{"v4", 44}, {"v6", 66}, {"v9", 99}},
-			[]testVal{{"v5", 55}, {"v7", 77}, {"v8", 88}},
-			[]testVal{{"v4", 44}, {"v5", 55}, {"v6", 66}, {"v7", 77}, {"v8", 88}, {"v9", 99}}},
+			[]testVal{{"v4", DefaultDashVotingPower}, {"v6", DefaultDashVotingPower}, {"v9", DefaultDashVotingPower}},
+			[]testVal{{"v5", DefaultDashVotingPower}, {"v7", DefaultDashVotingPower}, {"v8", DefaultDashVotingPower}},
+			[]testVal{{"v8", DefaultDashVotingPower}, {"v7", DefaultDashVotingPower}, {"v6", DefaultDashVotingPower}, {"v9", DefaultDashVotingPower}, {"v4", DefaultDashVotingPower}, {"v5", DefaultDashVotingPower}}},
 		// changes
 		4: { // head
-			[]testVal{{"v1", 111}, {"v2", 22}},
-			[]testVal{{"v1", 11}},
-			[]testVal{{"v1", 11}, {"v2", 22}}},
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}},
+			[]testVal{{"v1", DefaultDashVotingPower}},
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}}},
 		5: { // tail
-			[]testVal{{"v1", 11}, {"v2", 222}},
-			[]testVal{{"v2", 22}},
-			[]testVal{{"v1", 11}, {"v2", 22}}},
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}},
+			[]testVal{{"v2", DefaultDashVotingPower}},
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}}},
 		6: { // middle
-			[]testVal{{"v1", 11}, {"v2", 222}, {"v3", 33}},
-			[]testVal{{"v2", 22}},
-			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}}},
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}, {"v3", DefaultDashVotingPower}},
+			[]testVal{{"v2", DefaultDashVotingPower}},
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v3", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}}},
 		7: { // multi
-			[]testVal{{"v1", 111}, {"v2", 222}, {"v3", 333}},
-			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}},
-			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}}},
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}, {"v3", DefaultDashVotingPower}},
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}, {"v3", DefaultDashVotingPower}},
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v3", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}}},
 		// additions and changes
 		8: {
-			[]testVal{{"v1", 111}, {"v2", 22}},
-			[]testVal{{"v1", 11}, {"v3", 33}, {"v4", 44}},
-			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}, {"v4", 44}}},
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}},
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v3", DefaultDashVotingPower}, {"v4", DefaultDashVotingPower}},
+			[]testVal{{"v1", DefaultDashVotingPower}, {"v4", DefaultDashVotingPower}, {"v3", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}}},
 	}
 
 	for i, tt := range valSetUpdatesBasicTests {
 		// create a new validator set with the start values
 		valSet := createNewValidatorSet(tt.startVals)
-
 		// applyUpdates() with the update values
 		valList := createNewValidatorList(tt.updateVals)
+
 		valSet.applyUpdates(valList)
 
 		// check the new list of validators for proper merge
@@ -1268,13 +1180,11 @@ func TestValSetApplyUpdatesTestsExecute(t *testing.T) {
 }
 
 type testVSetCfg struct {
-	name         string
 	startVals    []testVal
 	deletedVals  []testVal
 	updatedVals  []testVal
 	addedVals    []testVal
 	expectedVals []testVal
-	expErr       error
 }
 
 func randTestVSetCfg(t *testing.T, nBase, nAddMax int) testVSetCfg {
@@ -1282,7 +1192,6 @@ func randTestVSetCfg(t *testing.T, nBase, nAddMax int) testVSetCfg {
 		panic(fmt.Sprintf("bad parameters %v %v", nBase, nAddMax))
 	}
 
-	const maxPower = 1000
 	var nOld, nDel, nChanged, nAdd int
 
 	nOld = int(tmrand.Uint()%uint(nBase)) + 1
@@ -1304,12 +1213,12 @@ func randTestVSetCfg(t *testing.T, nBase, nAddMax int) testVSetCfg {
 	cfg.expectedVals = make([]testVal, nBase-nDel+nAdd)
 
 	for i := 0; i < nBase; i++ {
-		cfg.startVals[i] = testVal{fmt.Sprintf("v%d", i), int64(tmrand.Uint()%maxPower + 1)}
+		cfg.startVals[i] = testVal{fmt.Sprintf("v%d", i), DefaultDashVotingPower}
 		if i < nOld {
 			cfg.expectedVals[i] = cfg.startVals[i]
 		}
 		if i >= nOld && i < nOld+nChanged {
-			cfg.updatedVals[i-nOld] = testVal{fmt.Sprintf("v%d", i), int64(tmrand.Uint()%maxPower + 1)}
+			cfg.updatedVals[i-nOld] = testVal{fmt.Sprintf("v%d", i), DefaultDashVotingPower}
 			cfg.expectedVals[i] = cfg.updatedVals[i-nOld]
 		}
 		if i >= nOld+nChanged {
@@ -1318,7 +1227,7 @@ func randTestVSetCfg(t *testing.T, nBase, nAddMax int) testVSetCfg {
 	}
 
 	for i := nBase; i < nBase+nAdd; i++ {
-		cfg.addedVals[i-nBase] = testVal{fmt.Sprintf("v%d", i), int64(tmrand.Uint()%maxPower + 1)}
+		cfg.addedVals[i-nBase] = testVal{fmt.Sprintf("v%d", i), DefaultDashVotingPower}
 		cfg.expectedVals[i-nDel] = cfg.addedVals[i-nBase]
 	}
 
@@ -1337,8 +1246,8 @@ func applyChangesToValSet(t *testing.T, expErr error, valSet *ValidatorSet, vals
 	for _, valsList := range valsLists {
 		changes = append(changes, valsList...)
 	}
-	valList := createNewValidatorList(changes)
-	err := valSet.UpdateWithChangeSet(valList)
+	valList, thresholdPublicKey := addValidatorsToValidatorSet(valSet, changes)
+	err := valSet.UpdateWithChangeSet(valList, thresholdPublicKey, crypto.RandQuorumHash())
 	if expErr != nil {
 		assert.Equal(t, expErr, err)
 	} else {
@@ -1351,53 +1260,53 @@ func TestValSetUpdatePriorityOrderTests(t *testing.T) {
 
 	testCases := []testVSetCfg{
 		0: { // remove high power validator, keep old equal lower power validators
-			startVals:    []testVal{{"v3", 1000}, {"v1", 1}, {"v2", 1}},
+			startVals:    []testVal{{"v3", DefaultDashVotingPower}, {"v1", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}},
 			deletedVals:  []testVal{{"v3", 0}},
 			updatedVals:  []testVal{},
 			addedVals:    []testVal{},
-			expectedVals: []testVal{{"v1", 1}, {"v2", 1}},
+			expectedVals: []testVal{{"v1", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}},
 		},
 		1: { // remove high power validator, keep old different power validators
-			startVals:    []testVal{{"v3", 1000}, {"v2", 10}, {"v1", 1}},
+			startVals:    []testVal{{"v3", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}, {"v1", DefaultDashVotingPower}},
 			deletedVals:  []testVal{{"v3", 0}},
 			updatedVals:  []testVal{},
 			addedVals:    []testVal{},
-			expectedVals: []testVal{{"v2", 10}, {"v1", 1}},
+			expectedVals: []testVal{{"v1", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}},
 		},
 		2: { // remove high power validator, add new low power validators, keep old lower power
-			startVals:    []testVal{{"v3", 1000}, {"v2", 2}, {"v1", 1}},
+			startVals:    []testVal{{"v3", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}, {"v1", DefaultDashVotingPower}},
 			deletedVals:  []testVal{{"v3", 0}},
-			updatedVals:  []testVal{{"v2", 1}},
-			addedVals:    []testVal{{"v5", 50}, {"v4", 40}},
-			expectedVals: []testVal{{"v5", 50}, {"v4", 40}, {"v1", 1}, {"v2", 1}},
+			updatedVals:  []testVal{{"v2", DefaultDashVotingPower}},
+			addedVals:    []testVal{{"v4", DefaultDashVotingPower}, {"v5", DefaultDashVotingPower}},
+			expectedVals: []testVal{{"v1", DefaultDashVotingPower}, {"v4", DefaultDashVotingPower}, {"v5", DefaultDashVotingPower}, {"v2", DefaultDashVotingPower}},
 		},
 
 		// generate a configuration with 100 validators,
 		// randomly select validators for updates and deletes, and
 		// generate 10 new validators to be added
 		3: randTestVSetCfg(t, 100, 10),
-
+		//
 		4: randTestVSetCfg(t, 1000, 100),
-
+		//
 		5: randTestVSetCfg(t, 10, 100),
-
+		//
 		6: randTestVSetCfg(t, 100, 1000),
-
+		//
 		7: randTestVSetCfg(t, 1000, 1000),
 	}
 
-	for _, cfg := range testCases {
+	for i, cfg := range testCases {
 
 		// create a new validator set
 		valSet := createNewValidatorSet(cfg.startVals)
 		verifyValidatorSet(t, valSet)
 
 		// run election up to nMaxElections times, apply changes and verify that the priority order is correct
-		verifyValSetUpdatePriorityOrder(t, valSet, cfg, nMaxElections)
+		verifyValSetUpdatePriorityOrder(t, valSet, cfg, nMaxElections, i)
 	}
 }
 
-func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg testVSetCfg, nMaxElections int32) {
+func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg testVSetCfg, nMaxElections int32, testNumber int) {
 	// Run election up to nMaxElections times, sort validators by priorities
 	valSet.IncrementProposerPriority(tmrand.Int31()%nMaxElections + 1)
 
@@ -1405,7 +1314,8 @@ func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg tes
 	applyChangesToValSet(t, nil, valSet, cfg.addedVals, cfg.updatedVals, cfg.deletedVals)
 
 	// basic checks
-	assert.Equal(t, cfg.expectedVals, toTestValList(valSet.Validators))
+	testValSet := toTestValList(valSet.Validators)
+	assert.Equal(t, cfg.expectedVals, testValSet, "(0) test number %d", testNumber)
 	verifyValidatorSet(t, valSet)
 
 	// verify that the added validators have the smallest priority:
@@ -1417,112 +1327,44 @@ func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg tes
 
 		addedValsPriSlice := updatedValsPriSorted[:len(cfg.addedVals)]
 		sort.Sort(ValidatorsByVotingPower(addedValsPriSlice))
-		assert.Equal(t, cfg.addedVals, toTestValList(addedValsPriSlice))
+		assert.Equal(t, cfg.addedVals, toTestValList(addedValsPriSlice), "(1) test number %d", testNumber)
 
 		//  - and should all have the same priority
 		expectedPri := addedValsPriSlice[0].ProposerPriority
 		for _, val := range addedValsPriSlice[1:] {
-			assert.Equal(t, expectedPri, val.ProposerPriority)
+			assert.Equal(t, expectedPri, val.ProposerPriority, "(2) test number %d", testNumber)
 		}
 	}
 }
 
 func TestNewValidatorSetFromExistingValidators(t *testing.T) {
 	size := 5
-	vals := make([]*Validator, size)
-	for i := 0; i < size; i++ {
-		pv := NewMockPV()
-		vals[i] = pv.ExtractIntoValidator(int64(i + 1))
-	}
-	valSet := NewValidatorSet(vals)
-	valSet.IncrementProposerPriority(5)
+	valSet, _ := GenerateValidatorSet(size)
+	valSet.IncrementProposerPriority(3)
 
-	newValSet := NewValidatorSet(valSet.Validators)
-	assert.NotEqual(t, valSet, newValSet)
+	newValSet0 := NewValidatorSet(valSet.Validators, valSet.ThresholdPublicKey, valSet.QuorumType, valSet.QuorumHash)
+	assert.NotEqual(t, valSet, newValSet0)
 
-	existingValSet, err := ValidatorSetFromExistingValidators(valSet.Validators)
+	valSet.IncrementProposerPriority(2)
+	newValSet1 := NewValidatorSet(valSet.Validators, valSet.ThresholdPublicKey, valSet.QuorumType, valSet.QuorumHash)
+	assert.Equal(t, valSet, newValSet1)
+
+	existingValSet, err := ValidatorSetFromExistingValidators(valSet.Validators, valSet.ThresholdPublicKey,
+		valSet.QuorumType, valSet.QuorumHash)
 	assert.NoError(t, err)
 	assert.Equal(t, valSet, existingValSet)
 	assert.Equal(t, valSet.CopyIncrementProposerPriority(3), existingValSet.CopyIncrementProposerPriority(3))
 }
 
-func TestValSetUpdateOverflowRelated(t *testing.T) {
-	testCases := []testVSetCfg{
-		{
-			name:         "1 no false overflow error messages for updates",
-			startVals:    []testVal{{"v2", MaxTotalVotingPower - 1}, {"v1", 1}},
-			updatedVals:  []testVal{{"v1", MaxTotalVotingPower - 1}, {"v2", 1}},
-			expectedVals: []testVal{{"v1", MaxTotalVotingPower - 1}, {"v2", 1}},
-			expErr:       nil,
-		},
-		{
-			// this test shows that it is important to apply the updates in the order of the change in power
-			// i.e. apply first updates with decreases in power, v2 change in this case.
-			name:         "2 no false overflow error messages for updates",
-			startVals:    []testVal{{"v2", MaxTotalVotingPower - 1}, {"v1", 1}},
-			updatedVals:  []testVal{{"v1", MaxTotalVotingPower/2 - 1}, {"v2", MaxTotalVotingPower / 2}},
-			expectedVals: []testVal{{"v2", MaxTotalVotingPower / 2}, {"v1", MaxTotalVotingPower/2 - 1}},
-			expErr:       nil,
-		},
-		{
-			name:         "3 no false overflow error messages for deletes",
-			startVals:    []testVal{{"v1", MaxTotalVotingPower - 2}, {"v2", 1}, {"v3", 1}},
-			deletedVals:  []testVal{{"v1", 0}},
-			addedVals:    []testVal{{"v4", MaxTotalVotingPower - 2}},
-			expectedVals: []testVal{{"v4", MaxTotalVotingPower - 2}, {"v2", 1}, {"v3", 1}},
-			expErr:       nil,
-		},
-		{
-			name: "4 no false overflow error messages for adds, updates and deletes",
-			startVals: []testVal{
-				{"v1", MaxTotalVotingPower / 4}, {"v2", MaxTotalVotingPower / 4},
-				{"v3", MaxTotalVotingPower / 4}, {"v4", MaxTotalVotingPower / 4}},
-			deletedVals: []testVal{{"v2", 0}},
-			updatedVals: []testVal{
-				{"v1", MaxTotalVotingPower/2 - 2}, {"v3", MaxTotalVotingPower/2 - 3}, {"v4", 2}},
-			addedVals: []testVal{{"v5", 3}},
-			expectedVals: []testVal{
-				{"v1", MaxTotalVotingPower/2 - 2}, {"v3", MaxTotalVotingPower/2 - 3}, {"v5", 3}, {"v4", 2}},
-			expErr: nil,
-		},
-		{
-			name: "5 check panic on overflow is prevented: update 8 validators with power int64(math.MaxInt64)/8",
-			startVals: []testVal{
-				{"v1", 1}, {"v2", 1}, {"v3", 1}, {"v4", 1}, {"v5", 1},
-				{"v6", 1}, {"v7", 1}, {"v8", 1}, {"v9", 1}},
-			updatedVals: []testVal{
-				{"v1", MaxTotalVotingPower}, {"v2", MaxTotalVotingPower}, {"v3", MaxTotalVotingPower},
-				{"v4", MaxTotalVotingPower}, {"v5", MaxTotalVotingPower}, {"v6", MaxTotalVotingPower},
-				{"v7", MaxTotalVotingPower}, {"v8", MaxTotalVotingPower}, {"v9", 8}},
-			expectedVals: []testVal{
-				{"v1", 1}, {"v2", 1}, {"v3", 1}, {"v4", 1}, {"v5", 1},
-				{"v6", 1}, {"v7", 1}, {"v8", 1}, {"v9", 1}},
-			expErr: ErrTotalVotingPowerOverflow,
-		},
-	}
-
-	for _, tt := range testCases {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			valSet := createNewValidatorSet(tt.startVals)
-			verifyValidatorSet(t, valSet)
-
-			// execute update and verify returned error is as expected
-			applyChangesToValSet(t, tt.expErr, valSet, tt.addedVals, tt.updatedVals, tt.deletedVals)
-
-			// verify updated validator set is as expected
-			assert.Equal(t, tt.expectedVals, toTestValList(valSet.Validators))
-			verifyValidatorSet(t, valSet)
-		})
-	}
-}
-
 func TestValidatorSet_VerifyCommitLightTrusting(t *testing.T) {
 	var (
 		blockID                       = makeBlockIDRandom()
+		stateID                       = makeStateIDRandom()
 		voteSet, originalValset, vals = randVoteSet(1, 1, tmproto.PrecommitType, 6, 1)
-		commit, err                   = MakeCommit(blockID, 1, 1, voteSet, vals, time.Now())
-		newValSet, _                  = RandValidatorSet(2, 1)
+		commit, err                   = MakeCommit(blockID, stateID, 1, 1, voteSet, vals)
+		newValSet, _                  = GenerateValidatorSet(2)
+		combinedProTxHashes           = append(originalValset.GetProTxHashes(), newValSet.GetProTxHashes()...)
+		combinedValSet, _             = GenerateValidatorSetUsingProTxHashes(combinedProTxHashes)
 	)
 	require.NoError(t, err)
 
@@ -1540,36 +1382,21 @@ func TestValidatorSet_VerifyCommitLightTrusting(t *testing.T) {
 			valSet: newValSet,
 			err:    true,
 		},
-		// good - first two are different but the rest of the same -> >1/3
+		// bad - the combined val set now has different keys
 		2: {
-			valSet: NewValidatorSet(append(newValSet.Validators, originalValset.Validators...)),
-			err:    false,
+			valSet: combinedValSet,
+			err:    true,
 		},
 	}
 
-	for _, tc := range testCases {
+	for i, tc := range testCases {
 		err = tc.valSet.VerifyCommitLightTrusting("test_chain_id", commit,
 			tmmath.Fraction{Numerator: 1, Denominator: 3})
 		if tc.err {
-			assert.Error(t, err)
+			assert.Error(t, err, "#%d", i)
 		} else {
-			assert.NoError(t, err)
+			assert.NoError(t, err, "#%d", i)
 		}
-	}
-}
-
-func TestValidatorSet_VerifyCommitLightTrustingErrorsOnOverflow(t *testing.T) {
-	var (
-		blockID               = makeBlockIDRandom()
-		voteSet, valSet, vals = randVoteSet(1, 1, tmproto.PrecommitType, 1, MaxTotalVotingPower)
-		commit, err           = MakeCommit(blockID, 1, 1, voteSet, vals, time.Now())
-	)
-	require.NoError(t, err)
-
-	err = valSet.VerifyCommitLightTrusting("test_chain_id", commit,
-		tmmath.Fraction{Numerator: 25, Denominator: 55})
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "int64 overflow")
 	}
 }
 
@@ -1600,14 +1427,14 @@ func TestSafeMul(t *testing.T) {
 }
 
 func TestValidatorSetProtoBuf(t *testing.T) {
-	valset, _ := RandValidatorSet(10, 100)
-	valset2, _ := RandValidatorSet(10, 100)
+	valset, _ := GenerateValidatorSet(10)
+	valset2, _ := GenerateValidatorSet(10)
 	valset2.Validators[0] = &Validator{}
 
-	valset3, _ := RandValidatorSet(10, 100)
+	valset3, _ := GenerateValidatorSet(10)
 	valset3.Proposer = nil
 
-	valset4, _ := RandValidatorSet(10, 100)
+	valset4, _ := GenerateValidatorSet(10)
 	valset4.Proposer = &Validator{}
 
 	testCases := []struct {
@@ -1671,9 +1498,11 @@ func (tvals testValsByVotingPower) Len() int {
 	return len(tvals)
 }
 
+// Here we need to sort by the pro_tx_hash and not the name if the power is equal, in the test the pro_tx_hash is derived
+//  from the name by applying a single SHA256
 func (tvals testValsByVotingPower) Less(i, j int) bool {
 	if tvals[i].power == tvals[j].power {
-		return bytes.Compare([]byte(tvals[i].name), []byte(tvals[j].name)) == -1
+		return bytes.Compare(crypto.Sha256([]byte(tvals[i].name)), crypto.Sha256([]byte(tvals[j].name))) == -1
 	}
 	return tvals[i].power > tvals[j].power
 }
@@ -1691,23 +1520,27 @@ func BenchmarkUpdates(b *testing.B) {
 		m = 2000
 	)
 	// Init with n validators
-	vs := make([]*Validator, n)
+	addresses0 := make([]crypto.Address, n)
 	for j := 0; j < n; j++ {
-		vs[j] = newValidator([]byte(fmt.Sprintf("v%d", j)), 100)
+		addresses0[j] = []byte(fmt.Sprintf("v%d", j))
 	}
-	valSet := NewValidatorSet(vs)
-	l := len(valSet.Validators)
+	valSet, _ := GenerateTestValidatorSetWithAddressesDefaultPower(addresses0)
 
-	// Make m new validators
+	addresses1 := make([]crypto.Address, n+m)
 	newValList := make([]*Validator, m)
-	for j := 0; j < m; j++ {
-		newValList[j] = newValidator([]byte(fmt.Sprintf("v%d", j+l)), 1000)
+	for j := 0; j < n+m; j++ {
+		addresses1[j] = []byte(fmt.Sprintf("v%d", j))
+		if j >= n {
+			newValList[j-n] = NewTestValidatorGeneratedFromAddress([]byte(fmt.Sprintf("v%d", j)))
+		}
 	}
+	valSet2, _ := GenerateTestValidatorSetWithAddressesDefaultPower(addresses1)
+
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		// Add m validators to valSetCopy
 		valSetCopy := valSet.Copy()
-		assert.NoError(b, valSetCopy.UpdateWithChangeSet(newValList))
+		assert.NoError(b, valSetCopy.UpdateWithChangeSet(newValList, valSet2.ThresholdPublicKey, crypto.RandQuorumHash()))
 	}
 }

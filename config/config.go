@@ -4,6 +4,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/tendermint/tendermint/crypto"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,6 +22,9 @@ const (
 	LogFormatPlain = "plain"
 	// LogFormatJSON is a format for json output
 	LogFormatJSON = "json"
+
+	// DefaultLogLevel defines a default log level as INFO.
+	DefaultLogLevel = "info"
 )
 
 // NOTE: Most of the structs & relevant comments + the
@@ -29,7 +34,7 @@ const (
 // config/toml.go
 // NOTE: libs/cli must know to look in the config dir!
 var (
-	DefaultTendermintDir = ".tendermint"
+	DefaultTendermintDir = ".tenderdash"
 	defaultConfigDir     = "config"
 	defaultDataDir       = "data"
 
@@ -204,6 +209,14 @@ type BaseConfig struct { //nolint: maligned
 	// connections from an external PrivValidator process
 	PrivValidatorListenAddr string `mapstructure:"priv_validator_laddr"`
 
+	// RPC port for Tendermint to query for
+	// an external PrivValidator process
+	PrivValidatorCoreRPCHost string `mapstructure:"priv_validator_core_rpc_host"`
+
+	PrivValidatorCoreRPCUsername string `mapstructure:"priv_validator_core_rpc_username"`
+
+	PrivValidatorCoreRPCPassword string `mapstructure:"priv_validator_core_rpc_password"`
+
 	// A JSON file containing the private key to use for p2p authenticated encryption
 	NodeKey string `mapstructure:"node_key_file"`
 
@@ -218,19 +231,22 @@ type BaseConfig struct { //nolint: maligned
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
-		Genesis:            defaultGenesisJSONPath,
-		PrivValidatorKey:   defaultPrivValKeyPath,
-		PrivValidatorState: defaultPrivValStatePath,
-		NodeKey:            defaultNodeKeyPath,
-		Moniker:            defaultMoniker,
-		ProxyApp:           "tcp://127.0.0.1:26658",
-		ABCI:               "socket",
-		LogLevel:           DefaultPackageLogLevels(),
-		LogFormat:          LogFormatPlain,
-		FastSyncMode:       true,
-		FilterPeers:        false,
-		DBBackend:          "goleveldb",
-		DBPath:             "data",
+		Genesis:                      defaultGenesisJSONPath,
+		PrivValidatorKey:             defaultPrivValKeyPath,
+		PrivValidatorState:           defaultPrivValStatePath,
+		PrivValidatorCoreRPCHost:     "127.0.0.1:19998",
+		PrivValidatorCoreRPCUsername: "dashrpc",
+		PrivValidatorCoreRPCPassword: "rpcpassword",
+		NodeKey:                      defaultNodeKeyPath,
+		Moniker:                      defaultMoniker,
+		ProxyApp:                     "tcp://127.0.0.1:26658",
+		ABCI:                         "socket",
+		LogLevel:                     DefaultLogLevel,
+		LogFormat:                    LogFormatPlain,
+		FastSyncMode:                 true,
+		FilterPeers:                  false,
+		DBBackend:                    "goleveldb",
+		DBPath:                       "data",
 	}
 }
 
@@ -241,6 +257,7 @@ func TestBaseConfig() BaseConfig {
 	cfg.ProxyApp = "kvstore"
 	cfg.FastSyncMode = false
 	cfg.DBBackend = "memdb"
+	cfg.PrivValidatorCoreRPCHost = ""
 	return cfg
 }
 
@@ -282,17 +299,6 @@ func (cfg BaseConfig) ValidateBasic() error {
 		return errors.New("unknown log_format (must be 'plain' or 'json')")
 	}
 	return nil
-}
-
-// DefaultLogLevel returns a default log level of "error"
-func DefaultLogLevel() string {
-	return "error"
-}
-
-// DefaultPackageLogLevels returns a default log level setting so all packages
-// log at "error", while the `state` and `main` packages log at "info"
-func DefaultPackageLogLevels() string {
-	return fmt.Sprintf("main:info,state:info,statesync:info,*:%s", DefaultLogLevel())
 }
 
 //-----------------------------------------------------------------------------
@@ -363,7 +369,7 @@ type RPCConfig struct {
 	MaxHeaderBytes int `mapstructure:"max_header_bytes"`
 
 	// The path to a file containing certificate that is used to create the HTTPS server.
-	// Migth be either absolute path or path related to tendermint's config directory.
+	// Might be either absolute path or path related to Tendermint's config directory.
 	//
 	// If the certificate is signed by a certificate authority,
 	// the certFile should be the concatenation of the server's certificate, any intermediates,
@@ -374,7 +380,7 @@ type RPCConfig struct {
 	TLSCertFile string `mapstructure:"tls_cert_file"`
 
 	// The path to a file containing matching private key that is used to create the HTTPS server.
-	// Migth be either absolute path or path related to tendermint's config directory.
+	// Might be either absolute path or path related to tendermint's config directory.
 	//
 	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
 	// Otherwise, HTTP server is run.
@@ -656,11 +662,16 @@ type MempoolConfig struct {
 	MaxTxsBytes int64 `mapstructure:"max_txs_bytes"`
 	// Size of the cache (used to filter transactions we saw earlier) in transactions
 	CacheSize int `mapstructure:"cache_size"`
+	// Do not remove invalid transactions from the cache (default: false)
+	// Set to true if it's not possible for any invalid transaction to become
+	// valid again in the future.
+	KeepInvalidTxsInCache bool `mapstructure:"keep-invalid-txs-in-cache"`
 	// Maximum size of a single transaction
 	// NOTE: the max size of a tx transmitted over the network is {max_tx_bytes}.
 	MaxTxBytes int `mapstructure:"max_tx_bytes"`
 	// Maximum size of a batch of transactions to send to a peer
 	// Including space needed by encoding (one varint per transaction).
+	// XXX: Unused due to https://github.com/tendermint/tendermint/issues/5796
 	MaxBatchBytes int `mapstructure:"max_batch_bytes"`
 }
 
@@ -672,11 +683,10 @@ func DefaultMempoolConfig() *MempoolConfig {
 		WalPath:   "",
 		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck
-		Size:          5000,
-		MaxTxsBytes:   1024 * 1024 * 1024, // 1GB
-		CacheSize:     10000,
-		MaxTxBytes:    1024 * 1024,      // 1MB
-		MaxBatchBytes: 10 * 1024 * 1024, // 10MB
+		Size:        5000,
+		MaxTxsBytes: 1024 * 1024 * 1024, // 1GB
+		CacheSize:   10000,
+		MaxTxBytes:  1024 * 1024, // 1MB
 	}
 }
 
@@ -711,12 +721,6 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 	}
 	if cfg.MaxTxBytes < 0 {
 		return errors.New("max_tx_bytes can't be negative")
-	}
-	if cfg.MaxBatchBytes < 0 {
-		return errors.New("max_batch_bytes can't be negative")
-	}
-	if cfg.MaxBatchBytes <= cfg.MaxTxBytes {
-		return errors.New("max_batch_bytes can't be less or equal to max_tx_bytes")
 	}
 	return nil
 }
@@ -862,6 +866,10 @@ type ConsensusConfig struct {
 	PeerQueryMaj23SleepDuration time.Duration `mapstructure:"peer_query_maj23_sleep_duration"`
 
 	DoubleSignCheckHeight int64 `mapstructure:"double_sign_check_height"`
+
+	QuorumType btcjson.LLMQType `mapstructure:"quorum_type"`
+
+	AppHashSize int `mapstructure:"app_hash_size"`
 }
 
 // DefaultConsensusConfig returns a default configuration for the consensus service
@@ -881,24 +889,28 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		PeerGossipSleepDuration:     100 * time.Millisecond,
 		PeerQueryMaj23SleepDuration: 2000 * time.Millisecond,
 		DoubleSignCheckHeight:       int64(0),
+		AppHashSize:                 crypto.SmallAppHashSize,
+		QuorumType:                  btcjson.LLMQType_5_60,
 	}
 }
 
 // TestConsensusConfig returns a configuration for testing the consensus service
 func TestConsensusConfig() *ConsensusConfig {
 	cfg := DefaultConsensusConfig()
-	cfg.TimeoutPropose = 40 * time.Millisecond
-	cfg.TimeoutProposeDelta = 1 * time.Millisecond
-	cfg.TimeoutPrevote = 10 * time.Millisecond
-	cfg.TimeoutPrevoteDelta = 1 * time.Millisecond
-	cfg.TimeoutPrecommit = 10 * time.Millisecond
-	cfg.TimeoutPrecommitDelta = 1 * time.Millisecond
+	cfg.TimeoutPropose = 400 * time.Millisecond
+	cfg.TimeoutProposeDelta = 10 * time.Millisecond
+	cfg.TimeoutPrevote = 100 * time.Millisecond
+	cfg.TimeoutPrevoteDelta = 10 * time.Millisecond
+	cfg.TimeoutPrecommit = 100 * time.Millisecond
+	cfg.TimeoutPrecommitDelta = 10 * time.Millisecond
 	// NOTE: when modifying, make sure to update time_iota_ms (testGenesisFmt) in toml.go
 	cfg.TimeoutCommit = 10 * time.Millisecond
 	cfg.SkipTimeoutCommit = true
 	cfg.PeerGossipSleepDuration = 5 * time.Millisecond
 	cfg.PeerQueryMaj23SleepDuration = 250 * time.Millisecond
 	cfg.DoubleSignCheckHeight = int64(0)
+	cfg.AppHashSize = crypto.DefaultAppHashSize
+	cfg.QuorumType = btcjson.LLMQType_5_60
 	return cfg
 }
 

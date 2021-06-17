@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// The main purpose of HexBytes is to enable HEX-encoding for json/encoding.
+// HexBytes enables HEX-encoding for json/encoding.
 type HexBytes []byte
 
 // Marshal needed for protobuf compatibility
@@ -43,7 +43,7 @@ func (bz *HexBytes) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Allow it to fulfill various interfaces in light-client, etc...
+// Bytes fulfils various interfaces in light-client, etc...
 func (bz HexBytes) Bytes() []byte {
 	return bz
 }
@@ -52,6 +52,18 @@ func (bz HexBytes) String() string {
 	return strings.ToUpper(hex.EncodeToString(bz))
 }
 
+func (bz HexBytes) ReversedBytes() HexBytes {
+	s := make([]byte, len(bz))
+	copy(s, bz)
+	for i,j := 0, len(s) - 1; i<j; i,j = i+1, j-1 {
+		s[i],s[j] = s[j], s[i]
+	}
+	return s
+}
+
+// Format writes either address of 0th element in a slice in base 16 notation,
+// with leading 0x (%p), or casts HexBytes to bytes and writes as hexadecimal
+// string to s.
 func (bz HexBytes) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'p':

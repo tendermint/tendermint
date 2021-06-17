@@ -28,7 +28,7 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
 	defer os.RemoveAll(config.RootDir)
 	config.Consensus.CreateEmptyBlocks = false
-	state, privVals := randGenesisState(1, false, 10)
+	state, privVals := randGenesisState(1, false, 100)
 	cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
@@ -252,7 +252,7 @@ func (app *CounterApplication) Commit() abci.ResponseCommit {
 	if app.txCount == 0 {
 		return abci.ResponseCommit{}
 	}
-	hash := make([]byte, 8)
+	hash := make([]byte, 32)
 	binary.BigEndian.PutUint64(hash, uint64(app.txCount))
 	return abci.ResponseCommit{Data: hash}
 }

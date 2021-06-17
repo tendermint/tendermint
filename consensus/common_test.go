@@ -1,9 +1,11 @@
+//nolint: lll
 package consensus
 
 import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -11,6 +13,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 
 	"github.com/go-kit/kit/log/term"
 	"github.com/stretchr/testify/require"
@@ -52,7 +57,7 @@ type cleanupFunc func()
 var (
 	config                *cfg.Config // NOTE: must be reset for each _test.go file
 	consensusReplayConfig *cfg.Config
-	ensureTimeout         = time.Millisecond * 200
+	ensureTimeout         = time.Millisecond * 800
 )
 
 func ensureDir(dir string, mode os.FileMode) {
@@ -76,7 +81,7 @@ type validatorStub struct {
 	VotingPower int64
 }
 
-var testMinPower int64 = 10
+var testMinPower int64 = types.DefaultDashVotingPower
 
 func newValidatorStub(privValidator types.PrivValidator, valIndex int32) *validatorStub {
 	return &validatorStub{
@@ -89,32 +94,37 @@ func newValidatorStub(privValidator types.PrivValidator, valIndex int32) *valida
 func (vs *validatorStub) signVote(
 	voteType tmproto.SignedMsgType,
 	hash []byte,
+	lastAppHash []byte,
+	quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash,
 	header types.PartSetHeader) (*types.Vote, error) {
 
-	pubKey, err := vs.PrivValidator.GetPubKey()
+	proTxHash, err := vs.PrivValidator.GetProTxHash()
 	if err != nil {
-		return nil, fmt.Errorf("can't get pubkey: %w", err)
+		return nil, fmt.Errorf("can't get proTxHash: %w", err)
 	}
 
 	vote := &types.Vote{
-		ValidatorIndex:   vs.Index,
-		ValidatorAddress: pubKey.Address(),
-		Height:           vs.Height,
-		Round:            vs.Round,
-		Timestamp:        tmtime.Now(),
-		Type:             voteType,
-		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
+		ValidatorIndex:     vs.Index,
+		ValidatorProTxHash: proTxHash,
+		Height:             vs.Height,
+		Round:              vs.Round,
+		Type:               voteType,
+		BlockID:            types.BlockID{Hash: hash, PartSetHeader: header},
+		StateID:            types.StateID{LastAppHash: lastAppHash},
 	}
 	v := vote.ToProto()
-	err = vs.PrivValidator.SignVote(config.ChainID(), v)
-	vote.Signature = v.Signature
+	err = vs.PrivValidator.SignVote(config.ChainID(), quorumType, quorumHash, v)
+	vote.BlockSignature = v.BlockSignature
+	vote.StateSignature = v.StateSignature
 
 	return vote, err
 }
 
-// Sign vote for type/hash/header
-func signVote(vs *validatorStub, voteType tmproto.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
-	v, err := vs.signVote(voteType, hash, header)
+// SignDigest vote for type/hash/header
+func signVote(vs *validatorStub, voteType tmproto.SignedMsgType, hash []byte, lastAppHash []byte, quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash, header types.PartSetHeader) *types.Vote {
+	v, err := vs.signVote(voteType, hash, lastAppHash, quorumType, quorumHash, header)
 	if err != nil {
 		panic(fmt.Errorf("failed to sign vote: %v", err))
 	}
@@ -124,11 +134,14 @@ func signVote(vs *validatorStub, voteType tmproto.SignedMsgType, hash []byte, he
 func signVotes(
 	voteType tmproto.SignedMsgType,
 	hash []byte,
+	lastAppHash []byte,
+	quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash,
 	header types.PartSetHeader,
 	vss ...*validatorStub) []*types.Vote {
 	votes := make([]*types.Vote, len(vss))
 	for i, vs := range vss {
-		votes[i] = signVote(vs, voteType, hash, header)
+		votes[i] = signVote(vs, voteType, hash, lastAppHash, quorumType, quorumHash, header)
 	}
 	return votes
 }
@@ -152,17 +165,17 @@ func (vss ValidatorStubsByPower) Len() int {
 }
 
 func (vss ValidatorStubsByPower) Less(i, j int) bool {
-	vssi, err := vss[i].GetPubKey()
+	vssi, err := vss[i].GetProTxHash()
 	if err != nil {
 		panic(err)
 	}
-	vssj, err := vss[j].GetPubKey()
+	vssj, err := vss[j].GetProTxHash()
 	if err != nil {
 		panic(err)
 	}
 
 	if vss[i].VotingPower == vss[j].VotingPower {
-		return bytes.Compare(vssi.Address(), vssj.Address()) == -1
+		return bytes.Compare(vssi.Bytes(), vssj.Bytes()) == -1
 	}
 	return vss[i].VotingPower > vss[j].VotingPower
 }
@@ -194,6 +207,8 @@ func decideProposal(
 	block, blockParts := cs1.createProposalBlock()
 	validRound := cs1.ValidRound
 	chainID := cs1.state.ChainID
+	quorumType := cs1.Validators.QuorumType
+	quorumHash := cs1.Validators.QuorumHash
 	cs1.mtx.Unlock()
 	if block == nil {
 		panic("Failed to createProposalBlock. Did you forget to add commit for previous block?")
@@ -201,9 +216,9 @@ func decideProposal(
 
 	// Make proposal
 	polRound, propBlockID := validRound, types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
-	proposal = types.NewProposal(height, round, polRound, propBlockID)
+	proposal = types.NewProposal(height, 1, round, polRound, propBlockID)
 	p := proposal.ToProto()
-	if err := vs.SignProposal(chainID, p); err != nil {
+	if err := vs.SignProposal(chainID, quorumType, quorumHash, p); err != nil {
 		panic(err)
 	}
 
@@ -225,17 +240,16 @@ func signAddVotes(
 	header types.PartSetHeader,
 	vss ...*validatorStub,
 ) {
-	votes := signVotes(voteType, hash, header, vss...)
+	votes := signVotes(voteType, hash, to.state.AppHash, to.Validators.QuorumType, to.Validators.QuorumHash, header, vss...)
 	addVotes(to, votes...)
 }
 
 func validatePrevote(t *testing.T, cs *State, round int32, privVal *validatorStub, blockHash []byte) {
 	prevotes := cs.Votes.Prevotes(round)
-	pubKey, err := privVal.GetPubKey()
+	proTxHash, err := privVal.GetProTxHash()
 	require.NoError(t, err)
-	address := pubKey.Address()
 	var vote *types.Vote
-	if vote = prevotes.GetByAddress(address); vote == nil {
+	if vote = prevotes.GetByProTxHash(proTxHash); vote == nil {
 		panic("Failed to find prevote from validator")
 	}
 	if blockHash == nil {
@@ -251,11 +265,10 @@ func validatePrevote(t *testing.T, cs *State, round int32, privVal *validatorStu
 
 func validateLastPrecommit(t *testing.T, cs *State, privVal *validatorStub, blockHash []byte) {
 	votes := cs.LastCommit
-	pv, err := privVal.GetPubKey()
+	proTxHash, err := privVal.GetProTxHash()
 	require.NoError(t, err)
-	address := pv.Address()
 	var vote *types.Vote
-	if vote = votes.GetByAddress(address); vote == nil {
+	if vote = votes.GetByProTxHash(proTxHash); vote == nil {
 		panic("Failed to find precommit from validator")
 	}
 	if !bytes.Equal(vote.BlockID.Hash, blockHash) {
@@ -273,11 +286,10 @@ func validatePrecommit(
 	lockedBlockHash []byte,
 ) {
 	precommits := cs.Votes.Precommits(thisRound)
-	pv, err := privVal.GetPubKey()
+	proTxHash, err := privVal.GetProTxHash()
 	require.NoError(t, err)
-	address := pv.Address()
 	var vote *types.Vote
-	if vote = precommits.GetByAddress(address); vote == nil {
+	if vote = precommits.GetByProTxHash(proTxHash); vote == nil {
 		panic("Failed to find precommit from validator")
 	}
 
@@ -328,7 +340,7 @@ func validatePrevoteAndPrecommit(
 	cs.mtx.Unlock()
 }
 
-func subscribeToVoter(cs *State, addr []byte) <-chan tmpubsub.Message {
+func subscribeToVoter(cs *State, proTxHash []byte) <-chan tmpubsub.Message {
 	votesSub, err := cs.eventBus.SubscribeUnbuffered(context.Background(), testSubscriber, types.EventQueryVote)
 	if err != nil {
 		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, types.EventQueryVote))
@@ -338,7 +350,7 @@ func subscribeToVoter(cs *State, addr []byte) <-chan tmpubsub.Message {
 		for msg := range votesSub.Out() {
 			vote := msg.Data().(types.EventDataVote)
 			// we only fire for our own votes
-			if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
+			if bytes.Equal(proTxHash, vote.Vote.ValidatorProTxHash) {
 				ch <- msg
 			}
 		}
@@ -374,10 +386,11 @@ func newStateWithConfigAndBlockStore(
 	// Get BlockStore
 	blockStore := store.NewBlockStore(blockDB)
 
-	// one for mempool, one for consensus
+	// one for mempool, one for consensus, one for signature validation
 	mtx := new(tmsync.Mutex)
 	proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
 	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+	proxyAppConnQry := abcicli.NewLocalClient(mtx, app)
 
 	// Make Mempool
 	mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
@@ -395,7 +408,8 @@ func newStateWithConfigAndBlockStore(
 		panic(err)
 	}
 
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, proxyAppConnQry, mempool, evpool, nil)
+
 	cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 	cs.SetPrivValidator(pv)
@@ -690,7 +704,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		app.InitChain(abci.RequestInitChain{Validators: vals})
+		app.InitChain(abci.RequestInitChain{ValidatorSet: vals})
 
 		css[i] = newStateWithConfigAndBlockStore(thisConfig, state, privVals[i], app, stateDB)
 		css[i].SetTimeoutTicker(tickerFunc())
@@ -701,6 +715,182 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 			os.RemoveAll(dir)
 		}
 	}
+}
+
+func updateConsensusNetAddNewValidators(css []*State, height int64, addValCount int, validate bool) ([]*types.Validator, []crypto.ProTxHash, crypto.PubKey, crypto.QuorumHash) {
+	currentHeight, currentValidators := css[0].GetValidatorSet()
+	currentValidatorCount := len(currentValidators.Validators)
+
+	if validate {
+		for _, cssi := range css {
+			height, validators := cssi.GetValidatorSet()
+			if height != currentHeight {
+				panic("they should all have the same heights")
+			}
+			if len(validators.Validators) != currentValidatorCount {
+				panic("they should all have the same initial validator count")
+			}
+			if !currentValidators.Equals(validators) {
+				panic("all validators should be the same")
+			}
+		}
+	}
+
+	validatorProTxHashes := currentValidators.GetProTxHashes()
+	newValidatorProTxHashes := make([]crypto.ProTxHash, addValCount)
+	for i := 0; i < addValCount; i++ {
+		proTxHash, err := css[currentValidatorCount+i].privValidator.GetProTxHash()
+		if err != nil {
+			panic(err)
+		}
+		newValidatorProTxHashes[i] = proTxHash
+	}
+	validatorProTxHashes = append(validatorProTxHashes, newValidatorProTxHashes...)
+	sort.Sort(crypto.SortProTxHash(validatorProTxHashes))
+	// now that we have the list of all the protxhashes we need to regenerate the keys and the threshold public key
+	validatorProTxHashes, privKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(validatorProTxHashes)
+	// privKeys are returned in order
+	quorumHash := crypto.RandQuorumHash()
+	var privVal types.PrivValidator
+	updatedValidators := make([]*types.Validator, len(validatorProTxHashes))
+	publicKeys := make([]crypto.PubKey, len(validatorProTxHashes))
+	validatorProTxHashesAsByteArray := make([][]byte, len(validatorProTxHashes))
+	for i := 0; i < len(validatorProTxHashes); i++ {
+		privVal = css[i].privValidator
+		privValProTxHash, err := privVal.GetProTxHash()
+		if err != nil {
+			panic(err)
+		}
+		for j, proTxHash := range validatorProTxHashes {
+			if bytes.Equal(privValProTxHash.Bytes(), proTxHash.Bytes()) {
+				err := privVal.UpdatePrivateKey(privKeys[j], height+3)
+				if err != nil {
+					panic(err)
+				}
+				updatedValidators[j] = privVal.ExtractIntoValidator(height+3, quorumHash)
+				publicKeys[j] = privKeys[j].PubKey()
+				if !bytes.Equal(updatedValidators[j].PubKey.Bytes(), publicKeys[j].Bytes()) {
+					panic("the validator public key should match the public key")
+				}
+				validatorProTxHashesAsByteArray[j] = validatorProTxHashes[j].Bytes()
+				break
+			}
+		}
+	}
+	// just do this for sanity testing
+	recoveredThresholdPublicKey, err := bls12381.RecoverThresholdPublicKeyFromPublicKeys(publicKeys, validatorProTxHashesAsByteArray)
+	if err != nil {
+		panic(err)
+	}
+	if !bytes.Equal(recoveredThresholdPublicKey.Bytes(), thresholdPublicKey.Bytes()) {
+		panic("the recovered public key should match the threshold public key")
+	}
+	return updatedValidators, newValidatorProTxHashes, thresholdPublicKey, quorumHash
+}
+
+func updateConsensusNetRemoveValidators(css []*State, height int64, removeValCount int, validate bool) ([]*types.Validator, []*types.Validator, crypto.PubKey, crypto.QuorumHash) {
+
+	currentHeight, currentValidators := css[0].GetValidatorSet()
+	currentValidatorCount := len(currentValidators.Validators)
+
+	if removeValCount >= currentValidatorCount {
+		panic("you can not remove all validators")
+	}
+	if validate {
+		for _, cssi := range css {
+			height, validators := cssi.GetValidatorSet()
+			if height != currentHeight {
+				panic("they should all have the same heights")
+			}
+			if len(validators.Validators) != currentValidatorCount {
+				panic("they should all have the same initial validator count")
+			}
+			if !currentValidators.Equals(validators) {
+				panic("all validators should be the same")
+			}
+		}
+	}
+
+	validatorProTxHashes := currentValidators.GetProTxHashes()
+	removedValidatorProTxHashes := validatorProTxHashes[len(validatorProTxHashes)-removeValCount:]
+	return updateConsensusNetRemoveValidatorsWithProTxHashes(css, height, removedValidatorProTxHashes, validate)
+}
+
+func updateConsensusNetRemoveValidatorsWithProTxHashes(css []*State, height int64, removalProTxHashes []crypto.ProTxHash, validate bool) ([]*types.Validator, []*types.Validator, crypto.PubKey, crypto.QuorumHash) {
+	currentValidatorCount := len(css[0].Validators.Validators)
+	currentValidators := css[0].Validators
+
+	if validate {
+		for _, cssi := range css {
+			if len(cssi.Validators.Validators) != currentValidatorCount {
+				panic("they should all have the same initial validator count")
+			}
+			if !currentValidators.Equals(cssi.Validators) {
+				panic("all validators should be the same")
+			}
+		}
+	}
+
+	validatorProTxHashes := currentValidators.GetProTxHashes()
+	var newValidatorProTxHashes []crypto.ProTxHash
+	for _, validatorProTxHash := range validatorProTxHashes {
+		found := false
+		for _, removalProTxHash := range removalProTxHashes {
+			if bytes.Equal(validatorProTxHash, removalProTxHash) {
+				found = true
+			}
+		}
+		if !found {
+			newValidatorProTxHashes = append(newValidatorProTxHashes, validatorProTxHash)
+		}
+	}
+	validatorProTxHashes = newValidatorProTxHashes
+	sort.Sort(crypto.SortProTxHash(validatorProTxHashes))
+	// now that we have the list of all the protxhashes we need to regenerate the keys and the threshold public key
+	validatorProTxHashes, privKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(validatorProTxHashes)
+	// privKeys are returned in order
+	quorumHash := crypto.RandQuorumHash()
+	var privVal types.PrivValidator
+	updatedValidators := make([]*types.Validator, len(validatorProTxHashes))
+	removedValidators := make([]*types.Validator, len(removalProTxHashes))
+	publicKeys := make([]crypto.PubKey, len(validatorProTxHashes))
+	validatorProTxHashesAsByteArray := make([][]byte, len(validatorProTxHashes))
+	for i, proTxHash := range validatorProTxHashes {
+		for _, state := range css {
+			stateProTxHash, err := state.privValidator.GetProTxHash()
+			if err != nil {
+				panic(err)
+			}
+			if bytes.Equal(stateProTxHash.Bytes(), proTxHash.Bytes()) {
+				// we found the prival
+				privVal = state.privValidator
+				err := privVal.UpdatePrivateKey(privKeys[i], height+3)
+				if err != nil {
+					panic(err)
+				}
+				updatedValidators[i] = privVal.ExtractIntoValidator(height+3, quorumHash)
+				publicKeys[i] = privKeys[i].PubKey()
+				if !bytes.Equal(updatedValidators[i].PubKey.Bytes(), publicKeys[i].Bytes()) {
+					panic("the validator public key should match the public key")
+				}
+				validatorProTxHashesAsByteArray[i] = validatorProTxHashes[i].Bytes()
+				break
+			}
+		}
+	}
+	for i, proTxHash := range removalProTxHashes {
+		_, removedValidator := currentValidators.GetByProTxHash(proTxHash)
+		removedValidators[i] = removedValidator
+	}
+	// just do this for sanity testing
+	recoveredThresholdPublicKey, err := bls12381.RecoverThresholdPublicKeyFromPublicKeys(publicKeys, validatorProTxHashesAsByteArray)
+	if err != nil {
+		panic(err)
+	}
+	if !bytes.Equal(recoveredThresholdPublicKey.Bytes(), thresholdPublicKey.Bytes()) {
+		panic("the recovered public key should match the threshold public key")
+	}
+	return updatedValidators, removedValidators, thresholdPublicKey, quorumHash
 }
 
 // nPeers = nValidators + nNotValidator
@@ -748,7 +938,7 @@ func randConsensusNetWithPeers(
 			// simulate handshake, receive app version. If don't do this, replay test will fail
 			state.Version.Consensus.App = kvstore.ProtocolVersion
 		}
-		app.InitChain(abci.RequestInitChain{Validators: vals})
+		app.InitChain(abci.RequestInitChain{ValidatorSet: vals})
 		// sm.SaveState(stateDB,state)	//height 1's validatorsInfo already saved in LoadStateFromDBOrGenesisDoc above
 
 		css[i] = newStateWithConfig(thisConfig, state, privVal, app)
@@ -777,21 +967,31 @@ func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {
 func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.GenesisDoc, []types.PrivValidator) {
 	validators := make([]types.GenesisValidator, numValidators)
 	privValidators := make([]types.PrivValidator, numValidators)
+
+	privateKeys, proTxHashes, thresholdPublicKey := bls12381.CreatePrivLLMQDataDefaultThreshold(numValidators)
+
 	for i := 0; i < numValidators; i++ {
-		val, privVal := types.RandValidator(randPower, minPower)
+		val := types.NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), proTxHashes[i])
 		validators[i] = types.GenesisValidator{
-			PubKey: val.PubKey,
-			Power:  val.VotingPower,
+			PubKey:    val.PubKey,
+			Power:     val.VotingPower,
+			ProTxHash: val.ProTxHash,
 		}
-		privValidators[i] = privVal
+		privValidators[i] = types.NewMockPVWithParams(privateKeys[i], proTxHashes[i], false, false)
 	}
-	sort.Sort(types.PrivValidatorsByAddress(privValidators))
+	sort.Sort(types.PrivValidatorsByProTxHash(privValidators))
+
+	coreChainLock := types.NewMockChainLock(2)
 
 	return &types.GenesisDoc{
-		GenesisTime:   tmtime.Now(),
-		InitialHeight: 1,
-		ChainID:       config.ChainID(),
-		Validators:    validators,
+		GenesisTime:                  tmtime.Now(),
+		InitialHeight:                1,
+		ChainID:                      config.ChainID(),
+		Validators:                   validators,
+		InitialCoreChainLockedHeight: 1,
+		InitialProposalCoreChainLock: coreChainLock.ToProto(),
+		ThresholdPublicKey:           thresholdPublicKey,
+		QuorumHash:                   crypto.RandQuorumHash(),
 	}, privValidators
 }
 
@@ -855,13 +1055,13 @@ func newCounter() abci.Application {
 	return counter.NewApplication(true)
 }
 
-func newPersistentKVStore() abci.Application {
-	dir, err := ioutil.TempDir("", "persistent-kvstore")
-	if err != nil {
-		panic(err)
-	}
-	return kvstore.NewPersistentKVStoreApplication(dir)
-}
+// func newPersistentKVStore() abci.Application {
+//	 dir, err := ioutil.TempDir("", "persistent-kvstore")
+//	 if err != nil {
+//	 	 panic(err)
+//	 }
+//	 return kvstore.NewPersistentKVStoreApplication(dir)
+// }
 
 func newPersistentKVStoreWithPath(dbDir string) abci.Application {
 	return kvstore.NewPersistentKVStoreApplication(dbDir)

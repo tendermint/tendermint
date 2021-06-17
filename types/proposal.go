@@ -1,8 +1,13 @@
 package types
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
+	"math"
 	"time"
 
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -23,25 +28,27 @@ var (
 // a so-called Proof-of-Lock (POL) round, as noted in the POLRound.
 // If POLRound >= 0, then BlockID corresponds to the block that is locked in POLRound.
 type Proposal struct {
-	Type      tmproto.SignedMsgType
-	Height    int64     `json:"height"`
-	Round     int32     `json:"round"`     // there can not be greater than 2_147_483_647 rounds
-	POLRound  int32     `json:"pol_round"` // -1 if null.
-	BlockID   BlockID   `json:"block_id"`
-	Timestamp time.Time `json:"timestamp"`
-	Signature []byte    `json:"signature"`
+	Type                  tmproto.SignedMsgType
+	Height                int64     `json:"height"`
+	CoreChainLockedHeight uint32    `json:"core_height"`
+	Round                 int32     `json:"round"`     // there can not be greater than 2_147_483_647 rounds
+	POLRound              int32     `json:"pol_round"` // -1 if null.
+	BlockID               BlockID   `json:"block_id"`
+	Timestamp             time.Time `json:"timestamp"`
+	Signature             []byte    `json:"signature"`
 }
 
 // NewProposal returns a new Proposal.
 // If there is no POLRound, polRound should be -1.
-func NewProposal(height int64, round int32, polRound int32, blockID BlockID) *Proposal {
+func NewProposal(height int64, coreChainLockedHeight uint32, round int32, polRound int32, blockID BlockID) *Proposal {
 	return &Proposal{
-		Type:      tmproto.ProposalType,
-		Height:    height,
-		Round:     round,
-		BlockID:   blockID,
-		POLRound:  polRound,
-		Timestamp: tmtime.Now(),
+		Type:                  tmproto.ProposalType,
+		Height:                height,
+		CoreChainLockedHeight: coreChainLockedHeight,
+		Round:                 round,
+		BlockID:               blockID,
+		POLRound:              polRound,
+		Timestamp:             tmtime.Now(),
 	}
 }
 
@@ -52,6 +59,9 @@ func (p *Proposal) ValidateBasic() error {
 	}
 	if p.Height < 0 {
 		return errors.New("negative Height")
+	}
+	if p.CoreChainLockedHeight == math.MaxUint32 {
+		return errors.New("core height not set")
 	}
 	if p.Round < 0 {
 		return errors.New("negative Round")
@@ -107,7 +117,7 @@ func (p *Proposal) String() string {
 // devices that rely on this encoding.
 //
 // See CanonicalizeProposal
-func ProposalSignBytes(chainID string, p *tmproto.Proposal) []byte {
+func ProposalBlockSignBytes(chainID string, p *tmproto.Proposal) []byte {
 	pb := CanonicalizeProposal(chainID, p)
 	bz, err := protoio.MarshalDelimited(&pb)
 	if err != nil {
@@ -115,6 +125,43 @@ func ProposalSignBytes(chainID string, p *tmproto.Proposal) []byte {
 	}
 
 	return bz
+}
+
+func ProposalBlockSignId(chainID string, p *tmproto.Proposal, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) []byte {
+	signBytes := ProposalBlockSignBytes(chainID, p)
+	proposalMessageHash := crypto.Sha256(signBytes)
+
+	proposalRequestId := ProposalRequestIdProto(p)
+
+	signId := crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(proposalRequestId), bls12381.ReverseBytes(proposalMessageHash))
+
+	return signId
+}
+
+func ProposalRequestId(p *Proposal) []byte {
+	requestIdMessage := []byte("dpproposal")
+	heightByteArray := make([]byte, 8)
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(p.Height))
+	roundByteArray := make([]byte, 4)
+	binary.LittleEndian.PutUint32(roundByteArray, uint32(p.Round))
+
+	requestIdMessage = append(requestIdMessage, heightByteArray...)
+	requestIdMessage = append(requestIdMessage, roundByteArray...)
+
+	return crypto.Sha256(requestIdMessage)
+}
+
+func ProposalRequestIdProto(p *tmproto.Proposal) []byte {
+	requestIdMessage := []byte("dpproposal")
+	heightByteArray := make([]byte, 8)
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(p.Height))
+	roundByteArray := make([]byte, 4)
+	binary.LittleEndian.PutUint32(roundByteArray, uint32(p.Round))
+
+	requestIdMessage = append(requestIdMessage, heightByteArray...)
+	requestIdMessage = append(requestIdMessage, roundByteArray...)
+
+	return crypto.Sha256(requestIdMessage)
 }
 
 // ToProto converts Proposal to protobuf
@@ -127,6 +174,7 @@ func (p *Proposal) ToProto() *tmproto.Proposal {
 	pb.BlockID = p.BlockID.ToProto()
 	pb.Type = p.Type
 	pb.Height = p.Height
+	pb.CoreChainLockedHeight = p.CoreChainLockedHeight
 	pb.Round = p.Round
 	pb.PolRound = p.POLRound
 	pb.Timestamp = p.Timestamp
@@ -152,6 +200,7 @@ func ProposalFromProto(pp *tmproto.Proposal) (*Proposal, error) {
 	p.BlockID = *blockID
 	p.Type = pp.Type
 	p.Height = pp.Height
+	p.CoreChainLockedHeight = pp.CoreChainLockedHeight
 	p.Round = pp.Round
 	p.POLRound = pp.PolRound
 	p.Timestamp = pp.Timestamp

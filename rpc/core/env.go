@@ -12,14 +12,16 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 )
 
 const (
 	// see README
-	defaultPerPage = 30
-	maxPerPage     = 100
+	defaultPerPage                   = 30
+	maxPerPage                       = 100
+	defaultRequestThresholdPublicKey = true
 
 	// SubscribeTimeout is the maximum time we wait to subscribe for an event.
 	// must be less than the server's write timeout (see rpcserver.DefaultConfig)
@@ -79,9 +81,10 @@ type Environment struct {
 	P2PTransport   transport
 
 	// objects
-	PubKey           crypto.PubKey
+	ProTxHash        crypto.ProTxHash
 	GenDoc           *types.GenesisDoc // cache the genesis structure
 	TxIndexer        txindex.TxIndexer
+	BlockIndexer     indexer.BlockIndexer
 	ConsensusReactor *consensus.Reactor
 	EventBus         *types.EventBus // thread safe
 	Mempool          mempl.Mempool
@@ -128,6 +131,14 @@ func validatePerPage(perPagePtr *int) int {
 	return perPage
 }
 
+func validateRequestThresholdPublicKey(requestThresholdPublicKeyPtr *bool) bool {
+	if requestThresholdPublicKeyPtr == nil { // no per_page parameter
+		return defaultRequestThresholdPublicKey
+	}
+	requestThresholdPublicKey := *requestThresholdPublicKeyPtr
+	return requestThresholdPublicKey
+}
+
 func validateSkipCount(page, perPage int) int {
 	skipCount := (page - 1) * perPage
 	if skipCount < 0 {
@@ -150,7 +161,7 @@ func getHeight(latestHeight int64, heightPtr *int64) (int64, error) {
 		}
 		base := env.BlockStore.Base()
 		if height < base {
-			return 0, fmt.Errorf("height %v is not available, lowest height is %v",
+			return 0, fmt.Errorf("height %d is not available, lowest height is %d",
 				height, base)
 		}
 		return height, nil

@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -33,6 +37,39 @@ func ValidateHash(h []byte) error {
 	if len(h) > 0 && len(h) != tmhash.Size {
 		return fmt.Errorf("expected size to be %d bytes, got %d bytes",
 			tmhash.Size,
+			len(h),
+		)
+	}
+	return nil
+}
+
+// ValidateAppHash returns an error if the hash is not empty, but its
+// size != tmhash.Size.
+func ValidateAppHash(h []byte) error {
+	if len(h) > 0 && len(h) < crypto.SmallAppHashSize {
+		return fmt.Errorf("expected size to be at least %d bytes, got %d bytes",
+			crypto.SmallAppHashSize,
+			len(h),
+		)
+	}
+	return nil
+}
+
+// ValidateSignature returns an error if the signature is not empty, but its
+// size != tmhash.Size.
+func ValidateSignatureSize(keyType crypto.KeyType, h []byte) error {
+	var signatureSize int // default
+	switch keyType {
+	case crypto.Ed25519:
+		signatureSize = ed25519.SignatureSize
+	case crypto.BLS12381:
+		signatureSize = bls12381.SignatureSize
+	default:
+		panic("key type unknown")
+	}
+	if len(h) > 0 && len(h) != signatureSize {
+		return fmt.Errorf("expected size to be %d bytes, got %d bytes",
+			bls12381.SignatureSize,
 			len(h),
 		)
 	}

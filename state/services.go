@@ -16,6 +16,7 @@ import (
 type BlockStore interface {
 	Base() int64
 	Height() int64
+	CoreChainLockedHeight() uint32
 	Size() int64
 
 	LoadBaseMeta() *types.BlockMeta
@@ -53,9 +54,7 @@ type EmptyEvidencePool struct{}
 func (EmptyEvidencePool) PendingEvidence(maxBytes int64) (ev []types.Evidence, size int64) {
 	return nil, 0
 }
-func (EmptyEvidencePool) AddEvidence(types.Evidence) error              { return nil }
-func (EmptyEvidencePool) Update(State, types.EvidenceList)              {}
-func (EmptyEvidencePool) CheckEvidence(evList types.EvidenceList) error { return nil }
-func (EmptyEvidencePool) AddEvidenceFromConsensus(evidence types.Evidence) error {
-	return nil
-}
+func (EmptyEvidencePool) AddEvidence(types.Evidence) error                { return nil }
+func (EmptyEvidencePool) Update(State, types.EvidenceList)                {}
+func (EmptyEvidencePool) CheckEvidence(evList types.EvidenceList) error   { return nil }
+func (EmptyEvidencePool) ReportConflictingVotes(voteA, voteB *types.Vote) {}

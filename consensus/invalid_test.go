@@ -39,7 +39,7 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	// and otherwise disable the priv validator
 	byzVal.mtx.Lock()
 	pv := byzVal.privValidator
-	byzVal.doPrevote = func(height int64, round int32) {
+	byzVal.doPrevote = func(height int64, round int32, allowOldBlocks bool) {
 		invalidDoPrevoteFunc(t, height, round, byzVal, byzR.Switch, pv)
 	}
 	byzVal.mtx.Unlock()
@@ -62,32 +62,39 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, sw
 	go func() {
 		cs.mtx.Lock()
 		cs.privValidator = pv
-		pubKey, err := cs.privValidator.GetPubKey()
+		proTxHash, err := cs.privValidator.GetProTxHash()
 		if err != nil {
 			panic(err)
 		}
-		addr := pubKey.Address()
-		valIndex, _ := cs.Validators.GetByAddress(addr)
+		valIndex, _ := cs.Validators.GetByProTxHash(proTxHash)
 
 		// precommit a random block
 		blockHash := bytes.HexBytes(tmrand.Bytes(32))
+		lastAppHash := bytes.HexBytes(tmrand.Bytes(32))
+		// we want to see both errors, so send the correct state id half the time
+		if tmrand.Bool() == true {
+			lastAppHash = cs.state.AppHash
+		}
 		precommit := &types.Vote{
-			ValidatorAddress: addr,
-			ValidatorIndex:   valIndex,
-			Height:           cs.Height,
-			Round:            cs.Round,
-			Timestamp:        cs.voteTime(),
-			Type:             tmproto.PrecommitType,
+			ValidatorProTxHash: proTxHash,
+			ValidatorIndex:     valIndex,
+			Height:             cs.Height,
+			Round:              cs.Round,
+			Type:               tmproto.PrecommitType,
 			BlockID: types.BlockID{
 				Hash:          blockHash,
 				PartSetHeader: types.PartSetHeader{Total: 1, Hash: tmrand.Bytes(32)}},
+			StateID: types.StateID{
+				LastAppHash: lastAppHash,
+			},
 		}
 		p := precommit.ToProto()
-		err = cs.privValidator.SignVote(cs.state.ChainID, p)
+		err = cs.privValidator.SignVote(cs.state.ChainID, cs.Validators.QuorumType, cs.Validators.QuorumHash, p)
 		if err != nil {
 			t.Error(err)
 		}
-		precommit.Signature = p.Signature
+		precommit.BlockSignature = p.BlockSignature
+		precommit.StateSignature = p.StateSignature
 		cs.privValidator = nil // disable priv val so we don't do normal votes
 		cs.mtx.Unlock()
 

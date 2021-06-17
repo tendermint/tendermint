@@ -3,14 +3,18 @@ package internal
 import (
 	"bytes"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"net"
 	"os"
 	"os/signal"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
+
+	"github.com/tendermint/tendermint/crypto/tmhash"
+
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/state"
 
@@ -55,6 +59,7 @@ type TestHarness struct {
 	signerClient     *privval.SignerClient
 	fpv              *privval.FilePV
 	chainID          string
+	quorumHash       crypto.QuorumHash
 	acceptRetries    int
 	logger           log.Logger
 	exitWhenComplete bool
@@ -119,6 +124,7 @@ func NewTestHarness(logger log.Logger, cfg TestHarnessConfig) (*TestHarness, err
 		signerClient:     signerClient,
 		fpv:              fpv,
 		chainID:          st.ChainID,
+		quorumHash:       st.QuorumHash,
 		acceptRetries:    cfg.AcceptRetries,
 		logger:           logger,
 		exitWhenComplete: cfg.ExitWhenComplete,
@@ -192,12 +198,12 @@ func (th *TestHarness) Run() {
 // local Tendermint version.
 func (th *TestHarness) TestPublicKey() error {
 	th.logger.Info("TEST: Public key of remote signer")
-	fpvk, err := th.fpv.GetPubKey()
+	fpvk, err := th.fpv.GetPubKey(th.quorumHash)
 	if err != nil {
 		return err
 	}
 	th.logger.Info("Local", "pubKey", fpvk)
-	sck, err := th.signerClient.GetPubKey()
+	sck, err := th.signerClient.GetPubKey(th.quorumHash)
 	if err != nil {
 		return err
 	}
@@ -216,10 +222,11 @@ func (th *TestHarness) TestSignProposal() error {
 	// sha256 hash of "hash"
 	hash := tmhash.Sum([]byte("hash"))
 	prop := &types.Proposal{
-		Type:     tmproto.ProposalType,
-		Height:   100,
-		Round:    0,
-		POLRound: -1,
+		Type:                  tmproto.ProposalType,
+		Height:                100,
+		CoreChainLockedHeight: 1,
+		Round:                 0,
+		POLRound:              -1,
 		BlockID: types.BlockID{
 			Hash: hash,
 			PartSetHeader: types.PartSetHeader{
@@ -230,8 +237,8 @@ func (th *TestHarness) TestSignProposal() error {
 		Timestamp: time.Now(),
 	}
 	p := prop.ToProto()
-	propBytes := types.ProposalSignBytes(th.chainID, p)
-	if err := th.signerClient.SignProposal(th.chainID, p); err != nil {
+	propSignId := types.ProposalBlockSignId(th.chainID, p, btcjson.LLMQType_5_60, th.quorumHash)
+	if err := th.signerClient.SignProposal(th.chainID, btcjson.LLMQType_5_60, th.quorumHash, p); err != nil {
 		th.logger.Error("FAILED: Signing of proposal", "err", err)
 		return newTestHarnessError(ErrTestSignProposalFailed, err, "")
 	}
@@ -242,12 +249,12 @@ func (th *TestHarness) TestSignProposal() error {
 		th.logger.Error("FAILED: Signed proposal is invalid", "err", err)
 		return newTestHarnessError(ErrTestSignProposalFailed, err, "")
 	}
-	sck, err := th.signerClient.GetPubKey()
+	sck, err := th.signerClient.GetPubKey(th.quorumHash)
 	if err != nil {
 		return err
 	}
 	// now validate the signature on the proposal
-	if sck.VerifySignature(propBytes, prop.Signature) {
+	if sck.VerifySignatureDigest(propSignId, prop.Signature) {
 		th.logger.Info("Successfully validated proposal signature")
 	} else {
 		th.logger.Error("FAILED: Proposal signature validation failed")
@@ -263,6 +270,7 @@ func (th *TestHarness) TestSignVote() error {
 	for _, voteType := range voteTypes {
 		th.logger.Info("Testing vote type", "type", voteType)
 		hash := tmhash.Sum([]byte("hash"))
+		lastAppHash := tmhash.Sum([]byte("hash"))
 		vote := &types.Vote{
 			Type:   voteType,
 			Height: 101,
@@ -274,31 +282,42 @@ func (th *TestHarness) TestSignVote() error {
 					Total: 1000000,
 				},
 			},
-			ValidatorIndex:   0,
-			ValidatorAddress: tmhash.SumTruncated([]byte("addr")),
-			Timestamp:        time.Now(),
+			StateID: types.StateID{
+				LastAppHash: lastAppHash,
+			},
+			ValidatorIndex:     0,
+			ValidatorProTxHash: tmhash.Sum([]byte("pro_tx_hash")),
 		}
 		v := vote.ToProto()
-		voteBytes := types.VoteSignBytes(th.chainID, v)
+		voteBlockId := types.VoteBlockSignId(th.chainID, v, btcjson.LLMQType_5_60, th.quorumHash)
+		voteStateId := types.VoteStateSignId(th.chainID, v, btcjson.LLMQType_5_60, th.quorumHash)
 		// sign the vote
-		if err := th.signerClient.SignVote(th.chainID, v); err != nil {
+		if err := th.signerClient.SignVote(th.chainID, btcjson.LLMQType_5_60, th.quorumHash, v); err != nil {
 			th.logger.Error("FAILED: Signing of vote", "err", err)
 			return newTestHarnessError(ErrTestSignVoteFailed, err, fmt.Sprintf("voteType=%d", voteType))
 		}
-		vote.Signature = v.Signature
+		vote.BlockSignature = v.BlockSignature
+		vote.StateSignature = v.StateSignature
 		th.logger.Debug("Signed vote", "vote", vote)
 		// validate the contents of the vote
 		if err := vote.ValidateBasic(); err != nil {
 			th.logger.Error("FAILED: Signed vote is invalid", "err", err)
 			return newTestHarnessError(ErrTestSignVoteFailed, err, fmt.Sprintf("voteType=%d", voteType))
 		}
-		sck, err := th.signerClient.GetPubKey()
+		sck, err := th.signerClient.GetPubKey(th.quorumHash)
 		if err != nil {
 			return err
 		}
 
 		// now validate the signature on the proposal
-		if sck.VerifySignature(voteBytes, vote.Signature) {
+		if sck.VerifySignatureDigest(voteBlockId, vote.BlockSignature) {
+			th.logger.Info("Successfully validated vote signature", "type", voteType)
+		} else {
+			th.logger.Error("FAILED: Vote signature validation failed", "type", voteType)
+			return newTestHarnessError(ErrTestSignVoteFailed, nil, "signature validation failed")
+		}
+
+		if sck.VerifySignatureDigest(voteStateId, vote.StateSignature) {
 			th.logger.Info("Successfully validated vote signature", "type", voteType)
 		} else {
 			th.logger.Error("FAILED: Vote signature validation failed", "type", voteType)
@@ -374,6 +393,7 @@ func newTestHarnessListener(logger log.Logger, cfg TestHarnessConfig) (*privval.
 		logger.Info("Resolved TCP address for listener", "addr", tcpLn.Addr())
 		svln = tcpLn
 	default:
+		_ = ln.Close()
 		logger.Error("Unsupported protocol (must be unix:// or tcp://)", "proto", proto)
 		return nil, newTestHarnessError(ErrInvalidParameters, nil, fmt.Sprintf("Unsupported protocol: %s", proto))
 	}

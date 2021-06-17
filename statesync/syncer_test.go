@@ -56,6 +56,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 
 		LastBlockHeight: 1,
 		LastBlockID:     types.BlockID{Hash: []byte("blockhash")},
+		LastStateID:     types.StateID{LastAppHash: []byte("statehash")},
 		LastBlockTime:   time.Now(),
 		LastResultsHash: []byte("last_results_hash"),
 		AppHash:         []byte("app_hash"),
@@ -74,7 +75,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 		{Height: 1, Format: 1, Index: 1, Chunk: []byte{1, 1, 1}},
 		{Height: 1, Format: 1, Index: 2, Chunk: []byte{1, 1, 2}},
 	}
-	s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
+	s := &snapshot{Height: 1, CoreChainLockedHeight: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
 
 	stateProvider := &mocks.StateProvider{}
 	stateProvider.On("AppHash", mock.Anything, uint64(1)).Return(state.AppHash, nil)
@@ -113,7 +114,8 @@ func TestSyncer_SyncAny(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, new)
 
-	new, err = syncer.AddSnapshot(peerB, &snapshot{Height: 2, Format: 2, Chunks: 3, Hash: []byte{1}})
+	new, err = syncer.AddSnapshot(peerB, &snapshot{Height: 2, CoreChainLockedHeight: 5,
+		Format: 2, Chunks: 3, Hash: []byte{1}})
 	require.NoError(t, err)
 	assert.True(t, new)
 
@@ -121,20 +123,22 @@ func TestSyncer_SyncAny(t *testing.T) {
 	// with height 2 format 2, and accept the snapshot at height 1.
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 		Snapshot: &abci.Snapshot{
-			Height: 2,
-			Format: 2,
-			Chunks: 3,
-			Hash:   []byte{1},
+			Height:                2,
+			Format:                2,
+			Chunks:                3,
+			Hash:                  []byte{1},
+			CoreChainLockedHeight: 5,
 		},
 		AppHash: []byte("app_hash_2"),
 	}).Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT_FORMAT}, nil)
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 		Snapshot: &abci.Snapshot{
-			Height:   s.Height,
-			Format:   s.Format,
-			Chunks:   s.Chunks,
-			Hash:     s.Hash,
-			Metadata: s.Metadata,
+			Height:                s.Height,
+			Format:                s.Format,
+			Chunks:                s.Chunks,
+			Hash:                  s.Hash,
+			Metadata:              s.Metadata,
+			CoreChainLockedHeight: s.CoreChainLockedHeight,
 		},
 		AppHash: []byte("app_hash"),
 	}).Times(2).Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ACCEPT}, nil)
@@ -181,9 +185,10 @@ func TestSyncer_SyncAny(t *testing.T) {
 		Index: 2, Chunk: []byte{1, 1, 2},
 	}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 	connQuery.On("InfoSync", proxy.RequestInfo).Return(&abci.ResponseInfo{
-		AppVersion:       9,
-		LastBlockHeight:  1,
-		LastBlockAppHash: []byte("app_hash"),
+		AppVersion:                9,
+		LastBlockHeight:           1,
+		LastCoreChainLockedHeight: 1,
+		LastBlockAppHash:          []byte("app_hash"),
 	}, nil)
 
 	newState, lastCommit, err := syncer.SyncAny(0)
@@ -217,7 +222,7 @@ func TestSyncer_SyncAny_noSnapshots(t *testing.T) {
 func TestSyncer_SyncAny_abort(t *testing.T) {
 	syncer, connSnapshot := setupOfferSyncer(t)
 
-	s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
+	s := &snapshot{Height: 1, CoreChainLockedHeight: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
 	_, err := syncer.AddSnapshot(simplePeer("id"), s)
 	require.NoError(t, err)
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
@@ -363,7 +368,8 @@ func TestSyncer_offerSnapshot(t *testing.T) {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			syncer, connSnapshot := setupOfferSyncer(t)
-			s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}, trustedAppHash: []byte("app_hash")}
+			s := &snapshot{Height: 1, CoreChainLockedHeight: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3},
+				trustedAppHash: []byte("app_hash")}
 			connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 				Snapshot: toABCI(s),
 				AppHash:  []byte("app_hash"),
@@ -604,7 +610,8 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 
 func TestSyncer_verifyApp(t *testing.T) {
 	boom := errors.New("boom")
-	s := &snapshot{Height: 3, Format: 1, Chunks: 5, Hash: []byte{1, 2, 3}, trustedAppHash: []byte("app_hash")}
+	s := &snapshot{Height: 3, CoreChainLockedHeight: 10, Format: 1, Chunks: 5, Hash: []byte{1, 2, 3},
+		trustedAppHash: []byte("app_hash")}
 
 	testcases := map[string]struct {
 		response  *abci.ResponseInfo
@@ -612,9 +619,10 @@ func TestSyncer_verifyApp(t *testing.T) {
 		expectErr error
 	}{
 		"verified": {&abci.ResponseInfo{
-			LastBlockHeight:  3,
-			LastBlockAppHash: []byte("app_hash"),
-			AppVersion:       9,
+			LastBlockHeight:           3,
+			LastCoreChainLockedHeight: 10,
+			LastBlockAppHash:          []byte("app_hash"),
+			AppVersion:                9,
 		}, nil, nil},
 		"invalid height": {&abci.ResponseInfo{
 			LastBlockHeight:  5,
@@ -652,10 +660,11 @@ func TestSyncer_verifyApp(t *testing.T) {
 
 func toABCI(s *snapshot) *abci.Snapshot {
 	return &abci.Snapshot{
-		Height:   s.Height,
-		Format:   s.Format,
-		Chunks:   s.Chunks,
-		Hash:     s.Hash,
-		Metadata: s.Metadata,
+		Height:                s.Height,
+		CoreChainLockedHeight: s.CoreChainLockedHeight,
+		Format:                s.Format,
+		Chunks:                s.Chunks,
+		Hash:                  s.Hash,
+		Metadata:              s.Metadata,
 	}
 }

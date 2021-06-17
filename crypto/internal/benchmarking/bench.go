@@ -37,7 +37,7 @@ func BenchmarkSigning(b *testing.B, priv crypto.PrivKey) {
 	message := []byte("Hello, world!")
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := priv.Sign(message)
+		_, err := priv.SignDigest(message)
 
 		if err != nil {
 			b.FailNow()
@@ -51,7 +51,7 @@ func BenchmarkVerification(b *testing.B, priv crypto.PrivKey) {
 	pub := priv.PubKey()
 	// use a short message, so this time doesn't get dominated by hashing.
 	message := []byte("Hello, world!")
-	signature, err := priv.Sign(message)
+	signature, err := priv.SignDigest(message)
 	if err != nil {
 		b.Fatal(err)
 	}

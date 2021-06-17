@@ -53,7 +53,7 @@ func (evR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
 		{
 			ID:                  EvidenceChannel,
-			Priority:            5,
+			Priority:            6,
 			RecvMessageCapacity: maxMsgSize,
 		},
 	}
@@ -69,7 +69,7 @@ func (evR *Reactor) AddPeer(peer p2p.Peer) {
 func (evR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	evis, err := decodeMsg(msgBytes)
 	if err != nil {
-		evR.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err, "bytes", msgBytes)
+		evR.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err)
 		evR.Switch.StopPeerForError(src, err)
 		return
 	}
@@ -118,16 +118,18 @@ func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 			case <-evR.Quit():
 				return
 			}
+		} else if !peer.IsRunning() || !evR.IsRunning() {
+			return
 		}
 
 		ev := next.Value.(types.Evidence)
 		evis := evR.prepareEvidenceMessage(peer, ev)
 		if len(evis) > 0 {
+			evR.Logger.Debug("Gossiping evidence to peer", "ev", ev, "peer", peer)
 			msgBytes, err := encodeMsg(evis)
 			if err != nil {
 				panic(err)
 			}
-			evR.Logger.Debug("Gossiping evidence to peer", "ev", ev, "peer", peer.ID())
 			success := peer.Send(EvidenceChannel, msgBytes)
 			if !success {
 				time.Sleep(peerRetryMessageIntervalMS * time.Millisecond)

@@ -15,9 +15,10 @@ import (
 // State is the application state.
 type State struct {
 	sync.RWMutex
-	Height uint64
-	Values map[string]string
-	Hash   []byte
+	Height     uint64
+	CoreHeight uint32
+	Values     map[string]string
+	Hash       []byte
 
 	// private fields aren't marshalled to disk.
 	file            string

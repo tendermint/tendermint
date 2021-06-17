@@ -2,6 +2,7 @@ package coretypes
 
 import (
 	"encoding/json"
+	"github.com/dashevo/dashd-go/btcjson"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -41,7 +42,7 @@ type ResultBlockResults struct {
 	TxsResults            []*abci.ResponseDeliverTx `json:"txs_results"`
 	BeginBlockEvents      []abci.Event              `json:"begin_block_events"`
 	EndBlockEvents        []abci.Event              `json:"end_block_events"`
-	ValidatorUpdates      []abci.ValidatorUpdate    `json:"validator_updates"`
+	ValidatorSetUpdate    *abci.ValidatorSetUpdate  `json:"validator_set_updates"`
 	ConsensusParamUpdates *abci.ConsensusParams     `json:"consensus_param_updates"`
 }
 
@@ -76,9 +77,8 @@ type SyncInfo struct {
 
 // Info about the node's validator
 type ValidatorInfo struct {
-	Address     bytes.HexBytes `json:"address"`
-	PubKey      crypto.PubKey  `json:"pub_key"`
-	VotingPower int64          `json:"voting_power"`
+	ProTxHash   crypto.ProTxHash `json:"pro_tx_hash"`
+	VotingPower int64            `json:"voting_power"`
 }
 
 // Node Status
@@ -124,8 +124,11 @@ type Peer struct {
 
 // Validators for a height.
 type ResultValidators struct {
-	BlockHeight int64              `json:"block_height"`
-	Validators  []*types.Validator `json:"validators"`
+	BlockHeight        int64              `json:"block_height"`
+	Validators         []*types.Validator `json:"validators"`
+	ThresholdPublicKey *crypto.PubKey     `json:"threshold_public_key"`
+	QuorumType         btcjson.LLMQType   `json:"quorum_type"`
+	QuorumHash         *crypto.QuorumHash `json:"quorum_hash"`
 	// Count of actual validators in this result
 	Count int `json:"count"`
 	// Total number of validators
@@ -193,6 +196,12 @@ type ResultTx struct {
 type ResultTxSearch struct {
 	Txs        []*ResultTx `json:"txs"`
 	TotalCount int         `json:"total_count"`
+}
+
+// ResultBlockSearch defines the RPC response type for a block search by events.
+type ResultBlockSearch struct {
+	Blocks     []*ResultBlock `json:"blocks"`
+	TotalCount int            `json:"total_count"`
 }
 
 // List of mempool txs

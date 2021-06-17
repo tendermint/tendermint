@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"net"
 	"os"
 	"syscall"
@@ -24,6 +25,7 @@ import (
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/p2p/conn"
 	p2pmock "github.com/tendermint/tendermint/p2p/mock"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
@@ -36,7 +38,6 @@ import (
 func TestNodeStartStop(t *testing.T) {
 	config := cfg.ResetTestRoot("node_node_test")
 	defer os.RemoveAll(config.RootDir)
-
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
@@ -102,8 +103,8 @@ func TestNodeDelayedStart(t *testing.T) {
 
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
-	n.GenesisDoc().GenesisTime = now.Add(2 * time.Second)
 	require.NoError(t, err)
+	n.GenesisDoc().GenesisTime = now.Add(2 * time.Second)
 
 	err = n.Start()
 	require.NoError(t, err)
@@ -150,6 +151,8 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	signerServer := privval.NewSignerServer(
 		dialerEndpoint,
 		config.ChainID(),
+		btcjson.LLMQType_5_60,
+		crypto.RandQuorumHash(),
 		types.NewMockPV(),
 	)
 
@@ -196,6 +199,8 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	pvsc := privval.NewSignerServer(
 		dialerEndpoint,
 		config.ChainID(),
+		btcjson.LLMQType_5_60,
+		crypto.RandQuorumHash(),
 		types.NewMockPV(),
 	)
 
@@ -235,12 +240,12 @@ func TestCreateProposalBlock(t *testing.T) {
 	var height int64 = 1
 	state, stateDB, privVals := state(1, height)
 	stateStore := sm.NewStore(stateDB)
-	maxBytes := 16384
+	maxBytes := 16568
 	var partSize uint32 = 256
 	maxEvidenceBytes := int64(maxBytes / 2)
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Evidence.MaxBytes = maxEvidenceBytes
-	proposerAddr, _ := state.Validators.GetByIndex(0)
+	proposerProTxHash, _ := state.Validators.GetByIndex(0)
 
 	// Make Mempool
 	memplMetrics := mempl.PrometheusMetrics("node_test_1")
@@ -265,10 +270,10 @@ func TestCreateProposalBlock(t *testing.T) {
 	// than can fit in a block
 	var currentBytes int64 = 0
 	for currentBytes <= maxEvidenceBytes {
-		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain")
+		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain",
+			state.Validators.QuorumType, state.Validators.QuorumHash)
 		currentBytes += int64(len(ev.Bytes()))
-		err := evidencePool.AddEvidenceFromConsensus(ev)
-		require.NoError(t, err)
+		evidencePool.ReportConflictingVotes(ev.VoteA, ev.VoteB)
 	}
 
 	evList, size := evidencePool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
@@ -289,16 +294,14 @@ func TestCreateProposalBlock(t *testing.T) {
 		stateStore,
 		logger,
 		proxyApp.Consensus(),
+		proxyApp.Query(),
 		mempool,
 		evidencePool,
+		nil,
 	)
 
-	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
-	block, _ := blockExec.CreateProposalBlock(
-		height,
-		state, commit,
-		proposerAddr,
-	)
+	commit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil, nil, nil, nil)
+	block, _ := blockExec.CreateProposalBlock(height, state, commit, proposerProTxHash)
 
 	// check that the part set does not exceed the maximum block size
 	partSet := block.MakePartSet(partSize)
@@ -333,7 +336,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	var maxBytes int64 = 16384
 	var partSize uint32 = 256
 	state.ConsensusParams.Block.MaxBytes = maxBytes
-	proposerAddr, _ := state.Validators.GetByIndex(0)
+	proposerProTxHash, _ := state.Validators.GetByIndex(0)
 
 	// Make Mempool
 	memplMetrics := mempl.PrometheusMetrics("node_test_2")
@@ -357,16 +360,15 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		stateStore,
 		logger,
 		proxyApp.Consensus(),
+		proxyApp.Query(),
 		mempool,
+
 		sm.EmptyEvidencePool{},
+		nil,
 	)
 
-	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
-	block, _ := blockExec.CreateProposalBlock(
-		height,
-		state, commit,
-		proposerAddr,
-	)
+	commit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil, nil, nil, nil)
+	block, _ := blockExec.CreateProposalBlock(height, state, commit, proposerProTxHash)
 
 	pb, err := block.ToProto()
 	require.NoError(t, err)
@@ -382,6 +384,14 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 
 	cr := p2pmock.NewReactor()
+	cr.Channels = []*conn.ChannelDescriptor{
+		{
+			ID:                  byte(0x31),
+			Priority:            5,
+			SendQueueCapacity:   100,
+			RecvMessageCapacity: 100,
+		},
+	}
 	customBlockchainReactor := p2pmock.NewReactor()
 
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
@@ -408,25 +418,23 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 
 	assert.True(t, customBlockchainReactor.IsRunning())
 	assert.Equal(t, customBlockchainReactor, n.Switch().Reactor("BLOCKCHAIN"))
+
+	channels := n.NodeInfo().(p2p.DefaultNodeInfo).Channels
+	assert.Contains(t, channels, mempl.MempoolChannel)
+	assert.Contains(t, channels, cr.Channels[0].ID)
 }
 
 func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
-	privVals := make([]types.PrivValidator, nVals)
-	vals := make([]types.GenesisValidator, nVals)
+	vals, privVals, thresholdPublicKey := types.GenerateGenesisValidators(nVals)
 	for i := 0; i < nVals; i++ {
-		privVal := types.NewMockPV()
-		privVals[i] = privVal
-		vals[i] = types.GenesisValidator{
-			Address: privVal.PrivKey.PubKey().Address(),
-			PubKey:  privVal.PrivKey.PubKey(),
-			Power:   1000,
-			Name:    fmt.Sprintf("test%d", i),
-		}
+		vals[i].Name = fmt.Sprintf("test%d", i)
 	}
 	s, _ := sm.MakeGenesisState(&types.GenesisDoc{
-		ChainID:    "test-chain",
-		Validators: vals,
-		AppHash:    nil,
+		ChainID:            "test-chain",
+		Validators:         vals,
+		ThresholdPublicKey: thresholdPublicKey,
+		QuorumHash:         crypto.RandQuorumHash(),
+		AppHash:            nil,
 	})
 
 	// save validators to db for 2 heights

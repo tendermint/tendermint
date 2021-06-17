@@ -1,6 +1,7 @@
 package state
 
 import (
+	"github.com/tendermint/tendermint/crypto"
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -30,8 +31,10 @@ func UpdateState(
 	header *types.Header,
 	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
+	newThresholdPublicKey crypto.PubKey,
+	quorumHash crypto.QuorumHash,
 ) (State, error) {
-	return updateState(state, blockID, header, abciResponses, validatorUpdates)
+	return updateState(state, blockID, header, abciResponses, validatorUpdates, newThresholdPublicKey, quorumHash)
 }
 
 // ValidateValidatorUpdates is an alias for validateValidatorUpdates exported

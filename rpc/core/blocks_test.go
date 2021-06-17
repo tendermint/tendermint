@@ -84,7 +84,7 @@ func TestBlockResults(t *testing.T) {
 	env.StateStore = sm.NewStore(dbm.NewMemDB())
 	err := env.StateStore.SaveABCIResponses(100, results)
 	require.NoError(t, err)
-	env.BlockStore = mockBlockStore{height: 100}
+	env.BlockStore = mockBlockStore{height: 100, coreChainLockedHeight: 3025}
 
 	testCases := []struct {
 		height  int64
@@ -99,7 +99,7 @@ func TestBlockResults(t *testing.T) {
 			TxsResults:            results.DeliverTxs,
 			BeginBlockEvents:      results.BeginBlock.Events,
 			EndBlockEvents:        results.EndBlock.Events,
-			ValidatorUpdates:      results.EndBlock.ValidatorUpdates,
+			ValidatorSetUpdate:    results.EndBlock.ValidatorSetUpdate,
 			ConsensusParamUpdates: results.EndBlock.ConsensusParamUpdates,
 		}},
 	}
@@ -116,11 +116,13 @@ func TestBlockResults(t *testing.T) {
 }
 
 type mockBlockStore struct {
-	height int64
+	height                int64
+	coreChainLockedHeight uint32
 }
 
 func (mockBlockStore) Base() int64                                       { return 1 }
 func (store mockBlockStore) Height() int64                               { return store.height }
+func (store mockBlockStore) CoreChainLockedHeight() uint32               { return store.coreChainLockedHeight }
 func (store mockBlockStore) Size() int64                                 { return store.height }
 func (mockBlockStore) LoadBaseMeta() *types.BlockMeta                    { return nil }
 func (mockBlockStore) LoadBlockMeta(height int64) *types.BlockMeta       { return nil }

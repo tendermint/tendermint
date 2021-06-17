@@ -1,4 +1,4 @@
-FROM golang:1.15-alpine AS build
+FROM golang:1.15-alpine AS builder
 
 RUN apk update && \
     apk upgrade && \
@@ -42,7 +42,7 @@ EXPOSE 26656 26657 26660
 
 STOPSIGNAL SIGTERM
 
-COPY --from=build /go/src/github.com/dashevo/tenderdash/build/tenderdash /usr/bin/tenderdash
+COPY --from=builder /go/src/github.com/dashevo/tenderdash/build/tenderdash /usr/bin/tenderdash
 
 # You can overwrite these before the first run to influence
 # config.json and genesis.json. Additionally, you can override

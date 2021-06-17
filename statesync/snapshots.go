@@ -17,11 +17,12 @@ type snapshotKey [sha256.Size]byte
 
 // snapshot contains data about a snapshot.
 type snapshot struct {
-	Height   uint64
-	Format   uint32
-	Chunks   uint32
-	Hash     []byte
-	Metadata []byte
+	Height                uint64
+	CoreChainLockedHeight uint32
+	Format                uint32
+	Chunks                uint32
+	Hash                  []byte
+	Metadata              []byte
 
 	trustedAppHash []byte // populated by light client
 }
@@ -32,9 +33,10 @@ type snapshot struct {
 func (s *snapshot) Key() snapshotKey {
 	// Hash.Write() never returns an error.
 	hasher := sha256.New()
-	hasher.Write([]byte(fmt.Sprintf("%v:%v:%v", s.Height, s.Format, s.Chunks))) //nolint:errcheck // ignore error
-	hasher.Write(s.Hash)                                                        //nolint:errcheck // ignore error
-	hasher.Write(s.Metadata)                                                    //nolint:errcheck // ignore error
+	hasher.Write([]byte(fmt.Sprintf("%v:%v:%v:%v", s.Height, s.CoreChainLockedHeight, //nolint:errcheck // ignore error
+		s.Format, s.Chunks))) //nolint:errcheck // ignore error
+	hasher.Write(s.Hash)     //nolint:errcheck // ignore error
+	hasher.Write(s.Metadata) //nolint:errcheck // ignore error
 	var key snapshotKey
 	copy(key[:], hasher.Sum(nil))
 	return key

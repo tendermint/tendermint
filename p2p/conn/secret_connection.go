@@ -97,12 +97,15 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	// Generate ephemeral keys for perfect forward secrecy.
 	locEphPub, locEphPriv := genEphKeys()
 
+	// fmt.Printf("ephemeral key %X (%s-%d) - locPubKey %X (%s-%d)", locEphPub, reflect.TypeOf(locEphPub), len(locEphPub),
+	// 	locPubKey.Bytes(), reflect.TypeOf(locPubKey), len(locPubKey.Bytes()))
+
 	// Write local ephemeral pubkey and receive one too.
 	// NOTE: every 32-byte string is accepted as a Curve25519 public key (see
 	// DJB's Curve25519 paper: http://cr.yp.to/ecdh/curve25519-20060209.pdf)
 	remEphPub, err := shareEphPubKey(conn, locEphPub)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("share eph pub key: %v", err)
 	}
 
 	// Sort by lexical order.
@@ -120,7 +123,7 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	// Compute common diffie hellman secret using X25519.
 	dhSecret, err := computeDHSecret(remEphPub, locEphPriv)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("compute DH secret: %v", err)
 	}
 
 	transcript.AppendMessage(labelDHSecret, dhSecret[:])
@@ -154,16 +157,16 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 		sendAead:   sendAead,
 	}
 
-	// Sign the challenge bytes for authentication.
+	// SignDigest the challenge bytes for authentication.
 	locSignature, err := signChallenge(&challenge, locPrivKey)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sign challenge: %v", err)
 	}
 
 	// Share (in secret) each other's pubkey & challenge signature
 	authSigMsg, err := shareAuthSignature(sc, locPubKey, locSignature)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sign auth signature: %v", err)
 	}
 
 	remPubKey, remSignature := authSigMsg.Key, authSigMsg.Sig
@@ -275,7 +278,6 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 }
 
 // Implements net.Conn
-// nolint
 func (sc *SecretConnection) Close() error                  { return sc.conn.Close() }
 func (sc *SecretConnection) LocalAddr() net.Addr           { return sc.conn.(net.Conn).LocalAddr() }
 func (sc *SecretConnection) RemoteAddr() net.Addr          { return sc.conn.(net.Conn).RemoteAddr() }
@@ -313,7 +315,7 @@ func shareEphPubKey(conn io.ReadWriter, locEphPub *[32]byte) (remEphPub *[32]byt
 		},
 		func(_ int) (val interface{}, abort bool, err error) {
 			var bytes gogotypes.BytesValue
-			err = protoio.NewDelimitedReader(conn, 1024*1024).ReadMsg(&bytes)
+			_, err = protoio.NewDelimitedReader(conn, 1024*1024).ReadMsg(&bytes)
 			if err != nil {
 				return nil, true, err // abort
 			}
@@ -390,7 +392,7 @@ func sort32(foo, bar *[32]byte) (lo, hi *[32]byte) {
 }
 
 func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKey) ([]byte, error) {
-	signature, err := locPrivKey.Sign(challenge[:])
+	signature, err := locPrivKey.SignDigest(challenge[:])
 	if err != nil {
 		return nil, err
 	}
@@ -419,7 +421,7 @@ func shareAuthSignature(sc io.ReadWriter, pubKey crypto.PubKey, signature []byte
 		},
 		func(_ int) (val interface{}, abort bool, err error) {
 			var pba tmp2p.AuthSigMessage
-			err = protoio.NewDelimitedReader(sc, 1024*1024).ReadMsg(&pba)
+			_, err = protoio.NewDelimitedReader(sc, 1024*1024).ReadMsg(&pba)
 			if err != nil {
 				return nil, true, err // abort
 			}

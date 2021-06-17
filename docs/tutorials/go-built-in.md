@@ -347,25 +347,24 @@ Put the following code into the "main.go" file:
 package main
 
 import (
-	"errors"
-	"flag"
-	"fmt"
-	"os"
-	"os/signal"
-	"path/filepath"
-	"syscall"
+ "flag"
+ "fmt"
+ "os"
+ "os/signal"
+ "path/filepath"
+ "syscall"
 
-	"github.com/dgraph-io/badger"
-	"github.com/spf13/viper"
+ "github.com/dgraph-io/badger"
+ "github.com/spf13/viper"
 
-	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
-	tmflags "github.com/tendermint/tendermint/libs/cli/flags"
-	"github.com/tendermint/tendermint/libs/log"
-	nm "github.com/tendermint/tendermint/node"
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/proxy"
+ abci "github.com/tendermint/tendermint/abci/types"
+ cfg "github.com/tendermint/tendermint/config"
+ tmflags "github.com/tendermint/tendermint/libs/cli/flags"
+ "github.com/tendermint/tendermint/libs/log"
+ nm "github.com/tendermint/tendermint/node"
+ "github.com/tendermint/tendermint/p2p"
+ "github.com/tendermint/tendermint/privval"
+ "github.com/tendermint/tendermint/proxy"
 )
 
 var configFile string
@@ -404,55 +403,55 @@ func main() {
 }
 
 func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
-	// read config
-	config := cfg.DefaultConfig()
-	config.RootDir = filepath.Dir(filepath.Dir(configFile))
-	viper.SetConfigFile(configFile)
-	if err := viper.ReadInConfig(); err != nil {
-		return nil, fmt.Errorf("viper failed to read config file: %w", err)
-	}
-	if err := viper.Unmarshal(config); err != nil {
-		return nil, fmt.Errorf("viper failed to unmarshal config: %w", err)
-	}
-	if err := config.ValidateBasic(); err != nil {
-		return nil, fmt.Errorf("config is invalid: %w", err)
-	}
+ // read config
+ config := cfg.DefaultConfig()
+ config.RootDir = filepath.Dir(filepath.Dir(configFile))
+ viper.SetConfigFile(configFile)
+ if err := viper.ReadInConfig(); err != nil {
+  return nil, fmt.Errorf("viper failed to read config file: %w", err)
+ }
+ if err := viper.Unmarshal(config); err != nil {
+  return nil, fmt.Errorf("viper failed to unmarshal config: %w", err)
+ }
+ if err := config.ValidateBasic(); err != nil {
+  return nil, fmt.Errorf("config is invalid: %w", err)
+ }
 
-	// create logger
-	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-	var err error
-	logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel())
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse log level: %w", err)
-	}
+ // create logger
+ logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+ var err error
+ logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel)
+ if err != nil {
+  return nil, fmt.Errorf("failed to parse log level: %w", err)
+ }
 
-	// read private validator
-	pv := privval.LoadFilePV(
-		config.PrivValidatorKeyFile(),
-		config.PrivValidatorStateFile(),
-	)
+ // read private validator
+ pv := privval.LoadFilePV(
+  config.PrivValidatorKeyFile(),
+  config.PrivValidatorStateFile(),
+ )
 
-	// read node key
-	nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
-	if err != nil {
-		return nil, fmt.Errorf("failed to load node's key: %w", err)
-	}
+ // read node key
+ nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
+ if err != nil {
+  return nil, fmt.Errorf("failed to load node's key: %w", err)
+ }
 
-	// create node
-	node, err := nm.NewNode(
-		config,
-		pv,
-		nodeKey,
-		proxy.NewLocalClientCreator(app),
-		nm.DefaultGenesisDocProviderFunc(config),
-		nm.DefaultDBProvider,
-		nm.DefaultMetricsProvider(config.Instrumentation),
-		logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new Tendermint node: %w", err)
-	}
+ // create node
+ node, err := nm.NewNode(
+  config,
+  pv,
+  nodeKey,
+  proxy.NewLocalClientCreator(app),
+  nm.DefaultGenesisDocProviderFunc(config),
+  nm.DefaultDBProvider,
+  nm.DefaultMetricsProvider(config.Instrumentation),
+  logger)
+ if err != nil {
+  return nil, fmt.Errorf("failed to create new Tendermint node: %w", err)
+ }
 
-	return node, nil
+ return node, nil
 }
 ```
 
@@ -586,10 +585,27 @@ dependency management.
 
 ```bash
 go mod init github.com/me/example
-go build
+go get github.com/tendermint/tendermint/@v0.34.0
 ```
 
-This should build the binary.
+After running the above commands you will see two generated files, go.mod and go.sum. The go.mod file should look similar to:
+
+```go
+module github.com/me/example
+
+go 1.15
+
+require (
+	github.com/dgraph-io/badger v1.6.2
+	github.com/tendermint/tendermint v0.34.0
+)
+```
+
+Finally, we will build our binary:
+
+```sh
+go build
+```
 
 To create a default configuration, nodeKey and private validator files, let's
 execute `tendermint init`. But before we do that, we will need to install

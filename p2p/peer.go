@@ -133,7 +133,7 @@ func newPeer(
 	p := &peer{
 		peerConn:      pc,
 		nodeInfo:      nodeInfo,
-		channels:      nodeInfo.(DefaultNodeInfo).Channels, // TODO
+		channels:      nodeInfo.(DefaultNodeInfo).Channels,
 		Data:          cmap.NewCMap(),
 		metricsTicker: time.NewTicker(metricsTickerDuration),
 		metrics:       NopMetrics(),

@@ -53,8 +53,6 @@ install: install-bls
 
 .PHONY: all
 
-# The below include contains the tools.
-include tools.mk
 include tests.mk
 
 ###############################################################################
@@ -89,18 +87,10 @@ proto-all: proto-gen proto-lint proto-check-breaking
 .PHONY: proto-all
 
 proto-gen:
-	## If you get the following error,
-	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
-	## See https://stackoverflow.com/a/25518702
-	## Note the $< here is substituted for the %.proto
-	## Note the $@ here is substituted for the %.pb.go
-	@sh scripts/protocgen.sh
-.PHONY: proto-gen
-
-proto-gen-docker:
+	@docker pull -q tendermintdev/docker-build-proto
 	@echo "Generating Protobuf files"
 	@docker run -v $(shell pwd):/workspace --workdir /workspace tendermintdev/docker-build-proto sh ./scripts/protocgen.sh
-.PHONY: proto-gen-docker
+.PHONY: proto-gen
 
 proto-lint:
 	@$(DOCKER_BUF) check lint --error-format=json
@@ -235,7 +225,7 @@ build-docker:
 ###############################################################################
 
 # Build linux binary on other platforms
-build-linux: tools
+build-linux:
 	GOOS=linux GOARCH=amd64 $(MAKE) build
 .PHONY: build-linux
 
@@ -273,7 +263,7 @@ endif
 
 # Run a nodejs tool to test endpoints against a localnet
 # The command takes care of starting and stopping the network
-# prerequisits: build-contract-tests-hooks build-linux
+# prerequisites: build-contract-tests-hooks build-linux
 # the two build commands were not added to let this command run from generic containers or machines.
 # The binaries should be built beforehand
 contract-tests:

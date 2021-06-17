@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/tendermint/tendermint/crypto"
 
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -12,9 +13,11 @@ import (
 
 // ShowValidatorCmd adds capabilities for showing the validator info.
 var ShowValidatorCmd = &cobra.Command{
-	Use:   "show_validator",
-	Short: "Show this node's validator info",
-	RunE:  showValidator,
+	Use:     "show-validator",
+	Aliases: []string{"show_validator"},
+	Short:   "Show this node's validator info",
+	RunE:    showValidator,
+	PreRun:  deprecateSnakeCase,
 }
 
 func showValidator(cmd *cobra.Command, args []string) error {
@@ -25,9 +28,9 @@ func showValidator(cmd *cobra.Command, args []string) error {
 
 	pv := privval.LoadFilePV(keyFilePath, config.PrivValidatorStateFile())
 
-	pubKey, err := pv.GetPubKey()
+	pubKey, err := pv.GetPubKey(crypto.QuorumHash{})
 	if err != nil {
-		return fmt.Errorf("can't get pubkey: %w", err)
+		return fmt.Errorf("can't get pubkey in show validator: %w", err)
 	}
 
 	bz, err := tmjson.Marshal(pubKey)

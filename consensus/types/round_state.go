@@ -111,8 +111,8 @@ func (rs *RoundState) RoundStateSimple() RoundStateSimple {
 		panic(err)
 	}
 
-	addr := rs.Validators.GetProposer().Address
-	idx, _ := rs.Validators.GetByAddress(addr)
+	proTxHash := rs.Validators.GetProposer().ProTxHash
+	idx, _ := rs.Validators.GetByProTxHash(proTxHash)
 
 	return RoundStateSimple{
 		HeightRoundStep:   fmt.Sprintf("%d/%d/%d", rs.Height, rs.Round, rs.Step),
@@ -122,24 +122,24 @@ func (rs *RoundState) RoundStateSimple() RoundStateSimple {
 		ValidBlockHash:    rs.ValidBlock.Hash(),
 		Votes:             votesJSON,
 		Proposer: types.ValidatorInfo{
-			Address: addr,
-			Index:   idx,
+			ProTxHash: proTxHash,
+			Index:     idx,
 		},
 	}
 }
 
 // NewRoundEvent returns the RoundState with proposer information as an event.
 func (rs *RoundState) NewRoundEvent() types.EventDataNewRound {
-	addr := rs.Validators.GetProposer().Address
-	idx, _ := rs.Validators.GetByAddress(addr)
+	proTxHash := rs.Validators.GetProposer().ProTxHash
+	idx, _ := rs.Validators.GetByProTxHash(proTxHash)
 
 	return types.EventDataNewRound{
 		Height: rs.Height,
 		Round:  rs.Round,
 		Step:   rs.Step.String(),
 		Proposer: types.ValidatorInfo{
-			Address: addr,
-			Index:   idx,
+			ProTxHash: proTxHash,
+			Index:     idx,
 		},
 	}
 }

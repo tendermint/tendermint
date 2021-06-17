@@ -3,6 +3,7 @@
 package secp256k1
 
 import (
+	"errors"
 	"math/big"
 
 	secp256k1 "github.com/btcsuite/btcd/btcec"
@@ -28,6 +29,32 @@ func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
 
 	sigBytes := serializeSig(sig)
 	return sigBytes, nil
+}
+
+// SignDigest creates an ECDSA signature on curve Secp256k1.
+// The returned signature will be of the form R || S (in lower-S form).
+func (privKey PrivKey) SignDigest(msg []byte) ([]byte, error) {
+	priv, _ := secp256k1.PrivKeyFromBytes(secp256k1.S256(), privKey)
+
+	sig, err := priv.Sign(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	sigBytes := serializeSig(sig)
+	return sigBytes, nil
+}
+
+func (pubKey PubKey) AggregateSignatures(sigSharesData [][]byte, messages [][]byte) ([]byte, error) {
+	return nil, errors.New("should not aggregate an edwards signature")
+}
+
+func (pubKey PubKey) VerifyAggregateSignature(messages [][]byte, sig []byte) bool {
+	return false
+}
+
+func (pubKey PubKey) VerifySignatureDigest(hash []byte, sig []byte) bool {
+	return false
 }
 
 // VerifySignature verifies a signature of the form R || S.

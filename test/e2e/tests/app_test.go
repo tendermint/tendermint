@@ -1,6 +1,7 @@
 package e2e_test
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -16,7 +17,7 @@ import (
 // Tests that any initial state given in genesis has made it into the app.
 func TestApp_InitialState(t *testing.T) {
 	testNode(t, func(t *testing.T, node e2e.Node) {
-		if node.Mode == e2e.ModeSeed {
+		if node.Stateless() {
 			return
 		}
 		if len(node.Testnet.InitialState) == 0 {
@@ -81,12 +82,27 @@ func TestApp_Tx(t *testing.T) {
 		value := fmt.Sprintf("%x", bz)
 		tx := types.Tx(fmt.Sprintf("%v=%v", key, value))
 
-		_, err = client.BroadcastTxCommit(ctx, tx)
+		_, err = client.BroadcastTxSync(ctx, tx)
 		require.NoError(t, err)
 
-		resp, err := client.ABCIQuery(ctx, "", []byte(key))
+		hash := tx.Hash()
+		waitTime := 30 * time.Second
+		require.Eventuallyf(t, func() bool {
+			txResp, err := client.Tx(ctx, hash, false)
+			return err == nil && bytes.Equal(txResp.Tx, tx)
+		}, waitTime, time.Second,
+			"submitted tx wasn't committed after %v", waitTime,
+		)
+
+		// NOTE: we don't test abci query of the light client
+		if node.Mode == e2e.ModeLight {
+			return
+		}
+
+		abciResp, err := client.ABCIQuery(ctx, "", []byte(key))
 		require.NoError(t, err)
-		assert.Equal(t, key, string(resp.Response.Key))
-		assert.Equal(t, value, string(resp.Response.Value))
+		assert.Equal(t, key, string(abciResp.Response.Key))
+		assert.Equal(t, value, string(abciResp.Response.Value))
+
 	})
 }

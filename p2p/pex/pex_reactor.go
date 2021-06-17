@@ -239,7 +239,7 @@ func (r *Reactor) logErrAddrBook(err error) {
 func (r *Reactor) Receive(chID byte, src Peer, msgBytes []byte) {
 	msg, err := decodeMsg(msgBytes)
 	if err != nil {
-		r.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
+		r.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err)
 		r.Switch.StopPeerForError(src, err)
 		return
 	}
@@ -582,6 +582,8 @@ func (r *Reactor) dialPeer(addr *p2p.NetAddress) error {
 
 	// cleanup any history
 	r.attemptsToDial.Delete(addr.DialString())
+
+	fmt.Printf("dialing success to %v", addr.DialString())
 	return nil
 }
 

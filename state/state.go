@@ -57,6 +57,13 @@ type State struct {
 	LastBlockID     types.BlockID
 	LastBlockTime   time.Time
 
+	// The Last StateID is actually the previous App Hash
+	LastStateID types.StateID
+
+	// Last Chain Lock is the last known chain locked height in consensus
+	// It does not go to 0 if a block had no chain lock and should stay the same as the previous block
+	LastCoreChainLockedBlockHeight uint32
+
 	// LastValidators is used to validate block.LastCommit.
 	// Validators are persisted to the database separately every time they change,
 	// so we can query for historical validator sets.
@@ -91,6 +98,10 @@ func (state State) Copy() State {
 		LastBlockHeight: state.LastBlockHeight,
 		LastBlockID:     state.LastBlockID,
 		LastBlockTime:   state.LastBlockTime,
+
+		LastStateID: state.LastStateID,
+
+		LastCoreChainLockedBlockHeight: state.LastCoreChainLockedBlockHeight,
 
 		NextValidators:              state.NextValidators.Copy(),
 		Validators:                  state.Validators.Copy(),
@@ -144,6 +155,8 @@ func (state *State) ToProto() (*tmstate.State, error) {
 	sm.InitialHeight = state.InitialHeight
 	sm.LastBlockHeight = state.LastBlockHeight
 
+	sm.LastCoreChainLockedBlockHeight = state.LastCoreChainLockedBlockHeight
+
 	sm.LastBlockID = state.LastBlockID.ToProto()
 	sm.LastBlockTime = state.LastBlockTime
 	vals, err := state.Validators.ToProto()
@@ -151,6 +164,8 @@ func (state *State) ToProto() (*tmstate.State, error) {
 		return nil, err
 	}
 	sm.Validators = vals
+
+	sm.LastStateID = state.LastStateID.ToProto()
 
 	nVals, err := state.NextValidators.ToProto()
 	if err != nil {
@@ -195,6 +210,15 @@ func StateFromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 	state.LastBlockHeight = pb.LastBlockHeight
 	state.LastBlockTime = pb.LastBlockTime
 
+	si, err := types.StateIDFromProto(&pb.LastStateID)
+	if err != nil {
+		return nil, err
+	}
+
+	state.LastStateID = *si
+
+	state.LastCoreChainLockedBlockHeight = pb.LastCoreChainLockedBlockHeight
+
 	vals, err := types.ValidatorSetFromProto(pb.Validators)
 	if err != nil {
 		return nil, err
@@ -214,7 +238,7 @@ func StateFromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 		}
 		state.LastValidators = lVals
 	} else {
-		state.LastValidators = types.NewValidatorSet(nil)
+		state.LastValidators = types.NewEmptyValidatorSet()
 	}
 
 	state.LastHeightValidatorsChanged = pb.LastHeightValidatorsChanged
@@ -230,25 +254,39 @@ func StateFromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 // Create a block from the latest state
 
 // MakeBlock builds a block from the current state with the given txs, commit,
-// and evidence. Note it also takes a proposerAddress because the state does not
+// and evidence. Note it also takes a proposerProTxHash because the state does not
 // track rounds, and hence does not know the correct proposer. TODO: fix this!
 func (state State) MakeBlock(
 	height int64,
+	coreChainLock *types.CoreChainLock,
 	txs []types.Tx,
 	commit *types.Commit,
 	evidence []types.Evidence,
-	proposerAddress []byte,
+	proposerProTxHash types.ProTxHash,
 ) (*types.Block, *types.PartSet) {
 
+	var coreChainLockHeight uint32
+	if coreChainLock == nil {
+		coreChainLockHeight = state.LastCoreChainLockedBlockHeight
+	} else {
+		coreChainLockHeight = coreChainLock.CoreBlockHeight
+	}
+
 	// Build base block with block data.
-	block := types.MakeBlock(height, txs, commit, evidence)
+	block := types.MakeBlock(height, coreChainLockHeight, coreChainLock, txs, commit, evidence)
 
 	// Set time.
 	var timestamp time.Time
 	if height == state.InitialHeight {
 		timestamp = state.LastBlockTime // genesis time
 	} else {
-		timestamp = MedianTime(commit, state.LastValidators)
+		currentTime := tmtime.Now()
+		if currentTime.Before(state.LastBlockTime) {
+			// this is weird, propose last block time
+			timestamp = state.LastBlockTime
+		} else {
+			timestamp = currentTime
+		}
 	}
 
 	// Fill rest of header with state data.
@@ -257,33 +295,10 @@ func (state State) MakeBlock(
 		timestamp, state.LastBlockID,
 		state.Validators.Hash(), state.NextValidators.Hash(),
 		types.HashConsensusParams(state.ConsensusParams), state.AppHash, state.LastResultsHash,
-		proposerAddress,
+		proposerProTxHash,
 	)
 
 	return block, block.MakePartSet(types.BlockPartSizeBytes)
-}
-
-// MedianTime computes a median time for a given Commit (based on Timestamp field of votes messages) and the
-// corresponding validator set. The computed time is always between timestamps of
-// the votes sent by honest processes, i.e., a faulty processes can not arbitrarily increase or decrease the
-// computed value.
-func MedianTime(commit *types.Commit, validators *types.ValidatorSet) time.Time {
-	weightedTimes := make([]*tmtime.WeightedTime, len(commit.Signatures))
-	totalVotingPower := int64(0)
-
-	for i, commitSig := range commit.Signatures {
-		if commitSig.Absent() {
-			continue
-		}
-		_, validator := validators.GetByAddress(commitSig.ValidatorAddress)
-		// If there's no condition, TestValidateBlockCommit panics; not needed normally.
-		if validator != nil {
-			totalVotingPower += validator.VotingPower
-			weightedTimes[i] = tmtime.NewWeightedTime(commitSig.Timestamp, validator.VotingPower)
-		}
-	}
-
-	return tmtime.WeightedMedian(weightedTimes, totalVotingPower)
 }
 
 //------------------------------------------------------------------------
@@ -323,15 +338,15 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 
 	var validatorSet, nextValidatorSet *types.ValidatorSet
 	if genDoc.Validators == nil {
-		validatorSet = types.NewValidatorSet(nil)
-		nextValidatorSet = types.NewValidatorSet(nil)
+		validatorSet = types.NewValidatorSet(nil, nil, genDoc.QuorumType, nil)
+		nextValidatorSet = types.NewValidatorSet(nil, nil, genDoc.QuorumType,nil)
 	} else {
 		validators := make([]*types.Validator, len(genDoc.Validators))
 		for i, val := range genDoc.Validators {
-			validators[i] = types.NewValidator(val.PubKey, val.Power)
+			validators[i] = types.NewValidatorDefaultVotingPower(val.PubKey, val.ProTxHash)
 		}
-		validatorSet = types.NewValidatorSet(validators)
-		nextValidatorSet = types.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
+		validatorSet = types.NewValidatorSet(validators, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash)
+		nextValidatorSet = types.NewValidatorSet(validators, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash).CopyIncrementProposerPriority(1)
 	}
 
 	return State{
@@ -341,11 +356,15 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 
 		LastBlockHeight: 0,
 		LastBlockID:     types.BlockID{},
+		LastStateID:     types.StateID{},
 		LastBlockTime:   genDoc.GenesisTime,
+
+		LastCoreChainLockedBlockHeight: genDoc.InitialCoreChainLockedHeight,
 
 		NextValidators:              nextValidatorSet,
 		Validators:                  validatorSet,
-		LastValidators:              types.NewValidatorSet(nil),
+		// The quorum type must be 0 on an empty validator set
+		LastValidators:              types.NewEmptyValidatorSet(),
 		LastHeightValidatorsChanged: genDoc.InitialHeight,
 
 		ConsensusParams:                  *genDoc.ConsensusParams,

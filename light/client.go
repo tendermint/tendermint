@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
+	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -34,6 +36,9 @@ const (
 	// - http://vancouver-webpages.com/time/web.html
 	// - https://blog.codinghorror.com/keeping-time-on-the-pc/
 	defaultMaxClockDrift = 10 * time.Second
+
+	// 10s is sufficient for most networks.
+	defaultMaxBlockLag = 10 * time.Second
 )
 
 // Option sets a parameter for the light client.
@@ -99,10 +104,24 @@ func MaxRetryAttempts(max uint16) Option {
 }
 
 // MaxClockDrift defines how much new header's time can drift into
-// the future. Default: 10s.
+// the future relative to the light clients local time. Default: 10s.
 func MaxClockDrift(d time.Duration) Option {
 	return func(c *Client) {
 		c.maxClockDrift = d
+	}
+}
+
+// MaxBlockLag represents the maximum time difference between the realtime
+// that a block is received and the timestamp of that block.
+// One can approximate it to the maximum block production time
+//
+// As an example, say the light client received block B at a time
+// 12:05 (this is the real time) and the time on the block
+// was 12:00. Then the lag here is 5 minutes.
+// Default: 10s
+func MaxBlockLag(d time.Duration) Option {
+	return func(c *Client) {
+		c.maxBlockLag = d
 	}
 }
 
@@ -118,6 +137,7 @@ type Client struct {
 	trustLevel       tmmath.Fraction
 	maxRetryAttempts uint16 // see MaxRetryAttempts option
 	maxClockDrift    time.Duration
+	maxBlockLag      time.Duration
 
 	// Mutex for locking during changes of the light clients providers
 	providerMutex tmsync.Mutex
@@ -204,6 +224,7 @@ func NewClientFromTrustedStore(
 		trustLevel:       DefaultTrustLevel,
 		maxRetryAttempts: defaultMaxRetryAttempts,
 		maxClockDrift:    defaultMaxClockDrift,
+		maxBlockLag:      defaultMaxBlockLag,
 		primary:          primary,
 		witnesses:        witnesses,
 		trustedStore:     trustedStore,
@@ -219,7 +240,7 @@ func NewClientFromTrustedStore(
 
 	// Validate the number of witnesses.
 	if len(c.witnesses) < 1 {
-		return nil, errNoWitnesses{}
+		return nil, ErrNoWitnesses
 	}
 
 	// Verify witnesses are all on the same chain.
@@ -294,7 +315,7 @@ func (c *Client) checkTrustedHeaderUsingOptions(ctx context.Context, options Tru
 		c.logger.Info("Client initialized with old header (trusted is more recent)",
 			"old", options.Height,
 			"trustedHeight", c.latestTrustedBlock.Height,
-			"trustedHash", hash2str(c.latestTrustedBlock.Hash()))
+			"trustedHash", c.latestTrustedBlock.Hash())
 
 		action := fmt.Sprintf(
 			"Rollback to %d (%X)? Note this will remove newer light blocks up to %d (%X)",
@@ -318,10 +339,11 @@ func (c *Client) checkTrustedHeaderUsingOptions(ctx context.Context, options Tru
 
 	if !bytes.Equal(primaryHash, c.latestTrustedBlock.Hash()) {
 		c.logger.Info("Prev. trusted header's hash (h1) doesn't match hash from primary provider (h2)",
-			"h1", hash2str(c.latestTrustedBlock.Hash()), "h2", hash2str(primaryHash))
+			"h1", c.latestTrustedBlock.Hash(), "h2", primaryHash)
 
 		action := fmt.Sprintf(
-			"Prev. trusted header's hash %X doesn't match hash %X from primary provider. Remove all the stored light blocks?",
+			"Prev. trusted header's hash %X doesn't match hash %X from primary provider."+
+				" Remove all the stored light blocks?",
 			c.latestTrustedBlock.Hash(), primaryHash)
 		if c.confirmationFn(action) {
 			err := c.Cleanup()
@@ -357,7 +379,7 @@ func (c *Client) initializeWithTrustOptions(ctx context.Context, options TrustOp
 	}
 
 	// 2) Ensure that +2/3 of validators signed correctly.
-	err = l.ValidatorSet.VerifyCommitLight(c.chainID, l.Commit.BlockID, l.Height, l.Commit)
+	err = l.ValidatorSet.VerifyCommitLight(c.chainID, l.Commit.BlockID, l.Commit.StateID, l.Height, l.Commit)
 	if err != nil {
 		return fmt.Errorf("invalid commit: %w", err)
 	}
@@ -433,7 +455,7 @@ func (c *Client) Update(ctx context.Context, now time.Time) (*types.LightBlock, 
 		if err != nil {
 			return nil, err
 		}
-		c.logger.Info("Advanced to new state", "height", latestBlock.Height, "hash", hash2str(latestBlock.Hash()))
+		c.logger.Info("Advanced to new state", "height", latestBlock.Height, "hash", latestBlock.Hash())
 		return latestBlock, nil
 	}
 
@@ -458,7 +480,7 @@ func (c *Client) VerifyLightBlockAtHeight(ctx context.Context, height int64, now
 	// Check if the light block already verified.
 	h, err := c.TrustedLightBlock(height)
 	if err == nil {
-		c.logger.Info("Header has already been verified", "height", height, "hash", hash2str(h.Hash()))
+		c.logger.Info("Header has already been verified", "height", height, "hash", h.Hash())
 		// Return already trusted light block
 		return h, nil
 	}
@@ -516,7 +538,7 @@ func (c *Client) VerifyHeader(ctx context.Context, newHeader *types.Header, now 
 			return fmt.Errorf("existing trusted header %X does not match newHeader %X", l.Hash(), newHeader.Hash())
 		}
 		c.logger.Info("Header has already been verified",
-			"height", newHeader.Height, "hash", hash2str(newHeader.Hash()))
+			"height", newHeader.Height, "hash", newHeader.Hash())
 		return nil
 	}
 
@@ -534,7 +556,7 @@ func (c *Client) VerifyHeader(ctx context.Context, newHeader *types.Header, now 
 }
 
 func (c *Client) verifyLightBlock(ctx context.Context, newLightBlock *types.LightBlock, now time.Time) error {
-	c.logger.Info("VerifyHeader", "height", newLightBlock.Height, "hash", hash2str(newLightBlock.Hash()))
+	c.logger.Info("VerifyHeader", "height", newLightBlock.Height, "hash", newLightBlock.Hash())
 
 	var (
 		verifyFunc func(ctx context.Context, trusted *types.LightBlock, new *types.LightBlock, now time.Time) error
@@ -615,9 +637,9 @@ func (c *Client) verifySequential(
 		// 2) Verify them
 		c.logger.Debug("Verify adjacent newLightBlock against verifiedBlock",
 			"trustedHeight", verifiedBlock.Height,
-			"trustedHash", hash2str(verifiedBlock.Hash()),
+			"trustedHash", verifiedBlock.Hash(),
 			"newHeight", interimBlock.Height,
-			"newHash", hash2str(interimBlock.Hash()))
+			"newHash", interimBlock.Hash())
 
 		err = VerifyAdjacent(verifiedBlock.SignedHeader, interimBlock.SignedHeader, interimBlock.ValidatorSet,
 			c.trustingPeriod, now, c.maxClockDrift)
@@ -635,17 +657,10 @@ func (c *Client) verifySequential(
 				// If some intermediate header is invalid, replace the primary and try
 				// again.
 				c.logger.Error("primary sent invalid header -> replacing", "err", err)
-				replaceErr := c.replacePrimaryProvider()
-				if replaceErr != nil {
-					c.logger.Error("Can't replace primary", "err", replaceErr)
-					// return original error
-					return err
-				}
 
-				replacementBlock, fErr := c.lightBlockFromPrimary(ctx, newLightBlock.Height)
-				if fErr != nil {
-					c.logger.Error("Can't fetch light block from primary", "err", fErr)
-					// return original error
+				replacementBlock, removeErr := c.findNewPrimary(ctx, newLightBlock.Height, true)
+				if removeErr != nil {
+					c.logger.Debug("failed to replace primary. Returning original error", "err", removeErr)
 					return err
 				}
 
@@ -706,9 +721,12 @@ func (c *Client) verifySkipping(
 	for {
 		c.logger.Debug("Verify non-adjacent newHeader against verifiedBlock",
 			"trustedHeight", verifiedBlock.Height,
-			"trustedHash", hash2str(verifiedBlock.Hash()),
+			"trustedHash", verifiedBlock.Hash(),
 			"newHeight", blockCache[depth].Height,
-			"newHash", hash2str(blockCache[depth].Hash()))
+			"newHash", blockCache[depth].Hash())
+
+		// fmt.Printf("verifying light skipping with validator set %v using verified block %v",
+		//  verifiedBlock.ValidatorSet, verifiedBlock)
 
 		err := Verify(verifiedBlock.SignedHeader, verifiedBlock.ValidatorSet, blockCache[depth].SignedHeader,
 			blockCache[depth].ValidatorSet, c.trustingPeriod, now, c.maxClockDrift, c.trustLevel)
@@ -734,7 +752,17 @@ func (c *Client) verifySkipping(
 				pivotHeight := verifiedBlock.Height + (blockCache[depth].Height-verifiedBlock.
 					Height)*verifySkippingNumerator/verifySkippingDenominator
 				interimBlock, providerErr := source.LightBlock(ctx, pivotHeight)
-				if providerErr != nil {
+				switch providerErr {
+				case nil:
+					blockCache = append(blockCache, interimBlock)
+
+				// if the error is benign, the client does not need to replace the primary
+				case provider.ErrLightBlockNotFound, provider.ErrNoResponse, provider.ErrHeightTooHigh:
+					return nil, err
+
+				// all other errors such as ErrBadLightBlock or ErrUnreliableProvider are seen as malevolent and the
+				// provider is removed
+				default:
 					return nil, ErrVerificationFailed{From: verifiedBlock.Height, To: pivotHeight, Reason: providerErr}
 				}
 				blockCache = append(blockCache, interimBlock)
@@ -769,17 +797,10 @@ func (c *Client) verifySkippingAgainstPrimary(
 		// If some intermediate header is invalid, replace the primary and try
 		// again.
 		c.logger.Error("primary sent invalid header -> replacing", "err", err)
-		replaceErr := c.replacePrimaryProvider()
-		if replaceErr != nil {
-			c.logger.Error("Can't replace primary", "err", replaceErr)
-			// return original error
-			return err
-		}
 
-		replacementBlock, fErr := c.lightBlockFromPrimary(ctx, newLightBlock.Height)
-		if fErr != nil {
-			c.logger.Error("Can't fetch light block from primary", "err", fErr)
-			// return original error
+		replacementBlock, removeErr := c.findNewPrimary(ctx, newLightBlock.Height, true)
+		if removeErr != nil {
+			c.logger.Error("failed to replace primary. Returning original error", "err", removeErr)
 			return err
 		}
 
@@ -890,6 +911,8 @@ func (c *Client) cleanupAfter(height int64) error {
 }
 
 func (c *Client) updateTrustedLightBlock(l *types.LightBlock) error {
+	c.logger.Debug("updating trusted light block", "light_block", l)
+
 	if err := c.trustedStore.SaveLightBlock(l); err != nil {
 		return fmt.Errorf("failed to save trusted header: %w", err)
 	}
@@ -928,19 +951,29 @@ func (c *Client) backwards(
 		interimHeader = interimBlock.Header
 		c.logger.Debug("Verify newHeader against verifiedHeader",
 			"trustedHeight", verifiedHeader.Height,
-			"trustedHash", hash2str(verifiedHeader.Hash()),
+			"trustedHash", verifiedHeader.Hash(),
 			"newHeight", interimHeader.Height,
-			"newHash", hash2str(interimHeader.Hash()))
+			"newHash", interimHeader.Hash())
 		if err := VerifyBackwards(interimHeader, verifiedHeader); err != nil {
-			c.logger.Error("primary sent invalid header -> replacing", "err", err)
-			if replaceErr := c.replacePrimaryProvider(); replaceErr != nil {
-				c.logger.Error("Can't replace primary", "err", replaceErr)
-				// return original error
-				return fmt.Errorf("verify backwards from %d to %d failed: %w",
-					verifiedHeader.Height, interimHeader.Height, err)
+			// verification has failed
+			c.logger.Error("backwards verification failed, replacing primary...", "err", err, "primary", c.primary)
+
+			// the client tries to see if it can get a witness to continue with the request
+			newPrimarysBlock, replaceErr := c.findNewPrimary(ctx, newHeader.Height, true)
+			if replaceErr != nil {
+				c.logger.Debug("failed to replace primary. Returning original error", "err", replaceErr)
+				return err
 			}
-			// we need to verify the header at the same height again
-			continue
+
+			// before continuing we must check that they have the same target header to validate
+			if !bytes.Equal(newPrimarysBlock.Hash(), newHeader.Hash()) {
+				c.logger.Debug("replaced primary but new primary has a different block to the initial one")
+				// return the original error
+				return err
+			}
+
+			// try again with the new primary
+			return c.backwards(ctx, verifiedHeader, newPrimarysBlock.Header)
 		}
 		verifiedHeader = interimHeader
 	}
@@ -948,52 +981,144 @@ func (c *Client) backwards(
 	return nil
 }
 
-// NOTE: requires a providerMutex locked.
-func (c *Client) removeWitness(idx int) {
-	switch len(c.witnesses) {
-	case 0:
-		panic(fmt.Sprintf("wanted to remove %d element from empty witnesses slice", idx))
-	case 1:
-		c.witnesses = make([]provider.Provider, 0)
-	default:
-		c.witnesses[idx] = c.witnesses[len(c.witnesses)-1]
-		c.witnesses = c.witnesses[:len(c.witnesses)-1]
-	}
-}
-
-// replaceProvider takes the first alternative provider and promotes it as the
-// primary provider.
-func (c *Client) replacePrimaryProvider() error {
-	c.providerMutex.Lock()
-	defer c.providerMutex.Unlock()
-
-	if len(c.witnesses) <= 1 {
-		return errNoWitnesses{}
-	}
-	c.primary = c.witnesses[0]
-	c.witnesses = c.witnesses[1:]
-	c.logger.Info("Replacing primary with the first witness", "new_primary", c.primary)
-
-	return nil
-}
-
 // lightBlockFromPrimary retrieves the lightBlock from the primary provider
-// at the specified height. Handles dropout by the primary provider by swapping
-// with an alternative provider.
+// at the specified height. This method also handles provider behavior as follows:
+//
+// 1. If the provider does not respond or does not have the block, it tries again
+//    with a different provider
+// 2. If all providers return the same error, the light client forwards the error to
+//    where the initial request came from
+// 3. If the provider provides an invalid light block, is deemed unreliable or returns
+//    any other error, the primary is permanently dropped and is replaced by a witness.
 func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*types.LightBlock, error) {
 	c.providerMutex.Lock()
 	l, err := c.primary.LightBlock(ctx, height)
 	c.providerMutex.Unlock()
-	if err != nil {
-		c.logger.Debug("Error on light block request from primary", "error", err)
-		replaceErr := c.replacePrimaryProvider()
-		if replaceErr != nil {
-			return nil, fmt.Errorf("%v. Tried to replace primary but: %w", err.Error(), replaceErr)
-		}
-		// replace primary and request a light block again
-		return c.lightBlockFromPrimary(ctx, height)
+
+	switch err {
+	case nil:
+		// Everything went smoothly. We reset the lightBlockRequests and return the light block
+		return l, nil
+
+	case provider.ErrNoResponse, provider.ErrLightBlockNotFound, provider.ErrHeightTooHigh:
+		// we find a new witness to replace the primary
+		c.logger.Debug("error from light block request from primary, replacing...",
+			"error", err, "height", height, "primary", c.primary)
+		return c.findNewPrimary(ctx, height, false)
+
+	default:
+		// The light client has most likely received either provider.ErrUnreliableProvider or provider.ErrBadLightBlock
+		// These errors mean that the light client should drop the primary and try with another provider instead
+		c.logger.Error("error from light block request from primary, removing...",
+			"error", err, "height", height, "primary", c.primary)
+		return c.findNewPrimary(ctx, height, true)
 	}
-	return l, err
+}
+
+// NOTE: requires a providerMutex lock
+func (c *Client) removeWitnesses(indexes []int) error {
+	// check that we will still have witnesses remaining
+	if len(c.witnesses) <= len(indexes) {
+		return ErrNoWitnesses
+	}
+
+	// we need to make sure that we remove witnesses by index in the reverse
+	// order so as to not affect the indexes themselves
+	sort.Ints(indexes)
+	for i := len(indexes) - 1; i >= 0; i-- {
+		c.witnesses[indexes[i]] = c.witnesses[len(c.witnesses)-1]
+		c.witnesses = c.witnesses[:len(c.witnesses)-1]
+	}
+
+	return nil
+}
+
+type witnessResponse struct {
+	lb           *types.LightBlock
+	witnessIndex int
+	err          error
+}
+
+// findNewPrimary concurrently sends a light block request, promoting the first witness to return
+// a valid light block as the new primary. The remove option indicates whether the primary should be
+// entire removed or just appended to the back of the witnesses list. This method also handles witness
+// errors. If no witness is available, it returns the last error of the witness.
+func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) (*types.LightBlock, error) {
+	c.providerMutex.Lock()
+	defer c.providerMutex.Unlock()
+
+	if len(c.witnesses) <= 1 {
+		return nil, ErrNoWitnesses
+	}
+
+	var (
+		witnessResponsesC = make(chan witnessResponse, len(c.witnesses))
+		witnessesToRemove []int
+		lastError         error
+		wg                sync.WaitGroup
+	)
+
+	// send out a light block request to all witnesses
+	subctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	for index := range c.witnesses {
+		wg.Add(1)
+		go func(witnessIndex int, witnessResponsesC chan witnessResponse) {
+			defer wg.Done()
+
+			lb, err := c.witnesses[witnessIndex].LightBlock(subctx, height)
+			witnessResponsesC <- witnessResponse{lb, witnessIndex, err}
+		}(index, witnessResponsesC)
+	}
+
+	// process all the responses as they come in
+	for i := 0; i < cap(witnessResponsesC); i++ {
+		response := <-witnessResponsesC
+		switch response.err {
+		// success! We have found a new primary
+		case nil:
+			cancel() // cancel all remaining requests to other witnesses
+
+			wg.Wait() // wait for all goroutines to finish
+
+			// if we are not intending on removing the primary then append the old primary to the end of the witness slice
+			if !remove {
+				c.witnesses = append(c.witnesses, c.primary)
+			}
+
+			// promote respondent as the new primary
+			c.logger.Debug("found new primary", "primary", c.witnesses[response.witnessIndex])
+			c.primary = c.witnesses[response.witnessIndex]
+
+			// add promoted witness to the list of witnesses to be removed
+			witnessesToRemove = append(witnessesToRemove, response.witnessIndex)
+
+			// remove witnesses marked as bad (the client must do this before we alter the witness slice and change the indexes
+			// of witnesses). Removal is done in descending order
+			if err := c.removeWitnesses(witnessesToRemove); err != nil {
+				return nil, err
+			}
+
+			// return the light block that new primary responded with
+			return response.lb, nil
+
+		// process benign errors by logging them only
+		case provider.ErrNoResponse, provider.ErrLightBlockNotFound, provider.ErrHeightTooHigh:
+			lastError = response.err
+			c.logger.Debug("error on light block request from witness",
+				"error", response.err, "primary", c.witnesses[response.witnessIndex])
+			continue
+
+		// process malevolent errors like ErrUnreliableProvider and ErrBadLightBlock by removing the witness
+		default:
+			lastError = response.err
+			c.logger.Error("error on light block request from witness, removing...",
+				"error", response.err, "primary", c.witnesses[response.witnessIndex])
+			witnessesToRemove = append(witnessesToRemove, response.witnessIndex)
+		}
+	}
+
+	return nil, lastError
 }
 
 // compareFirstHeaderWithWitnesses compares h with all witnesses. If any
@@ -1002,8 +1127,11 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 	compareCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	c.providerMutex.Lock()
+	defer c.providerMutex.Unlock()
+
 	if len(c.witnesses) < 1 {
-		return errNoWitnesses{}
+		return ErrNoWitnesses
 	}
 
 	errc := make(chan error, len(c.witnesses))
@@ -1021,27 +1149,27 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 		case nil:
 			continue
 		case errConflictingHeaders:
-			c.logger.Error(fmt.Sprintf(`Witness #%d has a different header. Please check primary is correct
-and remove witness. Otherwise, use the different primary`, e.WitnessIndex), "witness", c.witnesses[e.WitnessIndex])
+			c.logger.Error(fmt.Sprintf("Witness #%d has a different header. Please check primary is correct and"+
+				" remove witness. Otherwise, use the different primary", e.WitnessIndex), "witness",
+				c.witnesses[e.WitnessIndex])
 			return err
 		case errBadWitness:
 			// If witness sent us an invalid header, then remove it. If it didn't
 			// respond or couldn't find the block, then we ignore it and move on to
 			// the next witness.
 			if _, ok := e.Reason.(provider.ErrBadLightBlock); ok {
-				c.logger.Info("Witness sent us invalid header / vals -> removing it", "witness", c.witnesses[e.WitnessIndex])
+				c.logger.Info("Witness sent us invalid header / vals -> removing it",
+					"witness", c.witnesses[e.WitnessIndex], "err", err)
 				witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
 			}
 		}
+
 	}
 
-	for _, idx := range witnessesToRemove {
-		c.removeWitness(idx)
+	// remove witnesses that have misbehaved
+	if err := c.removeWitnesses(witnessesToRemove); err != nil {
+		return err
 	}
 
 	return nil
-}
-
-func hash2str(hash []byte) string {
-	return fmt.Sprintf("%X", hash)
 }

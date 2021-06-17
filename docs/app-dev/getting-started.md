@@ -34,7 +34,6 @@ Then run
 ```sh
 go get github.com/tendermint/tendermint
 cd $GOPATH/src/github.com/tendermint/tendermint
-make tools
 make install_abci
 ```
 

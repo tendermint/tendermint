@@ -25,8 +25,7 @@ import (
 func TestStoreLoadValidators(t *testing.T) {
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	val, _ := types.RandValidator(true, 10)
-	vals := types.NewValidatorSet([]*types.Validator{val})
+	vals, _ := types.GenerateValidatorSet(1)
 
 	// 1) LoadValidators loads validators using a height where they were last changed
 	err := sm.SaveValidatorsInfo(stateDB, 1, 1, vals)
@@ -61,7 +60,7 @@ func BenchmarkLoadValidators(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	state.Validators = genValSet(valSetSize)
+	state.Validators, _ = types.GenerateValidatorSet(valSetSize)
 	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
 	err = stateStore.Save(state)
 	require.NoError(b, err)
@@ -110,13 +109,16 @@ func TestPruneStates(t *testing.T) {
 			db := dbm.NewMemDB()
 			stateStore := sm.NewStore(db)
 			pk := bls12381.GenPrivKey().PubKey()
-
+			proTxHash := crypto.RandProTxHash()
 			// Generate a bunch of state data. Validators change for heights ending with 3, and
 			// parameters when ending with 5.
-			validator := &types.Validator{Address: tmrand.Bytes(crypto.AddressSize), VotingPower: 100, PubKey: pk}
+			validator := &types.Validator{Address: tmrand.Bytes(crypto.AddressSize),
+				VotingPower: types.DefaultDashVotingPower, PubKey: pk, ProTxHash: proTxHash}
 			validatorSet := &types.ValidatorSet{
-				Validators: []*types.Validator{validator},
-				Proposer:   validator,
+				Validators:         []*types.Validator{validator},
+				Proposer:           validator,
+				ThresholdPublicKey: validator.PubKey,
+				QuorumHash:         crypto.RandQuorumHash(),
 			}
 			valsChanged := int64(0)
 			paramsChanged := int64(0)

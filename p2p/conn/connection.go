@@ -316,7 +316,11 @@ func (c *MConnection) OnStop() {
 }
 
 func (c *MConnection) String() string {
-	return fmt.Sprintf("MConn{%v}", c.conn.RemoteAddr())
+	if c.conn != nil {
+		return fmt.Sprintf("MConn{%v}", c.conn.RemoteAddr())
+	} else {
+		return "MConn{nil}"
+	}
 }
 
 func (c *MConnection) flush() {
@@ -583,7 +587,8 @@ FOR_LOOP:
 		// Read packet type
 		var packet tmp2p.Packet
 
-		err := protoReader.ReadMsg(&packet)
+		_n, err := protoReader.ReadMsg(&packet)
+		c.recvMonitor.Update(_n)
 		if err != nil {
 			// stopServices was invoked and we are shutting down
 			// receiving is excpected to fail since we will close the connection

@@ -104,7 +104,7 @@ func (s *syncer) AddSnapshot(peer p2p.Peer, snapshot *snapshot) (bool, error) {
 	}
 	if added {
 		s.logger.Info("Discovered new snapshot", "height", snapshot.Height, "format", snapshot.Format,
-			"hash", fmt.Sprintf("%X", snapshot.Hash))
+			"hash", snapshot.Hash)
 	}
 	return added, nil
 }
@@ -171,18 +171,18 @@ func (s *syncer) SyncAny(discoveryTime time.Duration) (sm.State, *types.Commit, 
 		case errors.Is(err, errRetrySnapshot):
 			chunks.RetryAll()
 			s.logger.Info("Retrying snapshot", "height", snapshot.Height, "format", snapshot.Format,
-				"hash", fmt.Sprintf("%X", snapshot.Hash))
+				"hash", snapshot.Hash)
 			continue
 
 		case errors.Is(err, errTimeout):
 			s.snapshots.Reject(snapshot)
 			s.logger.Error("Timed out waiting for snapshot chunks, rejected snapshot",
-				"height", snapshot.Height, "format", snapshot.Format, "hash", fmt.Sprintf("%X", snapshot.Hash))
+				"height", snapshot.Height, "format", snapshot.Format, "hash", snapshot.Hash)
 
 		case errors.Is(err, errRejectSnapshot):
 			s.snapshots.Reject(snapshot)
 			s.logger.Info("Snapshot rejected", "height", snapshot.Height, "format", snapshot.Format,
-				"hash", fmt.Sprintf("%X", snapshot.Hash))
+				"hash", snapshot.Hash)
 
 		case errors.Is(err, errRejectFormat):
 			s.snapshots.RejectFormat(snapshot.Format)
@@ -190,7 +190,7 @@ func (s *syncer) SyncAny(discoveryTime time.Duration) (sm.State, *types.Commit, 
 
 		case errors.Is(err, errRejectSender):
 			s.logger.Info("Snapshot senders rejected", "height", snapshot.Height, "format", snapshot.Format,
-				"hash", fmt.Sprintf("%X", snapshot.Hash))
+				"hash", snapshot.Hash)
 			for _, peer := range s.snapshots.GetPeers(snapshot) {
 				s.snapshots.RejectPeer(peer.ID())
 				s.logger.Info("Snapshot sender rejected", "peer", peer.ID())
@@ -267,7 +267,7 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 
 	// Done! 🎉
 	s.logger.Info("Snapshot restored", "height", snapshot.Height, "format", snapshot.Format,
-		"hash", fmt.Sprintf("%X", snapshot.Hash))
+		"hash", snapshot.Hash)
 
 	return state, commit, nil
 }
@@ -276,14 +276,15 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 // response, or nil if the snapshot was accepted.
 func (s *syncer) offerSnapshot(snapshot *snapshot) error {
 	s.logger.Info("Offering snapshot to ABCI app", "height", snapshot.Height,
-		"format", snapshot.Format, "hash", fmt.Sprintf("%X", snapshot.Hash))
+		"format", snapshot.Format, "hash", snapshot.Hash)
 	resp, err := s.conn.OfferSnapshotSync(abci.RequestOfferSnapshot{
 		Snapshot: &abci.Snapshot{
-			Height:   snapshot.Height,
-			Format:   snapshot.Format,
-			Chunks:   snapshot.Chunks,
-			Hash:     snapshot.Hash,
-			Metadata: snapshot.Metadata,
+			Height:                snapshot.Height,
+			Format:                snapshot.Format,
+			Chunks:                snapshot.Chunks,
+			Hash:                  snapshot.Hash,
+			Metadata:              snapshot.Metadata,
+			CoreChainLockedHeight: snapshot.CoreChainLockedHeight,
 		},
 		AppHash: snapshot.trustedAppHash,
 	})
@@ -293,7 +294,7 @@ func (s *syncer) offerSnapshot(snapshot *snapshot) error {
 	switch resp.Result {
 	case abci.ResponseOfferSnapshot_ACCEPT:
 		s.logger.Info("Snapshot accepted, restoring", "height", snapshot.Height,
-			"format", snapshot.Format, "hash", fmt.Sprintf("%X", snapshot.Hash))
+			"format", snapshot.Format, "hash", snapshot.Hash)
 		return nil
 	case abci.ResponseOfferSnapshot_ABORT:
 		return errAbort
@@ -428,8 +429,8 @@ func (s *syncer) verifyApp(snapshot *snapshot) (uint64, error) {
 	}
 	if !bytes.Equal(snapshot.trustedAppHash, resp.LastBlockAppHash) {
 		s.logger.Error("appHash verification failed",
-			"expected", fmt.Sprintf("%X", snapshot.trustedAppHash),
-			"actual", fmt.Sprintf("%X", resp.LastBlockAppHash))
+			"expected", snapshot.trustedAppHash,
+			"actual", resp.LastBlockAppHash)
 		return 0, errVerifyFailed
 	}
 	if uint64(resp.LastBlockHeight) != snapshot.Height {
@@ -437,7 +438,13 @@ func (s *syncer) verifyApp(snapshot *snapshot) (uint64, error) {
 			"expected", snapshot.Height, "actual", resp.LastBlockHeight)
 		return 0, errVerifyFailed
 	}
-	s.logger.Info("Verified ABCI app", "height", snapshot.Height,
-		"appHash", fmt.Sprintf("%X", snapshot.trustedAppHash))
+	if snapshot.CoreChainLockedHeight != resp.LastCoreChainLockedHeight {
+		s.logger.Error("last core chain locked height verification failed",
+			"expected", fmt.Sprintf("%d", snapshot.CoreChainLockedHeight),
+			"actual", fmt.Sprintf("%d", resp.LastCoreChainLockedHeight))
+		return 0, errVerifyFailed
+	}
+
+	s.logger.Info("Verified ABCI app", "height", snapshot.Height, "appHash", snapshot.trustedAppHash)
 	return resp.AppVersion, nil
 }

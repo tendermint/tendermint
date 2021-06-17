@@ -18,18 +18,20 @@ func RPCRoutes(c *lrpc.Client) map[string]*rpcserver.RPCFunc {
 		"unsubscribe_all": rpcserver.NewWSRPCFunc(c.UnsubscribeAllWS, ""),
 
 		// info API
-		"health":               rpcserver.NewRPCFunc(makeHealthFunc(c), ""),
-		"status":               rpcserver.NewRPCFunc(makeStatusFunc(c), ""),
-		"net_info":             rpcserver.NewRPCFunc(makeNetInfoFunc(c), ""),
-		"blockchain":           rpcserver.NewRPCFunc(makeBlockchainInfoFunc(c), "minHeight,maxHeight"),
-		"genesis":              rpcserver.NewRPCFunc(makeGenesisFunc(c), ""),
-		"block":                rpcserver.NewRPCFunc(makeBlockFunc(c), "height"),
-		"block_by_hash":        rpcserver.NewRPCFunc(makeBlockByHashFunc(c), "hash"),
-		"block_results":        rpcserver.NewRPCFunc(makeBlockResultsFunc(c), "height"),
-		"commit":               rpcserver.NewRPCFunc(makeCommitFunc(c), "height"),
-		"tx":                   rpcserver.NewRPCFunc(makeTxFunc(c), "hash,prove"),
-		"tx_search":            rpcserver.NewRPCFunc(makeTxSearchFunc(c), "query,prove,page,per_page,order_by"),
-		"validators":           rpcserver.NewRPCFunc(makeValidatorsFunc(c), "height,page,per_page"),
+		"health":        rpcserver.NewRPCFunc(makeHealthFunc(c), ""),
+		"status":        rpcserver.NewRPCFunc(makeStatusFunc(c), ""),
+		"net_info":      rpcserver.NewRPCFunc(makeNetInfoFunc(c), ""),
+		"blockchain":    rpcserver.NewRPCFunc(makeBlockchainInfoFunc(c), "minHeight,maxHeight"),
+		"genesis":       rpcserver.NewRPCFunc(makeGenesisFunc(c), ""),
+		"block":         rpcserver.NewRPCFunc(makeBlockFunc(c), "height"),
+		"block_by_hash": rpcserver.NewRPCFunc(makeBlockByHashFunc(c), "hash"),
+		"block_results": rpcserver.NewRPCFunc(makeBlockResultsFunc(c), "height"),
+		"commit":        rpcserver.NewRPCFunc(makeCommitFunc(c), "height"),
+		"tx":            rpcserver.NewRPCFunc(makeTxFunc(c), "hash,prove"),
+		"tx_search":     rpcserver.NewRPCFunc(makeTxSearchFunc(c), "query,prove,page,per_page,order_by"),
+		"validators":    rpcserver.NewRPCFunc(makeValidatorsFunc(c),
+			"height,page,per_page,request_threshold_public_key"),
+
 		"dump_consensus_state": rpcserver.NewRPCFunc(makeDumpConsensusStateFunc(c), ""),
 		"consensus_state":      rpcserver.NewRPCFunc(makeConsensusStateFunc(c), ""),
 		"consensus_params":     rpcserver.NewRPCFunc(makeConsensusParamsFunc(c), "height"),
@@ -131,22 +133,53 @@ func makeTxFunc(c *lrpc.Client) rpcTxFunc {
 	}
 }
 
-type rpcTxSearchFunc func(ctx *rpctypes.Context, query string, prove bool,
-	page, perPage *int, orderBy string) (*ctypes.ResultTxSearch, error)
+type rpcTxSearchFunc func(
+	ctx *rpctypes.Context,
+	query string,
+	prove bool,
+	page, perPage *int,
+	orderBy string,
+) (*ctypes.ResultTxSearch, error)
 
 func makeTxSearchFunc(c *lrpc.Client) rpcTxSearchFunc {
-	return func(ctx *rpctypes.Context, query string, prove bool, page, perPage *int, orderBy string) (
-		*ctypes.ResultTxSearch, error) {
+	return func(
+		ctx *rpctypes.Context,
+		query string,
+		prove bool,
+		page, perPage *int,
+		orderBy string,
+	) (*ctypes.ResultTxSearch, error) {
 		return c.TxSearch(ctx.Context(), query, prove, page, perPage, orderBy)
 	}
 }
 
+type rpcBlockSearchFunc func(
+	ctx *rpctypes.Context,
+	query string,
+	prove bool,
+	page, perPage *int,
+	orderBy string,
+) (*ctypes.ResultBlockSearch, error)
+
+func makeBlockSearchFunc(c *lrpc.Client) rpcBlockSearchFunc {
+	return func(
+		ctx *rpctypes.Context,
+		query string,
+		prove bool,
+		page, perPage *int,
+		orderBy string,
+	) (*ctypes.ResultBlockSearch, error) {
+		return c.BlockSearch(ctx.Context(), query, page, perPage, orderBy)
+	}
+}
+
 type rpcValidatorsFunc func(ctx *rpctypes.Context, height *int64,
-	page, perPage *int) (*ctypes.ResultValidators, error)
+	page, perPage *int, requestThresholdPublicKey *bool) (*ctypes.ResultValidators, error)
 
 func makeValidatorsFunc(c *lrpc.Client) rpcValidatorsFunc {
-	return func(ctx *rpctypes.Context, height *int64, page, perPage *int) (*ctypes.ResultValidators, error) {
-		return c.Validators(ctx.Context(), height, page, perPage)
+	return func(ctx *rpctypes.Context, height *int64, page, perPage *int,
+		requestThresholdPublicKey *bool) (*ctypes.ResultValidators, error) {
+		return c.Validators(ctx.Context(), height, page, perPage, requestThresholdPublicKey)
 	}
 }
 

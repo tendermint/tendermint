@@ -28,7 +28,7 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 	// verify the time of the evidence
 	blockMeta := evpool.blockStore.LoadBlockMeta(evidence.Height())
 	if blockMeta == nil {
-		return fmt.Errorf("don't have header #%d", evidence.Height())
+		return fmt.Errorf("don't have header #%d %v", evidence.Height(), evpool.blockStore)
 	}
 	evTime := blockMeta.Header.Time
 	if evidence.Time() != evTime {
@@ -71,7 +71,21 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 		if evidence.Height() != ev.ConflictingBlock.Height {
 			trustedHeader, err = getSignedHeader(evpool.blockStore, ev.ConflictingBlock.Height)
 			if err != nil {
-				return err
+				// FIXME: This multi step process is a bit unergonomic. We may want to consider a more efficient process
+				// that doesn't require as much io and is atomic.
+
+				// If the node doesn't have a block at the height of the conflicting block, then this could be
+				// a forward lunatic attack. Thus the node must get the latest height it has
+				latestHeight := evpool.blockStore.Height()
+				trustedHeader, err = getSignedHeader(evpool.blockStore, latestHeight)
+				if err != nil {
+					return err
+				}
+				if trustedHeader.Time.Before(ev.ConflictingBlock.Time) {
+					return fmt.Errorf("latest block time (%v) is before conflicting block time (%v)",
+						trustedHeader.Time, ev.ConflictingBlock.Time,
+					)
+				}
 			}
 		}
 
@@ -119,36 +133,47 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 // the following checks:
 //     - the common header from the full node has at least 1/3 voting power which is also present in
 //       the conflicting header's commit
+//     - 2/3+ of the conflicting validator set correctly signed the conflicting block
 //     - the nodes trusted header at the same height as the conflicting header has a different hash
+//
+// CONTRACT: must run ValidateBasic() on the evidence before verifying
+//           must check that the evidence has not expired (i.e. is outside the maximum age threshold)
 func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, trustedHeader *types.SignedHeader,
 	commonVals *types.ValidatorSet, now time.Time, trustPeriod time.Duration) error {
-	// In the case of lunatic attack we need to perform a single verification jump between the
-	// common header and the conflicting one
-	if commonHeader.Height != trustedHeader.Height {
-		err := light.Verify(commonHeader, commonVals, e.ConflictingBlock.SignedHeader, e.ConflictingBlock.ValidatorSet,
-			trustPeriod, now, 0*time.Second, light.DefaultTrustLevel)
+	// In the case of lunatic attack there will be a different commonHeader height. Therefore the node perform a single
+	// verification jump between the common header and the conflicting one
+	if commonHeader.Height != e.ConflictingBlock.Height {
+		err := commonVals.VerifyCommitLightTrusting(trustedHeader.ChainID, e.ConflictingBlock.Commit, light.DefaultTrustLevel)
 		if err != nil {
-			return fmt.Errorf("skipping verification from common to conflicting header failed: %w", err)
+			return fmt.Errorf("skipping verification of conflicting block failed: %w", err)
 		}
-	} else {
-		// in the case of equivocation and amnesia we expect some header hashes to be correctly derived
-		if isInvalidHeader(trustedHeader.Header, e.ConflictingBlock.Header) {
-			return errors.New("common height is the same as conflicting block height so expected the conflicting" +
-				" block to be correctly derived yet it wasn't")
-		}
-		// ensure that 2/3 of the validator set did vote for this block
-		if err := e.ConflictingBlock.ValidatorSet.VerifyCommitLight(trustedHeader.ChainID, e.ConflictingBlock.Commit.BlockID,
-			e.ConflictingBlock.Height, e.ConflictingBlock.Commit); err != nil {
-			return fmt.Errorf("invalid commit from conflicting block: %w", err)
-		}
+
+		// In the case of equivocation and amnesia we expect all header hashes to be correctly derived
+	} else if isInvalidHeader(trustedHeader.Header, e.ConflictingBlock.Header) {
+		return errors.New("common height is the same as conflicting block height so expected the conflicting" +
+			" block to be correctly derived yet it wasn't")
 	}
 
+	// Verify that the 2/3+ commits from the conflicting validator set were for the conflicting header
+	if err := e.ConflictingBlock.ValidatorSet.VerifyCommitLight(trustedHeader.ChainID, e.ConflictingBlock.Commit.BlockID,
+		e.ConflictingBlock.Commit.StateID, e.ConflictingBlock.Height, e.ConflictingBlock.Commit); err != nil {
+		return fmt.Errorf("invalid commit from conflicting block: %w", err)
+	}
+
+	// Assert the correct amount of voting power of the validator set
 	if evTotal, valsTotal := e.TotalVotingPower, commonVals.TotalVotingPower(); evTotal != valsTotal {
 		return fmt.Errorf("total voting power from the evidence and our validator set does not match (%d != %d)",
 			evTotal, valsTotal)
 	}
 
-	if bytes.Equal(trustedHeader.Hash(), e.ConflictingBlock.Hash()) {
+	// check in the case of a forward lunatic attack that monotonically increasing time has been violated
+	if e.ConflictingBlock.Height > trustedHeader.Height && e.ConflictingBlock.Time.After(trustedHeader.Time) {
+		return fmt.Errorf("conflicting block doesn't violate monotonically increasing time (%v is after %v)",
+			e.ConflictingBlock.Time, trustedHeader.Time,
+		)
+
+		// In all other cases check that the hashes of the conflicting header and the trusted header are different
+	} else if bytes.Equal(trustedHeader.Hash(), e.ConflictingBlock.Hash()) {
 		return fmt.Errorf("trusted header hash matches the evidence's conflicting header hash: %X",
 			trustedHeader.Hash())
 	}
@@ -163,10 +188,11 @@ func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, t
 //      - the block ID's must be different
 //      - The signatures must both be valid
 func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string, valSet *types.ValidatorSet) error {
-	_, val := valSet.GetByAddress(e.VoteA.ValidatorAddress)
+	_, val := valSet.GetByProTxHash(e.VoteA.ValidatorProTxHash)
 	if val == nil {
-		return fmt.Errorf("address %X was not a validator at height %d", e.VoteA.ValidatorAddress, e.Height())
+		return fmt.Errorf("proTxHash %X was not a validator at height %d", e.VoteA.ValidatorProTxHash, e.Height())
 	}
+	proTxHash := val.ProTxHash
 	pubKey := val.PubKey
 
 	// H/R/S must be the same
@@ -178,11 +204,11 @@ func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string, valSet 
 			e.VoteB.Height, e.VoteB.Round, e.VoteB.Type)
 	}
 
-	// Address must be the same
-	if !bytes.Equal(e.VoteA.ValidatorAddress, e.VoteB.ValidatorAddress) {
-		return fmt.Errorf("validator addresses do not match: %X vs %X",
-			e.VoteA.ValidatorAddress,
-			e.VoteB.ValidatorAddress,
+	// ProTxHashes must be the same
+	if !bytes.Equal(e.VoteA.ValidatorProTxHash, e.VoteB.ValidatorProTxHash) {
+		return fmt.Errorf("validator proTxHashes do not match: %X vs %X",
+			e.VoteA.ValidatorProTxHash,
+			e.VoteB.ValidatorProTxHash,
 		)
 	}
 
@@ -194,11 +220,9 @@ func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string, valSet 
 		)
 	}
 
-	// pubkey must match address (this should already be true, sanity check)
-	addr := e.VoteA.ValidatorAddress
-	if !bytes.Equal(pubKey.Address(), addr) {
-		return fmt.Errorf("address (%X) doesn't match pubkey (%v - %X)",
-			addr, pubKey, pubKey.Address())
+	// proTxHash must match address (this should already be true, sanity check)
+	if !bytes.Equal(proTxHash, e.VoteA.ValidatorProTxHash) {
+		return fmt.Errorf("proTxHash (%X) doesn't match pubkey (%v)", e.VoteA.ValidatorProTxHash, proTxHash)
 	}
 
 	// validator voting power and total voting power must match
@@ -214,11 +238,12 @@ func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string, valSet 
 	va := e.VoteA.ToProto()
 	vb := e.VoteB.ToProto()
 	// Signatures must be valid
-	if !pubKey.VerifySignature(types.VoteSignBytes(chainID, va), e.VoteA.Signature) {
-		return fmt.Errorf("verifying VoteA: %w", types.ErrVoteInvalidSignature)
+	blockSignId := types.VoteBlockSignId(chainID, va, valSet.QuorumType, valSet.QuorumHash)
+	if !pubKey.VerifySignatureDigest(blockSignId, e.VoteA.BlockSignature) {
+		return fmt.Errorf("verifying VoteA: %s", types.ErrVoteInvalidBlockSignature.Error())
 	}
-	if !pubKey.VerifySignature(types.VoteSignBytes(chainID, vb), e.VoteB.Signature) {
-		return fmt.Errorf("verifying VoteB: %w", types.ErrVoteInvalidSignature)
+	if !pubKey.VerifySignatureDigest(types.VoteBlockSignId(chainID, vb, valSet.QuorumType, valSet.QuorumHash), e.VoteB.BlockSignature) {
+		return fmt.Errorf("verifying VoteB: %s", types.ErrVoteInvalidStateSignature.Error())
 	}
 
 	return nil

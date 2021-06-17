@@ -1,3 +1,4 @@
+//nolint:lll
 package types
 
 import (
@@ -5,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 
 	"github.com/stretchr/testify/assert"
@@ -24,25 +26,41 @@ func TestGenesisBad(t *testing.T) {
 		[]byte(`{"chain_id":"chain","initial_height":"-1"}`), // negative initial height
 		// missing pub_key type
 		[]byte(
-			`{"validators":[{"pub_key":{"value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":""}]}`,
+			`{"threshold_public_key": {"type": "tendermint/PubKeyBLS12381","value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"},"validators":[{"pub_key":{"value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":"","pro_tx_hash":"51BF39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C45F"}]}`,
+		),
+		// missing threshold_public_key
+		[]byte(
+			`{"validators":[{"pub_key":{"value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":"","pro_tx_hash":"51BF39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C45F"}]}`,
+		),
+		// missing threshold_public_key key type
+		[]byte(
+			`{"threshold_public_key": {"value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"},"validators":[{"pub_key":{"value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":"","pro_tx_hash":"51BF39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C45F"}]}`,
 		),
 		// missing chain_id
 		[]byte(
 			`{"validators":[` +
 				`{"pub_key":{` +
-				`"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="` +
-				`},"power":"10","name":""}` +
+				`"type": "tendermint/PubKeyBLS12381","value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"` +
+				`},"power":"10","name":"","pro_tx_hash":"51BF39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C45F"}` +
 				`]}`,
 		),
 		// too big chain_id
 		[]byte(
 			`{"chain_id": "Lorem ipsum dolor sit amet, consectetuer adipiscing", "validators": [` +
 				`{"pub_key":{` +
-				`"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="` +
-				`},"power":"10","name":""}` +
+				`"type": "tendermint/PubKeyBLS12381","value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"` +
+				`},"power":"10","name":"","pro_tx_hash":"51BF39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C45F"}` +
 				`]}`,
 		),
 		// wrong address
+		[]byte(
+			`{"chain_id":"mychain", "validators":[` +
+				`{"address": "A", "pub_key":{` +
+				`"type": "tendermint/PubKeyBLS12381","value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"` +
+				`},"power":"10","name":"","pro_tx_hash":"51BF39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C45F"}` +
+				`]}`,
+		),
+		// missing pro_tx_hash
 		[]byte(
 			`{"chain_id":"mychain", "validators":[` +
 				`{"address": "A", "pub_key":{` +
@@ -50,6 +68,25 @@ func TestGenesisBad(t *testing.T) {
 				`},"power":"10","name":""}` +
 				`]}`,
 		),
+		// missing quorum_hash
+		[]byte(
+			`{
+			"genesis_time": "0001-01-01T00:00:00Z",
+			"chain_id": "test-chain-QDKdJr",
+			"initial_height": "1000",
+            "initial_core_chain_locked_height": 3000,
+			"consensus_params": null,
+			"validators": [{
+				"pub_key":{"type": "tendermint/PubKeyBLS12381","value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"},
+				"power":"100",
+				"name":"",
+				"pro_tx_hash":"51BF39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C45F"
+			}],
+			"threshold_public_key": {
+				"type": "tendermint/PubKeyBLS12381",
+				"value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"
+			}
+		}`),
 	}
 
 	for _, testCase := range testCases {
@@ -65,12 +102,19 @@ func TestGenesisGood(t *testing.T) {
 			"genesis_time": "0001-01-01T00:00:00Z",
 			"chain_id": "test-chain-QDKdJr",
 			"initial_height": "1000",
+            "initial_core_chain_locked_height": 3000,
 			"consensus_params": null,
 			"validators": [{
-				"pub_key":{"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},
-				"power":"10",
-				"name":""
+				"pub_key":{"type": "tendermint/PubKeyBLS12381","value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"},
+				"power":"100",
+				"name":"",
+				"pro_tx_hash":"51BF39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C45F"
 			}],
+			"threshold_public_key": {
+				"type": "tendermint/PubKeyBLS12381",
+				"value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"
+			},
+			"quorum_hash":"43FF39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C4CC",
 			"app_hash":"",
 			"app_state":{"account_owner": "Bob"}
 		}`,
@@ -81,8 +125,10 @@ func TestGenesisGood(t *testing.T) {
 	pubkey := bls12381.GenPrivKey().PubKey()
 	// create a base gendoc from struct
 	baseGenDoc := &GenesisDoc{
-		ChainID:    "abc",
-		Validators: []GenesisValidator{{pubkey.Address(), pubkey, 10, "myval"}},
+		ChainID:            "abc",
+		Validators:         []GenesisValidator{{pubkey.Address(), pubkey, 100, "myval", crypto.RandProTxHash()}},
+		ThresholdPublicKey: pubkey,
+		QuorumHash:         crypto.RandQuorumHash(),
 	}
 	genDocBytes, err = tmjson.Marshal(baseGenDoc)
 	assert.NoError(t, err, "error marshalling genDoc")
@@ -156,11 +202,13 @@ func TestGenesisValidatorHash(t *testing.T) {
 func randomGenesisDoc() *GenesisDoc {
 	pubkey := bls12381.GenPrivKey().PubKey()
 	return &GenesisDoc{
-		GenesisTime:     tmtime.Now(),
-		ChainID:         "abc",
-		InitialHeight:   1000,
-		Validators:      []GenesisValidator{{pubkey.Address(), pubkey, 10, "myval"}},
-		ConsensusParams: DefaultConsensusParams(),
-		AppHash:         []byte{1, 2, 3},
+		GenesisTime:        tmtime.Now(),
+		ChainID:            "abc",
+		InitialHeight:      1000,
+		Validators:         []GenesisValidator{{pubkey.Address(), pubkey, DefaultDashVotingPower, "myval", crypto.RandProTxHash()}},
+		ConsensusParams:    DefaultConsensusParams(),
+		ThresholdPublicKey: pubkey,
+		QuorumHash:         crypto.RandQuorumHash(),
+		AppHash:            []byte{1, 2, 3},
 	}
 }

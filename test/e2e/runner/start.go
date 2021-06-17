@@ -58,7 +58,7 @@ func Start(testnet *e2e.Testnet) error {
 
 	// Update any state sync nodes with a trusted height and hash
 	for _, node := range nodeQueue {
-		if node.StateSync {
+		if node.StateSync || node.Mode == e2e.ModeLight {
 			err = UpdateConfigStateSync(node, block.Height, blockID.Hash.Bytes())
 			if err != nil {
 				return err
@@ -75,7 +75,7 @@ func Start(testnet *e2e.Testnet) error {
 		if err := execCompose(testnet.Dir, "up", "-d", node.Name); err != nil {
 			return err
 		}
-		status, err := waitForNode(node, node.StartAt, 1*time.Minute)
+		status, err := waitForNode(node, node.StartAt, 3*time.Minute)
 		if err != nil {
 			return err
 		}

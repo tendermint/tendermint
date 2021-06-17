@@ -1,6 +1,7 @@
 package types
 
 import (
+	"github.com/dashevo/dashd-go/btcjson"
 	"math"
 	"testing"
 	"time"
@@ -31,19 +32,24 @@ func randomDuplicateVoteEvidence(t *testing.T) *DuplicateVoteEvidence {
 	val := NewMockPV()
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
+	stateID := makeStateID(tmhash.Sum([]byte("statehash")))
+	quorumType := btcjson.LLMQType_5_60
+	quorumHash := crypto.RandQuorumHash()
 	const chainID = "mychain"
 	return &DuplicateVoteEvidence{
-		VoteA:            makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime),
-		VoteB:            makeVote(t, val, chainID, 0, 10, 2, 1, blockID2, defaultVoteTime.Add(1*time.Minute)),
-		TotalVotingPower: 30,
-		ValidatorPower:   10,
+
+		VoteA:            makeVote(t, val, chainID, 0, 10, quorumType, quorumHash, 2, 1, blockID, stateID),
+		VoteB:            makeVote(t, val, chainID, 0, 10, quorumType, quorumHash, 2, 1, blockID2, stateID),
+		TotalVotingPower: 3 * DefaultDashVotingPower,
+		ValidatorPower:   DefaultDashVotingPower,
 		Timestamp:        defaultVoteTime,
 	}
 }
 
 func TestDuplicateVoteEvidence(t *testing.T) {
 	const height = int64(13)
-	ev := NewMockDuplicateVoteEvidence(height, time.Now(), "mock-chain-id")
+	quorumType := btcjson.LLMQType_5_60
+	ev := NewMockDuplicateVoteEvidence(height, time.Now(), "mock-chain-id", quorumType, crypto.RandQuorumHash())
 	assert.Equal(t, ev.Hash(), tmhash.Sum(ev.Bytes()))
 	assert.NotNil(t, ev.String())
 	assert.Equal(t, ev.Height(), height)
@@ -53,6 +59,9 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 	val := NewMockPV()
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
+	stateID := makeStateID(tmhash.Sum([]byte("statehash")))
+	quorumType := btcjson.LLMQType_5_60
+	quorumHash := crypto.RandQuorumHash()
 	const chainID = "mychain"
 
 	testCases := []struct {
@@ -68,7 +77,7 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 			ev.VoteB = nil
 		}, true},
 		{"Invalid vote type", func(ev *DuplicateVoteEvidence) {
-			ev.VoteA = makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0, blockID2, defaultVoteTime)
+			ev.VoteA = makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType, quorumHash, math.MaxInt32, 0, blockID2, stateID)
 		}, true},
 		{"Invalid vote order", func(ev *DuplicateVoteEvidence) {
 			swap := ev.VoteA.Copy()
@@ -79,9 +88,9 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			vote1 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0x02, blockID, defaultVoteTime)
-			vote2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0x02, blockID2, defaultVoteTime)
-			valSet := NewValidatorSet([]*Validator{val.ExtractIntoValidator(10)})
+			vote1 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType, quorumHash, math.MaxInt32, 0x02, blockID, stateID)
+			vote2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType, quorumHash, math.MaxInt32, 0x02, blockID2, stateID)
+			valSet := NewValidatorSet([]*Validator{val.ExtractIntoValidator(0, quorumHash)}, val.PrivKey.PubKey(), quorumType, quorumHash)
 			ev := NewDuplicateVoteEvidence(vote1, vote2, defaultVoteTime, valSet)
 			tc.malleateEvidence(ev)
 			assert.Equal(t, tc.expectErr, ev.ValidateBasic() != nil, "Validate Basic had an unexpected result")
@@ -95,7 +104,8 @@ func TestLightClientAttackEvidence(t *testing.T) {
 	header := makeHeaderRandom()
 	header.Height = height
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
-	commit, err := MakeCommit(blockID, height, 1, voteSet, privVals, defaultVoteTime)
+	stateID := makeStateID(tmhash.Sum([]byte("stateHash")))
+	commit, err := MakeCommit(blockID, stateID, height, 1, voteSet, privVals)
 	require.NoError(t, err)
 	lcae := &LightClientAttackEvidence{
 		ConflictingBlock: &LightBlock{
@@ -110,7 +120,7 @@ func TestLightClientAttackEvidence(t *testing.T) {
 	assert.NotNil(t, lcae.String())
 	assert.NotNil(t, lcae.Hash())
 	// only 7 validators sign
-	differentCommit, err := MakeCommit(blockID, height, 1, voteSet, privVals[:7], defaultVoteTime)
+	differentCommit, err := MakeCommit(blockID, stateID, height, 1, voteSet, privVals[:7])
 	require.NoError(t, err)
 	differentEv := &LightClientAttackEvidence{
 		ConflictingBlock: &LightBlock{
@@ -159,7 +169,8 @@ func TestLightClientAttackEvidenceValidation(t *testing.T) {
 	header.Height = height
 	header.ValidatorsHash = valSet.Hash()
 	blockID := makeBlockID(header.Hash(), math.MaxInt32, tmhash.Sum([]byte("partshash")))
-	commit, err := MakeCommit(blockID, height, 1, voteSet, privVals, time.Now())
+	stateID := makeStateIDRandom()
+	commit, err := MakeCommit(blockID, stateID, height, 1, voteSet, privVals)
 	require.NoError(t, err)
 	lcae := &LightClientAttackEvidence{
 		ConflictingBlock: &LightBlock{
@@ -214,31 +225,33 @@ func TestLightClientAttackEvidenceValidation(t *testing.T) {
 }
 
 func TestMockEvidenceValidateBasic(t *testing.T) {
-	goodEvidence := NewMockDuplicateVoteEvidence(int64(1), time.Now(), "mock-chain-id")
+	goodEvidence := NewMockDuplicateVoteEvidence(int64(1), time.Now(), "mock-chain-id", btcjson.LLMQType_5_60,
+		crypto.RandQuorumHash())
 	assert.Nil(t, goodEvidence.ValidateBasic())
 }
 
-func makeVote(
-	t *testing.T, val PrivValidator, chainID string, valIndex int32, height int64, round int32, step int, blockID BlockID,
-	time time.Time) *Vote {
-	pubKey, err := val.GetPubKey()
+func makeVote(t *testing.T, val PrivValidator, chainID string, valIndex int32, height int64, quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash, round int32,
+	step int, blockID BlockID, stateID StateID) *Vote {
+	proTxHash, err := val.GetProTxHash()
 	require.NoError(t, err)
 	v := &Vote{
-		ValidatorAddress: pubKey.Address(),
-		ValidatorIndex:   valIndex,
-		Height:           height,
-		Round:            round,
-		Type:             tmproto.SignedMsgType(step),
-		BlockID:          blockID,
-		Timestamp:        time,
+		ValidatorProTxHash: proTxHash,
+		ValidatorIndex:     valIndex,
+		Height:             height,
+		Round:              round,
+		Type:               tmproto.SignedMsgType(step),
+		BlockID:            blockID,
+		StateID:            stateID,
 	}
 
 	vpb := v.ToProto()
-	err = val.SignVote(chainID, vpb)
+	err = val.SignVote(chainID, quorumType, quorumHash, vpb)
 	if err != nil {
 		panic(err)
 	}
-	v.Signature = vpb.Signature
+	v.BlockSignature = vpb.BlockSignature
+	v.StateSignature = vpb.StateSignature
 	return v
 }
 
@@ -257,7 +270,7 @@ func makeHeaderRandom() *Header {
 		AppHash:            crypto.CRandBytes(tmhash.Size),
 		LastResultsHash:    crypto.CRandBytes(tmhash.Size),
 		EvidenceHash:       crypto.CRandBytes(tmhash.Size),
-		ProposerAddress:    crypto.CRandBytes(crypto.AddressSize),
+		ProposerProTxHash:  crypto.CRandBytes(crypto.DefaultHashSize),
 	}
 }
 
@@ -266,9 +279,12 @@ func TestEvidenceProto(t *testing.T) {
 	val := NewMockPV()
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
+	stateID := makeStateID(tmhash.Sum([]byte("statehash")))
+	quorumType := btcjson.LLMQType_5_60
+	quorumHash := crypto.RandQuorumHash()
 	const chainID = "mychain"
-	v := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 1, 0x01, blockID, defaultVoteTime)
-	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, blockID2, defaultVoteTime)
+	v := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType, quorumHash, 1, 0x01, blockID, stateID)
+	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType, quorumHash, 2, 0x01, blockID2, stateID)
 
 	// -------- SignedHeaders --------
 	const height int64 = 37

@@ -140,7 +140,7 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
 		{
 			ID:                  BlockchainChannel,
-			Priority:            10,
+			Priority:            5,
 			SendQueueCapacity:   1000,
 			RecvBufferCapacity:  50 * 4096,
 			RecvMessageCapacity: bc.MaxMsgSize,
@@ -207,7 +207,7 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bcproto.BlockRequest,
 func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	msg, err := bc.DecodeMsg(msgBytes)
 	if err != nil {
-		bcR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
+		bcR.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err)
 		bcR.Switch.StopPeerForError(src, err)
 		return
 	}
@@ -256,8 +256,13 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 func (bcR *BlockchainReactor) poolRoutine(stateSynced bool) {
 
 	trySyncTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
+	defer trySyncTicker.Stop()
+
 	statusUpdateTicker := time.NewTicker(statusUpdateIntervalSeconds * time.Second)
+	defer statusUpdateTicker.Stop()
+
 	switchToConsensusTicker := time.NewTicker(switchToConsensusIntervalSeconds * time.Second)
+	defer switchToConsensusTicker.Stop()
 
 	blocksSynced := uint64(0)
 
@@ -358,12 +363,14 @@ FOR_LOOP:
 			firstParts := first.MakePartSet(types.BlockPartSizeBytes)
 			firstPartSetHeader := firstParts.Header()
 			firstID := types.BlockID{Hash: first.Hash(), PartSetHeader: firstPartSetHeader}
+			firstStateID := types.StateID{LastAppHash: first.Header.AppHash}
+
 			// Finally, verify the first block using the second's commit
 			// NOTE: we can probably make this more efficient, but note that calling
 			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 			// currently necessary.
 			err := state.Validators.VerifyCommitLight(
-				chainID, firstID, first.Height, second.LastCommit)
+				chainID, firstID, firstStateID, first.Height, second.LastCommit)
 			if err != nil {
 				bcR.Logger.Error("Error in validation", "err", err)
 				peerID := bcR.pool.RedoRequest(first.Height)

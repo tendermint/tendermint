@@ -3,7 +3,10 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"runtime/debug"
 	"strings"
+
+	"github.com/tendermint/tendermint/crypto/bls12381"
 
 	"github.com/tendermint/tendermint/libs/bits"
 	tmjson "github.com/tendermint/tendermint/libs/json"
@@ -65,13 +68,16 @@ type VoteSet struct {
 	signedMsgType tmproto.SignedMsgType
 	valSet        *ValidatorSet
 
-	mtx           tmsync.Mutex
-	votesBitArray *bits.BitArray
-	votes         []*Vote                // Primary votes to share
-	sum           int64                  // Sum of voting power for seen votes, discounting conflicts
-	maj23         *BlockID               // First 2/3 majority seen
-	votesByBlock  map[string]*blockVotes // string(blockHash|blockParts) -> blockVotes
-	peerMaj23s    map[P2PID]BlockID      // Maj23 for each peer
+	mtx               tmsync.Mutex
+	votesBitArray     *bits.BitArray
+	votes             []*Vote                // Primary votes to share
+	sum               int64                  // Sum of voting power for seen votes, discounting conflicts
+	maj23             *BlockID               // First 2/3 majority seen
+	stateMaj23        *StateID               // If a 2/3 majority is seen, this is the stateID
+	thresholdBlockSig []byte                 // If a 2/3 majority is seen, recover the block sig
+	thresholdStateSig []byte                 // If a 2/3 majority is seen, recover the state sig
+	votesByBlock      map[string]*blockVotes // string(blockHash|blockParts) -> blockVotes
+	peerMaj23s        map[P2PID]BlockID      // Maj23 for each peer
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
@@ -90,6 +96,7 @@ func NewVoteSet(chainID string, height int64, round int32,
 		votes:         make([]*Vote, valSet.Size()),
 		sum:           0,
 		maj23:         nil,
+		stateMaj23:    nil,
 		votesByBlock:  make(map[string]*blockVotes, valSet.Size()),
 		peerMaj23s:    make(map[P2PID]BlockID),
 	}
@@ -156,14 +163,14 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 		return false, ErrVoteNil
 	}
 	valIndex := vote.ValidatorIndex
-	valAddr := vote.ValidatorAddress
+	valProTxHash := vote.ValidatorProTxHash
 	blockKey := vote.BlockID.Key()
 
 	// Ensure that validator index was set
 	if valIndex < 0 {
 		return false, fmt.Errorf("index < 0: %w", ErrVoteInvalidValidatorIndex)
-	} else if len(valAddr) == 0 {
-		return false, fmt.Errorf("empty address: %w", ErrVoteInvalidValidatorAddress)
+	} else if len(valProTxHash) == 0 {
+		return false, fmt.Errorf("empty pro_tx_hash: %w", ErrVoteInvalidValidatorProTxHash)
 	}
 
 	// Make sure the step matches.
@@ -176,37 +183,42 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	}
 
 	// Ensure that signer is a validator.
-	lookupAddr, val := voteSet.valSet.GetByIndex(valIndex)
+	lookupProTxHash, val := voteSet.valSet.GetByIndex(valIndex)
 	if val == nil {
 		return false, fmt.Errorf(
 			"cannot find validator %d in valSet of size %d: %w",
 			valIndex, voteSet.valSet.Size(), ErrVoteInvalidValidatorIndex)
 	}
 
-	// Ensure that the signer has the right address.
-	if !bytes.Equal(valAddr, lookupAddr) {
+	// Ensure that the signer has the right proTxHash.
+	if !bytes.Equal(valProTxHash, lookupProTxHash) {
 		return false, fmt.Errorf(
-			"vote.ValidatorAddress (%X) does not match address (%X) for vote.ValidatorIndex (%d)\n"+
+			"vote.ValidatorProTxHash (%X) does not match proTxHash (%X) for vote.ValidatorIndex (%d)\n"+
 				"Ensure the genesis file is correct across all validators: %w",
-			valAddr, lookupAddr, valIndex, ErrVoteInvalidValidatorAddress)
+			valProTxHash, lookupProTxHash, valIndex, ErrVoteInvalidValidatorProTxHash)
 	}
 
 	// If we already know of this vote, return false.
 	if existing, ok := voteSet.getVote(valIndex, blockKey); ok {
-		if bytes.Equal(existing.Signature, vote.Signature) {
+		if bytes.Equal(existing.BlockSignature, vote.BlockSignature) &&
+			bytes.Equal(existing.StateSignature, vote.StateSignature) {
 			return false, nil // duplicate
 		}
 		return false, fmt.Errorf("existing vote: %v; new vote: %v: %w", existing, vote, ErrVoteNonDeterministicSignature)
 	}
 
 	// Check signature.
-	if err := vote.Verify(voteSet.chainID, val.PubKey); err != nil {
-		return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s: %w", voteSet.chainID, val.PubKey, err)
+	if err := vote.Verify(voteSet.chainID, voteSet.valSet.QuorumType, voteSet.valSet.QuorumHash, val.PubKey, val.ProTxHash); err != nil {
+		return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s ProTxHash %s: %w",
+			voteSet.chainID, val.PubKey, val.ProTxHash, err)
 	}
 
 	// Add vote and get conflicting vote if any.
 	added, conflicting := voteSet.addVerifiedVote(vote, blockKey, val.VotingPower)
 	if conflicting != nil {
+		fmt.Printf("-----\n")
+		debug.PrintStack()
+		fmt.Printf("-----\n")
 		return added, NewConflictingVoteError(conflicting, vote)
 	}
 	if !added {
@@ -288,7 +300,25 @@ func (voteSet *VoteSet) addVerifiedVote(
 		// Only consider the first quorum reached
 		if voteSet.maj23 == nil {
 			maj23BlockID := vote.BlockID
+			stateMaj23StateID := vote.StateID
+			// fmt.Printf("vote majority reached at height %d (%d/%d) quorum size %d\n",
+			//  voteSet.height, voteSet.round, voteSet.signedMsgType, quorum)
 			voteSet.maj23 = &maj23BlockID
+			voteSet.stateMaj23 = &stateMaj23StateID
+			if len(votesByBlock.votes) > 1 {
+				err := voteSet.recoverThresholdSigs(votesByBlock)
+				if err != nil {
+					// fmt.Printf("error %v quorum %d\n", err, quorum)
+					// for i, vote := range votesByBlock.votes {
+					// 	fmt.Printf("vote %d %v\n", i, vote)
+					// }
+					panic(err)
+				}
+			} else {
+				// there is only 1 validator
+				voteSet.thresholdBlockSig = vote.BlockSignature
+				voteSet.thresholdStateSig = vote.StateSignature
+			}
 			// And also copy votes over to voteSet.votes
 			for i, vote := range votesByBlock.votes {
 				if vote != nil {
@@ -299,6 +329,36 @@ func (voteSet *VoteSet) addVerifiedVote(
 	}
 
 	return true, conflicting
+}
+
+func (voteSet *VoteSet) recoverThresholdSigs(blockVotes *blockVotes) error {
+	if len(blockVotes.votes) < 2 {
+		return fmt.Errorf("attempting to recover a threshold signature with only 1 vote")
+	}
+	var blockSigs [][]byte
+	var stateSigs [][]byte
+	var blsIDs [][]byte
+	for _, vote := range blockVotes.votes {
+		if vote != nil {
+			blockSigs = append(blockSigs, vote.BlockSignature)
+			stateSigs = append(stateSigs, vote.StateSignature)
+			blsIDs = append(blsIDs, vote.ValidatorProTxHash)
+		}
+	}
+	thresholdBlockSig, err := bls12381.RecoverThresholdSignatureFromShares(blockSigs, blsIDs)
+	if err != nil {
+		return fmt.Errorf("error recovering threshold block sig: %v", err)
+	}
+	voteSet.thresholdBlockSig = thresholdBlockSig
+	if voteSet.maj23 != nil && voteSet.maj23.Hash != nil {
+		// if the vote is voting for nil, then we do not care to recover the state signature
+		thresholdStateSig, err := bls12381.RecoverThresholdSignatureFromShares(stateSigs, blsIDs)
+		if err != nil {
+			return fmt.Errorf("error recovering threshold state sig: %v", err)
+		}
+		voteSet.thresholdStateSig = thresholdStateSig
+	}
+	return nil
 }
 
 // If a peer claims that it has 2/3 majority for given blockKey, call this.
@@ -375,15 +435,15 @@ func (voteSet *VoteSet) GetByIndex(valIndex int32) *Vote {
 	return voteSet.votes[valIndex]
 }
 
-func (voteSet *VoteSet) GetByAddress(address []byte) *Vote {
+func (voteSet *VoteSet) GetByProTxHash(proTxHash []byte) *Vote {
 	if voteSet == nil {
 		return nil
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
-	valIndex, val := voteSet.valSet.GetByAddress(address)
+	valIndex, val := voteSet.valSet.GetByProTxHash(proTxHash)
 	if val == nil {
-		panic("GetByAddress(address) returned nil")
+		panic("GetByProTxHash(address) returned nil")
 	}
 	return voteSet.votes[valIndex]
 }
@@ -442,12 +502,14 @@ func (voteSet *VoteSet) TwoThirdsMajority() (blockID BlockID, ok bool) {
 //--------------------------------------------------------------------------------
 // Strings and JSON
 
+const nilVoteSetString = "nil-VoteSet"
+
 // String returns a string representation of VoteSet.
 //
 // See StringIndented.
 func (voteSet *VoteSet) String() string {
 	if voteSet == nil {
-		return "nil-VoteSet"
+		return nilVoteSetString
 	}
 	return voteSet.StringIndented("")
 }
@@ -551,13 +613,26 @@ func (voteSet *VoteSet) voteStrings() []string {
 // 7. 2/3+ majority for each peer
 func (voteSet *VoteSet) StringShort() string {
 	if voteSet == nil {
-		return "nil-VoteSet"
+		return nilVoteSetString
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 	_, _, frac := voteSet.sumTotalFrac()
 	return fmt.Sprintf(`VoteSet{H:%v R:%v T:%v +2/3:%v(%v) %v %v}`,
 		voteSet.height, voteSet.round, voteSet.signedMsgType, voteSet.maj23, frac, voteSet.votesBitArray, voteSet.peerMaj23s)
+}
+
+// LogString produces a logging suitable string representation of the
+// vote set.
+func (voteSet *VoteSet) LogString() string {
+	if voteSet == nil {
+		return nilVoteSetString
+	}
+	voteSet.mtx.Lock()
+	defer voteSet.mtx.Unlock()
+	voted, total, frac := voteSet.sumTotalFrac()
+
+	return fmt.Sprintf("Votes:%d/%d(%.3f)", voted, total, frac)
 }
 
 // return the power voted, the total, and the fraction
@@ -587,9 +662,27 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 		panic("Cannot MakeCommit() unless a blockhash has +2/3")
 	}
 
+	if voteSet.stateMaj23 == nil {
+		panic("Cannot MakeCommit() unless a stateMaj23 has been set")
+	}
+
+	if voteSet.thresholdBlockSig == nil {
+		panic("Cannot MakeCommit() unless a thresholdBlockSig has been created")
+	}
+
+	if voteSet.thresholdStateSig == nil {
+		panic("Cannot MakeCommit() unless a thresholdStateSig has been created")
+	}
+
 	// For every validator, get the precommit
 	commitSigs := make([]CommitSig, len(voteSet.votes))
 	for i, v := range voteSet.votes {
+		if v != nil {
+			err := v.ValidateBasic()
+			if err != nil {
+				panic(err)
+			}
+		}
 		commitSig := v.CommitSig()
 		// if block ID exists but doesn't match, exclude sig
 		if commitSig.ForBlock() && !v.BlockID.Equals(*voteSet.maj23) {
@@ -598,7 +691,8 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 		commitSigs[i] = commitSig
 	}
 
-	return NewCommit(voteSet.GetHeight(), voteSet.GetRound(), *voteSet.maj23, commitSigs)
+	return NewCommit(voteSet.GetHeight(), voteSet.GetRound(), *voteSet.maj23, *voteSet.stateMaj23,
+		commitSigs, voteSet.valSet.QuorumHash, voteSet.thresholdBlockSig, voteSet.thresholdStateSig)
 }
 
 //--------------------------------------------------------------------------------

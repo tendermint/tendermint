@@ -3,14 +3,24 @@ package main
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+
+	"github.com/tendermint/tendermint/crypto"
+
+	"github.com/tendermint/tendermint/types"
+
+	"github.com/tendermint/tendermint/crypto/bls12381"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
+	types1 "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -48,10 +58,11 @@ func NewApplication(cfg *Config) (*Application, error) {
 // Info implements ABCI.
 func (app *Application) Info(req abci.RequestInfo) abci.ResponseInfo {
 	return abci.ResponseInfo{
-		Version:          version.ABCIVersion,
-		AppVersion:       1,
-		LastBlockHeight:  int64(app.state.Height),
-		LastBlockAppHash: app.state.Hash,
+		Version:                   version.ABCIVersion,
+		AppVersion:                1,
+		LastBlockHeight:           int64(app.state.Height),
+		LastBlockAppHash:          app.state.Hash,
+		LastCoreChainLockedHeight: app.state.CoreHeight,
 	}
 }
 
@@ -68,7 +79,14 @@ func (app *Application) InitChain(req abci.RequestInitChain) abci.ResponseInitCh
 	resp := abci.ResponseInitChain{
 		AppHash: app.state.Hash,
 	}
-	if resp.Validators, err = app.validatorUpdates(0); err != nil {
+
+	validatorSetUpdate, err := app.validatorSetUpdates(0)
+	if err != nil {
+		panic(err)
+	}
+	resp.ValidatorSetUpdate = *validatorSetUpdate
+
+	if resp.NextCoreChainLockUpdate, err = app.chainLockUpdate(0); err != nil {
 		panic(err)
 	}
 	return resp
@@ -100,8 +118,28 @@ func (app *Application) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDelive
 func (app *Application) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
 	var err error
 	resp := abci.ResponseEndBlock{}
-	if resp.ValidatorUpdates, err = app.validatorUpdates(uint64(req.Height)); err != nil {
+	resp.ValidatorSetUpdate, err = app.validatorSetUpdates(uint64(req.Height))
+	if err != nil {
 		panic(err)
+	}
+	resp.NextCoreChainLockUpdate, err = app.chainLockUpdate(uint64(req.Height))
+	if err != nil {
+		panic(err)
+	}
+	resp.Events = []abci.Event{
+		{
+			Type: "val_updates",
+			Attributes: []abci.EventAttribute{
+				{
+					Key:   []byte("size"),
+					Value: []byte(strconv.Itoa(len(resp.ValidatorSetUpdate.ValidatorUpdates))),
+				},
+				{
+					Key:   []byte("height"),
+					Value: []byte(strconv.Itoa(int(req.Height))),
+				},
+			},
+		},
 	}
 	return resp
 }
@@ -117,7 +155,7 @@ func (app *Application) Commit() abci.ResponseCommit {
 		if err != nil {
 			panic(err)
 		}
-		logger.Info("Created state sync snapshot", "height", snapshot.Height)
+		app.logger.Info("Created state sync snapshot", "height", snapshot.Height)
 	}
 	retainHeight := int64(0)
 	if app.cfg.RetainBlocks > 0 {
@@ -188,22 +226,74 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 }
 
 // validatorUpdates generates a validator set update.
-func (app *Application) validatorUpdates(height uint64) (abci.ValidatorUpdates, error) {
+func (app *Application) validatorSetUpdates(height uint64) (*abci.ValidatorSetUpdate, error) {
 	updates := app.cfg.ValidatorUpdates[fmt.Sprintf("%v", height)]
 	if len(updates) == 0 {
-		return nil, nil
+		return &abci.ValidatorSetUpdate{}, nil
 	}
 
-	valUpdates := abci.ValidatorUpdates{}
-	for keyString, power := range updates {
+	thresholdPublicKeyUpdateString := app.cfg.ThesholdPublicKeyUpdate[fmt.Sprintf("%v", height)]
+	if len(thresholdPublicKeyUpdateString) == 0 {
+		return nil, fmt.Errorf("thresholdPublicKeyUpdate must be set")
+	}
+	thresholdPublicKeyUpdateBytes, err := base64.StdEncoding.DecodeString(thresholdPublicKeyUpdateString)
+	if err != nil {
+		return nil, fmt.Errorf("invalid base64 pubkey value %q: %w", thresholdPublicKeyUpdateString, err)
+	}
+	thresholdPublicKeyUpdate := bls12381.PubKey(thresholdPublicKeyUpdateBytes)
+	abciThresholdPublicKeyUpdate, err := cryptoenc.PubKeyToProto(thresholdPublicKeyUpdate)
+	if err != nil {
+		panic(err)
+	}
 
+	quorumHashUpdateString := app.cfg.QuorumHashUpdate[fmt.Sprintf("%v", height)]
+	if len(quorumHashUpdateString) == 0 {
+		return nil, fmt.Errorf("quorumHashUpdate must be set")
+	}
+	quorumHashUpdateBytes, err := hex.DecodeString(quorumHashUpdateString)
+	if err != nil {
+		return nil, fmt.Errorf("invalid hex quorum value %q: %w", quorumHashUpdateString, err)
+	}
+	quorumHashUpdate := crypto.QuorumHash(quorumHashUpdateBytes)
+
+	valSetUpdates := abci.ValidatorSetUpdate{}
+
+	valUpdates := abci.ValidatorUpdates{}
+	for proTxHashString, keyString := range updates {
 		keyBytes, err := base64.StdEncoding.DecodeString(keyString)
 		if err != nil {
 			return nil, fmt.Errorf("invalid base64 pubkey value %q: %w", keyString, err)
 		}
-		valUpdates = append(valUpdates, abci.UpdateValidator(keyBytes, int64(power)))
+		proTxHashBytes, err := hex.DecodeString(proTxHashString)
+		if err != nil {
+			return nil, fmt.Errorf("invalid hex proTxHash value %q: %w", proTxHashBytes, err)
+		}
+		publicKeyUpdate := bls12381.PubKey(keyBytes)
+		valUpdates = append(valUpdates, abci.UpdateValidator(proTxHashBytes, publicKeyUpdate, types.DefaultDashVotingPower))
 	}
-	return valUpdates, nil
+	valSetUpdates.ValidatorUpdates = valUpdates
+	valSetUpdates.ThresholdPublicKey = abciThresholdPublicKeyUpdate
+	valSetUpdates.QuorumHash = quorumHashUpdate
+	return &valSetUpdates, nil
+}
+
+// validatorUpdates generates a validator set update.
+func (app *Application) chainLockUpdate(height uint64) (*types1.CoreChainLock, error) {
+	updates := app.cfg.ChainLockUpdates[fmt.Sprintf("%v", height)]
+	if len(updates) == 0 {
+		return nil, nil
+	}
+
+	chainLockUpdateString := app.cfg.ChainLockUpdates[fmt.Sprintf("%v", height)]
+	if len(chainLockUpdateString) == 0 {
+		return nil, fmt.Errorf("chainlockUpdate must be set")
+	}
+	chainlockUpdateHeight, err := strconv.Atoi(chainLockUpdateString)
+	if err != nil {
+		return nil, fmt.Errorf("invalid number chainlockUpdate value %q: %w", chainLockUpdateString, err)
+	}
+	chainLock := types.NewMockChainLock(uint32(chainlockUpdateHeight))
+	return chainLock.ToProto(), nil
 }
 
 // parseTx parses a tx in 'key=value' format into a key and value.

@@ -95,8 +95,8 @@ type EventDataRoundState struct {
 }
 
 type ValidatorInfo struct {
-	Address Address `json:"address"`
-	Index   int32   `json:"index"`
+	ProTxHash ProTxHash `json:"pro_tx_hash"`
+	Index     int32     `json:"index"`
 }
 
 type EventDataNewRound struct {
@@ -136,6 +136,10 @@ const (
 	// TxHeightKey is a reserved key, used to specify transaction block's height.
 	// see EventBus#PublishEventTx
 	TxHeightKey = "tx.height"
+
+	// BlockHeightKey is a reserved key used for indexing BeginBlock and Endblock
+	// events.
+	BlockHeightKey = "block.height"
 )
 
 var (

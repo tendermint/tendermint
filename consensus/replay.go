@@ -78,7 +78,7 @@ func (cs *State) readReplayMessage(msg *TimedWALMessage, newStepSub types.Subscr
 				"blockID", v.BlockID, "peer", peerID)
 		}
 
-		cs.handleMsg(m)
+		cs.handleMsg(m, true)
 	case timeoutInfo:
 		cs.Logger.Info("Replay: Timeout", "height", m.Height, "round", m.Round, "step", m.Step, "dur", m.Duration)
 		cs.handleTimeout(m, cs.RoundState)
@@ -206,10 +206,12 @@ type Handshaker struct {
 	logger       log.Logger
 
 	nBlocks int // number of blocks applied to the state
+
+	appHashSize int
 }
 
 func NewHandshaker(stateStore sm.Store, state sm.State,
-	store sm.BlockStore, genDoc *types.GenesisDoc) *Handshaker {
+	store sm.BlockStore, genDoc *types.GenesisDoc, appHashSize int) *Handshaker {
 
 	return &Handshaker{
 		stateStore:   stateStore,
@@ -219,6 +221,7 @@ func NewHandshaker(stateStore sm.Store, state sm.State,
 		genDoc:       genDoc,
 		logger:       log.NewNopLogger(),
 		nBlocks:      0,
+		appHashSize:  appHashSize,
 	}
 }
 
@@ -251,10 +254,12 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 		return fmt.Errorf("got a negative last block height (%d) from the app", blockHeight)
 	}
 	appHash := res.LastBlockAppHash
+	coreChainLockedHeight := res.LastCoreChainLockedHeight
 
 	h.logger.Info("ABCI Handshake App Info",
 		"height", blockHeight,
-		"hash", fmt.Sprintf("%X", appHash),
+		"core height", coreChainLockedHeight,
+		"hash", appHash,
 		"software-version", res.Version,
 		"protocol-version", res.AppVersion,
 	)
@@ -270,8 +275,11 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 		return fmt.Errorf("error on replay: %v", err)
 	}
 
+	// Set the initial state last core chain locked block height
+	h.initialState.LastCoreChainLockedBlockHeight = coreChainLockedHeight
+
 	h.logger.Info("Completed ABCI Handshake - Tendermint and App are synced",
-		"appHeight", blockHeight, "appHash", fmt.Sprintf("%X", appHash))
+		"appHeight", blockHeight, "appHash", appHash)
 
 	// TODO: (on restart) replay mempool
 
@@ -289,7 +297,9 @@ func (h *Handshaker) ReplayBlocks(
 ) ([]byte, error) {
 	storeBlockBase := h.store.Base()
 	storeBlockHeight := h.store.Height()
+	storeCoreChainLockedHeight := h.store.CoreChainLockedHeight()
 	stateBlockHeight := state.LastBlockHeight
+	stateCoreChainLockedHeight := state.LastCoreChainLockedBlockHeight
 	h.logger.Info(
 		"ABCI Replay Blocks",
 		"appHeight",
@@ -297,15 +307,27 @@ func (h *Handshaker) ReplayBlocks(
 		"storeHeight",
 		storeBlockHeight,
 		"stateHeight",
-		stateBlockHeight)
+		stateBlockHeight,
+		"storeCoreChainLockedHeight",
+		storeCoreChainLockedHeight,
+		"stateCoreChainLockedHeight",
+		stateCoreChainLockedHeight)
 
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain.
 	if appBlockHeight == 0 {
 		validators := make([]*types.Validator, len(h.genDoc.Validators))
 		for i, val := range h.genDoc.Validators {
-			validators[i] = types.NewValidator(val.PubKey, val.Power)
+			validators[i] = types.NewValidatorDefaultVotingPower(val.PubKey, val.ProTxHash)
+			err := validators[i].ValidateBasic()
+			if err != nil {
+				return nil, fmt.Errorf("replay blocks error when validating validator: %s", err)
+			}
 		}
-		validatorSet := types.NewValidatorSet(validators)
+		validatorSet := types.NewValidatorSet(validators, h.genDoc.ThresholdPublicKey, h.genDoc.QuorumType, h.genDoc.QuorumHash)
+		err := validatorSet.ValidateBasic()
+		if err != nil {
+			return nil, fmt.Errorf("replay blocks error when validating validatorSet: %s", err)
+		}
 		nextVals := types.TM2PB.ValidatorUpdates(validatorSet)
 		csParams := types.TM2PB.ConsensusParams(h.genDoc.ConsensusParams)
 		req := abci.RequestInitChain{
@@ -313,14 +335,14 @@ func (h *Handshaker) ReplayBlocks(
 			ChainId:         h.genDoc.ChainID,
 			InitialHeight:   h.genDoc.InitialHeight,
 			ConsensusParams: csParams,
-			Validators:      nextVals,
+			ValidatorSet:    nextVals,
 			AppStateBytes:   h.genDoc.AppState,
 		}
 		res, err := proxyApp.Consensus().InitChainSync(req)
 		if err != nil {
 			return nil, err
 		}
-
+		h.logger.Debug("Response from Init Chain", "res", res.String())
 		appHash = res.AppHash
 
 		if stateBlockHeight == 0 { // we only update state when we are in initial state
@@ -331,15 +353,18 @@ func (h *Handshaker) ReplayBlocks(
 				state.AppHash = res.AppHash
 			}
 			// If the app returned validators or consensus params, update the state.
-			if len(res.Validators) > 0 {
-				vals, err := types.PB2TM.ValidatorUpdates(res.Validators)
+			if len(res.ValidatorSetUpdate.ValidatorUpdates) > 0 {
+				vals, thresholdPublicKey, quorumHash, err := types.PB2TM.ValidatorUpdatesFromValidatorSet(&res.ValidatorSetUpdate)
 				if err != nil {
 					return nil, err
 				}
-				state.Validators = types.NewValidatorSet(vals)
-				state.NextValidators = types.NewValidatorSet(vals).CopyIncrementProposerPriority(1)
+				newValidatorSet := types.NewValidatorSet(vals, thresholdPublicKey, h.genDoc.QuorumType, quorumHash)
+				h.logger.Debug("Updating validator set", "old", state.Validators, "new", newValidatorSet)
+				state.Validators = newValidatorSet
+				state.NextValidators = types.NewValidatorSet(vals, thresholdPublicKey, h.genDoc.QuorumType, quorumHash).CopyIncrementProposerPriority(1)
 			} else if len(h.genDoc.Validators) == 0 {
 				// If validator set is not set in genesis and still empty after InitChain, exit.
+				h.logger.Debug("Validator set is nil in genesis and still empty after InitChain")
 				return nil, fmt.Errorf("validator set is nil in genesis and still empty after InitChain")
 			}
 
@@ -413,7 +438,7 @@ func (h *Handshaker) ReplayBlocks(
 			// NOTE: We could instead use the cs.WAL on cs.Start,
 			// but we'd have to allow the WAL to replay a block that wrote it's #ENDHEIGHT
 			h.logger.Info("Replay last block using real app")
-			state, err = h.replayBlock(state, storeBlockHeight, proxyApp.Consensus())
+			state, err = h.replayBlock(state, storeBlockHeight, proxyApp.Consensus(), proxyApp.Query())
 			return state.AppHash, err
 
 		case appBlockHeight == storeBlockHeight:
@@ -424,7 +449,8 @@ func (h *Handshaker) ReplayBlocks(
 			}
 			mockApp := newMockProxyApp(appHash, abciResponses)
 			h.logger.Info("Replay last block using mock app")
-			state, err = h.replayBlock(state, storeBlockHeight, mockApp)
+			//ToDo: we could optimize by passing a mockValidationApp since all signatures were already verified
+			state, err = h.replayBlock(state, storeBlockHeight, mockApp, proxyApp.Query())
 			return state.AppHash, err
 		}
 
@@ -478,7 +504,7 @@ func (h *Handshaker) replayBlocks(
 
 	if mutateState {
 		// sync the final block
-		state, err = h.replayBlock(state, storeBlockHeight, proxyApp.Consensus())
+		state, err = h.replayBlock(state, storeBlockHeight, proxyApp.Consensus(), proxyApp.Query())
 		if err != nil {
 			return nil, err
 		}
@@ -490,13 +516,16 @@ func (h *Handshaker) replayBlocks(
 }
 
 // ApplyBlock on the proxyApp with the last block.
-func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.AppConnConsensus) (sm.State, error) {
+func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.AppConnConsensus,
+	proxyAppQuery proxy.AppConnQuery) (sm.State, error) {
 	block := h.store.LoadBlock(height)
 	meta := h.store.LoadBlockMeta(height)
 
 	// Use stubs for both mempool and evidence pool since no transactions nor
 	// evidence are needed here - block already exists.
-	blockExec := sm.NewBlockExecutor(h.stateStore, h.logger, proxyApp, emptyMempool{}, sm.EmptyEvidencePool{})
+
+	blockExec := sm.NewBlockExecutor(h.stateStore, h.logger, proxyApp, proxyAppQuery,
+		emptyMempool{}, sm.EmptyEvidencePool{}, nil, sm.BlockExecutorWithAppHashSize(h.appHashSize))
 	blockExec.SetEventBus(h.eventBus)
 
 	var err error

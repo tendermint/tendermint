@@ -25,14 +25,12 @@ var (
 	}
 
 	// The following specify randomly chosen values for testnet nodes.
-	nodeDatabases        = uniformChoice{"goleveldb", "cleveldb", "rocksdb", "boltdb", "badgerdb"}
-	nodeABCIProtocols    = uniformChoice{"unix", "tcp", "grpc", "builtin"}
-	nodePrivvalProtocols = uniformChoice{"file", "unix", "tcp"}
-	// FIXME v1 disabled due to https://github.com/tendermint/tendermint/issues/5444
-	// FIXME v2 disabled due to:
-	// https://github.com/tendermint/tendermint/issues/5513
-	// https://github.com/tendermint/tendermint/issues/5541
-	nodeFastSyncs         = uniformChoice{"", "v0"} // "v1", "v2"
+	nodeDatabases = uniformChoice{"goleveldb", "cleveldb", "rocksdb", "boltdb", "badgerdb"}
+	// FIXME: grpc disabled due to https://github.com/tendermint/tendermint/issues/5439
+	nodeABCIProtocols    = uniformChoice{"unix", "tcp", "builtin"} // "grpc"
+	nodePrivvalProtocols = uniformChoice{"file", "unix", "tcp", "dashcore"}
+	// FIXME: v2 disabled due to flake
+	nodeFastSyncs         = uniformChoice{"", "v0"} // "v2"
 	nodeStateSyncs        = uniformChoice{false, true}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 3}
@@ -44,8 +42,11 @@ var (
 		"restart":    0.1,
 	}
 	nodeMisbehaviors = weightedChoice{
-		misbehaviorOption{"double-prevote"}: 1,
-		misbehaviorOption{}:                 9,
+		// FIXME: evidence disabled due to node panicing when not
+		// having sufficient block history to process evidence.
+		// https://github.com/tendermint/tendermint/issues/5617
+		// misbehaviorOption{"double-prevote"}: 1,
+		misbehaviorOption{}: 9,
 	}
 )
 
@@ -70,20 +71,26 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		InitialState:     opt["initialState"].(map[string]string),
 		Validators:       &map[string]int64{},
 		ValidatorUpdates: map[string]map[string]int64{},
+		ChainLockUpdates: map[string]int64{},
 		Nodes:            map[string]*e2e.ManifestNode{},
 	}
 
-	var numSeeds, numValidators, numFulls int
+
+	var numSeeds, numValidators, numFulls, numChainLocks, numLightClients int
 	switch opt["topology"].(string) {
 	case "single":
 		numValidators = 1
+		numChainLocks = 5
 	case "quad":
 		numValidators = 4
+		numChainLocks = r.Intn(10)
 	case "large":
 		// FIXME Networks are kept small since large ones use too much CPU.
-		numSeeds = r.Intn(4)
+		numSeeds = r.Intn(3)
+		numLightClients = r.Intn(3)
 		numValidators = 4 + r.Intn(7)
 		numFulls = r.Intn(5)
+		numChainLocks = r.Intn(10)
 	default:
 		return manifest, fmt.Errorf("unknown topology %q", opt["topology"])
 	}
@@ -110,10 +117,10 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			r, e2e.ModeValidator, startAt, manifest.InitialHeight, i <= 2)
 
 		if startAt == 0 {
-			(*manifest.Validators)[name] = int64(30 + r.Intn(71))
+			(*manifest.Validators)[name] = 100
 		} else {
 			manifest.ValidatorUpdates[fmt.Sprint(startAt+5)] = map[string]int64{
-				name: int64(30 + r.Intn(71)),
+				name: 100,
 			}
 		}
 	}
@@ -139,14 +146,28 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
 	}
 
+	// Finally, we generate random chain locks.
+	startAtChainLocks := r.Intn(5)
+	startAtChainLocksHeight := 3000 + r.Intn(5)
+	for i := 1; i <= numChainLocks; i++ {
+		startAtChainLocks += r.Intn(5)
+		startAtChainLocksHeight += r.Intn(5)
+		manifest.ChainLockUpdates[fmt.Sprintf("%d", startAtChainLocks)] = int64(startAtChainLocksHeight)
+	}
+
 	// We now set up peer discovery for nodes. Seed nodes are fully meshed with
 	// each other, while non-seed nodes either use a set of random seeds or a
 	// set of random peers that start before themselves.
-	var seedNames, peerNames []string
+	var seedNames, peerNames, lightProviders []string
 	for name, node := range manifest.Nodes {
 		if node.Mode == string(e2e.ModeSeed) {
 			seedNames = append(seedNames, name)
 		} else {
+			// if the full node or validator is an ideal candidate, it is added as a light provider.
+			// There are at least two archive nodes so there should be at least two ideal candidates
+			if (node.StartAt == 0 || node.StartAt == manifest.InitialHeight) && node.RetainBlocks == 0 {
+				lightProviders = append(lightProviders, name)
+			}
 			peerNames = append(peerNames, name)
 		}
 	}
@@ -176,6 +197,14 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		} else if i > 0 {
 			manifest.Nodes[name].PersistentPeers = uniformSetChoice(peerNames[:i]).Choose(r)
 		}
+	}
+
+	// lastly, set up the light clients
+	for i := 1; i <= numLightClients; i++ {
+		startAt := manifest.InitialHeight + 5
+		manifest.Nodes[fmt.Sprintf("light%02d", i)] = generateLightNode(
+			r, startAt+(5*int64(i)), lightProviders,
+		)
 	}
 
 	return manifest, nil
@@ -209,7 +238,7 @@ func generateNode(
 		node.SnapshotInterval = 3
 	}
 
-	if node.Mode == "validator" {
+	if node.Mode == string(e2e.ModeValidator) {
 		misbehaveAt := startAt + 5 + int64(r.Intn(10))
 		if startAt == 0 {
 			misbehaveAt += initialHeight - 1
@@ -242,6 +271,17 @@ func generateNode(
 	}
 
 	return &node
+}
+
+func generateLightNode(r *rand.Rand, startAt int64, providers []string) *e2e.ManifestNode {
+	return &e2e.ManifestNode{
+		Mode:            string(e2e.ModeLight),
+		StartAt:         startAt,
+		Database:        nodeDatabases.Choose(r).(string),
+		ABCIProtocol:    "builtin",
+		PersistInterval: ptrUint64(0),
+		PersistentPeers: providers,
+	}
 }
 
 func ptrUint64(i uint64) *uint64 {

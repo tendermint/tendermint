@@ -4,8 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"time"
+
+	abci "github.com/tendermint/tendermint/abci/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -16,6 +21,12 @@ func validateBlock(state State, block *types.Block) error {
 	// Validate internal consistency.
 	if err := block.ValidateBasic(); err != nil {
 		return err
+	}
+
+	if block.CoreChainLock != nil {
+		if err := block.CoreChainLock.ValidateBasic(); err != nil {
+			return err
+		}
 	}
 
 	// Validate basic info.
@@ -89,42 +100,37 @@ func validateBlock(state State, block *types.Block) error {
 			return errors.New("initial block can't have LastCommit signatures")
 		}
 	} else {
+		// fmt.Printf("validating against state with lastBlockId %s lastStateId %s\n", state.LastBlockID.String(),
+		//  state.LastStateID.String())
 		// LastCommit.Signatures length is checked in VerifyCommit.
 		if err := state.LastValidators.VerifyCommit(
-			state.ChainID, state.LastBlockID, block.Height-1, block.LastCommit); err != nil {
+			state.ChainID, state.LastBlockID, state.LastStateID, block.Height-1, block.LastCommit); err != nil {
 			return err
 		}
 	}
 
 	// NOTE: We can't actually verify it's the right proposer because we don't
 	// know what round the block was first proposed. So just check that it's
-	// a legit address and a known validator.
-	if len(block.ProposerAddress) != crypto.AddressSize {
-		return fmt.Errorf("expected ProposerAddress size %d, got %d",
-			crypto.AddressSize,
-			len(block.ProposerAddress),
+	// a legit pro_tx_hash and a known validator.
+	if len(block.ProposerProTxHash) != crypto.DefaultHashSize {
+		return fmt.Errorf("expected ProposerProTxHash size %d, got %d",
+			crypto.DefaultHashSize,
+			len(block.ProposerProTxHash),
 		)
 	}
-	if !state.Validators.HasAddress(block.ProposerAddress) {
-		return fmt.Errorf("block.Header.ProposerAddress %X is not a validator",
-			block.ProposerAddress,
+	if !state.Validators.HasProTxHash(block.ProposerProTxHash) {
+		return fmt.Errorf("block.Header.ProposerProTxHash %X is not a validator",
+			block.ProposerProTxHash,
 		)
 	}
 
-	// Validate block Time
+	// Validate block Time is after previous block
 	switch {
 	case block.Height > state.InitialHeight:
 		if !block.Time.After(state.LastBlockTime) {
 			return fmt.Errorf("block time %v not greater than last block time %v",
 				block.Time,
 				state.LastBlockTime,
-			)
-		}
-		medianTime := MedianTime(block.LastCommit, state.LastValidators)
-		if !block.Time.Equal(medianTime) {
-			return fmt.Errorf("invalid block time. Expected %v, got %v",
-				medianTime,
-				block.Time,
 			)
 		}
 
@@ -142,9 +148,101 @@ func validateBlock(state State, block *types.Block) error {
 			block.Height, state.InitialHeight)
 	}
 
+	if block.CoreChainLock != nil {
+		// If there is a new Chain Lock we need to make sure the height in the header is the same as the chain lock
+		if block.Header.CoreChainLockedHeight != block.CoreChainLock.CoreBlockHeight {
+			return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight. CoreChainLock CoreBlockHeight %d, got %d",
+				block.CoreChainLock.CoreBlockHeight,
+				block.Header.CoreChainLockedHeight,
+			)
+		}
+
+		// We also need to make sure that the new height is superior to the old height
+		if block.Header.CoreChainLockedHeight <= state.LastCoreChainLockedBlockHeight {
+			return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight. Previous CoreChainLockedHeight %d, got %d",
+				state.LastCoreChainLockedBlockHeight,
+				block.Header.CoreChainLockedHeight,
+			)
+		}
+
+		// If there is no new Chain Lock we need to make sure the height has stayed the same
+	} else if block.Header.CoreChainLockedHeight != state.LastCoreChainLockedBlockHeight {
+		return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight when no new Chain Lock. "+
+			"Previous CoreChainLockedHeight %d, got %d",
+			state.LastCoreChainLockedBlockHeight, block.Header.CoreChainLockedHeight)
+	}
+
 	// Check evidence doesn't exceed the limit amount of bytes.
 	if max, got := state.ConsensusParams.Evidence.MaxBytes, block.Evidence.ByteSize(); got > max {
 		return types.NewErrEvidenceOverflow(max, got)
+	}
+
+	return nil
+}
+
+func validateBlockTime(state State, block *types.Block) error {
+	if block.Height == state.InitialHeight {
+		afterLast := state.LastBlockTime.Add(5 * time.Second)
+		beforeLast := state.LastBlockTime.Add(-5 * time.Second)
+		if block.Time.After(afterLast) || block.Time.Before(beforeLast) {
+			return fmt.Errorf("block time %v is out of window [%v, %v]",
+				block.Time, afterLast, beforeLast)
+		}
+	} else {
+		// Validate block Time is within a range of current time
+		after := tmtime.Now().Add(20 * time.Second)
+		before := tmtime.Now().Add(-20 * time.Second)
+		if block.Time.After(after) || block.Time.Before(before) {
+			return fmt.Errorf("block time %v is out of window [%v, %v]",
+				block.Time, before, after)
+		}
+	}
+	return nil
+}
+
+func validateBlockChainLock(proxyAppQueryConn proxy.AppConnQuery, state State, block *types.Block) error {
+	if block.CoreChainLock != nil {
+		// If there is a new Chain Lock we need to make sure the height in the header is the same as the chain lock
+		if block.Header.CoreChainLockedHeight != block.CoreChainLock.CoreBlockHeight {
+			return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight. CoreChainLock CoreBlockHeight %d, got %d",
+				block.CoreChainLock.CoreBlockHeight,
+				block.Header.CoreChainLockedHeight,
+			)
+		}
+
+		// We also need to make sure that the new height is superior to the old height
+		if block.Header.CoreChainLockedHeight <= state.LastCoreChainLockedBlockHeight {
+			return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight. Previous CoreChainLockedHeight %d, got %d",
+				state.LastCoreChainLockedBlockHeight,
+				block.Header.CoreChainLockedHeight,
+			)
+		}
+		coreChainLocksBytes, err := block.CoreChainLock.ToProto().Marshal()
+		if err != nil {
+			panic(err)
+		}
+
+		verifySignatureQueryRequest := abci.RequestQuery{
+			Data: coreChainLocksBytes,
+			Path: "/verify-chainlock",
+		}
+
+		// We need to query our abci application to make sure the chain lock signature is valid
+
+		checkQuorumSignatureResponse, err := proxyAppQueryConn.QuerySync(verifySignatureQueryRequest)
+		if err != nil {
+			return err
+		}
+
+		if checkQuorumSignatureResponse.Code != 0 {
+			return fmt.Errorf("chain Lock signature deemed invalid by abci application")
+		}
+
+		// If there is no new Chain Lock we need to make sure the height has stayed the same
+	} else if block.Header.CoreChainLockedHeight != state.LastCoreChainLockedBlockHeight {
+		return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight when no new Chain Lock. "+
+			"Previous CoreChainLockedHeight %d, got %d",
+			state.LastCoreChainLockedBlockHeight, block.Header.CoreChainLockedHeight)
 	}
 
 	return nil

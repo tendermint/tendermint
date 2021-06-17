@@ -2,6 +2,7 @@ package privval
 
 import (
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -66,9 +67,23 @@ func (sc *SignerClient) Ping() error {
 	return nil
 }
 
+func (sc *SignerClient) ExtractIntoValidator(height int64, quorumHash crypto.QuorumHash) *types.Validator {
+	pubKey, _ := sc.GetPubKey(quorumHash)
+	proTxHash, _ := sc.GetProTxHash()
+	if len(proTxHash) != crypto.DefaultHashSize {
+		panic("proTxHash wrong length")
+	}
+	return &types.Validator{
+		Address:     pubKey.Address(),
+		PubKey:      pubKey,
+		VotingPower: types.DefaultDashVotingPower,
+		ProTxHash:   proTxHash,
+	}
+}
+
 // GetPubKey retrieves a public key from a remote signer
 // returns an error if client is not able to provide the key
-func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
+func (sc *SignerClient) GetPubKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
 	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.PubKeyRequest{ChainId: sc.chainID}))
 	if err != nil {
 		return nil, fmt.Errorf("send: %w", err)
@@ -90,9 +105,32 @@ func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 	return pk, nil
 }
 
+func (sc *SignerClient) GetProTxHash() (crypto.ProTxHash, error) {
+	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.ProTxHashRequest{ChainId: sc.chainID}))
+	if err != nil {
+		return nil, fmt.Errorf("send: %w", err)
+	}
+
+	resp := response.GetProTxHashResponse()
+	if resp == nil {
+		return nil, ErrUnexpectedResponse
+	}
+	if resp.Error != nil {
+		return nil, &RemoteSignerError{Code: int(resp.Error.Code), Description: resp.Error.Description}
+	}
+
+	if len(resp.ProTxHash) != 32 {
+		return nil, fmt.Errorf("proTxHash is invalid size")
+	}
+
+	return resp.ProTxHash, nil
+}
+
 // SignVote requests a remote signer to sign a vote
-func (sc *SignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
-	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.SignVoteRequest{Vote: vote, ChainId: chainID}))
+func (sc *SignerClient) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
+	// fmt.Printf("--> sending request to sign vote (%d/%d) %v - %v", vote.Height, vote.Round, vote.BlockID, vote)
+	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.SignVoteRequest{Vote: vote, ChainId: chainID,
+		QuorumType: int32(quorumType), QuorumHash: quorumHash}))
 	if err != nil {
 		return err
 	}
@@ -111,9 +149,10 @@ func (sc *SignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
 }
 
 // SignProposal requests a remote signer to sign a proposal
-func (sc *SignerClient) SignProposal(chainID string, proposal *tmproto.Proposal) error {
+func (sc *SignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error {
 	response, err := sc.endpoint.SendRequest(mustWrapMsg(
-		&privvalproto.SignProposalRequest{Proposal: proposal, ChainId: chainID},
+		&privvalproto.SignProposalRequest{Proposal: proposal, ChainId: chainID,
+			QuorumType: int32(quorumType), QuorumHash: quorumHash},
 	))
 	if err != nil {
 		return err
@@ -129,5 +168,10 @@ func (sc *SignerClient) SignProposal(chainID string, proposal *tmproto.Proposal)
 
 	*proposal = resp.Proposal
 
+	return nil
+}
+
+func (sc *SignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, height int64) error {
+	// the private key is dealt with on the abci client
 	return nil
 }

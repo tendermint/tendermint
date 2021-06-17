@@ -1016,6 +1016,62 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /block_search:
+    get:
+      summary: Search for blocks by BeginBlock and EndBlock events
+      description: |
+        Search for blocks by BeginBlock and EndBlock events.
+
+        See /subscribe for the query syntax.
+      operationId: block_search
+      parameters:
+        - in: query
+          name: query
+          description: Query
+          required: true
+          schema:
+            type: string
+            example: "block.height > 1000 AND valset.changed > 0"
+        - in: query
+          name: page
+          description: "Page number (1-based)"
+          required: false
+          schema:
+            type: integer
+            default: 1
+            example: 1
+        - in: query
+          name: per_page
+          description: "Number of entries per page (max: 100)"
+          required: false
+          schema:
+            type: integer
+            default: 30
+            example: 30
+        - in: query
+          name: order_by
+          description: Order in which blocks are sorted ("asc" or "desc"), by height. If empty, default sorting will be still applied.
+          required: false
+          schema:
+            type: string
+            default: "desc"
+            example: "asc"
+      tags:
+        - Info
+      responses:
+        "200":
+          description: List of paginated blocks matching the search criteria.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlockSearchResponse"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /tx:
     get:
       summary: Get transactions by hash
@@ -1775,8 +1831,10 @@ components:
                 - "genesis_time"
                 - "chain_id"
                 - "initial_height"
+                - "initial_core_chain_locked_height"
                 - "consensus_params"
                 - "validators"
+                - "threshold_public_key"
                 - "app_hash"
               properties:
                 genesis_time:

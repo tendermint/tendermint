@@ -13,9 +13,10 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// Load generates transactions against the network until the given
-// context is cancelled.
-func Load(ctx context.Context, testnet *e2e.Testnet) error {
+// Load generates transactions against the network until the given context is
+// canceled. A multiplier of greater than one can be supplied if load needs to
+// be generated beyond a minimum amount.
+func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 	// Since transactions are executed across all nodes in the network, we need
 	// to reduce transaction load for larger networks to avoid using too much
 	// CPU. This gives high-throughput small networks and low-throughput large ones.
@@ -37,7 +38,7 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 	logger.Info(fmt.Sprintf("Starting transaction load (%v workers)...", concurrency))
 	started := time.Now()
 
-	go loadGenerate(ctx, chTx)
+	go loadGenerate(ctx, chTx, multiplier)
 
 	for w := 0; w < concurrency; w++ {
 		go loadProcess(ctx, testnet, chTx, chSuccess)
@@ -64,14 +65,14 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 	}
 }
 
-// loadGenerate generates jobs until the context is cancelled
-func loadGenerate(ctx context.Context, chTx chan<- types.Tx) {
+// loadGenerate generates jobs until the context is canceled
+func loadGenerate(ctx context.Context, chTx chan<- types.Tx, multiplier int) {
 	for i := 0; i < math.MaxInt64; i++ {
 		// We keep generating the same 1000 keys over and over, with different values.
 		// This gives a reasonable load without putting too much data in the app.
 		id := i % 1000
 
-		bz := make([]byte, 2048) // 4kb hex-encoded
+		bz := make([]byte, 1024) // 1kb hex-encoded
 		_, err := rand.Read(bz)
 		if err != nil {
 			panic(fmt.Sprintf("Failed to read random bytes: %v", err))
@@ -80,7 +81,8 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx) {
 
 		select {
 		case chTx <- tx:
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(time.Duration(100/multiplier) * time.Millisecond)
+
 		case <-ctx.Done():
 			close(chTx)
 			return
@@ -103,10 +105,17 @@ func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx
 			if err != nil {
 				continue
 			}
+
+			// check that the node is up
+			_, err = client.Health(ctx)
+			if err != nil {
+				continue
+			}
+
 			clients[node.Name] = client
 		}
-		_, err = client.BroadcastTxCommit(ctx, tx)
-		if err != nil {
+
+		if _, err = client.BroadcastTxSync(ctx, tx); err != nil {
 			continue
 		}
 		chSuccess <- tx

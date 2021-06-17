@@ -3,10 +3,13 @@ package http
 import (
 	"context"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"math/rand"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/tendermint/tendermint/light/provider"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
@@ -14,10 +17,13 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// This is very brittle, see: https://github.com/tendermint/tendermint/issues/4740
 var (
-	regexpMissingHeight = regexp.MustCompile(`height \d+ (must be less than or equal to|is not available)`)
-	maxRetryAttempts    = 10
+	// This is very brittle, see: https://github.com/tendermint/tendermint/issues/4740
+	regexpMissingHeight = regexp.MustCompile(`height \d+ is not available`)
+	regexpTooHigh       = regexp.MustCompile(`height \d+ must be less than or equal to`)
+
+	maxRetryAttempts      = 10
+	timeout          uint = 5 // sec.
 )
 
 // http provider uses an RPC client to obtain the necessary information.
@@ -28,14 +34,14 @@ type http struct {
 
 // New creates a HTTP provider, which is using the rpchttp.HTTP client under
 // the hood. If no scheme is provided in the remote URL, http will be used by
-// default.
+// default. The 5s timeout is used for all requests.
 func New(chainID, remote string) (provider.Provider, error) {
 	// Ensure URL scheme is set (default HTTP) when not provided.
 	if !strings.Contains(remote, "://") {
 		remote = "http://" + remote
 	}
 
-	httpClient, err := rpchttp.New(remote, "/websocket")
+	httpClient, err := rpchttp.NewWithTimeout(remote, "/websocket", timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +79,13 @@ func (p *http) LightBlock(ctx context.Context, height int64) (*types.LightBlock,
 		return nil, err
 	}
 
-	vs, err := p.validatorSet(ctx, h)
+	if height != 0 && sh.Height != height {
+		return nil, provider.ErrBadLightBlock{
+			Reason: fmt.Errorf("height %d responded doesn't match height %d requested", sh.Height, height),
+		}
+	}
+
+	vs, err := p.validatorSet(ctx, &sh.Height)
 	if err != nil {
 		return nil, err
 	}
@@ -98,17 +110,31 @@ func (p *http) ReportEvidence(ctx context.Context, ev types.Evidence) error {
 }
 
 func (p *http) validatorSet(ctx context.Context, height *int64) (*types.ValidatorSet, error) {
+	// Since the malicious node could report a massive number of pages, making us
+	// spend a considerable time iterating, we restrict the number of pages here.
+	// => 10000 validators max
+	const maxPages = 100
+
 	var (
-		maxPerPage = 100
-		vals       = []*types.Validator{}
-		page       = 1
+		perPage            = 100
+		vals               = []*types.Validator{}
+		thresholdPublicKey crypto.PubKey
+		quorumType         btcjson.LLMQType
+		quorumHash         crypto.QuorumHash
+		page               = 1
+		total              = -1
 	)
 
-	for len(vals)%maxPerPage == 0 {
+	for len(vals) != total && page <= maxPages {
 		for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
-			res, err := p.client.Validators(ctx, height, &page, &maxPerPage)
+			requestThresholdPublicKey := attempt == 1
+			res, err := p.client.Validators(ctx, height, &page, &perPage, &requestThresholdPublicKey)
 			if err != nil {
 				// TODO: standardize errors on the RPC side
+				if regexpTooHigh.MatchString(err.Error()) {
+					return nil, provider.ErrHeightTooHigh
+				}
+
 				if regexpMissingHeight.MatchString(err.Error()) {
 					return nil, provider.ErrLightBlockNotFound
 				}
@@ -120,19 +146,33 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 				time.Sleep(backoffTimeout(uint16(attempt)))
 				continue
 			}
-			if len(res.Validators) == 0 { // no more validators left
-				valSet, err := types.ValidatorSetFromExistingValidators(vals)
-				if err != nil {
-					return nil, provider.ErrBadLightBlock{Reason: err}
+
+			// Validate response.
+			if len(res.Validators) == 0 {
+				return nil, provider.ErrBadLightBlock{
+					Reason: fmt.Errorf("validator set is empty (height: %d, page: %d, per_page: %d)",
+						height, page, perPage),
 				}
-				return valSet, nil
 			}
+			if res.Total <= 0 {
+				return nil, provider.ErrBadLightBlock{
+					Reason: fmt.Errorf("total number of vals is <= 0: %d (height: %d, page: %d, per_page: %d)",
+						res.Total, height, page, perPage),
+				}
+			}
+
+			total = res.Total
 			vals = append(vals, res.Validators...)
+			if requestThresholdPublicKey {
+				thresholdPublicKey = *res.ThresholdPublicKey
+				quorumHash = *res.QuorumHash
+				quorumType = res.QuorumType
+			}
 			page++
 			break
 		}
 	}
-	valSet, err := types.ValidatorSetFromExistingValidators(vals)
+	valSet, err := types.ValidatorSetFromExistingValidators(vals, thresholdPublicKey, quorumType, quorumHash)
 	if err != nil {
 		return nil, provider.ErrBadLightBlock{Reason: err}
 	}
@@ -144,6 +184,10 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 		commit, err := p.client.Commit(ctx, height)
 		if err != nil {
 			// TODO: standardize errors on the RPC side
+			if regexpTooHigh.MatchString(err.Error()) {
+				return nil, provider.ErrHeightTooHigh
+			}
+
 			if regexpMissingHeight.MatchString(err.Error()) {
 				return nil, provider.ErrLightBlockNotFound
 			}

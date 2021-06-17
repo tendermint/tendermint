@@ -33,13 +33,15 @@ type cleanupFunc func()
 // make a Commit with a single vote containing just the height and a timestamp
 func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 	commitSigs := []types.CommitSig{{
-		BlockIDFlag:      types.BlockIDFlagCommit,
-		ValidatorAddress: tmrand.Bytes(crypto.AddressSize),
-		Timestamp:        timestamp,
-		Signature:        []byte("Signature"),
+		BlockIDFlag:        types.BlockIDFlagCommit,
+		ValidatorProTxHash: tmrand.Bytes(crypto.DefaultHashSize),
+		BlockSignature:     []byte("BlockSignature"),
+		StateSignature:     []byte("StateSignature"),
 	}}
 	return types.NewCommit(height, 0,
-		types.BlockID{Hash: []byte(""), PartSetHeader: types.PartSetHeader{Hash: []byte(""), Total: 2}}, commitSigs)
+		types.BlockID{Hash: []byte(""), PartSetHeader: types.PartSetHeader{Hash: []byte(""), Total: 2}},
+		types.StateID{LastAppHash: make([]byte, 32)}, commitSigs, crypto.RandQuorumHash(),
+		commitSigs[0].BlockSignature, commitSigs[0].StateSignature)
 }
 
 func makeTxs(height int64) (txs []types.Tx) {
@@ -50,7 +52,7 @@ func makeTxs(height int64) (txs []types.Tx) {
 }
 
 func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Block {
-	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().Address)
+	block, _ := state.MakeBlock(height, nil, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().ProTxHash)
 	return block
 }
 
@@ -185,11 +187,11 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	require.Error(t, err)
 
 	header1 := types.Header{
-		Version:         tmversion.Consensus{Block: version.BlockProtocol},
-		Height:          1,
-		ChainID:         "block_test",
-		Time:            tmtime.Now(),
-		ProposerAddress: tmrand.Bytes(crypto.AddressSize),
+		Version:           tmversion.Consensus{Block: version.BlockProtocol},
+		Height:            1,
+		ChainID:           "block_test",
+		Time:              tmtime.Now(),
+		ProposerProTxHash: tmrand.Bytes(crypto.DefaultHashSize),
 	}
 
 	// End of setup, test data
@@ -222,11 +224,11 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		{
 			block: newBlock( // New block at height 5 in empty block store is fine
 				types.Header{
-					Version:         tmversion.Consensus{Block: version.BlockProtocol},
-					Height:          5,
-					ChainID:         "block_test",
-					Time:            tmtime.Now(),
-					ProposerAddress: tmrand.Bytes(crypto.AddressSize)},
+					Version:           tmversion.Consensus{Block: version.BlockProtocol},
+					Height:            5,
+					ChainID:           "block_test",
+					Time:              tmtime.Now(),
+					ProposerProTxHash: tmrand.Bytes(crypto.DefaultHashSize)},
 				makeTestCommit(5, tmtime.Now()),
 			),
 			parts:      validPartSet,
@@ -533,7 +535,7 @@ func TestLoadBlockMeta(t *testing.T) {
 	// 3. A good blockMeta serialized and saved to the DB should be retrievable
 	meta := &types.BlockMeta{Header: types.Header{
 		Version: tmversion.Consensus{
-			Block: version.BlockProtocol, App: 0}, Height: 1, ProposerAddress: tmrand.Bytes(crypto.AddressSize)}}
+			Block: version.BlockProtocol, App: 0}, Height: 1, ProposerProTxHash: tmrand.Bytes(crypto.DefaultHashSize)}}
 	pbm := meta.ToProto()
 	err = db.Set(calcBlockMetaKey(height), mustEncode(pbm))
 	require.NoError(t, err)

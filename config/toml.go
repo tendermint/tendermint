@@ -137,6 +137,16 @@ priv_validator_state_file = "{{ js .BaseConfig.PrivValidatorState }}"
 # connections from an external PrivValidator process
 priv_validator_laddr = "{{ .BaseConfig.PrivValidatorListenAddr }}"
 
+# Local Dash Core Host to connect to
+# If this is set, the node follows a Dash Core PrivValidator process
+priv_validator_core_rpc_host = "{{ .BaseConfig.PrivValidatorCoreRPCHost }}"
+
+# Local Dash Core RPC Username
+priv_validator_core_rpc_username = "{{ .BaseConfig.PrivValidatorCoreRPCUsername }}"
+
+# Local Dash Core RPC Password
+priv_validator_core_rpc_password = "{{ .BaseConfig.PrivValidatorCoreRPCPassword }}"
+
 # Path to the JSON file containing the private key to use for node authentication in the p2p protocol
 node_key_file = "{{ js .BaseConfig.NodeKey }}"
 
@@ -219,7 +229,7 @@ max_body_bytes = {{ .RPC.MaxBodyBytes }}
 max_header_bytes = {{ .RPC.MaxHeaderBytes }}
 
 # The path to a file containing certificate that is used to create the HTTPS server.
-# Migth be either absolute path or path related to tendermint's config directory.
+# Might be either absolute path or path related to Tendermint's config directory.
 # If the certificate is signed by a certificate authority,
 # the certFile should be the concatenation of the server's certificate, any intermediates,
 # and the CA's certificate.
@@ -228,8 +238,8 @@ max_header_bytes = {{ .RPC.MaxHeaderBytes }}
 tls_cert_file = "{{ .RPC.TLSCertFile }}"
 
 # The path to a file containing matching private key that is used to create the HTTPS server.
-# Migth be either absolute path or path related to tendermint's config directory.
-# NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
+# Might be either absolute path or path related to Tendermint's config directory.
+# NOTE: both tls-cert-file and tls-key-file must be present for Tendermint to create HTTPS server.
 # Otherwise, HTTP server is run.
 tls_key_file = "{{ .RPC.TLSKeyFile }}"
 
@@ -310,7 +320,7 @@ handshake_timeout = "{{ .P2P.HandshakeTimeout }}"
 dial_timeout = "{{ .P2P.DialTimeout }}"
 
 #######################################################
-###          Mempool Configurattion Option          ###
+###          Mempool Configuration Option          ###
 #######################################################
 [mempool]
 
@@ -329,12 +339,18 @@ max_txs_bytes = {{ .Mempool.MaxTxsBytes }}
 # Size of the cache (used to filter transactions we saw earlier) in transactions
 cache_size = {{ .Mempool.CacheSize }}
 
+# Do not remove invalid transactions from the cache (default: false)
+# Set to true if it's not possible for any invalid transaction to become valid
+# again in the future.
+keep-invalid-txs-in-cache = {{ .Mempool.KeepInvalidTxsInCache }}
+
 # Maximum size of a single transaction.
 # NOTE: the max size of a tx transmitted over the network is {max_tx_bytes}.
 max_tx_bytes = {{ .Mempool.MaxTxBytes }}
 
 # Maximum size of a batch of transactions to send to a peer
 # Including space needed by encoding (one varint per transaction).
+# XXX: Unused due to https://github.com/tendermint/tendermint/issues/5796
 max_batch_bytes = {{ .Mempool.MaxBatchBytes }}
 
 #######################################################
@@ -417,6 +433,12 @@ create_empty_blocks_interval = "{{ .Consensus.CreateEmptyBlocksInterval }}"
 # Reactor sleep duration parameters
 peer_gossip_sleep_duration = "{{ .Consensus.PeerGossipSleepDuration }}"
 peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
+
+# Signing parameters
+quorum_type = "{{ .Consensus.QuorumType }}"
+
+# State parameters
+app_hash_size = "{{ .Consensus.AppHashSize }}"
 
 #######################################################
 ###   Transaction Indexer Configuration Options     ###
@@ -506,6 +528,7 @@ var testGenesisFmt = `{
   "genesis_time": "2018-10-10T08:20:13.695936996Z",
   "chain_id": "%s",
   "initial_height": "1",
+  "initial_core_chain_locked_height": 1,
 	"consensus_params": {
 		"block": {
 			"max_bytes": "22020096",
@@ -530,10 +553,16 @@ var testGenesisFmt = `{
         "type": "tendermint/PubKeyBLS12381",
         "value":"F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"
       },
-      "power": "10",
-      "name": ""
+      "power": "100",
+      "name": "",
+      "pro_tx_hash": "51BF39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C45F"
     }
   ],
+  "quorum_hash": "444F39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C433",
+  "threshold_public_key": {
+    "type": "tendermint/PubKeyBLS12381",
+	"value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"
+  },
   "app_hash": ""
 }`
 
@@ -546,7 +575,8 @@ var testPrivValidatorKey = `{
   "priv_key": {
     "type": "tendermint/PrivKeyBLS12381",
     "value": "RokcLOxJWTyBkh5HPbdIACng/B65M8a5PYH1Nw6xn70="
-  }
+  },
+  "pro_tx_hash": "51BF39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C45F"
 }`
 
 var testPrivValidatorState = `{

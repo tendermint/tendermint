@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	types1 "github.com/tendermint/tendermint/types"
+
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
 )
@@ -11,13 +13,16 @@ import (
 type Application struct {
 	types.BaseApplication
 
-	hashCount int
-	txCount   int
-	serial    bool
+	hashCount                  int
+	txCount                    int
+	serial                     bool
+	HasCoreChainLocks          bool
+	CurrentCoreChainLockHeight uint32
+	CoreChainLockStep          int32
 }
 
 func NewApplication(serial bool) *Application {
-	return &Application{serial: serial}
+	return &Application{serial: serial, CoreChainLockStep: 1}
 }
 
 func (app *Application) Info(req types.RequestInfo) types.ResponseInfo {
@@ -86,13 +91,17 @@ func (app *Application) Commit() (resp types.ResponseCommit) {
 	if app.txCount == 0 {
 		return types.ResponseCommit{}
 	}
-	hash := make([]byte, 8)
-	binary.BigEndian.PutUint64(hash, uint64(app.txCount))
+	hash := make([]byte, 24)
+	endHash := make([]byte, 8)
+	binary.BigEndian.PutUint64(endHash, uint64(app.txCount))
+	hash = append(hash, endHash...)
 	return types.ResponseCommit{Data: hash}
 }
 
 func (app *Application) Query(reqQuery types.RequestQuery) types.ResponseQuery {
 	switch reqQuery.Path {
+	case "verify-chainlock":
+		return types.ResponseQuery{Code: 0}
 	case "hash":
 		return types.ResponseQuery{Value: []byte(fmt.Sprintf("%v", app.hashCount))}
 	case "tx":
@@ -100,4 +109,17 @@ func (app *Application) Query(reqQuery types.RequestQuery) types.ResponseQuery {
 	default:
 		return types.ResponseQuery{Log: fmt.Sprintf("Invalid query path. Expected hash or tx, got %v", reqQuery.Path)}
 	}
+}
+
+func (app *Application) EndBlock(reqEndBlock types.RequestEndBlock) types.ResponseEndBlock {
+	if app.HasCoreChainLocks {
+		app.CurrentCoreChainLockHeight = uint32(int32(app.CurrentCoreChainLockHeight) + app.CoreChainLockStep)
+
+		coreChainLock := types1.NewMockChainLock(app.CurrentCoreChainLockHeight)
+
+		return types.ResponseEndBlock{
+			NextCoreChainLockUpdate: coreChainLock.ToProto(),
+		}
+	}
+	return types.ResponseEndBlock{}
 }

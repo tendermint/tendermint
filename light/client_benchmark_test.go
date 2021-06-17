@@ -5,13 +5,12 @@ import (
 	"testing"
 	"time"
 
-	dbm "github.com/tendermint/tm-db"
-
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
 	mockp "github.com/tendermint/tendermint/light/provider/mock"
 	dbs "github.com/tendermint/tendermint/light/store/db"
+	dbm "github.com/tendermint/tm-db"
 )
 
 // NOTE: block is produced every minute. Make sure the verification time
@@ -22,7 +21,7 @@ import (
 //
 // Remember that none of these benchmarks account for network latency.
 var (
-	benchmarkFullNode = mockp.New(genMockNode(chainID, 1000, 100, 1, bTime))
+	benchmarkFullNode = mockp.New(genMockNode(chainID, 1000, 100, bTime))
 	genesisBlock, _   = benchmarkFullNode.LightBlock(context.Background(), 1)
 )
 
