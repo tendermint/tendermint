@@ -16,8 +16,8 @@ import (
 	"github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/libs/autofile"
 	"github.com/tendermint/tendermint/libs/log"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmtypes "github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 const (

@@ -23,9 +23,9 @@ import (
 	"github.com/tendermint/tendermint/libs/bits"
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
-	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
 )
 
