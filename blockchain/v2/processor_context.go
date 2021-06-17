@@ -45,7 +45,7 @@ func (pc *pContext) setState(state state.State) {
 
 func (pc pContext) verifyCommit(chainID string, blockID types.BlockID, stateID types.StateID,
 	height int64, commit *types.Commit) error {
-	return pc.state.Validators.VerifyCommitLight(chainID, blockID, stateID, height, commit)
+	return pc.state.Validators.VerifyCommit(chainID, blockID, stateID, height, commit)
 }
 
 func (pc *pContext) saveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {

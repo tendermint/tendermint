@@ -33,7 +33,7 @@ const (
 type consensusReactor interface {
 	// for when we switch from blockchain reactor and fast sync to
 	// the consensus machine
-	SwitchToConsensus(state sm.State, skipWAL bool)
+	SwitchToValidatorConsensus(state sm.State, skipWAL bool)
 }
 
 type peerError struct {
@@ -325,7 +325,7 @@ FOR_LOOP:
 				}
 				conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
 				if ok {
-					conR.SwitchToConsensus(state, blocksSynced > 0 || stateSynced)
+					conR.SwitchToValidatorConsensus(state, blocksSynced > 0 || stateSynced)
 				}
 				// else {
 				// should only happen during testing
@@ -369,7 +369,7 @@ FOR_LOOP:
 			// NOTE: we can probably make this more efficient, but note that calling
 			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 			// currently necessary.
-			err := state.Validators.VerifyCommitLight(
+			err := state.Validators.VerifyCommit(
 				chainID, firstID, firstStateID, first.Height, second.LastCommit)
 			if err != nil {
 				bcR.Logger.Error("Error in validation", "err", err)
