@@ -100,8 +100,6 @@ type Reactor struct {
 	// requestRoutine spawned goroutines when stopping the reactor and before
 	// stopping the p2p Channel(s).
 	poolWG sync.WaitGroup
-
-	metrics *con.Metrics
 }
 
 // NewReactor returns new reactor instance.
@@ -140,7 +138,6 @@ func NewReactor(
 		peerUpdates:   peerUpdates,
 		peerUpdatesCh: make(chan p2p.Envelope),
 		closeCh:       make(chan struct{}),
-		metrics:       con.NopMetrics(),
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Blockchain", r)
