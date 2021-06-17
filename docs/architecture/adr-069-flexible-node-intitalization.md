@@ -132,6 +132,14 @@ point, a cluster of dependencies can be wrapped as a single
   `service.BaseService` and `service.Service` implementations is
   troubling, the default panic in `OnReset` seems troubling.)
 
+- As part of the refactor of `service.Service` have all services/nodes
+  respect the lifetime of a `context.Context` object, and avoid the
+  current practice of creating `context.Context` objects in p2p and
+  reactor code. This would be required for in-process multi-tenancy.
+  
+- Consider additional interfaces that node objects can provide in
+  terms of access to components (e.g. the mempool).
+
 - Support explicit dependencies between components and allow for
   parallel startup, so that different reactors can startup at the same
   time, where possible.
