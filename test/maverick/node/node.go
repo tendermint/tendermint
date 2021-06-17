@@ -672,7 +672,7 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 				return
 			}
 		} else {
-			conR.SwitchToConsensus(state, true)
+			conR.SwitchToValidatorConsensus(state, true)
 		}
 	}()
 	return nil

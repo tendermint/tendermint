@@ -103,8 +103,55 @@ func (conR *Reactor) OnStop() {
 
 // SwitchToConsensus switches from fast_sync mode to consensus mode.
 // It resets the state, turns off fast_sync, and starts the consensus state-machine
+// It decides based on the current validator set to either go into validator consensus or full node consensus
 func (conR *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
-	conR.Logger.Info("SwitchToConsensus")
+	if state.Validators.HasPublicKeys {
+		conR.SwitchToValidatorConsensus(state, skipWAL)
+	} else {
+		conR.SwitchToFullNodeConsensus(state, skipWAL)
+	}
+}
+
+// SwitchToValidatorConsensus switches from fast_sync mode to consensus mode.
+// It resets the state, turns off fast_sync, and starts the validator consensus state-machine
+func (conR *Reactor) SwitchToValidatorConsensus(state sm.State, skipWAL bool) {
+	conR.Logger.Info("SwitchToValidatorConsensus")
+
+	// We have no votes, so reconstruct LastPrecommits from SeenCommit.
+	if state.LastBlockHeight > 0 {
+		conR.conS.reconstructLastCommit(state)
+	}
+
+	// NOTE: The line below causes broadcastNewRoundStepRoutine() to broadcast a
+	// NewRoundStepMessage.
+	conR.conS.updateToState(state)
+
+	conR.mtx.Lock()
+	conR.waitSync = false
+	conR.mtx.Unlock()
+	conR.Metrics.FastSyncing.Set(0)
+	conR.Metrics.StateSyncing.Set(0)
+
+	if skipWAL {
+		conR.conS.doWALCatchup = false
+	}
+	err := conR.conS.Start()
+	if err != nil {
+		panic(fmt.Sprintf(`Failed to start consensus state: %v
+
+conS:
+%+v
+
+conR:
+%+v`, err, conR.conS, conR))
+	}
+}
+
+// SwitchToFullNodeConsensus switches from fast_sync mode to consensus mode.
+// It resets the state, turns off fast_sync, and starts the full node consensus state-machine
+// This state machine does not verify votes, but only commits
+func (conR *Reactor) SwitchToFullNodeConsensus(state sm.State, skipWAL bool) {
+	conR.Logger.Info("SwitchToValidatorConsensus")
 
 	// We have no votes, so reconstruct LastPrecommits from SeenCommit.
 	if state.LastBlockHeight > 0 {
@@ -195,7 +242,7 @@ func (conR *Reactor) AddPeer(peer p2p.Peer) {
 	go conR.queryMaj23Routine(peer, peerState)
 
 	// Send our state to peer.
-	// If we're fast_syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
+	// If we're fast_syncing, broadcast a RoundStepMessage later upon SwitchToValidatorConsensus().
 	if !conR.WaitSync() {
 		conR.sendNewRoundStepMessage(peer)
 	}
@@ -634,6 +681,9 @@ func (conR *Reactor) gossipVotesRoutine(peer p2p.Peer, ps *PeerState) {
 	// Simple hack to throttle logs upon sleep.
 	var sleeping = 0
 
+	nodeInfo := peer.NodeInfo()
+	nodeProTxHash := nodeInfo.GetProTxHash()
+
 OUTER_LOOP:
 	for {
 		// Manage disconnects from self or peer.
@@ -643,6 +693,11 @@ OUTER_LOOP:
 		}
 		rs := conR.conS.GetRoundState()
 		prs := ps.GetRoundState()
+
+		isValidator := false
+		if nodeProTxHash != nil {
+			isValidator = rs.Validators.HasProTxHash(*nodeProTxHash)
+		}
 
 		switch sleeping {
 		case 1: // First sleep
@@ -657,7 +712,7 @@ OUTER_LOOP:
 		// If height matches, then send LastPrecommits, Prevotes, Precommits.
 		if rs.Height == prs.Height {
 			heightLogger := logger.With("height", prs.Height)
-			if conR.gossipVotesForHeight(heightLogger, rs, prs, ps) {
+			if conR.gossipVotesForHeight(heightLogger, rs, prs, ps, isValidator) {
 				continue OUTER_LOOP
 			}
 		}
@@ -666,7 +721,7 @@ OUTER_LOOP:
 		// If peer is lagging by height 1, send LastCommit.
 		if prs.Height != 0 && rs.Height == prs.Height+1 {
 			if ps.SendCommit(rs.LastCommit) {
-				logger.Debug("Picked rs.LastPrecommits to send", "height", prs.Height)
+				logger.Debug("Picked rs.LastCommit to send", "height", prs.Height)
 				continue OUTER_LOOP
 			}
 		}
@@ -702,6 +757,80 @@ OUTER_LOOP:
 }
 
 func (conR *Reactor) gossipVotesForHeight(
+	logger log.Logger,
+	rs *cstypes.RoundState,
+	prs *cstypes.PeerRoundState,
+	ps *PeerState,
+	isValidator bool,
+) bool {
+	if isValidator {
+		return conR.gossipVotesToValidatorForHeight(logger, rs, prs, ps)
+	} else {
+		return conR.gossipVotesToFullNodeForHeight(logger, rs, prs, ps)
+	}
+}
+
+func (conR *Reactor) gossipVotesToValidatorForHeight(
+	logger log.Logger,
+	rs *cstypes.RoundState,
+	prs *cstypes.PeerRoundState,
+	ps *PeerState,
+) bool {
+
+	// If there are lastCommits to send...
+	if prs.Step == cstypes.RoundStepNewHeight {
+		if ps.SendCommit(rs.LastCommit) {
+			logger.Debug("Picked rs.LastCommit to send")
+			return true
+		}
+	}
+	// If there are POL prevotes to send...
+	if prs.Step <= cstypes.RoundStepPropose && prs.Round != -1 && prs.Round <= rs.Round && prs.ProposalPOLRound != -1 {
+		if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
+			if ps.PickSendVote(polPrevotes) {
+				logger.Debug("Picked rs.Prevotes(prs.ProposalPOLRound) to send",
+					"round", prs.ProposalPOLRound)
+				return true
+			}
+		}
+	}
+	// If there are prevotes to send...
+	if prs.Step <= cstypes.RoundStepPrevoteWait && prs.Round != -1 && prs.Round <= rs.Round {
+		if ps.PickSendVote(rs.Votes.Prevotes(prs.Round)) {
+			logger.Debug("Picked rs.Prevotes(prs.Round) to send", "round", prs.Round)
+			return true
+		}
+	}
+	// If there are precommits to send...
+	if prs.Step <= cstypes.RoundStepPrecommitWait && prs.Round != -1 && prs.Round <= rs.Round {
+		if ps.PickSendVote(rs.Votes.Precommits(prs.Round)) {
+			logger.Debug("Picked rs.Precommits(prs.Round) to send", "round", prs.Round)
+			return true
+		}
+	}
+	// If there are prevotes to send...Needed because of validBlock mechanism
+	if prs.Round != -1 && prs.Round <= rs.Round {
+		if ps.PickSendVote(rs.Votes.Prevotes(prs.Round)) {
+			logger.Debug("Picked rs.Prevotes(prs.Round) to send", "round", prs.Round)
+			return true
+		}
+	}
+	// If there are POLPrevotes to send...
+	if prs.ProposalPOLRound != -1 {
+		if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
+			if ps.PickSendVote(polPrevotes) {
+				logger.Debug("Picked rs.Prevotes(prs.ProposalPOLRound) to send",
+					"round", prs.ProposalPOLRound)
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+
+func (conR *Reactor) gossipVotesToFullNodeForHeight(
 	logger log.Logger,
 	rs *cstypes.RoundState,
 	prs *cstypes.PeerRoundState,
