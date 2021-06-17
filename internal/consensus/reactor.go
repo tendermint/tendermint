@@ -353,7 +353,8 @@ func (r *Reactor) UpdateMetrics(s sm.State, b *types.Block) {
 	rm.MissingValidators.Set(float64(missingValidators))
 	rm.MissingValidatorsPower.Set(float64(missingValidatorsPower))
 
-	var byzantineValidatorsPower, byzantineValidatorsCount int64
+	var byzantineValidatorsPower int64
+	var byzantineValidatorsCount int64
 	for _, ev := range b.Evidence.Evidence {
 		if dve, ok := ev.(*types.DuplicateVoteEvidence); ok {
 			if _, val := s.Validators.GetByAddress(dve.VoteA.ValidatorAddress); val != nil {

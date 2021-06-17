@@ -1752,7 +1752,8 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 	cs.metrics.MissingValidatorsPower.Set(float64(missingValidatorsPower))
 
 	// NOTE: byzantine validators power and count is only for consensus evidence i.e. duplicate vote
-	var byzantineValidatorsPower, byzantineValidatorsCount int64
+	var byzantineValidatorsPower int64
+	var byzantineValidatorsCount int64
 
 	for _, ev := range block.Evidence.Evidence {
 		if dve, ok := ev.(*types.DuplicateVoteEvidence); ok {
