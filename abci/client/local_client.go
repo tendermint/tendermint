@@ -362,7 +362,8 @@ func (app *localClient) ApplySnapshotChunkSync(
 
 func (app *localClient) PrepareProposalSync(
 	ctx context.Context,
-	req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+	req types.RequestPrepareProposal,
+) (*types.ResponsePrepareProposal, error) {
 
 	app.mtx.Lock()
 	defer app.mtx.Unlock()

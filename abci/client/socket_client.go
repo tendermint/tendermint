@@ -474,7 +474,8 @@ func (cli *socketClient) ApplySnapshotChunkSync(
 
 func (cli *socketClient) PrepareProposalSync(
 	ctx context.Context,
-	req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+	req types.RequestPrepareProposal,
+) (*types.ResponsePrepareProposal, error) {
 
 	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestPrepareProposal(req))
 	if err != nil {

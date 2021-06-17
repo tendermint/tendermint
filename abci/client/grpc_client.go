@@ -318,6 +318,7 @@ func (cli *grpcClient) PrepareProposalAsync(
 	ctx context.Context,
 	params types.RequestPrepareProposal,
 ) (*ReqRes, error) {
+
 	req := types.ToRequestPrepareProposal(params)
 	res, err := cli.client.PrepareProposal(ctx, req.GetPrepareProposal(), grpc.WaitForReady(true))
 	if err != nil {
@@ -326,7 +327,11 @@ func (cli *grpcClient) PrepareProposalAsync(
 	return cli.finishAsyncCall(
 		ctx,
 		req,
-		&types.Response{Value: &types.Response_PrepareProposal{PrepareProposal: res}},
+		&types.Response{
+			Value: &types.Response_PrepareProposal{
+				PrepareProposal: res,
+			},
+		},
 	)
 }
 
@@ -523,7 +528,8 @@ func (cli *grpcClient) ApplySnapshotChunkSync(
 
 func (cli *grpcClient) PrepareProposalSync(
 	ctx context.Context,
-	params types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+	params types.RequestPrepareProposal,
+) (*types.ResponsePrepareProposal, error) {
 
 	reqres, err := cli.PrepareProposalAsync(ctx, params)
 	if err != nil {
