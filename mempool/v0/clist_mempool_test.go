@@ -235,8 +235,7 @@ func TestMempool_KeepInvalidTxsInCache(t *testing.T) {
 		require.NoError(t, err)
 
 		// simulate new block
-		_ = app.DeliverTx(abci.RequestDeliverTx{Tx: a})
-		_ = app.DeliverTx(abci.RequestDeliverTx{Tx: b})
+		_ = app.FinalizeBlock(abci.RequestFinalizeBlock{Txs: [][]byte{a, b}})
 		err = mp.Update(1, []types.Tx{a, b},
 			[]*abci.ResponseDeliverTx{{Code: abci.CodeTypeOK}, {Code: 2}}, nil, nil)
 		require.NoError(t, err)

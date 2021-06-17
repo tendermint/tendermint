@@ -24,24 +24,30 @@ func (app *Application) Info(req types.RequestInfo) types.ResponseInfo {
 	return types.ResponseInfo{Data: fmt.Sprintf("{\"hashes\":%v,\"txs\":%v}", app.hashCount, app.txCount)}
 }
 
-func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
+func (app *Application) FinalizeBlock(req types.RequestFinalizeBlock) types.ResponseFinalizeBlock {
+
 	if app.serial {
-		if len(req.Tx) > 8 {
-			return types.ResponseDeliverTx{
-				Code: code.CodeTypeEncodingError,
-				Log:  fmt.Sprintf("Max tx size is 8 bytes, got %d", len(req.Tx))}
-		}
-		tx8 := make([]byte, 8)
-		copy(tx8[len(tx8)-len(req.Tx):], req.Tx)
-		txValue := binary.BigEndian.Uint64(tx8)
-		if txValue != uint64(app.txCount) {
-			return types.ResponseDeliverTx{
-				Code: code.CodeTypeBadNonce,
-				Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.txCount, txValue)}
+		for _, tx := range req.Txs {
+			if len(tx) > 8 {
+				return types.ResponseFinalizeBlock{Txs: []*types.ResponseDeliverTx{{
+					Code: code.CodeTypeEncodingError,
+					Log:  fmt.Sprintf("Max tx size is 8 bytes, got %d", len(tx))}},
+				}
+			}
+			tx8 := make([]byte, 8)
+			copy(tx8[len(tx8)-len(tx):], tx)
+			txValue := binary.BigEndian.Uint64(tx8)
+			if txValue != uint64(app.txCount) {
+				return types.ResponseFinalizeBlock{
+					Txs: []*types.ResponseDeliverTx{{
+						Code: code.CodeTypeBadNonce,
+						Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.txCount, txValue)}},
+				}
+			}
 		}
 	}
 	app.txCount++
-	return types.ResponseDeliverTx{Code: code.CodeTypeOK}
+	return types.ResponseFinalizeBlock{Txs: []*types.ResponseDeliverTx{{Code: code.CodeTypeOK}}}
 }
 
 func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {

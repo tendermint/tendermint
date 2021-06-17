@@ -73,11 +73,11 @@ type mockProxyApp struct {
 	abciResponses *tmstate.ABCIResponses
 }
 
-func (mock *mockProxyApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
-	r := mock.abciResponses.DeliverTxs[mock.txCount]
+func (mock *mockProxyApp) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
+	r := mock.abciResponses.FinalizeBlock
 	mock.txCount++
 	if r == nil {
-		return abci.ResponseDeliverTx{}
+		return abci.ResponseFinalizeBlock{}
 	}
 	return *r
 }
