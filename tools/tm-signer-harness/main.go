@@ -25,7 +25,7 @@ const (
 
 var defaultTMHome string
 
-var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 
 // Command line flags
 var (
@@ -165,8 +165,6 @@ func main() {
 		rootCmd.Usage()
 		os.Exit(0)
 	}
-
-	logger = log.NewFilter(logger, log.AllowInfo())
 
 	switch rootCmd.Arg(0) {
 	case "help":

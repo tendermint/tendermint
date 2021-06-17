@@ -14,20 +14,21 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	bcv0 "github.com/tendermint/tendermint/blockchain/v0"
-	bcv2 "github.com/tendermint/tendermint/blockchain/v2"
 	cfg "github.com/tendermint/tendermint/config"
-	cs "github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/evidence"
+	bcv0 "github.com/tendermint/tendermint/internal/blockchain/v0"
+	bcv2 "github.com/tendermint/tendermint/internal/blockchain/v2"
+	cs "github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/evidence"
+	"github.com/tendermint/tendermint/internal/mempool"
+	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
+	mempoolv1 "github.com/tendermint/tendermint/internal/mempool/v1"
+	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/p2p/pex"
+	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
-	"github.com/tendermint/tendermint/mempool"
-	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
-	mempoolv1 "github.com/tendermint/tendermint/mempool/v1"
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/p2p/pex"
 	protop2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -35,7 +36,6 @@ import (
 	kv "github.com/tendermint/tendermint/state/indexer/sink/kv"
 	null "github.com/tendermint/tendermint/state/indexer/sink/null"
 	psql "github.com/tendermint/tendermint/state/indexer/sink/psql"
-	"github.com/tendermint/tendermint/statesync"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
@@ -295,7 +295,7 @@ func createEvidenceReactor(
 
 	evidencePool, err := evidence.NewPool(logger, evidenceDB, sm.NewStore(stateDB), blockStore)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, fmt.Errorf("creating evidence pool: %w", err)
 	}
 
 	var (
@@ -749,6 +749,7 @@ func makeNodeInfo(
 			byte(evidence.EvidenceChannel),
 			byte(statesync.SnapshotChannel),
 			byte(statesync.ChunkChannel),
+			byte(statesync.LightBlockChannel),
 		},
 		Moniker: config.Moniker,
 		Other: p2p.NodeInfoOther{

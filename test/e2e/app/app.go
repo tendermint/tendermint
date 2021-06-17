@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strconv"
 
@@ -39,7 +38,7 @@ func NewApplication(cfg *Config) (*Application, error) {
 		return nil, err
 	}
 	return &Application{
-		logger:    log.NewTMLogger(log.NewSyncWriter(os.Stdout)),
+		logger:    log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false),
 		state:     state,
 		snapshots: snapshots,
 		cfg:       cfg,

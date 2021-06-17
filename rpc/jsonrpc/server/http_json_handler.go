@@ -141,7 +141,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 
 		if len(responses) > 0 {
 			if wErr := WriteRPCResponseHTTP(w, c, responses...); wErr != nil {
-				logger.Error("failed to write responses", "res", responses, "err", wErr)
+				logger.Error("failed to write responses", "err", wErr)
 			}
 		}
 	}

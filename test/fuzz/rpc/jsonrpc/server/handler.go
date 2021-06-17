@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
 
 	"github.com/tendermint/tendermint/libs/log"
 	rs "github.com/tendermint/tendermint/rpc/jsonrpc/server"
@@ -20,7 +19,7 @@ var mux *http.ServeMux
 
 func init() {
 	mux = http.NewServeMux()
-	lgr := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	lgr := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 	rs.RegisterRPCFuncs(mux, rpcFuncMap, lgr)
 }
 
