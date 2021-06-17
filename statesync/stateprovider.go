@@ -10,6 +10,11 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
+	"github.com/tendermint/tendermint/light"
+	lightprovider "github.com/tendermint/tendermint/light/provider"
+	lighthttp "github.com/tendermint/tendermint/light/provider/http"
+	lightrpc "github.com/tendermint/tendermint/light/rpc"
+	lightdb "github.com/tendermint/tendermint/light/store/db"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	sm "github.com/tendermint/tendermint/state"
@@ -38,14 +43,13 @@ type clientStateProvider struct {
 	providers     map[lightprovider.Provider]string
 }
 
-// NewClientStateProvider creates a new StateProvider using a light client and RPC clients.
-func NewClientStateProvider(
+// NewLightClientStateProvider creates a new StateProvider using a light client and RPC clients.
+func NewLightClientStateProvider(
 	ctx context.Context,
 	chainID string,
 	version tmstate.Version,
 	initialHeight int64,
 	servers []string,
-	trustOptions light.TrustOptions,
 	logger log.Logger,
 ) (StateProvider, error) {
 	if len(servers) < 2 {
@@ -66,7 +70,7 @@ func NewClientStateProvider(
 		providerRemotes[provider] = server
 	}
 
-	lc, err := light.NewClient(ctx, chainID, trustOptions, providers[0], providers[1:],
+	lc, err := light.NewClient(ctx, chainID, providers[0], providers[1:],
 		lightdb.New(dbm.NewMemDB(), ""), light.Logger(logger), light.MaxRetryAttempts(5))
 	if err != nil {
 		return nil, err

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/tendermint/tendermint/light/provider"
@@ -59,17 +58,18 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 		case nil: // at least one header matched
 			headerMatched = true
 		case errConflictingHeaders:
-			// We have conflicting headers. This could possibly imply an attack on the light client.
-			// First we need to verify the witness's header using the same skipping verification and then we
-			// need to find the point that the headers diverge and examine this for any evidence of an attack.
-			//
-			// We combine these actions together, verifying the witnesses headers and outputting the trace
-			// which captures the bifurcation point and if successful provides the information to create valid evidence.
-			err := c.handleConflictingHeaders(ctx, primaryTrace, e.Block, e.WitnessIndex, now)
-			if err != nil {
-				// return information of the attack
-				return err
-			}
+			//ToDo: maybe redo this logic
+			//// We have conflicting headers. This could possibly imply an attack on the light client.
+			//// First we need to verify the witness's header using the same skipping verification and then we
+			//// need to find the point that the headers diverge and examine this for any evidence of an attack.
+			////
+			//// We combine these actions together, verifying the witnesses headers and outputting the trace
+			//// which captures the bifurcation point and if successful provides the information to create valid evidence.
+			//err := c.handleConflictingHeaders(ctx, primaryTrace, e.Block, e.WitnessIndex, now)
+			//if err != nil {
+			//	// return information of the attack
+			//	return err
+			//}
 			// if attempt to generate conflicting headers failed then remove witness
 			witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
 
@@ -194,174 +194,13 @@ func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan erro
 	errc <- nil
 }
 
-// sendEvidence sends evidence to a provider on a best effort basis.
-func (c *Client) sendEvidence(ctx context.Context, ev *types.LightClientAttackEvidence, receiver provider.Provider) {
-	err := receiver.ReportEvidence(ctx, ev)
-	if err != nil {
-		c.logger.Error("Failed to report evidence to provider", "ev", ev, "provider", receiver)
-	}
-}
-
-// handleConflictingHeaders handles the primary style of attack, which is where a primary and witness have
-// two headers of the same height but with different hashes
-func (c *Client) handleConflictingHeaders(
-	ctx context.Context,
-	primaryTrace []*types.LightBlock,
-	challendingBlock *types.LightBlock,
-	witnessIndex int,
-	now time.Time,
-) error {
-	supportingWitness := c.witnesses[witnessIndex]
-	witnessTrace, primaryBlock, err := c.examineConflictingHeaderAgainstTrace(
-		ctx,
-		primaryTrace,
-		challendingBlock,
-		supportingWitness,
-		now,
-	)
-	if err != nil {
-		c.logger.Info("error validating witness's divergent header", "witness", supportingWitness, "err", err)
-		return nil
-	}
-
-	// We are suspecting that the primary is faulty, hence we hold the witness as the source of truth
-	// and generate evidence against the primary that we can send to the witness
-	commonBlock, trustedBlock := witnessTrace[0], witnessTrace[len(witnessTrace)-1]
-	evidenceAgainstPrimary := newLightClientAttackEvidence(primaryBlock, trustedBlock, commonBlock)
-	c.logger.Error("ATTEMPTED ATTACK DETECTED. Sending evidence againt primary by witness", "ev", evidenceAgainstPrimary,
-		"primary", c.primary, "witness", supportingWitness)
-	c.sendEvidence(ctx, evidenceAgainstPrimary, supportingWitness)
-
-	if primaryBlock.Commit.Round != witnessTrace[len(witnessTrace)-1].Commit.Round {
-		c.logger.Info("The light client has detected, and prevented, an attempted amnesia attack." +
-			" We think this attack is pretty unlikely, so if you see it, that's interesting to us." +
-			" Can you let us know by opening an issue through https://github.com/tendermint/tendermint/issues/new?")
-	}
-
-	// This may not be valid because the witness itself is at fault. So now we reverse it, examining the
-	// trace provided by the witness and holding the primary as the source of truth. Note: primary may not
-	// respond but this is okay as we will halt anyway.
-	primaryTrace, witnessBlock, err := c.examineConflictingHeaderAgainstTrace(
-		ctx,
-		witnessTrace,
-		primaryBlock,
-		c.primary,
-		now,
-	)
-	if err != nil {
-		c.logger.Info("Error validating primary's divergent header", "primary", c.primary, "err", err)
-		return ErrLightClientAttack
-	}
-
-	// We now use the primary trace to create evidence against the witness and send it to the primary
-	commonBlock, trustedBlock = primaryTrace[0], primaryTrace[len(primaryTrace)-1]
-	evidenceAgainstWitness := newLightClientAttackEvidence(witnessBlock, trustedBlock, commonBlock)
-	c.logger.Error("Sending evidence against witness by primary", "ev", evidenceAgainstWitness,
-		"primary", c.primary, "witness", supportingWitness)
-	c.sendEvidence(ctx, evidenceAgainstWitness, c.primary)
-	// We return the error and don't process anymore witnesses
-	return ErrLightClientAttack
-}
-
-// examineConflictingHeaderAgainstTrace takes a trace from one provider and a divergent header that
-// it has received from another and preforms verifySkipping at the heights of each of the intermediate
-// headers in the trace until it reaches the divergentHeader. 1 of 2 things can happen.
-//
-// 1. The light client verifies a header that is different to the intermediate header in the trace. This
-//    is the bifurcation point and the light client can create evidence from it
-// 2. The source stops responding, doesn't have the block or sends an invalid header in which case we
-//    return the error and remove the witness
-//
-// CONTRACT:
-// 1. Trace can not be empty len(trace) > 0
-// 2. The last block in the trace can not be of a lower height than the target block
-//    trace[len(trace)-1].Height >= targetBlock.Height
-// 3. The
-func (c *Client) examineConflictingHeaderAgainstTrace(
-	ctx context.Context,
-	trace []*types.LightBlock,
-	targetBlock *types.LightBlock,
-	source provider.Provider, now time.Time,
-) ([]*types.LightBlock, *types.LightBlock, error) {
-
-	var (
-		previouslyVerifiedBlock, sourceBlock *types.LightBlock
-		sourceTrace                          []*types.LightBlock
-		err                                  error
-	)
-
-	if targetBlock.Height < trace[0].Height {
-		return nil, nil, fmt.Errorf("target block has a height lower than the trusted height (%d < %d)",
-			targetBlock.Height, trace[0].Height)
-	}
-
-	for idx, traceBlock := range trace {
-		// this case only happens in a forward lunatic attack. We treat the block with the
-		// height directly after the targetBlock as the divergent block
-		if traceBlock.Height > targetBlock.Height {
-			// sanity check that the time of the traceBlock is indeed less than that of the targetBlock. If the trace
-			// was correctly verified we should expect monotonically increasing time. This means that if the block at
-			// the end of the trace has a lesser time than the target block then all blocks in the trace should have a
-			// lesser time
-			if traceBlock.Time.After(targetBlock.Time) {
-				return nil, nil,
-					errors.New("sanity check failed: expected traceblock to have a lesser time than the target block")
-			}
-
-			// before sending back the divergent block and trace we need to ensure we have verified
-			// the final gap between the previouslyVerifiedBlock and the targetBlock
-			if previouslyVerifiedBlock.Height != targetBlock.Height {
-				sourceTrace, err = c.verifySkipping(ctx, source, previouslyVerifiedBlock, targetBlock, now)
-				if err != nil {
-					return nil, nil, fmt.Errorf("verifySkipping of conflicting header failed: %w", err)
-				}
-			}
-			return sourceTrace, traceBlock, nil
-		}
-
-		// get the corresponding block from the source to verify and match up against the traceBlock
-		if traceBlock.Height == targetBlock.Height {
-			sourceBlock = targetBlock
-		} else {
-			sourceBlock, err = source.LightBlock(ctx, traceBlock.Height)
-			if err != nil {
-				return nil, nil, fmt.Errorf("failed to examine trace: %w", err)
-			}
-		}
-
-		// The first block in the trace MUST be the same to the light block that the source produces
-		// else we cannot continue with verification.
-		if idx == 0 {
-			if shash, thash := sourceBlock.Hash(), traceBlock.Hash(); !bytes.Equal(shash, thash) {
-				return nil, nil, fmt.Errorf("trusted block is different to the source's first block (%X = %X)",
-					thash, shash)
-			}
-			previouslyVerifiedBlock = sourceBlock
-			continue
-		}
-
-		// we check that the source provider can verify a block at the same height of the
-		// intermediate height
-		sourceTrace, err = c.verifySkipping(ctx, source, previouslyVerifiedBlock, sourceBlock, now)
-		if err != nil {
-			return nil, nil, fmt.Errorf("verifySkipping of conflicting header failed: %w", err)
-		}
-		// check if the headers verified by the source has diverged from the trace
-		if shash, thash := sourceBlock.Hash(), traceBlock.Hash(); !bytes.Equal(shash, thash) {
-			// Bifurcation point found!
-			return sourceTrace, traceBlock, nil
-		}
-
-		// headers are still the same. update the previouslyVerifiedBlock
-		previouslyVerifiedBlock = sourceBlock
-	}
-
-	// We have reached the end of the trace. This should never happen. This can only happen if one of the stated
-	// prerequisites to this function were not met. Namely that either trace[len(trace)-1].Height < targetBlock.Height
-	// or that trace[i].Hash() != targetBlock.Hash()
-	return nil, nil, errNoDivergence
-
-}
+//// sendEvidence sends evidence to a provider on a best effort basis.
+//func (c *Client) sendEvidence(ctx context.Context, ev *types.LightClientAttackEvidence, receiver provider.Provider) {
+//	err := receiver.ReportEvidence(ctx, ev)
+//	if err != nil {
+//		c.logger.Error("Failed to report evidence to provider", "ev", ev, "provider", receiver)
+//	}
+//}
 
 // getTargetBlockOrLatest gets the latest height, if it is greater than the target height then it queries
 // the target height else it returns the latest. returns true if it successfully managed to acquire the target
@@ -391,24 +230,4 @@ func (c *Client) getTargetBlockOrLatest(
 	}
 
 	return false, lightBlock, nil
-}
-
-// newLightClientAttackEvidence determines the type of attack and then forms the evidence filling out
-// all the fields such that it is ready to be sent to a full node.
-func newLightClientAttackEvidence(conflicted, trusted, common *types.LightBlock) *types.LightClientAttackEvidence {
-	ev := &types.LightClientAttackEvidence{ConflictingBlock: conflicted}
-	// if this is an equivocation or amnesia attack, i.e. the validator sets are the same, then we
-	// return the height of the conflicting block else if it is a lunatic attack and the validator sets
-	// are not the same then we send the height of the common header.
-	if ev.ConflictingHeaderIsInvalid(trusted.Header) {
-		ev.CommonHeight = common.Height
-		ev.Timestamp = common.Time
-		ev.TotalVotingPower = common.ValidatorSet.TotalVotingPower()
-	} else {
-		ev.CommonHeight = trusted.Height
-		ev.Timestamp = trusted.Time
-		ev.TotalVotingPower = trusted.ValidatorSet.TotalVotingPower()
-	}
-	ev.ByzantineValidators = ev.GetByzantineValidators(common.ValidatorSet, trusted.SignedHeader)
-	return ev
 }

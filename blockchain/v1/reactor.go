@@ -36,7 +36,7 @@ var (
 type consensusReactor interface {
 	// for when we switch from blockchain reactor and fast sync to
 	// the consensus machine
-	SwitchToConsensus(state sm.State, skipWAL bool)
+	SwitchToValidatorConsensus(state sm.State, skipWAL bool)
 }
 
 // BlockchainReactor handles long-term catchup syncing.
@@ -473,7 +473,7 @@ func (bcR *BlockchainReactor) processBlock() error {
 	// NOTE: we can probably make this more efficient, but note that calling
 	// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 	// currently necessary.
-	err = bcR.state.Validators.VerifyCommitLight(chainID, firstID, firstStateID, first.Height, second.LastCommit)
+	err = bcR.state.Validators.VerifyCommit(chainID, firstID, firstStateID, first.Height, second.LastCommit)
 	if err != nil {
 		bcR.Logger.Error("error during commit verification", "err", err,
 			"first", first.Height, "second", second.Height)
@@ -523,7 +523,7 @@ func (bcR *BlockchainReactor) sendBlockRequest(peerID p2p.ID, height int64) erro
 func (bcR *BlockchainReactor) switchToConsensus() {
 	conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
 	if ok {
-		conR.SwitchToConsensus(bcR.state, bcR.blocksSynced > 0 || bcR.stateSynced)
+		conR.SwitchToValidatorConsensus(bcR.state, bcR.blocksSynced > 0 || bcR.stateSynced)
 		bcR.eventsFromFSMCh <- bcFsmMessage{event: syncFinishedEv}
 	}
 	// else {
