@@ -1671,7 +1671,7 @@ func (cs *State) finalizeCommit(height int64) {
 	fail.Fail() // XXX
 
 	// must be called before we update state
-	cs.recordMetrics(height, block)
+	cs.RecordMetrics(height, block)
 
 	// NewHeightStep!
 	cs.updateToState(stateCopy)
@@ -1693,7 +1693,7 @@ func (cs *State) finalizeCommit(height int64) {
 	// * cs.StartTime is set to when we will start round0.
 }
 
-func (cs *State) recordMetrics(height int64, block *types.Block) {
+func (cs *State) RecordMetrics(height int64, block *types.Block) {
 	cs.metrics.Validators.Set(float64(cs.Validators.Size()))
 	cs.metrics.ValidatorsPower.Set(float64(cs.Validators.TotalVotingPower()))
 

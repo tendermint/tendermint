@@ -6,6 +6,7 @@ import (
 	"time"
 
 	bc "github.com/tendermint/tendermint/internal/blockchain"
+	con "github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -62,8 +63,7 @@ type consensusReactor interface {
 	// machine.
 	SwitchToConsensus(state sm.State, skipWAL bool)
 
-	// UpdateMetrics updates the fast sync status to the state metrics.
-	UpdateMetrics(s sm.State, b *types.Block)
+	GetConsensusState() *con.State
 }
 
 type peerError struct {
@@ -100,6 +100,8 @@ type Reactor struct {
 	// requestRoutine spawned goroutines when stopping the reactor and before
 	// stopping the p2p Channel(s).
 	poolWG sync.WaitGroup
+
+	metrics *con.Metrics
 }
 
 // NewReactor returns new reactor instance.
@@ -138,6 +140,7 @@ func NewReactor(
 		peerUpdates:   peerUpdates,
 		peerUpdatesCh: make(chan p2p.Envelope),
 		closeCh:       make(chan struct{}),
+		metrics:       con.NopMetrics(),
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Blockchain", r)
@@ -564,7 +567,7 @@ FOR_LOOP:
 				}
 
 				if r.consReactor != nil {
-					r.consReactor.UpdateMetrics(state, first)
+					r.consReactor.GetConsensusState().RecordMetrics(first.Height, first)
 				}
 
 				blocksSynced++
