@@ -32,7 +32,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - P2P Protocol
 
 - Go API
-  - [logging] \#6534 Removed the existing custom Tendermint logger backed by go-kit. The logging interface, `Logger`, remains.
+  - [libs/log] \#6534 Removed the existing custom Tendermint logger backed by go-kit. The logging interface, `Logger`, remains.
   Tendermint still provides a default logger backed by the performant zerolog logger. (@alexanderbez)
   - [mempool] \#6529 The `Context` field has been removed from the `TxInfo` type. `CheckTx` now requires a `Context` argument. (@alexanderbez)
   - [abci/client, proxy] \#5673 `Async` funcs return an error, `Sync` and `Async` funcs accept `context.Context` (@melekes)
@@ -87,7 +87,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [config/indexer] \#6411 Introduce support for custom event indexing data sources, specifically PostgreSQL. (@JayT106)
 
 ### IMPROVEMENTS
-
+- [libs/log] Console log formatting changes as a result of \#6534 and \#6589. (@tychoish)
 - [statesync] \#6566 Allow state sync fetchers and request timeout to be configurable. (@alexanderbez)
 - [types] \#6478 Add `block_id` to `newblock` event (@jeebster)
 - [crypto/ed25519] \#5632 Adopt zip215 `ed25519` verification. (@marbar3778)
