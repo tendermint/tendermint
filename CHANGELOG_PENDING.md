@@ -122,7 +122,11 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [crypto/merkle] \#6513 Optimize HashAlternatives (@marbar3778)
 - [p2p/pex] \#6509 Improve addrBook.hash performance (@cuonglm)
 - [consensus/metrics] \#6549 Change block_size gauge to a histogram for better observability over time (@marbar3778)
+<<<<<<< HEAD
 - [statesync] \#6587 Increase chunk priority and re-request chunks that don't arrive (@cmwaters)
+=======
+- [state/privval] \#6578 No GetPubKey retry beyond the proposal/voting window (@JayT106)
+>>>>>>> 52b2424450 (update changelog)
 
 ### BUG FIXES
 
