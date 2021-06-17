@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog"
 )
@@ -29,7 +30,17 @@ func NewDefaultLogger(format, level string, trace bool) (Logger, error) {
 	var logWriter io.Writer
 	switch strings.ToLower(format) {
 	case LogFormatPlain, LogFormatText:
-		logWriter = zerolog.ConsoleWriter{Out: os.Stderr}
+		logWriter = zerolog.ConsoleWriter{
+			Out:        os.Stderr,
+			NoColor:    true,
+			TimeFormat: time.RFC3339,
+			FormatLevel: func(i interface{}) string {
+				if ll, ok := i.(string); ok {
+					return strings.ToUpper(ll)
+				}
+				return "????"
+			},
+		}
 
 	case LogFormatJSON:
 		logWriter = os.Stderr
