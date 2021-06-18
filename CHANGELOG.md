@@ -1,13 +1,13 @@
 # Changelog
 
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
 ## v0.34.11
 
 *June 18, 2021*
 
 This release improves the robustness of statesync; tweaking channel priorities and timeouts and
 adding two new parameters to the state sync config.
-
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES
 
@@ -32,8 +32,6 @@ This release fixes a bug where peers would sometimes try to send messages
 on incorrect channels. Special thanks to our friends at Oasis Labs for surfacing
 this issue! 
 
-Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
-
 - [p2p/node] [\#6339](https://github.com/tendermint/tendermint/issues/6339) Fix bug with using custom channels (@cmwaters)
 - [light] [\#6346](https://github.com/tendermint/tendermint/issues/6346) Correctly handle too high errors to improve client robustness (@cmwaters)
 
@@ -48,8 +46,6 @@ Further details will be released once networks have upgraded.
 This release also includes a small Go API-breaking change, to reduce panics in the RPC layer.
 
 Special thanks to our external contributors on this release: @gchaincl
-
-Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES
 
@@ -72,8 +68,6 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 
 This release, in conjunction with [a fix in the Cosmos SDK](https://github.com/cosmos/cosmos-sdk/pull/8641),
 introduces changes that should mean the logs are much, much quieter. 🎉
-
-Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS
 
@@ -112,8 +106,6 @@ use remote signer implementations instead of `FilePV` in production.
 Thank you to @joe-bowman for his assistance with this vulnerability and a particular
 shout-out to @marbar3778 for diagnosing it quickly.
 
-Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
-
 ### BUG FIXES
 
 - [consensus] [\#6128](https://github.com/tendermint/tendermint/pull/6128) Remove privValidator from log call (@tessr)
@@ -134,8 +126,6 @@ Thank you to our friends at Crypto.com for the initial report of this memory lea
 
 Special thanks to other external contributors on this release: @yayajacky, @odidev, @laniehei, and @c29r3!
 
-Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
-
 ### BUG FIXES
 
 - [light] [\#6022](https://github.com/tendermint/tendermint/pull/6022) Fix a bug when the number of validators equals 100 (@melekes)
@@ -154,8 +144,6 @@ or https://nvd.nist.gov/vuln/detail/CVE-2021-21271.
 Tendermint Core v0.34.3 also updates GoGo Protobuf to 1.3.2 in order to pick up the fix for
 https://nvd.nist.gov/vuln/detail/CVE-2021-3121. 
 
-Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
-
 ### BUG FIXES
 
 - [evidence] [[security fix]](https://github.com/tendermint/tendermint/security/advisories/GHSA-p658-8693-mhvg) Use correct source of evidence time (@cmwaters)
@@ -168,8 +156,6 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 This release fixes a substantial bug in evidence handling where evidence could
 sometimes be broadcast before the block containing that evidence was fully committed,
 resulting in some nodes panicking when trying to verify said evidence.
-
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES
 
@@ -193,8 +179,6 @@ high load. The consequences can range from pauses between blocks to the peers
 disconnecting from this node. As a temporary remedy (until the mempool package
 is refactored), the `max-batch-bytes` was disabled. Transactions will be sent
 one by one without batching.
-
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES
 
@@ -223,8 +207,6 @@ Holy smokes, this is a big one! For a more reader-friendly overview of the chang
 
 Special thanks to external contributors on this release: @james-ray, @fedekunze, @favadi, @alessio,
 @joe-bowman, @cuonglm, @SadPencil and @dongsam.
-
-And as always, friendly reminder, that we have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES
 
@@ -466,9 +448,6 @@ as 2/3+ of the signatures are checked._
 
 Special thanks to @njmurarka at Bluzelle Networks for reporting this.
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
-
 ### SECURITY:
 
 - [consensus] Do not allow signatures for a wrong block in commits (@ebuchman)
@@ -483,8 +462,6 @@ need to update your code.**
 *May 28, 2020*
 
 Special thanks to external contributors on this release: @tau3,
-
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
@@ -544,8 +521,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 *April 21, 2020*
 
 Special thanks to external contributors on this release: @whylee259, @greg-szabo
-
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
@@ -633,9 +608,6 @@ Notes:
 Special thanks to [fudongbai](https://hackerone.com/fudongbai) for finding
 and reporting this.
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
-
 ### SECURITY:
 
 - [mempool] Reserve IDs in InitPeer instead of AddPeer (@tessr)
@@ -647,8 +619,6 @@ program](https://hackerone.com/tendermint).
 
 Special thanks to external contributors on this release:
 @antho1404, @michaelfig, @gterzian, @tau3, @Shivani912
-
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
@@ -700,9 +670,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 Special thanks to external contributors on this release:
 @princesinha19
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
-
 ### FEATURES:
 
 - [rpc] [\#3333](https://github.com/tendermint/tendermint/issues/3333) Add `order_by` to `/tx_search` endpoint, allowing to change default ordering from asc to desc (@princesinha19)
@@ -720,9 +687,6 @@ program](https://hackerone.com/tendermint).
 ## v0.33
 
 Special thanks to external contributors on this release: @mrekucci, @PSalant726, @princesinha19, @greg-szabo, @dongsam, @cuonglm, @jgimeno, @yenkhoon
-
-Friendly reminder, we have a [bug bounty
-program.](https://hackerone.com/tendermint).
 
 *January 14, 2020*
 
@@ -952,9 +916,6 @@ Notes:
 Special thanks to [fudongbai](https://hackerone.com/fudongbai) for finding
 and reporting this.
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
-
 ### SECURITY:
 
 - [mempool] Reserve IDs in InitPeer instead of AddPeer (@tessr)
@@ -965,9 +926,6 @@ program](https://hackerone.com/tendermint).
 _January, 9, 2020_
 
 Special thanks to external contributors on this release: @greg-szabo, @gregzaitsev, @yenkhoon
-
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
 
 ### FEATURES:
 
@@ -989,9 +947,6 @@ program](https://hackerone.com/tendermint).
 *November 19, 2019*
 
 Special thanks to external contributors on this release: @erikgrinaker, @guagualvcha, @hsyis, @cosmostuba, @whunmr, @austinabell
-
-Friendly reminder, we have a [bug bounty
-program.](https://hackerone.com/tendermint).
 
 
 ### BREAKING CHANGES:
@@ -1032,9 +987,6 @@ identified and fixed here.
 Special thanks to [elvishacker](https://hackerone.com/elvishacker) for finding
 and reporting this.
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
-
 ### BREAKING CHANGES:
 
 - Go API
@@ -1061,9 +1013,6 @@ accepting new peers and only allowing `ed25519` pubkeys.
 Special thanks to [fudongbai](https://hackerone.com/fudongbai) for pointing
 this out.
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
-
 ### SECURITY:
 
 - [p2p] [\#4030](https://github.com/tendermint/tendermint/issues/4030) Only allow ed25519 pubkeys when connecting
@@ -1079,9 +1028,6 @@ All clients are recommended to upgrade. See
 Special thanks to [fudongbai](https://hackerone.com/fudongbai) for discovering
 and reporting this issue.
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
-
 ### SECURITY:
 
 - [p2p] [\#4030](https://github.com/tendermint/tendermint/issues/4030) Fix for panic on nil public key send to a peer
@@ -1091,9 +1037,6 @@ program](https://hackerone.com/tendermint).
 *September 19, 2019*
 
 Special thanks to external contributors on this release: @jon-certik, @gracenoah, @PSalant726, @gchaincl
-
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
@@ -1130,9 +1073,6 @@ guide.
 Special thanks to external contributors on this release:
 @gchaincl, @bluele, @climber73
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
-
 ### IMPROVEMENTS:
 
 - [consensus] [\#3839](https://github.com/tendermint/tendermint/issues/3839) Reduce "Error attempting to add vote" message severity (Error -> Info)
@@ -1152,9 +1092,6 @@ program](https://hackerone.com/tendermint).
 
 Special thanks to external contributors on this release:
 @ruseinov, @bluele, @guagualvcha
-
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
@@ -1194,9 +1131,6 @@ Special thanks to external contributors on this release:
 This release contains a minor enhancement to the ABCI and some breaking changes to our libs folder, namely:
 - CheckTx requests include a `CheckTxType` enum that can be set to `Recheck` to indicate to the application that this transaction was already checked/validated and certain expensive operations (like checking signatures) can be skipped
 - Removed various functions from `libs` pkgs
-
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
@@ -1242,9 +1176,6 @@ and the RPC, namely:
 - ABCI Tags are now Events - see
   [docs](https://github.com/tendermint/tendermint/blob/60827f75623b92eff132dc0eff5b49d2025c591e/docs/spec/abci/abci.md#events)
 - Bind RPC to localhost by default, not to the public interface [UPGRADING/RPC_Changes](./UPGRADING.md#rpc_changes)
-
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
@@ -1346,8 +1277,6 @@ Notes:
 Special thanks to [fudongbai](https://hackerone.com/fudongbai) for finding
 and reporting this.
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
 
 ### SECURITY:
 
@@ -1368,8 +1297,6 @@ identified and fixed here.
 Special thanks to [elvishacker](https://hackerone.com/elvishacker) for finding
 and reporting this.
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
@@ -1397,8 +1324,6 @@ accepting new peers and only allowing `ed25519` pubkeys.
 Special thanks to [fudongbai](https://hackerone.com/fudongbai) for pointing
 this out.
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
 
 ### SECURITY:
 
@@ -1415,8 +1340,6 @@ All clients are recommended to upgrade. See
 Special thanks to [fudongbai](https://hackerone.com/fudongbai) for discovering
 and reporting this issue.
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
 
 ### SECURITY:
 
@@ -1712,8 +1635,6 @@ See the [v0.31.0
 Milestone](https://github.com/tendermint/tendermint/milestone/19?closed=1) for
 more details.
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
@@ -1934,8 +1855,6 @@ This release contains two important fixes: one for p2p layer where we sometimes
 were not closing connections and one for consensus layer where consensus with
 no empty blocks (`create_empty_blocks = false`) could halt.
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 - [pex] [\#3037](https://github.com/tendermint/tendermint/issues/3037) Only log "Reached max attempts to dial" once
@@ -1975,8 +1894,6 @@ While we are trying to stabilize the Block protocol to preserve compatibility
 with old chains, there may be some final changes yet to come before Cosmos
 launch as we continue to audit and test the software.
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
@@ -2025,8 +1942,6 @@ program](https://hackerone.com/tendermint).
 Special thanks to external contributors on this release:
 @HaoyangLiu
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
 
 ### BUG FIXES:
 - [consensus] Fix consensus halt from proposing blocks with too much evidence
@@ -2155,8 +2070,6 @@ Special thanks to @dlguddus for discovering a [major
 issue](https://github.com/tendermint/tendermint/issues/2718#issuecomment-440888677)
 in the proposer selection algorithm.
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
 
 This release is primarily about fixes to the proposer selection algorithm
 in preparation for the [Cosmos Game of
@@ -2219,8 +2132,6 @@ Special thanks to external contributors on this release:
 @ackratos, @goolAdapter, @james-ray, @joe-bowman, @kostko,
 @nagarajmanjunath, @tomtau
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
 
 ### FEATURES:
 
@@ -2260,8 +2171,6 @@ program](https://hackerone.com/tendermint).
 Special thanks to external contributors on this release:
 @danil-lashin, @kevlubkcm, @krhubert, @srmo
 
-Friendly reminder, we have a [bug bounty
-program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES:
 
@@ -2306,8 +2215,6 @@ program](https://hackerone.com/tendermint).
 
 Special thanks to external contributors on this release: @hleb-albau, @zhuzeyu
 
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
-
 ### FEATURES:
 
 - [rpc] [\#2582](https://github.com/tendermint/tendermint/issues/2582) Enable CORS on RPC API (@hleb-albau)
@@ -2324,8 +2231,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 *November 11, 2018*
 
 Special thanks to external contributors on this release: @katakonst
-
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### IMPROVEMENTS:
 
@@ -2499,8 +2404,6 @@ This release is mostly about the ConsensusParams - removing fields and enforcing
 It also addresses some issues found via security audit, removes various unused
 functions from `libs/common`, and implements
 [ADR-012](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-012-peer-transport.md).
-
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
 BREAKING CHANGES:
 
