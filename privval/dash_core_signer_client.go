@@ -12,6 +12,7 @@ import (
 
 	rpc "github.com/dashevo/dashd-go/rpcclient"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/dashcore/rpc"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	types "github.com/tendermint/tendermint/types"
 )
@@ -19,6 +20,7 @@ import (
 // DashCoreSignerClient implements PrivValidator.
 // Handles remote validator connections that provide signing services
 type DashCoreSignerClient struct {
+	dashCoreRpcClient *dashcore.RpcClient
 	endpoint          *rpc.Client
 	host              string
 	cachedProTxHash   crypto.ProTxHash
@@ -263,7 +265,6 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumType btcjson.LLMQ
 		return fmt.Errorf("decoding signature %d is incorrect size when signing proposal : %v", len(stateDecodedSignature), err)
 	}
 
-
 	// fmt.Printf("Signed Vote proTxHash %s stateSignBytes %s block signature %s \n", proTxHash, hex.EncodeToString(stateSignBytes),
 	// 	hex.EncodeToString(stateDecodedSignature))
 
@@ -288,7 +289,7 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumType btcjson.LLMQ
 
 // SignProposal requests a remote signer to sign a proposal
 func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposalProto *tmproto.Proposal) error {
-	messageBytes:= types.ProposalBlockSignBytes(chainID, proposalProto)
+	messageBytes := types.ProposalBlockSignBytes(chainID, proposalProto)
 
 	messageHash := crypto.Sha256(messageBytes)
 
@@ -339,7 +340,6 @@ func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumType btcjson.
 	//} else {
 	//	fmt.Printf("Unable to verify signature %v\n", pubKey)
 	//}
-
 
 	proposalProto.Signature = decodedSignature
 
