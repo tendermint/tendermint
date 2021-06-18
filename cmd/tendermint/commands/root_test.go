@@ -18,10 +18,6 @@ import (
 	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
-var (
-	defaultRoot = os.ExpandEnv("$HOME/.some/test/dir")
-)
-
 // clearConfig clears env vars, the given root dir, and resets viper.
 func clearConfig(dir string) {
 	if err := os.Unsetenv("TMHOME"); err != nil {
@@ -52,10 +48,10 @@ func testRootCmd() *cobra.Command {
 }
 
 func testSetup(rootDir string, args []string, env map[string]string) error {
-	clearConfig(defaultRoot)
+	clearConfig(rootDir)
 
 	rootCmd := testRootCmd()
-	cmd := cli.PrepareBaseCmd(rootCmd, "TM", defaultRoot)
+	cmd := cli.PrepareBaseCmd(rootCmd, "TM", rootDir)
 
 	// run with the args and env
 	args = append([]string{rootCmd.Use}, args...)
@@ -63,6 +59,7 @@ func testSetup(rootDir string, args []string, env map[string]string) error {
 }
 
 func TestRootHome(t *testing.T) {
+	defaultRoot := t.TempDir()
 	newRoot := filepath.Join(defaultRoot, "something-else")
 	cases := []struct {
 		args []string
@@ -105,6 +102,7 @@ func TestRootFlagsEnv(t *testing.T) {
 		{nil, map[string]string{"TM_LOG_LEVEL": "debug"}, "debug"},       // right env
 	}
 
+	defaultRoot := t.TempDir()
 	for i, tc := range cases {
 		idxString := strconv.Itoa(i)
 
@@ -135,6 +133,7 @@ func TestRootConfig(t *testing.T) {
 	}
 
 	for i, tc := range cases {
+		defaultRoot := t.TempDir()
 		idxString := strconv.Itoa(i)
 		clearConfig(defaultRoot)
 
