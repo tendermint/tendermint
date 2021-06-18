@@ -70,7 +70,7 @@ will need to change to accommodate these changes. Most notably:
 - The `Node` type has become internal, and all constructors return a
   `service.Service` implementation.
 
-- The `node.DefaultNewNode` and `node.NewNode` constructorsare no
+- The `node.DefaultNewNode` and `node.NewNode` constructors are no
   longer exported and have been replaced with `node.New` and
   `node.NewDefault` which provide more functional interfaces.
 
