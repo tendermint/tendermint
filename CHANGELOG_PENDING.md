@@ -17,9 +17,8 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [rpc] \#6168 Change default sorting to desc for `/tx_search` results (@melekes)
   - [cli] \#6282 User must specify the node mode when using `tendermint init` (@cmwaters)
   - [state/indexer] \#6382 reconstruct indexer, move txindex into the indexer package (@JayT106)
-  - [cli] \#6372 Introduce `BootstrapPeers` as part of the new p2p stack. Peers to be connected on
-    startup (@cmwaters)
-  - [config] \#6462 Move `PrivValidator` configuration out of `BaseConfig` into its own section.
+  - [cli] \#6372 Introduce `BootstrapPeers` as part of the new p2p stack. Peers to be connected on  startup (@cmwaters)
+  - [config] \#6462 Move `PrivValidator` configuration out of `BaseConfig` into its own section. (@tychoish)
 
 - Apps
   - [ABCI] \#6408 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)
@@ -32,13 +31,15 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - P2P Protocol
 
 - Go API
+  - [node] \#6540 Reduce surface area of the `node` package by making most of the implementation details private. (@tychoish)
+  - [p2p] \#6547 Move the entire `p2p` package and all reactor implementations into `internal`.  (@tychoish)
+  - [libs/log] \#6534 Remove the existing custom Tendermint logger backed by go-kit. The logging interface, `Logger`, remains. Tendermint still provides a default logger backed by the performant zerolog logger. (@alexanderbez)
   - [libs/time] \#6495 Move types/time to libs/time to improve consistency. (@tychoish)
-  - [libs/log] \#6534 Removed the existing custom Tendermint logger backed by go-kit. The logging interface, `Logger`, remains. Tendermint still provides a default logger backed by the performant zerolog logger. (@alexanderbez)
   - [mempool] \#6529 The `Context` field has been removed from the `TxInfo` type. `CheckTx` now requires a `Context` argument. (@alexanderbez)
   - [abci/client, proxy] \#5673 `Async` funcs return an error, `Sync` and `Async` funcs accept `context.Context` (@melekes)
-  - [p2p] Removed unused function `MakePoWTarget`. (@erikgrinaker)
+  - [p2p] Remove unused function `MakePoWTarget`. (@erikgrinaker)
   - [libs/bits] \#5720 Validate `BitArray` in `FromProto`, which now returns an error (@melekes)
-  - [proto/p2p] Renamed `DefaultNodeInfo` and `DefaultNodeInfoOther` to `NodeInfo` and `NodeInfoOther` (@erikgrinaker)
+  - [proto/p2p] Rename `DefaultNodeInfo` and `DefaultNodeInfoOther` to `NodeInfo` and `NodeInfoOther` (@erikgrinaker)
   - [proto/p2p] Rename `NodeInfo.default_node_id` to `node_id` (@erikgrinaker)
   - [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
   - [store] \#5848 Remove block store state in favor of using the db iterators directly (@cmwaters)
@@ -54,7 +55,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [rpc/client/http] \#6176 Unexpose `WSEvents` (@melekes)
   - [rpc/jsonrpc/client/ws_client] \#6176 `NewWS` no longer accepts options (use `NewWSWithOptions` and `OnReconnect` funcs to configure the client) (@melekes)
   - [internal/libs] \#6366 Move `autofile`, `clist`,`fail`,`flowrate`, `protoio`, `sync`, `tempfile`, `test` and `timer` lib packages to an internal folder
-  - [libs/rand] \#6364 Removed most of libs/rand in favour of standard lib's `math/rand` (@liamsi)
+  - [libs/rand] \#6364 Remove most of libs/rand in favour of standard lib's `math/rand` (@liamsi)
   - [mempool] \#6466 The original mempool reactor has been versioned as `v0` and moved to a sub-package under the root `mempool` package.
     Some core types have been kept in the `mempool` package such as `TxCache` and it's implementations, the `Mempool` interface itself
     and `TxInfo`. (@alexanderbez)
