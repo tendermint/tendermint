@@ -47,6 +47,17 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 * CLI commands and flags are all now hyphen-case instead of snake_case.
   Make sure to adjust any scripts that calls a cli command with snake_casing
+
+### API Changes
+
+The p2p layer was reimplemented as part of the 0.35 release cycle, and
+all reactors were refactored. As part of that work these
+implementations moved into the `internal` package and are no longer
+considered part of the public Go API of tendermint. Accordingly, the
+space `node` package was changed to reduce access to tendermint
+internals: applications that use tendermint as a library will need to
+change to accommodate these changes.
+
 ## v0.34.0
 
 **Upgrading to Tendermint 0.34 requires a blockchain restart.**
