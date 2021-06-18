@@ -180,7 +180,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 		LastBlockAppHash: []byte("app_hash"),
 	}, nil)
 
-	newState, lastCommit, err := rts.syncer.SyncAny(ctx, 0)
+	newState, lastCommit, err := rts.syncer.SyncAny(ctx, 0, func() {})
 	require.NoError(t, err)
 
 	wg.Wait()
@@ -206,7 +206,7 @@ func TestSyncer_SyncAny_noSnapshots(t *testing.T) {
 
 	rts := setup(t, nil, nil, stateProvider, 2)
 
-	_, _, err := rts.syncer.SyncAny(ctx, 0)
+	_, _, err := rts.syncer.SyncAny(ctx, 0, func() {})
 	require.Equal(t, errNoSnapshots, err)
 }
 
@@ -226,7 +226,7 @@ func TestSyncer_SyncAny_abort(t *testing.T) {
 		Snapshot: toABCI(s), AppHash: []byte("app_hash"),
 	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ABORT}, nil)
 
-	_, _, err = rts.syncer.SyncAny(ctx, 0)
+	_, _, err = rts.syncer.SyncAny(ctx, 0, func() {})
 	require.Equal(t, errAbort, err)
 	rts.conn.AssertExpectations(t)
 }
@@ -265,7 +265,7 @@ func TestSyncer_SyncAny_reject(t *testing.T) {
 		Snapshot: toABCI(s11), AppHash: []byte("app_hash"),
 	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT}, nil)
 
-	_, _, err = rts.syncer.SyncAny(ctx, 0)
+	_, _, err = rts.syncer.SyncAny(ctx, 0, func() {})
 	require.Equal(t, errNoSnapshots, err)
 	rts.conn.AssertExpectations(t)
 }
@@ -300,7 +300,7 @@ func TestSyncer_SyncAny_reject_format(t *testing.T) {
 		Snapshot: toABCI(s11), AppHash: []byte("app_hash"),
 	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ABORT}, nil)
 
-	_, _, err = rts.syncer.SyncAny(ctx, 0)
+	_, _, err = rts.syncer.SyncAny(ctx, 0, func() {})
 	require.Equal(t, errAbort, err)
 	rts.conn.AssertExpectations(t)
 }
@@ -346,7 +346,7 @@ func TestSyncer_SyncAny_reject_sender(t *testing.T) {
 		Snapshot: toABCI(sa), AppHash: []byte("app_hash"),
 	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT}, nil)
 
-	_, _, err = rts.syncer.SyncAny(ctx, 0)
+	_, _, err = rts.syncer.SyncAny(ctx, 0, func() {})
 	require.Equal(t, errNoSnapshots, err)
 	rts.conn.AssertExpectations(t)
 }
@@ -369,7 +369,7 @@ func TestSyncer_SyncAny_abciError(t *testing.T) {
 		Snapshot: toABCI(s), AppHash: []byte("app_hash"),
 	}).Once().Return(nil, errBoom)
 
-	_, _, err = rts.syncer.SyncAny(ctx, 0)
+	_, _, err = rts.syncer.SyncAny(ctx, 0, func() {})
 	require.True(t, errors.Is(err, errBoom))
 	rts.conn.AssertExpectations(t)
 }

@@ -233,14 +233,15 @@ func (r *Reactor) Sync(
 	)
 	r.mtx.Unlock()
 
-	// request snapshots from all currently connected peers
-	r.Logger.Debug("requesting snapshots from known peers")
-	r.snapshotCh.Out <- p2p.Envelope{
-		Broadcast: true,
-		Message:   &ssproto.SnapshotsRequest{},
+	requestSnapshotsHook := func() {
+		// request snapshots from all currently connected peers
+		r.snapshotCh.Out <- p2p.Envelope{
+			Broadcast: true,
+			Message:   &ssproto.SnapshotsRequest{},
+		}
 	}
 
-	state, commit, err := r.syncer.SyncAny(ctx, discoveryTime)
+	state, commit, err := r.syncer.SyncAny(ctx, discoveryTime, requestSnapshotsHook)
 	if err != nil {
 		return sm.State{}, err
 	}
