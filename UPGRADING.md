@@ -53,10 +53,26 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 The p2p layer was reimplemented as part of the 0.35 release cycle, and
 all reactors were refactored. As part of that work these
 implementations moved into the `internal` package and are no longer
-considered part of the public Go API of tendermint. Accordingly, the
-space `node` package was changed to reduce access to tendermint
-internals: applications that use tendermint as a library will need to
-change to accommodate these changes.
+considered part of the public Go API of tendermint. These packages
+are:
+
+- `p2p`
+- `mempool`
+- `consensus`
+- `statesync`
+- `blockchain`
+- `evidence`
+
+Accordingly, the space `node` package was changed to reduce access to
+tendermint internals: applications that use tendermint as a library
+will need to change to accommodate these changes. Most notably:
+
+- The `Node` type has become internal, and all constructors return a
+  `service.Service` implementation.
+
+- The `node.DefaultNewNode` and `node.NewNode` constructorsare no
+  longer exported and have been replaced with `node.New` and
+  `node.NewDefault` which provide more functional interfaces.
 
 ## v0.34.0
 
