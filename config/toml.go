@@ -426,11 +426,11 @@ discovery-time = "{{ .StateSync.DiscoveryTime }}"
 temp-dir = "{{ .StateSync.TempDir }}"
 
 # The timeout duration before re-requesting a chunk, possibly from a different
-# peer (default: 1 minute).
+# peer (default: 15 seconds).
 chunk-request-timeout = "{{ .StateSync.ChunkRequestTimeout }}"
 
-# The number of concurrent chunk fetchers to run (default: 1).
-chunk-fetchers = "{{ .StateSync.ChunkFetchers }}"
+# The number of concurrent chunk and block fetchers to run (default: 4).
+fetchers = "{{ .StateSync.Fetchers }}"
 
 #######################################################
 ###       Fast Sync Configuration Connections       ###
