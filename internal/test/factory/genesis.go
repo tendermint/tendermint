@@ -4,8 +4,8 @@ import (
 	"sort"
 
 	cfg "github.com/tendermint/tendermint/config"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 func RandGenesisDoc(

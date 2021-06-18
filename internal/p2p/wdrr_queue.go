@@ -10,8 +10,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-const defaultCapacity uint = 1048576 // 1MB
-
 // wrappedEnvelope wraps a p2p Envelope with its precomputed size.
 type wrappedEnvelope struct {
 	envelope Envelope

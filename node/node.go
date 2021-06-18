@@ -28,6 +28,7 @@ import (
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/libs/strings"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/privval"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
@@ -39,7 +40,6 @@ import (
 	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 // nodeImpl is the highest level interface to a full Tendermint node.
@@ -104,7 +104,7 @@ func newDefaultNode(config *cfg.Config, logger log.Logger) (service.Service, err
 
 	var pval *privval.FilePV
 	if config.Mode == cfg.ModeValidator {
-		pval, err = privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+		pval, err = privval.LoadOrGenFilePV(config.PrivValidator.KeyFile(), config.PrivValidator.StateFile())
 		if err != nil {
 			return nil, err
 		}
@@ -1176,7 +1176,12 @@ func createAndStartPrivValidatorGRPCClient(
 	chainID string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
-	pvsc, err := tmgrpc.DialRemoteSigner(config, chainID, logger)
+	pvsc, err := tmgrpc.DialRemoteSigner(
+		config.PrivValidator,
+		chainID,
+		logger,
+		config.Instrumentation.Prometheus,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}

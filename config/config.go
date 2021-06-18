@@ -125,32 +125,8 @@ func (cfg *Config) SetRoot(root string) *Config {
 	cfg.P2P.RootDir = root
 	cfg.Mempool.RootDir = root
 	cfg.Consensus.RootDir = root
+	cfg.PrivValidator.RootDir = root
 	return cfg
-}
-
-// PrivValidatorClientKeyFile returns the full path to the priv_validator_key.json file
-func (cfg Config) PrivValidatorClientKeyFile() string {
-	return rootify(cfg.PrivValidator.ClientKey, cfg.RootDir)
-}
-
-// PrivValidatorClientCertificateFile returns the full path to the priv_validator_key.json file
-func (cfg Config) PrivValidatorClientCertificateFile() string {
-	return rootify(cfg.PrivValidator.ClientCertificate, cfg.RootDir)
-}
-
-// PrivValidatorCertificateAuthorityFile returns the full path to the priv_validator_key.json file
-func (cfg Config) PrivValidatorRootCAFile() string {
-	return rootify(cfg.PrivValidator.RootCA, cfg.RootDir)
-}
-
-// PrivValidatorKeyFile returns the full path to the priv_validator_key.json file
-func (cfg Config) PrivValidatorKeyFile() string {
-	return rootify(cfg.PrivValidator.Key, cfg.RootDir)
-}
-
-// PrivValidatorFile returns the full path to the priv_validator_state.json file
-func (cfg Config) PrivValidatorStateFile() string {
-	return rootify(cfg.PrivValidator.State, cfg.RootDir)
 }
 
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
@@ -311,19 +287,6 @@ func (cfg BaseConfig) DBDir() string {
 	return rootify(cfg.DBPath, cfg.RootDir)
 }
 
-func (cfg Config) ArePrivValidatorClientSecurityOptionsPresent() bool {
-	switch {
-	case cfg.PrivValidator.RootCA == "":
-		return false
-	case cfg.PrivValidator.ClientKey == "":
-		return false
-	case cfg.PrivValidator.ClientCertificate == "":
-		return false
-	default:
-		return true
-	}
-}
-
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg BaseConfig) ValidateBasic() error {
@@ -350,6 +313,8 @@ func (cfg BaseConfig) ValidateBasic() error {
 
 // PrivValidatorConfig defines the configuration parameters for running a validator
 type PrivValidatorConfig struct {
+	RootDir string `mapstructure:"home"`
+
 	// Path to the JSON file containing the private key to use as a validator in the consensus protocol
 	Key string `mapstructure:"key-file"`
 
@@ -377,6 +342,44 @@ func DefaultPrivValidatorConfig() *PrivValidatorConfig {
 	return &PrivValidatorConfig{
 		Key:   defaultPrivValKeyPath,
 		State: defaultPrivValStatePath,
+	}
+}
+
+// ClientKeyFile returns the full path to the priv_validator_key.json file
+func (cfg *PrivValidatorConfig) ClientKeyFile() string {
+	return rootify(cfg.ClientKey, cfg.RootDir)
+}
+
+// ClientCertificateFile returns the full path to the priv_validator_key.json file
+func (cfg *PrivValidatorConfig) ClientCertificateFile() string {
+	return rootify(cfg.ClientCertificate, cfg.RootDir)
+}
+
+// CertificateAuthorityFile returns the full path to the priv_validator_key.json file
+func (cfg *PrivValidatorConfig) RootCAFile() string {
+	return rootify(cfg.RootCA, cfg.RootDir)
+}
+
+// KeyFile returns the full path to the priv_validator_key.json file
+func (cfg *PrivValidatorConfig) KeyFile() string {
+	return rootify(cfg.Key, cfg.RootDir)
+}
+
+// StateFile returns the full path to the priv_validator_state.json file
+func (cfg *PrivValidatorConfig) StateFile() string {
+	return rootify(cfg.State, cfg.RootDir)
+}
+
+func (cfg *PrivValidatorConfig) AreSecurityOptionsPresent() bool {
+	switch {
+	case cfg.RootCA == "":
+		return false
+	case cfg.ClientKey == "":
+		return false
+	case cfg.ClientCertificate == "":
+		return false
+	default:
+		return true
 	}
 }
 

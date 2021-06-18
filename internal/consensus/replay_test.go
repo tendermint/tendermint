@@ -706,7 +706,7 @@ func testHandshakeReplay(t *testing.T, sim *simulatorTestSuite, nBlocks int, mod
 		walFile := tempWALWithData(walBody)
 		config.Consensus.SetWalFile(walFile)
 
-		privVal, err := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+		privVal, err := privval.LoadFilePV(config.PrivValidator.KeyFile(), config.PrivValidator.StateFile())
 		require.NoError(t, err)
 
 		wal, err := NewWAL(walFile)
@@ -939,7 +939,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	//		- 0x03
 	config := ResetConfig("handshake_test_")
 	t.Cleanup(func() { os.RemoveAll(config.RootDir) })
-	privVal, err := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+	privVal, err := privval.LoadFilePV(config.PrivValidator.KeyFile(), config.PrivValidator.StateFile())
 	require.NoError(t, err)
 	const appVersion = 0x0
 	pubKey, err := privVal.GetPubKey(context.Background())
@@ -1230,7 +1230,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	config := ResetConfig("handshake_test_")
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
-	privVal, err := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+	privVal, err := privval.LoadFilePV(config.PrivValidator.KeyFile(), config.PrivValidator.StateFile())
 	require.NoError(t, err)
 	pubKey, err := privVal.GetPubKey(context.Background())
 	require.NoError(t, err)
