@@ -25,8 +25,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### IMPROVEMENTS
 
 - [statesync] \#6566 Allow state sync fetchers and request timeout to be configurable. (@alexanderbez)
-- [statesync] \#6378 Retry requests for snapshots and add a minimum discovery time (5s) for new snapshots.
+- [statesync] \#6378 Retry requests for snapshots and add a minimum discovery time (5s) for new snapshots. (@tychoish)
+- [statesync] \#6582 Increase chunk priority and add multiple retry chunk requests (@cmwaters)
 
 ### BUG FIXES
 
-- [evidence] \#6375 Fix bug with inconsistent LightClientAttackEvidence hashing (cmwaters)
+- [evidence] \#6375 Fix bug with inconsistent LightClientAttackEvidence hashing (@cmwaters)
