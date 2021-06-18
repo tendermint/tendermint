@@ -256,8 +256,10 @@ type Router struct {
 	protocolTransports map[Protocol]Transport
 	stopCh             chan struct{} // signals Router shutdown
 
-	peerMtx      sync.RWMutex
-	peerQueues   map[NodeID]queue // outbound messages per peer for all channels
+	peerMtx    sync.RWMutex
+	peerQueues map[NodeID]queue // outbound messages per peer for all channels
+	// the channels that the peer queue has open
+	peerChannels map[NodeID]ChannelIDs
 	queueFactory func(int) queue
 
 	// FIXME: We don't strictly need to use a mutex for this if we seal the
@@ -444,19 +446,33 @@ func (r *Router) routeChannel(
 				r.peerMtx.RLock()
 
 				queues = make([]queue, 0, len(r.peerQueues))
-				for _, q := range r.peerQueues {
-					queues = append(queues, q)
+				for nodeID, q := range r.peerQueues {
+					// check whether the peer is receiving on that channel
+					if r.peerChannels[nodeID].Contains(chID) {
+						queues = append(queues, q)
+					}
 				}
 
 				r.peerMtx.RUnlock()
 			} else {
 				r.peerMtx.RLock()
+
 				q, ok := r.peerQueues[envelope.To]
+				contains := false
+				if ok {
+					// check that the peer is receiving on the channel
+					contains = !r.peerChannels[envelope.To].Contains(chID)
+				}
 				r.peerMtx.RUnlock()
 
 				if !ok {
 					r.logger.Debug("dropping message for unconnected peer", "peer", envelope.To, "channel", chID)
 					continue
+				}
+
+				if !contains {
+					r.logger.Error("tried to send message across a channel that the peer doesn't have available",
+						"peer", envelope.To, "channel", chID)
 				}
 
 				queues = []queue{q}
@@ -616,7 +632,7 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 		return
 	}
 
-	r.routePeer(peerInfo.NodeID, conn)
+	r.routePeer(peerInfo.NodeID, conn, ToChannelIDs(peerInfo.Channels))
 }
 
 // dialPeers maintains outbound connections to peers by dialing them.
@@ -691,7 +707,7 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 		return
 	}
 
-	_, _, err = r.handshakePeer(ctx, conn, address.NodeID)
+	nodeInfo, _, err := r.handshakePeer(ctx, conn, address.NodeID)
 	switch {
 	case errors.Is(err, context.Canceled):
 		conn.Close()
@@ -710,14 +726,13 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 			"op", "outgoing/dialing", "peer", address.NodeID, "err", err)
 		conn.Close()
 		return
-
 	}
 
 	// routePeer (also) calls connection close
-	go r.routePeer(address.NodeID, conn)
+	go r.routePeer(address.NodeID, conn, ToChannelIDs(nodeInfo.Channels))
 }
 
-func (r *Router) getOrMakeQueue(peerID NodeID) queue {
+func (r *Router) getOrMakeQueue(peerID NodeID, channels ChannelIDs) queue {
 	r.peerMtx.Lock()
 	defer r.peerMtx.Unlock()
 
@@ -727,6 +742,7 @@ func (r *Router) getOrMakeQueue(peerID NodeID) queue {
 
 	peerQueue := r.queueFactory(queueBufferDefault)
 	r.peerQueues[peerID] = peerQueue
+	r.peerChannels[peerID] = channels
 	return peerQueue
 }
 
@@ -817,14 +833,15 @@ func (r *Router) runWithPeerMutex(fn func() error) error {
 // routePeer routes inbound and outbound messages between a peer and the reactor
 // channels. It will close the given connection and send queue when done, or if
 // they are closed elsewhere it will cause this method to shut down and return.
-func (r *Router) routePeer(peerID NodeID, conn Connection) {
+func (r *Router) routePeer(peerID NodeID, conn Connection, channels ChannelIDs) {
 	r.metrics.Peers.Add(1)
 	r.peerManager.Ready(peerID)
 
-	sendQueue := r.getOrMakeQueue(peerID)
+	sendQueue := r.getOrMakeQueue(peerID, channels)
 	defer func() {
 		r.peerMtx.Lock()
 		delete(r.peerQueues, peerID)
+		delete(r.peerChannels, peerID)
 		r.peerMtx.Unlock()
 
 		sendQueue.close()
@@ -1040,4 +1057,23 @@ func (r *Router) stopCtx() context.Context {
 	}()
 
 	return ctx
+}
+
+type ChannelIDs []ChannelID
+
+func (c ChannelIDs) Contains(channelID ChannelID) bool {
+	for i := 0; i < len(c); i++ {
+		if c[i] == channelID {
+			return true
+		}
+	}
+	return false
+}
+
+func ToChannelIDs(bytes []byte) ChannelIDs {
+	c := make([]ChannelID, len(bytes))
+	for i, b := range bytes {
+		c[i] = ChannelID(b)
+	}
+	return c
 }

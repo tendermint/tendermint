@@ -171,7 +171,7 @@ func TestRouter_Channel_SendReceive(t *testing.T) {
 	p2ptest.RequireReceive(t, b, p2p.Envelope{From: aID, Message: &p2ptest.Message{Value: "foo"}})
 	p2ptest.RequireEmpty(t, a, b, c)
 
-	// Sending a nil message a->c should be dropped.
+	// Sending a nil message a->b should be dropped.
 	p2ptest.RequireSend(t, a, p2p.Envelope{To: bID, Message: nil})
 	p2ptest.RequireEmpty(t, a, b, c)
 
@@ -766,4 +766,26 @@ func TestRouter_EvictPeers(t *testing.T) {
 	require.NoError(t, router.Stop())
 	mockTransport.AssertExpectations(t)
 	mockConnection.AssertExpectations(t)
+}
+
+func TestRouter_ChannelCompatability(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
+	closeCh := make(chan time.Time)
+
+	mockConnection := &mocks.Connection{}
+	mockConnection.On("String").Maybe().Return("mock")
+	mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
+		WaitUntil(closeCh).Return(p2p.NodeInfo{}, nil, io.EOF)
+	mockConnection.On("Close").Return(nil)
+
+	mockTransport := &mocks.Transport{}
+	mockTransport.On("String").Maybe().Return("mock")
+	mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
+	mockTransport.On("Close").Return(nil)
+	mockTransport.On("Accept").Once().Return(mockConnection, nil)
+	mockTransport.On("Accept").Once().Return(nil, io.EOF)
+
+	//
+
 }
