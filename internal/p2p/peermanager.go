@@ -553,6 +553,8 @@ func (m *PeerManager) DialFailed(address NodeAddress) error {
 			case <-m.closeCh:
 			}
 		}()
+	} else {
+		m.dialWaker.Wake()
 	}
 
 	return nil
