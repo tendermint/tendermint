@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dashevo/dashd-go/btcjson"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"net"
 	"net/http"
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
@@ -1424,8 +1425,12 @@ func createAndStartPrivValidatorRPCClient(
 	password string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
+	dashCoreRpcClient, err := dashcore.NewRpcClient(host, username, password)
+	if err != nil {
+		return nil, fmt.Errorf("can not connect to dashd: %w", err)
+	}
 
-	pvsc, err := privval.NewDashCoreSignerClient(host, username, password, defaultQuorumType)
+	pvsc, err := privval.NewDashCoreSignerClient(dashCoreRpcClient, defaultQuorumType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}

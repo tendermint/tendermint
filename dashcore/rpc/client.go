@@ -7,7 +7,7 @@ import (
 // RpcClient implements PrivValidator.
 // Handles remote validator connections that provide signing services
 type RpcClient struct {
-	endpoint    *rpc.Client
+	Endpoint    *rpc.Client
 	host        string
 	rpcUsername string
 	rpcPassword string
@@ -15,7 +15,7 @@ type RpcClient struct {
 
 // New returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
-func New(host string, rpcUsername string, rpcPassword string) (*RpcClient, error) {
+func NewRpcClient(host string, rpcUsername string, rpcPassword string) (*RpcClient, error) {
 	// Connect to local dash core RPC server using HTTP POST mode.
 	connCfg := &rpc.ConnConfig{
 		Host:         host,
@@ -31,23 +31,23 @@ func New(host string, rpcUsername string, rpcPassword string) (*RpcClient, error
 		return nil, err
 	}
 
-	return &RpcClient{endpoint: client, host: host, rpcUsername: rpcUsername, rpcPassword: rpcPassword}, nil
+	return &RpcClient{Endpoint: client, host: host, rpcUsername: rpcUsername, rpcPassword: rpcPassword}, nil
 }
 
 // Close closes the underlying connection
 func (rpcClient *RpcClient) Close() error {
-	rpcClient.endpoint.Shutdown()
+	rpcClient.Endpoint.Shutdown()
 	return nil
 }
 
 // Ping sends a ping request to the remote signer
 func (rpcClient *RpcClient) Ping() error {
-	err := rpcClient.endpoint.Ping()
+	err := rpcClient.Endpoint.Ping()
 	if err != nil {
 		return err
 	}
 
-	pb, err := rpcClient.endpoint.GetPeerInfo()
+	pb, err := rpcClient.Endpoint.GetPeerInfo()
 	if pb == nil {
 		return err
 	}

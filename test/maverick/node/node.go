@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dashevo/dashd-go/btcjson"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"net"
 	"net/http"
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
@@ -677,6 +678,7 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 	}()
 	return nil
 }
+
 // NewNode returns a new, ready to go, Tendermint Node.
 func NewNode(config *cfg.Config,
 	privValidator types.PrivValidator,
@@ -1477,7 +1479,11 @@ func createAndStartPrivValidatorRPCClient(
 	logger log.Logger,
 ) (types.PrivValidator, error) {
 
-	pvsc, err := privval.NewDashCoreSignerClient(host, username, password, defaultQuorumType)
+	dashCoreRpcClient, err := dashcore.NewRpcClient(host, username, password)
+	if err != nil {
+		return nil, fmt.Errorf("can not connect to dashd: %w", err)
+	}
+	pvsc, err := privval.NewDashCoreSignerClient(dashCoreRpcClient, defaultQuorumType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}

@@ -3,6 +3,7 @@ package mockcoreserver
 import (
 	"context"
 	"encoding/hex"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -75,7 +76,9 @@ func TestDashCoreSignerPingMethod(t *testing.T) {
 		WithPingMethod(1),
 		WithGetPeerInfoMethod(1),
 	)
-	client, err := privval.NewDashCoreSignerClient(addr, "root", "root", btcjson.LLMQType_5_60, "chain-123456")
+	dashCoreRpcClient, err := dashcore.NewRpcClient(addr, "root", "root")
+	assert.NoError(t, err)
+	client, err := privval.NewDashCoreSignerClient(dashCoreRpcClient, btcjson.LLMQType_5_60)
 	assert.NoError(t, err)
 	err = client.Ping()
 	assert.NoError(t, err)
@@ -118,7 +121,10 @@ func TestGetPubKey(t *testing.T) {
 		WithMasternodeMethod(cs, Endless),
 		WithGetNetworkInfoMethod(cs, Endless),
 	)
-	client, err := privval.NewDashCoreSignerClient(addr, "root", "root", btcjson.LLMQType_5_60, "chain-123456")
+
+	dashCoreRpcClient, err := dashcore.NewRpcClient(addr, "root", "root")
+	assert.NoError(t, err)
+	client, err := privval.NewDashCoreSignerClient(dashCoreRpcClient, btcjson.LLMQType_5_60)
 	assert.NoError(t, err)
 	quorumHash := crypto.RandQuorumHash()
 	pubKey, err := client.GetPubKey(quorumHash)
