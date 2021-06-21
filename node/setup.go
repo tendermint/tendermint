@@ -696,7 +696,7 @@ func createPEXReactorV2(
 	router *p2p.Router,
 ) (*pex.ReactorV2, error) {
 
-	channel, err := router.OpenChannel(pex.ChannelDescriptor(), &protop2p.PexMessage{}, 4096)
+	channel, err := router.OpenChannel(pex.ChannelDescriptor(), &protop2p.PexMessage{}, 128)
 	if err != nil {
 		return nil, err
 	}

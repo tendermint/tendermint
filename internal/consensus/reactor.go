@@ -33,8 +33,8 @@ var (
 			MsgType: new(tmcons.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  byte(StateChannel),
-				Priority:            6,
-				SendQueueCapacity:   100,
+				Priority:            8,
+				SendQueueCapacity:   64,
 				RecvMessageCapacity: maxMsgSize,
 
 				MaxSendBytes: 12000,
@@ -47,9 +47,9 @@ var (
 				// stuff. Once we gossip the whole block there is nothing left to send
 				// until next height or round.
 				ID:                  byte(DataChannel),
-				Priority:            10,
-				SendQueueCapacity:   100,
-				RecvBufferCapacity:  50 * 4096,
+				Priority:            12,
+				SendQueueCapacity:   64,
+				RecvBufferCapacity:  512,
 				RecvMessageCapacity: maxMsgSize,
 
 				MaxSendBytes: 40000,
@@ -59,9 +59,9 @@ var (
 			MsgType: new(tmcons.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  byte(VoteChannel),
-				Priority:            7,
-				SendQueueCapacity:   100,
-				RecvBufferCapacity:  100 * 100,
+				Priority:            10,
+				SendQueueCapacity:   64,
+				RecvBufferCapacity:  128,
 				RecvMessageCapacity: maxMsgSize,
 
 				MaxSendBytes: 150,
@@ -71,9 +71,9 @@ var (
 			MsgType: new(tmcons.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  byte(VoteSetBitsChannel),
-				Priority:            1,
-				SendQueueCapacity:   2,
-				RecvBufferCapacity:  1024,
+				Priority:            5,
+				SendQueueCapacity:   8,
+				RecvBufferCapacity:  128,
 				RecvMessageCapacity: maxMsgSize,
 
 				MaxSendBytes: 50,

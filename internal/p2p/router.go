@@ -18,7 +18,7 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 )
 
-const queueBufferDefault = 4096
+const queueBufferDefault = 32
 
 // ChannelID is an arbitrary channel ID.
 type ChannelID uint16

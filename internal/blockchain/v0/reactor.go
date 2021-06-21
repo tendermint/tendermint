@@ -32,7 +32,7 @@ var (
 				ID:                  byte(BlockchainChannel),
 				Priority:            5,
 				SendQueueCapacity:   1000,
-				RecvBufferCapacity:  50 * 4096,
+				RecvBufferCapacity:  1024,
 				RecvMessageCapacity: bc.MaxMsgSize,
 
 				MaxSendBytes: 100,
