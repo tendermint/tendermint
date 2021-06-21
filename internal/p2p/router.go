@@ -19,7 +19,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-const queueBufferDefault = 4096
+const queueBufferDefault = 32
 
 // ChannelID is an arbitrary channel ID.
 type ChannelID uint16
@@ -365,10 +365,6 @@ func (r *Router) createQueueFactory() (func(int) queue, error) {
 // wrapper message. The caller may provide a size to make the channel buffered,
 // which internally makes the inbound, outbound, and error channel buffered.
 func (r *Router) OpenChannel(chDesc ChannelDescriptor, messageType proto.Message, size int) (*Channel, error) {
-	if size == 0 {
-		size = queueBufferDefault
-	}
-
 	r.channelMtx.Lock()
 	defer r.channelMtx.Unlock()
 

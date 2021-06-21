@@ -103,8 +103,8 @@ func GetChannelShims(config *cfg.MempoolConfig) map[p2p.ChannelID]*p2p.ChannelDe
 				ID:                  byte(mempool.MempoolChannel),
 				Priority:            5,
 				RecvMessageCapacity: batchMsg.Size(),
-
-				MaxSendBytes: 5000,
+				RecvBufferCapacity:  128,
+				MaxSendBytes:        5000,
 			},
 		},
 	}
