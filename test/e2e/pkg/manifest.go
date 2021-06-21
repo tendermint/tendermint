@@ -68,6 +68,9 @@ type Manifest struct {
 	// KeyType sets the curve that will be used by validators.
 	// Options are ed25519 & secp256k1
 	KeyType string `toml:"key_type"`
+
+	// QuorumMembersCount ....
+	QuorumMembersCount int `toml:"quorum_members_count"`
 }
 
 // ManifestNode represents a node in a testnet manifest.
