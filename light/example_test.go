@@ -23,7 +23,7 @@ import (
 func ExampleClient_Update() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	conf := rpctest.CreateConfig()
+	conf := rpctest.CreateConfig("ExampleClient_Update")
 
 	// Start a test application
 	app := kvstore.NewApplication()
@@ -100,7 +100,7 @@ func ExampleClient_Update() {
 func ExampleClient_VerifyLightBlockAtHeight() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	conf := rpctest.CreateConfig()
+	conf := rpctest.CreateConfig("ExampleClient_VerifyLightBlockAtHeight")
 
 	// Start a test application
 	app := kvstore.NewApplication()
