@@ -190,19 +190,13 @@ func startLightClient(cfg *Config) error {
 
 	providers := rpcEndpoints(tmcfg.P2P.PersistentPeers)
 
-	// TODO: that can not work! Some arguments required by light.NewHTTPClient are missing!
 	c, err := light.NewHTTPClient(
 		context.Background(),
 		cfg.ChainID,
-		dashCoreRpcClient,
-		light.TrustOptions{
-			Period: tmcfg.StateSync.TrustPeriod,
-			Height: tmcfg.StateSync.TrustHeight,
-			Hash:   tmcfg.StateSync.TrustHashBytes(),
-		},
 		providers[0],
 		providers[1:],
 		dbs.New(lightDB, "light"),
+		dashCoreRpcClient,
 		light.Logger(nodeLogger),
 	)
 	if err != nil {
