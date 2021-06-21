@@ -50,6 +50,8 @@ func (sc *RetrySignerClient) GetPubKey(ctx context.Context) (crypto.PubKey, erro
 		pk  crypto.PubKey
 		err error
 	)
+
+	t := time.NewTimer(sc.timeout)
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
 		pk, err = sc.next.GetPubKey(ctx)
 		if err == nil {
@@ -62,8 +64,8 @@ func (sc *RetrySignerClient) GetPubKey(ctx context.Context) (crypto.PubKey, erro
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		default:
-			time.Sleep(sc.timeout)
+		case <-t.C:
+			t.Reset(sc.timeout)
 		}
 	}
 	return nil, fmt.Errorf("exhausted all attempts to get pubkey: %w", err)

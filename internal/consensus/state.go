@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"reflect"
 	"runtime/debug"
 	"time"
 
@@ -26,6 +25,7 @@ import (
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/service"
 	tmtime "github.com/tendermint/tendermint/libs/time"
+	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -276,16 +276,17 @@ func (cs *State) SetPrivValidator(priv types.PrivValidator) {
 	cs.privValidator = priv
 
 	if priv != nil {
-		t := reflect.TypeOf(priv).Name()
-		switch t {
-		case "RetrySignerClient":
+		switch t := priv.(type) {
+		case *privval.RetrySignerClient:
 			cs.privValidatorType = types.RetrySignerClient
-		case "FilePV":
+		case *privval.FilePV:
 			cs.privValidatorType = types.FileSignerClient
-		case "SignerClient":
+		case *privval.SignerClient:
 			cs.privValidatorType = types.SignerClient
-		case "MockPV":
+		case types.MockPV:
 			cs.privValidatorType = types.MockSignerClient
+		case *types.ErroringMockPV:
+			cs.privValidatorType = types.ErrorMockSignerClient
 		default:
 			cs.Logger.Error("unsupported priv validator type", "err",
 				fmt.Errorf("error privValidatorType %s", t))
