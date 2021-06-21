@@ -53,51 +53,55 @@ func (env *Environment) UnsafeReIndex(
 	}
 
 	for i := start; i <= end; i++ {
-		b := env.BlockStore.LoadBlock(i)
-		if b == nil {
-			return nil, fmt.Errorf("not able to load block at height %d from the blockstore", i)
-		}
+		select {
+		case <-ctx.Context().Done():
+			return nil, ctx.Context().Err()
+		default:
+			b := env.BlockStore.LoadBlock(i)
+			if b == nil {
+				return nil, fmt.Errorf("not able to load block at height %d from the blockstore", i)
+			}
 
-		r, err := env.StateStore.LoadABCIResponses(i)
-		if err != nil {
-			return nil, fmt.Errorf("not able to load ABCI Response at height %d from the statestore", i)
-		}
+			r, err := env.StateStore.LoadABCIResponses(i)
+			if err != nil {
+				return nil, fmt.Errorf("not able to load ABCI Response at height %d from the statestore", i)
+			}
 
-		e := types.EventDataNewBlockHeader{
-			Header:           b.Header,
-			NumTxs:           int64(len(b.Txs)),
-			ResultBeginBlock: *r.BeginBlock,
-			ResultEndBlock:   *r.EndBlock,
-		}
+			e := types.EventDataNewBlockHeader{
+				Header:           b.Header,
+				NumTxs:           int64(len(b.Txs)),
+				ResultBeginBlock: *r.BeginBlock,
+				ResultEndBlock:   *r.EndBlock,
+			}
 
-		var batch *indexer.Batch
-		if e.NumTxs > 0 {
-			batch = indexer.NewBatch(e.NumTxs)
+			var batch *indexer.Batch
+			if e.NumTxs > 0 {
+				batch = indexer.NewBatch(e.NumTxs)
 
-			for i, tx := range b.Data.Txs {
-				tr := abcitypes.TxResult{
-					Height: b.Height,
-					Index:  uint32(i),
-					Tx:     tx,
-					Result: *(r.DeliverTxs[i]),
+				for i, tx := range b.Data.Txs {
+					tr := abcitypes.TxResult{
+						Height: b.Height,
+						Index:  uint32(i),
+						Tx:     tx,
+						Result: *(r.DeliverTxs[i]),
+					}
+
+					_ = batch.Add(&tr)
 				}
-
-				_ = batch.Add(&tr)
-			}
-		}
-
-		for _, sink := range env.EventSinks {
-			if err := sink.IndexBlockEvents(e); err != nil {
-				return nil, err
 			}
 
-			if batch != nil {
-				if err := sink.IndexTxEvents(batch.Ops); err != nil {
+			for _, sink := range env.EventSinks {
+				if err := sink.IndexBlockEvents(e); err != nil {
 					return nil, err
 				}
+
+				if batch != nil {
+					if err := sink.IndexTxEvents(batch.Ops); err != nil {
+						return nil, err
+					}
+				}
 			}
 		}
-
 	}
 
 	return &ctypes.ResultUnsafeReIndex{Result: "re-index finished"}, nil
