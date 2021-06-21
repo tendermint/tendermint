@@ -180,7 +180,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 		LastBlockAppHash: []byte("app_hash"),
 	}, nil)
 
-	newState, lastCommit, err := rts.syncer.SyncAny(0, func() {})
+	newState, lastCommit, err := rts.syncer.SyncAny(ctx, 0, func() {})
 	require.NoError(t, err)
 
 	wg.Wait()
@@ -206,7 +206,7 @@ func TestSyncer_SyncAny_noSnapshots(t *testing.T) {
 
 	rts := setup(t, nil, nil, stateProvider, 2)
 
-	_, _, err := rts.syncer.SyncAny(0, func() {})
+	_, _, err := rts.syncer.SyncAny(ctx, 0, func() {})
 	require.Equal(t, errNoSnapshots, err)
 }
 
@@ -226,7 +226,7 @@ func TestSyncer_SyncAny_abort(t *testing.T) {
 		Snapshot: toABCI(s), AppHash: []byte("app_hash"),
 	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ABORT}, nil)
 
-	_, _, err = rts.syncer.SyncAny(0, func() {})
+	_, _, err = rts.syncer.SyncAny(ctx, 0, func() {})
 	require.Equal(t, errAbort, err)
 	rts.conn.AssertExpectations(t)
 }
@@ -265,7 +265,7 @@ func TestSyncer_SyncAny_reject(t *testing.T) {
 		Snapshot: toABCI(s11), AppHash: []byte("app_hash"),
 	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT}, nil)
 
-	_, _, err = rts.syncer.SyncAny(0, func() {})
+	_, _, err = rts.syncer.SyncAny(ctx, 0, func() {})
 	require.Equal(t, errNoSnapshots, err)
 	rts.conn.AssertExpectations(t)
 }
@@ -300,7 +300,7 @@ func TestSyncer_SyncAny_reject_format(t *testing.T) {
 		Snapshot: toABCI(s11), AppHash: []byte("app_hash"),
 	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ABORT}, nil)
 
-	_, _, err = rts.syncer.SyncAny(0, func() {})
+	_, _, err = rts.syncer.SyncAny(ctx, 0, func() {})
 	require.Equal(t, errAbort, err)
 	rts.conn.AssertExpectations(t)
 }
@@ -346,7 +346,7 @@ func TestSyncer_SyncAny_reject_sender(t *testing.T) {
 		Snapshot: toABCI(sa), AppHash: []byte("app_hash"),
 	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT}, nil)
 
-	_, _, err = rts.syncer.SyncAny(0, func() {})
+	_, _, err = rts.syncer.SyncAny(ctx, 0, func() {})
 	require.Equal(t, errNoSnapshots, err)
 	rts.conn.AssertExpectations(t)
 }
@@ -369,7 +369,7 @@ func TestSyncer_SyncAny_abciError(t *testing.T) {
 		Snapshot: toABCI(s), AppHash: []byte("app_hash"),
 	}).Once().Return(nil, errBoom)
 
-	_, _, err = rts.syncer.SyncAny(0, func() {})
+	_, _, err = rts.syncer.SyncAny(ctx, 0, func() {})
 	require.True(t, errors.Is(err, errBoom))
 	rts.conn.AssertExpectations(t)
 }
@@ -406,7 +406,7 @@ func TestSyncer_offerSnapshot(t *testing.T) {
 				AppHash:  []byte("app_hash"),
 			}).Return(&abci.ResponseOfferSnapshot{Result: tc.result}, tc.err)
 
-			err := rts.syncer.offerSnapshot(s)
+			err := rts.syncer.offerSnapshot(ctx, s)
 			if tc.expectErr == unknownErr {
 				require.Error(t, err)
 			} else {
@@ -462,7 +462,7 @@ func TestSyncer_applyChunks_Results(t *testing.T) {
 					Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 			}
 
-			err = rts.syncer.applyChunks(chunks)
+			err = rts.syncer.applyChunks(ctx, chunks)
 			if tc.expectErr == unknownErr {
 				require.Error(t, err)
 			} else {
@@ -527,7 +527,7 @@ func TestSyncer_applyChunks_RefetchChunks(t *testing.T) {
 			// check the queue contents, and finally close the queue to end the goroutine.
 			// We don't really care about the result of applyChunks, since it has separate test.
 			go func() {
-				rts.syncer.applyChunks(chunks) //nolint:errcheck // purposefully ignore error
+				rts.syncer.applyChunks(ctx, chunks) //nolint:errcheck // purposefully ignore error
 			}()
 
 			time.Sleep(50 * time.Millisecond)
@@ -626,7 +626,7 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 			// However, it will block on e.g. retry result, so we spawn a goroutine that will
 			// be shut down when the chunk queue closes.
 			go func() {
-				rts.syncer.applyChunks(chunks) //nolint:errcheck // purposefully ignore error
+				rts.syncer.applyChunks(ctx, chunks) //nolint:errcheck // purposefully ignore error
 			}()
 
 			time.Sleep(50 * time.Millisecond)
