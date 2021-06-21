@@ -144,7 +144,12 @@ func (s *syncer) RemovePeer(peerID p2p.NodeID) {
 // SyncAny tries to sync any of the snapshots in the snapshot pool, waiting to discover further
 // snapshots if none were found and discoveryTime > 0. It returns the latest state and block commit
 // which the caller must use to bootstrap the node.
-func (s *syncer) SyncAny(ctx context.Context, discoveryTime time.Duration, requestSnapshots func()) (sm.State, *types.Commit, error) {
+func (s *syncer) SyncAny(
+	ctx context.Context,
+	discoveryTime time.Duration,
+	requestSnapshots func(),
+) (sm.State, *types.Commit, error) {
+
 	if discoveryTime != 0 && discoveryTime < minimumDiscoveryTime {
 		discoveryTime = minimumDiscoveryTime
 	}
