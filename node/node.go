@@ -129,6 +129,7 @@ func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 	}
 }
 
+// DefaultDashCoreRpcClient returns RPC client for the Dash Core node
 func DefaultDashCoreRpcClient(config *cfg.Config) (*dashcore.RpcClient, error) {
 	return dashcore.NewRpcClient(
 		config.PrivValidatorCoreRPCHost,
@@ -688,7 +689,7 @@ func NewNode(config *cfg.Config,
 			llmqType = btcjson.LLMQType_100_67
 		}
 		// If a local port is provided for Dash Core rpc into the service to sign.
-		privValidator, err = createAndStartPrivValidatorRPCClient(config.PrivValidatorCoreRPCHost, config.Consensus.QuorumType, dashCoreRpcClient, logger)
+		privValidator, err = createAndStartPrivValidatorRPCClient(config.Consensus.QuorumType, dashCoreRpcClient, logger)
 		if err != nil {
 			return nil, fmt.Errorf("error with private validator socket client: %w", err)
 		}
@@ -1432,7 +1433,6 @@ func createAndStartPrivValidatorSocketClient(
 }
 
 func createAndStartPrivValidatorRPCClient(
-	host string,
 	defaultQuorumType btcjson.LLMQType,
 	dashCoreRpcClient *dashcore.RpcClient,
 	logger log.Logger,

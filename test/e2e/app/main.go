@@ -258,6 +258,7 @@ func startMaverick(cfg *Config) error {
 		maverick.DefaultGenesisDocProviderFunc(tmcfg),
 		maverick.DefaultDBProvider,
 		maverick.DefaultMetricsProvider(tmcfg.Instrumentation),
+		dashCoreRpcClient,
 		logger,
 	)
 	if err != nil {
