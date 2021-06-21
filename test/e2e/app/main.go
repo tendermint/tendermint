@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -37,10 +38,11 @@ import (
 var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
 var (
-	tmhome     string
-	tmcfg      *config.Config
-	nodeLogger log.Logger
-	nodeKey    *p2p.NodeKey
+	tmhome            string
+	tmcfg             *config.Config
+	nodeLogger        log.Logger
+	nodeKey           *p2p.NodeKey
+	dashCoreRpcClient *dashcore.RpcClient
 )
 
 func init() {
@@ -97,6 +99,16 @@ func run(configFile string) error {
 	go func() {
 		coreSrv.Start()
 	}()
+
+	dashCoreRpcClient, err = dashcore.NewRpcClient(
+		tmcfg.PrivValidatorCoreRPCHost,
+		tmcfg.BaseConfig.PrivValidatorCoreRPCUsername,
+		tmcfg.BaseConfig.PrivValidatorCoreRPCPassword,
+	)
+
+	if err != nil {
+		return fmt.Errorf("connection to Dash Core RPC failed: %w", err)
+	}
 
 	// Start app server.
 	switch cfg.Protocol {
@@ -160,6 +172,7 @@ func startNode(cfg *Config) error {
 		node.DefaultGenesisDocProviderFunc(tmcfg),
 		node.DefaultDBProvider,
 		node.DefaultMetricsProvider(tmcfg.Instrumentation),
+		dashCoreRpcClient,
 		nodeLogger,
 	)
 	if err != nil {
@@ -177,9 +190,11 @@ func startLightClient(cfg *Config) error {
 
 	providers := rpcEndpoints(tmcfg.P2P.PersistentPeers)
 
+	// TODO: that can not work! Some arguments required by light.NewHTTPClient are missing!
 	c, err := light.NewHTTPClient(
 		context.Background(),
 		cfg.ChainID,
+		dashCoreRpcClient,
 		light.TrustOptions{
 			Period: tmcfg.StateSync.TrustPeriod,
 			Height: tmcfg.StateSync.TrustHeight,
@@ -235,6 +250,7 @@ func startMaverick(cfg *Config) error {
 		misbehaviors[height] = mcs.MisbehaviorList[misbehaviorString]
 	}
 
+	// TODO: What is a maverick node?
 	n, err := maverick.NewNode(tmcfg,
 		maverick.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
 		nodeKey,
@@ -243,7 +259,6 @@ func startMaverick(cfg *Config) error {
 		maverick.DefaultDBProvider,
 		maverick.DefaultMetricsProvider(tmcfg.Instrumentation),
 		logger,
-		misbehaviors,
 	)
 	if err != nil {
 		return err

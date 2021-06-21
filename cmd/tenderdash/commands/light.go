@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -63,6 +64,10 @@ var (
 
 	primaryKey   = []byte("primary")
 	witnessesKey = []byte("witnesses")
+
+	dashCoreRpcHost string
+	dashCoreRpcUser string
+	dashCoreRpcPass string
 )
 
 func init() {
@@ -80,6 +85,12 @@ func init() {
 		900,
 		"maximum number of simultaneous connections (including WebSocket).")
 	LightCmd.Flags().BoolVar(&verbose, "verbose", false, "Verbose output")
+	LightCmd.Flags().StringVar(&dashCoreRpcHost, "dchost", "",
+		"host address of the Dash Core RPC node")
+	LightCmd.Flags().StringVar(&dashCoreRpcHost, "dcuser", "",
+		"Dash Core RPC node user")
+	LightCmd.Flags().StringVar(&dashCoreRpcHost, "dcpass", "",
+		"Dash Core RPC node password")
 }
 
 func runProxy(cmd *cobra.Command, args []string) error {
@@ -144,12 +155,15 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		light.DashCoreVerification(),
 	}
 
+	dashCoreRpcClient, err := dashcore.NewRpcClient(dashCoreRpcHost, dashCoreRpcUser, dashCoreRpcPass)
+
 	c, err := light.NewHTTPClient(
 		context.Background(),
 		chainID,
 		primaryAddr,
 		witnessesAddrs,
 		dbs.New(db, chainID),
+		dashCoreRpcClient,
 		options...,
 	)
 	if err != nil {

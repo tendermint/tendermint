@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"sort"
 	"sync"
 	"time"
@@ -137,6 +138,9 @@ type Client struct {
 
 	quit chan struct{}
 
+	// Signature verification is done by dashcore
+	dashCoreRpcClient *dashcore.RpcClient
+
 	logger log.Logger
 }
 
@@ -156,9 +160,10 @@ func NewClient(
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
+	dashCoreRpcClient *dashcore.RpcClient,
 	options ...Option) (*Client, error) {
 
-	c, err := NewClientFromTrustedStore(chainID, primary, witnesses, trustedStore, options...)
+	c, err := NewClientFromTrustedStore(chainID, primary, witnesses, trustedStore, dashCoreRpcClient, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -181,21 +186,23 @@ func NewClientFromTrustedStore(
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
+	dashCoreRpcClient *dashcore.RpcClient,
 	options ...Option) (*Client, error) {
 
 	c := &Client{
-		chainID:          chainID,
-		verificationMode: dashCoreVerification,
-		maxRetryAttempts: defaultMaxRetryAttempts,
-		maxClockDrift:    defaultMaxClockDrift,
-		maxBlockLag:      defaultMaxBlockLag,
-		primary:          primary,
-		witnesses:        witnesses,
-		trustedStore:     trustedStore,
-		pruningSize:      defaultPruningSize,
-		confirmationFn:   func(action string) bool { return true },
-		quit:             make(chan struct{}),
-		logger:           log.NewNopLogger(),
+		chainID:           chainID,
+		verificationMode:  dashCoreVerification,
+		maxRetryAttempts:  defaultMaxRetryAttempts,
+		maxClockDrift:     defaultMaxClockDrift,
+		maxBlockLag:       defaultMaxBlockLag,
+		primary:           primary,
+		witnesses:         witnesses,
+		trustedStore:      trustedStore,
+		pruningSize:       defaultPruningSize,
+		confirmationFn:    func(action string) bool { return true },
+		quit:              make(chan struct{}),
+		logger:            log.NewNopLogger(),
+		dashCoreRpcClient: dashCoreRpcClient,
 	}
 
 	for _, o := range options {
@@ -240,7 +247,6 @@ func (c *Client) restoreTrustedLightBlock() error {
 
 	return nil
 }
-
 
 // initializeWithTrustOptions fetches the weakly-trusted light block from
 // primary provider.
@@ -464,10 +470,7 @@ func (c *Client) verifyLightBlock(ctx context.Context, newLightBlock *types.Ligh
 }
 
 // see VerifyHeader
-func (c *Client) verifyLatest(
-	ctx context.Context,
-	newLightBlock *types.LightBlock,
-	now time.Time) error {
+func (c *Client) verifyLatest(ctx context.Context, newLightBlock *types.LightBlock, now time.Time) error {
 	return nil
 }
 

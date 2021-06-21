@@ -1,26 +1,31 @@
 package dashcore
 
 import (
+	"fmt"
 	rpc "github.com/dashevo/dashd-go/rpcclient"
 )
 
 // RpcClient implements PrivValidator.
 // Handles remote validator connections that provide signing services
 type RpcClient struct {
-	Endpoint    *rpc.Client
-	host        string
-	rpcUsername string
-	rpcPassword string
+	Endpoint *rpc.Client
+	host     string
+	username string
+	password string
 }
 
 // New returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
-func NewRpcClient(host string, rpcUsername string, rpcPassword string) (*RpcClient, error) {
+func NewRpcClient(host string, username string, password string) (*RpcClient, error) {
+	if host == "" {
+		return nil, fmt.Errorf("unable to establish connection to the Dash Core node")
+	}
+
 	// Connect to local dash core RPC server using HTTP POST mode.
 	connCfg := &rpc.ConnConfig{
 		Host:         host,
-		User:         rpcUsername,
-		Pass:         rpcPassword,
+		User:         username,
+		Pass:         password,
 		HTTPPostMode: true, // Dash core only supports HTTP POST mode
 		DisableTLS:   true, // Dash core does not provide TLS by default
 	}
@@ -31,7 +36,7 @@ func NewRpcClient(host string, rpcUsername string, rpcPassword string) (*RpcClie
 		return nil, err
 	}
 
-	return &RpcClient{Endpoint: client, host: host, rpcUsername: rpcUsername, rpcPassword: rpcPassword}, nil
+	return &RpcClient{Endpoint: client, host: host, username: username, password: password}, nil
 }
 
 // Close closes the underlying connection

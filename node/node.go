@@ -95,6 +95,11 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 		return nil, fmt.Errorf("failed to load or gen node key %s: %w", config.NodeKeyFile(), err)
 	}
 
+	dashCoreRpcClient, err := DefaultDashCoreRpcClient(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Dash Core RPC client %w", err)
+	}
+
 	return NewNode(config,
 		privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile()),
 		nodeKey,
@@ -102,6 +107,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
+		dashCoreRpcClient,
 		logger,
 	)
 }
@@ -121,6 +127,14 @@ func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 		}
 		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics(), sm.NopMetrics()
 	}
+}
+
+func DefaultDashCoreRpcClient(config *cfg.Config) (*dashcore.RpcClient, error) {
+	return dashcore.NewRpcClient(
+		config.PrivValidatorCoreRPCHost,
+		config.BaseConfig.PrivValidatorCoreRPCUsername,
+		config.BaseConfig.PrivValidatorCoreRPCPassword,
+	)
 }
 
 // Option sets a parameter for the node.
@@ -629,6 +643,7 @@ func NewNode(config *cfg.Config,
 	genesisDocProvider GenesisDocProvider,
 	dbProvider DBProvider,
 	metricsProvider MetricsProvider,
+	dashCoreRpcClient *dashcore.RpcClient,
 	logger log.Logger,
 	options ...Option) (*Node, error) {
 
@@ -668,14 +683,12 @@ func NewNode(config *cfg.Config,
 	var proTxHash crypto.ProTxHash
 	if config.PrivValidatorCoreRPCHost != "" {
 		logger.Info("Initializing Dash Core Signing", "quorum hash", state.Validators.QuorumHash.String())
-		username := config.BaseConfig.PrivValidatorCoreRPCUsername
-		password := config.BaseConfig.PrivValidatorCoreRPCPassword
 		llmqType := config.Consensus.QuorumType
 		if llmqType == 0 {
 			llmqType = btcjson.LLMQType_100_67
 		}
 		// If a local port is provided for Dash Core rpc into the service to sign.
-		privValidator, err = createAndStartPrivValidatorRPCClient(config.PrivValidatorCoreRPCHost, config.Consensus.QuorumType, username, password, logger)
+		privValidator, err = createAndStartPrivValidatorRPCClient(config.PrivValidatorCoreRPCHost, config.Consensus.QuorumType, dashCoreRpcClient, logger)
 		if err != nil {
 			return nil, fmt.Errorf("error with private validator socket client: %w", err)
 		}
@@ -1421,15 +1434,9 @@ func createAndStartPrivValidatorSocketClient(
 func createAndStartPrivValidatorRPCClient(
 	host string,
 	defaultQuorumType btcjson.LLMQType,
-	username string,
-	password string,
+	dashCoreRpcClient *dashcore.RpcClient,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
-	dashCoreRpcClient, err := dashcore.NewRpcClient(host, username, password)
-	if err != nil {
-		return nil, fmt.Errorf("can not connect to dashd: %w", err)
-	}
-
 	pvsc, err := privval.NewDashCoreSignerClient(dashCoreRpcClient, defaultQuorumType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
