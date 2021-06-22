@@ -50,7 +50,7 @@ func ChannelDescriptor() conn.ChannelDescriptor {
 		Priority:            1,
 		SendQueueCapacity:   10,
 		RecvMessageCapacity: maxMsgSize,
-		RecvBufferCapacity:  128,
+		RecvBufferCapacity:  32,
 		MaxSendBytes:        200,
 	}
 }
@@ -416,6 +416,7 @@ func (r *ReactorV2) sendRequestForPeers() {
 		// no peers are available
 		r.Logger.Debug("no available peers to send request to, waiting...")
 		r.nextRequestTime = time.Now().Add(noAvailablePeersWaitPeriod)
+
 		return
 	}
 	var peerID p2p.NodeID
