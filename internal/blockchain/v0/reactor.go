@@ -34,8 +34,7 @@ var (
 				SendQueueCapacity:   1000,
 				RecvBufferCapacity:  1024,
 				RecvMessageCapacity: bc.MaxMsgSize,
-
-				MaxSendBytes: 100,
+				MaxSendBytes:        100,
 			},
 		},
 	}

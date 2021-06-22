@@ -365,7 +365,7 @@ func (r *Router) createQueueFactory() (func(int) queue, error) {
 // which internally makes the inbound, outbound, and error channel buffered.
 func (r *Router) OpenChannel(chDesc ChannelDescriptor, messageType proto.Message, size int) (*Channel, error) {
 	if size == 0 {
-		size = queueBufferDefault
+		return nil, fmt.Errorf("must specify non-zero size for channel %d", chDesc.ID)
 	}
 
 	r.channelMtx.Lock()

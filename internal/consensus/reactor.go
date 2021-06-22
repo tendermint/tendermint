@@ -36,8 +36,8 @@ var (
 				Priority:            8,
 				SendQueueCapacity:   64,
 				RecvMessageCapacity: maxMsgSize,
-
-				MaxSendBytes: 12000,
+				RecvBufferCapacity:  128,
+				MaxSendBytes:        12000,
 			},
 		},
 		DataChannel: {
@@ -51,8 +51,7 @@ var (
 				SendQueueCapacity:   64,
 				RecvBufferCapacity:  512,
 				RecvMessageCapacity: maxMsgSize,
-
-				MaxSendBytes: 40000,
+				MaxSendBytes:        40000,
 			},
 		},
 		VoteChannel: {
@@ -63,8 +62,7 @@ var (
 				SendQueueCapacity:   64,
 				RecvBufferCapacity:  128,
 				RecvMessageCapacity: maxMsgSize,
-
-				MaxSendBytes: 150,
+				MaxSendBytes:        150,
 			},
 		},
 		VoteSetBitsChannel: {
@@ -75,8 +73,7 @@ var (
 				SendQueueCapacity:   8,
 				RecvBufferCapacity:  128,
 				RecvMessageCapacity: maxMsgSize,
-
-				MaxSendBytes: 50,
+				MaxSendBytes:        50,
 			},
 		},
 	}
