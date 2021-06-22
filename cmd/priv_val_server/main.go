@@ -46,9 +46,8 @@ func main() {
 		rootCA           = flag.String("rootcafile", "", "absolute path to root CA")
 		prometheusAddr   = flag.String("prometheus-addr", "", "address for prometheus endpoint (host:port)")
 
-		logger = log.NewTMLogger(
-			log.NewSyncWriter(os.Stdout),
-		).With("module", "priv_val")
+		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false).
+			With("module", "priv_val")
 	)
 	flag.Parse()
 

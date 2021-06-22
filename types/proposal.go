@@ -7,8 +7,8 @@ import (
 
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 var (

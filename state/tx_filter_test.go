@@ -1,13 +1,10 @@
 package state_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	dbm "github.com/tendermint/tm-db"
 
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	sm "github.com/tendermint/tendermint/state"
@@ -31,10 +28,7 @@ func TestTxFilter(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		stateDB, err := dbm.NewDB("state", "memdb", os.TempDir())
-		require.NoError(t, err)
-		stateStore := sm.NewStore(stateDB)
-		state, err := stateStore.LoadFromDBOrGenesisDoc(genDoc)
+		state, err := sm.MakeGenesisState(genDoc)
 		require.NoError(t, err)
 
 		f := sm.TxPreCheck(state)

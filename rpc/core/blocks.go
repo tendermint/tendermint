@@ -98,8 +98,8 @@ func (env *Environment) Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.
 
 	block := env.BlockStore.LoadBlock(height)
 	blockMeta := env.BlockStore.LoadBlockMeta(height)
-	if blockMeta == nil {
-		return &ctypes.ResultBlock{BlockID: types.BlockID{}, Block: block}, nil
+	if blockMeta == nil || block == nil {
+		return &ctypes.ResultBlock{BlockID: types.BlockID{}, Block: &types.Block{}}, nil
 	}
 	return &ctypes.ResultBlock{BlockID: blockMeta.BlockID, Block: block}, nil
 }

@@ -4,33 +4,27 @@ order: 7
 
 ## Logging
 
-Logging adds detail and allows the node operator to better identify what they are looking for. Tendermint supports log levels on a global and per-module basis. This allows the node operator to see only the information they need and the developer to hone in on specific changes they are working on. 
+Logging adds detail and allows the node operator to better identify what they are looking for. Tendermint supports log levels on a global and per-module basis. This allows the node operator to see only the information they need and the developer to hone in on specific changes they are working on.
 
 ## Configuring Log Levels
-
 
 There are three log levels, `info`, `debug` and `error`. These can be configured either through the command line via  `tendermint start --log-level ""` or within the `config.toml` file.
 
 - `info` Info represents an informational message. It is used to show that modules have started, stopped and how they are functioning.
 - `debug` Debug is used to trace various calls or problems. Debug is used widely throughout a codebase and can lead to overly verbose logging.
-- `error` Error represents something that has gone wrong. An error log can represent a potential problem that can lead to a node halt. 
-
-
-The default setting is a global `main:info,state:info,statesync:info,*:error` level. If you would like to set the log level for a specific module, it can be done in the following format: 
-
-> We are setting all modules to log level `info` and the mempool to `error`. This will log all errors within the mempool module. 
+- `error` Error represents something that has gone wrong. An error log can represent a potential problem that can lead to a node halt.
 
 Within the `config.toml`:
 
 ```toml
 # Output level for logging, including package level options
-log-level = "*:info,mempool:error"
+log-level = "info"
 ```
 
 Via the command line:
 
 ```sh
-tendermint start --log-level "*:info,mempool:error"
+tendermint start --log-level "info"
 ```
 
 ## List of modules
@@ -62,7 +56,6 @@ little overview what they do.
 - `state` Represents the latest state and execution submodule, which
   executes blocks against the application.
 - `statesync` Provides a way to quickly sync a node with pruned history.
-
 
 ### Walkabout example
 

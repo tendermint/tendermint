@@ -12,7 +12,7 @@ import (
 )
 
 func TestLightBlockValidateBasic(t *testing.T) {
-	header := makeRandHeader()
+	header := MakeRandHeader()
 	commit := randCommit(time.Now())
 	vals, _ := randValidatorPrivValSet(5, 1)
 	header.Height = commit.Height
@@ -57,7 +57,7 @@ func TestLightBlockValidateBasic(t *testing.T) {
 }
 
 func TestLightBlockProtobuf(t *testing.T) {
-	header := makeRandHeader()
+	header := MakeRandHeader()
 	commit := randCommit(time.Now())
 	vals, _ := randValidatorPrivValSet(5, 1)
 	header.Height = commit.Height

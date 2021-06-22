@@ -2,21 +2,20 @@ package pex
 
 import (
 	"net"
-	"os"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/p2p/pex"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/p2p/pex"
 	"github.com/tendermint/tendermint/version"
 )
 
 var (
 	pexR   *pex.Reactor
 	peer   p2p.Peer
-	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 )
 
 func init() {

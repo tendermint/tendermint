@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -26,7 +25,7 @@ type Result struct {
 func main() {
 	var (
 		mux    = http.NewServeMux()
-		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 	)
 
 	// Stop upon receiving SIGTERM or CTRL-C.

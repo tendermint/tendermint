@@ -88,21 +88,22 @@ func GenerateTLS(certPath, keyPath, ca string, log log.Logger) grpc.DialOption {
 
 // DialRemoteSigner is  a generalized function to dial the gRPC server.
 func DialRemoteSigner(
-	config *cfg.Config,
+	config *cfg.PrivValidatorConfig,
 	chainID string,
 	logger log.Logger,
+	usePrometheus bool,
 ) (*SignerClient, error) {
 	var transportSecurity grpc.DialOption
-	if config.ArePrivValidatorClientSecurityOptionsPresent() {
-		transportSecurity = GenerateTLS(config.PrivValidatorClientCertificateFile(),
-			config.PrivValidatorClientKeyFile(), config.PrivValidatorRootCAFile(), logger)
+	if config.AreSecurityOptionsPresent() {
+		transportSecurity = GenerateTLS(config.ClientCertificateFile(),
+			config.ClientKeyFile(), config.RootCAFile(), logger)
 	} else {
 		transportSecurity = grpc.WithInsecure()
 		logger.Info("Using an insecure gRPC connection!")
 	}
 
 	dialOptions := DefaultDialOptions()
-	if config.Instrumentation.Prometheus {
+	if usePrometheus {
 		grpcMetrics := grpc_prometheus.DefaultClientMetrics
 		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(grpcMetrics.UnaryClientInterceptor()))
 	}
@@ -110,7 +111,7 @@ func DialRemoteSigner(
 	dialOptions = append(dialOptions, transportSecurity)
 
 	ctx := context.Background()
-	_, address := tmnet.ProtocolAndAddress(config.PrivValidator.ListenAddr)
+	_, address := tmnet.ProtocolAndAddress(config.ListenAddr)
 	conn, err := grpc.DialContext(ctx, address, dialOptions...)
 	if err != nil {
 		logger.Error("unable to connect to server", "target", address, "err", err)

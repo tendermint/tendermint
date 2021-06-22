@@ -136,7 +136,7 @@ type ManifestNode struct {
 	// restart:    restarts the node, shutting it down with SIGTERM
 	Perturb []string `toml:"perturb"`
 
-	// Log level sets the log level of the specific node i.e. "consensus:info,*:error".
+	// Log level sets the log level of the specific node i.e. "info".
 	// This is helpful when debugging a specific problem. This overrides the network
 	// level.
 	LogLevel string `toml:"log_level"`

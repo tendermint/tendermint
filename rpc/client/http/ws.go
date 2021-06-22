@@ -52,7 +52,13 @@ type wsEvents struct {
 	ws *jsonrpcclient.WSClient
 
 	mtx           tmsync.RWMutex
-	subscriptions map[string]chan ctypes.ResultEvent // query -> chan
+	subscriptions map[string]*wsSubscription
+}
+
+type wsSubscription struct {
+	res   chan ctypes.ResultEvent
+	id    string
+	query string
 }
 
 var _ rpcclient.EventsClient = (*wsEvents)(nil)
@@ -70,7 +76,7 @@ func newWsEvents(remote string, wso WSOptions) (*wsEvents, error) {
 	}
 
 	w := &wsEvents{
-		subscriptions: make(map[string]chan ctypes.ResultEvent),
+		subscriptions: make(map[string]*wsSubscription),
 	}
 	w.BaseService = *service.NewBaseService(nil, "wsEvents", w)
 
@@ -136,10 +142,10 @@ func (w *wsEvents) Subscribe(ctx context.Context, subscriber, query string,
 
 	outc := make(chan ctypes.ResultEvent, outCap)
 	w.mtx.Lock()
+	defer w.mtx.Unlock()
 	// subscriber param is ignored because Tendermint will override it with
 	// remote IP anyway.
-	w.subscriptions[query] = outc
-	w.mtx.Unlock()
+	w.subscriptions[query] = &wsSubscription{res: outc, query: query}
 
 	return outc, nil
 }
@@ -158,9 +164,12 @@ func (w *wsEvents) Unsubscribe(ctx context.Context, subscriber, query string) er
 	}
 
 	w.mtx.Lock()
-	_, ok := w.subscriptions[query]
+	info, ok := w.subscriptions[query]
 	if ok {
-		delete(w.subscriptions, query)
+		if info.id != "" {
+			delete(w.subscriptions, info.id)
+		}
+		delete(w.subscriptions, info.query)
 	}
 	w.mtx.Unlock()
 
@@ -181,7 +190,7 @@ func (w *wsEvents) UnsubscribeAll(ctx context.Context, subscriber string) error 
 	}
 
 	w.mtx.Lock()
-	w.subscriptions = make(map[string]chan ctypes.ResultEvent)
+	w.subscriptions = make(map[string]*wsSubscription)
 	w.mtx.Unlock()
 
 	return nil
@@ -196,7 +205,11 @@ func (w *wsEvents) redoSubscriptionsAfter(d time.Duration) {
 
 	w.mtx.Lock()
 	defer w.mtx.Unlock()
-	for q := range w.subscriptions {
+
+	for q, info := range w.subscriptions {
+		if q != "" && q == info.id {
+			continue
+		}
 		err := w.ws.Subscribe(ctx, q)
 		if err != nil {
 			w.Logger.Error("failed to resubscribe", "query", q, "err", err)
@@ -240,10 +253,17 @@ func (w *wsEvents) eventListener() {
 
 			w.mtx.RLock()
 			out, ok := w.subscriptions[result.Query]
+			if ok {
+				if _, idOk := w.subscriptions[result.SubscriptionID]; !idOk {
+					out.id = result.SubscriptionID
+					w.subscriptions[result.SubscriptionID] = out
+				}
+			}
+
 			w.mtx.RUnlock()
 			if ok {
 				select {
-				case out <- *result:
+				case out.res <- *result:
 				case <-w.Quit():
 					return
 				}
