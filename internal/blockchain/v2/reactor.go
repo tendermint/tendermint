@@ -588,3 +588,7 @@ func (r *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 		},
 	}
 }
+
+func (r *BlockchainReactor) GetMaxPeerBlockHeight() int64 {
+	return r.maxPeerHeight
+}

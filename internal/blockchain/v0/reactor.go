@@ -582,3 +582,7 @@ FOR_LOOP:
 		}
 	}
 }
+
+func (r *Reactor) GetMaxPeerBlockHeight() int64 {
+	return r.pool.maxPeerHeight
+}

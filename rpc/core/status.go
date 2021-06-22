@@ -69,6 +69,7 @@ func (env *Environment) Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, err
 			EarliestAppHash:     earliestAppHash,
 			EarliestBlockHeight: earliestBlockHeight,
 			EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
+			MaxPeerBlockHeight:  env.FastSyncReactor.GetMaxPeerBlockHeight(),
 			CatchingUp:          env.ConsensusReactor.WaitSync(),
 		},
 		ValidatorInfo: validatorInfo,
