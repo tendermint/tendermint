@@ -6,7 +6,7 @@ import (
 	"time"
 
 	bc "github.com/tendermint/tendermint/internal/blockchain"
-	con "github.com/tendermint/tendermint/internal/consensus"
+	cons "github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -62,8 +62,6 @@ type consensusReactor interface {
 	// For when we switch from blockchain reactor and fast sync to the consensus
 	// machine.
 	SwitchToConsensus(state sm.State, skipWAL bool)
-
-	GetConsensusState() *con.State
 }
 
 type peerError struct {
@@ -100,6 +98,8 @@ type Reactor struct {
 	// requestRoutine spawned goroutines when stopping the reactor and before
 	// stopping the p2p Channel(s).
 	poolWG sync.WaitGroup
+
+	metrics *cons.Metrics
 }
 
 // NewReactor returns new reactor instance.
@@ -112,6 +112,7 @@ func NewReactor(
 	blockchainCh *p2p.Channel,
 	peerUpdates *p2p.PeerUpdates,
 	fastSync bool,
+	metrics *cons.Metrics,
 ) (*Reactor, error) {
 	if state.LastBlockHeight != store.Height() {
 		return nil, fmt.Errorf("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height())
@@ -138,6 +139,7 @@ func NewReactor(
 		peerUpdates:   peerUpdates,
 		peerUpdatesCh: make(chan p2p.Envelope),
 		closeCh:       make(chan struct{}),
+		metrics:       metrics,
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Blockchain", r)
@@ -563,9 +565,7 @@ FOR_LOOP:
 					panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 				}
 
-				if r.consReactor != nil {
-					r.consReactor.GetConsensusState().RecordMetrics(first.Height, first)
-				}
+				r.metrics.RecordConsMetrics(first)
 
 				blocksSynced++
 

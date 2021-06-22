@@ -16,6 +16,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/blockchain/v2/internal/behavior"
+	cons "github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/mempool/mock"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/conn"
@@ -175,7 +176,7 @@ func newTestReactor(t *testing.T, p testReactorParams) *BlockchainReactor {
 		require.NoError(t, err)
 	}
 
-	r := newReactor(state, store, reporter, appl, true)
+	r := newReactor(state, store, reporter, appl, true, cons.NopMetrics())
 	logger := log.TestingLogger()
 	r.SetLogger(logger.With("module", "blockchain"))
 
