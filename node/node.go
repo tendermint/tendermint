@@ -130,7 +130,7 @@ func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 }
 
 // DefaultDashCoreRpcClient returns RPC client for the Dash Core node
-func DefaultDashCoreRpcClient(config *cfg.Config) (*dashcore.RpcClient, error) {
+func DefaultDashCoreRpcClient(config *cfg.Config) (dashcore.RpcClient, error) {
 	return dashcore.NewRpcClient(
 		config.PrivValidatorCoreRPCHost,
 		config.BaseConfig.PrivValidatorCoreRPCUsername,
@@ -237,6 +237,8 @@ type Node struct {
 	blockIndexer      indexer.BlockIndexer
 	indexerService    *txindex.IndexerService
 	prometheusSrv     *http.Server
+
+	dashCoreRpcClient dashcore.RpcClient
 }
 
 func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
@@ -587,7 +589,7 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 // startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
 func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reactor,
 	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
-	stateStore sm.Store, blockStore *store.BlockStore, state sm.State) error {
+	stateStore sm.Store, blockStore *store.BlockStore, state sm.State, dashCoreRpcClient dashcore.RpcClient) error {
 	ssR.Logger.Info("Starting state sync")
 
 	if stateProvider == nil {
@@ -596,8 +598,13 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 		defer cancel()
 		stateProvider, err = statesync.NewLightClientStateProvider(
 			ctx,
-			state.ChainID, state.Version, state.InitialHeight,
-			config.RPCServers, ssR.Logger.With("module", "light"))
+			state.ChainID,
+			state.Version,
+			state.InitialHeight,
+			config.RPCServers,
+			dashCoreRpcClient,
+			ssR.Logger.With("module", "light"),
+		)
 		if err != nil {
 			return fmt.Errorf("failed to set up light client state provider: %w", err)
 		}
@@ -644,7 +651,7 @@ func NewNode(config *cfg.Config,
 	genesisDocProvider GenesisDocProvider,
 	dbProvider DBProvider,
 	metricsProvider MetricsProvider,
-	dashCoreRpcClient *dashcore.RpcClient,
+	dashCoreRpcClient dashcore.RpcClient,
 	logger log.Logger,
 	options ...Option) (*Node, error) {
 
@@ -884,6 +891,8 @@ func NewNode(config *cfg.Config,
 		indexerService:   indexerService,
 		blockIndexer:     blockIndexer,
 		eventBus:         eventBus,
+
+		dashCoreRpcClient: dashCoreRpcClient,
 	}
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
 
@@ -958,8 +967,18 @@ func (n *Node) OnStart() error {
 		if !ok {
 			return fmt.Errorf("this blockchain reactor does not support switching from state sync")
 		}
-		err := startStateSync(n.stateSyncReactor, bcR, n.consensusReactor, n.stateSyncProvider,
-			n.config.StateSync, n.config.FastSyncMode, n.stateStore, n.blockStore, n.stateSyncGenesis)
+		err := startStateSync(
+			n.stateSyncReactor,
+			bcR,
+			n.consensusReactor,
+			n.stateSyncProvider,
+			n.config.StateSync,
+			n.config.FastSyncMode,
+			n.stateStore,
+			n.blockStore,
+			n.stateSyncGenesis,
+			n.dashCoreRpcClient,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to start state sync: %w", err)
 		}
@@ -1434,7 +1453,7 @@ func createAndStartPrivValidatorSocketClient(
 
 func createAndStartPrivValidatorRPCClient(
 	defaultQuorumType btcjson.LLMQType,
-	dashCoreRpcClient *dashcore.RpcClient,
+	dashCoreRpcClient dashcore.RpcClient,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
 	pvsc, err := privval.NewDashCoreSignerClient(dashCoreRpcClient, defaultQuorumType)

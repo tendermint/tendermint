@@ -42,7 +42,7 @@ var (
 	tmcfg             *config.Config
 	nodeLogger        log.Logger
 	nodeKey           *p2p.NodeKey
-	dashCoreRpcClient *dashcore.RpcClient
+	dashCoreRpcClient dashcore.RpcClient
 )
 
 func init() {

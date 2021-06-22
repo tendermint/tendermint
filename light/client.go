@@ -138,8 +138,8 @@ type Client struct {
 
 	quit chan struct{}
 
-	// Signature verification is done by dashcore
-	dashCoreRpcClient *dashcore.RpcClient
+	// Rpc client connected to dashd
+	dashCoreRpcClient dashcore.RpcClient
 
 	logger log.Logger
 }
@@ -160,7 +160,7 @@ func NewClient(
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
-	dashCoreRpcClient *dashcore.RpcClient,
+	dashCoreRpcClient dashcore.RpcClient,
 	options ...Option) (*Client, error) {
 
 	c, err := NewClientFromTrustedStore(chainID, primary, witnesses, trustedStore, dashCoreRpcClient, options...)
@@ -186,7 +186,7 @@ func NewClientFromTrustedStore(
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
-	dashCoreRpcClient *dashcore.RpcClient,
+	dashCoreRpcClient dashcore.RpcClient,
 	options ...Option) (*Client, error) {
 
 	c := &Client{

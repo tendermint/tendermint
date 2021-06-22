@@ -3,6 +3,7 @@ package statesync
 import (
 	"context"
 	"fmt"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"strings"
 	"time"
 
@@ -50,6 +51,7 @@ func NewLightClientStateProvider(
 	version tmstate.Version,
 	initialHeight int64,
 	servers []string,
+	dashCoreRpcClient dashcore.RpcClient,
 	logger log.Logger,
 ) (StateProvider, error) {
 	if len(servers) < 2 {
@@ -70,8 +72,16 @@ func NewLightClientStateProvider(
 		providerRemotes[provider] = server
 	}
 
-	lc, err := light.NewClient(ctx, chainID, providers[0], providers[1:],
-		lightdb.New(dbm.NewMemDB(), ""), light.Logger(logger), light.MaxRetryAttempts(5))
+	lc, err := light.NewClient(
+		ctx,
+		chainID,
+		providers[0],
+		providers[1:],
+		lightdb.New(dbm.NewMemDB(), ""),
+		dashCoreRpcClient,
+		light.Logger(logger),
+		light.MaxRetryAttempts(5),
+	)
 	if err != nil {
 		return nil, err
 	}

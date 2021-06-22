@@ -19,7 +19,7 @@ import (
 // DashCoreSignerClient implements PrivValidator.
 // Handles remote validator connections that provide signing services
 type DashCoreSignerClient struct {
-	dashCoreRpcClient *dashcore.RpcClient
+	dashCoreRpcClient dashcore.RpcClient
 	cachedProTxHash   crypto.ProTxHash
 	defaultQuorumType btcjson.LLMQType
 }
@@ -28,7 +28,7 @@ var _ types.PrivValidator = (*DashCoreSignerClient)(nil)
 
 // NewDashCoreSignerClient returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
-func NewDashCoreSignerClient(client *dashcore.RpcClient, defaultQuorumType btcjson.LLMQType) (*DashCoreSignerClient, error) {
+func NewDashCoreSignerClient(client dashcore.RpcClient, defaultQuorumType btcjson.LLMQType) (*DashCoreSignerClient, error) {
 	return &DashCoreSignerClient{dashCoreRpcClient: client, defaultQuorumType: defaultQuorumType}, nil
 }
 
@@ -75,7 +75,7 @@ func (sc *DashCoreSignerClient) GetPubKey(quorumHash crypto.QuorumHash) (crypto.
 		return nil, fmt.Errorf("quorum hash must be 32 bytes long if requesting public key from dash core")
 	}
 
-	response, err := sc.dashCoreRpcClient.Endpoint.QuorumInfo(sc.defaultQuorumType, quorumHash.String(), false)
+	response, err := sc.dashCoreRpcClient.QuorumInfo(sc.defaultQuorumType, quorumHash.String(), false)
 	if err != nil {
 		return nil, fmt.Errorf("getPubKey Quorum Info Error for (%d) %s : %w", sc.defaultQuorumType, quorumHash.String(), err)
 	}
@@ -130,7 +130,7 @@ func (sc *DashCoreSignerClient) GetProTxHash() (crypto.ProTxHash, error) {
 		return sc.cachedProTxHash, nil
 	}
 
-	masternodeStatus, err := sc.dashCoreRpcClient.Endpoint.MasternodeStatus()
+	masternodeStatus, err := sc.dashCoreRpcClient.MasternodeStatus()
 	if err != nil {
 		return nil, fmt.Errorf("send: %w", err)
 	}
@@ -141,12 +141,12 @@ func (sc *DashCoreSignerClient) GetProTxHash() (crypto.ProTxHash, error) {
 	}
 	if len(decodedProTxHash) != crypto.DefaultHashSize {
 		// We are proof of service banned. Get the proTxHash from our IP Address
-		networkInfo, err := sc.dashCoreRpcClient.Endpoint.GetNetworkInfo()
+		networkInfo, err := sc.dashCoreRpcClient.GetNetworkInfo()
 		if err == nil && len(networkInfo.LocalAddresses) > 0 {
 			localAddress := networkInfo.LocalAddresses[0].Address
 			localPort := networkInfo.LocalAddresses[0].Port
 			localHost := fmt.Sprintf("%s:%d", localAddress, localPort)
-			results, err := sc.dashCoreRpcClient.Endpoint.MasternodeListJSON(localHost)
+			results, err := sc.dashCoreRpcClient.MasternodeListJSON(localHost)
 			if err == nil {
 				for _, v := range results {
 					decodedProTxHash, err = hex.DecodeString(v.ProTxHash)
@@ -190,7 +190,7 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumType btcjson.LLMQ
 
 	// proTxHash, err := sc.GetProTxHash()
 
-	blockResponse, err := sc.dashCoreRpcClient.Endpoint.QuorumSign(quorumType, blockRequestIdString, blockMessageHashString, quorumHash.String(), false)
+	blockResponse, err := sc.dashCoreRpcClient.QuorumSign(quorumType, blockRequestIdString, blockMessageHashString, quorumHash.String(), false)
 
 	if blockResponse == nil {
 		return ErrUnexpectedResponse
@@ -226,7 +226,7 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumType btcjson.LLMQ
 	//	fmt.Printf("Unable to verify signature %v\n", pubKey)
 	//}
 
-	stateResponse, err := sc.dashCoreRpcClient.Endpoint.QuorumSign(sc.defaultQuorumType, stateRequestIdString, stateMessageHashString, quorumHash.String(), false)
+	stateResponse, err := sc.dashCoreRpcClient.QuorumSign(sc.defaultQuorumType, stateRequestIdString, stateMessageHashString, quorumHash.String(), false)
 
 	if stateResponse == nil {
 		return ErrUnexpectedResponse
@@ -281,7 +281,7 @@ func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumType btcjson.
 		return fmt.Errorf("error signing proposal with invalid quorum type")
 	}
 
-	response, err := sc.dashCoreRpcClient.Endpoint.QuorumSign(quorumType, requestIdHashString, messageHashString, quorumHash.String(), false)
+	response, err := sc.dashCoreRpcClient.QuorumSign(quorumType, requestIdHashString, messageHashString, quorumHash.String(), false)
 
 	if response == nil {
 		return ErrUnexpectedResponse
