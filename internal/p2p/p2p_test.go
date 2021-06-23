@@ -18,6 +18,7 @@ var (
 		Priority:            5,
 		SendQueueCapacity:   10,
 		RecvMessageCapacity: 10,
+		RecvBufferCapacity:  8,
 		MaxSendBytes:        1000,
 	}
 

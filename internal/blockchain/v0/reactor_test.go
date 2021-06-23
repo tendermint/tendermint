@@ -63,7 +63,7 @@ func setup(
 		fastSync:           true,
 	}
 
-	chDesc := p2p.ChannelDescriptor{ID: byte(BlockchainChannel)}
+	chDesc := p2p.ChannelDescriptor{ID: byte(BlockchainChannel), RecvBufferCapacity: 16}
 	rts.blockchainChannels = rts.network.MakeChannelsNoCleanup(t, chDesc, new(bcproto.Message), int(chBuf))
 
 	i := 0
