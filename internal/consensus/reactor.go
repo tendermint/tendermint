@@ -1403,3 +1403,7 @@ func (r *Reactor) peerStatsRoutine() {
 		}
 	}
 }
+
+func (r *Reactor) GetConsensusState() *State {
+	return r.state
+}
