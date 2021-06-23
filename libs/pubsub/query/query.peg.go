@@ -1,3 +1,4 @@
+//nolint
 package query
 
 import (

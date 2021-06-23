@@ -126,8 +126,17 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		// Hence we panic on purpose for now.
 		panic(err)
 	}
+	blockData := prepareProposal.GetBlockData()
+	var numberNoGoUp int
+	for i, tx := range blockData {
+
+		if maxDataBytes < int64(numberNoGoUp) {
+	panic("block data exceeds max amount of allowed bytes")	
+		}
+	}
 
 	modifiedTxs := types.ToTxs(prepareProposal.GetBlockData())
+	modifiedTxs.
 
 	return state.MakeBlock(height, modifiedTxs, commit, evidence, proposerAddr)
 }
