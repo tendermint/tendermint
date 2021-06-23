@@ -87,7 +87,7 @@ type addrBook struct {
 	service.BaseService
 
 	// accessed concurrently
-	mtx        tmsync.Mutex
+	mtx        tmsync.RWMutex
 	ourAddrs   map[string]struct{}
 	privateIDs map[p2p.NodeID]struct{}
 	addrLookup map[p2p.NodeID]*knownAddress // new & old
@@ -189,8 +189,8 @@ func (a *addrBook) AddOurAddress(addr *p2p.NetAddress) {
 
 // OurAddress returns true if it is our address.
 func (a *addrBook) OurAddress(addr *p2p.NetAddress) bool {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
+	a.mtx.RLock()
+	defer a.mtx.RUnlock()
 
 	_, ok := a.ourAddrs[addr.String()]
 	return ok
@@ -227,25 +227,25 @@ func (a *addrBook) RemoveAddress(addr *p2p.NetAddress) {
 // IsGood returns true if peer was ever marked as good and haven't
 // done anything wrong since then.
 func (a *addrBook) IsGood(addr *p2p.NetAddress) bool {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
+	a.mtx.RLock()
+	defer a.mtx.RUnlock()
 
 	return a.addrLookup[addr.ID].isOld()
 }
 
 // IsBanned returns true if the peer is currently banned
 func (a *addrBook) IsBanned(addr *p2p.NetAddress) bool {
-	a.mtx.Lock()
+	a.mtx.RLock()
 	_, ok := a.badPeers[addr.ID]
-	a.mtx.Unlock()
+	a.mtx.RUnlock()
 
 	return ok
 }
 
 // HasAddress returns true if the address is in the book.
 func (a *addrBook) HasAddress(addr *p2p.NetAddress) bool {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
+	a.mtx.RLock()
+	defer a.mtx.RUnlock()
 
 	ka := a.addrLookup[addr.ID]
 	return ka != nil
@@ -270,8 +270,8 @@ func (a *addrBook) Empty() bool {
 // from an empty bucket.
 // nolint:gosec // G404: Use of weak random number generator
 func (a *addrBook) PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
+	a.mtx.RLock()
+	defer a.mtx.RUnlock()
 
 	bookSize := a.size()
 	if bookSize <= 0 {
@@ -389,8 +389,8 @@ func (a *addrBook) ReinstateBadPeers() {
 // It randomly selects some addresses (old & new). Suitable for peer-exchange protocols.
 // Must never return a nil address.
 func (a *addrBook) GetSelection() []*p2p.NetAddress {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
+	a.mtx.RLock()
+	defer a.mtx.RUnlock()
 
 	bookSize := a.size()
 	if bookSize <= 0 {
@@ -440,8 +440,8 @@ func percentageOfNum(p, n int) int {
 // that range) and determines how biased we are to pick an address from a new
 // bucket.
 func (a *addrBook) GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddress {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
+	a.mtx.RLock()
+	defer a.mtx.RUnlock()
 
 	bookSize := a.size()
 	if bookSize <= 0 {
@@ -475,8 +475,8 @@ func (a *addrBook) GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddre
 
 // Size returns the number of addresses in the book.
 func (a *addrBook) Size() int {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
+	a.mtx.RLock()
+	defer a.mtx.RUnlock()
 
 	return a.size()
 }
