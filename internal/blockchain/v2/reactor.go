@@ -590,5 +590,7 @@ func (r *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 }
 
 func (r *BlockchainReactor) GetMaxPeerBlockHeight() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
 	return r.maxPeerHeight
 }
