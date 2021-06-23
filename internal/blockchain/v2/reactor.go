@@ -9,6 +9,7 @@ import (
 
 	bc "github.com/tendermint/tendermint/internal/blockchain"
 	"github.com/tendermint/tendermint/internal/blockchain/v2/internal/behavior"
+	cons "github.com/tendermint/tendermint/internal/consensus"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
@@ -55,13 +56,13 @@ type blockApplier interface {
 
 // XXX: unify naming in this package around tmState
 func newReactor(state state.State, store blockStore, reporter behavior.Reporter,
-	blockApplier blockApplier, fastSync bool) *BlockchainReactor {
+	blockApplier blockApplier, fastSync bool, metrics *cons.Metrics) *BlockchainReactor {
 	initHeight := state.LastBlockHeight + 1
 	if initHeight == 1 {
 		initHeight = state.InitialHeight
 	}
 	scheduler := newScheduler(initHeight, time.Now())
-	pContext := newProcessorContext(store, blockApplier, state)
+	pContext := newProcessorContext(store, blockApplier, state, metrics)
 	// TODO: Fix naming to just newProcesssor
 	// newPcState requires a processorContext
 	processor := newPcState(pContext)
@@ -81,9 +82,10 @@ func NewBlockchainReactor(
 	state state.State,
 	blockApplier blockApplier,
 	store blockStore,
-	fastSync bool) *BlockchainReactor {
+	fastSync bool,
+	metrics *cons.Metrics) *BlockchainReactor {
 	reporter := behavior.NewMockReporter()
-	return newReactor(state, store, reporter, blockApplier, fastSync)
+	return newReactor(state, store, reporter, blockApplier, fastSync, metrics)
 }
 
 // SetSwitch implements Reactor interface.

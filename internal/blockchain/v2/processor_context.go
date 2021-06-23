@@ -3,6 +3,7 @@ package v2
 import (
 	"fmt"
 
+	cons "github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -13,19 +14,22 @@ type processorContext interface {
 	saveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit)
 	tmState() state.State
 	setState(state.State)
+	recordConsMetrics(block *types.Block)
 }
 
 type pContext struct {
 	store   blockStore
 	applier blockApplier
 	state   state.State
+	metrics *cons.Metrics
 }
 
-func newProcessorContext(st blockStore, ex blockApplier, s state.State) *pContext {
+func newProcessorContext(st blockStore, ex blockApplier, s state.State, m *cons.Metrics) *pContext {
 	return &pContext{
 		store:   st,
 		applier: ex,
 		state:   s,
+		metrics: m,
 	}
 }
 
@@ -49,6 +53,10 @@ func (pc pContext) verifyCommit(chainID string, blockID types.BlockID, height in
 
 func (pc *pContext) saveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
 	pc.store.SaveBlock(block, blockParts, seenCommit)
+}
+
+func (pc *pContext) recordConsMetrics(block *types.Block) {
+	pc.metrics.RecordConsMetrics(block)
 }
 
 type mockPContext struct {
@@ -97,4 +105,8 @@ func (mpc *mockPContext) setState(state state.State) {
 
 func (mpc *mockPContext) tmState() state.State {
 	return mpc.state
+}
+
+func (mpc *mockPContext) recordConsMetrics(block *types.Block) {
+
 }
