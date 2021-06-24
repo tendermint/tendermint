@@ -71,6 +71,7 @@ type Manifest struct {
 
 	// QuorumMembersCount ....
 	QuorumMembersCount int `toml:"quorum_members_count"`
+	QuorumRotate       int `toml:"quorum_rotate"`
 }
 
 // ManifestNode represents a node in a testnet manifest.

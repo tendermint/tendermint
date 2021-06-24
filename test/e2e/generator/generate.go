@@ -39,6 +39,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		return manifest, fmt.Errorf("unknown topology %q", opt["topology"])
 	}
 	manifest.QuorumMembersCount = topology.quorumMembersCount
+	manifest.QuorumRotate = topology.quorumRotate
 	numSeeds := topology.seeds.compute(r)
 	numValidators := topology.validators.compute(r)
 	numFulls := topology.fulls.compute(r)

@@ -29,6 +29,7 @@ var topologies = map[string]topology{
 		chainLocks:         &topologyItem{rand: 10},
 		lightClients:       &topologyItem{rand: 3},
 		quorumMembersCount: 3,
+		quorumRotate:       15,
 	},
 }
 
@@ -101,6 +102,7 @@ type topology struct {
 	chainLocks         *topologyItem
 	lightClients       *topologyItem
 	quorumMembersCount int
+	quorumRotate       int
 }
 
 type node struct {
