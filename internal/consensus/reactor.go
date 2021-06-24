@@ -304,6 +304,11 @@ conS:
 conR:
 %+v`, err, r.state, r))
 	}
+
+	d := types.EventDataFastSyncStatus{On: false, Height: state.LastBlockHeight}
+	if err := r.eventBus.PublishEventFastSyncStatus(d); err != nil {
+		r.Logger.Error("failed to emit the fastsync off event", "err", err)
+	}
 }
 
 // String returns a string representation of the Reactor.
