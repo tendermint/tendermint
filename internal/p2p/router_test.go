@@ -319,12 +319,12 @@ func TestRouter_Channel_Error(t *testing.T) {
 
 func TestRouter_AcceptPeers(t *testing.T) {
 	testcases := map[string]struct {
-		peerInfo p2p.NodeInfo
+		peerInfo types.NodeInfo
 		peerKey  crypto.PubKey
 		ok       bool
 	}{
 		"valid handshake": {peerInfo, peerKey.PubKey(), true},
-		"empty handshake": {p2p.NodeInfo{}, nil, false},
+		"empty handshake": {types.NodeInfo{}, nil, false},
 		"invalid key":     {peerInfo, selfKey.PubKey(), false},
 		"self handshake":  {selfInfo, selfKey.PubKey(), false},
 	}
@@ -478,7 +478,7 @@ func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 	mockConnection := &mocks.Connection{}
 	mockConnection.On("String").Maybe().Return("mock")
 	mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
-		WaitUntil(closeCh).Return(p2p.NodeInfo{}, nil, io.EOF)
+		WaitUntil(closeCh).Return(types.NodeInfo{}, nil, io.EOF)
 	mockConnection.On("Close").Return(nil)
 	mockConnection.On("RemoteEndpoint").Return(p2p.Endpoint{})
 
@@ -522,13 +522,13 @@ func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 func TestRouter_DialPeers(t *testing.T) {
 	testcases := map[string]struct {
 		dialID   types.NodeID
-		peerInfo p2p.NodeInfo
+		peerInfo types.NodeInfo
 		peerKey  crypto.PubKey
 		dialErr  error
 		ok       bool
 	}{
 		"valid dial":         {peerInfo.NodeID, peerInfo, peerKey.PubKey(), nil, true},
-		"empty handshake":    {peerInfo.NodeID, p2p.NodeInfo{}, nil, nil, false},
+		"empty handshake":    {peerInfo.NodeID, types.NodeInfo{}, nil, nil, false},
 		"invalid key":        {peerInfo.NodeID, peerInfo, selfKey.PubKey(), nil, false},
 		"unexpected node ID": {peerInfo.NodeID, selfInfo, selfKey.PubKey(), nil, false},
 		"dial error":         {peerInfo.NodeID, peerInfo, peerKey.PubKey(), errors.New("boom"), false},
@@ -634,7 +634,7 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 	mockConnection := &mocks.Connection{}
 	mockConnection.On("String").Maybe().Return("mock")
 	mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
-		WaitUntil(closeCh).Return(p2p.NodeInfo{}, nil, io.EOF)
+		WaitUntil(closeCh).Return(types.NodeInfo{}, nil, io.EOF)
 	mockConnection.On("Close").Return(nil)
 
 	mockTransport := &mocks.Transport{}

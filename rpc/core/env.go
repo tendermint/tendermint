@@ -47,7 +47,7 @@ type Consensus interface {
 type transport interface {
 	Listeners() []string
 	IsListening() bool
-	NodeInfo() p2p.NodeInfo
+	NodeInfo() types.NodeInfo
 }
 
 type peers interface {

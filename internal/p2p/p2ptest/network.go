@@ -215,7 +215,7 @@ func (n *Network) Remove(t *testing.T, id types.NodeID) {
 // Node is a node in a Network, with a Router and a PeerManager.
 type Node struct {
 	NodeID      types.NodeID
-	NodeInfo    p2p.NodeInfo
+	NodeInfo    types.NodeInfo
 	NodeAddress p2p.NodeAddress
 	PrivKey     crypto.PrivKey
 	Router      *p2p.Router
@@ -229,7 +229,7 @@ type Node struct {
 func (n *Network) MakeNode(t *testing.T, opts NodeOptions) *Node {
 	privKey := ed25519.GenPrivKey()
 	nodeID := types.NodeIDFromPubKey(privKey.PubKey())
-	nodeInfo := p2p.NodeInfo{
+	nodeInfo := types.NodeInfo{
 		NodeID:     nodeID,
 		ListenAddr: "0.0.0.0:0", // FIXME: We have to fake this for now.
 		Moniker:    string(nodeID),

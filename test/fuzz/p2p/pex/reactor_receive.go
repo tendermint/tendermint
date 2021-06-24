@@ -64,12 +64,12 @@ func newFuzzPeer() *fuzzPeer {
 
 var privKey = ed25519.GenPrivKey()
 var nodeID = types.NodeIDFromPubKey(privKey.PubKey())
-var defaultNodeInfo = p2p.NodeInfo{
-	ProtocolVersion: p2p.NewProtocolVersion(
-		version.P2PProtocol,
-		version.BlockProtocol,
-		0,
-	),
+var defaultNodeInfo = types.NodeInfo{
+	ProtocolVersion: types.ProtocolVersion{
+		P2P:   version.P2PProtocol,
+		Block: version.BlockProtocol,
+		App:   0,
+	},
 	NodeID:     nodeID,
 	ListenAddr: "127.0.0.1:0",
 	Moniker:    "foo1",
@@ -84,7 +84,7 @@ func (fp *fuzzPeer) RemoteAddr() net.Addr {
 func (fp *fuzzPeer) IsOutbound() bool             { return false }
 func (fp *fuzzPeer) IsPersistent() bool           { return false }
 func (fp *fuzzPeer) CloseConn() error             { return nil }
-func (fp *fuzzPeer) NodeInfo() p2p.NodeInfo       { return defaultNodeInfo }
+func (fp *fuzzPeer) NodeInfo() types.NodeInfo     { return defaultNodeInfo }
 func (fp *fuzzPeer) Status() p2p.ConnectionStatus { var cs p2p.ConnectionStatus; return cs }
 func (fp *fuzzPeer) SocketAddr() *p2p.NetAddress {
 	return types.NewNetAddress(fp.ID(), fp.RemoteAddr())

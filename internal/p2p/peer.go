@@ -32,7 +32,7 @@ type Peer interface {
 
 	CloseConn() error // close original connection
 
-	NodeInfo() NodeInfo // peer's info
+	NodeInfo() types.NodeInfo // peer's info
 	Status() tmconn.ConnectionStatus
 	SocketAddr() *NetAddress // actual address of the socket
 
@@ -81,7 +81,7 @@ type peer struct {
 	// peer's node info and the channel it knows about
 	// channels = nodeInfo.Channels
 	// cached to avoid copying nodeInfo in hasChannel
-	nodeInfo    NodeInfo
+	nodeInfo    types.NodeInfo
 	channels    []byte
 	reactors    map[byte]Reactor
 	onPeerError func(Peer, interface{})
@@ -96,7 +96,7 @@ type peer struct {
 type PeerOption func(*peer)
 
 func newPeer(
-	nodeInfo NodeInfo,
+	nodeInfo types.NodeInfo,
 	pc peerConn,
 	reactorsByCh map[byte]Reactor,
 	onPeerError func(Peer, interface{}),
@@ -218,7 +218,7 @@ func (p *peer) IsPersistent() bool {
 }
 
 // NodeInfo returns a copy of the peer's NodeInfo.
-func (p *peer) NodeInfo() NodeInfo {
+func (p *peer) NodeInfo() types.NodeInfo {
 	return p.nodeInfo
 }
 

@@ -218,7 +218,7 @@ type memoryMessage struct {
 	message   []byte
 
 	// For handshakes.
-	nodeInfo *NodeInfo
+	nodeInfo *types.NodeInfo
 	pubKey   crypto.PubKey
 }
 
@@ -270,29 +270,29 @@ func (c *MemoryConnection) Status() conn.ConnectionStatus {
 // Handshake implements Connection.
 func (c *MemoryConnection) Handshake(
 	ctx context.Context,
-	nodeInfo NodeInfo,
+	nodeInfo types.NodeInfo,
 	privKey crypto.PrivKey,
-) (NodeInfo, crypto.PubKey, error) {
+) (types.NodeInfo, crypto.PubKey, error) {
 	select {
 	case c.sendCh <- memoryMessage{nodeInfo: &nodeInfo, pubKey: privKey.PubKey()}:
 		c.logger.Debug("sent handshake", "nodeInfo", nodeInfo)
 	case <-c.closer.Done():
-		return NodeInfo{}, nil, io.EOF
+		return types.NodeInfo{}, nil, io.EOF
 	case <-ctx.Done():
-		return NodeInfo{}, nil, ctx.Err()
+		return types.NodeInfo{}, nil, ctx.Err()
 	}
 
 	select {
 	case msg := <-c.receiveCh:
 		if msg.nodeInfo == nil {
-			return NodeInfo{}, nil, errors.New("no NodeInfo in handshake")
+			return types.NodeInfo{}, nil, errors.New("no NodeInfo in handshake")
 		}
 		c.logger.Debug("received handshake", "peerInfo", msg.nodeInfo)
 		return *msg.nodeInfo, msg.pubKey, nil
 	case <-c.closer.Done():
-		return NodeInfo{}, nil, io.EOF
+		return types.NodeInfo{}, nil, io.EOF
 	case <-ctx.Done():
-		return NodeInfo{}, nil, ctx.Err()
+		return types.NodeInfo{}, nil, ctx.Err()
 	}
 }
 
