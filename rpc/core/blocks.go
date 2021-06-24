@@ -163,7 +163,7 @@ func (env *Environment) BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*
 
 	var totalGasUsed int64
 	for _, tx := range results.GetDeliverTxs() {
-		totalGasUsed = totalGasUsed + tx.GetGasUsed()
+		totalGasUsed += tx.GetGasUsed()
 	}
 
 	return &ctypes.ResultBlockResults{
