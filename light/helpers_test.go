@@ -92,13 +92,9 @@ func (pkz privKeys) ToValidators(thresholdPublicKey crypto.PubKey) *types.Valida
 
 // signHeader properly signs the header with all keys from first to last exclusive.
 func (pkz privKeys) signHeader(header *types.Header, valSet *types.ValidatorSet, first, last int) *types.Commit {
-	commitSigs := make([]types.CommitSig, len(pkz))
 	var blockSigs [][]byte
 	var stateSigs [][]byte
 	var blsIDs [][]byte
-	for i := 0; i < len(pkz); i++ {
-		commitSigs[i] = types.NewCommitSigAbsent()
-	}
 
 	blockID := types.BlockID{
 		Hash:          header.Hash(),
@@ -118,7 +114,6 @@ func (pkz privKeys) signHeader(header *types.Header, valSet *types.ValidatorSet,
 			panic("light client keys do not match")
 		}
 		vote := makeVote(header, valSet, proTxHash, pkz[i], blockID, stateID)
-		commitSigs[vote.ValidatorIndex] = vote.CommitSig()
 		blockSigs = append(blockSigs, vote.BlockSignature)
 		stateSigs = append(stateSigs, vote.StateSignature)
 		blsIDs = append(blsIDs, vote.ValidatorProTxHash)
@@ -127,7 +122,7 @@ func (pkz privKeys) signHeader(header *types.Header, valSet *types.ValidatorSet,
 	thresholdBlockSig, _ := bls12381.RecoverThresholdSignatureFromShares(blockSigs, blsIDs)
 	thresholdStateSig, _ := bls12381.RecoverThresholdSignatureFromShares(stateSigs, blsIDs)
 
-	return types.NewCommit(header.Height, 1, blockID, stateID, commitSigs, valSet.QuorumHash, thresholdBlockSig, thresholdStateSig)
+	return types.NewCommit(header.Height, 1, blockID, stateID, valSet.QuorumHash, thresholdBlockSig, thresholdStateSig)
 }
 
 func makeVote(header *types.Header, valset *types.ValidatorSet, proTxHash crypto.ProTxHash,
@@ -149,7 +144,7 @@ func makeVote(header *types.Header, valset *types.ValidatorSet, proTxHash crypto
 
 	v := vote.ToProto()
 	// SignDigest it
-	signId:= types.VoteBlockSignId(header.ChainID, v, valset.QuorumType, valset.QuorumHash)
+	signId := types.VoteBlockSignId(header.ChainID, v, valset.QuorumType, valset.QuorumHash)
 	sig, err := key.SignDigest(signId)
 	if err != nil {
 		panic(err)
