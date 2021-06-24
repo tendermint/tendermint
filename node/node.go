@@ -560,12 +560,6 @@ func makeSeedNode(config *cfg.Config,
 	return node, nil
 }
 
-// Temporary interface for switching to fast sync, we should get rid of v0.
-// See: https://github.com/tendermint/tendermint/issues/4595
-type fastSyncReactor interface {
-	SwitchToFastSync(sm.State) error
-}
-
 // OnStart starts the Node. It implements service.Service.
 func (n *nodeImpl) OnStart() error {
 	now := tmtime.Now()
@@ -658,7 +652,7 @@ func (n *nodeImpl) OnStart() error {
 
 	// Run state sync
 	if n.stateSync {
-		bcR, ok := n.bcReactor.(fastSyncReactor)
+		bcR, ok := n.bcReactor.(cs.FastSyncReactor)
 		if !ok {
 			return fmt.Errorf("this blockchain reactor does not support switching from state sync")
 		}
@@ -787,7 +781,8 @@ func (n *nodeImpl) ConfigureRPC() (*rpccore.Environment, error) {
 
 		Logger: n.Logger.With("module", "rpc"),
 
-		Config: *n.config.RPC,
+		Config:          *n.config.RPC,
+		FastSyncReactor: n.bcReactor.(cs.FastSyncReactor),
 	}
 	if n.config.Mode == cfg.ModeValidator {
 		pubKey, err := n.privValidator.GetPubKey(context.TODO())
@@ -1032,7 +1027,7 @@ func (n *nodeImpl) NodeInfo() p2p.NodeInfo {
 }
 
 // startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
-func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reactor,
+func startStateSync(ssR *statesync.Reactor, bcR cs.FastSyncReactor, conR *cs.Reactor,
 	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
 	stateStore sm.Store, blockStore *store.BlockStore, state sm.State) error {
 	ssR.Logger.Info("starting state sync...")

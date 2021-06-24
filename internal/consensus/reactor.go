@@ -98,6 +98,14 @@ const (
 
 type ReactorOption func(*Reactor)
 
+// Temporary interface for switching to fast sync, we should get rid of v0.
+// See: https://github.com/tendermint/tendermint/issues/4595
+type FastSyncReactor interface {
+	SwitchToFastSync(sm.State) error
+
+	GetMaxPeerBlockHeight() int64
+}
+
 // Reactor defines a reactor for the consensus service.
 type Reactor struct {
 	service.BaseService

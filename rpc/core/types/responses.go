@@ -94,6 +94,8 @@ type SyncInfo struct {
 	EarliestBlockHeight int64          `json:"earliest_block_height"`
 	EarliestBlockTime   time.Time      `json:"earliest_block_time"`
 
+	MaxPeerBlockHeight int64 `json:"max_peer_block_height"`
+
 	CatchingUp bool `json:"catching_up"`
 }
 
