@@ -126,6 +126,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [p2p/pex] \#6509 Improve addrBook.hash performance (@cuonglm)
 - [consensus/metrics] \#6549 Change block_size gauge to a histogram for better observability over time (@marbar3778)
 - [statesync] \#6587 Increase chunk priority and re-request chunks that don't arrive (@cmwaters)
+- [rpc] \#6615 Add TotalGasUsed to block_results response (@crypto-facs)
 
 ### BUG FIXES
 
@@ -134,5 +135,5 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [blockchain/v1] \#5711 Fix deadlock (@melekes)
 - [evidence] \#6375 Fix bug with inconsistent LightClientAttackEvidence hashing (cmwaters)
 - [rpc] \#6507 fix RPC client doesn't handle url's without ports (@JayT106)
-- [statesync] \#6463 Adds Reverse Sync feature to fetch historical light blocks after state sync in order to verify any evidence (@cmwaters) 
+- [statesync] \#6463 Adds Reverse Sync feature to fetch historical light blocks after state sync in order to verify any evidence (@cmwaters)
 - [fastsync] \#6590 Update the metrics during fast-sync (@JayT106)
