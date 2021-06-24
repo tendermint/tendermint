@@ -2,6 +2,8 @@ package light_test
 
 import (
 	"context"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+	"github.com/tendermint/tendermint/light"
 	"testing"
 	"time"
 
@@ -24,20 +26,25 @@ var (
 	genesisBlock, _   = benchmarkFullNode.LightBlock(context.Background(), 1)
 )
 
+func setupDashCoreRpcMockForBenchmark(b *testing.B) {
+	dashCoreRpcClientMock, _ = dashcore.NewRpcClientMock()
+
+	b.Cleanup(func() {
+		dashCoreRpcClientMock = nil
+	})
+}
+
 func BenchmarkSequence(b *testing.B) {
-	c, err := NewClient(
+	setupDashCoreRpcMockForBenchmark(b)
+
+	c, err := light.NewClient(
 		context.Background(),
 		chainID,
-		TrustOptions{
-			Period: 24 * time.Hour,
-			Height: 1,
-			Hash:   genesisBlock.Hash(),
-		},
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		Logger(log.TestingLogger()),
-		SequentialVerification(),
+		dashCoreRpcClientMock,
+		light.Logger(log.TestingLogger()),
 	)
 	if err != nil {
 		b.Fatal(err)
@@ -53,18 +60,16 @@ func BenchmarkSequence(b *testing.B) {
 }
 
 func BenchmarkBisection(b *testing.B) {
-	c, err := NewClient(
+	setupDashCoreRpcMockForBenchmark(b)
+
+	c, err := light.NewClient(
 		context.Background(),
 		chainID,
-		TrustOptions{
-			Period: 24 * time.Hour,
-			Height: 1,
-			Hash:   genesisBlock.Hash(),
-		},
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		Logger(log.TestingLogger()),
+		dashCoreRpcClientMock,
+		light.Logger(log.TestingLogger()),
 	)
 	if err != nil {
 		b.Fatal(err)
@@ -80,19 +85,17 @@ func BenchmarkBisection(b *testing.B) {
 }
 
 func BenchmarkBackwards(b *testing.B) {
-	trustedBlock, _ := benchmarkFullNode.LightBlock(context.Background(), 0)
-	c, err := NewClient(
+	setupDashCoreRpcMockForBenchmark(b)
+	benchmarkFullNode.LightBlock(context.Background(), 0)
+
+	c, err := light.NewClient(
 		context.Background(),
 		chainID,
-		TrustOptions{
-			Period: 24 * time.Hour,
-			Height: trustedBlock.Height,
-			Hash:   trustedBlock.Hash(),
-		},
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		Logger(log.TestingLogger()),
+		dashCoreRpcClientMock,
+		light.Logger(log.TestingLogger()),
 	)
 	if err != nil {
 		b.Fatal(err)

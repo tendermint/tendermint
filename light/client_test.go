@@ -63,7 +63,7 @@ var (
 	dashCoreRpcClientMock dashcore.RpcClient
 )
 
-func setupMock(t *testing.T) {
+func setupDashCoreRpcMock(t *testing.T) {
 	dashCoreRpcClientMock, _ = dashcore.NewRpcClientMock()
 
 	t.Cleanup(func() {
@@ -77,7 +77,7 @@ func TestMock(t *testing.T) {
 }
 
 func TestClient_SequentialVerification(t *testing.T) {
-	setupMock(t)
+	setupDashCoreRpcMock(t)
 
 	newVals, _ := types.GenerateValidatorSet(10)
 	differentVals, _ := types.GenerateValidatorSet(10)
@@ -374,7 +374,7 @@ func TestClient_SequentialVerification(t *testing.T) {
 // }
 
 func TestClientBisectionBetweenTrustedHeaders(t *testing.T) {
-	setupMock(t)
+	setupDashCoreRpcMock(t)
 
 	c, err := light.NewClient(
 		ctx,
@@ -399,7 +399,7 @@ func TestClientBisectionBetweenTrustedHeaders(t *testing.T) {
 }
 
 func TestClient_Cleanup(t *testing.T) {
-	setupMock(t)
+	setupDashCoreRpcMock(t)
 
 	c, err := light.NewClient(
 		ctx,
@@ -425,7 +425,7 @@ func TestClient_Cleanup(t *testing.T) {
 
 // trustedHeader.Height == options.Height
 func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
-	setupMock(t)
+	setupDashCoreRpcMock(t)
 
 	// 1. options.Hash == trustedHeader.Hash
 	{
@@ -492,7 +492,7 @@ func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
 
 // trustedHeader.Height < options.Height
 func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
-	setupMock(t)
+	setupDashCoreRpcMock(t)
 
 	// 1. options.Hash == trustedHeader.Hash
 	{
@@ -562,7 +562,7 @@ func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 
 // trustedHeader.Height > options.Height
 func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
-	setupMock(t)
+	setupDashCoreRpcMock(t)
 	// 1. options.Hash == trustedHeader.Hash
 	{
 		// load the first three headers into the trusted store
@@ -654,7 +654,7 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 }
 
 func TestClient_Update(t *testing.T) {
-	setupMock(t)
+	setupDashCoreRpcMock(t)
 
 	c, err := light.NewClient(
 		ctx,
@@ -677,7 +677,7 @@ func TestClient_Update(t *testing.T) {
 }
 
 func TestClient_Concurrency(t *testing.T) {
-	setupMock(t)
+	setupDashCoreRpcMock(t)
 
 	c, err := light.NewClient(
 		ctx,
@@ -720,7 +720,7 @@ func TestClient_Concurrency(t *testing.T) {
 }
 
 func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
-	setupMock(t)
+	setupDashCoreRpcMock(t)
 
 	c, err := light.NewClient(
 		ctx,
@@ -848,7 +848,7 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 // }
 
 func TestClient_NewClientFromTrustedStore(t *testing.T) {
-	setupMock(t)
+	setupDashCoreRpcMock(t)
 
 	// 1) Initiate DB and fill with a "trusted" header
 	db := dbs.New(dbm.NewMemDB(), chainID)
@@ -872,7 +872,7 @@ func TestClient_NewClientFromTrustedStore(t *testing.T) {
 }
 
 func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
-	setupMock(t)
+	setupDashCoreRpcMock(t)
 
 	// different headers hash then primary plus less than 1/3 signed (no fork)
 	badProvider1 := mockp.New(
@@ -935,7 +935,7 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 }
 
 func TestClient_TrustedValidatorSet(t *testing.T) {
-	setupMock(t)
+	setupDashCoreRpcMock(t)
 	differentVals, _ := types.GenerateValidatorSet(10)
 	badValSetNode := mockp.New(
 		chainID,
@@ -973,7 +973,7 @@ func TestClient_TrustedValidatorSet(t *testing.T) {
 }
 
 func TestClientPrunesHeadersAndValidatorSets(t *testing.T) {
-	setupMock(t)
+	setupDashCoreRpcMock(t)
 
 	c, err := light.NewClient(
 		ctx,
@@ -998,7 +998,7 @@ func TestClientPrunesHeadersAndValidatorSets(t *testing.T) {
 }
 
 func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
-	setupMock(t)
+	setupDashCoreRpcMock(t)
 
 	emptyValSet := &types.ValidatorSet{
 		Validators: nil,

@@ -3,6 +3,8 @@ package light_test
 import (
 	"context"
 	"fmt"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+	"github.com/tendermint/tendermint/light"
 	"io/ioutil"
 	stdlog "log"
 	"os"
@@ -40,7 +42,7 @@ func ExampleClient_Update() {
 		stdlog.Fatal(err)
 	}
 
-	block, err := primary.LightBlock(context.Background(), 2)
+	_, err = primary.LightBlock(context.Background(), 2)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -50,18 +52,20 @@ func ExampleClient_Update() {
 		stdlog.Fatal(err)
 	}
 
-	c, err := NewClient(
+	dashCoreRpcClient, err := dashcore.NewRpcClient(
+		config.PrivValidatorCoreRPCHost,
+		config.BaseConfig.PrivValidatorCoreRPCUsername,
+		config.BaseConfig.PrivValidatorCoreRPCPassword,
+	)
+
+	c, err := light.NewClient(
 		context.Background(),
 		chainID,
-		TrustOptions{
-			Period: 504 * time.Hour, // 21 days
-			Height: 2,
-			Hash:   block.Hash(),
-		},
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db, chainID),
-		Logger(log.TestingLogger()),
+		dashCoreRpcClient,
+		light.Logger(log.TestingLogger()),
 	)
 	if err != nil {
 		stdlog.Fatal(err)
@@ -108,7 +112,7 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 		stdlog.Fatal(err)
 	}
 
-	block, err := primary.LightBlock(context.Background(), 2)
+	_, err = primary.LightBlock(context.Background(), 2)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -118,18 +122,20 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 		stdlog.Fatal(err)
 	}
 
-	c, err := NewClient(
+	dashCoreRpcClient, err := dashcore.NewRpcClient(
+		config.PrivValidatorCoreRPCHost,
+		config.BaseConfig.PrivValidatorCoreRPCUsername,
+		config.BaseConfig.PrivValidatorCoreRPCPassword,
+	)
+
+	c, err := light.NewClient(
 		context.Background(),
 		chainID,
-		TrustOptions{
-			Period: 504 * time.Hour, // 21 days
-			Height: 2,
-			Hash:   block.Hash(),
-		},
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db, chainID),
-		Logger(log.TestingLogger()),
+		dashCoreRpcClient,
+		light.Logger(log.TestingLogger()),
 	)
 	if err != nil {
 		stdlog.Fatal(err)

@@ -3,6 +3,7 @@ package rpctest
 import (
 	"context"
 	"fmt"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"os"
 	"path/filepath"
 	"strings"
@@ -164,14 +165,27 @@ func NewTendermint(app abci.Application, opts *Options) *nm.Node {
 	pv := privval.LoadOrGenFilePV(pvKeyFile, pvKeyStateFile)
 	papp := proxy.NewLocalClientCreator(app)
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
+
+	dashCoreRpcClient, err := dashcore.NewRpcClient(
+		config.PrivValidatorCoreRPCHost,
+		config.BaseConfig.PrivValidatorCoreRPCUsername,
+		config.BaseConfig.PrivValidatorCoreRPCPassword,
+	)
+
 	if err != nil {
 		panic(err)
 	}
-	node, err := nm.NewNode(config, pv, nodeKey, papp,
+	node, err := nm.NewNode(
+		config,
+		pv,
+		nodeKey,
+		papp,
 		nm.DefaultGenesisDocProviderFunc(config),
 		nm.DefaultDBProvider,
 		nm.DefaultMetricsProvider(config.Instrumentation),
-		logger)
+		dashCoreRpcClient,
+		logger,
+	)
 	if err != nil {
 		panic(err)
 	}
