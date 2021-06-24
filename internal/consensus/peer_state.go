@@ -8,7 +8,6 @@ import (
 
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
@@ -37,7 +36,7 @@ func (pss peerStateStats) String() string {
 // NOTE: THIS GETS DUMPED WITH rpc/core/consensus.go.
 // Be mindful of what you Expose.
 type PeerState struct {
-	peerID p2p.NodeID
+	peerID types.NodeID
 	logger log.Logger
 
 	// NOTE: Modify below using setters, never directly.
@@ -51,7 +50,7 @@ type PeerState struct {
 }
 
 // NewPeerState returns a new PeerState for the given node ID.
-func NewPeerState(logger log.Logger, peerID p2p.NodeID) *PeerState {
+func NewPeerState(logger log.Logger, peerID types.NodeID) *PeerState {
 	return &PeerState{
 		peerID: peerID,
 		logger: logger,

@@ -7,6 +7,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmos "github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/types"
 )
 
 //------------------------------------------------------------------------------
@@ -17,7 +18,7 @@ import (
 // It contains the nodes private key for authentication.
 type NodeKey struct {
 	// Canonical ID - hex-encoded pubkey's address (IDByteLength bytes)
-	ID NodeID `json:"id"`
+	ID types.NodeID `json:"id"`
 	// Private key
 	PrivKey crypto.PrivKey `json:"priv_key"`
 }
@@ -64,7 +65,7 @@ func LoadOrGenNodeKey(filePath string) (NodeKey, error) {
 func GenNodeKey() NodeKey {
 	privKey := ed25519.GenPrivKey()
 	return NodeKey{
-		ID:      NodeIDFromPubKey(privKey.PubKey()),
+		ID:      types.NodeIDFromPubKey(privKey.PubKey()),
 		PrivKey: privKey,
 	}
 }
@@ -80,6 +81,6 @@ func LoadNodeKey(filePath string) (NodeKey, error) {
 	if err != nil {
 		return NodeKey{}, err
 	}
-	nodeKey.ID = NodeIDFromPubKey(nodeKey.PubKey())
+	nodeKey.ID = types.NodeIDFromPubKey(nodeKey.PubKey())
 	return nodeKey, nil
 }

@@ -12,6 +12,7 @@ import (
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p/conn"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -27,7 +28,7 @@ type MemoryNetwork struct {
 	logger log.Logger
 
 	mtx        sync.RWMutex
-	transports map[NodeID]*MemoryTransport
+	transports map[types.NodeID]*MemoryTransport
 	bufferSize int
 }
 
@@ -36,14 +37,14 @@ func NewMemoryNetwork(logger log.Logger, bufferSize int) *MemoryNetwork {
 	return &MemoryNetwork{
 		bufferSize: bufferSize,
 		logger:     logger,
-		transports: map[NodeID]*MemoryTransport{},
+		transports: map[types.NodeID]*MemoryTransport{},
 	}
 }
 
 // CreateTransport creates a new memory transport endpoint with the given node
 // ID and immediately begins listening on the address "memory:<id>". It panics
 // if the node ID is already in use (which is fine, since this is for tests).
-func (n *MemoryNetwork) CreateTransport(nodeID NodeID) *MemoryTransport {
+func (n *MemoryNetwork) CreateTransport(nodeID types.NodeID) *MemoryTransport {
 	t := newMemoryTransport(n, nodeID)
 
 	n.mtx.Lock()
@@ -56,14 +57,14 @@ func (n *MemoryNetwork) CreateTransport(nodeID NodeID) *MemoryTransport {
 }
 
 // GetTransport looks up a transport in the network, returning nil if not found.
-func (n *MemoryNetwork) GetTransport(id NodeID) *MemoryTransport {
+func (n *MemoryNetwork) GetTransport(id types.NodeID) *MemoryTransport {
 	n.mtx.RLock()
 	defer n.mtx.RUnlock()
 	return n.transports[id]
 }
 
 // RemoveTransport removes a transport from the network and closes it.
-func (n *MemoryNetwork) RemoveTransport(id NodeID) {
+func (n *MemoryNetwork) RemoveTransport(id types.NodeID) {
 	n.mtx.Lock()
 	t, ok := n.transports[id]
 	delete(n.transports, id)
@@ -91,7 +92,7 @@ func (n *MemoryNetwork) Size() int {
 type MemoryTransport struct {
 	logger     log.Logger
 	network    *MemoryNetwork
-	nodeID     NodeID
+	nodeID     types.NodeID
 	bufferSize int
 
 	acceptCh  chan *MemoryConnection
@@ -101,7 +102,7 @@ type MemoryTransport struct {
 
 // newMemoryTransport creates a new MemoryTransport. This is for internal use by
 // MemoryNetwork, use MemoryNetwork.CreateTransport() instead.
-func newMemoryTransport(network *MemoryNetwork, nodeID NodeID) *MemoryTransport {
+func newMemoryTransport(network *MemoryNetwork, nodeID types.NodeID) *MemoryTransport {
 	return &MemoryTransport{
 		logger:     network.logger.With("local", nodeID),
 		network:    network,
@@ -162,7 +163,7 @@ func (t *MemoryTransport) Dial(ctx context.Context, endpoint Endpoint) (Connecti
 		return nil, err
 	}
 
-	nodeID, err := NewNodeID(endpoint.Path)
+	nodeID, err := types.NewNodeID(endpoint.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -203,8 +204,8 @@ func (t *MemoryTransport) Close() error {
 // MemoryConnection is an in-memory connection between two transport endpoints.
 type MemoryConnection struct {
 	logger   log.Logger
-	localID  NodeID
-	remoteID NodeID
+	localID  types.NodeID
+	remoteID types.NodeID
 
 	receiveCh <-chan memoryMessage
 	sendCh    chan<- memoryMessage
@@ -224,8 +225,8 @@ type memoryMessage struct {
 // newMemoryConnection creates a new MemoryConnection.
 func newMemoryConnection(
 	logger log.Logger,
-	localID NodeID,
-	remoteID NodeID,
+	localID types.NodeID,
+	remoteID types.NodeID,
 	receiveCh <-chan memoryMessage,
 	sendCh chan<- memoryMessage,
 	closer *tmsync.Closer,

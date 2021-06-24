@@ -8,6 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/p2p/conn"
+	"github.com/tendermint/tendermint/types"
 )
 
 //go:generate mockery --case underscore --name Transport|Connection
@@ -145,8 +146,17 @@ type Endpoint struct {
 	Path string
 }
 
+// NewEndpoint constructs an Endpoint from a types.NetAddress structure.
+func NewEndpoint(na *types.NetAddress) Endpoint {
+	return Endpoint{
+		Protocol: MConnProtocol,
+		IP:       na.IP,
+		Port:     na.Port,
+	}
+}
+
 // NodeAddress converts the endpoint into a NodeAddress for the given node ID.
-func (e Endpoint) NodeAddress(nodeID NodeID) NodeAddress {
+func (e Endpoint) NodeAddress(nodeID types.NodeID) NodeAddress {
 	address := NodeAddress{
 		NodeID:   nodeID,
 		Protocol: e.Protocol,
@@ -165,7 +175,7 @@ func (e Endpoint) String() string {
 	// assume that path is a node ID (to handle opaque URLs of the form
 	// scheme:id).
 	if e.IP == nil {
-		if nodeID, err := NewNodeID(e.Path); err == nil {
+		if nodeID, err := types.NewNodeID(e.Path); err == nil {
 			return e.NodeAddress(nodeID).String()
 		}
 	}

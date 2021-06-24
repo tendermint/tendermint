@@ -12,6 +12,7 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/service"
 	protop2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
+	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -77,7 +78,7 @@ type ReactorV2 struct {
 	closeCh     chan struct{}
 
 	// list of available peers to loop through and send peer requests to
-	availablePeers map[p2p.NodeID]struct{}
+	availablePeers map[types.NodeID]struct{}
 
 	mtx sync.RWMutex
 
@@ -85,12 +86,12 @@ type ReactorV2 struct {
 	// to. This prevents the sending of spurious responses.
 	// NOTE: If a node never responds, they will remain in this map until a
 	// peer down status update is sent
-	requestsSent map[p2p.NodeID]struct{}
+	requestsSent map[types.NodeID]struct{}
 
 	// lastReceivedRequests keeps track of when peers send a request to prevent
 	// peers from sending requests too often (as defined by
 	// minReceiveRequestInterval).
-	lastReceivedRequests map[p2p.NodeID]time.Time
+	lastReceivedRequests map[types.NodeID]time.Time
 
 	// the time when another request will be sent
 	nextRequestTime time.Time
@@ -119,9 +120,9 @@ func NewReactorV2(
 		pexCh:                pexCh,
 		peerUpdates:          peerUpdates,
 		closeCh:              make(chan struct{}),
-		availablePeers:       make(map[p2p.NodeID]struct{}),
-		requestsSent:         make(map[p2p.NodeID]struct{}),
-		lastReceivedRequests: make(map[p2p.NodeID]time.Time),
+		availablePeers:       make(map[types.NodeID]struct{}),
+		requestsSent:         make(map[types.NodeID]struct{}),
+		lastReceivedRequests: make(map[types.NodeID]time.Time),
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "PEX", r)
@@ -418,7 +419,7 @@ func (r *ReactorV2) sendRequestForPeers() {
 		r.nextRequestTime = time.Now().Add(noAvailablePeersWaitPeriod)
 		return
 	}
-	var peerID p2p.NodeID
+	var peerID types.NodeID
 
 	// use range to get a random peer.
 	for peerID = range r.availablePeers {
@@ -492,7 +493,7 @@ func (r *ReactorV2) calculateNextRequestTime() {
 	r.nextRequestTime = time.Now().Add(baseTime * time.Duration(r.discoveryRatio))
 }
 
-func (r *ReactorV2) markPeerRequest(peer p2p.NodeID) error {
+func (r *ReactorV2) markPeerRequest(peer types.NodeID) error {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 	if lastRequestTime, ok := r.lastReceivedRequests[peer]; ok {
@@ -505,7 +506,7 @@ func (r *ReactorV2) markPeerRequest(peer p2p.NodeID) error {
 	return nil
 }
 
-func (r *ReactorV2) markPeerResponse(peer p2p.NodeID) error {
+func (r *ReactorV2) markPeerResponse(peer types.NodeID) error {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 	// check if a request to this peer was sent
@@ -522,7 +523,7 @@ func (r *ReactorV2) markPeerResponse(peer p2p.NodeID) error {
 
 // all addresses must use a MCONN protocol for the peer to be considered part of the
 // legacy p2p pex system
-func (r *ReactorV2) isLegacyPeer(peer p2p.NodeID) bool {
+func (r *ReactorV2) isLegacyPeer(peer types.NodeID) bool {
 	for _, addr := range r.peerManager.Addresses(peer) {
 		if addr.Protocol != p2p.MConnProtocol {
 			return false

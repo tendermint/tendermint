@@ -1,4 +1,4 @@
-package p2p
+package types
 
 import (
 	"net"
@@ -122,15 +122,6 @@ func TestNewNetAddressString(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestNewNetAddressStrings(t *testing.T) {
-	addrs, errs := NewNetAddressStrings([]string{
-		"127.0.0.1:8080",
-		"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
-		"deadbeefdeadbeefdeadbeefdeadbeefdeadbeed@127.0.0.2:8080"})
-	assert.Len(t, errs, 1)
-	assert.Equal(t, 2, len(addrs))
 }
 
 func TestNewNetAddressIPPort(t *testing.T) {

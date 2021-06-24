@@ -278,7 +278,7 @@ func persistentPeersArray(config *cfg.Config) ([]string, error) {
 		if err != nil {
 			return []string{}, err
 		}
-		peers[i] = p2p.IDAddressString(nodeKey.ID, fmt.Sprintf("%s:%d", hostnameOrIP(i), p2pPort))
+		peers[i] = nodeKey.ID.AddressString(fmt.Sprintf("%s:%d", hostnameOrIP(i), p2pPort))
 	}
 	return peers, nil
 }

@@ -5,6 +5,7 @@ package mocks
 import (
 	conn "github.com/tendermint/tendermint/internal/p2p/conn"
 	log "github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/types"
 
 	mock "github.com/stretchr/testify/mock"
 
@@ -54,14 +55,14 @@ func (_m *Peer) Get(_a0 string) interface{} {
 }
 
 // ID provides a mock function with given fields:
-func (_m *Peer) ID() p2p.NodeID {
+func (_m *Peer) ID() types.NodeID {
 	ret := _m.Called()
 
-	var r0 p2p.NodeID
-	if rf, ok := ret.Get(0).(func() p2p.NodeID); ok {
+	var r0 types.NodeID
+	if rf, ok := ret.Get(0).(func() types.NodeID); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(p2p.NodeID)
+		r0 = ret.Get(0).(types.NodeID)
 	}
 
 	return r0

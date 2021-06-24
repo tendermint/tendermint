@@ -12,7 +12,6 @@ import (
 	"github.com/tendermint/tendermint/internal/libs/clist"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
-	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/proxy"
@@ -303,7 +302,7 @@ func (mem *CListMempool) globalCb(req *abci.Request, res *abci.Response) {
 func (mem *CListMempool) reqResCb(
 	tx []byte,
 	peerID uint16,
-	peerP2PID p2p.NodeID,
+	peerP2PID types.NodeID,
 	externalCb func(*abci.Response),
 ) func(res *abci.Response) {
 	return func(res *abci.Response) {
@@ -382,7 +381,7 @@ func (mem *CListMempool) isFull(txSize int) error {
 func (mem *CListMempool) resCbFirstTime(
 	tx []byte,
 	peerID uint16,
-	peerP2PID p2p.NodeID,
+	peerP2PID types.NodeID,
 	res *abci.Response,
 ) {
 	switch r := res.Value.(type) {

@@ -591,11 +591,11 @@ func (n *nodeImpl) OnStart() error {
 	}
 
 	// Start the transport.
-	addr, err := p2p.NewNetAddressString(p2p.IDAddressString(n.nodeKey.ID, n.config.P2P.ListenAddress))
+	addr, err := types.NewNetAddressString(n.nodeKey.ID.AddressString(n.config.P2P.ListenAddress))
 	if err != nil {
 		return err
 	}
-	if err := n.transport.Listen(addr.Endpoint()); err != nil {
+	if err := n.transport.Listen(p2p.NewEndpoint(addr)); err != nil {
 		return err
 	}
 
@@ -1205,7 +1205,7 @@ func getRouterConfig(conf *cfg.Config, proxyApp proxy.AppConns) p2p.RouterOption
 	}
 
 	if conf.FilterPeers && proxyApp != nil {
-		opts.FilterPeerByID = func(ctx context.Context, id p2p.NodeID) error {
+		opts.FilterPeerByID = func(ctx context.Context, id types.NodeID) error {
 			res, err := proxyApp.Query().QuerySync(context.Background(), abci.RequestQuery{
 				Path: fmt.Sprintf("/p2p/filter/id/%s", id),
 			})

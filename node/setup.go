@@ -454,7 +454,7 @@ func createPeerManager(
 	config *cfg.Config,
 	dbProvider cfg.DBProvider,
 	p2pLogger log.Logger,
-	nodeID p2p.NodeID,
+	nodeID types.NodeID,
 ) (*p2p.PeerManager, error) {
 
 	var maxConns uint16
@@ -480,9 +480,9 @@ func createPeerManager(
 		maxConns = 64
 	}
 
-	privatePeerIDs := make(map[p2p.NodeID]struct{})
+	privatePeerIDs := make(map[types.NodeID]struct{})
 	for _, id := range tmstrings.SplitAndTrimEmpty(config.P2P.PrivatePeerIDs, ",", " ") {
-		privatePeerIDs[p2p.NodeID(id)] = struct{}{}
+		privatePeerIDs[types.NodeID(id)] = struct{}{}
 	}
 
 	options := p2p.PeerManagerOptions{
@@ -651,14 +651,14 @@ func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
 
 	// Add ourselves to addrbook to prevent dialing ourselves
 	if config.P2P.ExternalAddress != "" {
-		addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.ID, config.P2P.ExternalAddress))
+		addr, err := types.NewNetAddressString(nodeKey.ID.AddressString(config.P2P.ExternalAddress))
 		if err != nil {
 			return nil, fmt.Errorf("p2p.external_address is incorrect: %w", err)
 		}
 		addrBook.AddOurAddress(addr)
 	}
 	if config.P2P.ListenAddress != "" {
-		addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.ID, config.P2P.ListenAddress))
+		addr, err := types.NewNetAddressString(nodeKey.ID.AddressString(config.P2P.ListenAddress))
 		if err != nil {
 			return nil, fmt.Errorf("p2p.laddr is incorrect: %w", err)
 		}
