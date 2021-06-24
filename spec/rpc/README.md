@@ -592,6 +592,7 @@ curl -X POST https://localhost:26657 -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\
   "id": 0,
   "result": {
     "height": "12",
+    "total_gas_used": "100",
     "txs_results": [
       {
         "code": "0",
