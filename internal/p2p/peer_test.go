@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/types"
 
 	"github.com/tendermint/tendermint/config"
 	tmconn "github.com/tendermint/tendermint/internal/p2p/conn"
@@ -82,7 +83,7 @@ func createOutboundPeerAndPerformHandshake(
 		{ID: testCh, Priority: 1},
 	}
 	pk := ed25519.GenPrivKey()
-	ourNodeInfo := testNodeInfo(NodeIDFromPubKey(pk.PubKey()), "host_peer")
+	ourNodeInfo := testNodeInfo(types.NodeIDFromPubKey(pk.PubKey()), "host_peer")
 	transport := NewMConnTransport(log.TestingLogger(), mConfig, chDescs, MConnTransportOptions{})
 	reactorsByCh := map[byte]Reactor{testCh: NewTestReactor(chDescs, true)}
 	pc, err := testOutboundPeerConn(transport, addr, config, false, pk)
@@ -149,8 +150,8 @@ func (rp *remotePeer) Addr() *NetAddress {
 	return rp.addr
 }
 
-func (rp *remotePeer) ID() NodeID {
-	return NodeIDFromPubKey(rp.PrivKey.PubKey())
+func (rp *remotePeer) ID() types.NodeID {
+	return types.NodeIDFromPubKey(rp.PrivKey.PubKey())
 }
 
 func (rp *remotePeer) Start() {
@@ -163,7 +164,7 @@ func (rp *remotePeer) Start() {
 		golog.Fatalf("net.Listen tcp :0: %+v", e)
 	}
 	rp.listener = l
-	rp.addr = NewNetAddress(NodeIDFromPubKey(rp.PrivKey.PubKey()), l.Addr())
+	rp.addr = types.NewNetAddress(types.NodeIDFromPubKey(rp.PrivKey.PubKey()), l.Addr())
 	if rp.channels == nil {
 		rp.channels = []byte{testCh}
 	}
@@ -220,8 +221,8 @@ func (rp *remotePeer) accept() {
 	}
 }
 
-func (rp *remotePeer) nodeInfo() NodeInfo {
-	return NodeInfo{
+func (rp *remotePeer) nodeInfo() types.NodeInfo {
+	return types.NodeInfo{
 		ProtocolVersion: defaultProtocolVersion,
 		NodeID:          rp.Addr().ID,
 		ListenAddr:      rp.listener.Addr().String(),

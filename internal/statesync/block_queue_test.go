@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/test/factory"
+	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -22,7 +22,7 @@ var (
 )
 
 func TestBlockQueueBasic(t *testing.T) {
-	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
+	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
 	queue := newBlockQueue(startHeight, stopHeight, stopTime, 1)
@@ -69,7 +69,7 @@ loop:
 
 // Test with spurious failures and retries
 func TestBlockQueueWithFailures(t *testing.T) {
-	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
+	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
 	queue := newBlockQueue(startHeight, stopHeight, stopTime, 200)
@@ -119,7 +119,7 @@ func TestBlockQueueWithFailures(t *testing.T) {
 // Test that when all the blocks are retrieved that the queue still holds on to
 // it's workers and in the event of failure can still fetch the failed block
 func TestBlockQueueBlocks(t *testing.T) {
-	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
+	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 	queue := newBlockQueue(startHeight, stopHeight, stopTime, 2)
 	expectedHeight := startHeight
@@ -166,7 +166,7 @@ loop:
 }
 
 func TestBlockQueueAcceptsNoMoreBlocks(t *testing.T) {
-	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
+	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 	queue := newBlockQueue(startHeight, stopHeight, stopTime, 1)
 	defer queue.close()
@@ -191,7 +191,7 @@ loop:
 // Test a scenario where more blocks are needed then just the stopheight because
 // we haven't found a block with a small enough time.
 func TestBlockQueueStopTime(t *testing.T) {
-	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
+	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
 	queue := newBlockQueue(startHeight, stopHeight, stopTime, 1)
@@ -233,7 +233,7 @@ func TestBlockQueueStopTime(t *testing.T) {
 	}
 }
 
-func mockLBResp(t *testing.T, peer p2p.NodeID, height int64, time time.Time) lightBlockResponse {
+func mockLBResp(t *testing.T, peer types.NodeID, height int64, time time.Time) lightBlockResponse {
 	return lightBlockResponse{
 		block: mockLB(t, height, time, factory.MakeBlockID()),
 		peer:  peer,
