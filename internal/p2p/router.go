@@ -248,7 +248,7 @@ type Router struct {
 	logger             log.Logger
 	metrics            *Metrics
 	options            RouterOptions
-	nodeInfo           NodeInfo
+	nodeInfo           types.NodeInfo
 	privKey            crypto.PrivKey
 	peerManager        *PeerManager
 	chDescs            []ChannelDescriptor
@@ -275,7 +275,7 @@ type Router struct {
 func NewRouter(
 	logger log.Logger,
 	metrics *Metrics,
-	nodeInfo NodeInfo,
+	nodeInfo types.NodeInfo,
 	privKey crypto.PrivKey,
 	peerManager *PeerManager,
 	transports []Transport,
@@ -787,7 +787,7 @@ func (r *Router) handshakePeer(
 	ctx context.Context,
 	conn Connection,
 	expectID types.NodeID,
-) (NodeInfo, crypto.PubKey, error) {
+) (types.NodeInfo, crypto.PubKey, error) {
 
 	if r.options.HandshakeTimeout > 0 {
 		var cancel context.CancelFunc

@@ -103,8 +103,8 @@ type Switch struct {
 	peers        *PeerSet
 	dialing      *cmap.CMap
 	reconnecting *cmap.CMap
-	nodeInfo     NodeInfo // our node info
-	nodeKey      NodeKey  // our node privkey
+	nodeInfo     types.NodeInfo // our node info
+	nodeKey      NodeKey        // our node privkey
 	addrBook     AddrBook
 	// peers addresses with whom we'll maintain constant connection
 	persistentPeersAddrs []*NetAddress
@@ -242,13 +242,13 @@ func (sw *Switch) Reactor(name string) Reactor {
 
 // SetNodeInfo sets the switch's NodeInfo for checking compatibility and handshaking with other nodes.
 // NOTE: Not goroutine safe.
-func (sw *Switch) SetNodeInfo(nodeInfo NodeInfo) {
+func (sw *Switch) SetNodeInfo(nodeInfo types.NodeInfo) {
 	sw.nodeInfo = nodeInfo
 }
 
 // NodeInfo returns the switch's NodeInfo.
 // NOTE: Not goroutine safe.
-func (sw *Switch) NodeInfo() NodeInfo {
+func (sw *Switch) NodeInfo() types.NodeInfo {
 	return sw.nodeInfo
 }
 
@@ -669,7 +669,7 @@ func (sw *Switch) IsPeerPersistent(na *NetAddress) bool {
 
 func (sw *Switch) acceptRoutine() {
 	for {
-		var peerNodeInfo NodeInfo
+		var peerNodeInfo types.NodeInfo
 		c, err := sw.transport.Accept()
 		if err == nil {
 			// NOTE: The legacy MConn transport did handshaking in Accept(),
@@ -800,7 +800,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	var peerNodeInfo NodeInfo
+	var peerNodeInfo types.NodeInfo
 	c, err := sw.transport.Dial(ctx, Endpoint{
 		Protocol: MConnProtocol,
 		IP:       addr.IP,
@@ -856,7 +856,10 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	return nil
 }
 
-func (sw *Switch) handshakePeer(c Connection, expectPeerID types.NodeID) (NodeInfo, crypto.PubKey, error) {
+func (sw *Switch) handshakePeer(
+	c Connection,
+	expectPeerID types.NodeID,
+) (types.NodeInfo, crypto.PubKey, error) {
 	// Moved from transport and hardcoded until legacy P2P stack removal.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

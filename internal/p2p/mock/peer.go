@@ -45,8 +45,8 @@ func NewPeer(ip net.IP) *Peer {
 func (mp *Peer) FlushStop()                              { mp.Stop() } //nolint:errcheck //ignore error
 func (mp *Peer) TrySend(chID byte, msgBytes []byte) bool { return true }
 func (mp *Peer) Send(chID byte, msgBytes []byte) bool    { return true }
-func (mp *Peer) NodeInfo() p2p.NodeInfo {
-	return p2p.NodeInfo{
+func (mp *Peer) NodeInfo() types.NodeInfo {
+	return types.NodeInfo{
 		NodeID:     mp.addr.ID,
 		ListenAddr: mp.addr.DialString(),
 	}

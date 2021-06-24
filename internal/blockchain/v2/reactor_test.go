@@ -45,8 +45,8 @@ func (mp mockPeer) IsOutbound() bool   { return true }
 func (mp mockPeer) IsPersistent() bool { return true }
 func (mp mockPeer) CloseConn() error   { return nil }
 
-func (mp mockPeer) NodeInfo() p2p.NodeInfo {
-	return p2p.NodeInfo{
+func (mp mockPeer) NodeInfo() types.NodeInfo {
+	return types.NodeInfo{
 		NodeID:     "",
 		ListenAddr: "",
 	}
