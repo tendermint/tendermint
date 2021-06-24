@@ -11,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/libs/cmap"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/types"
 )
 
 //go:generate mockery --case underscore --name Peer
@@ -22,7 +23,7 @@ type Peer interface {
 	service.Service
 	FlushStop()
 
-	ID() NodeID           // peer's cryptographic ID
+	ID() types.NodeID     // peer's cryptographic ID
 	RemoteIP() net.IP     // remote IP of the connection
 	RemoteAddr() net.Addr // remote address of the connection
 
@@ -202,7 +203,7 @@ func (p *peer) OnStop() {
 // Implements Peer
 
 // ID returns the peer's ID - the hex encoded hash of its pubkey.
-func (p *peer) ID() NodeID {
+func (p *peer) ID() types.NodeID {
 	return p.nodeInfo.ID()
 }
 

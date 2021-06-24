@@ -6,13 +6,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/types"
 )
 
 type lightBlockResponse struct {
 	block *types.LightBlock
-	peer  p2p.NodeID
+	peer  types.NodeID
 }
 
 // a block queue is used for asynchronously fetching and verifying light blocks

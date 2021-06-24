@@ -100,7 +100,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	rts := setup(t, nValidators, states, 100) // buffer must be large enough to not deadlock
 
-	var bzNodeID p2p.NodeID
+	var bzNodeID types.NodeID
 
 	// Set the first state's reactor as the dedicated byzantine reactor and grab
 	// the NodeID that corresponds to the state so we can reference the reactor.

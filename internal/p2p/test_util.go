@@ -9,6 +9,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/types"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/p2p/conn"
@@ -46,7 +47,7 @@ func CreateRoutableAddr() (addr string, netAddr *NetAddress) {
 			mrand.Int()%256,
 			mrand.Int()%256,
 			mrand.Int()%256)
-		netAddr, err = NewNetAddressString(addr)
+		netAddr, err = types.NewNetAddressString(addr)
 		if err != nil {
 			panic(err)
 		}
@@ -171,8 +172,8 @@ func MakeSwitch(
 
 	nodeKey := GenNodeKey()
 	nodeInfo := testNodeInfo(nodeKey.ID, fmt.Sprintf("node%d", i))
-	addr, err := NewNetAddressString(
-		IDAddressString(nodeKey.ID, nodeInfo.ListenAddr),
+	addr, err := types.NewNetAddressString(
+		nodeKey.ID.AddressString(nodeInfo.ListenAddr),
 	)
 	if err != nil {
 		panic(err)
@@ -187,7 +188,7 @@ func MakeSwitch(
 	sw.SetLogger(swLogger)
 	sw.SetNodeKey(nodeKey)
 
-	if err := t.Listen(addr.Endpoint()); err != nil {
+	if err := t.Listen(NewEndpoint(addr)); err != nil {
 		panic(err)
 	}
 
@@ -226,11 +227,11 @@ func testPeerConn(
 //----------------------------------------------------------------
 // rand node info
 
-func testNodeInfo(id NodeID, name string) NodeInfo {
+func testNodeInfo(id types.NodeID, name string) NodeInfo {
 	return testNodeInfoWithNetwork(id, name, "testing")
 }
 
-func testNodeInfoWithNetwork(id NodeID, name, network string) NodeInfo {
+func testNodeInfoWithNetwork(id types.NodeID, name, network string) NodeInfo {
 	return NodeInfo{
 		ProtocolVersion: defaultProtocolVersion,
 		NodeID:          id,
@@ -271,7 +272,7 @@ func (book *AddrBookMock) OurAddress(addr *NetAddress) bool {
 	_, ok := book.OurAddrs[addr.String()]
 	return ok
 }
-func (book *AddrBookMock) MarkGood(NodeID) {}
+func (book *AddrBookMock) MarkGood(types.NodeID) {}
 func (book *AddrBookMock) HasAddress(addr *NetAddress) bool {
 	_, ok := book.Addrs[addr.String()]
 	return ok
