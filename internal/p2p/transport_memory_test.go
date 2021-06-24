@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/types"
 )
 
 // Transports are mainly tested by common tests in transport_test.go, we
@@ -20,7 +21,7 @@ func init() {
 			network = p2p.NewMemoryNetwork(log.TestingLogger(), 1)
 		}
 		i := byte(network.Size())
-		nodeID, err := p2p.NewNodeID(hex.EncodeToString(bytes.Repeat([]byte{i<<4 + i}, 20)))
+		nodeID, err := types.NewNodeID(hex.EncodeToString(bytes.Repeat([]byte{i<<4 + i}, 20)))
 		require.NoError(t, err)
 		transport := network.CreateTransport(nodeID)
 

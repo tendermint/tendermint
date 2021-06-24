@@ -39,13 +39,13 @@ var (
 
 type reactorTestSuite struct {
 	network             *p2ptest.Network
-	states              map[p2p.NodeID]*State
-	reactors            map[p2p.NodeID]*Reactor
-	subs                map[p2p.NodeID]types.Subscription
-	stateChannels       map[p2p.NodeID]*p2p.Channel
-	dataChannels        map[p2p.NodeID]*p2p.Channel
-	voteChannels        map[p2p.NodeID]*p2p.Channel
-	voteSetBitsChannels map[p2p.NodeID]*p2p.Channel
+	states              map[types.NodeID]*State
+	reactors            map[types.NodeID]*Reactor
+	subs                map[types.NodeID]types.Subscription
+	stateChannels       map[types.NodeID]*p2p.Channel
+	dataChannels        map[types.NodeID]*p2p.Channel
+	voteChannels        map[types.NodeID]*p2p.Channel
+	voteSetBitsChannels map[types.NodeID]*p2p.Channel
 }
 
 func chDesc(chID p2p.ChannelID) p2p.ChannelDescriptor {
@@ -59,9 +59,9 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 
 	rts := &reactorTestSuite{
 		network:  p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
-		states:   make(map[p2p.NodeID]*State),
-		reactors: make(map[p2p.NodeID]*Reactor, numNodes),
-		subs:     make(map[p2p.NodeID]types.Subscription, numNodes),
+		states:   make(map[types.NodeID]*State),
+		reactors: make(map[types.NodeID]*Reactor, numNodes),
+		subs:     make(map[types.NodeID]types.Subscription, numNodes),
 	}
 
 	rts.stateChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(StateChannel), new(tmcons.Message), size)
