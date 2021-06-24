@@ -25,6 +25,7 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	sm "github.com/tendermint/tendermint/state"
 	statemocks "github.com/tendermint/tendermint/state/mocks"
@@ -42,6 +43,7 @@ type reactorTestSuite struct {
 	states              map[types.NodeID]*State
 	reactors            map[types.NodeID]*Reactor
 	subs                map[types.NodeID]types.Subscription
+	fastsyncSubs        map[types.NodeID]types.Subscription
 	stateChannels       map[types.NodeID]*p2p.Channel
 	dataChannels        map[types.NodeID]*p2p.Channel
 	voteChannels        map[types.NodeID]*p2p.Channel
@@ -58,10 +60,11 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 	t.Helper()
 
 	rts := &reactorTestSuite{
-		network:  p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
-		states:   make(map[types.NodeID]*State),
-		reactors: make(map[types.NodeID]*Reactor, numNodes),
-		subs:     make(map[types.NodeID]types.Subscription, numNodes),
+		network:      p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
+		states:       make(map[types.NodeID]*State),
+		reactors:     make(map[types.NodeID]*Reactor, numNodes),
+		subs:         make(map[types.NodeID]types.Subscription, numNodes),
+		fastsyncSubs: make(map[types.NodeID]types.Subscription, numNodes),
 	}
 
 	rts.stateChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(StateChannel), new(tmcons.Message), size)
@@ -89,9 +92,13 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 		blocksSub, err := state.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, size)
 		require.NoError(t, err)
 
+		fsSub, err := state.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryFastSyncStatus, size)
+		require.NoError(t, err)
+
 		rts.states[nodeID] = state
 		rts.subs[nodeID] = blocksSub
 		rts.reactors[nodeID] = reactor
+		rts.fastsyncSubs[nodeID] = fsSub
 
 		// simulate handle initChain in handshake
 		if state.state.LastBlockHeight == 0 {
@@ -253,6 +260,22 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 	wg.Wait()
 }
 
+func ensureFastSyncStatus(msg tmpubsub.Message, on bool, height int64) {
+	status, ok := msg.Data().(types.EventDataFastSyncStatus)
+	if !ok {
+		panic(fmt.Sprintf("expected a EventDataFastSyncStatus, got %T. Wrong subscription channel?",
+			msg.Data()))
+	}
+
+	if status.On != on {
+		panic(fmt.Sprintf("expected on %v, got %v", on, status.On))
+	}
+
+	if status.Height != height {
+		panic(fmt.Sprintf("expected on %v, got %v", height, status.Height))
+	}
+}
+
 func TestReactorBasic(t *testing.T) {
 	config := configSetup(t)
 
@@ -276,6 +299,19 @@ func TestReactorBasic(t *testing.T) {
 		// wait till everyone makes the first new block
 		go func(s types.Subscription) {
 			<-s.Out()
+			wg.Done()
+		}(sub)
+	}
+
+	wg.Wait()
+
+	for _, sub := range rts.fastsyncSubs {
+		wg.Add(1)
+
+		// wait till everyone makes the consensus switch
+		go func(s types.Subscription) {
+			msg := <-s.Out()
+			ensureFastSyncStatus(msg, false, 0)
 			wg.Done()
 		}(sub)
 	}
