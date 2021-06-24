@@ -166,11 +166,7 @@ func NewTendermint(app abci.Application, opts *Options) *nm.Node {
 	papp := proxy.NewLocalClientCreator(app)
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 
-	dashCoreRpcClient, err := dashcore.NewRpcClient(
-		config.PrivValidatorCoreRPCHost,
-		config.BaseConfig.PrivValidatorCoreRPCUsername,
-		config.BaseConfig.PrivValidatorCoreRPCPassword,
-	)
+	dashCoreRpcClient, err := dashcore.NewRpcClientMock()
 
 	if err != nil {
 		panic(err)
