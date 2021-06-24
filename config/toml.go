@@ -425,6 +425,13 @@ discovery-time = "{{ .StateSync.DiscoveryTime }}"
 # Will create a new, randomly named directory within, and remove it when done.
 temp-dir = "{{ .StateSync.TempDir }}"
 
+# The timeout duration before re-requesting a chunk, possibly from a different
+# peer (default: 15 seconds).
+chunk-request-timeout = "{{ .StateSync.ChunkRequestTimeout }}"
+
+# The number of concurrent chunk and block fetchers to run (default: 4).
+fetchers = "{{ .StateSync.Fetchers }}"
+
 #######################################################
 ###       Fast Sync Configuration Connections       ###
 #######################################################

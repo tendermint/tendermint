@@ -2,7 +2,9 @@ package pubsub
 
 import (
 	"errors"
+	"fmt"
 
+	"github.com/google/uuid"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 )
 
@@ -21,6 +23,7 @@ var (
 // 2) channel which is closed if a client is too slow or choose to unsubscribe
 // 3) err indicating the reason for (2)
 type Subscription struct {
+	id  string
 	out chan Message
 
 	canceled chan struct{}
@@ -31,6 +34,7 @@ type Subscription struct {
 // NewSubscription returns a new subscription with the given outCapacity.
 func NewSubscription(outCapacity int) *Subscription {
 	return &Subscription{
+		id:       uuid.NewString(),
 		out:      make(chan Message, outCapacity),
 		canceled: make(chan struct{}),
 	}
@@ -42,6 +46,8 @@ func NewSubscription(outCapacity int) *Subscription {
 func (s *Subscription) Out() <-chan Message {
 	return s.out
 }
+
+func (s *Subscription) ID() string { return s.id }
 
 // Canceled returns a channel that's closed when the subscription is
 // terminated and supposed to be used in a select statement.
@@ -64,27 +70,42 @@ func (s *Subscription) Err() error {
 
 func (s *Subscription) cancel(err error) {
 	s.mtx.Lock()
-	s.err = err
-	s.mtx.Unlock()
+	defer s.mtx.Unlock()
+	defer func() {
+		perr := recover()
+		if err == nil && perr != nil {
+			err = fmt.Errorf("problem closing subscription: %v", perr)
+		}
+	}()
+
+	if s.err == nil && err != nil {
+		s.err = err
+	}
+
 	close(s.canceled)
 }
 
 // Message glues data and events together.
 type Message struct {
+	subID  string
 	data   interface{}
 	events map[string][]string
 }
 
-func NewMessage(data interface{}, events map[string][]string) Message {
-	return Message{data, events}
+func NewMessage(subID string, data interface{}, events map[string][]string) Message {
+	return Message{
+		subID:  subID,
+		data:   data,
+		events: events,
+	}
 }
+
+// SubscriptionID returns the unique identifier for the subscription
+// that produced this message.
+func (msg Message) SubscriptionID() string { return msg.subID }
 
 // Data returns an original data published.
-func (msg Message) Data() interface{} {
-	return msg.data
-}
+func (msg Message) Data() interface{} { return msg.data }
 
 // Events returns events, which matched the client's query.
-func (msg Message) Events() map[string][]string {
-	return msg.events
-}
+func (msg Message) Events() map[string][]string { return msg.events }

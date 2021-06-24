@@ -248,7 +248,13 @@ func (c *Local) eventsRoutine(
 	for {
 		select {
 		case msg := <-sub.Out():
-			result := ctypes.ResultEvent{Query: q.String(), Data: msg.Data(), Events: msg.Events()}
+			result := ctypes.ResultEvent{
+				SubscriptionID: msg.SubscriptionID(),
+				Query:          q.String(),
+				Data:           msg.Data(),
+				Events:         msg.Events(),
+			}
+
 			if cap(outc) == 0 {
 				outc <- result
 			} else {
@@ -293,11 +299,18 @@ func (c *Local) resubscribe(subscriber string, q tmpubsub.Query) types.Subscript
 }
 
 func (c *Local) Unsubscribe(ctx context.Context, subscriber, query string) error {
-	q, err := tmquery.New(query)
+	args := tmpubsub.UnsubscribeArgs{Subscriber: subscriber}
+	var err error
+	args.Query, err = tmquery.New(query)
 	if err != nil {
-		return fmt.Errorf("failed to parse query: %w", err)
+		// if this isn't a valid query it might be an ID, so
+		// we'll try that. It'll turn into an error when we
+		// try to unsubscribe. Eventually, perhaps, we'll want
+		// to change the interface to only allow
+		// unsubscription by ID, but that's a larger change.
+		args.ID = query
 	}
-	return c.EventBus.Unsubscribe(ctx, subscriber, q)
+	return c.EventBus.Unsubscribe(ctx, args)
 }
 
 func (c *Local) UnsubscribeAll(ctx context.Context, subscriber string) error {

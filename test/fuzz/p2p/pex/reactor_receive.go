@@ -5,10 +5,11 @@ import (
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/p2p/pex"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/p2p/pex"
+	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -62,7 +63,7 @@ func newFuzzPeer() *fuzzPeer {
 }
 
 var privKey = ed25519.GenPrivKey()
-var nodeID = p2p.NodeIDFromPubKey(privKey.PubKey())
+var nodeID = types.NodeIDFromPubKey(privKey.PubKey())
 var defaultNodeInfo = p2p.NodeInfo{
 	ProtocolVersion: p2p.NewProtocolVersion(
 		version.P2PProtocol,
@@ -75,17 +76,19 @@ var defaultNodeInfo = p2p.NodeInfo{
 }
 
 func (fp *fuzzPeer) FlushStop()       {}
-func (fp *fuzzPeer) ID() p2p.NodeID   { return nodeID }
+func (fp *fuzzPeer) ID() types.NodeID { return nodeID }
 func (fp *fuzzPeer) RemoteIP() net.IP { return net.IPv4(198, 163, 190, 214) }
 func (fp *fuzzPeer) RemoteAddr() net.Addr {
 	return &net.TCPAddr{IP: fp.RemoteIP(), Port: 26656, Zone: ""}
 }
-func (fp *fuzzPeer) IsOutbound() bool                  { return false }
-func (fp *fuzzPeer) IsPersistent() bool                { return false }
-func (fp *fuzzPeer) CloseConn() error                  { return nil }
-func (fp *fuzzPeer) NodeInfo() p2p.NodeInfo            { return defaultNodeInfo }
-func (fp *fuzzPeer) Status() p2p.ConnectionStatus      { var cs p2p.ConnectionStatus; return cs }
-func (fp *fuzzPeer) SocketAddr() *p2p.NetAddress       { return p2p.NewNetAddress(fp.ID(), fp.RemoteAddr()) }
+func (fp *fuzzPeer) IsOutbound() bool             { return false }
+func (fp *fuzzPeer) IsPersistent() bool           { return false }
+func (fp *fuzzPeer) CloseConn() error             { return nil }
+func (fp *fuzzPeer) NodeInfo() p2p.NodeInfo       { return defaultNodeInfo }
+func (fp *fuzzPeer) Status() p2p.ConnectionStatus { var cs p2p.ConnectionStatus; return cs }
+func (fp *fuzzPeer) SocketAddr() *p2p.NetAddress {
+	return types.NewNetAddress(fp.ID(), fp.RemoteAddr())
+}
 func (fp *fuzzPeer) Send(byte, []byte) bool            { return true }
 func (fp *fuzzPeer) TrySend(byte, []byte) bool         { return true }
 func (fp *fuzzPeer) Set(key string, value interface{}) { fp.m[key] = value }
