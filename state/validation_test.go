@@ -31,7 +31,7 @@ func TestValidateBlockHeader(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(3, 1)
-	state.NodeProTxHash = &state.Validators.Validators[0].ProTxHash
+	nodeProTxHash := &state.Validators.Validators[0].ProTxHash
 	stateStore := sm.NewStore(stateDB)
 	nextChainLock := &types.CoreChainLock{
 		CoreBlockHeight: 100,
@@ -103,7 +103,7 @@ func TestValidateBlockHeader(t *testing.T) {
 			A good block passes
 		*/
 		var err error
-		state, _, _, lastCommit, err = makeAndCommitGoodBlock(state, height, lastCommit, proposerProTxHash,
+		state, _, _, lastCommit, err = makeAndCommitGoodBlock(state, nodeProTxHash, height, lastCommit, proposerProTxHash,
 			blockExec, privVals, nil)
 		require.NoError(t, err, "height %d", height)
 	}
@@ -115,7 +115,7 @@ func TestValidateBlockCommit(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(1, 1)
-	state.NodeProTxHash = &state.Validators.Validators[0].ProTxHash
+	nodeProTxHash := &state.Validators.Validators[0].ProTxHash
 	stateStore := sm.NewStore(stateDB)
 
 	nextChainLock := &types.CoreChainLock{
@@ -192,6 +192,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		var stateID types.StateID
 		state, blockID, stateID, lastCommit, err = makeAndCommitGoodBlock(
 			state,
+			nodeProTxHash,
 			height,
 			lastCommit,
 			proTxHash,
@@ -250,7 +251,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(4, 1)
-	state.NodeProTxHash = &state.Validators.Validators[0].ProTxHash
+	nodeProTxHash := &state.Validators.Validators[0].ProTxHash
 	stateStore := sm.NewStore(stateDB)
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
@@ -320,6 +321,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 		var err error
 		state, _, _, lastCommit, err = makeAndCommitGoodBlock(
 			state,
+			nodeProTxHash,
 			height,
 			lastCommit,
 			proposerProTxHash,

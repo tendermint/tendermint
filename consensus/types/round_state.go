@@ -79,6 +79,7 @@ type RoundState struct {
 	LockedRound        int32               `json:"locked_round"`
 	LockedBlock        *types.Block        `json:"locked_block"`
 	LockedBlockParts   *types.PartSet      `json:"locked_block_parts"`
+	Commit             *types.Commit       `json:"commit"`
 
 	// Last known round with POL for non-nil valid block.
 	ValidRound int32        `json:"valid_round"`
@@ -88,12 +89,13 @@ type RoundState struct {
 	ValidBlockParts           *types.PartSet      `json:"valid_block_parts"`
 	Votes                     *HeightVoteSet      `json:"votes"`
 	CommitRound               int32               `json:"commit_round"` //
+	LastPrecommits            *types.VoteSet      `json:"last_precommits"`
 	LastCommit                *types.Commit       `json:"last_commit"`
 	LastValidators            *types.ValidatorSet `json:"last_validators"`
 	TriggeredTimeoutPrecommit bool                `json:"triggered_timeout_precommit"`
 }
 
-// Compressed version of the RoundState for use in RPC
+// RoundStateSimple is a compressed version of the RoundState for use in RPC
 type RoundStateSimple struct {
 	HeightRoundStep   string              `json:"height/round/step"`
 	StartTime         time.Time           `json:"start_time"`
@@ -104,7 +106,7 @@ type RoundStateSimple struct {
 	Proposer          types.ValidatorInfo `json:"proposer"`
 }
 
-// Compress the RoundState to RoundStateSimple
+// RoundStateSimple compresses the RoundState to RoundStateSimple
 func (rs *RoundState) RoundStateSimple() RoundStateSimple {
 	votesJSON, err := rs.Votes.MarshalJSON()
 	if err != nil {
@@ -186,10 +188,10 @@ func (rs *RoundState) StringIndented(indent string) string {
 %s  ProposalBlock: %v %v
 %s  LockedRound:   %v
 %s  LockedBlock:   %v %v
-%s  ValidRound:   %v
-%s  ValidBlock:   %v %v
+%s  ValidRound:    %v
+%s  ValidBlock:    %v %v
 %s  Votes:         %v
-%s  LastPrecommits:    %v
+%s  LastCommit:    %v
 %s  LastValidators:%v
 %s}`,
 		indent, rs.Height, rs.Round, rs.Step,

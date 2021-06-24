@@ -55,6 +55,7 @@ func startConsensusNet(t *testing.T, css []*State, n int) (
 	reactors := make([]*Reactor, n)
 	blocksSubs := make([]types.Subscription, 0)
 	eventBuses := make([]*types.EventBus, n)
+	nodeProTxHashes := make([]*crypto.ProTxHash, n)
 	for i := 0; i < n; i++ {
 		/*logger, err := tmflags.ParseLogLevel("consensus:info,*:error", logger, "info")
 		if err != nil {	t.Fatal(err)}*/
@@ -75,9 +76,10 @@ func startConsensusNet(t *testing.T, css []*State, n int) (
 			}
 
 		}
+		nodeProTxHashes[i] = &css[i].privValidatorProTxHash
 	}
 	// make connected switches and start all reactors
-	p2p.MakeConnectedSwitches(config.P2P, n, func(i int, s *p2p.Switch) *p2p.Switch {
+	p2p.MakeConnectedSwitches(config.P2P, nodeProTxHashes, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("CONSENSUS", reactors[i])
 		s.SetLogger(reactors[i].conS.Logger.With("module", "p2p"))
 		return s
@@ -89,7 +91,7 @@ func startConsensusNet(t *testing.T, css []*State, n int) (
 	// TODO: is this still true with new pubsub?
 	for i := 0; i < n; i++ {
 		s := reactors[i].conS.GetState()
-		reactors[i].SwitchToValidatorConsensus(s, false)
+		reactors[i].SwitchToConsensus(s, false)
 	}
 	return reactors, blocksSubs, eventBuses
 }
@@ -357,14 +359,17 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	// ensure the commit includes all validators
 	// send newValTx to change vals in block 3
 	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, updateTransactions...)
+	logger.Info("->Passed block 2")
 
 	// wait till everyone makes block 3.
 	// it includes the commit for block 2, which is by the original validator set
 	waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, css, updateTransactions...)
+	logger.Info("->Passed block 3")
 
 	// wait till everyone makes block 4.
 	// it includes the commit for block 3, which is by the original validator set
 	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css)
+	logger.Info("->Passed block 4")
 
 	// the commits for block 4 should be with the updated validator set
 	activeVals[string(newValidatorProTxHashes[0])] = struct{}{}
@@ -372,6 +377,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	// wait till everyone makes block 6
 	// it includes the commit for block 4, which should have the updated validator set
 	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, quorumHash, blocksSubs, css)
+	logger.Info("->Passed block 6")
 
 	//---------------------------------------------------------------------------
 	logger.Info("---------------------------- Testing adding two validators at once")
@@ -393,10 +399,13 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	// block 7
 	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, updateTransactions2...)
+	logger.Info("->Passed block 7")
 	// block 8
 	waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, css, updateTransactions2...)
+	logger.Info("->Passed block 8")
 	// block 9
 	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css)
+	logger.Info("->Passed block 9")
 	activeVals[string(newValidatorProTxHashes[0])] = struct{}{}
 	activeVals[string(newValidatorProTxHashes[1])] = struct{}{}
 	// block 11
@@ -424,10 +433,13 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	// block 12
 	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, updateTransactions3...)
+	logger.Info("->Passed block 12")
 	// block 13
 	waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, css, updateTransactions3...)
+	logger.Info("->Passed block 13")
 	// block 14
 	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css)
+	logger.Info("->Passed block 14")
 	delete(activeVals, string(removedValidators[0].ProTxHash))
 	delete(activeVals, string(removedValidators[1].ProTxHash))
 	// block 16
@@ -455,13 +467,13 @@ func TestReactorWithTimeoutCommit(t *testing.T) {
 
 func waitForAndValidateBlock(
 	t *testing.T,
-	n int,
+	nPeers int,
 	activeVals map[string]struct{},
 	blocksSubs []types.Subscription,
 	css []*State,
 	txs ...[]byte,
 ) {
-	timeoutWaitGroup(t, n, func(j int) {
+	timeoutWaitGroup(t, nPeers, func(j int) {
 		css[j].Logger.Debug("waitForAndValidateBlock")
 		msg := <-blocksSubs[j].Out()
 		newBlock := msg.Data().(types.EventDataNewBlock).Block

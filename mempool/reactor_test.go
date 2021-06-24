@@ -293,7 +293,7 @@ func mempoolLogger() log.Logger {
 			}
 		}
 		return term.FgBgColor{}
-	})
+	}, "debug")
 }
 
 // connect N mempool reactors through N switches

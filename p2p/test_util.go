@@ -79,13 +79,14 @@ const TestHost = "localhost"
 // initSwitch defines how the i'th switch should be initialized (ie. with what reactors).
 // NOTE: panics if any switch fails to start.
 func MakeConnectedSwitches(cfg *config.P2PConfig,
-	n int,
+	nodeProTxHashes []*crypto.ProTxHash,
 	initSwitch func(int, *Switch) *Switch,
 	connect func([]*Switch, int, int),
 ) []*Switch {
+	n := len(nodeProTxHashes)
 	switches := make([]*Switch, n)
 	for i := 0; i < n; i++ {
-		switches[i] = MakeSwitch(cfg, i, TestHost, "123.123.123", initSwitch)
+		switches[i] = MakeSwitch(cfg, i, TestHost, "123.123.123", nodeProTxHashes[i], initSwitch)
 	}
 
 	if err := StartSwitches(switches); err != nil {
@@ -179,6 +180,7 @@ func MakeSwitch(
 	cfg *config.P2PConfig,
 	i int,
 	network, version string,
+	nodeProTxHash *crypto.ProTxHash,
 	initSwitch func(int, *Switch) *Switch,
 	opts ...SwitchOption,
 ) *Switch {
@@ -186,7 +188,7 @@ func MakeSwitch(
 	nodeKey := NodeKey{
 		PrivKey: ed25519.GenPrivKey(),
 	}
-	nodeInfo := testNodeInfo(nodeKey.ID(), fmt.Sprintf("node%d", i))
+	nodeInfo := testNodeInfo(nodeKey.ID(), fmt.Sprintf("node%d", i), nodeProTxHash)
 	addr, err := NewNetAddressString(
 		IDAddressString(nodeKey.ID(), nodeInfo.(DefaultNodeInfo).ListenAddr),
 	)
@@ -255,13 +257,14 @@ func testPeerConn(
 //----------------------------------------------------------------
 // rand node info
 
-func testNodeInfo(id ID, name string) NodeInfo {
-	return testNodeInfoWithNetwork(id, name, "testing")
+func testNodeInfo(id ID, name string, nodeProTxHash *crypto.ProTxHash) NodeInfo {
+	return testNodeInfoWithNetwork(id, name, "testing", nodeProTxHash)
 }
 
-func testNodeInfoWithNetwork(id ID, name, network string) NodeInfo {
+func testNodeInfoWithNetwork(id ID, name, network string, nodeProTxHash *crypto.ProTxHash) NodeInfo {
 	return DefaultNodeInfo{
 		ProtocolVersion: defaultProtocolVersion,
+		ProTxHash:       nodeProTxHash,
 		DefaultNodeID:   id,
 		ListenAddr:      fmt.Sprintf("127.0.0.1:%d", getFreePort()),
 		Network:         network,

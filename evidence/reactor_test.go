@@ -242,7 +242,7 @@ func evidenceLogger() log.Logger {
 			}
 		}
 		return term.FgBgColor{}
-	})
+	}, "debug")
 }
 
 // connect N evidence reactors through N switches

@@ -69,6 +69,16 @@ func (l *tmLogger) Debug(msg string, keyvals ...interface{}) {
 	}
 }
 
+// P2PDebug logs a message at level P2PDebug.
+func (l *tmLogger) P2PDebug(msg string, keyvals ...interface{}) {
+	lWithLevel := kitlevel.Debug(l.srcLogger)
+
+	if err := kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...); err != nil {
+		errLogger := kitlevel.Error(l.srcLogger)
+		kitlog.With(errLogger, msgKey, msg).Log("err", err) //nolint:errcheck // no need to check error again
+	}
+}
+
 // Error logs a message at level Error.
 func (l *tmLogger) Error(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Error(l.srcLogger)

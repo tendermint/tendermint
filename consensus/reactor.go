@@ -102,20 +102,9 @@ func (conR *Reactor) OnStop() {
 }
 
 // SwitchToConsensus switches from fast_sync mode to consensus mode.
-// It resets the state, turns off fast_sync, and starts the consensus state-machine
-// It decides based on the current validator set to either go into validator consensus or full node consensus
-func (conR *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
-	if state.Validators.HasPublicKeys {
-		conR.SwitchToValidatorConsensus(state, skipWAL)
-	} else {
-		conR.SwitchToFullNodeConsensus(state, skipWAL)
-	}
-}
-
-// SwitchToValidatorConsensus switches from fast_sync mode to consensus mode.
 // It resets the state, turns off fast_sync, and starts the validator consensus state-machine
-func (conR *Reactor) SwitchToValidatorConsensus(state sm.State, skipWAL bool) {
-	conR.Logger.Info("SwitchToValidatorConsensus")
+func (conR *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
+	conR.Logger.Info("SwitchToConsensus")
 
 	// We have no votes, so reconstruct LastPrecommits from SeenCommit.
 	if state.LastBlockHeight > 0 {
@@ -124,43 +113,7 @@ func (conR *Reactor) SwitchToValidatorConsensus(state sm.State, skipWAL bool) {
 
 	// NOTE: The line below causes broadcastNewRoundStepRoutine() to broadcast a
 	// NewRoundStepMessage.
-	conR.conS.updateToState(state)
-
-	conR.mtx.Lock()
-	conR.waitSync = false
-	conR.mtx.Unlock()
-	conR.Metrics.FastSyncing.Set(0)
-	conR.Metrics.StateSyncing.Set(0)
-
-	if skipWAL {
-		conR.conS.doWALCatchup = false
-	}
-	err := conR.conS.Start()
-	if err != nil {
-		panic(fmt.Sprintf(`Failed to start consensus state: %v
-
-conS:
-%+v
-
-conR:
-%+v`, err, conR.conS, conR))
-	}
-}
-
-// SwitchToFullNodeConsensus switches from fast_sync mode to consensus mode.
-// It resets the state, turns off fast_sync, and starts the full node consensus state-machine
-// This state machine does not verify votes, but only commits
-func (conR *Reactor) SwitchToFullNodeConsensus(state sm.State, skipWAL bool) {
-	conR.Logger.Info("SwitchToValidatorConsensus")
-
-	// We have no votes, so reconstruct LastPrecommits from SeenCommit.
-	if state.LastBlockHeight > 0 {
-		conR.conS.reconstructLastCommit(state)
-	}
-
-	// NOTE: The line below causes broadcastNewRoundStepRoutine() to broadcast a
-	// NewRoundStepMessage.
-	conR.conS.updateToState(state)
+	conR.conS.updateToState(state, nil, conR.Logger)
 
 	conR.mtx.Lock()
 	conR.waitSync = false
@@ -311,6 +264,8 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			ps.ApplyNewValidBlockMessage(msg)
 		case *HasVoteMessage:
 			ps.ApplyHasVoteMessage(msg)
+		case *HasCommitMessage:
+			ps.ApplyHasCommitMessage(msg)
 		case *VoteSetMaj23Message:
 			cs := conR.conS
 			cs.mtx.Lock()
@@ -375,13 +330,18 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		case *VoteMessage:
 			cs := conR.conS
 			cs.mtx.RLock()
-			height, valSize, lastValSize := cs.Height, cs.Validators.Size(), cs.LastValidators.Size()
+			height, valSize, lastPrecommitsSize := cs.Height, cs.Validators.Size(), cs.LastPrecommits.Size()
 			cs.mtx.RUnlock()
 			ps.EnsureVoteBitArrays(height, valSize)
-			ps.EnsureVoteBitArrays(height-1, lastValSize)
+			ps.EnsureVoteBitArrays(height-1, lastPrecommitsSize)
 			ps.SetHasVote(msg.Vote)
 
 			cs.peerMsgQueue <- msgInfo{msg, src.ID()}
+		case *CommitMessage:
+			cs := conR.conS
+			ps.SetHasCommit(msg.Commit)
+
+			cs.peerMsgQueue <- msgInfo{ msg, src.ID()}
 
 		default:
 			// don't punish (leave room for soft upgrades)
@@ -465,6 +425,12 @@ func (conR *Reactor) subscribeToBroadcastEvents() {
 		conR.Logger.Error("Error adding listener for events", "err", err)
 	}
 
+	if err := conR.conS.evsw.AddListenerForEvent(subscriber, types.EventCommit,
+		func(data tmevents.EventData) {
+			conR.broadcastHasCommitMessage(data.(*types.Commit))
+		}); err != nil {
+		conR.Logger.Error("Error adding listener for events", "err", err)
+	}
 }
 
 func (conR *Reactor) unsubscribeFromBroadcastEvents() {
@@ -495,6 +461,33 @@ func (conR *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
 		Round:  vote.Round,
 		Type:   vote.Type,
 		Index:  vote.ValidatorIndex,
+	}
+	conR.Switch.Broadcast(StateChannel, MustEncode(msg))
+	/*
+		// TODO: Make this broadcast more selective.
+		for _, peer := range conR.Switch.Peers().List() {
+			ps, ok := peer.Get(PeerStateKey).(*PeerState)
+			if !ok {
+				panic(fmt.Sprintf("Peer %v has no state", peer))
+			}
+			prs := ps.GetRoundState()
+			if prs.Height == vote.Height {
+				// TODO: Also filter on round?
+				peer.TrySend(StateChannel, struct{ ConsensusMessage }{msg})
+			} else {
+				// Height doesn't match
+				// TODO: check a field, maybe CatchupCommitRound?
+				// TODO: But that requires changing the struct field comment.
+			}
+		}
+	*/
+}
+
+// Broadcasts HasVoteMessage to peers that care.
+func (conR *Reactor) broadcastHasCommitMessage(commit *types.Commit) {
+	msg := &HasCommitMessage{
+		Height: commit.Height,
+		Round:  commit.Round,
 	}
 	conR.Switch.Broadcast(StateChannel, MustEncode(msg))
 	/*
@@ -695,8 +688,10 @@ OUTER_LOOP:
 		prs := ps.GetRoundState()
 
 		isValidator := false
+		wasValidator := false
 		if nodeProTxHash != nil {
 			isValidator = rs.Validators.HasProTxHash(*nodeProTxHash)
+			wasValidator = rs.LastValidators.HasProTxHash(*nodeProTxHash)
 		}
 
 		switch sleeping {
@@ -706,32 +701,51 @@ OUTER_LOOP:
 			sleeping = 0
 		}
 
-		// logger.Debug("gossipVotesRoutine", "rsHeight", rs.Height, "rsRound", rs.Round,
-		// "prsHeight", prs.Height, "prsRound", prs.Round, "prsStep", prs.Step)
-
-		// If height matches, then send LastPrecommits, Prevotes, Precommits.
-		if rs.Height == prs.Height {
-			heightLogger := logger.With("height", prs.Height)
-			if conR.gossipVotesForHeight(heightLogger, rs, prs, ps, isValidator) {
+		// Special catchup logic.
+		// If peer is lagging by height 1, send LastCommit.
+		if prs.Height != 0 && rs.Height == prs.Height+1 && wasValidator {
+			if ps.PickSendVote(rs.LastPrecommits) {
+				logger.Debug("Picked a previous precommit vote to send", "height", prs.Height)
 				continue OUTER_LOOP
 			}
 		}
 
+		// logger.Debug("gossipVotesRoutine", "rsHeight", rs.Height, "rsRound", rs.Round,
+		// "prsHeight", prs.Height, "prsRound", prs.Round, "prsStep", prs.Step)
+
+		// If height matches, then send LastCommit, Prevotes, Precommits.
+		if rs.Height == prs.Height {
+			heightLogger := logger.With("height", prs.Height)
+			if wasValidator == false {
+				// If there are lastCommits to send...
+				if prs.Step == cstypes.RoundStepNewHeight && prs.Height+1 == rs.Height && prs.HasCommit == false {
+					if ps.SendCommit(rs.LastCommit) {
+						logger.Debug("Sending LastCommit to non-validator node")
+						continue OUTER_LOOP
+					}
+				}
+			}
+			if isValidator == true {
+				if conR.gossipVotesForHeight(heightLogger, rs, prs, ps) {
+					continue OUTER_LOOP
+				}
+			}
+		}
+
 		// Special catchup logic.
-		// If peer is lagging by height 1, send LastCommit.
-		if prs.Height != 0 && rs.Height == prs.Height+1 {
+		// If peer is lagging by height 1, send LastCommit if we haven't already.
+		if prs.Height != 0 && rs.Height == prs.Height+1 && prs.HasCommit == false && wasValidator == false {
 			if ps.SendCommit(rs.LastCommit) {
-				logger.Debug("Picked rs.LastCommit to send", "height", prs.Height)
+				logger.Debug("Sending LastCommit for catch up", "height", prs.Height)
 				continue OUTER_LOOP
 			}
 		}
 
 		// Catchup logic
-		// If peer is lagging by more than 1, send Commit.
+		// If peer is lagging by more than 1, send Commit for that height to allow them to catch up.
 		blockStoreBase := conR.conS.blockStore.Base()
-		if blockStoreBase > 0 && prs.Height != 0 && rs.Height >= prs.Height+2 && prs.Height >= blockStoreBase {
+		if blockStoreBase > 0 && prs.Height != 0 && rs.Height >= prs.Height+2 && prs.Height >= blockStoreBase && prs.HasCommit == false {
 			// Load the block commit for prs.Height,
-			// which contains precommit signatures for prs.Height.
 			if commit := conR.conS.blockStore.LoadBlockCommit(prs.Height); commit != nil {
 				if ps.SendCommit(commit) {
 					logger.Debug("Picked Catchup commit to send", "height", prs.Height)
@@ -761,86 +775,12 @@ func (conR *Reactor) gossipVotesForHeight(
 	rs *cstypes.RoundState,
 	prs *cstypes.PeerRoundState,
 	ps *PeerState,
-	isValidator bool,
-) bool {
-	if isValidator {
-		return conR.gossipVotesToValidatorForHeight(logger, rs, prs, ps)
-	} else {
-		return conR.gossipVotesToFullNodeForHeight(logger, rs, prs, ps)
-	}
-}
-
-func (conR *Reactor) gossipVotesToValidatorForHeight(
-	logger log.Logger,
-	rs *cstypes.RoundState,
-	prs *cstypes.PeerRoundState,
-	ps *PeerState,
 ) bool {
 
-	// If there are lastCommits to send...
+	// If there are lastPrecommits to send...
 	if prs.Step == cstypes.RoundStepNewHeight {
-		if ps.SendCommit(rs.LastCommit) {
-			logger.Debug("Picked rs.LastCommit to send")
-			return true
-		}
-	}
-	// If there are POL prevotes to send...
-	if prs.Step <= cstypes.RoundStepPropose && prs.Round != -1 && prs.Round <= rs.Round && prs.ProposalPOLRound != -1 {
-		if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
-			if ps.PickSendVote(polPrevotes) {
-				logger.Debug("Picked rs.Prevotes(prs.ProposalPOLRound) to send",
-					"round", prs.ProposalPOLRound)
-				return true
-			}
-		}
-	}
-	// If there are prevotes to send...
-	if prs.Step <= cstypes.RoundStepPrevoteWait && prs.Round != -1 && prs.Round <= rs.Round {
-		if ps.PickSendVote(rs.Votes.Prevotes(prs.Round)) {
-			logger.Debug("Picked rs.Prevotes(prs.Round) to send", "round", prs.Round)
-			return true
-		}
-	}
-	// If there are precommits to send...
-	if prs.Step <= cstypes.RoundStepPrecommitWait && prs.Round != -1 && prs.Round <= rs.Round {
-		if ps.PickSendVote(rs.Votes.Precommits(prs.Round)) {
-			logger.Debug("Picked rs.Precommits(prs.Round) to send", "round", prs.Round)
-			return true
-		}
-	}
-	// If there are prevotes to send...Needed because of validBlock mechanism
-	if prs.Round != -1 && prs.Round <= rs.Round {
-		if ps.PickSendVote(rs.Votes.Prevotes(prs.Round)) {
-			logger.Debug("Picked rs.Prevotes(prs.Round) to send", "round", prs.Round)
-			return true
-		}
-	}
-	// If there are POLPrevotes to send...
-	if prs.ProposalPOLRound != -1 {
-		if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
-			if ps.PickSendVote(polPrevotes) {
-				logger.Debug("Picked rs.Prevotes(prs.ProposalPOLRound) to send",
-					"round", prs.ProposalPOLRound)
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
-
-func (conR *Reactor) gossipVotesToFullNodeForHeight(
-	logger log.Logger,
-	rs *cstypes.RoundState,
-	prs *cstypes.PeerRoundState,
-	ps *PeerState,
-) bool {
-
-	// If there are lastCommits to send...
-	if prs.Step == cstypes.RoundStepNewHeight {
-		if ps.SendCommit(rs.LastCommit) {
-			logger.Debug("Picked rs.LastCommit to send")
+		if ps.PickSendVote(rs.LastPrecommits) {
+			logger.Debug("Picked previous precommit vote to send")
 			return true
 		}
 	}
@@ -991,8 +931,10 @@ func (conR *Reactor) peerStatsRoutine() {
 			// Get peer
 			peer := conR.Switch.Peers().Get(msg.PeerID)
 			if peer == nil {
-				conR.Logger.Debug("Attempt to update stats for non-existent peer",
-					"peer", msg.PeerID)
+				if msg.PeerID != "" { //this would be internal
+					conR.Logger.Debug("Attempt to update stats for non-existent peer",
+						"peer", msg.PeerID)
+				}
 				continue
 			}
 			// Get peer state
@@ -1180,7 +1122,7 @@ func (ps *PeerState) SetHasProposalBlockPart(height int64, round int32, index in
 func (ps *PeerState) SendCommit(commit *types.Commit) bool {
 	if commit != nil {
 		msg := &CommitMessage{commit}
-		ps.logger.Debug("Sending commit message", "ps", ps, "commit", commit)
+		ps.logger.Debug("Sending commit message", "peer", ps.peer, "ps", ps, "commit", commit)
 		if ps.peer.Send(VoteChannel, MustEncode(msg)) {
 			ps.SetHasCommit(commit)
 			return true
@@ -1520,6 +1462,18 @@ func (ps *PeerState) ApplyHasVoteMessage(msg *HasVoteMessage) {
 	ps.setHasVote(msg.Height, msg.Round, msg.Type, msg.Index)
 }
 
+// ApplyHasCommitMessage updates the peer state for the new commit.
+func (ps *PeerState) ApplyHasCommitMessage(msg *HasCommitMessage) {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	if ps.PRS.Height != msg.Height {
+		return
+	}
+
+	ps.setHasCommit(msg.Height, msg.Round)
+}
+
 // ApplyVoteSetBitsMessage updates the peer state for the bit-array of votes
 // it claims to have for the corresponding BlockID.
 // `ourVotes` is a BitArray of votes we have for msg.BlockID
@@ -1577,6 +1531,7 @@ func init() {
 	tmjson.RegisterType(&BlockPartMessage{}, "tendermint/BlockPart")
 	tmjson.RegisterType(&VoteMessage{}, "tendermint/Vote")
 	tmjson.RegisterType(&HasVoteMessage{}, "tendermint/HasVote")
+	tmjson.RegisterType(&HasCommitMessage{}, "tendermint/HasCommit")
 	tmjson.RegisterType(&VoteSetMaj23Message{}, "tendermint/VoteSetMaj23")
 	tmjson.RegisterType(&VoteSetBitsMessage{}, "tendermint/VoteSetBits")
 }
@@ -1833,7 +1788,7 @@ func (m *CommitMessage) ValidateBasic() error {
 
 // String returns a string representation.
 func (m *CommitMessage) String() string {
-	return fmt.Sprintf("[Commit %v]", m.Commit)
+	return m.Commit.String()
 }
 
 //-------------------------------------
@@ -1842,7 +1797,6 @@ func (m *CommitMessage) String() string {
 type HasCommitMessage struct {
 	Height int64
 	Round  int32
-	BlockID types.BlockID
 }
 
 // ValidateBasic performs basic validation.
@@ -1853,15 +1807,12 @@ func (m *HasCommitMessage) ValidateBasic() error {
 	if m.Round < 0 {
 		return errors.New("negative Round")
 	}
-	if err := m.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong BlockID: %v", err)
-	}
 	return nil
 }
 
 // String returns a string representation.
 func (m *HasCommitMessage) String() string {
-	return fmt.Sprintf("[HasCommit %v/%02d/%v]", m.Height, m.Round, m.BlockID)
+	return fmt.Sprintf("[HasCommit %v/%02d]", m.Height, m.Round)
 }
 
 //-------------------------------------
