@@ -454,7 +454,7 @@ func createPeerManager(
 	config *cfg.Config,
 	dbProvider cfg.DBProvider,
 	p2pLogger log.Logger,
-	nodeID p2p.NodeID,
+	nodeID types.NodeID,
 ) (*p2p.PeerManager, error) {
 
 	var maxConns uint16
@@ -480,9 +480,9 @@ func createPeerManager(
 		maxConns = 64
 	}
 
-	privatePeerIDs := make(map[p2p.NodeID]struct{})
+	privatePeerIDs := make(map[types.NodeID]struct{})
 	for _, id := range tmstrings.SplitAndTrimEmpty(config.P2P.PrivatePeerIDs, ",", " ") {
-		privatePeerIDs[p2p.NodeID(id)] = struct{}{}
+		privatePeerIDs[types.NodeID(id)] = struct{}{}
 	}
 
 	options := p2p.PeerManagerOptions{
@@ -537,7 +537,7 @@ func createPeerManager(
 func createRouter(
 	p2pLogger log.Logger,
 	p2pMetrics *p2p.Metrics,
-	nodeInfo p2p.NodeInfo,
+	nodeInfo types.NodeInfo,
 	privKey crypto.PrivKey,
 	peerManager *p2p.PeerManager,
 	transport p2p.Transport,
@@ -565,7 +565,7 @@ func createSwitch(
 	consensusReactor *p2p.ReactorShim,
 	evidenceReactor *p2p.ReactorShim,
 	proxyApp proxy.AppConns,
-	nodeInfo p2p.NodeInfo,
+	nodeInfo types.NodeInfo,
 	nodeKey p2p.NodeKey,
 	p2pLogger log.Logger,
 ) *p2p.Switch {
@@ -651,14 +651,14 @@ func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
 
 	// Add ourselves to addrbook to prevent dialing ourselves
 	if config.P2P.ExternalAddress != "" {
-		addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.ID, config.P2P.ExternalAddress))
+		addr, err := types.NewNetAddressString(nodeKey.ID.AddressString(config.P2P.ExternalAddress))
 		if err != nil {
 			return nil, fmt.Errorf("p2p.external_address is incorrect: %w", err)
 		}
 		addrBook.AddOurAddress(addr)
 	}
 	if config.P2P.ListenAddress != "" {
-		addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.ID, config.P2P.ListenAddress))
+		addr, err := types.NewNetAddressString(nodeKey.ID.AddressString(config.P2P.ListenAddress))
 		if err != nil {
 			return nil, fmt.Errorf("p2p.laddr is incorrect: %w", err)
 		}
@@ -713,7 +713,7 @@ func makeNodeInfo(
 	eventSinks []indexer.EventSink,
 	genDoc *types.GenesisDoc,
 	state sm.State,
-) (p2p.NodeInfo, error) {
+) (types.NodeInfo, error) {
 	txIndexerStatus := "off"
 
 	if indexer.IndexingEnabled(eventSinks) {
@@ -729,15 +729,15 @@ func makeNodeInfo(
 		bcChannel = bcv2.BlockchainChannel
 
 	default:
-		return p2p.NodeInfo{}, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
+		return types.NodeInfo{}, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}
 
-	nodeInfo := p2p.NodeInfo{
-		ProtocolVersion: p2p.NewProtocolVersion(
-			version.P2PProtocol, // global
-			state.Version.Consensus.Block,
-			state.Version.Consensus.App,
-		),
+	nodeInfo := types.NodeInfo{
+		ProtocolVersion: types.ProtocolVersion{
+			P2P:   version.P2PProtocol, // global
+			Block: state.Version.Consensus.Block,
+			App:   state.Version.Consensus.App,
+		},
 		NodeID:  nodeKey.ID,
 		Network: genDoc.ChainID,
 		Version: version.TMVersion,
@@ -754,7 +754,7 @@ func makeNodeInfo(
 			byte(statesync.LightBlockChannel),
 		},
 		Moniker: config.Moniker,
-		Other: p2p.NodeInfoOther{
+		Other: types.NodeInfoOther{
 			TxIndex:    txIndexerStatus,
 			RPCAddress: config.RPC.ListenAddress,
 		},
@@ -781,19 +781,19 @@ func makeSeedNodeInfo(
 	nodeKey p2p.NodeKey,
 	genDoc *types.GenesisDoc,
 	state sm.State,
-) (p2p.NodeInfo, error) {
-	nodeInfo := p2p.NodeInfo{
-		ProtocolVersion: p2p.NewProtocolVersion(
-			version.P2PProtocol, // global
-			state.Version.Consensus.Block,
-			state.Version.Consensus.App,
-		),
+) (types.NodeInfo, error) {
+	nodeInfo := types.NodeInfo{
+		ProtocolVersion: types.ProtocolVersion{
+			P2P:   version.P2PProtocol, // global
+			Block: state.Version.Consensus.Block,
+			App:   state.Version.Consensus.App,
+		},
 		NodeID:   nodeKey.ID,
 		Network:  genDoc.ChainID,
 		Version:  version.TMVersion,
 		Channels: []byte{},
 		Moniker:  config.Moniker,
-		Other: p2p.NodeInfoOther{
+		Other: types.NodeInfoOther{
 			TxIndex:    "off",
 			RPCAddress: config.RPC.ListenAddress,
 		},

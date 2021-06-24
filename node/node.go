@@ -58,7 +58,7 @@ type nodeImpl struct {
 	peerManager *p2p.PeerManager
 	router      *p2p.Router
 	addrBook    pex.AddrBook // known peers
-	nodeInfo    p2p.NodeInfo
+	nodeInfo    types.NodeInfo
 	nodeKey     p2p.NodeKey // our node privkey
 	isListening bool
 
@@ -560,12 +560,6 @@ func makeSeedNode(config *cfg.Config,
 	return node, nil
 }
 
-// Temporary interface for switching to fast sync, we should get rid of v0.
-// See: https://github.com/tendermint/tendermint/issues/4595
-type fastSyncReactor interface {
-	SwitchToFastSync(sm.State) error
-}
-
 // OnStart starts the Node. It implements service.Service.
 func (n *nodeImpl) OnStart() error {
 	now := tmtime.Now()
@@ -591,11 +585,11 @@ func (n *nodeImpl) OnStart() error {
 	}
 
 	// Start the transport.
-	addr, err := p2p.NewNetAddressString(p2p.IDAddressString(n.nodeKey.ID, n.config.P2P.ListenAddress))
+	addr, err := types.NewNetAddressString(n.nodeKey.ID.AddressString(n.config.P2P.ListenAddress))
 	if err != nil {
 		return err
 	}
-	if err := n.transport.Listen(addr.Endpoint()); err != nil {
+	if err := n.transport.Listen(p2p.NewEndpoint(addr)); err != nil {
 		return err
 	}
 
@@ -658,7 +652,7 @@ func (n *nodeImpl) OnStart() error {
 
 	// Run state sync
 	if n.stateSync {
-		bcR, ok := n.bcReactor.(fastSyncReactor)
+		bcR, ok := n.bcReactor.(cs.FastSyncReactor)
 		if !ok {
 			return fmt.Errorf("this blockchain reactor does not support switching from state sync")
 		}
@@ -787,7 +781,8 @@ func (n *nodeImpl) ConfigureRPC() (*rpccore.Environment, error) {
 
 		Logger: n.Logger.With("module", "rpc"),
 
-		Config: *n.config.RPC,
+		Config:          *n.config.RPC,
+		FastSyncReactor: n.bcReactor.(cs.FastSyncReactor),
 	}
 	if n.config.Mode == cfg.ModeValidator {
 		pubKey, err := n.privValidator.GetPubKey(context.TODO())
@@ -1027,12 +1022,12 @@ func (n *nodeImpl) IsListening() bool {
 }
 
 // NodeInfo returns the Node's Info from the Switch.
-func (n *nodeImpl) NodeInfo() p2p.NodeInfo {
+func (n *nodeImpl) NodeInfo() types.NodeInfo {
 	return n.nodeInfo
 }
 
 // startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
-func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reactor,
+func startStateSync(ssR *statesync.Reactor, bcR cs.FastSyncReactor, conR *cs.Reactor,
 	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
 	stateStore sm.Store, blockStore *store.BlockStore, state sm.State) error {
 	ssR.Logger.Info("starting state sync...")
@@ -1205,7 +1200,7 @@ func getRouterConfig(conf *cfg.Config, proxyApp proxy.AppConns) p2p.RouterOption
 	}
 
 	if conf.FilterPeers && proxyApp != nil {
-		opts.FilterPeerByID = func(ctx context.Context, id p2p.NodeID) error {
+		opts.FilterPeerByID = func(ctx context.Context, id types.NodeID) error {
 			res, err := proxyApp.Query().QuerySync(context.Background(), abci.RequestQuery{
 				Path: fmt.Sprintf("/p2p/filter/id/%s", id),
 			})

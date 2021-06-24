@@ -19,6 +19,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [state/indexer] \#6382 reconstruct indexer, move txindex into the indexer package (@JayT106)
   - [cli] \#6372 Introduce `BootstrapPeers` as part of the new p2p stack. Peers to be connected on  startup (@cmwaters)
   - [config] \#6462 Move `PrivValidator` configuration out of `BaseConfig` into its own section. (@tychoish)
+  - [rpc] \#6610 Add MaxPeerBlockHeight into /status rpc call (@JayT106)
 
 - Apps
   - [ABCI] \#6408 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)
@@ -31,6 +32,8 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - P2P Protocol
 
 - Go API
+  - [p2p] \#6618 Move `p2p.NodeInfo` into `types` to support use of the SDK. (@tychoish)
+  - [p2p] \#6583 Make `p2p.NodeID` and `p2p.NetAddress` exported types to support their use in the RPC layer. (@tychoish)
   - [node] \#6540 Reduce surface area of the `node` package by making most of the implementation details private. (@tychoish)
   - [p2p] \#6547 Move the entire `p2p` package and all reactor implementations into `internal`.  (@tychoish)
   - [libs/log] \#6534 Remove the existing custom Tendermint logger backed by go-kit. The logging interface, `Logger`, remains. Tendermint still provides a default logger backed by the performant zerolog logger. (@alexanderbez)
@@ -123,6 +126,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [p2p/pex] \#6509 Improve addrBook.hash performance (@cuonglm)
 - [consensus/metrics] \#6549 Change block_size gauge to a histogram for better observability over time (@marbar3778)
 - [statesync] \#6587 Increase chunk priority and re-request chunks that don't arrive (@cmwaters)
+- [rpc] \#6615 Add TotalGasUsed to block_results response (@crypto-facs)
 
 ### BUG FIXES
 
@@ -131,5 +135,5 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [blockchain/v1] \#5711 Fix deadlock (@melekes)
 - [evidence] \#6375 Fix bug with inconsistent LightClientAttackEvidence hashing (cmwaters)
 - [rpc] \#6507 fix RPC client doesn't handle url's without ports (@JayT106)
-- [statesync] \#6463 Adds Reverse Sync feature to fetch historical light blocks after state sync in order to verify any evidence (@cmwaters) 
+- [statesync] \#6463 Adds Reverse Sync feature to fetch historical light blocks after state sync in order to verify any evidence (@cmwaters)
 - [fastsync] \#6590 Update the metrics during fast-sync (@JayT106)

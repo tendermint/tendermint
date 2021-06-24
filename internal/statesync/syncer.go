@@ -113,7 +113,7 @@ func (s *syncer) AddChunk(chunk *chunk) (bool, error) {
 
 // AddSnapshot adds a snapshot to the snapshot pool. It returns true if a new, previously unseen
 // snapshot was accepted and added.
-func (s *syncer) AddSnapshot(peerID p2p.NodeID, snapshot *snapshot) (bool, error) {
+func (s *syncer) AddSnapshot(peerID types.NodeID, snapshot *snapshot) (bool, error) {
 	added, err := s.snapshots.Add(peerID, snapshot)
 	if err != nil {
 		return false, err
@@ -127,7 +127,7 @@ func (s *syncer) AddSnapshot(peerID p2p.NodeID, snapshot *snapshot) (bool, error
 
 // AddPeer adds a peer to the pool. For now we just keep it simple and send a
 // single request to discover snapshots, later we may want to do retries and stuff.
-func (s *syncer) AddPeer(peerID p2p.NodeID) {
+func (s *syncer) AddPeer(peerID types.NodeID) {
 	s.logger.Debug("Requesting snapshots from peer", "peer", peerID)
 	s.snapshotCh <- p2p.Envelope{
 		To:      peerID,
@@ -136,7 +136,7 @@ func (s *syncer) AddPeer(peerID p2p.NodeID) {
 }
 
 // RemovePeer removes a peer from the pool.
-func (s *syncer) RemovePeer(peerID p2p.NodeID) {
+func (s *syncer) RemovePeer(peerID types.NodeID) {
 	s.logger.Debug("Removing peer from sync", "peer", peerID)
 	s.snapshots.RemovePeer(peerID)
 }
@@ -371,7 +371,7 @@ func (s *syncer) applyChunks(ctx context.Context, chunks *chunkQueue) error {
 		// Reject any senders as requested by the app
 		for _, sender := range resp.RejectSenders {
 			if sender != "" {
-				peerID := p2p.NodeID(sender)
+				peerID := types.NodeID(sender)
 				s.snapshots.RejectPeer(peerID)
 
 				if err := chunks.DiscardSender(peerID); err != nil {

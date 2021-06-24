@@ -14,13 +14,14 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/types"
 )
 
 // Network sets up an in-memory network that can be used for high-level P2P
 // testing. It creates an arbitrary number of nodes that are connected to each
 // other, and can open channels across all nodes with custom reactors.
 type Network struct {
-	Nodes map[p2p.NodeID]*Node
+	Nodes map[types.NodeID]*Node
 
 	logger        log.Logger
 	memoryNetwork *p2p.MemoryNetwork
@@ -51,7 +52,7 @@ func MakeNetwork(t *testing.T, opts NetworkOptions) *Network {
 	opts.setDefaults()
 	logger := log.TestingLogger()
 	network := &Network{
-		Nodes:         map[p2p.NodeID]*Node{},
+		Nodes:         map[types.NodeID]*Node{},
 		logger:        logger,
 		memoryNetwork: p2p.NewMemoryNetwork(logger, opts.BufferSize),
 	}
@@ -71,7 +72,7 @@ func (n *Network) Start(t *testing.T) {
 	// Set up a list of node addresses to dial, and a peer update subscription
 	// for each node.
 	dialQueue := []p2p.NodeAddress{}
-	subs := map[p2p.NodeID]*p2p.PeerUpdates{}
+	subs := map[types.NodeID]*p2p.PeerUpdates{}
 	for _, node := range n.Nodes {
 		dialQueue = append(dialQueue, node.NodeAddress)
 		subs[node.NodeID] = node.PeerManager.Subscribe()
@@ -124,8 +125,8 @@ func (n *Network) Start(t *testing.T) {
 }
 
 // NodeIDs returns the network's node IDs.
-func (n *Network) NodeIDs() []p2p.NodeID {
-	ids := []p2p.NodeID{}
+func (n *Network) NodeIDs() []types.NodeID {
+	ids := []types.NodeID{}
 	for id := range n.Nodes {
 		ids = append(ids, id)
 	}
@@ -139,8 +140,8 @@ func (n *Network) MakeChannels(
 	chDesc p2p.ChannelDescriptor,
 	messageType proto.Message,
 	size int,
-) map[p2p.NodeID]*p2p.Channel {
-	channels := map[p2p.NodeID]*p2p.Channel{}
+) map[types.NodeID]*p2p.Channel {
+	channels := map[types.NodeID]*p2p.Channel{}
 	for _, node := range n.Nodes {
 		channels[node.NodeID] = node.MakeChannel(t, chDesc, messageType, size)
 	}
@@ -155,8 +156,8 @@ func (n *Network) MakeChannelsNoCleanup(
 	chDesc p2p.ChannelDescriptor,
 	messageType proto.Message,
 	size int,
-) map[p2p.NodeID]*p2p.Channel {
-	channels := map[p2p.NodeID]*p2p.Channel{}
+) map[types.NodeID]*p2p.Channel {
+	channels := map[types.NodeID]*p2p.Channel{}
 	for _, node := range n.Nodes {
 		channels[node.NodeID] = node.MakeChannelNoCleanup(t, chDesc, messageType, size)
 	}
@@ -173,7 +174,7 @@ func (n *Network) RandomNode() *Node {
 }
 
 // Peers returns a node's peers (i.e. everyone except itself).
-func (n *Network) Peers(id p2p.NodeID) []*Node {
+func (n *Network) Peers(id types.NodeID) []*Node {
 	peers := make([]*Node, 0, len(n.Nodes)-1)
 	for _, peer := range n.Nodes {
 		if peer.NodeID != id {
@@ -185,7 +186,7 @@ func (n *Network) Peers(id p2p.NodeID) []*Node {
 
 // Remove removes a node from the network, stopping it and waiting for all other
 // nodes to pick up the disconnection.
-func (n *Network) Remove(t *testing.T, id p2p.NodeID) {
+func (n *Network) Remove(t *testing.T, id types.NodeID) {
 	require.Contains(t, n.Nodes, id)
 	node := n.Nodes[id]
 	delete(n.Nodes, id)
@@ -213,8 +214,8 @@ func (n *Network) Remove(t *testing.T, id p2p.NodeID) {
 
 // Node is a node in a Network, with a Router and a PeerManager.
 type Node struct {
-	NodeID      p2p.NodeID
-	NodeInfo    p2p.NodeInfo
+	NodeID      types.NodeID
+	NodeInfo    types.NodeInfo
 	NodeAddress p2p.NodeAddress
 	PrivKey     crypto.PrivKey
 	Router      *p2p.Router
@@ -227,8 +228,8 @@ type Node struct {
 // network. Callers are responsible for updating peering relationships.
 func (n *Network) MakeNode(t *testing.T, opts NodeOptions) *Node {
 	privKey := ed25519.GenPrivKey()
-	nodeID := p2p.NodeIDFromPubKey(privKey.PubKey())
-	nodeInfo := p2p.NodeInfo{
+	nodeID := types.NodeIDFromPubKey(privKey.PubKey())
+	nodeInfo := types.NodeInfo{
 		NodeID:     nodeID,
 		ListenAddr: "0.0.0.0:0", // FIXME: We have to fake this for now.
 		Moniker:    string(nodeID),

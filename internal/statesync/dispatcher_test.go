@@ -13,6 +13,7 @@ import (
 
 	"github.com/tendermint/tendermint/internal/p2p"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
+	"github.com/tendermint/tendermint/types"
 )
 
 func TestDispatcherBasic(t *testing.T) {
@@ -98,7 +99,7 @@ func TestPeerListBasic(t *testing.T) {
 	}
 	assert.Equal(t, half, peerList.Len())
 
-	peerList.Remove(p2p.NodeID("lp"))
+	peerList.Remove(types.NodeID("lp"))
 	assert.Equal(t, half, peerList.Len())
 
 	peerList.Remove(peerSet[half])
@@ -170,10 +171,10 @@ func handleRequests(t *testing.T, d *dispatcher, ch chan p2p.Envelope, closeCh c
 	}
 }
 
-func createPeerSet(num int) []p2p.NodeID {
-	peers := make([]p2p.NodeID, num)
+func createPeerSet(num int) []types.NodeID {
+	peers := make([]types.NodeID, num)
 	for i := 0; i < num; i++ {
-		peers[i], _ = p2p.NewNodeID(strings.Repeat(fmt.Sprintf("%d", i), 2*p2p.NodeIDByteLength))
+		peers[i], _ = types.NewNodeID(strings.Repeat(fmt.Sprintf("%d", i), 2*types.NodeIDByteLength))
 	}
 	return peers
 }

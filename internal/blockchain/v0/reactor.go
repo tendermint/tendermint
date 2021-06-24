@@ -66,7 +66,7 @@ type consensusReactor interface {
 
 type peerError struct {
 	err    error
-	peerID p2p.NodeID
+	peerID types.NodeID
 }
 
 func (e peerError) Error() string {
@@ -194,7 +194,7 @@ func (r *Reactor) OnStop() {
 
 // respondToPeer loads a block and sends it to the requesting peer, if we have it.
 // Otherwise, we'll respond saying we do not have it.
-func (r *Reactor) respondToPeer(msg *bcproto.BlockRequest, peerID p2p.NodeID) {
+func (r *Reactor) respondToPeer(msg *bcproto.BlockRequest, peerID types.NodeID) {
 	block := r.store.LoadBlock(msg.Height)
 	if block != nil {
 		blockProto, err := block.ToProto()
@@ -588,4 +588,8 @@ FOR_LOOP:
 			break FOR_LOOP
 		}
 	}
+}
+
+func (r *Reactor) GetMaxPeerBlockHeight() int64 {
+	return r.pool.MaxPeerHeight()
 }
