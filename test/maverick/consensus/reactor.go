@@ -267,6 +267,8 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			ps.ApplyNewValidBlockMessage(msg)
 		case *tmcon.HasVoteMessage:
 			ps.ApplyHasVoteMessage(msg)
+		case *tmcon.HasCommitMessage:
+			ps.ApplyHasCommitMessage(msg)
 		case *tmcon.VoteSetMaj23Message:
 			cs := conR.conS
 			cs.mtx.Lock()
@@ -1255,6 +1257,25 @@ func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.Sign
 	}
 }
 
+// SetHasCommit sets the given vote as known by the peer
+func (ps *PeerState) SetHasCommit(commit *types.Commit) {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	ps.setHasCommit(commit.Height, commit.Round)
+}
+
+func (ps *PeerState) setHasCommit(height int64, round int32) {
+	logger := ps.logger.With("peer", ps.peer,
+		"peerH/R",
+		fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
+		"H/R",
+		fmt.Sprintf("%d/%d", height, round))
+	logger.Debug("setHasCommit")
+
+	ps.PRS.HasCommit = true
+}
+
 // ApplyNewRoundStepMessage updates the peer state for the new round.
 func (ps *PeerState) ApplyNewRoundStepMessage(msg *tmcon.NewRoundStepMessage) {
 	ps.mtx.Lock()
@@ -1352,6 +1373,18 @@ func (ps *PeerState) ApplyHasVoteMessage(msg *tmcon.HasVoteMessage) {
 	}
 
 	ps.setHasVote(msg.Height, msg.Round, msg.Type, msg.Index)
+}
+
+// ApplyHasCommitMessage updates the peer state for the new commit.
+func (ps *PeerState) ApplyHasCommitMessage(msg *tmcon.HasCommitMessage) {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	if ps.PRS.Height != msg.Height {
+		return
+	}
+
+	ps.setHasCommit(msg.Height, msg.Round)
 }
 
 // ApplyVoteSetBitsMessage updates the peer state for the bit-array of votes

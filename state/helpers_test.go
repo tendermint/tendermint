@@ -31,14 +31,15 @@ func newTestApp() proxy.AppConns {
 
 func makeAndCommitGoodBlock(
 	state sm.State,
+	nodeProTxHash *crypto.ProTxHash,
 	height int64,
 	lastCommit *types.Commit,
-	proposerProTxHash []byte,
+	proposerProTxHash crypto.ProTxHash,
 	blockExec *sm.BlockExecutor,
 	privVals map[string]types.PrivValidator,
 	evidence []types.Evidence) (sm.State, types.BlockID, types.StateID, *types.Commit, error) {
 	// A good block passes
-	state, blockID, stateID, err := makeAndApplyGoodBlock(state, height, lastCommit, proposerProTxHash, blockExec, evidence)
+	state, blockID, stateID, err := makeAndApplyGoodBlock(state, nodeProTxHash, height, lastCommit, proposerProTxHash, blockExec, evidence)
 	if err != nil {
 		return state, types.BlockID{}, types.StateID{}, nil, err
 	}
@@ -51,7 +52,7 @@ func makeAndCommitGoodBlock(
 	return state, blockID, stateID, commit, nil
 }
 
-func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commit, proposerProTxHash []byte,
+func makeAndApplyGoodBlock(state sm.State, nodeProTxHash *crypto.ProTxHash, height int64, lastCommit *types.Commit, proposerProTxHash []byte,
 	blockExec *sm.BlockExecutor, evidence []types.Evidence) (sm.State, types.BlockID, types.StateID, error) {
 	block, _ := state.MakeBlock(height, nil, makeTxs(height), lastCommit, evidence, proposerProTxHash)
 	if err := blockExec.ValidateBlock(state, block); err != nil {
@@ -59,7 +60,7 @@ func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commi
 	}
 	blockID := types.BlockID{Hash: block.Hash(),
 		PartSetHeader: types.PartSetHeader{Total: 3, Hash: tmrand.Bytes(32)}}
-	state, _, err := blockExec.ApplyBlock(state, blockID, block)
+	state, _, err := blockExec.ApplyBlock(state, nodeProTxHash, blockID, block)
 	if err != nil {
 		return state, types.BlockID{}, types.StateID{}, err
 	}

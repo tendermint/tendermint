@@ -18,6 +18,17 @@ func TestVariousLevels(t *testing.T) {
 			"AllowAll",
 			log.AllowAll(),
 			strings.Join([]string{
+				`{"_msg":"here","level":"debug","this is":"p2p_debug log"}`,
+				`{"_msg":"here","level":"debug","this is":"debug log"}`,
+				`{"_msg":"here","level":"info","this is":"info log"}`,
+				`{"_msg":"here","level":"error","this is":"error log"}`,
+			}, "\n"),
+		},
+		{
+			"AllowP2PDebug",
+			log.AllowP2PDebug(),
+			strings.Join([]string{
+				`{"_msg":"here","level":"debug","this is":"p2p_debug log"}`,
 				`{"_msg":"here","level":"debug","this is":"debug log"}`,
 				`{"_msg":"here","level":"info","this is":"info log"}`,
 				`{"_msg":"here","level":"error","this is":"error log"}`,
@@ -60,6 +71,7 @@ func TestVariousLevels(t *testing.T) {
 			var buf bytes.Buffer
 			logger := log.NewFilter(log.NewTMJSONLoggerNoTS(&buf), tc.allowed)
 
+			logger.P2PDebug("here", "this is", "p2p_debug log")
 			logger.Debug("here", "this is", "debug log")
 			logger.Info("here", "this is", "info log")
 			logger.Error("here", "this is", "error log")

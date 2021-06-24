@@ -69,8 +69,6 @@ message Commit {
 message HasCommit {
   int64                          height = 1;
   int32                          round  = 2;
-  tendermint.types.SignedMsgType type   = 3;
-  tendermint.types.BlockID       block_id = 4 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
 }
 
 

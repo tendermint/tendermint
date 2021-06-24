@@ -704,6 +704,7 @@ func NewNode(config *cfg.Config,
 	metricsProvider MetricsProvider,
 	dashCoreRpcClient dashcore.RpcClient,
 	logger log.Logger,
+	misbehaviors map[int64]cs.Misbehavior,
 	options ...Option) (*Node, error) {
 
 	blockStore, stateDB, err := initDBs(config, dbProvider)
@@ -849,7 +850,7 @@ func NewNode(config *cfg.Config,
 	}
 	consensusReactor, consensusState := createConsensusReactor(
 		config, state, blockExec, blockStore, mempool, evidencePool,
-		privValidator, csMetrics, stateSync || fastSync, eventBus, consensusLogger,
+		privValidator, csMetrics, stateSync || fastSync, eventBus, consensusLogger, misbehaviors,
 	)
 
 	// Set up state sync reactor, and schedule a sync if requested.

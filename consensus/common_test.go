@@ -405,8 +405,9 @@ func newStateWithConfigAndBlockStore(
 
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, proxyAppConnQry, mempool, evpool, nil)
 
-	cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
-	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
+	logger := log.TestingLogger().With("module", "consensus")
+	cs := NewStateWithLogger(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool, logger)
+	cs.SetLogger(logger)
 	cs.SetPrivValidator(pv)
 
 	eventBus := types.NewEventBus()
@@ -678,7 +679,7 @@ func consensusLogger() log.Logger {
 			}
 		}
 		return term.FgBgColor{}
-	}).With("module", "consensus")
+	}, "debug").With("module", "consensus")
 }
 
 func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker,
@@ -925,6 +926,10 @@ func randConsensusNetWithPeers(
 			}
 
 			privVal = privval.GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
+
+			// These validator might not have the public keys, for testing purposes let's assume they don't
+			state.Validators.HasPublicKeys = false
+			state.NextValidators.HasPublicKeys = false
 		}
 
 		app := appFunc(path.Join(config.DBDir(), fmt.Sprintf("%s_%d", testName, i)))
@@ -938,7 +943,8 @@ func randConsensusNetWithPeers(
 
 		css[i] = newStateWithConfig(thisConfig, state, privVal, app)
 		css[i].SetTimeoutTicker(tickerFunc())
-		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
+		proTxHash, _ := privVal.GetProTxHash()
+		css[i].SetLogger(logger.With("validator", i, "proTxHash", proTxHash.ShortString(), "module", "consensus"))
 	}
 	return css, genDoc, peer0Config, func() {
 		for _, dir := range configRootDirs {

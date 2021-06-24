@@ -100,6 +100,9 @@ func (p *Proposal) ValidateBasic() error {
 //
 // See BlockID#String.
 func (p *Proposal) String() string {
+	if p == nil {
+		return fmt.Sprintf("Proposal{nil}")
+	}
 	return fmt.Sprintf("Proposal{%v/%v (%v, %v) %X @ %s}",
 		p.Height,
 		p.Round,

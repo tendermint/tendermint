@@ -20,7 +20,7 @@ func (bz *HexBytes) Unmarshal(data []byte) error {
 	return nil
 }
 
-// This is the point of Bytes.
+// MarshalJSON is the point of Bytes.
 func (bz HexBytes) MarshalJSON() ([]byte, error) {
 	s := strings.ToUpper(hex.EncodeToString(bz))
 	jbz := make([]byte, len(s)+2)
@@ -30,7 +30,7 @@ func (bz HexBytes) MarshalJSON() ([]byte, error) {
 	return jbz, nil
 }
 
-// This is the point of Bytes.
+// UnmarshalJSON is the point of Bytes.
 func (bz *HexBytes) UnmarshalJSON(data []byte) error {
 	if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 		return fmt.Errorf("invalid hex string: %s", data)
@@ -46,6 +46,10 @@ func (bz *HexBytes) UnmarshalJSON(data []byte) error {
 // Bytes fulfils various interfaces in light-client, etc...
 func (bz HexBytes) Bytes() []byte {
 	return bz
+}
+
+func (bz HexBytes) ShortString() string {
+	return strings.ToUpper(hex.EncodeToString(bz[:3]))
 }
 
 func (bz HexBytes) String() string {

@@ -904,10 +904,6 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 			stateID, commit.StateID)
 	}
 
-	talliedVotingPower := int64(0)
-
-	votingPowerNeedMoreThan := vals.TotalVotingPower() * 2 / 3
-
 	blockSignId := commit.CanonicalVoteVerifySignId(chainID, vals.QuorumType, vals.QuorumHash)
 
 	if !vals.ThresholdPublicKey.VerifySignatureDigest(blockSignId, commit.ThresholdBlockSignature) {
@@ -922,10 +918,6 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 		canonicalVoteStateSignBytes := commit.CanonicalVoteStateSignBytes(chainID)
 		return fmt.Errorf("incorrect threshold state signature lc %X %X", canonicalVoteStateSignBytes,
 			commit.ThresholdStateSignature)
-	}
-
-	if got, needed := talliedVotingPower, votingPowerNeedMoreThan; got <= needed {
-		return ErrNotEnoughVotingPowerSigned{Got: got, Needed: needed}
 	}
 
 	return nil
