@@ -1663,6 +1663,9 @@ components:
                   codespace:
                     type: string
                     example: "ibc"
+            total_gas_used:
+              type: string
+              example: "100"
             begin_block_events:
               type: array
               nullable: true
