@@ -27,6 +27,7 @@ const (
 	// These are used for testing the consensus state machine.
 	// They can also be used to build real-time consensus visualizers.
 	EventCompleteProposalValue = "CompleteProposal"
+	EventFastSyncStatusValue   = "FastSyncStatus"
 	EventLockValue             = "Lock"
 	EventNewRoundValue         = "NewRound"
 	EventNewRoundStepValue     = "NewRoundStep"
@@ -100,6 +101,7 @@ func init() {
 	tmjson.RegisterType(EventDataVote{}, "tendermint/event/Vote")
 	tmjson.RegisterType(EventDataValidatorSetUpdates{}, "tendermint/event/ValidatorSetUpdates")
 	tmjson.RegisterType(EventDataString(""), "tendermint/event/ProposalString")
+	tmjson.RegisterType(EventDataFastSyncStatus{}, "tendermint/event/FastSyncStatus")
 }
 
 // Most event messages are basic types (a block, a transaction)
@@ -170,6 +172,11 @@ type EventDataValidatorSetUpdates struct {
 	ValidatorUpdates []*Validator `json:"validator_updates"`
 }
 
+type EventDataFastSyncStatus struct {
+	On     bool  `json:"on"`
+	Height int64 `json:"height"`
+}
+
 // PUBSUB
 
 const (
@@ -207,6 +214,7 @@ var (
 	EventQueryValidatorSetUpdates = QueryForEvent(EventValidatorSetUpdatesValue)
 	EventQueryValidBlock          = QueryForEvent(EventValidBlockValue)
 	EventQueryVote                = QueryForEvent(EventVoteValue)
+	EventQueryFastSyncStatus      = QueryForEvent(EventFastSyncStatusValue)
 )
 
 func EventQueryTxFor(tx Tx) tmpubsub.Query {
