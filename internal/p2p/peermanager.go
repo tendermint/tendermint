@@ -435,11 +435,13 @@ func (m *PeerManager) Add(address NodeAddress) (bool, error) {
 
 // PeerRatio returns the ratio of peer addresses stored to the maximum size.
 func (m *PeerManager) PeerRatio() float64 {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
 	if m.options.MaxPeers == 0 {
 		return 0
 	}
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
+
 	return float64(m.store.Size()) / float64(m.options.MaxPeers)
 }
 
@@ -552,9 +554,10 @@ func (m *PeerManager) DialFailed(address NodeAddress) error {
 			case <-m.closeCh:
 			}
 		}()
+	} else {
+		m.dialWaker.Wake()
 	}
 
-	m.dialWaker.Wake()
 	return nil
 }
 

@@ -331,6 +331,7 @@ func createBlockchainReactor(
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	fastSync bool,
+	metrics *cs.Metrics,
 ) (*p2p.ReactorShim, service.Service, error) {
 
 	logger = logger.With("module", "blockchain")
@@ -355,6 +356,7 @@ func createBlockchainReactor(
 		reactor, err := bcv0.NewReactor(
 			logger, state.Copy(), blockExec, blockStore, csReactor,
 			channels[bcv0.BlockchainChannel], peerUpdates, fastSync,
+			metrics,
 		)
 		if err != nil {
 			return nil, nil, err
@@ -363,7 +365,7 @@ func createBlockchainReactor(
 		return reactorShim, reactor, nil
 
 	case cfg.BlockchainV2:
-		reactor := bcv2.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+		reactor := bcv2.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync, metrics)
 		reactor.SetLogger(logger)
 
 		return nil, reactor, nil

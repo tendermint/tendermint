@@ -290,7 +290,7 @@ func makeNode(config *cfg.Config,
 	// doing a state sync first.
 	bcReactorShim, bcReactor, err := createBlockchainReactor(
 		logger, config, state, blockExec, blockStore, csReactor,
-		peerManager, router, fastSync && !stateSync,
+		peerManager, router, fastSync && !stateSync, csMetrics,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not create blockchain reactor: %w", err)
@@ -1055,7 +1055,7 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 	}
 
 	go func() {
-		state, err := ssR.Sync(stateProvider, config.DiscoveryTime)
+		state, err := ssR.Sync(context.TODO(), stateProvider, config.DiscoveryTime)
 		if err != nil {
 			ssR.Logger.Error("state sync failed", "err", err)
 			return
