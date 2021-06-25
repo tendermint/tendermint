@@ -215,6 +215,31 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 	rts.network.Nodes[rts.nodes[1]].PeerManager.Disconnected(rts.nodes[0])
 }
 
+func TestReactor_SyncTime(t *testing.T) {
+	config := cfg.ResetTestRoot("blockchain_reactor_test")
+	defer os.RemoveAll(config.RootDir)
+
+	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
+	maxBlockHeight := int64(100)
+
+	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
+
+	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
+
+	rts.start(t)
+
+	require.Eventually(
+		t,
+		func() bool {
+			return rts.reactors[rts.nodes[1]].GetRemainingSyncTime() > time.Nanosecond &&
+				rts.reactors[rts.nodes[1]].pool.getLastSyncRate() > 0.001
+		},
+		10*time.Second,
+		10*time.Millisecond,
+		"expected node to be partially synced",
+	)
+}
+
 func TestReactor_NoBlockResponse(t *testing.T) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
