@@ -70,12 +70,12 @@ func TestNodeInfoValidate(t *testing.T) {
 	name := "testing"
 
 	// test case passes
-	ni = testNodeInfo(nodeKey.ID(), name).(DefaultNodeInfo)
+	ni = testNodeInfo(nodeKey.ID(), name, nil).(DefaultNodeInfo)
 	ni.Channels = channels
 	assert.NoError(t, ni.Validate())
 
 	for _, tc := range testCases {
-		ni := testNodeInfo(nodeKey.ID(), name).(DefaultNodeInfo)
+		ni := testNodeInfo(nodeKey.ID(), name, nil).(DefaultNodeInfo)
 		ni.Channels = channels
 		tc.malleateNodeInfo(&ni)
 		err := ni.Validate()
@@ -97,8 +97,8 @@ func TestNodeInfoCompatible(t *testing.T) {
 	var newTestChannel byte = 0x2
 
 	// test NodeInfo is compatible
-	ni1 := testNodeInfo(nodeKey1.ID(), name).(DefaultNodeInfo)
-	ni2 := testNodeInfo(nodeKey2.ID(), name).(DefaultNodeInfo)
+	ni1 := testNodeInfo(nodeKey1.ID(), name, nil).(DefaultNodeInfo)
+	ni2 := testNodeInfo(nodeKey2.ID(), name, nil).(DefaultNodeInfo)
 	assert.NoError(t, ni1.CompatibleWith(ni2))
 
 	// add another channel; still compatible
@@ -121,7 +121,7 @@ func TestNodeInfoCompatible(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		ni := testNodeInfo(nodeKey2.ID(), name).(DefaultNodeInfo)
+		ni := testNodeInfo(nodeKey2.ID(), name, nil).(DefaultNodeInfo)
 		tc.malleateNodeInfo(&ni)
 		assert.Error(t, ni1.CompatibleWith(ni))
 	}
