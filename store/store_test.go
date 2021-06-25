@@ -3,6 +3,8 @@ package store
 import (
 	"bytes"
 	"fmt"
+	"github.com/tendermint/tendermint/crypto/bls12381"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"os"
 	"runtime/debug"
 	"strings"
@@ -32,16 +34,33 @@ type cleanupFunc func()
 
 // make a Commit with a single vote containing just the height and a timestamp
 func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
-	commitSigs := []types.CommitSig{{
-		BlockIDFlag:        types.BlockIDFlagCommit,
-		ValidatorProTxHash: tmrand.Bytes(crypto.DefaultHashSize),
-		BlockSignature:     []byte("BlockSignature"),
-		StateSignature:     []byte("StateSignature"),
-	}}
+	blockID := types.BlockID{Hash: []byte(""), PartSetHeader: types.PartSetHeader{Hash: []byte(""), Total: 2}}
+	stateID := types.StateID{LastAppHash: make([]byte, 32)}
+	goodVote := &types.Vote{
+		ValidatorProTxHash: crypto.RandQuorumHash(),
+		ValidatorIndex:     0,
+		Height:             height,
+		Round:              0,
+		Type:               tmproto.PrecommitType,
+		BlockID:            blockID,
+		StateID:            stateID,
+	}
+
+	g := goodVote.ToProto()
+
+	privKey := bls12381.GenPrivKey()
+	privVal := types.NewMockPVWithParams(privKey, crypto.RandProTxHash(), false,
+		false)
+
+	privVal.SignVote("chainID", state.Validators.QuorumType, state.Validators.QuorumHash, g)
+
+	goodVote.BlockSignature = g.BlockSignature
+	goodVote.StateSignature = g.StateSignature
+
 	return types.NewCommit(height, 0,
 		types.BlockID{Hash: []byte(""), PartSetHeader: types.PartSetHeader{Hash: []byte(""), Total: 2}},
-		types.StateID{LastAppHash: make([]byte, 32)}, commitSigs, crypto.RandQuorumHash(),
-		commitSigs[0].BlockSignature, commitSigs[0].StateSignature)
+		types.StateID{LastAppHash: make([]byte, 32)},  crypto.RandQuorumHash(),
+		goodVote.BlockSignature, goodVote.StateSignature)
 }
 
 func makeTxs(height int64) (txs []types.Tx) {

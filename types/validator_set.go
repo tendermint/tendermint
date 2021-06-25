@@ -373,33 +373,11 @@ func (vals *ValidatorSet) HasProTxHash(proTxHash crypto.ProTxHash) bool {
 	return false
 }
 
-// HasAddress returns true if address given is in the validator set, false -
-// otherwise.
-func (vals *ValidatorSet) HasAddress(address []byte) bool {
-	for _, val := range vals.Validators {
-		if bytes.Equal(val.Address, address) {
-			return true
-		}
-	}
-	return false
-}
-
 // GetByProTxHash returns an index of the validator with protxhash and validator
 // itself (copy) if found. Otherwise, -1 and nil are returned.
 func (vals *ValidatorSet) GetByProTxHash(proTxHash []byte) (index int32, val *Validator) {
 	for idx, val := range vals.Validators {
 		if bytes.Equal(val.ProTxHash, proTxHash) {
-			return int32(idx), val.Copy()
-		}
-	}
-	return -1, nil
-}
-
-// GetByAddress returns an index of the validator with address and validator
-// itself (copy) if found. Otherwise, -1 and nil are returned.
-func (vals *ValidatorSet) GetByAddress(address []byte) (index int32, val *Validator) {
-	for idx, val := range vals.Validators {
-		if bytes.Equal(val.Address, address) {
 			return int32(idx), val.Copy()
 		}
 	}
@@ -443,31 +421,6 @@ func (vals *ValidatorSet) GetPublicKeys() []crypto.PubKey {
 		publicKeys[i] = val.PubKey
 	}
 	return publicKeys
-}
-
-// GetAddresses returns the all validator publicKeys
-func (vals *ValidatorSet) GetAddresses() []crypto.Address {
-	addresses := make([]crypto.Address, len(vals.Validators))
-	for i, val := range vals.Validators {
-		if val.Address != nil {
-			addresses[i] = val.Address
-		} else {
-			addresses[i] = val.PubKey.Address()
-		}
-	}
-	return addresses
-}
-
-func (vals *ValidatorSet) GetAddressPowers() map[string]int64 {
-	addresses := make(map[string]int64, len(vals.Validators))
-	for _, val := range vals.Validators {
-		if val.Address != nil {
-			addresses[string(val.Address)] = val.VotingPower
-		} else {
-			addresses[string(val.PubKey.Address())] = val.VotingPower
-		}
-	}
-	return addresses
 }
 
 // GetProTxHashesOrdered returns the all validator proTxHashes in order
@@ -908,7 +861,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 
 	if !vals.ThresholdPublicKey.VerifySignatureDigest(blockSignId, commit.ThresholdBlockSignature) {
 		canonicalVoteBlockSignBytes := commit.CanonicalVoteVerifySignBytes(chainID)
-		return fmt.Errorf("incorrect threshold block signature lc %X %X", canonicalVoteBlockSignBytes,
+		return fmt.Errorf("incorrect threshold block signature %X %X", canonicalVoteBlockSignBytes,
 			commit.ThresholdBlockSignature)
 	}
 
@@ -916,7 +869,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 
 	if !vals.ThresholdPublicKey.VerifySignatureDigest(stateSignId, commit.ThresholdStateSignature) {
 		canonicalVoteStateSignBytes := commit.CanonicalVoteStateSignBytes(chainID)
-		return fmt.Errorf("incorrect threshold state signature lc %X %X", canonicalVoteStateSignBytes,
+		return fmt.Errorf("incorrect threshold state signature %X %X", canonicalVoteStateSignBytes,
 			commit.ThresholdStateSignature)
 	}
 
@@ -1191,29 +1144,26 @@ func GenerateValidatorSet(numValidators int) (*ValidatorSet, []PrivValidator) {
 	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash(), true), privValidators
 }
 
-func GenerateTestValidatorSetWithAddresses(addresses []crypto.Address, power []int64) (*ValidatorSet, []PrivValidator) {
+func GenerateTestValidatorSetWithProTxHashes(proTxHashes []crypto.ProTxHash, power []int64) (*ValidatorSet, []PrivValidator) {
 	var (
-		numValidators      = len(addresses)
-		proTxHashes        = make([]ProTxHash, numValidators)
-		originalAddressMap = make(map[string][]byte)
+		numValidators      = len(proTxHashes)
 		originalPowerMap   = make(map[string]int64)
 		valz               = make([]*Validator, numValidators)
 		privValidators     = make([]PrivValidator, numValidators)
 	)
 	for i := 0; i < numValidators; i++ {
-		proTxHashes[i] = crypto.Sha256(addresses[i])
-		originalAddressMap[string(proTxHashes[i])] = addresses[i]
 		originalPowerMap[string(proTxHashes[i])] = power[i]
 	}
-	sort.Sort(crypto.SortProTxHash(proTxHashes))
 
-	orderedProTxHashes, privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+	sortedProTxHashes := proTxHashes[:]
+	sort.Sort(crypto.SortProTxHash(sortedProTxHashes))
+
+	orderedProTxHashes, privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(sortedProTxHashes)
 
 	for i := 0; i < numValidators; i++ {
 		privValidators[i] = NewMockPVWithParams(privateKeys[i], orderedProTxHashes[i], false,
 			false)
 		valz[i] = NewValidator(privateKeys[i].PubKey(), originalPowerMap[string(orderedProTxHashes[i])], orderedProTxHashes[i])
-		valz[i].Address = originalAddressMap[string(orderedProTxHashes[i])]
 	}
 
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
@@ -1221,18 +1171,12 @@ func GenerateTestValidatorSetWithAddresses(addresses []crypto.Address, power []i
 	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash(), true), privValidators
 }
 
-func GenerateTestValidatorSetWithAddressesDefaultPower(addresses []crypto.Address) (*ValidatorSet, []PrivValidator) {
+func GenerateTestValidatorSetWithProTxHashesDefaultPower(proTxHashes []crypto.ProTxHash) (*ValidatorSet, []PrivValidator) {
 	var (
-		numValidators      = len(addresses)
-		proTxHashes        = make([]ProTxHash, numValidators)
-		originalAddressMap = make(map[string][]byte)
+		numValidators      = len(proTxHashes)
 		valz               = make([]*Validator, numValidators)
 		privValidators     = make([]PrivValidator, numValidators)
 	)
-	for i := 0; i < numValidators; i++ {
-		proTxHashes[i] = crypto.Sha256(addresses[i])
-		originalAddressMap[string(proTxHashes[i])] = addresses[i]
-	}
 	sort.Sort(crypto.SortProTxHash(proTxHashes))
 
 	orderedProTxHashes, privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
@@ -1241,7 +1185,6 @@ func GenerateTestValidatorSetWithAddressesDefaultPower(addresses []crypto.Addres
 		privValidators[i] = NewMockPVWithParams(privateKeys[i], orderedProTxHashes[i], false,
 			false)
 		valz[i] = NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), orderedProTxHashes[i])
-		valz[i].Address = originalAddressMap[string(orderedProTxHashes[i])]
 	}
 
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))

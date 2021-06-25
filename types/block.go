@@ -302,7 +302,7 @@ func MaxDataBytes(maxBytes int64, keyType crypto.KeyType, evidenceBytes int64, v
 		MaxOverheadForBlock -
 		MaxHeaderBytes -
 		MaxCoreChainLockSize -
-		MaxCommitBytes(valsCount, keyType) -
+		MaxCommitOverheadBytes -
 		evidenceBytes
 
 	if maxDataBytes < 0 {
@@ -327,7 +327,7 @@ func MaxDataBytesNoEvidence(maxBytes int64, keyType crypto.KeyType, valsCount in
 		MaxOverheadForBlock -
 		MaxHeaderBytes -
 		MaxCoreChainLockSize -
-		MaxCommitBytes(valsCount, keyType)
+		MaxCommitOverheadBytes
 
 	if maxDataBytes < 0 {
 		panic(fmt.Sprintf(
@@ -615,35 +615,10 @@ const (
 )
 
 const (
-	// Max size of commit without any commitSigs -> 82 for BlockID, 34 for StateID, 8 for Height, 4 for Round.
-	MaxCommitOverheadBytes int64 = 130
-	// Commit sig size is made up of 96 bytes for each signature, 32 bytes for the proTxHash,
-	// 1 byte for the flag
-	MaxCommitSigBytesBLS12381 int64 = 232
+	// MaxCommitOverheadBytes is the max size of commit -> 82 for BlockID, 34 for StateID, 8 for Height, 4 for Round.
+	// 96 for Block signature, 96 for State Signature
+	MaxCommitOverheadBytes int64 = 322
 )
-
-func MaxCommitSigBytesForKeyType(keyType crypto.KeyType) int64 {
-	switch keyType {
-	case crypto.BLS12381:
-		return MaxCommitSigBytesBLS12381
-	default:
-		return MaxCommitSigBytesBLS12381
-	}
-}
-
-func MaxCommitBytes(valCount int, keyType crypto.KeyType) int64 {
-	// From the repeated commit sig field
-	var maxCommitBytes = MaxCommitSigBytesForKeyType(keyType)
-	var protoEncodingOverhead int64
-	// protobuff encodes up to signed 128 bits with 2 extra bits, more would take 3 or more. While we could have more
-	// than 3 in the case of very large signatures (maybe lattice based signatures), this is good enough for now
-	if maxCommitBytes < 128 {
-		protoEncodingOverhead = 2
-	} else {
-		protoEncodingOverhead = 3
-	}
-	return MaxCommitOverheadBytes + ((maxCommitBytes + protoEncodingOverhead) * int64(valCount))
-}
 
 //-------------------------------------
 

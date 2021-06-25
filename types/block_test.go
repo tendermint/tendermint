@@ -19,7 +19,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	"github.com/tendermint/tendermint/libs/bits"
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -81,8 +80,8 @@ func TestBlockValidateBasic(t *testing.T) {
 				valSet.GetProposer().ProTxHash
 		}, false},
 		{"Negative Height", func(blk *Block) { blk.Height = -1 }, true},
-		{"Remove 1/2 the commits", func(blk *Block) {
-			blk.LastCommit.Signatures = commit.Signatures[:commit.Size()/2]
+		{"Modify the last Commit", func(blk *Block) {
+			blk.LastCommit.BlockID = BlockID{}
 			blk.LastCommit.hash = nil // clear hash or change wont be noticed
 		}, true},
 		{"Remove LastCommitHash", func(blk *Block) {
@@ -266,14 +265,9 @@ func TestCommit(t *testing.T) {
 	assert.Equal(t, h-1, commit.Height)
 	assert.EqualValues(t, 1, commit.Round)
 	assert.Equal(t, tmproto.PrecommitType, tmproto.SignedMsgType(commit.Type()))
-	if commit.Size() <= 0 {
-		t.Fatalf("commit %v has a zero or negative size: %d", commit, commit.Size())
-	}
 
-	require.NotNil(t, commit.BitArray())
-	assert.Equal(t, bits.NewBitArray(10).Size(), commit.BitArray().Size())
-
-	assert.Equal(t, voteSet.GetByIndex(0), commit.GetByIndex(0))
+	require.NotNil(t, commit.ThresholdBlockSignature)
+	require.NotNil(t, commit.ThresholdStateSignature)
 	assert.True(t, commit.IsCommit())
 }
 
@@ -284,8 +278,8 @@ func TestCommitValidateBasic(t *testing.T) {
 		expectErr      bool
 	}{
 		{"Random Commit", func(com *Commit) {}, false},
-		{"Incorrect block signature", func(com *Commit) { com.Signatures[0].BlockSignature = []byte{0} }, false},
-		{"Incorrect state signature", func(com *Commit) { com.Signatures[0].StateSignature = []byte{0} }, false},
+		{"Incorrect block signature", func(com *Commit) { com.ThresholdBlockSignature = []byte{0} }, false},
+		{"Incorrect state signature", func(com *Commit) { com.ThresholdStateSignature = []byte{0} }, false},
 		{"Incorrect height", func(com *Commit) { com.Height = int64(-100) }, true},
 		{"Incorrect round", func(com *Commit) { com.Round = -100 }, true},
 	}
@@ -300,16 +294,6 @@ func TestCommitValidateBasic(t *testing.T) {
 }
 
 func TestMaxCommitBytes(t *testing.T) {
-	cs := CommitSig{
-		BlockIDFlag:        BlockIDFlagNil,
-		ValidatorProTxHash: crypto.ProTxHashFromSeedBytes([]byte("validator_pro_tx_hash")),
-		BlockSignature:     crypto.CRandBytes(MaxSignatureSize),
-		StateSignature:     crypto.CRandBytes(MaxSignatureSize),
-	}
-
-	pbSig := cs.ToProto()
-	// test that a single commit sig doesn't exceed max commit sig bytes
-	assert.EqualValues(t, MaxCommitSigBytesBLS12381, pbSig.Size())
 
 	// check size with a single commit
 	commit := &Commit{
@@ -325,23 +309,18 @@ func TestMaxCommitBytes(t *testing.T) {
 		StateID: StateID{
 			LastAppHash: tmhash.Sum([]byte("stateID_hash")),
 		},
-		Signatures: []CommitSig{cs},
+		ThresholdBlockSignature: crypto.CRandBytes(SignatureSize),
+		ThresholdStateSignature: crypto.CRandBytes(SignatureSize),
 	}
 
 	pb := commit.ToProto()
 	pbSize := int64(pb.Size())
-	maxCommitBytes := MaxCommitBytes(1, crypto.BLS12381)
+	maxCommitBytes := MaxCommitOverheadBytes
 	assert.EqualValues(t, maxCommitBytes, pbSize)
-
-	// check the upper bound of the commit size
-	for i := 1; i < MaxVotesCount; i++ {
-		commit.Signatures = append(commit.Signatures, cs)
-	}
 
 	pb = commit.ToProto()
 
-	assert.EqualValues(t, MaxCommitBytes(MaxVotesCount, crypto.BLS12381), int64(pb.Size()))
-
+	assert.EqualValues(t, MaxCommitOverheadBytes, int64(pb.Size()))
 }
 
 func TestHeaderHash(t *testing.T) {
@@ -553,34 +532,6 @@ func TestBlockMaxDataBytesNoEvidence(t *testing.T) {
 	}
 }
 
-func TestCommitToVoteSet(t *testing.T) {
-	lastID := makeBlockIDRandom()
-	lastStateID := makeStateIDRandom()
-	h := int64(3)
-
-	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, lastStateID, h-1, 1, voteSet, vals)
-	assert.NoError(t, err)
-
-	chainID := voteSet.ChainID()
-	voteSet2 := CommitToVoteSet(chainID, commit, valSet)
-
-	for i := int32(0); int(i) < len(vals); i++ {
-		vote1 := voteSet.GetByIndex(i)
-		vote2 := voteSet2.GetByIndex(i)
-		vote3 := commit.GetVote(i)
-
-		vote1bz, err := vote1.ToProto().Marshal()
-		require.NoError(t, err)
-		vote2bz, err := vote2.ToProto().Marshal()
-		require.NoError(t, err)
-		vote3bz, err := vote3.ToProto().Marshal()
-		require.NoError(t, err)
-		assert.Equal(t, vote1bz, vote2bz)
-		assert.Equal(t, vote1bz, vote3bz)
-	}
-}
-
 func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 	stateID := makeStateID([]byte("lastapphash"))
@@ -682,7 +633,7 @@ func TestBlockIDValidateBasic(t *testing.T) {
 func TestBlockProtoBuf(t *testing.T) {
 	h := tmrand.Int63()
 	c1 := randCommit()
-	b1 := MakeBlock(h, 0, nil, []Tx{Tx([]byte{1})}, &Commit{Signatures: []CommitSig{}}, []Evidence{})
+	b1 := MakeBlock(h, 0, nil, []Tx{Tx([]byte{1})}, &Commit{}, []Evidence{})
 	b1.ProposerProTxHash = tmrand.Bytes(crypto.DefaultHashSize)
 
 	b2 := MakeBlock(h, 0, nil, []Tx{Tx([]byte{1})}, c1, []Evidence{})

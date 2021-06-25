@@ -50,12 +50,14 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	// we need validators saved for heights at least as high as we have evidence for
 	height := int64(numEvidence) + 10
 	quorumHash := crypto.RandQuorumHash()
+	proTxHashes := make([]*crypto.ProTxHash, N)
 	for i := 0; i < N; i++ {
 		stateDBs[i] = initializeValidatorState(val, height, btcjson.LLMQType_5_60, quorumHash)
+		proTxHashes[i] = &val.ProTxHash
 	}
 
 	// make reactors from statedb
-	reactors, pools := makeAndConnectReactorsAndPools(config, stateDBs)
+	reactors, pools := makeAndConnectReactorsAndPools(config, stateDBs, proTxHashes)
 
 	// set the peer height on each reactor
 	for _, r := range reactors {
@@ -87,8 +89,12 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	stateDB1 := initializeValidatorState(val, height1, btcjson.LLMQType_5_60, quorumHash)
 	stateDB2 := initializeValidatorState(val, height2, btcjson.LLMQType_5_60, quorumHash)
 
+	proTxHashes := make([]*crypto.ProTxHash, 2)
+	proTxHashes[0] = &val.ProTxHash
+	proTxHashes[1] = &val.ProTxHash
+
 	// make reactors from statedb
-	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2})
+	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2}, proTxHashes)
 
 	// set the peer height on each reactor
 	for _, r := range reactors {
@@ -134,8 +140,12 @@ func TestReactorsGossipNoCommittedEvidence(t *testing.T) {
 	require.NoError(t, err)
 	state.LastBlockHeight++
 
+	proTxHashes := make([]*crypto.ProTxHash, 2)
+	proTxHashes[0] = &val.ProTxHash
+	proTxHashes[1] = &val.ProTxHash
+
 	// make reactors from statedb
-	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2})
+	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2}, proTxHashes)
 
 	evList := sendEvidence(t, pools[0], val, 2, btcjson.LLMQType_5_60, quorumHash)
 	pools[0].Update(state, evList)
@@ -246,7 +256,7 @@ func evidenceLogger() log.Logger {
 }
 
 // connect N evidence reactors through N switches
-func makeAndConnectReactorsAndPools(config *cfg.Config, stateStores []sm.Store) ([]*evidence.Reactor,
+func makeAndConnectReactorsAndPools(config *cfg.Config, stateStores []sm.Store, proTxHashes []*crypto.ProTxHash) ([]*evidence.Reactor,
 	[]*evidence.Pool) {
 	N := len(stateStores)
 
@@ -270,7 +280,7 @@ func makeAndConnectReactorsAndPools(config *cfg.Config, stateStores []sm.Store) 
 		reactors[i].SetLogger(logger.With("validator", i))
 	}
 
-	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
+	p2p.MakeConnectedSwitches(config.P2P, proTxHashes, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("EVIDENCE", reactors[i])
 		return s
 

@@ -367,16 +367,17 @@ func createBlockchainReactor(config *cfg.Config,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore *store.BlockStore,
+	nodeProTxHash *crypto.ProTxHash,
 	fastSync bool,
 	logger log.Logger) (bcReactor p2p.Reactor, err error) {
 
 	switch config.FastSync.Version {
 	case "v0":
-		bcReactor = bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+		bcReactor = bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, nodeProTxHash, fastSync)
 	case "v1":
-		bcReactor = bcv1.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+		bcReactor = bcv1.NewBlockchainReactor(state.Copy(), blockExec, blockStore, nodeProTxHash, fastSync)
 	case "v2":
-		bcReactor = bcv2.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+		bcReactor = bcv2.NewBlockchainReactor(state.Copy(), blockExec, blockStore, nodeProTxHash, fastSync)
 	default:
 		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}
@@ -614,7 +615,7 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 				return
 			}
 		} else {
-			conR.SwitchToValidatorConsensus(state, true)
+			conR.SwitchToConsensus(state, true)
 		}
 	}()
 	return nil
@@ -762,7 +763,7 @@ func NewNode(config *cfg.Config,
 	)
 
 	// Make BlockchainReactor. Don't start fast sync if we're doing a state sync first.
-	bcReactor, err := createBlockchainReactor(config, state, blockExec, blockStore, fastSync && !stateSync, logger)
+	bcReactor, err := createBlockchainReactor(config, state, blockExec, blockStore, &proTxHash, fastSync && !stateSync, logger)
 	if err != nil {
 		return nil, fmt.Errorf("could not create blockchain reactor: %w", err)
 	}

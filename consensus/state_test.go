@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -71,11 +69,10 @@ func TestStateProposerSelection0(t *testing.T) {
 
 	// Commit a block and ensure proposer for the next height is correct.
 	prop := cs1.GetRoundState().Validators.GetProposer()
-	pv, err := cs1.privValidator.GetPubKey(crypto.QuorumHash{})
+	proTxHash, err := cs1.privValidator.GetProTxHash()
 	require.NoError(t, err)
-	address := pv.Address()
-	if !bytes.Equal(prop.Address, address) {
-		t.Fatalf("expected proposer to be validator %d. Got %X", 0, prop.Address)
+	if !bytes.Equal(prop.ProTxHash, proTxHash) {
+		t.Fatalf("expected proposer to be validator %d. Got %X", 0, prop.ProTxHash)
 	}
 
 	// Wait for complete proposal.
@@ -88,11 +85,10 @@ func TestStateProposerSelection0(t *testing.T) {
 	ensureNewRound(newRoundCh, height+1, 0)
 
 	prop = cs1.GetRoundState().Validators.GetProposer()
-	pv1, err := vss[1].GetPubKey(crypto.QuorumHash{})
+	proTxHash, err = vss[1].GetProTxHash()
 	require.NoError(t, err)
-	addr := pv1.Address()
-	if !bytes.Equal(prop.Address, addr) {
-		panic(fmt.Sprintf("expected proposer to be validator %d. Got %X", 1, prop.Address))
+	if !bytes.Equal(prop.ProTxHash, proTxHash) {
+		panic(fmt.Sprintf("expected proposer to be validator %d. Got %X", 1, prop.ProTxHash))
 	}
 }
 
@@ -114,15 +110,14 @@ func TestStateProposerSelection2(t *testing.T) {
 	// everyone just votes nil. we get a new proposer each round
 	for i := int32(0); int(i) < len(vss); i++ {
 		prop := cs1.GetRoundState().Validators.GetProposer()
-		pvk, err := vss[int(i+round)%len(vss)].GetPubKey(crypto.QuorumHash{})
+		proTxHash, err := vss[int(i+round)%len(vss)].GetProTxHash()
 		require.NoError(t, err)
-		addr := pvk.Address()
-		correctProposer := addr
-		if !bytes.Equal(prop.Address, correctProposer) {
+		correctProposer := proTxHash
+		if !bytes.Equal(prop.ProTxHash, correctProposer) {
 			panic(fmt.Sprintf(
 				"expected RoundState.Validators.GetProposer() to be validator %d. Got %X",
 				int(i+2)%len(vss),
-				prop.Address))
+				prop.ProTxHash))
 		}
 
 		rs := cs1.GetRoundState()

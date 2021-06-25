@@ -147,7 +147,7 @@ func TestProposalValidateBasic(t *testing.T) {
 			p.Signature = make([]byte, 0)
 		}, true},
 		{"Too big Signature", func(p *Proposal) {
-			p.Signature = make([]byte, MaxSignatureSize+1)
+			p.Signature = make([]byte, SignatureSize+1)
 		}, true},
 	}
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))

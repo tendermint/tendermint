@@ -79,12 +79,12 @@ func NewMockPVWithParams(privKey crypto.PrivKey, proTxHash []byte, breakProposal
 		breakProposalSigning: breakProposalSigning, breakVoteSigning: breakVoteSigning}
 }
 
-// Implements PrivValidator.
+// GetPubKey implements PrivValidator.
 func (pv *MockPV) GetPubKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
 	return pv.PrivKey.PubKey(), nil
 }
 
-// Implements PrivValidator.
+// GetProTxHash implements PrivValidator.
 func (pv *MockPV) GetProTxHash() (crypto.ProTxHash, error) {
 	if len(pv.ProTxHash) != crypto.ProTxHashSize {
 		return nil, fmt.Errorf("mock proTxHash is invalid size")
@@ -92,7 +92,7 @@ func (pv *MockPV) GetProTxHash() (crypto.ProTxHash, error) {
 	return pv.ProTxHash, nil
 }
 
-// Implements PrivValidator.
+// SignVote implements PrivValidator.
 func (pv *MockPV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
 	pv.updateKeyIfNeeded(vote.Height)
 	useChainID := chainID
@@ -193,7 +193,6 @@ func (pv *MockPV) ExtractIntoValidator(height int64, quorumHash crypto.QuorumHas
 		panic("proTxHash wrong length")
 	}
 	return &Validator{
-		Address:     pubKey.Address(),
 		PubKey:      pubKey,
 		VotingPower: DefaultDashVotingPower,
 		ProTxHash:   pv.ProTxHash,

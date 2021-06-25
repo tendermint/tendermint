@@ -88,7 +88,7 @@ func TestValidator_Propose(t *testing.T) {
 		expectCount := 0
 		proposeCount := 0
 		for _, block := range blocks {
-			if bytes.Equal(valSchedule.Set.Proposer.Address, proTxHash) {
+			if bytes.Equal(valSchedule.Set.Proposer.ProTxHash, proTxHash) {
 				expectCount++
 				if bytes.Equal(block.ProposerProTxHash, proTxHash) {
 					proposeCount++

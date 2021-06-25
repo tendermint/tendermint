@@ -126,6 +126,7 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 
 	// create some fixed values
 	privKey := bls12381.GenPrivKey()
+	quorumHash := crypto.RandQuorumHash()
 	pubKey := privKey.PubKey()
 	addr := pubKey.Address()
 	pubBytes := pubKey.Bytes()
@@ -145,8 +146,13 @@ func TestUnmarshalValidatorKey(t *testing.T) {
     "type": "tendermint/PrivKeyBLS12381",
     "value": "%s"
   },
-  "pro_tx_hash": "%s"
-}`, addr, pubB64, privB64, proTxHash)
+  "pro_tx_hash": "%s",
+  "quorum_hash": "%s",
+  "threshold_public_key": {
+    "type": "tendermint/PubKeyBLS12381",
+    "value": "%s"
+  }
+}`, addr, pubB64, privB64, proTxHash, quorumHash, pubB64)
 
 	val := FilePVKey{}
 	err := tmjson.Unmarshal([]byte(serialized), &val)
@@ -157,6 +163,8 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 	assert.EqualValues(pubKey, val.PubKey)
 	assert.EqualValues(privKey, val.PrivKey)
 	assert.EqualValues(proTxHash, val.ProTxHash)
+	assert.EqualValues(quorumHash, val.QuorumHash)
+	assert.EqualValues(pubKey, val.ThresholdPublicKey)
 
 	// export it and make sure it is the same
 	out, err := tmjson.Marshal(val)

@@ -255,7 +255,7 @@ func TestVoteValidateBasic(t *testing.T) {
 		{"Invalid ProTxHash", func(v *Vote) { v.ValidatorProTxHash = make([]byte, 1) }, true},
 		{"Invalid ValidatorIndex", func(v *Vote) { v.ValidatorIndex = -1 }, true},
 		{"Invalid Signature", func(v *Vote) { v.BlockSignature = nil }, true},
-		{"Too big Signature", func(v *Vote) { v.BlockSignature = make([]byte, MaxSignatureSize+1) }, true},
+		{"Too big Signature", func(v *Vote) { v.BlockSignature = make([]byte, SignatureSize+1) }, true},
 	}
 	for _, tc := range testCases {
 		tc := tc
