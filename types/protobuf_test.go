@@ -51,9 +51,6 @@ func TestABCIValidators(t *testing.T) {
 		QuorumHash:         quorumHash,
 	}, abciVals)
 
-	// val with address
-	tmVal.Address = pkBLS.Address()
-
 	abciVal = TM2PB.ValidatorUpdate(tmVal)
 	tmVals, err = PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{abciVal})
 	assert.Nil(t, err)

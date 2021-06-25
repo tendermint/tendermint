@@ -2,6 +2,7 @@ package v2
 
 import (
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -16,21 +17,23 @@ type processorContext interface {
 }
 
 type pContext struct {
-	store   blockStore
-	applier blockApplier
-	state   state.State
+	store         blockStore
+	nodeProTxHash *crypto.ProTxHash
+	applier       blockApplier
+	state         state.State
 }
 
-func newProcessorContext(st blockStore, ex blockApplier, s state.State) *pContext {
+func newProcessorContext(st blockStore, nodeProTxHash *crypto.ProTxHash, ex blockApplier, s state.State) *pContext {
 	return &pContext{
 		store:   st,
+		nodeProTxHash: nodeProTxHash,
 		applier: ex,
 		state:   s,
 	}
 }
 
 func (pc *pContext) applyBlock(blockID types.BlockID, block *types.Block) error {
-	newState, _, err := pc.applier.ApplyBlock(pc.state, blockID, block)
+	newState, _, err := pc.applier.ApplyBlock(pc.state, pc.nodeProTxHash, blockID, block)
 	pc.state = newState
 	return err
 }

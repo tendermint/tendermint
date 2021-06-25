@@ -13,12 +13,11 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
-// Volatile state for each Validator
+// Validator Volatile state for each Validator
 // NOTE: The ProposerPriority is not included in Validator.Hash();
 // make sure to update that method if changes are made here
 // The ProTxHash is part of Dash additions required for BLS threshold signatures
 type Validator struct {
-	Address     Address       `json:"address"`
 	PubKey      crypto.PubKey `json:"pub_key"`
 	VotingPower int64         `json:"voting_power"`
 	ProTxHash   ProTxHash     `json:"pro_tx_hash"`
@@ -26,21 +25,19 @@ type Validator struct {
 	ProposerPriority int64 `json:"proposer_priority"`
 }
 
-func NewTestValidatorGeneratedFromAddress(address crypto.Address) *Validator {
+func NewTestValidatorGeneratedFromProTxHash(proTxHash crypto.ProTxHash) *Validator {
 	return &Validator{
-		Address:          address,
 		VotingPower:      DefaultDashVotingPower,
 		ProposerPriority: 0,
-		ProTxHash:        crypto.Sha256(address),
+		ProTxHash:        proTxHash,
 	}
 }
 
-func NewTestRemoveValidatorGeneratedFromAddress(address crypto.Address) *Validator {
+func NewTestRemoveValidatorGeneratedFromProTxHash(proTxHash crypto.ProTxHash) *Validator {
 	return &Validator{
-		Address:          address,
 		VotingPower:      0,
 		ProposerPriority: 0,
-		ProTxHash:        crypto.Sha256(address),
+		ProTxHash:        proTxHash,
 	}
 }
 
@@ -55,9 +52,6 @@ func NewValidator(pubKey crypto.PubKey, votingPower int64, proTxHash []byte) *Va
 		VotingPower:      votingPower,
 		ProposerPriority: 0,
 		ProTxHash:        proTxHash,
-	}
-	if pubKey != nil {
-		val.Address = pubKey.Address()
 	}
 	return val
 }
@@ -76,8 +70,8 @@ func (v *Validator) ValidateBasic() error {
 		return errors.New("validator has negative voting power")
 	}
 
-	if len(v.Address) != crypto.AddressSize {
-		return fmt.Errorf("validator address is the wrong size: %v", v.Address)
+	if len(v.ProTxHash) != crypto.DefaultHashSize {
+		return fmt.Errorf("validator proTxHash is the wrong size: %v", v.ProTxHash)
 	}
 
 	return nil
@@ -190,7 +184,6 @@ func (v *Validator) ToProto() (*tmproto.Validator, error) {
 	}
 
 	vp := tmproto.Validator{
-		Address:          v.Address,
 		PubKey:           pk,
 		VotingPower:      v.VotingPower,
 		ProposerPriority: v.ProposerPriority,
@@ -212,7 +205,6 @@ func ValidatorFromProto(vp *tmproto.Validator) (*Validator, error) {
 		return nil, err
 	}
 	v := new(Validator)
-	v.Address = vp.GetAddress()
 	v.PubKey = pk
 	v.VotingPower = vp.GetVotingPower()
 	v.ProposerPriority = vp.GetProposerPriority()

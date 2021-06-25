@@ -1463,7 +1463,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	stateDB, state, store := stateAndStore(config, pubKey, 0x0)
 	stateStore := sm.NewStore(stateDB)
 
-	oldValAddr := state.Validators.Validators[0].Address
+	oldValProTxHash := state.Validators.Validators[0].ProTxHash
 
 	// now start the app using the handshake - it should sync
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
@@ -1486,7 +1486,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 
 	newValProTxHash := state.Validators.Validators[0].ProTxHash
 	expectValProTxHash := val.ProTxHash
-	assert.NotEqual(t, oldValAddr, newValProTxHash)
+	assert.NotEqual(t, oldValProTxHash, newValProTxHash)
 	assert.Equal(t, newValProTxHash, expectValProTxHash)
 }
 

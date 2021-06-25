@@ -61,9 +61,10 @@ func TestValidatorValidateBasic(t *testing.T) {
 		{
 			val: &Validator{
 				PubKey: nil,
+				ProTxHash: crypto.RandProTxHash(),
+				VotingPower: 100,
 			},
-			err: true,
-			msg: "validator does not have a public key",
+			err: false,
 		},
 		{
 			val: NewValidator(pubKey, -1, priv.ProTxHash),
@@ -73,7 +74,6 @@ func TestValidatorValidateBasic(t *testing.T) {
 		{
 			val: &Validator{
 				PubKey:    pubKey,
-				Address:   nil,
 				ProTxHash: priv.ProTxHash,
 			},
 			err: true,
@@ -82,7 +82,6 @@ func TestValidatorValidateBasic(t *testing.T) {
 		{
 			val: &Validator{
 				PubKey:    pubKey,
-				Address:   []byte{'a'},
 				ProTxHash: priv.ProTxHash,
 			},
 			err: true,
@@ -91,7 +90,6 @@ func TestValidatorValidateBasic(t *testing.T) {
 		{
 			val: &Validator{
 				PubKey:    pubKey,
-				Address:   pubKey.Address(),
 				ProTxHash: nil,
 			},
 			err: true,

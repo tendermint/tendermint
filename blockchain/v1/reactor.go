@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 	"reflect"
 	"time"
 
@@ -45,6 +46,7 @@ type BlockchainReactor struct {
 
 	initialState sm.State // immutable
 	state        sm.State
+	nodeProTxHash *crypto.ProTxHash
 
 	blockExec *sm.BlockExecutor
 	store     *store.BlockStore
@@ -70,7 +72,7 @@ type BlockchainReactor struct {
 }
 
 // NewBlockchainReactor returns new reactor instance.
-func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore,
+func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore, nodeProTxHash *crypto.ProTxHash,
 	fastSync bool) *BlockchainReactor {
 
 	if state.LastBlockHeight != store.Height() {
@@ -90,6 +92,7 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *st
 	bcR := &BlockchainReactor{
 		initialState:     state,
 		state:            state,
+		nodeProTxHash:    nodeProTxHash,
 		blockExec:        blockExec,
 		fastSync:         fastSync,
 		store:            store,
@@ -482,7 +485,7 @@ func (bcR *BlockchainReactor) processBlock() error {
 
 	bcR.store.SaveBlock(first, firstParts, second.LastCommit)
 
-	bcR.state, _, err = bcR.blockExec.ApplyBlock(bcR.state, firstID, first)
+	bcR.state, _, err = bcR.blockExec.ApplyBlock(bcR.state, bcR.nodeProTxHash, firstID, first)
 	if err != nil {
 		panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 	}

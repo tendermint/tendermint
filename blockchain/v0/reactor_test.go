@@ -49,10 +49,16 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 		panic("only support one validator")
 	}
 
+	nodeProTxHash, err := privVals[0].GetProTxHash()
+
+	if err != nil {
+		panic(fmt.Errorf("error start app: %w", err))
+	}
+
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc)
-	err := proxyApp.Start()
+	err = proxyApp.Start()
 	if err != nil {
 		panic(fmt.Errorf("error start app: %w", err))
 	}
@@ -82,7 +88,7 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 	// let's add some blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
 		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, types.StateID{LastAppHash: nil},
-			nil, nil, nil, nil)
+			nil, nil, nil)
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
@@ -98,11 +104,10 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 			if err != nil {
 				panic(err)
 			}
-			commitSig := vote.CommitSig()
 			// since there is only 1 vote, use it as threshold
 			lastCommit = types.NewCommit(vote.Height, vote.Round,
-				lastBlockMeta.BlockID, lastBlockMeta.StateID, []types.CommitSig{commitSig}, nil, commitSig.BlockSignature,
-				commitSig.StateSignature)
+				lastBlockMeta.BlockID, lastBlockMeta.StateID, nil, vote.BlockSignature,
+				vote.StateSignature)
 		}
 
 		thisBlock := makeBlock(blockHeight, nil, state, lastCommit)
@@ -110,7 +115,7 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
-		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
+		state, _, err = blockExec.ApplyBlock(state, &nodeProTxHash, blockID, thisBlock)
 		if err != nil {
 			panic(fmt.Errorf("error apply block: %w", err))
 		}
@@ -118,7 +123,7 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
 	}
 
-	bcReactor := NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+	bcReactor := NewBlockchainReactor(state.Copy(), blockExec, blockStore, &nodeProTxHash, fastSync)
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
 	return BlockchainReactorPair{bcReactor, proxyApp}
@@ -136,7 +141,13 @@ func TestNoBlockResponse(t *testing.T) {
 	reactorPairs[0] = newBlockchainReactor(log.TestingLogger(), genDoc, privVals, maxBlockHeight)
 	reactorPairs[1] = newBlockchainReactor(log.TestingLogger(), genDoc, privVals, 0)
 
-	p2p.MakeConnectedSwitches(config.P2P, 2, func(i int, s *p2p.Switch) *p2p.Switch {
+	nodeProTxHashes := make([]*crypto.ProTxHash, 2)
+
+	proTxHash, _ := privVals[0].GetProTxHash()
+	nodeProTxHashes[0] = &proTxHash
+	nodeProTxHashes[1] = &proTxHash
+
+	p2p.MakeConnectedSwitches(config.P2P, nodeProTxHashes, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
 		return s
 
@@ -211,7 +222,15 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	reactorPairs[2] = newBlockchainReactor(log.TestingLogger(), genDoc, privVals, 0)
 	reactorPairs[3] = newBlockchainReactor(log.TestingLogger(), genDoc, privVals, 0)
 
-	switches := p2p.MakeConnectedSwitches(config.P2P, 4, func(i int, s *p2p.Switch) *p2p.Switch {
+	nodeProTxHashes := make([]*crypto.ProTxHash, 4)
+
+	proTxHash, _ := privVals[0].GetProTxHash()
+	nodeProTxHashes[0] = &proTxHash
+	nodeProTxHashes[1] = &proTxHash
+	nodeProTxHashes[2] = &proTxHash
+	nodeProTxHashes[3] = &proTxHash
+
+	switches := p2p.MakeConnectedSwitches(config.P2P, nodeProTxHashes, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
 		return s
 
@@ -250,7 +269,10 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	lastReactorPair := newBlockchainReactor(log.TestingLogger(), genDoc, privVals, 0)
 	reactorPairs = append(reactorPairs, lastReactorPair)
 
-	switches = append(switches, p2p.MakeConnectedSwitches(config.P2P, 1, func(i int, s *p2p.Switch) *p2p.Switch {
+	nodeProTxHashes = make([]*crypto.ProTxHash, 1)
+	nodeProTxHashes[0] = &proTxHash
+
+	switches = append(switches, p2p.MakeConnectedSwitches(config.P2P, nodeProTxHashes, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[len(reactorPairs)-1].reactor)
 		return s
 

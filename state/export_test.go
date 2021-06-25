@@ -27,6 +27,7 @@ const ValSetCheckpointInterval = valSetCheckpointInterval
 // exclusively and explicitly for testing.
 func UpdateState(
 	state State,
+	nodeProTxHash *crypto.ProTxHash,
 	blockID types.BlockID,
 	header *types.Header,
 	abciResponses *tmstate.ABCIResponses,
@@ -34,7 +35,7 @@ func UpdateState(
 	newThresholdPublicKey crypto.PubKey,
 	quorumHash crypto.QuorumHash,
 ) (State, error) {
-	return updateState(state, blockID, header, abciResponses, validatorUpdates, newThresholdPublicKey, quorumHash)
+	return updateState(state, nodeProTxHash, blockID, header, abciResponses, validatorUpdates, newThresholdPublicKey, quorumHash)
 }
 
 // ValidateValidatorUpdates is an alias for validateValidatorUpdates exported

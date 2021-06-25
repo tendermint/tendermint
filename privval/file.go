@@ -402,7 +402,6 @@ func (pv *FilePV) ExtractIntoValidator(height int64, quorumHash crypto.QuorumHas
 		panic("proTxHash wrong length")
 	}
 	return &types.Validator{
-		Address:     pubKey.Address(),
 		PubKey:      pubKey,
 		VotingPower: types.DefaultDashVotingPower,
 		ProTxHash:   pv.Key.ProTxHash,

@@ -2,6 +2,7 @@ package statesync
 
 import (
 	"errors"
+	"github.com/tendermint/tendermint/crypto"
 	"testing"
 	"time"
 
@@ -61,9 +62,9 @@ func TestSyncer_SyncAny(t *testing.T) {
 		LastResultsHash: []byte("last_results_hash"),
 		AppHash:         []byte("app_hash"),
 
-		LastValidators: &types.ValidatorSet{Proposer: &types.Validator{Address: []byte("val1")}},
-		Validators:     &types.ValidatorSet{Proposer: &types.Validator{Address: []byte("val2")}},
-		NextValidators: &types.ValidatorSet{Proposer: &types.Validator{Address: []byte("val3")}},
+		LastValidators: &types.ValidatorSet{Proposer: &types.Validator{ProTxHash: crypto.Sha256([]byte("val1"))}},
+		Validators:     &types.ValidatorSet{Proposer: &types.Validator{ProTxHash: crypto.Sha256([]byte("val2"))}},
+		NextValidators: &types.ValidatorSet{Proposer: &types.Validator{ProTxHash: crypto.Sha256([]byte("val3"))}},
 
 		ConsensusParams:                  *types.DefaultConsensusParams(),
 		LastHeightConsensusParamsChanged: 1,

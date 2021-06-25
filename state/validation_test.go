@@ -135,7 +135,9 @@ func TestValidateBlockCommit(t *testing.T) {
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil,
 		nil, nil)
-	wrongSigsCommit := types.NewCommit(1, 0, types.BlockID{}, types.StateID{}, nil,
+	wrongSignorCommit := types.NewCommit(1, 0, types.BlockID{}, types.StateID{}, nil,
+		nil, nil)
+	wrongVoteMessageSignedCommit := types.NewCommit(1, 0, types.BlockID{}, types.StateID{}, nil,
 		nil, nil)
 	badPrivVal := types.NewMockPV()
 
@@ -172,12 +174,24 @@ func TestValidateBlockCommit(t *testing.T) {
 				height, err)
 
 			/*
-				#2589: test len(block.LastPrecommits.Signatures) == state.LastValidators.Size()
+				Test that the threshold block signatures are good
 			*/
-			block, _ = state.MakeBlock(height, nextChainLock, makeTxs(height), wrongSigsCommit, nil, proTxHash)
+			block, _ = state.MakeBlock(height, nextChainLock, makeTxs(height), wrongSignorCommit, nil, proTxHash)
 			err = blockExec.ValidateBlock(state, block)
 			require.Error(t, err)
-			require.True(t, strings.HasPrefix(err.Error(), "block threshold signature is wrong size"),
+			require.True(t, strings.HasPrefix(err.Error(), "incorrect threshold block signature"),
+				"expected error on block threshold signature at height %d, but got: %v",
+				height,
+				err,
+			)
+
+			/*
+				Test that the threshold block signatures are good
+			*/
+			block, _ = state.MakeBlock(height, nextChainLock, makeTxs(height), wrongVoteMessageSignedCommit, nil, proTxHash)
+			err = blockExec.ValidateBlock(state, block)
+			require.Error(t, err)
+			require.True(t, strings.HasPrefix(err.Error(), "incorrect threshold block signature"),
 				"expected error on block threshold signature at height %d, but got: %v",
 				height,
 				err,
@@ -239,9 +253,13 @@ func TestValidateBlockCommit(t *testing.T) {
 		goodVote.BlockSignature, badVote.BlockSignature = g.BlockSignature, b.BlockSignature
 		goodVote.StateSignature, badVote.StateSignature = g.StateSignature, b.StateSignature
 
-		wrongSigsCommit = types.NewCommit(goodVote.Height, goodVote.Round,
+		wrongSignorCommit = types.NewCommit(goodVote.Height, goodVote.Round,
 			blockID, stateID, state.Validators.QuorumHash,
 			goodVote.BlockSignature, goodVote.StateSignature)
+
+		wrongVoteMessageSignedCommit = types.NewCommit(goodVote.Height, goodVote.Round,
+			blockID, stateID, state.Validators.QuorumHash,
+			badVote.BlockSignature, badVote.StateSignature)
 	}
 }
 
