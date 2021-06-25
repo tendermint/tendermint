@@ -100,6 +100,8 @@ type Reactor struct {
 	poolWG sync.WaitGroup
 
 	metrics *cons.Metrics
+
+	syncStartFrom time.Time
 }
 
 // NewReactor returns new reactor instance.
@@ -140,6 +142,7 @@ func NewReactor(
 		peerUpdatesCh: make(chan p2p.Envelope),
 		closeCh:       make(chan struct{}),
 		metrics:       metrics,
+		syncStartFrom: time.Now(),
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Blockchain", r)
@@ -371,6 +374,8 @@ func (r *Reactor) SwitchToFastSync(state sm.State) error {
 		return err
 	}
 
+	r.syncStartFrom = time.Now()
+
 	r.poolWG.Add(1)
 	go r.poolRoutine(true)
 
@@ -596,4 +601,21 @@ FOR_LOOP:
 
 func (r *Reactor) GetMaxPeerBlockHeight() int64 {
 	return r.pool.MaxPeerHeight()
+}
+
+func (r *Reactor) GetTotalSyncedTime() time.Duration {
+	return time.Since(r.syncStartFrom)
+}
+
+func (r *Reactor) GetRemainingSyncTime() time.Duration {
+	targetSyncs := r.pool.targetSyncBlocks()
+	currentSyncs := r.store.Height() - r.pool.startHeight + 1
+	lastSyncRate := r.pool.getLastSyncRate()
+	if currentSyncs < 0 || lastSyncRate < 0.001 {
+		return time.Duration(0)
+	}
+
+	remain := float64(targetSyncs-currentSyncs) / lastSyncRate
+
+	return time.Duration(int64(remain * float64(time.Second)))
 }

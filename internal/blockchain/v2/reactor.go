@@ -48,6 +48,10 @@ type BlockchainReactor struct {
 	reporter behavior.Reporter
 	io       iIO
 	store    blockStore
+
+	syncStartFrom   time.Time
+	syncStartHeight int64
+	lastSyncRate    float64 // # blocks sync per sec base on the last 100 blocks
 }
 
 type blockApplier interface {
@@ -68,12 +72,15 @@ func newReactor(state state.State, store blockStore, reporter behavior.Reporter,
 	processor := newPcState(pContext)
 
 	return &BlockchainReactor{
-		scheduler: newRoutine("scheduler", scheduler.handle, chBufferSize),
-		processor: newRoutine("processor", processor.handle, chBufferSize),
-		store:     store,
-		reporter:  reporter,
-		logger:    log.NewNopLogger(),
-		fastSync:  fastSync,
+		scheduler:       newRoutine("scheduler", scheduler.handle, chBufferSize),
+		processor:       newRoutine("processor", processor.handle, chBufferSize),
+		store:           store,
+		reporter:        reporter,
+		logger:          log.NewNopLogger(),
+		fastSync:        fastSync,
+		syncStartHeight: initHeight,
+		syncStartFrom:   time.Now(),
+		lastSyncRate:    0.0,
 	}
 }
 
@@ -175,7 +182,13 @@ func (r *BlockchainReactor) endSync() {
 func (r *BlockchainReactor) SwitchToFastSync(state state.State) error {
 	r.stateSynced = true
 	state = state.Copy()
-	return r.startSync(&state)
+
+	err := r.startSync(&state)
+	if err == nil {
+		r.syncStartFrom = time.Now()
+	}
+
+	return err
 }
 
 // reactor generated ticker events:
@@ -283,7 +296,6 @@ func (e bcResetState) String() string {
 
 // Takes the channel as a parameter to avoid race conditions on r.events.
 func (r *BlockchainReactor) demux(events <-chan Event) {
-	var lastRate = 0.0
 	var lastHundred = time.Now()
 
 	var (
@@ -415,9 +427,9 @@ func (r *BlockchainReactor) demux(events <-chan Event) {
 			case pcBlockProcessed:
 				r.setSyncHeight(event.height)
 				if r.syncHeight%100 == 0 {
-					lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
+					r.lastSyncRate = 0.9*r.lastSyncRate + 0.1*(100/time.Since(lastHundred).Seconds())
 					r.logger.Info("Fast Sync Rate", "height", r.syncHeight,
-						"max_peer_height", r.maxPeerHeight, "blocks/s", lastRate)
+						"max_peer_height", r.maxPeerHeight, "blocks/s", r.lastSyncRate)
 					lastHundred = time.Now()
 				}
 				r.scheduler.send(event)
@@ -595,4 +607,23 @@ func (r *BlockchainReactor) GetMaxPeerBlockHeight() int64 {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 	return r.maxPeerHeight
+}
+
+func (r *BlockchainReactor) GetTotalSyncedTime() time.Duration {
+	return time.Since(r.syncStartFrom)
+}
+
+func (r *BlockchainReactor) GetRemainingSyncTime() time.Duration {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	targetSyncs := r.maxPeerHeight - r.syncStartHeight
+	currentSyncs := r.syncHeight - r.syncStartHeight + 1
+	if currentSyncs < 0 || r.lastSyncRate < 0.001 {
+		return time.Duration(0)
+	}
+
+	remain := float64(targetSyncs-currentSyncs) / r.lastSyncRate
+
+	return time.Duration(int64(remain * float64(time.Second)))
 }

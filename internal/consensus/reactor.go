@@ -102,6 +102,14 @@ type FastSyncReactor interface {
 	SwitchToFastSync(sm.State) error
 
 	GetMaxPeerBlockHeight() int64
+
+	// GetTotalSyncedTime returns the time duration since the fastsync starting.
+	GetTotalSyncedTime() time.Duration
+
+	// GetRemainingSyncTime returns the estimating time the node will be fully synced,
+	// if will return 0 if the fastsync does not perform or the number of block synced is
+	// too small (less than 100).
+	GetRemainingSyncTime() time.Duration
 }
 
 // Reactor defines a reactor for the consensus service.

@@ -1330,6 +1330,12 @@ components:
         catching_up:
           type: boolean
           example: false
+        total_synced_time:
+          type: integer
+          example: "1000000000"
+        remaining_time:
+          type: integer
+          example: "0"
     ValidatorInfo:
       type: object
       properties:
