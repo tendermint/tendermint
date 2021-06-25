@@ -1214,6 +1214,44 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /re_index:
+    post:
+      summary: Re-index the block/tx event data (Unsafe)
+      operationId: re_index
+      tags:
+        - Unsafe
+      description: |
+        re-index the  block/tx event data to the indexer database, this route in under unsafe, and has to manually enabled to use
+
+          **Example:** curl -X POST "localhost:26657/re_index?start_height=1&end_height=2"
+      parameters:
+        - in: query
+          name: start_height
+          description: the block height would like to start for re-index.
+          required: true
+          schema:
+            type: integer
+            example: 1
+        - in: query
+          name: end_height
+          description: the block height would like to finish for re-index.
+          required: true
+          schema:
+            type: integer
+            example: 2
+      responses:
+        "200":
+          description: Re-index finished
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReIndexResponse"
+        "500":
+          description: Request error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
 components:
   schemas:
@@ -2750,6 +2788,13 @@ components:
         Log:
           type: string
           example: "Dialing seeds in progress. See /net_info for details"
+
+    ReIndexResponse:
+      type: object
+      properties:
+        Log:
+          type: string
+          example: "Finished re-indexing the block/tx events."
 
     BlockSearchResponse:
       type: object
