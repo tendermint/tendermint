@@ -9,13 +9,14 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/types"
 )
 
 func TestNewNodeID(t *testing.T) {
 	// Most tests are in TestNodeID_Validate, this just checks that it's validated.
 	testcases := []struct {
 		input  string
-		expect p2p.NodeID
+		expect types.NodeID
 		ok     bool
 	}{
 		{"", "", false},
@@ -28,7 +29,7 @@ func TestNewNodeID(t *testing.T) {
 	for _, tc := range testcases {
 		tc := tc
 		t.Run(tc.input, func(t *testing.T) {
-			id, err := p2p.NewNodeID(tc.input)
+			id, err := types.NewNodeID(tc.input)
 			if !tc.ok {
 				require.Error(t, err)
 			} else {
@@ -41,14 +42,14 @@ func TestNewNodeID(t *testing.T) {
 
 func TestNewNodeIDFromPubKey(t *testing.T) {
 	privKey := ed25519.GenPrivKeyFromSecret([]byte("foo"))
-	nodeID := p2p.NodeIDFromPubKey(privKey.PubKey())
-	require.Equal(t, p2p.NodeID("045f5600654182cfeaccfe6cb19f0642e8a59898"), nodeID)
+	nodeID := types.NodeIDFromPubKey(privKey.PubKey())
+	require.Equal(t, types.NodeID("045f5600654182cfeaccfe6cb19f0642e8a59898"), nodeID)
 	require.NoError(t, nodeID.Validate())
 }
 
 func TestNodeID_Bytes(t *testing.T) {
 	testcases := []struct {
-		nodeID p2p.NodeID
+		nodeID types.NodeID
 		expect []byte
 		ok     bool
 	}{
@@ -74,7 +75,7 @@ func TestNodeID_Bytes(t *testing.T) {
 
 func TestNodeID_Validate(t *testing.T) {
 	testcases := []struct {
-		nodeID p2p.NodeID
+		nodeID types.NodeID
 		ok     bool
 	}{
 		{"", false},
@@ -99,7 +100,7 @@ func TestNodeID_Validate(t *testing.T) {
 
 func TestParseNodeAddress(t *testing.T) {
 	user := "00112233445566778899aabbccddeeff00112233"
-	id := p2p.NodeID(user)
+	id := types.NodeID(user)
 
 	testcases := []struct {
 		url    string
@@ -201,7 +202,7 @@ func TestParseNodeAddress(t *testing.T) {
 }
 
 func TestNodeAddress_Resolve(t *testing.T) {
-	id := p2p.NodeID("00112233445566778899aabbccddeeff00112233")
+	id := types.NodeID("00112233445566778899aabbccddeeff00112233")
 
 	testcases := []struct {
 		address p2p.NodeAddress
@@ -285,7 +286,7 @@ func TestNodeAddress_Resolve(t *testing.T) {
 }
 
 func TestNodeAddress_String(t *testing.T) {
-	id := p2p.NodeID("00112233445566778899aabbccddeeff00112233")
+	id := types.NodeID("00112233445566778899aabbccddeeff00112233")
 	user := string(id)
 	testcases := []struct {
 		address p2p.NodeAddress
@@ -348,7 +349,7 @@ func TestNodeAddress_String(t *testing.T) {
 }
 
 func TestNodeAddress_Validate(t *testing.T) {
-	id := p2p.NodeID("00112233445566778899aabbccddeeff00112233")
+	id := types.NodeID("00112233445566778899aabbccddeeff00112233")
 	testcases := []struct {
 		address p2p.NodeAddress
 		ok      bool

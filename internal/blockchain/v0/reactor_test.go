@@ -9,6 +9,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
+	cons "github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/mempool/mock"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
@@ -26,14 +27,14 @@ import (
 type reactorTestSuite struct {
 	network *p2ptest.Network
 	logger  log.Logger
-	nodes   []p2p.NodeID
+	nodes   []types.NodeID
 
-	reactors map[p2p.NodeID]*Reactor
-	app      map[p2p.NodeID]proxy.AppConns
+	reactors map[types.NodeID]*Reactor
+	app      map[types.NodeID]proxy.AppConns
 
-	blockchainChannels map[p2p.NodeID]*p2p.Channel
-	peerChans          map[p2p.NodeID]chan p2p.PeerUpdate
-	peerUpdates        map[p2p.NodeID]*p2p.PeerUpdates
+	blockchainChannels map[types.NodeID]*p2p.Channel
+	peerChans          map[types.NodeID]chan p2p.PeerUpdate
+	peerUpdates        map[types.NodeID]*p2p.PeerUpdates
 
 	fastSync bool
 }
@@ -54,12 +55,12 @@ func setup(
 	rts := &reactorTestSuite{
 		logger:             log.TestingLogger().With("module", "blockchain", "testCase", t.Name()),
 		network:            p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
-		nodes:              make([]p2p.NodeID, 0, numNodes),
-		reactors:           make(map[p2p.NodeID]*Reactor, numNodes),
-		app:                make(map[p2p.NodeID]proxy.AppConns, numNodes),
-		blockchainChannels: make(map[p2p.NodeID]*p2p.Channel, numNodes),
-		peerChans:          make(map[p2p.NodeID]chan p2p.PeerUpdate, numNodes),
-		peerUpdates:        make(map[p2p.NodeID]*p2p.PeerUpdates, numNodes),
+		nodes:              make([]types.NodeID, 0, numNodes),
+		reactors:           make(map[types.NodeID]*Reactor, numNodes),
+		app:                make(map[types.NodeID]proxy.AppConns, numNodes),
+		blockchainChannels: make(map[types.NodeID]*p2p.Channel, numNodes),
+		peerChans:          make(map[types.NodeID]chan p2p.PeerUpdate, numNodes),
+		peerUpdates:        make(map[types.NodeID]*p2p.PeerUpdates, numNodes),
 		fastSync:           true,
 	}
 
@@ -88,7 +89,7 @@ func setup(
 }
 
 func (rts *reactorTestSuite) addNode(t *testing.T,
-	nodeID p2p.NodeID,
+	nodeID types.NodeID,
 	genDoc *types.GenesisDoc,
 	privVal types.PrivValidator,
 	maxBlockHeight int64,
@@ -162,7 +163,8 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 		nil,
 		rts.blockchainChannels[nodeID],
 		rts.peerUpdates[nodeID],
-		rts.fastSync)
+		rts.fastSync,
+		cons.NopMetrics())
 	require.NoError(t, err)
 
 	require.NoError(t, rts.reactors[nodeID].Start())

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	bc "github.com/tendermint/tendermint/internal/blockchain"
+	cons "github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -32,10 +33,9 @@ var (
 				ID:                  byte(BlockchainChannel),
 				Priority:            5,
 				SendQueueCapacity:   1000,
-				RecvBufferCapacity:  50 * 4096,
+				RecvBufferCapacity:  1024,
 				RecvMessageCapacity: bc.MaxMsgSize,
-
-				MaxSendBytes: 100,
+				MaxSendBytes:        100,
 			},
 		},
 	}
@@ -65,7 +65,7 @@ type consensusReactor interface {
 
 type peerError struct {
 	err    error
-	peerID p2p.NodeID
+	peerID types.NodeID
 }
 
 func (e peerError) Error() string {
@@ -97,6 +97,8 @@ type Reactor struct {
 	// requestRoutine spawned goroutines when stopping the reactor and before
 	// stopping the p2p Channel(s).
 	poolWG sync.WaitGroup
+
+	metrics *cons.Metrics
 }
 
 // NewReactor returns new reactor instance.
@@ -109,6 +111,7 @@ func NewReactor(
 	blockchainCh *p2p.Channel,
 	peerUpdates *p2p.PeerUpdates,
 	fastSync bool,
+	metrics *cons.Metrics,
 ) (*Reactor, error) {
 	if state.LastBlockHeight != store.Height() {
 		return nil, fmt.Errorf("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height())
@@ -135,6 +138,7 @@ func NewReactor(
 		peerUpdates:   peerUpdates,
 		peerUpdatesCh: make(chan p2p.Envelope),
 		closeCh:       make(chan struct{}),
+		metrics:       metrics,
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Blockchain", r)
@@ -189,7 +193,7 @@ func (r *Reactor) OnStop() {
 
 // respondToPeer loads a block and sends it to the requesting peer, if we have it.
 // Otherwise, we'll respond saying we do not have it.
-func (r *Reactor) respondToPeer(msg *bcproto.BlockRequest, peerID p2p.NodeID) {
+func (r *Reactor) respondToPeer(msg *bcproto.BlockRequest, peerID types.NodeID) {
 	block := r.store.LoadBlock(msg.Height)
 	if block != nil {
 		blockProto, err := block.ToProto()
@@ -560,6 +564,8 @@ FOR_LOOP:
 					panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 				}
 
+				r.metrics.RecordConsMetrics(first)
+
 				blocksSynced++
 
 				if blocksSynced%100 == 0 {
@@ -581,4 +587,8 @@ FOR_LOOP:
 			break FOR_LOOP
 		}
 	}
+}
+
+func (r *Reactor) GetMaxPeerBlockHeight() int64 {
+	return r.pool.MaxPeerHeight()
 }

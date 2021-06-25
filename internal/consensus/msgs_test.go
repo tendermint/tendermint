@@ -14,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
-	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/bits"
 	"github.com/tendermint/tendermint/libs/bytes"
@@ -249,7 +248,7 @@ func TestWALMsgProto(t *testing.T) {
 				Round:  1,
 				Part:   &parts,
 			},
-			PeerID: p2p.NodeID("string"),
+			PeerID: types.NodeID("string"),
 		}, &tmcons.WALMessage{
 			Sum: &tmcons.WALMessage_MsgInfo{
 				MsgInfo: &tmcons.MsgInfo{
