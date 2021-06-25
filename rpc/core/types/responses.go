@@ -62,6 +62,7 @@ type ResultCommit struct {
 type ResultBlockResults struct {
 	Height                int64                     `json:"height"`
 	TxsResults            []*abci.ResponseDeliverTx `json:"txs_results"`
+	TotalGasUsed          int64                     `json:"total_gas_used"`
 	BeginBlockEvents      []abci.Event              `json:"begin_block_events"`
 	EndBlockEvents        []abci.Event              `json:"end_block_events"`
 	ValidatorUpdates      []abci.ValidatorUpdate    `json:"validator_updates"`
@@ -94,6 +95,8 @@ type SyncInfo struct {
 	EarliestBlockHeight int64          `json:"earliest_block_height"`
 	EarliestBlockTime   time.Time      `json:"earliest_block_time"`
 
+	MaxPeerBlockHeight int64 `json:"max_peer_block_height"`
+
 	CatchingUp bool `json:"catching_up"`
 }
 
@@ -106,9 +109,9 @@ type ValidatorInfo struct {
 
 // Node Status
 type ResultStatus struct {
-	NodeInfo      p2p.NodeInfo  `json:"node_info"`
-	SyncInfo      SyncInfo      `json:"sync_info"`
-	ValidatorInfo ValidatorInfo `json:"validator_info"`
+	NodeInfo      types.NodeInfo `json:"node_info"`
+	SyncInfo      SyncInfo       `json:"sync_info"`
+	ValidatorInfo ValidatorInfo  `json:"validator_info"`
 }
 
 // Is TxIndexing enabled
@@ -139,7 +142,7 @@ type ResultDialPeers struct {
 
 // A peer
 type Peer struct {
-	NodeInfo         p2p.NodeInfo         `json:"node_info"`
+	NodeInfo         types.NodeInfo       `json:"node_info"`
 	IsOutbound       bool                 `json:"is_outbound"`
 	ConnectionStatus p2p.ConnectionStatus `json:"connection_status"`
 	RemoteIP         string               `json:"remote_ip"`

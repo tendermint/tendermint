@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/types"
 )
 
 // RequireEmpty requires that the given channel is empty.
@@ -83,7 +84,7 @@ func RequireSend(t *testing.T, channel *p2p.Channel, envelope p2p.Envelope) {
 func RequireSendReceive(
 	t *testing.T,
 	channel *p2p.Channel,
-	peerID p2p.NodeID,
+	peerID types.NodeID,
 	send proto.Message,
 	receive proto.Message,
 ) {

@@ -3,6 +3,8 @@ package p2p
 import (
 	"fmt"
 	"net"
+
+	"github.com/tendermint/tendermint/types"
 )
 
 // ErrFilterTimeout indicates that a filter operation timed out.
@@ -18,7 +20,7 @@ type ErrRejected struct {
 	addr              NetAddress
 	conn              net.Conn
 	err               error
-	id                NodeID
+	id                types.NodeID
 	isAuthFailure     bool
 	isDuplicate       bool
 	isFiltered        bool
@@ -99,7 +101,7 @@ func (e ErrRejected) IsSelf() bool { return e.isSelf }
 // ErrSwitchDuplicatePeerID to be raised when a peer is connecting with a known
 // ID.
 type ErrSwitchDuplicatePeerID struct {
-	ID NodeID
+	ID types.NodeID
 }
 
 func (e ErrSwitchDuplicatePeerID) Error() string {
@@ -127,7 +129,7 @@ func (e ErrSwitchConnectToSelf) Error() string {
 
 type ErrSwitchAuthenticationFailure struct {
 	Dialed *NetAddress
-	Got    NodeID
+	Got    types.NodeID
 }
 
 func (e ErrSwitchAuthenticationFailure) Error() string {
@@ -162,15 +164,6 @@ type ErrNetAddressInvalid struct {
 
 func (e ErrNetAddressInvalid) Error() string {
 	return fmt.Sprintf("invalid address (%s): %v", e.Addr, e.Err)
-}
-
-type ErrNetAddressLookup struct {
-	Addr string
-	Err  error
-}
-
-func (e ErrNetAddressLookup) Error() string {
-	return fmt.Sprintf("error looking up host (%s): %v", e.Addr, e.Err)
 }
 
 // ErrCurrentlyDialingOrExistingAddress indicates that we're currently

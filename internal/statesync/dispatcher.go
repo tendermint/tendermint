@@ -31,7 +31,7 @@ type dispatcher struct {
 	timeout        time.Duration
 
 	mtx     sync.Mutex
-	calls   map[p2p.NodeID]chan *types.LightBlock
+	calls   map[types.NodeID]chan *types.LightBlock
 	running bool
 }
 
@@ -40,12 +40,12 @@ func newDispatcher(requestCh chan<- p2p.Envelope, timeout time.Duration) *dispat
 		availablePeers: newPeerList(),
 		timeout:        timeout,
 		requestCh:      requestCh,
-		calls:          make(map[p2p.NodeID]chan *types.LightBlock),
+		calls:          make(map[types.NodeID]chan *types.LightBlock),
 		running:        true,
 	}
 }
 
-func (d *dispatcher) LightBlock(ctx context.Context, height int64) (*types.LightBlock, p2p.NodeID, error) {
+func (d *dispatcher) LightBlock(ctx context.Context, height int64) (*types.LightBlock, types.NodeID, error) {
 	d.mtx.Lock()
 	outgoingCalls := len(d.calls)
 	d.mtx.Unlock()
@@ -95,7 +95,7 @@ func (d *dispatcher) start() {
 	d.running = true
 }
 
-func (d *dispatcher) lightBlock(ctx context.Context, height int64, peer p2p.NodeID) (*types.LightBlock, error) {
+func (d *dispatcher) lightBlock(ctx context.Context, height int64, peer types.NodeID) (*types.LightBlock, error) {
 	// dispatch the request to the peer
 	callCh, err := d.dispatch(peer, height)
 	if err != nil {
@@ -119,7 +119,7 @@ func (d *dispatcher) lightBlock(ctx context.Context, height int64, peer p2p.Node
 
 // respond allows the underlying process which receives requests on the
 // requestCh to respond with the respective light block
-func (d *dispatcher) respond(lb *proto.LightBlock, peer p2p.NodeID) error {
+func (d *dispatcher) respond(lb *proto.LightBlock, peer types.NodeID) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 
@@ -149,11 +149,11 @@ func (d *dispatcher) respond(lb *proto.LightBlock, peer p2p.NodeID) error {
 	return nil
 }
 
-func (d *dispatcher) addPeer(peer p2p.NodeID) {
+func (d *dispatcher) addPeer(peer types.NodeID) {
 	d.availablePeers.Append(peer)
 }
 
-func (d *dispatcher) removePeer(peer p2p.NodeID) {
+func (d *dispatcher) removePeer(peer types.NodeID) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	if _, ok := d.calls[peer]; ok {
@@ -165,7 +165,7 @@ func (d *dispatcher) removePeer(peer p2p.NodeID) {
 
 // dispatch takes a peer and allocates it a channel so long as it's not already
 // busy and the receiving channel is still running. It then dispatches the message
-func (d *dispatcher) dispatch(peer p2p.NodeID, height int64) (chan *types.LightBlock, error) {
+func (d *dispatcher) dispatch(peer types.NodeID, height int64) (chan *types.LightBlock, error) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	ch := make(chan *types.LightBlock, 1)
@@ -195,7 +195,7 @@ func (d *dispatcher) dispatch(peer p2p.NodeID, height int64) (chan *types.LightB
 
 // release appends the peer back to the list and deletes the allocated call so
 // that a new call can be made to that peer
-func (d *dispatcher) release(peer p2p.NodeID) {
+func (d *dispatcher) release(peer types.NodeID) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	if call, ok := d.calls[peer]; ok {
@@ -213,7 +213,7 @@ func (d *dispatcher) release(peer p2p.NodeID) {
 // TODO: This should probably be moved over to the light package but as we're
 // not yet officially supporting p2p light clients we'll leave this here for now.
 type blockProvider struct {
-	peer       p2p.NodeID
+	peer       types.NodeID
 	chainID    string
 	timeout    time.Duration
 	dispatcher *dispatcher
@@ -255,14 +255,14 @@ func (p *blockProvider) String() string { return string(p.peer) }
 // retrieving blocks over all the peers the reactor is connected to
 type peerlist struct {
 	mtx     sync.Mutex
-	peers   []p2p.NodeID
-	waiting []chan p2p.NodeID
+	peers   []types.NodeID
+	waiting []chan types.NodeID
 }
 
 func newPeerList() *peerlist {
 	return &peerlist{
-		peers:   make([]p2p.NodeID, 0),
-		waiting: make([]chan p2p.NodeID, 0),
+		peers:   make([]types.NodeID, 0),
+		waiting: make([]chan types.NodeID, 0),
 	}
 }
 
@@ -272,12 +272,12 @@ func (l *peerlist) Len() int {
 	return len(l.peers)
 }
 
-func (l *peerlist) Pop() p2p.NodeID {
+func (l *peerlist) Pop() types.NodeID {
 	l.mtx.Lock()
 	if len(l.peers) == 0 {
 		// if we don't have any peers in the list we block until a peer is
 		// appended
-		wait := make(chan p2p.NodeID, 1)
+		wait := make(chan types.NodeID, 1)
 		l.waiting = append(l.waiting, wait)
 		// unlock whilst waiting so that the list can be appended to
 		l.mtx.Unlock()
@@ -291,7 +291,7 @@ func (l *peerlist) Pop() p2p.NodeID {
 	return peer
 }
 
-func (l *peerlist) Append(peer p2p.NodeID) {
+func (l *peerlist) Append(peer types.NodeID) {
 	l.mtx.Lock()
 	defer l.mtx.Unlock()
 	if len(l.waiting) > 0 {
@@ -304,7 +304,7 @@ func (l *peerlist) Append(peer p2p.NodeID) {
 	}
 }
 
-func (l *peerlist) Remove(peer p2p.NodeID) {
+func (l *peerlist) Remove(peer types.NodeID) {
 	l.mtx.Lock()
 	defer l.mtx.Unlock()
 	for i, p := range l.peers {
@@ -315,7 +315,7 @@ func (l *peerlist) Remove(peer p2p.NodeID) {
 	}
 }
 
-func (l *peerlist) Peers() []p2p.NodeID {
+func (l *peerlist) Peers() []types.NodeID {
 	l.mtx.Lock()
 	defer l.mtx.Unlock()
 	return l.peers

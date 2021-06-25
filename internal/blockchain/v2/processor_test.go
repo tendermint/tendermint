@@ -5,7 +5,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/tendermint/tendermint/internal/p2p"
 	tmState "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -40,7 +39,7 @@ func makeState(p *params) *pcState {
 	state := newPcState(context)
 
 	for _, item := range p.items {
-		state.enqueue(p2p.NodeID(item.pid), makePcBlock(item.height), item.height)
+		state.enqueue(types.NodeID(item.pid), makePcBlock(item.height), item.height)
 	}
 
 	state.blocksSynced = p.blocksSynced
@@ -48,7 +47,7 @@ func makeState(p *params) *pcState {
 	return state
 }
 
-func mBlockResponse(peerID p2p.NodeID, height int64) scBlockReceived {
+func mBlockResponse(peerID types.NodeID, height int64) scBlockReceived {
 	return scBlockReceived{
 		peerID: peerID,
 		block:  makePcBlock(height),
