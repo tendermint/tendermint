@@ -3,6 +3,7 @@ package mock_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,6 +24,8 @@ func TestStatus(t *testing.T) {
 					LatestAppHash:      bytes.HexBytes("app"),
 					LatestBlockHeight:  10,
 					MaxPeerBlockHeight: 20,
+					TotalSyncedTime:    time.Second,
+					RemainingTime:      time.Minute,
 				},
 			}},
 	}
@@ -36,6 +39,8 @@ func TestStatus(t *testing.T) {
 	assert.EqualValues("block", status.SyncInfo.LatestBlockHash)
 	assert.EqualValues(10, status.SyncInfo.LatestBlockHeight)
 	assert.EqualValues(20, status.SyncInfo.MaxPeerBlockHeight)
+	assert.EqualValues(time.Second, status.SyncInfo.TotalSyncedTime)
+	assert.EqualValues(time.Minute, status.SyncInfo.RemainingTime)
 
 	// make sure recorder works properly
 	require.Equal(1, len(r.Calls))
@@ -49,4 +54,6 @@ func TestStatus(t *testing.T) {
 	assert.EqualValues("block", st.SyncInfo.LatestBlockHash)
 	assert.EqualValues(10, st.SyncInfo.LatestBlockHeight)
 	assert.EqualValues(20, st.SyncInfo.MaxPeerBlockHeight)
+	assert.EqualValues(time.Second, status.SyncInfo.TotalSyncedTime)
+	assert.EqualValues(time.Minute, status.SyncInfo.RemainingTime)
 }
