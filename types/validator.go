@@ -71,7 +71,7 @@ func (v *Validator) ValidateBasic() error {
 	}
 
 	if len(v.ProTxHash) != crypto.DefaultHashSize {
-		return fmt.Errorf("validator proTxHash is the wrong size: %v", v.ProTxHash)
+		return fmt.Errorf("validator proTxHash is the wrong size: %v", len(v.ProTxHash))
 	}
 
 	return nil

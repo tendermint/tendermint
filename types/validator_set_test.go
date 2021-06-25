@@ -86,106 +86,133 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 	badValSet.ThresholdPublicKey = val.PubKey
 
 	testCases := []struct {
+		testName string
 		vals ValidatorSet
 		err  bool
 		msg  string
 	}{
 		{
+			testName: "Validator set needs members even with threshold public key",
 			vals: ValidatorSet{ThresholdPublicKey: bls12381.GenPrivKey().PubKey()},
 			err:  true,
 			msg:  "validator set is nil or empty",
 		},
 		{
+			testName: "Validator set needs members",
 			vals: ValidatorSet{},
 			err:  true,
 			msg:  "validator set is nil or empty",
 		},
 		{
+			testName: "Validator set needs members even with threshold public key and quorum hash",
 			vals: ValidatorSet{
 				Validators:         []*Validator{},
 				ThresholdPublicKey: bls12381.GenPrivKey().PubKey(),
 				QuorumHash:         crypto.RandQuorumHash(),
+				HasPublicKeys:      true,
 			},
 			err: true,
 			msg: "validator set is nil or empty",
 		},
 		{
+			testName: "Validator set needs members even with quorum hash",
 			vals: ValidatorSet{
 				Validators: []*Validator{},
 				QuorumHash: crypto.RandQuorumHash(),
+				HasPublicKeys:      true,
 			},
 			err: true,
 			msg: "validator set is nil or empty",
 		},
 		{
+			testName: "Validator set needs members even with quorum hash",
 			vals: ValidatorSet{
 				Validators:         []*Validator{val},
 				ThresholdPublicKey: val.PubKey,
 				QuorumHash:         crypto.RandQuorumHash(),
+				HasPublicKeys:      true,
 			},
 			err: true,
-			msg: "proposer failed validate basic, error: nil validator",
+			msg: "validator set proposer is not set",
 		},
 		{
+			testName: "Validator in set has wrong public key for threshold",
 			vals: ValidatorSet{
 				Validators:         []*Validator{val},
 				ThresholdPublicKey: bls12381.GenPrivKey().PubKey(),
 				QuorumHash:         crypto.RandQuorumHash(),
+				HasPublicKeys:      true,
+				Proposer: val,
 			},
 			err: true,
 			msg: "thresholdPublicKey error: incorrect threshold public key",
 		},
 		{
+			testName: "Validator in set has no public key",
 			vals: ValidatorSet{
 				Validators:         []*Validator{badValNoPublicKey},
 				ThresholdPublicKey: bls12381.GenPrivKey().PubKey(),
 				QuorumHash:         crypto.RandQuorumHash(),
+				HasPublicKeys:      true,
+				Proposer:           badValNoPublicKey,
 			},
 			err: true,
-			msg: "invalid validator #0: validator does not have a public key",
+			msg: "invalid validator pub key #0: validator does not have a public key",
 		},
 		{
+			testName: "Validator in set has no proTxHash",
 			vals: ValidatorSet{
 				Validators:         []*Validator{badValNoProTxHash},
 				ThresholdPublicKey: bls12381.GenPrivKey().PubKey(),
 				QuorumHash:         crypto.RandQuorumHash(),
+				HasPublicKeys:      true,
+				Proposer:           badValNoProTxHash,
 			},
 			err: true,
 			msg: "invalid validator #0: validator does not have a provider transaction hash",
 		},
 		{
+			testName: "Validator set needs quorum hash",
 			vals: ValidatorSet{
 				Validators:         []*Validator{val},
 				Proposer:           val,
 				ThresholdPublicKey: val.PubKey,
+				HasPublicKeys:      true,
 			},
 			err: true,
 			msg: "quorumHash error: quorum hash is not set",
 		},
 		{
+			testName: "Validator set single val good",
 			vals: ValidatorSet{
 				Validators:         []*Validator{val},
 				Proposer:           val,
 				ThresholdPublicKey: val.PubKey,
 				QuorumHash:         crypto.RandQuorumHash(),
+				HasPublicKeys:      true,
 			},
 			err: false,
 			msg: "",
 		},
 		{
+			testName: "Validator set needs threshold public key",
 			vals: ValidatorSet{
 				Validators: []*Validator{val},
 				Proposer:   val,
+				QuorumHash:         crypto.RandQuorumHash(),
+				HasPublicKeys:      true,
 			},
 			err: true,
 			msg: "thresholdPublicKey error: threshold public key is not set",
 		},
 		{
+			testName: "Validator set has incorrect threshold public key",
 			vals: *badValSet,
 			err:  true,
 			msg:  "thresholdPublicKey error: incorrect recovered threshold public key",
 		},
 		{
+			testName: "Validator set is good",
 			vals: *goodValSet,
 			err:  false,
 			msg:  "",
@@ -193,14 +220,16 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		err := tc.vals.ValidateBasic()
-		if tc.err {
-			if assert.Error(t, err) {
-				assert.True(t, strings.HasPrefix(err.Error(), tc.msg))
+		t.Run(tc.testName, func(t *testing.T) {
+			err := tc.vals.ValidateBasic()
+			if tc.err {
+				if assert.Error(t, err) {
+					assert.True(t, strings.HasPrefix(err.Error(), tc.msg))
+				}
+			} else {
+				assert.NoError(t, err)
 			}
-		} else {
-			assert.NoError(t, err)
-		}
+		})
 	}
 }
 
@@ -561,21 +590,18 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 	}{
 		{"good", chainID, vote.BlockID, vote.StateID, vote.Height, commit, false},
 
-		{"wrong block signature", "EpsilonEridani", vote.BlockID, vote.StateID, vote.Height, commit, true},
+		{"incorrect threshold block signature", "EpsilonEridani", vote.BlockID, vote.StateID, vote.Height, commit, true},
 		{"wrong block ID", chainID, makeBlockIDRandom(), vote.StateID, vote.Height, commit, true},
 		{"wrong height", chainID, vote.BlockID, vote.StateID, vote.Height - 1, commit, true},
 
-		{"wrong set size: 1 vs 0", chainID, vote.BlockID, vote.StateID, vote.Height,
+		{"incorrect threshold block signature", chainID, vote.BlockID, vote.StateID, vote.Height,
 			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, quorumHash, nil, nil), true},
 
-		{"wrong set size: 1 vs 2", chainID, vote.BlockID, vote.StateID, vote.Height,
+		{"incorrect threshold state signature", chainID, vote.BlockID, vote.StateID, vote.Height,
 			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID,
-				 quorumHash, nil, nil), true},
+				 quorumHash, vote.BlockSignature, nil), true},
 
-		{"insufficient voting power: got 0, needed more than 66", chainID, vote.BlockID, vote.StateID, vote.Height,
-			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, quorumHash, vote.BlockSignature, vote.StateSignature), true},
-
-		{"wrong block signature", chainID, vote.BlockID, vote.StateID, vote.Height,
+		{"incorrect threshold block signature", chainID, vote.BlockID, vote.StateID, vote.Height,
 			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, quorumHash, vote2.BlockSignature, vote2.StateSignature), true},
 	}
 
@@ -594,7 +620,7 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 	}
 }
 
-func TestValidatorSet_VerifyCommit_CheckAllSignatures(t *testing.T) {
+func TestValidatorSet_VerifyCommit_CheckThresholdSignatures(t *testing.T) {
 	var (
 		chainID = "test_chain_id"
 		h       = int64(3)
@@ -602,21 +628,21 @@ func TestValidatorSet_VerifyCommit_CheckAllSignatures(t *testing.T) {
 		stateID = makeStateIDRandom()
 	)
 
-	voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, 4, 10)
+	voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, 4)
 	commit, err := MakeCommit(blockID, stateID, h, 0, voteSet, vals)
 	require.NoError(t, err)
 
-	// malleate 4th signature
+	// malleate threshold sigs signature
 	vote := voteSet.GetByIndex(3)
 	v := vote.ToProto()
 	err = vals[3].SignVote("CentaurusA", valSet.QuorumType, valSet.QuorumHash, v)
 	require.NoError(t, err)
-	vote.BlockSignature = v.BlockSignature
-	vote.StateSignature = v.StateSignature
+	commit.ThresholdBlockSignature = v.BlockSignature
+	commit.ThresholdStateSignature = v.StateSignature
 
 	err = valSet.VerifyCommit(chainID, blockID, stateID, h, commit)
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "wrong block signature (#3")
+		assert.Contains(t, err.Error(), "incorrect threshold block signature")
 	}
 }
 
@@ -1274,7 +1300,7 @@ func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg tes
 
 	// basic checks
 	testValSet := toTestProTxHashValList(valSet.Validators)
-	assert.Equal(t, cfg.expectedVals, testValSet, "(0) test number %d", testNumber)
+	assert.Equal(t, switchToTestProTxHashValList(cfg.expectedVals), testValSet, "(0) test number %d", testNumber)
 	verifyValidatorSet(t, valSet)
 
 	// verify that the added validators have the smallest priority:

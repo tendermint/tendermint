@@ -116,6 +116,10 @@ func (vals *ValidatorSet) ValidateBasic() error {
 		return errors.New("validator set is nil or empty")
 	}
 
+	if vals.Proposer == nil {
+		return errors.New("validator set proposer is not set")
+	}
+
 	for idx, val := range vals.Validators {
 		if err := val.ValidateBasic(); err != nil {
 			return fmt.Errorf("invalid validator #%d: %w", idx, err)
@@ -1101,8 +1105,12 @@ func ValidatorSetFromExistingValidators(valz []*Validator, thresholdPublicKey cr
 	if len(valz) == 0 {
 		return nil, errors.New("validator set is empty")
 	}
+	hasPublicKeys := true
 	for _, val := range valz {
 		err := val.ValidateBasic()
+		if val.PubKey == nil {
+			hasPublicKeys = false
+		}
 		if err != nil {
 			return nil, fmt.Errorf("can't create validator set: %w", err)
 		}
@@ -1113,6 +1121,7 @@ func ValidatorSetFromExistingValidators(valz []*Validator, thresholdPublicKey cr
 		ThresholdPublicKey: thresholdPublicKey,
 		QuorumType:         quorumType,
 		QuorumHash:         quorumHash,
+		HasPublicKeys:      hasPublicKeys,
 	}
 	vals.Proposer = vals.findPreviousProposer()
 	vals.updateTotalVotingPower()

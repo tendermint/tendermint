@@ -51,7 +51,7 @@ func TestValidatorValidateBasic(t *testing.T) {
 		{
 			val: NewValidatorDefaultVotingPower(pubKey, priv.ProTxHash),
 			err: false,
-			msg: "",
+			msg: "no error",
 		},
 		{
 			val: nil,
@@ -65,6 +65,7 @@ func TestValidatorValidateBasic(t *testing.T) {
 				VotingPower: 100,
 			},
 			err: false,
+			msg: "no error",
 		},
 		{
 			val: NewValidator(pubKey, -1, priv.ProTxHash),
@@ -74,18 +75,10 @@ func TestValidatorValidateBasic(t *testing.T) {
 		{
 			val: &Validator{
 				PubKey:    pubKey,
-				ProTxHash: priv.ProTxHash,
+				ProTxHash: crypto.CRandBytes(12),
 			},
 			err: true,
-			msg: "validator address is the wrong size: ",
-		},
-		{
-			val: &Validator{
-				PubKey:    pubKey,
-				ProTxHash: priv.ProTxHash,
-			},
-			err: true,
-			msg: "validator address is the wrong size: 61",
+			msg: "validator proTxHash is the wrong size: 12",
 		},
 		{
 			val: &Validator{
@@ -98,13 +91,15 @@ func TestValidatorValidateBasic(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		err := tc.val.ValidateBasic()
-		if tc.err {
-			if assert.Error(t, err) {
-				assert.Equal(t, tc.msg, err.Error())
+		t.Run(tc.msg, func(t *testing.T) {
+			err := tc.val.ValidateBasic()
+			if tc.err {
+				if assert.Error(t, err) {
+					assert.Equal(t, tc.msg, err.Error())
+				}
+			} else {
+				assert.NoError(t, err)
 			}
-		} else {
-			assert.NoError(t, err)
-		}
+		})
 	}
 }
