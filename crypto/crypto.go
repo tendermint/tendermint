@@ -46,7 +46,9 @@ type Symmetric interface {
 type BatchVerifier interface {
 	// Add appends an entry into the BatchVerifier.
 	Add(key PubKey, message, signature []byte) error
-	// Verify verifies all the entries in the BatchVerifier.
-	// If the verification fails it is unknown which entry failed and each entry will need to be verified individually.
-	Verify() bool
+	// Verify verifies all the entries in the BatchVerifier, and returns
+	// if every signature in the batch is valid, and a vector of bools
+	// indicating the verification status of each signature (in the order
+	// that signatures were added to the batch).
+	Verify() (bool, []bool)
 }
