@@ -251,11 +251,11 @@ func TestSignProposal(t *testing.T) {
 	// sign a proposal for first time
 	proposal := newProposal(height, 1, round, block1)
 	pbp := proposal.ToProto()
-	err = privVal.SignProposal("mychainid", 0, crypto.QuorumHash{}, pbp)
+	_, err = privVal.SignProposal("mychainid", 0, crypto.QuorumHash{}, pbp)
 	assert.NoError(err, "expected no error signing proposal")
 
 	// try to sign the same proposal again; should be fine
-	err = privVal.SignProposal("mychainid", 0, crypto.QuorumHash{}, pbp)
+	_, err = privVal.SignProposal("mychainid", 0, crypto.QuorumHash{}, pbp)
 	assert.NoError(err, "expected no error on signing same proposal")
 
 	// now try some bad Proposals
@@ -267,14 +267,14 @@ func TestSignProposal(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		err = privVal.SignProposal("mychainid", 0, crypto.QuorumHash{}, c.ToProto())
+		_, err = privVal.SignProposal("mychainid", 0, crypto.QuorumHash{}, c.ToProto())
 		assert.Error(err, "expected error on signing conflicting proposal")
 	}
 
 	// try signing a proposal with a different time stamp
 	sig := proposal.Signature
 	proposal.Timestamp = proposal.Timestamp.Add(time.Duration(1000))
-	err = privVal.SignProposal("mychainid", 0, crypto.QuorumHash{}, pbp)
+	_, err = privVal.SignProposal("mychainid", 0, crypto.QuorumHash{}, pbp)
 	assert.NoError(err)
 	assert.Equal(sig, proposal.Signature)
 }
@@ -295,7 +295,7 @@ func TestDifferByTimestamp(t *testing.T) {
 	{
 		proposal := newProposal(height, 1, round, block1)
 		pb := proposal.ToProto()
-		err := privVal.SignProposal(chainID, 0, crypto.QuorumHash{}, pb)
+		_, err := privVal.SignProposal(chainID, 0, crypto.QuorumHash{}, pb)
 		assert.NoError(t, err, "expected no error signing proposal")
 		signBytes := types.ProposalBlockSignBytes(chainID, pb)
 
@@ -306,7 +306,7 @@ func TestDifferByTimestamp(t *testing.T) {
 		pb.Timestamp = pb.Timestamp.Add(time.Millisecond)
 		var emptySig []byte
 		proposal.Signature = emptySig
-		err = privVal.SignProposal("mychainid", 0, crypto.QuorumHash{}, pb)
+		_, err = privVal.SignProposal("mychainid", 0, crypto.QuorumHash{}, pb)
 		assert.NoError(t, err, "expected no error on signing same proposal")
 
 		assert.Equal(t, timeStamp, pb.Timestamp)

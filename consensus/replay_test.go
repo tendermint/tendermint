@@ -398,7 +398,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	proposal := types.NewProposal(vss[1].Height, 1, round, -1, blockID)
 	p := proposal.ToProto()
-	if err := vss[1].SignProposal(config.ChainID(), genDoc.QuorumType, genDoc.QuorumHash, p); err != nil {
+	if _, err := vss[1].SignProposal(config.ChainID(), genDoc.QuorumType, genDoc.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -423,7 +423,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	proposal = types.NewProposal(vss[2].Height, 1, round, -1, blockID)
 	p = proposal.ToProto()
-	if err := vss[2].SignProposal(config.ChainID(), genDoc.QuorumType, genDoc.QuorumHash, p); err != nil {
+	if _, err := vss[2].SignProposal(config.ChainID(), genDoc.QuorumType, genDoc.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -475,7 +475,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	vssProposer := findProposer(vss, css[0].Validators.Proposer.ProTxHash)
 	proposal = types.NewProposal(vss[3].Height, 1, round, -1, blockID)
 	p = proposal.ToProto()
-	if err := vssProposer.SignProposal(config.ChainID(), genDoc.QuorumType, quorumHash2, p); err != nil {
+	if _, err := vssProposer.SignProposal(config.ChainID(), genDoc.QuorumType, quorumHash2, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -543,7 +543,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		panic(fmt.Sprintf("validator proTxHash %X not found in newVss", proposerProTxHash))
 	}
 	proposerIndex := valIndexFnByProTxHash(proposerProTxHash)
-	if err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, quorumHash2, p); err != nil {
+	if _, err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, quorumHash2, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -618,7 +618,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	}
 	proposerIndex = valIndexFnByProTxHash(proposerProTxHash)
 	validatorsAtProposalHeight := css[0].state.ValidatorsAtHeight(p.Height)
-	if err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p); err != nil {
+	if _, err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -663,7 +663,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	proposerProTxHash = css[0].RoundState.Validators.GetProposer().ProTxHash
 	proposerIndex = valIndexFnByProTxHash(proposerProTxHash)
 	validatorsAtProposalHeight = css[0].state.ValidatorsAtHeight(p.Height)
-	if err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p); err != nil {
+	if _, err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -724,7 +724,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	proposerProTxHash = css[0].RoundState.Validators.GetProposer().ProTxHash
 	proposerIndex = valIndexFnByProTxHash(proposerProTxHash)
 	validatorsAtProposalHeight = css[0].state.ValidatorsAtHeight(p.Height)
-	if err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p); err != nil {
+	if _, err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature

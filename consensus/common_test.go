@@ -207,8 +207,10 @@ func decideProposal(
 	block, blockParts := cs1.createProposalBlock()
 	validRound := cs1.ValidRound
 	chainID := cs1.state.ChainID
-	quorumType := cs1.Validators.QuorumType
-	quorumHash := cs1.Validators.QuorumHash
+
+	validatorsAtProposalHeight := cs1.state.ValidatorsAtHeight(height)
+	quorumType := validatorsAtProposalHeight.QuorumType
+	quorumHash := validatorsAtProposalHeight.QuorumHash
 	cs1.mtx.Unlock()
 	if block == nil {
 		panic("Failed to createProposalBlock. Did you forget to add commit for previous block?")
@@ -218,9 +220,18 @@ func decideProposal(
 	polRound, propBlockID := validRound, types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 	proposal = types.NewProposal(height, 1, round, polRound, propBlockID)
 	p := proposal.ToProto()
-	if err := vs.SignProposal(chainID, quorumType, quorumHash, p); err != nil {
+
+	proTxHash, _ := vs.GetProTxHash()
+	pubKey, _ := vs.GetPubKey(validatorsAtProposalHeight.QuorumHash)
+
+	signId, err := vs.SignProposal(chainID, quorumType, quorumHash, p)
+
+	if err != nil {
 		panic(err)
 	}
+	cs1.Logger.Debug("signed proposal common test","height", proposal.Height, "round", proposal.Round,
+		"proposerProTxHash", proTxHash.ShortString(), "public key", pubKey.Bytes(), "quorum type",
+		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signId", signId)
 
 	proposal.Signature = p.Signature
 

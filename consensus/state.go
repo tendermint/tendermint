@@ -1188,7 +1188,15 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	proposal := types.NewProposal(height, proposedChainLockHeight, round, cs.ValidRound, propBlockID)
 	p := proposal.ToProto()
 	validatorsAtProposalHeight := cs.state.ValidatorsAtHeight(p.Height)
-	if err := cs.privValidator.SignProposal(cs.state.ChainID, validatorsAtProposalHeight.QuorumType, validatorsAtProposalHeight.QuorumHash, p); err == nil {
+
+	proTxHash, _ := cs.privValidator.GetProTxHash()
+	pubKey, _ := cs.privValidator.GetPubKey(validatorsAtProposalHeight.QuorumHash)
+
+	cs.Logger.Debug("signing proposal","height", proposal.Height, "round", proposal.Round,
+		"proposerProTxHash", proTxHash.ShortString(), "public key", pubKey.Bytes(), "quorum type",
+		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash)
+
+	if _, err := cs.privValidator.SignProposal(cs.state.ChainID, validatorsAtProposalHeight.QuorumType, validatorsAtProposalHeight.QuorumHash, p); err == nil {
 		proposal.Signature = p.Signature
 
 		// send proposal and block parts on internal msg queue
@@ -2000,8 +2008,8 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 	//	hex.EncodeToString(proposalBlockSignBytes))
 
 	if !proposer.PubKey.VerifySignatureDigest(proposalBlockSignId, proposal.Signature) {
-		fmt.Printf("error proposer %X \nat height %d \nverifying proposal signature %X \nwith key %X \n quorum %d:%X blockSignId %X\n",
-			proposer.ProTxHash, proposal.Height, proposal.Signature,  proposer.PubKey.Bytes(), cs.state.Validators.QuorumType,
+		fmt.Printf("error proposer %X \nat height %d/%d \nverifying proposal signature %X \nwith key %X \n quorum %d:%X blockSignId %X\n",
+			proposer.ProTxHash, proposal.Height, proposal.Round, proposal.Signature,  proposer.PubKey.Bytes(), cs.state.Validators.QuorumType,
 			cs.state.Validators.QuorumHash, proposalBlockSignId)
 		return fmt.Errorf("error proposer %X verifying proposal signature %X at height %d with key %X blockSignId %X quorum hash %s quorum type %d\n",
 			proposer.ProTxHash, proposal.Signature, proposal.Height, proposer.PubKey.Bytes(), proposalBlockSignId, cs.state.Validators.QuorumHash, cs.state.Validators.QuorumType)

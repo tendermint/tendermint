@@ -71,7 +71,7 @@ func TestProposalVerifySignature(t *testing.T) {
 	signId := ProposalBlockSignId("test_chain_id", p, btcjson.LLMQType_5_60, quorumHash)
 
 	// sign it
-	err = privVal.SignProposal("test_chain_id", btcjson.LLMQType_5_60, quorumHash, p)
+	_, err = privVal.SignProposal("test_chain_id", btcjson.LLMQType_5_60, quorumHash, p)
 	require.NoError(t, err)
 	prop.Signature = p.Signature
 
@@ -108,7 +108,7 @@ func BenchmarkProposalWriteSignBytes(b *testing.B) {
 func BenchmarkProposalSign(b *testing.B) {
 	privVal := NewMockPV()
 	for i := 0; i < b.N; i++ {
-		err := privVal.SignProposal("test_chain_id", 0, crypto.QuorumHash{}, pbp)
+		_, err := privVal.SignProposal("test_chain_id", 0, crypto.QuorumHash{}, pbp)
 		if err != nil {
 			b.Error(err)
 		}
@@ -117,7 +117,7 @@ func BenchmarkProposalSign(b *testing.B) {
 
 func BenchmarkProposalVerifySignature(b *testing.B) {
 	privVal := NewMockPV()
-	err := privVal.SignProposal("test_chain_id", 0, crypto.QuorumHash{}, pbp)
+	_, err := privVal.SignProposal("test_chain_id", 0, crypto.QuorumHash{}, pbp)
 	require.NoError(b, err)
 	pubKey, err := privVal.GetPubKey(crypto.QuorumHash{})
 	require.NoError(b, err)
@@ -159,7 +159,7 @@ func TestProposalValidateBasic(t *testing.T) {
 				4, 1, 2, 2,
 				blockID)
 			p := prop.ToProto()
-			err := privVal.SignProposal("test_chain_id", 0, crypto.QuorumHash{}, p)
+			_, err := privVal.SignProposal("test_chain_id", 0, crypto.QuorumHash{}, p)
 			prop.Signature = p.Signature
 			require.NoError(t, err)
 			tc.malleateProposal(prop)

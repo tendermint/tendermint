@@ -345,13 +345,13 @@ func TestSignerSignProposalErrors(t *testing.T) {
 			Signature:             []byte("signature"),
 		}
 
-		err := tc.signerClient.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, proposal.ToProto())
+		_, err := tc.signerClient.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, proposal.ToProto())
 		require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
 
-		err = tc.mockPV.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, proposal.ToProto())
+		_, err = tc.mockPV.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, proposal.ToProto())
 		require.Error(t, err)
 
-		err = tc.signerClient.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, proposal.ToProto())
+		_, err = tc.signerClient.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, proposal.ToProto())
 		require.Error(t, err)
 	}
 }

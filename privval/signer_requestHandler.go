@@ -103,7 +103,7 @@ func DefaultValidationRequestHandler(
 
 		proposalQuorumHash := r.SignProposalRequest.QuorumHash
 		proposalQuorumType := r.SignProposalRequest.QuorumType
-		err = privVal.SignProposal(chainID, btcjson.LLMQType(proposalQuorumType), proposalQuorumHash, proposal)
+		_, err = privVal.SignProposal(chainID, btcjson.LLMQType(proposalQuorumType), proposalQuorumHash, proposal)
 		if err != nil {
 			res = mustWrapMsg(&privvalproto.SignedProposalResponse{
 				Proposal: tmproto.Proposal{}, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})

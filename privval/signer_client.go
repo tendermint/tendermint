@@ -148,26 +148,26 @@ func (sc *SignerClient) SignVote(chainID string, quorumType btcjson.LLMQType, qu
 }
 
 // SignProposal requests a remote signer to sign a proposal
-func (sc *SignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error {
+func (sc *SignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) ([]byte, error) {
 	response, err := sc.endpoint.SendRequest(mustWrapMsg(
 		&privvalproto.SignProposalRequest{Proposal: proposal, ChainId: chainID,
 			QuorumType: int32(quorumType), QuorumHash: quorumHash},
 	))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	resp := response.GetSignedProposalResponse()
 	if resp == nil {
-		return ErrUnexpectedResponse
+		return nil, ErrUnexpectedResponse
 	}
 	if resp.Error != nil {
-		return &RemoteSignerError{Code: int(resp.Error.Code), Description: resp.Error.Description}
+		return nil, &RemoteSignerError{Code: int(resp.Error.Code), Description: resp.Error.Description}
 	}
 
 	*proposal = resp.Proposal
 
-	return nil
+	return nil, nil
 }
 
 func (sc *SignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, height int64) error {

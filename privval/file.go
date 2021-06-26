@@ -428,11 +428,11 @@ func (pv *FilePV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 
 // SignProposal signs a canonical representation of the proposal, along with
 // the chainID. Implements PrivValidator.
-func (pv *FilePV) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error {
+func (pv *FilePV) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) ([]byte, error) {
 	if err := pv.signProposal(chainID, quorumType, quorumHash, proposal); err != nil {
-		return fmt.Errorf("error signing proposal: %v", err)
+		return nil, fmt.Errorf("error signing proposal: %v", err)
 	}
-	return nil
+	return nil, nil
 }
 
 // Save persists the FilePV to disk.

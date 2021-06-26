@@ -286,7 +286,7 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumType btcjson.LLMQ
 }
 
 // SignProposal requests a remote signer to sign a proposal
-func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposalProto *tmproto.Proposal) error {
+func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposalProto *tmproto.Proposal) ([]byte, error) {
 	messageBytes:= types.ProposalBlockSignBytes(chainID, proposalProto)
 
 	messageHash := crypto.Sha256(messageBytes)
@@ -298,24 +298,24 @@ func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumType btcjson.
 	requestIdHashString := strings.ToUpper(hex.EncodeToString(requestIdHash))
 
 	if quorumType == 0 {
-		return fmt.Errorf("error signing proposal with invalid quorum type")
+		return nil, fmt.Errorf("error signing proposal with invalid quorum type")
 	}
 
 	response, err := sc.endpoint.QuorumSign(quorumType, requestIdHashString, messageHashString, quorumHash.String(), false)
 
 	if response == nil {
-		return ErrUnexpectedResponse
+		return nil, ErrUnexpectedResponse
 	}
 	if err != nil {
-		return &RemoteSignerError{Code: 500, Description: err.Error()}
+		return nil, &RemoteSignerError{Code: 500, Description: err.Error()}
 	}
 
 	decodedSignature, err := hex.DecodeString(response.Signature)
 	if err != nil {
-		return fmt.Errorf("error decoding signature when signing proposal : %v", err)
+		return nil, fmt.Errorf("error decoding signature when signing proposal : %v", err)
 	}
 	if len(decodedSignature) != bls12381.SignatureSize {
-		return fmt.Errorf("decoding signature %d is incorrect size when signing proposal : %v", len(decodedSignature), err)
+		return nil, fmt.Errorf("decoding signature %d is incorrect size when signing proposal : %v", len(decodedSignature), err)
 	}
 
 	//fmt.Printf("proposal message that is being signed %v\n", messageBytes)
@@ -342,7 +342,7 @@ func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumType btcjson.
 
 	proposalProto.Signature = decodedSignature
 
-	return nil
+	return nil, nil
 }
 
 func (sc *DashCoreSignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, height int64) error {

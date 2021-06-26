@@ -115,20 +115,20 @@ func (sc *RetrySignerClient) SignVote(chainID string, quorumType btcjson.LLMQTyp
 	return fmt.Errorf("exhausted all attempts to sign vote: %w", err)
 }
 
-func (sc *RetrySignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error {
+func (sc *RetrySignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) ([]byte, error) {
 	var err error
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
-		err = sc.next.SignProposal(chainID, quorumType, quorumHash, proposal)
+		_, err = sc.next.SignProposal(chainID, quorumType, quorumHash, proposal)
 		if err == nil {
-			return nil
+			return nil, nil
 		}
 		// If remote signer errors, we don't retry.
 		if _, ok := err.(*RemoteSignerError); ok {
-			return err
+			return nil, err
 		}
 		time.Sleep(sc.timeout)
 	}
-	return fmt.Errorf("exhausted all attempts to sign proposal: %w", err)
+	return nil, fmt.Errorf("exhausted all attempts to sign proposal: %w", err)
 }
 
 func (sc *RetrySignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, height int64) error {
