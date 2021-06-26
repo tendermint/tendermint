@@ -1187,7 +1187,8 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	}
 	proposal := types.NewProposal(height, proposedChainLockHeight, round, cs.ValidRound, propBlockID)
 	p := proposal.ToProto()
-	if err := cs.privValidator.SignProposal(cs.state.ChainID, cs.Validators.QuorumType, cs.Validators.QuorumHash, p); err == nil {
+	validatorsAtProposalHeight := cs.state.ValidatorsAtHeight(p.Height)
+	if err := cs.privValidator.SignProposal(cs.state.ChainID, validatorsAtProposalHeight.QuorumType, validatorsAtProposalHeight.QuorumHash, p); err == nil {
 		proposal.Signature = p.Signature
 
 		// send proposal and block parts on internal msg queue
@@ -2353,11 +2354,12 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 
 	case tmproto.PrecommitType:
 		precommits := cs.Votes.Precommits(vote.Round)
+		data := precommits.LogString()
 		cs.Logger.Debug("added vote to precommit",
 			"height", vote.Height,
 			"round", vote.Round,
-			"validator", vote.ValidatorProTxHash.String(),
-			"data", precommits.LogString())
+			"val_index", vote.ValidatorIndex,
+			"data", data)
 
 		blockID, ok := precommits.TwoThirdsMajority()
 		if ok {

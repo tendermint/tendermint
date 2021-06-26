@@ -369,7 +369,6 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	signAddVotes(css[0], tmproto.PrevoteType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
 	signAddVotes(css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
 	ensureNewRound(newRoundCh, height+1, 0)
-	//ensureNewBlock(blockCh, height)
 
 	// HEIGHT 2
 	updatedValidators2, _, newThresholdPublicKey, quorumHash2 := updateConsensusNetAddNewValidators(css, height, 1, false)
@@ -618,7 +617,8 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		panic(fmt.Sprintf("validator proTxHash %X not found in newVss", proposerProTxHash))
 	}
 	proposerIndex = valIndexFnByProTxHash(proposerProTxHash)
-	if err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, quorumHash4, p); err != nil {
+	validatorsAtProposalHeight := css[0].state.ValidatorsAtHeight(p.Height)
+	if err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -662,7 +662,8 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	p = proposal.ToProto()
 	proposerProTxHash = css[0].RoundState.Validators.GetProposer().ProTxHash
 	proposerIndex = valIndexFnByProTxHash(proposerProTxHash)
-	if err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, quorumHash4, p); err != nil {
+	validatorsAtProposalHeight = css[0].state.ValidatorsAtHeight(p.Height)
+	if err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -722,7 +723,8 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	p = proposal.ToProto()
 	proposerProTxHash = css[0].RoundState.Validators.GetProposer().ProTxHash
 	proposerIndex = valIndexFnByProTxHash(proposerProTxHash)
-	if err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, quorumHash4, p); err != nil {
+	validatorsAtProposalHeight = css[0].state.ValidatorsAtHeight(p.Height)
+	if err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
