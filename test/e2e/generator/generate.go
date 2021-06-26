@@ -38,8 +38,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	if !ok {
 		return manifest, fmt.Errorf("unknown topology %q", opt["topology"])
 	}
-	manifest.QuorumMembersCount = topology.quorumMembersCount
-	manifest.QuorumRotate = topology.quorumRotate
+
 	numSeeds := topology.seeds.compute(r)
 	numValidators := topology.validators.compute(r)
 	numFulls := topology.fulls.compute(r)
@@ -52,28 +51,32 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			r, e2e.ModeSeed, 0, manifest.InitialHeight, false)
 	}
 
+	heightStep := int64(topology.quorumRotate)
+
 	// Next, we generate validators. We make sure a BFT quorum of validators start
 	// at the initial height, and that we have two archive nodes. We also set up
 	// the initial validator set, and validator set updates for delayed nodes.
-	nextStartAt := manifest.InitialHeight + 5
-	quorum := numValidators*2/3 + 1
-	for i := 1; i <= numValidators; i++ {
-		startAt := int64(0)
-		if i > quorum {
-			startAt = nextStartAt
-			nextStartAt += 5
-		}
-		name := fmt.Sprintf("validator%02d", i)
-		manifest.Nodes[name] = generateNode(
-			r, e2e.ModeValidator, startAt, manifest.InitialHeight, i <= 2)
+	nextStartAt := manifest.InitialHeight + heightStep
+	// prepare the list of the validator names
+	validatorNames := makeValidatorNames(numValidators)
 
-		if startAt == 0 {
-			(*manifest.Validators)[name] = 100
-		} else {
-			manifest.ValidatorUpdates[fmt.Sprint(startAt+5)] = map[string]int64{
-				name: 100,
-			}
-		}
+	valPlr := validatorUpdatesPopulator{
+		initialHeight:  manifest.InitialHeight,
+		validatorNames: validatorNames,
+		quorumMembers:  topology.quorumMembersCount,
+		quorumRotate:   heightStep,
+	}
+	// generate the validators updates list since initial height and updates every N blocks specified in quorumRotate
+	valPlr.populate(*manifest.Validators, manifest.ValidatorUpdates)
+
+	// prepare the list when the validators participate in the quorum
+	valStartSince, err := makeValidatorStartSinceMap(*manifest.Validators, manifest.ValidatorUpdates)
+	if err != nil {
+		return e2e.Manifest{}, err
+	}
+	for i, name := range validatorNames {
+		manifest.Nodes[name] = generateNode(r, e2e.ModeValidator, valStartSince[name], manifest.InitialHeight, i < 2)
+		validatorNames = append(validatorNames, name)
 	}
 
 	// Move validators to InitChain if specified.
@@ -91,7 +94,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		startAt := int64(0)
 		if r.Float64() >= 0.5 {
 			startAt = nextStartAt
-			nextStartAt += 5
+			nextStartAt += heightStep
 		}
 		manifest.Nodes[fmt.Sprintf("full%02d", i)] = generateNode(
 			r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
@@ -152,7 +155,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 
 	// lastly, set up the light clients
 	for i := 1; i <= numLightClients; i++ {
-		startAt := manifest.InitialHeight + 5
+		startAt := manifest.InitialHeight + heightStep
 		manifest.Nodes[fmt.Sprintf("light%02d", i)] = generateLightNode(
 			r, startAt+(5*int64(i)), lightProviders,
 		)
