@@ -58,7 +58,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	// the initial validator set, and validator set updates for delayed nodes.
 	nextStartAt := manifest.InitialHeight + heightStep
 	// prepare the list of the validator names
-	validatorNames := makeValidatorNames(numValidators)
+	validatorNames := generateValidatorNames(numValidators)
 
 	valPlr := validatorUpdatesPopulator{
 		initialHeight:  manifest.InitialHeight,
@@ -67,24 +67,18 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		quorumRotate:   heightStep,
 	}
 	// generate the validators updates list since initial height and updates every N blocks specified in quorumRotate
-	valPlr.populate(*manifest.Validators, manifest.ValidatorUpdates)
-
-	// prepare the list when the validators participate in the quorum
-	valStartSince, err := makeValidatorStartSinceMap(*manifest.Validators, manifest.ValidatorUpdates)
-	if err != nil {
-		return e2e.Manifest{}, err
-	}
+	valHeights := valPlr.populate(manifest.ValidatorUpdates)
 	for i, name := range validatorNames {
-		manifest.Nodes[name] = generateNode(r, e2e.ModeValidator, valStartSince[name], manifest.InitialHeight, i < 2)
+		manifest.Nodes[name] = generateNode(r, e2e.ModeValidator, valHeights[name][0], manifest.InitialHeight, i < 2)
 		validatorNames = append(validatorNames, name)
 	}
 
 	// Move validators to InitChain if specified.
 	switch opt["validators"].(string) {
 	case "genesis":
+		*manifest.Validators = manifest.ValidatorUpdates["0"]
+		delete(manifest.ValidatorUpdates, "0")
 	case "initchain":
-		manifest.ValidatorUpdates["0"] = *manifest.Validators
-		manifest.Validators = &map[string]int64{}
 	default:
 		return manifest, fmt.Errorf("invalid validators option %q", opt["validators"])
 	}
