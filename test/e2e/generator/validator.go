@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 	"strconv"
-
-	"github.com/tendermint/tendermint/types/time"
 )
 
 const (
@@ -14,6 +12,7 @@ const (
 )
 
 type validatorUpdatesPopulator struct {
+	rand           *rand.Rand
 	initialHeight  int64
 	validatorNames []string
 	quorumMembers  int
@@ -54,10 +53,9 @@ func (v *validatorUpdatesPopulator) populate(validatorUpdates map[string]map[str
 }
 
 func (v *validatorUpdatesPopulator) generateValidators(validators map[string]int64, names []string) []string {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for j := 0; j < v.quorumMembers; j++ {
 		for {
-			n := r.Intn(len(names))
+			n := v.rand.Intn(len(names))
 			name := names[n]
 			if _, ok := validators[name]; !ok {
 				names = append(names[0:n], names[n+1:]...)
@@ -71,6 +69,7 @@ func (v *validatorUpdatesPopulator) generateValidators(validators map[string]int
 	}
 	return names
 }
+
 func generateValidatorNames(nums int) []string {
 	names := make([]string, 0, nums)
 	for i := 1; i <= nums; i++ {

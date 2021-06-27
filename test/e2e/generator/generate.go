@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
@@ -57,10 +58,12 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	// at the initial height, and that we have two archive nodes. We also set up
 	// the initial validator set, and validator set updates for delayed nodes.
 	nextStartAt := manifest.InitialHeight + heightStep
+
 	// prepare the list of the validator names
 	validatorNames := generateValidatorNames(numValidators)
 
 	valPlr := validatorUpdatesPopulator{
+		rand:           rand.New(rand.NewSource(time.Now().UnixNano())),
 		initialHeight:  manifest.InitialHeight,
 		validatorNames: validatorNames,
 		quorumMembers:  topology.quorumMembersCount,
