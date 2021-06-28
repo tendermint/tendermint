@@ -8,12 +8,12 @@ import (
 	"github.com/spf13/cobra"
 
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/p2p"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	"github.com/tendermint/tendermint/p2p"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 // InitFilesCmd initializes a fresh Tendermint Core instance.
@@ -51,8 +51,8 @@ func initFilesWithConfig(config *cfg.Config) error {
 
 	if config.Mode == cfg.ModeValidator {
 		// private validator
-		privValKeyFile := config.PrivValidatorKeyFile()
-		privValStateFile := config.PrivValidatorStateFile()
+		privValKeyFile := config.PrivValidator.KeyFile()
+		privValStateFile := config.PrivValidator.StateFile()
 		if tmos.FileExists(privValKeyFile) {
 			pv, err = privval.LoadFilePV(privValKeyFile, privValStateFile)
 			if err != nil {

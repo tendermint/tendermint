@@ -26,7 +26,7 @@
         "round": 1,
         "block_id": {
           "hash": "C106084B050BDCC5AEBC414628992E43B6216544E19826BAB46027350C5FD3C5",
-          "part_set_header": {
+          "parts": {
             "total": 1,
             "hash": "C106084B050BDCC5AEBC414628992E43B6216544E19826BAB46027350C5FD3C5"
           }
@@ -103,7 +103,7 @@
             "round": 1,
             "block_id": {
               "hash": "EED66C25F857A3DA1443411CCB93DD943574A8A55F55C8E2248A129E270F9BE3",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "EED66C25F857A3DA1443411CCB93DD943574A8A55F55C8E2248A129E270F9BE3"
               }
@@ -218,7 +218,7 @@
             "round": 1,
             "block_id": {
               "hash": "0E61042148BB059117B880E371AEC93341630D01E665088844BC1D8DFA5B6B23",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "0E61042148BB059117B880E371AEC93341630D01E665088844BC1D8DFA5B6B23"
               }
@@ -300,7 +300,7 @@
             "round": 1,
             "block_id": {
               "hash": "FE0A34650DA8A9402EA231A4D03FD1F39E0D7F894456D7268A582244FB968605",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "FE0A34650DA8A9402EA231A4D03FD1F39E0D7F894456D7268A582244FB968605"
               }
@@ -373,7 +373,7 @@
             "round": 1,
             "block_id": {
               "hash": "EED66C25F857A3DA1443411CCB93DD943574A8A55F55C8E2248A129E270F9BE3",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "EED66C25F857A3DA1443411CCB93DD943574A8A55F55C8E2248A129E270F9BE3"
               }
@@ -488,7 +488,7 @@
             "round": 1,
             "block_id": {
               "hash": "0E61042148BB059117B880E371AEC93341630D01E665088844BC1D8DFA5B6B23",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "0E61042148BB059117B880E371AEC93341630D01E665088844BC1D8DFA5B6B23"
               }
@@ -570,7 +570,7 @@
             "round": 1,
             "block_id": {
               "hash": "EED66C25F857A3DA1443411CCB93DD943574A8A55F55C8E2248A129E270F9BE3",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "EED66C25F857A3DA1443411CCB93DD943574A8A55F55C8E2248A129E270F9BE3"
               }

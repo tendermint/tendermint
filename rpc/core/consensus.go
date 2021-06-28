@@ -1,7 +1,7 @@
 package core
 
 import (
-	cm "github.com/tendermint/tendermint/consensus"
+	cm "github.com/tendermint/tendermint/internal/consensus"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"

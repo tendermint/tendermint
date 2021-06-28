@@ -5,14 +5,15 @@ package p2p
 
 import (
 	fmt "fmt"
-	_ "github.com/gogo/protobuf/gogoproto"
-	proto "github.com/gogo/protobuf/proto"
-	_ "github.com/gogo/protobuf/types"
-	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
 	io "io"
 	math "math"
 	math_bits "math/bits"
 	time "time"
+
+	_ "github.com/gogo/protobuf/gogoproto"
+	proto "github.com/gogo/protobuf/proto"
+	_ "github.com/gogo/protobuf/types"
+	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -369,8 +370,8 @@ func (m *PeerAddressInfo) GetDialFailures() uint32 {
 
 func init() {
 	proto.RegisterType((*ProtocolVersion)(nil), "tendermint.p2p.ProtocolVersion")
-	proto.RegisterType((*NodeInfo)(nil), "tendermint.p2p.NodeInfo")
-	proto.RegisterType((*NodeInfoOther)(nil), "tendermint.p2p.NodeInfoOther")
+	proto.RegisterType((*NodeInfo)(nil), "tendermint.types.NodeInfo")
+	proto.RegisterType((*NodeInfoOther)(nil), "tendermint.types.NodeInfoOther")
 	proto.RegisterType((*PeerInfo)(nil), "tendermint.p2p.PeerInfo")
 	proto.RegisterType((*PeerAddressInfo)(nil), "tendermint.p2p.PeerAddressInfo")
 }

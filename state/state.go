@@ -9,10 +9,10 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -341,7 +341,7 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 	}
 
 	var validatorSet, nextValidatorSet *types.ValidatorSet
-	if genDoc.Validators == nil {
+	if genDoc.Validators == nil || len(genDoc.Validators) == 0 {
 		validatorSet = types.NewValidatorSet(nil)
 		nextValidatorSet = types.NewValidatorSet(nil)
 	} else {

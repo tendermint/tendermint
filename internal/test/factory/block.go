@@ -1,6 +1,8 @@
 package factory
 
 import (
+	"time"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/types"
@@ -9,6 +11,10 @@ import (
 
 const (
 	DefaultTestChainID = "test-chain"
+)
+
+var (
+	DefaultTestTime = time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
 )
 
 func MakeVersion() version.Consensus {

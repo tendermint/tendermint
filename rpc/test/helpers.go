@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -54,18 +52,6 @@ func waitForGRPC(ctx context.Context, conf *cfg.Config) {
 	}
 }
 
-// f**ing long, but unique for each test
-func makePathname() string {
-	// get path
-	p, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
-	// fmt.Println(p)
-	sep := string(filepath.Separator)
-	return strings.ReplaceAll(p, sep, "_")
-}
-
 func randPort() int {
 	port, err := tmnet.GetFreePort()
 	if err != nil {
@@ -80,9 +66,8 @@ func makeAddrs() (string, string, string) {
 		fmt.Sprintf("tcp://127.0.0.1:%d", randPort())
 }
 
-func CreateConfig() *cfg.Config {
-	pathname := makePathname()
-	c := cfg.ResetTestRoot(pathname)
+func CreateConfig(testName string) *cfg.Config {
+	c := cfg.ResetTestRoot(testName)
 
 	// and we use random ports to run in parallel
 	tm, rpc, grpc := makeAddrs()
@@ -113,8 +98,7 @@ func StartTendermint(ctx context.Context,
 	if nodeOpts.suppressStdout {
 		logger = log.NewNopLogger()
 	} else {
-		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-		logger = log.NewFilter(logger, log.AllowError())
+		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 	}
 	papp := proxy.NewLocalClientCreator(app)
 	node, err := nm.New(conf, logger, papp, nil)
