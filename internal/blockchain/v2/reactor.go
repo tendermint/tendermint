@@ -49,7 +49,7 @@ type BlockchainReactor struct {
 	io       iIO
 	store    blockStore
 
-	syncStartFrom   time.Time
+	syncStartTime   time.Time
 	syncStartHeight int64
 	lastSyncRate    float64 // # blocks sync per sec base on the last 100 blocks
 }
@@ -79,7 +79,7 @@ func newReactor(state state.State, store blockStore, reporter behavior.Reporter,
 		logger:          log.NewNopLogger(),
 		fastSync:        fastSync,
 		syncStartHeight: initHeight,
-		syncStartFrom:   time.Now(),
+		syncStartTime:   time.Now(),
 		lastSyncRate:    0.0,
 	}
 }
@@ -185,7 +185,7 @@ func (r *BlockchainReactor) SwitchToFastSync(state state.State) error {
 
 	err := r.startSync(&state)
 	if err == nil {
-		r.syncStartFrom = time.Now()
+		r.syncStartTime = time.Now()
 	}
 
 	return err
@@ -610,7 +610,7 @@ func (r *BlockchainReactor) GetMaxPeerBlockHeight() int64 {
 }
 
 func (r *BlockchainReactor) GetTotalSyncedTime() time.Duration {
-	return time.Since(r.syncStartFrom)
+	return time.Since(r.syncStartTime)
 }
 
 func (r *BlockchainReactor) GetRemainingSyncTime() time.Duration {

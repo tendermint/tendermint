@@ -101,7 +101,7 @@ type Reactor struct {
 
 	metrics *cons.Metrics
 
-	syncStartFrom time.Time
+	syncStartTime time.Time
 }
 
 // NewReactor returns new reactor instance.
@@ -142,7 +142,7 @@ func NewReactor(
 		peerUpdatesCh: make(chan p2p.Envelope),
 		closeCh:       make(chan struct{}),
 		metrics:       metrics,
-		syncStartFrom: time.Now(),
+		syncStartTime: time.Now(),
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Blockchain", r)
@@ -374,7 +374,7 @@ func (r *Reactor) SwitchToFastSync(state sm.State) error {
 		return err
 	}
 
-	r.syncStartFrom = time.Now()
+	r.syncStartTime = time.Now()
 
 	r.poolWG.Add(1)
 	go r.poolRoutine(true)
@@ -604,7 +604,7 @@ func (r *Reactor) GetMaxPeerBlockHeight() int64 {
 }
 
 func (r *Reactor) GetTotalSyncedTime() time.Duration {
-	return time.Since(r.syncStartFrom)
+	return time.Since(r.syncStartTime)
 }
 
 func (r *Reactor) GetRemainingSyncTime() time.Duration {
