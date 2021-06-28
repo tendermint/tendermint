@@ -1331,10 +1331,10 @@ components:
           type: boolean
           example: false
         total_synced_time:
-          type: integer
+          type: string
           example: "1000000000"
         remaining_time:
-          type: integer
+          type: string
           example: "0"
     ValidatorInfo:
       type: object
