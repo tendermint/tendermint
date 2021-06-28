@@ -24,6 +24,7 @@ import (
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/service"
 	tmtime "github.com/tendermint/tendermint/libs/time"
+	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -78,8 +79,9 @@ type State struct {
 	service.BaseService
 
 	// config details
-	config        *cfg.ConsensusConfig
-	privValidator types.PrivValidator // for signing votes
+	config            *cfg.ConsensusConfig
+	privValidator     types.PrivValidator // for signing votes
+	privValidatorType types.PrivValidatorType
 
 	// store blocks and commits
 	blockStore sm.BlockStore
@@ -271,6 +273,24 @@ func (cs *State) SetPrivValidator(priv types.PrivValidator) {
 	defer cs.mtx.Unlock()
 
 	cs.privValidator = priv
+
+	if priv != nil {
+		switch t := priv.(type) {
+		case *privval.RetrySignerClient:
+			cs.privValidatorType = types.RetrySignerClient
+		case *privval.FilePV:
+			cs.privValidatorType = types.FileSignerClient
+		case *privval.SignerClient:
+			cs.privValidatorType = types.SignerClient
+		case types.MockPV:
+			cs.privValidatorType = types.MockSignerClient
+		case *types.ErroringMockPV:
+			cs.privValidatorType = types.ErrorMockSignerClient
+		default:
+			cs.Logger.Error("unsupported priv validator type", "err",
+				fmt.Errorf("error privValidatorType %s", t))
+		}
+	}
 
 	if err := cs.updatePrivValidatorPubKey(); err != nil {
 		cs.Logger.Error("failed to get private validator pubkey", "err", err)
@@ -2267,7 +2287,13 @@ func (cs *State) updatePrivValidatorPubKey() error {
 		timeout = cs.config.TimeoutPrevote
 	}
 
-	// set a hard timeout for 2 seconds. This helps in avoiding blocking of the remote signer connection
+	// no GetPubKey retry beyond the proposal/voting in RetrySignerClient
+	if cs.Step >= cstypes.RoundStepPrecommit && cs.privValidatorType == types.RetrySignerClient {
+		timeout = 0
+	}
+
+	// set context timeout depending on the configuration and the State step,
+	// this helps in avoiding blocking of the remote signer connection.
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
 	pubKey, err := cs.privValidator.GetPubKey(ctx)
