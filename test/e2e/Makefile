@@ -1,10 +1,12 @@
+ROOT_PATH := $(abspath $(lastword $(MAKEFILE_LIST)/../../../))
+
 all: docker generator runner
 
 docker:
 	docker build --tag tenderdash/e2e-node -f docker/Dockerfile ../..
 
 e2e/app/compile:
-	docker run --rm -it --entrypoint "/src/tenderdash/test/e2e/entrypoint.sh" -w "/src/tenderdash/test/e2e" -v /Users/samuelw/Documents/src/go/github.com/dashevo/tenderdash:/src/tenderdash tenderdash/e2e-node
+	docker run --rm -it --entrypoint "/src/tenderdash/test/e2e/entrypoint.sh" -w "/src/tenderdash/test/e2e" -v $(ROOT_PATH):/src/tenderdash tenderdash/e2e-node
 
 runner/simple: runner e2e/app/compile
 	./build/runner -f networks/simple.toml
