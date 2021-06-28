@@ -9,6 +9,8 @@ import (
 // NOTE: Interfaces used by RPC must be thread safe!
 //------------------------------------------------------
 
+//go:generate mockery --case underscore --name BlockStore
+
 //------------------------------------------------------
 // blockstore
 

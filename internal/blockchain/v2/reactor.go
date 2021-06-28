@@ -585,8 +585,14 @@ func (r *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 			ID:                  BlockchainChannel,
 			Priority:            5,
 			SendQueueCapacity:   2000,
-			RecvBufferCapacity:  50 * 4096,
+			RecvBufferCapacity:  1024,
 			RecvMessageCapacity: bc.MaxMsgSize,
 		},
 	}
+}
+
+func (r *BlockchainReactor) GetMaxPeerBlockHeight() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+	return r.maxPeerHeight
 }

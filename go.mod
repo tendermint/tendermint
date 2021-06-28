@@ -4,7 +4,6 @@ go 1.15
 
 require (
 	github.com/BurntSushi/toml v0.3.1
-	github.com/ChainSafe/go-schnorrkel v0.0.0-20210222182958-bd440c890782
 	github.com/Masterminds/squirrel v1.5.0
 	github.com/Workiva/go-datastructures v1.0.53
 	github.com/adlio/schema v1.1.13
@@ -19,12 +18,11 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/gtank/merlin v0.1.1
-	github.com/hdevalence/ed25519consensus v0.0.0-20210204194344-59a8610d2b87
 	github.com/lib/pq v1.10.2
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/minio/highwayhash v1.0.2
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
+	github.com/oasisprotocol/curve25519-voi v0.0.0-20210609091139-0a56a4bca00b
 	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.0
@@ -37,7 +35,7 @@ require (
 	github.com/spf13/viper v1.8.0
 	github.com/stretchr/testify v1.7.0
 	github.com/tendermint/tm-db v0.6.4
-	golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9
+	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
 	google.golang.org/grpc v1.38.0
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect

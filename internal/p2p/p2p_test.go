@@ -24,7 +24,7 @@ var (
 
 	selfKey  crypto.PrivKey = ed25519.GenPrivKeyFromSecret([]byte{0xf9, 0x1b, 0x08, 0xaa, 0x38, 0xee, 0x34, 0xdd})
 	selfID                  = types.NodeIDFromPubKey(selfKey.PubKey())
-	selfInfo                = p2p.NodeInfo{
+	selfInfo                = types.NodeInfo{
 		NodeID:     selfID,
 		ListenAddr: "0.0.0.0:0",
 		Network:    "test",
@@ -33,7 +33,7 @@ var (
 
 	peerKey  crypto.PrivKey = ed25519.GenPrivKeyFromSecret([]byte{0x84, 0xd7, 0x01, 0xbf, 0x83, 0x20, 0x1c, 0xfe})
 	peerID                  = types.NodeIDFromPubKey(peerKey.PubKey())
-	peerInfo                = p2p.NodeInfo{
+	peerInfo                = types.NodeInfo{
 		NodeID:     peerID,
 		ListenAddr: "0.0.0.0:0",
 		Network:    "test",

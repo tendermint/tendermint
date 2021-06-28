@@ -1,4 +1,4 @@
-package p2p
+package types
 
 import (
 	"errors"
@@ -7,8 +7,6 @@ import (
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
-	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 const (
@@ -28,23 +26,6 @@ type ProtocolVersion struct {
 	App   uint64 `json:"app"`
 }
 
-// defaultProtocolVersion populates the Block and P2P versions using
-// the global values, but not the App.
-var defaultProtocolVersion = NewProtocolVersion(
-	version.P2PProtocol,
-	version.BlockProtocol,
-	0,
-)
-
-// NewProtocolVersion returns a fully populated ProtocolVersion.
-func NewProtocolVersion(p2p, block, app uint64) ProtocolVersion {
-	return ProtocolVersion{
-		P2P:   p2p,
-		Block: block,
-		App:   app,
-	}
-}
-
 //-------------------------------------------------------------
 
 // NodeInfo is the basic node information exchanged
@@ -53,8 +34,8 @@ type NodeInfo struct {
 	ProtocolVersion ProtocolVersion `json:"protocol_version"`
 
 	// Authenticate
-	NodeID     types.NodeID `json:"id"`          // authenticated identifier
-	ListenAddr string       `json:"listen_addr"` // accepting incoming
+	NodeID     NodeID `json:"id"`          // authenticated identifier
+	ListenAddr string `json:"listen_addr"` // accepting incoming
 
 	// Check compatibility.
 	// Channels are HexBytes so easier to read as JSON
@@ -74,7 +55,7 @@ type NodeInfoOther struct {
 }
 
 // ID returns the node's peer ID.
-func (info NodeInfo) ID() types.NodeID {
+func (info NodeInfo) ID() NodeID {
 	return info.NodeID
 }
 
@@ -96,7 +77,7 @@ func (info NodeInfo) Validate() error {
 	// ID is already validated.
 
 	// Validate ListenAddr.
-	_, err := types.NewNetAddressString(info.ID().AddressString(info.ListenAddr))
+	_, err := NewNetAddressString(info.ID().AddressString(info.ListenAddr))
 	if err != nil {
 		return err
 	}
@@ -187,7 +168,7 @@ OUTER_LOOP:
 // may not match that address actually dialed if its an outbound peer.
 func (info NodeInfo) NetAddress() (*NetAddress, error) {
 	idAddr := info.ID().AddressString(info.ListenAddr)
-	return types.NewNetAddressString(idAddr)
+	return NewNetAddressString(idAddr)
 }
 
 func (info NodeInfo) ToProto() *tmp2p.NodeInfo {
@@ -223,7 +204,7 @@ func NodeInfoFromProto(pb *tmp2p.NodeInfo) (NodeInfo, error) {
 			Block: pb.ProtocolVersion.Block,
 			App:   pb.ProtocolVersion.App,
 		},
-		NodeID:     types.NodeID(pb.NodeID),
+		NodeID:     NodeID(pb.NodeID),
 		ListenAddr: pb.ListenAddr,
 		Network:    pb.Network,
 		Version:    pb.Version,

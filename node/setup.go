@@ -537,7 +537,7 @@ func createPeerManager(
 func createRouter(
 	p2pLogger log.Logger,
 	p2pMetrics *p2p.Metrics,
-	nodeInfo p2p.NodeInfo,
+	nodeInfo types.NodeInfo,
 	privKey crypto.PrivKey,
 	peerManager *p2p.PeerManager,
 	transport p2p.Transport,
@@ -565,7 +565,7 @@ func createSwitch(
 	consensusReactor *p2p.ReactorShim,
 	evidenceReactor *p2p.ReactorShim,
 	proxyApp proxy.AppConns,
-	nodeInfo p2p.NodeInfo,
+	nodeInfo types.NodeInfo,
 	nodeKey p2p.NodeKey,
 	p2pLogger log.Logger,
 ) *p2p.Switch {
@@ -698,7 +698,7 @@ func createPEXReactorV2(
 	router *p2p.Router,
 ) (*pex.ReactorV2, error) {
 
-	channel, err := router.OpenChannel(pex.ChannelDescriptor(), &protop2p.PexMessage{}, 4096)
+	channel, err := router.OpenChannel(pex.ChannelDescriptor(), &protop2p.PexMessage{}, 128)
 	if err != nil {
 		return nil, err
 	}
@@ -713,7 +713,7 @@ func makeNodeInfo(
 	eventSinks []indexer.EventSink,
 	genDoc *types.GenesisDoc,
 	state sm.State,
-) (p2p.NodeInfo, error) {
+) (types.NodeInfo, error) {
 	txIndexerStatus := "off"
 
 	if indexer.IndexingEnabled(eventSinks) {
@@ -729,15 +729,15 @@ func makeNodeInfo(
 		bcChannel = bcv2.BlockchainChannel
 
 	default:
-		return p2p.NodeInfo{}, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
+		return types.NodeInfo{}, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}
 
-	nodeInfo := p2p.NodeInfo{
-		ProtocolVersion: p2p.NewProtocolVersion(
-			version.P2PProtocol, // global
-			state.Version.Consensus.Block,
-			state.Version.Consensus.App,
-		),
+	nodeInfo := types.NodeInfo{
+		ProtocolVersion: types.ProtocolVersion{
+			P2P:   version.P2PProtocol, // global
+			Block: state.Version.Consensus.Block,
+			App:   state.Version.Consensus.App,
+		},
 		NodeID:  nodeKey.ID,
 		Network: genDoc.ChainID,
 		Version: version.TMVersion,
@@ -754,7 +754,7 @@ func makeNodeInfo(
 			byte(statesync.LightBlockChannel),
 		},
 		Moniker: config.Moniker,
-		Other: p2p.NodeInfoOther{
+		Other: types.NodeInfoOther{
 			TxIndex:    txIndexerStatus,
 			RPCAddress: config.RPC.ListenAddress,
 		},
@@ -781,19 +781,19 @@ func makeSeedNodeInfo(
 	nodeKey p2p.NodeKey,
 	genDoc *types.GenesisDoc,
 	state sm.State,
-) (p2p.NodeInfo, error) {
-	nodeInfo := p2p.NodeInfo{
-		ProtocolVersion: p2p.NewProtocolVersion(
-			version.P2PProtocol, // global
-			state.Version.Consensus.Block,
-			state.Version.Consensus.App,
-		),
+) (types.NodeInfo, error) {
+	nodeInfo := types.NodeInfo{
+		ProtocolVersion: types.ProtocolVersion{
+			P2P:   version.P2PProtocol, // global
+			Block: state.Version.Consensus.Block,
+			App:   state.Version.Consensus.App,
+		},
 		NodeID:   nodeKey.ID,
 		Network:  genDoc.ChainID,
 		Version:  version.TMVersion,
 		Channels: []byte{},
 		Moniker:  config.Moniker,
-		Other: p2p.NodeInfoOther{
+		Other: types.NodeInfoOther{
 			TxIndex:    "off",
 			RPCAddress: config.RPC.ListenAddress,
 		},

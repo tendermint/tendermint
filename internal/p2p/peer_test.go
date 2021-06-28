@@ -221,8 +221,8 @@ func (rp *remotePeer) accept() {
 	}
 }
 
-func (rp *remotePeer) nodeInfo() NodeInfo {
-	return NodeInfo{
+func (rp *remotePeer) nodeInfo() types.NodeInfo {
+	return types.NodeInfo{
 		ProtocolVersion: defaultProtocolVersion,
 		NodeID:          rp.Addr().ID,
 		ListenAddr:      rp.listener.Addr().String(),
