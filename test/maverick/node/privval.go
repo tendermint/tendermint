@@ -294,10 +294,11 @@ func (pv *FilePV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 // SignProposal signs a canonical representation of the proposal, along with
 // the chainID. Implements PrivValidator.
 func (pv *FilePV) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) ([]byte, error) {
-	if err := pv.signProposal(chainID, quorumType, quorumHash, proposal); err != nil {
+	signId, err := pv.signProposal(chainID, quorumType, quorumHash, proposal)
+	if err != nil {
 		return nil, fmt.Errorf("error signing proposal: %v", err)
 	}
-	return nil, nil
+	return signId, nil
 }
 
 // Save persists the FilePV to disk.
@@ -344,6 +345,7 @@ func (pv *FilePV) updateKeyIfNeeded(height int64) {
 		// fmt.Printf("privval node %X at height %d updating key %X with new key %X\n",
 		//  pv.Key.ProTxHash, height, pv.Key.PrivKey.PubKey().Bytes(), pv.Key.NextPrivKeys[0].PubKey().Bytes())
 		pv.Key.PrivKey = pv.Key.NextPrivKeys[0]
+		pv.Key.PubKey = pv.Key.PrivKey.PubKey()
 		if len(pv.Key.NextPrivKeys) > 1 {
 			pv.Key.NextPrivKeys = pv.Key.NextPrivKeys[1:]
 			pv.Key.NextPrivKeyHeights = pv.Key.NextPrivKeyHeights[1:]
@@ -431,7 +433,7 @@ func (pv *FilePV) signVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 // signProposal checks if the proposal is good to sign and sets the proposal signature.
 // It may need to set the timestamp as well if the proposal is otherwise the same as
 // a previously signed proposal ie. we crashed after signing but before the proposal hit the WAL).
-func (pv *FilePV) signProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error {
+func (pv *FilePV) signProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) ([]byte, error) {
 	pv.updateKeyIfNeeded(proposal.Height)
 	height, round, step := proposal.Height, proposal.Round, stepPropose
 
@@ -439,7 +441,7 @@ func (pv *FilePV) signProposal(chainID string, quorumType btcjson.LLMQType, quor
 
 	_, err := lss.CheckHRS(height, round, step)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	blockSignId := types.ProposalBlockSignId(chainID, proposal, quorumType, quorumHash)
@@ -449,11 +451,11 @@ func (pv *FilePV) signProposal(chainID string, quorumType btcjson.LLMQType, quor
 	// It passed the checks. SignDigest the proposal
 	blockSig, err := pv.Key.PrivKey.SignDigest(blockSignId)
 	if err != nil {
-		return err
+		return blockSignId, err
 	}
 	pv.saveSigned(height, round, step, blockSignBytes, blockSig, nil, nil)
 	proposal.Signature = blockSig
-	return nil
+	return blockSignId, nil
 }
 
 // Persist height/round/step and signature

@@ -2007,12 +2007,14 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 	//	hex.EncodeToString(proposalRequestId), hex.EncodeToString(signId), hex.EncodeToString(cs.state.Validators.QuorumHash),
 	//	hex.EncodeToString(proposalBlockSignBytes))
 
+
+
 	if !proposer.PubKey.VerifySignatureDigest(proposalBlockSignId, proposal.Signature) {
-		fmt.Printf("error proposer %X \nat height %d/%d \nverifying proposal signature %X \nwith key %X \n quorum %d:%X blockSignId %X\n",
-			proposer.ProTxHash, proposal.Height, proposal.Round, proposal.Signature,  proposer.PubKey.Bytes(), cs.state.Validators.QuorumType,
-			cs.state.Validators.QuorumHash, proposalBlockSignId)
-		return fmt.Errorf("error proposer %X verifying proposal signature %X at height %d with key %X blockSignId %X quorum hash %s quorum type %d\n",
-			proposer.ProTxHash, proposal.Signature, proposal.Height, proposer.PubKey.Bytes(), proposalBlockSignId, cs.state.Validators.QuorumHash, cs.state.Validators.QuorumType)
+		cs.Logger.Debug("error verifying signature", "height", proposal.Height,
+			"round", proposal.Round, "proposer", proposer.ProTxHash.ShortString(), "signature", proposal.Signature, "pubkey",
+			proposer.PubKey.Bytes(), "quorumType", cs.state.Validators.QuorumType,
+			"quorumHash", cs.state.Validators.QuorumHash, "proposalSignId", proposalBlockSignId)
+		return ErrInvalidProposalSignature
 	}
 
 	proposal.Signature = p.Signature
