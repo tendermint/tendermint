@@ -50,5 +50,6 @@ func TestBatchSafe(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	require.True(t, v.Verify())
+	ok, _ := v.Verify()
+	require.True(t, ok)
 }
