@@ -124,7 +124,7 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 
 	chainID := config.ChainID()
 
-	pv, err := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+	pv, err := privval.LoadOrGenFilePV(config.PrivValidator.KeyFile(), config.PrivValidator.StateFile())
 	require.NoError(t, err)
 
 	for i, c := range GetClients(t, n, config) {

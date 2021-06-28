@@ -65,7 +65,7 @@ func InjectEvidence(testnet *e2e.Testnet, amount int) error {
 
 	// wait for the node to reach the height above the forged height so that
 	// it is able to validate the evidence
-	status, err := waitForNode(targetNode, waitHeight, 10*time.Second)
+	status, err := waitForNode(targetNode, waitHeight, 15*time.Second)
 	if err != nil {
 		return err
 	}

@@ -7,8 +7,8 @@ import (
 	"log"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	sc "github.com/tendermint/tendermint/internal/p2p/conn"
 	"github.com/tendermint/tendermint/libs/async"
-	sc "github.com/tendermint/tendermint/p2p/conn"
 )
 
 func Fuzz(data []byte) int {

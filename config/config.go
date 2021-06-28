@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 const (
@@ -15,11 +17,6 @@ const (
 	FuzzModeDrop = iota
 	// FuzzModeDelay is a mode in which we randomly sleep
 	FuzzModeDelay
-
-	// LogFormatPlain is a format for colored text
-	LogFormatPlain = "plain"
-	// LogFormatJSON is a format for json output
-	LogFormatJSON = "json"
 
 	// DefaultLogLevel defines a default log level as INFO.
 	DefaultLogLevel = "info"
@@ -128,32 +125,8 @@ func (cfg *Config) SetRoot(root string) *Config {
 	cfg.P2P.RootDir = root
 	cfg.Mempool.RootDir = root
 	cfg.Consensus.RootDir = root
+	cfg.PrivValidator.RootDir = root
 	return cfg
-}
-
-// PrivValidatorClientKeyFile returns the full path to the priv_validator_key.json file
-func (cfg Config) PrivValidatorClientKeyFile() string {
-	return rootify(cfg.PrivValidator.ClientKey, cfg.RootDir)
-}
-
-// PrivValidatorClientCertificateFile returns the full path to the priv_validator_key.json file
-func (cfg Config) PrivValidatorClientCertificateFile() string {
-	return rootify(cfg.PrivValidator.ClientCertificate, cfg.RootDir)
-}
-
-// PrivValidatorCertificateAuthorityFile returns the full path to the priv_validator_key.json file
-func (cfg Config) PrivValidatorRootCAFile() string {
-	return rootify(cfg.PrivValidator.RootCA, cfg.RootDir)
-}
-
-// PrivValidatorKeyFile returns the full path to the priv_validator_key.json file
-func (cfg Config) PrivValidatorKeyFile() string {
-	return rootify(cfg.PrivValidator.Key, cfg.RootDir)
-}
-
-// PrivValidatorFile returns the full path to the priv_validator_state.json file
-func (cfg Config) PrivValidatorStateFile() string {
-	return rootify(cfg.PrivValidator.State, cfg.RootDir)
 }
 
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
@@ -276,7 +249,7 @@ func DefaultBaseConfig() BaseConfig {
 		ProxyApp:     "tcp://127.0.0.1:26658",
 		ABCI:         "socket",
 		LogLevel:     DefaultLogLevel,
-		LogFormat:    LogFormatPlain,
+		LogFormat:    log.LogFormatPlain,
 		FastSyncMode: true,
 		FilterPeers:  false,
 		DBBackend:    "goleveldb",
@@ -314,34 +287,24 @@ func (cfg BaseConfig) DBDir() string {
 	return rootify(cfg.DBPath, cfg.RootDir)
 }
 
-func (cfg Config) ArePrivValidatorClientSecurityOptionsPresent() bool {
-	switch {
-	case cfg.PrivValidator.RootCA == "":
-		return false
-	case cfg.PrivValidator.ClientKey == "":
-		return false
-	case cfg.PrivValidator.ClientCertificate == "":
-		return false
-	default:
-		return true
-	}
-}
-
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg BaseConfig) ValidateBasic() error {
 	switch cfg.LogFormat {
-	case LogFormatPlain, LogFormatJSON:
+	case log.LogFormatJSON, log.LogFormatText, log.LogFormatPlain:
 	default:
-		return errors.New("unknown log format (must be 'plain' or 'json')")
+		return errors.New("unknown log format (must be 'plain', 'text' or 'json')")
 	}
+
 	switch cfg.Mode {
 	case ModeFull, ModeValidator, ModeSeed:
 	case "":
 		return errors.New("no mode has been set")
+
 	default:
 		return fmt.Errorf("unknown mode: %v", cfg.Mode)
 	}
+
 	return nil
 }
 
@@ -350,6 +313,8 @@ func (cfg BaseConfig) ValidateBasic() error {
 
 // PrivValidatorConfig defines the configuration parameters for running a validator
 type PrivValidatorConfig struct {
+	RootDir string `mapstructure:"home"`
+
 	// Path to the JSON file containing the private key to use as a validator in the consensus protocol
 	Key string `mapstructure:"key-file"`
 
@@ -377,6 +342,44 @@ func DefaultPrivValidatorConfig() *PrivValidatorConfig {
 	return &PrivValidatorConfig{
 		Key:   defaultPrivValKeyPath,
 		State: defaultPrivValStatePath,
+	}
+}
+
+// ClientKeyFile returns the full path to the priv_validator_key.json file
+func (cfg *PrivValidatorConfig) ClientKeyFile() string {
+	return rootify(cfg.ClientKey, cfg.RootDir)
+}
+
+// ClientCertificateFile returns the full path to the priv_validator_key.json file
+func (cfg *PrivValidatorConfig) ClientCertificateFile() string {
+	return rootify(cfg.ClientCertificate, cfg.RootDir)
+}
+
+// CertificateAuthorityFile returns the full path to the priv_validator_key.json file
+func (cfg *PrivValidatorConfig) RootCAFile() string {
+	return rootify(cfg.RootCA, cfg.RootDir)
+}
+
+// KeyFile returns the full path to the priv_validator_key.json file
+func (cfg *PrivValidatorConfig) KeyFile() string {
+	return rootify(cfg.Key, cfg.RootDir)
+}
+
+// StateFile returns the full path to the priv_validator_state.json file
+func (cfg *PrivValidatorConfig) StateFile() string {
+	return rootify(cfg.State, cfg.RootDir)
+}
+
+func (cfg *PrivValidatorConfig) AreSecurityOptionsPresent() bool {
+	switch {
+	case cfg.RootCA == "":
+		return false
+	case cfg.ClientKey == "":
+		return false
+	case cfg.ClientCertificate == "":
+		return false
+	default:
+		return true
 	}
 }
 
@@ -806,13 +809,15 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 
 // StateSyncConfig defines the configuration for the Tendermint state sync service
 type StateSyncConfig struct {
-	Enable        bool          `mapstructure:"enable"`
-	TempDir       string        `mapstructure:"temp-dir"`
-	RPCServers    []string      `mapstructure:"rpc-servers"`
-	TrustPeriod   time.Duration `mapstructure:"trust-period"`
-	TrustHeight   int64         `mapstructure:"trust-height"`
-	TrustHash     string        `mapstructure:"trust-hash"`
-	DiscoveryTime time.Duration `mapstructure:"discovery-time"`
+	Enable              bool          `mapstructure:"enable"`
+	TempDir             string        `mapstructure:"temp-dir"`
+	RPCServers          []string      `mapstructure:"rpc-servers"`
+	TrustPeriod         time.Duration `mapstructure:"trust-period"`
+	TrustHeight         int64         `mapstructure:"trust-height"`
+	TrustHash           string        `mapstructure:"trust-hash"`
+	DiscoveryTime       time.Duration `mapstructure:"discovery-time"`
+	ChunkRequestTimeout time.Duration `mapstructure:"chunk-request-timeout"`
+	Fetchers            int32         `mapstructure:"fetchers"`
 }
 
 func (cfg *StateSyncConfig) TrustHashBytes() []byte {
@@ -827,8 +832,10 @@ func (cfg *StateSyncConfig) TrustHashBytes() []byte {
 // DefaultStateSyncConfig returns a default configuration for the state sync service
 func DefaultStateSyncConfig() *StateSyncConfig {
 	return &StateSyncConfig{
-		TrustPeriod:   168 * time.Hour,
-		DiscoveryTime: 15 * time.Second,
+		TrustPeriod:         168 * time.Hour,
+		DiscoveryTime:       15 * time.Second,
+		ChunkRequestTimeout: 15 * time.Second,
+		Fetchers:            4,
 	}
 }
 
@@ -843,14 +850,17 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 		if len(cfg.RPCServers) == 0 {
 			return errors.New("rpc-servers is required")
 		}
+
 		if len(cfg.RPCServers) < 2 {
 			return errors.New("at least two rpc-servers entries is required")
 		}
+
 		for _, server := range cfg.RPCServers {
 			if len(server) == 0 {
 				return errors.New("found empty rpc-servers entry")
 			}
 		}
+
 		if cfg.DiscoveryTime != 0 && cfg.DiscoveryTime < 5*time.Second {
 			return errors.New("discovery time must be 0s or greater than five seconds")
 		}
@@ -858,17 +868,29 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 		if cfg.TrustPeriod <= 0 {
 			return errors.New("trusted-period is required")
 		}
+
 		if cfg.TrustHeight <= 0 {
 			return errors.New("trusted-height is required")
 		}
+
 		if len(cfg.TrustHash) == 0 {
 			return errors.New("trusted-hash is required")
 		}
+
 		_, err := hex.DecodeString(cfg.TrustHash)
 		if err != nil {
 			return fmt.Errorf("invalid trusted-hash: %w", err)
 		}
+
+		if cfg.ChunkRequestTimeout < 5*time.Second {
+			return errors.New("chunk-request-timeout must be at least 5 seconds")
+		}
+
+		if cfg.Fetchers <= 0 {
+			return errors.New("fetchers is required")
+		}
 	}
+
 	return nil
 }
 

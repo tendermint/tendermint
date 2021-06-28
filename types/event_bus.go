@@ -14,7 +14,7 @@ const defaultCapacity = 0
 
 type EventBusSubscriber interface {
 	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (Subscription, error)
-	Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error
+	Unsubscribe(ctx context.Context, args tmpubsub.UnsubscribeArgs) error
 	UnsubscribeAll(ctx context.Context, subscriber string) error
 
 	NumClients() int
@@ -22,6 +22,7 @@ type EventBusSubscriber interface {
 }
 
 type Subscription interface {
+	ID() string
 	Out() <-chan tmpubsub.Message
 	Canceled() <-chan struct{}
 	Err() error
@@ -91,8 +92,8 @@ func (b *EventBus) SubscribeUnbuffered(
 	return b.pubsub.SubscribeUnbuffered(ctx, subscriber, query)
 }
 
-func (b *EventBus) Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error {
-	return b.pubsub.Unsubscribe(ctx, subscriber, query)
+func (b *EventBus) Unsubscribe(ctx context.Context, args tmpubsub.UnsubscribeArgs) error {
+	return b.pubsub.Unsubscribe(ctx, args)
 }
 
 func (b *EventBus) UnsubscribeAll(ctx context.Context, subscriber string) error {
@@ -239,7 +240,7 @@ func (NopEventBus) Subscribe(
 	return nil
 }
 
-func (NopEventBus) Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error {
+func (NopEventBus) Unsubscribe(ctx context.Context, args tmpubsub.UnsubscribeArgs) error {
 	return nil
 }
 

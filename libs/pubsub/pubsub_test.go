@@ -291,7 +291,9 @@ func TestUnsubscribe(t *testing.T) {
 	ctx := context.Background()
 	subscription, err := s.Subscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"))
 	require.NoError(t, err)
-	err = s.Unsubscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"))
+	err = s.Unsubscribe(ctx, pubsub.UnsubscribeArgs{
+		Subscriber: clientID,
+		Query:      query.MustParse("tm.events.type='NewBlock'")})
 	require.NoError(t, err)
 
 	err = s.Publish(ctx, "Nick Fury")
@@ -315,10 +317,14 @@ func TestClientUnsubscribesTwice(t *testing.T) {
 	ctx := context.Background()
 	_, err = s.Subscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"))
 	require.NoError(t, err)
-	err = s.Unsubscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"))
+	err = s.Unsubscribe(ctx, pubsub.UnsubscribeArgs{
+		Subscriber: clientID,
+		Query:      query.MustParse("tm.events.type='NewBlock'")})
 	require.NoError(t, err)
 
-	err = s.Unsubscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"))
+	err = s.Unsubscribe(ctx, pubsub.UnsubscribeArgs{
+		Subscriber: clientID,
+		Query:      query.MustParse("tm.events.type='NewBlock'")})
 	assert.Equal(t, pubsub.ErrSubscriptionNotFound, err)
 	err = s.UnsubscribeAll(ctx, clientID)
 	assert.Equal(t, pubsub.ErrSubscriptionNotFound, err)
@@ -338,7 +344,7 @@ func TestResubscribe(t *testing.T) {
 	ctx := context.Background()
 	_, err = s.Subscribe(ctx, clientID, query.Empty{})
 	require.NoError(t, err)
-	err = s.Unsubscribe(ctx, clientID, query.Empty{})
+	err = s.Unsubscribe(ctx, pubsub.UnsubscribeArgs{Subscriber: clientID, Query: query.Empty{}})
 	require.NoError(t, err)
 	subscription, err := s.Subscribe(ctx, clientID, query.Empty{})
 	require.NoError(t, err)

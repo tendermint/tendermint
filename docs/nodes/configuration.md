@@ -78,7 +78,7 @@ db-backend = "goleveldb"
 db-dir = "data"
 
 # Output level for logging, including package level options
-log-level = "main:info,state:info,statesync:info,*:error"
+log-level = "info"
 
 # Output format: 'plain' (colored text) or 'json'
 log-format = "plain"
@@ -145,7 +145,7 @@ grpc-laddr = ""
 # 1024 - 40 - 10 - 50 = 924 = ~900
 grpc-max-open-connections = 900
 
-# Activate unsafe RPC commands like /dial_seeds and /unsafe_flush_mempool
+# Activate unsafe RPC commands like /dial_seeds, /re_index, and /unsafe_flush_mempool
 unsafe = false
 
 # Maximum number of simultaneous connections (including WebSocket).

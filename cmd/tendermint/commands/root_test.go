@@ -116,7 +116,7 @@ func TestRootFlagsEnv(t *testing.T) {
 func TestRootConfig(t *testing.T) {
 
 	// write non-default config
-	nonDefaultLogLvl := "abc:debug"
+	nonDefaultLogLvl := "debug"
 	cvals := map[string]string{
 		"log-level": nonDefaultLogLvl,
 	}
@@ -127,9 +127,9 @@ func TestRootConfig(t *testing.T) {
 
 		logLvl string
 	}{
-		{nil, nil, nonDefaultLogLvl},                                     // should load config
-		{[]string{"--log-level=abc:info"}, nil, "abc:info"},              // flag over rides
-		{nil, map[string]string{"TM_LOG_LEVEL": "abc:info"}, "abc:info"}, // env over rides
+		{nil, nil, nonDefaultLogLvl},                             // should load config
+		{[]string{"--log-level=info"}, nil, "info"},              // flag over rides
+		{nil, map[string]string{"TM_LOG_LEVEL": "info"}, "info"}, // env over rides
 	}
 
 	for i, tc := range cases {

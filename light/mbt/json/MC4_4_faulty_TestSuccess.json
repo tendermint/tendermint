@@ -26,7 +26,7 @@
         "round": 1,
         "block_id": {
           "hash": "6B68DB34DEF944920D6638B3AA84FE1DF790BC8BDC5189E201F23730D5756A9D",
-          "part_set_header": {
+          "parts": {
             "total": 1,
             "hash": "6B68DB34DEF944920D6638B3AA84FE1DF790BC8BDC5189E201F23730D5756A9D"
           }
@@ -130,7 +130,7 @@
             "round": 1,
             "block_id": {
               "hash": "EEF6A072BAD4A86F7B01A3E4D4E0920BA79F1FA8A25204F86697CA5C27885BF7",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "EEF6A072BAD4A86F7B01A3E4D4E0920BA79F1FA8A25204F86697CA5C27885BF7"
               }
@@ -221,7 +221,7 @@
             "round": 1,
             "block_id": {
               "hash": "6A1D90F13DCA0E65251D3DA8A07EA17A86CF79E340729DFEF165AC90FF9C2080",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "6A1D90F13DCA0E65251D3DA8A07EA17A86CF79E340729DFEF165AC90FF9C2080"
               }
@@ -284,7 +284,7 @@
             "round": 1,
             "block_id": {
               "hash": "DE957F0FC7A17229F36289714559F7FB5E908DEE04E549FF88DB72404E118581",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "DE957F0FC7A17229F36289714559F7FB5E908DEE04E549FF88DB72404E118581"
               }
@@ -411,7 +411,7 @@
             "round": 1,
             "block_id": {
               "hash": "EEF6A072BAD4A86F7B01A3E4D4E0920BA79F1FA8A25204F86697CA5C27885BF7",
-              "part_set_header": {
+              "parts": {
                 "total": 1,
                 "hash": "EEF6A072BAD4A86F7B01A3E4D4E0920BA79F1FA8A25204F86697CA5C27885BF7"
               }

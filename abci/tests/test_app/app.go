@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/types"
@@ -19,7 +18,7 @@ func startClient(abciType string) abcicli.Client {
 	if err != nil {
 		panic(err.Error())
 	}
-	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 	client.SetLogger(logger.With("module", "abcicli"))
 	if err := client.Start(); err != nil {
 		panicf("connecting to abci_app: %v", err.Error())

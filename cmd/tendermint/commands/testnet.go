@@ -12,12 +12,12 @@ import (
 	"github.com/spf13/viper"
 
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	"github.com/tendermint/tendermint/p2p"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 var (
@@ -278,7 +278,7 @@ func persistentPeersArray(config *cfg.Config) ([]string, error) {
 		if err != nil {
 			return []string{}, err
 		}
-		peers[i] = p2p.IDAddressString(nodeKey.ID, fmt.Sprintf("%s:%d", hostnameOrIP(i), p2pPort))
+		peers[i] = nodeKey.ID.AddressString(fmt.Sprintf("%s:%d", hostnameOrIP(i), p2pPort))
 	}
 	return peers, nil
 }
