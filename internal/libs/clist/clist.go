@@ -356,9 +356,9 @@ func (l *CList) PushBack(v interface{}) *CElement {
 // Remove removes the given element in the CList
 // NOTE: As per the contract of CList, removed elements cannot be added back.
 // Due to detach the prev/next element when CList removes the given element,
-// Please do not use CElement.Next() in the for loop postcondition, and uses
-// the claim a variable ahead the for loop and assign the Next() element
-// to it in the loop.
+// please do not use CElement.Next() in the for loop postcondition, uses
+// a variable ahead the for loop and then assigns the Next() element
+// to it in the loop as the postcondition.
 func (l *CList) Remove(e *CElement) interface{} {
 	l.mtx.Lock()
 	defer l.mtx.Unlock()
