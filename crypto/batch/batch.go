@@ -20,3 +20,14 @@ func CreateBatchVerifier(pk crypto.PubKey) (crypto.BatchVerifier, bool) {
 	// case where the key does not support batch verification
 	return nil, false
 }
+
+// SupportsBatchVerifier checks if a key type implements the batch verifier
+// interface.
+func SupportsBatchVerifier(pk crypto.PubKey) bool {
+	switch pk.Type() {
+	case ed25519.KeyType, sr25519.KeyType:
+		return true
+	}
+
+	return false
+}
