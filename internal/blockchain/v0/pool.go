@@ -84,9 +84,9 @@ type BlockPool struct {
 	requestsCh chan<- BlockRequest
 	errorsCh   chan<- peerError
 
-	startHeight  int64
-	lastHundred  time.Time
-	lastSyncRate float64
+	startHeight               int64
+	lastHundredBlockTimeStamp time.Time
+	lastSyncRate              float64
 }
 
 // NewBlockPool returns a new BlockPool with the height equal to start. Block
@@ -112,7 +112,7 @@ func NewBlockPool(start int64, requestsCh chan<- BlockRequest, errorsCh chan<- p
 // pool's start time.
 func (pool *BlockPool) OnStart() error {
 	pool.lastAdvance = time.Now()
-	pool.lastHundred = pool.lastAdvance
+	pool.lastHundredBlockTimeStamp = pool.lastAdvance
 	go pool.makeRequestersRoutine()
 	return nil
 }
@@ -224,9 +224,11 @@ func (pool *BlockPool) PopRequest() {
 		pool.height++
 		pool.lastAdvance = time.Now()
 
+		// the lastSyncRate will be updated every 100 blocks, it uses the adaptive filter
+		// to smooth the block sync rate and the unit represents the number of blocks per second.
 		if pool.height%100 == 0 {
-			pool.lastSyncRate = 0.9*pool.lastSyncRate + 0.1*(100/time.Since(pool.lastHundred).Seconds())
-			pool.lastHundred = time.Now()
+			pool.lastSyncRate = 0.9*pool.lastSyncRate + 0.1*(100/time.Since(pool.lastHundredBlockTimeStamp).Seconds())
+			pool.lastHundredBlockTimeStamp = time.Now()
 		}
 
 	} else {

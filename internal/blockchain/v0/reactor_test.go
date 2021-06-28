@@ -223,9 +223,7 @@ func TestReactor_SyncTime(t *testing.T) {
 	maxBlockHeight := int64(100)
 
 	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
-
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
-
 	rts.start(t)
 
 	require.Eventually(
