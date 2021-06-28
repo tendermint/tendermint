@@ -305,9 +305,9 @@ conR:
 %+v`, err, r.state, r))
 	}
 
-	d := types.EventDataFastSyncStatus{On: false, Height: state.LastBlockHeight}
+	d := types.EventDataFastSyncStatus{Complete: true, Height: state.LastBlockHeight}
 	if err := r.eventBus.PublishEventFastSyncStatus(d); err != nil {
-		r.Logger.Error("failed to emit the fastsync off event", "err", err)
+		r.Logger.Error("failed to emit the fastsync complete event", "err", err)
 	}
 }
 

@@ -1072,9 +1072,9 @@ func startStateSync(ssR *statesync.Reactor, bcR cs.FastSyncReactor, conR *cs.Rea
 				return
 			}
 
-			d := types.EventDataFastSyncStatus{On: true, Height: state.LastBlockHeight}
+			d := types.EventDataFastSyncStatus{Complete: false, Height: state.LastBlockHeight}
 			if err := eventbus.PublishEventFastSyncStatus(d); err != nil {
-				ssR.Logger.Error("failed to emit the fastsync on event", "err", err)
+				ssR.Logger.Error("failed to emit the fastsync starting event", "err", err)
 			}
 
 		} else {

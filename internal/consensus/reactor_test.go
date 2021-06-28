@@ -260,15 +260,15 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 	wg.Wait()
 }
 
-func ensureFastSyncStatus(msg tmpubsub.Message, on bool, height int64) {
+func ensureFastSyncStatus(msg tmpubsub.Message, complete bool, height int64) {
 	status, ok := msg.Data().(types.EventDataFastSyncStatus)
 	if !ok {
 		panic(fmt.Sprintf("expected a EventDataFastSyncStatus, got %T. Wrong subscription channel?",
 			msg.Data()))
 	}
 
-	if status.On != on {
-		panic(fmt.Sprintf("expected on %v, got %v", on, status.On))
+	if status.Complete != complete {
+		panic(fmt.Sprintf("expected on %v, got %v", complete, status.Complete))
 	}
 
 	if status.Height != height {
@@ -311,7 +311,7 @@ func TestReactorBasic(t *testing.T) {
 		// wait till everyone makes the consensus switch
 		go func(s types.Subscription) {
 			msg := <-s.Out()
-			ensureFastSyncStatus(msg, false, 0)
+			ensureFastSyncStatus(msg, true, 0)
 			wg.Done()
 		}(sub)
 	}

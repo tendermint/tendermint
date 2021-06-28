@@ -173,8 +173,8 @@ type EventDataValidatorSetUpdates struct {
 }
 
 type EventDataFastSyncStatus struct {
-	On     bool  `json:"on"`
-	Height int64 `json:"height"`
+	Complete bool  `json:"complete"`
+	Height   int64 `json:"height"`
 }
 
 // PUBSUB
