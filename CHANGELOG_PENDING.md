@@ -116,6 +116,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [crypto/merkle] \#6443 Improve HashAlternatives performance (@cuonglm)
 - [crypto/merkle] \#6513 Optimize HashAlternatives (@marbar3778)
 - [p2p/pex] \#6509 Improve addrBook.hash performance (@cuonglm)
+- [cmd/tendermint/commands] \#6623 replace `$HOME/.some/test/dir` with `t.TempDir` (@tanyabouman)
 
 ### BUG FIXES
 
