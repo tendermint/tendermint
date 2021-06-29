@@ -220,7 +220,7 @@ func TestReactor_SyncTime(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 
 	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
-	maxBlockHeight := int64(100)
+	maxBlockHeight := int64(101)
 
 	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())

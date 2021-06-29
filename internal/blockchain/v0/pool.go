@@ -102,7 +102,7 @@ func NewBlockPool(start int64, requestsCh chan<- BlockRequest, errorsCh chan<- p
 
 		requestsCh:   requestsCh,
 		errorsCh:     errorsCh,
-		lastSyncRate: 0.0,
+		lastSyncRate: 0,
 	}
 	bp.BaseService = *service.NewBaseService(nil, "BlockPool", bp)
 	return bp
@@ -226,8 +226,12 @@ func (pool *BlockPool) PopRequest() {
 
 		// the lastSyncRate will be updated every 100 blocks, it uses the adaptive filter
 		// to smooth the block sync rate and the unit represents the number of blocks per second.
-		if pool.height%100 == 0 {
-			pool.lastSyncRate = 0.9*pool.lastSyncRate + 0.1*(100/time.Since(pool.lastHundredBlockTimeStamp).Seconds())
+		if (pool.height-pool.startHeight)%100 == 0 {
+			if pool.lastSyncRate == 0 {
+				pool.lastSyncRate = 100 / time.Since(pool.lastHundredBlockTimeStamp).Seconds()
+			} else {
+				pool.lastSyncRate = 0.9*pool.lastSyncRate + 0.1*(100/time.Since(pool.lastHundredBlockTimeStamp).Seconds())
+			}
 			pool.lastHundredBlockTimeStamp = time.Now()
 		}
 
