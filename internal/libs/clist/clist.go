@@ -196,7 +196,7 @@ func (e *CElement) SetPrev(newPrev *CElement) {
 	e.mtx.Unlock()
 }
 
-// Detach is a shortcut to mark the givne element remove and detach the prev/next elements.
+// Detach is a shortcut to mark the given element remove and detach the prev/next elements.
 func (e *CElement) Detach() {
 	e.mtx.Lock()
 	defer e.mtx.Unlock()
@@ -355,7 +355,7 @@ func (l *CList) PushBack(v interface{}) *CElement {
 
 // Remove removes the given element in the CList
 // NOTE: As per the contract of CList, removed elements cannot be added back.
-// Due to detach the prev/next element when CList removes the given element,
+// Because CList detachse the prev/next element when it removes the given element,
 // please do not use CElement.Next() in the for loop postcondition, uses
 // a variable ahead the for loop and then assigns the Next() element
 // to it in the loop as the postcondition.
@@ -424,7 +424,7 @@ func (l *CList) Clear() {
 		}
 
 		if l.len == 1 {
-			l.wg = waitGroup1() // WaitGroups are difficult to re-use.
+			l.wg = waitGroup1()
 			l.waitCh = make(chan struct{})
 		}
 		l.len--
