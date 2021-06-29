@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/dashevo/dashd-go/btcjson"
 	"io/ioutil"
+	"strconv"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
@@ -49,8 +50,10 @@ func voteToStep(vote *tmproto.Vote) int8 {
 // FilePVKey stores the immutable part of PrivValidator.
 type FilePVKey struct {
 	PrivateKeys          map[string]crypto.QuorumKeys `json:"private_keys"`
-	UpdateHeights        map[int64]crypto.QuorumHash `json:"update_heights"`
-	FirstHeightOfQuorums map[string]int64 `json:"first_height_of_quorums"`
+	// heightString -> quorumHash
+	UpdateHeights        map[string]crypto.QuorumHash `json:"update_heights"`
+	// quorumHash -> heightString
+	FirstHeightOfQuorums map[string]string `json:"first_height_of_quorums"`
 	ProTxHash            crypto.ProTxHash `json:"pro_tx_hash"`
 
 	filePath string
@@ -234,10 +237,12 @@ func WithPrivateKeys(keys []crypto.PrivKey, quorumHashes []crypto.QuorumHash, th
 
 func WithUpdateHeights(updateHeights map[int64]crypto.QuorumHash) FilePVOption {
 	return func(filePV *FilePV) error {
-		filePV.Key.UpdateHeights = updateHeights
+		filePV.Key.UpdateHeights = make(map[string]crypto.QuorumHash)
 		for height, quorumHash := range updateHeights {
+			filePV.Key.UpdateHeights[strconv.Itoa(int(height))] = quorumHash
+
 			if _, ok := filePV.Key.FirstHeightOfQuorums[quorumHash.String()]; ok {
-				filePV.Key.FirstHeightOfQuorums[quorumHash.String()] = height
+				filePV.Key.FirstHeightOfQuorums[quorumHash.String()] = strconv.Itoa(int(height))
 			}
 		}
 		return nil
@@ -366,14 +371,22 @@ func (pv *FilePV) GetQuorumHashes() ([]crypto.QuorumHash, error) {
 	return quorumHashes, nil
 }
 
+func (pv *FilePV) GetFirstQuorumHash() (crypto.QuorumHash, error) {
+	for quorumHashString, _ := range pv.Key.PrivateKeys {
+		return hex.DecodeString(quorumHashString)
+	}
+	return nil, nil
+}
+
 // GetThresholdPublicKey ...
 func (pv *FilePV) GetThresholdPublicKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
 	return pv.Key.PrivateKeys[quorumHash.String()].ThresholdPublicKey, nil
 }
 
 // GetHeight ...
-func (pv *FilePV) GetHeight(quorumHash crypto.QuorumHash) int64 {
-	return pv.Key.FirstHeightOfQuorums[quorumHash.String()]
+func (pv *FilePV) GetHeight(quorumHash crypto.QuorumHash) (int64, error) {
+	intString := pv.Key.FirstHeightOfQuorums[quorumHash.String()]
+	return strconv.ParseInt(intString,10, 64)
 }
 
 // ExtractIntoValidator ...
@@ -454,9 +467,9 @@ func (pv *FilePV) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.
 		PrivKey: privateKey,
 		PubKey: privateKey.PubKey(),
 	}
-	pv.Key.UpdateHeights[height] = quorumHash
+	pv.Key.UpdateHeights[strconv.Itoa(int(height))] = quorumHash
 	if _, ok := pv.Key.FirstHeightOfQuorums[quorumHash.String()]; ok != true {
-		pv.Key.FirstHeightOfQuorums[quorumHash.String()] = height
+		pv.Key.FirstHeightOfQuorums[quorumHash.String()] = strconv.Itoa(int(height))
 	}
 	return nil
 }

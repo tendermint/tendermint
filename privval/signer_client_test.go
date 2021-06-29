@@ -154,8 +154,12 @@ func TestSignerProposal(t *testing.T) {
 			}
 		})
 
-		require.NoError(t, tc.mockPV.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, want.ToProto()))
-		require.NoError(t, tc.signerClient.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, have.ToProto()))
+		_, err := tc.mockPV.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, want.ToProto())
+
+		require.NoError(t, err)
+
+		_, err = tc.signerClient.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, have.ToProto())
+		require.NoError(t, err)
 
 		assert.Equal(t, want.Signature, have.Signature)
 	}

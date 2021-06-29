@@ -72,9 +72,9 @@ func (sptxh SortProTxHash) Swap(i, j int) {
 }
 
 type QuorumKeys struct {
-	PrivKey PrivKey
-	PubKey PubKey
-	ThresholdPublicKey PubKey
+	PrivKey PrivKey `json:"priv_key"`
+	PubKey PubKey `json:"pub_key"`
+	ThresholdPublicKey PubKey `json:"threshold_public_key"`
 }
 
 type PubKey interface {
