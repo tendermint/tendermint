@@ -6,7 +6,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmjson "github.com/tendermint/tendermint/libs/json"
-	tmos "github.com/tendermint/tendermint/libs/os"
+
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -41,26 +41,6 @@ func (nodeKey NodeKey) SaveAs(filePath string) error {
 	return nil
 }
 
-// LoadOrGenNodeKey attempts to load the NodeKey from the given filePath. If
-// the file does not exist, it generates and saves a new NodeKey.
-func LoadOrGenNodeKey(filePath string) (NodeKey, error) {
-	if tmos.FileExists(filePath) {
-		nodeKey, err := LoadNodeKey(filePath)
-		if err != nil {
-			return NodeKey{}, err
-		}
-		return nodeKey, nil
-	}
-
-	nodeKey := GenNodeKey()
-
-	if err := nodeKey.SaveAs(filePath); err != nil {
-		return NodeKey{}, err
-	}
-
-	return nodeKey, nil
-}
-
 // GenNodeKey generates a new node key.
 func GenNodeKey() NodeKey {
 	privKey := ed25519.GenPrivKey()
@@ -68,19 +48,4 @@ func GenNodeKey() NodeKey {
 		ID:      types.NodeIDFromPubKey(privKey.PubKey()),
 		PrivKey: privKey,
 	}
-}
-
-// LoadNodeKey loads NodeKey located in filePath.
-func LoadNodeKey(filePath string) (NodeKey, error) {
-	jsonBytes, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		return NodeKey{}, err
-	}
-	nodeKey := NodeKey{}
-	err = tmjson.Unmarshal(jsonBytes, &nodeKey)
-	if err != nil {
-		return NodeKey{}, err
-	}
-	nodeKey.ID = types.NodeIDFromPubKey(nodeKey.PubKey())
-	return nodeKey, nil
 }
