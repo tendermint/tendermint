@@ -261,12 +261,6 @@ func LoadOrGenFilePV(keyFilePath, stateFilePath string) *FilePV {
 	return pv
 }
 
-// GetAddress returns the address of the validator.
-// Implements PrivValidator.
-func (pv *FilePV) GetAddress() types.Address {
-	return pv.Key.Address
-}
-
 // GetPubKey returns the public key of the validator.
 // Implements PrivValidator.
 func (pv *FilePV) GetPubKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {

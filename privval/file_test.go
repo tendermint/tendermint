@@ -35,10 +35,17 @@ func TestGenLoadValidator(t *testing.T) {
 	height := int64(100)
 	privVal.LastSignState.Height = height
 	privVal.Save()
-	addr := privVal.GetAddress()
-
+	proTxHash, err := privVal.GetProTxHash()
+	assert.NoError(err)
+	publicKey, err := privVal.GetFirstPubKey()
+	assert.NoError(err)
 	privVal = LoadFilePV(tempKeyFile.Name(), tempStateFile.Name())
-	assert.Equal(addr, privVal.GetAddress(), "expected privval addr to be the same")
+	proTxHash2, err := privVal.GetProTxHash()
+	assert.NoError(err)
+	publicKey2, err := privVal.GetFirstPubKey()
+	assert.NoError(err)
+	assert.Equal(proTxHash, proTxHash2, "expected privval proTxHashes to be the same")
+	assert.Equal(publicKey, publicKey2, "expected privval public keys to be the same")
 	assert.Equal(height, privVal.LastSignState.Height, "expected privval.LastHeight to have been saved")
 }
 
@@ -91,9 +98,17 @@ func TestLoadOrGenValidator(t *testing.T) {
 	}
 
 	privVal := LoadOrGenFilePV(tempKeyFilePath, tempStateFilePath)
-	addr := privVal.GetAddress()
+	proTxHash, err := privVal.GetProTxHash()
+	assert.NoError(err)
+	publicKey, err := privVal.GetFirstPubKey()
+	assert.NoError(err)
 	privVal = LoadOrGenFilePV(tempKeyFilePath, tempStateFilePath)
-	assert.Equal(addr, privVal.GetAddress(), "expected privval addr to be the same")
+	proTxHash2, err := privVal.GetProTxHash()
+	assert.NoError(err)
+	publicKey2, err := privVal.GetFirstPubKey()
+	assert.NoError(err)
+	assert.Equal(proTxHash, proTxHash2, "expected privval proTxHashes to be the same")
+	assert.Equal(publicKey, publicKey2, "expected privval public keys to be the same")
 }
 
 func TestUnmarshalValidatorState(t *testing.T) {
