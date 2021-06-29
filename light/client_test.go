@@ -77,7 +77,9 @@ func setupDashCoreRpcMock(t *testing.T) {
 func setupTrustedStoreMock(t *testing.T) {
 	trustedStoreMock = dbs.New(dbm.NewMemDB(), chainID)
 	// Adding one block to the store
-	_ = trustedStoreMock.SaveLightBlock(l1)
+	err := trustedStoreMock.SaveLightBlock(l1)
+
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		trustedStoreMock = nil
@@ -167,70 +169,69 @@ func TestClient_Cleanup(t *testing.T) {
 	assert.Nil(t, l)
 }
 
-// trustedHeader.Height == options.Height
-func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
+func TestClientRestoresTrustedHeaderAfterStartupWhenHashesAreEqual(t *testing.T) {
 	setupDashCoreRpcMock(t)
 
-	// 1. options.Hash == trustedHeader.Hash
-	{
-		trustedStore := dbs.New(dbm.NewMemDB(), chainID)
-		err := trustedStore.SaveLightBlock(l1)
-		require.NoError(t, err)
+	// options.Hash == trustedHeader.Hash
+	trustedStore := dbs.New(dbm.NewMemDB(), chainID)
+	err := trustedStore.SaveLightBlock(l1)
+	require.NoError(t, err)
 
-		c, err := light.NewClient(
-			ctx,
-			chainID,
-			fullNode,
-			[]provider.Provider{fullNode},
-			trustedStore,
-			dashCoreRpcClientMock,
-			light.Logger(log.TestingLogger()),
-		)
-		require.NoError(t, err)
+	c, err := light.NewClient(
+		ctx,
+		chainID,
+		fullNode,
+		[]provider.Provider{fullNode},
+		trustedStore,
+		dashCoreRpcClientMock,
+		light.Logger(log.TestingLogger()),
+	)
+	require.NoError(t, err)
 
-		l, err := c.TrustedLightBlock(1)
-		assert.NoError(t, err)
-		assert.NotNil(t, l)
-		assert.Equal(t, l.Hash(), h1.Hash())
-		assert.Equal(t, l.ValidatorSet.Hash(), h1.ValidatorsHash.Bytes())
-	}
+	l, err := c.TrustedLightBlock(1)
+	assert.NoError(t, err)
+	assert.NotNil(t, l)
+	assert.Equal(t, l.Hash(), h1.Hash())
+	assert.Equal(t, l.ValidatorSet.Hash(), h1.ValidatorsHash.Bytes())
+}
 
-	// 2. options.Hash != trustedHeader.Hash
-	{
-		trustedStore := dbs.New(dbm.NewMemDB(), chainID)
-		err := trustedStore.SaveLightBlock(l1)
-		require.NoError(t, err)
+// trustedHeader.Height == options.Height
+func TestClientNotRestoresTrustedHeaderAfterStartupWhenHashesAreNotEqual(t *testing.T) {
+	setupDashCoreRpcMock(t)
+	// options.Hash != trustedHeader.Hash
+	trustedStore := dbs.New(dbm.NewMemDB(), chainID)
+	err := trustedStore.SaveLightBlock(l1)
+	require.NoError(t, err)
 
-		// header1 != h1
-		header1 := keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Hour), nil, vals, vals,
-			hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys))
+	// header1 != h1
+	header1 := keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Hour), nil, vals, vals,
+		hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys))
 
-		primary := mockp.New(
-			chainID,
-			map[int64]*types.SignedHeader{
-				// trusted header
-				1: header1,
-			},
-			valSet,
-		)
+	primary := mockp.New(
+		chainID,
+		map[int64]*types.SignedHeader{
+			// trusted header
+			1: header1,
+		},
+		valSet,
+	)
 
-		c, err := light.NewClient(
-			ctx,
-			chainID,
-			primary,
-			[]provider.Provider{primary},
-			trustedStore,
-			dashCoreRpcClientMock,
-			light.Logger(log.TestingLogger()),
-		)
-		require.NoError(t, err)
+	c, err := light.NewClient(
+		ctx,
+		chainID,
+		primary,
+		[]provider.Provider{primary},
+		trustedStore,
+		dashCoreRpcClientMock,
+		light.Logger(log.TestingLogger()),
+	)
+	require.NoError(t, err)
 
-		l, err := c.TrustedLightBlock(1)
-		assert.NoError(t, err)
-		if assert.NotNil(t, l) {
-			assert.Equal(t, l.Hash(), header1.Hash())
-			assert.NoError(t, l.ValidateBasic(chainID))
-		}
+	l, err := c.TrustedLightBlock(1)
+	assert.NoError(t, err)
+	if assert.NotNil(t, l) {
+		assert.Equal(t, l.Hash(), header1.Hash())
+		assert.NoError(t, l.ValidateBasic(chainID))
 	}
 }
 
