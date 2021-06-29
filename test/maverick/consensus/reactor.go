@@ -675,7 +675,7 @@ OUTER_LOOP:
 			// Load the block commit for prs.Height,
 			// which contains precommit signatures for prs.Height.
 			if commit := conR.conS.blockStore.LoadBlockCommit(prs.Height); commit != nil {
-				if ps.PickSendVote(commit) {
+				if ps.SendCommit(commit) {
 					logger.Debug("Picked Catchup commit to send", "height", prs.Height)
 					continue OUTER_LOOP
 				}
@@ -1043,6 +1043,18 @@ func (ps *PeerState) SetHasProposalBlockPart(height int64, round int32, index in
 	}
 
 	ps.PRS.ProposalBlockParts.SetIndex(index, true)
+}
+
+func (ps *PeerState) SendCommit(commit *types.Commit) bool {
+	if commit != nil {
+		msg := &tmcon.CommitMessage{commit}
+		ps.logger.Debug("Sending commit message", "peer", ps.peer, "ps", ps, "commit", commit)
+		if ps.peer.Send(VoteChannel, tmcon.MustEncode(msg)) {
+			ps.SetHasCommit(commit)
+			return true
+		}
+	}
+	return false
 }
 
 // PickSendVote picks a vote and sends it to the peer.
