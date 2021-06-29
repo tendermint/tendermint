@@ -4,6 +4,7 @@ import (
 	"context"
 	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"github.com/tendermint/tendermint/light"
+	"github.com/tendermint/tendermint/light/store"
 	"sync"
 	"testing"
 	"time"
@@ -60,7 +61,9 @@ var (
 	)
 	deadNode = mockp.NewDeadMock(chainID)
 	// largeFullNode = mockp.New(genMockNode(chainID, 10, 3, 0, bTime))
+
 	dashCoreRpcClientMock dashcore.RpcClient
+	trustedStoreMock      store.Store
 )
 
 func setupDashCoreRpcMock(t *testing.T) {
@@ -68,6 +71,16 @@ func setupDashCoreRpcMock(t *testing.T) {
 
 	t.Cleanup(func() {
 		dashCoreRpcClientMock = nil
+	})
+}
+
+func setupTrustedStoreMock(t *testing.T) {
+	trustedStoreMock = dbs.New(dbm.NewMemDB(), chainID)
+	// Adding one block to the store
+	_ = trustedStoreMock.SaveLightBlock(l1)
+
+	t.Cleanup(func() {
+		trustedStoreMock = nil
 	})
 }
 
@@ -130,13 +143,14 @@ func TestClientBisectionBetweenTrustedHeaders(t *testing.T) {
 
 func TestClient_Cleanup(t *testing.T) {
 	setupDashCoreRpcMock(t)
+	setupTrustedStoreMock(t)
 
 	c, err := light.NewClient(
 		ctx,
 		chainID,
 		fullNode,
 		[]provider.Provider{fullNode},
-		dbs.New(dbm.NewMemDB(), chainID),
+		trustedStoreMock,
 		dashCoreRpcClientMock,
 		light.Logger(log.TestingLogger()),
 	)
