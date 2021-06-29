@@ -129,7 +129,9 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [p2p/pex] \#6509 Improve addrBook.hash performance (@cuonglm)
 - [consensus/metrics] \#6549 Change block_size gauge to a histogram for better observability over time (@marbar3778)
 - [statesync] \#6587 Increase chunk priority and re-request chunks that don't arrive (@cmwaters)
+- [state/privval] \#6578 No GetPubKey retry beyond the proposal/voting window (@JayT106)
 - [rpc] \#6615 Add TotalGasUsed to block_results response (@crypto-facs)
+- [cmd/tendermint/commands] \#6623 replace `$HOME/.some/test/dir` with `t.TempDir` (@tanyabouman)
 
 ### BUG FIXES
 
