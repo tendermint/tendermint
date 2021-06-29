@@ -145,7 +145,7 @@ grpc-laddr = ""
 # 1024 - 40 - 10 - 50 = 924 = ~900
 grpc-max-open-connections = 900
 
-# Activate unsafe RPC commands like /dial_seeds, /re_index, and /unsafe_flush_mempool
+# Activate unsafe RPC commands like /dial_seeds and /unsafe_flush_mempool
 unsafe = false
 
 # Maximum number of simultaneous connections (including WebSocket).
