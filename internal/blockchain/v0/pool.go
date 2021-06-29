@@ -227,10 +227,11 @@ func (pool *BlockPool) PopRequest() {
 		// the lastSyncRate will be updated every 100 blocks, it uses the adaptive filter
 		// to smooth the block sync rate and the unit represents the number of blocks per second.
 		if (pool.height-pool.startHeight)%100 == 0 {
+			newSyncRate := 100 / time.Since(pool.lastHundredBlockTimeStamp).Seconds()
 			if pool.lastSyncRate == 0 {
-				pool.lastSyncRate = 100 / time.Since(pool.lastHundredBlockTimeStamp).Seconds()
+				pool.lastSyncRate = newSyncRate
 			} else {
-				pool.lastSyncRate = 0.9*pool.lastSyncRate + 0.1*(100/time.Since(pool.lastHundredBlockTimeStamp).Seconds())
+				pool.lastSyncRate = 0.9*pool.lastSyncRate + 0.1*newSyncRate
 			}
 			pool.lastHundredBlockTimeStamp = time.Now()
 		}

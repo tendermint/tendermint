@@ -427,10 +427,11 @@ func (r *BlockchainReactor) demux(events <-chan Event) {
 			case pcBlockProcessed:
 				r.setSyncHeight(event.height)
 				if (r.syncHeight-r.syncStartHeight)%100 == 0 {
+					newSyncRate := 100 / time.Since(lastHundred).Seconds()
 					if r.lastSyncRate == 0 {
-						r.lastSyncRate = 100 / time.Since(lastHundred).Seconds()
+						r.lastSyncRate = newSyncRate
 					} else {
-						r.lastSyncRate = 0.9*r.lastSyncRate + 0.1*(100/time.Since(lastHundred).Seconds())
+						r.lastSyncRate = 0.9*r.lastSyncRate + 0.1*newSyncRate
 					}
 					r.logger.Info("Fast Sync Rate", "height", r.syncHeight,
 						"max_peer_height", r.maxPeerHeight, "blocks/s", r.lastSyncRate)
