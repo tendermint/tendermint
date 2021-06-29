@@ -226,6 +226,9 @@ func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*Duplica
 // punishment of the malicious validators. There are three forms of attacks: Lunatic, Equivocation
 // and Amnesia. These attacks are exhaustive. You can find a more detailed overview of this at
 // tendermint/docs/architecture/adr-047-handling-evidence-from-light-client.md
+// 
+// CommonHeight is used to indicate the type of attack. If the height is different to the conflicting block
+// height, then nodes will treat this as of the Lunatic form, else it is of the Equivocation form. 
 type LightClientAttackEvidence struct {
 	ConflictingBlock *LightBlock
 	CommonHeight     int64
