@@ -266,7 +266,3 @@ type ResultEvent struct {
 	Data           types.TMEventData   `json:"data"`
 	Events         map[string][]string `json:"events"`
 }
-
-type ResultUnsafeReIndex struct {
-	Result string `json:"result"`
-}
