@@ -396,7 +396,7 @@ func newLightClientAttackEvidence(conflicted, trusted, common *types.LightBlock)
 	ev := &types.LightClientAttackEvidence{ConflictingBlock: conflicted}
 	// We use the common height to indicate the form of the attack.
 	// if this is an equivocation or amnesia attack, i.e. the validator sets are the same, then we
-	// return the height of the conflicting block as the common height. If instead it is a lunatic 
+	// return the height of the conflicting block as the common height. If instead it is a lunatic
 	// attack and the validator sets are not the same then we send the height of the common header.
 	if ev.ConflictingHeaderIsInvalid(trusted.Header) {
 		ev.CommonHeight = common.Height
