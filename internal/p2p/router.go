@@ -603,15 +603,16 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 	}
 
 	if err := r.nodeInfo.CompatibleWith(peerInfo); err != nil {
-		r.peerManager.Remove(peerInfo.NodeID)
 		r.logger.Error("peer rejected due to incompatibility", "node", peerInfo.NodeID, "err", err)
-		conn.Close()
+		removeErr := r.peerManager.Remove(peerInfo.NodeID)
+		if removeErr != nil {
+			r.logger.Error("failed to remove peer from manager", "err", err)
+		}
 		return
 	}
 
 	if err := r.filterPeersID(ctx, peerInfo.NodeID); err != nil {
 		r.logger.Debug("peer filtered by node ID", "node", peerInfo.NodeID, "err", err)
-		conn.Close()
 		return
 	}
 
@@ -711,8 +712,11 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 	}
 
 	if err := r.nodeInfo.CompatibleWith(peerInfo); err != nil {
-		r.peerManager.Remove(peerInfo.NodeID)
 		r.logger.Error("peer rejected due to incompatibility", "node", peerInfo.NodeID, "err", err)
+		removeErr := r.peerManager.Remove(peerInfo.NodeID)
+		if removeErr != nil {
+			r.logger.Error("failed to remove peer from manager", "err", err)
+		}
 		conn.Close()
 		return
 	}
