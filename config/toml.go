@@ -247,7 +247,8 @@ laddr = "{{ .P2P.ListenAddress }}"
 # Address to advertise to peers for them to dial
 # If empty, will use the same port as the laddr,
 # and will introspect on the listener or use UPnP
-# to figure out the address.
+# to figure out the address. ip and port are required
+# example: 159.89.10.97:26656
 external_address = "{{ .P2P.ExternalAddress }}"
 
 # Comma separated list of seed nodes to connect to
