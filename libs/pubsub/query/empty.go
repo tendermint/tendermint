@@ -9,7 +9,7 @@ type Empty struct {
 }
 
 // Matches always returns true.
-func (Empty) Matches(tags []types.Event) (bool, error) {
+func (Empty) Matches(events []types.Event) (bool, error) {
 	return true, nil
 }
 
