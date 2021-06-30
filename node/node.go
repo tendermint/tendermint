@@ -21,7 +21,6 @@ import (
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
-	pubp2p "github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/pex"
 	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/libs/log"
@@ -90,7 +89,7 @@ type nodeImpl struct {
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
 // It implements NodeProvider.
 func newDefaultNode(config *cfg.Config, logger log.Logger) (service.Service, error) {
-	nodeKey, err := pubp2p.LoadOrGenNodeKey(config.NodeKeyFile())
+	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	if err != nil {
 		return nil, fmt.Errorf("failed to load or gen node key %s: %w", config.NodeKeyFile(), err)
 	}

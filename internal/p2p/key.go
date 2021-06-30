@@ -41,15 +41,6 @@ func (nodeKey NodeKey) SaveAs(filePath string) error {
 	return nil
 }
 
-// GenNodeKey generates a new node key.
-func GenNodeKey() NodeKey {
-	privKey := ed25519.GenPrivKey()
-	return NodeKey{
-		ID:      types.NodeIDFromPubKey(privKey.PubKey()),
-		PrivKey: privKey,
-	}
-}
-
 // LoadOrGenNodeKey attempts to load the NodeKey from the given filePath. If
 // the file does not exist, it generates and saves a new NodeKey.
 func LoadOrGenNodeKey(filePath string) (NodeKey, error) {
@@ -68,6 +59,15 @@ func LoadOrGenNodeKey(filePath string) (NodeKey, error) {
 	}
 
 	return nodeKey, nil
+}
+
+// GenNodeKey generates a new node key.
+func GenNodeKey() NodeKey {
+	privKey := ed25519.GenPrivKey()
+	return NodeKey{
+		ID:      types.NodeIDFromPubKey(privKey.PubKey()),
+		PrivKey: privKey,
+	}
 }
 
 // LoadNodeKey loads NodeKey located in filePath.
