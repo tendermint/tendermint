@@ -825,12 +825,12 @@ func (sw *Switch) addOutboundPeerWithConfig(
 				// to avoid dialing in the future.
 				sw.addrBook.RemoveAddress(addr)
 				sw.addrBook.AddOurAddress(addr)
-
-				return err
 			}
 			if e.IsIncompatible() {
 				sw.addrBook.RemoveAddress(addr)
 			}
+
+			return err
 		}
 
 		// retry persistent peers after

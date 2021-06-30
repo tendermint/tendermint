@@ -272,6 +272,35 @@ func TestPeerManager_Add(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestPeerManager_Remove(t *testing.T) {
+	// create an empty peer manager
+	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+
+	// add a pair of nodes to the peer manager
+	aID := types.NodeID(strings.Repeat("a", 40))
+	_, err = peerManager.Add(p2p.NodeAddress{Protocol: "tcp", NodeID: aID})
+	require.NoError(t, err)
+	bID := types.NodeID(strings.Repeat("b", 40))
+	_, err = peerManager.Add(p2p.NodeAddress{Protocol: "tcp", NodeID: bID})
+	require.NoError(t, err)
+
+	// ensure that the peers are present
+	require.Len(t, peerManager.Peers(), 2)
+
+	// remove one of the added peers
+	err = peerManager.Remove(aID)
+	require.NoError(t, err)
+
+	// ensure that only one peer is present in the peer manager
+	addressResultA := peerManager.Addresses(aID)
+	require.Len(t, addressResultA, 0)
+	addressResultB := peerManager.Addresses(bID)
+	require.Len(t, addressResultB, 1)
+
+	require.Len(t, peerManager.Peers(), 1)
+}
+
 func TestPeerManager_DialNext(t *testing.T) {
 	a := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("a", 40))}
 

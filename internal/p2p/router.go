@@ -602,8 +602,16 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 		return
 	}
 
+	if err := r.nodeInfo.CompatibleWith(peerInfo); err != nil {
+		r.peerManager.Remove(peerInfo.NodeID)
+		r.logger.Error("peer rejected due to incompatibility", "node", peerInfo.NodeID, "err", err)
+		conn.Close()
+		return
+	}
+
 	if err := r.filterPeersID(ctx, peerInfo.NodeID); err != nil {
 		r.logger.Debug("peer filtered by node ID", "node", peerInfo.NodeID, "err", err)
+		conn.Close()
 		return
 	}
 
@@ -688,7 +696,7 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 		return
 	}
 
-	_, _, err = r.handshakePeer(ctx, conn, address.NodeID)
+	peerInfo, _, err := r.handshakePeer(ctx, conn, address.NodeID)
 	switch {
 	case errors.Is(err, context.Canceled):
 		conn.Close()
@@ -698,6 +706,13 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 		if err = r.peerManager.DialFailed(address); err != nil {
 			r.logger.Error("failed to report dial failure", "peer", address, "err", err)
 		}
+		conn.Close()
+		return
+	}
+
+	if err := r.nodeInfo.CompatibleWith(peerInfo); err != nil {
+		r.peerManager.Remove(peerInfo.NodeID)
+		r.logger.Error("peer rejected due to incompatibility", "node", peerInfo.NodeID, "err", err)
 		conn.Close()
 		return
 	}
@@ -806,6 +821,14 @@ func (r *Router) handshakePeer(
 	if expectID != "" && expectID != peerInfo.NodeID {
 		return peerInfo, peerKey, fmt.Errorf("expected to connect with peer %q, got %q",
 			expectID, peerInfo.NodeID)
+	}
+	if err := r.nodeInfo.CompatibleWith(peerInfo); err != nil {
+		return peerInfo, peerKey, ErrRejected{
+			conn:           conn.(*mConnConnection).conn,
+			err:            err,
+			id:             peerInfo.ID(),
+			isIncompatible: true,
+		}
 	}
 	return peerInfo, peerKey, nil
 }
