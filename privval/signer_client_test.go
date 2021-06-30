@@ -33,7 +33,8 @@ func getSignerTestCases(t *testing.T) []signerTestCase {
 	// Get test cases for each possible dialer (DialTCP / DialUnix / etc)
 	for _, dtc := range getDialerTestCases(t) {
 		chainID := tmrand.Str(12)
-		mockPV := types.NewMockPV()
+		quorumHash := crypto.RandQuorumHash()
+		mockPV := types.NewMockPVForQuorum(quorumHash)
 
 		// get a pair of signer listener, signer dialer endpoints
 		sl, sd := getMockEndpoints(t, dtc.addr, dtc.dialer)
@@ -47,7 +48,7 @@ func getSignerTestCases(t *testing.T) []signerTestCase {
 		tc := signerTestCase{
 			chainID:      chainID,
 			quorumType:   btcjson.LLMQType_5_60,
-			quorumHash:   crypto.RandQuorumHash(),
+			quorumHash:   quorumHash,
 			mockPV:       mockPV,
 			signerClient: sc,
 			signerServer: ss,

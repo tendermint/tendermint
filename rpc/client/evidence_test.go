@@ -9,8 +9,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 
-	"github.com/tendermint/tendermint/crypto/bls12381"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -40,19 +38,22 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	v := vote.ToProto()
 	v2 := vote2.ToProto()
 
-	vote.BlockSignature, err = val.Key.PrivKey.SignDigest(types.VoteBlockSignId(chainID, v, quorumType, quorumHash))
+	privKey, err := val.Key.PrivateKeyForQuorumHash(quorumHash)
 	require.NoError(t, err)
 
-	vote2.BlockSignature, err = val.Key.PrivKey.SignDigest(types.VoteBlockSignId(chainID, v2, quorumType, quorumHash))
+	vote.BlockSignature, err = privKey.SignDigest(types.VoteBlockSignId(chainID, v, quorumType, quorumHash))
 	require.NoError(t, err)
 
-	vote.StateSignature, err = val.Key.PrivKey.SignDigest(types.VoteStateSignId(chainID, v, quorumType, quorumHash))
+	vote2.BlockSignature, err = privKey.SignDigest(types.VoteBlockSignId(chainID, v2, quorumType, quorumHash))
 	require.NoError(t, err)
 
-	vote2.StateSignature, err = val.Key.PrivKey.SignDigest(types.VoteStateSignId(chainID, v2, quorumType, quorumHash))
+	vote.StateSignature, err = privKey.SignDigest(types.VoteStateSignId(chainID, v, quorumType, quorumHash))
 	require.NoError(t, err)
 
-	validator := types.NewValidator(val.Key.PubKey, 100, val.Key.ProTxHash)
+	vote2.StateSignature, err = privKey.SignDigest(types.VoteStateSignId(chainID, v2, quorumType, quorumHash))
+	require.NoError(t, err)
+
+	validator := types.NewValidator(privKey.PubKey(), 100, val.Key.ProTxHash)
 	valSet := types.NewValidatorSet([]*types.Validator{validator}, validator.PubKey, quorumType, quorumHash, true)
 
 	return types.NewDuplicateVoteEvidence(vote, vote2, defaultTestTime, valSet)
@@ -149,8 +150,9 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 		require.NoError(t, err)
 
 		proTxHash := pv.Key.ProTxHash
-		bls12381pub := pv.Key.PubKey.(bls12381.PubKey)
-		rawpub := bls12381pub.Bytes()
+		pubKey, err := pv.GetFirstPubKey()
+		require.NoError(t, err, "private validator must have a public key")
+		rawpub := pubKey.Bytes()
 		result2, err := c.ABCIQuery(context.Background(), "/val", proTxHash.Bytes())
 		require.NoError(t, err)
 		qres := result2.Response
