@@ -296,13 +296,13 @@ func (err *ErrEvidenceOverflow) Error() string {
 
 // unstable - use only for testing
 
-// assumes the round to be 0 and the validator index to be 0
+// NewMockDuplicateVoteEvidence assumes the round to be 0 and the validator index to be 0
 func NewMockDuplicateVoteEvidence(height int64, time time.Time, chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) *DuplicateVoteEvidence {
-	val := NewMockPV()
+	val := NewMockPVForQuorum(quorumHash)
 	return NewMockDuplicateVoteEvidenceWithValidator(height, time, val, chainID, quorumType, quorumHash)
 }
 
-// assumes voting power to be DefaultDashVotingPower and validator to be the only one in the set
+// NewMockDuplicateVoteEvidenceWithValidator assumes voting power to be DefaultDashVotingPower and validator to be the only one in the set
 func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
 	pv PrivValidator, chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) *DuplicateVoteEvidence {
 	pubKey, err := pv.GetPubKey(quorumHash)

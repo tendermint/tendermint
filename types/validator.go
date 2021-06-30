@@ -219,12 +219,13 @@ func ValidatorFromProto(vp *tmproto.Validator) (*Validator, error) {
 // RandValidator returns a randomized validator, useful for testing.
 // UNSTABLE
 func RandValidator() (*Validator, PrivValidator) {
-	privVal := NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	privVal := NewMockPVForQuorum(quorumHash)
 	proTxHash, err := privVal.GetProTxHash()
 	if err != nil {
 		panic(fmt.Errorf("could not retrieve proTxHash %w", err))
 	}
-	pubKey, err := privVal.GetPubKey(crypto.QuorumHash{})
+	pubKey, err := privVal.GetPubKey(quorumHash)
 	if err != nil {
 		panic(fmt.Errorf("could not retrieve pubkey %w", err))
 	}

@@ -87,6 +87,20 @@ func NewMockPV() *MockPV {
 		ProTxHash: crypto.RandProTxHash(), breakProposalSigning: false, breakVoteSigning: false}
 }
 
+func NewMockPVForQuorum(quorumHash crypto.QuorumHash) *MockPV {
+	privKey := bls12381.GenPrivKey()
+	quorumKeys := crypto.QuorumKeys{
+		PrivKey: privKey,
+		PubKey: privKey.PubKey(),
+		ThresholdPublicKey: privKey.PubKey(),
+	}
+	privateKeysMap := make(map[string]crypto.QuorumKeys)
+	privateKeysMap[quorumHash.String()] = quorumKeys
+
+	return &MockPV{PrivateKeys: privateKeysMap, UpdateHeights: nil, FirstHeightOfQuorums: nil,
+		ProTxHash: crypto.RandProTxHash(), breakProposalSigning: false, breakVoteSigning: false}
+}
+
 // NewMockPVWithParams allows one to create a MockPV instance, but with finer
 // grained control over the operation of the mock validator. This is useful for
 // mocking test failures.

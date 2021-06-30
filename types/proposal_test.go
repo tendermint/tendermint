@@ -59,15 +59,15 @@ func TestProposalString(t *testing.T) {
 }
 
 func TestProposalVerifySignature(t *testing.T) {
-	privVal := NewMockPV()
-	pubKey, err := privVal.GetPubKey(crypto.QuorumHash{})
+	quorumHash := crypto.RandQuorumHash()
+	privVal := NewMockPVForQuorum(quorumHash)
+	pubKey, err := privVal.GetPubKey(quorumHash)
 	require.NoError(t, err)
 
 	prop := NewProposal(
 		4, 1, 2, 2,
 		BlockID{tmrand.Bytes(tmhash.Size), PartSetHeader{777, tmrand.Bytes(tmhash.Size)}})
 	p := prop.ToProto()
-	quorumHash := crypto.RandQuorumHash()
 	signId := ProposalBlockSignId("test_chain_id", p, btcjson.LLMQType_5_60, quorumHash)
 
 	// sign it
@@ -128,8 +128,8 @@ func BenchmarkProposalVerifySignature(b *testing.B) {
 }
 
 func TestProposalValidateBasic(t *testing.T) {
-
-	privVal := NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	privVal := NewMockPVForQuorum(quorumHash)
 	testCases := []struct {
 		testName         string
 		malleateProposal func(*Proposal)
@@ -159,7 +159,7 @@ func TestProposalValidateBasic(t *testing.T) {
 				4, 1, 2, 2,
 				blockID)
 			p := prop.ToProto()
-			_, err := privVal.SignProposal("test_chain_id", 0, crypto.QuorumHash{}, p)
+			_, err := privVal.SignProposal("test_chain_id", 0, quorumHash, p)
 			prop.Signature = p.Signature
 			require.NoError(t, err)
 			tc.malleateProposal(prop)

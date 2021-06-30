@@ -137,14 +137,14 @@ func TestVoteProposalNotEq(t *testing.T) {
 }
 
 func TestVoteVerifySignature(t *testing.T) {
-	privVal := NewMockPV()
-	pubkey, err := privVal.GetPubKey(crypto.QuorumHash{})
+	quorumHash := crypto.RandQuorumHash()
+	privVal := NewMockPVForQuorum(quorumHash)
+	pubkey, err := privVal.GetPubKey(quorumHash)
 	require.NoError(t, err)
 
 	vote := examplePrecommit()
 	v := vote.ToProto()
 	quorumType := btcjson.LLMQType_5_60
-	quorumHash := crypto.RandQuorumHash()
 	signId := VoteBlockSignId("test_chain_id", v, quorumType, quorumHash)
 	signStateId := VoteStateSignId("test_chain_id", v, quorumType, quorumHash)
 
@@ -200,12 +200,12 @@ func TestIsVoteTypeValid(t *testing.T) {
 }
 
 func TestVoteVerify(t *testing.T) {
-	privVal := NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	privVal := NewMockPVForQuorum(quorumHash)
 	proTxHash, err := privVal.GetProTxHash()
 	require.NoError(t, err)
 
 	quorumType := btcjson.LLMQType_5_60
-	quorumHash := crypto.RandQuorumHash()
 
 	pubkey, err := privVal.GetPubKey(quorumHash)
 	require.NoError(t, err)
@@ -239,7 +239,8 @@ func TestVoteString(t *testing.T) {
 }
 
 func TestVoteValidateBasic(t *testing.T) {
-	privVal := NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	privVal := NewMockPVForQuorum(quorumHash)
 
 	testCases := []struct {
 		testName     string
@@ -262,7 +263,7 @@ func TestVoteValidateBasic(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			vote := examplePrecommit()
 			v := vote.ToProto()
-			err := privVal.SignVote("test_chain_id", 0, crypto.QuorumHash{}, v)
+			err := privVal.SignVote("test_chain_id", 0, quorumHash, v)
 			vote.BlockSignature = v.BlockSignature
 			vote.StateSignature = v.StateSignature
 			require.NoError(t, err)
@@ -273,10 +274,11 @@ func TestVoteValidateBasic(t *testing.T) {
 }
 
 func TestVoteProtobuf(t *testing.T) {
-	privVal := NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	privVal := NewMockPVForQuorum(quorumHash)
 	vote := examplePrecommit()
 	v := vote.ToProto()
-	err := privVal.SignVote("test_chain_id", 0, crypto.QuorumHash{}, v)
+	err := privVal.SignVote("test_chain_id", 0, quorumHash, v)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
 	require.NoError(t, err)
