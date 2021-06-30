@@ -13,6 +13,7 @@ import (
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/sync"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -34,8 +35,8 @@ type blockStore interface {
 type BlockchainReactor struct {
 	p2p.BaseReactor
 
-	fastSync    bool // if true, enable fast sync on start
-	stateSynced bool // set to true when SwitchToFastSync is called by state sync
+	fastSync    *sync.AtomicBool // enable fast sync on start when it's been Set
+	stateSynced bool             // set to true when SwitchToFastSync is called by state sync
 	scheduler   *Routine
 	processor   *Routine
 	logger      log.Logger
@@ -77,9 +78,9 @@ func newReactor(state state.State, store blockStore, reporter behavior.Reporter,
 		store:           store,
 		reporter:        reporter,
 		logger:          log.NewNopLogger(),
-		fastSync:        fastSync,
+		fastSync:        sync.NewBool(fastSync),
 		syncStartHeight: initHeight,
-		syncStartTime:   time.Now(),
+		syncStartTime:   time.Time{},
 		lastSyncRate:    0,
 	}
 }
@@ -136,7 +137,7 @@ func (r *BlockchainReactor) SetLogger(logger log.Logger) {
 // Start implements cmn.Service interface
 func (r *BlockchainReactor) Start() error {
 	r.reporter = behavior.NewSwitchReporter(r.BaseReactor.Switch)
-	if r.fastSync {
+	if r.fastSync.IsSet() {
 		err := r.startSync(nil)
 		if err != nil {
 			return fmt.Errorf("failed to start fast sync: %w", err)
@@ -446,6 +447,7 @@ func (r *BlockchainReactor) demux(events <-chan Event) {
 					r.logger.Error("Failed to switch to consensus reactor")
 				}
 				r.endSync()
+				r.fastSync.UnSet()
 				return
 			case noOpEvent:
 			default:
@@ -615,10 +617,17 @@ func (r *BlockchainReactor) GetMaxPeerBlockHeight() int64 {
 }
 
 func (r *BlockchainReactor) GetTotalSyncedTime() time.Duration {
+	if !r.fastSync.IsSet() || r.syncStartTime.IsZero() {
+		return time.Duration(0)
+	}
 	return time.Since(r.syncStartTime)
 }
 
 func (r *BlockchainReactor) GetRemainingSyncTime() time.Duration {
+	if !r.fastSync.IsSet() {
+		return time.Duration(0)
+	}
+
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 

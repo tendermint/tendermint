@@ -11,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	tmSync "github.com/tendermint/tendermint/libs/sync"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
@@ -84,7 +85,7 @@ type Reactor struct {
 	store       *store.BlockStore
 	pool        *BlockPool
 	consReactor consensusReactor
-	fastSync    bool
+	fastSync    *tmSync.AtomicBool
 
 	blockchainCh  *p2p.Channel
 	peerUpdates   *p2p.PeerUpdates
@@ -134,7 +135,7 @@ func NewReactor(
 		store:         store,
 		pool:          NewBlockPool(startHeight, requestsCh, errorsCh),
 		consReactor:   consReactor,
-		fastSync:      fastSync,
+		fastSync:      tmSync.NewBool(fastSync),
 		requestsCh:    requestsCh,
 		errorsCh:      errorsCh,
 		blockchainCh:  blockchainCh,
@@ -142,7 +143,7 @@ func NewReactor(
 		peerUpdatesCh: make(chan p2p.Envelope),
 		closeCh:       make(chan struct{}),
 		metrics:       metrics,
-		syncStartTime: time.Now(),
+		syncStartTime: time.Time{},
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Blockchain", r)
@@ -157,7 +158,7 @@ func NewReactor(
 // If fastSync is enabled, we also start the pool and the pool processing
 // goroutine. If the pool fails to start, an error is returned.
 func (r *Reactor) OnStart() error {
-	if r.fastSync {
+	if r.fastSync.IsSet() {
 		if err := r.pool.Start(); err != nil {
 			return err
 		}
@@ -175,7 +176,7 @@ func (r *Reactor) OnStart() error {
 // OnStop stops the reactor by signaling to all spawned goroutines to exit and
 // blocking until they all exit.
 func (r *Reactor) OnStop() {
-	if r.fastSync {
+	if r.fastSync.IsSet() {
 		if err := r.pool.Stop(); err != nil {
 			r.Logger.Error("failed to stop pool", "err", err)
 		}
@@ -366,7 +367,7 @@ func (r *Reactor) processPeerUpdates() {
 // SwitchToFastSync is called by the state sync reactor when switching to fast
 // sync.
 func (r *Reactor) SwitchToFastSync(state sm.State) error {
-	r.fastSync = true
+	r.fastSync.Set()
 	r.initialState = state
 	r.pool.height = state.LastBlockHeight + 1
 
@@ -488,6 +489,8 @@ FOR_LOOP:
 				r.Logger.Error("failed to stop pool", "err", err)
 			}
 
+			r.fastSync.UnSet()
+
 			if r.consReactor != nil {
 				r.consReactor.SwitchToConsensus(state, blocksSynced > 0 || stateSynced)
 			}
@@ -604,10 +607,17 @@ func (r *Reactor) GetMaxPeerBlockHeight() int64 {
 }
 
 func (r *Reactor) GetTotalSyncedTime() time.Duration {
+	if !r.fastSync.IsSet() || r.syncStartTime.IsZero() {
+		return time.Duration(0)
+	}
 	return time.Since(r.syncStartTime)
 }
 
 func (r *Reactor) GetRemainingSyncTime() time.Duration {
+	if !r.fastSync.IsSet() {
+		return time.Duration(0)
+	}
+
 	targetSyncs := r.pool.targetSyncBlocks()
 	currentSyncs := r.store.Height() - r.pool.startHeight + 1
 	lastSyncRate := r.pool.getLastSyncRate()
