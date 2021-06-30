@@ -129,7 +129,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger, misbehaviors map[int6
 	}
 
 	return NewNode(config,
-		LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile()),
+		privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile()),
 		nodeKey,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
