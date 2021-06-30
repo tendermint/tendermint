@@ -1,7 +1,6 @@
 package light_test
 
 import (
-	"fmt"
 	"github.com/dashevo/dashd-go/btcjson"
 	"time"
 
@@ -44,8 +43,6 @@ func genPrivKeys(n int, keyType crypto.KeyType) privKeys {
 func exposeMockPVKeys(pvs []*types.MockPV, quorumHash crypto.QuorumHash) privKeys {
 	res := make(privKeys, len(pvs))
 	for i, pval := range pvs {
-		fmt.Println(quorumHash.String())
-		fmt.Println(pval.PrivateKeys)
 		res[i] = pval.PrivateKeys[quorumHash.String()].PrivKey
 	}
 	return res
