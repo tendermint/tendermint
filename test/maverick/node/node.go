@@ -5,14 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"net"
 	"net/http"
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -32,6 +31,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/light"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
@@ -328,7 +328,6 @@ func createAndStartIndexerService(
 }
 
 func doHandshake(
-	config *cfg.Config,
 	stateStore sm.Store,
 	state sm.State,
 	blockStore sm.BlockStore,
@@ -337,7 +336,7 @@ func doHandshake(
 	proxyApp proxy.AppConns,
 	consensusLogger log.Logger) error {
 
-	handshaker := cs.NewHandshaker(stateStore, state, blockStore, genDoc, config.Consensus.AppHashSize)
+	handshaker := cs.NewHandshaker(stateStore, state, blockStore, genDoc)
 	handshaker.SetLogger(consensusLogger)
 	handshaker.SetEventBus(eventBus)
 	if err := handshaker.Handshake(proxyApp); err != nil {
@@ -420,17 +419,16 @@ func createBlockchainReactor(config *cfg.Config,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore *store.BlockStore,
-	nodeProTxHash *crypto.ProTxHash,
 	fastSync bool,
 	logger log.Logger) (bcReactor p2p.Reactor, err error) {
 
 	switch config.FastSync.Version {
 	case "v0":
-		bcReactor = bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, nodeProTxHash, fastSync)
+		bcReactor = bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	case "v1":
-		bcReactor = bcv1.NewBlockchainReactor(state.Copy(), blockExec, blockStore, nodeProTxHash, fastSync)
+		bcReactor = bcv1.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	case "v2":
-		bcReactor = bcv2.NewBlockchainReactor(state.Copy(), blockExec, blockStore, nodeProTxHash, fastSync)
+		bcReactor = bcv2.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	default:
 		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}
@@ -637,7 +635,11 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 		stateProvider, err = statesync.NewLightClientStateProvider(
 			ctx,
 			state.ChainID, state.Version, state.InitialHeight,
-			config.RPCServers, ssR.Logger.With("module", "light"))
+			config.RPCServers, light.TrustOptions{
+				Period: config.TrustPeriod,
+				Height: config.TrustHeight,
+				Hash:   config.TrustHashBytes(),
+			}, ssR.Logger.With("module", "light"))
 		if err != nil {
 			return fmt.Errorf("failed to set up light client state provider: %w", err)
 		}
@@ -675,7 +677,6 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 	}()
 	return nil
 }
-
 // NewNode returns a new, ready to go, Tendermint Node.
 func NewNode(config *cfg.Config,
 	privValidator types.PrivValidator,
@@ -819,7 +820,7 @@ func NewNode(config *cfg.Config,
 	)
 
 	// Make BlockchainReactor. Don't start fast sync if we're doing a state sync first.
-	bcReactor, err := createBlockchainReactor(config, state, blockExec, blockStore, &proTxHash, fastSync && !stateSync, logger)
+	bcReactor, err := createBlockchainReactor(config, state, blockExec, blockStore, fastSync && !stateSync, logger)
 	if err != nil {
 		return nil, fmt.Errorf("could not create blockchain reactor: %w", err)
 	}
@@ -1470,6 +1471,7 @@ func createAndStartPrivValidatorSocketClient(
 
 func createAndStartPrivValidatorRPCClient(
 	host string,
+	initialQuorumHash crypto.QuorumHash,
 	defaultQuorumType btcjson.LLMQType,
 	username string,
 	password string,
@@ -1481,10 +1483,10 @@ func createAndStartPrivValidatorRPCClient(
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
 
-	// try to get a proTxHash from private validate first time to make sure connection works
-	_, err = pvsc.GetProTxHash()
+	// try to get a pubkey from private validate first time
+	_, err = pvsc.GetPubKey(initialQuorumHash)
 	if err != nil {
-		return nil, fmt.Errorf("can't get proTxHash when starting private validator rpc client: %w", err)
+		return nil, fmt.Errorf("can't get pubkey when starting maverick private validator rpc client: %w", err)
 	}
 
 	//const (
