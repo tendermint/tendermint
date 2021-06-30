@@ -213,8 +213,8 @@ func EventQueryTxFor(tx Tx) tmpubsub.Query {
 	return tmquery.MustParse(fmt.Sprintf("%s='%s' AND %s='%X'", EventTypeKey, EventTxValue, TxHashKey, tx.Hash()))
 }
 
-func QueryForEvent(eventType string) tmpubsub.Query {
-	return tmquery.MustParse(fmt.Sprintf("%s='%s'", EventTypeKey, eventType))
+func QueryForEvent(eventValue string) tmpubsub.Query {
+	return tmquery.MustParse(fmt.Sprintf("%s='%s'", EventTypeKey, eventValue))
 }
 
 // BlockEventPublisher publishes all block related events
