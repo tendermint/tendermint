@@ -1189,9 +1189,16 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	p := proposal.ToProto()
 	validatorsAtProposalHeight := cs.state.ValidatorsAtHeight(p.Height)
 
-	proTxHash, _ := cs.privValidator.GetProTxHash()
-	pubKey, _ := cs.privValidator.GetPubKey(validatorsAtProposalHeight.QuorumHash)
-
+	proTxHash, err := cs.privValidator.GetProTxHash()
+	if err != nil {
+		cs.Logger.Error("propose step; failed signing proposal; couldn't get proTxHash", "height", height, "round", round, "err", err)
+		return
+	}
+	pubKey, err := cs.privValidator.GetPubKey(validatorsAtProposalHeight.QuorumHash)
+	if err != nil {
+		cs.Logger.Error("propose step; failed signing proposal; couldn't get pubKey", "height", height, "round", round, "err", err)
+		return
+	}
 	cs.Logger.Debug("signing proposal","height", proposal.Height, "round", proposal.Round,
 		"proposerProTxHash", proTxHash.ShortString(), "public key", pubKey.Bytes(), "quorum type",
 		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash)
