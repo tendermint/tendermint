@@ -507,12 +507,15 @@ func shouldResetPubkeys() bool {
 
 func initGenesisForEveryNode(testnet *e2e.Testnet) (map[e2e.Mode]types.GenesisDoc, error) {
 	genesis := make(map[e2e.Mode]types.GenesisDoc)
-	for _, v := range []e2e.Mode{e2e.ModeFull, e2e.ModeValidator, e2e.ModeSeed, e2e.ModeLight} {
+	for _, tn := range testnet.Nodes {
+		if _, ok := genesis[tn.Mode]; ok {
+			continue
+		}
 		genDoc, err := MakeGenesis(testnet)
 		if err != nil {
 			return nil, err
 		}
-		genesis[v] = genDoc
+		genesis[tn.Mode] = genDoc
 	}
 	return genesis, nil
 }
