@@ -27,7 +27,7 @@ const (
 
 var (
 	vals, privVals = types.GenerateMockValidatorSet(4)
-	keys           = exposeMockPVKeys(privVals)
+	keys           = exposeMockPVKeys(privVals, vals.QuorumHash)
 	ctx            = context.Background()
 	bTime, _       = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
 	h1             = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,

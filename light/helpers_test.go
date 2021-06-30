@@ -40,10 +40,10 @@ func genPrivKeys(n int, keyType crypto.KeyType) privKeys {
 	return res
 }
 
-func exposeMockPVKeys(pvs []*types.MockPV) privKeys {
+func exposeMockPVKeys(pvs []*types.MockPV, quorumHash crypto.QuorumHash) privKeys {
 	res := make(privKeys, len(pvs))
 	for i, pval := range pvs {
-		res[i] = pval.PrivKey
+		res[i] = pval.PrivateKeys[quorumHash.String()].PrivKey
 	}
 	return res
 }
@@ -229,12 +229,12 @@ func genMockNodeWithKeys(
 		valsets            = make(map[int64]*types.ValidatorSet, blockSize+1)
 		keymap             = make(map[int64]privKeys, blockSize+1)
 		valset0, privVals0 = types.GenerateMockValidatorSet(valSize)
-		keys               = exposeMockPVKeys(privVals0)
+		keys               = exposeMockPVKeys(privVals0, valset0.QuorumHash)
 		newKeys            privKeys
 	)
 
 	nextValSet, nextPrivVals := types.GenerateMockValidatorSetUsingProTxHashes(valset0.GetProTxHashes())
-	newKeys = exposeMockPVKeys(nextPrivVals)
+	newKeys = exposeMockPVKeys(nextPrivVals, nextValSet.QuorumHash)
 	keymap[1] = keys
 	keymap[2] = newKeys
 
@@ -250,7 +250,7 @@ func genMockNodeWithKeys(
 
 	for height := int64(2); height <= blockSize; height++ {
 		nextValSet, nextPrivVals := types.GenerateMockValidatorSetUsingProTxHashes(valset0.GetProTxHashes())
-		newKeys = exposeMockPVKeys(nextPrivVals)
+		newKeys = exposeMockPVKeys(nextPrivVals, nextValSet.QuorumHash)
 		currentHeader = keys.GenSignedHeaderLastBlockID(chainID, height, bTime.Add(time.Duration(height)*time.Minute),
 			nil,
 			currentValset, nextValSet, hash("app_hash"), hash("cons_hash"),
