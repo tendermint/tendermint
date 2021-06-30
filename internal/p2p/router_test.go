@@ -24,6 +24,7 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p/mocks"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/types"
 )
 
 func echoReactor(channel *p2p.Channel) {
@@ -139,7 +140,7 @@ func TestRouter_Channel(t *testing.T) {
 
 	// We should be able to send on the channel, even though there are no peers.
 	p2ptest.RequireSend(t, channel, p2p.Envelope{
-		To:      p2p.NodeID(strings.Repeat("a", 40)),
+		To:      types.NodeID(strings.Repeat("a", 40)),
 		Message: &p2ptest.Message{Value: "foo"},
 	})
 
@@ -181,7 +182,7 @@ func TestRouter_Channel_SendReceive(t *testing.T) {
 
 	// Sending to an unknown peer should be dropped.
 	p2ptest.RequireSend(t, a, p2p.Envelope{
-		To:      p2p.NodeID(strings.Repeat("a", 40)),
+		To:      types.NodeID(strings.Repeat("a", 40)),
 		Message: &p2ptest.Message{Value: "a"},
 	})
 	p2ptest.RequireEmpty(t, a, b, c)
@@ -318,12 +319,12 @@ func TestRouter_Channel_Error(t *testing.T) {
 
 func TestRouter_AcceptPeers(t *testing.T) {
 	testcases := map[string]struct {
-		peerInfo p2p.NodeInfo
+		peerInfo types.NodeInfo
 		peerKey  crypto.PubKey
 		ok       bool
 	}{
 		"valid handshake": {peerInfo, peerKey.PubKey(), true},
-		"empty handshake": {p2p.NodeInfo{}, nil, false},
+		"empty handshake": {types.NodeInfo{}, nil, false},
 		"invalid key":     {peerInfo, selfKey.PubKey(), false},
 		"self handshake":  {selfInfo, selfKey.PubKey(), false},
 	}
@@ -477,7 +478,7 @@ func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 	mockConnection := &mocks.Connection{}
 	mockConnection.On("String").Maybe().Return("mock")
 	mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
-		WaitUntil(closeCh).Return(p2p.NodeInfo{}, nil, io.EOF)
+		WaitUntil(closeCh).Return(types.NodeInfo{}, nil, io.EOF)
 	mockConnection.On("Close").Return(nil)
 	mockConnection.On("RemoteEndpoint").Return(p2p.Endpoint{})
 
@@ -520,14 +521,14 @@ func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 
 func TestRouter_DialPeers(t *testing.T) {
 	testcases := map[string]struct {
-		dialID   p2p.NodeID
-		peerInfo p2p.NodeInfo
+		dialID   types.NodeID
+		peerInfo types.NodeInfo
 		peerKey  crypto.PubKey
 		dialErr  error
 		ok       bool
 	}{
 		"valid dial":         {peerInfo.NodeID, peerInfo, peerKey.PubKey(), nil, true},
-		"empty handshake":    {peerInfo.NodeID, p2p.NodeInfo{}, nil, nil, false},
+		"empty handshake":    {peerInfo.NodeID, types.NodeInfo{}, nil, nil, false},
 		"invalid key":        {peerInfo.NodeID, peerInfo, selfKey.PubKey(), nil, false},
 		"unexpected node ID": {peerInfo.NodeID, selfInfo, selfKey.PubKey(), nil, false},
 		"dial error":         {peerInfo.NodeID, peerInfo, peerKey.PubKey(), errors.New("boom"), false},
@@ -621,9 +622,9 @@ func TestRouter_DialPeers(t *testing.T) {
 func TestRouter_DialPeers_Parallel(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
-	a := p2p.NodeAddress{Protocol: "mock", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
-	b := p2p.NodeAddress{Protocol: "mock", NodeID: p2p.NodeID(strings.Repeat("b", 40))}
-	c := p2p.NodeAddress{Protocol: "mock", NodeID: p2p.NodeID(strings.Repeat("c", 40))}
+	a := p2p.NodeAddress{Protocol: "mock", NodeID: types.NodeID(strings.Repeat("a", 40))}
+	b := p2p.NodeAddress{Protocol: "mock", NodeID: types.NodeID(strings.Repeat("b", 40))}
+	c := p2p.NodeAddress{Protocol: "mock", NodeID: types.NodeID(strings.Repeat("c", 40))}
 
 	// Set up a mock transport that returns a connection that blocks during the
 	// handshake. It should dial all peers in parallel.
@@ -633,7 +634,7 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 	mockConnection := &mocks.Connection{}
 	mockConnection.On("String").Maybe().Return("mock")
 	mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
-		WaitUntil(closeCh).Return(p2p.NodeInfo{}, nil, io.EOF)
+		WaitUntil(closeCh).Return(types.NodeInfo{}, nil, io.EOF)
 	mockConnection.On("Close").Return(nil)
 
 	mockTransport := &mocks.Transport{}

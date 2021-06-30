@@ -9,6 +9,12 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 )
 
+const batchVerifyThreshold = 2
+
+func shouldBatchVerify(vals *ValidatorSet, commit *Commit) bool {
+	return len(commit.Signatures) >= batchVerifyThreshold && batch.SupportsBatchVerifier(vals.GetProposer().PubKey)
+}
+
 // VerifyCommit verifies +2/3 of the set had signed the given commit.
 //
 // It checks all the signatures! While it's safe to exit as soon as we have
@@ -18,7 +24,6 @@ import (
 // with a bonus for including more than +2/3 of the signatures.
 func VerifyCommit(chainID string, vals *ValidatorSet, blockID BlockID,
 	height int64, commit *Commit) error {
-
 	// run a basic validation of the arguments
 	if err := verifyBasicValsAndCommit(vals, commit, height, blockID); err != nil {
 		return err
@@ -35,18 +40,14 @@ func VerifyCommit(chainID string, vals *ValidatorSet, blockID BlockID,
 	count := func(c CommitSig) bool { return c.ForBlock() }
 
 	// attempt to batch verify
-	cacheSignBytes, success, err := tryVerifyCommitBatch(
-		chainID, vals, commit, votingPowerNeeded, ignore, count, true, true)
-	if err != nil {
-		return err
-	}
-	if success {
-		return nil
+	if shouldBatchVerify(vals, commit) {
+		return verifyCommitBatch(chainID, vals, commit,
+			votingPowerNeeded, ignore, count, true, true)
 	}
 
 	// if verification failed or is not supported then fallback to single verification
 	return verifyCommitSingle(chainID, vals, commit, votingPowerNeeded,
-		cacheSignBytes, ignore, count, true, true)
+		ignore, count, true, true)
 }
 
 // LIGHT CLIENT VERIFICATION METHODS
@@ -57,7 +58,6 @@ func VerifyCommit(chainID string, vals *ValidatorSet, blockID BlockID,
 // signatures.
 func VerifyCommitLight(chainID string, vals *ValidatorSet, blockID BlockID,
 	height int64, commit *Commit) error {
-
 	// run a basic validation of the arguments
 	if err := verifyBasicValsAndCommit(vals, commit, height, blockID); err != nil {
 		return err
@@ -73,19 +73,14 @@ func VerifyCommitLight(chainID string, vals *ValidatorSet, blockID BlockID,
 	count := func(c CommitSig) bool { return true }
 
 	// attempt to batch verify
-	cacheSignBytes, success, err := tryVerifyCommitBatch(
-		chainID, vals, commit, votingPowerNeeded, ignore, count, false, true)
-	if err != nil {
-		return err
-	}
-	if success {
-		return nil
+	if shouldBatchVerify(vals, commit) {
+		return verifyCommitBatch(chainID, vals, commit,
+			votingPowerNeeded, ignore, count, false, true)
 	}
 
 	// if verification failed or is not supported then fallback to single verification
 	return verifyCommitSingle(chainID, vals, commit, votingPowerNeeded,
-		cacheSignBytes, ignore, count, false, true)
-
+		ignore, count, false, true)
 }
 
 // VerifyCommitLightTrusting verifies that trustLevel of the validator set signed
@@ -124,18 +119,14 @@ func VerifyCommitLightTrusting(chainID string, vals *ValidatorSet, commit *Commi
 	// attempt to batch verify commit. As the validator set doesn't necessarily
 	// correspond with the validator set that signed the block we need to look
 	// up by address rather than index.
-	cacheSignBytes, success, err := tryVerifyCommitBatch(
-		chainID, vals, commit, votingPowerNeeded, ignore, count, false, false)
-	if err != nil {
-		return err
-	}
-	if success {
-		return nil
+	if shouldBatchVerify(vals, commit) {
+		return verifyCommitBatch(chainID, vals, commit,
+			votingPowerNeeded, ignore, count, false, false)
 	}
 
 	// attempt with single verification
 	return verifyCommitSingle(chainID, vals, commit, votingPowerNeeded,
-		cacheSignBytes, ignore, count, false, false)
+		ignore, count, false, false)
 }
 
 // ValidateHash returns an error if the hash is not empty, but its
@@ -152,12 +143,13 @@ func ValidateHash(h []byte) error {
 
 // Batch verification
 
-// tryVerifyCommitBatch attempts to batch verify. If it is not supported or
-// verification fails it returns false. If there is an error in the signatures
-// or the way that they are counted an error is returned. A cache of all the
-// commits in byte form is returned in case it needs to be used again for single
-// verification
-func tryVerifyCommitBatch(
+// verifyCommitBatch batch verifies commits.  This routine is equivalent
+// to verifyCommitSingle in behavior, just faster iff every signature in the
+// batch is valid.
+//
+// Note: The caller is responsible for checking to see if this routine is
+// usable via `shouldVerifyBatch(vals, commit)`.
+func verifyCommitBatch(
 	chainID string,
 	vals *ValidatorSet,
 	commit *Commit,
@@ -166,21 +158,20 @@ func tryVerifyCommitBatch(
 	countSig func(CommitSig) bool,
 	countAllSignatures bool,
 	lookUpByIndex bool,
-) (map[string][]byte, bool, error) {
+) error {
 	var (
 		val                *Validator
 		valIdx             int32
 		seenVals                 = make(map[int32]int, len(commit.Signatures))
+		batchSigIdxs             = make([]int, 0, len(commit.Signatures))
 		talliedVotingPower int64 = 0
-		// we keep a cache of the signed bytes to make it quicker to verify
-		// individually if we need to
-		cacheSignBytes = make(map[string][]byte, len(commit.Signatures))
 	)
 	// attempt to create a batch verifier
 	bv, ok := batch.CreateBatchVerifier(vals.GetProposer().PubKey)
-	// check if batch verification is supported
-	if !ok || len(commit.Signatures) < 2 {
-		return cacheSignBytes, false, nil
+	// re-check if batch verification is supported
+	if !ok || len(commit.Signatures) < batchVerifyThreshold {
+		// This should *NEVER* happen.
+		return fmt.Errorf("unsupported signature algorithm or insufficient signatures for batch verification")
 	}
 
 	for idx, commitSig := range commit.Signatures {
@@ -206,20 +197,19 @@ func tryVerifyCommitBatch(
 			// that the same validator doesn't commit twice
 			if firstIndex, ok := seenVals[valIdx]; ok {
 				secondIndex := idx
-				return cacheSignBytes, false, fmt.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
+				return fmt.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
 			}
 			seenVals[valIdx] = idx
 		}
 
 		// Validate signature.
 		voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
-		// cache the signBytes in case batch verification fails
-		cacheSignBytes[string(val.PubKey.Bytes())] = voteSignBytes
 
 		// add the key, sig and message to the verifier
 		if err := bv.Add(val.PubKey, voteSignBytes, commitSig.Signature); err != nil {
-			return cacheSignBytes, false, err
+			return err
 		}
+		batchSigIdxs = append(batchSigIdxs, idx)
 
 		// If this signature counts then add the voting power of the validator
 		// to the tally
@@ -237,18 +227,32 @@ func tryVerifyCommitBatch(
 	// ensure that we have batched together enough signatures to exceed the
 	// voting power needed else there is no need to even verify
 	if got, needed := talliedVotingPower, votingPowerNeeded; got <= needed {
-		return cacheSignBytes, false, ErrNotEnoughVotingPowerSigned{Got: got, Needed: needed}
+		return ErrNotEnoughVotingPowerSigned{Got: got, Needed: needed}
 	}
 
-	// attempt to verify the batch. If this fails, fall back to single
-	// verification
-	if bv.Verify() {
+	// attempt to verify the batch.
+	ok, validSigs := bv.Verify()
+	if ok {
 		// success
-		return cacheSignBytes, true, nil
+		return nil
 	}
 
-	// verification failed
-	return cacheSignBytes, false, nil
+	// one or more of the signatures is invalid, find and return the first
+	// invalid signature.
+	for i, ok := range validSigs {
+		if !ok {
+			// go back from the batch index to the commit.Signatures index
+			idx := batchSigIdxs[i]
+			sig := commit.Signatures[idx]
+			return fmt.Errorf("wrong signature (#%d): %X", idx, sig)
+		}
+	}
+
+	// execution reaching here is a bug, and one of the following has
+	// happened:
+	//  * non-zero tallied voting power, empty batch (impossible?)
+	//  * bv.Verify() returned `false, []bool{true, ..., true}` (BUG)
+	return fmt.Errorf("BUG: batch verification failed with no invalid signatures")
 }
 
 // Single Verification
@@ -263,7 +267,6 @@ func verifyCommitSingle(
 	vals *ValidatorSet,
 	commit *Commit,
 	votingPowerNeeded int64,
-	cachedVals map[string][]byte,
 	ignoreSig func(CommitSig) bool,
 	countSig func(CommitSig) bool,
 	countAllSignatures bool,
@@ -303,12 +306,7 @@ func verifyCommitSingle(
 			seenVals[valIdx] = idx
 		}
 
-		// Check if we have the validator in the cache
-		if cachedVote, ok := cachedVals[string(val.PubKey.Bytes())]; !ok {
-			voteSignBytes = commit.VoteSignBytes(chainID, int32(idx))
-		} else {
-			voteSignBytes = cachedVote
-		}
+		voteSignBytes = commit.VoteSignBytes(chainID, int32(idx))
 
 		if !val.PubKey.VerifySignature(voteSignBytes, commitSig.Signature) {
 			return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)

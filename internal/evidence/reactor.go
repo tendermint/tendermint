@@ -31,8 +31,8 @@ var (
 				ID:                  byte(EvidenceChannel),
 				Priority:            6,
 				RecvMessageCapacity: maxMsgSize,
-
-				MaxSendBytes: 400,
+				RecvBufferCapacity:  32,
+				MaxSendBytes:        400,
 			},
 		},
 	}
@@ -62,7 +62,7 @@ type Reactor struct {
 	peerWG sync.WaitGroup
 
 	mtx          tmsync.Mutex
-	peerRoutines map[p2p.NodeID]*tmsync.Closer
+	peerRoutines map[types.NodeID]*tmsync.Closer
 }
 
 // NewReactor returns a reference to a new evidence reactor, which implements the
@@ -79,7 +79,7 @@ func NewReactor(
 		evidenceCh:   evidenceCh,
 		peerUpdates:  peerUpdates,
 		closeCh:      make(chan struct{}),
-		peerRoutines: make(map[p2p.NodeID]*tmsync.Closer),
+		peerRoutines: make(map[types.NodeID]*tmsync.Closer),
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Evidence", r)
@@ -285,7 +285,7 @@ func (r *Reactor) processPeerUpdates() {
 // that the peer has already received or may not be ready for.
 //
 // REF: https://github.com/tendermint/tendermint/issues/4727
-func (r *Reactor) broadcastEvidenceLoop(peerID p2p.NodeID, closer *tmsync.Closer) {
+func (r *Reactor) broadcastEvidenceLoop(peerID types.NodeID, closer *tmsync.Closer) {
 	var next *clist.CElement
 
 	defer func() {

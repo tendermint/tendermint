@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p/pex"
 	"github.com/tendermint/tendermint/libs/log"
 	proto "github.com/tendermint/tendermint/proto/tendermint/p2p"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -326,14 +327,14 @@ type reactorTestSuite struct {
 	network *p2ptest.Network
 	logger  log.Logger
 
-	reactors    map[p2p.NodeID]*pex.ReactorV2
-	pexChannels map[p2p.NodeID]*p2p.Channel
+	reactors    map[types.NodeID]*pex.ReactorV2
+	pexChannels map[types.NodeID]*p2p.Channel
 
-	peerChans   map[p2p.NodeID]chan p2p.PeerUpdate
-	peerUpdates map[p2p.NodeID]*p2p.PeerUpdates
+	peerChans   map[types.NodeID]chan p2p.PeerUpdate
+	peerUpdates map[types.NodeID]*p2p.PeerUpdates
 
-	nodes []p2p.NodeID
-	mocks []p2p.NodeID
+	nodes []types.NodeID
+	mocks []types.NodeID
 	total int
 	opts  testOptions
 }
@@ -369,10 +370,10 @@ func setupNetwork(t *testing.T, opts testOptions) *reactorTestSuite {
 	rts := &reactorTestSuite{
 		logger:      log.TestingLogger().With("testCase", t.Name()),
 		network:     p2ptest.MakeNetwork(t, networkOpts),
-		reactors:    make(map[p2p.NodeID]*pex.ReactorV2, realNodes),
-		pexChannels: make(map[p2p.NodeID]*p2p.Channel, opts.TotalNodes),
-		peerChans:   make(map[p2p.NodeID]chan p2p.PeerUpdate, opts.TotalNodes),
-		peerUpdates: make(map[p2p.NodeID]*p2p.PeerUpdates, opts.TotalNodes),
+		reactors:    make(map[types.NodeID]*pex.ReactorV2, realNodes),
+		pexChannels: make(map[types.NodeID]*p2p.Channel, opts.TotalNodes),
+		peerChans:   make(map[types.NodeID]chan p2p.PeerUpdate, opts.TotalNodes),
+		peerUpdates: make(map[types.NodeID]*p2p.PeerUpdates, opts.TotalNodes),
 		total:       opts.TotalNodes,
 		opts:        opts,
 	}
@@ -464,7 +465,7 @@ func (r *reactorTestSuite) addNodes(t *testing.T, nodes int) {
 
 func (r *reactorTestSuite) listenFor(
 	t *testing.T,
-	node p2p.NodeID,
+	node types.NodeID,
 	conditional func(msg p2p.Envelope) bool,
 	assertion func(t *testing.T, msg p2p.Envelope) bool,
 	waitPeriod time.Duration,
@@ -788,7 +789,7 @@ func (r *reactorTestSuite) pexAddresses(t *testing.T, nodeIndices []int) []proto
 	return addresses
 }
 
-func (r *reactorTestSuite) checkNodePair(t *testing.T, first, second int) (p2p.NodeID, p2p.NodeID) {
+func (r *reactorTestSuite) checkNodePair(t *testing.T, first, second int) (types.NodeID, types.NodeID) {
 	require.NotEqual(t, first, second)
 	require.Less(t, first, r.total)
 	require.Less(t, second, r.total)
@@ -806,12 +807,12 @@ func (r *reactorTestSuite) addAddresses(t *testing.T, node int, addrs []int) {
 	}
 }
 
-func newNodeID(t *testing.T, id string) p2p.NodeID {
-	nodeID, err := p2p.NewNodeID(strings.Repeat(id, 2*p2p.NodeIDByteLength))
+func newNodeID(t *testing.T, id string) types.NodeID {
+	nodeID, err := types.NewNodeID(strings.Repeat(id, 2*types.NodeIDByteLength))
 	require.NoError(t, err)
 	return nodeID
 }
 
-func randomNodeID(t *testing.T) p2p.NodeID {
-	return p2p.NodeIDFromPubKey(ed25519.GenPrivKey().PubKey())
+func randomNodeID(t *testing.T) types.NodeID {
+	return types.NodeIDFromPubKey(ed25519.GenPrivKey().PubKey())
 }

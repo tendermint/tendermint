@@ -489,12 +489,14 @@ func (evpool *Pool) batchExpiredPendingEvidence(batch dbm.Batch) (int64, time.Ti
 func (evpool *Pool) removeEvidenceFromList(
 	blockEvidenceMap map[string]struct{}) {
 
-	for e := evpool.evidenceList.Front(); e != nil; e = e.Next() {
+	el := evpool.evidenceList
+	var nextE *clist.CElement
+	for e := el.Front(); e != nil; e = nextE {
+		nextE = e.Next()
 		// Remove from clist
 		ev := e.Value.(types.Evidence)
 		if _, ok := blockEvidenceMap[evMapKey(ev)]; ok {
 			evpool.evidenceList.Remove(e)
-			e.DetachPrev()
 		}
 	}
 }
