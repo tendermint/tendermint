@@ -147,10 +147,15 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	)
 	privval.SignerDialerEndpointTimeoutReadWrite(100 * time.Millisecond)(dialerEndpoint)
 
+	// We need to get the quorum hash used in config to set up the node
+	pv := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+	quorumHash, err := pv.GetFirstQuorumHash()
+	require.NoError(t, err)
+
 	signerServer := privval.NewSignerServer(
 		dialerEndpoint,
 		config.ChainID(),
-		types.NewMockPV(),
+		types.NewMockPVForQuorum(quorumHash),
 	)
 
 	go func() {
@@ -193,10 +198,15 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	)
 	privval.SignerDialerEndpointTimeoutReadWrite(100 * time.Millisecond)(dialerEndpoint)
 
+	// We need to get the quorum hash used in config to set up the node
+	pv := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+	quorumHash, err := pv.GetFirstQuorumHash()
+	require.NoError(t, err)
+
 	pvsc := privval.NewSignerServer(
 		dialerEndpoint,
 		config.ChainID(),
-		types.NewMockPV(),
+		types.NewMockPVForQuorum(quorumHash),
 	)
 
 	go func() {
