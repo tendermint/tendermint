@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/tendermint/tendermint/privval"
 	"os"
 	"path/filepath"
 
@@ -177,13 +178,13 @@ func initFilesWithConfig(config *cfg.Config) error {
 	// private validator
 	privValKeyFile := config.PrivValidatorKeyFile()
 	privValStateFile := config.PrivValidatorStateFile()
-	var pv *nd.FilePV
+	var pv *privval.FilePV
 	if tmos.FileExists(privValKeyFile) {
-		pv = nd.LoadFilePV(privValKeyFile, privValStateFile)
+		pv = privval.LoadFilePV(privValKeyFile, privValStateFile)
 		logger.Info("Found private validator", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
 	} else {
-		pv = nd.GenFilePV(privValKeyFile, privValStateFile)
+		pv = privval.GenFilePV(privValKeyFile, privValStateFile)
 		pv.Save()
 		logger.Info("Generated private validator", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)

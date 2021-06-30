@@ -33,13 +33,14 @@ func getSignerTestCases(t *testing.T) []signerTestCase {
 	// Get test cases for each possible dialer (DialTCP / DialUnix / etc)
 	for _, dtc := range getDialerTestCases(t) {
 		chainID := tmrand.Str(12)
-		mockPV := types.NewMockPV()
+		quorumHash := crypto.RandQuorumHash()
+		mockPV := types.NewMockPVForQuorum(quorumHash)
 
 		// get a pair of signer listener, signer dialer endpoints
 		sl, sd := getMockEndpoints(t, dtc.addr, dtc.dialer)
 		sc, err := NewSignerClient(sl, chainID)
 		require.NoError(t, err)
-		ss := NewSignerServer(sd, chainID, btcjson.LLMQType_5_60, crypto.RandQuorumHash(), mockPV)
+		ss := NewSignerServer(sd, chainID, mockPV)
 
 		err = ss.Start()
 		require.NoError(t, err)
@@ -47,7 +48,7 @@ func getSignerTestCases(t *testing.T) []signerTestCase {
 		tc := signerTestCase{
 			chainID:      chainID,
 			quorumType:   btcjson.LLMQType_5_60,
-			quorumHash:   crypto.RandQuorumHash(),
+			quorumHash:   quorumHash,
 			mockPV:       mockPV,
 			signerClient: sc,
 			signerServer: ss,
@@ -154,8 +155,12 @@ func TestSignerProposal(t *testing.T) {
 			}
 		})
 
-		require.NoError(t, tc.mockPV.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, want.ToProto()))
-		require.NoError(t, tc.signerClient.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, have.ToProto()))
+		_, err := tc.mockPV.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, want.ToProto())
+
+		require.NoError(t, err)
+
+		_, err = tc.signerClient.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, have.ToProto())
+		require.NoError(t, err)
 
 		assert.Equal(t, want.Signature, have.Signature)
 	}
@@ -345,13 +350,13 @@ func TestSignerSignProposalErrors(t *testing.T) {
 			Signature:             []byte("signature"),
 		}
 
-		err := tc.signerClient.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, proposal.ToProto())
+		_, err := tc.signerClient.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, proposal.ToProto())
 		require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
 
-		err = tc.mockPV.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, proposal.ToProto())
+		_, err = tc.mockPV.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, proposal.ToProto())
 		require.Error(t, err)
 
-		err = tc.signerClient.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, proposal.ToProto())
+		_, err = tc.signerClient.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, proposal.ToProto())
 		require.Error(t, err)
 	}
 }
@@ -401,13 +406,15 @@ func TestSignerSignVoteErrors(t *testing.T) {
 }
 
 func brokenHandler(privVal types.PrivValidator, request privvalproto.Message,
-	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) (privvalproto.Message, error) {
+	chainID string) (privvalproto.Message, error) {
 	var res privvalproto.Message
 	var err error
 
 	switch r := request.Sum.(type) {
 	// This is broken and will answer most requests with a pubkey response
 	case *privvalproto.Message_PubKeyRequest:
+		res = mustWrapMsg(&privvalproto.PubKeyResponse{PubKey: cryptoproto.PublicKey{}, Error: nil})
+	case *privvalproto.Message_ThresholdPubKeyRequest:
 		res = mustWrapMsg(&privvalproto.PubKeyResponse{PubKey: cryptoproto.PublicKey{}, Error: nil})
 	case *privvalproto.Message_ProTxHashRequest:
 		res = mustWrapMsg(&privvalproto.PubKeyResponse{PubKey: cryptoproto.PublicKey{}, Error: nil})
@@ -426,8 +433,8 @@ func brokenHandler(privVal types.PrivValidator, request privvalproto.Message,
 
 func TestSignerUnexpectedResponse(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
-		tc.signerServer.privVal = types.NewMockPV()
-		tc.mockPV = types.NewMockPV()
+		tc.signerServer.privVal = types.NewMockPVForQuorum(tc.quorumHash)
+		tc.mockPV = types.NewMockPVForQuorum(tc.quorumHash)
 
 		tc.signerServer.SetRequestHandler(brokenHandler)
 

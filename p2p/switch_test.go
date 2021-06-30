@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -92,7 +93,8 @@ func (tr *TestReactor) getMsgs(chID byte) []PeerMessage {
 // XXX: note this uses net.Pipe and not a proper TCP conn
 func MakeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switch, *Switch) {
 	// Create two switches that will be interconnected.
-	switches := MakeConnectedSwitches(cfg, 2, initSwitch, Connect2Switches)
+	nodeProTxHashes := make([]*crypto.ProTxHash, 2)
+	switches := MakeConnectedSwitches(cfg, nodeProTxHashes, initSwitch, Connect2Switches)
 	return switches[0], switches[1]
 }
 
@@ -184,7 +186,7 @@ func assertMsgReceivedWithTimeout(
 }
 
 func TestSwitchFiltersOutItself(t *testing.T) {
-	s1 := MakeSwitch(cfg, 1, "127.0.0.1", "123.123.123", initSwitchFunc)
+	s1 := MakeSwitch(cfg, 1, "127.0.0.1", "123.123.123", nil, initSwitchFunc)
 
 	// simulate s1 having a public IP by creating a remote peer with the same ID
 	rp := &remotePeer{PrivKey: s1.nodeKey.PrivKey, Config: cfg}
@@ -222,6 +224,7 @@ func TestSwitchPeerFilter(t *testing.T) {
 			1,
 			"testing",
 			"123.123.123",
+			nil,
 			initSwitchFunc,
 			SwitchPeerFilters(filters...),
 		)
@@ -272,6 +275,7 @@ func TestSwitchPeerFilterTimeout(t *testing.T) {
 			1,
 			"testing",
 			"123.123.123",
+			nil,
 			initSwitchFunc,
 			SwitchFilterTimeout(5*time.Millisecond),
 			SwitchPeerFilters(filters...),
@@ -307,7 +311,7 @@ func TestSwitchPeerFilterTimeout(t *testing.T) {
 }
 
 func TestSwitchPeerFilterDuplicate(t *testing.T) {
-	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", nil, initSwitchFunc)
 	err := sw.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -355,7 +359,7 @@ func assertNoPeersAfterTimeout(t *testing.T, sw *Switch, timeout time.Duration) 
 func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", nil, initSwitchFunc)
 	err := sw.Start()
 	if err != nil {
 		t.Error(err)
@@ -447,7 +451,7 @@ func TestSwitchStopPeerForError(t *testing.T) {
 }
 
 func TestSwitchReconnectsToOutboundPersistentPeer(t *testing.T) {
-	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", nil, initSwitchFunc)
 	err := sw.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -497,7 +501,7 @@ func TestSwitchReconnectsToOutboundPersistentPeer(t *testing.T) {
 }
 
 func TestSwitchReconnectsToInboundPersistentPeer(t *testing.T) {
-	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", nil, initSwitchFunc)
 	err := sw.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -530,7 +534,7 @@ func TestSwitchDialPeersAsync(t *testing.T) {
 		return
 	}
 
-	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", nil, initSwitchFunc)
 	err := sw.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -560,7 +564,8 @@ func waitUntilSwitchHasAtLeastNPeers(sw *Switch, n int) {
 }
 
 func TestSwitchFullConnectivity(t *testing.T) {
-	switches := MakeConnectedSwitches(cfg, 3, initSwitchFunc, Connect2Switches)
+	nodeProTxHashes := make([]*crypto.ProTxHash, 3)
+	switches := MakeConnectedSwitches(cfg, nodeProTxHashes, initSwitchFunc, Connect2Switches)
 	defer func() {
 		for _, sw := range switches {
 			sw := sw
@@ -596,7 +601,7 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 	}
 
 	// make switch
-	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", nil, initSwitchFunc)
 	err := sw.AddUnconditionalPeerIDs(unconditionalPeerIDs)
 	require.NoError(t, err)
 	err = sw.Start()
@@ -750,7 +755,7 @@ func TestSwitchInitPeerIsNotCalledBeforeRemovePeer(t *testing.T) {
 	reactor.BaseReactor = NewBaseReactor("mockReactor", reactor)
 
 	// make switch
-	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", func(i int, sw *Switch) *Switch {
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", nil, func(i int, sw *Switch) *Switch {
 		sw.AddReactor("mock", reactor)
 		return sw
 	})

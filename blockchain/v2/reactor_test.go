@@ -488,13 +488,13 @@ type testApp struct {
 
 func randGenesisDoc(chainID string, numValidators int) (
 	*types.GenesisDoc, []types.PrivValidator) {
-	validators, privValidators, thresholdPublicKey := types.GenerateGenesisValidators(numValidators)
+	validators, privValidators, quorumHash, thresholdPublicKey := types.GenerateGenesisValidators(numValidators)
 	return &types.GenesisDoc{
 		GenesisTime:        tmtime.Now(),
 		ChainID:            chainID,
 		Validators:         validators,
 		ThresholdPublicKey: thresholdPublicKey,
-		QuorumHash:         crypto.RandQuorumHash(),
+		QuorumHash:         quorumHash,
 	}, privValidators
 }
 

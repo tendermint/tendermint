@@ -208,6 +208,7 @@ func randomGenesisDoc() *GenesisDoc {
 		Validators:         []GenesisValidator{{pubkey.Address(), pubkey, DefaultDashVotingPower, "myval", crypto.RandProTxHash()}},
 		ConsensusParams:    DefaultConsensusParams(),
 		ThresholdPublicKey: pubkey,
+		QuorumType:         100,
 		QuorumHash:         crypto.RandQuorumHash(),
 		AppHash:            []byte{1, 2, 3},
 	}

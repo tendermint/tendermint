@@ -343,7 +343,7 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 		"persist_interval":  node.PersistInterval,
 		"snapshot_interval": node.SnapshotInterval,
 		"retain_blocks":     node.RetainBlocks,
-		"key_type":          node.PrivvalKey.Type(),
+		"key_type":          bls12381.KeyType,
 	}
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:
@@ -439,13 +439,9 @@ func UpdateConfigStateSync(node *e2e.Node, height int64, hash []byte) error {
 }
 
 func newDefaultFilePV(node *e2e.Node, nodeDir string) (*privval.FilePV, error) {
-	tn := node.Testnet
 	return privval.NewFilePVWithOptions(
-		privval.WithPrivKey(bls12381.GenPrivKey()),
+		privval.WithPrivateKey(bls12381.GenPrivKey(), crypto.RandQuorumHash(), &node.Testnet.ThresholdPublicKey),
 		privval.WithProTxHash(crypto.RandProTxHash()),
-		privval.WithQuorumHash(tn.QuorumHash, tn.QuorumHashUpdates),
-		privval.WithNextPrivvalKeys(node.NextPrivvalKeys, node.NextPrivvalHeights),
-		privval.WithThresholdPublicKey(tn.ThresholdPublicKey, tn.ThresholdPublicKeyUpdates),
 		privval.WithKeyAndStateFilePaths(
 			filepath.Join(nodeDir, PrivvalDummyKeyFile),
 			filepath.Join(nodeDir, PrivvalDummyStateFile),
@@ -454,16 +450,13 @@ func newDefaultFilePV(node *e2e.Node, nodeDir string) (*privval.FilePV, error) {
 }
 
 func newFilePVFromNode(node *e2e.Node, nodeDir string) (*privval.FilePV, error) {
-	tn := node.Testnet
 	return privval.NewFilePVWithOptions(
-		privval.WithPrivKey(node.PrivvalKey),
+		privval.WithPrivateKeysMap(node.PrivvalKeys),
 		privval.WithProTxHash(node.ProTxHash),
-		privval.WithQuorumHash(tn.QuorumHash, tn.QuorumHashUpdates),
-		privval.WithThresholdPublicKey(tn.ThresholdPublicKey, tn.ThresholdPublicKeyUpdates),
-		privval.WithNextPrivvalKeys(node.NextPrivvalKeys, node.NextPrivvalHeights),
+		privval.WithUpdateHeights(node.PrivvalUpdateHeights),
 		privval.WithKeyAndStateFilePaths(
-			filepath.Join(nodeDir, PrivvalKeyFile),
-			filepath.Join(nodeDir, PrivvalStateFile),
+			filepath.Join(nodeDir, PrivvalDummyKeyFile),
+			filepath.Join(nodeDir, PrivvalDummyStateFile),
 		),
 	)
 }

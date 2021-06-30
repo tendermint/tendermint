@@ -135,7 +135,9 @@ func extractKey(tmhome, outputPath string) {
 	keyFile := filepath.Join(internal.ExpandPath(tmhome), "config", "priv_validator_key.json")
 	stateFile := filepath.Join(internal.ExpandPath(tmhome), "data", "priv_validator_state.json")
 	fpv := privval.LoadFilePV(keyFile, stateFile)
-	pkb := []byte(fpv.Key.PrivKey.(ed25519.PrivKey))
+	quorumHash, _ := fpv.GetFirstQuorumHash()
+	privKey, _ := fpv.Key.PrivateKeyForQuorumHash(quorumHash)
+	pkb := privKey.Bytes()
 	if err := ioutil.WriteFile(internal.ExpandPath(outputPath), pkb[:32], 0600); err != nil {
 		logger.Info("Failed to write private key", "output", outputPath, "err", err)
 		os.Exit(1)

@@ -24,6 +24,13 @@ message RemoteSignerError {
 // PubKeyRequest requests the consensus public key from the remote signer.
 message PubKeyRequest {
   string chain_id = 1;
+  bytes  quorum_hash = 2;
+}
+
+// PubKeyRequest requests the consensus public key from the remote signer.
+message ThresholdPubKeyRequest {
+  string chain_id = 1;
+  bytes  quorum_hash = 2;
 }
 
 // ProTxHashRequest requests the consensus proTxHash from the remote signer.
@@ -33,6 +40,12 @@ message ProTxHashRequest {
 
 // PubKeyResponse is a response message containing the public key.
 message PubKeyResponse {
+  tendermint.crypto.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
+  RemoteSignerError           error   = 2;
+}
+
+// PubKeyResponse is a response message containing the public key.
+message ThresholdPubKeyResponse {
   tendermint.crypto.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
   RemoteSignerError           error   = 2;
 }
@@ -89,5 +102,7 @@ message Message {
     PingResponse           ping_response            = 8;
     ProTxHashRequest          pro_tx_hash_request          = 9;
     ProTxHashResponse         pro_tx_hash_response         = 10;
+    ThresholdPubKeyRequest          threshold_pub_key_request          = 11;
+    ThresholdPubKeyResponse         threshold_pub_key_response         = 12;
   }
 }

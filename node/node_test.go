@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"net"
 	"os"
 	"syscall"
@@ -148,12 +147,15 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	)
 	privval.SignerDialerEndpointTimeoutReadWrite(100 * time.Millisecond)(dialerEndpoint)
 
+	// We need to get the quorum hash used in config to set up the node
+	pv := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+	quorumHash, err := pv.GetFirstQuorumHash()
+	require.NoError(t, err)
+
 	signerServer := privval.NewSignerServer(
 		dialerEndpoint,
 		config.ChainID(),
-		btcjson.LLMQType_5_60,
-		crypto.RandQuorumHash(),
-		types.NewMockPV(),
+		types.NewMockPVForQuorum(quorumHash),
 	)
 
 	go func() {
@@ -196,12 +198,15 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	)
 	privval.SignerDialerEndpointTimeoutReadWrite(100 * time.Millisecond)(dialerEndpoint)
 
+	// We need to get the quorum hash used in config to set up the node
+	pv := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+	quorumHash, err := pv.GetFirstQuorumHash()
+	require.NoError(t, err)
+
 	pvsc := privval.NewSignerServer(
 		dialerEndpoint,
 		config.ChainID(),
-		btcjson.LLMQType_5_60,
-		crypto.RandQuorumHash(),
-		types.NewMockPV(),
+		types.NewMockPVForQuorum(quorumHash),
 	)
 
 	go func() {
@@ -300,7 +305,7 @@ func TestCreateProposalBlock(t *testing.T) {
 		nil,
 	)
 
-	commit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil, nil, nil, nil)
+	commit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
 	block, _ := blockExec.CreateProposalBlock(height, state, commit, proposerProTxHash)
 
 	// check that the part set does not exceed the maximum block size
@@ -367,7 +372,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		nil,
 	)
 
-	commit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil, nil, nil, nil)
+	commit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
 	block, _ := blockExec.CreateProposalBlock(height, state, commit, proposerProTxHash)
 
 	pb, err := block.ToProto()
@@ -425,7 +430,7 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 }
 
 func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
-	vals, privVals, thresholdPublicKey := types.GenerateGenesisValidators(nVals)
+	vals, privVals, quorumHash, thresholdPublicKey := types.GenerateGenesisValidators(nVals)
 	for i := 0; i < nVals; i++ {
 		vals[i].Name = fmt.Sprintf("test%d", i)
 	}
@@ -433,7 +438,7 @@ func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
 		ChainID:            "test-chain",
 		Validators:         vals,
 		ThresholdPublicKey: thresholdPublicKey,
-		QuorumHash:         crypto.RandQuorumHash(),
+		QuorumHash:         quorumHash,
 		AppHash:            nil,
 	})
 

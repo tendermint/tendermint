@@ -71,6 +71,12 @@ func (sptxh SortProTxHash) Swap(i, j int) {
 	sptxh[i], sptxh[j] = sptxh[j], sptxh[i]
 }
 
+type QuorumKeys struct {
+	PrivKey PrivKey `json:"priv_key"`
+	PubKey PubKey `json:"pub_key"`
+	ThresholdPublicKey PubKey `json:"threshold_public_key"`
+}
+
 type PubKey interface {
 	HexStringer
 	Address() Address
