@@ -433,8 +433,8 @@ func brokenHandler(privVal types.PrivValidator, request privvalproto.Message,
 
 func TestSignerUnexpectedResponse(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
-		tc.signerServer.privVal = types.NewMockPV()
-		tc.mockPV = types.NewMockPV()
+		tc.signerServer.privVal = types.NewMockPVForQuorum(tc.quorumHash)
+		tc.mockPV = types.NewMockPVForQuorum(tc.quorumHash)
 
 		tc.signerServer.SetRequestHandler(brokenHandler)
 

@@ -168,15 +168,10 @@ func (v *Validator) Bytes() []byte {
 	return bz
 }
 
-// ToProto converts Valiator to protobuf
+// ToProto converts Validator to protobuf
 func (v *Validator) ToProto() (*tmproto.Validator, error) {
 	if v == nil {
 		return nil, errors.New("nil validator")
-	}
-
-	pk, err := ce.PubKeyToProto(v.PubKey)
-	if err != nil {
-		return nil, err
 	}
 
 	if v.ProTxHash == nil {
@@ -184,10 +179,17 @@ func (v *Validator) ToProto() (*tmproto.Validator, error) {
 	}
 
 	vp := tmproto.Validator{
-		PubKey:           pk,
 		VotingPower:      v.VotingPower,
 		ProposerPriority: v.ProposerPriority,
 		ProTxHash:        v.ProTxHash,
+	}
+
+	if v.PubKey != nil {
+		pk, err := ce.PubKeyToProto(v.PubKey)
+		if err != nil {
+			return nil, err
+		}
+		vp.PubKey = pk
 	}
 
 	return &vp, nil

@@ -106,9 +106,10 @@ func BenchmarkProposalWriteSignBytes(b *testing.B) {
 }
 
 func BenchmarkProposalSign(b *testing.B) {
-	privVal := NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	privVal := NewMockPVForQuorum(quorumHash)
 	for i := 0; i < b.N; i++ {
-		_, err := privVal.SignProposal("test_chain_id", 0, crypto.QuorumHash{}, pbp)
+		_, err := privVal.SignProposal("test_chain_id", 0, quorumHash, pbp)
 		if err != nil {
 			b.Error(err)
 		}
@@ -116,10 +117,11 @@ func BenchmarkProposalSign(b *testing.B) {
 }
 
 func BenchmarkProposalVerifySignature(b *testing.B) {
-	privVal := NewMockPV()
-	_, err := privVal.SignProposal("test_chain_id", 0, crypto.QuorumHash{}, pbp)
+	quorumHash := crypto.RandQuorumHash()
+	privVal := NewMockPVForQuorum(quorumHash)
+	_, err := privVal.SignProposal("test_chain_id", 0, quorumHash, pbp)
 	require.NoError(b, err)
-	pubKey, err := privVal.GetPubKey(crypto.QuorumHash{})
+	pubKey, err := privVal.GetPubKey(quorumHash)
 	require.NoError(b, err)
 
 	for i := 0; i < b.N; i++ {

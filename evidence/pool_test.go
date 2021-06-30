@@ -161,9 +161,10 @@ func TestEvidencePoolQuorum(t *testing.T) {
 // Tests inbound evidence for the right time and height
 func TestAddExpiredEvidence(t *testing.T) {
 	var (
-		val                 = types.NewMockPV()
+		quorumHash          = crypto.RandQuorumHash()
+		val                 = types.NewMockPVForQuorum(quorumHash)
 		height              = int64(30)
-		stateStore          = initializeValidatorState(val, height, btcjson.LLMQType_5_60, crypto.RandQuorumHash())
+		stateStore          = initializeValidatorState(val, height, btcjson.LLMQType_5_60, quorumHash)
 		evidenceDB          = dbm.NewMemDB()
 		blockStore          = &mocks.BlockStore{}
 		expiredEvidenceTime = time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -311,10 +312,11 @@ func TestVerifyDuplicatedEvidenceFails(t *testing.T) {
 // pending evidence and continue to gossip it
 func TestRecoverPendingEvidence(t *testing.T) {
 	height := int64(10)
-	val := types.NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	val := types.NewMockPVForQuorum(quorumHash)
 	valProTxHash := val.ProTxHash
 	evidenceDB := dbm.NewMemDB()
-	stateStore := initializeValidatorState(val, height, btcjson.LLMQType_5_60, crypto.RandQuorumHash())
+	stateStore := initializeValidatorState(val, height, btcjson.LLMQType_5_60, quorumHash)
 	state, err := stateStore.Load()
 	require.NoError(t, err)
 	blockStore := initializeBlockStore(dbm.NewMemDB(), state, valProTxHash)
@@ -395,8 +397,14 @@ func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) s
 }
 
 func initializeValidatorState(privVal types.PrivValidator, height int64, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) sm.Store {
-	pubKey, _ := privVal.GetPubKey(quorumHash)
-	proTxHash, _ := privVal.GetProTxHash()
+	pubKey, err := privVal.GetPubKey(quorumHash)
+	if err != nil {
+		panic(err)
+	}
+	proTxHash, err := privVal.GetProTxHash()
+	if err != nil {
+		panic(err)
+	}
 	if len(proTxHash) != 32 {
 		panic("proTxHash len not correct")
 	}
@@ -440,10 +448,11 @@ func makeCommit(height int64, quorumHash []byte, valProTxHash []byte) *types.Com
 }
 
 func defaultTestPool(height int64) (*evidence.Pool, *types.MockPV) {
-	val := types.NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	val := types.NewMockPVForQuorum(quorumHash)
 	valProTxHash := val.ProTxHash
 	evidenceDB := dbm.NewMemDB()
-	stateStore := initializeValidatorState(val, height, btcjson.LLMQType_5_60, crypto.RandQuorumHash())
+	stateStore := initializeValidatorState(val, height, btcjson.LLMQType_5_60, quorumHash)
 	state, _ := stateStore.Load()
 	blockStore := initializeBlockStore(dbm.NewMemDB(), state, valProTxHash)
 	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)

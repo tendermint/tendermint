@@ -41,8 +41,11 @@ func TestValidatorProtoBuf(t *testing.T) {
 }
 
 func TestValidatorValidateBasic(t *testing.T) {
-	priv := NewMockPV()
-	pubKey, _ := priv.GetPubKey(crypto.QuorumHash{})
+	quorumHash := crypto.RandQuorumHash()
+	priv := NewMockPVForQuorum(quorumHash)
+	pubKey, err := priv.GetPubKey(quorumHash)
+	require.NoError(t, err)
+
 	testCases := []struct {
 		val *Validator
 		err bool
