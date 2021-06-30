@@ -18,11 +18,11 @@ var ShowNodeIDCmd = &cobra.Command{
 }
 
 func showNodeID(cmd *cobra.Command, args []string) error {
-	nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
+	nodeKeyID, err := p2p.LoadNodeKeyID(config.NodeKeyFile())
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(nodeKey.ID)
+	fmt.Println(nodeKeyID)
 	return nil
 }

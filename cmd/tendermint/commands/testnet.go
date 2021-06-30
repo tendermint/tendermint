@@ -274,11 +274,11 @@ func persistentPeersArray(config *cfg.Config) ([]string, error) {
 	for i := 0; i < nValidators+nNonValidators; i++ {
 		nodeDir := filepath.Join(outputDir, fmt.Sprintf("%s%d", nodeDirPrefix, i))
 		config.SetRoot(nodeDir)
-		nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
+		nodeKey, err := p2p.LoadNodeKeyID(config.NodeKeyFile())
 		if err != nil {
 			return []string{}, err
 		}
-		peers[i] = nodeKey.ID.AddressString(fmt.Sprintf("%s:%d", hostnameOrIP(i), p2pPort))
+		peers[i] = nodeKey.AddressString(fmt.Sprintf("%s:%d", hostnameOrIP(i), p2pPort))
 	}
 	return peers, nil
 }

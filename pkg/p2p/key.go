@@ -10,27 +10,27 @@ import (
 )
 
 // LoadNodeKey loads NodeKey located in filePath.
-func LoadNodeKey(filePath string) (p2p.NodeKey, error) {
+func LoadNodeKeyID(filePath string) (types.NodeID, error) {
 	jsonBytes, err := ioutil.ReadFile(filePath)
 	if err != nil {
-		return p2p.NodeKey{}, err
+		return "", err
 	}
 	nodeKey := p2p.NodeKey{}
 	err = tmjson.Unmarshal(jsonBytes, &nodeKey)
 	if err != nil {
-		return p2p.NodeKey{}, err
+		return "", err
 	}
 	nodeKey.ID = types.NodeIDFromPubKey(nodeKey.PubKey())
-	return nodeKey, nil
+	return nodeKey.ID, nil
 }
 
 // LoadOrGenNodeKey attempts to load the NodeKey from the given filePath. If
 // the file does not exist, it generates and saves a new NodeKey.
-func LoadOrGenNodeKey(filePath string) (p2p.NodeKey, error) {
+func LoadOrGenNodeKeyID(filePath string) (types.NodeID, error) {
 	if tmos.FileExists(filePath) {
-		nodeKey, err := LoadNodeKey(filePath)
+		nodeKey, err := LoadNodeKeyID(filePath)
 		if err != nil {
-			return p2p.NodeKey{}, err
+			return "", err
 		}
 		return nodeKey, nil
 	}
@@ -38,8 +38,8 @@ func LoadOrGenNodeKey(filePath string) (p2p.NodeKey, error) {
 	nodeKey := p2p.GenNodeKey()
 
 	if err := nodeKey.SaveAs(filePath); err != nil {
-		return p2p.NodeKey{}, err
+		return "", err
 	}
 
-	return nodeKey, nil
+	return nodeKey.ID, nil
 }

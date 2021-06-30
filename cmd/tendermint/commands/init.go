@@ -8,10 +8,10 @@ import (
 	"github.com/spf13/cobra"
 
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/p2p"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
-	"github.com/tendermint/tendermint/pkg/p2p"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
 )
