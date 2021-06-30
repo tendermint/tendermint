@@ -50,21 +50,6 @@ func GenNodeKey() NodeKey {
 	}
 }
 
-// LoadNodeKey loads NodeKey located in filePath.
-func LoadNodeKey(filePath string) (NodeKey, error) {
-	jsonBytes, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		return NodeKey{}, err
-	}
-	nodeKey := NodeKey{}
-	err = tmjson.Unmarshal(jsonBytes, &nodeKey)
-	if err != nil {
-		return NodeKey{}, err
-	}
-	nodeKey.ID = types.NodeIDFromPubKey(nodeKey.PubKey())
-	return nodeKey, nil
-}
-
 // LoadOrGenNodeKey attempts to load the NodeKey from the given filePath. If
 // the file does not exist, it generates and saves a new NodeKey.
 func LoadOrGenNodeKey(filePath string) (NodeKey, error) {
@@ -82,5 +67,20 @@ func LoadOrGenNodeKey(filePath string) (NodeKey, error) {
 		return NodeKey{}, err
 	}
 
+	return nodeKey, nil
+}
+
+// LoadNodeKey loads NodeKey located in filePath.
+func LoadNodeKey(filePath string) (NodeKey, error) {
+	jsonBytes, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return NodeKey{}, err
+	}
+	nodeKey := NodeKey{}
+	err = tmjson.Unmarshal(jsonBytes, &nodeKey)
+	if err != nil {
+		return NodeKey{}, err
+	}
+	nodeKey.ID = types.NodeIDFromPubKey(nodeKey.PubKey())
 	return nodeKey, nil
 }
