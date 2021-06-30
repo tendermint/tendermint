@@ -371,7 +371,7 @@ func (r *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
 func (r *Reactor) subscribeToBroadcastEvents() {
 	err := r.state.evsw.AddListenerForEvent(
 		listenerIDConsensus,
-		types.EventNewRoundStep,
+		types.EventNewRoundStepValue,
 		func(data tmevents.EventData) {
 			r.broadcastNewRoundStepMessage(data.(*cstypes.RoundState))
 			select {
@@ -386,7 +386,7 @@ func (r *Reactor) subscribeToBroadcastEvents() {
 
 	err = r.state.evsw.AddListenerForEvent(
 		listenerIDConsensus,
-		types.EventValidBlock,
+		types.EventValidBlockValue,
 		func(data tmevents.EventData) {
 			r.broadcastNewValidBlockMessage(data.(*cstypes.RoundState))
 		},
@@ -397,7 +397,7 @@ func (r *Reactor) subscribeToBroadcastEvents() {
 
 	err = r.state.evsw.AddListenerForEvent(
 		listenerIDConsensus,
-		types.EventVote,
+		types.EventVoteValue,
 		func(data tmevents.EventData) {
 			r.broadcastHasVoteMessage(data.(*types.Vote))
 		},
