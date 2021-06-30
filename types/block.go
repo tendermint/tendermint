@@ -617,7 +617,7 @@ const (
 const (
 	// MaxCommitOverheadBytes is the max size of commit -> 82 for BlockID, 34 for StateID, 8 for Height, 4 for Round.
 	// 96 for Block signature, 96 for State Signature
-	MaxCommitOverheadBytes int64 = 322
+	MaxCommitOverheadBytes int64 = 326
 )
 
 //-------------------------------------

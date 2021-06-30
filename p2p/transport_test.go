@@ -142,7 +142,7 @@ func TestTransportMultiplexMaxIncomingConnections(t *testing.T) {
 	id := PubKeyToID(pv.PubKey())
 	mt := newMultiplexTransport(
 		testNodeInfo(
-			id, "transport",
+			id, "transport", nil,
 		),
 		NodeKey{
 			PrivKey: pv,
@@ -244,7 +244,7 @@ func testDialer(dialAddr NetAddress, errc chan error) {
 	var (
 		pv     = ed25519.GenPrivKey()
 		dialer = newMultiplexTransport(
-			testNodeInfo(PubKeyToID(pv.PubKey()), defaultNodeName),
+			testNodeInfo(PubKeyToID(pv.PubKey()), defaultNodeName, nil),
 			NodeKey{
 				PrivKey: pv,
 			},
@@ -266,7 +266,7 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 
 	var (
 		fastNodePV   = ed25519.GenPrivKey()
-		fastNodeInfo = testNodeInfo(PubKeyToID(fastNodePV.PubKey()), "fastnode")
+		fastNodeInfo = testNodeInfo(PubKeyToID(fastNodePV.PubKey()), "fastnode", nil)
 		errc         = make(chan error)
 		fastc        = make(chan struct{})
 		slowc        = make(chan struct{})
@@ -309,6 +309,7 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 			testNodeInfo(
 				PubKeyToID(ed25519.GenPrivKey().PubKey()),
 				"slow_peer",
+				nil,
 			))
 		if err != nil {
 			errc <- err
@@ -363,7 +364,7 @@ func TestTransportMultiplexValidateNodeInfo(t *testing.T) {
 		var (
 			pv     = ed25519.GenPrivKey()
 			dialer = newMultiplexTransport(
-				testNodeInfo(PubKeyToID(pv.PubKey()), ""), // Should not be empty
+				testNodeInfo(PubKeyToID(pv.PubKey()), "", nil), // Should not be empty
 				NodeKey{
 					PrivKey: pv,
 				},
@@ -403,7 +404,7 @@ func TestTransportMultiplexRejectMissmatchID(t *testing.T) {
 	go func() {
 		dialer := newMultiplexTransport(
 			testNodeInfo(
-				PubKeyToID(ed25519.GenPrivKey().PubKey()), "dialer",
+				PubKeyToID(ed25519.GenPrivKey().PubKey()), "dialer", nil,
 			),
 			NodeKey{
 				PrivKey: ed25519.GenPrivKey(),
@@ -440,7 +441,7 @@ func TestTransportMultiplexDialRejectWrongID(t *testing.T) {
 	var (
 		pv     = ed25519.GenPrivKey()
 		dialer = newMultiplexTransport(
-			testNodeInfo(PubKeyToID(pv.PubKey()), ""), // Should not be empty
+			testNodeInfo(PubKeyToID(pv.PubKey()), "", nil), // Should not be empty
 			NodeKey{
 				PrivKey: pv,
 			},
@@ -472,7 +473,7 @@ func TestTransportMultiplexRejectIncompatible(t *testing.T) {
 		var (
 			pv     = ed25519.GenPrivKey()
 			dialer = newMultiplexTransport(
-				testNodeInfoWithNetwork(PubKeyToID(pv.PubKey()), "dialer", "incompatible-network"),
+				testNodeInfoWithNetwork(PubKeyToID(pv.PubKey()), "dialer", "incompatible-network", nil),
 				NodeKey{
 					PrivKey: pv,
 				},
@@ -571,7 +572,7 @@ func TestTransportHandshake(t *testing.T) {
 
 	var (
 		peerPV       = ed25519.GenPrivKey()
-		peerNodeInfo = testNodeInfo(PubKeyToID(peerPV.PubKey()), defaultNodeName)
+		peerNodeInfo = testNodeInfo(PubKeyToID(peerPV.PubKey()), defaultNodeName, nil)
 	)
 
 	go func() {
@@ -643,7 +644,7 @@ func testSetupMultiplexTransport(t *testing.T) *MultiplexTransport {
 		id = PubKeyToID(pv.PubKey())
 		mt = newMultiplexTransport(
 			testNodeInfo(
-				id, "transport",
+				id, "transport", nil,
 			),
 			NodeKey{
 				PrivKey: pv,

@@ -51,8 +51,12 @@ func (c *MockCoreServer) QuorumInfo(cmd btcjson.QuorumCmd) btcjson.QuorumInfoRes
 	if err != nil {
 		panic(err)
 	}
+	height, err := c.FilePV.GetHeight(qq)
+	if err != nil {
+		panic(err)
+	}
 	return btcjson.QuorumInfoResult{
-		Height:          uint32(c.FilePV.GetHeight(qq)),
+		Height:          uint32(height),
 		Type:            strconv.Itoa(int(c.LLMQType)),
 		QuorumHash:      quorumHash,
 		Members:         members,
@@ -71,28 +75,31 @@ func (c *MockCoreServer) QuorumSign(cmd btcjson.QuorumCmd) btcjson.QuorumSignRes
 		panic(err)
 	}
 
-	cmdQuorumHash, err := hex.DecodeString(*cmd.QuorumHash)
+	quorumHashBytes, err := hex.DecodeString(*cmd.QuorumHash)
+	if err != nil {
+		panic(err)
+	}
+	quorumHash := crypto.QuorumHash(quorumHashBytes)
+
+	signID := crypto.SignId(
+		*cmd.LLMQType,
+		bls12381.ReverseBytes(quorumHash),
+		bls12381.ReverseBytes(reqID),
+		bls12381.ReverseBytes(msgHash),
+	)
+	privateKey, err := c.FilePV.Key.PrivateKeyForQuorumHash(quorumHash)
 	if err != nil {
 		panic(err)
 	}
 
-	c.FilePV.UpdateKeysByQuorumHash(cmdQuorumHash)
-
-	qh := c.FilePV.Key.QuorumHash
-	signID := crypto.SignId(
-		*cmd.LLMQType,
-		bls12381.ReverseBytes(qh),
-		bls12381.ReverseBytes(reqID),
-		bls12381.ReverseBytes(msgHash),
-	)
-	sign, err := c.FilePV.Key.PrivKey.SignDigest(signID)
+	sign, err := privateKey.SignDigest(signID)
 	if err != nil {
 		panic(err)
 	}
 
 	res := btcjson.QuorumSignResult{
 		LLMQType:   int(c.LLMQType),
-		QuorumHash: c.FilePV.Key.QuorumHash.String(),
+		QuorumHash: quorumHash.String(),
 		ID:         hex.EncodeToString(reqID),
 		MsgHash:    hex.EncodeToString(msgHash),
 		SignHash:   hex.EncodeToString(signID),

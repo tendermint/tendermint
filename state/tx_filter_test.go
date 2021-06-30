@@ -1,6 +1,7 @@
 package state_test
 
 import (
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"os"
 	"testing"
 
@@ -9,7 +10,6 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -25,8 +25,8 @@ func TestTxFilter(t *testing.T) {
 		tx    types.Tx
 		isErr bool
 	}{
-		{types.Tx(tmrand.Bytes(2081)), false},
-		{types.Tx(tmrand.Bytes(2082)), true},
+		{types.Tx(tmrand.Bytes(2120)), false},
+		{types.Tx(tmrand.Bytes(2121)), true},
 		{types.Tx(tmrand.Bytes(3000)), true},
 	}
 	// We get 2202 above as we have 80 more bytes in max bytes and we are using bls, so 2155 + 80 - 32 - 1 = 2202

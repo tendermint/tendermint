@@ -5,6 +5,7 @@ import (
 	// number generator here and we can run the tests a bit faster
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"github.com/dashevo/dashd-go/btcjson"
 	"math"
 	"os"
@@ -39,7 +40,7 @@ func TestBlockAddEvidence(t *testing.T) {
 
 	coreChainLock := NewMockChainLock(1)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10)
 	commit, err := MakeCommit(lastID, lastStateID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -61,7 +62,7 @@ func TestBlockValidateBasic(t *testing.T) {
 	lastStateID := makeStateIDRandom()
 	h := int64(3)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10)
 	commit, err := MakeCommit(lastID, lastStateID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -136,7 +137,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	lastStateID := makeStateIDRandom()
 	h := int64(3)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10)
 	commit, err := MakeCommit(lastID, lastStateID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -147,10 +148,9 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	block := MakeBlock(h, 0, nil, []Tx{Tx("Hello World")}, commit, evList)
 	partSet := block.MakePartSet(512)
 	assert.NotNil(t, partSet)
-	// The part set can be either 4 or 5 parts, this is because of variance in sizes due to the non second part of
+	// The part set can be either 3 or 4 parts, this is because of variance in sizes due to the non second part of
 	//  timestamps marshalling to different sizes
-	assert.True(t, partSet.Total() >= 7)
-	assert.True(t, partSet.Total() <= 8)
+	assert.True(t, partSet.Total() == 3)
 }
 
 func TestBlockHashesTo(t *testing.T) {
@@ -160,7 +160,7 @@ func TestBlockHashesTo(t *testing.T) {
 	lastStateID := makeStateIDRandom()
 	h := int64(3)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10)
 	commit, err := MakeCommit(lastID, lastStateID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -258,7 +258,7 @@ func TestCommit(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	lastStateID := makeStateIDRandom()
 	h := int64(3)
-	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
+	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10)
 	commit, err := MakeCommit(lastID, lastStateID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -278,8 +278,8 @@ func TestCommitValidateBasic(t *testing.T) {
 		expectErr      bool
 	}{
 		{"Random Commit", func(com *Commit) {}, false},
-		{"Incorrect block signature", func(com *Commit) { com.ThresholdBlockSignature = []byte{0} }, false},
-		{"Incorrect state signature", func(com *Commit) { com.ThresholdStateSignature = []byte{0} }, false},
+		{"Incorrect block signature", func(com *Commit) { com.ThresholdBlockSignature = []byte{0} }, true},
+		{"Incorrect state signature", func(com *Commit) { com.ThresholdStateSignature = []byte{0} }, true},
 		{"Incorrect height", func(com *Commit) { com.Height = int64(-100) }, true},
 		{"Incorrect round", func(com *Commit) { com.Round = -100 }, true},
 	}
@@ -451,7 +451,7 @@ func randCommit() *Commit {
 	lastID := makeBlockIDRandom()
 	lastStateID := makeStateIDRandom()
 	h := int64(3)
-	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
+	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10)
 	commit, err := MakeCommit(lastID, lastStateID, h-1, 1, voteSet, vals)
 	if err != nil {
 		panic(err)
@@ -478,26 +478,28 @@ func TestBlockMaxDataBytes(t *testing.T) {
 	}{
 		0: {-10, crypto.BLS12381, 1, 0, true, 0},
 		1: {10, crypto.BLS12381, 1, 0, true, 0},
-		2: {1153, crypto.BLS12381, 1, 0, true, 0},
-		3: {1154, crypto.BLS12381, 1, 0, false, 0},
-		4: {1155, crypto.BLS12381, 1, 0, false, 1},
-		5: {1390, crypto.BLS12381, 2, 0, false, 1},
-		6: {1489, crypto.BLS12381, 2, 100, false, 0},
+		2: {1114, crypto.BLS12381, 1, 0, true, 0},
+		3: {1115, crypto.BLS12381, 1, 0, false, 0},
+		4: {1116, crypto.BLS12381, 1, 0, false, 1},
+		5: {1116, crypto.BLS12381, 2, 0, false, 1},
+		6: {1215, crypto.BLS12381, 2, 100, false, 0},
 	}
 	// An extra 33 bytes (32 for sig, 1 for proto encoding are needed for BLS compared to edwards per validator
 
 	for i, tc := range testCases {
 		tc := tc
-		if tc.panics {
-			assert.Panics(t, func() {
-				MaxDataBytes(tc.maxBytes, tc.keyType, tc.evidenceBytes, tc.valsCount)
-			}, "#%v", i)
-		} else {
-			assert.Equal(t,
-				tc.result,
-				MaxDataBytes(tc.maxBytes, tc.keyType, tc.evidenceBytes, tc.valsCount),
-				"#%v", i)
-		}
+		t.Run(fmt.Sprintf("%d", tc.maxBytes), func(t *testing.T) {
+			if tc.panics {
+				assert.Panics(t, func() {
+					MaxDataBytes(tc.maxBytes, tc.keyType, tc.evidenceBytes, tc.valsCount)
+				}, "#%v", i)
+			} else {
+				assert.Equal(t,
+					tc.result,
+					MaxDataBytes(tc.maxBytes, tc.keyType, tc.evidenceBytes, tc.valsCount),
+					"#%v", i)
+			}
+		})
 	}
 }
 
@@ -512,23 +514,25 @@ func TestBlockMaxDataBytesNoEvidence(t *testing.T) {
 	}{
 		0: {-10, 1, crypto.BLS12381, 1, true, 0},
 		1: {10, 1, crypto.BLS12381, 1, true, 0},
-		2: {1153, 1, crypto.BLS12381, 1, true, 0},
-		3: {1154, 1, crypto.BLS12381, 1, false, 0},
-		4: {1155, 1, crypto.BLS12381, 1, false, 1},
+		2: {1114, 1, crypto.BLS12381, 1, true, 0},
+		3: {1115, 1, crypto.BLS12381, 1, false, 0},
+		4: {1116, 1, crypto.BLS12381, 1, false, 1},
 	}
 
 	for i, tc := range testCases {
 		tc := tc
-		if tc.panics {
-			assert.Panics(t, func() {
-				MaxDataBytesNoEvidence(tc.maxBytes, tc.keyType, tc.valsCount)
-			}, "#%v", i)
-		} else {
-			assert.Equal(t,
-				tc.result,
-				MaxDataBytesNoEvidence(tc.maxBytes, tc.keyType, tc.valsCount),
-				"#%v", i)
-		}
+		t.Run(fmt.Sprintf("%d", tc.maxBytes), func(t *testing.T) {
+			if tc.panics {
+				assert.Panics(t, func() {
+					MaxDataBytesNoEvidence(tc.maxBytes, tc.keyType, tc.valsCount)
+				}, "#%v", i)
+			} else {
+				assert.Equal(t,
+					tc.result,
+					MaxDataBytesNoEvidence(tc.maxBytes, tc.keyType, tc.valsCount),
+					"#%v", i)
+			}
+		})
 	}
 }
 
@@ -554,7 +558,7 @@ func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		voteSet, valSet, vals := randVoteSet(height-1, round, tmproto.PrecommitType, tc.numValidators, 1)
+		voteSet, valSet, vals := randVoteSet(height-1, round, tmproto.PrecommitType, tc.numValidators)
 
 		vi := int32(0)
 		for n := range tc.blockIDs {

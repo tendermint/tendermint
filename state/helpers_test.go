@@ -104,18 +104,18 @@ func makeTxs(height int64) (txs []types.Tx) {
 
 func makeState(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValidator) {
 	privValsByProTxHash := make(map[string]types.PrivValidator, nVals)
-	vals, privVals, thresholdPublicKey := types.GenerateMockGenesisValidators(nVals)
+	vals, privVals, quorumHash, thresholdPublicKey := types.GenerateMockGenesisValidators(nVals)
 	// vals and privals are sorted
 	for i := 0; i < nVals; i++ {
 		vals[i].Name = fmt.Sprintf("test%d", i)
 		proTxHash := vals[i].ProTxHash
-		privValsByProTxHash[proTxHash.String()] = types.NewMockPVWithParams(privVals[i].PrivKey, vals[i].ProTxHash, false, false)
+		privValsByProTxHash[proTxHash.String()] = privVals[i]
 	}
 	s, _ := sm.MakeGenesisState(&types.GenesisDoc{
 		ChainID:            chainID,
 		Validators:         vals,
 		ThresholdPublicKey: thresholdPublicKey,
-		QuorumHash:         crypto.RandQuorumHash(),
+		QuorumHash:         quorumHash,
 		AppHash:            nil,
 	})
 

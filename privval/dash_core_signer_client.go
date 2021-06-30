@@ -3,6 +3,7 @@ package privval
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"runtime/debug"
 	"strings"
@@ -74,7 +75,7 @@ func (sc *DashCoreSignerClient) Ping() error {
 	return nil
 }
 
-func (sc *DashCoreSignerClient) ExtractIntoValidator(height int64, quorumHash crypto.QuorumHash) *types.Validator {
+func (sc *DashCoreSignerClient) ExtractIntoValidator(quorumHash crypto.QuorumHash) *types.Validator {
 	pubKey, _ := sc.GetPubKey(quorumHash)
 	proTxHash, _ := sc.GetProTxHash()
 	if len(proTxHash) != crypto.DefaultHashSize {
@@ -142,6 +143,29 @@ func (sc *DashCoreSignerClient) GetPubKey(quorumHash crypto.QuorumHash) (crypto.
 	}
 
 	return bls12381.PubKey(decodedPublicKeyShare), nil
+}
+
+func (sc *DashCoreSignerClient) GetFirstQuorumHash() (crypto.QuorumHash, error) {
+	return nil, errors.New("getFirstQuorumHash should not be called on a dash core signer client")
+}
+
+func (sc *DashCoreSignerClient) GetThresholdPublicKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
+	if len(quorumHash.Bytes()) != crypto.DefaultHashSize {
+		return nil, fmt.Errorf("quorum hash must be 32 bytes long if requesting public key from dash core")
+	}
+
+	response, err := sc.endpoint.QuorumInfo(sc.defaultQuorumType, quorumHash.String(), false)
+	if err != nil {
+		return nil, fmt.Errorf("getThresholdPublicKey Quorum Info Error for (%d) %s : %w", sc.defaultQuorumType, quorumHash.String(), err)
+	}
+	decodedThresholdPublicKey, err := hex.DecodeString(response.QuorumPublicKey)
+	if len(decodedThresholdPublicKey) != bls12381.PubKeySize {
+		return nil, fmt.Errorf("decoding thresholdPublicKey %d is incorrect size when getting public key : %v", len(decodedThresholdPublicKey), err)
+	}
+	return bls12381.PubKey(decodedThresholdPublicKey), nil
+}
+func (sc *DashCoreSignerClient) GetHeight(quorumHash crypto.QuorumHash) (int64, error) {
+	return 0, fmt.Errorf("getHeight should not be called on a dash core signer client %s", quorumHash.String())
 }
 
 func (sc *DashCoreSignerClient) GetProTxHash() (crypto.ProTxHash, error) {
@@ -286,7 +310,7 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumType btcjson.LLMQ
 }
 
 // SignProposal requests a remote signer to sign a proposal
-func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposalProto *tmproto.Proposal) error {
+func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposalProto *tmproto.Proposal) ([]byte, error) {
 	messageBytes:= types.ProposalBlockSignBytes(chainID, proposalProto)
 
 	messageHash := crypto.Sha256(messageBytes)
@@ -298,24 +322,24 @@ func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumType btcjson.
 	requestIdHashString := strings.ToUpper(hex.EncodeToString(requestIdHash))
 
 	if quorumType == 0 {
-		return fmt.Errorf("error signing proposal with invalid quorum type")
+		return nil, fmt.Errorf("error signing proposal with invalid quorum type")
 	}
 
 	response, err := sc.endpoint.QuorumSign(quorumType, requestIdHashString, messageHashString, quorumHash.String(), false)
 
 	if response == nil {
-		return ErrUnexpectedResponse
+		return nil, ErrUnexpectedResponse
 	}
 	if err != nil {
-		return &RemoteSignerError{Code: 500, Description: err.Error()}
+		return nil, &RemoteSignerError{Code: 500, Description: err.Error()}
 	}
 
 	decodedSignature, err := hex.DecodeString(response.Signature)
 	if err != nil {
-		return fmt.Errorf("error decoding signature when signing proposal : %v", err)
+		return nil, fmt.Errorf("error decoding signature when signing proposal : %v", err)
 	}
 	if len(decodedSignature) != bls12381.SignatureSize {
-		return fmt.Errorf("decoding signature %d is incorrect size when signing proposal : %v", len(decodedSignature), err)
+		return nil, fmt.Errorf("decoding signature %d is incorrect size when signing proposal : %v", len(decodedSignature), err)
 	}
 
 	//fmt.Printf("proposal message that is being signed %v\n", messageBytes)
@@ -342,10 +366,10 @@ func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumType btcjson.
 
 	proposalProto.Signature = decodedSignature
 
-	return nil
+	return nil, nil
 }
 
-func (sc *DashCoreSignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, height int64) error {
+func (sc *DashCoreSignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.QuorumHash,  height int64) error {
 	// the private key is dealt with on the abci client
 	return nil
 }

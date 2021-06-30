@@ -37,7 +37,7 @@ func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 	blockID := types.BlockID{Hash: []byte(""), PartSetHeader: types.PartSetHeader{Hash: []byte(""), Total: 2}}
 	stateID := types.StateID{LastAppHash: make([]byte, 32)}
 	goodVote := &types.Vote{
-		ValidatorProTxHash: crypto.RandQuorumHash(),
+		ValidatorProTxHash: crypto.RandProTxHash(),
 		ValidatorIndex:     0,
 		Height:             height,
 		Round:              0,
@@ -49,8 +49,8 @@ func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 	g := goodVote.ToProto()
 
 	privKey := bls12381.GenPrivKey()
-	privVal := types.NewMockPVWithParams(privKey, crypto.RandProTxHash(), false,
-		false)
+	privVal := types.NewMockPVWithParams(privKey, crypto.RandProTxHash(), state.Validators.QuorumHash,
+		state.Validators.ThresholdPublicKey, false, false)
 
 	privVal.SignVote("chainID", state.Validators.QuorumType, state.Validators.QuorumHash, g)
 

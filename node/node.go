@@ -697,6 +697,8 @@ func NewNode(config *cfg.Config,
 			return nil, fmt.Errorf("can't get proTxHash through listen address: %w", err)
 		}
 		logger.Info("Connected to Private Validator through listen address", "proTxHash", proTxHash.String())
+	} else if privValidator == nil {
+		logger.Info("Private Validator is not properly set", "proTxHash", proTxHash.String())
 	}
 	weAreOnlyValidator = onlyValidatorIsUs(state, proTxHash)
 

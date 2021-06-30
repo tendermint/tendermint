@@ -640,6 +640,9 @@ func (voteSet *VoteSet) LogString() string {
 
 // return the power voted, the total, and the fraction
 func (voteSet *VoteSet) sumTotalFrac() (int64, int64, float64) {
+	if voteSet.valSet == nil {
+		panic("vote set validator set should be set")
+	}
 	voted, total := voteSet.sum, voteSet.valSet.TotalVotingPower()
 	fracVoted := float64(voted) / float64(total)
 	return voted, total, fracVoted

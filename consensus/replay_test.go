@@ -369,7 +369,6 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	signAddVotes(css[0], tmproto.PrevoteType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
 	signAddVotes(css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
 	ensureNewRound(newRoundCh, height+1, 0)
-	//ensureNewBlock(blockCh, height)
 
 	// HEIGHT 2
 	updatedValidators2, _, newThresholdPublicKey, quorumHash2 := updateConsensusNetAddNewValidators(css, height, 1, false)
@@ -399,7 +398,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	proposal := types.NewProposal(vss[1].Height, 1, round, -1, blockID)
 	p := proposal.ToProto()
-	if err := vss[1].SignProposal(config.ChainID(), genDoc.QuorumType, genDoc.QuorumHash, p); err != nil {
+	if _, err := vss[1].SignProposal(config.ChainID(), genDoc.QuorumType, genDoc.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -424,7 +423,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	proposal = types.NewProposal(vss[2].Height, 1, round, -1, blockID)
 	p = proposal.ToProto()
-	if err := vss[2].SignProposal(config.ChainID(), genDoc.QuorumType, genDoc.QuorumHash, p); err != nil {
+	if _, err := vss[2].SignProposal(config.ChainID(), genDoc.QuorumType, genDoc.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -476,7 +475,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	vssProposer := findProposer(vss, css[0].Validators.Proposer.ProTxHash)
 	proposal = types.NewProposal(vss[3].Height, 1, round, -1, blockID)
 	p = proposal.ToProto()
-	if err := vssProposer.SignProposal(config.ChainID(), genDoc.QuorumType, quorumHash2, p); err != nil {
+	if _, err := vssProposer.SignProposal(config.ChainID(), genDoc.QuorumType, quorumHash2, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -544,7 +543,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		panic(fmt.Sprintf("validator proTxHash %X not found in newVss", proposerProTxHash))
 	}
 	proposerIndex := valIndexFnByProTxHash(proposerProTxHash)
-	if err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, quorumHash2, p); err != nil {
+	if _, err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, quorumHash2, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -605,7 +604,9 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	proposal = types.NewProposal(vss[2].Height, 1, round, -1, blockID)
 	p = proposal.ToProto()
-	proposerProTxHash = css[0].RoundState.Validators.GetProposer().ProTxHash
+	proposer := css[0].RoundState.Validators.GetProposer()
+	proposerProTxHash = proposer.ProTxHash
+	proposerPubKey := proposer.PubKey
 	valIndexFnByProTxHash = func(proTxHash crypto.ProTxHash) int {
 		for i, vs := range vss {
 			vsProTxHash, err := vs.GetProTxHash()
@@ -618,9 +619,28 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		panic(fmt.Sprintf("validator proTxHash %X not found in newVss", proposerProTxHash))
 	}
 	proposerIndex = valIndexFnByProTxHash(proposerProTxHash)
-	if err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, quorumHash4, p); err != nil {
+	validatorsAtProposalHeight := css[0].state.ValidatorsAtHeight(p.Height)
+
+	signId, err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p)
+	if err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
+
+	proposerPubKey2, err := vss[proposerIndex].GetPubKey(validatorsAtProposalHeight.QuorumHash)
+	proposerProTxHash2, err := vss[proposerIndex].GetProTxHash()
+
+	if !bytes.Equal(proposerProTxHash2.Bytes(), proposerProTxHash.Bytes()) {
+		t.Fatal("wrong proposer", err)
+	}
+
+	if !bytes.Equal(proposerPubKey2.Bytes(), proposerPubKey.Bytes()) {
+		t.Fatal("wrong proposer pubKey", err)
+	}
+
+	css[0].Logger.Debug("signed proposal","height", proposal.Height, "round", proposal.Round,
+		"proposer", proposerProTxHash.ShortString(), "signature", p.Signature, "pubkey", proposerPubKey2.Bytes(), "quorum type",
+		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signId", signId)
+
 	proposal.Signature = p.Signature
 
 	// set the proposal block
@@ -662,7 +682,8 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	p = proposal.ToProto()
 	proposerProTxHash = css[0].RoundState.Validators.GetProposer().ProTxHash
 	proposerIndex = valIndexFnByProTxHash(proposerProTxHash)
-	if err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, quorumHash4, p); err != nil {
+	validatorsAtProposalHeight = css[0].state.ValidatorsAtHeight(p.Height)
+	if _, err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -720,11 +741,27 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	proposal = types.NewProposal(vss[5].Height, 1, round, -1, blockID)
 	p = proposal.ToProto()
-	proposerProTxHash = css[0].RoundState.Validators.GetProposer().ProTxHash
+	proposer = css[0].RoundState.Validators.GetProposer()
+	proposerProTxHash = proposer.ProTxHash
+	proposerPubKey = proposer.PubKey
 	proposerIndex = valIndexFnByProTxHash(proposerProTxHash)
-	if err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, quorumHash4, p); err != nil {
+	validatorsAtProposalHeight = css[0].state.ValidatorsAtHeight(p.Height)
+	signId, err = vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p)
+
+	if err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
+
+	proposerPubKey2, err = vss[proposerIndex].GetPubKey(validatorsAtProposalHeight.QuorumHash)
+
+	if !bytes.Equal(proposerPubKey2.Bytes(), proposerPubKey.Bytes()) {
+		//t.Fatal("wrong proposer pubKey", err)
+	}
+
+	css[0].Logger.Debug("signed proposal","height", proposal.Height, "round", proposal.Round,
+		"proposer", proposerProTxHash.ShortString(), "signature", p.Signature, "pubkey", proposerPubKey.Bytes(), "quorum type",
+		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signId", signId)
+
 	proposal.Signature = p.Signature
 
 	// set the proposal block

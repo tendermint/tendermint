@@ -116,6 +116,10 @@ func (vals *ValidatorSet) ValidateBasic() error {
 		return errors.New("validator set is nil or empty")
 	}
 
+	if vals.Proposer == nil {
+		return errors.New("validator set proposer is not set")
+	}
+
 	for idx, val := range vals.Validators {
 		if err := val.ValidateBasic(); err != nil {
 			return fmt.Errorf("invalid validator #%d: %w", idx, err)
@@ -446,9 +450,11 @@ func (vals *ValidatorSet) RegenerateWithNewKeys() (*ValidatorSet, []PrivValidato
 		privValidators = make([]PrivValidator, numValidators)
 	)
 	orderedProTxHashes, privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+	quorumHash := crypto.RandQuorumHash()
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], orderedProTxHashes[i], false, false)
+		privValidators[i] = NewMockPVWithParams(privateKeys[i], orderedProTxHashes[i], quorumHash, thresholdPublicKey,
+			false, false)
 		valz[i] = NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), orderedProTxHashes[i])
 	}
 
@@ -1101,8 +1107,12 @@ func ValidatorSetFromExistingValidators(valz []*Validator, thresholdPublicKey cr
 	if len(valz) == 0 {
 		return nil, errors.New("validator set is empty")
 	}
+	hasPublicKeys := true
 	for _, val := range valz {
 		err := val.ValidateBasic()
+		if val.PubKey == nil {
+			hasPublicKeys = false
+		}
 		if err != nil {
 			return nil, fmt.Errorf("can't create validator set: %w", err)
 		}
@@ -1113,6 +1123,7 @@ func ValidatorSetFromExistingValidators(valz []*Validator, thresholdPublicKey cr
 		ThresholdPublicKey: thresholdPublicKey,
 		QuorumType:         quorumType,
 		QuorumHash:         quorumHash,
+		HasPublicKeys:      hasPublicKeys,
 	}
 	vals.Proposer = vals.findPreviousProposer()
 	vals.updateTotalVotingPower()
@@ -1133,15 +1144,17 @@ func GenerateValidatorSet(numValidators int) (*ValidatorSet, []PrivValidator) {
 	)
 	threshold := numValidators*2/3 + 1
 	privateKeys, proTxHashes, thresholdPublicKey := bls12381.CreatePrivLLMQData(numValidators, threshold)
+	quorumHash := crypto.RandQuorumHash()
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false, false)
+		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], quorumHash,
+			thresholdPublicKey, false, false)
 		valz[i] = NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), proTxHashes[i])
 	}
 
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash(), true), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), quorumHash, true), privValidators
 }
 
 func GenerateTestValidatorSetWithProTxHashes(proTxHashes []crypto.ProTxHash, power []int64) (*ValidatorSet, []PrivValidator) {
@@ -1159,16 +1172,17 @@ func GenerateTestValidatorSetWithProTxHashes(proTxHashes []crypto.ProTxHash, pow
 	sort.Sort(crypto.SortProTxHash(sortedProTxHashes))
 
 	orderedProTxHashes, privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(sortedProTxHashes)
+	quorumHash := crypto.RandQuorumHash()
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], orderedProTxHashes[i], false,
-			false)
+		privValidators[i] = NewMockPVWithParams(privateKeys[i], orderedProTxHashes[i], quorumHash,
+			thresholdPublicKey, false, false)
 		valz[i] = NewValidator(privateKeys[i].PubKey(), originalPowerMap[string(orderedProTxHashes[i])], orderedProTxHashes[i])
 	}
 
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash(), true), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), quorumHash, true), privValidators
 }
 
 func GenerateTestValidatorSetWithProTxHashesDefaultPower(proTxHashes []crypto.ProTxHash) (*ValidatorSet, []PrivValidator) {
@@ -1180,16 +1194,17 @@ func GenerateTestValidatorSetWithProTxHashesDefaultPower(proTxHashes []crypto.Pr
 	sort.Sort(crypto.SortProTxHash(proTxHashes))
 
 	orderedProTxHashes, privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+	quorumHash := crypto.RandQuorumHash()
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], orderedProTxHashes[i], false,
-			false)
+		privValidators[i] = NewMockPVWithParams(privateKeys[i], orderedProTxHashes[i], quorumHash,
+			thresholdPublicKey, false, false)
 		valz[i] = NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), orderedProTxHashes[i])
 	}
 
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash(), true), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), quorumHash, true), privValidators
 }
 
 func GenerateMockValidatorSet(numValidators int) (*ValidatorSet, []*MockPV) {
@@ -1199,28 +1214,30 @@ func GenerateMockValidatorSet(numValidators int) (*ValidatorSet, []*MockPV) {
 	)
 	threshold := numValidators*2/3 + 1
 	privateKeys, proTxHashes, thresholdPublicKey := bls12381.CreatePrivLLMQData(numValidators, threshold)
+	quorumHash := crypto.RandQuorumHash()
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false,
-			false)
+		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], quorumHash,
+			thresholdPublicKey, false, false)
 		valz[i] = NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), proTxHashes[i])
 	}
 
 	sort.Sort(MockPrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash(), true), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), quorumHash, true), privValidators
 }
 
-func GenerateGenesisValidators(numValidators int) ([]GenesisValidator, []PrivValidator, crypto.PubKey) {
+func GenerateGenesisValidators(numValidators int) ([]GenesisValidator, []PrivValidator, crypto.QuorumHash, crypto.PubKey) {
 	var (
 		genesisValidators = make([]GenesisValidator, numValidators)
 		privValidators    = make([]PrivValidator, numValidators)
 	)
 	privateKeys, proTxHashes, thresholdPublicKey := bls12381.CreatePrivLLMQDataDefaultThreshold(numValidators)
+	quorumHash := crypto.RandQuorumHash()
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false,
-			false)
+		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], quorumHash,
+			thresholdPublicKey, false, false)
 		genesisValidators[i] = GenesisValidator{
 			PubKey:    privateKeys[i].PubKey(),
 			Power:     DefaultDashVotingPower,
@@ -1231,19 +1248,20 @@ func GenerateGenesisValidators(numValidators int) ([]GenesisValidator, []PrivVal
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 	sort.Sort(GenesisValidatorsByProTxHash(genesisValidators))
 
-	return genesisValidators, privValidators, thresholdPublicKey
+	return genesisValidators, privValidators, quorumHash, thresholdPublicKey
 }
 
-func GenerateMockGenesisValidators(numValidators int) ([]GenesisValidator, []*MockPV, crypto.PubKey) {
+func GenerateMockGenesisValidators(numValidators int) ([]GenesisValidator, []*MockPV, crypto.QuorumHash, crypto.PubKey) {
 	var (
 		genesisValidators = make([]GenesisValidator, numValidators)
 		privValidators    = make([]*MockPV, numValidators)
 	)
 	privateKeys, proTxHashes, thresholdPublicKey := bls12381.CreatePrivLLMQDataDefaultThreshold(numValidators)
+	quorumHash := crypto.RandQuorumHash()
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false,
-			false)
+		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], quorumHash,
+			thresholdPublicKey, false, false)
 		genesisValidators[i] = GenesisValidator{
 			PubKey:    privateKeys[i].PubKey(),
 			Power:     DefaultDashVotingPower,
@@ -1254,7 +1272,7 @@ func GenerateMockGenesisValidators(numValidators int) ([]GenesisValidator, []*Mo
 	sort.Sort(MockPrivValidatorsByProTxHash(privValidators))
 	sort.Sort(GenesisValidatorsByProTxHash(genesisValidators))
 
-	return genesisValidators, privValidators, thresholdPublicKey
+	return genesisValidators, privValidators, quorumHash, thresholdPublicKey
 }
 
 func GenerateValidatorSetUsingProTxHashes(proTxHashes []crypto.ProTxHash) (*ValidatorSet, []PrivValidator) {
@@ -1267,10 +1285,11 @@ func GenerateValidatorSetUsingProTxHashes(proTxHashes []crypto.ProTxHash) (*Vali
 		privValidators = make([]PrivValidator, numValidators)
 	)
 	orderedProTxHashes, privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+	quorumHash := crypto.RandQuorumHash()
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], orderedProTxHashes[i], false,
-			false)
+		privValidators[i] = NewMockPVWithParams(privateKeys[i], orderedProTxHashes[i], quorumHash,
+			thresholdPublicKey, false, false)
 		valz[i] = NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), orderedProTxHashes[i])
 	}
 
@@ -1289,10 +1308,11 @@ func GenerateMockValidatorSetUsingProTxHashes(proTxHashes []crypto.ProTxHash) (*
 		privValidators = make([]*MockPV, numValidators)
 	)
 	orderedProTxHashes, privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+	quorumHash := crypto.RandQuorumHash()
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], orderedProTxHashes[i], false,
-			false)
+		privValidators[i] = NewMockPVWithParams(privateKeys[i], orderedProTxHashes[i], quorumHash,
+			thresholdPublicKey, false, false)
 		valz[i] = NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), orderedProTxHashes[i])
 	}
 

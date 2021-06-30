@@ -29,12 +29,12 @@ func TestEvidenceList(t *testing.T) {
 }
 
 func randomDuplicateVoteEvidence(t *testing.T) *DuplicateVoteEvidence {
-	val := NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	val := NewMockPVForQuorum(quorumHash)
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
 	stateID := makeStateID(tmhash.Sum([]byte("statehash")))
 	quorumType := btcjson.LLMQType_5_60
-	quorumHash := crypto.RandQuorumHash()
 	const chainID = "mychain"
 	return &DuplicateVoteEvidence{
 
@@ -56,12 +56,12 @@ func TestDuplicateVoteEvidence(t *testing.T) {
 }
 
 func TestDuplicateVoteEvidenceValidation(t *testing.T) {
-	val := NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	val := NewMockPVForQuorum(quorumHash)
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	stateID := makeStateID(tmhash.Sum([]byte("statehash")))
 	quorumType := btcjson.LLMQType_5_60
-	quorumHash := crypto.RandQuorumHash()
 	const chainID = "mychain"
 
 	testCases := []struct {
@@ -90,7 +90,9 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			vote1 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType, quorumHash, math.MaxInt32, 0x02, blockID, stateID)
 			vote2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType, quorumHash, math.MaxInt32, 0x02, blockID2, stateID)
-			valSet := NewValidatorSet([]*Validator{val.ExtractIntoValidator(0, quorumHash)}, val.PrivKey.PubKey(), quorumType, quorumHash, true)
+			thresholdPublicKey, err := val.GetThresholdPublicKey(quorumHash)
+			assert.NoError(t, err)
+			valSet := NewValidatorSet([]*Validator{val.ExtractIntoValidator(quorumHash)}, thresholdPublicKey, quorumType, quorumHash, true)
 			ev := NewDuplicateVoteEvidence(vote1, vote2, defaultVoteTime, valSet)
 			tc.malleateEvidence(ev)
 			assert.Equal(t, tc.expectErr, ev.ValidateBasic() != nil, "Validate Basic had an unexpected result")
@@ -150,12 +152,12 @@ func makeHeaderRandom() *Header {
 
 func TestEvidenceProto(t *testing.T) {
 	// -------- Votes --------
-	val := NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	val := NewMockPVForQuorum(quorumHash)
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	stateID := makeStateID(tmhash.Sum([]byte("statehash")))
 	quorumType := btcjson.LLMQType_5_60
-	quorumHash := crypto.RandQuorumHash()
 	const chainID = "mychain"
 	v := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType, quorumHash, 1, 0x01, blockID, stateID)
 	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType, quorumHash, 2, 0x01, blockID2, stateID)

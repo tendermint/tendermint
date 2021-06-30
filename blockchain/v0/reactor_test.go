@@ -28,13 +28,13 @@ import (
 var config *cfg.Config
 
 func randGenesisDoc(numValidators int) (*types.GenesisDoc, []types.PrivValidator) {
-	validators, privValidators, thresholdPublicKey := types.GenerateGenesisValidators(numValidators)
+	validators, privValidators, quorumHash, thresholdPublicKey := types.GenerateGenesisValidators(numValidators)
 	return &types.GenesisDoc{
 		GenesisTime:        tmtime.Now(),
 		ChainID:            config.ChainID(),
 		Validators:         validators,
 		ThresholdPublicKey: thresholdPublicKey,
-		QuorumHash:         crypto.RandProTxHash(),
+		QuorumHash:         quorumHash,
 	}, privValidators
 }
 

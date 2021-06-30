@@ -71,7 +71,7 @@ func (v *Validator) ValidateBasic() error {
 	}
 
 	if len(v.ProTxHash) != crypto.DefaultHashSize {
-		return fmt.Errorf("validator proTxHash is the wrong size: %v", v.ProTxHash)
+		return fmt.Errorf("validator proTxHash is the wrong size: %v", len(v.ProTxHash))
 	}
 
 	return nil
@@ -168,15 +168,10 @@ func (v *Validator) Bytes() []byte {
 	return bz
 }
 
-// ToProto converts Valiator to protobuf
+// ToProto converts Validator to protobuf
 func (v *Validator) ToProto() (*tmproto.Validator, error) {
 	if v == nil {
 		return nil, errors.New("nil validator")
-	}
-
-	pk, err := ce.PubKeyToProto(v.PubKey)
-	if err != nil {
-		return nil, err
 	}
 
 	if v.ProTxHash == nil {
@@ -184,10 +179,17 @@ func (v *Validator) ToProto() (*tmproto.Validator, error) {
 	}
 
 	vp := tmproto.Validator{
-		PubKey:           pk,
 		VotingPower:      v.VotingPower,
 		ProposerPriority: v.ProposerPriority,
 		ProTxHash:        v.ProTxHash,
+	}
+
+	if v.PubKey != nil {
+		pk, err := ce.PubKeyToProto(v.PubKey)
+		if err != nil {
+			return nil, err
+		}
+		vp.PubKey = pk
 	}
 
 	return &vp, nil
@@ -219,12 +221,13 @@ func ValidatorFromProto(vp *tmproto.Validator) (*Validator, error) {
 // RandValidator returns a randomized validator, useful for testing.
 // UNSTABLE
 func RandValidator() (*Validator, PrivValidator) {
-	privVal := NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	privVal := NewMockPVForQuorum(quorumHash)
 	proTxHash, err := privVal.GetProTxHash()
 	if err != nil {
 		panic(fmt.Errorf("could not retrieve proTxHash %w", err))
 	}
-	pubKey, err := privVal.GetPubKey(crypto.QuorumHash{})
+	pubKey, err := privVal.GetPubKey(quorumHash)
 	if err != nil {
 		panic(fmt.Errorf("could not retrieve pubkey %w", err))
 	}

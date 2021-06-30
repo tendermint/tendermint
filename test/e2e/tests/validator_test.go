@@ -105,46 +105,6 @@ func TestValidator_Propose(t *testing.T) {
 	})
 }
 
-// Tests that a validator signs blocks when it's supposed to. It tolerates some
-// missed blocks, e.g. due to testnet perturbations.
-func TestValidator_Sign(t *testing.T) {
-	blocks := fetchBlockChain(t)
-	testNode(t, func(t *testing.T, node e2e.Node) {
-		if node.Mode != e2e.ModeValidator {
-			return
-		}
-		proTxHash := node.ProTxHash
-		valSchedule := newValidatorSchedule(*node.Testnet)
-
-		expectCount := 0
-		signCount := 0
-		for _, block := range blocks[1:] { // Skip first block, since it has no signatures
-			signed := false
-			for _, sig := range block.LastCommit.Signatures {
-				if bytes.Equal(sig.ValidatorProTxHash, proTxHash) {
-					signed = true
-					break
-				}
-			}
-			if valSchedule.Set.HasProTxHash(proTxHash) {
-				expectCount++
-				if signed {
-					signCount++
-				}
-			} else {
-				require.False(t, signed, "unexpected signature for block %v", block.LastCommit.Height)
-			}
-			valSchedule.Increment(1)
-		}
-
-		require.False(t, signCount == 0 && expectCount > 0,
-			"validator did not sign any blocks (expected %v)", expectCount)
-		if expectCount > 7 {
-			require.GreaterOrEqual(t, signCount, 3, "validator didn't sign even 3 blocks (expected %v)", expectCount)
-		}
-	})
-}
-
 // validatorSchedule is a validator set iterator, which takes into account
 // validator set updates.
 type validatorSchedule struct {

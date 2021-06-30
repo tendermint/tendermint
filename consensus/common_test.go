@@ -207,8 +207,10 @@ func decideProposal(
 	block, blockParts := cs1.createProposalBlock()
 	validRound := cs1.ValidRound
 	chainID := cs1.state.ChainID
-	quorumType := cs1.Validators.QuorumType
-	quorumHash := cs1.Validators.QuorumHash
+
+	validatorsAtProposalHeight := cs1.state.ValidatorsAtHeight(height)
+	quorumType := validatorsAtProposalHeight.QuorumType
+	quorumHash := validatorsAtProposalHeight.QuorumHash
 	cs1.mtx.Unlock()
 	if block == nil {
 		panic("Failed to createProposalBlock. Did you forget to add commit for previous block?")
@@ -218,9 +220,18 @@ func decideProposal(
 	polRound, propBlockID := validRound, types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 	proposal = types.NewProposal(height, 1, round, polRound, propBlockID)
 	p := proposal.ToProto()
-	if err := vs.SignProposal(chainID, quorumType, quorumHash, p); err != nil {
+
+	proTxHash, _ := vs.GetProTxHash()
+	pubKey, _ := vs.GetPubKey(validatorsAtProposalHeight.QuorumHash)
+
+	signId, err := vs.SignProposal(chainID, quorumType, quorumHash, p)
+
+	if err != nil {
 		panic(err)
 	}
+	cs1.Logger.Debug("signed proposal common test","height", proposal.Height, "round", proposal.Round,
+		"proposerProTxHash", proTxHash.ShortString(), "public key", pubKey.Bytes(), "quorum type",
+		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signId", signId)
 
 	proposal.Signature = p.Signature
 
@@ -759,11 +770,11 @@ func updateConsensusNetAddNewValidators(css []*State, height int64, addValCount 
 		}
 		for j, proTxHash := range validatorProTxHashes {
 			if bytes.Equal(privValProTxHash.Bytes(), proTxHash.Bytes()) {
-				err := privVal.UpdatePrivateKey(privKeys[j], height+3)
+				err := privVal.UpdatePrivateKey(privKeys[j], quorumHash, height+3)
 				if err != nil {
 					panic(err)
 				}
-				updatedValidators[j] = privVal.ExtractIntoValidator(height+3, quorumHash)
+				updatedValidators[j] = privVal.ExtractIntoValidator(quorumHash)
 				publicKeys[j] = privKeys[j].PubKey()
 				if !bytes.Equal(updatedValidators[j].PubKey.Bytes(), publicKeys[j].Bytes()) {
 					panic("the validator public key should match the public key")
@@ -860,11 +871,11 @@ func updateConsensusNetRemoveValidatorsWithProTxHashes(css []*State, height int6
 			if bytes.Equal(stateProTxHash.Bytes(), proTxHash.Bytes()) {
 				// we found the prival
 				privVal = state.privValidator
-				err := privVal.UpdatePrivateKey(privKeys[i], height+3)
+				err := privVal.UpdatePrivateKey(privKeys[i], quorumHash, height+3)
 				if err != nil {
 					panic(err)
 				}
-				updatedValidators[i] = privVal.ExtractIntoValidator(height+3, quorumHash)
+				updatedValidators[i] = privVal.ExtractIntoValidator(quorumHash)
 				publicKeys[i] = privKeys[i].PubKey()
 				if !bytes.Equal(updatedValidators[i].PubKey.Bytes(), publicKeys[i].Bytes()) {
 					panic("the validator public key should match the public key")
@@ -970,7 +981,7 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	privValidators := make([]types.PrivValidator, numValidators)
 
 	privateKeys, proTxHashes, thresholdPublicKey := bls12381.CreatePrivLLMQDataDefaultThreshold(numValidators)
-
+	quorumHash := crypto.RandQuorumHash()
 	for i := 0; i < numValidators; i++ {
 		val := types.NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), proTxHashes[i])
 		validators[i] = types.GenesisValidator{
@@ -978,7 +989,8 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 			Power:     val.VotingPower,
 			ProTxHash: val.ProTxHash,
 		}
-		privValidators[i] = types.NewMockPVWithParams(privateKeys[i], proTxHashes[i], false, false)
+		privValidators[i] = types.NewMockPVWithParams(privateKeys[i], proTxHashes[i], quorumHash, thresholdPublicKey,
+			false, false)
 	}
 	sort.Sort(types.PrivValidatorsByProTxHash(privValidators))
 
@@ -992,7 +1004,7 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 		InitialCoreChainLockedHeight: 1,
 		InitialProposalCoreChainLock: coreChainLock.ToProto(),
 		ThresholdPublicKey:           thresholdPublicKey,
-		QuorumHash:                   crypto.RandQuorumHash(),
+		QuorumHash:                   quorumHash,
 	}, privValidators
 }
 

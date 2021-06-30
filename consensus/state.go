@@ -1187,7 +1187,23 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	}
 	proposal := types.NewProposal(height, proposedChainLockHeight, round, cs.ValidRound, propBlockID)
 	p := proposal.ToProto()
-	if err := cs.privValidator.SignProposal(cs.state.ChainID, cs.Validators.QuorumType, cs.Validators.QuorumHash, p); err == nil {
+	validatorsAtProposalHeight := cs.state.ValidatorsAtHeight(p.Height)
+
+	proTxHash, err := cs.privValidator.GetProTxHash()
+	if err != nil {
+		cs.Logger.Error("propose step; failed signing proposal; couldn't get proTxHash", "height", height, "round", round, "err", err)
+		return
+	}
+	pubKey, err := cs.privValidator.GetPubKey(validatorsAtProposalHeight.QuorumHash)
+	if err != nil {
+		cs.Logger.Error("propose step; failed signing proposal; couldn't get pubKey", "height", height, "round", round, "err", err)
+		return
+	}
+	cs.Logger.Debug("signing proposal","height", proposal.Height, "round", proposal.Round,
+		"proposerProTxHash", proTxHash.ShortString(), "public key", pubKey.Bytes(), "quorum type",
+		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash)
+
+	if _, err := cs.privValidator.SignProposal(cs.state.ChainID, validatorsAtProposalHeight.QuorumType, validatorsAtProposalHeight.QuorumHash, p); err == nil {
 		proposal.Signature = p.Signature
 
 		// send proposal and block parts on internal msg queue
@@ -1998,12 +2014,14 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 	//	hex.EncodeToString(proposalRequestId), hex.EncodeToString(signId), hex.EncodeToString(cs.state.Validators.QuorumHash),
 	//	hex.EncodeToString(proposalBlockSignBytes))
 
+
+
 	if !proposer.PubKey.VerifySignatureDigest(proposalBlockSignId, proposal.Signature) {
-		fmt.Printf("error proposer %X \nat height %d \nverifying proposal signature %X \nwith key %X \n quorum %d:%X blockSignId %X\n",
-			proposer.ProTxHash, proposal.Height, proposal.Signature,  proposer.PubKey.Bytes(), cs.state.Validators.QuorumType,
-			cs.state.Validators.QuorumHash, proposalBlockSignId)
-		return fmt.Errorf("error proposer %X verifying proposal signature %X at height %d with key %X blockSignId %X quorum hash %s quorum type %d\n",
-			proposer.ProTxHash, proposal.Signature, proposal.Height, proposer.PubKey.Bytes(), proposalBlockSignId, cs.state.Validators.QuorumHash, cs.state.Validators.QuorumType)
+		cs.Logger.Debug("error verifying signature", "height", proposal.Height,
+			"round", proposal.Round, "proposer", proposer.ProTxHash.ShortString(), "signature", proposal.Signature, "pubkey",
+			proposer.PubKey.Bytes(), "quorumType", cs.state.Validators.QuorumType,
+			"quorumHash", cs.state.Validators.QuorumHash, "proposalSignId", proposalBlockSignId)
+		return ErrInvalidProposalSignature
 	}
 
 	proposal.Signature = p.Signature
@@ -2353,11 +2371,12 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 
 	case tmproto.PrecommitType:
 		precommits := cs.Votes.Precommits(vote.Round)
+		data := precommits.LogString()
 		cs.Logger.Debug("added vote to precommit",
 			"height", vote.Height,
 			"round", vote.Round,
-			"validator", vote.ValidatorProTxHash.String(),
-			"data", precommits.LogString())
+			"val_index", vote.ValidatorIndex,
+			"data", data)
 
 		blockID, ok := precommits.TwoThirdsMajority()
 		if ok {

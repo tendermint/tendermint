@@ -29,12 +29,14 @@ type voteData struct {
 }
 
 func TestVerifyDuplicateVoteEvidence(t *testing.T) {
-	val := types.NewMockPV()
-	val2 := types.NewMockPV()
-	randQuorumHash := crypto.RandQuorumHash()
+	quorumHash := crypto.RandQuorumHash()
+	val := types.NewMockPVForQuorum(quorumHash)
+	val2 := types.NewMockPVForQuorum(quorumHash)
 	quorumType := btcjson.LLMQType_5_60
-	valSet := types.NewValidatorSet([]*types.Validator{val.ExtractIntoValidator(0, randQuorumHash)},
-		val.PrivKey.PubKey(), quorumType, randQuorumHash, true)
+	pubKey, err := val.GetPubKey(quorumHash)
+	require.NoError(t, err)
+	valSet := types.NewValidatorSet([]*types.Validator{val.ExtractIntoValidator(quorumHash)},
+		pubKey, quorumType, quorumHash, true)
 
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
@@ -45,28 +47,28 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 
 	const chainID = "mychain"
 
-	vote1 := makeVote(t, val, chainID, quorumType, randQuorumHash, 0, 10, 2, 1, blockID, stateID)
+	vote1 := makeVote(t, val, chainID, quorumType, quorumHash, 0, 10, 2, 1, blockID, stateID)
 	v1 := vote1.ToProto()
-	err := val.SignVote(chainID, quorumType, randQuorumHash, v1)
+	err = val.SignVote(chainID, quorumType, quorumHash, v1)
 	require.NoError(t, err)
-	badVote := makeVote(t, val, chainID, quorumType, randQuorumHash, 0, 10, 2, 1, blockID, stateID)
+	badVote := makeVote(t, val, chainID, quorumType, quorumHash, 0, 10, 2, 1, blockID, stateID)
 	bv := badVote.ToProto()
-	err = val2.SignVote(chainID, quorumType, randQuorumHash, bv)
+	err = val2.SignVote(chainID, quorumType, quorumHash, bv)
 	require.NoError(t, err)
 
 	vote1.BlockSignature = v1.BlockSignature
 	badVote.BlockSignature = bv.BlockSignature
 
 	cases := []voteData{
-		{vote1, makeVote(t, val, chainID, quorumType, randQuorumHash, 0, 10, 2, 1, blockID2, stateID), true}, // different block ids
-		{vote1, makeVote(t, val, chainID, quorumType, randQuorumHash, 0, 10, 2, 1, blockID3, stateID), true},
-		{vote1, makeVote(t, val, chainID, quorumType, randQuorumHash, 0, 10, 2, 1, blockID4, stateID), true},
-		{vote1, makeVote(t, val, chainID, quorumType, randQuorumHash, 0, 10, 2, 1, blockID, stateID), false},     // wrong block id
-		{vote1, makeVote(t, val, "mychain2", quorumType, randQuorumHash, 0, 10, 2, 1, blockID2, stateID), false}, // wrong chain id
-		{vote1, makeVote(t, val, chainID, quorumType, randQuorumHash, 0, 11, 2, 1, blockID2, stateID), false},    // wrong height
-		{vote1, makeVote(t, val, chainID, quorumType, randQuorumHash, 0, 10, 3, 1, blockID2, stateID), false},    // wrong round
-		{vote1, makeVote(t, val, chainID, quorumType, randQuorumHash, 0, 10, 2, 2, blockID2, stateID), false},    // wrong step
-		{vote1, makeVote(t, val2, chainID, quorumType, randQuorumHash, 0, 10, 2, 1, blockID2, stateID), false},   // wrong validator
+		{vote1, makeVote(t, val, chainID, quorumType, quorumHash, 0, 10, 2, 1, blockID2, stateID), true}, // different block ids
+		{vote1, makeVote(t, val, chainID, quorumType, quorumHash, 0, 10, 2, 1, blockID3, stateID), true},
+		{vote1, makeVote(t, val, chainID, quorumType, quorumHash, 0, 10, 2, 1, blockID4, stateID), true},
+		{vote1, makeVote(t, val, chainID, quorumType, quorumHash, 0, 10, 2, 1, blockID, stateID), false},     // wrong block id
+		{vote1, makeVote(t, val, "mychain2", quorumType, quorumHash, 0, 10, 2, 1, blockID2, stateID), false}, // wrong chain id
+		{vote1, makeVote(t, val, chainID, quorumType, quorumHash, 0, 11, 2, 1, blockID2, stateID), false},    // wrong height
+		{vote1, makeVote(t, val, chainID, quorumType, quorumHash, 0, 10, 3, 1, blockID2, stateID), false},    // wrong round
+		{vote1, makeVote(t, val, chainID, quorumType, quorumHash, 0, 10, 2, 2, blockID2, stateID), false},    // wrong step
+		{vote1, makeVote(t, val2, chainID, quorumType, quorumHash, 0, 10, 2, 1, blockID2, stateID), false},   // wrong validator
 		{vote1, badVote, false}, // signed by wrong key
 	}
 
@@ -87,13 +89,13 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 	}
 
 	// create good evidence and correct validator power
-	goodEv := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime, val, chainID, quorumType, randQuorumHash)
+	goodEv := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime, val, chainID, quorumType, quorumHash)
 	goodEv.ValidatorPower = types.DefaultDashVotingPower
 	goodEv.TotalVotingPower = types.DefaultDashVotingPower
-	badEv := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime, val, chainID, quorumType, randQuorumHash)
+	badEv := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime, val, chainID, quorumType, quorumHash)
 	badEv.ValidatorPower = types.DefaultDashVotingPower + 1
 	badEv.TotalVotingPower = types.DefaultDashVotingPower
-	badTimeEv := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime.Add(1*time.Minute), val, chainID, quorumType, randQuorumHash)
+	badTimeEv := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime.Add(1*time.Minute), val, chainID, quorumType, quorumHash)
 	badTimeEv.ValidatorPower = types.DefaultDashVotingPower
 	badTimeEv.TotalVotingPower = types.DefaultDashVotingPower
 	state := sm.State{

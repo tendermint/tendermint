@@ -140,6 +140,10 @@ func TestValidateBlockCommit(t *testing.T) {
 	wrongVoteMessageSignedCommit := types.NewCommit(1, 0, types.BlockID{}, types.StateID{}, nil,
 		nil, nil)
 	badPrivVal := types.NewMockPV()
+	badPrivValQuorumHash, err := badPrivVal.GetFirstQuorumHash()
+	if err != nil {
+		panic(err)
+	}
 
 	for height := int64(1); height < validationTestsStopHeight; height++ {
 		proTxHash := state.Validators.GetProposer().ProTxHash
@@ -245,9 +249,9 @@ func TestValidateBlockCommit(t *testing.T) {
 		g := goodVote.ToProto()
 		b := badVote.ToProto()
 
-		err = badPrivVal.SignVote(chainID, state.Validators.QuorumType, state.Validators.QuorumHash, g)
+		err = badPrivVal.SignVote(chainID, state.Validators.QuorumType, badPrivValQuorumHash, g)
 		require.NoError(t, err, "height %d", height)
-		err = badPrivVal.SignVote(chainID, state.Validators.QuorumType, state.Validators.QuorumHash, b)
+		err = badPrivVal.SignVote(chainID, state.Validators.QuorumType, badPrivValQuorumHash, b)
 		require.NoError(t, err, "height %d", height)
 
 		goodVote.BlockSignature, badVote.BlockSignature = g.BlockSignature, b.BlockSignature

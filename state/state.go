@@ -301,6 +301,16 @@ func (state State) MakeBlock(
 	return block, block.MakePartSet(types.BlockPartSizeBytes)
 }
 
+func (state State) ValidatorsAtHeight(height int64) *types.ValidatorSet {
+	if state.LastBlockHeight == height {
+		return state.LastValidators
+	} else if state.LastBlockHeight + 2 == height {
+		return state.NextValidators
+	} else {
+		return state.Validators
+	}
+}
+
 //------------------------------------------------------------------------
 // Genesis
 
