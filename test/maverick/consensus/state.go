@@ -648,11 +648,6 @@ func (cs *State) OnStart() error {
 		return err
 	}
 
-	// Double Signing Risk Reduction
-	if err := cs.checkDoubleSigningRisk(cs.Height); err != nil {
-		return err
-	}
-
 	// now start the receiveRoutine
 	go cs.receiveRoutine(0)
 
@@ -821,15 +816,6 @@ func (cs *State) reconstructLastCommit(state sm.State) {
 	}
 
 	cs.LastCommit = seenCommit
-
-	if state.LastValidators.HasProTxHash(cs.privValidatorProTxHash) {
-		lastPrecommits := types.CommitToVoteSet(state.ChainID, seenCommit, state.LastValidators)
-		if !lastPrecommits.HasTwoThirdsMajority() {
-			panic("failed to reconstruct last commit; does not have +2/3 maj")
-		}
-
-		cs.LastPrecommits = lastPrecommits
-	}
 }
 
 // Updates State and increments height to match that of state.
@@ -1272,7 +1258,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
-		commit = types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil, nil)
+		commit = types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
 	case cs.LastPrecommits.HasTwoThirdsMajority():
 		// Make the commit from LastPrecommits
 		commit = cs.LastPrecommits.MakeCommit()
@@ -1532,6 +1518,7 @@ func (cs *State) finalizeCommit(height int64) {
 	var retainHeight int64
 	stateCopy, retainHeight, err = cs.blockExec.ApplyBlock(
 		stateCopy,
+		&cs.privValidatorProTxHash,
 		types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()},
 		block)
 	if err != nil {
@@ -1923,29 +1910,6 @@ func (cs *State) updatePrivValidatorPubKey() error {
 		return fmt.Errorf("maverick pubKey must be 48 bytes")
 	}
 	cs.privValidatorPubKey = pubKey
-	return nil
-}
-
-// look back to check existence of the node's consensus votes before joining consensus
-func (cs *State) checkDoubleSigningRisk(height int64) error {
-	if cs.privValidator != nil && cs.privValidatorPubKey != nil && cs.config.DoubleSignCheckHeight > 0 && height > 0 {
-		valProTxHash := cs.privValidatorProTxHash
-		doubleSignCheckHeight := cs.config.DoubleSignCheckHeight
-		if doubleSignCheckHeight > height {
-			doubleSignCheckHeight = height
-		}
-		for i := int64(1); i < doubleSignCheckHeight; i++ {
-			lastCommit := cs.blockStore.LoadSeenCommit(height - i)
-			if lastCommit != nil {
-				for sigIdx, s := range lastCommit.Signatures {
-					if s.BlockIDFlag == types.BlockIDFlagCommit && bytes.Equal(s.ValidatorProTxHash, valProTxHash) {
-						cs.Logger.Info("Found signature from the same key", "sig", s, "idx", sigIdx, "height", height-i)
-						return ErrSignatureFoundInPastBlocks
-					}
-				}
-			}
-		}
-	}
 	return nil
 }
 
