@@ -259,7 +259,7 @@ type Router struct {
 	peerMtx    sync.RWMutex
 	peerQueues map[NodeID]queue // outbound messages per peer for all channels
 	// the channels that the peer queue has open
-	peerChannels map[NodeID]ChannelIDs
+	peerChannels map[NodeID]channelIDs
 	queueFactory func(int) queue
 
 	// FIXME: We don't strictly need to use a mutex for this if we seal the
@@ -305,6 +305,7 @@ func NewRouter(
 		channelQueues:      map[ChannelID]queue{},
 		channelMessages:    map[ChannelID]proto.Message{},
 		peerQueues:         map[NodeID]queue{},
+		peerChannels:       make(map[NodeID]channelIDs),
 	}
 
 	router.BaseService = service.NewBaseService(logger, "router", router)
@@ -447,8 +448,10 @@ func (r *Router) routeChannel(
 
 				queues = make([]queue, 0, len(r.peerQueues))
 				for nodeID, q := range r.peerQueues {
+					peerChs := r.peerChannels[nodeID]
+
 					// check whether the peer is receiving on that channel
-					if r.peerChannels[nodeID].Contains(chID) {
+					if _, ok := peerChs[chID]; ok {
 						queues = append(queues, q)
 					}
 				}
@@ -460,8 +463,10 @@ func (r *Router) routeChannel(
 				q, ok := r.peerQueues[envelope.To]
 				contains := false
 				if ok {
-					// check that the peer is receiving on the channel
-					contains = !r.peerChannels[envelope.To].Contains(chID)
+					peerChs := r.peerChannels[envelope.To]
+
+					// check whether the peer is receiving on that channel
+					_, contains = peerChs[chID]
 				}
 				r.peerMtx.RUnlock()
 
@@ -473,6 +478,7 @@ func (r *Router) routeChannel(
 				if !contains {
 					r.logger.Error("tried to send message across a channel that the peer doesn't have available",
 						"peer", envelope.To, "channel", chID)
+					continue
 				}
 
 				queues = []queue{q}
@@ -732,7 +738,7 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 	go r.routePeer(address.NodeID, conn, ToChannelIDs(nodeInfo.Channels))
 }
 
-func (r *Router) getOrMakeQueue(peerID NodeID, channels ChannelIDs) queue {
+func (r *Router) getOrMakeQueue(peerID NodeID, channels channelIDs) queue {
 	r.peerMtx.Lock()
 	defer r.peerMtx.Unlock()
 
@@ -833,7 +839,7 @@ func (r *Router) runWithPeerMutex(fn func() error) error {
 // routePeer routes inbound and outbound messages between a peer and the reactor
 // channels. It will close the given connection and send queue when done, or if
 // they are closed elsewhere it will cause this method to shut down and return.
-func (r *Router) routePeer(peerID NodeID, conn Connection, channels ChannelIDs) {
+func (r *Router) routePeer(peerID NodeID, conn Connection, channels channelIDs) {
 	r.metrics.Peers.Add(1)
 	r.peerManager.Ready(peerID)
 
@@ -1059,21 +1065,12 @@ func (r *Router) stopCtx() context.Context {
 	return ctx
 }
 
-type ChannelIDs []ChannelID
+type channelIDs map[ChannelID]struct{}
 
-func (c ChannelIDs) Contains(channelID ChannelID) bool {
-	for i := 0; i < len(c); i++ {
-		if c[i] == channelID {
-			return true
-		}
-	}
-	return false
-}
-
-func ToChannelIDs(bytes []byte) ChannelIDs {
-	c := make([]ChannelID, len(bytes))
-	for i, b := range bytes {
-		c[i] = ChannelID(b)
+func ToChannelIDs(bytes []byte) channelIDs {
+	c := make(map[ChannelID]struct{}, len(bytes))
+	for _, b := range bytes {
+		c[ChannelID(b)] = struct{}{}
 	}
 	return c
 }
