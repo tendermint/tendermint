@@ -134,7 +134,7 @@ func (sc *DashCoreSignerClient) GetThresholdPublicKey(quorumHash crypto.QuorumHa
 		return nil, fmt.Errorf("quorum hash must be 32 bytes long if requesting public key from dash core")
 	}
 
-	response, err := sc.endpoint.QuorumInfo(sc.defaultQuorumType, quorumHash.String(), false)
+	response, err := sc.dashCoreRpcClient.QuorumInfo(sc.defaultQuorumType, quorumHash.String(), false)
 	if err != nil {
 		return nil, fmt.Errorf("getThresholdPublicKey Quorum Info Error for (%d) %s : %w", sc.defaultQuorumType, quorumHash.String(), err)
 	}
@@ -290,7 +290,7 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumType btcjson.LLMQ
 
 // SignProposal requests a remote signer to sign a proposal
 func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposalProto *tmproto.Proposal) ([]byte, error) {
-	messageBytes:= types.ProposalBlockSignBytes(chainID, proposalProto)
+	messageBytes := types.ProposalBlockSignBytes(chainID, proposalProto)
 
 	messageHash := crypto.Sha256(messageBytes)
 
@@ -347,7 +347,7 @@ func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumType btcjson.
 	return nil, nil
 }
 
-func (sc *DashCoreSignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.QuorumHash,  height int64) error {
+func (sc *DashCoreSignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.QuorumHash, height int64) error {
 	// the private key is dealt with on the abci client
 	return nil
 }
