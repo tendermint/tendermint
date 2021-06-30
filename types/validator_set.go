@@ -1251,7 +1251,7 @@ func GenerateGenesisValidators(numValidators int) ([]GenesisValidator, []PrivVal
 	return genesisValidators, privValidators, quorumHash, thresholdPublicKey
 }
 
-func GenerateMockGenesisValidators(numValidators int) ([]GenesisValidator, []*MockPV, crypto.PubKey) {
+func GenerateMockGenesisValidators(numValidators int) ([]GenesisValidator, []*MockPV, crypto.QuorumHash, crypto.PubKey) {
 	var (
 		genesisValidators = make([]GenesisValidator, numValidators)
 		privValidators    = make([]*MockPV, numValidators)
@@ -1272,7 +1272,7 @@ func GenerateMockGenesisValidators(numValidators int) ([]GenesisValidator, []*Mo
 	sort.Sort(MockPrivValidatorsByProTxHash(privValidators))
 	sort.Sort(GenesisValidatorsByProTxHash(genesisValidators))
 
-	return genesisValidators, privValidators, thresholdPublicKey
+	return genesisValidators, privValidators, quorumHash, thresholdPublicKey
 }
 
 func GenerateValidatorSetUsingProTxHashes(proTxHashes []crypto.ProTxHash) (*ValidatorSet, []PrivValidator) {
