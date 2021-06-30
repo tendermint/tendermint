@@ -72,6 +72,8 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 	rts.voteChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteChannel), new(tmcons.Message), size)
 	rts.voteSetBitsChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteSetBitsChannel), new(tmcons.Message), size)
 
+	_, cancel := context.WithCancel(context.Background())
+
 	i := 0
 	for nodeID, node := range rts.network.Nodes {
 		state := states[i]
@@ -124,6 +126,7 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 		}
 
 		leaktest.Check(t)
+		cancel()
 	})
 
 	return rts
@@ -260,20 +263,13 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 	wg.Wait()
 }
 
-func ensureFastSyncStatus(msg tmpubsub.Message, complete bool, height int64) {
+func ensureFastSyncStatus(t *testing.T, msg tmpubsub.Message, complete bool, height int64) {
+	t.Helper()
 	status, ok := msg.Data().(types.EventDataFastSyncStatus)
-	if !ok {
-		panic(fmt.Sprintf("expected a EventDataFastSyncStatus, got %T. Wrong subscription channel?",
-			msg.Data()))
-	}
 
-	if status.Complete != complete {
-		panic(fmt.Sprintf("expected on %v, got %v", complete, status.Complete))
-	}
-
-	if status.Height != height {
-		panic(fmt.Sprintf("expected on %v, got %v", height, status.Height))
-	}
+	require.True(t, ok)
+	require.Equal(t, complete, status.Complete)
+	require.Equal(t, height, status.Height)
 }
 
 func TestReactorBasic(t *testing.T) {
@@ -298,8 +294,8 @@ func TestReactorBasic(t *testing.T) {
 
 		// wait till everyone makes the first new block
 		go func(s types.Subscription) {
+			defer wg.Done()
 			<-s.Out()
-			wg.Done()
 		}(sub)
 	}
 
@@ -310,9 +306,9 @@ func TestReactorBasic(t *testing.T) {
 
 		// wait till everyone makes the consensus switch
 		go func(s types.Subscription) {
+			defer wg.Done()
 			msg := <-s.Out()
-			ensureFastSyncStatus(msg, true, 0)
-			wg.Done()
+			ensureFastSyncStatus(t, msg, true, 0)
 		}(sub)
 	}
 
