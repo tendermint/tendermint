@@ -249,7 +249,7 @@ laddr = "{{ .P2P.ListenAddress }}"
 # and will introspect on the listener or use UPnP
 # to figure out the address. ip and port are required
 # example: 159.89.10.97:26656
-external-address = "{{ .P2P.ExternalAddress }}"
+external_address = "{{ .P2P.ExternalAddress }}"
 
 # Comma separated list of seed nodes to connect to
 seeds = "{{ .P2P.Seeds }}"
