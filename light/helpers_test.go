@@ -1,6 +1,7 @@
 package light_test
 
 import (
+	"fmt"
 	"github.com/dashevo/dashd-go/btcjson"
 	"time"
 
@@ -43,6 +44,8 @@ func genPrivKeys(n int, keyType crypto.KeyType) privKeys {
 func exposeMockPVKeys(pvs []*types.MockPV, quorumHash crypto.QuorumHash) privKeys {
 	res := make(privKeys, len(pvs))
 	for i, pval := range pvs {
+		fmt.Println(quorumHash.String())
+		fmt.Println(pval.PrivateKeys)
 		res[i] = pval.PrivateKeys[quorumHash.String()].PrivKey
 	}
 	return res
@@ -110,6 +113,12 @@ func (pkz privKeys) signHeader(header *types.Header, valSet *types.ValidatorSet,
 		// Verify that the private key matches the validator proTxHash
 		privateKey := pkz[i]
 		proTxHash, val := valSet.GetByIndex(int32(i))
+		if val == nil {
+			panic("no val")
+		}
+		if privateKey == nil {
+			panic("no priv key")
+		}
 		if !privateKey.PubKey().Equals(val.PubKey) {
 			panic("light client keys do not match")
 		}
