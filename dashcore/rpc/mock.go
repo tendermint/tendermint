@@ -89,3 +89,7 @@ func (rpcClientMock *rpcClientMock) QuorumSign(quorumType btcjson.LLMQType, requ
 		Result:           false,
 	}, nil
 }
+
+func (rpcClientMock *rpcClientMock) QuorumVerify(quorumType btcjson.LLMQType, requestID string, messageHash string, signature string, quorumHash string) (bool, error) {
+	return true, nil
+}
