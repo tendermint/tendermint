@@ -81,14 +81,14 @@ func (pvKey FilePVKey) PrivateKeyForQuorumHash(quorumHash crypto.QuorumHash) (cr
 	if keys, ok := pvKey.PrivateKeys[quorumHash.String()]; ok {
 		return keys.PrivKey, nil
 	}
-	return nil, fmt.Errorf("no threshold public key for quorum hash %v", quorumHash)
+	return nil, fmt.Errorf("no private key for quorum hash %v", quorumHash)
 }
 
 func (pvKey FilePVKey) PublicKeyForQuorumHash(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
 	if keys, ok := pvKey.PrivateKeys[quorumHash.String()]; ok {
 		return keys.PubKey, nil
 	}
-	return nil, fmt.Errorf("no threshold public key for quorum hash %v", quorumHash)
+	return nil, fmt.Errorf("no public key for quorum hash %v", quorumHash)
 }
 
 func (pvKey FilePVKey) ThresholdPublicKeyForQuorumHash(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
