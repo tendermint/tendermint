@@ -39,7 +39,7 @@ const (
 	EventVoteValue             = "Vote"
 )
 
-// Pre-populated ABCI for Tendermint-reserved events
+// Pre-populated ABCI Tendermint-reserved events
 var (
 	EventNewBlock = abci.Event{
 		Type: strings.Split(EventTypeKey, ".")[0],
