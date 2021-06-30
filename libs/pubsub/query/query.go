@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/tendermint/tendermint/abci/types"
 )
 
 var (
@@ -198,7 +200,7 @@ func (q *Query) Conditions() ([]Condition, error) {
 //
 // For example, query "name=John" matches events = {"name": ["John", "Eric"]}.
 // More examples could be found in parser_test.go and query_test.go.
-func (q *Query) Matches(events map[string][]string) (bool, error) {
+func (q *Query) Matches(events []types.Event) (bool, error) {
 	if len(events) == 0 {
 		return false, nil
 	}

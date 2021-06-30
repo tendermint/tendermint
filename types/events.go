@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"strings"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmjson "github.com/tendermint/tendermint/libs/json"
@@ -16,11 +17,11 @@ const (
 	// after a block has been committed.
 	// These are also used by the tx indexer for async indexing.
 	// All of this data can be fetched through the rpc.
-	EventNewBlock            = "NewBlock"
-	EventNewBlockHeader      = "NewBlockHeader"
-	EventNewEvidence         = "NewEvidence"
-	EventTx                  = "Tx"
-	EventValidatorSetUpdates = "ValidatorSetUpdates"
+	EventNewBlockValue            = "NewBlock"
+	EventNewBlockHeaderValue      = "NewBlockHeader"
+	EventNewEvidenceValue         = "NewEvidence"
+	EventTxValue                  = "Tx"
+	EventValidatorSetUpdatesValue = "ValidatorSetUpdates"
 
 	// Internal consensus events.
 	// These are used for testing the consensus state machine.
@@ -36,6 +37,19 @@ const (
 	EventUnlock           = "Unlock"
 	EventValidBlock       = "ValidBlock"
 	EventVote             = "Vote"
+)
+
+var (
+	// EventNewBlock defines an ABCI event for a new block.
+	EventNewBlock = abci.Event{
+		Type: strings.Split(EventTypeKey, ".")[0],
+		Attributes: []abci.EventAttribute{
+			{
+				Key:   strings.Split(EventTypeKey, ".")[1],
+				Value: EventNewBlockValue,
+			},
+		},
+	}
 )
 
 // ENCODING / DECODING
@@ -149,24 +163,24 @@ const (
 var (
 	EventQueryCompleteProposal    = QueryForEvent(EventCompleteProposal)
 	EventQueryLock                = QueryForEvent(EventLock)
-	EventQueryNewBlock            = QueryForEvent(EventNewBlock)
-	EventQueryNewBlockHeader      = QueryForEvent(EventNewBlockHeader)
-	EventQueryNewEvidence         = QueryForEvent(EventNewEvidence)
+	EventQueryNewBlock            = QueryForEvent(EventNewBlockValue)
+	EventQueryNewBlockHeader      = QueryForEvent(EventNewBlockHeaderValue)
+	EventQueryNewEvidence         = QueryForEvent(EventNewEvidenceValue)
 	EventQueryNewRound            = QueryForEvent(EventNewRound)
 	EventQueryNewRoundStep        = QueryForEvent(EventNewRoundStep)
 	EventQueryPolka               = QueryForEvent(EventPolka)
 	EventQueryRelock              = QueryForEvent(EventRelock)
 	EventQueryTimeoutPropose      = QueryForEvent(EventTimeoutPropose)
 	EventQueryTimeoutWait         = QueryForEvent(EventTimeoutWait)
-	EventQueryTx                  = QueryForEvent(EventTx)
+	EventQueryTx                  = QueryForEvent(EventTxValue)
 	EventQueryUnlock              = QueryForEvent(EventUnlock)
-	EventQueryValidatorSetUpdates = QueryForEvent(EventValidatorSetUpdates)
+	EventQueryValidatorSetUpdates = QueryForEvent(EventValidatorSetUpdatesValue)
 	EventQueryValidBlock          = QueryForEvent(EventValidBlock)
 	EventQueryVote                = QueryForEvent(EventVote)
 )
 
 func EventQueryTxFor(tx Tx) tmpubsub.Query {
-	return tmquery.MustParse(fmt.Sprintf("%s='%s' AND %s='%X'", EventTypeKey, EventTx, TxHashKey, tx.Hash()))
+	return tmquery.MustParse(fmt.Sprintf("%s='%s' AND %s='%X'", EventTypeKey, EventTxValue, TxHashKey, tx.Hash()))
 }
 
 func QueryForEvent(eventType string) tmpubsub.Query {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
@@ -106,41 +105,36 @@ func (b *EventBus) Publish(eventType string, eventData TMEventData) error {
 	return b.pubsub.PublishWithEvents(ctx, eventData, map[string][]string{EventTypeKey: {eventType}})
 }
 
-// validateAndStringifyEvents takes a slice of event objects and creates a
-// map of stringified events where each key is composed of the event
-// type and each of the event's attributes keys in the form of
-// "{event.Type}.{attribute.Key}" and the value is each attribute's value.
-func (b *EventBus) validateAndStringifyEvents(events []types.Event, logger log.Logger) map[string][]string {
-	result := make(map[string][]string)
-	for _, event := range events {
-		if len(event.Type) == 0 {
-			logger.Debug("Got an event with an empty type (skipping)", "event", event)
-			continue
-		}
+// func (b *EventBus) validateAndStringifyEvents(events []types.Event, logger log.Logger) []types.Event {
+// 	result := make(map[string][]string)
 
-		for _, attr := range event.Attributes {
-			if len(attr.Key) == 0 {
-				logger.Debug("Got an event attribute with an empty key(skipping)", "event", event)
-				continue
-			}
+// 	for _, event := range events {
+// 		if len(event.Type) == 0 {
+// 			logger.Debug("got an event with an empty type (skipping)", "event", event)
+// 			continue
+// 		}
 
-			compositeTag := fmt.Sprintf("%s.%s", event.Type, attr.Key)
-			result[compositeTag] = append(result[compositeTag], attr.Value)
-		}
-	}
+// 		for _, attr := range event.Attributes {
+// 			if len(attr.Key) == 0 {
+// 				logger.Debug("got an event attribute with an empty key (skipping)", "event", event)
+// 				continue
+// 			}
 
-	return result
-}
+// 			compositeTag := fmt.Sprintf("%s.%s", event.Type, attr.Key)
+// 			result[compositeTag] = append(result[compositeTag], attr.Value)
+// 		}
+// 	}
+
+// 	return result
+// }
 
 func (b *EventBus) PublishEventNewBlock(data EventDataNewBlock) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
-
-	resultEvents := append(data.ResultBeginBlock.Events, data.ResultEndBlock.Events...)
-	events := b.validateAndStringifyEvents(resultEvents, b.Logger.With("block", data.Block.StringShort()))
+	events := append(data.ResultBeginBlock.Events, data.ResultEndBlock.Events...)
 
 	// add predefined new block event
-	events[EventTypeKey] = append(events[EventTypeKey], EventNewBlock)
+	events = append(events, EventNewBlock)
 
 	return b.pubsub.PublishWithEvents(ctx, data, events)
 }
