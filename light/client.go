@@ -3,10 +3,13 @@ package light
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -453,7 +456,7 @@ func (c *Client) verifyLightBlock(ctx context.Context, newLightBlock *types.Ligh
 
 	switch c.verificationMode {
 	case dashCoreVerification:
-		verifyFunc = c.verifyLatest
+		verifyFunc = c.verifyBlockWithDashCore
 	default:
 		panic(fmt.Sprintf("Unknown verification mode: %b", c.verificationMode))
 	}
@@ -469,8 +472,61 @@ func (c *Client) verifyLightBlock(ctx context.Context, newLightBlock *types.Ligh
 	return c.updateTrustedLightBlock(newLightBlock)
 }
 
-// see VerifyHeader
-func (c *Client) verifyLatest(ctx context.Context, newLightBlock *types.LightBlock, now time.Time) error {
+// This method is called from verifyLightBlock if verification mode is dashcore,
+// verifyLightBlock in its turn is called by VerifyHeader.
+func (c *Client) verifyBlockWithDashCore(ctx context.Context, newLightBlock *types.LightBlock, now time.Time) error {
+	quorumHash := newLightBlock.ValidatorSet.QuorumHash.String()
+	quorumType := newLightBlock.ValidatorSet.QuorumType
+
+	protoVote := newLightBlock.Commit.GetCanonicalVote().ToProto()
+
+	blockSignBytes := types.VoteBlockSignBytes(c.chainID, protoVote)
+	stateSignBytes := types.VoteStateSignBytes(c.chainID, protoVote)
+
+	blockMessageHash := crypto.Sha256(blockSignBytes)
+	blockMessageHashString := strings.ToUpper(hex.EncodeToString(blockMessageHash))
+	blockRequestId := types.VoteBlockRequestIdProto(protoVote)
+	blockRequestIdString := strings.ToUpper(hex.EncodeToString(blockRequestId))
+	blockSignatureString := strings.ToUpper(hex.EncodeToString(newLightBlock.Commit.ThresholdBlockSignature))
+
+	stateMessageHash := crypto.Sha256(stateSignBytes)
+	stateMessageHashString := strings.ToUpper(hex.EncodeToString(stateMessageHash))
+	stateRequestId := types.VoteStateRequestIdProto(protoVote)
+	stateRequestIdString := strings.ToUpper(hex.EncodeToString(stateRequestId))
+	stateSignatureString := strings.ToUpper(hex.EncodeToString(newLightBlock.Commit.ThresholdStateSignature))
+
+	blockSignatureIsValid, err := c.dashCoreRpcClient.QuorumVerify(
+		quorumType,
+		blockRequestIdString,
+		blockMessageHashString,
+		blockSignatureString,
+		quorumHash,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if !blockSignatureIsValid {
+		return fmt.Errorf("block signature is invalid")
+	}
+
+	stateSignatureIsValid, err := c.dashCoreRpcClient.QuorumVerify(
+		quorumType,
+		stateRequestIdString,
+		stateMessageHashString,
+		stateSignatureString,
+		quorumHash,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if !stateSignatureIsValid {
+		return fmt.Errorf("state signature is invalid")
+	}
+
 	return nil
 }
 

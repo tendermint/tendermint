@@ -17,6 +17,8 @@ type RpcClient interface {
 	MasternodeListJSON(filter string) (map[string]btcjson.MasternodelistResultJSON, error)
 	// QuorumSign signs message in a quorum session
 	QuorumSign(quorumType btcjson.LLMQType, requestID string, messageHash string, quorumHash string, submit bool) (*btcjson.QuorumSignResultWithBool, error)
+	// QuorumVerify verifies quorum signature
+	QuorumVerify(quorumType btcjson.LLMQType, requestID string, messageHash string, signature string, quorumHash string) (bool, error)
 	// Close Closes connection to dashd
 	Close() error
 	// Ping Sends ping to dashd
@@ -93,4 +95,8 @@ func (rpcClient *rpcClient) MasternodeListJSON(filter string) (map[string]btcjso
 
 func (rpcClient *rpcClient) QuorumSign(quorumType btcjson.LLMQType, requestID string, messageHash string, quorumHash string, submit bool) (*btcjson.QuorumSignResultWithBool, error) {
 	return rpcClient.endpoint.QuorumSign(quorumType, requestID, messageHash, quorumHash, submit)
+}
+
+func (rpcClient *rpcClient) QuorumVerify(quorumType btcjson.LLMQType, requestID string, messageHash string, signature string, quorumHash string) (bool, error) {
+	return rpcClient.endpoint.QuorumVerify(quorumType, requestID, messageHash, signature, quorumHash)
 }

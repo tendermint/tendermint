@@ -63,7 +63,7 @@ var (
 	// largeFullNode = mockp.New(genMockNode(chainID, 10, 3, 0, bTime))
 
 	dashCoreRpcClientMock dashcore.RpcClient
-	trustedStoreMock      store.Store
+	trustedStore          store.Store
 )
 
 func setupDashCoreRpcMock(t *testing.T) {
@@ -74,15 +74,15 @@ func setupDashCoreRpcMock(t *testing.T) {
 	})
 }
 
-func setupTrustedStoreMock(t *testing.T) {
-	trustedStoreMock = dbs.New(dbm.NewMemDB(), chainID)
+func setupTrustedStore(t *testing.T) {
+	trustedStore = dbs.New(dbm.NewMemDB(), chainID)
 	// Adding one block to the store
-	err := trustedStoreMock.SaveLightBlock(l1)
+	err := trustedStore.SaveLightBlock(l1)
 
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		trustedStoreMock = nil
+		trustedStore = nil
 	})
 }
 
@@ -145,14 +145,14 @@ func TestClientBisectionBetweenTrustedHeaders(t *testing.T) {
 
 func TestClient_Cleanup(t *testing.T) {
 	setupDashCoreRpcMock(t)
-	setupTrustedStoreMock(t)
+	setupTrustedStore(t)
 
 	c, err := light.NewClient(
 		ctx,
 		chainID,
 		fullNode,
 		[]provider.Provider{fullNode},
-		trustedStoreMock,
+		trustedStore,
 		dashCoreRpcClientMock,
 		light.Logger(log.TestingLogger()),
 	)
@@ -195,13 +195,11 @@ func TestClientRestoresTrustedHeaderAfterStartupWhenHashesAreEqual(t *testing.T)
 	assert.Equal(t, l.ValidatorSet.Hash(), h1.ValidatorsHash.Bytes())
 }
 
-// trustedHeader.Height == options.Height
+// trustedHeader.Height == options.Height, options.Hash != trustedHeader.Hash,
+// the value in the trusted store should be overwritten to the block from the primary
 func TestClientNotRestoresTrustedHeaderAfterStartupWhenHashesAreNotEqual(t *testing.T) {
 	setupDashCoreRpcMock(t)
-	// options.Hash != trustedHeader.Hash
-	trustedStore := dbs.New(dbm.NewMemDB(), chainID)
-	err := trustedStore.SaveLightBlock(l1)
-	require.NoError(t, err)
+	setupTrustedStore(t)
 
 	// header1 != h1
 	header1 := keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Hour), nil, vals, vals,
@@ -230,6 +228,7 @@ func TestClientNotRestoresTrustedHeaderAfterStartupWhenHashesAreNotEqual(t *test
 	l, err := c.TrustedLightBlock(1)
 	assert.NoError(t, err)
 	if assert.NotNil(t, l) {
+		assert.NotEqual(t, l1.Hash(), l.Hash())
 		assert.Equal(t, l.Hash(), header1.Hash())
 		assert.NoError(t, l.ValidateBasic(chainID))
 	}
@@ -423,13 +422,14 @@ func TestClient_Update(t *testing.T) {
 
 func TestClient_Concurrency(t *testing.T) {
 	setupDashCoreRpcMock(t)
+	setupTrustedStore(t)
 
 	c, err := light.NewClient(
 		ctx,
 		chainID,
 		fullNode,
 		[]provider.Provider{fullNode},
-		dbs.New(dbm.NewMemDB(), chainID),
+		trustedStore,
 		dashCoreRpcClientMock,
 		light.Logger(log.TestingLogger()),
 	)
@@ -445,7 +445,7 @@ func TestClient_Concurrency(t *testing.T) {
 			defer wg.Done()
 
 			// NOTE: Cleanup, Stop, VerifyLightBlockAtHeight and Verify are not supposed
-			// to be concurrenly safe.
+			// to be concurrently safe.
 
 			assert.Equal(t, chainID, c.ChainID())
 
@@ -647,6 +647,7 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 	)
 
 	lb1, _ := badProvider1.LightBlock(ctx, 2)
+	require.NotNil(t, lb1)
 	require.NotEqual(t, lb1.Hash(), l1.Hash())
 
 	c, err := light.NewClient(
@@ -719,13 +720,14 @@ func TestClient_TrustedValidatorSet(t *testing.T) {
 
 func TestClientPrunesHeadersAndValidatorSets(t *testing.T) {
 	setupDashCoreRpcMock(t)
+	setupTrustedStore(t)
 
 	c, err := light.NewClient(
 		ctx,
 		chainID,
 		fullNode,
 		[]provider.Provider{fullNode},
-		dbs.New(dbm.NewMemDB(), chainID),
+		trustedStore,
 		dashCoreRpcClientMock,
 		light.Logger(log.TestingLogger()),
 		light.PruningSize(1),
@@ -744,6 +746,7 @@ func TestClientPrunesHeadersAndValidatorSets(t *testing.T) {
 
 func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
 	setupDashCoreRpcMock(t)
+	setupTrustedStore(t)
 
 	emptyValSet := &types.ValidatorSet{
 		Validators: nil,
@@ -800,7 +803,7 @@ func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
 			chainID,
 			badNode,
 			[]provider.Provider{badNode, badNode},
-			dbs.New(dbm.NewMemDB(), chainID),
+			trustedStore,
 			dashCoreRpcClientMock,
 			light.MaxRetryAttempts(1),
 		)
