@@ -270,7 +270,7 @@ func startSigner(cfg *Config) error {
 	endpoint := privval.NewSignerDialerEndpoint(logger, dialFn,
 		privval.SignerDialerEndpointRetryWaitInterval(1*time.Second),
 		privval.SignerDialerEndpointConnRetries(100))
-	err := privval.NewSignerServer(endpoint, cfg.ChainID, btcjson.LLMQType_5_60, crypto.RandQuorumHash(), filePV).Start()
+	err := privval.NewSignerServer(endpoint, cfg.ChainID, filePV).Start()
 	if err != nil {
 		return err
 	}

@@ -77,6 +77,28 @@ func (pvKey FilePVKey) Save() {
 
 }
 
+func (pvKey FilePVKey) PrivateKeyForQuorumHash(quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
+	if keys, ok := pvKey.PrivateKeys[quorumHash.String()]; ok {
+		return keys.PrivKey, nil
+	}
+	return nil, fmt.Errorf("no threshold public key for quorum hash %v", quorumHash)
+}
+
+func (pvKey FilePVKey) PublicKeyForQuorumHash(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
+	if keys, ok := pvKey.PrivateKeys[quorumHash.String()]; ok {
+		return keys.PubKey, nil
+	}
+	return nil, fmt.Errorf("no threshold public key for quorum hash %v", quorumHash)
+}
+
+func (pvKey FilePVKey) ThresholdPublicKeyForQuorumHash(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
+	if keys, ok := pvKey.PrivateKeys[quorumHash.String()]; ok {
+		return keys.ThresholdPublicKey, nil
+	}
+	return nil, fmt.Errorf("no threshold public key for quorum hash %v", quorumHash)
+}
+
+
 //-------------------------------------------------------------------------------
 
 // FilePVLastSignState stores the mutable part of PrivValidator.
@@ -347,9 +369,14 @@ func LoadOrGenFilePV(keyFilePath, stateFilePath string) *FilePV {
 // GetPubKey returns the public key of the validator.
 // Implements PrivValidator.
 func (pv *FilePV) GetPubKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
-	return pv.Key.PrivateKeys[quorumHash.String()].PubKey, nil
+	if keys, ok := pv.Key.PrivateKeys[quorumHash.String()]; ok {
+		return keys.PubKey, nil
+	}
+	return nil, fmt.Errorf("no public key for quorum hash %v", quorumHash)
 }
 
+// GetFirstPubKey returns the first public key of the validator.
+// Implements PrivValidator.
 func (pv *FilePV) GetFirstPubKey() (crypto.PubKey, error) {
 	for _, quorumKeys := range pv.Key.PrivateKeys {
 		return quorumKeys.PubKey, nil
@@ -380,7 +407,10 @@ func (pv *FilePV) GetFirstQuorumHash() (crypto.QuorumHash, error) {
 
 // GetThresholdPublicKey ...
 func (pv *FilePV) GetThresholdPublicKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
-	return pv.Key.PrivateKeys[quorumHash.String()].ThresholdPublicKey, nil
+	if keys, ok := pv.Key.PrivateKeys[quorumHash.String()]; ok {
+		return keys.ThresholdPublicKey, nil
+	}
+	return nil, fmt.Errorf("no threshold public key for quorum hash %v", quorumHash)
 }
 
 // GetHeight ...
@@ -390,7 +420,7 @@ func (pv *FilePV) GetHeight(quorumHash crypto.QuorumHash) (int64, error) {
 }
 
 // ExtractIntoValidator ...
-func (pv *FilePV) ExtractIntoValidator(height int64, quorumHash crypto.QuorumHash) *types.Validator {
+func (pv *FilePV) ExtractIntoValidator(quorumHash crypto.QuorumHash) *types.Validator {
 	pubKey, _ := pv.GetPubKey(quorumHash)
 	if len(pv.Key.ProTxHash) != crypto.DefaultHashSize {
 		panic("proTxHash wrong length")

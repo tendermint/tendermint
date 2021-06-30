@@ -16,8 +16,6 @@ func DefaultValidationRequestHandler(
 	privVal types.PrivValidator,
 	req privvalproto.Message,
 	chainID string,
-	quorumType btcjson.LLMQType,
-	quorumHash crypto.QuorumHash,
 ) (privvalproto.Message, error) {
 	var (
 		res privvalproto.Message
@@ -34,7 +32,7 @@ func DefaultValidationRequestHandler(
 		}
 
 		var pubKey crypto.PubKey
-		pubKey, err = privVal.GetPubKey(quorumHash)
+		pubKey, err = privVal.GetPubKey(r.PubKeyRequest.QuorumHash)
 		if err != nil {
 			return res, err
 		}
@@ -48,6 +46,30 @@ func DefaultValidationRequestHandler(
 				PubKey: cryptoproto.PublicKey{}, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
 		} else {
 			res = mustWrapMsg(&privvalproto.PubKeyResponse{PubKey: pk, Error: nil})
+		}
+	case *privvalproto.Message_ThresholdPubKeyRequest:
+		if r.ThresholdPubKeyRequest.GetChainId() != chainID {
+			res = mustWrapMsg(&privvalproto.ThresholdPubKeyResponse{
+				PubKey: cryptoproto.PublicKey{}, Error: &privvalproto.RemoteSignerError{
+					Code: 0, Description: "unable to provide threshold pubkey"}})
+			return res, fmt.Errorf("want chainID: %s, got chainID: %s", r.ThresholdPubKeyRequest.GetChainId(), chainID)
+		}
+
+		var pubKey crypto.PubKey
+		pubKey, err = privVal.GetThresholdPublicKey(r.ThresholdPubKeyRequest.QuorumHash)
+		if err != nil {
+			return res, err
+		}
+		pk, err := cryptoenc.PubKeyToProto(pubKey)
+		if err != nil {
+			return res, err
+		}
+
+		if err != nil {
+			res = mustWrapMsg(&privvalproto.ThresholdPubKeyResponse{
+				PubKey: cryptoproto.PublicKey{}, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
+		} else {
+			res = mustWrapMsg(&privvalproto.ThresholdPubKeyResponse{PubKey: pk, Error: nil})
 		}
 	case *privvalproto.Message_ProTxHashRequest:
 		if r.ProTxHashRequest.GetChainId() != chainID {

@@ -109,7 +109,7 @@ func makeState(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValida
 	for i := 0; i < nVals; i++ {
 		vals[i].Name = fmt.Sprintf("test%d", i)
 		proTxHash := vals[i].ProTxHash
-		privValsByProTxHash[proTxHash.String()] = types.NewMockPVWithParams(privVals[i].PrivKey, vals[i].ProTxHash, false, false)
+		privValsByProTxHash[proTxHash.String()] = privVals[i]
 	}
 	s, _ := sm.MakeGenesisState(&types.GenesisDoc{
 		ChainID:            chainID,

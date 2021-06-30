@@ -1,6 +1,7 @@
 package privval
 
 import (
+	"errors"
 	"fmt"
 	"github.com/dashevo/dashd-go/btcjson"
 	"time"
@@ -45,7 +46,7 @@ func (sc *RetrySignerClient) Ping() error {
 	return sc.next.Ping()
 }
 
-func (sc *RetrySignerClient) ExtractIntoValidator(height int64, quorumHash crypto.QuorumHash) *types.Validator {
+func (sc *RetrySignerClient) ExtractIntoValidator(quorumHash crypto.QuorumHash) *types.Validator {
 	pubKey, _ := sc.GetPubKey(quorumHash)
 	proTxHash, _ := sc.GetProTxHash()
 	if len(proTxHash) != crypto.DefaultHashSize {
@@ -99,6 +100,32 @@ func (sc *RetrySignerClient) GetProTxHash() (crypto.ProTxHash, error) {
 	return nil, fmt.Errorf("exhausted all attempts to get protxhash: %w", err)
 }
 
+func (sc *RetrySignerClient) GetFirstQuorumHash() (crypto.QuorumHash, error) {
+	return nil, errors.New("getFirstQuorumHash should not be called on a signer client")
+}
+
+func (sc *RetrySignerClient) GetThresholdPublicKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
+	var (
+		pk  crypto.PubKey
+		err error
+	)
+	for i := 0; i < sc.retries || sc.retries == 0; i++ {
+		pk, err = sc.next.GetThresholdPublicKey(quorumHash)
+		if err == nil {
+			return pk, nil
+		}
+		// If remote signer errors, we don't retry.
+		if _, ok := err.(*RemoteSignerError); ok {
+			return nil, err
+		}
+		time.Sleep(sc.timeout)
+	}
+	return nil, fmt.Errorf("exhausted all attempts to get pubkey: %w", err)
+}
+func (sc *RetrySignerClient) GetHeight(quorumHash crypto.QuorumHash) (int64, error) {
+	return 0, fmt.Errorf("getHeight should not be called on asigner client %s", quorumHash.String())
+}
+
 func (sc *RetrySignerClient) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
 	var err error
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
@@ -132,7 +159,7 @@ func (sc *RetrySignerClient) SignProposal(chainID string, quorumType btcjson.LLM
 	return signId, fmt.Errorf("exhausted all attempts to sign proposal: %w", err)
 }
 
-func (sc *RetrySignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, height int64) error {
+func (sc *RetrySignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.QuorumHash, height int64) error {
 	// the private key is dealt with on the abci client
 	return nil
 }

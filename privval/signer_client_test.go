@@ -39,7 +39,7 @@ func getSignerTestCases(t *testing.T) []signerTestCase {
 		sl, sd := getMockEndpoints(t, dtc.addr, dtc.dialer)
 		sc, err := NewSignerClient(sl, chainID)
 		require.NoError(t, err)
-		ss := NewSignerServer(sd, chainID, btcjson.LLMQType_5_60, crypto.RandQuorumHash(), mockPV)
+		ss := NewSignerServer(sd, chainID, mockPV)
 
 		err = ss.Start()
 		require.NoError(t, err)
@@ -405,13 +405,15 @@ func TestSignerSignVoteErrors(t *testing.T) {
 }
 
 func brokenHandler(privVal types.PrivValidator, request privvalproto.Message,
-	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) (privvalproto.Message, error) {
+	chainID string) (privvalproto.Message, error) {
 	var res privvalproto.Message
 	var err error
 
 	switch r := request.Sum.(type) {
 	// This is broken and will answer most requests with a pubkey response
 	case *privvalproto.Message_PubKeyRequest:
+		res = mustWrapMsg(&privvalproto.PubKeyResponse{PubKey: cryptoproto.PublicKey{}, Error: nil})
+	case *privvalproto.Message_ThresholdPubKeyRequest:
 		res = mustWrapMsg(&privvalproto.PubKeyResponse{PubKey: cryptoproto.PublicKey{}, Error: nil})
 	case *privvalproto.Message_ProTxHashRequest:
 		res = mustWrapMsg(&privvalproto.PubKeyResponse{PubKey: cryptoproto.PublicKey{}, Error: nil})

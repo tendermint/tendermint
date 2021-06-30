@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"net"
 	"os"
 	"syscall"
@@ -151,8 +150,6 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	signerServer := privval.NewSignerServer(
 		dialerEndpoint,
 		config.ChainID(),
-		btcjson.LLMQType_5_60,
-		crypto.RandQuorumHash(),
 		types.NewMockPV(),
 	)
 
@@ -199,8 +196,6 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	pvsc := privval.NewSignerServer(
 		dialerEndpoint,
 		config.ChainID(),
-		btcjson.LLMQType_5_60,
-		crypto.RandQuorumHash(),
 		types.NewMockPV(),
 	)
 
@@ -425,7 +420,7 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 }
 
 func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
-	vals, privVals, thresholdPublicKey := types.GenerateGenesisValidators(nVals)
+	vals, privVals, quorumHash, thresholdPublicKey := types.GenerateGenesisValidators(nVals)
 	for i := 0; i < nVals; i++ {
 		vals[i].Name = fmt.Sprintf("test%d", i)
 	}
@@ -433,7 +428,7 @@ func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
 		ChainID:            "test-chain",
 		Validators:         vals,
 		ThresholdPublicKey: thresholdPublicKey,
-		QuorumHash:         crypto.RandQuorumHash(),
+		QuorumHash:         quorumHash,
 		AppHash:            nil,
 	})
 

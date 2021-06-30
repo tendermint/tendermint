@@ -770,11 +770,11 @@ func updateConsensusNetAddNewValidators(css []*State, height int64, addValCount 
 		}
 		for j, proTxHash := range validatorProTxHashes {
 			if bytes.Equal(privValProTxHash.Bytes(), proTxHash.Bytes()) {
-				err := privVal.UpdatePrivateKey(privKeys[j], height+3)
+				err := privVal.UpdatePrivateKey(privKeys[j], quorumHash, height+3)
 				if err != nil {
 					panic(err)
 				}
-				updatedValidators[j] = privVal.ExtractIntoValidator(height+3, quorumHash)
+				updatedValidators[j] = privVal.ExtractIntoValidator(quorumHash)
 				publicKeys[j] = privKeys[j].PubKey()
 				if !bytes.Equal(updatedValidators[j].PubKey.Bytes(), publicKeys[j].Bytes()) {
 					panic("the validator public key should match the public key")
@@ -871,11 +871,11 @@ func updateConsensusNetRemoveValidatorsWithProTxHashes(css []*State, height int6
 			if bytes.Equal(stateProTxHash.Bytes(), proTxHash.Bytes()) {
 				// we found the prival
 				privVal = state.privValidator
-				err := privVal.UpdatePrivateKey(privKeys[i], height+3)
+				err := privVal.UpdatePrivateKey(privKeys[i], quorumHash, height+3)
 				if err != nil {
 					panic(err)
 				}
-				updatedValidators[i] = privVal.ExtractIntoValidator(height+3, quorumHash)
+				updatedValidators[i] = privVal.ExtractIntoValidator(quorumHash)
 				publicKeys[i] = privKeys[i].PubKey()
 				if !bytes.Equal(updatedValidators[i].PubKey.Bytes(), publicKeys[i].Bytes()) {
 					panic("the validator public key should match the public key")
@@ -981,7 +981,7 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	privValidators := make([]types.PrivValidator, numValidators)
 
 	privateKeys, proTxHashes, thresholdPublicKey := bls12381.CreatePrivLLMQDataDefaultThreshold(numValidators)
-
+	quorumHash := crypto.RandQuorumHash()
 	for i := 0; i < numValidators; i++ {
 		val := types.NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), proTxHashes[i])
 		validators[i] = types.GenesisValidator{
@@ -989,7 +989,8 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 			Power:     val.VotingPower,
 			ProTxHash: val.ProTxHash,
 		}
-		privValidators[i] = types.NewMockPVWithParams(privateKeys[i], proTxHashes[i], false, false)
+		privValidators[i] = types.NewMockPVWithParams(privateKeys[i], proTxHashes[i], quorumHash, thresholdPublicKey,
+			false, false)
 	}
 	sort.Sort(types.PrivValidatorsByProTxHash(privValidators))
 
@@ -1003,7 +1004,7 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 		InitialCoreChainLockedHeight: 1,
 		InitialProposalCoreChainLock: coreChainLock.ToProto(),
 		ThresholdPublicKey:           thresholdPublicKey,
-		QuorumHash:                   crypto.RandQuorumHash(),
+		QuorumHash:                   quorumHash,
 	}, privValidators
 }
 

@@ -1,6 +1,7 @@
 package privval
 
 import (
+	"errors"
 	"fmt"
 	"github.com/dashevo/dashd-go/btcjson"
 	"time"
@@ -67,7 +68,7 @@ func (sc *SignerClient) Ping() error {
 	return nil
 }
 
-func (sc *SignerClient) ExtractIntoValidator(height int64, quorumHash crypto.QuorumHash) *types.Validator {
+func (sc *SignerClient) ExtractIntoValidator(quorumHash crypto.QuorumHash) *types.Validator {
 	pubKey, _ := sc.GetPubKey(quorumHash)
 	proTxHash, _ := sc.GetProTxHash()
 	if len(proTxHash) != crypto.DefaultHashSize {
@@ -83,7 +84,7 @@ func (sc *SignerClient) ExtractIntoValidator(height int64, quorumHash crypto.Quo
 // GetPubKey retrieves a public key from a remote signer
 // returns an error if client is not able to provide the key
 func (sc *SignerClient) GetPubKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
-	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.PubKeyRequest{ChainId: sc.chainID}))
+	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.PubKeyRequest{ChainId: sc.chainID, QuorumHash: quorumHash}))
 	if err != nil {
 		return nil, fmt.Errorf("send: %w", err)
 	}
@@ -123,6 +124,39 @@ func (sc *SignerClient) GetProTxHash() (crypto.ProTxHash, error) {
 	}
 
 	return resp.ProTxHash, nil
+}
+
+func (sc *SignerClient) GetFirstQuorumHash() (crypto.QuorumHash, error) {
+	return nil, errors.New("getFirstQuorumHash should not be called on a signer client")
+}
+
+func (sc *SignerClient) GetThresholdPublicKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
+	if len(quorumHash.Bytes()) != crypto.DefaultHashSize {
+		return nil, fmt.Errorf("quorum hash must be 32 bytes long if requesting public key from dash core")
+	}
+
+	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.ThresholdPubKeyRequest{ChainId: sc.chainID, QuorumHash: quorumHash}))
+	if err != nil {
+		return nil, fmt.Errorf("send: %w", err)
+	}
+
+	resp := response.GetPubKeyResponse()
+	if resp == nil {
+		return nil, ErrUnexpectedResponse
+	}
+	if resp.Error != nil {
+		return nil, &RemoteSignerError{Code: int(resp.Error.Code), Description: resp.Error.Description}
+	}
+
+	pk, err := cryptoenc.PubKeyFromProto(resp.PubKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return pk, nil
+}
+func (sc *SignerClient) GetHeight(quorumHash crypto.QuorumHash) (int64, error) {
+	return 0, fmt.Errorf("getHeight should not be called on asigner client %s", quorumHash.String())
 }
 
 // SignVote requests a remote signer to sign a vote
@@ -173,7 +207,7 @@ func (sc *SignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType
 	return blockSignId, nil
 }
 
-func (sc *SignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, height int64) error {
+func (sc *SignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.QuorumHash, height int64) error {
 	// the private key is dealt with on the abci client
 	return nil
 }

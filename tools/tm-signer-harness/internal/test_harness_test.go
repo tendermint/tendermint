@@ -2,7 +2,6 @@ package internal
 
 import (
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -97,7 +96,16 @@ func TestRemoteSignerTestHarnessSuccessfulRun(t *testing.T) {
 	harnessTest(
 		t,
 		func(th *TestHarness) *privval.SignerServer {
-			return newMockSignerServer(t, th, th.fpv.Key.PrivKey, th.fpv.Key.ProTxHash, false, false)
+			privKey, err := th.fpv.Key.PrivateKeyForQuorumHash(th.quorumHash)
+			if err != nil {
+				panic(err)
+			}
+			thresholdPublicKey, err := th.fpv.Key.ThresholdPublicKeyForQuorumHash(th.quorumHash)
+			if err != nil {
+				panic(err)
+			}
+			return newMockSignerServer(t, th, privKey, th.fpv.Key.ProTxHash, th.quorumHash, thresholdPublicKey,
+				false, false)
 		},
 		NoError,
 	)
@@ -107,7 +115,12 @@ func TestRemoteSignerPublicKeyCheckFailed(t *testing.T) {
 	harnessTest(
 		t,
 		func(th *TestHarness) *privval.SignerServer {
-			return newMockSignerServer(t, th, bls12381.GenPrivKey(), crypto.CRandBytes(32), false, false)
+			thresholdPublicKey, err := th.fpv.Key.ThresholdPublicKeyForQuorumHash(th.quorumHash)
+			if err != nil {
+				panic(err)
+			}
+			return newMockSignerServer(t, th, bls12381.GenPrivKey(), crypto.RandProTxHash(), th.quorumHash,
+				thresholdPublicKey, false, false)
 		},
 		ErrTestPublicKeyFailed,
 	)
@@ -117,7 +130,16 @@ func TestRemoteSignerProposalSigningFailed(t *testing.T) {
 	harnessTest(
 		t,
 		func(th *TestHarness) *privval.SignerServer {
-			return newMockSignerServer(t, th, th.fpv.Key.PrivKey, th.fpv.Key.ProTxHash, true, false)
+			privKey, err := th.fpv.Key.PrivateKeyForQuorumHash(th.quorumHash)
+			if err != nil {
+				panic(err)
+			}
+			thresholdPublicKey, err := th.fpv.Key.ThresholdPublicKeyForQuorumHash(th.quorumHash)
+			if err != nil {
+				panic(err)
+			}
+			return newMockSignerServer(t, th, privKey, th.fpv.Key.ProTxHash, th.quorumHash, thresholdPublicKey,
+				true, false)
 		},
 		ErrTestSignProposalFailed,
 	)
@@ -127,7 +149,16 @@ func TestRemoteSignerVoteSigningFailed(t *testing.T) {
 	harnessTest(
 		t,
 		func(th *TestHarness) *privval.SignerServer {
-			return newMockSignerServer(t, th, th.fpv.Key.PrivKey, th.fpv.Key.ProTxHash, false, true)
+			privKey, err := th.fpv.Key.PrivateKeyForQuorumHash(th.quorumHash)
+			if err != nil {
+				panic(err)
+			}
+			thresholdPublicKey, err := th.fpv.Key.ThresholdPublicKeyForQuorumHash(th.quorumHash)
+			if err != nil {
+				panic(err)
+			}
+			return newMockSignerServer(t, th, privKey, th.fpv.Key.ProTxHash, th.quorumHash, thresholdPublicKey,
+				false, true)
 		},
 		ErrTestSignVoteFailed,
 	)
@@ -138,10 +169,13 @@ func newMockSignerServer(
 	th *TestHarness,
 	privKey crypto.PrivKey,
 	proTxHash crypto.ProTxHash,
+	quorumHash crypto.QuorumHash,
+	thresholdPublicKey crypto.PubKey,
 	breakProposalSigning bool,
 	breakVoteSigning bool,
 ) *privval.SignerServer {
-	mockPV := types.NewMockPVWithParams(privKey, proTxHash, breakProposalSigning, breakVoteSigning)
+	mockPV := types.NewMockPVWithParams(privKey, proTxHash, quorumHash, thresholdPublicKey,
+		breakProposalSigning, breakVoteSigning)
 
 	dialerEndpoint := privval.NewSignerDialerEndpoint(
 		th.logger,
@@ -152,7 +186,7 @@ func newMockSignerServer(
 		),
 	)
 
-	return privval.NewSignerServer(dialerEndpoint, th.chainID, btcjson.LLMQType_5_60, crypto.RandQuorumHash(), mockPV)
+	return privval.NewSignerServer(dialerEndpoint, th.chainID, mockPV)
 }
 
 // For running relatively standard tests.

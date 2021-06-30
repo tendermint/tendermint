@@ -320,7 +320,7 @@ func (pv *FilePV) Reset() {
 func (pv *FilePV) String() string {
 	return fmt.Sprintf(
 		"PrivValidator{%v LH:%v, LR:%v, LS:%v}",
-		pv.GetAddress(),
+		pv.Key.ProTxHash,
 		pv.LastSignState.Height,
 		pv.LastSignState.Round,
 		pv.LastSignState.Step,

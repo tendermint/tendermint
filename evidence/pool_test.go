@@ -214,8 +214,9 @@ func TestReportConflictingVotes(t *testing.T) {
 
 	pool, pv := defaultTestPool(height)
 
-	quorumHash := crypto.RandQuorumHash()
-	val := pv.ExtractIntoValidator(height+1, quorumHash)
+	quorumHash, err := pv.GetFirstQuorumHash()
+	require.NoError(t, err)
+	val := pv.ExtractIntoValidator(quorumHash)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height+1, defaultEvidenceTime, pv, evidenceChainID,
 		btcjson.LLMQType_5_60, quorumHash)
 
