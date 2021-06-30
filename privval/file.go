@@ -229,6 +229,14 @@ func WithKeyAndStateFilePaths(keyFilePath, stateFilePath string) FilePVOption {
 	}
 }
 
+func WithPrivateKey(key crypto.PrivKey, quorumHash crypto.QuorumHash, thresholdPublicKey *crypto.PubKey) FilePVOption {
+	if thresholdPublicKey == nil {
+		return WithPrivateKeys([]crypto.PrivKey{key}, []crypto.QuorumHash{quorumHash}, nil)
+	} else {
+		return WithPrivateKeys([]crypto.PrivKey{key}, []crypto.QuorumHash{quorumHash}, &[]crypto.PubKey{*thresholdPublicKey})
+	}
+}
+
 // WithPrivateKeys ...
 func WithPrivateKeys(keys []crypto.PrivKey, quorumHashes []crypto.QuorumHash, thresholdPublicKeys *[]crypto.PubKey) FilePVOption {
 	return func(filePV *FilePV) error {
@@ -253,18 +261,25 @@ func WithPrivateKeys(keys []crypto.PrivKey, quorumHashes []crypto.QuorumHash, th
 			}
 			privateKeysMap[quorumHashes[i].String()] = quorumKeys
 		}
+		filePV.Key.PrivateKeys = privateKeysMap
 		return nil
 	}
 }
 
-func WithUpdateHeights(updateHeights map[int64]crypto.QuorumHash) FilePVOption {
+func WithPrivateKeysMap(privateKeysMap map[string]crypto.QuorumKeys) FilePVOption {
 	return func(filePV *FilePV) error {
-		filePV.Key.UpdateHeights = make(map[string]crypto.QuorumHash)
-		for height, quorumHash := range updateHeights {
-			filePV.Key.UpdateHeights[strconv.Itoa(int(height))] = quorumHash
 
+		filePV.Key.PrivateKeys = privateKeysMap
+		return nil
+	}
+}
+
+func WithUpdateHeights(updateHeights map[string]crypto.QuorumHash) FilePVOption {
+	return func(filePV *FilePV) error {
+		filePV.Key.UpdateHeights = updateHeights
+		for height, quorumHash := range updateHeights {
 			if _, ok := filePV.Key.FirstHeightOfQuorums[quorumHash.String()]; ok {
-				filePV.Key.FirstHeightOfQuorums[quorumHash.String()] = strconv.Itoa(int(height))
+				filePV.Key.FirstHeightOfQuorums[quorumHash.String()] = height
 			}
 		}
 		return nil

@@ -14,7 +14,6 @@ import (
 	"github.com/spf13/viper"
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmflags "github.com/tendermint/tendermint/libs/cli/flags"
 	"github.com/tendermint/tendermint/libs/log"

@@ -246,8 +246,8 @@ func (pv *MockPV) ExtractIntoValidator(quorumHash crypto.QuorumHash) *Validator 
 
 // String returns a string representation of the MockPV.
 func (pv *MockPV) String() string {
-	mpv, _ := pv.GetPubKey([]byte{}) // mockPV will never return an error, ignored here
-	return fmt.Sprintf("MockPV{%v}", mpv.Address())
+	proTxHash, _ := pv.GetProTxHash() // mockPV will never return an error, ignored here
+	return fmt.Sprintf("MockPV{%v}", proTxHash)
 }
 
 // XXX: Implement.
