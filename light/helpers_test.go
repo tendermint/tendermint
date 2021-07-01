@@ -275,7 +275,11 @@ func genMockNode(
 	map[int64]*types.ValidatorSet,
 	*types.MockPV) {
 	headers, valset, privvalKeys := genMockNodeWithKeys(chainID, blockSize, valSize, bTime)
-	privateValidator := privvalKeys[valset[0].Validators[0].ProTxHash.String()]
+	var privateValidator *types.MockPV
+	for _, privVal := range privvalKeys {
+		privateValidator = privVal
+		break
+	}
 	return chainID, headers, valset, privateValidator
 }
 
