@@ -20,7 +20,7 @@ import (
 // DashCoreSignerClient implements PrivValidator.
 // Handles remote validator connections that provide signing services
 type DashCoreSignerClient struct {
-	dashCoreRpcClient dashcore.RpcClient
+	dashCoreRpcClient dashcore.DashCoreClient
 	cachedProTxHash   crypto.ProTxHash
 	defaultQuorumType btcjson.LLMQType
 }
@@ -29,7 +29,7 @@ var _ types.PrivValidator = (*DashCoreSignerClient)(nil)
 
 // NewDashCoreSignerClient returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
-func NewDashCoreSignerClient(client dashcore.RpcClient, defaultQuorumType btcjson.LLMQType) (*DashCoreSignerClient, error) {
+func NewDashCoreSignerClient(client dashcore.DashCoreClient, defaultQuorumType btcjson.LLMQType) (*DashCoreSignerClient, error) {
 	return &DashCoreSignerClient{dashCoreRpcClient: client, defaultQuorumType: defaultQuorumType}, nil
 }
 

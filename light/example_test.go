@@ -52,7 +52,7 @@ func ExampleClient_Update() {
 		stdlog.Fatal(err)
 	}
 
-	dashCoreRpcClient, err := dashcore.NewRpcClient(
+	dashCoreRpcClient, err := dashcore.NewDashCoreRpcClient(
 		config.PrivValidatorCoreRPCHost,
 		config.BaseConfig.PrivValidatorCoreRPCUsername,
 		config.BaseConfig.PrivValidatorCoreRPCPassword,
@@ -122,7 +122,7 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 		stdlog.Fatal(err)
 	}
 
-	dashCoreRpcClient, err := dashcore.NewRpcClient(
+	dashCoreRpcClient, err := dashcore.NewDashCoreRpcClient(
 		config.PrivValidatorCoreRPCHost,
 		config.BaseConfig.PrivValidatorCoreRPCUsername,
 		config.BaseConfig.PrivValidatorCoreRPCPassword,

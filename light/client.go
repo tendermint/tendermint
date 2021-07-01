@@ -142,7 +142,7 @@ type Client struct {
 	quit chan struct{}
 
 	// Rpc client connected to dashd
-	dashCoreRpcClient dashcore.RpcClient
+	dashCoreRpcClient dashcore.DashCoreClient
 
 	logger log.Logger
 }
@@ -163,7 +163,7 @@ func NewClient(
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
-	dashCoreRpcClient dashcore.RpcClient,
+	dashCoreRpcClient dashcore.DashCoreClient,
 	options ...Option) (*Client, error) {
 
 	c, err := NewClientFromTrustedStore(chainID, primary, witnesses, trustedStore, dashCoreRpcClient, options...)
@@ -189,7 +189,7 @@ func NewClientFromTrustedStore(
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
-	dashCoreRpcClient dashcore.RpcClient,
+	dashCoreRpcClient dashcore.DashCoreClient,
 	options ...Option) (*Client, error) {
 
 	c := &Client{

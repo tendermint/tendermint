@@ -38,7 +38,6 @@ var (
 	// 3/3 signed
 	h3 = keys.GenSignedHeaderLastBlockID(chainID, 3, bTime.Add(1*time.Hour), nil, vals, vals,
 		hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys), types.BlockID{Hash: h2.Hash()})
-	trustPeriod = 4 * time.Hour
 	valSet      = map[int64]*types.ValidatorSet{
 		1: vals,
 		2: vals,
@@ -62,7 +61,7 @@ var (
 	deadNode = mockp.NewDeadMock(chainID)
 	// largeFullNode = mockp.New(genMockNode(chainID, 10, 3, 0, bTime))
 
-	dashCoreRpcClientMock dashcore.RpcClient
+	dashCoreRpcClientMock dashcore.DashCoreClient
 	trustedStore          store.Store
 )
 

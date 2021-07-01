@@ -1,44 +1,85 @@
 package dashcore
 
 import (
+	"encoding/hex"
+	"strconv"
+
 	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
+	"github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/privval"
 )
 
-// rpcClientMock implements RpcClient for tests
-type rpcClientMock struct{}
+// DashCoreMockClient is an implementation of a mock core-server
+type DashCoreMockClient struct {
+	chainID  string
+	llmqType btcjson.LLMQType
+	filePV   privval.FilePV
+}
 
-// NewRpcClientMock returns a mock instance of RpcClient.
-func NewRpcClientMock() (RpcClient, error) {
-	return &rpcClientMock{}, nil
+func NewDashCoreMockClient(chainId string, llmqType btcjson.LLMQType, filePV privval.FilePV) DashCoreMockClient {
+	return DashCoreMockClient{
+		chainID: chainId,
+		llmqType: llmqType,
+		filePV: filePV,
+	}
 }
 
 // Close closes the underlying connection
-func (rpcClientMock *rpcClientMock) Close() error {
+func (mc *DashCoreMockClient) Close() error {
 	return nil
 }
 
 // Ping sends a ping request to the remote signer
-func (rpcClientMock *rpcClientMock) Ping() error {
+func (mc *DashCoreMockClient) Ping() error {
 	return nil
 }
 
-func (rpcClientMock *rpcClientMock) QuorumInfo(quorumType btcjson.LLMQType, quorumHash string, includeSkShare bool) (*btcjson.QuorumInfoResult, error) {
+func (mc *DashCoreMockClient) QuorumInfo(quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) (*btcjson.QuorumInfoResult, error) {
+	var members []btcjson.QuorumMember
+	proTxHash, err := mc.filePV.GetProTxHash()
+	if err != nil {
+		panic(err)
+	}
+	pk, err := mc.filePV.GetPubKey(quorumHash)
+	if err != nil {
+		panic(err)
+	}
+	if pk != nil {
+		members = append(members, btcjson.QuorumMember{
+			ProTxHash:      proTxHash.String(),
+			PubKeyOperator: crypto.CRandHex(96),
+			Valid:          true,
+			PubKeyShare:    pk.HexString(),
+		})
+	}
+	tpk, err := mc.filePV.GetThresholdPublicKey(quorumHash)
+	if err != nil {
+		panic(err)
+	}
+	height, err := mc.filePV.GetHeight(quorumHash)
+	if err != nil {
+		panic(err)
+	}
 	return &btcjson.QuorumInfoResult{
-		Height:          0,
-		Type:            "",
-		QuorumHash:      "",
-		MinedBlock:      "",
-		Members:         nil,
-		QuorumPublicKey: "",
-		SecretKeyShare:  "",
+		Height:          uint32(height),
+		Type:            strconv.Itoa(int(quorumType)),
+		QuorumHash:      quorumHash.String(),
+		Members:         members,
+		QuorumPublicKey: tpk.String(),
 	}, nil
 }
 
-func (rpcClientMock *rpcClientMock) MasternodeStatus() (*btcjson.MasternodeStatusResult, error) {
+func (mc *DashCoreMockClient) MasternodeStatus() (*btcjson.MasternodeStatusResult, error) {
+	proTxHash, err := mc.filePV.GetProTxHash()
+	if err != nil {
+		panic(err)
+	}
 	return &btcjson.MasternodeStatusResult{
 		Outpoint:        "",
 		Service:         "",
-		ProTxHash:       "",
+		ProTxHash:       proTxHash.String(),
 		CollateralHash:  "",
 		CollateralIndex: 0,
 		DMNState:        btcjson.DMNState{},
@@ -47,7 +88,7 @@ func (rpcClientMock *rpcClientMock) MasternodeStatus() (*btcjson.MasternodeStatu
 	}, nil
 }
 
-func (rpcClientMock *rpcClientMock) GetNetworkInfo() (*btcjson.GetNetworkInfoResult, error) {
+func (mc *DashCoreMockClient) GetNetworkInfo() (*btcjson.GetNetworkInfoResult, error) {
 	return &btcjson.GetNetworkInfoResult{
 		Version:         0,
 		SubVersion:      "",
@@ -65,7 +106,11 @@ func (rpcClientMock *rpcClientMock) GetNetworkInfo() (*btcjson.GetNetworkInfoRes
 	}, nil
 }
 
-func (rpcClientMock *rpcClientMock) MasternodeListJSON(filter string) (map[string]btcjson.MasternodelistResultJSON, error) {
+func (mc *DashCoreMockClient) MasternodeListJSON(filter string) (map[string]btcjson.MasternodelistResultJSON, error) {
+	proTxHash, err := mc.filePV.GetProTxHash()
+	if err != nil {
+		panic(err)
+	}
 	m := make(map[string]btcjson.MasternodelistResultJSON)
 	m[""] = btcjson.MasternodelistResultJSON{
 		Address:           "",
@@ -74,7 +119,7 @@ func (rpcClientMock *rpcClientMock) MasternodeListJSON(filter string) (map[strin
 		Lastpaidtime:      0,
 		Owneraddress:      "",
 		Payee:             "",
-		ProTxHash:         "",
+		ProTxHash:         proTxHash.String(),
 		Pubkeyoperator:    "",
 		Status:            "",
 		Votingaddress:     "",
@@ -83,13 +128,47 @@ func (rpcClientMock *rpcClientMock) MasternodeListJSON(filter string) (map[strin
 	return m, nil
 }
 
-func (rpcClientMock *rpcClientMock) QuorumSign(quorumType btcjson.LLMQType, requestID string, messageHash string, quorumHash string, submit bool) (*btcjson.QuorumSignResultWithBool, error) {
-	return &btcjson.QuorumSignResultWithBool{
-		QuorumSignResult: btcjson.QuorumSignResult{},
-		Result:           false,
-	}, nil
+func (mc *DashCoreMockClient) QuorumSign(quorumType btcjson.LLMQType, requestID bytes.HexBytes, messageHash bytes.HexBytes, quorumHash crypto.QuorumHash) (*btcjson.QuorumSignResult, error) {
+	signID := crypto.SignId(
+		quorumType,
+		bls12381.ReverseBytes(quorumHash),
+		bls12381.ReverseBytes(requestID),
+		bls12381.ReverseBytes(messageHash),
+	)
+	privateKey, err := mc.filePV.Key.PrivateKeyForQuorumHash(quorumHash)
+	if err != nil {
+		panic(err)
+	}
+
+	sign, err := privateKey.SignDigest(signID)
+	if err != nil {
+		panic(err)
+	}
+
+	res := btcjson.QuorumSignResult{
+		LLMQType:   int(quorumType),
+		QuorumHash: quorumHash.String(),
+		ID:         hex.EncodeToString(requestID),
+		MsgHash:    hex.EncodeToString(messageHash),
+		SignHash:   hex.EncodeToString(signID),
+		Signature:  hex.EncodeToString(sign),
+	}
+	return &res, nil
 }
 
-func (rpcClientMock *rpcClientMock) QuorumVerify(quorumType btcjson.LLMQType, requestID string, messageHash string, signature string, quorumHash string) (bool, error) {
-	return true, nil
+func (mc *DashCoreMockClient) QuorumVerify(quorumType btcjson.LLMQType, requestID bytes.HexBytes, messageHash bytes.HexBytes, signature bytes.HexBytes, quorumHash crypto.QuorumHash) (bool, error) {
+	signID := crypto.SignId(
+		quorumType,
+		bls12381.ReverseBytes(quorumHash),
+		bls12381.ReverseBytes(requestID),
+		bls12381.ReverseBytes(messageHash),
+	)
+	thresholdPublicKey, err := mc.filePV.Key.ThresholdPublicKeyForQuorumHash(quorumHash)
+	if err != nil {
+		panic(err)
+	}
+
+	signatureVerified := thresholdPublicKey.VerifySignatureDigest(signID, signature)
+
+	return signatureVerified, nil
 }

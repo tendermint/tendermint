@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"github.com/dashevo/dashd-go/btcjson"
 	rpc "github.com/dashevo/dashd-go/rpcclient"
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/libs/bytes"
 )
 
-type RpcClient interface {
+type DashCoreClient interface {
 	// QuorumInfo returns quorum info
-	QuorumInfo(quorumType btcjson.LLMQType, quorumHash string, includeSkShare bool) (*btcjson.QuorumInfoResult, error)
+	QuorumInfo(quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) (*btcjson.QuorumInfoResult, error)
 	// MasternodeStatus returns masternode status
 	MasternodeStatus() (*btcjson.MasternodeStatusResult, error)
 	// GetNetworkInfo returns network info
@@ -16,24 +18,24 @@ type RpcClient interface {
 	// MasternodeListJSON returns masternode list json
 	MasternodeListJSON(filter string) (map[string]btcjson.MasternodelistResultJSON, error)
 	// QuorumSign signs message in a quorum session
-	QuorumSign(quorumType btcjson.LLMQType, requestID string, messageHash string, quorumHash string, submit bool) (*btcjson.QuorumSignResultWithBool, error)
+	QuorumSign(quorumType btcjson.LLMQType, requestID bytes.HexBytes, messageHash bytes.HexBytes, quorumHash bytes.HexBytes) (*btcjson.QuorumSignResult, error)
 	// QuorumVerify verifies quorum signature
-	QuorumVerify(quorumType btcjson.LLMQType, requestID string, messageHash string, signature string, quorumHash string) (bool, error)
+	QuorumVerify(quorumType btcjson.LLMQType, requestID bytes.HexBytes, messageHash bytes.HexBytes, signature bytes.HexBytes, quorumHash bytes.HexBytes) (bool, error)
 	// Close Closes connection to dashd
 	Close() error
 	// Ping Sends ping to dashd
 	Ping() error
 }
 
-// rpcClient implements RpcClient
+// DashCoreRpcClient implements DashCoreClient
 // Handles connection to the underlying dashd instance
-type rpcClient struct {
+type DashCoreRpcClient struct {
 	endpoint *rpc.Client
 }
 
-// NewRpcClient returns an instance of RpcClient.
+// NewDashCoreRpcClient returns an instance of DashCoreClient.
 // it will start the endpoint (if not already started)
-func NewRpcClient(host string, username string, password string) (RpcClient, error) {
+func NewDashCoreRpcClient(host string, username string, password string) (DashCoreClient, error) {
 	if host == "" {
 		return nil, fmt.Errorf("unable to establish connection to the Dash Core node")
 	}
@@ -53,17 +55,17 @@ func NewRpcClient(host string, username string, password string) (RpcClient, err
 		return nil, err
 	}
 
-	return &rpcClient{endpoint: client}, nil
+	return &DashCoreRpcClient{endpoint: client}, nil
 }
 
 // Close closes the underlying connection
-func (rpcClient *rpcClient) Close() error {
+func (rpcClient *DashCoreRpcClient) Close() error {
 	rpcClient.endpoint.Shutdown()
 	return nil
 }
 
 // Ping sends a ping request to the remote signer
-func (rpcClient *rpcClient) Ping() error {
+func (rpcClient *DashCoreRpcClient) Ping() error {
 	err := rpcClient.endpoint.Ping()
 	if err != nil {
 		return err
@@ -77,26 +79,33 @@ func (rpcClient *rpcClient) Ping() error {
 	return nil
 }
 
-func (rpcClient *rpcClient) QuorumInfo(quorumType btcjson.LLMQType, quorumHash string, includeSkShare bool) (*btcjson.QuorumInfoResult, error) {
-	return rpcClient.endpoint.QuorumInfo(quorumType, quorumHash, includeSkShare)
+func (rpcClient *DashCoreRpcClient) QuorumInfo(quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) (*btcjson.QuorumInfoResult, error) {
+	return rpcClient.endpoint.QuorumInfo(quorumType, quorumHash.String(), false)
 }
 
-func (rpcClient *rpcClient) MasternodeStatus() (*btcjson.MasternodeStatusResult, error) {
+func (rpcClient *DashCoreRpcClient) MasternodeStatus() (*btcjson.MasternodeStatusResult, error) {
 	return rpcClient.endpoint.MasternodeStatus()
 }
 
-func (rpcClient *rpcClient) GetNetworkInfo() (*btcjson.GetNetworkInfoResult, error) {
+func (rpcClient *DashCoreRpcClient) GetNetworkInfo() (*btcjson.GetNetworkInfoResult, error) {
 	return rpcClient.endpoint.GetNetworkInfo()
 }
 
-func (rpcClient *rpcClient) MasternodeListJSON(filter string) (map[string]btcjson.MasternodelistResultJSON, error) {
+func (rpcClient *DashCoreRpcClient) MasternodeListJSON(filter string) (map[string]btcjson.MasternodelistResultJSON, error) {
 	return rpcClient.endpoint.MasternodeListJSON(filter)
 }
 
-func (rpcClient *rpcClient) QuorumSign(quorumType btcjson.LLMQType, requestID string, messageHash string, quorumHash string, submit bool) (*btcjson.QuorumSignResultWithBool, error) {
-	return rpcClient.endpoint.QuorumSign(quorumType, requestID, messageHash, quorumHash, submit)
+func (rpcClient *DashCoreRpcClient) QuorumSign(quorumType btcjson.LLMQType, requestID string, messageHash string, quorumHash string) (*btcjson.QuorumSignResult, error) {
+	quorumSignResultWithBool, err := rpcClient.endpoint.QuorumSign(quorumType, requestID, messageHash, quorumHash, false)
+	if quorumSignResultWithBool == nil {
+		return nil, err
+	} else {
+		quorumSignResult := quorumSignResultWithBool.QuorumSignResult
+		return &quorumSignResult, err
+	}
+
 }
 
-func (rpcClient *rpcClient) QuorumVerify(quorumType btcjson.LLMQType, requestID string, messageHash string, signature string, quorumHash string) (bool, error) {
+func (rpcClient *DashCoreRpcClient) QuorumVerify(quorumType btcjson.LLMQType, requestID string, messageHash string, signature string, quorumHash string) (bool, error) {
 	return rpcClient.endpoint.QuorumVerify(quorumType, requestID, messageHash, signature, quorumHash)
 }

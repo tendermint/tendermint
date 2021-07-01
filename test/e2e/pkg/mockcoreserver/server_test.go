@@ -76,7 +76,7 @@ func TestDashCoreSignerPingMethod(t *testing.T) {
 		WithPingMethod(1),
 		WithGetPeerInfoMethod(1),
 	)
-	dashCoreRpcClient, err := dashcore.NewRpcClient(addr, "root", "root")
+	dashCoreRpcClient, err := dashcore.NewDashCoreRpcClient(addr, "root", "root")
 	assert.NoError(t, err)
 	client, err := privval.NewDashCoreSignerClient(dashCoreRpcClient, btcjson.LLMQType_5_60)
 	assert.NoError(t, err)
@@ -122,7 +122,7 @@ func TestGetPubKey(t *testing.T) {
 		WithGetNetworkInfoMethod(cs, Endless),
 	)
 
-	dashCoreRpcClient, err := dashcore.NewRpcClient(addr, "root", "root")
+	dashCoreRpcClient, err := dashcore.NewDashCoreRpcClient(addr, "root", "root")
 	assert.NoError(t, err)
 	client, err := privval.NewDashCoreSignerClient(dashCoreRpcClient, btcjson.LLMQType_5_60)
 	assert.NoError(t, err)

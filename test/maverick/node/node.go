@@ -164,8 +164,8 @@ func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 }
 
 // DefaultDashCoreRpcClient returns RPC client for the Dash Core node
-func DefaultDashCoreRpcClient(config *cfg.Config) (dashcore.RpcClient, error) {
-	return dashcore.NewRpcClient(
+func DefaultDashCoreRpcClient(config *cfg.Config) (dashcore.DashCoreClient, error) {
+	return dashcore.NewDashCoreRpcClient(
 		config.PrivValidatorCoreRPCHost,
 		config.BaseConfig.PrivValidatorCoreRPCUsername,
 		config.BaseConfig.PrivValidatorCoreRPCPassword,
@@ -270,7 +270,7 @@ type Node struct {
 	indexerService    *txindex.IndexerService
 	prometheusSrv     *http.Server
 
-	dashCoreRpcClient dashcore.RpcClient
+	dashCoreRpcClient dashcore.DashCoreClient
 }
 
 func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
@@ -704,7 +704,7 @@ func NewNode(config *cfg.Config,
 	genesisDocProvider GenesisDocProvider,
 	dbProvider DBProvider,
 	metricsProvider MetricsProvider,
-	dashCoreRpcClient dashcore.RpcClient,
+	dashCoreRpcClient dashcore.DashCoreClient,
 	logger log.Logger,
 	misbehaviors map[int64]cs.Misbehavior,
 	options ...Option) (*Node, error) {
@@ -1492,7 +1492,7 @@ func createAndStartPrivValidatorSocketClient(
 func createAndStartPrivValidatorRPCClient(
 	host string,
 	defaultQuorumType btcjson.LLMQType,
-	dashCoreRpcClient dashcore.RpcClient,
+	dashCoreRpcClient dashcore.DashCoreClient,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
 	pvsc, err := privval.NewDashCoreSignerClient(dashCoreRpcClient, defaultQuorumType)
