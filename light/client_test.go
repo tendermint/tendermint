@@ -196,121 +196,8 @@ func TestClientRestoresTrustedHeaderAfterStartupWhenHashesAreEqual(t *testing.T)
 	assert.Equal(t, l.ValidatorSet.Hash(), h1.ValidatorsHash.Bytes())
 }
 
-// trustedHeader.Height == options.Height, options.Hash != trustedHeader.Hash,
-// the value in the trusted store should be overwritten to the block from the primary
-func TestClientNotRestoresTrustedHeaderAfterStartupWhenHashesAreNotEqual(t *testing.T) {
+func TestClientRestoresTrustedHeaderAfterStartup(t *testing.T) {
 	setupDashCoreMockClient(t)
-	setupTrustedStore(t)
-
-	// header1 != h1
-	header1 := keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Hour), nil, vals, vals,
-		hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys))
-
-	primary := mockp.New(
-		chainID,
-		map[int64]*types.SignedHeader{
-			// trusted header
-			1: header1,
-		},
-		valSet,
-		privVals[0],
-	)
-
-	c, err := light.NewClient(
-		ctx,
-		chainID,
-		primary,
-		[]provider.Provider{primary},
-		trustedStore,
-		dashCoreMockClient,
-		light.Logger(log.TestingLogger()),
-	)
-	require.NoError(t, err)
-
-	l, err := c.TrustedLightBlock(1)
-	assert.NoError(t, err)
-	if assert.NotNil(t, l) {
-		assert.NotEqual(t, l1.Hash(), l.Hash())
-		assert.Equal(t, l.Hash(), header1.Hash())
-		assert.NoError(t, l.ValidateBasic(chainID))
-	}
-}
-
-// trustedHeader.Height < options.Height
-func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
-	setupDashCoreMockClient(t)
-
-	// 1. options.Hash == trustedHeader.Hash
-	{
-		trustedStore := dbs.New(dbm.NewMemDB(), chainID)
-		err := trustedStore.SaveLightBlock(l1)
-		require.NoError(t, err)
-
-		c, err := light.NewClient(
-			ctx,
-			chainID,
-			fullNode,
-			[]provider.Provider{fullNode},
-			trustedStore,
-			dashCoreMockClient,
-			light.Logger(log.TestingLogger()),
-		)
-		require.NoError(t, err)
-
-		// Check we still have the 1st header (+header+).
-		l, err := c.TrustedLightBlock(1)
-		assert.NoError(t, err)
-		assert.NotNil(t, l)
-		assert.Equal(t, l.Hash(), h1.Hash())
-		assert.NoError(t, l.ValidateBasic(chainID))
-	}
-
-	// 2. options.Hash != trustedHeader.Hash
-	// This could happen if previous provider was lying to us.
-	{
-		trustedStore := dbs.New(dbm.NewMemDB(), chainID)
-		err := trustedStore.SaveLightBlock(l1)
-		require.NoError(t, err)
-
-		// header1 != header
-		diffHeader1 := keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Hour), nil, vals, vals,
-			hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys))
-
-		diffHeader2 := keys.GenSignedHeader(chainID, 2, bTime.Add(2*time.Hour), nil, vals, vals,
-			hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys))
-
-		primary := mockp.New(
-			chainID,
-			map[int64]*types.SignedHeader{
-				1: diffHeader1,
-				2: diffHeader2,
-			},
-			valSet,
-			privVals[0],
-		)
-
-		c, err := light.NewClient(
-			ctx,
-			chainID,
-			primary,
-			[]provider.Provider{primary},
-			trustedStore,
-			dashCoreMockClient,
-			light.Logger(log.TestingLogger()),
-		)
-		require.NoError(t, err)
-
-		// Check we no longer have the invalid 1st header (+header+).
-		l, err := c.TrustedLightBlock(1)
-		assert.Error(t, err)
-		assert.Nil(t, l)
-	}
-}
-
-// trustedHeader.Height > options.Height
-func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
-	setupDashCoreMockClient(t)
-	// 1. options.Hash == trustedHeader.Hash
 	{
 		// load the first three headers into the trusted store
 		trustedStore := dbs.New(dbm.NewMemDB(), chainID)
@@ -338,64 +225,7 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 		assert.Equal(t, l.Hash(), h1.Hash())
 		assert.NoError(t, l.ValidateBasic(chainID))
 
-		// Check we no longer have 2nd light block.
-		l, err = c.TrustedLightBlock(2)
-		assert.Error(t, err)
-		assert.Nil(t, l)
-
 		l, err = c.TrustedLightBlock(3)
-		assert.Error(t, err)
-		assert.Nil(t, l)
-	}
-
-	// 2. options.Hash != trustedHeader.Hash
-	// This could happen if previous provider was lying to us.
-	{
-		trustedStore := dbs.New(dbm.NewMemDB(), chainID)
-		err := trustedStore.SaveLightBlock(l1)
-		require.NoError(t, err)
-
-		// header1 != header
-		header1 := keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Hour), nil, vals, vals,
-			hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys))
-
-		header2 := keys.GenSignedHeader(chainID, 2, bTime.Add(2*time.Hour), nil, vals, vals,
-			hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys))
-		err = trustedStore.SaveLightBlock(&types.LightBlock{
-			SignedHeader: header2,
-			ValidatorSet: vals,
-		})
-		require.NoError(t, err)
-
-		primary := mockp.New(
-			chainID,
-			map[int64]*types.SignedHeader{
-				1: header1,
-			},
-			valSet,
-			privVals[0],
-		)
-
-		c, err := light.NewClient(
-			ctx,
-			chainID,
-			primary,
-			[]provider.Provider{primary},
-			trustedStore,
-			dashCoreMockClient,
-			light.Logger(log.TestingLogger()),
-		)
-		require.NoError(t, err)
-
-		// Check we have swapped invalid 1st light block (+lightblock+) with correct one (+lightblock2+).
-		l, err := c.TrustedLightBlock(1)
-		assert.NoError(t, err)
-		assert.NotNil(t, l)
-		assert.Equal(t, l.Hash(), header1.Hash())
-		assert.NoError(t, l.ValidateBasic(chainID))
-
-		// Check we no longer have invalid 2nd light block (+lightblock2+).
-		l, err = c.TrustedLightBlock(2)
 		assert.Error(t, err)
 		assert.Nil(t, l)
 	}
@@ -621,72 +451,6 @@ func TestClient_NewClientFromTrustedStore(t *testing.T) {
 	assert.EqualValues(t, l1.Height, h.Height)
 }
 
-func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
-	setupDashCoreMockClient(t)
-
-	// different headers hash then primary plus less than 1/3 signed (no fork)
-	badProvider1 := mockp.New(
-		chainID,
-		map[int64]*types.SignedHeader{
-			1: h1,
-			2: keys.GenSignedHeaderLastBlockID(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
-				hash("app_hash2"), hash("cons_hash"), hash("results_hash"),
-				len(keys), len(keys), types.BlockID{Hash: h1.Hash()}),
-		},
-		map[int64]*types.ValidatorSet{
-			1: vals,
-			2: vals,
-		},
-		privVals[0],
-	)
-	// header is empty
-	badProvider2 := mockp.New(
-		chainID,
-		map[int64]*types.SignedHeader{
-			1: h1,
-			2: h2,
-		},
-		map[int64]*types.ValidatorSet{
-			1: vals,
-			2: vals,
-		},
-		privVals[0],
-	)
-
-	lb1, _ := badProvider1.LightBlock(ctx, 2)
-	require.NotNil(t, lb1)
-	require.NotEqual(t, lb1.Hash(), l1.Hash())
-
-	c, err := light.NewClient(
-		ctx,
-		chainID,
-		fullNode,
-		[]provider.Provider{badProvider1, badProvider2},
-		dbs.New(dbm.NewMemDB(), chainID),
-		dashCoreMockClient,
-		light.Logger(log.TestingLogger()),
-		light.MaxRetryAttempts(1),
-	)
-	// witness should have behaved properly -> no error
-	require.NoError(t, err)
-	assert.EqualValues(t, 2, len(c.Witnesses()))
-
-	// witness behaves incorrectly -> removed from list, no error
-	l, err := c.VerifyLightBlockAtHeight(ctx, 2, bTime.Add(2*time.Hour))
-	assert.NoError(t, err)
-	assert.EqualValues(t, 1, len(c.Witnesses()))
-	// light block should still be verified
-	assert.EqualValues(t, 2, l.Height)
-
-	// remaining witnesses don't have light block -> error
-	_, err = c.VerifyLightBlockAtHeight(ctx, 3, bTime.Add(2*time.Hour))
-	if assert.Error(t, err) {
-		assert.Equal(t, light.ErrFailedHeaderCrossReferencing, err)
-	}
-	// witness does not have a light block -> left in the list
-	assert.EqualValues(t, 1, len(c.Witnesses()))
-}
-
 func TestClient_TrustedValidatorSet(t *testing.T) {
 	setupDashCoreMockClient(t)
 	differentVals, _ := types.GenerateValidatorSet(10)
@@ -709,8 +473,9 @@ func TestClient_TrustedValidatorSet(t *testing.T) {
 		privVals[0],
 	)
 
-	c, err := light.NewClient(
+	c, err := light.NewClientAtHeight(
 		ctx,
+		1,
 		chainID,
 		fullNode,
 		[]provider.Provider{badValSetNode, fullNode},

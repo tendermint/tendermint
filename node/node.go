@@ -95,11 +95,6 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 		return nil, fmt.Errorf("failed to load or gen node key %s: %w", config.NodeKeyFile(), err)
 	}
 
-	dashCoreRpcClient, err := DefaultDashCoreRpcClient(config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Dash Core RPC client %w", err)
-	}
-
 	return NewNode(config,
 		privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile()),
 		nodeKey,
@@ -107,7 +102,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
-		dashCoreRpcClient,
+		nil,
 		logger,
 	)
 }
@@ -696,6 +691,13 @@ func NewNode(config *cfg.Config,
 		if llmqType == 0 {
 			llmqType = btcjson.LLMQType_100_67
 		}
+		if dashCoreRpcClient == nil {
+			rpcClient, err := DefaultDashCoreRpcClient(config)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create Dash Core RPC client %w", err)
+			}
+			dashCoreRpcClient = rpcClient
+		}
 		// If a local port is provided for Dash Core rpc into the service to sign.
 		privValidator, err = createAndStartPrivValidatorRPCClient(config.Consensus.QuorumType, dashCoreRpcClient, logger)
 		if err != nil {
@@ -721,6 +723,16 @@ func NewNode(config *cfg.Config,
 		logger.Info("Connected to Private Validator through listen address", "proTxHash", proTxHash.String())
 	} else if privValidator == nil {
 		logger.Info("Private Validator is not properly set", "proTxHash", proTxHash.String())
+	}
+
+	if dashCoreRpcClient == nil {
+		llmqType := config.Consensus.QuorumType
+		if llmqType == 0 {
+			llmqType = btcjson.LLMQType_100_67
+		}
+		// This is used for light client verification only
+		mockClient := dashcore.NewDashCoreMockClient(config.ChainID(), llmqType, privValidator, false)
+		dashCoreRpcClient = mockClient
 	}
 	weAreOnlyValidator = onlyValidatorIsUs(state, proTxHash)
 

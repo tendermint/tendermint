@@ -3,7 +3,6 @@ package rpctest
 import (
 	"context"
 	"fmt"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"os"
 	"path/filepath"
 	"strings"
@@ -169,8 +168,6 @@ func NewTendermint(app abci.Application, opts *Options) *nm.Node {
 		panic(err)
 	}
 
-	dashCoreRpcClient := dashcore.NewDashCoreMockClient(config.ChainID(), 100, pv, true)
-
 	node, err := nm.NewNode(
 		config,
 		pv,
@@ -179,7 +176,7 @@ func NewTendermint(app abci.Application, opts *Options) *nm.Node {
 		nm.DefaultGenesisDocProviderFunc(config),
 		nm.DefaultDBProvider,
 		nm.DefaultMetricsProvider(config.Instrumentation),
-		dashCoreRpcClient,
+		nil,
 		logger,
 	)
 	if err != nil {

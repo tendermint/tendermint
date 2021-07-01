@@ -404,7 +404,7 @@ func (c *Client) VerifyLightBlockAtHeight(ctx context.Context, height int64, now
 	}
 
 	// Request the light block from primary
-	l, err := c.lightBlockFromPrimary(ctx)
+	l, err := c.lightBlockFromPrimaryAtHeight(ctx, height)
 	if err != nil {
 		return nil, err
 	}
@@ -492,6 +492,13 @@ func (c *Client) verifyLightBlock(ctx context.Context, newLightBlock *types.Ligh
 
 	if err != nil {
 		c.logger.Error("Can't verify", "err", err)
+		return err
+	}
+
+	err = c.compareFirstHeaderWithWitnesses(ctx, newLightBlock.SignedHeader)
+
+	if err != nil {
+		c.logger.Error("Witness error", "err", err)
 		return err
 	}
 

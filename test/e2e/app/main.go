@@ -253,6 +253,7 @@ func startMaverick(cfg *Config) error {
 		maverick.DefaultMetricsProvider(tmcfg.Instrumentation),
 		dashCoreRpcClient,
 		logger,
+		misbehaviors,
 	)
 	if err != nil {
 		return err
