@@ -97,8 +97,8 @@ func (rpcClient *DashCoreRpcClient) MasternodeListJSON(filter string) (map[strin
 	return rpcClient.endpoint.MasternodeListJSON(filter)
 }
 
-func (rpcClient *DashCoreRpcClient) QuorumSign(quorumType btcjson.LLMQType, requestID string, messageHash string, quorumHash string) (*btcjson.QuorumSignResult, error) {
-	quorumSignResultWithBool, err := rpcClient.endpoint.QuorumSign(quorumType, requestID, messageHash, quorumHash, false)
+func (rpcClient *DashCoreRpcClient) QuorumSign(quorumType btcjson.LLMQType, requestID bytes.HexBytes, messageHash bytes.HexBytes, quorumHash crypto.QuorumHash) (*btcjson.QuorumSignResult, error) {
+	quorumSignResultWithBool, err := rpcClient.endpoint.QuorumSign(quorumType, requestID.String(), messageHash.String(), quorumHash.String(), false)
 	if quorumSignResultWithBool == nil {
 		return nil, err
 	} else {
@@ -108,6 +108,6 @@ func (rpcClient *DashCoreRpcClient) QuorumSign(quorumType btcjson.LLMQType, requ
 
 }
 
-func (rpcClient *DashCoreRpcClient) QuorumVerify(quorumType btcjson.LLMQType, requestID string, messageHash string, signature string, quorumHash string) (bool, error) {
-	return rpcClient.endpoint.QuorumVerify(quorumType, requestID, messageHash, signature, quorumHash)
+func (rpcClient *DashCoreRpcClient) QuorumVerify(quorumType btcjson.LLMQType, requestID bytes.HexBytes, messageHash bytes.HexBytes, signature bytes.HexBytes, quorumHash crypto.QuorumHash) (bool, error) {
+	return rpcClient.endpoint.QuorumVerify(quorumType, requestID.String(), messageHash.String(), signature.String(), quorumHash.String())
 }

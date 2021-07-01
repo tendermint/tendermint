@@ -2,27 +2,33 @@ package dashcore
 
 import (
 	"encoding/hex"
+	"errors"
+	"github.com/tendermint/tendermint/types"
 	"strconv"
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/libs/bytes"
-	"github.com/tendermint/tendermint/privval"
 )
 
 // DashCoreMockClient is an implementation of a mock core-server
 type DashCoreMockClient struct {
 	chainID  string
 	llmqType btcjson.LLMQType
-	filePV   privval.FilePV
+	localPV  types.LocalTestPrivValidator
+	canSign  bool
 }
 
-func NewDashCoreMockClient(chainId string, llmqType btcjson.LLMQType, filePV privval.FilePV) DashCoreMockClient {
-	return DashCoreMockClient{
+func NewDashCoreMockClient(chainId string, llmqType btcjson.LLMQType, localPV types.LocalTestPrivValidator, canSign bool) *DashCoreMockClient {
+	if localPV == nil {
+		panic("localPV must be set")
+	}
+	return &DashCoreMockClient{
 		chainID: chainId,
 		llmqType: llmqType,
-		filePV: filePV,
+		localPV: localPV,
+		canSign: canSign,
 	}
 }
 
@@ -38,11 +44,11 @@ func (mc *DashCoreMockClient) Ping() error {
 
 func (mc *DashCoreMockClient) QuorumInfo(quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) (*btcjson.QuorumInfoResult, error) {
 	var members []btcjson.QuorumMember
-	proTxHash, err := mc.filePV.GetProTxHash()
+	proTxHash, err := mc.localPV.GetProTxHash()
 	if err != nil {
 		panic(err)
 	}
-	pk, err := mc.filePV.GetPubKey(quorumHash)
+	pk, err := mc.localPV.GetPubKey(quorumHash)
 	if err != nil {
 		panic(err)
 	}
@@ -54,11 +60,11 @@ func (mc *DashCoreMockClient) QuorumInfo(quorumType btcjson.LLMQType, quorumHash
 			PubKeyShare:    pk.HexString(),
 		})
 	}
-	tpk, err := mc.filePV.GetThresholdPublicKey(quorumHash)
+	tpk, err := mc.localPV.GetThresholdPublicKey(quorumHash)
 	if err != nil {
 		panic(err)
 	}
-	height, err := mc.filePV.GetHeight(quorumHash)
+	height, err := mc.localPV.GetHeight(quorumHash)
 	if err != nil {
 		panic(err)
 	}
@@ -72,7 +78,7 @@ func (mc *DashCoreMockClient) QuorumInfo(quorumType btcjson.LLMQType, quorumHash
 }
 
 func (mc *DashCoreMockClient) MasternodeStatus() (*btcjson.MasternodeStatusResult, error) {
-	proTxHash, err := mc.filePV.GetProTxHash()
+	proTxHash, err := mc.localPV.GetProTxHash()
 	if err != nil {
 		panic(err)
 	}
@@ -107,7 +113,7 @@ func (mc *DashCoreMockClient) GetNetworkInfo() (*btcjson.GetNetworkInfoResult, e
 }
 
 func (mc *DashCoreMockClient) MasternodeListJSON(filter string) (map[string]btcjson.MasternodelistResultJSON, error) {
-	proTxHash, err := mc.filePV.GetProTxHash()
+	proTxHash, err := mc.localPV.GetProTxHash()
 	if err != nil {
 		panic(err)
 	}
@@ -129,13 +135,17 @@ func (mc *DashCoreMockClient) MasternodeListJSON(filter string) (map[string]btcj
 }
 
 func (mc *DashCoreMockClient) QuorumSign(quorumType btcjson.LLMQType, requestID bytes.HexBytes, messageHash bytes.HexBytes, quorumHash crypto.QuorumHash) (*btcjson.QuorumSignResult, error) {
+	if mc.canSign == false {
+		return nil, errors.New("dash core mock client not set up for signing")
+	}
+
 	signID := crypto.SignId(
 		quorumType,
 		bls12381.ReverseBytes(quorumHash),
 		bls12381.ReverseBytes(requestID),
 		bls12381.ReverseBytes(messageHash),
 	)
-	privateKey, err := mc.filePV.Key.PrivateKeyForQuorumHash(quorumHash)
+	privateKey, err := mc.localPV.GetPrivateKey(quorumHash)
 	if err != nil {
 		panic(err)
 	}
@@ -163,7 +173,7 @@ func (mc *DashCoreMockClient) QuorumVerify(quorumType btcjson.LLMQType, requestI
 		bls12381.ReverseBytes(requestID),
 		bls12381.ReverseBytes(messageHash),
 	)
-	thresholdPublicKey, err := mc.filePV.Key.ThresholdPublicKeyForQuorumHash(quorumHash)
+	thresholdPublicKey, err := mc.localPV.GetThresholdPublicKey(quorumHash)
 	if err != nil {
 		panic(err)
 	}

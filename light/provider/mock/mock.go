@@ -18,6 +18,7 @@ type Mock struct {
 	headers          map[int64]*types.SignedHeader
 	vals             map[int64]*types.ValidatorSet
 	evidenceToReport map[string]types.Evidence // hash => evidence
+	MockPV           *types.MockPV
 	latestHeight     int64
 }
 
@@ -25,7 +26,7 @@ var _ provider.Provider = (*Mock)(nil)
 
 // New creates a mock provider with the given set of headers and validator
 // sets.
-func New(chainID string, headers map[int64]*types.SignedHeader, vals map[int64]*types.ValidatorSet) *Mock {
+func New(chainID string, headers map[int64]*types.SignedHeader, vals map[int64]*types.ValidatorSet, mockPV *types.MockPV) *Mock {
 	height := int64(0)
 	for h := range headers {
 		if h > height {
@@ -38,6 +39,7 @@ func New(chainID string, headers map[int64]*types.SignedHeader, vals map[int64]*
 		vals:             vals,
 		evidenceToReport: make(map[string]types.Evidence),
 		latestHeight:     height,
+		MockPV:           mockPV,
 	}
 }
 
@@ -118,5 +120,5 @@ func (p *Mock) AddLightBlock(lb *types.LightBlock) {
 }
 
 func (p *Mock) Copy(id string) *Mock {
-	return New(id, p.headers, p.vals)
+	return New(id, p.headers, p.vals, p.MockPV)
 }

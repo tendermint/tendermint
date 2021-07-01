@@ -165,12 +165,12 @@ func NewTendermint(app abci.Application, opts *Options) *nm.Node {
 	pv := privval.LoadOrGenFilePV(pvKeyFile, pvKeyStateFile)
 	papp := proxy.NewLocalClientCreator(app)
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
-
-	dashCoreRpcClient, err := dashcore.NewRpcClientMock()
-
 	if err != nil {
 		panic(err)
 	}
+
+	dashCoreRpcClient := dashcore.NewDashCoreMockClient(config.ChainID(), 100, pv, true)
+
 	node, err := nm.NewNode(
 		config,
 		pv,

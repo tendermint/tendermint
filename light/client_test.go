@@ -23,6 +23,7 @@ import (
 
 const (
 	chainID = "test"
+	llmqType = 100
 )
 
 var (
@@ -57,19 +58,20 @@ var (
 		chainID,
 		headerSet,
 		valSet,
+		privVals[0],
 	)
 	deadNode = mockp.NewDeadMock(chainID)
 	// largeFullNode = mockp.New(genMockNode(chainID, 10, 3, 0, bTime))
 
-	dashCoreRpcClientMock dashcore.DashCoreClient
-	trustedStore          store.Store
+	dashCoreMockClient dashcore.DashCoreClient
+	trustedStore       store.Store
 )
 
-func setupDashCoreRpcMock(t *testing.T) {
-	dashCoreRpcClientMock, _ = dashcore.NewRpcClientMock()
+func setupDashCoreMockClient(t *testing.T) {
+	dashCoreMockClient = dashcore.NewDashCoreMockClient(chainID, llmqType, privVals[0], true)
 
 	t.Cleanup(func() {
-		dashCoreRpcClientMock = nil
+		dashCoreMockClient = nil
 	})
 }
 
@@ -118,7 +120,7 @@ func TestMock(t *testing.T) {
 // }
 
 func TestClientBisectionBetweenTrustedHeaders(t *testing.T) {
-	setupDashCoreRpcMock(t)
+	setupDashCoreMockClient(t)
 
 	c, err := light.NewClient(
 		ctx,
@@ -126,7 +128,7 @@ func TestClientBisectionBetweenTrustedHeaders(t *testing.T) {
 		fullNode,
 		[]provider.Provider{fullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		dashCoreRpcClientMock,
+		dashCoreMockClient,
 	)
 	require.NoError(t, err)
 
@@ -143,7 +145,7 @@ func TestClientBisectionBetweenTrustedHeaders(t *testing.T) {
 }
 
 func TestClient_Cleanup(t *testing.T) {
-	setupDashCoreRpcMock(t)
+	setupDashCoreMockClient(t)
 	setupTrustedStore(t)
 
 	c, err := light.NewClient(
@@ -152,7 +154,7 @@ func TestClient_Cleanup(t *testing.T) {
 		fullNode,
 		[]provider.Provider{fullNode},
 		trustedStore,
-		dashCoreRpcClientMock,
+		dashCoreMockClient,
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
@@ -169,7 +171,7 @@ func TestClient_Cleanup(t *testing.T) {
 }
 
 func TestClientRestoresTrustedHeaderAfterStartupWhenHashesAreEqual(t *testing.T) {
-	setupDashCoreRpcMock(t)
+	setupDashCoreMockClient(t)
 
 	// options.Hash == trustedHeader.Hash
 	trustedStore := dbs.New(dbm.NewMemDB(), chainID)
@@ -182,7 +184,7 @@ func TestClientRestoresTrustedHeaderAfterStartupWhenHashesAreEqual(t *testing.T)
 		fullNode,
 		[]provider.Provider{fullNode},
 		trustedStore,
-		dashCoreRpcClientMock,
+		dashCoreMockClient,
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
@@ -197,7 +199,7 @@ func TestClientRestoresTrustedHeaderAfterStartupWhenHashesAreEqual(t *testing.T)
 // trustedHeader.Height == options.Height, options.Hash != trustedHeader.Hash,
 // the value in the trusted store should be overwritten to the block from the primary
 func TestClientNotRestoresTrustedHeaderAfterStartupWhenHashesAreNotEqual(t *testing.T) {
-	setupDashCoreRpcMock(t)
+	setupDashCoreMockClient(t)
 	setupTrustedStore(t)
 
 	// header1 != h1
@@ -211,6 +213,7 @@ func TestClientNotRestoresTrustedHeaderAfterStartupWhenHashesAreNotEqual(t *test
 			1: header1,
 		},
 		valSet,
+		privVals[0],
 	)
 
 	c, err := light.NewClient(
@@ -219,7 +222,7 @@ func TestClientNotRestoresTrustedHeaderAfterStartupWhenHashesAreNotEqual(t *test
 		primary,
 		[]provider.Provider{primary},
 		trustedStore,
-		dashCoreRpcClientMock,
+		dashCoreMockClient,
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
@@ -235,7 +238,7 @@ func TestClientNotRestoresTrustedHeaderAfterStartupWhenHashesAreNotEqual(t *test
 
 // trustedHeader.Height < options.Height
 func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
-	setupDashCoreRpcMock(t)
+	setupDashCoreMockClient(t)
 
 	// 1. options.Hash == trustedHeader.Hash
 	{
@@ -249,7 +252,7 @@ func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 			fullNode,
 			[]provider.Provider{fullNode},
 			trustedStore,
-			dashCoreRpcClientMock,
+			dashCoreMockClient,
 			light.Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
@@ -283,6 +286,7 @@ func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 				2: diffHeader2,
 			},
 			valSet,
+			privVals[0],
 		)
 
 		c, err := light.NewClient(
@@ -291,7 +295,7 @@ func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 			primary,
 			[]provider.Provider{primary},
 			trustedStore,
-			dashCoreRpcClientMock,
+			dashCoreMockClient,
 			light.Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
@@ -305,7 +309,7 @@ func TestClientRestoresTrustedHeaderAfterStartup2(t *testing.T) {
 
 // trustedHeader.Height > options.Height
 func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
-	setupDashCoreRpcMock(t)
+	setupDashCoreMockClient(t)
 	// 1. options.Hash == trustedHeader.Hash
 	{
 		// load the first three headers into the trusted store
@@ -322,7 +326,7 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 			fullNode,
 			[]provider.Provider{fullNode},
 			trustedStore,
-			dashCoreRpcClientMock,
+			dashCoreMockClient,
 			light.Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
@@ -369,6 +373,7 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 				1: header1,
 			},
 			valSet,
+			privVals[0],
 		)
 
 		c, err := light.NewClient(
@@ -377,7 +382,7 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 			primary,
 			[]provider.Provider{primary},
 			trustedStore,
-			dashCoreRpcClientMock,
+			dashCoreMockClient,
 			light.Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
@@ -397,7 +402,7 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 }
 
 func TestClient_Update(t *testing.T) {
-	setupDashCoreRpcMock(t)
+	setupDashCoreMockClient(t)
 
 	c, err := light.NewClient(
 		ctx,
@@ -405,7 +410,7 @@ func TestClient_Update(t *testing.T) {
 		fullNode,
 		[]provider.Provider{fullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		dashCoreRpcClientMock,
+		dashCoreMockClient,
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
@@ -420,7 +425,7 @@ func TestClient_Update(t *testing.T) {
 }
 
 func TestClient_Concurrency(t *testing.T) {
-	setupDashCoreRpcMock(t)
+	setupDashCoreMockClient(t)
 	setupTrustedStore(t)
 
 	c, err := light.NewClient(
@@ -429,7 +434,7 @@ func TestClient_Concurrency(t *testing.T) {
 		fullNode,
 		[]provider.Provider{fullNode},
 		trustedStore,
-		dashCoreRpcClientMock,
+		dashCoreMockClient,
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
@@ -464,7 +469,7 @@ func TestClient_Concurrency(t *testing.T) {
 }
 
 func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
-	setupDashCoreRpcMock(t)
+	setupDashCoreMockClient(t)
 
 	c, err := light.NewClient(
 		ctx,
@@ -472,7 +477,7 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 		deadNode,
 		[]provider.Provider{fullNode, fullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		dashCoreRpcClientMock,
+		dashCoreMockClient,
 		light.Logger(log.TestingLogger()),
 		light.MaxRetryAttempts(1),
 	)
@@ -592,7 +597,7 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 // }
 
 func TestClient_NewClientFromTrustedStore(t *testing.T) {
-	setupDashCoreRpcMock(t)
+	setupDashCoreMockClient(t)
 
 	// 1) Initiate DB and fill with a "trusted" header
 	db := dbs.New(dbm.NewMemDB(), chainID)
@@ -604,7 +609,7 @@ func TestClient_NewClientFromTrustedStore(t *testing.T) {
 		deadNode,
 		[]provider.Provider{deadNode},
 		db,
-		dashCoreRpcClientMock,
+		dashCoreMockClient,
 	)
 	require.NoError(t, err)
 
@@ -616,7 +621,7 @@ func TestClient_NewClientFromTrustedStore(t *testing.T) {
 }
 
 func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
-	setupDashCoreRpcMock(t)
+	setupDashCoreMockClient(t)
 
 	// different headers hash then primary plus less than 1/3 signed (no fork)
 	badProvider1 := mockp.New(
@@ -631,6 +636,7 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 			1: vals,
 			2: vals,
 		},
+		privVals[0],
 	)
 	// header is empty
 	badProvider2 := mockp.New(
@@ -643,6 +649,7 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 			1: vals,
 			2: vals,
 		},
+		privVals[0],
 	)
 
 	lb1, _ := badProvider1.LightBlock(ctx, 2)
@@ -655,7 +662,7 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 		fullNode,
 		[]provider.Provider{badProvider1, badProvider2},
 		dbs.New(dbm.NewMemDB(), chainID),
-		dashCoreRpcClientMock,
+		dashCoreMockClient,
 		light.Logger(log.TestingLogger()),
 		light.MaxRetryAttempts(1),
 	)
@@ -680,7 +687,7 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 }
 
 func TestClient_TrustedValidatorSet(t *testing.T) {
-	setupDashCoreRpcMock(t)
+	setupDashCoreMockClient(t)
 	differentVals, _ := types.GenerateValidatorSet(10)
 	badValSetNode := mockp.New(
 		chainID,
@@ -698,6 +705,7 @@ func TestClient_TrustedValidatorSet(t *testing.T) {
 			2: differentVals,
 			3: differentVals,
 		},
+		privVals[0],
 	)
 
 	c, err := light.NewClient(
@@ -706,7 +714,7 @@ func TestClient_TrustedValidatorSet(t *testing.T) {
 		fullNode,
 		[]provider.Provider{badValSetNode, fullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		dashCoreRpcClientMock,
+		dashCoreMockClient,
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
@@ -718,7 +726,7 @@ func TestClient_TrustedValidatorSet(t *testing.T) {
 }
 
 func TestClientPrunesHeadersAndValidatorSets(t *testing.T) {
-	setupDashCoreRpcMock(t)
+	setupDashCoreMockClient(t)
 	setupTrustedStore(t)
 
 	c, err := light.NewClient(
@@ -727,7 +735,7 @@ func TestClientPrunesHeadersAndValidatorSets(t *testing.T) {
 		fullNode,
 		[]provider.Provider{fullNode},
 		trustedStore,
-		dashCoreRpcClientMock,
+		dashCoreMockClient,
 		light.Logger(log.TestingLogger()),
 		light.PruningSize(1),
 	)
@@ -744,7 +752,7 @@ func TestClientPrunesHeadersAndValidatorSets(t *testing.T) {
 }
 
 func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
-	setupDashCoreRpcMock(t)
+	setupDashCoreMockClient(t)
 	setupTrustedStore(t)
 
 	emptyValSet := &types.ValidatorSet{
@@ -796,6 +804,7 @@ func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
 			chainID,
 			tc.headers,
 			tc.vals,
+			privVals[0],
 		)
 		c, err := light.NewClient(
 			ctx,
@@ -803,7 +812,7 @@ func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
 			badNode,
 			[]provider.Provider{badNode, badNode},
 			trustedStore,
-			dashCoreRpcClientMock,
+			dashCoreMockClient,
 			light.MaxRetryAttempts(1),
 		)
 		require.NoError(t, err)

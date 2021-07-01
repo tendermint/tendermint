@@ -3,13 +3,11 @@ package light
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/tendermint/tendermint/crypto"
 	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -475,7 +473,7 @@ func (c *Client) verifyLightBlock(ctx context.Context, newLightBlock *types.Ligh
 // This method is called from verifyLightBlock if verification mode is dashcore,
 // verifyLightBlock in its turn is called by VerifyHeader.
 func (c *Client) verifyBlockWithDashCore(ctx context.Context, newLightBlock *types.LightBlock, now time.Time) error {
-	quorumHash := newLightBlock.ValidatorSet.QuorumHash.String()
+	quorumHash := newLightBlock.ValidatorSet.QuorumHash
 	quorumType := newLightBlock.ValidatorSet.QuorumType
 
 	protoVote := newLightBlock.Commit.GetCanonicalVote().ToProto()
@@ -484,22 +482,17 @@ func (c *Client) verifyBlockWithDashCore(ctx context.Context, newLightBlock *typ
 	stateSignBytes := types.VoteStateSignBytes(c.chainID, protoVote)
 
 	blockMessageHash := crypto.Sha256(blockSignBytes)
-	blockMessageHashString := strings.ToUpper(hex.EncodeToString(blockMessageHash))
 	blockRequestId := types.VoteBlockRequestIdProto(protoVote)
-	blockRequestIdString := strings.ToUpper(hex.EncodeToString(blockRequestId))
-	blockSignatureString := strings.ToUpper(hex.EncodeToString(newLightBlock.Commit.ThresholdBlockSignature))
 
 	stateMessageHash := crypto.Sha256(stateSignBytes)
-	stateMessageHashString := strings.ToUpper(hex.EncodeToString(stateMessageHash))
 	stateRequestId := types.VoteStateRequestIdProto(protoVote)
-	stateRequestIdString := strings.ToUpper(hex.EncodeToString(stateRequestId))
-	stateSignatureString := strings.ToUpper(hex.EncodeToString(newLightBlock.Commit.ThresholdStateSignature))
+	stateSignature := newLightBlock.Commit.ThresholdStateSignature
 
 	blockSignatureIsValid, err := c.dashCoreRpcClient.QuorumVerify(
 		quorumType,
-		blockRequestIdString,
-		blockMessageHashString,
-		blockSignatureString,
+		blockRequestId,
+		blockMessageHash,
+		newLightBlock.Commit.ThresholdBlockSignature,
 		quorumHash,
 	)
 
@@ -513,9 +506,9 @@ func (c *Client) verifyBlockWithDashCore(ctx context.Context, newLightBlock *typ
 
 	stateSignatureIsValid, err := c.dashCoreRpcClient.QuorumVerify(
 		quorumType,
-		stateRequestIdString,
-		stateMessageHashString,
-		stateSignatureString,
+		stateRequestId,
+		stateMessageHash,
+		stateSignature,
 		quorumHash,
 	)
 

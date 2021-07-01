@@ -207,11 +207,16 @@ func NewFilePVOneKey(privKey crypto.PrivKey, proTxHash []byte, quorumHash crypto
 	privateKeysMap := make(map[string]crypto.QuorumKeys)
 	privateKeysMap[quorumHash.String()] = quorumKeys
 
+	updateHeightsMap := make(map[string]crypto.QuorumHash)
+	firstHeightOfQuorumsMap := make(map[string]string)
+
 	return &FilePV{
 		Key: FilePVKey{
-			PrivateKeys:        privateKeysMap,
-			ProTxHash:          proTxHash,
-			filePath:           keyFilePath,
+			PrivateKeys:          privateKeysMap,
+			ProTxHash:            proTxHash,
+			filePath:             keyFilePath,
+			UpdateHeights:        updateHeightsMap,
+			FirstHeightOfQuorums: firstHeightOfQuorumsMap,
 		},
 		LastSignState: FilePVLastSignState{
 			Step:     stepNone,
@@ -428,6 +433,14 @@ func (pv *FilePV) GetThresholdPublicKey(quorumHash crypto.QuorumHash) (crypto.Pu
 	return nil, fmt.Errorf("no threshold public key for quorum hash %v", quorumHash)
 }
 
+// GetPrivateKey ...
+func (pv *FilePV) GetPrivateKey(quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
+	if keys, ok := pv.Key.PrivateKeys[quorumHash.String()]; ok {
+		return keys.PrivKey, nil
+	}
+	return nil, fmt.Errorf("no private key for quorum hash %v", quorumHash)
+}
+
 // GetHeight ...
 func (pv *FilePV) GetHeight(quorumHash crypto.QuorumHash) (int64, error) {
 	intString := pv.Key.FirstHeightOfQuorums[quorumHash.String()]
@@ -507,16 +520,16 @@ func (pv *FilePV) String() string {
 	)
 }
 
-func (pv *FilePV) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.QuorumHash, height int64) error {
+func (pv *FilePV) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.QuorumHash, thresholdPublicKey crypto.PubKey, height int64) {
 	pv.Key.PrivateKeys[quorumHash.String()] = crypto.QuorumKeys{
 		PrivKey: privateKey,
 		PubKey: privateKey.PubKey(),
+		ThresholdPublicKey: thresholdPublicKey,
 	}
 	pv.Key.UpdateHeights[strconv.Itoa(int(height))] = quorumHash
 	if _, ok := pv.Key.FirstHeightOfQuorums[quorumHash.String()]; ok != true {
 		pv.Key.FirstHeightOfQuorums[quorumHash.String()] = strconv.Itoa(int(height))
 	}
-	return nil
 }
 
 //------------------------------------------------------------------------------------
