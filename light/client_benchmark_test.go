@@ -22,7 +22,8 @@ import (
 //
 // Remember that none of these benchmarks account for network latency.
 var (
-	benchmarkFullNode = mockp.New(genMockNode(chainID, 1000, 100, bTime))
+	blocks = int64(1000)
+	benchmarkFullNode = mockp.New(genMockNode(chainID, blocks, 20, bTime))
 	genesisBlock, _   = benchmarkFullNode.LightBlock(context.Background(), 1)
 )
 

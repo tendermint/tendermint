@@ -23,6 +23,7 @@ type PrivValidator interface {
 
 	GetProTxHash() (crypto.ProTxHash, error)
 	GetFirstQuorumHash() (crypto.QuorumHash, error)
+	GetPrivateKey(quorumHash crypto.QuorumHash) (crypto.PrivKey, error)
 	GetThresholdPublicKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error)
 	GetHeight(quorumHash crypto.QuorumHash) (int64, error)
 
@@ -30,11 +31,6 @@ type PrivValidator interface {
 	SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) ([]byte, error)
 
 	ExtractIntoValidator(quorumHash crypto.QuorumHash) *Validator
-}
-
-type LocalTestPrivValidator interface {
-	PrivValidator
-    GetPrivateKey(quorumHash crypto.QuorumHash) (crypto.PrivKey, error)
 }
 
 type PrivValidatorsByProTxHash []PrivValidator

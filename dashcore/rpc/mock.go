@@ -16,11 +16,11 @@ import (
 type DashCoreMockClient struct {
 	chainID  string
 	llmqType btcjson.LLMQType
-	localPV  types.LocalTestPrivValidator
+	localPV  types.PrivValidator
 	canSign  bool
 }
 
-func NewDashCoreMockClient(chainId string, llmqType btcjson.LLMQType, localPV types.LocalTestPrivValidator, canSign bool) *DashCoreMockClient {
+func NewDashCoreMockClient(chainId string, llmqType btcjson.LLMQType, localPV types.PrivValidator, canSign bool) *DashCoreMockClient {
 	if localPV == nil {
 		panic("localPV must be set")
 	}

@@ -210,3 +210,8 @@ func (sc *SignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType
 func (sc *SignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.QuorumHash, thresholdPublicKey crypto.PubKey, height int64) {
 
 }
+
+func (sc *SignerClient) GetPrivateKey(quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
+	return nil, nil
+}
+

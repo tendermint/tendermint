@@ -336,3 +336,7 @@ func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumType btcjson.
 func (sc *DashCoreSignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.QuorumHash, thresholdPublicKey crypto.PubKey, height int64) {
 
 }
+
+func (sc *DashCoreSignerClient) GetPrivateKey(quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
+	return nil, nil
+}

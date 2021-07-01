@@ -404,8 +404,9 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 func TestClient_Update(t *testing.T) {
 	setupDashCoreMockClient(t)
 
-	c, err := light.NewClient(
+	c, err := light.NewClientAtHeight(
 		ctx,
+		2,
 		chainID,
 		fullNode,
 		[]provider.Provider{fullNode},
@@ -753,7 +754,6 @@ func TestClientPrunesHeadersAndValidatorSets(t *testing.T) {
 
 func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
 	setupDashCoreMockClient(t)
-	setupTrustedStore(t)
 
 	emptyValSet := &types.ValidatorSet{
 		Validators: nil,
@@ -800,6 +800,7 @@ func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		setupTrustedStore(t)
 		badNode := mockp.New(
 			chainID,
 			tc.headers,
