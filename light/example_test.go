@@ -5,6 +5,7 @@ import (
 	"fmt"
 	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"github.com/tendermint/tendermint/light"
+	"github.com/tendermint/tendermint/types"
 	"io/ioutil"
 	stdlog "log"
 	"os"
@@ -19,6 +20,10 @@ import (
 	httpp "github.com/tendermint/tendermint/light/provider/http"
 	dbs "github.com/tendermint/tendermint/light/store/db"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
+)
+
+var (
+	privval types.PrivValidator
 )
 
 // Automatically getting new headers and verifying them.
@@ -52,11 +57,7 @@ func ExampleClient_Update() {
 		stdlog.Fatal(err)
 	}
 
-	dashCoreRpcClient, err := dashcore.NewRpcClient(
-		config.PrivValidatorCoreRPCHost,
-		config.BaseConfig.PrivValidatorCoreRPCUsername,
-		config.BaseConfig.PrivValidatorCoreRPCPassword,
-	)
+	dashCoreMockClient := dashcore.NewDashCoreMockClient(chainID, 100, privval, false)
 
 	c, err := light.NewClient(
 		context.Background(),
@@ -64,7 +65,7 @@ func ExampleClient_Update() {
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db, chainID),
-		dashCoreRpcClient,
+		dashCoreMockClient,
 		light.Logger(log.TestingLogger()),
 	)
 	if err != nil {
@@ -122,11 +123,7 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 		stdlog.Fatal(err)
 	}
 
-	dashCoreRpcClient, err := dashcore.NewRpcClient(
-		config.PrivValidatorCoreRPCHost,
-		config.BaseConfig.PrivValidatorCoreRPCUsername,
-		config.BaseConfig.PrivValidatorCoreRPCPassword,
-	)
+	dashCoreMockClient := dashcore.NewDashCoreMockClient(chainID, 100, privval, false)
 
 	c, err := light.NewClient(
 		context.Background(),
@@ -134,7 +131,7 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db, chainID),
-		dashCoreRpcClient,
+		dashCoreMockClient,
 		light.Logger(log.TestingLogger()),
 	)
 	if err != nil {
@@ -164,7 +161,7 @@ func TestMain(m *testing.M) {
 	// start a tendermint node (and kvstore) in the background to test against
 	app := kvstore.NewApplication()
 	node := rpctest.StartTendermint(app, rpctest.SuppressStdout)
-
+	privval = node.PrivValidator()
 	code := m.Run()
 
 	// and shut down proper at the end

@@ -51,7 +51,7 @@ func NewLightClientStateProvider(
 	version tmstate.Version,
 	initialHeight int64,
 	servers []string,
-	dashCoreRpcClient dashcore.RpcClient,
+	dashCoreRpcClient dashcore.DashCoreClient,
 	logger log.Logger,
 ) (StateProvider, error) {
 	if len(servers) < 2 {

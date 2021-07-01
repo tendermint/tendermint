@@ -228,21 +228,17 @@ func genMockNodeWithKeys(
 	bTime time.Time) (
 	map[int64]*types.SignedHeader,
 	map[int64]*types.ValidatorSet,
-	map[int64]privKeys) {
+	map[string]*types.MockPV) {
 
 	var (
 		headers            = make(map[int64]*types.SignedHeader, blockSize)
 		valsets            = make(map[int64]*types.ValidatorSet, blockSize+1)
-		keymap             = make(map[int64]privKeys, blockSize+1)
-		valset0, privVals0 = types.GenerateMockValidatorSet(valSize)
-		keys               = exposeMockPVKeys(privVals0, valset0.QuorumHash)
-		newKeys            privKeys
+		valset0, privVals  = types.GenerateMockValidatorSet(valSize)
+		keys               = exposeMockPVKeys(privVals, valset0.QuorumHash)
+		privValMap         = types.MapMockPVByProTxHashes(privVals)
 	)
 
-	nextValSet, nextPrivVals := types.GenerateMockValidatorSetUsingProTxHashes(valset0.GetProTxHashes())
-	newKeys = exposeMockPVKeys(nextPrivVals, nextValSet.QuorumHash)
-	keymap[1] = keys
-	keymap[2] = newKeys
+	nextValSet, _ := types.GenerateMockValidatorSetUpdatingPrivateValidatorsAtHeight(valset0.GetProTxHashes(), privValMap, 0)
 
 	// genesis header and vals
 	lastHeader := keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Minute), nil,
@@ -251,25 +247,22 @@ func genMockNodeWithKeys(
 	currentHeader := lastHeader
 	headers[1] = currentHeader
 	valsets[1] = valset0
-	keys = newKeys
 	currentValset := nextValSet
 
 	for height := int64(2); height <= blockSize; height++ {
-		nextValSet, nextPrivVals := types.GenerateMockValidatorSetUsingProTxHashes(valset0.GetProTxHashes())
-		newKeys = exposeMockPVKeys(nextPrivVals, nextValSet.QuorumHash)
-		currentHeader = keys.GenSignedHeaderLastBlockID(chainID, height, bTime.Add(time.Duration(height)*time.Minute),
+		keysAtHeight := exposeMockPVKeys(privVals, currentValset.QuorumHash)
+		nextValSet, _ := types.GenerateMockValidatorSetUpdatingPrivateValidatorsAtHeight(valset0.GetProTxHashes(), privValMap, height)
+		currentHeader = keysAtHeight.GenSignedHeaderLastBlockID(chainID, height, bTime.Add(time.Duration(height)*time.Minute),
 			nil,
 			currentValset, nextValSet, hash("app_hash"), hash("cons_hash"),
 			hash("results_hash"), 0, len(keys), types.BlockID{Hash: lastHeader.Hash()})
 		headers[height] = currentHeader
 		valsets[height] = currentValset
 		lastHeader = currentHeader
-		keys = newKeys
 		currentValset = nextValSet
-		keymap[height+1] = keys
 	}
 
-	return headers, valsets, keymap
+	return headers, valsets, privValMap
 }
 
 func genMockNode(
@@ -279,9 +272,15 @@ func genMockNode(
 	bTime time.Time) (
 	string,
 	map[int64]*types.SignedHeader,
-	map[int64]*types.ValidatorSet) {
-	headers, valset, _ := genMockNodeWithKeys(chainID, blockSize, valSize, bTime)
-	return chainID, headers, valset
+	map[int64]*types.ValidatorSet,
+	*types.MockPV) {
+	headers, valset, privvalKeys := genMockNodeWithKeys(chainID, blockSize, valSize, bTime)
+	var privateValidator *types.MockPV
+	for _, privVal := range privvalKeys {
+		privateValidator = privVal
+		break
+	}
+	return chainID, headers, valset, privateValidator
 }
 
 func hash(s string) []byte {

@@ -41,7 +41,7 @@ var (
 	tmcfg             *config.Config
 	nodeLogger        log.Logger
 	nodeKey           *p2p.NodeKey
-	dashCoreRpcClient dashcore.RpcClient
+	dashCoreRpcClient dashcore.DashCoreClient
 )
 
 func init() {
@@ -99,7 +99,7 @@ func run(configFile string) error {
 		coreSrv.Start()
 	}()
 
-	dashCoreRpcClient, err = dashcore.NewRpcClient(
+	dashCoreRpcClient, err = dashcore.NewDashCoreRpcClient(
 		tmcfg.PrivValidatorCoreRPCHost,
 		tmcfg.BaseConfig.PrivValidatorCoreRPCUsername,
 		tmcfg.BaseConfig.PrivValidatorCoreRPCPassword,
@@ -253,6 +253,7 @@ func startMaverick(cfg *Config) error {
 		maverick.DefaultMetricsProvider(tmcfg.Instrumentation),
 		dashCoreRpcClient,
 		logger,
+		misbehaviors,
 	)
 	if err != nil {
 		return err

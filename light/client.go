@@ -3,13 +3,11 @@ package light
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/tendermint/tendermint/crypto"
 	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -142,7 +140,7 @@ type Client struct {
 	quit chan struct{}
 
 	// Rpc client connected to dashd
-	dashCoreRpcClient dashcore.RpcClient
+	dashCoreRpcClient dashcore.DashCoreClient
 
 	logger log.Logger
 }
@@ -163,7 +161,20 @@ func NewClient(
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
-	dashCoreRpcClient dashcore.RpcClient,
+	dashCoreRpcClient dashcore.DashCoreClient,
+	options ...Option) (*Client, error) {
+
+	return NewClientAtHeight(ctx, 0, chainID, primary, witnesses, trustedStore, dashCoreRpcClient, options...)
+}
+
+func NewClientAtHeight(
+	ctx context.Context,
+	height int64,
+	chainID string,
+	primary provider.Provider,
+	witnesses []provider.Provider,
+	trustedStore store.Store,
+	dashCoreRpcClient dashcore.DashCoreClient,
 	options ...Option) (*Client, error) {
 
 	c, err := NewClientFromTrustedStore(chainID, primary, witnesses, trustedStore, dashCoreRpcClient, options...)
@@ -173,7 +184,7 @@ func NewClient(
 
 	if c.latestTrustedBlock == nil {
 		c.logger.Info("Downloading trusted light block using options")
-		if err := c.initialize(ctx); err != nil {
+		if err := c.initializeAtHeight(ctx, height); err != nil {
 			return nil, err
 		}
 	}
@@ -189,7 +200,7 @@ func NewClientFromTrustedStore(
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
-	dashCoreRpcClient dashcore.RpcClient,
+	dashCoreRpcClient dashcore.DashCoreClient,
 	options ...Option) (*Client, error) {
 
 	c := &Client{
@@ -251,11 +262,17 @@ func (c *Client) restoreTrustedLightBlock() error {
 	return nil
 }
 
-// initializeWithTrustOptions fetches the weakly-trusted light block from
+// initialize fetches the last light block from
 // primary provider.
 func (c *Client) initialize(ctx context.Context) error {
+	return c.initializeAtHeight(ctx, 0) //
+}
+
+// initializeAtHeight fetches a light block at given height from
+// primary provider.
+func (c *Client) initializeAtHeight(ctx context.Context, height int64) error {
 	// 1) Fetch and verify the light block.
-	l, err := c.lightBlockFromPrimary(ctx)
+	l, err := c.lightBlockFromPrimaryAtHeight(ctx, height)
 	if err != nil {
 		return err
 	}
@@ -267,20 +284,30 @@ func (c *Client) initialize(ctx context.Context) error {
 		return err
 	}
 
-	// 2) Ensure that +2/3 of validators signed correctly.
+	// 2) Ensure the commit height is correct
+	if l.Height != l.Commit.Height {
+		return fmt.Errorf("invalid commit: height %d does not match commit height %d", l.Height, l.Commit.Height)
+	}
+
+	// 3) Ensure that the commit is valid based on validator set we got back.
+	// Todo: we will want to remove validator sets entirely from light blocks and just have quorum hashes
 	err = l.ValidatorSet.VerifyCommit(c.chainID, l.Commit.BlockID, l.Commit.StateID, l.Height, l.Commit)
 	if err != nil {
 		return fmt.Errorf("invalid commit: %w", err)
 	}
 
-	// 3) Ensure that the validator set exists
+	// 4) Ensure that the commit is valid based on local dash core verification.
+	err = c.verifyBlockWithDashCore(ctx, l)
+	if err != nil {
+		return fmt.Errorf("invalid light block: %w", err)
+	}
 
-	// 3) Cross-verify with witnesses to ensure everybody has the same state.
+	// 5) Cross-verify with witnesses to ensure everybody has the same state.
 	if err := c.compareFirstHeaderWithWitnesses(ctx, l.SignedHeader); err != nil {
 		return err
 	}
 
-	// 4) Persist both of them and continue.
+	// 6) Persist both of them and continue.
 	return c.updateTrustedLightBlock(l)
 }
 
@@ -377,7 +404,7 @@ func (c *Client) VerifyLightBlockAtHeight(ctx context.Context, height int64, now
 	}
 
 	// Request the light block from primary
-	l, err := c.lightBlockFromPrimary(ctx)
+	l, err := c.lightBlockFromPrimaryAtHeight(ctx, height)
 	if err != nil {
 		return nil, err
 	}
@@ -450,7 +477,7 @@ func (c *Client) verifyLightBlock(ctx context.Context, newLightBlock *types.Ligh
 	c.logger.Info("VerifyHeader", "height", newLightBlock.Height, "hash", newLightBlock.Hash())
 
 	var (
-		verifyFunc func(ctx context.Context, new *types.LightBlock, now time.Time) error
+		verifyFunc func(ctx context.Context, new *types.LightBlock) error
 		err        error
 	)
 
@@ -461,10 +488,17 @@ func (c *Client) verifyLightBlock(ctx context.Context, newLightBlock *types.Ligh
 		panic(fmt.Sprintf("Unknown verification mode: %b", c.verificationMode))
 	}
 
-	err = verifyFunc(ctx, newLightBlock, now)
+	err = verifyFunc(ctx, newLightBlock)
 
 	if err != nil {
 		c.logger.Error("Can't verify", "err", err)
+		return err
+	}
+
+	err = c.compareFirstHeaderWithWitnesses(ctx, newLightBlock.SignedHeader)
+
+	if err != nil {
+		c.logger.Error("Witness error", "err", err)
 		return err
 	}
 
@@ -474,8 +508,8 @@ func (c *Client) verifyLightBlock(ctx context.Context, newLightBlock *types.Ligh
 
 // This method is called from verifyLightBlock if verification mode is dashcore,
 // verifyLightBlock in its turn is called by VerifyHeader.
-func (c *Client) verifyBlockWithDashCore(ctx context.Context, newLightBlock *types.LightBlock, now time.Time) error {
-	quorumHash := newLightBlock.ValidatorSet.QuorumHash.String()
+func (c *Client) verifyBlockWithDashCore(ctx context.Context, newLightBlock *types.LightBlock) error {
+	quorumHash := newLightBlock.ValidatorSet.QuorumHash
 	quorumType := newLightBlock.ValidatorSet.QuorumType
 
 	protoVote := newLightBlock.Commit.GetCanonicalVote().ToProto()
@@ -484,22 +518,17 @@ func (c *Client) verifyBlockWithDashCore(ctx context.Context, newLightBlock *typ
 	stateSignBytes := types.VoteStateSignBytes(c.chainID, protoVote)
 
 	blockMessageHash := crypto.Sha256(blockSignBytes)
-	blockMessageHashString := strings.ToUpper(hex.EncodeToString(blockMessageHash))
 	blockRequestId := types.VoteBlockRequestIdProto(protoVote)
-	blockRequestIdString := strings.ToUpper(hex.EncodeToString(blockRequestId))
-	blockSignatureString := strings.ToUpper(hex.EncodeToString(newLightBlock.Commit.ThresholdBlockSignature))
 
 	stateMessageHash := crypto.Sha256(stateSignBytes)
-	stateMessageHashString := strings.ToUpper(hex.EncodeToString(stateMessageHash))
 	stateRequestId := types.VoteStateRequestIdProto(protoVote)
-	stateRequestIdString := strings.ToUpper(hex.EncodeToString(stateRequestId))
-	stateSignatureString := strings.ToUpper(hex.EncodeToString(newLightBlock.Commit.ThresholdStateSignature))
+	stateSignature := newLightBlock.Commit.ThresholdStateSignature
 
 	blockSignatureIsValid, err := c.dashCoreRpcClient.QuorumVerify(
 		quorumType,
-		blockRequestIdString,
-		blockMessageHashString,
-		blockSignatureString,
+		blockRequestId,
+		blockMessageHash,
+		newLightBlock.Commit.ThresholdBlockSignature,
 		quorumHash,
 	)
 
@@ -513,9 +542,9 @@ func (c *Client) verifyBlockWithDashCore(ctx context.Context, newLightBlock *typ
 
 	stateSignatureIsValid, err := c.dashCoreRpcClient.QuorumVerify(
 		quorumType,
-		stateRequestIdString,
-		stateMessageHashString,
-		stateSignatureString,
+		stateRequestId,
+		stateMessageHash,
+		stateSignature,
 		quorumHash,
 	)
 
@@ -640,8 +669,12 @@ func (c *Client) updateTrustedLightBlock(l *types.LightBlock) error {
 // 3. If the provider provides an invalid light block, is deemed unreliable or returns
 //    any other error, the primary is permanently dropped and is replaced by a witness.
 func (c *Client) lightBlockFromPrimary(ctx context.Context) (*types.LightBlock, error) {
+	return c.lightBlockFromPrimaryAtHeight(ctx, 0)
+}
+
+func (c *Client) lightBlockFromPrimaryAtHeight(ctx context.Context, height int64) (*types.LightBlock, error) {
 	c.providerMutex.Lock()
-	l, err := c.primary.LightBlock(ctx, 0)
+	l, err := c.primary.LightBlock(ctx, height)
 	c.providerMutex.Unlock()
 
 	switch err {

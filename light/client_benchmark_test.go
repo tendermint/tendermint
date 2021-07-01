@@ -22,15 +22,16 @@ import (
 //
 // Remember that none of these benchmarks account for network latency.
 var (
-	benchmarkFullNode = mockp.New(genMockNode(chainID, 1000, 100, bTime))
+	blocks = int64(1000)
+	benchmarkFullNode = mockp.New(genMockNode(chainID, blocks, 20, bTime))
 	genesisBlock, _   = benchmarkFullNode.LightBlock(context.Background(), 1)
 )
 
 func setupDashCoreRpcMockForBenchmark(b *testing.B) {
-	dashCoreRpcClientMock, _ = dashcore.NewRpcClientMock()
+	dashCoreMockClient = dashcore.NewDashCoreMockClient(chainID, 100, benchmarkFullNode.MockPV, false)
 
 	b.Cleanup(func() {
-		dashCoreRpcClientMock = nil
+		dashCoreMockClient = nil
 	})
 }
 
@@ -43,7 +44,7 @@ func BenchmarkSequence(b *testing.B) {
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		dashCoreRpcClientMock,
+		dashCoreMockClient,
 		light.Logger(log.TestingLogger()),
 	)
 	if err != nil {
@@ -68,7 +69,7 @@ func BenchmarkBisection(b *testing.B) {
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		dashCoreRpcClientMock,
+		dashCoreMockClient,
 		light.Logger(log.TestingLogger()),
 	)
 	if err != nil {
@@ -94,7 +95,7 @@ func BenchmarkBackwards(b *testing.B) {
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
-		dashCoreRpcClientMock,
+		dashCoreMockClient,
 		light.Logger(log.TestingLogger()),
 	)
 	if err != nil {
