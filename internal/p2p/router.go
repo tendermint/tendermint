@@ -594,23 +594,17 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 	// message to make sure both ends have accepted the connection, such
 	// that it can be coordinated with the peer manager.
 	peerInfo, _, err := r.handshakePeer(ctx, conn, "")
+	var errRejected ErrRejected
 	switch {
 	case errors.Is(err, context.Canceled):
+		return
+	case errors.As(err, &errRejected) && errRejected.IsIncompatible():
+		r.logger.Error("peer rejected due to incompatibility", "node", peerInfo.NodeID, "err", err)
 		return
 	case err != nil:
 		r.logger.Error("peer handshake failed", "endpoint", conn, "err", err)
 		return
 	}
-
-	if err := r.nodeInfo.CompatibleWith(peerInfo); err != nil {
-		r.logger.Error("peer rejected due to incompatibility", "node", peerInfo.NodeID, "err", err)
-		removeErr := r.peerManager.Remove(peerInfo.NodeID)
-		if removeErr != nil {
-			r.logger.Error("failed to remove peer from manager", "err", err)
-		}
-		return
-	}
-
 	if err := r.filterPeersID(ctx, peerInfo.NodeID); err != nil {
 		r.logger.Debug("peer filtered by node ID", "node", peerInfo.NodeID, "err", err)
 		return
@@ -698,24 +692,20 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 	}
 
 	peerInfo, _, err := r.handshakePeer(ctx, conn, address.NodeID)
+	var errRejected ErrRejected
 	switch {
 	case errors.Is(err, context.Canceled):
+		conn.Close()
+		return
+	case errors.As(err, &errRejected) && errRejected.IsIncompatible():
+		r.logger.Error("peer rejected due to incompatibility", "node", peerInfo.NodeID, "err", err)
+		r.peerManager.Errored(peerInfo.NodeID, err)
 		conn.Close()
 		return
 	case err != nil:
 		r.logger.Error("failed to handshake with peer", "peer", address, "err", err)
 		if err = r.peerManager.DialFailed(address); err != nil {
 			r.logger.Error("failed to report dial failure", "peer", address, "err", err)
-		}
-		conn.Close()
-		return
-	}
-
-	if err := r.nodeInfo.CompatibleWith(peerInfo); err != nil {
-		r.logger.Error("peer rejected due to incompatibility", "node", peerInfo.NodeID, "err", err)
-		removeErr := r.peerManager.Remove(peerInfo.NodeID)
-		if removeErr != nil {
-			r.logger.Error("failed to remove peer from manager", "err", err)
 		}
 		conn.Close()
 		return
@@ -814,7 +804,6 @@ func (r *Router) handshakePeer(
 	if err != nil {
 		return peerInfo, peerKey, err
 	}
-
 	if err = peerInfo.Validate(); err != nil {
 		return peerInfo, peerKey, fmt.Errorf("invalid handshake NodeInfo: %w", err)
 	}
@@ -828,7 +817,6 @@ func (r *Router) handshakePeer(
 	}
 	if err := r.nodeInfo.CompatibleWith(peerInfo); err != nil {
 		return peerInfo, peerKey, ErrRejected{
-			conn:           conn.(*mConnConnection).conn,
 			err:            err,
 			id:             peerInfo.ID(),
 			isIncompatible: true,

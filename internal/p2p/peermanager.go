@@ -433,15 +433,6 @@ func (m *PeerManager) Add(address NodeAddress) (bool, error) {
 	return true, nil
 }
 
-// Remove removes a peer from the manager. If the peer is not already present,
-// then remove does nothing.
-func (m *PeerManager) Remove(nodeID types.NodeID) error {
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
-
-	return m.store.Delete(nodeID)
-}
-
 // PeerRatio returns the ratio of peer addresses stored to the maximum size.
 func (m *PeerManager) PeerRatio() float64 {
 	m.mtx.Lock()
