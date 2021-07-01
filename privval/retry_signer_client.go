@@ -159,7 +159,10 @@ func (sc *RetrySignerClient) SignProposal(chainID string, quorumType btcjson.LLM
 	return signId, fmt.Errorf("exhausted all attempts to sign proposal: %w", err)
 }
 
-func (sc *RetrySignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.QuorumHash, height int64) error {
-	// the private key is dealt with on the abci client
-	return nil
+func (sc *RetrySignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.QuorumHash, thresholdPublicKey crypto.PubKey, height int64) {
+
+}
+
+func (sc *RetrySignerClient) GetPrivateKey(quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
+	return nil, nil
 }

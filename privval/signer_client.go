@@ -207,7 +207,11 @@ func (sc *SignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType
 	return blockSignId, nil
 }
 
-func (sc *SignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.QuorumHash, height int64) error {
-	// the private key is dealt with on the abci client
-	return nil
+func (sc *SignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.QuorumHash, thresholdPublicKey crypto.PubKey, height int64) {
+
 }
+
+func (sc *SignerClient) GetPrivateKey(quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
+	return nil, nil
+}
+

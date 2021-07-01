@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dashevo/dashd-go/btcjson"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"net"
 	"net/http"
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
@@ -101,6 +102,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
+		nil,
 		logger,
 	)
 }
@@ -120,6 +122,15 @@ func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 		}
 		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics(), sm.NopMetrics()
 	}
+}
+
+// DefaultDashCoreRpcClient returns RPC client for the Dash Core node
+func DefaultDashCoreRpcClient(config *cfg.Config) (dashcore.DashCoreClient, error) {
+	return dashcore.NewDashCoreRpcClient(
+		config.PrivValidatorCoreRPCHost,
+		config.BaseConfig.PrivValidatorCoreRPCUsername,
+		config.BaseConfig.PrivValidatorCoreRPCPassword,
+	)
 }
 
 // Option sets a parameter for the node.
@@ -221,6 +232,8 @@ type Node struct {
 	blockIndexer      indexer.BlockIndexer
 	indexerService    *txindex.IndexerService
 	prometheusSrv     *http.Server
+
+	dashCoreRpcClient dashcore.DashCoreClient
 }
 
 func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
@@ -572,7 +585,7 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 // startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
 func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reactor,
 	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
-	stateStore sm.Store, blockStore *store.BlockStore, state sm.State) error {
+	stateStore sm.Store, blockStore *store.BlockStore, state sm.State, dashCoreRpcClient dashcore.DashCoreClient) error {
 	ssR.Logger.Info("Starting state sync")
 
 	if stateProvider == nil {
@@ -581,8 +594,13 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 		defer cancel()
 		stateProvider, err = statesync.NewLightClientStateProvider(
 			ctx,
-			state.ChainID, state.Version, state.InitialHeight,
-			config.RPCServers, ssR.Logger.With("module", "light"))
+			state.ChainID,
+			state.Version,
+			state.InitialHeight,
+			config.RPCServers,
+			dashCoreRpcClient,
+			ssR.Logger.With("module", "light"),
+		)
 		if err != nil {
 			return fmt.Errorf("failed to set up light client state provider: %w", err)
 		}
@@ -629,6 +647,7 @@ func NewNode(config *cfg.Config,
 	genesisDocProvider GenesisDocProvider,
 	dbProvider DBProvider,
 	metricsProvider MetricsProvider,
+	dashCoreRpcClient dashcore.DashCoreClient,
 	logger log.Logger,
 	options ...Option) (*Node, error) {
 
@@ -668,14 +687,19 @@ func NewNode(config *cfg.Config,
 	var proTxHash crypto.ProTxHash
 	if config.PrivValidatorCoreRPCHost != "" {
 		logger.Info("Initializing Dash Core Signing", "quorum hash", state.Validators.QuorumHash.String())
-		username := config.BaseConfig.PrivValidatorCoreRPCUsername
-		password := config.BaseConfig.PrivValidatorCoreRPCPassword
 		llmqType := config.Consensus.QuorumType
 		if llmqType == 0 {
 			llmqType = btcjson.LLMQType_100_67
 		}
+		if dashCoreRpcClient == nil {
+			rpcClient, err := DefaultDashCoreRpcClient(config)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create Dash Core RPC client %w", err)
+			}
+			dashCoreRpcClient = rpcClient
+		}
 		// If a local port is provided for Dash Core rpc into the service to sign.
-		privValidator, err = createAndStartPrivValidatorRPCClient(config.PrivValidatorCoreRPCHost, config.Consensus.QuorumType, username, password, logger)
+		privValidator, err = createAndStartPrivValidatorRPCClient(config.Consensus.QuorumType, dashCoreRpcClient, logger)
 		if err != nil {
 			return nil, fmt.Errorf("error with private validator socket client: %w", err)
 		}
@@ -699,6 +723,16 @@ func NewNode(config *cfg.Config,
 		logger.Info("Connected to Private Validator through listen address", "proTxHash", proTxHash.String())
 	} else if privValidator == nil {
 		logger.Info("Private Validator is not properly set", "proTxHash", proTxHash.String())
+	}
+
+	if dashCoreRpcClient == nil {
+		llmqType := config.Consensus.QuorumType
+		if llmqType == 0 {
+			llmqType = btcjson.LLMQType_100_67
+		}
+		// This is used for light client verification only
+		mockClient := dashcore.NewDashCoreMockClient(config.ChainID(), llmqType, privValidator, false)
+		dashCoreRpcClient = mockClient
 	}
 	weAreOnlyValidator = onlyValidatorIsUs(state, proTxHash)
 
@@ -872,6 +906,8 @@ func NewNode(config *cfg.Config,
 		indexerService:   indexerService,
 		blockIndexer:     blockIndexer,
 		eventBus:         eventBus,
+
+		dashCoreRpcClient: dashCoreRpcClient,
 	}
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
 
@@ -946,8 +982,18 @@ func (n *Node) OnStart() error {
 		if !ok {
 			return fmt.Errorf("this blockchain reactor does not support switching from state sync")
 		}
-		err := startStateSync(n.stateSyncReactor, bcR, n.consensusReactor, n.stateSyncProvider,
-			n.config.StateSync, n.config.FastSyncMode, n.stateStore, n.blockStore, n.stateSyncGenesis)
+		err := startStateSync(
+			n.stateSyncReactor,
+			bcR,
+			n.consensusReactor,
+			n.stateSyncProvider,
+			n.config.StateSync,
+			n.config.FastSyncMode,
+			n.stateStore,
+			n.blockStore,
+			n.stateSyncGenesis,
+			n.dashCoreRpcClient,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to start state sync: %w", err)
 		}
@@ -1421,14 +1467,11 @@ func createAndStartPrivValidatorSocketClient(
 }
 
 func createAndStartPrivValidatorRPCClient(
-	host string,
 	defaultQuorumType btcjson.LLMQType,
-	username string,
-	password string,
+	dashCoreRpcClient dashcore.DashCoreClient,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
-
-	pvsc, err := privval.NewDashCoreSignerClient(host, username, password, defaultQuorumType)
+	pvsc, err := privval.NewDashCoreSignerClient(dashCoreRpcClient, defaultQuorumType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}

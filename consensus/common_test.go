@@ -770,10 +770,7 @@ func updateConsensusNetAddNewValidators(css []*State, height int64, addValCount 
 		}
 		for j, proTxHash := range validatorProTxHashes {
 			if bytes.Equal(privValProTxHash.Bytes(), proTxHash.Bytes()) {
-				err := privVal.UpdatePrivateKey(privKeys[j], quorumHash, height+3)
-				if err != nil {
-					panic(err)
-				}
+				privVal.UpdatePrivateKey(privKeys[j], quorumHash, thresholdPublicKey, height+3)
 				updatedValidators[j] = privVal.ExtractIntoValidator(quorumHash)
 				publicKeys[j] = privKeys[j].PubKey()
 				if !bytes.Equal(updatedValidators[j].PubKey.Bytes(), publicKeys[j].Bytes()) {
@@ -871,10 +868,7 @@ func updateConsensusNetRemoveValidatorsWithProTxHashes(css []*State, height int6
 			if bytes.Equal(stateProTxHash.Bytes(), proTxHash.Bytes()) {
 				// we found the prival
 				privVal = state.privValidator
-				err := privVal.UpdatePrivateKey(privKeys[i], quorumHash, height+3)
-				if err != nil {
-					panic(err)
-				}
+				privVal.UpdatePrivateKey(privKeys[i], quorumHash, thresholdPublicKey, height+3)
 				updatedValidators[i] = privVal.ExtractIntoValidator(quorumHash)
 				publicKeys[i] = privKeys[i].PubKey()
 				if !bytes.Equal(updatedValidators[i].PubKey.Bytes(), publicKeys[i].Bytes()) {

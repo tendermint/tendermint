@@ -3,6 +3,7 @@ package http_test
 import (
 	"context"
 	"fmt"
+	lighthttp "github.com/tendermint/tendermint/light/provider/http"
 	"os"
 	"testing"
 

@@ -3,102 +3,11 @@ package light
 import (
 	"bytes"
 	"context"
-	"errors"
 	"time"
 
 	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/types"
 )
-
-// The detector component of the light client detects and handles attacks on the light client.
-// More info here:
-// tendermint/docs/architecture/adr-047-handling-evidence-from-light-client.md
-
-// detectDivergence is a second wall of defense for the light client.
-//
-// It takes the target verified header and compares it with the headers of a set of
-// witness providers that the light client is connected to. If a conflicting header
-// is returned it verifies and examines the conflicting header against the verified
-// trace that was produced from the primary. If successful, it produces two sets of evidence
-// and sends them to the opposite provider before halting.
-//
-// If there are no conflictinge headers, the light client deems the verified target header
-// trusted and saves it to the trusted store.
-func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.LightBlock, now time.Time) error {
-	if primaryTrace == nil || len(primaryTrace) < 2 {
-		return errors.New("nil or single block primary trace")
-	}
-	var (
-		headerMatched      bool
-		lastVerifiedHeader = primaryTrace[len(primaryTrace)-1].SignedHeader
-		witnessesToRemove  = make([]int, 0)
-	)
-	c.logger.Debug("Running detector against trace", "endBlockHeight", lastVerifiedHeader.Height,
-		"endBlockHash", lastVerifiedHeader.Hash, "length", len(primaryTrace))
-
-	c.providerMutex.Lock()
-	defer c.providerMutex.Unlock()
-
-	if len(c.witnesses) == 0 {
-		return ErrNoWitnesses
-	}
-
-	// launch one goroutine per witness to retrieve the light block of the target height
-	// and compare it with the header from the primary
-	errc := make(chan error, len(c.witnesses))
-	for i, witness := range c.witnesses {
-		go c.compareNewHeaderWithWitness(ctx, errc, lastVerifiedHeader, witness, i)
-	}
-
-	// handle errors from the header comparisons as they come in
-	for i := 0; i < cap(errc); i++ {
-		err := <-errc
-
-		switch e := err.(type) {
-		case nil: // at least one header matched
-			headerMatched = true
-		case errConflictingHeaders:
-			//ToDo: maybe redo this logic
-			//// We have conflicting headers. This could possibly imply an attack on the light client.
-			//// First we need to verify the witness's header using the same skipping verification and then we
-			//// need to find the point that the headers diverge and examine this for any evidence of an attack.
-			////
-			//// We combine these actions together, verifying the witnesses headers and outputting the trace
-			//// which captures the bifurcation point and if successful provides the information to create valid evidence.
-			//err := c.handleConflictingHeaders(ctx, primaryTrace, e.Block, e.WitnessIndex, now)
-			//if err != nil {
-			//	// return information of the attack
-			//	return err
-			//}
-			// if attempt to generate conflicting headers failed then remove witness
-			witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
-
-		case errBadWitness:
-			c.logger.Info("Witness returned an error during header comparison", "witness", c.witnesses[e.WitnessIndex],
-				"err", err)
-			// if witness sent us an invalid header, then remove it. If it didn't respond or couldn't find the block, then we
-			// ignore it and move on to the next witness
-			if _, ok := e.Reason.(provider.ErrBadLightBlock); ok {
-				c.logger.Info("Witness sent us invalid header / vals -> removing it", "witness", c.witnesses[e.WitnessIndex])
-				witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
-			}
-		}
-	}
-
-	// remove witnesses that have misbehaved
-	if err := c.removeWitnesses(witnessesToRemove); err != nil {
-		return err
-	}
-
-	// 1. If we had at least one witness that returned the same header then we
-	// conclude that we can trust the header
-	if headerMatched {
-		return nil
-	}
-
-	// 2. Else all witnesses have either not responded, don't have the block or sent invalid blocks.
-	return ErrFailedHeaderCrossReferencing
-}
 
 // compareNewHeaderWithWitness takes the verified header from the primary and compares it with a
 // header from a specified witness. The function can return one of three errors:

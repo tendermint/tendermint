@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -36,10 +37,11 @@ import (
 var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
 var (
-	tmhome     string
-	tmcfg      *config.Config
-	nodeLogger log.Logger
-	nodeKey    *p2p.NodeKey
+	tmhome            string
+	tmcfg             *config.Config
+	nodeLogger        log.Logger
+	nodeKey           *p2p.NodeKey
+	dashCoreRpcClient dashcore.DashCoreClient
 )
 
 func init() {
@@ -96,6 +98,16 @@ func run(configFile string) error {
 	go func() {
 		coreSrv.Start()
 	}()
+
+	dashCoreRpcClient, err = dashcore.NewDashCoreRpcClient(
+		tmcfg.PrivValidatorCoreRPCHost,
+		tmcfg.BaseConfig.PrivValidatorCoreRPCUsername,
+		tmcfg.BaseConfig.PrivValidatorCoreRPCPassword,
+	)
+
+	if err != nil {
+		return fmt.Errorf("connection to Dash Core RPC failed: %w", err)
+	}
 
 	// Start app server.
 	switch cfg.Protocol {
@@ -159,6 +171,7 @@ func startNode(cfg *Config) error {
 		node.DefaultGenesisDocProviderFunc(tmcfg),
 		node.DefaultDBProvider,
 		node.DefaultMetricsProvider(tmcfg.Instrumentation),
+		dashCoreRpcClient,
 		nodeLogger,
 	)
 	if err != nil {
@@ -182,6 +195,7 @@ func startLightClient(cfg *Config) error {
 		providers[0],
 		providers[1:],
 		dbs.New(lightDB, "light"),
+		dashCoreRpcClient,
 		light.Logger(nodeLogger),
 	)
 	if err != nil {
@@ -229,6 +243,7 @@ func startMaverick(cfg *Config) error {
 		misbehaviors[height] = mcs.MisbehaviorList[misbehaviorString]
 	}
 
+	// TODO: What is a maverick node?
 	n, err := maverick.NewNode(tmcfg,
 		privval.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
 		nodeKey,
@@ -236,6 +251,7 @@ func startMaverick(cfg *Config) error {
 		maverick.DefaultGenesisDocProviderFunc(tmcfg),
 		maverick.DefaultDBProvider,
 		maverick.DefaultMetricsProvider(tmcfg.Instrumentation),
+		dashCoreRpcClient,
 		logger,
 		misbehaviors,
 	)
