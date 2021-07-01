@@ -35,7 +35,7 @@ type DashCoreRpcClient struct {
 
 // NewDashCoreRpcClient returns an instance of DashCoreClient.
 // it will start the endpoint (if not already started)
-func NewDashCoreRpcClient(host string, username string, password string) (DashCoreClient, error) {
+func NewDashCoreRpcClient(host string, username string, password string) (*DashCoreRpcClient, error) {
 	if host == "" {
 		return nil, fmt.Errorf("unable to establish connection to the Dash Core node")
 	}
@@ -55,7 +55,9 @@ func NewDashCoreRpcClient(host string, username string, password string) (DashCo
 		return nil, err
 	}
 
-	return &DashCoreRpcClient{endpoint: client}, nil
+	dashCoreClient := DashCoreRpcClient{endpoint: client}
+
+	return &dashCoreClient, nil
 }
 
 // Close closes the underlying connection
