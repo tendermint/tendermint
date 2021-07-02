@@ -455,8 +455,9 @@ func UpdateConfigStateSync(node *e2e.Node, height int64, hash []byte) error {
 
 func newDefaultFilePV(node *e2e.Node, nodeDir string) (*privval.FilePV, error) {
 	return privval.NewFilePVWithOptions(
-		privval.WithPrivateKey(bls12381.GenPrivKey(), crypto.RandQuorumHash(), &node.Testnet.ThresholdPublicKey),
+		privval.WithPrivateKeysMap(node.PrivvalKeys),
 		privval.WithProTxHash(crypto.RandProTxHash()),
+		privval.WithUpdateHeights(node.PrivvalUpdateHeights),
 		privval.WithKeyAndStateFilePaths(
 			filepath.Join(nodeDir, PrivvalDummyKeyFile),
 			filepath.Join(nodeDir, PrivvalDummyStateFile),
@@ -470,8 +471,8 @@ func newFilePVFromNode(node *e2e.Node, nodeDir string) (*privval.FilePV, error) 
 		privval.WithProTxHash(node.ProTxHash),
 		privval.WithUpdateHeights(node.PrivvalUpdateHeights),
 		privval.WithKeyAndStateFilePaths(
-			filepath.Join(nodeDir, PrivvalDummyKeyFile),
-			filepath.Join(nodeDir, PrivvalDummyStateFile),
+			filepath.Join(nodeDir, PrivvalKeyFile),
+			filepath.Join(nodeDir, PrivvalStateFile),
 		),
 	)
 }

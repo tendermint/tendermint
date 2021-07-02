@@ -2,12 +2,12 @@ package mockcoreserver
 
 import (
 	"encoding/hex"
+	"fmt"
 	"strconv"
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
-	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/privval"
 )
 
@@ -33,12 +33,21 @@ func (c *MockCoreServer) QuorumInfo(cmd btcjson.QuorumCmd) btcjson.QuorumInfoRes
 	if err != nil {
 		panic(err)
 	}
-	quorumHash := strVal(cmd.QuorumHash)
-	qq := bytes.HexBytes(quorumHash)
-	pk, err := c.FilePV.GetPubKey(qq)
+	if cmd.QuorumHash == nil {
+		err = fmt.Errorf("quorum hash can not be nil when trying to get quorum info")
+		panic(err)
+	}
+	quorumHashBytes, err := hex.DecodeString(*cmd.QuorumHash)
+	if len(quorumHashBytes) != crypto.DefaultHashSize {
+		err = fmt.Errorf("quorum hash %v is incorrect when trying to get quorum info", *cmd.QuorumHash)
+		panic(err)
+	}
+	quorumHash := crypto.QuorumHash(quorumHashBytes)
 	if err != nil {
 		panic(err)
 	}
+	pk, _ := c.FilePV.GetPubKey(quorumHash)
+	// if the public key isn't found that means the node is not part of the quorum, don't add it as a member
 	if pk != nil {
 		members = append(members, btcjson.QuorumMember{
 			ProTxHash:      proTxHash.String(),
@@ -47,18 +56,18 @@ func (c *MockCoreServer) QuorumInfo(cmd btcjson.QuorumCmd) btcjson.QuorumInfoRes
 			PubKeyShare:    pk.HexString(),
 		})
 	}
-	tpk, err := c.FilePV.GetThresholdPublicKey(qq)
+	tpk, err := c.FilePV.GetThresholdPublicKey(quorumHash)
 	if err != nil {
 		panic(err)
 	}
-	height, err := c.FilePV.GetHeight(qq)
+	height, err := c.FilePV.GetHeight(quorumHash)
 	if err != nil {
 		panic(err)
 	}
 	return btcjson.QuorumInfoResult{
 		Height:          uint32(height),
 		Type:            strconv.Itoa(int(c.LLMQType)),
-		QuorumHash:      quorumHash,
+		QuorumHash:      quorumHash.String(),
 		Members:         members,
 		QuorumPublicKey: tpk.String(),
 	}
