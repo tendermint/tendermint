@@ -25,6 +25,7 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
+	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -281,7 +282,9 @@ func (cs *State) SetPrivValidator(priv types.PrivValidator) {
 		case *privval.FilePV:
 			cs.privValidatorType = types.FileSignerClient
 		case *privval.SignerClient:
-			cs.privValidatorType = types.SignerClient
+			cs.privValidatorType = types.SignerSocketClient
+		case *tmgrpc.SignerClient:
+			cs.privValidatorType = types.SignergRPCClient
 		case types.MockPV:
 			cs.privValidatorType = types.MockSignerClient
 		case *types.ErroringMockPV:
