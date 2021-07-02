@@ -80,7 +80,7 @@ will need to change to accommodate these changes. Most notably:
 This release is not compatible with previous blockchains due to changes to
 the encoding format (see "Protocol Buffers," below) and the block header (see "Blockchain Protocol").
 
-Note also that Tendermint 0.34 also requires Go 1.15 or higher.
+Note also that Tendermint 0.34 also requires Go 1.16 or higher.
 
 ### ABCI Changes
 

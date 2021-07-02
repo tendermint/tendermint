@@ -1,5 +1,5 @@
 # stage 1 Generate Tendermint Binary
-FROM golang:1.15-alpine as builder
+FROM golang:1.16-alpine as builder
 RUN apk update && \
     apk upgrade && \
     apk --no-cache add make
