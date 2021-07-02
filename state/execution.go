@@ -115,7 +115,10 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
 
-	prepareProposal, err := blockExec.proxyApp.PrepareProposalSync(context.Background(), abci.RequestPrepareProposal{BlockData: txs.ToSliceOfBytes()})
+	preparedProposal, err := blockExec.proxyApp.PrepareProposalSync(
+		context.Background(),
+		abci.RequestPrepareProposal{BlockData: txs.ToSliceOfBytes()},
+	)
 	if err != nil {
 		// The App MUST ensure that only valid (and hence 'processable')
 		// Tx enter the mempool. Hence, at this point, we can't have any non-processable
@@ -126,17 +129,17 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		// Hence we panic on purpose for now.
 		panic(err)
 	}
-	blockData := prepareProposal.GetBlockData()
-	var numberNoGoUp int
-	for i, tx := range blockData {
+	newTxs := preparedProposal.GetBlockData()
+	var txSize int
+	for _, tx := range newTxs {
+		txSize += len(tx)
 
-		if maxDataBytes < int64(numberNoGoUp) {
-	panic("block data exceeds max amount of allowed bytes")	
+		if maxDataBytes < int64(txSize) {
+			panic("block data exceeds max amount of allowed bytes")
 		}
 	}
 
-	modifiedTxs := types.ToTxs(prepareProposal.GetBlockData())
-	modifiedTxs.
+	modifiedTxs := types.ToTxs(preparedProposal.GetBlockData())
 
 	return state.MakeBlock(height, modifiedTxs, commit, evidence, proposerAddr)
 }
