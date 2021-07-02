@@ -4,12 +4,16 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
+	tmos "github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -280,6 +284,41 @@ func (cfg BaseConfig) GenesisFile() string {
 // NodeKeyFile returns the full path to the node_key.json file
 func (cfg BaseConfig) NodeKeyFile() string {
 	return rootify(cfg.NodeKey, cfg.RootDir)
+}
+
+// LoadNodeKey loads NodeKey located in filePath.
+func (cfg BaseConfig) LoadNodeKeyID() (types.NodeID, error) {
+	jsonBytes, err := ioutil.ReadFile(cfg.NodeKeyFile())
+	if err != nil {
+		return "", err
+	}
+	nodeKey := types.NodeKey{}
+	err = tmjson.Unmarshal(jsonBytes, &nodeKey)
+	if err != nil {
+		return "", err
+	}
+	nodeKey.ID = types.NodeIDFromPubKey(nodeKey.PubKey())
+	return nodeKey.ID, nil
+}
+
+// LoadOrGenNodeKey attempts to load the NodeKey from the given filePath. If
+// the file does not exist, it generates and saves a new NodeKey.
+func (cfg BaseConfig) LoadOrGenNodeKeyID() (types.NodeID, error) {
+	if tmos.FileExists(cfg.NodeKeyFile()) {
+		nodeKey, err := cfg.LoadNodeKeyID()
+		if err != nil {
+			return "", err
+		}
+		return nodeKey, nil
+	}
+
+	nodeKey := types.GenNodeKey()
+
+	if err := nodeKey.SaveAs(cfg.NodeKeyFile()); err != nil {
+		return "", err
+	}
+
+	return nodeKey.ID, nil
 }
 
 // DBDir returns the full path to the database directory

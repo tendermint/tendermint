@@ -566,7 +566,7 @@ func createSwitch(
 	evidenceReactor *p2p.ReactorShim,
 	proxyApp proxy.AppConns,
 	nodeInfo types.NodeInfo,
-	nodeKey p2p.NodeKey,
+	nodeKey types.NodeKey,
 	p2pLogger log.Logger,
 ) *p2p.Switch {
 
@@ -644,7 +644,7 @@ func createSwitch(
 }
 
 func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
-	p2pLogger log.Logger, nodeKey p2p.NodeKey) (pex.AddrBook, error) {
+	p2pLogger log.Logger, nodeKey types.NodeKey) (pex.AddrBook, error) {
 
 	addrBook := pex.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
 	addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
@@ -709,7 +709,7 @@ func createPEXReactorV2(
 
 func makeNodeInfo(
 	config *cfg.Config,
-	nodeKey p2p.NodeKey,
+	nodeKey types.NodeKey,
 	eventSinks []indexer.EventSink,
 	genDoc *types.GenesisDoc,
 	state sm.State,
@@ -778,7 +778,7 @@ func makeNodeInfo(
 
 func makeSeedNodeInfo(
 	config *cfg.Config,
-	nodeKey p2p.NodeKey,
+	nodeKey types.NodeKey,
 	genDoc *types.GenesisDoc,
 	state sm.State,
 ) (types.NodeInfo, error) {
