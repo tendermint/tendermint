@@ -58,12 +58,18 @@ func Setup(testnet *e2e.Testnet) error {
 		return err
 	}
 
-	genesis, err := MakeGenesis(testnet)
+	genesisNodes, err := initGenesisForEveryNode(testnet)
 	if err != nil {
 		return err
 	}
+	withModificators(genesisNodes, pubkeyResettingModificator(shouldResetPubkeys()))
 
 	for _, node := range testnet.Nodes {
+		genesis, ok := genesisNodes[node.Mode]
+		if !ok {
+			return fmt.Errorf("node has unsupported node type: %s", node.Mode)
+		}
+
 		nodeDir := filepath.Join(testnet.Dir, node.Name)
 
 		dirs := []string{
@@ -182,7 +188,9 @@ services:
     - 6060
     volumes:
     - ./{{ .Name }}:/tenderdash
-    - /Users/samuelw/Documents/src/go/github.com/dashevo/tenderdash/test/e2e/build/app:/usr/bin/app
+{{- if ne $.PreCompiledAppPath "" }}
+    - {{ $.PreCompiledAppPath }}:/usr/bin/app
+{{- end }}
     networks:
       {{ $.Name }}:
         ipv{{ if $.IPv6 }}6{{ else }}4{{ end}}_address: {{ .IP }}
@@ -192,7 +200,14 @@ services:
 		return nil, err
 	}
 	var buf bytes.Buffer
-	err = tmpl.Execute(&buf, testnet)
+	data := &struct {
+		*e2e.Testnet
+		PreCompiledAppPath string
+	}{
+		Testnet:            testnet,
+		PreCompiledAppPath: os.Getenv("PRE_COMPILED_APP_PATH"),
+	}
+	err = tmpl.Execute(&buf, data)
 	if err != nil {
 		return nil, err
 	}
@@ -459,4 +474,47 @@ func newFilePVFromNode(node *e2e.Node, nodeDir string) (*privval.FilePV, error) 
 			filepath.Join(nodeDir, PrivvalDummyStateFile),
 		),
 	)
+}
+
+func pubkeyResettingModificator(val bool) func(genesis map[e2e.Mode]types.GenesisDoc) {
+	return func(genesis map[e2e.Mode]types.GenesisDoc) {
+		if val {
+			resetPubkey(genesis[e2e.ModeFull].Validators)
+		}
+	}
+}
+
+func resetPubkey(vals []types.GenesisValidator) {
+	for i := 0; i < len(vals); i++ {
+		vals[i].PubKey = nil
+	}
+}
+
+func shouldResetPubkeys() bool {
+	val, ok := os.LookupEnv("FULLNODE_PUBKEY_RESET")
+	if !ok {
+		return false
+	}
+	return val == "true" || val == "1"
+}
+
+func initGenesisForEveryNode(testnet *e2e.Testnet) (map[e2e.Mode]types.GenesisDoc, error) {
+	genesis := make(map[e2e.Mode]types.GenesisDoc)
+	for _, tn := range testnet.Nodes {
+		if _, ok := genesis[tn.Mode]; ok {
+			continue
+		}
+		genDoc, err := MakeGenesis(testnet)
+		if err != nil {
+			return nil, err
+		}
+		genesis[tn.Mode] = genDoc
+	}
+	return genesis, nil
+}
+
+func withModificators(genesis map[e2e.Mode]types.GenesisDoc, modFuns ...func(map[e2e.Mode]types.GenesisDoc)) {
+	for _, fn := range modFuns {
+		fn(genesis)
+	}
 }
