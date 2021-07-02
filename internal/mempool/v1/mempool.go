@@ -14,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	pubmempool "github.com/tendermint/tendermint/pkg/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -224,7 +225,7 @@ func (txmp *TxMempool) CheckTx(
 
 	txSize := len(tx)
 	if txSize > txmp.config.MaxTxBytes {
-		return mempool.ErrTxTooLarge{
+		return pubmempool.ErrTxTooLarge{
 			Max:    txmp.config.MaxTxBytes,
 			Actual: txSize,
 		}
@@ -232,7 +233,7 @@ func (txmp *TxMempool) CheckTx(
 
 	if txmp.preCheck != nil {
 		if err := txmp.preCheck(tx); err != nil {
-			return mempool.ErrPreCheck{
+			return pubmempool.ErrPreCheck{
 				Reason: err,
 			}
 		}
@@ -252,7 +253,7 @@ func (txmp *TxMempool) CheckTx(
 		if wtx != nil && ok {
 			// We already have the transaction stored and the we've already seen this
 			// transaction from txInfo.SenderID.
-			return mempool.ErrTxInCache
+			return pubmempool.ErrTxInCache
 		}
 
 		txmp.logger.Debug("tx exists already in cache", "tx_hash", tx.Hash())
@@ -304,7 +305,6 @@ func (txmp *TxMempool) Flush() {
 			txmp.txStore.RemoveTx(wtx)
 			txmp.priorityIndex.RemoveTx(wtx)
 			txmp.gossipIndex.Remove(wtx.gossipEl)
-			wtx.gossipEl.DetachPrev()
 		}
 	}
 
@@ -707,7 +707,7 @@ func (txmp *TxMempool) canAddTx(wtx *WrappedTx) error {
 	)
 
 	if numTxs >= txmp.config.Size || int64(wtx.Size())+sizeBytes > txmp.config.MaxTxsBytes {
-		return mempool.ErrMempoolIsFull{
+		return pubmempool.ErrMempoolIsFull{
 			NumTxs:      numTxs,
 			MaxTxs:      txmp.config.Size,
 			TxsBytes:    sizeBytes,
@@ -742,7 +742,6 @@ func (txmp *TxMempool) removeTx(wtx *WrappedTx, removeFromCache bool) {
 	// Remove the transaction from the gossip index and cleanup the linked-list
 	// element so it can be garbage collected.
 	txmp.gossipIndex.Remove(wtx.gossipEl)
-	wtx.gossipEl.DetachPrev()
 
 	atomic.AddInt64(&txmp.sizeBytes, int64(-wtx.Size()))
 

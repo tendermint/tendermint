@@ -24,6 +24,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
+	pubmempool "github.com/tendermint/tendermint/pkg/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -82,7 +83,7 @@ func checkTxs(t *testing.T, mp mempool.Mempool, count int, peerID uint16) types.
 			// Skip invalid txs.
 			// TestMempoolFilters will fail otherwise. It asserts a number of txs
 			// returned.
-			if mempool.IsPreCheckError(err) {
+			if pubmempool.IsPreCheckError(err) {
 				continue
 			}
 			t.Fatalf("CheckTx failed: %v while checking #%d tx", err, i)
@@ -455,7 +456,7 @@ func TestMempool_CheckTxChecksTxSize(t *testing.T) {
 		if !testCase.err {
 			require.NoError(t, err, caseString)
 		} else {
-			require.Equal(t, err, mempool.ErrTxTooLarge{
+			require.Equal(t, err, pubmempool.ErrTxTooLarge{
 				Max:    maxTxSize,
 				Actual: testCase.len,
 			}, caseString)
@@ -503,7 +504,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 
 	err = mp.CheckTx(context.Background(), []byte{0x05}, nil, mempool.TxInfo{})
 	if assert.Error(t, err) {
-		assert.IsType(t, mempool.ErrMempoolIsFull{}, err)
+		assert.IsType(t, pubmempool.ErrMempoolIsFull{}, err)
 	}
 
 	// 6. zero after tx is rechecked and removed due to not being valid anymore

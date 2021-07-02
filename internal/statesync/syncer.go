@@ -50,7 +50,6 @@ var (
 // sync all snapshots in the pool (pausing to discover new ones), or Sync() to sync a specific
 // snapshot. Snapshots and chunks are fed via AddSnapshot() and AddChunk() as appropriate.
 type syncer struct {
-	cfg           config.StateSyncConfig
 	logger        log.Logger
 	stateProvider StateProvider
 	conn          proxy.AppConnSnapshot
@@ -59,6 +58,8 @@ type syncer struct {
 	snapshotCh    chan<- p2p.Envelope
 	chunkCh       chan<- p2p.Envelope
 	tempDir       string
+	fetchers      int32
+	retryTimeout  time.Duration
 
 	mtx    tmsync.RWMutex
 	chunks *chunkQueue
@@ -75,7 +76,6 @@ func newSyncer(
 	tempDir string,
 ) *syncer {
 	return &syncer{
-		cfg:           cfg,
 		logger:        logger,
 		stateProvider: stateProvider,
 		conn:          conn,
@@ -84,6 +84,8 @@ func newSyncer(
 		snapshotCh:    snapshotCh,
 		chunkCh:       chunkCh,
 		tempDir:       tempDir,
+		fetchers:      cfg.Fetchers,
+		retryTimeout:  cfg.ChunkRequestTimeout,
 	}
 }
 
@@ -111,7 +113,7 @@ func (s *syncer) AddChunk(chunk *chunk) (bool, error) {
 
 // AddSnapshot adds a snapshot to the snapshot pool. It returns true if a new, previously unseen
 // snapshot was accepted and added.
-func (s *syncer) AddSnapshot(peerID p2p.NodeID, snapshot *snapshot) (bool, error) {
+func (s *syncer) AddSnapshot(peerID types.NodeID, snapshot *snapshot) (bool, error) {
 	added, err := s.snapshots.Add(peerID, snapshot)
 	if err != nil {
 		return false, err
@@ -125,7 +127,7 @@ func (s *syncer) AddSnapshot(peerID p2p.NodeID, snapshot *snapshot) (bool, error
 
 // AddPeer adds a peer to the pool. For now we just keep it simple and send a
 // single request to discover snapshots, later we may want to do retries and stuff.
-func (s *syncer) AddPeer(peerID p2p.NodeID) {
+func (s *syncer) AddPeer(peerID types.NodeID) {
 	s.logger.Debug("Requesting snapshots from peer", "peer", peerID)
 	s.snapshotCh <- p2p.Envelope{
 		To:      peerID,
@@ -134,7 +136,7 @@ func (s *syncer) AddPeer(peerID p2p.NodeID) {
 }
 
 // RemovePeer removes a peer from the pool.
-func (s *syncer) RemovePeer(peerID p2p.NodeID) {
+func (s *syncer) RemovePeer(peerID types.NodeID) {
 	s.logger.Debug("Removing peer from sync", "peer", peerID)
 	s.snapshots.RemovePeer(peerID)
 }
@@ -142,12 +144,18 @@ func (s *syncer) RemovePeer(peerID p2p.NodeID) {
 // SyncAny tries to sync any of the snapshots in the snapshot pool, waiting to discover further
 // snapshots if none were found and discoveryTime > 0. It returns the latest state and block commit
 // which the caller must use to bootstrap the node.
-func (s *syncer) SyncAny(discoveryTime time.Duration, retryHook func()) (sm.State, *types.Commit, error) {
+func (s *syncer) SyncAny(
+	ctx context.Context,
+	discoveryTime time.Duration,
+	requestSnapshots func(),
+) (sm.State, *types.Commit, error) {
+
 	if discoveryTime != 0 && discoveryTime < minimumDiscoveryTime {
 		discoveryTime = minimumDiscoveryTime
 	}
 
 	if discoveryTime > 0 {
+		requestSnapshots()
 		s.logger.Info(fmt.Sprintf("Discovering snapshots for %v", discoveryTime))
 		time.Sleep(discoveryTime)
 	}
@@ -169,7 +177,7 @@ func (s *syncer) SyncAny(discoveryTime time.Duration, retryHook func()) (sm.Stat
 			if discoveryTime == 0 {
 				return sm.State{}, nil, errNoSnapshots
 			}
-			retryHook()
+			requestSnapshots()
 			s.logger.Info(fmt.Sprintf("Discovering snapshots for %v", discoveryTime))
 			time.Sleep(discoveryTime)
 			continue
@@ -182,7 +190,7 @@ func (s *syncer) SyncAny(discoveryTime time.Duration, retryHook func()) (sm.Stat
 			defer chunks.Close() // in case we forget to close it elsewhere
 		}
 
-		newState, commit, err := s.Sync(snapshot, chunks)
+		newState, commit, err := s.Sync(ctx, snapshot, chunks)
 		switch {
 		case err == nil:
 			return newState, commit, nil
@@ -234,7 +242,7 @@ func (s *syncer) SyncAny(discoveryTime time.Duration, retryHook func()) (sm.Stat
 
 // Sync executes a sync for a specific snapshot, returning the latest state and block commit which
 // the caller must use to bootstrap the node.
-func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.Commit, error) {
+func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.Commit, error) {
 	s.mtx.Lock()
 	if s.chunks != nil {
 		s.mtx.Unlock()
@@ -249,19 +257,19 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 	}()
 
 	// Offer snapshot to ABCI app.
-	err := s.offerSnapshot(snapshot)
+	err := s.offerSnapshot(ctx, snapshot)
 	if err != nil {
 		return sm.State{}, nil, err
 	}
 
 	// Spawn chunk fetchers. They will terminate when the chunk queue is closed or context canceled.
-	ctx, cancel := context.WithCancel(context.Background())
+	fetchCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	for i := int32(0); i < s.cfg.ChunkFetchers; i++ {
-		go s.fetchChunks(ctx, snapshot, chunks)
+	for i := int32(0); i < s.fetchers; i++ {
+		go s.fetchChunks(fetchCtx, snapshot, chunks)
 	}
 
-	pctx, pcancel := context.WithTimeout(context.Background(), 10*time.Second)
+	pctx, pcancel := context.WithTimeout(ctx, 10*time.Second)
 	defer pcancel()
 
 	// Optimistically build new state, so we don't discover any light client failures at the end.
@@ -275,7 +283,7 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 	}
 
 	// Restore snapshot
-	err = s.applyChunks(chunks)
+	err = s.applyChunks(ctx, chunks)
 	if err != nil {
 		return sm.State{}, nil, err
 	}
@@ -296,10 +304,10 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 
 // offerSnapshot offers a snapshot to the app. It returns various errors depending on the app's
 // response, or nil if the snapshot was accepted.
-func (s *syncer) offerSnapshot(snapshot *snapshot) error {
+func (s *syncer) offerSnapshot(ctx context.Context, snapshot *snapshot) error {
 	s.logger.Info("Offering snapshot to ABCI app", "height", snapshot.Height,
 		"format", snapshot.Format, "hash", snapshot.Hash)
-	resp, err := s.conn.OfferSnapshotSync(context.Background(), abci.RequestOfferSnapshot{
+	resp, err := s.conn.OfferSnapshotSync(ctx, abci.RequestOfferSnapshot{
 		Snapshot: &abci.Snapshot{
 			Height:   snapshot.Height,
 			Format:   snapshot.Format,
@@ -332,7 +340,7 @@ func (s *syncer) offerSnapshot(snapshot *snapshot) error {
 
 // applyChunks applies chunks to the app. It returns various errors depending on the app's
 // response, or nil once the snapshot is fully restored.
-func (s *syncer) applyChunks(chunks *chunkQueue) error {
+func (s *syncer) applyChunks(ctx context.Context, chunks *chunkQueue) error {
 	for {
 		chunk, err := chunks.Next()
 		if err == errDone {
@@ -341,7 +349,7 @@ func (s *syncer) applyChunks(chunks *chunkQueue) error {
 			return fmt.Errorf("failed to fetch chunk: %w", err)
 		}
 
-		resp, err := s.conn.ApplySnapshotChunkSync(context.Background(), abci.RequestApplySnapshotChunk{
+		resp, err := s.conn.ApplySnapshotChunkSync(ctx, abci.RequestApplySnapshotChunk{
 			Index:  chunk.Index,
 			Chunk:  chunk.Chunk,
 			Sender: string(chunk.Sender),
@@ -363,7 +371,7 @@ func (s *syncer) applyChunks(chunks *chunkQueue) error {
 		// Reject any senders as requested by the app
 		for _, sender := range resp.RejectSenders {
 			if sender != "" {
-				peerID := p2p.NodeID(sender)
+				peerID := types.NodeID(sender)
 				s.snapshots.RejectPeer(peerID)
 
 				if err := chunks.DiscardSender(peerID); err != nil {
@@ -391,36 +399,44 @@ func (s *syncer) applyChunks(chunks *chunkQueue) error {
 // fetchChunks requests chunks from peers, receiving allocations from the chunk queue. Chunks
 // will be received from the reactor via syncer.AddChunks() to chunkQueue.Add().
 func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *chunkQueue) {
+	var (
+		next  = true
+		index uint32
+		err   error
+	)
+
 	for {
-		index, err := chunks.Allocate()
-		if err == errDone {
-			// Keep checking until the context is canceled (restore is done), in case any
-			// chunks need to be refetched.
-			select {
-			case <-ctx.Done():
-				return
-			default:
+		if next {
+			index, err = chunks.Allocate()
+			if errors.Is(err, errDone) {
+				// Keep checking until the context is canceled (restore is done), in case any
+				// chunks need to be refetched.
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(2 * time.Second):
+					continue
+				}
 			}
-			time.Sleep(2 * time.Second)
-			continue
-		}
-		if err != nil {
-			s.logger.Error("Failed to allocate chunk from queue", "err", err)
-			return
+			if err != nil {
+				s.logger.Error("Failed to allocate chunk from queue", "err", err)
+				return
+			}
 		}
 		s.logger.Info("Fetching snapshot chunk", "height", snapshot.Height,
 			"format", snapshot.Format, "chunk", index, "total", chunks.Size())
 
-		ticker := time.NewTicker(s.cfg.ChunkRequestTimeout)
+		ticker := time.NewTicker(s.retryTimeout)
 		defer ticker.Stop()
 
 		s.requestChunk(snapshot, index)
 
 		select {
 		case <-chunks.WaitFor(index):
+			next = true
 
 		case <-ticker.C:
-			s.requestChunk(snapshot, index)
+			next = false
 
 		case <-ctx.Done():
 			return

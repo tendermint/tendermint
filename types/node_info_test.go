@@ -1,10 +1,16 @@
-package p2p
+package types
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	tmnet "github.com/tendermint/tendermint/libs/net"
+	"github.com/tendermint/tendermint/version"
 )
+
+const testCh = 0x01
 
 func TestNodeInfoValidate(t *testing.T) {
 
@@ -64,16 +70,16 @@ func TestNodeInfoValidate(t *testing.T) {
 		{"Good RPCAddress", func(ni *NodeInfo) { ni.Other.RPCAddress = "0.0.0.0:26657" }, false},
 	}
 
-	nodeKey := GenNodeKey()
+	nodeKeyID := testNodeID()
 	name := "testing"
 
 	// test case passes
-	ni = testNodeInfo(nodeKey.ID, name)
+	ni = testNodeInfo(nodeKeyID, name)
 	ni.Channels = channels
 	assert.NoError(t, ni.Validate())
 
 	for _, tc := range testCases {
-		ni := testNodeInfo(nodeKey.ID, name)
+		ni := testNodeInfo(nodeKeyID, name)
 		ni.Channels = channels
 		tc.malleateNodeInfo(&ni)
 		err := ni.Validate()
@@ -86,17 +92,52 @@ func TestNodeInfoValidate(t *testing.T) {
 
 }
 
-func TestNodeInfoCompatible(t *testing.T) {
+func testNodeID() NodeID {
+	return NodeIDFromPubKey(ed25519.GenPrivKey().PubKey())
+}
 
-	nodeKey1 := GenNodeKey()
-	nodeKey2 := GenNodeKey()
+func testNodeInfo(id NodeID, name string) NodeInfo {
+	return testNodeInfoWithNetwork(id, name, "testing")
+}
+
+func testNodeInfoWithNetwork(id NodeID, name, network string) NodeInfo {
+	return NodeInfo{
+		ProtocolVersion: ProtocolVersion{
+			P2P:   version.P2PProtocol,
+			Block: version.BlockProtocol,
+			App:   0,
+		},
+		NodeID:     id,
+		ListenAddr: fmt.Sprintf("127.0.0.1:%d", getFreePort()),
+		Network:    network,
+		Version:    "1.2.3-rc0-deadbeef",
+		Channels:   []byte{testCh},
+		Moniker:    name,
+		Other: NodeInfoOther{
+			TxIndex:    "on",
+			RPCAddress: fmt.Sprintf("127.0.0.1:%d", getFreePort()),
+		},
+	}
+}
+
+func getFreePort() int {
+	port, err := tmnet.GetFreePort()
+	if err != nil {
+		panic(err)
+	}
+	return port
+}
+
+func TestNodeInfoCompatible(t *testing.T) {
+	nodeKey1ID := testNodeID()
+	nodeKey2ID := testNodeID()
 	name := "testing"
 
 	var newTestChannel byte = 0x2
 
 	// test NodeInfo is compatible
-	ni1 := testNodeInfo(nodeKey1.ID, name)
-	ni2 := testNodeInfo(nodeKey2.ID, name)
+	ni1 := testNodeInfo(nodeKey1ID, name)
+	ni2 := testNodeInfo(nodeKey2ID, name)
 	assert.NoError(t, ni1.CompatibleWith(ni2))
 
 	// add another channel; still compatible
@@ -113,7 +154,7 @@ func TestNodeInfoCompatible(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		ni := testNodeInfo(nodeKey2.ID, name)
+		ni := testNodeInfo(nodeKey2ID, name)
 		tc.malleateNodeInfo(&ni)
 		assert.Error(t, ni1.CompatibleWith(ni))
 	}

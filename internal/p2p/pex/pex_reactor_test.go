@@ -18,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p/mock"
 	"github.com/tendermint/tendermint/libs/log"
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
+	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -128,7 +129,7 @@ func TestPEXReactorReceive(t *testing.T) {
 	size := book.Size()
 	na, err := peer.NodeInfo().NetAddress()
 	require.NoError(t, err)
-	msg := mustEncode(&tmp2p.PexResponse{Addresses: []tmp2p.PexAddress{na.ToProto()}})
+	msg := mustEncode(&tmp2p.PexResponse{Addresses: NetAddressesToProto([]*types.NetAddress{na})})
 	r.Receive(PexChannel, peer, msg)
 	assert.Equal(t, size+1, book.Size())
 
@@ -185,7 +186,7 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 	assert.True(t, r.requestsSent.Has(id))
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
-	msg := mustEncode(&tmp2p.PexResponse{Addresses: []tmp2p.PexAddress{peer.SocketAddr().ToProto()}})
+	msg := mustEncode(&tmp2p.PexResponse{Addresses: NetAddressesToProto([]*types.NetAddress{peer.SocketAddr()})})
 
 	// receive some addrs. should clear the request
 	r.Receive(PexChannel, peer, msg)
@@ -457,7 +458,8 @@ func TestPEXReactorDoesNotAddPrivatePeersToAddrBook(t *testing.T) {
 	size := book.Size()
 	na, err := peer.NodeInfo().NetAddress()
 	require.NoError(t, err)
-	msg := mustEncode(&tmp2p.PexResponse{Addresses: []tmp2p.PexAddress{na.ToProto()}})
+
+	msg := mustEncode(&tmp2p.PexResponse{Addresses: NetAddressesToProto([]*types.NetAddress{na})})
 	pexR.Receive(PexChannel, peer, msg)
 	assert.Equal(t, size, book.Size())
 

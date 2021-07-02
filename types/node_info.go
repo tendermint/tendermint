@@ -1,4 +1,4 @@
-package p2p
+package types
 
 import (
 	"errors"
@@ -7,7 +7,6 @@ import (
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
-	"github.com/tendermint/tendermint/version"
 )
 
 const (
@@ -25,23 +24,6 @@ type ProtocolVersion struct {
 	P2P   uint64 `json:"p2p"`
 	Block uint64 `json:"block"`
 	App   uint64 `json:"app"`
-}
-
-// defaultProtocolVersion populates the Block and P2P versions using
-// the global values, but not the App.
-var defaultProtocolVersion = NewProtocolVersion(
-	version.P2PProtocol,
-	version.BlockProtocol,
-	0,
-)
-
-// NewProtocolVersion returns a fully populated ProtocolVersion.
-func NewProtocolVersion(p2p, block, app uint64) ProtocolVersion {
-	return ProtocolVersion{
-		P2P:   p2p,
-		Block: block,
-		App:   app,
-	}
 }
 
 //-------------------------------------------------------------
@@ -95,7 +77,7 @@ func (info NodeInfo) Validate() error {
 	// ID is already validated.
 
 	// Validate ListenAddr.
-	_, err := NewNetAddressString(IDAddressString(info.ID(), info.ListenAddr))
+	_, err := NewNetAddressString(info.ID().AddressString(info.ListenAddr))
 	if err != nil {
 		return err
 	}
@@ -185,7 +167,7 @@ OUTER_LOOP:
 // ListenAddr. Note that the ListenAddr is not authenticated and
 // may not match that address actually dialed if its an outbound peer.
 func (info NodeInfo) NetAddress() (*NetAddress, error) {
-	idAddr := IDAddressString(info.ID(), info.ListenAddr)
+	idAddr := info.ID().AddressString(info.ListenAddr)
 	return NewNetAddressString(idAddr)
 }
 

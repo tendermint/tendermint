@@ -16,6 +16,7 @@ import (
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	p2pproto "github.com/tendermint/tendermint/proto/tendermint/p2p"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -46,7 +47,7 @@ const (
 
 // PeerUpdate is a peer update event sent via PeerUpdates.
 type PeerUpdate struct {
-	NodeID NodeID
+	NodeID types.NodeID
 	Status PeerStatus
 }
 
@@ -105,7 +106,7 @@ type PeerManagerOptions struct {
 	// to. These will be scored higher than other peers, and if
 	// MaxConnectedUpgrade is non-zero any lower-scored peers will be evicted if
 	// necessary to make room for these.
-	PersistentPeers []NodeID
+	PersistentPeers []types.NodeID
 
 	// MaxPeers is the maximum number of peers to track information about, i.e.
 	// store in the peer store. When exceeded, the lowest-scored unconnected peers
@@ -147,15 +148,15 @@ type PeerManagerOptions struct {
 
 	// PeerScores sets fixed scores for specific peers. It is mainly used
 	// for testing. A score of 0 is ignored.
-	PeerScores map[NodeID]PeerScore
+	PeerScores map[types.NodeID]PeerScore
 
 	// PrivatePeerIDs defines a set of NodeID objects which the PEX reactor will
 	// consider private and never gossip.
-	PrivatePeers map[NodeID]struct{}
+	PrivatePeers map[types.NodeID]struct{}
 
 	// persistentPeers provides fast PersistentPeers lookups. It is built
 	// by optimize().
-	persistentPeers map[NodeID]bool
+	persistentPeers map[types.NodeID]bool
 }
 
 // Validate validates the options.
@@ -209,7 +210,7 @@ func (o *PeerManagerOptions) Validate() error {
 
 // isPersistentPeer checks if a peer is in PersistentPeers. It will panic
 // if called before optimize().
-func (o *PeerManagerOptions) isPersistent(id NodeID) bool {
+func (o *PeerManagerOptions) isPersistent(id types.NodeID) bool {
 	if o.persistentPeers == nil {
 		panic("isPersistentPeer() called before optimize()")
 	}
@@ -220,7 +221,7 @@ func (o *PeerManagerOptions) isPersistent(id NodeID) bool {
 // separate method instead of memoizing during calls to avoid dealing with
 // concurrency and mutex overhead.
 func (o *PeerManagerOptions) optimize() {
-	o.persistentPeers = make(map[NodeID]bool, len(o.PersistentPeers))
+	o.persistentPeers = make(map[types.NodeID]bool, len(o.PersistentPeers))
 	for _, p := range o.PersistentPeers {
 		o.persistentPeers[p] = true
 	}
@@ -270,7 +271,7 @@ func (o *PeerManagerOptions) optimize() {
 // - EvictNext: pick peer from evict, mark as evicting.
 // - Disconnected: unmark connected, upgrading[from]=to, evict, evicting.
 type PeerManager struct {
-	selfID     NodeID
+	selfID     types.NodeID
 	options    PeerManagerOptions
 	rand       *rand.Rand
 	dialWaker  *tmsync.Waker // wakes up DialNext() on relevant peer changes
@@ -281,16 +282,16 @@ type PeerManager struct {
 	mtx           sync.Mutex
 	store         *peerStore
 	subscriptions map[*PeerUpdates]*PeerUpdates // keyed by struct identity (address)
-	dialing       map[NodeID]bool               // peers being dialed (DialNext → Dialed/DialFail)
-	upgrading     map[NodeID]NodeID             // peers claimed for upgrade (DialNext → Dialed/DialFail)
-	connected     map[NodeID]bool               // connected peers (Dialed/Accepted → Disconnected)
-	ready         map[NodeID]bool               // ready peers (Ready → Disconnected)
-	evict         map[NodeID]bool               // peers scheduled for eviction (Connected → EvictNext)
-	evicting      map[NodeID]bool               // peers being evicted (EvictNext → Disconnected)
+	dialing       map[types.NodeID]bool         // peers being dialed (DialNext → Dialed/DialFail)
+	upgrading     map[types.NodeID]types.NodeID // peers claimed for upgrade (DialNext → Dialed/DialFail)
+	connected     map[types.NodeID]bool         // connected peers (Dialed/Accepted → Disconnected)
+	ready         map[types.NodeID]bool         // ready peers (Ready → Disconnected)
+	evict         map[types.NodeID]bool         // peers scheduled for eviction (Connected → EvictNext)
+	evicting      map[types.NodeID]bool         // peers being evicted (EvictNext → Disconnected)
 }
 
 // NewPeerManager creates a new peer manager.
-func NewPeerManager(selfID NodeID, peerDB dbm.DB, options PeerManagerOptions) (*PeerManager, error) {
+func NewPeerManager(selfID types.NodeID, peerDB dbm.DB, options PeerManagerOptions) (*PeerManager, error) {
 	if selfID == "" {
 		return nil, errors.New("self ID not given")
 	}
@@ -314,12 +315,12 @@ func NewPeerManager(selfID NodeID, peerDB dbm.DB, options PeerManagerOptions) (*
 		closeCh:    make(chan struct{}),
 
 		store:         store,
-		dialing:       map[NodeID]bool{},
-		upgrading:     map[NodeID]NodeID{},
-		connected:     map[NodeID]bool{},
-		ready:         map[NodeID]bool{},
-		evict:         map[NodeID]bool{},
-		evicting:      map[NodeID]bool{},
+		dialing:       map[types.NodeID]bool{},
+		upgrading:     map[types.NodeID]types.NodeID{},
+		connected:     map[types.NodeID]bool{},
+		ready:         map[types.NodeID]bool{},
+		evict:         map[types.NodeID]bool{},
+		evicting:      map[types.NodeID]bool{},
 		subscriptions: map[*PeerUpdates]*PeerUpdates{},
 	}
 	if err = peerManager.configurePeers(); err != nil {
@@ -339,7 +340,7 @@ func (m *PeerManager) configurePeers() error {
 		return err
 	}
 
-	configure := map[NodeID]bool{}
+	configure := map[types.NodeID]bool{}
 	for _, id := range m.options.PersistentPeers {
 		configure[id] = true
 	}
@@ -364,7 +365,7 @@ func (m *PeerManager) configurePeer(peer peerInfo) peerInfo {
 }
 
 // newPeerInfo creates a peerInfo for a new peer.
-func (m *PeerManager) newPeerInfo(id NodeID) peerInfo {
+func (m *PeerManager) newPeerInfo(id types.NodeID) peerInfo {
 	peerInfo := peerInfo{
 		ID:          id,
 		AddressInfo: map[NodeAddress]*peerAddressInfo{},
@@ -434,11 +435,13 @@ func (m *PeerManager) Add(address NodeAddress) (bool, error) {
 
 // PeerRatio returns the ratio of peer addresses stored to the maximum size.
 func (m *PeerManager) PeerRatio() float64 {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
 	if m.options.MaxPeers == 0 {
 		return 0
 	}
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
+
 	return float64(m.store.Size()) / float64(m.options.MaxPeers)
 }
 
@@ -551,9 +554,10 @@ func (m *PeerManager) DialFailed(address NodeAddress) error {
 			case <-m.closeCh:
 			}
 		}()
+	} else {
+		m.dialWaker.Wake()
 	}
 
-	m.dialWaker.Wake()
 	return nil
 }
 
@@ -565,7 +569,7 @@ func (m *PeerManager) Dialed(address NodeAddress) error {
 
 	delete(m.dialing, address.NodeID)
 
-	var upgradeFromPeer NodeID
+	var upgradeFromPeer types.NodeID
 	for from, to := range m.upgrading {
 		if to == address.NodeID {
 			delete(m.upgrading, from)
@@ -636,7 +640,7 @@ func (m *PeerManager) Dialed(address NodeAddress) error {
 // that, we'll need to get the remote address after all, but as noted above that
 // can't be the remote endpoint since that will usually have the wrong port
 // number.
-func (m *PeerManager) Accepted(peerID NodeID) error {
+func (m *PeerManager) Accepted(peerID types.NodeID) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -659,7 +663,7 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 	// If all connections slots are full, but we allow upgrades (and we checked
 	// above that we have upgrade capacity), then we can look for a lower-scored
 	// peer to replace and if found accept the connection anyway and evict it.
-	var upgradeFromPeer NodeID
+	var upgradeFromPeer types.NodeID
 	if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
 		upgradeFromPeer = m.findUpgradeCandidate(peer.ID, peer.Score())
 		if upgradeFromPeer == "" {
@@ -684,7 +688,7 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 // peer must already be marked as connected. This is separate from Dialed() and
 // Accepted() to allow the router to set up its internal queues before reactors
 // start sending messages.
-func (m *PeerManager) Ready(peerID NodeID) {
+func (m *PeerManager) Ready(peerID types.NodeID) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -699,7 +703,7 @@ func (m *PeerManager) Ready(peerID NodeID) {
 
 // EvictNext returns the next peer to evict (i.e. disconnect). If no evictable
 // peers are found, the call will block until one becomes available.
-func (m *PeerManager) EvictNext(ctx context.Context) (NodeID, error) {
+func (m *PeerManager) EvictNext(ctx context.Context) (types.NodeID, error) {
 	for {
 		id, err := m.TryEvictNext()
 		if err != nil || id != "" {
@@ -715,7 +719,7 @@ func (m *PeerManager) EvictNext(ctx context.Context) (NodeID, error) {
 
 // TryEvictNext is equivalent to EvictNext, but immediately returns an empty
 // node ID if no evictable peers are found.
-func (m *PeerManager) TryEvictNext() (NodeID, error) {
+func (m *PeerManager) TryEvictNext() (types.NodeID, error) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -751,7 +755,7 @@ func (m *PeerManager) TryEvictNext() (NodeID, error) {
 
 // Disconnected unmarks a peer as connected, allowing it to be dialed or
 // accepted again as appropriate.
-func (m *PeerManager) Disconnected(peerID NodeID) {
+func (m *PeerManager) Disconnected(peerID types.NodeID) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -781,7 +785,7 @@ func (m *PeerManager) Disconnected(peerID NodeID) {
 //
 // FIXME: This will cause the peer manager to immediately try to reconnect to
 // the peer, which is probably not always what we want.
-func (m *PeerManager) Errored(peerID NodeID, err error) {
+func (m *PeerManager) Errored(peerID types.NodeID, err error) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -796,7 +800,7 @@ func (m *PeerManager) Errored(peerID NodeID, err error) {
 //
 // FIXME: This is fairly naïve and only returns the addresses of the
 // highest-ranked peers.
-func (m *PeerManager) Advertise(peerID NodeID, limit uint16) []NodeAddress {
+func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -921,7 +925,7 @@ func (m *PeerManager) Close() {
 
 // Addresses returns all known addresses for a peer, primarily for testing.
 // The order is arbitrary.
-func (m *PeerManager) Addresses(peerID NodeID) []NodeAddress {
+func (m *PeerManager) Addresses(peerID types.NodeID) []NodeAddress {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -935,11 +939,11 @@ func (m *PeerManager) Addresses(peerID NodeID) []NodeAddress {
 }
 
 // Peers returns all known peers, primarily for testing. The order is arbitrary.
-func (m *PeerManager) Peers() []NodeID {
+func (m *PeerManager) Peers() []types.NodeID {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	peers := []NodeID{}
+	peers := []types.NodeID{}
 	for _, peer := range m.store.Ranked() {
 		peers = append(peers, peer.ID)
 	}
@@ -947,11 +951,11 @@ func (m *PeerManager) Peers() []NodeID {
 }
 
 // Scores returns the peer scores for all known peers, primarily for testing.
-func (m *PeerManager) Scores() map[NodeID]PeerScore {
+func (m *PeerManager) Scores() map[types.NodeID]PeerScore {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	scores := map[NodeID]PeerScore{}
+	scores := map[types.NodeID]PeerScore{}
 	for _, peer := range m.store.Ranked() {
 		scores[peer.ID] = peer.Score()
 	}
@@ -959,7 +963,7 @@ func (m *PeerManager) Scores() map[NodeID]PeerScore {
 }
 
 // Status returns the status for a peer, primarily for testing.
-func (m *PeerManager) Status(id NodeID) PeerStatus {
+func (m *PeerManager) Status(id types.NodeID) PeerStatus {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 	switch {
@@ -974,7 +978,7 @@ func (m *PeerManager) Status(id NodeID) PeerStatus {
 // to make room for the given peer. Returns an empty ID if none is found.
 // If the peer is already being upgraded to, we return that same upgrade.
 // The caller must hold the mutex lock.
-func (m *PeerManager) findUpgradeCandidate(id NodeID, score PeerScore) NodeID {
+func (m *PeerManager) findUpgradeCandidate(id types.NodeID, score PeerScore) types.NodeID {
 	for from, to := range m.upgrading {
 		if to == id {
 			return from
@@ -1030,7 +1034,7 @@ func (m *PeerManager) retryDelay(failures uint32, persistent bool) time.Duration
 // FIXME: This is a temporary workaround to share state between the consensus
 // and mempool reactors, carried over from the legacy P2P stack. Reactors should
 // not have dependencies on each other, instead tracking this themselves.
-func (m *PeerManager) GetHeight(peerID NodeID) int64 {
+func (m *PeerManager) GetHeight(peerID types.NodeID) int64 {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -1043,7 +1047,7 @@ func (m *PeerManager) GetHeight(peerID NodeID) int64 {
 // FIXME: This is a temporary workaround to share state between the consensus
 // and mempool reactors, carried over from the legacy P2P stack. Reactors should
 // not have dependencies on each other, instead tracking this themselves.
-func (m *PeerManager) SetHeight(peerID NodeID, height int64) error {
+func (m *PeerManager) SetHeight(peerID types.NodeID, height int64) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -1064,7 +1068,7 @@ func (m *PeerManager) SetHeight(peerID NodeID, height int64) error {
 // (without fsync, since we can afford to lose recent writes).
 type peerStore struct {
 	db     dbm.DB
-	peers  map[NodeID]*peerInfo
+	peers  map[types.NodeID]*peerInfo
 	ranked []*peerInfo // cache for Ranked(), nil invalidates cache
 }
 
@@ -1083,7 +1087,7 @@ func newPeerStore(db dbm.DB) (*peerStore, error) {
 
 // loadPeers loads all peers from the database into memory.
 func (s *peerStore) loadPeers() error {
-	peers := map[NodeID]*peerInfo{}
+	peers := map[types.NodeID]*peerInfo{}
 
 	start, end := keyPeerInfoRange()
 	iter, err := s.db.Iterator(start, end)
@@ -1114,7 +1118,7 @@ func (s *peerStore) loadPeers() error {
 
 // Get fetches a peer. The boolean indicates whether the peer existed or not.
 // The returned peer info is a copy, and can be mutated at will.
-func (s *peerStore) Get(id NodeID) (peerInfo, bool) {
+func (s *peerStore) Get(id types.NodeID) (peerInfo, bool) {
 	peer, ok := s.peers[id]
 	return peer.Copy(), ok
 }
@@ -1152,7 +1156,7 @@ func (s *peerStore) Set(peer peerInfo) error {
 }
 
 // Delete deletes a peer, or does nothing if it does not exist.
-func (s *peerStore) Delete(id NodeID) error {
+func (s *peerStore) Delete(id types.NodeID) error {
 	if _, ok := s.peers[id]; !ok {
 		return nil
 	}
@@ -1210,7 +1214,7 @@ func (s *peerStore) Size() int {
 
 // peerInfo contains peer information stored in a peerStore.
 type peerInfo struct {
-	ID            NodeID
+	ID            types.NodeID
 	AddressInfo   map[NodeAddress]*peerAddressInfo
 	LastConnected time.Time
 
@@ -1226,7 +1230,7 @@ type peerInfo struct {
 // erroring if the data is invalid.
 func peerInfoFromProto(msg *p2pproto.PeerInfo) (*peerInfo, error) {
 	p := &peerInfo{
-		ID:          NodeID(msg.ID),
+		ID:          types.NodeID(msg.ID),
 		AddressInfo: map[NodeAddress]*peerAddressInfo{},
 	}
 	if msg.LastConnected != nil {
@@ -1363,7 +1367,7 @@ const (
 )
 
 // keyPeerInfo generates a peerInfo database key.
-func keyPeerInfo(id NodeID) []byte {
+func keyPeerInfo(id types.NodeID) []byte {
 	key, err := orderedcode.Append(nil, prefixPeerInfo, string(id))
 	if err != nil {
 		panic(err)

@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/types"
@@ -20,7 +19,7 @@ func init() {
 }
 
 type testPeer struct {
-	id        p2p.NodeID
+	id        types.NodeID
 	base      int64
 	height    int64
 	inputChan chan inputData // make sure each peer's data is sequential
@@ -50,7 +49,7 @@ func (p testPeer) simulateInput(input inputData) {
 	// input.t.Logf("Added block from peer %v (height: %v)", input.request.PeerID, input.request.Height)
 }
 
-type testPeers map[p2p.NodeID]testPeer
+type testPeers map[types.NodeID]testPeer
 
 func (ps testPeers) start() {
 	for _, v := range ps {
@@ -67,7 +66,7 @@ func (ps testPeers) stop() {
 func makePeers(numPeers int, minHeight, maxHeight int64) testPeers {
 	peers := make(testPeers, numPeers)
 	for i := 0; i < numPeers; i++ {
-		peerID := p2p.NodeID(tmrand.Str(12))
+		peerID := types.NodeID(tmrand.Str(12))
 		height := minHeight + mrand.Int63n(maxHeight-minHeight)
 		base := minHeight + int64(i)
 		if base > height {
@@ -183,7 +182,7 @@ func TestBlockPoolTimeout(t *testing.T) {
 
 	// Pull from channels
 	counter := 0
-	timedOut := map[p2p.NodeID]struct{}{}
+	timedOut := map[types.NodeID]struct{}{}
 	for {
 		select {
 		case err := <-errorsCh:
@@ -204,7 +203,7 @@ func TestBlockPoolTimeout(t *testing.T) {
 func TestBlockPoolRemovePeer(t *testing.T) {
 	peers := make(testPeers, 10)
 	for i := 0; i < 10; i++ {
-		peerID := p2p.NodeID(fmt.Sprintf("%d", i+1))
+		peerID := types.NodeID(fmt.Sprintf("%d", i+1))
 		height := int64(i + 1)
 		peers[peerID] = testPeer{peerID, 0, height, make(chan inputData)}
 	}
@@ -228,10 +227,10 @@ func TestBlockPoolRemovePeer(t *testing.T) {
 	assert.EqualValues(t, 10, pool.MaxPeerHeight())
 
 	// remove not-existing peer
-	assert.NotPanics(t, func() { pool.RemovePeer(p2p.NodeID("Superman")) })
+	assert.NotPanics(t, func() { pool.RemovePeer(types.NodeID("Superman")) })
 
 	// remove peer with biggest height
-	pool.RemovePeer(p2p.NodeID("10"))
+	pool.RemovePeer(types.NodeID("10"))
 	assert.EqualValues(t, 9, pool.MaxPeerHeight())
 
 	// remove all peers

@@ -14,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/types"
 )
 
 // transportFactory is used to set up transports for tests.
@@ -241,21 +242,25 @@ func TestConnection_Handshake(t *testing.T) {
 
 		// A handshake should pass the given keys and NodeInfo.
 		aKey := ed25519.GenPrivKey()
-		aInfo := p2p.NodeInfo{
-			NodeID:          p2p.NodeIDFromPubKey(aKey.PubKey()),
-			ProtocolVersion: p2p.NewProtocolVersion(1, 2, 3),
-			ListenAddr:      "listenaddr",
-			Network:         "network",
-			Version:         "1.2.3",
-			Channels:        bytes.HexBytes([]byte{0xf0, 0x0f}),
-			Moniker:         "moniker",
-			Other: p2p.NodeInfoOther{
+		aInfo := types.NodeInfo{
+			NodeID: types.NodeIDFromPubKey(aKey.PubKey()),
+			ProtocolVersion: types.ProtocolVersion{
+				P2P:   1,
+				Block: 2,
+				App:   3,
+			},
+			ListenAddr: "listenaddr",
+			Network:    "network",
+			Version:    "1.2.3",
+			Channels:   bytes.HexBytes([]byte{0xf0, 0x0f}),
+			Moniker:    "moniker",
+			Other: types.NodeInfoOther{
 				TxIndex:    "txindex",
 				RPCAddress: "rpc.domain.com",
 			},
 		}
 		bKey := ed25519.GenPrivKey()
-		bInfo := p2p.NodeInfo{NodeID: p2p.NodeIDFromPubKey(bKey.PubKey())}
+		bInfo := types.NodeInfo{NodeID: types.NodeIDFromPubKey(bKey.PubKey())}
 
 		errCh := make(chan error, 1)
 		go func() {
@@ -286,7 +291,7 @@ func TestConnection_HandshakeCancel(t *testing.T) {
 		ab, ba := dialAccept(t, a, b)
 		timeoutCtx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 		cancel()
-		_, _, err := ab.Handshake(timeoutCtx, p2p.NodeInfo{}, ed25519.GenPrivKey())
+		_, _, err := ab.Handshake(timeoutCtx, types.NodeInfo{}, ed25519.GenPrivKey())
 		require.Error(t, err)
 		require.Equal(t, context.Canceled, err)
 		_ = ab.Close()
@@ -296,7 +301,7 @@ func TestConnection_HandshakeCancel(t *testing.T) {
 		ab, ba = dialAccept(t, a, b)
 		timeoutCtx, cancel = context.WithTimeout(ctx, 200*time.Millisecond)
 		defer cancel()
-		_, _, err = ab.Handshake(timeoutCtx, p2p.NodeInfo{}, ed25519.GenPrivKey())
+		_, _, err = ab.Handshake(timeoutCtx, types.NodeInfo{}, ed25519.GenPrivKey())
 		require.Error(t, err)
 		require.Equal(t, context.DeadlineExceeded, err)
 		_ = ab.Close()
@@ -437,7 +442,7 @@ func TestEndpoint_NodeAddress(t *testing.T) {
 		ip4    = []byte{1, 2, 3, 4}
 		ip4in6 = net.IPv4(1, 2, 3, 4)
 		ip6    = []byte{0xb1, 0x0c, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01}
-		id     = p2p.NodeID("00112233445566778899aabbccddeeff00112233")
+		id     = types.NodeID("00112233445566778899aabbccddeeff00112233")
 	)
 
 	testcases := []struct {
@@ -492,7 +497,7 @@ func TestEndpoint_String(t *testing.T) {
 		ip4    = []byte{1, 2, 3, 4}
 		ip4in6 = net.IPv4(1, 2, 3, 4)
 		ip6    = []byte{0xb1, 0x0c, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01}
-		nodeID = p2p.NodeID("00112233445566778899aabbccddeeff00112233")
+		nodeID = types.NodeID("00112233445566778899aabbccddeeff00112233")
 	)
 
 	testcases := []struct {
@@ -618,13 +623,13 @@ func dialAcceptHandshake(t *testing.T, a, b p2p.Transport) (p2p.Connection, p2p.
 	errCh := make(chan error, 1)
 	go func() {
 		privKey := ed25519.GenPrivKey()
-		nodeInfo := p2p.NodeInfo{NodeID: p2p.NodeIDFromPubKey(privKey.PubKey())}
+		nodeInfo := types.NodeInfo{NodeID: types.NodeIDFromPubKey(privKey.PubKey())}
 		_, _, err := ba.Handshake(ctx, nodeInfo, privKey)
 		errCh <- err
 	}()
 
 	privKey := ed25519.GenPrivKey()
-	nodeInfo := p2p.NodeInfo{NodeID: p2p.NodeIDFromPubKey(privKey.PubKey())}
+	nodeInfo := types.NodeInfo{NodeID: types.NodeIDFromPubKey(privKey.PubKey())}
 	_, _, err := ab.Handshake(ctx, nodeInfo, privKey)
 	require.NoError(t, err)
 
