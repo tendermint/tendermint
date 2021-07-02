@@ -66,6 +66,8 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
     Some core types have been kept in the `mempool` package such as `TxCache` and it's implementations, the `Mempool` interface itself
     and `TxInfo`. (@alexanderbez)
   - [crypto/sr25519] \#6526 Do not re-execute the Ed25519-style key derivation step when doing signing and verification.  The derivation is now done once and only once.  This breaks `sr25519.GenPrivKeyFromSecret` output compatibility. (@Yawning)
+  - [types] \#6627 Move `NodeKey` to types to make the type public. 
+  - [config] \#6627 Extend `config` to contain methods `LoadNodeKeyID` and `LoadorGenNodeKeyID`
 
 - Blockchain Protocol
 
