@@ -170,7 +170,7 @@ func MakeSwitch(
 	opts ...SwitchOption,
 ) *Switch {
 
-	nodeKey := GenNodeKey()
+	nodeKey := types.GenNodeKey()
 	nodeInfo := testNodeInfo(nodeKey.ID, fmt.Sprintf("node%d", i))
 	addr, err := types.NewNetAddressString(
 		nodeKey.ID.AddressString(nodeInfo.ListenAddr),
