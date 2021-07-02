@@ -70,6 +70,10 @@ func Setup(testnet *e2e.Testnet) error {
 			return fmt.Errorf("node has unsupported node type: %s", node.Mode)
 		}
 
+		if node.ProTxHash != nil {
+			genesis.NodeProTxHash = &node.ProTxHash
+		}
+
 		nodeDir := filepath.Join(testnet.Dir, node.Name)
 
 		dirs := []string{
@@ -261,6 +265,8 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.DBBackend = node.Database
 	cfg.StateSync.DiscoveryTime = 5 * time.Second
 	cfg.Consensus.AppHashSize = crypto.DefaultHashSize
+	cfg.BaseConfig.LogLevel = "debug"
+
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:
 		cfg.ProxyApp = AppAddressUNIX
@@ -477,9 +483,9 @@ func newFilePVFromNode(node *e2e.Node, nodeDir string) (*privval.FilePV, error) 
 	)
 }
 
-func pubkeyResettingModificator(val bool) func(genesis map[e2e.Mode]types.GenesisDoc) {
+func pubkeyResettingModificator(isValidator bool) func(genesis map[e2e.Mode]types.GenesisDoc) {
 	return func(genesis map[e2e.Mode]types.GenesisDoc) {
-		if val {
+		if isValidator {
 			resetPubkey(genesis[e2e.ModeFull].Validators)
 		}
 	}

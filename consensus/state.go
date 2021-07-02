@@ -2135,15 +2135,23 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID, from
 				// Move onto the next step
 				// We should allow old blocks if we are recovering from replay
 				allowOldBlocks := fromReplay
+				cs.Logger.Debug("entering prevote after complete proposal", "height", cs.ProposalBlock.Height,
+					"hash", cs.ProposalBlock.Hash())
 				cs.enterPrevote(height, cs.Round, allowOldBlocks)
 				if hasThreshold { // this is optimisation as this will be triggered when prevote is added
+					cs.Logger.Debug("entering precommit after complete proposal with threshold received", "height", cs.ProposalBlock.Height,
+						"hash", cs.ProposalBlock.Hash())
 					cs.enterPrecommit(height, cs.Round)
 				}
 			} else if cs.Step == cstypes.RoundStepApplyCommit {
 				// If we're waiting on the proposal block...
+				cs.Logger.Debug("trying to finalize commit after complete proposal", "height", cs.ProposalBlock.Height,
+					"hash", cs.ProposalBlock.Hash())
 				cs.tryFinalizeCommit(height)
 			}
 		} else {
+			cs.Logger.Debug("adding commit after complete proposal", "height", cs.ProposalBlock.Height,
+				"hash", cs.ProposalBlock.Hash())
 			// We received a commit before the block
 			added, err := cs.addCommit(cs.Commit)
 			if err != nil {
