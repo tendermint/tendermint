@@ -327,6 +327,16 @@ func TestRouter_AcceptPeers(t *testing.T) {
 		"empty handshake": {types.NodeInfo{}, nil, false},
 		"invalid key":     {peerInfo, selfKey.PubKey(), false},
 		"self handshake":  {selfInfo, selfKey.PubKey(), false},
+		"incompatible peer": {
+			types.NodeInfo{
+				NodeID:     peerID,
+				ListenAddr: "0.0.0.0:0",
+				Network:    "other-network",
+				Moniker:    string(peerID),
+			},
+			peerKey.PubKey(),
+			false,
+		},
 	}
 	for name, tc := range testcases {
 		tc := tc
@@ -532,6 +542,18 @@ func TestRouter_DialPeers(t *testing.T) {
 		"invalid key":        {peerInfo.NodeID, peerInfo, selfKey.PubKey(), nil, false},
 		"unexpected node ID": {peerInfo.NodeID, selfInfo, selfKey.PubKey(), nil, false},
 		"dial error":         {peerInfo.NodeID, peerInfo, peerKey.PubKey(), errors.New("boom"), false},
+		"incompatible peer": {
+			peerInfo.NodeID,
+			types.NodeInfo{
+				NodeID:     peerID,
+				ListenAddr: "0.0.0.0:0",
+				Network:    "other-network",
+				Moniker:    string(peerID),
+			},
+			peerKey.PubKey(),
+			nil,
+			false,
+		},
 	}
 	for name, tc := range testcases {
 		tc := tc

@@ -690,12 +690,15 @@ func (sw *Switch) acceptRoutine() {
 			}
 			switch err := err.(type) {
 			case ErrRejected:
+				addr := err.Addr()
 				if err.IsSelf() {
 					// Remove the given address from the address book and add to our addresses
 					// to avoid dialing in the future.
-					addr := err.Addr()
 					sw.addrBook.RemoveAddress(&addr)
 					sw.addrBook.AddOurAddress(&addr)
+				}
+				if err.IsIncompatible() {
+					sw.addrBook.RemoveAddress(&addr)
 				}
 
 				sw.Logger.Info(
@@ -822,9 +825,12 @@ func (sw *Switch) addOutboundPeerWithConfig(
 				// to avoid dialing in the future.
 				sw.addrBook.RemoveAddress(addr)
 				sw.addrBook.AddOurAddress(addr)
-
-				return err
 			}
+			if e.IsIncompatible() {
+				sw.addrBook.RemoveAddress(addr)
+			}
+
+			return err
 		}
 
 		// retry persistent peers after
