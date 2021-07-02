@@ -730,7 +730,7 @@ func (cs *State) newStep() {
 			cs.Logger.Error("failed publishing new round step", "err", err)
 		}
 
-		cs.evsw.FireEvent(types.EventNewRoundStep, &cs.RoundState)
+		cs.evsw.FireEvent(types.EventNewRoundStepValue, &cs.RoundState)
 	}
 }
 
@@ -1560,7 +1560,7 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 				logger.Error("failed publishing valid block", "err", err)
 			}
 
-			cs.evsw.FireEvent(types.EventValidBlock, &cs.RoundState)
+			cs.evsw.FireEvent(types.EventValidBlockValue, &cs.RoundState)
 		}
 	}
 }
@@ -2020,7 +2020,7 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 			return added, err
 		}
 
-		cs.evsw.FireEvent(types.EventVote, vote)
+		cs.evsw.FireEvent(types.EventVoteValue, vote)
 
 		// if we can skip timeoutCommit and have all the votes now,
 		if cs.config.SkipTimeoutCommit && cs.LastCommit.HasAll() {
@@ -2049,7 +2049,7 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 	if err := cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote}); err != nil {
 		return added, err
 	}
-	cs.evsw.FireEvent(types.EventVote, vote)
+	cs.evsw.FireEvent(types.EventVoteValue, vote)
 
 	switch vote.Type {
 	case tmproto.PrevoteType:
@@ -2103,7 +2103,7 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 					cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
 				}
 
-				cs.evsw.FireEvent(types.EventValidBlock, &cs.RoundState)
+				cs.evsw.FireEvent(types.EventValidBlockValue, &cs.RoundState)
 				if err := cs.eventBus.PublishEventValidBlock(cs.RoundStateEvent()); err != nil {
 					return added, err
 				}
