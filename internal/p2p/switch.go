@@ -104,7 +104,7 @@ type Switch struct {
 	dialing      *cmap.CMap
 	reconnecting *cmap.CMap
 	nodeInfo     types.NodeInfo // our node info
-	nodeKey      NodeKey        // our node privkey
+	nodeKey      types.NodeKey  // our node privkey
 	addrBook     AddrBook
 	// peers addresses with whom we'll maintain constant connection
 	persistentPeersAddrs []*NetAddress
@@ -254,7 +254,7 @@ func (sw *Switch) NodeInfo() types.NodeInfo {
 
 // SetNodeKey sets the switch's private key for authenticated encryption.
 // NOTE: Not goroutine safe.
-func (sw *Switch) SetNodeKey(nodeKey NodeKey) {
+func (sw *Switch) SetNodeKey(nodeKey types.NodeKey) {
 	sw.nodeKey = nodeKey
 }
 
