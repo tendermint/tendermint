@@ -594,12 +594,8 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 	// message to make sure both ends have accepted the connection, such
 	// that it can be coordinated with the peer manager.
 	peerInfo, _, err := r.handshakePeer(ctx, conn, "")
-	var errRejected ErrRejected
 	switch {
 	case errors.Is(err, context.Canceled):
-		return
-	case errors.As(err, &errRejected) && errRejected.IsIncompatible():
-		r.logger.Error("peer rejected due to incompatibility", "node", peerInfo.NodeID, "err", err)
 		return
 	case err != nil:
 		r.logger.Error("peer handshake failed", "endpoint", conn, "err", err)
