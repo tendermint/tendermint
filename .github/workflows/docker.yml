@@ -43,7 +43,7 @@ jobs:
 
       - name: Set Docker tags and labels
         id: docker_meta
-        uses: crazy-max/ghaction-docker-meta@v2
+        uses: docker/metadata-action@v3
         with:
           images: dashpay/tenderdash
           tags: |
