@@ -225,7 +225,7 @@ func (conR *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 // NOTE: blocks on consensus state for proposals, block parts, and votes
 func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	if !conR.IsRunning() {
-		conR.Logger.Debug("Receive", "src", src, "chId", chID, "bytes", msgBytes)
+		conR.Logger.P2PDebug("Receive", "src", src, "chId", chID, "bytes", msgBytes)
 		return
 	}
 
@@ -242,7 +242,7 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		return
 	}
 
-	conR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
+	conR.Logger.P2PDebug("Receive", "src", src, "chId", chID, "msg", msg)
 
 	// Get peer states
 	ps, ok := src.Get(types.PeerStateKey).(*PeerState)
@@ -1260,13 +1260,13 @@ func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.Sign
 		fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
 		"H/R",
 		fmt.Sprintf("%d/%d", height, round))
-	logger.Debug("setHasVote", "type", voteType, "index", index)
 
 	// NOTE: some may be nil BitArrays -> no side effects.
 	psVotes := ps.getVoteBitArray(height, round, voteType)
 	if psVotes != nil {
 		psVotes.SetIndex(int(index), true)
 	}
+	logger.Debug("peerState setHasVote Maverick", "type", voteType, "index", index, "peer votes", psVotes)
 }
 
 // SetHasCommit sets the given vote as known by the peer

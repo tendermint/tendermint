@@ -173,7 +173,7 @@ func (memR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		memR.Switch.StopPeerForError(src, err)
 		return
 	}
-	memR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
+	memR.Logger.P2PDebug("Receive", "src", src, "chId", chID, "msg", msg)
 
 	txInfo := TxInfo{SenderID: memR.ids.GetForPeer(src)}
 	if src != nil {
@@ -182,7 +182,7 @@ func (memR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	for _, tx := range msg.Txs {
 		err = memR.mempool.CheckTx(tx, nil, txInfo)
 		if err == ErrTxInCache {
-			memR.Logger.Debug("Tx already exists in cache", "tx", txID(tx))
+			memR.Logger.P2PDebug("Tx already exists in cache", "tx", txID(tx))
 		} else if err != nil {
 			memR.Logger.Info("Could not check tx", "tx", txID(tx), "err", err)
 		}

@@ -264,7 +264,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.DBBackend = node.Database
 	cfg.StateSync.DiscoveryTime = 5 * time.Second
 	cfg.Consensus.AppHashSize = crypto.DefaultHashSize
-	// cfg.BaseConfig.LogLevel = "debug"
+	cfg.BaseConfig.LogLevel = "debug"
 
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:

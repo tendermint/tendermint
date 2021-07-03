@@ -2,6 +2,7 @@ package mockcoreserver
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/dashevo/dashd-go/btcjson"
 )
@@ -54,7 +55,9 @@ func WithQuorumSignMethod(cs CoreServer, times int) MethodFunc {
 func WithQuorumVerifyMethod(cs CoreServer, times int) MethodFunc {
 	call := OnMethod(func(req btcjson.Request) (interface{}, error) {
 		cmd := btcjson.QuorumCmd{}
+		fmt.Printf("request is %v\n", req)
 		err := unmarshalCmd(req, &cmd.SubCmd, &cmd.LLMQType, &cmd.RequestID, &cmd.MessageHash, &cmd.Signature, &cmd.QuorumHash)
+		fmt.Printf("cmd is %v\n", cmd)
 		if err != nil {
 			return nil, err
 		}

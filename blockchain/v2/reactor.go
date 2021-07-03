@@ -472,7 +472,7 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		return
 	}
 
-	r.logger.Debug("Receive", "src", src.ID(), "chID", chID, "msg", msg)
+	r.logger.P2PDebug("Receive", "src", src.ID(), "chID", chID, "msg", msg)
 
 	switch msg := msg.(type) {
 	case *bcproto.StatusRequest:
