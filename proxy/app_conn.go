@@ -22,6 +22,9 @@ type AppConnConsensus interface {
 	DeliverTxAsync(context.Context, types.RequestDeliverTx) (*abcicli.ReqRes, error)
 	EndBlockSync(context.Context, types.RequestEndBlock) (*types.ResponseEndBlock, error)
 	CommitSync(context.Context) (*types.ResponseCommit, error)
+
+	VoteExtensionSync(context.Context, types.RequestVoteExtension) (*types.ResponseVoteExtension, error)
+	VerifyVoteExtensionSync(context.Context, types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error)
 }
 
 type AppConnMempool interface {
@@ -100,6 +103,14 @@ func (app *appConnConsensus) EndBlockSync(
 
 func (app *appConnConsensus) CommitSync(ctx context.Context) (*types.ResponseCommit, error) {
 	return app.appConn.CommitSync(ctx)
+}
+
+func (app *appConnConsensus) VoteExtensionSync(ctx context.Context) (*types.ResponseVoteExtension, error) {
+	return app.appConn.VoteExtensionSync(ctx)
+}
+
+func (app *appConnConsensus) VerifyVoteExtensionSync(ctx context.Context) (*types.ResponseVerifyVoteExtension, error) {
+	return app.appConn.VerifyVoteExtensionSync(ctx)
 }
 
 //------------------------------------------------

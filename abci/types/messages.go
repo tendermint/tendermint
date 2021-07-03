@@ -114,6 +114,18 @@ func ToRequestApplySnapshotChunk(req RequestApplySnapshotChunk) *Request {
 	}
 }
 
+func ToRequestVoteExtension(req RequestVoteExtension) *Request {
+	return &Request{
+		Value: &Request_VoteExtension{&req},
+	}
+}
+
+func ToRequestVerifyVoteExtension(req RequestVerifyVoteExtension) *Request {
+	return &Request{
+		Value: &Request_VerifyVoteExtension{&req},
+	}
+}
+
 //----------------------------------------
 
 func ToResponseException(errStr string) *Response {
@@ -202,5 +214,17 @@ func ToResponseLoadSnapshotChunk(res ResponseLoadSnapshotChunk) *Response {
 func ToResponseApplySnapshotChunk(res ResponseApplySnapshotChunk) *Response {
 	return &Response{
 		Value: &Response_ApplySnapshotChunk{&res},
+	}
+}
+
+func ToResponseVoteExtension(res ResponseVoteExtension) *Response {
+	return &Response{
+		Value: &Response_VoteExtension{&res},
+	}
+}
+
+func ToResponseVerifyVoteExtension(res ResponseVerifyVoteExtension) *Response {
+	return &Response{
+		Value: &Response_VerifyVoteExtension{&res},
 	}
 }

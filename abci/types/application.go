@@ -17,11 +17,13 @@ type Application interface {
 	CheckTx(RequestCheckTx) ResponseCheckTx // Validate a tx for the mempool
 
 	// Consensus Connection
-	InitChain(RequestInitChain) ResponseInitChain    // Initialize blockchain w validators/other info from TendermintCore
-	BeginBlock(RequestBeginBlock) ResponseBeginBlock // Signals the beginning of a block
-	DeliverTx(RequestDeliverTx) ResponseDeliverTx    // Deliver a tx for full processing
-	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
-	Commit() ResponseCommit                          // Commit the state and return the application Merkle root hash
+	InitChain(RequestInitChain) ResponseInitChain     // Initialize blockchain w validators/other info from TendermintCore
+	BeginBlock(RequestBeginBlock) ResponseBeginBlock  // Signals the beginning of a block
+	DeliverTx(RequestDeliverTx) ResponseDeliverTx     // Deliver a tx for full processing
+	EndBlock(RequestEndBlock) ResponseEndBlock        // Signals the end of a block, returns changes to the validator set
+	Commit() ResponseCommit                           // Commit the state and return the application Merkle root hash
+	VoteExtension() ResponseVoteExtension             // Create application specific vote extension
+	VerifyVoteExtension() ResponseVerifyVoteExtension // Verify created vote extension
 
 	// State Sync Connection
 	ListSnapshots(RequestListSnapshots) ResponseListSnapshots                // List available snapshots
@@ -56,6 +58,14 @@ func (BaseApplication) CheckTx(req RequestCheckTx) ResponseCheckTx {
 
 func (BaseApplication) Commit() ResponseCommit {
 	return ResponseCommit{}
+}
+
+func (BaseApplication) VoteExtension(req RequestVoteExtension) ResponseVoteExtension {
+	return ResponseVoteExtension{}
+}
+
+func (BaseApplication) VerifyVoteExtension(req RequestVerifyVoteExtension) ResponseVerifyVoteExtension {
+	return ResponseVerifyVoteExtension{Code: CodeTypeOK}
 }
 
 func (BaseApplication) Query(req RequestQuery) ResponseQuery {

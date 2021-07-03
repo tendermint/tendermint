@@ -171,3 +171,5 @@ func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.Respo
 
 	return resQuery
 }
+
+// XXX: add voteext

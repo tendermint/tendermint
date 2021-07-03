@@ -204,6 +204,34 @@ func (app *localClient) ApplySnapshotChunkAsync(
 	), nil
 }
 
+func (app *localClient) VoteExtension(
+	ctx context.Context,
+	req types.RequestVoteExtension,
+) (*ReqRes, error) {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res := app.Application.VoteExtension(req)
+	return app.callback(
+		types.ToRequestVoteExtension(req),
+		types.ToResponseVoteExtension(res),
+	), nil
+}
+
+func (app *localClient) VerifyVoteExtension(
+	ctx context.Context,
+	req types.RequestVerifyVoteExtension,
+) (*ReqRes, error) {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res := app.Application.VerifyVoteExtension(req)
+	return app.callback(
+		types.ToRequestVerifyVoteExtension(req),
+		types.ToResponseVerifyVoteExtension(res),
+	), nil
+}
+
 //-------------------------------------------------------
 
 func (app *localClient) FlushSync(ctx context.Context) error {
@@ -343,6 +371,28 @@ func (app *localClient) ApplySnapshotChunkSync(
 	defer app.mtx.Unlock()
 
 	res := app.Application.ApplySnapshotChunk(req)
+	return &res, nil
+}
+
+func (app *localClient) VoteExtension(
+	ctx context.Context,
+	req types.RequestVoteExtension) (*types.ResponseVoteExtension, error) {
+
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res := app.Application.ApplyVoteExtension(req)
+	return &res, nil
+}
+
+func (app *localClient) VerifyVoteExtension(
+	ctx context.Context,
+	req types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
+
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res := app.Application.ApplyVerifyVoteExtension(req)
 	return &res, nil
 }
 
