@@ -102,7 +102,7 @@ message Vote {
   bytes validator_address = 6;
   int32 validator_index   = 7;
   bytes signature         = 8;
-  VoteExtension extension = 9;
+  VoteExtension vote_extension = 9;
 }
 
 message VoteExtension {

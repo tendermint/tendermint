@@ -22,8 +22,8 @@ type Application interface {
 	DeliverTx(RequestDeliverTx) ResponseDeliverTx     // Deliver a tx for full processing
 	EndBlock(RequestEndBlock) ResponseEndBlock        // Signals the end of a block, returns changes to the validator set
 	Commit() ResponseCommit                           // Commit the state and return the application Merkle root hash
-	VoteExtension() ResponseVoteExtension             // Create application specific vote extension
-	VerifyVoteExtension() ResponseVerifyVoteExtension // Verify created vote extension
+	VoteExtension(RequestVoteExtension) ResponseVoteExtension             // Create application specific vote extension
+	VerifyVoteExtension(RequestVerifyVoteExtension) ResponseVerifyVoteExtension // Verify created vote extension
 
 	// State Sync Connection
 	ListSnapshots(RequestListSnapshots) ResponseListSnapshots                // List available snapshots

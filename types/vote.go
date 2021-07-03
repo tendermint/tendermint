@@ -45,6 +45,11 @@ func NewConflictingVoteError(vote1, vote2 *Vote) *ErrVoteConflictingVotes {
 // Address is hex bytes.
 type Address = crypto.Address
 
+type VoteExtension struct {
+	AppDataSigned             []byte `json:"app_data_signed"`
+	AppDataSelfAuthenticating []byte `json:"app_data_self_authenticating"`
+}
+
 // Vote represents a prevote, precommit, or commit vote from validators for
 // consensus.
 type Vote struct {
@@ -56,6 +61,7 @@ type Vote struct {
 	ValidatorAddress Address               `json:"validator_address"`
 	ValidatorIndex   int32                 `json:"validator_index"`
 	Signature        []byte                `json:"signature"`
+	VoteExtension    VoteExtension         `json:"vote_extension"`
 }
 
 // CommitSig converts the Vote to a CommitSig.
@@ -201,6 +207,17 @@ func (vote *Vote) ValidateBasic() error {
 	return nil
 }
 
+func (ext *VoteExtension) ToProto() *tmproto.VoteExtension {
+	if ext == nil {
+		return nil
+	}
+
+	return &tmproto.VoteExtension{
+		AppDataSigned:             ext.AppDataSigned,
+		AppDataSelfAuthenticating: ext.AppDataSelfAuthenticating,
+	}
+}
+
 // ToProto converts the handwritten type to proto generated type
 // return type, nil if everything converts safely, otherwise nil, error
 func (vote *Vote) ToProto() *tmproto.Vote {
@@ -217,6 +234,7 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 		ValidatorAddress: vote.ValidatorAddress,
 		ValidatorIndex:   vote.ValidatorIndex,
 		Signature:        vote.Signature,
+		VoteExtension:    vote.VoteExtension.ToProto(),
 	}
 }
 
@@ -232,6 +250,12 @@ func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 		return nil, err
 	}
 
+	ext := VoteExtension{}
+	if pv.VoteExtension != nil {
+		ext.AppDataSigned = pv.VoteExtension.AppDataSigned
+		ext.AppDataSelfAuthenticating = pv.VoteExtension.AppDataSelfAuthenticating
+	}
+
 	vote := new(Vote)
 	vote.Type = pv.Type
 	vote.Height = pv.Height
@@ -241,6 +265,7 @@ func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 	vote.ValidatorAddress = pv.ValidatorAddress
 	vote.ValidatorIndex = pv.ValidatorIndex
 	vote.Signature = pv.Signature
+	vote.VoteExtension = ext
 
 	return vote, vote.ValidateBasic()
 }
