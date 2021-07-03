@@ -220,7 +220,6 @@ func initFilesWithConfig(config *cfg.Config) error {
 			return fmt.Errorf("can't get proTxHash maverick init files with config: %w", err)
 		}
 		genDoc.Validators = []types.GenesisValidator{{
-			Address:   pubKey.Address(),
 			PubKey:    pubKey,
 			ProTxHash: proTxHash,
 			Power:     types.DefaultDashVotingPower,

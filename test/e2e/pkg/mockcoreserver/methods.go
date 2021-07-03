@@ -50,6 +50,25 @@ func WithQuorumSignMethod(cs CoreServer, times int) MethodFunc {
 	}
 }
 
+// WithQuorumVerifyMethod ...
+func WithQuorumVerifyMethod(cs CoreServer, times int) MethodFunc {
+	call := OnMethod(func(req btcjson.Request) (interface{}, error) {
+		cmd := btcjson.QuorumCmd{}
+		err := unmarshalCmd(req, &cmd.SubCmd, &cmd.LLMQType, &cmd.RequestID, &cmd.MessageHash, &cmd.Signature, &cmd.QuorumHash)
+		if err != nil {
+			return nil, err
+		}
+		return cs.QuorumVerify(cmd), nil
+	})
+	return func(srv *JRPCServer) {
+		srv.
+			On("quorum verify").
+			Expect(And(Debug())).
+			Times(times).
+			Respond(call, JsonContentType())
+	}
+}
+
 // WithMasternodeMethod ...
 func WithMasternodeMethod(cs CoreServer, times int) MethodFunc {
 	call := OnMethod(func(req btcjson.Request) (interface{}, error) {

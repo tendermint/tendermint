@@ -15,6 +15,7 @@ import (
 type CoreServer interface {
 	QuorumInfo(cmd btcjson.QuorumCmd) btcjson.QuorumInfoResult
 	QuorumSign(cmd btcjson.QuorumCmd) btcjson.QuorumSignResult
+	QuorumVerify(cmd btcjson.QuorumCmd) btcjson.QuorumVerifyResult
 	MasternodeStatus(cmd btcjson.MasternodeCmd) btcjson.MasternodeStatusResult
 	GetNetworkInfo(cmd btcjson.GetNetworkInfoCmd) btcjson.GetNetworkInfoResult
 }
@@ -117,6 +118,44 @@ func (c *MockCoreServer) QuorumSign(cmd btcjson.QuorumCmd) btcjson.QuorumSignRes
 	return res
 }
 
+// QuorumVerify returns a quorum-verify result
+func (c *MockCoreServer) QuorumVerify(cmd btcjson.QuorumCmd) btcjson.QuorumVerifyResult {
+	reqID, err := hex.DecodeString(strVal(cmd.RequestID))
+	if err != nil {
+		panic(err)
+	}
+	msgHash, err := hex.DecodeString(strVal(cmd.MessageHash))
+	if err != nil {
+		panic(err)
+	}
+
+	quorumHashBytes, err := hex.DecodeString(*cmd.QuorumHash)
+	if err != nil {
+		panic(err)
+	}
+	quorumHash := crypto.QuorumHash(quorumHashBytes)
+
+	signature, err := hex.DecodeString(*cmd.Signature)
+
+	signID := crypto.SignId(
+		*cmd.LLMQType,
+		bls12381.ReverseBytes(quorumHash),
+		bls12381.ReverseBytes(reqID),
+		bls12381.ReverseBytes(msgHash),
+	)
+	thresholdPublicKey, err := c.FilePV.GetThresholdPublicKey(quorumHash)
+	if err != nil {
+		panic(err)
+	}
+
+	signatureVerified := thresholdPublicKey.VerifySignatureDigest(signID, signature)
+
+	res := btcjson.QuorumVerifyResult{
+		Result: signatureVerified,
+	}
+	return res
+}
+
 // MasternodeStatus returns a masternode-status result
 func (c *MockCoreServer) MasternodeStatus(_ btcjson.MasternodeCmd) btcjson.MasternodeStatusResult {
 	proTxHash, err := c.FilePV.GetProTxHash()
@@ -137,18 +176,24 @@ func (c *MockCoreServer) GetNetworkInfo(_ btcjson.GetNetworkInfoCmd) btcjson.Get
 type StaticCoreServer struct {
 	QuorumInfoResult       btcjson.QuorumInfoResult
 	QuorumSignResult       btcjson.QuorumSignResult
+	QuorumVerifyResult     btcjson.QuorumVerifyResult
 	MasternodeStatusResult btcjson.MasternodeStatusResult
 	GetNetworkInfoResult   btcjson.GetNetworkInfoResult
 }
 
-// Quorum returns constant quorum-info result
+// QuorumInfo returns constant quorum-info result
 func (c *StaticCoreServer) QuorumInfo(_ btcjson.QuorumCmd) btcjson.QuorumInfoResult {
 	return c.QuorumInfoResult
 }
 
-// Quorum returns constant quorum-sign result
+// QuorumSign returns constant quorum-sign result
 func (c *StaticCoreServer) QuorumSign(_ btcjson.QuorumCmd) btcjson.QuorumSignResult {
 	return c.QuorumSignResult
+}
+
+// QuorumVerify returns constant quorum-sign result
+func (c *StaticCoreServer) QuorumVerify(_ btcjson.QuorumCmd) btcjson.QuorumVerifyResult {
+	return c.QuorumVerifyResult
 }
 
 // MasternodeStatus returns constant masternode-status result

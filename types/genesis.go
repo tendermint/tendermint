@@ -1,7 +1,6 @@
 package types
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,7 +31,6 @@ const (
 
 // GenesisValidator is an initial validator.
 type GenesisValidator struct {
-	Address   Address          `json:"address"`
 	PubKey    crypto.PubKey    `json:"pub_key"`
 	Power     int64            `json:"power"`
 	Name      string           `json:"name"`
@@ -106,15 +104,9 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		return err
 	}
 
-	for i, v := range genDoc.Validators {
+	for _, v := range genDoc.Validators {
 		if v.Power == 0 {
 			return fmt.Errorf("the genesis file cannot contain validators with no voting power: %v", v)
-		}
-		if len(v.Address) > 0 && !bytes.Equal(v.PubKey.Address(), v.Address) {
-			return fmt.Errorf("incorrect address for validator %v in the genesis file, should be %v", v, v.PubKey.Address())
-		}
-		if len(v.Address) == 0 {
-			genDoc.Validators[i].Address = v.PubKey.Address()
 		}
 		if len(v.ProTxHash) != crypto.ProTxHashSize {
 			return fmt.Errorf("validators must all contain a pro_tx_hash of size 32")

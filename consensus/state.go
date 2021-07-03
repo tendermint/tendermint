@@ -1561,7 +1561,7 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 		return
 	}
 
-	logger.Debug("entering commit step", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
+	logger.Info("Entering commit step", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
 
 	defer func() {
 		// Done enterCommit:
@@ -1724,7 +1724,7 @@ func (cs *State) tryAddCommit(commit *types.Commit, peerID p2p.ID) (bool, error)
 	return added, nil
 }
 
-func (cs *State) verifyCommit(commit *types.Commit, peerID p2p.ID) (added bool, err error) {
+func (cs *State) verifyCommit(commit *types.Commit, peerID p2p.ID) (verified bool, err error) {
 	// Lets first do some basic commit validation before more complicated commit verification
 	if err := commit.ValidateBasic(); err != nil {
 		return false, fmt.Errorf("error validating commit: %v", err)
@@ -1749,13 +1749,11 @@ func (cs *State) verifyCommit(commit *types.Commit, peerID p2p.ID) (added bool, 
 	// Height mismatch is ignored.
 	// Not necessarily a bad peer, but not favourable behaviour.
 	if commit.Height != stateHeight {
-		added = false
 		cs.Logger.Debug("commit ignored and not added", "commit_height", commit.Height, "cs_height", stateHeight, "peer", peerID)
 		return false, nil
 	}
 
 	if commit.BlockID.Hash != nil && !bytes.Equal(commit.StateID.LastAppHash, cs.state.AppHash) {
-		added = false
 		err = errors.New("commit state last app hash does not match the known state app hash")
 		cs.Logger.Debug("commit ignored because sending wrong app hash", "voteHeight", commit.Height,
 			"csHeight", cs.Height, "peerID", peerID)
@@ -1764,7 +1762,22 @@ func (cs *State) verifyCommit(commit *types.Commit, peerID p2p.ID) (added bool, 
 
 	stateId := types.StateID{LastAppHash: cs.state.AppHash}
 
-	// Lets verify that the commit signatures match the current validator set
+	if rs.Proposal == nil {
+		cs.Logger.Info("Commit came in before proposal", "height", commit.Height)
+		// We need to verify that it was properly signed
+		// This generally proves that the commit is correct
+		if err := cs.Validators.VerifyCommit(cs.state.ChainID, commit.BlockID, stateId, cs.Height, commit); err != nil {
+			return false, fmt.Errorf("error verifying commit: %v", err)
+		}
+
+		cs.Commit = commit
+
+		return false, nil
+	}
+
+
+
+	// Lets verify that the threshold signature matches the current validator set
 	if err := cs.Validators.VerifyCommit(cs.state.ChainID, rs.Proposal.BlockID, stateId, cs.Height, commit); err != nil {
 		return false, fmt.Errorf("error verifying commit: %v", err)
 	}
@@ -2150,6 +2163,8 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID, from
 				cs.tryFinalizeCommit(height)
 			}
 		} else {
+			cs.Logger.Info("Proposal block fully received", "proposal", cs.ProposalBlock)
+			cs.Logger.Info("Commit already present", "commit", cs.Commit)
 			cs.Logger.Debug("adding commit after complete proposal", "height", cs.ProposalBlock.Height,
 				"hash", cs.ProposalBlock.Hash())
 			// We received a commit before the block

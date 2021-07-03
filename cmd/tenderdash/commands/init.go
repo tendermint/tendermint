@@ -77,7 +77,6 @@ func initFilesWithConfig(config *cfg.Config) error {
 		}
 		logger.Info("Found proTxHash", "proTxHash", proTxHash)
 		genDoc.Validators = []types.GenesisValidator{{
-			Address:   pubKey.Address(),
 			PubKey:    pubKey,
 			ProTxHash: proTxHash,
 			Power:     types.DefaultDashVotingPower,

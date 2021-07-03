@@ -219,9 +219,9 @@ services:
 }
 
 // MakeGenesis generates a genesis document.
-func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
+func MakeGenesis(testnet *e2e.Testnet, genesisTime time.Time) (types.GenesisDoc, error) {
 	genesis := types.GenesisDoc{
-		GenesisTime:        time.Now(),
+		GenesisTime:        genesisTime,
 		ChainID:            testnet.Name,
 		ConsensusParams:    types.DefaultConsensusParams(),
 		InitialHeight:      testnet.InitialHeight,
@@ -232,7 +232,6 @@ func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
 	for validator, pubkey := range testnet.Validators {
 		genesis.Validators = append(genesis.Validators, types.GenesisValidator{
 			Name:      validator.Name,
-			Address:   pubkey.Address(),
 			PubKey:    pubkey,
 			ProTxHash: validator.ProTxHash,
 			Power:     types.DefaultDashVotingPower,
@@ -265,7 +264,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.DBBackend = node.Database
 	cfg.StateSync.DiscoveryTime = 5 * time.Second
 	cfg.Consensus.AppHashSize = crypto.DefaultHashSize
-	cfg.BaseConfig.LogLevel = "debug"
+	// cfg.BaseConfig.LogLevel = "debug"
 
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:
@@ -507,11 +506,12 @@ func shouldResetPubkeys() bool {
 
 func initGenesisForEveryNode(testnet *e2e.Testnet) (map[e2e.Mode]types.GenesisDoc, error) {
 	genesis := make(map[e2e.Mode]types.GenesisDoc)
+	genesisTime := time.Now()
 	for _, tn := range testnet.Nodes {
 		if _, ok := genesis[tn.Mode]; ok {
 			continue
 		}
-		genDoc, err := MakeGenesis(testnet)
+		genDoc, err := MakeGenesis(testnet, genesisTime)
 		if err != nil {
 			return nil, err
 		}
