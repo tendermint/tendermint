@@ -58,12 +58,22 @@ func Setup(testnet *e2e.Testnet) error {
 		return err
 	}
 
-	genesis, err := MakeGenesis(testnet)
+	genesisNodes, err := initGenesisForEveryNode(testnet)
 	if err != nil {
 		return err
 	}
+	withModificators(genesisNodes, pubkeyResettingModificator(shouldResetPubkeys()))
 
 	for _, node := range testnet.Nodes {
+		genesis, ok := genesisNodes[node.Mode]
+		if !ok {
+			return fmt.Errorf("node has unsupported node type: %s", node.Mode)
+		}
+
+		if node.ProTxHash != nil {
+			genesis.NodeProTxHash = &node.ProTxHash
+		}
+
 		nodeDir := filepath.Join(testnet.Dir, node.Name)
 
 		dirs := []string{
@@ -99,6 +109,12 @@ func Setup(testnet *e2e.Testnet) error {
 
 		if node.Mode == e2e.ModeLight {
 			// stop early if a light client
+			// Set up a dummy validator for light client verification.
+			pv, err := newDefaultFilePV(node, nodeDir)
+			if err != nil {
+				return err
+			}
+			pv.Save()
 			continue
 		}
 
@@ -182,7 +198,9 @@ services:
     - 6060
     volumes:
     - ./{{ .Name }}:/tenderdash
-    - /Users/samuelw/Documents/src/go/github.com/dashevo/tenderdash/test/e2e/build/app:/usr/bin/app
+{{- if ne $.PreCompiledAppPath "" }}
+    - {{ $.PreCompiledAppPath }}:/usr/bin/app
+{{- end }}
     networks:
       {{ $.Name }}:
         ipv{{ if $.IPv6 }}6{{ else }}4{{ end}}_address: {{ .IP }}
@@ -192,7 +210,14 @@ services:
 		return nil, err
 	}
 	var buf bytes.Buffer
-	err = tmpl.Execute(&buf, testnet)
+	data := &struct {
+		*e2e.Testnet
+		PreCompiledAppPath string
+	}{
+		Testnet:            testnet,
+		PreCompiledAppPath: os.Getenv("PRE_COMPILED_APP_PATH"),
+	}
+	err = tmpl.Execute(&buf, data)
 	if err != nil {
 		return nil, err
 	}
@@ -200,9 +225,9 @@ services:
 }
 
 // MakeGenesis generates a genesis document.
-func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
+func MakeGenesis(testnet *e2e.Testnet, genesisTime time.Time) (types.GenesisDoc, error) {
 	genesis := types.GenesisDoc{
-		GenesisTime:        time.Now(),
+		GenesisTime:        genesisTime,
 		ChainID:            testnet.Name,
 		ConsensusParams:    types.DefaultConsensusParams(),
 		InitialHeight:      testnet.InitialHeight,
@@ -213,7 +238,6 @@ func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
 	for validator, pubkey := range testnet.Validators {
 		genesis.Validators = append(genesis.Validators, types.GenesisValidator{
 			Name:      validator.Name,
-			Address:   pubkey.Address(),
 			PubKey:    pubkey,
 			ProTxHash: validator.ProTxHash,
 			Power:     types.DefaultDashVotingPower,
@@ -246,6 +270,8 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.DBBackend = node.Database
 	cfg.StateSync.DiscoveryTime = 5 * time.Second
 	cfg.Consensus.AppHashSize = crypto.DefaultHashSize
+	cfg.BaseConfig.LogLevel = "debug"
+
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:
 		cfg.ProxyApp = AppAddressUNIX
@@ -440,8 +466,9 @@ func UpdateConfigStateSync(node *e2e.Node, height int64, hash []byte) error {
 
 func newDefaultFilePV(node *e2e.Node, nodeDir string) (*privval.FilePV, error) {
 	return privval.NewFilePVWithOptions(
-		privval.WithPrivateKey(bls12381.GenPrivKey(), crypto.RandQuorumHash(), &node.Testnet.ThresholdPublicKey),
+		privval.WithPrivateKeysMap(node.PrivvalKeys),
 		privval.WithProTxHash(crypto.RandProTxHash()),
+		privval.WithUpdateHeights(node.PrivvalUpdateHeights),
 		privval.WithKeyAndStateFilePaths(
 			filepath.Join(nodeDir, PrivvalDummyKeyFile),
 			filepath.Join(nodeDir, PrivvalDummyStateFile),
@@ -455,8 +482,52 @@ func newFilePVFromNode(node *e2e.Node, nodeDir string) (*privval.FilePV, error) 
 		privval.WithProTxHash(node.ProTxHash),
 		privval.WithUpdateHeights(node.PrivvalUpdateHeights),
 		privval.WithKeyAndStateFilePaths(
-			filepath.Join(nodeDir, PrivvalDummyKeyFile),
-			filepath.Join(nodeDir, PrivvalDummyStateFile),
+			filepath.Join(nodeDir, PrivvalKeyFile),
+			filepath.Join(nodeDir, PrivvalStateFile),
 		),
 	)
+}
+
+func pubkeyResettingModificator(isValidator bool) func(genesis map[e2e.Mode]types.GenesisDoc) {
+	return func(genesis map[e2e.Mode]types.GenesisDoc) {
+		if isValidator {
+			resetPubkey(genesis[e2e.ModeFull].Validators)
+		}
+	}
+}
+
+func resetPubkey(vals []types.GenesisValidator) {
+	for i := 0; i < len(vals); i++ {
+		vals[i].PubKey = nil
+	}
+}
+
+func shouldResetPubkeys() bool {
+	val, ok := os.LookupEnv("FULLNODE_PUBKEY_RESET")
+	if !ok {
+		return false
+	}
+	return val == "true" || val == "1"
+}
+
+func initGenesisForEveryNode(testnet *e2e.Testnet) (map[e2e.Mode]types.GenesisDoc, error) {
+	genesis := make(map[e2e.Mode]types.GenesisDoc)
+	genesisTime := time.Now()
+	for _, tn := range testnet.Nodes {
+		if _, ok := genesis[tn.Mode]; ok {
+			continue
+		}
+		genDoc, err := MakeGenesis(testnet, genesisTime)
+		if err != nil {
+			return nil, err
+		}
+		genesis[tn.Mode] = genDoc
+	}
+	return genesis, nil
+}
+
+func withModificators(genesis map[e2e.Mode]types.GenesisDoc, modFuns ...func(map[e2e.Mode]types.GenesisDoc)) {
+	for _, fn := range modFuns {
+		fn(genesis)
+	}
 }

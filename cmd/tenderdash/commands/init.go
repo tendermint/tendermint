@@ -3,8 +3,6 @@ package commands
 import (
 	"fmt"
 
-	"github.com/tendermint/tendermint/crypto"
-
 	"github.com/spf13/cobra"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -58,26 +56,32 @@ func initFilesWithConfig(config *cfg.Config) error {
 	if tmos.FileExists(genFile) {
 		logger.Info("Found genesis file", "path", genFile)
 	} else {
-		pubKey, err := pv.GetPubKey(crypto.QuorumHash{})
+		quorumHash, err := pv.GetFirstQuorumHash()
+		if err != nil {
+			return fmt.Errorf("there is no quorum hash: %w", err)
+		}
+		pubKey, err := pv.GetPubKey(quorumHash)
 		if err != nil {
 			return fmt.Errorf("can't get pubkey in init files with config: %w", err)
-		}
-
-		genDoc := types.GenesisDoc{
-			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
-			GenesisTime:     tmtime.Now(),
-			ConsensusParams: types.DefaultConsensusParams(),
-			ThresholdPublicKey: pubKey,
-			QuorumHash: crypto.RandQuorumHash(),
 		}
 
 		proTxHash, err := pv.GetProTxHash()
 		if err != nil {
 			return fmt.Errorf("can't get proTxHash: %w", err)
 		}
+
 		logger.Info("Found proTxHash", "proTxHash", proTxHash)
+
+		genDoc := types.GenesisDoc{
+			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
+			GenesisTime:     tmtime.Now(),
+			ConsensusParams: types.DefaultConsensusParams(),
+			ThresholdPublicKey: pubKey,
+			QuorumHash: quorumHash,
+			NodeProTxHash: &proTxHash,
+		}
+
 		genDoc.Validators = []types.GenesisValidator{{
-			Address:   pubKey.Address(),
 			PubKey:    pubKey,
 			ProTxHash: proTxHash,
 			Power:     types.DefaultDashVotingPower,

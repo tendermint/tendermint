@@ -282,8 +282,11 @@ func WithPrivateKeysMap(privateKeysMap map[string]crypto.QuorumKeys) FilePVOptio
 func WithUpdateHeights(updateHeights map[string]crypto.QuorumHash) FilePVOption {
 	return func(filePV *FilePV) error {
 		filePV.Key.UpdateHeights = updateHeights
+		if filePV.Key.FirstHeightOfQuorums == nil {
+			filePV.Key.FirstHeightOfQuorums = make(map[string]string)
+		}
 		for height, quorumHash := range updateHeights {
-			if _, ok := filePV.Key.FirstHeightOfQuorums[quorumHash.String()]; ok {
+			if _, ok := filePV.Key.FirstHeightOfQuorums[quorumHash.String()]; ok == false {
 				filePV.Key.FirstHeightOfQuorums[quorumHash.String()] = height
 			}
 		}
@@ -392,7 +395,7 @@ func (pv *FilePV) GetPubKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error)
 	if keys, ok := pv.Key.PrivateKeys[quorumHash.String()]; ok {
 		return keys.PubKey, nil
 	}
-	return nil, fmt.Errorf("no public key for quorum hash %v", quorumHash)
+	return nil, fmt.Errorf("filePV: no public key for quorum hash (get) %v", quorumHash)
 }
 
 // GetFirstPubKey returns the first public key of the validator.
@@ -443,8 +446,11 @@ func (pv *FilePV) GetPrivateKey(quorumHash crypto.QuorumHash) (crypto.PrivKey, e
 
 // GetHeight ...
 func (pv *FilePV) GetHeight(quorumHash crypto.QuorumHash) (int64, error) {
-	intString := pv.Key.FirstHeightOfQuorums[quorumHash.String()]
-	return strconv.ParseInt(intString,10, 64)
+	if intString, ok := pv.Key.FirstHeightOfQuorums[quorumHash.String()]; ok {
+		return strconv.ParseInt(intString,10, 64)
+	} else {
+		return -1, fmt.Errorf("quorum hash not found for GetHeight %v", quorumHash.String())
+	}
 }
 
 // ExtractIntoValidator ...

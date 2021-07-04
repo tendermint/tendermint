@@ -37,7 +37,7 @@ var (
 type consensusReactor interface {
 	// for when we switch from blockchain reactor and fast sync to
 	// the consensus machine
-	SwitchToValidatorConsensus(state sm.State, skipWAL bool)
+	SwitchToConsensus(state sm.State, skipWAL bool)
 }
 
 // BlockchainReactor handles long-term catchup syncing.
@@ -267,7 +267,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		return
 	}
 
-	bcR.Logger.Debug("Receive", "src", src, "chID", chID, "msg", msg)
+	bcR.Logger.P2PDebug("Receive", "src", src, "chID", chID, "msg", msg)
 
 	switch msg := msg.(type) {
 	case *bcproto.BlockRequest:
@@ -526,7 +526,7 @@ func (bcR *BlockchainReactor) sendBlockRequest(peerID p2p.ID, height int64) erro
 func (bcR *BlockchainReactor) switchToConsensus() {
 	conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
 	if ok {
-		conR.SwitchToValidatorConsensus(bcR.state, bcR.blocksSynced > 0 || bcR.stateSynced)
+		conR.SwitchToConsensus(bcR.state, bcR.blocksSynced > 0 || bcR.stateSynced)
 		bcR.eventsFromFSMCh <- bcFsmMessage{event: syncFinishedEv}
 	}
 	// else {

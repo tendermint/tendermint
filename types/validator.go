@@ -136,6 +136,15 @@ func (v *Validator) String() string {
 		v.ProposerPriority)
 }
 
+func (v *Validator) ShortStringBasic() string {
+	if v == nil {
+		return "nil-Validator"
+	}
+	return fmt.Sprintf("Validator{%v %v}",
+		v.ProTxHash.ShortString(),
+		v.PubKey)
+}
+
 // ValidatorListString returns a prettified validator list for logging purposes.
 func ValidatorListString(vals []*Validator) string {
 	chunks := make([]string, len(vals))

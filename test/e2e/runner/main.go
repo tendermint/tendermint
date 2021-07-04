@@ -57,16 +57,16 @@ func NewCLI() *CLI {
 				return err
 			}
 
-			chLoadResult := make(chan error)
-			ctx, loadCancel := context.WithCancel(context.Background())
-			defer loadCancel()
-			go func() {
-				err := Load(ctx, cli.testnet, 1)
-				if err != nil {
-					logger.Error(fmt.Sprintf("Transaction load failed: %v", err.Error()))
-				}
-				chLoadResult <- err
-			}()
+			//chLoadResult := make(chan error)
+			//ctx, loadCancel := context.WithCancel(context.Background())
+			//defer loadCancel()
+			//go func() {
+			//	err := Load(ctx, cli.testnet, 1)
+			//	if err != nil {
+			//		logger.Error(fmt.Sprintf("Transaction load failed: %v", err.Error()))
+			//	}
+			//	chLoadResult <- err
+			//}()
 
 			if err := Start(cli.testnet); err != nil {
 				return err
@@ -93,10 +93,10 @@ func NewCLI() *CLI {
 				}
 			}
 
-			loadCancel()
-			if err := <-chLoadResult; err != nil {
-				return err
-			}
+			//loadCancel()
+			//if err := <-chLoadResult; err != nil {
+			//	return err
+			//}
 			if err := Wait(cli.testnet, 5); err != nil { // wait for network to settle before tests
 				return err
 			}

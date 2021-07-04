@@ -112,7 +112,7 @@ func (p *Proposal) String() string {
 		CanonicalTime(p.Timestamp))
 }
 
-// ProposalSignBytes returns the proto-encoding of the canonicalized Proposal,
+// ProposalBlockSignBytes returns the proto-encoding of the canonicalized Proposal,
 // for signing. Panics if the marshaling fails.
 //
 // The encoded Protobuf message is varint length-prefixed (using MarshalDelimited)

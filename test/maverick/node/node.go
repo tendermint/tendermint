@@ -687,7 +687,7 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 				return
 			}
 		} else {
-			conR.SwitchToValidatorConsensus(state, true)
+			conR.SwitchToConsensus(state, true)
 		}
 	}()
 	return nil
@@ -1376,6 +1376,7 @@ func makeNodeInfo(
 	}
 
 	nodeInfo := p2p.DefaultNodeInfo{
+		ProTxHash: genDoc.NodeProTxHash,
 		ProtocolVersion: p2p.NewProtocolVersion(
 			version.P2PProtocol, // global
 			state.Version.Consensus.Block,

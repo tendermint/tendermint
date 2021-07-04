@@ -109,5 +109,6 @@ func (rpcClient *DashCoreRpcClient) QuorumSign(quorumType btcjson.LLMQType, requ
 }
 
 func (rpcClient *DashCoreRpcClient) QuorumVerify(quorumType btcjson.LLMQType, requestID bytes.HexBytes, messageHash bytes.HexBytes, signature bytes.HexBytes, quorumHash crypto.QuorumHash) (bool, error) {
+	fmt.Printf("quorum verify sig %v quorumhash %s", signature, quorumHash)
 	return rpcClient.endpoint.QuorumVerify(quorumType, requestID.String(), messageHash.String(), signature.String(), quorumHash.String())
 }

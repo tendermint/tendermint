@@ -133,7 +133,7 @@ func (pv *MockPV) GetPubKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error)
 	if keys, ok := pv.PrivateKeys[quorumHash.String()]; ok {
 		return keys.PubKey, nil
 	}
-	return nil, fmt.Errorf("no public key for quorum hash %v", quorumHash)
+	return nil, fmt.Errorf("mockPV: no public key for quorum hash %v", quorumHash)
 }
 
 // GetProTxHash implements PrivValidator.
@@ -168,8 +168,11 @@ func (pv *MockPV) ThresholdPublicKeyForQuorumHash(quorumHash crypto.QuorumHash) 
 
 // GetHeight ...
 func (pv *MockPV) GetHeight(quorumHash crypto.QuorumHash) (int64, error) {
-	intString := pv.FirstHeightOfQuorums[quorumHash.String()]
-	return strconv.ParseInt(intString,10, 64)
+	if intString, ok := pv.FirstHeightOfQuorums[quorumHash.String()]; ok {
+		return strconv.ParseInt(intString,10, 64)
+	} else {
+		return -1, fmt.Errorf("quorum hash not found for GetHeight %v", quorumHash.String())
+	}
 }
 
 // SignVote implements PrivValidator.

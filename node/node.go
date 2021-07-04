@@ -1333,6 +1333,7 @@ func makeNodeInfo(
 	}
 
 	nodeInfo := p2p.DefaultNodeInfo{
+		ProTxHash: genDoc.NodeProTxHash,
 		ProtocolVersion: p2p.NewProtocolVersion(
 			version.P2PProtocol, // global
 			state.Version.Consensus.Block,

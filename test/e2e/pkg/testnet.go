@@ -296,6 +296,17 @@ func LoadTestnet(file string) (*Testnet, error) {
 
 	// Set up genesis validators. If not specified explicitly, use all validator nodes.
 	if manifest.Validators != nil {
+		for _, node := range testnet.Nodes {
+			if node.Mode != ModeValidator {
+				quorumKeys := crypto.QuorumKeys{
+					ThresholdPublicKey: thresholdPublicKey,
+				}
+				if node.PrivvalKeys == nil {
+					node.PrivvalKeys = make(map[string]crypto.QuorumKeys)
+				}
+				node.PrivvalKeys[quorumHash.String()] = quorumKeys
+			}
+		}
 		var i = 0
 		for validatorName := range *manifest.Validators {
 			validator := testnet.LookupNode(validatorName)
@@ -330,12 +341,20 @@ func LoadTestnet(file string) (*Testnet, error) {
 					PubKey: privateKeys[i].PubKey(),
 					ThresholdPublicKey: thresholdPublicKey,
 				}
-				privateKeysMap := make(map[string]crypto.QuorumKeys)
-				privateKeysMap[quorumHash.String()] = quorumKeys
-
-				node.PrivvalKeys = privateKeysMap
+				if node.PrivvalKeys == nil {
+					node.PrivvalKeys = make(map[string]crypto.QuorumKeys)
+				}
+				node.PrivvalKeys[quorumHash.String()] = quorumKeys
 				fmt.Printf("Setting validator %s proTxHash to %X\n", node.Name, node.ProTxHash)
 				i++
+			} else {
+				quorumKeys := crypto.QuorumKeys{
+					ThresholdPublicKey: thresholdPublicKey,
+				}
+				if node.PrivvalKeys == nil {
+					node.PrivvalKeys = make(map[string]crypto.QuorumKeys)
+				}
+				node.PrivvalKeys[quorumHash.String()] = quorumKeys
 			}
 		}
 	}
@@ -396,9 +415,12 @@ func LoadTestnet(file string) (*Testnet, error) {
 					ThresholdPublicKey: thresholdPublicKey,
 				}
 				privateKeysMap := make(map[string]crypto.QuorumKeys)
+				privvalUpdateHeights := make(map[string]crypto.QuorumHash)
 				privateKeysMap[quorumHash.String()] = quorumKeys
+				privvalUpdateHeights[strconv.Itoa(height)] = quorumHash
 
 				node.PrivvalKeys = privateKeysMap
+				node.PrivvalUpdateHeights = privvalUpdateHeights
 				fmt.Printf("Set validator %s/%X (at genesis) pubkey to %X\n", node.Name,
 					node.ProTxHash, pubKey.Bytes())
 			} else {
@@ -407,10 +429,35 @@ func LoadTestnet(file string) (*Testnet, error) {
 				if node.PrivvalKeys == nil {
 					node.PrivvalKeys = make(map[string]crypto.QuorumKeys)
 				}
+				if node.PrivvalUpdateHeights == nil {
+					node.PrivvalUpdateHeights = make(map[string]crypto.QuorumHash)
+				}
 				pubKey := privateKeys[i].PubKey()
 				quorumKeys := crypto.QuorumKeys{
 					PrivKey: privateKeys[i],
 					PubKey: pubKey,
+					ThresholdPublicKey: thresholdPublicKey,
+				}
+				node.PrivvalKeys[quorumHash.String()] = quorumKeys
+				node.PrivvalUpdateHeights[strconv.Itoa(height+2)] = quorumHash
+			}
+		}
+
+		for _, node := range testnet.Nodes {
+			isPartOfQuorum := false
+			for _, proTxHash := range proTxHashes {
+				if bytes.Equal(node.ProTxHash, proTxHash) {
+					isPartOfQuorum = true
+				}
+			}
+			if isPartOfQuorum == false {
+				if node.PrivvalKeys == nil {
+					node.PrivvalKeys = make(map[string]crypto.QuorumKeys)
+				}
+				if node.PrivvalUpdateHeights == nil {
+					node.PrivvalUpdateHeights = make(map[string]crypto.QuorumHash)
+				}
+				quorumKeys := crypto.QuorumKeys{
 					ThresholdPublicKey: thresholdPublicKey,
 				}
 				node.PrivvalKeys[quorumHash.String()] = quorumKeys
