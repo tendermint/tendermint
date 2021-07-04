@@ -109,6 +109,12 @@ func Setup(testnet *e2e.Testnet) error {
 
 		if node.Mode == e2e.ModeLight {
 			// stop early if a light client
+			// Set up a dummy validator for light client verification.
+			pv, err := newDefaultFilePV(node, nodeDir)
+			if err != nil {
+				return err
+			}
+			pv.Save()
 			continue
 		}
 
