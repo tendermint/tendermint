@@ -623,7 +623,7 @@ func (cs *State) updateToState(state sm.State, commit *types.Commit, logger log.
 		}
 
 		// If state isn't further out than cs.state, just ignore.
-		// This happens when SwitchToValidatorConsensus() is called in the reactor.
+		// This happens when SwitchToConsensus() is called in the reactor.
 		// We don't want to reset e.g. the Votes, but we still want to
 		// signal the new round step, because other services (eg. txNotifier)
 		// depend on having an up-to-date peer state!
@@ -699,7 +699,8 @@ func (cs *State) updateToState(state sm.State, commit *types.Commit, logger log.
 
 	if cs.Validators == nil || !bytes.Equal(cs.Validators.QuorumHash, validators.QuorumHash) {
 		if cs.Logger != nil {
-			cs.Logger.Info("updating validators", "from", cs.Validators, "to", validators)
+			cs.Logger.Info("Updating validators", "from", cs.Validators.BasicInfoString(),
+				"to", validators.BasicInfoString())
 		}
 	}
 	cs.Validators = validators
@@ -1770,12 +1771,15 @@ func (cs *State) verifyCommit(commit *types.Commit, peerID p2p.ID) (verified boo
 			return false, fmt.Errorf("error verifying commit: %v", err)
 		}
 
+		if !cs.ProposalBlockParts.HasHeader(commit.BlockID.PartSetHeader) {
+			cs.Logger.Info("setting proposal block parts from commit", "partSetHeader", commit.BlockID.PartSetHeader)
+			cs.ProposalBlockParts = types.NewPartSetFromHeader(commit.BlockID.PartSetHeader)
+		}
+
 		cs.Commit = commit
 
 		return false, nil
 	}
-
-
 
 	// Lets verify that the threshold signature matches the current validator set
 	if err := cs.Validators.VerifyCommit(cs.state.ChainID, rs.Proposal.BlockID, stateId, cs.Height, commit); err != nil {
@@ -2294,6 +2298,7 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 		"adding vote",
 		"vote_height", vote.Height,
 		"vote_type", vote.Type,
+		"val_proTxHash", vote.ValidatorProTxHash.ShortString(),
 		"val_index", vote.ValidatorIndex,
 		"cs_height", cs.Height,
 	)

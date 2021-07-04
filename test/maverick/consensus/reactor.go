@@ -103,10 +103,10 @@ func (conR *Reactor) OnStop() {
 	}
 }
 
-// SwitchToValidatorConsensus switches from fast_sync mode to consensus mode.
+// SwitchToConsensus switches from fast_sync mode to consensus mode.
 // It resets the state, turns off fast_sync, and starts the consensus state-machine
-func (conR *Reactor) SwitchToValidatorConsensus(state sm.State, skipWAL bool) {
-	conR.Logger.Info("SwitchToValidatorConsensus")
+func (conR *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
+	conR.Logger.Info("SwitchToConsensus")
 
 	// We have no votes, so reconstruct LastPrecommits from SeenCommit.
 	if state.LastBlockHeight > 0 {
@@ -198,7 +198,7 @@ func (conR *Reactor) AddPeer(peer p2p.Peer) {
 	go conR.queryMaj23Routine(peer, peerState)
 
 	// Send our state to peer.
-	// If we're fast_syncing, broadcast a RoundStepMessage later upon SwitchToValidatorConsensus().
+	// If we're fast_syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
 	if !conR.WaitSync() {
 		conR.sendNewRoundStepMessage(peer)
 	}

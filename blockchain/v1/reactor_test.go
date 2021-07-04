@@ -174,7 +174,7 @@ type consensusReactorTest struct {
 	mtx                 sync.Mutex
 }
 
-func (conR *consensusReactorTest) SwitchToValidatorConsensus(state sm.State, blocksSynced bool) {
+func (conR *consensusReactorTest) SwitchToConsensus(state sm.State, blocksSynced bool) {
 	conR.mtx.Lock()
 	defer conR.mtx.Unlock()
 	conR.switchedToConsensus = true

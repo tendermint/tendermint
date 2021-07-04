@@ -195,7 +195,7 @@ func (conR *Reactor) AddPeer(peer p2p.Peer) {
 	go conR.queryMaj23Routine(peer, peerState)
 
 	// Send our state to peer.
-	// If we're fast_syncing, broadcast a RoundStepMessage later upon SwitchToValidatorConsensus().
+	// If we're fast_syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
 	if !conR.WaitSync() {
 		conR.sendNewRoundStepMessage(peer)
 	}

@@ -981,6 +981,36 @@ func (vals *ValidatorSet) StringIndented(indent string) string {
 
 }
 
+// BasicInfoString returns a string representation of ValidatorSet without power and priority.
+//
+// See StringIndented.
+func (vals *ValidatorSet) BasicInfoString() string {
+	return vals.StringIndentedBasic("")
+}
+
+func (vals *ValidatorSet) StringIndentedBasic(indent string) string {
+	if vals == nil {
+		return "nil-ValidatorSet"
+	}
+	var valStrings []string
+	vals.Iterate(func(index int, val *Validator) bool {
+		valStrings = append(valStrings, val.ShortStringBasic())
+		return false
+	})
+	return fmt.Sprintf(`ValidatorSet{
+%s  Proposer: %v
+%s  QuorumHash: %v
+%s  Validators:
+%s    %v
+%s}`,
+		indent, vals.GetProposer().ProTxHash.ShortString(),
+		indent, vals.QuorumHash.String(),
+		indent,
+		indent, strings.Join(valStrings, "\n"+indent+"    "),
+		indent)
+
+}
+
 //-------------------------------------
 
 // ValidatorsByVotingPower implements sort.Interface for []*Validator based on

@@ -32,9 +32,9 @@ const (
 )
 
 type consensusReactor interface {
-	// for when we switch from blockchain reactor and fast sync to
+	// SwitchToConsensus is for when we switch from blockchain reactor and fast sync to
 	// the consensus machine
-	SwitchToValidatorConsensus(state sm.State, skipWAL bool)
+	SwitchToConsensus(state sm.State, skipWAL bool)
 }
 
 type peerError struct {
@@ -328,7 +328,7 @@ FOR_LOOP:
 				}
 				conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
 				if ok {
-					conR.SwitchToValidatorConsensus(state, blocksSynced > 0 || stateSynced)
+					conR.SwitchToConsensus(state, blocksSynced > 0 || stateSynced)
 				}
 				// else {
 				// should only happen during testing
