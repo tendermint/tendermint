@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmcfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/libs/progressbar"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
@@ -154,6 +155,9 @@ func eventReIndex(cmd *cobra.Command, es []indexer.EventSink, bs *store.BlockSto
 		return fmt.Errorf("no event sink has been enabled")
 	}
 
+	var bar progressbar.Bar
+	bar.NewOption(startHeight-1, endHeight)
+
 	for i := startHeight; i <= endHeight; i++ {
 		select {
 		case <-cmd.Context().Done():
@@ -204,7 +208,10 @@ func eventReIndex(cmd *cobra.Command, es []indexer.EventSink, bs *store.BlockSto
 				}
 			}
 		}
+
+		bar.Play(i)
 	}
+	bar.Finish()
 
 	return nil
 }
