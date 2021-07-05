@@ -274,7 +274,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	}
 
 	// Replay blocks up to the latest in the blockstore.
-	_, err = h.ReplayBlocks(h.initialState, h.nodeProTxHash, appHash, blockHeight, proxyApp)
+	_, err = h.ReplayBlocks(h.initialState, appHash, blockHeight, proxyApp)
 	if err != nil {
 		return fmt.Errorf("error on replay: %v", err)
 	}
@@ -295,7 +295,6 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 // Returns the final AppHash or an error.
 func (h *Handshaker) ReplayBlocks(
 	state sm.State,
-	nodeProTxHash *crypto.ProTxHash,
 	appHash []byte,
 	appBlockHeight int64,
 	proxyApp proxy.AppConns,
@@ -330,7 +329,7 @@ func (h *Handshaker) ReplayBlocks(
 					return nil, fmt.Errorf("replay blocks error when validating validator: %s", err)
 				}
 			}
-			validatorSet := types.NewValidatorSetWithLocalNodeProTxHash(validators, h.genDoc.ThresholdPublicKey, h.genDoc.QuorumType, h.genDoc.QuorumHash, nodeProTxHash)
+			validatorSet := types.NewValidatorSetWithLocalNodeProTxHash(validators, h.genDoc.ThresholdPublicKey, h.genDoc.QuorumType, h.genDoc.QuorumHash, h.nodeProTxHash)
 			err := validatorSet.ValidateBasic()
 			if err != nil {
 				return nil, fmt.Errorf("replay blocks error when validating validatorSet: %s", err)
@@ -375,10 +374,10 @@ func (h *Handshaker) ReplayBlocks(
 				if err != nil {
 					return nil, err
 				}
-				newValidatorSet := types.NewValidatorSetWithLocalNodeProTxHash(vals, thresholdPublicKey, h.genDoc.QuorumType, quorumHash, nodeProTxHash)
+				newValidatorSet := types.NewValidatorSetWithLocalNodeProTxHash(vals, thresholdPublicKey, h.genDoc.QuorumType, quorumHash, h.nodeProTxHash)
 				h.logger.Debug("Updating validator set", "old", state.Validators, "new", newValidatorSet)
 				state.Validators = newValidatorSet
-				state.NextValidators = types.NewValidatorSetWithLocalNodeProTxHash(vals, thresholdPublicKey, h.genDoc.QuorumType, quorumHash, nodeProTxHash).CopyIncrementProposerPriority(1)
+				state.NextValidators = types.NewValidatorSetWithLocalNodeProTxHash(vals, thresholdPublicKey, h.genDoc.QuorumType, quorumHash, h.nodeProTxHash).CopyIncrementProposerPriority(1)
 			} else if len(h.genDoc.Validators) == 0 {
 				// If validator set is not set in genesis and still empty after InitChain, exit.
 				h.logger.Debug("Validator set is nil in genesis and still empty after InitChain")
@@ -432,7 +431,7 @@ func (h *Handshaker) ReplayBlocks(
 		// Either the app is asking for replay, or we're all synced up.
 		if appBlockHeight < storeBlockHeight {
 			// the app is behind, so replay blocks, but no need to go through WAL (state is already synced to store)
-			return h.replayBlocks(state, nodeProTxHash, proxyApp, appBlockHeight, storeBlockHeight, false)
+			return h.replayBlocks(state, proxyApp, appBlockHeight, storeBlockHeight, false)
 
 		} else if appBlockHeight == storeBlockHeight {
 			// We're good!
@@ -447,7 +446,7 @@ func (h *Handshaker) ReplayBlocks(
 		case appBlockHeight < stateBlockHeight:
 			// the app is further behind than it should be, so replay blocks
 			// but leave the last block to go through the WAL
-			return h.replayBlocks(state, nodeProTxHash, proxyApp, appBlockHeight, storeBlockHeight, true)
+			return h.replayBlocks(state, proxyApp, appBlockHeight, storeBlockHeight, true)
 
 		case appBlockHeight == stateBlockHeight:
 			// We haven't run Commit (both the state and app are one block behind),
@@ -455,7 +454,7 @@ func (h *Handshaker) ReplayBlocks(
 			// NOTE: We could instead use the cs.WAL on cs.Start,
 			// but we'd have to allow the WAL to replay a block that wrote it's #ENDHEIGHT
 			h.logger.Info("Replay last block using real app")
-			state, err = h.replayBlock(state, nodeProTxHash, storeBlockHeight, proxyApp.Consensus(), proxyApp.Query())
+			state, err = h.replayBlock(state, storeBlockHeight, proxyApp.Consensus(), proxyApp.Query())
 			return state.AppHash, err
 
 		case appBlockHeight == storeBlockHeight:
@@ -467,7 +466,7 @@ func (h *Handshaker) ReplayBlocks(
 			mockApp := newMockProxyApp(appHash, abciResponses)
 			h.logger.Info("Replay last block using mock app")
 			//ToDo: we could optimize by passing a mockValidationApp since all signatures were already verified
-			state, err = h.replayBlock(state, nodeProTxHash, storeBlockHeight, mockApp, proxyApp.Query())
+			state, err = h.replayBlock(state, storeBlockHeight, mockApp, proxyApp.Query())
 			return state.AppHash, err
 		}
 
@@ -479,7 +478,6 @@ func (h *Handshaker) ReplayBlocks(
 
 func (h *Handshaker) replayBlocks(
 	state sm.State,
-	nodeProTxHash *crypto.ProTxHash,
 	proxyApp proxy.AppConns,
 	appBlockHeight,
 	storeBlockHeight int64,
@@ -522,7 +520,7 @@ func (h *Handshaker) replayBlocks(
 
 	if mutateState {
 		// sync the final block
-		state, err = h.replayBlock(state, nodeProTxHash, storeBlockHeight, proxyApp.Consensus(), proxyApp.Query())
+		state, err = h.replayBlock(state, storeBlockHeight, proxyApp.Consensus(), proxyApp.Query())
 		if err != nil {
 			return nil, err
 		}
@@ -534,7 +532,7 @@ func (h *Handshaker) replayBlocks(
 }
 
 // ApplyBlock on the proxyApp with the last block.
-func (h *Handshaker) replayBlock(state sm.State, nodeProTxHash *crypto.ProTxHash, height int64, proxyApp proxy.AppConnConsensus,
+func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.AppConnConsensus,
 	proxyAppQuery proxy.AppConnQuery) (sm.State, error) {
 	block := h.store.LoadBlock(height)
 	meta := h.store.LoadBlockMeta(height)
@@ -547,7 +545,7 @@ func (h *Handshaker) replayBlock(state sm.State, nodeProTxHash *crypto.ProTxHash
 	blockExec.SetEventBus(h.eventBus)
 
 	var err error
-	state, _, err = blockExec.ApplyBlock(state, nodeProTxHash, meta.BlockID, block)
+	state, _, err = blockExec.ApplyBlock(state, h.nodeProTxHash, meta.BlockID, block)
 	if err != nil {
 		return sm.State{}, err
 	}
