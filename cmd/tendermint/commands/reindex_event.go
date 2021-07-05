@@ -25,21 +25,24 @@ var ReIndexEventCmd = &cobra.Command{
 	Use:     "reindex-event",
 	Aliases: []string{"reindex_event"},
 	Short:   "Reindex the missing events to the event stores",
-	Example: "tendermint reindex-event --start-height 1 --end-height 10",
+	Example: "tendermint reindex-event --start-height 2 --end-height 10",
 	Run: func(cmd *cobra.Command, args []string) {
 		es, err := loadEventSinks(config)
 		if err != nil {
 			fmt.Println("event re-index failed: ", err)
+			return
 		}
 
 		bs, ss, err := loadStateAndBlockStore(config)
 		if err != nil {
 			fmt.Println("event re-index failed: ", err)
+			return
 		}
 
 		err = eventReIndex(cmd, es, bs, ss)
 		if err != nil {
 			fmt.Println("event re-index failed: ", err)
+			return
 		}
 
 		fmt.Println("event re-index finished")
@@ -147,8 +150,8 @@ func eventReIndex(cmd *cobra.Command, es []indexer.EventSink, bs *store.BlockSto
 			ctypes.ErrInvalidRequest, startHeight, endHeight)
 	}
 
-	if endHeight > startHeight {
-		endHeight = startHeight
+	if endHeight > height {
+		endHeight = height
 	}
 
 	if !indexer.IndexingEnabled(es) {
