@@ -258,13 +258,6 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 		return fmt.Errorf("got a negative last block height (%d) from the app", blockHeight)
 	}
 	appHash := res.LastBlockAppHash
-	nodeProTxHash := crypto.ProTxHash(res.ProTxHash)
-	var nodeProTxHashP *crypto.ProTxHash
-	if len(nodeProTxHash) == crypto.ProTxHashSize {
-		nodeProTxHashP = &nodeProTxHash
-	} else {
-		nodeProTxHashP = nil
-	}
 	coreChainLockedHeight := res.LastCoreChainLockedHeight
 
 	h.logger.Info("ABCI Handshake App Info",
@@ -281,7 +274,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	}
 
 	// Replay blocks up to the latest in the blockstore.
-	_, err = h.ReplayBlocks(h.initialState, nodeProTxHashP, appHash, blockHeight, proxyApp)
+	_, err = h.ReplayBlocks(h.initialState, h.nodeProTxHash, appHash, blockHeight, proxyApp)
 	if err != nil {
 		return fmt.Errorf("error on replay: %v", err)
 	}

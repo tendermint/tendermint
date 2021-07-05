@@ -338,26 +338,7 @@ func createAndStartIndexerService(
 	return indexerService, txIndexer, blockIndexer, nil
 }
 
-func doHandshake(
-	config *cfg.Config,
-	stateStore sm.Store,
-	state sm.State,
-	blockStore sm.BlockStore,
-	genDoc *types.GenesisDoc,
-	eventBus types.BlockEventPublisher,
-	proxyApp proxy.AppConns,
-	consensusLogger log.Logger) error {
-
-	handshaker := cs.NewHandshaker(stateStore, state, blockStore, genDoc, config.Consensus.AppHashSize)
-	handshaker.SetLogger(consensusLogger)
-	handshaker.SetEventBus(eventBus)
-	if err := handshaker.Handshake(proxyApp); err != nil {
-		return fmt.Errorf("error during handshake: %v", err)
-	}
-	return nil
-}
-
-func logNodeStartupInfo(state sm.State, proTxHash crypto.ProTxHash, logger, consensusLogger log.Logger) {
+func logNodeStartupInfo(state sm.State, proTxHash *crypto.ProTxHash, logger, consensusLogger log.Logger) {
 	// Log the version info.
 	logger.Info("Version info",
 		"software", version.TMCoreSemVer,
@@ -374,19 +355,22 @@ func logNodeStartupInfo(state sm.State, proTxHash crypto.ProTxHash, logger, cons
 	}
 
 	// Log whether this node is a validator or an observer
-	if state.Validators.HasProTxHash(proTxHash) {
+	if proTxHash != nil && state.Validators.HasProTxHash(*proTxHash) {
 		consensusLogger.Info("This node is a validator", "proTxHash", proTxHash)
 	} else {
 		consensusLogger.Info("This node is not a validator", "proTxHash", proTxHash)
 	}
 }
 
-func onlyValidatorIsUs(state sm.State, proTxHash types.ProTxHash) bool {
+func onlyValidatorIsUs(state sm.State, proTxHash *types.ProTxHash) bool {
+	if proTxHash == nil {
+		return false
+	}
 	if state.Validators.Size() > 1 {
 		return false
 	}
 	validatorProTxHash, _ := state.Validators.GetByIndex(0)
-	return bytes.Equal(validatorProTxHash, proTxHash)
+	return bytes.Equal(validatorProTxHash, *proTxHash)
 }
 
 func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
@@ -737,7 +721,7 @@ func NewNode(config *cfg.Config,
 	}
 
 	var weAreOnlyValidator bool
-	var proTxHash crypto.ProTxHash
+	var proTxHashP *crypto.ProTxHash
 	var privValidator types.PrivValidator
 	if config.PrivValidatorCoreRPCHost != "" {
 		logger.Info("Initializing Dash Core Signing", "quorum hash", state.Validators.QuorumHash.String())
@@ -758,11 +742,16 @@ func NewNode(config *cfg.Config,
 		if err != nil {
 			return nil, fmt.Errorf("error with private validator socket client: %w", err)
 		}
-		proTxHash, err = privValidator.GetProTxHash()
-		if err != nil {
-			return nil, fmt.Errorf("can't get proTxHash using dash core signing: %w", err)
+		if config.IsMasternode {
+			proTxHash, err := privValidator.GetProTxHash()
+			if err != nil {
+				return nil, fmt.Errorf("can't get proTxHash using dash core signing: %w", err)
+			}
+			proTxHashP = &proTxHash
+			logger.Info("Connected to Core RPC Masternode", "proTxHash", proTxHash.String())
+		} else {
+			logger.Info("Connected to Core RPC FullNode")
 		}
-		logger.Info("Connected to Core RPC", "proTxHash", proTxHash.String())
 	} else if config.PrivValidatorListenAddr != "" {
 		// If an address is provided, listen on the socket for a connection from an
 		// external signing process.
@@ -771,17 +760,23 @@ func NewNode(config *cfg.Config,
 		if err != nil {
 			return nil, fmt.Errorf("error with private validator socket client: %w", err)
 		}
-		proTxHash, err = privValidator.GetProTxHash()
-		if err != nil {
-			return nil, fmt.Errorf("can't get proTxHash through listen address: %w", err)
+		if config.IsMasternode {
+			proTxHash, err := privValidator.GetProTxHash()
+			if err != nil {
+				return nil, fmt.Errorf("can't get proTxHash using dash core signing: %w", err)
+			}
+			proTxHashP = &proTxHash
+			logger.Info("Connected to Private Validator through listen address", "proTxHash", proTxHash.String())
+		} else {
+			logger.Info("Connected to Private Validator through listen address")
 		}
-		logger.Info("Connected to Private Validator through listen address", "proTxHash", proTxHash.String())
 	} else {
 		privValidator = privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
-		proTxHash, err = privValidator.GetProTxHash()
+		proTxHash, err := privValidator.GetProTxHash()
 		if err != nil {
 			return nil, fmt.Errorf("can't get proTxHash through file: %w", err)
 		}
+		proTxHashP = &proTxHash
 		logger.Info("Private Validator using local file", "proTxHash", proTxHash.String())
 	}
 
@@ -795,7 +790,7 @@ func NewNode(config *cfg.Config,
 		dashCoreRpcClient = mockClient
 	}
 
-	weAreOnlyValidator = onlyValidatorIsUs(state, proTxHash)
+	weAreOnlyValidator = onlyValidatorIsUs(state, proTxHashP)
 
 	// Determine whether we should attempt state sync.
 	stateSync := config.StateSync.Enable && !weAreOnlyValidator
@@ -808,7 +803,7 @@ func NewNode(config *cfg.Config,
 	// and replays any blocks as necessary to sync tendermint with the app.
 	consensusLogger := logger.With("module", "consensus")
 	if !stateSync {
-		handshaker := cs.NewHandshaker(stateStore, state, blockStore, genDoc, config.Consensus.AppHashSize)
+		handshaker := cs.NewHandshaker(stateStore, state, blockStore, genDoc, proTxHashP, config.Consensus.AppHashSize)
 		handshaker.SetLogger(consensusLogger)
 		handshaker.SetEventBus(eventBus)
 		if err := handshaker.Handshake(proxyApp); err != nil {
@@ -828,7 +823,7 @@ func NewNode(config *cfg.Config,
 	// app may modify the validator set, specifying ourself as the only validator.
 	fastSync := config.FastSyncMode && !weAreOnlyValidator
 
-	logNodeStartupInfo(state, proTxHash, logger, consensusLogger)
+	logNodeStartupInfo(state, proTxHashP, logger, consensusLogger)
 
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
@@ -860,7 +855,7 @@ func NewNode(config *cfg.Config,
 	)
 
 	// Make BlockchainReactor. Don't start fast sync if we're doing a state sync first.
-	bcReactor, err := createBlockchainReactor(config, state, blockExec, blockStore, &proTxHash, fastSync && !stateSync, logger)
+	bcReactor, err := createBlockchainReactor(config, state, blockExec, blockStore, proTxHashP, fastSync && !stateSync, logger)
 	if err != nil {
 		return nil, fmt.Errorf("could not create blockchain reactor: %w", err)
 	}
@@ -885,7 +880,7 @@ func NewNode(config *cfg.Config,
 		config.StateSync.TempDir)
 	stateSyncReactor.SetLogger(logger.With("module", "statesync"))
 
-	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state, &proTxHash)
+	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state, proTxHashP)
 	if err != nil {
 		return nil, err
 	}

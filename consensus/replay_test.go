@@ -912,6 +912,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	var store *mockBlockStore
 	var stateDB dbm.DB
 	var genesisState sm.State
+	var privVal types.PrivValidator
 	if testValidatorsChange {
 		testConfig := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), mode))
 		defer os.RemoveAll(testConfig.RootDir)
@@ -922,6 +923,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		chain = append([]*types.Block{}, sim.Chain...) // copy chain
 		commits = sim.Commits
 		store = newMockBlockStore(config, genesisState.ConsensusParams)
+		privVal = privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	} else { // test single node
 		testConfig := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), mode))
 		defer os.RemoveAll(testConfig.RootDir)
@@ -930,7 +932,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		walFile := tempWALWithData(walBody)
 		config.Consensus.SetWalFile(walFile)
 
-		privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+		privVal = privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 
 		gdoc, err := sm.MakeGenesisDocFromFile(config.GenesisFile())
 		if err != nil {
@@ -954,6 +956,14 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		stateDB, genesisState, store = stateAndStore(config, pubKey, kvstore.ProtocolVersion)
 
 	}
+	var proTxHashP *crypto.ProTxHash
+	proTxHash, err := privVal.GetProTxHash()
+	if err == nil {
+		proTxHashP = &proTxHash
+	} else {
+		proTxHashP = nil
+	}
+
 	stateStore := sm.NewStore(stateDB)
 	store.chain = chain
 	store.commits = commits
@@ -991,7 +1001,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 
 	// now start the app using the handshake - it should sync
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
-	handshaker := NewHandshaker(stateStore, state, store, genDoc, config.Consensus.AppHashSize)
+	handshaker := NewHandshaker(stateStore, state, store, genDoc, proTxHashP, config.Consensus.AppHashSize)
 	proxyApp := proxy.NewAppConns(clientCreator2)
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
@@ -1003,7 +1013,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		}
 	})
 
-	err := handshaker.Handshake(proxyApp)
+	err = handshaker.Handshake(proxyApp)
 	if expectError {
 		require.Error(t, err)
 		return
@@ -1152,7 +1162,11 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	const appVersion = 0x0
-	pubKey, err := privVal.GetPubKey(crypto.QuorumHash{})
+	quorumHash, err := privVal.GetFirstQuorumHash()
+	require.NoError(t, err)
+	pubKey, err := privVal.GetPubKey(quorumHash)
+	require.NoError(t, err)
+	proTxHash, err := privVal.GetProTxHash()
 	require.NoError(t, err)
 	stateDB, state, store := stateAndStore(config, pubKey, appVersion)
 	stateStore := sm.NewStore(stateDB)
@@ -1179,7 +1193,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 		})
 
 		assert.Panics(t, func() {
-			h := NewHandshaker(stateStore, state, store, genDoc, config.Consensus.AppHashSize)
+			h := NewHandshaker(stateStore, state, store, genDoc, &proTxHash, config.Consensus.AppHashSize)
 			if err = h.Handshake(proxyApp); err != nil {
 				t.Log(err)
 			}
@@ -1203,7 +1217,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 		})
 
 		assert.Panics(t, func() {
-			h := NewHandshaker(stateStore, state, store, genDoc, config.Consensus.AppHashSize)
+			h := NewHandshaker(stateStore, state, store, genDoc, &proTxHash, config.Consensus.AppHashSize)
 			if err = h.Handshake(proxyApp); err != nil {
 				t.Log(err)
 			}
@@ -1497,6 +1511,8 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	pubKey, err := privVal.GetPubKey(randQuorumHash)
 	require.NoError(t, err)
+	proTxHash, err := privVal.GetProTxHash()
+	require.NoError(t, err)
 	stateDB, state, store := stateAndStore(config, pubKey, 0x0)
 	stateStore := sm.NewStore(stateDB)
 
@@ -1504,7 +1520,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 
 	// now start the app using the handshake - it should sync
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
-	handshaker := NewHandshaker(stateStore, state, store, genDoc, config.Consensus.AppHashSize)
+	handshaker := NewHandshaker(stateStore, state, store, genDoc, &proTxHash, config.Consensus.AppHashSize)
 	proxyApp := proxy.NewAppConns(clientCreator)
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)

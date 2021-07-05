@@ -201,12 +201,14 @@ func makeHeightSearchFunc(height int64) auto.SearchFunc {
 //---------------------------------------------------
 
 type Handshaker struct {
-	stateStore   sm.Store
-	initialState sm.State
-	store        sm.BlockStore
-	eventBus     types.BlockEventPublisher
-	genDoc       *types.GenesisDoc
-	logger       log.Logger
+	stateStore    sm.Store
+	initialState  sm.State
+	store         sm.BlockStore
+	eventBus      types.BlockEventPublisher
+	genDoc        *types.GenesisDoc
+	nodeProTxHash *crypto.ProTxHash
+	logger        log.Logger
+
 
 	nBlocks int // number of blocks applied to the state
 
@@ -214,17 +216,18 @@ type Handshaker struct {
 }
 
 func NewHandshaker(stateStore sm.Store, state sm.State,
-	store sm.BlockStore, genDoc *types.GenesisDoc, appHashSize int) *Handshaker {
+	store sm.BlockStore, genDoc *types.GenesisDoc, nodeProTxHash *crypto.ProTxHash, appHashSize int) *Handshaker {
 
 	return &Handshaker{
-		stateStore:   stateStore,
-		initialState: state,
-		store:        store,
-		eventBus:     types.NopEventBus{},
-		genDoc:       genDoc,
-		logger:       log.NewNopLogger(),
-		nBlocks:      0,
-		appHashSize:  appHashSize,
+		stateStore:    stateStore,
+		initialState:  state,
+		store:         store,
+		eventBus:      types.NopEventBus{},
+		genDoc:        genDoc,
+		logger:        log.NewNopLogger(),
+		nBlocks:       0,
+		appHashSize:   appHashSize,
+		nodeProTxHash: nodeProTxHash,
 	}
 }
 
@@ -257,13 +260,6 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 		return fmt.Errorf("got a negative last block height (%d) from the app", blockHeight)
 	}
 	appHash := res.LastBlockAppHash
-	nodeProTxHash := crypto.ProTxHash(res.ProTxHash)
-	var nodeProTxHashP *crypto.ProTxHash
-	if len(nodeProTxHash) == crypto.ProTxHashSize {
-		nodeProTxHashP = &nodeProTxHash
-	} else {
-		nodeProTxHashP = nil
-	}
 
 	h.logger.Info("ABCI Handshake App Info",
 		"height", blockHeight,
@@ -278,7 +274,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	}
 
 	// Replay blocks up to the latest in the blockstore.
-	_, err = h.ReplayBlocks(h.initialState, nodeProTxHashP, appHash, blockHeight, proxyApp)
+	_, err = h.ReplayBlocks(h.initialState, h.nodeProTxHash, appHash, blockHeight, proxyApp)
 	if err != nil {
 		return fmt.Errorf("error on replay: %v", err)
 	}
