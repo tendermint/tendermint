@@ -113,8 +113,7 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	header := tmproto.Header{
 		Height: height,
 	}
-	kvstore.BeginBlock(types.RequestBeginBlock{Hash: hash, Header: header})
-	kvstore.EndBlock(types.RequestEndBlock{Height: header.Height})
+	kvstore.FinalizeBlock(types.RequestFinalizeBlock{Hash: hash, Header: header})
 	kvstore.Commit()
 
 	resInfo = kvstore.Info(types.RequestInfo{})

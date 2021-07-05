@@ -76,20 +76,22 @@ func testStream(t *testing.T, app types.Application) {
 	client.SetResponseCallback(func(req *types.Request, res *types.Response) {
 		// Process response
 		switch r := res.Value.(type) {
-		case *types.Response_DeliverTx:
-			counter++
-			if r.DeliverTx.Code != code.CodeTypeOK {
-				t.Error("DeliverTx failed with ret_code", r.DeliverTx.Code)
-			}
-			if counter > numDeliverTxs {
-				t.Fatalf("Too many DeliverTx responses. Got %d, expected %d", counter, numDeliverTxs)
-			}
-			if counter == numDeliverTxs {
-				go func() {
-					time.Sleep(time.Second * 1) // Wait for a bit to allow counter overflow
-					close(done)
-				}()
-				return
+		case *types.Response_FinalizeBlock:
+			for _, tx := range r.FinalizeBlock.Txs {
+				counter++
+				if tx.Code != code.CodeTypeOK {
+					t.Error("DeliverTx failed with ret_code", tx.Code)
+				}
+				if counter > numDeliverTxs {
+					t.Fatalf("Too many DeliverTx responses. Got %d, expected %d", counter, numDeliverTxs)
+				}
+				if counter == numDeliverTxs {
+					go func() {
+						time.Sleep(time.Second * 1) // Wait for a bit to allow counter overflow
+						close(done)
+					}()
+					return
+				}
 			}
 		case *types.Response_Flush:
 			// ignore
