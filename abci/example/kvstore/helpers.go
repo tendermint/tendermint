@@ -32,7 +32,8 @@ func RandValidatorSetUpdate(cnt int) types.ValidatorSetUpdate {
 // which allows tests to pass and is fine as long as you
 // don't make any tx that modify the validator state
 func InitKVStore(app *PersistentKVStoreApplication) {
+	val := RandValidatorSetUpdate(1)
 	app.InitChain(types.RequestInitChain{
-		ValidatorSet: RandValidatorSetUpdate(1),
+		ValidatorSet: &val,
 	})
 }

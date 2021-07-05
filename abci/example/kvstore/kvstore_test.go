@@ -134,7 +134,7 @@ func TestValUpdates(t *testing.T) {
 
 	// initialize with the first nInit
 	kvstore.InitChain(types.RequestInitChain{
-		ValidatorSet: initVals,
+		ValidatorSet: &initVals,
 	})
 
 	kvVals := kvstore.ValidatorSet()

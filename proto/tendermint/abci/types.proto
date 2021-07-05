@@ -62,10 +62,10 @@ message RequestInitChain {
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   string                   chain_id         = 2;
   ConsensusParams          consensus_params = 3;
-  //repeated ValidatorUpdate validators       = 4 [(gogoproto.nullable) = false];
+  ValidatorSetUpdate       validator_set    = 4 [(gogoproto.nullable) = true];
   bytes                    app_state_bytes  = 5;
   int64                    initial_height   = 6;
-  ValidatorSetUpdate validator_set = 100 [(gogoproto.nullable) = false];
+  uint32                   initial_core_height = 7;
 }
 
 message RequestQuery {

@@ -149,7 +149,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		app.InitChain(abci.RequestInitChain{ValidatorSet: vals})
+		app.InitChain(abci.RequestInitChain{ValidatorSet: &vals})
 
 		pv := privVals[i]
 		// duplicate code from:

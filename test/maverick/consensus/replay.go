@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -305,13 +306,31 @@ func (h *Handshaker) ReplayBlocks(
 
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain.
 	if appBlockHeight == 0 {
-		validators := make([]*types.Validator, len(h.genDoc.Validators))
-		for i, val := range h.genDoc.Validators {
-			validators[i] = types.NewValidatorDefaultVotingPower(val.PubKey, val.ProTxHash)
+		var nextVals *abci.ValidatorSetUpdate
+		if h.genDoc.QuorumHash != nil {
+			validators := make([]*types.Validator, len(h.genDoc.Validators))
+			for i, val := range h.genDoc.Validators {
+				validators[i] = types.NewValidatorDefaultVotingPower(val.PubKey, val.ProTxHash)
+				err := validators[i].ValidateBasic()
+				if err != nil {
+					return nil, fmt.Errorf("replay blocks error when validating validator: %s", err)
+				}
+			}
+			validatorSet := types.NewValidatorSetWithLocalNodeProTxHash(validators, h.genDoc.ThresholdPublicKey, h.genDoc.QuorumType, h.genDoc.QuorumHash, h.genDoc.NodeProTxHash)
+			err := validatorSet.ValidateBasic()
+			if err != nil {
+				return nil, fmt.Errorf("replay blocks error when validating validatorSet: %s", err)
+			}
+			vals := types.TM2PB.ValidatorUpdates(validatorSet)
+			nextVals = &vals
+		} else {
+			nextVals = nil
 		}
-		validatorSet := types.NewValidatorSetWithLocalNodeProTxHash(validators, h.genDoc.ThresholdPublicKey, h.genDoc.QuorumType,
-			h.genDoc.QuorumHash, h.genDoc.NodeProTxHash)
-		nextVals := types.TM2PB.ValidatorUpdates(validatorSet)
+
+		if h.genDoc.InitialCoreChainLockedHeight == 0 {
+			return nil, errors.New("the initial core chain locked height in genesis can not be 0")
+		}
+
 		csParams := types.TM2PB.ConsensusParams(h.genDoc.ConsensusParams)
 		req := abci.RequestInitChain{
 			Time:            h.genDoc.GenesisTime,
@@ -320,6 +339,7 @@ func (h *Handshaker) ReplayBlocks(
 			ConsensusParams: csParams,
 			ValidatorSet:    nextVals,
 			AppStateBytes:   h.genDoc.AppState,
+			InitialCoreHeight: h.genDoc.InitialCoreChainLockedHeight,
 		}
 		res, err := proxyApp.Consensus().InitChainSync(req)
 		if err != nil {

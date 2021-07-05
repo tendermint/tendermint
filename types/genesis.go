@@ -124,7 +124,7 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		return fmt.Errorf("the quorum hash must be at least 20 bytes long (%d Validator(s))", len(genDoc.Validators))
 	}
 
-	if genDoc.Validators != nil && genDoc.QuorumType == 0 {
+	if genDoc.QuorumType == 0 {
 		return fmt.Errorf("the quorum type must not be 0 (%d Validator(s))", len(genDoc.Validators))
 	}
 
