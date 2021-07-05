@@ -39,8 +39,9 @@ type NodeInfo struct {
 
 	// Check compatibility.
 	// Channels are HexBytes so easier to read as JSON
-	Network  string         `json:"network"`  // network/chain ID
-	Version  string         `json:"version"`  // major.minor.revision
+	Network string `json:"network"` // network/chain ID
+	Version string `json:"version"` // major.minor.revision
+	// FIXME: This should be changed to uint16 to be consistent with the updated channel type
 	Channels bytes.HexBytes `json:"channels"` // channels this node knows about
 
 	// ASCIIText fields
@@ -169,6 +170,31 @@ OUTER_LOOP:
 func (info NodeInfo) NetAddress() (*NetAddress, error) {
 	idAddr := info.ID().AddressString(info.ListenAddr)
 	return NewNetAddressString(idAddr)
+}
+
+// AddChannel is used by the router when a channel is opened to add it to the node info
+func (info *NodeInfo) AddChannel(channel uint16) {
+	// check that the channel doesn't already exist
+	for _, ch := range info.Channels {
+		if ch == byte(channel) {
+			return
+		}
+	}
+
+	info.Channels = append(info.Channels, byte(channel))
+}
+
+func (info NodeInfo) Copy() NodeInfo {
+	return NodeInfo{
+		ProtocolVersion: info.ProtocolVersion,
+		NodeID:          info.NodeID,
+		ListenAddr:      info.ListenAddr,
+		Network:         info.Network,
+		Version:         info.Version,
+		Channels:        info.Channels,
+		Moniker:         info.Moniker,
+		Other:           info.Other,
+	}
 }
 
 func (info NodeInfo) ToProto() *tmp2p.NodeInfo {
