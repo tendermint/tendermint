@@ -1,6 +1,6 @@
 name: Build & Push
-#  Build & Push rebuilds the tendermint docker image on every push to master and creation of tags
-# and pushes the image to https://hub.docker.com/r/interchainio/simapp/tags
+# Build & Push rebuilds the Tenderdash docker image every time a release is published
+# and pushes the image to https://hub.docker.com/r/dashpay/tenderdash/tags
 on:
   release:
     types:
