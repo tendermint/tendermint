@@ -42,7 +42,7 @@ var (
 
 func AddInitFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVar(&quorumType, "quorumType", 0, "Quorum Type")
-	cmd.Flags().Uint32Var(&coreChainLockedHeight, "coreChainLockedHeight", 0, "Initial Core Chain Locked Height")
+	cmd.Flags().Uint32Var(&coreChainLockedHeight, "coreChainLockedHeight", 1, "Initial Core Chain Locked Height")
 	cmd.Flags().Int64Var(&initChainInitialHeight, "initialHeight", 0, "Initial Height")
 	cmd.Flags().BytesHexVar(&proTxHash, "proTxHash", []byte(nil), "Node pro tx hash")
 	cmd.Flags().BytesHexVar(&appHash, "appHash", []byte(nil), "App hash")
@@ -151,6 +151,7 @@ func initFilesSingleNodeWithConfig(config *cfg.Config) error {
 			ThresholdPublicKey: pubKey,
 			QuorumHash: quorumHash,
 			NodeProTxHash: &proTxHash,
+			InitialCoreChainLockedHeight: 1,
 		}
 
 		genDoc.Validators = []types.GenesisValidator{{

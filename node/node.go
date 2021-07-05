@@ -96,7 +96,6 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	}
 
 	return NewNode(config,
-		privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile()),
 		nodeKey,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
@@ -641,7 +640,6 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 
 // NewNode returns a new, ready to go, Tendermint Node.
 func NewNode(config *cfg.Config,
-	privValidator types.PrivValidator,
 	nodeKey *p2p.NodeKey,
 	clientCreator proxy.ClientCreator,
 	genesisDocProvider GenesisDocProvider,
@@ -685,6 +683,7 @@ func NewNode(config *cfg.Config,
 
 	var weAreOnlyValidator bool
 	var proTxHash crypto.ProTxHash
+	var privValidator types.PrivValidator
 	if config.PrivValidatorCoreRPCHost != "" {
 		logger.Info("Initializing Dash Core Signing", "quorum hash", state.Validators.QuorumHash.String())
 		llmqType := config.Consensus.QuorumType
@@ -721,8 +720,9 @@ func NewNode(config *cfg.Config,
 			return nil, fmt.Errorf("can't get proTxHash through listen address: %w", err)
 		}
 		logger.Info("Connected to Private Validator through listen address", "proTxHash", proTxHash.String())
-	} else if privValidator == nil {
-		logger.Info("Private Validator is not properly set", "proTxHash", proTxHash.String())
+	} else {
+		privValidator = privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+		logger.Info("Private Validator using local file", "proTxHash", proTxHash.String())
 	}
 
 	if dashCoreRpcClient == nil {

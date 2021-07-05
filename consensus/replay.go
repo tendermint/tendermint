@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 	"hash/crc32"
 	"io"
 	"reflect"
@@ -317,7 +318,7 @@ func (h *Handshaker) ReplayBlocks(
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain.
 	if appBlockHeight == 0 {
 		var nextVals *abci.ValidatorSetUpdate
-		if h.genDoc.QuorumHash != nil {
+		if h.genDoc.QuorumHash != nil && len(h.genDoc.QuorumHash) == crypto.DefaultHashSize {
 			validators := make([]*types.Validator, len(h.genDoc.Validators))
 			for i, val := range h.genDoc.Validators {
 				validators[i] = types.NewValidatorDefaultVotingPower(val.PubKey, val.ProTxHash)

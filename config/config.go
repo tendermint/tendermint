@@ -234,9 +234,31 @@ func DefaultBaseConfig() BaseConfig {
 		Genesis:                      defaultGenesisJSONPath,
 		PrivValidatorKey:             defaultPrivValKeyPath,
 		PrivValidatorState:           defaultPrivValStatePath,
-		PrivValidatorCoreRPCHost:     "127.0.0.1:19998",
+		PrivValidatorCoreRPCHost:     "",
 		PrivValidatorCoreRPCUsername: "dashrpc",
 		PrivValidatorCoreRPCPassword: "rpcpassword",
+		NodeKey:                      defaultNodeKeyPath,
+		Moniker:                      defaultMoniker,
+		ProxyApp:                     "tcp://127.0.0.1:26658",
+		ABCI:                         "socket",
+		LogLevel:                     DefaultLogLevel,
+		LogFormat:                    LogFormatPlain,
+		FastSyncMode:                 true,
+		FilterPeers:                  false,
+		DBBackend:                    "goleveldb",
+		DBPath:                       "data",
+	}
+}
+
+// SingleNodeBaseConfig returns a default base configuration for a Tendermint node
+func SingleNodeBaseConfig() BaseConfig {
+	return BaseConfig{
+		Genesis:                      defaultGenesisJSONPath,
+		PrivValidatorKey:             defaultPrivValKeyPath,
+		PrivValidatorState:           defaultPrivValStatePath,
+		PrivValidatorCoreRPCHost:     "",
+		PrivValidatorCoreRPCUsername: "",
+		PrivValidatorCoreRPCPassword: "",
 		NodeKey:                      defaultNodeKeyPath,
 		Moniker:                      defaultMoniker,
 		ProxyApp:                     "tcp://127.0.0.1:26658",

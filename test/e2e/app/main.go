@@ -165,7 +165,6 @@ func startNode(cfg *Config) error {
 	}
 	n, err := node.NewNode(
 		tmcfg,
-		privval.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
 		nodeKey,
 		proxy.NewLocalClientCreator(app),
 		node.DefaultGenesisDocProviderFunc(tmcfg),
@@ -245,7 +244,6 @@ func startMaverick(cfg *Config) error {
 
 	// TODO: What is a maverick node?
 	n, err := maverick.NewNode(tmcfg,
-		privval.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
 		nodeKey,
 		proxy.NewLocalClientCreator(app),
 		maverick.DefaultGenesisDocProviderFunc(tmcfg),
