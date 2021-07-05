@@ -772,12 +772,18 @@ func TestRouter_EvictPeers(t *testing.T) {
 func TestRouter_ChannelCompatability(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
-	closeCh := make(chan time.Time)
+	incompatiblePeer := types.NodeInfo{
+		NodeID:     peerID,
+		ListenAddr: "0.0.0.0:0",
+		Network:    "test",
+		Moniker:    string(peerID),
+		Channels:	[]byte{0x03},
+	}
 
 	mockConnection := &mocks.Connection{}
 	mockConnection.On("String").Maybe().Return("mock")
 	mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
-		WaitUntil(closeCh).Return(p2p.NodeInfo{}, nil, io.EOF)
+		Return(incompatiblePeer, peerKey, nil)
 	mockConnection.On("Close").Return(nil)
 
 	mockTransport := &mocks.Transport{}
@@ -787,6 +793,26 @@ func TestRouter_ChannelCompatability(t *testing.T) {
 	mockTransport.On("Accept").Once().Return(mockConnection, nil)
 	mockTransport.On("Accept").Once().Return(nil, io.EOF)
 
-	//
+	// Set up and start the router.
+	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+	defer peerManager.Close()
 
+	router, err := p2p.NewRouter(
+		log.TestingLogger(),
+		p2p.NopMetrics(),
+		selfInfo,
+		selfKey,
+		peerManager,
+		[]p2p.Transport{mockTransport},
+		p2p.RouterOptions{},
+	)
+	require.NoError(t, err)
+
+	require.NoError(t, router.Start())
+	time.Sleep(time.Second)
+	require.NoError(t, router.Stop())
+
+	mockConnection.AssertExpectations(t)
+	mockTransport.AssertExpectations(t)
 }
