@@ -256,7 +256,7 @@ type Router struct {
 	connTracker        connectionTracker
 	protocolTransports map[Protocol]Transport
 	stopCh             chan struct{} // signals Router shutdown
-  
+
 	peerMtx    sync.RWMutex
 	peerQueues map[types.NodeID]queue // outbound messages per peer for all channels
 	// the channels that the peer queue has open
@@ -389,6 +389,9 @@ func (r *Router) OpenChannel(chDesc ChannelDescriptor, messageType proto.Message
 
 	r.channelQueues[id] = queue
 	r.channelMessages[id] = messageType
+
+	// add the channel to the nodeInfo if it's not already there.
+	r.nodeInfo.AddChannel(uint16(chDesc.ID))
 
 	go func() {
 		defer func() {
@@ -710,14 +713,8 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 	}
 
 	peerInfo, _, err := r.handshakePeer(ctx, conn, address.NodeID)
-	var errRejected ErrRejected
 	switch {
 	case errors.Is(err, context.Canceled):
-		conn.Close()
-		return
-	case errors.As(err, &errRejected) && errRejected.IsIncompatible():
-		r.logger.Error("peer rejected due to incompatibility", "node", peerInfo.NodeID, "err", err)
-		r.peerManager.Errored(peerInfo.NodeID, err)
 		conn.Close()
 		return
 	case err != nil:
@@ -1015,6 +1012,11 @@ func (r *Router) evictPeers() {
 			queue.close()
 		}
 	}
+}
+
+// NodeInfo returns a copy of the current NodeInfo. Used for testing.
+func (r *Router) NodeInfo() types.NodeInfo {
+	return r.nodeInfo.Copy()
 }
 
 // OnStart implements service.Service.
