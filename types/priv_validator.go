@@ -15,12 +15,12 @@ import (
 type PrivValidatorType uint8
 
 const (
-	MockSignerClient      = PrivValidatorType(0x00) // mock singer
-	FileSignerClient      = PrivValidatorType(0x01) // singer client via file
-	RetrySignerClient     = PrivValidatorType(0x02) // singer client with retry via socket
-	SignerSocketClient    = PrivValidatorType(0x03) // singer client via socket
-	ErrorMockSignerClient = PrivValidatorType(0x04) // error mock singer
-	SignergRPCClient      = PrivValidatorType(0x05) // singer client via gRPC
+	MockSignerClient      = PrivValidatorType(0x00) // mock signer
+	FileSignerClient      = PrivValidatorType(0x01) // signer client via file
+	RetrySignerClient     = PrivValidatorType(0x02) // signer client with retry via socket
+	SignerSocketClient    = PrivValidatorType(0x03) // signer client via socket
+	ErrorMockSignerClient = PrivValidatorType(0x04) // error mock signer
+	SignerGRPCClient      = PrivValidatorType(0x05) // signer client via gRPC
 )
 
 // PrivValidator defines the functionality of a local Tendermint validator

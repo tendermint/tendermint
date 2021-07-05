@@ -284,7 +284,7 @@ func (cs *State) SetPrivValidator(priv types.PrivValidator) {
 		case *privval.SignerClient:
 			cs.privValidatorType = types.SignerSocketClient
 		case *tmgrpc.SignerClient:
-			cs.privValidatorType = types.SignergRPCClient
+			cs.privValidatorType = types.SignerGRPCClient
 		case types.MockPV:
 			cs.privValidatorType = types.MockSignerClient
 		case *types.ErroringMockPV:
