@@ -310,12 +310,17 @@ func (r *Reactor) backfill(
 	// waiting on blocks. If it takes 4s to retrieve a block and 1s to verify
 	// it, then steady state involves four workers.
 	for i := 0; i < int(r.cfg.Fetchers); i++ {
+		ctxWithCancel, cancel := context.WithCancel(ctx)
+		defer cancel()
 		go func() {
 			for {
 				select {
 				case height := <-queue.nextHeight():
 					r.Logger.Debug("fetching next block", "height", height)
-					lb, peer, err := r.dispatcher.LightBlock(ctx, height)
+					lb, peer, err := r.dispatcher.LightBlock(ctxWithCancel, height)
+					if errors.Is(err, context.Canceled) {
+						return
+					}
 					if err != nil {
 						queue.retry(height)
 						if errors.Is(err, errNoConnectedPeers) {
