@@ -299,27 +299,28 @@ func execBlockOnProxyApp(
 ) (*tmstate.ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
-	txIndex := 0
 	abciResponses := new(tmstate.ABCIResponses)
 	dtxs := make([]*abci.ResponseDeliverTx, len(block.Txs))
 	abciResponses.FinalizeBlock.Txs = dtxs
 
 	// Execute transactions and get hash.
 	proxyCb := func(req *abci.Request, res *abci.Response) {
-		if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
-			// TODO: make use of res.Log
-			// TODO: make use of this info
-			// Blocks may include invalid txs.
-			txRes := r.DeliverTx
-			if txRes.Code == abci.CodeTypeOK {
-				validTxs++
-			} else {
-				logger.Debug("invalid tx", "code", txRes.Code, "log", txRes.Log)
-				invalidTxs++
-			}
+		if r, ok := res.Value.(*abci.Response_FinalizeBlock); ok {
+			for i, tx := range r.FinalizeBlock.Txs {
 
-			abciResponses.FinalizeBlock.Txs[txIndex] = txRes
-			txIndex++
+				// TODO: make use of res.Log
+				// TODO: make use of this info
+				// Blocks may include invalid txs.
+				txRes := tx
+				if txRes.Code == abci.CodeTypeOK {
+					validTxs++
+				} else {
+					logger.Debug("invalid tx", "code", txRes.Code, "log", txRes.Log)
+					invalidTxs++
+				}
+
+				abciResponses.FinalizeBlock.Txs[i] = txRes
+			}
 		}
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)

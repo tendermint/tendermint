@@ -121,7 +121,7 @@ type slowApp struct {
 	types.BaseApplication
 }
 
-func (slowApp) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
+func (slowApp) FinalizeBlock(req types.RequestFinalizeBlock) types.ResponseFinalizeBlock {
 	time.Sleep(200 * time.Millisecond)
-	return types.ResponseBeginBlock{}
+	return types.ResponseFinalizeBlock{}
 }

@@ -163,18 +163,17 @@ func (env *Environment) BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*
 	}
 
 	var totalGasUsed int64
-	for _, tx := range results.GetDeliverTxs() {
+	for _, tx := range results.FinalizeBlock.GetTxs() {
 		totalGasUsed += tx.GetGasUsed()
 	}
 
 	return &ctypes.ResultBlockResults{
 		Height:                height,
-		TxsResults:            results.DeliverTxs,
+		TxsResults:            results.FinalizeBlock.Txs,
 		TotalGasUsed:          totalGasUsed,
-		BeginBlockEvents:      results.BeginBlock.Events,
-		EndBlockEvents:        results.EndBlock.Events,
-		ValidatorUpdates:      results.EndBlock.ValidatorUpdates,
-		ConsensusParamUpdates: results.EndBlock.ConsensusParamUpdates,
+		FinalizeBlockEvents:   results.FinalizeBlock.Events,
+		ValidatorUpdates:      results.FinalizeBlock.ValidatorUpdates,
+		ConsensusParamUpdates: results.FinalizeBlock.ConsensusParamUpdates,
 	}, nil
 }
 

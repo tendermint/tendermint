@@ -82,11 +82,6 @@ func (mock *mockProxyApp) FinalizeBlock(req abci.RequestFinalizeBlock) abci.Resp
 	return *r
 }
 
-func (mock *mockProxyApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
-	mock.txCount = 0
-	return *mock.abciResponses.EndBlock
-}
-
 func (mock *mockProxyApp) Commit() abci.ResponseCommit {
 	return abci.ResponseCommit{Data: mock.appHash}
 }
