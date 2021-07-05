@@ -619,8 +619,8 @@ func TestMockProxyApp(t *testing.T) {
 
 	assert.NotPanics(t, func() {
 		abciResWithEmptyDeliverTx := new(tmstate.ABCIResponses)
-		abciResWithEmptyDeliverTx.DeliverTxs = make([]*abci.ResponseDeliverTx, 0)
-		abciResWithEmptyDeliverTx.DeliverTxs = append(abciResWithEmptyDeliverTx.DeliverTxs, &abci.ResponseDeliverTx{})
+		abciResWithEmptyDeliverTx.FinalizeBlock.Txs = make([]*abci.ResponseDeliverTx, 0)
+		abciResWithEmptyDeliverTx.FinalizeBlock.Txs = append(abciResWithEmptyDeliverTx.FinalizeBlock.Txs, &abci.ResponseDeliverTx{})
 
 		// called when saveABCIResponses:
 		bytes, err := proto.Marshal(abciResWithEmptyDeliverTx)
@@ -634,28 +634,30 @@ func TestMockProxyApp(t *testing.T) {
 		mock := newMockProxyApp([]byte("mock_hash"), loadedAbciRes)
 
 		abciRes := new(tmstate.ABCIResponses)
-		abciRes.DeliverTxs = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.DeliverTxs))
+		abciRes.FinalizeBlock.Txs = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.FinalizeBlock.Txs))
 		// Execute transactions and get hash.
 		proxyCb := func(req *abci.Request, res *abci.Response) {
-			if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
-				// TODO: make use of res.Log
-				// TODO: make use of this info
-				// Blocks may include invalid txs.
-				txRes := r.DeliverTx
-				if txRes.Code == abci.CodeTypeOK {
-					validTxs++
-				} else {
-					logger.Debug("Invalid tx", "code", txRes.Code, "log", txRes.Log)
-					invalidTxs++
+			if r, ok := res.Value.(*abci.Response_FinalizeBlock); ok {
+				for i, tx := range r.FinalizeBlock.Txs {
+					// TODO: make use of res.Log
+					// TODO: make use of this info
+					// Blocks may include invalid txs.
+					txRes := tx
+					if txRes.Code == abci.CodeTypeOK {
+						validTxs++
+					} else {
+						logger.Debug("Invalid tx", "code", txRes.Code, "log", txRes.Log)
+						invalidTxs++
+					}
+					abciRes.FinalizeBlock.Txs[i] = txRes
+					txIndex++
 				}
-				abciRes.DeliverTxs[txIndex] = txRes
-				txIndex++
 			}
 		}
 		mock.SetResponseCallback(proxyCb)
 
 		someTx := []byte("tx")
-		_, err = mock.DeliverTxAsync(context.Background(), abci.RequestDeliverTx{Tx: someTx})
+		_, err = mock.FinalizeBlockSync(context.Background(), abci.RequestFinalizeBlock{Txs: [][]byte{someTx}})
 		assert.NoError(t, err)
 	})
 	assert.True(t, validTxs == 1)

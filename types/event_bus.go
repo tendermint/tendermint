@@ -122,9 +122,9 @@ func (b *EventBus) Publish(eventValue string, eventData TMEventData) error {
 func (b *EventBus) PublishEventNewBlock(data EventDataNewBlock) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
-	events := append(data.ResultBeginBlock.Events, data.ResultEndBlock.Events...)
 
-	// add Tendermint-reserved new block event
+	events := data.ResultFinalizeBlock.Events
+
 	events = append(events, EventNewBlock)
 
 	return b.pubsub.PublishWithEvents(ctx, data, events)
@@ -133,9 +133,9 @@ func (b *EventBus) PublishEventNewBlock(data EventDataNewBlock) error {
 func (b *EventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
-	events := append(data.ResultBeginBlock.Events, data.ResultEndBlock.Events...)
 
-	// add Tendermint-reserved new block header event
+	events := data.ResultFinalizeBlock.Events
+
 	events = append(events, EventNewBlockHeader)
 
 	return b.pubsub.PublishWithEvents(ctx, data, events)

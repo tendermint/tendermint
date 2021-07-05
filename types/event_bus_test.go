@@ -76,17 +76,12 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 
 	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
 	blockID := BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(BlockPartSizeBytes).Header()}
-	resultBeginBlock := abci.ResponseBeginBlock{
+	resultFinalizeBlock := abci.ResponseFinalizeBlock{
 		Events: []abci.Event{
 			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "baz", Value: "1"}}},
-		},
-	}
-	resultEndBlock := abci.ResponseEndBlock{
-		Events: []abci.Event{
 			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "foz", Value: "2"}}},
 		},
 	}
-
 	// PublishEventNewBlock adds the tm.event compositeKey, so the query below should work
 	query := "tm.event='NewBlock' AND testType.baz=1 AND testType.foz=2"
 	blocksSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
@@ -98,16 +93,14 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 		edt := msg.Data().(EventDataNewBlock)
 		assert.Equal(t, block, edt.Block)
 		assert.Equal(t, blockID, edt.BlockID)
-		assert.Equal(t, resultBeginBlock, edt.ResultBeginBlock)
-		assert.Equal(t, resultEndBlock, edt.ResultEndBlock)
+		assert.Equal(t, resultFinalizeBlock, edt.ResultFinalizeBlock)
 		close(done)
 	}()
 
 	err = eventBus.PublishEventNewBlock(EventDataNewBlock{
-		Block:            block,
-		BlockID:          blockID,
-		ResultBeginBlock: resultBeginBlock,
-		ResultEndBlock:   resultEndBlock,
+		Block:               block,
+		BlockID:             blockID,
+		ResultFinalizeBlock: resultFinalizeBlock,
 	})
 	assert.NoError(t, err)
 
@@ -237,17 +230,12 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	})
 
 	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
-	resultBeginBlock := abci.ResponseBeginBlock{
+	resultFinalizeBlock := abci.ResponseFinalizeBlock{
 		Events: []abci.Event{
 			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "baz", Value: "1"}}},
-		},
-	}
-	resultEndBlock := abci.ResponseEndBlock{
-		Events: []abci.Event{
 			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "foz", Value: "2"}}},
 		},
 	}
-
 	// PublishEventNewBlockHeader adds the tm.event compositeKey, so the query below should work
 	query := "tm.event='NewBlockHeader' AND testType.baz=1 AND testType.foz=2"
 	headersSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
@@ -258,15 +246,14 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 		msg := <-headersSub.Out()
 		edt := msg.Data().(EventDataNewBlockHeader)
 		assert.Equal(t, block.Header, edt.Header)
-		assert.Equal(t, resultBeginBlock, edt.ResultBeginBlock)
-		assert.Equal(t, resultEndBlock, edt.ResultEndBlock)
+		assert.Equal(t, resultFinalizeBlock, edt.ResultFinalizeBlock)
+
 		close(done)
 	}()
 
 	err = eventBus.PublishEventNewBlockHeader(EventDataNewBlockHeader{
-		Header:           block.Header,
-		ResultBeginBlock: resultBeginBlock,
-		ResultEndBlock:   resultEndBlock,
+		Header:              block.Header,
+		ResultFinalizeBlock: resultFinalizeBlock,
 	})
 	assert.NoError(t, err)
 

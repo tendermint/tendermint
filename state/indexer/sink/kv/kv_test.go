@@ -32,28 +32,14 @@ func TestBlockFuncs(t *testing.T) {
 
 	require.NoError(t, indexer.IndexBlockEvents(types.EventDataNewBlockHeader{
 		Header: types.Header{Height: 1},
-		ResultBeginBlock: abci.ResponseBeginBlock{
+		ResultFinalizeBlock: abci.ResponseFinalizeBlock{
 			Events: []abci.Event{
 				{
-					Type: "begin_event",
+					Type: "finalize_event",
 					Attributes: []abci.EventAttribute{
 						{
 							Key:   "proposer",
 							Value: "FCAA001",
-							Index: true,
-						},
-					},
-				},
-			},
-		},
-		ResultEndBlock: abci.ResponseEndBlock{
-			Events: []abci.Event{
-				{
-					Type: "end_event",
-					Attributes: []abci.EventAttribute{
-						{
-							Key:   "foo",
-							Value: "100",
 							Index: true,
 						},
 					},
@@ -67,36 +53,17 @@ func TestBlockFuncs(t *testing.T) {
 	assert.True(t, b)
 
 	for i := 2; i < 12; i++ {
-		var index bool
-		if i%2 == 0 {
-			index = true
-		}
-
 		require.NoError(t, indexer.IndexBlockEvents(types.EventDataNewBlockHeader{
 			Header: types.Header{Height: int64(i)},
-			ResultBeginBlock: abci.ResponseBeginBlock{
+			ResultFinalizeBlock: abci.ResponseFinalizeBlock{
 				Events: []abci.Event{
 					{
-						Type: "begin_event",
+						Type: "finalize_event",
 						Attributes: []abci.EventAttribute{
 							{
 								Key:   "proposer",
 								Value: "FCAA001",
 								Index: true,
-							},
-						},
-					},
-				},
-			},
-			ResultEndBlock: abci.ResponseEndBlock{
-				Events: []abci.Event{
-					{
-						Type: "end_event",
-						Attributes: []abci.EventAttribute{
-							{
-								Key:   "foo",
-								Value: fmt.Sprintf("%d", i),
-								Index: index,
 							},
 						},
 					},
