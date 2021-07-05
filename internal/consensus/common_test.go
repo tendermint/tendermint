@@ -19,7 +19,6 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
-	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
@@ -449,7 +448,7 @@ func randState(config *cfg.Config, nValidators int) (*State, []*validatorStub) {
 
 	vss := make([]*validatorStub, nValidators)
 
-	cs := newState(state, privVals[0], counter.NewApplication(true))
+	cs := newState(state, privVals[0], kvstore.NewApplication())
 
 	for i := 0; i < nValidators; i++ {
 		vss[i] = newValidatorStub(privVals[i], int32(i))
@@ -861,10 +860,6 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 }
 
 func (*mockTicker) SetLogger(log.Logger) {}
-
-func newCounter() abci.Application {
-	return counter.NewApplication(true)
-}
 
 func newPersistentKVStore() abci.Application {
 	dir, err := ioutil.TempDir("", "persistent-kvstore")

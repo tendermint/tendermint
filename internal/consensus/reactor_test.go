@@ -257,7 +257,7 @@ func TestReactorBasic(t *testing.T) {
 	config := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(t, config, n, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	states, cleanup := randConsensusState(t, config, n, "consensus_reactor_test", newMockTickerFunc(true), newPersistentKVStore)
 	t.Cleanup(cleanup)
 
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
@@ -287,7 +287,7 @@ func TestReactorWithEvidence(t *testing.T) {
 	n := 4
 	testName := "consensus_reactor_test"
 	tickerFunc := newMockTickerFunc(true)
-	appFunc := newCounter
+	appFunc := newPersistentKVStore
 
 	genDoc, privVals := factory.RandGenesisDoc(config, n, false, 30)
 	states := make([]*State, n)
@@ -387,7 +387,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 		n,
 		"consensus_reactor_test",
 		newMockTickerFunc(true),
-		newCounter,
+		newPersistentKVStore,
 		func(c *cfg.Config) {
 			c.Consensus.CreateEmptyBlocks = false
 		},
@@ -431,7 +431,7 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 	config := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(t, config, n, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	states, cleanup := randConsensusState(t, config, n, "consensus_reactor_test", newMockTickerFunc(true), newPersistentKVStore)
 	t.Cleanup(cleanup)
 
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
