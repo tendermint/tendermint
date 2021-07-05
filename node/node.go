@@ -1496,8 +1496,8 @@ func createAndStartPrivValidatorRPCClient(
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
 
-	// try to get a proTxHash from private validate first time to make sure connection works
-	_, err = pvsc.GetProTxHash()
+	// try to ping Core from private validator first time to make sure connection works
+	err = pvsc.Ping()
 	if err != nil {
 		return nil, fmt.Errorf("can't get proTxHash when starting private validator rpc client: %w", err)
 	}
