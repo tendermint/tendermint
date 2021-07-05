@@ -623,7 +623,6 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 		r.logger.Error("peer handshake failed", "endpoint", conn, "err", err)
 		return
 	}
-
 	if err := r.filterPeersID(ctx, peerInfo.NodeID); err != nil {
 		r.logger.Debug("peer filtered by node ID", "node", peerInfo.NodeID, "err", err)
 		return
@@ -710,9 +709,15 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 		return
 	}
 
-	nodeInfo, _, err := r.handshakePeer(ctx, conn, address.NodeID)
+	peerInfo, _, err := r.handshakePeer(ctx, conn, address.NodeID)
+	var errRejected ErrRejected
 	switch {
 	case errors.Is(err, context.Canceled):
+		conn.Close()
+		return
+	case errors.As(err, &errRejected) && errRejected.IsIncompatible():
+		r.logger.Error("peer rejected due to incompatibility", "node", peerInfo.NodeID, "err", err)
+		r.peerManager.Errored(peerInfo.NodeID, err)
 		conn.Close()
 		return
 	case err != nil:
@@ -732,7 +737,7 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 	}
 
 	// routePeer (also) calls connection close
-	go r.routePeer(address.NodeID, conn, ToChannelIDs(nodeInfo.Channels))
+	go r.routePeer(address.NodeID, conn, ToChannelIDs(peerInfo.Channels))
 }
 
 func (r *Router) getOrMakeQueue(peerID types.NodeID, channels channelIDs) queue {
@@ -817,7 +822,6 @@ func (r *Router) handshakePeer(
 	if err != nil {
 		return peerInfo, peerKey, err
 	}
-
 	if err = peerInfo.Validate(); err != nil {
 		return peerInfo, peerKey, fmt.Errorf("invalid handshake NodeInfo: %w", err)
 	}
@@ -828,6 +832,13 @@ func (r *Router) handshakePeer(
 	if expectID != "" && expectID != peerInfo.NodeID {
 		return peerInfo, peerKey, fmt.Errorf("expected to connect with peer %q, got %q",
 			expectID, peerInfo.NodeID)
+	}
+	if err := r.nodeInfo.CompatibleWith(peerInfo); err != nil {
+		return peerInfo, peerKey, ErrRejected{
+			err:            err,
+			id:             peerInfo.ID(),
+			isIncompatible: true,
+		}
 	}
 	return peerInfo, peerKey, nil
 }

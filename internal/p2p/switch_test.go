@@ -213,6 +213,26 @@ func TestSwitchFiltersOutItself(t *testing.T) {
 	assertNoPeersAfterTimeout(t, s1, 100*time.Millisecond)
 }
 
+func TestSwitchDialFailsOnIncompatiblePeer(t *testing.T) {
+	s1 := MakeSwitch(cfg, 1, "127.0.0.1", "123.123.123", initSwitchFunc, log.TestingLogger())
+	ni := s1.NodeInfo()
+	ni.Network = "network-a"
+	s1.SetNodeInfo(ni)
+
+	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg, Network: "network-b"}
+	rp.Start()
+	defer rp.Stop()
+
+	err := s1.DialPeerWithAddress(rp.Addr())
+	require.Error(t, err)
+	errRejected, ok := err.(ErrRejected)
+	require.True(t, ok, "expected error to be of type IsRejected")
+	require.True(t, errRejected.IsIncompatible(), "expected error to be IsIncompatible")
+
+	// remote peer should not have been added to the addressbook
+	require.False(t, s1.addrBook.HasAddress(rp.Addr()))
+}
+
 func TestSwitchPeerFilter(t *testing.T) {
 	var (
 		filters = []PeerFilterFunc{
@@ -695,6 +715,36 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 	for _, peer := range unconditionalPeers {
 		peer.Stop()
 	}
+}
+
+func TestSwitchRejectsIncompatiblePeers(t *testing.T) {
+	sw := MakeSwitch(cfg, 1, "127.0.0.1", "123.123.123", initSwitchFunc, log.TestingLogger())
+	ni := sw.NodeInfo()
+	ni.Network = "network-a"
+	sw.SetNodeInfo(ni)
+
+	err := sw.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err := sw.Stop()
+		require.NoError(t, err)
+	})
+
+	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg, Network: "network-b"}
+	rp.Start()
+	defer rp.Stop()
+
+	assert.Equal(t, 0, sw.Peers().Size())
+
+	conn, err := rp.Dial(sw.NetAddress())
+	assert.Nil(t, err)
+
+	one := make([]byte, 1)
+	_ = conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
+	_, err = conn.Read(one)
+	assert.Error(t, err)
+
+	assert.Equal(t, 0, sw.Peers().Size())
 }
 
 type errorTransport struct {

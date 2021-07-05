@@ -39,6 +39,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/tendermint/tendermint/abci/types"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/libs/service"
@@ -70,7 +71,7 @@ var (
 // allows event types to repeat themselves with the same set of keys and
 // different values.
 type Query interface {
-	Matches(events map[string][]string) (bool, error)
+	Matches(events []types.Event) (bool, error)
 	String() string
 }
 
@@ -102,7 +103,7 @@ type cmd struct {
 
 	// publish
 	msg    interface{}
-	events map[string][]string
+	events []types.Event
 }
 
 // Server allows clients to subscribe/unsubscribe for messages, publishing
@@ -314,13 +315,13 @@ func (s *Server) NumClientSubscriptions(clientID string) int {
 // Publish publishes the given message. An error will be returned to the caller
 // if the context is canceled.
 func (s *Server) Publish(ctx context.Context, msg interface{}) error {
-	return s.PublishWithEvents(ctx, msg, make(map[string][]string))
+	return s.PublishWithEvents(ctx, msg, []types.Event{})
 }
 
 // PublishWithEvents publishes the given message with the set of events. The set
 // is matched with clients queries. If there is a match, the message is sent to
 // the client.
-func (s *Server) PublishWithEvents(ctx context.Context, msg interface{}, events map[string][]string) error {
+func (s *Server) PublishWithEvents(ctx context.Context, msg interface{}, events []types.Event) error {
 	select {
 	case s.cmds <- cmd{op: pub, msg: msg, events: events}:
 		return nil
@@ -473,7 +474,7 @@ func (state *state) removeAll(reason error) {
 	}
 }
 
-func (state *state) send(msg interface{}, events map[string][]string) error {
+func (state *state) send(msg interface{}, events []types.Event) error {
 	for qStr, clientSubscriptions := range state.subscriptions {
 		if sub, ok := clientSubscriptions[qStr]; ok && sub.id == qStr {
 			continue

@@ -9,6 +9,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 ### BREAKING CHANGES
 
 - CLI/RPC/Config
+  - [pubsub/events] \#6634 The `ResultEvent.Events` field is now of type `[]abci.Event` preserving event order instead of `map[string][]string`. (@alexanderbez)
   - [config] \#5598 The `test_fuzz` and `test_fuzz_config` P2P settings have been removed. (@erikgrinaker)
   - [config] \#5728 `fast_sync = "v1"` is no longer supported (@melekes)
   - [cli] \#5772 `gen_node_key` prints JSON-encoded `NodeKey` rather than ID and does not save it to `node_key.json` (@melekes)
@@ -33,6 +34,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - P2P Protocol
 
 - Go API
+  - [pubsub] \#6634 The `Query#Matches` method along with other pubsub methods, now accepts a `[]abci.Event` instead of `map[string][]string`. (@alexanderbez)
   - [p2p] \#6618 Move `p2p.NodeInfo` into `types` to support use of the SDK. (@tychoish)
   - [p2p] \#6583 Make `p2p.NodeID` and `p2p.NetAddress` exported types to support their use in the RPC layer. (@tychoish)
   - [node] \#6540 Reduce surface area of the `node` package by making most of the implementation details private. (@tychoish)
@@ -64,6 +66,8 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
     Some core types have been kept in the `mempool` package such as `TxCache` and it's implementations, the `Mempool` interface itself
     and `TxInfo`. (@alexanderbez)
   - [crypto/sr25519] \#6526 Do not re-execute the Ed25519-style key derivation step when doing signing and verification.  The derivation is now done once and only once.  This breaks `sr25519.GenPrivKeyFromSecret` output compatibility. (@Yawning)
+  - [types] \#6627 Move `NodeKey` to types to make the type public. 
+  - [config] \#6627 Extend `config` to contain methods `LoadNodeKeyID` and `LoadorGenNodeKeyID`
 
 - Blockchain Protocol
 
