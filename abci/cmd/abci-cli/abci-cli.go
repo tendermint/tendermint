@@ -68,12 +68,9 @@ var RootCmd = &cobra.Command{
 		}
 
 		if logger == nil {
-			allowLevel, err := log.AllowLevel(flagLogLevel)
-			if err != nil {
-				return err
-			}
-			logger = log.NewFilter(log.NewTMLogger(log.NewSyncWriter(os.Stdout)), allowLevel)
+			logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 		}
+
 		if client == nil {
 			var err error
 			client, err = abcicli.NewClient(flagAddress, flagAbci, false)
@@ -600,7 +597,7 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 
 func cmdCounter(cmd *cobra.Command, args []string) error {
 	app := counter.NewApplication(flagSerial)
-	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 
 	// Start the listener
 	srv, err := server.NewServer(flagAddress, flagAbci, app)
@@ -625,7 +622,7 @@ func cmdCounter(cmd *cobra.Command, args []string) error {
 }
 
 func cmdKVStore(cmd *cobra.Command, args []string) error {
-	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 
 	// Create the application - in memory or persisted to disk
 	var app types.Application

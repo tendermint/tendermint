@@ -10,10 +10,9 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	"github.com/tendermint/tendermint/p2p"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 // InitFilesCmd initializes a fresh Tendermint Core instance.
@@ -51,8 +50,8 @@ func initFilesWithConfig(config *cfg.Config) error {
 
 	if config.Mode == cfg.ModeValidator {
 		// private validator
-		privValKeyFile := config.PrivValidatorKeyFile()
-		privValStateFile := config.PrivValidatorStateFile()
+		privValKeyFile := config.PrivValidator.KeyFile()
+		privValStateFile := config.PrivValidator.StateFile()
 		if tmos.FileExists(privValKeyFile) {
 			pv, err = privval.LoadFilePV(privValKeyFile, privValStateFile)
 			if err != nil {
@@ -76,7 +75,7 @@ func initFilesWithConfig(config *cfg.Config) error {
 	if tmos.FileExists(nodeKeyFile) {
 		logger.Info("Found node key", "path", nodeKeyFile)
 	} else {
-		if _, err := p2p.LoadOrGenNodeKey(nodeKeyFile); err != nil {
+		if _, err := types.LoadOrGenNodeKey(nodeKeyFile); err != nil {
 			return err
 		}
 		logger.Info("Generated node key", "path", nodeKeyFile)

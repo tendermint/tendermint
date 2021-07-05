@@ -40,7 +40,7 @@ Verify that you have the latest version of Go installed:
 
 ```bash
 $ go version
-go version go1.15.x darwin/amd64
+go version go1.16.x darwin/amd64
 ```
 
 ## 1.2 Creating a new Go project
@@ -351,7 +351,7 @@ import (
  tmflags "github.com/tendermint/tendermint/libs/cli/flags"
  "github.com/tendermint/tendermint/libs/log"
  nm "github.com/tendermint/tendermint/node"
- "github.com/tendermint/tendermint/p2p"
+ "github.com/tendermint/tendermint/internal/p2p"
  "github.com/tendermint/tendermint/privval"
  "github.com/tendermint/tendermint/proxy"
 )

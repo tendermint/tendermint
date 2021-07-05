@@ -75,12 +75,6 @@ func init() {
 // It is used to retrieve current state and save and load ABCI responses,
 // validators and consensus parameters
 type Store interface {
-	// LoadFromDBOrGenesisFile loads the most recent state.
-	// If the chain is new it will use the genesis file from the provided genesis file path as the current state.
-	LoadFromDBOrGenesisFile(string) (State, error)
-	// LoadFromDBOrGenesisDoc loads the most recent state.
-	// If the chain is new it will use the genesis doc as the current state.
-	LoadFromDBOrGenesisDoc(*types.GenesisDoc) (State, error)
 	// Load loads the current state of the blockchain
 	Load() (State, error)
 	// LoadValidators loads the validator set at a given height
@@ -93,6 +87,8 @@ type Store interface {
 	Save(State) error
 	// SaveABCIResponses saves ABCIResponses for a given height
 	SaveABCIResponses(int64, *tmstate.ABCIResponses) error
+	// SaveValidatorSet saves the validator set at a given height
+	SaveValidatorSets(int64, int64, *types.ValidatorSet) error
 	// Bootstrap is used for bootstrapping state when not starting from a initial height.
 	Bootstrap(State) error
 	// PruneStates takes the height from which to prune up to (exclusive)
@@ -109,43 +105,6 @@ var _ Store = (*dbStore)(nil)
 // NewStore creates the dbStore of the state pkg.
 func NewStore(db dbm.DB) Store {
 	return dbStore{db}
-}
-
-// LoadStateFromDBOrGenesisFile loads the most recent state from the database,
-// or creates a new one from the given genesisFilePath.
-func (store dbStore) LoadFromDBOrGenesisFile(genesisFilePath string) (State, error) {
-	state, err := store.Load()
-	if err != nil {
-		return State{}, err
-	}
-	if state.IsEmpty() {
-		var err error
-		state, err = MakeGenesisStateFromFile(genesisFilePath)
-		if err != nil {
-			return state, err
-		}
-	}
-
-	return state, nil
-}
-
-// LoadStateFromDBOrGenesisDoc loads the most recent state from the database,
-// or creates a new one from the given genesisDoc.
-func (store dbStore) LoadFromDBOrGenesisDoc(genesisDoc *types.GenesisDoc) (State, error) {
-	state, err := store.Load()
-	if err != nil {
-		return State{}, err
-	}
-
-	if state.IsEmpty() {
-		var err error
-		state, err = MakeGenesisState(genesisDoc)
-		if err != nil {
-			return state, err
-		}
-	}
-
-	return state, nil
 }
 
 // LoadState loads the State from the database.
@@ -502,6 +461,24 @@ func (store dbStore) saveABCIResponses(height int64, abciResponses *tmstate.ABCI
 	return store.db.SetSync(abciResponsesKey(height), bz)
 }
 
+// SaveValidatorSets is used to save the validator set over multiple heights.
+// It is exposed so that a backfill operation during state sync can populate
+// the store with the necessary amount of validator sets to verify any evidence
+// it may encounter.
+func (store dbStore) SaveValidatorSets(lowerHeight, upperHeight int64, vals *types.ValidatorSet) error {
+	batch := store.db.NewBatch()
+	defer batch.Close()
+
+	// batch together all the validator sets from lowerHeight to upperHeight
+	for height := lowerHeight; height <= upperHeight; height++ {
+		if err := store.saveValidatorsInfo(height, lowerHeight, vals, batch); err != nil {
+			return err
+		}
+	}
+
+	return batch.WriteSync()
+}
+
 //-----------------------------------------------------------------------------
 
 // LoadValidators loads the ValidatorSet for a given height.
@@ -606,12 +583,7 @@ func (store dbStore) saveValidatorsInfo(
 		return err
 	}
 
-	err = batch.Set(validatorsKey(height), bz)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return batch.Set(validatorsKey(height), bz)
 }
 
 //-----------------------------------------------------------------------------

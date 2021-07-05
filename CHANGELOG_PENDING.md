@@ -9,6 +9,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 ### BREAKING CHANGES
 
 - CLI/RPC/Config
+  - [pubsub/events] \#6634 The `ResultEvent.Events` field is now of type `[]abci.Event` preserving event order instead of `map[string][]string`. (@alexanderbez)
   - [config] \#5598 The `test_fuzz` and `test_fuzz_config` P2P settings have been removed. (@erikgrinaker)
   - [config] \#5728 `fast_sync = "v1"` is no longer supported (@melekes)
   - [cli] \#5772 `gen_node_key` prints JSON-encoded `NodeKey` rather than ID and does not save it to `node_key.json` (@melekes)
@@ -17,9 +18,10 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [rpc] \#6168 Change default sorting to desc for `/tx_search` results (@melekes)
   - [cli] \#6282 User must specify the node mode when using `tendermint init` (@cmwaters)
   - [state/indexer] \#6382 reconstruct indexer, move txindex into the indexer package (@JayT106)
-  - [cli] \#6372 Introduce `BootstrapPeers` as part of the new p2p stack. Peers to be connected on
-    startup (@cmwaters)
-  - [config] \#6462 Move `PrivValidator` configuration out of `BaseConfig` into its own section.
+  - [cli] \#6372 Introduce `BootstrapPeers` as part of the new p2p stack. Peers to be connected on  startup (@cmwaters)
+  - [config] \#6462 Move `PrivValidator` configuration out of `BaseConfig` into its own section. (@tychoish)
+  - [rpc] \#6610 Add MaxPeerBlockHeight into /status rpc call (@JayT106)
+  - [libs/CList] \#6626 Automatically detach the prev/next elements in Remove function (@JayT106)
 
 - Apps
   - [ABCI] \#6408 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)
@@ -32,11 +34,18 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - P2P Protocol
 
 - Go API
+  - [pubsub] \#6634 The `Query#Matches` method along with other pubsub methods, now accepts a `[]abci.Event` instead of `map[string][]string`. (@alexanderbez)
+  - [p2p] \#6618 Move `p2p.NodeInfo` into `types` to support use of the SDK. (@tychoish)
+  - [p2p] \#6583 Make `p2p.NodeID` and `p2p.NetAddress` exported types to support their use in the RPC layer. (@tychoish)
+  - [node] \#6540 Reduce surface area of the `node` package by making most of the implementation details private. (@tychoish)
+  - [p2p] \#6547 Move the entire `p2p` package and all reactor implementations into `internal`.  (@tychoish)
+  - [libs/log] \#6534 Remove the existing custom Tendermint logger backed by go-kit. The logging interface, `Logger`, remains. Tendermint still provides a default logger backed by the performant zerolog logger. (@alexanderbez)
+  - [libs/time] \#6495 Move types/time to libs/time to improve consistency. (@tychoish)
   - [mempool] \#6529 The `Context` field has been removed from the `TxInfo` type. `CheckTx` now requires a `Context` argument. (@alexanderbez)
   - [abci/client, proxy] \#5673 `Async` funcs return an error, `Sync` and `Async` funcs accept `context.Context` (@melekes)
-  - [p2p] Removed unused function `MakePoWTarget`. (@erikgrinaker)
+  - [p2p] Remove unused function `MakePoWTarget`. (@erikgrinaker)
   - [libs/bits] \#5720 Validate `BitArray` in `FromProto`, which now returns an error (@melekes)
-  - [proto/p2p] Renamed `DefaultNodeInfo` and `DefaultNodeInfoOther` to `NodeInfo` and `NodeInfoOther` (@erikgrinaker)
+  - [proto/p2p] Rename `DefaultNodeInfo` and `DefaultNodeInfoOther` to `NodeInfo` and `NodeInfoOther` (@erikgrinaker)
   - [proto/p2p] Rename `NodeInfo.default_node_id` to `node_id` (@erikgrinaker)
   - [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
   - [store] \#5848 Remove block store state in favor of using the db iterators directly (@cmwaters)
@@ -52,16 +61,20 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [rpc/client/http] \#6176 Unexpose `WSEvents` (@melekes)
   - [rpc/jsonrpc/client/ws_client] \#6176 `NewWS` no longer accepts options (use `NewWSWithOptions` and `OnReconnect` funcs to configure the client) (@melekes)
   - [internal/libs] \#6366 Move `autofile`, `clist`,`fail`,`flowrate`, `protoio`, `sync`, `tempfile`, `test` and `timer` lib packages to an internal folder
-  - [libs/rand] \#6364 Removed most of libs/rand in favour of standard lib's `math/rand` (@liamsi)
+  - [libs/rand] \#6364 Remove most of libs/rand in favour of standard lib's `math/rand` (@liamsi)
   - [mempool] \#6466 The original mempool reactor has been versioned as `v0` and moved to a sub-package under the root `mempool` package.
     Some core types have been kept in the `mempool` package such as `TxCache` and it's implementations, the `Mempool` interface itself
     and `TxInfo`. (@alexanderbez)
+  - [crypto/sr25519] \#6526 Do not re-execute the Ed25519-style key derivation step when doing signing and verification.  The derivation is now done once and only once.  This breaks `sr25519.GenPrivKeyFromSecret` output compatibility. (@Yawning)
+  - [types] \#6627 Move `NodeKey` to types to make the type public. 
+  - [config] \#6627 Extend `config` to contain methods `LoadNodeKeyID` and `LoadorGenNodeKeyID`
 
 - Blockchain Protocol
 
 - Data Storage
   - [store/state/evidence/light] \#5771 Use an order-preserving varint key encoding (@cmwaters)
   - [mempool] \#6396 Remove mempool's write ahead log (WAL), (previously unused by the tendermint code). (@tychoish)
+  - [state] \#6541 Move pruneBlocks from consensus/state to state/execution. (@JayT106)
 
 - Tooling
   - [tools] \#6498 Set OS home dir to instead of the hardcoded PATH. (@JayT106)
@@ -84,9 +97,12 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [config/indexer] \#6411 Introduce support for custom event indexing data sources, specifically PostgreSQL. (@JayT106)
 
 ### IMPROVEMENTS
-
+- [libs/log] Console log formatting changes as a result of \#6534 and \#6589. (@tychoish)
+- [statesync] \#6566 Allow state sync fetchers and request timeout to be configurable. (@alexanderbez)
 - [types] \#6478 Add `block_id` to `newblock` event (@jeebster)
 - [crypto/ed25519] \#5632 Adopt zip215 `ed25519` verification. (@marbar3778)
+- [crypto/ed25519] \#6526 Use [curve25519-voi](https://github.com/oasisprotocol/curve25519-voi) for `ed25519` signing and verification. (@Yawning)
+- [crypto/sr25519] \#6526 Use [curve25519-voi](https://github.com/oasisprotocol/curve25519-voi) for `sr25519` signing and verification. (@Yawning)
 - [privval] \#5603 Add `--key` to `init`, `gen_validator`, `testnet` & `unsafe_reset_priv_validator` for use in generating `secp256k1` keys.
 - [privval] \#5725 Add gRPC support to private validator.
 - [privval] \#5876 `tendermint show-validator` will query the remote signer if gRPC is being used (@marbar3778)
@@ -116,6 +132,11 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [crypto/merkle] \#6443 Improve HashAlternatives performance (@cuonglm)
 - [crypto/merkle] \#6513 Optimize HashAlternatives (@marbar3778)
 - [p2p/pex] \#6509 Improve addrBook.hash performance (@cuonglm)
+- [consensus/metrics] \#6549 Change block_size gauge to a histogram for better observability over time (@marbar3778)
+- [statesync] \#6587 Increase chunk priority and re-request chunks that don't arrive (@cmwaters)
+- [state/privval] \#6578 No GetPubKey retry beyond the proposal/voting window (@JayT106)
+- [rpc] \#6615 Add TotalGasUsed to block_results response (@crypto-facs)
+- [cmd/tendermint/commands] \#6623 replace `$HOME/.some/test/dir` with `t.TempDir` (@tanyabouman)
 
 ### BUG FIXES
 
@@ -123,3 +144,6 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [blockchain/v1] [\#5701](https://github.com/tendermint/tendermint/pull/5701) Handle peers without blocks (@melekes)
 - [blockchain/v1] \#5711 Fix deadlock (@melekes)
 - [evidence] \#6375 Fix bug with inconsistent LightClientAttackEvidence hashing (cmwaters)
+- [rpc] \#6507 fix RPC client doesn't handle url's without ports (@JayT106)
+- [statesync] \#6463 Adds Reverse Sync feature to fetch historical light blocks after state sync in order to verify any evidence (@cmwaters)
+- [fastsync] \#6590 Update the metrics during fast-sync (@JayT106)

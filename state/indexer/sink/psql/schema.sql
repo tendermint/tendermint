@@ -6,12 +6,14 @@ CREATE TABLE block_events (
     height INTEGER NOT NULL,
     type block_event_type,
     created_at TIMESTAMPTZ NOT NULL,
-    chain_id VARCHAR NOT NULL
+    chain_id VARCHAR NOT NULL,
+    UNIQUE (key, height)
 );
 CREATE TABLE tx_results (
     id SERIAL PRIMARY KEY,
     tx_result BYTEA NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL
+    created_at TIMESTAMPTZ NOT NULL,
+    UNIQUE (tx_result)
 );
 CREATE TABLE tx_events (
     id SERIAL PRIMARY KEY,
@@ -22,6 +24,7 @@ CREATE TABLE tx_events (
     tx_result_id SERIAL,
     created_at TIMESTAMPTZ NOT NULL,
     chain_id VARCHAR NOT NULL,
+    UNIQUE (hash, key),
     FOREIGN KEY (tx_result_id)
         REFERENCES tx_results(id)
         ON DELETE CASCADE

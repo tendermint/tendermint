@@ -72,6 +72,11 @@ func TestBlockFuncs(t *testing.T) {
 	assert.Equal(t, errors.New("block search is not supported via the postgres event sink"), err)
 
 	require.NoError(t, verifyTimeStamp(TableEventBlock))
+
+	// try to insert the duplicate block events.
+	err = indexer.IndexBlockEvents(getTestBlockHeader())
+	require.NoError(t, err)
+
 	require.NoError(t, teardown(t, pool))
 }
 
@@ -103,6 +108,10 @@ func TestTxFuncs(t *testing.T) {
 	r2, err := indexer.SearchTxEvents(context.TODO(), nil)
 	assert.Nil(t, r2)
 	assert.Equal(t, errors.New("tx search is not supported via the postgres event sink"), err)
+
+	// try to insert the duplicate tx events.
+	err = indexer.IndexTxEvents([]*abci.TxResult{txResult})
+	require.NoError(t, err)
 
 	assert.Nil(t, teardown(t, pool))
 }

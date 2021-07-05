@@ -96,11 +96,12 @@ func (env *Environment) Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.
 		return nil, err
 	}
 
-	block := env.BlockStore.LoadBlock(height)
 	blockMeta := env.BlockStore.LoadBlockMeta(height)
 	if blockMeta == nil {
-		return &ctypes.ResultBlock{BlockID: types.BlockID{}, Block: block}, nil
+		return &ctypes.ResultBlock{BlockID: types.BlockID{}, Block: nil}, nil
 	}
+
+	block := env.BlockStore.LoadBlock(height)
 	return &ctypes.ResultBlock{BlockID: blockMeta.BlockID, Block: block}, nil
 }
 
@@ -161,9 +162,15 @@ func (env *Environment) BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*
 		return nil, err
 	}
 
+	var totalGasUsed int64
+	for _, tx := range results.GetDeliverTxs() {
+		totalGasUsed += tx.GetGasUsed()
+	}
+
 	return &ctypes.ResultBlockResults{
 		Height:                height,
 		TxsResults:            results.DeliverTxs,
+		TotalGasUsed:          totalGasUsed,
 		BeginBlockEvents:      results.BeginBlock.Events,
 		EndBlockEvents:        results.EndBlock.Events,
 		ValidatorUpdates:      results.EndBlock.ValidatorUpdates,

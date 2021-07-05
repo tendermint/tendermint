@@ -50,7 +50,9 @@ func (es *EventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error {
 	sqlStmt := sq.
 		Insert(TableEventBlock).
 		Columns("key", "value", "height", "type", "created_at", "chain_id").
-		PlaceholderFormat(sq.Dollar)
+		PlaceholderFormat(sq.Dollar).
+		Suffix("ON CONFLICT (key,height)").
+		Suffix("DO NOTHING")
 
 	ts := time.Now()
 	// index the reserved block height index
@@ -76,12 +78,16 @@ func (es *EventSink) IndexTxEvents(txr []*abci.TxResult) error {
 		Columns("tx_result", "created_at").
 		PlaceholderFormat(sq.Dollar).
 		RunWith(es.store).
+		Suffix("ON CONFLICT (tx_result)").
+		Suffix("DO NOTHING").
 		Suffix("RETURNING \"id\"")
 
 	sqlStmtEvents := sq.
 		Insert(TableEventTx).
 		Columns("key", "value", "height", "hash", "tx_result_id", "created_at", "chain_id").
-		PlaceholderFormat(sq.Dollar)
+		PlaceholderFormat(sq.Dollar).
+		Suffix("ON CONFLICT (key,hash)").
+		Suffix("DO NOTHING")
 
 	ts := time.Now()
 	for _, tx := range txr {
@@ -93,8 +99,16 @@ func (es *EventSink) IndexTxEvents(txr []*abci.TxResult) error {
 		sqlStmtTxResult = sqlStmtTxResult.Values(txBz, ts)
 
 		// execute sqlStmtTxResult db query and retrieve the txid
-		err = sqlStmtTxResult.QueryRow().Scan(&txid)
+		r, err := sqlStmtTxResult.Query()
 		if err != nil {
+			return err
+		}
+
+		if !r.Next() {
+			return nil
+		}
+
+		if err := r.Scan(&txid); err != nil {
 			return err
 		}
 
@@ -103,7 +117,6 @@ func (es *EventSink) IndexTxEvents(txr []*abci.TxResult) error {
 
 		sqlStmtEvents = sqlStmtEvents.Values(types.TxHashKey, hash, tx.Height, hash, txid, ts, es.chainID)
 		sqlStmtEvents = sqlStmtEvents.Values(types.TxHeightKey, fmt.Sprint(tx.Height), tx.Height, hash, txid, ts, es.chainID)
-
 		for _, event := range tx.Result.Events {
 			// only index events with a non-empty type
 			if len(event.Type) == 0 {

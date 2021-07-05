@@ -19,7 +19,7 @@ func NodeSuite(t *testing.T) (service.Service, *config.Config) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	conf := rpctest.CreateConfig()
+	conf := rpctest.CreateConfig(t.Name())
 
 	// start a tendermint node in the background to test against
 	dir, err := ioutil.TempDir("/tmp", fmt.Sprint("rpc-client-test-", t.Name()))

@@ -22,6 +22,12 @@ func (m *Message) Wrap(pb proto.Message) error {
 	case *SnapshotsResponse:
 		m.Sum = &Message_SnapshotsResponse{SnapshotsResponse: msg}
 
+	case *LightBlockRequest:
+		m.Sum = &Message_LightBlockRequest{LightBlockRequest: msg}
+
+	case *LightBlockResponse:
+		m.Sum = &Message_LightBlockResponse{LightBlockResponse: msg}
+
 	default:
 		return fmt.Errorf("unknown message: %T", msg)
 	}
@@ -44,6 +50,12 @@ func (m *Message) Unwrap() (proto.Message, error) {
 
 	case *Message_SnapshotsResponse:
 		return m.GetSnapshotsResponse(), nil
+
+	case *Message_LightBlockRequest:
+		return m.GetLightBlockRequest(), nil
+
+	case *Message_LightBlockResponse:
+		return m.GetLightBlockResponse(), nil
 
 	default:
 		return nil, fmt.Errorf("unknown message: %T", msg)
@@ -85,6 +97,14 @@ func (m *Message) Validate() error {
 		if m.GetSnapshotsResponse().Chunks == 0 {
 			return errors.New("snapshot has no chunks")
 		}
+
+	case *Message_LightBlockRequest:
+		if m.GetLightBlockRequest().Height == 0 {
+			return errors.New("height cannot be 0")
+		}
+
+	// light block validation handled by the backfill process
+	case *Message_LightBlockResponse:
 
 	default:
 		return fmt.Errorf("unknown message type: %T", msg)

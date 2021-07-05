@@ -21,19 +21,19 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	"github.com/tendermint/tendermint/evidence"
+	"github.com/tendermint/tendermint/internal/evidence"
+	"github.com/tendermint/tendermint/internal/mempool"
+	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	"github.com/tendermint/tendermint/mempool"
-	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
-	"github.com/tendermint/tendermint/p2p"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 func TestNodeStartStop(t *testing.T) {
@@ -277,6 +277,7 @@ func TestCreateProposalBlock(t *testing.T) {
 		proxyApp.Consensus(),
 		mp,
 		evidencePool,
+		blockStore,
 	)
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
@@ -316,6 +317,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	const height int64 = 1
 	state, stateDB, _ := state(1, height)
 	stateStore := sm.NewStore(stateDB)
+	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	const maxBytes int64 = 16384
 	const partSize uint32 = 256
 	state.ConsensusParams.Block.MaxBytes = maxBytes
@@ -344,6 +346,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 		proxyApp.Consensus(),
 		mp,
 		sm.EmptyEvidencePool{},
+		blockStore,
 	)
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
@@ -375,6 +378,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	state, stateDB, _ := state(types.MaxVotesCount, int64(1))
 	stateStore := sm.NewStore(stateDB)
+	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	const maxBytes int64 = 1024 * 1024 * 2
 	state.ConsensusParams.Block.MaxBytes = maxBytes
 	proposerAddr, _ := state.Validators.GetByIndex(0)
@@ -409,6 +413,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		proxyApp.Consensus(),
 		mp,
 		sm.EmptyEvidencePool{},
+		blockStore,
 	)
 
 	blockID := types.BlockID{
@@ -480,7 +485,7 @@ func TestNodeNewSeedNode(t *testing.T) {
 	config.Mode = cfg.ModeSeed
 	defer os.RemoveAll(config.RootDir)
 
-	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
+	nodeKey, err := types.LoadOrGenNodeKey(config.NodeKeyFile())
 	require.NoError(t, err)
 
 	ns, err := makeSeedNode(config,
@@ -618,4 +623,23 @@ func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
 		}
 	}
 	return s, stateDB, privVals
+}
+
+func TestLoadStateFromGenesis(t *testing.T) {
+	stateDB := dbm.NewMemDB()
+	stateStore := sm.NewStore(stateDB)
+	config := cfg.ResetTestRoot("load_state_from_genesis")
+
+	loadedState, err := stateStore.Load()
+	require.NoError(t, err)
+	require.True(t, loadedState.IsEmpty())
+
+	genDoc, _ := factory.RandGenesisDoc(config, 0, false, 10)
+
+	state, err := loadStateFromDBOrGenesisDocProvider(
+		stateStore,
+		genDoc,
+	)
+	require.NoError(t, err)
+	require.NotNil(t, state)
 }
