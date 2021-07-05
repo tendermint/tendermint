@@ -70,10 +70,6 @@ func Setup(testnet *e2e.Testnet) error {
 			return fmt.Errorf("node has unsupported node type: %s", node.Mode)
 		}
 
-		if node.ProTxHash != nil {
-			genesis.NodeProTxHash = &node.ProTxHash
-		}
-
 		nodeDir := filepath.Join(testnet.Dir, node.Name)
 
 		dirs := []string{

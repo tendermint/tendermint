@@ -778,6 +778,10 @@ func NewNode(config *cfg.Config,
 		logger.Info("Connected to Private Validator through listen address", "proTxHash", proTxHash.String())
 	} else {
 		privValidator = privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+		proTxHash, err = privValidator.GetProTxHash()
+		if err != nil {
+			return nil, fmt.Errorf("can't get proTxHash through file: %w", err)
+		}
 		logger.Info("Private Validator using local file", "proTxHash", proTxHash.String())
 	}
 
@@ -881,7 +885,7 @@ func NewNode(config *cfg.Config,
 		config.StateSync.TempDir)
 	stateSyncReactor.SetLogger(logger.With("module", "statesync"))
 
-	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state)
+	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state, &proTxHash)
 	if err != nil {
 		return nil, err
 	}
@@ -1359,6 +1363,7 @@ func makeNodeInfo(
 	txIndexer txindex.TxIndexer,
 	genDoc *types.GenesisDoc,
 	state sm.State,
+	nodeProTxHash *crypto.ProTxHash,
 ) (p2p.NodeInfo, error) {
 	txIndexerStatus := "on"
 	if _, ok := txIndexer.(*null.TxIndex); ok {
@@ -1378,7 +1383,7 @@ func makeNodeInfo(
 	}
 
 	nodeInfo := p2p.DefaultNodeInfo{
-		ProTxHash: genDoc.NodeProTxHash,
+		ProTxHash: nodeProTxHash,
 		ProtocolVersion: p2p.NewProtocolVersion(
 			version.P2PProtocol, // global
 			state.Version.Consensus.Block,

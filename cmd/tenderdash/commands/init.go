@@ -5,7 +5,6 @@ import (
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/spf13/cobra"
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/crypto"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
@@ -76,7 +75,6 @@ func initFilesWithConfig(config *cfg.Config) error {
 	if tmos.FileExists(genFile) {
 		logger.Info("Found genesis file", "path", genFile)
 	} else {
-		nodeProTxHash := crypto.ProTxHash(proTxHash)
 		genDoc := types.GenesisDoc{
 			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
 			GenesisTime:     tmtime.Now(),
@@ -85,12 +83,6 @@ func initFilesWithConfig(config *cfg.Config) error {
 			InitialCoreChainLockedHeight: coreChainLockedHeight,
 			InitialHeight:   initChainInitialHeight,
 			AppHash:         appHash,
-		}
-		if len(nodeProTxHash) != 0 {
-			if len(nodeProTxHash) != crypto.ProTxHashSize {
-				return fmt.Errorf("nodeProTxHash is incorrect size wanted 32 bytes, got %v bytes", len(nodeProTxHash))
-			}
-			genDoc.NodeProTxHash = &nodeProTxHash
 		}
 
 		if err := genDoc.SaveAs(genFile); err != nil {
@@ -150,7 +142,6 @@ func initFilesSingleNodeWithConfig(config *cfg.Config) error {
 			ConsensusParams: types.DefaultConsensusParams(),
 			ThresholdPublicKey: pubKey,
 			QuorumHash: quorumHash,
-			NodeProTxHash: &proTxHash,
 			InitialCoreChainLockedHeight: 1,
 		}
 
