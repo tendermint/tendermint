@@ -99,7 +99,7 @@ func (tm2pb) ValidatorUpdate(val *Validator) abci.ValidatorUpdate {
 		if err != nil {
 			panic(err)
 		}
-		valUpdate.PubKey = pk
+		valUpdate.PubKey = &pk
 	}
 	return valUpdate
 }
@@ -130,10 +130,17 @@ func (tm2pb) ConsensusParams(params *tmproto.ConsensusParams) *abci.ConsensusPar
 
 // XXX: panics on nil or unknown pubkey type
 func (tm2pb) NewValidatorUpdate(pubkey crypto.PubKey, power int64, proTxHash []byte) abci.ValidatorUpdate {
-	pubkeyABCI, err := cryptoenc.PubKeyToProto(pubkey)
-	if err != nil {
-		panic(err)
+	var pubkeyABCI *crypto2.PublicKey
+	if pubkey != nil {
+		pubkeyProto, err := cryptoenc.PubKeyToProto(pubkey)
+		if err != nil {
+			panic(err)
+		}
+		pubkeyABCI = &pubkeyProto
+	} else {
+		pubkeyABCI = nil
 	}
+
 	return abci.ValidatorUpdate{
 		PubKey:    pubkeyABCI,
 		Power:     power,
@@ -152,9 +159,13 @@ type pb2tm struct{}
 func (pb2tm) ValidatorUpdates(vals []abci.ValidatorUpdate) ([]*Validator, error) {
 	tmVals := make([]*Validator, len(vals))
 	for i, v := range vals {
-		pub, err := cryptoenc.PubKeyFromProto(v.PubKey)
-		if err != nil {
-			return nil, err
+		pub := crypto.PubKey(nil)
+		var err error
+		if v.PubKey != nil {
+			pub, err = cryptoenc.PubKeyFromProto(*v.PubKey)
+			if err != nil {
+				return nil, err
+			}
 		}
 		tmVals[i] = NewValidator(pub, v.Power, v.ProTxHash)
 	}
@@ -168,9 +179,13 @@ func (pb2tm) ValidatorUpdatesFromValidatorSet(valSetUpdate *abci.ValidatorSetUpd
 	}
 	tmVals := make([]*Validator, len(valSetUpdate.ValidatorUpdates))
 	for i, v := range valSetUpdate.ValidatorUpdates {
-		pub, err := cryptoenc.PubKeyFromProto(v.PubKey)
-		if err != nil {
-			return nil, nil, nil, err
+		pub := crypto.PubKey(nil)
+		var err error
+		if v.PubKey != nil {
+			pub, err = cryptoenc.PubKeyFromProto(*v.PubKey)
+			if err != nil {
+				return nil, nil, nil, err
+			}
 		}
 		tmVals[i] = NewValidator(pub, v.Power, v.ProTxHash)
 		err = tmVals[i].ValidateBasic()

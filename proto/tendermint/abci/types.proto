@@ -349,7 +349,7 @@ message Validator {
 
 // ValidatorUpdate
 message ValidatorUpdate {
-  tendermint.crypto.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
+  tendermint.crypto.PublicKey pub_key = 1 [(gogoproto.nullable) = true];
   int64                       power   = 2;
   bytes pro_tx_hash = 3;
 }

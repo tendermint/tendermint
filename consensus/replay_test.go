@@ -380,7 +380,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		// start by adding all validator transactions
 		abciPubKey, err := cryptoenc.PubKeyToProto(updatedValidators2[i].PubKey)
 		require.NoError(t, err)
-		updateTransactions[i] = kvstore.MakeValSetChangeTx(updatedValidators2[i].ProTxHash, abciPubKey, testMinPower)
+		updateTransactions[i] = kvstore.MakeValSetChangeTx(updatedValidators2[i].ProTxHash, &abciPubKey, testMinPower)
 	}
 	abciThresholdPubKey, err := cryptoenc.PubKeyToProto(newThresholdPublicKey)
 	require.NoError(t, err)
@@ -448,7 +448,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		// start by adding all validator transactions
 		abciPubKey, err := cryptoenc.PubKeyToProto(updatedValidators4[i].PubKey)
 		require.NoError(t, err)
-		updateTransactions2[i] = kvstore.MakeValSetChangeTx(updatedValidators4[i].ProTxHash, abciPubKey, testMinPower)
+		updateTransactions2[i] = kvstore.MakeValSetChangeTx(updatedValidators4[i].ProTxHash, &abciPubKey, testMinPower)
 		var oldPubKey crypto.PubKey
 		for _, validatorAt2 := range updatedValidators2 {
 			if bytes.Equal(validatorAt2.ProTxHash, updatedValidators4[i].ProTxHash) {
@@ -578,7 +578,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		// start by adding all validator transactions
 		abciPubKey, err := cryptoenc.PubKeyToProto(updatedValidators6[i].PubKey)
 		require.NoError(t, err)
-		updateTransactions3[i] = kvstore.MakeValSetChangeTx(updatedValidators6[i].ProTxHash, abciPubKey, testMinPower)
+		updateTransactions3[i] = kvstore.MakeValSetChangeTx(updatedValidators6[i].ProTxHash, &abciPubKey, testMinPower)
 		var oldPubKey crypto.PubKey
 		for _, validatorAt4 := range updatedValidators4 {
 			if bytes.Equal(validatorAt4.ProTxHash, updatedValidators6[i].ProTxHash) {
@@ -724,7 +724,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		// start by adding all validator transactions
 		abciPubKey, err := cryptoenc.PubKeyToProto(updatedValidators8[i].PubKey)
 		require.NoError(t, err)
-		updateTransactions4[i] = kvstore.MakeValSetChangeTx(updatedValidators8[i].ProTxHash, abciPubKey, testMinPower)
+		updateTransactions4[i] = kvstore.MakeValSetChangeTx(updatedValidators8[i].ProTxHash, &abciPubKey, testMinPower)
 	}
 	abciThresholdPubKey, err = cryptoenc.PubKeyToProto(newThresholdPublicKey)
 	require.NoError(t, err)
