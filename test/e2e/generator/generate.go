@@ -44,7 +44,7 @@ var (
 		"restart":    0.1,
 	}
 	evidence = uniformChoice{0, 1, 10}
-	txSize = uniformChoice{1024, 10240} // either 1kb or 10kb
+	txSize   = uniformChoice{1024, 10240} // either 1kb or 10kb
 )
 
 // Generate generates random testnets using the given RNG.
@@ -93,7 +93,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		KeyType:          opt["keyType"].(string),
 		Evidence:         evidence.Choose(r).(int),
 		QueueType:        opt["queueType"].(string),
-		TxSize: 		  int64(txSize.Choose(r).(int)),
+		TxSize:           int64(txSize.Choose(r).(int)),
 	}
 
 	var p2pNodeFactor int
