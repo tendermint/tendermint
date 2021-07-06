@@ -73,11 +73,6 @@ func (rpcClient *DashCoreRpcClient) Ping() error {
 		return err
 	}
 
-	pb, err := rpcClient.endpoint.GetPeerInfo()
-	if pb == nil {
-		return err
-	}
-
 	return nil
 }
 

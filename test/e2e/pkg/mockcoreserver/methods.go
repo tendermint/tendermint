@@ -121,18 +121,6 @@ func WithPingMethod(cs CoreServer, times int) MethodFunc {
 	}
 }
 
-// WithGetPeerInfoMethod ...
-func WithGetPeerInfoMethod(times int) MethodFunc {
-	result := []btcjson.GetPeerInfoResult{{}}
-	return func(srv *JRPCServer) {
-		srv.
-			On("getpeerinfo").
-			Expect(And(JRPCParamsEmpty())).
-			Times(times).
-			Respond(JRPCResult(result), JsonContentType())
-	}
-}
-
 // WithMethods ...
 func WithMethods(srv *JRPCServer, methods ...func(srv *JRPCServer)) *JRPCServer {
 	for _, fn := range methods {

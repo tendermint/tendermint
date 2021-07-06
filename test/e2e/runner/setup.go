@@ -359,16 +359,18 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 // MakeAppConfig generates an ABCI application config for a node.
 func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 	cfg := map[string]interface{}{
-		"chain_id":          node.Testnet.Name,
-		"dir":               "data/app",
-		"listen":            AppAddressUNIX,
-		"mode":              node.Mode,
-		"proxy_port":        node.ProxyPort,
-		"protocol":          "socket",
-		"persist_interval":  node.PersistInterval,
-		"snapshot_interval": node.SnapshotInterval,
-		"retain_blocks":     node.RetainBlocks,
-		"key_type":          bls12381.KeyType,
+		"chain_id":            node.Testnet.Name,
+		"dir":                 "data/app",
+		"listen":              AppAddressUNIX,
+		"mode":                node.Mode,
+		"proxy_port":          node.ProxyPort,
+		"privval_server_type": "dashcore",
+		"privval_server":      PrivvalAddressDashCore,
+		"protocol":            "socket",
+		"persist_interval":    node.PersistInterval,
+		"snapshot_interval":   node.SnapshotInterval,
+		"retain_blocks":       node.RetainBlocks,
+		"key_type":            bls12381.KeyType,
 	}
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:
@@ -402,6 +404,11 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 			cfg["privval_state"] = PrivvalStateFile
 		default:
 			return nil, fmt.Errorf("unexpected privval protocol setting %q", node.PrivvalProtocol)
+		}
+	} else {
+		if node.PrivvalProtocol == e2e.ProtocolDashCore {
+			cfg["privval_server_type"] = "dashcore"
+			cfg["privval_server"] = PrivvalAddressDashCore
 		}
 	}
 

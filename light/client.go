@@ -203,6 +203,10 @@ func NewClientFromTrustedStore(
 	dashCoreRpcClient dashcore.DashCoreClient,
 	options ...Option) (*Client, error) {
 
+	if dashCoreRpcClient == nil {
+		return nil, ErrNoDashCoreClient
+	}
+
 	c := &Client{
 		chainID:           chainID,
 		verificationMode:  dashCoreVerification,
