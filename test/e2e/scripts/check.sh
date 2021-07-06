@@ -20,7 +20,7 @@ for MANIFEST in "$@"; do
 	for i in {1..3}; do
 		if ! ./build/runner -f "$MANIFEST"; then
 			echo "==> Testnet $MANIFEST failed"
-			((FAILED=FAILED+1))
+			((FAILED_COUNT=FAILED_COUNT+1))
             ./build/runner -f "$MANIFEST" logs >> ${MANIFEST%.toml}-$i.txt
 		fi
 		echo ""
@@ -30,7 +30,7 @@ for MANIFEST in "$@"; do
 		for i in {3..5}; do
 			if ! ./build/runner -f "$MANIFEST"; then
 				echo "==> Testnet $MANIFEST failed"
-				((FAILED=FAILED+1))
+				((FAILED_COUNT=FAILED_COUNT+1))
                 ./build/runner -f "$MANIFEST" logs >> ${MANIFEST%.toml}-$i.txt
 			fi
 			echo ""
@@ -38,7 +38,7 @@ for MANIFEST in "$@"; do
 	fi
 
 	if [[ $FAILED_COUNT > 0 ]]; then 
-		echo "==> Testnet $MANIFEST failed $FAILED_COUNT out of $MAX_ATTEMPTS times"
+		echo "==> Testnet $MANIFEST failed $FAILED_COUNT out of 5 times"
 		./build/runner -f "$MANIFEST" cleanup
         FAILED+=("$MANIFEST ($FAILED_COUNT times)")
 	else
