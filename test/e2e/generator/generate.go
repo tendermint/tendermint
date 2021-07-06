@@ -44,6 +44,7 @@ var (
 		"restart":    0.1,
 	}
 	evidence = uniformChoice{0, 1, 10}
+	txSize = uniformChoice{1024, 10240} // either 1kb or 10kb
 )
 
 // Generate generates random testnets using the given RNG.
@@ -92,6 +93,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		KeyType:          opt["keyType"].(string),
 		Evidence:         evidence.Choose(r).(int),
 		QueueType:        opt["queueType"].(string),
+		TxSize: 		  int64(txSize.Choose(r).(int)),
 	}
 
 	var p2pNodeFactor int
@@ -127,7 +129,6 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	// First we generate seed nodes, starting at the initial height.
 	for i := 1; i <= numSeeds; i++ {
 		node := generateNode(r, e2e.ModeSeed, 0, manifest.InitialHeight, false)
-		node.QueueType = manifest.QueueType
 
 		if p2pNodeFactor == 0 {
 			node.DisableLegacyP2P = manifest.DisableLegacyP2P
@@ -153,7 +154,6 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		node := generateNode(
 			r, e2e.ModeValidator, startAt, manifest.InitialHeight, i <= 2)
 
-		node.QueueType = manifest.QueueType
 		if p2pNodeFactor == 0 {
 			node.DisableLegacyP2P = manifest.DisableLegacyP2P
 		} else if p2pNodeFactor%i == 0 {
@@ -189,7 +189,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			nextStartAt += 5
 		}
 		node := generateNode(r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
-		node.QueueType = manifest.QueueType
+
 		if p2pNodeFactor == 0 {
 			node.DisableLegacyP2P = manifest.DisableLegacyP2P
 		} else if p2pNodeFactor%i == 0 {
