@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"fmt"
+	"runtime/debug"
 	"time"
 
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
@@ -1207,7 +1208,11 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
-			r.Logger.Error("recovering from processing message panic", "err", err)
+			r.Logger.Error(
+				"recovering from processing message panic",
+				"err", err,
+				"stack", string(debug.Stack()),
+			)
 		}
 	}()
 
