@@ -5,18 +5,12 @@ import "sync/atomic"
 // AtomicBool is an atomic Boolean.
 // Its methods are all atomic, thus safe to be called by multiple goroutines simultaneously.
 // Note: When embedding into a struct one should always use *AtomicBool to avoid copy.
-
 // it's a simple implmentation from https://github.com/tevino/abool
 type AtomicBool int32
 
-// New creates an AtomicBool with default set to false.
-func New() *AtomicBool {
-	return new(AtomicBool)
-}
-
 // NewBool creates an AtomicBool with given default value.
 func NewBool(ok bool) *AtomicBool {
-	ab := New()
+	ab := new(AtomicBool)
 	if ok {
 		ab.Set()
 	}

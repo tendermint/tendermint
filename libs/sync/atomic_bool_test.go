@@ -1,36 +1,27 @@
 package sync
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestDefaultValue(t *testing.T) {
 	t.Parallel()
-	v := New()
-	if v.IsSet() {
-		t.Fatal("Empty value of AtomicBool should be false")
-	}
+	v := NewBool(false)
+	assert.False(t, v.IsSet())
 
 	v = NewBool(true)
-	if !v.IsSet() {
-		t.Fatal("NewValue(true) should be true")
-	}
-
-	v = NewBool(false)
-	if v.IsSet() {
-		t.Fatal("NewValue(false) should be false")
-	}
+	assert.True(t, v.IsSet())
 }
 
 func TestSetUnSet(t *testing.T) {
 	t.Parallel()
-	v := New()
+	v := NewBool(false)
 
 	v.Set()
-	if !v.IsSet() {
-		t.Fatal("AtomicBool.Set() failed")
-	}
+	assert.True(t, v.IsSet())
 
 	v.UnSet()
-	if v.IsSet() {
-		t.Fatal("AtomicBool.UnSet() failed")
-	}
+	assert.False(t, v.IsSet())
 }
