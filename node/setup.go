@@ -81,13 +81,14 @@ func createAndStartIndexerService(
 
 	eventSinks := []indexer.EventSink{}
 
-	// Check duplicated sinks.
+	// check fir duplicated sinks
 	sinks := map[string]bool{}
 	for _, s := range config.TxIndex.Indexer {
 		sl := strings.ToLower(s)
 		if sinks[sl] {
 			return nil, nil, errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
 		}
+
 		sinks[sl] = true
 	}
 
@@ -95,25 +96,31 @@ loop:
 	for k := range sinks {
 		switch k {
 		case string(indexer.NULL):
-			// when we see null in the config, the eventsinks will be reset with the nullEventSink.
+			// When we see null in the config, the eventsinks will be reset with the
+			// nullEventSink.
 			eventSinks = []indexer.EventSink{null.NewEventSink()}
 			break loop
+
 		case string(indexer.KV):
 			store, err := dbProvider(&cfg.DBContext{ID: "tx_index", Config: config})
 			if err != nil {
 				return nil, nil, err
 			}
+
 			eventSinks = append(eventSinks, kv.NewEventSink(store))
+
 		case string(indexer.PSQL):
 			conn := config.TxIndex.PsqlConn
 			if conn == "" {
 				return nil, nil, errors.New("the psql connection settings cannot be empty")
 			}
+
 			es, _, err := psql.NewEventSink(conn, chainID)
 			if err != nil {
 				return nil, nil, err
 			}
 			eventSinks = append(eventSinks, es)
+
 		default:
 			return nil, nil, errors.New("unsupported event sink type")
 		}
