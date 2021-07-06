@@ -293,6 +293,10 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.PrivValidatorKey = PrivvalDummyKeyFile
 	cfg.PrivValidatorState = PrivvalDummyStateFile
 
+	if node.PrivvalProtocol == e2e.ProtocolDashCore {
+		cfg.PrivValidatorCoreRPCHost = "127.0.0.1:19998"
+	}
+
 	switch node.Mode {
 	case e2e.ModeValidator:
 		switch node.PrivvalProtocol {
@@ -304,7 +308,6 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 		case e2e.ProtocolTCP:
 			cfg.PrivValidatorListenAddr = PrivvalAddressTCP
 		case e2e.ProtocolDashCore:
-			cfg.PrivValidatorCoreRPCHost = "127.0.0.1:19998"
 			cfg.PrivValidatorKey = PrivvalKeyFile
 			cfg.PrivValidatorState = PrivvalStateFile
 		default:
