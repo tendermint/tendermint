@@ -20,8 +20,6 @@ fi
 MANIFEST=$1
 COUNT=$2
 
-cd ..
-
 if make; then
     for i in {0..$COUNT}; do
 		if ! ./build/runner -f "$MANIFEST"; then
