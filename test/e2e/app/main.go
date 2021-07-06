@@ -305,6 +305,7 @@ func setupCoreServer(cfg *Config) (*mockcoreserver.JRPCServer, error) {
 		mockcoreserver.WithQuorumVerifyMethod(coreServer, mockcoreserver.Endless),
 		mockcoreserver.WithMasternodeMethod(coreServer, mockcoreserver.Endless),
 		mockcoreserver.WithGetNetworkInfoMethod(coreServer, mockcoreserver.Endless),
+		mockcoreserver.WithPingMethod(coreServer, mockcoreserver.Endless),
 	)
 	return srv, nil
 }

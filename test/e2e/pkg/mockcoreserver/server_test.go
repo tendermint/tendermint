@@ -71,9 +71,10 @@ func TestDashCoreSignerPingMethod(t *testing.T) {
 	go func() {
 		srv.Start()
 	}()
+	cs := &StaticCoreServer{}
 	srv = WithMethods(
 		srv,
-		WithPingMethod(1),
+		WithPingMethod(cs, 1),
 		WithGetPeerInfoMethod(1),
 	)
 	dashCoreRpcClient, err := dashcore.NewDashCoreRpcClient(addr, "root", "root")
