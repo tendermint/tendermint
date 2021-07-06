@@ -18,6 +18,7 @@ type CoreServer interface {
 	QuorumVerify(cmd btcjson.QuorumCmd) btcjson.QuorumVerifyResult
 	MasternodeStatus(cmd btcjson.MasternodeCmd) btcjson.MasternodeStatusResult
 	GetNetworkInfo(cmd btcjson.GetNetworkInfoCmd) btcjson.GetNetworkInfoResult
+	Ping(cmd btcjson.PingCmd) error
 }
 
 // MockCoreServer is an implementation of a mock core-server
@@ -172,6 +173,11 @@ func (c *MockCoreServer) GetNetworkInfo(_ btcjson.GetNetworkInfoCmd) btcjson.Get
 	return btcjson.GetNetworkInfoResult{}
 }
 
+// Ping ...
+func (c *MockCoreServer) Ping(cmd btcjson.PingCmd) error {
+	return nil
+}
+
 // StaticCoreServer is a mock of core-server with static result data
 type StaticCoreServer struct {
 	QuorumInfoResult       btcjson.QuorumInfoResult
@@ -204,6 +210,11 @@ func (c *StaticCoreServer) MasternodeStatus(_ btcjson.MasternodeCmd) btcjson.Mas
 // GetNetworkInfo returns constant network-info result
 func (c *StaticCoreServer) GetNetworkInfo(_ btcjson.GetNetworkInfoCmd) btcjson.GetNetworkInfoResult {
 	return c.GetNetworkInfoResult
+}
+
+// Ping ...
+func (c *StaticCoreServer) Ping(cmd btcjson.PingCmd) error {
+	return nil
 }
 
 func strVal(s *string) string {

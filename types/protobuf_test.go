@@ -47,7 +47,7 @@ func TestABCIValidators(t *testing.T) {
 	abciVals := TM2PB.ValidatorUpdates(NewValidatorSet(tmVals, tmVal.PubKey, btcjson.LLMQType_5_60, quorumHash, true))
 	assert.Equal(t, abci.ValidatorSetUpdate{
 		ValidatorUpdates:   []abci.ValidatorUpdate{abciVal},
-		ThresholdPublicKey: abciVal.PubKey,
+		ThresholdPublicKey: *abciVal.PubKey,
 		QuorumHash:         quorumHash,
 	}, abciVals)
 
@@ -87,7 +87,7 @@ func TestABCIValidatorFromPubKeyAndPower(t *testing.T) {
 	abciVal := TM2PB.NewValidatorUpdate(pubkey, DefaultDashVotingPower, crypto.RandProTxHash())
 	assert.Equal(t, DefaultDashVotingPower, abciVal.Power)
 
-	assert.Panics(t, func() { TM2PB.NewValidatorUpdate(nil, DefaultDashVotingPower, crypto.RandProTxHash()) })
+	assert.NotPanics(t, func() { TM2PB.NewValidatorUpdate(nil, DefaultDashVotingPower, crypto.RandProTxHash()) })
 	assert.Panics(t, func() { TM2PB.NewValidatorUpdate(pubKeyBLS{}, DefaultDashVotingPower, crypto.RandProTxHash()) })
 }
 

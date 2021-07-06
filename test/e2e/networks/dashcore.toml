@@ -78,6 +78,7 @@ mode = "full"
 # FIXME: should be v2, disabled due to flake
 fast_sync = "v0"
 persistent_peers = ["validator01", "validator02", "validator03", "validator04", "validator05"]
+privval_protocol = "dashcore"
 retain_blocks = 1
 perturb = ["restart"]
 
@@ -87,15 +88,18 @@ mode = "full"
 # FIXME: should be v2, disabled due to flake
 fast_sync = "v0"
 state_sync = true
+privval_protocol = "dashcore"
 seeds = ["seed01"]
 perturb = ["restart"]
 
 [node.light01]
 mode= "light"
 start_at= 1005
+privval_protocol = "dashcore"
 persistent_peers = ["validator01", "validator02", "validator03"]
 
 [node.light02]
 mode= "light"
 start_at= 1015
+privval_protocol = "dashcore"
 persistent_peers = ["validator04", "full01", "validator05"]

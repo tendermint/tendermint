@@ -71,6 +71,9 @@ var ErrLightClientAttack = errors.New(`attempted attack detected.
 	Check logs for full evidence and trace`,
 )
 
+// ErrNoDashCoreClient means that there is no dash core client to connect to
+var ErrNoDashCoreClient = errors.New("no dash core client. please reset light client")
+
 // ErrNoWitnesses means that there are not enough witnesses connected to
 // continue running the light client.
 var ErrNoWitnesses = errors.New("no witnesses connected. please reset light client")

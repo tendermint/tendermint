@@ -107,25 +107,17 @@ func WithGetNetworkInfoMethod(cs CoreServer, times int) MethodFunc {
 }
 
 // WithPingMethod ...
-func WithPingMethod(times int) MethodFunc {
+func WithPingMethod(cs CoreServer, times int) MethodFunc {
+	call := OnMethod(func(req btcjson.Request) (interface{}, error) {
+		cmd := btcjson.PingCmd{}
+		return cs.Ping(cmd), nil
+	})
 	return func(srv *JRPCServer) {
 		srv.
 			On("ping").
-			Expect(JRPCParamsEmpty()).
+			Expect(And(Debug())).
 			Times(times).
-			Respond(JRPCResult(""), JsonContentType())
-	}
-}
-
-// WithGetPeerInfoMethod ...
-func WithGetPeerInfoMethod(times int) MethodFunc {
-	result := []btcjson.GetPeerInfoResult{{}}
-	return func(srv *JRPCServer) {
-		srv.
-			On("getpeerinfo").
-			Expect(And(JRPCParamsEmpty())).
-			Times(times).
-			Respond(JRPCResult(result), JsonContentType())
+			Respond(call, JsonContentType())
 	}
 }
 

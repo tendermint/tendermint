@@ -199,6 +199,9 @@ type BaseConfig struct { //nolint: maligned
 	// Path to the JSON file containing the initial validator set and other meta data
 	Genesis string `mapstructure:"genesis_file"`
 
+	// Set to whether the node is a masternode or not
+	IsMasternode bool `mapstructure:"is_masternode"`
+
 	// Path to the JSON file containing the private key to use as a validator in the consensus protocol
 	PrivValidatorKey string `mapstructure:"priv_validator_key_file"`
 
@@ -232,6 +235,7 @@ type BaseConfig struct { //nolint: maligned
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
 		Genesis:                      defaultGenesisJSONPath,
+		IsMasternode:                 true,
 		PrivValidatorKey:             defaultPrivValKeyPath,
 		PrivValidatorState:           defaultPrivValStatePath,
 		PrivValidatorCoreRPCHost:     "",
@@ -254,6 +258,7 @@ func DefaultBaseConfig() BaseConfig {
 func SingleNodeBaseConfig() BaseConfig {
 	return BaseConfig{
 		Genesis:                      defaultGenesisJSONPath,
+		IsMasternode:                 true,
 		PrivValidatorKey:             defaultPrivValKeyPath,
 		PrivValidatorState:           defaultPrivValStatePath,
 		PrivValidatorCoreRPCHost:     "",

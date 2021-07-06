@@ -141,18 +141,20 @@ func TestValUpdates(t *testing.T) {
 	valSetEqualTest(t, kvVals, initVals)
 
 	// change the validator set to the full validator set
-	txs := make([][]byte, 16)
+	txs := make([][]byte, 17)
 	removalUpdates := make([]types.ValidatorUpdate, 5)
 	for i, val := range initVals.ValidatorUpdates {
 		// remove old validators
-		txs[i] = MakeValSetChangeTx(val.ProTxHash, val.PubKey, 0)
+		txs[i] = MakeValSetRemovalTx(val.ProTxHash)
 		removalUpdates[i] = initVals.ValidatorUpdates[i]
+		removalUpdates[i].PubKey = nil
 		removalUpdates[i].Power = 0
 	}
 	for i, val := range fullVals.ValidatorUpdates {
 		txs[i+5] = MakeValSetChangeTx(val.ProTxHash, val.PubKey, val.Power)
 	}
 	txs[15] = MakeThresholdPublicKeyChangeTx(fullVals.ThresholdPublicKey)
+	txs[16] = MakeQuorumHashTx(fullVals.QuorumHash)
 	valUpdates := fullVals
 	removalUpdates = append(removalUpdates, fullVals.ValidatorUpdates...)
 	valUpdates.ValidatorUpdates = removalUpdates
@@ -200,7 +202,7 @@ func valsEqualTest(t *testing.T, vals1, vals2 []types.ValidatorUpdate) {
 		v2 := vals2[i]
 		if !v1.PubKey.Equal(v2.PubKey) ||
 			v1.Power != v2.Power {
-			t.Fatalf("vals dont match at index %d. got %X/%d , expected %X/%d", i, v2.PubKey, v2.Power, v1.PubKey, v1.Power)
+			t.Fatalf("vals dont match at index %d. got %X/%d , expected %X/%d", i, *v2.PubKey, v2.Power, *v1.PubKey, v1.Power)
 		}
 	}
 }

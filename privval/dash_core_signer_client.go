@@ -43,8 +43,20 @@ func (sc *DashCoreSignerClient) Close() error {
 //--------------------------------------------------------
 // Implement PrivValidator
 
-// Ping sends a ping request to the remote signer
+// Ping sends a ping request to the remote signer and will retry 2 extra times if failure
 func (sc *DashCoreSignerClient) Ping() error {
+	var err error
+	for i:=0; i<3; i++ {
+		if err = sc.ping(); err == nil {
+			return nil
+		}
+	}
+
+	return err
+}
+
+// ping sends a ping request to the remote signer
+func (sc *DashCoreSignerClient) ping() error {
 	err := sc.dashCoreRpcClient.Ping()
 	if err != nil {
 		return err
@@ -52,6 +64,7 @@ func (sc *DashCoreSignerClient) Ping() error {
 
 	return nil
 }
+
 
 func (sc *DashCoreSignerClient) ExtractIntoValidator(quorumHash crypto.QuorumHash) *types.Validator {
 	pubKey, _ := sc.GetPubKey(quorumHash)

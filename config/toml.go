@@ -127,6 +127,9 @@ log_format = "{{ .BaseConfig.LogFormat }}"
 # Path to the JSON file containing the initial validator set and other meta data
 genesis_file = "{{ js .BaseConfig.Genesis }}"
 
+# Set to whether we are a masternode or not
+is_masternode = {{ .BaseConfig.IsMasternode }}
+
 # Path to the JSON file containing the private key to use as a validator in the consensus protocol
 priv_validator_key_file = "{{ js .BaseConfig.PrivValidatorKey }}"
 

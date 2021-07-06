@@ -32,12 +32,13 @@ const (
 	AppAddressTCP  = "tcp://127.0.0.1:30000"
 	AppAddressUNIX = "unix:///var/run/app.sock"
 
-	PrivvalAddressTCP     = "tcp://0.0.0.0:27559"
-	PrivvalAddressUNIX    = "unix:///var/run/privval.sock"
-	PrivvalKeyFile        = "config/priv_validator_key.json"
-	PrivvalStateFile      = "data/priv_validator_state.json"
-	PrivvalDummyKeyFile   = "config/dummy_validator_key.json"
-	PrivvalDummyStateFile = "data/dummy_validator_state.json"
+	PrivvalAddressTCP      = "tcp://0.0.0.0:27559"
+	PrivvalAddressUNIX     = "unix:///var/run/privval.sock"
+	PrivvalAddressDashCore = "127.0.0.1:19998"
+	PrivvalKeyFile         = "config/priv_validator_key.json"
+	PrivvalStateFile       = "data/priv_validator_state.json"
+	PrivvalDummyKeyFile    = "config/dummy_validator_key.json"
+	PrivvalDummyStateFile  = "data/dummy_validator_state.json"
 )
 
 // Setup sets up the testnet configuration.
@@ -68,10 +69,6 @@ func Setup(testnet *e2e.Testnet) error {
 		genesis, ok := genesisNodes[node.Mode]
 		if !ok {
 			return fmt.Errorf("node has unsupported node type: %s", node.Mode)
-		}
-
-		if node.ProTxHash != nil {
-			genesis.NodeProTxHash = &node.ProTxHash
 		}
 
 		nodeDir := filepath.Join(testnet.Dir, node.Name)
@@ -227,13 +224,14 @@ services:
 // MakeGenesis generates a genesis document.
 func MakeGenesis(testnet *e2e.Testnet, genesisTime time.Time) (types.GenesisDoc, error) {
 	genesis := types.GenesisDoc{
-		GenesisTime:        genesisTime,
-		ChainID:            testnet.Name,
-		ConsensusParams:    types.DefaultConsensusParams(),
-		InitialHeight:      testnet.InitialHeight,
-		ThresholdPublicKey: testnet.ThresholdPublicKey,
-		QuorumType:         testnet.QuorumType,
-		QuorumHash:         testnet.QuorumHash,
+		GenesisTime:                  genesisTime,
+		ChainID:                      testnet.Name,
+		ConsensusParams:              types.DefaultConsensusParams(),
+		InitialHeight:                testnet.InitialHeight,
+		InitialCoreChainLockedHeight: testnet.InitialCoreHeight,
+		ThresholdPublicKey:           testnet.ThresholdPublicKey,
+		QuorumType:                   testnet.QuorumType,
+		QuorumHash:                   testnet.QuorumHash,
 	}
 	for validator, pubkey := range testnet.Validators {
 		genesis.Validators = append(genesis.Validators, types.GenesisValidator{
@@ -294,6 +292,10 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.PrivValidatorListenAddr = ""
 	cfg.PrivValidatorKey = PrivvalDummyKeyFile
 	cfg.PrivValidatorState = PrivvalDummyStateFile
+
+	if node.PrivvalProtocol == e2e.ProtocolDashCore {
+		cfg.PrivValidatorCoreRPCHost = "127.0.0.1:19998"
+	}
 
 	switch node.Mode {
 	case e2e.ModeValidator:
@@ -360,16 +362,18 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 // MakeAppConfig generates an ABCI application config for a node.
 func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 	cfg := map[string]interface{}{
-		"chain_id":          node.Testnet.Name,
-		"dir":               "data/app",
-		"listen":            AppAddressUNIX,
-		"mode":              node.Mode,
-		"proxy_port":        node.ProxyPort,
-		"protocol":          "socket",
-		"persist_interval":  node.PersistInterval,
-		"snapshot_interval": node.SnapshotInterval,
-		"retain_blocks":     node.RetainBlocks,
-		"key_type":          bls12381.KeyType,
+		"chain_id":            node.Testnet.Name,
+		"dir":                 "data/app",
+		"listen":              AppAddressUNIX,
+		"mode":                node.Mode,
+		"proxy_port":          node.ProxyPort,
+		"privval_server_type": "dashcore",
+		"privval_server":      PrivvalAddressDashCore,
+		"protocol":            "socket",
+		"persist_interval":    node.PersistInterval,
+		"snapshot_interval":   node.SnapshotInterval,
+		"retain_blocks":       node.RetainBlocks,
+		"key_type":            bls12381.KeyType,
 	}
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:
@@ -389,16 +393,25 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 		switch node.PrivvalProtocol {
 		case e2e.ProtocolFile:
 		case e2e.ProtocolDashCore:
+			cfg["privval_server_type"] = "dashcore"
+			cfg["privval_server"] = PrivvalAddressDashCore
 		case e2e.ProtocolTCP:
+			cfg["privval_server_type"] = "tcp"
 			cfg["privval_server"] = PrivvalAddressTCP
 			cfg["privval_key"] = PrivvalKeyFile
 			cfg["privval_state"] = PrivvalStateFile
 		case e2e.ProtocolUNIX:
+			cfg["privval_server_type"] = "unix"
 			cfg["privval_server"] = PrivvalAddressUNIX
 			cfg["privval_key"] = PrivvalKeyFile
 			cfg["privval_state"] = PrivvalStateFile
 		default:
 			return nil, fmt.Errorf("unexpected privval protocol setting %q", node.PrivvalProtocol)
+		}
+	} else {
+		if node.PrivvalProtocol == e2e.ProtocolDashCore {
+			cfg["privval_server_type"] = "dashcore"
+			cfg["privval_server"] = PrivvalAddressDashCore
 		}
 	}
 

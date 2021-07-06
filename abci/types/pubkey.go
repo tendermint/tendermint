@@ -8,17 +8,19 @@ import (
 )
 
 func UpdateValidator(proTxHash []byte, pk []byte, power int64) ValidatorUpdate {
-	pke := bls12381.PubKey(pk)
-	pkp, err := cryptoenc.PubKeyToProto(pke)
-	if err != nil {
-		panic(err)
-	}
-
-	return ValidatorUpdate{
-		PubKey:    pkp,
+	valUpdate := ValidatorUpdate{
 		Power:     power,
 		ProTxHash: proTxHash,
 	}
+	if len(pk) > 0 {
+		pke := bls12381.PubKey(pk)
+		pkp, err := cryptoenc.PubKeyToProto(pke)
+		if err != nil {
+			panic(err)
+		}
+		valUpdate.PubKey = &pkp
+	}
+	return valUpdate
 }
 
 func UpdateValidatorSet(validatorUpdates []ValidatorUpdate, thresholdPublicKey crypto2.PublicKey) ValidatorSetUpdate {
