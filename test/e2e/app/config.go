@@ -22,6 +22,7 @@ type Config struct {
 	ThesholdPublicKeyUpdate map[string]string            `toml:"threshold_public_key_update"`
 	QuorumHashUpdate        map[string]string            `toml:"quorum_hash_update"`
 	ChainLockUpdates        map[string]string            `toml:"chainlock_updates"`
+	PrivValServerType       string                       `toml:"privval_server_type"`
 	PrivValServer           string                       `toml:"privval_server"`
 	PrivValKey              string                       `toml:"privval_key"`
 	PrivValState            string                       `toml:"privval_state"`

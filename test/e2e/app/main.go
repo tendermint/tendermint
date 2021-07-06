@@ -82,28 +82,30 @@ func run(configFile string) error {
 
 	// Start remote signer (must start before node if running builtin).
 	if cfg.PrivValServer != "" {
-		if err = startSigner(cfg); err != nil {
-			return err
-		}
-		if cfg.Protocol == "builtin" {
-			time.Sleep(1 * time.Second)
+		if cfg.PrivValServerType == "dashcore" {
+			// Start mock core-server
+			coreSrv, err := setupCoreServer(cfg)
+			if err != nil {
+				return fmt.Errorf("unable to setup mock core server: %w", err)
+			}
+			go func() {
+				coreSrv.Start()
+			}()
+
+			dashCoreRpcClient, err = dashcore.NewDashCoreRpcClient(
+				cfg.PrivValServer,
+				tmcfg.BaseConfig.PrivValidatorCoreRPCUsername,
+				tmcfg.BaseConfig.PrivValidatorCoreRPCPassword,
+			)
+		} else {
+			if err = startSigner(cfg); err != nil {
+				return err
+			}
+			if cfg.Protocol == "builtin" {
+				time.Sleep(1 * time.Second)
+			}
 		}
 	}
-
-	// Start mock core-server
-	coreSrv, err := setupCoreServer(cfg)
-	if err != nil {
-		return fmt.Errorf("unable to setup mock core server: %w", err)
-	}
-	go func() {
-		coreSrv.Start()
-	}()
-
-	dashCoreRpcClient, err = dashcore.NewDashCoreRpcClient(
-		tmcfg.PrivValidatorCoreRPCHost,
-		tmcfg.BaseConfig.PrivValidatorCoreRPCUsername,
-		tmcfg.BaseConfig.PrivValidatorCoreRPCPassword,
-	)
 
 	if err != nil {
 		return fmt.Errorf("connection to Dash Core RPC failed: %w", err)

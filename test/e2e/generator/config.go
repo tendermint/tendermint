@@ -94,14 +94,15 @@ func defaultCfg() config {
 		// testnetCombinations defines global testnet options, where we generate a
 		// separate testnet for each combination (Cartesian product) of options.
 		testnetCombinations: map[string][]interface{}{
-			"topology":      {"single", "quad", "large"},
-			"ipv6":          {false, true},
-			"initialHeight": {0, 1000},
+			"topology":                     {"single", "quad", "large"},
+			"ipv6":                         {false, true},
+			"initialHeight":                {0, 1000},
+			"initialCoreChainLockedHeight": {1, 3000},
 			"initialState": {
 				map[string]string{},
 				map[string]string{"initial01": "a", "initial02": "b", "initial03": "c"},
 			},
-			"validators": {"genesis", "initchain"},
+			"validators":                   {"genesis", "initchain"},
 		},
 		node: node{
 			// The following specify randomly chosen values for testnet nodes.

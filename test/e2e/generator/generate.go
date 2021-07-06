@@ -27,13 +27,14 @@ func Generate(r *rand.Rand) ([]e2e.Manifest, error) {
 // generateTestnet generates a single testnet with the given options.
 func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, error) {
 	manifest := e2e.Manifest{
-		IPv6:             opt["ipv6"].(bool),
-		InitialHeight:    int64(opt["initialHeight"].(int)),
-		InitialState:     opt["initialState"].(map[string]string),
-		Validators:       &map[string]int64{},
-		ValidatorUpdates: map[string]map[string]int64{},
-		ChainLockUpdates: map[string]int64{},
-		Nodes:            map[string]*e2e.ManifestNode{},
+		IPv6:                         opt["ipv6"].(bool),
+		InitialHeight:                int64(opt["initialHeight"].(int)),
+		InitialCoreChainLockedHeight: uint32(opt["initialCoreChainLockedHeight"].(int)),
+		InitialState:                 opt["initialState"].(map[string]string),
+		Validators:                   &map[string]int64{},
+		ValidatorUpdates:             map[string]map[string]int64{},
+		ChainLockUpdates:             map[string]int64{},
+		Nodes:                        map[string]*e2e.ManifestNode{},
 	}
 	topology, ok := topologies[opt["topology"].(string)]
 	if !ok {

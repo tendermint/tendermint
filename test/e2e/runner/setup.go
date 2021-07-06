@@ -32,12 +32,13 @@ const (
 	AppAddressTCP  = "tcp://127.0.0.1:30000"
 	AppAddressUNIX = "unix:///var/run/app.sock"
 
-	PrivvalAddressTCP     = "tcp://0.0.0.0:27559"
-	PrivvalAddressUNIX    = "unix:///var/run/privval.sock"
-	PrivvalKeyFile        = "config/priv_validator_key.json"
-	PrivvalStateFile      = "data/priv_validator_state.json"
-	PrivvalDummyKeyFile   = "config/dummy_validator_key.json"
-	PrivvalDummyStateFile = "data/dummy_validator_state.json"
+	PrivvalAddressTCP      = "tcp://0.0.0.0:27559"
+	PrivvalAddressUNIX     = "unix:///var/run/privval.sock"
+	PrivvalAddressDashCore = "127.0.0.1:19998"
+	PrivvalKeyFile         = "config/priv_validator_key.json"
+	PrivvalStateFile       = "data/priv_validator_state.json"
+	PrivvalDummyKeyFile    = "config/dummy_validator_key.json"
+	PrivvalDummyStateFile  = "data/dummy_validator_state.json"
 )
 
 // Setup sets up the testnet configuration.
@@ -223,13 +224,14 @@ services:
 // MakeGenesis generates a genesis document.
 func MakeGenesis(testnet *e2e.Testnet, genesisTime time.Time) (types.GenesisDoc, error) {
 	genesis := types.GenesisDoc{
-		GenesisTime:        genesisTime,
-		ChainID:            testnet.Name,
-		ConsensusParams:    types.DefaultConsensusParams(),
-		InitialHeight:      testnet.InitialHeight,
-		ThresholdPublicKey: testnet.ThresholdPublicKey,
-		QuorumType:         testnet.QuorumType,
-		QuorumHash:         testnet.QuorumHash,
+		GenesisTime:                  genesisTime,
+		ChainID:                      testnet.Name,
+		ConsensusParams:              types.DefaultConsensusParams(),
+		InitialHeight:                testnet.InitialHeight,
+		InitialCoreChainLockedHeight: testnet.InitialCoreHeight,
+		ThresholdPublicKey:           testnet.ThresholdPublicKey,
+		QuorumType:                   testnet.QuorumType,
+		QuorumHash:                   testnet.QuorumHash,
 	}
 	for validator, pubkey := range testnet.Validators {
 		genesis.Validators = append(genesis.Validators, types.GenesisValidator{
@@ -302,6 +304,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 		case e2e.ProtocolTCP:
 			cfg.PrivValidatorListenAddr = PrivvalAddressTCP
 		case e2e.ProtocolDashCore:
+			cfg.PrivValidatorCoreRPCHost = "127.0.0.1:19998"
 			cfg.PrivValidatorKey = PrivvalKeyFile
 			cfg.PrivValidatorState = PrivvalStateFile
 		default:
@@ -385,11 +388,15 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 		switch node.PrivvalProtocol {
 		case e2e.ProtocolFile:
 		case e2e.ProtocolDashCore:
+			cfg["privval_server_type"] = "dashcore"
+			cfg["privval_server"] = PrivvalAddressDashCore
 		case e2e.ProtocolTCP:
+			cfg["privval_server_type"] = "tcp"
 			cfg["privval_server"] = PrivvalAddressTCP
 			cfg["privval_key"] = PrivvalKeyFile
 			cfg["privval_state"] = PrivvalStateFile
 		case e2e.ProtocolUNIX:
+			cfg["privval_server_type"] = "unix"
 			cfg["privval_server"] = PrivvalAddressUNIX
 			cfg["privval_key"] = PrivvalKeyFile
 			cfg["privval_state"] = PrivvalStateFile
