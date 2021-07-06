@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/tendermint/tendermint/crypto/merkle"
 	"math"
 	"math/big"
 	"sort"
@@ -515,10 +516,10 @@ func (vals *ValidatorSet) findProposer() *Validator {
 
 // Hash returns the Quorum Hash.
 func (vals *ValidatorSet) Hash() []byte {
-	if vals.QuorumHash == nil {
-		return []byte(nil)
-	}
-	return vals.QuorumHash
+	bzs := make([][]byte,2)
+	bzs[0] = vals.ThresholdPublicKey.Bytes()
+	bzs[1] = vals.QuorumHash
+	return merkle.HashFromByteSlices(bzs)
 }
 
 // Iterate will run the given function over the set.
