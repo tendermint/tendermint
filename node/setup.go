@@ -81,7 +81,7 @@ func createAndStartIndexerService(
 
 	eventSinks := []indexer.EventSink{}
 
-	// check fir duplicated sinks
+	// check for duplicated sinks
 	sinks := map[string]bool{}
 	for _, s := range config.TxIndex.Indexer {
 		sl := strings.ToLower(s)
