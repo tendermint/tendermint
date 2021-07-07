@@ -20,7 +20,6 @@ import (
 )
 
 // ReIndexEventCmd allows re-index the event by given block height interval
-// console.
 var ReIndexEventCmd = &cobra.Command{
 	Use:   "reindex-event",
 	Short: "reindex events to the event store backends",
