@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"fmt"
+	"runtime/debug"
 	"time"
 
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
@@ -1197,20 +1198,23 @@ func (r *Reactor) handleVoteSetBitsMessage(envelope p2p.Envelope, msgI Message) 
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
 //
+// NOTE: We process these messages even when we're fast_syncing. Messages affect
+// either a peer state or the consensus state. Peer state updates can happen in
+// parallel, but processing of proposals, block parts, and votes are ordered by
+// the p2p channel.
+//
 // NOTE: We block on consensus state for proposals, block parts, and votes.
 func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
-			r.Logger.Error("recovering from processing message panic", "err", err)
+			r.Logger.Error(
+				"recovering from processing message panic",
+				"err", err,
+				"stack", string(debug.Stack()),
+			)
 		}
 	}()
-
-	// Just skip the entire message during syncing so that we can
-	// process fewer messages.
-	if r.WaitSync() {
-		return
-	}
 
 	// We wrap the envelope's message in a Proto wire type so we can convert back
 	// the domain type that individual channel message handlers can work with. We
