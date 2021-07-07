@@ -41,8 +41,7 @@ var ReIndexEventCmd = &cobra.Command{
 			return
 		}
 
-		err = eventReIndex(cmd, es, bs, ss)
-		if err != nil {
+		if err = eventReIndex(cmd, es, bs, ss); err != nil {
 			fmt.Println("event re-index failed: ", err)
 			return
 		}
