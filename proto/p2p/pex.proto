@@ -17,9 +17,21 @@ message PexResponse {
   repeated PexAddress addresses = 1 [(gogoproto.nullable) = false];
 }
 
+message PexAddressV2 {
+  string url = 1 [(gogoproto.customname) = "URL"];
+}
+
+message PexRequestV2 {}
+
+message PexResponseV2 {
+  repeated PexAddressV2 addresses = 1 [(gogoproto.nullable) = false];
+}
+
 message PexMessage {
   oneof sum {
-    PexRequest  pex_request  = 1;
-    PexResponse pex_response = 2;
+    PexRequest    pex_request     = 1;
+    PexResponse   pex_response    = 2;
+    PexRequestV2  pex_request_v2  = 3;
+    PexResponseV2 pex_response_v2 = 4;
   }
 }
