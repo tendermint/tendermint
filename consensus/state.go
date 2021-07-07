@@ -2031,6 +2031,13 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 	// Already have one
 	// TODO: possibly catch double proposals
 	if cs.Proposal != nil {
+		if proposal.Height == cs.Height && proposal.Round > cs.Proposal.Round && proposal.Round > cs.LastProposalRound {
+			// Todo: this is not secure as we are not even verifying the proposal
+			cs.Logger.Debug("future proposal came in with current proposal known", "height", proposal.Height,
+				"round", proposal.Round)
+			cs.LastProposalRound = proposal.Round
+			cs.LastProposal = proposal
+		}
 		return nil
 	}
 
@@ -2040,7 +2047,7 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 
 	// Does not apply
 	if proposal.Height != cs.Height || proposal.Round != cs.Round {
-		if proposal.Height  == cs.Height && proposal.Round > cs.LastProposalRound {
+		if proposal.Height == cs.Height && proposal.Round > cs.LastProposalRound {
 			// Todo: this is not secure as we are not even verifying the proposal
 			cs.Logger.Debug("future proposal came in", "height", proposal.Height,
 				"round", proposal.Round)
