@@ -2053,6 +2053,9 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 				"round", proposal.Round)
 			cs.LastProposalRound = proposal.Round
 			cs.LastProposal = proposal
+		} else {
+			cs.Logger.Debug("received proposal for different height or round", "height", proposal.Height,
+				"round", proposal.Round)
 		}
 		return nil
 	}
