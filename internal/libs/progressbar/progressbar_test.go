@@ -8,7 +8,6 @@ import (
 )
 
 func TestProgressBar(t *testing.T) {
-	t.Skip()
 	var bar progressbar.Bar
 	bar.NewOption(0, 100)
 
@@ -20,7 +19,6 @@ func TestProgressBar(t *testing.T) {
 }
 
 func TestProgressBarWithGraph(t *testing.T) {
-	t.Skip()
 	var bar progressbar.Bar
 	bar.NewOptionWithGraph(0, 100, "#")
 	for i := 0; i <= 100; i++ {
