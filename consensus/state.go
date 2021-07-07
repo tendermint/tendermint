@@ -32,6 +32,8 @@ import (
 // Consensus sentinel errors
 var (
 	ErrInvalidProposalNotSet      = errors.New("error invalid proposal not set")
+	ErrInvalidProposalForCommit   = errors.New("error invalid proposal for commit")
+	ErrUnableToVerifyProposal     = errors.New("error unable to verify proposal")
 	ErrInvalidProposalSignature   = errors.New("error invalid proposal signature")
 	ErrInvalidProposalCoreHeight  = errors.New("error invalid proposal core height")
 	ErrInvalidProposalPOLRound    = errors.New("error invalid proposal POL round")
@@ -2020,15 +2022,28 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 	//	hex.EncodeToString(proposalRequestId), hex.EncodeToString(signId), hex.EncodeToString(cs.state.Validators.QuorumHash),
 	//	hex.EncodeToString(proposalBlockSignBytes))
 
-
-
-	if !proposer.PubKey.VerifySignatureDigest(proposalBlockSignId, proposal.Signature) {
-		cs.Logger.Debug("error verifying signature", "height", proposal.Height,
-			"round", proposal.Round, "proposer", proposer.ProTxHash.ShortString(), "signature", proposal.Signature, "pubkey",
-			proposer.PubKey.Bytes(), "quorumType", cs.state.Validators.QuorumType,
-			"quorumHash", cs.state.Validators.QuorumHash, "proposalSignId", proposalBlockSignId)
-		return ErrInvalidProposalSignature
+	if proposer.PubKey != nil {
+		// We are part of the validator set
+		if !proposer.PubKey.VerifySignatureDigest(proposalBlockSignId, proposal.Signature) {
+			cs.Logger.Debug("error verifying signature", "height", proposal.Height,
+				"round", proposal.Round, "proposer", proposer.ProTxHash.ShortString(), "signature", proposal.Signature, "pubkey",
+				proposer.PubKey.Bytes(), "quorumType", cs.state.Validators.QuorumType,
+				"quorumHash", cs.state.Validators.QuorumHash, "proposalSignId", proposalBlockSignId)
+			return ErrInvalidProposalSignature
+		}
+	} else if cs.Commit != nil && cs.Commit.Height == proposal.Height && cs.Commit.Round == proposal.Round {
+		// We are not part of the validator set
+		// We might have a commit already for the Round State
+		// We need to verify that the commit block id is equal to the proposal block id
+		if !proposal.BlockID.Equals(cs.Commit.BlockID) {
+			return ErrInvalidProposalForCommit
+		}
+	} else {
+		// We received a proposal we can not check
+		return ErrUnableToVerifyProposal
 	}
+
+
 
 	proposal.Signature = p.Signature
 	cs.Proposal = proposal
