@@ -17,7 +17,7 @@ message ValidatorSet {
 }
 
 message Validator {
-  tendermint.crypto.PublicKey pub_key           = 2 [(gogoproto.nullable) = false];
+  tendermint.crypto.PublicKey pub_key           = 2 [(gogoproto.nullable) = true];
   int64                       voting_power      = 3;
   int64                       proposer_priority = 4;
   bytes                       pro_tx_hash       = 5;
