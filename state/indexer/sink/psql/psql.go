@@ -110,6 +110,7 @@ func (es *EventSink) IndexTxEvents(txr []*abci.TxResult) error {
 		if err != nil {
 			return err
 		}
+		defer r.Close()
 
 		if !r.Next() {
 			return nil

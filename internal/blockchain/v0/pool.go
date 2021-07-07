@@ -83,6 +83,10 @@ type BlockPool struct {
 
 	requestsCh chan<- BlockRequest
 	errorsCh   chan<- peerError
+
+	startHeight               int64
+	lastHundredBlockTimeStamp time.Time
+	lastSyncRate              float64
 }
 
 // NewBlockPool returns a new BlockPool with the height equal to start. Block
@@ -91,12 +95,14 @@ func NewBlockPool(start int64, requestsCh chan<- BlockRequest, errorsCh chan<- p
 	bp := &BlockPool{
 		peers: make(map[types.NodeID]*bpPeer),
 
-		requesters: make(map[int64]*bpRequester),
-		height:     start,
-		numPending: 0,
+		requesters:  make(map[int64]*bpRequester),
+		height:      start,
+		startHeight: start,
+		numPending:  0,
 
-		requestsCh: requestsCh,
-		errorsCh:   errorsCh,
+		requestsCh:   requestsCh,
+		errorsCh:     errorsCh,
+		lastSyncRate: 0,
 	}
 	bp.BaseService = *service.NewBaseService(nil, "BlockPool", bp)
 	return bp
@@ -106,6 +112,7 @@ func NewBlockPool(start int64, requestsCh chan<- BlockRequest, errorsCh chan<- p
 // pool's start time.
 func (pool *BlockPool) OnStart() error {
 	pool.lastAdvance = time.Now()
+	pool.lastHundredBlockTimeStamp = pool.lastAdvance
 	go pool.makeRequestersRoutine()
 	return nil
 }
@@ -216,6 +223,19 @@ func (pool *BlockPool) PopRequest() {
 		delete(pool.requesters, pool.height)
 		pool.height++
 		pool.lastAdvance = time.Now()
+
+		// the lastSyncRate will be updated every 100 blocks, it uses the adaptive filter
+		// to smooth the block sync rate and the unit represents the number of blocks per second.
+		if (pool.height-pool.startHeight)%100 == 0 {
+			newSyncRate := 100 / time.Since(pool.lastHundredBlockTimeStamp).Seconds()
+			if pool.lastSyncRate == 0 {
+				pool.lastSyncRate = newSyncRate
+			} else {
+				pool.lastSyncRate = 0.9*pool.lastSyncRate + 0.1*newSyncRate
+			}
+			pool.lastHundredBlockTimeStamp = time.Now()
+		}
+
 	} else {
 		panic(fmt.Sprintf("Expected requester to pop, got nothing at height %v", pool.height))
 	}
@@ -426,6 +446,20 @@ func (pool *BlockPool) debug() string {
 		}
 	}
 	return str
+}
+
+func (pool *BlockPool) targetSyncBlocks() int64 {
+	pool.mtx.RLock()
+	defer pool.mtx.RUnlock()
+
+	return pool.maxPeerHeight - pool.startHeight + 1
+}
+
+func (pool *BlockPool) getLastSyncRate() float64 {
+	pool.mtx.RLock()
+	defer pool.mtx.RUnlock()
+
+	return pool.lastSyncRate
 }
 
 //-------------------------------------

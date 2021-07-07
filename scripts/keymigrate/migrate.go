@@ -18,7 +18,6 @@ import (
 	"sync"
 
 	"github.com/google/orderedcode"
-	"github.com/pkg/errors"
 	dbm "github.com/tendermint/tm-db"
 )
 
@@ -395,7 +394,7 @@ func Migrate(ctx context.Context, db dbm.DB) error {
 
 	// check the error results
 	if len(errs) != 0 {
-		return errors.Errorf("encountered errors during migration: %v", errStrs)
+		return fmt.Errorf("encountered errors during migration: %v", errStrs)
 	}
 
 	return nil
