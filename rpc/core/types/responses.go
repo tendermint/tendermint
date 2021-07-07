@@ -98,6 +98,9 @@ type SyncInfo struct {
 	MaxPeerBlockHeight int64 `json:"max_peer_block_height"`
 
 	CatchingUp bool `json:"catching_up"`
+
+	TotalSyncedTime time.Duration `json:"total_synced_time"`
+	RemainingTime   time.Duration `json:"remaining_time"`
 }
 
 // Info about the node's validator
