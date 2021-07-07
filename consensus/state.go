@@ -1045,6 +1045,8 @@ func (cs *State) enterNewRound(height int64, round int32) {
 		cs.Proposal = nil
 		cs.ProposalBlock = nil
 		cs.ProposalBlockParts = nil
+		cs.LastProposal = nil
+		cs.LastProposalRound = 0
 	}
 
 	cs.Votes.SetRound(tmmath.SafeAddInt32(round, 1)) // also track next round (round+1) to allow round-skipping
@@ -1714,7 +1716,14 @@ func (cs *State) tryAddCommit(commit *types.Commit, peerID p2p.ID) (bool, error)
 			return false, err
 		}
 		if verified {
+			lastProposalRound := cs.LastProposalRound
+			lastProposal := cs.LastProposal
 			cs.enterNewRound(cs.Height, commit.Round)
+			if commit.Round == lastProposalRound {
+				cs.Logger.Debug("Applying proposal received earlier","height", commit.Height, "round",
+					commit.Round, "proposal", lastProposal)
+				cs.defaultSetProposal(lastProposal)
+			}
 			return false, nil
 		}
 	}
@@ -1757,7 +1766,7 @@ func (cs *State) verifyCommit(commit *types.Commit, peerID p2p.ID, ignoreProposa
 	}
 
 	cs.Logger.Debug(
-		"adding commit from remote",
+		"verifying commit from remote",
 		"commit_height", commit.Height,
 		"cs_height", cs.Height,
 	)
@@ -1779,7 +1788,12 @@ func (cs *State) verifyCommit(commit *types.Commit, peerID p2p.ID, ignoreProposa
 	stateId := types.StateID{LastAppHash: cs.state.AppHash}
 
 	if rs.Proposal == nil || ignoreProposalBlock {
-		cs.Logger.Info("Commit came in before proposal", "height", commit.Height, "round", commit.Round)
+		if ignoreProposalBlock {
+			cs.Logger.Info("Commit verified for future round", "height", commit.Height, "round", commit.Round)
+		} else {
+			cs.Logger.Info("Commit came in before proposal", "height", commit.Height, "round", commit.Round)
+		}
+
 		// We need to verify that it was properly signed
 		// This generally proves that the commit is correct
 		if err := cs.Validators.VerifyCommit(cs.state.ChainID, commit.BlockID, stateId, cs.Height, commit); err != nil {
@@ -2026,6 +2040,13 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 
 	// Does not apply
 	if proposal.Height != cs.Height || proposal.Round != cs.Round {
+		if proposal.Height  == cs.Height && proposal.Round > cs.LastProposalRound {
+			// Todo: this is not secure as we are not even verifying the proposal
+			cs.Logger.Debug("future proposal came in", "height", proposal.Height,
+				"round", proposal.Round)
+			cs.LastProposalRound = proposal.Round
+			cs.LastProposal = proposal
+		}
 		return nil
 	}
 
@@ -2063,6 +2084,8 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 		// We might have a commit already for the Round State
 		// We need to verify that the commit block id is equal to the proposal block id
 		if !proposal.BlockID.Equals(cs.Commit.BlockID) {
+			cs.Logger.Debug("proposal blockId isn't the same as the commit blockId", "height", proposal.Height,
+				"round", proposal.Round, "proposer", proposer.ProTxHash.ShortString())
 			return ErrInvalidProposalForCommit
 		}
 	}
