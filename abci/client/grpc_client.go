@@ -48,11 +48,11 @@ func NewGRPCClient(addr string, mustConnect bool) Client {
 		mustConnect: mustConnect,
 		// Buffering the channel is needed to make calls appear asynchronous,
 		// which is required when the caller makes multiple async calls before
-		// processing callbacks (e.g. due to holding locks). 64 means that a
-		// caller can make up to 64 async calls before a callback must be
-		// processed (otherwise it deadlocks). It also means that we can make 64
+		// processing callbacks (e.g. due to holding locks). 4 means that a
+		// caller can make up to 4 async calls before a callback must be
+		// processed (otherwise it deadlocks). It also means that we can make 4
 		// gRPC calls while processing a slow callback at the channel head.
-		chReqRes: make(chan *ReqRes, 64),
+		chReqRes: make(chan *ReqRes, 16),
 	}
 	cli.BaseService = *service.NewBaseService(nil, "grpcClient", cli)
 	return cli
