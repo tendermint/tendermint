@@ -1499,16 +1499,19 @@ func (bs *mockBlockStore) PruneBlocks(height int64) (uint64, error) {
 // Test handshake/init chain
 
 func TestHandshakeUpdatesValidators(t *testing.T) {
+	config := ResetConfig("handshake_test_")
+	defer os.RemoveAll(config.RootDir)
+	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+
 	val, _ := types.RandValidator()
-	randQuorumHash := crypto.RandQuorumHash()
+	randQuorumHash, err := privVal.GetFirstQuorumHash()
+	require.NoError(t, err)
 	vals := types.NewValidatorSet([]*types.Validator{val}, val.PubKey, btcjson.LLMQType_5_60, randQuorumHash, true)
 	abciValidatorSetUpdates := types.TM2PB.ValidatorUpdates(vals)
 	app := &initChainApp{vals: &abciValidatorSetUpdates}
 	clientCreator := proxy.NewLocalClientCreator(app)
 
-	config := ResetConfig("handshake_test_")
-	defer os.RemoveAll(config.RootDir)
-	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+
 	pubKey, err := privVal.GetPubKey(randQuorumHash)
 	require.NoError(t, err)
 	proTxHash, err := privVal.GetProTxHash()
