@@ -148,3 +148,4 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [rpc] \#6507 fix RPC client doesn't handle url's without ports (@JayT106)
 - [statesync] \#6463 Adds Reverse Sync feature to fetch historical light blocks after state sync in order to verify any evidence (@cmwaters)
 - [fastsync] \#6590 Update the metrics during fast-sync (@JayT106)
+- [gitignore] \#6668 Fix gitignore of abci-cli (@tanyabouman)
