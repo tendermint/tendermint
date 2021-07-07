@@ -700,12 +700,13 @@ func NewNode(config *cfg.Config,
 			}
 			dashCoreRpcClient = rpcClient
 		}
-		// If a local port is provided for Dash Core rpc into the service to sign.
-		privValidator, err = createAndStartPrivValidatorRPCClient(config.Consensus.QuorumType, dashCoreRpcClient, logger)
-		if err != nil {
-			return nil, fmt.Errorf("error with private validator socket client: %w", err)
-		}
+
 		if config.IsMasternode {
+			// If a local port is provided for Dash Core rpc into the service to sign.
+			privValidator, err = createAndStartPrivValidatorRPCClient(config.Consensus.QuorumType, dashCoreRpcClient, logger)
+			if err != nil {
+				return nil, fmt.Errorf("error with private validator socket client: %w", err)
+			}
 			proTxHash, err := privValidator.GetProTxHash()
 			if err != nil {
 				return nil, fmt.Errorf("can't get proTxHash using dash core signing: %w", err)
@@ -1084,7 +1085,7 @@ func (n *Node) ConfigureRPC() error {
 		ConsensusState: n.consensusState,
 		P2PPeers:       n.sw,
 		P2PTransport:   n,
-		
+
 		GenDoc:           n.genesisDoc,
 		TxIndexer:        n.txIndexer,
 		BlockIndexer:     n.blockIndexer,
