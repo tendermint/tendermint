@@ -18,19 +18,12 @@ func (bar *Bar) NewOption(start, total int64) {
 	bar.cur = start
 	bar.start = start
 	bar.total = total
-	if bar.graph == "" {
-		bar.graph = "█"
-	}
+	bar.graph = "█"
 	bar.percent = bar.getPercent()
 }
 
 func (bar *Bar) getPercent() int64 {
 	return int64(float32(bar.cur-bar.start) / float32(bar.total-bar.start) * 100)
-}
-
-func (bar *Bar) NewOptionWithGraph(start, total int64, graph string) {
-	bar.graph = graph
-	bar.NewOption(start, total)
 }
 
 func (bar *Bar) Play(cur int64) {
