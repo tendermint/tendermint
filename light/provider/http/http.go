@@ -195,6 +195,10 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 			time.Sleep(backoffTimeout(uint16(attempt)))
 			continue
 		}
+		if commit == nil {
+			time.Sleep(backoffTimeout(uint16(attempt)))
+			continue
+		}
 		return &commit.SignedHeader, nil
 	}
 	return nil, provider.ErrNoResponse
