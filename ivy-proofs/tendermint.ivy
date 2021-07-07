@@ -60,7 +60,7 @@ include network_shim
 module tendermint(abstract_protocol) = {
 
     # the initial value of a node:
-    parameter init_val(N:node): value
+    function init_val(N:node): value
 
     # the three type of steps
     object step_t = {
@@ -129,7 +129,7 @@ module tendermint(abstract_protocol) = {
         }
 
         export action start = {
-            assume ~_has_started;
+            require ~_has_started;
             _has_started := true;
             # line 10
             call startRound(0);
@@ -171,17 +171,15 @@ module tendermint(abstract_protocol) = {
             call shim.broadcast(n,m);
         }
 
-
         implement shim.proposal_handler.handle(msg:msg) {
             _recved_proposal(msg.m_src, msg.m_round, msg.m_value, msg.m_vround) := true;
         }
 
-
         # line 22-27
         export action l_22(v:value) = {
-            assume _has_started;
-            assume _recved_proposal(proposers.get_proposer(round_p), round_p, v, round.minus_one);
-            assume step = step_t.propose;
+            require _has_started;
+            require _recved_proposal(proposers.get_proposer(round_p), round_p, v, round.minus_one);
+            require step = step_t.propose;
 
             if (value.valid(v) & (lockedRound = round.minus_one | lockedValue = v)) {
                 call broadcast_prevote(round_p, v); # line 24
@@ -195,17 +193,15 @@ module tendermint(abstract_protocol) = {
             step := step_t.prevote;
         }
 
-
-
         # line 28-33
         export action l_28(r:round, v:value, vr:round, q:nset) = {
-            assume _has_started;
-            assume r = round_p;
-            assume _recved_proposal(proposers.get_proposer(r), r, v, vr);
-            assume nset.is_quorum(q);
-            assume nset.member(N,q) -> _recved_prevote(N,vr,v);
-            assume step = step_t.propose;
-            assume vr >= 0 & vr < r;
+            require _has_started;
+            require r = round_p;
+            require _recved_proposal(proposers.get_proposer(r), r, v, vr);
+            require nset.is_quorum(q);
+            require nset.member(N,q) -> _recved_prevote(N,vr,v);
+            require step = step_t.propose;
+            require vr >= 0 & vr < r;
 
             # line 29
             if (value.valid(v) & (lockedRound <= vr | lockedValue = v)) {
@@ -228,19 +224,17 @@ module tendermint(abstract_protocol) = {
         }
 
         implement shim.prevote_handler.handle(msg:msg) {
-            assume msg.m_vround = round.minus_one;
             _recved_prevote(msg.m_src, msg.m_round, msg.m_value) := true;
         }
 
-
         # line 34-35
         export action l_34(r:round, q:nset) = {
-            assume _has_started;
-            assume round_p = r;
-            assume nset.is_quorum(q);
-            assume exists V . nset.member(N,q) -> _recved_prevote(N,r,V);
-            assume step = step_t.prevote;
-            assume ~done_l34(r);
+            require _has_started;
+            require round_p = r;
+            require nset.is_quorum(q);
+            require exists V . nset.member(N,q) -> _recved_prevote(N,r,V);
+            require step = step_t.prevote;
+            require ~done_l34(r);
             done_l34(r) := true;
 
             prevote_timer_scheduled(r) := true;
@@ -249,15 +243,15 @@ module tendermint(abstract_protocol) = {
 
         # line 36-43
         export action l_36(r:round, v:value, q:nset) = {
-            assume _has_started;
-            assume r = round_p;
-            assume exists VR . _recved_proposal(proposers.get_proposer(r), r, v, VR);
-            assume nset.is_quorum(q);
-            assume nset.member(N,q) -> _recved_prevote(N,r,v);
-            assume value.valid(v);
-            assume step = step_t.prevote | step = step_t.precommit;
+            require _has_started;
+            require r = round_p;
+            require exists VR . round.minus_one <= VR & VR < r & _recved_proposal(proposers.get_proposer(r), r, v, VR);
+            require nset.is_quorum(q);
+            require nset.member(N,q) -> _recved_prevote(N,r,v);
+            require value.valid(v);
+            require step = step_t.prevote | step = step_t.precommit;
 
-            assume ~done_l36(r,v);
+            require ~done_l36(r,v);
             done_l36(r, v) := true;
 
             if step = step_t.prevote {
@@ -270,17 +264,15 @@ module tendermint(abstract_protocol) = {
 
             validValue := v; # line 42
             validRound := r; # line 43
-
         }
-
 
         # line 44-46
         export action l_44(r:round, q:nset) = {
-            assume _has_started;
-            assume r = round_p;
-            assume nset.is_quorum(q);
-            assume nset.member(N,q) -> _recved_prevote(N,r,value.nil);
-            assume step = step_t.prevote;
+            require _has_started;
+            require r = round_p;
+            require nset.is_quorum(q);
+            require nset.member(N,q) -> _recved_prevote(N,r,value.nil);
+            require step = step_t.prevote;
 
             call broadcast_precommit(r, value.nil); # line 45
             step := step_t.precommit; # line 46
@@ -294,23 +286,21 @@ module tendermint(abstract_protocol) = {
             m.m_src := n;
             m.m_round := r;
             m.m_value := v;
-            m.m_vround := round.minus_one;
             call shim.broadcast(n,m);
         }
 
         implement shim.precommit_handler.handle(msg:msg) {
-            assume msg.m_vround = round.minus_one;
             _recved_precommit(msg.m_src, msg.m_round, msg.m_value) := true;
         }
 
 
         # line 47-48
         export action l_47(r:round, q:nset) = {
-            assume _has_started;
-            assume round_p = r;
-            assume nset.is_quorum(q);
-            assume nset.member(N,q) -> exists V . _recved_precommit(N,r,V);
-            assume ~done_l47(r);
+            require _has_started;
+            require round_p = r;
+            require nset.is_quorum(q);
+            require nset.member(N,q) -> exists V . _recved_precommit(N,r,V);
+            require ~done_l47(r);
             done_l47(r) := true;
 
             precommit_timer_scheduled(r) := true;
@@ -319,11 +309,11 @@ module tendermint(abstract_protocol) = {
 
         # line 49-54
         export action l_49_decide(r:round, v:value, q:nset) = {
-            assume _has_started;
-            assume exists VR . _recved_proposal(proposers.get_proposer(r), r, v, VR);
-            assume nset.is_quorum(q);
-            assume nset.member(N,q) -> _recved_precommit(N,r,v);
-            assume decision = value.nil;
+            require _has_started;
+            require exists VR . round.minus_one <= VR & VR < r & _recved_proposal(proposers.get_proposer(r), r, v, VR);
+            require nset.is_quorum(q);
+            require nset.member(N,q) -> _recved_precommit(N,r,v);
+            require decision = value.nil;
 
             if value.valid(v) {
                 decision := v;
@@ -334,19 +324,19 @@ module tendermint(abstract_protocol) = {
 
         # line 55-56
         export action l_55(r:round, b:nset) = {
-            assume _has_started;
-            assume nset.is_blocking(b);
-            assume nset.member(N,b) -> exists V,VR . _recved_proposal(N,r,V,VR) | _recved_prevote(N,r,V) | _recved_precommit(N,r,V);
-            assume r > round_p;
+            require _has_started;
+            require nset.is_blocking(b);
+            require nset.member(N,b) -> exists VR . round.minus_one <= VR & VR < r & exists V . _recved_proposal(N,r,V,VR) | _recved_prevote(N,r,V) | _recved_precommit(N,r,V);
+            require r > round_p;
             call startRound(r); # line 56
         }
 
         # line 57-60
         export action onTimeoutPropose(r:round) = {
-            assume _has_started;
-            assume propose_timer_scheduled(r);
-            assume r = round_p;
-            assume step = step_t.propose;
+            require _has_started;
+            require propose_timer_scheduled(r);
+            require r = round_p;
+            require step = step_t.propose;
             call broadcast_prevote(r,value.nil);
             step := step_t.prevote;
 
@@ -357,10 +347,10 @@ module tendermint(abstract_protocol) = {
 
         # line 61-64
         export action onTimeoutPrevote(r:round) = {
-            assume _has_started;
-            assume prevote_timer_scheduled(r);
-            assume r = round_p;
-            assume step = step_t.prevote;
+            require _has_started;
+            require prevote_timer_scheduled(r);
+            require r = round_p;
+            require step = step_t.prevote;
             call broadcast_precommit(r,value.nil);
             step := step_t.precommit;
 
@@ -369,12 +359,11 @@ module tendermint(abstract_protocol) = {
             prevote_timer_scheduled(r) := false;
         }
 
-
         # line 65-67
         export action onTimeoutPrecommit(r:round) = {
-            assume _has_started;
-            assume precommit_timer_scheduled(r);
-            assume r = round_p;
+            require _has_started;
+            require precommit_timer_scheduled(r);
+            require r = round_p;
             call startRound(round.incr(r));
 
             precommit_timer_scheduled(r) := false;
@@ -385,13 +374,11 @@ module tendermint(abstract_protocol) = {
 
 # Byzantine nodes can send whatever they want, but they cannot send
 # messages on behalf of well-behaved nodes. In practice this is implemented
-# using cryprography (e.g. public-key cryptography).
+# using cryptography (e.g. public-key cryptography).
 
-        export action byzantine_send = {
-            assume ~well_behaved(n);
-            var m:msg;
-            var dst:node;
-            assume ~well_behaved(m.m_src); # cannot forge the identity of well-behaved nodes
+        export action byzantine_send(m:msg, dst:node) = {
+            require ~well_behaved(n);
+            require ~well_behaved(m.m_src); # cannot forge the identity of well-behaved nodes
             call shim.send(n,dst,m);
         }
 
@@ -407,24 +394,27 @@ module tendermint(abstract_protocol) = {
 # preconditions are met, and b) provide a refinement relation.
 
 
-        invariant 0 <= round_p
-        invariant abstract_protocol.left_round(n,R) <-> R < round_p
+        specification {
 
-        invariant lockedRound ~= round.minus_one -> forall R,V . abstract_protocol.locked(n,R,V) <-> R <= lockedRound & lockedValue = V
-        invariant lockedRound = round.minus_one -> forall R,V . ~abstract_protocol.locked(n,R,V)
+            invariant 0 <= round_p
+            invariant abstract_protocol.left_round(n,R) <-> R < round_p
 
-        invariant forall M:msg . well_behaved(M.m_src) & M.m_kind = msg_kind.prevote & shim.sent(M,N) -> abstract_protocol.prevoted(M.m_src,M.m_round,M.m_value)
-        invariant well_behaved(N) & _recved_prevote(N,R,V) -> abstract_protocol.prevoted(N,R,V)
-        invariant forall M:msg . well_behaved(M.m_src) & M.m_kind = msg_kind.precommit & shim.sent(M,N) -> abstract_protocol.precommitted(M.m_src,M.m_round,M.m_value)
-        invariant well_behaved(N) & _recved_precommit(N,R,V) -> abstract_protocol.precommitted(N,R,V)
+            invariant lockedRound ~= round.minus_one -> forall R,V . abstract_protocol.locked(n,R,V) <-> R <= lockedRound & lockedValue = V
+            invariant lockedRound = round.minus_one -> forall R,V . ~abstract_protocol.locked(n,R,V)
 
-        invariant (step = step_t.prevote | step = step_t.propose) -> ~abstract_protocol.precommitted(n,round_p,V)
-        invariant step = step_t.propose -> ~abstract_protocol.prevoted(n,round_p,V)
-        invariant step = step_t.prevote -> exists V . abstract_protocol.prevoted(n,round_p,V)
+            invariant forall M:msg . well_behaved(M.m_src) & M.m_kind = msg_kind.prevote & shim.sent(M,N) -> abstract_protocol.prevoted(M.m_src,M.m_round,M.m_value)
+            invariant well_behaved(N) & _recved_prevote(N,R,V) -> abstract_protocol.prevoted(N,R,V)
+            invariant forall M:msg . well_behaved(M.m_src) & M.m_kind = msg_kind.precommit & shim.sent(M,N) -> abstract_protocol.precommitted(M.m_src,M.m_round,M.m_value)
+            invariant well_behaved(N) & _recved_precommit(N,R,V) -> abstract_protocol.precommitted(N,R,V)
 
-        invariant round_p < R -> ~(abstract_protocol.prevoted(n,R,V) | abstract_protocol.precommitted(n,R,V))
-        invariant ~_has_started -> step = step_t.propose & ~(abstract_protocol.prevoted(n,R,V) | abstract_protocol.precommitted(n,R,V)) & round_p = 0
+            invariant (step = step_t.prevote | step = step_t.propose) -> ~abstract_protocol.precommitted(n,round_p,V)
+            invariant step = step_t.propose -> ~abstract_protocol.prevoted(n,round_p,V)
+            invariant step = step_t.prevote -> exists V . abstract_protocol.prevoted(n,round_p,V)
 
-        invariant decision ~= value.nil -> exists R . abstract_protocol.decided(n,R,decision)
+            invariant round_p < R -> ~(abstract_protocol.prevoted(n,R,V) | abstract_protocol.precommitted(n,R,V))
+            invariant ~_has_started -> step = step_t.propose & ~(abstract_protocol.prevoted(n,R,V) | abstract_protocol.precommitted(n,R,V)) & round_p = 0
+
+            invariant decision ~= value.nil -> exists R . abstract_protocol.decided(n,R,decision)
+        }
     }
 }

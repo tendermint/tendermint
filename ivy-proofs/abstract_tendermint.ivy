@@ -165,7 +165,9 @@ module abstract_tendermint = {
 
     action misbehave = {
 # Byzantine nodes can claim they observed whatever they want about themselves,
-# but they cannot remove observations.
+# but they cannot remove observations. Note that we use assume because we don't
+# want those to be checked; we just want them to be true (that's the model of
+# Byzantine behavior).
         observed_prevoted(N,R,V) := *;
         assume (old observed_prevoted(N,R,V)) -> observed_prevoted(N,R,V);
         assume well_behaved(N) -> old observed_prevoted(N,R,V) = observed_prevoted(N,R,V);

@@ -117,6 +117,7 @@ isolate abstract_accountable_safety = {
             }
             proof {
                 apply complete_induction # the two subgoals (base case and inductive case) are then discharged automatically
+                # NOTE: this can take a long time depending on the SMT random seed (to try a different seed, use `ivy_check seed=$RANDOM`
             }
         }
     } with this, round, nset, accountable_bft.max_2f_byzantine, defs.observed_equivocation_def, defs.observed_unlawful_prevote_def, defs.accountability_violation_def, defs.agreement_def

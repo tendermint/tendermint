@@ -28,9 +28,7 @@ object msg = {
 }
 
 # This is our model of the network:
-trusted isolate net = {
-# `trusted` indicates to Ivy that this is a trusted object, i.e. we assume
-# without proof that receive is only called when its requirement is true.
+isolate net = {
 
     export action recv(dst:node,v:msg)
     action send(src:node,dst:node,v:msg)
@@ -40,25 +38,21 @@ trusted isolate net = {
     # sense, the network is fully asynchronous. Moreover, there is no
     # requirement that a given message will be received at all.
 
-    specification {
+    # The state of the network consists of all the packets that have been
+    # sent so far, along with their destination.
+    relation sent(V:msg, N:node)
 
-        # The state of the network consists of all the packets that have been
-        # sent so far, along with their destination.
-        relation sent(V:msg, N:node)
-
-        after init {
-            sent(V, N) := false
-        }
-
-        before send {
-            sent(v,dst) := true
-        }
-
-        before recv {
-            require sent(v,dst) # only sent messages can be received.
-        }
+    after init {
+        sent(V, N) := false
     }
 
+    before send {
+        sent(v,dst) := true
+    }
+
+    before recv {
+        require sent(v,dst) # only sent messages can be received.
+    }
 }
 
 # The network shim sits on top of the network and, upon receiving a message,
@@ -100,7 +94,6 @@ isolate shim = {
         }
     }
 
-    # In contrast to the network object, the shim is not a trusted component.
     # Here we give an implementation of it that satisfies its specification:
     implementation {
 
