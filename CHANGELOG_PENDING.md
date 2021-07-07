@@ -1,6 +1,6 @@
 # Unreleased Changes
 
-## v0.34.11
+## v0.34.12
 
 Special thanks to external contributors on this release:
 
@@ -22,8 +22,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS
 
-- [statesync] \#6378 Retry requests for snapshots and add a minimum discovery time (5s) for new snapshots.
-
 ### BUG FIXES
 
-- [evidence] \#6375 Fix bug with inconsistent LightClientAttackEvidence hashing (cmwaters)

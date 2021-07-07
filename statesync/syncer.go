@@ -8,6 +8,7 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
@@ -18,12 +19,9 @@ import (
 )
 
 const (
-	// chunkFetchers is the number of concurrent chunk fetchers to run.
-	chunkFetchers = 4
 	// chunkTimeout is the timeout while waiting for the next chunk from the chunk queue.
 	chunkTimeout = 2 * time.Minute
-	// requestTimeout is the timeout before rerequesting a chunk, possibly from a different peer.
-	chunkRequestTimeout = 10 * time.Second
+
 	// minimumDiscoveryTime is the lowest allowable time for a
 	// SyncAny discovery time.
 	minimumDiscoveryTime = 5 * time.Second
@@ -58,14 +56,23 @@ type syncer struct {
 	connQuery     proxy.AppConnQuery
 	snapshots     *snapshotPool
 	tempDir       string
+	chunkFetchers int32
+	retryTimeout  time.Duration
 
 	mtx    tmsync.RWMutex
 	chunks *chunkQueue
 }
 
 // newSyncer creates a new syncer.
-func newSyncer(logger log.Logger, conn proxy.AppConnSnapshot, connQuery proxy.AppConnQuery,
-	stateProvider StateProvider, tempDir string) *syncer {
+func newSyncer(
+	cfg config.StateSyncConfig,
+	logger log.Logger,
+	conn proxy.AppConnSnapshot,
+	connQuery proxy.AppConnQuery,
+	stateProvider StateProvider,
+	tempDir string,
+) *syncer {
+
 	return &syncer{
 		logger:        logger,
 		stateProvider: stateProvider,
@@ -73,6 +80,8 @@ func newSyncer(logger log.Logger, conn proxy.AppConnSnapshot, connQuery proxy.Ap
 		connQuery:     connQuery,
 		snapshots:     newSnapshotPool(stateProvider),
 		tempDir:       tempDir,
+		chunkFetchers: cfg.ChunkFetchers,
+		retryTimeout:  cfg.ChunkRequestTimeout,
 	}
 }
 
@@ -243,7 +252,7 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 	// Spawn chunk fetchers. They will terminate when the chunk queue is closed or context cancelled.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	for i := int32(0); i < chunkFetchers; i++ {
+	for i := int32(0); i < s.chunkFetchers; i++ {
 		go s.fetchChunks(ctx, snapshot, chunks)
 	}
 
@@ -376,36 +385,50 @@ func (s *syncer) applyChunks(chunks *chunkQueue) error {
 // fetchChunks requests chunks from peers, receiving allocations from the chunk queue. Chunks
 // will be received from the reactor via syncer.AddChunks() to chunkQueue.Add().
 func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *chunkQueue) {
+	var (
+		next  = true
+		index uint32
+		err   error
+	)
+
 	for {
-		index, err := chunks.Allocate()
-		if err == errDone {
-			// Keep checking until the context is cancelled (restore is done), in case any
-			// chunks need to be refetched.
-			select {
-			case <-ctx.Done():
-				return
-			default:
+		if next {
+			index, err = chunks.Allocate()
+			if errors.Is(err, errDone) {
+				// Keep checking until the context is canceled (restore is done), in case any
+				// chunks need to be refetched.
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
+				time.Sleep(2 * time.Second)
+				continue
 			}
-			time.Sleep(2 * time.Second)
-			continue
-		}
-		if err != nil {
-			s.logger.Error("Failed to allocate chunk from queue", "err", err)
-			return
+			if err != nil {
+				s.logger.Error("Failed to allocate chunk from queue", "err", err)
+				return
+			}
 		}
 		s.logger.Info("Fetching snapshot chunk", "height", snapshot.Height,
 			"format", snapshot.Format, "chunk", index, "total", chunks.Size())
 
-		ticker := time.NewTicker(chunkRequestTimeout)
+		ticker := time.NewTicker(s.retryTimeout)
 		defer ticker.Stop()
+
 		s.requestChunk(snapshot, index)
+
 		select {
 		case <-chunks.WaitFor(index):
+			next = true
+
 		case <-ticker.C:
-			s.requestChunk(snapshot, index)
+			next = false
+
 		case <-ctx.Done():
 			return
 		}
+
 		ticker.Stop()
 	}
 }

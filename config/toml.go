@@ -247,7 +247,8 @@ laddr = "{{ .P2P.ListenAddress }}"
 # Address to advertise to peers for them to dial
 # If empty, will use the same port as the laddr,
 # and will introspect on the listener or use UPnP
-# to figure out the address.
+# to figure out the address. ip and port are required
+# example: 159.89.10.97:26656
 external_address = "{{ .P2P.ExternalAddress }}"
 
 # Comma separated list of seed nodes to connect to
@@ -371,6 +372,13 @@ discovery_time = "{{ .StateSync.DiscoveryTime }}"
 # Temporary directory for state sync snapshot chunks, defaults to the OS tempdir (typically /tmp).
 # Will create a new, randomly named directory within, and remove it when done.
 temp_dir = "{{ .StateSync.TempDir }}"
+
+# The timeout duration before re-requesting a chunk, possibly from a different
+# peer (default: 1 minute).
+chunk_request_timeout = "{{ .StateSync.ChunkRequestTimeout }}"
+
+# The number of concurrent chunk fetchers to run (default: 1).
+chunk_fetchers = "{{ .StateSync.ChunkFetchers }}"
 
 #######################################################
 ###       Fast Sync Configuration Connections       ###
