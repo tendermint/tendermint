@@ -22,9 +22,11 @@ import (
 // ReIndexEventCmd allows re-index the event by given block height interval
 // console.
 var ReIndexEventCmd = &cobra.Command{
-	Use:     "reindex-event",
-	Aliases: []string{"reindex_event"},
-	Short:   "Reindex the missing events to the event stores",
+	Use:   "reindex-event",
+	Short: "reindex events to the event store backends",
+	Long: `
+	reindex-event is an offline tooling to re-index block and tx events to the eventsinks,
+	you can run this command when the event store backend dropped/disconnected or you want to replace the backend.`,
 	Example: "tendermint reindex-event --start-height 2 --end-height 10",
 	Run: func(cmd *cobra.Command, args []string) {
 		es, err := loadEventSinks(config)
@@ -152,6 +154,7 @@ func eventReIndex(cmd *cobra.Command, es []indexer.EventSink, bs *store.BlockSto
 
 	if endHeight > height {
 		endHeight = height
+		fmt.Printf("set the end block height to block store height %d \n", height)
 	}
 
 	if !indexer.IndexingEnabled(es) {
@@ -161,6 +164,7 @@ func eventReIndex(cmd *cobra.Command, es []indexer.EventSink, bs *store.BlockSto
 	var bar progressbar.Bar
 	bar.NewOption(startHeight-1, endHeight)
 
+	fmt.Println("start re-indexing events:")
 	for i := startHeight; i <= endHeight; i++ {
 		select {
 		case <-cmd.Context().Done():
