@@ -39,7 +39,9 @@ func TestApp_InitialState(t *testing.T) {
 // block and the node sync status.
 func TestApp_Hash(t *testing.T) {
 	testNode(t, func(t *testing.T, node e2e.Node) {
-		if node.Mode == e2e.ModeSeed {
+		// disables tests for light clients
+		// see https://github.com/tendermint/tendermint/issues/6671
+		if node.Mode == e2e.ModeSeed || node.Mode == e2e.ModeLight {
 			return
 		}
 
@@ -64,7 +66,9 @@ func TestApp_Hash(t *testing.T) {
 // Tests that we can set a value and retrieve it.
 func TestApp_Tx(t *testing.T) {
 	testNode(t, func(t *testing.T, node e2e.Node) {
-		if node.Mode == e2e.ModeSeed {
+		// disables tests for light clients
+		// see https://github.com/tendermint/tendermint/issues/6671
+		if node.Mode == e2e.ModeSeed || node.Mode == e2e.ModeLight {
 			return
 		}
 
