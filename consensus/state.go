@@ -1005,6 +1005,7 @@ func (cs *State) handleTxsAvailable() {
 // Enter: `timeoutPrecommits` after any +2/3 precommits from (height,round-1)
 // Enter: +2/3 precommits for nil at (height,round-1)
 // Enter: +2/3 prevotes any or +2/3 precommits for block or any from (height, round)
+// Enter: A valid commit came in from a future round
 // NOTE: cs.StartTime was already set for height.
 func (cs *State) enterNewRound(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
@@ -1700,8 +1701,26 @@ func (cs *State) tryAddCommit(commit *types.Commit, peerID p2p.ID) (bool, error)
 	if cs.Commit != nil {
 		return false, nil
 	}
+
+	rs := cs.RoundState
+
+	// We need to first verify that the commit received wasn't for a future round,
+	// If it was then we must go to next round
+	if commit.Height == rs.Height && commit.Round > rs.Round {
+		cs.Logger.Debug("Commit received for a later round","height", commit.Height, "our round",
+			rs.Round, "commit round", commit.Round)
+		verified, err := cs.verifyCommit(commit, peerID, true)
+		if err != nil {
+			return false, err
+		}
+		if verified {
+			cs.enterNewRound(cs.Height, commit.Round)
+			return false, nil
+		}
+	}
+
 	// First lets verify that the commit is what we are expecting
-	verified, err := cs.verifyCommit(commit, peerID)
+	verified, err := cs.verifyCommit(commit, peerID, false)
 	if verified == false || err != nil {
 		return verified, err
 	}
@@ -1721,7 +1740,7 @@ func (cs *State) tryAddCommit(commit *types.Commit, peerID p2p.ID) (bool, error)
 	return added, nil
 }
 
-func (cs *State) verifyCommit(commit *types.Commit, peerID p2p.ID) (verified bool, err error) {
+func (cs *State) verifyCommit(commit *types.Commit, peerID p2p.ID, ignoreProposalBlock bool) (verified bool, err error) {
 	// Lets first do some basic commit validation before more complicated commit verification
 	if err := commit.ValidateBasic(); err != nil {
 		return false, fmt.Errorf("error validating commit: %v", err)
@@ -1759,8 +1778,8 @@ func (cs *State) verifyCommit(commit *types.Commit, peerID p2p.ID) (verified boo
 
 	stateId := types.StateID{LastAppHash: cs.state.AppHash}
 
-	if rs.Proposal == nil {
-		cs.Logger.Info("Commit came in before proposal", "height", commit.Height)
+	if rs.Proposal == nil || ignoreProposalBlock {
+		cs.Logger.Info("Commit came in before proposal", "height", commit.Height, "round", commit.Round)
 		// We need to verify that it was properly signed
 		// This generally proves that the commit is correct
 		if err := cs.Validators.VerifyCommit(cs.state.ChainID, commit.BlockID, stateId, cs.Height, commit); err != nil {
@@ -1774,7 +1793,15 @@ func (cs *State) verifyCommit(commit *types.Commit, peerID p2p.ID) (verified boo
 
 		cs.Commit = commit
 
-		return false, nil
+		if ignoreProposalBlock {
+			// If we are verifying the commit for a future round we just need to know if the commit was properly signed
+			// so we can go to the next round
+			return true, nil
+		} else {
+			// We don't need to go to the next round, when we get the proposal in the commit will be set and the proposal
+			// block will be executed
+			return false, nil
+		}
 	}
 
 	// Lets verify that the threshold signature matches the current validator set
@@ -2038,7 +2065,7 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 		if !proposal.BlockID.Equals(cs.Commit.BlockID) {
 			return ErrInvalidProposalForCommit
 		}
-	} 
+	}
 	//else {
 	//	// We received a proposal we can not check
 	//	return ErrUnableToVerifyProposal
