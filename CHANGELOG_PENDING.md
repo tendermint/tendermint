@@ -22,6 +22,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [config] \#6462 Move `PrivValidator` configuration out of `BaseConfig` into its own section. (@tychoish)
   - [rpc] \#6610 Add MaxPeerBlockHeight into /status rpc call (@JayT106)
   - [libs/CList] \#6626 Automatically detach the prev/next elements in Remove function (@JayT106)
+  - [fastsync/rpc] \#6620 Add TotalSyncedTime & RemainingTime to SyncInfo in /status RPC  (@JayT106)
 
 - Apps
   - [ABCI] \#6408 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)

@@ -66,6 +66,7 @@ type Testnet struct {
 	KeyType          string
 	Evidence         int
 	LogLevel         string
+	TxSize           int64
 }
 
 // Node represents a Tendermint node in a testnet.
@@ -133,9 +134,13 @@ func LoadTestnet(file string) (*Testnet, error) {
 		Evidence:         manifest.Evidence,
 		KeyType:          "ed25519",
 		LogLevel:         manifest.LogLevel,
+		TxSize:           manifest.TxSize,
 	}
 	if len(manifest.KeyType) != 0 {
 		testnet.KeyType = manifest.KeyType
+	}
+	if testnet.TxSize <= 0 {
+		testnet.TxSize = 1024
 	}
 	if manifest.InitialHeight > 0 {
 		testnet.InitialHeight = manifest.InitialHeight
@@ -169,8 +174,8 @@ func LoadTestnet(file string) (*Testnet, error) {
 			RetainBlocks:     nodeManifest.RetainBlocks,
 			Perturbations:    []Perturbation{},
 			LogLevel:         manifest.LogLevel,
-			DisableLegacyP2P: manifest.DisableLegacyP2P,
 			QueueType:        manifest.QueueType,
+			DisableLegacyP2P: manifest.DisableLegacyP2P || nodeManifest.DisableLegacyP2P,
 		}
 
 		if node.StartAt == testnet.InitialHeight {
@@ -319,6 +324,11 @@ func (n Node) Validate(testnet Testnet) error {
 	case "", "v0", "v2":
 	default:
 		return fmt.Errorf("invalid fast sync setting %q", n.FastSync)
+	}
+	switch n.QueueType {
+	case "", "priority", "wdrr", "fifo":
+	default:
+		return fmt.Errorf("unsupported p2p queue type: %s", n.QueueType)
 	}
 	switch n.Database {
 	case "goleveldb", "cleveldb", "boltdb", "rocksdb", "badgerdb":

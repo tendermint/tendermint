@@ -38,7 +38,7 @@ func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 	logger.Info(fmt.Sprintf("Starting transaction load (%v workers)...", concurrency))
 	started := time.Now()
 
-	go loadGenerate(ctx, chTx, multiplier)
+	go loadGenerate(ctx, chTx, multiplier, testnet.TxSize)
 
 	for w := 0; w < concurrency; w++ {
 		go loadProcess(ctx, testnet, chTx, chSuccess)
@@ -66,13 +66,13 @@ func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 }
 
 // loadGenerate generates jobs until the context is canceled
-func loadGenerate(ctx context.Context, chTx chan<- types.Tx, multiplier int) {
+func loadGenerate(ctx context.Context, chTx chan<- types.Tx, multiplier int, size int64) {
 	for i := 0; i < math.MaxInt64; i++ {
 		// We keep generating the same 1000 keys over and over, with different values.
 		// This gives a reasonable load without putting too much data in the app.
 		id := i % 1000
 
-		bz := make([]byte, 1024) // 1kb hex-encoded
+		bz := make([]byte, size)
 		_, err := rand.Read(bz)
 		if err != nil {
 			panic(fmt.Sprintf("Failed to read random bytes: %v", err))
@@ -81,7 +81,7 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, multiplier int) {
 
 		select {
 		case chTx <- tx:
-			time.Sleep(time.Second / time.Duration(multiplier))
+			time.Sleep(time.Millisecond * time.Duration(int(size)/multiplier))
 
 		case <-ctx.Done():
 			close(chTx)

@@ -268,6 +268,8 @@ While we do not favor any operation system, more secure and stable Linux server
 distributions (like Centos) should be preferred over desktop operation systems
 (like Mac OS).
 
+Native Windows support is not provided. If you are using a windows machine, you can try using the [bash shell](https://docs.microsoft.com/en-us/windows/wsl/install-win10).
+
 ### Miscellaneous
 
 NOTE: if you are going to use Tendermint in a public domain, make sure
