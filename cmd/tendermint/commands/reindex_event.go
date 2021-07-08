@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	tmdb "github.com/tendermint/tm-db"
+
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmcfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/libs/progressbar"
@@ -16,7 +18,10 @@ import (
 	"github.com/tendermint/tendermint/state/indexer/sink/psql"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
-	tmdb "github.com/tendermint/tm-db"
+)
+
+const (
+	reindexFailed = "event re-index failed: "
 )
 
 // ReIndexEventCmd allows re-index the event by given block height interval
@@ -30,18 +35,18 @@ var ReIndexEventCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		es, err := loadEventSinks(config)
 		if err != nil {
-			fmt.Println("event re-index failed: ", err)
+			fmt.Println(reindexFailed, err)
 			return
 		}
 
 		bs, ss, err := loadStateAndBlockStore(config)
 		if err != nil {
-			fmt.Println("event re-index failed: ", err)
+			fmt.Println(reindexFailed, err)
 			return
 		}
 
 		if err = eventReIndex(cmd, es, bs, ss); err != nil {
-			fmt.Println("event re-index failed: ", err)
+			fmt.Println(reindexFailed, err)
 			return
 		}
 
