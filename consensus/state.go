@@ -31,6 +31,9 @@ import (
 
 // Consensus sentinel errors
 var (
+	ErrInvalidProposalNotSet      = errors.New("error invalid proposal not set")
+	ErrInvalidProposalForCommit   = errors.New("error invalid proposal for commit")
+	ErrUnableToVerifyProposal     = errors.New("error unable to verify proposal")
 	ErrInvalidProposalSignature   = errors.New("error invalid proposal signature")
 	ErrInvalidProposalCoreHeight  = errors.New("error invalid proposal core height")
 	ErrInvalidProposalPOLRound    = errors.New("error invalid proposal POL round")
@@ -100,9 +103,6 @@ type State struct {
 	mtx tmsync.RWMutex
 	cstypes.RoundState
 	state sm.State // State until height-1.
-	// privValidator pubkey, memoized for the duration of one block
-	// to avoid extra requests to HSM
-	privValidatorPubKey crypto.PubKey
 
 	// privValidator proTxHash, memoized for the duration of one block
 	// to avoid extra requests to HSM
@@ -301,10 +301,6 @@ func (cs *State) SetPrivValidator(priv types.PrivValidator) {
 
 	if err := cs.updatePrivValidatorProTxHash(); err != nil {
 		cs.Logger.Error("Can't get private validator protxhash", "err", err)
-	}
-
-	if err := cs.updatePrivValidatorPubKey(); err != nil {
-		cs.Logger.Error("failed to get private validator pubkey", "err", err)
 	}
 }
 
@@ -1009,6 +1005,7 @@ func (cs *State) handleTxsAvailable() {
 // Enter: `timeoutPrecommits` after any +2/3 precommits from (height,round-1)
 // Enter: +2/3 precommits for nil at (height,round-1)
 // Enter: +2/3 prevotes any or +2/3 precommits for block or any from (height, round)
+// Enter: A valid commit came in from a future round
 // NOTE: cs.StartTime was already set for height.
 func (cs *State) enterNewRound(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
@@ -1704,8 +1701,31 @@ func (cs *State) tryAddCommit(commit *types.Commit, peerID p2p.ID) (bool, error)
 	if cs.Commit != nil {
 		return false, nil
 	}
+
+	rs := cs.RoundState
+
+	// We need to first verify that the commit received wasn't for a future round,
+	// If it was then we must go to next round
+	if commit.Height == rs.Height && commit.Round > rs.Round {
+		cs.Logger.Debug("Commit received for a later round","height", commit.Height, "our round",
+			rs.Round, "commit round", commit.Round)
+		verified, err := cs.verifyCommit(commit, peerID, true)
+		if err != nil {
+			return false, err
+		}
+		if verified {
+			cs.enterNewRound(cs.Height, commit.Round)
+			// We are now going to receive the block, so initialize the block parts.
+			if cs.ProposalBlockParts == nil {
+				cs.ProposalBlockParts = types.NewPartSetFromHeader(commit.BlockID.PartSetHeader)
+			}
+
+			return false, nil
+		}
+	}
+
 	// First lets verify that the commit is what we are expecting
-	verified, err := cs.verifyCommit(commit, peerID)
+	verified, err := cs.verifyCommit(commit, peerID, false)
 	if verified == false || err != nil {
 		return verified, err
 	}
@@ -1725,7 +1745,7 @@ func (cs *State) tryAddCommit(commit *types.Commit, peerID p2p.ID) (bool, error)
 	return added, nil
 }
 
-func (cs *State) verifyCommit(commit *types.Commit, peerID p2p.ID) (verified bool, err error) {
+func (cs *State) verifyCommit(commit *types.Commit, peerID p2p.ID, ignoreProposalBlock bool) (verified bool, err error) {
 	// Lets first do some basic commit validation before more complicated commit verification
 	if err := commit.ValidateBasic(); err != nil {
 		return false, fmt.Errorf("error validating commit: %v", err)
@@ -1742,7 +1762,7 @@ func (cs *State) verifyCommit(commit *types.Commit, peerID p2p.ID) (verified boo
 	}
 
 	cs.Logger.Debug(
-		"adding commit from remote",
+		"verifying commit from remote",
 		"commit_height", commit.Height,
 		"cs_height", cs.Height,
 	)
@@ -1763,8 +1783,13 @@ func (cs *State) verifyCommit(commit *types.Commit, peerID p2p.ID) (verified boo
 
 	stateId := types.StateID{LastAppHash: cs.state.AppHash}
 
-	if rs.Proposal == nil {
-		cs.Logger.Info("Commit came in before proposal", "height", commit.Height)
+	if rs.Proposal == nil || ignoreProposalBlock {
+		if ignoreProposalBlock {
+			cs.Logger.Info("Commit verified for future round", "height", commit.Height, "round", commit.Round)
+		} else {
+			cs.Logger.Info("Commit came in before proposal", "height", commit.Height, "round", commit.Round)
+		}
+
 		// We need to verify that it was properly signed
 		// This generally proves that the commit is correct
 		if err := cs.Validators.VerifyCommit(cs.state.ChainID, commit.BlockID, stateId, cs.Height, commit); err != nil {
@@ -1778,7 +1803,15 @@ func (cs *State) verifyCommit(commit *types.Commit, peerID p2p.ID) (verified boo
 
 		cs.Commit = commit
 
-		return false, nil
+		if ignoreProposalBlock {
+			// If we are verifying the commit for a future round we just need to know if the commit was properly signed
+			// so we can go to the next round
+			return true, nil
+		} else {
+			// We don't need to go to the next round, when we get the proposal in the commit will be set and the proposal
+			// block will be executed
+			return false, nil
+		}
 	}
 
 	// Lets verify that the threshold signature matches the current validator set
@@ -1874,8 +1907,6 @@ func (cs *State) applyCommit(commit *types.Commit, logger log.Logger) {
 		retainHeight int64
 	)
 
-
-
 	stateCopy, retainHeight, err = cs.blockExec.ApplyBlockWithLogger(
 		stateCopy,
 		&cs.privValidatorProTxHash,
@@ -1910,11 +1941,6 @@ func (cs *State) applyCommit(commit *types.Commit, logger log.Logger) {
 	cs.updateToState(stateCopy, commit, logger)
 
 	fail.Fail() // XXX
-
-	// Private validator might have changed it's key pair => refetch pubkey.
-	if err := cs.updatePrivValidatorPubKey(); err != nil {
-		logger.Error("failed to get private validator pubkey", "err", err)
-	}
 
 	// cs.StartTime is already set.
 	// Schedule Round0 to start soon.
@@ -1954,8 +1980,6 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 	// Remember that the first LastPrecommits is intentionally empty, so it's not
 	// fair to increment missing validators number.
 	if height > cs.state.InitialHeight {
-
-
 		if cs.privValidator != nil {
 			if cs.privValidatorProTxHash == nil {
 				// Metrics won't be updated, but it's not critical.
@@ -2006,6 +2030,10 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 		return nil
 	}
 
+	if proposal == nil {
+		return ErrInvalidProposalNotSet
+	}
+
 	// Does not apply
 	if proposal.Height != cs.Height || proposal.Round != cs.Round {
 		return nil
@@ -2031,15 +2059,30 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 	//	hex.EncodeToString(proposalRequestId), hex.EncodeToString(signId), hex.EncodeToString(cs.state.Validators.QuorumHash),
 	//	hex.EncodeToString(proposalBlockSignBytes))
 
-
-
-	if !proposer.PubKey.VerifySignatureDigest(proposalBlockSignId, proposal.Signature) {
-		cs.Logger.Debug("error verifying signature", "height", proposal.Height,
-			"round", proposal.Round, "proposer", proposer.ProTxHash.ShortString(), "signature", proposal.Signature, "pubkey",
-			proposer.PubKey.Bytes(), "quorumType", cs.state.Validators.QuorumType,
-			"quorumHash", cs.state.Validators.QuorumHash, "proposalSignId", proposalBlockSignId)
-		return ErrInvalidProposalSignature
+	if proposer.PubKey != nil {
+		// We are part of the validator set
+		if !proposer.PubKey.VerifySignatureDigest(proposalBlockSignId, proposal.Signature) {
+			cs.Logger.Debug("error verifying signature", "height", proposal.Height,
+				"round", proposal.Round, "proposer", proposer.ProTxHash.ShortString(), "signature", proposal.Signature, "pubkey",
+				proposer.PubKey.Bytes(), "quorumType", cs.state.Validators.QuorumType,
+				"quorumHash", cs.state.Validators.QuorumHash, "proposalSignId", proposalBlockSignId)
+			return ErrInvalidProposalSignature
+		}
+	} else if cs.Commit != nil && cs.Commit.Height == proposal.Height && cs.Commit.Round == proposal.Round {
+		// We are not part of the validator set
+		// We might have a commit already for the Round State
+		// We need to verify that the commit block id is equal to the proposal block id
+		if !proposal.BlockID.Equals(cs.Commit.BlockID) {
+			cs.Logger.Debug("proposal blockId isn't the same as the commit blockId", "height", proposal.Height,
+				"round", proposal.Round, "proposer", proposer.ProTxHash.ShortString())
+			return ErrInvalidProposalForCommit
+		}
+	} else {
+		// We received a proposal we can not check
+		return ErrUnableToVerifyProposal
 	}
+
+
 
 	proposal.Signature = p.Signature
 	cs.Proposal = proposal
@@ -2505,22 +2548,6 @@ func (cs *State) signAddVote(msgType tmproto.SignedMsgType, hash []byte, header 
 	}
 
 	cs.Logger.Error("failed signing vote", "height", cs.Height, "round", cs.Round, "vote", vote, "err", err)
-	return nil
-}
-
-// updatePrivValidatorPubKey get's the private validator public key and
-// memoizes it. This func returns an error if the private validator is not
-// responding or responds with an error.
-func (cs *State) updatePrivValidatorPubKey() error {
-	if cs.privValidator == nil {
-		return nil
-	}
-
-	pubKey, err := cs.privValidator.GetPubKey(cs.Validators.QuorumHash)
-	if err != nil {
-		return err
-	}
-	cs.privValidatorPubKey = pubKey
 	return nil
 }
 

@@ -700,12 +700,13 @@ func NewNode(config *cfg.Config,
 			}
 			dashCoreRpcClient = rpcClient
 		}
-		// If a local port is provided for Dash Core rpc into the service to sign.
-		privValidator, err = createAndStartPrivValidatorRPCClient(config.Consensus.QuorumType, dashCoreRpcClient, logger)
-		if err != nil {
-			return nil, fmt.Errorf("error with private validator socket client: %w", err)
-		}
+
 		if config.IsMasternode {
+			// If a local port is provided for Dash Core rpc into the service to sign.
+			privValidator, err = createAndStartPrivValidatorRPCClient(config.Consensus.QuorumType, dashCoreRpcClient, logger)
+			if err != nil {
+				return nil, fmt.Errorf("error with private validator socket client: %w", err)
+			}
 			proTxHash, err := privValidator.GetProTxHash()
 			if err != nil {
 				return nil, fmt.Errorf("can't get proTxHash using dash core signing: %w", err)
@@ -1074,11 +1075,7 @@ func (n *Node) OnStop() {
 
 // ConfigureRPC makes sure RPC has all the objects it needs to operate.
 func (n *Node) ConfigureRPC() error {
-	proTxHash, err := n.privValidator.GetProTxHash()
-	if err != nil {
-		return fmt.Errorf("can't get proTxHash for rpc: %w", err)
-	}
-	rpccore.SetEnvironment(&rpccore.Environment{
+	env := rpccore.Environment{
 		ProxyAppQuery:   n.proxyApp.Query(),
 		ProxyAppMempool: n.proxyApp.Mempool(),
 
@@ -1089,7 +1086,6 @@ func (n *Node) ConfigureRPC() error {
 		P2PPeers:       n.sw,
 		P2PTransport:   n,
 
-		ProTxHash:        proTxHash,
 		GenDoc:           n.genesisDoc,
 		TxIndexer:        n.txIndexer,
 		BlockIndexer:     n.blockIndexer,
@@ -1100,7 +1096,17 @@ func (n *Node) ConfigureRPC() error {
 		Logger: n.Logger.With("module", "rpc"),
 
 		Config: *n.config.RPC,
-	})
+	}
+
+	if n.IsConfiguredAsMasternode() {
+		proTxHash, err := n.privValidator.GetProTxHash()
+		if err != nil {
+			return fmt.Errorf("can't get proTxHash for rpc: %w", err)
+		}
+		env.ProTxHash = &proTxHash
+	}
+
+	rpccore.SetEnvironment(&env)
 	return nil
 }
 
@@ -1319,6 +1325,10 @@ func (n *Node) Listeners() []string {
 
 func (n *Node) IsListening() bool {
 	return n.isListening
+}
+
+func (n *Node) IsConfiguredAsMasternode() bool {
+	return n.config.IsMasternode
 }
 
 // NodeInfo returns the Node's Info from the Switch.
