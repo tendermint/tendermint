@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"io"
 	"io/ioutil"
 	"os"
@@ -15,6 +14,8 @@ import (
 	"sort"
 	"testing"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
@@ -637,7 +638,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		t.Fatal("wrong proposer pubKey", err)
 	}
 
-	css[0].Logger.Debug("signed proposal","height", proposal.Height, "round", proposal.Round,
+	css[0].Logger.Debug("signed proposal", "height", proposal.Height, "round", proposal.Round,
 		"proposer", proposerProTxHash.ShortString(), "signature", p.Signature, "pubkey", proposerPubKey2.Bytes(), "quorum type",
 		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signId", signId)
 
@@ -758,7 +759,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		//t.Fatal("wrong proposer pubKey", err)
 	}
 
-	css[0].Logger.Debug("signed proposal","height", proposal.Height, "round", proposal.Round,
+	css[0].Logger.Debug("signed proposal", "height", proposal.Height, "round", proposal.Round,
 		"proposer", proposerProTxHash.ShortString(), "signature", p.Signature, "pubkey", proposerPubKey.Bytes(), "quorum type",
 		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signId", signId)
 
@@ -1104,7 +1105,7 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateStore sm.Store, nodePr
 func buildTMStateFromChain(
 	config *cfg.Config,
 	stateStore sm.Store,
-    nodeProTxHash *crypto.ProTxHash,
+	nodeProTxHash *crypto.ProTxHash,
 	state sm.State,
 	chain []*types.Block,
 	nBlocks int,
@@ -1510,7 +1511,6 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	abciValidatorSetUpdates := types.TM2PB.ValidatorUpdates(vals)
 	app := &initChainApp{vals: &abciValidatorSetUpdates}
 	clientCreator := proxy.NewLocalClientCreator(app)
-
 
 	pubKey, err := privVal.GetPubKey(randQuorumHash)
 	require.NoError(t, err)

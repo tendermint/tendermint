@@ -5,8 +5,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"strconv"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 
@@ -62,9 +63,9 @@ func (pvs PrivValidatorsByProTxHash) Swap(i, j int) {
 // MockPV implements PrivValidator without any safety or persistence.
 // Only use it for testing.
 type MockPV struct {
-	PrivateKeys          map[string]crypto.QuorumKeys
+	PrivateKeys map[string]crypto.QuorumKeys
 	// heightString -> quorumHash
-	UpdateHeights        map[string]crypto.QuorumHash
+	UpdateHeights map[string]crypto.QuorumHash
 	// quorumHash -> heightString
 	FirstHeightOfQuorums map[string]string
 	ProTxHash            crypto.ProTxHash
@@ -77,8 +78,8 @@ func NewMockPV() *MockPV {
 	privKey := bls12381.GenPrivKey()
 	quorumHash := crypto.RandQuorumHash()
 	quorumKeys := crypto.QuorumKeys{
-		PrivKey: privKey,
-		PubKey: privKey.PubKey(),
+		PrivKey:            privKey,
+		PubKey:             privKey.PubKey(),
 		ThresholdPublicKey: privKey.PubKey(),
 	}
 	privateKeysMap := make(map[string]crypto.QuorumKeys)
@@ -94,8 +95,8 @@ func NewMockPV() *MockPV {
 func NewMockPVForQuorum(quorumHash crypto.QuorumHash) *MockPV {
 	privKey := bls12381.GenPrivKey()
 	quorumKeys := crypto.QuorumKeys{
-		PrivKey: privKey,
-		PubKey: privKey.PubKey(),
+		PrivKey:            privKey,
+		PubKey:             privKey.PubKey(),
 		ThresholdPublicKey: privKey.PubKey(),
 	}
 	privateKeysMap := make(map[string]crypto.QuorumKeys)
@@ -114,8 +115,8 @@ func NewMockPVForQuorum(quorumHash crypto.QuorumHash) *MockPV {
 func NewMockPVWithParams(privKey crypto.PrivKey, proTxHash crypto.ProTxHash, quorumHash crypto.QuorumHash,
 	thresholdPublicKey crypto.PubKey, breakProposalSigning bool, breakVoteSigning bool) *MockPV {
 	quorumKeys := crypto.QuorumKeys{
-		PrivKey: privKey,
-		PubKey: privKey.PubKey(),
+		PrivKey:            privKey,
+		PubKey:             privKey.PubKey(),
 		ThresholdPublicKey: thresholdPublicKey,
 	}
 	privateKeysMap := make(map[string]crypto.QuorumKeys)
@@ -145,7 +146,7 @@ func (pv *MockPV) GetProTxHash() (crypto.ProTxHash, error) {
 }
 
 func (pv *MockPV) GetFirstQuorumHash() (crypto.QuorumHash, error) {
-	for quorumHashString, _ := range pv.PrivateKeys {
+	for quorumHashString := range pv.PrivateKeys {
 		return hex.DecodeString(quorumHashString)
 	}
 	return nil, nil
@@ -169,7 +170,7 @@ func (pv *MockPV) ThresholdPublicKeyForQuorumHash(quorumHash crypto.QuorumHash) 
 // GetHeight ...
 func (pv *MockPV) GetHeight(quorumHash crypto.QuorumHash) (int64, error) {
 	if intString, ok := pv.FirstHeightOfQuorums[quorumHash.String()]; ok {
-		return strconv.ParseInt(intString,10, 64)
+		return strconv.ParseInt(intString, 10, 64)
 	} else {
 		return -1, fmt.Errorf("quorum hash not found for GetHeight %v", quorumHash.String())
 	}
@@ -244,8 +245,8 @@ func (pv *MockPV) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.
 	//  privateKey.PubKey().Bytes(), height)
 	pv.mtx.RLock()
 	pv.PrivateKeys[quorumHash.String()] = crypto.QuorumKeys{
-		PrivKey: privateKey,
-		PubKey: privateKey.PubKey(),
+		PrivKey:            privateKey,
+		PubKey:             privateKey.PubKey(),
 		ThresholdPublicKey: thresholdPublicKey,
 	}
 	pv.UpdateHeights[strconv.Itoa(int(height))] = quorumHash
@@ -310,8 +311,8 @@ func NewErroringMockPV() *ErroringMockPV {
 	privKey := bls12381.GenPrivKey()
 	quorumHash := crypto.RandQuorumHash()
 	quorumKeys := crypto.QuorumKeys{
-		PrivKey: privKey,
-		PubKey: privKey.PubKey(),
+		PrivKey:            privKey,
+		PubKey:             privKey.PubKey(),
 		ThresholdPublicKey: privKey.PubKey(),
 	}
 	privateKeysMap := make(map[string]crypto.QuorumKeys)

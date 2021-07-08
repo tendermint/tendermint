@@ -192,7 +192,9 @@ func allowed(allowed level) Option {
 
 // AllowP2PDebugWith allows error, info, debug and p2p debug level log events to pass for a specific key value pair.
 func AllowP2PDebugWith(key interface{}, value interface{}) Option {
-	return func(l *filter) { l.allowedKeyvals[keyval{key, value}] = levelError | levelInfo | levelDebug | levelP2PDebug }
+	return func(l *filter) {
+		l.allowedKeyvals[keyval{key, value}] = levelError | levelInfo | levelDebug | levelP2PDebug
+	}
 }
 
 // AllowDebugWith allows error, info and debug level log events to pass for a specific key value pair.

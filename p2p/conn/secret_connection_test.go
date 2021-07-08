@@ -47,12 +47,12 @@ type privKeyWithNilPubKey struct {
 }
 
 func (pk privKeyWithNilPubKey) Bytes() []byte                         { return pk.orig.Bytes() }
-func (pk privKeyWithNilPubKey) Sign(msg []byte) ([]byte, error) { return pk.orig.Sign(msg) }
+func (pk privKeyWithNilPubKey) Sign(msg []byte) ([]byte, error)       { return pk.orig.Sign(msg) }
 func (pk privKeyWithNilPubKey) SignDigest(msg []byte) ([]byte, error) { return pk.orig.SignDigest(msg) }
 func (pk privKeyWithNilPubKey) PubKey() crypto.PubKey                 { return nil }
-func (pk privKeyWithNilPubKey) Equals(pk2 crypto.PrivKey) bool  { return pk.orig.Equals(pk2) }
-func (pk privKeyWithNilPubKey) Type() string                    { return "privKeyWithNilPubKey" }
-func (pk privKeyWithNilPubKey) TypeValue() crypto.KeyType       { return crypto.KeyTypeAny }
+func (pk privKeyWithNilPubKey) Equals(pk2 crypto.PrivKey) bool        { return pk.orig.Equals(pk2) }
+func (pk privKeyWithNilPubKey) Type() string                          { return "privKeyWithNilPubKey" }
+func (pk privKeyWithNilPubKey) TypeValue() crypto.KeyType             { return crypto.KeyTypeAny }
 
 func TestSecretConnectionHandshake(t *testing.T) {
 	fooSecConn, barSecConn := makeSecretConnPair(t)

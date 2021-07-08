@@ -3,8 +3,9 @@ package privval
 import (
 	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
@@ -214,4 +215,3 @@ func (sc *SignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash c
 func (sc *SignerClient) GetPrivateKey(quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
 	return nil, nil
 }
-

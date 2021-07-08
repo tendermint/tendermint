@@ -2,6 +2,7 @@ package dashcore
 
 import (
 	"fmt"
+
 	"github.com/dashevo/dashd-go/btcjson"
 	rpc "github.com/dashevo/dashd-go/rpcclient"
 	"github.com/tendermint/tendermint/crypto"

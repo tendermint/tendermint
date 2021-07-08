@@ -341,7 +341,7 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			cs := conR.conS
 			ps.SetHasCommit(msg.Commit)
 
-			cs.peerMsgQueue <- msgInfo{ msg, src.ID()}
+			cs.peerMsgQueue <- msgInfo{msg, src.ID()}
 
 		default:
 			// don't punish (leave room for soft upgrades)
@@ -1806,7 +1806,6 @@ func (m *HasVoteMessage) ValidateBasic() error {
 func (m *HasVoteMessage) String() string {
 	return fmt.Sprintf("[HasVote VI:%v V:{%v/%02d/%v}]", m.Index, m.Height, m.Round, m.Type)
 }
-
 
 //-------------------------------------
 

@@ -2,8 +2,9 @@ package e2e_test
 
 import (
 	"bytes"
-	"github.com/dashevo/dashd-go/btcjson"
 	"testing"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 

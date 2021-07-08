@@ -1,10 +1,11 @@
 package types
 
 import (
-	"github.com/dashevo/dashd-go/btcjson"
 	"math"
 	"testing"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 

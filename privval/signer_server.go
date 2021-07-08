@@ -18,9 +18,9 @@ type ValidationRequestHandlerFunc func(
 type SignerServer struct {
 	service.BaseService
 
-	endpoint   *SignerDialerEndpoint
-	chainID    string
-	privVal    types.PrivValidator
+	endpoint *SignerDialerEndpoint
+	chainID  string
+	privVal  types.PrivValidator
 
 	handlerMtx               tmsync.Mutex
 	validationRequestHandler ValidationRequestHandlerFunc

@@ -3,12 +3,13 @@ package consensus
 import (
 	"context"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
 	"os"
 	"path"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -464,7 +465,7 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *St
 	polRound, propBlockID = cs.ValidRound, types.BlockID{Hash: block2.Hash(), PartSetHeader: blockParts2.Header()}
 	proposal2 := types.NewProposal(height, 1, round, polRound, propBlockID)
 	p2 := proposal2.ToProto()
-	if _, err := cs.privValidator.SignProposal(cs.state.ChainID, cs.Validators.QuorumType,  cs.Validators.QuorumHash, p2); err != nil {
+	if _, err := cs.privValidator.SignProposal(cs.state.ChainID, cs.Validators.QuorumType, cs.Validators.QuorumHash, p2); err != nil {
 		t.Error(err)
 	}
 

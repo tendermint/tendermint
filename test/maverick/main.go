@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/privval"
 	"os"
 	"path/filepath"
+
+	"github.com/tendermint/tendermint/privval"
 
 	"github.com/tendermint/tendermint/crypto"
 

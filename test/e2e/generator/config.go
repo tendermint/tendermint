@@ -102,7 +102,7 @@ func defaultCfg() config {
 				map[string]string{},
 				map[string]string{"initial01": "a", "initial02": "b", "initial03": "c"},
 			},
-			"validators":                   {"genesis", "initchain"},
+			"validators": {"genesis", "initchain"},
 		},
 		node: node{
 			// The following specify randomly chosen values for testnet nodes.

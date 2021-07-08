@@ -5,11 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"

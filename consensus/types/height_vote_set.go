@@ -16,7 +16,7 @@ import (
 type RoundVoteSet struct {
 	Prevotes   *types.VoteSet
 	Precommits *types.VoteSet
-	Commit *types.Commit
+	Commit     *types.Commit
 }
 
 var (

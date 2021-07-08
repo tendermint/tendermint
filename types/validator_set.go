@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
-	"github.com/tendermint/tendermint/crypto/merkle"
 	"math"
 	"math/big"
 	"sort"
 	"strings"
+
+	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/tendermint/tendermint/crypto/merkle"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
@@ -61,7 +62,7 @@ type ValidatorSet struct {
 	Proposer           *Validator        `json:"proposer"`
 	ThresholdPublicKey crypto.PubKey     `json:"threshold_public_key"`
 	QuorumHash         crypto.QuorumHash `json:"quorum_hash"`
-	QuorumType		   btcjson.LLMQType  `json:"quorum_type"`
+	QuorumType         btcjson.LLMQType  `json:"quorum_type"`
 	HasPublicKeys      bool              `json:"has_public_keys"`
 
 	// cached (unexported)
@@ -78,11 +79,11 @@ type ValidatorSet struct {
 // Note the validator set size has an implied limit equal to that of the
 // MaxVotesCount - commits by a validator set larger than this will fail
 // validation.
-func NewValidatorSet(valz []*Validator, newThresholdPublicKey crypto.PubKey, quorumType	btcjson.LLMQType,
+func NewValidatorSet(valz []*Validator, newThresholdPublicKey crypto.PubKey, quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash, hasPublicKeys bool) *ValidatorSet {
 	vals := &ValidatorSet{
-		QuorumHash: quorumHash,
-		QuorumType: quorumType,
+		QuorumHash:    quorumHash,
+		QuorumType:    quorumType,
 		HasPublicKeys: hasPublicKeys,
 	}
 	err := vals.updateWithChangeSet(valz, false, newThresholdPublicKey, quorumHash)
@@ -98,7 +99,7 @@ func NewValidatorSet(valz []*Validator, newThresholdPublicKey crypto.PubKey, quo
 // NewValidatorSetWithLocalNodeProTxHash initializes a ValidatorSet the same way as NewValidatorSet does,
 // however it does allows to set the localNodeProTxHash to more easily identify if the validator set should have public
 // keys. If the local node is part of the validator set the public keys must be present
-func NewValidatorSetWithLocalNodeProTxHash(valz []*Validator, newThresholdPublicKey crypto.PubKey, quorumType	btcjson.LLMQType,
+func NewValidatorSetWithLocalNodeProTxHash(valz []*Validator, newThresholdPublicKey crypto.PubKey, quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash, localNodeProTxHash *crypto.ProTxHash) *ValidatorSet {
 	vals := NewValidatorSet(valz, newThresholdPublicKey, quorumType, quorumHash, false)
 	if localNodeProTxHash != nil && vals.HasProTxHash(*localNodeProTxHash) {
@@ -519,7 +520,7 @@ func (vals *ValidatorSet) Hash() []byte {
 	if vals.QuorumHash == nil || vals.ThresholdPublicKey == nil {
 		return []byte(nil)
 	}
-	bzs := make([][]byte,2)
+	bzs := make([][]byte, 2)
 	bzs[0] = vals.ThresholdPublicKey.Bytes()
 	bzs[1] = vals.QuorumHash
 	return merkle.HashFromByteSlices(bzs)
@@ -1141,7 +1142,6 @@ func ValidatorSetFromProto(vp *tmproto.ValidatorSet) (*ValidatorSet, error) {
 	return vals, vals.ValidateBasic()
 }
 
-
 // ValidatorSetFromExistingValidators takes an existing array of validators and rebuilds
 // the exact same validator set that corresponds to it without changing the proposer priority or power
 // if any of the validators fail validate basic then an empty set is returned.
@@ -1202,10 +1202,10 @@ func GenerateValidatorSet(numValidators int) (*ValidatorSet, []PrivValidator) {
 
 func GenerateTestValidatorSetWithProTxHashes(proTxHashes []crypto.ProTxHash, power []int64) (*ValidatorSet, []PrivValidator) {
 	var (
-		numValidators      = len(proTxHashes)
-		originalPowerMap   = make(map[string]int64)
-		valz               = make([]*Validator, numValidators)
-		privValidators     = make([]PrivValidator, numValidators)
+		numValidators    = len(proTxHashes)
+		originalPowerMap = make(map[string]int64)
+		valz             = make([]*Validator, numValidators)
+		privValidators   = make([]PrivValidator, numValidators)
 	)
 	for i := 0; i < numValidators; i++ {
 		originalPowerMap[string(proTxHashes[i])] = power[i]
@@ -1230,9 +1230,9 @@ func GenerateTestValidatorSetWithProTxHashes(proTxHashes []crypto.ProTxHash, pow
 
 func GenerateTestValidatorSetWithProTxHashesDefaultPower(proTxHashes []crypto.ProTxHash) (*ValidatorSet, []PrivValidator) {
 	var (
-		numValidators      = len(proTxHashes)
-		valz               = make([]*Validator, numValidators)
-		privValidators     = make([]PrivValidator, numValidators)
+		numValidators  = len(proTxHashes)
+		valz           = make([]*Validator, numValidators)
+		privValidators = make([]PrivValidator, numValidators)
 	)
 	sort.Sort(crypto.SortProTxHash(proTxHashes))
 

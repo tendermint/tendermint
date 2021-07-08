@@ -3,8 +3,9 @@ package dashcore
 import (
 	"encoding/hex"
 	"errors"
-	"github.com/tendermint/tendermint/types"
 	"strconv"
+
+	"github.com/tendermint/tendermint/types"
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/tendermint/tendermint/crypto"
@@ -25,10 +26,10 @@ func NewDashCoreMockClient(chainId string, llmqType btcjson.LLMQType, localPV ty
 		panic("localPV must be set")
 	}
 	return &DashCoreMockClient{
-		chainID: chainId,
+		chainID:  chainId,
 		llmqType: llmqType,
-		localPV: localPV,
-		canSign: canSign,
+		localPV:  localPV,
+		canSign:  canSign,
 	}
 }
 

@@ -5,10 +5,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"io/ioutil"
 	"strconv"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
 
@@ -49,12 +50,12 @@ func voteToStep(vote *tmproto.Vote) int8 {
 
 // FilePVKey stores the immutable part of PrivValidator.
 type FilePVKey struct {
-	PrivateKeys          map[string]crypto.QuorumKeys `json:"private_keys"`
+	PrivateKeys map[string]crypto.QuorumKeys `json:"private_keys"`
 	// heightString -> quorumHash
-	UpdateHeights        map[string]crypto.QuorumHash `json:"update_heights"`
+	UpdateHeights map[string]crypto.QuorumHash `json:"update_heights"`
 	// quorumHash -> heightString
 	FirstHeightOfQuorums map[string]string `json:"first_height_of_quorums"`
-	ProTxHash            crypto.ProTxHash `json:"pro_tx_hash"`
+	ProTxHash            crypto.ProTxHash  `json:"pro_tx_hash"`
 
 	filePath string
 }
@@ -97,7 +98,6 @@ func (pvKey FilePVKey) ThresholdPublicKeyForQuorumHash(quorumHash crypto.QuorumH
 	}
 	return nil, fmt.Errorf("no threshold public key for quorum hash %v", quorumHash)
 }
-
 
 //-------------------------------------------------------------------------------
 
@@ -200,8 +200,8 @@ func NewFilePVOneKey(privKey crypto.PrivKey, proTxHash []byte, quorumHash crypto
 	}
 
 	quorumKeys := crypto.QuorumKeys{
-		PrivKey: privKey,
-		PubKey: privKey.PubKey(),
+		PrivKey:            privKey,
+		PubKey:             privKey.PubKey(),
 		ThresholdPublicKey: thresholdPublicKey,
 	}
 	privateKeysMap := make(map[string]crypto.QuorumKeys)
@@ -259,7 +259,7 @@ func WithPrivateKeys(keys []crypto.PrivKey, quorumHashes []crypto.QuorumHash, th
 		for i, key := range keys {
 			quorumKeys := crypto.QuorumKeys{
 				PrivKey: key,
-				PubKey: key.PubKey(),
+				PubKey:  key.PubKey(),
 			}
 			if thresholdPublicKeys != nil {
 				quorumKeys.ThresholdPublicKey = (*thresholdPublicKeys)[i]
@@ -410,7 +410,7 @@ func (pv *FilePV) GetFirstPubKey() (crypto.PubKey, error) {
 func (pv *FilePV) GetQuorumHashes() ([]crypto.QuorumHash, error) {
 	quorumHashes := make([]crypto.QuorumHash, len(pv.Key.PrivateKeys))
 	i := 0
-	for quorumHashString, _ := range pv.Key.PrivateKeys {
+	for quorumHashString := range pv.Key.PrivateKeys {
 		quorumHash, err := hex.DecodeString(quorumHashString)
 		quorumHashes[i] = quorumHash
 		if err != nil {
@@ -422,7 +422,7 @@ func (pv *FilePV) GetQuorumHashes() ([]crypto.QuorumHash, error) {
 }
 
 func (pv *FilePV) GetFirstQuorumHash() (crypto.QuorumHash, error) {
-	for quorumHashString, _ := range pv.Key.PrivateKeys {
+	for quorumHashString := range pv.Key.PrivateKeys {
 		return hex.DecodeString(quorumHashString)
 	}
 	return nil, nil
@@ -447,7 +447,7 @@ func (pv *FilePV) GetPrivateKey(quorumHash crypto.QuorumHash) (crypto.PrivKey, e
 // GetHeight ...
 func (pv *FilePV) GetHeight(quorumHash crypto.QuorumHash) (int64, error) {
 	if intString, ok := pv.Key.FirstHeightOfQuorums[quorumHash.String()]; ok {
-		return strconv.ParseInt(intString,10, 64)
+		return strconv.ParseInt(intString, 10, 64)
 	} else {
 		return -1, fmt.Errorf("quorum hash not found for GetHeight %v", quorumHash.String())
 	}
@@ -528,8 +528,8 @@ func (pv *FilePV) String() string {
 
 func (pv *FilePV) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.QuorumHash, thresholdPublicKey crypto.PubKey, height int64) {
 	pv.Key.PrivateKeys[quorumHash.String()] = crypto.QuorumKeys{
-		PrivKey: privateKey,
-		PubKey: privateKey.PubKey(),
+		PrivKey:            privateKey,
+		PubKey:             privateKey.PubKey(),
 		ThresholdPublicKey: thresholdPublicKey,
 	}
 	pv.Key.UpdateHeights[strconv.Itoa(int(height))] = quorumHash

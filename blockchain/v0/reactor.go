@@ -2,9 +2,10 @@ package v0
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
 	"reflect"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
@@ -51,7 +52,7 @@ type BlockchainReactor struct {
 	p2p.BaseReactor
 
 	// immutable
-	initialState sm.State
+	initialState  sm.State
 	nodeProTxHash *crypto.ProTxHash
 
 	blockExec *sm.BlockExecutor
@@ -84,14 +85,14 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *st
 	pool := NewBlockPool(startHeight, requestsCh, errorsCh)
 
 	bcR := &BlockchainReactor{
-		initialState: state,
+		initialState:  state,
 		nodeProTxHash: nodeProTxHash,
-		blockExec:    blockExec,
-		store:        store,
-		pool:         pool,
-		fastSync:     fastSync,
-		requestsCh:   requestsCh,
-		errorsCh:     errorsCh,
+		blockExec:     blockExec,
+		store:         store,
+		pool:          pool,
+		fastSync:      fastSync,
+		requestsCh:    requestsCh,
+		errorsCh:      errorsCh,
 	}
 	bcR.BaseReactor = *p2p.NewBaseReactor("BlockchainReactor", bcR)
 	return bcR

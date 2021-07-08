@@ -2,9 +2,10 @@ package types
 
 import (
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"os"
 	"testing"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 

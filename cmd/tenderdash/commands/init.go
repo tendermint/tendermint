@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/spf13/cobra"
 	cfg "github.com/tendermint/tendermint/config"
@@ -32,11 +33,11 @@ func initFilesSingleNode(cmd *cobra.Command, args []string) error {
 }
 
 var (
-	quorumType int
-	coreChainLockedHeight uint32
+	quorumType             int
+	coreChainLockedHeight  uint32
 	initChainInitialHeight int64
-	appHash []byte
-	proTxHash []byte
+	appHash                []byte
+	proTxHash              []byte
 )
 
 func AddInitFlags(cmd *cobra.Command) {
@@ -76,13 +77,13 @@ func initFilesWithConfig(config *cfg.Config) error {
 		logger.Info("Found genesis file", "path", genFile)
 	} else {
 		genDoc := types.GenesisDoc{
-			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
-			GenesisTime:     tmtime.Now(),
-			ConsensusParams: types.DefaultConsensusParams(),
-			QuorumType:      btcjson.LLMQType(quorumType),
+			ChainID:                      fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
+			GenesisTime:                  tmtime.Now(),
+			ConsensusParams:              types.DefaultConsensusParams(),
+			QuorumType:                   btcjson.LLMQType(quorumType),
 			InitialCoreChainLockedHeight: coreChainLockedHeight,
-			InitialHeight:   initChainInitialHeight,
-			AppHash:         appHash,
+			InitialHeight:                initChainInitialHeight,
+			AppHash:                      appHash,
 		}
 
 		if err := genDoc.SaveAs(genFile); err != nil {
@@ -137,11 +138,11 @@ func initFilesSingleNodeWithConfig(config *cfg.Config) error {
 		logger.Info("Found proTxHash", "proTxHash", proTxHash)
 
 		genDoc := types.GenesisDoc{
-			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
-			GenesisTime:     tmtime.Now(),
-			ConsensusParams: types.DefaultConsensusParams(),
-			ThresholdPublicKey: pubKey,
-			QuorumHash: quorumHash,
+			ChainID:                      fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
+			GenesisTime:                  tmtime.Now(),
+			ConsensusParams:              types.DefaultConsensusParams(),
+			ThresholdPublicKey:           pubKey,
+			QuorumHash:                   quorumHash,
 			InitialCoreChainLockedHeight: 1,
 		}
 

@@ -3,6 +3,7 @@ package evidence
 import (
 	"bytes"
 	"fmt"
+
 	"github.com/tendermint/tendermint/types"
 )
 

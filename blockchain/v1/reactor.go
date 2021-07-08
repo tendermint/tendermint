@@ -2,9 +2,10 @@ package v1
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
 	"reflect"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/tendermint/tendermint/behaviour"
 	bc "github.com/tendermint/tendermint/blockchain"
@@ -44,8 +45,8 @@ type consensusReactor interface {
 type BlockchainReactor struct {
 	p2p.BaseReactor
 
-	initialState sm.State // immutable
-	state        sm.State
+	initialState  sm.State // immutable
+	state         sm.State
 	nodeProTxHash *crypto.ProTxHash
 
 	blockExec *sm.BlockExecutor

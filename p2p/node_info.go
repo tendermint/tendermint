@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
 	"reflect"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"

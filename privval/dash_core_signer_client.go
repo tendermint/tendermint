@@ -5,12 +5,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
-	"github.com/tendermint/tendermint/crypto/bls12381"
 	"runtime/debug"
 
+	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/tendermint/tendermint/crypto/bls12381"
+
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/dashcore/rpc"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	types "github.com/tendermint/tendermint/types"
 )
@@ -46,7 +47,7 @@ func (sc *DashCoreSignerClient) Close() error {
 // Ping sends a ping request to the remote signer and will retry 2 extra times if failure
 func (sc *DashCoreSignerClient) Ping() error {
 	var err error
-	for i:=0; i<3; i++ {
+	for i := 0; i < 3; i++ {
 		if err = sc.ping(); err == nil {
 			return nil
 		}
@@ -64,7 +65,6 @@ func (sc *DashCoreSignerClient) ping() error {
 
 	return nil
 }
-
 
 func (sc *DashCoreSignerClient) ExtractIntoValidator(quorumHash crypto.QuorumHash) *types.Validator {
 	pubKey, _ := sc.GetPubKey(quorumHash)

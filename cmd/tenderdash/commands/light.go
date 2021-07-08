@@ -5,12 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 
 	"github.com/spf13/cobra"
 

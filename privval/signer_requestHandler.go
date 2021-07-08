@@ -2,6 +2,7 @@ package privval
 
 import (
 	"fmt"
+
 	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"

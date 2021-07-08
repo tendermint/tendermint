@@ -6,9 +6,10 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"strings"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/gogo/protobuf/proto"
 	gogotypes "github.com/gogo/protobuf/types"
@@ -629,13 +630,13 @@ type Commit struct {
 	// ValidatorSet order.
 	// Any peer with a block can gossip signatures by index with a peer without
 	// recalculating the active ValidatorSet.
-	Height                  int64       `json:"height"`
-	Round                   int32       `json:"round"`
-	BlockID                 BlockID     `json:"block_id"`
-	StateID                 StateID     `json:"state_id"`
-	QuorumHash              []byte      `json:"quorum_hash"`
-	ThresholdBlockSignature []byte      `json:"threshold_block_signature"`
-	ThresholdStateSignature []byte      `json:"threshold_state_signature"`
+	Height                  int64   `json:"height"`
+	Round                   int32   `json:"round"`
+	BlockID                 BlockID `json:"block_id"`
+	StateID                 StateID `json:"state_id"`
+	QuorumHash              []byte  `json:"quorum_hash"`
+	ThresholdBlockSignature []byte  `json:"threshold_block_signature"`
+	ThresholdStateSignature []byte  `json:"threshold_state_signature"`
 
 	// Memoized in first call to corresponding method.
 	// NOTE: can't memoize in constructor because constructor isn't used for
@@ -709,7 +710,7 @@ func (commit *Commit) CanonicalVoteVerifySignId(chainID string, quorumType btcjs
 //
 // Panics if valIdx >= commit.Size().
 //
-func (commit *Commit) VoteStateSignId(chainID string, quorumType btcjson.LLMQType, quorumHash []byte)  []byte {
+func (commit *Commit) VoteStateSignId(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
 	v := commit.GetCanonicalVote()
 	return VoteStateSignId(chainID, v.ToProto(), quorumType, quorumHash)
 }
@@ -731,7 +732,6 @@ func (commit *Commit) VoteStateRequestId() []byte {
 
 	return crypto.Sha256(requestIdMessage)
 }
-
 
 // CanonicalVoteStateSignBytes returns the bytes of the State corresponding to valIdx for
 // signing.
@@ -830,7 +830,6 @@ func (commit *Commit) String() string {
 		base64.StdEncoding.EncodeToString(commit.ThresholdStateSignature),
 		commit.hash)
 }
-
 
 // StringIndented returns a string representation of the commit.
 func (commit *Commit) StringIndented(indent string) string {

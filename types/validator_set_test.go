@@ -4,12 +4,13 @@ package types
 import (
 	"bytes"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"math"
 	"sort"
 	"strings"
 	"testing"
 	"testing/quick"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -87,21 +88,21 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 
 	testCases := []struct {
 		testName string
-		vals ValidatorSet
-		err  bool
-		msg  string
+		vals     ValidatorSet
+		err      bool
+		msg      string
 	}{
 		{
 			testName: "Validator set needs members even with threshold public key",
-			vals: ValidatorSet{ThresholdPublicKey: bls12381.GenPrivKey().PubKey()},
-			err:  true,
-			msg:  "validator set is nil or empty",
+			vals:     ValidatorSet{ThresholdPublicKey: bls12381.GenPrivKey().PubKey()},
+			err:      true,
+			msg:      "validator set is nil or empty",
 		},
 		{
 			testName: "Validator set needs members",
-			vals: ValidatorSet{},
-			err:  true,
-			msg:  "validator set is nil or empty",
+			vals:     ValidatorSet{},
+			err:      true,
+			msg:      "validator set is nil or empty",
 		},
 		{
 			testName: "Validator set needs members even with threshold public key and quorum hash",
@@ -117,9 +118,9 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 		{
 			testName: "Validator set needs members even with quorum hash",
 			vals: ValidatorSet{
-				Validators: []*Validator{},
-				QuorumHash: crypto.RandQuorumHash(),
-				HasPublicKeys:      true,
+				Validators:    []*Validator{},
+				QuorumHash:    crypto.RandQuorumHash(),
+				HasPublicKeys: true,
 			},
 			err: true,
 			msg: "validator set is nil or empty",
@@ -142,7 +143,7 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 				ThresholdPublicKey: bls12381.GenPrivKey().PubKey(),
 				QuorumHash:         crypto.RandQuorumHash(),
 				HasPublicKeys:      true,
-				Proposer: val,
+				Proposer:           val,
 			},
 			err: true,
 			msg: "thresholdPublicKey error: incorrect threshold public key",
@@ -197,25 +198,25 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 		{
 			testName: "Validator set needs threshold public key",
 			vals: ValidatorSet{
-				Validators: []*Validator{val},
-				Proposer:   val,
-				QuorumHash:         crypto.RandQuorumHash(),
-				HasPublicKeys:      true,
+				Validators:    []*Validator{val},
+				Proposer:      val,
+				QuorumHash:    crypto.RandQuorumHash(),
+				HasPublicKeys: true,
 			},
 			err: true,
 			msg: "thresholdPublicKey error: threshold public key is not set",
 		},
 		{
 			testName: "Validator set has incorrect threshold public key",
-			vals: *badValSet,
-			err:  true,
-			msg:  "thresholdPublicKey error: incorrect recovered threshold public key",
+			vals:     *badValSet,
+			err:      true,
+			msg:      "thresholdPublicKey error: incorrect recovered threshold public key",
 		},
 		{
 			testName: "Validator set is good",
-			vals: *goodValSet,
-			err:  false,
-			msg:  "",
+			vals:     *goodValSet,
+			err:      false,
+			msg:      "",
 		},
 	}
 
@@ -298,12 +299,12 @@ func TestProposerSelection1(t *testing.T) {
 		vset.IncrementProposerPriority(1)
 	}
 	expected := `2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B ` +
-                `2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B ` +
-		        `2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B ` +
-		        `2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B ` +
-		        `2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B ` +
-		        `2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B ` +
-                `2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B`
+		`2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B ` +
+		`2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B ` +
+		`2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B ` +
+		`2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B ` +
+		`2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B ` +
+		`2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B 2C26B4 BAA5A0 FCDE2B`
 	if expected != strings.Join(proposers, " ") {
 		t.Errorf("expected sequence of proposers was\n%v\nbut got \n%v", expected, strings.Join(proposers, " "))
 	}
@@ -599,7 +600,7 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 
 		{"incorrect threshold state signature", chainID, vote.BlockID, vote.StateID, vote.Height,
 			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID,
-				 quorumHash, vote.BlockSignature, nil), true},
+				quorumHash, vote.BlockSignature, nil), true},
 
 		{"incorrect threshold block signature", chainID, vote.BlockID, vote.StateID, vote.Height,
 			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, quorumHash, vote2.BlockSignature, vote2.StateSignature), true},
@@ -714,7 +715,7 @@ type testVal struct {
 
 type testProTxHashVal struct {
 	proTxHash crypto.ProTxHash
-	power int64
+	power     int64
 }
 
 func permutation(valList []testVal) []testVal {

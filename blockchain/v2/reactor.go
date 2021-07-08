@@ -3,8 +3,9 @@ package v2
 import (
 	"errors"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/tendermint/tendermint/behaviour"
 	bc "github.com/tendermint/tendermint/blockchain"
