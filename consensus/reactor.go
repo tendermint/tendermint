@@ -549,7 +549,8 @@ OUTER_LOOP:
 		}
 
 		// Send proposal Block parts?
-		if (isValidator && rs.ProposalBlockParts.HasHeader(prs.ProposalBlockPartSetHeader)) || prs.HasCommit {
+		if (isValidator && rs.ProposalBlockParts.HasHeader(prs.ProposalBlockPartSetHeader)) ||
+			(prs.HasCommit && rs.ProposalBlockParts != nil) {
 			if !isValidator && prs.HasCommit && prs.ProposalBlockParts == nil {
 				// We can assume if they have the commit then they should have the same part set header
 				ps.PRS.ProposalBlockPartSetHeader = rs.ProposalBlockParts.Header()

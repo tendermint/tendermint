@@ -105,9 +105,9 @@ type Node struct {
 // separately by the runner and the test cases. For this reason, testnets use a
 // random seed to generate e.g. keys.
 func LoadTestnet(file string) (*Testnet, error) {
-	fmt.Printf("loading manifest")
+	fmt.Printf("loading manifest\n")
 	manifest, err := LoadManifest(file)
-	fmt.Printf("loaded manifest")
+	fmt.Printf("loaded manifest\n")
 	if err != nil {
 		return nil, err
 	}
@@ -153,6 +153,8 @@ func LoadTestnet(file string) (*Testnet, error) {
 			}
 		}
 	}
+
+	fmt.Printf("validator count is %v\n", validatorCount)
 
 	quorumType := manifest.QuorumType
 	if quorumType == 0 {
@@ -392,7 +394,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			proTxHashesInUpdate[i] = node.ProTxHash
 			i++
 		}
-		proTxHashes = append(proTxHashes, proTxHashesInUpdate...)
+		proTxHashes = proTxHashesInUpdate
 
 		sort.Sort(crypto.SortProTxHash(proTxHashes))
 
