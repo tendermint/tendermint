@@ -138,6 +138,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [state/privval] \#6578 No GetPubKey retry beyond the proposal/voting window (@JayT106)
 - [rpc] \#6615 Add TotalGasUsed to block_results response (@crypto-facs)
 - [cmd/tendermint/commands] \#6623 replace `$HOME/.some/test/dir` with `t.TempDir` (@tanyabouman)
+- [p2p] \#6630 do not attempt to redial peers with different chain IDs
 
 ### BUG FIXES
 
