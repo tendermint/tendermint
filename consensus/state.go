@@ -1045,8 +1045,6 @@ func (cs *State) enterNewRound(height int64, round int32) {
 		cs.Proposal = nil
 		cs.ProposalBlock = nil
 		cs.ProposalBlockParts = nil
-		cs.LastProposal = nil
-		cs.LastProposalRound = 0
 	}
 
 	cs.Votes.SetRound(tmmath.SafeAddInt32(round, 1)) // also track next round (round+1) to allow round-skipping
@@ -1716,14 +1714,12 @@ func (cs *State) tryAddCommit(commit *types.Commit, peerID p2p.ID) (bool, error)
 			return false, err
 		}
 		if verified {
-			lastProposalRound := cs.LastProposalRound
-			lastProposal := cs.LastProposal
 			cs.enterNewRound(cs.Height, commit.Round)
-			if commit.Round == lastProposalRound {
-				cs.Logger.Debug("Applying proposal received earlier","height", commit.Height, "round",
-					commit.Round, "proposal", lastProposal)
-				cs.defaultSetProposal(lastProposal)
+			// We are now going to receive the block, so initialize the block parts.
+			if cs.ProposalBlockParts == nil {
+				cs.ProposalBlockParts = types.NewPartSetFromHeader(commit.BlockID.PartSetHeader)
 			}
+
 			return false, nil
 		}
 	}
@@ -2031,13 +2027,6 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 	// Already have one
 	// TODO: possibly catch double proposals
 	if cs.Proposal != nil {
-		if proposal.Height == cs.Height && proposal.Round > cs.Proposal.Round && proposal.Round > cs.LastProposalRound {
-			// Todo: this is not secure as we are not even verifying the proposal
-			cs.Logger.Debug("future proposal came in with current proposal known", "height", proposal.Height,
-				"round", proposal.Round)
-			cs.LastProposalRound = proposal.Round
-			cs.LastProposal = proposal
-		}
 		return nil
 	}
 
@@ -2047,16 +2036,6 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 
 	// Does not apply
 	if proposal.Height != cs.Height || proposal.Round != cs.Round {
-		if proposal.Height == cs.Height && proposal.Round > cs.LastProposalRound {
-			// Todo: this is not secure as we are not even verifying the proposal
-			cs.Logger.Debug("future proposal came in", "height", proposal.Height,
-				"round", proposal.Round)
-			cs.LastProposalRound = proposal.Round
-			cs.LastProposal = proposal
-		} else {
-			cs.Logger.Debug("received proposal for different height or round", "height", proposal.Height,
-				"round", proposal.Round)
-		}
 		return nil
 	}
 

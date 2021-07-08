@@ -191,7 +191,7 @@ func (conR *Reactor) AddPeer(peer p2p.Peer) {
 	}
 	// Begin routines for this peer.
 	go conR.gossipDataRoutine(peer, peerState)
-	go conR.gossipVotesRoutine(peer, peerState)
+	go conR.gossipVotesAndCommitRoutine(peer, peerState)
 	go conR.queryMaj23Routine(peer, peerState)
 
 	// Send our state to peer.
@@ -530,6 +530,9 @@ func (conR *Reactor) sendNewRoundStepMessage(peer p2p.Peer) {
 func (conR *Reactor) gossipDataRoutine(peer p2p.Peer, ps *PeerState) {
 	logger := conR.Logger.With("peer", peer)
 
+	nodeInfo := peer.NodeInfo()
+	nodeProTxHash := nodeInfo.GetProTxHash()
+
 OUTER_LOOP:
 	for {
 		// Manage disconnects from self or peer.
@@ -540,8 +543,18 @@ OUTER_LOOP:
 		rs := conR.conS.GetRoundState()
 		prs := ps.GetRoundState()
 
+		isValidator := false
+		if nodeProTxHash != nil {
+			isValidator = rs.Validators.HasProTxHash(*nodeProTxHash)
+		}
+
 		// Send proposal Block parts?
-		if rs.ProposalBlockParts.HasHeader(prs.ProposalBlockPartSetHeader) {
+		if (isValidator && rs.ProposalBlockParts.HasHeader(prs.ProposalBlockPartSetHeader)) || prs.HasCommit {
+			if !isValidator && prs.HasCommit && prs.ProposalBlockParts == nil {
+				// We can assume if they have the commit then they should have the same part set header
+				ps.PRS.ProposalBlockPartSetHeader = rs.ProposalBlockParts.Header()
+				ps.PRS.ProposalBlockParts = bits.NewBitArray(int(rs.ProposalBlockParts.Header().Total))
+			}
 			if index, ok := rs.ProposalBlockParts.BitArray().Sub(prs.ProposalBlockParts.Copy()).PickRandom(); ok {
 				part := rs.ProposalBlockParts.GetPart(index)
 				msg := &BlockPartMessage{
@@ -592,8 +605,8 @@ OUTER_LOOP:
 		// (These can match on hash so the round doesn't matter)
 		// Now consider sending other things, like the Proposal itself.
 
-		// Send Proposal && ProposalPOL BitArray?
-		if rs.Proposal != nil && !prs.Proposal {
+		// Send Proposal && ProposalPOL BitArray? but only to validators
+		if rs.Proposal != nil && !prs.Proposal && isValidator {
 			// Proposal: share the proposal metadata with peer.
 			{
 				msg := &ProposalMessage{Proposal: rs.Proposal}
@@ -668,7 +681,7 @@ func (conR *Reactor) gossipDataForCatchup(logger log.Logger, rs *cstypes.RoundSt
 	time.Sleep(conR.conS.config.PeerGossipSleepDuration)
 }
 
-func (conR *Reactor) gossipVotesRoutine(peer p2p.Peer, ps *PeerState) {
+func (conR *Reactor) gossipVotesAndCommitRoutine(peer p2p.Peer, ps *PeerState) {
 	logger := conR.Logger.With("peer", peer)
 
 	// Simple hack to throttle logs upon sleep.
@@ -681,7 +694,7 @@ OUTER_LOOP:
 	for {
 		// Manage disconnects from self or peer.
 		if !peer.IsRunning() || !conR.IsRunning() {
-			logger.Info("Stopping gossipVotesRoutine for peer")
+			logger.Info("Stopping gossipVotesAndCommitRoutine for peer")
 			return
 		}
 		rs := conR.conS.GetRoundState()
@@ -710,7 +723,7 @@ OUTER_LOOP:
 			}
 		}
 
-		// logger.Debug("gossipVotesRoutine", "rsHeight", rs.Height, "rsRound", rs.Round,
+		// logger.Debug("gossipVotesAndCommitRoutine", "rsHeight", rs.Height, "rsRound", rs.Round,
 		// "prsHeight", prs.Height, "prsRound", prs.Round, "prsStep", prs.Step)
 
 		// If height matches, then send LastCommit, Prevotes, Precommits.
@@ -1349,7 +1362,21 @@ func (ps *PeerState) SetHasCommit(commit *types.Commit) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
+	logger := ps.logger.With(
+		"peerH/R",
+		fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
+		"H/R",
+		fmt.Sprintf("%d/%d", commit.Height, commit.Round))
+	logger.Debug("setHasCommit")
+
 	ps.setHasCommit(commit.Height, commit.Round)
+
+	if ps.PRS.Height < commit.Height || (ps.PRS.Height == commit.Height && ps.PRS.Round < commit.Round) {
+		ps.PRS.ProposalBlockPartSetHeader = commit.BlockID.PartSetHeader
+		ps.PRS.ProposalBlockParts = bits.NewBitArray(int(commit.BlockID.PartSetHeader.Total))
+		ps.PRS.ProposalPOLRound = -1
+		ps.PRS.ProposalPOL = nil
+	}
 }
 
 func (ps *PeerState) setHasCommit(height int64, round int32) {
@@ -1360,7 +1387,12 @@ func (ps *PeerState) setHasCommit(height int64, round int32) {
 		fmt.Sprintf("%d/%d", height, round))
 	logger.Debug("setHasCommit")
 
-	ps.PRS.HasCommit = true
+	if ps.PRS.Height < height || (ps.PRS.Height == height && ps.PRS.Round < round) {
+		ps.PRS.Height = height
+		ps.PRS.Round = round
+		ps.PRS.Step = cstypes.RoundStepPropose // shouldn't matter
+		ps.PRS.HasCommit = true
+	}
 }
 
 // ApplyNewRoundStepMessage updates the peer state for the new round.
