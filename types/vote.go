@@ -98,7 +98,7 @@ func VoteBlockSignBytes(chainID string, vote *tmproto.Vote) []byte {
 	return bz
 }
 
-// VoteBlockSignId returns signId that should be signed for the block
+// VoteBlockSignId returns signID that should be signed for the block
 func VoteBlockSignId(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
 	blockSignBytes := VoteBlockSignBytes(chainID, vote)
 
@@ -106,9 +106,9 @@ func VoteBlockSignId(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQ
 
 	blockRequestId := VoteBlockRequestIdProto(vote)
 
-	blockSignId := crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
+	blockSignID := crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
 
-	return blockSignId
+	return blockSignID
 }
 
 // VoteStateSignBytes returns the proto-encoding of the canonicalized last app hash state, for
@@ -129,7 +129,7 @@ func VoteStateSignBytes(chainID string, vote *tmproto.Vote) []byte {
 	return bz
 }
 
-// VoteStateSignId returns signId that should be signed for the state
+// VoteStateSignId returns signID that should be signed for the state
 func VoteStateSignId(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
 	stateSignBytes := VoteStateSignBytes(chainID, vote)
 
@@ -257,12 +257,12 @@ func (vote *Vote) Verify(chainID string, quorumType btcjson.LLMQType, quorumHash
 
 	blockRequestId := VoteBlockRequestId(vote)
 
-	signId := crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
+	signID := crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
 
-	// fmt.Printf("block vote verify sign Id %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(signId), quorumType,
+	// fmt.Printf("block vote verify sign Id %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(signID), quorumType,
 	//	hex.EncodeToString(quorumHash), hex.EncodeToString(blockRequestId), hex.EncodeToString(blockMessageHash))
 
-	if !pubKey.VerifySignatureDigest(signId, vote.BlockSignature) {
+	if !pubKey.VerifySignatureDigest(signID, vote.BlockSignature) {
 		return fmt.Errorf("%s proTxHash %s pubKey %v vote %v sign bytes %s block signature %s", ErrVoteInvalidBlockSignature.Error(),
 			proTxHash, pubKey, vote, hex.EncodeToString(voteBlockSignBytes), hex.EncodeToString(vote.BlockSignature))
 	}

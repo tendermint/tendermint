@@ -622,7 +622,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	proposerIndex = valIndexFnByProTxHash(proposerProTxHash)
 	validatorsAtProposalHeight := css[0].state.ValidatorsAtHeight(p.Height)
 
-	signId, err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p)
+	signID, err := vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p)
 	if err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
@@ -640,7 +640,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	css[0].Logger.Debug("signed proposal", "height", proposal.Height, "round", proposal.Round,
 		"proposer", proposerProTxHash.ShortString(), "signature", p.Signature, "pubkey", proposerPubKey2.Bytes(), "quorum type",
-		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signId", signId)
+		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signID", signID)
 
 	proposal.Signature = p.Signature
 
@@ -747,7 +747,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	proposerPubKey = proposer.PubKey
 	proposerIndex = valIndexFnByProTxHash(proposerProTxHash)
 	validatorsAtProposalHeight = css[0].state.ValidatorsAtHeight(p.Height)
-	signId, err = vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p)
+	signID, err = vss[proposerIndex].SignProposal(config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p)
 
 	if err != nil {
 		t.Fatal("failed to sign bad proposal", err)
@@ -761,7 +761,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	css[0].Logger.Debug("signed proposal", "height", proposal.Height, "round", proposal.Round,
 		"proposer", proposerProTxHash.ShortString(), "signature", p.Signature, "pubkey", proposerPubKey.Bytes(), "quorum type",
-		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signId", signId)
+		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signID", signID)
 
 	proposal.Signature = p.Signature
 

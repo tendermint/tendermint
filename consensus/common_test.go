@@ -225,14 +225,14 @@ func decideProposal(
 	proTxHash, _ := vs.GetProTxHash()
 	pubKey, _ := vs.GetPubKey(validatorsAtProposalHeight.QuorumHash)
 
-	signId, err := vs.SignProposal(chainID, quorumType, quorumHash, p)
+	signID, err := vs.SignProposal(chainID, quorumType, quorumHash, p)
 
 	if err != nil {
 		panic(err)
 	}
 	cs1.Logger.Debug("signed proposal common test", "height", proposal.Height, "round", proposal.Round,
 		"proposerProTxHash", proTxHash.ShortString(), "public key", pubKey.Bytes(), "quorum type",
-		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signId", signId)
+		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signID", signID)
 
 	proposal.Signature = p.Signature
 

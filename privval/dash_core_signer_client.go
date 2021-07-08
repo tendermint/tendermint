@@ -238,14 +238,14 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumType btcjson.LLMQ
 	/// fmt.Printf("Signed Vote proTxHash %s blockSignBytes %s block signature %s \n", proTxHash, hex.EncodeToString(blockSignBytes),
 	//	hex.EncodeToString(blockDecodedSignature))
 
-	// signId := crypto.SignId(sc.defaultQuorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
+	// signID := crypto.SignId(sc.defaultQuorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
 
 	// fmt.Printf("core returned block requestId %s our block request Id %s\n", blockResponse.ID, blockRequestIdString)
 	//
-	// fmt.Printf("core block signId %s our block sign Id %s\n", blockResponse.SignHash, hex.EncodeToString(signId))
+	// fmt.Printf("core block signID %s our block sign Id %s\n", blockResponse.SignHash, hex.EncodeToString(signID))
 	//
 	//pubKey, err := sc.GetPubKey(quorumHash)
-	//verified := pubKey.VerifySignatureDigest(signId, blockDecodedSignature)
+	//verified := pubKey.VerifySignatureDigest(signID, blockDecodedSignature)
 	//if verified {
 	//	fmt.Printf("Verified core signing with public key %v\n", pubKey)
 	//} else {
@@ -276,7 +276,7 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumType btcjson.LLMQ
 
 	// fmt.Printf("core returned state requestId %s our state request Id %s\n", stateResponse.ID, stateRequestIdString)
 	//
-	// fmt.Printf("core state signId %s our state sign Id %s\n", stateResponse.SignHash, hex.EncodeToString(stateSignId))
+	// fmt.Printf("core state signID %s our state sign Id %s\n", stateResponse.SignHash, hex.EncodeToString(stateSignId))
 	//
 	//stateVerified := pubKey.VerifySignatureDigest(stateSignId, stateDecodedSignature)
 	//if stateVerified {
@@ -327,14 +327,14 @@ func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumType btcjson.
 	//fmt.Printf("Proposal signBytes %s signature %s \n", hex.EncodeToString(messageBytes),
 	//	hex.EncodeToString(decodedSignature))
 	//
-	//signId := crypto.SignId(sc.defaultQuorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(requestIdHash), bls12381.ReverseBytes(messageHash))
+	//signID := crypto.SignId(sc.defaultQuorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(requestIdHash), bls12381.ReverseBytes(messageHash))
 	//
 	//fmt.Printf("core returned requestId %s our request Id %s\n", response.ID, requestIdHashString)
 	////
-	//fmt.Printf("core signId %s our sign Id %s\n", response.SignHash, hex.EncodeToString(signId))
+	//fmt.Printf("core signID %s our sign Id %s\n", response.SignHash, hex.EncodeToString(signID))
 	////
 	//pubKey, err := sc.GetPubKey(quorumHash)
-	//verified := pubKey.VerifySignatureDigest(signId, decodedSignature)
+	//verified := pubKey.VerifySignatureDigest(signID, decodedSignature)
 	//if verified {
 	//	fmt.Printf("Verified core signing with public key %v\n", pubKey)
 	//} else {

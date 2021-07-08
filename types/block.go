@@ -697,7 +697,7 @@ func (commit *Commit) CanonicalVoteVerifySignBytes(chainID string) []byte {
 	return VoteBlockSignBytes(chainID, vCanonical)
 }
 
-// CanonicalVoteVerifySignId returns the signId bytes of the Canonical Vote that is threshold signed.
+// CanonicalVoteVerifySignId returns the signID bytes of the Canonical Vote that is threshold signed.
 //
 func (commit *Commit) CanonicalVoteVerifySignId(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
 	voteCanonical := commit.GetCanonicalVote()
@@ -705,7 +705,7 @@ func (commit *Commit) CanonicalVoteVerifySignId(chainID string, quorumType btcjs
 	return VoteBlockSignId(chainID, vCanonical, quorumType, quorumHash)
 }
 
-// VoteStateSignId returns the signId bytes of the state for the Vote corresponding to valIdx for
+// VoteStateSignId returns the signID bytes of the state for the Vote corresponding to valIdx for
 // signing.
 //
 // Panics if valIdx >= commit.Size().
