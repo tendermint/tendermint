@@ -91,6 +91,8 @@ type Mempool interface {
 
 	GetConfig() *cfg.MempoolConfig
 	GetTxByHash(hash [sha256.Size]byte) (types.Tx, error)
+
+	GetAddressList() []string
 }
 
 //--------------------------------------------------------------------------------

@@ -741,6 +741,17 @@ func (mem *CListMempool) GetUserPendingTxsCnt(address string) int {
 	return cnt
 }
 
+func (mem *CListMempool) GetAddressList() []string {
+	addressList := make([]string, 0, len(mem.addressRecord))
+	mem.addrMapMtx.RLock()
+	for address, _ := range mem.addressRecord {
+		addressList = append(addressList, address)
+	}
+	mem.addrMapMtx.RUnlock()
+
+	return addressList
+}
+
 // Lock() must be help by the caller during execution.
 func (mem *CListMempool) Update(
 	height int64,

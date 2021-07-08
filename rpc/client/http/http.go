@@ -309,6 +309,15 @@ func (c *baseRPCClient) UserNumUnconfirmedTxs(address string) (*ctypes.ResultUse
 	return result, nil
 }
 
+func (c *baseRPCClient) GetAddressList() (*ctypes.ResultUnconfirmedAddresses, error) {
+	result := new(ctypes.ResultUnconfirmedAddresses)
+	_, err := c.caller.Call("get_address_list", map[string]interface{}{}, result)
+	if err != nil {
+		return nil, errors.Wrap(err, "get_address_list")
+	}
+	return result, nil
+}
+
 func (c *baseRPCClient) NetInfo() (*ctypes.ResultNetInfo, error) {
 	result := new(ctypes.ResultNetInfo)
 	_, err := c.caller.Call("net_info", map[string]interface{}{}, result)

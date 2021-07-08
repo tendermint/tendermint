@@ -167,3 +167,10 @@ func UserNumUnconfirmedTxs(address string) (*ctypes.ResultUserUnconfirmedTxs, er
 func GetUnconfirmedTxByHash(hash [sha256.Size]byte) (types.Tx, error) {
 	return env.Mempool.GetTxByHash(hash)
 }
+
+func GetAddressList() (*ctypes.ResultUnconfirmedAddresses, error) {
+	addressList := env.Mempool.GetAddressList()
+	return &ctypes.ResultUnconfirmedAddresses{
+		Addresses: addressList,
+	}, nil
+}

@@ -118,6 +118,10 @@ func (c *Local) UserNumUnconfirmedTxs(address string) (*ctypes.ResultUserUnconfi
 	return core.UserNumUnconfirmedTxs(address)
 }
 
+func (c *Local) GetAddressList() (*ctypes.ResultUnconfirmedAddresses, error) {
+	return core.GetAddressList()
+}
+
 func (c *Local) NetInfo() (*ctypes.ResultNetInfo, error) {
 	return core.NetInfo(c.ctx)
 }

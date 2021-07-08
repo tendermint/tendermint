@@ -13,6 +13,10 @@ import (
 // Mempool is an empty implementation of a Mempool, useful for testing.
 type Mempool struct{}
 
+func (m Mempool) GetAddressList() []string {
+	return nil
+}
+
 func (m Mempool) GetTxByHash(hash [sha256.Size]byte) (types.Tx, error) {
 	return nil, mempl.ErrNoSuchTx
 }

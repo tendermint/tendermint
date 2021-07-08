@@ -159,6 +159,10 @@ func (c *Client) UserNumUnconfirmedTxs(address string) (*ctypes.ResultUserUnconf
 	return c.next.UserNumUnconfirmedTxs(address)
 }
 
+func (c *Client) GetAddressList() (*ctypes.ResultUnconfirmedAddresses, error) {
+	return c.next.GetAddressList()
+}
+
 func (c *Client) NetInfo() (*ctypes.ResultNetInfo, error) {
 	return c.next.NetInfo()
 }

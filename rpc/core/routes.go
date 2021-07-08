@@ -33,6 +33,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"num_unconfirmed_txs":      rpc.NewRPCFunc(NumUnconfirmedTxs, ""),
 	"user_unconfirmed_txs":     rpc.NewRPCFunc(UserUnconfirmedTxs, "address,limit"),
 	"user_num_unconfirmed_txs": rpc.NewRPCFunc(UserNumUnconfirmedTxs, "address"),
+	"get_address_list":         rpc.NewRPCFunc(GetAddressList, ""),
 
 	// tx broadcast API
 	"broadcast_tx_commit": rpc.NewRPCFunc(BroadcastTxCommit, "tx"),

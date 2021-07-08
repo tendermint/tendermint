@@ -204,6 +204,11 @@ type ResultUserUnconfirmedTxs struct {
 	Txs   []types.Tx `json:"txs"`
 }
 
+// List of mempool addresses
+type ResultUnconfirmedAddresses struct {
+	Addresses []string `json:"addresses"`
+}
+
 // Info abci msg
 type ResultABCIInfo struct {
 	Response abci.ResponseInfo `json:"response"`
