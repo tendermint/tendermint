@@ -130,7 +130,7 @@ func loadStateAndBlockStore(cfg *tmcfg.Config) (*store.BlockStore, state.Store, 
 	return blockStore, stateStore, nil
 }
 
-func eventReIndex(cmd *cobra.Command, es []indexer.EventSink, bs *store.BlockStore, ss state.Store) error {
+func eventReIndex(cmd *cobra.Command, es []indexer.EventSink, bs state.BlockStore, ss state.Store) error {
 
 	base := bs.Base()
 
