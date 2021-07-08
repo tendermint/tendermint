@@ -2077,11 +2077,10 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 				"round", proposal.Round, "proposer", proposer.ProTxHash.ShortString())
 			return ErrInvalidProposalForCommit
 		}
+	} else {
+		// We received a proposal we can not check
+		return ErrUnableToVerifyProposal
 	}
-	//else {
-	//	// We received a proposal we can not check
-	//	return ErrUnableToVerifyProposal
-	//}
 
 
 

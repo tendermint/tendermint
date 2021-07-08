@@ -1388,7 +1388,7 @@ func (ps *PeerState) setHasCommit(height int64, round int32) {
 		fmt.Sprintf("%d/%d", height, round))
 	logger.Debug("setHasCommit")
 
-	if ps.PRS.Height < height || (ps.PRS.Height == height && ps.PRS.Round < round) {
+	if ps.PRS.Height < height || (ps.PRS.Height == height && ps.PRS.Round <= round) {
 		ps.PRS.Height = height
 		ps.PRS.Round = round
 		ps.PRS.Step = cstypes.RoundStepPropose // shouldn't matter
