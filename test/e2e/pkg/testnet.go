@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"io"
 	"math/rand"
 	"net"
@@ -13,6 +12,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
@@ -204,7 +205,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 		fmt.Printf("Creating node: %s\n", name)
 		privKey := keyGen.Generate(manifest.KeyType)
 		quorumKeys := crypto.QuorumKeys{
-			PrivKey: privKey,
+			PrivKey:            privKey,
 			ThresholdPublicKey: thresholdPublicKey,
 		}
 		privateKeysMap := make(map[string]crypto.QuorumKeys)
@@ -320,8 +321,8 @@ func LoadTestnet(file string) (*Testnet, error) {
 			validator.ProTxHash = proTxHashes[i]
 
 			quorumKeys := crypto.QuorumKeys{
-				PrivKey: privateKeys[i],
-				PubKey: pubKey,
+				PrivKey:            privateKeys[i],
+				PubKey:             pubKey,
 				ThresholdPublicKey: thresholdPublicKey,
 			}
 			privateKeysMap := make(map[string]crypto.QuorumKeys)
@@ -339,8 +340,8 @@ func LoadTestnet(file string) (*Testnet, error) {
 				testnet.Validators[node] = privateKeys[i].PubKey()
 				node.ProTxHash = proTxHashes[i]
 				quorumKeys := crypto.QuorumKeys{
-					PrivKey: privateKeys[i],
-					PubKey: privateKeys[i].PubKey(),
+					PrivKey:            privateKeys[i],
+					PubKey:             privateKeys[i].PubKey(),
 					ThresholdPublicKey: thresholdPublicKey,
 				}
 				if node.PrivvalKeys == nil {
@@ -412,8 +413,8 @@ func LoadTestnet(file string) (*Testnet, error) {
 			if height == 0 {
 				pubKey := privateKeys[i].PubKey()
 				quorumKeys := crypto.QuorumKeys{
-					PrivKey: privateKeys[i],
-					PubKey: pubKey,
+					PrivKey:            privateKeys[i],
+					PubKey:             pubKey,
 					ThresholdPublicKey: thresholdPublicKey,
 				}
 				privateKeysMap := make(map[string]crypto.QuorumKeys)
@@ -436,8 +437,8 @@ func LoadTestnet(file string) (*Testnet, error) {
 				}
 				pubKey := privateKeys[i].PubKey()
 				quorumKeys := crypto.QuorumKeys{
-					PrivKey: privateKeys[i],
-					PubKey: pubKey,
+					PrivKey:            privateKeys[i],
+					PubKey:             pubKey,
 					ThresholdPublicKey: thresholdPublicKey,
 				}
 				node.PrivvalKeys[quorumHash.String()] = quorumKeys

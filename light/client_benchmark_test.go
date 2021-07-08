@@ -2,10 +2,11 @@ package light_test
 
 import (
 	"context"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
-	"github.com/tendermint/tendermint/light"
 	"testing"
 	"time"
+
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+	"github.com/tendermint/tendermint/light"
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light/provider"
@@ -22,7 +23,7 @@ import (
 //
 // Remember that none of these benchmarks account for network latency.
 var (
-	blocks = int64(1000)
+	blocks            = int64(1000)
 	benchmarkFullNode = mockp.New(genMockNode(chainID, blocks, 20, bTime))
 	genesisBlock, _   = benchmarkFullNode.LightBlock(context.Background(), 1)
 )

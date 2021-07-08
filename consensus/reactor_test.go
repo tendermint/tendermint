@@ -5,8 +5,6 @@ import (
 	bytes2 "bytes"
 	"context"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
-	"github.com/tendermint/tendermint/crypto"
 	"os"
 	"path"
 	"runtime"
@@ -14,6 +12,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -537,7 +538,7 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 			css[j].Logger.Debug("waitForBlockWithUpdatedValsAndValidateIt")
 			msg := <-blocksSubs[j].Out()
 			newBlock = msg.Data().(types.EventDataNewBlock).Block
-			if bytes2.Equal(newBlock.LastCommit.QuorumHash,quorumHash) {
+			if bytes2.Equal(newBlock.LastCommit.QuorumHash, quorumHash) {
 				css[j].Logger.Debug("waitForBlockWithUpdatedValsAndValidateIt: Got block", "height", newBlock.Height)
 				break LOOP
 			} else {

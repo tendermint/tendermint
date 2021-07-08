@@ -3,12 +3,13 @@ package mockcoreserver
 import (
 	"context"
 	"encoding/hex"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"testing"
+
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/stretchr/testify/assert"

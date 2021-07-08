@@ -903,7 +903,6 @@ func (cs *State) handleMsg(mi msgInfo, fromReplay bool) {
 			cs.statsMsgQueue <- mi
 		}
 
-
 	default:
 		cs.Logger.Error("unknown msg type", "type", fmt.Sprintf("%T", msg))
 		return
@@ -1197,7 +1196,7 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 		cs.Logger.Error("propose step; failed signing proposal; couldn't get pubKey", "height", height, "round", round, "err", err)
 		return
 	}
-	cs.Logger.Debug("signing proposal","height", proposal.Height, "round", proposal.Round,
+	cs.Logger.Debug("signing proposal", "height", proposal.Height, "round", proposal.Round,
 		"proposerProTxHash", proTxHash.ShortString(), "public key", pubKey.Bytes(), "quorum type",
 		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash)
 
@@ -1694,7 +1693,6 @@ func (cs *State) finalizeCommit(height int64) {
 	}
 }
 
-
 // If we received a commit message from an external source try to add it then finalize it.
 func (cs *State) tryAddCommit(commit *types.Commit, peerID p2p.ID) (bool, error) {
 	// Let's only add one remote commit
@@ -1707,7 +1705,7 @@ func (cs *State) tryAddCommit(commit *types.Commit, peerID p2p.ID) (bool, error)
 	// We need to first verify that the commit received wasn't for a future round,
 	// If it was then we must go to next round
 	if commit.Height == rs.Height && commit.Round > rs.Round {
-		cs.Logger.Debug("Commit received for a later round","height", commit.Height, "our round",
+		cs.Logger.Debug("Commit received for a later round", "height", commit.Height, "our round",
 			rs.Round, "commit round", commit.Round)
 		verified, err := cs.verifyCommit(commit, peerID, true)
 		if err != nil {
@@ -2082,8 +2080,6 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 		return ErrUnableToVerifyProposal
 	}
 
-
-
 	proposal.Signature = p.Signature
 	cs.Proposal = proposal
 	// We don't update cs.ProposalBlockParts if it is already set.
@@ -2164,7 +2160,6 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID, from
 		if err := cs.eventBus.PublishEventCompleteProposal(cs.CompleteProposalEvent()); err != nil {
 			cs.Logger.Error("failed publishing event complete proposal", "err", err)
 		}
-
 
 		if cs.Commit == nil {
 			// No commit has come in yet allowing the fast forwarding of these steps

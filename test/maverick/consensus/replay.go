@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
 	"hash/crc32"
 	"io"
 	"reflect"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcon "github.com/tendermint/tendermint/consensus"
@@ -209,7 +210,6 @@ type Handshaker struct {
 	nodeProTxHash *crypto.ProTxHash
 	logger        log.Logger
 
-
 	nBlocks int // number of blocks applied to the state
 
 	appHashSize int
@@ -337,12 +337,12 @@ func (h *Handshaker) ReplayBlocks(
 
 		csParams := types.TM2PB.ConsensusParams(h.genDoc.ConsensusParams)
 		req := abci.RequestInitChain{
-			Time:            h.genDoc.GenesisTime,
-			ChainId:         h.genDoc.ChainID,
-			InitialHeight:   h.genDoc.InitialHeight,
-			ConsensusParams: csParams,
-			ValidatorSet:    nextVals,
-			AppStateBytes:   h.genDoc.AppState,
+			Time:              h.genDoc.GenesisTime,
+			ChainId:           h.genDoc.ChainID,
+			InitialHeight:     h.genDoc.InitialHeight,
+			ConsensusParams:   csParams,
+			ValidatorSet:      nextVals,
+			AppStateBytes:     h.genDoc.AppState,
 			InitialCoreHeight: h.genDoc.InitialCoreChainLockedHeight,
 		}
 		res, err := proxyApp.Consensus().InitChainSync(req)

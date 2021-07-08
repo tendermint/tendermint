@@ -2,12 +2,13 @@ package light_test
 
 import (
 	"context"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
-	"github.com/tendermint/tendermint/light"
-	"github.com/tendermint/tendermint/light/store"
 	"sync"
 	"testing"
 	"time"
+
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+	"github.com/tendermint/tendermint/light"
+	"github.com/tendermint/tendermint/light/store"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,7 +23,7 @@ import (
 )
 
 const (
-	chainID = "test"
+	chainID  = "test"
 	llmqType = 100
 )
 
@@ -39,7 +40,7 @@ var (
 	// 3/3 signed
 	h3 = keys.GenSignedHeaderLastBlockID(chainID, 3, bTime.Add(1*time.Hour), nil, vals, vals,
 		hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys), types.BlockID{Hash: h2.Hash()})
-	valSet      = map[int64]*types.ValidatorSet{
+	valSet = map[int64]*types.ValidatorSet{
 		1: vals,
 		2: vals,
 		3: vals,

@@ -3,10 +3,11 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"os"
+
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
-	"os"
 )
 
 func startClient(abciType string) abcicli.Client {

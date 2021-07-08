@@ -3,10 +3,11 @@ package evidence_test
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
 

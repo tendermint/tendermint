@@ -3,9 +3,10 @@ package client_test
 import (
 	"bytes"
 	"context"
-	"github.com/dashevo/dashd-go/btcjson"
 	"testing"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 
@@ -63,7 +64,7 @@ func makeEvidences(
 	t *testing.T,
 	val *privval.FilePV,
 	chainID string,
-    quorumType btcjson.LLMQType,
+	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
 ) (correct *types.DuplicateVoteEvidence, fakes []*types.DuplicateVoteEvidence) {
 	vote := types.Vote{

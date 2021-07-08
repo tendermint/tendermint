@@ -1,9 +1,10 @@
 package types
 
 import (
-	"github.com/dashevo/dashd-go/btcjson"
 	"strings"
 	"testing"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"

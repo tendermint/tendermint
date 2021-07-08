@@ -3,9 +3,10 @@ package http_test
 import (
 	"context"
 	"fmt"
-	lighthttp "github.com/tendermint/tendermint/light/provider/http"
 	"os"
 	"testing"
+
+	lighthttp "github.com/tendermint/tendermint/light/provider/http"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

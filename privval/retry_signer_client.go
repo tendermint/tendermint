@@ -3,8 +3,9 @@ package privval
 import (
 	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"

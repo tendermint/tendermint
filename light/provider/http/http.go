@@ -3,11 +3,12 @@ package http
 import (
 	"context"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"math/rand"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 

@@ -20,7 +20,6 @@ const testCh = 0x01
 //------------------------------------------------
 
 type mockNodeInfo struct {
-
 	addr *NetAddress
 }
 

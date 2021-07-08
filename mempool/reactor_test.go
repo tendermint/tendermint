@@ -3,11 +3,12 @@ package mempool
 import (
 	"encoding/hex"
 	"errors"
-	"github.com/tendermint/tendermint/crypto"
 	"net"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/fortytw2/leaktest"
 	"github.com/go-kit/kit/log/term"

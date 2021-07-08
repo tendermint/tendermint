@@ -7,15 +7,13 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-
-
 type DashCoreMockSignerServer struct {
-	server *jrpc.Server
+	server     *jrpc.Server
 	chainID    string
 	quorumHash crypto.QuorumHash
 	privVal    types.PrivValidator
 
-	handlerMtx               tmsync.Mutex
+	handlerMtx tmsync.Mutex
 }
 
 func NewDashCoreMockSignerServer(endpoint *SignerDialerEndpoint, chainID string, quorumHash crypto.QuorumHash, privVal types.PrivValidator) *DashCoreMockSignerServer {
@@ -27,9 +25,9 @@ func NewDashCoreMockSignerServer(endpoint *SignerDialerEndpoint, chainID string,
 			AuthPasswd: "password",     // basic auth password
 			AppName:    "dashcoremock", // plugin name for headers
 		},
-		chainID: chainID,
+		chainID:    chainID,
 		quorumHash: quorumHash,
-		privVal: privVal,
+		privVal:    privVal,
 	}
 
 	return mockServer

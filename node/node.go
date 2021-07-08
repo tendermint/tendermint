@@ -5,13 +5,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"net"
 	"net/http"
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
 	"strings"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"

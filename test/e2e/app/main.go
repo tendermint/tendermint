@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/spf13/viper"

@@ -200,7 +200,6 @@ func TestFastSyncNoBlockResponse(t *testing.T) {
 	nodeProTxHashes[0] = &proTxHash
 	nodeProTxHashes[1] = &proTxHash
 
-
 	p2p.MakeConnectedSwitches(config.P2P, nodeProTxHashes, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[i].bcR)
 		s.AddReactor("CONSENSUS", reactorPairs[i].conR)

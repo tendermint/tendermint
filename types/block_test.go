@@ -6,12 +6,13 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"math"
 	"os"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"

@@ -2,10 +2,11 @@
 package evidence_test
 
 import (
-	"github.com/dashevo/dashd-go/btcjson"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 

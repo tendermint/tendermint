@@ -4,10 +4,11 @@ package state_test
 import (
 	"bytes"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"math/big"
 	"os"
 	"testing"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
@@ -593,7 +594,7 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 
 	// Any node pro tx hash should do
 	firstNodeProTxHash, _ := state.Validators.GetByIndex(0)
-	updatedState, err := sm.UpdateState(state,  &firstNodeProTxHash, blockID, &block.Header, abciResponses,
+	updatedState, err := sm.UpdateState(state, &firstNodeProTxHash, blockID, &block.Header, abciResponses,
 		validatorUpdates, thresholdPublicKeyUpdate, quorumHash)
 	assert.NoError(t, err)
 
