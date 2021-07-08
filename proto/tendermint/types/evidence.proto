@@ -10,17 +10,17 @@ import "tendermint/types/validator.proto";
 
 message Evidence {
   oneof sum {
-    DuplicateVoteEvidence     duplicate_vote_evidence      = 1;
+    DuplicateVoteEvidence duplicate_vote_evidence = 1;
   }
 }
 
 // DuplicateVoteEvidence contains evidence of a validator signed two conflicting votes.
 message DuplicateVoteEvidence {
-  tendermint.types.Vote       vote_a = 1;
-  tendermint.types.Vote       vote_b = 2;
-  int64                       total_voting_power = 3;
-  int64                       validator_power = 4;
-  google.protobuf.Timestamp   timestamp = 5 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  tendermint.types.Vote     vote_a             = 1;
+  tendermint.types.Vote     vote_b             = 2;
+  int64                     total_voting_power = 3;
+  int64                     validator_power    = 4;
+  google.protobuf.Timestamp timestamp          = 5 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 }
 
 message EvidenceList {
