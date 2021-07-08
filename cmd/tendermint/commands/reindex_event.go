@@ -168,6 +168,7 @@ func eventReIndex(cmd *cobra.Command, es []indexer.EventSink, bs state.BlockStor
 	bar.NewOption(startHeight-1, endHeight)
 
 	fmt.Println("start re-indexing events:")
+	defer bar.Finish()
 	for i := startHeight; i <= endHeight; i++ {
 		select {
 		case <-cmd.Context().Done():
@@ -221,7 +222,6 @@ func eventReIndex(cmd *cobra.Command, es []indexer.EventSink, bs state.BlockStor
 
 		bar.Play(i)
 	}
-	bar.Finish()
 
 	return nil
 }
