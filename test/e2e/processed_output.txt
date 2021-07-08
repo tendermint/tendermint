@@ -1,0 +1,232 @@
+I[2021-07-08|18:11:25.698] Starting node validator05 at height 5...     
+E[2021-07-08|18:14:33.075] timed out waiting for validator05 to reach height 5 
+    validator05 = 80
+    persistent_peers = ["validator05"]
+  [node.validator05]
+    [node.validator05.misbehaviors]
+Attaching to validator05, validator04, validator03, validator02, validator01, seed01
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:32.866] Starting SignerServer service                impl=SignerServer
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:32.866] Remote signer connecting to unix:///var/run/privval.sock 
+[36;1mvalidator05    |[0m D[2021-07-08|16:11:32.867] SignerDialer: Reconnection failed            retries=1 max=100 err="dial unix /var/run/privval.sock: connect: no such file or directory"
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:32.867] Server listening on tcp://127.0.0.1:30000 (socket protocol) 
+[36;1mvalidator05    |[0m D[2021-07-08|16:11:33.867] SignerDialer: Reconnection failed            retries=2 max=100 err="dial unix /var/run/privval.sock: connect: no such file or directory"
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:33.937] Starting multiAppConn service                module=proxy impl=multiAppConn
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:33.937] Starting socketClient service                module=abci-client connection=query impl=socketClient
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:33.938] Starting socketClient service                module=abci-client connection=snapshot impl=socketClient
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:33.938] Starting socketClient service                module=abci-client connection=mempool impl=socketClient
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:33.938] Starting socketClient service                module=abci-client connection=consensus impl=socketClient
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:33.938] Starting EventBus service                    module=events impl=EventBus
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:33.938] Starting PubSub service                      module=pubsub impl=PubSub
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:33.950] Starting IndexerService service              module=txindex impl=IndexerService
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:33.951] Starting SignerListenerEndpoint service      module=privval impl=SignerListenerEndpoint
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:33.951] SignerListener: Listening for new connection module=privval 
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:33.951] SignerListener: Blocking for connection      module=privval 
+[36;1mvalidator05    |[0m D[2021-07-08|16:11:34.867] SignerDialer: Connection Ready               
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.867] SignerListener: Connected                    module=privval 
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.867] Version info                                 module=main tendermint_version=unreleased-callum/snapshots-adc0aaca0beeacf56fe7accdb2436676ef44b339 block=11 p2p=8
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.867] This node is not a validator                 module=consensus addr=07EB27AE0D0607DB338F1F102B3C25049FE04C68 pubKey=PubKeyEd25519{01352C4BF1C15242BEDBD631DFC6E8EC476B69000DBDB1FA98396D10551B36C7}
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.880] P2P Node ID                                  module=p2p ID=927c50a5e508c747830ce3ba64a3f70fdda58ef2 file=/tendermint/config/node_key.json
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.880] Adding persistent peers                      module=p2p addrs="[4b1068420ef739db63377250553562b9a978708a@10.186.73.7:26656 2551a13ed720101b271a5df4816d1e4b3d3bd133@10.186.73.6:26656 8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656]"
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.880] Adding unconditional peer ids                module=p2p ids=[]
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.880] Add our address to book                      module=p2p book=/tendermint/config/addrbook.json addr=927c50a5e508c747830ce3ba64a3f70fdda58ef2@10.186.73.8:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.880] Add our address to book                      module=p2p book=/tendermint/config/addrbook.json addr=927c50a5e508c747830ce3ba64a3f70fdda58ef2@0.0.0.0:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.880] Starting Node service                        module=main impl=Node
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.880] Starting pprof server                        module=main laddr=:6060
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.880] Starting P2P Switch service                  module=p2p impl="P2P Switch"
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.880] Starting StateSync service                   module=statesync impl=StateSync
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.880] Starting PEX service                         module=pex impl=PEX
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.880] Starting AddrBook service                    module=p2p book=/tendermint/config/addrbook.json impl=AddrBook
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.880] Starting Mempool service                     module=mempool impl=Mempool
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.880] Starting BlockchainReactor service           module=blockchain impl=BlockchainReactor
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.880] Starting Consensus service                   module=consensus impl=ConsensusReactor
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.880] Starting RPC HTTP server on [::]:26657       module=rpc-server 
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.880] Reactor                                      module=consensus waitSync=true
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.880] Starting Evidence service                    module=evidence impl=Evidence
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.880] Saving AddrBook to file                      module=p2p book=/tendermint/config/addrbook.json size=3
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.880] Ensure peers                                 module=pex numOutPeers=0 numInPeers=0 numDialing=0 numToDial=10
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.884] Starting state sync                          module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.885] Will dial address                            module=pex addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.885] Downloading trusted light block using options module=light 
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.885] Will dial address                            module=pex addr=4b1068420ef739db63377250553562b9a978708a@10.186.73.7:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.885] Will dial address                            module=pex addr=2551a13ed720101b271a5df4816d1e4b3d3bd133@10.186.73.6:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.885] Dialing peer                                 module=p2p address=2551a13ed720101b271a5df4816d1e4b3d3bd133@10.186.73.6:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.885] Dialing peer                                 module=p2p address=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.886] Dialing peer                                 module=p2p address=4b1068420ef739db63377250553562b9a978708a@10.186.73.7:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.887] Starting Peer service                        module=p2p peer=2551a13ed720101b271a5df4816d1e4b3d3bd133@10.186.73.6:26656 impl="Peer{MConn{10.186.73.6:26656} 2551a13ed720101b271a5df4816d1e4b3d3bd133 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.887] Starting MConnection service                 module=p2p peer=2551a13ed720101b271a5df4816d1e4b3d3bd133@10.186.73.6:26656 impl=MConn{10.186.73.6:26656}
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.887] Added peer                                   module=p2p peer="Peer{MConn{10.186.73.6:26656} 2551a13ed720101b271a5df4816d1e4b3d3bd133 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.887] Starting Peer service                        module=p2p peer=4b1068420ef739db63377250553562b9a978708a@10.186.73.7:26656 impl="Peer{MConn{10.186.73.7:26656} 4b1068420ef739db63377250553562b9a978708a out}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.887] Starting MConnection service                 module=p2p peer=4b1068420ef739db63377250553562b9a978708a@10.186.73.7:26656 impl=MConn{10.186.73.7:26656}
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.887] Added peer                                   module=p2p peer="Peer{MConn{10.186.73.7:26656} 4b1068420ef739db63377250553562b9a978708a out}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.888] Starting Peer service                        module=p2p peer=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656 impl="Peer{MConn{10.186.73.5:26656} 8773a83e2f9fa4bc7a3e94303eb4df33af294288 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.888] Starting MConnection service                 module=p2p peer=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656 impl=MConn{10.186.73.5:26656}
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.888] Added peer                                   module=p2p peer="Peer{MConn{10.186.73.5:26656} 8773a83e2f9fa4bc7a3e94303eb4df33af294288 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.891] Started node                                 module=main nodeInfo="{ProtocolVersion:{P2P:8 Block:11 App:0} DefaultNodeID:927c50a5e508c747830ce3ba64a3f70fdda58ef2 ListenAddr:tcp://10.186.73.8:26656 Network:gen-0004 Version:unreleased-callum/snapshots-adc0aaca0beeacf56fe7accdb2436676ef44b339 Channels:40202122233038606100 Moniker:validator05 Other:{TxIndex:on RPCAddress:tcp://0.0.0.0:26657}}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.891] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:34.891] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:35.087] Received snapshot                            module=statesync height=6 format=1 peer=2551a13ed720101b271a5df4816d1e4b3d3bd133
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:35.089] Received snapshot                            module=statesync height=6 format=1 peer=8773a83e2f9fa4bc7a3e94303eb4df33af294288
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:35.089] VerifyHeader                                 module=light height=7 hash=32BC17B4A6F5E5F60931657B63D42A91A8FAFF9D3FE10AB53902006B4093F287
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:35.095] VerifyHeader                                 module=light height=8 hash=25D145DFA483CEA665EEF19A37EB03B8482A6AC3BC3A72522155C47C0F1CA932
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:36.560] Starting Peer service                        module=p2p peer=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:43274 impl="Peer{MConn{10.186.73.3:43274} 539ffc12a0ac78970dab31ae8cdcfdd4285b2162 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:36.560] Starting MConnection service                 module=p2p peer=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:43274 impl=MConn{10.186.73.3:43274}
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:36.560] Requesting snapshots from peer               module=statesync peer=539ffc12a0ac78970dab31ae8cdcfdd4285b2162
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:36.560] Added peer                                   module=p2p peer="Peer{MConn{10.186.73.3:43274} 539ffc12a0ac78970dab31ae8cdcfdd4285b2162 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:36.762] Received snapshot                            module=statesync height=9 format=1 peer=539ffc12a0ac78970dab31ae8cdcfdd4285b2162
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:39.891] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:39.891] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:42.461] Starting Peer service                        module=p2p peer=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:41812 impl="Peer{MConn{10.186.73.4:41812} 0a9c99096b50a6d72a24d5aa5286d3f7022b3555 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:42.461] Starting MConnection service                 module=p2p peer=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:41812 impl=MConn{10.186.73.4:41812}
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:42.461] Requesting snapshots from peer               module=statesync peer=0a9c99096b50a6d72a24d5aa5286d3f7022b3555
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:42.461] Added peer                                   module=p2p peer="Peer{MConn{10.186.73.4:41812} 0a9c99096b50a6d72a24d5aa5286d3f7022b3555 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:42.662] Received snapshot                            module=statesync height=12 format=1 peer=0a9c99096b50a6d72a24d5aa5286d3f7022b3555
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:44.891] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:44.891] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:49.892] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:49.892] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:54.892] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:54.892] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:59.892] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:11:59.892] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:04.885] Ensure peers                                 module=pex numOutPeers=3 numInPeers=2 numDialing=0 numToDial=7
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:04.885] Will dial address                            module=pex addr=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:04.885] We need more addresses. Sending pexRequest to random peer module=pex peer="Peer{MConn{10.186.73.4:41812} 0a9c99096b50a6d72a24d5aa5286d3f7022b3555 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:04.885] Dialing peer                                 module=p2p address=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:04.892] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:04.892] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m E[2021-07-08|16:12:05.886] dialing failed (attempts: 1): dial tcp 10.186.73.2:26656: i/o timeout module=pex addr=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:09.893] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:09.893] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:14.893] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:14.893] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:19.893] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:19.893] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:24.894] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:24.894] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:29.894] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:29.894] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:34.885] Ensure peers                                 module=pex numOutPeers=3 numInPeers=2 numDialing=0 numToDial=7
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:34.885] Will dial address                            module=pex addr=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:34.885] We need more addresses. Sending pexRequest to random peer module=pex peer="Peer{MConn{10.186.73.7:26656} 4b1068420ef739db63377250553562b9a978708a out}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:34.886] Dialing peer                                 module=p2p address=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:34.894] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:34.894] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m E[2021-07-08|16:12:35.886] dialing failed (attempts: 2): dial tcp 10.186.73.2:26656: i/o timeout module=pex addr=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:39.894] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:39.895] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:44.895] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:44.895] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:49.895] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:49.895] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:54.895] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:54.895] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:59.896] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:12:59.896] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:04.885] Ensure peers                                 module=pex numOutPeers=3 numInPeers=2 numDialing=0 numToDial=7
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:04.885] Will dial address                            module=pex addr=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:04.886] We need more addresses. Sending pexRequest to random peer module=pex peer="Peer{MConn{10.186.73.5:26656} 8773a83e2f9fa4bc7a3e94303eb4df33af294288 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:04.886] Dialing peer                                 module=p2p address=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:04.896] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:04.896] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m E[2021-07-08|16:13:05.886] dialing failed (attempts: 3): dial tcp 10.186.73.2:26656: i/o timeout module=pex addr=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:09.896] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:09.896] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:14.896] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:14.896] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m E[2021-07-08|16:13:19.887] Connection failed @ sendRoutine              module=p2p peer=2551a13ed720101b271a5df4816d1e4b3d3bd133@10.186.73.6:26656 conn=MConn{10.186.73.6:26656} err="pong timeout"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:19.887] Stopping MConnection service                 module=p2p peer=2551a13ed720101b271a5df4816d1e4b3d3bd133@10.186.73.6:26656 impl=MConn{10.186.73.6:26656}
+[36;1mvalidator05    |[0m E[2021-07-08|16:13:19.888] Stopping peer for error                      module=p2p peer="Peer{MConn{10.186.73.6:26656} 2551a13ed720101b271a5df4816d1e4b3d3bd133 out}" err="pong timeout"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:19.888] Stopping Peer service                        module=p2p peer=2551a13ed720101b271a5df4816d1e4b3d3bd133@10.186.73.6:26656 impl="Peer{MConn{10.186.73.6:26656} 2551a13ed720101b271a5df4816d1e4b3d3bd133 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:19.888] Removing peer from sync                      module=statesync peer=2551a13ed720101b271a5df4816d1e4b3d3bd133
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:19.888] Reconnecting to peer                         module=p2p addr=2551a13ed720101b271a5df4816d1e4b3d3bd133@10.186.73.6:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:19.888] Dialing peer                                 module=p2p address=2551a13ed720101b271a5df4816d1e4b3d3bd133@10.186.73.6:26656
+[36;1mvalidator05    |[0m E[2021-07-08|16:13:19.888] Connection failed @ sendRoutine              module=p2p peer=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656 conn=MConn{10.186.73.5:26656} err="pong timeout"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:19.888] Stopping MConnection service                 module=p2p peer=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656 impl=MConn{10.186.73.5:26656}
+[36;1mvalidator05    |[0m E[2021-07-08|16:13:19.889] Stopping peer for error                      module=p2p peer="Peer{MConn{10.186.73.5:26656} 8773a83e2f9fa4bc7a3e94303eb4df33af294288 out}" err="pong timeout"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:19.889] Error reconnecting to peer. Trying again     module=p2p tries=0 err="auth failure: secret conn failed: EOF" addr=2551a13ed720101b271a5df4816d1e4b3d3bd133@10.186.73.6:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:19.889] Stopping Peer service                        module=p2p peer=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656 impl="Peer{MConn{10.186.73.5:26656} 8773a83e2f9fa4bc7a3e94303eb4df33af294288 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:19.889] Removing peer from sync                      module=statesync peer=8773a83e2f9fa4bc7a3e94303eb4df33af294288
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:19.889] Reconnecting to peer                         module=p2p addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:19.889] Dialing peer                                 module=p2p address=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:19.893] Starting Peer service                        module=p2p peer=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656 impl="Peer{MConn{10.186.73.5:26656} 8773a83e2f9fa4bc7a3e94303eb4df33af294288 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:19.893] Starting MConnection service                 module=p2p peer=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656 impl=MConn{10.186.73.5:26656}
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:19.893] Requesting snapshots from peer               module=statesync peer=8773a83e2f9fa4bc7a3e94303eb4df33af294288
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:19.893] Added peer                                   module=p2p peer="Peer{MConn{10.186.73.5:26656} 8773a83e2f9fa4bc7a3e94303eb4df33af294288 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:19.897] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:19.897] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:19.910] Stopping gossipVotesRoutine for peer         module=consensus peer="Peer{MConn{10.186.73.5:26656} 8773a83e2f9fa4bc7a3e94303eb4df33af294288 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:19.910] Stopping gossipDataRoutine for peer          module=consensus peer="Peer{MConn{10.186.73.5:26656} 8773a83e2f9fa4bc7a3e94303eb4df33af294288 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:19.910] Stopping gossipDataRoutine for peer          module=consensus peer="Peer{MConn{10.186.73.6:26656} 2551a13ed720101b271a5df4816d1e4b3d3bd133 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:19.910] Stopping gossipVotesRoutine for peer         module=consensus peer="Peer{MConn{10.186.73.6:26656} 2551a13ed720101b271a5df4816d1e4b3d3bd133 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:20.095] Received snapshot                            module=statesync height=54 format=1 peer=8773a83e2f9fa4bc7a3e94303eb4df33af294288
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:20.897] Stopping queryMaj23Routine for peer          module=consensus peer="Peer{MConn{10.186.73.6:26656} 2551a13ed720101b271a5df4816d1e4b3d3bd133 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:20.897] Stopping queryMaj23Routine for peer          module=consensus peer="Peer{MConn{10.186.73.5:26656} 8773a83e2f9fa4bc7a3e94303eb4df33af294288 out}"
+[36;1mvalidator05    |[0m E[2021-07-08|16:13:21.561] Connection failed @ sendRoutine              module=p2p peer=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:43274 conn=MConn{10.186.73.3:43274} err="pong timeout"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:21.561] Stopping MConnection service                 module=p2p peer=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:43274 impl=MConn{10.186.73.3:43274}
+[36;1mvalidator05    |[0m E[2021-07-08|16:13:21.561] Stopping peer for error                      module=p2p peer="Peer{MConn{10.186.73.3:43274} 539ffc12a0ac78970dab31ae8cdcfdd4285b2162 in}" err="pong timeout"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:21.561] Stopping Peer service                        module=p2p peer=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:43274 impl="Peer{MConn{10.186.73.3:43274} 539ffc12a0ac78970dab31ae8cdcfdd4285b2162 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:21.561] Removing peer from sync                      module=statesync peer=539ffc12a0ac78970dab31ae8cdcfdd4285b2162
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:21.562] Starting Peer service                        module=p2p peer=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:43700 impl="Peer{MConn{10.186.73.3:43700} 539ffc12a0ac78970dab31ae8cdcfdd4285b2162 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:21.562] Starting MConnection service                 module=p2p peer=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:43700 impl=MConn{10.186.73.3:43700}
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:21.562] Requesting snapshots from peer               module=statesync peer=539ffc12a0ac78970dab31ae8cdcfdd4285b2162
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:21.562] Added peer                                   module=p2p peer="Peer{MConn{10.186.73.3:43700} 539ffc12a0ac78970dab31ae8cdcfdd4285b2162 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:21.588] Stopping gossipVotesRoutine for peer         module=consensus peer="Peer{MConn{10.186.73.3:43274} 539ffc12a0ac78970dab31ae8cdcfdd4285b2162 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:21.588] Stopping gossipDataRoutine for peer          module=consensus peer="Peer{MConn{10.186.73.3:43274} 539ffc12a0ac78970dab31ae8cdcfdd4285b2162 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:21.763] Received snapshot                            module=statesync height=54 format=1 peer=539ffc12a0ac78970dab31ae8cdcfdd4285b2162
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:22.571] Stopping queryMaj23Routine for peer          module=consensus peer="Peer{MConn{10.186.73.3:43274} 539ffc12a0ac78970dab31ae8cdcfdd4285b2162 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:24.897] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:24.897] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m E[2021-07-08|16:13:27.461] Connection failed @ sendRoutine              module=p2p peer=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:41812 conn=MConn{10.186.73.4:41812} err="pong timeout"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:27.461] Stopping MConnection service                 module=p2p peer=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:41812 impl=MConn{10.186.73.4:41812}
+[36;1mvalidator05    |[0m E[2021-07-08|16:13:27.461] Stopping peer for error                      module=p2p peer="Peer{MConn{10.186.73.4:41812} 0a9c99096b50a6d72a24d5aa5286d3f7022b3555 in}" err="pong timeout"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:27.461] Stopping Peer service                        module=p2p peer=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:41812 impl="Peer{MConn{10.186.73.4:41812} 0a9c99096b50a6d72a24d5aa5286d3f7022b3555 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:27.461] Removing peer from sync                      module=statesync peer=0a9c99096b50a6d72a24d5aa5286d3f7022b3555
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:27.469] Stopping gossipDataRoutine for peer          module=consensus peer="Peer{MConn{10.186.73.4:41812} 0a9c99096b50a6d72a24d5aa5286d3f7022b3555 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:27.469] Stopping gossipVotesRoutine for peer         module=consensus peer="Peer{MConn{10.186.73.4:41812} 0a9c99096b50a6d72a24d5aa5286d3f7022b3555 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:27.632] Dialing peer                                 module=p2p address=2551a13ed720101b271a5df4816d1e4b3d3bd133@10.186.73.6:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:27.636] Starting Peer service                        module=p2p peer=2551a13ed720101b271a5df4816d1e4b3d3bd133@10.186.73.6:26656 impl="Peer{MConn{10.186.73.6:26656} 2551a13ed720101b271a5df4816d1e4b3d3bd133 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:27.636] Starting MConnection service                 module=p2p peer=2551a13ed720101b271a5df4816d1e4b3d3bd133@10.186.73.6:26656 impl=MConn{10.186.73.6:26656}
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:27.636] Requesting snapshots from peer               module=statesync peer=2551a13ed720101b271a5df4816d1e4b3d3bd133
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:27.636] Added peer                                   module=p2p peer="Peer{MConn{10.186.73.6:26656} 2551a13ed720101b271a5df4816d1e4b3d3bd133 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:27.838] Received snapshot                            module=statesync height=57 format=1 peer=2551a13ed720101b271a5df4816d1e4b3d3bd133
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:28.470] Stopping queryMaj23Routine for peer          module=consensus peer="Peer{MConn{10.186.73.4:41812} 0a9c99096b50a6d72a24d5aa5286d3f7022b3555 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:29.897] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:29.897] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:34.881] Saving AddrBook to file                      module=p2p book=/tendermint/config/addrbook.json size=6
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:34.885] Ensure peers                                 module=pex numOutPeers=3 numInPeers=1 numDialing=0 numToDial=7
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:34.887] Will dial address                            module=pex addr=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:34.888] We need more addresses. Sending pexRequest to random peer module=pex peer="Peer{MConn{10.186.73.6:26656} 2551a13ed720101b271a5df4816d1e4b3d3bd133 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:34.888] Dialing peer                                 module=p2p address=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:34.898] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:34.898] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m E[2021-07-08|16:13:35.888] dialing failed (attempts: 4): dial tcp 10.186.73.2:26656: i/o timeout module=pex addr=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:39.898] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:39.898] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:42.461] Starting Peer service                        module=p2p peer=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:42288 impl="Peer{MConn{10.186.73.4:42288} 0a9c99096b50a6d72a24d5aa5286d3f7022b3555 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:42.461] Starting MConnection service                 module=p2p peer=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:42288 impl=MConn{10.186.73.4:42288}
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:42.461] Requesting snapshots from peer               module=statesync peer=0a9c99096b50a6d72a24d5aa5286d3f7022b3555
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:42.461] Added peer                                   module=p2p peer="Peer{MConn{10.186.73.4:42288} 0a9c99096b50a6d72a24d5aa5286d3f7022b3555 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:42.663] Received snapshot                            module=statesync height=63 format=1 peer=0a9c99096b50a6d72a24d5aa5286d3f7022b3555
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:44.898] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:44.898] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:49.898] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:49.899] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:54.899] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:54.899] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:59.899] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:13:59.899] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:14:04.885] Ensure peers                                 module=pex numOutPeers=3 numInPeers=2 numDialing=0 numToDial=7
+[36;1mvalidator05    |[0m I[2021-07-08|16:14:04.886] We need more addresses. Sending pexRequest to random peer module=pex peer="Peer{MConn{10.186.73.7:26656} 4b1068420ef739db63377250553562b9a978708a out}"
+[36;1mvalidator05    |[0m I[2021-07-08|16:14:04.886] No addresses to dial. Falling back to seeds  module=pex 
+[36;1mvalidator05    |[0m I[2021-07-08|16:14:04.899] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:14:04.899] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:14:09.899] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:14:09.899] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:14:14.899] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:14:14.900] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:14:19.900] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:14:19.900] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:14:24.900] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:14:24.900] Discovering snapshots for 5s                 module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:14:29.900] Requesting snapshots from known peers        module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|16:14:29.900] Discovering snapshots for 5s                 module=statesync 

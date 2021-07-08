@@ -1,0 +1,89 @@
+Attaching to validator05, validator04, validator03, validator02, validator01, seed01
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:38.053] Starting SignerServer service                impl=SignerServer
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:38.053] Remote signer connecting to unix:///var/run/privval.sock 
+[36;1mvalidator05    |[0m D[2021-07-08|17:00:38.053] SignerDialer: Reconnection failed            retries=1 max=100 err="dial unix /var/run/privval.sock: connect: no such file or directory"
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:38.054] Server listening on tcp://127.0.0.1:30000 (socket protocol) 
+[36;1mvalidator05    |[0m D[2021-07-08|17:00:39.054] SignerDialer: Reconnection failed            retries=2 max=100 err="dial unix /var/run/privval.sock: connect: no such file or directory"
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:39.088] Starting multiAppConn service                module=proxy impl=multiAppConn
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:39.088] Starting socketClient service                module=abci-client connection=query impl=socketClient
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:39.088] Starting socketClient service                module=abci-client connection=snapshot impl=socketClient
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:39.088] Starting socketClient service                module=abci-client connection=mempool impl=socketClient
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:39.088] Starting socketClient service                module=abci-client connection=consensus impl=socketClient
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:39.088] Starting EventBus service                    module=events impl=EventBus
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:39.088] Starting PubSub service                      module=pubsub impl=PubSub
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:39.098] Starting IndexerService service              module=txindex impl=IndexerService
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:39.099] Starting SignerListenerEndpoint service      module=privval impl=SignerListenerEndpoint
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:39.099] SignerListener: Listening for new connection module=privval 
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:39.099] SignerListener: Blocking for connection      module=privval 
+[36;1mvalidator05    |[0m D[2021-07-08|17:00:40.054] SignerDialer: Connection Ready               
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.054] SignerListener: Connected                    module=privval 
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.055] Version info                                 module=main tendermint_version=unreleased-callum/snapshots-adc0aaca0beeacf56fe7accdb2436676ef44b339 block=11 p2p=8
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.055] This node is not a validator                 module=consensus addr=07EB27AE0D0607DB338F1F102B3C25049FE04C68 pubKey=PubKeyEd25519{01352C4BF1C15242BEDBD631DFC6E8EC476B69000DBDB1FA98396D10551B36C7}
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.071] P2P Node ID                                  module=p2p ID=927c50a5e508c747830ce3ba64a3f70fdda58ef2 file=/tendermint/config/node_key.json
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.071] Adding persistent peers                      module=p2p addrs="[4b1068420ef739db63377250553562b9a978708a@10.186.73.7:26656 2551a13ed720101b271a5df4816d1e4b3d3bd133@10.186.73.6:26656 8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656]"
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.071] Adding unconditional peer ids                module=p2p ids=[]
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.072] Add our address to book                      module=p2p book=/tendermint/config/addrbook.json addr=927c50a5e508c747830ce3ba64a3f70fdda58ef2@10.186.73.8:26656
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.072] Add our address to book                      module=p2p book=/tendermint/config/addrbook.json addr=927c50a5e508c747830ce3ba64a3f70fdda58ef2@0.0.0.0:26656
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.072] Starting Node service                        module=main impl=Node
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.072] Starting pprof server                        module=main laddr=:6060
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.072] Starting P2P Switch service                  module=p2p impl="P2P Switch"
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.072] Starting RPC HTTP server on [::]:26657       module=rpc-server 
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.072] Starting Mempool service                     module=mempool impl=Mempool
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.072] Starting BlockchainReactor service           module=blockchain impl=BlockchainReactor
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.072] Starting Consensus service                   module=consensus impl=ConsensusReactor
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.072] Reactor                                      module=consensus waitSync=true
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.073] Starting Evidence service                    module=evidence impl=Evidence
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.073] Starting StateSync service                   module=statesync impl=StateSync
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.073] Starting PEX service                         module=pex impl=PEX
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.073] Starting AddrBook service                    module=p2p book=/tendermint/config/addrbook.json impl=AddrBook
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.073] Saving AddrBook to file                      module=p2p book=/tendermint/config/addrbook.json size=3
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.073] Ensure peers                                 module=pex numOutPeers=0 numInPeers=0 numDialing=0 numToDial=10
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.077] Starting state sync                          module=statesync 
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.077] Downloading trusted light block using options module=light 
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.077] Requesting light block                       module=light height=1
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.077] Will dial address                            module=pex addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.077] Will dial address                            module=pex addr=2551a13ed720101b271a5df4816d1e4b3d3bd133@10.186.73.6:26656
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.077] Will dial address                            module=pex addr=4b1068420ef739db63377250553562b9a978708a@10.186.73.7:26656
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.078] Dialing peer                                 module=p2p address=4b1068420ef739db63377250553562b9a978708a@10.186.73.7:26656
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.079] Dialing peer                                 module=p2p address=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.079] Dialing peer                                 module=p2p address=2551a13ed720101b271a5df4816d1e4b3d3bd133@10.186.73.6:26656
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.084] Starting Peer service                        module=p2p peer=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656 impl="Peer{MConn{10.186.73.5:26656} 8773a83e2f9fa4bc7a3e94303eb4df33af294288 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.085] Starting MConnection service                 module=p2p peer=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656 impl=MConn{10.186.73.5:26656}
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.085] Added peer                                   module=p2p peer="Peer{MConn{10.186.73.5:26656} 8773a83e2f9fa4bc7a3e94303eb4df33af294288 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.086] Starting Peer service                        module=p2p peer=4b1068420ef739db63377250553562b9a978708a@10.186.73.7:26656 impl="Peer{MConn{10.186.73.7:26656} 4b1068420ef739db63377250553562b9a978708a out}"
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.086] Starting MConnection service                 module=p2p peer=4b1068420ef739db63377250553562b9a978708a@10.186.73.7:26656 impl=MConn{10.186.73.7:26656}
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.086] Added peer                                   module=p2p peer="Peer{MConn{10.186.73.7:26656} 4b1068420ef739db63377250553562b9a978708a out}"
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.088] Starting Peer service                        module=p2p peer=2551a13ed720101b271a5df4816d1e4b3d3bd133@10.186.73.6:26656 impl="Peer{MConn{10.186.73.6:26656} 2551a13ed720101b271a5df4816d1e4b3d3bd133 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.088] Starting MConnection service                 module=p2p peer=2551a13ed720101b271a5df4816d1e4b3d3bd133@10.186.73.6:26656 impl=MConn{10.186.73.6:26656}
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:40.088] Added peer                                   module=p2p peer="Peer{MConn{10.186.73.6:26656} 2551a13ed720101b271a5df4816d1e4b3d3bd133 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:41.272] Starting Peer service                        module=p2p peer=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:47494 impl="Peer{MConn{10.186.73.3:47494} 539ffc12a0ac78970dab31ae8cdcfdd4285b2162 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:41.272] Starting MConnection service                 module=p2p peer=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:47494 impl=MConn{10.186.73.3:47494}
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:41.272] Added peer                                   module=p2p peer="Peer{MConn{10.186.73.3:47494} 539ffc12a0ac78970dab31ae8cdcfdd4285b2162 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:47.664] Starting Peer service                        module=p2p peer=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:46044 impl="Peer{MConn{10.186.73.4:46044} 0a9c99096b50a6d72a24d5aa5286d3f7022b3555 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:47.664] Starting MConnection service                 module=p2p peer=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:46044 impl=MConn{10.186.73.4:46044}
+[36;1mvalidator05    |[0m I[2021-07-08|17:00:47.664] Added peer                                   module=p2p peer="Peer{MConn{10.186.73.4:46044} 0a9c99096b50a6d72a24d5aa5286d3f7022b3555 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|17:01:10.078] Ensure peers                                 module=pex numOutPeers=3 numInPeers=2 numDialing=0 numToDial=7
+[36;1mvalidator05    |[0m I[2021-07-08|17:01:10.078] Will dial address                            module=pex addr=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m I[2021-07-08|17:01:10.079] We need more addresses. Sending pexRequest to random peer module=pex peer="Peer{MConn{10.186.73.5:26656} 8773a83e2f9fa4bc7a3e94303eb4df33af294288 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|17:01:10.079] Dialing peer                                 module=p2p address=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m E[2021-07-08|17:01:11.080] dialing failed (attempts: 1): dial tcp 10.186.73.2:26656: i/o timeout module=pex addr=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m I[2021-07-08|17:01:40.078] Ensure peers                                 module=pex numOutPeers=3 numInPeers=2 numDialing=0 numToDial=7
+[36;1mvalidator05    |[0m I[2021-07-08|17:01:40.078] Will dial address                            module=pex addr=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m I[2021-07-08|17:01:40.078] We need more addresses. Sending pexRequest to random peer module=pex peer="Peer{MConn{10.186.73.6:26656} 2551a13ed720101b271a5df4816d1e4b3d3bd133 out}"
+[36;1mvalidator05    |[0m I[2021-07-08|17:01:40.078] Dialing peer                                 module=p2p address=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m E[2021-07-08|17:01:41.079] dialing failed (attempts: 2): dial tcp 10.186.73.2:26656: i/o timeout module=pex addr=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m I[2021-07-08|17:02:10.078] Ensure peers                                 module=pex numOutPeers=3 numInPeers=2 numDialing=0 numToDial=7
+[36;1mvalidator05    |[0m I[2021-07-08|17:02:10.079] Will dial address                            module=pex addr=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m I[2021-07-08|17:02:10.079] We need more addresses. Sending pexRequest to random peer module=pex peer="Peer{MConn{10.186.73.3:47494} 539ffc12a0ac78970dab31ae8cdcfdd4285b2162 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|17:02:10.079] Dialing peer                                 module=p2p address=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m E[2021-07-08|17:02:11.079] dialing failed (attempts: 3): dial tcp 10.186.73.2:26656: i/o timeout module=pex addr=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m I[2021-07-08|17:02:40.073] Saving AddrBook to file                      module=p2p book=/tendermint/config/addrbook.json size=6
+[36;1mvalidator05    |[0m I[2021-07-08|17:02:40.078] Ensure peers                                 module=pex numOutPeers=3 numInPeers=2 numDialing=0 numToDial=7
+[36;1mvalidator05    |[0m I[2021-07-08|17:02:40.078] Will dial address                            module=pex addr=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m I[2021-07-08|17:02:40.078] We need more addresses. Sending pexRequest to random peer module=pex peer="Peer{MConn{10.186.73.3:47494} 539ffc12a0ac78970dab31ae8cdcfdd4285b2162 in}"
+[36;1mvalidator05    |[0m I[2021-07-08|17:02:40.078] Dialing peer                                 module=p2p address=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m E[2021-07-08|17:02:41.079] dialing failed (attempts: 4): dial tcp 10.186.73.2:26656: i/o timeout module=pex addr=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36;1mvalidator05    |[0m I[2021-07-08|17:03:06.157] Finding new primary...                       module=light 
+[36;1mvalidator05    |[0m I[2021-07-08|17:03:10.078] Ensure peers                                 module=pex numOutPeers=3 numInPeers=2 numDialing=0 numToDial=7
+[36;1mvalidator05    |[0m I[2021-07-08|17:03:10.078] We need more addresses. Sending pexRequest to random peer module=pex peer="Peer{MConn{10.186.73.7:26656} 4b1068420ef739db63377250553562b9a978708a out}"
+[36;1mvalidator05    |[0m I[2021-07-08|17:03:10.078] No addresses to dial. Falling back to seeds  module=pex 

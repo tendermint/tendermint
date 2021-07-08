@@ -987,6 +987,7 @@ func (c *Client) backwards(
 // 3. If the provider provides an invalid light block, is deemed unreliable or returns
 //    any other error, the primary is permanently dropped and is replaced by a witness.
 func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*types.LightBlock, error) {
+	c.logger.Info("Requesting light block", "height", height)
 	c.providerMutex.Lock()
 	l, err := c.primary.LightBlock(ctx, height)
 	c.providerMutex.Unlock()
@@ -995,6 +996,9 @@ func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*type
 	case nil:
 		// Everything went smoothly. We reset the lightBlockRequests and return the light block
 		return l, nil
+
+	case context.Canceled, context.DeadlineExceeded:
+		return l, err
 
 	case provider.ErrNoResponse, provider.ErrLightBlockNotFound, provider.ErrHeightTooHigh:
 		// we find a new witness to replace the primary
@@ -1046,6 +1050,8 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 	if len(c.witnesses) <= 1 {
 		return nil, ErrNoWitnesses
 	}
+
+	c.logger.Info("Finding new primary...")
 
 	var (
 		witnessResponsesC = make(chan witnessResponse, len(c.witnesses))
