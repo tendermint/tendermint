@@ -16,7 +16,7 @@ func Perturb(testnet *e2e.Testnet) error {
 			if err != nil {
 				return err
 			}
-			time.Sleep(3 * time.Second) // give network some time to recover between each
+			time.Sleep(5 * time.Second) // give network some time to recover between each
 		}
 	}
 	return nil
@@ -72,7 +72,7 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 		return nil, nil
 	}
 
-	status, err := waitForNode(node, 0, 15*time.Second)
+	status, err := waitForNode(node, 0, 30*time.Second)
 	if err != nil {
 		return nil, err
 	}
