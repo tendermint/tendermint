@@ -295,14 +295,14 @@ func (cli *socketClient) ApplySnapshotChunkAsync(
 	return cli.queueRequestAsync(ctx, types.ToRequestApplySnapshotChunk(req))
 }
 
-func (cli *socketClient) VoteExtension(
+func (cli *socketClient) VoteExtensionAsync(
 	ctx context.Context,
 	req types.RequestVoteExtension,
 ) (*ReqRes, error) {
 	return cli.queueRequestAsync(ctx, types.ToRequestVoteExtension(req))
 }
 
-func (cli *socketClient) VerifyVoteExtension(
+func (cli *socketClient) VerifyVoteExtensionAsync(
 	ctx context.Context,
 	req types.RequestVerifyVoteExtension,
 ) (*ReqRes, error) {
@@ -487,6 +487,7 @@ func (cli *socketClient) VoteExtensionSync(
 	if err != nil {
 		return nil, err
 	}
+  return reqres.Response.GetVoteExtension(), nil
 }
 
 func (cli *socketClient) VerifyVoteExtensionSync(
@@ -497,6 +498,7 @@ func (cli *socketClient) VerifyVoteExtensionSync(
 	if err != nil {
 		return nil, err
 	}
+  return reqres.Response.GetVerifyVoteExtension(), nil
 }
 
 //----------------------------------------
@@ -628,7 +630,7 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 	case *types.Request_VoteExtension:
 		_, ok = res.Value.(*types.Response_VoteExtension)
 	case *types.Request_VerifyVoteExtension:
-		_, ok := res.Value.(*types.Response_VerifyVoteExtension)
+		_, ok = res.Value.(*types.Response_VerifyVoteExtension)
 	}
 	return ok
 }

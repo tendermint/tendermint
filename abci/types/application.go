@@ -182,3 +182,15 @@ func (app *GRPCApplication) ApplySnapshotChunk(
 	res := app.app.ApplySnapshotChunk(*req)
 	return &res, nil
 }
+
+func (app *GRPCApplication) VoteExtension(
+  ctx context.Context, req *RequestVoteExtension) (*ResponseVoteExtension, error) {
+  res := app.app.VoteExtension(*req)
+  return &res, nil
+}
+
+func (app *GRPCApplication) VerifyVoteExtension(
+  ctx context.Context, req *RequestVerifyVoteExtension) (*ResponseVerifyVoteExtension, error) {
+  res := app.app.VerifyVoteExtension(*req)
+  return &res, nil
+}

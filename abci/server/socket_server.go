@@ -237,7 +237,7 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 		res := s.app.VoteExtension(*r.VoteExtension)
 		responses <- types.ToResponseVoteExtension(res)
 	case *types.Request_VerifyVoteExtension:
-		res := s.app.VerifyVoteExtension(*r.VoteExtension)
+		res := s.app.VerifyVoteExtension(*r.VerifyVoteExtension)
 		responses <- types.ToResponseVerifyVoteExtension(res)
 	default:
 		responses <- types.ToResponseException("Unknown request")
