@@ -80,7 +80,7 @@ func newSnapshotPool(stateProvider StateProvider) *snapshotPool {
 // snapshot height is verified using the light client, and the expected app hash
 // is set for the snapshot.
 func (p *snapshotPool) Add(peerID types.NodeID, snapshot *snapshot) (bool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
 	defer cancel()
 
 	appHash, err := p.stateProvider.AppHash(ctx, snapshot.Height)

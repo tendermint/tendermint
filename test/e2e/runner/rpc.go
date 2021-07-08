@@ -55,7 +55,7 @@ func waitForHeight(testnet *e2e.Testnet, height int64) (*types.Block, *types.Blo
 		if len(clients) == 0 {
 			return nil, nil, errors.New("unable to connect to any network nodes")
 		}
-		if time.Since(lastIncrease) >= 20*time.Second {
+		if time.Since(lastIncrease) >= 30*time.Second {
 			if maxResult == nil {
 				return nil, nil, errors.New("chain stalled at unknown height")
 			}

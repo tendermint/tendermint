@@ -476,8 +476,6 @@ func (r *Router) routeChannel(
 				}
 
 				if !contains {
-					r.logger.Error("tried to send message across a channel that the peer doesn't have available",
-						"peer", envelope.To, "channel", chID)
 					continue
 				}
 
