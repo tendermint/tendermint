@@ -72,7 +72,7 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 		return nil, nil
 	}
 
-	status, err := waitForNode(node, 0, 30*time.Second)
+	status, err := waitForNode(node, 0, time.Minute)
 	if err != nil {
 		return nil, err
 	}

@@ -317,7 +317,7 @@ func (r *Reactor) backfill(
 			for {
 				select {
 				case height := <-queue.nextHeight():
-					r.Logger.Debug("fetching next block", "height", height)
+					r.Logger.Info("fetching next block", "height", height)
 					lb, peer, err := r.dispatcher.LightBlock(ctxWithCancel, height)
 					if errors.Is(err, context.Canceled) {
 						return
@@ -363,7 +363,7 @@ func (r *Reactor) backfill(
 						block: lb,
 						peer:  peer,
 					})
-					r.Logger.Debug("backfill: added light block to processing queue", "height", height)
+					r.Logger.Info("backfill: added light block to processing queue", "height", height)
 
 				case <-queue.done():
 					return
@@ -458,7 +458,7 @@ func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
 		}
 
 		for _, snapshot := range snapshots {
-			logger.Debug(
+			logger.Info(
 				"advertising snapshot",
 				"height", snapshot.Height,
 				"format", snapshot.Format,
@@ -480,11 +480,11 @@ func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
 		defer r.mtx.RUnlock()
 
 		if r.syncer == nil {
-			logger.Debug("received unexpected snapshot; no state sync in progress")
+			logger.Info("received unexpected snapshot; no state sync in progress")
 			return nil
 		}
 
-		logger.Debug("received snapshot", "height", msg.Height, "format", msg.Format)
+		logger.Info("received snapshot", "height", msg.Height, "format", msg.Format)
 		_, err := r.syncer.AddSnapshot(envelope.From, &snapshot{
 			Height:   msg.Height,
 			Format:   msg.Format,
@@ -516,7 +516,7 @@ func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
 func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 	switch msg := envelope.Message.(type) {
 	case *ssproto.ChunkRequest:
-		r.Logger.Debug(
+		r.Logger.Info(
 			"received chunk request",
 			"height", msg.Height,
 			"format", msg.Format,
@@ -540,7 +540,7 @@ func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 			return nil
 		}
 
-		r.Logger.Debug(
+		r.Logger.Info(
 			"sending chunk",
 			"height", msg.Height,
 			"format", msg.Format,
@@ -563,11 +563,11 @@ func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 		defer r.mtx.RUnlock()
 
 		if r.syncer == nil {
-			r.Logger.Debug("received unexpected chunk; no state sync in progress", "peer", envelope.From)
+			r.Logger.Info("received unexpected chunk; no state sync in progress", "peer", envelope.From)
 			return nil
 		}
 
-		r.Logger.Debug(
+		r.Logger.Info(
 			"received chunk; adding to sync",
 			"height", msg.Height,
 			"format", msg.Format,
@@ -652,7 +652,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 		}
 	}()
 
-	r.Logger.Debug("received message", "message", reflect.TypeOf(envelope.Message), "peer", envelope.From)
+	r.Logger.Info("received message", "message", reflect.TypeOf(envelope.Message), "peer", envelope.From)
 
 	switch chID {
 	case SnapshotChannel:
@@ -709,7 +709,7 @@ func (r *Reactor) processCh(ch *p2p.Channel, chName string) {
 			}
 
 		case <-r.closeCh:
-			r.Logger.Debug(fmt.Sprintf("stopped listening on %s channel; closing...", chName))
+			r.Logger.Info(fmt.Sprintf("stopped listening on %s channel; closing...", chName))
 			return
 		}
 	}
@@ -718,7 +718,7 @@ func (r *Reactor) processCh(ch *p2p.Channel, chName string) {
 // processPeerUpdate processes a PeerUpdate, returning an error upon failing to
 // handle the PeerUpdate or if a panic is recovered.
 func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
-	r.Logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
+	r.Logger.Info("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
@@ -750,7 +750,7 @@ func (r *Reactor) processPeerUpdates() {
 			r.processPeerUpdate(peerUpdate)
 
 		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on peer updates channel; closing...")
+			r.Logger.Info("stopped listening on peer updates channel; closing...")
 			return
 		}
 	}
