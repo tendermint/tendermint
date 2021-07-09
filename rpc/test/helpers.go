@@ -142,7 +142,7 @@ func StartTendermint(app abci.Application, opts ...func(*Options)) *nm.Node {
 // cleans up test/config files.
 func StopTendermint(node *nm.Node) {
 	if err := node.Stop(); err != nil {
-		node.Logger.Error("Error when tryint to stop node", "err", err)
+		node.Logger.Error("Error when trying to stop node", "err", err)
 	}
 	node.Wait()
 	os.RemoveAll(node.Config().RootDir)

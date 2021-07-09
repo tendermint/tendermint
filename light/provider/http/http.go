@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"regexp"
@@ -19,6 +18,7 @@ var (
 	// This is very brittle, see: https://github.com/tendermint/tendermint/issues/4740
 	regexpMissingHeight = regexp.MustCompile(`height \d+ is not available`)
 	regexpTooHigh       = regexp.MustCompile(`height \d+ must be less than or equal to`)
+	regexpTimedOut      = regexp.MustCompile(`Timeout exceeded`)
 
 	maxRetryAttempts      = 5
 	timeout          uint = 5 // sec.
@@ -120,6 +120,7 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 		total   = -1
 	)
 
+OUTER_LOOP:
 	for len(vals) != total && page <= maxPages {
 		for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
 			res, err := p.client.Validators(ctx, height, &page, &perPage)
@@ -142,11 +143,8 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 				total = res.Total
 				vals = append(vals, res.Validators...)
 				page++
-				break
+				continue OUTER_LOOP
 
-			case errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded):
-				return nil, err
-				
 			case regexpTooHigh.MatchString(err.Error()):
 				return nil, provider.ErrHeightTooHigh
 
@@ -157,12 +155,16 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 			case attempt == maxRetryAttempts:
 				return nil, provider.ErrNoResponse
 
-			default:
-				// else we wait and try again with exponential backoff
+			case regexpTimedOut.MatchString(err.Error()):
+				// we wait and try again with exponential backoff
 				time.Sleep(backoffTimeout(uint16(attempt)))
 				continue
+
+			// context canceled or connection refused we return the error
+			default:
+				return nil, err
 			}
-			
+
 		}
 	}
 
@@ -180,20 +182,20 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 		case err == nil:
 			return &commit.SignedHeader, nil
 
-		case errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded):
-			return nil, err
-		
-		// TODO: standardize errors on the RPC side
 		case regexpTooHigh.MatchString(err.Error()):
-				return nil, provider.ErrHeightTooHigh
+			return nil, provider.ErrHeightTooHigh
 
 		case regexpMissingHeight.MatchString(err.Error()):
-				return nil, provider.ErrLightBlockNotFound
-		
-		default:
+			return nil, provider.ErrLightBlockNotFound
+
+		case regexpTimedOut.MatchString(err.Error()):
 			// we wait and try again with exponential backoff
 			time.Sleep(backoffTimeout(uint16(attempt)))
 			continue
+
+		// either context was cancelled or connection refused.
+		default:
+			return nil, err
 		}
 	}
 	return nil, provider.ErrNoResponse
