@@ -283,7 +283,8 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 	// Optimistically build new state, so we don't discover any light client failures at the end.
 	state, err := s.stateProvider.State(pctx, snapshot.Height)
 	if err != nil {
-		if err == context.DeadlineExceeded {
+		// check if the provider context exceeded the 10 second deadline
+		if err == context.DeadlineExceeded && ctx.Err() == nil {
 			return sm.State{}, nil, errDeadlineExceeded
 		}
 
@@ -291,9 +292,11 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 	}
 	commit, err := s.stateProvider.Commit(pctx, snapshot.Height)
 	if err != nil {
-		if err == context.DeadlineExceeded {
+		// check if the provider context exceeded the 10 second deadline
+		if err == context.DeadlineExceeded && ctx.Err() == nil {
 			return sm.State{}, nil, errDeadlineExceeded
 		}
+
 		return sm.State{}, nil, fmt.Errorf("failed to fetch commit: %w", err)
 	}
 
