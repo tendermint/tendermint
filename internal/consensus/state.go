@@ -1424,6 +1424,7 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 			logger.Error("failed publishing event relock", "err", err)
 		}
 
+		// XXX: need to add vote extension here
 		cs.signAddVote(tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader)
 		return
 	}
@@ -1445,6 +1446,7 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 			logger.Error("failed publishing event lock", "err", err)
 		}
 
+		// XXX: need to add vote extension here
 		cs.signAddVote(tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader)
 		return
 	}
@@ -1528,6 +1530,7 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 		cs.tryFinalizeCommit(height)
 	}()
 
+	// XXX: SelfAuthenticating AppData VoteExtension should be excluded here
 	blockID, ok := cs.Votes.Precommits(commitRound).TwoThirdsMajority()
 	if !ok {
 		panic("RunActionCommit() expects +2/3 precommits")

@@ -354,6 +354,11 @@ func TestConsMsgsVectors(t *testing.T) {
 	}
 	pbProposal := proposal.ToProto()
 
+	ext := types.VoteExtension{
+		AppDataSigned:             []byte("signed"),
+		AppDataSelfAuthenticating: []byte("auth"),
+	}
+
 	v := &types.Vote{
 		ValidatorAddress: []byte("add_more_exclamation"),
 		ValidatorIndex:   1,
@@ -362,7 +367,8 @@ func TestConsMsgsVectors(t *testing.T) {
 		Timestamp:        date,
 		Type:             tmproto.PrecommitType,
 		BlockID:          bi,
-    // XXX: insert voteextension
+		VoteExtension:    ext,
+		// XXX: insert voteextension
 	}
 	vpb := v.ToProto()
 
@@ -399,7 +405,7 @@ func TestConsMsgsVectors(t *testing.T) {
 			"2a36080110011a3008011204746573741a26080110011a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d"},
 		{"Vote", &tmcons.Message{Sum: &tmcons.Message_Vote{
 			Vote: &tmcons.Vote{Vote: vpb}}},
-			"32720a700802100122480a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d1224080112206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d2a0608c0b89fdc0532146164645f6d6f72655f6578636c616d6174696f6e38014a00"},
+			"3280010a7e0802100122480a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d1224080112206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d2a0608c0b89fdc0532146164645f6d6f72655f6578636c616d6174696f6e38014a0e0a067369676e6564120461757468"},
 		{"HasVote", &tmcons.Message{Sum: &tmcons.Message_HasVote{
 			HasVote: &tmcons.HasVote{Height: 1, Round: 1, Type: tmproto.PrevoteType, Index: 1}}},
 			"3a080801100118012001"},

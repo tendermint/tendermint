@@ -207,8 +207,18 @@ func (vote *Vote) ValidateBasic() error {
 	return nil
 }
 
-func (ext *VoteExtension) ToProto() *tmproto.VoteExtension {
-	if ext == nil {
+func (ext VoteExtension) IsEmpty() bool {
+	if len(ext.AppDataSigned) != 0 {
+		return false
+	}
+	if len(ext.AppDataSelfAuthenticating) != 0 {
+		return false
+	}
+	return true
+}
+
+func (ext VoteExtension) ToProto() *tmproto.VoteExtension {
+	if ext.IsEmpty() {
 		return nil
 	}
 
