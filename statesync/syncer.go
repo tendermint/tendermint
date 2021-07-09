@@ -230,6 +230,10 @@ func (s *syncer) SyncAny(
 				s.logger.Info("Snapshot sender rejected", "peer", peer.ID())
 			}
 
+		case errors.Is(err, context.DeadlineExceeded):
+			s.logger.Info("Timed out validating snapshot, rejecting", "height", snapshot.Height, "err", err)
+			s.snapshots.Reject(snapshot)
+
 		default:
 			return sm.State{}, nil, fmt.Errorf("snapshot restoration failed: %w", err)
 		}
@@ -273,7 +277,7 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 		go s.fetchChunks(ctx, snapshot, chunks)
 	}
 
-	pctx, pcancel := context.WithTimeout(context.Background(), 10*time.Second)
+	pctx, pcancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer pcancel()
 
 	// Optimistically build new state, so we don't discover any light client failures at the end.
