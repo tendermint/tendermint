@@ -869,6 +869,10 @@ func newPersistentKVStore() abci.Application {
 	return kvstore.NewPersistentKVStoreApplication(dir)
 }
 
+func newKVStore() abci.Application {
+	return kvstore.NewApplication()
+}
+
 func newPersistentKVStoreWithPath(dbDir string) abci.Application {
 	return kvstore.NewPersistentKVStoreApplication(dbDir)
 }

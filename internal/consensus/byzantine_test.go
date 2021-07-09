@@ -35,7 +35,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	prevoteHeight := int64(2)
 	testName := "consensus_byzantine_test"
 	tickerFunc := newMockTickerFunc(true)
-	appFunc := newPersistentKVStore
+	appFunc := newKVStore
 
 	genDoc, privVals := factory.RandGenesisDoc(config, nValidators, false, 30)
 	states := make([]*State, nValidators)
