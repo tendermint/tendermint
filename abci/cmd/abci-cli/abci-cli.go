@@ -57,9 +57,7 @@ var RootCmd = &cobra.Command{
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 
 		switch cmd.Use {
-		case "kvstore": // for the examples apps, don't pre-run
-			return nil
-		case "version": // skip running for version command
+		case "kvstore", "version":
 			return nil
 		}
 
