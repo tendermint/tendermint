@@ -108,6 +108,7 @@ func VoteSignBytes(chainID string, vote *tmproto.Vote) []byte {
 
 func (vote *Vote) Copy() *Vote {
 	voteCopy := *vote
+	voteCopy.VoteExtension = vote.VoteExtension.Copy()
 	return &voteCopy
 }
 
@@ -207,6 +208,16 @@ func (vote *Vote) ValidateBasic() error {
 	return nil
 }
 
+func (ext VoteExtension) Copy() VoteExtension {
+	res := VoteExtension{
+		AppDataSigned:             make([]byte, len(ext.AppDataSigned)),
+		AppDataSelfAuthenticating: make([]byte, len(ext.AppDataSelfAuthenticating)),
+	}
+	copy(res.AppDataSigned, ext.AppDataSigned)
+	copy(res.AppDataSelfAuthenticating, ext.AppDataSelfAuthenticating)
+	return res
+}
+
 func (ext VoteExtension) IsEmpty() bool {
 	if len(ext.AppDataSigned) != 0 {
 		return false
@@ -248,6 +259,15 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 	}
 }
 
+func VoteExtensionFromProto(pext *tmproto.VoteExtension) VoteExtension {
+	ext := VoteExtension{}
+	if pext != nil {
+		ext.AppDataSigned = pext.AppDataSigned
+		ext.AppDataSelfAuthenticating = pext.AppDataSelfAuthenticating
+	}
+	return ext
+}
+
 // FromProto converts a proto generetad type to a handwritten type
 // return type, nil if everything converts safely, otherwise nil, error
 func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
@@ -260,12 +280,6 @@ func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 		return nil, err
 	}
 
-	ext := VoteExtension{}
-	if pv.VoteExtension != nil {
-		ext.AppDataSigned = pv.VoteExtension.AppDataSigned
-		ext.AppDataSelfAuthenticating = pv.VoteExtension.AppDataSelfAuthenticating
-	}
-
 	vote := new(Vote)
 	vote.Type = pv.Type
 	vote.Height = pv.Height
@@ -275,7 +289,7 @@ func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 	vote.ValidatorAddress = pv.ValidatorAddress
 	vote.ValidatorIndex = pv.ValidatorIndex
 	vote.Signature = pv.Signature
-	vote.VoteExtension = ext
+	vote.VoteExtension = VoteExtensionFromProto(pv.VoteExtension)
 
 	return vote, vote.ValidateBasic()
 }
