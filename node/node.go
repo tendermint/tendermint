@@ -668,6 +668,13 @@ func (n *nodeImpl) OnStart() error {
 		if err != nil {
 			return fmt.Errorf("failed to start state sync: %w", err)
 		}
+
+		// at the beginning of the statesync start, we use the initialHeight as the event height
+		// because of the statesync doesn't have the concreate state height before fetched the snapshot.
+		d := types.EventDataStateSyncStatus{Complete: false, Height: state.InitialHeight}
+		if err := n.eventBus.PublishEventStateSyncStatus(d); err != nil {
+			n.Logger.Error("failed to emit the statesync start event", "err", err)
+		}
 	}
 
 	return nil
@@ -1029,7 +1036,7 @@ func (n *nodeImpl) NodeInfo() types.NodeInfo {
 // startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
 func startStateSync(ssR *statesync.Reactor, bcR cs.FastSyncReactor, conR *cs.Reactor,
 	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
-	stateStore sm.Store, blockStore *store.BlockStore, state sm.State, eventbus *types.EventBus) error {
+	stateStore sm.Store, blockStore *store.BlockStore, state sm.State, eb *types.EventBus) error {
 	ssR.Logger.Info("starting state sync...")
 
 	if stateProvider == nil {
@@ -1063,6 +1070,12 @@ func startStateSync(ssR *statesync.Reactor, bcR cs.FastSyncReactor, conR *cs.Rea
 		}
 
 		conR.Metrics.StateSyncing.Set(0)
+
+		d := types.EventDataStateSyncStatus{Complete: true, Height: state.LastBlockHeight}
+		if err := eb.PublishEventStateSyncStatus(d); err != nil {
+			ssR.Logger.Error("failed to emit the statesync start event", "err", err)
+		}
+
 		if fastSync {
 			// FIXME Very ugly to have these metrics bleed through here.
 			conR.Metrics.FastSyncing.Set(1)
@@ -1073,7 +1086,7 @@ func startStateSync(ssR *statesync.Reactor, bcR cs.FastSyncReactor, conR *cs.Rea
 			}
 
 			d := types.EventDataFastSyncStatus{Complete: false, Height: state.LastBlockHeight}
-			if err := eventbus.PublishEventFastSyncStatus(d); err != nil {
+			if err := eb.PublishEventFastSyncStatus(d); err != nil {
 				ssR.Logger.Error("failed to emit the fastsync starting event", "err", err)
 			}
 
