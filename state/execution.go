@@ -368,6 +368,8 @@ func execBlockOnProxyApp(
 		return nil, err
 	}
 
+	abciResponses.VoteExtension, err = proxyAppConn.VoteExtensionSync(ctx, abci.RequestVoteExtension{Height: block.Height, Round: round})
+
 	logger.Info("executed block", "height", block.Height, "num_valid_txs", validTxs, "num_invalid_txs", invalidTxs)
 	return abciResponses, nil
 }
@@ -483,7 +485,7 @@ func updateState(
 
 	nextVersion := state.Version
 
-	// NOTE: the AppHash has not been populated.
+	// NOTE: the AppHash and the VoteExtension has not been populated.
 	// It will be filled on state.Save.
 	return State{
 		Version:                          nextVersion,
@@ -500,6 +502,7 @@ func updateState(
 		LastHeightConsensusParamsChanged: lastHeightParamsChanged,
 		LastResultsHash:                  ABCIResponsesResultsHash(abciResponses),
 		AppHash:                          nil,
+		VoteExtension:										types.VoteExtension{},
 	}, nil
 }
 

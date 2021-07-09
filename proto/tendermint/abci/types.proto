@@ -274,7 +274,7 @@ message ResponseApplySnapshotChunk {
 }
 
 message ResponseVoteExtension {
-  tendermint.types.VoteExtension extension = 1;
+  tendermint.types.VoteExtension vote_extension = 1;
 }
 
 message ResponseVerifyVoteExtension {
