@@ -476,6 +476,10 @@ func (r *Router) routeChannel(
 				}
 
 				if !contains {
+					// reactor tried to send a message across a channel that the
+					// peer doesn't have available. This is a known issue due to
+					// how peer subscriptions work:
+					// https://github.com/tendermint/tendermint/issues/6598
 					continue
 				}
 
