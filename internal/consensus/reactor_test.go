@@ -257,7 +257,9 @@ func TestReactorBasic(t *testing.T) {
 	config := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(t, config, n, "consensus_reactor_test", newMockTickerFunc(true), newPersistentKVStore)
+	states, cleanup := randConsensusState(t,
+		config, n, "consensus_reactor_test",
+		newMockTickerFunc(true), newPersistentKVStore)
 	t.Cleanup(cleanup)
 
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
@@ -431,7 +433,9 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 	config := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(t, config, n, "consensus_reactor_test", newMockTickerFunc(true), newPersistentKVStore)
+	states, cleanup := randConsensusState(t,
+		config, n, "consensus_reactor_test",
+		newMockTickerFunc(true), newPersistentKVStore)
 	t.Cleanup(cleanup)
 
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
