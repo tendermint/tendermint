@@ -3,7 +3,6 @@ package statesync
 import (
 	"context"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"math/rand"
 	"sort"
@@ -94,13 +93,13 @@ func (p *snapshotPool) Add(peer p2p.Peer, snapshot *snapshot) (bool, error) {
 
 	switch {
 	case p.formatBlacklist[snapshot.Format]:
-		return false, errors.New("blacklisted format")
+		return false, nil
 	case p.peerBlacklist[peer.ID()]:
-		return false, errors.New("from blacklisted peer")
+		return false, nil
 	case p.snapshotBlacklist[key]:
-		return false, errors.New("snapshot has already been blacklisted")
+		return false, nil
 	case len(p.peerIndex[peer.ID()]) >= recentSnapshots:
-		return false, errors.New("peer has already sent 10 snapshots")
+		return false, nil
 	}
 
 	if p.snapshotPeers[key] == nil {
@@ -114,7 +113,7 @@ func (p *snapshotPool) Add(peer p2p.Peer, snapshot *snapshot) (bool, error) {
 	p.peerIndex[peer.ID()][key] = true
 
 	if p.snapshots[key] != nil {
-		return false, errors.New("snapshot already received")
+		return false, nil
 	}
 	p.snapshots[key] = snapshot
 
