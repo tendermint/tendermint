@@ -37,7 +37,7 @@ cd $GOPATH/src/github.com/tendermint/tendermint
 make install_abci
 ```
 
-Now you should have the `abci-cli` installed; you'll see a couple of
+Now you should have the `abci-cli` installed; you'll notice the `kvstore`
 commands (`kvstore`) that are example applications written
 in Go. See below for an application written in JavaScript.
 
