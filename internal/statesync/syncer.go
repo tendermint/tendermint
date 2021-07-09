@@ -45,9 +45,9 @@ var (
 	errTimeout = errors.New("timed out waiting for chunk")
 	// errNoSnapshots is returned by SyncAny() if no snapshots are found and discovery is disabled.
 	errNoSnapshots = errors.New("no suitable snapshots found")
-	// errDeadlineExceeded is returned by Sync() when the timeout for retrieving
+	// errStateCommitTimeout is returned by Sync() when the timeout for retrieving
 	// tendermint state or the commit is exceeded
-	errDeadlineExceeded = errors.New("deadline to retrieve state and commit exceeded")
+	errStateCommitTimeout = errors.New("timed out trying to retrieve state and commit")
 )
 
 // syncer runs a state sync against an ABCI app. Use either SyncAny() to automatically attempt to
@@ -230,7 +230,7 @@ func (s *syncer) SyncAny(
 				s.logger.Info("Snapshot sender rejected", "peer", peer)
 			}
 
-		case errors.Is(err, errDeadlineExceeded):
+		case errors.Is(err, errStateCommitTimeout):
 			s.logger.Info("Timed out retrieving state and commit, rejecting and retrying...", "height", snapshot.Height)
 			s.snapshots.Reject(snapshot)
 
@@ -283,17 +283,20 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 	// Optimistically build new state, so we don't discover any light client failures at the end.
 	state, err := s.stateProvider.State(pctx, snapshot.Height)
 	if err != nil {
-		if err == context.DeadlineExceeded {
-			return sm.State{}, nil, errDeadlineExceeded
+		// check if the provider context exceeded the 10 second deadline
+		if err == context.DeadlineExceeded && ctx.Err() == nil {
+			return sm.State{}, nil, errStateCommitTimeout
 		}
 
 		return sm.State{}, nil, fmt.Errorf("failed to build new state: %w", err)
 	}
 	commit, err := s.stateProvider.Commit(pctx, snapshot.Height)
 	if err != nil {
-		if err == context.DeadlineExceeded {
-			return sm.State{}, nil, errDeadlineExceeded
+		// check if the provider context exceeded the 10 second deadline
+		if err == context.DeadlineExceeded && ctx.Err() == nil {
+			return sm.State{}, nil, errStateCommitTimeout
 		}
+
 		return sm.State{}, nil, fmt.Errorf("failed to fetch commit: %w", err)
 	}
 
