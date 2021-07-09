@@ -98,10 +98,10 @@ func (s *syncer) AddChunk(chunk *chunk) (bool, error) {
 		return false, err
 	}
 	if added {
-		s.logger.Info("Added chunk to queue", "height", chunk.Height, "format", chunk.Format,
+		s.logger.Debug("Added chunk to queue", "height", chunk.Height, "format", chunk.Format,
 			"chunk", chunk.Index)
 	} else {
-		s.logger.Info("Ignoring duplicate chunk in queue", "height", chunk.Height, "format", chunk.Format,
+		s.logger.Debug("Ignoring duplicate chunk in queue", "height", chunk.Height, "format", chunk.Format,
 			"chunk", chunk.Index)
 	}
 	return added, nil
@@ -117,8 +117,6 @@ func (s *syncer) AddSnapshot(peer p2p.Peer, snapshot *snapshot) (bool, error) {
 	if added {
 		s.logger.Info("Discovered new snapshot", "height", snapshot.Height, "format", snapshot.Format,
 			"hash", snapshot.Hash)
-	} else {
-		s.logger.Debug("Ignoring snapshot", "height", snapshot.Height)
 	}
 	return added, nil
 }
@@ -126,13 +124,13 @@ func (s *syncer) AddSnapshot(peer p2p.Peer, snapshot *snapshot) (bool, error) {
 // AddPeer adds a peer to the pool. For now we just keep it simple and send a single request
 // to discover snapshots, later we may want to do retries and stuff.
 func (s *syncer) AddPeer(peer p2p.Peer) {
-	s.logger.Info("Requesting snapshots from peer", "peer", peer.ID())
+	s.logger.Debug("Requesting snapshots from peer", "peer", peer.ID())
 	peer.Send(SnapshotChannel, mustEncodeMsg(&ssproto.SnapshotsRequest{}))
 }
 
 // RemovePeer removes a peer from the pool.
 func (s *syncer) RemovePeer(peer p2p.Peer) {
-	s.logger.Info("Removing peer from sync", "peer", peer.ID())
+	s.logger.Debug("Removing peer from sync", "peer", peer.ID())
 	s.snapshots.RemovePeer(peer.ID())
 }
 
@@ -331,14 +329,12 @@ func (s *syncer) offerSnapshot(snapshot *snapshot) error {
 // response, or nil once the snapshot is fully restored.
 func (s *syncer) applyChunks(chunks *chunkQueue) error {
 	for {
-		s.logger.Info("Waiting for next chunk...")
 		chunk, err := chunks.Next()
 		if err == errDone {
 			return nil
 		} else if err != nil {
 			return fmt.Errorf("failed to fetch chunk: %w", err)
 		}
-		s.logger.Info("Offering chunk to ABCI app", "height", chunk.Height)
 
 		resp, err := s.conn.ApplySnapshotChunkSync(abci.RequestApplySnapshotChunk{
 			Index:  chunk.Index,
@@ -445,7 +441,7 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 			"format", snapshot.Format, "hash", snapshot.Hash)
 		return
 	}
-	s.logger.Info("Requesting snapshot chunk", "height", snapshot.Height,
+	s.logger.Debug("Requesting snapshot chunk", "height", snapshot.Height,
 		"format", snapshot.Format, "chunk", chunk, "peer", peer.ID())
 	peer.Send(ChunkChannel, mustEncodeMsg(&ssproto.ChunkRequest{
 		Height: snapshot.Height,
