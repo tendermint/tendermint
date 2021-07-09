@@ -57,7 +57,7 @@ func (d *dispatcher) LightBlock(ctx context.Context, height int64) (*types.Light
 
 	// fetch the next peer id in the list and request a light block from that
 	// peer
-	peer := d.availablePeers.Pop()
+	peer := d.availablePeers.Pop(ctx)
 	lb, err := d.lightBlock(ctx, height, peer)
 	return lb, peer, err
 }
@@ -272,7 +272,7 @@ func (l *peerlist) Len() int {
 	return len(l.peers)
 }
 
-func (l *peerlist) Pop() types.NodeID {
+func (l *peerlist) Pop(ctx context.Context) types.NodeID {
 	l.mtx.Lock()
 	if len(l.peers) == 0 {
 		// if we don't have any peers in the list we block until a peer is
@@ -281,8 +281,13 @@ func (l *peerlist) Pop() types.NodeID {
 		l.waiting = append(l.waiting, wait)
 		// unlock whilst waiting so that the list can be appended to
 		l.mtx.Unlock()
-		peer := <-wait
-		return peer
+		select {
+		case peer := <-wait:
+			return peer
+
+		case <-ctx.Done():
+			return ""
+		}
 	}
 
 	peer := l.peers[0]

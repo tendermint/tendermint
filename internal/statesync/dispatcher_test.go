@@ -95,7 +95,7 @@ func TestPeerListBasic(t *testing.T) {
 
 	half := numPeers / 2
 	for i := 0; i < half; i++ {
-		assert.Equal(t, peerSet[i], peerList.Pop())
+		assert.Equal(t, peerSet[i], peerList.Pop(ctx))
 	}
 	assert.Equal(t, half, peerList.Len())
 
@@ -104,7 +104,7 @@ func TestPeerListBasic(t *testing.T) {
 
 	peerList.Remove(peerSet[half])
 	half++
-	assert.Equal(t, peerSet[half], peerList.Pop())
+	assert.Equal(t, peerSet[half], peerList.Pop(ctx))
 
 }
 
@@ -117,7 +117,7 @@ func TestPeerListConcurrent(t *testing.T) {
 	// peer list hasn't been populated each these go routines should block
 	for i := 0; i < numPeers/2; i++ {
 		go func() {
-			_ = peerList.Pop()
+			_ = peerList.Pop(ctx)
 			wg.Done()
 		}()
 	}
@@ -132,7 +132,7 @@ func TestPeerListConcurrent(t *testing.T) {
 	// we request the second half of the peer set
 	for i := 0; i < numPeers/2; i++ {
 		go func() {
-			_ = peerList.Pop()
+			_ = peerList.Pop(ctx)
 			wg.Done()
 		}()
 	}
