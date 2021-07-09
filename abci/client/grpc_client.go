@@ -314,6 +314,40 @@ func (cli *grpcClient) ApplySnapshotChunkAsync(
 	)
 }
 
+// NOTE: call is synchronous, use ctx to break early if needed
+func (cli *grpcClient) VoteExtensionAsync(
+	ctx context.Context,
+	params types.RequestVoteExtension,
+) (*ReqRes, error) {
+	req := types.ToRequestVoteExtension(params)
+	res, err := cli.client.VoteExtension(ctx, req.GetVoteExtension(), grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishAsyncCall(
+		ctx,
+		req,
+		&types.Response{Value: &types.Response_VoteExtension{VoteExtension: res}},
+	)
+}
+
+// NOTE: call is synchronous, use ctx to break early if needed
+func (cli *grpcClient) VerifyVoteExtensionAsync(
+	ctx context.Context,
+	params types.RequestVerifyVoteExtension,
+) (*ReqRes, error) {
+	req := types.ToRequestVerifyVoteExtension(params)
+	res, err := cli.client.VerifyVoteExtension(ctx, req.GetVerifyVoteExtension(), grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishAsyncCall(
+		ctx,
+		req,
+		&types.Response{Value: &types.Response_VerifyVoteExtension{VerifyVoteExtension: res}},
+	)
+}
+
 // finishAsyncCall creates a ReqRes for an async call, and immediately populates it
 // with the response. We don't complete it until it's been ordered via the channel.
 func (cli *grpcClient) finishAsyncCall(ctx context.Context, req *types.Request, res *types.Response) (*ReqRes, error) {
@@ -503,4 +537,26 @@ func (cli *grpcClient) ApplySnapshotChunkSync(
 		return nil, err
 	}
 	return cli.finishSyncCall(reqres).GetApplySnapshotChunk(), cli.Error()
+}
+
+func (cli *grpcClient) VoteExtensionSync(
+	ctx context.Context,
+	params types.RequestVoteExtension) (*types.ResponseVoteExtension, error) {
+
+	reqres, err := cli.VoteExtensionAsync(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishSyncCall(reqres).GetVoteExtension(), cli.Error()
+}
+
+func (cli *grpcClient) VerifyVoteExtensionSync(
+	ctx context.Context,
+	params types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
+
+	reqres, err := cli.VerifyVoteExtensionAsync(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishSyncCall(reqres).GetVerifyVoteExtension(), cli.Error()
 }

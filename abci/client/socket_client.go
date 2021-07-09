@@ -295,6 +295,20 @@ func (cli *socketClient) ApplySnapshotChunkAsync(
 	return cli.queueRequestAsync(ctx, types.ToRequestApplySnapshotChunk(req))
 }
 
+func (cli *socketClient) VoteExtensionAsync(
+	ctx context.Context,
+	req types.RequestVoteExtension,
+) (*ReqRes, error) {
+	return cli.queueRequestAsync(ctx, types.ToRequestVoteExtension(req))
+}
+
+func (cli *socketClient) VerifyVoteExtensionAsync(
+	ctx context.Context,
+	req types.RequestVerifyVoteExtension,
+) (*ReqRes, error) {
+	return cli.queueRequestAsync(ctx, types.ToRequestVerifyVoteExtension(req))
+}
+
 //----------------------------------------
 
 func (cli *socketClient) FlushSync(ctx context.Context) error {
@@ -465,6 +479,28 @@ func (cli *socketClient) ApplySnapshotChunkSync(
 	return reqres.Response.GetApplySnapshotChunk(), nil
 }
 
+func (cli *socketClient) VoteExtensionSync(
+	ctx context.Context,
+	req types.RequestVoteExtension) (*types.ResponseVoteExtension, error) {
+
+	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestVoteExtension(req))
+	if err != nil {
+		return nil, err
+	}
+  return reqres.Response.GetVoteExtension(), nil
+}
+
+func (cli *socketClient) VerifyVoteExtensionSync(
+	ctx context.Context,
+	req types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
+
+	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestVerifyVoteExtension(req))
+	if err != nil {
+		return nil, err
+	}
+  return reqres.Response.GetVerifyVoteExtension(), nil
+}
+
 //----------------------------------------
 
 // queueRequest enqueues req onto the queue. If the queue is full, it ether
@@ -591,6 +627,10 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_ListSnapshots)
 	case *types.Request_OfferSnapshot:
 		_, ok = res.Value.(*types.Response_OfferSnapshot)
+	case *types.Request_VoteExtension:
+		_, ok = res.Value.(*types.Response_VoteExtension)
+	case *types.Request_VerifyVoteExtension:
+		_, ok = res.Value.(*types.Response_VerifyVoteExtension)
 	}
 	return ok
 }

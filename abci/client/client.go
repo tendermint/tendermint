@@ -46,6 +46,8 @@ type Client interface {
 	OfferSnapshotAsync(context.Context, types.RequestOfferSnapshot) (*ReqRes, error)
 	LoadSnapshotChunkAsync(context.Context, types.RequestLoadSnapshotChunk) (*ReqRes, error)
 	ApplySnapshotChunkAsync(context.Context, types.RequestApplySnapshotChunk) (*ReqRes, error)
+	VoteExtensionAsync(context.Context, types.RequestVoteExtension) (*ReqRes, error)
+	VerifyVoteExtensionAsync(context.Context, types.RequestVerifyVoteExtension) (*ReqRes, error)
 
 	// Synchronous requests
 	FlushSync(context.Context) error
@@ -62,6 +64,8 @@ type Client interface {
 	OfferSnapshotSync(context.Context, types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error)
 	LoadSnapshotChunkSync(context.Context, types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error)
 	ApplySnapshotChunkSync(context.Context, types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error)
+	VoteExtensionSync(context.Context, types.RequestVoteExtension) (*types.ResponseVoteExtension, error)
+	VerifyVoteExtensionSync(context.Context, types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error)
 }
 
 //----------------------------------------
