@@ -38,7 +38,7 @@ make install_abci
 ```
 
 Now you should have the `abci-cli` installed; you'll notice the `kvstore`
-commands (`kvstore`) that are example applications written
+command, an example application written
 in Go. See below for an application written in JavaScript.
 
 Now, let's run some apps!
