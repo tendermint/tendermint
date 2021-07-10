@@ -236,6 +236,21 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	return state, nil
 }
 
+func (blockExec *BlockExecutor) VoteExtension(height int64, round int32) (types.VoteExtension, error) {
+  ctx := context.Background()
+  req := abci.RequestVoteExtension{
+    Height: uint64(height),
+    Round: uint64(round),
+  }
+
+  resp, err := blockExec.proxyApp.VoteExtensionSync(ctx, req)
+  if err != nil {
+    return types.VoteExtension{}, err
+  }
+
+  return types.VoteExtensionFromProto(resp.VoteExtension), nil
+}
+
 // Commit locks the mempool, runs the ABCI Commit message, and updates the
 // mempool.
 // It returns the result of calling abci.Commit (the AppHash) and the height to retain (if any).
@@ -367,8 +382,6 @@ func execBlockOnProxyApp(
 		logger.Error("error in proxyAppConn.EndBlock", "err", err)
 		return nil, err
 	}
-
-	abciResponses.VoteExtension, err = proxyAppConn.VoteExtensionSync(ctx, abci.RequestVoteExtension{Height: block.Height, Round: round})
 
 	logger.Info("executed block", "height", block.Height, "num_valid_txs", validTxs, "num_invalid_txs", invalidTxs)
 	return abciResponses, nil
@@ -502,7 +515,6 @@ func updateState(
 		LastHeightConsensusParamsChanged: lastHeightParamsChanged,
 		LastResultsHash:                  ABCIResponsesResultsHash(abciResponses),
 		AppHash:                          nil,
-		VoteExtension:										types.VoteExtension{},
 	}, nil
 }
 

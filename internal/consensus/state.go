@@ -1424,8 +1424,7 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 			logger.Error("failed publishing event relock", "err", err)
 		}
 
-		// XXX: need to add vote extension here
-		cs.signAddVote(tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader)
+    cs.signAddVote(tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader)
 		return
 	}
 
@@ -1446,7 +1445,6 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 			logger.Error("failed publishing event lock", "err", err)
 		}
 
-		// XXX: need to add vote extension here
 		cs.signAddVote(tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader)
 		return
 	}
@@ -1530,7 +1528,6 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 		cs.tryFinalizeCommit(height)
 	}()
 
-	// XXX: SelfAuthenticating AppData VoteExtension should be excluded here
 	blockID, ok := cs.Votes.Precommits(commitRound).TwoThirdsMajority()
 	if !ok {
 		panic("RunActionCommit() expects +2/3 precommits")
@@ -2213,11 +2210,23 @@ func (cs *State) signVote(
 		timeout = time.Second
 	}
 
+  // If the signedMessage type is for precommit, add VoteExtension
+  switch msgType {
+  case tmproto.PrecommitType:
+    ext, err := cs.blockExec.VoteExtension(cs.Height, cs.Round)
+    if err != nil {
+      return nil, err
+    }
+    vote.VoteExtension = ext
+  default:
+  }
+
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
 
 	err := cs.privValidator.SignVote(ctx, cs.state.ChainID, v)
 	vote.Signature = v.Signature
+
 
 	return vote, err
 }
@@ -2247,7 +2256,8 @@ func (cs *State) voteTime() time.Time {
 }
 
 // sign the vote and publish on internalMsgQueue
-func (cs *State) signAddVote(msgType tmproto.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
+func (cs *State) signAddVote(
+  msgType tmproto.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
 	if cs.privValidator == nil { // the node does not have a key
 		return nil
 	}
