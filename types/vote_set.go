@@ -86,7 +86,7 @@ func NewVoteSet(chainID string, height int64, round int32,
 	if height == 0 {
 		panic("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
-	if valSet.HasPublicKeys == false {
+	if !valSet.HasPublicKeys {
 		panic("Cannot make VoteSet when the validator set doesn't have public keys.")
 	}
 	return &VoteSet{

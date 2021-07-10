@@ -250,7 +250,7 @@ func (pv *MockPV) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.
 		ThresholdPublicKey: thresholdPublicKey,
 	}
 	pv.UpdateHeights[strconv.Itoa(int(height))] = quorumHash
-	if _, ok := pv.FirstHeightOfQuorums[quorumHash.String()]; ok != true {
+	if _, ok := pv.FirstHeightOfQuorums[quorumHash.String()]; !ok {
 		pv.FirstHeightOfQuorums[quorumHash.String()] = strconv.Itoa(int(height))
 	}
 	pv.mtx.RUnlock()

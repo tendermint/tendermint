@@ -285,7 +285,7 @@ func WithUpdateHeights(updateHeights map[string]crypto.QuorumHash) FilePVOption 
 			filePV.Key.FirstHeightOfQuorums = make(map[string]string)
 		}
 		for height, quorumHash := range updateHeights {
-			if _, ok := filePV.Key.FirstHeightOfQuorums[quorumHash.String()]; ok == false {
+			if _, ok := filePV.Key.FirstHeightOfQuorums[quorumHash.String()]; !ok {
 				filePV.Key.FirstHeightOfQuorums[quorumHash.String()] = height
 			}
 		}
@@ -531,7 +531,7 @@ func (pv *FilePV) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.
 		ThresholdPublicKey: thresholdPublicKey,
 	}
 	pv.Key.UpdateHeights[strconv.Itoa(int(height))] = quorumHash
-	if _, ok := pv.Key.FirstHeightOfQuorums[quorumHash.String()]; ok != true {
+	if _, ok := pv.Key.FirstHeightOfQuorums[quorumHash.String()]; !ok {
 		pv.Key.FirstHeightOfQuorums[quorumHash.String()] = strconv.Itoa(int(height))
 	}
 }
