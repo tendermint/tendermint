@@ -587,3 +587,47 @@ func TestConnVectors(t *testing.T) {
 		require.Equal(t, tc.expBytes, hex.EncodeToString(bz), tc.testName)
 	}
 }
+
+func TestMConnectionChannelOverflow(t *testing.T) {
+	chOnErr := make(chan struct{})
+	chOnRcv := make(chan struct{})
+
+	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(t, chOnErr)
+	t.Cleanup(stopAll(t, mconnClient, mconnServer))
+
+	mconnServer.onReceive = func(chID byte, msgBytes []byte) {
+		chOnRcv <- struct{}{}
+	}
+
+	client := mconnClient.conn
+	protoWriter := protoio.NewDelimitedWriter(client)
+
+	var packet = tmp2p.PacketMsg{
+		ChannelID: 0x01,
+		EOF:       true,
+		Data:      []byte(`42`),
+	}
+	_, err := protoWriter.WriteMsg(mustWrapPacket(&packet))
+	require.NoError(t, err)
+	assert.True(t, expectSend(chOnRcv))
+
+	packet.ChannelID = int32(1025)
+	_, err = protoWriter.WriteMsg(mustWrapPacket(&packet))
+	require.NoError(t, err)
+	assert.False(t, expectSend(chOnRcv))
+
+}
+
+type stopper interface {
+	Stop() error
+}
+
+func stopAll(t *testing.T, stoppers ...stopper) func() {
+	return func() {
+		for _, s := range stoppers {
+			if err := s.Stop(); err != nil {
+				t.Log(err)
+			}
+		}
+	}
+}

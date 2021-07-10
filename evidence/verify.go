@@ -140,15 +140,3 @@ func getSignedHeader(blockStore BlockStore, height int64) (*types.SignedHeader, 
 		Commit: commit,
 	}, nil
 }
-
-// isInvalidHeader takes a trusted header and matches it againt a conflicting header
-// to determine whether the conflicting header was the product of a valid state transition
-// or not. If it is then all the deterministic fields of the header should be the same.
-// If not, it is an invalid header and constitutes a lunatic attack.
-func isInvalidHeader(trusted, conflicting *types.Header) bool {
-	return !bytes.Equal(trusted.ValidatorsHash, conflicting.ValidatorsHash) ||
-		!bytes.Equal(trusted.NextValidatorsHash, conflicting.NextValidatorsHash) ||
-		!bytes.Equal(trusted.ConsensusHash, conflicting.ConsensusHash) ||
-		!bytes.Equal(trusted.AppHash, conflicting.AppHash) ||
-		!bytes.Equal(trusted.LastResultsHash, conflicting.LastResultsHash)
-}

@@ -212,7 +212,7 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 				evpool.logger.Error("Can't add evidence to pending list", "err", err, "ev", ev)
 			}
 
-			evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
+			evpool.logger.Info("Check evidence: verified evidence of byzantine behavior", "evidence", ev)
 		}
 
 		// check for duplicate evidence. We cache hashes so we don't have to work them out again.

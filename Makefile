@@ -3,7 +3,12 @@ OUTPUT?=build/tenderdash
 
 REPO_NAME=github.com/dashevo/tenderdash
 BUILD_TAGS?=tenderdash
-VERSION := $(shell git describe --always)
+# If building a release, please checkout the version tag to get the correct version setting
+ifneq ($(shell git symbolic-ref -q --short HEAD),)
+VERSION := unreleased-$(shell git symbolic-ref -q --short HEAD)-$(shell git rev-parse HEAD)
+else
+VERSION := $(shell git describe)
+endif
 LD_FLAGS = -X ${REPO_NAME}/version.TMCoreSemVer=$(VERSION)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 HTTPS_GIT := https://${REPO_NAME}.git

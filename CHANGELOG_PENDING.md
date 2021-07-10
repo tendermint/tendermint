@@ -1,6 +1,6 @@
 # Unreleased Changes
 
-## v0.34.11
+## v0.34.12
 
 Special thanks to external contributors on this release:
 
@@ -44,3 +44,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [libs/log] \#6174 Include timestamp (`ts` field; `time.RFC3339Nano` format) in JSON logger output (@melekes)
 
 ### BUG FIXES
+
