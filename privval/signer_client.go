@@ -202,10 +202,10 @@ func (sc *SignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType
 
 	*proposal = resp.Proposal
 
-	// We can assume that the signer client calculated the signId correctly
-	blockSignId := types.ProposalBlockSignId(chainID, proposal, quorumType, quorumHash)
+	// We can assume that the signer client calculated the signID correctly
+	blockSignID := types.ProposalBlockSignId(chainID, proposal, quorumType, quorumHash)
 
-	return blockSignId, nil
+	return blockSignID, nil
 }
 
 func (sc *SignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.QuorumHash, thresholdPublicKey crypto.PubKey, height int64) {

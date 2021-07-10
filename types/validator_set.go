@@ -846,11 +846,11 @@ func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator, newThreshold
 
 func (vals *ValidatorSet) CommitSignIds(chainID string, commit *Commit) ([]byte, []byte) {
 
-	blockSignId := commit.CanonicalVoteVerifySignId(chainID, vals.QuorumType, vals.QuorumHash)
+	blockSignID := commit.CanonicalVoteVerifySignId(chainID, vals.QuorumType, vals.QuorumHash)
 
 	stateSignId := commit.CanonicalVoteStateSignId(chainID, vals.QuorumType, vals.QuorumHash)
 
-	return blockSignId, stateSignId
+	return blockSignID, stateSignId
 }
 
 // VerifyCommit verifies +2/3 of the set had signed the given commit.
@@ -877,9 +877,9 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 			stateID, commit.StateID)
 	}
 
-	blockSignId := commit.CanonicalVoteVerifySignId(chainID, vals.QuorumType, vals.QuorumHash)
+	blockSignID := commit.CanonicalVoteVerifySignId(chainID, vals.QuorumType, vals.QuorumHash)
 
-	if !vals.ThresholdPublicKey.VerifySignatureDigest(blockSignId, commit.ThresholdBlockSignature) {
+	if !vals.ThresholdPublicKey.VerifySignatureDigest(blockSignID, commit.ThresholdBlockSignature) {
 		canonicalVoteBlockSignBytes := commit.CanonicalVoteVerifySignBytes(chainID)
 		return fmt.Errorf("incorrect threshold block signature %X %X", canonicalVoteBlockSignBytes,
 			commit.ThresholdBlockSignature)

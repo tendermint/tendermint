@@ -183,7 +183,7 @@ func (pv *MockPV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 		useChainID = "incorrect-chain-id"
 	}
 
-	blockSignId := VoteBlockSignId(useChainID, vote, quorumType, quorumHash)
+	blockSignID := VoteBlockSignId(useChainID, vote, quorumType, quorumHash)
 	stateSignId := VoteStateSignId(useChainID, vote, quorumType, quorumHash)
 
 	var privKey crypto.PrivKey
@@ -193,7 +193,7 @@ func (pv *MockPV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 		return fmt.Errorf("file private validator could not sign vote for quorum hash %v", quorumHash)
 	}
 
-	blockSignature, err := privKey.SignDigest(blockSignId)
+	blockSignature, err := privKey.SignDigest(blockSignID)
 	// fmt.Printf("validator %X signing vote of type %d at height %d with key %X blockSignBytes %X stateSignBytes %X\n",
 	//  pv.ProTxHash, vote.Type, vote.Height, pv.PrivKey.PubKey().Bytes(), blockSignBytes, stateSignBytes)
 	// fmt.Printf("block sign bytes are %X by %X using key %X resulting in sig %X\n", blockSignBytes, pv.ProTxHash,
@@ -221,23 +221,23 @@ func (pv *MockPV) SignProposal(chainID string, quorumType btcjson.LLMQType, quor
 		useChainID = "incorrect-chain-id"
 	}
 
-	signId := ProposalBlockSignId(useChainID, proposal, quorumType, quorumHash)
+	signID := ProposalBlockSignId(useChainID, proposal, quorumType, quorumHash)
 
 	var privKey crypto.PrivKey
 	if quorumKeys, ok := pv.PrivateKeys[quorumHash.String()]; ok {
 		privKey = quorumKeys.PrivKey
 	} else {
-		return signId, fmt.Errorf("file private validator could not sign vote for quorum hash %v", quorumHash)
+		return signID, fmt.Errorf("file private validator could not sign vote for quorum hash %v", quorumHash)
 	}
 
-	sig, err := privKey.SignDigest(signId)
+	sig, err := privKey.SignDigest(signID)
 	if err != nil {
 		return nil, err
 	}
 
 	proposal.Signature = sig
 
-	return signId, nil
+	return signID, nil
 }
 
 func (pv *MockPV) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.QuorumHash, thresholdPublicKey crypto.PubKey, height int64) {
@@ -250,7 +250,7 @@ func (pv *MockPV) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.
 		ThresholdPublicKey: thresholdPublicKey,
 	}
 	pv.UpdateHeights[strconv.Itoa(int(height))] = quorumHash
-	if _, ok := pv.FirstHeightOfQuorums[quorumHash.String()]; ok != true {
+	if _, ok := pv.FirstHeightOfQuorums[quorumHash.String()]; !ok {
 		pv.FirstHeightOfQuorums[quorumHash.String()] = strconv.Itoa(int(height))
 	}
 	pv.mtx.RUnlock()

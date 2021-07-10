@@ -2053,8 +2053,8 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 
 	proposer := cs.Validators.GetProposer()
 
-	//fmt.Printf("verifying request Id %s signId %s quorum hash %s proposalBlockSignBytes %s\n",
-	//	hex.EncodeToString(proposalRequestId), hex.EncodeToString(signId), hex.EncodeToString(cs.state.Validators.QuorumHash),
+	//fmt.Printf("verifying request Id %s signID %s quorum hash %s proposalBlockSignBytes %s\n",
+	//	hex.EncodeToString(proposalRequestId), hex.EncodeToString(signID), hex.EncodeToString(cs.state.Validators.QuorumHash),
 	//	hex.EncodeToString(proposalBlockSignBytes))
 
 	if proposer.PubKey != nil {
