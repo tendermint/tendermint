@@ -629,8 +629,9 @@ FOR_LOOP:
 				// never block
 			}
 		case *tmp2p.Packet_PacketMsg:
-			channel, ok := c.channelsIdx[byte(pkt.PacketMsg.ChannelID)]
-			if !ok || channel == nil {
+			channelID := byte(pkt.PacketMsg.ChannelID)
+			channel, ok := c.channelsIdx[channelID]
+			if pkt.PacketMsg.ChannelID < 0 || pkt.PacketMsg.ChannelID > math.MaxUint8 || !ok || channel == nil {
 				err := fmt.Errorf("unknown channel %X", pkt.PacketMsg.ChannelID)
 				c.Logger.Debug("Connection failed @ recvRoutine", "conn", c, "err", err)
 				c.stopForError(err)
@@ -646,9 +647,9 @@ FOR_LOOP:
 				break FOR_LOOP
 			}
 			if msgBytes != nil {
-				c.Logger.P2PDebug("Received bytes", "chID", pkt.PacketMsg.ChannelID, "msgBytes", base64.StdEncoding.EncodeToString(msgBytes))
+				c.Logger.P2PDebug("Received bytes", "chID", channelID, "msgBytes", base64.StdEncoding.EncodeToString(msgBytes))
 				// NOTE: This means the reactor.Receive runs in the same thread as the p2p recv routine
-				c.onReceive(byte(pkt.PacketMsg.ChannelID), msgBytes)
+				c.onReceive(channelID, msgBytes)
 			}
 		default:
 			err := fmt.Errorf("unknown message type %v", reflect.TypeOf(packet))

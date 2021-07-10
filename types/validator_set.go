@@ -1072,7 +1072,9 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 	}
 	vp.Proposer = valProposer
 
-	vp.TotalVotingPower = vals.totalVotingPower
+	// NOTE: Sometimes we use the bytes of the proto form as a hash. This means that we need to
+	// be consistent with cached data
+	vp.TotalVotingPower = 0
 
 	if vals.ThresholdPublicKey == nil {
 		return nil, fmt.Errorf("thresholdPublicKey is not set")
@@ -1124,7 +1126,12 @@ func ValidatorSetFromProto(vp *tmproto.ValidatorSet) (*ValidatorSet, error) {
 
 	vals.Proposer = p
 
-	vals.totalVotingPower = vp.GetTotalVotingPower()
+	// NOTE: We can't trust the total voting power given to us by other peers. If someone were to
+	// inject a non-zeo value that wasn't the correct voting power we could assume a wrong total
+	// power hence we need to recompute it.
+	// FIXME: We should look to remove TotalVotingPower from proto or add it in the validators hash
+	// so we don't have to do this
+	vals.TotalVotingPower()
 
 	thresholdPublicKey, err := cryptoenc.PubKeyFromProto(vp.ThresholdPublicKey)
 	if err != nil {

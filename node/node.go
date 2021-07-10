@@ -764,7 +764,7 @@ func NewNode(config *cfg.Config,
 	}
 
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
-	// and replays any blocks as necessary to sync tendermint with the app.
+	// and replays any blocks as necessary to sync tenderdash with the app.
 	consensusLogger := logger.With("module", "consensus")
 	if !stateSync {
 		handshaker := cs.NewHandshaker(stateStore, state, blockStore, genDoc, proTxHashP, config.Consensus.AppHashSize)
@@ -840,8 +840,12 @@ func NewNode(config *cfg.Config,
 	// FIXME The way we do phased startups (e.g. replay -> fast sync -> consensus) is very messy,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
-	stateSyncReactor := statesync.NewReactor(proxyApp.Snapshot(), proxyApp.Query(),
-		config.StateSync.TempDir)
+	stateSyncReactor := statesync.NewReactor(
+		*config.StateSync,
+		proxyApp.Snapshot(),
+		proxyApp.Query(),
+		config.StateSync.TempDir,
+	)
 	stateSyncReactor.SetLogger(logger.With("module", "statesync"))
 
 	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state, proTxHashP)
