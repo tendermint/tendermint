@@ -45,6 +45,8 @@ func newDispatcher(requestCh chan<- p2p.Envelope, timeout time.Duration) *dispat
 	}
 }
 
+// LightBlock uses the request channel to fetch a light block from the next peer
+// in a list, tracks the call and waits for the reactor to pass along the response
 func (d *dispatcher) LightBlock(ctx context.Context, height int64) (*types.LightBlock, types.NodeID, error) {
 	d.mtx.Lock()
 	outgoingCalls := len(d.calls)
@@ -62,6 +64,8 @@ func (d *dispatcher) LightBlock(ctx context.Context, height int64) (*types.Light
 	return lb, peer, err
 }
 
+// Providers turns the dispatcher into a set of providers (per peer) which can
+// be used by a light client
 func (d *dispatcher) Providers(chainID string, timeout time.Duration) []provider.Provider {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()

@@ -909,6 +909,10 @@ func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*type
 		// Everything went smoothly. We reset the lightBlockRequests and return the light block
 		return l, nil
 
+	// catch canceled contexts or deadlines
+	case context.Canceled, context.DeadlineExceeded:
+		return nil, err
+
 	case provider.ErrNoResponse, provider.ErrLightBlockNotFound, provider.ErrHeightTooHigh:
 		// we find a new witness to replace the primary
 		c.logger.Debug("error from light block request from primary, replacing...",
@@ -1011,6 +1015,10 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 			// return the light block that new primary responded with
 			return response.lb, nil
 
+		// catch canceled contexts or deadlines
+		case context.Canceled, context.DeadlineExceeded:
+			return nil, response.err
+
 		// process benign errors by logging them only
 		case provider.ErrNoResponse, provider.ErrLightBlockNotFound, provider.ErrHeightTooHigh:
 			lastError = response.err
@@ -1067,7 +1075,13 @@ and remove witness. Otherwise, use a different primary`, e.WitnessIndex), "witne
 				"witness", c.witnesses[e.WitnessIndex],
 				"err", err)
 			witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
-		default: // the witness either didn't respond or didn't have the block. We ignore it.
+		default:
+			// check for canceled contexts or deadlines
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return err
+			}
+
+			// the witness either didn't respond or didn't have the block. We ignore it.
 			c.logger.Debug("unable to compare first header with witness",
 				"err", err)
 		}

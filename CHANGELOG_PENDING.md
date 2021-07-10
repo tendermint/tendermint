@@ -150,3 +150,4 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [statesync] \#6463 Adds Reverse Sync feature to fetch historical light blocks after state sync in order to verify any evidence (@cmwaters)
 - [fastsync] \#6590 Update the metrics during fast-sync (@JayT106)
 - [gitignore] \#6668 Fix gitignore of abci-cli (@tanyabouman)
+- [light] \#6687 Fix bug with incorrecly handled contexts in the light client (@cmwaters)
