@@ -309,7 +309,7 @@ func createAndStartIndexerService(
 func logNodeStartupInfo(state sm.State, proTxHash *crypto.ProTxHash, logger, consensusLogger log.Logger) {
 	// Log the version info.
 	logger.Info("Version info",
-		"tendermint_version", version.TMCoreSemVer,
+		"software", version.TMCoreSemVer,
 		"block", version.BlockProtocol,
 		"p2p", version.P2PProtocol,
 	)
@@ -764,7 +764,7 @@ func NewNode(config *cfg.Config,
 	}
 
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
-	// and replays any blocks as necessary to sync tendermint with the app.
+	// and replays any blocks as necessary to sync tenderdash with the app.
 	consensusLogger := logger.With("module", "consensus")
 	if !stateSync {
 		handshaker := cs.NewHandshaker(stateStore, state, blockStore, genDoc, proTxHashP, config.Consensus.AppHashSize)
