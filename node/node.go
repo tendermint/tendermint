@@ -1057,8 +1057,7 @@ func startStateSync(
 			return
 		}
 
-		err = ssR.Backfill(state)
-		if err != nil {
+		if err := ssR.Backfill(state); err != nil {
 			ssR.GetLogger().Error("backfill failed; node has insufficient history to verify all evidence;"+
 				" proceeding optimistically...", "err", err)
 		}
@@ -1073,8 +1072,7 @@ func startStateSync(
 		if fastSync {
 			// FIXME Very ugly to have these metrics bleed through here.
 			conR.SetFastSyncingMetrics(1)
-			err = bcR.SwitchToFastSync(state)
-			if err != nil {
+			if err := bcR.SwitchToFastSync(state); err != nil {
 				ssR.GetLogger().Error("failed to switch to fast sync", "err", err)
 				return
 			}
