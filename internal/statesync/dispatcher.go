@@ -49,13 +49,12 @@ func newDispatcher(requestCh chan<- p2p.Envelope, timeout time.Duration) *dispat
 // in a list, tracks the call and waits for the reactor to pass along the response
 func (d *dispatcher) LightBlock(ctx context.Context, height int64) (*types.LightBlock, types.NodeID, error) {
 	d.mtx.Lock()
-	outgoingCalls := len(d.calls)
-	d.mtx.Unlock()
-
 	// check to see that the dispatcher is connected to at least one peer
-	if d.availablePeers.Len() == 0 && outgoingCalls == 0 {
+	if d.availablePeers.Len() == 0 && len(d.calls) == 0 {
+		d.mtx.Unlock()
 		return nil, "", errNoConnectedPeers
 	}
+	d.mtx.Unlock()
 
 	// fetch the next peer id in the list and request a light block from that
 	// peer
