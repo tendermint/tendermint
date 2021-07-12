@@ -176,7 +176,7 @@ func TestPeerListBasic(t *testing.T) {
 
 func TestPeerListBlocksWhenEmpty(t *testing.T) {
 	peerList := newPeerList()
-	assert.Zero(t, peerList.Len())
+	require.Zero(t, peerList.Len())
 	doneCh := make(chan struct{})
 	go func() {
 		peerList.Pop(context.Background())
@@ -189,9 +189,9 @@ func TestPeerListBlocksWhenEmpty(t *testing.T) {
 	}
 }
 
-func TestEmptyPeerListReturnsWhenContextCancelled(t *testing.T) {
+func TestEmptyPeerListReturnsWhenContextCanceled(t *testing.T) {
 	peerList := newPeerList()
-	assert.Zero(t, peerList.Len())
+	require.Zero(t, peerList.Len())
 	doneCh := make(chan struct{})
 	ctx := context.Background()
 	wrapped, cancel := context.WithCancel(ctx)
@@ -210,7 +210,7 @@ func TestEmptyPeerListReturnsWhenContextCancelled(t *testing.T) {
 	select {
 	case <-doneCh:
 	case <-time.After(100 * time.Millisecond):
-		t.Error("peer list should have returned after context cancelled")
+		t.Error("peer list should have returned after context canceled")
 	}
 }
 
