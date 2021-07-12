@@ -49,6 +49,72 @@ func TestDispatcherBasic(t *testing.T) {
 	wg.Wait()
 }
 
+func TestDispatcherReturnsNoBlock(t *testing.T) {
+	ch := make(chan p2p.Envelope, 100)
+	d := newDispatcher(ch, 1*time.Second)
+	peerFromSet := createPeerSet(1)[0]
+	d.addPeer(peerFromSet)
+	doneCh := make(chan struct{})
+
+	go func() {
+		err := d.respond(nil, peerFromSet)
+		require.Nil(t, err)
+		close(doneCh)
+	}()
+
+	lb, peerResult, err := d.LightBlock(context.Background(), 1)
+	<-doneCh
+
+	require.Nil(t, lb)
+	require.Nil(t, err)
+	require.Equal(t, peerFromSet, peerResult)
+}
+
+func TestDispatcherErrorsWhenNoPeers(t *testing.T) {
+	ch := make(chan p2p.Envelope, 100)
+	d := newDispatcher(ch, 1*time.Second)
+
+	lb, peerResult, err := d.LightBlock(context.Background(), 1)
+
+	require.Nil(t, lb)
+	require.Empty(t, peerResult)
+	require.Equal(t, errNoConnectedPeers, err)
+}
+
+func TestDispatcherReturnsBlockOncePeerAvailable(t *testing.T) {
+	ch := make(chan p2p.Envelope, 100)
+	d := newDispatcher(ch, 1*time.Second)
+	peerFromSet := createPeerSet(1)[0]
+	d.addPeer(peerFromSet)
+	ctx := context.Background()
+	wrapped, cancelFunc := context.WithCancel(ctx)
+
+	doneCh := make(chan struct{})
+	go func() {
+		lb, peerResult, err := d.LightBlock(wrapped, 1)
+		require.Nil(t, lb)
+		require.Equal(t, peerFromSet, peerResult)
+		require.Nil(t, err)
+		close(doneCh)
+	}()
+	cancelFunc()
+	<-doneCh
+
+	go func() {
+		lb := &types.LightBlock{}
+		asProto, err := lb.ToProto()
+		require.Nil(t, err)
+		err = d.respond(asProto, peerFromSet)
+		require.Nil(t, err)
+	}()
+
+	lb, peerResult, err := d.LightBlock(context.Background(), 1)
+
+	require.NotNil(t, lb)
+	require.Equal(t, peerFromSet, peerResult)
+	require.Nil(t, err)
+}
+
 func TestDispatcherProviders(t *testing.T) {
 
 	ch := make(chan p2p.Envelope, 100)
@@ -106,6 +172,46 @@ func TestPeerListBasic(t *testing.T) {
 	half++
 	assert.Equal(t, peerSet[half], peerList.Pop(ctx))
 
+}
+
+func TestPeerListBlocksWhenEmpty(t *testing.T) {
+	peerList := newPeerList()
+	assert.Zero(t, peerList.Len())
+	doneCh := make(chan struct{})
+	go func() {
+		peerList.Pop(context.Background())
+		close(doneCh)
+	}()
+	select {
+	case <-doneCh:
+		t.Error("empty peer list should not have returned result")
+	case <-time.After(100 * time.Millisecond):
+	}
+}
+
+func TestEmptyPeerListReturnsWhenContextCancelled(t *testing.T) {
+	peerList := newPeerList()
+	assert.Zero(t, peerList.Len())
+	doneCh := make(chan struct{})
+	ctx := context.Background()
+	wrapped, cancel := context.WithCancel(ctx)
+	go func() {
+		peerList.Pop(wrapped)
+		close(doneCh)
+	}()
+	select {
+	case <-doneCh:
+		t.Error("empty peer list should not have returned result")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	cancel()
+
+	select {
+	case <-doneCh:
+	case <-time.After(100 * time.Millisecond):
+		t.Error("peer list should have returned after context cancelled")
+	}
 }
 
 func TestPeerListConcurrent(t *testing.T) {
