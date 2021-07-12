@@ -31,6 +31,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [ABCI] \#5818 Use protoio for msg length delimitation. Migrates from int64 to uint64 length delimiters.
   - [Version] \#6494 `TMCoreSemVer` has been renamed to `TMVersion`.
     - It is not required any longer to set ldflags to set version strings
+  - [abci/counter] \#6684 Delete counter example app
 
 - P2P Protocol
 
