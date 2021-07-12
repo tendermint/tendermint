@@ -668,13 +668,6 @@ func (n *nodeImpl) OnStart() error {
 		if err != nil {
 			return fmt.Errorf("failed to start state sync: %w", err)
 		}
-
-		// at the beginning of the statesync start, we use the initialHeight as the event height
-		// because of the statesync doesn't have the concreate state height before fetched the snapshot.
-		d := types.EventDataStateSyncStatus{Complete: false, Height: state.InitialHeight}
-		if err := n.eventBus.PublishEventStateSyncStatus(d); err != nil {
-			n.Logger.Error("failed to emit the statesync start event", "err", err)
-		}
 	}
 
 	return nil
@@ -1054,6 +1047,13 @@ func startStateSync(ssR *statesync.Reactor, bcR cs.FastSyncReactor, conR *cs.Rea
 		if err != nil {
 			return fmt.Errorf("failed to set up light client state provider: %w", err)
 		}
+	}
+
+	// at the beginning of the statesync start, we use the initialHeight as the event height
+	// because of the statesync doesn't have the concreate state height before fetched the snapshot.
+	d := types.EventDataStateSyncStatus{Complete: false, Height: state.InitialHeight}
+	if err := eb.PublishEventStateSyncStatus(d); err != nil {
+		ssR.Logger.Error("failed to emit the statesync start event", "err", err)
 	}
 
 	go func() {
