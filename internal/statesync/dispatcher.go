@@ -45,6 +45,8 @@ func newDispatcher(requestCh chan<- p2p.Envelope, timeout time.Duration) *dispat
 	}
 }
 
+// LightBlock uses the request channel to fetch a light block from the next peer
+// in a list, tracks the call and waits for the reactor to pass along the response
 func (d *dispatcher) LightBlock(ctx context.Context, height int64) (*types.LightBlock, types.NodeID, error) {
 	d.mtx.Lock()
 	outgoingCalls := len(d.calls)
@@ -57,11 +59,13 @@ func (d *dispatcher) LightBlock(ctx context.Context, height int64) (*types.Light
 
 	// fetch the next peer id in the list and request a light block from that
 	// peer
-	peer := d.availablePeers.Pop()
+	peer := d.availablePeers.Pop(ctx)
 	lb, err := d.lightBlock(ctx, height, peer)
 	return lb, peer, err
 }
 
+// Providers turns the dispatcher into a set of providers (per peer) which can
+// be used by a light client
 func (d *dispatcher) Providers(chainID string, timeout time.Duration) []provider.Provider {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
@@ -272,7 +276,7 @@ func (l *peerlist) Len() int {
 	return len(l.peers)
 }
 
-func (l *peerlist) Pop() types.NodeID {
+func (l *peerlist) Pop(ctx context.Context) types.NodeID {
 	l.mtx.Lock()
 	if len(l.peers) == 0 {
 		// if we don't have any peers in the list we block until a peer is
@@ -281,8 +285,13 @@ func (l *peerlist) Pop() types.NodeID {
 		l.waiting = append(l.waiting, wait)
 		// unlock whilst waiting so that the list can be appended to
 		l.mtx.Unlock()
-		peer := <-wait
-		return peer
+		select {
+		case peer := <-wait:
+			return peer
+
+		case <-ctx.Done():
+			return ""
+		}
 	}
 
 	peer := l.peers[0]

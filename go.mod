@@ -13,6 +13,7 @@ require (
 	github.com/go-kit/kit v0.11.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
+	github.com/golangci/golangci-lint v1.41.1
 	github.com/google/orderedcode v0.0.1
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/websocket v1.4.2
@@ -21,7 +22,6 @@ require (
 	github.com/lib/pq v1.10.2
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/minio/highwayhash v1.0.2
-	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/oasisprotocol/curve25519-voi v0.0.0-20210609091139-0a56a4bca00b
 	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/prometheus/client_golang v1.11.0

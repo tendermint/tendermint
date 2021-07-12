@@ -68,9 +68,9 @@ func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 // loadGenerate generates jobs until the context is canceled
 func loadGenerate(ctx context.Context, chTx chan<- types.Tx, multiplier int, size int64) {
 	for i := 0; i < math.MaxInt64; i++ {
-		// We keep generating the same 1000 keys over and over, with different values.
+		// We keep generating the same 100 keys over and over, with different values.
 		// This gives a reasonable load without putting too much data in the app.
-		id := i % 1000
+		id := i % 100
 
 		bz := make([]byte, size)
 		_, err := rand.Read(bz)
@@ -81,7 +81,8 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, multiplier int, siz
 
 		select {
 		case chTx <- tx:
-			time.Sleep(time.Millisecond * time.Duration(int(size)/multiplier))
+			sqrtSize := int(math.Sqrt(float64(size)))
+			time.Sleep(10 * time.Millisecond * time.Duration(sqrtSize/multiplier))
 
 		case <-ctx.Done():
 			close(chTx)
