@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,6 +18,7 @@ import (
 )
 
 func TestDispatcherBasic(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
 
 	ch := make(chan p2p.Envelope, 100)
 	closeCh := make(chan struct{})
@@ -50,6 +52,7 @@ func TestDispatcherBasic(t *testing.T) {
 }
 
 func TestDispatcherReturnsNoBlock(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
 	ch := make(chan p2p.Envelope, 100)
 	d := newDispatcher(ch, 1*time.Second)
 	peerFromSet := createPeerSet(1)[0]
@@ -71,6 +74,7 @@ func TestDispatcherReturnsNoBlock(t *testing.T) {
 }
 
 func TestDispatcherErrorsWhenNoPeers(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
 	ch := make(chan p2p.Envelope, 100)
 	d := newDispatcher(ch, 1*time.Second)
 
@@ -82,6 +86,7 @@ func TestDispatcherErrorsWhenNoPeers(t *testing.T) {
 }
 
 func TestDispatcherReturnsBlockOncePeerAvailable(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
 	ch := make(chan p2p.Envelope, 100)
 	d := newDispatcher(ch, 1*time.Second)
 	peerFromSet := createPeerSet(1)[0]
@@ -116,6 +121,7 @@ func TestDispatcherReturnsBlockOncePeerAvailable(t *testing.T) {
 }
 
 func TestDispatcherProviders(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
 
 	ch := make(chan p2p.Envelope, 100)
 	chainID := "state-sync-test"
@@ -144,6 +150,7 @@ func TestDispatcherProviders(t *testing.T) {
 }
 
 func TestPeerListBasic(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
 	peerList := newPeerList()
 	assert.Zero(t, peerList.Len())
 	numPeers := 10
@@ -175,11 +182,14 @@ func TestPeerListBasic(t *testing.T) {
 }
 
 func TestPeerListBlocksWhenEmpty(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
 	peerList := newPeerList()
 	require.Zero(t, peerList.Len())
 	doneCh := make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	go func() {
-		peerList.Pop(context.Background())
+		peerList.Pop(ctx)
 		close(doneCh)
 	}()
 	select {
@@ -190,6 +200,7 @@ func TestPeerListBlocksWhenEmpty(t *testing.T) {
 }
 
 func TestEmptyPeerListReturnsWhenContextCanceled(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
 	peerList := newPeerList()
 	require.Zero(t, peerList.Len())
 	doneCh := make(chan struct{})
@@ -215,6 +226,7 @@ func TestEmptyPeerListReturnsWhenContextCanceled(t *testing.T) {
 }
 
 func TestPeerListConcurrent(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
 	peerList := newPeerList()
 	numPeers := 10
 
