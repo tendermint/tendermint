@@ -664,7 +664,7 @@ func (n *nodeImpl) OnStart() error {
 		}
 
 		err = startStateSync(n.stateSyncReactor, bcR, n.consensusReactor, n.stateSyncProvider,
-			n.config.StateSync, n.config.FastSyncMode, n.stateStore, n.blockStore, state, n.eventBus)
+			n.config.StateSync, n.config.FastSyncMode, state, n.eventBus)
 		if err != nil {
 			return fmt.Errorf("failed to start state sync: %w", err)
 		}
@@ -1028,8 +1028,7 @@ func (n *nodeImpl) NodeInfo() types.NodeInfo {
 
 // startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
 func startStateSync(ssR *statesync.Reactor, bcR cs.FastSyncReactor, conR *cs.Reactor,
-	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
-	stateStore sm.Store, blockStore *store.BlockStore, state sm.State, eb *types.EventBus) error {
+	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool, state sm.State, eb *types.EventBus) error {
 	ssR.Logger.Info("starting state sync...")
 
 	if stateProvider == nil {
