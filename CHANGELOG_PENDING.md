@@ -1,6 +1,6 @@
 # Unreleased Changes
 
-## v0.34.21
+## v0.37.0
 
 Special thanks to external contributors on this release:
 
@@ -12,6 +12,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - Apps
 
+  - [abci/counter] \#6684 Delete counter example app
+
 - P2P Protocol
 
 - Go API
@@ -19,8 +21,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - Blockchain Protocol
 
 ### FEATURES
-
-- [#9083] backport cli command to reindex missed events (@cmwaters)
 
 ### IMPROVEMENTS
 
