@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/light"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -102,6 +103,15 @@ const (
 	maxLightBlockRequestRetries = 20
 )
 
+//go:generate mockery --case underscore --name SyncReactor
+// create this interface for testing abilities of node.startStateSync
+type SyncReactor interface {
+	Sync(context.Context, time.Duration) (sm.State, error)
+	Backfill(sm.State) error
+	GetLogger() log.Logger
+	InitStateProvider(sm.State, []string, light.TrustOptions, log.Logger) error
+}
+
 // Reactor handles state sync, both restoring snapshots for the local node and
 // serving snapshots for other nodes.
 type Reactor struct {
@@ -126,6 +136,8 @@ type Reactor struct {
 	// received snapshots and chunks into the sync.
 	mtx    tmsync.RWMutex
 	syncer *syncer
+
+	sp StateProvider // provides state data for bootstrapping the StateSyncReactor
 }
 
 // NewReactor returns a reference to a new state sync reactor, which implements
@@ -213,7 +225,6 @@ func (r *Reactor) OnStop() {
 // able to process evidence and participate in consensus.
 func (r *Reactor) Sync(
 	ctx context.Context,
-	stateProvider StateProvider,
 	discoveryTime time.Duration,
 ) (sm.State, error) {
 	r.mtx.Lock()
@@ -222,12 +233,17 @@ func (r *Reactor) Sync(
 		return sm.State{}, errors.New("a state sync is already in progress")
 	}
 
+	if r.sp == nil {
+		r.mtx.Unlock()
+		return sm.State{}, errors.New("should init the state provider before calling Sync")
+	}
+
 	r.syncer = newSyncer(
 		r.cfg,
 		r.Logger,
 		r.conn,
 		r.connQuery,
-		stateProvider,
+		r.sp,
 		r.snapshotCh.Out,
 		r.chunkCh.Out,
 		r.tempDir,
@@ -829,4 +845,29 @@ func (r *Reactor) fetchLightBlock(height uint64) (*types.LightBlock, error) {
 		ValidatorSet: vals,
 	}, nil
 
+}
+
+func (r *Reactor) GetLogger() log.Logger {
+	return r.Logger
+}
+
+func (r *Reactor) InitStateProvider(
+	state sm.State,
+	cfgRPCServers []string,
+	trustOpt light.TrustOptions,
+	logger log.Logger) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	sp, err := NewLightClientStateProvider(
+		ctx,
+		state.ChainID, state.Version, state.InitialHeight,
+		cfgRPCServers, trustOpt, logger)
+
+	if err != nil {
+		return err
+	}
+
+	r.sp = sp
+
+	return nil
 }

@@ -112,6 +112,14 @@ type FastSyncReactor interface {
 	GetRemainingSyncTime() time.Duration
 }
 
+//go:generate mockery --case underscore --name ConsSyncReactor
+// create this interface for testing abilities of node.startStateSync
+type ConsSyncReactor interface {
+	SwitchToConsensus(sm.State, bool)
+	SetStateSyncingMetrics(float64)
+	SetFastSyncingMetrics(float64)
+}
+
 // Reactor defines a reactor for the consensus service.
 type Reactor struct {
 	service.BaseService
@@ -1428,4 +1436,12 @@ func (r *Reactor) peerStatsRoutine() {
 
 func (r *Reactor) GetConsensusState() *State {
 	return r.state
+}
+
+func (r *Reactor) SetStateSyncingMetrics(v float64) {
+	r.Metrics.StateSyncing.Set(v)
+}
+
+func (r *Reactor) SetFastSyncingMetrics(v float64) {
+	r.Metrics.FastSyncing.Set(v)
 }

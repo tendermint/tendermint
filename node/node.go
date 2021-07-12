@@ -63,26 +63,25 @@ type nodeImpl struct {
 	isListening bool
 
 	// services
-	eventBus          *types.EventBus // pub/sub for services
-	stateStore        sm.Store
-	blockStore        *store.BlockStore // store the blockchain to disk
-	bcReactor         service.Service   // for fast-syncing
-	mempoolReactor    service.Service   // for gossipping transactions
-	mempool           mempool.Mempool
-	stateSync         bool                    // whether the node should state sync on startup
-	stateSyncReactor  *statesync.Reactor      // for hosting and restoring state sync snapshots
-	stateSyncProvider statesync.StateProvider // provides state data for bootstrapping a node
-	consensusState    *cs.State               // latest consensus state
-	consensusReactor  *cs.Reactor             // for participating in the consensus
-	pexReactor        *pex.Reactor            // for exchanging peer addresses
-	pexReactorV2      *pex.ReactorV2          // for exchanging peer addresses
-	evidenceReactor   *evidence.Reactor
-	evidencePool      *evidence.Pool // tracking evidence
-	proxyApp          proxy.AppConns // connection to the application
-	rpcListeners      []net.Listener // rpc servers
-	eventSinks        []indexer.EventSink
-	indexerService    *indexer.Service
-	prometheusSrv     *http.Server
+	eventBus         *types.EventBus // pub/sub for services
+	stateStore       sm.Store
+	blockStore       *store.BlockStore // store the blockchain to disk
+	bcReactor        service.Service   // for fast-syncing
+	mempoolReactor   service.Service   // for gossipping transactions
+	mempool          mempool.Mempool
+	stateSync        bool               // whether the node should state sync on startup
+	stateSyncReactor *statesync.Reactor // for hosting and restoring state sync snapshots
+	consensusState   *cs.State          // latest consensus state
+	consensusReactor *cs.Reactor        // for participating in the consensus
+	pexReactor       *pex.Reactor       // for exchanging peer addresses
+	pexReactorV2     *pex.ReactorV2     // for exchanging peer addresses
+	evidenceReactor  *evidence.Reactor
+	evidencePool     *evidence.Pool // tracking evidence
+	proxyApp         proxy.AppConns // connection to the application
+	rpcListeners     []net.Listener // rpc servers
+	eventSinks       []indexer.EventSink
+	indexerService   *indexer.Service
+	prometheusSrv    *http.Server
 }
 
 // newDefaultNode returns a Tendermint node with default settings for the
@@ -663,7 +662,7 @@ func (n *nodeImpl) OnStart() error {
 			return fmt.Errorf("unable to derive state: %w", err)
 		}
 
-		err = startStateSync(n.stateSyncReactor, bcR, n.consensusReactor, n.stateSyncProvider,
+		err = startStateSync(n.stateSyncReactor, bcR, n.consensusReactor,
 			n.config.StateSync, n.config.FastSyncMode, state, n.eventBus)
 		if err != nil {
 			return fmt.Errorf("failed to start state sync: %w", err)
@@ -1027,60 +1026,56 @@ func (n *nodeImpl) NodeInfo() types.NodeInfo {
 }
 
 // startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
-func startStateSync(ssR *statesync.Reactor, bcR cs.FastSyncReactor, conR *cs.Reactor,
-	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool, state sm.State, eb *types.EventBus) error {
-	ssR.Logger.Info("starting state sync...")
+func startStateSync(
+	ssR statesync.SyncReactor,
+	bcR cs.FastSyncReactor,
+	conR cs.ConsSyncReactor,
+	config *cfg.StateSyncConfig,
+	fastSync bool,
+	state sm.State,
+	eb *types.EventBus) error {
+	ssR.GetLogger().Info("starting state sync...")
 
-	if stateProvider == nil {
-		var err error
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		stateProvider, err = statesync.NewLightClientStateProvider(
-			ctx,
-			state.ChainID, state.Version, state.InitialHeight,
-			config.RPCServers, light.TrustOptions{
-				Period: config.TrustPeriod,
-				Height: config.TrustHeight,
-				Hash:   config.TrustHashBytes(),
-			}, ssR.Logger.With("module", "light"))
-		if err != nil {
-			return fmt.Errorf("failed to set up light client state provider: %w", err)
-		}
+	if err := ssR.InitStateProvider(state, config.RPCServers, light.TrustOptions{
+		Period: config.TrustPeriod,
+		Height: config.TrustHeight,
+		Hash:   config.TrustHashBytes()}, ssR.GetLogger().With("module", "light")); err != nil {
+		return fmt.Errorf("failed to set up light client state provider: %w", err)
 	}
 
 	// at the beginning of the statesync start, we use the initialHeight as the event height
 	// because of the statesync doesn't have the concreate state height before fetched the snapshot.
 	d := types.EventDataStateSyncStatus{Complete: false, Height: state.InitialHeight}
 	if err := eb.PublishEventStateSyncStatus(d); err != nil {
-		ssR.Logger.Error("failed to emit the statesync start event", "err", err)
+		ssR.GetLogger().Error("failed to emit the statesync start event", "err", err)
 	}
 
 	go func() {
-		state, err := ssR.Sync(context.TODO(), stateProvider, config.DiscoveryTime)
+		state, err := ssR.Sync(context.TODO(), config.DiscoveryTime)
 		if err != nil {
-			ssR.Logger.Error("state sync failed", "err", err)
+			ssR.GetLogger().Error("state sync failed", "err", err)
 			return
 		}
 
 		err = ssR.Backfill(state)
 		if err != nil {
-			ssR.Logger.Error("backfill failed; node has insufficient history to verify all evidence;"+
+			ssR.GetLogger().Error("backfill failed; node has insufficient history to verify all evidence;"+
 				" proceeding optimistically...", "err", err)
 		}
 
-		conR.Metrics.StateSyncing.Set(0)
+		conR.SetStateSyncingMetrics(0)
 
 		d := types.EventDataStateSyncStatus{Complete: true, Height: state.LastBlockHeight}
 		if err := eb.PublishEventStateSyncStatus(d); err != nil {
-			ssR.Logger.Error("failed to emit the statesync start event", "err", err)
+			ssR.GetLogger().Error("failed to emit the statesync start event", "err", err)
 		}
 
 		if fastSync {
 			// FIXME Very ugly to have these metrics bleed through here.
-			conR.Metrics.FastSyncing.Set(1)
+			conR.SetFastSyncingMetrics(1)
 			err = bcR.SwitchToFastSync(state)
 			if err != nil {
-				ssR.Logger.Error("failed to switch to fast sync", "err", err)
+				ssR.GetLogger().Error("failed to switch to fast sync", "err", err)
 				return
 			}
 
