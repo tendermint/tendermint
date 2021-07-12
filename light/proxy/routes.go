@@ -29,7 +29,7 @@ func RPCRoutes(c *lrpc.Client) map[string]*rpcserver.RPCFunc {
 		"commit":        rpcserver.NewRPCFunc(makeCommitFunc(c), "height"),
 		"tx":            rpcserver.NewRPCFunc(makeTxFunc(c), "hash,prove"),
 		"tx_search":     rpcserver.NewRPCFunc(makeTxSearchFunc(c), "query,prove,page,per_page,order_by"),
-		"validators":    rpcserver.NewRPCFunc(makeValidatorsFunc(c),
+		"validators": rpcserver.NewRPCFunc(makeValidatorsFunc(c),
 			"height,page,per_page,request_threshold_public_key"),
 
 		"dump_consensus_state": rpcserver.NewRPCFunc(makeDumpConsensusStateFunc(c), ""),

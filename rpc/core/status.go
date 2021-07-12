@@ -51,6 +51,14 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 		votingPower = val.VotingPower
 	}
 
+	validatorInfo := ctypes.ValidatorInfo{
+		VotingPower: votingPower,
+	}
+
+	if env.ProTxHash != nil {
+		validatorInfo.ProTxHash = *env.ProTxHash
+	}
+
 	result := &ctypes.ResultStatus{
 		NodeInfo: env.P2PTransport.NodeInfo().(p2p.DefaultNodeInfo),
 		SyncInfo: ctypes.SyncInfo{
@@ -64,10 +72,7 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 			EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
 			CatchingUp:          env.ConsensusReactor.WaitSync(),
 		},
-		ValidatorInfo: ctypes.ValidatorInfo{
-			ProTxHash:   env.ProTxHash,
-			VotingPower: votingPower,
-		},
+		ValidatorInfo: validatorInfo,
 	}
 
 	return result, nil
@@ -78,7 +83,10 @@ func validatorAtHeight(h int64) *types.Validator {
 	if err != nil {
 		return nil
 	}
-	privValProTxHash := env.ProTxHash
+	if env.ProTxHash == nil {
+		return nil
+	}
+	privValProTxHash := *env.ProTxHash
 	_, val := vals.GetByProTxHash(privValProTxHash)
 	return val
 }

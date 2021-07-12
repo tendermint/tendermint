@@ -4,10 +4,11 @@ package state_test
 import (
 	"bytes"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"math/big"
 	"os"
 	"testing"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
@@ -474,7 +475,7 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 	fvp, err := cryptoenc.PubKeyToProto(val2PubKey)
 	require.NoError(t, err)
 
-	updateAddVal := abci.ValidatorUpdate{ProTxHash: val2ProTxHash, PubKey: fvp, Power: val2VotingPower}
+	updateAddVal := abci.ValidatorUpdate{ProTxHash: val2ProTxHash, PubKey: &fvp, Power: val2VotingPower}
 	validatorUpdates, err = types.PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{updateAddVal})
 	assert.NoError(t, err)
 	updatedState2, err := sm.UpdateState(state, &firstNodeProTxHash, blockID, &block.Header, abciResponses, validatorUpdates, thresholdPublicKey, quorumHash)
@@ -593,7 +594,7 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 
 	// Any node pro tx hash should do
 	firstNodeProTxHash, _ := state.Validators.GetByIndex(0)
-	updatedState, err := sm.UpdateState(state,  &firstNodeProTxHash, blockID, &block.Header, abciResponses,
+	updatedState, err := sm.UpdateState(state, &firstNodeProTxHash, blockID, &block.Header, abciResponses,
 		validatorUpdates, thresholdPublicKeyUpdate, quorumHash)
 	assert.NoError(t, err)
 
@@ -608,7 +609,7 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	val2PubKey := privateKeys[1].PubKey()
 	fvp, err := cryptoenc.PubKeyToProto(val2PubKey)
 	require.NoError(t, err)
-	updateAddVal := abci.ValidatorUpdate{ProTxHash: val2ProTxHash, PubKey: fvp, Power: val1VotingPower}
+	updateAddVal := abci.ValidatorUpdate{ProTxHash: val2ProTxHash, PubKey: &fvp, Power: val1VotingPower}
 	validatorUpdates, err = types.PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{updateAddVal})
 	assert.NoError(t, err)
 
@@ -875,12 +876,12 @@ func TestFourAddFourMinusOneGenesisValidators(t *testing.T) {
 	var abciValidatorUpdates []abci.ValidatorUpdate
 	updatedPubKey, err := cryptoenc.PubKeyToProto(originalValidatorSet.Validators[0].PubKey)
 	require.NoError(t, err)
-	updatePreviousVal := abci.ValidatorUpdate{ProTxHash: proTxHashes[0], Power: 0, PubKey: updatedPubKey}
+	updatePreviousVal := abci.ValidatorUpdate{ProTxHash: proTxHashes[0], Power: 0, PubKey: &updatedPubKey}
 	abciValidatorUpdates = append(abciValidatorUpdates, updatePreviousVal)
 	for i := 1; i < len(proTxHashes); i++ {
 		updatedPubKey, err := cryptoenc.PubKeyToProto(privateKeys4[i-1].PubKey())
 		require.NoError(t, err)
-		updatePreviousVal := abci.ValidatorUpdate{ProTxHash: proTxHashes[i], Power: types.DefaultDashVotingPower, PubKey: updatedPubKey}
+		updatePreviousVal := abci.ValidatorUpdate{ProTxHash: proTxHashes[i], Power: types.DefaultDashVotingPower, PubKey: &updatedPubKey}
 		abciValidatorUpdates = append(abciValidatorUpdates, updatePreviousVal)
 	}
 

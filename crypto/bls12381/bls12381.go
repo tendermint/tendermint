@@ -7,13 +7,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
+	"math/rand"
+	"sort"
+
 	bls "github.com/dashpay/bls-signatures/go-bindings"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmjson "github.com/tendermint/tendermint/libs/json"
-	"io"
-	"math/rand"
-	"sort"
 )
 
 //-------------------------------------
@@ -218,7 +219,7 @@ func CreatePrivLLMQDataOnProTxHashesUsingSeed(proTxHashes []crypto.ProTxHash, th
 	seedSource int64) ([]crypto.ProTxHash, []crypto.PrivKey, crypto.PubKey) {
 	members := len(proTxHashes)
 	if members < threshold {
-		panic("members must be bigger than threshold")
+		panic(fmt.Sprintf("members %d must be bigger than threshold %d", members, threshold))
 	}
 	if threshold == 0 {
 		panic("threshold must not be 0")
@@ -332,7 +333,7 @@ func RecoverThresholdPublicKeyFromPublicKeys(publicKeys []crypto.PubKey, blsIds 
 	return PubKey(thresholdPublicKey.Serialize()), nil
 }
 
-// BLS Ids are the Pro_tx_hashes from validators
+// RecoverThresholdSignatureFromShares BLS Ids are the Pro_tx_hashes from validators
 func RecoverThresholdSignatureFromShares(sigSharesData [][]byte, blsIds [][]byte) ([]byte, error) {
 	sigShares := make([]*bls.InsecureSignature, len(sigSharesData))
 	hashes := make([]bls.Hash, len(sigSharesData))
@@ -372,7 +373,7 @@ func RecoverThresholdSignatureFromShares(sigSharesData [][]byte, blsIds [][]byte
 
 var _ crypto.PubKey = PubKey{}
 
-// PubKeyBLS12381 implements crypto.PubKey for the bls12381 signature scheme.
+// PubKey PubKeyBLS12381 implements crypto.PubKey for the bls12381 signature scheme.
 type PubKey []byte
 
 // Address is the SHA256-20 of the raw pubkey bytes.

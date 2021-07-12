@@ -2,6 +2,7 @@ package v2
 
 import (
 	"fmt"
+
 	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/tendermint/tendermint/state"
@@ -25,10 +26,10 @@ type pContext struct {
 
 func newProcessorContext(st blockStore, nodeProTxHash *crypto.ProTxHash, ex blockApplier, s state.State) *pContext {
 	return &pContext{
-		store:   st,
+		store:         st,
 		nodeProTxHash: nodeProTxHash,
-		applier: ex,
-		state:   s,
+		applier:       ex,
+		state:         s,
 	}
 }
 

@@ -3,11 +3,12 @@ package http
 import (
 	"context"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"math/rand"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 
@@ -192,6 +193,10 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 				return nil, provider.ErrLightBlockNotFound
 			}
 			// we wait and try again with exponential backoff
+			time.Sleep(backoffTimeout(uint16(attempt)))
+			continue
+		}
+		if commit == nil {
 			time.Sleep(backoffTimeout(uint16(attempt)))
 			continue
 		}

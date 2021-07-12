@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"math"
 	"math/big"
 	"sort"
 	"strings"
+
+	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/tendermint/tendermint/crypto/merkle"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
@@ -60,7 +62,7 @@ type ValidatorSet struct {
 	Proposer           *Validator        `json:"proposer"`
 	ThresholdPublicKey crypto.PubKey     `json:"threshold_public_key"`
 	QuorumHash         crypto.QuorumHash `json:"quorum_hash"`
-	QuorumType		   btcjson.LLMQType  `json:"quorum_type"`
+	QuorumType         btcjson.LLMQType  `json:"quorum_type"`
 	HasPublicKeys      bool              `json:"has_public_keys"`
 
 	// cached (unexported)
@@ -77,11 +79,11 @@ type ValidatorSet struct {
 // Note the validator set size has an implied limit equal to that of the
 // MaxVotesCount - commits by a validator set larger than this will fail
 // validation.
-func NewValidatorSet(valz []*Validator, newThresholdPublicKey crypto.PubKey, quorumType	btcjson.LLMQType,
+func NewValidatorSet(valz []*Validator, newThresholdPublicKey crypto.PubKey, quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash, hasPublicKeys bool) *ValidatorSet {
 	vals := &ValidatorSet{
-		QuorumHash: quorumHash,
-		QuorumType: quorumType,
+		QuorumHash:    quorumHash,
+		QuorumType:    quorumType,
 		HasPublicKeys: hasPublicKeys,
 	}
 	err := vals.updateWithChangeSet(valz, false, newThresholdPublicKey, quorumHash)
@@ -97,7 +99,7 @@ func NewValidatorSet(valz []*Validator, newThresholdPublicKey crypto.PubKey, quo
 // NewValidatorSetWithLocalNodeProTxHash initializes a ValidatorSet the same way as NewValidatorSet does,
 // however it does allows to set the localNodeProTxHash to more easily identify if the validator set should have public
 // keys. If the local node is part of the validator set the public keys must be present
-func NewValidatorSetWithLocalNodeProTxHash(valz []*Validator, newThresholdPublicKey crypto.PubKey, quorumType	btcjson.LLMQType,
+func NewValidatorSetWithLocalNodeProTxHash(valz []*Validator, newThresholdPublicKey crypto.PubKey, quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash, localNodeProTxHash *crypto.ProTxHash) *ValidatorSet {
 	vals := NewValidatorSet(valz, newThresholdPublicKey, quorumType, quorumHash, false)
 	if localNodeProTxHash != nil && vals.HasProTxHash(*localNodeProTxHash) {
@@ -515,10 +517,13 @@ func (vals *ValidatorSet) findProposer() *Validator {
 
 // Hash returns the Quorum Hash.
 func (vals *ValidatorSet) Hash() []byte {
-	if vals.QuorumHash == nil {
+	if vals.QuorumHash == nil || vals.ThresholdPublicKey == nil {
 		return []byte(nil)
 	}
-	return vals.QuorumHash
+	bzs := make([][]byte, 2)
+	bzs[0] = vals.ThresholdPublicKey.Bytes()
+	bzs[1] = vals.QuorumHash
+	return merkle.HashFromByteSlices(bzs)
 }
 
 // Iterate will run the given function over the set.
@@ -841,11 +846,11 @@ func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator, newThreshold
 
 func (vals *ValidatorSet) CommitSignIds(chainID string, commit *Commit) ([]byte, []byte) {
 
-	blockSignId := commit.CanonicalVoteVerifySignId(chainID, vals.QuorumType, vals.QuorumHash)
+	blockSignID := commit.CanonicalVoteVerifySignId(chainID, vals.QuorumType, vals.QuorumHash)
 
 	stateSignId := commit.CanonicalVoteStateSignId(chainID, vals.QuorumType, vals.QuorumHash)
 
-	return blockSignId, stateSignId
+	return blockSignID, stateSignId
 }
 
 // VerifyCommit verifies +2/3 of the set had signed the given commit.
@@ -872,9 +877,9 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 			stateID, commit.StateID)
 	}
 
-	blockSignId := commit.CanonicalVoteVerifySignId(chainID, vals.QuorumType, vals.QuorumHash)
+	blockSignID := commit.CanonicalVoteVerifySignId(chainID, vals.QuorumType, vals.QuorumHash)
 
-	if !vals.ThresholdPublicKey.VerifySignatureDigest(blockSignId, commit.ThresholdBlockSignature) {
+	if !vals.ThresholdPublicKey.VerifySignatureDigest(blockSignID, commit.ThresholdBlockSignature) {
 		canonicalVoteBlockSignBytes := commit.CanonicalVoteVerifySignBytes(chainID)
 		return fmt.Errorf("incorrect threshold block signature %X %X", canonicalVoteBlockSignBytes,
 			commit.ThresholdBlockSignature)
@@ -981,6 +986,36 @@ func (vals *ValidatorSet) StringIndented(indent string) string {
 
 }
 
+// BasicInfoString returns a string representation of ValidatorSet without power and priority.
+//
+// See StringIndented.
+func (vals *ValidatorSet) BasicInfoString() string {
+	return vals.StringIndentedBasic("")
+}
+
+func (vals *ValidatorSet) StringIndentedBasic(indent string) string {
+	if vals == nil {
+		return "nil-ValidatorSet"
+	}
+	var valStrings []string
+	vals.Iterate(func(index int, val *Validator) bool {
+		valStrings = append(valStrings, val.ShortStringBasic())
+		return false
+	})
+	return fmt.Sprintf(`ValidatorSet{
+%s  Proposer: %v
+%s  QuorumHash: %v
+%s  Validators:
+%s    %v
+%s}`,
+		indent, vals.GetProposer().ProTxHash.ShortString(),
+		indent, vals.QuorumHash.String(),
+		indent,
+		indent, strings.Join(valStrings, "\n"+indent+"    "),
+		indent)
+
+}
+
 //-------------------------------------
 
 // ValidatorsByVotingPower implements sort.Interface for []*Validator based on
@@ -1037,7 +1072,9 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 	}
 	vp.Proposer = valProposer
 
-	vp.TotalVotingPower = vals.totalVotingPower
+	// NOTE: Sometimes we use the bytes of the proto form as a hash. This means that we need to
+	// be consistent with cached data
+	vp.TotalVotingPower = 0
 
 	if vals.ThresholdPublicKey == nil {
 		return nil, fmt.Errorf("thresholdPublicKey is not set")
@@ -1089,7 +1126,12 @@ func ValidatorSetFromProto(vp *tmproto.ValidatorSet) (*ValidatorSet, error) {
 
 	vals.Proposer = p
 
-	vals.totalVotingPower = vp.GetTotalVotingPower()
+	// NOTE: We can't trust the total voting power given to us by other peers. If someone were to
+	// inject a non-zeo value that wasn't the correct voting power we could assume a wrong total
+	// power hence we need to recompute it.
+	// FIXME: We should look to remove TotalVotingPower from proto or add it in the validators hash
+	// so we don't have to do this
+	vals.TotalVotingPower()
 
 	thresholdPublicKey, err := cryptoenc.PubKeyFromProto(vp.ThresholdPublicKey)
 	if err != nil {
@@ -1106,7 +1148,6 @@ func ValidatorSetFromProto(vp *tmproto.ValidatorSet) (*ValidatorSet, error) {
 
 	return vals, vals.ValidateBasic()
 }
-
 
 // ValidatorSetFromExistingValidators takes an existing array of validators and rebuilds
 // the exact same validator set that corresponds to it without changing the proposer priority or power
@@ -1168,10 +1209,10 @@ func GenerateValidatorSet(numValidators int) (*ValidatorSet, []PrivValidator) {
 
 func GenerateTestValidatorSetWithProTxHashes(proTxHashes []crypto.ProTxHash, power []int64) (*ValidatorSet, []PrivValidator) {
 	var (
-		numValidators      = len(proTxHashes)
-		originalPowerMap   = make(map[string]int64)
-		valz               = make([]*Validator, numValidators)
-		privValidators     = make([]PrivValidator, numValidators)
+		numValidators    = len(proTxHashes)
+		originalPowerMap = make(map[string]int64)
+		valz             = make([]*Validator, numValidators)
+		privValidators   = make([]PrivValidator, numValidators)
 	)
 	for i := 0; i < numValidators; i++ {
 		originalPowerMap[string(proTxHashes[i])] = power[i]
@@ -1196,9 +1237,9 @@ func GenerateTestValidatorSetWithProTxHashes(proTxHashes []crypto.ProTxHash, pow
 
 func GenerateTestValidatorSetWithProTxHashesDefaultPower(proTxHashes []crypto.ProTxHash) (*ValidatorSet, []PrivValidator) {
 	var (
-		numValidators      = len(proTxHashes)
-		valz               = make([]*Validator, numValidators)
-		privValidators     = make([]PrivValidator, numValidators)
+		numValidators  = len(proTxHashes)
+		valz           = make([]*Validator, numValidators)
+		privValidators = make([]PrivValidator, numValidators)
 	)
 	sort.Sort(crypto.SortProTxHash(proTxHashes))
 

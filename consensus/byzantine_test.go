@@ -3,12 +3,13 @@ package consensus
 import (
 	"context"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
 	"os"
 	"path"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,7 +55,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		app.InitChain(abci.RequestInitChain{ValidatorSet: vals})
+		app.InitChain(abci.RequestInitChain{ValidatorSet: &vals})
 
 		blockDB := dbm.NewMemDB()
 		blockStore := store.NewBlockStore(blockDB)
@@ -464,7 +465,7 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *St
 	polRound, propBlockID = cs.ValidRound, types.BlockID{Hash: block2.Hash(), PartSetHeader: blockParts2.Header()}
 	proposal2 := types.NewProposal(height, 1, round, polRound, propBlockID)
 	p2 := proposal2.ToProto()
-	if _, err := cs.privValidator.SignProposal(cs.state.ChainID, cs.Validators.QuorumType,  cs.Validators.QuorumHash, p2); err != nil {
+	if _, err := cs.privValidator.SignProposal(cs.state.ChainID, cs.Validators.QuorumType, cs.Validators.QuorumHash, p2); err != nil {
 		t.Error(err)
 	}
 
@@ -546,7 +547,7 @@ func (br *ByzantineReactor) AddPeer(peer p2p.Peer) {
 	peer.Set(types.PeerStateKey, peerState)
 
 	// Send our state to peer.
-	// If we're syncing, broadcast a RoundStepMessage later upon SwitchToValidatorConsensus().
+	// If we're syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
 	if !br.reactor.waitSync {
 		br.reactor.sendNewRoundStepMessage(peer)
 	}

@@ -71,3 +71,44 @@ func TestEnsureDir(t *testing.T) {
 	err = EnsureDir(filepath.Join(tmp, "linkfile"), 0755)
 	require.Error(t, err)
 }
+
+// Ensure that using CopyFile does not truncate the destination file before
+// the origin is positively a non-directory and that it is ready for copying.
+// See https://github.com/tendermint/tendermint/issues/6427
+func TestTrickedTruncation(t *testing.T) {
+	tmpDir, err := ioutil.TempDir(os.TempDir(), "pwn_truncate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpDir)
+
+	originalWALPath := filepath.Join(tmpDir, "wal")
+	originalWALContent := []byte("I AM BECOME DEATH, DESTROYER OF ALL WORLDS!")
+	if err := ioutil.WriteFile(originalWALPath, originalWALContent, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// 1. Sanity check.
+	readWAL, err := ioutil.ReadFile(originalWALPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(readWAL, originalWALContent) {
+		t.Fatalf("Cannot proceed as the content does not match\nGot:  %q\nWant: %q", readWAL, originalWALContent)
+	}
+
+	// 2. Now cause the truncation of the original file.
+	// It is absolutely legal to invoke os.Open on a directory.
+	if err := CopyFile(tmpDir, originalWALPath); err == nil {
+		t.Fatal("Expected an error")
+	}
+
+	// 3. Check the WAL's content
+	reReadWAL, err := ioutil.ReadFile(originalWALPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(reReadWAL, originalWALContent) {
+		t.Fatalf("Oops, the WAL's content was changed :(\nGot:  %q\nWant: %q", reReadWAL, originalWALContent)
+	}
+}

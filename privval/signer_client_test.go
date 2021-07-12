@@ -2,9 +2,10 @@ package privval
 
 import (
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"testing"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

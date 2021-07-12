@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.34.11
+
+*June 18, 2021*
+
+This release improves the robustness of statesync; tweaking channel priorities and timeouts and
+adding two new parameters to the state sync config.
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES
+
+- Apps
+    - [Version] \#6494 `TMCoreSemVer` is not required to be set as a ldflag any longer.
+
+### IMPROVEMENTS
+
+- [statesync] \#6566 Allow state sync fetchers and request timeout to be configurable. (@alexanderbez)
+- [statesync] \#6378 Retry requests for snapshots and add a minimum discovery time (5s) for new snapshots. (@tychoish)
+- [statesync] \#6582 Increase chunk priority and add multiple retry chunk requests (@cmwaters)
+
+### BUG FIXES
+
+- [evidence] \#6375 Fix bug with inconsistent LightClientAttackEvidence hashing (@cmwaters)
+
 ## v0.34.10
 
 *April 14, 2021*

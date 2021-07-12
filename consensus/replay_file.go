@@ -320,7 +320,8 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 		tmos.Exit(fmt.Sprintf("Failed to start event bus: %v", err))
 	}
 
-	handshaker := NewHandshaker(stateStore, state, blockStore, gdoc, csConfig.AppHashSize)
+	// We should be able to just pass nil here for the node pro tx hash
+	handshaker := NewHandshaker(stateStore, state, blockStore, gdoc, nil, csConfig.AppHashSize)
 	handshaker.SetEventBus(eventBus)
 	err = handshaker.Handshake(proxyApp)
 	if err != nil {

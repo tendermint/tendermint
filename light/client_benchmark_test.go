@@ -2,10 +2,11 @@ package light_test
 
 import (
 	"context"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
-	"github.com/tendermint/tendermint/light"
 	"testing"
 	"time"
+
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+	"github.com/tendermint/tendermint/light"
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light/provider"
@@ -22,12 +23,11 @@ import (
 //
 // Remember that none of these benchmarks account for network latency.
 var (
-	blocks = int64(1000)
+	blocks            = int64(1000)
 	benchmarkFullNode = mockp.New(genMockNode(chainID, blocks, 20, bTime))
-	genesisBlock, _   = benchmarkFullNode.LightBlock(context.Background(), 1)
 )
 
-func setupDashCoreRpcMockForBenchmark(b *testing.B) {
+func setupDashCoreRPCMockForBenchmark(b *testing.B) {
 	dashCoreMockClient = dashcore.NewDashCoreMockClient(chainID, 100, benchmarkFullNode.MockPV, false)
 
 	b.Cleanup(func() {
@@ -36,7 +36,7 @@ func setupDashCoreRpcMockForBenchmark(b *testing.B) {
 }
 
 func BenchmarkSequence(b *testing.B) {
-	setupDashCoreRpcMockForBenchmark(b)
+	setupDashCoreRPCMockForBenchmark(b)
 
 	c, err := light.NewClient(
 		context.Background(),
@@ -61,7 +61,7 @@ func BenchmarkSequence(b *testing.B) {
 }
 
 func BenchmarkBisection(b *testing.B) {
-	setupDashCoreRpcMockForBenchmark(b)
+	setupDashCoreRPCMockForBenchmark(b)
 
 	c, err := light.NewClient(
 		context.Background(),
@@ -86,8 +86,11 @@ func BenchmarkBisection(b *testing.B) {
 }
 
 func BenchmarkBackwards(b *testing.B) {
-	setupDashCoreRpcMockForBenchmark(b)
-	benchmarkFullNode.LightBlock(context.Background(), 0)
+	setupDashCoreRPCMockForBenchmark(b)
+	_, err := benchmarkFullNode.LightBlock(context.Background(), 0)
+	if err != nil {
+		b.Fatal(err)
+	}
 
 	c, err := light.NewClient(
 		context.Background(),

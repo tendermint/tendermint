@@ -3,9 +3,10 @@ package statesync
 import (
 	"context"
 	"fmt"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"strings"
 	"time"
+
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 
 	dbm "github.com/tendermint/tm-db"
 

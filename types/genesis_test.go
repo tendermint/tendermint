@@ -126,7 +126,7 @@ func TestGenesisGood(t *testing.T) {
 	// create a base gendoc from struct
 	baseGenDoc := &GenesisDoc{
 		ChainID:            "abc",
-		Validators:         []GenesisValidator{{pubkey.Address(), pubkey, 100, "myval", crypto.RandProTxHash()}},
+		Validators:         []GenesisValidator{{pubkey, 100, "myval", crypto.RandProTxHash()}},
 		ThresholdPublicKey: pubkey,
 		QuorumHash:         crypto.RandQuorumHash(),
 	}
@@ -138,8 +138,8 @@ func TestGenesisGood(t *testing.T) {
 	assert.NoError(t, err, "expected no error for valid genDoc json")
 	assert.NotNil(t, genDoc.ConsensusParams, "expected consensus params to be filled in")
 
-	// check validator's address is filled
-	assert.NotNil(t, genDoc.Validators[0].Address, "expected validator's address to be filled in")
+	// check validator's proTxHash is filled
+	assert.NotNil(t, genDoc.Validators[0].ProTxHash, "expected validator's proTxHash to be filled in")
 
 	// create json with consensus params filled
 	genDocBytes, err = tmjson.Marshal(genDoc)
@@ -205,7 +205,7 @@ func randomGenesisDoc() *GenesisDoc {
 		GenesisTime:        tmtime.Now(),
 		ChainID:            "abc",
 		InitialHeight:      1000,
-		Validators:         []GenesisValidator{{pubkey.Address(), pubkey, DefaultDashVotingPower, "myval", crypto.RandProTxHash()}},
+		Validators:         []GenesisValidator{{pubkey, DefaultDashVotingPower, "myval", crypto.RandProTxHash()}},
 		ConsensusParams:    DefaultConsensusParams(),
 		ThresholdPublicKey: pubkey,
 		QuorumType:         100,

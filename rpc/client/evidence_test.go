@@ -3,9 +3,10 @@ package client_test
 import (
 	"bytes"
 	"context"
-	"github.com/dashevo/dashd-go/btcjson"
 	"testing"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 
@@ -63,7 +64,7 @@ func makeEvidences(
 	t *testing.T,
 	val *privval.FilePV,
 	chainID string,
-    quorumType btcjson.LLMQType,
+	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
 ) (correct *types.DuplicateVoteEvidence, fakes []*types.DuplicateVoteEvidence) {
 	vote := types.Vote{
@@ -162,7 +163,7 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 		err = abci.ReadMessage(bytes.NewReader(qres.Value), &v)
 		require.NoError(t, err, "Error reading query result, value %v", qres.Value)
 
-		pk, err := cryptoenc.PubKeyFromProto(v.PubKey)
+		pk, err := cryptoenc.PubKeyFromProto(*v.PubKey)
 		require.NoError(t, err)
 
 		require.EqualValues(t, rawpub, pk, "Stored PubKey not equal with expected, value %v", string(qres.Value))

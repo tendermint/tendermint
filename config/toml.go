@@ -127,6 +127,9 @@ log_format = "{{ .BaseConfig.LogFormat }}"
 # Path to the JSON file containing the initial validator set and other meta data
 genesis_file = "{{ js .BaseConfig.Genesis }}"
 
+# Set to whether we are a masternode or not
+is_masternode = {{ .BaseConfig.IsMasternode }}
+
 # Path to the JSON file containing the private key to use as a validator in the consensus protocol
 priv_validator_key_file = "{{ js .BaseConfig.PrivValidatorKey }}"
 
@@ -381,6 +384,13 @@ discovery_time = "{{ .StateSync.DiscoveryTime }}"
 # Temporary directory for state sync snapshot chunks, defaults to the OS tempdir (typically /tmp).
 # Will create a new, randomly named directory within, and remove it when done.
 temp_dir = "{{ .StateSync.TempDir }}"
+
+# The timeout duration before re-requesting a chunk, possibly from a different
+# peer (default: 1 minute).
+chunk_request_timeout = "{{ .StateSync.ChunkRequestTimeout }}"
+
+# The number of concurrent chunk fetchers to run (default: 1).
+chunk_fetchers = "{{ .StateSync.ChunkFetchers }}"
 
 #######################################################
 ###       Fast Sync Configuration Connections       ###

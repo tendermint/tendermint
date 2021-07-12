@@ -240,6 +240,7 @@ Each PR should have one commit once it lands on `master`; this can be accomplish
      release, and add the github aliases of external contributors to the top of
      the changelog. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
    - Reset the `CHANGELOG_PENDING.md`
+   - Bump TMVersionDefault version in  `version.go`
    - Bump P2P and block protocol versions in  `version.go`, if necessary
    - Bump ABCI protocol version in `version.go`, if necessary
    - Make sure all significant breaking changes are covered in `UPGRADING.md`

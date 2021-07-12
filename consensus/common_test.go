@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -13,6 +12,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
@@ -224,14 +225,14 @@ func decideProposal(
 	proTxHash, _ := vs.GetProTxHash()
 	pubKey, _ := vs.GetPubKey(validatorsAtProposalHeight.QuorumHash)
 
-	signId, err := vs.SignProposal(chainID, quorumType, quorumHash, p)
+	signID, err := vs.SignProposal(chainID, quorumType, quorumHash, p)
 
 	if err != nil {
 		panic(err)
 	}
-	cs1.Logger.Debug("signed proposal common test","height", proposal.Height, "round", proposal.Round,
+	cs1.Logger.Debug("signed proposal common test", "height", proposal.Height, "round", proposal.Round,
 		"proposerProTxHash", proTxHash.ShortString(), "public key", pubKey.Bytes(), "quorum type",
-		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signId", signId)
+		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signID", signID)
 
 	proposal.Signature = p.Signature
 
@@ -711,7 +712,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		app.InitChain(abci.RequestInitChain{ValidatorSet: vals})
+		app.InitChain(abci.RequestInitChain{ValidatorSet: &vals})
 
 		css[i] = newStateWithConfigAndBlockStore(thisConfig, state, privVals[i], app, stateDB)
 		css[i].SetTimeoutTicker(tickerFunc())
@@ -943,7 +944,7 @@ func randConsensusNetWithPeers(
 			// simulate handshake, receive app version. If don't do this, replay test will fail
 			state.Version.Consensus.App = kvstore.ProtocolVersion
 		}
-		app.InitChain(abci.RequestInitChain{ValidatorSet: vals})
+		app.InitChain(abci.RequestInitChain{ValidatorSet: &vals})
 		// sm.SaveState(stateDB,state)	//height 1's validatorsInfo already saved in LoadStateFromDBOrGenesisDoc above
 
 		css[i] = newStateWithConfig(thisConfig, state, privVal, app)

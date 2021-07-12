@@ -2,6 +2,7 @@ package dashcore
 
 import (
 	"fmt"
+
 	"github.com/dashevo/dashd-go/btcjson"
 	rpc "github.com/dashevo/dashd-go/rpcclient"
 	"github.com/tendermint/tendermint/crypto"
@@ -73,11 +74,6 @@ func (rpcClient *DashCoreRpcClient) Ping() error {
 		return err
 	}
 
-	pb, err := rpcClient.endpoint.GetPeerInfo()
-	if pb == nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -109,5 +105,6 @@ func (rpcClient *DashCoreRpcClient) QuorumSign(quorumType btcjson.LLMQType, requ
 }
 
 func (rpcClient *DashCoreRpcClient) QuorumVerify(quorumType btcjson.LLMQType, requestID bytes.HexBytes, messageHash bytes.HexBytes, signature bytes.HexBytes, quorumHash crypto.QuorumHash) (bool, error) {
+	fmt.Printf("quorum verify sig %v quorumhash %s", signature, quorumHash)
 	return rpcClient.endpoint.QuorumVerify(quorumType, requestID.String(), messageHash.String(), signature.String(), quorumHash.String())
 }

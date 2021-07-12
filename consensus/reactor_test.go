@@ -5,8 +5,6 @@ import (
 	bytes2 "bytes"
 	"context"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
-	"github.com/tendermint/tendermint/crypto"
 	"os"
 	"path"
 	"runtime"
@@ -14,6 +12,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -126,6 +127,55 @@ func TestReactorBasic(t *testing.T) {
 	}, css)
 }
 
+// Ensure a testnet doesn't make blocks if only 4 out of 7 nodes in a quorum are online
+func TestReactorNoThreshold(t *testing.T) {
+	N := 7
+	T := 4
+	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	for i := 0; i < N; i++ {
+		css[i].config.SkipTimeoutCommit = false
+	}
+	defer cleanup()
+	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, T)
+	voteCh := subscribe(css[0].eventBus, types.EventQueryVote)
+	// map of active validators
+	activeVals := make(map[string]struct{})
+	for i := 0; i < T; i++ {
+		proTxHash, err := css[i].privValidator.GetProTxHash()
+		require.NoError(t, err)
+		activeVals[string(proTxHash)] = struct{}{}
+	}
+
+	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
+
+	ensurePrevote(voteCh,1,0)
+	waitForAndValidateNoBlock(t, T, blocksSubs, css)
+}
+
+// Ensure a testnet makes blocks if only 5 out of 7 nodes in a quorum are online
+func TestReactorAtThreshold(t *testing.T) {
+	N := 7
+	T := 5
+	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	defer cleanup()
+	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, T)
+
+	logger := log.TestingLogger()
+
+	// map of active validators
+	activeVals := make(map[string]struct{})
+	for i := 0; i < T; i++ {
+		proTxHash, err := css[i].privValidator.GetProTxHash()
+		require.NoError(t, err)
+		activeVals[string(proTxHash)] = struct{}{}
+	}
+
+	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
+	// wait till everyone makes the first new block
+	waitForAndValidateBlock(t, T, activeVals, blocksSubs, css)
+	logger.Info("->Passed block 2")
+}
+
 // Ensure we can process blocks with evidence
 func TestReactorWithEvidence(t *testing.T) {
 	nValidators := 4
@@ -149,7 +199,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		app.InitChain(abci.RequestInitChain{ValidatorSet: vals})
+		app.InitChain(abci.RequestInitChain{ValidatorSet: &vals})
 
 		pv := privVals[i]
 		// duplicate code from:
@@ -347,7 +397,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 		// start by adding all validator transactions
 		abciPubKey, err := cryptoenc.PubKeyToProto(updatedValidators[i].PubKey)
 		require.NoError(t, err)
-		updateTransactions[i] = kvstore.MakeValSetChangeTx(updatedValidators[i].ProTxHash, abciPubKey, testMinPower)
+		updateTransactions[i] = kvstore.MakeValSetChangeTx(updatedValidators[i].ProTxHash, &abciPubKey, testMinPower)
 	}
 	abciThresholdPubKey, err := cryptoenc.PubKeyToProto(newThresholdPublicKey)
 	require.NoError(t, err)
@@ -389,7 +439,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 		// start by adding all validator transactions
 		abciPubKey, err := cryptoenc.PubKeyToProto(updatedValidators[i].PubKey)
 		require.NoError(t, err)
-		updateTransactions2[i] = kvstore.MakeValSetChangeTx(updatedValidators[i].ProTxHash, abciPubKey, testMinPower)
+		updateTransactions2[i] = kvstore.MakeValSetChangeTx(updatedValidators[i].ProTxHash, &abciPubKey, testMinPower)
 	}
 	abciThresholdPubKey, err = cryptoenc.PubKeyToProto(newThresholdPublicKey)
 	require.NoError(t, err)
@@ -423,7 +473,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 		// start by adding all validator transactions
 		abciPubKey, err := cryptoenc.PubKeyToProto(updatedValidators[i].PubKey)
 		require.NoError(t, err)
-		updateTransactions3[i] = kvstore.MakeValSetChangeTx(updatedValidators[i].ProTxHash, abciPubKey, testMinPower)
+		updateTransactions3[i] = kvstore.MakeValSetChangeTx(updatedValidators[i].ProTxHash, &abciPubKey, testMinPower)
 	}
 	abciThresholdPubKey, err = cryptoenc.PubKeyToProto(newThresholdPublicKey)
 	require.NoError(t, err)
@@ -487,6 +537,18 @@ func waitForAndValidateBlock(
 	}, css)
 }
 
+func waitForAndValidateNoBlock(
+	t *testing.T,
+	nPeers int,
+	blocksSubs []types.Subscription,
+	css []*State,
+) {
+	timeoutWaitNoBlockGroup(t, nPeers, func(j int) {
+		css[j].Logger.Debug("waitForAndValidateNoBlock")
+		<-blocksSubs[j].Out()
+	}, css)
+}
+
 func waitForAndValidateBlockWithTx(
 	t *testing.T,
 	n int,
@@ -537,7 +599,7 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 			css[j].Logger.Debug("waitForBlockWithUpdatedValsAndValidateIt")
 			msg := <-blocksSubs[j].Out()
 			newBlock = msg.Data().(types.EventDataNewBlock).Block
-			if bytes2.Equal(newBlock.LastCommit.QuorumHash,quorumHash) {
+			if bytes2.Equal(newBlock.LastCommit.QuorumHash, quorumHash) {
 				css[j].Logger.Debug("waitForBlockWithUpdatedValsAndValidateIt: Got block", "height", newBlock.Height)
 				break LOOP
 			} else {
@@ -576,7 +638,7 @@ func timeoutWaitGroup(t *testing.T, n int, f func(int), css []*State) {
 
 	// we're running many nodes in-process, possibly in in a virtual machine,
 	// and spewing debug messages - making a block could take a while,
-	timeout := time.Second * 120
+	timeout := time.Second * 20
 
 	select {
 	case <-done:
@@ -592,6 +654,44 @@ func timeoutWaitGroup(t *testing.T, n int, f func(int), css []*State) {
 		require.NoError(t, err)
 		capture()
 		panic("Timed out waiting for all validators to commit a block")
+	}
+}
+
+func timeoutWaitNoBlockGroup(t *testing.T, n int, f func(int), css []*State) {
+	wg := new(sync.WaitGroup)
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		go func(j int) {
+			f(j)
+			wg.Done()
+		}(i)
+	}
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	// we're running many nodes in-process, possibly in in a virtual machine,
+	// and spewing debug messages - making a block could take a while,
+	timeout := time.Second * 20
+
+	select {
+	case <-done:
+		panic("Didn't time out waiting for all validators to commit a block, as it should for the test")
+	case <-time.After(timeout):
+		for i, cs := range css {
+			t.Log("#################")
+			t.Log("Validator", i)
+			t.Log(cs.GetRoundState())
+			t.Log("")
+		}
+		os.Stdout.Write([]byte("pprof.Lookup('goroutine'):\n"))
+		err := pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+		require.NoError(t, err)
+		capture()
+
 	}
 }
 

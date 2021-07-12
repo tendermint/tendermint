@@ -1,9 +1,10 @@
 package types
 
 import (
-	"github.com/dashevo/dashd-go/btcjson"
 	"strings"
 	"testing"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
@@ -145,7 +146,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	vote := examplePrecommit()
 	v := vote.ToProto()
 	quorumType := btcjson.LLMQType_5_60
-	signId := VoteBlockSignId("test_chain_id", v, quorumType, quorumHash)
+	signID := VoteBlockSignId("test_chain_id", v, quorumType, quorumHash)
 	signStateId := VoteStateSignId("test_chain_id", v, quorumType, quorumHash)
 
 	// sign it
@@ -153,7 +154,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	require.NoError(t, err)
 
 	// verify the same vote
-	valid := pubkey.VerifySignatureDigest(signId, v.BlockSignature)
+	valid := pubkey.VerifySignatureDigest(signID, v.BlockSignature)
 	require.True(t, valid)
 
 	// verify the same vote
@@ -170,7 +171,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	// verify the transmitted vote
 	newSignId := VoteBlockSignId("test_chain_id", precommit, quorumType, quorumHash)
 	newSignStateId := VoteStateSignId("test_chain_id", precommit, quorumType, quorumHash)
-	require.Equal(t, string(signId), string(newSignId))
+	require.Equal(t, string(signID), string(newSignId))
 	require.Equal(t, string(signStateId), string(newSignStateId))
 	valid = pubkey.VerifySignatureDigest(newSignId, precommit.BlockSignature)
 	require.True(t, valid)

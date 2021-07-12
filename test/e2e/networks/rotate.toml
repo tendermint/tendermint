@@ -12,16 +12,27 @@ initial_core_chain_locked_height = 3400
 1020 = 3454
 1040 = 3500
 
-[validators]
-validator01 = 100
+[validator_update]
+    [validator_update.0]
+    validator01 = 100
+    validator02 = 100
+    validator03 = 100
+    validator04 = 100
+    validator05 = 100
 
-[validator_update.0]
-validator02 = 100
-validator03 = 100
-validator04 = 100
+    [validator_update.1010]
+    validator06 = 100
+    validator07 = 100
+    validator08 = 100
+    validator09 = 100
+    validator10 = 100
 
-[validator_update.1010]
-validator05 = 100
+    [validator_update.1020]
+    validator01 = 100
+    validator06 = 100
+    validator08 = 100
+    validator11 = 100
+    validator12 = 100
 
 [node.seed01]
 mode = "seed"
@@ -71,6 +82,48 @@ fast_sync = "v0"
 #abci_protocol = "grpc"
 privval_protocol = "dashcore"
 perturb = ["kill", "pause", "disconnect", "restart"]
+
+[node.validator06]
+seeds = ["seed01"]
+snapshot_interval = 5
+perturb = ["disconnect"]
+privval_protocol = "dashcore"
+
+[node.validator07]
+seeds = ["seed01"]
+snapshot_interval = 5
+perturb = ["disconnect"]
+privval_protocol = "dashcore"
+
+[node.validator08]
+seeds = ["seed01"]
+snapshot_interval = 5
+perturb = ["disconnect"]
+privval_protocol = "dashcore"
+
+[node.validator09]
+seeds = ["seed01"]
+snapshot_interval = 5
+perturb = ["disconnect"]
+privval_protocol = "dashcore"
+
+[node.validator10]
+seeds = ["seed01"]
+snapshot_interval = 5
+perturb = ["disconnect"]
+privval_protocol = "dashcore"
+
+[node.validator11]
+seeds = ["seed01"]
+snapshot_interval = 5
+perturb = ["disconnect"]
+privval_protocol = "dashcore"
+
+[node.validator12]
+seeds = ["seed01"]
+snapshot_interval = 5
+perturb = ["disconnect"]
+privval_protocol = "dashcore"
 
 [node.full01]
 start_at = 1010

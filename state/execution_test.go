@@ -136,25 +136,25 @@ func TestValidateValidatorUpdates(t *testing.T) {
 	}{
 		{
 			"adding a validator is OK",
-			[]abci.ValidatorUpdate{{PubKey: pk2, Power: 20, ProTxHash: proTxHash2}},
+			[]abci.ValidatorUpdate{{PubKey: &pk2, Power: 100, ProTxHash: proTxHash2}},
 			defaultValidatorParams,
 			false,
 		},
 		{
 			"updating a validator is OK",
-			[]abci.ValidatorUpdate{{PubKey: pk1, Power: 20, ProTxHash: proTxHash1}},
+			[]abci.ValidatorUpdate{{PubKey: &pk1, Power: 100, ProTxHash: proTxHash1}},
 			defaultValidatorParams,
 			false,
 		},
 		{
 			"removing a validator is OK",
-			[]abci.ValidatorUpdate{{PubKey: pk2, Power: 0, ProTxHash: proTxHash2}},
+			[]abci.ValidatorUpdate{{Power: 0, ProTxHash: proTxHash2}},
 			defaultValidatorParams,
 			false,
 		},
 		{
 			"adding a validator with negative power results in error",
-			[]abci.ValidatorUpdate{{PubKey: pk2, Power: -100, ProTxHash: proTxHash2}},
+			[]abci.ValidatorUpdate{{PubKey: &pk2, Power: -100, ProTxHash: proTxHash2}},
 			defaultValidatorParams,
 			true,
 		},
@@ -231,7 +231,7 @@ func TestUpdateValidators(t *testing.T) {
 			"removing a non-existing validator results in error",
 			removedValidatorSet,
 			&abci.ValidatorSetUpdate{
-				ValidatorUpdates:   []abci.ValidatorUpdate{{ProTxHash: crypto.RandProTxHash(), PubKey: pk, Power: 0}},
+				ValidatorUpdates:   []abci.ValidatorUpdate{{ProTxHash: crypto.RandProTxHash(), Power: 0}},
 				ThresholdPublicKey: pk,
 				QuorumHash:         removedValidatorSet.QuorumHash,
 			},
@@ -375,7 +375,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	require.NoError(t, err)
 	// Remove the only validator
 	validatorUpdates := []abci.ValidatorUpdate{
-		{PubKey: publicKey, ProTxHash: proTxHash, Power: 0},
+		{ProTxHash: proTxHash, Power: 0},
 	}
 	// the quorum hash needs to be the same
 	// because we are providing an update removing a member from a known quorum, not changing the quorum

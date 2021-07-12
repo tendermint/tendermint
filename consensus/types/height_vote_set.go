@@ -16,7 +16,7 @@ import (
 type RoundVoteSet struct {
 	Prevotes   *types.VoteSet
 	Precommits *types.VoteSet
-	Commit *types.Commit
+	Commit     *types.Commit
 }
 
 var (
@@ -121,7 +121,7 @@ func (hvs *HeightVoteSet) addRound(round int32) {
 // Duplicate votes return added=false, err=nil.
 // By convention, peerID is "" if origin is self.
 func (hvs *HeightVoteSet) AddVote(vote *types.Vote, peerID p2p.ID) (added bool, err error) {
-	if hvs.valSet.HasPublicKeys == false {
+	if !hvs.valSet.HasPublicKeys {
 		return false, nil
 	}
 	hvs.mtx.Lock()

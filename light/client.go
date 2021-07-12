@@ -5,11 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
@@ -202,6 +203,10 @@ func NewClientFromTrustedStore(
 	trustedStore store.Store,
 	dashCoreRpcClient dashcore.DashCoreClient,
 	options ...Option) (*Client, error) {
+
+	if dashCoreRpcClient == nil {
+		return nil, ErrNoDashCoreClient
+	}
 
 	c := &Client{
 		chainID:           chainID,

@@ -103,10 +103,10 @@ func (conR *Reactor) OnStop() {
 	}
 }
 
-// SwitchToValidatorConsensus switches from fast_sync mode to consensus mode.
+// SwitchToConsensus switches from fast_sync mode to consensus mode.
 // It resets the state, turns off fast_sync, and starts the consensus state-machine
-func (conR *Reactor) SwitchToValidatorConsensus(state sm.State, skipWAL bool) {
-	conR.Logger.Info("SwitchToValidatorConsensus")
+func (conR *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
+	conR.Logger.Info("SwitchToConsensus")
 
 	// We have no votes, so reconstruct LastPrecommits from SeenCommit.
 	if state.LastBlockHeight > 0 {
@@ -198,7 +198,7 @@ func (conR *Reactor) AddPeer(peer p2p.Peer) {
 	go conR.queryMaj23Routine(peer, peerState)
 
 	// Send our state to peer.
-	// If we're fast_syncing, broadcast a RoundStepMessage later upon SwitchToValidatorConsensus().
+	// If we're fast_syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
 	if !conR.WaitSync() {
 		conR.sendNewRoundStepMessage(peer)
 	}
@@ -225,7 +225,7 @@ func (conR *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 // NOTE: blocks on consensus state for proposals, block parts, and votes
 func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	if !conR.IsRunning() {
-		conR.Logger.Debug("Receive", "src", src, "chId", chID, "bytes", msgBytes)
+		conR.Logger.P2PDebug("Receive", "src", src, "chId", chID, "bytes", msgBytes)
 		return
 	}
 
@@ -242,7 +242,7 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		return
 	}
 
-	conR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
+	conR.Logger.P2PDebug("Receive", "src", src, "chId", chID, "msg", msg)
 
 	// Get peer states
 	ps, ok := src.Get(types.PeerStateKey).(*PeerState)
@@ -1260,13 +1260,13 @@ func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.Sign
 		fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
 		"H/R",
 		fmt.Sprintf("%d/%d", height, round))
-	logger.Debug("setHasVote", "type", voteType, "index", index)
 
 	// NOTE: some may be nil BitArrays -> no side effects.
 	psVotes := ps.getVoteBitArray(height, round, voteType)
 	if psVotes != nil {
 		psVotes.SetIndex(int(index), true)
 	}
+	logger.Debug("peerState setHasVote Maverick", "type", voteType, "index", index, "peer votes", psVotes)
 }
 
 // SetHasCommit sets the given vote as known by the peer
