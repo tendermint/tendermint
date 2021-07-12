@@ -498,7 +498,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 		n,
 		"consensus_voting_power_changes_test",
 		newMockTickerFunc(true),
-		newKVStore,
+		newPersistentKVStore,
 	)
 
 	t.Cleanup(cleanup)

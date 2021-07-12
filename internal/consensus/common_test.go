@@ -861,6 +861,14 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 
 func (*mockTicker) SetLogger(log.Logger) {}
 
+func newPersistentKVStore() abci.Application {
+	dir, err := ioutil.TempDir("", "persistent-kvstore")
+	if err != nil {
+		panic(err)
+	}
+	return kvstore.NewPersistentKVStoreApplication(dir)
+}
+
 func newKVStore() abci.Application {
 	return kvstore.NewApplication()
 }
