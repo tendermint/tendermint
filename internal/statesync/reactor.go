@@ -338,6 +338,9 @@ func (r *Reactor) backfill(
 					if lb == nil {
 						r.Logger.Info("backfill: peer didn't have block, fetching from another peer", "height", height)
 						queue.retry(height)
+						// as we are fetching blocks backwards, if this node doesn't have the block it likely doesn't
+						// have any prior ones, thus we remove it from the peer list
+						r.dispatcher.removePeer(peer)
 						continue
 					}
 
