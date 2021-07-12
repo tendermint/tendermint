@@ -151,10 +151,9 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("can't get pubkey in testnet files: %w", err)
 		}
 		genVals[i] = types.GenesisValidator{
-			Address: pubKey.Address(),
-			PubKey:  pubKey,
-			Power:   1,
-			Name:    nodeDirName,
+			PubKey: pubKey,
+			Power:  1,
+			Name:   nodeDirName,
 		}
 	}
 

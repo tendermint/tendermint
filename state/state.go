@@ -304,7 +304,7 @@ func (state State) MakeBlock(
 func (state State) ValidatorsAtHeight(height int64) *types.ValidatorSet {
 	if state.LastBlockHeight == height {
 		return state.LastValidators
-	} else if state.LastBlockHeight + 2 == height {
+	} else if state.LastBlockHeight+2 == height {
 		return state.NextValidators
 	} else {
 		return state.Validators
@@ -349,7 +349,7 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 	var validatorSet, nextValidatorSet *types.ValidatorSet
 	if genDoc.Validators == nil {
 		validatorSet = types.NewValidatorSet(nil, nil, genDoc.QuorumType, nil, false)
-		nextValidatorSet = types.NewValidatorSet(nil, nil, genDoc.QuorumType,nil, false)
+		nextValidatorSet = types.NewValidatorSet(nil, nil, genDoc.QuorumType, nil, false)
 	} else {
 		validators := make([]*types.Validator, len(genDoc.Validators))
 		hasAllPublicKeys := true
@@ -375,8 +375,8 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 
 		LastCoreChainLockedBlockHeight: genDoc.InitialCoreChainLockedHeight,
 
-		NextValidators:              nextValidatorSet,
-		Validators:                  validatorSet,
+		NextValidators: nextValidatorSet,
+		Validators:     validatorSet,
 		// The quorum type must be 0 on an empty validator set
 		LastValidators:              types.NewEmptyValidatorSet(),
 		LastHeightValidatorsChanged: genDoc.InitialHeight,

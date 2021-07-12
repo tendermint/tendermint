@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
 	p2pmocks "github.com/tendermint/tendermint/p2p/mocks"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
@@ -60,7 +61,8 @@ func TestReactor_Receive_ChunkRequest(t *testing.T) {
 			}
 
 			// Start a reactor and send a ssproto.ChunkRequest, then wait for and check response
-			r := NewReactor(conn, nil, "")
+			cfg := config.DefaultStateSyncConfig()
+			r := NewReactor(*cfg, conn, nil, "")
 			err := r.Start()
 			require.NoError(t, err)
 			t.Cleanup(func() {
@@ -137,7 +139,8 @@ func TestReactor_Receive_SnapshotsRequest(t *testing.T) {
 			}
 
 			// Start a reactor and send a SnapshotsRequestMessage, then wait for and check responses
-			r := NewReactor(conn, nil, "")
+			cfg := config.DefaultStateSyncConfig()
+			r := NewReactor(*cfg, conn, nil, "")
 			err := r.Start()
 			require.NoError(t, err)
 			t.Cleanup(func() {

@@ -1,13 +1,13 @@
 package types
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"io/ioutil"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
 
@@ -32,7 +32,6 @@ const (
 
 // GenesisValidator is an initial validator.
 type GenesisValidator struct {
-	Address   Address          `json:"address"`
 	PubKey    crypto.PubKey    `json:"pub_key"`
 	Power     int64            `json:"power"`
 	Name      string           `json:"name"`
@@ -51,7 +50,6 @@ type GenesisDoc struct {
 	ThresholdPublicKey           crypto.PubKey            `json:"threshold_public_key"`
 	QuorumType                   btcjson.LLMQType         `json:"quorum_type"`
 	QuorumHash                   crypto.QuorumHash        `json:"quorum_hash"`
-	NodeProTxHash                *crypto.ProTxHash        `json:"node_pro_tx_hash"`
 	AppHash                      tmbytes.HexBytes         `json:"app_hash"`
 	AppState                     json.RawMessage          `json:"app_state,omitempty"`
 }
@@ -106,15 +104,9 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		return err
 	}
 
-	for i, v := range genDoc.Validators {
+	for _, v := range genDoc.Validators {
 		if v.Power == 0 {
 			return fmt.Errorf("the genesis file cannot contain validators with no voting power: %v", v)
-		}
-		if len(v.Address) > 0 && !bytes.Equal(v.PubKey.Address(), v.Address) {
-			return fmt.Errorf("incorrect address for validator %v in the genesis file, should be %v", v, v.PubKey.Address())
-		}
-		if len(v.Address) == 0 {
-			genDoc.Validators[i].Address = v.PubKey.Address()
 		}
 		if len(v.ProTxHash) != crypto.ProTxHashSize {
 			return fmt.Errorf("validators must all contain a pro_tx_hash of size 32")
@@ -132,12 +124,8 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		return fmt.Errorf("the quorum hash must be at least 20 bytes long (%d Validator(s))", len(genDoc.Validators))
 	}
 
-	if genDoc.Validators != nil && genDoc.QuorumType == 0 {
+	if genDoc.QuorumType == 0 {
 		return fmt.Errorf("the quorum type must not be 0 (%d Validator(s))", len(genDoc.Validators))
-	}
-
-	if genDoc.NodeProTxHash != nil && len(*genDoc.NodeProTxHash) != crypto.DefaultHashSize {
-		return fmt.Errorf("the node proTxHash must be 32 bytes if it is set (received %d)", len(*genDoc.NodeProTxHash))
 	}
 
 	if genDoc.GenesisTime.IsZero() {

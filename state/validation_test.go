@@ -295,7 +295,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 		nil,
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil,
-	nil, nil)
+		nil, nil)
 
 	for height := int64(1); height < validationTestsStopHeight; height++ {
 		proposerProTxHash := state.Validators.GetProposer().ProTxHash

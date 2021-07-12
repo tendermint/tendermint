@@ -64,7 +64,6 @@ type peers interface {
 	Peers() p2p.IPeerSet
 }
 
-//----------------------------------------------
 // Environment contains objects and interfaces used by the RPC. It is expected
 // to be setup once during startup.
 type Environment struct {
@@ -81,7 +80,7 @@ type Environment struct {
 	P2PTransport   transport
 
 	// objects
-	ProTxHash        crypto.ProTxHash
+	ProTxHash        *crypto.ProTxHash
 	GenDoc           *types.GenesisDoc // cache the genesis structure
 	TxIndexer        txindex.TxIndexer
 	BlockIndexer     indexer.BlockIndexer

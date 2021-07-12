@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto/bls12381"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto/bls12381"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
@@ -439,24 +440,25 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 		}
 
 		// Check if validator's pubkey matches an ABCI type in the consensus params
-		pk, err := cryptoenc.PubKeyFromProto(valUpdate.PubKey)
-		if err != nil {
-			return err
-		}
+		if valUpdate.PubKey != nil {
+			pk, err := cryptoenc.PubKeyFromProto(*valUpdate.PubKey)
+			if err != nil {
+				return err
+			}
+			if !types.IsValidPubkeyType(params, pk.Type()) {
+				return fmt.Errorf("validator %v is using pubkey %s, which is unsupported for consensus",
+					valUpdate, pk.Type())
+			}
 
-		if !types.IsValidPubkeyType(params, pk.Type()) {
-			return fmt.Errorf("validator %v is using pubkey %s, which is unsupported for consensus",
-				valUpdate, pk.Type())
-		}
+			if len(pk.Bytes()) != bls12381.PubKeySize {
+				return fmt.Errorf("validator %X has incorrect public key size %v",
+					valUpdate.ProTxHash, pk.String())
+			}
 
-		if len(pk.Bytes()) != bls12381.PubKeySize {
-			return fmt.Errorf("validator %X has incorrect public key size %v",
-				valUpdate.ProTxHash, pk.String())
-		}
-
-		if pk.String() == "PubKeyBLS12381{000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}" {
-			return fmt.Errorf("validator %X public key should not be empty %v",
-				valUpdate.ProTxHash, pk.String())
+			if pk.String() == "PubKeyBLS12381{000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}" {
+				return fmt.Errorf("validator %X public key should not be empty %v",
+					valUpdate.ProTxHash, pk.String())
+			}
 		}
 
 		if valUpdate.ProTxHash == nil {

@@ -3,13 +3,14 @@ package store
 import (
 	"bytes"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto/bls12381"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"os"
 	"runtime/debug"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto/bls12381"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
@@ -59,7 +60,7 @@ func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 
 	return types.NewCommit(height, 0,
 		types.BlockID{Hash: []byte(""), PartSetHeader: types.PartSetHeader{Hash: []byte(""), Total: 2}},
-		types.StateID{LastAppHash: make([]byte, 32)},  crypto.RandQuorumHash(),
+		types.StateID{LastAppHash: make([]byte, 32)}, crypto.RandQuorumHash(),
 		goodVote.BlockSignature, goodVote.StateSignature)
 }
 

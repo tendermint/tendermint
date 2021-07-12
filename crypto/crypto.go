@@ -2,6 +2,7 @@ package crypto
 
 import (
 	bytes2 "bytes"
+
 	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -72,9 +73,9 @@ func (sptxh SortProTxHash) Swap(i, j int) {
 }
 
 type QuorumKeys struct {
-	PrivKey PrivKey `json:"priv_key"`
-	PubKey PubKey `json:"pub_key"`
-	ThresholdPublicKey PubKey `json:"threshold_public_key"`
+	PrivKey            PrivKey `json:"priv_key"`
+	PubKey             PubKey  `json:"pub_key"`
+	ThresholdPublicKey PubKey  `json:"threshold_public_key"`
 }
 
 type PubKey interface {

@@ -1,8 +1,9 @@
 package light_test
 
 import (
-	"github.com/dashevo/dashd-go/btcjson"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -150,15 +151,15 @@ func makeVote(header *types.Header, valset *types.ValidatorSet, proTxHash crypto
 
 	v := vote.ToProto()
 	// SignDigest it
-	signId := types.VoteBlockSignId(header.ChainID, v, valset.QuorumType, valset.QuorumHash)
-	sig, err := key.SignDigest(signId)
+	signID := types.VoteBlockSignId(header.ChainID, v, valset.QuorumType, valset.QuorumHash)
+	sig, err := key.SignDigest(signID)
 	if err != nil {
 		panic(err)
 	}
 
 	// SignDigest it
-	stateSignId := types.VoteStateSignId(header.ChainID, v, valset.QuorumType, valset.QuorumHash)
-	sigState, err := key.SignDigest(stateSignId)
+	stateSignID := types.VoteStateSignId(header.ChainID, v, valset.QuorumType, valset.QuorumHash)
+	sigState, err := key.SignDigest(stateSignID)
 	if err != nil {
 		panic(err)
 	}
@@ -231,11 +232,11 @@ func genMockNodeWithKeys(
 	map[string]*types.MockPV) {
 
 	var (
-		headers            = make(map[int64]*types.SignedHeader, blockSize)
-		valsets            = make(map[int64]*types.ValidatorSet, blockSize+1)
-		valset0, privVals  = types.GenerateMockValidatorSet(valSize)
-		keys               = exposeMockPVKeys(privVals, valset0.QuorumHash)
-		privValMap         = types.MapMockPVByProTxHashes(privVals)
+		headers           = make(map[int64]*types.SignedHeader, blockSize)
+		valsets           = make(map[int64]*types.ValidatorSet, blockSize+1)
+		valset0, privVals = types.GenerateMockValidatorSet(valSize)
+		keys              = exposeMockPVKeys(privVals, valset0.QuorumHash)
+		privValMap        = types.MapMockPVByProTxHashes(privVals)
 	)
 
 	nextValSet, _ := types.GenerateMockValidatorSetUpdatingPrivateValidatorsAtHeight(valset0.GetProTxHashes(), privValMap, 0)

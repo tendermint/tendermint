@@ -12,10 +12,14 @@ import (
 )
 
 func main() {
+	initFilesCommand := cmd.InitFilesCmd
+	cmd.AddInitFlags(initFilesCommand)
+
 	rootCmd := cmd.RootCmd
 	rootCmd.AddCommand(
 		cmd.GenValidatorCmd,
-		cmd.InitFilesCmd,
+		initFilesCommand,
+		cmd.LocalInitFilesCmd,
 		cmd.ProbeUpnpCmd,
 		cmd.LightCmd,
 		cmd.ReplayCmd,

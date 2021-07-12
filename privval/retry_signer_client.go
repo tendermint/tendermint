@@ -3,8 +3,9 @@ package privval
 import (
 	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -143,12 +144,12 @@ func (sc *RetrySignerClient) SignVote(chainID string, quorumType btcjson.LLMQTyp
 }
 
 func (sc *RetrySignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) ([]byte, error) {
-	var signId []byte
+	var signID []byte
 	var err error
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
-		signId, err = sc.next.SignProposal(chainID, quorumType, quorumHash, proposal)
+		signID, err = sc.next.SignProposal(chainID, quorumType, quorumHash, proposal)
 		if err == nil {
-			return signId, nil
+			return signID, nil
 		}
 		// If remote signer errors, we don't retry.
 		if _, ok := err.(*RemoteSignerError); ok {
@@ -156,7 +157,7 @@ func (sc *RetrySignerClient) SignProposal(chainID string, quorumType btcjson.LLM
 		}
 		time.Sleep(sc.timeout)
 	}
-	return signId, fmt.Errorf("exhausted all attempts to sign proposal: %w", err)
+	return signID, fmt.Errorf("exhausted all attempts to sign proposal: %w", err)
 }
 
 func (sc *RetrySignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.QuorumHash, thresholdPublicKey crypto.PubKey, height int64) {

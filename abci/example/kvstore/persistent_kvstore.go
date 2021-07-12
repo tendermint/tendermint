@@ -35,7 +35,7 @@ type PersistentKVStoreApplication struct {
 
 	ValidatorSetUpdates types.ValidatorSetUpdate
 
-	valProTxHashToPubKeyMap map[string]pc.PublicKey
+	valProTxHashToPubKeyMap map[string]*pc.PublicKey
 
 	logger log.Logger
 }
@@ -51,7 +51,7 @@ func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication
 
 	return &PersistentKVStoreApplication{
 		app:                     &Application{state: state},
-		valProTxHashToPubKeyMap: make(map[string]pc.PublicKey),
+		valProTxHashToPubKeyMap: make(map[string]*pc.PublicKey),
 		logger:                  log.NewNopLogger(),
 	}
 }
@@ -215,6 +215,13 @@ func (app *PersistentKVStoreApplication) ValidatorSet() (validatorSet types.Vali
 				panic(err)
 			}
 			validatorSet.ThresholdPublicKey = thresholdPublicKeyMessage.GetThresholdPublicKey()
+		} else if isQuorumHashTx(key) {
+			quorumHashMessage := new(types.QuorumHashUpdate)
+			err := types.ReadMessage(bytes.NewBuffer(itr.Value()), quorumHashMessage)
+			if err != nil {
+				panic(err)
+			}
+			validatorSet.QuorumHash = quorumHashMessage.GetQuorumHash()
 		}
 	}
 	if err = itr.Error(); err != nil {
@@ -223,14 +230,22 @@ func (app *PersistentKVStoreApplication) ValidatorSet() (validatorSet types.Vali
 	return
 }
 
-func MakeValSetChangeTx(proTxHash []byte, pubkey pc.PublicKey, power int64) []byte {
-	pk, err := cryptoenc.PubKeyFromProto(pubkey)
-	if err != nil {
-		panic(err)
+func MakeValSetChangeTx(proTxHash []byte, pubkey *pc.PublicKey, power int64) []byte {
+	pubStr := ""
+	if pubkey != nil {
+		pk, err := cryptoenc.PubKeyFromProto(*pubkey)
+		if err != nil {
+			panic(err)
+		}
+		pubStr = base64.StdEncoding.EncodeToString(pk.Bytes())
 	}
-	pubStr := base64.StdEncoding.EncodeToString(pk.Bytes())
 	proTxHashStr := base64.StdEncoding.EncodeToString(proTxHash)
 	return []byte(fmt.Sprintf("val:%s!%s!%d", proTxHashStr, pubStr, power))
+}
+
+func MakeValSetRemovalTx(proTxHash []byte) []byte {
+	proTxHashStr := base64.StdEncoding.EncodeToString(proTxHash)
+	return []byte(fmt.Sprintf("val:%s!!%d", proTxHashStr, 0))
 }
 
 func MakeThresholdPublicKeyChangeTx(thresholdPublicKey pc.PublicKey) []byte {
@@ -281,12 +296,15 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 			Log:  fmt.Sprintf("ProTxHash (%s) is invalid base64", proTxHash)}
 	}
 
-	// decode the pubkey
-	pubkey, err := base64.StdEncoding.DecodeString(pubkeyS)
-	if err != nil {
-		return types.ResponseDeliverTx{
-			Code: code.CodeTypeEncodingError,
-			Log:  fmt.Sprintf("Pubkey (%s) is invalid base64", pubkeyS)}
+	var pubkey []byte
+	if pubkeyS != "" {
+		// decode the pubkey
+		pubkey, err = base64.StdEncoding.DecodeString(pubkeyS)
+		if err != nil {
+			return types.ResponseDeliverTx{
+				Code: code.CodeTypeEncodingError,
+				Log:  fmt.Sprintf("Pubkey (%s) is invalid base64", pubkeyS)}
+		}
 	}
 
 	// decode the power
@@ -334,12 +352,15 @@ func (app *PersistentKVStoreApplication) execQuorumHashTx(tx []byte) types.Respo
 
 // add, update, or remove a validator
 func (app *PersistentKVStoreApplication) updateValidatorSet(v types.ValidatorUpdate) types.ResponseDeliverTx {
-	_, err := cryptoenc.PubKeyFromProto(v.PubKey)
-	if v.ProTxHash == nil {
-		panic(fmt.Errorf("proTxHash can not be nil: %w", err))
+	if v.PubKey != nil {
+		_, err := cryptoenc.PubKeyFromProto(*v.PubKey)
+		if err != nil {
+			panic(fmt.Errorf("can't decode public key: %w", err))
+		}
 	}
-	if err != nil {
-		panic(fmt.Errorf("can't decode public key: %w", err))
+
+	if v.ProTxHash == nil {
+		panic(fmt.Errorf("proTxHash can not be nil"))
 	}
 	key := []byte("val:" + string(v.ProTxHash))
 
@@ -367,7 +388,7 @@ func (app *PersistentKVStoreApplication) updateValidatorSet(v types.ValidatorUpd
 				Code: code.CodeTypeEncodingError,
 				Log:  fmt.Sprintf("Error encoding validator: %v", err)}
 		}
-		if err = app.app.state.db.Set(key, value.Bytes()); err != nil {
+		if err := app.app.state.db.Set(key, value.Bytes()); err != nil {
 			panic(err)
 		}
 		app.valProTxHashToPubKeyMap[string(v.ProTxHash)] = v.PubKey

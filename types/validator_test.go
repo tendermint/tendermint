@@ -63,8 +63,8 @@ func TestValidatorValidateBasic(t *testing.T) {
 		},
 		{
 			val: &Validator{
-				PubKey: nil,
-				ProTxHash: crypto.RandProTxHash(),
+				PubKey:      nil,
+				ProTxHash:   crypto.RandProTxHash(),
 				VotingPower: 100,
 			},
 			err: false,

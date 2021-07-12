@@ -116,8 +116,8 @@ func MsgToProto(msg Message) (*tmcons.Message, error) {
 		pb = tmcons.Message{
 			Sum: &tmcons.Message_HasCommit{
 				HasCommit: &tmcons.HasCommit{
-					Height:  msg.Height,
-					Round:   msg.Round,
+					Height: msg.Height,
+					Round:  msg.Round,
 				},
 			},
 		}

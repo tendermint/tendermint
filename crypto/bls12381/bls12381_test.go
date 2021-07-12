@@ -39,11 +39,11 @@ func TestBLSAddress(t *testing.T) {
 	assert.EqualValues(t, decodedAddressBytes, address)
 }
 
-func reverseBytes(bz []byte) []byte  {
+func reverseBytes(bz []byte) []byte {
 	s := make([]byte, len(bz))
 	copy(s, bz)
-	for i,j := 0, len(s) - 1; i<j; i,j = i+1, j-1 {
-		s[i],s[j] = s[j], s[i]
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
 	}
 	return s
 }

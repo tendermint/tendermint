@@ -1,9 +1,10 @@
 package state_test
 
 import (
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"os"
 	"testing"
+
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

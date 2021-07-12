@@ -209,7 +209,6 @@ func randomGenesisDoc() *types.GenesisDoc {
 		ChainID:     "abc",
 		Validators: []types.GenesisValidator{
 			{
-				Address:   pubkey.Address(),
 				PubKey:    pubkey,
 				ProTxHash: crypto.RandProTxHash(),
 				Power:     types.DefaultDashVotingPower,

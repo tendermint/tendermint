@@ -3,8 +3,9 @@ package privval
 import (
 	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
@@ -201,10 +202,10 @@ func (sc *SignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType
 
 	*proposal = resp.Proposal
 
-	// We can assume that the signer client calculated the signId correctly
-	blockSignId := types.ProposalBlockSignId(chainID, proposal, quorumType, quorumHash)
+	// We can assume that the signer client calculated the signID correctly
+	blockSignID := types.ProposalBlockSignId(chainID, proposal, quorumType, quorumHash)
 
-	return blockSignId, nil
+	return blockSignID, nil
 }
 
 func (sc *SignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash crypto.QuorumHash, thresholdPublicKey crypto.PubKey, height int64) {
@@ -214,4 +215,3 @@ func (sc *SignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, quorumHash c
 func (sc *SignerClient) GetPrivateKey(quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
 	return nil, nil
 }
-

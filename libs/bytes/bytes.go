@@ -59,8 +59,8 @@ func (bz HexBytes) String() string {
 func (bz HexBytes) ReversedBytes() HexBytes {
 	s := make([]byte, len(bz))
 	copy(s, bz)
-	for i,j := 0, len(s) - 1; i<j; i,j = i+1, j-1 {
-		s[i],s[j] = s[j], s[i]
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
 	}
 	return s
 }

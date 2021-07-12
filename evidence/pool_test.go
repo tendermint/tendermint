@@ -2,10 +2,11 @@
 package evidence_test
 
 import (
-	"github.com/dashevo/dashd-go/btcjson"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 
@@ -245,6 +246,9 @@ func TestReportConflictingVotes(t *testing.T) {
 	// should be able to retrieve evidence from pool
 	evList, _ = pool.PendingEvidence(defaultEvidenceMaxBytes)
 	require.Equal(t, []types.Evidence{ev}, evList)
+
+	next = pool.EvidenceFront()
+	require.NotNil(t, next)
 }
 
 func TestEvidencePoolUpdate(t *testing.T) {
@@ -347,7 +351,7 @@ func TestRecoverPendingEvidence(t *testing.T) {
 			Evidence: tmproto.EvidenceParams{
 				MaxAgeNumBlocks: 20,
 				MaxAgeDuration:  20 * time.Minute,
-				MaxBytes:        1000,
+				MaxBytes:        defaultEvidenceMaxBytes,
 			},
 		},
 	}, nil)

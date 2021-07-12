@@ -67,10 +67,9 @@ message Commit {
 
 // HasCommit is sent to indicate that a particular vote has been received.
 message HasCommit {
-  int64                          height = 1;
-  int32                          round  = 2;
+  int64 height = 1;
+  int32 round  = 2;
 }
-
 
 // VoteSetMaj23 is sent to indicate that a given BlockID has seen +2/3 votes.
 message VoteSetMaj23 {

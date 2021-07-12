@@ -136,6 +136,15 @@ func (v *Validator) String() string {
 		v.ProposerPriority)
 }
 
+func (v *Validator) ShortStringBasic() string {
+	if v == nil {
+		return "nil-Validator"
+	}
+	return fmt.Sprintf("Validator{%v %v}",
+		v.ProTxHash.ShortString(),
+		v.PubKey)
+}
+
 // ValidatorListString returns a prettified validator list for logging purposes.
 func ValidatorListString(vals []*Validator) string {
 	chunks := make([]string, len(vals))
@@ -184,33 +193,36 @@ func (v *Validator) ToProto() (*tmproto.Validator, error) {
 		ProTxHash:        v.ProTxHash,
 	}
 
-	if v.PubKey != nil {
+	if v.PubKey != nil && len(v.PubKey.Bytes()) > 0 {
 		pk, err := ce.PubKeyToProto(v.PubKey)
 		if err != nil {
 			return nil, err
 		}
-		vp.PubKey = pk
+		vp.PubKey = &pk
 	}
 
 	return &vp, nil
 }
 
-// FromProto sets a protobuf Validator to the given pointer.
+// ValidatorFromProto sets a protobuf Validator to the given pointer.
 // It returns an error if the public key is invalid.
 func ValidatorFromProto(vp *tmproto.Validator) (*Validator, error) {
 	if vp == nil {
 		return nil, errors.New("nil validator")
 	}
 
-	pk, err := ce.PubKeyFromProto(vp.PubKey)
-	if err != nil {
-		return nil, err
-	}
 	v := new(Validator)
-	v.PubKey = pk
 	v.VotingPower = vp.GetVotingPower()
 	v.ProposerPriority = vp.GetProposerPriority()
 	v.ProTxHash = vp.ProTxHash
+
+	if vp.PubKey != nil && (*vp.PubKey).Sum != nil {
+		pk, err := ce.PubKeyFromProto(*vp.PubKey)
+		if err != nil {
+			return nil, err
+		}
+		v.PubKey = pk
+	}
 
 	return v, nil
 }

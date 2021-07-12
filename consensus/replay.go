@@ -2,11 +2,14 @@ package consensus
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"io"
 	"reflect"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
@@ -198,12 +201,13 @@ func makeHeightSearchFunc(height int64) auto.SearchFunc {
 //---------------------------------------------------
 
 type Handshaker struct {
-	stateStore   sm.Store
-	initialState sm.State
-	store        sm.BlockStore
-	eventBus     types.BlockEventPublisher
-	genDoc       *types.GenesisDoc
-	logger       log.Logger
+	stateStore    sm.Store
+	initialState  sm.State
+	store         sm.BlockStore
+	eventBus      types.BlockEventPublisher
+	genDoc        *types.GenesisDoc
+	nodeProTxHash *crypto.ProTxHash
+	logger        log.Logger
 
 	nBlocks int // number of blocks applied to the state
 
@@ -211,17 +215,18 @@ type Handshaker struct {
 }
 
 func NewHandshaker(stateStore sm.Store, state sm.State,
-	store sm.BlockStore, genDoc *types.GenesisDoc, appHashSize int) *Handshaker {
+	store sm.BlockStore, genDoc *types.GenesisDoc, nodeProTxHash *crypto.ProTxHash, appHashSize int) *Handshaker {
 
 	return &Handshaker{
-		stateStore:   stateStore,
-		initialState: state,
-		store:        store,
-		eventBus:     types.NopEventBus{},
-		genDoc:       genDoc,
-		logger:       log.NewNopLogger(),
-		nBlocks:      0,
-		appHashSize:  appHashSize,
+		stateStore:    stateStore,
+		initialState:  state,
+		store:         store,
+		eventBus:      types.NopEventBus{},
+		genDoc:        genDoc,
+		logger:        log.NewNopLogger(),
+		nBlocks:       0,
+		appHashSize:   appHashSize,
+		nodeProTxHash: nodeProTxHash,
 	}
 }
 
@@ -315,28 +320,40 @@ func (h *Handshaker) ReplayBlocks(
 
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain.
 	if appBlockHeight == 0 {
-		validators := make([]*types.Validator, len(h.genDoc.Validators))
-		for i, val := range h.genDoc.Validators {
-			validators[i] = types.NewValidatorDefaultVotingPower(val.PubKey, val.ProTxHash)
-			err := validators[i].ValidateBasic()
-			if err != nil {
-				return nil, fmt.Errorf("replay blocks error when validating validator: %s", err)
+		var nextVals *abci.ValidatorSetUpdate
+		if h.genDoc.QuorumHash != nil && len(h.genDoc.QuorumHash) == crypto.DefaultHashSize {
+			validators := make([]*types.Validator, len(h.genDoc.Validators))
+			for i, val := range h.genDoc.Validators {
+				validators[i] = types.NewValidatorDefaultVotingPower(val.PubKey, val.ProTxHash)
+				err := validators[i].ValidateBasic()
+				if err != nil {
+					return nil, fmt.Errorf("replay blocks error when validating validator: %s", err)
+				}
 			}
+			validatorSet := types.NewValidatorSetWithLocalNodeProTxHash(validators, h.genDoc.ThresholdPublicKey, h.genDoc.QuorumType, h.genDoc.QuorumHash, h.nodeProTxHash)
+			err := validatorSet.ValidateBasic()
+			if err != nil {
+				return nil, fmt.Errorf("replay blocks error when validating validatorSet: %s", err)
+			}
+			vals := types.TM2PB.ValidatorUpdates(validatorSet)
+			nextVals = &vals
+		} else {
+			nextVals = nil
 		}
-		validatorSet := types.NewValidatorSetWithLocalNodeProTxHash(validators, h.genDoc.ThresholdPublicKey, h.genDoc.QuorumType, h.genDoc.QuorumHash, h.genDoc.NodeProTxHash)
-		err := validatorSet.ValidateBasic()
-		if err != nil {
-			return nil, fmt.Errorf("replay blocks error when validating validatorSet: %s", err)
+
+		if h.genDoc.InitialCoreChainLockedHeight == 0 {
+			return nil, errors.New("the initial core chain locked height in genesis can not be 0")
 		}
-		nextVals := types.TM2PB.ValidatorUpdates(validatorSet)
+
 		csParams := types.TM2PB.ConsensusParams(h.genDoc.ConsensusParams)
 		req := abci.RequestInitChain{
-			Time:            h.genDoc.GenesisTime,
-			ChainId:         h.genDoc.ChainID,
-			InitialHeight:   h.genDoc.InitialHeight,
-			ConsensusParams: csParams,
-			ValidatorSet:    nextVals,
-			AppStateBytes:   h.genDoc.AppState,
+			Time:              h.genDoc.GenesisTime,
+			ChainId:           h.genDoc.ChainID,
+			InitialHeight:     h.genDoc.InitialHeight,
+			ConsensusParams:   csParams,
+			ValidatorSet:      nextVals,
+			AppStateBytes:     h.genDoc.AppState,
+			InitialCoreHeight: h.genDoc.InitialCoreChainLockedHeight,
 		}
 		res, err := proxyApp.Consensus().InitChainSync(req)
 		if err != nil {
@@ -358,10 +375,10 @@ func (h *Handshaker) ReplayBlocks(
 				if err != nil {
 					return nil, err
 				}
-				newValidatorSet := types.NewValidatorSetWithLocalNodeProTxHash(vals, thresholdPublicKey, h.genDoc.QuorumType, quorumHash, h.genDoc.NodeProTxHash)
+				newValidatorSet := types.NewValidatorSetWithLocalNodeProTxHash(vals, thresholdPublicKey, h.genDoc.QuorumType, quorumHash, h.nodeProTxHash)
 				h.logger.Debug("Updating validator set", "old", state.Validators, "new", newValidatorSet)
 				state.Validators = newValidatorSet
-				state.NextValidators = types.NewValidatorSetWithLocalNodeProTxHash(vals, thresholdPublicKey, h.genDoc.QuorumType, quorumHash, h.genDoc.NodeProTxHash).CopyIncrementProposerPriority(1)
+				state.NextValidators = types.NewValidatorSetWithLocalNodeProTxHash(vals, thresholdPublicKey, h.genDoc.QuorumType, quorumHash, h.nodeProTxHash).CopyIncrementProposerPriority(1)
 			} else if len(h.genDoc.Validators) == 0 {
 				// If validator set is not set in genesis and still empty after InitChain, exit.
 				h.logger.Debug("Validator set is nil in genesis and still empty after InitChain")
@@ -529,7 +546,7 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	blockExec.SetEventBus(h.eventBus)
 
 	var err error
-	state, _, err = blockExec.ApplyBlock(state, h.genDoc.NodeProTxHash, meta.BlockID, block)
+	state, _, err = blockExec.ApplyBlock(state, h.nodeProTxHash, meta.BlockID, block)
 	if err != nil {
 		return sm.State{}, err
 	}

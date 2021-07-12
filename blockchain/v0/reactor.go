@@ -2,9 +2,10 @@ package v0
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
 	"reflect"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
@@ -32,9 +33,9 @@ const (
 )
 
 type consensusReactor interface {
-	// for when we switch from blockchain reactor and fast sync to
+	// SwitchToConsensus is for when we switch from blockchain reactor and fast sync to
 	// the consensus machine
-	SwitchToValidatorConsensus(state sm.State, skipWAL bool)
+	SwitchToConsensus(state sm.State, skipWAL bool)
 }
 
 type peerError struct {
@@ -51,7 +52,7 @@ type BlockchainReactor struct {
 	p2p.BaseReactor
 
 	// immutable
-	initialState sm.State
+	initialState  sm.State
 	nodeProTxHash *crypto.ProTxHash
 
 	blockExec *sm.BlockExecutor
@@ -84,14 +85,14 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *st
 	pool := NewBlockPool(startHeight, requestsCh, errorsCh)
 
 	bcR := &BlockchainReactor{
-		initialState: state,
+		initialState:  state,
 		nodeProTxHash: nodeProTxHash,
-		blockExec:    blockExec,
-		store:        store,
-		pool:         pool,
-		fastSync:     fastSync,
-		requestsCh:   requestsCh,
-		errorsCh:     errorsCh,
+		blockExec:     blockExec,
+		store:         store,
+		pool:          pool,
+		fastSync:      fastSync,
+		requestsCh:    requestsCh,
+		errorsCh:      errorsCh,
 	}
 	bcR.BaseReactor = *p2p.NewBaseReactor("BlockchainReactor", bcR)
 	return bcR
@@ -221,7 +222,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		return
 	}
 
-	bcR.Logger.Debug("Receive", "src", src, "chID", chID, "msg", msg)
+	bcR.Logger.P2PDebug("Receive", "src", src, "chID", chID, "msg", msg)
 
 	switch msg := msg.(type) {
 	case *bcproto.BlockRequest:
@@ -328,7 +329,7 @@ FOR_LOOP:
 				}
 				conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
 				if ok {
-					conR.SwitchToValidatorConsensus(state, blocksSynced > 0 || stateSynced)
+					conR.SwitchToConsensus(state, blocksSynced > 0 || stateSynced)
 				}
 				// else {
 				// should only happen during testing

@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"strings"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 
@@ -193,6 +194,8 @@ func (evl EvidenceList) Hash() []byte {
 	// the Evidence size is capped.
 	evidenceBzs := make([][]byte, len(evl))
 	for i := 0; i < len(evl); i++ {
+		// TODO: We should change this to the hash. Using bytes contains some unexported data that
+		// may cause different hashes
 		evidenceBzs[i] = evl[i].Bytes()
 	}
 	return merkle.HashFromByteSlices(evidenceBzs)

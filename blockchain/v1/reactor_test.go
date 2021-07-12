@@ -174,7 +174,7 @@ type consensusReactorTest struct {
 	mtx                 sync.Mutex
 }
 
-func (conR *consensusReactorTest) SwitchToValidatorConsensus(state sm.State, blocksSynced bool) {
+func (conR *consensusReactorTest) SwitchToConsensus(state sm.State, blocksSynced bool) {
 	conR.mtx.Lock()
 	defer conR.mtx.Unlock()
 	conR.switchedToConsensus = true
@@ -199,7 +199,6 @@ func TestFastSyncNoBlockResponse(t *testing.T) {
 	proTxHash, _ := privVals[0].GetProTxHash()
 	nodeProTxHashes[0] = &proTxHash
 	nodeProTxHashes[1] = &proTxHash
-
 
 	p2p.MakeConnectedSwitches(config.P2P, nodeProTxHashes, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[i].bcR)

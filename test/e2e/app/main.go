@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/spf13/viper"
@@ -82,31 +83,33 @@ func run(configFile string) error {
 
 	// Start remote signer (must start before node if running builtin).
 	if cfg.PrivValServer != "" {
-		if err = startSigner(cfg); err != nil {
-			return err
+		if cfg.PrivValServerType == "dashcore" {
+			fmt.Printf("Starting mock core server at address %v\n", cfg.PrivValServer)
+			// Start mock core-server
+			coreSrv, err := setupCoreServer(cfg)
+			if err != nil {
+				return fmt.Errorf("unable to setup mock core server: %w", err)
+			}
+			go func() {
+				coreSrv.Start()
+			}()
+
+			dashCoreRpcClient, err = dashcore.NewDashCoreRpcClient(
+				cfg.PrivValServer,
+				tmcfg.BaseConfig.PrivValidatorCoreRPCUsername,
+				tmcfg.BaseConfig.PrivValidatorCoreRPCPassword,
+			)
+			if err != nil {
+				return fmt.Errorf("connection to Dash Core RPC failed: %w", err)
+			}
+		} else {
+			if err = startSigner(cfg); err != nil {
+				return err
+			}
+			if cfg.Protocol == "builtin" {
+				time.Sleep(1 * time.Second)
+			}
 		}
-		if cfg.Protocol == "builtin" {
-			time.Sleep(1 * time.Second)
-		}
-	}
-
-	// Start mock core-server
-	coreSrv, err := setupCoreServer(cfg)
-	if err != nil {
-		return fmt.Errorf("unable to setup mock core server: %w", err)
-	}
-	go func() {
-		coreSrv.Start()
-	}()
-
-	dashCoreRpcClient, err = dashcore.NewDashCoreRpcClient(
-		tmcfg.PrivValidatorCoreRPCHost,
-		tmcfg.BaseConfig.PrivValidatorCoreRPCUsername,
-		tmcfg.BaseConfig.PrivValidatorCoreRPCPassword,
-	)
-
-	if err != nil {
-		return fmt.Errorf("connection to Dash Core RPC failed: %w", err)
 	}
 
 	// Start app server.
@@ -165,7 +168,6 @@ func startNode(cfg *Config) error {
 	}
 	n, err := node.NewNode(
 		tmcfg,
-		privval.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
 		nodeKey,
 		proxy.NewLocalClientCreator(app),
 		node.DefaultGenesisDocProviderFunc(tmcfg),
@@ -245,7 +247,6 @@ func startMaverick(cfg *Config) error {
 
 	// TODO: What is a maverick node?
 	n, err := maverick.NewNode(tmcfg,
-		privval.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
 		nodeKey,
 		proxy.NewLocalClientCreator(app),
 		maverick.DefaultGenesisDocProviderFunc(tmcfg),
@@ -289,7 +290,7 @@ func startSigner(cfg *Config) error {
 }
 
 func setupCoreServer(cfg *Config) (*mockcoreserver.JRPCServer, error) {
-	srv := mockcoreserver.NewJRPCServer(tmcfg.PrivValidatorCoreRPCHost, "/")
+	srv := mockcoreserver.NewJRPCServer(cfg.PrivValServer, "/")
 	privValKeyPath := filepath.Clean(tmhome + "/" + tmcfg.PrivValidatorKey)
 	privValStatePath := filepath.Clean(tmhome + "/" + tmcfg.PrivValidatorState)
 	filePV := privval.LoadFilePV(privValKeyPath, privValStatePath)
@@ -302,8 +303,10 @@ func setupCoreServer(cfg *Config) (*mockcoreserver.JRPCServer, error) {
 		srv,
 		mockcoreserver.WithQuorumInfoMethod(coreServer, mockcoreserver.Endless),
 		mockcoreserver.WithQuorumSignMethod(coreServer, mockcoreserver.Endless),
+		mockcoreserver.WithQuorumVerifyMethod(coreServer, mockcoreserver.Endless),
 		mockcoreserver.WithMasternodeMethod(coreServer, mockcoreserver.Endless),
 		mockcoreserver.WithGetNetworkInfoMethod(coreServer, mockcoreserver.Endless),
+		mockcoreserver.WithPingMethod(coreServer, mockcoreserver.Endless),
 	)
 	return srv, nil
 }

@@ -45,6 +45,14 @@ func NewCLI() *CLI {
 			if err != nil {
 				return err
 			}
+			configPreset, err := cmd.Flags().GetString("preset")
+			if err != nil {
+				return err
+			}
+			err = initConfig(configPreset)
+			if err != nil {
+				return err
+			}
 			return cli.generate(dir, groups)
 		},
 	}
@@ -52,6 +60,7 @@ func NewCLI() *CLI {
 	cli.root.PersistentFlags().StringP("dir", "d", "", "Output directory for manifests")
 	_ = cli.root.MarkPersistentFlagRequired("dir")
 	cli.root.PersistentFlags().IntP("groups", "g", 0, "Number of groups")
+	cli.root.PersistentFlags().StringP("preset", "p", "default", "Config preset, by default is used \"default\"")
 
 	return cli
 }

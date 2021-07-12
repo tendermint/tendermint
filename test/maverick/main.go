@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/privval"
 	"os"
 	"path/filepath"
+
+	"github.com/tendermint/tendermint/privval"
 
 	"github.com/tendermint/tendermint/crypto"
 
@@ -220,7 +221,6 @@ func initFilesWithConfig(config *cfg.Config) error {
 			return fmt.Errorf("can't get proTxHash maverick init files with config: %w", err)
 		}
 		genDoc.Validators = []types.GenesisValidator{{
-			Address:   pubKey.Address(),
 			PubKey:    pubKey,
 			ProTxHash: proTxHash,
 			Power:     types.DefaultDashVotingPower,

@@ -838,7 +838,7 @@ func (cs *State) updateToState(state sm.State) {
 		}
 
 		// If state isn't further out than cs.state, just ignore.
-		// This happens when SwitchToValidatorConsensus() is called in the reactor.
+		// This happens when SwitchToConsensus() is called in the reactor.
 		// We don't want to reset e.g. the Votes, but we still want to
 		// signal the new round step, because other services (eg. txNotifier)
 		// depend on having an up-to-date peer state!

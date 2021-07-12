@@ -15,7 +15,6 @@ import (
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
@@ -159,9 +158,6 @@ func NewTendermint(app abci.Application, opts *Options) *nm.Node {
 		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 		logger = log.NewFilter(logger, log.AllowError())
 	}
-	pvKeyFile := config.PrivValidatorKeyFile()
-	pvKeyStateFile := config.PrivValidatorStateFile()
-	pv := privval.LoadOrGenFilePV(pvKeyFile, pvKeyStateFile)
 	papp := proxy.NewLocalClientCreator(app)
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	if err != nil {
@@ -170,7 +166,6 @@ func NewTendermint(app abci.Application, opts *Options) *nm.Node {
 
 	node, err := nm.NewNode(
 		config,
-		pv,
 		nodeKey,
 		papp,
 		nm.DefaultGenesisDocProviderFunc(config),

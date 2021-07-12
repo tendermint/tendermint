@@ -3,11 +3,12 @@ package internal
 import (
 	"bytes"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"net"
 	"os"
 	"os/signal"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 

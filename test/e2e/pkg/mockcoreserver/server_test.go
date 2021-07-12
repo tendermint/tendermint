@@ -3,12 +3,13 @@ package mockcoreserver
 import (
 	"context"
 	"encoding/hex"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"testing"
+
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/stretchr/testify/assert"
@@ -71,10 +72,10 @@ func TestDashCoreSignerPingMethod(t *testing.T) {
 	go func() {
 		srv.Start()
 	}()
+	cs := &StaticCoreServer{}
 	srv = WithMethods(
 		srv,
-		WithPingMethod(1),
-		WithGetPeerInfoMethod(1),
+		WithPingMethod(cs, 1),
 	)
 	dashCoreRpcClient, err := dashcore.NewDashCoreRpcClient(addr, "root", "root")
 	assert.NoError(t, err)

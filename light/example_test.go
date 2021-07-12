@@ -3,14 +3,15 @@ package light_test
 import (
 	"context"
 	"fmt"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
-	"github.com/tendermint/tendermint/light"
-	"github.com/tendermint/tendermint/types"
 	"io/ioutil"
 	stdlog "log"
 	"os"
 	"testing"
 	"time"
+
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+	"github.com/tendermint/tendermint/light"
+	"github.com/tendermint/tendermint/types"
 
 	dbm "github.com/tendermint/tm-db"
 
