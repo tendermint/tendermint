@@ -463,6 +463,7 @@ func TestReactor_Backfill(t *testing.T) {
 				factory.DefaultTestChainID,
 				startHeight,
 				stopHeight,
+				1,
 				factory.MakeBlockIDWithHash(chain[startHeight].Header.Hash()),
 				stopTime,
 			)
