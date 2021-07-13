@@ -256,7 +256,7 @@ func (r *Reactor) Sync(
 
 	if r.stateProvider == nil {
 		r.mtx.Unlock()
-		return sm.State{}, errors.New("should init the state provider before calling Sync")
+		return sm.State{}, errors.New("the stateProvider should not be nil when doing state sync")
 	}
 
 	r.syncer = newSyncer(

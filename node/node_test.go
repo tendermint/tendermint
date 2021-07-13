@@ -680,8 +680,8 @@ func TestNodeStartStateSync(t *testing.T) {
 
 	mockSSR.On("Sync", context.TODO(), cfgSS.DiscoveryTime).Return(state, nil).
 		On("Backfill", state).Return(nil)
-	mockCSR.On("SetStateSyncingMetrics", float64(0)).Return()
-	mockCSR.On("SwitchToConsensus", state, true).Return()
+	mockCSR.On("SetStateSyncingMetrics", float64(0)).Return().
+		On("SwitchToConsensus", state, true).Return()
 
 	require.NoError(t,
 		startStateSync(mockSSR, mockFSR, mockCSR, config.StateSync, false, state.InitialHeight, eventBus))
