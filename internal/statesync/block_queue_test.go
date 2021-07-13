@@ -25,7 +25,7 @@ func TestBlockQueueBasic(t *testing.T) {
 	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
-	queue := newBlockQueue(startHeight, stopHeight, stopTime, 1)
+	queue := newBlockQueue(startHeight, stopHeight, 1, stopTime, 1)
 	wg := &sync.WaitGroup{}
 
 	// asynchronously fetch blocks and add it to the queue
@@ -72,7 +72,7 @@ func TestBlockQueueWithFailures(t *testing.T) {
 	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
-	queue := newBlockQueue(startHeight, stopHeight, stopTime, 200)
+	queue := newBlockQueue(startHeight, stopHeight, 1, stopTime, 200)
 	wg := &sync.WaitGroup{}
 
 	failureRate := 4
@@ -121,7 +121,7 @@ func TestBlockQueueWithFailures(t *testing.T) {
 func TestBlockQueueBlocks(t *testing.T) {
 	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
-	queue := newBlockQueue(startHeight, stopHeight, stopTime, 2)
+	queue := newBlockQueue(startHeight, stopHeight, 1, stopTime, 2)
 	expectedHeight := startHeight
 	retryHeight := stopHeight + 2
 
@@ -168,7 +168,7 @@ loop:
 func TestBlockQueueAcceptsNoMoreBlocks(t *testing.T) {
 	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
-	queue := newBlockQueue(startHeight, stopHeight, stopTime, 1)
+	queue := newBlockQueue(startHeight, stopHeight, 1, stopTime, 1)
 	defer queue.close()
 
 loop:
@@ -194,7 +194,7 @@ func TestBlockQueueStopTime(t *testing.T) {
 	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
-	queue := newBlockQueue(startHeight, stopHeight, stopTime, 1)
+	queue := newBlockQueue(startHeight, stopHeight, 1, stopTime, 1)
 	wg := &sync.WaitGroup{}
 
 	baseTime := stopTime.Add(-50 * time.Second)
@@ -229,6 +229,46 @@ func TestBlockQueueStopTime(t *testing.T) {
 			wg.Wait()
 			assert.Less(t, trackingHeight, stopHeight-50)
 			return
+		}
+	}
+}
+
+func TestBlockQueueInitialHeight(t *testing.T) {
+	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
+	require.NoError(t, err)
+	const initialHeight int64 = 120
+
+	queue := newBlockQueue(startHeight, stopHeight, initialHeight, stopTime, 1)
+	wg := &sync.WaitGroup{}
+
+	// asynchronously fetch blocks and add it to the queue
+	for i := 0; i <= numWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			for {
+				select {
+				case height := <-queue.nextHeight():
+					require.GreaterOrEqual(t, height, initialHeight)
+					queue.add(mockLBResp(t, peerID, height, endTime))
+				case <-queue.done():
+					wg.Done()
+					return
+				}
+			}
+		}()
+	}
+
+loop:
+	for {
+		select {
+		case <-queue.done():
+			wg.Wait()
+			require.NoError(t, queue.error())
+			break loop
+
+		case resp := <-queue.verifyNext():
+			require.GreaterOrEqual(t, resp.block.Height, initialHeight)
+			queue.success(resp.block.Height)
 		}
 	}
 }
