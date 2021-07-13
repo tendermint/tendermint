@@ -678,17 +678,15 @@ func TestNodeStartStateSync(t *testing.T) {
 	require.NotNil(t, sub)
 
 	cfgSS := config.StateSync
-	tl := log.TestingLogger()
 
 	to := light.TrustOptions{
 		Period: cfgSS.TrustPeriod,
 		Height: cfgSS.TrustHeight,
 		Hash:   cfgSS.TrustHashBytes()}
 
-	mockSSR.On("GetLogger").Return(tl).
-		On("Sync", context.TODO(), cfgSS.DiscoveryTime).Return(state, nil).
+	mockSSR.On("Sync", context.TODO(), cfgSS.DiscoveryTime).Return(state, nil).
 		On("Backfill", state).Return(nil).
-		On("InitStateProvider", state, cfgSS.RPCServers, to, tl.With("module", "light")).Return(nil)
+		On("InitStateProvider", state, cfgSS.RPCServers, to, eventBus.Logger.With("module", "light")).Return(nil)
 
 	mockCSR.On("SetStateSyncingMetrics", float64(0)).Return()
 	mockCSR.On("SwitchToConsensus", state, true).Return()

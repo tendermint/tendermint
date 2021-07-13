@@ -1033,12 +1033,14 @@ func startStateSync(
 	fastSync bool,
 	state sm.State,
 	eb *types.EventBus) error {
-	ssR.GetLogger().Info("starting state sync...")
+	stateSyncLogger := eb.Logger.With("module", "statesync")
+
+	stateSyncLogger.Info("starting state sync...")
 
 	if err := ssR.InitStateProvider(state, config.RPCServers, light.TrustOptions{
 		Period: config.TrustPeriod,
 		Height: config.TrustHeight,
-		Hash:   config.TrustHashBytes()}, ssR.GetLogger().With("module", "light")); err != nil {
+		Hash:   config.TrustHashBytes()}, eb.Logger.With("module", "light")); err != nil {
 		return fmt.Errorf("failed to set up light client state provider: %w", err)
 	}
 
@@ -1046,18 +1048,18 @@ func startStateSync(
 	// because of the statesync doesn't have the concreate state height before fetched the snapshot.
 	d := types.EventDataStateSyncStatus{Complete: false, Height: state.InitialHeight}
 	if err := eb.PublishEventStateSyncStatus(d); err != nil {
-		ssR.GetLogger().Error("failed to emit the statesync start event", "err", err)
+		stateSyncLogger.Error("failed to emit the statesync start event", "err", err)
 	}
 
 	go func() {
 		state, err := ssR.Sync(context.TODO(), config.DiscoveryTime)
 		if err != nil {
-			ssR.GetLogger().Error("state sync failed", "err", err)
+			stateSyncLogger.Error("state sync failed", "err", err)
 			return
 		}
 
 		if err := ssR.Backfill(state); err != nil {
-			ssR.GetLogger().Error("backfill failed; node has insufficient history to verify all evidence;"+
+			stateSyncLogger.Error("backfill failed; node has insufficient history to verify all evidence;"+
 				" proceeding optimistically...", "err", err)
 		}
 
@@ -1065,14 +1067,14 @@ func startStateSync(
 
 		d := types.EventDataStateSyncStatus{Complete: true, Height: state.LastBlockHeight}
 		if err := eb.PublishEventStateSyncStatus(d); err != nil {
-			ssR.GetLogger().Error("failed to emit the statesync start event", "err", err)
+			stateSyncLogger.Error("failed to emit the statesync start event", "err", err)
 		}
 
 		if fastSync {
 			// FIXME Very ugly to have these metrics bleed through here.
 			conR.SetFastSyncingMetrics(1)
 			if err := bcR.SwitchToFastSync(state); err != nil {
-				ssR.GetLogger().Error("failed to switch to fast sync", "err", err)
+				stateSyncLogger.Error("failed to switch to fast sync", "err", err)
 				return
 			}
 
