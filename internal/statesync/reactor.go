@@ -137,7 +137,7 @@ type Reactor struct {
 	mtx    tmsync.RWMutex
 	syncer *syncer
 
-	sp StateProvider // provides state data for bootstrapping the StateSyncReactor
+	stateProvider StateProvider // provides state data for bootstrapping the StateSyncReactor
 }
 
 // NewReactor returns a reference to a new state sync reactor, which implements
@@ -233,7 +233,7 @@ func (r *Reactor) Sync(
 		return sm.State{}, errors.New("a state sync is already in progress")
 	}
 
-	if r.sp == nil {
+	if r.stateProvider == nil {
 		r.mtx.Unlock()
 		return sm.State{}, errors.New("should init the state provider before calling Sync")
 	}
@@ -243,7 +243,7 @@ func (r *Reactor) Sync(
 		r.Logger,
 		r.conn,
 		r.connQuery,
-		r.sp,
+		r.stateProvider,
 		r.snapshotCh.Out,
 		r.chunkCh.Out,
 		r.tempDir,
@@ -867,7 +867,7 @@ func (r *Reactor) InitStateProvider(
 		return err
 	}
 
-	r.sp = sp
+	r.stateProvider = sp
 
 	return nil
 }
