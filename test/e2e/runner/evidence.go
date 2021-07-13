@@ -65,11 +65,10 @@ func InjectEvidence(testnet *e2e.Testnet, amount int) error {
 
 	// wait for the node to reach the height above the forged height so that
 	// it is able to validate the evidence
-	status, err := waitForNode(targetNode, waitHeight, 30*time.Second)
+	_, err = waitForNode(targetNode, waitHeight, 30*time.Second)
 	if err != nil {
 		return err
 	}
-	duplicateVoteTime := status.SyncInfo.LatestBlockTime
 
 	var ev types.Evidence
 	for i := 1; i <= amount; i++ {
@@ -79,7 +78,7 @@ func InjectEvidence(testnet *e2e.Testnet, amount int) error {
 			)
 		} else {
 			ev, err = generateDuplicateVoteEvidence(
-				privVals, evidenceHeight, valSet, testnet.Name, duplicateVoteTime,
+				privVals, evidenceHeight, valSet, testnet.Name, blockRes.Block.Time,
 			)
 		}
 		if err != nil {
