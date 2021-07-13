@@ -94,7 +94,7 @@ func NewLightClientStateProviderFromDispatcher(
 	trustOptions light.TrustOptions,
 	logger log.Logger,
 ) (StateProvider, error) {
-	providers := dispatcher.Providers(chainID, 10*time.Second)
+	providers := dispatcher.Providers(chainID, 30*time.Second)
 	if len(providers) < 2 {
 		return nil, fmt.Errorf("at least 2 peers are required, got %d", len(providers))
 	}

@@ -23,9 +23,10 @@ type blockQueue struct {
 	verifyHeight int64
 
 	// termination conditions
-	stopHeight int64
-	stopTime   time.Time
-	terminal   *types.LightBlock
+	initialHeight int64
+	stopHeight    int64
+	stopTime      time.Time
+	terminal      *types.LightBlock
 
 	// track failed heights so we know what blocks to try fetch again
 	failed *maxIntHeap
@@ -45,21 +46,22 @@ type blockQueue struct {
 }
 
 func newBlockQueue(
-	startHeight, stopHeight int64,
+	startHeight, stopHeight, initialHeight int64,
 	stopTime time.Time,
 	maxRetries int,
 ) *blockQueue {
 	return &blockQueue{
-		stopHeight:   stopHeight,
-		stopTime:     stopTime,
-		fetchHeight:  startHeight,
-		verifyHeight: startHeight,
-		pending:      make(map[int64]lightBlockResponse),
-		failed:       &maxIntHeap{},
-		retries:      0,
-		maxRetries:   maxRetries,
-		waiters:      make([]chan int64, 0),
-		doneCh:       make(chan struct{}),
+		stopHeight:    stopHeight,
+		initialHeight: initialHeight,
+		stopTime:      stopTime,
+		fetchHeight:   startHeight,
+		verifyHeight:  startHeight,
+		pending:       make(map[int64]lightBlockResponse),
+		failed:        &maxIntHeap{},
+		retries:       0,
+		maxRetries:    maxRetries,
+		waiters:       make([]chan int64, 0),
+		doneCh:        make(chan struct{}),
 	}
 }
 
@@ -93,9 +95,10 @@ func (q *blockQueue) add(l lightBlockResponse) {
 		q.pending[l.block.Height] = l
 	}
 
-	// Lastly, if the incoming block is past the stop time and stop height then
-	// we mark it as the terminal block
-	if l.block.Height <= q.stopHeight && l.block.Time.Before(q.stopTime) {
+	// Lastly, if the incoming block is past the stop time and stop height or
+	// is equal to the initial height then we mark it as the terminal block.
+	if l.block.Height <= q.stopHeight && l.block.Time.Before(q.stopTime) ||
+		l.block.Height == q.initialHeight {
 		q.terminal = l.block
 	}
 }
@@ -115,7 +118,7 @@ func (q *blockQueue) nextHeight() <-chan int64 {
 		return ch
 	}
 
-	if q.terminal == nil {
+	if q.terminal == nil && q.fetchHeight >= q.initialHeight {
 		// return and decrement the fetch height
 		ch <- q.fetchHeight
 		q.fetchHeight--
