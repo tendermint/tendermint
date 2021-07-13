@@ -74,6 +74,12 @@ type TxMempool struct {
 	// thread-safe priority queue.
 	priorityIndex *TxPriorityQueue
 
+	// heightIndex defines a height-based, in ascending order, transaction index
+	heightIndex *WrappedTxList
+
+	// timestampIndex defines a timestamp-based, in ascending order, transaction index
+	timestampIndex *WrappedTxList
+
 	// A read/write lock is used to safe guard updates, insertions and deletions
 	// from the mempool. A read-lock is implicitly acquired when executing CheckTx,
 	// however, a caller must explicitly grab a write-lock via Lock when updating
@@ -279,6 +285,7 @@ func (txmp *TxMempool) CheckTx(
 			tx:        tx,
 			hash:      txHash,
 			timestamp: time.Now().UTC(),
+			height:    txmp.height,
 		}
 		txmp.initTxCallback(wtx, res, txInfo)
 
@@ -301,11 +308,7 @@ func (txmp *TxMempool) Flush() {
 	defer txmp.mtx.RUnlock()
 
 	for _, wtx := range txmp.txStore.GetAllTxs() {
-		if !txmp.txStore.IsTxRemoved(wtx.hash) {
-			txmp.txStore.RemoveTx(wtx)
-			txmp.priorityIndex.RemoveTx(wtx)
-			txmp.gossipIndex.Remove(wtx.gossipEl)
-		}
+		txmp.removeTx(wtx, false)
 	}
 
 	atomic.SwapInt64(&txmp.sizeBytes, 0)
@@ -443,6 +446,9 @@ func (txmp *TxMempool) Update(
 		}
 	}
 
+	// TODO: Purge transactions from height and timestamp indexes that have
+	// exceeded their TTL.
+
 	// If there any uncommitted transactions left in the mempool, we either
 	// initiate re-CheckTx per remaining transaction or notify that remaining
 	// transactions are left.
@@ -549,7 +555,6 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			}
 
 			wtx.gasWanted = checkTxRes.CheckTx.GasWanted
-			wtx.height = txmp.height
 			wtx.priority = priority
 			wtx.sender = sender
 			wtx.peers = map[uint16]struct{}{
@@ -722,6 +727,16 @@ func (txmp *TxMempool) insertTx(wtx *WrappedTx) {
 	txmp.txStore.SetTx(wtx)
 	txmp.priorityIndex.PushTx(wtx)
 
+	heightIdx := txmp.heightIndex.GetSortedIndex(func(curr *WrappedTx) bool {
+		return curr.height >= wtx.height
+	})
+	txmp.heightIndex.InsertAt(heightIdx, wtx)
+
+	timeIdx := txmp.timestampIndex.GetSortedIndex(func(curr *WrappedTx) bool {
+		return curr.timestamp.After(wtx.timestamp) || curr.timestamp.Equal(wtx.timestamp)
+	})
+	txmp.timestampIndex.InsertAt(timeIdx, wtx)
+
 	// Insert the transaction into the gossip index and mark the reference to the
 	// linked-list element, which will be needed at a later point when the
 	// transaction is removed.
@@ -738,6 +753,8 @@ func (txmp *TxMempool) removeTx(wtx *WrappedTx, removeFromCache bool) {
 
 	txmp.txStore.RemoveTx(wtx)
 	txmp.priorityIndex.RemoveTx(wtx)
+
+	// TODO: remove from height and timestamp indexes.
 
 	// Remove the transaction from the gossip index and cleanup the linked-list
 	// element so it can be garbage collected.
