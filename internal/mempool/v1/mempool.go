@@ -74,10 +74,12 @@ type TxMempool struct {
 	// thread-safe priority queue.
 	priorityIndex *TxPriorityQueue
 
-	// heightIndex defines a height-based, in ascending order, transaction index
+	// heightIndex defines a height-based, in ascending order, transaction index.
+	// i.e. older transactions are first.
 	heightIndex *WrappedTxList
 
-	// timestampIndex defines a timestamp-based, in ascending order, transaction index
+	// timestampIndex defines a timestamp-based, in ascending order, transaction
+	// index. i.e. older transactions are first.
 	timestampIndex *WrappedTxList
 
 	// A read/write lock is used to safe guard updates, insertions and deletions
