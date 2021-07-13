@@ -22,6 +22,7 @@ import (
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	proxymocks "github.com/tendermint/tendermint/proxy/mocks"
+	"github.com/tendermint/tendermint/state"
 	smmocks "github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -123,7 +124,7 @@ func setup(
 
 	cfg := config.DefaultStateSyncConfig()
 
-	rts.reactor = NewReactor(
+	r, e := NewReactor(
 		*cfg,
 		log.TestingLogger(),
 		conn,
@@ -135,7 +136,12 @@ func setup(
 		rts.stateStore,
 		rts.blockStore,
 		"",
+		state.State{},
+		false,
 	)
+
+	rts.reactor = r
+	require.NoError(t, e)
 
 	// override the dispatcher with one with a shorter timeout
 	rts.reactor.dispatcher = newDispatcher(rts.blockChannel.Out, 1*time.Second)

@@ -108,7 +108,6 @@ const (
 type SyncReactor interface {
 	Sync(context.Context, time.Duration) (sm.State, error)
 	Backfill(sm.State) error
-	InitStateProvider(sm.State, []string, light.TrustOptions, log.Logger) error
 }
 
 // Reactor handles state sync, both restoring snapshots for the local node and
@@ -153,7 +152,9 @@ func NewReactor(
 	stateStore sm.Store,
 	blockStore *store.BlockStore,
 	tempDir string,
-) *Reactor {
+	state sm.State,
+	stateSync bool,
+) (*Reactor, error) {
 	r := &Reactor{
 		cfg:         cfg,
 		conn:        conn,
@@ -169,8 +170,29 @@ func NewReactor(
 		blockStore:  blockStore,
 	}
 
+	if stateSync {
+		ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+		defer cancel()
+
+		to := light.TrustOptions{
+			Period: cfg.TrustPeriod,
+			Height: cfg.TrustHeight,
+			Hash:   cfg.TrustHashBytes()}
+
+		sp, err := NewLightClientStateProvider(
+			ctx,
+			state.ChainID, state.Version, state.InitialHeight,
+			cfg.RPCServers, to, logger.With("module", "light"))
+
+		if err != nil {
+			return nil, err
+		}
+
+		r.stateProvider = sp
+	}
+
 	r.BaseService = *service.NewBaseService(logger, "StateSync", r)
-	return r
+	return r, nil
 }
 
 // OnStart starts separate go routines for each p2p Channel and listens for
@@ -844,25 +866,4 @@ func (r *Reactor) fetchLightBlock(height uint64) (*types.LightBlock, error) {
 		ValidatorSet: vals,
 	}, nil
 
-}
-
-func (r *Reactor) InitStateProvider(
-	state sm.State,
-	cfgRPCServers []string,
-	trustOpt light.TrustOptions,
-	logger log.Logger) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	sp, err := NewLightClientStateProvider(
-		ctx,
-		state.ChainID, state.Version, state.InitialHeight,
-		cfgRPCServers, trustOpt, logger)
-
-	if err != nil {
-		return err
-	}
-
-	r.stateProvider = sp
-
-	return nil
 }

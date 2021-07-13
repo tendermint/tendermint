@@ -23,7 +23,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	consmocks "github.com/tendermint/tendermint/internal/consensus/mocks"
 	ssmocks "github.com/tendermint/tendermint/internal/statesync/mocks"
-	"github.com/tendermint/tendermint/light"
 
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -679,20 +678,13 @@ func TestNodeStartStateSync(t *testing.T) {
 
 	cfgSS := config.StateSync
 
-	to := light.TrustOptions{
-		Period: cfgSS.TrustPeriod,
-		Height: cfgSS.TrustHeight,
-		Hash:   cfgSS.TrustHashBytes()}
-
 	mockSSR.On("Sync", context.TODO(), cfgSS.DiscoveryTime).Return(state, nil).
-		On("Backfill", state).Return(nil).
-		On("InitStateProvider", state, cfgSS.RPCServers, to, eventBus.Logger.With("module", "light")).Return(nil)
-
+		On("Backfill", state).Return(nil)
 	mockCSR.On("SetStateSyncingMetrics", float64(0)).Return()
 	mockCSR.On("SwitchToConsensus", state, true).Return()
 
 	require.NoError(t,
-		startStateSync(mockSSR, mockFSR, mockCSR, config.StateSync, false, state, eventBus))
+		startStateSync(mockSSR, mockFSR, mockCSR, config.StateSync, false, state.InitialHeight, eventBus))
 
 	for cnt := 0; cnt < 2; {
 		select {

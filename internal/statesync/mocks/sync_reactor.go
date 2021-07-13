@@ -5,11 +5,7 @@ package mocks
 import (
 	context "context"
 
-	log "github.com/tendermint/tendermint/libs/log"
-	light "github.com/tendermint/tendermint/light"
-
 	mock "github.com/stretchr/testify/mock"
-
 	state "github.com/tendermint/tendermint/state"
 
 	time "time"
@@ -27,20 +23,6 @@ func (_m *SyncReactor) Backfill(_a0 state.State) error {
 	var r0 error
 	if rf, ok := ret.Get(0).(func(state.State) error); ok {
 		r0 = rf(_a0)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// InitStateProvider provides a mock function with given fields: _a0, _a1, _a2, _a3
-func (_m *SyncReactor) InitStateProvider(_a0 state.State, _a1 []string, _a2 light.TrustOptions, _a3 log.Logger) error {
-	ret := _m.Called(_a0, _a1, _a2, _a3)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(state.State, []string, light.TrustOptions, log.Logger) error); ok {
-		r0 = rf(_a0, _a1, _a2, _a3)
 	} else {
 		r0 = ret.Error(0)
 	}

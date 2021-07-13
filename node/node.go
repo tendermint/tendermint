@@ -29,7 +29,6 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/libs/strings"
 	tmtime "github.com/tendermint/tendermint/libs/time"
-	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/privval"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	"github.com/tendermint/tendermint/proxy"
@@ -333,7 +332,7 @@ func makeNode(config *cfg.Config,
 		peerUpdates = stateSyncReactorShim.PeerUpdates
 	}
 
-	stateSyncReactor = statesync.NewReactor(
+	stateSyncReactor, err = statesync.NewReactor(
 		*config.StateSync,
 		stateSyncReactorShim.Logger,
 		proxyApp.Snapshot(),
@@ -345,7 +344,13 @@ func makeNode(config *cfg.Config,
 		stateStore,
 		blockStore,
 		config.StateSync.TempDir,
+		state,
+		stateSync,
 	)
+
+	if err != nil {
+		return nil, err
+	}
 
 	// add the channel descriptors to both the transports
 	// FIXME: This should be removed when the legacy p2p stack is removed and
@@ -663,7 +668,7 @@ func (n *nodeImpl) OnStart() error {
 		}
 
 		if err := startStateSync(n.stateSyncReactor, bcR, n.consensusReactor,
-			n.config.StateSync, n.config.FastSyncMode, state, n.eventBus); err != nil {
+			n.config.StateSync, n.config.FastSyncMode, state.InitialHeight, n.eventBus); err != nil {
 			return fmt.Errorf("failed to start state sync: %w", err)
 		}
 	}
@@ -1031,22 +1036,15 @@ func startStateSync(
 	conR cs.ConsSyncReactor,
 	config *cfg.StateSyncConfig,
 	fastSync bool,
-	state sm.State,
+	stateInitHeight int64,
 	eb *types.EventBus) error {
 	stateSyncLogger := eb.Logger.With("module", "statesync")
 
 	stateSyncLogger.Info("starting state sync...")
 
-	if err := ssR.InitStateProvider(state, config.RPCServers, light.TrustOptions{
-		Period: config.TrustPeriod,
-		Height: config.TrustHeight,
-		Hash:   config.TrustHashBytes()}, eb.Logger.With("module", "light")); err != nil {
-		return fmt.Errorf("failed to set up light client state provider: %w", err)
-	}
-
 	// at the beginning of the statesync start, we use the initialHeight as the event height
 	// because of the statesync doesn't have the concreate state height before fetched the snapshot.
-	d := types.EventDataStateSyncStatus{Complete: false, Height: state.InitialHeight}
+	d := types.EventDataStateSyncStatus{Complete: false, Height: stateInitHeight}
 	if err := eb.PublishEventStateSyncStatus(d); err != nil {
 		stateSyncLogger.Error("failed to emit the statesync start event", "err", err)
 	}
