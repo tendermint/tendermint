@@ -281,7 +281,9 @@ func (r *Reactor) Backfill(state sm.State) error {
 	return r.backfill(
 		context.Background(),
 		state.ChainID,
-		state.LastBlockHeight, stopHeight,
+		state.LastBlockHeight,
+		stopHeight,
+		state.InitialHeight,
 		state.LastBlockID,
 		stopTime,
 	)
@@ -290,7 +292,7 @@ func (r *Reactor) Backfill(state sm.State) error {
 func (r *Reactor) backfill(
 	ctx context.Context,
 	chainID string,
-	startHeight, stopHeight int64,
+	startHeight, stopHeight, initialHeight int64,
 	trustedBlockID types.BlockID,
 	stopTime time.Time,
 ) error {
@@ -303,7 +305,7 @@ func (r *Reactor) backfill(
 		lastChangeHeight int64 = startHeight
 	)
 
-	queue := newBlockQueue(startHeight, stopHeight, stopTime, maxLightBlockRequestRetries)
+	queue := newBlockQueue(startHeight, stopHeight, initialHeight, stopTime, maxLightBlockRequestRetries)
 
 	// fetch light blocks across four workers. The aim with deploying concurrent
 	// workers is to equate the network messaging time with the verification
