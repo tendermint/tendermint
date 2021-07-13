@@ -113,7 +113,7 @@ type FastSyncReactor interface {
 }
 
 //go:generate mockery --case underscore --name ConsSyncReactor
-// create this interface for testing abilities of node.startStateSync
+// ConsSyncReactor defines an interface used for testing abilities of node.startStateSync.
 type ConsSyncReactor interface {
 	SwitchToConsensus(sm.State, bool)
 	SetStateSyncingMetrics(float64)

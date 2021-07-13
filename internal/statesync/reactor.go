@@ -104,7 +104,7 @@ const (
 )
 
 //go:generate mockery --case underscore --name SyncReactor
-// create this interface for testing abilities of node.startStateSync
+// SyncReactor defines an interface used for testing abilities of node.startStateSync.
 type SyncReactor interface {
 	Sync(context.Context, time.Duration) (sm.State, error)
 	Backfill(sm.State) error
@@ -177,12 +177,14 @@ func NewReactor(
 		to := light.TrustOptions{
 			Period: cfg.TrustPeriod,
 			Height: cfg.TrustHeight,
-			Hash:   cfg.TrustHashBytes()}
+			Hash:   cfg.TrustHashBytes(),
+		}
 
 		sp, err := NewLightClientStateProvider(
 			ctx,
 			state.ChainID, state.Version, state.InitialHeight,
-			cfg.RPCServers, to, logger.With("module", "light"))
+			cfg.RPCServers, to, logger.With("module", "light"),
+		)
 
 		if err != nil {
 			return nil, err
