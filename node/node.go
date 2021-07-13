@@ -662,9 +662,8 @@ func (n *nodeImpl) OnStart() error {
 			return fmt.Errorf("unable to derive state: %w", err)
 		}
 
-		err = startStateSync(n.stateSyncReactor, bcR, n.consensusReactor,
-			n.config.StateSync, n.config.FastSyncMode, state, n.eventBus)
-		if err != nil {
+		if err := startStateSync(n.stateSyncReactor, bcR, n.consensusReactor,
+			n.config.StateSync, n.config.FastSyncMode, state, n.eventBus); err != nil {
 			return fmt.Errorf("failed to start state sync: %w", err)
 		}
 	}
