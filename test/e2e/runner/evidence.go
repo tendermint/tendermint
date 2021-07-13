@@ -43,15 +43,15 @@ func InjectEvidence(testnet *e2e.Testnet, amount int) error {
 	if err != nil {
 		return err
 	}
-	lightEvidenceCommonHeight := blockRes.Block.Height
+	evidenceHeight := blockRes.Block.Height
 	waitHeight := blockRes.Block.Height + 3
-	duplicateVoteHeight := waitHeight
 
 	nValidators := 100
-	valRes, err := client.Validators(context.Background(), &lightEvidenceCommonHeight, nil, &nValidators)
+	valRes, err := client.Validators(context.Background(), &evidenceHeight, nil, &nValidators)
 	if err != nil {
 		return err
 	}
+
 	valSet, err := types.ValidatorSetFromExistingValidators(valRes.Validators)
 	if err != nil {
 		return err
@@ -75,11 +75,11 @@ func InjectEvidence(testnet *e2e.Testnet, amount int) error {
 	for i := 1; i <= amount; i++ {
 		if i%lightClientEvidenceRatio == 0 {
 			ev, err = generateLightClientAttackEvidence(
-				privVals, lightEvidenceCommonHeight, valSet, testnet.Name, blockRes.Block.Time,
+				privVals, evidenceHeight, valSet, testnet.Name, blockRes.Block.Time,
 			)
 		} else {
 			ev, err = generateDuplicateVoteEvidence(
-				privVals, duplicateVoteHeight, valSet, testnet.Name, duplicateVoteTime,
+				privVals, evidenceHeight, valSet, testnet.Name, duplicateVoteTime,
 			)
 		}
 		if err != nil {
