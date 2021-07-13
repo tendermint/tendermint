@@ -277,7 +277,7 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 		go s.fetchChunks(fetchCtx, snapshot, chunks)
 	}
 
-	pctx, pcancel := context.WithTimeout(ctx, 10*time.Second)
+	pctx, pcancel := context.WithTimeout(ctx, 30*time.Second)
 	defer pcancel()
 
 	// Optimistically build new state, so we don't discover any light client failures at the end.
