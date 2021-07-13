@@ -34,22 +34,6 @@ func (_m *SyncReactor) Backfill(_a0 state.State) error {
 	return r0
 }
 
-// GetLogger provides a mock function with given fields:
-func (_m *SyncReactor) GetLogger() log.Logger {
-	ret := _m.Called()
-
-	var r0 log.Logger
-	if rf, ok := ret.Get(0).(func() log.Logger); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(log.Logger)
-		}
-	}
-
-	return r0
-}
-
 // InitStateProvider provides a mock function with given fields: _a0, _a1, _a2, _a3
 func (_m *SyncReactor) InitStateProvider(_a0 state.State, _a1 []string, _a2 light.TrustOptions, _a3 log.Logger) error {
 	ret := _m.Called(_a0, _a1, _a2, _a3)

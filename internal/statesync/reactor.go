@@ -108,7 +108,6 @@ const (
 type SyncReactor interface {
 	Sync(context.Context, time.Duration) (sm.State, error)
 	Backfill(sm.State) error
-	GetLogger() log.Logger
 	InitStateProvider(sm.State, []string, light.TrustOptions, log.Logger) error
 }
 
@@ -845,10 +844,6 @@ func (r *Reactor) fetchLightBlock(height uint64) (*types.LightBlock, error) {
 		ValidatorSet: vals,
 	}, nil
 
-}
-
-func (r *Reactor) GetLogger() log.Logger {
-	return r.Logger
 }
 
 func (r *Reactor) InitStateProvider(
