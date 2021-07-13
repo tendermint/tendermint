@@ -96,7 +96,7 @@ func (q *blockQueue) add(l lightBlockResponse) {
 	}
 
 	// Lastly, if the incoming block is past the stop time and stop height or
-	// is equal to the initial height then we mark it as the terminal block
+	// is equal to the initial height then we mark it as the terminal block.
 	if l.block.Height <= q.stopHeight && l.block.Time.Before(q.stopTime) ||
 		l.block.Height == q.initialHeight {
 		q.terminal = l.block
