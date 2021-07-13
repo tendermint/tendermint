@@ -1037,7 +1037,8 @@ func startStateSync(
 	config *cfg.StateSyncConfig,
 	fastSync bool,
 	stateInitHeight int64,
-	eb *types.EventBus) error {
+	eb *types.EventBus,
+) error {
 	stateSyncLogger := eb.Logger.With("module", "statesync")
 
 	stateSyncLogger.Info("starting state sync...")
