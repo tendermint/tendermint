@@ -14,9 +14,9 @@ var (
 	// testnetCombinations defines global testnet options, where we generate a
 	// separate testnet for each combination (Cartesian product) of options.
 	testnetCombinations = map[string][]interface{}{
-		"topology":      {"single", "quad", "large"},
-		"ipv6":          {false, true},
-		"p2p":           {NewP2PMode, LegacyP2PMode, HybridP2PMode},
+		"topology":      {"quad", "large"},
+		"ipv6":          {false},
+		"p2p":           {NewP2PMode},
 		"queueType":     {"priority"}, // "fifo", "wdrr"
 		"initialHeight": {0, 1000},
 		"initialState": {
@@ -24,13 +24,13 @@ var (
 			map[string]string{"initial01": "a", "initial02": "b", "initial03": "c"},
 		},
 		"validators": {"genesis", "initchain"},
-		"keyType":    {types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1},
+		"keyType":    {types.ABCIPubKeyTypeEd25519},
 	}
 
 	// The following specify randomly chosen values for testnet nodes.
-	nodeDatabases        = uniformChoice{"goleveldb", "cleveldb", "rocksdb", "boltdb", "badgerdb"}
-	nodeABCIProtocols    = uniformChoice{"unix", "tcp", "builtin", "grpc"}
-	nodePrivvalProtocols = uniformChoice{"file", "unix", "tcp", "grpc"}
+	nodeDatabases        = uniformChoice{"badgerdb"}
+	nodeABCIProtocols    = uniformChoice{"builtin"}
+	nodePrivvalProtocols = uniformChoice{"file"}
 	// FIXME: v2 disabled due to flake
 	nodeFastSyncs         = uniformChoice{"v0"} // "v2"
 	nodeStateSyncs        = uniformChoice{false, true}
@@ -38,10 +38,10 @@ var (
 	nodeSnapshotIntervals = uniformChoice{0, 3}
 	nodeRetainBlocks      = uniformChoice{0, int(e2e.EvidenceAgeHeight), int(e2e.EvidenceAgeHeight) + 5}
 	nodePerturbations     = probSetChoice{
-		"disconnect": 0.1,
-		"pause":      0.1,
-		"kill":       0.1,
-		"restart":    0.1,
+		// 	"disconnect": 0.1,
+		// 	"pause":      0.1,
+		// 	"kill":       0.1,
+		// 	"restart":    0.1,
 	}
 	evidence = uniformChoice{0, 1, 10}
 	txSize   = uniformChoice{1024, 10240} // either 1kb or 10kb
