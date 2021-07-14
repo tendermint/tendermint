@@ -457,12 +457,7 @@ func (txmp *TxMempool) Update(
 		}
 	}
 
-	// TODO: Purge transactions from height and timestamp indexes that have
-	// exceeded their TTL.
-
-	// purge all transactions that have expired their height-based TTL
-
-	// purge all transactions that have expired their time-based TTL
+	txmp.purgeExpiredTxs(blockHeight)
 
 	// If there any uncommitted transactions left in the mempool, we either
 	// initiate re-CheckTx per remaining transaction or notify that remaining
@@ -772,6 +767,52 @@ func (txmp *TxMempool) removeTx(wtx *WrappedTx, removeFromCache bool) {
 
 	if removeFromCache {
 		txmp.cache.Remove(wtx.tx)
+	}
+}
+
+// purgeExpiredTxs removes all transactions that have exceeded their respective
+// height and/or time based TTLs from their respective indexes. Every expired
+// transaction will be removed from the mempool entirely, except for the cache.
+//
+// NOTE: purgeExpiredTxs must only be called during TxMempool#Update in which
+// the caller has a write-lock on the mempool and so we can safely iterate over
+// the height and time based indexes.
+func (txmp *TxMempool) purgeExpiredTxs(blockHeight int64) {
+	now := time.Now()
+	expiredTxs := make(map[[mempool.TxKeySize]byte]*WrappedTx)
+
+	if txmp.config.TTLNumBlocks > 0 {
+		var purgeIdx int
+		for i, wtx := range txmp.heightIndex.txs {
+			if (blockHeight - wtx.height) > txmp.config.TTLNumBlocks {
+				expiredTxs[mempool.TxKey(wtx.tx)] = wtx
+				purgeIdx = i
+			} else {
+				// since the index is sorted, we know no other txs can be be purged
+				break
+			}
+		}
+
+		txmp.heightIndex.txs = txmp.heightIndex.txs[purgeIdx+1:]
+	}
+
+	if txmp.config.TTLDuration > 0 {
+		var purgeIdx int
+		for i, wtx := range txmp.timestampIndex.txs {
+			if now.Sub(wtx.timestamp) > txmp.config.TTLDuration {
+				expiredTxs[mempool.TxKey(wtx.tx)] = wtx
+				purgeIdx = i
+			} else {
+				// since the index is sorted, we know no other txs can be be purged
+				break
+			}
+		}
+
+		txmp.timestampIndex.txs = txmp.timestampIndex.txs[purgeIdx+1:]
+	}
+
+	for _, wtx := range expiredTxs {
+		txmp.removeTx(wtx, false)
 	}
 }
 
