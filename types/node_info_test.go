@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/version"
@@ -158,4 +159,17 @@ func TestNodeInfoCompatible(t *testing.T) {
 		tc.malleateNodeInfo(&ni)
 		assert.Error(t, ni1.CompatibleWith(ni))
 	}
+}
+
+func TestNodeInfoAddChannel(t *testing.T) {
+	nodeInfo := testNodeInfo(testNodeID(), "testing")
+	nodeInfo.Channels = []byte{}
+	require.Empty(t, nodeInfo.Channels)
+
+	nodeInfo.AddChannel(2)
+	require.Contains(t, nodeInfo.Channels, byte(0x02))
+
+	// adding the same channel again shouldn't be a problem
+	nodeInfo.AddChannel(2)
+	require.Contains(t, nodeInfo.Channels, byte(0x02))
 }

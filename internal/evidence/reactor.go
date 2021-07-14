@@ -2,6 +2,7 @@ package evidence
 
 import (
 	"fmt"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -165,6 +166,11 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
+			r.Logger.Error(
+				"recovering from processing message panic",
+				"err", err,
+				"stack", string(debug.Stack()),
+			)
 		}
 	}()
 
@@ -296,7 +302,11 @@ func (r *Reactor) broadcastEvidenceLoop(peerID types.NodeID, closer *tmsync.Clos
 		r.peerWG.Done()
 
 		if e := recover(); e != nil {
-			r.Logger.Error("recovering from broadcasting evidence loop", "err", e)
+			r.Logger.Error(
+				"recovering from broadcasting evidence loop",
+				"err", e,
+				"stack", string(debug.Stack()),
+			)
 		}
 	}()
 

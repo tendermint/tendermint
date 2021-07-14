@@ -59,7 +59,7 @@ type nodeImpl struct {
 	router      *p2p.Router
 	addrBook    pex.AddrBook // known peers
 	nodeInfo    types.NodeInfo
-	nodeKey     p2p.NodeKey // our node privkey
+	nodeKey     types.NodeKey // our node privkey
 	isListening bool
 
 	// services
@@ -89,7 +89,7 @@ type nodeImpl struct {
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
 // It implements NodeProvider.
 func newDefaultNode(config *cfg.Config, logger log.Logger) (service.Service, error) {
-	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
+	nodeKey, err := types.LoadOrGenNodeKey(config.NodeKeyFile())
 	if err != nil {
 		return nil, fmt.Errorf("failed to load or gen node key %s: %w", config.NodeKeyFile(), err)
 	}
@@ -126,7 +126,7 @@ func newDefaultNode(config *cfg.Config, logger log.Logger) (service.Service, err
 // makeNode returns a new, ready to go, Tendermint Node.
 func makeNode(config *cfg.Config,
 	privValidator types.PrivValidator,
-	nodeKey p2p.NodeKey,
+	nodeKey types.NodeKey,
 	clientCreator proxy.ClientCreator,
 	genesisDocProvider genesisDocProvider,
 	dbProvider cfg.DBProvider,
@@ -458,7 +458,7 @@ func makeNode(config *cfg.Config,
 // makeSeedNode returns a new seed node, containing only p2p, pex reactor
 func makeSeedNode(config *cfg.Config,
 	dbProvider cfg.DBProvider,
-	nodeKey p2p.NodeKey,
+	nodeKey types.NodeKey,
 	genesisDocProvider genesisDocProvider,
 	logger log.Logger,
 ) (service.Service, error) {

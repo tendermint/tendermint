@@ -38,7 +38,7 @@ func newMockPeer(ip net.IP) *mockPeer {
 	if ip == nil {
 		ip = net.IP{127, 0, 0, 1}
 	}
-	nodeKey := GenNodeKey()
+	nodeKey := types.GenNodeKey()
 	return &mockPeer{
 		ip: ip,
 		id: nodeKey.ID,

@@ -3,12 +3,11 @@ package statesync
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"sync"
 	"testing"
 	"time"
 
-	// "github.com/fortytw2/leaktest"
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
@@ -421,11 +420,11 @@ func TestReactor_Dispatcher(t *testing.T) {
 
 func TestReactor_Backfill(t *testing.T) {
 	// test backfill algorithm with varying failure rates [0, 10]
-	failureRates := []int{0, 3, 9}
+	failureRates := []int{0, 2, 9}
 	for _, failureRate := range failureRates {
 		failureRate := failureRate
 		t.Run(fmt.Sprintf("failure rate: %d", failureRate), func(t *testing.T) {
-			// t.Cleanup(leaktest.Check(t))
+			t.Cleanup(leaktest.CheckTimeout(t, 1*time.Minute))
 			rts := setup(t, nil, nil, nil, 21)
 
 			var (
@@ -464,10 +463,11 @@ func TestReactor_Backfill(t *testing.T) {
 				factory.DefaultTestChainID,
 				startHeight,
 				stopHeight,
+				1,
 				factory.MakeBlockIDWithHash(chain[startHeight].Header.Hash()),
 				stopTime,
 			)
-			if failureRate > 5 {
+			if failureRate > 3 {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
@@ -506,6 +506,7 @@ func handleLightBlockRequests(t *testing.T,
 	close chan struct{},
 	failureRate int) {
 	requests := 0
+	errorCount := 0
 	for {
 		select {
 		case envelope := <-receiving:
@@ -520,7 +521,7 @@ func handleLightBlockRequests(t *testing.T,
 						},
 					}
 				} else {
-					switch rand.Intn(3) {
+					switch errorCount % 3 {
 					case 0: // send a different block
 						differntLB, err := mockLB(t, int64(msg.Height), factory.DefaultTestTime, factory.MakeBlockID()).ToProto()
 						require.NoError(t, err)
@@ -539,6 +540,7 @@ func handleLightBlockRequests(t *testing.T,
 						}
 					case 2: // don't do anything
 					}
+					errorCount++
 				}
 			}
 		case <-close:

@@ -257,8 +257,10 @@ type Router struct {
 	protocolTransports map[Protocol]Transport
 	stopCh             chan struct{} // signals Router shutdown
 
-	peerMtx      sync.RWMutex
-	peerQueues   map[types.NodeID]queue // outbound messages per peer for all channels
+	peerMtx    sync.RWMutex
+	peerQueues map[types.NodeID]queue // outbound messages per peer for all channels
+	// the channels that the peer queue has open
+	peerChannels map[types.NodeID]channelIDs
 	queueFactory func(int) queue
 
 	// FIXME: We don't strictly need to use a mutex for this if we seal the
@@ -304,6 +306,7 @@ func NewRouter(
 		channelQueues:      map[ChannelID]queue{},
 		channelMessages:    map[ChannelID]proto.Message{},
 		peerQueues:         map[types.NodeID]queue{},
+		peerChannels:       make(map[types.NodeID]channelIDs),
 	}
 
 	router.BaseService = service.NewBaseService(logger, "router", router)
@@ -387,6 +390,9 @@ func (r *Router) OpenChannel(chDesc ChannelDescriptor, messageType proto.Message
 	r.channelQueues[id] = queue
 	r.channelMessages[id] = messageType
 
+	// add the channel to the nodeInfo if it's not already there.
+	r.nodeInfo.AddChannel(uint16(chDesc.ID))
+
 	go func() {
 		defer func() {
 			r.channelMtx.Lock()
@@ -441,18 +447,39 @@ func (r *Router) routeChannel(
 				r.peerMtx.RLock()
 
 				queues = make([]queue, 0, len(r.peerQueues))
-				for _, q := range r.peerQueues {
-					queues = append(queues, q)
+				for nodeID, q := range r.peerQueues {
+					peerChs := r.peerChannels[nodeID]
+
+					// check whether the peer is receiving on that channel
+					if _, ok := peerChs[chID]; ok {
+						queues = append(queues, q)
+					}
 				}
 
 				r.peerMtx.RUnlock()
 			} else {
 				r.peerMtx.RLock()
+
 				q, ok := r.peerQueues[envelope.To]
+				contains := false
+				if ok {
+					peerChs := r.peerChannels[envelope.To]
+
+					// check whether the peer is receiving on that channel
+					_, contains = peerChs[chID]
+				}
 				r.peerMtx.RUnlock()
 
 				if !ok {
 					r.logger.Debug("dropping message for unconnected peer", "peer", envelope.To, "channel", chID)
+					continue
+				}
+
+				if !contains {
+					// reactor tried to send a message across a channel that the
+					// peer doesn't have available. This is a known issue due to
+					// how peer subscriptions work:
+					// https://github.com/tendermint/tendermint/issues/6598
 					continue
 				}
 
@@ -601,7 +628,6 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 		r.logger.Error("peer handshake failed", "endpoint", conn, "err", err)
 		return
 	}
-
 	if err := r.filterPeersID(ctx, peerInfo.NodeID); err != nil {
 		r.logger.Debug("peer filtered by node ID", "node", peerInfo.NodeID, "err", err)
 		return
@@ -613,7 +639,7 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 		return
 	}
 
-	r.routePeer(peerInfo.NodeID, conn)
+	r.routePeer(peerInfo.NodeID, conn, toChannelIDs(peerInfo.Channels))
 }
 
 // dialPeers maintains outbound connections to peers by dialing them.
@@ -688,7 +714,7 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 		return
 	}
 
-	_, _, err = r.handshakePeer(ctx, conn, address.NodeID)
+	peerInfo, _, err := r.handshakePeer(ctx, conn, address.NodeID)
 	switch {
 	case errors.Is(err, context.Canceled):
 		conn.Close()
@@ -707,14 +733,13 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 			"op", "outgoing/dialing", "peer", address.NodeID, "err", err)
 		conn.Close()
 		return
-
 	}
 
 	// routePeer (also) calls connection close
-	go r.routePeer(address.NodeID, conn)
+	go r.routePeer(address.NodeID, conn, toChannelIDs(peerInfo.Channels))
 }
 
-func (r *Router) getOrMakeQueue(peerID types.NodeID) queue {
+func (r *Router) getOrMakeQueue(peerID types.NodeID, channels channelIDs) queue {
 	r.peerMtx.Lock()
 	defer r.peerMtx.Unlock()
 
@@ -724,6 +749,7 @@ func (r *Router) getOrMakeQueue(peerID types.NodeID) queue {
 
 	peerQueue := r.queueFactory(queueBufferDefault)
 	r.peerQueues[peerID] = peerQueue
+	r.peerChannels[peerID] = channels
 	return peerQueue
 }
 
@@ -795,7 +821,6 @@ func (r *Router) handshakePeer(
 	if err != nil {
 		return peerInfo, peerKey, err
 	}
-
 	if err = peerInfo.Validate(); err != nil {
 		return peerInfo, peerKey, fmt.Errorf("invalid handshake NodeInfo: %w", err)
 	}
@@ -806,6 +831,13 @@ func (r *Router) handshakePeer(
 	if expectID != "" && expectID != peerInfo.NodeID {
 		return peerInfo, peerKey, fmt.Errorf("expected to connect with peer %q, got %q",
 			expectID, peerInfo.NodeID)
+	}
+	if err := r.nodeInfo.CompatibleWith(peerInfo); err != nil {
+		return peerInfo, peerKey, ErrRejected{
+			err:            err,
+			id:             peerInfo.ID(),
+			isIncompatible: true,
+		}
 	}
 	return peerInfo, peerKey, nil
 }
@@ -819,14 +851,15 @@ func (r *Router) runWithPeerMutex(fn func() error) error {
 // routePeer routes inbound and outbound messages between a peer and the reactor
 // channels. It will close the given connection and send queue when done, or if
 // they are closed elsewhere it will cause this method to shut down and return.
-func (r *Router) routePeer(peerID types.NodeID, conn Connection) {
+func (r *Router) routePeer(peerID types.NodeID, conn Connection, channels channelIDs) {
 	r.metrics.Peers.Add(1)
 	r.peerManager.Ready(peerID)
 
-	sendQueue := r.getOrMakeQueue(peerID)
+	sendQueue := r.getOrMakeQueue(peerID, channels)
 	defer func() {
 		r.peerMtx.Lock()
 		delete(r.peerQueues, peerID)
+		delete(r.peerChannels, peerID)
 		r.peerMtx.Unlock()
 
 		sendQueue.close()
@@ -983,6 +1016,11 @@ func (r *Router) evictPeers() {
 	}
 }
 
+// NodeInfo returns a copy of the current NodeInfo. Used for testing.
+func (r *Router) NodeInfo() types.NodeInfo {
+	return r.nodeInfo.Copy()
+}
+
 // OnStart implements service.Service.
 func (r *Router) OnStart() error {
 	go r.dialPeers()
@@ -1042,4 +1080,14 @@ func (r *Router) stopCtx() context.Context {
 	}()
 
 	return ctx
+}
+
+type channelIDs map[ChannelID]struct{}
+
+func toChannelIDs(bytes []byte) channelIDs {
+	c := make(map[ChannelID]struct{}, len(bytes))
+	for _, b := range bytes {
+		c[ChannelID(b)] = struct{}{}
+	}
+	return c
 }

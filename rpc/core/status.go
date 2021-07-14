@@ -71,6 +71,8 @@ func (env *Environment) Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, err
 			EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
 			MaxPeerBlockHeight:  env.FastSyncReactor.GetMaxPeerBlockHeight(),
 			CatchingUp:          env.ConsensusReactor.WaitSync(),
+			TotalSyncedTime:     env.FastSyncReactor.GetTotalSyncedTime(),
+			RemainingTime:       env.FastSyncReactor.GetRemainingSyncTime(),
 		},
 		ValidatorInfo: validatorInfo,
 	}
