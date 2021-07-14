@@ -777,7 +777,7 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.NotEqual(t, c.Primary(), deadNode)
-	assert.Equal(t, 1, len(c.Witnesses()))
+	assert.Equal(t, 2, len(c.Witnesses()))
 }
 
 func TestClient_BackwardsVerification(t *testing.T) {
@@ -1119,7 +1119,7 @@ func TestClientHandlesContexts(t *testing.T) {
 		},
 		p,
 		[]provider.Provider{p, p},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(dbm.NewMemDB(), chainID),
 	)
 	require.Error(t, ctxTimeOut.Err())
 	require.Error(t, err)
@@ -1136,7 +1136,7 @@ func TestClientHandlesContexts(t *testing.T) {
 		},
 		p,
 		[]provider.Provider{p, p},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(dbm.NewMemDB(), chainID),
 	)
 	require.NoError(t, err)
 

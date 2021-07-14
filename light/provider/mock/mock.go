@@ -64,16 +64,14 @@ func (p *Mock) String() string {
 func (p *Mock) LightBlock(ctx context.Context, height int64) (*types.LightBlock, error) {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
-<<<<<<< HEAD
-=======
 
+	// allocate a window of time for contexts to be canceled
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case <-time.After(10 * time.Millisecond):
 	}
 
->>>>>>> 40fba3960 (add missing context catch and tests (#6701))
 	var lb *types.LightBlock
 
 	if height > p.latestHeight {
