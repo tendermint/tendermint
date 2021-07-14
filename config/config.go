@@ -833,10 +833,12 @@ func DefaultMempoolConfig() *MempoolConfig {
 		Broadcast: true,
 		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck
-		Size:        5000,
-		MaxTxsBytes: 1024 * 1024 * 1024, // 1GB
-		CacheSize:   10000,
-		MaxTxBytes:  1024 * 1024, // 1MB
+		Size:         5000,
+		MaxTxsBytes:  1024 * 1024 * 1024, // 1GB
+		CacheSize:    10000,
+		MaxTxBytes:   1024 * 1024, // 1MB
+		TTLDuration:  0 * time.Second,
+		TTLNumBlocks: 0,
 	}
 }
 
@@ -862,6 +864,13 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 	if cfg.MaxTxBytes < 0 {
 		return errors.New("max-tx-bytes can't be negative")
 	}
+	if cfg.TTLDuration < 0 {
+		return errors.New("ttl-duration can't be negative")
+	}
+	if cfg.TTLNumBlocks < 0 {
+		return errors.New("ttl-num-blocks can't be negative")
+	}
+
 	return nil
 }
 
