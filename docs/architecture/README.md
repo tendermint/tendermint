@@ -61,7 +61,7 @@ Note the context/background should be written in the present tense.
 - [ADR-053: State-Sync-Prototype](./adr-053-state-sync-prototype.md)
 - [ADR-054: Crypto-Encoding-2](./adr-054-crypto-encoding-2.md)
 - [ADR-055: Protobuf-Design](./adr-055-protobuf-design.md)
-- [ADR-056: Light-Client-Amnesia-Attacks](./adr-056-light-client-amnesia-attacks)
+- [ADR-056: Light-Client-Amnesia-Attacks](./adr-056-light-client-amnesia-attacks.md)
 - [ADR-059: Evidence-Composition-and-Lifecycle](./adr-059-evidence-composition-and-lifecycle.md)
 - [ADR-062: P2P-Architecture](./adr-062-p2p-architecture.md)
 - [ADR-063: Privval-gRPC](./adr-063-privval-grpc.md)
