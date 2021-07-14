@@ -20,10 +20,13 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### FEATURES
 
+- [rpc] [\#6717](https://github.com/tendermint/tendermint/pull/6717) introduce
+  `/genesis_chunked` rpc endpoint for handling large genesis files by chunking them
+
 ### IMPROVEMENTS
 
 ### BUG FIXES
 
 - [light] [\#6685](https://github.com/tendermint/tendermint/pull/6685) fix bug
-  with incorrecly handling contexts which occasionally froze state sync.
+  with incorrectly handling contexts that would occasionally freeze state sync. (@cmwaters)
 
