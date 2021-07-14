@@ -93,19 +93,15 @@ func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent, uncondit
 
 // Genesis returns genesis file.
 // More: https://docs.tendermint.com/master/rpc/#/Info/genesis
-<<<<<<< HEAD
 func Genesis(ctx *rpctypes.Context) (*ctypes.ResultGenesis, error) {
-=======
-func (env *Environment) Genesis(ctx *rpctypes.Context) (*ctypes.ResultGenesis, error) {
 	if len(env.genChunks) > 1 {
 		return nil, errors.New("genesis response is large, please use the genesis_chunked API instead")
 	}
 
->>>>>>> d9134063e (rpc: add chunked rpc interface (#6445))
 	return &ctypes.ResultGenesis{Genesis: env.GenDoc}, nil
 }
 
-func (env *Environment) GenesisChunked(ctx *rpctypes.Context, chunk uint) (*ctypes.ResultGenesisChunk, error) {
+func GenesisChunked(ctx *rpctypes.Context, chunk uint) (*ctypes.ResultGenesisChunk, error) {
 	if env.genChunks == nil {
 		return nil, fmt.Errorf("service configuration error, genesis chunks are not initialized")
 	}
