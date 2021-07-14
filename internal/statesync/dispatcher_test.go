@@ -60,8 +60,8 @@ func TestDispatcherReturnsNoBlock(t *testing.T) {
 	doneCh := make(chan struct{})
 
 	go func() {
-		err := d.respond(nil, peerFromSet)
-		require.Nil(t, err)
+		<-ch
+		require.NoError(t, d.respond(nil, peerFromSet))
 		close(doneCh)
 	}()
 
@@ -87,8 +87,8 @@ func TestDispatcherErrorsWhenNoPeers(t *testing.T) {
 
 func TestDispatcherReturnsBlockOncePeerAvailable(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
-	ch := make(chan p2p.Envelope, 100)
-	d := newDispatcher(ch, 1*time.Second)
+	dispatcherRequestCh := make(chan p2p.Envelope, 100)
+	d := newDispatcher(dispatcherRequestCh, 1*time.Second)
 	peerFromSet := createPeerSet(1)[0]
 	d.addPeer(peerFromSet)
 	ctx := context.Background()
@@ -100,12 +100,18 @@ func TestDispatcherReturnsBlockOncePeerAvailable(t *testing.T) {
 		require.Nil(t, lb)
 		require.Equal(t, peerFromSet, peerResult)
 		require.Nil(t, err)
+
+		// calls to dispatcher.Lightblock write into the dispatcher's requestCh.
+		// we read from the requestCh here to unblock the requestCh for future
+		// calls.
+		<-dispatcherRequestCh
 		close(doneCh)
 	}()
 	cancelFunc()
 	<-doneCh
 
 	go func() {
+		<-dispatcherRequestCh
 		lb := &types.LightBlock{}
 		asProto, err := lb.ToProto()
 		require.Nil(t, err)
