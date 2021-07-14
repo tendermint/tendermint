@@ -109,6 +109,12 @@ func NewTxMempool(
 		txStore:       NewTxStore(),
 		gossipIndex:   clist.New(),
 		priorityIndex: NewTxPriorityQueue(),
+		heightIndex: NewWrappedTxList(func(wtx1, wtx2 *WrappedTx) bool {
+			return wtx1.height >= wtx2.height
+		}),
+		timestampIndex: NewWrappedTxList(func(wtx1, wtx2 *WrappedTx) bool {
+			return wtx1.timestamp.After(wtx2.timestamp) || wtx1.timestamp.Equal(wtx2.timestamp)
+		}),
 	}
 
 	if cfg.CacheSize > 0 {
@@ -309,6 +315,9 @@ func (txmp *TxMempool) Flush() {
 	txmp.mtx.RLock()
 	defer txmp.mtx.RUnlock()
 
+	txmp.heightIndex.Reset()
+	txmp.timestampIndex.Reset()
+
 	for _, wtx := range txmp.txStore.GetAllTxs() {
 		txmp.removeTx(wtx, false)
 	}
@@ -450,6 +459,10 @@ func (txmp *TxMempool) Update(
 
 	// TODO: Purge transactions from height and timestamp indexes that have
 	// exceeded their TTL.
+
+	// purge all transactions that have expired their height-based TTL
+
+	// purge all transactions that have expired their time-based TTL
 
 	// If there any uncommitted transactions left in the mempool, we either
 	// initiate re-CheckTx per remaining transaction or notify that remaining
@@ -728,16 +741,8 @@ func (txmp *TxMempool) canAddTx(wtx *WrappedTx) error {
 func (txmp *TxMempool) insertTx(wtx *WrappedTx) {
 	txmp.txStore.SetTx(wtx)
 	txmp.priorityIndex.PushTx(wtx)
-
-	heightIdx := txmp.heightIndex.GetSortedIndex(func(curr *WrappedTx) bool {
-		return curr.height >= wtx.height
-	})
-	txmp.heightIndex.InsertAt(heightIdx, wtx)
-
-	timeIdx := txmp.timestampIndex.GetSortedIndex(func(curr *WrappedTx) bool {
-		return curr.timestamp.After(wtx.timestamp) || curr.timestamp.Equal(wtx.timestamp)
-	})
-	txmp.timestampIndex.InsertAt(timeIdx, wtx)
+	txmp.heightIndex.Insert(wtx)
+	txmp.timestampIndex.Insert(wtx)
 
 	// Insert the transaction into the gossip index and mark the reference to the
 	// linked-list element, which will be needed at a later point when the
@@ -756,7 +761,8 @@ func (txmp *TxMempool) removeTx(wtx *WrappedTx, removeFromCache bool) {
 	txmp.txStore.RemoveTx(wtx)
 	txmp.priorityIndex.RemoveTx(wtx)
 
-	// TODO: remove from height and timestamp indexes.
+	// Note: height and timestamp based indexes used for TTL purging are removed
+	// during TxMempool#Update.
 
 	// Remove the transaction from the gossip index and cleanup the linked-list
 	// element so it can be garbage collected.

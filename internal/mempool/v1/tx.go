@@ -201,25 +201,40 @@ func (txs *TxStore) GetOrSetPeerByTxHash(hash [mempool.TxKeySize]byte, peerID ui
 }
 
 // WrappedTxList implements a thread-safe list of *WrappedTx objects that can be
-// used to build generic transaction indexes in the mempool.
+// used to build generic transaction indexes in the mempool. It accepts a
+// comparator function, less(a, b *WrappedTx) bool, that compares two WrappedTx
+// references which is used during Insert in order to determine sorted order. If
+// less returns true, a <= b.
 type WrappedTxList struct {
-	mtx tmsync.RWMutex
-	txs []*WrappedTx
+	mtx  tmsync.RWMutex
+	txs  []*WrappedTx
+	less func(*WrappedTx, *WrappedTx) bool
 }
 
-func NewWrappedTxList() *WrappedTxList {
+func NewWrappedTxList(less func(*WrappedTx, *WrappedTx) bool) *WrappedTxList {
 	return &WrappedTxList{
-		txs: make([]*WrappedTx, 0),
+		txs:  make([]*WrappedTx, 0),
+		less: less,
 	}
 }
 
-// InsertAt inserts a reference to a WrappedTx object at index i in the the
-// WrappedTxList keeping the list. A caller wishing to keep the list sorted must
-// know the correct index, i, at which to insert. This can be done via a
-// sort.Search with specific index searching criteria.
-func (wtl *WrappedTxList) InsertAt(i int, wtx *WrappedTx) {
+// Reset resets the list of transactions to an empty list.
+func (wtl *WrappedTxList) Reset() {
 	wtl.mtx.Lock()
 	defer wtl.mtx.Unlock()
+
+	wtl.txs = make([]*WrappedTx, 0)
+}
+
+// Insert inserts a WrappedTx reference into the sorted list based on the list's
+// comparator function.
+func (wtl *WrappedTxList) Insert(wtx *WrappedTx) {
+	wtl.mtx.Lock()
+	defer wtl.mtx.Unlock()
+
+	i := sort.Search(len(wtl.txs), func(i int) bool {
+		return wtl.less(wtl.txs[i], wtx)
+	})
 
 	if i == len(wtl.txs) {
 		// insert at the end
@@ -232,17 +247,4 @@ func (wtl *WrappedTxList) InsertAt(i int, wtx *WrappedTx) {
 	// NOTE: The call to append does not allocate memory when cap(wtl.txs) > len(wtl.txs).
 	wtl.txs = append(wtl.txs[:i+1], wtl.txs[i:]...)
 	wtl.txs[i] = wtx
-}
-
-// GetSortedIndex searches for and returns the smallest index, via binary search,
-// in the WrappedTxList where cmp(wtl[i]) returns true. This can be used to find
-// the correct index to insert a new element at via InsertAt such that the list
-// remains sorted given generic indexes.
-func (wtl *WrappedTxList) GetSortedIndex(cmp func(*WrappedTx) bool) int {
-	wtl.mtx.RLock()
-	defer wtl.mtx.RUnlock()
-
-	return sort.Search(len(wtl.txs), func(i int) bool {
-		return cmp(wtl.txs[i])
-	})
 }
