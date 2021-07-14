@@ -630,10 +630,10 @@ func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
 }
 
 func TestLoadStateFromGenesis(t *testing.T) {
-	_ = loadStatefromGenesus(t)
+	_ = loadStatefromGenesis(t)
 }
 
-func loadStatefromGenesus(t *testing.T) sm.State {
+func loadStatefromGenesis(t *testing.T) sm.State {
 	t.Helper()
 
 	stateDB := dbm.NewMemDB()
@@ -660,7 +660,7 @@ func TestNodeStartStateSync(t *testing.T) {
 	mockSSR := &ssmocks.SyncReactor{}
 	mockFSR := &consmocks.FastSyncReactor{}
 	mockCSR := &consmocks.ConsSyncReactor{}
-	state := loadStatefromGenesus(t)
+	state := loadStatefromGenesis(t)
 	config := cfg.ResetTestRoot("load_state_from_genesis")
 
 	eventBus, err := createAndStartEventBus(log.TestingLogger())
