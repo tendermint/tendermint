@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/types"
@@ -60,9 +61,17 @@ func (p *Mock) String() string {
 	return fmt.Sprintf("Mock{headers: %s, vals: %v}", headers.String(), vals.String())
 }
 
-func (p *Mock) LightBlock(_ context.Context, height int64) (*types.LightBlock, error) {
+func (p *Mock) LightBlock(ctx context.Context, height int64) (*types.LightBlock, error) {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
+
+	// allocate a window of time for contexts to be canceled
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(10 * time.Millisecond):
+	}
+
 	var lb *types.LightBlock
 
 	if height > p.latestHeight {
