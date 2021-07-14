@@ -132,3 +132,20 @@ func TestTxStore_Size(t *testing.T) {
 
 	require.Equal(t, numTxs, txStore.Size())
 }
+
+func TestWrappedTxList_Reset(t *testing.T) {
+	list := NewWrappedTxList(func(wtx1, wtx2 *WrappedTx) bool {
+		return wtx1.height >= wtx2.height
+	})
+
+	require.Zero(t, list.Size())
+
+	for i := 0; i < 100; i++ {
+		list.Insert(&WrappedTx{height: int64(i)})
+	}
+
+	require.Equal(t, 100, list.Size())
+
+	list.Reset()
+	require.Zero(t, list.Size())
+}

@@ -218,6 +218,14 @@ func NewWrappedTxList(less func(*WrappedTx, *WrappedTx) bool) *WrappedTxList {
 	}
 }
 
+// Size returns the number of WrappedTx objects in the list.
+func (wtl *WrappedTxList) Size() int {
+	wtl.mtx.RLock()
+	defer wtl.mtx.RUnlock()
+
+	return len(wtl.txs)
+}
+
 // Reset resets the list of transactions to an empty list.
 func (wtl *WrappedTxList) Reset() {
 	wtl.mtx.Lock()
@@ -239,6 +247,7 @@ func (wtl *WrappedTxList) Insert(wtx *WrappedTx) {
 	if i == len(wtl.txs) {
 		// insert at the end
 		wtl.txs = append(wtl.txs, wtx)
+		return
 	}
 
 	// Make space for the inserted element by shifting values at the insertion
