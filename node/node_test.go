@@ -27,6 +27,7 @@ import (
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
 	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
+	statesync "github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
@@ -657,9 +658,10 @@ func loadStatefromGenesis(t *testing.T) sm.State {
 }
 
 func TestNodeStartStateSync(t *testing.T) {
-	mockSSR := &ssmocks.SyncReactor{}
+	mockSSR := &statesync.MockSyncReactor{}
 	mockFSR := &consmocks.FastSyncReactor{}
 	mockCSR := &consmocks.ConsSyncReactor{}
+	mockSP := &ssmocks.StateProvider{}
 	state := loadStatefromGenesis(t)
 	config := cfg.ResetTestRoot("load_state_from_genesis")
 
@@ -678,13 +680,13 @@ func TestNodeStartStateSync(t *testing.T) {
 
 	cfgSS := config.StateSync
 
-	mockSSR.On("Sync", context.TODO(), cfgSS.DiscoveryTime).Return(state, nil).
+	mockSSR.On("Sync", context.TODO(), mockSP, cfgSS.DiscoveryTime).Return(state, nil).
 		On("Backfill", state).Return(nil)
 	mockCSR.On("SetStateSyncingMetrics", float64(0)).Return().
 		On("SwitchToConsensus", state, true).Return()
 
 	require.NoError(t,
-		startStateSync(mockSSR, mockFSR, mockCSR, config.StateSync, false, state.InitialHeight, eventBus))
+		startStateSync(mockSSR, mockFSR, mockCSR, mockSP, config.StateSync, false, state.InitialHeight, eventBus))
 
 	for cnt := 0; cnt < 2; {
 		select {

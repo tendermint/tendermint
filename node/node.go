@@ -29,6 +29,7 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/libs/strings"
 	tmtime "github.com/tendermint/tendermint/libs/time"
+	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/privval"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	"github.com/tendermint/tendermint/proxy"
@@ -332,7 +333,7 @@ func makeNode(config *cfg.Config,
 		peerUpdates = stateSyncReactorShim.PeerUpdates
 	}
 
-	stateSyncReactor, err = statesync.NewReactor(
+	stateSyncReactor = statesync.NewReactor(
 		*config.StateSync,
 		stateSyncReactorShim.Logger,
 		proxyApp.Snapshot(),
@@ -344,8 +345,6 @@ func makeNode(config *cfg.Config,
 		stateStore,
 		blockStore,
 		config.StateSync.TempDir,
-		state,
-		stateSync,
 	)
 
 	if err != nil {
@@ -667,8 +666,15 @@ func (n *nodeImpl) OnStart() error {
 			return fmt.Errorf("unable to derive state: %w", err)
 		}
 
-		if err := startStateSync(n.stateSyncReactor, bcR, n.consensusReactor,
-			n.config.StateSync, n.config.FastSyncMode, state.InitialHeight, n.eventBus); err != nil {
+		ssc := n.config.StateSync
+		sp, err := constructStateProvider(ssc, state, n.Logger.With("module", "light"))
+
+		if err != nil {
+			return fmt.Errorf("failed to set up light client state provider: %w", err)
+		}
+
+		if err := startStateSync(n.stateSyncReactor, bcR, n.consensusReactor, sp,
+			ssc, n.config.FastSyncMode, state.InitialHeight, n.eventBus); err != nil {
 			return fmt.Errorf("failed to start state sync: %w", err)
 		}
 	}
@@ -1034,6 +1040,7 @@ func startStateSync(
 	ssR statesync.SyncReactor,
 	bcR cs.FastSyncReactor,
 	conR cs.ConsSyncReactor,
+	sp statesync.StateProvider,
 	config *cfg.StateSyncConfig,
 	fastSync bool,
 	stateInitHeight int64,
@@ -1051,7 +1058,7 @@ func startStateSync(
 	}
 
 	go func() {
-		state, err := ssR.Sync(context.TODO(), config.DiscoveryTime)
+		state, err := ssR.Sync(context.TODO(), sp, config.DiscoveryTime)
 		if err != nil {
 			stateSyncLogger.Error("state sync failed", "err", err)
 			return
@@ -1270,4 +1277,25 @@ func getChannelsFromShim(reactorShim *p2p.ReactorShim) map[p2p.ChannelID]*p2p.Ch
 	}
 
 	return channels
+}
+
+func constructStateProvider(
+	ssc *cfg.StateSyncConfig,
+	state sm.State,
+	logger log.Logger,
+) (statesync.StateProvider, error) {
+	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	defer cancel()
+
+	to := light.TrustOptions{
+		Period: ssc.TrustPeriod,
+		Height: ssc.TrustHeight,
+		Hash:   ssc.TrustHashBytes(),
+	}
+
+	return statesync.NewLightClientStateProvider(
+		ctx,
+		state.ChainID, state.Version, state.InitialHeight,
+		ssc.RPCServers, to, logger,
+	)
 }

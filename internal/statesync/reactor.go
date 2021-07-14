@@ -16,7 +16,6 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/light"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -103,10 +102,9 @@ const (
 	maxLightBlockRequestRetries = 20
 )
 
-//go:generate mockery --case underscore --name SyncReactor
 // SyncReactor defines an interface used for testing abilities of node.startStateSync.
 type SyncReactor interface {
-	Sync(context.Context, time.Duration) (sm.State, error)
+	Sync(context.Context, StateProvider, time.Duration) (sm.State, error)
 	Backfill(sm.State) error
 }
 
@@ -134,8 +132,6 @@ type Reactor struct {
 	// received snapshots and chunks into the sync.
 	mtx    tmsync.RWMutex
 	syncer *syncer
-
-	stateProvider StateProvider // provides state data for bootstrapping the StateSyncReactor
 }
 
 // NewReactor returns a reference to a new state sync reactor, which implements
@@ -152,9 +148,7 @@ func NewReactor(
 	stateStore sm.Store,
 	blockStore *store.BlockStore,
 	tempDir string,
-	state sm.State,
-	requireStateProvider bool,
-) (*Reactor, error) {
+) *Reactor {
 	r := &Reactor{
 		cfg:         cfg,
 		conn:        conn,
@@ -170,31 +164,8 @@ func NewReactor(
 		blockStore:  blockStore,
 	}
 
-	if requireStateProvider {
-		ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
-		defer cancel()
-
-		to := light.TrustOptions{
-			Period: cfg.TrustPeriod,
-			Height: cfg.TrustHeight,
-			Hash:   cfg.TrustHashBytes(),
-		}
-
-		sp, err := NewLightClientStateProvider(
-			ctx,
-			state.ChainID, state.Version, state.InitialHeight,
-			cfg.RPCServers, to, logger.With("module", "light"),
-		)
-
-		if err != nil {
-			return nil, err
-		}
-
-		r.stateProvider = sp
-	}
-
 	r.BaseService = *service.NewBaseService(logger, "StateSync", r)
-	return r, nil
+	return r
 }
 
 // OnStart starts separate go routines for each p2p Channel and listens for
@@ -248,6 +219,7 @@ func (r *Reactor) OnStop() {
 // able to process evidence and participate in consensus.
 func (r *Reactor) Sync(
 	ctx context.Context,
+	stateProvider StateProvider,
 	discoveryTime time.Duration,
 ) (sm.State, error) {
 	r.mtx.Lock()
@@ -256,9 +228,9 @@ func (r *Reactor) Sync(
 		return sm.State{}, errors.New("a state sync is already in progress")
 	}
 
-	if r.stateProvider == nil {
+	if stateProvider == nil {
 		r.mtx.Unlock()
-		return sm.State{}, errors.New("the stateProvider should not be nil when doing state sync")
+		return sm.State{}, errors.New("the stateProvider should not be nil when doing the state sync")
 	}
 
 	r.syncer = newSyncer(
@@ -266,7 +238,7 @@ func (r *Reactor) Sync(
 		r.Logger,
 		r.conn,
 		r.connQuery,
-		r.stateProvider,
+		stateProvider,
 		r.snapshotCh.Out,
 		r.chunkCh.Out,
 		r.tempDir,
