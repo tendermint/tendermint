@@ -74,6 +74,7 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 			witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
 
 		case errBadWitness:
+<<<<<<< HEAD
 			c.logger.Info("Witness returned an error during header comparison", "witness", c.witnesses[e.WitnessIndex],
 				"err", err)
 			// if witness sent us an invalid header, then remove it. If it didn't respond or couldn't find the block, then we
@@ -82,6 +83,16 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 				c.logger.Info("Witness sent us invalid header / vals -> removing it", "witness", c.witnesses[e.WitnessIndex])
 				witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
 			}
+=======
+			c.logger.Info("witness returned an error during header comparison, removing...",
+				"witness", c.witnesses[e.WitnessIndex], "err", err)
+			witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
+		default:
+			if errors.Is(e, context.Canceled) || errors.Is(e, context.DeadlineExceeded) {
+				return e
+			}
+			c.logger.Info("error in light block request to witness", "err", err)
+>>>>>>> 40fba3960 (add missing context catch and tests (#6701))
 		}
 	}
 
@@ -118,7 +129,7 @@ func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan erro
 
 	// the witness hasn't been helpful in comparing headers, we mark the response and continue
 	// comparing with the rest of the witnesses
-	case provider.ErrNoResponse, provider.ErrLightBlockNotFound:
+	case provider.ErrNoResponse, provider.ErrLightBlockNotFound, context.DeadlineExceeded, context.Canceled:
 		errc <- err
 		return
 
