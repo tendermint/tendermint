@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/types"
@@ -55,9 +56,15 @@ func (p *Mock) String() string {
 	return fmt.Sprintf("Mock{id: %s, headers: %s, vals: %v}", p.id, headers.String(), vals.String())
 }
 
-func (p *Mock) LightBlock(_ context.Context, height int64) (*types.LightBlock, error) {
+func (p *Mock) LightBlock(ctx context.Context, height int64) (*types.LightBlock, error) {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
+
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(10 * time.Millisecond):
+	}
 
 	var lb *types.LightBlock
 
