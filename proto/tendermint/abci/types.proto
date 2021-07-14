@@ -35,7 +35,7 @@ message Request {
     RequestOfferSnapshot       offer_snapshot        = 12;
     RequestLoadSnapshotChunk   load_snapshot_chunk   = 13;
     RequestApplySnapshotChunk  apply_snapshot_chunk  = 14;
-    RequestVoteExtension       vote_extension        = 15;
+    RequestExtendVote          extend_vote        = 15;
     RequestVerifyVoteExtension verify_vote_extension = 16;
   }
 }
@@ -120,7 +120,7 @@ message RequestApplySnapshotChunk {
 }
 
 // Extends a vote with application-side injection
-message RequestVoteExtension {
+message RequestExtendVote {
   uint64 height = 1;
   uint64 round = 2;
 }
@@ -150,7 +150,7 @@ message Response {
     ResponseOfferSnapshot       offer_snapshot        = 13;
     ResponseLoadSnapshotChunk   load_snapshot_chunk   = 14;
     ResponseApplySnapshotChunk  apply_snapshot_chunk  = 15;
-    ResponseVoteExtension       vote_extension        = 16;
+    ResponseExtendVote          extend_vote        = 16;
     ResponseVerifyVoteExtension verify_vote_extension = 17;
   }
 }
@@ -273,8 +273,8 @@ message ResponseApplySnapshotChunk {
   }
 }
 
-message ResponseVoteExtension {
-  tendermint.types.VoteExtension extension = 1;
+message ResponseExtendVote {
+  tendermint.types.VoteExtension vote_extension = 1;
 }
 
 message ResponseVerifyVoteExtension {
@@ -389,6 +389,6 @@ service ABCIApplication {
   rpc OfferSnapshot(RequestOfferSnapshot) returns (ResponseOfferSnapshot);
   rpc LoadSnapshotChunk(RequestLoadSnapshotChunk) returns (ResponseLoadSnapshotChunk);
   rpc ApplySnapshotChunk(RequestApplySnapshotChunk) returns (ResponseApplySnapshotChunk);
-  rpc VoteExtension(RequestVoteExtension) returns (ResponseVoteExtension);
+  rpc ExtendVote(RequestExtendVote) returns (ResponseExtendVote);
   rpc VerifyVoteExtension(RequestVerifyVoteExtension) returns (ResponseVerifyVoteExtension);
 }

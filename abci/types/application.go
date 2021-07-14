@@ -17,12 +17,12 @@ type Application interface {
 	CheckTx(RequestCheckTx) ResponseCheckTx // Validate a tx for the mempool
 
 	// Consensus Connection
-	InitChain(RequestInitChain) ResponseInitChain     // Initialize blockchain w validators/other info from TendermintCore
-	BeginBlock(RequestBeginBlock) ResponseBeginBlock  // Signals the beginning of a block
-	DeliverTx(RequestDeliverTx) ResponseDeliverTx     // Deliver a tx for full processing
-	EndBlock(RequestEndBlock) ResponseEndBlock        // Signals the end of a block, returns changes to the validator set
-	Commit() ResponseCommit                           // Commit the state and return the application Merkle root hash
-	VoteExtension(RequestVoteExtension) ResponseVoteExtension             // Create application specific vote extension
+	InitChain(RequestInitChain) ResponseInitChain                               // Initialize blockchain w validators/other info from TendermintCore
+	BeginBlock(RequestBeginBlock) ResponseBeginBlock                            // Signals the beginning of a block
+	DeliverTx(RequestDeliverTx) ResponseDeliverTx                               // Deliver a tx for full processing
+	EndBlock(RequestEndBlock) ResponseEndBlock                                  // Signals the end of a block, returns changes to the validator set
+	Commit() ResponseCommit                                                     // Commit the state and return the application Merkle root hash
+	ExtendVote(RequestExtendVote) ResponseExtendVote                            // Create application specific vote extension
 	VerifyVoteExtension(RequestVerifyVoteExtension) ResponseVerifyVoteExtension // Verify created vote extension
 
 	// State Sync Connection
@@ -60,8 +60,8 @@ func (BaseApplication) Commit() ResponseCommit {
 	return ResponseCommit{}
 }
 
-func (BaseApplication) VoteExtension(req RequestVoteExtension) ResponseVoteExtension {
-	return ResponseVoteExtension{}
+func (BaseApplication) ExtendVote(req RequestExtendVote) ResponseExtendVote {
+	return ResponseExtendVote{}
 }
 
 func (BaseApplication) VerifyVoteExtension(req RequestVerifyVoteExtension) ResponseVerifyVoteExtension {
@@ -183,14 +183,14 @@ func (app *GRPCApplication) ApplySnapshotChunk(
 	return &res, nil
 }
 
-func (app *GRPCApplication) VoteExtension(
-  ctx context.Context, req *RequestVoteExtension) (*ResponseVoteExtension, error) {
-  res := app.app.VoteExtension(*req)
-  return &res, nil
+func (app *GRPCApplication) ExtendVote(
+	ctx context.Context, req *RequestExtendVote) (*ResponseExtendVote, error) {
+	res := app.app.ExtendVote(*req)
+	return &res, nil
 }
 
 func (app *GRPCApplication) VerifyVoteExtension(
-  ctx context.Context, req *RequestVerifyVoteExtension) (*ResponseVerifyVoteExtension, error) {
-  res := app.app.VerifyVoteExtension(*req)
-  return &res, nil
+	ctx context.Context, req *RequestVerifyVoteExtension) (*ResponseVerifyVoteExtension, error) {
+	res := app.app.VerifyVoteExtension(*req)
+	return &res, nil
 }

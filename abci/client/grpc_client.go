@@ -315,19 +315,19 @@ func (cli *grpcClient) ApplySnapshotChunkAsync(
 }
 
 // NOTE: call is synchronous, use ctx to break early if needed
-func (cli *grpcClient) VoteExtensionAsync(
+func (cli *grpcClient) ExtendVoteAsync(
 	ctx context.Context,
-	params types.RequestVoteExtension,
+	params types.RequestExtendVote,
 ) (*ReqRes, error) {
-	req := types.ToRequestVoteExtension(params)
-	res, err := cli.client.VoteExtension(ctx, req.GetVoteExtension(), grpc.WaitForReady(true))
+	req := types.ToRequestExtendVote(params)
+	res, err := cli.client.ExtendVote(ctx, req.GetExtendVote(), grpc.WaitForReady(true))
 	if err != nil {
 		return nil, err
 	}
 	return cli.finishAsyncCall(
 		ctx,
 		req,
-		&types.Response{Value: &types.Response_VoteExtension{VoteExtension: res}},
+		&types.Response{Value: &types.Response_ExtendVote{ExtendVote: res}},
 	)
 }
 
@@ -539,15 +539,15 @@ func (cli *grpcClient) ApplySnapshotChunkSync(
 	return cli.finishSyncCall(reqres).GetApplySnapshotChunk(), cli.Error()
 }
 
-func (cli *grpcClient) VoteExtensionSync(
+func (cli *grpcClient) ExtendVoteSync(
 	ctx context.Context,
-	params types.RequestVoteExtension) (*types.ResponseVoteExtension, error) {
+	params types.RequestExtendVote) (*types.ResponseExtendVote, error) {
 
-	reqres, err := cli.VoteExtensionAsync(ctx, params)
+	reqres, err := cli.ExtendVoteAsync(ctx, params)
 	if err != nil {
 		return nil, err
 	}
-	return cli.finishSyncCall(reqres).GetVoteExtension(), cli.Error()
+	return cli.finishSyncCall(reqres).GetExtendVote(), cli.Error()
 }
 
 func (cli *grpcClient) VerifyVoteExtensionSync(
