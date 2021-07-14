@@ -2,6 +2,8 @@ package v1
 
 import (
 	"fmt"
+	"math/rand"
+	"sort"
 	"testing"
 	"time"
 
@@ -148,4 +150,32 @@ func TestWrappedTxList_Reset(t *testing.T) {
 
 	list.Reset()
 	require.Zero(t, list.Size())
+}
+
+func TestWrappedTxList_Insert(t *testing.T) {
+	list := NewWrappedTxList(func(wtx1, wtx2 *WrappedTx) bool {
+		return wtx1.height >= wtx2.height
+	})
+
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	var expected []int
+	for i := 0; i < 100; i++ {
+		height := rng.Int63n(10000)
+		expected = append(expected, int(height))
+		list.Insert(&WrappedTx{height: height})
+
+		if i%10 == 0 {
+			list.Insert(&WrappedTx{height: height})
+			expected = append(expected, int(height))
+		}
+	}
+
+	got := make([]int, list.Size())
+	for i, wtx := range list.txs {
+		got[i] = int(wtx.height)
+	}
+
+	sort.Ints(expected)
+	require.Equal(t, expected, got)
 }
