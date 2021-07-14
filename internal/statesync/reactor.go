@@ -153,7 +153,7 @@ func NewReactor(
 	blockStore *store.BlockStore,
 	tempDir string,
 	state sm.State,
-	stateSync bool,
+	requireStateProvider bool,
 ) (*Reactor, error) {
 	r := &Reactor{
 		cfg:         cfg,
@@ -170,7 +170,7 @@ func NewReactor(
 		blockStore:  blockStore,
 	}
 
-	if stateSync {
+	if requireStateProvider {
 		ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
 		defer cancel()
 
