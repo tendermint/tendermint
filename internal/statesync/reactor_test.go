@@ -123,7 +123,7 @@ func setup(
 
 	cfg := config.DefaultStateSyncConfig()
 
-	r := NewReactor(
+	rts.reactor = NewReactor(
 		*cfg,
 		log.TestingLogger(),
 		conn,
@@ -136,8 +136,6 @@ func setup(
 		rts.blockStore,
 		"",
 	)
-
-	rts.reactor = r
 
 	// override the dispatcher with one with a shorter timeout
 	rts.reactor.dispatcher = newDispatcher(rts.blockChannel.Out, 1*time.Second)

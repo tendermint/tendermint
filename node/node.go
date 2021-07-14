@@ -347,10 +347,6 @@ func makeNode(config *cfg.Config,
 		config.StateSync.TempDir,
 	)
 
-	if err != nil {
-		return nil, err
-	}
-
 	// add the channel descriptors to both the transports
 	// FIXME: This should be removed when the legacy p2p stack is removed and
 	// transports can either be agnostic to channel descriptors or can be
