@@ -168,8 +168,8 @@ Part defines a part of a block. In Tendermint blocks are broken into `parts` for
 
 ## Time
 
-Tendermint uses the [Google.Protobuf.WellKnownTypes.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/timestamp)
-format, which uses two integers, one for Seconds and for Nanoseconds.
+Tendermint uses the [Google.Protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp)
+format, which uses two integers, one 64 bit integer for Seconds and a 32 bit integer for Nanoseconds.
 
 ## Data
 
