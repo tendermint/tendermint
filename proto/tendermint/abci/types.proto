@@ -35,6 +35,7 @@ message Request {
     RequestOfferSnapshot      offer_snapshot       = 12;
     RequestLoadSnapshotChunk  load_snapshot_chunk  = 13;
     RequestApplySnapshotChunk apply_snapshot_chunk = 14;
+    RequestPrepareProposal    prepare_proposal     = 15;
   }
 }
 
@@ -117,6 +118,13 @@ message RequestApplySnapshotChunk {
   string sender = 3;
 }
 
+message RequestPrepareProposal {
+  // block_data is an array of transactions that will be included in a block,
+  // sent to the app for possible modifications.
+  // applications can not exceed the size of the data passed to it.
+  repeated bytes block_data = 1;
+}
+
 //----------------------------------------
 // Response types
 
@@ -137,6 +145,7 @@ message Response {
     ResponseOfferSnapshot      offer_snapshot       = 13;
     ResponseLoadSnapshotChunk  load_snapshot_chunk  = 14;
     ResponseApplySnapshotChunk apply_snapshot_chunk = 15;
+    ResponsePrepareProposal    prepare_proposal     = 16;
   }
 }
 
@@ -258,6 +267,10 @@ message ResponseApplySnapshotChunk {
   }
 }
 
+message ResponsePrepareProposal {
+  repeated bytes block_data = 1;
+}
+
 //----------------------------------------
 // Misc.
 
@@ -362,4 +375,5 @@ service ABCIApplication {
   rpc OfferSnapshot(RequestOfferSnapshot) returns (ResponseOfferSnapshot);
   rpc LoadSnapshotChunk(RequestLoadSnapshotChunk) returns (ResponseLoadSnapshotChunk);
   rpc ApplySnapshotChunk(RequestApplySnapshotChunk) returns (ResponseApplySnapshotChunk);
+  rpc PrepareProposal(RequestPrepareProposal) returns (ResponsePrepareProposal);
 }
