@@ -1024,8 +1024,13 @@ func (r *Router) NodeInfo() types.NodeInfo {
 // OnStart implements service.Service.
 func (r *Router) OnStart() error {
 	netAddr, _ := r.nodeInfo.NetAddress()
-	r.Logger.Info("node info", "NodeID", r.nodeInfo.NodeID, "Channels", r.nodeInfo.Channels,
-		"ListenAddr", r.nodeInfo.ListenAddr, "NetAddr", netAddr)
+	r.Logger.Info(
+	  "starting router", 
+	  "node_id", r.nodeInfo.NodeID,
+	  "channels", r.nodeInfo.Channels,
+		"listen_addr", r.nodeInfo.ListenAddr,
+		 "net_addr", netAddr,
+		 )
 
 	go r.dialPeers()
 	go r.evictPeers()
