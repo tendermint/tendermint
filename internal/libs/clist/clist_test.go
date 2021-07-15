@@ -369,7 +369,7 @@ func TestNextWaitChan(t *testing.T) {
 
 	select {
 	case <-el2.NextWaitChan():
-		t.Fatal("nextWaitChan should have been closed")
+		t.Fatal("nextWaitChan should not have been closed")
 	case <-time.After(10 * time.Millisecond):
 	}
 
@@ -384,7 +384,7 @@ func TestNextWaitChan(t *testing.T) {
 	el3 := l.PushBack(3)
 	select {
 	case <-el3.NextWaitChan():
-		t.Fatal("nextWaitChan should have been closed")
+		t.Fatal("nextWaitChan should not have been closed")
 	case <-time.After(10 * time.Millisecond):
 	}
 	l.Clear()
