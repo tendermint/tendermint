@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPanicOnMaxLength(t *testing.T) {
@@ -332,5 +333,65 @@ FOR_LOOP2:
 
 	if pushed != seen {
 		t.Fatalf("number of pushed items (%d) not equal to number of seen items (%d)", pushed, seen)
+	}
+}
+
+func TestRemoved(t *testing.T) {
+	l := New()
+	el1 := l.PushBack(1)
+	el2 := l.PushBack(2)
+	el3 := l.PushBack(2)
+	l.Remove(el1)
+	require.True(t, el1.Removed())
+	require.False(t, el2.Removed())
+
+	l.Clear()
+	require.True(t, el2.Removed())
+	require.True(t, el3.Removed())
+}
+
+func TestNextWaitChan(t *testing.T) {
+	l := New()
+	el1 := l.PushBack(1)
+	select {
+	case <-el1.NextWaitChan():
+		t.Fatal("nextWaitChan should not have been closed")
+	case <-time.After(10 * time.Millisecond):
+	}
+
+	el2 := l.PushBack(2)
+	select {
+	case <-el1.NextWaitChan():
+		require.NotNil(t, el1.Next())
+	case <-time.After(10 * time.Millisecond):
+		t.Fatal("nextWaitChan should have been closed")
+	}
+
+	select {
+	case <-el2.NextWaitChan():
+		t.Fatal("nextWaitChan should have been closed")
+	case <-time.After(10 * time.Millisecond):
+	}
+
+	l.Remove(el2)
+	select {
+	case <-el2.NextWaitChan():
+		require.Nil(t, el2.Next())
+	case <-time.After(10 * time.Millisecond):
+		t.Fatal("nextWaitChan should have been closed")
+	}
+
+	el3 := l.PushBack(3)
+	select {
+	case <-el3.NextWaitChan():
+		t.Fatal("nextWaitChan should have been closed")
+	case <-time.After(10 * time.Millisecond):
+	}
+	l.Clear()
+	select {
+	case <-el3.NextWaitChan():
+		require.Nil(t, el2.Next())
+	case <-time.After(10 * time.Millisecond):
+		t.Fatal("nextWaitChan should have been closed")
 	}
 }
