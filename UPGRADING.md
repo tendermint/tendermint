@@ -74,6 +74,10 @@ will need to change to accommodate these changes. Most notably:
   longer exported and have been replaced with `node.New` and
   `node.NewDefault` which provide more functional interfaces.
 
+### RPC changes
+
+Mark gRPC in the RPC layer as deprecated and to be removed in 0.36.
+
 ## v0.34.0
 
 **Upgrading to Tendermint 0.34 requires a blockchain restart.**
