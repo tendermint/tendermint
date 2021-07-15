@@ -51,11 +51,11 @@ func CanonicalizeProposal(chainID string, proposal *tmproto.Proposal) tmproto.Ca
 	}
 }
 
-func CanonicalizeVoteExtension(ext *tmproto.VoteExtension) *tmproto.CanonicalVoteExtension {
+func GetSignedVoteExtension(ext *tmproto.VoteExtension) *tmproto.SignedVoteExtension {
 	if ext == nil {
 		return nil
 	}
-	return &tmproto.CanonicalVoteExtension{
+	return &tmproto.SignedVoteExtension{
 		AppDataSigned: ext.AppDataSigned,
 	}
 }
@@ -70,7 +70,7 @@ func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote 
 		BlockID:       CanonicalizeBlockID(vote.BlockID),
 		Timestamp:     vote.Timestamp,
 		ChainID:       chainID,
-		VoteExtension: CanonicalizeVoteExtension(vote.VoteExtension),
+		VoteExtension: GetSignedVoteExtension(vote.VoteExtension),
 	}
 }
 

@@ -41,6 +41,16 @@ func (r ResponseQuery) IsErr() bool {
 	return r.Code != CodeTypeOK
 }
 
+// IsOK returns true if Code is OK
+func (r ResponseVerifyVoteExtension) IsOK() bool {
+	return r.Code == CodeTypeOK
+}
+
+// IsErr returns true if Code is something other than OK.
+func (r ResponseVerifyVoteExtension) IsErr() bool {
+	return r.Code != CodeTypeOK
+}
+
 //---------------------------------------------------------------------------
 // override JSON marshaling so we emit defaults (ie. disable omitempty)
 

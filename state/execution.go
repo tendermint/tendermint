@@ -236,19 +236,37 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	return state, nil
 }
 
-func (blockExec *BlockExecutor) VoteExtension(height int64, round int32) (types.VoteExtension, error) {
-  ctx := context.Background()
-  req := abci.RequestVoteExtension{
-    Height: uint64(height),
-    Round: uint64(round),
-  }
+func (blockExec *BlockExecutor) ExtendVote(height int64, round int32) (types.VoteExtension, error) {
+	ctx := context.Background()
+	req := abci.RequestExtendVote{
+		Height: uint64(height),
+		Round:  uint64(round),
+	}
 
-  resp, err := blockExec.proxyApp.VoteExtensionSync(ctx, req)
-  if err != nil {
-    return types.VoteExtension{}, err
-  }
+	resp, err := blockExec.proxyApp.ExtendVoteSync(ctx, req)
+	if err != nil {
+		return types.VoteExtension{}, err
+	}
 
-  return types.VoteExtensionFromProto(resp.VoteExtension), nil
+	return types.VoteExtensionFromProto(resp.VoteExtension), nil
+}
+
+func (blockExec *BlockExecutor) VerifyVoteExtension(ext types.VoteExtension) error {
+	ctx := context.Background()
+	req := abci.RequestVerifyVoteExtension{
+		VoteExtension: *ext.ToProto(),
+	}
+
+	resp, err := blockExec.proxyApp.VerifyVoteExtensionSync(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	if resp.IsErr() {
+		return types.ErrVoteInvalidExtension
+	}
+
+	return nil
 }
 
 // Commit locks the mempool, runs the ABCI Commit message, and updates the
