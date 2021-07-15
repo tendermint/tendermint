@@ -353,45 +353,53 @@ func TestRemoved(t *testing.T) {
 func TestNextWaitChan(t *testing.T) {
 	l := New()
 	el1 := l.PushBack(1)
-	select {
-	case <-el1.NextWaitChan():
-		t.Fatal("nextWaitChan should not have been closed")
-	case <-time.After(10 * time.Millisecond):
-	}
+	t.Run("tail element should not have a closed nextWaitChan", func(t *testing.T) {
+		select {
+		case <-el1.NextWaitChan():
+			t.Fatal("nextWaitChan should not have been closed")
+		default:
+		}
+	})
 
 	el2 := l.PushBack(2)
-	select {
-	case <-el1.NextWaitChan():
-		require.NotNil(t, el1.Next())
-	case <-time.After(10 * time.Millisecond):
-		t.Fatal("nextWaitChan should have been closed")
-	}
+	t.Run("adding element should close tail nextWaitChan", func(t *testing.T) {
+		select {
+		case <-el1.NextWaitChan():
+			require.NotNil(t, el1.Next())
+		default:
+			t.Fatal("nextWaitChan should have been closed")
+		}
 
-	select {
-	case <-el2.NextWaitChan():
-		t.Fatal("nextWaitChan should not have been closed")
-	case <-time.After(10 * time.Millisecond):
-	}
+		select {
+		case <-el2.NextWaitChan():
+			t.Fatal("nextWaitChan should not have been closed")
+		default:
+		}
+	})
 
-	l.Remove(el2)
-	select {
-	case <-el2.NextWaitChan():
-		require.Nil(t, el2.Next())
-	case <-time.After(10 * time.Millisecond):
-		t.Fatal("nextWaitChan should have been closed")
-	}
+	t.Run("removing element should close its nextWaitChan", func(t *testing.T) {
+		l.Remove(el2)
+		select {
+		case <-el2.NextWaitChan():
+			require.Nil(t, el2.Next())
+		default:
+			t.Fatal("nextWaitChan should have been closed")
+		}
+	})
 
-	el3 := l.PushBack(3)
-	select {
-	case <-el3.NextWaitChan():
-		t.Fatal("nextWaitChan should not have been closed")
-	case <-time.After(10 * time.Millisecond):
-	}
-	l.Clear()
-	select {
-	case <-el3.NextWaitChan():
-		require.Nil(t, el2.Next())
-	case <-time.After(10 * time.Millisecond):
-		t.Fatal("nextWaitChan should have been closed")
-	}
+	t.Run("clearing list should close elements' nextWaitChan", func(t *testing.T) {
+		el3 := l.PushBack(3)
+		select {
+		case <-el3.NextWaitChan():
+			t.Fatal("nextWaitChan should not have been closed")
+		default:
+		}
+		l.Clear()
+		select {
+		case <-el3.NextWaitChan():
+			require.Nil(t, el2.Next())
+		default:
+			t.Fatal("nextWaitChan should have been closed")
+		}
+	})
 }
