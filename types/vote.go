@@ -46,9 +46,38 @@ func NewConflictingVoteError(vote1, vote2 *Vote) *ErrVoteConflictingVotes {
 // Address is hex bytes.
 type Address = crypto.Address
 
+type VoteExtensionSigned struct {
+	AppDataSigned []byte `json:"app_data_signed"`
+}
+
+func (ext VoteExtensionSigned) BytesPacked() []byte {
+	res := make([]byte, len(ext.AppDataSigned))
+	copy(res, ext.AppDataSigned)
+	return res
+}
+
+func (ext VoteExtensionSigned) FromSigned() VoteExtension {
+	return VoteExtension{
+		AppDataSigned: ext.AppDataSigned,
+	}
+}
+
 type VoteExtension struct {
 	AppDataSigned             []byte `json:"app_data_signed"`
 	AppDataSelfAuthenticating []byte `json:"app_data_self_authenticating"`
+}
+
+func (ext VoteExtension) ToSigned() VoteExtensionSigned {
+	return VoteExtensionSigned{
+		AppDataSigned: ext.AppDataSigned,
+	}
+}
+
+func (ext VoteExtension) BytesPacked() []byte {
+	res := make([]byte, len(ext.AppDataSigned)+len(ext.AppDataSelfAuthenticating))
+	copy(res[:len(ext.AppDataSigned)], ext.AppDataSigned)
+	copy(res[len(ext.AppDataSigned):], ext.AppDataSelfAuthenticating)
+	return res
 }
 
 // Vote represents a prevote, precommit, or commit vote from validators for
@@ -86,6 +115,7 @@ func (vote *Vote) CommitSig() CommitSig {
 		ValidatorAddress: vote.ValidatorAddress,
 		Timestamp:        vote.Timestamp,
 		Signature:        vote.Signature,
+		VoteExtension:    vote.VoteExtension.ToSigned(),
 	}
 }
 
@@ -124,6 +154,7 @@ func (vote *Vote) Copy() *Vote {
 // 7. first 6 bytes of block hash
 // 8. first 6 bytes of signature
 // 9. timestamp
+// 10. first 6 bytes of vote extension
 func (vote *Vote) String() string {
 	if vote == nil {
 		return nilVoteStr
@@ -149,6 +180,7 @@ func (vote *Vote) String() string {
 		tmbytes.Fingerprint(vote.BlockID.Hash),
 		tmbytes.Fingerprint(vote.Signature),
 		CanonicalTime(vote.Timestamp),
+		tmbytes.Fingerprint(vote.VoteExtension.BytesPacked()),
 	)
 }
 
@@ -205,6 +237,8 @@ func (vote *Vote) ValidateBasic() error {
 	if len(vote.Signature) > MaxSignatureSize {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
+
+	// XXX: add length verification for vote extension?
 
 	return nil
 }
