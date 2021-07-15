@@ -17,6 +17,7 @@ func (bapi *broadcastAPI) Ping(ctx context.Context, req *RequestPing) (*Response
 	return &ResponsePing{}, nil
 }
 
+// `Deprecated: gRPC  in the RPC layer of Tendermint will be deprecated in 0.36`
 func (bapi *broadcastAPI) BroadcastTx(ctx context.Context, req *RequestBroadcastTx) (*ResponseBroadcastTx, error) {
 	// NOTE: there's no way to get client's remote address
 	// see https://stackoverflow.com/questions/33684570/session-and-remote-ip-address-in-grpc-go
