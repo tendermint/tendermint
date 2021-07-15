@@ -782,7 +782,7 @@ func (txmp *TxMempool) purgeExpiredTxs(blockHeight int64) {
 	expiredTxs := make(map[[mempool.TxKeySize]byte]*WrappedTx)
 
 	if txmp.config.TTLNumBlocks > 0 {
-		var purgeIdx int
+		purgeIdx := -1
 		for i, wtx := range txmp.heightIndex.txs {
 			if (blockHeight - wtx.height) > txmp.config.TTLNumBlocks {
 				expiredTxs[mempool.TxKey(wtx.tx)] = wtx
@@ -793,11 +793,13 @@ func (txmp *TxMempool) purgeExpiredTxs(blockHeight int64) {
 			}
 		}
 
-		txmp.heightIndex.txs = txmp.heightIndex.txs[purgeIdx+1:]
+		if purgeIdx >= 0 {
+			txmp.heightIndex.txs = txmp.heightIndex.txs[purgeIdx+1:]
+		}
 	}
 
 	if txmp.config.TTLDuration > 0 {
-		var purgeIdx int
+		purgeIdx := -1
 		for i, wtx := range txmp.timestampIndex.txs {
 			if now.Sub(wtx.timestamp) > txmp.config.TTLDuration {
 				expiredTxs[mempool.TxKey(wtx.tx)] = wtx
@@ -808,7 +810,9 @@ func (txmp *TxMempool) purgeExpiredTxs(blockHeight int64) {
 			}
 		}
 
-		txmp.timestampIndex.txs = txmp.timestampIndex.txs[purgeIdx+1:]
+		if purgeIdx >= 0 {
+			txmp.timestampIndex.txs = txmp.timestampIndex.txs[purgeIdx+1:]
+		}
 	}
 
 	for _, wtx := range expiredTxs {
