@@ -122,8 +122,8 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		abci.RequestPrepareProposal{BlockData: txs.ToSliceOfBytes()},
 	)
 	if err != nil {
-		// The App MUST ensure that only valid (and hence 'processable')
-		// Tx enter the mempool. Hence, at this point, we can't have any non-processable
+		// The App MUST ensure that only valid (and hence 'processable') transactions
+		// enter the mempool. Hence, at this point, we can't have any non-processable
 		// transaction causing an error. Also, the App can simply skip any Tx that could cause any
 		// kind of trouble.
 		// Either way, we can not recover in a meaningful way, unless we skip proposing
