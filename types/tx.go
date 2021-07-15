@@ -90,6 +90,7 @@ func (txs Txs) ToSliceOfBytes() [][]byte {
 	return txBzs
 }
 
+// ToTxs converts a raw slice of byte slices into a Txs type.
 func ToTxs(txs [][]byte) Txs {
 	txBzs := make(Txs, len(txs))
 	for i := 0; i < len(txs); i++ {
