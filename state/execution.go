@@ -300,6 +300,7 @@ func execBlockOnProxyApp(
 	var validTxs, invalidTxs = 0, 0
 
 	abciResponses := new(tmstate.ABCIResponses)
+	abciResponses.FinalizeBlock = &abci.ResponseFinalizeBlock{}
 	dtxs := make([]*abci.ResponseDeliverTx, len(block.Txs))
 	abciResponses.FinalizeBlock.Txs = dtxs
 
@@ -525,14 +526,16 @@ func fireEvents(
 		}
 	}
 
-	for i, tx := range block.Data.Txs {
-		if err := eventBus.PublishEventTx(types.EventDataTx{TxResult: abci.TxResult{
-			Height: block.Height,
-			Index:  uint32(i),
-			Tx:     tx,
-			Result: *(abciResponses.FinalizeBlock.Txs[i]),
-		}}); err != nil {
-			logger.Error("failed publishing event TX", "err", err)
+	if len(abciResponses.FinalizeBlock.Txs) != 0 {
+		for i, tx := range block.Data.Txs {
+			if err := eventBus.PublishEventTx(types.EventDataTx{TxResult: abci.TxResult{
+				Height: block.Height,
+				Index:  uint32(i),
+				Tx:     tx,
+				Result: *(abciResponses.FinalizeBlock.Txs[i]),
+			}}); err != nil {
+				logger.Error("failed publishing event TX", "err", err)
+			}
 		}
 	}
 

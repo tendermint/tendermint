@@ -362,7 +362,7 @@ func TestSerialReap(t *testing.T) {
 	commitRange := func(start, end int) {
 		ctx := context.Background()
 		// Deliver some txs.
-		var txs = make([][]byte, start-end)
+		var txs = make([][]byte, end)
 		for i := start; i < end; i++ {
 			txBytes := make([]byte, 8)
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
@@ -409,7 +409,7 @@ func TestSerialReap(t *testing.T) {
 	// Reap again.  We should get the same amount
 	reapCheck(1000)
 
-	// Commit from the conensus AppConn
+	// Commit from the consensus AppConn
 	commitRange(0, 500)
 	updateRange(0, 500)
 

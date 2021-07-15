@@ -81,13 +81,15 @@ func testCounter() {
 	// commit(client, nil)
 	// deliverTx(client, []byte("abc"), code.CodeTypeBadNonce, nil)
 	commit(client, nil)
-	deliverTx(client, []byte{0x00}, types.CodeTypeOK, nil)
+	finalizeBlock(client, []tx{{Data: []byte{0x00}, CodeExp: types.CodeTypeOK, DataExp: nil}})
 	commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 1})
 	// deliverTx(client, []byte{0x00}, code.CodeTypeBadNonce, nil)
-	deliverTx(client, []byte{0x01}, types.CodeTypeOK, nil)
-	deliverTx(client, []byte{0x00, 0x02}, types.CodeTypeOK, nil)
-	deliverTx(client, []byte{0x00, 0x03}, types.CodeTypeOK, nil)
-	deliverTx(client, []byte{0x00, 0x00, 0x04}, types.CodeTypeOK, nil)
+	txs := []tx{
+		{Data: []byte{0x01}, DataExp: nil, CodeExp: types.CodeTypeOK},
+		{Data: []byte{0x00, 0x02}, DataExp: nil, CodeExp: types.CodeTypeOK},
+		{Data: []byte{0x00, 0x03}, DataExp: nil, CodeExp: types.CodeTypeOK},
+		{Data: []byte{0x00, 0x00, 0x04}, DataExp: nil, CodeExp: types.CodeTypeOK}}
+	finalizeBlock(client, txs)
 	// deliverTx(client, []byte{0x00, 0x00, 0x06}, code.CodeTypeBadNonce, nil)
 	commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 5})
 }

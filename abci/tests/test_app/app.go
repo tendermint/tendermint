@@ -37,16 +37,29 @@ func commit(client abcicli.Client, hashExp []byte) {
 	}
 }
 
-func deliverTx(client abcicli.Client, txBytes []byte, codeExp uint32, dataExp []byte) {
-	res, err := client.DeliverTxSync(ctx, types.RequestDeliverTx{Tx: txBytes})
+type tx struct {
+	Data    []byte
+	CodeExp uint32
+	DataExp []byte
+}
+
+func finalizeBlock(client abcicli.Client, txs []tx) {
+	var txsData = make([][]byte, len(txs))
+	for i, tx := range txs {
+		txsData[i] = tx.Data
+	}
+
+	res, err := client.FinalizeBlockSync(ctx, types.RequestFinalizeBlock{Txs: txsData})
 	if err != nil {
 		panicf("client error: %v", err)
 	}
-	if res.Code != codeExp {
-		panicf("DeliverTx response code was unexpected. Got %v expected %v. Log: %v", res.Code, codeExp, res.Log)
-	}
-	if !bytes.Equal(res.Data, dataExp) {
-		panicf("DeliverTx response data was unexpected. Got %X expected %X", res.Data, dataExp)
+	for i, tx := range res.Txs {
+		if tx.Code != txs[i].CodeExp {
+			panicf("DeliverTx response code was unexpected. Got %v expected %v. Log: %v", tx.Code, txs[i].CodeExp, tx.Log)
+		}
+		if !bytes.Equal(tx.Data, txs[i].DataExp) {
+			panicf("DeliverTx response data was unexpected. Got %X expected %X", tx.Data, txs[i].DataExp)
+		}
 	}
 }
 
