@@ -42,7 +42,7 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 		if err := execCompose(testnet.Dir, "kill", "-s", "SIGKILL", node.Name); err != nil {
 			return nil, err
 		}
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
 		if err := execCompose(testnet.Dir, "start", node.Name); err != nil {
 			return nil, err
 		}
@@ -73,7 +73,7 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 		return nil, nil
 	}
 
-	status, err := waitForNode(node, 0, 2*time.Minute)
+	status, err := waitForNode(node, 0, 3*time.Minute)
 	if err != nil {
 		return nil, err
 	}
