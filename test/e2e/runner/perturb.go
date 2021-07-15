@@ -16,7 +16,7 @@ func Perturb(testnet *e2e.Testnet) error {
 			if err != nil {
 				return err
 			}
-			time.Sleep(15 * time.Second) // give network some time to recover between each
+			time.Sleep(20 * time.Second) // give network some time to recover between each
 		}
 	}
 	return nil
@@ -42,7 +42,7 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 		if err := execCompose(testnet.Dir, "kill", "-s", "SIGKILL", node.Name); err != nil {
 			return nil, err
 		}
-		time.Sleep(2 * time.Second)
+		time.Sleep(5 * time.Second)
 		if err := execCompose(testnet.Dir, "start", node.Name); err != nil {
 			return nil, err
 		}
