@@ -276,9 +276,6 @@ Does not run any perbutations.
 			defer loadCancel()
 			go func() {
 				err := Load(ctx, cli.testnet, 1)
-				if err != nil {
-					logger.Error(fmt.Sprintf("Transaction load failed: %v", err.Error()))
-				}
 				chLoadResult <- err
 			}()
 

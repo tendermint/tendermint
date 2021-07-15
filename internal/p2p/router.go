@@ -1025,12 +1025,12 @@ func (r *Router) NodeInfo() types.NodeInfo {
 func (r *Router) OnStart() error {
 	netAddr, _ := r.nodeInfo.NetAddress()
 	r.Logger.Info(
-	  "starting router", 
-	  "node_id", r.nodeInfo.NodeID,
-	  "channels", r.nodeInfo.Channels,
+		"starting router",
+		"node_id", r.nodeInfo.NodeID,
+		"channels", r.nodeInfo.Channels,
 		"listen_addr", r.nodeInfo.ListenAddr,
-		 "net_addr", netAddr,
-		 )
+		"net_addr", netAddr,
+	)
 
 	go r.dialPeers()
 	go r.evictPeers()
