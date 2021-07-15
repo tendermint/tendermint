@@ -2227,6 +2227,16 @@ func (cs *State) signVote(
 		vote.VoteExtension = ext
 	default:
 	}
+	// If the signedMessage type is for precommit, add VoteExtension
+	switch msgType {
+	case tmproto.PrecommitType:
+		ext, err := cs.blockExec.VoteExtension(cs.Height, cs.Round)
+		if err != nil {
+			return nil, err
+		}
+		vote.VoteExtension = ext
+	default:
+	}
 
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
