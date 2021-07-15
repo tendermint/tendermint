@@ -79,9 +79,10 @@ func (txs Txs) Proof(i int) TxProof {
 	}
 }
 
-// Convert []Txs to [][]Byte
-// This method should become obsolete once Txs is switched to [][]byte,
-// ref #2603
+// ToSliceOfBytes converts a Txs to slice of byte slices.
+//
+// NOTE: This method should become obsolete once Txs is switched to [][]byte.
+// ref: #2603
 func (txs Txs) ToSliceOfBytes() [][]byte {
 	txBzs := make([][]byte, len(txs))
 	for i := 0; i < len(txs); i++ {
