@@ -486,8 +486,6 @@ type LightBlock struct {
   Header          Header
   Commit          Commit
   Validators      ValidatorSet
-  NextValidators  ValidatorSet
-  Provider        PeerID
 }
 ```
 

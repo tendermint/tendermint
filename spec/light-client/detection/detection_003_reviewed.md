@@ -457,6 +457,10 @@ we refer to a variable of the following type
 type LightClientAttackEvidence struct {
     ConflictingBlock   LightBlock
     CommonHeight       int64
+
+    // Evidence also includes application specific data which is not
+    // part of verification but is sent to the application once the
+    // evidence gets committed on chain.
 }
 ```
 
@@ -698,6 +702,10 @@ func CreateEvidenceForPeer(peer PeerID, root LightBlock, trace LightStore)
                 // we can create evidence for submission to the secondary
                 ev := new InternalEvidence;
                 ev.Evidence.ConflictingBlock := trace[i];
+                // CommonHeight is used to indicate the type of attack
+                // if the CommonHeight != ConflictingBlock.Height this 
+                // is by definition a lunatic attack else it is an
+                // equivocation attack
                 ev.Evidence.CommonHeight := common.Height;
                 ev.Peer := peer
                 return (ev, common, auxLS, FoundEvidence)
