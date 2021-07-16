@@ -25,6 +25,34 @@ with regards to how the node instances are started. However, this is indeed
 the case and the existing dependencies are tangled around supporting these
 cases.
 
+## Alternative Approaches
+
+### Do Nothing
+
+### Generic Service Plugability
+
+## Decisions
+
+## Detailed Design
+
+## Consequences 
+
+### Positive
+
+### Negative 
+
+### Neutral 
+
+## Open Questions
+
+### Timing
+
+### Interface Implications
+
+## References 
+
+------------------------------------------------------------------------
+
 ## Observations
 
 To prepare for this work [this
