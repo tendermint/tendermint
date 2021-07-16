@@ -278,35 +278,35 @@ dial-timeout = "3s"
 # Mempool version to use:
 #   1) "v0" - The legacy non-prioritized mempool reactor.
 #   2) "v1" (default) - The prioritized mempool reactor.
-version = "{{ .Mempool.Version }}"
+version = "v1"
 
-recheck = {{ .Mempool.Recheck }}
-broadcast = {{ .Mempool.Broadcast }}
+recheck = true
+broadcast = true
 
 # Maximum number of transactions in the mempool
-size = {{ .Mempool.Size }}
+size = 5000
 
 # Limit the total size of all txs in the mempool.
 # This only accounts for raw transactions (e.g. given 1MB transactions and
 # max-txs-bytes=5MB, mempool will only accept 5 transactions).
-max-txs-bytes = {{ .Mempool.MaxTxsBytes }}
+max-txs-bytes = 1073741824
 
 # Size of the cache (used to filter transactions we saw earlier) in transactions
-cache-size = {{ .Mempool.CacheSize }}
+cache-size = 10000
 
 # Do not remove invalid transactions from the cache (default: false)
 # Set to true if it's not possible for any invalid transaction to become valid
 # again in the future.
-keep-invalid-txs-in-cache = {{ .Mempool.KeepInvalidTxsInCache }}
+keep-invalid-txs-in-cache = false
 
 # Maximum size of a single transaction.
 # NOTE: the max size of a tx transmitted over the network is {max-tx-bytes}.
-max-tx-bytes = {{ .Mempool.MaxTxBytes }}
+max-tx-bytes = 1048576
 
 # Maximum size of a batch of transactions to send to a peer
 # Including space needed by encoding (one varint per transaction).
 # XXX: Unused due to https://github.com/tendermint/tendermint/issues/5796
-max-batch-bytes = {{ .Mempool.MaxBatchBytes }}
+max-batch-bytes = 0
 
 # ttl-duration, if non-zero, defines the maximum amount of time a transaction
 # can exist for in the mempool.
@@ -314,7 +314,7 @@ max-batch-bytes = {{ .Mempool.MaxBatchBytes }}
 # Note, if ttl-num-blocks is also defined, a transaction will be removed if it
 # has existed in the mempool at least ttl-num-blocks number of blocks or if it's
 # insertion time into the mempool is beyond ttl-duration.
-ttl-duration = "{{ .Mempool.TTLDuration }}"
+ttl-duration = "0s"
 
 # ttl-num-blocks, if non-zero, defines the maximum number of blocks a transaction
 # can exist for in the mempool.
@@ -322,7 +322,7 @@ ttl-duration = "{{ .Mempool.TTLDuration }}"
 # Note, if ttl-duration is also defined, a transaction will be removed if it
 # has existed in the mempool at least ttl-num-blocks number of blocks or if
 # it's insertion time into the mempool is beyond ttl-duration.
-ttl-num-blocks = {{ .Mempool.TTLNumBlocks }}
+ttl-num-blocks = 0
 
 #######################################################
 ###         State Sync Configuration Options        ###
