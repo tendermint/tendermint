@@ -206,7 +206,7 @@ func TestWrappedTxList_Remove(t *testing.T) {
 	list.Remove(&WrappedTx{height: 20000})
 
 	// remove a tx that exists (by height) but not referenced
-	list.Remove(&WrappedTx{height: int64(txs[0].height)})
+	list.Remove(&WrappedTx{height: txs[0].height})
 
 	// remove a few existing txs
 	for i := 0; i < 25; i++ {
