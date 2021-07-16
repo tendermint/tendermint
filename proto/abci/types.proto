@@ -52,19 +52,18 @@ message RequestInfo {
 }
 
 message RequestInitChain {
-  google.protobuf.Timestamp time = 1
-      [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  string                   chain_id         = 2;
-  ConsensusParams          consensus_params = 3;
-  repeated ValidatorUpdate validators       = 4 [(gogoproto.nullable) = false];
-  bytes                    app_state_bytes  = 5;
-  uint64                   initial_height   = 6;
+  google.protobuf.Timestamp        time             = 1 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  string                           chain_id         = 2;
+  tendermint.types.ConsensusParams consensus_params = 3;
+  repeated ValidatorUpdate         validators       = 4 [(gogoproto.nullable) = false];
+  bytes                            app_state_bytes  = 5;
+  int64                            initial_height   = 6;
 }
 
 message RequestQuery {
   bytes  data   = 1;
   string path   = 2;
-  uint64 height = 3;
+  int64  height = 3;
   bool   prove  = 4;
 }
 
@@ -90,14 +89,13 @@ message RequestDeliverTx {
 }
 
 message RequestEndBlock {
-  uint64 height = 1;
+  int64 height = 1;
 }
 
 message RequestCommit {}
 
 // lists available snapshots
-message RequestListSnapshots {
-}
+message RequestListSnapshots {}
 
 // offers a snapshot to the application
 message RequestOfferSnapshot {
@@ -160,14 +158,14 @@ message ResponseInfo {
   string version     = 2;
   uint64 app_version = 3;
 
-  uint64 last_block_height   = 4;
-  bytes  last_block_app_hash = 5;
+  int64 last_block_height   = 4;
+  bytes last_block_app_hash = 5;
 }
 
 message ResponseInitChain {
-  ConsensusParams          consensus_params = 1;
-  repeated ValidatorUpdate validators       = 2 [(gogoproto.nullable) = false];
-  bytes                    app_hash         = 3;
+  tendermint.types.ConsensusParams consensus_params = 1;
+  repeated ValidatorUpdate         validators       = 2 [(gogoproto.nullable) = false];
+  bytes                            app_hash         = 3;
 }
 
 message ResponseQuery {
@@ -179,13 +177,12 @@ message ResponseQuery {
   bytes                      key       = 6;
   bytes                      value     = 7;
   tendermint.crypto.ProofOps proof_ops = 8;
-  uint64                     height    = 9;
+  int64                      height    = 9;
   string                     codespace = 10;
 }
 
 message ResponseBeginBlock {
-  repeated Event events = 1
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+  repeated Event events = 1 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
 }
 
 message ResponseCheckTx {
@@ -209,22 +206,20 @@ message ResponseDeliverTx {
   int64          gas_wanted = 5 [json_name = "gas_wanted"];
   int64          gas_used   = 6 [json_name = "gas_used"];
   repeated Event events     = 7
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];  // nondeterministic
   string codespace = 8;
 }
 
 message ResponseEndBlock {
-  repeated ValidatorUpdate validator_updates = 1
-      [(gogoproto.nullable) = false];
-  ConsensusParams consensus_param_updates = 2;
-  repeated Event  events                  = 3
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+  repeated ValidatorUpdate         validator_updates       = 1 [(gogoproto.nullable) = false];
+  tendermint.types.ConsensusParams consensus_param_updates = 2;
+  repeated Event                   events                  = 3 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
 }
 
 message ResponseCommit {
   // reserve 1
-  bytes  data          = 2;
-  uint64 retain_height = 3;
+  bytes data          = 2;
+  int64 retain_height = 3;
 }
 
 message ResponseListSnapshots {
@@ -266,23 +261,6 @@ message ResponseApplySnapshotChunk {
 //----------------------------------------
 // Misc.
 
-// ConsensusParams contains all consensus-relevant parameters
-// that can be adjusted by the abci app
-message ConsensusParams {
-  BlockParams                      block     = 1;
-  tendermint.types.EvidenceParams  evidence  = 2;
-  tendermint.types.ValidatorParams validator = 3;
-  tendermint.types.VersionParams   version   = 4;
-}
-
-// BlockParams contains limits on the block size.
-message BlockParams {
-  // Note: must be greater than 0
-  int64 max_bytes = 1;
-  // Note: must be greater or equal to -1
-  int64 max_gas = 2;
-}
-
 message LastCommitInfo {
   int32             round = 1;
   repeated VoteInfo votes = 2 [(gogoproto.nullable) = false];
@@ -293,24 +271,21 @@ message LastCommitInfo {
 // Later, transactions may be queried using these events.
 message Event {
   string                  type       = 1;
-  repeated EventAttribute attributes = 2 [
-    (gogoproto.nullable) = false,
-    (gogoproto.jsontag)  = "attributes,omitempty"
-  ];
+  repeated EventAttribute attributes = 2 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "attributes,omitempty"];
 }
 
 // EventAttribute is a single key-value pair, associated with an event.
 message EventAttribute {
-  bytes key   = 1;
-  bytes value = 2;
-  bool  index = 3;  // nondeterministic
+  string key   = 1;
+  string value = 2;
+  bool   index = 3;  // nondeterministic
 }
 
 // TxResult contains results of executing the transaction.
 //
 // One usage is indexing transaction results.
 message TxResult {
-  uint64            height = 1;
+  int64             height = 1;
   uint32            index  = 2;
   bytes             tx     = 3;
   ResponseDeliverTx result = 4 [(gogoproto.nullable) = false];
@@ -349,12 +324,9 @@ message Evidence {
   // The offending validator
   Validator validator = 2 [(gogoproto.nullable) = false];
   // The height when the offense occurred
-  uint64 height = 3;
+  int64 height = 3;
   // The corresponding time where the offense occurred
-  google.protobuf.Timestamp time = 4 [
-    (gogoproto.nullable) = false,
-    (gogoproto.stdtime)  = true
-  ];
+  google.protobuf.Timestamp time = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   // Total voting power of the validator set in case the ABCI application does
   // not store historical validators.
   // https://github.com/tendermint/tendermint/issues/4581

@@ -19,7 +19,6 @@ message Validator {
   int64                       proposer_priority = 4;
 }
 
-// Used to compute the validator hash within the ValidatorSetHash
 message SimpleValidator {
   tendermint.crypto.PublicKey pub_key      = 1;
   int64                       voting_power = 2;

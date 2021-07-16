@@ -27,7 +27,7 @@ message DuplicateVoteEvidence {
 // LightClientAttackEvidence contains evidence of a set of validators attempting to mislead a light client.
 message LightClientAttackEvidence {
   tendermint.types.LightBlock conflicting_block            = 1;
-  uint64                      common_height                = 2;
+  int64                       common_height                = 2;
   repeated tendermint.types.Validator byzantine_validators = 3;
   int64                               total_voting_power   = 4;
   google.protobuf.Timestamp           timestamp            = 5 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
