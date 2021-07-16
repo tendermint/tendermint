@@ -357,7 +357,7 @@ func (h *Handshaker) ReplayBlocks(
 		}
 		res, err := proxyApp.Consensus().InitChainSync(req)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("initChain error from abci: %v", err)
 		}
 		h.logger.Debug("Response from Init Chain", "res", res.String())
 		appHash = res.AppHash
