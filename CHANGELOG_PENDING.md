@@ -24,6 +24,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [libs/CList] \#6626 Automatically detach the prev/next elements in Remove function (@JayT106)
   - [fastsync/rpc] \#6620 Add TotalSyncedTime & RemainingTime to SyncInfo in /status RPC  (@JayT106)
   - [rpc/grpc] \#6725 Mark gRPC in the RPC layer as deprecated.
+  - [blockchain/v2] \#6730 Fast Sync v2 is deprecated, please use v0
 
 - Apps
   - [ABCI] \#6408 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)

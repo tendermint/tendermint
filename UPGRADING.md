@@ -32,6 +32,8 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 - configuration values starting with `priv-validator-` have moved to the new
   `priv-validator` section, without the `priv-validator-` prefix.
 
+* Fast Sync v2 has been deprecated, please use v0 to sync a node.
+
 ### CLI Changes
 
 * You must now specify the node mode (validator|full|seed) in `tendermint init [mode]`
