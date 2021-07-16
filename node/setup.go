@@ -372,10 +372,7 @@ func createBlockchainReactor(
 		return reactorShim, reactor, nil
 
 	case cfg.BlockchainV2:
-		reactor := bcv2.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync, metrics)
-		reactor.SetLogger(logger)
-
-		return nil, reactor, nil
+		return nil, nil, errors.New("fastsync version v2 is no longer supported. Please use v0")
 
 	default:
 		return nil, nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
