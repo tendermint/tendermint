@@ -452,7 +452,7 @@ func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
 	require.Equal(t, 95, txmp.heightIndex.Size())
 
 	// check more txs at height 101
-	tTxs = checkTxs(t, txmp, 50, 1)
+	_ = checkTxs(t, txmp, 50, 1)
 	require.Equal(t, 145, txmp.Size())
 	require.Equal(t, 145, txmp.heightIndex.Size())
 

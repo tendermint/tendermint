@@ -215,9 +215,9 @@ func TestWrappedTxList_Remove(t *testing.T) {
 		txs = append(txs[:j], txs[j+1:]...)
 	}
 
-	var expected []int
-	for _, tx := range txs {
-		expected = append(expected, int(tx.height))
+	expected := make([]int, len(txs))
+	for i, tx := range txs {
+		expected[i] = int(tx.height)
 	}
 
 	got := make([]int, list.Size())
