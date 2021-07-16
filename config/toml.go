@@ -436,6 +436,16 @@ chunk-request-timeout = "{{ .StateSync.ChunkRequestTimeout }}"
 fetchers = "{{ .StateSync.Fetchers }}"
 
 #######################################################
+###       Fast Sync Configuration Connections       ###
+#######################################################
+[fastsync]
+
+# Fast Sync version to use:
+#   1) "v0" (default) - the legacy fast sync implementation
+#   2) "v2" - DEPRECATED, please use v0
+version = "{{ .FastSync.Version }}"
+
+#######################################################
 ###         Consensus Configuration Options         ###
 #######################################################
 [consensus]
