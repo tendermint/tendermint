@@ -961,7 +961,7 @@ func (cfg *FastSyncConfig) ValidateBasic() error {
 	case BlockchainV0:
 		return nil
 	case BlockchainV2:
-		return errors.New("fastsync version v2 is not supported")
+		return errors.New("fastsync version v2 is no longer supported. Please use v0")
 	default:
 		return fmt.Errorf("unknown fastsync version %s", cfg.Version)
 	}
