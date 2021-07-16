@@ -257,3 +257,26 @@ func (wtl *WrappedTxList) Insert(wtx *WrappedTx) {
 	wtl.txs = append(wtl.txs[:i+1], wtl.txs[i:]...)
 	wtl.txs[i] = wtx
 }
+
+// Remove attempts to remove a WrappedTx from the sorted list.
+func (wtl *WrappedTxList) Remove(wtx *WrappedTx) {
+	wtl.mtx.Lock()
+	defer wtl.mtx.Unlock()
+
+	i := sort.Search(len(wtl.txs), func(i int) bool {
+		return wtl.less(wtl.txs[i], wtx)
+	})
+
+	// Since the list is sorted, we evaluate all elements starting at i. Note, if
+	// the element does not exist, we may potentially evaluate the entire remainder
+	// of the list. However, a caller should not be expected to call Remove with a
+	// non-existing element.
+	for i < len(wtl.txs) {
+		if wtl.txs[i] == wtx {
+			wtl.txs = append(wtl.txs[:i], wtl.txs[i+1:]...)
+			return
+		}
+
+		i++
+	}
+}

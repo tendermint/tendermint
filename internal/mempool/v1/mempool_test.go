@@ -102,14 +102,10 @@ func checkTxs(t *testing.T, txmp *TxMempool, numTxs int, peerID uint16) []testTx
 		_, err := rng.Read(prefix)
 		require.NoError(t, err)
 
-		// sender := make([]byte, 10)
-		// _, err = rng.Read(sender)
-		// require.NoError(t, err)
-
 		priority := int64(rng.Intn(9999-1000) + 1000)
 
 		txs[i] = testTx{
-			tx:       []byte(fmt.Sprintf("sender-%d=%X=%d", i, prefix, priority)),
+			tx:       []byte(fmt.Sprintf("sender-%d-%d=%X=%d", i, peerID, prefix, priority)),
 			priority: priority,
 		}
 		require.NoError(t, txmp.CheckTx(context.Background(), txs[i].tx, nil, txInfo))
@@ -430,4 +426,54 @@ func TestTxMempool_ConcurrentTxs(t *testing.T) {
 	wg.Wait()
 	require.Zero(t, txmp.Size())
 	require.Zero(t, txmp.SizeBytes())
+}
+
+func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
+	txmp := setup(t, 500)
+	txmp.height = 100
+	txmp.config.TTLNumBlocks = 10
+
+	tTxs := checkTxs(t, txmp, 100, 0)
+	require.Equal(t, len(tTxs), txmp.Size())
+	require.Equal(t, 100, txmp.heightIndex.Size())
+
+	// reap 5 txs at the next height -- no txs should expire
+	reapedTxs := txmp.ReapMaxTxs(5)
+	responses := make([]*abci.ResponseDeliverTx, len(reapedTxs))
+	for i := 0; i < len(responses); i++ {
+		responses[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
+	}
+
+	txmp.Lock()
+	require.NoError(t, txmp.Update(txmp.height+1, reapedTxs, responses, nil, nil))
+	txmp.Unlock()
+
+	require.Equal(t, 95, txmp.Size())
+	require.Equal(t, 95, txmp.heightIndex.Size())
+
+	// check more txs at height 101
+	tTxs = checkTxs(t, txmp, 50, 1)
+	require.Equal(t, 145, txmp.Size())
+	require.Equal(t, 145, txmp.heightIndex.Size())
+
+	// Reap 5 txs at a height that would expire all the transactions from before
+	// the previous Update (height 100).
+	//
+	// NOTE: When we reap txs below, we do not know if we're picking txs from the
+	// initial CheckTx calls or from the second round of CheckTx calls. Thus, we
+	// cannot guarantee that all 95 txs are remaining that should be expired and
+	// removed. However, we do know that that at most 95 txs can be expired and
+	// removed.
+	reapedTxs = txmp.ReapMaxTxs(5)
+	responses = make([]*abci.ResponseDeliverTx, len(reapedTxs))
+	for i := 0; i < len(responses); i++ {
+		responses[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
+	}
+
+	txmp.Lock()
+	require.NoError(t, txmp.Update(txmp.height+10, reapedTxs, responses, nil, nil))
+	txmp.Unlock()
+
+	require.GreaterOrEqual(t, txmp.Size(), 45)
+	require.GreaterOrEqual(t, txmp.heightIndex.Size(), 45)
 }

@@ -755,9 +755,8 @@ func (txmp *TxMempool) removeTx(wtx *WrappedTx, removeFromCache bool) {
 
 	txmp.txStore.RemoveTx(wtx)
 	txmp.priorityIndex.RemoveTx(wtx)
-
-	// Note: height and timestamp based indexes used for TTL purging are removed
-	// during TxMempool#Update.
+	txmp.heightIndex.Remove(wtx)
+	txmp.timestampIndex.Remove(wtx)
 
 	// Remove the transaction from the gossip index and cleanup the linked-list
 	// element so it can be garbage collected.
