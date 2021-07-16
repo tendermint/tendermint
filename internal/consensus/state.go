@@ -2230,7 +2230,7 @@ func (cs *State) signVote(
 	// If the signedMessage type is for precommit, add VoteExtension
 	switch msgType {
 	case tmproto.PrecommitType:
-		ext, err := cs.blockExec.VoteExtension(cs.Height, cs.Round)
+		ext, err := cs.blockExec.ExtendVote(cs.Height, cs.Round)
 		if err != nil {
 			return nil, err
 		}
