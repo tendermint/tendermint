@@ -105,6 +105,9 @@ message Vote {
   VoteExtension vote_extension = 9;
 }
 
+// VoteExtension is application-specific additional data to the validator vote,
+// returned from the ExtendVote ABCI call to the application and should be
+// gossiped between validators along the votes.
 message VoteExtension {
   bytes app_data_signed              = 1;
   bytes app_data_self_authenticating = 2;

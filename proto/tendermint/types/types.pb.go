@@ -573,6 +573,9 @@ func (m *Vote) GetVoteExtension() *VoteExtension {
 	return nil
 }
 
+// VoteExtension is application-specific additional data to the validator vote,
+// returned from the ExtendVote ABCI call to the application and should be
+// gossiped between validators along the votes.
 type VoteExtension struct {
 	AppDataSigned             []byte `protobuf:"bytes,1,opt,name=app_data_signed,json=appDataSigned,proto3" json:"app_data_signed,omitempty"`
 	AppDataSelfAuthenticating []byte `protobuf:"bytes,2,opt,name=app_data_self_authenticating,json=appDataSelfAuthenticating,proto3" json:"app_data_self_authenticating,omitempty"`
