@@ -21,7 +21,6 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [cli] \#6372 Introduce `BootstrapPeers` as part of the new p2p stack. Peers to be connected on  startup (@cmwaters)
   - [config] \#6462 Move `PrivValidator` configuration out of `BaseConfig` into its own section. (@tychoish)
   - [rpc] \#6610 Add MaxPeerBlockHeight into /status rpc call (@JayT106)
-  - [libs/CList] \#6626 Automatically detach the prev/next elements in Remove function (@JayT106)
   - [fastsync/rpc] \#6620 Add TotalSyncedTime & RemainingTime to SyncInfo in /status RPC  (@JayT106)
   - [rpc/grpc] \#6725 Mark gRPC in the RPC layer as deprecated.
   - [blockchain/v2] \#6730 Fast Sync v2 is deprecated, please use v0
