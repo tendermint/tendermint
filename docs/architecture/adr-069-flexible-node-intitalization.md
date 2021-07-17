@@ -19,19 +19,95 @@ because these interfaces were _already_ changing as a result of the `p2p`
 [refactor](./adr-061-p2p-refactor-scope.md), so it made sense to think a bit
 more about how tendermint exposes this API.
 
-It is not immediately intuitive that the nexus of this change is in the
-relationship between the `rpc` package and the `node` package, particularly
-with regards to how the node instances are started. However, this is indeed
-the case and the existing dependencies are tangled around supporting these
-cases.
+While the interfaces of the P2P layer and most of the node package are
+already internalized, this precludes several kinds of operational
+patterns that are important to key tendermint users who use tendermint
+as a library, specifically introspecting the tendermint node service
+and replacing components is not supported in the latest version of the
+code, and some of these use cases would require maintaining a vendor
+copy of the code. Adding these features requires rather extensive
+(internal/implementation) changes to the `node` and `rpc` packages,
+and this ADR describes a model for changing the way that tendermint
+nodes initialize, in service of providing this kind of functionality.
+
+We consider node initialization, because the current implemention
+provides strong connections between all components, as well as between
+the components of the node and the RPC layer, and being able to think
+about the interactions of these components will help enable these
+features and help define the requirements of the node package. 
 
 ## Alternative Approaches
 
 ### Do Nothing
 
+The current implementation is functional and sufficient for the vast
+majority of use cases (e.g. all users of the Cosmos-SDK as well as
+anyone who runs tendermint and the ABCI application in separate
+processes.) In the current implementation, and even previous versions,
+modifying node initialization or injecting custom components required
+copying most of the `node` package, which amounts to requiring users
+to maintain a vendored copy of tendermint for these kinds of use
+cases.
+
+While this is (likely) not tenable in the long term, as users do want
+more modularity, and the current service implementation is brittle and
+difficult to maintain, it may be viable in the short and medium term
+to delay implementation which will allow us to do more product
+research and build more confidence and consensus around the eventual
+solution.
+
 ### Generic Service Plugability
 
+We can imagine a system design that exports interfaces (in the Golang
+sense) for all components of the system, to permit runtime dependency
+injection of all components in the system so that users can compose
+tendermint nodes of arbitrary user supplied components. 
+
+This is an interesting proposal, and may be interesting to persue, but
+essentially requires doing a lot more API design and increases the
+surface area of our API. While this is not a goal at the moment,
+eventually providing support for some kinds of plugability may be
+useful, so the current solution does not explicitly forclose the
+possibility of this alternative. 
+
+### Abstract Dependency Based Startup and Shutdown
+
+The proposal on in this document simplifies and makes tendermint node
+initialization more abstract, but the system lacks a number of
+features which daemon/service initialization might provide, such as a
+dependency based system that allows the authors of services to control
+the initialization and shutdown order of components using an
+dependencies to control the ordering. 
+
+Dependency based orderings make it possible to write components
+(reactors, etc.) with only limited awareness of other components or of
+node initialization, and is the state of the art for process
+initialization. However, this may be too abstract and complicated, and
+authors of components in the current implementation of tendermint
+*would* need to know about other components, so a dependency based
+system would be unhelpfully abstract at this stage.
+
 ## Decisions
+
+- Provide a more flexible internal framework for initializing tendermint
+  nodes to make the initatilization process less hard-coded by the
+  implementation of the node objects. 
+  
+  - Reactors should not need to expose their interfaces *within* the
+    implementation of the node type, except in the context of some groups of
+    service. 
+
+- Expose some "unsafe"  way of replacing (some?) existing components, and or
+  inserting arbitrary reactors or services into the tendermint node's
+  initialization.
+  
+  - This may include creating an exported, top-level "unsafe" package with
+    several interfaces and constructors, or simply a function in the
+    node package. 
+
+- Refactor and simplify the process start/initialization logic,
+  separately from--but as a precursor to--permitting user replacement
+  of components.
 
 ## Detailed Design
 
@@ -39,7 +115,7 @@ cases.
 
 ### Positive
 
-### Negative 
+### Negative
 
 ### Neutral 
 
@@ -82,36 +158,6 @@ desecrate stage or sequence of services.  As some services have
 dependencies during construction or initialization and as a starting
 point, a cluster of dependencies can be wrapped as a single
 `service.Service`.
-
-## Goals
-
-- Provide a more flexible internal framework for initializing tendermint
-  nodes to make the initatilization process less hard-coded by the
-  implementation of the node objects. 
-  
-  - Reactors should not need to expose their interfaces *within* the
-    implementation of the node type, except in the context of some groups of
-    service. 
-
-- Expose some "unsafe"  way of replacing (some?) existing components, and or
-  inserting arbitrary reactors or services into the tendermint node's
-  initialization.
-  
-  - This may include creating an exported, top-level "unsafe" package with
-    several interfaces and constructors, or simply a function in the
-    node package. 
-
-- Refactor and simplify the process start/initialization logic,
-  separately from--but as a precursor to--permitting user replacement
-  of components.
-
-## Non-Goals
-
-- Fully abstract dependency-based process initialization. 
-
-- Fully abstract replacement of core tendermint components without vendoring.
-
-- Parallelized initialization of components.
 
 ## Questions
 
