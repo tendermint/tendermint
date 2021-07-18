@@ -252,16 +252,9 @@ func TestScanRightDeleteRandom(t *testing.T) {
 	// time.Sleep(time.Second * 1)
 
 	// And remove all the elements.
-	// we detach the prev/next element in CList.Remove, so just assign l.Front direcly.
-	halfElements := numElements / 2
-	for el := l.Front(); el != nil && halfElements > 0; el = l.Front() {
+	for el := l.Front(); el != nil; el = el.Next() {
 		l.Remove(el)
-		halfElements--
 	}
-
-	// remove the rest half elements in the CList
-	l.Clear()
-
 	if l.Len() != 0 {
 		t.Fatal("Failed to remove all elements from CList")
 	}
