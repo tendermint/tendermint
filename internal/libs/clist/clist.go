@@ -196,26 +196,21 @@ func (e *CElement) SetPrev(newPrev *CElement) {
 	e.mtx.Unlock()
 }
 
-// Detach is a shortcut to mark the given element remove and detach the prev/next elements.
-func (e *CElement) Detach() {
+func (e *CElement) SetRemoved() {
 	e.mtx.Lock()
-	defer e.mtx.Unlock()
 
 	e.removed = true
 
+	// This wakes up anyone waiting in either direction.
 	if e.prev == nil {
 		e.prevWg.Done()
 		close(e.prevWaitCh)
-	} else {
-		e.prev = nil
 	}
-
 	if e.next == nil {
 		e.nextWg.Done()
 		close(e.nextWaitCh)
-	} else {
-		e.next = nil
 	}
+	e.mtx.Unlock()
 }
 
 //--------------------------------------------------------------------------------
@@ -353,26 +348,24 @@ func (l *CList) PushBack(v interface{}) *CElement {
 	return e
 }
 
-// Remove removes the given element in the CList
+// CONTRACT: Caller must call e.DetachPrev() and/or e.DetachNext() to avoid memory leaks.
 // NOTE: As per the contract of CList, removed elements cannot be added back.
-// Because CList detachse the prev/next element when it removes the given element,
-// please do not use CElement.Next() in the for loop postcondition, uses
-// a variable ahead the for loop and then assigns the Next() element
-// to it in the loop as the postcondition.
 func (l *CList) Remove(e *CElement) interface{} {
 	l.mtx.Lock()
-	defer l.mtx.Unlock()
 
 	prev := e.Prev()
 	next := e.Next()
 
 	if l.head == nil || l.tail == nil {
+		l.mtx.Unlock()
 		panic("Remove(e) on empty CList")
 	}
 	if prev == nil && l.head != e {
+		l.mtx.Unlock()
 		panic("Remove(e) with false head")
 	}
 	if next == nil && l.tail != e {
+		l.mtx.Unlock()
 		panic("Remove(e) with false tail")
 	}
 
@@ -397,51 +390,11 @@ func (l *CList) Remove(e *CElement) interface{} {
 		next.SetPrev(prev)
 	}
 
-	e.Detach()
+	// Set .Done() on e, otherwise waiters will wait forever.
+	e.SetRemoved()
 
+	l.mtx.Unlock()
 	return e.Value
-}
-
-// Clear removes all the elements in the CList
-func (l *CList) Clear() {
-	l.mtx.Lock()
-	defer l.mtx.Unlock()
-
-	if l.head == nil || l.tail == nil {
-		return
-	}
-
-	for e := l.head; e != nil; e = l.head {
-		prevE := e.Prev()
-		nextE := e.Next()
-
-		if prevE == nil && e != l.head {
-			panic("CList.Clear failed due to nil prev element")
-		}
-
-		if nextE == nil && e != l.tail {
-			panic("CList.Clear failed due to nil next element")
-		}
-
-		if l.len == 1 {
-			l.wg = waitGroup1()
-			l.waitCh = make(chan struct{})
-		}
-		l.len--
-
-		if prevE == nil {
-			l.head = nextE
-		} else {
-			prevE.SetNext(nextE)
-		}
-		if nextE == nil {
-			l.tail = prevE
-		} else {
-			nextE.SetPrev(prevE)
-		}
-
-		e.Detach()
-	}
 }
 
 func waitGroup1() (wg *sync.WaitGroup) {
