@@ -200,6 +200,7 @@ cors-allowed-headers = [{{ range .RPC.CORSAllowedHeaders }}{{ printf "%q, " . }}
 
 # TCP or UNIX socket address for the gRPC server to listen on
 # NOTE: This server only supports /broadcast_tx_commit
+# Deprecated gRPC  in the RPC layer of Tendermint will be deprecated in 0.36.
 grpc-laddr = "{{ .RPC.GRPCListenAddress }}"
 
 # Maximum number of simultaneous connections.
@@ -209,6 +210,7 @@ grpc-laddr = "{{ .RPC.GRPCListenAddress }}"
 # 0 - unlimited.
 # Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
 # 1024 - 40 - 10 - 50 = 924 = ~900
+# Deprecated gRPC  in the RPC layer of Tendermint will be deprecated in 0.36.
 grpc-max-open-connections = {{ .RPC.GRPCMaxOpenConnections }}
 
 # Activate unsafe RPC commands like /dial-seeds and /unsafe-flush-mempool
@@ -440,7 +442,7 @@ fetchers = "{{ .StateSync.Fetchers }}"
 
 # Fast Sync version to use:
 #   1) "v0" (default) - the legacy fast sync implementation
-#   2) "v2" - complete redesign of v0, optimized for testability & readability
+#   2) "v2" - DEPRECATED, please use v0
 version = "{{ .FastSync.Version }}"
 
 #######################################################

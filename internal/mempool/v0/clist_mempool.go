@@ -164,7 +164,10 @@ func (mem *CListMempool) Flush() {
 	_ = atomic.SwapInt64(&mem.txsBytes, 0)
 	mem.cache.Reset()
 
-	mem.txs.Clear()
+	for e := mem.txs.Front(); e != nil; e = e.Next() {
+		mem.txs.Remove(e)
+		e.DetachPrev()
+	}
 
 	mem.txsMap.Range(func(key, _ interface{}) bool {
 		mem.txsMap.Delete(key)
@@ -335,6 +338,7 @@ func (mem *CListMempool) addTx(memTx *mempoolTx) {
 // 	- resCbRecheck (lock not held) if tx was invalidated
 func (mem *CListMempool) removeTx(tx types.Tx, elem *clist.CElement, removeFromCache bool) {
 	mem.txs.Remove(elem)
+	elem.DetachPrev()
 	mem.txsMap.Delete(mempool.TxKey(tx))
 	atomic.AddInt64(&mem.txsBytes, int64(-len(tx)))
 

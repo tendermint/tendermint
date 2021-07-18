@@ -460,10 +460,11 @@ func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
 		}
 
 		for _, snapshot := range snapshots {
-			logger.Debug(
+			logger.Info(
 				"advertising snapshot",
 				"height", snapshot.Height,
 				"format", snapshot.Format,
+				"peer", envelope.From,
 			)
 			r.snapshotCh.Out <- p2p.Envelope{
 				To: envelope.From,

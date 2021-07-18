@@ -6,6 +6,8 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+//go:generate mockery --case underscore --name Provider
+
 // Provider provides information for the light client to sync (verification
 // happens in the client).
 type Provider interface {

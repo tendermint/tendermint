@@ -18,6 +18,7 @@ type Config struct {
 // StartGRPCServer starts a new gRPC BroadcastAPIServer using the given
 // net.Listener.
 // NOTE: This function blocks - you may want to call it in a go-routine.
+// Deprecated: gRPC  in the RPC layer of Tendermint will be removed in 0.36
 func StartGRPCServer(env *core.Environment, ln net.Listener) error {
 	grpcServer := grpc.NewServer()
 	RegisterBroadcastAPIServer(grpcServer, &broadcastAPI{env: env})
