@@ -340,14 +340,9 @@ func TestRemoved(t *testing.T) {
 	l := New()
 	el1 := l.PushBack(1)
 	el2 := l.PushBack(2)
-	el3 := l.PushBack(2)
 	l.Remove(el1)
 	require.True(t, el1.Removed())
 	require.False(t, el2.Removed())
-
-	l.Clear()
-	require.True(t, el2.Removed())
-	require.True(t, el3.Removed())
 }
 
 func TestNextWaitChan(t *testing.T) {
@@ -381,22 +376,6 @@ func TestNextWaitChan(t *testing.T) {
 		l.Remove(el2)
 		select {
 		case <-el2.NextWaitChan():
-			require.Nil(t, el2.Next())
-		default:
-			t.Fatal("nextWaitChan should have been closed")
-		}
-	})
-
-	t.Run("clearing list should close elements' nextWaitChan", func(t *testing.T) {
-		el3 := l.PushBack(3)
-		select {
-		case <-el3.NextWaitChan():
-			t.Fatal("nextWaitChan should not have been closed")
-		default:
-		}
-		l.Clear()
-		select {
-		case <-el3.NextWaitChan():
 			require.Nil(t, el2.Next())
 		default:
 			t.Fatal("nextWaitChan should have been closed")
