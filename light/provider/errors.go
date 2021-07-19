@@ -41,3 +41,17 @@ type ErrUnreliableProvider struct {
 func (e ErrUnreliableProvider) Error() string {
 	return fmt.Sprintf("client deemed unreliable: %s", e.Reason)
 }
+
+// ShouldBeRemoved analyzes the nature of the error and whether the provider
+// should be removed from the light clients set
+func ShouldBeRemoved(err error) bool {
+	switch err.(type) {
+	case ErrUnreliableProvider, ErrBadLightBlock:
+		return true
+	default:
+		if errors.Is(err, ErrConnectionClosed) {
+			return true
+		}
+		return false
+	}
+}
