@@ -62,6 +62,13 @@ func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		if len(manifest.Nodes) == 1 {
+			if opt["p2p"] == HybridP2PMode {
+				fmt.Println("one")
+				continue
+			}
+		}
 		manifests = append(manifests, manifest)
 	}
 	return manifests, nil
