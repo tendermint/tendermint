@@ -50,7 +50,7 @@ func VerifyNonAdjacent(
 		return err
 	}
 
-	// check the untrusted header is within the trust period
+	// check if the untrusted header is within the trust period
 	if HeaderExpired(untrustedHeader, trustingPeriod, now) {
 		return ErrOldHeaderExpired{untrustedHeader.Time.Add(trustingPeriod), now}
 	}
@@ -118,7 +118,7 @@ func VerifyAdjacent(
 		return errors.New("headers must be adjacent in height")
 	}
 
-	// check the untrusted header is within the trust period
+	// check if the untrusted header is within the trust period
 	if HeaderExpired(untrustedHeader, trustingPeriod, now) {
 		return ErrOldHeaderExpired{untrustedHeader.Time.Add(trustingPeriod), now}
 	}
@@ -225,8 +225,8 @@ func VerifyBackwards(untrustedHeader, trustedHeader *types.Header) error {
 	return nil
 }
 
-// NOTE: this function assimes that untrustedHeader is after trustedHeader.
-// Do not use for backwards verification
+// NOTE: This function assumes that untrustedHeader is after trustedHeader.
+// Do not use for backwards verification.
 func verifyNewHeaderAndVals(
 	untrustedHeader *types.SignedHeader,
 	untrustedVals *types.ValidatorSet,

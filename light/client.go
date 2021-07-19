@@ -633,7 +633,7 @@ func (c *Client) verifySequential(
 //
 // If this function errors, it should always wrap it in a `ErrVerifcationFailed`
 // struct so that the calling function can determine where it failed and handle
-// it accordingly
+// it accordingly.
 func (c *Client) verifySkipping(
 	ctx context.Context,
 	source provider.Provider,
@@ -1098,9 +1098,9 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 		case nil:
 			continue
 		case errConflictingHeaders:
-			c.logger.Error(fmt.Sprintf(`witness #%d has a different header (%X). Please check primary is correct
-and remove witness. Otherwise, use a different primary`, e.WitnessIndex, e.Block.Hash()),
-				"witness", c.witnesses[e.WitnessIndex])
+			c.logger.Error("witness has a different header. Please check primary is correct and remove witness." 
+			+ "Otherwise, use a different primary`,
+				"witness", c.witnesses[e.WitnessIndex], "ExpHeader", h.Hash(), "GotHeader", e.Block.Hash())
 			return err
 		case errBadWitness:
 			// If witness sent us an invalid header, then remove it
