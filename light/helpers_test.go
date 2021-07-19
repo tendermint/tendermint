@@ -3,10 +3,12 @@ package light_test
 import (
 	"time"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmtime "github.com/tendermint/tendermint/libs/time"
+	provider_mocks "github.com/tendermint/tendermint/light/provider/mocks"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
@@ -237,6 +239,16 @@ func genMockNode(
 	map[int64]*types.ValidatorSet) {
 	headers, valset, _ := genMockNodeWithKeys(chainID, blockSize, valSize, valVariation, bTime)
 	return chainID, headers, valset
+}
+
+func mockNodeFromHeadersAndVals(headers map[int64]*types.SignedHeader,
+	vals map[int64]*types.ValidatorSet) *provider_mocks.Provider {
+	mockNode := &provider_mocks.Provider{}
+	for i, header := range headers {
+		lb := &types.LightBlock{SignedHeader: header, ValidatorSet: vals[i]}
+		mockNode.On("LightBlock", mock.Anything, i).Return(lb, nil)
+	}
+	return mockNode
 }
 
 func hash(s string) []byte {
