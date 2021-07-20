@@ -17,6 +17,7 @@ import (
 	httpp "github.com/tendermint/tendermint/light/provider/http"
 	dbs "github.com/tendermint/tendermint/light/store/db"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
+	"github.com/tendermint/tendermint/types"
 )
 
 // Automatically getting new headers and verifying them.
@@ -33,9 +34,6 @@ func ExampleClient_Update() {
 	}
 	defer func() { _ = closer(ctx) }()
 
-	// give Tendermint time to generate some blocks
-	time.Sleep(5 * time.Second)
-
 	dbDir, err := ioutil.TempDir("", "light-client-example")
 	if err != nil {
 		stdlog.Fatal(err)
@@ -44,14 +42,26 @@ func ExampleClient_Update() {
 
 	chainID := conf.ChainID()
 
+	// create a provider using the node's RPC
 	primary, err := httpp.New(chainID, conf.RPC.ListenAddress)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
 
-	block, err := primary.LightBlock(ctx, 2)
-	if err != nil {
-		stdlog.Fatal(err)
+	var block *types.LightBlock
+
+	LOOP:
+	for {
+		block, err = primary.LightBlock(ctx, 2)
+		switch err {
+		case nil:
+			break LOOP
+		// node isn't running yet, wait 1 second and repeat
+		case provider.ErrNoResponse, provider.ErrHeightTooHigh:
+			time.Sleep(1 * time.Second)
+		default:
+			stdlog.Fatal(err)
+		}
 	}
 
 	db, err := dbm.NewGoLevelDB("light-client-db", dbDir)
@@ -59,6 +69,7 @@ func ExampleClient_Update() {
 		stdlog.Fatal(err)
 	}
 
+	// initialize the light client
 	c, err := light.NewClient(
 		ctx,
 		chainID,
