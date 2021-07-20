@@ -120,7 +120,6 @@ message Commit {
   int32              round      = 2;
   BlockID            block_id   = 3 [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];
   repeated CommitSig signatures = 4 [(gogoproto.nullable) = false];
-  repeated VoteExtensionSigned vote_extensions = 5;
 }
 
 // CommitSig is a part of the Vote included in a Commit.
