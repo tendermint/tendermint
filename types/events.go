@@ -27,16 +27,19 @@ const (
 	// These are used for testing the consensus state machine.
 	// They can also be used to build real-time consensus visualizers.
 	EventCompleteProposalValue = "CompleteProposal"
-	EventLockValue             = "Lock"
-	EventNewRoundValue         = "NewRound"
-	EventNewRoundStepValue     = "NewRoundStep"
-	EventPolkaValue            = "Polka"
-	EventRelockValue           = "Relock"
-	EventTimeoutProposeValue   = "TimeoutPropose"
-	EventTimeoutWaitValue      = "TimeoutWait"
-	EventUnlockValue           = "Unlock"
-	EventValidBlockValue       = "ValidBlock"
-	EventVoteValue             = "Vote"
+	// The FastSyncStatus event will be emitted when the node switching
+	// state sync mechanism between the consensus reactor and the fastsync reactor.
+	EventFastSyncStatusValue = "FastSyncStatus"
+	EventLockValue           = "Lock"
+	EventNewRoundValue       = "NewRound"
+	EventNewRoundStepValue   = "NewRoundStep"
+	EventPolkaValue          = "Polka"
+	EventRelockValue         = "Relock"
+	EventTimeoutProposeValue = "TimeoutPropose"
+	EventTimeoutWaitValue    = "TimeoutWait"
+	EventUnlockValue         = "Unlock"
+	EventValidBlockValue     = "ValidBlock"
+	EventVoteValue           = "Vote"
 )
 
 // Pre-populated ABCI Tendermint-reserved events
@@ -100,6 +103,7 @@ func init() {
 	tmjson.RegisterType(EventDataVote{}, "tendermint/event/Vote")
 	tmjson.RegisterType(EventDataValidatorSetUpdates{}, "tendermint/event/ValidatorSetUpdates")
 	tmjson.RegisterType(EventDataString(""), "tendermint/event/ProposalString")
+	tmjson.RegisterType(EventDataFastSyncStatus{}, "tendermint/event/FastSyncStatus")
 }
 
 // Most event messages are basic types (a block, a transaction)
@@ -170,6 +174,13 @@ type EventDataValidatorSetUpdates struct {
 	ValidatorUpdates []*Validator `json:"validator_updates"`
 }
 
+// EventDataFastSyncStatus shows the fastsync status and the
+// height when the node state sync mechanism changes.
+type EventDataFastSyncStatus struct {
+	Complete bool  `json:"complete"`
+	Height   int64 `json:"height"`
+}
+
 // PUBSUB
 
 const (
@@ -207,6 +218,7 @@ var (
 	EventQueryValidatorSetUpdates = QueryForEvent(EventValidatorSetUpdatesValue)
 	EventQueryValidBlock          = QueryForEvent(EventValidBlockValue)
 	EventQueryVote                = QueryForEvent(EventVoteValue)
+	EventQueryFastSyncStatus      = QueryForEvent(EventFastSyncStatusValue)
 )
 
 func EventQueryTxFor(tx Tx) tmpubsub.Query {

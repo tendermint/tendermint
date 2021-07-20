@@ -15,7 +15,6 @@ var (
 	// separate testnet for each combination (Cartesian product) of options.
 	testnetCombinations = map[string][]interface{}{
 		"topology":      {"single", "quad", "large"},
-		"ipv6":          {false, true},
 		"p2p":           {NewP2PMode, LegacyP2PMode, HybridP2PMode},
 		"queueType":     {"priority"}, // "fifo", "wdrr"
 		"initialHeight": {0, 1000},
@@ -44,6 +43,7 @@ var (
 	}
 	evidence = uniformChoice{0, 1, 10}
 	txSize   = uniformChoice{1024, 10240} // either 1kb or 10kb
+	ipv6     = uniformChoice{false, true}
 	keyType  = uniformChoice{types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1}
 )
 
@@ -61,6 +61,12 @@ func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 		manifest, err := generateTestnet(r, opt)
 		if err != nil {
 			return nil, err
+		}
+
+		if len(manifest.Nodes) == 1 {
+			if opt["p2p"] == HybridP2PMode {
+				continue
+			}
 		}
 		manifests = append(manifests, manifest)
 	}
@@ -84,7 +90,7 @@ const (
 // generateTestnet generates a single testnet with the given options.
 func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, error) {
 	manifest := e2e.Manifest{
-		IPv6:             opt["ipv6"].(bool),
+		IPv6:             ipv6.Choose(r).(bool),
 		InitialHeight:    int64(opt["initialHeight"].(int)),
 		InitialState:     opt["initialState"].(map[string]string),
 		Validators:       &map[string]int64{},
