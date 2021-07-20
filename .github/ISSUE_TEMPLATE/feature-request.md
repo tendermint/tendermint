@@ -1,36 +1,27 @@
 ---
-name: Feature Request
-about: Create a proposal to request a feature
+name: Feature request
+about: Suggest an idea for this project
+title: ''
+labels: 'enhancement'
+assignees: ''
 
 ---
 
-<!-- < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < < ☺ 
-v                            ✰  Thanks for opening an issue! ✰    
-v    Before smashing the submit button please review the template.
-v    Word of caution: poorly thought-out proposals may be rejected 
-v                     without deliberation 
-☺ > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > >  -->
+<!--- Provide a general summary of the feature request in the Title above -->
 
-## Summary
+## Expected Behavior
+<!--- A clear and concise description of what you want to happen -->
 
-<!-- Short, concise description of the proposed feature -->
+## Current Behavior
+<!--- Explain the difference from current behavior -->
 
-## Problem Definition
+## Possible Solution
+<!--- Suggest ideas of how to implement the addition or change -->
 
-<!-- Why do we need this feature? 
-What problems may be addressed by introducing this feature?
-What benefits does Tendermint stand to gain by including this feature?
-Are there any disadvantages of including this feature? -->
+## Alternatives Considered
+<!--- A clear and concise description of any alternative solutions or features you've considered -->
 
-## Proposal
+## Additional Context
+<!--- Add any other context or screenshots about the feature request here. -->
 
-<!-- Detailed description of requirements of implementation -->
 
-____
-
-#### For Admin Use
-
-- [ ] Not duplicate issue
-- [ ] Appropriate labels applied
-- [ ] Appropriate contributors tagged
-- [ ] Contributor assigned/self-assigned
