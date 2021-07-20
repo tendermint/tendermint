@@ -664,7 +664,7 @@ func (n *nodeImpl) OnStart() error {
 		}
 
 		err = startStateSync(n.stateSyncReactor, bcR, n.consensusReactor, n.stateSyncProvider,
-			n.config.StateSync, n.config.FastSyncMode, n.stateStore, n.blockStore, state)
+			n.config.StateSync, n.config.FastSyncMode, n.stateStore, n.blockStore, state, n.eventBus)
 		if err != nil {
 			return fmt.Errorf("failed to start state sync: %w", err)
 		}
@@ -1029,7 +1029,7 @@ func (n *nodeImpl) NodeInfo() types.NodeInfo {
 // startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
 func startStateSync(ssR *statesync.Reactor, bcR cs.FastSyncReactor, conR *cs.Reactor,
 	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
-	stateStore sm.Store, blockStore *store.BlockStore, state sm.State) error {
+	stateStore sm.Store, blockStore *store.BlockStore, state sm.State, eventbus *types.EventBus) error {
 	ssR.Logger.Info("starting state sync...")
 
 	if stateProvider == nil {
@@ -1071,6 +1071,12 @@ func startStateSync(ssR *statesync.Reactor, bcR cs.FastSyncReactor, conR *cs.Rea
 				ssR.Logger.Error("failed to switch to fast sync", "err", err)
 				return
 			}
+
+			d := types.EventDataFastSyncStatus{Complete: false, Height: state.LastBlockHeight}
+			if err := eventbus.PublishEventFastSyncStatus(d); err != nil {
+				ssR.Logger.Error("failed to emit the fastsync starting event", "err", err)
+			}
+
 		} else {
 			conR.SwitchToConsensus(state, true)
 		}
