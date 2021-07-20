@@ -45,6 +45,8 @@ func NewConflictingVoteError(vote1, vote2 *Vote) *ErrVoteConflictingVotes {
 // Address is hex bytes.
 type Address = crypto.Address
 
+// VoteExtension represents additional data per application embedded in the
+// Vote.
 type VoteExtension struct {
 	AppDataSigned             []byte `json:"app_data_signed"`
 	AppDataSelfAuthenticating []byte `json:"app_data_self_authenticating"`

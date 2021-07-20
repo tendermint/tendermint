@@ -204,17 +204,17 @@ func (app *localClient) ApplySnapshotChunkAsync(
 	), nil
 }
 
-func (app *localClient) VoteExtensionAsync(
+func (app *localClient) ExtendVoteAsync(
 	ctx context.Context,
-	req types.RequestVoteExtension,
+	req types.RequestExtendVote,
 ) (*ReqRes, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
-	res := app.Application.VoteExtension(req)
+	res := app.Application.ExtendVote(req)
 	return app.callback(
-		types.ToRequestVoteExtension(req),
-		types.ToResponseVoteExtension(res),
+		types.ToRequestExtendVote(req),
+		types.ToResponseExtendVote(res),
 	), nil
 }
 
@@ -374,14 +374,14 @@ func (app *localClient) ApplySnapshotChunkSync(
 	return &res, nil
 }
 
-func (app *localClient) VoteExtensionSync(
+func (app *localClient) ExtendVoteSync(
 	ctx context.Context,
-	req types.RequestVoteExtension) (*types.ResponseVoteExtension, error) {
+	req types.RequestExtendVote) (*types.ResponseExtendVote, error) {
 
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
-	res := app.Application.VoteExtension(req)
+	res := app.Application.ExtendVote(req)
 	return &res, nil
 }
 

@@ -295,11 +295,11 @@ func (cli *socketClient) ApplySnapshotChunkAsync(
 	return cli.queueRequestAsync(ctx, types.ToRequestApplySnapshotChunk(req))
 }
 
-func (cli *socketClient) VoteExtensionAsync(
+func (cli *socketClient) ExtendVoteAsync(
 	ctx context.Context,
-	req types.RequestVoteExtension,
+	req types.RequestExtendVote,
 ) (*ReqRes, error) {
-	return cli.queueRequestAsync(ctx, types.ToRequestVoteExtension(req))
+	return cli.queueRequestAsync(ctx, types.ToRequestExtendVote(req))
 }
 
 func (cli *socketClient) VerifyVoteExtensionAsync(
@@ -479,15 +479,15 @@ func (cli *socketClient) ApplySnapshotChunkSync(
 	return reqres.Response.GetApplySnapshotChunk(), nil
 }
 
-func (cli *socketClient) VoteExtensionSync(
+func (cli *socketClient) ExtendVoteSync(
 	ctx context.Context,
-	req types.RequestVoteExtension) (*types.ResponseVoteExtension, error) {
+	req types.RequestExtendVote) (*types.ResponseExtendVote, error) {
 
-	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestVoteExtension(req))
+	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestExtendVote(req))
 	if err != nil {
 		return nil, err
 	}
-  return reqres.Response.GetVoteExtension(), nil
+	return reqres.Response.GetExtendVote(), nil
 }
 
 func (cli *socketClient) VerifyVoteExtensionSync(
@@ -498,7 +498,7 @@ func (cli *socketClient) VerifyVoteExtensionSync(
 	if err != nil {
 		return nil, err
 	}
-  return reqres.Response.GetVerifyVoteExtension(), nil
+	return reqres.Response.GetVerifyVoteExtension(), nil
 }
 
 //----------------------------------------
@@ -627,8 +627,8 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_ListSnapshots)
 	case *types.Request_OfferSnapshot:
 		_, ok = res.Value.(*types.Response_OfferSnapshot)
-	case *types.Request_VoteExtension:
-		_, ok = res.Value.(*types.Response_VoteExtension)
+	case *types.Request_ExtendVote:
+		_, ok = res.Value.(*types.Response_ExtendVote)
 	case *types.Request_VerifyVoteExtension:
 		_, ok = res.Value.(*types.Response_VerifyVoteExtension)
 	}

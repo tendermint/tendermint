@@ -368,7 +368,6 @@ func TestConsMsgsVectors(t *testing.T) {
 		Type:             tmproto.PrecommitType,
 		BlockID:          bi,
 		VoteExtension:    ext,
-		// XXX: insert voteextension
 	}
 	vpb := v.ToProto()
 

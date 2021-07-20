@@ -114,9 +114,9 @@ func ToRequestApplySnapshotChunk(req RequestApplySnapshotChunk) *Request {
 	}
 }
 
-func ToRequestVoteExtension(req RequestVoteExtension) *Request {
+func ToRequestExtendVote(req RequestExtendVote) *Request {
 	return &Request{
-		Value: &Request_VoteExtension{&req},
+		Value: &Request_ExtendVote{&req},
 	}
 }
 
@@ -217,9 +217,9 @@ func ToResponseApplySnapshotChunk(res ResponseApplySnapshotChunk) *Response {
 	}
 }
 
-func ToResponseVoteExtension(res ResponseVoteExtension) *Response {
+func ToResponseExtendVote(res ResponseExtendVote) *Response {
 	return &Response{
-		Value: &Response_VoteExtension{&res},
+		Value: &Response_ExtendVote{&res},
 	}
 }
 

@@ -23,7 +23,7 @@ type AppConnConsensus interface {
 	EndBlockSync(context.Context, types.RequestEndBlock) (*types.ResponseEndBlock, error)
 	CommitSync(context.Context) (*types.ResponseCommit, error)
 
-	VoteExtensionSync(context.Context, types.RequestVoteExtension) (*types.ResponseVoteExtension, error)
+	ExtendVoteSync(context.Context, types.RequestExtendVote) (*types.ResponseExtendVote, error)
 	VerifyVoteExtensionSync(context.Context, types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error)
 }
 
@@ -105,8 +105,8 @@ func (app *appConnConsensus) CommitSync(ctx context.Context) (*types.ResponseCom
 	return app.appConn.CommitSync(ctx)
 }
 
-func (app *appConnConsensus) VoteExtensionSync(ctx context.Context, req types.RequestVoteExtension) (*types.ResponseVoteExtension, error) {
-	return app.appConn.VoteExtensionSync(ctx, req)
+func (app *appConnConsensus) ExtendVoteSync(ctx context.Context, req types.RequestExtendVote) (*types.ResponseExtendVote, error) {
+	return app.appConn.ExtendVoteSync(ctx, req)
 }
 
 func (app *appConnConsensus) VerifyVoteExtensionSync(ctx context.Context, req types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
