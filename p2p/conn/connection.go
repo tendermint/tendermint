@@ -52,6 +52,7 @@ type receiveCbFunc func(chID byte, msgBytes []byte)
 type errorCbFunc func(interface{})
 
 /*
+MConnection struct:
 Each peer has one `MConnection` (multiplex connection) instance.
 
 __multiplex__ *noun* a system or signal involving simultaneous transmission of

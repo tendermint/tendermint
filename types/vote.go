@@ -111,21 +111,11 @@ func VoteBlockSignId(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQ
 	return blockSignID
 }
 
-// VoteStateSignBytes returns the proto-encoding of the canonicalized last app hash state, for
-// signing. Panics is the marshaling fails.
-//
-// The encoded Protobuf message is varint length-prefixed (using MarshalDelimited)
-// for backwards-compatibility with the Amino encoding, due to e.g. hardware
-// devices that rely on this encoding.
-//
-// See CanonicalizeVote
+// VoteStateSignBytes returns the 40 bytes of the height + last state app hash.
 func VoteStateSignBytes(chainID string, vote *tmproto.Vote) []byte {
-	pb := CanonicalizeStateVote(vote)
-	bz, err := protoio.MarshalDelimited(&pb)
-	if err != nil {
-		panic(err)
-	}
-
+	bz := make([]byte, 8)
+	binary.LittleEndian.PutUint64(bz, uint64(vote.Height - 1))
+	bz = append(bz, vote.StateID.LastAppHash...)
 	return bz
 }
 
@@ -220,12 +210,10 @@ func VoteBlockRequestIdProto(vote *tmproto.Vote) []byte {
 func VoteStateRequestId(vote *Vote) []byte {
 	requestIdMessage := []byte("dpsvote")
 	heightByteArray := make([]byte, 8)
-	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height))
-	roundByteArray := make([]byte, 4)
-	binary.LittleEndian.PutUint32(roundByteArray, uint32(vote.Round))
+	// We use height - 1 because we are signing the state at the end of the execution of the previous block
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height) - 1)
 
 	requestIdMessage = append(requestIdMessage, heightByteArray...)
-	requestIdMessage = append(requestIdMessage, roundByteArray...)
 
 	return crypto.Sha256(requestIdMessage)
 }
@@ -233,12 +221,9 @@ func VoteStateRequestId(vote *Vote) []byte {
 func VoteStateRequestIdProto(vote *tmproto.Vote) []byte {
 	requestIdMessage := []byte("dpsvote")
 	heightByteArray := make([]byte, 8)
-	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height))
-	roundByteArray := make([]byte, 4)
-	binary.LittleEndian.PutUint32(roundByteArray, uint32(vote.Round))
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height) - 1)
 
 	requestIdMessage = append(requestIdMessage, heightByteArray...)
-	requestIdMessage = append(requestIdMessage, roundByteArray...)
 
 	return crypto.Sha256(requestIdMessage)
 }
