@@ -1098,9 +1098,9 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 		case nil:
 			continue
 		case errConflictingHeaders:
-			c.logger.Error("witness has a different header. Please check primary is correct and remove witness." 
-			+ "Otherwise, use a different primary`,
-				"witness", c.witnesses[e.WitnessIndex], "ExpHeader", h.Hash(), "GotHeader", e.Block.Hash())
+			c.logger.Error(`witness has a different header. Please check primary is
+correct and remove witness. Otherwise, use a different primary`,
+				"Witness", c.witnesses[e.WitnessIndex], "ExpHeader", h.Hash(), "GotHeader", e.Block.Hash())
 			return err
 		case errBadWitness:
 			// If witness sent us an invalid header, then remove it
