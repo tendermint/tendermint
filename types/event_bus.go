@@ -233,10 +233,6 @@ func (b *EventBus) PublishEventValidatorSetUpdates(data EventDataValidatorSetUpd
 	return b.Publish(EventValidatorSetUpdatesValue, data)
 }
 
-func (b *EventBus) PublishEventFastSyncUpdate(data EventDataValidatorSetUpdates) error {
-	return b.Publish(EventFastSyncStatusValue, data)
-}
-
 //-----------------------------------------------------------------------------
 type NopEventBus struct{}
 
