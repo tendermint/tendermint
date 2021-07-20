@@ -91,6 +91,13 @@ func InjectEvidence(testnet *e2e.Testnet, amount int) error {
 		}
 	}
 
+	// wait for the node to reach the height above the forged height so that
+	// it is able to validate the evidence
+	_, err = waitForNode(targetNode, blockRes.Block.Height+2, 10*time.Second)
+	if err != nil {
+		return err
+	}
+
 	logger.Info(fmt.Sprintf("Finished sending evidence (height %d)", blockRes.Block.Height+2))
 
 	return nil
@@ -186,7 +193,12 @@ func generateDuplicateVoteEvidence(
 	if err != nil {
 		return nil, err
 	}
-	return types.NewDuplicateVoteEvidence(voteA, voteB, time, vals), nil
+	ev := types.NewDuplicateVoteEvidence(voteA, voteB, time, vals)
+	if ev == nil {
+		return nil, fmt.Errorf("could not generate evidence a=%v b=%v vals=%v", voteA, voteB, vals)
+	}
+
+	return ev, nil
 }
 
 func readPrivKey(keyFilePath string) (crypto.PrivKey, error) {
