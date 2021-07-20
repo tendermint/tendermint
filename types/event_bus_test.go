@@ -370,6 +370,8 @@ func TestEventBusPublish(t *testing.T) {
 	require.NoError(t, err)
 	err = eventBus.PublishEventValidatorSetUpdates(EventDataValidatorSetUpdates{})
 	require.NoError(t, err)
+	err = eventBus.PublishEventFastSyncStatus(EventDataFastSyncStatus{})
+	require.NoError(t, err)
 
 	select {
 	case <-done:
@@ -476,9 +478,11 @@ var events = []string{
 	EventRelockValue,
 	EventTimeoutWaitValue,
 	EventVoteValue,
+	EventFastSyncStatusValue,
 }
 
 func randEventValue() string {
+
 	return events[mrand.Intn(len(events))]
 }
 
@@ -494,7 +498,8 @@ var queries = []tmpubsub.Query{
 	EventQueryLock,
 	EventQueryRelock,
 	EventQueryTimeoutWait,
-	EventQueryVote}
+	EventQueryVote,
+	EventQueryFastSyncStatus}
 
 func randQuery() tmpubsub.Query {
 	return queries[mrand.Intn(len(queries))]
