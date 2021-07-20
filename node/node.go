@@ -1082,7 +1082,7 @@ func startStateSync(
 
 			d := types.EventDataFastSyncStatus{Complete: false, Height: state.LastBlockHeight}
 			if err := eb.PublishEventFastSyncStatus(d); err != nil {
-				ssR.Logger.Error("failed to emit the fastsync starting event", "err", err)
+				stateSyncLogger.Error("failed to emit the fastsync starting event", "err", err)
 			}
 
 		} else {
