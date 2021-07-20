@@ -24,6 +24,7 @@ var (
 	ErrVoteInvalidBlockHash          = errors.New("invalid block hash")
 	ErrVoteNonDeterministicSignature = errors.New("non-deterministic signature")
 	ErrVoteNil                       = errors.New("nil vote")
+	ErrVoteInvalidExtension          = errors.New("invalid vote extension")
 )
 
 type ErrVoteConflictingVotes struct {
@@ -45,11 +46,38 @@ func NewConflictingVoteError(vote1, vote2 *Vote) *ErrVoteConflictingVotes {
 // Address is hex bytes.
 type Address = crypto.Address
 
-// VoteExtension represents additional data per application embedded in the
-// Vote.
+type VoteExtensionSigned struct {
+	AppDataSigned []byte `json:"app_data_signed"`
+}
+
+func (ext VoteExtensionSigned) BytesPacked() []byte {
+	res := make([]byte, len(ext.AppDataSigned))
+	copy(res, ext.AppDataSigned)
+	return res
+}
+
+func (ext VoteExtensionSigned) FromSigned() VoteExtension {
+	return VoteExtension{
+		AppDataSigned: ext.AppDataSigned,
+	}
+}
+
 type VoteExtension struct {
 	AppDataSigned             []byte `json:"app_data_signed"`
 	AppDataSelfAuthenticating []byte `json:"app_data_self_authenticating"`
+}
+
+func (ext VoteExtension) ToSigned() VoteExtensionSigned {
+	return VoteExtensionSigned{
+		AppDataSigned: ext.AppDataSigned,
+	}
+}
+
+func (ext VoteExtension) BytesPacked() []byte {
+	res := make([]byte, len(ext.AppDataSigned)+len(ext.AppDataSelfAuthenticating))
+	copy(res[:len(ext.AppDataSigned)], ext.AppDataSigned)
+	copy(res[len(ext.AppDataSigned):], ext.AppDataSelfAuthenticating)
+	return res
 }
 
 // Vote represents a prevote, precommit, or commit vote from validators for
@@ -87,6 +115,7 @@ func (vote *Vote) CommitSig() CommitSig {
 		ValidatorAddress: vote.ValidatorAddress,
 		Timestamp:        vote.Timestamp,
 		Signature:        vote.Signature,
+		VoteExtension:    vote.VoteExtension.ToSigned(),
 	}
 }
 
@@ -124,7 +153,8 @@ func (vote *Vote) Copy() *Vote {
 // 6. type string
 // 7. first 6 bytes of block hash
 // 8. first 6 bytes of signature
-// 9. timestamp
+// 9. first 6 bytes of vote extension
+// 10. timestamp
 func (vote *Vote) String() string {
 	if vote == nil {
 		return nilVoteStr
@@ -140,7 +170,7 @@ func (vote *Vote) String() string {
 		panic("Unknown vote type")
 	}
 
-	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X @ %s}",
+	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X %X @ %s}",
 		vote.ValidatorIndex,
 		tmbytes.Fingerprint(vote.ValidatorAddress),
 		vote.Height,
@@ -149,6 +179,7 @@ func (vote *Vote) String() string {
 		typeString,
 		tmbytes.Fingerprint(vote.BlockID.Hash),
 		tmbytes.Fingerprint(vote.Signature),
+		tmbytes.Fingerprint(vote.VoteExtension.BytesPacked()),
 		CanonicalTime(vote.Timestamp),
 	)
 }
@@ -206,6 +237,8 @@ func (vote *Vote) ValidateBasic() error {
 	if len(vote.Signature) > MaxSignatureSize {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
+
+	// XXX: add length verification for vote extension?
 
 	return nil
 }

@@ -127,7 +127,7 @@ message RequestExtendVote {
 
 // Verify the vote extension
 message RequestVerifyVoteExtension {
-  tendermint.types.VoteExtension extension = 1 [(gogoproto.nullable) = false];
+  tendermint.types.VoteExtension vote_extension = 1 [(gogoproto.nullable) = false];
 }
 
 //----------------------------------------
