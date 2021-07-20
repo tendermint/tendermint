@@ -523,13 +523,14 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			"code", checkTxRes.CheckTx.Code,
 			"post_check_err", err,
 		)
-		checkTxRes.CheckTx.MempoolError.ErrorMessage = err.Error()
-		checkTxRes.CheckTx.MempoolError.IsRetryable = false
 
 		txmp.metrics.FailedTxs.Add(1)
 
 		if !txmp.config.KeepInvalidTxsInCache {
 			txmp.cache.Remove(wtx.tx)
+		}
+		if err != nil {
+			checkTxRes.CheckTx.MempoolErrorMessage = err.Error()
 		}
 		return
 	}
