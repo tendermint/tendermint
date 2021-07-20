@@ -586,7 +586,7 @@ func (c *Client) verifySequential(
 				}
 
 				// If some intermediate header is invalid, remove the primary and try again.
-				c.logger.Error("primary sent invalid header -> removing", "err", err, "primary", c.primary)
+				c.logger.Info("primary sent invalid header -> removing", "err", err, "primary", c.primary)
 
 				replacementBlock, removeErr := c.findNewPrimary(ctx, newLightBlock.Height, true)
 				if removeErr != nil {
@@ -772,11 +772,7 @@ func (c *Client) verifySkippingAgainstPrimary(
 
 	// if we've reached here we're attempting to retry verification with a
 	// different provider
-	if replace {
-		c.logger.Error("primary sent invalid header -> removing and trying again", "err", e, "primary", c.primary)
-	} else {
-		c.logger.Info("primary returned error -> replacing and trying again", "err", e, "primary", c.primary)
-	}
+	c.logger.Info("primary returned error", "err", e, "primary", c.primary, "replace", replace)
 
 	replacementBlock, removeErr := c.findNewPrimary(ctx, newLightBlock.Height, replace)
 	if removeErr != nil {
@@ -897,7 +893,7 @@ func (c *Client) backwards(
 			"newHash", interimHeader.Hash())
 		if err := VerifyBackwards(interimHeader, verifiedHeader); err != nil {
 			// verification has failed
-			c.logger.Error("backwards verification failed, replacing primary...", "err", err, "primary", c.primary)
+			c.logger.Info("backwards verification failed, replacing primary...", "err", err, "primary", c.primary)
 
 			// the client tries to see if it can get a witness to continue with the request
 			newPrimarysBlock, replaceErr := c.findNewPrimary(ctx, newHeader.Height, true)
@@ -954,7 +950,7 @@ func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*type
 	default:
 		// The light client has most likely received either provider.ErrUnreliableProvider or provider.ErrBadLightBlock
 		// These errors mean that the light client should drop the primary and try with another provider instead
-		c.logger.Error("error from light block request from primary, removing...",
+		c.logger.Info("error from light block request from primary, removing...",
 			"error", err, "height", height, "primary", c.primary)
 		return c.findNewPrimary(ctx, height, true)
 	}
