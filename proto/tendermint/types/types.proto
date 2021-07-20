@@ -104,12 +104,12 @@ message Vote {
   bytes signature         = 8;
   VoteExtension vote_extension = 9;
 }
-
+// VoteExtension is app-defined additional information to the validator votes.
 message VoteExtension {
   bytes app_data_signed              = 1;
   bytes app_data_self_authenticating = 2;
 }
-
+// VoteExtensionSigned is the part of VoteExtension that is actually signed by the validators.
 message VoteExtensionSigned {
   bytes app_data_signed = 1;
 }
