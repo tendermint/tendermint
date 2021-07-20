@@ -111,21 +111,11 @@ func VoteBlockSignId(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQ
 	return blockSignID
 }
 
-// VoteStateSignBytes returns the proto-encoding of the canonicalized last app hash state, for
-// signing. Panics is the marshaling fails.
-//
-// The encoded Protobuf message is varint length-prefixed (using MarshalDelimited)
-// for backwards-compatibility with the Amino encoding, due to e.g. hardware
-// devices that rely on this encoding.
-//
-// See CanonicalizeVote
+// VoteStateSignBytes returns the 40 bytes of the height + last state app hash.
 func VoteStateSignBytes(chainID string, vote *tmproto.Vote) []byte {
-	pb := CanonicalizeStateVote(vote)
-	bz, err := protoio.MarshalDelimited(&pb)
-	if err != nil {
-		panic(err)
-	}
-
+	bz := make([]byte, 8)
+	binary.LittleEndian.PutUint64(bz, uint64(vote.Height - 1))
+	bz = append(bz, vote.StateID.LastAppHash...)
 	return bz
 }
 

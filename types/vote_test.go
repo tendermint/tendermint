@@ -127,6 +127,30 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 	}
 }
 
+func TestVoteStateSignBytesTestVectors(t *testing.T) {
+	tests := []struct {
+		chainID string
+		vote    *Vote
+		want    []byte
+	}{
+		0: {
+			"", &Vote{Height: 1, StateID: StateID{
+				LastAppHash: crypto.Sha256([]byte("hello")),
+			}},
+			// NOTE: Height and Round are skipped here. This case needs to be considered while parsing.
+			[]byte{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x2c, 0xf2, 0x4d, 0xba, 0x5f, 0xb0, 0xa3, 0xe, 0x26, 0xe8,
+				0x3b, 0x2a, 0xc5, 0xb9, 0xe2, 0x9e, 0x1b, 0x16, 0x1e, 0x5c, 0x1f, 0xa7, 0x42, 0x5e, 0x73, 0x4, 0x33, 0x62,
+				0x93, 0x8b, 0x98, 0x24},
+		},
+	}
+	for i, tc := range tests {
+		v := tc.vote.ToProto()
+		got := VoteStateSignBytes(tc.chainID, v)
+		assert.Equal(t, len(tc.want), len(got), "test case #%v: got unexpected sign bytes length for Vote.", i)
+		assert.Equal(t, tc.want, got, "test case #%v: got unexpected sign bytes for Vote.", i)
+	}
+}
+
 func TestVoteProposalNotEq(t *testing.T) {
 	cv := CanonicalizeVote("", &tmproto.Vote{Height: 1, Round: 1})
 	p := CanonicalizeProposal("", &tmproto.Proposal{Height: 1, Round: 1})
