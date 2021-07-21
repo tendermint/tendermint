@@ -31,9 +31,6 @@ func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 
 	witnessHeaders, witnessValidators, chainKeys := genMockNodeWithKeys(chainID, latestHeight, valSize, 2, bTime)
 
-	// never called, delete it to make mockery asserts pass
-	delete(witnessHeaders, 2)
-
 	forgedKeys := chainKeys[divergenceHeight-1].ChangeKeys(3) // we change 3 out of the 5 validators (still 2/5 remain)
 	forgedVals := forgedKeys.ToValidators(2, 0)
 	for height := int64(1); height <= latestHeight; height++ {
@@ -46,6 +43,9 @@ func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 			nil, forgedVals, forgedVals, hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(forgedKeys))
 		primaryValidators[height] = forgedVals
 	}
+
+	// never called, delete it to make mockery asserts pass
+	delete(witnessHeaders, 2)
 	delete(primaryHeaders, 2)
 
 	mockWitness := mockNodeFromHeadersAndVals(witnessHeaders, witnessValidators)
