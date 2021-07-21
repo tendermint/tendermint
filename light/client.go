@@ -734,9 +734,10 @@ func (c *Client) verifySkippingAgainstPrimary(
 		}
 	}
 
+	var e = &ErrVerificationFailed{}
 	// all errors from verify skipping should be `ErrVerificationFailed`
-	e, ok := err.(ErrVerificationFailed)
-	if !ok {
+	// if it's not we just return the error directly
+	if !errors.As(err, e) {
 		return err
 	}
 
