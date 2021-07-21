@@ -614,7 +614,7 @@ func TestClient_AddProviders(t *testing.T) {
 	require.Len(t, c.Witnesses(), 2)
 	select {
 	case <-closeCh:
-	case <-time.After(5*time.Second):
+	case <-time.After(5 * time.Second):
 		t.Fatal("concurent light block verification failed to finish in 5s")
 	}
 }
