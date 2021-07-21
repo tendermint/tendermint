@@ -110,7 +110,7 @@ message VoteExtension {
   bytes app_data_self_authenticating = 2;
 }
 
-message SignedVoteExtension {
+message VoteExtensionSigned {
   bytes app_data_signed = 1;
 }
 
@@ -120,7 +120,6 @@ message Commit {
   int32              round      = 2;
   BlockID            block_id   = 3 [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];
   repeated CommitSig signatures = 4 [(gogoproto.nullable) = false];
-  repeated SignedVoteExtension vote_extensions = 5;
 }
 
 // CommitSig is a part of the Vote included in a Commit.
@@ -130,6 +129,7 @@ message CommitSig {
   google.protobuf.Timestamp timestamp         = 3
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes signature = 4;
+  VoteExtensionSigned vote_extension = 5;
 }
 
 message Proposal {

@@ -51,11 +51,11 @@ func CanonicalizeProposal(chainID string, proposal *tmproto.Proposal) tmproto.Ca
 	}
 }
 
-func GetSignedVoteExtension(ext *tmproto.VoteExtension) *tmproto.SignedVoteExtension {
+func GetSignedVoteExtension(ext *tmproto.VoteExtension) *tmproto.VoteExtensionSigned {
 	if ext == nil {
 		return nil
 	}
-	return &tmproto.SignedVoteExtension{
+	return &tmproto.VoteExtensionSigned{
 		AppDataSigned: ext.AppDataSigned,
 	}
 }
