@@ -4,7 +4,7 @@
 
 - 2021-06-09: Initial Draft (@tychoish)
 
-- 2021-07-21: Initial Draft (@tychoish)
+- 2021-07-21: Major Revision (@tychoish)
 
 ## Status 
 
