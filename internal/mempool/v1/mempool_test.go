@@ -500,7 +500,8 @@ func TestTxMempool_CheckTxPostCheckError(t *testing.T) {
 			err:  nil,
 		},
 	}
-	for _, testCase := range cases {
+	for _, tc := range cases {
+		testCase := tc
 		t.Run(testCase.name, func(t *testing.T) {
 			postCheckFn := func(_ types.Tx, _ *abci.ResponseCheckTx) error {
 				return testCase.err
