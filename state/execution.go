@@ -253,9 +253,14 @@ func (blockExec *BlockExecutor) ExtendVote(height int64, round int32) (types.Vot
 
 func (blockExec *BlockExecutor) VerifyVoteExtension(ext types.VoteExtension) error {
 	ctx := context.Background()
-	req := abci.RequestVerifyVoteExtension{
-		VoteExtension: *ext.ToProto(),
-	}
+  pext := ext.ToProto()
+
+  var req abci.RequestVerifyVoteExtension
+  if pext != nil {
+	  req = abci.RequestVerifyVoteExtension{
+		  VoteExtension: *pext,
+	  }
+  }
 
 	resp, err := blockExec.proxyApp.VerifyVoteExtensionSync(ctx, req)
 	if err != nil {
