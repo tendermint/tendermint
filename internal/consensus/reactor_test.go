@@ -25,6 +25,7 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	sm "github.com/tendermint/tendermint/state"
 	statemocks "github.com/tendermint/tendermint/state/mocks"
@@ -42,6 +43,7 @@ type reactorTestSuite struct {
 	states              map[types.NodeID]*State
 	reactors            map[types.NodeID]*Reactor
 	subs                map[types.NodeID]types.Subscription
+	fastsyncSubs        map[types.NodeID]types.Subscription
 	stateChannels       map[types.NodeID]*p2p.Channel
 	dataChannels        map[types.NodeID]*p2p.Channel
 	voteChannels        map[types.NodeID]*p2p.Channel
@@ -58,16 +60,19 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 	t.Helper()
 
 	rts := &reactorTestSuite{
-		network:  p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
-		states:   make(map[types.NodeID]*State),
-		reactors: make(map[types.NodeID]*Reactor, numNodes),
-		subs:     make(map[types.NodeID]types.Subscription, numNodes),
+		network:      p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
+		states:       make(map[types.NodeID]*State),
+		reactors:     make(map[types.NodeID]*Reactor, numNodes),
+		subs:         make(map[types.NodeID]types.Subscription, numNodes),
+		fastsyncSubs: make(map[types.NodeID]types.Subscription, numNodes),
 	}
 
 	rts.stateChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(StateChannel), new(tmcons.Message), size)
 	rts.dataChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(DataChannel), new(tmcons.Message), size)
 	rts.voteChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteChannel), new(tmcons.Message), size)
 	rts.voteSetBitsChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteSetBitsChannel), new(tmcons.Message), size)
+
+	_, cancel := context.WithCancel(context.Background())
 
 	i := 0
 	for nodeID, node := range rts.network.Nodes {
@@ -89,9 +94,13 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 		blocksSub, err := state.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, size)
 		require.NoError(t, err)
 
+		fsSub, err := state.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryFastSyncStatus, size)
+		require.NoError(t, err)
+
 		rts.states[nodeID] = state
 		rts.subs[nodeID] = blocksSub
 		rts.reactors[nodeID] = reactor
+		rts.fastsyncSubs[nodeID] = fsSub
 
 		// simulate handle initChain in handshake
 		if state.state.LastBlockHeight == 0 {
@@ -117,6 +126,7 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 		}
 
 		leaktest.Check(t)
+		cancel()
 	})
 
 	return rts
@@ -253,6 +263,15 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 	wg.Wait()
 }
 
+func ensureFastSyncStatus(t *testing.T, msg tmpubsub.Message, complete bool, height int64) {
+	t.Helper()
+	status, ok := msg.Data().(types.EventDataFastSyncStatus)
+
+	require.True(t, ok)
+	require.Equal(t, complete, status.Complete)
+	require.Equal(t, height, status.Height)
+}
+
 func TestReactorBasic(t *testing.T) {
 	config := configSetup(t)
 
@@ -275,8 +294,21 @@ func TestReactorBasic(t *testing.T) {
 
 		// wait till everyone makes the first new block
 		go func(s types.Subscription) {
+			defer wg.Done()
 			<-s.Out()
-			wg.Done()
+		}(sub)
+	}
+
+	wg.Wait()
+
+	for _, sub := range rts.fastsyncSubs {
+		wg.Add(1)
+
+		// wait till everyone makes the consensus switch
+		go func(s types.Subscription) {
+			defer wg.Done()
+			msg := <-s.Out()
+			ensureFastSyncStatus(t, msg, true, 0)
 		}(sub)
 	}
 
