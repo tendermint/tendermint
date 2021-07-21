@@ -88,6 +88,7 @@ type validatorStub struct {
 	Round  int32
 	types.PrivValidator
 	VotingPower int64
+	lastVote    *types.Vote
 }
 
 const testMinPower int64 = 10
@@ -122,7 +123,21 @@ func (vs *validatorStub) signVote(
 	}
 	v := vote.ToProto()
 	err = vs.PrivValidator.SignVote(context.Background(), config.ChainID(), v)
+
+	// ref: signVote in FilePV, the vote should use the privious vote info when the sign data is the same.
+	if vs.lastVote != nil &&
+		vs.lastVote.Type == v.Type &&
+		bytes.Equal(vs.lastVote.BlockID.Hash, v.BlockID.GetHash()) &&
+		vs.lastVote.Height == v.GetHeight() &&
+		vs.lastVote.Round == v.Round &&
+		bytes.Equal(vs.lastVote.ValidatorAddress.Bytes(), v.GetValidatorAddress()) &&
+		vs.lastVote.ValidatorIndex == v.GetValidatorIndex() {
+		v.Signature = vs.lastVote.Signature
+		v.Timestamp = vs.lastVote.Timestamp
+	}
+
 	vote.Signature = v.Signature
+	vote.Timestamp = v.Timestamp
 
 	return vote, err
 }
@@ -139,6 +154,9 @@ func signVote(
 	if err != nil {
 		panic(fmt.Errorf("failed to sign vote: %v", err))
 	}
+
+	vs.lastVote = v
+
 	return v
 }
 
