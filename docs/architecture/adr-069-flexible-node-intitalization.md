@@ -4,6 +4,8 @@
 
 - 2021-06-09: Initial Draft (@tychoish)
 
+- 2021-07-21: Initial Draft (@tychoish)
+
 ## Status 
 
 Proposed. 
@@ -95,19 +97,16 @@ system would be unhelpfully abstract at this stage.
   
   - Reactors should not need to expose their interfaces *within* the
     implementation of the node type, except in the context of some groups of
-    service. 
-
-- Expose some "unsafe"  way of replacing (some?) existing components, and or
-  inserting arbitrary reactors or services into the tendermint node's
-  initialization.
+    services.
   
-  - This may include creating an exported, top-level "unsafe" package with
-    several interfaces and constructors, or simply a function in the
-    node package. 
+  - This refactoring should be entirely opaque to users. 
+  
+- If required for the 0.35 release, add an "unsafe" way to construct a
+  node service with user-supplied mempool, including making the
+  relevant interfaces and types external/exported.
 
-- Refactor and simplify the process start/initialization logic,
-  separately from--but as a precursor to--permitting user replacement
-  of components.
+- Prioritize implementation of p2p-based statesync reactor to obviate
+  need for users to inject a custom state-sync provider.
 
 ## Detailed Design
 
@@ -121,82 +120,22 @@ system would be unhelpfully abstract at this stage.
 
 ## Open Questions
 
-### Timing
-
-### Interface Implications
-
-## References 
-
-------------------------------------------------------------------------
-
-## Observations
-
-To prepare for this work [this
-branch](https://github.com/tendermint/tendermint/tree/tychoish/scratch-node-minimize)
-contains some experimentation with the node implementation to see if,
-without making major modifications or changing interfaces, what
-aspects could be simplified. To summarize, generally:
-
-- The implementation of the `node` service, doesn't really need the
-  ability to introspect the implementations of reactors in most
-  cases.
-
-- The exception to this, is the cluster of
-  consensus/statesync/blockhain (which depend on eachother,) because
-  `node` itself contains some of their specific initialization logic.
-
-- While the RPC environment construction happens in `node`, this can
-  happen early during `node` construction rather than at
-  initialization time, which reduces the need for the implementation
-  of the node object to track this state.
-
-Ideally, it seems like a node instance should be expressable simply as
-a list of `service.Services` and any knowledge of the internals of any
-of these services could be limited to their constructors. There is a
-sketch of a generic and simple `groupService` implementation, to handle a
-desecrate stage or sequence of services.  As some services have
-dependencies during construction or initialization and as a starting
-point, a cluster of dependencies can be wrapped as a single
-`service.Service`.
-
-## Questions
-
 - To what extent does this new initialization framework need to accommodate
   the legacy p2p stack? Would it be possible to delay a great deal of this
   work to the 0.36 cycle to avoid this complexity? 
   
   - Answer: _depends on timing_, and the requirement to ship pluggable
     reactors in 0.35. 
+
+- Where should additional public types be exported for the 0.35
+  release? 
   
-- There's clear and common interest in injecting some kind of mempool, and
-  intuitively this makes sense as the highest priority.
-  
-  - Does the existing `mempool.Mempool` interface make sense to expose and
-    commit to, or should we make a smaller interface? 
-    
-	- Answer: _yes_, smaller mempool interface is better. 
-
-  - Is it reasonable for users to bring their own mempool without bringing
-    their own reactor?
-	
-	- Answer: _probably not_, but this might be a function of how the
-      current implementations work and can be refactored. 
-
-- Are there reactors, other than the mempool, that make sense to support
-  ad-hoc replacing (e.g. statesync, blockchain (fastsync),) and if so should
-  we provide any first-class support for this?
-
-  - Answer: _defer_. Certainly this shouldn't be attempted until after
-    there is a refactor of the consensus reactor. Is more likely than
-    block/fast sync. 
-
-- There's a dependency (and nearly a cycle), between consensus,
-  blockchain (fastsync), which makes it very hard to allow meaningful
-  injection of any of these components without allowing injection of
-  all of them (statesync provider as a possible exception.) Is this
-  acceptable?
-  
-  - Answer: _yes_. 
+  Related to the general project of API stabilization there is a
+  desire to deprecate the `types` package, and move these public types
+  into a new `pkg` hierarchy; however, the design of the `pkg`
+  interface is currently underspecified. If `types` is going to remain
+  for the 0.35 release, then we should consider the impact of using
+  multiple organizing modalities for this code within a single release. 
 
 ## Future Work
 
@@ -218,21 +157,24 @@ point, a cluster of dependencies can be wrapped as a single
   parallel startup, so that different reactors can startup at the same
   time, where possible.
 
-## Proposal / Conclusion 
+## References 
 
-- Wait for e2e tests to stablize, before changing node initialization.
-
-- Continue building on [the experimental branch
+- [this
   branch](https://github.com/tendermint/tendermint/tree/tychoish/scratch-node-minimize)
-  to reduce the complexity in the node initialization, and recast
-  `nodeImpl` as a list of `service.Service` objects, modulo
-  requirements for legacy p2p components which will be deleted.
+  contains experimental work in the implementation of the node package
+  to unwind some of the hard dependencies between components.
 
-- Add the ability to construct a tendermint node via a new public
-  constructor that will take a list of additional services that will
-  either be appended to the end of the node initialization process
-  (simple,) or (based on name) replace one of the default services
-  (MVP for mempool only.)
+- [the component
+  graph](https://peter.bourgon.org/go-for-industrial-programming/#the-component-graph)
+  as a framing for internal service construction. 
 
-- Move components from `p2p` into `types` to support writing
-  novel services/mempool implementations.
+## Appendix
+
+### Dependencies 
+
+There's a relationship between the blockchain and consensus reactor
+described by the following dependency graph makes replacing some of
+these components more difficult relative to other reactors or
+components.
+
+![consensus blockchain dependency graph](./img/consensus_blockchain.png)
