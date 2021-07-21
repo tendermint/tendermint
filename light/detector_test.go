@@ -226,6 +226,9 @@ func TestLightClientAttackEvidence_ForwardLunatic(t *testing.T) {
 	)
 
 	witnessHeaders, witnessValidators, chainKeys := genMockNodeWithKeys(chainID, latestHeight, valSize, 2, bTime)
+	for _, unusedHeader := range []int64{3, 5, 6, 8} {
+		delete(primaryHeaders, unusedHeader)
+	}
 
 	// primary has the exact same headers except it forges one extra header in the future using keys from 2/5ths of
 	// the validators
@@ -247,18 +250,16 @@ func TestLightClientAttackEvidence_ForwardLunatic(t *testing.T) {
 		hash("results_hash"),
 		0, len(forgedKeys),
 	)
-
-	for _, unusedHeader := range []int64{3, 5, 6, 8} {
-		delete(primaryHeaders, unusedHeader)
-	}
 	mockPrimary := mockNodeFromHeadersAndVals(primaryHeaders, primaryValidators)
 	lastBlock, _ := mockPrimary.LightBlock(ctx, forgedHeight)
 	mockPrimary.On("LightBlock", mock.Anything, int64(0)).Return(lastBlock, nil)
 	mockPrimary.On("LightBlock", mock.Anything, mock.Anything).Return(nil, provider.ErrLightBlockNotFound)
 
-	for _, unusedHeader := range []int64{3, 5, 6, 8} {
-		delete(witnessHeaders, unusedHeader)
-	}
+	/*
+		for _, unusedHeader := range []int64{3, 5, 6, 8} {
+			delete(witnessHeaders, unusedHeader)
+		}
+	*/
 	mockWitness := mockNodeFromHeadersAndVals(witnessHeaders, witnessValidators)
 	lastBlock, _ = mockWitness.LightBlock(ctx, latestHeight)
 	mockWitness.On("LightBlock", mock.Anything, int64(0)).Return(lastBlock, nil).Once()
