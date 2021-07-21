@@ -237,10 +237,6 @@ func (b *EventBus) PublishEventValidatorSetUpdates(data EventDataValidatorSetUpd
 	return b.Publish(EventValidatorSetUpdatesValue, data)
 }
 
-func (b *EventBus) PublishEventStateSyncUpdate(data EventDataValidatorSetUpdates) error {
-	return b.Publish(EventStateSyncStatusValue, data)
-}
-
 //-----------------------------------------------------------------------------
 type NopEventBus struct{}
 
