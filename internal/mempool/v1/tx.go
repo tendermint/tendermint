@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"sort"
 	"time"
 
 	"github.com/tendermint/tendermint/internal/libs/clist"
@@ -197,4 +198,85 @@ func (txs *TxStore) GetOrSetPeerByTxHash(hash [mempool.TxKeySize]byte, peerID ui
 
 	wtx.peers[peerID] = struct{}{}
 	return wtx, false
+}
+
+// WrappedTxList implements a thread-safe list of *WrappedTx objects that can be
+// used to build generic transaction indexes in the mempool. It accepts a
+// comparator function, less(a, b *WrappedTx) bool, that compares two WrappedTx
+// references which is used during Insert in order to determine sorted order. If
+// less returns true, a <= b.
+type WrappedTxList struct {
+	mtx  tmsync.RWMutex
+	txs  []*WrappedTx
+	less func(*WrappedTx, *WrappedTx) bool
+}
+
+func NewWrappedTxList(less func(*WrappedTx, *WrappedTx) bool) *WrappedTxList {
+	return &WrappedTxList{
+		txs:  make([]*WrappedTx, 0),
+		less: less,
+	}
+}
+
+// Size returns the number of WrappedTx objects in the list.
+func (wtl *WrappedTxList) Size() int {
+	wtl.mtx.RLock()
+	defer wtl.mtx.RUnlock()
+
+	return len(wtl.txs)
+}
+
+// Reset resets the list of transactions to an empty list.
+func (wtl *WrappedTxList) Reset() {
+	wtl.mtx.Lock()
+	defer wtl.mtx.Unlock()
+
+	wtl.txs = make([]*WrappedTx, 0)
+}
+
+// Insert inserts a WrappedTx reference into the sorted list based on the list's
+// comparator function.
+func (wtl *WrappedTxList) Insert(wtx *WrappedTx) {
+	wtl.mtx.Lock()
+	defer wtl.mtx.Unlock()
+
+	i := sort.Search(len(wtl.txs), func(i int) bool {
+		return wtl.less(wtl.txs[i], wtx)
+	})
+
+	if i == len(wtl.txs) {
+		// insert at the end
+		wtl.txs = append(wtl.txs, wtx)
+		return
+	}
+
+	// Make space for the inserted element by shifting values at the insertion
+	// index up one index.
+	//
+	// NOTE: The call to append does not allocate memory when cap(wtl.txs) > len(wtl.txs).
+	wtl.txs = append(wtl.txs[:i+1], wtl.txs[i:]...)
+	wtl.txs[i] = wtx
+}
+
+// Remove attempts to remove a WrappedTx from the sorted list.
+func (wtl *WrappedTxList) Remove(wtx *WrappedTx) {
+	wtl.mtx.Lock()
+	defer wtl.mtx.Unlock()
+
+	i := sort.Search(len(wtl.txs), func(i int) bool {
+		return wtl.less(wtl.txs[i], wtx)
+	})
+
+	// Since the list is sorted, we evaluate all elements starting at i. Note, if
+	// the element does not exist, we may potentially evaluate the entire remainder
+	// of the list. However, a caller should not be expected to call Remove with a
+	// non-existing element.
+	for i < len(wtl.txs) {
+		if wtl.txs[i] == wtx {
+			wtl.txs = append(wtl.txs[:i], wtl.txs[i+1:]...)
+			return
+		}
+
+		i++
+	}
 }

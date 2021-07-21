@@ -45,3 +45,13 @@ version = "v0"
 
 If we're lagging sufficiently, we should go back to fast syncing, but
 this is an [open issue](https://github.com/tendermint/tendermint/issues/129).
+
+## The Fast Sync event
+When the tendermint blockchain core launches, it might switch to the `fast-sync`
+mode to catch up the states to the current network best height. the core will emits
+a fast-sync event to expose the current status and the sync height. Once it catched
+the network best height, it will switches to the state sync mechanism and then emit
+another event for exposing the fast-sync `complete` status and the state `height`.
+
+The user can query the events by subscribing `EventQueryFastSyncStatus`
+Please check [types](https://pkg.go.dev/github.com/tendermint/tendermint/types?utm_source=godoc#pkg-constants) for the details.

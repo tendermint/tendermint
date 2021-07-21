@@ -98,6 +98,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - Applications that do not specify a priority, i.e. zero, will have transactions reaped by the order in which they are received by the node.
   - Transactions are gossiped in FIFO order as they are in `v0`.
 - [config/indexer] \#6411 Introduce support for custom event indexing data sources, specifically PostgreSQL. (@JayT106)
+- [fastsync/event] \#6619 Emit fastsync status event when switching consensus/fastsync (@JayT106)
 
 ### IMPROVEMENTS
 - [libs/log] Console log formatting changes as a result of \#6534 and \#6589. (@tychoish)

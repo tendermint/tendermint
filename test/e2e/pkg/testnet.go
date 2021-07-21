@@ -223,14 +223,20 @@ func LoadTestnet(file string) (*Testnet, error) {
 			if peer == nil {
 				return nil, fmt.Errorf("unknown persistent peer %q for node %q", peerName, node.Name)
 			}
+			if peer.Mode == ModeLight {
+				return nil, fmt.Errorf("can not have a light client as a persistent peer (for %q)", node.Name)
+			}
 			node.PersistentPeers = append(node.PersistentPeers, peer)
 		}
 
 		// If there are no seeds or persistent peers specified, default to persistent
-		// connections to all other nodes.
+		// connections to all other full nodes.
 		if len(node.PersistentPeers) == 0 && len(node.Seeds) == 0 {
 			for _, peer := range testnet.Nodes {
 				if peer.Name == node.Name {
+					continue
+				}
+				if peer.Mode == ModeLight {
 					continue
 				}
 				node.PersistentPeers = append(node.PersistentPeers, peer)

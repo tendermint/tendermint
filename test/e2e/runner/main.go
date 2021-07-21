@@ -85,7 +85,7 @@ func NewCLI() *CLI {
 				if err := InjectEvidence(cli.testnet, cli.testnet.Evidence); err != nil {
 					return err
 				}
-				if err := Wait(cli.testnet, 1); err != nil { // ensure chain progress
+				if err := Wait(cli.testnet, 5); err != nil { // ensure chain progress
 					return err
 				}
 			}

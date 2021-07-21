@@ -74,6 +74,14 @@ type TxMempool struct {
 	// thread-safe priority queue.
 	priorityIndex *TxPriorityQueue
 
+	// heightIndex defines a height-based, in ascending order, transaction index.
+	// i.e. older transactions are first.
+	heightIndex *WrappedTxList
+
+	// timestampIndex defines a timestamp-based, in ascending order, transaction
+	// index. i.e. older transactions are first.
+	timestampIndex *WrappedTxList
+
 	// A read/write lock is used to safe guard updates, insertions and deletions
 	// from the mempool. A read-lock is implicitly acquired when executing CheckTx,
 	// however, a caller must explicitly grab a write-lock via Lock when updating
@@ -101,6 +109,12 @@ func NewTxMempool(
 		txStore:       NewTxStore(),
 		gossipIndex:   clist.New(),
 		priorityIndex: NewTxPriorityQueue(),
+		heightIndex: NewWrappedTxList(func(wtx1, wtx2 *WrappedTx) bool {
+			return wtx1.height >= wtx2.height
+		}),
+		timestampIndex: NewWrappedTxList(func(wtx1, wtx2 *WrappedTx) bool {
+			return wtx1.timestamp.After(wtx2.timestamp) || wtx1.timestamp.Equal(wtx2.timestamp)
+		}),
 	}
 
 	if cfg.CacheSize > 0 {
@@ -279,6 +293,7 @@ func (txmp *TxMempool) CheckTx(
 			tx:        tx,
 			hash:      txHash,
 			timestamp: time.Now().UTC(),
+			height:    txmp.height,
 		}
 		txmp.initTxCallback(wtx, res, txInfo)
 
@@ -300,13 +315,11 @@ func (txmp *TxMempool) Flush() {
 	txmp.mtx.RLock()
 	defer txmp.mtx.RUnlock()
 
+	txmp.heightIndex.Reset()
+	txmp.timestampIndex.Reset()
+
 	for _, wtx := range txmp.txStore.GetAllTxs() {
-		if !txmp.txStore.IsTxRemoved(wtx.hash) {
-			txmp.txStore.RemoveTx(wtx)
-			txmp.priorityIndex.RemoveTx(wtx)
-			txmp.gossipIndex.Remove(wtx.gossipEl)
-			wtx.gossipEl.DetachPrev()
-		}
+		txmp.removeTx(wtx, false)
 	}
 
 	atomic.SwapInt64(&txmp.sizeBytes, 0)
@@ -444,6 +457,8 @@ func (txmp *TxMempool) Update(
 		}
 	}
 
+	txmp.purgeExpiredTxs(blockHeight)
+
 	// If there any uncommitted transactions left in the mempool, we either
 	// initiate re-CheckTx per remaining transaction or notify that remaining
 	// transactions are left.
@@ -550,7 +565,6 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			}
 
 			wtx.gasWanted = checkTxRes.CheckTx.GasWanted
-			wtx.height = txmp.height
 			wtx.priority = priority
 			wtx.sender = sender
 			wtx.peers = map[uint16]struct{}{
@@ -722,6 +736,8 @@ func (txmp *TxMempool) canAddTx(wtx *WrappedTx) error {
 func (txmp *TxMempool) insertTx(wtx *WrappedTx) {
 	txmp.txStore.SetTx(wtx)
 	txmp.priorityIndex.PushTx(wtx)
+	txmp.heightIndex.Insert(wtx)
+	txmp.timestampIndex.Insert(wtx)
 
 	// Insert the transaction into the gossip index and mark the reference to the
 	// linked-list element, which will be needed at a later point when the
@@ -739,6 +755,8 @@ func (txmp *TxMempool) removeTx(wtx *WrappedTx, removeFromCache bool) {
 
 	txmp.txStore.RemoveTx(wtx)
 	txmp.priorityIndex.RemoveTx(wtx)
+	txmp.heightIndex.Remove(wtx)
+	txmp.timestampIndex.Remove(wtx)
 
 	// Remove the transaction from the gossip index and cleanup the linked-list
 	// element so it can be garbage collected.
@@ -749,6 +767,56 @@ func (txmp *TxMempool) removeTx(wtx *WrappedTx, removeFromCache bool) {
 
 	if removeFromCache {
 		txmp.cache.Remove(wtx.tx)
+	}
+}
+
+// purgeExpiredTxs removes all transactions that have exceeded their respective
+// height and/or time based TTLs from their respective indexes. Every expired
+// transaction will be removed from the mempool entirely, except for the cache.
+//
+// NOTE: purgeExpiredTxs must only be called during TxMempool#Update in which
+// the caller has a write-lock on the mempool and so we can safely iterate over
+// the height and time based indexes.
+func (txmp *TxMempool) purgeExpiredTxs(blockHeight int64) {
+	now := time.Now()
+	expiredTxs := make(map[[mempool.TxKeySize]byte]*WrappedTx)
+
+	if txmp.config.TTLNumBlocks > 0 {
+		purgeIdx := -1
+		for i, wtx := range txmp.heightIndex.txs {
+			if (blockHeight - wtx.height) > txmp.config.TTLNumBlocks {
+				expiredTxs[mempool.TxKey(wtx.tx)] = wtx
+				purgeIdx = i
+			} else {
+				// since the index is sorted, we know no other txs can be be purged
+				break
+			}
+		}
+
+		if purgeIdx >= 0 {
+			txmp.heightIndex.txs = txmp.heightIndex.txs[purgeIdx+1:]
+		}
+	}
+
+	if txmp.config.TTLDuration > 0 {
+		purgeIdx := -1
+		for i, wtx := range txmp.timestampIndex.txs {
+			if now.Sub(wtx.timestamp) > txmp.config.TTLDuration {
+				expiredTxs[mempool.TxKey(wtx.tx)] = wtx
+				purgeIdx = i
+			} else {
+				// since the index is sorted, we know no other txs can be be purged
+				break
+			}
+		}
+
+		if purgeIdx >= 0 {
+			txmp.timestampIndex.txs = txmp.timestampIndex.txs[purgeIdx+1:]
+		}
+	}
+
+	for _, wtx := range expiredTxs {
+		txmp.removeTx(wtx, false)
 	}
 }
 
