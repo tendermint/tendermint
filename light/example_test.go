@@ -2,7 +2,6 @@ package light_test
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	stdlog "log"
 	"os"
@@ -24,6 +23,7 @@ func ExampleLightClient() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	conf := rpctest.CreateConfig("ExampleClient_VerifyLightBlockAtHeight")
+	logger := log.TestingLogger()
 
 	// Start a test application
 	app := kvstore.NewApplication()
@@ -48,7 +48,9 @@ func ExampleLightClient() {
 	}
 
 	// give Tendermint time to generate some blocks
-	block, err := waitForBlock(ctx, primary, 2)
+	time.Sleep(5 * time.Second)
+
+	block, err := primary.LightBlock(ctx, 2)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -68,7 +70,7 @@ func ExampleLightClient() {
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db),
-		light.Logger(log.TestingLogger()),
+		light.Logger(logger),
 	)
 	if err != nil {
 		stdlog.Fatal(err)
@@ -80,32 +82,26 @@ func ExampleLightClient() {
 	}()
 
 	// wait for a few more blocks to be produced
-	_, err = waitForBlock(ctx, primary, 4)
-	if err != nil {
-		stdlog.Fatal(err)
-	}
+	time.Sleep(2 * time.Second)
 
 	// veify the block at height 3
 	_, err = c.VerifyLightBlockAtHeight(context.Background(), 3, time.Now())
 	if err != nil {
 		stdlog.Fatal(err)
 	}
-
+	
 	// retrieve light block at height 3
-	h, err := c.TrustedLightBlock(3)
+	_, err = c.TrustedLightBlock(3)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
 
+	
 	// update to the latest height
-	h, err = c.Update(ctx, time.Now())
+	lb, err := c.Update(ctx, time.Now())
 	if err != nil {
 		stdlog.Fatal(err)
 	}
-
-	if h != nil && h.Height > 3 {
-		fmt.Println("successful update")
-	} else {
-		fmt.Println("update failed")
-	}
+	
+	logger.Info("verified light block", "light-block", lb)
 }

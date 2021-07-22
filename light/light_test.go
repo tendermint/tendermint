@@ -151,7 +151,12 @@ func waitForBlock(ctx context.Context, p provider.Provider, height int64) (*type
 			return block, nil
 		// node isn't running yet, wait 1 second and repeat
 		case provider.ErrNoResponse, provider.ErrHeightTooHigh:
-			time.Sleep(1 * time.Second)
+			timer := time.NewTimer(1 * time.Second)
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-timer.C:
+			}
 		default:
 			return nil, err
 		}
