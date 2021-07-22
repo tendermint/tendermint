@@ -104,7 +104,6 @@ func TestLoadEventSink(t *testing.T) {
 			require.NoError(t, err)
 		}
 	}
-
 }
 
 func TestLoadBlockStore(t *testing.T) {
@@ -169,5 +168,4 @@ func TestReIndexEvent(t *testing.T) {
 			require.NoError(t, err)
 		}
 	}
-
 }
