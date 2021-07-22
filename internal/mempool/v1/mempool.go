@@ -530,7 +530,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			txmp.cache.Remove(wtx.tx)
 		}
 		if err != nil {
-			checkTxRes.CheckTx.MempoolErrorMessage = err.Error()
+			checkTxRes.CheckTx.MempoolError = err.Error()
 		}
 		return
 	}
