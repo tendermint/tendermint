@@ -29,7 +29,7 @@ will execute respondToPeer which will fetch the block from the node's state stor
 and respond to the peer. For every block response, the node will add the block
 the it's pool via AddBlock.
 
-Internall, v0 runs a poolRoutine that constantly checks for what blocks it needs
+Internally, v0 runs a poolRoutine that constantly checks for what blocks it needs
 and requests them. The poolRoutine is also responsible for taking blocks from the
 pool, saving and executing each block.
 */
