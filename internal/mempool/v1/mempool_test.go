@@ -519,7 +519,7 @@ func TestTxMempool_CheckTxPostCheckError(t *testing.T) {
 				if testCase.err != nil {
 					expectedErrString = testCase.err.Error()
 				}
-				require.Equal(t, expectedErrString, checkTxRes.CheckTx.MempoolErrorMessage)
+				require.Equal(t, expectedErrString, checkTxRes.CheckTx.MempoolError)
 			}
 			require.NoError(t, txmp.CheckTx(context.Background(), tx, callback, mempool.TxInfo{SenderID: 0}))
 		})
