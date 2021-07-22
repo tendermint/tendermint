@@ -15,6 +15,7 @@ func main() {
 	rootCmd := cmd.RootCmd
 	rootCmd.AddCommand(
 		cmd.GenValidatorCmd,
+		cmd.ReIndexEventCmd,
 		cmd.InitFilesCmd,
 		cmd.ProbeUpnpCmd,
 		cmd.LightCmd,

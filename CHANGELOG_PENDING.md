@@ -81,6 +81,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 
 - Tooling
   - [tools] \#6498 Set OS home dir to instead of the hardcoded PATH. (@JayT106)
+  - [cli/indexer] \#6676 Reindex events command line tooling. (@JayT106)
 
 ### FEATURES
 
