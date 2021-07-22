@@ -29,17 +29,18 @@ const (
 	EventCompleteProposalValue = "CompleteProposal"
 	// The FastSyncStatus event will be emitted when the node switching
 	// state sync mechanism between the consensus reactor and the fastsync reactor.
-	EventFastSyncStatusValue = "FastSyncStatus"
-	EventLockValue           = "Lock"
-	EventNewRoundValue       = "NewRound"
-	EventNewRoundStepValue   = "NewRoundStep"
-	EventPolkaValue          = "Polka"
-	EventRelockValue         = "Relock"
-	EventTimeoutProposeValue = "TimeoutPropose"
-	EventTimeoutWaitValue    = "TimeoutWait"
-	EventUnlockValue         = "Unlock"
-	EventValidBlockValue     = "ValidBlock"
-	EventVoteValue           = "Vote"
+	EventFastSyncStatusValue  = "FastSyncStatus"
+	EventLockValue            = "Lock"
+	EventNewRoundValue        = "NewRound"
+	EventNewRoundStepValue    = "NewRoundStep"
+	EventPolkaValue           = "Polka"
+	EventRelockValue          = "Relock"
+	EventStateSyncStatusValue = "StateSyncStatus"
+	EventTimeoutProposeValue  = "TimeoutPropose"
+	EventTimeoutWaitValue     = "TimeoutWait"
+	EventUnlockValue          = "Unlock"
+	EventValidBlockValue      = "ValidBlock"
+	EventVoteValue            = "Vote"
 )
 
 // Pre-populated ABCI Tendermint-reserved events
@@ -104,6 +105,7 @@ func init() {
 	tmjson.RegisterType(EventDataValidatorSetUpdates{}, "tendermint/event/ValidatorSetUpdates")
 	tmjson.RegisterType(EventDataString(""), "tendermint/event/ProposalString")
 	tmjson.RegisterType(EventDataFastSyncStatus{}, "tendermint/event/FastSyncStatus")
+	tmjson.RegisterType(EventDataStateSyncStatus{}, "tendermint/event/StateSyncStatus")
 }
 
 // Most event messages are basic types (a block, a transaction)
@@ -181,6 +183,13 @@ type EventDataFastSyncStatus struct {
 	Height   int64 `json:"height"`
 }
 
+// EventDataStateSyncStatus shows the statesync status and the
+// height when the node state sync mechanism changes.
+type EventDataStateSyncStatus struct {
+	Complete bool  `json:"complete"`
+	Height   int64 `json:"height"`
+}
+
 // PUBSUB
 
 const (
@@ -219,6 +228,7 @@ var (
 	EventQueryValidBlock          = QueryForEvent(EventValidBlockValue)
 	EventQueryVote                = QueryForEvent(EventVoteValue)
 	EventQueryFastSyncStatus      = QueryForEvent(EventFastSyncStatusValue)
+	EventQueryStateSyncStatus     = QueryForEvent(EventStateSyncStatusValue)
 )
 
 func EventQueryTxFor(tx Tx) tmpubsub.Query {
