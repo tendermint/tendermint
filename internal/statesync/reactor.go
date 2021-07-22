@@ -102,6 +102,12 @@ const (
 	maxLightBlockRequestRetries = 20
 )
 
+// SyncReactor defines an interface used for testing abilities of node.startStateSync.
+type SyncReactor interface {
+	Sync(context.Context, StateProvider, time.Duration) (sm.State, error)
+	Backfill(sm.State) error
+}
+
 // Reactor handles state sync, both restoring snapshots for the local node and
 // serving snapshots for other nodes.
 type Reactor struct {
@@ -220,6 +226,11 @@ func (r *Reactor) Sync(
 	if r.syncer != nil {
 		r.mtx.Unlock()
 		return sm.State{}, errors.New("a state sync is already in progress")
+	}
+
+	if stateProvider == nil {
+		r.mtx.Unlock()
+		return sm.State{}, errors.New("the stateProvider should not be nil when doing the state sync")
 	}
 
 	r.syncer = newSyncer(

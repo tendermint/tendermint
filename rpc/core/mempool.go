@@ -48,11 +48,12 @@ func (env *Environment) BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ct
 	r := res.GetCheckTx()
 
 	return &ctypes.ResultBroadcastTx{
-		Code:      r.Code,
-		Data:      r.Data,
-		Log:       r.Log,
-		Codespace: r.Codespace,
-		Hash:      tx.Hash(),
+		Code:         r.Code,
+		Data:         r.Data,
+		Log:          r.Log,
+		Codespace:    r.Codespace,
+		MempoolError: r.MempoolError,
+		Hash:         tx.Hash(),
 	}, nil
 }
 
