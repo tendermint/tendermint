@@ -208,8 +208,9 @@ func TestClient_SequentialVerification(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			mockNode := mockNodeFromHeadersAndVals(tc.otherHeaders, tc.vals)
+		testCase := tc
+		t.Run(testCase.name, func(t *testing.T) {
+			mockNode := mockNodeFromHeadersAndVals(testCase.otherHeaders, testCase.vals)
 			mockNode.On("LightBlock", mock.Anything, mock.Anything).Return(nil, provider.ErrLightBlockNotFound)
 			c, err := light.NewClient(
 				ctx,
@@ -222,7 +223,7 @@ func TestClient_SequentialVerification(t *testing.T) {
 				light.Logger(log.TestingLogger()),
 			)
 
-			if tc.initErr {
+			if testCase.initErr {
 				require.Error(t, err)
 				return
 			}
@@ -230,7 +231,7 @@ func TestClient_SequentialVerification(t *testing.T) {
 			require.NoError(t, err)
 
 			_, err = c.VerifyLightBlockAtHeight(ctx, 3, bTime.Add(3*time.Hour))
-			if tc.verifyErr {
+			if testCase.verifyErr {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
@@ -366,8 +367,10 @@ func TestClientLargeBisectionVerification(t *testing.T) {
 	_, mockHeaders, mockVals := genMockNode(chainID, int64(numBlocks), 3, 0, bTime)
 
 	mockNode := &provider_mocks.Provider{}
-	mockNode.On("LightBlock", mock.Anything, int64(100)).Return(&types.LightBlock{SignedHeader: mockHeaders[100], ValidatorSet: mockVals[100]}, nil)
-	mockNode.On("LightBlock", mock.Anything, int64(5)).Return(&types.LightBlock{SignedHeader: mockHeaders[5], ValidatorSet: mockVals[5]}, nil)
+	mockNode.On("LightBlock", mock.Anything, int64(100)).
+		Return(&types.LightBlock{SignedHeader: mockHeaders[100], ValidatorSet: mockVals[100]}, nil)
+	mockNode.On("LightBlock", mock.Anything, int64(5)).
+		Return(&types.LightBlock{SignedHeader: mockHeaders[5], ValidatorSet: mockVals[5]}, nil)
 
 	lastBlock, _ := mockNode.LightBlock(ctx, int64(numBlocks))
 	mockNode.On("LightBlock", mock.Anything, int64(0)).Return(lastBlock, nil)
@@ -953,10 +956,11 @@ func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
+		testCase := tc
 		t.Run(fmt.Sprintf("case: %d", i), func(t *testing.T) {
-			mockBadNode := mockNodeFromHeadersAndVals(tc.headers, tc.vals)
-			if tc.errorToThrow != nil {
-				mockBadNode.On("LightBlock", mock.Anything, tc.errorHeight).Return(nil, tc.errorToThrow)
+			mockBadNode := mockNodeFromHeadersAndVals(testCase.headers, testCase.vals)
+			if testCase.errorToThrow != nil {
+				mockBadNode.On("LightBlock", mock.Anything, testCase.errorHeight).Return(nil, testCase.errorToThrow)
 			}
 
 			c, err := light.NewClient(
@@ -970,7 +974,7 @@ func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
 			require.NoError(t, err)
 
 			_, err = c.VerifyLightBlockAtHeight(ctx, 3, bTime.Add(2*time.Hour))
-			if tc.err {
+			if testCase.err {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
@@ -983,7 +987,9 @@ func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
 
 func TestClientHandlesContexts(t *testing.T) {
 	mockNode := &provider_mocks.Provider{}
-	mockNode.On("LightBlock", mock.MatchedBy(func(ctx context.Context) bool { return ctx.Err() == nil }), int64(1)).Return(l1, nil)
+	mockNode.On("LightBlock",
+		mock.MatchedBy(func(ctx context.Context) bool { return ctx.Err() == nil }),
+		int64(1)).Return(l1, nil)
 	mockNode.On("LightBlock",
 		mock.MatchedBy(func(ctx context.Context) bool { return ctx.Err() == context.DeadlineExceeded }),
 		mock.Anything).Return(nil, context.DeadlineExceeded)
