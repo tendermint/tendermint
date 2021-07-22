@@ -107,6 +107,10 @@ func loadEventSinks(cfg *tmcfg.Config) ([]indexer.EventSink, error) {
 			" please check the tx-index section in the config.toml")
 	}
 
+	if !indexer.IndexingEnabled(eventSinks) {
+		return nil, fmt.Errorf("no event sink has been enabled")
+	}
+
 	return eventSinks, nil
 }
 
@@ -134,7 +138,7 @@ func eventReIndex(cmd *cobra.Command, es []indexer.EventSink, bs state.BlockStor
 
 	base := bs.Base()
 
-	if startHeight <= base {
+	if startHeight < base {
 		return fmt.Errorf("%s (requested start height: %d, base height: %d)", ctypes.ErrHeightNotAvailable, startHeight, base)
 	}
 
@@ -149,7 +153,7 @@ func eventReIndex(cmd *cobra.Command, es []indexer.EventSink, bs state.BlockStor
 			"%s (requested end height: %d, base height: %d)", ctypes.ErrHeightNotAvailable, endHeight, base)
 	}
 
-	if endHeight < startHeight {
+	if endHeight <= startHeight {
 		return fmt.Errorf(
 			"%s (requested the end height: %d is less than the start height: %d)",
 			ctypes.ErrInvalidRequest, startHeight, endHeight)
@@ -158,10 +162,6 @@ func eventReIndex(cmd *cobra.Command, es []indexer.EventSink, bs state.BlockStor
 	if endHeight > height {
 		endHeight = height
 		fmt.Printf("set the end block height to block store height %d \n", height)
-	}
-
-	if !indexer.IndexingEnabled(es) {
-		return fmt.Errorf("no event sink has been enabled")
 	}
 
 	var bar progressbar.Bar
