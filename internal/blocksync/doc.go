@@ -1,5 +1,5 @@
 /*
-Package blockchain provides two implementations of the fast-sync protocol.
+package blocksync provides two implementations of the block-sync protocol.
 
 - v0 was the very first implementation. it's battle tested, but does not have a
 lot of test coverage.
@@ -14,4 +14,4 @@ Check out ADR-40 for the formal model and requirements.
 there are no pending requests.
 
 */
-package blockchain
+package blocksync

@@ -7,14 +7,14 @@ import (
 
 	proto "github.com/gogo/protobuf/proto"
 
-	bc "github.com/tendermint/tendermint/internal/blockchain"
-	"github.com/tendermint/tendermint/internal/blockchain/v2/internal/behavior"
+	bc "github.com/tendermint/tendermint/internal/blocksync"
+	"github.com/tendermint/tendermint/internal/blocksync/v2/internal/behavior"
 	cons "github.com/tendermint/tendermint/internal/consensus"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/sync"
-	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
+	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )

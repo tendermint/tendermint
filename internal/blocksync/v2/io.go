@@ -5,7 +5,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/internal/p2p"
-	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
+	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
