@@ -131,7 +131,7 @@ func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan erro
 		var isTargetHeight bool
 		isTargetHeight, lightBlock, err = c.getTargetBlockOrLatest(ctx, h.Height, witness)
 		if err != nil {
-			if provider.ShouldBeRemoved(err) {
+			if c.providerShouldBeRemoved(err) {
 				errc <- errBadWitness{Reason: err, WitnessIndex: witnessIndex}
 			} else {
 				errc <- err
@@ -159,7 +159,7 @@ func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan erro
 		time.Sleep(2*c.maxClockDrift + c.maxBlockLag)
 		isTargetHeight, lightBlock, err = c.getTargetBlockOrLatest(ctx, h.Height, witness)
 		if err != nil {
-			if provider.ShouldBeRemoved(err) {
+			if c.providerShouldBeRemoved(err) {
 				errc <- errBadWitness{Reason: err, WitnessIndex: witnessIndex}
 			} else {
 				errc <- err

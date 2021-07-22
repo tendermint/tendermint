@@ -766,7 +766,7 @@ func (c *Client) verifySkippingAgainstPrimary(
 			return e.Reason
 		}
 
-		if !provider.ShouldBeRemoved(e.Reason) {
+		if !c.providerShouldBeRemoved(e.Reason) {
 			replace = false
 		}
 	}
@@ -1119,4 +1119,12 @@ correct and remove witness. Otherwise, use a different primary`,
 
 	// remove all witnesses that misbehaved
 	return c.removeWitnesses(witnessesToRemove)
+}
+
+// providerShouldBeRemoved analyzes the nature of the error and whether the provider
+// should be removed from the light clients set
+func (c *Client) providerShouldBeRemoved(err error) bool {
+	return errors.As(err, &provider.ErrUnreliableProvider{}) ||
+		errors.As(err, &provider.ErrBadLightBlock{}) ||
+		errors.Is(err, provider.ErrConnectionClosed)
 }
