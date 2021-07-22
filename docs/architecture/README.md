@@ -97,3 +97,4 @@ Note the context/background should be written in the present tense.
 - [ADR-041: Proposer-Selection-via-ABCI](./adr-041-proposer-selection-via-abci.md)
 - [ADR-045: ABCI-Evidence](./adr-045-abci-evidence.md)
 - [ADR-057: RPC](./adr-057-RPC.md)
+- [ADR-069: Node Initialization](./adr-069-flexible-node-initialization.md)
