@@ -30,16 +30,30 @@ var ReIndexEventCmd = &cobra.Command{
 	Short: "reindex events to the event store backends",
 	Long: `
 	reindex-event is an offline tooling to re-index block and tx events to the eventsinks,
-	you can run this command when the event store backend dropped/disconnected or you want to replace the backend.`,
-	Example: "tendermint reindex-event --start-height 2 --end-height 10",
+	you can run this command when the event store backend dropped/disconnected or you want to replace the backend.
+	The default start-height is 0, meaning the tooling will start reindex from the base block height(inclusive); and the 
+	default end-height is 0, meaning the tooling will reindex until the latest block height(inclusive). User can omits
+	either or both arguments.
+	`,
+	Example: `
+	tendermint reindex-event
+	tendermint reindex-event --start-height 2
+	tendermint reindex-event --end-height 10
+	tendermint reindex-event --start-height 2 --end-height 10
+	`,
 	Run: func(cmd *cobra.Command, args []string) {
-		es, err := loadEventSinks(config)
+		bs, ss, err := loadStateAndBlockStore(config)
 		if err != nil {
 			fmt.Println(reindexFailed, err)
 			return
 		}
 
-		bs, ss, err := loadStateAndBlockStore(config)
+		if err := checkValidHeight(bs); err != nil {
+			fmt.Println(reindexFailed, err)
+			return
+		}
+
+		es, err := loadEventSinks(config)
 		if err != nil {
 			fmt.Println(reindexFailed, err)
 			return
@@ -60,8 +74,8 @@ var (
 )
 
 func init() {
-	ReIndexEventCmd.Flags().Int64Var(&startHeight, "start-height", 1, "the block height would like to start for re-index")
-	ReIndexEventCmd.Flags().Int64Var(&endHeight, "end-height", 1, "the block height would like to finish for re-index")
+	ReIndexEventCmd.Flags().Int64Var(&startHeight, "start-height", 0, "the block height would like to start for re-index")
+	ReIndexEventCmd.Flags().Int64Var(&endHeight, "end-height", 0, "the block height would like to finish for re-index")
 }
 
 func loadEventSinks(cfg *tmcfg.Config) ([]indexer.EventSink, error) {
@@ -136,34 +150,6 @@ func loadStateAndBlockStore(cfg *tmcfg.Config) (*store.BlockStore, state.Store, 
 
 func eventReIndex(cmd *cobra.Command, es []indexer.EventSink, bs state.BlockStore, ss state.Store) error {
 
-	base := bs.Base()
-
-	if startHeight < base {
-		return fmt.Errorf("%s (requested start height: %d, base height: %d)", ctypes.ErrHeightNotAvailable, startHeight, base)
-	}
-
-	height := bs.Height()
-	if startHeight > height {
-		return fmt.Errorf(
-			"%s (requested start height: %d, store height: %d)", ctypes.ErrHeightNotAvailable, startHeight, height)
-	}
-
-	if endHeight <= base {
-		return fmt.Errorf(
-			"%s (requested end height: %d, base height: %d)", ctypes.ErrHeightNotAvailable, endHeight, base)
-	}
-
-	if endHeight <= startHeight {
-		return fmt.Errorf(
-			"%s (requested the end height: %d is less than the start height: %d)",
-			ctypes.ErrInvalidRequest, startHeight, endHeight)
-	}
-
-	if endHeight > height {
-		endHeight = height
-		fmt.Printf("set the end block height to block store height %d \n", height)
-	}
-
 	var bar progressbar.Bar
 	bar.NewOption(startHeight-1, endHeight)
 
@@ -221,6 +207,44 @@ func eventReIndex(cmd *cobra.Command, es []indexer.EventSink, bs state.BlockStor
 		}
 
 		bar.Play(i)
+	}
+
+	return nil
+}
+
+func checkValidHeight(bs state.BlockStore) error {
+	base := bs.Base()
+
+	if startHeight == 0 {
+		startHeight = base
+		fmt.Printf("set the start block height to the base height of the blockstore %d \n", base)
+	}
+
+	if startHeight < base {
+		return fmt.Errorf("%s (requested start height: %d, base height: %d)", ctypes.ErrHeightNotAvailable, startHeight, base)
+	}
+
+	height := bs.Height()
+
+	if startHeight > height {
+		return fmt.Errorf(
+			"%s (requested start height: %d, store height: %d)", ctypes.ErrHeightNotAvailable, startHeight, height)
+	}
+
+	if endHeight == 0 || endHeight > height {
+		endHeight = height
+		fmt.Printf("set the end block height to the latest height of the blockstore %d \n", height)
+	}
+
+	if endHeight < base {
+		return fmt.Errorf(
+			"%s (requested end height: %d, base height: %d)", ctypes.ErrHeightNotAvailable, endHeight, base)
+	}
+
+	if endHeight < startHeight {
+		return fmt.Errorf(
+			"%s (requested the end height: %d is less than the start height: %d)",
+			ctypes.ErrInvalidRequest, startHeight, endHeight)
 	}
 
 	return nil

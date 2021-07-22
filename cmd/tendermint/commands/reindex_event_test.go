@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abcitypes "github.com/tendermint/tendermint/abci/types"
+	tmcfg "github.com/tendermint/tendermint/config"
 	prototmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/state/mocks"
@@ -18,7 +19,7 @@ import (
 
 const (
 	height int64 = 10
-	base   int64 = 1
+	base   int64 = 2
 )
 
 func setupReIndexEventCmd() *cobra.Command {
@@ -32,6 +33,87 @@ func setupReIndexEventCmd() *cobra.Command {
 	return reIndexEventCmd
 }
 
+func TestReIndexEventCheckHeight(t *testing.T) {
+	mockBlockStore := &mocks.BlockStore{}
+	mockBlockStore.
+		On("Base").Return(base).
+		On("Height").Return(height)
+
+	testCases := []struct {
+		startHeight int64
+		endHeight   int64
+		validHeight bool
+	}{
+		{0, 0, true},
+		{0, base, true},
+		{0, base - 1, false},
+		{0, height, true},
+		{0, height + 1, true},
+		{0, 0, true},
+		{base - 1, 0, false},
+		{base, 0, true},
+		{base, base, true},
+		{base, base - 1, false},
+		{base, height, true},
+		{base, height + 1, true},
+		{height, 0, true},
+		{height, base, false},
+		{height, height - 1, false},
+		{height, height, true},
+		{height, height + 1, true},
+		{height + 1, 0, false},
+	}
+
+	for _, tc := range testCases {
+		startHeight = tc.startHeight
+		endHeight = tc.endHeight
+
+		err := checkValidHeight(mockBlockStore)
+		if tc.validHeight {
+			require.NoError(t, err)
+		} else {
+			require.Error(t, err)
+		}
+	}
+}
+
+func TestLoadEventSink(t *testing.T) {
+	testCases := []struct {
+		sinks   []string
+		connURL string
+		loadErr bool
+	}{
+		{[]string{}, "", true},
+		{[]string{"NULL"}, "", true},
+		{[]string{"KV"}, "", false},
+		{[]string{"KV", "KV"}, "", true},
+		{[]string{"PSQL"}, "", true},         // true because empty connect url
+		{[]string{"PSQL"}, "wrongUrl", true}, // true because wrong connect url
+		// skip to test PSQL connect with correct url
+		{[]string{"UnsupportedSinkType"}, "wrongUrl", true},
+	}
+
+	for _, tc := range testCases {
+		cfg := tmcfg.TestConfig()
+		cfg.TxIndex.Indexer = tc.sinks
+		cfg.TxIndex.PsqlConn = tc.connURL
+		_, err := loadEventSinks(cfg)
+		if tc.loadErr {
+			require.Error(t, err)
+		} else {
+			require.NoError(t, err)
+		}
+	}
+
+}
+
+func TestLoadBlockStore(t *testing.T) {
+	bs, ss, err := loadStateAndBlockStore(tmcfg.TestConfig())
+	require.NoError(t, err)
+	require.NotNil(t, bs)
+	require.NotNil(t, ss)
+
+}
 func TestReIndexEvent(t *testing.T) {
 	mockBlockStore := &mocks.BlockStore{}
 	mockStateStore := &mocks.Store{}
@@ -40,11 +122,11 @@ func TestReIndexEvent(t *testing.T) {
 	mockBlockStore.
 		On("Base").Return(base).
 		On("Height").Return(height).
-		On("LoadBlock", base+1).Return(nil).Once().
-		On("LoadBlock", base+1).Return(&types.Block{Data: types.Data{Txs: types.Txs{make(types.Tx, 1)}}})
+		On("LoadBlock", base).Return(nil).Once().
+		On("LoadBlock", base).Return(&types.Block{Data: types.Data{Txs: types.Txs{make(types.Tx, 1)}}}).
+		On("LoadBlock", height).Return(&types.Block{Data: types.Data{Txs: types.Txs{make(types.Tx, 1)}}})
 
 	mockEventSink.
-		On("Type").Return(indexer.NULL).Once().
 		On("Type").Return(indexer.KV).
 		On("IndexBlockEvents", mock.AnythingOfType("types.EventDataNewBlockHeader")).Return(errors.New("")).Once().
 		On("IndexBlockEvents", mock.AnythingOfType("types.EventDataNewBlockHeader")).Return(nil).
@@ -59,33 +141,29 @@ func TestReIndexEvent(t *testing.T) {
 	}
 
 	mockStateStore.
-		On("LoadABCIResponses", base+1).Return(nil, errors.New("")).Once().
-		On("LoadABCIResponses", base+1).Return(abciResp, nil)
+		On("LoadABCIResponses", base).Return(nil, errors.New("")).Once().
+		On("LoadABCIResponses", base).Return(abciResp, nil).
+		On("LoadABCIResponses", height).Return(abciResp, nil)
 
 	testCases := []struct {
 		startHeight int64
 		endHeight   int64
-		isErr       bool
+		reIndexErr  bool
 	}{
-		{base, 0, true},              // the start height less equal than the base height
-		{height + 1, 0, true},        // the start height greater than the store height
-		{base + 1, base, true},       // the end height less equal than the base height
-		{height, height - 1, true},   // the start height greater than the end height
-		{base + 1, height + 1, true}, // the end height will be the same as the store height and no eventsink error
-		{base + 1, base + 1, true},   // LoadBlock error
-		{base + 1, base + 1, true},   // LoadABCIResponses error
-		{base + 1, base + 1, true},   // index block event error
-		{base + 1, base + 1, true},   // index tx event error
-		{base + 1, base + 1, false},
+		{base, height, true}, // LoadBlock error
+		{base, height, true}, // LoadABCIResponses error
+		{base, height, true}, // index block event error
+		{base, height, true}, // index tx event error
+		{base, base, false},
+		{height, height, false},
 	}
 
 	for _, tc := range testCases {
-
 		startHeight = tc.startHeight
 		endHeight = tc.endHeight
 
 		err := eventReIndex(setupReIndexEventCmd(), []indexer.EventSink{mockEventSink}, mockBlockStore, mockStateStore)
-		if tc.isErr {
+		if tc.reIndexErr {
 			require.Error(t, err)
 		} else {
 			require.NoError(t, err)
