@@ -79,7 +79,7 @@ type Node struct {
 	IP               net.IP
 	ProxyPort        uint32
 	StartAt          int64
-	FastSync         string
+	BlockSync        string
 	StateSync        bool
 	Database         string
 	ABCIProtocol     Protocol
@@ -167,7 +167,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			ABCIProtocol:     ProtocolBuiltin,
 			PrivvalProtocol:  ProtocolFile,
 			StartAt:          nodeManifest.StartAt,
-			FastSync:         nodeManifest.FastSync,
+			BlockSync:        nodeManifest.BlockSync,
 			StateSync:        nodeManifest.StateSync,
 			PersistInterval:  1,
 			SnapshotInterval: nodeManifest.SnapshotInterval,
@@ -326,10 +326,10 @@ func (n Node) Validate(testnet Testnet) error {
 			}
 		}
 	}
-	switch n.FastSync {
+	switch n.BlockSync {
 	case "", "v0", "v2":
 	default:
-		return fmt.Errorf("invalid fast sync setting %q", n.FastSync)
+		return fmt.Errorf("invalid block sync setting %q", n.BlockSync)
 	}
 	switch n.QueueType {
 	case "", "priority", "wdrr", "fifo":

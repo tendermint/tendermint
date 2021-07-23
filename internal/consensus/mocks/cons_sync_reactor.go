@@ -12,8 +12,8 @@ type ConsSyncReactor struct {
 	mock.Mock
 }
 
-// SetFastSyncingMetrics provides a mock function with given fields: _a0
-func (_m *ConsSyncReactor) SetFastSyncingMetrics(_a0 float64) {
+// SetBlockSyncingMetrics provides a mock function with given fields: _a0
+func (_m *ConsSyncReactor) SetBlockSyncingMetrics(_a0 float64) {
 	_m.Called(_a0)
 }
 

@@ -292,10 +292,10 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 		return nil, fmt.Errorf("unexpected mode %q", node.Mode)
 	}
 
-	if node.FastSync == "" {
+	if node.BlockSync == "" {
 		cfg.FastSyncMode = false
 	} else {
-		cfg.FastSync.Version = node.FastSync
+		cfg.FastSync.Version = node.BlockSync
 	}
 
 	if node.StateSync {

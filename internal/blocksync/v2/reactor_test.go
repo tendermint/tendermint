@@ -14,8 +14,8 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/internal/blocksync/v2/internal/behavior"
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/blocksync/v2/internal/behavior"
 	cons "github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/mempool/mock"
 	"github.com/tendermint/tendermint/internal/p2p"

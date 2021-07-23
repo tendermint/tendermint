@@ -29,8 +29,8 @@ const (
 	ModeValidator = "validator"
 	ModeSeed      = "seed"
 
-	BlockchainV0 = "v0"
-	BlockchainV2 = "v2"
+	BlockSyncV0 = "v0"
+	BlockSyncV2 = "v2"
 
 	MempoolV0 = "v0"
 	MempoolV1 = "v1"
@@ -911,7 +911,7 @@ func DefaultStateSyncConfig() *StateSyncConfig {
 	}
 }
 
-// TestFastSyncConfig returns a default configuration for the state sync service
+// TestStateSyncConfig returns a default configuration for the state sync service
 func TestStateSyncConfig() *StateSyncConfig {
 	return DefaultStateSyncConfig()
 }
@@ -967,21 +967,21 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 }
 
 //-----------------------------------------------------------------------------
-// FastSyncConfig
+// BlockSyncConfig (formerly known as FastSync)
 
-// FastSyncConfig defines the configuration for the Tendermint fast sync service
+// FastSyncConfig defines the configuration for the Tendermint block sync service
 type FastSyncConfig struct {
 	Version string `mapstructure:"version"`
 }
 
-// DefaultFastSyncConfig returns a default configuration for the fast sync service
+// DefaultFastSyncConfig returns a default configuration for the block sync service
 func DefaultFastSyncConfig() *FastSyncConfig {
 	return &FastSyncConfig{
-		Version: BlockchainV0,
+		Version: BlockSyncV0,
 	}
 }
 
-// TestFastSyncConfig returns a default configuration for the fast sync.
+// TestFastSyncConfig returns a default configuration for the block sync.
 func TestFastSyncConfig() *FastSyncConfig {
 	return DefaultFastSyncConfig()
 }
@@ -989,12 +989,12 @@ func TestFastSyncConfig() *FastSyncConfig {
 // ValidateBasic performs basic validation.
 func (cfg *FastSyncConfig) ValidateBasic() error {
 	switch cfg.Version {
-	case BlockchainV0:
+	case BlockSyncV0:
 		return nil
-	case BlockchainV2:
-		return errors.New("fastsync version v2 is no longer supported. Please use v0")
+	case BlockSyncV2:
+		return errors.New("blocksync version v2 is no longer supported. Please use v0")
 	default:
-		return fmt.Errorf("unknown fastsync version %s", cfg.Version)
+		return fmt.Errorf("unknown blocksync version %s", cfg.Version)
 	}
 }
 

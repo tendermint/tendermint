@@ -43,7 +43,7 @@ type reactorTestSuite struct {
 	states              map[types.NodeID]*State
 	reactors            map[types.NodeID]*Reactor
 	subs                map[types.NodeID]types.Subscription
-	fastsyncSubs        map[types.NodeID]types.Subscription
+	blocksyncSubs       map[types.NodeID]types.Subscription
 	stateChannels       map[types.NodeID]*p2p.Channel
 	dataChannels        map[types.NodeID]*p2p.Channel
 	voteChannels        map[types.NodeID]*p2p.Channel
@@ -60,11 +60,11 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 	t.Helper()
 
 	rts := &reactorTestSuite{
-		network:      p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
-		states:       make(map[types.NodeID]*State),
-		reactors:     make(map[types.NodeID]*Reactor, numNodes),
-		subs:         make(map[types.NodeID]types.Subscription, numNodes),
-		fastsyncSubs: make(map[types.NodeID]types.Subscription, numNodes),
+		network:       p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
+		states:        make(map[types.NodeID]*State),
+		reactors:      make(map[types.NodeID]*Reactor, numNodes),
+		subs:          make(map[types.NodeID]types.Subscription, numNodes),
+		blocksyncSubs: make(map[types.NodeID]types.Subscription, numNodes),
 	}
 
 	rts.stateChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(StateChannel), new(tmcons.Message), size)
@@ -94,13 +94,13 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 		blocksSub, err := state.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, size)
 		require.NoError(t, err)
 
-		fsSub, err := state.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryFastSyncStatus, size)
+		fsSub, err := state.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryBlockSyncStatus, size)
 		require.NoError(t, err)
 
 		rts.states[nodeID] = state
 		rts.subs[nodeID] = blocksSub
 		rts.reactors[nodeID] = reactor
-		rts.fastsyncSubs[nodeID] = fsSub
+		rts.blocksyncSubs[nodeID] = fsSub
 
 		// simulate handle initChain in handshake
 		if state.state.LastBlockHeight == 0 {
@@ -263,9 +263,9 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 	wg.Wait()
 }
 
-func ensureFastSyncStatus(t *testing.T, msg tmpubsub.Message, complete bool, height int64) {
+func ensureBlockSyncStatus(t *testing.T, msg tmpubsub.Message, complete bool, height int64) {
 	t.Helper()
-	status, ok := msg.Data().(types.EventDataFastSyncStatus)
+	status, ok := msg.Data().(types.EventDataBlockSyncStatus)
 
 	require.True(t, ok)
 	require.Equal(t, complete, status.Complete)
@@ -301,14 +301,14 @@ func TestReactorBasic(t *testing.T) {
 
 	wg.Wait()
 
-	for _, sub := range rts.fastsyncSubs {
+	for _, sub := range rts.blocksyncSubs {
 		wg.Add(1)
 
 		// wait till everyone makes the consensus switch
 		go func(s types.Subscription) {
 			defer wg.Done()
 			msg := <-s.Out()
-			ensureFastSyncStatus(t, msg, true, 0)
+			ensureBlockSyncStatus(t, msg, true, 0)
 		}(sub)
 	}
 

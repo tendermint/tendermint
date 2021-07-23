@@ -60,7 +60,7 @@ const (
 )
 
 type consensusReactor interface {
-	// For when we switch from blockchain reactor and fast sync to the consensus
+	// For when we switch from blockchain reactor and block sync to the consensus
 	// machine.
 	SwitchToConsensus(state sm.State, skipWAL bool)
 }
@@ -85,7 +85,7 @@ type Reactor struct {
 	store       *store.BlockStore
 	pool        *BlockPool
 	consReactor consensusReactor
-	fastSync    *tmSync.AtomicBool
+	blockSync   *tmSync.AtomicBool
 
 	blockchainCh *p2p.Channel
 	// blockchainOutBridgeCh defines a channel that acts as a bridge between sending Envelope
@@ -121,7 +121,7 @@ func NewReactor(
 	consReactor consensusReactor,
 	blockchainCh *p2p.Channel,
 	peerUpdates *p2p.PeerUpdates,
-	fastSync bool,
+	blockSync bool,
 	metrics *cons.Metrics,
 ) (*Reactor, error) {
 	if state.LastBlockHeight != store.Height() {
@@ -142,7 +142,7 @@ func NewReactor(
 		store:                 store,
 		pool:                  NewBlockPool(startHeight, requestsCh, errorsCh),
 		consReactor:           consReactor,
-		fastSync:              tmSync.NewBool(fastSync),
+		blockSync:             tmSync.NewBool(blockSync),
 		requestsCh:            requestsCh,
 		errorsCh:              errorsCh,
 		blockchainCh:          blockchainCh,
@@ -162,10 +162,10 @@ func NewReactor(
 // messages on that p2p channel accordingly. The caller must be sure to execute
 // OnStop to ensure the outbound p2p Channels are closed.
 //
-// If fastSync is enabled, we also start the pool and the pool processing
+// If blockSync is enabled, we also start the pool and the pool processing
 // goroutine. If the pool fails to start, an error is returned.
 func (r *Reactor) OnStart() error {
-	if r.fastSync.IsSet() {
+	if r.blockSync.IsSet() {
 		if err := r.pool.Start(); err != nil {
 			return err
 		}
@@ -183,7 +183,7 @@ func (r *Reactor) OnStart() error {
 // OnStop stops the reactor by signaling to all spawned goroutines to exit and
 // blocking until they all exit.
 func (r *Reactor) OnStop() {
-	if r.fastSync.IsSet() {
+	if r.blockSync.IsSet() {
 		if err := r.pool.Stop(); err != nil {
 			r.Logger.Error("failed to stop pool", "err", err)
 		}
@@ -374,7 +374,7 @@ func (r *Reactor) processPeerUpdates() {
 // SwitchToFastSync is called by the state sync reactor when switching to fast
 // sync.
 func (r *Reactor) SwitchToFastSync(state sm.State) error {
-	r.fastSync.Set()
+	r.blockSync.Set()
 	r.initialState = state
 	r.pool.height = state.LastBlockHeight + 1
 
@@ -496,7 +496,7 @@ FOR_LOOP:
 				r.Logger.Error("failed to stop pool", "err", err)
 			}
 
-			r.fastSync.UnSet()
+			r.blockSync.UnSet()
 
 			if r.consReactor != nil {
 				r.consReactor.SwitchToConsensus(state, blocksSynced > 0 || stateSynced)
@@ -591,7 +591,7 @@ FOR_LOOP:
 				if blocksSynced%100 == 0 {
 					lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
 					r.Logger.Info(
-						"fast sync rate",
+						"block sync rate",
 						"height", r.pool.height,
 						"max_peer_height", r.pool.MaxPeerHeight(),
 						"blocks/s", lastRate,
@@ -614,14 +614,14 @@ func (r *Reactor) GetMaxPeerBlockHeight() int64 {
 }
 
 func (r *Reactor) GetTotalSyncedTime() time.Duration {
-	if !r.fastSync.IsSet() || r.syncStartTime.IsZero() {
+	if !r.blockSync.IsSet() || r.syncStartTime.IsZero() {
 		return time.Duration(0)
 	}
 	return time.Since(r.syncStartTime)
 }
 
 func (r *Reactor) GetRemainingSyncTime() time.Duration {
-	if !r.fastSync.IsSet() {
+	if !r.blockSync.IsSet() {
 		return time.Duration(0)
 	}
 
