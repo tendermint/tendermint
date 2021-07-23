@@ -362,7 +362,7 @@ func (c *mConnConnection) onError(e interface{}) {
 	if !ok {
 		err = fmt.Errorf("%v", err)
 	}
-	c.logger.Error("error from connection", "err", err)
+	c.logger.Error("error from connection", "err", err, "context", "P2P DEBUG")
 	// We have to close the connection here, since MConnection will have stopped
 	// the service on any errors.
 	_ = c.Close()
