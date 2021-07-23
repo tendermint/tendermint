@@ -50,8 +50,9 @@ func VerifyNonAdjacent(
 		return err
 	}
 
-	if HeaderExpired(trustedHeader, trustingPeriod, now) {
-		return ErrOldHeaderExpired{trustedHeader.Time.Add(trustingPeriod), now}
+	// check if the untrusted header is within the trust period
+	if HeaderExpired(untrustedHeader, trustingPeriod, now) {
+		return ErrOldHeaderExpired{untrustedHeader.Time.Add(trustingPeriod), now}
 	}
 
 	if err := verifyNewHeaderAndVals(
@@ -117,8 +118,9 @@ func VerifyAdjacent(
 		return errors.New("headers must be adjacent in height")
 	}
 
-	if HeaderExpired(trustedHeader, trustingPeriod, now) {
-		return ErrOldHeaderExpired{trustedHeader.Time.Add(trustingPeriod), now}
+	// check if the untrusted header is within the trust period
+	if HeaderExpired(untrustedHeader, trustingPeriod, now) {
+		return ErrOldHeaderExpired{untrustedHeader.Time.Add(trustingPeriod), now}
 	}
 
 	if err := verifyNewHeaderAndVals(
@@ -192,7 +194,10 @@ func HeaderExpired(h *types.SignedHeader, trustingPeriod time.Duration, now time
 //  of the trusted header
 //
 // For any of these cases ErrInvalidHeader is returned.
-// NOTE: This does not check whether the trusted header has expired or not.
+// NOTE: This does not check whether the trusted or untrusted header has expired
+// or not. These checks are not necessary because the detector never runs during
+// backwards verification and thus evidence that needs to be within a certain
+// time bound is never sent.
 func VerifyBackwards(untrustedHeader, trustedHeader *types.Header) error {
 	if err := untrustedHeader.ValidateBasic(); err != nil {
 		return ErrInvalidHeader{err}
@@ -220,6 +225,8 @@ func VerifyBackwards(untrustedHeader, trustedHeader *types.Header) error {
 	return nil
 }
 
+// NOTE: This function assumes that untrustedHeader is after trustedHeader.
+// Do not use for backwards verification.
 func verifyNewHeaderAndVals(
 	untrustedHeader *types.SignedHeader,
 	untrustedVals *types.ValidatorSet,

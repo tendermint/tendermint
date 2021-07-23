@@ -85,7 +85,7 @@ func (p *snapshotPool) Add(peerID types.NodeID, snapshot *snapshot) (bool, error
 
 	appHash, err := p.stateProvider.AppHash(ctx, snapshot.Height)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to get app hash: %w", err)
 	}
 	snapshot.trustedAppHash = appHash
 	key := snapshot.Key()
