@@ -372,6 +372,8 @@ func TestEventBusPublish(t *testing.T) {
 	require.NoError(t, err)
 	err = eventBus.PublishEventFastSyncStatus(EventDataFastSyncStatus{})
 	require.NoError(t, err)
+	err = eventBus.PublishEventStateSyncStatus(EventDataStateSyncStatus{})
+	require.NoError(t, err)
 
 	select {
 	case <-done:
@@ -479,6 +481,7 @@ var events = []string{
 	EventTimeoutWaitValue,
 	EventVoteValue,
 	EventFastSyncStatusValue,
+	EventStateSyncStatusValue,
 }
 
 func randEventValue() string {

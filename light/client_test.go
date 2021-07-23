@@ -589,6 +589,36 @@ func TestClient_Concurrency(t *testing.T) {
 	wg.Wait()
 }
 
+func TestClient_AddProviders(t *testing.T) {
+	c, err := light.NewClient(
+		ctx,
+		chainID,
+		trustOptions,
+		fullNode,
+		[]provider.Provider{fullNode},
+		dbs.New(dbm.NewMemDB()),
+		light.Logger(log.TestingLogger()),
+	)
+	require.NoError(t, err)
+
+	closeCh := make(chan struct{})
+	go func() {
+		// run verification concurrently to make sure it doesn't dead lock
+		_, err = c.VerifyLightBlockAtHeight(ctx, 2, bTime.Add(2*time.Hour))
+		require.NoError(t, err)
+		close(closeCh)
+	}()
+
+	// NOTE: the light client doesn't check uniqueness of providers
+	c.AddProvider(fullNode)
+	require.Len(t, c.Witnesses(), 2)
+	select {
+	case <-closeCh:
+	case <-time.After(5 * time.Second):
+		t.Fatal("concurent light block verification failed to finish in 5s")
+	}
+}
+
 func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 	c, err := light.NewClient(
 		ctx,

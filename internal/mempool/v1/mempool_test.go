@@ -3,11 +3,13 @@ package v1
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -70,13 +72,13 @@ func (app *application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 	}
 }
 
-func setup(t testing.TB, cacheSize int) *TxMempool {
+func setup(t testing.TB, cacheSize int, options ...TxMempoolOption) *TxMempool {
 	t.Helper()
 
 	app := &application{kvstore.NewApplication()}
 	cc := proxy.NewLocalClientCreator(app)
 
-	cfg := config.ResetTestRoot(t.Name())
+	cfg := config.ResetTestRoot(strings.ReplaceAll(t.Name(), "/", "|"))
 	cfg.Mempool.CacheSize = cacheSize
 
 	appConnMem, err := cc.NewABCIClient()
@@ -88,7 +90,7 @@ func setup(t testing.TB, cacheSize int) *TxMempool {
 		require.NoError(t, appConnMem.Stop())
 	})
 
-	return NewTxMempool(log.TestingLogger().With("test", t.Name()), cfg.Mempool, appConnMem, 0)
+	return NewTxMempool(log.TestingLogger().With("test", t.Name()), cfg.Mempool, appConnMem, 0, options...)
 }
 
 func checkTxs(t *testing.T, txmp *TxMempool, numTxs int, peerID uint16) []testTx {
@@ -320,11 +322,17 @@ func TestTxMempool_CheckTxExceedsMaxSize(t *testing.T) {
 	txmp := setup(t, 0)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	tx := make([]byte, txmp.config.MaxTxsBytes+1)
+	tx := make([]byte, txmp.config.MaxTxBytes+1)
 	_, err := rng.Read(tx)
 	require.NoError(t, err)
 
 	require.Error(t, txmp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{SenderID: 0}))
+
+	tx = make([]byte, txmp.config.MaxTxBytes-1)
+	_, err = rng.Read(tx)
+	require.NoError(t, err)
+
+	require.NoError(t, txmp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{SenderID: 0}))
 }
 
 func TestTxMempool_CheckTxSamePeer(t *testing.T) {
@@ -476,4 +484,44 @@ func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
 
 	require.GreaterOrEqual(t, txmp.Size(), 45)
 	require.GreaterOrEqual(t, txmp.heightIndex.Size(), 45)
+}
+
+func TestTxMempool_CheckTxPostCheckError(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+	}{
+		{
+			name: "error",
+			err:  errors.New("test error"),
+		},
+		{
+			name: "no error",
+			err:  nil,
+		},
+	}
+	for _, tc := range cases {
+		testCase := tc
+		t.Run(testCase.name, func(t *testing.T) {
+			postCheckFn := func(_ types.Tx, _ *abci.ResponseCheckTx) error {
+				return testCase.err
+			}
+			txmp := setup(t, 0, WithPostCheck(postCheckFn))
+			rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+			tx := make([]byte, txmp.config.MaxTxBytes-1)
+			_, err := rng.Read(tx)
+			require.NoError(t, err)
+
+			callback := func(res *abci.Response) {
+				checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
+				require.True(t, ok)
+				expectedErrString := ""
+				if testCase.err != nil {
+					expectedErrString = testCase.err.Error()
+				}
+				require.Equal(t, expectedErrString, checkTxRes.CheckTx.MempoolError)
+			}
+			require.NoError(t, txmp.CheckTx(context.Background(), tx, callback, mempool.TxInfo{SenderID: 0}))
+		})
+	}
 }
