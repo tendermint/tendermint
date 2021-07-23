@@ -43,7 +43,7 @@ func Fuzz(data []byte) int {
 		return 1
 	}
 
-	if inputJSONIsSlice(data) {
+	if inputJSONIsMultiElementSlice(data) {
 		recv := []types.RPCResponse{}
 		if err := json.Unmarshal(blob, &recv); err != nil {
 			panic(err)
@@ -57,8 +57,8 @@ func Fuzz(data []byte) int {
 	return 1
 }
 
-func inputJSONIsSlice(input []byte) bool {
+func inputJSONIsMultiElementSlice(input []byte) bool {
 	slice := []interface{}{}
 	err := json.Unmarshal(input, &slice)
-	return err == nil
+	return err == nil && len(slice) > 1
 }
