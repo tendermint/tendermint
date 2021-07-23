@@ -905,7 +905,7 @@ func (r *Router) receivePeer(peerID types.NodeID, conn Connection) error {
 	for {
 		chID, bz, err := conn.ReceiveMessage()
 		if err != nil {
-			r.logger.Error("received error from receive message")
+			r.logger.Error("received error from receive message", "err", err, "context", "P2P DEBUG")
 			return err
 		}
 

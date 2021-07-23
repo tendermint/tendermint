@@ -368,7 +368,7 @@ func (c *mConnConnection) onError(e interface{}) {
 	_ = c.Close()
 	select {
 	case c.errorCh <- err:
-		c.logger.Error("adding error to channel")
+		c.logger.Error("adding error to channel", "err", err, "context", "P2P DEBUG")
 	case <-c.closeCh:
 	}
 }
@@ -412,7 +412,7 @@ func (c *mConnConnection) TrySendMessage(chID ChannelID, msg []byte) (bool, erro
 func (c *mConnConnection) ReceiveMessage() (ChannelID, []byte, error) {
 	select {
 	case err := <-c.errorCh:
-		c.logger.Error("propagating error message to router", "err", err)
+		c.logger.Error("propagating error message to router", "err", err, "context", "P2P DEBUG")
 		return 0, nil, err
 	case <-c.closeCh:
 		return 0, nil, io.EOF
