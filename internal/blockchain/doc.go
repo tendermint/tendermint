@@ -3,11 +3,11 @@ Package blockchain implements two versions of a reactor Service that are
 responsible for block propagation and gossip between peers. This mechanism is
 more formally known as fast-sync.
 
-In order for a validator to successfully participate in consensus, it must have
+In order for a full node to successfully participate in consensus, it must have
 the latest view of state. The fast-sync protocol is a mechanism in which peers
 may exchange and gossip entire blocks with one another, in a request/response
 type model, until they've successfully synced to the latest head block. Once
-succussfully synced, the validator can switch to an active role in consensus and
+succussfully synced, the full node can switch to an active role in consensus and
 will no longer fast-sync and thus no longer run the fast-sync process.
 
 Note, the blockchain reactor Service gossips entire block and relevant data such
