@@ -362,11 +362,13 @@ func (c *mConnConnection) onError(e interface{}) {
 	if !ok {
 		err = fmt.Errorf("%v", err)
 	}
+	c.logger.Error("error from connection", "err", err)
 	// We have to close the connection here, since MConnection will have stopped
 	// the service on any errors.
 	_ = c.Close()
 	select {
 	case c.errorCh <- err:
+		c.logger.Error("adding error to channel")
 	case <-c.closeCh:
 	}
 }
@@ -410,6 +412,7 @@ func (c *mConnConnection) TrySendMessage(chID ChannelID, msg []byte) (bool, erro
 func (c *mConnConnection) ReceiveMessage() (ChannelID, []byte, error) {
 	select {
 	case err := <-c.errorCh:
+		c.logger.Error("propagating error message to router", "err", err)
 		return 0, nil, err
 	case <-c.closeCh:
 		return 0, nil, io.EOF
