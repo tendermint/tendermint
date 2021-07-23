@@ -1849,7 +1849,7 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 // NOTE: block is not necessarily valid.
 // Asynchronously triggers either enterPrevote (before we timeout of propose) or tryFinalizeCommit,
 // once we have the full block.
-func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID types.NodeID) (added bool, err error) {
+func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID types.NodeID) (bool, error) {
 	height, round, part := msg.Height, msg.Round, msg.Part
 
 	// Blocks might be reused, so round mismatch is OK
@@ -1872,78 +1872,79 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID types.NodeID
 		return false, nil
 	}
 
-	added, err = cs.ProposalBlockParts.AddPart(part)
-	if err != nil {
+	added, err := cs.ProposalBlockParts.AddPart(part)
+	if err != nil || !added {
 		return added, err
 	}
+
 	if cs.ProposalBlockParts.ByteSize() > cs.state.ConsensusParams.Block.MaxBytes {
-		return added, fmt.Errorf("total size of proposal block parts exceeds maximum block bytes (%d > %d)",
+		return true, fmt.Errorf("total size of proposal block parts exceeds maximum block bytes (%d > %d)",
 			cs.ProposalBlockParts.ByteSize(), cs.state.ConsensusParams.Block.MaxBytes,
 		)
 	}
-	if added && cs.ProposalBlockParts.IsComplete() {
-		bz, err := ioutil.ReadAll(cs.ProposalBlockParts.GetReader())
-		if err != nil {
-			return added, err
-		}
-
-		var pbb = new(tmproto.Block)
-		err = proto.Unmarshal(bz, pbb)
-		if err != nil {
-			return added, err
-		}
-
-		block, err := types.BlockFromProto(pbb)
-		if err != nil {
-			return added, err
-		}
-
-		cs.ProposalBlock = block
-
-		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
-		cs.Logger.Info("received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
-
-		if err := cs.eventBus.PublishEventCompleteProposal(cs.CompleteProposalEvent()); err != nil {
-			cs.Logger.Error("failed publishing event complete proposal", "err", err)
-		}
-
-		// Update Valid* if we can.
-		prevotes := cs.Votes.Prevotes(cs.Round)
-		blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
-		if hasTwoThirds && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
-			if cs.ProposalBlock.HashesTo(blockID.Hash) {
-				cs.Logger.Debug(
-					"updating valid block to new proposal block",
-					"valid_round", cs.Round,
-					"valid_block_hash", cs.ProposalBlock.Hash(),
-				)
-
-				cs.ValidRound = cs.Round
-				cs.ValidBlock = cs.ProposalBlock
-				cs.ValidBlockParts = cs.ProposalBlockParts
-			}
-			// TODO: In case there is +2/3 majority in Prevotes set for some
-			// block and cs.ProposalBlock contains different block, either
-			// proposer is faulty or voting power of faulty processes is more
-			// than 1/3. We should trigger in the future accountability
-			// procedure at this point.
-		}
-
-		if cs.Step <= cstypes.RoundStepPropose && cs.isProposalComplete() {
-			// Move onto the next step
-			cs.enterPrevote(height, cs.Round)
-			if hasTwoThirds { // this is optimisation as this will be triggered when prevote is added
-				cs.enterPrecommit(height, cs.Round)
-			}
-		} else if cs.Step == cstypes.RoundStepCommit {
-			// If we're waiting on the proposal block...
-			cs.tryFinalizeCommit(height)
-		}
-
-		return added, nil
+	if !cs.ProposalBlockParts.IsComplete() {
+		return true, nil
 	}
 
-	return added, nil
+	bz, err := ioutil.ReadAll(cs.ProposalBlockParts.GetReader())
+	if err != nil {
+		return true, err
+	}
+
+	var pbb = new(tmproto.Block)
+	err = proto.Unmarshal(bz, pbb)
+	if err != nil {
+		return true, err
+	}
+
+	block, err := types.BlockFromProto(pbb)
+	if err != nil {
+		return true, err
+	}
+
+	cs.ProposalBlock = block
+
+	// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
+	cs.Logger.Info("received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
+
+	if err := cs.eventBus.PublishEventCompleteProposal(cs.CompleteProposalEvent()); err != nil {
+		cs.Logger.Error("failed publishing event complete proposal", "err", err)
+	}
+
+	// Update Valid* if we can.
+	prevotes := cs.Votes.Prevotes(cs.Round)
+	blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
+	if hasTwoThirds && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
+		if cs.ProposalBlock.HashesTo(blockID.Hash) {
+			cs.Logger.Debug(
+				"updating valid block to new proposal block",
+				"valid_round", cs.Round,
+				"valid_block_hash", cs.ProposalBlock.Hash(),
+			)
+
+			cs.ValidRound = cs.Round
+			cs.ValidBlock = cs.ProposalBlock
+			cs.ValidBlockParts = cs.ProposalBlockParts
+		}
+		// TODO: In case there is +2/3 majority in Prevotes set for some
+		// block and cs.ProposalBlock contains different block, either
+		// proposer is faulty or voting power of faulty processes is more
+		// than 1/3. We should trigger in the future accountability
+		// procedure at this point.
+	}
+
+	if cs.Step <= cstypes.RoundStepPropose && cs.isProposalComplete() {
+		// Move onto the next step
+		cs.enterPrevote(height, cs.Round)
+		if hasTwoThirds { // this is optimisation as this will be triggered when prevote is added
+			cs.enterPrecommit(height, cs.Round)
+		}
+	} else if cs.Step == cstypes.RoundStepCommit {
+		// If we're waiting on the proposal block...
+		cs.tryFinalizeCommit(height)
+	}
+
+	return true, nil
 }
 
 // Attempt to add the vote. if its a duplicate signature, dupeout the validator
