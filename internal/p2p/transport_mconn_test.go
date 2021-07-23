@@ -211,7 +211,7 @@ func TestMConnTransport_Listen(t *testing.T) {
 			_ = transport.Close()
 
 			// Dialing the closed endpoint should error
-			conn, err = transport.Dial(ctx, endpoint)
+			_, err = transport.Dial(ctx, endpoint)
 			require.Error(t, err)
 		})
 	}
