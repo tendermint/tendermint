@@ -60,8 +60,5 @@ func Fuzz(data []byte) int {
 func inputJSONIsSlice(input []byte) bool {
 	slice := []interface{}{}
 	err := json.Unmarshal(input, &slice)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
