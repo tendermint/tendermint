@@ -11,11 +11,6 @@ func TestCloseWhileDequeueFull(t *testing.T) {
 	enqueueLength := 5
 	chDescs := []ChannelDescriptor{
 		{ID: 0x01, Priority: 1, MaxSendBytes: 4},
-		{ID: 0x02, Priority: 1, MaxSendBytes: 4},
-		{ID: 0x03, Priority: 1, MaxSendBytes: 4},
-		{ID: 0x04, Priority: 1, MaxSendBytes: 4},
-		{ID: 0x05, Priority: 1, MaxSendBytes: 4},
-		{ID: 0x06, Priority: 1, MaxSendBytes: 4},
 	}
 	pqueue := newPQScheduler(log.NewNopLogger(), NopMetrics(), chDescs, uint(enqueueLength), 1, 120)
 
