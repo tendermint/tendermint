@@ -129,17 +129,18 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
+		testCase := tc
+		t.Run(testCase.name, func(t *testing.T) {
 			// primary performs an equivocation attack
 			var (
 				valSize        = 5
-				primaryHeaders = make(map[int64]*types.SignedHeader, tc.latestHeight)
+				primaryHeaders = make(map[int64]*types.SignedHeader, testCase.latestHeight)
 				// validators don't change in this network (however we still use a map just for convenience)
-				primaryValidators = make(map[int64]*types.ValidatorSet, tc.latestHeight)
+				primaryValidators = make(map[int64]*types.ValidatorSet, testCase.latestHeight)
 			)
-			witnessHeaders, witnessValidators, chainKeys := genLightBlocksWithKeys(chainID, tc.latestHeight+1, valSize, 2, bTime)
-			for height := int64(1); height <= tc.latestHeight; height++ {
-				if height < tc.divergenceHeight {
+			witnessHeaders, witnessValidators, chainKeys := genLightBlocksWithKeys(chainID, testCase.latestHeight+1, valSize, 2, bTime)
+			for height := int64(1); height <= testCase.latestHeight; height++ {
+				if height < testCase.divergenceHeight {
 					primaryHeaders[height] = witnessHeaders[height]
 					primaryValidators[height] = witnessValidators[height]
 					continue
@@ -153,11 +154,11 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 				primaryValidators[height] = witnessValidators[height]
 			}
 
-			for _, height := range tc.unusedWitnessBlockHeights {
+			for _, height := range testCase.unusedWitnessBlockHeights {
 				delete(witnessHeaders, height)
 			}
 			mockWitness := mockNodeFromHeadersAndVals(witnessHeaders, witnessValidators)
-			for _, height := range tc.unusedPrimaryBlockHeights {
+			for _, height := range testCase.unusedPrimaryBlockHeights {
 				delete(primaryHeaders, height)
 			}
 			mockPrimary := mockNodeFromHeadersAndVals(primaryHeaders, primaryValidators)
@@ -168,20 +169,20 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 			mockWitness.On("ReportEvidence", mock.Anything, mock.MatchedBy(func(evidence types.Evidence) bool {
 				evAgainstPrimary := &types.LightClientAttackEvidence{
 					ConflictingBlock: &types.LightBlock{
-						SignedHeader: primaryHeaders[tc.divergenceHeight],
-						ValidatorSet: primaryValidators[tc.divergenceHeight],
+						SignedHeader: primaryHeaders[testCase.divergenceHeight],
+						ValidatorSet: primaryValidators[testCase.divergenceHeight],
 					},
-					CommonHeight: tc.divergenceHeight,
+					CommonHeight: testCase.divergenceHeight,
 				}
 				return bytes.Equal(evidence.Hash(), evAgainstPrimary.Hash())
 			})).Return(nil)
 			mockPrimary.On("ReportEvidence", mock.Anything, mock.MatchedBy(func(evidence types.Evidence) bool {
 				evAgainstWitness := &types.LightClientAttackEvidence{
 					ConflictingBlock: &types.LightBlock{
-						SignedHeader: witnessHeaders[tc.divergenceHeight],
-						ValidatorSet: witnessValidators[tc.divergenceHeight],
+						SignedHeader: witnessHeaders[testCase.divergenceHeight],
+						ValidatorSet: witnessValidators[testCase.divergenceHeight],
 					},
-					CommonHeight: tc.divergenceHeight,
+					CommonHeight: testCase.divergenceHeight,
 				}
 				return bytes.Equal(evidence.Hash(), evAgainstWitness.Hash())
 			})).Return(nil)
@@ -198,12 +199,12 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 				[]provider.Provider{mockWitness},
 				dbs.New(dbm.NewMemDB()),
 				light.Logger(log.TestingLogger()),
-				tc.lightOption,
+				testCase.lightOption,
 			)
 			require.NoError(t, err)
 
 			// Check verification returns an error.
-			_, err = c.VerifyLightBlockAtHeight(ctx, tc.latestHeight, bTime.Add(300*time.Second))
+			_, err = c.VerifyLightBlockAtHeight(ctx, testCase.latestHeight, bTime.Add(300*time.Second))
 			if assert.Error(t, err) {
 				assert.Equal(t, light.ErrLightClientAttack, err)
 			}
