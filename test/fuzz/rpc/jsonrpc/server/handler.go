@@ -1,4 +1,4 @@
-package handler
+package server
 
 import (
 	"bytes"
@@ -39,11 +39,26 @@ func Fuzz(data []byte) int {
 	if err := res.Body.Close(); err != nil {
 		panic(err)
 	}
-	if len(blob) > 0 {
-		recv := new(types.RPCResponse)
-		if err := json.Unmarshal(blob, recv); err != nil {
+	if len(blob) == 0 {
+		return 1
+	}
+
+	if inputJSONIsMultiElementSlice(data) {
+		recv := []types.RPCResponse{}
+		if err := json.Unmarshal(blob, &recv); err != nil {
 			panic(err)
 		}
+		return 1
+	}
+	recv := &types.RPCResponse{}
+	if err := json.Unmarshal(blob, recv); err != nil {
+		panic(err)
 	}
 	return 1
+}
+
+func inputJSONIsMultiElementSlice(input []byte) bool {
+	slice := []interface{}{}
+	err := json.Unmarshal(input, &slice)
+	return err == nil && len(slice) > 1
 }
