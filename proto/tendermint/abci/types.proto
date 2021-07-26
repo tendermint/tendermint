@@ -122,8 +122,9 @@ message RequestPrepareProposal {
   // block_data is an array of transactions that will be included in a block,
   // sent to the app for possible modifications.
   // applications can not exceed the size of the data passed to it.
-  repeated bytes block_data      = 1;
-  int64          block_data_size = 2;
+  repeated bytes block_data = 1;
+  // If an application decides to populate block_data with extra information, they can not exceed this value.
+  int64 block_data_size = 2;
 }
 
 //----------------------------------------
