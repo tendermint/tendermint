@@ -80,6 +80,7 @@ type Node struct {
 	ProxyPort        uint32
 	StartAt          int64
 	BlockSync        string
+	Mempool          string
 	StateSync        bool
 	Database         string
 	ABCIProtocol     Protocol
@@ -168,6 +169,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			PrivvalProtocol:  ProtocolFile,
 			StartAt:          nodeManifest.StartAt,
 			BlockSync:        nodeManifest.BlockSync,
+			Mempool:          nodeManifest.Mempool,
 			StateSync:        nodeManifest.StateSync,
 			PersistInterval:  1,
 			SnapshotInterval: nodeManifest.SnapshotInterval,
@@ -330,6 +332,11 @@ func (n Node) Validate(testnet Testnet) error {
 	case "", "v0", "v2":
 	default:
 		return fmt.Errorf("invalid block sync setting %q", n.BlockSync)
+	}
+	switch n.Mempool {
+	case "", "v0", "v1":
+	default:
+		return fmt.Errorf("invalid mempool version %q", n.Mempool)
 	}
 	switch n.QueueType {
 	case "", "priority", "wdrr", "fifo":
