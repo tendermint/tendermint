@@ -1256,9 +1256,9 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 
 func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.SignedMsgType, index int32) {
 	logger := ps.logger.With(
-		"peerH/R",
+		"peerHR",
 		fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
-		"H/R",
+		"HR",
 		fmt.Sprintf("%d/%d", height, round))
 
 	// NOTE: some may be nil BitArrays -> no side effects.
@@ -1266,7 +1266,7 @@ func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.Sign
 	if psVotes != nil {
 		psVotes.SetIndex(int(index), true)
 	}
-	logger.Debug("peerState setHasVote Maverick", "type", voteType, "index", index, "peer votes", psVotes)
+	logger.Debug("peerState setHasVote Maverick", "type", voteType, "index", index, "peerVotes", psVotes)
 }
 
 // SetHasCommit sets the given vote as known by the peer
@@ -1279,9 +1279,9 @@ func (ps *PeerState) SetHasCommit(commit *types.Commit) {
 
 func (ps *PeerState) setHasCommit(height int64, round int32) {
 	logger := ps.logger.With("peer", ps.peer,
-		"peerH/R",
+		"peerHR",
 		fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
-		"H/R",
+		"HR",
 		fmt.Sprintf("%d/%d", height, round))
 	logger.Debug("setHasCommit")
 
