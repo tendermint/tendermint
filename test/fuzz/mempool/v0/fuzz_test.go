@@ -1,4 +1,4 @@
-package server_test
+package v0_test
 
 import (
 	"io/ioutil"
@@ -7,12 +7,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/test/fuzz/rpc/jsonrpc/server"
+	mempoolv0 "github.com/tendermint/tendermint/test/fuzz/mempool/v0"
 )
 
 const testdataCasesDir = "testdata/cases"
 
-func TestServerTestdataCases(t *testing.T) {
+func TestMempoolTestdataCases(t *testing.T) {
 	entries, err := os.ReadDir(testdataCasesDir)
 	require.NoError(t, err)
 
@@ -27,7 +27,7 @@ func TestServerTestdataCases(t *testing.T) {
 			require.NoError(t, err)
 			input, err := ioutil.ReadAll(f)
 			require.NoError(t, err)
-			server.Fuzz(input)
+			mempoolv0.Fuzz(input)
 		})
 	}
 }
