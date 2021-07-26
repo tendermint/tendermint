@@ -1,4 +1,4 @@
-package secret_connection_test
+package secretconnection_test
 
 import (
 	"io/ioutil"
@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/test/fuzz/p2p/secret_connection"
+	"github.com/tendermint/tendermint/test/fuzz/p2p/secretconnection"
 )
 
 const testdataCasesDir = "testdata/cases"
@@ -27,7 +27,7 @@ func TestSecretConnectionTestdataCases(t *testing.T) {
 			require.NoError(t, err)
 			input, err := ioutil.ReadAll(f)
 			require.NoError(t, err)
-			secret_connection.Fuzz(input)
+			secretconnection.Fuzz(input)
 		})
 	}
 }
