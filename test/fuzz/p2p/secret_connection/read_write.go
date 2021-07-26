@@ -1,4 +1,4 @@
-package secretconnection
+package secret_connection
 
 import (
 	"bytes"
