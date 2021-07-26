@@ -157,6 +157,10 @@ func (b *EventBus) PublishEventFastSyncStatus(data EventDataFastSyncStatus) erro
 	return b.Publish(EventFastSyncStatusValue, data)
 }
 
+func (b *EventBus) PublishEventStateSyncStatus(data EventDataStateSyncStatus) error {
+	return b.Publish(EventStateSyncStatusValue, data)
+}
+
 // PublishEventTx publishes tx event with events from Result. Note it will add
 // predefined keys (EventTypeKey, TxHashKey). Existing events with the same keys
 // will be overwritten.
@@ -314,5 +318,9 @@ func (NopEventBus) PublishEventValidatorSetUpdates(data EventDataValidatorSetUpd
 }
 
 func (NopEventBus) PublishEventFastSyncStatus(data EventDataFastSyncStatus) error {
+	return nil
+}
+
+func (NopEventBus) PublishEventStateSyncStatus(data EventDataStateSyncStatus) error {
 	return nil
 }
