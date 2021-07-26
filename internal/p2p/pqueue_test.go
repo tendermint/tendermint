@@ -41,5 +41,4 @@ func TestCloseWhileDequeueFull(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("pqueue failed to close")
 	}
-
 }
