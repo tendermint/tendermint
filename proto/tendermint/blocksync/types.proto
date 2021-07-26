@@ -1,5 +1,5 @@
 syntax = "proto3";
-package tendermint.blockchain;
+package tendermint.blocksync;
 
 option go_package = "github.com/tendermint/tendermint/proto/tendermint/blocksync";
 
