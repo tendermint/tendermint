@@ -176,7 +176,7 @@ func (app *PersistentKVStoreApplication) PrepareProposal(
 		req.BlockData[1] = []byte("modified tx")
 	}
 
-	return types.ResponsePrepareProposal(req)
+	return types.ResponsePrepareProposal{BlockData: req.BlockData}
 }
 
 //---------------------------------------------
