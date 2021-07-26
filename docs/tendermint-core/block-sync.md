@@ -3,6 +3,7 @@ order: 10
 ---
 
 # Block Sync
+*Formerly known as Fast Sync*
 
 In a proof of work blockchain, syncing with the chain is the same
 process as staying up-to-date with the consensus: download blocks, and
