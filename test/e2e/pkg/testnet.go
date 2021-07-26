@@ -80,6 +80,7 @@ type Node struct {
 	ProxyPort        uint32
 	StartAt          int64
 	FastSync         string
+	Mempool          string
 	StateSync        bool
 	Database         string
 	ABCIProtocol     Protocol
@@ -168,6 +169,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			PrivvalProtocol:  ProtocolFile,
 			StartAt:          nodeManifest.StartAt,
 			FastSync:         nodeManifest.FastSync,
+			Mempool:          nodeManifest.Mempool,
 			StateSync:        nodeManifest.StateSync,
 			PersistInterval:  1,
 			SnapshotInterval: nodeManifest.SnapshotInterval,
@@ -223,14 +225,20 @@ func LoadTestnet(file string) (*Testnet, error) {
 			if peer == nil {
 				return nil, fmt.Errorf("unknown persistent peer %q for node %q", peerName, node.Name)
 			}
+			if peer.Mode == ModeLight {
+				return nil, fmt.Errorf("can not have a light client as a persistent peer (for %q)", node.Name)
+			}
 			node.PersistentPeers = append(node.PersistentPeers, peer)
 		}
 
 		// If there are no seeds or persistent peers specified, default to persistent
-		// connections to all other nodes.
+		// connections to all other full nodes.
 		if len(node.PersistentPeers) == 0 && len(node.Seeds) == 0 {
 			for _, peer := range testnet.Nodes {
 				if peer.Name == node.Name {
+					continue
+				}
+				if peer.Mode == ModeLight {
 					continue
 				}
 				node.PersistentPeers = append(node.PersistentPeers, peer)
@@ -324,6 +332,11 @@ func (n Node) Validate(testnet Testnet) error {
 	case "", "v0", "v2":
 	default:
 		return fmt.Errorf("invalid fast sync setting %q", n.FastSync)
+	}
+	switch n.Mempool {
+	case "", "v0", "v1":
+	default:
+		return fmt.Errorf("invalid mempool version %q", n.Mempool)
 	}
 	switch n.QueueType {
 	case "", "priority", "wdrr", "fifo":

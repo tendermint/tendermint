@@ -32,6 +32,8 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 - configuration values starting with `priv-validator-` have moved to the new
   `priv-validator` section, without the `priv-validator-` prefix.
 
+* Fast Sync v2 has been deprecated, please use v0 to sync a node.
+
 ### CLI Changes
 
 * You must now specify the node mode (validator|full|seed) in `tendermint init [mode]`
@@ -73,6 +75,10 @@ will need to change to accommodate these changes. Most notably:
 - The `node.DefaultNewNode` and `node.NewNode` constructors are no
   longer exported and have been replaced with `node.New` and
   `node.NewDefault` which provide more functional interfaces.
+
+### RPC changes
+
+Mark gRPC in the RPC layer as deprecated and to be removed in 0.36.
 
 ## v0.34.0
 

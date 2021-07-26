@@ -85,7 +85,7 @@ func NewCLI() *CLI {
 				if err := InjectEvidence(cli.testnet, cli.testnet.Evidence); err != nil {
 					return err
 				}
-				if err := Wait(cli.testnet, 1); err != nil { // ensure chain progress
+				if err := Wait(cli.testnet, 5); err != nil { // ensure chain progress
 					return err
 				}
 			}
@@ -276,9 +276,6 @@ Does not run any perbutations.
 			defer loadCancel()
 			go func() {
 				err := Load(ctx, cli.testnet, 1)
-				if err != nil {
-					logger.Error(fmt.Sprintf("Transaction load failed: %v", err.Error()))
-				}
 				chLoadResult <- err
 			}()
 

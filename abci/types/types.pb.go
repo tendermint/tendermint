@@ -1908,16 +1908,17 @@ func (m *ResponseBeginBlock) GetEvents() []Event {
 }
 
 type ResponseCheckTx struct {
-	Code      uint32  `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
-	Data      []byte  `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
-	Log       string  `protobuf:"bytes,3,opt,name=log,proto3" json:"log,omitempty"`
-	Info      string  `protobuf:"bytes,4,opt,name=info,proto3" json:"info,omitempty"`
-	GasWanted int64   `protobuf:"varint,5,opt,name=gas_wanted,proto3" json:"gas_wanted,omitempty"`
-	GasUsed   int64   `protobuf:"varint,6,opt,name=gas_used,proto3" json:"gas_used,omitempty"`
-	Events    []Event `protobuf:"bytes,7,rep,name=events,proto3" json:"events,omitempty"`
-	Codespace string  `protobuf:"bytes,8,opt,name=codespace,proto3" json:"codespace,omitempty"`
-	Sender    string  `protobuf:"bytes,9,opt,name=sender,proto3" json:"sender,omitempty"`
-	Priority  int64   `protobuf:"varint,10,opt,name=priority,proto3" json:"priority,omitempty"`
+	Code         uint32  `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
+	Data         []byte  `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	Log          string  `protobuf:"bytes,3,opt,name=log,proto3" json:"log,omitempty"`
+	Info         string  `protobuf:"bytes,4,opt,name=info,proto3" json:"info,omitempty"`
+	GasWanted    int64   `protobuf:"varint,5,opt,name=gas_wanted,proto3" json:"gas_wanted,omitempty"`
+	GasUsed      int64   `protobuf:"varint,6,opt,name=gas_used,proto3" json:"gas_used,omitempty"`
+	Events       []Event `protobuf:"bytes,7,rep,name=events,proto3" json:"events,omitempty"`
+	Codespace    string  `protobuf:"bytes,8,opt,name=codespace,proto3" json:"codespace,omitempty"`
+	Sender       string  `protobuf:"bytes,9,opt,name=sender,proto3" json:"sender,omitempty"`
+	Priority     int64   `protobuf:"varint,10,opt,name=priority,proto3" json:"priority,omitempty"`
+	MempoolError string  `protobuf:"bytes,11,opt,name=mempool_error,json=mempoolError,proto3" json:"mempool_error,omitempty"`
 }
 
 func (m *ResponseCheckTx) Reset()         { *m = ResponseCheckTx{} }
@@ -2021,6 +2022,13 @@ func (m *ResponseCheckTx) GetPriority() int64 {
 		return m.Priority
 	}
 	return 0
+}
+
+func (m *ResponseCheckTx) GetMempoolError() string {
+	if m != nil {
+		return m.MempoolError
+	}
+	return ""
 }
 
 type ResponseDeliverTx struct {
@@ -5480,6 +5488,13 @@ func (m *ResponseCheckTx) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.MempoolError) > 0 {
+		i -= len(m.MempoolError)
+		copy(dAtA[i:], m.MempoolError)
+		i = encodeVarintTypes(dAtA, i, uint64(len(m.MempoolError)))
+		i--
+		dAtA[i] = 0x5a
+	}
 	if m.Priority != 0 {
 		i = encodeVarintTypes(dAtA, i, uint64(m.Priority))
 		i--
@@ -7166,6 +7181,10 @@ func (m *ResponseCheckTx) Size() (n int) {
 	}
 	if m.Priority != 0 {
 		n += 1 + sovTypes(uint64(m.Priority))
+	}
+	l = len(m.MempoolError)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
 	}
 	return n
 }
@@ -11618,6 +11637,38 @@ func (m *ResponseCheckTx) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
+		case 11:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MempoolError", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.MempoolError = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipTypes(dAtA[iNdEx:])

@@ -2,6 +2,7 @@ package light_test
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -588,6 +589,36 @@ func TestClient_Concurrency(t *testing.T) {
 	wg.Wait()
 }
 
+func TestClient_AddProviders(t *testing.T) {
+	c, err := light.NewClient(
+		ctx,
+		chainID,
+		trustOptions,
+		fullNode,
+		[]provider.Provider{fullNode},
+		dbs.New(dbm.NewMemDB()),
+		light.Logger(log.TestingLogger()),
+	)
+	require.NoError(t, err)
+
+	closeCh := make(chan struct{})
+	go func() {
+		// run verification concurrently to make sure it doesn't dead lock
+		_, err = c.VerifyLightBlockAtHeight(ctx, 2, bTime.Add(2*time.Hour))
+		require.NoError(t, err)
+		close(closeCh)
+	}()
+
+	// NOTE: the light client doesn't check uniqueness of providers
+	c.AddProvider(fullNode)
+	require.Len(t, c.Witnesses(), 2)
+	select {
+	case <-closeCh:
+	case <-time.After(5 * time.Second):
+		t.Fatal("concurent light block verification failed to finish in 5s")
+	}
+}
+
 func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 	c, err := light.NewClient(
 		ctx,
@@ -927,5 +958,63 @@ func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
 			assert.NoError(t, err)
 		}
 	}
+
+}
+
+func TestClientHandlesContexts(t *testing.T) {
+	p := mockp.New(genMockNode(chainID, 100, 10, 1, bTime))
+	genBlock, err := p.LightBlock(ctx, 1)
+	require.NoError(t, err)
+
+	// instantiate the light client with a timeout
+	ctxTimeOut, cancel := context.WithTimeout(ctx, 10*time.Millisecond)
+	defer cancel()
+	_, err = light.NewClient(
+		ctxTimeOut,
+		chainID,
+		light.TrustOptions{
+			Period: 24 * time.Hour,
+			Height: 1,
+			Hash:   genBlock.Hash(),
+		},
+		p,
+		[]provider.Provider{p, p},
+		dbs.New(dbm.NewMemDB()),
+	)
+	require.Error(t, ctxTimeOut.Err())
+	require.Error(t, err)
+	require.True(t, errors.Is(err, context.DeadlineExceeded))
+
+	// instantiate the client for real
+	c, err := light.NewClient(
+		ctx,
+		chainID,
+		light.TrustOptions{
+			Period: 24 * time.Hour,
+			Height: 1,
+			Hash:   genBlock.Hash(),
+		},
+		p,
+		[]provider.Provider{p, p},
+		dbs.New(dbm.NewMemDB()),
+	)
+	require.NoError(t, err)
+
+	// verify a block with a timeout
+	ctxTimeOutBlock, cancel := context.WithTimeout(ctx, 10*time.Millisecond)
+	defer cancel()
+	_, err = c.VerifyLightBlockAtHeight(ctxTimeOutBlock, 100, bTime.Add(100*time.Minute))
+	require.Error(t, ctxTimeOutBlock.Err())
+	require.Error(t, err)
+	require.True(t, errors.Is(err, context.DeadlineExceeded))
+
+	// verify a block with a cancel
+	ctxCancel, cancel := context.WithCancel(ctx)
+	defer cancel()
+	time.AfterFunc(10*time.Millisecond, cancel)
+	_, err = c.VerifyLightBlockAtHeight(ctxCancel, 100, bTime.Add(100*time.Minute))
+	require.Error(t, ctxCancel.Err())
+	require.Error(t, err)
+	require.True(t, errors.Is(err, context.Canceled))
 
 }

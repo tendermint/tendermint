@@ -15,7 +15,6 @@ var (
 	// separate testnet for each combination (Cartesian product) of options.
 	testnetCombinations = map[string][]interface{}{
 		"topology":      {"single", "quad", "large"},
-		"ipv6":          {false, true},
 		"p2p":           {NewP2PMode, LegacyP2PMode, HybridP2PMode},
 		"queueType":     {"priority"}, // "fifo", "wdrr"
 		"initialHeight": {0, 1000},
@@ -24,7 +23,6 @@ var (
 			map[string]string{"initial01": "a", "initial02": "b", "initial03": "c"},
 		},
 		"validators": {"genesis", "initchain"},
-		"keyType":    {types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1},
 	}
 
 	// The following specify randomly chosen values for testnet nodes.
@@ -33,6 +31,7 @@ var (
 	nodePrivvalProtocols = uniformChoice{"file", "unix", "tcp", "grpc"}
 	// FIXME: v2 disabled due to flake
 	nodeFastSyncs         = uniformChoice{"v0"} // "v2"
+	nodeMempools          = uniformChoice{"v0", "v1"}
 	nodeStateSyncs        = uniformChoice{false, true}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 3}
@@ -45,6 +44,8 @@ var (
 	}
 	evidence = uniformChoice{0, 1, 10}
 	txSize   = uniformChoice{1024, 10240} // either 1kb or 10kb
+	ipv6     = uniformChoice{false, true}
+	keyType  = uniformChoice{types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1}
 )
 
 // Generate generates random testnets using the given RNG.
@@ -61,6 +62,12 @@ func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 		manifest, err := generateTestnet(r, opt)
 		if err != nil {
 			return nil, err
+		}
+
+		if len(manifest.Nodes) == 1 {
+			if opt["p2p"] == HybridP2PMode {
+				continue
+			}
 		}
 		manifests = append(manifests, manifest)
 	}
@@ -84,13 +91,13 @@ const (
 // generateTestnet generates a single testnet with the given options.
 func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, error) {
 	manifest := e2e.Manifest{
-		IPv6:             opt["ipv6"].(bool),
+		IPv6:             ipv6.Choose(r).(bool),
 		InitialHeight:    int64(opt["initialHeight"].(int)),
 		InitialState:     opt["initialState"].(map[string]string),
 		Validators:       &map[string]int64{},
 		ValidatorUpdates: map[string]map[string]int64{},
 		Nodes:            map[string]*e2e.ManifestNode{},
-		KeyType:          opt["keyType"].(string),
+		KeyType:          keyType.Choose(r).(string),
 		Evidence:         evidence.Choose(r).(int),
 		QueueType:        opt["queueType"].(string),
 		TxSize:           int64(txSize.Choose(r).(int)),
@@ -267,6 +274,7 @@ func generateNode(
 		ABCIProtocol:     nodeABCIProtocols.Choose(r).(string),
 		PrivvalProtocol:  nodePrivvalProtocols.Choose(r).(string),
 		FastSync:         nodeFastSyncs.Choose(r).(string),
+		Mempool:          nodeMempools.Choose(r).(string),
 		StateSync:        nodeStateSyncs.Choose(r).(bool) && startAt > 0,
 		PersistInterval:  ptrUint64(uint64(nodePersistIntervals.Choose(r).(int))),
 		SnapshotInterval: uint64(nodeSnapshotIntervals.Choose(r).(int)),
