@@ -380,35 +380,37 @@ func makeNode(config *cfg.Config,
 	pexCh := pex.ChannelDescriptor()
 	transport.AddChannelDescriptors([]*p2p.ChannelDescriptor{&pexCh})
 
-	if config.P2P.DisableLegacy {
-		addrBook = nil
-		pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		// setup Transport and Switch
-		sw = createSwitch(
-			config, transport, p2pMetrics, mpReactorShim, bcReactorForSwitch,
-			stateSyncReactorShim, csReactorShim, evReactorShim, proxyApp, nodeInfo, nodeKey, p2pLogger,
-		)
+	if config.P2P.PexReactor {
+		if config.P2P.DisableLegacy {
+			addrBook = nil
+			pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			// setup Transport and Switch
+			sw = createSwitch(
+				config, transport, p2pMetrics, mpReactorShim, bcReactorForSwitch,
+				stateSyncReactorShim, csReactorShim, evReactorShim, proxyApp, nodeInfo, nodeKey, p2pLogger,
+			)
 
-		err = sw.AddPersistentPeers(strings.SplitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
-		if err != nil {
-			return nil, fmt.Errorf("could not add peers from persistent-peers field: %w", err)
-		}
+			err = sw.AddPersistentPeers(strings.SplitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
+			if err != nil {
+				return nil, fmt.Errorf("could not add peers from persistent-peers field: %w", err)
+			}
 
-		err = sw.AddUnconditionalPeerIDs(strings.SplitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
-		if err != nil {
-			return nil, fmt.Errorf("could not add peer ids from unconditional_peer_ids field: %w", err)
-		}
+			err = sw.AddUnconditionalPeerIDs(strings.SplitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
+			if err != nil {
+				return nil, fmt.Errorf("could not add peer ids from unconditional_peer_ids field: %w", err)
+			}
 
-		addrBook, err = createAddrBookAndSetOnSwitch(config, sw, p2pLogger, nodeKey)
-		if err != nil {
-			return nil, fmt.Errorf("could not create addrbook: %w", err)
-		}
+			addrBook, err = createAddrBookAndSetOnSwitch(config, sw, p2pLogger, nodeKey)
+			if err != nil {
+				return nil, fmt.Errorf("could not create addrbook: %w", err)
+			}
 
-		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
+			pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
+		}
 	}
 
 	if config.RPC.PprofListenAddress != "" {
