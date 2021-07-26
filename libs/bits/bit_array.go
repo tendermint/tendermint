@@ -318,7 +318,6 @@ func (bA *BitArray) CountTrueBits() int {
 	return bits
 }
 
-
 func (bA *BitArray) stringIndented(indent string) string {
 	lines := []string{}
 	bits := ""

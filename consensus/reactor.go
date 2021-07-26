@@ -1349,7 +1349,6 @@ func (ps *PeerState) SetHasVote(vote *types.Vote, cs *State) {
 			fmt.Sprintf("%d/%d", cs.RoundState.Height, cs.RoundState.Round))
 	}
 
-
 	ps.setHasVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex, logger)
 }
 
@@ -1363,7 +1362,6 @@ func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.Sign
 			"HR",
 			fmt.Sprintf("%d/%d", height, round))
 	}
-
 
 	// NOTE: some may be nil BitArrays -> no side effects.
 	psVotes := ps.getVoteBitArray(height, round, voteType)
