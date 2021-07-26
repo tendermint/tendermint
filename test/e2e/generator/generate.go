@@ -31,6 +31,7 @@ var (
 	nodePrivvalProtocols = uniformChoice{"file", "unix", "tcp", "grpc"}
 	// FIXME: v2 disabled due to flake
 	nodeFastSyncs         = uniformChoice{"v0"} // "v2"
+	nodeMempools          = uniformChoice{"v0", "v1"}
 	nodeStateSyncs        = uniformChoice{false, true}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 3}
@@ -273,6 +274,7 @@ func generateNode(
 		ABCIProtocol:     nodeABCIProtocols.Choose(r).(string),
 		PrivvalProtocol:  nodePrivvalProtocols.Choose(r).(string),
 		FastSync:         nodeFastSyncs.Choose(r).(string),
+		Mempool:          nodeMempools.Choose(r).(string),
 		StateSync:        nodeStateSyncs.Choose(r).(bool) && startAt > 0,
 		PersistInterval:  ptrUint64(uint64(nodePersistIntervals.Choose(r).(int))),
 		SnapshotInterval: uint64(nodeSnapshotIntervals.Choose(r).(int)),
