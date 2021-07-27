@@ -89,19 +89,18 @@ func ExampleLightClient() {
 	if err != nil {
 		stdlog.Fatal(err)
 	}
-	
+
 	// retrieve light block at height 3
 	_, err = c.TrustedLightBlock(3)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
 
-	
 	// update to the latest height
 	lb, err := c.Update(ctx, time.Now())
 	if err != nil {
 		stdlog.Fatal(err)
 	}
-	
+
 	logger.Info("verified light block", "light-block", lb)
 }
