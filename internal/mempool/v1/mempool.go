@@ -748,7 +748,7 @@ func (txmp *TxMempool) insertTx(wtx *WrappedTx) {
 	// Insert the transaction into the gossip index and mark the reference to the
 	// linked-list element, which will be needed at a later point when the
 	// transaction is removed.
-	gossipEl := txmp.gotsipIndex.PushBack(wtx)
+	gossipEl := txmp.gossipIndex.PushBack(wtx)
 	wtx.gossipEl = gossipEl
 
 	atomic.AddInt64(&txmp.sizeBytes, int64(wtx.Size()))
