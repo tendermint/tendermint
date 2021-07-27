@@ -343,7 +343,7 @@ func createBlockchainReactor(
 
 	logger = logger.With("module", "blockchain")
 
-	switch config.FastSync.Version {
+	switch config.BlockSync.Version {
 	case cfg.BlockSyncV0:
 		reactorShim := p2p.NewReactorShim(logger, "BlockchainShim", bcv0.ChannelShims)
 
@@ -375,7 +375,7 @@ func createBlockchainReactor(
 		return nil, nil, errors.New("block sync version v2 is no longer supported. Please use v0")
 
 	default:
-		return nil, nil, fmt.Errorf("unknown block sync version %s", config.FastSync.Version)
+		return nil, nil, fmt.Errorf("unknown block sync version %s", config.BlockSync.Version)
 	}
 }
 
@@ -725,7 +725,7 @@ func makeNodeInfo(
 	}
 
 	var bcChannel byte
-	switch config.FastSync.Version {
+	switch config.BlockSync.Version {
 	case cfg.BlockSyncV0:
 		bcChannel = byte(bcv0.BlockchainChannel)
 
@@ -733,7 +733,7 @@ func makeNodeInfo(
 		bcChannel = bcv2.BlockchainChannel
 
 	default:
-		return types.NodeInfo{}, fmt.Errorf("unknown blocksync version %s", config.FastSync.Version)
+		return types.NodeInfo{}, fmt.Errorf("unknown blocksync version %s", config.BlockSync.Version)
 	}
 
 	nodeInfo := types.NodeInfo{

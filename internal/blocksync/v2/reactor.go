@@ -36,7 +36,7 @@ type BlockchainReactor struct {
 	p2p.BaseReactor
 
 	blockSync   *sync.AtomicBool // enable block sync on start when it's been Set
-	stateSynced bool             // set to true when SwitchToFastSync is called by state sync
+	stateSynced bool             // set to true when SwitchToBlockSync is called by state sync
 	scheduler   *Routine
 	processor   *Routine
 	logger      log.Logger
@@ -179,8 +179,8 @@ func (r *BlockchainReactor) endSync() {
 	r.processor.stop()
 }
 
-// SwitchToFastSync is called by the state sync reactor when switching to block sync.
-func (r *BlockchainReactor) SwitchToFastSync(state state.State) error {
+// SwitchToBlockSync is called by the state sync reactor when switching to block sync.
+func (r *BlockchainReactor) SwitchToBlockSync(state state.State) error {
 	r.stateSynced = true
 	state = state.Copy()
 

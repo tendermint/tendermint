@@ -371,9 +371,9 @@ func (r *Reactor) processPeerUpdates() {
 	}
 }
 
-// SwitchToFastSync is called by the state sync reactor when switching to fast
+// SwitchToBlockSync is called by the state sync reactor when switching to fast
 // sync.
-func (r *Reactor) SwitchToFastSync(state sm.State) error {
+func (r *Reactor) SwitchToBlockSync(state sm.State) error {
 	r.blockSync.Set()
 	r.initialState = state
 	r.pool.height = state.LastBlockHeight + 1

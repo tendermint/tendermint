@@ -299,7 +299,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	if node.BlockSync == "" {
 		cfg.FastSyncMode = false
 	} else {
-		cfg.FastSync.Version = node.BlockSync
+		cfg.BlockSync.Version = node.BlockSync
 	}
 
 	if node.StateSync {

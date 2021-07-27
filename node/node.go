@@ -610,7 +610,7 @@ func (n *nodeImpl) OnStart() error {
 	}
 
 	if n.config.Mode != cfg.ModeSeed {
-		if n.config.FastSync.Version == cfg.BlockSyncV0 {
+		if n.config.BlockSync.Version == cfg.BlockSyncV0 {
 			// Start the real blockchain reactor separately since the switch uses the shim.
 			if err := n.bcReactor.Start(); err != nil {
 				return err
@@ -695,7 +695,7 @@ func (n *nodeImpl) OnStop() {
 
 	if n.config.Mode != cfg.ModeSeed {
 		// now stop the reactors
-		if n.config.FastSync.Version == cfg.BlockSyncV0 {
+		if n.config.BlockSync.Version == cfg.BlockSyncV0 {
 			// Stop the real blockchain reactor separately since the switch uses the shim.
 			if err := n.bcReactor.Stop(); err != nil {
 				n.Logger.Error("failed to stop the blockchain reactor", "err", err)
