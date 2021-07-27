@@ -55,6 +55,8 @@ type Reactor struct {
 
 	mtx          tmsync.Mutex
 	peerRoutines map[types.NodeID]*tmsync.Closer
+
+	panicHandler func(interface{})
 }
 
 // NewReactor returns a reference to a new reactor.
@@ -76,10 +78,15 @@ func NewReactor(
 		peerUpdates:  peerUpdates,
 		closeCh:      make(chan struct{}),
 		peerRoutines: make(map[types.NodeID]*tmsync.Closer),
+		panicHandler: defaultPanicHandler,
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Mempool", r)
 	return r
+}
+
+func defaultPanicHandler(r interface{}) {
+	panic(r)
 }
 
 // GetChannelShims returns a map of ChannelDescriptorShim objects, where each
@@ -187,7 +194,8 @@ func (r *Reactor) handleMempoolMessage(envelope p2p.Envelope) error {
 func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
-			err = fmt.Errorf("panic in processing message: %v", e)
+			r.panicHandler(e)
+			err = fmt.Errorf("panic in processing message: %v", r)
 			r.Logger.Error(
 				"recovering from processing message panic",
 				"err", err,
@@ -317,9 +325,10 @@ func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer)
 		r.peerWG.Done()
 
 		if e := recover(); e != nil {
+			r.panicHandler(e)
 			r.Logger.Error(
 				"recovering from broadcasting mempool loop",
-				"err", e,
+				"err", r,
 				"stack", string(debug.Stack()),
 			)
 		}
