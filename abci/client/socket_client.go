@@ -417,6 +417,17 @@ func (cli *socketClient) ApplySnapshotChunkSync(
 	return reqres.Response.GetApplySnapshotChunk(), cli.Error()
 }
 
+func (cli *socketClient) PrepareProposal(
+	ctx context.Context,
+	req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+
+	reqres, err := cli.queueRequestAndFlush(ctx, types.ToRequestPrepareProposal(req))
+	if err != nil {
+		return nil, err
+	}
+	return reqres.Response.GetPrepareProposal(), nil
+}
+
 //----------------------------------------
 
 func (cli *socketClient) queueRequest(req *types.Request) *ReqRes {
@@ -492,6 +503,8 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_ListSnapshots)
 	case *types.Request_OfferSnapshot:
 		_, ok = res.Value.(*types.Response_OfferSnapshot)
+	case *types.Request_PrepareProposal:
+		_, ok = res.Value.(*types.Response_PrepareProposal)
 	}
 	return ok
 }

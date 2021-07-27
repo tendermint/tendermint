@@ -92,6 +92,28 @@ func (txs Txs) Proof(i int) TxProof {
 	}
 }
 
+// ToSliceOfBytes converts a Txs to slice of byte slices.
+//
+// NOTE: This method should become obsolete once Txs is switched to [][]byte.
+// ref: #2603
+// TODO This function is to disappear when TxRecord is introduced
+func (txs Txs) ToSliceOfBytes() [][]byte {
+	txBzs := make([][]byte, len(txs))
+	for i := 0; i < len(txs); i++ {
+		txBzs[i] = txs[i]
+	}
+	return txBzs
+}
+
+// ToTxs converts a raw slice of byte slices into a Txs type.
+func ToTxs(txs [][]byte) Txs {
+	txBzs := make(Txs, len(txs))
+	for i := 0; i < len(txs); i++ {
+		txBzs[i] = txs[i]
+	}
+	return txBzs
+}
+
 // TxProof represents a Merkle proof of the presence of a transaction in the Merkle tree.
 type TxProof struct {
 	RootHash tmbytes.HexBytes `json:"root_hash"`
