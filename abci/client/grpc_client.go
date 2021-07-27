@@ -368,3 +368,11 @@ func (cli *grpcClient) ApplySnapshotChunk(
 	req := types.ToRequestApplySnapshotChunk(params)
 	return cli.client.ApplySnapshotChunk(ctx, req.GetApplySnapshotChunk(), grpc.WaitForReady(true))
 }
+
+func (cli *grpcClient) PrepareProposal(
+	ctx context.Context,
+	params types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+
+	req := types.ToRequestPrepareProposal(params)
+	return cli.client.PrepareProposal(ctx, req.GetPrepareProposal(), grpc.WaitForReady(true))
+}

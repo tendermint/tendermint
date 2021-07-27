@@ -20,6 +20,7 @@ type AppConnConsensus interface {
 
 	InitChain(context.Context, types.RequestInitChain) (*types.ResponseInitChain, error)
 
+	PrepareProposal(context.Context, types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error)
 	BeginBlock(context.Context, types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	DeliverTx(context.Context, types.RequestDeliverTx) (*types.ResponseDeliverTx, error)
 	EndBlock(context.Context, types.RequestEndBlock) (*types.ResponseEndBlock, error)
@@ -62,6 +63,8 @@ type appConnConsensus struct {
 	appConn abciclient.Client
 }
 
+var _ AppConnConsensus = (*appConnConsensus)(nil)
+
 func NewAppConnConsensus(appConn abciclient.Client, metrics *Metrics) AppConnConsensus {
 	return &appConnConsensus{
 		metrics: metrics,
@@ -83,6 +86,14 @@ func (app *appConnConsensus) InitChain(
 ) (*types.ResponseInitChain, error) {
 	defer addTimeSample(app.metrics.MethodTiming.With("method", "init_chain", "type", "sync"))()
 	return app.appConn.InitChain(ctx, req)
+}
+
+func (app *appConnConsensus) PrepareProposal(
+	ctx context.Context,
+	req types.RequestPrepareProposal,
+) (*types.ResponsePrepareProposal, error) {
+	defer addTimeSample(app.metrics.MethodTiming.With("method", "prepare_proposal", "type", "sync"))()
+	return app.appConn.PrepareProposal(ctx, req)
 }
 
 func (app *appConnConsensus) BeginBlock(

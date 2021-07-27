@@ -404,6 +404,17 @@ func (cli *socketClient) ApplySnapshotChunk(
 	return reqres.Response.GetApplySnapshotChunk(), nil
 }
 
+func (cli *socketClient) PrepareProposal(
+	ctx context.Context,
+	req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+
+	reqres, err := cli.queueRequestAndFlush(ctx, types.ToRequestPrepareProposal(req))
+	if err != nil {
+		return nil, err
+	}
+	return reqres.Response.GetPrepareProposal(), nil
+}
+
 //----------------------------------------
 
 // queueRequest enqueues req onto the queue. If the queue is full, it ether
@@ -527,6 +538,8 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_ListSnapshots)
 	case *types.Request_OfferSnapshot:
 		_, ok = res.Value.(*types.Response_OfferSnapshot)
+	case *types.Request_PrepareProposal:
+		_, ok = res.Value.(*types.Response_PrepareProposal)
 	}
 	return ok
 }
