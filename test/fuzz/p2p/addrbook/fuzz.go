@@ -1,5 +1,5 @@
 // nolint: gosec
-package addr
+package addrbook
 
 import (
 	"encoding/json"

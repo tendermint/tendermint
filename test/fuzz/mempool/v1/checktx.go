@@ -1,4 +1,4 @@
-package checktx
+package v1
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/mempool"
-	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
+	mempoolv1 "github.com/tendermint/tendermint/internal/mempool/v0"
 	"github.com/tendermint/tendermint/proxy"
 )
 
@@ -24,7 +24,7 @@ func init() {
 	cfg := config.DefaultMempoolConfig()
 	cfg.Broadcast = false
 
-	mp = mempoolv0.NewCListMempool(cfg, appConnMem, 0)
+	mp = mempoolv1.NewCListMempool(cfg, appConnMem, 0)
 }
 
 func Fuzz(data []byte) int {

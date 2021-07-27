@@ -23,9 +23,14 @@ jobs:
         working-directory: test/fuzz
         run: go get -u github.com/dvyukov/go-fuzz/go-fuzz github.com/dvyukov/go-fuzz/go-fuzz-build
 
-      - name: Fuzz mempool
+      - name: Fuzz mempool-v1
         working-directory: test/fuzz
-        run: timeout -s SIGINT --preserve-status 10m make fuzz-mempool
+        run: timeout -s SIGINT --preserve-status 10m make fuzz-mempool-v1
+        continue-on-error: true
+
+      - name: Fuzz mempool-v0
+        working-directory: test/fuzz
+        run: timeout -s SIGINT --preserve-status 10m make fuzz-mempool-v0
         continue-on-error: true
 
       - name: Fuzz p2p-addrbook
