@@ -114,7 +114,7 @@ func TestConfig() *Config {
 		P2P:             TestP2PConfig(),
 		Mempool:         TestMempoolConfig(),
 		StateSync:       TestStateSyncConfig(),
-		BlockSync:        TestBlockSyncConfig(),
+		BlockSync:       TestBlockSyncConfig(),
 		Consensus:       TestConsensusConfig(),
 		TxIndex:         TestTxIndexConfig(),
 		Instrumentation: TestInstrumentationConfig(),

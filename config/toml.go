@@ -459,7 +459,7 @@ fetchers = "{{ .StateSync.Fetchers }}"
 # Block Sync version to use:
 #   1) "v0" (default) - the legacy block sync implementation
 #   2) "v2" - DEPRECATED, please use v0
-version = "{{ .FastSync.Version }}"
+version = "{{ .BlockSync.Version }}"
 
 #######################################################
 ###         Consensus Configuration Options         ###
