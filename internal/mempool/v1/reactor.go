@@ -384,9 +384,6 @@ func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer)
 
 		select {
 		case <-nextGossipTx.NextWaitChan():
-			// If there is a next element in gossip index, we point memTx to that node's
-			// value, otherwise we reset memTx to nil which will be checked at the
-			// parent for loop.
 			nextGossipTx = nextGossipTx.Next()
 
 		case <-closer.Done():
