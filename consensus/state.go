@@ -1196,9 +1196,10 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 		cs.Logger.Error("propose step; failed signing proposal; couldn't get pubKey", "height", height, "round", round, "err", err)
 		return
 	}
+	messageBytes := types.ProposalBlockSignBytes(cs.state.ChainID, p)
 	cs.Logger.Debug("signing proposal", "height", proposal.Height, "round", proposal.Round,
-		"proposerProTxHash", proTxHash.ShortString(), "public key", pubKey.Bytes(), "quorum type",
-		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash)
+		"proposerProTxHash", proTxHash.ShortString(), "publicKey", pubKey.Bytes(), "proposalBytes", messageBytes, "quorumType",
+		validatorsAtProposalHeight.QuorumType, "quorumHash", validatorsAtProposalHeight.QuorumHash)
 
 	if _, err := cs.privValidator.SignProposal(cs.state.ChainID, validatorsAtProposalHeight.QuorumType, validatorsAtProposalHeight.QuorumHash, p); err == nil {
 		proposal.Signature = p.Signature
@@ -2511,6 +2512,11 @@ func (cs *State) signVote(
 	v := vote.ToProto()
 	// fmt.Printf("validators for signing vote are %v\n", cs.state.Validators)
 	err := cs.privValidator.SignVote(cs.state.ChainID, cs.state.Validators.QuorumType, cs.state.Validators.QuorumHash, v)
+	if err == nil {
+		blockSignBytes := types.VoteBlockSignBytes(cs.state.ChainID, v)
+		cs.Logger.Debug("signed vote", "quorumType", cs.state.Validators.QuorumType,
+			"quorumHash", cs.state.Validators.QuorumHash, "vote", v, "signBytes", blockSignBytes)
+	}
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
 
