@@ -45,6 +45,7 @@ type Client interface {
 	Query(context.Context, types.RequestQuery) (*types.ResponseQuery, error)
 	Commit(context.Context) (*types.ResponseCommit, error)
 	InitChain(context.Context, types.RequestInitChain) (*types.ResponseInitChain, error)
+	PrepareProposal(context.Context, types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error)
 	BeginBlock(context.Context, types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	EndBlock(context.Context, types.RequestEndBlock) (*types.ResponseEndBlock, error)
 	ListSnapshots(context.Context, types.RequestListSnapshots) (*types.ResponseListSnapshots, error)
