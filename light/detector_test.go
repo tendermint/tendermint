@@ -138,7 +138,8 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 				// validators don't change in this network (however we still use a map just for convenience)
 				primaryValidators = make(map[int64]*types.ValidatorSet, testCase.latestHeight)
 			)
-			witnessHeaders, witnessValidators, chainKeys := genLightBlocksWithKeys(chainID, testCase.latestHeight+1, valSize, 2, bTime)
+			witnessHeaders, witnessValidators, chainKeys := genLightBlocksWithKeys(chainID,
+				testCase.latestHeight+1, valSize, 2, bTime)
 			for height := int64(1); height <= testCase.latestHeight; height++ {
 				if height < testCase.divergenceHeight {
 					primaryHeaders[height] = witnessHeaders[height]
