@@ -1,4 +1,4 @@
-package blockchain_test
+package blocksync_test
 
 import (
 	"encoding/hex"
@@ -8,7 +8,7 @@ import (
 	proto "github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
-	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
+	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
 	"github.com/tendermint/tendermint/types"
 )
 

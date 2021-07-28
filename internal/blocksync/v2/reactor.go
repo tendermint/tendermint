@@ -7,14 +7,14 @@ import (
 
 	proto "github.com/gogo/protobuf/proto"
 
-	bc "github.com/tendermint/tendermint/internal/blockchain"
-	"github.com/tendermint/tendermint/internal/blockchain/v2/internal/behavior"
+	bc "github.com/tendermint/tendermint/internal/blocksync"
+	"github.com/tendermint/tendermint/internal/blocksync/v2/internal/behavior"
 	cons "github.com/tendermint/tendermint/internal/consensus"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/sync"
-	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
+	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -31,12 +31,12 @@ type blockStore interface {
 	Height() int64
 }
 
-// BlockchainReactor handles fast sync protocol.
+// BlockchainReactor handles block sync protocol.
 type BlockchainReactor struct {
 	p2p.BaseReactor
 
-	fastSync    *sync.AtomicBool // enable fast sync on start when it's been Set
-	stateSynced bool             // set to true when SwitchToFastSync is called by state sync
+	blockSync   *sync.AtomicBool // enable block sync on start when it's been Set
+	stateSynced bool             // set to true when SwitchToBlockSync is called by state sync
 	scheduler   *Routine
 	processor   *Routine
 	logger      log.Logger
@@ -44,7 +44,7 @@ type BlockchainReactor struct {
 	mtx           tmsync.RWMutex
 	maxPeerHeight int64
 	syncHeight    int64
-	events        chan Event // non-nil during a fast sync
+	events        chan Event // non-nil during a block sync
 
 	reporter behavior.Reporter
 	io       iIO
@@ -61,7 +61,7 @@ type blockApplier interface {
 
 // XXX: unify naming in this package around tmState
 func newReactor(state state.State, store blockStore, reporter behavior.Reporter,
-	blockApplier blockApplier, fastSync bool, metrics *cons.Metrics) *BlockchainReactor {
+	blockApplier blockApplier, blockSync bool, metrics *cons.Metrics) *BlockchainReactor {
 	initHeight := state.LastBlockHeight + 1
 	if initHeight == 1 {
 		initHeight = state.InitialHeight
@@ -78,7 +78,7 @@ func newReactor(state state.State, store blockStore, reporter behavior.Reporter,
 		store:           store,
 		reporter:        reporter,
 		logger:          log.NewNopLogger(),
-		fastSync:        sync.NewBool(fastSync),
+		blockSync:       sync.NewBool(blockSync),
 		syncStartHeight: initHeight,
 		syncStartTime:   time.Time{},
 		lastSyncRate:    0,
@@ -90,10 +90,10 @@ func NewBlockchainReactor(
 	state state.State,
 	blockApplier blockApplier,
 	store blockStore,
-	fastSync bool,
+	blockSync bool,
 	metrics *cons.Metrics) *BlockchainReactor {
 	reporter := behavior.NewMockReporter()
-	return newReactor(state, store, reporter, blockApplier, fastSync, metrics)
+	return newReactor(state, store, reporter, blockApplier, blockSync, metrics)
 }
 
 // SetSwitch implements Reactor interface.
@@ -137,22 +137,22 @@ func (r *BlockchainReactor) SetLogger(logger log.Logger) {
 // Start implements cmn.Service interface
 func (r *BlockchainReactor) Start() error {
 	r.reporter = behavior.NewSwitchReporter(r.BaseReactor.Switch)
-	if r.fastSync.IsSet() {
+	if r.blockSync.IsSet() {
 		err := r.startSync(nil)
 		if err != nil {
-			return fmt.Errorf("failed to start fast sync: %w", err)
+			return fmt.Errorf("failed to start block sync: %w", err)
 		}
 	}
 	return nil
 }
 
-// startSync begins a fast sync, signaled by r.events being non-nil. If state is non-nil,
+// startSync begins a block sync, signaled by r.events being non-nil. If state is non-nil,
 // the scheduler and processor is updated with this state on startup.
 func (r *BlockchainReactor) startSync(state *state.State) error {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 	if r.events != nil {
-		return errors.New("fast sync already in progress")
+		return errors.New("block sync already in progress")
 	}
 	r.events = make(chan Event, chBufferSize)
 	go r.scheduler.start()
@@ -167,7 +167,7 @@ func (r *BlockchainReactor) startSync(state *state.State) error {
 	return nil
 }
 
-// endSync ends a fast sync
+// endSync ends a block sync
 func (r *BlockchainReactor) endSync() {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
@@ -179,8 +179,8 @@ func (r *BlockchainReactor) endSync() {
 	r.processor.stop()
 }
 
-// SwitchToFastSync is called by the state sync reactor when switching to fast sync.
-func (r *BlockchainReactor) SwitchToFastSync(state state.State) error {
+// SwitchToBlockSync is called by the state sync reactor when switching to block sync.
+func (r *BlockchainReactor) SwitchToBlockSync(state state.State) error {
 	r.stateSynced = true
 	state = state.Copy()
 
@@ -434,7 +434,7 @@ func (r *BlockchainReactor) demux(events <-chan Event) {
 					} else {
 						r.lastSyncRate = 0.9*r.lastSyncRate + 0.1*newSyncRate
 					}
-					r.logger.Info("Fast Sync Rate", "height", r.syncHeight,
+					r.logger.Info("block sync Rate", "height", r.syncHeight,
 						"max_peer_height", r.maxPeerHeight, "blocks/s", r.lastSyncRate)
 					lastHundred = time.Now()
 				}
@@ -442,12 +442,12 @@ func (r *BlockchainReactor) demux(events <-chan Event) {
 			case pcBlockVerificationFailure:
 				r.scheduler.send(event)
 			case pcFinished:
-				r.logger.Info("Fast sync complete, switching to consensus")
+				r.logger.Info("block sync complete, switching to consensus")
 				if !r.io.trySwitchToConsensus(event.tmState, event.blocksSynced > 0 || r.stateSynced) {
 					r.logger.Error("Failed to switch to consensus reactor")
 				}
 				r.endSync()
-				r.fastSync.UnSet()
+				r.blockSync.UnSet()
 				return
 			case noOpEvent:
 			default:
@@ -617,14 +617,14 @@ func (r *BlockchainReactor) GetMaxPeerBlockHeight() int64 {
 }
 
 func (r *BlockchainReactor) GetTotalSyncedTime() time.Duration {
-	if !r.fastSync.IsSet() || r.syncStartTime.IsZero() {
+	if !r.blockSync.IsSet() || r.syncStartTime.IsZero() {
 		return time.Duration(0)
 	}
 	return time.Since(r.syncStartTime)
 }
 
 func (r *BlockchainReactor) GetRemainingSyncTime() time.Duration {
-	if !r.fastSync.IsSet() {
+	if !r.blockSync.IsSet() {
 		return time.Duration(0)
 	}
 

@@ -36,7 +36,7 @@ proxy-app = "tcp://127.0.0.1:26658"
 # A custom human readable name for this node
 moniker = "anonymous"
 
-# If this node is many blocks behind the tip of the chain, FastSync
+# If this node is many blocks behind the tip of the chain, BlockSync
 # allows them to catchup quickly by downloading blocks in parallel
 # and verifying their commits
 fast-sync = true
@@ -354,12 +354,12 @@ discovery-time = "15s"
 temp-dir = ""
 
 #######################################################
-###       Fast Sync Configuration Connections       ###
+###       BlockSync Configuration Connections       ###
 #######################################################
 [fastsync]
 
-# Fast Sync version to use:
-#   1) "v0" (default) - the legacy fast sync implementation
+# Block Sync version to use:
+#   1) "v0" (default) - the legacy block sync implementation
 #   2) "v2" - complete redesign of v0, optimized for testability & readability
 version = "v0"
 
