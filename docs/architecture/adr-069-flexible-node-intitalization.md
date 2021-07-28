@@ -132,7 +132,8 @@ startup/shutdown in a consistent order.
 Consensus, blocksync (nee fast sync.), and statesync all depend on
 each other, and have significant initialization dependencies that are
 presently encoded in the `node` package, and as part of this change,
-a new package/component will be added that
+a new package/component will encapsulate the initialization of this
+area of functionality.
 
 In order to support replacement of a component, a new public function
 will be added to the public interface of `node` with a signature that
