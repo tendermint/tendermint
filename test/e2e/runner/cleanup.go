@@ -33,9 +33,8 @@ func cleanupDocker() error {
 		return err
 	}
 
-	err = exec("bash", "-c", fmt.Sprintf(
+	return exec("bash", "-c", fmt.Sprintf(
 		"docker network ls -q --filter label=e2e | xargs %v docker network rm", xargsR))
-	return err
 }
 
 // cleanupDir cleans up a testnet directory
