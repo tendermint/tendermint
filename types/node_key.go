@@ -34,10 +34,7 @@ func (nodeKey NodeKey) SaveAs(filePath string) error {
 		return err
 	}
 	err = ioutil.WriteFile(filePath, jsonBytes, 0600)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // LoadOrGenNodeKey attempts to load the NodeKey from the given filePath. If

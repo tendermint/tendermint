@@ -662,9 +662,5 @@ func (store dbStore) saveConsensusParamsInfo(
 	}
 
 	err = batch.Set(consensusParamsKey(nextHeight), bz)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
