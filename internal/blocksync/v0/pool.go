@@ -65,7 +65,7 @@ type BlockRequest struct {
 	PeerID types.NodeID
 }
 
-// BlockPool keeps track of the fast sync peers, block requests and block responses.
+// BlockPool keeps track of the block sync peers, block requests and block responses.
 type BlockPool struct {
 	service.BaseService
 	lastAdvance time.Time

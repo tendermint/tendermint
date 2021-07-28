@@ -5,7 +5,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/internal/p2p"
-	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
+	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -42,7 +42,7 @@ const (
 )
 
 type consensusReactor interface {
-	// for when we switch from blockchain reactor and fast sync to
+	// for when we switch from blockchain reactor and block sync to
 	// the consensus machine
 	SwitchToConsensus(state state.State, skipWAL bool)
 }
