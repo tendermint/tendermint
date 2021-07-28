@@ -255,8 +255,7 @@ func verifyTimeStamp(tb string) error {
 
 	if rows.Next() {
 		var ts string
-		err = rows.Scan(&ts)
-		return err
+		return rows.Scan(&ts)
 	}
 
 	return errors.New("no result")

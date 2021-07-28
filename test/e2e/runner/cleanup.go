@@ -15,8 +15,7 @@ func Cleanup(testnet *e2e.Testnet) error {
 	if err != nil {
 		return err
 	}
-	err = cleanupDir(testnet.Dir)
-	return err
+	return cleanupDir(testnet.Dir)
 }
 
 // cleanupDocker removes all E2E resources (with label e2e=True), regardless
@@ -67,6 +66,5 @@ func cleanupDir(dir string) error {
 		return err
 	}
 
-	err = os.RemoveAll(dir)
-	return err
+	return os.RemoveAll(dir)
 }

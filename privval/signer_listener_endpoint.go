@@ -142,8 +142,7 @@ func (sl *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error 
 	// block until connected or timeout
 	sl.Logger.Info("SignerListener: Blocking for connection")
 	sl.triggerConnect()
-	err := sl.WaitConnection(sl.connectionAvailableCh, maxWait)
-	return err
+	return sl.WaitConnection(sl.connectionAvailableCh, maxWait)
 }
 
 func (sl *SignerListenerEndpoint) acceptNewConnection() (net.Conn, error) {

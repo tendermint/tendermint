@@ -661,6 +661,5 @@ func (store dbStore) saveConsensusParamsInfo(
 		return err
 	}
 
-	err = batch.Set(consensusParamsKey(nextHeight), bz)
-	return err
+	return batch.Set(consensusParamsKey(nextHeight), bz)
 }
