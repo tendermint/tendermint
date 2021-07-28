@@ -132,6 +132,7 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 	second := &WrappedTx{}
 	primaryMempool.insertTx(second)
 
-	primaryReactor.Stop()
+	err := primaryReactor.Stop()
+	require.NoError(t, err)
 	primaryReactor.peerWG.Wait()
 }
