@@ -88,8 +88,9 @@ type ManifestNode struct {
 	// runner will wait for the network to reach at least this block height.
 	StartAt int64 `toml:"start_at"`
 
-	// FastSync specifies whether to enable the fast sync protocol.
-	FastSync bool `toml:"fast_sync"`
+	// BlockSync specifies the block sync mode: "" (disable), "v0" or "v2".
+	// Defaults to disabled.
+	BlockSync string `toml:"block_sync"`
 
 	// Mempool specifies which version of mempool to use. Either "v0" or "v1"
 	// This defaults to v0.

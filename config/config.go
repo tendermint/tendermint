@@ -72,7 +72,7 @@ type Config struct {
 	P2P             *P2PConfig             `mapstructure:"p2p"`
 	Mempool         *MempoolConfig         `mapstructure:"mempool"`
 	StateSync       *StateSyncConfig       `mapstructure:"statesync"`
-	FastSync        *FastSyncConfig        `mapstructure:"fastsync"`
+	BlockSync       *BlockSyncConfig       `mapstructure:"fastsync"`
 	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
 	TxIndex         *TxIndexConfig         `mapstructure:"tx_index"`
 	Instrumentation *InstrumentationConfig `mapstructure:"instrumentation"`
@@ -86,7 +86,7 @@ func DefaultConfig() *Config {
 		P2P:             DefaultP2PConfig(),
 		Mempool:         DefaultMempoolConfig(),
 		StateSync:       DefaultStateSyncConfig(),
-		FastSync:        DefaultFastSyncConfig(),
+		BlockSync:       DefaultBlockSyncConfig(),
 		Consensus:       DefaultConsensusConfig(),
 		TxIndex:         DefaultTxIndexConfig(),
 		Instrumentation: DefaultInstrumentationConfig(),
@@ -101,7 +101,7 @@ func TestConfig() *Config {
 		P2P:             TestP2PConfig(),
 		Mempool:         TestMempoolConfig(),
 		StateSync:       TestStateSyncConfig(),
-		FastSync:        TestFastSyncConfig(),
+		BlockSync:       TestBlockSyncConfig(),
 		Consensus:       TestConsensusConfig(),
 		TxIndex:         TestTxIndexConfig(),
 		Instrumentation: TestInstrumentationConfig(),
@@ -136,7 +136,7 @@ func (cfg *Config) ValidateBasic() error {
 	if err := cfg.StateSync.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [statesync] section: %w", err)
 	}
-	if err := cfg.FastSync.ValidateBasic(); err != nil {
+	if err := cfg.BlockSync.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [fastsync] section: %w", err)
 	}
 	if err := cfg.Consensus.ValidateBasic(); err != nil {
@@ -817,7 +817,7 @@ func DefaultStateSyncConfig() *StateSyncConfig {
 	}
 }
 
-// TestFastSyncConfig returns a default configuration for the state sync service
+// TestStateSyncConfig returns a default configuration for the state sync service
 func TestStateSyncConfig() *StateSyncConfig {
 	return DefaultStateSyncConfig()
 }
@@ -873,34 +873,34 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 }
 
 //-----------------------------------------------------------------------------
-// FastSyncConfig
+// BlockSyncConfig
 
-// FastSyncConfig defines the configuration for the Tendermint fast sync service
-type FastSyncConfig struct {
+// BlockSyncConfig (formerly known as FastSync) defines the configuration for the Tendermint block sync service
+type BlockSyncConfig struct {
 	Version string `mapstructure:"version"`
 }
 
-// DefaultFastSyncConfig returns a default configuration for the fast sync service
-func DefaultFastSyncConfig() *FastSyncConfig {
-	return &FastSyncConfig{
+// DefaultBlockSyncConfig returns a default configuration for the block sync service
+func DefaultBlockSyncConfig() *BlockSyncConfig {
+	return &BlockSyncConfig{
 		Version: "v0",
 	}
 }
 
-// TestFastSyncConfig returns a default configuration for the fast sync.
-func TestFastSyncConfig() *FastSyncConfig {
-	return DefaultFastSyncConfig()
+// TestBlockSyncConfig returns a default configuration for the block sync.
+func TestBlockSyncConfig() *BlockSyncConfig {
+	return DefaultBlockSyncConfig()
 }
 
 // ValidateBasic performs basic validation.
-func (cfg *FastSyncConfig) ValidateBasic() error {
+func (cfg *BlockSyncConfig) ValidateBasic() error {
 	switch cfg.Version {
 	case "v0":
 		return nil
 	case "v1", "v2":
-		return fmt.Errorf("fast sync version %s has been deprecated. Please use v0 instead", cfg.Version)
+		return fmt.Errorf("blocksync version %s has been deprecated. Please use v0 instead", cfg.Version)
 	default:
-		return fmt.Errorf("unknown fastsync version %s", cfg.Version)
+		return fmt.Errorf("unknown blocksync version %s", cfg.Version)
 	}
 }
 

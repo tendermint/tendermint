@@ -429,13 +429,13 @@ chunk_request_timeout = "{{ .StateSync.ChunkRequestTimeout }}"
 chunk_fetchers = "{{ .StateSync.ChunkFetchers }}"
 
 #######################################################
-###       Fast Sync Configuration Connections       ###
+###       Block Sync Configuration Connections       ###
 #######################################################
 [fastsync]
 
-# Fast Sync version to use:
+# Block Sync version to use:
 # 
-# In v0.37, v1 and v2 of the fast sync protocol were deprecated.
+# In v0.37, v1 and v2 of the block sync protocols were deprecated.
 # Please use v0 instead.
 #
 #   1) "v0" - the default fast sync implementation

@@ -1,4 +1,4 @@
-package blockchain
+package blocksync
 
 import (
 	"fmt"
