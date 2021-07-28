@@ -806,10 +806,33 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
   /genesis:
     get:
       summary: Get Genesis
       operationId: genesis
+      tags:
+        - Info
+      description: |
+        Get the genesis document.
+      responses:
+        "200":
+          description: Genesis results.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenesisResponse"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /genesis_chunked:
+    get:
+      summary: Get Genesis in paginated chunks
+      operationId: genesis_chunked
       tags:
         - Info
       description: |
@@ -837,27 +860,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /genesis_chunked:
-    get:
-      summary: Get Genesis
-      operationId: genesis_chunked
-      tags:
-        - Info
-      description: |
-        Get genesis in 
-      responses:
-        "200":
-          description: Genesis results.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenesisResponse"
-        "500":
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
 
   /dump_consensus_state:
     get:
