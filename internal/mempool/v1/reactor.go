@@ -194,7 +194,7 @@ func (r *Reactor) handleMempoolMessage(envelope p2p.Envelope) error {
 func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
-			r.panicHandler(e)
+			r.observePanic(e)
 			err = fmt.Errorf("panic in processing message: %v", e)
 			r.Logger.Error(
 				"recovering from processing message panic",
@@ -325,7 +325,7 @@ func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer)
 		r.peerWG.Done()
 
 		if e := recover(); e != nil {
-			r.panicHandler(e)
+			r.observePanic(e)
 			r.Logger.Error(
 				"recovering from broadcasting mempool loop",
 				"err", r,
