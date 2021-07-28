@@ -24,147 +24,39 @@ and securely replicates it on many machines.
 For protocol details, see [the specification](https://github.com/tendermint/spec).
 
 For detailed analysis of the consensus protocol, including safety and liveness proofs,
-see our recent paper, "[The latest gossip on BFT consensus](https://arxiv.org/abs/1807.04938)".
+see their recent paper, "[The latest gossip on BFT consensus](https://arxiv.org/abs/1807.04938)".
+
+I reference this paper and HotStuff, and propose a pipelined BFT consensus protocol – chainedTendermint,
+which has been published in IEEE: https://ieeexplore.ieee.org/document/9350801
+I also paste it here: https://github.com/james-ray/tendermint/blob/chainedTendermint/H041.pdf
 
 ## Releases
 
-Please do not depend on master as your production branch. Use [releases](https://github.com/tendermint/tendermint/releases) instead.
+I want to implement the pipleline protocol myself in my spare time. 
+If you are interested, have any question, or find any flaw in this paper, please contact me JamesRayLei@gmail.com
 
-Tendermint is being used in production in both private and public environments,
-most notably the blockchains of the [Cosmos Network](https://cosmos.network/).
-However, we are still making breaking changes to the protocol and the APIs and have not yet released v1.0.
-See below for more details about [versioning](#versioning).
-
-In any case, if you intend to run Tendermint in production, we're happy to help. You can
-contact us [over email](mailto:hello@interchain.berlin) or [join the chat](https://discord.gg/vcExX9T).
-
-## Security
-
-To report a security vulnerability, see our [bug bounty
-program](https://hackerone.com/tendermint). 
-For examples of the kinds of bugs we're looking for, see [our security policy](SECURITY.md).
-
-We also maintain a dedicated mailing list for security updates. We will only ever use this mailing list
-to notify you of vulnerabilities and fixes in Tendermint Core. You can subscribe [here](http://eepurl.com/gZ5hQD).
-
-## Minimum requirements
-
-| Requirement | Notes            |
-|-------------|------------------|
-| Go version  | Go1.15 or higher |
-
-## Documentation
-
-Complete documentation can be found on the [website](https://docs.tendermint.com/master/).
-
-### Install
-
-See the [install instructions](/docs/introduction/install.md).
-
-### Quick Start
-
-- [Single node](/docs/introduction/quick-start.md)
-- [Local cluster using docker-compose](/docs/networks/docker-compose.md)
-- [Remote cluster using Terraform and Ansible](/docs/networks/terraform-and-ansible.md)
-- [Join the Cosmos testnet](https://cosmos.network/testnet)
-
-## Contributing
-
-Please abide by the [Code of Conduct](CODE_OF_CONDUCT.md) in all interactions.
-
-Before contributing to the project, please take a look at the [contributing guidelines](CONTRIBUTING.md)
-and the [style guide](STYLE_GUIDE.md). You may also find it helpful to read the
-[specifications](https://github.com/tendermint/spec), watch the [Developer Sessions](/docs/DEV_SESSIONS.md), 
-and familiarize yourself with our
-[Architectural Decision Records](https://github.com/tendermint/tendermint/tree/master/docs/architecture).
-
-## Versioning
-
-### Semantic Versioning
-
-Tendermint uses [Semantic Versioning](http://semver.org/) to determine when and how the version changes.
-According to SemVer, anything in the public API can change at any time before version 1.0.0
-
-To provide some stability to Tendermint users in these 0.X.X days, the MINOR version is used
-to signal breaking changes across a subset of the total public API. This subset includes all
-interfaces exposed to other processes (cli, rpc, p2p, etc.), but does not
-include the Go APIs.
-
-That said, breaking changes in the following packages will be documented in the
-CHANGELOG even if they don't lead to MINOR version bumps:
-
-- crypto
-- config
-- libs
-    - bits
-    - bytes
-    - json
-    - log
-    - math
-    - net
-    - os
-    - protoio
-    - rand
-    - sync
-    - strings
-    - service
-- node
-- rpc/client
-- types
-
-### Upgrades
-
-In an effort to avoid accumulating technical debt prior to 1.0.0,
-we do not guarantee that breaking changes (ie. bumps in the MINOR version)
-will work with existing Tendermint blockchains. In these cases you will
-have to start a new blockchain, or write something custom to get the old
-data into the new chain. However, any bump in the PATCH version should be 
-compatible with existing blockchain histories.
+I plan to work on the branch chainedTendermint of this repository, any cooperative work is appreciated.
 
 
-For more information on upgrading, see [UPGRADING.md](./UPGRADING.md).
+## Challenges and Plans
 
-### Supported Versions
+The pipeline protocol relies on aggregated signature, which is not done in Tendermint yet.
+There are some discussion about the timestamp, each vote has different timestamp, so we need to address this problem.
 
-Because we are a small core team, we only ship patch updates, including security updates,
-to the most recent minor release and the second-most recent minor release. Consequently,
-we strongly recommend keeping Tendermint up-to-date. Upgrading instructions can be found
-in [UPGRADING.md](./UPGRADING.md).
+Anyway, I plan to implenment the first phase protocol: the basic parallel Tendermint protocol, which does not adopt aggregated signature, but only
+parallelize the prevotes and precommits, and "flatten" the rounds.  I think this needs lots of code modification.
 
-## Resources
+If this protocol has been done and well tested, I will call it release 1. When refer to test, I mean, to deploy several nodes as a cluster and run the new consensus protocol. Of course, all the CI tests are unable to run, because there is no concept of "round" in parallel Tendermint protocol, the modification is big, lots of data structures would change. I will first test the cluster on normal condition, and on some abnormal network condition to see if the consensus protocol works well. The CI tests shall be fixed after the main codes pass the tests and are stable.
 
-### Tendermint Core
+## Thoughts
+From my point of view, BFT consensus cannot be appied to public blockchain, but only suitable for alliance chain. Though alliance chain can be used to do cross public chain txs, like Cosmos does. The difficulty is, you use BFT, so obviously you don't trust every node in the cluster, but the PoS based scheme and BFT premise can only guarantee the protocol runs well under at most 1/3 malicious nodes. Though it is not a public chain, but only an alliance chain, this condition is still hard to be guaranteed. There are two methods, one is using CA node, like the permissioned alliance chain. The other is controlling most of the funds in the operator itself, so other funds must be less than 1/3.  Whether you use which method, it is like you deployed most cluster nodes by yourself, and the other joined nodes are more like a mere formality without pratical meaning. If you can trust every node or you deploy all the nodes, you can simply use Clique consensus, which is much light weighted. 
 
-For details about the blockchain data structures and the p2p protocols, see the
-[Tendermint specification](https://docs.tendermint.com/master/spec/).
+One advantage of BFT consenus like Tendermint is instant finality, but it is based on the 1/3 malicious nodes hypothesis. If this hypothesis is broken, there are possibly two forks that meet the commit condition, and there are no rollback and follow the longest chain mechanism.
+Unlike the concern of Layer2 scheme like optimistic rollup, the validators in Layer1 cannot steal funds, the most malicious thing they can do is to fork the chain. In current Tendermint, if the chain is forked then the whole chain is possibly stopped (1/2 nodes confirm one fork and the other 1/2 confirm the other fork), in other word, the attacker cannot make a double spending either. This lack of motivation increases the safety of the BFT scheme in Layer1.
 
-For details on using the software, see the [documentation](/docs/) which is also
-hosted at: <https://docs.tendermint.com/master/>
+Using BFT consensus is conducive to let others join and constrain their behavior, if they do malicious action, their staked funds are slashed, this is an effective deterrent. But this is based on the most funds are staked in the trusted nodes, and the trusted nodes do not do malicious action.  This is like the second method that I mentioned above. If you cannot control the flow of the most funds in your alliance chain, and the funds in your chain are not achieved by paying the real world cash (in other word, the evil joined nodes accquire the funds at no cost), the safety of your chain is vulnerable.
 
-### Tools
+Clique is not instant finality, but it does have Byzantine resistance, for every node follows the longest chain, you should ally other signers in order to fork the chain from a previous point.
 
-Benchmarking is provided by [`tm-load-test`](https://github.com/informalsystems/tm-load-test).
-Additional tooling can be found in [/docs/tools](/docs/tools).
+Instant finality should be good, but not suitable for public chain, the mechanism that sets the weight(or difficulty) for each block is more suitable for public chain. The reason is: if more than 1/3 evil does occur, there can be two forks confirmed by BFT consensus, the whole network is probably stopped, and you cannot blame this to "not my fault, it is the premise of BFT consensus that is violated". Whereas the mechanism that follows the longest/heavest chain does not stop the whole system, we only need to concern the double spending attack. To optimize the round robin in Clique, there is already project like Dfinity that imports VRF to create a "true random flow". What's more, since we do not persue instant finality, we do not need to vote for the block, just let the blocks with weights broadcast in the network. Thus the performance should be better.
 
-### Applications
-
-- [Cosmos SDK](http://github.com/cosmos/cosmos-sdk); a cryptocurrency application framework
-- [Ethermint](http://github.com/cosmos/ethermint); Ethereum on Tendermint
-- [Many more](https://tendermint.com/ecosystem)
-
-### Research
-
-- [The latest gossip on BFT consensus](https://arxiv.org/abs/1807.04938)
-- [Master's Thesis on Tendermint](https://atrium.lib.uoguelph.ca/xmlui/handle/10214/9769)
-- [Original Whitepaper: "Tendermint: Consensus Without Mining"](https://tendermint.com/static/docs/tendermint.pdf)
-- [Tendermint Core Blog](https://medium.com/tendermint/tagged/tendermint-core)
-- [Cosmos Blog](https://blog.cosmos.network/tendermint/home)
-
-## Join us!
-
-Tendermint Core is maintained by [Interchain GmbH](https://interchain.berlin).
-If you'd like to work full-time on Tendermint Core, [we're hiring](https://interchain-gmbh.breezy.hr/p/682fb7e8a6f601-software-engineer-tendermint-core)!
-
-Funding for Tendermint Core development comes primarily from the [Interchain Foundation](https://interchain.io),
-a Swiss non-profit. The Tendermint trademark is owned by [Tendermint Inc.](https://tendermint.com), the for-profit entity
- that also maintains [tendermint.com](https://tendermint.com).
