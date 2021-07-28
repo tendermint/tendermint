@@ -147,6 +147,8 @@ func makeNode(config *cfg.Config,
 		return nil, fmt.Errorf("error in genesis doc: %w", err)
 	}
 
+	// Either load state from a previous run or generate the genesis state from
+	// genesis doc
 	state, err := loadStateFromDBOrGenesisDocProvider(stateStore, genDoc)
 	if err != nil {
 		return nil, err
@@ -208,31 +210,11 @@ func makeNode(config *cfg.Config,
 		stateSync = false
 	}
 
-	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
-	// and replays any blocks as necessary to sync tendermint with the app.
-	consensusLogger := logger.With("module", "consensus")
-	if !stateSync {
-		if err := doHandshake(stateStore, state, blockStore, genDoc, eventBus, proxyApp, consensusLogger); err != nil {
-			return nil, err
-		}
-
-		// Reload the state. It will have the Version.Consensus.App set by the
-		// Handshake, and may have other modifications as well (ie. depending on
-		// what happened during block replay).
-		state, err = stateStore.Load()
-		if err != nil {
-			return nil, fmt.Errorf("cannot load state: %w", err)
-		}
-	}
-
 	// Determine whether we should do fast sync. This must happen after the handshake, since the
 	// app may modify the validator set, specifying ourself as the only validator.
 	fastSync := config.FastSyncMode && !onlyValidatorIsUs(state, pubKey)
 
-	logNodeStartupInfo(state, pubKey, logger, consensusLogger, config.Mode)
-
 	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
-	// TODO: Use a persistent peer database.
 	nodeInfo, err := makeNodeInfo(config, nodeKey, eventSinks, genDoc, state)
 	if err != nil {
 		return nil, err
@@ -279,6 +261,7 @@ func makeNode(config *cfg.Config,
 		sm.BlockExecutorWithMetrics(smMetrics),
 	)
 
+	consensusLogger := logger.With("module", "consensus")
 	csReactorShim, csReactor, csState := createConsensusReactor(
 		config, state, blockExec, blockStore, mp, evPool,
 		privValidator, csMetrics, stateSync || fastSync, eventBus,
@@ -347,7 +330,7 @@ func makeNode(config *cfg.Config,
 		config.StateSync.TempDir,
 	)
 
-	// add the channel descriptors to both the transports
+	// add the channel descriptors to the transport
 	// FIXME: This should be removed when the legacy p2p stack is removed and
 	// transports can either be agnostic to channel descriptors or can be
 	// declared in the constructor.
@@ -568,6 +551,30 @@ func (n *nodeImpl) OnStart() error {
 		time.Sleep(genTime.Sub(now))
 	}
 
+	// Either load state from a previous run or generate the genesis state from
+	// genesis doc
+	state, err := loadStateFromDBOrGenesisDocProvider(n.stateStore, n.genesisDoc)
+	if err != nil {
+		return err
+	}
+
+	// If we are not using state sync, we need to a handshake with the
+	// application. This calls `RequestInfo`, sets the AppVersion on
+	// the state, can call `InitChain` if this is the first time that the
+	// application has run and replays any blocks as necessary to sync
+	// tendermint with the app. We do all this before starting any other service
+	state, err = syncWithApplication(n.stateStore, n.blockStore, n.genesisDoc, state, n.eventBus, n.proxyApp, n.stateSync, n.Logger)
+	if err != nil {
+		return err
+	}
+
+	// Retrieve state
+	pubKey, err := n.privValidator.GetPubKey(context.TODO())
+	if err != nil {
+		fmt.Errorf("failed to retrieve pubKey: %w", err)
+	}
+	logNodeStartupInfo(state, pubKey, n.Logger, n.config.Mode)
+
 	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
 	if n.config.RPC.ListenAddress != "" && n.config.Mode != cfg.ModeSeed {
@@ -578,6 +585,7 @@ func (n *nodeImpl) OnStart() error {
 		n.rpcListeners = listeners
 	}
 
+	// If we are using prometheus for metric gathering, start that server.
 	if n.config.Instrumentation.Prometheus &&
 		n.config.Instrumentation.PrometheusListenAddr != "" {
 		n.prometheusSrv = n.startPrometheusServer(n.config.Instrumentation.PrometheusListenAddr)
@@ -592,19 +600,32 @@ func (n *nodeImpl) OnStart() error {
 		return err
 	}
 
+	// Start the P2P layer
 	n.isListening = true
-
 	n.Logger.Info("p2p service", "legacy_enabled", !n.config.P2P.DisableLegacy)
-
 	if n.config.P2P.DisableLegacy {
-		err = n.router.Start()
+		if err := n.router.Start(); err != nil {
+			return err
+		}
 	} else {
 		// Add private IDs to addrbook to block those peers being added
 		n.addrBook.AddPrivateIDs(strings.SplitAndTrimEmpty(n.config.P2P.PrivatePeerIDs, ",", " "))
-		err = n.sw.Start()
+		if err := n.sw.Start(); err != nil {
+			return err
+		}
+
+		// Always connect to persistent peers
+		err = n.sw.DialPeersAsync(strings.SplitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
+		if err != nil {
+			return fmt.Errorf("could not dial peers from persistent-peers field: %w", err)
+		}
 	}
-	if err != nil {
-		return err
+
+	// Start the Peer Exhange reactor so we can discover new peers
+	if n.config.P2P.DisableLegacy && n.pexReactorV2 != nil {
+		if err := n.pexReactorV2.Start(); err != nil {
+			return err
+		}
 	}
 
 	if n.config.Mode != cfg.ModeSeed {
@@ -634,19 +655,6 @@ func (n *nodeImpl) OnStart() error {
 		if err := n.evidenceReactor.Start(); err != nil {
 			return err
 		}
-	}
-
-	if n.config.P2P.DisableLegacy && n.pexReactorV2 != nil {
-		if err := n.pexReactorV2.Start(); err != nil {
-			return err
-		}
-	} else {
-		// Always connect to persistent peers
-		err = n.sw.DialPeersAsync(strings.SplitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
-		if err != nil {
-			return fmt.Errorf("could not dial peers from persistent-peers field: %w", err)
-		}
-
 	}
 
 	// Run state sync

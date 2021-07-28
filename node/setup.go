@@ -140,25 +140,7 @@ loop:
 	return indexerService, eventSinks, nil
 }
 
-func doHandshake(
-	stateStore sm.Store,
-	state sm.State,
-	blockStore sm.BlockStore,
-	genDoc *types.GenesisDoc,
-	eventBus types.BlockEventPublisher,
-	proxyApp proxy.AppConns,
-	consensusLogger log.Logger) error {
-
-	handshaker := cs.NewHandshaker(stateStore, state, blockStore, genDoc)
-	handshaker.SetLogger(consensusLogger)
-	handshaker.SetEventBus(eventBus)
-	if err := handshaker.Handshake(proxyApp); err != nil {
-		return fmt.Errorf("error during handshake: %v", err)
-	}
-	return nil
-}
-
-func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusLogger log.Logger, mode string) {
+func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger log.Logger, mode string) {
 	// Log the version info.
 	logger.Info("Version info",
 		"tmVersion", version.TMVersion,
@@ -176,14 +158,14 @@ func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusL
 	}
 	switch {
 	case mode == cfg.ModeFull:
-		consensusLogger.Info("This node is a fullnode")
+		logger.Info("This node is a fullnode")
 	case mode == cfg.ModeValidator:
 		addr := pubKey.Address()
 		// Log whether this node is a validator or an observer
 		if state.Validators.HasAddress(addr) {
-			consensusLogger.Info("This node is a validator", "addr", addr, "pubKey", pubKey.Bytes())
+			logger.Info("This node is a validator", "addr", addr, "pubKey", pubKey.Bytes())
 		} else {
-			consensusLogger.Info("This node is a validator (NOT in the active validator set)",
+			logger.Info("This node is a validator (NOT in the active validator set)",
 				"addr", addr, "pubKey", pubKey.Bytes())
 		}
 	}
