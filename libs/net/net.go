@@ -1,8 +1,10 @@
 package net
 
 import (
+	"context"
 	"net"
 	"strings"
+	"syscall"
 )
 
 // Connect dials the given address and returns a net.Conn. The protoAddr argument should be prefixed with the protocol,
@@ -34,10 +36,26 @@ func GetFreePort() (int, error) {
 		return 0, err
 	}
 
-	l, err := net.ListenTCP("tcp", addr)
-	if err != nil {
-		return 0, err
+	// Defines a control function callback.
+	// The callback will be called after the socket is created but before it is
+	// 'bound'.
+	// For more information, see https://pkg.go.dev/net#ListenConfig.
+	controlFn := func(network, address string, c syscall.RawConn) error {
+		c.Control(func(fd uintptr) {
+			// Set SO_REUSEADDR on the socket.
+			// SO_REUSEADDR allows a socket to be reused as soon as it is closed.
+			// This is necessary because the caller of GetFreePort is likely going
+			// to use the port immediately.
+			syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
+		})
+		return nil
 	}
+
+	listenCfg := net.ListenConfig{
+		Control: controlFn,
+	}
+	l, err := listenCfg.Listen(context.Background(), "tcp", addr.String())
+
 	defer l.Close()
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
