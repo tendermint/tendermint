@@ -1775,7 +1775,7 @@ func (cs *State) verifyCommit(commit *types.Commit, peerID p2p.ID, ignoreProposa
 
 	if commit.BlockID.Hash != nil && !bytes.Equal(commit.StateID.LastAppHash, cs.state.AppHash) {
 		err = errors.New("commit state last app hash does not match the known state app hash")
-		cs.Logger.Debug("commit ignored because sending wrong app hash", "voteHeight", commit.Height,
+		cs.Logger.Error("commit ignored because sending wrong app hash", "voteHeight", commit.Height,
 			"csHeight", cs.Height, "peerID", peerID)
 		return false, err
 	}
@@ -1834,7 +1834,6 @@ func (cs *State) verifyCommit(commit *types.Commit, peerID p2p.ID, ignoreProposa
 }
 
 func (cs *State) addCommit(commit *types.Commit) (added bool, err error) {
-
 	// The commit is all good, let's apply it to the state
 	cs.updateProposalBlockAndPartsBeforeCommit(commit.BlockID, cs.Logger)
 
@@ -1860,6 +1859,8 @@ func (cs *State) addCommit(commit *types.Commit) (added bool, err error) {
 }
 
 func (cs *State) applyCommit(commit *types.Commit, logger log.Logger) {
+	logger.Info("applying commit", "commit", commit)
+
 	var height int64
 
 	block, blockParts := cs.ProposalBlock, cs.ProposalBlockParts
@@ -2511,12 +2512,7 @@ func (cs *State) signVote(
 
 	v := vote.ToProto()
 	// fmt.Printf("validators for signing vote are %v\n", cs.state.Validators)
-	err := cs.privValidator.SignVote(cs.state.ChainID, cs.state.Validators.QuorumType, cs.state.Validators.QuorumHash, v)
-	if err == nil {
-		blockSignBytes := types.VoteBlockSignBytes(cs.state.ChainID, v)
-		cs.Logger.Debug("signed vote", "quorumType", cs.state.Validators.QuorumType,
-			"quorumHash", cs.state.Validators.QuorumHash, "vote", v, "signBytes", blockSignBytes)
-	}
+	err := cs.privValidator.SignVote(cs.state.ChainID, cs.state.Validators.QuorumType, cs.state.Validators.QuorumHash, v, cs.Logger)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
 

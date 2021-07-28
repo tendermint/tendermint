@@ -123,7 +123,7 @@ func makeVote(t *testing.T, val PrivValidator, chainID string, valIndex int32, h
 	}
 
 	vpb := v.ToProto()
-	err = val.SignVote(chainID, quorumType, quorumHash, vpb)
+	err = val.SignVote(chainID, quorumType, quorumHash, vpb, nil)
 	if err != nil {
 		panic(err)
 	}

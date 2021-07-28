@@ -3,6 +3,7 @@ package privval
 import (
 	"errors"
 	"fmt"
+	"github.com/tendermint/tendermint/libs/log"
 	"time"
 
 	"github.com/dashevo/dashd-go/btcjson"
@@ -161,7 +162,7 @@ func (sc *SignerClient) GetHeight(quorumHash crypto.QuorumHash) (int64, error) {
 }
 
 // SignVote requests a remote signer to sign a vote
-func (sc *SignerClient) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
+func (sc *SignerClient) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote, logger log.Logger) error {
 	// fmt.Printf("--> sending request to sign vote (%d/%d) %v - %v", vote.Height, vote.Round, vote.BlockID, vote)
 	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.SignVoteRequest{Vote: vote, ChainId: chainID,
 		QuorumType: int32(quorumType), QuorumHash: quorumHash}))

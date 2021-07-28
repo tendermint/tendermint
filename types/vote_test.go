@@ -174,7 +174,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	signStateId := VoteStateSignId("test_chain_id", v, quorumType, quorumHash)
 
 	// sign it
-	err = privVal.SignVote("test_chain_id", quorumType, quorumHash, v)
+	err = privVal.SignVote("test_chain_id", quorumType, quorumHash, v, nil)
 	require.NoError(t, err)
 
 	// verify the same vote
@@ -288,7 +288,7 @@ func TestVoteValidateBasic(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			vote := examplePrecommit()
 			v := vote.ToProto()
-			err := privVal.SignVote("test_chain_id", 0, quorumHash, v)
+			err := privVal.SignVote("test_chain_id", 0, quorumHash, v, nil)
 			vote.BlockSignature = v.BlockSignature
 			vote.StateSignature = v.StateSignature
 			require.NoError(t, err)
@@ -303,7 +303,7 @@ func TestVoteProtobuf(t *testing.T) {
 	privVal := NewMockPVForQuorum(quorumHash)
 	vote := examplePrecommit()
 	v := vote.ToProto()
-	err := privVal.SignVote("test_chain_id", 0, quorumHash, v)
+	err := privVal.SignVote("test_chain_id", 0, quorumHash, v, nil)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
 	require.NoError(t, err)
