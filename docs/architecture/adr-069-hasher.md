@@ -36,8 +36,8 @@ We would like to define the HashType for using in the later struct.
 ```go
 type HashType string
 const (
-	SHA256 HashType = "sha256"
-	BLAKE2B HashType = "blake2b"
+    SHA256 HashType = "sha256"
+    BLAKE2B HashType = "blake2b"
     CUSTOM HashType = "custom"
     // SHA256_SIMD HashType = "sha256_simd"
     // other hash type if the TM core want to support
