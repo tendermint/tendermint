@@ -53,10 +53,12 @@ type Reactor struct {
 	// goroutines.
 	peerWG sync.WaitGroup
 
+	// observePanic is a function for observing panics that were recovered in methods on
+	// Reactor. observePanic is called with the recovered value.
+	observePanic func(interface{})
+
 	mtx          tmsync.Mutex
 	peerRoutines map[types.NodeID]*tmsync.Closer
-
-	panicHandler func(interface{})
 }
 
 // NewReactor returns a reference to a new reactor.
@@ -78,16 +80,14 @@ func NewReactor(
 		peerUpdates:  peerUpdates,
 		closeCh:      make(chan struct{}),
 		peerRoutines: make(map[types.NodeID]*tmsync.Closer),
-		panicHandler: defaultPanicHandler,
+		observePanic: defaultObservePanic,
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Mempool", r)
 	return r
 }
 
-func defaultPanicHandler(r interface{}) {
-	panic(r)
-}
+func defaultObservePanic(r interface{}) {}
 
 // GetChannelShims returns a map of ChannelDescriptorShim objects, where each
 // object wraps a reference to a legacy p2p ChannelDescriptor and the corresponding
@@ -195,7 +195,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	defer func() {
 		if e := recover(); e != nil {
 			r.panicHandler(e)
-			err = fmt.Errorf("panic in processing message: %v", r)
+			err = fmt.Errorf("panic in processing message: %v", e)
 			r.Logger.Error(
 				"recovering from processing message panic",
 				"err", err,
