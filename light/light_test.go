@@ -2,6 +2,7 @@ package light_test
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -35,10 +36,11 @@ func TestClientIntegration_Update(t *testing.T) {
 	app := kvstore.NewApplication()
 	_, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
 	require.NoError(t, err)
-	defer func() { require.NoError(t, closer(ctx)) }()
+	defer func() {
+		fmt.Println("close")
 
-	// give Tendermint time to generate some blocks
-	time.Sleep(5 * time.Second)
+		require.NoError(t, closer(ctx))
+	}()
 
 	dbDir, err := ioutil.TempDir("", "light-client-test-update-example")
 	require.NoError(t, err)
@@ -76,7 +78,14 @@ func TestClientIntegration_Update(t *testing.T) {
 	// ensure Tendermint is at height 3 or higher
 	_, err = waitForBlock(ctx, primary, 3)
 	require.NoError(t, err)
-
+	for i := 0; i < 100; i++ {
+		b, pErr := primary.LightBlock(ctx, 0)
+		if pErr != nil {
+			fmt.Println("err")
+			fmt.Println(pErr)
+			fmt.Println(b)
+		}
+	}
 	h, err := c.Update(ctx, time.Now())
 	require.NoError(t, err)
 	require.NotNil(t, h)

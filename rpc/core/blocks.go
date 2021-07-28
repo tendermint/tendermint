@@ -136,6 +136,8 @@ func (env *Environment) Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes
 	// use a non-canonical commit
 	if height == env.BlockStore.Height() {
 		commit := env.BlockStore.LoadSeenCommit(height)
+		fmt.Println("not commited height")
+		fmt.Println(commit)
 		return ctypes.NewResultCommit(&header, commit, false), nil
 	}
 

@@ -268,6 +268,7 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 		panic(err)
 	}
 	if len(bz) == 0 {
+		fmt.Println("nil bytes")
 		return nil
 	}
 	err = proto.Unmarshal(bz, pbc)

@@ -111,6 +111,7 @@ func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan erro
 	witness provider.Provider, witnessIndex int) {
 
 	lightBlock, err := witness.LightBlock(ctx, h.Height)
+	//	fmt.Println(lightBlock.SignedHeader)
 	switch err {
 	// no error means we move on to checking the hash of the two headers
 	case nil:

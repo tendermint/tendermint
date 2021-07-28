@@ -114,6 +114,7 @@ func (p *http) LightBlock(ctx context.Context, height int64) (*types.LightBlock,
 
 	sh, err := p.signedHeader(ctx, h)
 	if err != nil {
+		fmt.Println("nil signed header")
 		return nil, err
 	}
 
@@ -137,6 +138,9 @@ func (p *http) LightBlock(ctx context.Context, height int64) (*types.LightBlock,
 	lb := &types.LightBlock{
 		SignedHeader: sh,
 		ValidatorSet: vs,
+	}
+	if lb.SignedHeader.Commit == nil {
+		fmt.Println(lb)
 	}
 
 	err = lb.ValidateBasic(p.chainID)
