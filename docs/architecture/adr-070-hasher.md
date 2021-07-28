@@ -1,4 +1,4 @@
-# ADR 069: hasher 
+# ADR 070: hasher 
 
 ## Changelog
 
