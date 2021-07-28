@@ -808,7 +808,7 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
   /genesis:
     get:
-      summary: Get Genesis in chunked
+      summary: Get Genesis
       operationId: genesis
       tags:
         - Info
