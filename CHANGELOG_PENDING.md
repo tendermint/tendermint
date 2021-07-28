@@ -72,6 +72,8 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [crypto/sr25519] \#6526 Do not re-execute the Ed25519-style key derivation step when doing signing and verification.  The derivation is now done once and only once.  This breaks `sr25519.GenPrivKeyFromSecret` output compatibility. (@Yawning)
   - [types] \#6627 Move `NodeKey` to types to make the type public. 
   - [config] \#6627 Extend `config` to contain methods `LoadNodeKeyID` and `LoadorGenNodeKeyID`
+  - [blocksync] \#6755 Rename `FastSync` and `Blockchain` package to `BlockSync`
+    (@cmwaters)
 
 - Blockchain Protocol
 
@@ -82,6 +84,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 
 - Tooling
   - [tools] \#6498 Set OS home dir to instead of the hardcoded PATH. (@JayT106)
+  - [cli/indexer] \#6676 Reindex events command line tooling. (@JayT106)
 
 ### FEATURES
 

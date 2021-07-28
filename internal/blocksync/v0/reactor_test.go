@@ -15,7 +15,7 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
-	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
+	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	sf "github.com/tendermint/tendermint/state/test/factory"
@@ -36,7 +36,7 @@ type reactorTestSuite struct {
 	peerChans          map[types.NodeID]chan p2p.PeerUpdate
 	peerUpdates        map[types.NodeID]*p2p.PeerUpdates
 
-	fastSync bool
+	blockSync bool
 }
 
 func setup(
@@ -61,7 +61,7 @@ func setup(
 		blockchainChannels: make(map[types.NodeID]*p2p.Channel, numNodes),
 		peerChans:          make(map[types.NodeID]chan p2p.PeerUpdate, numNodes),
 		peerUpdates:        make(map[types.NodeID]*p2p.PeerUpdates, numNodes),
-		fastSync:           true,
+		blockSync:          true,
 	}
 
 	chDesc := p2p.ChannelDescriptor{ID: byte(BlockchainChannel)}
@@ -163,7 +163,7 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 		nil,
 		rts.blockchainChannels[nodeID],
 		rts.peerUpdates[nodeID],
-		rts.fastSync,
+		rts.blockSync,
 		cons.NopMetrics())
 	require.NoError(t, err)
 
