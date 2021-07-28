@@ -42,7 +42,7 @@ database = "boltdb"
 persist_interval = 0
 perturb = ["restart"]
 privval_protocol = "tcp"
-seeds = ["seed02"]
+seeds = ["seed01"]
 
 [node.validator03]
 database = "badgerdb"
