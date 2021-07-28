@@ -188,8 +188,8 @@ func (txmp *TxMempool) WaitForNextTx() <-chan struct{} {
 // NextGossipTx returns the next valid transaction to gossip. A caller must wait
 // for WaitForNextTx to signal a transaction is available to gossip first. It is
 // thread-safe.
-func (txmp *TxMempool) NextGossipTx() *WrappedTx {
-	return txmp.gossipIndex.Front().Value.(*WrappedTx)
+func (txmp *TxMempool) NextGossipTx() *clist.CElement {
+	return txmp.gossipIndex.Front()
 }
 
 // EnableTxsAvailable enables the mempool to trigger events when transactions
