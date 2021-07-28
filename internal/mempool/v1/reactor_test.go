@@ -106,7 +106,7 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 	numNodes := 2
 	rts := setupReactors(t, numNodes, 0)
 
-	panicHandler := func(r interface{}) {
+	observePanic := func(r interface{}) {
 		t.Fatalf("panic detected in reactor")
 	}
 
@@ -116,8 +116,8 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 	primaryMempool := primaryReactor.mempool
 	secondaryReactor := rts.reactors[secondary]
 
-	primaryReactor.panicHandler = panicHandler
-	secondaryReactor.panicHandler = panicHandler
+	primaryReactor.observePanic = observePanic
+	secondaryReactor.observePanic = observePanic
 
 	firstTx := &WrappedTx{}
 	primaryMempool.insertTx(firstTx)
