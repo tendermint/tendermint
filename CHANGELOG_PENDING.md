@@ -106,6 +106,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [statesync/event] \#6700 Emit statesync status start/end event (@JayT106)
 
 ### IMPROVEMENTS
+
 - [libs/log] Console log formatting changes as a result of \#6534 and \#6589. (@tychoish)
 - [statesync] \#6566 Allow state sync fetchers and request timeout to be configurable. (@alexanderbez)
 - [types] \#6478 Add `block_id` to `newblock` event (@jeebster)
@@ -146,6 +147,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [state/privval] \#6578 No GetPubKey retry beyond the proposal/voting window (@JayT106)
 - [rpc] \#6615 Add TotalGasUsed to block_results response (@crypto-facs)
 - [cmd/tendermint/commands] \#6623 replace `$HOME/.some/test/dir` with `t.TempDir` (@tanyabouman)
+- [cleanup] \#6778 Remove redundant error plumbing
 
 ### BUG FIXES
 
