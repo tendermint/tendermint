@@ -433,7 +433,9 @@ func TestClientDivergentTraces2(t *testing.T) {
 
 // 3. witness has the same first header, but different second header
 // => creation should succeed, but the verification should fail
+//nolint: dupl
 func TestClientDivergentTraces3(t *testing.T) {
+	//
 	primaryHeaders, primaryVals, _ := genLightBlocksWithKeys(chainID, 2, 5, 2, bTime)
 	mockPrimary := mockNodeFromHeadersAndVals(primaryHeaders, primaryVals)
 
@@ -469,7 +471,9 @@ func TestClientDivergentTraces3(t *testing.T) {
 
 // 4. Witness has a divergent header but can not produce a valid trace to back it up.
 // It should be ignored
+//nolint: dupl
 func TestClientDivergentTraces4(t *testing.T) {
+	//
 	primaryHeaders, primaryVals, _ := genLightBlocksWithKeys(chainID, 2, 5, 2, bTime)
 	mockPrimary := mockNodeFromHeadersAndVals(primaryHeaders, primaryVals)
 
