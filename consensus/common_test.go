@@ -107,10 +107,7 @@ func (vs *validatorStub) signVote(
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
 	}
 	v := vote.ToProto()
-<<<<<<< HEAD:consensus/common_test.go
-	err = vs.PrivValidator.SignVote(config.ChainID(), v)
-=======
-	if err := vs.PrivValidator.SignVote(context.Background(), config.ChainID(), v); err != nil {
+	if err := vs.PrivValidator.SignVote(config.ChainID(), v); err != nil {
 		return nil, fmt.Errorf("sign vote failed: %w", err)
 	}
 
@@ -120,7 +117,6 @@ func (vs *validatorStub) signVote(
 		v.Timestamp = vs.lastVote.Timestamp
 	}
 
->>>>>>> 9a2a7d430 (state/privval: vote timestamp fix (#6748)):internal/consensus/common_test.go
 	vote.Signature = v.Signature
 	vote.Timestamp = v.Timestamp
 

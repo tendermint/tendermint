@@ -1878,21 +1878,17 @@ func TestStateOutputVoteStats(t *testing.T) {
 }
 
 func TestSignSameVoteTwice(t *testing.T) {
-	config := configSetup(t)
-
-	_, vss := randState(config, 2)
+	_, vss := randState(2)
 
 	randBytes := tmrand.Bytes(tmhash.Size)
 
 	vote := signVote(vss[1],
-		config,
 		tmproto.PrecommitType,
 		randBytes,
 		types.PartSetHeader{Total: 10, Hash: randBytes},
 	)
 
 	vote2 := signVote(vss[1],
-		config,
 		tmproto.PrecommitType,
 		randBytes,
 		types.PartSetHeader{Total: 10, Hash: randBytes},
