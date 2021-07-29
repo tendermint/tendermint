@@ -10,10 +10,10 @@ import (
 	"github.com/tendermint/tendermint/test/fuzz/rpc/jsonrpc/server"
 )
 
-const testdataDir = "testdata"
+const testdataCasesDir = "testdata/cases"
 
-func TestServerOnTestData(t *testing.T) {
-	entries, err := os.ReadDir(testdataDir)
+func TestServerTestdataCases(t *testing.T) {
+	entries, err := os.ReadDir(testdataCasesDir)
 	require.NoError(t, err)
 
 	for _, e := range entries {
@@ -21,9 +21,9 @@ func TestServerOnTestData(t *testing.T) {
 		t.Run(entry.Name(), func(t *testing.T) {
 			defer func() {
 				r := recover()
-				require.Nilf(t, r, "testdata test panic")
+				require.Nilf(t, r, "testdata/cases test panic")
 			}()
-			f, err := os.Open(filepath.Join(testdataDir, entry.Name()))
+			f, err := os.Open(filepath.Join(testdataCasesDir, entry.Name()))
 			require.NoError(t, err)
 			input, err := ioutil.ReadAll(f)
 			require.NoError(t, err)

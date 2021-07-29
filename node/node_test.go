@@ -659,7 +659,7 @@ func loadStatefromGenesis(t *testing.T) sm.State {
 
 func TestNodeStartStateSync(t *testing.T) {
 	mockSSR := &statesync.MockSyncReactor{}
-	mockFSR := &consmocks.FastSyncReactor{}
+	mockFSR := &consmocks.BlockSyncReactor{}
 	mockCSR := &consmocks.ConsSyncReactor{}
 	mockSP := &ssmocks.StateProvider{}
 	state := loadStatefromGenesis(t)

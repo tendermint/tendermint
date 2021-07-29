@@ -296,10 +296,10 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 		cfg.Mempool.Version = node.Mempool
 	}
 
-	if node.FastSync == "" {
+	if node.BlockSync == "" {
 		cfg.FastSyncMode = false
 	} else {
-		cfg.FastSync.Version = node.FastSync
+		cfg.BlockSync.Version = node.BlockSync
 	}
 
 	if node.StateSync {

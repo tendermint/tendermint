@@ -66,7 +66,7 @@ type nodeImpl struct {
 	eventBus         *types.EventBus // pub/sub for services
 	stateStore       sm.Store
 	blockStore       *store.BlockStore // store the blockchain to disk
-	bcReactor        service.Service   // for fast-syncing
+	bcReactor        service.Service   // for block-syncing
 	mempoolReactor   service.Service   // for gossipping transactions
 	mempool          mempool.Mempool
 	stateSync        bool               // whether the node should state sync on startup
@@ -225,9 +225,9 @@ func makeNode(config *cfg.Config,
 		}
 	}
 
-	// Determine whether we should do fast sync. This must happen after the handshake, since the
+	// Determine whether we should do block sync. This must happen after the handshake, since the
 	// app may modify the validator set, specifying ourself as the only validator.
-	fastSync := config.FastSyncMode && !onlyValidatorIsUs(state, pubKey)
+	blockSync := config.FastSyncMode && !onlyValidatorIsUs(state, pubKey)
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger, config.Mode)
 
@@ -281,15 +281,15 @@ func makeNode(config *cfg.Config,
 
 	csReactorShim, csReactor, csState := createConsensusReactor(
 		config, state, blockExec, blockStore, mp, evPool,
-		privValidator, csMetrics, stateSync || fastSync, eventBus,
+		privValidator, csMetrics, stateSync || blockSync, eventBus,
 		peerManager, router, consensusLogger,
 	)
 
-	// Create the blockchain reactor. Note, we do not start fast sync if we're
+	// Create the blockchain reactor. Note, we do not start block sync if we're
 	// doing a state sync first.
 	bcReactorShim, bcReactor, err := createBlockchainReactor(
 		logger, config, state, blockExec, blockStore, csReactor,
-		peerManager, router, fastSync && !stateSync, csMetrics,
+		peerManager, router, blockSync && !stateSync, csMetrics,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not create blockchain reactor: %w", err)
@@ -303,16 +303,16 @@ func makeNode(config *cfg.Config,
 		bcReactorForSwitch = bcReactor.(p2p.Reactor)
 	}
 
-	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or fast sync first.
+	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or block sync first.
 	// FIXME We need to update metrics here, since other reactors don't have access to them.
 	if stateSync {
 		csMetrics.StateSyncing.Set(1)
-	} else if fastSync {
-		csMetrics.FastSyncing.Set(1)
+	} else if blockSync {
+		csMetrics.BlockSyncing.Set(1)
 	}
 
 	// Set up state sync reactor, and schedule a sync if requested.
-	// FIXME The way we do phased startups (e.g. replay -> fast sync -> consensus) is very messy,
+	// FIXME The way we do phased startups (e.g. replay -> block sync -> consensus) is very messy,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
 	var (
@@ -610,7 +610,7 @@ func (n *nodeImpl) OnStart() error {
 	}
 
 	if n.config.Mode != cfg.ModeSeed {
-		if n.config.FastSync.Version == cfg.BlockchainV0 {
+		if n.config.BlockSync.Version == cfg.BlockSyncV0 {
 			// Start the real blockchain reactor separately since the switch uses the shim.
 			if err := n.bcReactor.Start(); err != nil {
 				return err
@@ -653,7 +653,7 @@ func (n *nodeImpl) OnStart() error {
 
 	// Run state sync
 	if n.stateSync {
-		bcR, ok := n.bcReactor.(cs.FastSyncReactor)
+		bcR, ok := n.bcReactor.(cs.BlockSyncReactor)
 		if !ok {
 			return fmt.Errorf("this blockchain reactor does not support switching from state sync")
 		}
@@ -695,7 +695,7 @@ func (n *nodeImpl) OnStop() {
 
 	if n.config.Mode != cfg.ModeSeed {
 		// now stop the reactors
-		if n.config.FastSync.Version == cfg.BlockchainV0 {
+		if n.config.BlockSync.Version == cfg.BlockSyncV0 {
 			// Stop the real blockchain reactor separately since the switch uses the shim.
 			if err := n.bcReactor.Stop(); err != nil {
 				n.Logger.Error("failed to stop the blockchain reactor", "err", err)
@@ -788,8 +788,8 @@ func (n *nodeImpl) ConfigureRPC() (*rpccore.Environment, error) {
 
 		Logger: n.Logger.With("module", "rpc"),
 
-		Config:          *n.config.RPC,
-		FastSyncReactor: n.bcReactor.(cs.FastSyncReactor),
+		Config:           *n.config.RPC,
+		BlockSyncReactor: n.bcReactor.(cs.BlockSyncReactor),
 	}
 	if n.config.Mode == cfg.ModeValidator {
 		pubKey, err := n.privValidator.GetPubKey(context.TODO())
@@ -1033,14 +1033,14 @@ func (n *nodeImpl) NodeInfo() types.NodeInfo {
 	return n.nodeInfo
 }
 
-// startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
+// startStateSync starts an asynchronous state sync process, then switches to block sync mode.
 func startStateSync(
 	ssR statesync.SyncReactor,
-	bcR cs.FastSyncReactor,
+	bcR cs.BlockSyncReactor,
 	conR cs.ConsSyncReactor,
 	sp statesync.StateProvider,
 	config *cfg.StateSyncConfig,
-	fastSync bool,
+	blockSync bool,
 	stateInitHeight int64,
 	eb *types.EventBus,
 ) error {
@@ -1074,17 +1074,17 @@ func startStateSync(
 			stateSyncLogger.Error("failed to emit the statesync start event", "err", err)
 		}
 
-		if fastSync {
+		if blockSync {
 			// FIXME Very ugly to have these metrics bleed through here.
-			conR.SetFastSyncingMetrics(1)
-			if err := bcR.SwitchToFastSync(state); err != nil {
-				stateSyncLogger.Error("failed to switch to fast sync", "err", err)
+			conR.SetBlockSyncingMetrics(1)
+			if err := bcR.SwitchToBlockSync(state); err != nil {
+				stateSyncLogger.Error("failed to switch to block sync", "err", err)
 				return
 			}
 
-			d := types.EventDataFastSyncStatus{Complete: false, Height: state.LastBlockHeight}
-			if err := eb.PublishEventFastSyncStatus(d); err != nil {
-				stateSyncLogger.Error("failed to emit the fastsync starting event", "err", err)
+			d := types.EventDataBlockSyncStatus{Complete: false, Height: state.LastBlockHeight}
+			if err := eb.PublishEventBlockSyncStatus(d); err != nil {
+				stateSyncLogger.Error("failed to emit the block sync starting event", "err", err)
 			}
 
 		} else {

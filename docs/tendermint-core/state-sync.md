@@ -4,7 +4,7 @@ order: 11
 
 # State Sync
 
-With fast sync a node is downloading all of the data of an application from genesis and verifying it. 
+With block sync a node is downloading all of the data of an application from genesis and verifying it. 
 With state sync your node will download data related to the head or near the head of the chain and verify the data. 
 This leads to drastically shorter times for joining a network. 
 
