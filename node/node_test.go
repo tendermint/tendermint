@@ -81,8 +81,10 @@ func TestNodeStartStop(t *testing.T) {
 			panic(err)
 		}
 		err = p.Signal(syscall.SIGABRT)
-		fmt.Println(err)
-		t.Fatal("timed out waiting for shutdown")
+		if err != nil {
+			t.Logf("err: %s", err)
+		}
+		t.Fatalf("timed out waiting for shutdown")
 	}
 }
 

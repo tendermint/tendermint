@@ -41,15 +41,20 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
+const (
+	_blockStoreID = "blockstore"
+	_stateStoreID = "state"
+)
+
 func initDBs(config *cfg.Config, dbProvider cfg.DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
 	var blockStoreDB dbm.DB
-	blockStoreDB, err = dbProvider(&cfg.DBContext{ID: "blockstore", Config: config})
+	blockStoreDB, err = dbProvider(&cfg.DBContext{ID: _blockStoreID, Config: config})
 	if err != nil {
 		return
 	}
 	blockStore = store.NewBlockStore(blockStoreDB)
 
-	stateDB, err = dbProvider(&cfg.DBContext{ID: "state", Config: config})
+	stateDB, err = dbProvider(&cfg.DBContext{ID: _stateStoreID, Config: config})
 	return
 }
 

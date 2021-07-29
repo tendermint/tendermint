@@ -13,7 +13,6 @@ import (
 	_ "github.com/lib/pq" // provide the psql db driver
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/rs/cors"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
@@ -25,7 +24,6 @@ import (
 	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/libs/strings"
 	tmtime "github.com/tendermint/tendermint/libs/time"
@@ -34,8 +32,6 @@ import (
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
-	grpccore "github.com/tendermint/tendermint/rpc/grpc"
-	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/store"
@@ -573,11 +569,33 @@ func (n *nodeImpl) OnStart() error {
 	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
 	if n.config.RPC.ListenAddress != "" && n.config.Mode != cfg.ModeSeed {
-		listeners, err := n.startRPC()
+		env, err := n.ConfigureRPC()
+		if err != nil {
+			return err
+		}
+
+		routes := env.GetRoutes()
+		if n.config.RPC.Unsafe {
+			routes = rpccore.CombineRoutes(routes, env.UnsafeRoutes())
+		}
+
+		listeners, err := startHTTPRPCServer(n.config.RPC, env.Logger, routes, n.eventBus)
 		if err != nil {
 			return err
 		}
 		n.rpcListeners = listeners
+	}
+
+	if n.config.RPC.GRPCListenAddress != "" && n.config.Mode != cfg.ModeSeed {
+		env, err := n.ConfigureRPC()
+		if err != nil {
+			return err
+		}
+		listener, err := startGRPCServer(n.config.RPC, env, env.Logger)
+		if err != nil {
+			return err
+		}
+		n.rpcListeners = append(n.rpcListeners, listener)
 	}
 
 	if n.config.Instrumentation.Prometheus &&
@@ -803,125 +821,6 @@ func (n *nodeImpl) ConfigureRPC() (*rpccore.Environment, error) {
 	}
 
 	return &rpcCoreEnv, nil
-}
-
-func (n *nodeImpl) startRPC() ([]net.Listener, error) {
-	env, err := n.ConfigureRPC()
-	if err != nil {
-		return nil, err
-	}
-
-	listenAddrs := strings.SplitAndTrimEmpty(n.config.RPC.ListenAddress, ",", " ")
-	routes := env.GetRoutes()
-
-	if n.config.RPC.Unsafe {
-		env.AddUnsafe(routes)
-	}
-
-	config := rpcserver.DefaultConfig()
-	config.MaxBodyBytes = n.config.RPC.MaxBodyBytes
-	config.MaxHeaderBytes = n.config.RPC.MaxHeaderBytes
-	config.MaxOpenConnections = n.config.RPC.MaxOpenConnections
-	// If necessary adjust global WriteTimeout to ensure it's greater than
-	// TimeoutBroadcastTxCommit.
-	// See https://github.com/tendermint/tendermint/issues/3435
-	if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
-		config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
-	}
-
-	// we may expose the rpc over both a unix and tcp socket
-	listeners := make([]net.Listener, len(listenAddrs))
-	for i, listenAddr := range listenAddrs {
-		mux := http.NewServeMux()
-		rpcLogger := n.Logger.With("module", "rpc-server")
-		wmLogger := rpcLogger.With("protocol", "websocket")
-		wm := rpcserver.NewWebsocketManager(routes,
-			rpcserver.OnDisconnect(func(remoteAddr string) {
-				err := n.eventBus.UnsubscribeAll(context.Background(), remoteAddr)
-				if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
-					wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
-				}
-			}),
-			rpcserver.ReadLimit(config.MaxBodyBytes),
-		)
-		wm.SetLogger(wmLogger)
-		mux.HandleFunc("/websocket", wm.WebsocketHandler)
-		rpcserver.RegisterRPCFuncs(mux, routes, rpcLogger)
-		listener, err := rpcserver.Listen(
-			listenAddr,
-			config,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		var rootHandler http.Handler = mux
-		if n.config.RPC.IsCorsEnabled() {
-			corsMiddleware := cors.New(cors.Options{
-				AllowedOrigins: n.config.RPC.CORSAllowedOrigins,
-				AllowedMethods: n.config.RPC.CORSAllowedMethods,
-				AllowedHeaders: n.config.RPC.CORSAllowedHeaders,
-			})
-			rootHandler = corsMiddleware.Handler(mux)
-		}
-		if n.config.RPC.IsTLSEnabled() {
-			go func() {
-				if err := rpcserver.ServeTLS(
-					listener,
-					rootHandler,
-					n.config.RPC.CertFile(),
-					n.config.RPC.KeyFile(),
-					rpcLogger,
-					config,
-				); err != nil {
-					n.Logger.Error("Error serving server with TLS", "err", err)
-				}
-			}()
-		} else {
-			go func() {
-				if err := rpcserver.Serve(
-					listener,
-					rootHandler,
-					rpcLogger,
-					config,
-				); err != nil {
-					n.Logger.Error("Error serving server", "err", err)
-				}
-			}()
-		}
-
-		listeners[i] = listener
-	}
-
-	// we expose a simplified api over grpc for convenience to app devs
-	grpcListenAddr := n.config.RPC.GRPCListenAddress
-	if grpcListenAddr != "" {
-		config := rpcserver.DefaultConfig()
-		config.MaxBodyBytes = n.config.RPC.MaxBodyBytes
-		config.MaxHeaderBytes = n.config.RPC.MaxHeaderBytes
-		// NOTE: GRPCMaxOpenConnections is used, not MaxOpenConnections
-		config.MaxOpenConnections = n.config.RPC.GRPCMaxOpenConnections
-		// If necessary adjust global WriteTimeout to ensure it's greater than
-		// TimeoutBroadcastTxCommit.
-		// See https://github.com/tendermint/tendermint/issues/3435
-		if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
-			config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
-		}
-		listener, err := rpcserver.Listen(grpcListenAddr, config)
-		if err != nil {
-			return nil, err
-		}
-		go func() {
-			if err := grpccore.StartGRPCServer(env, listener); err != nil {
-				n.Logger.Error("Error starting gRPC server", "err", err)
-			}
-		}()
-		listeners = append(listeners, listener)
-
-	}
-
-	return listeners, nil
-
 }
 
 // startPrometheusServer starts a Prometheus HTTP server, listening for metrics

@@ -51,16 +51,13 @@ func DefaultConfig() *Config {
 //
 // NOTE: This function blocks - you may want to call it in a go-routine.
 func Serve(listener net.Listener, handler http.Handler, logger log.Logger, config *Config) error {
-	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s", listener.Addr()))
 	s := &http.Server{
 		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
 		ReadTimeout:    config.ReadTimeout,
 		WriteTimeout:   config.WriteTimeout,
 		MaxHeaderBytes: config.MaxHeaderBytes,
 	}
-	err := s.Serve(listener)
-	logger.Info("RPC HTTP server stopped", "err", err)
-	return err
+	return s.Serve(listener)
 }
 
 // Serve creates a http.Server and calls ServeTLS with the given listener,
@@ -75,18 +72,13 @@ func ServeTLS(
 	logger log.Logger,
 	config *Config,
 ) error {
-	logger.Info(fmt.Sprintf("Starting RPC HTTPS server on %s (cert: %q, key: %q)",
-		listener.Addr(), certFile, keyFile))
 	s := &http.Server{
 		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
 		ReadTimeout:    config.ReadTimeout,
 		WriteTimeout:   config.WriteTimeout,
 		MaxHeaderBytes: config.MaxHeaderBytes,
 	}
-	err := s.ServeTLS(listener, certFile, keyFile)
-
-	logger.Error("RPC HTTPS server stopped", "err", err)
-	return err
+	return s.ServeTLS(listener, certFile, keyFile)
 }
 
 // WriteRPCResponseHTTPError marshals res as JSON (with indent) and writes it
@@ -261,7 +253,7 @@ func (h maxBytesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // Listen starts a new net.Listener on the given address.
 // It returns an error if the address is invalid or the call to Listen() fails.
-func Listen(addr string, config *Config) (listener net.Listener, err error) {
+func Listen(addr string, maxOpenConnections int) (listener net.Listener, err error) {
 	parts := strings.SplitN(addr, "://", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf(
@@ -274,8 +266,8 @@ func Listen(addr string, config *Config) (listener net.Listener, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to listen on %v: %v", addr, err)
 	}
-	if config.MaxOpenConnections > 0 {
-		listener = netutil.LimitListener(listener, config.MaxOpenConnections)
+	if maxOpenConnections > 0 {
+		listener = netutil.LimitListener(listener, maxOpenConnections)
 	}
 
 	return listener, nil
