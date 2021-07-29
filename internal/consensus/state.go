@@ -314,7 +314,12 @@ func (cs *State) LoadCommit(height int64) *types.Commit {
 	defer cs.mtx.RUnlock()
 
 	if height == cs.blockStore.Height() {
-		return cs.blockStore.LoadSeenCommit(height)
+		commit := cs.blockStore.LoadSeenCommit()
+		// NOTE: we can't yet ensure atomicity of operations in asserting
+		// whether this is the latest height and retrieving the seen commit
+		if commit != nil && commit.Height == height {
+			return commit
+		}
 	}
 
 	return cs.blockStore.LoadBlockCommit(height)
@@ -594,15 +599,19 @@ func (cs *State) sendInternalMessage(mi msgInfo) {
 // Reconstruct LastCommit from SeenCommit, which we saved along with the block,
 // (which happens even before saving the state)
 func (cs *State) reconstructLastCommit(state sm.State) {
-	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
-	if seenCommit == nil {
+	commit := cs.blockStore.LoadSeenCommit()
+	if commit == nil || commit.Height != state.LastBlockHeight {
+		commit = cs.blockStore.LoadBlockCommit(state.LastBlockHeight)
+	}
+
+	if commit == nil {
 		panic(fmt.Sprintf(
-			"failed to reconstruct last commit; seen commit for height %v not found",
+			"failed to reconstruct last commit; commit for height %v not found",
 			state.LastBlockHeight,
 		))
 	}
 
-	lastPrecommits := types.CommitToVoteSet(state.ChainID, seenCommit, state.LastValidators)
+	lastPrecommits := types.CommitToVoteSet(state.ChainID, commit, state.LastValidators)
 	if !lastPrecommits.HasTwoThirdsMajority() {
 		panic("failed to reconstruct last commit; does not have +2/3 maj")
 	}
@@ -2317,7 +2326,7 @@ func (cs *State) checkDoubleSigningRisk(height int64) error {
 		}
 
 		for i := int64(1); i < doubleSignCheckHeight; i++ {
-			lastCommit := cs.blockStore.LoadSeenCommit(height - i)
+			lastCommit := cs.LoadCommit(height - i)
 			if lastCommit != nil {
 				for sigIdx, s := range lastCommit.Signatures {
 					if s.BlockIDFlag == types.BlockIDFlagCommit && bytes.Equal(s.ValidatorAddress, valAddr) {

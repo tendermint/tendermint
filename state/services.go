@@ -32,7 +32,7 @@ type BlockStore interface {
 	LoadBlockPart(height int64, index int) *types.Part
 
 	LoadBlockCommit(height int64) *types.Commit
-	LoadSeenCommit(height int64) *types.Commit
+	LoadSeenCommit() *types.Commit
 }
 
 //-----------------------------------------------------------------------------
