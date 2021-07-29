@@ -1877,6 +1877,30 @@ func TestStateOutputVoteStats(t *testing.T) {
 
 }
 
+func TestSignSameVoteTwice(t *testing.T) {
+	config := configSetup(t)
+
+	_, vss := randState(config, 2)
+
+	randBytes := tmrand.Bytes(tmhash.Size)
+
+	vote := signVote(vss[1],
+		config,
+		tmproto.PrecommitType,
+		randBytes,
+		types.PartSetHeader{Total: 10, Hash: randBytes},
+	)
+
+	vote2 := signVote(vss[1],
+		config,
+		tmproto.PrecommitType,
+		randBytes,
+		types.PartSetHeader{Total: 10, Hash: randBytes},
+	)
+
+	require.Equal(t, vote, vote2)
+}
+
 // subscribe subscribes test client to the given query and returns a channel with cap = 1.
 func subscribe(eventBus *types.EventBus, q tmpubsub.Query) <-chan tmpubsub.Message {
 	sub, err := eventBus.Subscribe(context.Background(), testSubscriber, q)
