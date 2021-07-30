@@ -219,6 +219,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 	}
 
 	results := make([]*abci.TxResult, 0, len(filteredHashes))
+hashes:
 	for _, h := range filteredHashes {
 		res, err := txi.Get(h)
 		if err != nil {
@@ -229,7 +230,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 		// Potentially exit early.
 		select {
 		case <-ctx.Done():
-			break
+			break hashes
 		default:
 		}
 	}
@@ -285,13 +286,14 @@ func (txi *TxIndex) match(
 		}
 		defer it.Close()
 
+	iterEqual:
 		for ; it.Valid(); it.Next() {
 			tmpHashes[string(it.Value())] = it.Value()
 
 			// Potentially exit early.
 			select {
 			case <-ctx.Done():
-				break
+				break iterEqual
 			default:
 			}
 		}
@@ -308,13 +310,14 @@ func (txi *TxIndex) match(
 		}
 		defer it.Close()
 
+	iterExists:
 		for ; it.Valid(); it.Next() {
 			tmpHashes[string(it.Value())] = it.Value()
 
 			// Potentially exit early.
 			select {
 			case <-ctx.Done():
-				break
+				break iterExists
 			default:
 			}
 		}
@@ -332,6 +335,7 @@ func (txi *TxIndex) match(
 		}
 		defer it.Close()
 
+	iterContains:
 		for ; it.Valid(); it.Next() {
 			value, err := parseValueFromKey(it.Key())
 			if err != nil {
@@ -344,7 +348,7 @@ func (txi *TxIndex) match(
 			// Potentially exit early.
 			select {
 			case <-ctx.Done():
-				break
+				break iterContains
 			default:
 			}
 		}
@@ -412,7 +416,7 @@ func (txi *TxIndex) matchRange(
 	}
 	defer it.Close()
 
-LOOP:
+iter:
 	for ; it.Valid(); it.Next() {
 		value, err := parseValueFromKey(it.Key())
 		if err != nil {
@@ -421,7 +425,7 @@ LOOP:
 		if _, ok := qr.AnyBound().(int64); ok {
 			v, err := strconv.ParseInt(value, 10, 64)
 			if err != nil {
-				continue LOOP
+				continue iter
 			}
 
 			include := true
@@ -448,7 +452,7 @@ LOOP:
 		// Potentially exit early.
 		select {
 		case <-ctx.Done():
-			break
+			break iter
 		default:
 		}
 	}
