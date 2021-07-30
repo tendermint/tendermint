@@ -2180,6 +2180,7 @@ func (cs *State) signVote(
 	v := vote.ToProto()
 	err := cs.privValidator.SignVote(cs.state.ChainID, v)
 	vote.Signature = v.Signature
+	vote.Timestamp = v.Timestamp
 
 	return vote, err
 }

@@ -74,6 +74,7 @@ type validatorStub struct {
 	Round  int32
 	types.PrivValidator
 	VotingPower int64
+	lastVote    *types.Vote
 }
 
 var testMinPower int64 = 10
@@ -106,8 +107,18 @@ func (vs *validatorStub) signVote(
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
 	}
 	v := vote.ToProto()
-	err = vs.PrivValidator.SignVote(config.ChainID(), v)
+	if err := vs.PrivValidator.SignVote(config.ChainID(), v); err != nil {
+		return nil, fmt.Errorf("sign vote failed: %w", err)
+	}
+
+	// ref: signVote in FilePV, the vote should use the privious vote info when the sign data is the same.
+	if signDataIsEqual(vs.lastVote, v) {
+		v.Signature = vs.lastVote.Signature
+		v.Timestamp = vs.lastVote.Timestamp
+	}
+
 	vote.Signature = v.Signature
+	vote.Timestamp = v.Timestamp
 
 	return vote, err
 }
@@ -118,6 +129,9 @@ func signVote(vs *validatorStub, voteType tmproto.SignedMsgType, hash []byte, he
 	if err != nil {
 		panic(fmt.Errorf("failed to sign vote: %v", err))
 	}
+
+	vs.lastVote = v
+
 	return v
 }
 
@@ -865,4 +879,17 @@ func newPersistentKVStore() abci.Application {
 
 func newPersistentKVStoreWithPath(dbDir string) abci.Application {
 	return kvstore.NewPersistentKVStoreApplication(dbDir)
+}
+
+func signDataIsEqual(v1 *types.Vote, v2 *tmproto.Vote) bool {
+	if v1 == nil || v2 == nil {
+		return false
+	}
+
+	return v1.Type == v2.Type &&
+		bytes.Equal(v1.BlockID.Hash, v2.BlockID.GetHash()) &&
+		v1.Height == v2.GetHeight() &&
+		v1.Round == v2.Round &&
+		bytes.Equal(v1.ValidatorAddress.Bytes(), v2.GetValidatorAddress()) &&
+		v1.ValidatorIndex == v2.GetValidatorIndex()
 }
