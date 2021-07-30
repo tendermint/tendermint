@@ -3,6 +3,7 @@ package v1
 import (
 	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -129,10 +130,18 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 	primaryReactor.peerWG.Add(1)
 	go primaryReactor.broadcastTxRoutine(secondary, closer)
 
-	second := &WrappedTx{}
-	primaryMempool.insertTx(second)
+	wg := &sync.WaitGroup{}
+	for i := 0; i < 50; i++ {
+		next := &WrappedTx{}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			primaryMempool.insertTx(next)
+		}()
+	}
 
 	err := primaryReactor.Stop()
 	require.NoError(t, err)
 	primaryReactor.peerWG.Wait()
+	wg.Wait()
 }
