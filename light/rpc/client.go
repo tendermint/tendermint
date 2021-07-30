@@ -25,7 +25,7 @@ import (
 type KeyPathFunc func(path string, key []byte) (merkle.KeyPath, error)
 
 // LightClient is an interface that contains functionality needed by Client from the light client.
-//go:generate mockery --case underscore --name LightClient
+//go:generate ../../scripts/mockery_generate.sh LightClient
 type LightClient interface {
 	ChainID() string
 	Update(ctx context.Context, now time.Time) (*types.LightBlock, error)

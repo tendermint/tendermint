@@ -9,7 +9,7 @@ import (
 // NOTE: Interfaces used by RPC must be thread safe!
 //------------------------------------------------------
 
-//go:generate mockery --case underscore --name BlockStore
+//go:generate ../scripts/mockery_generate.sh BlockStore
 
 //------------------------------------------------------
 // blockstore
@@ -38,7 +38,7 @@ type BlockStore interface {
 //-----------------------------------------------------------------------------
 // evidence pool
 
-//go:generate mockery --case underscore --name EvidencePool
+//go:generate ../scripts/mockery_generate.sh EvidencePool
 
 // EvidencePool defines the EvidencePool interface used by State.
 type EvidencePool interface {
