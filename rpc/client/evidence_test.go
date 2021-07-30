@@ -126,7 +126,7 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 		t.Logf("client %d", i)
 
 		// make sure that the node has produced enough blocks
-		waitForBlock(t, ctx, c, 2)
+		waitForBlock(ctx, t, c, 2)
 
 		result, err := c.BroadcastEvidence(ctx, correct)
 		require.NoError(t, err, "BroadcastEvidence(%s) failed", correct)
@@ -169,18 +169,19 @@ func TestBroadcastEmptyEvidence(t *testing.T) {
 	}
 }
 
-func waitForBlock(t *testing.T, ctx context.Context, c client.Client, height int64) {
+func waitForBlock(ctx context.Context, t *testing.T, c client.Client, height int64) {
+	ticker := time.NewTicker(200 * time.Millisecond)
+	defer ticker.Stop()
 	for {
-		status, err := c.Status(ctx)
-		require.NoError(t, err)
-		if status.SyncInfo.LatestBlockHeight >= height {
-			return
-		}
-		timer := time.NewTimer(200 * time.Millisecond)
 		select {
 		case <-ctx.Done():
 			return
-		case <-timer.C:
+		case <-ticker.C:
+			status, err := c.Status(ctx)
+			require.NoError(t, err)
+			if status.SyncInfo.LatestBlockHeight >= height {
+				return
+			}
 		}
 	}
 }
