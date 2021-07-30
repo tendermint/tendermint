@@ -237,7 +237,7 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumType btcjson.LLMQ
 	proTxHash, err := sc.GetProTxHash()
 
 
-	signID := crypto.SignId(sc.defaultQuorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
+	signID := crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
 
 	logger.Debug("signed vote", "height", protoVote.Height, "round", protoVote.Round, "quorumType", quorumType,
 		"quorumHash", quorumHash, "signature", blockDecodedSignature, "signBytes", blockSignBytes, "proTxHash", proTxHash,
