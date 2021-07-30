@@ -108,7 +108,7 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 	rts := setupReactors(t, numNodes, 0)
 
 	observePanic := func(r interface{}) {
-		t.Fatalf("panic detected in reactor")
+		t.Fatal("panic detected in reactor")
 	}
 
 	primary := rts.nodes[0]
