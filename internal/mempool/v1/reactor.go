@@ -328,7 +328,7 @@ func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer)
 			r.observePanic(e)
 			r.Logger.Error(
 				"recovering from broadcasting mempool loop",
-				"err", r,
+				"err", e,
 				"stack", string(debug.Stack()),
 			)
 		}
