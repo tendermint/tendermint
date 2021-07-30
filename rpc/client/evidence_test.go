@@ -170,18 +170,19 @@ func TestBroadcastEmptyEvidence(t *testing.T) {
 }
 
 func waitForBlock(ctx context.Context, t *testing.T, c client.Client, height int64) {
-	ticker := time.NewTicker(200 * time.Millisecond)
-	defer ticker.Stop()
+	timer := time.NewTimer(0 * time.Millisecond)
+	defer timer.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
+		case <-timer.C:
 			status, err := c.Status(ctx)
 			require.NoError(t, err)
 			if status.SyncInfo.LatestBlockHeight >= height {
 				return
 			}
+			timer.Reset(200 * time.Millisecond)
 		}
 	}
 }
