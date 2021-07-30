@@ -239,7 +239,8 @@ func makeNode(config *cfg.Config,
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
 
-	csMetrics, p2pMetrics, memplMetrics, smMetrics := defaultMetricsProvider(config.Instrumentation)(genDoc.ChainID)
+	csMetrics, p2pMetrics, memplMetrics, smMetrics, statesyncMetrics :=
+		defaultMetricsProvider(config.Instrumentation)(genDoc.ChainID)
 
 	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey,
 		peerManager, transport, getRouterConfig(config, proxyApp))
@@ -341,6 +342,7 @@ func makeNode(config *cfg.Config,
 		stateStore,
 		blockStore,
 		config.StateSync.TempDir,
+		statesyncMetrics,
 	)
 
 	// add the channel descriptors to both the transports
@@ -1035,19 +1037,20 @@ func defaultGenesisDocProviderFunc(config *cfg.Config) genesisDocProvider {
 }
 
 // metricsProvider returns a consensus, p2p and mempool Metrics.
-type metricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempool.Metrics, *sm.Metrics)
+type metricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempool.Metrics, *sm.Metrics, *statesync.Metrics)
 
 // defaultMetricsProvider returns Metrics build using Prometheus client library
 // if Prometheus is enabled. Otherwise, it returns no-op Metrics.
 func defaultMetricsProvider(config *cfg.InstrumentationConfig) metricsProvider {
-	return func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempool.Metrics, *sm.Metrics) {
+	return func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempool.Metrics, *sm.Metrics, *statesync.Metrics) {
 		if config.Prometheus {
 			return cs.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				p2p.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				mempool.PrometheusMetrics(config.Namespace, "chain_id", chainID),
-				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID)
+				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+				statesync.PrometheusMetrics(config.Namespace, "chain_id", chainID)
 		}
-		return cs.NopMetrics(), p2p.NopMetrics(), mempool.NopMetrics(), sm.NopMetrics()
+		return cs.NopMetrics(), p2p.NopMetrics(), mempool.NopMetrics(), sm.NopMetrics(), statesync.NopMetrics()
 	}
 }
 

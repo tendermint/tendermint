@@ -156,6 +156,7 @@ func setup(
 		rts.stateStore,
 		rts.blockStore,
 		"",
+		NopMetrics(),
 	)
 
 	rts.syncer = newSyncer(

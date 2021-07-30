@@ -158,6 +158,8 @@ type Reactor struct {
 	syncer        *syncer
 	providers     map[types.NodeID]*BlockProvider
 	stateProvider StateProvider
+
+	metrics *Metrics
 }
 
 // NewReactor returns a reference to a new state sync reactor, which implements
@@ -176,6 +178,7 @@ func NewReactor(
 	stateStore sm.Store,
 	blockStore *store.BlockStore,
 	tempDir string,
+	ssMetrics *Metrics,
 ) *Reactor {
 	r := &Reactor{
 		chainID:       chainID,
@@ -195,6 +198,7 @@ func NewReactor(
 		peers:         newPeerList(),
 		dispatcher:    NewDispatcher(blockCh.Out),
 		providers:     make(map[types.NodeID]*BlockProvider),
+		metrics:       ssMetrics,
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "StateSync", r)
