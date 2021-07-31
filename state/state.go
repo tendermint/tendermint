@@ -302,11 +302,12 @@ func (state State) MakeBlock(
 }
 
 func (state State) ValidatorsAtHeight(height int64) *types.ValidatorSet {
-	if state.LastBlockHeight == height {
+	switch {
+	case state.LastBlockHeight == height:
 		return state.LastValidators
-	} else if state.LastBlockHeight+2 == height {
+	case state.LastBlockHeight+2 == height:
 		return state.NextValidators
-	} else {
+	default:
 		return state.Validators
 	}
 }

@@ -136,7 +136,7 @@ func (mc *DashCoreMockClient) MasternodeListJSON(filter string) (map[string]btcj
 }
 
 func (mc *DashCoreMockClient) QuorumSign(quorumType btcjson.LLMQType, requestID bytes.HexBytes, messageHash bytes.HexBytes, quorumHash crypto.QuorumHash) (*btcjson.QuorumSignResult, error) {
-	if mc.canSign == false {
+	if !mc.canSign {
 		return nil, errors.New("dash core mock client not set up for signing")
 	}
 

@@ -75,14 +75,18 @@ func (app *PersistentKVStoreApplication) SetOption(req types.RequestSetOption) t
 func (app *PersistentKVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	// if it starts with "vals:", update the validator set
 	// format is "val:proTxHash!pubkey!power"
-	if isValidatorTx(req.Tx) {
+	switch {
+	case isValidatorTx(req.Tx):
 		// update validators in the merkle tree
 		// and in app.ValUpdates
 		return app.execValidatorTx(req.Tx)
-	} else if isThresholdPublicKeyTx(req.Tx) {
+	case isThresholdPublicKeyTx(req.Tx):
 		return app.execThresholdPublicKeyTx(req.Tx)
-	} else if isQuorumHashTx(req.Tx) {
+	case isQuorumHashTx(req.Tx):
 		return app.execQuorumHashTx(req.Tx)
+	default:
+		// otherwise, update the key-value store
+		return app.app.DeliverTx(req)
 	}
 
 	// otherwise, update the key-value store

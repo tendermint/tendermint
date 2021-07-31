@@ -114,7 +114,7 @@ func VoteBlockSignId(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQ
 // VoteStateSignBytes returns the 40 bytes of the height + last state app hash.
 func VoteStateSignBytes(chainID string, vote *tmproto.Vote) []byte {
 	bz := make([]byte, 8)
-	binary.LittleEndian.PutUint64(bz, uint64(vote.Height - 1))
+	binary.LittleEndian.PutUint64(bz, uint64(vote.Height-1))
 	bz = append(bz, vote.StateID.LastAppHash...)
 	return bz
 }
@@ -211,7 +211,7 @@ func VoteStateRequestId(vote *Vote) []byte {
 	requestIdMessage := []byte("dpsvote")
 	heightByteArray := make([]byte, 8)
 	// We use height - 1 because we are signing the state at the end of the execution of the previous block
-	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height) - 1)
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height)-1)
 
 	requestIdMessage = append(requestIdMessage, heightByteArray...)
 
@@ -221,7 +221,7 @@ func VoteStateRequestId(vote *Vote) []byte {
 func VoteStateRequestIdProto(vote *tmproto.Vote) []byte {
 	requestIdMessage := []byte("dpsvote")
 	heightByteArray := make([]byte, 8)
-	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height) - 1)
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height)-1)
 
 	requestIdMessage = append(requestIdMessage, heightByteArray...)
 

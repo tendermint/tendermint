@@ -97,11 +97,9 @@ func (rpcClient *DashCoreRpcClient) QuorumSign(quorumType btcjson.LLMQType, requ
 	quorumSignResultWithBool, err := rpcClient.endpoint.QuorumSign(quorumType, requestID.String(), messageHash.String(), quorumHash.String(), false)
 	if quorumSignResultWithBool == nil {
 		return nil, err
-	} else {
-		quorumSignResult := quorumSignResultWithBool.QuorumSignResult
-		return &quorumSignResult, err
 	}
-
+	quorumSignResult := quorumSignResultWithBool.QuorumSignResult
+	return &quorumSignResult, err
 }
 
 func (rpcClient *DashCoreRpcClient) QuorumVerify(quorumType btcjson.LLMQType, requestID bytes.HexBytes, messageHash bytes.HexBytes, signature bytes.HexBytes, quorumHash crypto.QuorumHash) (bool, error) {
