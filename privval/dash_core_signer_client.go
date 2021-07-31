@@ -225,7 +225,7 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumType btcjson.LLMQ
 		return &RemoteSignerError{Code: 500, Description: err.Error()}
 	}
 
-	// fmt.Printf("blockResponse %v", blockResponse)
+	//fmt.Printf("blockResponse %v", blockResponse)
 	//
 	blockDecodedSignature, err := hex.DecodeString(blockResponse.Signature)
 	if err != nil {
@@ -235,7 +235,7 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumType btcjson.LLMQ
 		return fmt.Errorf("decoding signature %d is incorrect size when signing proposal : %v", len(blockDecodedSignature), err)
 	}
 
-	// fmt.Printf("Signed Vote proTxHash %s blockSignBytes %s block signature %s \n", proTxHash, hex.EncodeToString(blockSignBytes),
+	/// fmt.Printf("Signed Vote proTxHash %s blockSignBytes %s block signature %s \n", proTxHash, hex.EncodeToString(blockSignBytes),
 	//	hex.EncodeToString(blockDecodedSignature))
 
 	// signID := crypto.SignId(sc.defaultQuorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
@@ -244,13 +244,13 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumType btcjson.LLMQ
 	//
 	// fmt.Printf("core block signID %s our block sign Id %s\n", blockResponse.SignHash, hex.EncodeToString(signID))
 	//
-	// pubKey, err := sc.GetPubKey(quorumHash)
-	// verified := pubKey.VerifySignatureDigest(signID, blockDecodedSignature)
-	// if verified {
+	//pubKey, err := sc.GetPubKey(quorumHash)
+	//verified := pubKey.VerifySignatureDigest(signID, blockDecodedSignature)
+	//if verified {
 	//	fmt.Printf("Verified core signing with public key %v\n", pubKey)
-	// } else {
+	//} else {
 	//	fmt.Printf("Unable to verify signature %v\n", pubKey)
-	// }
+	//}
 
 	stateResponse, err := sc.dashCoreRpcClient.QuorumSign(sc.defaultQuorumType, stateRequestId, stateMessageHash, quorumHash)
 
