@@ -29,8 +29,8 @@ const (
 	// For verifySkipping, when using the cache of headers from the previous batch,
 	// they will always be at a height greater than 1/2 (normal verifySkipping) so to
 	// find something in between the range, 9/16 is used.
-	verifySkippingNumerator   = 9
-	verifySkippingDenominator = 16
+	// verifySkippingNumerator   = 9
+	// verifySkippingDenominator = 16
 
 	// 10s should cover most of the clients.
 	// References:
