@@ -16,11 +16,9 @@ import (
 	"github.com/tendermint/tendermint/evidence"
 	"github.com/tendermint/tendermint/evidence/mocks"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	sm "github.com/tendermint/tendermint/state"
 	smmocks "github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 type voteData struct {
@@ -154,6 +152,7 @@ func makeVote(
 	return v
 }
 
+/*
 func makeHeaderRandom(height int64) *types.Header {
 	return &types.Header{
 		Version:            tmversion.Consensus{Block: version.BlockProtocol, App: 1},
@@ -171,7 +170,7 @@ func makeHeaderRandom(height int64) *types.Header {
 		EvidenceHash:       crypto.CRandBytes(tmhash.Size),
 		ProposerProTxHash:  crypto.CRandBytes(crypto.DefaultHashSize),
 	}
-}
+}*/
 
 func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.BlockID {
 	var (

@@ -112,7 +112,7 @@ func Debug() ExpectFunc {
 			return err
 		}
 		req.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
-		//log.Printf("[DEBUG] Request Body: %s\n", buf)
+		// log.Printf("[DEBUG] Request Body: %s\n", buf)
 		return nil
 	}
 }

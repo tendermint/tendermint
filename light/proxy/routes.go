@@ -161,6 +161,7 @@ type rpcBlockSearchFunc func(
 	orderBy string,
 ) (*ctypes.ResultBlockSearch, error)
 
+/*
 func makeBlockSearchFunc(c *lrpc.Client) rpcBlockSearchFunc {
 	return func(
 		ctx *rpctypes.Context,
@@ -171,7 +172,7 @@ func makeBlockSearchFunc(c *lrpc.Client) rpcBlockSearchFunc {
 	) (*ctypes.ResultBlockSearch, error) {
 		return c.BlockSearch(ctx.Context(), query, page, perPage, orderBy)
 	}
-}
+}*/
 
 type rpcValidatorsFunc func(ctx *rpctypes.Context, height *int64,
 	page, perPage *int, requestThresholdPublicKey *bool) (*ctypes.ResultValidators, error)

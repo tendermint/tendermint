@@ -406,6 +406,7 @@ func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.Bloc
 	}
 }
 
+/*
 func makeStateID(lastAppHash []byte) types.StateID {
 	var (
 		h = make([]byte, tmhash.Size)
@@ -414,4 +415,4 @@ func makeStateID(lastAppHash []byte) types.StateID {
 	return types.StateID{
 		LastAppHash: h,
 	}
-}
+}*/
