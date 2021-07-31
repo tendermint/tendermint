@@ -120,8 +120,8 @@ func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string, valSet 
 		return fmt.Errorf("verifying VoteA: %s", types.ErrVoteInvalidBlockSignature.Error())
 	}
 	if !pubKey.VerifySignatureDigest(
-		types.VoteBlockSignId(chainID, vb, valSet.QuorumType, valSet.QuorumHash),
-		e.VoteB.BlockSignature,
+	    types.VoteBlockSignId(chainID, vb, valSet.QuorumType, valSet.QuorumHash),
+	    e.VoteB.BlockSignature,
 	) {
 		return fmt.Errorf("verifying VoteB: %s", types.ErrVoteInvalidStateSignature.Error())
 	}

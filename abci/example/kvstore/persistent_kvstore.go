@@ -205,28 +205,28 @@ func (app *PersistentKVStoreApplication) ValidatorSet() (validatorSet types.Vali
 	}
 	for ; itr.Valid(); itr.Next() {
 		key := itr.Key()
-		switch {
-		case isValidatorTx(key):
-			validator := new(types.ValidatorUpdate)
-			err := types.ReadMessage(bytes.NewBuffer(itr.Value()), validator)
-			if err != nil {
-				panic(err)
-			}
-			validatorSet.ValidatorUpdates = append(validatorSet.ValidatorUpdates, *validator)
-		case isThresholdPublicKeyTx(key):
-			thresholdPublicKeyMessage := new(types.ThresholdPublicKeyUpdate)
-			err := types.ReadMessage(bytes.NewBuffer(itr.Value()), thresholdPublicKeyMessage)
-			if err != nil {
-				panic(err)
-			}
-			validatorSet.ThresholdPublicKey = thresholdPublicKeyMessage.GetThresholdPublicKey()
-		case isQuorumHashTx(key):
-			quorumHashMessage := new(types.QuorumHashUpdate)
-			err := types.ReadMessage(bytes.NewBuffer(itr.Value()), quorumHashMessage)
-			if err != nil {
-				panic(err)
-			}
-			validatorSet.QuorumHash = quorumHashMessage.GetQuorumHash()
+		switch{
+		    case isValidatorTx(key):
+                validator := new(types.ValidatorUpdate)
+                err := types.ReadMessage(bytes.NewBuffer(itr.Value()), validator)
+                if err != nil {
+                    panic(err)
+                }
+                validatorSet.ValidatorUpdates = append(validatorSet.ValidatorUpdates, *validator)
+            case isThresholdPublicKeyTx(key):
+                thresholdPublicKeyMessage := new(types.ThresholdPublicKeyUpdate)
+                err := types.ReadMessage(bytes.NewBuffer(itr.Value()), thresholdPublicKeyMessage)
+                if err != nil {
+                    panic(err)
+                }
+                validatorSet.ThresholdPublicKey = thresholdPublicKeyMessage.GetThresholdPublicKey()
+            case isQuorumHashTx(key):
+                quorumHashMessage := new(types.QuorumHashUpdate)
+                err := types.ReadMessage(bytes.NewBuffer(itr.Value()), quorumHashMessage)
+                if err != nil {
+                    panic(err)
+                }
+                validatorSet.QuorumHash = quorumHashMessage.GetQuorumHash()
 		}
 	}
 	if err = itr.Error(); err != nil {

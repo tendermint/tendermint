@@ -26,9 +26,9 @@ func RandValidatorSetUpdate(cnt int) types.ValidatorSetUpdate {
 		panic(err)
 	}
 	return types.ValidatorSetUpdate{
-		ValidatorUpdates:   res,
-		ThresholdPublicKey: thresholdPublicKeyABCI,
-		QuorumHash:         crypto.RandQuorumHash(),
+	    ValidatorUpdates: res,
+	    ThresholdPublicKey: thresholdPublicKeyABCI,
+	    QuorumHash: crypto.RandQuorumHash(),
 	}
 }
 
