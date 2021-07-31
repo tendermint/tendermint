@@ -140,7 +140,7 @@ func (mc *DashCoreMockClient) QuorumSign(quorumType btcjson.LLMQType, requestID 
 		return nil, errors.New("dash core mock client not set up for signing")
 	}
 
-	signID := crypto.SignId(
+	signID := crypto.SignID(
 		quorumType,
 		bls12381.ReverseBytes(quorumHash),
 		bls12381.ReverseBytes(requestID),
@@ -168,7 +168,7 @@ func (mc *DashCoreMockClient) QuorumSign(quorumType btcjson.LLMQType, requestID 
 }
 
 func (mc *DashCoreMockClient) QuorumVerify(quorumType btcjson.LLMQType, requestID bytes.HexBytes, messageHash bytes.HexBytes, signature bytes.HexBytes, quorumHash crypto.QuorumHash) (bool, error) {
-	signID := crypto.SignId(
+	signID := crypto.SignID(
 		quorumType,
 		bls12381.ReverseBytes(quorumHash),
 		bls12381.ReverseBytes(requestID),

@@ -106,7 +106,7 @@ func VoteBlockSignId(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQ
 
 	blockRequestId := VoteBlockRequestIdProto(vote)
 
-	blockSignID := crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
+	blockSignID := crypto.SignID(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
 
 	return blockSignID
 }
@@ -131,7 +131,7 @@ func VoteStateSignId(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQ
 
 	stateRequestId := VoteStateRequestIdProto(vote)
 
-	stateSignId := crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestId), bls12381.ReverseBytes(stateMessageHash))
+	stateSignId := crypto.SignID(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestId), bls12381.ReverseBytes(stateMessageHash))
 
 	return stateSignId
 }
@@ -242,7 +242,7 @@ func (vote *Vote) Verify(chainID string, quorumType btcjson.LLMQType, quorumHash
 
 	blockRequestId := VoteBlockRequestId(vote)
 
-	signID := crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
+	signID := crypto.SignID(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
 
 	// fmt.Printf("block vote verify sign Id %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(signID), quorumType,
 	//	hex.EncodeToString(quorumHash), hex.EncodeToString(blockRequestId), hex.EncodeToString(blockMessageHash))
@@ -259,7 +259,7 @@ func (vote *Vote) Verify(chainID string, quorumType btcjson.LLMQType, quorumHash
 
 		stateRequestId := VoteStateRequestId(vote)
 
-		stateSignId := crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestId), bls12381.ReverseBytes(stateMessageHash))
+		stateSignId := crypto.SignID(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestId), bls12381.ReverseBytes(stateMessageHash))
 
 		// fmt.Printf("state vote verify sign Id %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(stateSignId), quorumType,
 		//	hex.EncodeToString(quorumHash), hex.EncodeToString(stateRequestId), hex.EncodeToString(stateMessageHash))

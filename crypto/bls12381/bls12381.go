@@ -211,7 +211,10 @@ func CreatePrivLLMQDataOnProTxHashesDefaultThresholdUsingSeedSource(proTxHashes 
 	return CreatePrivLLMQDataOnProTxHashesUsingSeed(proTxHashes, len(proTxHashes)*2/3+1, seedSource)
 }
 
-func CreatePrivLLMQDataOnProTxHashes(proTxHashes []crypto.ProTxHash, threshold int) ([]crypto.ProTxHash, []crypto.PrivKey, crypto.PubKey) {
+func CreatePrivLLMQDataOnProTxHashes(
+    proTxHashes []crypto.ProTxHash,
+    threshold int,
+    ) ([]crypto.ProTxHash, []crypto.PrivKey, crypto.PubKey) {
 	return CreatePrivLLMQDataOnProTxHashesUsingSeed(proTxHashes, threshold, 0)
 }
 
