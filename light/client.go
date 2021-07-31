@@ -695,7 +695,7 @@ func (c *Client) lightBlockFromPrimaryAtHeight(ctx context.Context, height int64
 		if c.latestTrustedBlock != nil && l.Height < c.latestTrustedBlock.Height {
 			return c.findNewPrimary(ctx, false)
 		}
-        return l, nil
+		return l, nil
 
 	case provider.ErrNoResponse, provider.ErrLightBlockNotFound, provider.ErrHeightTooHigh:
 		// we find a new witness to replace the primary
