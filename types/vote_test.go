@@ -238,12 +238,12 @@ func TestVoteVerify(t *testing.T) {
 	vote := examplePrevote()
 	vote.ValidatorProTxHash = proTxHash
 
-	err = vote.Verify("test_chain_id", quorumType, quorumHash, bls12381.GenPrivKey().PubKey(), crypto.RandProTxHash())
+	_, _, err = vote.Verify("test_chain_id", quorumType, quorumHash, bls12381.GenPrivKey().PubKey(), crypto.RandProTxHash())
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrVoteInvalidValidatorProTxHash, err)
 	}
 
-	err = vote.Verify("test_chain_id", quorumType, quorumHash, pubkey, proTxHash)
+	_, _, err = vote.Verify("test_chain_id", quorumType, quorumHash, pubkey, proTxHash)
 	if assert.Error(t, err) {
 		assert.True(t, strings.HasPrefix(err.Error(), ErrVoteInvalidBlockSignature.Error())) // since block signatures are verified first
 	}

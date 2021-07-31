@@ -185,7 +185,7 @@ func (pv *MockPV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 	}
 
 	blockSignID := VoteBlockSignId(useChainID, vote, quorumType, quorumHash)
-	stateSignId := VoteStateSignId(useChainID, vote, quorumType, quorumHash)
+
 
 	var privKey crypto.PrivKey
 	if quorumKeys, ok := pv.PrivateKeys[quorumHash.String()]; ok {
@@ -204,7 +204,8 @@ func (pv *MockPV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 	}
 	vote.BlockSignature = blockSignature
 
-	if stateSignId != nil {
+	if vote.BlockID.Hash != nil {
+		stateSignId := VoteStateSignId(useChainID, vote, quorumType, quorumHash)
 		stateSignature, err := privKey.SignDigest(stateSignId)
 		if err != nil {
 			return err
