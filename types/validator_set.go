@@ -1218,7 +1218,7 @@ func GenerateTestValidatorSetWithProTxHashes(proTxHashes []crypto.ProTxHash, pow
 		originalPowerMap[string(proTxHashes[i])] = power[i]
 	}
 
-	sortedProTxHashes := proTxHashes[:]
+	sortedProTxHashes := proTxHashes
 	sort.Sort(crypto.SortProTxHash(sortedProTxHashes))
 
 	orderedProTxHashes, privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(sortedProTxHashes)

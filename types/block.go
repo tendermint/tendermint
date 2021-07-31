@@ -671,22 +671,22 @@ func (commit *Commit) GetCanonicalVote() *Vote {
 	}
 }
 
-// VoteBlockRequestId returns the requestId Hash of the Vote corresponding to valIdx for
+// VoteBlockRequestID returns the requestId Hash of the Vote corresponding to valIdx for
 // signing.
 //
 // Panics if valIdx >= commit.Size().
 //
-func (commit *Commit) VoteBlockRequestId() []byte {
-	requestIdMessage := []byte("dpbvote")
+func (commit *Commit) VoteBlockRequestID() []byte {
+	requestIDMessage := []byte("dpbvote")
 	heightByteArray := make([]byte, 8)
 	binary.LittleEndian.PutUint64(heightByteArray, uint64(commit.Height))
 	roundByteArray := make([]byte, 4)
 	binary.LittleEndian.PutUint32(roundByteArray, uint32(commit.Round))
 
-	requestIdMessage = append(requestIdMessage, heightByteArray...)
-	requestIdMessage = append(requestIdMessage, roundByteArray...)
+	requestIDMessage = append(requestIDMessage, heightByteArray...)
+	requestIDMessage = append(requestIDMessage, roundByteArray...)
 
-	return crypto.Sha256(requestIdMessage)
+	return crypto.Sha256(requestIDMessage)
 }
 
 // CanonicalVoteVerifySignBytes returns the bytes of the Canonical Vote that is threshold signed.

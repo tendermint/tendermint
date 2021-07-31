@@ -216,7 +216,7 @@ func ValidatorFromProto(vp *tmproto.Validator) (*Validator, error) {
 	v.ProposerPriority = vp.GetProposerPriority()
 	v.ProTxHash = vp.ProTxHash
 
-	if vp.PubKey != nil && (*vp.PubKey).Sum != nil {
+	if vp.PubKey != nil && vp.PubKey.Sum != nil {
 		pk, err := ce.PubKeyFromProto(*vp.PubKey)
 		if err != nil {
 			return nil, err

@@ -119,13 +119,17 @@ func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string, valSet 
 	if !pubKey.VerifySignatureDigest(blockSignID, e.VoteA.BlockSignature) {
 		return fmt.Errorf("verifying VoteA: %s", types.ErrVoteInvalidBlockSignature.Error())
 	}
-	if !pubKey.VerifySignatureDigest(types.VoteBlockSignId(chainID, vb, valSet.QuorumType, valSet.QuorumHash), e.VoteB.BlockSignature) {
+	if !pubKey.VerifySignatureDigest(
+	    types.VoteBlockSignId(chainID, vb, valSet.QuorumType, valSet.QuorumHash),
+	    e.VoteB.BlockSignature,
+	) {
 		return fmt.Errorf("verifying VoteB: %s", types.ErrVoteInvalidStateSignature.Error())
 	}
 
 	return nil
 }
 
+/*
 func getSignedHeader(blockStore BlockStore, height int64) (*types.SignedHeader, error) {
 	blockMeta := blockStore.LoadBlockMeta(height)
 	if blockMeta == nil {
@@ -139,4 +143,4 @@ func getSignedHeader(blockStore BlockStore, height int64) (*types.SignedHeader, 
 		Header: &blockMeta.Header,
 		Commit: commit,
 	}, nil
-}
+}*/
