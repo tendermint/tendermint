@@ -166,14 +166,14 @@ func (p *peer) String() string {
 	if mConnString == "MConn{pipe}" {
 		mConnString = ""
 	} else {
-		mConnString = mConnString + " "
+		mConnString += " "
 	}
 
 	if proTxHash != nil {
 		return fmt.Sprintf("Peer{%sproTxHash:%v}", mConnString, proTxHash.ShortString())
-	} else {
-		return fmt.Sprintf("Peer{%speerId:%v}", mConnString, p.ID())
 	}
+
+	return fmt.Sprintf("Peer{%speerId:%v}", mConnString, p.ID())
 
 }
 

@@ -88,9 +88,6 @@ func (app *PersistentKVStoreApplication) DeliverTx(req types.RequestDeliverTx) t
 		// otherwise, update the key-value store
 		return app.app.DeliverTx(req)
 	}
-
-	// otherwise, update the key-value store
-	return app.app.DeliverTx(req)
 }
 
 func (app *PersistentKVStoreApplication) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
@@ -231,7 +228,7 @@ func (app *PersistentKVStoreApplication) ValidatorSet() (validatorSet types.Vali
 	if err = itr.Error(); err != nil {
 		panic(err)
 	}
-	return
+	return validatorSet
 }
 
 func MakeValSetChangeTx(proTxHash []byte, pubkey *pc.PublicKey, power int64) []byte {
