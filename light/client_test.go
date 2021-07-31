@@ -69,7 +69,7 @@ var (
 )
 
 func setupDashCoreMockClient(t *testing.T) {
-	dashCoreMockClient = dashcore.NewDashCoreMockClient(chainID, llmqType, privVals[0], true)
+	dashCoreMockClient = dashcore.NewMockClient(chainID, llmqType, privVals[0], true)
 
 	t.Cleanup(func() {
 		dashCoreMockClient = nil

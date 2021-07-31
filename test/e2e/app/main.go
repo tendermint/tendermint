@@ -94,7 +94,7 @@ func run(configFile string) error {
 				coreSrv.Start()
 			}()
 
-			dashCoreRpcClient, err = dashcore.NewDashCoreRpcClient(
+			dashCoreRpcClient, err = dashcore.NewDashCoreRPCClient(
 				cfg.PrivValServer,
 				tmcfg.BaseConfig.PrivValidatorCoreRPCUsername,
 				tmcfg.BaseConfig.PrivValidatorCoreRPCPassword,

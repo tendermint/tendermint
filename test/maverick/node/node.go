@@ -161,7 +161,7 @@ func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 
 // DefaultDashCoreRpcClient returns RPC client for the Dash Core node
 func DefaultDashCoreRpcClient(config *cfg.Config) (dashcore.DashCoreClient, error) {
-	return dashcore.NewDashCoreRpcClient(
+	return dashcore.NewDashCoreRPCClient(
 		config.PrivValidatorCoreRPCHost,
 		config.BaseConfig.PrivValidatorCoreRPCUsername,
 		config.BaseConfig.PrivValidatorCoreRPCPassword,
@@ -787,7 +787,7 @@ func NewNode(config *cfg.Config,
 			llmqType = btcjson.LLMQType_100_67
 		}
 		// This is used for light client verification only
-		mockClient := dashcore.NewDashCoreMockClient(config.ChainID(), llmqType, privValidator, false)
+		mockClient := dashcore.NewMockClient(config.ChainID(), llmqType, privValidator, false)
 		dashCoreRpcClient = mockClient
 	}
 

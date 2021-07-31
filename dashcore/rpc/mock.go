@@ -13,20 +13,20 @@ import (
 	"github.com/tendermint/tendermint/libs/bytes"
 )
 
-// DashCoreMockClient is an implementation of a mock core-server
-type DashCoreMockClient struct {
+// MockClient is an implementation of a mock core-server
+type MockClient struct {
 	chainID  string
 	llmqType btcjson.LLMQType
 	localPV  types.PrivValidator
 	canSign  bool
 }
 
-func NewDashCoreMockClient(chainId string, llmqType btcjson.LLMQType, localPV types.PrivValidator, canSign bool) *DashCoreMockClient {
+func NewMockClient(chainID string, llmqType btcjson.LLMQType, localPV types.PrivValidator, canSign bool) *MockClient {
 	if localPV == nil {
 		panic("localPV must be set")
 	}
-	return &DashCoreMockClient{
-		chainID:  chainId,
+	return &MockClient{
+		chainID:  chainID,
 		llmqType: llmqType,
 		localPV:  localPV,
 		canSign:  canSign,
@@ -34,16 +34,19 @@ func NewDashCoreMockClient(chainId string, llmqType btcjson.LLMQType, localPV ty
 }
 
 // Close closes the underlying connection
-func (mc *DashCoreMockClient) Close() error {
+func (mc *MockClient) Close() error {
 	return nil
 }
 
 // Ping sends a ping request to the remote signer
-func (mc *DashCoreMockClient) Ping() error {
+func (mc *MockClient) Ping() error {
 	return nil
 }
 
-func (mc *DashCoreMockClient) QuorumInfo(quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) (*btcjson.QuorumInfoResult, error) {
+func (mc *MockClient) QuorumInfo(
+	quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash,
+) (*btcjson.QuorumInfoResult, error) {
 	var members []btcjson.QuorumMember
 	proTxHash, err := mc.localPV.GetProTxHash()
 	if err != nil {
@@ -78,7 +81,7 @@ func (mc *DashCoreMockClient) QuorumInfo(quorumType btcjson.LLMQType, quorumHash
 	}, nil
 }
 
-func (mc *DashCoreMockClient) MasternodeStatus() (*btcjson.MasternodeStatusResult, error) {
+func (mc *MockClient) MasternodeStatus() (*btcjson.MasternodeStatusResult, error) {
 	proTxHash, err := mc.localPV.GetProTxHash()
 	if err != nil {
 		panic(err)
@@ -95,7 +98,7 @@ func (mc *DashCoreMockClient) MasternodeStatus() (*btcjson.MasternodeStatusResul
 	}, nil
 }
 
-func (mc *DashCoreMockClient) GetNetworkInfo() (*btcjson.GetNetworkInfoResult, error) {
+func (mc *MockClient) GetNetworkInfo() (*btcjson.GetNetworkInfoResult, error) {
 	return &btcjson.GetNetworkInfoResult{
 		Version:         0,
 		SubVersion:      "",
@@ -113,7 +116,7 @@ func (mc *DashCoreMockClient) GetNetworkInfo() (*btcjson.GetNetworkInfoResult, e
 	}, nil
 }
 
-func (mc *DashCoreMockClient) MasternodeListJSON(filter string) (map[string]btcjson.MasternodelistResultJSON, error) {
+func (mc *MockClient) MasternodeListJSON(filter string) (map[string]btcjson.MasternodelistResultJSON, error) {
 	proTxHash, err := mc.localPV.GetProTxHash()
 	if err != nil {
 		panic(err)
@@ -135,7 +138,7 @@ func (mc *DashCoreMockClient) MasternodeListJSON(filter string) (map[string]btcj
 	return m, nil
 }
 
-func (mc *DashCoreMockClient) QuorumSign(quorumType btcjson.LLMQType, requestID bytes.HexBytes, messageHash bytes.HexBytes, quorumHash crypto.QuorumHash) (*btcjson.QuorumSignResult, error) {
+func (mc *MockClient) QuorumSign(quorumType btcjson.LLMQType, requestID bytes.HexBytes, messageHash bytes.HexBytes, quorumHash crypto.QuorumHash) (*btcjson.QuorumSignResult, error) {
 	if !mc.canSign {
 		return nil, errors.New("dash core mock client not set up for signing")
 	}
@@ -167,7 +170,13 @@ func (mc *DashCoreMockClient) QuorumSign(quorumType btcjson.LLMQType, requestID 
 	return &res, nil
 }
 
-func (mc *DashCoreMockClient) QuorumVerify(quorumType btcjson.LLMQType, requestID bytes.HexBytes, messageHash bytes.HexBytes, signature bytes.HexBytes, quorumHash crypto.QuorumHash) (bool, error) {
+func (mc *MockClient) QuorumVerify(
+	quorumType btcjson.LLMQType,
+	requestID bytes.HexBytes,
+	messageHash bytes.HexBytes,
+	signature bytes.HexBytes,
+	quorumHash crypto.QuorumHash,
+) (bool, error) {
 	signID := crypto.SignID(
 		quorumType,
 		bls12381.ReverseBytes(quorumHash),

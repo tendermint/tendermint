@@ -28,7 +28,7 @@ var (
 )
 
 func setupDashCoreRPCMockForBenchmark(b *testing.B) {
-	dashCoreMockClient = dashcore.NewDashCoreMockClient(chainID, 100, benchmarkFullNode.MockPV, false)
+	dashCoreMockClient = dashcore.NewMockClient(chainID, 100, benchmarkFullNode.MockPV, false)
 
 	b.Cleanup(func() {
 		dashCoreMockClient = nil

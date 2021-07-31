@@ -55,7 +55,12 @@ type blockVerifier interface {
 }
 
 type blockApplier interface {
-	ApplyBlock(state state.State, nodeProTxHash *crypto.ProTxHash, blockID types.BlockID, block *types.Block) (state.State, int64, error)
+	ApplyBlock(
+		state state.State,
+		nodeProTxHash *crypto.ProTxHash,
+		blockID types.BlockID,
+		block *types.Block,
+	) (state.State, int64, error)
 }
 
 // XXX: unify naming in this package around tmState
