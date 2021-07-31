@@ -730,7 +730,7 @@ OUTER_LOOP:
 		// If height matches, then send LastCommit, Prevotes, Precommits.
 		if rs.Height == prs.Height {
 			heightLogger := logger.With("height", prs.Height)
-			if wasValidator == false {
+			if !wasValidator {
 				// If there are lastCommits to send...
 				if prs.Step == cstypes.RoundStepNewHeight && prs.Height+1 == rs.Height && prs.HasCommit == false {
 					if ps.SendCommit(rs.LastCommit) {
@@ -748,7 +748,7 @@ OUTER_LOOP:
 
 		// Special catchup logic.
 		// If peer is lagging by height 1, send LastCommit if we haven't already.
-		if prs.Height != 0 && rs.Height == prs.Height+1 && prs.HasCommit == false && wasValidator == false {
+		if prs.Height != 0 && rs.Height == prs.Height+1 && !prs.HasCommit && !wasValidator {
 			if ps.SendCommit(rs.LastCommit) {
 				logger.Debug("Sending LastCommit for catch up", "height", prs.Height)
 				continue OUTER_LOOP

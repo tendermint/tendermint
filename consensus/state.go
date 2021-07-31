@@ -1724,7 +1724,7 @@ func (cs *State) tryAddCommit(commit *types.Commit, peerID p2p.ID) (bool, error)
 
 	// First lets verify that the commit is what we are expecting
 	verified, err := cs.verifyCommit(commit, peerID, false)
-	if verified == false || err != nil {
+	if !verified || err != nil {
 		return verified, err
 	}
 
@@ -2317,7 +2317,7 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 	}
 
 	// Ignore vote if we do not have public keys to verify votes
-	if cs.Validators.HasPublicKeys == false {
+	if !cs.Validators.HasPublicKeys {
 		added = false
 		cs.Logger.Debug("vote received on non-validator, ignoring it", "vote_height", vote.Height,
 			"cs_height", cs.Height, "peer", peerID)

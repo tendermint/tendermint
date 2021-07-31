@@ -1539,11 +1539,11 @@ func createAndStartPrivValidatorRPCClient(
 		return nil, fmt.Errorf("can't get proTxHash when starting private validator rpc client: %w", err)
 	}
 
-	//const (
+	// const (
 	//	retries = 50 // 50 * 100ms = 5s total
 	//	timeout = 100 * time.Millisecond
-	//)
-	//pvscWithRetries := privval.NewRetrySignerClient(pvsc, retries, timeout)
+	// )
+	// pvscWithRetries := privval.NewRetrySignerClient(pvsc, retries, timeout)
 
 	return pvsc, nil
 }

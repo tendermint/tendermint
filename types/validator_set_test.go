@@ -496,7 +496,8 @@ func TestAveragingInIncrementProposerPriority(t *testing.T) {
 				{ProTxHash: []byte("c"), ProposerPriority: 1}}},
 			// this should average twice but the average should be 0 after the first iteration
 			// (voting power is 0 -> no changes)
-			11, 1 / 3},
+			// 1/3 -> 0
+			11, 0},
 		2: {ValidatorSet{
 			Validators: []*Validator{
 				{ProTxHash: []byte("a"), ProposerPriority: 100},

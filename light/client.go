@@ -269,9 +269,11 @@ func (c *Client) restoreTrustedLightBlock() error {
 
 // initialize fetches the last light block from
 // primary provider.
+/*
 func (c *Client) initialize(ctx context.Context) error {
 	return c.initializeAtHeight(ctx, 0) //
 }
+*/
 
 // initializeAtHeight fetches a light block at given height from
 // primary provider.
@@ -615,6 +617,7 @@ func (c *Client) Cleanup() error {
 
 // cleanupAfter deletes all headers & validator sets after +height+. It also
 // resets latestTrustedBlock to the latest header.
+/*
 func (c *Client) cleanupAfter(height int64) error {
 	prevHeight := c.latestTrustedBlock.Height
 
@@ -642,7 +645,7 @@ func (c *Client) cleanupAfter(height int64) error {
 	}
 
 	return nil
-}
+}*/
 
 func (c *Client) updateTrustedLightBlock(l *types.LightBlock) error {
 	c.logger.Debug("updating trusted light block", "light_block", l)
@@ -695,7 +698,7 @@ func (c *Client) lightBlockFromPrimaryAtHeight(ctx context.Context, height int64
 		if c.latestTrustedBlock != nil && l.Height < c.latestTrustedBlock.Height {
 			return c.findNewPrimary(ctx, false)
 		}
-        return l, nil
+		return l, nil
 
 	case provider.ErrNoResponse, provider.ErrLightBlockNotFound, provider.ErrHeightTooHigh:
 		// we find a new witness to replace the primary

@@ -5,12 +5,12 @@ import (
 	bls "github.com/dashpay/bls-signatures/go-bindings"
 )
 
-func SignID(llmqType btcjson.LLMQType, quorumHash QuorumHash, requestId []byte, messageHash []byte) []byte {
+func SignID(llmqType btcjson.LLMQType, quorumHash QuorumHash, requestID []byte, messageHash []byte) []byte {
 	var blsQuorumHash bls.Hash
 	copy(blsQuorumHash[:], quorumHash.Bytes())
 
 	var blsRequestID bls.Hash
-	copy(blsRequestID[:], requestId)
+	copy(blsRequestID[:], requestID)
 
 	var blsMessageHash bls.Hash
 	copy(blsMessageHash[:], messageHash)

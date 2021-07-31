@@ -153,6 +153,7 @@ func makeTxSearchFunc(c *lrpc.Client) rpcTxSearchFunc {
 	}
 }
 
+/*
 type rpcBlockSearchFunc func(
 	ctx *rpctypes.Context,
 	query string,
@@ -160,6 +161,7 @@ type rpcBlockSearchFunc func(
 	page, perPage *int,
 	orderBy string,
 ) (*ctypes.ResultBlockSearch, error)
+*/
 
 /*
 func makeBlockSearchFunc(c *lrpc.Client) rpcBlockSearchFunc {

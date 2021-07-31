@@ -755,9 +755,10 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	proposerPubKey2, err = vss[proposerIndex].GetPubKey(validatorsAtProposalHeight.QuorumHash)
 
-	if !bytes.Equal(proposerPubKey2.Bytes(), proposerPubKey.Bytes()) {
-		//t.Fatal("wrong proposer pubKey", err)
-	}
+	/*
+		if !bytes.Equal(proposerPubKey2.Bytes(), proposerPubKey.Bytes()) {
+			//t.Fatal("wrong proposer pubKey", err)
+		}*/
 
 	css[0].Logger.Debug("signed proposal", "height", proposal.Height, "round", proposal.Round,
 		"proposer", proposerProTxHash.ShortString(), "signature", p.Signature, "pubkey", proposerPubKey.Bytes(), "quorum type",

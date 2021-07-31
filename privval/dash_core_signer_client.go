@@ -123,7 +123,7 @@ func (sc *DashCoreSignerClient) GetPubKey(quorumHash crypto.QuorumHash) (crypto.
 	}
 
 	if len(decodedPublicKeyShare) != bls12381.PubKeySize {
-		if found == true {
+		if found {
 			// We found it, we should have a public key share
 			return nil, fmt.Errorf("no public key share found")
 		} else {
@@ -244,13 +244,13 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumType btcjson.LLMQ
 	//
 	// fmt.Printf("core block signID %s our block sign Id %s\n", blockResponse.SignHash, hex.EncodeToString(signID))
 	//
-	//pubKey, err := sc.GetPubKey(quorumHash)
-	//verified := pubKey.VerifySignatureDigest(signID, blockDecodedSignature)
-	//if verified {
+	// pubKey, err := sc.GetPubKey(quorumHash)
+	// verified := pubKey.VerifySignatureDigest(signID, blockDecodedSignature)
+	// if verified {
 	//	fmt.Printf("Verified core signing with public key %v\n", pubKey)
-	//} else {
+	// } else {
 	//	fmt.Printf("Unable to verify signature %v\n", pubKey)
-	//}
+	// }
 
 	stateResponse, err := sc.dashCoreRpcClient.QuorumSign(sc.defaultQuorumType, stateRequestId, stateMessageHash, quorumHash)
 
