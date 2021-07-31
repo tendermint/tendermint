@@ -557,9 +557,9 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 	vote := examplePrecommit()
 	vote.ValidatorProTxHash = proTxHash
 	v := vote.ToProto()
-	blockSig, err := privKey.SignDigest(VoteBlockSignId(chainID, v, btcjson.LLMQType_5_60, quorumHash))
+	blockSig, err := privKey.SignDigest(VoteBlockSignID(chainID, v, btcjson.LLMQType_5_60, quorumHash))
 	require.NoError(t, err)
-	stateSig, err := privKey.SignDigest(VoteStateSignId(chainID, v, btcjson.LLMQType_5_60, quorumHash))
+	stateSig, err := privKey.SignDigest(VoteStateSignID(chainID, v, btcjson.LLMQType_5_60, quorumHash))
 	require.NoError(t, err)
 	vote.BlockSignature = blockSig
 	vote.StateSignature = stateSig

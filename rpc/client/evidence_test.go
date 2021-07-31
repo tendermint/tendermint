@@ -42,16 +42,16 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	privKey, err := val.Key.PrivateKeyForQuorumHash(quorumHash)
 	require.NoError(t, err)
 
-	vote.BlockSignature, err = privKey.SignDigest(types.VoteBlockSignId(chainID, v, quorumType, quorumHash))
+	vote.BlockSignature, err = privKey.SignDigest(types.VoteBlockSignID(chainID, v, quorumType, quorumHash))
 	require.NoError(t, err)
 
-	vote2.BlockSignature, err = privKey.SignDigest(types.VoteBlockSignId(chainID, v2, quorumType, quorumHash))
+	vote2.BlockSignature, err = privKey.SignDigest(types.VoteBlockSignID(chainID, v2, quorumType, quorumHash))
 	require.NoError(t, err)
 
-	vote.StateSignature, err = privKey.SignDigest(types.VoteStateSignId(chainID, v, quorumType, quorumHash))
+	vote.StateSignature, err = privKey.SignDigest(types.VoteStateSignID(chainID, v, quorumType, quorumHash))
 	require.NoError(t, err)
 
-	vote2.StateSignature, err = privKey.SignDigest(types.VoteStateSignId(chainID, v2, quorumType, quorumHash))
+	vote2.StateSignature, err = privKey.SignDigest(types.VoteStateSignID(chainID, v2, quorumType, quorumHash))
 	require.NoError(t, err)
 
 	validator := types.NewValidator(privKey.PubKey(), 100, val.Key.ProTxHash)

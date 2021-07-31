@@ -171,9 +171,8 @@ func (pv *MockPV) ThresholdPublicKeyForQuorumHash(quorumHash crypto.QuorumHash) 
 func (pv *MockPV) GetHeight(quorumHash crypto.QuorumHash) (int64, error) {
 	if intString, ok := pv.FirstHeightOfQuorums[quorumHash.String()]; ok {
 		return strconv.ParseInt(intString, 10, 64)
-	} else {
-		return -1, fmt.Errorf("quorum hash not found for GetHeight %v", quorumHash.String())
 	}
+    return -1, fmt.Errorf("quorum hash not found for GetHeight %v", quorumHash.String())
 }
 
 // SignVote implements PrivValidator.
@@ -183,8 +182,8 @@ func (pv *MockPV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 		useChainID = "incorrect-chain-id"
 	}
 
-	blockSignID := VoteBlockSignId(useChainID, vote, quorumType, quorumHash)
-	stateSignId := VoteStateSignId(useChainID, vote, quorumType, quorumHash)
+	blockSignID := VoteBlockSignID(useChainID, vote, quorumType, quorumHash)
+	stateSignID := VoteStateSignID(useChainID, vote, quorumType, quorumHash)
 
 	var privKey crypto.PrivKey
 	if quorumKeys, ok := pv.PrivateKeys[quorumHash.String()]; ok {
@@ -203,8 +202,8 @@ func (pv *MockPV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 	}
 	vote.BlockSignature = blockSignature
 
-	if stateSignId != nil {
-		stateSignature, err := privKey.SignDigest(stateSignId)
+	if stateSignID != nil {
+		stateSignature, err := privKey.SignDigest(stateSignID)
 		if err != nil {
 			return err
 		}
@@ -221,7 +220,7 @@ func (pv *MockPV) SignProposal(chainID string, quorumType btcjson.LLMQType, quor
 		useChainID = "incorrect-chain-id"
 	}
 
-	signID := ProposalBlockSignId(useChainID, proposal, quorumType, quorumHash)
+	signID := ProposalBlockSignID(useChainID, proposal, quorumType, quorumHash)
 
 	var privKey crypto.PrivKey
 	if quorumKeys, ok := pv.PrivateKeys[quorumHash.String()]; ok {

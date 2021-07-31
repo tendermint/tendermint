@@ -210,9 +210,9 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumType btcjson.LLMQ
 
 	stateMessageHash := crypto.Sha256(stateSignBytes)
 
-	blockRequestId := types.VoteBlockRequestIdProto(protoVote)
+	blockRequestId := types.VoteBlockRequestIDProto(protoVote)
 
-	stateRequestId := types.VoteStateRequestIdProto(protoVote)
+	stateRequestId := types.VoteStateRequestIDProto(protoVote)
 
 	// proTxHash, err := sc.GetProTxHash()
 
@@ -297,7 +297,7 @@ func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumType btcjson.
 
 	messageHash := crypto.Sha256(messageBytes)
 
-	requestIdHash := types.ProposalRequestIdProto(proposalProto)
+	requestIdHash := types.ProposalRequestIDProto(proposalProto)
 
 	if quorumType == 0 {
 		return nil, fmt.Errorf("error signing proposal with invalid quorum type")

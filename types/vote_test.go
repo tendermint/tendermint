@@ -170,8 +170,8 @@ func TestVoteVerifySignature(t *testing.T) {
 	vote := examplePrecommit()
 	v := vote.ToProto()
 	quorumType := btcjson.LLMQType_5_60
-	signID := VoteBlockSignId("test_chain_id", v, quorumType, quorumHash)
-	signStateId := VoteStateSignId("test_chain_id", v, quorumType, quorumHash)
+	signID := VoteBlockSignID("test_chain_id", v, quorumType, quorumHash)
+	signStateId := VoteStateSignID("test_chain_id", v, quorumType, quorumHash)
 
 	// sign it
 	err = privVal.SignVote("test_chain_id", quorumType, quorumHash, v)
@@ -193,8 +193,8 @@ func TestVoteVerifySignature(t *testing.T) {
 	require.NoError(t, err)
 
 	// verify the transmitted vote
-	newSignId := VoteBlockSignId("test_chain_id", precommit, quorumType, quorumHash)
-	newSignStateId := VoteStateSignId("test_chain_id", precommit, quorumType, quorumHash)
+	newSignId := VoteBlockSignID("test_chain_id", precommit, quorumType, quorumHash)
+	newSignStateId := VoteStateSignID("test_chain_id", precommit, quorumType, quorumHash)
 	require.Equal(t, string(signID), string(newSignId))
 	require.Equal(t, string(signStateId), string(newSignStateId))
 	valid = pubkey.VerifySignatureDigest(newSignId, precommit.BlockSignature)

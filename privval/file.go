@@ -558,9 +558,9 @@ func (pv *FilePV) signVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 		return err
 	}
 
-	blockSignID := types.VoteBlockSignId(chainID, vote, quorumType, quorumHash)
+	blockSignID := types.VoteBlockSignID(chainID, vote, quorumType, quorumHash)
 
-	stateSignID := types.VoteStateSignId(chainID, vote, quorumType, quorumHash)
+	stateSignID := types.VoteStateSignID(chainID, vote, quorumType, quorumHash)
 
 	blockSignBytes := types.VoteBlockSignBytes(chainID, vote)
 
@@ -631,7 +631,7 @@ func (pv *FilePV) signProposal(chainID string, quorumType btcjson.LLMQType, quor
 		return nil, err
 	}
 
-	blockSignID := types.ProposalBlockSignId(chainID, proposal, quorumType, quorumHash)
+	blockSignID := types.ProposalBlockSignID(chainID, proposal, quorumType, quorumHash)
 
 	blockSignBytes := types.ProposalBlockSignBytes(chainID, proposal)
 

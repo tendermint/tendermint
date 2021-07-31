@@ -69,7 +69,7 @@ func TestProposalVerifySignature(t *testing.T) {
 		4, 1, 2, 2,
 		BlockID{tmrand.Bytes(tmhash.Size), PartSetHeader{777, tmrand.Bytes(tmhash.Size)}})
 	p := prop.ToProto()
-	signID := ProposalBlockSignId("test_chain_id", p, btcjson.LLMQType_5_60, quorumHash)
+	signID := ProposalBlockSignID("test_chain_id", p, btcjson.LLMQType_5_60, quorumHash)
 
 	// sign it
 	_, err = privVal.SignProposal("test_chain_id", btcjson.LLMQType_5_60, quorumHash, p)
@@ -94,9 +94,9 @@ func TestProposalVerifySignature(t *testing.T) {
 	require.NoError(t, err)
 
 	// verify the transmitted proposal
-	newSignId := ProposalBlockSignId("test_chain_id", pb, btcjson.LLMQType_5_60, quorumHash)
-	require.Equal(t, string(signID), string(newSignId))
-	valid = pubKey.VerifySignatureDigest(newSignId, np.Signature)
+	newSignID := ProposalBlockSignID("test_chain_id", pb, btcjson.LLMQType_5_60, quorumHash)
+	require.Equal(t, string(signID), string(newSignID))
+	valid = pubKey.VerifySignatureDigest(newSignID, np.Signature)
 	require.True(t, valid)
 }
 

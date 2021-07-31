@@ -2049,7 +2049,7 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 
 	p := proposal.ToProto()
 	// Verify signature
-	proposalBlockSignId := types.ProposalBlockSignId(cs.state.ChainID, p, cs.state.Validators.QuorumType, cs.state.Validators.QuorumHash)
+	proposalBlockSignId := types.ProposalBlockSignID(cs.state.ChainID, p, cs.state.Validators.QuorumType, cs.state.Validators.QuorumHash)
 
 	proposer := cs.Validators.GetProposer()
 

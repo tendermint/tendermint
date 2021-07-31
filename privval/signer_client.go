@@ -203,7 +203,7 @@ func (sc *SignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType
 	*proposal = resp.Proposal
 
 	// We can assume that the signer client calculated the signID correctly
-	blockSignID := types.ProposalBlockSignId(chainID, proposal, quorumType, quorumHash)
+	blockSignID := types.ProposalBlockSignID(chainID, proposal, quorumType, quorumHash)
 
 	return blockSignID, nil
 }

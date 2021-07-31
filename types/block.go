@@ -697,22 +697,22 @@ func (commit *Commit) CanonicalVoteVerifySignBytes(chainID string) []byte {
 	return VoteBlockSignBytes(chainID, vCanonical)
 }
 
-// CanonicalVoteVerifySignId returns the signID bytes of the Canonical Vote that is threshold signed.
+// CanonicalVoteVerifySignID returns the signID bytes of the Canonical Vote that is threshold signed.
 //
-func (commit *Commit) CanonicalVoteVerifySignId(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
+func (commit *Commit) CanonicalVoteVerifySignID(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
 	voteCanonical := commit.GetCanonicalVote()
 	vCanonical := voteCanonical.ToProto()
-	return VoteBlockSignId(chainID, vCanonical, quorumType, quorumHash)
+	return VoteBlockSignID(chainID, vCanonical, quorumType, quorumHash)
 }
 
-// VoteStateSignId returns the signID bytes of the state for the Vote corresponding to valIdx for
+// VoteStateSignID returns the signID bytes of the state for the Vote corresponding to valIdx for
 // signing.
 //
 // Panics if valIdx >= commit.Size().
 //
-func (commit *Commit) VoteStateSignId(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
+func (commit *Commit) VoteStateSignID(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
 	v := commit.GetCanonicalVote()
-	return VoteStateSignId(chainID, v.ToProto(), quorumType, quorumHash)
+	return VoteStateSignID(chainID, v.ToProto(), quorumType, quorumHash)
 }
 
 // VoteStateRequestId returns the requestId Hash of the Vote corresponding to valIdx for
@@ -720,17 +720,17 @@ func (commit *Commit) VoteStateSignId(chainID string, quorumType btcjson.LLMQTyp
 //
 // Panics if valIdx >= commit.Size().
 //
-func (commit *Commit) VoteStateRequestId() []byte {
-	requestIdMessage := []byte("dpsvote")
+func (commit *Commit) VoteStateRequestID() []byte {
+	requestIDMessage := []byte("dpsvote")
 	heightByteArray := make([]byte, 8)
 	binary.LittleEndian.PutUint64(heightByteArray, uint64(commit.Height))
 	roundByteArray := make([]byte, 4)
 	binary.LittleEndian.PutUint32(roundByteArray, uint32(commit.Round))
 
-	requestIdMessage = append(requestIdMessage, heightByteArray...)
-	requestIdMessage = append(requestIdMessage, roundByteArray...)
+	requestIDMessage = append(requestIDMessage, heightByteArray...)
+	requestIDMessage = append(requestIDMessage, roundByteArray...)
 
-	return crypto.Sha256(requestIdMessage)
+	return crypto.Sha256(requestIDMessage)
 }
 
 // CanonicalVoteStateSignBytes returns the bytes of the State corresponding to valIdx for
@@ -744,9 +744,9 @@ func (commit *Commit) CanonicalVoteStateSignBytes(chainID string) []byte {
 	return VoteStateSignBytes(chainID, v.ToProto())
 }
 
-func (commit *Commit) CanonicalVoteStateSignId(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
+func (commit *Commit) CanonicalVoteStateSignID(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
 	v := commit.GetCanonicalVote()
-	return VoteStateSignId(chainID, v.ToProto(), quorumType, quorumHash)
+	return VoteStateSignID(chainID, v.ToProto(), quorumType, quorumHash)
 }
 
 // Type returns the vote type of the commit, which is always VoteTypePrecommit
