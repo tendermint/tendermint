@@ -59,7 +59,7 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 	badVote.BlockSignature = bv.BlockSignature
 
 	cases := []voteData{
-	    // different block ids
+		// different block ids
 		{vote1, makeVote(t, val, chainID, quorumType, quorumHash, 0, 10, 2, 1, blockID2, stateID), true},
 		{vote1, makeVote(t, val, chainID, quorumType, quorumHash, 0, 10, 2, 1, blockID3, stateID), true},
 		{vote1, makeVote(t, val, chainID, quorumType, quorumHash, 0, 10, 2, 1, blockID4, stateID), true},
@@ -97,18 +97,18 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 
 	// create good evidence and correct validator power
 	goodEv := types.NewMockDuplicateVoteEvidenceWithValidator(
-	    10, defaultEvidenceTime, val, chainID, quorumType, quorumHash,
-	    )
+		10, defaultEvidenceTime, val, chainID, quorumType, quorumHash,
+	)
 	goodEv.ValidatorPower = types.DefaultDashVotingPower
 	goodEv.TotalVotingPower = types.DefaultDashVotingPower
 	badEv := types.NewMockDuplicateVoteEvidenceWithValidator(
-	    10, defaultEvidenceTime, val, chainID, quorumType, quorumHash,
-	    )
+		10, defaultEvidenceTime, val, chainID, quorumType, quorumHash,
+	)
 	badEv.ValidatorPower = types.DefaultDashVotingPower + 1
 	badEv.TotalVotingPower = types.DefaultDashVotingPower
 	badTimeEv := types.NewMockDuplicateVoteEvidenceWithValidator(
-	    10, defaultEvidenceTime.Add(1*time.Minute), val, chainID, quorumType, quorumHash,
-	    )
+		10, defaultEvidenceTime.Add(1*time.Minute), val, chainID, quorumType, quorumHash,
+	)
 	badTimeEv.ValidatorPower = types.DefaultDashVotingPower
 	badTimeEv.TotalVotingPower = types.DefaultDashVotingPower
 	state := sm.State{
@@ -122,8 +122,8 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 	stateStore.On("Load").Return(state, nil)
 	blockStore := &mocks.BlockStore{}
 	blockStore.On("LoadBlockMeta", int64(10)).Return(
-	    &types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}},
-	    )
+		&types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}},
+	)
 
 	pool, err := evidence.NewPool(dbm.NewMemDB(), stateStore, blockStore)
 	require.NoError(t, err)
@@ -155,7 +155,7 @@ func makeVote(
 	step int,
 	blockID types.BlockID,
 	stateID types.StateID,
-	) *types.Vote {
+) *types.Vote {
 	proTxHash, err := val.GetProTxHash()
 	require.NoError(t, err)
 	v := &types.Vote{

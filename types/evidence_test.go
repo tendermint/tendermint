@@ -78,7 +78,10 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 			ev.VoteB = nil
 		}, true},
 		{"Invalid vote type", func(ev *DuplicateVoteEvidence) {
-			ev.VoteA = makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType, quorumHash, math.MaxInt32, 0, blockID2, stateID)
+			ev.VoteA = makeVote(
+				t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType,
+				quorumHash, math.MaxInt32, 0, blockID2, stateID,
+			)
 		}, true},
 		{"Invalid vote order", func(ev *DuplicateVoteEvidence) {
 			swap := ev.VoteA.Copy()
@@ -89,11 +92,15 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			vote1 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType, quorumHash, math.MaxInt32, 0x02, blockID, stateID)
-			vote2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType, quorumHash, math.MaxInt32, 0x02, blockID2, stateID)
+			vote1 := makeVote(
+				t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType,
+				quorumHash, math.MaxInt32, 0x02, blockID, stateID)
+			vote2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType,
+				quorumHash, math.MaxInt32, 0x02, blockID2, stateID)
 			thresholdPublicKey, err := val.GetThresholdPublicKey(quorumHash)
 			assert.NoError(t, err)
-			valSet := NewValidatorSet([]*Validator{val.ExtractIntoValidator(quorumHash)}, thresholdPublicKey, quorumType, quorumHash, true)
+			valSet := NewValidatorSet(
+				[]*Validator{val.ExtractIntoValidator(quorumHash)}, thresholdPublicKey, quorumType, quorumHash, true)
 			ev := NewDuplicateVoteEvidence(vote1, vote2, defaultVoteTime, valSet)
 			tc.malleateEvidence(ev)
 			assert.Equal(t, tc.expectErr, ev.ValidateBasic() != nil, "Validate Basic had an unexpected result")
@@ -107,9 +114,12 @@ func TestMockEvidenceValidateBasic(t *testing.T) {
 	assert.Nil(t, goodEvidence.ValidateBasic())
 }
 
-func makeVote(t *testing.T, val PrivValidator, chainID string, valIndex int32, height int64, quorumType btcjson.LLMQType,
+func makeVote(
+	t *testing.T, val PrivValidator, chainID string,
+	valIndex int32, height int64, quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash, round int32,
-	step int, blockID BlockID, stateID StateID) *Vote {
+	step int, blockID BlockID, stateID StateID,
+) *Vote {
 	proTxHash, err := val.GetProTxHash()
 	require.NoError(t, err)
 	v := &Vote{

@@ -311,7 +311,8 @@ func NewMockDuplicateVoteEvidence(
 	return NewMockDuplicateVoteEvidenceWithValidator(height, time, val, chainID, quorumType, quorumHash)
 }
 
-// NewMockDuplicateVoteEvidenceWithValidator assumes voting power to be DefaultDashVotingPower and validator to be the only one in the set
+// NewMockDuplicateVoteEvidenceWithValidator assumes voting power to be DefaultDashVotingPower and
+// validator to be the only one in the set
 func NewMockDuplicateVoteEvidenceWithValidator(
 	height int64,
 	time time.Time,

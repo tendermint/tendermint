@@ -148,11 +148,11 @@ func TestRecoverThresholdPublicKeyFromPublicKeys6(t *testing.T) {
 	}
 	publicKeyStrings := make([]string, 3)
 	publicKeyStrings[0] =
-	    "0576000a5c7787d9ff04c38ab28ed80915f629186dca1fc4bbdde323bcd272d1bc6790adb198968ce575821d8e17f3cb"
+		"0576000a5c7787d9ff04c38ab28ed80915f629186dca1fc4bbdde323bcd272d1bc6790adb198968ce575821d8e17f3cb"
 	publicKeyStrings[1] =
-	    "0de93b6fc9cd50d0f8410ab967581adfb39f857ebe5c1155e84cdca9f048d55580373bb4afe8416129754f364b72b307"
+		"0de93b6fc9cd50d0f8410ab967581adfb39f857ebe5c1155e84cdca9f048d55580373bb4afe8416129754f364b72b307"
 	publicKeyStrings[2] =
-	    "94f04de48efbf01a4f356403043524bb4cde869daf6511bb9e7e0ce91d032cacaf00f624d18b15f67e01a5c23f530766"
+		"94f04de48efbf01a4f356403043524bb4cde869daf6511bb9e7e0ce91d032cacaf00f624d18b15f67e01a5c23f530766"
 	publicKeys := make([]crypto.PubKey, 3)
 	for i, publicKeyString := range publicKeyStrings {
 		decodedPublicKeyBytes, err := hex.DecodeString(publicKeyString)
@@ -162,7 +162,7 @@ func TestRecoverThresholdPublicKeyFromPublicKeys6(t *testing.T) {
 	thresholdPublicKey, err := bls12381.RecoverThresholdPublicKeyFromPublicKeys(publicKeys, proTxHashes)
 	require.NoError(t, err)
 	expectedThresholdPublicKeyString :=
-	    "13330b5a849c8ac388c1b4643a5faca0125c6d43f0433478cea4c331096839aea479f73eebf829b73ea4abfa3a067ece"
+		"13330b5a849c8ac388c1b4643a5faca0125c6d43f0433478cea4c331096839aea479f73eebf829b73ea4abfa3a067ece"
 	encodedThresholdPublicKey := hex.EncodeToString(thresholdPublicKey.Bytes())
 	require.Equal(t, expectedThresholdPublicKeyString, encodedThresholdPublicKey)
 }

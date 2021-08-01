@@ -34,7 +34,12 @@ func BodyShouldBeSame(v interface{}) ExpectFunc {
 		}
 		req.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
 		if !bytes.Equal(body, buf) {
-			return fmt.Errorf("the request body retried by URL %s is not equal\nexpected: %s\nactual: %s", req.URL.String(), buf, body)
+			return fmt.Errorf(
+				"the request body retried by URL %s is not equal\nexpected: %s\nactual: %s",
+				req.URL.String(),
+				buf,
+				body,
+			)
 		}
 		return nil
 	}

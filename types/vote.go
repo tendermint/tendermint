@@ -106,7 +106,12 @@ func VoteBlockSignID(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQ
 
 	blockRequestID := VoteBlockRequestIDProto(vote)
 
-	blockSignID := crypto.SignID(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestID), bls12381.ReverseBytes(blockMessageHash))
+	blockSignID := crypto.SignID(
+		quorumType,
+		bls12381.ReverseBytes(quorumHash),
+		bls12381.ReverseBytes(blockRequestID),
+		bls12381.ReverseBytes(blockMessageHash),
+	)
 
 	return blockSignID
 }
@@ -131,7 +136,12 @@ func VoteStateSignID(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQ
 
 	stateRequestID := VoteStateRequestIDProto(vote)
 
-	stateSignID := crypto.SignID(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestID), bls12381.ReverseBytes(stateMessageHash))
+	stateSignID := crypto.SignID(
+		quorumType,
+		bls12381.ReverseBytes(quorumHash),
+		bls12381.ReverseBytes(stateRequestID),
+		bls12381.ReverseBytes(stateMessageHash),
+	)
 
 	return stateSignID
 }
@@ -228,7 +238,13 @@ func VoteStateRequestIDProto(vote *tmproto.Vote) []byte {
 	return crypto.Sha256(requestIDMessage)
 }
 
-func (vote *Vote) Verify(chainID string, quorumType btcjson.LLMQType, quorumHash []byte, pubKey crypto.PubKey, proTxHash crypto.ProTxHash) error {
+func (vote *Vote) Verify(
+	chainID string,
+	quorumType btcjson.LLMQType,
+	quorumHash []byte,
+	pubKey crypto.PubKey,
+	proTxHash crypto.ProTxHash,
+) error {
 	if !bytes.Equal(proTxHash, vote.ValidatorProTxHash) {
 		return ErrVoteInvalidValidatorProTxHash
 	}
@@ -242,7 +258,12 @@ func (vote *Vote) Verify(chainID string, quorumType btcjson.LLMQType, quorumHash
 
 	blockRequestID := VoteBlockRequestID(vote)
 
-	signID := crypto.SignID(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestID), bls12381.ReverseBytes(blockMessageHash))
+	signID := crypto.SignID(
+		quorumType,
+		bls12381.ReverseBytes(quorumHash),
+		bls12381.ReverseBytes(blockRequestID),
+		bls12381.ReverseBytes(blockMessageHash),
+	)
 
 	// fmt.Printf("block vote verify sign ID %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(signID), quorumType,
 	//	hex.EncodeToString(quorumHash), hex.EncodeToString(blockRequestID), hex.EncodeToString(blockMessageHash))

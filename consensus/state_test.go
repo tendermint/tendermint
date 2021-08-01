@@ -1761,10 +1761,10 @@ func TestStateHalt1(t *testing.T) {
 	signAddVotes(cs1, tmproto.PrecommitType, propBlock.Hash(), propBlockParts.Header(), vs3)
 	// we receive this later, but vs3 might receive it earlier and with ours will go to commit!
 	precommit4 := signVote(
-	    vs4, tmproto.PrecommitType, propBlock.Hash(),
-	    cs1.state.AppHash, cs1.state.Validators.QuorumType,
+		vs4, tmproto.PrecommitType, propBlock.Hash(),
+		cs1.state.AppHash, cs1.state.Validators.QuorumType,
 		cs1.state.Validators.QuorumHash, propBlockParts.Header(),
-		)
+	)
 
 	incrementRound(vs2, vs3, vs4)
 

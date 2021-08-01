@@ -1189,30 +1189,38 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	proTxHash, err := cs.privValidator.GetProTxHash()
 	if err != nil {
 		cs.Logger.Error(
-		    "propose step; failed signing proposal; couldn't get proTxHash",
-		    "height", height,
-		    "round", round,
-		    "err", err,
-		    )
+			"propose step; failed signing proposal; couldn't get proTxHash",
+			"height", height,
+			"round", round,
+			"err", err,
+		)
 		return
 	}
 	pubKey, err := cs.privValidator.GetPubKey(validatorsAtProposalHeight.QuorumHash)
 	if err != nil {
-		cs.Logger.Error("propose step; failed signing proposal; couldn't get pubKey", "height", height, "round", round, "err", err)
+		cs.Logger.Error(
+			"propose step; failed signing proposal; couldn't get pubKey",
+			"height",
+			height,
+			"round",
+			round,
+			"err",
+			err,
+		)
 		return
 	}
 	cs.Logger.Debug(
-	    "signing proposal", "height", proposal.Height, "round", proposal.Round,
+		"signing proposal", "height", proposal.Height, "round", proposal.Round,
 		"proposerProTxHash", proTxHash.ShortString(), "public key", pubKey.Bytes(), "quorum type",
 		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash,
-		)
+	)
 
 	if _, err := cs.privValidator.SignProposal(
-	    cs.state.ChainID,
-	    validatorsAtProposalHeight.QuorumType,
-	    validatorsAtProposalHeight.QuorumHash,
-	    p,
-	    ); err == nil {
+		cs.state.ChainID,
+		validatorsAtProposalHeight.QuorumType,
+		validatorsAtProposalHeight.QuorumHash,
+		p,
+	); err == nil {
 		proposal.Signature = p.Signature
 
 		// send proposal and block parts on internal msg queue
@@ -1756,8 +1764,8 @@ func (cs *State) tryAddCommit(commit *types.Commit, peerID p2p.ID) (bool, error)
 }
 
 func (cs *State) verifyCommit(
-    commit *types.Commit, peerID p2p.ID, ignoreProposalBlock bool,
-    ) (verified bool, err error) {
+	commit *types.Commit, peerID p2p.ID, ignoreProposalBlock bool,
+) (verified bool, err error) {
 	// Lets first do some basic commit validation before more complicated commit verification
 	if err := commit.ValidateBasic(); err != nil {
 		return false, fmt.Errorf("error validating commit: %v", err)
@@ -1783,14 +1791,14 @@ func (cs *State) verifyCommit(
 	// Not necessarily a bad peer, but not favourable behaviour.
 	if commit.Height != stateHeight {
 		cs.Logger.Debug(
-		    "commit ignored and not added",
-		    "commit_height",
-		    commit.Height,
-		    "cs_height",
-		    stateHeight,
-		    "peer",
-		    peerID,
-		    )
+			"commit ignored and not added",
+			"commit_height",
+			commit.Height,
+			"cs_height",
+			stateHeight,
+			"peer",
+			peerID,
+		)
 		return false, nil
 	}
 
@@ -1828,9 +1836,9 @@ func (cs *State) verifyCommit(
 			// so we can go to the next round
 			return true, nil
 		}
-        // We don't need to go to the next round, when we get the proposal in the commit will be set and the proposal
-        // block will be executed
-        return false, nil
+		// We don't need to go to the next round, when we get the proposal in the commit will be set and the proposal
+		// block will be executed
+		return false, nil
 	}
 
 	// Lets verify that the threshold signature matches the current validator set
@@ -2071,11 +2079,11 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 	p := proposal.ToProto()
 	// Verify signature
 	proposalBlockSignID := types.ProposalBlockSignID(
-	    cs.state.ChainID,
-	    p,
-	    cs.state.Validators.QuorumType,
-	    cs.state.Validators.QuorumHash,
-	    )
+		cs.state.ChainID,
+		p,
+		cs.state.Validators.QuorumType,
+		cs.state.Validators.QuorumHash,
+	)
 
 	proposer := cs.Validators.GetProposer()
 
@@ -2085,8 +2093,8 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 	//  hex.EncodeToString(cs.state.Validators.QuorumHash),
 	//	hex.EncodeToString(proposalBlockSignBytes))
 
-    switch{
-	case proposer.PubKey != nil :
+	switch {
+	case proposer.PubKey != nil:
 		// We are part of the validator set
 		if !proposer.PubKey.VerifySignatureDigest(proposalBlockSignID, proposal.Signature) {
 			cs.Logger.Debug("error verifying signature", "height", proposal.Height,
@@ -2095,7 +2103,7 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 				"quorumHash", cs.state.Validators.QuorumHash, "proposalSignId", proposalBlockSignID)
 			return ErrInvalidProposalSignature
 		}
-	case cs.Commit != nil && cs.Commit.Height == proposal.Height && cs.Commit.Round == proposal.Round :
+	case cs.Commit != nil && cs.Commit.Height == proposal.Height && cs.Commit.Round == proposal.Round:
 		// We are not part of the validator set
 		// We might have a commit already for the Round State
 		// We need to verify that the commit block id is equal to the proposal block id
@@ -2104,7 +2112,7 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 				"round", proposal.Round, "proposer", proposer.ProTxHash.ShortString())
 			return ErrInvalidProposalForCommit
 		}
-	default :
+	default:
 		// We received a proposal we can not check
 		return ErrUnableToVerifyProposal
 	}
@@ -2224,12 +2232,12 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID, from
 				cs.enterPrevote(height, cs.Round, allowOldBlocks)
 				if hasThreshold { // this is optimisation as this will be triggered when prevote is added
 					cs.Logger.Debug(
-					    "entering precommit after complete proposal with threshold received",
-					    "height",
-					    cs.ProposalBlock.Height,
+						"entering precommit after complete proposal with threshold received",
+						"height",
+						cs.ProposalBlock.Height,
 						"hash",
 						cs.ProposalBlock.Hash(),
-						)
+					)
 					cs.enterPrecommit(height, cs.Round)
 				}
 			} else if cs.Step == cstypes.RoundStepApplyCommit {

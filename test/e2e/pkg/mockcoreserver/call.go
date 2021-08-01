@@ -18,9 +18,9 @@ type (
 )
 
 type respOption struct {
-	status      int
-	body        io.Reader
-	header      map[string][]string
+	status int
+	body   io.Reader
+	header map[string][]string
 	// handlerFunc func(w http.ResponseWriter, req *http.Request)
 }
 

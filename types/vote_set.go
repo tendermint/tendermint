@@ -207,11 +207,19 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 			bytes.Equal(existing.StateSignature, vote.StateSignature) {
 			return false, nil // duplicate
 		}
-		return false, fmt.Errorf("existing vote: %v; new vote: %v: %w", existing, vote, ErrVoteNonDeterministicSignature)
+		return false, fmt.Errorf(
+			"existing vote: %v; new vote: %v: %w", existing, vote, ErrVoteNonDeterministicSignature,
+		)
 	}
 
 	// Check signature.
-	if err := vote.Verify(voteSet.chainID, voteSet.valSet.QuorumType, voteSet.valSet.QuorumHash, val.PubKey, val.ProTxHash); err != nil {
+	if err := vote.Verify(
+		voteSet.chainID,
+		voteSet.valSet.QuorumType,
+		voteSet.valSet.QuorumHash,
+		val.PubKey,
+		val.ProTxHash,
+	); err != nil {
 		return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s ProTxHash %s: %w",
 			voteSet.chainID, val.PubKey, val.ProTxHash, err)
 	}

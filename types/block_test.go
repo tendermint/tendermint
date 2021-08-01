@@ -644,7 +644,13 @@ func TestBlockProtoBuf(t *testing.T) {
 	b2 := MakeBlock(h, 0, nil, []Tx{Tx([]byte{1})}, c1, []Evidence{})
 	b2.ProposerProTxHash = tmrand.Bytes(crypto.DefaultHashSize)
 	evidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
-	evi := NewMockDuplicateVoteEvidence(h, evidenceTime, "block-test-chain", btcjson.LLMQType_5_60, crypto.RandQuorumHash())
+	evi := NewMockDuplicateVoteEvidence(
+		h,
+		evidenceTime,
+		"block-test-chain",
+		btcjson.LLMQType_5_60,
+		crypto.RandQuorumHash(),
+	)
 	b2.Evidence = EvidenceData{Evidence: EvidenceList{evi}}
 	b2.EvidenceHash = b2.Evidence.Hash()
 

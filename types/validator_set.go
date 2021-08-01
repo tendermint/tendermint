@@ -201,8 +201,13 @@ func (vals *ValidatorSet) ThresholdPublicKeyValid() error {
 		if err != nil {
 			return err
 		} else if !recoveredThresholdPublicKey.Equals(vals.ThresholdPublicKey) {
-			return fmt.Errorf("incorrect recovered threshold public key recovered %s expected %s keys %v proTxHashes %v",
-				recoveredThresholdPublicKey.String(), vals.ThresholdPublicKey.String(), vals.GetPublicKeys(), vals.GetProTxHashesAsByteArrays())
+			return fmt.Errorf(
+				"incorrect recovered threshold public key recovered %s expected %s keys %v proTxHashes %v",
+				recoveredThresholdPublicKey.String(),
+				vals.ThresholdPublicKey.String(),
+				vals.GetPublicKeys(),
+				vals.GetProTxHashesAsByteArrays(),
+			)
 		}
 	}
 	return nil
@@ -477,7 +482,13 @@ func (vals *ValidatorSet) RegenerateWithNewKeys() (*ValidatorSet, []PrivValidato
 	// Just to make sure
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey, vals.QuorumType, crypto.RandQuorumHash(), vals.HasPublicKeys), privValidators
+	return NewValidatorSet(
+		valz,
+		thresholdPublicKey,
+		vals.QuorumType,
+		crypto.RandQuorumHash(),
+		vals.HasPublicKeys,
+	), privValidators
 }
 
 // Forces recalculation of the set's total voting power.

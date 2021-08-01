@@ -641,7 +641,7 @@ type Commit struct {
 	// Memoized in first call to corresponding method.
 	// NOTE: can't memoize in constructor because constructor isn't used for
 	// unmarshaling.
-	hash     tmbytes.HexBytes
+	hash tmbytes.HexBytes
 	// bitArray *bits.BitArray
 }
 

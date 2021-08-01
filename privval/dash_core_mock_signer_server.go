@@ -16,7 +16,12 @@ type DashCoreMockSignerServer struct {
 	// handlerMtx tmsync.Mutex
 }
 
-func NewDashCoreMockSignerServer(endpoint *SignerDialerEndpoint, chainID string, quorumHash crypto.QuorumHash, privVal types.PrivValidator) *DashCoreMockSignerServer {
+func NewDashCoreMockSignerServer(
+	endpoint *SignerDialerEndpoint,
+	chainID string,
+	quorumHash crypto.QuorumHash,
+	privVal types.PrivValidator,
+) *DashCoreMockSignerServer {
 	// create plugin (jrpc server)
 	mockServer := &DashCoreMockSignerServer{
 		server: &jrpc.Server{

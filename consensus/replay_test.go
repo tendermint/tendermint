@@ -457,11 +457,11 @@ func TestSimulateValidatorsChange(t *testing.T) {
 			}
 		}
 		fmt.Printf(
-		    "update at height 4 (for 6) %v %v -> %v\n",
-		    updatedValidators4[i].ProTxHash,
-		    oldPubKey,
-		    updatedValidators4[i].PubKey,
-		    )
+			"update at height 4 (for 6) %v %v -> %v\n",
+			updatedValidators4[i].ProTxHash,
+			oldPubKey,
+			updatedValidators4[i].PubKey,
+		)
 	}
 	abciThresholdPubKey2, err := cryptoenc.PubKeyToProto(newThresholdPublicKey)
 	require.NoError(t, err)
@@ -592,11 +592,11 @@ func TestSimulateValidatorsChange(t *testing.T) {
 			}
 		}
 		fmt.Printf(
-		    "update at height 6 (for 8) %v %v -> %v\n",
-		    updatedValidators6[i].ProTxHash,
-		    oldPubKey,
-		    updatedValidators6[i].PubKey,
-		    )
+			"update at height 6 (for 8) %v %v -> %v\n",
+			updatedValidators6[i].ProTxHash,
+			oldPubKey,
+			updatedValidators6[i].PubKey,
+		)
 	}
 	abciThresholdPubKey, err = cryptoenc.PubKeyToProto(newThresholdPublicKey)
 	require.NoError(t, err)
@@ -628,17 +628,17 @@ func TestSimulateValidatorsChange(t *testing.T) {
 			}
 		}
 		panic(fmt.Sprintf(
-		    "validator proTxHash %X not found in newVss",
-		    proposerProTxHash,
-		    ))
+			"validator proTxHash %X not found in newVss",
+			proposerProTxHash,
+		))
 	}
 	proposerIndex = valIndexFnByProTxHash(proposerProTxHash)
 	validatorsAtProposalHeight := css[0].state.ValidatorsAtHeight(p.Height)
 
 	signID, err :=
-	    vss[proposerIndex].SignProposal(
-	        config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p,
-	        )
+		vss[proposerIndex].SignProposal(
+			config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p,
+		)
 	if err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
@@ -654,9 +654,13 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		t.Fatal("wrong proposer pubKey", err)
 	}
 
-	css[0].Logger.Debug("signed proposal", "height", proposal.Height, "round", proposal.Round,
-		"proposer", proposerProTxHash.ShortString(), "signature", p.Signature, "pubkey", proposerPubKey2.Bytes(), "quorum type",
-		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signID", signID)
+	css[0].Logger.Debug(
+		"signed proposal", "height", proposal.Height, "round", proposal.Round,
+		"proposer", proposerProTxHash.ShortString(), "signature", p.Signature,
+		"pubkey", proposerPubKey2.Bytes(), "quorum type",
+		validatorsAtProposalHeight.QuorumType, "quorum hash",
+		validatorsAtProposalHeight.QuorumHash, "signID", signID,
+	)
 
 	proposal.Signature = p.Signature
 
@@ -678,8 +682,8 @@ func TestSimulateValidatorsChange(t *testing.T) {
 			continue
 		}
 		signAddVotes(
-		    css[0], tmproto.PrevoteType, rs.ProposalBlock.Hash(),
-		    rs.ProposalBlockParts.Header(), vssForSigning[i],
+			css[0], tmproto.PrevoteType, rs.ProposalBlock.Hash(),
+			rs.ProposalBlockParts.Header(), vssForSigning[i],
 		)
 	}
 	for i := 0; i < nVals+3; i++ {
@@ -687,8 +691,8 @@ func TestSimulateValidatorsChange(t *testing.T) {
 			continue
 		}
 		signAddVotes(
-		    css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(),
-		    rs.ProposalBlockParts.Header(), vssForSigning[i],
+			css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(),
+			rs.ProposalBlockParts.Header(), vssForSigning[i],
 		)
 	}
 
@@ -707,7 +711,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	proposerIndex = valIndexFnByProTxHash(proposerProTxHash)
 	validatorsAtProposalHeight = css[0].state.ValidatorsAtHeight(p.Height)
 	if _, err := vss[proposerIndex].SignProposal(
-	    config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p,
+		config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p,
 	); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
@@ -750,8 +754,8 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		abciPubKey, err := cryptoenc.PubKeyToProto(updatedValidators8[i].PubKey)
 		require.NoError(t, err)
 		updateTransactions4[i] = kvstore.MakeValSetChangeTx(
-		    updatedValidators8[i].ProTxHash, &abciPubKey, testMinPower,
-		    )
+			updatedValidators8[i].ProTxHash, &abciPubKey, testMinPower,
+		)
 	}
 	abciThresholdPubKey, err = cryptoenc.PubKeyToProto(newThresholdPublicKey)
 	require.NoError(t, err)
@@ -774,8 +778,8 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	proposerIndex = valIndexFnByProTxHash(proposerProTxHash)
 	validatorsAtProposalHeight = css[0].state.ValidatorsAtHeight(p.Height)
 	signID, err = vss[proposerIndex].SignProposal(
-	    config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p,
-	    )
+		config.ChainID(), genDoc.QuorumType, validatorsAtProposalHeight.QuorumHash, p,
+	)
 
 	if err != nil {
 		t.Fatal("failed to sign bad proposal", err)
@@ -788,9 +792,12 @@ func TestSimulateValidatorsChange(t *testing.T) {
 			//t.Fatal("wrong proposer pubKey", err)
 		}*/
 
-	css[0].Logger.Debug("signed proposal", "height", proposal.Height, "round", proposal.Round,
-		"proposer", proposerProTxHash.ShortString(), "signature", p.Signature, "pubkey", proposerPubKey.Bytes(), "quorum type",
-		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signID", signID)
+	css[0].Logger.Debug(
+		"signed proposal", "height", proposal.Height, "round", proposal.Round,
+		"proposer", proposerProTxHash.ShortString(), "signature", p.Signature,
+		"pubkey", proposerPubKey.Bytes(), "quorum type",
+		validatorsAtProposalHeight.QuorumType, "quorum hash",
+		validatorsAtProposalHeight.QuorumHash, "signID", signID)
 
 	proposal.Signature = p.Signature
 
@@ -1078,12 +1085,12 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 }
 
 func applyBlock(
-    stateStore sm.Store,
-    st sm.State,
-    nodeProTxHash *crypto.ProTxHash,
-    blk *types.Block,
-    proxyApp proxy.AppConns,
-    ) sm.State {
+	stateStore sm.Store,
+	st sm.State,
+	nodeProTxHash *crypto.ProTxHash,
+	blk *types.Block,
+	proxyApp proxy.AppConns,
+) sm.State {
 	testPartSize := types.BlockPartSizeBytes
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
 		proxyApp.Query(), mempool, evpool, nil)

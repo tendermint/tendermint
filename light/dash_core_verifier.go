@@ -8,8 +8,8 @@ import (
 
 // DashCoreVerifier is used to verify signatures of light blocks
 type DashCoreVerifier struct {
-	endpoint          *rpc.Client
-	host              string
+	endpoint *rpc.Client
+	host     string
 	// cachedProTxHash   crypto.ProTxHash
 	rpcUsername       string
 	rpcPassword       string
@@ -19,11 +19,11 @@ type DashCoreVerifier struct {
 // NewDashCoreVerifierClient returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
 func NewDashCoreVerifierClient(
-    host string,
-    rpcUsername string,
-    rpcPassword string,
-    defaultQuorumType btcjson.LLMQType,
-    ) (*DashCoreVerifier, error) {
+	host string,
+	rpcUsername string,
+	rpcPassword string,
+	defaultQuorumType btcjson.LLMQType,
+) (*DashCoreVerifier, error) {
 	// Connect to local dash core RPC server using HTTP POST mode.
 	connCfg := &rpc.ConnConfig{
 		Host:         host,
@@ -40,10 +40,10 @@ func NewDashCoreVerifierClient(
 	}
 
 	return &DashCoreVerifier{
-	    endpoint: client,
-	    host: host,
-	    rpcUsername: rpcUsername,
-	    rpcPassword: rpcPassword,
-	    defaultQuorumType: defaultQuorumType,
-	    }, nil
+		endpoint:          client,
+		host:              host,
+		rpcUsername:       rpcUsername,
+		rpcPassword:       rpcPassword,
+		defaultQuorumType: defaultQuorumType,
+	}, nil
 }

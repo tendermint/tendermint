@@ -131,7 +131,9 @@ func ProposalBlockSignBytes(chainID string, p *tmproto.Proposal) []byte {
 	return bz
 }
 
-func ProposalBlockSignID(chainID string, p *tmproto.Proposal, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) []byte {
+func ProposalBlockSignID(
+	chainID string, p *tmproto.Proposal, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
+) []byte {
 	signBytes := ProposalBlockSignBytes(chainID, p)
 	proposalMessageHash := crypto.Sha256(signBytes)
 

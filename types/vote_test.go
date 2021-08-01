@@ -245,7 +245,9 @@ func TestVoteVerify(t *testing.T) {
 
 	err = vote.Verify("test_chain_id", quorumType, quorumHash, pubkey, proTxHash)
 	if assert.Error(t, err) {
-		assert.True(t, strings.HasPrefix(err.Error(), ErrVoteInvalidBlockSignature.Error())) // since block signatures are verified first
+		assert.True(
+			t, strings.HasPrefix(err.Error(), ErrVoteInvalidBlockSignature.Error()),
+		) // since block signatures are verified first
 	}
 }
 

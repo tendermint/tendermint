@@ -130,7 +130,9 @@ func TestGetPubKey(t *testing.T) {
 	quorumHash := crypto.RandQuorumHash()
 	pubKey, err := client.GetPubKey(quorumHash)
 	assert.NoError(t, err)
-	b, _ := hex.DecodeString("83349BA8363E5C03E9D6318B0491E38305CF59D9D57CEA2295A86ECFA696622571F266C28BACC78666E8B9B0FB2B3123")
+	b, _ := hex.DecodeString(
+		"83349BA8363E5C03E9D6318B0491E38305CF59D9D57CEA2295A86ECFA696622571F266C28BACC78666E8B9B0FB2B3123",
+	)
 	assert.True(t, pubKey.Equals(bls12381.PubKey(b)))
 	srv.Stop(ctx)
 }

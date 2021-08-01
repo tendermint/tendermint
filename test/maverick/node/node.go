@@ -724,7 +724,8 @@ func NewNode(config *cfg.Config,
 	var weAreOnlyValidator bool
 	var proTxHashP *crypto.ProTxHash
 	var privValidator types.PrivValidator
-	if config.PrivValidatorCoreRPCHost != "" {
+	switch {
+	case config.PrivValidatorCoreRPCHost != "":
 		logger.Info("Initializing Dash Core Signing", "quorum hash", state.Validators.QuorumHash.String())
 		llmqType := config.Consensus.QuorumType
 		if llmqType == 0 {
@@ -753,7 +754,7 @@ func NewNode(config *cfg.Config,
 		} else {
 			logger.Info("Connected to Core RPC FullNode")
 		}
-	} else if config.PrivValidatorListenAddr != "" {
+	case config.PrivValidatorListenAddr != "":
 		// If an address is provided, listen on the socket for a connection from an
 		// external signing process.
 		// FIXME: we should start services inside OnStart
@@ -776,7 +777,7 @@ func NewNode(config *cfg.Config,
 		} else {
 			logger.Info("Connected to Private Validator through listen address")
 		}
-	} else {
+	default:
 		privValidator = privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 		proTxHash, err := privValidator.GetProTxHash()
 		if err != nil {
