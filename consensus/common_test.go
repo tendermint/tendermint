@@ -236,7 +236,7 @@ func decideProposal(
 
 	proposal.Signature = p.Signature
 
-	return
+	return proposal, block
 }
 
 func addVotes(to *State, votes ...*types.Vote) {

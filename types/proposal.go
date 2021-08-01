@@ -137,7 +137,12 @@ func ProposalBlockSignID(chainID string, p *tmproto.Proposal, quorumType btcjson
 
 	proposalRequestID := ProposalRequestIDProto(p)
 
-	signID := crypto.SignID(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(proposalRequestID), bls12381.ReverseBytes(proposalMessageHash))
+	signID := crypto.SignID(
+		quorumType,
+		bls12381.ReverseBytes(quorumHash),
+		bls12381.ReverseBytes(proposalRequestID),
+		bls12381.ReverseBytes(proposalMessageHash),
+	)
 
 	return signID
 }

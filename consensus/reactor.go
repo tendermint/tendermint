@@ -758,7 +758,8 @@ OUTER_LOOP:
 		// Catchup logic
 		// If peer is lagging by more than 1, send Commit for that height to allow them to catch up.
 		blockStoreBase := conR.conS.blockStore.Base()
-		if blockStoreBase > 0 && prs.Height != 0 && rs.Height >= prs.Height+2 && prs.Height >= blockStoreBase && prs.HasCommit == false {
+		if blockStoreBase > 0 && prs.Height != 0 && rs.Height >= prs.Height+2 &&
+		    prs.Height >= blockStoreBase && prs.HasCommit == false {
 			// Load the block commit for prs.Height,
 			if commit := conR.conS.blockStore.LoadBlockCommit(prs.Height); commit != nil {
 				if ps.SendCommit(commit) {

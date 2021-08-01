@@ -300,14 +300,26 @@ func (err *ErrEvidenceOverflow) Error() string {
 // unstable - use only for testing
 
 // NewMockDuplicateVoteEvidence assumes the round to be 0 and the validator index to be 0
-func NewMockDuplicateVoteEvidence(height int64, time time.Time, chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) *DuplicateVoteEvidence {
+func NewMockDuplicateVoteEvidence(
+	height int64,
+	time time.Time,
+	chainID string,
+	quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash,
+) *DuplicateVoteEvidence {
 	val := NewMockPVForQuorum(quorumHash)
 	return NewMockDuplicateVoteEvidenceWithValidator(height, time, val, chainID, quorumType, quorumHash)
 }
 
 // NewMockDuplicateVoteEvidenceWithValidator assumes voting power to be DefaultDashVotingPower and validator to be the only one in the set
-func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
-	pv PrivValidator, chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) *DuplicateVoteEvidence {
+func NewMockDuplicateVoteEvidenceWithValidator(
+	height int64,
+	time time.Time,
+	pv PrivValidator,
+	chainID string,
+	quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash,
+) *DuplicateVoteEvidence {
 	pubKey, err := pv.GetPubKey(quorumHash)
 	if err != nil {
 		panic(err)
@@ -325,7 +337,12 @@ func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
 	_ = pv.SignVote(chainID, quorumType, quorumHash, vB)
 	voteB.BlockSignature = vB.BlockSignature
 	voteB.StateSignature = vB.StateSignature
-	return NewDuplicateVoteEvidence(voteA, voteB, time, NewValidatorSet([]*Validator{val}, val.PubKey, quorumType, quorumHash, true))
+	return NewDuplicateVoteEvidence(
+		voteA,
+		voteB,
+		time,
+		NewValidatorSet([]*Validator{val}, val.PubKey, quorumType, quorumHash, true),
+	)
 }
 
 // assumes voting power to be DefaultDashVotingPower and validator to be the only one in the set

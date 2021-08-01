@@ -17,7 +17,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	"github.com/tendermint/tendermint/libs/bits"
+	// "github.com/tendermint/tendermint/libs/bits"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
@@ -642,7 +642,7 @@ type Commit struct {
 	// NOTE: can't memoize in constructor because constructor isn't used for
 	// unmarshaling.
 	hash     tmbytes.HexBytes
-	bitArray *bits.BitArray
+	// bitArray *bits.BitArray
 }
 
 // NewCommit returns a new Commit.
@@ -791,10 +791,18 @@ func (commit *Commit) ValidateBasic() error {
 			return errors.New("commit cannot be for nil block")
 		}
 		if len(commit.ThresholdBlockSignature) != SignatureSize {
-			return fmt.Errorf("block threshold signature is wrong size (wanted: %d, received: %d)", SignatureSize, len(commit.ThresholdBlockSignature))
+			return fmt.Errorf(
+				"block threshold signature is wrong size (wanted: %d, received: %d)",
+				SignatureSize,
+				len(commit.ThresholdBlockSignature),
+			)
 		}
 		if len(commit.ThresholdStateSignature) != SignatureSize {
-			return fmt.Errorf("state threshold signature is wrong size (wanted: %d, received: %d)", SignatureSize, len(commit.ThresholdStateSignature))
+			return fmt.Errorf(
+				"state threshold signature is wrong size (wanted: %d, received: %d)",
+				SignatureSize,
+				len(commit.ThresholdStateSignature),
+			)
 		}
 	}
 	return nil
