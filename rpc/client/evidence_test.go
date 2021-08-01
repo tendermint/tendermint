@@ -137,7 +137,7 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 
 	for i, c := range GetClients() {
 		h := int64(1)
-		vals, _ := c.Validators(context.Background(), &h, nil, nil, nil)
+		vals, err := c.Validators(context.Background(), &h, nil, nil, nil)
 		correct, fakes := makeEvidences(t, pv, chainID, vals.QuorumType, *vals.QuorumHash)
 		t.Logf("client %d", i)
 
