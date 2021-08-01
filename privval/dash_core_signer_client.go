@@ -200,7 +200,7 @@ func (sc *DashCoreSignerClient) GetProTxHash() (crypto.ProTxHash, error) {
 			results, err := sc.dashCoreRPCClient.MasternodeListJSON(localHost)
 			if err == nil {
 				for _, v := range results {
-					decodedProTxHash, err = hex.DecodeString(v.ProTxHash)
+					decodedProTxHash, _ = hex.DecodeString(v.ProTxHash)
 				}
 			}
 		}

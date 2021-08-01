@@ -269,7 +269,9 @@ func (vote *Vote) Verify(
 	//	hex.EncodeToString(quorumHash), hex.EncodeToString(blockRequestID), hex.EncodeToString(blockMessageHash))
 
 	if !pubKey.VerifySignatureDigest(signID, vote.BlockSignature) {
-		return fmt.Errorf("%s proTxHash %s pubKey %v vote %v sign bytes %s block signature %s", ErrVoteInvalidBlockSignature.Error(),
+		return fmt.Errorf(
+			"%s proTxHash %s pubKey %v vote %v sign bytes %s block signature %s",
+			ErrVoteInvalidBlockSignature.Error(),
 			proTxHash, pubKey, vote, hex.EncodeToString(voteBlockSignBytes), hex.EncodeToString(vote.BlockSignature))
 	}
 
@@ -280,7 +282,12 @@ func (vote *Vote) Verify(
 
 		stateRequestID := VoteStateRequestID(vote)
 
-		stateSignID := crypto.SignID(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestID), bls12381.ReverseBytes(stateMessageHash))
+		stateSignID := crypto.SignID(
+			quorumType,
+			bls12381.ReverseBytes(quorumHash),
+			bls12381.ReverseBytes(stateRequestID),
+			bls12381.ReverseBytes(stateMessageHash),
+		)
 
 		// fmt.Printf("state vote verify sign ID %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(stateSignID), quorumType,
 		//	hex.EncodeToString(quorumHash), hex.EncodeToString(stateRequestID), hex.EncodeToString(stateMessageHash))

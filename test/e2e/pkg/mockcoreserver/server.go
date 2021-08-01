@@ -106,7 +106,6 @@ func (s *JRPCServer) Start() {
 	httpCall := s.httpSrv.On(s.endpointURL)
 	httpCall.Forever()
 	httpCall.handlerFunc = func(w http.ResponseWriter, req *http.Request) error {
-		ctx := context.Background()
 		s.guard.Lock()
 		defer s.guard.Unlock()
 		jReq := btcjson.Request{}
@@ -125,7 +124,7 @@ func (s *JRPCServer) Start() {
 			return err
 		}
 		// put unmarshalled JRPC request into a context
-		ctx = context.WithValue(req.Context(), jRPCRequestKey, jReq)
+		ctx := context.WithValue(req.Context(), jRPCRequestKey, jReq)
 		return call.execute(w, req.WithContext(ctx))
 	}
 	s.httpSrv.Start()

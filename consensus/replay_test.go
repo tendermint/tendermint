@@ -1,5 +1,3 @@
-//nolint:lll
-
 package consensus
 
 import (
@@ -643,8 +641,8 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 
-	proposerPubKey2, err := vss[proposerIndex].GetPubKey(validatorsAtProposalHeight.QuorumHash)
-	proposerProTxHash2, err := vss[proposerIndex].GetProTxHash()
+	proposerPubKey2, _ := vss[proposerIndex].GetPubKey(validatorsAtProposalHeight.QuorumHash)
+	proposerProTxHash2, _ := vss[proposerIndex].GetProTxHash()
 
 	if !bytes.Equal(proposerProTxHash2.Bytes(), proposerProTxHash.Bytes()) {
 		t.Fatal("wrong proposer", err)
@@ -785,7 +783,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 
-	proposerPubKey2, err = vss[proposerIndex].GetPubKey(validatorsAtProposalHeight.QuorumHash)
+	// proposerPubKey2, _ = vss[proposerIndex].GetPubKey(validatorsAtProposalHeight.QuorumHash)
 
 	/*
 		if !bytes.Equal(proposerPubKey2.Bytes(), proposerPubKey.Bytes()) {
