@@ -691,10 +691,11 @@ func NewNode(config *cfg.Config,
 	switch {
 	case config.PrivValidatorCoreRPCHost != "":
 		logger.Info("Initializing Dash Core Signing", "quorum hash", state.Validators.QuorumHash.String())
-		llmqType := config.Consensus.QuorumType
-		if llmqType == 0 {
-			llmqType = btcjson.LLMQType_100_67
-		}
+		/*
+			llmqType := config.Consensus.QuorumType
+			if llmqType == 0 {
+				llmqType = btcjson.LLMQType_100_67
+			}*/
 		if dashCoreRPCClient == nil {
 			rpcClient, err := DefaultDashCoreRPCClient(config)
 			if err != nil {

@@ -136,7 +136,7 @@ func (c *MockCoreServer) QuorumVerify(cmd btcjson.QuorumCmd) btcjson.QuorumVerif
 	}
 	quorumHash := crypto.QuorumHash(quorumHashBytes)
 
-	signature, err := hex.DecodeString(*cmd.Signature)
+	signature, _ := hex.DecodeString(*cmd.Signature)
 
 	signID := crypto.SignID(
 		*cmd.LLMQType,

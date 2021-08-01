@@ -688,7 +688,15 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 		panic("Cannot MakeCommit() unless a thresholdStateSig has been created")
 	}
 
-	return NewCommit(voteSet.GetHeight(), voteSet.GetRound(), *voteSet.maj23, *voteSet.stateMaj23, voteSet.valSet.QuorumHash, voteSet.thresholdBlockSig, voteSet.thresholdStateSig)
+	return NewCommit(
+		voteSet.GetHeight(),
+		voteSet.GetRound(),
+		*voteSet.maj23,
+		*voteSet.stateMaj23,
+		voteSet.valSet.QuorumHash,
+		voteSet.thresholdBlockSig,
+		voteSet.thresholdStateSig,
+	)
 }
 
 //--------------------------------------------------------------------------------
