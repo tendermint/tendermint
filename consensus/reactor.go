@@ -732,14 +732,14 @@ OUTER_LOOP:
 			heightLogger := logger.With("height", prs.Height)
 			if !wasValidator {
 				// If there are lastCommits to send...
-				if prs.Step == cstypes.RoundStepNewHeight && prs.Height+1 == rs.Height && prs.HasCommit == false {
+				if prs.Step == cstypes.RoundStepNewHeight && prs.Height+1 == rs.Height && !prs.HasCommit {
 					if ps.SendCommit(rs.LastCommit) {
 						logger.Debug("Sending LastCommit to non-validator node")
 						continue OUTER_LOOP
 					}
 				}
 			}
-			if isValidator == true {
+			if isValidator {
 				if conR.gossipVotesForHeight(heightLogger, rs, prs, ps) {
 					continue OUTER_LOOP
 				}

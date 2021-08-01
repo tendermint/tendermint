@@ -237,7 +237,10 @@ func (blockExec *BlockExecutor) ApplyBlockWithLogger(
 	blockExec.store.Load()
 
 	// Update the state with the block and responses.
-	state, err = updateState(state, nodeProTxHash, blockID, &block.Header, abciResponses, validatorUpdates, thresholdPublicKeyUpdate, quorumHash)
+	state, err = updateState(
+	    state, nodeProTxHash, blockID, &block.Header,
+	    abciResponses, validatorUpdates, thresholdPublicKeyUpdate, quorumHash,
+	    )
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
@@ -413,7 +416,11 @@ func execBlockOnProxyApp(
 		return nil, err
 	}
 
-	logger.Info("executed block", "height", block.Height, "coreHeight", block.CoreChainLockedHeight, "num_valid_txs", validTxs, "num_invalid_txs", invalidTxs)
+	logger.Info(
+	    "executed block", "height", block.Height, "coreHeight",
+	    block.CoreChainLockedHeight, "num_valid_txs", validTxs,
+	    "num_invalid_txs", invalidTxs,
+	    )
 	return abciResponses, nil
 }
 
@@ -455,7 +462,8 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 					valUpdate.ProTxHash, pk.String())
 			}
 
-			if pk.String() == "PubKeyBLS12381{000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}" {
+			if pk.String() ==
+			    "PubKeyBLS12381{000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}" {
 				return fmt.Errorf("validator %X public key should not be empty %v",
 					valUpdate.ProTxHash, pk.String())
 			}

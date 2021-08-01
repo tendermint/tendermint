@@ -3,14 +3,14 @@ package light
 import (
 	"github.com/dashevo/dashd-go/btcjson"
 	rpc "github.com/dashevo/dashd-go/rpcclient"
-	"github.com/tendermint/tendermint/crypto"
+	// "github.com/tendermint/tendermint/crypto"
 )
 
 // DashCoreVerifier is used to verify signatures of light blocks
 type DashCoreVerifier struct {
 	endpoint          *rpc.Client
 	host              string
-	cachedProTxHash   crypto.ProTxHash
+	// cachedProTxHash   crypto.ProTxHash
 	rpcUsername       string
 	rpcPassword       string
 	defaultQuorumType btcjson.LLMQType
@@ -18,7 +18,12 @@ type DashCoreVerifier struct {
 
 // NewDashCoreVerifierClient returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
-func NewDashCoreVerifierClient(host string, rpcUsername string, rpcPassword string, defaultQuorumType btcjson.LLMQType) (*DashCoreVerifier, error) {
+func NewDashCoreVerifierClient(
+    host string,
+    rpcUsername string,
+    rpcPassword string,
+    defaultQuorumType btcjson.LLMQType,
+    ) (*DashCoreVerifier, error) {
 	// Connect to local dash core RPC server using HTTP POST mode.
 	connCfg := &rpc.ConnConfig{
 		Host:         host,
@@ -34,5 +39,11 @@ func NewDashCoreVerifierClient(host string, rpcUsername string, rpcPassword stri
 		return nil, err
 	}
 
-	return &DashCoreVerifier{endpoint: client, host: host, rpcUsername: rpcUsername, rpcPassword: rpcPassword, defaultQuorumType: defaultQuorumType}, nil
+	return &DashCoreVerifier{
+	    endpoint: client,
+	    host: host,
+	    rpcUsername: rpcUsername,
+	    rpcPassword: rpcPassword,
+	    defaultQuorumType: defaultQuorumType,
+	    }, nil
 }

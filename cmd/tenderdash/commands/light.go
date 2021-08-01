@@ -156,7 +156,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		light.DashCoreVerification(),
 	}
 
-	dashCoreRpcClient, err := dashcore.NewDashCoreRPCClient(dashCoreRPCHost, dashCoreRPCUser, dashCoreRPCPass)
+	dashCoreRPCClient, err := dashcore.NewRPCClient(dashCoreRPCHost, dashCoreRPCUser, dashCoreRPCPass)
 
 	c, err := light.NewHTTPClient(
 		context.Background(),
@@ -164,7 +164,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		primaryAddr,
 		witnessesAddrs,
 		dbs.New(db, chainID),
-		dashCoreRpcClient,
+		dashCoreRPCClient,
 		options...,
 	)
 	if err != nil {

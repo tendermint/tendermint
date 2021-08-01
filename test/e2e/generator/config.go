@@ -86,7 +86,7 @@ type node struct {
 type config struct {
 	testnetCombinations map[string][]interface{}
 	node                node
-	quorumMembersCount  int
+	// quorumMembersCount  int
 }
 
 func defaultCfg() config {

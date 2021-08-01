@@ -171,7 +171,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	v := vote.ToProto()
 	quorumType := btcjson.LLMQType_5_60
 	signID := VoteBlockSignID("test_chain_id", v, quorumType, quorumHash)
-	signStateId := VoteStateSignID("test_chain_id", v, quorumType, quorumHash)
+	signStateID := VoteStateSignID("test_chain_id", v, quorumType, quorumHash)
 
 	// sign it
 	err = privVal.SignVote("test_chain_id", quorumType, quorumHash, v)
@@ -182,7 +182,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	require.True(t, valid)
 
 	// verify the same vote
-	valid = pubkey.VerifySignatureDigest(signStateId, v.StateSignature)
+	valid = pubkey.VerifySignatureDigest(signStateID, v.StateSignature)
 	require.True(t, valid)
 
 	// serialize, deserialize and verify again....
@@ -193,13 +193,13 @@ func TestVoteVerifySignature(t *testing.T) {
 	require.NoError(t, err)
 
 	// verify the transmitted vote
-	newSignId := VoteBlockSignID("test_chain_id", precommit, quorumType, quorumHash)
-	newSignStateId := VoteStateSignID("test_chain_id", precommit, quorumType, quorumHash)
-	require.Equal(t, string(signID), string(newSignId))
-	require.Equal(t, string(signStateId), string(newSignStateId))
-	valid = pubkey.VerifySignatureDigest(newSignId, precommit.BlockSignature)
+	newSignID := VoteBlockSignID("test_chain_id", precommit, quorumType, quorumHash)
+	newSignStateID := VoteStateSignID("test_chain_id", precommit, quorumType, quorumHash)
+	require.Equal(t, string(signID), string(newSignID))
+	require.Equal(t, string(signStateID), string(newSignStateID))
+	valid = pubkey.VerifySignatureDigest(newSignID, precommit.BlockSignature)
 	require.True(t, valid)
-	valid = pubkey.VerifySignatureDigest(newSignStateId, precommit.StateSignature)
+	valid = pubkey.VerifySignatureDigest(newSignStateID, precommit.StateSignature)
 	require.True(t, valid)
 }
 

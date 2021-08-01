@@ -52,7 +52,7 @@ func TestServer(t *testing.T) {
 			}).
 			Expect(And(BodyShouldBeEmpty(), QueryShouldHave(tc.query))).
 			Once().
-			Respond(JsonBody(tc.e), JsonContentType())
+			Respond(JSONBody(tc.e), JSONContentType())
 		resp, err := http.Get(tc.url)
 		assert.NoError(t, err)
 		data, err := ioutil.ReadAll(resp.Body)
@@ -77,9 +77,9 @@ func TestDashCoreSignerPingMethod(t *testing.T) {
 		srv,
 		WithPingMethod(cs, 1),
 	)
-	dashCoreRpcClient, err := dashcore.NewDashCoreRPCClient(addr, "root", "root")
+	dashCoreRPCClient, err := dashcore.NewRPCClient(addr, "root", "root")
 	assert.NoError(t, err)
-	client, err := privval.NewDashCoreSignerClient(dashCoreRpcClient, btcjson.LLMQType_5_60)
+	client, err := privval.NewDashCoreSignerClient(dashCoreRPCClient, btcjson.LLMQType_5_60)
 	assert.NoError(t, err)
 	err = client.Ping()
 	assert.NoError(t, err)
@@ -123,9 +123,9 @@ func TestGetPubKey(t *testing.T) {
 		WithGetNetworkInfoMethod(cs, Endless),
 	)
 
-	dashCoreRpcClient, err := dashcore.NewDashCoreRPCClient(addr, "root", "root")
+	dashCoreRPCClient, err := dashcore.NewRPCClient(addr, "root", "root")
 	assert.NoError(t, err)
-	client, err := privval.NewDashCoreSignerClient(dashCoreRpcClient, btcjson.LLMQType_5_60)
+	client, err := privval.NewDashCoreSignerClient(dashCoreRPCClient, btcjson.LLMQType_5_60)
 	assert.NoError(t, err)
 	quorumHash := crypto.RandQuorumHash()
 	pubKey, err := client.GetPubKey(quorumHash)

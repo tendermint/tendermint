@@ -360,8 +360,12 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 				hasAllPublicKeys = false
 			}
 		}
-		validatorSet = types.NewValidatorSet(validators, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash, hasAllPublicKeys)
-		nextValidatorSet = types.NewValidatorSet(validators, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash, hasAllPublicKeys).CopyIncrementProposerPriority(1)
+		validatorSet = types.NewValidatorSet(
+		    validators, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash, hasAllPublicKeys,
+		    )
+		nextValidatorSet = types.NewValidatorSet(
+		    validators, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash, hasAllPublicKeys,
+		    ).CopyIncrementProposerPriority(1)
 	}
 
 	return State{

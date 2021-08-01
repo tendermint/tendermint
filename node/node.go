@@ -125,8 +125,8 @@ func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 }
 
 // DefaultDashCoreRPCClient returns RPC client for the Dash Core node
-func DefaultDashCoreRPCClient(config *cfg.Config) (dashcore.DashCoreClient, error) {
-	return dashcore.NewDashCoreRPCClient(
+func DefaultDashCoreRPCClient(config *cfg.Config) (dashcore.Client, error) {
+	return dashcore.NewRPCClient(
 		config.PrivValidatorCoreRPCHost,
 		config.BaseConfig.PrivValidatorCoreRPCUsername,
 		config.BaseConfig.PrivValidatorCoreRPCPassword,
@@ -233,7 +233,7 @@ type Node struct {
 	indexerService    *txindex.IndexerService
 	prometheusSrv     *http.Server
 
-	dashCoreRPCClient dashcore.DashCoreClient
+	dashCoreRPCClient dashcore.Client
 }
 
 func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
@@ -588,7 +588,7 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 // startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
 func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reactor,
 	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
-	stateStore sm.Store, blockStore *store.BlockStore, state sm.State, dashCoreRPCClient dashcore.DashCoreClient) error {
+	stateStore sm.Store, blockStore *store.BlockStore, state sm.State, dashCoreRPCClient dashcore.Client) error {
 	ssR.Logger.Info("Starting state sync")
 
 	if stateProvider == nil {
@@ -649,7 +649,7 @@ func NewNode(config *cfg.Config,
 	genesisDocProvider GenesisDocProvider,
 	dbProvider DBProvider,
 	metricsProvider MetricsProvider,
-	dashCoreRPCClient dashcore.DashCoreClient,
+	dashCoreRPCClient dashcore.Client,
 	logger log.Logger,
 	options ...Option) (*Node, error) {
 
@@ -1516,7 +1516,7 @@ func createAndStartPrivValidatorSocketClient(
 
 func createAndStartPrivValidatorRPCClient(
 	defaultQuorumType btcjson.LLMQType,
-	dashCoreRPCClient dashcore.DashCoreClient,
+	dashCoreRPCClient dashcore.Client,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
 	pvsc, err := privval.NewDashCoreSignerClient(dashCoreRPCClient, defaultQuorumType)

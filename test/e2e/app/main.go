@@ -42,7 +42,7 @@ var (
 	tmcfg             *config.Config
 	nodeLogger        log.Logger
 	nodeKey           *p2p.NodeKey
-	dashCoreRpcClient dashcore.DashCoreClient
+	dashCoreRPCClient dashcore.Client
 )
 
 func init() {
@@ -94,7 +94,7 @@ func run(configFile string) error {
 				coreSrv.Start()
 			}()
 
-			dashCoreRpcClient, err = dashcore.NewDashCoreRPCClient(
+			dashCoreRPCClient, err = dashcore.NewRPCClient(
 				cfg.PrivValServer,
 				tmcfg.BaseConfig.PrivValidatorCoreRPCUsername,
 				tmcfg.BaseConfig.PrivValidatorCoreRPCPassword,
@@ -173,7 +173,7 @@ func startNode(cfg *Config) error {
 		node.DefaultGenesisDocProviderFunc(tmcfg),
 		node.DefaultDBProvider,
 		node.DefaultMetricsProvider(tmcfg.Instrumentation),
-		dashCoreRpcClient,
+		dashCoreRPCClient,
 		nodeLogger,
 	)
 	if err != nil {
@@ -197,7 +197,7 @@ func startLightClient(cfg *Config) error {
 		providers[0],
 		providers[1:],
 		dbs.New(lightDB, "light"),
-		dashCoreRpcClient,
+		dashCoreRPCClient,
 		light.Logger(nodeLogger),
 	)
 	if err != nil {
@@ -252,7 +252,7 @@ func startMaverick(cfg *Config) error {
 		maverick.DefaultGenesisDocProviderFunc(tmcfg),
 		maverick.DefaultDBProvider,
 		maverick.DefaultMetricsProvider(tmcfg.Instrumentation),
-		dashCoreRpcClient,
+		dashCoreRPCClient,
 		logger,
 		misbehaviors,
 	)

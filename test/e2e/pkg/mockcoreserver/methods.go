@@ -28,7 +28,7 @@ func WithQuorumInfoMethod(cs CoreServer, times int) MethodFunc {
 			On("quorum info").
 			Expect(And(Debug())).
 			Times(times).
-			Respond(call, JsonContentType())
+			Respond(call, JSONContentType())
 	}
 }
 
@@ -47,7 +47,7 @@ func WithQuorumSignMethod(cs CoreServer, times int) MethodFunc {
 			On("quorum sign").
 			Expect(And(Debug())).
 			Times(times).
-			Respond(call, JsonContentType())
+			Respond(call, JSONContentType())
 	}
 }
 
@@ -68,7 +68,7 @@ func WithQuorumVerifyMethod(cs CoreServer, times int) MethodFunc {
 			On("quorum verify").
 			Expect(And(Debug())).
 			Times(times).
-			Respond(call, JsonContentType())
+			Respond(call, JSONContentType())
 	}
 }
 
@@ -87,7 +87,7 @@ func WithMasternodeMethod(cs CoreServer, times int) MethodFunc {
 			On("masternode status").
 			Expect(And(Debug())).
 			Times(times).
-			Respond(call, JsonContentType())
+			Respond(call, JSONContentType())
 	}
 }
 
@@ -102,7 +102,7 @@ func WithGetNetworkInfoMethod(cs CoreServer, times int) MethodFunc {
 			On("getnetworkinfo").
 			Expect(And(Debug())).
 			Times(times).
-			Respond(call, JsonContentType())
+			Respond(call, JSONContentType())
 	}
 }
 
@@ -117,7 +117,7 @@ func WithPingMethod(cs CoreServer, times int) MethodFunc {
 			On("ping").
 			Expect(And(Debug())).
 			Times(times).
-			Respond(call, JsonContentType())
+			Respond(call, JSONContentType())
 	}
 }
 

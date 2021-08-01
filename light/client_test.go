@@ -64,7 +64,7 @@ var (
 	deadNode = mockp.NewDeadMock(chainID)
 	// largeFullNode = mockp.New(genMockNode(chainID, 10, 3, 0, bTime))
 
-	dashCoreMockClient dashcore.DashCoreClient
+	dashCoreMockClient dashcore.Client
 	trustedStore       store.Store
 )
 

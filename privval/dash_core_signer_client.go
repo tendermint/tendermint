@@ -19,7 +19,7 @@ import (
 // DashCoreSignerClient implements PrivValidator.
 // Handles remote validator connections that provide signing services
 type DashCoreSignerClient struct {
-	dashCoreRpcClient dashcore.DashCoreClient
+	dashCoreRPCClient dashcore.Client
 	cachedProTxHash   crypto.ProTxHash
 	defaultQuorumType btcjson.LLMQType
 }
@@ -28,13 +28,13 @@ var _ types.PrivValidator = (*DashCoreSignerClient)(nil)
 
 // NewDashCoreSignerClient returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
-func NewDashCoreSignerClient(client dashcore.DashCoreClient, defaultQuorumType btcjson.LLMQType) (*DashCoreSignerClient, error) {
-	return &DashCoreSignerClient{dashCoreRpcClient: client, defaultQuorumType: defaultQuorumType}, nil
+func NewDashCoreSignerClient(client dashcore.Client, defaultQuorumType btcjson.LLMQType) (*DashCoreSignerClient, error) {
+	return &DashCoreSignerClient{dashCoreRPCClient: client, defaultQuorumType: defaultQuorumType}, nil
 }
 
 // Close closes the underlying connection
 func (sc *DashCoreSignerClient) Close() error {
-	err := sc.dashCoreRpcClient.Close()
+	err := sc.dashCoreRPCClient.Close()
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func (sc *DashCoreSignerClient) Ping() error {
 
 // ping sends a ping request to the remote signer
 func (sc *DashCoreSignerClient) ping() error {
-	err := sc.dashCoreRpcClient.Ping()
+	err := sc.dashCoreRPCClient.Ping()
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func (sc *DashCoreSignerClient) GetPubKey(quorumHash crypto.QuorumHash) (crypto.
 		return nil, fmt.Errorf("quorum hash must be 32 bytes long if requesting public key from dash core")
 	}
 
-	response, err := sc.dashCoreRpcClient.QuorumInfo(sc.defaultQuorumType, quorumHash)
+	response, err := sc.dashCoreRPCClient.QuorumInfo(sc.defaultQuorumType, quorumHash)
 	if err != nil {
 		return nil, fmt.Errorf("getPubKey Quorum Info Error for (%d) %s : %w", sc.defaultQuorumType, quorumHash.String(), err)
 	}
@@ -126,11 +126,9 @@ func (sc *DashCoreSignerClient) GetPubKey(quorumHash crypto.QuorumHash) (crypto.
 		if found {
 			// We found it, we should have a public key share
 			return nil, fmt.Errorf("no public key share found")
-		} else {
-			// We are not part of the quorum, there is no error
-			return nil, nil
 		}
-
+        // We are not part of the quorum, there is no error
+        return nil, nil
 	}
 
 	return bls12381.PubKey(decodedPublicKeyShare), nil
@@ -145,7 +143,7 @@ func (sc *DashCoreSignerClient) GetThresholdPublicKey(quorumHash crypto.QuorumHa
 		return nil, fmt.Errorf("quorum hash must be 32 bytes long if requesting public key from dash core")
 	}
 
-	response, err := sc.dashCoreRpcClient.QuorumInfo(sc.defaultQuorumType, quorumHash)
+	response, err := sc.dashCoreRPCClient.QuorumInfo(sc.defaultQuorumType, quorumHash)
 	if err != nil {
 		return nil, fmt.Errorf("getThresholdPublicKey Quorum Info Error for (%d) %s : %w", sc.defaultQuorumType, quorumHash.String(), err)
 	}
@@ -164,7 +162,7 @@ func (sc *DashCoreSignerClient) GetProTxHash() (crypto.ProTxHash, error) {
 		return sc.cachedProTxHash, nil
 	}
 
-	masternodeStatus, err := sc.dashCoreRpcClient.MasternodeStatus()
+	masternodeStatus, err := sc.dashCoreRPCClient.MasternodeStatus()
 	if err != nil {
 		return nil, fmt.Errorf("send: %w", err)
 	}
@@ -175,12 +173,12 @@ func (sc *DashCoreSignerClient) GetProTxHash() (crypto.ProTxHash, error) {
 	}
 	if len(decodedProTxHash) != crypto.DefaultHashSize {
 		// We are proof of service banned. Get the proTxHash from our IP Address
-		networkInfo, err := sc.dashCoreRpcClient.GetNetworkInfo()
+		networkInfo, err := sc.dashCoreRPCClient.GetNetworkInfo()
 		if err == nil && len(networkInfo.LocalAddresses) > 0 {
 			localAddress := networkInfo.LocalAddresses[0].Address
 			localPort := networkInfo.LocalAddresses[0].Port
 			localHost := fmt.Sprintf("%s:%d", localAddress, localPort)
-			results, err := sc.dashCoreRpcClient.MasternodeListJSON(localHost)
+			results, err := sc.dashCoreRPCClient.MasternodeListJSON(localHost)
 			if err == nil {
 				for _, v := range results {
 					decodedProTxHash, err = hex.DecodeString(v.ProTxHash)
@@ -210,13 +208,13 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumType btcjson.LLMQ
 
 	stateMessageHash := crypto.Sha256(stateSignBytes)
 
-	blockRequestId := types.VoteBlockRequestIDProto(protoVote)
+	blockRequestID := types.VoteBlockRequestIDProto(protoVote)
 
-	stateRequestId := types.VoteStateRequestIDProto(protoVote)
+	stateRequestID := types.VoteStateRequestIDProto(protoVote)
 
 	// proTxHash, err := sc.GetProTxHash()
 
-	blockResponse, err := sc.dashCoreRpcClient.QuorumSign(quorumType, blockRequestId, blockMessageHash, quorumHash)
+	blockResponse, err := sc.dashCoreRPCClient.QuorumSign(quorumType, blockRequestID, blockMessageHash, quorumHash)
 
 	if blockResponse == nil {
 		return ErrUnexpectedResponse
@@ -238,9 +236,9 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumType btcjson.LLMQ
 	// fmt.Printf("Signed Vote proTxHash %s blockSignBytes %s block signature %s \n", proTxHash, hex.EncodeToString(blockSignBytes),
 	//	hex.EncodeToString(blockDecodedSignature))
 
-	// signID := crypto.SignId(sc.defaultQuorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
+	// signID := crypto.SignId(sc.defaultQuorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestID), bls12381.ReverseBytes(blockMessageHash))
 
-	// fmt.Printf("core returned block requestId %s our block request Id %s\n", blockResponse.ID, blockRequestIdString)
+	// fmt.Printf("core returned block requestId %s our block request Id %s\n", blockResponse.ID, blockRequestIDString)
 	//
 	// fmt.Printf("core block signID %s our block sign Id %s\n", blockResponse.SignHash, hex.EncodeToString(signID))
 	//
@@ -252,7 +250,7 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumType btcjson.LLMQ
 	//	fmt.Printf("Unable to verify signature %v\n", pubKey)
 	// }
 
-	stateResponse, err := sc.dashCoreRpcClient.QuorumSign(sc.defaultQuorumType, stateRequestId, stateMessageHash, quorumHash)
+	stateResponse, err := sc.dashCoreRPCClient.QuorumSign(sc.defaultQuorumType, stateRequestID, stateMessageHash, quorumHash)
 
 	if stateResponse == nil {
 		return ErrUnexpectedResponse
@@ -272,9 +270,9 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumType btcjson.LLMQ
 	// fmt.Printf("Signed Vote proTxHash %s stateSignBytes %s block signature %s \n", proTxHash, hex.EncodeToString(stateSignBytes),
 	// 	hex.EncodeToString(stateDecodedSignature))
 
-	// stateSignId := crypto.SignId(sc.defaultQuorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestId), bls12381.ReverseBytes(stateMessageHash))
+	// stateSignId := crypto.SignId(sc.defaultQuorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestID), bls12381.ReverseBytes(stateMessageHash))
 
-	// fmt.Printf("core returned state requestId %s our state request Id %s\n", stateResponse.ID, stateRequestIdString)
+	// fmt.Printf("core returned state requestId %s our state request Id %s\n", stateResponse.ID, stateRequestIDString)
 	//
 	// fmt.Printf("core state signID %s our state sign Id %s\n", stateResponse.SignHash, hex.EncodeToString(stateSignId))
 	//
@@ -297,13 +295,13 @@ func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumType btcjson.
 
 	messageHash := crypto.Sha256(messageBytes)
 
-	requestIdHash := types.ProposalRequestIDProto(proposalProto)
+	requestIDHash := types.ProposalRequestIDProto(proposalProto)
 
 	if quorumType == 0 {
 		return nil, fmt.Errorf("error signing proposal with invalid quorum type")
 	}
 
-	response, err := sc.dashCoreRpcClient.QuorumSign(quorumType, requestIdHash, messageHash, quorumHash)
+	response, err := sc.dashCoreRPCClient.QuorumSign(quorumType, requestIDHash, messageHash, quorumHash)
 
 	if response == nil {
 		return nil, ErrUnexpectedResponse
@@ -327,9 +325,9 @@ func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumType btcjson.
 	// fmt.Printf("Proposal signBytes %s signature %s \n", hex.EncodeToString(messageBytes),
 	//	hex.EncodeToString(decodedSignature))
 	//
-	// signID := crypto.SignId(sc.defaultQuorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(requestIdHash), bls12381.ReverseBytes(messageHash))
+	// signID := crypto.SignId(sc.defaultQuorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(requestIDHash), bls12381.ReverseBytes(messageHash))
 	//
-	// fmt.Printf("core returned requestId %s our request Id %s\n", response.ID, requestIdHashString)
+	// fmt.Printf("core returned requestId %s our request Id %s\n", response.ID, requestIDHashString)
 	// //
 	// fmt.Printf("core signID %s our sign Id %s\n", response.SignHash, hex.EncodeToString(signID))
 	// //
