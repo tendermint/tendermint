@@ -17,7 +17,7 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 ### Config Changes
 
-* `fast_sync = "v1"` is no longer supported. Please use `v2` instead.
+* `fast_sync = "v1"` and `fast_sync = "v2"` are no longer supported. Please use `v0` instead.
 
 * All config parameters are now hyphen-case (also known as kebab-case) instead of snake_case. Before restarting the node make sure
   you have updated all the variables in your `config.toml` file.
@@ -29,10 +29,11 @@ This guide provides instructions for upgrading to specific versions of Tendermin
   `Seeds`. Bootstrap peers are connected with on startup if needed for peer discovery. Unlike
   persistent peers, there's no gaurantee that the node will remain connected with these peers. 
 
-- configuration values starting with `priv-validator-` have moved to the new
+* configuration values starting with `priv-validator-` have moved to the new
   `priv-validator` section, without the `priv-validator-` prefix.
 
-* Fast Sync v2 has been deprecated, please use v0 to sync a node.
+* The fast sync process as well as the blockchain package and service has all
+  been renamed to block sync
 
 ### CLI Changes
 

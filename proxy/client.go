@@ -10,6 +10,8 @@ import (
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 )
 
+//go:generate ../scripts/mockery_generate.sh ClientCreator
+
 // ClientCreator creates new ABCI clients.
 type ClientCreator interface {
 	// NewABCIClient returns a new ABCI client.

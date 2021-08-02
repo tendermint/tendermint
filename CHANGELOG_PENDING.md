@@ -24,12 +24,14 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [fastsync/rpc] \#6620 Add TotalSyncedTime & RemainingTime to SyncInfo in /status RPC  (@JayT106)
   - [rpc/grpc] \#6725 Mark gRPC in the RPC layer as deprecated.
   - [blockchain/v2] \#6730 Fast Sync v2 is deprecated, please use v0
+  - [rpc] Add genesis_chunked method to support paginated and parallel fetching of large genesis documents.
 
 - Apps
   - [ABCI] \#6408 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)
   - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
   - [ABCI] \#5447 Reset `Oneof` indexes for  `Request` and `Response`.
   - [ABCI] \#5818 Use protoio for msg length delimitation. Migrates from int64 to uint64 length delimiters.
+  - [ABCI] \#3546 Add `mempool_error` field to `ResponseCheckTx`. This field will contain an error string if Tendermint encountered an error while adding a transaction to the mempool. (@williambanfield)
   - [Version] \#6494 `TMCoreSemVer` has been renamed to `TMVersion`.
     - It is not required any longer to set ldflags to set version strings
   - [abci/counter] \#6684 Delete counter example app
@@ -71,6 +73,8 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [crypto/sr25519] \#6526 Do not re-execute the Ed25519-style key derivation step when doing signing and verification.  The derivation is now done once and only once.  This breaks `sr25519.GenPrivKeyFromSecret` output compatibility. (@Yawning)
   - [types] \#6627 Move `NodeKey` to types to make the type public. 
   - [config] \#6627 Extend `config` to contain methods `LoadNodeKeyID` and `LoadorGenNodeKeyID`
+  - [blocksync] \#6755 Rename `FastSync` and `Blockchain` package to `BlockSync`
+    (@cmwaters)
 
 - Blockchain Protocol
 
@@ -81,6 +85,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 
 - Tooling
   - [tools] \#6498 Set OS home dir to instead of the hardcoded PATH. (@JayT106)
+  - [cli/indexer] \#6676 Reindex events command line tooling. (@JayT106)
 
 ### FEATURES
 

@@ -153,8 +153,8 @@ func (b *EventBus) PublishEventValidBlock(data EventDataRoundState) error {
 	return b.Publish(EventValidBlockValue, data)
 }
 
-func (b *EventBus) PublishEventFastSyncStatus(data EventDataFastSyncStatus) error {
-	return b.Publish(EventFastSyncStatusValue, data)
+func (b *EventBus) PublishEventBlockSyncStatus(data EventDataBlockSyncStatus) error {
+	return b.Publish(EventBlockSyncStatusValue, data)
 }
 
 func (b *EventBus) PublishEventStateSyncStatus(data EventDataStateSyncStatus) error {
@@ -317,7 +317,7 @@ func (NopEventBus) PublishEventValidatorSetUpdates(data EventDataValidatorSetUpd
 	return nil
 }
 
-func (NopEventBus) PublishEventFastSyncStatus(data EventDataFastSyncStatus) error {
+func (NopEventBus) PublishEventBlockSyncStatus(data EventDataBlockSyncStatus) error {
 	return nil
 }
 

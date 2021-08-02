@@ -15,11 +15,7 @@ func Cleanup(testnet *e2e.Testnet) error {
 	if err != nil {
 		return err
 	}
-	err = cleanupDir(testnet.Dir)
-	if err != nil {
-		return err
-	}
-	return nil
+	return cleanupDir(testnet.Dir)
 }
 
 // cleanupDocker removes all E2E resources (with label e2e=True), regardless
@@ -37,13 +33,8 @@ func cleanupDocker() error {
 		return err
 	}
 
-	err = exec("bash", "-c", fmt.Sprintf(
+	return exec("bash", "-c", fmt.Sprintf(
 		"docker network ls -q --filter label=e2e | xargs %v docker network rm", xargsR))
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // cleanupDir cleans up a testnet directory
@@ -74,10 +65,5 @@ func cleanupDir(dir string) error {
 		return err
 	}
 
-	err = os.RemoveAll(dir)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return os.RemoveAll(dir)
 }

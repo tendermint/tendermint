@@ -16,8 +16,8 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	bcv0 "github.com/tendermint/tendermint/internal/blockchain/v0"
-	bcv2 "github.com/tendermint/tendermint/internal/blockchain/v2"
+	bcv0 "github.com/tendermint/tendermint/internal/blocksync/v0"
+	bcv2 "github.com/tendermint/tendermint/internal/blocksync/v2"
 	cs "github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -319,14 +319,14 @@ func createBlockchainReactor(
 	csReactor *cs.Reactor,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
-	fastSync bool,
+	blockSync bool,
 	metrics *cs.Metrics,
 ) (*p2p.ReactorShim, service.Service, error) {
 
 	logger = logger.With("module", "blockchain")
 
-	switch config.FastSync.Version {
-	case cfg.BlockchainV0:
+	switch config.BlockSync.Version {
+	case cfg.BlockSyncV0:
 		reactorShim := p2p.NewReactorShim(logger, "BlockchainShim", bcv0.ChannelShims)
 
 		var (
@@ -344,7 +344,7 @@ func createBlockchainReactor(
 
 		reactor, err := bcv0.NewReactor(
 			logger, state.Copy(), blockExec, blockStore, csReactor,
-			channels[bcv0.BlockchainChannel], peerUpdates, fastSync,
+			channels[bcv0.BlockchainChannel], peerUpdates, blockSync,
 			metrics,
 		)
 		if err != nil {
@@ -353,11 +353,11 @@ func createBlockchainReactor(
 
 		return reactorShim, reactor, nil
 
-	case cfg.BlockchainV2:
-		return nil, nil, errors.New("fastsync version v2 is no longer supported. Please use v0")
+	case cfg.BlockSyncV2:
+		return nil, nil, errors.New("block sync version v2 is no longer supported. Please use v0")
 
 	default:
-		return nil, nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
+		return nil, nil, fmt.Errorf("unknown block sync version %s", config.BlockSync.Version)
 	}
 }
 
@@ -707,15 +707,15 @@ func makeNodeInfo(
 	}
 
 	var bcChannel byte
-	switch config.FastSync.Version {
-	case cfg.BlockchainV0:
+	switch config.BlockSync.Version {
+	case cfg.BlockSyncV0:
 		bcChannel = byte(bcv0.BlockchainChannel)
 
-	case cfg.BlockchainV2:
+	case cfg.BlockSyncV2:
 		bcChannel = bcv2.BlockchainChannel
 
 	default:
-		return types.NodeInfo{}, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
+		return types.NodeInfo{}, fmt.Errorf("unknown blocksync version %s", config.BlockSync.Version)
 	}
 
 	nodeInfo := types.NodeInfo{

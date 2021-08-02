@@ -14,7 +14,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-//go:generate mockery --case underscore --name Peer
+//go:generate ../../scripts/mockery_generate.sh Peer
 
 const metricsTickerDuration = 10 * time.Second
 

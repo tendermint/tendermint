@@ -135,12 +135,19 @@ func (env *Environment) Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes
 	// If the next block has not been committed yet,
 	// use a non-canonical commit
 	if height == env.BlockStore.Height() {
-		commit := env.BlockStore.LoadSeenCommit(height)
-		return ctypes.NewResultCommit(&header, commit, false), nil
+		commit := env.BlockStore.LoadSeenCommit()
+		// NOTE: we can't yet ensure atomicity of operations in asserting
+		// whether this is the latest height and retrieving the seen commit
+		if commit != nil && commit.Height == height {
+			return ctypes.NewResultCommit(&header, commit, false), nil
+		}
 	}
 
 	// Return the canonical commit (comes from the block at height+1)
 	commit := env.BlockStore.LoadBlockCommit(height)
+	if commit == nil {
+		return nil, nil
+	}
 	return ctypes.NewResultCommit(&header, commit, true), nil
 }
 

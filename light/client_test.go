@@ -3,11 +3,13 @@ package light_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	dbm "github.com/tendermint/tm-db"
@@ -16,7 +18,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
-	mockp "github.com/tendermint/tendermint/light/provider/mock"
+	provider_mocks "github.com/tendermint/tendermint/light/provider/mocks"
 	dbs "github.com/tendermint/tendermint/light/store/db"
 	"github.com/tendermint/tendermint/types"
 )
@@ -57,14 +59,9 @@ var (
 		// last header (3/3 signed)
 		3: h3,
 	}
-	l1       = &types.LightBlock{SignedHeader: h1, ValidatorSet: vals}
-	fullNode = mockp.New(
-		chainID,
-		headerSet,
-		valSet,
-	)
-	deadNode      = mockp.NewDeadMock(chainID)
-	largeFullNode = mockp.New(genMockNode(chainID, 10, 3, 0, bTime))
+	l1 = &types.LightBlock{SignedHeader: h1, ValidatorSet: vals}
+	l2 = &types.LightBlock{SignedHeader: h2, ValidatorSet: vals}
+	l3 = &types.LightBlock{SignedHeader: h3, ValidatorSet: vals}
 )
 
 func TestValidateTrustOptions(t *testing.T) {
@@ -111,11 +108,6 @@ func TestValidateTrustOptions(t *testing.T) {
 		}
 	}
 
-}
-
-func TestMock(t *testing.T) {
-	l, _ := fullNode.LightBlock(ctx, 3)
-	assert.Equal(t, int64(3), l.Height)
 }
 
 func TestClient_SequentialVerification(t *testing.T) {
@@ -216,28 +208,22 @@ func TestClient_SequentialVerification(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
+		testCase := tc
+		t.Run(testCase.name, func(t *testing.T) {
+			mockNode := mockNodeFromHeadersAndVals(testCase.otherHeaders, testCase.vals)
+			mockNode.On("LightBlock", mock.Anything, mock.Anything).Return(nil, provider.ErrLightBlockNotFound)
 			c, err := light.NewClient(
 				ctx,
 				chainID,
 				trustOptions,
-				mockp.New(
-					chainID,
-					tc.otherHeaders,
-					tc.vals,
-				),
-				[]provider.Provider{mockp.New(
-					chainID,
-					tc.otherHeaders,
-					tc.vals,
-				)},
+				mockNode,
+				[]provider.Provider{mockNode},
 				dbs.New(dbm.NewMemDB()),
 				light.SequentialVerification(),
 				light.Logger(log.TestingLogger()),
 			)
 
-			if tc.initErr {
+			if testCase.initErr {
 				require.Error(t, err)
 				return
 			}
@@ -245,11 +231,12 @@ func TestClient_SequentialVerification(t *testing.T) {
 			require.NoError(t, err)
 
 			_, err = c.VerifyLightBlockAtHeight(ctx, 3, bTime.Add(3*time.Hour))
-			if tc.verifyErr {
+			if testCase.verifyErr {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
 			}
+			mockNode.AssertExpectations(t)
 		})
 	}
 }
@@ -343,20 +330,14 @@ func TestClient_SkippingVerification(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			mockNode := mockNodeFromHeadersAndVals(tc.otherHeaders, tc.vals)
+			mockNode.On("LightBlock", mock.Anything, mock.Anything).Return(nil, provider.ErrLightBlockNotFound)
 			c, err := light.NewClient(
 				ctx,
 				chainID,
 				trustOptions,
-				mockp.New(
-					chainID,
-					tc.otherHeaders,
-					tc.vals,
-				),
-				[]provider.Provider{mockp.New(
-					chainID,
-					tc.otherHeaders,
-					tc.vals,
-				)},
+				mockNode,
+				[]provider.Provider{mockNode},
 				dbs.New(dbm.NewMemDB()),
 				light.SkippingVerification(light.DefaultTrustLevel),
 				light.Logger(log.TestingLogger()),
@@ -382,8 +363,23 @@ func TestClient_SkippingVerification(t *testing.T) {
 // start from a large light block to make sure that the pivot height doesn't select a height outside
 // the appropriate range
 func TestClientLargeBisectionVerification(t *testing.T) {
-	veryLargeFullNode := mockp.New(genMockNode(chainID, 100, 3, 0, bTime))
-	trustedLightBlock, err := veryLargeFullNode.LightBlock(ctx, 5)
+	numBlocks := int64(300)
+	mockHeaders, mockVals, _ := genLightBlocksWithKeys(chainID, numBlocks, 101, 2, bTime)
+
+	lastBlock := &types.LightBlock{SignedHeader: mockHeaders[numBlocks], ValidatorSet: mockVals[numBlocks]}
+	mockNode := &provider_mocks.Provider{}
+	mockNode.On("LightBlock", mock.Anything, numBlocks).
+		Return(lastBlock, nil)
+
+	mockNode.On("LightBlock", mock.Anything, int64(200)).
+		Return(&types.LightBlock{SignedHeader: mockHeaders[200], ValidatorSet: mockVals[200]}, nil)
+
+	mockNode.On("LightBlock", mock.Anything, int64(256)).
+		Return(&types.LightBlock{SignedHeader: mockHeaders[256], ValidatorSet: mockVals[256]}, nil)
+
+	mockNode.On("LightBlock", mock.Anything, int64(0)).Return(lastBlock, nil)
+
+	trustedLightBlock, err := mockNode.LightBlock(ctx, int64(200))
 	require.NoError(t, err)
 	c, err := light.NewClient(
 		ctx,
@@ -393,20 +389,25 @@ func TestClientLargeBisectionVerification(t *testing.T) {
 			Height: trustedLightBlock.Height,
 			Hash:   trustedLightBlock.Hash(),
 		},
-		veryLargeFullNode,
-		[]provider.Provider{veryLargeFullNode},
+		mockNode,
+		[]provider.Provider{mockNode},
 		dbs.New(dbm.NewMemDB()),
 		light.SkippingVerification(light.DefaultTrustLevel),
 	)
 	require.NoError(t, err)
-	h, err := c.Update(ctx, bTime.Add(100*time.Minute))
+	h, err := c.Update(ctx, bTime.Add(300*time.Minute))
 	assert.NoError(t, err)
-	h2, err := veryLargeFullNode.LightBlock(ctx, 100)
+	height, err := c.LastTrustedHeight()
+	require.NoError(t, err)
+	require.Equal(t, numBlocks, height)
+	h2, err := mockNode.LightBlock(ctx, numBlocks)
 	require.NoError(t, err)
 	assert.Equal(t, h, h2)
+	mockNode.AssertExpectations(t)
 }
 
 func TestClientBisectionBetweenTrustedHeaders(t *testing.T) {
+	mockFullNode := mockNodeFromHeadersAndVals(headerSet, valSet)
 	c, err := light.NewClient(
 		ctx,
 		chainID,
@@ -415,8 +416,8 @@ func TestClientBisectionBetweenTrustedHeaders(t *testing.T) {
 			Height: 1,
 			Hash:   h1.Hash(),
 		},
-		fullNode,
-		[]provider.Provider{fullNode},
+		mockFullNode,
+		[]provider.Provider{mockFullNode},
 		dbs.New(dbm.NewMemDB()),
 		light.SkippingVerification(light.DefaultTrustLevel),
 	)
@@ -432,15 +433,18 @@ func TestClientBisectionBetweenTrustedHeaders(t *testing.T) {
 	// verify using bisection the light block between the two trusted light blocks
 	_, err = c.VerifyLightBlockAtHeight(ctx, 2, bTime.Add(1*time.Hour))
 	assert.NoError(t, err)
+	mockFullNode.AssertExpectations(t)
 }
 
 func TestClient_Cleanup(t *testing.T) {
+	mockFullNode := &provider_mocks.Provider{}
+	mockFullNode.On("LightBlock", mock.Anything, int64(1)).Return(l1, nil)
 	c, err := light.NewClient(
 		ctx,
 		chainID,
 		trustOptions,
-		fullNode,
-		[]provider.Provider{fullNode},
+		mockFullNode,
+		[]provider.Provider{mockFullNode},
 		dbs.New(dbm.NewMemDB()),
 		light.Logger(log.TestingLogger()),
 	)
@@ -455,12 +459,14 @@ func TestClient_Cleanup(t *testing.T) {
 	l, err := c.TrustedLightBlock(1)
 	assert.Error(t, err)
 	assert.Nil(t, l)
+	mockFullNode.AssertExpectations(t)
 }
 
 // trustedHeader.Height == options.Height
 func TestClientRestoresTrustedHeaderAfterStartup(t *testing.T) {
 	// 1. options.Hash == trustedHeader.Hash
-	{
+	t.Run("hashes should match", func(t *testing.T) {
+		mockNode := &provider_mocks.Provider{}
 		trustedStore := dbs.New(dbm.NewMemDB())
 		err := trustedStore.SaveLightBlock(l1)
 		require.NoError(t, err)
@@ -469,8 +475,8 @@ func TestClientRestoresTrustedHeaderAfterStartup(t *testing.T) {
 			ctx,
 			chainID,
 			trustOptions,
-			fullNode,
-			[]provider.Provider{fullNode},
+			mockNode,
+			[]provider.Provider{mockNode},
 			trustedStore,
 			light.Logger(log.TestingLogger()),
 		)
@@ -481,10 +487,11 @@ func TestClientRestoresTrustedHeaderAfterStartup(t *testing.T) {
 		assert.NotNil(t, l)
 		assert.Equal(t, l.Hash(), h1.Hash())
 		assert.Equal(t, l.ValidatorSet.Hash(), h1.ValidatorsHash.Bytes())
-	}
+		mockNode.AssertExpectations(t)
+	})
 
 	// 2. options.Hash != trustedHeader.Hash
-	{
+	t.Run("hashes should not match", func(t *testing.T) {
 		trustedStore := dbs.New(dbm.NewMemDB())
 		err := trustedStore.SaveLightBlock(l1)
 		require.NoError(t, err)
@@ -492,15 +499,7 @@ func TestClientRestoresTrustedHeaderAfterStartup(t *testing.T) {
 		// header1 != h1
 		header1 := keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Hour), nil, vals, vals,
 			hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys))
-
-		primary := mockp.New(
-			chainID,
-			map[int64]*types.SignedHeader{
-				// trusted header
-				1: header1,
-			},
-			valSet,
-		)
+		mockNode := &provider_mocks.Provider{}
 
 		c, err := light.NewClient(
 			ctx,
@@ -510,8 +509,8 @@ func TestClientRestoresTrustedHeaderAfterStartup(t *testing.T) {
 				Height: 1,
 				Hash:   header1.Hash(),
 			},
-			primary,
-			[]provider.Provider{primary},
+			mockNode,
+			[]provider.Provider{mockNode},
 			trustedStore,
 			light.Logger(log.TestingLogger()),
 		)
@@ -524,16 +523,21 @@ func TestClientRestoresTrustedHeaderAfterStartup(t *testing.T) {
 			assert.Equal(t, l.Hash(), l1.Hash())
 			assert.NoError(t, l.ValidateBasic(chainID))
 		}
-	}
+		mockNode.AssertExpectations(t)
+	})
 }
 
 func TestClient_Update(t *testing.T) {
+	mockFullNode := &provider_mocks.Provider{}
+	mockFullNode.On("LightBlock", mock.Anything, int64(0)).Return(l3, nil)
+	mockFullNode.On("LightBlock", mock.Anything, int64(1)).Return(l1, nil)
+	mockFullNode.On("LightBlock", mock.Anything, int64(3)).Return(l3, nil)
 	c, err := light.NewClient(
 		ctx,
 		chainID,
 		trustOptions,
-		fullNode,
-		[]provider.Provider{fullNode},
+		mockFullNode,
+		[]provider.Provider{mockFullNode},
 		dbs.New(dbm.NewMemDB()),
 		light.Logger(log.TestingLogger()),
 	)
@@ -546,15 +550,19 @@ func TestClient_Update(t *testing.T) {
 		assert.EqualValues(t, 3, l.Height)
 		assert.NoError(t, l.ValidateBasic(chainID))
 	}
+	mockFullNode.AssertExpectations(t)
 }
 
 func TestClient_Concurrency(t *testing.T) {
+	mockFullNode := &provider_mocks.Provider{}
+	mockFullNode.On("LightBlock", mock.Anything, int64(2)).Return(l2, nil)
+	mockFullNode.On("LightBlock", mock.Anything, int64(1)).Return(l1, nil)
 	c, err := light.NewClient(
 		ctx,
 		chainID,
 		trustOptions,
-		fullNode,
-		[]provider.Provider{fullNode},
+		mockFullNode,
+		[]provider.Provider{mockFullNode},
 		dbs.New(dbm.NewMemDB()),
 		light.Logger(log.TestingLogger()),
 	)
@@ -587,15 +595,20 @@ func TestClient_Concurrency(t *testing.T) {
 	}
 
 	wg.Wait()
+	mockFullNode.AssertExpectations(t)
 }
 
 func TestClient_AddProviders(t *testing.T) {
+	mockFullNode := mockNodeFromHeadersAndVals(map[int64]*types.SignedHeader{
+		1: h1,
+		2: h2,
+	}, valSet)
 	c, err := light.NewClient(
 		ctx,
 		chainID,
 		trustOptions,
-		fullNode,
-		[]provider.Provider{fullNode},
+		mockFullNode,
+		[]provider.Provider{mockFullNode},
 		dbs.New(dbm.NewMemDB()),
 		light.Logger(log.TestingLogger()),
 	)
@@ -610,22 +623,28 @@ func TestClient_AddProviders(t *testing.T) {
 	}()
 
 	// NOTE: the light client doesn't check uniqueness of providers
-	c.AddProvider(fullNode)
+	c.AddProvider(mockFullNode)
 	require.Len(t, c.Witnesses(), 2)
 	select {
 	case <-closeCh:
 	case <-time.After(5 * time.Second):
 		t.Fatal("concurent light block verification failed to finish in 5s")
 	}
+	mockFullNode.AssertExpectations(t)
 }
 
 func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
+	mockFullNode := &provider_mocks.Provider{}
+	mockFullNode.On("LightBlock", mock.Anything, mock.Anything).Return(l1, nil)
+
+	mockDeadNode := &provider_mocks.Provider{}
+	mockDeadNode.On("LightBlock", mock.Anything, mock.Anything).Return(nil, provider.ErrNoResponse)
 	c, err := light.NewClient(
 		ctx,
 		chainID,
 		trustOptions,
-		deadNode,
-		[]provider.Provider{fullNode, fullNode},
+		mockDeadNode,
+		[]provider.Provider{mockFullNode, mockFullNode},
 		dbs.New(dbm.NewMemDB()),
 		light.Logger(log.TestingLogger()),
 	)
@@ -635,16 +654,25 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 	require.NoError(t, err)
 
 	// the primary should no longer be the deadNode
-	assert.NotEqual(t, c.Primary(), deadNode)
+	assert.NotEqual(t, c.Primary(), mockDeadNode)
 
 	// we should still have the dead node as a witness because it
 	// hasn't repeatedly been unresponsive yet
 	assert.Equal(t, 2, len(c.Witnesses()))
+	mockDeadNode.AssertExpectations(t)
+	mockFullNode.AssertExpectations(t)
 }
 
 func TestClient_BackwardsVerification(t *testing.T) {
 	{
-		trustHeader, _ := largeFullNode.LightBlock(ctx, 6)
+		headers, vals, _ := genLightBlocksWithKeys(chainID, 9, 3, 0, bTime)
+		delete(headers, 1)
+		delete(headers, 2)
+		delete(vals, 1)
+		delete(vals, 2)
+		mockLargeFullNode := mockNodeFromHeadersAndVals(headers, vals)
+		trustHeader, _ := mockLargeFullNode.LightBlock(ctx, 6)
+
 		c, err := light.NewClient(
 			ctx,
 			chainID,
@@ -653,8 +681,8 @@ func TestClient_BackwardsVerification(t *testing.T) {
 				Height: trustHeader.Height,
 				Hash:   trustHeader.Hash(),
 			},
-			largeFullNode,
-			[]provider.Provider{largeFullNode},
+			mockLargeFullNode,
+			[]provider.Provider{mockLargeFullNode},
 			dbs.New(dbm.NewMemDB()),
 			light.Logger(log.TestingLogger()),
 		)
@@ -692,41 +720,36 @@ func TestClient_BackwardsVerification(t *testing.T) {
 		// so expect error
 		_, err = c.VerifyLightBlockAtHeight(ctx, 8, bTime.Add(12*time.Minute))
 		assert.Error(t, err)
+		mockLargeFullNode.AssertExpectations(t)
 
 	}
 	{
 		testCases := []struct {
-			provider provider.Provider
+			headers map[int64]*types.SignedHeader
+			vals    map[int64]*types.ValidatorSet
 		}{
 			{
 				// 7) provides incorrect height
-				mockp.New(
-					chainID,
-					map[int64]*types.SignedHeader{
-						1: h1,
-						2: keys.GenSignedHeader(chainID, 1, bTime.Add(30*time.Minute), nil, vals, vals,
-							hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys)),
-						3: h3,
-					},
-					valSet,
-				),
+				headers: map[int64]*types.SignedHeader{
+					2: keys.GenSignedHeader(chainID, 1, bTime.Add(30*time.Minute), nil, vals, vals,
+						hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys)),
+					3: h3,
+				},
+				vals: valSet,
 			},
 			{
 				// 8) provides incorrect hash
-				mockp.New(
-					chainID,
-					map[int64]*types.SignedHeader{
-						1: h1,
-						2: keys.GenSignedHeader(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
-							hash("app_hash2"), hash("cons_hash23"), hash("results_hash30"), 0, len(keys)),
-						3: h3,
-					},
-					valSet,
-				),
+				headers: map[int64]*types.SignedHeader{
+					2: keys.GenSignedHeader(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
+						hash("app_hash2"), hash("cons_hash23"), hash("results_hash30"), 0, len(keys)),
+					3: h3,
+				},
+				vals: valSet,
 			},
 		}
 
 		for idx, tc := range testCases {
+			mockNode := mockNodeFromHeadersAndVals(tc.headers, tc.vals)
 			c, err := light.NewClient(
 				ctx,
 				chainID,
@@ -735,8 +758,8 @@ func TestClient_BackwardsVerification(t *testing.T) {
 					Height: 3,
 					Hash:   h3.Hash(),
 				},
-				tc.provider,
-				[]provider.Provider{tc.provider},
+				mockNode,
+				[]provider.Provider{mockNode},
 				dbs.New(dbm.NewMemDB()),
 				light.Logger(log.TestingLogger()),
 			)
@@ -744,6 +767,7 @@ func TestClient_BackwardsVerification(t *testing.T) {
 
 			_, err = c.VerifyLightBlockAtHeight(ctx, 2, bTime.Add(1*time.Hour).Add(1*time.Second))
 			assert.Error(t, err, idx)
+			mockNode.AssertExpectations(t)
 		}
 	}
 }
@@ -753,60 +777,62 @@ func TestClient_NewClientFromTrustedStore(t *testing.T) {
 	db := dbs.New(dbm.NewMemDB())
 	err := db.SaveLightBlock(l1)
 	require.NoError(t, err)
+	mockNode := &provider_mocks.Provider{}
 
 	c, err := light.NewClientFromTrustedStore(
 		chainID,
 		trustPeriod,
-		deadNode,
-		[]provider.Provider{deadNode},
+		mockNode,
+		[]provider.Provider{mockNode},
 		db,
 	)
 	require.NoError(t, err)
 
-	// 2) Check light block exists (deadNode is being used to ensure we're not getting
-	// it from primary)
+	// 2) Check light block exists
 	h, err := c.TrustedLightBlock(1)
 	assert.NoError(t, err)
 	assert.EqualValues(t, l1.Height, h.Height)
+	mockNode.AssertExpectations(t)
 }
 
 func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 	// different headers hash then primary plus less than 1/3 signed (no fork)
-	badProvider1 := mockp.New(
-		chainID,
-		map[int64]*types.SignedHeader{
-			1: h1,
-			2: keys.GenSignedHeaderLastBlockID(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
-				hash("app_hash2"), hash("cons_hash"), hash("results_hash"),
-				len(keys), len(keys), types.BlockID{Hash: h1.Hash()}),
-		},
-		map[int64]*types.ValidatorSet{
-			1: vals,
-			2: vals,
-		},
-	)
-	// header is empty
-	badProvider2 := mockp.New(
-		chainID,
-		map[int64]*types.SignedHeader{
-			1: h1,
-			2: h2,
-		},
-		map[int64]*types.ValidatorSet{
-			1: vals,
-			2: vals,
-		},
-	)
+	headers1 := map[int64]*types.SignedHeader{
+		1: h1,
+		2: keys.GenSignedHeaderLastBlockID(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
+			hash("app_hash2"), hash("cons_hash"), hash("results_hash"),
+			len(keys), len(keys), types.BlockID{Hash: h1.Hash()}),
+	}
+	vals1 := map[int64]*types.ValidatorSet{
+		1: vals,
+		2: vals,
+	}
+	mockBadNode1 := mockNodeFromHeadersAndVals(headers1, vals1)
+	mockBadNode1.On("LightBlock", mock.Anything, mock.Anything).Return(nil, provider.ErrLightBlockNotFound)
 
-	lb1, _ := badProvider1.LightBlock(ctx, 2)
+	// header is empty
+	headers2 := map[int64]*types.SignedHeader{
+		1: h1,
+		2: h2,
+	}
+	vals2 := map[int64]*types.ValidatorSet{
+		1: vals,
+		2: vals,
+	}
+	mockBadNode2 := mockNodeFromHeadersAndVals(headers2, vals2)
+	mockBadNode2.On("LightBlock", mock.Anything, mock.Anything).Return(nil, provider.ErrLightBlockNotFound)
+
+	mockFullNode := mockNodeFromHeadersAndVals(headerSet, valSet)
+
+	lb1, _ := mockBadNode1.LightBlock(ctx, 2)
 	require.NotEqual(t, lb1.Hash(), l1.Hash())
 
 	c, err := light.NewClient(
 		ctx,
 		chainID,
 		trustOptions,
-		fullNode,
-		[]provider.Provider{badProvider1, badProvider2},
+		mockFullNode,
+		[]provider.Provider{mockBadNode1, mockBadNode2},
 		dbs.New(dbm.NewMemDB()),
 		light.Logger(log.TestingLogger()),
 	)
@@ -828,12 +854,13 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 	}
 	// witness does not have a light block -> left in the list
 	assert.EqualValues(t, 1, len(c.Witnesses()))
+	mockBadNode1.AssertExpectations(t)
+	mockBadNode2.AssertExpectations(t)
 }
 
 func TestClient_TrustedValidatorSet(t *testing.T) {
 	differentVals, _ := factory.RandValidatorSet(10, 100)
-	badValSetNode := mockp.New(
-		chainID,
+	mockBadValSetNode := mockNodeFromHeadersAndVals(
 		map[int64]*types.SignedHeader{
 			1: h1,
 			// 3/3 signed, but validator set at height 2 below is invalid -> witness
@@ -841,21 +868,27 @@ func TestClient_TrustedValidatorSet(t *testing.T) {
 			2: keys.GenSignedHeaderLastBlockID(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
 				hash("app_hash2"), hash("cons_hash"), hash("results_hash"),
 				0, len(keys), types.BlockID{Hash: h1.Hash()}),
-			3: h3,
 		},
 		map[int64]*types.ValidatorSet{
 			1: vals,
 			2: differentVals,
-			3: differentVals,
+		})
+	mockFullNode := mockNodeFromHeadersAndVals(
+		map[int64]*types.SignedHeader{
+			1: h1,
+			2: h2,
 		},
-	)
+		map[int64]*types.ValidatorSet{
+			1: vals,
+			2: vals,
+		})
 
 	c, err := light.NewClient(
 		ctx,
 		chainID,
 		trustOptions,
-		fullNode,
-		[]provider.Provider{badValSetNode, fullNode},
+		mockFullNode,
+		[]provider.Provider{mockBadValSetNode, mockFullNode},
 		dbs.New(dbm.NewMemDB()),
 		light.Logger(log.TestingLogger()),
 	)
@@ -865,15 +898,29 @@ func TestClient_TrustedValidatorSet(t *testing.T) {
 	_, err = c.VerifyLightBlockAtHeight(ctx, 2, bTime.Add(2*time.Hour).Add(1*time.Second))
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(c.Witnesses()))
+	mockBadValSetNode.AssertExpectations(t)
+	mockFullNode.AssertExpectations(t)
 }
 
 func TestClientPrunesHeadersAndValidatorSets(t *testing.T) {
+	mockFullNode := mockNodeFromHeadersAndVals(
+		map[int64]*types.SignedHeader{
+			1: h1,
+			3: h3,
+			0: h3,
+		},
+		map[int64]*types.ValidatorSet{
+			1: vals,
+			3: vals,
+			0: vals,
+		})
+
 	c, err := light.NewClient(
 		ctx,
 		chainID,
 		trustOptions,
-		fullNode,
-		[]provider.Provider{fullNode},
+		mockFullNode,
+		[]provider.Provider{mockFullNode},
 		dbs.New(dbm.NewMemDB()),
 		light.Logger(log.TestingLogger()),
 		light.PruningSize(1),
@@ -888,6 +935,7 @@ func TestClientPrunesHeadersAndValidatorSets(t *testing.T) {
 
 	_, err = c.TrustedLightBlock(1)
 	assert.Error(t, err)
+	mockFullNode.AssertExpectations(t)
 }
 
 func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
@@ -899,86 +947,108 @@ func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
 	testCases := []struct {
 		headers map[int64]*types.SignedHeader
 		vals    map[int64]*types.ValidatorSet
-		err     bool
+
+		errorToThrow error
+		errorHeight  int64
+
+		err bool
 	}{
 		{
-			headerSet,
-			valSet,
-			false,
-		},
-		{
-			headerSet,
-			map[int64]*types.ValidatorSet{
-				1: vals,
-				2: vals,
-				3: nil,
-			},
-			true,
-		},
-		{
-			map[int64]*types.SignedHeader{
+			headers: map[int64]*types.SignedHeader{
 				1: h1,
-				2: h2,
-				3: nil,
+				3: h3,
 			},
-			valSet,
-			true,
+			vals: map[int64]*types.ValidatorSet{
+				1: vals,
+				3: vals,
+			},
+			err: false,
 		},
 		{
-			headerSet,
-			map[int64]*types.ValidatorSet{
+			headers: map[int64]*types.SignedHeader{
+				1: h1,
+			},
+			vals: map[int64]*types.ValidatorSet{
 				1: vals,
-				2: vals,
+			},
+			errorToThrow: provider.ErrBadLightBlock{Reason: errors.New("nil header or vals")},
+			errorHeight:  3,
+			err:          true,
+		},
+		{
+			headers: map[int64]*types.SignedHeader{
+				1: h1,
+			},
+			errorToThrow: provider.ErrBadLightBlock{Reason: errors.New("nil header or vals")},
+			errorHeight:  3,
+			vals:         valSet,
+			err:          true,
+		},
+		{
+			headers: map[int64]*types.SignedHeader{
+				1: h1,
+				3: h3,
+			},
+			vals: map[int64]*types.ValidatorSet{
+				1: vals,
 				3: emptyValSet,
 			},
-			true,
+			err: true,
 		},
 	}
 
-	for _, tc := range testCases {
-		badNode := mockp.New(
-			chainID,
-			tc.headers,
-			tc.vals,
-		)
-		c, err := light.NewClient(
-			ctx,
-			chainID,
-			trustOptions,
-			badNode,
-			[]provider.Provider{badNode, badNode},
-			dbs.New(dbm.NewMemDB()),
-		)
-		require.NoError(t, err)
+	for i, tc := range testCases {
+		testCase := tc
+		t.Run(fmt.Sprintf("case: %d", i), func(t *testing.T) {
+			mockBadNode := mockNodeFromHeadersAndVals(testCase.headers, testCase.vals)
+			if testCase.errorToThrow != nil {
+				mockBadNode.On("LightBlock", mock.Anything, testCase.errorHeight).Return(nil, testCase.errorToThrow)
+			}
 
-		_, err = c.VerifyLightBlockAtHeight(ctx, 3, bTime.Add(2*time.Hour))
-		if tc.err {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
+			c, err := light.NewClient(
+				ctx,
+				chainID,
+				trustOptions,
+				mockBadNode,
+				[]provider.Provider{mockBadNode, mockBadNode},
+				dbs.New(dbm.NewMemDB()),
+			)
+			require.NoError(t, err)
+
+			_, err = c.VerifyLightBlockAtHeight(ctx, 3, bTime.Add(2*time.Hour))
+			if testCase.err {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			mockBadNode.AssertExpectations(t)
+		})
 	}
 
 }
 
 func TestClientHandlesContexts(t *testing.T) {
-	p := mockp.New(genMockNode(chainID, 100, 10, 1, bTime))
-	genBlock, err := p.LightBlock(ctx, 1)
-	require.NoError(t, err)
+	mockNode := &provider_mocks.Provider{}
+	mockNode.On("LightBlock",
+		mock.MatchedBy(func(ctx context.Context) bool { return ctx.Err() == nil }),
+		int64(1)).Return(l1, nil)
+	mockNode.On("LightBlock",
+		mock.MatchedBy(func(ctx context.Context) bool { return ctx.Err() == context.DeadlineExceeded }),
+		mock.Anything).Return(nil, context.DeadlineExceeded)
+
+	mockNode.On("LightBlock",
+		mock.MatchedBy(func(ctx context.Context) bool { return ctx.Err() == context.Canceled }),
+		mock.Anything).Return(nil, context.Canceled)
 
 	// instantiate the light client with a timeout
-	ctxTimeOut, cancel := context.WithTimeout(ctx, 10*time.Millisecond)
+	ctxTimeOut, cancel := context.WithTimeout(ctx, 1*time.Nanosecond)
 	defer cancel()
-	_, err = light.NewClient(
+	_, err := light.NewClient(
 		ctxTimeOut,
 		chainID,
-		light.TrustOptions{
-			Period: 24 * time.Hour,
-			Height: 1,
-			Hash:   genBlock.Hash(),
-		},
-		p,
-		[]provider.Provider{p, p},
+		trustOptions,
+		mockNode,
+		[]provider.Provider{mockNode, mockNode},
 		dbs.New(dbm.NewMemDB()),
 	)
 	require.Error(t, ctxTimeOut.Err())
@@ -989,19 +1059,15 @@ func TestClientHandlesContexts(t *testing.T) {
 	c, err := light.NewClient(
 		ctx,
 		chainID,
-		light.TrustOptions{
-			Period: 24 * time.Hour,
-			Height: 1,
-			Hash:   genBlock.Hash(),
-		},
-		p,
-		[]provider.Provider{p, p},
+		trustOptions,
+		mockNode,
+		[]provider.Provider{mockNode, mockNode},
 		dbs.New(dbm.NewMemDB()),
 	)
 	require.NoError(t, err)
 
 	// verify a block with a timeout
-	ctxTimeOutBlock, cancel := context.WithTimeout(ctx, 10*time.Millisecond)
+	ctxTimeOutBlock, cancel := context.WithTimeout(ctx, 1*time.Nanosecond)
 	defer cancel()
 	_, err = c.VerifyLightBlockAtHeight(ctxTimeOutBlock, 100, bTime.Add(100*time.Minute))
 	require.Error(t, ctxTimeOutBlock.Err())
@@ -1010,11 +1076,11 @@ func TestClientHandlesContexts(t *testing.T) {
 
 	// verify a block with a cancel
 	ctxCancel, cancel := context.WithCancel(ctx)
-	defer cancel()
-	time.AfterFunc(10*time.Millisecond, cancel)
+	cancel()
 	_, err = c.VerifyLightBlockAtHeight(ctxCancel, 100, bTime.Add(100*time.Minute))
 	require.Error(t, ctxCancel.Err())
 	require.Error(t, err)
 	require.True(t, errors.Is(err, context.Canceled))
+	mockNode.AssertExpectations(t)
 
 }

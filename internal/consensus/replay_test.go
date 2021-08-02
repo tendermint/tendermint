@@ -893,8 +893,8 @@ func (bs *mockBlockStore) SaveBlock(block *types.Block, blockParts *types.PartSe
 func (bs *mockBlockStore) LoadBlockCommit(height int64) *types.Commit {
 	return bs.commits[height-1]
 }
-func (bs *mockBlockStore) LoadSeenCommit(height int64) *types.Commit {
-	return bs.commits[height-1]
+func (bs *mockBlockStore) LoadSeenCommit() *types.Commit {
+	return bs.commits[len(bs.commits)-1]
 }
 
 func (bs *mockBlockStore) PruneBlocks(height int64) (uint64, error) {
