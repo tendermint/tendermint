@@ -74,7 +74,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	valHeights := valPlr.populate(manifest.ValidatorUpdates)
 	for i, name := range validatorNames {
 		manifest.Nodes[name] = generateNode(r, e2e.ModeValidator, valHeights[name][0], manifest.InitialHeight, i < 2)
-		// validatorNames = append(validatorNames, name)
+		validatorNames = append(validatorNames, name)
 	}
 
 	// Move validators to InitChain if specified.
