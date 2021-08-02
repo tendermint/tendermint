@@ -221,6 +221,7 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			err := tc.vals.ValidateBasic()
 			if tc.err {

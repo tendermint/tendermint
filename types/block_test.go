@@ -489,6 +489,7 @@ func TestBlockMaxDataBytes(t *testing.T) {
 
 	for i, tc := range testCases {
 		tc := tc
+		i := i
 		t.Run(fmt.Sprintf("%d", tc.maxBytes), func(t *testing.T) {
 			if tc.panics {
 				assert.Panics(t, func() {
@@ -522,6 +523,7 @@ func TestBlockMaxDataBytesNoEvidence(t *testing.T) {
 
 	for i, tc := range testCases {
 		tc := tc
+		i := i
 		t.Run(fmt.Sprintf("%d", tc.maxBytes), func(t *testing.T) {
 			if tc.panics {
 				assert.Panics(t, func() {
