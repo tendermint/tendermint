@@ -488,6 +488,7 @@ func TestBlockMaxDataBytes(t *testing.T) {
 	// An extra 33 bytes (32 for sig, 1 for proto encoding are needed for BLS compared to edwards per validator
 
 	for i, tc := range testCases {
+	    i := i
 		tc := tc
 		t.Run(fmt.Sprintf("%d", tc.maxBytes), func(t *testing.T) {
 			if tc.panics {
