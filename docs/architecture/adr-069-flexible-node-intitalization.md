@@ -81,13 +81,16 @@ dependency based system that allows the authors of services to control
 the initialization and shutdown order of components using an
 dependencies to control the ordering.
 
-Dependency based orderings make it possible to write components
-(reactors, etc.) with only limited awareness of other components or of
-node initialization, and is the state of the art for process
-initialization. However, this may be too abstract and complicated, and
-authors of components in the current implementation of tendermint
-*would* need to know about other components, so a dependency based
-system would be unhelpfully abstract at this stage.
+Such a system would work, by allowing services to declare
+initialization order dependencies to other reactors (by ID, perhaps)
+so that the node could decide the initialization based on the
+dependencys declared by components rather than requiring the node to
+encode this logic directly. 
+
+However, this may be too abstract, complicated, and overwrought, and
+in any case authors of components in the current implementation of
+tendermint *do* need to know about other components, so a dependency
+based system would be unhelpfully abstract at this stage.
 
 ## Decisions
 
@@ -121,7 +124,10 @@ reactors, which should be replaced by references to `service.Service`
 objects. This will require moving the construction of the [rpc
 service](https://github.com/tendermint/tendermint/blob/master/node/node.go#L771)
 into the constructor of
-[makeNode](https://github.com/tendermint/tendermint/blob/master/node/node.go#L126).
+[makeNode](https://github.com/tendermint/tendermint/blob/master/node/node.go#L126). One
+possible implementation of this would be to climate the current
+`ConfigureRPC` method on the node package and instead [configure it
+here](https://github.com/tendermint/tendermint/blob/tychoish/scratch-node-minimize/node/node.go#L441). 
 
 In order to prevent adding complexity to the `node` package, this
 project will add an implementation to the service `service` package
@@ -131,9 +137,10 @@ startup/shutdown in a consistent order.
 
 Consensus, blocksync (nee fast sync.), and statesync all depend on
 each other, and have significant initialization dependencies that are
-presently encoded in the `node` package, and as part of this change,
-a new package/component will encapsulate the initialization of this
-area of functionality.
+presently encoded in the `node` package, and as part of this change, a
+new package/component (likely named `blocks` located at
+`internal/blocks`) will encapsulate the initialization of these block
+management areas of the code.
 
 In order to support replacement of a component, a new public function
 will be added to the public interface of `node` with a signature that
@@ -144,7 +151,7 @@ func NewWithServices(conf *config.Config,
 	logger log.Logger,
 	cf proxy.ClientCreator,
 	gen *types.GenesisDoc,
-	srvs ...service.Service
+	srvs []service.Service
 ) (service.Service, error) {
 ```
 
@@ -156,7 +163,6 @@ services. `NewWithServices` will validate input service lists with the
 following rules:
 
 - no running services
-- all values of `service.Service.String()` must be unique.
 - for replacing default services, callers cannot supply more than
   one replacement reactor for any specified type.
 
