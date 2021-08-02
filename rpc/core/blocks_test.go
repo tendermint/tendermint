@@ -133,4 +133,3 @@ func (mockBlockStore) LoadSeenCommit() *types.Commit                     { retur
 func (mockBlockStore) PruneBlocks(height int64) (uint64, error)          { return 0, nil }
 func (mockBlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
 }
-func (mockBlockStore) Close() error { return nil }

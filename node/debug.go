@@ -13,11 +13,12 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// Debug is a type useful for debugging tendermint problems.
-// Tendermint nodes will shutdown if a divergent hash is detected. Once in this
-// state, they will not start up again. Debug runs just an RPC server on the
-// tendermint data stores without running any other components. This way a user
-// can query the RPC server to diagnose the issue that caused a crash to begin with.
+// Debug manages an RPC service that exports methods to debug a failed node.
+// After a node shuts down due to a consensus failure,, it will no longer start
+// up and cannot easily be inspected. A Debug value provides a similar interface
+// to the node, using the underlying Tendermint data stores, without bringing up
+// any other components. A caller can query the Debug service to inspect the
+// persisted state and debug the failure.
 type Debug struct {
 	service.BaseService
 
@@ -35,6 +36,9 @@ func NewDebugFromConfig(cfg *config.Config) (*Debug, error) {
 	}
 	blockStore := store.NewBlockStore(blockStoreDB)
 	stateDB, err := config.DefaultDBProvider(&config.DBContext{ID: _stateStoreID, Config: cfg})
+	if err != nil {
+		return nil, err
+	}
 	stateStore := sm.NewStore(stateDB)
 
 	return NewDebug(cfg.RPC, blockStore, stateStore), nil
@@ -63,7 +67,7 @@ func (debug *Debug) OnStart() error {
 	}
 	routes := rpcCoreEnv.InfoRoutes()
 	l := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
-	listeners, err := startHTTPRPCServer(debug.rpcConfig, l, routes, types.NopEventBus{})
+	listeners, err := startRPCServers(debug.rpcConfig, l, routes, types.NopEventBus{})
 	if err != nil {
 		return err
 	}
@@ -72,7 +76,7 @@ func (debug *Debug) OnStart() error {
 }
 
 func (debug *Debug) OnStop() {
-	for _, listener := range debug.listeners {
-		listener.Close()
+	for i := len(debug.listeners) - 1; i >= 0; i-- {
+		debug.listeners[i].Close()
 	}
 }

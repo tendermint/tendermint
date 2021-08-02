@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/rs/cors"
+
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
@@ -18,9 +19,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func startGRPCServer(rpcConfig *cfg.RPCConfig,
-	env *rpccore.Environment,
-	logger log.Logger) (net.Listener, error) {
+func startRPCServer(rpcConfig *cfg.RPCConfig, env *rpccore.Environment, logger log.Logger) (net.Listener, error) {
 	// we expose a simplified api over grpc for convenience to app devs
 	listener, err := rpcserver.Listen(rpcConfig.GRPCListenAddress, rpcConfig.GRPCMaxOpenConnections)
 	if err != nil {
@@ -34,11 +33,7 @@ func startGRPCServer(rpcConfig *cfg.RPCConfig,
 	return listener, nil
 }
 
-func startHTTPRPCServer(rpcConfig *cfg.RPCConfig,
-	logger log.Logger,
-	routes rpccore.RoutesMap,
-	eventBus types.EventBusSubscriber) ([]net.Listener, error) {
-
+func startRPCServers(rpcConfig *cfg.RPCConfig, logger log.Logger, routes rpccore.RoutesMap, eventBus types.EventBusSubscriber) ([]net.Listener, error) {
 	config := rpcserver.DefaultConfig()
 	config.MaxBodyBytes = rpcConfig.MaxBodyBytes
 	config.MaxHeaderBytes = rpcConfig.MaxHeaderBytes
@@ -58,6 +53,7 @@ func startHTTPRPCServer(rpcConfig *cfg.RPCConfig,
 		mux := http.NewServeMux()
 		registerWebsocketHandler(rpcConfig, mux, routes, logger, eventBus)
 		rpcserver.RegisterRPCFuncs(mux, routes, logger)
+		listenerAddr := listener.Addr().String()
 
 		var rootHandler http.Handler = mux
 		if rpcConfig.IsCorsEnabled() {
@@ -65,12 +61,10 @@ func startHTTPRPCServer(rpcConfig *cfg.RPCConfig,
 		}
 		if rpcConfig.IsTLSEnabled() {
 			go func() {
-				listenerAddr := listener.Addr().String()
 				keyFile := rpcConfig.KeyFile()
 				certFile := rpcConfig.CertFile()
 				logger.Info("RPC HTTPS server starting", "address", listenerAddr,
 					"certfile", certFile, "keyfile", keyFile)
-
 				err := rpcserver.ServeTLS(listener, rootHandler, keyFile, certFile, logger, config)
 				if !errors.Is(err, net.ErrClosed) {
 					logger.Error("RPC HTTPS server stopped with error", "address", listener, "err", err)
@@ -80,7 +74,6 @@ func startHTTPRPCServer(rpcConfig *cfg.RPCConfig,
 			}()
 		} else {
 			go func() {
-				listenerAddr := listener.Addr().String()
 				logger.Info("RPC HTTPS server starting", "address", listenerAddr)
 
 				err := rpcserver.Serve(listener, rootHandler, logger, config)
@@ -102,7 +95,12 @@ func listenersFromRPCConfig(rpcConfig *cfg.RPCConfig) ([]net.Listener, error) {
 	for i, listenAddr := range listenAddrs {
 		listener, err := rpcserver.Listen(listenAddr, rpcConfig.MaxOpenConnections)
 		if err != nil {
-			closeOpenListeners(listeners)
+			// close any listeners opened before returning
+			for _, l := range listeners {
+				if l != nil {
+					l.Close()
+				}
+			}
 			return nil, err
 		}
 		listeners[i] = listener
@@ -141,10 +139,4 @@ func addCORSHandler(rpcConfig *cfg.RPCConfig, h http.Handler) http.Handler {
 		h = corsMiddleware.Handler(h)
 	}
 	return h
-}
-
-func closeOpenListeners(listeners []net.Listener) {
-	for _, listener := range listeners {
-		listener.Close()
-	}
 }

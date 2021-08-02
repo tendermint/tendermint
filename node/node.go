@@ -579,7 +579,7 @@ func (n *nodeImpl) OnStart() error {
 			routes = rpccore.CombineRoutes(routes, env.UnsafeRoutes())
 		}
 
-		listeners, err := startHTTPRPCServer(n.config.RPC, env.Logger, routes, n.eventBus)
+		listeners, err := startRPCServers(n.config.RPC, env.Logger, routes, n.eventBus)
 		if err != nil {
 			return err
 		}
@@ -591,7 +591,7 @@ func (n *nodeImpl) OnStart() error {
 		if err != nil {
 			return err
 		}
-		listener, err := startGRPCServer(n.config.RPC, env, env.Logger)
+		listener, err := startRPCServer(n.config.RPC, env, env.Logger)
 		if err != nil {
 			return err
 		}
