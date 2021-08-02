@@ -84,7 +84,7 @@ func TestNodeStartStop(t *testing.T) {
 		if err != nil {
 			t.Logf("err: %s", err)
 		}
-		t.Fatalf("timed out waiting for shutdown")
+		t.Fatal("timed out waiting for shutdown")
 	}
 }
 

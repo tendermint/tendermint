@@ -3,7 +3,6 @@ package node
 import (
 	"net"
 
-	"github.com/tendermint/tendermint/config"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -29,19 +28,19 @@ type Debug struct {
 	listeners []net.Listener
 }
 
-func NewDebugFromConfig(cfg *config.Config) (*Debug, error) {
-	blockStoreDB, err := config.DefaultDBProvider(&config.DBContext{ID: _blockStoreID, Config: cfg})
+func NewDebugFromConfig(config *cfg.Config) (*Debug, error) {
+	blockStoreDB, err := cfg.DefaultDBProvider(&cfg.DBContext{ID: _blockStoreID, Config: config})
 	if err != nil {
 		return nil, err
 	}
 	blockStore := store.NewBlockStore(blockStoreDB)
-	stateDB, err := config.DefaultDBProvider(&config.DBContext{ID: _stateStoreID, Config: cfg})
+	stateDB, err := cfg.DefaultDBProvider(&cfg.DBContext{ID: _stateStoreID, Config: config})
 	if err != nil {
 		return nil, err
 	}
 	stateStore := sm.NewStore(stateDB)
 
-	return NewDebug(cfg.RPC, blockStore, stateStore), nil
+	return NewDebug(config.RPC, blockStore, stateStore), nil
 }
 
 func NewDebug(rpcConfig *cfg.RPCConfig, blockStore sm.BlockStore, stateStore sm.Store) *Debug {
@@ -53,11 +52,11 @@ func NewDebug(rpcConfig *cfg.RPCConfig, blockStore sm.BlockStore, stateStore sm.
 }
 
 func NewDefaultDebug() (*Debug, error) {
-	cfg := config.Config{
-		BaseConfig: config.DefaultBaseConfig(),
-		RPC:        config.DefaultRPCConfig(),
+	config := cfg.Config{
+		BaseConfig: cfg.DefaultBaseConfig(),
+		RPC:        cfg.DefaultRPCConfig(),
 	}
-	return NewDebugFromConfig(&cfg)
+	return NewDebugFromConfig(&config)
 }
 
 func (debug *Debug) OnStart() error {
@@ -77,6 +76,9 @@ func (debug *Debug) OnStart() error {
 
 func (debug *Debug) OnStop() {
 	for i := len(debug.listeners) - 1; i >= 0; i-- {
-		debug.listeners[i].Close()
+		err := debug.listeners[i].Close()
+		if err != nil {
+			debug.Logger.Error("Error stopping debug rpc listener", "err", err)
+		}
 	}
 }

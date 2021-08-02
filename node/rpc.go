@@ -33,6 +33,7 @@ func startRPCServer(rpcConfig *cfg.RPCConfig, env *rpccore.Environment, logger l
 	return listener, nil
 }
 
+// nolint: lll
 func startRPCServers(rpcConfig *cfg.RPCConfig, logger log.Logger, routes rpccore.RoutesMap, eventBus types.EventBusSubscriber) ([]net.Listener, error) {
 	config := rpcserver.DefaultConfig()
 	config.MaxBodyBytes = rpcConfig.MaxBodyBytes
