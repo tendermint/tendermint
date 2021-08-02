@@ -163,7 +163,7 @@ type scheduler struct {
 	height int64
 
 	// lastAdvance tracks the last time a block execution happened.
-	// syncTimeout is the maximum time the scheduler waits to advance in the fast sync process before finishing.
+	// syncTimeout is the maximum time the scheduler waits to advance in the block sync process before finishing.
 	// This covers the cases where there are no peers or all peers have a lower height.
 	lastAdvance time.Time
 	syncTimeout time.Duration
