@@ -27,7 +27,7 @@ This guide provides instructions for upgrading to specific versions of Tendermin
   
 * `BootstrapPeers` has been added as part of the new p2p stack. This will eventually replace
   `Seeds`. Bootstrap peers are connected with on startup if needed for peer discovery. Unlike
-  persistent peers, there's no gaurantee that the node will remain connected with these peers. 
+  persistent peers, there's no guarantee that the node will remain connected with these peers. 
 
 * configuration values starting with `priv-validator-` have moved to the new
   `priv-validator` section, without the `priv-validator-` prefix.
