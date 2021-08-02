@@ -46,17 +46,17 @@ func NewConflictingVoteError(vote1, vote2 *Vote) *ErrVoteConflictingVotes {
 // Address is hex bytes.
 type Address = crypto.Address
 
-type VoteExtensionSigned struct {
+type VoteExtensionToSign struct {
 	AppDataSigned []byte `json:"app_data_signed"`
 }
 
-func (ext VoteExtensionSigned) BytesPacked() []byte {
+func (ext VoteExtensionToSign) BytesPacked() []byte {
 	res := make([]byte, len(ext.AppDataSigned))
 	copy(res, ext.AppDataSigned)
 	return res
 }
 
-func (ext VoteExtensionSigned) FromSigned() VoteExtension {
+func (ext VoteExtensionToSign) FromSigned() VoteExtension {
 	return VoteExtension{
 		AppDataSigned: ext.AppDataSigned,
 	}
@@ -67,8 +67,8 @@ type VoteExtension struct {
 	AppDataSelfAuthenticating []byte `json:"app_data_self_authenticating"`
 }
 
-func (ext VoteExtension) ToSigned() VoteExtensionSigned {
-	return VoteExtensionSigned{
+func (ext VoteExtension) ToSigned() VoteExtensionToSign {
+	return VoteExtensionToSign{
 		AppDataSigned: ext.AppDataSigned,
 	}
 }

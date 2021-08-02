@@ -110,7 +110,7 @@ message VoteExtension {
   bytes app_data_self_authenticating = 2;
 }
 
-message VoteExtensionSigned {
+message VoteExtensionToSign {
   bytes app_data_signed = 1;
 }
 
@@ -129,7 +129,7 @@ message CommitSig {
   google.protobuf.Timestamp timestamp         = 3
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes signature = 4;
-  VoteExtensionSigned vote_extension = 5;
+  VoteExtensionToSign vote_extension = 5;
 }
 
 message Proposal {
