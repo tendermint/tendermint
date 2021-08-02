@@ -53,10 +53,9 @@ cases.
 
 While this is (likely) not tenable in the long term, as users do want
 more modularity, and the current service implementation is brittle and
-difficult to maintain, it may be viable in the short and medium term
-to delay implementation which will allow us to do more product
-research and build more confidence and consensus around the eventual
-solution.
+difficult to maintain, in the short term it may be possible to delay
+implementation somewhat. Eventually, however, we will need to make the
+`node` package easier to maintain and reason about.
 
 ### Generic Service Plugability
 
@@ -65,12 +64,12 @@ sense) for all components of the system, to permit runtime dependency
 injection of all components in the system so that users can compose
 tendermint nodes of arbitrary user supplied components.
 
-This is an interesting proposal, and may be interesting to persue, but
-essentially requires doing a lot more API design and increases the
-surface area of our API. While this is not a goal at the moment,
-eventually providing support for some kinds of plugability may be
-useful, so the current solution does not explicitly forclose the
-possibility of this alternative.
+This is an interesting proposal, and customization would provide
+benefits, this is a huge undertaking particularly with regards to API
+design work, that we do not have scope for at the moment. While this
+is not a goal at the moment, eventually providing support for some
+kinds of plugability may be useful, so the current solution does not
+explicitly forclose the possibility of this alternative.
 
 ### Abstract Dependency Based Startup and Shutdown
 
@@ -151,7 +150,7 @@ func NewWithServices(conf *config.Config,
 	logger log.Logger,
 	cf proxy.ClientCreator,
 	gen *types.GenesisDoc,
-	srvs []service.Service
+	srvs []service.Service,
 ) (service.Service, error) {
 ```
 
