@@ -8,6 +8,7 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
@@ -21,8 +22,7 @@ import (
 type Debug struct {
 	service.BaseService
 
-	blockStore sm.BlockStore
-	stateStore sm.Store
+	routes rpccore.RoutesMap
 
 	rpcConfig *cfg.RPCConfig
 	listeners []net.Listener
@@ -38,16 +38,24 @@ func NewDebugFromConfig(config *cfg.Config) (*Debug, error) {
 	if err != nil {
 		return nil, err
 	}
+	genDocFunc := defaultGenesisDocProviderFunc(config)
+	genDoc, err := genDocFunc()
+	if err != nil {
+		return nil, err
+	}
+	sinks, err := indexerSinksFromConfig(config, cfg.DefaultDBProvider, genDoc.ChainID)
+	if err != nil {
+		return nil, err
+	}
 	stateStore := sm.NewStore(stateDB)
-
-	return NewDebug(config.RPC, blockStore, stateStore), nil
+	return NewDebug(config.RPC, blockStore, stateStore, sinks), nil
 }
 
-func NewDebug(rpcConfig *cfg.RPCConfig, blockStore sm.BlockStore, stateStore sm.Store) *Debug {
+func NewDebug(rpcConfig *cfg.RPCConfig, blockStore sm.BlockStore, stateStore sm.Store, eventSinks []indexer.EventSink) *Debug {
+	routes := rpccore.DebugRoutes(stateStore, blockStore, eventSinks)
 	return &Debug{
-		blockStore: blockStore,
-		stateStore: stateStore,
-		rpcConfig:  rpcConfig,
+		routes:    routes,
+		rpcConfig: rpcConfig,
 	}
 }
 
@@ -55,18 +63,14 @@ func NewDefaultDebug() (*Debug, error) {
 	config := cfg.Config{
 		BaseConfig: cfg.DefaultBaseConfig(),
 		RPC:        cfg.DefaultRPCConfig(),
+		TxIndex:    cfg.DefaultTxIndexConfig(),
 	}
 	return NewDebugFromConfig(&config)
 }
 
 func (debug *Debug) OnStart() error {
-	rpcCoreEnv := rpccore.Environment{
-		StateStore: debug.stateStore,
-		BlockStore: debug.blockStore,
-	}
-	routes := rpcCoreEnv.InfoRoutes()
 	l := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
-	listeners, err := startRPCServers(debug.rpcConfig, l, routes, types.NopEventBus{})
+	listeners, err := startRPCServers(debug.rpcConfig, l, debug.routes, &types.NopEventBus{})
 	if err != nil {
 		return err
 	}
