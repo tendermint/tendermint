@@ -112,7 +112,7 @@ type BlockSyncReactor interface {
 	GetRemainingSyncTime() time.Duration
 }
 
-//go:generate mockery --case underscore --name ConsSyncReactor
+//go:generate ../../scripts/mockery_generate.sh ConsSyncReactor
 // ConsSyncReactor defines an interface used for testing abilities of node.startStateSync.
 type ConsSyncReactor interface {
 	SwitchToConsensus(sm.State, bool)

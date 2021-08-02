@@ -54,6 +54,10 @@ type Reactor struct {
 	// goroutines.
 	peerWG sync.WaitGroup
 
+	// observePanic is a function for observing panics that were recovered in methods on
+	// Reactor. observePanic is called with the recovered value.
+	observePanic func(interface{})
+
 	mtx          tmsync.Mutex
 	peerRoutines map[types.NodeID]*tmsync.Closer
 }
@@ -77,11 +81,14 @@ func NewReactor(
 		peerUpdates:  peerUpdates,
 		closeCh:      make(chan struct{}),
 		peerRoutines: make(map[types.NodeID]*tmsync.Closer),
+		observePanic: defaultObservePanic,
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Mempool", r)
 	return r
 }
+
+func defaultObservePanic(r interface{}) {}
 
 // GetChannelShims returns a map of ChannelDescriptorShim objects, where each
 // object wraps a reference to a legacy p2p ChannelDescriptor and the corresponding
@@ -188,6 +195,7 @@ func (r *Reactor) handleMempoolMessage(envelope p2p.Envelope) error {
 func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
+			r.observePanic(e)
 			err = fmt.Errorf("panic in processing message: %v", e)
 			r.Logger.Error(
 				"recovering from processing message panic",
@@ -318,6 +326,7 @@ func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer)
 		r.peerWG.Done()
 
 		if e := recover(); e != nil {
+			r.observePanic(e)
 			r.Logger.Error(
 				"recovering from broadcasting mempool loop",
 				"err", e,
