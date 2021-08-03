@@ -3,14 +3,12 @@ package light
 import (
 	"github.com/dashevo/dashd-go/btcjson"
 	rpc "github.com/dashevo/dashd-go/rpcclient"
-	// "github.com/tendermint/tendermint/crypto"
 )
 
 // DashCoreVerifier is used to verify signatures of light blocks
 type DashCoreVerifier struct {
-	endpoint *rpc.Client
-	host     string
-	// cachedProTxHash   crypto.ProTxHash
+	endpoint          *rpc.Client
+	host              string
 	rpcUsername       string
 	rpcPassword       string
 	defaultQuorumType btcjson.LLMQType

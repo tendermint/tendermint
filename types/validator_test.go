@@ -94,12 +94,12 @@ func TestValidatorValidateBasic(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
+		tcRun := tc
 		t.Run(tc.msg, func(t *testing.T) {
-			err := tc.val.ValidateBasic()
-			if tc.err {
+			err := tcRun.val.ValidateBasic()
+			if tcRun.err {
 				if assert.Error(t, err) {
-					assert.Equal(t, tc.msg, err.Error())
+					assert.Equal(t, tcRun.msg, err.Error())
 				}
 			} else {
 				assert.NoError(t, err)

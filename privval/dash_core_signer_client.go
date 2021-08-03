@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"runtime/debug"
 
 	"github.com/tendermint/tendermint/libs/log"
 
@@ -202,12 +201,14 @@ func (sc *DashCoreSignerClient) GetProTxHash() (crypto.ProTxHash, error) {
 			results, err := sc.dashCoreRPCClient.MasternodeListJSON(localHost)
 			if err == nil {
 				for _, v := range results {
-					decodedProTxHash, _ = hex.DecodeString(v.ProTxHash)
+					decodedProTxHash, err = hex.DecodeString(v.ProTxHash)
+					if err != nil {
+						return nil, fmt.Errorf("error decoding proTxHash: %v", err)
+					}
 				}
 			}
 		}
 		if len(decodedProTxHash) != crypto.DefaultHashSize {
-			debug.PrintStack()
 			return nil, fmt.Errorf(
 				"decoding proTxHash %d is incorrect size when signing proposal : %v",
 				len(decodedProTxHash),
@@ -252,6 +253,7 @@ func (sc *DashCoreSignerClient) SignVote(
 		return fmt.Errorf("decoding signature %d is incorrect size when signing vote : %v", len(blockDecodedSignature), err)
 	}
 
+	// No need to check the error as this is only used for logging
 	proTxHash, _ := sc.GetProTxHash()
 
 	signID := crypto.SignID(
@@ -268,7 +270,10 @@ func (sc *DashCoreSignerClient) SignVote(
 		hex.EncodeToString(blockRequestID), "coreSignId", bls12381.ReverseBytes(coreSignID),
 		"signId", hex.EncodeToString(signID))
 
-	pubKey, _ := sc.GetPubKey(quorumHash)
+	pubKey, err := sc.GetPubKey(quorumHash)
+	if err != nil {
+		return &RemoteSignerError{Code: 500, Description: err.Error()}
+	}
 	verified := pubKey.VerifySignatureDigest(signID, blockDecodedSignature)
 	if verified {
 		logger.Debug("Verified core signature", "height", protoVote.Height, "round", protoVote.Round, "pubkey", pubKey)

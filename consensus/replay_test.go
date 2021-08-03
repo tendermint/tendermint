@@ -641,7 +641,10 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 
-	proposerPubKey2, _ := vss[proposerIndex].GetPubKey(validatorsAtProposalHeight.QuorumHash)
+	proposerPubKey2, err := vss[proposerIndex].GetPubKey(validatorsAtProposalHeight.QuorumHash)
+	if err != nil {
+		t.Fatal("failed to get public key")
+	}
 	proposerProTxHash2, err := vss[proposerIndex].GetProTxHash()
 
 	if !bytes.Equal(proposerProTxHash2.Bytes(), proposerProTxHash.Bytes()) {
