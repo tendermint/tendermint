@@ -16,12 +16,12 @@ const (
 type Metrics struct {
 	TotalSnapshots         metrics.Counter
 	ChunkProcess           metrics.Gauge
-	SnapshotHeight         metrics.Counter
-	SnapshotChunk          metrics.Gauge
+	SnapshotHeight         metrics.Gauge
+	SnapshotChunk          metrics.Counter
 	SnapshotChunkTotal     metrics.Gauge
 	StateSyncTime          metrics.Gauge
 	StateSyncTimeRemaining metrics.Gauge
-	BackFill               metrics.Gauge
+	BackFill               metrics.Counter
 	BackFillTotal          metrics.Gauge
 }
 
@@ -46,17 +46,17 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "statesync_chunk_process",
 			Help:      " The average processing time per chunk.",
 		}, labels).With(labelsAndValues...),
-		SnapshotHeight: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+		SnapshotHeight: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "statesync_snapshot_height",
 			Help:      "The height of the current snapshot being processed.",
 		}, labels).With(labelsAndValues...),
-		SnapshotChunk: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+		SnapshotChunk: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "statesync_snapshot_chunk",
-			Help:      "The current chunk being processed.",
+			Help:      "The current chunks being processed.",
 		}, labels).With(labelsAndValues...),
 		SnapshotChunkTotal: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
@@ -76,7 +76,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "statesync_synctime_remaining",
 			Help:      " The estimation time to finish the statesync.",
 		}, labels).With(labelsAndValues...),
-		BackFill: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+		BackFill: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "statesync_backfill",
@@ -96,12 +96,12 @@ func NopMetrics() *Metrics {
 	return &Metrics{
 		TotalSnapshots:         discard.NewCounter(),
 		ChunkProcess:           discard.NewGauge(),
-		SnapshotHeight:         discard.NewCounter(),
-		SnapshotChunk:          discard.NewGauge(),
+		SnapshotHeight:         discard.NewGauge(),
+		SnapshotChunk:          discard.NewCounter(),
 		SnapshotChunkTotal:     discard.NewGauge(),
 		StateSyncTime:          discard.NewGauge(),
 		StateSyncTimeRemaining: discard.NewGauge(),
-		BackFill:               discard.NewGauge(),
+		BackFill:               discard.NewCounter(),
 		BackFillTotal:          discard.NewGauge(),
 	}
 }

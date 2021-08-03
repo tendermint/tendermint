@@ -168,6 +168,7 @@ func setup(
 		rts.snapshotOutCh,
 		rts.chunkOutCh,
 		"",
+		rts.reactor.metrics,
 	)
 
 	require.NoError(t, rts.reactor.Start())

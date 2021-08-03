@@ -63,8 +63,9 @@ type syncer struct {
 	fetchers      int32
 	retryTimeout  time.Duration
 
-	mtx    tmsync.RWMutex
-	chunks *chunkQueue
+	mtx     tmsync.RWMutex
+	chunks  *chunkQueue
+	metrics *Metrics
 }
 
 // newSyncer creates a new syncer.
@@ -76,6 +77,7 @@ func newSyncer(
 	stateProvider StateProvider,
 	snapshotCh, chunkCh chan<- p2p.Envelope,
 	tempDir string,
+	metrics *Metrics,
 ) *syncer {
 	return &syncer{
 		logger:        logger,
@@ -88,6 +90,7 @@ func newSyncer(
 		tempDir:       tempDir,
 		fetchers:      cfg.Fetchers,
 		retryTimeout:  cfg.ChunkRequestTimeout,
+		metrics:       metrics,
 	}
 }
 
@@ -121,6 +124,7 @@ func (s *syncer) AddSnapshot(peerID types.NodeID, snapshot *snapshot) (bool, err
 		return false, err
 	}
 	if added {
+		s.metrics.TotalSnapshots.Add(1)
 		s.logger.Info("Discovered new snapshot", "height", snapshot.Height, "format", snapshot.Format,
 			"hash", snapshot.Hash)
 	}
@@ -190,9 +194,12 @@ func (s *syncer) SyncAny(
 			defer chunks.Close() // in case we forget to close it elsewhere
 		}
 
+		s.metrics.SnapshotChunkTotal.Set(float64(snapshot.Chunks))
+
 		newState, commit, err := s.Sync(ctx, snapshot, chunks)
 		switch {
 		case err == nil:
+			s.metrics.SnapshotHeight.Set(float64(snapshot.Height))
 			return newState, commit, nil
 
 		case errors.Is(err, errAbort):
@@ -475,7 +482,7 @@ func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *ch
 		select {
 		case <-chunks.WaitFor(index):
 			next = true
-
+			s.metrics.SnapshotChunk.Add(1)
 		case <-ticker.C:
 			next = false
 

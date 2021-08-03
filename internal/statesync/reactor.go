@@ -275,6 +275,7 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 		r.snapshotCh.Out,
 		r.chunkCh.Out,
 		r.tempDir,
+		r.metrics,
 	)
 	r.mtx.Unlock()
 	defer func() {
@@ -330,6 +331,9 @@ func (r *Reactor) Backfill(ctx context.Context, state sm.State) error {
 		// this essentially makes stop time a void criteria for termination
 		stopTime = state.LastBlockTime
 	}
+
+	r.metrics.BackFillTotal.Set(float64(state.LastBlockHeight - stopHeight))
+
 	return r.backfill(
 		ctx,
 		state.ChainID,
@@ -428,7 +432,6 @@ func (r *Reactor) backfill(
 						peer:  peer,
 					})
 					r.Logger.Debug("backfill: added light block to processing queue", "height", height)
-
 				case <-queue.done():
 					return
 				}
@@ -484,6 +487,8 @@ func (r *Reactor) backfill(
 			r.Logger.Info("backfill: verified and stored light block", "height", resp.block.Height)
 
 			lastValidatorSet = resp.block.ValidatorSet
+
+			r.metrics.BackFill.Add(1)
 
 		case <-queue.done():
 			if err := queue.error(); err != nil {
