@@ -293,8 +293,9 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 	// Spawn chunk fetchers. They will terminate when the chunk queue is closed or context canceled.
 	fetchCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	fetchStartTime := time.Now()
 	for i := int32(0); i < s.fetchers; i++ {
-		go s.fetchChunks(fetchCtx, snapshot, chunks)
+		go s.fetchChunks(fetchCtx, snapshot, chunks, fetchStartTime)
 	}
 
 	pctx, pcancel := context.WithTimeout(ctx, 1*time.Minute)
@@ -446,7 +447,7 @@ func (s *syncer) applyChunks(ctx context.Context, chunks *chunkQueue) error {
 
 // fetchChunks requests chunks from peers, receiving allocations from the chunk queue. Chunks
 // will be received from the reactor via syncer.AddChunks() to chunkQueue.Add().
-func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *chunkQueue) {
+func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *chunkQueue, start time.Time) {
 	var (
 		next  = true
 		index uint32
@@ -482,7 +483,10 @@ func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *ch
 		select {
 		case <-chunks.WaitFor(index):
 			next = true
+
 			s.metrics.SnapshotChunk.Add(1)
+			avg := time.Since(start).Nanoseconds() / int64(chunks.chunkReturnedSize())
+			s.metrics.ChunkProcess.Set(float64(avg))
 		case <-ticker.C:
 			next = false
 
