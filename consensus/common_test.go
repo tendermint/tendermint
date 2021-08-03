@@ -277,7 +277,7 @@ func validatePrevote(t *testing.T, cs *State, round int32, privVal *validatorStu
 
 func validateLastCommit(t *testing.T, cs *State, privVal *validatorStub, blockHash []byte) {
 	commit := cs.LastCommit
-	commit.ValidateBasic()
+	_ = commit.ValidateBasic()
 	if !bytes.Equal(commit.BlockID.Hash, blockHash) {
 		panic(fmt.Sprintf("Expected commit to be for %X, got %X", blockHash, commit.BlockID.Hash))
 	}

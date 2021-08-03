@@ -228,13 +228,17 @@ func (blockExec *BlockExecutor) ApplyBlockWithLogger(
 	validatorUpdates, thresholdPublicKeyUpdate, quorumHash, err :=
 		types.PB2TM.ValidatorUpdatesFromValidatorSet(abciValidatorSetUpdates)
 	if err != nil {
-		return state, 0, err
+		return state, 0, fmt.Errorf("error when converting abci validator updates: %v", err)
 	}
 	if len(validatorUpdates) > 0 {
 		blockExec.logger.Debug("updates to validators", "updates", types.ValidatorListString(validatorUpdates))
 	}
 
-	blockExec.store.Load()
+	/*
+		_, err = blockExec.store.Load()
+		if err != nil {
+			return state, 0, fmt.Errorf("unable to load store when applying block: %v", err)
+		}*/
 
 	// Update the state with the block and responses.
 	state, err = updateState(

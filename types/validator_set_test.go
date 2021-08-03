@@ -788,7 +788,7 @@ func addValidatorsToValidatorSet(vals *ValidatorSet, testValList []testVal) ([]*
 	combinedProTxHashes = append(combinedProTxHashes, addedProTxHashes...)
 	if len(combinedProTxHashes) > 0 {
 		rVals, _ := GenerateTestValidatorSetWithProTxHashesDefaultPower(combinedProTxHashes)
-		rValidators := append(rVals.Validators, removedVals...)
+		rValidators := append(rVals.Validators, removedVals...) // nolint:gocritic
 		return rValidators, rVals.ThresholdPublicKey
 	}
 	return removedVals, nil

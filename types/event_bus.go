@@ -135,7 +135,7 @@ func (b *EventBus) PublishEventNewBlock(data EventDataNewBlock) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
 
-	resultEvents := append(data.ResultBeginBlock.Events, data.ResultEndBlock.Events...)
+	resultEvents := append(data.ResultBeginBlock.Events, data.ResultEndBlock.Events...) // nolint:gocritic
 	events := b.validateAndStringifyEvents(resultEvents, b.Logger.With("block", data.Block.StringShort()))
 
 	// add predefined new block event
@@ -148,7 +148,7 @@ func (b *EventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) erro
 	// no explicit deadline for publishing events
 	ctx := context.Background()
 
-	resultTags := append(data.ResultBeginBlock.Events, data.ResultEndBlock.Events...)
+	resultTags := append(data.ResultBeginBlock.Events, data.ResultEndBlock.Events...) // nolint:gocritic
 	// TODO: Create StringShort method for Header and use it in logger.
 	events := b.validateAndStringifyEvents(resultTags, b.Logger.With("header", data.Header))
 

@@ -177,7 +177,7 @@ func TestUpdateValidators(t *testing.T) {
 	validatorSet, _ := types.GenerateValidatorSet(4)
 	originalProTxHashes := validatorSet.GetProTxHashes()
 	addedProTxHashes := bls12381.CreateProTxHashes(4)
-	combinedProTxHashes := append(originalProTxHashes, addedProTxHashes...)
+	combinedProTxHashes := append(originalProTxHashes, addedProTxHashes...) // nolint:gocritic
 	combinedValidatorSet, _ := types.GenerateValidatorSetUsingProTxHashes(combinedProTxHashes)
 	regeneratedValidatorSet, _ := types.GenerateValidatorSetUsingProTxHashes(combinedProTxHashes)
 	abciRegeneratedValidatorUpdates := regeneratedValidatorSet.ABCIEquivalentValidatorUpdates()

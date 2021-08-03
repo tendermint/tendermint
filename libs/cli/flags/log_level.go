@@ -69,7 +69,7 @@ func ParseLogLevel(lvl string, logger log.Logger, defaultLogLevelValue string) (
 			default:
 				return nil,
 					fmt.Errorf(
-						"expected either \"info\", \"debug\", \"p2p_debug\", \"error\" or \"none\" log level, given %s (pair %s, list %s)",
+						"expected either \"info\", \"debug\", \"p2p_debug\", \"error\" or \"none\" log level, given %s (pair %s, list %s)", // nolint:lll
 						level,
 						item,
 						list)

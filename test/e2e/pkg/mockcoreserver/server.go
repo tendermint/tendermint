@@ -67,10 +67,11 @@ func (s *HTTPServer) Start() {
 // Stop stops http server
 func (s *HTTPServer) Stop(ctx context.Context) {
 	s.guard.Lock()
-	defer s.guard.Unlock()
 	if err := s.httpSrv.Shutdown(ctx); err != nil {
+		s.guard.Unlock()
 		log.Fatalf("unable to stop a server graceful: %v", err)
 	}
+	s.guard.Unlock()
 }
 
 // NewHTTPServer returns a mock http server
