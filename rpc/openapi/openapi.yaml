@@ -837,7 +837,7 @@ paths:
         - Info
       description: |
         Get genesis document in a paginated/chunked format to make it
-        easier to iterate through larger gensis structures.
+        easier to iterate through larger genesis structures.
       parameters:
         - in: query
           name: chunkID
@@ -1946,14 +1946,14 @@ components:
             - "chunk"
             - "total"
             - "data"
-          properties: 
+          properties:
             chunk:
               type: integer
               example: 0
             total:
               type: integer
               example: 1
-            data: 
+            data:
               type: string
               example: "Z2VuZXNpcwo="
 
