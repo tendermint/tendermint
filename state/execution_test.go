@@ -15,6 +15,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+
 	// "github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
 	mmock "github.com/tendermint/tendermint/mempool/mock"

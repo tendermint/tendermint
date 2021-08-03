@@ -3,6 +3,7 @@ package privval
 import (
 	"github.com/go-pkgz/jrpc"
 	"github.com/tendermint/tendermint/crypto"
+
 	// tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/types"
 )
