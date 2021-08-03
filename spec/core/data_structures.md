@@ -4,33 +4,39 @@ Here we describe the data structures in the Tendermint blockchain and the rules 
 
 The Tendermint blockchains consists of a short list of data types:
 
-- [`Block`](#block)
-- [`Header`](#header)
-- [`Version`](#version)
-- [`BlockID`](#blockid)
-- [`PartSetHeader`](#partsetheader)
-- [`Time`](#time)
-- [`Data` (for transactions)](#data)
-- [`Commit`](#commit)
-- [`CommitSig`](#commitsig)
-- [`BlockIDFlag`](#blockidflag)
-- [`Vote`](#vote)
-- [`CanonicalVote`](#canonicalvote)
-- [`SignedMsgType`](#signedmsgtype)
-- [`EvidenceList`](#evidence_list)
-- [`Evidence`](#evidence)
-- [`DuplicateVoteEvidence`](#duplicatevoteevidence)
-- [`LightClientAttackEvidence`](#lightclientattackevidence)
-- [`LightBlock`](#lightblock)
-- [`SignedHeader`](#signedheader)
-- [`Validator`](#validator)
-- [`ValidatorSet`](#validatorset)
-- [`Address`](#address)
-- [`ConsensusParams`](#consensusparams)
-- [`BlockParams`](#blockparams)
-- [`EvidenceParams`](#evidenceparams)
-- [`ValidatorParams`](#validatorparams)
-- [`VersionParams`](#versionparams)
+- [Data Structures](#data-structures)
+  - [Block](#block)
+  - [Execution](#execution)
+  - [Header](#header)
+  - [Version](#version)
+  - [BlockID](#blockid)
+  - [PartSetHeader](#partsetheader)
+  - [Part](#part)
+  - [Time](#time)
+  - [Data](#data)
+  - [Commit](#commit)
+  - [CommitSig](#commitsig)
+  - [BlockIDFlag](#blockidflag)
+  - [Vote](#vote)
+  - [CanonicalVote](#canonicalvote)
+  - [Proposal](#proposal)
+  - [SignedMsgType](#signedmsgtype)
+  - [Signature](#signature)
+  - [EvidenceList](#evidencelist)
+  - [Evidence](#evidence)
+    - [DuplicateVoteEvidence](#duplicatevoteevidence)
+    - [LightClientAttackEvidence](#lightclientattackevidence)
+  - [LightBlock](#lightblock)
+  - [SignedHeader](#signedheader)
+  - [ValidatorSet](#validatorset)
+  - [Validator](#validator)
+  - [Address](#address)
+  - [ConsensusParams](#consensusparams)
+    - [BlockParams](#blockparams)
+  - [EvidenceParams](#evidenceparams)
+  - [ValidatorParams](#validatorparams)
+  - [VersionParams](#versionparams)
+    - [Proof](#proof)
 
 
 ## Block
@@ -323,8 +329,7 @@ EvidenceList is a simple wrapper for a list of evidence:
 
 Evidence in Tendermint is used to indicate breaches in the consensus by a validator.
 
-The [Fork Accountability](../light-client/accountability.md) document provides a good overview of evidence and how they occur. For evidence to be committed onchain, it must adhere to the validation rules of each evidence and must not be expired. The expiration age, measured in both block height and time is set in `EvidenceParams`. Each evidence uses
-the timestamp of the block that the evidence occurred at to indicate the age of the evidence.
+More information on how evidence works in Tendermint can be found [here](../consensus/evidence.md)
 
 ### DuplicateVoteEvidence
 
@@ -339,23 +344,9 @@ in the same round of the same height. Votes are lexicographically sorted on `Blo
 | ValidatorPower   | int64         | Power of the equivocating validator at the height                  | Must be equal to the nodes own copy of the data     |
 | Timestamp        | [Time](#Time) | Time of the block where the equivocation occurred                  | Must be equal to the nodes own copy of the data     |
 
-Valid Duplicate Vote Evidence must adhere to the following rules:
-
-- Validator Address, Height, Round and Type must be the same for both votes
-
-- BlockID must be different for both votes (BlockID can be for a nil block)
-
-- Validator must have been in the validator set at that height
-
-- Vote signature must be valid (using the chainID)
-
-- For DuplicateVoteEvidence to be included in a block it must be within the time period outlined in [evidenceParams](../abci/abci.md#evidenceparams). Evidence expiration is measured as a combination of age in terms of height and time.
-
-- Information required to form ABCI evidence (`TotalVotingPower`, `ValidatorPower` and `Timestamp`) must all match the nodes own state at that height.
-
 ### LightClientAttackEvidence
 
-LightClientAttackEvidence is a generalized evidence that captures all forms of known attacks on
+`LightClientAttackEvidence` is a generalized evidence that captures all forms of known attacks on
 a light client such that a full node can verify, propose and commit the evidence on-chain for
 punishment of the malicious validators. There are three forms of attacks: Lunatic, Equivocation
 and Amnesia. These attacks are exhaustive. You can find a more detailed overview of this [here](../light-client/accountability#the_misbehavior_of_faulty_validators)
@@ -367,23 +358,6 @@ and Amnesia. These attacks are exhaustive. You can find a more detailed overview
 | Byzantine Validators | Array of [Validators](#Validators) | validators that acted maliciously                                    | Read Below                                                       |
 | TotalVotingPower     | int64                              | The total power of the validator set at the height of the infraction | Must be equal to the nodes own copy of the data                  |
 | Timestamp            | [Time](#Time)                      | Time of the block where the infraction occurred                      | Must be equal to the nodes own copy of the data                  |
-
-Valid Light Client Attack Evidence must adhere to the following rules:
-
-- If the header of the light block is invalid, thus indicating a lunatic attack, the node must check that
-    they can use `verifySkipping` from their header at the common height to the conflicting header
-
-- If the header is valid, then the validator sets are the same and this is either a form of equivocation
-    or amnesia. We therefore check that 2/3 of the validator set also signed the conflicting header.
-
-- The trusted header of the node at the same height as the conflicting header must have a different hash to
-    the conflicting header.
-
-- The `ByzantineValidators` provided must be the overlap between validators in the common validator set and those that voted in the commit of the conflicting block.
-
-- For LightClientAttackEvidence to be included in a block it must be within the time period outlined in [evidenceParams](../abci/abci.md#evidenceparams). Evidence expiration is measured as a combination of age in terms of height and time.
-
-- Information required to form ABCI evidence (`TotalVotingPower` and `Timestamp`) must all match the nodes own state at that height.
 
 ## LightBlock
 
