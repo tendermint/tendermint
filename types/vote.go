@@ -40,6 +40,7 @@ var (
 	ErrVoteInvalidValidatorPubKeySize = errors.New("invalid validator public key size")
 	ErrVoteInvalidBlockSignature      = errors.New("invalid block signature")
 	ErrVoteInvalidStateSignature      = errors.New("invalid state signature")
+	ErrVoteStateSignatureShouldBeNil  = errors.New("state signature when voting for nil block")
 	ErrVoteInvalidBlockHash           = errors.New("invalid block hash")
 	ErrVoteNonDeterministicSignature  = errors.New("non-deterministic signature")
 	ErrVoteNil                        = errors.New("nil vote")
@@ -238,18 +239,12 @@ func VoteStateRequestIDProto(vote *tmproto.Vote) []byte {
 	return crypto.Sha256(requestIDMessage)
 }
 
-func (vote *Vote) Verify(
-	chainID string,
-	quorumType btcjson.LLMQType,
-	quorumHash []byte,
-	pubKey crypto.PubKey,
-	proTxHash crypto.ProTxHash,
-) error {
+func (vote *Vote) Verify(chainID string, quorumType btcjson.LLMQType, quorumHash []byte, pubKey crypto.PubKey, proTxHash crypto.ProTxHash) ([]byte, []byte, error) {
 	if !bytes.Equal(proTxHash, vote.ValidatorProTxHash) {
-		return ErrVoteInvalidValidatorProTxHash
+		return nil, nil, ErrVoteInvalidValidatorProTxHash
 	}
 	if len(pubKey.Bytes()) != bls12381.PubKeySize {
-		return ErrVoteInvalidValidatorPubKeySize
+		return nil, nil, ErrVoteInvalidValidatorPubKeySize
 	}
 	v := vote.ToProto()
 	voteBlockSignBytes := VoteBlockSignBytes(chainID, v)
@@ -269,17 +264,11 @@ func (vote *Vote) Verify(
 	//	hex.EncodeToString(quorumHash), hex.EncodeToString(blockRequestID), hex.EncodeToString(blockMessageHash))
 
 	if !pubKey.VerifySignatureDigest(signID, vote.BlockSignature) {
-		return fmt.Errorf(
-			"%s proTxHash %s pubKey %v vote %v sign bytes %s block signature %s",
-			ErrVoteInvalidBlockSignature.Error(),
-			proTxHash,
-			pubKey,
-			vote,
-			hex.EncodeToString(voteBlockSignBytes),
-			hex.EncodeToString(vote.BlockSignature),
-		)
+		return nil, nil, fmt.Errorf("%s proTxHash %s pubKey %v vote %v sign bytes %s block signature %s", ErrVoteInvalidBlockSignature.Error(),
+			proTxHash, pubKey, vote, hex.EncodeToString(voteBlockSignBytes), hex.EncodeToString(vote.BlockSignature))
 	}
 
+	stateSignId := []byte(nil)
 	// we must verify the stateID but only if the blockID isn't nil
 	if vote.BlockID.Hash != nil {
 		voteStateSignBytes := VoteStateSignBytes(chainID, v)
@@ -287,22 +276,19 @@ func (vote *Vote) Verify(
 
 		stateRequestID := VoteStateRequestID(vote)
 
-		stateSignID := crypto.SignID(
-			quorumType,
-			bls12381.ReverseBytes(quorumHash),
-			bls12381.ReverseBytes(stateRequestID),
-			bls12381.ReverseBytes(stateMessageHash),
-		)
+		stateSignId = crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestId), bls12381.ReverseBytes(stateMessageHash))
 
 		// fmt.Printf("state vote verify sign ID %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(stateSignID), quorumType,
 		//	hex.EncodeToString(quorumHash), hex.EncodeToString(stateRequestID), hex.EncodeToString(stateMessageHash))
 
-		if !pubKey.VerifySignatureDigest(stateSignID, vote.StateSignature) {
-			return ErrVoteInvalidStateSignature
+		if !pubKey.VerifySignatureDigest(stateSignId, vote.StateSignature) {
+			return nil, nil, ErrVoteInvalidStateSignature
 		}
+	} else if vote.StateSignature != nil {
+		return nil, nil, ErrVoteStateSignatureShouldBeNil
 	}
 
-	return nil
+	return signID, stateSignId, nil
 }
 
 // ValidateBasic performs basic validation.

@@ -631,13 +631,13 @@ type Commit struct {
 	// ValidatorSet order.
 	// Any peer with a block can gossip signatures by index with a peer without
 	// recalculating the active ValidatorSet.
-	Height                  int64   `json:"height"`
-	Round                   int32   `json:"round"`
-	BlockID                 BlockID `json:"block_id"`
-	StateID                 StateID `json:"state_id"`
-	QuorumHash              []byte  `json:"quorum_hash"`
-	ThresholdBlockSignature []byte  `json:"threshold_block_signature"`
-	ThresholdStateSignature []byte  `json:"threshold_state_signature"`
+	Height                  int64             `json:"height"`
+	Round                   int32             `json:"round"`
+	BlockID                 BlockID           `json:"block_id"`
+	StateID                 StateID           `json:"state_id"`
+	QuorumHash              crypto.QuorumHash `json:"quorum_hash"`
+	ThresholdBlockSignature []byte            `json:"threshold_block_signature"`
+	ThresholdStateSignature []byte            `json:"threshold_state_signature"`
 
 	// Memoized in first call to corresponding method.
 	// NOTE: can't memoize in constructor because constructor isn't used for
@@ -830,11 +830,12 @@ func (commit *Commit) String() string {
 	if commit == nil {
 		return "nil-Commit"
 	}
-	return fmt.Sprintf(`Commit{H: %d, R: %d, BlockID: %v, StateID: %v, BlockSignature: %v, StateSignature: %v}#%v`,
+	return fmt.Sprintf(`Commit{H: %d, R: %d, BlockID: %v, StateID: %v, QuorumHash %v, BlockSignature: %v, StateSignature: %v}#%v`,
 		commit.Height,
 		commit.Round,
 		commit.BlockID,
 		commit.StateID,
+		commit.QuorumHash,
 		base64.StdEncoding.EncodeToString(commit.ThresholdBlockSignature),
 		base64.StdEncoding.EncodeToString(commit.ThresholdStateSignature),
 		commit.hash)

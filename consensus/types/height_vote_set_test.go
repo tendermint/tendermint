@@ -81,7 +81,7 @@ func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []ty
 	chainID := config.ChainID()
 
 	v := vote.ToProto()
-	err = privVal.SignVote(chainID, quorumType, quorumHash, v)
+	err = privVal.SignVote(chainID, quorumType, quorumHash, v, nil)
 	if err != nil {
 		panic(fmt.Sprintf("Error signing vote: %v", err))
 	}

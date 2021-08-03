@@ -105,7 +105,7 @@ func validateBlock(state State, block *types.Block) error {
 		// LastPrecommits.Signatures length is checked in VerifyCommit.
 		if err := state.LastValidators.VerifyCommit(
 			state.ChainID, state.LastBlockID, state.LastStateID, block.Height-1, block.LastCommit); err != nil {
-			return err
+			return fmt.Errorf("error validating block: %v", err)
 		}
 	}
 

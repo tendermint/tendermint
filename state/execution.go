@@ -231,7 +231,8 @@ func (blockExec *BlockExecutor) ApplyBlockWithLogger(
 		return state, 0, fmt.Errorf("error when converting abci validator updates: %v", err)
 	}
 	if len(validatorUpdates) > 0 {
-		blockExec.logger.Debug("updates to validators", "updates", types.ValidatorListString(validatorUpdates))
+		blockExec.logger.Debug("updates to validators", "quorumHash", quorumHash, "thresholdPublicKey",
+			thresholdPublicKeyUpdate, "updates", types.ValidatorListString(validatorUpdates))
 	}
 
 	/*
