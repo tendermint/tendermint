@@ -1396,6 +1396,27 @@ components:
         remaining_time:
           type: string
           example: "0"
+        statesync_total_snapshots:
+          type: string
+          example: "10"      
+        statesync_chunk_process:
+          type: string
+          example: "1000000000"      
+        statesync_snapshot_height:
+          type: string
+          example: "1262196"      
+        statesync_snapshot_chunk:
+          type: string
+          example: "10"      
+        statesync_snapshot_chunk_total:
+          type: string
+          example: "100"      
+        statesync_backfill:
+          type: string
+          example: "10"      
+        statesync_backfill_total:
+          type: string
+          example: "100"                                                                  
     ValidatorInfo:
       type: object
       properties:
