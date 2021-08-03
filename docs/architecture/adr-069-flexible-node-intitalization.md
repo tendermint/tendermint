@@ -42,7 +42,7 @@ features and help define the requirements of the node package.
 ### Do Nothing
 
 The current implementation is functional and sufficient for the vast
-majority of use cases (e.g. all users of the Cosmos-SDK as well as
+majority of use cases (e.g., all users of the Cosmos-SDK as well as
 anyone who runs tendermint and the ABCI application in separate
 processes). In the current implementation, and even previous versions,
 modifying node initialization or injecting custom components required
