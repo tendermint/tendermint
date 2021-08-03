@@ -14,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-
 func DefaultValidationRequestHandler(
 	privVal types.PrivValidator,
 	req privvalproto.Message,
@@ -104,7 +103,6 @@ func DefaultValidationRequestHandler(
 
 	return res, err
 }
-
 
 // computeKeyResponse is a function type for key response generation
 type computeKeyResponse func(pubkey cryptoproto.PublicKey, err *privvalproto.RemoteSignerError) proto.Message
