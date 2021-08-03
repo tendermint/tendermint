@@ -5,6 +5,7 @@ import (
 
 	"github.com/dashevo/dashd-go/btcjson"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	cryptoproto "github.com/tendermint/tendermint/proto/tendermint/crypto"
@@ -12,6 +13,7 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
+
 
 func DefaultValidationRequestHandler(
 	privVal types.PrivValidator,
@@ -25,53 +27,13 @@ func DefaultValidationRequestHandler(
 
 	switch r := req.Sum.(type) {
 	case *privvalproto.Message_PubKeyRequest:
-		if r.PubKeyRequest.GetChainId() != chainID {
-			res = mustWrapMsg(&privvalproto.PubKeyResponse{
-				PubKey: cryptoproto.PublicKey{}, Error: &privvalproto.RemoteSignerError{
-					Code: 0, Description: "unable to provide pubkey"}})
-			return res, fmt.Errorf("want chainID: %s, got chainID: %s", r.PubKeyRequest.GetChainId(), chainID)
-		}
-
-		var pubKey crypto.PubKey
-		pubKey, err = privVal.GetPubKey(r.PubKeyRequest.QuorumHash)
-		if err != nil {
-			return res, err
-		}
-		pk, err := cryptoenc.PubKeyToProto(pubKey)
-		if err != nil {
-			return res, err
-		}
-
-		if err != nil {
-			res = mustWrapMsg(&privvalproto.PubKeyResponse{
-				PubKey: cryptoproto.PublicKey{}, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
-		} else {
-			res = mustWrapMsg(&privvalproto.PubKeyResponse{PubKey: pk, Error: nil})
-		}
+		res, err = handleKeyRequest(
+			r.PubKeyRequest.QuorumHash, r.PubKeyRequest.GetChainId,
+			computePubKeyResponse, chainID, privVal, "unable to provide pubkey")
 	case *privvalproto.Message_ThresholdPubKeyRequest:
-		if r.ThresholdPubKeyRequest.GetChainId() != chainID {
-			res = mustWrapMsg(&privvalproto.ThresholdPubKeyResponse{
-				PubKey: cryptoproto.PublicKey{}, Error: &privvalproto.RemoteSignerError{
-					Code: 0, Description: "unable to provide threshold pubkey"}})
-			return res, fmt.Errorf("want chainID: %s, got chainID: %s", r.ThresholdPubKeyRequest.GetChainId(), chainID)
-		}
-
-		var pubKey crypto.PubKey
-		pubKey, err = privVal.GetThresholdPublicKey(r.ThresholdPubKeyRequest.QuorumHash)
-		if err != nil {
-			return res, err
-		}
-		pk, err := cryptoenc.PubKeyToProto(pubKey)
-		if err != nil {
-			return res, err
-		}
-
-		if err != nil {
-			res = mustWrapMsg(&privvalproto.ThresholdPubKeyResponse{
-				PubKey: cryptoproto.PublicKey{}, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
-		} else {
-			res = mustWrapMsg(&privvalproto.ThresholdPubKeyResponse{PubKey: pk, Error: nil})
-		}
+		res, err = handleKeyRequest(
+			r.ThresholdPubKeyRequest.QuorumHash, r.ThresholdPubKeyRequest.GetChainId,
+			computeThresholdPubKeyResponse, chainID, privVal, "unable to provide threshold pubkey")
 	case *privvalproto.Message_ProTxHashRequest:
 		if r.ProTxHashRequest.GetChainId() != chainID {
 			res = mustWrapMsg(&privvalproto.ProTxHashResponse{
@@ -140,5 +102,68 @@ func DefaultValidationRequestHandler(
 		err = fmt.Errorf("unknown msg: %v", r)
 	}
 
+	return res, err
+}
+
+
+// computeKeyResponse is a function type for key response generation
+type computeKeyResponse func(pubkey cryptoproto.PublicKey, err *privvalproto.RemoteSignerError) proto.Message
+
+// computePubKeyResponse returns PubKeyResponse type
+func computePubKeyResponse(pubKey cryptoproto.PublicKey, err *privvalproto.RemoteSignerError) proto.Message {
+	return &privvalproto.PubKeyResponse{
+		PubKey: pubKey,
+		Error:  err,
+	}
+}
+
+// computeThresholdPubKeyResponse returns ThresholdPubKeyResponse
+func computeThresholdPubKeyResponse(pubKey cryptoproto.PublicKey, err *privvalproto.RemoteSignerError) proto.Message {
+	return &privvalproto.ThresholdPubKeyResponse{
+		PubKey: pubKey,
+		Error:  err,
+	}
+}
+
+// getChainID is a function type for getting chainID of a request
+type getChainID func() string
+
+// handleKeyRequest handles key message requests
+func handleKeyRequest(
+	quorumHash crypto.QuorumHash, getChainIDFn getChainID, keyResponseFn computeKeyResponse,
+	chainID string, privVal types.PrivValidator, description string,
+) (res privvalproto.Message, err error) {
+	if getChainIDFn() != chainID {
+		res = mustWrapMsg(keyResponseFn(
+			cryptoproto.PublicKey{},
+			&privvalproto.RemoteSignerError{
+				Code:        0,
+				Description: description,
+			},
+		))
+		return res, fmt.Errorf("want chainID: %s, got chainID: %s", getChainIDFn(), chainID)
+	}
+
+	var pubKey crypto.PubKey
+	pubKey, err = privVal.GetPubKey(quorumHash)
+	if err != nil {
+		return res, err
+	}
+	pk, err := cryptoenc.PubKeyToProto(pubKey)
+	if err != nil {
+		return res, err
+	}
+
+	if err != nil {
+		res = mustWrapMsg(keyResponseFn(
+			cryptoproto.PublicKey{},
+			&privvalproto.RemoteSignerError{
+				Code:        0,
+				Description: err.Error(),
+			},
+		))
+	} else {
+		res = mustWrapMsg(keyResponseFn(pk, nil))
+	}
 	return res, err
 }
