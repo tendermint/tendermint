@@ -565,7 +565,8 @@ func (n *nodeImpl) OnStart() error {
 	// the state, can call `InitChain` if this is the first time that the
 	// application has run and replays any blocks as necessary to sync
 	// tendermint with the app. We do all this before starting any other service
-	state, err = syncWithApplication(n.stateStore, n.blockStore, n.genesisDoc, state, n.eventBus, n.proxyApp, n.stateSync, n.Logger)
+	err = syncWithApplication(n.stateStore, n.blockStore, n.genesisDoc, state, 
+		n.eventBus, n.proxyApp, n.stateSync, n.Logger)
 	if err != nil {
 		return err
 	}

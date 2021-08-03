@@ -115,35 +115,43 @@ func syncWithApplication(
 	} else if storeBlockHeight == stateBlockHeight+1 {
 		// We saved the block in the store but haven't updated the state,
 		// so we'll need to replay a block using the WAL.
+		// NOTE: In all these cases we generate a new state and store it to disk
 		switch {
 		case appBlockHeight < stateBlockHeight:
 			// the app is further behind than it should be, so replay blocks
 			// up to storeBlockHeight and run the
-			return state, replayBlocks(
-				state, proxyApp, blockStore, stateStore, appBlockHeight, storeBlockHeight, true, eventBus, genDoc, logger,
-			)
+			state, err := replayBlocks(state, proxyApp, blockStore, stateStore, appBlockHeight, storeBlockHeight, 
+				true, eventBus, genDoc, logger)
 
 		case appBlockHeight == stateBlockHeight:
 			// We haven't run Commit (both the state and app are one block behind),
 			// so replayBlock with the real app.
-			// NOTE: We could instead use the cs.WAL on cs.Start,
-			// but we'd have to allow the WAL to replay a block that wrote it's #ENDHEIGHT
 			logger.Info("Replay last block using real app")
-			_, err = replayBlock(state, blockStore, stateStore, storeBlockHeight, proxyApp.Consensus(), eventBus, logger)
-			return state, err
+			state, err = replayBlock(state, blockStore, stateStore, storeBlockHeight, proxyApp.Consensus(), eventBus, logger)
+			if err != nil {
+				return sm.State{}, err
+			}
 
 		case appBlockHeight == storeBlockHeight:
 			// We ran Commit, but didn't save the state, so replayBlock with mock app.
 			abciResponses, err := stateStore.LoadABCIResponses(storeBlockHeight)
 			if err != nil {
-				return state, err
+				return sm.State{}, err
 			}
 			mockApp := newMockProxyApp(appHash, abciResponses)
 			logger.Info("Replay last block using mock app")
-			_, err = replayBlock(state, blockStore, stateStore, storeBlockHeight, mockApp, eventBus, logger)
-			return state, err
+			state, err = replayBlock(state, blockStore, stateStore, storeBlockHeight, mockApp, eventBus, logger)
+			if err != nil {
+				return sm.State{}, err
+			}
 		}
 
+		// Save the new state.
+		if err := stateStore.Save(state); err != nil {
+			return sm.State{}, err
+		}
+
+		return state, nil
 	}
 
 	panic(fmt.Sprintf("uncovered case! appHeight: %d, storeHeight: %d, stateHeight: %d",
