@@ -14,15 +14,13 @@ const (
 
 // Metrics contains metrics exposed by this package.
 type Metrics struct {
-	TotalSnapshots         metrics.Counter
-	ChunkProcess           metrics.Gauge
-	SnapshotHeight         metrics.Gauge
-	SnapshotChunk          metrics.Counter
-	SnapshotChunkTotal     metrics.Gauge
-	StateSyncTime          metrics.Gauge
-	StateSyncTimeRemaining metrics.Gauge
-	BackFill               metrics.Counter
-	BackFillTotal          metrics.Gauge
+	TotalSnapshots     metrics.Counter
+	ChunkProcess       metrics.Gauge
+	SnapshotHeight     metrics.Gauge
+	SnapshotChunk      metrics.Counter
+	SnapshotChunkTotal metrics.Gauge
+	BackFill           metrics.Counter
+	BackFillTotal      metrics.Gauge
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -64,18 +62,6 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "statesync_snapshot_chunks_total",
 			Help:      "The total number of chunks in the current snapshot.",
 		}, labels).With(labelsAndValues...),
-		StateSyncTime: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "statesync_synctime",
-			Help:      "The current sync time from starting.",
-		}, labels).With(labelsAndValues...),
-		StateSyncTimeRemaining: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "statesync_synctime_remaining",
-			Help:      " The estimation time to finish the statesync.",
-		}, labels).With(labelsAndValues...),
 		BackFill: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
@@ -94,14 +80,12 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 // NopMetrics returns no-op Metrics.
 func NopMetrics() *Metrics {
 	return &Metrics{
-		TotalSnapshots:         discard.NewCounter(),
-		ChunkProcess:           discard.NewGauge(),
-		SnapshotHeight:         discard.NewGauge(),
-		SnapshotChunk:          discard.NewCounter(),
-		SnapshotChunkTotal:     discard.NewGauge(),
-		StateSyncTime:          discard.NewGauge(),
-		StateSyncTimeRemaining: discard.NewGauge(),
-		BackFill:               discard.NewCounter(),
-		BackFillTotal:          discard.NewGauge(),
+		TotalSnapshots:     discard.NewCounter(),
+		ChunkProcess:       discard.NewGauge(),
+		SnapshotHeight:     discard.NewGauge(),
+		SnapshotChunk:      discard.NewCounter(),
+		SnapshotChunkTotal: discard.NewGauge(),
+		BackFill:           discard.NewCounter(),
+		BackFillTotal:      discard.NewGauge(),
 	}
 }
