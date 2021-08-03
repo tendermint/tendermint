@@ -830,7 +830,8 @@ func (commit *Commit) String() string {
 	if commit == nil {
 		return "nil-Commit"
 	}
-	return fmt.Sprintf(`Commit{H: %d, R: %d, BlockID: %v, StateID: %v, QuorumHash %v, BlockSignature: %v, StateSignature: %v}#%v`,
+	return fmt.Sprintf(
+		`Commit{H: %d, R: %d, BlockID: %v, StateID: %v, QuorumHash %v, BlockSignature: %v, StateSignature: %v}#%v`,
 		commit.Height,
 		commit.Round,
 		commit.BlockID,

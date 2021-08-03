@@ -1353,7 +1353,8 @@ func (ps *PeerState) SetHasVote(vote *types.Vote, cs *State) {
 	ps.setHasVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex, logger)
 }
 
-func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.SignedMsgType, index int32, logger log.Logger) {
+func (ps *PeerState) setHasVote(
+	height int64, round int32, voteType tmproto.SignedMsgType, index int32, logger log.Logger) {
 
 	if logger == nil {
 		peerProTxHash := ps.peer.NodeInfo().GetProTxHash()

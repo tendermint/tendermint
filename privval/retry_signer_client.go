@@ -3,8 +3,9 @@ package privval
 import (
 	"errors"
 	"fmt"
-	"github.com/tendermint/tendermint/libs/log"
 	"time"
+
+	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/dashevo/dashd-go/btcjson"
 
@@ -128,13 +129,9 @@ func (sc *RetrySignerClient) GetHeight(quorumHash crypto.QuorumHash) (int64, err
 	return 0, fmt.Errorf("getHeight should not be called on asigner client %s", quorumHash.String())
 }
 
-<<<<<<< HEAD
 func (sc *RetrySignerClient) SignVote(
-	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote,
-) error {
-=======
-func (sc *RetrySignerClient) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote, logger log.Logger) error {
->>>>>>> v0.5-dev
+	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
+	vote *tmproto.Vote, logger log.Logger) error {
 	var err error
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
 		err = sc.next.SignVote(chainID, quorumType, quorumHash, vote, nil)

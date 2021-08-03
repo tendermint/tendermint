@@ -5,10 +5,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/tendermint/tendermint/libs/log"
 	"io/ioutil"
 	"strconv"
 	"time"
+
+	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/dashevo/dashd-go/btcjson"
 
@@ -480,13 +481,9 @@ func (pv *FilePV) GetProTxHash() (crypto.ProTxHash, error) {
 
 // SignVote signs a canonical representation of the vote, along with the
 // chainID. Implements PrivValidator.
-<<<<<<< HEAD
 func (pv *FilePV) SignVote(
-	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote,
-) error {
-=======
-func (pv *FilePV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote, logger log.Logger) error {
->>>>>>> v0.5-dev
+	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
+	vote *tmproto.Vote, logger log.Logger) error {
 	if err := pv.signVote(chainID, quorumType, quorumHash, vote); err != nil {
 		return fmt.Errorf("error signing vote: %v", err)
 	}

@@ -53,7 +53,7 @@ func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 	privVal := types.NewMockPVWithParams(privKey, crypto.RandProTxHash(), state.Validators.QuorumHash,
 		state.Validators.ThresholdPublicKey, false, false)
 
-	privVal.SignVote("chainID", state.Validators.QuorumType, state.Validators.QuorumHash, g, nil)
+	_ = privVal.SignVote("chainID", state.Validators.QuorumType, state.Validators.QuorumHash, g, nil)
 
 	goodVote.BlockSignature = g.BlockSignature
 	goodVote.StateSignature = g.StateSignature

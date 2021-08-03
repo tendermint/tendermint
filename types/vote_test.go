@@ -238,7 +238,8 @@ func TestVoteVerify(t *testing.T) {
 	vote := examplePrevote()
 	vote.ValidatorProTxHash = proTxHash
 
-	_, _, err = vote.Verify("test_chain_id", quorumType, quorumHash, bls12381.GenPrivKey().PubKey(), crypto.RandProTxHash())
+	_, _, err = vote.Verify(
+		"test_chain_id", quorumType, quorumHash, bls12381.GenPrivKey().PubKey(), crypto.RandProTxHash())
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrVoteInvalidValidatorProTxHash, err)
 	}

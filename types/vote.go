@@ -239,7 +239,9 @@ func VoteStateRequestIDProto(vote *tmproto.Vote) []byte {
 	return crypto.Sha256(requestIDMessage)
 }
 
-func (vote *Vote) Verify(chainID string, quorumType btcjson.LLMQType, quorumHash []byte, pubKey crypto.PubKey, proTxHash crypto.ProTxHash) ([]byte, []byte, error) {
+func (vote *Vote) Verify(
+	chainID string, quorumType btcjson.LLMQType, quorumHash []byte,
+	pubKey crypto.PubKey, proTxHash crypto.ProTxHash) ([]byte, []byte, error) {
 	if !bytes.Equal(proTxHash, vote.ValidatorProTxHash) {
 		return nil, nil, ErrVoteInvalidValidatorProTxHash
 	}
@@ -264,11 +266,12 @@ func (vote *Vote) Verify(chainID string, quorumType btcjson.LLMQType, quorumHash
 	//	hex.EncodeToString(quorumHash), hex.EncodeToString(blockRequestID), hex.EncodeToString(blockMessageHash))
 
 	if !pubKey.VerifySignatureDigest(signID, vote.BlockSignature) {
-		return nil, nil, fmt.Errorf("%s proTxHash %s pubKey %v vote %v sign bytes %s block signature %s", ErrVoteInvalidBlockSignature.Error(),
+		return nil, nil, fmt.Errorf(
+			"%s proTxHash %s pubKey %v vote %v sign bytes %s block signature %s", ErrVoteInvalidBlockSignature.Error(),
 			proTxHash, pubKey, vote, hex.EncodeToString(voteBlockSignBytes), hex.EncodeToString(vote.BlockSignature))
 	}
 
-	stateSignId := []byte(nil)
+	stateSignID := []byte(nil)
 	// we must verify the stateID but only if the blockID isn't nil
 	if vote.BlockID.Hash != nil {
 		voteStateSignBytes := VoteStateSignBytes(chainID, v)
@@ -276,19 +279,21 @@ func (vote *Vote) Verify(chainID string, quorumType btcjson.LLMQType, quorumHash
 
 		stateRequestID := VoteStateRequestID(vote)
 
-		stateSignId = crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestId), bls12381.ReverseBytes(stateMessageHash))
+		stateSignID = crypto.SignID(
+			quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestID),
+			bls12381.ReverseBytes(stateMessageHash))
 
 		// fmt.Printf("state vote verify sign ID %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(stateSignID), quorumType,
 		//	hex.EncodeToString(quorumHash), hex.EncodeToString(stateRequestID), hex.EncodeToString(stateMessageHash))
 
-		if !pubKey.VerifySignatureDigest(stateSignId, vote.StateSignature) {
+		if !pubKey.VerifySignatureDigest(stateSignID, vote.StateSignature) {
 			return nil, nil, ErrVoteInvalidStateSignature
 		}
 	} else if vote.StateSignature != nil {
 		return nil, nil, ErrVoteStateSignatureShouldBeNil
 	}
 
-	return signID, stateSignId, nil
+	return signID, stateSignID, nil
 }
 
 // ValidateBasic performs basic validation.
