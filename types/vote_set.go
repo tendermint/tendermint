@@ -211,13 +211,14 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	}
 
 	// Check signature.
-	if err := vote.Verify(voteSet.chainID, voteSet.valSet.QuorumType, voteSet.valSet.QuorumHash, val.PubKey, val.ProTxHash); err != nil {
+	signId, stateSignId, err := vote.Verify(voteSet.chainID, voteSet.valSet.QuorumType, voteSet.valSet.QuorumHash, val.PubKey, val.ProTxHash)
+	if err != nil {
 		return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s ProTxHash %s: %w",
 			voteSet.chainID, val.PubKey, val.ProTxHash, err)
 	}
 
 	// Add vote and get conflicting vote if any.
-	added, conflicting := voteSet.addVerifiedVote(vote, blockKey, val.VotingPower)
+	added, conflicting := voteSet.addVerifiedVote(vote, blockKey, val.VotingPower, signId, stateSignId)
 	if conflicting != nil {
 		fmt.Printf("-----\n")
 		debug.PrintStack()
@@ -247,6 +248,8 @@ func (voteSet *VoteSet) addVerifiedVote(
 	vote *Vote,
 	blockKey string,
 	votingPower int64,
+	signId []byte,
+	stateSignId []byte,
 ) (added bool, conflicting *Vote) {
 	valIndex := vote.ValidatorIndex
 
@@ -309,7 +312,7 @@ func (voteSet *VoteSet) addVerifiedVote(
 			voteSet.maj23 = &maj23BlockID
 			voteSet.stateMaj23 = &stateMaj23StateID
 			if len(votesByBlock.votes) > 1 {
-				err := voteSet.recoverThresholdSigs(votesByBlock)
+				err := voteSet.recoverThresholdSigsAndVerify(votesByBlock, signId, stateSignId)
 				if err != nil {
 					// fmt.Printf("error %v quorum %d\n", err, quorum)
 					// for i, vote := range votesByBlock.votes {
@@ -334,6 +337,26 @@ func (voteSet *VoteSet) addVerifiedVote(
 	return true, conflicting
 }
 
+func (voteSet *VoteSet) recoverThresholdSigsAndVerify(blockVotes *blockVotes, signId []byte, stateSignId []byte) error {
+	err := voteSet.recoverThresholdSigs(blockVotes)
+	if err != nil {
+		return err
+	}
+	verified := voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(signId, voteSet.thresholdBlockSig)
+	if !verified {
+		thresholdBlockSig := voteSet.thresholdBlockSig
+		return fmt.Errorf("recovered incorrect threshold signature %v", thresholdBlockSig)
+	}
+	if voteSet.thresholdStateSig != nil {
+		verified = voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(stateSignId, voteSet.thresholdStateSig)
+		if !verified {
+			thresholdStateSig := voteSet.thresholdStateSig
+			return fmt.Errorf("recovered incorrect state threshold signature %v", thresholdStateSig)
+		}
+	}
+	return nil
+}
+
 func (voteSet *VoteSet) recoverThresholdSigs(blockVotes *blockVotes) error {
 	if len(blockVotes.votes) < 2 {
 		return fmt.Errorf("attempting to recover a threshold signature with only 1 vote")
@@ -353,6 +376,7 @@ func (voteSet *VoteSet) recoverThresholdSigs(blockVotes *blockVotes) error {
 		return fmt.Errorf("error recovering threshold block sig: %v", err)
 	}
 	voteSet.thresholdBlockSig = thresholdBlockSig
+
 	if voteSet.maj23 != nil && voteSet.maj23.Hash != nil {
 		// if the vote is voting for nil, then we do not care to recover the state signature
 		thresholdStateSig, err := bls12381.RecoverThresholdSignatureFromShares(stateSigs, blsIDs)

@@ -173,17 +173,18 @@ func TestValidateBlockCommit(t *testing.T) {
 			block, _ := state.MakeBlock(height, nextChainLock, makeTxs(height), wrongHeightCommit, nil,
 				proTxHash)
 			err = blockExec.ValidateBlock(state, block)
-			_, isErrInvalidCommitHeight := err.(types.ErrInvalidCommitHeight)
-			require.True(t, isErrInvalidCommitHeight, "expected ErrInvalidCommitHeight at height %d but got: %v",
-				height, err)
-
+			require.True(t, strings.HasPrefix(err.Error(), "error validating block: Invalid commit -- wrong height:"),
+				"expected error on block threshold signature at height %d, but got: %v",
+				height,
+				err,
+			)
 			/*
 				Test that the threshold block signatures are good
 			*/
 			block, _ = state.MakeBlock(height, nextChainLock, makeTxs(height), wrongSignorCommit, nil, proTxHash)
 			err = blockExec.ValidateBlock(state, block)
 			require.Error(t, err)
-			require.True(t, strings.HasPrefix(err.Error(), "incorrect threshold block signature"),
+			require.True(t, strings.HasPrefix(err.Error(), "error validating block: incorrect threshold block signature"),
 				"expected error on block threshold signature at height %d, but got: %v",
 				height,
 				err,
@@ -195,7 +196,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			block, _ = state.MakeBlock(height, nextChainLock, makeTxs(height), wrongVoteMessageSignedCommit, nil, proTxHash)
 			err = blockExec.ValidateBlock(state, block)
 			require.Error(t, err)
-			require.True(t, strings.HasPrefix(err.Error(), "incorrect threshold block signature"),
+			require.True(t, strings.HasPrefix(err.Error(), "error validating block: incorrect threshold block signature"),
 				"expected error on block threshold signature at height %d, but got: %v",
 				height,
 				err,
@@ -249,9 +250,9 @@ func TestValidateBlockCommit(t *testing.T) {
 		g := goodVote.ToProto()
 		b := badVote.ToProto()
 
-		err = badPrivVal.SignVote(chainID, state.Validators.QuorumType, badPrivValQuorumHash, g)
+		err = badPrivVal.SignVote(chainID, state.Validators.QuorumType, badPrivValQuorumHash, g, nil)
 		require.NoError(t, err, "height %d", height)
-		err = badPrivVal.SignVote(chainID, state.Validators.QuorumType, badPrivValQuorumHash, b)
+		err = badPrivVal.SignVote(chainID, state.Validators.QuorumType, badPrivValQuorumHash, b, nil)
 		require.NoError(t, err, "height %d", height)
 
 		goodVote.BlockSignature, badVote.BlockSignature = g.BlockSignature, b.BlockSignature

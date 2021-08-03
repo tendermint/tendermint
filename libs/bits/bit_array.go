@@ -308,6 +308,16 @@ func (bA *BitArray) StringIndented(indent string) string {
 	return bA.stringIndented(indent)
 }
 
+func (bA *BitArray) CountTrueBits() int {
+	bits := 0
+	for i := 0; i < bA.Bits; i++ {
+		if bA.getIndex(i) {
+			bits++
+		}
+	}
+	return bits
+}
+
 func (bA *BitArray) stringIndented(indent string) string {
 	lines := []string{}
 	bits := ""

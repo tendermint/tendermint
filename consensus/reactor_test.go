@@ -148,7 +148,7 @@ func TestReactorNoThreshold(t *testing.T) {
 
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 
-	ensurePrevote(voteCh,1,0)
+	ensurePrevote(voteCh, 1, 0)
 	waitForAndValidateNoBlock(t, T, blocksSubs, css)
 }
 

@@ -64,7 +64,7 @@ func makeVote(
 
 	vpb := vote.ToProto()
 
-	_ = privVal.SignVote(header.ChainID, valset.QuorumType, valset.QuorumHash, vpb)
+	_ = privVal.SignVote(header.ChainID, valset.QuorumType, valset.QuorumHash, vpb, nil)
 	vote.BlockSignature = vpb.BlockSignature
 	vote.StateSignature = vpb.StateSignature
 
