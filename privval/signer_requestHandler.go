@@ -147,12 +147,17 @@ func handleKeyRequest(
 	var pubKey crypto.PubKey
 	pubKey, err = privVal.GetPubKey(quorumHash)
 	if err != nil {
-		return res, err
+		res = mustWrapMsg(keyResponseFn(
+			cryptoproto.PublicKey{},
+			&privvalproto.RemoteSignerError{
+				Code:        0,
+				Description: err.Error(),
+			},
+		))
 	}
-	pk, err := cryptoenc.PubKeyToProto(pubKey)
-	if err != nil {
-		return res, err
-	}
+
+	var pk cryptoproto.PublicKey
+	pk, err = cryptoenc.PubKeyToProto(pubKey)
 
 	if err != nil {
 		res = mustWrapMsg(keyResponseFn(
