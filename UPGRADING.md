@@ -27,13 +27,34 @@ This guide provides instructions for upgrading to specific versions of Tendermin
   
 * `BootstrapPeers` has been added as part of the new p2p stack. This will eventually replace
   `Seeds`. Bootstrap peers are connected with on startup if needed for peer discovery. Unlike
-  persistent peers, there's no guarantee that the node will remain connected with these peers. 
+  persistent peers, there's no gaurantee that the node will remain connected with these peers. 
 
 * configuration values starting with `priv-validator-` have moved to the new
   `priv-validator` section, without the `priv-validator-` prefix.
 
 * The fast sync process as well as the blockchain package and service has all
   been renamed to block sync
+
+### Key Format Changes
+
+The key names of all tendermint on-disk database keys changes in
+0.35. Upgrading nodes must either re-sync all data run a migration
+script provided in this release. The script located in
+`github.com/tendermint/tendermint/scripts/keymigrate/migrate.go`
+provides the function `Migrate(context.Context, db.DB)` which you can
+operationalize as makes sense for your deployment. 
+
+For ease of use the `tendermint` command includes a CLI version of the
+migration script, which you can invoke, as in: 
+
+	tendermint key-migrate
+	
+This reads the configuration file as normal and allows the
+`--db-backend` and `--db-dir` flags to change database operations as
+needed. 
+
+The migration operation is idempotent and can be run more than once,
+if needed.
 
 ### CLI Changes
 
@@ -66,7 +87,7 @@ are:
 - `blockchain`
 - `evidence`
 
-Accordingly, the space `node` package was changed to reduce access to
+Accordingly, the `node` package was changed to reduce access to
 tendermint internals: applications that use tendermint as a library
 will need to change to accommodate these changes. Most notably:
 
