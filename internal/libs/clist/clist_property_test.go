@@ -4,8 +4,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/internal/libs/clist"
 	"pgregory.net/rapid"
+
+	"github.com/tendermint/tendermint/internal/libs/clist"
 )
 
 func TestCListProperties(t *testing.T) {
