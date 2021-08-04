@@ -2257,7 +2257,10 @@ func (cs *State) voteTime() time.Time {
 
 // sign the vote and publish on internalMsgQueue
 func (cs *State) signAddVote(
-  msgType tmproto.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
+  msgType tmproto.SignedMsgType,
+  hash []byte,
+  header types.PartSetHeader,
+) *types.Vote {
 	if cs.privValidator == nil { // the node does not have a key
 		return nil
 	}
