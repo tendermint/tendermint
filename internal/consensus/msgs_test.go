@@ -355,7 +355,7 @@ func TestConsMsgsVectors(t *testing.T) {
 	pbProposal := proposal.ToProto()
 
 	ext := types.VoteExtension{
-		AppDataSigned:             []byte("signed"),
+		AppDataToSign:             []byte("signed"),
 		AppDataSelfAuthenticating: []byte("auth"),
 	}
 

@@ -805,8 +805,7 @@ func (commit *Commit) GetVote(valIdx int32) *Vote {
 		ValidatorAddress: commitSig.ValidatorAddress,
 		ValidatorIndex:   valIdx,
 		Signature:        commitSig.Signature,
-		// XXX: check if self-authenticating is needed
-		VoteExtension: commitSig.VoteExtension.FromSigned(),
+		VoteExtension:    commitSig.VoteExtension.FromSigned(),
 	}
 }
 
