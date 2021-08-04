@@ -26,6 +26,13 @@ func TestStatus(t *testing.T) {
 					MaxPeerBlockHeight: 20,
 					TotalSyncedTime:    time.Second,
 					RemainingTime:      time.Minute,
+					TotalSnapshots:     10,
+					ChunkProcess:       time.Duration(10),
+					SnapshotHeight:     10,
+					SnapshotChunk:      9,
+					SnapshotChunkTotal: 10,
+					BackFill:           9,
+					BackFillTotal:      10,
 				},
 			}},
 	}
@@ -56,4 +63,12 @@ func TestStatus(t *testing.T) {
 	assert.EqualValues(20, st.SyncInfo.MaxPeerBlockHeight)
 	assert.EqualValues(time.Second, status.SyncInfo.TotalSyncedTime)
 	assert.EqualValues(time.Minute, status.SyncInfo.RemainingTime)
+
+	assert.EqualValues(10, st.SyncInfo.TotalSnapshots)
+	assert.EqualValues(time.Duration(10), st.SyncInfo.ChunkProcess)
+	assert.EqualValues(10, st.SyncInfo.SnapshotHeight)
+	assert.EqualValues(9, status.SyncInfo.SnapshotChunk)
+	assert.EqualValues(10, status.SyncInfo.SnapshotChunkTotal)
+	assert.EqualValues(9, status.SyncInfo.BackFill)
+	assert.EqualValues(10, status.SyncInfo.BackFillTotal)
 }

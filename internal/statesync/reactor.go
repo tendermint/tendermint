@@ -347,9 +347,6 @@ func (r *Reactor) Backfill(ctx context.Context, state sm.State) error {
 		stopTime = state.LastBlockTime
 	}
 
-	r.backfillTotal = state.LastBlockHeight - stopHeight
-	r.metrics.BackFillTotal.Set(float64(r.backfillTotal))
-
 	return r.backfill(
 		ctx,
 		state.ChainID,
@@ -370,6 +367,9 @@ func (r *Reactor) backfill(
 ) error {
 	r.Logger.Info("starting backfill process...", "startHeight", startHeight,
 		"stopHeight", stopHeight, "stopTime", stopTime, "trustedBlockID", trustedBlockID)
+
+	r.backfillTotal = startHeight - stopHeight + 1
+	r.metrics.BackFillTotal.Set(float64(r.backfillTotal))
 
 	const sleepTime = 1 * time.Second
 	var (
@@ -506,6 +506,13 @@ func (r *Reactor) backfill(
 
 			r.backfills++
 			r.metrics.BackFill.Add(1)
+
+			// the block height might less than the stopHeight because of the stopTime condition
+			// hasn't been fulfilled.
+			if resp.block.Height < stopHeight {
+				r.backfillTotal++
+				r.metrics.BackFillTotal.Set(float64(r.backfillTotal))
+			}
 
 		case <-queue.done():
 			if err := queue.error(); err != nil {

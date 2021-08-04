@@ -195,6 +195,10 @@ func TestSyncer_SyncAny(t *testing.T) {
 	require.Equal(t, expectState, newState)
 	require.Equal(t, commit, lastCommit)
 
+	require.Equal(t, len(chunks), int(rts.syncer.proccessingSnapshot.Chunks))
+	require.Equal(t, expectState.LastBlockHeight, rts.syncer.lastSyncedSnapshotHeight)
+	require.True(t, rts.syncer.avgChunkTime > 0)
+
 	connSnapshot.AssertExpectations(t)
 	connQuery.AssertExpectations(t)
 }

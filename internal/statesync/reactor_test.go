@@ -598,6 +598,9 @@ func TestReactor_Backfill(t *testing.T) {
 			)
 			if failureRate > 3 {
 				require.Error(t, err)
+
+				require.True(t, rts.reactor.backfills < 2)
+				require.Equal(t, startHeight-stopHeight+1, rts.reactor.backfillTotal)
 			} else {
 				require.NoError(t, err)
 
@@ -608,7 +611,11 @@ func TestReactor_Backfill(t *testing.T) {
 
 				require.Nil(t, rts.blockStore.LoadBlockMeta(stopHeight-1))
 				require.Nil(t, rts.blockStore.LoadBlockMeta(startHeight+1))
+
+				require.Equal(t, startHeight-stopHeight+1, rts.reactor.backfills)
+				require.Equal(t, startHeight-stopHeight+1, rts.reactor.backfillTotal)
 			}
+
 		})
 	}
 }
