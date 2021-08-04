@@ -21,7 +21,7 @@ jobs:
       - name: test & coverage report creation
         run: |
           go test ./... -mod=readonly -timeout 8m -race -coverprofile=coverage.txt -covermode=atomic -tags=memdb,goleveldb,cleveldb,boltdb,rocksdb,badgerdb -v
-      - uses: codecov/codecov-action@v2.0.1
+      - uses: codecov/codecov-action@v2.0.2
         with:
           file: ./coverage.txt
           fail_ci_if_error: true  
