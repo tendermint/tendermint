@@ -346,7 +346,6 @@ func (r *Reactor) Backfill(ctx context.Context, state sm.State) error {
 		// this essentially makes stop time a void criteria for termination
 		stopTime = state.LastBlockTime
 	}
-
 	return r.backfill(
 		ctx,
 		state.ChainID,
@@ -448,6 +447,7 @@ func (r *Reactor) backfill(
 						peer:  peer,
 					})
 					r.Logger.Debug("backfill: added light block to processing queue", "height", height)
+
 				case <-queue.done():
 					return
 				}
