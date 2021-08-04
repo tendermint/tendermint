@@ -507,7 +507,7 @@ func (r *Reactor) backfill(
 			r.backfills++
 			r.metrics.BackFill.Add(1)
 
-			// the block height might less than the stopHeight because of the stopTime condition
+			// the block height might be less than the stopHeight because of the stopTime condition
 			// hasn't been fulfilled.
 			if resp.block.Height < stopHeight {
 				r.backfillTotal++
