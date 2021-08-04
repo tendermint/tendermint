@@ -125,6 +125,19 @@ const (
 	maxLightBlockRequestRetries = 20
 )
 
+// SyncReactor defines an interface used for the rpc syncinfo query.
+type SyncReactor interface {
+	// The following calls are for the rpc sync info query, please see statesync.metrics for
+	// the details.
+	GetTotalSnapshots() int64
+	GetChunkProcess() time.Duration
+	GetSnapshotHeight() int64
+	GetSnapshotChunk() int64
+	GetSnapshotChunkTotal() int64
+	GetBackFill() int64
+	GetBackFillTotal() int64
+}
+
 // Reactor handles state sync, both restoring snapshots for the local node and
 // serving snapshots for other nodes.
 type Reactor struct {
@@ -159,7 +172,9 @@ type Reactor struct {
 	providers     map[types.NodeID]*BlockProvider
 	stateProvider StateProvider
 
-	metrics *Metrics
+	metrics       *Metrics
+	backfillTotal int64
+	backfills     int64
 }
 
 // NewReactor returns a reference to a new state sync reactor, which implements
@@ -332,7 +347,8 @@ func (r *Reactor) Backfill(ctx context.Context, state sm.State) error {
 		stopTime = state.LastBlockTime
 	}
 
-	r.metrics.BackFillTotal.Set(float64(state.LastBlockHeight - stopHeight))
+	r.backfillTotal = state.LastBlockHeight - stopHeight
+	r.metrics.BackFillTotal.Set(float64(r.backfillTotal))
 
 	return r.backfill(
 		ctx,
@@ -488,6 +504,7 @@ func (r *Reactor) backfill(
 
 			lastValidatorSet = resp.block.ValidatorSet
 
+			r.backfills++
 			r.metrics.BackFill.Add(1)
 
 		case <-queue.done():
@@ -1013,4 +1030,58 @@ func (r *Reactor) initStateProvider(ctx context.Context, chainID string, initial
 		}
 	}
 	return nil
+}
+
+func (r *Reactor) GetTotalSnapshots() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	return int64(len(r.syncer.snapshots.snapshots))
+}
+
+func (r *Reactor) GetChunkProcess() time.Duration {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	return time.Duration(r.syncer.avgChunkTime)
+}
+
+func (r *Reactor) GetSnapshotHeight() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	return r.syncer.lastSyncedSnapshotHeight
+}
+func (r *Reactor) GetSnapshotChunk() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	if r.syncer.chunks != nil {
+		return int64(r.syncer.chunks.chunkReturnedSize())
+	}
+	return 0
+}
+
+func (r *Reactor) GetSnapshotChunkTotal() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	if r.syncer.proccessingSnapshot != nil {
+		return int64(r.syncer.proccessingSnapshot.Chunks)
+	}
+	return 0
+}
+
+func (r *Reactor) GetBackFill() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	return r.backfills
+}
+
+func (r *Reactor) GetBackFillTotal() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	return r.backfillTotal
 }

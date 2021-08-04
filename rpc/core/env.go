@@ -10,6 +10,7 @@ import (
 	"github.com/tendermint/tendermint/internal/consensus"
 	mempl "github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/statesync"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
@@ -97,6 +98,7 @@ type Environment struct {
 	EventBus         *types.EventBus // thread safe
 	Mempool          mempl.Mempool
 	BlockSyncReactor consensus.BlockSyncReactor
+	StateSyncReactor statesync.SyncReactor
 
 	Logger log.Logger
 

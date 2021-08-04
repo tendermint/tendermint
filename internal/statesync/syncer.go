@@ -66,6 +66,10 @@ type syncer struct {
 	mtx     tmsync.RWMutex
 	chunks  *chunkQueue
 	metrics *Metrics
+
+	avgChunkTime             int64
+	lastSyncedSnapshotHeight int64
+	proccessingSnapshot      *snapshot
 }
 
 // newSyncer creates a new syncer.
@@ -194,12 +198,15 @@ func (s *syncer) SyncAny(
 			defer chunks.Close() // in case we forget to close it elsewhere
 		}
 
+		s.proccessingSnapshot = snapshot
+
 		s.metrics.SnapshotChunkTotal.Set(float64(snapshot.Chunks))
 
 		newState, commit, err := s.Sync(ctx, snapshot, chunks)
 		switch {
 		case err == nil:
 			s.metrics.SnapshotHeight.Set(float64(snapshot.Height))
+			s.lastSyncedSnapshotHeight = int64(snapshot.Height)
 			return newState, commit, nil
 
 		case errors.Is(err, errAbort):
@@ -485,8 +492,8 @@ func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *ch
 			next = true
 
 			s.metrics.SnapshotChunk.Add(1)
-			avg := time.Since(start).Nanoseconds() / int64(chunks.chunkReturnedSize())
-			s.metrics.ChunkProcess.Set(float64(avg))
+			s.avgChunkTime = time.Since(start).Nanoseconds() / int64(chunks.chunkReturnedSize())
+			s.metrics.ChunkProcess.Set(float64(s.avgChunkTime))
 		case <-ticker.C:
 			next = false
 

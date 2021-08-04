@@ -73,6 +73,13 @@ func (env *Environment) Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, err
 			CatchingUp:          env.ConsensusReactor.WaitSync(),
 			TotalSyncedTime:     env.BlockSyncReactor.GetTotalSyncedTime(),
 			RemainingTime:       env.BlockSyncReactor.GetRemainingSyncTime(),
+			TotalSnapshots:      env.StateSyncReactor.GetTotalSnapshots(),
+			ChunkProcess:        env.StateSyncReactor.GetChunkProcess(),
+			SnapshotHeight:      env.StateSyncReactor.GetSnapshotHeight(),
+			SnapshotChunk:       env.StateSyncReactor.GetSnapshotChunk(),
+			SnapshotChunkTotal:  env.StateSyncReactor.GetSnapshotChunkTotal(),
+			BackFill:            env.StateSyncReactor.GetBackFill(),
+			BackFillTotal:       env.StateSyncReactor.GetBackFillTotal(),
 		},
 		ValidatorInfo: validatorInfo,
 	}
