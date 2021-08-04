@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.5
+
+**2021-08-04**
+
+### Breaking changes (Go API)
+
+- [metadb] [\#151](https://github.com/tendermint/tm-db/pull/151) split backends into packages and add metadb (@marbar3778, @mvdan)
+
+### Version bumps
+
+- Bump dgraph/badger to v2.
+- Bump go.etcd.io/bbolt from 1.3.5 to 1.3.6.
+- Bump grpc from 1.35.0 to 1.38.0.
+
 ## 0.6.4
 
 **2021-02-09**
