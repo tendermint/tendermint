@@ -599,7 +599,7 @@ func TestReactor_Backfill(t *testing.T) {
 			if failureRate > 3 {
 				require.Error(t, err)
 
-				require.True(t, rts.reactor.backfills < 2)
+				require.NotEqual(t, rts.reactor.backfills, rts.reactor.backfillTotal)
 				require.Equal(t, startHeight-stopHeight+1, rts.reactor.backfillTotal)
 			} else {
 				require.NoError(t, err)

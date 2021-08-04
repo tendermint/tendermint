@@ -1043,27 +1043,36 @@ func (r *Reactor) GetTotalSnapshots() int64 {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 
-	return int64(len(r.syncer.snapshots.snapshots))
+	if r.syncer != nil && r.syncer.snapshots != nil {
+		return int64(len(r.syncer.snapshots.snapshots))
+	}
+	return 0
 }
 
 func (r *Reactor) GetChunkProcess() time.Duration {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 
-	return time.Duration(r.syncer.avgChunkTime)
+	if r.syncer != nil {
+		return time.Duration(r.syncer.avgChunkTime)
+	}
+	return time.Duration(0)
 }
 
 func (r *Reactor) GetSnapshotHeight() int64 {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 
-	return r.syncer.lastSyncedSnapshotHeight
+	if r.syncer != nil {
+		return r.syncer.lastSyncedSnapshotHeight
+	}
+	return 0
 }
 func (r *Reactor) GetSnapshotChunk() int64 {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 
-	if r.syncer.chunks != nil {
+	if r.syncer != nil && r.syncer.chunks != nil {
 		return int64(r.syncer.chunks.chunkReturnedSize())
 	}
 	return 0
@@ -1073,7 +1082,7 @@ func (r *Reactor) GetSnapshotChunkTotal() int64 {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 
-	if r.syncer.proccessingSnapshot != nil {
+	if r.syncer != nil && r.syncer.proccessingSnapshot != nil {
 		return int64(r.syncer.proccessingSnapshot.Chunks)
 	}
 	return 0
