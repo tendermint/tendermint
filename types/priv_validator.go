@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/tendermint/tendermint/libs/log"
 	"strconv"
 
 	"github.com/dashevo/dashd-go/btcjson"
@@ -28,7 +29,7 @@ type PrivValidator interface {
 	GetThresholdPublicKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error)
 	GetHeight(quorumHash crypto.QuorumHash) (int64, error)
 
-	SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error
+	SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote, logger log.Logger) error
 	SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) ([]byte, error)
 
 	ExtractIntoValidator(quorumHash crypto.QuorumHash) *Validator
@@ -177,14 +178,14 @@ func (pv *MockPV) GetHeight(quorumHash crypto.QuorumHash) (int64, error) {
 }
 
 // SignVote implements PrivValidator.
-func (pv *MockPV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
+func (pv *MockPV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote, logger log.Logger) error {
 	useChainID := chainID
 	if pv.breakVoteSigning {
 		useChainID = "incorrect-chain-id"
 	}
 
 	blockSignID := VoteBlockSignId(useChainID, vote, quorumType, quorumHash)
-	stateSignId := VoteStateSignId(useChainID, vote, quorumType, quorumHash)
+
 
 	var privKey crypto.PrivKey
 	if quorumKeys, ok := pv.PrivateKeys[quorumHash.String()]; ok {
@@ -203,7 +204,8 @@ func (pv *MockPV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 	}
 	vote.BlockSignature = blockSignature
 
-	if stateSignId != nil {
+	if vote.BlockID.Hash != nil {
+		stateSignId := VoteStateSignId(useChainID, vote, quorumType, quorumHash)
 		stateSignature, err := privKey.SignDigest(stateSignId)
 		if err != nil {
 			return err
@@ -296,7 +298,7 @@ type ErroringMockPV struct {
 var ErroringMockPVErr = errors.New("erroringMockPV always returns an error")
 
 // SignVote Implements PrivValidator.
-func (pv *ErroringMockPV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
+func (pv *ErroringMockPV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote, logger log.Logger) error {
 	return ErroringMockPVErr
 }
 

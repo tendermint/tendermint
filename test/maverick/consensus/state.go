@@ -1802,8 +1802,7 @@ func (cs *State) signVote(
 	}
 
 	v := vote.ToProto()
-	err := cs.privValidator.SignVote(cs.state.ChainID, cs.state.Validators.QuorumType,
-		cs.state.Validators.QuorumHash, v)
+	err := cs.privValidator.SignVote(cs.state.ChainID, cs.state.Validators.QuorumType, cs.state.Validators.QuorumHash, v, nil)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
 

@@ -293,7 +293,7 @@ func (th *TestHarness) TestSignVote() error {
 		voteBlockId := types.VoteBlockSignId(th.chainID, v, btcjson.LLMQType_5_60, th.quorumHash)
 		voteStateId := types.VoteStateSignId(th.chainID, v, btcjson.LLMQType_5_60, th.quorumHash)
 		// sign the vote
-		if err := th.signerClient.SignVote(th.chainID, btcjson.LLMQType_5_60, th.quorumHash, v); err != nil {
+		if err := th.signerClient.SignVote(th.chainID, btcjson.LLMQType_5_60, th.quorumHash, v, nil); err != nil {
 			th.logger.Error("FAILED: Signing of vote", "err", err)
 			return newTestHarnessError(ErrTestSignVoteFailed, err, fmt.Sprintf("voteType=%d", voteType))
 		}

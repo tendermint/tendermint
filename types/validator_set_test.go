@@ -636,7 +636,7 @@ func TestValidatorSet_VerifyCommit_CheckThresholdSignatures(t *testing.T) {
 	// malleate threshold sigs signature
 	vote := voteSet.GetByIndex(3)
 	v := vote.ToProto()
-	err = vals[3].SignVote("CentaurusA", valSet.QuorumType, valSet.QuorumHash, v)
+	err = vals[3].SignVote("CentaurusA", valSet.QuorumType, valSet.QuorumHash, v, nil)
 	require.NoError(t, err)
 	commit.ThresholdBlockSignature = v.BlockSignature
 	commit.ThresholdStateSignature = v.StateSignature
