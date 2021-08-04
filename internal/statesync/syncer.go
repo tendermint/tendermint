@@ -302,7 +302,7 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 	defer cancel()
 	fetchStartTime := time.Now()
 	for i := int32(0); i < s.fetchers; i++ {
-		go s.fetchChunks(fetchCtx, snapshot, chunks, fetchStartTime)
+		go s.fetchChunks(fetchCtx, snapshot, chunks)
 	}
 
 	pctx, pcancel := context.WithTimeout(ctx, 1*time.Minute)
@@ -339,7 +339,7 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 	}
 
 	// Restore snapshot
-	err = s.applyChunks(ctx, chunks)
+	err = s.applyChunks(ctx, chunks, fetchStartTime)
 	if err != nil {
 		return sm.State{}, nil, err
 	}
@@ -396,7 +396,7 @@ func (s *syncer) offerSnapshot(ctx context.Context, snapshot *snapshot) error {
 
 // applyChunks applies chunks to the app. It returns various errors depending on the app's
 // response, or nil once the snapshot is fully restored.
-func (s *syncer) applyChunks(ctx context.Context, chunks *chunkQueue) error {
+func (s *syncer) applyChunks(ctx context.Context, chunks *chunkQueue, start time.Time) error {
 	for {
 		chunk, err := chunks.Next()
 		if err == errDone {
@@ -415,6 +415,10 @@ func (s *syncer) applyChunks(ctx context.Context, chunks *chunkQueue) error {
 		}
 		s.logger.Info("Applied snapshot chunk to ABCI app", "height", chunk.Height,
 			"format", chunk.Format, "chunk", chunk.Index, "total", chunks.Size())
+
+		s.metrics.SnapshotChunk.Add(1)
+		s.avgChunkTime = time.Since(start).Nanoseconds() / int64(chunks.chunkReturnedSize())
+		s.metrics.ChunkProcess.Set(float64(s.avgChunkTime))
 
 		// Discard and refetch any chunks as requested by the app
 		for _, index := range resp.RefetchChunks {
@@ -454,7 +458,7 @@ func (s *syncer) applyChunks(ctx context.Context, chunks *chunkQueue) error {
 
 // fetchChunks requests chunks from peers, receiving allocations from the chunk queue. Chunks
 // will be received from the reactor via syncer.AddChunks() to chunkQueue.Add().
-func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *chunkQueue, start time.Time) {
+func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *chunkQueue) {
 	var (
 		next  = true
 		index uint32
@@ -491,9 +495,6 @@ func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *ch
 		case <-chunks.WaitFor(index):
 			next = true
 
-			s.metrics.SnapshotChunk.Add(1)
-			s.avgChunkTime = time.Since(start).Nanoseconds() / int64(chunks.chunkReturnedSize())
-			s.metrics.ChunkProcess.Set(float64(s.avgChunkTime))
 		case <-ticker.C:
 			next = false
 
