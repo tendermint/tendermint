@@ -416,10 +416,6 @@ func (s *syncer) applyChunks(ctx context.Context, chunks *chunkQueue, start time
 		s.logger.Info("Applied snapshot chunk to ABCI app", "height", chunk.Height,
 			"format", chunk.Format, "chunk", chunk.Index, "total", chunks.Size())
 
-		s.metrics.SnapshotChunk.Add(1)
-		s.avgChunkTime = time.Since(start).Nanoseconds() / int64(chunks.chunkReturnedSize())
-		s.metrics.ChunkProcess.Set(float64(s.avgChunkTime))
-
 		// Discard and refetch any chunks as requested by the app
 		for _, index := range resp.RefetchChunks {
 			err := chunks.Discard(index)
@@ -442,6 +438,9 @@ func (s *syncer) applyChunks(ctx context.Context, chunks *chunkQueue, start time
 
 		switch resp.Result {
 		case abci.ResponseApplySnapshotChunk_ACCEPT:
+			s.metrics.SnapshotChunk.Add(1)
+			s.avgChunkTime = time.Since(start).Nanoseconds() / int64(chunks.chunkReturnedSize())
+			s.metrics.ChunkProcess.Set(float64(s.avgChunkTime))
 		case abci.ResponseApplySnapshotChunk_ABORT:
 			return errAbort
 		case abci.ResponseApplySnapshotChunk_RETRY:
