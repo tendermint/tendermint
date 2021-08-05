@@ -521,7 +521,9 @@ func TestNodeSetEventSink(t *testing.T) {
 		genDoc, err := types.GenesisDocFromFile(config.GenesisFile())
 		require.NoError(t, err)
 
-		indexService, eventSinks, err := createAndStartIndexerService(config, cfg.DefaultDBProvider, eventBus, logger, genDoc.ChainID)
+		indexService, eventSinks, err := createAndStartIndexerService(config,
+			cfg.DefaultDBProvider, eventBus, logger, genDoc.ChainID)
+		require.NoError(t, err)
 		t.Cleanup(func() { require.NoError(t, indexService.Stop()) })
 		return eventSinks
 	}

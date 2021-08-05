@@ -61,22 +61,21 @@ type nodeImpl struct {
 	isListening bool
 
 	// services
-	eventBus          *types.EventBus // pub/sub for services
-	stateStore        sm.Store
-	blockStore        *store.BlockStore // store the blockchain to disk
-	bcReactor         service.Service   // for fast-syncing
-	mempoolReactor    service.Service   // for gossipping transactions
-	mempool           mempool.Mempool
-	stateSync         bool                    // whether the node should state sync on startup
-	stateSyncReactor  *statesync.Reactor      // for hosting and restoring state sync snapshots
-	stateSyncProvider statesync.StateProvider // provides state data for bootstrapping a node
-	consensusReactor  *cs.Reactor             // for participating in the consensus
-	pexReactor        service.Service         // for exchanging peer addresses
-	evidenceReactor   service.Service
-	rpcListeners      []net.Listener // rpc servers
-	indexerService    service.Service
-	rpcEnv            *rpccore.Environment
-	prometheusSrv     *http.Server
+	eventBus         *types.EventBus // pub/sub for services
+	stateStore       sm.Store
+	blockStore       *store.BlockStore // store the blockchain to disk
+	bcReactor        service.Service   // for fast-syncing
+	mempoolReactor   service.Service   // for gossipping transactions
+	mempool          mempool.Mempool
+	stateSync        bool               // whether the node should state sync on startup
+	stateSyncReactor *statesync.Reactor // for hosting and restoring state sync snapshots
+	consensusReactor *cs.Reactor        // for participating in the consensus
+	pexReactor       service.Service    // for exchanging peer addresses
+	evidenceReactor  service.Service
+	rpcListeners     []net.Listener // rpc servers
+	indexerService   service.Service
+	rpcEnv           *rpccore.Environment
+	prometheusSrv    *http.Server
 }
 
 // newDefaultNode returns a Tendermint node with default settings for the
