@@ -522,7 +522,6 @@ func makeSeedNode(config *cfg.Config,
 			return nil, err
 		}
 	} else {
-
 		sw = createSwitch(
 			config, transport, p2pMetrics, nil, nil,
 			nil, nil, nil, nil, nodeInfo, nodeKey, p2pLogger,
@@ -612,46 +611,47 @@ func (n *nodeImpl) OnStart() error {
 		if err = n.router.Start(); err != nil {
 			return err
 		}
-
-		if n.config.Mode != cfg.ModeSeed {
-			if n.config.BlockSync.Version == cfg.BlockSyncV0 {
-				// Start the real blockchain reactor separately since the switch uses the shim.
-				if err := n.bcReactor.Start(); err != nil {
-					return err
-				}
-			}
-
-			// Start the real consensus reactor separately since the switch uses the shim.
-			if err := n.consensusReactor.Start(); err != nil {
-				return err
-			}
-
-			// Start the real state sync reactor separately since the switch uses the shim.
-			if err := n.stateSyncReactor.Start(); err != nil {
-				return err
-			}
-
-			// Start the real mempool reactor separately since the switch uses the shim.
-			if err := n.mempoolReactor.Start(); err != nil {
-				return err
-			}
-
-			// Start the real evidence reactor separately since the switch uses the shim.
-			if err := n.evidenceReactor.Start(); err != nil {
-				return err
-			}
-		}
-
-		if err := n.pexReactor.Start(); err != nil {
-			return err
-		}
 	} else {
 		// Add private IDs to addrbook to block those peers being added
 		n.addrBook.AddPrivateIDs(strings.SplitAndTrimEmpty(n.config.P2P.PrivatePeerIDs, ",", " "))
 		if err = n.sw.Start(); err != nil {
 			return err
 		}
+	}
 
+	if n.config.Mode != cfg.ModeSeed {
+		if n.config.BlockSync.Version == cfg.BlockSyncV0 {
+			if err := n.bcReactor.Start(); err != nil {
+				return err
+			}
+		}
+
+		// Start the real consensus reactor separately since the switch uses the shim.
+		if err := n.consensusReactor.Start(); err != nil {
+			return err
+		}
+
+		// Start the real state sync reactor separately since the switch uses the shim.
+		if err := n.stateSyncReactor.Start(); err != nil {
+			return err
+		}
+
+		// Start the real mempool reactor separately since the switch uses the shim.
+		if err := n.mempoolReactor.Start(); err != nil {
+			return err
+		}
+
+		// Start the real evidence reactor separately since the switch uses the shim.
+		if err := n.evidenceReactor.Start(); err != nil {
+			return err
+		}
+	}
+
+	if n.config.P2P.DisableLegacy {
+		if err := n.pexReactor.Start(); err != nil {
+			return err
+		}
+	} else {
 		// Always connect to persistent peers
 		err = n.sw.DialPeersAsync(strings.SplitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
 		if err != nil {
