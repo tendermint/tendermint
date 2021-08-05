@@ -3,7 +3,7 @@ module github.com/tendermint/tendermint
 go 1.16
 
 require (
-	github.com/BurntSushi/toml v0.3.1
+	github.com/BurntSushi/toml v0.4.1
 	github.com/Masterminds/squirrel v1.5.0
 	github.com/Workiva/go-datastructures v1.0.53
 	github.com/adlio/schema v1.1.13
@@ -39,4 +39,5 @@ require (
 	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
 	google.golang.org/grpc v1.39.0
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
+	pgregory.net/rapid v0.4.7
 )
