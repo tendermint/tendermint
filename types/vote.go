@@ -47,36 +47,36 @@ func NewConflictingVoteError(vote1, vote2 *Vote) *ErrVoteConflictingVotes {
 type Address = crypto.Address
 
 type VoteExtensionToSign struct {
-	AppDataSigned []byte `json:"app_data_signed"`
+	AppDataToSign []byte `json:"app_data_to_sign"`
 }
 
 func (ext VoteExtensionToSign) BytesPacked() []byte {
-	res := make([]byte, len(ext.AppDataSigned))
-	copy(res, ext.AppDataSigned)
+	res := make([]byte, len(ext.AppDataToSign))
+	copy(res, ext.AppDataToSign)
 	return res
 }
 
 func (ext VoteExtensionToSign) FromSigned() VoteExtension {
 	return VoteExtension{
-		AppDataSigned: ext.AppDataSigned,
+		AppDataToSign: ext.AppDataToSign,
 	}
 }
 
 type VoteExtension struct {
-	AppDataSigned             []byte `json:"app_data_signed"`
+	AppDataToSign             []byte `json:"app_data_to_sign"`
 	AppDataSelfAuthenticating []byte `json:"app_data_self_authenticating"`
 }
 
 func (ext VoteExtension) ToSigned() VoteExtensionToSign {
 	return VoteExtensionToSign{
-		AppDataSigned: ext.AppDataSigned,
+		AppDataToSign: ext.AppDataToSign,
 	}
 }
 
 func (ext VoteExtension) BytesPacked() []byte {
-	res := make([]byte, len(ext.AppDataSigned)+len(ext.AppDataSelfAuthenticating))
-	copy(res[:len(ext.AppDataSigned)], ext.AppDataSigned)
-	copy(res[len(ext.AppDataSigned):], ext.AppDataSelfAuthenticating)
+	res := make([]byte, len(ext.AppDataToSign)+len(ext.AppDataSelfAuthenticating))
+	copy(res[:len(ext.AppDataToSign)], ext.AppDataToSign)
+	copy(res[len(ext.AppDataToSign):], ext.AppDataSelfAuthenticating)
 	return res
 }
 
@@ -245,16 +245,16 @@ func (vote *Vote) ValidateBasic() error {
 
 func (ext VoteExtension) Copy() VoteExtension {
 	res := VoteExtension{
-		AppDataSigned:             make([]byte, len(ext.AppDataSigned)),
+		AppDataToSign:             make([]byte, len(ext.AppDataToSign)),
 		AppDataSelfAuthenticating: make([]byte, len(ext.AppDataSelfAuthenticating)),
 	}
-	copy(res.AppDataSigned, ext.AppDataSigned)
+	copy(res.AppDataToSign, ext.AppDataToSign)
 	copy(res.AppDataSelfAuthenticating, ext.AppDataSelfAuthenticating)
 	return res
 }
 
 func (ext VoteExtension) IsEmpty() bool {
-	if len(ext.AppDataSigned) != 0 {
+	if len(ext.AppDataToSign) != 0 {
 		return false
 	}
 	if len(ext.AppDataSelfAuthenticating) != 0 {
@@ -269,7 +269,7 @@ func (ext VoteExtension) ToProto() *tmproto.VoteExtension {
 	}
 
 	return &tmproto.VoteExtension{
-		AppDataSigned:             ext.AppDataSigned,
+		AppDataToSign:             ext.AppDataToSign,
 		AppDataSelfAuthenticating: ext.AppDataSelfAuthenticating,
 	}
 }
@@ -297,7 +297,7 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 func VoteExtensionFromProto(pext *tmproto.VoteExtension) VoteExtension {
 	ext := VoteExtension{}
 	if pext != nil {
-		ext.AppDataSigned = pext.AppDataSigned
+		ext.AppDataToSign = pext.AppDataToSign
 		ext.AppDataSelfAuthenticating = pext.AppDataSelfAuthenticating
 	}
 	return ext

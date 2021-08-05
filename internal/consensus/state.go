@@ -2217,16 +2217,16 @@ func (cs *State) signVote(
 		timeout = time.Second
 	}
 
-	// If the signedMessage type is for precommit, add VoteExtension
-	switch msgType {
-	case tmproto.PrecommitType:
-		ext, err := cs.blockExec.ExtendVote(cs.Height, cs.Round)
-		if err != nil {
-			return nil, err
-		}
-		vote.VoteExtension = ext
-	default:
-	}
+  // If the signedMessage type is for precommit, add VoteExtension
+  switch msgType {
+  case tmproto.PrecommitType:
+    ext, err := cs.blockExec.ExtendVote(vote)
+    if err != nil {
+      return nil, err
+    }
+    vote.VoteExtension = ext
+  default:
+  }
 
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
@@ -2263,7 +2263,10 @@ func (cs *State) voteTime() time.Time {
 
 // sign the vote and publish on internalMsgQueue
 func (cs *State) signAddVote(
-	msgType tmproto.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
+  msgType tmproto.SignedMsgType,
+  hash []byte,
+  header types.PartSetHeader,
+) *types.Vote {
 	if cs.privValidator == nil { // the node does not have a key
 		return nil
 	}

@@ -36,7 +36,7 @@ func exampleVote() *types.Vote {
 		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
 		ValidatorIndex:   56789,
 		VoteExtension: types.VoteExtension {
-			AppDataSigned: []byte("app_data_signed"),
+			AppDataToSign: []byte("app_data_to_sign"),
 			AppDataSelfAuthenticating: []byte("app_data_self_authenticating"),
 		},
 	}
