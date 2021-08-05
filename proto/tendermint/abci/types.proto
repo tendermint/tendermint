@@ -35,7 +35,7 @@ message Request {
     RequestOfferSnapshot       offer_snapshot        = 12;
     RequestLoadSnapshotChunk   load_snapshot_chunk   = 13;
     RequestApplySnapshotChunk  apply_snapshot_chunk  = 14;
-    RequestExtendVote          extend_vote        = 15;
+    RequestExtendVote          extend_vote           = 15;
     RequestVerifyVoteExtension verify_vote_extension = 16;
   }
 }
@@ -121,8 +121,7 @@ message RequestApplySnapshotChunk {
 
 // Extends a vote with application-side injection
 message RequestExtendVote {
-  uint64 height = 1;
-  uint64 round = 2;
+  types.Vote vote = 1;
 }
 
 // Verify the vote extension

@@ -236,11 +236,10 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	return state, nil
 }
 
-func (blockExec *BlockExecutor) ExtendVote(height int64, round int32) (types.VoteExtension, error) {
+func (blockExec *BlockExecutor) ExtendVote(vote *types.Vote) (types.VoteExtension, error) {
   ctx := context.Background()
   req := abci.RequestExtendVote{
-    Height: uint64(height),
-    Round:  uint64(round),
+    Vote: vote.ToProto(),
   }
 
   resp, err := blockExec.proxyApp.ExtendVoteSync(ctx, req)
