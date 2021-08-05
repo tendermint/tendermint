@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/types"
 )
 
 // knownAddress tracks information about a known network address
@@ -30,7 +31,7 @@ func newKnownAddress(addr *p2p.NetAddress, src *p2p.NetAddress) *knownAddress {
 	}
 }
 
-func (ka *knownAddress) ID() p2p.NodeID {
+func (ka *knownAddress) ID() types.NodeID {
 	return ka.Addr.ID
 }
 

@@ -3,6 +3,7 @@ package pex
 import (
 	"errors"
 	"fmt"
+	"net"
 	"sync"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
+	"github.com/tendermint/tendermint/types"
 )
 
 type Peer = p2p.Peer
@@ -97,7 +99,7 @@ type Reactor struct {
 	attemptsToDial sync.Map // address (string) -> {number of attempts (int), last time dialed (time.Time)}
 
 	// seed/crawled mode fields
-	crawlPeerInfos map[p2p.NodeID]crawlPeerInfo
+	crawlPeerInfos map[types.NodeID]crawlPeerInfo
 }
 
 func (r *Reactor) minReceiveRequestInterval() time.Duration {
@@ -137,7 +139,7 @@ func NewReactor(b AddrBook, config *ReactorConfig) *Reactor {
 		ensurePeersPeriod:    defaultEnsurePeersPeriod,
 		requestsSent:         cmap.NewCMap(),
 		lastReceivedRequests: cmap.NewCMap(),
-		crawlPeerInfos:       make(map[p2p.NodeID]crawlPeerInfo),
+		crawlPeerInfos:       make(map[types.NodeID]crawlPeerInfo),
 	}
 	r.BaseReactor = *p2p.NewBaseReactor("PEX", r)
 	return r
@@ -289,7 +291,7 @@ func (r *Reactor) Receive(chID byte, src Peer, msgBytes []byte) {
 
 	case *tmp2p.PexResponse:
 		// If we asked for addresses, add them to the book
-		addrs, err := p2p.NetAddressesFromProto(msg.Addresses)
+		addrs, err := NetAddressesFromProto(msg.Addresses)
 		if err != nil {
 			r.Switch.StopPeerForError(src, err)
 			r.book.MarkBad(src.SocketAddr(), defaultBanTime)
@@ -411,7 +413,7 @@ func (r *Reactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 
 // SendAddrs sends addrs to the peer.
 func (r *Reactor) SendAddrs(p Peer, netAddrs []*p2p.NetAddress) {
-	p.Send(PexChannel, mustEncode(&tmp2p.PexResponse{Addresses: p2p.NetAddressesToProto(netAddrs)}))
+	p.Send(PexChannel, mustEncode(&tmp2p.PexResponse{Addresses: NetAddressesToProto(netAddrs)}))
 }
 
 // SetEnsurePeersPeriod sets period to ensure peers connected.
@@ -477,7 +479,7 @@ func (r *Reactor) ensurePeers() {
 	// NOTE: range here is [10, 90]. Too high ?
 	newBias := tmmath.MinInt(out, 8)*10 + 10
 
-	toDial := make(map[p2p.NodeID]*p2p.NetAddress)
+	toDial := make(map[types.NodeID]*p2p.NetAddress)
 	// Try maxAttempts times to pick numToDial addresses to dial
 	maxAttempts := numToDial * 3
 
@@ -615,7 +617,7 @@ func (r *Reactor) checkSeeds() (numOnline int, netAddrs []*p2p.NetAddress, err e
 	numOnline = lSeeds - len(errs)
 	for _, err := range errs {
 		switch e := err.(type) {
-		case p2p.ErrNetAddressLookup:
+		case types.ErrNetAddressLookup:
 			r.Logger.Error("Connecting to seed failed", "err", e)
 		default:
 			return 0, nil, fmt.Errorf("seed node configuration has error: %w", e)
@@ -811,4 +813,51 @@ func decodeMsg(bz []byte) (proto.Message, error) {
 	default:
 		return nil, fmt.Errorf("unknown message: %T", msg)
 	}
+}
+
+//-----------------------------------------------------------------------------
+// address converters
+
+// NetAddressFromProto converts a Protobuf PexAddress into a native struct.
+func NetAddressFromProto(pb tmp2p.PexAddress) (*types.NetAddress, error) {
+	ip := net.ParseIP(pb.IP)
+	if ip == nil {
+		return nil, fmt.Errorf("invalid IP address %v", pb.IP)
+	}
+	if pb.Port >= 1<<16 {
+		return nil, fmt.Errorf("invalid port number %v", pb.Port)
+	}
+	return &types.NetAddress{
+		ID:   types.NodeID(pb.ID),
+		IP:   ip,
+		Port: uint16(pb.Port),
+	}, nil
+}
+
+// NetAddressesFromProto converts a slice of Protobuf PexAddresses into a native slice.
+func NetAddressesFromProto(pbs []tmp2p.PexAddress) ([]*types.NetAddress, error) {
+	nas := make([]*types.NetAddress, 0, len(pbs))
+	for _, pb := range pbs {
+		na, err := NetAddressFromProto(pb)
+		if err != nil {
+			return nil, err
+		}
+		nas = append(nas, na)
+	}
+	return nas, nil
+}
+
+// NetAddressesToProto converts a slice of NetAddresses into a Protobuf PexAddress slice.
+func NetAddressesToProto(nas []*types.NetAddress) []tmp2p.PexAddress {
+	pbs := make([]tmp2p.PexAddress, 0, len(nas))
+	for _, na := range nas {
+		if na != nil {
+			pbs = append(pbs, tmp2p.PexAddress{
+				ID:   string(na.ID),
+				IP:   na.IP.String(),
+				Port: uint32(na.Port),
+			})
+		}
+	}
+	return pbs
 }

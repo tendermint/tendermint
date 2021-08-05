@@ -20,7 +20,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-//go:generate mockery --case underscore --name StateProvider
+//go:generate ../../scripts/mockery_generate.sh StateProvider
 
 // StateProvider is a provider of trusted state data for bootstrapping a node. This refers
 // to the state.State object, not the state machine.
@@ -94,7 +94,7 @@ func NewLightClientStateProviderFromDispatcher(
 	trustOptions light.TrustOptions,
 	logger log.Logger,
 ) (StateProvider, error) {
-	providers := dispatcher.Providers(chainID, 10*time.Second)
+	providers := dispatcher.Providers(chainID, 30*time.Second)
 	if len(providers) < 2 {
 		return nil, fmt.Errorf("at least 2 peers are required, got %d", len(providers))
 	}

@@ -47,7 +47,7 @@ type Consensus interface {
 type transport interface {
 	Listeners() []string
 	IsListening() bool
-	NodeInfo() p2p.NodeInfo
+	NodeInfo() types.NodeInfo
 }
 
 type peers interface {
@@ -81,6 +81,7 @@ type Environment struct {
 	ConsensusReactor *consensus.Reactor
 	EventBus         *types.EventBus // thread safe
 	Mempool          mempl.Mempool
+	BlockSyncReactor consensus.BlockSyncReactor
 
 	Logger log.Logger
 

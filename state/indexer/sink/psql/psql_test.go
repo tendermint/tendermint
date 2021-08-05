@@ -255,12 +255,7 @@ func verifyTimeStamp(tb string) error {
 
 	if rows.Next() {
 		var ts string
-		err = rows.Scan(&ts)
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return rows.Scan(&ts)
 	}
 
 	return errors.New("no result")
@@ -293,6 +288,7 @@ func verifyBlock(h int64) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer rows.Close()
 
 	if !rows.Next() {
 		return false, nil
@@ -308,6 +304,7 @@ func verifyBlock(h int64) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer rows.Close()
 
 	return rows.Next(), nil
 }

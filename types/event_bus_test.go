@@ -342,7 +342,7 @@ func TestEventBusPublish(t *testing.T) {
 		}
 	}()
 
-	err = eventBus.Publish(EventNewBlockHeader, EventDataNewBlockHeader{})
+	err = eventBus.Publish(EventNewBlockHeaderValue, EventDataNewBlockHeader{})
 	require.NoError(t, err)
 	err = eventBus.PublishEventNewBlock(EventDataNewBlock{})
 	require.NoError(t, err)
@@ -369,6 +369,10 @@ func TestEventBusPublish(t *testing.T) {
 	err = eventBus.PublishEventLock(EventDataRoundState{})
 	require.NoError(t, err)
 	err = eventBus.PublishEventValidatorSetUpdates(EventDataValidatorSetUpdates{})
+	require.NoError(t, err)
+	err = eventBus.PublishEventBlockSyncStatus(EventDataBlockSyncStatus{})
+	require.NoError(t, err)
+	err = eventBus.PublishEventStateSyncStatus(EventDataStateSyncStatus{})
 	require.NoError(t, err)
 
 	select {
@@ -447,16 +451,16 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 		}()
 	}
 
-	eventType := EventNewBlock
+	eventValue := EventNewBlockValue
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		if randEvents {
-			eventType = randEvent()
+			eventValue = randEventValue()
 		}
 
-		err := eventBus.Publish(eventType, EventDataString("Gamora"))
+		err := eventBus.Publish(eventValue, EventDataString("Gamora"))
 		if err != nil {
 			b.Error(err)
 		}
@@ -464,20 +468,24 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 }
 
 var events = []string{
-	EventNewBlock,
-	EventNewBlockHeader,
-	EventNewRound,
-	EventNewRoundStep,
-	EventTimeoutPropose,
-	EventCompleteProposal,
-	EventPolka,
-	EventUnlock,
-	EventLock,
-	EventRelock,
-	EventTimeoutWait,
-	EventVote}
+	EventNewBlockValue,
+	EventNewBlockHeaderValue,
+	EventNewRoundValue,
+	EventNewRoundStepValue,
+	EventTimeoutProposeValue,
+	EventCompleteProposalValue,
+	EventPolkaValue,
+	EventUnlockValue,
+	EventLockValue,
+	EventRelockValue,
+	EventTimeoutWaitValue,
+	EventVoteValue,
+	EventBlockSyncStatusValue,
+	EventStateSyncStatusValue,
+}
 
-func randEvent() string {
+func randEventValue() string {
+
 	return events[mrand.Intn(len(events))]
 }
 
@@ -493,7 +501,10 @@ var queries = []tmpubsub.Query{
 	EventQueryLock,
 	EventQueryRelock,
 	EventQueryTimeoutWait,
-	EventQueryVote}
+	EventQueryVote,
+	EventQueryBlockSyncStatus,
+	EventQueryStateSyncStatus,
+}
 
 func randQuery() tmpubsub.Query {
 	return queries[mrand.Intn(len(queries))]

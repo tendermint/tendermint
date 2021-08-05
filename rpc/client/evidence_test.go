@@ -116,20 +116,17 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 	defer cancel()
 
 	n, config := NodeSuite(t)
-
-	// previous versions of this test used a shared fixture with
-	// other tests, and in this version we give it a little time
-	// for the node to make progress before running the test
-	time.Sleep(10 * time.Millisecond)
-
 	chainID := config.ChainID()
 
-	pv, err := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+	pv, err := privval.LoadOrGenFilePV(config.PrivValidator.KeyFile(), config.PrivValidator.StateFile())
 	require.NoError(t, err)
 
 	for i, c := range GetClients(t, n, config) {
 		correct, fakes := makeEvidences(t, pv, chainID)
 		t.Logf("client %d", i)
+
+		// make sure that the node has produced enough blocks
+		waitForBlock(ctx, t, c, 2)
 
 		result, err := c.BroadcastEvidence(ctx, correct)
 		require.NoError(t, err, "BroadcastEvidence(%s) failed", correct)
@@ -169,5 +166,23 @@ func TestBroadcastEmptyEvidence(t *testing.T) {
 	for _, c := range GetClients(t, n, conf) {
 		_, err := c.BroadcastEvidence(context.Background(), nil)
 		assert.Error(t, err)
+	}
+}
+
+func waitForBlock(ctx context.Context, t *testing.T, c client.Client, height int64) {
+	timer := time.NewTimer(0 * time.Millisecond)
+	defer timer.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+			status, err := c.Status(ctx)
+			require.NoError(t, err)
+			if status.SyncInfo.LatestBlockHeight >= height {
+				return
+			}
+			timer.Reset(200 * time.Millisecond)
+		}
 	}
 }

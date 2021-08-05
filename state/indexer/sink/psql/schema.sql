@@ -25,9 +25,7 @@ CREATE TABLE tx_events (
     created_at TIMESTAMPTZ NOT NULL,
     chain_id VARCHAR NOT NULL,
     UNIQUE (hash, key),
-    FOREIGN KEY (tx_result_id)
-        REFERENCES tx_results(id)
-        ON DELETE CASCADE
+    FOREIGN KEY (tx_result_id) REFERENCES tx_results(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_block_events_key_value ON block_events(key, value);
 CREATE INDEX idx_tx_events_key_value ON tx_events(key, value);

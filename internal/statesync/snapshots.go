@@ -10,7 +10,7 @@ import (
 	"time"
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/types"
 )
 
 // snapshotKey is a snapshot key used for lookups.
@@ -47,16 +47,16 @@ type snapshotPool struct {
 
 	tmsync.Mutex
 	snapshots     map[snapshotKey]*snapshot
-	snapshotPeers map[snapshotKey]map[p2p.NodeID]p2p.NodeID
+	snapshotPeers map[snapshotKey]map[types.NodeID]types.NodeID
 
 	// indexes for fast searches
 	formatIndex map[uint32]map[snapshotKey]bool
 	heightIndex map[uint64]map[snapshotKey]bool
-	peerIndex   map[p2p.NodeID]map[snapshotKey]bool
+	peerIndex   map[types.NodeID]map[snapshotKey]bool
 
 	// blacklists for rejected items
 	formatBlacklist   map[uint32]bool
-	peerBlacklist     map[p2p.NodeID]bool
+	peerBlacklist     map[types.NodeID]bool
 	snapshotBlacklist map[snapshotKey]bool
 }
 
@@ -65,12 +65,12 @@ func newSnapshotPool(stateProvider StateProvider) *snapshotPool {
 	return &snapshotPool{
 		stateProvider:     stateProvider,
 		snapshots:         make(map[snapshotKey]*snapshot),
-		snapshotPeers:     make(map[snapshotKey]map[p2p.NodeID]p2p.NodeID),
+		snapshotPeers:     make(map[snapshotKey]map[types.NodeID]types.NodeID),
 		formatIndex:       make(map[uint32]map[snapshotKey]bool),
 		heightIndex:       make(map[uint64]map[snapshotKey]bool),
-		peerIndex:         make(map[p2p.NodeID]map[snapshotKey]bool),
+		peerIndex:         make(map[types.NodeID]map[snapshotKey]bool),
 		formatBlacklist:   make(map[uint32]bool),
-		peerBlacklist:     make(map[p2p.NodeID]bool),
+		peerBlacklist:     make(map[types.NodeID]bool),
 		snapshotBlacklist: make(map[snapshotKey]bool),
 	}
 }
@@ -79,13 +79,13 @@ func newSnapshotPool(stateProvider StateProvider) *snapshotPool {
 // snapshots. It returns true if this was a new, non-blacklisted snapshot. The
 // snapshot height is verified using the light client, and the expected app hash
 // is set for the snapshot.
-func (p *snapshotPool) Add(peerID p2p.NodeID, snapshot *snapshot) (bool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func (p *snapshotPool) Add(peerID types.NodeID, snapshot *snapshot) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
 	defer cancel()
 
 	appHash, err := p.stateProvider.AppHash(ctx, snapshot.Height)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to get app hash: %w", err)
 	}
 	snapshot.trustedAppHash = appHash
 	key := snapshot.Key()
@@ -105,7 +105,7 @@ func (p *snapshotPool) Add(peerID p2p.NodeID, snapshot *snapshot) (bool, error) 
 	}
 
 	if p.snapshotPeers[key] == nil {
-		p.snapshotPeers[key] = make(map[p2p.NodeID]p2p.NodeID)
+		p.snapshotPeers[key] = make(map[types.NodeID]types.NodeID)
 	}
 	p.snapshotPeers[key][peerID] = peerID
 
@@ -142,7 +142,7 @@ func (p *snapshotPool) Best() *snapshot {
 }
 
 // GetPeer returns a random peer for a snapshot, if any.
-func (p *snapshotPool) GetPeer(snapshot *snapshot) p2p.NodeID {
+func (p *snapshotPool) GetPeer(snapshot *snapshot) types.NodeID {
 	peers := p.GetPeers(snapshot)
 	if len(peers) == 0 {
 		return ""
@@ -151,13 +151,13 @@ func (p *snapshotPool) GetPeer(snapshot *snapshot) p2p.NodeID {
 }
 
 // GetPeers returns the peers for a snapshot.
-func (p *snapshotPool) GetPeers(snapshot *snapshot) []p2p.NodeID {
+func (p *snapshotPool) GetPeers(snapshot *snapshot) []types.NodeID {
 	key := snapshot.Key()
 
 	p.Lock()
 	defer p.Unlock()
 
-	peers := make([]p2p.NodeID, 0, len(p.snapshotPeers[key]))
+	peers := make([]types.NodeID, 0, len(p.snapshotPeers[key]))
 	for _, peer := range p.snapshotPeers[key] {
 		peers = append(peers, peer)
 	}
@@ -254,7 +254,7 @@ func (p *snapshotPool) RejectFormat(format uint32) {
 }
 
 // RejectPeer rejects a peer. It will never be used again.
-func (p *snapshotPool) RejectPeer(peerID p2p.NodeID) {
+func (p *snapshotPool) RejectPeer(peerID types.NodeID) {
 	if len(peerID) == 0 {
 		return
 	}
@@ -267,14 +267,14 @@ func (p *snapshotPool) RejectPeer(peerID p2p.NodeID) {
 }
 
 // RemovePeer removes a peer from the pool, and any snapshots that no longer have peers.
-func (p *snapshotPool) RemovePeer(peerID p2p.NodeID) {
+func (p *snapshotPool) RemovePeer(peerID types.NodeID) {
 	p.Lock()
 	defer p.Unlock()
 	p.removePeer(peerID)
 }
 
 // removePeer removes a peer. The caller must hold the mutex lock.
-func (p *snapshotPool) removePeer(peerID p2p.NodeID) {
+func (p *snapshotPool) removePeer(peerID types.NodeID) {
 	for key := range p.peerIndex[peerID] {
 		delete(p.snapshotPeers[key], peerID)
 		if len(p.snapshotPeers[key]) == 0 {

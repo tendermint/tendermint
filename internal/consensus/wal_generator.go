@@ -40,8 +40,8 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	// COPY PASTE FROM node.go WITH A FEW MODIFICATIONS
 	// NOTE: we can't import node package because of circular dependency.
 	// NOTE: we don't do handshake so need to set state.Version.Consensus.App directly.
-	privValidatorKeyFile := config.PrivValidatorKeyFile()
-	privValidatorStateFile := config.PrivValidatorStateFile()
+	privValidatorKeyFile := config.PrivValidator.KeyFile()
+	privValidatorStateFile := config.PrivValidator.StateFile()
 	privValidator, err := privval.LoadOrGenFilePV(privValidatorKeyFile, privValidatorStateFile)
 	if err != nil {
 		return err

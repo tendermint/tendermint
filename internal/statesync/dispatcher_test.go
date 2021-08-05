@@ -8,14 +8,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/internal/p2p"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
+	"github.com/tendermint/tendermint/types"
 )
 
 func TestDispatcherBasic(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
 
 	ch := make(chan p2p.Envelope, 100)
 	closeCh := make(chan struct{})
@@ -48,7 +51,83 @@ func TestDispatcherBasic(t *testing.T) {
 	wg.Wait()
 }
 
+func TestDispatcherReturnsNoBlock(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+	ch := make(chan p2p.Envelope, 100)
+	d := newDispatcher(ch, 1*time.Second)
+	peerFromSet := createPeerSet(1)[0]
+	d.addPeer(peerFromSet)
+	doneCh := make(chan struct{})
+
+	go func() {
+		<-ch
+		require.NoError(t, d.respond(nil, peerFromSet))
+		close(doneCh)
+	}()
+
+	lb, peerResult, err := d.LightBlock(context.Background(), 1)
+	<-doneCh
+
+	require.Nil(t, lb)
+	require.Nil(t, err)
+	require.Equal(t, peerFromSet, peerResult)
+}
+
+func TestDispatcherErrorsWhenNoPeers(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+	ch := make(chan p2p.Envelope, 100)
+	d := newDispatcher(ch, 1*time.Second)
+
+	lb, peerResult, err := d.LightBlock(context.Background(), 1)
+
+	require.Nil(t, lb)
+	require.Empty(t, peerResult)
+	require.Equal(t, errNoConnectedPeers, err)
+}
+
+func TestDispatcherReturnsBlockOncePeerAvailable(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+	dispatcherRequestCh := make(chan p2p.Envelope, 100)
+	d := newDispatcher(dispatcherRequestCh, 1*time.Second)
+	peerFromSet := createPeerSet(1)[0]
+	d.addPeer(peerFromSet)
+	ctx := context.Background()
+	wrapped, cancelFunc := context.WithCancel(ctx)
+
+	doneCh := make(chan struct{})
+	go func() {
+		lb, peerResult, err := d.LightBlock(wrapped, 1)
+		require.Nil(t, lb)
+		require.Equal(t, peerFromSet, peerResult)
+		require.Nil(t, err)
+
+		// calls to dispatcher.Lightblock write into the dispatcher's requestCh.
+		// we read from the requestCh here to unblock the requestCh for future
+		// calls.
+		<-dispatcherRequestCh
+		close(doneCh)
+	}()
+	cancelFunc()
+	<-doneCh
+
+	go func() {
+		<-dispatcherRequestCh
+		lb := &types.LightBlock{}
+		asProto, err := lb.ToProto()
+		require.Nil(t, err)
+		err = d.respond(asProto, peerFromSet)
+		require.Nil(t, err)
+	}()
+
+	lb, peerResult, err := d.LightBlock(context.Background(), 1)
+
+	require.NotNil(t, lb)
+	require.Equal(t, peerFromSet, peerResult)
+	require.Nil(t, err)
+}
+
 func TestDispatcherProviders(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
 
 	ch := make(chan p2p.Envelope, 100)
 	chainID := "state-sync-test"
@@ -77,6 +156,7 @@ func TestDispatcherProviders(t *testing.T) {
 }
 
 func TestPeerListBasic(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
 	peerList := newPeerList()
 	assert.Zero(t, peerList.Len())
 	numPeers := 10
@@ -94,20 +174,65 @@ func TestPeerListBasic(t *testing.T) {
 
 	half := numPeers / 2
 	for i := 0; i < half; i++ {
-		assert.Equal(t, peerSet[i], peerList.Pop())
+		assert.Equal(t, peerSet[i], peerList.Pop(ctx))
 	}
 	assert.Equal(t, half, peerList.Len())
 
-	peerList.Remove(p2p.NodeID("lp"))
+	peerList.Remove(types.NodeID("lp"))
 	assert.Equal(t, half, peerList.Len())
 
 	peerList.Remove(peerSet[half])
 	half++
-	assert.Equal(t, peerSet[half], peerList.Pop())
+	assert.Equal(t, peerSet[half], peerList.Pop(ctx))
 
 }
 
+func TestPeerListBlocksWhenEmpty(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+	peerList := newPeerList()
+	require.Zero(t, peerList.Len())
+	doneCh := make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		peerList.Pop(ctx)
+		close(doneCh)
+	}()
+	select {
+	case <-doneCh:
+		t.Error("empty peer list should not have returned result")
+	case <-time.After(100 * time.Millisecond):
+	}
+}
+
+func TestEmptyPeerListReturnsWhenContextCanceled(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+	peerList := newPeerList()
+	require.Zero(t, peerList.Len())
+	doneCh := make(chan struct{})
+	ctx := context.Background()
+	wrapped, cancel := context.WithCancel(ctx)
+	go func() {
+		peerList.Pop(wrapped)
+		close(doneCh)
+	}()
+	select {
+	case <-doneCh:
+		t.Error("empty peer list should not have returned result")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	cancel()
+
+	select {
+	case <-doneCh:
+	case <-time.After(100 * time.Millisecond):
+		t.Error("peer list should have returned after context canceled")
+	}
+}
+
 func TestPeerListConcurrent(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
 	peerList := newPeerList()
 	numPeers := 10
 
@@ -116,7 +241,7 @@ func TestPeerListConcurrent(t *testing.T) {
 	// peer list hasn't been populated each these go routines should block
 	for i := 0; i < numPeers/2; i++ {
 		go func() {
-			_ = peerList.Pop()
+			_ = peerList.Pop(ctx)
 			wg.Done()
 		}()
 	}
@@ -131,7 +256,7 @@ func TestPeerListConcurrent(t *testing.T) {
 	// we request the second half of the peer set
 	for i := 0; i < numPeers/2; i++ {
 		go func() {
-			_ = peerList.Pop()
+			_ = peerList.Pop(ctx)
 			wg.Done()
 		}()
 	}
@@ -170,10 +295,10 @@ func handleRequests(t *testing.T, d *dispatcher, ch chan p2p.Envelope, closeCh c
 	}
 }
 
-func createPeerSet(num int) []p2p.NodeID {
-	peers := make([]p2p.NodeID, num)
+func createPeerSet(num int) []types.NodeID {
+	peers := make([]types.NodeID, num)
 	for i := 0; i < num; i++ {
-		peers[i], _ = p2p.NewNodeID(strings.Repeat(fmt.Sprintf("%d", i), 2*p2p.NodeIDByteLength))
+		peers[i], _ = types.NewNodeID(strings.Repeat(fmt.Sprintf("%d", i), 2*types.NodeIDByteLength))
 	}
 	return peers
 }

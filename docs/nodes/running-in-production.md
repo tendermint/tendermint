@@ -40,7 +40,7 @@ Default logging level (`log-level = "info"`) should suffice for
 normal operation mode. Read [this
 post](https://blog.cosmos.network/one-of-the-exciting-new-features-in-0-10-0-release-is-smart-log-level-flag-e2506b4ab756)
 for details on how to configure `log-level` config variable. Some of the
-modules can be found [here](../nodes/logging#list-of-modules). If
+modules can be found [here](logging.md#list-of-modules). If
 you're trying to debug Tendermint or asked to provide logs with debug
 logging level, you can do so by running Tendermint with
 `--log-level="debug"`.
@@ -114,7 +114,7 @@ just the votes seen at the current height.
 If, after consulting with the logs and above endpoints, you still have no idea
 what's happening, consider using `tendermint debug kill` sub-command. This
 command will scrap all the available info and kill the process. See
-[Debugging](../tools/debugging.md) for the exact format.
+[Debugging](../tools/debugging/README.md) for the exact format.
 
 You can inspect the resulting archive yourself or create an issue on
 [Github](https://github.com/tendermint/tendermint). Before opening an issue
@@ -134,7 +134,7 @@ Tendermint also can report and serve Prometheus metrics. See
 [Metrics](./metrics.md).
 
 `tendermint debug dump` sub-command can be used to periodically dump useful
-information into an archive. See [Debugging](../tools/debugging.md) for more
+information into an archive. See [Debugging](../tools/debugging/README.md) for more
 information.
 
 ## What happens when my app dies
@@ -268,6 +268,8 @@ While we do not favor any operation system, more secure and stable Linux server
 distributions (like Centos) should be preferred over desktop operation systems
 (like Mac OS).
 
+Native Windows support is not provided. If you are using a windows machine, you can try using the [bash shell](https://docs.microsoft.com/en-us/windows/wsl/install-win10).
+
 ### Miscellaneous
 
 NOTE: if you are going to use Tendermint in a public domain, make sure
@@ -313,7 +315,7 @@ We want `skip-timeout-commit=false` when there is economics on the line
 because proposers should wait to hear for more votes. But if you don't
 care about that and want the fastest consensus, you can skip it. It will
 be kept false by default for public deployments (e.g. [Cosmos
-Hub](https://cosmos.network/intro/hub)) while for enterprise
+Hub](https://hub.cosmos.network/main/hub-overview/overview.html)) while for enterprise
 applications, setting it to true is not a problem.
 
 - `consensus.peer-gossip-sleep-duration`

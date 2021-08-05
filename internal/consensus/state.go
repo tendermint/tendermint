@@ -17,17 +17,18 @@ import (
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/libs/fail"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	"github.com/tendermint/tendermint/internal/p2p"
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/service"
+	tmtime "github.com/tendermint/tendermint/libs/time"
+	"github.com/tendermint/tendermint/privval"
+	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 // Consensus sentinel errors
@@ -44,8 +45,8 @@ var msgQueueSize = 1000
 
 // msgs from the reactor which may update the state
 type msgInfo struct {
-	Msg    Message    `json:"msg"`
-	PeerID p2p.NodeID `json:"peer_key"`
+	Msg    Message      `json:"msg"`
+	PeerID types.NodeID `json:"peer_key"`
 }
 
 // internally generated messages which may update the state
@@ -79,8 +80,9 @@ type State struct {
 	service.BaseService
 
 	// config details
-	config        *cfg.ConsensusConfig
-	privValidator types.PrivValidator // for signing votes
+	config            *cfg.ConsensusConfig
+	privValidator     types.PrivValidator // for signing votes
+	privValidatorType types.PrivValidatorType
 
 	// store blocks and commits
 	blockStore sm.BlockStore
@@ -273,6 +275,26 @@ func (cs *State) SetPrivValidator(priv types.PrivValidator) {
 
 	cs.privValidator = priv
 
+	if priv != nil {
+		switch t := priv.(type) {
+		case *privval.RetrySignerClient:
+			cs.privValidatorType = types.RetrySignerClient
+		case *privval.FilePV:
+			cs.privValidatorType = types.FileSignerClient
+		case *privval.SignerClient:
+			cs.privValidatorType = types.SignerSocketClient
+		case *tmgrpc.SignerClient:
+			cs.privValidatorType = types.SignerGRPCClient
+		case types.MockPV:
+			cs.privValidatorType = types.MockSignerClient
+		case *types.ErroringMockPV:
+			cs.privValidatorType = types.ErrorMockSignerClient
+		default:
+			cs.Logger.Error("unsupported priv validator type", "err",
+				fmt.Errorf("error privValidatorType %s", t))
+		}
+	}
+
 	if err := cs.updatePrivValidatorPubKey(); err != nil {
 		cs.Logger.Error("failed to get private validator pubkey", "err", err)
 	}
@@ -292,7 +314,14 @@ func (cs *State) LoadCommit(height int64) *types.Commit {
 	defer cs.mtx.RUnlock()
 
 	if height == cs.blockStore.Height() {
-		return cs.blockStore.LoadSeenCommit(height)
+		commit := cs.blockStore.LoadSeenCommit()
+		// NOTE: Retrieving the height of the most recent block and retrieving
+		// the most recent commit does not currently occur as an atomic
+		// operation. We check the height and commit here in case a more recent
+		// commit has arrived since retrieving the latest height.
+		if commit != nil && commit.Height == height {
+			return commit
+		}
 	}
 
 	return cs.blockStore.LoadBlockCommit(height)
@@ -471,7 +500,7 @@ func (cs *State) OpenWAL(walFile string) (WAL, error) {
 // TODO: should these return anything or let callers just use events?
 
 // AddVote inputs a vote.
-func (cs *State) AddVote(vote *types.Vote, peerID p2p.NodeID) (added bool, err error) {
+func (cs *State) AddVote(vote *types.Vote, peerID types.NodeID) (added bool, err error) {
 	if peerID == "" {
 		cs.internalMsgQueue <- msgInfo{&VoteMessage{vote}, ""}
 	} else {
@@ -483,7 +512,7 @@ func (cs *State) AddVote(vote *types.Vote, peerID p2p.NodeID) (added bool, err e
 }
 
 // SetProposal inputs a proposal.
-func (cs *State) SetProposal(proposal *types.Proposal, peerID p2p.NodeID) error {
+func (cs *State) SetProposal(proposal *types.Proposal, peerID types.NodeID) error {
 
 	if peerID == "" {
 		cs.internalMsgQueue <- msgInfo{&ProposalMessage{proposal}, ""}
@@ -496,7 +525,7 @@ func (cs *State) SetProposal(proposal *types.Proposal, peerID p2p.NodeID) error 
 }
 
 // AddProposalBlockPart inputs a part of the proposal block.
-func (cs *State) AddProposalBlockPart(height int64, round int32, part *types.Part, peerID p2p.NodeID) error {
+func (cs *State) AddProposalBlockPart(height int64, round int32, part *types.Part, peerID types.NodeID) error {
 
 	if peerID == "" {
 		cs.internalMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, ""}
@@ -513,7 +542,7 @@ func (cs *State) SetProposalAndBlock(
 	proposal *types.Proposal,
 	block *types.Block,
 	parts *types.PartSet,
-	peerID p2p.NodeID,
+	peerID types.NodeID,
 ) error {
 
 	if err := cs.SetProposal(proposal, peerID); err != nil {
@@ -572,15 +601,19 @@ func (cs *State) sendInternalMessage(mi msgInfo) {
 // Reconstruct LastCommit from SeenCommit, which we saved along with the block,
 // (which happens even before saving the state)
 func (cs *State) reconstructLastCommit(state sm.State) {
-	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
-	if seenCommit == nil {
+	commit := cs.blockStore.LoadSeenCommit()
+	if commit == nil || commit.Height != state.LastBlockHeight {
+		commit = cs.blockStore.LoadBlockCommit(state.LastBlockHeight)
+	}
+
+	if commit == nil {
 		panic(fmt.Sprintf(
-			"failed to reconstruct last commit; seen commit for height %v not found",
+			"failed to reconstruct last commit; commit for height %v not found",
 			state.LastBlockHeight,
 		))
 	}
 
-	lastPrecommits := types.CommitToVoteSet(state.ChainID, seenCommit, state.LastValidators)
+	lastPrecommits := types.CommitToVoteSet(state.ChainID, commit, state.LastValidators)
 	if !lastPrecommits.HasTwoThirdsMajority() {
 		panic("failed to reconstruct last commit; does not have +2/3 maj")
 	}
@@ -711,7 +744,7 @@ func (cs *State) newStep() {
 			cs.Logger.Error("failed publishing new round step", "err", err)
 		}
 
-		cs.evsw.FireEvent(types.EventNewRoundStep, &cs.RoundState)
+		cs.evsw.FireEvent(types.EventNewRoundStepValue, &cs.RoundState)
 	}
 }
 
@@ -1541,7 +1574,7 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 				logger.Error("failed publishing valid block", "err", err)
 			}
 
-			cs.evsw.FireEvent(types.EventValidBlock, &cs.RoundState)
+			cs.evsw.FireEvent(types.EventValidBlockValue, &cs.RoundState)
 		}
 	}
 }
@@ -1671,7 +1704,7 @@ func (cs *State) finalizeCommit(height int64) {
 	fail.Fail() // XXX
 
 	// must be called before we update state
-	cs.recordMetrics(height, block)
+	cs.RecordMetrics(height, block)
 
 	// NewHeightStep!
 	cs.updateToState(stateCopy)
@@ -1693,7 +1726,7 @@ func (cs *State) finalizeCommit(height int64) {
 	// * cs.StartTime is set to when we will start round0.
 }
 
-func (cs *State) recordMetrics(height int64, block *types.Block) {
+func (cs *State) RecordMetrics(height int64, block *types.Block) {
 	cs.metrics.Validators.Set(float64(cs.Validators.Size()))
 	cs.metrics.ValidatorsPower.Set(float64(cs.Validators.TotalVotingPower()))
 
@@ -1713,8 +1746,9 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 			address    types.Address
 		)
 		if commitSize != valSetLen {
-			panic(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
+			cs.Logger.Error(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
 				commitSize, valSetLen, block.Height, block.LastCommit.Signatures, cs.LastValidators.Validators))
+			return
 		}
 
 		if cs.privValidator != nil {
@@ -1752,9 +1786,10 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 
 	// NOTE: byzantine validators power and count is only for consensus evidence i.e. duplicate vote
 	var (
-		byzantineValidatorsPower = int64(0)
-		byzantineValidatorsCount = int64(0)
+		byzantineValidatorsPower int64
+		byzantineValidatorsCount int64
 	)
+
 	for _, ev := range block.Evidence.Evidence {
 		if dve, ok := ev.(*types.DuplicateVoteEvidence); ok {
 			if _, val := cs.Validators.GetByAddress(dve.VoteA.ValidatorAddress); val != nil {
@@ -1825,7 +1860,7 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 // NOTE: block is not necessarily valid.
 // Asynchronously triggers either enterPrevote (before we timeout of propose) or tryFinalizeCommit,
 // once we have the full block.
-func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.NodeID) (added bool, err error) {
+func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID types.NodeID) (added bool, err error) {
 	height, round, part := msg.Height, msg.Round, msg.Part
 
 	// Blocks might be reused, so round mismatch is OK
@@ -1923,7 +1958,7 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.NodeID) 
 }
 
 // Attempt to add the vote. if its a duplicate signature, dupeout the validator
-func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.NodeID) (bool, error) {
+func (cs *State) tryAddVote(vote *types.Vote, peerID types.NodeID) (bool, error) {
 	added, err := cs.addVote(vote, peerID)
 	if err != nil {
 		// If the vote height is off, we'll just ignore it,
@@ -1971,7 +2006,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.NodeID) (bool, error) {
 	return added, nil
 }
 
-func (cs *State) addVote(vote *types.Vote, peerID p2p.NodeID) (added bool, err error) {
+func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err error) {
 	cs.Logger.Debug(
 		"adding vote",
 		"vote_height", vote.Height,
@@ -1999,7 +2034,7 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.NodeID) (added bool, err e
 			return added, err
 		}
 
-		cs.evsw.FireEvent(types.EventVote, vote)
+		cs.evsw.FireEvent(types.EventVoteValue, vote)
 
 		// if we can skip timeoutCommit and have all the votes now,
 		if cs.config.SkipTimeoutCommit && cs.LastCommit.HasAll() {
@@ -2028,7 +2063,7 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.NodeID) (added bool, err e
 	if err := cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote}); err != nil {
 		return added, err
 	}
-	cs.evsw.FireEvent(types.EventVote, vote)
+	cs.evsw.FireEvent(types.EventVoteValue, vote)
 
 	switch vote.Type {
 	case tmproto.PrevoteType:
@@ -2082,7 +2117,7 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.NodeID) (added bool, err e
 					cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
 				}
 
-				cs.evsw.FireEvent(types.EventValidBlock, &cs.RoundState)
+				cs.evsw.FireEvent(types.EventValidBlockValue, &cs.RoundState)
 				if err := cs.eventBus.PublishEventValidBlock(cs.RoundStateEvent()); err != nil {
 					return added, err
 				}
@@ -2194,6 +2229,7 @@ func (cs *State) signVote(
 
 	err := cs.privValidator.SignVote(ctx, cs.state.ChainID, v)
 	vote.Signature = v.Signature
+	vote.Timestamp = v.Timestamp
 
 	return vote, err
 }
@@ -2266,7 +2302,13 @@ func (cs *State) updatePrivValidatorPubKey() error {
 		timeout = cs.config.TimeoutPrevote
 	}
 
-	// set a hard timeout for 2 seconds. This helps in avoiding blocking of the remote signer connection
+	// no GetPubKey retry beyond the proposal/voting in RetrySignerClient
+	if cs.Step >= cstypes.RoundStepPrecommit && cs.privValidatorType == types.RetrySignerClient {
+		timeout = 0
+	}
+
+	// set context timeout depending on the configuration and the State step,
+	// this helps in avoiding blocking of the remote signer connection.
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
 	pubKey, err := cs.privValidator.GetPubKey(ctx)
@@ -2287,7 +2329,7 @@ func (cs *State) checkDoubleSigningRisk(height int64) error {
 		}
 
 		for i := int64(1); i < doubleSignCheckHeight; i++ {
-			lastCommit := cs.blockStore.LoadSeenCommit(height - i)
+			lastCommit := cs.LoadCommit(height - i)
 			if lastCommit != nil {
 				for sigIdx, s := range lastCommit.Signatures {
 					if s.BlockIDFlag == types.BlockIDFlagCommit && bytes.Equal(s.ValidatorAddress, valAddr) {

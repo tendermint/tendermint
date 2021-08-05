@@ -1,8 +1,15 @@
 #!/usr/bin/make -f
 
-.PHONY: fuzz-mempool
-fuzz-mempool:
-	cd mempool && \
+.PHONY: fuzz-mempool-v1
+fuzz-mempool-v1:
+	cd mempool/v1 && \
+		rm -f *-fuzz.zip && \
+		go-fuzz-build && \
+		go-fuzz
+
+.PHONY: fuzz-mempool-v0
+fuzz-mempool-v0:
+	cd mempool/v0 && \
 		rm -f *-fuzz.zip && \
 		go-fuzz-build && \
 		go-fuzz
@@ -37,3 +44,9 @@ fuzz-rpc-server:
 		rm -f *-fuzz.zip && \
 		go-fuzz-build && \
 		go-fuzz
+
+clean:
+	find . -name corpus -type d -exec rm -rf {} +;
+	find . -name crashers -type d -exec rm -rf {} +;
+	find . -name suppressions -type d -exec rm -rf {} +;
+	find . -name *\.zip -type f -delete

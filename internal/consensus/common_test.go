@@ -19,7 +19,6 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
-	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
@@ -31,12 +30,12 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 const (
@@ -89,6 +88,7 @@ type validatorStub struct {
 	Round  int32
 	types.PrivValidator
 	VotingPower int64
+	lastVote    *types.Vote
 }
 
 const testMinPower int64 = 10
@@ -122,8 +122,18 @@ func (vs *validatorStub) signVote(
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
 	}
 	v := vote.ToProto()
-	err = vs.PrivValidator.SignVote(context.Background(), config.ChainID(), v)
+	if err := vs.PrivValidator.SignVote(context.Background(), config.ChainID(), v); err != nil {
+		return nil, fmt.Errorf("sign vote failed: %w", err)
+	}
+
+	// ref: signVote in FilePV, the vote should use the privious vote info when the sign data is the same.
+	if signDataIsEqual(vs.lastVote, v) {
+		v.Signature = vs.lastVote.Signature
+		v.Timestamp = vs.lastVote.Timestamp
+	}
+
 	vote.Signature = v.Signature
+	vote.Timestamp = v.Timestamp
 
 	return vote, err
 }
@@ -140,6 +150,9 @@ func signVote(
 	if err != nil {
 		panic(fmt.Errorf("failed to sign vote: %v", err))
 	}
+
+	vs.lastVote = v
+
 	return v
 }
 
@@ -432,9 +445,9 @@ func newStateWithConfigAndBlockStore(
 }
 
 func loadPrivValidator(config *cfg.Config) *privval.FilePV {
-	privValidatorKeyFile := config.PrivValidatorKeyFile()
+	privValidatorKeyFile := config.PrivValidator.KeyFile()
 	ensureDir(filepath.Dir(privValidatorKeyFile), 0700)
-	privValidatorStateFile := config.PrivValidatorStateFile()
+	privValidatorStateFile := config.PrivValidator.StateFile()
 	privValidator, err := privval.LoadOrGenFilePV(privValidatorKeyFile, privValidatorStateFile)
 	if err != nil {
 		panic(err)
@@ -449,7 +462,7 @@ func randState(config *cfg.Config, nValidators int) (*State, []*validatorStub) {
 
 	vss := make([]*validatorStub, nValidators)
 
-	cs := newState(state, privVals[0], counter.NewApplication(true))
+	cs := newState(state, privVals[0], kvstore.NewApplication())
 
 	for i := 0; i < nValidators; i++ {
 		vss[i] = newValidatorStub(privVals[i], int32(i))
@@ -862,10 +875,6 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 
 func (*mockTicker) SetLogger(log.Logger) {}
 
-func newCounter() abci.Application {
-	return counter.NewApplication(true)
-}
-
 func newPersistentKVStore() abci.Application {
 	dir, err := ioutil.TempDir("", "persistent-kvstore")
 	if err != nil {
@@ -874,6 +883,23 @@ func newPersistentKVStore() abci.Application {
 	return kvstore.NewPersistentKVStoreApplication(dir)
 }
 
+func newKVStore() abci.Application {
+	return kvstore.NewApplication()
+}
+
 func newPersistentKVStoreWithPath(dbDir string) abci.Application {
 	return kvstore.NewPersistentKVStoreApplication(dbDir)
+}
+
+func signDataIsEqual(v1 *types.Vote, v2 *tmproto.Vote) bool {
+	if v1 == nil || v2 == nil {
+		return false
+	}
+
+	return v1.Type == v2.Type &&
+		bytes.Equal(v1.BlockID.Hash, v2.BlockID.GetHash()) &&
+		v1.Height == v2.GetHeight() &&
+		v1.Round == v2.Round &&
+		bytes.Equal(v1.ValidatorAddress.Bytes(), v2.GetValidatorAddress()) &&
+		v1.ValidatorIndex == v2.GetValidatorIndex()
 }

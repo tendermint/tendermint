@@ -44,8 +44,7 @@ func TestHeaderEvents(t *testing.T) {
 				})
 			}
 
-			evtTyp := types.EventNewBlockHeader
-			evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
+			evt, err := client.WaitForOneEvent(c, types.EventNewBlockHeaderValue, waitForEventTimeout)
 			require.Nil(t, err, "%d: %+v", i, err)
 			_, ok := evt.(types.EventDataNewBlockHeader)
 			require.True(t, ok, "%d: %#v", i, evt)
@@ -75,7 +74,7 @@ func TestBlockEvents(t *testing.T) {
 
 			const subscriber = "TestBlockEvents"
 
-			eventCh, err := c.Subscribe(context.Background(), subscriber, types.QueryForEvent(types.EventNewBlock).String())
+			eventCh, err := c.Subscribe(context.Background(), subscriber, types.QueryForEvent(types.EventNewBlockValue).String())
 			require.NoError(t, err)
 			t.Cleanup(func() {
 				if err := c.UnsubscribeAll(context.Background(), subscriber); err != nil {
@@ -146,7 +145,7 @@ func testTxEventsSent(t *testing.T, broadcastMethod string) {
 			}()
 
 			// and wait for confirmation
-			evt, err := client.WaitForOneEvent(c, types.EventTx, waitForEventTimeout)
+			evt, err := client.WaitForOneEvent(c, types.EventTxValue, waitForEventTimeout)
 			require.Nil(t, err)
 
 			// and make sure it has the proper info
@@ -176,12 +175,12 @@ func TestHTTPReturnsErrorIfClientIsNotRunning(t *testing.T) {
 
 	// on Subscribe
 	_, err := c.Subscribe(ctx, "TestHeaderEvents",
-		types.QueryForEvent(types.EventNewBlockHeader).String())
+		types.QueryForEvent(types.EventNewBlockHeaderValue).String())
 	assert.Error(t, err)
 
 	// on Unsubscribe
 	err = c.Unsubscribe(ctx, "TestHeaderEvents",
-		types.QueryForEvent(types.EventNewBlockHeader).String())
+		types.QueryForEvent(types.EventNewBlockHeaderValue).String())
 	assert.Error(t, err)
 
 	// on UnsubscribeAll

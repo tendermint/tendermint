@@ -2,6 +2,7 @@ package evidence
 
 import (
 	"fmt"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -31,8 +32,8 @@ var (
 				ID:                  byte(EvidenceChannel),
 				Priority:            6,
 				RecvMessageCapacity: maxMsgSize,
-
-				MaxSendBytes: 400,
+				RecvBufferCapacity:  32,
+				MaxSendBytes:        400,
 			},
 		},
 	}
@@ -62,7 +63,7 @@ type Reactor struct {
 	peerWG sync.WaitGroup
 
 	mtx          tmsync.Mutex
-	peerRoutines map[p2p.NodeID]*tmsync.Closer
+	peerRoutines map[types.NodeID]*tmsync.Closer
 }
 
 // NewReactor returns a reference to a new evidence reactor, which implements the
@@ -79,7 +80,7 @@ func NewReactor(
 		evidenceCh:   evidenceCh,
 		peerUpdates:  peerUpdates,
 		closeCh:      make(chan struct{}),
-		peerRoutines: make(map[p2p.NodeID]*tmsync.Closer),
+		peerRoutines: make(map[types.NodeID]*tmsync.Closer),
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Evidence", r)
@@ -165,6 +166,11 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
+			r.Logger.Error(
+				"recovering from processing message panic",
+				"err", err,
+				"stack", string(debug.Stack()),
+			)
 		}
 	}()
 
@@ -285,7 +291,7 @@ func (r *Reactor) processPeerUpdates() {
 // that the peer has already received or may not be ready for.
 //
 // REF: https://github.com/tendermint/tendermint/issues/4727
-func (r *Reactor) broadcastEvidenceLoop(peerID p2p.NodeID, closer *tmsync.Closer) {
+func (r *Reactor) broadcastEvidenceLoop(peerID types.NodeID, closer *tmsync.Closer) {
 	var next *clist.CElement
 
 	defer func() {
@@ -296,7 +302,11 @@ func (r *Reactor) broadcastEvidenceLoop(peerID p2p.NodeID, closer *tmsync.Closer
 		r.peerWG.Done()
 
 		if e := recover(); e != nil {
-			r.Logger.Error("recovering from broadcasting evidence loop", "err", e)
+			r.Logger.Error(
+				"recovering from broadcasting evidence loop",
+				"err", e,
+				"stack", string(debug.Stack()),
+			)
 		}
 	}()
 

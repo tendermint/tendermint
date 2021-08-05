@@ -12,6 +12,7 @@ import (
 	p2pmocks "github.com/tendermint/tendermint/internal/p2p/mocks"
 	"github.com/tendermint/tendermint/libs/log"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
+	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -77,10 +78,10 @@ func setup(t *testing.T, peers []p2p.Peer) *reactorShimTestSuite {
 	return rts
 }
 
-func simplePeer(t *testing.T, id string) (*p2pmocks.Peer, p2p.NodeID) {
+func simplePeer(t *testing.T, id string) (*p2pmocks.Peer, types.NodeID) {
 	t.Helper()
 
-	peerID := p2p.NodeID(id)
+	peerID := types.NodeID(id)
 	peer := &p2pmocks.Peer{}
 	peer.On("ID").Return(peerID)
 

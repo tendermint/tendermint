@@ -27,6 +27,7 @@ import (
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/libs/strings"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/privval"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
@@ -37,7 +38,6 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 // nodeImpl is the highest level interface to a full Tendermint node.
@@ -56,8 +56,8 @@ type nodeImpl struct {
 	peerManager *p2p.PeerManager
 	router      *p2p.Router
 	addrBook    pex.AddrBook // known peers
-	nodeInfo    p2p.NodeInfo
-	nodeKey     p2p.NodeKey // our node privkey
+	nodeInfo    types.NodeInfo
+	nodeKey     types.NodeKey // our node privkey
 	isListening bool
 
 	// services
@@ -83,7 +83,7 @@ type nodeImpl struct {
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
 // It implements NodeProvider.
 func newDefaultNode(config *cfg.Config, logger log.Logger) (service.Service, error) {
-	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
+	nodeKey, err := types.LoadOrGenNodeKey(config.NodeKeyFile())
 	if err != nil {
 		return nil, fmt.Errorf("failed to load or gen node key %s: %w", config.NodeKeyFile(), err)
 	}
@@ -98,7 +98,7 @@ func newDefaultNode(config *cfg.Config, logger log.Logger) (service.Service, err
 
 	var pval *privval.FilePV
 	if config.Mode == cfg.ModeValidator {
-		pval, err = privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+		pval, err = privval.LoadOrGenFilePV(config.PrivValidator.KeyFile(), config.PrivValidator.StateFile())
 		if err != nil {
 			return nil, err
 		}
@@ -120,7 +120,7 @@ func newDefaultNode(config *cfg.Config, logger log.Logger) (service.Service, err
 // makeNode returns a new, ready to go, Tendermint Node.
 func makeNode(config *cfg.Config,
 	privValidator types.PrivValidator,
-	nodeKey p2p.NodeKey,
+	nodeKey types.NodeKey,
 	clientCreator proxy.ClientCreator,
 	genesisDocProvider genesisDocProvider,
 	dbProvider cfg.DBProvider,
@@ -197,7 +197,7 @@ func makeNode(config *cfg.Config,
 	}
 
 	// Determine whether we should attempt state sync.
-	stateSync := config.StateSync.Enable && !onlyValidatorIsUs(genDoc, pubKey)
+	stateSync := config.StateSync.Enable && !onlyValidatorIsUs(state, pubKey)
 	if stateSync && state.LastBlockHeight > 0 {
 		logger.Info("Found local state with non-zero height, skipping state sync")
 		stateSync = false
@@ -220,9 +220,9 @@ func makeNode(config *cfg.Config,
 		}
 	}
 
-	// Determine whether we should do fast sync. This must happen after the handshake, since the
+	// Determine whether we should do block sync. This must happen after the handshake, since the
 	// app may modify the validator set, specifying ourself as the only validator.
-	fastSync := config.FastSyncMode && !onlyValidatorIsUs(genDoc, pubKey)
+	blockSync := config.FastSyncMode && !onlyValidatorIsUs(state, pubKey)
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger, config.Mode)
 
@@ -276,15 +276,15 @@ func makeNode(config *cfg.Config,
 
 	csReactorShim, csReactor, csState := createConsensusReactor(
 		config, state, blockExec, blockStore, mp, evPool,
-		privValidator, csMetrics, stateSync || fastSync, eventBus,
+		privValidator, csMetrics, stateSync || blockSync, eventBus,
 		peerManager, router, consensusLogger,
 	)
 
-	// Create the blockchain reactor. Note, we do not start fast sync if we're
+	// Create the blockchain reactor. Note, we do not start block sync if we're
 	// doing a state sync first.
 	bcReactorShim, bcReactor, err := createBlockchainReactor(
 		logger, config, state, blockExec, blockStore, csReactor,
-		peerManager, router, fastSync && !stateSync,
+		peerManager, router, blockSync && !stateSync, csMetrics,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not create blockchain reactor: %w", err)
@@ -298,16 +298,16 @@ func makeNode(config *cfg.Config,
 		bcReactorForSwitch = bcReactor.(p2p.Reactor)
 	}
 
-	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or fast sync first.
+	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or block sync first.
 	// FIXME We need to update metrics here, since other reactors don't have access to them.
 	if stateSync {
 		csMetrics.StateSyncing.Set(1)
-	} else if fastSync {
-		csMetrics.FastSyncing.Set(1)
+	} else if blockSync {
+		csMetrics.BlockSyncing.Set(1)
 	}
 
 	// Set up state sync reactor, and schedule a sync if requested.
-	// FIXME The way we do phased startups (e.g. replay -> fast sync -> consensus) is very messy,
+	// FIXME The way we do phased startups (e.g. replay -> block sync -> consensus) is very messy,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
 	var (
@@ -329,6 +329,7 @@ func makeNode(config *cfg.Config,
 	}
 
 	stateSyncReactor = statesync.NewReactor(
+		*config.StateSync,
 		stateSyncReactorShim.Logger,
 		proxyApp.Snapshot(),
 		proxyApp.Query(),
@@ -467,7 +468,7 @@ func makeNode(config *cfg.Config,
 // makeSeedNode returns a new seed node, containing only p2p, pex reactor
 func makeSeedNode(config *cfg.Config,
 	dbProvider cfg.DBProvider,
-	nodeKey p2p.NodeKey,
+	nodeKey types.NodeKey,
 	genesisDocProvider genesisDocProvider,
 	logger log.Logger,
 ) (service.Service, error) {
@@ -571,12 +572,6 @@ func makeSeedNode(config *cfg.Config,
 	return node, nil
 }
 
-// Temporary interface for switching to fast sync, we should get rid of v0.
-// See: https://github.com/tendermint/tendermint/issues/4595
-type fastSyncReactor interface {
-	SwitchToFastSync(sm.State) error
-}
-
 // OnStart starts the Node. It implements service.Service.
 func (n *nodeImpl) OnStart() error {
 	now := tmtime.Now()
@@ -602,11 +597,11 @@ func (n *nodeImpl) OnStart() error {
 	}
 
 	// Start the transport.
-	addr, err := p2p.NewNetAddressString(p2p.IDAddressString(n.nodeKey.ID, n.config.P2P.ListenAddress))
+	addr, err := types.NewNetAddressString(n.nodeKey.ID.AddressString(n.config.P2P.ListenAddress))
 	if err != nil {
 		return err
 	}
-	if err := n.transport.Listen(addr.Endpoint()); err != nil {
+	if err := n.transport.Listen(p2p.NewEndpoint(addr)); err != nil {
 		return err
 	}
 
@@ -626,7 +621,7 @@ func (n *nodeImpl) OnStart() error {
 	}
 
 	if n.config.Mode != cfg.ModeSeed {
-		if n.config.FastSync.Version == cfg.BlockchainV0 {
+		if n.config.BlockSync.Version == cfg.BlockSyncV0 {
 			// Start the real blockchain reactor separately since the switch uses the shim.
 			if err := n.bcReactor.Start(); err != nil {
 				return err
@@ -669,7 +664,7 @@ func (n *nodeImpl) OnStart() error {
 
 	// Run state sync
 	if n.stateSync {
-		bcR, ok := n.bcReactor.(fastSyncReactor)
+		bcR, ok := n.bcReactor.(cs.BlockSyncReactor)
 		if !ok {
 			return fmt.Errorf("this blockchain reactor does not support switching from state sync")
 		}
@@ -680,9 +675,15 @@ func (n *nodeImpl) OnStart() error {
 			return fmt.Errorf("unable to derive state: %w", err)
 		}
 
-		err = startStateSync(n.stateSyncReactor, bcR, n.consensusReactor, n.stateSyncProvider,
-			n.config.StateSync, n.config.FastSyncMode, n.stateStore, n.blockStore, state)
+		ssc := n.config.StateSync
+		sp, err := constructStateProvider(ssc, state, n.Logger.With("module", "light"))
+
 		if err != nil {
+			return fmt.Errorf("failed to set up light client state provider: %w", err)
+		}
+
+		if err := startStateSync(n.stateSyncReactor, bcR, n.consensusReactor, sp,
+			ssc, n.config.FastSyncMode, state.InitialHeight, n.eventBus); err != nil {
 			return fmt.Errorf("failed to start state sync: %w", err)
 		}
 	}
@@ -705,7 +706,7 @@ func (n *nodeImpl) OnStop() {
 
 	if n.config.Mode != cfg.ModeSeed {
 		// now stop the reactors
-		if n.config.FastSync.Version == cfg.BlockchainV0 {
+		if n.config.BlockSync.Version == cfg.BlockSyncV0 {
 			// Stop the real blockchain reactor separately since the switch uses the shim.
 			if err := n.bcReactor.Stop(); err != nil {
 				n.Logger.Error("failed to stop the blockchain reactor", "err", err)
@@ -965,55 +966,64 @@ func (n *nodeImpl) IsListening() bool {
 }
 
 // NodeInfo returns the Node's Info from the Switch.
-func (n *nodeImpl) NodeInfo() p2p.NodeInfo {
+func (n *nodeImpl) NodeInfo() types.NodeInfo {
 	return n.nodeInfo
 }
 
-// startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
-func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reactor,
-	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
-	stateStore sm.Store, blockStore *store.BlockStore, state sm.State) error {
-	ssR.Logger.Info("starting state sync...")
+// startStateSync starts an asynchronous state sync process, then switches to block sync mode.
+func startStateSync(
+	ssR statesync.SyncReactor,
+	bcR cs.BlockSyncReactor,
+	conR cs.ConsSyncReactor,
+	sp statesync.StateProvider,
+	config *cfg.StateSyncConfig,
+	blockSync bool,
+	stateInitHeight int64,
+	eb *types.EventBus,
+) error {
+	stateSyncLogger := eb.Logger.With("module", "statesync")
 
-	if stateProvider == nil {
-		var err error
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		stateProvider, err = statesync.NewLightClientStateProvider(
-			ctx,
-			state.ChainID, state.Version, state.InitialHeight,
-			config.RPCServers, light.TrustOptions{
-				Period: config.TrustPeriod,
-				Height: config.TrustHeight,
-				Hash:   config.TrustHashBytes(),
-			}, ssR.Logger.With("module", "light"))
-		if err != nil {
-			return fmt.Errorf("failed to set up light client state provider: %w", err)
-		}
+	stateSyncLogger.Info("starting state sync...")
+
+	// at the beginning of the statesync start, we use the initialHeight as the event height
+	// because of the statesync doesn't have the concreate state height before fetched the snapshot.
+	d := types.EventDataStateSyncStatus{Complete: false, Height: stateInitHeight}
+	if err := eb.PublishEventStateSyncStatus(d); err != nil {
+		stateSyncLogger.Error("failed to emit the statesync start event", "err", err)
 	}
 
 	go func() {
-		state, err := ssR.Sync(stateProvider, config.DiscoveryTime)
+		state, err := ssR.Sync(context.TODO(), sp, config.DiscoveryTime)
 		if err != nil {
-			ssR.Logger.Error("state sync failed", "err", err)
+			stateSyncLogger.Error("state sync failed", "err", err)
 			return
 		}
 
-		err = ssR.Backfill(state)
-		if err != nil {
-			ssR.Logger.Error("backfill failed; node has insufficient history to verify all evidence;"+
+		if err := ssR.Backfill(state); err != nil {
+			stateSyncLogger.Error("backfill failed; node has insufficient history to verify all evidence;"+
 				" proceeding optimistically...", "err", err)
 		}
 
-		conR.Metrics.StateSyncing.Set(0)
-		if fastSync {
+		conR.SetStateSyncingMetrics(0)
+
+		d := types.EventDataStateSyncStatus{Complete: true, Height: state.LastBlockHeight}
+		if err := eb.PublishEventStateSyncStatus(d); err != nil {
+			stateSyncLogger.Error("failed to emit the statesync start event", "err", err)
+		}
+
+		if blockSync {
 			// FIXME Very ugly to have these metrics bleed through here.
-			conR.Metrics.FastSyncing.Set(1)
-			err = bcR.SwitchToFastSync(state)
-			if err != nil {
-				ssR.Logger.Error("failed to switch to fast sync", "err", err)
+			conR.SetBlockSyncingMetrics(1)
+			if err := bcR.SwitchToBlockSync(state); err != nil {
+				stateSyncLogger.Error("failed to switch to block sync", "err", err)
 				return
 			}
+
+			d := types.EventDataBlockSyncStatus{Complete: false, Height: state.LastBlockHeight}
+			if err := eb.PublishEventBlockSyncStatus(d); err != nil {
+				stateSyncLogger.Error("failed to emit the block sync starting event", "err", err)
+			}
+
 		} else {
 			conR.SwitchToConsensus(state, true)
 		}
@@ -1114,7 +1124,12 @@ func createAndStartPrivValidatorGRPCClient(
 	chainID string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
-	pvsc, err := tmgrpc.DialRemoteSigner(config, chainID, logger)
+	pvsc, err := tmgrpc.DialRemoteSigner(
+		config.PrivValidator,
+		chainID,
+		logger,
+		config.Instrumentation.Prometheus,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
@@ -1138,7 +1153,7 @@ func getRouterConfig(conf *cfg.Config, proxyApp proxy.AppConns) p2p.RouterOption
 	}
 
 	if conf.FilterPeers && proxyApp != nil {
-		opts.FilterPeerByID = func(ctx context.Context, id p2p.NodeID) error {
+		opts.FilterPeerByID = func(ctx context.Context, id types.NodeID) error {
 			res, err := proxyApp.Query().QuerySync(context.Background(), abci.RequestQuery{
 				Path: fmt.Sprintf("/p2p/filter/id/%s", id),
 			})
@@ -1197,4 +1212,25 @@ func getChannelsFromShim(reactorShim *p2p.ReactorShim) map[p2p.ChannelID]*p2p.Ch
 	}
 
 	return channels
+}
+
+func constructStateProvider(
+	ssc *cfg.StateSyncConfig,
+	state sm.State,
+	logger log.Logger,
+) (statesync.StateProvider, error) {
+	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	defer cancel()
+
+	to := light.TrustOptions{
+		Period: ssc.TrustPeriod,
+		Height: ssc.TrustHeight,
+		Hash:   ssc.TrustHashBytes(),
+	}
+
+	return statesync.NewLightClientStateProvider(
+		ctx,
+		state.ChainID, state.Version, state.InitialHeight,
+		ssc.RPCServers, to, logger,
+	)
 }

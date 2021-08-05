@@ -200,6 +200,7 @@ cors-allowed-headers = [{{ range .RPC.CORSAllowedHeaders }}{{ printf "%q, " . }}
 
 # TCP or UNIX socket address for the gRPC server to listen on
 # NOTE: This server only supports /broadcast_tx_commit
+# Deprecated gRPC  in the RPC layer of Tendermint will be deprecated in 0.36.
 grpc-laddr = "{{ .RPC.GRPCListenAddress }}"
 
 # Maximum number of simultaneous connections.
@@ -209,6 +210,7 @@ grpc-laddr = "{{ .RPC.GRPCListenAddress }}"
 # 0 - unlimited.
 # Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
 # 1024 - 40 - 10 - 50 = 924 = ~900
+# Deprecated gRPC  in the RPC layer of Tendermint will be deprecated in 0.36.
 grpc-max-open-connections = {{ .RPC.GRPCMaxOpenConnections }}
 
 # Activate unsafe RPC commands like /dial-seeds and /unsafe-flush-mempool
@@ -280,7 +282,8 @@ laddr = "{{ .P2P.ListenAddress }}"
 # Address to advertise to peers for them to dial
 # If empty, will use the same port as the laddr,
 # and will introspect on the listener or use UPnP
-# to figure out the address.
+# to figure out the address. ip and port are required
+# example: 159.89.10.97:26656
 external-address = "{{ .P2P.ExternalAddress }}"
 
 # Comma separated list of seed nodes to connect to
@@ -396,6 +399,22 @@ max-tx-bytes = {{ .Mempool.MaxTxBytes }}
 # XXX: Unused due to https://github.com/tendermint/tendermint/issues/5796
 max-batch-bytes = {{ .Mempool.MaxBatchBytes }}
 
+# ttl-duration, if non-zero, defines the maximum amount of time a transaction
+# can exist for in the mempool.
+#
+# Note, if ttl-num-blocks is also defined, a transaction will be removed if it
+# has existed in the mempool at least ttl-num-blocks number of blocks or if it's
+# insertion time into the mempool is beyond ttl-duration.
+ttl-duration = "{{ .Mempool.TTLDuration }}"
+
+# ttl-num-blocks, if non-zero, defines the maximum number of blocks a transaction
+# can exist for in the mempool.
+#
+# Note, if ttl-duration is also defined, a transaction will be removed if it
+# has existed in the mempool at least ttl-num-blocks number of blocks or if
+# it's insertion time into the mempool is beyond ttl-duration.
+ttl-num-blocks = {{ .Mempool.TTLNumBlocks }}
+
 #######################################################
 ###         State Sync Configuration Options        ###
 #######################################################
@@ -425,15 +444,22 @@ discovery-time = "{{ .StateSync.DiscoveryTime }}"
 # Will create a new, randomly named directory within, and remove it when done.
 temp-dir = "{{ .StateSync.TempDir }}"
 
+# The timeout duration before re-requesting a chunk, possibly from a different
+# peer (default: 15 seconds).
+chunk-request-timeout = "{{ .StateSync.ChunkRequestTimeout }}"
+
+# The number of concurrent chunk and block fetchers to run (default: 4).
+fetchers = "{{ .StateSync.Fetchers }}"
+
 #######################################################
-###       Fast Sync Configuration Connections       ###
+###       Block Sync Configuration Connections       ###
 #######################################################
 [fastsync]
 
-# Fast Sync version to use:
-#   1) "v0" (default) - the legacy fast sync implementation
-#   2) "v2" - complete redesign of v0, optimized for testability & readability
-version = "{{ .FastSync.Version }}"
+# Block Sync version to use:
+#   1) "v0" (default) - the legacy block sync implementation
+#   2) "v2" - DEPRECATED, please use v0
+version = "{{ .BlockSync.Version }}"
 
 #######################################################
 ###         Consensus Configuration Options         ###

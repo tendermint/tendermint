@@ -36,7 +36,7 @@ proxy-app = "tcp://127.0.0.1:26658"
 # A custom human readable name for this node
 moniker = "anonymous"
 
-# If this node is many blocks behind the tip of the chain, FastSync
+# If this node is many blocks behind the tip of the chain, BlockSync
 # allows them to catchup quickly by downloading blocks in parallel
 # and verifying their commits
 fast-sync = true
@@ -275,9 +275,13 @@ dial-timeout = "3s"
 #######################################################
 [mempool]
 
+# Mempool version to use:
+#   1) "v0" - The legacy non-prioritized mempool reactor.
+#   2) "v1" (default) - The prioritized mempool reactor.
+version = "v1"
+
 recheck = true
 broadcast = true
-wal-dir = ""
 
 # Maximum number of transactions in the mempool
 size = 5000
@@ -303,6 +307,22 @@ max-tx-bytes = 1048576
 # Including space needed by encoding (one varint per transaction).
 # XXX: Unused due to https://github.com/tendermint/tendermint/issues/5796
 max-batch-bytes = 0
+
+# ttl-duration, if non-zero, defines the maximum amount of time a transaction
+# can exist for in the mempool.
+#
+# Note, if ttl-num-blocks is also defined, a transaction will be removed if it
+# has existed in the mempool at least ttl-num-blocks number of blocks or if it's
+# insertion time into the mempool is beyond ttl-duration.
+ttl-duration = "0s"
+
+# ttl-num-blocks, if non-zero, defines the maximum number of blocks a transaction
+# can exist for in the mempool.
+#
+# Note, if ttl-duration is also defined, a transaction will be removed if it
+# has existed in the mempool at least ttl-num-blocks number of blocks or if
+# it's insertion time into the mempool is beyond ttl-duration.
+ttl-num-blocks = 0
 
 #######################################################
 ###         State Sync Configuration Options        ###
@@ -334,12 +354,12 @@ discovery-time = "15s"
 temp-dir = ""
 
 #######################################################
-###       Fast Sync Configuration Connections       ###
+###       BlockSync Configuration Connections       ###
 #######################################################
 [fastsync]
 
-# Fast Sync version to use:
-#   1) "v0" (default) - the legacy fast sync implementation
+# Block Sync version to use:
+#   1) "v0" (default) - the legacy block sync implementation
 #   2) "v2" - complete redesign of v0, optimized for testability & readability
 version = "v0"
 
@@ -421,7 +441,6 @@ max-open-connections = 3
 
 # Instrumentation namespace
 namespace = "tendermint"
-
 ```
 
 ## Empty blocks VS no empty blocks

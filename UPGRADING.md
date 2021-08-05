@@ -17,7 +17,7 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 ### Config Changes
 
-* `fast_sync = "v1"` is no longer supported. Please use `v2` instead.
+* `fast_sync = "v1"` and `fast_sync = "v2"` are no longer supported. Please use `v0` instead.
 
 * All config parameters are now hyphen-case (also known as kebab-case) instead of snake_case. Before restarting the node make sure
   you have updated all the variables in your `config.toml` file.
@@ -27,10 +27,13 @@ This guide provides instructions for upgrading to specific versions of Tendermin
   
 * `BootstrapPeers` has been added as part of the new p2p stack. This will eventually replace
   `Seeds`. Bootstrap peers are connected with on startup if needed for peer discovery. Unlike
-  persistent peers, there's no gaurantee that the node will remain connected with these peers. 
+  persistent peers, there's no guarantee that the node will remain connected with these peers. 
 
-- configuration values starting with `priv-validator-` have moved to the new
+* configuration values starting with `priv-validator-` have moved to the new
   `priv-validator` section, without the `priv-validator-` prefix.
+
+* The fast sync process as well as the blockchain package and service has all
+  been renamed to block sync
 
 ### CLI Changes
 
@@ -47,13 +50,44 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 * CLI commands and flags are all now hyphen-case instead of snake_case.
   Make sure to adjust any scripts that calls a cli command with snake_casing
+
+### API Changes
+
+The p2p layer was reimplemented as part of the 0.35 release cycle, and
+all reactors were refactored. As part of that work these
+implementations moved into the `internal` package and are no longer
+considered part of the public Go API of tendermint. These packages
+are:
+
+- `p2p`
+- `mempool`
+- `consensus`
+- `statesync`
+- `blockchain`
+- `evidence`
+
+Accordingly, the space `node` package was changed to reduce access to
+tendermint internals: applications that use tendermint as a library
+will need to change to accommodate these changes. Most notably:
+
+- The `Node` type has become internal, and all constructors return a
+  `service.Service` implementation.
+
+- The `node.DefaultNewNode` and `node.NewNode` constructors are no
+  longer exported and have been replaced with `node.New` and
+  `node.NewDefault` which provide more functional interfaces.
+
+### RPC changes
+
+Mark gRPC in the RPC layer as deprecated and to be removed in 0.36.
+
 ## v0.34.0
 
 **Upgrading to Tendermint 0.34 requires a blockchain restart.**
 This release is not compatible with previous blockchains due to changes to
 the encoding format (see "Protocol Buffers," below) and the block header (see "Blockchain Protocol").
 
-Note also that Tendermint 0.34 also requires Go 1.15 or higher.
+Note also that Tendermint 0.34 also requires Go 1.16 or higher.
 
 ### ABCI Changes
 

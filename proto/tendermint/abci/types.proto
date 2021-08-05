@@ -196,6 +196,10 @@ message ResponseCheckTx {
   string         codespace  = 8;
   string         sender     = 9;
   int64          priority   = 10;
+
+  // mempool_error is set by Tendermint.
+  // ABCI applictions creating a ResponseCheckTX should not set mempool_error.
+  string mempool_error = 11;
 }
 
 message ResponseDeliverTx {

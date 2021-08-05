@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abciserver "github.com/tendermint/tendermint/abci/server"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -24,6 +23,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
+	pubmempool "github.com/tendermint/tendermint/pkg/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -82,7 +82,7 @@ func checkTxs(t *testing.T, mp mempool.Mempool, count int, peerID uint16) types.
 			// Skip invalid txs.
 			// TestMempoolFilters will fail otherwise. It asserts a number of txs
 			// returned.
-			if mempool.IsPreCheckError(err) {
+			if pubmempool.IsPreCheckError(err) {
 				continue
 			}
 			t.Fatalf("CheckTx failed: %v while checking #%d tx", err, i)
@@ -216,7 +216,7 @@ func TestMempoolUpdate(t *testing.T) {
 }
 
 func TestMempool_KeepInvalidTxsInCache(t *testing.T) {
-	app := counter.NewApplication(true)
+	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	wcfg := cfg.DefaultConfig()
 	wcfg.Mempool.KeepInvalidTxsInCache = true
@@ -308,7 +308,7 @@ func TestTxsAvailable(t *testing.T) {
 }
 
 func TestSerialReap(t *testing.T) {
-	app := counter.NewApplication(true)
+	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
 
 	mp, cleanup := newMempoolWithApp(cc)
@@ -455,7 +455,7 @@ func TestMempool_CheckTxChecksTxSize(t *testing.T) {
 		if !testCase.err {
 			require.NoError(t, err, caseString)
 		} else {
-			require.Equal(t, err, mempool.ErrTxTooLarge{
+			require.Equal(t, err, pubmempool.ErrTxTooLarge{
 				Max:    maxTxSize,
 				Actual: testCase.len,
 			}, caseString)
@@ -503,11 +503,11 @@ func TestMempoolTxsBytes(t *testing.T) {
 
 	err = mp.CheckTx(context.Background(), []byte{0x05}, nil, mempool.TxInfo{})
 	if assert.Error(t, err) {
-		assert.IsType(t, mempool.ErrMempoolIsFull{}, err)
+		assert.IsType(t, pubmempool.ErrMempoolIsFull{}, err)
 	}
 
 	// 6. zero after tx is rechecked and removed due to not being valid anymore
-	app2 := counter.NewApplication(true)
+	app2 := kvstore.NewApplication()
 	cc = proxy.NewLocalClientCreator(app2)
 	mp, cleanup = newMempoolWithApp(cc)
 	defer cleanup()
@@ -539,16 +539,16 @@ func TestMempoolTxsBytes(t *testing.T) {
 	// Pretend like we committed nothing so txBytes gets rechecked and removed.
 	err = mp.Update(1, []types.Tx{}, abciResponses(0, abci.CodeTypeOK), nil, nil)
 	require.NoError(t, err)
-	assert.EqualValues(t, 0, mp.SizeBytes())
+	assert.EqualValues(t, 8, mp.SizeBytes())
 
 	// 7. Test RemoveTxByKey function
 	err = mp.CheckTx(context.Background(), []byte{0x06}, nil, mempool.TxInfo{})
 	require.NoError(t, err)
-	assert.EqualValues(t, 1, mp.SizeBytes())
+	assert.EqualValues(t, 9, mp.SizeBytes())
 	mp.RemoveTxByKey(mempool.TxKey([]byte{0x07}), true)
-	assert.EqualValues(t, 1, mp.SizeBytes())
+	assert.EqualValues(t, 9, mp.SizeBytes())
 	mp.RemoveTxByKey(mempool.TxKey([]byte{0x06}), true)
-	assert.EqualValues(t, 0, mp.SizeBytes())
+	assert.EqualValues(t, 8, mp.SizeBytes())
 
 }
 

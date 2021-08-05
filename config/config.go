@@ -4,12 +4,16 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
+	tmos "github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -25,8 +29,8 @@ const (
 	ModeValidator = "validator"
 	ModeSeed      = "seed"
 
-	BlockchainV0 = "v0"
-	BlockchainV2 = "v2"
+	BlockSyncV0 = "v0"
+	BlockSyncV2 = "v2"
 
 	MempoolV0 = "v0"
 	MempoolV1 = "v1"
@@ -72,7 +76,7 @@ type Config struct {
 	P2P             *P2PConfig             `mapstructure:"p2p"`
 	Mempool         *MempoolConfig         `mapstructure:"mempool"`
 	StateSync       *StateSyncConfig       `mapstructure:"statesync"`
-	FastSync        *FastSyncConfig        `mapstructure:"fastsync"`
+	BlockSync       *BlockSyncConfig       `mapstructure:"fastsync"`
 	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
 	TxIndex         *TxIndexConfig         `mapstructure:"tx-index"`
 	Instrumentation *InstrumentationConfig `mapstructure:"instrumentation"`
@@ -87,7 +91,7 @@ func DefaultConfig() *Config {
 		P2P:             DefaultP2PConfig(),
 		Mempool:         DefaultMempoolConfig(),
 		StateSync:       DefaultStateSyncConfig(),
-		FastSync:        DefaultFastSyncConfig(),
+		BlockSync:       DefaultBlockSyncConfig(),
 		Consensus:       DefaultConsensusConfig(),
 		TxIndex:         DefaultTxIndexConfig(),
 		Instrumentation: DefaultInstrumentationConfig(),
@@ -110,7 +114,7 @@ func TestConfig() *Config {
 		P2P:             TestP2PConfig(),
 		Mempool:         TestMempoolConfig(),
 		StateSync:       TestStateSyncConfig(),
-		FastSync:        TestFastSyncConfig(),
+		BlockSync:       TestBlockSyncConfig(),
 		Consensus:       TestConsensusConfig(),
 		TxIndex:         TestTxIndexConfig(),
 		Instrumentation: TestInstrumentationConfig(),
@@ -125,32 +129,8 @@ func (cfg *Config) SetRoot(root string) *Config {
 	cfg.P2P.RootDir = root
 	cfg.Mempool.RootDir = root
 	cfg.Consensus.RootDir = root
+	cfg.PrivValidator.RootDir = root
 	return cfg
-}
-
-// PrivValidatorClientKeyFile returns the full path to the priv_validator_key.json file
-func (cfg Config) PrivValidatorClientKeyFile() string {
-	return rootify(cfg.PrivValidator.ClientKey, cfg.RootDir)
-}
-
-// PrivValidatorClientCertificateFile returns the full path to the priv_validator_key.json file
-func (cfg Config) PrivValidatorClientCertificateFile() string {
-	return rootify(cfg.PrivValidator.ClientCertificate, cfg.RootDir)
-}
-
-// PrivValidatorCertificateAuthorityFile returns the full path to the priv_validator_key.json file
-func (cfg Config) PrivValidatorRootCAFile() string {
-	return rootify(cfg.PrivValidator.RootCA, cfg.RootDir)
-}
-
-// PrivValidatorKeyFile returns the full path to the priv_validator_key.json file
-func (cfg Config) PrivValidatorKeyFile() string {
-	return rootify(cfg.PrivValidator.Key, cfg.RootDir)
-}
-
-// PrivValidatorFile returns the full path to the priv_validator_state.json file
-func (cfg Config) PrivValidatorStateFile() string {
-	return rootify(cfg.PrivValidator.State, cfg.RootDir)
 }
 
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
@@ -171,7 +151,7 @@ func (cfg *Config) ValidateBasic() error {
 	if err := cfg.StateSync.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [statesync] section: %w", err)
 	}
-	if err := cfg.FastSync.ValidateBasic(); err != nil {
+	if err := cfg.BlockSync.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [fastsync] section: %w", err)
 	}
 	if err := cfg.Consensus.ValidateBasic(); err != nil {
@@ -217,6 +197,7 @@ type BaseConfig struct { //nolint: maligned
 	// If this node is many blocks behind the tip of the chain, FastSync
 	// allows them to catchup quickly by downloading blocks in parallel
 	// and verifying their commits
+	// TODO: This should be moved to the blocksync config
 	FastSyncMode bool `mapstructure:"fast-sync"`
 
 	// Database backend: goleveldb | cleveldb | boltdb | rocksdb
@@ -306,22 +287,44 @@ func (cfg BaseConfig) NodeKeyFile() string {
 	return rootify(cfg.NodeKey, cfg.RootDir)
 }
 
+// LoadNodeKey loads NodeKey located in filePath.
+func (cfg BaseConfig) LoadNodeKeyID() (types.NodeID, error) {
+	jsonBytes, err := ioutil.ReadFile(cfg.NodeKeyFile())
+	if err != nil {
+		return "", err
+	}
+	nodeKey := types.NodeKey{}
+	err = tmjson.Unmarshal(jsonBytes, &nodeKey)
+	if err != nil {
+		return "", err
+	}
+	nodeKey.ID = types.NodeIDFromPubKey(nodeKey.PubKey())
+	return nodeKey.ID, nil
+}
+
+// LoadOrGenNodeKey attempts to load the NodeKey from the given filePath. If
+// the file does not exist, it generates and saves a new NodeKey.
+func (cfg BaseConfig) LoadOrGenNodeKeyID() (types.NodeID, error) {
+	if tmos.FileExists(cfg.NodeKeyFile()) {
+		nodeKey, err := cfg.LoadNodeKeyID()
+		if err != nil {
+			return "", err
+		}
+		return nodeKey, nil
+	}
+
+	nodeKey := types.GenNodeKey()
+
+	if err := nodeKey.SaveAs(cfg.NodeKeyFile()); err != nil {
+		return "", err
+	}
+
+	return nodeKey.ID, nil
+}
+
 // DBDir returns the full path to the database directory
 func (cfg BaseConfig) DBDir() string {
 	return rootify(cfg.DBPath, cfg.RootDir)
-}
-
-func (cfg Config) ArePrivValidatorClientSecurityOptionsPresent() bool {
-	switch {
-	case cfg.PrivValidator.RootCA == "":
-		return false
-	case cfg.PrivValidator.ClientKey == "":
-		return false
-	case cfg.PrivValidator.ClientCertificate == "":
-		return false
-	default:
-		return true
-	}
 }
 
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
@@ -350,6 +353,8 @@ func (cfg BaseConfig) ValidateBasic() error {
 
 // PrivValidatorConfig defines the configuration parameters for running a validator
 type PrivValidatorConfig struct {
+	RootDir string `mapstructure:"home"`
+
 	// Path to the JSON file containing the private key to use as a validator in the consensus protocol
 	Key string `mapstructure:"key-file"`
 
@@ -380,6 +385,44 @@ func DefaultPrivValidatorConfig() *PrivValidatorConfig {
 	}
 }
 
+// ClientKeyFile returns the full path to the priv_validator_key.json file
+func (cfg *PrivValidatorConfig) ClientKeyFile() string {
+	return rootify(cfg.ClientKey, cfg.RootDir)
+}
+
+// ClientCertificateFile returns the full path to the priv_validator_key.json file
+func (cfg *PrivValidatorConfig) ClientCertificateFile() string {
+	return rootify(cfg.ClientCertificate, cfg.RootDir)
+}
+
+// CertificateAuthorityFile returns the full path to the priv_validator_key.json file
+func (cfg *PrivValidatorConfig) RootCAFile() string {
+	return rootify(cfg.RootCA, cfg.RootDir)
+}
+
+// KeyFile returns the full path to the priv_validator_key.json file
+func (cfg *PrivValidatorConfig) KeyFile() string {
+	return rootify(cfg.Key, cfg.RootDir)
+}
+
+// StateFile returns the full path to the priv_validator_state.json file
+func (cfg *PrivValidatorConfig) StateFile() string {
+	return rootify(cfg.State, cfg.RootDir)
+}
+
+func (cfg *PrivValidatorConfig) AreSecurityOptionsPresent() bool {
+	switch {
+	case cfg.RootCA == "":
+		return false
+	case cfg.ClientKey == "":
+		return false
+	case cfg.ClientCertificate == "":
+		return false
+	default:
+		return true
+	}
+}
+
 //-----------------------------------------------------------------------------
 // RPCConfig
 
@@ -404,6 +447,7 @@ type RPCConfig struct {
 
 	// TCP or UNIX socket address for the gRPC server to listen on
 	// NOTE: This server only supports /broadcast_tx_commit
+	// Deprecated: gRPC in the RPC layer of Tendermint will be removed in 0.36.
 	GRPCListenAddress string `mapstructure:"grpc-laddr"`
 
 	// Maximum number of simultaneous connections.
@@ -411,6 +455,7 @@ type RPCConfig struct {
 	// If you want to accept a larger number than the default, make sure
 	// you increase your OS limits.
 	// 0 - unlimited.
+	// Deprecated: gRPC in the RPC layer of Tendermint will be removed in 0.36.
 	GRPCMaxOpenConnections int `mapstructure:"grpc-max-open-connections"`
 
 	// Activate unsafe RPC commands like /dial-persistent-peers and /unsafe-flush-mempool
@@ -740,25 +785,47 @@ type MempoolConfig struct {
 	RootDir   string `mapstructure:"home"`
 	Recheck   bool   `mapstructure:"recheck"`
 	Broadcast bool   `mapstructure:"broadcast"`
+
 	// Maximum number of transactions in the mempool
 	Size int `mapstructure:"size"`
+
 	// Limit the total size of all txs in the mempool.
 	// This only accounts for raw transactions (e.g. given 1MB transactions and
 	// max-txs-bytes=5MB, mempool will only accept 5 transactions).
 	MaxTxsBytes int64 `mapstructure:"max-txs-bytes"`
+
 	// Size of the cache (used to filter transactions we saw earlier) in transactions
 	CacheSize int `mapstructure:"cache-size"`
+
 	// Do not remove invalid transactions from the cache (default: false)
 	// Set to true if it's not possible for any invalid transaction to become
 	// valid again in the future.
 	KeepInvalidTxsInCache bool `mapstructure:"keep-invalid-txs-in-cache"`
+
 	// Maximum size of a single transaction
 	// NOTE: the max size of a tx transmitted over the network is {max-tx-bytes}.
 	MaxTxBytes int `mapstructure:"max-tx-bytes"`
+
 	// Maximum size of a batch of transactions to send to a peer
 	// Including space needed by encoding (one varint per transaction).
 	// XXX: Unused due to https://github.com/tendermint/tendermint/issues/5796
 	MaxBatchBytes int `mapstructure:"max-batch-bytes"`
+
+	// TTLDuration, if non-zero, defines the maximum amount of time a transaction
+	// can exist for in the mempool.
+	//
+	// Note, if TTLNumBlocks is also defined, a transaction will be removed if it
+	// has existed in the mempool at least TTLNumBlocks number of blocks or if it's
+	// insertion time into the mempool is beyond TTLDuration.
+	TTLDuration time.Duration `mapstructure:"ttl-duration"`
+
+	// TTLNumBlocks, if non-zero, defines the maximum number of blocks a transaction
+	// can exist for in the mempool.
+	//
+	// Note, if TTLDuration is also defined, a transaction will be removed if it
+	// has existed in the mempool at least TTLNumBlocks number of blocks or if
+	// it's insertion time into the mempool is beyond TTLDuration.
+	TTLNumBlocks int64 `mapstructure:"ttl-num-blocks"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool.
@@ -769,10 +836,12 @@ func DefaultMempoolConfig() *MempoolConfig {
 		Broadcast: true,
 		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck
-		Size:        5000,
-		MaxTxsBytes: 1024 * 1024 * 1024, // 1GB
-		CacheSize:   10000,
-		MaxTxBytes:  1024 * 1024, // 1MB
+		Size:         5000,
+		MaxTxsBytes:  1024 * 1024 * 1024, // 1GB
+		CacheSize:    10000,
+		MaxTxBytes:   1024 * 1024, // 1MB
+		TTLDuration:  0 * time.Second,
+		TTLNumBlocks: 0,
 	}
 }
 
@@ -798,6 +867,13 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 	if cfg.MaxTxBytes < 0 {
 		return errors.New("max-tx-bytes can't be negative")
 	}
+	if cfg.TTLDuration < 0 {
+		return errors.New("ttl-duration can't be negative")
+	}
+	if cfg.TTLNumBlocks < 0 {
+		return errors.New("ttl-num-blocks can't be negative")
+	}
+
 	return nil
 }
 
@@ -806,13 +882,15 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 
 // StateSyncConfig defines the configuration for the Tendermint state sync service
 type StateSyncConfig struct {
-	Enable        bool          `mapstructure:"enable"`
-	TempDir       string        `mapstructure:"temp-dir"`
-	RPCServers    []string      `mapstructure:"rpc-servers"`
-	TrustPeriod   time.Duration `mapstructure:"trust-period"`
-	TrustHeight   int64         `mapstructure:"trust-height"`
-	TrustHash     string        `mapstructure:"trust-hash"`
-	DiscoveryTime time.Duration `mapstructure:"discovery-time"`
+	Enable              bool          `mapstructure:"enable"`
+	TempDir             string        `mapstructure:"temp-dir"`
+	RPCServers          []string      `mapstructure:"rpc-servers"`
+	TrustPeriod         time.Duration `mapstructure:"trust-period"`
+	TrustHeight         int64         `mapstructure:"trust-height"`
+	TrustHash           string        `mapstructure:"trust-hash"`
+	DiscoveryTime       time.Duration `mapstructure:"discovery-time"`
+	ChunkRequestTimeout time.Duration `mapstructure:"chunk-request-timeout"`
+	Fetchers            int32         `mapstructure:"fetchers"`
 }
 
 func (cfg *StateSyncConfig) TrustHashBytes() []byte {
@@ -827,12 +905,14 @@ func (cfg *StateSyncConfig) TrustHashBytes() []byte {
 // DefaultStateSyncConfig returns a default configuration for the state sync service
 func DefaultStateSyncConfig() *StateSyncConfig {
 	return &StateSyncConfig{
-		TrustPeriod:   168 * time.Hour,
-		DiscoveryTime: 15 * time.Second,
+		TrustPeriod:         168 * time.Hour,
+		DiscoveryTime:       15 * time.Second,
+		ChunkRequestTimeout: 15 * time.Second,
+		Fetchers:            4,
 	}
 }
 
-// TestFastSyncConfig returns a default configuration for the state sync service
+// TestStateSyncConfig returns a default configuration for the state sync service
 func TestStateSyncConfig() *StateSyncConfig {
 	return DefaultStateSyncConfig()
 }
@@ -843,14 +923,17 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 		if len(cfg.RPCServers) == 0 {
 			return errors.New("rpc-servers is required")
 		}
+
 		if len(cfg.RPCServers) < 2 {
 			return errors.New("at least two rpc-servers entries is required")
 		}
+
 		for _, server := range cfg.RPCServers {
 			if len(server) == 0 {
 				return errors.New("found empty rpc-servers entry")
 			}
 		}
+
 		if cfg.DiscoveryTime != 0 && cfg.DiscoveryTime < 5*time.Second {
 			return errors.New("discovery time must be 0s or greater than five seconds")
 		}
@@ -858,49 +941,60 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 		if cfg.TrustPeriod <= 0 {
 			return errors.New("trusted-period is required")
 		}
+
 		if cfg.TrustHeight <= 0 {
 			return errors.New("trusted-height is required")
 		}
+
 		if len(cfg.TrustHash) == 0 {
 			return errors.New("trusted-hash is required")
 		}
+
 		_, err := hex.DecodeString(cfg.TrustHash)
 		if err != nil {
 			return fmt.Errorf("invalid trusted-hash: %w", err)
 		}
+
+		if cfg.ChunkRequestTimeout < 5*time.Second {
+			return errors.New("chunk-request-timeout must be at least 5 seconds")
+		}
+
+		if cfg.Fetchers <= 0 {
+			return errors.New("fetchers is required")
+		}
 	}
+
 	return nil
 }
 
 //-----------------------------------------------------------------------------
-// FastSyncConfig
 
-// FastSyncConfig defines the configuration for the Tendermint fast sync service
-type FastSyncConfig struct {
+// BlockSyncConfig (formerly known as FastSync) defines the configuration for the Tendermint block sync service
+type BlockSyncConfig struct {
 	Version string `mapstructure:"version"`
 }
 
-// DefaultFastSyncConfig returns a default configuration for the fast sync service
-func DefaultFastSyncConfig() *FastSyncConfig {
-	return &FastSyncConfig{
-		Version: BlockchainV0,
+// DefaultBlockSyncConfig returns a default configuration for the block sync service
+func DefaultBlockSyncConfig() *BlockSyncConfig {
+	return &BlockSyncConfig{
+		Version: BlockSyncV0,
 	}
 }
 
-// TestFastSyncConfig returns a default configuration for the fast sync.
-func TestFastSyncConfig() *FastSyncConfig {
-	return DefaultFastSyncConfig()
+// TestBlockSyncConfig returns a default configuration for the block sync.
+func TestBlockSyncConfig() *BlockSyncConfig {
+	return DefaultBlockSyncConfig()
 }
 
 // ValidateBasic performs basic validation.
-func (cfg *FastSyncConfig) ValidateBasic() error {
+func (cfg *BlockSyncConfig) ValidateBasic() error {
 	switch cfg.Version {
-	case BlockchainV0:
+	case BlockSyncV0:
 		return nil
-	case BlockchainV2:
-		return nil
+	case BlockSyncV2:
+		return errors.New("blocksync version v2 is no longer supported. Please use v0")
 	default:
-		return fmt.Errorf("unknown fastsync version %s", cfg.Version)
+		return fmt.Errorf("unknown blocksync version %s", cfg.Version)
 	}
 }
 

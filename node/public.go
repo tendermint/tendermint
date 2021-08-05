@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/privval"
@@ -32,7 +31,7 @@ func New(conf *config.Config,
 	cf proxy.ClientCreator,
 	gen *types.GenesisDoc,
 ) (service.Service, error) {
-	nodeKey, err := p2p.LoadOrGenNodeKey(conf.NodeKeyFile())
+	nodeKey, err := types.LoadOrGenNodeKey(conf.NodeKeyFile())
 	if err != nil {
 		return nil, fmt.Errorf("failed to load or gen node key %s: %w", conf.NodeKeyFile(), err)
 	}
@@ -47,7 +46,7 @@ func New(conf *config.Config,
 
 	switch conf.Mode {
 	case config.ModeFull, config.ModeValidator:
-		pval, err := privval.LoadOrGenFilePV(conf.PrivValidatorKeyFile(), conf.PrivValidatorStateFile())
+		pval, err := privval.LoadOrGenFilePV(conf.PrivValidator.KeyFile(), conf.PrivValidator.StateFile())
 		if err != nil {
 			return nil, err
 		}

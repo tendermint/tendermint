@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"runtime/debug"
 	"sort"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/config"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
@@ -37,33 +39,33 @@ var (
 			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  byte(SnapshotChannel),
-				Priority:            5,
+				Priority:            6,
 				SendQueueCapacity:   10,
 				RecvMessageCapacity: snapshotMsgSize,
-
-				MaxSendBytes: 400,
+				RecvBufferCapacity:  128,
+				MaxSendBytes:        400,
 			},
 		},
 		ChunkChannel: {
 			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  byte(ChunkChannel),
-				Priority:            1,
+				Priority:            3,
 				SendQueueCapacity:   4,
 				RecvMessageCapacity: chunkMsgSize,
-
-				MaxSendBytes: 400,
+				RecvBufferCapacity:  128,
+				MaxSendBytes:        400,
 			},
 		},
 		LightBlockChannel: {
 			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  byte(LightBlockChannel),
-				Priority:            1,
+				Priority:            2,
 				SendQueueCapacity:   10,
 				RecvMessageCapacity: lightBlockMsgSize,
-
-				MaxSendBytes: 400,
+				RecvBufferCapacity:  128,
+				MaxSendBytes:        400,
 			},
 		},
 	}
@@ -83,32 +85,35 @@ const (
 	recentSnapshots = 10
 
 	// snapshotMsgSize is the maximum size of a snapshotResponseMessage
-	snapshotMsgSize = int(4e6)
+	snapshotMsgSize = int(4e6) // ~4MB
 
 	// chunkMsgSize is the maximum size of a chunkResponseMessage
-	chunkMsgSize = int(16e6)
+	chunkMsgSize = int(16e6) // ~16MB
 
 	// lightBlockMsgSize is the maximum size of a lightBlockResponseMessage
-	lightBlockMsgSize = int(1e7)
+	lightBlockMsgSize = int(1e7) // ~10MB
 
 	// lightBlockResponseTimeout is how long the dispatcher waits for a peer to
 	// return a light block
-	lightBlockResponseTimeout = 10 * time.Second
+	lightBlockResponseTimeout = 30 * time.Second
 
 	// maxLightBlockRequestRetries is the amount of retries acceptable before
 	// the backfill process aborts
 	maxLightBlockRequestRetries = 20
-
-	// the amount of processes fetching light blocks - this should be roughly calculated
-	// as the time to fetch a block / time to verify a block
-	lightBlockFetchers = 4
 )
+
+// SyncReactor defines an interface used for testing abilities of node.startStateSync.
+type SyncReactor interface {
+	Sync(context.Context, StateProvider, time.Duration) (sm.State, error)
+	Backfill(sm.State) error
+}
 
 // Reactor handles state sync, both restoring snapshots for the local node and
 // serving snapshots for other nodes.
 type Reactor struct {
 	service.BaseService
 
+	cfg        config.StateSyncConfig
 	stateStore sm.Store
 	blockStore *store.BlockStore
 
@@ -134,6 +139,7 @@ type Reactor struct {
 // and querying, references to p2p Channels and a channel to listen for peer
 // updates on. Note, the reactor will close all p2p Channels when stopping.
 func NewReactor(
+	cfg config.StateSyncConfig,
 	logger log.Logger,
 	conn proxy.AppConnSnapshot,
 	connQuery proxy.AppConnQuery,
@@ -144,6 +150,7 @@ func NewReactor(
 	tempDir string,
 ) *Reactor {
 	r := &Reactor{
+		cfg:         cfg,
 		conn:        conn,
 		connQuery:   connQuery,
 		snapshotCh:  snapshotCh,
@@ -210,28 +217,43 @@ func (r *Reactor) OnStop() {
 // application. It also saves tendermint state and runs a backfill process to
 // retrieve the necessary amount of headers, commits and validators sets to be
 // able to process evidence and participate in consensus.
-func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration) (sm.State, error) {
+func (r *Reactor) Sync(
+	ctx context.Context,
+	stateProvider StateProvider,
+	discoveryTime time.Duration,
+) (sm.State, error) {
 	r.mtx.Lock()
 	if r.syncer != nil {
 		r.mtx.Unlock()
 		return sm.State{}, errors.New("a state sync is already in progress")
 	}
 
-	r.syncer = newSyncer(r.Logger, r.conn, r.connQuery, stateProvider, r.snapshotCh.Out, r.chunkCh.Out, r.tempDir)
+	if stateProvider == nil {
+		r.mtx.Unlock()
+		return sm.State{}, errors.New("the stateProvider should not be nil when doing the state sync")
+	}
+
+	r.syncer = newSyncer(
+		r.cfg,
+		r.Logger,
+		r.conn,
+		r.connQuery,
+		stateProvider,
+		r.snapshotCh.Out,
+		r.chunkCh.Out,
+		r.tempDir,
+	)
 	r.mtx.Unlock()
 
-	hook := func() {
+	requestSnapshotsHook := func() {
 		// request snapshots from all currently connected peers
-		r.Logger.Debug("requesting snapshots from known peers")
 		r.snapshotCh.Out <- p2p.Envelope{
 			Broadcast: true,
 			Message:   &ssproto.SnapshotsRequest{},
 		}
 	}
 
-	hook()
-
-	state, commit, err := r.syncer.SyncAny(discoveryTime, hook)
+	state, commit, err := r.syncer.SyncAny(ctx, discoveryTime, requestSnapshotsHook)
 	if err != nil {
 		return sm.State{}, err
 	}
@@ -270,7 +292,9 @@ func (r *Reactor) Backfill(state sm.State) error {
 	return r.backfill(
 		context.Background(),
 		state.ChainID,
-		state.LastBlockHeight, stopHeight,
+		state.LastBlockHeight,
+		stopHeight,
+		state.InitialHeight,
 		state.LastBlockID,
 		stopTime,
 	)
@@ -279,7 +303,7 @@ func (r *Reactor) Backfill(state sm.State) error {
 func (r *Reactor) backfill(
 	ctx context.Context,
 	chainID string,
-	startHeight, stopHeight int64,
+	startHeight, stopHeight, initialHeight int64,
 	trustedBlockID types.BlockID,
 	stopTime time.Time,
 ) error {
@@ -292,20 +316,25 @@ func (r *Reactor) backfill(
 		lastChangeHeight int64 = startHeight
 	)
 
-	queue := newBlockQueue(startHeight, stopHeight, stopTime, maxLightBlockRequestRetries)
+	queue := newBlockQueue(startHeight, stopHeight, initialHeight, stopTime, maxLightBlockRequestRetries)
 
 	// fetch light blocks across four workers. The aim with deploying concurrent
 	// workers is to equate the network messaging time with the verification
 	// time. Ideally we want the verification process to never have to be
 	// waiting on blocks. If it takes 4s to retrieve a block and 1s to verify
 	// it, then steady state involves four workers.
-	for i := 0; i < lightBlockFetchers; i++ {
+	for i := 0; i < int(r.cfg.Fetchers); i++ {
+		ctxWithCancel, cancel := context.WithCancel(ctx)
+		defer cancel()
 		go func() {
 			for {
 				select {
 				case height := <-queue.nextHeight():
 					r.Logger.Debug("fetching next block", "height", height)
-					lb, peer, err := r.dispatcher.LightBlock(ctx, height)
+					lb, peer, err := r.dispatcher.LightBlock(ctxWithCancel, height)
+					if errors.Is(err, context.Canceled) {
+						return
+					}
 					if err != nil {
 						queue.retry(height)
 						if errors.Is(err, errNoConnectedPeers) {
@@ -322,8 +351,8 @@ func (r *Reactor) backfill(
 					if lb == nil {
 						r.Logger.Info("backfill: peer didn't have block, fetching from another peer", "height", height)
 						queue.retry(height)
-						// as we are fetching blocks backwards, if this node doesn't have the block it likely doesn't
-						// have any prior ones, thus we remove it from the peer list
+						// As we are fetching blocks backwards, if this node doesn't have the block it likely doesn't
+						// have any prior ones, thus we remove it from the peer list.
 						r.dispatcher.removePeer(peer)
 						continue
 					}
@@ -442,10 +471,11 @@ func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
 		}
 
 		for _, snapshot := range snapshots {
-			logger.Debug(
+			logger.Info(
 				"advertising snapshot",
 				"height", snapshot.Height,
 				"format", snapshot.Format,
+				"peer", envelope.From,
 			)
 			r.snapshotCh.Out <- p2p.Envelope{
 				To: envelope.From,
@@ -612,7 +642,6 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 	case *ssproto.LightBlockResponse:
 		if err := r.dispatcher.respond(msg.LightBlock, envelope.From); err != nil {
 			r.Logger.Error("error processing light block response", "err", err)
-			return err
 		}
 
 	default:
@@ -629,6 +658,11 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
+			r.Logger.Error(
+				"recovering from processing message panic",
+				"err", err,
+				"stack", string(debug.Stack()),
+			)
 		}
 	}()
 

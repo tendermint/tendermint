@@ -18,7 +18,7 @@ func ExampleHTTP_simple() {
 
 	// Start a tendermint node (and kvstore) in the background to test against
 	app := kvstore.NewApplication()
-	conf := rpctest.CreateConfig()
+	conf := rpctest.CreateConfig("ExampleHTTP_simple")
 
 	_, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
 	if err != nil {
@@ -79,7 +79,7 @@ func ExampleHTTP_batching() {
 
 	// Start a tendermint node (and kvstore) in the background to test against
 	app := kvstore.NewApplication()
-	conf := rpctest.CreateConfig()
+	conf := rpctest.CreateConfig("ExampleHTTP_batching")
 
 	_, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
 	if err != nil {

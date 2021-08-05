@@ -16,10 +16,10 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/test/factory"
 	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -234,14 +234,14 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 			bBlockMeta := bs.LoadBlockMeta(tuple.block.Height)
 
 			if tuple.eraseSeenCommitInDB {
-				err := db.Delete(seenCommitKey(tuple.block.Height))
+				err := db.Delete(seenCommitKey())
 				require.NoError(t, err)
 			}
 			if tuple.corruptSeenCommitInDB {
-				err := db.Set(seenCommitKey(tuple.block.Height), []byte("bogus-seen-commit"))
+				err := db.Set(seenCommitKey(), []byte("bogus-seen-commit"))
 				require.NoError(t, err)
 			}
-			bSeenCommit := bs.LoadSeenCommit(tuple.block.Height)
+			bSeenCommit := bs.LoadSeenCommit()
 
 			commitHeight := tuple.block.Height - 1
 			if tuple.eraseCommitInDB {
@@ -494,9 +494,8 @@ func TestBlockFetchAtHeight(t *testing.T) {
 
 func TestSeenAndCanonicalCommit(t *testing.T) {
 	bs, _ := freshBlockStore()
-	height := int64(2)
 	loadCommit := func() (interface{}, error) {
-		meta := bs.LoadSeenCommit(height)
+		meta := bs.LoadSeenCommit()
 		return meta, nil
 	}
 
@@ -509,20 +508,15 @@ func TestSeenAndCanonicalCommit(t *testing.T) {
 	// produce a few blocks and check that the correct seen and cannoncial commits
 	// are persisted.
 	for h := int64(3); h <= 5; h++ {
-		c1 := bs.LoadSeenCommit(h)
-		require.Nil(t, c1)
-		c2 := bs.LoadBlockCommit(h - 1)
-		require.Nil(t, c2)
 		blockCommit := makeTestCommit(h-1, tmtime.Now())
 		block := factory.MakeBlock(state, h, blockCommit)
 		partSet := block.MakePartSet(2)
 		seenCommit := makeTestCommit(h, tmtime.Now())
 		bs.SaveBlock(block, partSet, seenCommit)
-		c3 := bs.LoadSeenCommit(h)
+		c3 := bs.LoadSeenCommit()
+		require.NotNil(t, c3)
+		require.Equal(t, h, c3.Height)
 		require.Equal(t, seenCommit.Hash(), c3.Hash())
-		// the previous seen commit should be removed
-		c4 := bs.LoadSeenCommit(h - 1)
-		require.Nil(t, c4)
 		c5 := bs.LoadBlockCommit(h)
 		require.Nil(t, c5)
 		c6 := bs.LoadBlockCommit(h - 1)
