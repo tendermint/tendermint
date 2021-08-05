@@ -21,7 +21,7 @@ func NewHTTPClient(
 	primaryAddress string,
 	witnessesAddresses []string,
 	trustedStore store.Store,
-	dashCoreRpcClient dashcore.DashCoreClient,
+	dashCoreRPCClient dashcore.Client,
 	options ...Option) (*Client, error) {
 
 	providers, err := providersFromAddresses(append(witnessesAddresses, primaryAddress), chainID)
@@ -35,7 +35,7 @@ func NewHTTPClient(
 		providers[len(providers)-1],
 		providers[:len(providers)-1],
 		trustedStore,
-		dashCoreRpcClient,
+		dashCoreRPCClient,
 		options...)
 }
 
@@ -50,7 +50,7 @@ func NewHTTPClientFromTrustedStore(
 	primaryAddress string,
 	witnessesAddresses []string,
 	trustedStore store.Store,
-	dashCoreRpcClient dashcore.DashCoreClient,
+	dashCoreRPCClient dashcore.Client,
 	options ...Option) (*Client, error) {
 
 	providers, err := providersFromAddresses(append(witnessesAddresses, primaryAddress), chainID)
@@ -63,7 +63,7 @@ func NewHTTPClientFromTrustedStore(
 		providers[len(providers)-1],
 		providers[:len(providers)-1],
 		trustedStore,
-		dashCoreRpcClient,
+		dashCoreRPCClient,
 		options...)
 }
 

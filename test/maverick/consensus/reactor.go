@@ -1047,7 +1047,7 @@ func (ps *PeerState) SetHasProposalBlockPart(height int64, round int32, index in
 
 func (ps *PeerState) SendCommit(commit *types.Commit) bool {
 	if commit != nil {
-		msg := &tmcon.CommitMessage{commit}
+		msg := &tmcon.CommitMessage{Commit: commit}
 		ps.logger.Debug("Sending commit message", "peer", ps.peer, "ps", ps, "commit", commit)
 		if ps.peer.Send(VoteChannel, tmcon.MustEncode(msg)) {
 			ps.SetHasCommit(commit)

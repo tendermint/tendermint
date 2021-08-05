@@ -64,12 +64,12 @@ var (
 	deadNode = mockp.NewDeadMock(chainID)
 	// largeFullNode = mockp.New(genMockNode(chainID, 10, 3, 0, bTime))
 
-	dashCoreMockClient dashcore.DashCoreClient
+	dashCoreMockClient dashcore.Client
 	trustedStore       store.Store
 )
 
 func setupDashCoreMockClient(t *testing.T) {
-	dashCoreMockClient = dashcore.NewDashCoreMockClient(chainID, llmqType, privVals[0], true)
+	dashCoreMockClient = dashcore.NewMockClient(chainID, llmqType, privVals[0], true)
 
 	t.Cleanup(func() {
 		dashCoreMockClient = nil

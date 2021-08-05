@@ -257,7 +257,11 @@ func evidenceLogger() log.Logger {
 }
 
 // connect N evidence reactors through N switches
-func makeAndConnectReactorsAndPools(config *cfg.Config, stateStores []sm.Store, proTxHashes []*crypto.ProTxHash) ([]*evidence.Reactor,
+func makeAndConnectReactorsAndPools(
+	config *cfg.Config,
+	stateStores []sm.Store,
+	proTxHashes []*crypto.ProTxHash,
+) ([]*evidence.Reactor,
 	[]*evidence.Pool) {
 	N := len(stateStores)
 

@@ -29,8 +29,8 @@ const (
 	// For verifySkipping, when using the cache of headers from the previous batch,
 	// they will always be at a height greater than 1/2 (normal verifySkipping) so to
 	// find something in between the range, 9/16 is used.
-	verifySkippingNumerator   = 9
-	verifySkippingDenominator = 16
+	// verifySkippingNumerator   = 9
+	// verifySkippingDenominator = 16
 
 	// 10s should cover most of the clients.
 	// References:
@@ -141,7 +141,7 @@ type Client struct {
 	quit chan struct{}
 
 	// Rpc client connected to dashd
-	dashCoreRpcClient dashcore.DashCoreClient
+	dashCoreRPCClient dashcore.Client
 
 	logger log.Logger
 }
@@ -162,10 +162,10 @@ func NewClient(
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
-	dashCoreRpcClient dashcore.DashCoreClient,
+	dashCoreRPCClient dashcore.Client,
 	options ...Option) (*Client, error) {
 
-	return NewClientAtHeight(ctx, 0, chainID, primary, witnesses, trustedStore, dashCoreRpcClient, options...)
+	return NewClientAtHeight(ctx, 0, chainID, primary, witnesses, trustedStore, dashCoreRPCClient, options...)
 }
 
 func NewClientAtHeight(
@@ -175,10 +175,10 @@ func NewClientAtHeight(
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
-	dashCoreRpcClient dashcore.DashCoreClient,
+	dashCoreRPCClient dashcore.Client,
 	options ...Option) (*Client, error) {
 
-	c, err := NewClientFromTrustedStore(chainID, primary, witnesses, trustedStore, dashCoreRpcClient, options...)
+	c, err := NewClientFromTrustedStore(chainID, primary, witnesses, trustedStore, dashCoreRPCClient, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -201,10 +201,10 @@ func NewClientFromTrustedStore(
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
-	dashCoreRpcClient dashcore.DashCoreClient,
+	dashCoreRPCClient dashcore.Client,
 	options ...Option) (*Client, error) {
 
-	if dashCoreRpcClient == nil {
+	if dashCoreRPCClient == nil {
 		return nil, ErrNoDashCoreClient
 	}
 
@@ -221,7 +221,7 @@ func NewClientFromTrustedStore(
 		confirmationFn:    func(action string) bool { return true },
 		quit:              make(chan struct{}),
 		logger:            log.NewNopLogger(),
-		dashCoreRpcClient: dashCoreRpcClient,
+		dashCoreRPCClient: dashCoreRPCClient,
 	}
 
 	for _, o := range options {
@@ -269,9 +269,11 @@ func (c *Client) restoreTrustedLightBlock() error {
 
 // initialize fetches the last light block from
 // primary provider.
+/*
 func (c *Client) initialize(ctx context.Context) error {
 	return c.initializeAtHeight(ctx, 0) //
 }
+*/
 
 // initializeAtHeight fetches a light block at given height from
 // primary provider.
@@ -523,15 +525,15 @@ func (c *Client) verifyBlockWithDashCore(ctx context.Context, newLightBlock *typ
 	stateSignBytes := types.VoteStateSignBytes(c.chainID, protoVote)
 
 	blockMessageHash := crypto.Sha256(blockSignBytes)
-	blockRequestId := types.VoteBlockRequestIdProto(protoVote)
+	blockRequestID := types.VoteBlockRequestIDProto(protoVote)
 
 	stateMessageHash := crypto.Sha256(stateSignBytes)
-	stateRequestId := types.VoteStateRequestIdProto(protoVote)
+	stateRequestID := types.VoteStateRequestIDProto(protoVote)
 	stateSignature := newLightBlock.Commit.ThresholdStateSignature
 
-	blockSignatureIsValid, err := c.dashCoreRpcClient.QuorumVerify(
+	blockSignatureIsValid, err := c.dashCoreRPCClient.QuorumVerify(
 		quorumType,
-		blockRequestId,
+		blockRequestID,
 		blockMessageHash,
 		newLightBlock.Commit.ThresholdBlockSignature,
 		quorumHash,
@@ -545,9 +547,9 @@ func (c *Client) verifyBlockWithDashCore(ctx context.Context, newLightBlock *typ
 		return fmt.Errorf("block signature is invalid")
 	}
 
-	stateSignatureIsValid, err := c.dashCoreRpcClient.QuorumVerify(
+	stateSignatureIsValid, err := c.dashCoreRPCClient.QuorumVerify(
 		quorumType,
-		stateRequestId,
+		stateRequestID,
 		stateMessageHash,
 		stateSignature,
 		quorumHash,
@@ -615,6 +617,7 @@ func (c *Client) Cleanup() error {
 
 // cleanupAfter deletes all headers & validator sets after +height+. It also
 // resets latestTrustedBlock to the latest header.
+/*
 func (c *Client) cleanupAfter(height int64) error {
 	prevHeight := c.latestTrustedBlock.Height
 
@@ -642,7 +645,7 @@ func (c *Client) cleanupAfter(height int64) error {
 	}
 
 	return nil
-}
+}*/
 
 func (c *Client) updateTrustedLightBlock(l *types.LightBlock) error {
 	c.logger.Debug("updating trusted light block", "light_block", l)
@@ -694,9 +697,8 @@ func (c *Client) lightBlockFromPrimaryAtHeight(ctx context.Context, height int64
 		// Otherwise we need to find a new primary
 		if c.latestTrustedBlock != nil && l.Height < c.latestTrustedBlock.Height {
 			return c.findNewPrimary(ctx, false)
-		} else {
-			return l, nil
 		}
+		return l, nil
 
 	case provider.ErrNoResponse, provider.ErrLightBlockNotFound, provider.ErrHeightTooHigh:
 		// we find a new witness to replace the primary

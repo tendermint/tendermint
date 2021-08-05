@@ -15,7 +15,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
-	"github.com/tendermint/tendermint/crypto/tmhash"
+
 	"github.com/tendermint/tendermint/libs/log"
 	mmock "github.com/tendermint/tendermint/mempool/mock"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -73,7 +73,6 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	privVal := privVals[state.Validators.Validators[0].ProTxHash.String()]
-	blockID := makeBlockID([]byte("headerhash"), 1000, []byte("partshash"))
 
 	// we don't need to worry about validating the evidence as long as they pass validate basic
 	dve := types.NewMockDuplicateVoteEvidenceWithValidator(3, defaultEvidenceTime, privVal, state.ChainID,
@@ -103,7 +102,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	block := makeBlock(state, 1)
 	block.Evidence = types.EvidenceData{Evidence: ev}
 	block.Header.EvidenceHash = block.Evidence.Hash()
-	blockID = types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
+	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
 	state, retainHeight, err := blockExec.ApplyBlock(state, nodeProTxHash, blockID, block)
 	require.Nil(t, err)
@@ -177,7 +176,7 @@ func TestUpdateValidators(t *testing.T) {
 	validatorSet, _ := types.GenerateValidatorSet(4)
 	originalProTxHashes := validatorSet.GetProTxHashes()
 	addedProTxHashes := bls12381.CreateProTxHashes(4)
-	combinedProTxHashes := append(originalProTxHashes, addedProTxHashes...)
+	combinedProTxHashes := append(originalProTxHashes, addedProTxHashes...) // nolint:gocritic
 	combinedValidatorSet, _ := types.GenerateValidatorSetUsingProTxHashes(combinedProTxHashes)
 	regeneratedValidatorSet, _ := types.GenerateValidatorSetUsingProTxHashes(combinedProTxHashes)
 	abciRegeneratedValidatorUpdates := regeneratedValidatorSet.ABCIEquivalentValidatorUpdates()
@@ -390,6 +389,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	assert.NotEmpty(t, state.NextValidators.Validators)
 }
 
+/*
 func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.BlockID {
 	var (
 		h   = make([]byte, tmhash.Size)
@@ -405,7 +405,9 @@ func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.Bloc
 		},
 	}
 }
+*/
 
+/*
 func makeStateID(lastAppHash []byte) types.StateID {
 	var (
 		h = make([]byte, tmhash.Size)
@@ -414,4 +416,4 @@ func makeStateID(lastAppHash []byte) types.StateID {
 	return types.StateID{
 		LastAppHash: h,
 	}
-}
+}*/

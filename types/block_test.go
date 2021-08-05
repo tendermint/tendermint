@@ -106,14 +106,14 @@ func TestBlockValidateBasic(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		tc := tc
-		i := i
-		t.Run(tc.testName, func(t *testing.T) {
+		tcRun := tc
+		j := i
+		t.Run(tcRun.testName, func(t *testing.T) {
 			block := MakeBlock(h, 0, nil, txs, commit, evList)
 			block.ProposerProTxHash = valSet.GetProposer().ProTxHash
-			tc.malleateBlock(block)
+			tcRun.malleateBlock(block)
 			err = block.ValidateBasic()
-			assert.Equal(t, tc.expErr, err != nil, "#%d: %v", i, err)
+			assert.Equal(t, tcRun.expErr, err != nil, "#%d: %v", j, err)
 		})
 	}
 }
@@ -285,11 +285,11 @@ func TestCommitValidateBasic(t *testing.T) {
 		{"Incorrect round", func(com *Commit) { com.Round = -100 }, true},
 	}
 	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
+		tcRun := tc
+		t.Run(tcRun.testName, func(t *testing.T) {
 			com := randCommit()
-			tc.malleateCommit(com)
-			assert.Equal(t, tc.expectErr, com.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+			tcRun.malleateCommit(com)
+			assert.Equal(t, tcRun.expectErr, com.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
 	}
 }
@@ -367,16 +367,16 @@ func TestHeaderHash(t *testing.T) {
 		}, nil},
 	}
 	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.desc, func(t *testing.T) {
-			assert.Equal(t, tc.expectHash, tc.header.Hash())
+		tcRun := tc
+		t.Run(tcRun.desc, func(t *testing.T) {
+			assert.Equal(t, tcRun.expectHash, tcRun.header.Hash())
 
 			// We also make sure that all fields are hashed in struct order, and that all
 			// fields in the test struct are non-zero.
-			if tc.header != nil && tc.expectHash != nil {
+			if tcRun.header != nil && tcRun.expectHash != nil {
 				byteSlices := [][]byte{}
 
-				s := reflect.ValueOf(*tc.header)
+				s := reflect.ValueOf(*tcRun.header)
 				for i := 0; i < s.NumField(); i++ {
 					f := s.Field(i)
 
@@ -404,7 +404,7 @@ func TestHeaderHash(t *testing.T) {
 					}
 				}
 				assert.Equal(t,
-					bytes.HexBytes(merkle.HashFromByteSlices(byteSlices)), tc.header.Hash())
+					bytes.HexBytes(merkle.HashFromByteSlices(byteSlices)), tcRun.header.Hash())
 			}
 		})
 	}
@@ -488,17 +488,18 @@ func TestBlockMaxDataBytes(t *testing.T) {
 	// An extra 33 bytes (32 for sig, 1 for proto encoding are needed for BLS compared to edwards per validator
 
 	for i, tc := range testCases {
-		tc := tc
-		t.Run(fmt.Sprintf("%d", tc.maxBytes), func(t *testing.T) {
-			if tc.panics {
+		tcRun := tc
+		j := i
+		t.Run(fmt.Sprintf("%d", tcRun.maxBytes), func(t *testing.T) {
+			if tcRun.panics {
 				assert.Panics(t, func() {
-					MaxDataBytes(tc.maxBytes, tc.keyType, tc.evidenceBytes, tc.valsCount)
-				}, "#%v", i)
+					MaxDataBytes(tcRun.maxBytes, tcRun.keyType, tcRun.evidenceBytes, tcRun.valsCount)
+				}, "#%v", j)
 			} else {
 				assert.Equal(t,
-					tc.result,
-					MaxDataBytes(tc.maxBytes, tc.keyType, tc.evidenceBytes, tc.valsCount),
-					"#%v", i)
+					tcRun.result,
+					MaxDataBytes(tcRun.maxBytes, tcRun.keyType, tcRun.evidenceBytes, tcRun.valsCount),
+					"#%v", j)
 			}
 		})
 	}
@@ -521,17 +522,18 @@ func TestBlockMaxDataBytesNoEvidence(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		tc := tc
-		t.Run(fmt.Sprintf("%d", tc.maxBytes), func(t *testing.T) {
-			if tc.panics {
+		tcRun := tc
+		j := i
+		t.Run(fmt.Sprintf("%d", tcRun.maxBytes), func(t *testing.T) {
+			if tcRun.panics {
 				assert.Panics(t, func() {
-					MaxDataBytesNoEvidence(tc.maxBytes, tc.keyType, tc.valsCount)
-				}, "#%v", i)
+					MaxDataBytesNoEvidence(tcRun.maxBytes, tcRun.keyType, tcRun.valsCount)
+				}, "#%v", j)
 			} else {
 				assert.Equal(t,
-					tc.result,
-					MaxDataBytesNoEvidence(tc.maxBytes, tc.keyType, tc.valsCount),
-					"#%v", i)
+					tcRun.result,
+					MaxDataBytesNoEvidence(tcRun.maxBytes, tcRun.keyType, tcRun.valsCount),
+					"#%v", j)
 			}
 		})
 	}
@@ -624,13 +626,13 @@ func TestBlockIDValidateBasic(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
+		tcRun := tc
+		t.Run(tcRun.testName, func(t *testing.T) {
 			blockID := BlockID{
-				Hash:          tc.blockIDHash,
-				PartSetHeader: tc.blockIDPartSetHeader,
+				Hash:          tcRun.blockIDHash,
+				PartSetHeader: tcRun.blockIDPartSetHeader,
 			}
-			assert.Equal(t, tc.expectErr, blockID.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+			assert.Equal(t, tcRun.expectErr, blockID.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
 	}
 }
@@ -644,7 +646,13 @@ func TestBlockProtoBuf(t *testing.T) {
 	b2 := MakeBlock(h, 0, nil, []Tx{Tx([]byte{1})}, c1, []Evidence{})
 	b2.ProposerProTxHash = tmrand.Bytes(crypto.DefaultHashSize)
 	evidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
-	evi := NewMockDuplicateVoteEvidence(h, evidenceTime, "block-test-chain", btcjson.LLMQType_5_60, crypto.RandQuorumHash())
+	evi := NewMockDuplicateVoteEvidence(
+		h,
+		evidenceTime,
+		"block-test-chain",
+		btcjson.LLMQType_5_60,
+		crypto.RandQuorumHash(),
+	)
 	b2.Evidence = EvidenceData{Evidence: EvidenceList{evi}}
 	b2.EvidenceHash = b2.Evidence.Hash()
 

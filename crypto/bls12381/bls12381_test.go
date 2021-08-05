@@ -1,10 +1,12 @@
+// nolint:lll
 package bls12381_test
 
 import (
 	"encoding/base64"
 	"encoding/hex"
-	"github.com/tendermint/tendermint/libs/rand"
 	"testing"
+
+	"github.com/tendermint/tendermint/libs/rand"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -148,9 +150,12 @@ func TestRecoverThresholdPublicKeyFromPublicKeys6(t *testing.T) {
 		proTxHashes[i] = decodedProTxHash
 	}
 	publicKeyStrings := make([]string, 3)
-	publicKeyStrings[0] = "0576000a5c7787d9ff04c38ab28ed80915f629186dca1fc4bbdde323bcd272d1bc6790adb198968ce575821d8e17f3cb"
-	publicKeyStrings[1] = "0de93b6fc9cd50d0f8410ab967581adfb39f857ebe5c1155e84cdca9f048d55580373bb4afe8416129754f364b72b307"
-	publicKeyStrings[2] = "94f04de48efbf01a4f356403043524bb4cde869daf6511bb9e7e0ce91d032cacaf00f624d18b15f67e01a5c23f530766"
+	publicKeyStrings[0] =
+		"0576000a5c7787d9ff04c38ab28ed80915f629186dca1fc4bbdde323bcd272d1bc6790adb198968ce575821d8e17f3cb"
+	publicKeyStrings[1] =
+		"0de93b6fc9cd50d0f8410ab967581adfb39f857ebe5c1155e84cdca9f048d55580373bb4afe8416129754f364b72b307"
+	publicKeyStrings[2] =
+		"94f04de48efbf01a4f356403043524bb4cde869daf6511bb9e7e0ce91d032cacaf00f624d18b15f67e01a5c23f530766"
 	publicKeys := make([]crypto.PubKey, 3)
 	for i, publicKeyString := range publicKeyStrings {
 		decodedPublicKeyBytes, err := hex.DecodeString(publicKeyString)
@@ -159,7 +164,8 @@ func TestRecoverThresholdPublicKeyFromPublicKeys6(t *testing.T) {
 	}
 	thresholdPublicKey, err := bls12381.RecoverThresholdPublicKeyFromPublicKeys(publicKeys, proTxHashes)
 	require.NoError(t, err)
-	expectedThresholdPublicKeyString := "13330b5a849c8ac388c1b4643a5faca0125c6d43f0433478cea4c331096839aea479f73eebf829b73ea4abfa3a067ece"
+	expectedThresholdPublicKeyString :=
+		"13330b5a849c8ac388c1b4643a5faca0125c6d43f0433478cea4c331096839aea479f73eebf829b73ea4abfa3a067ece"
 	encodedThresholdPublicKey := hex.EncodeToString(thresholdPublicKey.Bytes())
 	require.Equal(t, expectedThresholdPublicKeyString, encodedThresholdPublicKey)
 }
@@ -181,11 +187,11 @@ func Test100MemberOverThreshold(t *testing.T) {
 	for i, proTxHash := range proTxHashes {
 		proTxHashesBytes[i] = proTxHash
 	}
-	signId := crypto.CRandBytes(32)
+	signID := crypto.CRandBytes(32)
 	signatures := make([][]byte, 100)
 	var err error
 	for i, privKey := range privKeys {
-		signatures[i], err = privKey.SignDigest(signId)
+		signatures[i], err = privKey.SignDigest(signID)
 		require.NoError(t, err)
 	}
 	omit := rand.Intn(34)
@@ -194,10 +200,12 @@ func Test100MemberOverThreshold(t *testing.T) {
 		offset = rand.Intn(omit)
 	}
 	check := n - omit
-	require.True(t, check>66)
-	sig, err := bls12381.RecoverThresholdSignatureFromShares(signatures[offset:check + offset], proTxHashesBytes[offset:check + offset])
+	require.True(t, check > 66)
+	sig, err := bls12381.RecoverThresholdSignatureFromShares(
+		signatures[offset:check+offset], proTxHashesBytes[offset:check+offset],
+	)
 	require.NoError(t, err)
-	verified := thresholdPublicKey.VerifySignatureDigest(signId, sig)
+	verified := thresholdPublicKey.VerifySignatureDigest(signID, sig)
 	require.True(t, verified, "offset %d check %d", offset, check)
 }
 
@@ -209,33 +217,35 @@ func Test100MemberAtThreshold(t *testing.T) {
 	for i, proTxHash := range proTxHashes {
 		proTxHashesBytes[i] = proTxHash
 	}
-	signId := crypto.CRandBytes(32)
+	signID := crypto.CRandBytes(32)
 	signatures := make([][]byte, 100)
 	var err error
 	for i, privKey := range privKeys {
-		signatures[i], err = privKey.SignDigest(signId)
+		signatures[i], err = privKey.SignDigest(signID)
 		require.NoError(t, err)
 	}
-	omit := 33//rand.Intn(34)
+	omit := 33 // rand.Intn(34)
 	offset := 0
 	if omit > 0 {
 		offset = rand.Intn(omit)
 	}
 	check := n - omit
-	require.True(t, check>66)
-	sig, err := bls12381.RecoverThresholdSignatureFromShares(signatures[offset:check + offset], proTxHashesBytes[offset:check + offset])
+	require.True(t, check > 66)
+	sig, err := bls12381.RecoverThresholdSignatureFromShares(
+		signatures[offset:check+offset], proTxHashesBytes[offset:check+offset],
+	)
 	require.NoError(t, err)
-	verified := thresholdPublicKey.VerifySignatureDigest(signId, sig)
+	verified := thresholdPublicKey.VerifySignatureDigest(signID, sig)
 	require.True(t, verified, "offset %d check %d", offset, check)
 }
 
-//func Test100MemberThresholdManyTimes(t *testing.T) {
+// func Test100MemberThresholdManyTimes(t *testing.T) {
 //	n := 10000
 //	for i:=0; i<n; i++ {
 //		Test100MemberAtThreshold(t)
 //		fmt.Printf("verified 100member test #%d\n", i)
 //	}
-//}
+// }
 
 func TestRecoverThresholdSignatureFromSharesCaseStudy(t *testing.T) {
 	proTxHashesBytes := make([][]byte, 86)
@@ -329,7 +339,8 @@ func TestRecoverThresholdSignatureFromSharesCaseStudy(t *testing.T) {
 		"8B971EF085C168CAE87C3EF20DCDEBB23A9A26EB7D47A4F793AA2353BED4018E",
 		"6DA069138E905FCF845D2E92979086E2BF89BA25D50E1C59799CBF4D2F2A9D01",
 	}
-	signatureStrings := [86]string{"EY5CZGlo6LJkiDPqbf8gYymNm0KiDdJhnHKGXFOYygXK59wV/w6SmhF3fQkJ9JnIFq1O0tywWRfz9Y25qSbsX+SV8HZ2Ux780YS1/1x8qbOq09iQvK5ednhH9Sz5nTsk",
+	signatureStrings := [86]string{
+		"EY5CZGlo6LJkiDPqbf8gYymNm0KiDdJhnHKGXFOYygXK59wV/w6SmhF3fQkJ9JnIFq1O0tywWRfz9Y25qSbsX+SV8HZ2Ux780YS1/1x8qbOq09iQvK5ednhH9Sz5nTsk",
 		"lDHCIAPsiLczQHBh1tCdH69swzz1VK36cQ/P5OORZWq2YeF7TkXm0JAihEKv86HcAWQVitK1DCQMJg0AJDPP+7sVuAqLsyXbTMWAqxxQFYAIf9YOSBXwhg9ihwsqiVpF",
 		"FwA9/ZHDQ7qO2jRVHOjT/fYIayHy1Uy5sjBVjN+SBA7Fl56b19sHBdag2XS+BnmPB73gSssjRz7oEu25Cyapj2iEPn6FWakmaM4369Z0zF++8FFlgag6PtEITDdznQBb",
 		"CdnBoOeTgch5LA3UtwMu8b2ST9Ln1ro/3ybnQF0IlHzppGgfoYWZfvS/sPx3eROLDV/Wt8wYfwAHw4cDDTBH5XA2S2O20lzU6DwYpglizRg+y80RNJv2F5h81CeTMDUf",
@@ -520,8 +531,8 @@ func TestRecoverThresholdSignatureFromSharesCaseStudy(t *testing.T) {
 	thresholdSignature, err := bls12381.RecoverThresholdSignatureFromShares(signatureBytes, proTxHashesBytes)
 	require.NoError(t, err, "should be able to recover threshold signature")
 
-	//expectedThresholdSignature, err := base64.StdEncoding.DecodeString("lAFnjEd9eXEI3NWVc65fUOICPEYatEOER5P7NYrDT2EdD5CnqB+bjizBu8TOEA8FAlz7DWx/kQrW8yagJOmfznkUbRfx6puL3GXcIey8NJjZJkoWmmS2QdneRX0ec5D4")
-	//require.EqualValues(t, expectedThresholdSignature, thresholdSignature, "should have the correct threshold signature")
+	// expectedThresholdSignature, err := base64.StdEncoding.DecodeString("lAFnjEd9eXEI3NWVc65fUOICPEYatEOER5P7NYrDT2EdD5CnqB+bjizBu8TOEA8FAlz7DWx/kQrW8yagJOmfznkUbRfx6puL3GXcIey8NJjZJkoWmmS2QdneRX0ec5D4")
+	// require.EqualValues(t, expectedThresholdSignature, thresholdSignature, "should have the correct threshold signature")
 
 	thresholdPublicKeyBytes, err := hex.DecodeString("04195b1adb84f85f43a1009fa4987c732ab5f751b42f195442ebfa3d031831dfa67050517f12bc79bf0a33bb78cf873c")
 	require.NoError(t, err, "should be able to decode thresholdPublicKeyBytes")
@@ -529,7 +540,7 @@ func TestRecoverThresholdSignatureFromSharesCaseStudy(t *testing.T) {
 	msg, err := hex.DecodeString("C4E3500CAEC0AEB79CFA05F10EBE77717BEEF5D51159E2A89D8FE98B696BE4A9")
 	require.NoError(t, err, "should be able to decode msg")
 	result := thresholdPublicKey.VerifySignatureDigest(msg, thresholdSignature)
-	require.True(t, result,"signature should be verified")
+	require.True(t, result, "signature should be verified")
 }
 
 func TestAggregationDiffMessages(t *testing.T) {

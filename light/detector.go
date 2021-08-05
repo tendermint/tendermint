@@ -103,13 +103,13 @@ func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan erro
 	errc <- nil
 }
 
-//// sendEvidence sends evidence to a provider on a best effort basis.
-//func (c *Client) sendEvidence(ctx context.Context, ev *types.LightClientAttackEvidence, receiver provider.Provider) {
+// sendEvidence sends evidence to a provider on a best effort basis.
+// func (c *Client) sendEvidence(ctx context.Context, ev *types.LightClientAttackEvidence, receiver provider.Provider) {
 //	err := receiver.ReportEvidence(ctx, ev)
 //	if err != nil {
 //		c.logger.Error("Failed to report evidence to provider", "ev", ev, "provider", receiver)
 //	}
-//}
+// }
 
 // getTargetBlockOrLatest gets the latest height, if it is greater than the target height then it queries
 // the target height else it returns the latest. returns true if it successfully managed to acquire the target

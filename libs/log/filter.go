@@ -152,7 +152,10 @@ func AllowLevel(lvl string) (Option, error) {
 	case "none":
 		return AllowNone(), nil
 	default:
-		return nil, fmt.Errorf("expected either \"info\", \"debug\", \"p2p_debug\", \"error\" or \"none\" level, given %s", lvl)
+		return nil, fmt.Errorf(
+			"expected either \"info\", \"debug\", \"p2p_debug\", \"error\" or \"none\" level, given %s",
+			lvl,
+		)
 	}
 }
 

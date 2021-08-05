@@ -66,9 +66,9 @@ var (
 	primaryKey   = []byte("primary")
 	witnessesKey = []byte("witnesses")
 
-	dashCoreRpcHost string
-	dashCoreRpcUser string
-	dashCoreRpcPass string
+	dashCoreRPCHost string
+	dashCoreRPCUser string
+	dashCoreRPCPass string
 )
 
 func init() {
@@ -86,11 +86,11 @@ func init() {
 		900,
 		"maximum number of simultaneous connections (including WebSocket).")
 	LightCmd.Flags().BoolVar(&verbose, "verbose", false, "Verbose output")
-	LightCmd.Flags().StringVar(&dashCoreRpcHost, "dchost", "",
+	LightCmd.Flags().StringVar(&dashCoreRPCHost, "dchost", "",
 		"host address of the Dash Core RPC node")
-	LightCmd.Flags().StringVar(&dashCoreRpcHost, "dcuser", "",
+	LightCmd.Flags().StringVar(&dashCoreRPCHost, "dcuser", "",
 		"Dash Core RPC node user")
-	LightCmd.Flags().StringVar(&dashCoreRpcHost, "dcpass", "",
+	LightCmd.Flags().StringVar(&dashCoreRPCHost, "dcpass", "",
 		"Dash Core RPC node password")
 }
 
@@ -156,7 +156,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		light.DashCoreVerification(),
 	}
 
-	dashCoreRpcClient, err := dashcore.NewDashCoreRpcClient(dashCoreRpcHost, dashCoreRpcUser, dashCoreRpcPass)
+	dashCoreRPCClient, _ := dashcore.NewRPCClient(dashCoreRPCHost, dashCoreRPCUser, dashCoreRPCPass)
 
 	c, err := light.NewHTTPClient(
 		context.Background(),
@@ -164,7 +164,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		primaryAddr,
 		witnessesAddrs,
 		dbs.New(db, chainID),
-		dashCoreRpcClient,
+		dashCoreRPCClient,
 		options...,
 	)
 	if err != nil {

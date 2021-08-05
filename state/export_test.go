@@ -35,7 +35,9 @@ func UpdateState(
 	newThresholdPublicKey crypto.PubKey,
 	quorumHash crypto.QuorumHash,
 ) (State, error) {
-	return updateState(state, nodeProTxHash, blockID, header, abciResponses, validatorUpdates, newThresholdPublicKey, quorumHash)
+	return updateState(
+		state, nodeProTxHash, blockID, header, abciResponses, validatorUpdates, newThresholdPublicKey, quorumHash,
+	)
 }
 
 // ValidateValidatorUpdates is an alias for validateValidatorUpdates exported

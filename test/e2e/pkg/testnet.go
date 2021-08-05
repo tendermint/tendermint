@@ -453,7 +453,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 					isPartOfQuorum = true
 				}
 			}
-			if isPartOfQuorum == false {
+			if !isPartOfQuorum {
 				if node.PrivvalKeys == nil {
 					node.PrivvalKeys = make(map[string]crypto.QuorumKeys)
 				}

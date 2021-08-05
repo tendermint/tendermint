@@ -52,7 +52,7 @@ func NewLightClientStateProvider(
 	version tmstate.Version,
 	initialHeight int64,
 	servers []string,
-	dashCoreRpcClient dashcore.DashCoreClient,
+	dashCoreRPCClient dashcore.Client,
 	logger log.Logger,
 ) (StateProvider, error) {
 	if len(servers) < 2 {
@@ -79,7 +79,7 @@ func NewLightClientStateProvider(
 		providers[0],
 		providers[1:],
 		lightdb.New(dbm.NewMemDB(), ""),
-		dashCoreRpcClient,
+		dashCoreRPCClient,
 		light.Logger(logger),
 		light.MaxRetryAttempts(5),
 	)

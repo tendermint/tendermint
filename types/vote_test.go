@@ -170,8 +170,8 @@ func TestVoteVerifySignature(t *testing.T) {
 	vote := examplePrecommit()
 	v := vote.ToProto()
 	quorumType := btcjson.LLMQType_5_60
-	signID := VoteBlockSignId("test_chain_id", v, quorumType, quorumHash)
-	signStateId := VoteStateSignId("test_chain_id", v, quorumType, quorumHash)
+	signID := VoteBlockSignID("test_chain_id", v, quorumType, quorumHash)
+	signStateID := VoteStateSignID("test_chain_id", v, quorumType, quorumHash)
 
 	// sign it
 	err = privVal.SignVote("test_chain_id", quorumType, quorumHash, v, nil)
@@ -182,7 +182,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	require.True(t, valid)
 
 	// verify the same vote
-	valid = pubkey.VerifySignatureDigest(signStateId, v.StateSignature)
+	valid = pubkey.VerifySignatureDigest(signStateID, v.StateSignature)
 	require.True(t, valid)
 
 	// serialize, deserialize and verify again....
@@ -193,13 +193,13 @@ func TestVoteVerifySignature(t *testing.T) {
 	require.NoError(t, err)
 
 	// verify the transmitted vote
-	newSignId := VoteBlockSignId("test_chain_id", precommit, quorumType, quorumHash)
-	newSignStateId := VoteStateSignId("test_chain_id", precommit, quorumType, quorumHash)
-	require.Equal(t, string(signID), string(newSignId))
-	require.Equal(t, string(signStateId), string(newSignStateId))
-	valid = pubkey.VerifySignatureDigest(newSignId, precommit.BlockSignature)
+	newSignID := VoteBlockSignID("test_chain_id", precommit, quorumType, quorumHash)
+	newSignStateID := VoteStateSignID("test_chain_id", precommit, quorumType, quorumHash)
+	require.Equal(t, string(signID), string(newSignID))
+	require.Equal(t, string(signStateID), string(newSignStateID))
+	valid = pubkey.VerifySignatureDigest(newSignID, precommit.BlockSignature)
 	require.True(t, valid)
-	valid = pubkey.VerifySignatureDigest(newSignStateId, precommit.StateSignature)
+	valid = pubkey.VerifySignatureDigest(newSignStateID, precommit.StateSignature)
 	require.True(t, valid)
 }
 
@@ -238,14 +238,17 @@ func TestVoteVerify(t *testing.T) {
 	vote := examplePrevote()
 	vote.ValidatorProTxHash = proTxHash
 
-	_, _, err = vote.Verify("test_chain_id", quorumType, quorumHash, bls12381.GenPrivKey().PubKey(), crypto.RandProTxHash())
+	_, _, err = vote.Verify(
+		"test_chain_id", quorumType, quorumHash, bls12381.GenPrivKey().PubKey(), crypto.RandProTxHash())
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrVoteInvalidValidatorProTxHash, err)
 	}
 
 	_, _, err = vote.Verify("test_chain_id", quorumType, quorumHash, pubkey, proTxHash)
 	if assert.Error(t, err) {
-		assert.True(t, strings.HasPrefix(err.Error(), ErrVoteInvalidBlockSignature.Error())) // since block signatures are verified first
+		assert.True(
+			t, strings.HasPrefix(err.Error(), ErrVoteInvalidBlockSignature.Error()),
+		) // since block signatures are verified first
 	}
 }
 

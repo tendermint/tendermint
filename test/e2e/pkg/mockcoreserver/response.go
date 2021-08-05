@@ -36,14 +36,14 @@ func Body(body []byte) HandlerOptionFunc {
 	}
 }
 
-// JsonBody ...
-func JsonBody(v interface{}) HandlerOptionFunc {
+// JSONBody ...
+func JSONBody(v interface{}) HandlerOptionFunc {
 	return Body(mustMarshal(v))
 }
 
 // JRPCResult ..
 func JRPCResult(v interface{}) HandlerOptionFunc {
-	return JsonBody(&response{Result: mustMarshal(v)})
+	return JSONBody(&response{Result: mustMarshal(v)})
 }
 
 // Header ...
@@ -59,8 +59,8 @@ func ContentType(val string) HandlerOptionFunc {
 	return Header("content-type", val)
 }
 
-// JsonContentType ...
-func JsonContentType() HandlerOptionFunc {
+// JSONContentType ...
+func JSONContentType() HandlerOptionFunc {
 	return ContentType("application/json")
 }
 

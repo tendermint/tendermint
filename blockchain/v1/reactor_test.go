@@ -329,14 +329,16 @@ outerFor:
 	nodeProTxHashes = make([]*crypto.ProTxHash, 1)
 	nodeProTxHashes[0] = &proTxHash
 
-	switches = append(switches, p2p.MakeConnectedSwitches(config.P2P, nodeProTxHashes, func(i int, s *p2p.Switch) *p2p.Switch {
-		s.AddReactor("BLOCKCHAIN", reactorPairs[len(reactorPairs)-1].bcR)
-		s.AddReactor("CONSENSUS", reactorPairs[len(reactorPairs)-1].conR)
-		moduleName := fmt.Sprintf("blockchain-%v", len(reactorPairs)-1)
-		reactorPairs[len(reactorPairs)-1].bcR.SetLogger(lastLogger.With("module", moduleName))
-		return s
-
-	}, p2p.Connect2Switches)...)
+	switches = append(
+		switches,
+		p2p.MakeConnectedSwitches(config.P2P, nodeProTxHashes, func(i int, s *p2p.Switch) *p2p.Switch {
+			s.AddReactor("BLOCKCHAIN", reactorPairs[len(reactorPairs)-1].bcR)
+			s.AddReactor("CONSENSUS", reactorPairs[len(reactorPairs)-1].conR)
+			moduleName := fmt.Sprintf("blockchain-%v", len(reactorPairs)-1)
+			reactorPairs[len(reactorPairs)-1].bcR.SetLogger(lastLogger.With("module", moduleName))
+			return s
+		}, p2p.Connect2Switches)...,
+	)
 
 	for i := 0; i < len(reactorPairs)-1; i++ {
 		p2p.Connect2Switches(switches, i, len(reactorPairs)-1)

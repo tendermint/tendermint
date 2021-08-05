@@ -207,18 +207,21 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 			bytes.Equal(existing.StateSignature, vote.StateSignature) {
 			return false, nil // duplicate
 		}
-		return false, fmt.Errorf("existing vote: %v; new vote: %v: %w", existing, vote, ErrVoteNonDeterministicSignature)
+		return false, fmt.Errorf(
+			"existing vote: %v; new vote: %v: %w", existing, vote, ErrVoteNonDeterministicSignature,
+		)
 	}
 
 	// Check signature.
-	signId, stateSignId, err := vote.Verify(voteSet.chainID, voteSet.valSet.QuorumType, voteSet.valSet.QuorumHash, val.PubKey, val.ProTxHash)
+	signID, stateSignID, err := vote.Verify(
+		voteSet.chainID, voteSet.valSet.QuorumType, voteSet.valSet.QuorumHash, val.PubKey, val.ProTxHash)
 	if err != nil {
 		return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s ProTxHash %s: %w",
 			voteSet.chainID, val.PubKey, val.ProTxHash, err)
 	}
 
 	// Add vote and get conflicting vote if any.
-	added, conflicting := voteSet.addVerifiedVote(vote, blockKey, val.VotingPower, signId, stateSignId)
+	added, conflicting := voteSet.addVerifiedVote(vote, blockKey, val.VotingPower, signID, stateSignID)
 	if conflicting != nil {
 		fmt.Printf("-----\n")
 		debug.PrintStack()
@@ -248,8 +251,8 @@ func (voteSet *VoteSet) addVerifiedVote(
 	vote *Vote,
 	blockKey string,
 	votingPower int64,
-	signId []byte,
-	stateSignId []byte,
+	signID []byte,
+	stateSignID []byte,
 ) (added bool, conflicting *Vote) {
 	valIndex := vote.ValidatorIndex
 
@@ -312,7 +315,7 @@ func (voteSet *VoteSet) addVerifiedVote(
 			voteSet.maj23 = &maj23BlockID
 			voteSet.stateMaj23 = &stateMaj23StateID
 			if len(votesByBlock.votes) > 1 {
-				err := voteSet.recoverThresholdSigsAndVerify(votesByBlock, signId, stateSignId)
+				err := voteSet.recoverThresholdSigsAndVerify(votesByBlock, signID, stateSignID)
 				if err != nil {
 					// fmt.Printf("error %v quorum %d\n", err, quorum)
 					// for i, vote := range votesByBlock.votes {
@@ -337,18 +340,18 @@ func (voteSet *VoteSet) addVerifiedVote(
 	return true, conflicting
 }
 
-func (voteSet *VoteSet) recoverThresholdSigsAndVerify(blockVotes *blockVotes, signId []byte, stateSignId []byte) error {
+func (voteSet *VoteSet) recoverThresholdSigsAndVerify(blockVotes *blockVotes, signID []byte, stateSignID []byte) error {
 	err := voteSet.recoverThresholdSigs(blockVotes)
 	if err != nil {
 		return err
 	}
-	verified := voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(signId, voteSet.thresholdBlockSig)
+	verified := voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(signID, voteSet.thresholdBlockSig)
 	if !verified {
 		thresholdBlockSig := voteSet.thresholdBlockSig
 		return fmt.Errorf("recovered incorrect threshold signature %v", thresholdBlockSig)
 	}
 	if voteSet.thresholdStateSig != nil {
-		verified = voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(stateSignId, voteSet.thresholdStateSig)
+		verified = voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(stateSignID, voteSet.thresholdStateSig)
 		if !verified {
 			thresholdStateSig := voteSet.thresholdStateSig
 			return fmt.Errorf("recovered incorrect state threshold signature %v", thresholdStateSig)
@@ -704,7 +707,15 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 		panic("Cannot MakeCommit() unless a thresholdStateSig has been created")
 	}
 
-	return NewCommit(voteSet.GetHeight(), voteSet.GetRound(), *voteSet.maj23, *voteSet.stateMaj23, voteSet.valSet.QuorumHash, voteSet.thresholdBlockSig, voteSet.thresholdStateSig)
+	return NewCommit(
+		voteSet.GetHeight(),
+		voteSet.GetRound(),
+		*voteSet.maj23,
+		*voteSet.stateMaj23,
+		voteSet.valSet.QuorumHash,
+		voteSet.thresholdBlockSig,
+		voteSet.thresholdStateSig,
+	)
 }
 
 //--------------------------------------------------------------------------------

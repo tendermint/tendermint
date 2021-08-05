@@ -114,7 +114,11 @@ func (tm2pb) ValidatorUpdates(vals *ValidatorSet) abci.ValidatorSetUpdate {
 	if err != nil {
 		panic(err)
 	}
-	return abci.ValidatorSetUpdate{ValidatorUpdates: validators, ThresholdPublicKey: abciThresholdPublicKey, QuorumHash: vals.QuorumHash}
+	return abci.ValidatorSetUpdate{
+		ValidatorUpdates:   validators,
+		ThresholdPublicKey: abciThresholdPublicKey,
+		QuorumHash:         vals.QuorumHash,
+	}
 }
 
 func (tm2pb) ConsensusParams(params *tmproto.ConsensusParams) *abci.ConsensusParams {

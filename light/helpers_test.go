@@ -88,7 +88,13 @@ func (pkz privKeys) ToValidators(thresholdPublicKey crypto.PubKey) *types.Valida
 		res[i] = types.NewValidatorDefaultVotingPower(k.PubKey(), crypto.Sha256(k.PubKey().Address()))
 	}
 	// Quorum hash is pseudorandom
-	return types.NewValidatorSet(res, thresholdPublicKey, btcjson.LLMQType_5_60, crypto.Sha256(thresholdPublicKey.Bytes()), true)
+	return types.NewValidatorSet(
+		res,
+		thresholdPublicKey,
+		btcjson.LLMQType_5_60,
+		crypto.Sha256(thresholdPublicKey.Bytes()),
+		true,
+	)
 }
 
 // signHeader properly signs the header with all keys from first to last exclusive.
@@ -151,14 +157,14 @@ func makeVote(header *types.Header, valset *types.ValidatorSet, proTxHash crypto
 
 	v := vote.ToProto()
 	// SignDigest it
-	signID := types.VoteBlockSignId(header.ChainID, v, valset.QuorumType, valset.QuorumHash)
+	signID := types.VoteBlockSignID(header.ChainID, v, valset.QuorumType, valset.QuorumHash)
 	sig, err := key.SignDigest(signID)
 	if err != nil {
 		panic(err)
 	}
 
 	// SignDigest it
-	stateSignID := types.VoteStateSignId(header.ChainID, v, valset.QuorumType, valset.QuorumHash)
+	stateSignID := types.VoteStateSignID(header.ChainID, v, valset.QuorumType, valset.QuorumHash)
 	sigState, err := key.SignDigest(stateSignID)
 	if err != nil {
 		panic(err)
@@ -239,7 +245,11 @@ func genMockNodeWithKeys(
 		privValMap        = types.MapMockPVByProTxHashes(privVals)
 	)
 
-	nextValSet, _ := types.GenerateMockValidatorSetUpdatingPrivateValidatorsAtHeight(valset0.GetProTxHashes(), privValMap, 0)
+	nextValSet, _ := types.GenerateMockValidatorSetUpdatingPrivateValidatorsAtHeight(
+		valset0.GetProTxHashes(),
+		privValMap,
+		0,
+	)
 
 	// genesis header and vals
 	lastHeader := keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Minute), nil,
@@ -252,8 +262,11 @@ func genMockNodeWithKeys(
 
 	for height := int64(2); height <= blockSize; height++ {
 		keysAtHeight := exposeMockPVKeys(privVals, currentValset.QuorumHash)
-		nextValSet, _ := types.GenerateMockValidatorSetUpdatingPrivateValidatorsAtHeight(valset0.GetProTxHashes(), privValMap, height)
-		currentHeader = keysAtHeight.GenSignedHeaderLastBlockID(chainID, height, bTime.Add(time.Duration(height)*time.Minute),
+		nextValSet, _ := types.GenerateMockValidatorSetUpdatingPrivateValidatorsAtHeight(
+			valset0.GetProTxHashes(), privValMap, height,
+		)
+		currentHeader = keysAtHeight.GenSignedHeaderLastBlockID(
+			chainID, height, bTime.Add(time.Duration(height)*time.Minute),
 			nil,
 			currentValset, nextValSet, hash("app_hash"), hash("cons_hash"),
 			hash("results_hash"), 0, len(keys), types.BlockID{Hash: lastHeader.Hash()})

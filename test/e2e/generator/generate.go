@@ -13,8 +13,9 @@ import (
 
 // Generate generates random testnets using the given RNG.
 func Generate(r *rand.Rand) ([]e2e.Manifest, error) {
-	var manifests []e2e.Manifest
-	for _, opt := range combinations(cfg.testnetCombinations) {
+	testnetCombinations := combinations(cfg.testnetCombinations)
+	manifests := make([]e2e.Manifest, 0, len(testnetCombinations))
+	for _, opt := range testnetCombinations {
 		manifest, err := generateTestnet(r, opt)
 		if err != nil {
 			return nil, err
@@ -64,7 +65,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	validatorNames := generateValidatorNames(numValidators)
 
 	valPlr := validatorUpdatesPopulator{
-		rand:           rand.New(rand.NewSource(time.Now().UnixNano())),
+		rand:           rand.New(rand.NewSource(time.Now().UnixNano())), // nolint:gosec
 		initialHeight:  manifest.InitialHeight,
 		validatorNames: validatorNames,
 		quorumMembers:  topology.quorumMembersCount,
@@ -74,7 +75,6 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	valHeights := valPlr.populate(manifest.ValidatorUpdates)
 	for i, name := range validatorNames {
 		manifest.Nodes[name] = generateNode(r, e2e.ModeValidator, valHeights[name][0], manifest.InitialHeight, i < 2)
-		validatorNames = append(validatorNames, name)
 	}
 
 	// Move validators to InitChain if specified.

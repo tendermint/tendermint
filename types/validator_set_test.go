@@ -221,6 +221,7 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			err := tc.vals.ValidateBasic()
 			if tc.err {
@@ -496,7 +497,8 @@ func TestAveragingInIncrementProposerPriority(t *testing.T) {
 				{ProTxHash: []byte("c"), ProposerPriority: 1}}},
 			// this should average twice but the average should be 0 after the first iteration
 			// (voting power is 0 -> no changes)
-			11, 1 / 3},
+			// 1/3 -> 0
+			11, 0},
 		2: {ValidatorSet{
 			Validators: []*Validator{
 				{ProTxHash: []byte("a"), ProposerPriority: 100},
@@ -556,9 +558,9 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 	vote := examplePrecommit()
 	vote.ValidatorProTxHash = proTxHash
 	v := vote.ToProto()
-	blockSig, err := privKey.SignDigest(VoteBlockSignId(chainID, v, btcjson.LLMQType_5_60, quorumHash))
+	blockSig, err := privKey.SignDigest(VoteBlockSignID(chainID, v, btcjson.LLMQType_5_60, quorumHash))
 	require.NoError(t, err)
-	stateSig, err := privKey.SignDigest(VoteStateSignId(chainID, v, btcjson.LLMQType_5_60, quorumHash))
+	stateSig, err := privKey.SignDigest(VoteStateSignID(chainID, v, btcjson.LLMQType_5_60, quorumHash))
 	require.NoError(t, err)
 	vote.BlockSignature = blockSig
 	vote.StateSignature = stateSig
@@ -786,7 +788,7 @@ func addValidatorsToValidatorSet(vals *ValidatorSet, testValList []testVal) ([]*
 	combinedProTxHashes = append(combinedProTxHashes, addedProTxHashes...)
 	if len(combinedProTxHashes) > 0 {
 		rVals, _ := GenerateTestValidatorSetWithProTxHashesDefaultPower(combinedProTxHashes)
-		rValidators := append(rVals.Validators, removedVals...)
+		rValidators := append(rVals.Validators, removedVals...) // nolint:gocritic
 		return rValidators, rVals.ThresholdPublicKey
 	}
 	return removedVals, nil

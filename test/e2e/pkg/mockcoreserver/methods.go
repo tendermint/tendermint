@@ -28,7 +28,7 @@ func WithQuorumInfoMethod(cs CoreServer, times int) MethodFunc {
 			On("quorum info").
 			Expect(And(Debug())).
 			Times(times).
-			Respond(call, JsonContentType())
+			Respond(call, JSONContentType())
 	}
 }
 
@@ -47,7 +47,7 @@ func WithQuorumSignMethod(cs CoreServer, times int) MethodFunc {
 			On("quorum sign").
 			Expect(And(Debug())).
 			Times(times).
-			Respond(call, JsonContentType())
+			Respond(call, JSONContentType())
 	}
 }
 
@@ -56,7 +56,15 @@ func WithQuorumVerifyMethod(cs CoreServer, times int) MethodFunc {
 	call := OnMethod(func(req btcjson.Request) (interface{}, error) {
 		cmd := btcjson.QuorumCmd{}
 		fmt.Printf("request is %v\n", req)
-		err := unmarshalCmd(req, &cmd.SubCmd, &cmd.LLMQType, &cmd.RequestID, &cmd.MessageHash, &cmd.QuorumHash, &cmd.Signature)
+		err := unmarshalCmd(
+			req,
+			&cmd.SubCmd,
+			&cmd.LLMQType,
+			&cmd.RequestID,
+			&cmd.MessageHash,
+			&cmd.QuorumHash,
+			&cmd.Signature,
+		)
 		fmt.Printf("cmd is %v\n", cmd)
 		if err != nil {
 			return nil, err
@@ -68,7 +76,7 @@ func WithQuorumVerifyMethod(cs CoreServer, times int) MethodFunc {
 			On("quorum verify").
 			Expect(And(Debug())).
 			Times(times).
-			Respond(call, JsonContentType())
+			Respond(call, JSONContentType())
 	}
 }
 
@@ -87,7 +95,7 @@ func WithMasternodeMethod(cs CoreServer, times int) MethodFunc {
 			On("masternode status").
 			Expect(And(Debug())).
 			Times(times).
-			Respond(call, JsonContentType())
+			Respond(call, JSONContentType())
 	}
 }
 
@@ -102,7 +110,7 @@ func WithGetNetworkInfoMethod(cs CoreServer, times int) MethodFunc {
 			On("getnetworkinfo").
 			Expect(And(Debug())).
 			Times(times).
-			Respond(call, JsonContentType())
+			Respond(call, JSONContentType())
 	}
 }
 
@@ -117,7 +125,7 @@ func WithPingMethod(cs CoreServer, times int) MethodFunc {
 			On("ping").
 			Expect(And(Debug())).
 			Times(times).
-			Respond(call, JsonContentType())
+			Respond(call, JSONContentType())
 	}
 }
 

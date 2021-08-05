@@ -408,11 +408,9 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 		default:
 			return nil, fmt.Errorf("unexpected privval protocol setting %q", node.PrivvalProtocol)
 		}
-	} else {
-		if node.PrivvalProtocol == e2e.ProtocolDashCore {
-			cfg["privval_server_type"] = "dashcore"
-			cfg["privval_server"] = PrivvalAddressDashCore
-		}
+	} else if node.PrivvalProtocol == e2e.ProtocolDashCore {
+		cfg["privval_server_type"] = "dashcore"
+		cfg["privval_server"] = PrivvalAddressDashCore
 	}
 
 	misbehaviors := make(map[string]string)

@@ -25,7 +25,11 @@ func RandValidatorSetUpdate(cnt int) types.ValidatorSetUpdate {
 	if err != nil {
 		panic(err)
 	}
-	return types.ValidatorSetUpdate{ValidatorUpdates: res, ThresholdPublicKey: thresholdPublicKeyABCI, QuorumHash: crypto.RandQuorumHash()}
+	return types.ValidatorSetUpdate{
+		ValidatorUpdates:   res,
+		ThresholdPublicKey: thresholdPublicKeyABCI,
+		QuorumHash:         crypto.RandQuorumHash(),
+	}
 }
 
 // InitKVStore initializes the kvstore app with some data,

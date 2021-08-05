@@ -730,16 +730,16 @@ OUTER_LOOP:
 		// If height matches, then send LastCommit, Prevotes, Precommits.
 		if rs.Height == prs.Height {
 			heightLogger := logger.With("height", prs.Height)
-			if wasValidator == false {
+			if !wasValidator {
 				// If there are lastCommits to send...
-				if prs.Step == cstypes.RoundStepNewHeight && prs.Height+1 == rs.Height && prs.HasCommit == false {
+				if prs.Step == cstypes.RoundStepNewHeight && prs.Height+1 == rs.Height && !prs.HasCommit {
 					if ps.SendCommit(rs.LastCommit) {
 						logger.Debug("Sending LastCommit to non-validator node")
 						continue OUTER_LOOP
 					}
 				}
 			}
-			if isValidator == true {
+			if isValidator {
 				if conR.gossipVotesForHeight(heightLogger, rs, prs, ps) {
 					continue OUTER_LOOP
 				}
@@ -748,7 +748,7 @@ OUTER_LOOP:
 
 		// Special catchup logic.
 		// If peer is lagging by height 1, send LastCommit if we haven't already.
-		if prs.Height != 0 && rs.Height == prs.Height+1 && prs.HasCommit == false && wasValidator == false {
+		if prs.Height != 0 && rs.Height == prs.Height+1 && !prs.HasCommit && !wasValidator {
 			if ps.SendCommit(rs.LastCommit) {
 				logger.Debug("Sending LastCommit for catch up", "height", prs.Height)
 				continue OUTER_LOOP
@@ -758,7 +758,8 @@ OUTER_LOOP:
 		// Catchup logic
 		// If peer is lagging by more than 1, send Commit for that height to allow them to catch up.
 		blockStoreBase := conR.conS.blockStore.Base()
-		if blockStoreBase > 0 && prs.Height != 0 && rs.Height >= prs.Height+2 && prs.Height >= blockStoreBase && prs.HasCommit == false {
+		if blockStoreBase > 0 && prs.Height != 0 && rs.Height >= prs.Height+2 &&
+			prs.Height >= blockStoreBase && !prs.HasCommit {
 			// Load the block commit for prs.Height,
 			if commit := conR.conS.blockStore.LoadBlockCommit(prs.Height); commit != nil {
 				if ps.SendCommit(commit) {
@@ -945,7 +946,7 @@ func (conR *Reactor) peerStatsRoutine() {
 			// Get peer
 			peer := conR.Switch.Peers().Get(msg.PeerID)
 			if peer == nil {
-				if msg.PeerID != "" { //this would be internal
+				if msg.PeerID != "" { // this would be internal
 					conR.Logger.Debug("Attempt to update stats for non-existent peer",
 						"peer", msg.PeerID)
 				}
@@ -1352,7 +1353,8 @@ func (ps *PeerState) SetHasVote(vote *types.Vote, cs *State) {
 	ps.setHasVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex, logger)
 }
 
-func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.SignedMsgType, index int32, logger log.Logger) {
+func (ps *PeerState) setHasVote(
+	height int64, round int32, voteType tmproto.SignedMsgType, index int32, logger log.Logger) {
 
 	if logger == nil {
 		peerProTxHash := ps.peer.NodeInfo().GetProTxHash()

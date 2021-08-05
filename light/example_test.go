@@ -58,7 +58,7 @@ func ExampleClient_Update() {
 		stdlog.Fatal(err)
 	}
 
-	dashCoreMockClient := dashcore.NewDashCoreMockClient(chainID, 100, privval, false)
+	dashCoreMockClient := dashcore.NewMockClient(chainID, 100, privval, false)
 
 	c, err := light.NewClient(
 		context.Background(),
@@ -124,7 +124,7 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 		stdlog.Fatal(err)
 	}
 
-	dashCoreMockClient := dashcore.NewDashCoreMockClient(chainID, 100, privval, false)
+	dashCoreMockClient := dashcore.NewMockClient(chainID, 100, privval, false)
 
 	c, err := light.NewClient(
 		context.Background(),

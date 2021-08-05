@@ -236,7 +236,7 @@ func decideProposal(
 
 	proposal.Signature = p.Signature
 
-	return
+	return proposal, block
 }
 
 func addVotes(to *State, votes ...*types.Vote) {
@@ -277,7 +277,10 @@ func validatePrevote(t *testing.T, cs *State, round int32, privVal *validatorStu
 
 func validateLastCommit(t *testing.T, cs *State, privVal *validatorStub, blockHash []byte) {
 	commit := cs.LastCommit
-	commit.ValidateBasic()
+	err := commit.ValidateBasic()
+	if err != nil {
+		panic(fmt.Sprintf("Expected commit to be valid %v, %v", commit, err))
+	}
 	if !bytes.Equal(commit.BlockID.Hash, blockHash) {
 		panic(fmt.Sprintf("Expected commit to be for %X, got %X", blockHash, commit.BlockID.Hash))
 	}

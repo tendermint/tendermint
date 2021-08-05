@@ -302,11 +302,12 @@ func (state State) MakeBlock(
 }
 
 func (state State) ValidatorsAtHeight(height int64) *types.ValidatorSet {
-	if state.LastBlockHeight == height {
+	switch {
+	case state.LastBlockHeight == height:
 		return state.LastValidators
-	} else if state.LastBlockHeight+2 == height {
+	case state.LastBlockHeight+2 == height:
 		return state.NextValidators
-	} else {
+	default:
 		return state.Validators
 	}
 }
@@ -359,8 +360,12 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 				hasAllPublicKeys = false
 			}
 		}
-		validatorSet = types.NewValidatorSet(validators, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash, hasAllPublicKeys)
-		nextValidatorSet = types.NewValidatorSet(validators, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash, hasAllPublicKeys).CopyIncrementProposerPriority(1)
+		validatorSet = types.NewValidatorSet(
+			validators, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash, hasAllPublicKeys,
+		)
+		nextValidatorSet = types.NewValidatorSet(
+			validators, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash, hasAllPublicKeys,
+		).CopyIncrementProposerPriority(1)
 	}
 
 	return State{

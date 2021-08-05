@@ -65,7 +65,8 @@ type BlockchainReactor struct {
 }
 
 // NewBlockchainReactor returns new reactor instance.
-func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore, nodeProTxHash *crypto.ProTxHash,
+func NewBlockchainReactor(
+	state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore, nodeProTxHash *crypto.ProTxHash,
 	fastSync bool) *BlockchainReactor {
 
 	if state.LastBlockHeight != store.Height() {

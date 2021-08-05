@@ -75,18 +75,19 @@ func (app *PersistentKVStoreApplication) SetOption(req types.RequestSetOption) t
 func (app *PersistentKVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	// if it starts with "vals:", update the validator set
 	// format is "val:proTxHash!pubkey!power"
-	if isValidatorTx(req.Tx) {
+	switch {
+	case isValidatorTx(req.Tx):
 		// update validators in the merkle tree
 		// and in app.ValUpdates
 		return app.execValidatorTx(req.Tx)
-	} else if isThresholdPublicKeyTx(req.Tx) {
+	case isThresholdPublicKeyTx(req.Tx):
 		return app.execThresholdPublicKeyTx(req.Tx)
-	} else if isQuorumHashTx(req.Tx) {
+	case isQuorumHashTx(req.Tx):
 		return app.execQuorumHashTx(req.Tx)
+	default:
+		// otherwise, update the key-value store
+		return app.app.DeliverTx(req)
 	}
-
-	// otherwise, update the key-value store
-	return app.app.DeliverTx(req)
 }
 
 func (app *PersistentKVStoreApplication) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
@@ -201,21 +202,22 @@ func (app *PersistentKVStoreApplication) ValidatorSet() (validatorSet types.Vali
 	}
 	for ; itr.Valid(); itr.Next() {
 		key := itr.Key()
-		if isValidatorTx(key) {
+		switch {
+		case isValidatorTx(key):
 			validator := new(types.ValidatorUpdate)
 			err := types.ReadMessage(bytes.NewBuffer(itr.Value()), validator)
 			if err != nil {
 				panic(err)
 			}
 			validatorSet.ValidatorUpdates = append(validatorSet.ValidatorUpdates, *validator)
-		} else if isThresholdPublicKeyTx(key) {
+		case isThresholdPublicKeyTx(key):
 			thresholdPublicKeyMessage := new(types.ThresholdPublicKeyUpdate)
 			err := types.ReadMessage(bytes.NewBuffer(itr.Value()), thresholdPublicKeyMessage)
 			if err != nil {
 				panic(err)
 			}
 			validatorSet.ThresholdPublicKey = thresholdPublicKeyMessage.GetThresholdPublicKey()
-		} else if isQuorumHashTx(key) {
+		case isQuorumHashTx(key):
 			quorumHashMessage := new(types.QuorumHashUpdate)
 			err := types.ReadMessage(bytes.NewBuffer(itr.Value()), quorumHashMessage)
 			if err != nil {
@@ -227,7 +229,7 @@ func (app *PersistentKVStoreApplication) ValidatorSet() (validatorSet types.Vali
 	if err = itr.Error(); err != nil {
 		panic(err)
 	}
-	return
+	return validatorSet
 }
 
 func MakeValSetChangeTx(proTxHash []byte, pubkey *pc.PublicKey, power int64) []byte {

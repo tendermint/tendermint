@@ -204,10 +204,18 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 		// Make proposal
 		propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
-		proposal := types.NewProposal(height, lazyProposer.state.LastCoreChainLockedBlockHeight, round, lazyProposer.ValidRound, propBlockID)
+		proposal := types.NewProposal(
+			height,
+			lazyProposer.state.LastCoreChainLockedBlockHeight,
+			round,
+			lazyProposer.ValidRound,
+			propBlockID,
+		)
 		p := proposal.ToProto()
-		if _, err := lazyProposer.privValidator.SignProposal(lazyProposer.state.ChainID, lazyProposer.state.Validators.QuorumType,
-			lazyProposer.state.Validators.QuorumHash, p); err == nil {
+		if _, err := lazyProposer.privValidator.SignProposal(
+			lazyProposer.state.ChainID, lazyProposer.state.Validators.QuorumType,
+			lazyProposer.state.Validators.QuorumHash, p,
+		); err == nil {
 			proposal.Signature = p.Signature
 
 			// send proposal and block parts on internal msg queue
@@ -451,7 +459,9 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *St
 	polRound, propBlockID := cs.ValidRound, types.BlockID{Hash: block1.Hash(), PartSetHeader: blockParts1.Header()}
 	proposal1 := types.NewProposal(height, 1, round, polRound, propBlockID)
 	p1 := proposal1.ToProto()
-	if _, err := cs.privValidator.SignProposal(cs.state.ChainID, cs.Validators.QuorumType, cs.Validators.QuorumHash, p1); err != nil {
+	if _, err := cs.privValidator.SignProposal(
+		cs.state.ChainID, cs.Validators.QuorumType, cs.Validators.QuorumHash, p1,
+	); err != nil {
 		t.Error(err)
 	}
 
@@ -465,7 +475,9 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *St
 	polRound, propBlockID = cs.ValidRound, types.BlockID{Hash: block2.Hash(), PartSetHeader: blockParts2.Header()}
 	proposal2 := types.NewProposal(height, 1, round, polRound, propBlockID)
 	p2 := proposal2.ToProto()
-	if _, err := cs.privValidator.SignProposal(cs.state.ChainID, cs.Validators.QuorumType, cs.Validators.QuorumHash, p2); err != nil {
+	if _, err := cs.privValidator.SignProposal(
+		cs.state.ChainID, cs.Validators.QuorumType, cs.Validators.QuorumHash, p2,
+	); err != nil {
 		t.Error(err)
 	}
 

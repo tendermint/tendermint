@@ -17,7 +17,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	"github.com/tendermint/tendermint/libs/bits"
+
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
@@ -641,8 +641,7 @@ type Commit struct {
 	// Memoized in first call to corresponding method.
 	// NOTE: can't memoize in constructor because constructor isn't used for
 	// unmarshaling.
-	hash     tmbytes.HexBytes
-	bitArray *bits.BitArray
+	hash tmbytes.HexBytes
 }
 
 // NewCommit returns a new Commit.
@@ -671,22 +670,22 @@ func (commit *Commit) GetCanonicalVote() *Vote {
 	}
 }
 
-// VoteBlockRequestId returns the requestId Hash of the Vote corresponding to valIdx for
+// VoteBlockRequestID returns the requestId Hash of the Vote corresponding to valIdx for
 // signing.
 //
 // Panics if valIdx >= commit.Size().
 //
-func (commit *Commit) VoteBlockRequestId() []byte {
-	requestIdMessage := []byte("dpbvote")
+func (commit *Commit) VoteBlockRequestID() []byte {
+	requestIDMessage := []byte("dpbvote")
 	heightByteArray := make([]byte, 8)
 	binary.LittleEndian.PutUint64(heightByteArray, uint64(commit.Height))
 	roundByteArray := make([]byte, 4)
 	binary.LittleEndian.PutUint32(roundByteArray, uint32(commit.Round))
 
-	requestIdMessage = append(requestIdMessage, heightByteArray...)
-	requestIdMessage = append(requestIdMessage, roundByteArray...)
+	requestIDMessage = append(requestIDMessage, heightByteArray...)
+	requestIDMessage = append(requestIDMessage, roundByteArray...)
 
-	return crypto.Sha256(requestIdMessage)
+	return crypto.Sha256(requestIDMessage)
 }
 
 // CanonicalVoteVerifySignBytes returns the bytes of the Canonical Vote that is threshold signed.
@@ -697,22 +696,22 @@ func (commit *Commit) CanonicalVoteVerifySignBytes(chainID string) []byte {
 	return VoteBlockSignBytes(chainID, vCanonical)
 }
 
-// CanonicalVoteVerifySignId returns the signID bytes of the Canonical Vote that is threshold signed.
+// CanonicalVoteVerifySignID returns the signID bytes of the Canonical Vote that is threshold signed.
 //
-func (commit *Commit) CanonicalVoteVerifySignId(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
+func (commit *Commit) CanonicalVoteVerifySignID(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
 	voteCanonical := commit.GetCanonicalVote()
 	vCanonical := voteCanonical.ToProto()
-	return VoteBlockSignId(chainID, vCanonical, quorumType, quorumHash)
+	return VoteBlockSignID(chainID, vCanonical, quorumType, quorumHash)
 }
 
-// VoteStateSignId returns the signID bytes of the state for the Vote corresponding to valIdx for
+// VoteStateSignID returns the signID bytes of the state for the Vote corresponding to valIdx for
 // signing.
 //
 // Panics if valIdx >= commit.Size().
 //
-func (commit *Commit) VoteStateSignId(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
+func (commit *Commit) VoteStateSignID(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
 	v := commit.GetCanonicalVote()
-	return VoteStateSignId(chainID, v.ToProto(), quorumType, quorumHash)
+	return VoteStateSignID(chainID, v.ToProto(), quorumType, quorumHash)
 }
 
 // VoteStateRequestId returns the requestId Hash of the Vote corresponding to valIdx for
@@ -720,17 +719,17 @@ func (commit *Commit) VoteStateSignId(chainID string, quorumType btcjson.LLMQTyp
 //
 // Panics if valIdx >= commit.Size().
 //
-func (commit *Commit) VoteStateRequestId() []byte {
-	requestIdMessage := []byte("dpsvote")
+func (commit *Commit) VoteStateRequestID() []byte {
+	requestIDMessage := []byte("dpsvote")
 	heightByteArray := make([]byte, 8)
 	binary.LittleEndian.PutUint64(heightByteArray, uint64(commit.Height))
 	roundByteArray := make([]byte, 4)
 	binary.LittleEndian.PutUint32(roundByteArray, uint32(commit.Round))
 
-	requestIdMessage = append(requestIdMessage, heightByteArray...)
-	requestIdMessage = append(requestIdMessage, roundByteArray...)
+	requestIDMessage = append(requestIDMessage, heightByteArray...)
+	requestIDMessage = append(requestIDMessage, roundByteArray...)
 
-	return crypto.Sha256(requestIdMessage)
+	return crypto.Sha256(requestIDMessage)
 }
 
 // CanonicalVoteStateSignBytes returns the bytes of the State corresponding to valIdx for
@@ -744,9 +743,9 @@ func (commit *Commit) CanonicalVoteStateSignBytes(chainID string) []byte {
 	return VoteStateSignBytes(chainID, v.ToProto())
 }
 
-func (commit *Commit) CanonicalVoteStateSignId(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
+func (commit *Commit) CanonicalVoteStateSignID(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
 	v := commit.GetCanonicalVote()
-	return VoteStateSignId(chainID, v.ToProto(), quorumType, quorumHash)
+	return VoteStateSignID(chainID, v.ToProto(), quorumType, quorumHash)
 }
 
 // Type returns the vote type of the commit, which is always VoteTypePrecommit
@@ -791,10 +790,18 @@ func (commit *Commit) ValidateBasic() error {
 			return errors.New("commit cannot be for nil block")
 		}
 		if len(commit.ThresholdBlockSignature) != SignatureSize {
-			return fmt.Errorf("block threshold signature is wrong size (wanted: %d, received: %d)", SignatureSize, len(commit.ThresholdBlockSignature))
+			return fmt.Errorf(
+				"block threshold signature is wrong size (wanted: %d, received: %d)",
+				SignatureSize,
+				len(commit.ThresholdBlockSignature),
+			)
 		}
 		if len(commit.ThresholdStateSignature) != SignatureSize {
-			return fmt.Errorf("state threshold signature is wrong size (wanted: %d, received: %d)", SignatureSize, len(commit.ThresholdStateSignature))
+			return fmt.Errorf(
+				"state threshold signature is wrong size (wanted: %d, received: %d)",
+				SignatureSize,
+				len(commit.ThresholdStateSignature),
+			)
 		}
 	}
 	return nil
@@ -821,7 +828,8 @@ func (commit *Commit) String() string {
 	if commit == nil {
 		return "nil-Commit"
 	}
-	return fmt.Sprintf(`Commit{H: %d, R: %d, BlockID: %v, StateID: %v, QuorumHash %v, BlockSignature: %v, StateSignature: %v}#%v`,
+	return fmt.Sprintf(
+		`Commit{H: %d, R: %d, BlockID: %v, StateID: %v, QuorumHash %v, BlockSignature: %v, StateSignature: %v}#%v`,
 		commit.Height,
 		commit.Round,
 		commit.BlockID,
