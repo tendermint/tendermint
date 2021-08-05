@@ -29,6 +29,10 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+var (
+	m = PrometheusMetrics(config.TestConfig().Instrumentation.Namespace)
+)
+
 type reactorTestSuite struct {
 	reactor *Reactor
 	syncer  *syncer
@@ -156,7 +160,7 @@ func setup(
 		rts.stateStore,
 		rts.blockStore,
 		"",
-		NopMetrics(),
+		m,
 	)
 
 	rts.syncer = newSyncer(
@@ -170,6 +174,8 @@ func setup(
 		"",
 		rts.reactor.metrics,
 	)
+
+	rts.reactor.syncer = rts.syncer
 
 	require.NoError(t, rts.reactor.Start())
 	require.True(t, rts.reactor.IsRunning())
@@ -615,7 +621,8 @@ func TestReactor_Backfill(t *testing.T) {
 				require.Equal(t, startHeight-stopHeight+1, rts.reactor.backfills)
 				require.Equal(t, startHeight-stopHeight+1, rts.reactor.backfillTotal)
 			}
-
+			require.Equal(t, rts.reactor.backfills, rts.reactor.GetBackFill())
+			require.Equal(t, rts.reactor.backfillTotal, rts.reactor.GetBackFillTotal())
 		})
 	}
 }

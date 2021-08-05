@@ -251,6 +251,7 @@ func (s *syncer) SyncAny(
 		}
 		snapshot = nil
 		chunks = nil
+		s.proccessingSnapshot = nil
 	}
 }
 
