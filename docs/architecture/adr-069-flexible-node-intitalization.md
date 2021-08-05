@@ -80,7 +80,7 @@ Such a system could work by allowing services to declare
 initialization order dependencies to other reactors (by ID, perhaps)
 so that the node could decide the initialization based on the
 dependencies declared by services rather than requiring the node to
-encode this logic directly. 
+encode this logic directly.
 
 This level of configuration is probably more complicated than is needed.  Given
 that the authors of components in the current implementation of tendermint
@@ -94,14 +94,14 @@ would probably be overly-abstract at this stage.
   implementation of the node objects.
 
   - Reactors should not need to expose their interfaces *within* the
-    implementation of the node type, except in the context of some groups of
-    services.
+	implementation of the node type, except in the context of some groups of
+	services.
 
   - This refactoring should be entirely opaque to users.
 
   - These node initialization changes should not require a
-    reevaluation of the `service.Service` or a generic initialization
-    orchestration framework.
+	reevaluation of the `service.Service` or a generic initialization
+	orchestration framework.
 
 - If required for the 0.35 release, add an "unsafe" way to construct a
   node service with user-supplied mempool, including making the
@@ -122,7 +122,7 @@ into the constructor of
 [makeNode](https://github.com/tendermint/tendermint/blob/master/node/node.go#L126). One
 possible implementation of this would be to eliminate the current
 `ConfigureRPC` method on the node package and instead [configure it
-here](https://github.com/tendermint/tendermint/blob/tychoish/scratch-node-minimize/node/node.go#L441). 
+here](https://github.com/tendermint/tendermint/pull/6798/files#diff-375d57e386f20eaa5f09f02bb9d28bfc48ac3dca18d0325f59492208219e5618R441).
 
 To avoid adding complexity to the `node` package, we will add a
 composite service implementation to the `service` package
