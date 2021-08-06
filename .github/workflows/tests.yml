@@ -19,7 +19,7 @@ jobs:
         with:
           go-version: "1.16"
       - uses: actions/checkout@v2.3.4
-      - uses: technote-space/get-diff-action@v4
+      - uses: technote-space/get-diff-action@v5
         with:
           PATTERNS: |
             **/**.go
@@ -51,7 +51,7 @@ jobs:
         with:
           go-version: "1.16"
       - uses: actions/checkout@v2.3.4
-      - uses: technote-space/get-diff-action@v4
+      - uses: technote-space/get-diff-action@v5
         with:
           PATTERNS: |
             **/**.go
@@ -82,7 +82,7 @@ jobs:
         with:
           go-version: "1.16"
       - uses: actions/checkout@v2.3.4
-      - uses: technote-space/get-diff-action@v4
+      - uses: technote-space/get-diff-action@v5
         with:
           PATTERNS: |
             **/**.go
