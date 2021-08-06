@@ -51,6 +51,11 @@ type reactorTestSuite struct {
 	blockOutCh     chan p2p.Envelope
 	blockPeerErrCh chan p2p.PeerError
 
+	paramsChannel   *p2p.Channel
+	paramsInCh      chan p2p.Envelope
+	paramsOutCh     chan p2p.Envelope
+	paramsPeerErrCh chan p2p.PeerError
+
 	peerUpdateCh chan p2p.PeerUpdate
 	peerUpdates  *p2p.PeerUpdates
 
@@ -119,6 +124,14 @@ func setup(
 		rts.blockPeerErrCh,
 	)
 
+	rts.paramsChannel = p2p.NewChannel(
+		ParamsChannel,
+		new(ssproto.Message),
+		rts.paramsInCh,
+		rts.paramsOutCh,
+		rts.paramsPeerErrCh,
+	)
+
 	rts.stateStore = &smmocks.Store{}
 	rts.blockStore = store.NewBlockStore(dbm.NewMemDB())
 
@@ -132,6 +145,7 @@ func setup(
 		rts.snapshotChannel,
 		rts.chunkChannel,
 		rts.blockChannel,
+		rts.paramsChannel,
 		rts.peerUpdates,
 		rts.stateStore,
 		rts.blockStore,
@@ -388,7 +402,7 @@ func TestReactor_Dispatcher(t *testing.T) {
 	chain := buildLightBlockChain(t, 1, 10, time.Now())
 	go handleLightBlockRequests(t, chain, rts.blockOutCh, rts.blockInCh, closeCh, 0)
 
-	dispatcher := rts.reactor.Dispatcher()
+	dispatcher := rts.reactor.dispatcher
 	providers := dispatcher.Providers(factory.DefaultTestChainID)
 	require.Len(t, providers, 2)
 	require.Equal(t, 2, dispatcher.peerCount())
@@ -438,7 +452,8 @@ func TestReactor_Dispatcher(t *testing.T) {
 		Hash:   lb.Hash(),
 	}
 
-	p2pStateProvider, err := NewP2PStateProvider(ctx, "testchain", 1, rts.reactor.Dispatcher(), to, log.TestingLogger())
+	// TODO: move into a separate test
+	p2pStateProvider, err := NewP2PStateProvider(ctx, "testchain", 1, rts.reactor.dispatcher, to, rts.paramsOutCh, log.TestingLogger())
 	require.NoError(t, err)
 
 	appHash, err := p2pStateProvider.AppHash(ctx, 5)

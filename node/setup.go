@@ -756,6 +756,7 @@ func makeNodeInfo(
 			byte(statesync.SnapshotChannel),
 			byte(statesync.ChunkChannel),
 			byte(statesync.LightBlockChannel),
+			byte(statesync.ParamsChannel),
 		},
 		Moniker: config.Moniker,
 		Other: types.NodeInfoOther{

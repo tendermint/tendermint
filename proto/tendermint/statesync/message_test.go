@@ -9,6 +9,7 @@ import (
 
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 func TestValidateMsg(t *testing.T) {
@@ -186,9 +187,9 @@ func TestStateSyncVectors(t *testing.T) {
 			"ParamsResponse",
 			&ssproto.ParamsResponse{
 				Height:          9001,
-				ConsensusParams: &tmproto.ConsensusParams{},
+				ConsensusParams: types.DefaultConsensusParams().ToProto(),
 			},
-			"420508a9461200",
+			"423408a946122f0a10088080c00a10ffffffffffffffffff01120e08a08d0612040880c60a188080401a090a07656432353531392200",
 		},
 	}
 

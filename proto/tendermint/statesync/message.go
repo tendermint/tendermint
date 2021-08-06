@@ -5,8 +5,6 @@ import (
 	fmt "fmt"
 
 	proto "github.com/gogo/protobuf/proto"
-
-	"github.com/tendermint/tendermint/types"
 )
 
 // Wrap implements the p2p Wrapper interface and wraps a state sync proto message.
@@ -129,11 +127,6 @@ func (m *Message) Validate() error {
 		resp := m.GetParamsResponse()
 		if resp.Height == 0 {
 			return errors.New("height cannot be 0")
-		}
-
-		if resp.ConsensusParams != nil {
-			cp := types.ConsensusParamsFromProto(*resp.ConsensusParams)
-			return cp.ValidateConsensusParams()
 		}
 
 	default:

@@ -181,6 +181,7 @@ func (d *dispatcher) removePeer(peer types.NodeID) {
 	} else {
 		d.availablePeers.Remove(peer)
 	}
+	delete(d.providers, peer)
 }
 
 // peerCount returns the amount of peers that the dispatcher is connected with

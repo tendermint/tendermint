@@ -1,4 +1,12 @@
 [node.validator01]
+snapshot_interval = 2
 [node.validator02]
+snapshot_interval = 3
 [node.validator03]
+snapshot_interval = 3
 [node.validator04]
+state_sync = true
+start_at = 5
+persistent_peers = ["validator01"] 
+[node.validator05]
+snapshot_interval =3

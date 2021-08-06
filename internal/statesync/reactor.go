@@ -101,6 +101,10 @@ const (
 	// return a light block
 	lightBlockResponseTimeout = 30 * time.Second
 
+	// consensusParamsResponseTimeout is the time the p2p state provider waits
+	// before performing a secondary call
+	consensusParamsResponseTimeout = 5 * time.Second
+
 	// maxLightBlockRequestRetries is the amount of retries acceptable before
 	// the backfill process aborts
 	maxLightBlockRequestRetries = 20
@@ -121,6 +125,7 @@ type Reactor struct {
 	snapshotCh  *p2p.Channel
 	chunkCh     *p2p.Channel
 	blockCh     *p2p.Channel
+	paramsCh    *p2p.Channel
 	peerUpdates *p2p.PeerUpdates
 	closeCh     chan struct{}
 
@@ -141,7 +146,7 @@ func NewReactor(
 	logger log.Logger,
 	conn proxy.AppConnSnapshot,
 	connQuery proxy.AppConnQuery,
-	snapshotCh, chunkCh, blockCh *p2p.Channel,
+	snapshotCh, chunkCh, blockCh, paramsCh *p2p.Channel,
 	peerUpdates *p2p.PeerUpdates,
 	stateStore sm.Store,
 	blockStore *store.BlockStore,
@@ -154,10 +159,10 @@ func NewReactor(
 		snapshotCh:  snapshotCh,
 		chunkCh:     chunkCh,
 		blockCh:     blockCh,
+		paramsCh:    paramsCh,
 		peerUpdates: peerUpdates,
 		closeCh:     make(chan struct{}),
 		tempDir:     tempDir,
-		dispatcher:  newDispatcher(blockCh.Out, lightBlockResponseTimeout),
 		stateStore:  stateStore,
 		blockStore:  blockStore,
 	}
@@ -227,6 +232,8 @@ func (r *Reactor) Sync(
 		return sm.State{}, errors.New("a state sync is already in progress")
 	}
 
+	r.dispatcher = newDispatcher(r.blockCh.Out, lightBlockResponseTimeout)
+
 	to := light.TrustOptions{
 		Period: r.cfg.TrustPeriod,
 		Height: r.cfg.TrustHeight,
@@ -242,7 +249,7 @@ func (r *Reactor) Sync(
 		// state provider needs at least two connected peers to initialize
 		spLogger.Info("Generating P2P state provider")
 		r.waitForEnoughPeers(ctx, 2)
-		stateProvider, err = NewP2PStateProvider(ctx, chainID, initialHeight, r.Dispatcher(), to, spLogger)
+		stateProvider, err = NewP2PStateProvider(ctx, chainID, initialHeight, r.dispatcher, to, r.paramsCh.Out, spLogger)
 		if err != nil {
 			return sm.State{}, err
 		}
@@ -476,12 +483,6 @@ func (r *Reactor) backfill(
 	}
 }
 
-// Dispatcher exposes the dispatcher so that a state provider can use it for
-// light client verification
-func (r *Reactor) Dispatcher() *dispatcher { //nolint:golint
-	return r.dispatcher
-}
-
 // handleSnapshotMessage handles envelopes sent from peers on the
 // SnapshotChannel. It returns an error only if the Envelope.Message is unknown
 // for this channel. This should never be called outside of handleMessage.
@@ -677,6 +678,50 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 	return nil
 }
 
+func (r *Reactor) handleParamsMessage(envelope p2p.Envelope) error {
+	switch msg := envelope.Message.(type) {
+	case *ssproto.ParamsRequest:
+		r.Logger.Info("received light block request", "height", msg.Height)
+		cp, err := r.stateStore.LoadConsensusParams(int64(msg.Height))
+		if err != nil {
+			r.Logger.Error("failed to fetch requested consensus params", "err", err, "height", msg.Height)
+			return nil
+		}
+
+		cpproto := cp.ToProto()
+		r.blockCh.Out <- p2p.Envelope{
+			To: envelope.From,
+			Message: &ssproto.ParamsResponse{
+				Height:          msg.Height,
+				ConsensusParams: cpproto,
+			},
+		}
+
+	case *ssproto.ParamsResponse:
+		r.mtx.RLock()
+		defer r.mtx.RUnlock()
+
+		if r.syncer == nil {
+			r.Logger.Debug("received unexpected params response; no state sync in progress", "peer", envelope.From)
+			return nil
+		}
+
+		cp := types.ConsensusParamsFromProto(msg.ConsensusParams)
+
+		if sp, ok := r.syncer.stateProvider.(*stateProviderP2P); ok {
+			select {
+			case sp.paramsRecvCh <- cp:
+			default:
+			}
+		}
+
+	default:
+		return fmt.Errorf("received unknown message: %T", msg)
+	}
+
+	return nil
+}
+
 // handleMessage handles an Envelope sent from a peer on a specific p2p Channel.
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
@@ -704,6 +749,9 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	case LightBlockChannel:
 		err = r.handleLightBlockMessage(envelope)
 
+	case ParamsChannel:
+		err = r.handleParamsMessage(envelope)
+
 	default:
 		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", chID, envelope)
 	}
@@ -727,6 +775,10 @@ func (r *Reactor) processChunkCh() {
 // envelopes on the LightBlockChannel.
 func (r *Reactor) processBlockCh() {
 	r.processCh(r.blockCh, "light block")
+}
+
+func (r *Reactor) processParamsCh() {
+	r.processCh(r.paramsCh, "consensus params")
 }
 
 // processCh routes state sync messages to their respective handlers. Any error
