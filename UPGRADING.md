@@ -102,6 +102,16 @@ will need to change to accommodate these changes. Most notably:
 
 Mark gRPC in the RPC layer as deprecated and to be removed in 0.36.
 
+### Support for Custom Reactor and Mempool Implementations
+
+The changes to p2p layer removed existing support for custom
+reactors. Based on our understanding of how this functionality was
+used, the introduction of the prioritized mempool covers nearly all of
+the use cases for custom reactors. If you are currently running custom
+reactors and mempools and are having trouble seeing the migration path
+for your project please feel free to reach out to the Tendermint Core
+development team directly. 
+
 ## v0.34.0
 
 **Upgrading to Tendermint 0.34 requires a blockchain restart.**
