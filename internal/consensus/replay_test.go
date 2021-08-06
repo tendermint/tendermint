@@ -17,7 +17,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -36,6 +35,8 @@ import (
 	sf "github.com/tendermint/tendermint/state/test/factory"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/memdb"
 )
 
 // These tests ensure we can always recover from failure at any part of the consensus process.
@@ -59,7 +60,7 @@ func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Confi
 	state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 	require.NoError(t, err)
 	privValidator := loadPrivValidator(consensusReplayConfig)
-	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	blockStore := store.NewBlockStore(memdb.NewDB())
 	cs := newStateWithConfigAndBlockStore(
 		consensusReplayConfig,
 		state,
@@ -148,8 +149,8 @@ LOOP:
 
 		// create consensus state from a clean slate
 		logger := log.NewNopLogger()
-		blockDB := dbm.NewMemDB()
-		stateDB := dbm.NewMemDB()
+		blockDB := memdb.NewDB()
+		stateDB := memdb.NewDB()
 		stateStore := sm.NewStore(stateDB)
 		blockStore := store.NewBlockStore(blockDB)
 		state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
@@ -691,7 +692,7 @@ func testHandshakeReplay(t *testing.T, sim *simulatorTestSuite, nBlocks int, mod
 	if testValidatorsChange {
 		testConfig := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), mode))
 		defer func() { _ = os.RemoveAll(testConfig.RootDir) }()
-		stateDB = dbm.NewMemDB()
+		stateDB = memdb.NewDB()
 
 		genesisState = sim.GenesisState
 		config = sim.Config
@@ -745,7 +746,7 @@ func testHandshakeReplay(t *testing.T, sim *simulatorTestSuite, nBlocks int, mod
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
 		proxyApp := proxy.NewAppConns(clientCreator2)
-		stateDB1 := dbm.NewMemDB()
+		stateDB1 := memdb.NewDB()
 		stateStore := sm.NewStore(stateDB1)
 		err := stateStore.Save(genesisState)
 		require.NoError(t, err)
@@ -1155,7 +1156,7 @@ func stateAndStore(
 	config *cfg.Config,
 	pubKey crypto.PubKey,
 	appVersion uint64) (dbm.DB, sm.State, *mockBlockStore) {
-	stateDB := dbm.NewMemDB()
+	stateDB := memdb.NewDB()
 	stateStore := sm.NewStore(stateDB)
 	state, _ := sm.MakeGenesisStateFromFile(config.GenesisFile())
 	state.Version.Consensus.App = appVersion

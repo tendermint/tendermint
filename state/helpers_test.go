@@ -6,6 +6,7 @@ import (
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/memdb"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
@@ -109,7 +110,7 @@ func makeState(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValida
 		AppHash:    nil,
 	})
 
-	stateDB := dbm.NewMemDB()
+	stateDB := memdb.NewDB()
 	stateStore := sm.NewStore(stateDB)
 	if err := stateStore.Save(s); err != nil {
 		panic(err)

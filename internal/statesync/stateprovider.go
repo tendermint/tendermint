@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	dbm "github.com/tendermint/tm-db"
-
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light"
@@ -18,6 +16,7 @@ import (
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tm-db/memdb"
 )
 
 //go:generate ../../scripts/mockery_generate.sh StateProvider
@@ -71,7 +70,7 @@ func NewLightClientStateProvider(
 	}
 
 	lc, err := light.NewClient(ctx, chainID, trustOptions, providers[0], providers[1:],
-		lightdb.New(dbm.NewMemDB()), light.Logger(logger))
+		lightdb.New(memdb.NewDB()), light.Logger(logger))
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +104,7 @@ func NewLightClientStateProviderFromDispatcher(
 	}
 
 	lc, err := light.NewClient(ctx, chainID, trustOptions, providers[0], providers[1:],
-		lightdb.New(dbm.NewMemDB()), light.Logger(logger))
+		lightdb.New(memdb.NewDB()), light.Logger(logger))
 	if err != nil {
 		return nil, err
 	}

@@ -11,7 +11,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
@@ -29,6 +28,7 @@ import (
 	sf "github.com/tendermint/tendermint/state/test/factory"
 	tmstore "github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tm-db/memdb"
 )
 
 type mockPeer struct {
@@ -167,9 +167,9 @@ func newTestReactor(t *testing.T, p testReactorParams) *BlockchainReactor {
 		proxyApp := proxy.NewAppConns(cc)
 		err := proxyApp.Start()
 		require.NoError(t, err)
-		db := dbm.NewMemDB()
+		db := memdb.NewDB()
 		stateStore := sm.NewStore(db)
-		blockStore := tmstore.NewBlockStore(dbm.NewMemDB())
+		blockStore := tmstore.NewBlockStore(memdb.NewDB())
 		appl = sm.NewBlockExecutor(
 			stateStore, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.EmptyEvidencePool{}, blockStore)
 		err = stateStore.Save(state)
@@ -489,8 +489,8 @@ func newReactorStore(
 		panic(fmt.Errorf("error start app: %w", err))
 	}
 
-	stateDB := dbm.NewMemDB()
-	blockStore := tmstore.NewBlockStore(dbm.NewMemDB())
+	stateDB := memdb.NewDB()
+	blockStore := tmstore.NewBlockStore(memdb.NewDB())
 	stateStore := sm.NewStore(stateDB)
 	state, err := sm.MakeGenesisState(genDoc)
 	require.NoError(t, err)

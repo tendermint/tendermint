@@ -8,26 +8,28 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/state/indexer"
 	kvtx "github.com/tendermint/tendermint/state/indexer/tx/kv"
 	"github.com/tendermint/tendermint/types"
 	db "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/memdb"
 )
 
 func TestType(t *testing.T) {
-	kvSink := NewEventSink(db.NewMemDB())
+	kvSink := NewEventSink(memdb.NewDB())
 	assert.Equal(t, indexer.KV, kvSink.Type())
 }
 
 func TestStop(t *testing.T) {
-	kvSink := NewEventSink(db.NewMemDB())
+	kvSink := NewEventSink(memdb.NewDB())
 	assert.Nil(t, kvSink.Stop())
 }
 
 func TestBlockFuncs(t *testing.T) {
-	store := db.NewPrefixDB(db.NewMemDB(), []byte("block_events"))
+	store := db.NewPrefixDB(memdb.NewDB(), []byte("block_events"))
 	indexer := NewEventSink(store)
 
 	require.NoError(t, indexer.IndexBlockEvents(types.EventDataNewBlockHeader{
@@ -158,7 +160,7 @@ func TestBlockFuncs(t *testing.T) {
 }
 
 func TestTxSearchWithCancelation(t *testing.T) {
-	indexer := NewEventSink(db.NewMemDB())
+	indexer := NewEventSink(memdb.NewDB())
 
 	txResult := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "number", Value: "1", Index: true}}},
@@ -180,7 +182,7 @@ func TestTxSearchWithCancelation(t *testing.T) {
 }
 
 func TestTxSearchDeprecatedIndexing(t *testing.T) {
-	esdb := db.NewMemDB()
+	esdb := memdb.NewDB()
 	indexer := NewEventSink(esdb)
 
 	// index tx using events indexing (composite key)
@@ -260,7 +262,7 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 }
 
 func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
-	indexer := NewEventSink(db.NewMemDB())
+	indexer := NewEventSink(memdb.NewDB())
 
 	txResult := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "number", Value: "1", Index: true}}},
@@ -282,7 +284,7 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 }
 
 func TestTxSearchMultipleTxs(t *testing.T) {
-	indexer := NewEventSink(db.NewMemDB())
+	indexer := NewEventSink(memdb.NewDB())
 
 	// indexed first, but bigger height (to test the order of transactions)
 	txResult := txResultWithEvents([]abci.Event{

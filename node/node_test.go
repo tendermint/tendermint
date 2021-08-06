@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/memdb"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	cfg "github.com/tendermint/tendermint/config"
@@ -248,8 +249,8 @@ func TestCreateProposalBlock(t *testing.T) {
 	mp.SetLogger(logger)
 
 	// Make EvidencePool
-	evidenceDB := dbm.NewMemDB()
-	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	evidenceDB := memdb.NewDB()
+	blockStore := store.NewBlockStore(memdb.NewDB())
 	evidencePool, err := evidence.NewPool(logger, evidenceDB, stateStore, blockStore)
 	require.NoError(t, err)
 
@@ -322,7 +323,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	const height int64 = 1
 	state, stateDB, _ := state(1, height)
 	stateStore := sm.NewStore(stateDB)
-	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	blockStore := store.NewBlockStore(memdb.NewDB())
 	const maxBytes int64 = 16384
 	const partSize uint32 = 256
 	state.ConsensusParams.Block.MaxBytes = maxBytes
@@ -383,7 +384,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	state, stateDB, _ := state(types.MaxVotesCount, int64(1))
 	stateStore := sm.NewStore(stateDB)
-	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	blockStore := store.NewBlockStore(memdb.NewDB())
 	const maxBytes int64 = 1024 * 1024 * 2
 	state.ConsensusParams.Block.MaxBytes = maxBytes
 	proposerAddr, _ := state.Validators.GetByIndex(0)
@@ -614,7 +615,7 @@ func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
 	})
 
 	// save validators to db for 2 heights
-	stateDB := dbm.NewMemDB()
+	stateDB := memdb.NewDB()
 	stateStore := sm.NewStore(stateDB)
 	if err := stateStore.Save(s); err != nil {
 		panic(err)
@@ -637,7 +638,7 @@ func TestLoadStateFromGenesis(t *testing.T) {
 func loadStatefromGenesis(t *testing.T) sm.State {
 	t.Helper()
 
-	stateDB := dbm.NewMemDB()
+	stateDB := memdb.NewDB()
 	stateStore := sm.NewStore(stateDB)
 	config := cfg.ResetTestRoot("load_state_from_genesis")
 

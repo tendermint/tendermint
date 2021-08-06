@@ -5,13 +5,12 @@ import (
 	"testing"
 	"time"
 
-	dbm "github.com/tendermint/tm-db"
-
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
 	dbs "github.com/tendermint/tendermint/light/store/db"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tm-db/memdb"
 )
 
 // NOTE: block is produced every minute. Make sure the verification time
@@ -75,7 +74,7 @@ func BenchmarkSequence(b *testing.B) {
 		},
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.Logger(log.TestingLogger()),
 		light.SequentialVerification(),
 	)
@@ -107,7 +106,7 @@ func BenchmarkBisection(b *testing.B) {
 		},
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.Logger(log.TestingLogger()),
 	)
 	if err != nil {
@@ -138,7 +137,7 @@ func BenchmarkBackwards(b *testing.B) {
 		},
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.Logger(log.TestingLogger()),
 	)
 	if err != nil {

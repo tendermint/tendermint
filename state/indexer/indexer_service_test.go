@@ -21,7 +21,7 @@ import (
 	kv "github.com/tendermint/tendermint/state/indexer/sink/kv"
 	psql "github.com/tendermint/tendermint/state/indexer/sink/psql"
 	"github.com/tendermint/tendermint/types"
-	db "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/memdb"
 )
 
 var psqldb *sql.DB
@@ -55,7 +55,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	pool, err := setupDB(t)
 	assert.Nil(t, err)
 
-	store := db.NewMemDB()
+	store := memdb.NewDB()
 	eventSinks := []indexer.EventSink{kv.NewEventSink(store), pSink}
 	assert.True(t, indexer.KVSinkEnabled(eventSinks))
 	assert.True(t, indexer.IndexingEnabled(eventSinks))

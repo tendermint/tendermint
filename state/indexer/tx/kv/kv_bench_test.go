@@ -7,11 +7,10 @@ import (
 	"io/ioutil"
 	"testing"
 
-	dbm "github.com/tendermint/tm-db"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tm-db/goleveldb"
 )
 
 func BenchmarkTxSearch(b *testing.B) {
@@ -20,7 +19,7 @@ func BenchmarkTxSearch(b *testing.B) {
 		b.Errorf("failed to create temporary directory: %s", err)
 	}
 
-	db, err := dbm.NewGoLevelDB("benchmark_tx_search_test", dbDir)
+	db, err := goleveldb.NewDB("benchmark_tx_search_test", dbDir)
 	if err != nil {
 		b.Errorf("failed to create database: %s", err)
 	}

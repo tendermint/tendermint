@@ -11,17 +11,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	db "github.com/tendermint/tm-db"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	indexer "github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tm-db/memdb"
 )
 
 func TestTxIndex(t *testing.T) {
-	txIndexer := NewTxIndex(db.NewMemDB())
+	txIndexer := NewTxIndex(memdb.NewDB())
 
 	tx := types.Tx("HELLO WORLD")
 	txResult := &abci.TxResult{
@@ -67,7 +66,7 @@ func TestTxIndex(t *testing.T) {
 }
 
 func TestTxSearch(t *testing.T) {
-	indexer := NewTxIndex(db.NewMemDB())
+	indexer := NewTxIndex(memdb.NewDB())
 
 	txResult := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "number", Value: "1", Index: true}}},
@@ -147,7 +146,7 @@ func TestTxSearch(t *testing.T) {
 }
 
 func TestTxSearchWithCancelation(t *testing.T) {
-	indexer := NewTxIndex(db.NewMemDB())
+	indexer := NewTxIndex(memdb.NewDB())
 
 	txResult := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "number", Value: "1", Index: true}}},
@@ -165,7 +164,7 @@ func TestTxSearchWithCancelation(t *testing.T) {
 }
 
 func TestTxSearchDeprecatedIndexing(t *testing.T) {
-	indexer := NewTxIndex(db.NewMemDB())
+	indexer := NewTxIndex(memdb.NewDB())
 
 	// index tx using events indexing (composite key)
 	txResult1 := txResultWithEvents([]abci.Event{
@@ -244,7 +243,7 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 }
 
 func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
-	indexer := NewTxIndex(db.NewMemDB())
+	indexer := NewTxIndex(memdb.NewDB())
 
 	txResult := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "number", Value: "1", Index: true}}},
@@ -266,7 +265,7 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 }
 
 func TestTxSearchMultipleTxs(t *testing.T) {
-	indexer := NewTxIndex(db.NewMemDB())
+	indexer := NewTxIndex(memdb.NewDB())
 
 	// indexed first, but bigger height (to test the order of transactions)
 	txResult := txResultWithEvents([]abci.Event{

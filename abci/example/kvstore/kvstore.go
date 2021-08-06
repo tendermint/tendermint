@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	dbm "github.com/tendermint/tm-db"
-
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/version"
+	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/memdb"
 )
 
 var (
@@ -71,7 +71,7 @@ type Application struct {
 }
 
 func NewApplication() *Application {
-	state := loadState(dbm.NewMemDB())
+	state := loadState(memdb.NewDB())
 	return &Application{state: state}
 }
 

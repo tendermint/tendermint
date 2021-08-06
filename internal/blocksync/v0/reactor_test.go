@@ -21,7 +21,7 @@ import (
 	sf "github.com/tendermint/tendermint/state/test/factory"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/memdb"
 )
 
 type reactorTestSuite struct {
@@ -100,8 +100,8 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 	rts.app[nodeID] = proxy.NewAppConns(proxy.NewLocalClientCreator(&abci.BaseApplication{}))
 	require.NoError(t, rts.app[nodeID].Start())
 
-	blockDB := dbm.NewMemDB()
-	stateDB := dbm.NewMemDB()
+	blockDB := memdb.NewDB()
+	stateDB := memdb.NewDB()
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(blockDB)
 

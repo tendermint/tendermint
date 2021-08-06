@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/evidence"
@@ -23,7 +24,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/memdb"
 )
 
 // Byzantine node sends two different prevotes (nil and blockID) to the same
@@ -43,7 +44,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	for i := 0; i < nValidators; i++ {
 		func() {
 			logger := consensusLogger().With("test", "byzantine", "validator", i)
-			stateDB := dbm.NewMemDB() // each state needs its own db
+			stateDB := memdb.NewDB() // each state needs its own db
 			stateStore := sm.NewStore(stateDB)
 			state, err := sm.MakeGenesisState(genDoc)
 			require.NoError(t, err)
@@ -57,7 +58,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			vals := types.TM2PB.ValidatorUpdates(state.Validators)
 			app.InitChain(abci.RequestInitChain{Validators: vals})
 
-			blockDB := dbm.NewMemDB()
+			blockDB := memdb.NewDB()
 			blockStore := store.NewBlockStore(blockDB)
 
 			// one for mempool, one for consensus
@@ -73,7 +74,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			}
 
 			// Make a full instance of the evidence pool
-			evidenceDB := dbm.NewMemDB()
+			evidenceDB := memdb.NewDB()
 			evpool, err := evidence.NewPool(logger.With("module", "evidence"), evidenceDB, stateStore, blockStore)
 			require.NoError(t, err)
 

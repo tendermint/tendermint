@@ -12,8 +12,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	dbm "github.com/tendermint/tm-db"
-
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light"
@@ -21,6 +19,7 @@ import (
 	provider_mocks "github.com/tendermint/tendermint/light/provider/mocks"
 	dbs "github.com/tendermint/tendermint/light/store/db"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tm-db/memdb"
 )
 
 const (
@@ -218,7 +217,7 @@ func TestClient_SequentialVerification(t *testing.T) {
 				trustOptions,
 				mockNode,
 				[]provider.Provider{mockNode},
-				dbs.New(dbm.NewMemDB()),
+				dbs.New(memdb.NewDB()),
 				light.SequentialVerification(),
 				light.Logger(log.TestingLogger()),
 			)
@@ -338,7 +337,7 @@ func TestClient_SkippingVerification(t *testing.T) {
 				trustOptions,
 				mockNode,
 				[]provider.Provider{mockNode},
-				dbs.New(dbm.NewMemDB()),
+				dbs.New(memdb.NewDB()),
 				light.SkippingVerification(light.DefaultTrustLevel),
 				light.Logger(log.TestingLogger()),
 			)
@@ -391,7 +390,7 @@ func TestClientLargeBisectionVerification(t *testing.T) {
 		},
 		mockNode,
 		[]provider.Provider{mockNode},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.SkippingVerification(light.DefaultTrustLevel),
 	)
 	require.NoError(t, err)
@@ -418,7 +417,7 @@ func TestClientBisectionBetweenTrustedHeaders(t *testing.T) {
 		},
 		mockFullNode,
 		[]provider.Provider{mockFullNode},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.SkippingVerification(light.DefaultTrustLevel),
 	)
 	require.NoError(t, err)
@@ -445,7 +444,7 @@ func TestClient_Cleanup(t *testing.T) {
 		trustOptions,
 		mockFullNode,
 		[]provider.Provider{mockFullNode},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
@@ -467,7 +466,7 @@ func TestClientRestoresTrustedHeaderAfterStartup(t *testing.T) {
 	// 1. options.Hash == trustedHeader.Hash
 	t.Run("hashes should match", func(t *testing.T) {
 		mockNode := &provider_mocks.Provider{}
-		trustedStore := dbs.New(dbm.NewMemDB())
+		trustedStore := dbs.New(memdb.NewDB())
 		err := trustedStore.SaveLightBlock(l1)
 		require.NoError(t, err)
 
@@ -492,7 +491,7 @@ func TestClientRestoresTrustedHeaderAfterStartup(t *testing.T) {
 
 	// 2. options.Hash != trustedHeader.Hash
 	t.Run("hashes should not match", func(t *testing.T) {
-		trustedStore := dbs.New(dbm.NewMemDB())
+		trustedStore := dbs.New(memdb.NewDB())
 		err := trustedStore.SaveLightBlock(l1)
 		require.NoError(t, err)
 
@@ -538,7 +537,7 @@ func TestClient_Update(t *testing.T) {
 		trustOptions,
 		mockFullNode,
 		[]provider.Provider{mockFullNode},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
@@ -563,7 +562,7 @@ func TestClient_Concurrency(t *testing.T) {
 		trustOptions,
 		mockFullNode,
 		[]provider.Provider{mockFullNode},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
@@ -609,7 +608,7 @@ func TestClient_AddProviders(t *testing.T) {
 		trustOptions,
 		mockFullNode,
 		[]provider.Provider{mockFullNode},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
@@ -645,7 +644,7 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 		trustOptions,
 		mockDeadNode,
 		[]provider.Provider{mockFullNode, mockFullNode},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.Logger(log.TestingLogger()),
 	)
 
@@ -683,7 +682,7 @@ func TestClient_BackwardsVerification(t *testing.T) {
 			},
 			mockLargeFullNode,
 			[]provider.Provider{mockLargeFullNode},
-			dbs.New(dbm.NewMemDB()),
+			dbs.New(memdb.NewDB()),
 			light.Logger(log.TestingLogger()),
 		)
 		require.NoError(t, err)
@@ -760,7 +759,7 @@ func TestClient_BackwardsVerification(t *testing.T) {
 				},
 				mockNode,
 				[]provider.Provider{mockNode},
-				dbs.New(dbm.NewMemDB()),
+				dbs.New(memdb.NewDB()),
 				light.Logger(log.TestingLogger()),
 			)
 			require.NoError(t, err, idx)
@@ -774,7 +773,7 @@ func TestClient_BackwardsVerification(t *testing.T) {
 
 func TestClient_NewClientFromTrustedStore(t *testing.T) {
 	// 1) Initiate DB and fill with a "trusted" header
-	db := dbs.New(dbm.NewMemDB())
+	db := dbs.New(memdb.NewDB())
 	err := db.SaveLightBlock(l1)
 	require.NoError(t, err)
 	mockNode := &provider_mocks.Provider{}
@@ -833,7 +832,7 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 		trustOptions,
 		mockFullNode,
 		[]provider.Provider{mockBadNode1, mockBadNode2},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.Logger(log.TestingLogger()),
 	)
 	// witness should have behaved properly -> no error
@@ -889,7 +888,7 @@ func TestClient_TrustedValidatorSet(t *testing.T) {
 		trustOptions,
 		mockFullNode,
 		[]provider.Provider{mockBadValSetNode, mockFullNode},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
@@ -921,7 +920,7 @@ func TestClientPrunesHeadersAndValidatorSets(t *testing.T) {
 		trustOptions,
 		mockFullNode,
 		[]provider.Provider{mockFullNode},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.Logger(log.TestingLogger()),
 		light.PruningSize(1),
 	)
@@ -1011,7 +1010,7 @@ func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
 				trustOptions,
 				mockBadNode,
 				[]provider.Provider{mockBadNode, mockBadNode},
-				dbs.New(dbm.NewMemDB()),
+				dbs.New(memdb.NewDB()),
 			)
 			require.NoError(t, err)
 
@@ -1049,7 +1048,7 @@ func TestClientHandlesContexts(t *testing.T) {
 		trustOptions,
 		mockNode,
 		[]provider.Provider{mockNode, mockNode},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 	)
 	require.Error(t, ctxTimeOut.Err())
 	require.Error(t, err)
@@ -1062,7 +1061,7 @@ func TestClientHandlesContexts(t *testing.T) {
 		trustOptions,
 		mockNode,
 		[]provider.Provider{mockNode, mockNode},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 	)
 	require.NoError(t, err)
 

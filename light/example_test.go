@@ -7,8 +7,6 @@ import (
 	"os"
 	"time"
 
-	dbm "github.com/tendermint/tm-db"
-
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light"
@@ -16,6 +14,7 @@ import (
 	httpp "github.com/tendermint/tendermint/light/provider/http"
 	dbs "github.com/tendermint/tendermint/light/store/db"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
+	"github.com/tendermint/tm-db/goleveldb"
 )
 
 // Manually getting light blocks and verifying them.
@@ -55,7 +54,7 @@ func ExampleClient() {
 		stdlog.Fatal(err)
 	}
 
-	db, err := dbm.NewGoLevelDB("light-client-db", dbDir)
+	db, err := goleveldb.NewDB("light-client-db", dbDir)
 	if err != nil {
 		stdlog.Fatal(err)
 	}

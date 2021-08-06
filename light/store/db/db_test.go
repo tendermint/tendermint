@@ -8,18 +8,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	dbm "github.com/tendermint/tm-db"
-
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
+	"github.com/tendermint/tm-db/memdb"
 )
 
 func TestLast_FirstLightBlockHeight(t *testing.T) {
-	dbStore := New(dbm.NewMemDB())
+	dbStore := New(memdb.NewDB())
 
 	// Empty store
 	height, err := dbStore.LastLightBlockHeight()
@@ -44,7 +43,7 @@ func TestLast_FirstLightBlockHeight(t *testing.T) {
 }
 
 func Test_SaveLightBlock(t *testing.T) {
-	dbStore := New(dbm.NewMemDB())
+	dbStore := New(memdb.NewDB())
 
 	// Empty store
 	h, err := dbStore.LightBlock(1)
@@ -74,7 +73,7 @@ func Test_SaveLightBlock(t *testing.T) {
 }
 
 func Test_LightBlockBefore(t *testing.T) {
-	dbStore := New(dbm.NewMemDB())
+	dbStore := New(memdb.NewDB())
 
 	assert.Panics(t, func() {
 		_, _ = dbStore.LightBlockBefore(0)
@@ -95,7 +94,7 @@ func Test_LightBlockBefore(t *testing.T) {
 }
 
 func Test_Prune(t *testing.T) {
-	dbStore := New(dbm.NewMemDB())
+	dbStore := New(memdb.NewDB())
 
 	// Empty store
 	assert.EqualValues(t, 0, dbStore.Size())
@@ -132,7 +131,7 @@ func Test_Prune(t *testing.T) {
 }
 
 func Test_Concurrency(t *testing.T) {
-	dbStore := New(dbm.NewMemDB())
+	dbStore := New(memdb.NewDB())
 
 	var wg sync.WaitGroup
 	for i := 1; i <= 100; i++ {

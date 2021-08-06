@@ -22,7 +22,7 @@ import (
 	sf "github.com/tendermint/tendermint/state/test/factory"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/memdb"
 )
 
 const validationTestsStopHeight int64 = 10
@@ -34,7 +34,7 @@ func TestValidateBlockHeader(t *testing.T) {
 
 	state, stateDB, privVals := makeState(3, 1)
 	stateStore := sm.NewStore(stateDB)
-	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	blockStore := store.NewBlockStore(memdb.NewDB())
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		log.TestingLogger(),
@@ -121,7 +121,7 @@ func TestValidateBlockCommit(t *testing.T) {
 
 	state, stateDB, privVals := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)
-	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	blockStore := store.NewBlockStore(memdb.NewDB())
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		log.TestingLogger(),
@@ -242,7 +242,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 
 	state, stateDB, privVals := makeState(4, 1)
 	stateStore := sm.NewStore(stateDB)
-	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	blockStore := store.NewBlockStore(memdb.NewDB())
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	evpool := &mocks.EvidencePool{}

@@ -63,7 +63,7 @@ This package provides three major things:
 
 Example usage:
 
-		db, err := dbm.NewGoLevelDB("light-client-db", dbDir)
+		db, err := goleveldb.NewDB("light-client-db", dbDir)
 		if err != nil {
 			// handle error
 		}

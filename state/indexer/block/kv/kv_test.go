@@ -11,10 +11,11 @@ import (
 	blockidxkv "github.com/tendermint/tendermint/state/indexer/block/kv"
 	"github.com/tendermint/tendermint/types"
 	db "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/memdb"
 )
 
 func TestBlockIndexer(t *testing.T) {
-	store := db.NewPrefixDB(db.NewMemDB(), []byte("block_events"))
+	store := db.NewPrefixDB(memdb.NewDB(), []byte("block_events"))
 	indexer := blockidxkv.New(store)
 
 	require.NoError(t, indexer.Index(types.EventDataNewBlockHeader{

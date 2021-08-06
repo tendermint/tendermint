@@ -16,7 +16,6 @@ import (
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/crypto"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
@@ -25,6 +24,7 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tm-db/memdb"
 )
 
 func echoReactor(channel *p2p.Channel) {
@@ -98,7 +98,7 @@ func TestRouter_Channel_Basic(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
 	// Set up a router with no transports (so no peers).
-	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	peerManager, err := p2p.NewPeerManager(selfID, memdb.NewDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 	defer peerManager.Close()
 
@@ -370,7 +370,7 @@ func TestRouter_AcceptPeers(t *testing.T) {
 			mockTransport.On("Accept").Once().Return(nil, io.EOF)
 
 			// Set up and start the router.
-			peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
+			peerManager, err := p2p.NewPeerManager(selfID, memdb.NewDB(), p2p.PeerManagerOptions{})
 			require.NoError(t, err)
 			defer peerManager.Close()
 
@@ -425,7 +425,7 @@ func TestRouter_AcceptPeers_Error(t *testing.T) {
 	mockTransport.On("Close").Return(nil)
 
 	// Set up and start the router.
-	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	peerManager, err := p2p.NewPeerManager(selfID, memdb.NewDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 	defer peerManager.Close()
 
@@ -459,7 +459,7 @@ func TestRouter_AcceptPeers_ErrorEOF(t *testing.T) {
 	mockTransport.On("Close").Return(nil)
 
 	// Set up and start the router.
-	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	peerManager, err := p2p.NewPeerManager(selfID, memdb.NewDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 	defer peerManager.Close()
 
@@ -507,7 +507,7 @@ func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 	mockTransport.On("Accept").Once().Return(nil, io.EOF)
 
 	// Set up and start the router.
-	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	peerManager, err := p2p.NewPeerManager(selfID, memdb.NewDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 	defer peerManager.Close()
 
@@ -600,7 +600,7 @@ func TestRouter_DialPeers(t *testing.T) {
 			}
 
 			// Set up and start the router.
-			peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
+			peerManager, err := p2p.NewPeerManager(selfID, memdb.NewDB(), p2p.PeerManagerOptions{})
 			require.NoError(t, err)
 			defer peerManager.Close()
 
@@ -677,7 +677,7 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 	}
 
 	// Set up and start the router.
-	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	peerManager, err := p2p.NewPeerManager(selfID, memdb.NewDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 	defer peerManager.Close()
 
@@ -758,7 +758,7 @@ func TestRouter_EvictPeers(t *testing.T) {
 	mockTransport.On("Accept").Once().Return(nil, io.EOF)
 
 	// Set up and start the router.
-	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	peerManager, err := p2p.NewPeerManager(selfID, memdb.NewDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 	defer peerManager.Close()
 
@@ -822,7 +822,7 @@ func TestRouter_ChannelCompatability(t *testing.T) {
 	mockTransport.On("Accept").Once().Return(nil, io.EOF)
 
 	// Set up and start the router.
-	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	peerManager, err := p2p.NewPeerManager(selfID, memdb.NewDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 	defer peerManager.Close()
 
@@ -872,7 +872,7 @@ func TestRouter_DontSendOnInvalidChannel(t *testing.T) {
 	mockTransport.On("Accept").Once().Return(nil, io.EOF)
 
 	// Set up and start the router.
-	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	peerManager, err := p2p.NewPeerManager(selfID, memdb.NewDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 	defer peerManager.Close()
 

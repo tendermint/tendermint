@@ -8,13 +8,13 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tm-db/memdb"
 )
 
 // Network sets up an in-memory network that can be used for high-level P2P
@@ -238,7 +238,7 @@ func (n *Network) MakeNode(t *testing.T, opts NodeOptions) *Node {
 	transport := n.memoryNetwork.CreateTransport(nodeID)
 	require.Len(t, transport.Endpoints(), 1, "transport not listening on 1 endpoint")
 
-	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{
+	peerManager, err := p2p.NewPeerManager(nodeID, memdb.NewDB(), p2p.PeerManagerOptions{
 		MinRetryTime:    10 * time.Millisecond,
 		MaxRetryTime:    100 * time.Millisecond,
 		RetryTimeJitter: time.Millisecond,

@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/goleveldb"
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -115,7 +116,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		witnessesAddrs = strings.Split(witnessAddrsJoined, ",")
 	}
 
-	lightDB, err := dbm.NewGoLevelDB("light-client-db", dir)
+	lightDB, err := goleveldb.NewDB("light-client-db", dir)
 	if err != nil {
 		return fmt.Errorf("can't create a db: %w", err)
 	}

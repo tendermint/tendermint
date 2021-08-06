@@ -11,6 +11,7 @@ import (
 	"github.com/google/orderedcode"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/memdb"
 )
 
 func makeKey(t *testing.T, elems ...interface{}) []byte {
@@ -71,7 +72,7 @@ func getNewPrefixKeys(t *testing.T, val int) map[string][]byte {
 }
 
 func getLegacyDatabase(t *testing.T) (int, dbm.DB) {
-	db := dbm.NewMemDB()
+	db := memdb.NewDB()
 	batch := db.NewBatch()
 	ct := 0
 
@@ -166,11 +167,11 @@ func TestMigration(t *testing.T) {
 		})
 		t.Run("Replacement", func(t *testing.T) {
 			t.Run("MissingKey", func(t *testing.T) {
-				db := dbm.NewMemDB()
+				db := memdb.NewDB()
 				require.NoError(t, replaceKey(db, keyID("hi"), nil))
 			})
 			t.Run("ReplacementFails", func(t *testing.T) {
-				db := dbm.NewMemDB()
+				db := memdb.NewDB()
 				key := keyID("hi")
 				require.NoError(t, db.Set(key, []byte("world")))
 				require.Error(t, replaceKey(db, key, func(k keyID) (keyID, error) {
@@ -178,7 +179,7 @@ func TestMigration(t *testing.T) {
 				}))
 			})
 			t.Run("KeyDisapears", func(t *testing.T) {
-				db := dbm.NewMemDB()
+				db := memdb.NewDB()
 				key := keyID("hi")
 				require.NoError(t, db.Set(key, []byte("world")))
 				require.Error(t, replaceKey(db, key, func(k keyID) (keyID, error) {

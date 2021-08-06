@@ -10,7 +10,6 @@ import (
 	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
@@ -25,6 +24,7 @@ import (
 	smmocks "github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tm-db/memdb"
 )
 
 type reactorTestSuite struct {
@@ -119,7 +119,7 @@ func setup(
 	)
 
 	rts.stateStore = &smmocks.Store{}
-	rts.blockStore = store.NewBlockStore(dbm.NewMemDB())
+	rts.blockStore = store.NewBlockStore(memdb.NewDB())
 
 	cfg := config.DefaultStateSyncConfig()
 

@@ -11,14 +11,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	dbm "github.com/tendermint/tm-db"
-
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
 	mempl "github.com/tendermint/tendermint/internal/mempool"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tm-db/memdb"
 )
 
 // for testing
@@ -124,8 +123,8 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	config := configSetup(t)
 
 	state, privVals := randGenesisState(config, 1, false, 10)
-	stateStore := sm.NewStore(dbm.NewMemDB())
-	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	stateStore := sm.NewStore(memdb.NewDB())
+	blockStore := store.NewBlockStore(memdb.NewDB())
 	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], NewCounterApplication(), blockStore)
 	err := stateStore.Save(state)
 	require.NoError(t, err)
@@ -151,8 +150,8 @@ func TestMempoolRmBadTx(t *testing.T) {
 
 	state, privVals := randGenesisState(config, 1, false, 10)
 	app := NewCounterApplication()
-	stateStore := sm.NewStore(dbm.NewMemDB())
-	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	stateStore := sm.NewStore(memdb.NewDB())
+	blockStore := store.NewBlockStore(memdb.NewDB())
 	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], app, blockStore)
 	err := stateStore.Save(state)
 	require.NoError(t, err)

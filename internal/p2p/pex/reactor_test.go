@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/internal/p2p"
@@ -16,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	proto "github.com/tendermint/tendermint/proto/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tm-db/memdb"
 )
 
 const (
@@ -298,7 +298,7 @@ func setupSingle(t *testing.T) *singleTestReactor {
 
 	peerCh := make(chan p2p.PeerUpdate, chBuf)
 	peerUpdates := p2p.NewPeerUpdates(peerCh, chBuf)
-	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	peerManager, err := p2p.NewPeerManager(nodeID, memdb.NewDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 
 	reactor := pex.NewReactorV2(log.TestingLogger(), peerManager, pexCh, peerUpdates)

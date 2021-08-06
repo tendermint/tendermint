@@ -31,7 +31,7 @@ import (
 	statemocks "github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/memdb"
 )
 
 var (
@@ -328,7 +328,7 @@ func TestReactorWithEvidence(t *testing.T) {
 	logger := consensusLogger()
 
 	for i := 0; i < n; i++ {
-		stateDB := dbm.NewMemDB() // each state needs its own db
+		stateDB := memdb.NewDB() // each state needs its own db
 		stateStore := sm.NewStore(stateDB)
 		state, err := sm.MakeGenesisState(genDoc)
 		require.NoError(t, err)
@@ -342,7 +342,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 
 		pv := privVals[i]
-		blockDB := dbm.NewMemDB()
+		blockDB := memdb.NewDB()
 		blockStore := store.NewBlockStore(blockDB)
 
 		// one for mempool, one for consensus
