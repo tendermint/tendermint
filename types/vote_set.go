@@ -352,13 +352,15 @@ func (voteSet *VoteSet) recoverThresholdSigsAndVerify(blockVotes *blockVotes, si
 	verified := voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(signID, voteSet.thresholdBlockSig)
 	if !verified {
 		thresholdBlockSig := voteSet.thresholdBlockSig
-		return fmt.Errorf("recovered incorrect threshold signature %X voteSetCount %d", thresholdBlockSig, len(blockVotes.votes))
+		return fmt.Errorf("recovered incorrect threshold signature %X voteSetCount %d",
+			thresholdBlockSig, len(blockVotes.votes))
 	}
 	if voteSet.thresholdStateSig != nil {
 		verified = voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(stateSignID, voteSet.thresholdStateSig)
 		if !verified {
 			thresholdStateSig := voteSet.thresholdStateSig
-			return fmt.Errorf("recovered incorrect state threshold signature %X voteSetCount %d", thresholdStateSig, len(blockVotes.votes))
+			return fmt.Errorf("recovered incorrect state threshold signature %X voteSetCount %d",
+				thresholdStateSig, len(blockVotes.votes))
 		}
 	}
 	return nil
