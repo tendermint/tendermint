@@ -882,8 +882,11 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 
 // StateSyncConfig defines the configuration for the Tendermint state sync service
 type StateSyncConfig struct {
-	Enable              bool          `mapstructure:"enable"`
-	TempDir             string        `mapstructure:"temp-dir"`
+	Enable  bool   `mapstructure:"enable"`
+	TempDir string `mapstructure:"temp-dir"`
+	// Light blocks needed for state verification can be obtained either via
+	// the P2P layer or RPC layer.
+	UseP2P              bool          `mapstructure:"use-p2p"`
 	RPCServers          []string      `mapstructure:"rpc-servers"`
 	TrustPeriod         time.Duration `mapstructure:"trust-period"`
 	TrustHeight         int64         `mapstructure:"trust-height"`
@@ -920,17 +923,21 @@ func TestStateSyncConfig() *StateSyncConfig {
 // ValidateBasic performs basic validation.
 func (cfg *StateSyncConfig) ValidateBasic() error {
 	if cfg.Enable {
-		if len(cfg.RPCServers) == 0 {
-			return errors.New("rpc-servers is required")
-		}
+		// If we're not using the P2P stack then we need to validate the
+		// RPCServers
+		if !cfg.UseP2P {
+			if len(cfg.RPCServers) == 0 {
+				return errors.New("rpc-servers is required")
+			}
 
-		if len(cfg.RPCServers) < 2 {
-			return errors.New("at least two rpc-servers entries is required")
-		}
+			if len(cfg.RPCServers) < 2 {
+				return errors.New("at least two rpc-servers entries is required")
+			}
 
-		for _, server := range cfg.RPCServers {
-			if len(server) == 0 {
-				return errors.New("found empty rpc-servers entry")
+			for _, server := range cfg.RPCServers {
+				if len(server) == 0 {
+					return errors.New("found empty rpc-servers entry")
+				}
 			}
 		}
 

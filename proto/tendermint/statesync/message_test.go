@@ -161,6 +161,35 @@ func TestStateSyncVectors(t *testing.T) {
 			},
 			"2214080110021803220c697427732061206368756e6b",
 		},
+		{
+			"LightBlockRequest",
+			&ssproto.LightBlockRequest{
+				Height: 100,
+			},
+			"2a020864",
+		},
+		{
+			"LightBlockResponse",
+			&ssproto.LightBlockResponse{
+				LightBlock: nil,
+			},
+			"3200",
+		},
+		{
+			"ParamsRequest",
+			&ssproto.ParamsRequest{
+				Height: 9001,
+			},
+			"3a0308a946",
+		},
+		{
+			"ParamsResponse",
+			&ssproto.ParamsResponse{
+				Height:          9001,
+				ConsensusParams: &tmproto.ConsensusParams{},
+			},
+			"420508a9461200",
+		},
 	}
 
 	for _, tc := range testCases {

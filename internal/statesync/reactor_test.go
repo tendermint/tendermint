@@ -18,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/internal/statesync/mocks"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -388,8 +389,9 @@ func TestReactor_Dispatcher(t *testing.T) {
 	go handleLightBlockRequests(t, chain, rts.blockOutCh, rts.blockInCh, closeCh, 0)
 
 	dispatcher := rts.reactor.Dispatcher()
-	providers := dispatcher.Providers(factory.DefaultTestChainID, 5*time.Second)
+	providers := dispatcher.Providers(factory.DefaultTestChainID)
 	require.Len(t, providers, 2)
+	require.Equal(t, 2, dispatcher.peerCount())
 
 	wg := sync.WaitGroup{}
 
@@ -416,6 +418,41 @@ func TestReactor_Dispatcher(t *testing.T) {
 		t.Fail()
 	case <-ctx.Done():
 	}
+
+	t.Log(dispatcher.availablePeers.Peers())
+	require.Equal(t, 2, dispatcher.peerCount())
+
+	rts.peerUpdateCh <- p2p.PeerUpdate{
+		NodeID: types.NodeID("cc"),
+		Status: p2p.PeerStatusUp,
+	}
+
+	require.Equal(t, 3, dispatcher.peerCount())
+
+	// we now test the p2p state provider
+	lb, _, err := dispatcher.LightBlock(ctx, 2)
+	require.NoError(t, err)
+	to := light.TrustOptions{
+		Period: 24 * time.Hour,
+		Height: lb.Height,
+		Hash:   lb.Hash(),
+	}
+
+	p2pStateProvider, err := NewP2PStateProvider(ctx, "testchain", 1, rts.reactor.Dispatcher(), to, log.TestingLogger())
+	require.NoError(t, err)
+
+	appHash, err := p2pStateProvider.AppHash(ctx, 5)
+	require.NoError(t, err)
+	require.Len(t, appHash, 20)
+
+	state, err := p2pStateProvider.State(ctx, 6)
+	require.NoError(t, err)
+	require.Equal(t, appHash, state.AppHash)
+
+	commit, err := p2pStateProvider.Commit(ctx, 5)
+	require.NoError(t, err)
+	require.Equal(t, commit.BlockID, state.LastBlockID)
+
 }
 
 func TestReactor_Backfill(t *testing.T) {

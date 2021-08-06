@@ -18,6 +18,7 @@ import (
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/version"
 )
 
 //go:generate ../../scripts/mockery_generate.sh StateProvider
@@ -33,20 +34,21 @@ type StateProvider interface {
 	State(ctx context.Context, height uint64) (sm.State, error)
 }
 
-// lightClientStateProvider is a state provider using the light client.
-type lightClientStateProvider struct {
+// stateProvider implements the above interface using a light client to fetch and
+// verify the AppHash, Commit, and Tendermint State from trusted data in order
+// to bootstrap a node. The stateProvider can either be initated using RPC or
+// P2P Providers.
+type stateProvider struct {
 	tmsync.Mutex  // light.Client is not concurrency-safe
 	lc            *light.Client
-	version       sm.Version
 	initialHeight int64
 	providers     map[lightprovider.Provider]string
 }
 
-// NewLightClientStateProvider creates a new StateProvider using a light client and RPC clients.
-func NewLightClientStateProvider(
+// NewRPCStateProvider creates a new StateProvider using a light client and RPC clients.
+func NewRPCStateProvider(
 	ctx context.Context,
 	chainID string,
-	version sm.Version,
 	initialHeight int64,
 	servers []string,
 	trustOptions light.TrustOptions,
@@ -75,26 +77,24 @@ func NewLightClientStateProvider(
 	if err != nil {
 		return nil, err
 	}
-	return &lightClientStateProvider{
+	return &stateProvider{
 		lc:            lc,
-		version:       version,
 		initialHeight: initialHeight,
 		providers:     providerRemotes,
 	}, nil
 }
 
-// NewLightClientStateProviderFromDispatcher creates a light client state
-// provider but uses a p2p connected dispatched instead of RPC endpoints
-func NewLightClientStateProviderFromDispatcher(
+// NewP2PStateProvider creates a light client state
+// provider but uses a dispatcher connected to the P2P layer
+func NewP2PStateProvider(
 	ctx context.Context,
 	chainID string,
-	version sm.Version,
 	initialHeight int64,
 	dispatcher *dispatcher,
 	trustOptions light.TrustOptions,
 	logger log.Logger,
 ) (StateProvider, error) {
-	providers := dispatcher.Providers(chainID, 30*time.Second)
+	providers := dispatcher.Providers(chainID)
 	if len(providers) < 2 {
 		return nil, fmt.Errorf("at least 2 peers are required, got %d", len(providers))
 	}
@@ -110,16 +110,15 @@ func NewLightClientStateProviderFromDispatcher(
 		return nil, err
 	}
 
-	return &lightClientStateProvider{
+	return &stateProvider{
 		lc:            lc,
-		version:       version,
 		initialHeight: initialHeight,
 		providers:     providersMap,
 	}, nil
 }
 
 // AppHash implements StateProvider.
-func (s *lightClientStateProvider) AppHash(ctx context.Context, height uint64) ([]byte, error) {
+func (s *stateProvider) AppHash(ctx context.Context, height uint64) ([]byte, error) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -128,7 +127,7 @@ func (s *lightClientStateProvider) AppHash(ctx context.Context, height uint64) (
 	if err != nil {
 		return nil, err
 	}
-	// We also try to fetch the blocks at height H and H+2, since we need these
+	// We also try to fetch the blocks at H+2, since we need these
 	// when building the state while restoring the snapshot. This avoids the race
 	// condition where we try to restore a snapshot before H+2 exists.
 	//
@@ -140,15 +139,11 @@ func (s *lightClientStateProvider) AppHash(ctx context.Context, height uint64) (
 	if err != nil {
 		return nil, err
 	}
-	_, err = s.lc.VerifyLightBlockAtHeight(ctx, int64(height), time.Now())
-	if err != nil {
-		return nil, err
-	}
 	return header.AppHash, nil
 }
 
 // Commit implements StateProvider.
-func (s *lightClientStateProvider) Commit(ctx context.Context, height uint64) (*types.Commit, error) {
+func (s *stateProvider) Commit(ctx context.Context, height uint64) (*types.Commit, error) {
 	s.Lock()
 	defer s.Unlock()
 	header, err := s.lc.VerifyLightBlockAtHeight(ctx, int64(height), time.Now())
@@ -159,13 +154,12 @@ func (s *lightClientStateProvider) Commit(ctx context.Context, height uint64) (*
 }
 
 // State implements StateProvider.
-func (s *lightClientStateProvider) State(ctx context.Context, height uint64) (sm.State, error) {
+func (s *stateProvider) State(ctx context.Context, height uint64) (sm.State, error) {
 	s.Lock()
 	defer s.Unlock()
 
 	state := sm.State{
 		ChainID:       s.lc.ChainID(),
-		Version:       s.version,
 		InitialHeight: s.initialHeight,
 	}
 	if state.InitialHeight == 0 {
@@ -193,6 +187,10 @@ func (s *lightClientStateProvider) State(ctx context.Context, height uint64) (sm
 		return sm.State{}, err
 	}
 
+	state.Version = sm.Version{
+		Consensus: currentLightBlock.Version,
+		Software:  version.TMVersion,
+	}
 	state.LastBlockHeight = lastLightBlock.Height
 	state.LastBlockTime = lastLightBlock.Time
 	state.LastBlockID = lastLightBlock.Commit.BlockID

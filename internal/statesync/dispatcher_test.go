@@ -49,6 +49,9 @@ func TestDispatcherBasic(t *testing.T) {
 		}(int64(i))
 	}
 	wg.Wait()
+
+	// we should finish with as many peers as we started out with
+	assert.Equal(t, 5, d.peerCount())
 }
 
 func TestDispatcherReturnsNoBlock(t *testing.T) {
@@ -99,7 +102,7 @@ func TestDispatcherReturnsBlockOncePeerAvailable(t *testing.T) {
 		lb, peerResult, err := d.LightBlock(wrapped, 1)
 		require.Nil(t, lb)
 		require.Equal(t, peerFromSet, peerResult)
-		require.Nil(t, err)
+		require.Equal(t, context.Canceled, err)
 
 		// calls to dispatcher.Lightblock write into the dispatcher's requestCh.
 		// we read from the requestCh here to unblock the requestCh for future
@@ -134,7 +137,7 @@ func TestDispatcherProviders(t *testing.T) {
 	closeCh := make(chan struct{})
 	defer close(closeCh)
 
-	d := newDispatcher(ch, 1*time.Second)
+	d := newDispatcher(ch, 5*time.Second)
 
 	go handleRequests(t, d, ch, closeCh)
 
@@ -143,16 +146,17 @@ func TestDispatcherProviders(t *testing.T) {
 		d.addPeer(peer)
 	}
 
-	providers := d.Providers(chainID, 5*time.Second)
+	providers := d.Providers(chainID)
 	require.Len(t, providers, 5)
 	for i, p := range providers {
 		bp, ok := p.(*blockProvider)
 		require.True(t, ok)
-		assert.Equal(t, bp.String(), string(peers[i]))
+		assert.Equal(t, string(peers[i]), bp.String(), i)
 		lb, err := p.LightBlock(context.Background(), 10)
 		assert.Error(t, err)
 		assert.Nil(t, lb)
 	}
+	require.Equal(t, 0, d.peerCount())
 }
 
 func TestPeerListBasic(t *testing.T) {
@@ -178,13 +182,22 @@ func TestPeerListBasic(t *testing.T) {
 	}
 	assert.Equal(t, half, peerList.Len())
 
+	// removing a peer that doesn't exist should not change the list
 	peerList.Remove(types.NodeID("lp"))
 	assert.Equal(t, half, peerList.Len())
 
+	// removing a peer that exists should decrease the list size by one
 	peerList.Remove(peerSet[half])
-	half++
-	assert.Equal(t, peerSet[half], peerList.Pop(ctx))
+	assert.Equal(t, numPeers-half-1, peerList.Len())
 
+	// popping the next peer should work as expected
+	assert.Equal(t, peerSet[half+1], peerList.Pop(ctx))
+	assert.Equal(t, numPeers-half-2, peerList.Len())
+
+	// append the two peers back
+	peerList.Append(peerSet[half])
+	peerList.Append(peerSet[half+1])
+	assert.Equal(t, half, peerList.Len())
 }
 
 func TestPeerListBlocksWhenEmpty(t *testing.T) {
@@ -274,6 +287,25 @@ func TestPeerListConcurrent(t *testing.T) {
 	case <-ctx.Done():
 		// there should be no peers remaining
 		require.Equal(t, 0, peerList.Len())
+	}
+}
+
+func TestPeerListRemove(t *testing.T) {
+	peerList := newPeerList()
+	numPeers := 10
+
+	peerSet := createPeerSet(numPeers)
+	for _, peer := range peerSet {
+		peerList.Append(peer)
+	}
+
+	for _, peer := range peerSet {
+		peerList.Remove(peer)
+		for _, p := range peerList.Peers() {
+			require.NotEqual(t, p, peer)
+		}
+		numPeers--
+		require.Equal(t, numPeers, peerList.Len())
 	}
 }
 

@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/light"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -81,6 +82,9 @@ const (
 	// LightBlockChannel exchanges light blocks
 	LightBlockChannel = p2p.ChannelID(0x62)
 
+	// ParamsChannel exchanges consensus params
+	ParamsChannel = p2p.ChannelID(0x63)
+
 	// recentSnapshots is the number of recent snapshots to send and receive per peer.
 	recentSnapshots = 10
 
@@ -101,12 +105,6 @@ const (
 	// the backfill process aborts
 	maxLightBlockRequestRetries = 20
 )
-
-// SyncReactor defines an interface used for testing abilities of node.startStateSync.
-type SyncReactor interface {
-	Sync(context.Context, StateProvider, time.Duration) (sm.State, error)
-	Backfill(sm.State) error
-}
 
 // Reactor handles state sync, both restoring snapshots for the local node and
 // serving snapshots for other nodes.
@@ -214,13 +212,14 @@ func (r *Reactor) OnStop() {
 }
 
 // Sync runs a state sync, fetching snapshots and providing chunks to the
-// application. It also saves tendermint state and runs a backfill process to
-// retrieve the necessary amount of headers, commits and validators sets to be
-// able to process evidence and participate in consensus.
+// application. At the close of the operation, Sync will bootstrap the state
+// store and persist the commit at that height so that either consensus or
+// blocksync can commence. It will then proceed to backfill the necessary amount
+// of historical blocks before participating in consensus
 func (r *Reactor) Sync(
 	ctx context.Context,
-	stateProvider StateProvider,
-	discoveryTime time.Duration,
+	chainID string,
+	initialHeight int64,
 ) (sm.State, error) {
 	r.mtx.Lock()
 	if r.syncer != nil {
@@ -228,9 +227,31 @@ func (r *Reactor) Sync(
 		return sm.State{}, errors.New("a state sync is already in progress")
 	}
 
-	if stateProvider == nil {
-		r.mtx.Unlock()
-		return sm.State{}, errors.New("the stateProvider should not be nil when doing the state sync")
+	to := light.TrustOptions{
+		Period: r.cfg.TrustPeriod,
+		Height: r.cfg.TrustHeight,
+		Hash:   r.cfg.TrustHashBytes(),
+	}
+	spLogger := r.Logger.With("module", "stateprovider")
+
+	var (
+		stateProvider StateProvider
+		err           error
+	)
+	if r.cfg.UseP2P {
+		// state provider needs at least two connected peers to initialize
+		spLogger.Info("Generating P2P state provider")
+		r.waitForEnoughPeers(ctx, 2)
+		stateProvider, err = NewP2PStateProvider(ctx, chainID, initialHeight, r.Dispatcher(), to, spLogger)
+		if err != nil {
+			return sm.State{}, err
+		}
+		spLogger.Info("Finished generating P2P state provider")
+	} else {
+		stateProvider, err = NewRPCStateProvider(ctx, chainID, initialHeight, r.cfg.RPCServers, to, spLogger)
+		if err != nil {
+			return sm.State{}, err
+		}
 	}
 
 	r.syncer = newSyncer(
@@ -253,7 +274,7 @@ func (r *Reactor) Sync(
 		}
 	}
 
-	state, commit, err := r.syncer.SyncAny(ctx, discoveryTime, requestSnapshotsHook)
+	state, commit, err := r.syncer.SyncAny(ctx, r.cfg.DiscoveryTime, requestSnapshotsHook)
 	if err != nil {
 		return sm.State{}, err
 	}
@@ -272,6 +293,11 @@ func (r *Reactor) Sync(
 		return sm.State{}, fmt.Errorf("failed to store last seen commit: %w", err)
 	}
 
+	err = r.Backfill(ctx, state)
+	if err != nil {
+		return sm.State{}, err
+	}
+
 	return state, nil
 }
 
@@ -279,7 +305,7 @@ func (r *Reactor) Sync(
 // order. It does not stop verifying blocks until reaching a block with a height
 // and time that is less or equal to the stopHeight and stopTime. The
 // trustedBlockID should be of the header at startHeight.
-func (r *Reactor) Backfill(state sm.State) error {
+func (r *Reactor) Backfill(ctx context.Context, state sm.State) error {
 	params := state.ConsensusParams.Evidence
 	stopHeight := state.LastBlockHeight - params.MaxAgeNumBlocks
 	stopTime := state.LastBlockTime.Add(-params.MaxAgeDuration)
@@ -290,7 +316,7 @@ func (r *Reactor) Backfill(state sm.State) error {
 		stopTime = state.LastBlockTime
 	}
 	return r.backfill(
-		context.Background(),
+		ctx,
 		state.ChainID,
 		state.LastBlockHeight,
 		stopHeight,
@@ -732,7 +758,7 @@ func (r *Reactor) processCh(ch *p2p.Channel, chName string) {
 // processPeerUpdate processes a PeerUpdate, returning an error upon failing to
 // handle the PeerUpdate or if a panic is recovered.
 func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
-	r.Logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
+	r.Logger.Info("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
@@ -750,6 +776,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 		}
 		r.dispatcher.removePeer(peerUpdate.NodeID)
 	}
+	r.Logger.Info("processed peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 }
 
 // processPeerUpdates initiates a blocking process where we listen for and handle
@@ -839,5 +866,17 @@ func (r *Reactor) fetchLightBlock(height uint64) (*types.LightBlock, error) {
 		},
 		ValidatorSet: vals,
 	}, nil
+}
 
+func (r *Reactor) waitForEnoughPeers(ctx context.Context, numPeers int) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(200 * time.Millisecond):
+			if r.dispatcher.peerCount() >= numPeers {
+				return
+			}
+		}
+	}
 }

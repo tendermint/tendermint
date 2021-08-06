@@ -426,15 +426,17 @@ ttl-num-blocks = {{ .Mempool.TTLNumBlocks }}
 # starting from the height of the snapshot.
 enable = {{ .StateSync.Enable }}
 
-# RPC servers (comma-separated) for light client verification of the synced state machine and
-# retrieval of state data for node bootstrapping. Also needs a trusted height and corresponding
-# header hash obtained from a trusted source, and a period during which validators can be trusted.
-#
-# For Cosmos SDK-based chains, trust-period should usually be about 2/3 of the unbonding time (~2
-# weeks) during which they can be financially punished (slashed) for misbehavior.
+# State sync can source light blocks needed to verify state either through the P2P layer or via RPC
+# When using the RPC, at least two (comma-separated) server addresses must be specified
+use-p2p = {{ .StateSync.UseP2P }}
 rpc-servers = "{{ StringsJoin .StateSync.RPCServers "," }}"
+
+# The hash and height of a trusted block. Must be within the trust-period.
 trust-height = {{ .StateSync.TrustHeight }}
 trust-hash = "{{ .StateSync.TrustHash }}"
+
+# For Cosmos SDK-based chains, trust-period should usually be about 2/3 of the unbonding time (~2
+# weeks) during which they can be financially punished (slashed) for misbehavior.
 trust-period = "{{ .StateSync.TrustPeriod }}"
 
 # Time to spend discovering snapshots before initiating a restore.

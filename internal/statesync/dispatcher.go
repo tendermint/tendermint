@@ -3,7 +3,6 @@ package statesync
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -26,12 +25,19 @@ var (
 // blocks. NOTE: It is not the responsibility of the dispatcher to verify the
 // light blocks.
 type dispatcher struct {
+	// a pool of peers to send light block request too
 	availablePeers *peerlist
 	requestCh      chan<- p2p.Envelope
-	timeout        time.Duration
+	// timeout for light block delivery (immutable)
+	timeout time.Duration
 
-	mtx     sync.Mutex
-	calls   map[types.NodeID]chan *types.LightBlock
+	mtx sync.Mutex
+	// the set of providers that the dispatcher is providing for (is distinct
+	// from available peers)
+	providers map[types.NodeID]struct{}
+	// all pending calls that have been dispatched and are awaiting an answer
+	calls map[types.NodeID]chan *types.LightBlock
+	// signals whether the underlying reactor is still running
 	running bool
 }
 
@@ -40,8 +46,8 @@ func newDispatcher(requestCh chan<- p2p.Envelope, timeout time.Duration) *dispat
 		availablePeers: newPeerList(),
 		timeout:        timeout,
 		requestCh:      requestCh,
+		providers:      make(map[types.NodeID]struct{}),
 		calls:          make(map[types.NodeID]chan *types.LightBlock),
-		running:        true,
 	}
 }
 
@@ -49,6 +55,10 @@ func newDispatcher(requestCh chan<- p2p.Envelope, timeout time.Duration) *dispat
 // in a list, tracks the call and waits for the reactor to pass along the response
 func (d *dispatcher) LightBlock(ctx context.Context, height int64) (*types.LightBlock, types.NodeID, error) {
 	d.mtx.Lock()
+	// check that the dispatcher is connected to the reactor
+	if !d.running {
+		return nil, "", errDisconnected
+	}
 	// check to see that the dispatcher is connected to at least one peer
 	if d.availablePeers.Len() == 0 && len(d.calls) == 0 {
 		d.mtx.Unlock()
@@ -59,27 +69,36 @@ func (d *dispatcher) LightBlock(ctx context.Context, height int64) (*types.Light
 	// fetch the next peer id in the list and request a light block from that
 	// peer
 	peer := d.availablePeers.Pop(ctx)
+	defer d.release(peer)
 	lb, err := d.lightBlock(ctx, height, peer)
 	return lb, peer, err
 }
 
 // Providers turns the dispatcher into a set of providers (per peer) which can
 // be used by a light client
-func (d *dispatcher) Providers(chainID string, timeout time.Duration) []provider.Provider {
+func (d *dispatcher) Providers(chainID string) []provider.Provider {
+	providers := make([]provider.Provider, d.availablePeers.Len())
+	for i := 0; i < cap(providers); i++ {
+		peer := d.availablePeers.Pop(context.Background())
+		providers[i] = d.CreateProvider(peer, chainID)
+	}
+	return providers
+}
+
+// Creates an individual provider from a peer id that the dispatcher is
+// connected with.
+func (d *dispatcher) CreateProvider(peer types.NodeID, chainID string) provider.Provider {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 
-	providers := make([]provider.Provider, d.availablePeers.Len())
-	peers := d.availablePeers.Peers()
-	for index, peer := range peers {
-		providers[index] = &blockProvider{
-			peer:       peer,
-			dispatcher: d,
-			chainID:    chainID,
-			timeout:    timeout,
-		}
+	d.availablePeers.Remove(peer)
+	d.providers[peer] = struct{}{}
+	return &blockProvider{
+		peer:       peer,
+		dispatcher: d,
+		chainID:    chainID,
+		timeout:    d.timeout,
 	}
-	return providers
 }
 
 func (d *dispatcher) stop() {
@@ -111,11 +130,9 @@ func (d *dispatcher) lightBlock(ctx context.Context, height int64, peer types.No
 		return resp, nil
 
 	case <-ctx.Done():
-		d.release(peer)
-		return nil, nil
+		return nil, ctx.Err()
 
 	case <-time.After(d.timeout):
-		d.release(peer)
 		return nil, errNoResponse
 	}
 }
@@ -132,10 +149,6 @@ func (d *dispatcher) respond(lb *proto.LightBlock, peer types.NodeID) error {
 		// this can also happen if the response came in after the timeout
 		return errUnsolicitedResponse
 	}
-	// release the peer after returning the response
-	defer d.availablePeers.Append(peer)
-	defer close(answerCh)
-	defer delete(d.calls, peer)
 
 	if lb == nil {
 		answerCh <- nil
@@ -144,7 +157,7 @@ func (d *dispatcher) respond(lb *proto.LightBlock, peer types.NodeID) error {
 
 	block, err := types.LightBlockFromProto(lb)
 	if err != nil {
-		fmt.Println("error with converting light block")
+		answerCh <- nil
 		return err
 	}
 
@@ -152,18 +165,34 @@ func (d *dispatcher) respond(lb *proto.LightBlock, peer types.NodeID) error {
 	return nil
 }
 
+// addPeer adds a peer to the dispatcher
 func (d *dispatcher) addPeer(peer types.NodeID) {
 	d.availablePeers.Append(peer)
 }
 
+// removePeer removes a peer from the dispatcher
 func (d *dispatcher) removePeer(peer types.NodeID) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	if _, ok := d.calls[peer]; ok {
+	if call, ok := d.calls[peer]; ok {
+		call <- nil
+		close(call)
 		delete(d.calls, peer)
 	} else {
 		d.availablePeers.Remove(peer)
 	}
+}
+
+// peerCount returns the amount of peers that the dispatcher is connected with
+func (d *dispatcher) peerCount() int {
+	return d.availablePeers.Len()
+}
+
+func (d *dispatcher) isConnected(peer types.NodeID) bool {
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
+	_, ok := d.providers[peer]
+	return ok
 }
 
 // dispatch takes a peer and allocates it a channel so long as it's not already
@@ -223,15 +252,19 @@ type blockProvider struct {
 }
 
 func (p *blockProvider) LightBlock(ctx context.Context, height int64) (*types.LightBlock, error) {
-	// FIXME: The provider doesn't know if the dispatcher is still connected to
-	// that peer. If the connection is dropped for whatever reason the
-	// dispatcher needs to be able to relay this back to the provider so it can
-	// return ErrConnectionClosed instead of ErrNoResponse
+	// check if the underlying reactor is still connected with the peer
+	if !p.dispatcher.isConnected(p.peer) {
+		return nil, provider.ErrConnectionClosed
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
-	lb, _ := p.dispatcher.lightBlock(ctx, height, p.peer)
+	lb, err := p.dispatcher.lightBlock(ctx, height, p.peer)
+	if err != nil {
+		return nil, provider.ErrUnreliableProvider{Reason: err.Error()}
+	}
 	if lb == nil {
-		return nil, provider.ErrNoResponse
+		return nil, provider.ErrLightBlockNotFound
 	}
 
 	if err := lb.ValidateBasic(p.chainID); err != nil {
