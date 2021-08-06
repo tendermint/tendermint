@@ -518,6 +518,50 @@ func (vals *ValidatorSet) TotalVotingPower() int64 {
 	return vals.totalVotingPower
 }
 
+// QuorumVotingPower returns the voting power of the quorum if all the members existed.
+func (vals *ValidatorSet) QuorumVotingPower() int64 {
+	return int64(vals.QuorumTypeMemberCount()) * DefaultDashVotingPower
+}
+
+// QuorumVotingThresholdPower returns the voting power of the quorum if all the members existed.
+func (vals *ValidatorSet) QuorumVotingThresholdPower() int64 {
+	return int64(vals.QuorumTypeThresholdCount()) * DefaultDashVotingPower
+}
+
+func (vals *ValidatorSet) QuorumTypeMemberCount() int {
+	switch vals.QuorumType {
+	case btcjson.LLMQType_50_60:
+		return 50
+	case btcjson.LLMQType_400_60:
+		return 400
+	case btcjson.LLMQType_400_85:
+		return 400
+	case btcjson.LLMQType_100_67:
+		return 100
+	case 101:
+		return 10
+	default:
+		return len(vals.Validators)
+	}
+}
+
+func (vals *ValidatorSet) QuorumTypeThresholdCount() int {
+	switch vals.QuorumType {
+	case btcjson.LLMQType_50_60:
+		return 30
+	case btcjson.LLMQType_400_60:
+		return 240
+	case btcjson.LLMQType_400_85:
+		return 340
+	case btcjson.LLMQType_100_67:
+		return 67
+	case 101:
+		return 6
+	default:
+		return len(vals.Validators)*2/3 + 1
+	}
+}
+
 // GetProposer returns the current proposer. If the validator set is empty, nil
 // is returned.
 func (vals *ValidatorSet) GetProposer() (proposer *Validator) {

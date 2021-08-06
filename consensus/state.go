@@ -2378,8 +2378,12 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 	cs.Logger.Debug(
 		"adding vote",
 		"vote_height", vote.Height,
+		"vote_round", vote.Round,
 		"vote_type", vote.Type,
 		"val_proTxHash", vote.ValidatorProTxHash.ShortString(),
+		"vote_block_key", vote.BlockID.Key(),
+		"vote_block_signature", vote.BlockSignature,
+		"vote_state_signature", vote.StateSignature,
 		"val_index", vote.ValidatorIndex,
 		"cs_height", cs.Height,
 	)
@@ -2387,6 +2391,20 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 	height := cs.Height
 	added, err = cs.Votes.AddVote(vote, peerID)
 	if !added {
+		if err != nil {
+			cs.Logger.Error(
+				"error adding vote",
+				"vote_height", vote.Height,
+				"vote_round", vote.Round,
+				"vote_type", vote.Type,
+				"val_proTxHash", vote.ValidatorProTxHash.ShortString(),
+				"vote_block_key", vote.BlockID.Key(),
+				"vote_block_signature", vote.BlockSignature,
+				"vote_state_signature", vote.StateSignature,
+				"val_index", vote.ValidatorIndex,
+				"cs_height", cs.Height,
+			)
+		}
 		// Either duplicate, or error upon cs.Votes.AddByIndex()
 		return
 	}
