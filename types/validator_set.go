@@ -523,7 +523,7 @@ func (vals *ValidatorSet) QuorumVotingPower() int64 {
 	return int64(vals.QuorumTypeMemberCount()) * DefaultDashVotingPower
 }
 
-// QuorumVotingThresholdPower returns the voting power of the quorum if all the members existed.
+// QuorumVotingThresholdPower returns the threshold power of the voting power of the quorum if all the members existed.
 func (vals *ValidatorSet) QuorumVotingThresholdPower() int64 {
 	return int64(vals.QuorumTypeThresholdCount()) * DefaultDashVotingPower
 }
