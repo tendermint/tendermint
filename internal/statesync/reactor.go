@@ -128,13 +128,13 @@ const (
 // Metricer defines an interface used for the rpc sync info query, please see statesync.metrics
 // for the details.
 type Metricer interface {
-	GetTotalSnapshots() int64
-	GetChunkProcess() time.Duration
-	GetSnapshotHeight() int64
-	GetSnapshotChunk() int64
-	GetSnapshotChunkTotal() int64
-	GetBackFill() int64
-	GetBackFillTotal() int64
+	TotalSnapshots() int64
+	ChunkProcessAvgTime() time.Duration
+	SnapshotHeight() int64
+	SnapshotChunksCount() int64
+	SnapshotChunksTotal() int64
+	BackFilledBlocks() int64
+	BackFillBlocksTotal() int64
 }
 
 // Reactor handles state sync, both restoring snapshots for the local node and
@@ -171,9 +171,9 @@ type Reactor struct {
 	providers     map[types.NodeID]*BlockProvider
 	stateProvider StateProvider
 
-	metrics       *Metrics
-	backfillTotal int64
-	backfills     int64
+	metrics            *Metrics
+	backfillBlockTotal int64
+	backfilledBlocks   int64
 }
 
 // NewReactor returns a reference to a new state sync reactor, which implements
@@ -366,8 +366,8 @@ func (r *Reactor) backfill(
 	r.Logger.Info("starting backfill process...", "startHeight", startHeight,
 		"stopHeight", stopHeight, "stopTime", stopTime, "trustedBlockID", trustedBlockID)
 
-	r.backfillTotal = startHeight - stopHeight + 1
-	r.metrics.BackFillBlocksTotal.Set(float64(r.backfillTotal))
+	r.backfillBlockTotal = startHeight - stopHeight + 1
+	r.metrics.BackFillBlocksTotal.Set(float64(r.backfillBlockTotal))
 
 	const sleepTime = 1 * time.Second
 	var (
@@ -503,14 +503,14 @@ func (r *Reactor) backfill(
 
 			lastValidatorSet = resp.block.ValidatorSet
 
-			r.backfills++
+			r.backfilledBlocks++
 			r.metrics.BackFilledBlocks.Add(1)
 
 			// The block height might be less than the stopHeight because of the stopTime condition
 			// hasn't been fulfilled.
 			if resp.block.Height < stopHeight {
-				r.backfillTotal++
-				r.metrics.BackFillBlocksTotal.Set(float64(r.backfillTotal))
+				r.backfillBlockTotal++
+				r.metrics.BackFillBlocksTotal.Set(float64(r.backfillBlockTotal))
 			}
 
 		case <-queue.done():
@@ -1038,7 +1038,7 @@ func (r *Reactor) initStateProvider(ctx context.Context, chainID string, initial
 	return nil
 }
 
-func (r *Reactor) GetTotalSnapshots() int64 {
+func (r *Reactor) TotalSnapshots() int64 {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 
@@ -1048,7 +1048,7 @@ func (r *Reactor) GetTotalSnapshots() int64 {
 	return 0
 }
 
-func (r *Reactor) GetChunkProcess() time.Duration {
+func (r *Reactor) ChunkProcessAvgTime() time.Duration {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 
@@ -1058,7 +1058,7 @@ func (r *Reactor) GetChunkProcess() time.Duration {
 	return time.Duration(0)
 }
 
-func (r *Reactor) GetSnapshotHeight() int64 {
+func (r *Reactor) SnapshotHeight() int64 {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 
@@ -1067,7 +1067,7 @@ func (r *Reactor) GetSnapshotHeight() int64 {
 	}
 	return 0
 }
-func (r *Reactor) GetSnapshotChunk() int64 {
+func (r *Reactor) SnapshotChunksCount() int64 {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 
@@ -1077,7 +1077,7 @@ func (r *Reactor) GetSnapshotChunk() int64 {
 	return 0
 }
 
-func (r *Reactor) GetSnapshotChunkTotal() int64 {
+func (r *Reactor) SnapshotChunksTotal() int64 {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 
@@ -1087,16 +1087,16 @@ func (r *Reactor) GetSnapshotChunkTotal() int64 {
 	return 0
 }
 
-func (r *Reactor) GetBackFill() int64 {
+func (r *Reactor) BackFilledBlocks() int64 {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 
-	return r.backfills
+	return r.backfilledBlocks
 }
 
-func (r *Reactor) GetBackFillTotal() int64 {
+func (r *Reactor) BackFillBlocksTotal() int64 {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 
-	return r.backfillTotal
+	return r.backfillBlockTotal
 }

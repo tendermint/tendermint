@@ -1399,22 +1399,22 @@ components:
         total_snapshots:
           type: string
           example: "10"      
-        chunk_process:
+        chunk_process_avg_time:
           type: string
           example: "1000000000"      
         snapshot_height:
           type: string
           example: "1262196"      
-        snapshot_chunk:
+        snapshot_chunks_count:
           type: string
           example: "10"      
-        snapshot_chunk_total:
+        snapshot_chunks_total:
           type: string
           example: "100"      
-        backfill:
+        backfilled_blocks:
           type: string
           example: "10"      
-        backfill_total:
+        backfill_blocks_total:
           type: string
           example: "100"                                                                  
     ValidatorInfo:

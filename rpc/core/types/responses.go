@@ -101,13 +101,13 @@ type SyncInfo struct {
 	TotalSyncedTime time.Duration `json:"total_synced_time"`
 	RemainingTime   time.Duration `json:"remaining_time"`
 
-	TotalSnapshots     int64         `json:"total_snapshots"`
-	ChunkProcess       time.Duration `json:"chunk_process"`
-	SnapshotHeight     int64         `json:"snapshot_height"`
-	SnapshotChunk      int64         `json:"snapshot_chunk"`
-	SnapshotChunkTotal int64         `json:"snapshot_chunk_total"`
-	BackFill           int64         `json:"backfill"`
-	BackFillTotal      int64         `json:"backfill_total"`
+	TotalSnapshots      int64         `json:"total_snapshots"`
+	ChunkProcessAvgTime time.Duration `json:"chunk_process_avg_time"`
+	SnapshotHeight      int64         `json:"snapshot_height"`
+	SnapshotChunksCount int64         `json:"snapshot_chunks_count"`
+	SnapshotChunksTotal int64         `json:"snapshot_chunks_total"`
+	BackFilledBlocks    int64         `json:"backfilled_blocks"`
+	BackFillBlocksTotal int64         `json:"backfill_blocks_total"`
 }
 
 // Info about the node's validator
