@@ -124,6 +124,15 @@ func (d *dispatcher) lightBlock(ctx context.Context, height int64, peer types.No
 		return nil, err
 	}
 
+	defer func() {
+		d.mtx.Lock()
+		defer d.mtx.Unlock()
+		if call, ok := d.calls[peer]; ok {
+			close(call)
+			delete(d.calls, peer)
+		}
+	}()
+
 	// wait for a response, cancel or timeout
 	select {
 	case resp := <-callCh:
@@ -231,10 +240,6 @@ func (d *dispatcher) dispatch(peer types.NodeID, height int64) (chan *types.Ligh
 func (d *dispatcher) release(peer types.NodeID) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	if call, ok := d.calls[peer]; ok {
-		close(call)
-		delete(d.calls, peer)
-	}
 	d.availablePeers.Append(peer)
 }
 

@@ -190,6 +190,8 @@ func (r *Reactor) OnStart() error {
 
 	go r.processBlockCh()
 
+	go r.processParamsCh()
+
 	go r.processPeerUpdates()
 
 	r.dispatcher.start()
@@ -681,7 +683,7 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 func (r *Reactor) handleParamsMessage(envelope p2p.Envelope) error {
 	switch msg := envelope.Message.(type) {
 	case *ssproto.ParamsRequest:
-		r.Logger.Info("received light block request", "height", msg.Height)
+		r.Logger.Debug("received consensus params request", "height", msg.Height)
 		cp, err := r.stateStore.LoadConsensusParams(int64(msg.Height))
 		if err != nil {
 			r.Logger.Error("failed to fetch requested consensus params", "err", err, "height", msg.Height)
@@ -700,6 +702,7 @@ func (r *Reactor) handleParamsMessage(envelope p2p.Envelope) error {
 	case *ssproto.ParamsResponse:
 		r.mtx.RLock()
 		defer r.mtx.RUnlock()
+		r.Logger.Debug("received consensus params response", "height", msg.Height)
 
 		if r.syncer == nil {
 			r.Logger.Debug("received unexpected params response; no state sync in progress", "peer", envelope.From)
@@ -709,6 +712,7 @@ func (r *Reactor) handleParamsMessage(envelope p2p.Envelope) error {
 		cp := types.ConsensusParamsFromProto(msg.ConsensusParams)
 
 		if sp, ok := r.syncer.stateProvider.(*stateProviderP2P); ok {
+			r.Logger.Debug("passing along message")
 			select {
 			case sp.paramsRecvCh <- cp:
 			default:

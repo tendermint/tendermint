@@ -25,7 +25,7 @@ func TestDispatcherBasic(t *testing.T) {
 	defer close(closeCh)
 
 	d := newDispatcher(ch, 1*time.Second)
-
+	d.start()
 	go handleRequests(t, d, ch, closeCh)
 
 	peers := createPeerSet(5)
@@ -58,6 +58,7 @@ func TestDispatcherReturnsNoBlock(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 	ch := make(chan p2p.Envelope, 100)
 	d := newDispatcher(ch, 1*time.Second)
+	d.start()
 	peerFromSet := createPeerSet(1)[0]
 	d.addPeer(peerFromSet)
 	doneCh := make(chan struct{})
@@ -80,6 +81,7 @@ func TestDispatcherErrorsWhenNoPeers(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 	ch := make(chan p2p.Envelope, 100)
 	d := newDispatcher(ch, 1*time.Second)
+	d.start()
 
 	lb, peerResult, err := d.LightBlock(context.Background(), 1)
 
@@ -92,6 +94,8 @@ func TestDispatcherReturnsBlockOncePeerAvailable(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 	dispatcherRequestCh := make(chan p2p.Envelope, 100)
 	d := newDispatcher(dispatcherRequestCh, 1*time.Second)
+	d.start()
+
 	peerFromSet := createPeerSet(1)[0]
 	d.addPeer(peerFromSet)
 	ctx := context.Background()
@@ -138,7 +142,7 @@ func TestDispatcherProviders(t *testing.T) {
 	defer close(closeCh)
 
 	d := newDispatcher(ch, 5*time.Second)
-
+	d.start()
 	go handleRequests(t, d, ch, closeCh)
 
 	peers := createPeerSet(5)
@@ -322,6 +326,7 @@ func handleRequests(t *testing.T, d *dispatcher, ch chan p2p.Envelope, closeCh c
 			block, _ := resp.block.ToProto()
 			require.NoError(t, d.respond(block, resp.peer))
 		case <-closeCh:
+			d.stop()
 			return
 		}
 	}

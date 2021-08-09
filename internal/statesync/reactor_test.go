@@ -3,6 +3,7 @@ package statesync
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -92,6 +93,9 @@ func setup(
 		blockInCh:         make(chan p2p.Envelope, chBuf),
 		blockOutCh:        make(chan p2p.Envelope, chBuf),
 		blockPeerErrCh:    make(chan p2p.PeerError, chBuf),
+		paramsInCh:        make(chan p2p.Envelope, chBuf),
+		paramsOutCh:       make(chan p2p.Envelope, chBuf),
+		paramsPeerErrCh:   make(chan p2p.PeerError, chBuf),
 		conn:              conn,
 		connQuery:         connQuery,
 		stateProvider:     stateProvider,
@@ -405,7 +409,7 @@ func TestReactor_Dispatcher(t *testing.T) {
 	dispatcher := rts.reactor.dispatcher
 	providers := dispatcher.Providers(factory.DefaultTestChainID)
 	require.Len(t, providers, 2)
-	require.Equal(t, 2, dispatcher.peerCount())
+	require.Equal(t, 0, dispatcher.peerCount())
 
 	wg := sync.WaitGroup{}
 
@@ -432,19 +436,35 @@ func TestReactor_Dispatcher(t *testing.T) {
 		t.Fail()
 	case <-ctx.Done():
 	}
+	require.Equal(t, 0, dispatcher.peerCount())
 
-	t.Log(dispatcher.availablePeers.Peers())
-	require.Equal(t, 2, dispatcher.peerCount())
+}
 
+func TestReactor_P2P_Provider(t *testing.T) {
+	rts := setup(t, nil, nil, nil, 2)
 	rts.peerUpdateCh <- p2p.PeerUpdate{
-		NodeID: types.NodeID("cc"),
+		NodeID: types.NodeID(strings.Repeat("a", 2*types.NodeIDByteLength)),
+		Status: p2p.PeerStatusUp,
+	}
+	rts.peerUpdateCh <- p2p.PeerUpdate{
+		NodeID: types.NodeID(strings.Repeat("b", 2*types.NodeIDByteLength)),
 		Status: p2p.PeerStatusUp,
 	}
 
-	require.Equal(t, 3, dispatcher.peerCount())
+	// make syncer non nil else test won't think we are state syncing
+	rts.reactor.syncer = rts.syncer
+
+	closeCh := make(chan struct{})
+	defer close(closeCh)
+
+	chain := buildLightBlockChain(t, 1, 10, time.Now())
+	go handleLightBlockRequests(t, chain, rts.blockOutCh, rts.blockInCh, closeCh, 0)
+	go handleConsensusParamsRequest(t, rts.paramsOutCh, rts.paramsInCh, closeCh)
 
 	// we now test the p2p state provider
-	lb, _, err := dispatcher.LightBlock(ctx, 2)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	lb, _, err := rts.reactor.dispatcher.LightBlock(ctx, 2)
 	require.NoError(t, err)
 	to := light.TrustOptions{
 		Period: 24 * time.Hour,
@@ -452,22 +472,24 @@ func TestReactor_Dispatcher(t *testing.T) {
 		Hash:   lb.Hash(),
 	}
 
-	// TODO: move into a separate test
-	p2pStateProvider, err := NewP2PStateProvider(ctx, "testchain", 1, rts.reactor.dispatcher, to, rts.paramsOutCh, log.TestingLogger())
+	p2pStateProvider, err := NewP2PStateProvider(ctx, "test-chain", 1, rts.reactor.dispatcher, 
+		to, rts.reactor.paramsCh.Out, log.TestingLogger())
 	require.NoError(t, err)
+	// set the state provider else the test won't think we are state syncing
+	rts.reactor.syncer = rts.syncer
+	rts.syncer.stateProvider = p2pStateProvider
 
 	appHash, err := p2pStateProvider.AppHash(ctx, 5)
 	require.NoError(t, err)
-	require.Len(t, appHash, 20)
+	require.Len(t, appHash, 32)
 
-	state, err := p2pStateProvider.State(ctx, 6)
+	state, err := p2pStateProvider.State(ctx, 5)
 	require.NoError(t, err)
 	require.Equal(t, appHash, state.AppHash)
 
 	commit, err := p2pStateProvider.Commit(ctx, 5)
 	require.NoError(t, err)
 	require.Equal(t, commit.BlockID, state.LastBlockID)
-
 }
 
 func TestReactor_Backfill(t *testing.T) {
@@ -546,7 +568,6 @@ func retryUntil(t *testing.T, fn func() bool, timeout time.Duration) {
 		if fn() {
 			return
 		}
-
 		require.NoError(t, ctx.Err())
 	}
 }
@@ -575,7 +596,9 @@ func handleLightBlockRequests(t *testing.T,
 				} else {
 					switch errorCount % 3 {
 					case 0: // send a different block
-						differntLB, err := mockLB(t, int64(msg.Height), factory.DefaultTestTime, factory.MakeBlockID()).ToProto()
+						vals, pv := factory.RandValidatorSet(3, 10)
+						_, _, lb := mockLB(t, int64(msg.Height), factory.DefaultTestTime, factory.MakeBlockID(), vals, pv)
+						differntLB, err := lb.ToProto()
 						require.NoError(t, err)
 						sending <- p2p.Envelope{
 							From: envelope.To,
@@ -602,12 +625,36 @@ func handleLightBlockRequests(t *testing.T,
 	}
 }
 
+func handleConsensusParamsRequest(t *testing.T, receiving, sending chan p2p.Envelope, closeCh chan struct{}) {
+	params := types.DefaultConsensusParams()
+	paramsProto := params.ToProto()
+	for {
+		select {
+		case envelope := <-receiving:
+			t.Log("received consensus params request")
+			msg, ok := envelope.Message.(*ssproto.ParamsRequest)
+			require.True(t, ok)
+			sending <- p2p.Envelope{
+				From: envelope.To,
+				Message: &ssproto.ParamsResponse{
+					Height:          msg.Height,
+					ConsensusParams: paramsProto,
+				},
+			}
+
+		case <-closeCh:
+			return
+		}
+	}
+}
+
 func buildLightBlockChain(t *testing.T, fromHeight, toHeight int64, startTime time.Time) map[int64]*types.LightBlock {
 	chain := make(map[int64]*types.LightBlock, toHeight-fromHeight)
 	lastBlockID := factory.MakeBlockID()
-	blockTime := startTime.Add(-5 * time.Minute)
+	blockTime := startTime.Add(time.Duration(fromHeight-toHeight) * time.Minute)
+	vals, pv := factory.RandValidatorSet(3, 10)
 	for height := fromHeight; height < toHeight; height++ {
-		chain[height] = mockLB(t, height, blockTime, lastBlockID)
+		vals, pv, chain[height] = mockLB(t, height, blockTime, lastBlockID, vals, pv)
 		lastBlockID = factory.MakeBlockIDWithHash(chain[height].Header.Hash())
 		blockTime = blockTime.Add(1 * time.Minute)
 	}
@@ -615,24 +662,26 @@ func buildLightBlockChain(t *testing.T, fromHeight, toHeight int64, startTime ti
 }
 
 func mockLB(t *testing.T, height int64, time time.Time,
-	lastBlockID types.BlockID) *types.LightBlock {
+	lastBlockID types.BlockID, currentVals *types.ValidatorSet, currentPrivVals []types.PrivValidator) (*types.ValidatorSet, []types.PrivValidator, *types.LightBlock) {
 	header, err := factory.MakeHeader(&types.Header{
 		Height:      height,
 		LastBlockID: lastBlockID,
 		Time:        time,
 	})
 	require.NoError(t, err)
-	vals, pv := factory.RandValidatorSet(3, 10)
-	header.ValidatorsHash = vals.Hash()
+	nextVals, nextPrivVals := factory.RandValidatorSet(3, 10)
+	header.ValidatorsHash = currentVals.Hash()
+	header.NextValidatorsHash = nextVals.Hash()
+	header.ConsensusHash = types.DefaultConsensusParams().HashConsensusParams()
 	lastBlockID = factory.MakeBlockIDWithHash(header.Hash())
-	voteSet := types.NewVoteSet(factory.DefaultTestChainID, height, 0, tmproto.PrecommitType, vals)
-	commit, err := factory.MakeCommit(lastBlockID, height, 0, voteSet, pv, time)
+	voteSet := types.NewVoteSet(factory.DefaultTestChainID, height, 0, tmproto.PrecommitType, currentVals)
+	commit, err := factory.MakeCommit(lastBlockID, height, 0, voteSet, currentPrivVals, time)
 	require.NoError(t, err)
-	return &types.LightBlock{
+	return nextVals, nextPrivVals, &types.LightBlock{
 		SignedHeader: &types.SignedHeader{
 			Header: header,
 			Commit: commit,
 		},
-		ValidatorSet: vals,
+		ValidatorSet: currentVals,
 	}
 }

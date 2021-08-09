@@ -335,8 +335,8 @@ func (s *stateProviderP2P) State(ctx context.Context, height uint64) (sm.State, 
 }
 
 func (s *stateProviderP2P) addPeer(peer types.NodeID) {
-	provider := s.dispatcher.CreateProvider(peer, s.lc.ChainID())
 	if len(s.lc.Witnesses()) < 6 {
+		provider := s.dispatcher.CreateProvider(peer, s.lc.ChainID())
 		s.lc.AddProvider(provider)
 	}
 }
@@ -352,16 +352,24 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 		if err != nil {
 			return types.ConsensusParams{}, fmt.Errorf("invalid provider node id: %w", err)
 		}
-		s.paramsSendCh <- p2p.Envelope{
+
+		select {
+		case s.paramsSendCh <- p2p.Envelope{
 			To: peer,
 			Message: &ssproto.ParamsRequest{
 				Height: uint64(height),
 			},
+		}:
+		case <-ctx.Done():
+			return types.ConsensusParams{}, ctx.Err()
 		}
+
 		select {
 		// if we get no response from this provider we move on to the next one
 		case <-time.After(consensusParamsResponseTimeout):
 			continue
+		case <-ctx.Done():
+			return types.ConsensusParams{}, ctx.Err()
 		case params := <-s.paramsRecvCh:
 			return params, nil
 		}
