@@ -5,10 +5,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/meta"
 )
 
 func TestMakeHeader(t *testing.T) {
-	_, err := MakeHeader(&types.Header{})
+	_, err := MakeHeader(&meta.Header{})
 	assert.NoError(t, err)
 }

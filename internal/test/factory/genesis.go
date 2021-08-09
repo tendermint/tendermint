@@ -5,28 +5,28 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	tmtime "github.com/tendermint/tendermint/libs/time"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/consensus"
 )
 
 func RandGenesisDoc(
 	config *cfg.Config,
 	numValidators int,
 	randPower bool,
-	minPower int64) (*types.GenesisDoc, []types.PrivValidator) {
+	minPower int64) (*consensus.GenesisDoc, []consensus.PrivValidator) {
 
-	validators := make([]types.GenesisValidator, numValidators)
-	privValidators := make([]types.PrivValidator, numValidators)
+	validators := make([]consensus.GenesisValidator, numValidators)
+	privValidators := make([]consensus.PrivValidator, numValidators)
 	for i := 0; i < numValidators; i++ {
 		val, privVal := RandValidator(randPower, minPower)
-		validators[i] = types.GenesisValidator{
+		validators[i] = consensus.GenesisValidator{
 			PubKey: val.PubKey,
 			Power:  val.VotingPower,
 		}
 		privValidators[i] = privVal
 	}
-	sort.Sort(types.PrivValidatorsByAddress(privValidators))
+	sort.Sort(consensus.PrivValidatorsByAddress(privValidators))
 
-	return &types.GenesisDoc{
+	return &consensus.GenesisDoc{
 		GenesisTime:   tmtime.Now(),
 		InitialHeight: 1,
 		ChainID:       config.ChainID(),

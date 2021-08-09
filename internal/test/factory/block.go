@@ -5,7 +5,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/meta"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -32,14 +32,14 @@ func RandomHash() []byte {
 	return crypto.CRandBytes(tmhash.Size)
 }
 
-func MakeBlockID() types.BlockID {
+func MakeBlockID() meta.BlockID {
 	return MakeBlockIDWithHash(RandomHash())
 }
 
-func MakeBlockIDWithHash(hash []byte) types.BlockID {
-	return types.BlockID{
+func MakeBlockIDWithHash(hash []byte) meta.BlockID {
+	return meta.BlockID{
 		Hash: hash,
-		PartSetHeader: types.PartSetHeader{
+		PartSetHeader: meta.PartSetHeader{
 			Total: 100,
 			Hash:  RandomHash(),
 		},
@@ -48,7 +48,7 @@ func MakeBlockIDWithHash(hash []byte) types.BlockID {
 
 // MakeHeader fills the rest of the contents of the header such that it passes
 // validate basic
-func MakeHeader(h *types.Header) (*types.Header, error) {
+func MakeHeader(h *meta.Header) (*meta.Header, error) {
 	if h.Version.Block == 0 {
 		h.Version.Block = version.BlockProtocol
 	}
@@ -92,8 +92,8 @@ func MakeHeader(h *types.Header) (*types.Header, error) {
 	return h, h.ValidateBasic()
 }
 
-func MakeRandomHeader() *types.Header {
-	h, err := MakeHeader(&types.Header{})
+func MakeRandomHeader() *meta.Header {
+	h, err := MakeHeader(&meta.Header{})
 	if err != nil {
 		panic(err)
 	}

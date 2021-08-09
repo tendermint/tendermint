@@ -6,11 +6,11 @@ import (
 	"math/rand"
 	"sort"
 
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/consensus"
 )
 
-func RandValidator(randPower bool, minPower int64) (*types.Validator, types.PrivValidator) {
-	privVal := types.NewMockPV()
+func RandValidator(randPower bool, minPower int64) (*consensus.Validator, consensus.PrivValidator) {
+	privVal := consensus.NewMockPV()
 	votePower := minPower
 	if randPower {
 		// nolint:gosec // G404: Use of weak random number generator
@@ -20,14 +20,14 @@ func RandValidator(randPower bool, minPower int64) (*types.Validator, types.Priv
 	if err != nil {
 		panic(fmt.Errorf("could not retrieve pubkey %w", err))
 	}
-	val := types.NewValidator(pubKey, votePower)
+	val := consensus.NewValidator(pubKey, votePower)
 	return val, privVal
 }
 
-func RandValidatorSet(numValidators int, votingPower int64) (*types.ValidatorSet, []types.PrivValidator) {
+func RandValidatorSet(numValidators int, votingPower int64) (*consensus.ValidatorSet, []consensus.PrivValidator) {
 	var (
-		valz           = make([]*types.Validator, numValidators)
-		privValidators = make([]types.PrivValidator, numValidators)
+		valz           = make([]*consensus.Validator, numValidators)
+		privValidators = make([]consensus.PrivValidator, numValidators)
 	)
 
 	for i := 0; i < numValidators; i++ {
@@ -36,7 +36,7 @@ func RandValidatorSet(numValidators int, votingPower int64) (*types.ValidatorSet
 		privValidators[i] = privValidator
 	}
 
-	sort.Sort(types.PrivValidatorsByAddress(privValidators))
+	sort.Sort(consensus.PrivValidatorsByAddress(privValidators))
 
-	return types.NewValidatorSet(valz), privValidators
+	return consensus.NewValidatorSet(valz), privValidators
 }

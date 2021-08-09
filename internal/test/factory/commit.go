@@ -5,12 +5,24 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/meta"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
 )
 
-func MakeCommit(blockID types.BlockID, height int64, round int32,
-	voteSet *types.VoteSet, validators []types.PrivValidator, now time.Time) (*types.Commit, error) {
+func MakeRandomCommit(time time.Time) *meta.Commit {
+	lastID := MakeBlockID()
+	h := int64(3)
+	voteSet, _, vals := RandVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time)
+	if err != nil {
+		panic(err)
+	}
+	return commit
+}
+
+func MakeCommit(blockID meta.BlockID, height int64, round int32,
+	voteSet *consensus.VoteSet, validators []consensus.PrivValidator, now time.Time) (*meta.Commit, error) {
 
 	// all sign
 	for i := 0; i < len(validators); i++ {
@@ -18,7 +30,7 @@ func MakeCommit(blockID types.BlockID, height int64, round int32,
 		if err != nil {
 			return nil, fmt.Errorf("can't get pubkey: %w", err)
 		}
-		vote := &types.Vote{
+		vote := &consensus.Vote{
 			ValidatorAddress: pubKey.Address(),
 			ValidatorIndex:   int32(i),
 			Height:           height,
@@ -28,7 +40,7 @@ func MakeCommit(blockID types.BlockID, height int64, round int32,
 			Timestamp:        now,
 		}
 
-		_, err = signAddVote(validators[i], vote, voteSet)
+		_, err = SignAddVote(validators[i], vote, voteSet)
 		if err != nil {
 			return nil, err
 		}
@@ -37,7 +49,7 @@ func MakeCommit(blockID types.BlockID, height int64, round int32,
 	return voteSet.MakeCommit(), nil
 }
 
-func signAddVote(privVal types.PrivValidator, vote *types.Vote, voteSet *types.VoteSet) (signed bool, err error) {
+func SignAddVote(privVal consensus.PrivValidator, vote *consensus.Vote, voteSet *consensus.VoteSet) (signed bool, err error) {
 	v := vote.ToProto()
 	err = privVal.SignVote(context.Background(), voteSet.ChainID(), v)
 	if err != nil {
