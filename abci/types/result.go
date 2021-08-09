@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 
 	"github.com/gogo/protobuf/jsonpb"
+
+  types "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 const (
@@ -43,12 +45,12 @@ func (r ResponseQuery) IsErr() bool {
 
 // IsOK returns true if Code is OK
 func (r ResponseVerifyVoteExtension) IsOK() bool {
-	return r.Code == CodeTypeOK
+	return r.Result <= ResponseVerifyVoteExtension_ACCEPT
 }
 
 // IsErr returns true if Code is something other than OK.
 func (r ResponseVerifyVoteExtension) IsErr() bool {
-	return r.Code != CodeTypeOK
+	return r.Result > ResponseVerifyVoteExtension_ACCEPT
 }
 
 //---------------------------------------------------------------------------
@@ -128,3 +130,25 @@ var _ jsonRoundTripper = (*ResponseDeliverTx)(nil)
 var _ jsonRoundTripper = (*ResponseCheckTx)(nil)
 
 var _ jsonRoundTripper = (*EventAttribute)(nil)
+
+// -----------------------------------------------
+// construct Result data
+
+func RespondExtendVote(app_data_to_sign, app_data_self_authenticating []byte) ResponseExtendVote {
+  return ResponseExtendVote {
+    VoteExtension: &types.VoteExtension {
+      AppDataToSign: app_data_to_sign,
+      AppDataSelfAuthenticating: app_data_self_authenticating,
+    },
+  }
+}
+
+func RespondVerifyVoteExtension(ok bool) ResponseVerifyVoteExtension {
+  result := ResponseVerifyVoteExtension_REJECT
+  if ok {
+    result = ResponseVerifyVoteExtension_ACCEPT
+  }
+  return ResponseVerifyVoteExtension {
+    Result: result,
+  }
+}

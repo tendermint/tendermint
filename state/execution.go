@@ -250,15 +250,10 @@ func (blockExec *BlockExecutor) ExtendVote(vote *types.Vote) (types.VoteExtensio
 	return types.VoteExtensionFromProto(resp.VoteExtension), nil
 }
 
-func (blockExec *BlockExecutor) VerifyVoteExtension(ext types.VoteExtension) error {
+func (blockExec *BlockExecutor) VerifyVoteExtension(vote *types.Vote) error {
 	ctx := context.Background()
-  pext := ext.ToProto()
-
-  var req abci.RequestVerifyVoteExtension
-  if pext != nil {
-	  req = abci.RequestVerifyVoteExtension{
-		  VoteExtension: *pext,
-	  }
+  req := abci.RequestVerifyVoteExtension{
+    Vote: vote.ToProto(),
   }
 
 	resp, err := blockExec.proxyApp.VerifyVoteExtensionSync(ctx, req)

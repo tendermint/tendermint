@@ -126,7 +126,7 @@ message RequestExtendVote {
 
 // Verify the vote extension
 message RequestVerifyVoteExtension {
-  tendermint.types.VoteExtension vote_extension = 1 [(gogoproto.nullable) = false];
+  types.Vote vote = 1;
 }
 
 //----------------------------------------
@@ -277,11 +277,14 @@ message ResponseExtendVote {
 }
 
 message ResponseVerifyVoteExtension {
-  // XXX
-  uint32 code = 1;
-  bytes  data = 2;
-  string log  = 3;  // nondeterministic
-  string info = 4;  // nondeterministic
+  Result result = 1;
+
+  enum Result {
+    UNKNOWN       = 0;  // Unknown result, treat as ACCEPT by default
+    ACCEPT        = 1;  // Vote extension verified, include the vote
+    SLASH         = 2;  // Vote extension verification aborted, continue but slash validator
+    REJECT        = 3;  // Vote extension invalidated
+  }
 }
 
 //----------------------------------------
