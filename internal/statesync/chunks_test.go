@@ -552,6 +552,7 @@ func TestChunkReturned_Size(t *testing.T) {
 
 // Allocate and add all chunks to the queue
 func allocateAddChunksToQueue(t *testing.T, q *chunkQueue) {
+	t.Helper()
 	for i := uint32(0); i < q.Size(); i++ {
 		_, err := q.Allocate()
 		require.NoError(t, err)
