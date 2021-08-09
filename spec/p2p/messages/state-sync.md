@@ -6,13 +6,14 @@ order: 5
 
 ## Channels
 
-State sync has three distinct channels. The channel identifiers are listed below.
+State sync has four distinct channels. The channel identifiers are listed below.
 
 | Name              | Number |
 |-------------------|--------|
 | SnapshotChannel   | 96     |
 | ChunkChannel      | 97     |
 | LightBlockChannel | 98     |
+| ParamsChannel     | 99     |
 
 ## Message Types
 
@@ -82,13 +83,13 @@ light blocks at specified heights.
 
 ### LightBlockResponse
 
-The sender will retrieve and construct the light block from both the block and state stores. The
+The receiver will retrieve and construct the light block from both the block and state stores. The
 receiver will verify the data by comparing the hashes and store the header, commit and validator set
 if necessary. The light block at the height of the snapshot will be used to verify the `AppHash`.
 
 | Name          | Type                                                    | Description                          | Field Number |
 |---------------|---------------------------------------------------------|--------------------------------------|--------------|
-| light_block   | [LightBlock](../../core/data_structures.md#lightblock)  | light block at the height requested  | 1            |
+| light_block   | [LightBlock](../../core/data_structures.md#lightblock)  | Light block at the height requested  | 1            |
 
 State sync will use [light client verification](../../light-client/verification.README.md) to verify
 the light blocks.
@@ -97,9 +98,28 @@ the light blocks.
 If no state sync is in progress (i.e. during normal operation), any unsolicited response messages
 are discarded.
 
+### ParamsRequest
+
+In order to build tendermint state, the state provider will request the params at the height of the snapshot and use the header to verify it.
+
+| Name     | Type   | Description                | Field Number |
+|----------|--------|----------------------------|--------------|
+| height   | uint64 | Height of the consensus params  | 1            |
+
+
+### ParamsResponse
+
+A reciever to the request will use the state store to fetch the consensus params at that height and return it to the sender.
+
+| Name     | Type   | Description                     | Field Number |
+|----------|--------|---------------------------------|--------------|
+| height   | uint64 | Height of the consensus params  | 1            |
+| consensus_params | [ConsensusParams](../../core/data_structures.md#ConsensusParams) | Consensus params at the height requested | 2 |
+
+
 ### Message
 
-Message is a [`oneof` protobuf type](https://developers.google.com/protocol-buffers/docs/proto#oneof). The `oneof` consists of six messages.
+Message is a [`oneof` protobuf type](https://developers.google.com/protocol-buffers/docs/proto#oneof). The `oneof` consists of eight messages.
 
 | Name                 | Type                                       | Description                                  | Field Number |
 |----------------------|--------------------------------------------|----------------------------------------------|--------------|
@@ -109,3 +129,5 @@ Message is a [`oneof` protobuf type](https://developers.google.com/protocol-buff
 | chunk_response       | [ChunkRequest](#chunkresponse)             | Response of chunks used to recreate state.   | 4            |
 | light_block_request  | [LightBlockRequest](#lightblockrequest)    | Request a light block.                       | 5            |
 | light_block_response | [LightBlockResponse](#lightblockresponse)  | Respond with a light block                   | 6            |
+| params_request  | [ParamsRequest](#paramsrequest)    | Request the consensus params at a height.                       | 7            |
+| params_response | [ParamsResponse](#paramsresponse)  | Respond with the consensus params                   | 8            |
