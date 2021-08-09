@@ -92,13 +92,13 @@ type Environment struct {
 	PeerManager peerManager
 
 	// objects
-	PubKey           crypto.PubKey
-	GenDoc           *types.GenesisDoc // cache the genesis structure
-	EventSinks       []indexer.EventSink
-	EventBus         *types.EventBus // thread safe
-	Mempool          mempl.Mempool
-	BlockSyncReactor consensus.BlockSyncReactor
-	StateSyncReactor statesync.SyncReactor
+	PubKey            crypto.PubKey
+	GenDoc            *types.GenesisDoc // cache the genesis structure
+	EventSinks        []indexer.EventSink
+	EventBus          *types.EventBus // thread safe
+	Mempool           mempl.Mempool
+	BlockSyncReactor  consensus.BlockSyncReactor
+	StateSyncMetricer statesync.Metricer
 
 	Logger log.Logger
 

@@ -125,10 +125,9 @@ const (
 	maxLightBlockRequestRetries = 20
 )
 
-// SyncReactor defines an interface used for the rpc syncinfo query.
-type SyncReactor interface {
-	// The following calls are for the rpc sync info query, please see statesync.metrics for
-	// the details.
+// Metricer defines an interface used for the rpc sync info query, please see statesync.metrics
+// for the details.
+type Metricer interface {
 	GetTotalSnapshots() int64
 	GetChunkProcess() time.Duration
 	GetSnapshotHeight() int64
