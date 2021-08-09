@@ -152,7 +152,7 @@ type Commit struct {
 type Commit struct {
 	Height     int64       `json:"height"`
 	Round      int32       `json:"round"`
-	Timestamp   time.Time   `json:"round"`
+	Timestamp   time.Time   `json:"timestamp"` 
 	BlockID    BlockID     `json:"block_id"`
 	Signatures []CommitSig `json:"signatures"`
 }
