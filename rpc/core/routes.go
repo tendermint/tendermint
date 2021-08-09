@@ -2,8 +2,6 @@ package core
 
 import (
 	rpc "github.com/tendermint/tendermint/rpc/jsonrpc/server"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/state/indexer"
 )
 
 // TODO: better system than "unsafe" prefix
@@ -88,6 +86,7 @@ func (env *Environment) UnsafeRoutes() RoutesMap {
 	}
 }
 
+// CombineRoutes takes a list of RoutesMaps and combines them into a single RoutesMap.
 func CombineRoutes(routesMaps ...RoutesMap) RoutesMap {
 	res := RoutesMap{}
 	for _, routesMap := range routesMaps {
@@ -96,24 +95,4 @@ func CombineRoutes(routesMaps ...RoutesMap) RoutesMap {
 		}
 	}
 	return res
-}
-
-func DebugRoutes(store sm.Store, blockStore sm.BlockStore, eventSinks []indexer.EventSink) RoutesMap {
-	env := &Environment{
-		EventSinks: eventSinks,
-		StateStore: store,
-		BlockStore: blockStore,
-	}
-	return RoutesMap{
-		"blockchain":       rpc.NewRPCFunc(env.BlockchainInfo, "minHeight,maxHeight", true),
-		"consensus_params": rpc.NewRPCFunc(env.ConsensusParams, "height", true),
-		"block":            rpc.NewRPCFunc(env.Block, "height", true),
-		"block_by_hash":    rpc.NewRPCFunc(env.BlockByHash, "hash", true),
-		"block_results":    rpc.NewRPCFunc(env.BlockResults, "height", true),
-		"commit":           rpc.NewRPCFunc(env.Commit, "height", true),
-		"validators":       rpc.NewRPCFunc(env.Validators, "height,page,per_page", true),
-		"tx":               rpc.NewRPCFunc(env.Tx, "hash,prove", true),
-		"tx_search":        rpc.NewRPCFunc(env.TxSearch, "query,prove,page,per_page,order_by", false),
-		"block_search":     rpc.NewRPCFunc(env.BlockSearch, "query,page,per_page,order_by", false),
-	}
 }

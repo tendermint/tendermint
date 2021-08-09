@@ -1,9 +1,11 @@
-package node_test
+package inspect_test
 
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/fortytw2/leaktest"
@@ -12,8 +14,9 @@ import (
 	abci_types "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/inspect"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
-	"github.com/tendermint/tendermint/node"
 	http_client "github.com/tendermint/tendermint/rpc/client/http"
 	"github.com/tendermint/tendermint/state/indexer"
 	indexer_mocks "github.com/tendermint/tendermint/state/indexer/mocks"
@@ -21,35 +24,33 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func TestDebugConstructor(t *testing.T) {
+func TestInspectConstructor(t *testing.T) {
 	config := cfg.ResetTestRoot("test")
 	t.Cleanup(leaktest.Check(t))
 	defer func() { _ = os.RemoveAll(config.RootDir) }()
 	t.Run("from config", func(t *testing.T) {
-		d, err := node.NewDebugFromConfig(config)
+		d, err := inspect.NewFromConfig(config)
 		require.NoError(t, err)
 		require.NotNil(t, d)
-
-		d.OnStop()
 	})
 
 }
 
-func TestDebugRun(t *testing.T) {
+func TestInspectRun(t *testing.T) {
 	config := cfg.ResetTestRoot("test")
 	t.Cleanup(leaktest.Check(t))
 	defer func() { _ = os.RemoveAll(config.RootDir) }()
 	t.Run("from config", func(t *testing.T) {
-		d, err := node.NewDebugFromConfig(config)
+		d, err := inspect.NewFromConfig(config)
 		require.NoError(t, err)
-		err = d.OnStart()
-		require.NoError(t, err)
-		d.OnStop()
+		ctx, cancel := context.WithCancel(context.Background())
+		go d.Run(ctx)
+		cancel()
 	})
 
 }
 
-func TestDebugServeInfoRPC(t *testing.T) {
+func TestInspectServeInfoRPC(t *testing.T) {
 	testHeight := int64(1)
 	testBlock := new(types.Block)
 	testBlock.Header.Height = testHeight
@@ -64,22 +65,24 @@ func TestDebugServeInfoRPC(t *testing.T) {
 	eventSinkMock := &indexer_mocks.EventSink{}
 
 	rpcConfig := config.TestRPCConfig()
-	d := node.NewDebug(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock})
-	require.NoError(t, d.OnStart())
+	l := log.TestingLogger()
+	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	ctx, cancel := context.WithCancel(context.Background())
+	go d.Run(ctx)
+	requireConnect(t, rpcConfig.ListenAddress, 15)
 	cli, err := http_client.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
 	resultBlock, err := cli.Block(context.Background(), &testHeight)
 	require.NoError(t, err)
 	require.Equal(t, testBlock.Height, resultBlock.Block.Height)
 	require.Equal(t, testBlock.LastCommitHash, resultBlock.Block.LastCommitHash)
-
-	d.OnStop()
+	cancel()
 
 	blockStoreMock.AssertExpectations(t)
 	stateStoreMock.AssertExpectations(t)
 }
 
-func TestDebugTxSearch(t *testing.T) {
+func TestInspectTxSearch(t *testing.T) {
 	testHash := []byte("test")
 	testTx := []byte("tx")
 	testQuery := fmt.Sprintf("tx.hash='%s'", string(testHash))
@@ -97,8 +100,11 @@ func TestDebugTxSearch(t *testing.T) {
 		Return([]*abci_types.TxResult{testTxResult}, nil)
 
 	rpcConfig := config.TestRPCConfig()
-	d := node.NewDebug(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock})
-	require.NoError(t, d.OnStart())
+	l := log.TestingLogger()
+	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	ctx, cancel := context.WithCancel(context.Background())
+	go d.Run(ctx)
+	requireConnect(t, rpcConfig.ListenAddress, 15)
 	cli, err := http_client.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
 
@@ -108,7 +114,24 @@ func TestDebugTxSearch(t *testing.T) {
 	require.Len(t, resultTxSearch.Txs, 1)
 	require.Equal(t, types.Tx(testTx), resultTxSearch.Txs[0].Tx)
 
-	d.OnStop()
+	cancel()
 
 	eventSinkMock.AssertExpectations(t)
+}
+
+func requireConnect(t testing.TB, addr string, retries int) {
+	parts := strings.SplitN(addr, "://", 2)
+	if len(parts) != 2 {
+		t.Fatalf("malformed address to dial: %s", addr)
+	}
+	var err error
+	for i := 0; i < retries; i++ {
+		var conn net.Conn
+		conn, err = net.Dial(parts[0], parts[1])
+		if err == nil {
+			conn.Close()
+			return
+		}
+	}
+	t.Fatalf("unable to connect to server %s after %d tries: %s", addr, retries, err)
 }
