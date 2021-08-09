@@ -14,13 +14,13 @@ const (
 
 // Metrics contains metrics exposed by this package.
 type Metrics struct {
-	TotalSnapshots     metrics.Counter
-	ChunkProcess       metrics.Gauge
-	SnapshotHeight     metrics.Gauge
-	SnapshotChunk      metrics.Counter
-	SnapshotChunkTotal metrics.Gauge
-	BackFill           metrics.Counter
-	BackFillTotal      metrics.Gauge
+	TotalSnapshots      metrics.Counter
+	ChunkProcessAvgTime metrics.Gauge
+	SnapshotHeight      metrics.Gauge
+	SnapshotChunk       metrics.Counter
+	SnapshotChunkTotal  metrics.Gauge
+	BackFilledBlocks    metrics.Counter
+	BackFillBlocksTotal metrics.Gauge
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -35,43 +35,43 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 		TotalSnapshots: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "statesync_total_snapshots",
+			Name:      "total_snapshots",
 			Help:      "The total number of snapshots discovered.",
 		}, labels).With(labelsAndValues...),
-		ChunkProcess: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+		ChunkProcessAvgTime: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "statesync_chunk_process",
+			Name:      "chunk_process_avg_time",
 			Help:      "The average processing time per chunk.",
 		}, labels).With(labelsAndValues...),
 		SnapshotHeight: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "statesync_snapshot_height",
+			Name:      "snapshot_height",
 			Help:      "The height of the current snapshot the has been processed.",
 		}, labels).With(labelsAndValues...),
 		SnapshotChunk: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "statesync_snapshot_chunk",
+			Name:      "snapshot_chunk",
 			Help:      "The current number of chunks that have been processed.",
 		}, labels).With(labelsAndValues...),
 		SnapshotChunkTotal: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "statesync_snapshot_chunks_total",
+			Name:      "snapshot_chunks_total",
 			Help:      "The total number of chunks in the current snapshot.",
 		}, labels).With(labelsAndValues...),
-		BackFill: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+		BackFilledBlocks: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "statesync_backfill",
+			Name:      "backfilled_blocks",
 			Help:      "The current number of blocks that have been back-filled.",
 		}, labels).With(labelsAndValues...),
-		BackFillTotal: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+		BackFillBlocksTotal: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "statesync_backfill_total",
+			Name:      "backfilled_blocks_total",
 			Help:      "The total number of blocks that need to be back-filled.",
 		}, labels).With(labelsAndValues...),
 	}
@@ -80,12 +80,12 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 // NopMetrics returns no-op Metrics.
 func NopMetrics() *Metrics {
 	return &Metrics{
-		TotalSnapshots:     discard.NewCounter(),
-		ChunkProcess:       discard.NewGauge(),
-		SnapshotHeight:     discard.NewGauge(),
-		SnapshotChunk:      discard.NewCounter(),
-		SnapshotChunkTotal: discard.NewGauge(),
-		BackFill:           discard.NewCounter(),
-		BackFillTotal:      discard.NewGauge(),
+		TotalSnapshots:      discard.NewCounter(),
+		ChunkProcessAvgTime: discard.NewGauge(),
+		SnapshotHeight:      discard.NewGauge(),
+		SnapshotChunk:       discard.NewCounter(),
+		SnapshotChunkTotal:  discard.NewGauge(),
+		BackFilledBlocks:    discard.NewCounter(),
+		BackFillBlocksTotal: discard.NewGauge(),
 	}
 }

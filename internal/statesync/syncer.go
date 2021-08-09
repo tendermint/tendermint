@@ -440,7 +440,7 @@ func (s *syncer) applyChunks(ctx context.Context, chunks *chunkQueue, start time
 		case abci.ResponseApplySnapshotChunk_ACCEPT:
 			s.metrics.SnapshotChunk.Add(1)
 			s.avgChunkTime = time.Since(start).Nanoseconds() / int64(chunks.numChunksReturned())
-			s.metrics.ChunkProcess.Set(float64(s.avgChunkTime))
+			s.metrics.ChunkProcessAvgTime.Set(float64(s.avgChunkTime))
 		case abci.ResponseApplySnapshotChunk_ABORT:
 			return errAbort
 		case abci.ResponseApplySnapshotChunk_RETRY:
