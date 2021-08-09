@@ -239,17 +239,17 @@ func makeNode(config *cfg.Config,
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
 
-	csMetrics, p2pMetrics, memplMetrics, smMetrics, statesyncMetrics :=
+	nodeMetrics :=
 		defaultMetricsProvider(config.Instrumentation)(genDoc.ChainID)
 
-	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey,
+	router, err := createRouter(p2pLogger, nodeMetrics.p2p, nodeInfo, nodeKey.PrivKey,
 		peerManager, transport, getRouterConfig(config, proxyApp))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
 
 	mpReactorShim, mpReactor, mp, err := createMempoolReactor(
-		config, proxyApp, state, memplMetrics, peerManager, router, logger,
+		config, proxyApp, state, nodeMetrics.mempool, peerManager, router, logger,
 	)
 	if err != nil {
 		return nil, err
@@ -270,12 +270,12 @@ func makeNode(config *cfg.Config,
 		mp,
 		evPool,
 		blockStore,
-		sm.BlockExecutorWithMetrics(smMetrics),
+		sm.BlockExecutorWithMetrics(nodeMetrics.state),
 	)
 
 	csReactorShim, csReactor, csState := createConsensusReactor(
 		config, state, blockExec, blockStore, mp, evPool,
-		privValidator, csMetrics, stateSync || blockSync, eventBus,
+		privValidator, nodeMetrics.cs, stateSync || blockSync, eventBus,
 		peerManager, router, consensusLogger,
 	)
 
@@ -283,7 +283,7 @@ func makeNode(config *cfg.Config,
 	// doing a state sync first.
 	bcReactorShim, bcReactor, err := createBlockchainReactor(
 		logger, config, state, blockExec, blockStore, csReactor,
-		peerManager, router, blockSync && !stateSync, csMetrics,
+		peerManager, router, blockSync && !stateSync, nodeMetrics.cs,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not create blockchain reactor: %w", err)
@@ -300,9 +300,9 @@ func makeNode(config *cfg.Config,
 	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or block sync first.
 	// FIXME We need to update metrics here, since other reactors don't have access to them.
 	if stateSync {
-		csMetrics.StateSyncing.Set(1)
+		nodeMetrics.cs.StateSyncing.Set(1)
 	} else if blockSync {
-		csMetrics.BlockSyncing.Set(1)
+		nodeMetrics.cs.BlockSyncing.Set(1)
 	}
 
 	// Set up state sync reactor, and schedule a sync if requested.
@@ -342,7 +342,7 @@ func makeNode(config *cfg.Config,
 		stateStore,
 		blockStore,
 		config.StateSync.TempDir,
-		statesyncMetrics,
+		nodeMetrics.statesync,
 	)
 
 	// add the channel descriptors to both the transports
@@ -1036,21 +1036,37 @@ func defaultGenesisDocProviderFunc(config *cfg.Config) genesisDocProvider {
 	}
 }
 
-// metricsProvider returns a consensus, p2p and mempool Metrics.
-type metricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempool.Metrics, *sm.Metrics, *statesync.Metrics)
+type nodeMetrics struct {
+	cs        *cs.Metrics
+	p2p       *p2p.Metrics
+	mempool   *mempool.Metrics
+	state     *sm.Metrics
+	statesync *statesync.Metrics
+}
+
+// metricsProvider returns consensus, p2p, mempool, state, statesync Metrics.
+type metricsProvider func(chainID string) *nodeMetrics
 
 // defaultMetricsProvider returns Metrics build using Prometheus client library
 // if Prometheus is enabled. Otherwise, it returns no-op Metrics.
 func defaultMetricsProvider(config *cfg.InstrumentationConfig) metricsProvider {
-	return func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempool.Metrics, *sm.Metrics, *statesync.Metrics) {
+	return func(chainID string) *nodeMetrics {
 		if config.Prometheus {
-			return cs.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+			return &nodeMetrics{
+				cs.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				p2p.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				mempool.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID),
-				statesync.PrometheusMetrics(config.Namespace, "chain_id", chainID)
+				statesync.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+			}
 		}
-		return cs.NopMetrics(), p2p.NopMetrics(), mempool.NopMetrics(), sm.NopMetrics(), statesync.NopMetrics()
+		return &nodeMetrics{
+			cs.NopMetrics(),
+			p2p.NopMetrics(),
+			mempool.NopMetrics(),
+			sm.NopMetrics(),
+			statesync.NopMetrics(),
+		}
 	}
 }
 
