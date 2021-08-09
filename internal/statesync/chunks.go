@@ -356,11 +356,11 @@ func (q *chunkQueue) WaitFor(index uint32) <-chan uint32 {
 	return ch
 }
 
-func (q *chunkQueue) chunkReturnedSize() uint32 {
+func (q *chunkQueue) numChunksReturned() int {
 	q.Lock()
 	defer q.Unlock()
 
-	cnt := uint32(0)
+	cnt := 0
 	for _, b := range q.chunkReturned {
 		if b {
 			cnt++

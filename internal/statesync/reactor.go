@@ -1073,7 +1073,7 @@ func (r *Reactor) GetSnapshotChunk() int64 {
 	defer r.mtx.RUnlock()
 
 	if r.syncer != nil && r.syncer.chunks != nil {
-		return int64(r.syncer.chunks.chunkReturnedSize())
+		return int64(r.syncer.chunks.numChunksReturned())
 	}
 	return 0
 }

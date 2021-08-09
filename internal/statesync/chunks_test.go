@@ -537,14 +537,14 @@ func TestChunkQueue_WaitFor(t *testing.T) {
 	assert.False(t, ok)
 }
 
-func TestChunkReturned_Size(t *testing.T) {
+func TestNumChunkReturned(t *testing.T) {
 	queue, teardown := setupChunkQueue(t)
 	defer teardown()
 
 	assert.EqualValues(t, 5, queue.Size())
 
 	allocateAddChunksToQueue(t, queue)
-	assert.EqualValues(t, 5, queue.chunkReturnedSize())
+	assert.EqualValues(t, 5, queue.numChunksReturned())
 
 	err := queue.Close()
 	require.NoError(t, err)
