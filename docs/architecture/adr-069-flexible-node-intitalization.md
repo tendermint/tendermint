@@ -39,6 +39,12 @@ features and help define the requirements of the node package.
 
 ## Alternative Approaches
 
+These alternatives are presented to frame the design space and to
+contextualize the decision in terms of product requirements. These
+ideas are not inherently bad, and may even be possible or desireable
+in the (distant) future, and merely provide additional context for how
+we, in the moment came to our decision(s).
+
 ### Do Nothing
 
 The current implementation is functional and sufficient for the vast
@@ -89,13 +95,19 @@ would probably be overly-abstract at this stage.
 
 ## Decisions
 
-- Provide a more-flexible internal framework for initializing tendermint
-  nodes to make the initatilization process less hard-coded by the
-  implementation of the node objects.
+- To the greatest extent possible, factor the code base so that
+  packages are responsible for their own initialization, and minimize
+  the amount of code in the `node` package itself.
+
+- As a design goal, reduce direct coupling and dependencies between
+  components in the implementation of `node`.
+
+- Begin iterating on a more-flexible internal framework for
+  initializing tendermint nodes to make the initatilization process
+  less hard-coded by the implementation of the node objects.
 
   - Reactors should not need to expose their interfaces *within* the
-	implementation of the node type, except in the context of some groups of
-	services.
+	implementation of the node type
 
   - This refactoring should be entirely opaque to users.
 
@@ -103,9 +115,10 @@ would probably be overly-abstract at this stage.
 	reevaluation of the `service.Service` or a generic initialization
 	orchestration framework.
 
-- If required for the 0.35 release, add an "unsafe" way to construct a
-  node service with user-supplied mempool, including making the
-  relevant interfaces and types external/exported.
+- Do not proactively provide a system for injecting
+  components/services within a tendtermint node, though make it
+  possible to retrofit this kind of plugability in the future if
+  needed.
 
 - Prioritize implementation of p2p-based statesync reactor to obviate
   need for users to inject a custom state-sync provider.
@@ -137,6 +150,13 @@ new package/component (likely named `blocks` located at
 `internal/blocks`) will encapsulate the initialization of these block
 management areas of the code.
 
+### Injectable Component Option
+
+This section briefly describes a possible implementation for
+user-supplied services running within a node. This should not be
+implemented unless user-supplied components are a hard requirement for
+a user.
+
 In order to allow components to be replaced, a new public function
 will be added to the public interface of `node` with a signature that
 resembles the following:
@@ -161,7 +181,8 @@ service lists with the following rules:
   default service type.
 
 If callers violate any of these rules, `NewWithServices` will return
-an error.
+an error. To retract support for this kind of operation in the future,
+the function can be modified to *always* return an error.
 
 ## Consequences
 
