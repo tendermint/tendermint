@@ -42,19 +42,19 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "statesync_chunk_process",
-			Help:      " The average processing time per chunk.",
+			Help:      "The average processing time per chunk.",
 		}, labels).With(labelsAndValues...),
 		SnapshotHeight: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "statesync_snapshot_height",
-			Help:      "The height of the current snapshot being processed.",
+			Help:      "The height of the current snapshot the has been processed.",
 		}, labels).With(labelsAndValues...),
 		SnapshotChunk: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "statesync_snapshot_chunk",
-			Help:      "The current chunks being processed.",
+			Help:      "The current number of chunks that have been processed.",
 		}, labels).With(labelsAndValues...),
 		SnapshotChunkTotal: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
@@ -66,13 +66,13 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "statesync_backfill",
-			Help:      "The current blocks has been back-filled.",
+			Help:      "The current number of blocks that have been back-filled.",
 		}, labels).With(labelsAndValues...),
 		BackFillTotal: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "statesync_backfill_total",
-			Help:      "The total blocks need to be back-filled.",
+			Help:      "The total number of blocks that need to be back-filled.",
 		}, labels).With(labelsAndValues...),
 	}
 }

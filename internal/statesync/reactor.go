@@ -507,7 +507,7 @@ func (r *Reactor) backfill(
 			r.backfills++
 			r.metrics.BackFill.Add(1)
 
-			// the block height might be less than the stopHeight because of the stopTime condition
+			// The block height might be less than the stopHeight because of the stopTime condition
 			// hasn't been fulfilled.
 			if resp.block.Height < stopHeight {
 				r.backfillTotal++
@@ -1082,8 +1082,8 @@ func (r *Reactor) GetSnapshotChunkTotal() int64 {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 
-	if r.syncer != nil && r.syncer.proccessingSnapshot != nil {
-		return int64(r.syncer.proccessingSnapshot.Chunks)
+	if r.syncer != nil && r.syncer.processingSnapshot != nil {
+		return int64(r.syncer.processingSnapshot.Chunks)
 	}
 	return 0
 }

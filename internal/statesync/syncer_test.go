@@ -195,11 +195,11 @@ func TestSyncer_SyncAny(t *testing.T) {
 	require.Equal(t, expectState, newState)
 	require.Equal(t, commit, lastCommit)
 
-	require.Equal(t, len(chunks), int(rts.syncer.proccessingSnapshot.Chunks))
+	require.Equal(t, len(chunks), int(rts.syncer.processingSnapshot.Chunks))
 	require.Equal(t, expectState.LastBlockHeight, rts.syncer.lastSyncedSnapshotHeight)
 	require.True(t, rts.syncer.avgChunkTime > 0)
 
-	require.Equal(t, int64(rts.syncer.proccessingSnapshot.Chunks), rts.reactor.GetSnapshotChunkTotal())
+	require.Equal(t, int64(rts.syncer.processingSnapshot.Chunks), rts.reactor.GetSnapshotChunkTotal())
 	require.Equal(t, rts.syncer.lastSyncedSnapshotHeight, rts.reactor.GetSnapshotHeight())
 	require.Equal(t, time.Duration(rts.syncer.avgChunkTime), rts.reactor.GetChunkProcess())
 	require.Equal(t, int64(len(rts.syncer.snapshots.snapshots)), rts.reactor.GetTotalSnapshots())

@@ -69,7 +69,7 @@ type syncer struct {
 
 	avgChunkTime             int64
 	lastSyncedSnapshotHeight int64
-	proccessingSnapshot      *snapshot
+	processingSnapshot       *snapshot
 }
 
 // newSyncer creates a new syncer.
@@ -198,8 +198,7 @@ func (s *syncer) SyncAny(
 			defer chunks.Close() // in case we forget to close it elsewhere
 		}
 
-		s.proccessingSnapshot = snapshot
-
+		s.processingSnapshot = snapshot
 		s.metrics.SnapshotChunkTotal.Set(float64(snapshot.Chunks))
 
 		newState, commit, err := s.Sync(ctx, snapshot, chunks)
@@ -251,7 +250,7 @@ func (s *syncer) SyncAny(
 		}
 		snapshot = nil
 		chunks = nil
-		s.proccessingSnapshot = nil
+		s.processingSnapshot = nil
 	}
 }
 
