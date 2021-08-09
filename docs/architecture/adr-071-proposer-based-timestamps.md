@@ -131,7 +131,7 @@ type CommitSig struct {
 
 ### Changes to Commit
 
-The [Commit](https://github.com/tendermint/tendermint/blob/a419f4df76fe4aed668a6c74696deabb9fe73211/types/block.go#L746) struct does not currently contains a timestamp. 
+The [Commit](https://github.com/tendermint/tendermint/blob/a419f4df76fe4aed668a6c74696deabb9fe73211/types/block.go#L746) struct does not currently contain a timestamp. 
 The timestamps in the `Commit.CommitSig` entries are currently used to build the block timestamp.
 With these timestamps removed, the commit time will instead be stored in the `Commit` struct.
 
