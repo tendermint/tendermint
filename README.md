@@ -29,34 +29,32 @@ see their recent paper, "[The latest gossip on BFT consensus](https://arxiv.org/
 I reference this paper and HotStuff, and propose a pipelined BFT consensus protocol – chainedTendermint,
 which has been published in IEEE: https://ieeexplore.ieee.org/document/9350801
 I also paste it here: https://github.com/james-ray/tendermint/blob/chainedTendermint/H041.pdf
-
-## Releases
-
-I want to implement the pipleline protocol myself in my spare time. 
-If you are interested, have any question, or find any flaw in this paper, please contact me JamesRayLei@gmail.com
-
-I plan to work on the branch chainedTendermint of this repository, any cooperative work is appreciated.
-
-
-## Challenges and Plans
-
-The pipeline protocol relies on aggregated signature, which is not done in Tendermint yet.
-There are some discussion about the timestamp, each vote has different timestamp, so we need to address this problem.
-
-Anyway, I plan to implenment the first phase protocol: the basic parallel Tendermint protocol, which does not adopt aggregated signature, but only
-parallelize the prevotes and precommits, and "flatten" the rounds.  I think this needs lots of code modification.
-
-If this protocol has been done and well tested, I will call it release 1. When refer to test, I mean, to deploy several nodes as a cluster and run the new consensus protocol. Of course, all the CI tests are unable to run, because there is no concept of "round" in parallel Tendermint protocol, the modification is big, lots of data structures would change. I will first test the cluster on normal condition, and on some abnormal network condition to see if the consensus protocol works well. The CI tests shall be fixed after the main codes pass the tests and are stable.
+Simply state it: it parallelize the steps of Tendermint vote protocol, cancel the round in Tendermint, but keeps the votes from one replica follow the lock and unlock rule in Tendermint in the height base.
+In short, it does not have much creativity in protocol design, but rather the parallel implementation of Tendermint, to keep its safety rule unchanged (in height base).
 
 ## Thoughts
-From my point of view, BFT consensus cannot be appied to public blockchain, but only suitable for alliance chain. Though alliance chain can be used to do cross public chain txs, like Cosmos does. The difficulty is, you use BFT, so obviously you don't trust every node in the cluster, but the PoS based scheme and BFT premise can only guarantee the protocol runs well under at most 1/3 malicious nodes. Though it is not a public chain, but only an alliance chain, this condition is still hard to be guaranteed. There are two methods, one is using CA node, like the permissioned alliance chain. The other is controlling most of the funds in the operator itself, so other funds must be less than 1/3.  Whether you use which method, it is like you deployed most cluster nodes by yourself, and the other joined nodes are more like a mere formality without pratical meaning. If you can trust every node or you deploy all the nodes, you can simply use Clique consensus, which is much light weighted. 
+There are three categories of consensus protocols:
 
-One advantage of BFT consenus like Tendermint is instant finality, but it is based on the 1/3 malicious nodes hypothesis. If this hypothesis is broken, there are possibly two forks that meet the commit condition, and there are no rollback and follow the longest chain mechanism.
-Unlike the concern of Layer2 scheme like optimistic rollup, the validators in Layer1 cannot steal funds, the most malicious thing they can do is to fork the chain. In current Tendermint, if the chain is forked then the whole chain is possibly stopped (1/2 nodes confirm one fork and the other 1/2 confirm the other fork), in other word, the attacker cannot make a double spending either. This lack of motivation increases the safety of the BFT scheme in Layer1.
+1. Tendermint/HoneyBadger is the category of instant finality: the height h must be finalized before the replica can enter height h+1.
+2. Chained Tendermint is of the same category of CasperFFG, Grandpa and Chained-HotStuff. This category is "not instant finalized, but can be finalized after some heights/checkpoints", and the heights/checkpoints that are needed to finalize an earlier height/checkpoint are not guaranteed.
+3. Clique/Dfinity is the category of "follow the longest chain without voting", BSC and Heco use posa, which is a modified version of Clique. Dfinity uses random beacon, improve the round robin strategy in Clique.  I also publish another paper "Continuous Distributed Key Generation on Blockchain Based on BFT Consensus", which refreshes the distributed seed of each epoch. I don't know Dfinity uses which way to refresh the seed.
 
-Using BFT consensus is conducive to let others join and constrain their behavior, if they do malicious action, their staked funds are slashed, this is an effective deterrent. But this is based on the most funds are staked in the trusted nodes, and the trusted nodes do not do malicious action.  This is like the second method that I mentioned above. If you cannot control the flow of the most funds in your alliance chain, and the funds in your chain are not achieved by paying the real world cash (in other word, the evil joined nodes accquire the funds at no cost), the safety of your chain is vulnerable.
+At first I don't think Chained Tendermint has much value, because category 2 and category 3 are both without instant finality, and I prefer category 3, since it does not need the broadcast of voting.   
+Another reason that I think category 2 is challenging to succeed is how to guarantee the hypothesis of BFT protocol: less of 1/3 fauly voting power.
+If more than 1/3 validator nodes go offline, the network is hung.
+If there is two chain forks confirmed, the network might need human handle to recover, because the protocol does not consider this may happen and does not write code to handle chain forks, to follower the longer confirmed chain.
+The last reason is: there is no decentralised way to handle long range attack, all the three categories of consensus protocols have this problem. While the PoW protocol might be condemned as wasting electric, it does not need vote, it does not have hypothesis and it does not need human handle to recover, so it is robuster.
 
-Clique is not instant finality, but it does have Byzantine resistance, for every node follows the longest chain, you should ally other signers in order to fork the chain from a previous point.
+Recently lots of cross chain and L2 project succeed, such as Polygon, Polynetwork, and the eth-like chain Heco and Bsc succeed as well. I begin to think the trend is: public chains with PoW contain value, alliance chain to do the cross chain. Until recently I realize that Eth2.0 still wants to use CasperFFG and Polkadot uses Grandpa protocol combined with the strategy of random selecting, voting, verification, fishing and bounty.
 
-Instant finality should be good, but not suitable for public chain, the mechanism that sets the weight(or difficulty) for each block is more suitable for public chain. The reason is: if more than 1/3 evil does occur, there can be two forks confirmed by BFT consensus, the whole network is probably stopped, and you cannot blame this to "not my fault, it is the premise of BFT consensus that is violated". Whereas the mechanism that follows the longest/heavest chain does not stop the whole system, we only need to concern the double spending attack. To optimize the round robin in Clique, there is already project like Dfinity that imports VRF to create a "true random flow". What's more, since we do not persue instant finality, we do not need to vote for the block, just let the blocks with weights broadcast in the network. Thus the performance should be better.
+The design of the two is so similar, why they do not combine into one?
+
+I used to contact with Alistair Steward, he explained to me the detail of Grandpa protocol, I think it is a marvalous protocol and I learned a lot from him. Besides there maybe only one downside (if there is any), it cannot adopt the aggregation of signatures scheme, because the vote set includes the votes of different heights.
+And for CasperFFG, I don't think its liveness is strong. There may be situation that both competing chain forks are hard to continue, because the replica cannot violate the voting rules: s1<h1<s2<h2.   And, it needs the "direct parent" constraint, while the Chained Tendermint does not.
+
+
+
+
+
+
 
