@@ -42,12 +42,11 @@ There are three categories of consensus protocols:
 At first I don't think Chained Tendermint has much value, because category 2 and category 3 are both without instant finality, and I prefer category 3, since it does not need the broadcast of voting.   
 Another reason that I think category 2 is challenging to succeed is how to guarantee the hypothesis of BFT protocol: less of 1/3 fauly voting power.
 If more than 1/3 validator nodes go offline, the network is hung.
-If there is two chain forks confirmed, the network might need human handle to recover, because the protocol does not consider this may happen and does not write code to handle chain forks, to followe the longer confirmed chain.
-
+If there is two chain forks confirmed, the network might need human handle to recover, because the protocol does not consider this may happen and does not write code to handle chain forks, to follow the longer confirmed chain. 
 The last reason is: there is no decentralised way to handle long range attack, all the three categories of consensus protocols have this problem. While the PoW protocol might be condemned as wasting electric, it does not need vote, it does not have hypothesis and it does not need human handle to recover, so it is robuster.
 
 Recently lots of cross chain and L2 project succeed, such as Polygon, Polynetwork, and the eth-like chain Heco and Bsc succeed as well. I begin to think the trend is: public chains with PoW contain value, alliance chain to do the cross chain. Until recently I realize that Eth2.0 still wants to use CasperFFG and Polkadot uses Grandpa protocol and both combines the mechanism to use random numbers to do the selecting and so on.
-Why Heco and Bsc does not like category 1 and 2, but prefer category 3, while eth2.0 and Polkadot prefer category 2? I think the reason is: in order to do cross chain/shard, the confirmed checkpoint mechanism is mandatory, it can be confirmed later, but not none.
+Why Heco and Bsc does not like category 1 and 2, but prefer category 3, while eth2.0 and Polkadot prefer category 2? I think the reason is: in order to do cross chain/shard, the confirmed checkpoint mechanism is mandatory, it can be confirmed later, but not none. While Heco and Bsc care more about performance, for the confirm time, since it is more like aliance chain, two heights are enough.
 
 The design of the two is so similar, why they do not combine into one?
 
