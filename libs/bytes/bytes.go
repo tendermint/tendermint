@@ -35,6 +35,13 @@ func (bz HexBytes) MarshalJSON() ([]byte, error) {
 	hex.Encode(buf[1:], []byte(bz))
 	buf[0] = '"'
 	buf[size-1] = '"'
+
+	// Ensure letter digits are capitalized.
+	for i := 1; i < size-1; i++ {
+		if buf[i] >= 'a' && buf[i] <= 'f' {
+			buf[i] = 'A' + (buf[i] - 'a')
+		}
+	}
 	return buf, nil
 }
 
