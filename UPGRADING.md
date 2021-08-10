@@ -24,10 +24,10 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 * Added `--mode` flag and `mode` config variable on `config.toml` for setting Mode of the Node: `full` | `validator` | `seed` (default: `full`)
   [ADR-52](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md)
-  
+
 * `BootstrapPeers` has been added as part of the new p2p stack. This will eventually replace
   `Seeds`. Bootstrap peers are connected with on startup if needed for peer discovery. Unlike
-  persistent peers, there's no gaurantee that the node will remain connected with these peers. 
+  persistent peers, there's no gaurantee that the node will remain connected with these peers.
 
 * configuration values starting with `priv-validator-` have moved to the new
   `priv-validator` section, without the `priv-validator-` prefix.
@@ -37,21 +37,21 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 ### Key Format Changes
 
-The key names of all tendermint on-disk database keys changes in
-0.35. Upgrading nodes must either re-sync all data run a migration
+The format of all tendermint on-disk database keys changes in
+0.35. Upgrading nodes must either re-sync all data or run a migration
 script provided in this release. The script located in
 `github.com/tendermint/tendermint/scripts/keymigrate/migrate.go`
 provides the function `Migrate(context.Context, db.DB)` which you can
-operationalize as makes sense for your deployment. 
+operationalize as makes sense for your deployment.
 
 For ease of use the `tendermint` command includes a CLI version of the
-migration script, which you can invoke, as in: 
+migration script, which you can invoke, as in:
 
 	tendermint key-migrate
-	
+
 This reads the configuration file as normal and allows the
 `--db-backend` and `--db-dir` flags to change database operations as
-needed. 
+needed.
 
 The migration operation is idempotent and can be run more than once,
 if needed.
@@ -265,8 +265,8 @@ Other user-relevant changes include:
 
 * The old `lite` package was removed; the new light client uses the `light` package.
 * The `Verifier` was broken up into two pieces:
-    * Core verification logic (pure `VerifyX` functions)
-    * `Client` object, which represents the complete light client
+	* Core verification logic (pure `VerifyX` functions)
+	* `Client` object, which represents the complete light client
 * The new light clients stores headers & validator sets as `LightBlock`s
 * The RPC client can be found in the `/rpc` directory.
 * The HTTP(S) proxy is located in the `/proxy` directory.
@@ -398,12 +398,12 @@ Evidence Params has been changed to include duration.
 ### Go API
 
 * `libs/common` has been removed in favor of specific pkgs.
-    * `async`
-    * `service`
-    * `rand`
-    * `net`
-    * `strings`
-    * `cmap`
+	* `async`
+	* `service`
+	* `rand`
+	* `net`
+	* `strings`
+	* `cmap`
 * removal of `errors` pkg
 
 ### RPC Changes
@@ -472,9 +472,9 @@ Prior to the update, suppose your `ResponseDeliverTx` look like:
 ```go
 abci.ResponseDeliverTx{
   Tags: []kv.Pair{
-    {Key: []byte("sender"), Value: []byte("foo")},
-    {Key: []byte("recipient"), Value: []byte("bar")},
-    {Key: []byte("amount"), Value: []byte("35")},
+	{Key: []byte("sender"), Value: []byte("foo")},
+	{Key: []byte("recipient"), Value: []byte("bar")},
+	{Key: []byte("amount"), Value: []byte("35")},
   }
 }
 ```
@@ -493,14 +493,14 @@ the following `Events`:
 ```go
 abci.ResponseDeliverTx{
   Events: []abci.Event{
-    {
-      Type: "transfer",
-      Attributes: kv.Pairs{
-        {Key: []byte("sender"), Value: []byte("foo")},
-        {Key: []byte("recipient"), Value: []byte("bar")},
-        {Key: []byte("amount"), Value: []byte("35")},
-      },
-    }
+	{
+	  Type: "transfer",
+	  Attributes: kv.Pairs{
+		{Key: []byte("sender"), Value: []byte("foo")},
+		{Key: []byte("recipient"), Value: []byte("bar")},
+		{Key: []byte("amount"), Value: []byte("35")},
+	  },
+	}
 }
 ```
 
@@ -548,9 +548,9 @@ In this case, the WS client will receive an error with description:
   "jsonrpc": "2.0",
   "id": "{ID}#event",
   "error": {
-    "code": -32000,
-    "msg": "Server error",
-    "data": "subscription was canceled (reason: client is not pulling messages fast enough)" // or "subscription was canceled (reason: Tendermint exited)"
+	"code": -32000,
+	"msg": "Server error",
+	"data": "subscription was canceled (reason: client is not pulling messages fast enough)" // or "subscription was canceled (reason: Tendermint exited)"
   }
 }
 
@@ -756,9 +756,9 @@ just the `Data` field set:
 
 ```go
 []ProofOp{
-    ProofOp{
-        Data: <proof bytes>,
-    }
+	ProofOp{
+		Data: <proof bytes>,
+	}
 }
 ```
 
