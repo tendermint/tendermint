@@ -48,7 +48,7 @@ The last reason is: there is no decentralised way to handle long range attack, a
 Recently lots of cross chain and L2 project succeed, such as Polygon, Polynetwork, and the eth-like chain Heco and Bsc succeed as well. I begin to think the trend is: public chains with PoW contain value, alliance chain to do the cross chain. Until recently I realize that Eth2.0 still wants to use CasperFFG and Polkadot uses Grandpa protocol and both combines the mechanism to use random numbers to do the selecting and so on.
 Why Heco and Bsc does not like category 1 and 2, but prefer category 3, while eth2.0 and Polkadot prefer category 2? I think the reason is: in order to do cross chain/shard, the confirmed checkpoint mechanism is mandatory, it can be confirmed later, but not none. While Heco and Bsc care more about performance, for the confirm time, since it is more like aliance chain, two heights are enough.
 
-The design of the two is so similar, why they do not combine into one?
+The design of the two--eth2.0 and Polkadot, is so similar, why they do not combine into one?
 
 I used to contact with Alistair Steward, he explained to me the detail of Grandpa protocol, I think it is a marvelous protocol and I learned a lot from him. Besides there maybe only one downside (if there is any), it cannot adopt the aggregation of signatures scheme, because the vote set includes the votes of different heights.
 And for CasperFFG, I don't think its liveness is strong. There may be situation that both competing chain forks are hard to continue, because the replica cannot violate the voting rules: s1<h1<s2<h2.   And, it needs the "direct parent" constraint, while the Chained Tendermint does not.
