@@ -30,7 +30,7 @@ I reference this paper and HotStuff, and propose a pipelined BFT consensus proto
 which has been published in IEEE: https://ieeexplore.ieee.org/document/9350801
 I also paste it here: https://github.com/james-ray/tendermint/blob/chainedTendermint/H041.pdf
 Simply state it: it parallelize the steps of Tendermint vote protocol, cancel the round in Tendermint, but keeps the votes from one replica follow the lock and unlock rule in Tendermint in the height base.
-In short, it does not have much creativity in protocol design, but rather the parallel implementation of Tendermint, to keep its safety rule unchanged (in height base).
+In short, it may not have much creativity in protocol design, but rather the parallel and pipleline implementations of Tendermint, and keeping its safety rule unchanged (in height base).
 
 ## Thoughts
 There are three categories of consensus protocols:
