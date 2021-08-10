@@ -27,7 +27,7 @@ func (bz *HexBytes) Unmarshal(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaler interface.  The encoding is a JSON
+// MarshalJSON implements the json.Marshaler interface. The encoding is a JSON
 // quoted string of hexadecimal digits.
 func (bz HexBytes) MarshalJSON() ([]byte, error) {
 	size := hex.EncodedLen(len(bz)) + 2 // +2 for quotation marks
