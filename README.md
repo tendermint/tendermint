@@ -46,7 +46,8 @@ If there is two chain forks confirmed, the network might need human handle to re
 
 The last reason is: there is no decentralised way to handle long range attack, all the three categories of consensus protocols have this problem. While the PoW protocol might be condemned as wasting electric, it does not need vote, it does not have hypothesis and it does not need human handle to recover, so it is robuster.
 
-Recently lots of cross chain and L2 project succeed, such as Polygon, Polynetwork, and the eth-like chain Heco and Bsc succeed as well. I begin to think the trend is: public chains with PoW contain value, alliance chain to do the cross chain. Until recently I realize that Eth2.0 still wants to use CasperFFG and Polkadot uses Grandpa protocol combined with the strategy of random selecting, voting, verification, fishing and bounty.
+Recently lots of cross chain and L2 project succeed, such as Polygon, Polynetwork, and the eth-like chain Heco and Bsc succeed as well. I begin to think the trend is: public chains with PoW contain value, alliance chain to do the cross chain. Until recently I realize that Eth2.0 still wants to use CasperFFG and Polkadot uses Grandpa protocol and both combines the mechanism to use random numbers to do the selecting and so on.
+Why Heco and Bsc does not like category 1 and 2, but prefer category 3, while eth2.0 and Polkadot prefer category 2? I think the reason is: in order to do cross chain/shard, the confirmed checkpoint mechanism is mandatory, it can be confirmed later, but not none.
 
 The design of the two is so similar, why they do not combine into one?
 
