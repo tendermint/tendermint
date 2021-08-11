@@ -264,7 +264,7 @@ Block timestamps must be monotonically increasing.
 In `BFTTime`, if a validator’s clock was behind, the [validator added 1 millisecond to the previous block’s time and used that in its vote messages](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/internal/consensus/state.go#L2246).
 A goal of adding proposer-based timestamps is to enforce some degree of clock synchronization, so having a mechanism that completely ignores the validator’s local time no longer works.
 
-Validator clocks may not be perfectly in sync.
+Validator clocks will not be perfectly in sync.
 Therefore, the proposer’s local time may be less than the `LastCommit.Timestamp`.
 If the proposer’s local time is less than the `LastCommit.Timestamp`, the proposer will sleep until its local time exceeds it.
 
