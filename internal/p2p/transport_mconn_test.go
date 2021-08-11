@@ -151,9 +151,6 @@ func TestMConnTransport_Listen(t *testing.T) {
 				[]*p2p.ChannelDescriptor{{ID: byte(chID), Priority: 1}},
 				p2p.MConnTransportOptions{},
 			)
-			t.Cleanup(func() {
-				_ = transport.Close()
-			})
 
 			// Transport should not listen on any endpoints yet.
 			require.Empty(t, transport.Endpoints())
@@ -165,19 +162,6 @@ func TestMConnTransport_Listen(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-
-			// Start a goroutine to just accept any connections.
-			go func() {
-				for {
-					conn, err := transport.Accept()
-					if err != nil {
-						return
-					}
-					defer func() {
-						_ = conn.Close()
-					}()
-				}
-			}()
 
 			// Check the endpoint.
 			endpoints := transport.Endpoints()
@@ -195,13 +179,39 @@ func TestMConnTransport_Listen(t *testing.T) {
 			require.NotZero(t, endpoint.Port)
 			require.Empty(t, endpoint.Path)
 
-			// Dialing the endpoint should work.
-			conn, err := transport.Dial(ctx, endpoint)
+			dialedChan := make(chan struct{})
+
+			var peerConn p2p.Connection
+			go func() {
+				// Dialing the endpoint should work.
+				var err error
+				peerConn, err = transport.Dial(ctx, endpoint)
+				require.NoError(t, err)
+				close(dialedChan)
+			}()
+
+			conn, err := transport.Accept()
 			require.NoError(t, err)
-			require.NoError(t, conn.Close())
+			_ = conn.Close()
+			<-dialedChan
+
+			time.Sleep(time.Minute)
+			// closing the connection should not error
+			require.NoError(t, peerConn.Close())
+
+			// try to read from the connection should error
+			_, _, err = peerConn.ReceiveMessage()
+			require.Error(t, err)
 
 			// Trying to listen again should error.
 			err = transport.Listen(tc.endpoint)
+			require.Error(t, err)
+
+			// close the transport
+			_ = transport.Close()
+
+			// Dialing the closed endpoint should error
+			_, err = transport.Dial(ctx, endpoint)
 			require.Error(t, err)
 		})
 	}

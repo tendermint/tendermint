@@ -17,11 +17,12 @@ type Application interface {
 	CheckTx(RequestCheckTx) ResponseCheckTx // Validate a tx for the mempool
 
 	// Consensus Connection
-	InitChain(RequestInitChain) ResponseInitChain                               // Initialize blockchain w validators/other info from TendermintCore
-	BeginBlock(RequestBeginBlock) ResponseBeginBlock                            // Signals the beginning of a block
-	DeliverTx(RequestDeliverTx) ResponseDeliverTx                               // Deliver a tx for full processing
-	EndBlock(RequestEndBlock) ResponseEndBlock                                  // Signals the end of a block, returns changes to the validator set
-	Commit() ResponseCommit                                                     // Commit the state and return the application Merkle root hash
+	InitChain(RequestInitChain) ResponseInitChain // Initialize blockchain w validators/other info from TendermintCore
+	PrepareProposal(RequestPrepareProposal) ResponsePrepareProposal
+	BeginBlock(RequestBeginBlock) ResponseBeginBlock // Signals the beginning of a block
+	DeliverTx(RequestDeliverTx) ResponseDeliverTx    // Deliver a tx for full processing
+	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
+	Commit() ResponseCommit                          // Commit the state and return the application Merkle root hash
 	ExtendVote(RequestExtendVote) ResponseExtendVote                            // Create application specific vote extension
 	VerifyVoteExtension(RequestVerifyVoteExtension) ResponseVerifyVoteExtension // Verify created vote extension
 
@@ -98,6 +99,10 @@ func (BaseApplication) LoadSnapshotChunk(req RequestLoadSnapshotChunk) ResponseL
 
 func (BaseApplication) ApplySnapshotChunk(req RequestApplySnapshotChunk) ResponseApplySnapshotChunk {
 	return ResponseApplySnapshotChunk{}
+}
+
+func (BaseApplication) PrepareProposal(req RequestPrepareProposal) ResponsePrepareProposal {
+	return ResponsePrepareProposal{}
 }
 
 //-------------------------------------------------------
@@ -192,5 +197,11 @@ func (app *GRPCApplication) ExtendVote(
 func (app *GRPCApplication) VerifyVoteExtension(
 	ctx context.Context, req *RequestVerifyVoteExtension) (*ResponseVerifyVoteExtension, error) {
 	res := app.app.VerifyVoteExtension(*req)
+  return &res, nil
+}
+
+func (app *GRPCApplication) PrepareProposal(
+	ctx context.Context, req *RequestPrepareProposal) (*ResponsePrepareProposal, error) {
+	res := app.app.PrepareProposal(*req)
 	return &res, nil
 }

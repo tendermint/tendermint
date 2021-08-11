@@ -421,7 +421,6 @@ func (c *MConnection) CanSend(chID byte) bool {
 // sendRoutine polls for packets to send from channels.
 func (c *MConnection) sendRoutine() {
 	defer c._recover()
-
 	protoWriter := protoio.NewDelimitedWriter(c.bufConnWriter)
 
 FOR_LOOP:

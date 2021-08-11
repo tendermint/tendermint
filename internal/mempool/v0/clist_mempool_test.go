@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abciserver "github.com/tendermint/tendermint/abci/server"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -217,7 +216,7 @@ func TestMempoolUpdate(t *testing.T) {
 }
 
 func TestMempool_KeepInvalidTxsInCache(t *testing.T) {
-	app := counter.NewApplication(true)
+	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	wcfg := cfg.DefaultConfig()
 	wcfg.Mempool.KeepInvalidTxsInCache = true
@@ -309,7 +308,7 @@ func TestTxsAvailable(t *testing.T) {
 }
 
 func TestSerialReap(t *testing.T) {
-	app := counter.NewApplication(true)
+	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
 
 	mp, cleanup := newMempoolWithApp(cc)
@@ -508,7 +507,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 	}
 
 	// 6. zero after tx is rechecked and removed due to not being valid anymore
-	app2 := counter.NewApplication(true)
+	app2 := kvstore.NewApplication()
 	cc = proxy.NewLocalClientCreator(app2)
 	mp, cleanup = newMempoolWithApp(cc)
 	defer cleanup()
@@ -540,16 +539,16 @@ func TestMempoolTxsBytes(t *testing.T) {
 	// Pretend like we committed nothing so txBytes gets rechecked and removed.
 	err = mp.Update(1, []types.Tx{}, abciResponses(0, abci.CodeTypeOK), nil, nil)
 	require.NoError(t, err)
-	assert.EqualValues(t, 0, mp.SizeBytes())
+	assert.EqualValues(t, 8, mp.SizeBytes())
 
 	// 7. Test RemoveTxByKey function
 	err = mp.CheckTx(context.Background(), []byte{0x06}, nil, mempool.TxInfo{})
 	require.NoError(t, err)
-	assert.EqualValues(t, 1, mp.SizeBytes())
+	assert.EqualValues(t, 9, mp.SizeBytes())
 	mp.RemoveTxByKey(mempool.TxKey([]byte{0x07}), true)
-	assert.EqualValues(t, 1, mp.SizeBytes())
+	assert.EqualValues(t, 9, mp.SizeBytes())
 	mp.RemoveTxByKey(mempool.TxKey([]byte{0x06}), true)
-	assert.EqualValues(t, 0, mp.SizeBytes())
+	assert.EqualValues(t, 8, mp.SizeBytes())
 
 }
 

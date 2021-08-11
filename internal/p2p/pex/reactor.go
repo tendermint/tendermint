@@ -3,6 +3,7 @@ package pex
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -367,6 +368,11 @@ func (r *ReactorV2) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (er
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
+			r.Logger.Error(
+				"recovering from processing message panic",
+				"err", err,
+				"stack", string(debug.Stack()),
+			)
 		}
 	}()
 

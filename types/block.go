@@ -805,7 +805,7 @@ func (commit *Commit) GetVote(valIdx int32) *Vote {
 		ValidatorAddress: commitSig.ValidatorAddress,
 		ValidatorIndex:   valIdx,
 		Signature:        commitSig.Signature,
-		VoteExtension:    commitSig.VoteExtension.FromSigned(),
+		VoteExtension:    commitSig.VoteExtension.ToVoteExtension(),
 	}
 }
 

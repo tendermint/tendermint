@@ -309,6 +309,13 @@ func (cli *socketClient) VerifyVoteExtensionAsync(
 	return cli.queueRequestAsync(ctx, types.ToRequestVerifyVoteExtension(req))
 }
 
+func (cli *socketClient) PrepareProposalAsync(
+	ctx context.Context,
+	req types.RequestPrepareProposal,
+) (*ReqRes, error) {
+	return cli.queueRequestAsync(ctx, types.ToRequestPrepareProposal(req))
+}
+
 //----------------------------------------
 
 func (cli *socketClient) FlushSync(ctx context.Context) error {
@@ -501,6 +508,18 @@ func (cli *socketClient) VerifyVoteExtensionSync(
 	return reqres.Response.GetVerifyVoteExtension(), nil
 }
 
+func (cli *socketClient) PrepareProposalSync(
+	ctx context.Context,
+	req types.RequestPrepareProposal,
+) (*types.ResponsePrepareProposal, error) {
+
+	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestPrepareProposal(req))
+	if err != nil {
+		return nil, err
+	}
+	return reqres.Response.GetPrepareProposal(), nil
+}
+
 //----------------------------------------
 
 // queueRequest enqueues req onto the queue. If the queue is full, it ether
@@ -631,6 +650,8 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_ExtendVote)
 	case *types.Request_VerifyVoteExtension:
 		_, ok = res.Value.(*types.Response_VerifyVoteExtension)
+	case *types.Request_PrepareProposal:
+		_, ok = res.Value.(*types.Response_PrepareProposal)
 	}
 	return ok
 }

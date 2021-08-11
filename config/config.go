@@ -4,12 +4,16 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
+	tmos "github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -282,6 +286,41 @@ func (cfg BaseConfig) NodeKeyFile() string {
 	return rootify(cfg.NodeKey, cfg.RootDir)
 }
 
+// LoadNodeKey loads NodeKey located in filePath.
+func (cfg BaseConfig) LoadNodeKeyID() (types.NodeID, error) {
+	jsonBytes, err := ioutil.ReadFile(cfg.NodeKeyFile())
+	if err != nil {
+		return "", err
+	}
+	nodeKey := types.NodeKey{}
+	err = tmjson.Unmarshal(jsonBytes, &nodeKey)
+	if err != nil {
+		return "", err
+	}
+	nodeKey.ID = types.NodeIDFromPubKey(nodeKey.PubKey())
+	return nodeKey.ID, nil
+}
+
+// LoadOrGenNodeKey attempts to load the NodeKey from the given filePath. If
+// the file does not exist, it generates and saves a new NodeKey.
+func (cfg BaseConfig) LoadOrGenNodeKeyID() (types.NodeID, error) {
+	if tmos.FileExists(cfg.NodeKeyFile()) {
+		nodeKey, err := cfg.LoadNodeKeyID()
+		if err != nil {
+			return "", err
+		}
+		return nodeKey, nil
+	}
+
+	nodeKey := types.GenNodeKey()
+
+	if err := nodeKey.SaveAs(cfg.NodeKeyFile()); err != nil {
+		return "", err
+	}
+
+	return nodeKey.ID, nil
+}
+
 // DBDir returns the full path to the database directory
 func (cfg BaseConfig) DBDir() string {
 	return rootify(cfg.DBPath, cfg.RootDir)
@@ -407,6 +446,7 @@ type RPCConfig struct {
 
 	// TCP or UNIX socket address for the gRPC server to listen on
 	// NOTE: This server only supports /broadcast_tx_commit
+	// Deprecated: gRPC in the RPC layer of Tendermint will be removed in 0.36.
 	GRPCListenAddress string `mapstructure:"grpc-laddr"`
 
 	// Maximum number of simultaneous connections.
@@ -414,6 +454,7 @@ type RPCConfig struct {
 	// If you want to accept a larger number than the default, make sure
 	// you increase your OS limits.
 	// 0 - unlimited.
+	// Deprecated: gRPC in the RPC layer of Tendermint will be removed in 0.36.
 	GRPCMaxOpenConnections int `mapstructure:"grpc-max-open-connections"`
 
 	// Activate unsafe RPC commands like /dial-persistent-peers and /unsafe-flush-mempool
@@ -743,25 +784,47 @@ type MempoolConfig struct {
 	RootDir   string `mapstructure:"home"`
 	Recheck   bool   `mapstructure:"recheck"`
 	Broadcast bool   `mapstructure:"broadcast"`
+
 	// Maximum number of transactions in the mempool
 	Size int `mapstructure:"size"`
+
 	// Limit the total size of all txs in the mempool.
 	// This only accounts for raw transactions (e.g. given 1MB transactions and
 	// max-txs-bytes=5MB, mempool will only accept 5 transactions).
 	MaxTxsBytes int64 `mapstructure:"max-txs-bytes"`
+
 	// Size of the cache (used to filter transactions we saw earlier) in transactions
 	CacheSize int `mapstructure:"cache-size"`
+
 	// Do not remove invalid transactions from the cache (default: false)
 	// Set to true if it's not possible for any invalid transaction to become
 	// valid again in the future.
 	KeepInvalidTxsInCache bool `mapstructure:"keep-invalid-txs-in-cache"`
+
 	// Maximum size of a single transaction
 	// NOTE: the max size of a tx transmitted over the network is {max-tx-bytes}.
 	MaxTxBytes int `mapstructure:"max-tx-bytes"`
+
 	// Maximum size of a batch of transactions to send to a peer
 	// Including space needed by encoding (one varint per transaction).
 	// XXX: Unused due to https://github.com/tendermint/tendermint/issues/5796
 	MaxBatchBytes int `mapstructure:"max-batch-bytes"`
+
+	// TTLDuration, if non-zero, defines the maximum amount of time a transaction
+	// can exist for in the mempool.
+	//
+	// Note, if TTLNumBlocks is also defined, a transaction will be removed if it
+	// has existed in the mempool at least TTLNumBlocks number of blocks or if it's
+	// insertion time into the mempool is beyond TTLDuration.
+	TTLDuration time.Duration `mapstructure:"ttl-duration"`
+
+	// TTLNumBlocks, if non-zero, defines the maximum number of blocks a transaction
+	// can exist for in the mempool.
+	//
+	// Note, if TTLDuration is also defined, a transaction will be removed if it
+	// has existed in the mempool at least TTLNumBlocks number of blocks or if
+	// it's insertion time into the mempool is beyond TTLDuration.
+	TTLNumBlocks int64 `mapstructure:"ttl-num-blocks"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool.
@@ -772,10 +835,12 @@ func DefaultMempoolConfig() *MempoolConfig {
 		Broadcast: true,
 		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck
-		Size:        5000,
-		MaxTxsBytes: 1024 * 1024 * 1024, // 1GB
-		CacheSize:   10000,
-		MaxTxBytes:  1024 * 1024, // 1MB
+		Size:         5000,
+		MaxTxsBytes:  1024 * 1024 * 1024, // 1GB
+		CacheSize:    10000,
+		MaxTxBytes:   1024 * 1024, // 1MB
+		TTLDuration:  0 * time.Second,
+		TTLNumBlocks: 0,
 	}
 }
 
@@ -801,6 +866,13 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 	if cfg.MaxTxBytes < 0 {
 		return errors.New("max-tx-bytes can't be negative")
 	}
+	if cfg.TTLDuration < 0 {
+		return errors.New("ttl-duration can't be negative")
+	}
+	if cfg.TTLNumBlocks < 0 {
+		return errors.New("ttl-num-blocks can't be negative")
+	}
+
 	return nil
 }
 
@@ -920,7 +992,7 @@ func (cfg *FastSyncConfig) ValidateBasic() error {
 	case BlockchainV0:
 		return nil
 	case BlockchainV2:
-		return nil
+		return errors.New("fastsync version v2 is no longer supported. Please use v0")
 	default:
 		return fmt.Errorf("unknown fastsync version %s", cfg.Version)
 	}

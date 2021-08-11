@@ -25,6 +25,7 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
+	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -281,7 +282,9 @@ func (cs *State) SetPrivValidator(priv types.PrivValidator) {
 		case *privval.FilePV:
 			cs.privValidatorType = types.FileSignerClient
 		case *privval.SignerClient:
-			cs.privValidatorType = types.SignerClient
+			cs.privValidatorType = types.SignerSocketClient
+		case *tmgrpc.SignerClient:
+			cs.privValidatorType = types.SignerGRPCClient
 		case types.MockPV:
 			cs.privValidatorType = types.MockSignerClient
 		case *types.ErroringMockPV:
@@ -2211,22 +2214,17 @@ func (cs *State) signVote(
 	switch msgType {
 	case tmproto.PrecommitType:
 		timeout = cs.config.TimeoutPrecommit
+		// If the signedMessage type is for precommit, add VoteExtension
+		ext, err := cs.blockExec.ExtendVote(vote)
+		if err != nil {
+			return nil, err
+		}
+		vote.VoteExtension = ext
 	case tmproto.PrevoteType:
 		timeout = cs.config.TimeoutPrevote
 	default:
 		timeout = time.Second
 	}
-
-  // If the signedMessage type is for precommit, add VoteExtension
-  switch msgType {
-  case tmproto.PrecommitType:
-    ext, err := cs.blockExec.ExtendVote(vote)
-    if err != nil {
-      return nil, err
-    }
-    vote.VoteExtension = ext
-  default:
-  }
 
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()

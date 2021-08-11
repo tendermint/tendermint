@@ -48,7 +48,7 @@ const (
 	PerturbationPause      Perturbation = "pause"
 	PerturbationRestart    Perturbation = "restart"
 
-	EvidenceAgeHeight int64         = 5
+	EvidenceAgeHeight int64         = 7
 	EvidenceAgeTime   time.Duration = 500 * time.Millisecond
 )
 
@@ -66,6 +66,7 @@ type Testnet struct {
 	KeyType          string
 	Evidence         int
 	LogLevel         string
+	TxSize           int64
 }
 
 // Node represents a Tendermint node in a testnet.
@@ -79,6 +80,7 @@ type Node struct {
 	ProxyPort        uint32
 	StartAt          int64
 	FastSync         string
+	Mempool          string
 	StateSync        bool
 	Database         string
 	ABCIProtocol     Protocol
@@ -133,9 +135,13 @@ func LoadTestnet(file string) (*Testnet, error) {
 		Evidence:         manifest.Evidence,
 		KeyType:          "ed25519",
 		LogLevel:         manifest.LogLevel,
+		TxSize:           manifest.TxSize,
 	}
 	if len(manifest.KeyType) != 0 {
 		testnet.KeyType = manifest.KeyType
+	}
+	if testnet.TxSize <= 0 {
+		testnet.TxSize = 1024
 	}
 	if manifest.InitialHeight > 0 {
 		testnet.InitialHeight = manifest.InitialHeight
@@ -163,14 +169,15 @@ func LoadTestnet(file string) (*Testnet, error) {
 			PrivvalProtocol:  ProtocolFile,
 			StartAt:          nodeManifest.StartAt,
 			FastSync:         nodeManifest.FastSync,
+			Mempool:          nodeManifest.Mempool,
 			StateSync:        nodeManifest.StateSync,
 			PersistInterval:  1,
 			SnapshotInterval: nodeManifest.SnapshotInterval,
 			RetainBlocks:     nodeManifest.RetainBlocks,
 			Perturbations:    []Perturbation{},
 			LogLevel:         manifest.LogLevel,
-			DisableLegacyP2P: manifest.DisableLegacyP2P,
 			QueueType:        manifest.QueueType,
+			DisableLegacyP2P: manifest.DisableLegacyP2P || nodeManifest.DisableLegacyP2P,
 		}
 
 		if node.StartAt == testnet.InitialHeight {
@@ -218,14 +225,20 @@ func LoadTestnet(file string) (*Testnet, error) {
 			if peer == nil {
 				return nil, fmt.Errorf("unknown persistent peer %q for node %q", peerName, node.Name)
 			}
+			if peer.Mode == ModeLight {
+				return nil, fmt.Errorf("can not have a light client as a persistent peer (for %q)", node.Name)
+			}
 			node.PersistentPeers = append(node.PersistentPeers, peer)
 		}
 
 		// If there are no seeds or persistent peers specified, default to persistent
-		// connections to all other nodes.
+		// connections to all other full nodes.
 		if len(node.PersistentPeers) == 0 && len(node.Seeds) == 0 {
 			for _, peer := range testnet.Nodes {
 				if peer.Name == node.Name {
+					continue
+				}
+				if peer.Mode == ModeLight {
 					continue
 				}
 				node.PersistentPeers = append(node.PersistentPeers, peer)
@@ -319,6 +332,16 @@ func (n Node) Validate(testnet Testnet) error {
 	case "", "v0", "v2":
 	default:
 		return fmt.Errorf("invalid fast sync setting %q", n.FastSync)
+	}
+	switch n.Mempool {
+	case "", "v0", "v1":
+	default:
+		return fmt.Errorf("invalid mempool version %q", n.Mempool)
+	}
+	switch n.QueueType {
+	case "", "priority", "wdrr", "fifo":
+	default:
+		return fmt.Errorf("unsupported p2p queue type: %s", n.QueueType)
 	}
 	switch n.Database {
 	case "goleveldb", "cleveldb", "boltdb", "rocksdb", "badgerdb":

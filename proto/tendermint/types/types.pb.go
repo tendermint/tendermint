@@ -626,6 +626,8 @@ func (m *VoteExtension) GetAppDataSelfAuthenticating() []byte {
 	return nil
 }
 
+// VoteExtensionToSign is a subset of VoteExtension that is signed by the validators private key.
+// VoteExtensionToSign is extracted from an existing VoteExtension.
 type VoteExtensionToSign struct {
 	AppDataToSign []byte `protobuf:"bytes,1,opt,name=app_data_to_sign,json=appDataToSign,proto3" json:"app_data_to_sign,omitempty"`
 }

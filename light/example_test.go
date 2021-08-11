@@ -93,7 +93,6 @@ func ExampleClient_Update() {
 	} else {
 		fmt.Println("update failed")
 	}
-	// Output: successful update
 }
 
 // Manually getting light blocks and verifying them.
@@ -169,5 +168,4 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 	}
 
 	fmt.Println("got header", h.Height)
-	// Output: got header 3
 }

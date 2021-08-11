@@ -81,13 +81,14 @@ func createAndStartIndexerService(
 
 	eventSinks := []indexer.EventSink{}
 
-	// Check duplicated sinks.
+	// check for duplicated sinks
 	sinks := map[string]bool{}
 	for _, s := range config.TxIndex.Indexer {
 		sl := strings.ToLower(s)
 		if sinks[sl] {
 			return nil, nil, errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
 		}
+
 		sinks[sl] = true
 	}
 
@@ -95,25 +96,31 @@ loop:
 	for k := range sinks {
 		switch k {
 		case string(indexer.NULL):
-			// when we see null in the config, the eventsinks will be reset with the nullEventSink.
+			// When we see null in the config, the eventsinks will be reset with the
+			// nullEventSink.
 			eventSinks = []indexer.EventSink{null.NewEventSink()}
 			break loop
+
 		case string(indexer.KV):
 			store, err := dbProvider(&cfg.DBContext{ID: "tx_index", Config: config})
 			if err != nil {
 				return nil, nil, err
 			}
+
 			eventSinks = append(eventSinks, kv.NewEventSink(store))
+
 		case string(indexer.PSQL):
 			conn := config.TxIndex.PsqlConn
 			if conn == "" {
 				return nil, nil, errors.New("the psql connection settings cannot be empty")
 			}
+
 			es, _, err := psql.NewEventSink(conn, chainID)
 			if err != nil {
 				return nil, nil, err
 			}
 			eventSinks = append(eventSinks, es)
+
 		default:
 			return nil, nil, errors.New("unsupported event sink type")
 		}
@@ -365,10 +372,7 @@ func createBlockchainReactor(
 		return reactorShim, reactor, nil
 
 	case cfg.BlockchainV2:
-		reactor := bcv2.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync, metrics)
-		reactor.SetLogger(logger)
-
-		return nil, reactor, nil
+		return nil, nil, errors.New("fastsync version v2 is no longer supported. Please use v0")
 
 	default:
 		return nil, nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
@@ -566,7 +570,7 @@ func createSwitch(
 	evidenceReactor *p2p.ReactorShim,
 	proxyApp proxy.AppConns,
 	nodeInfo types.NodeInfo,
-	nodeKey p2p.NodeKey,
+	nodeKey types.NodeKey,
 	p2pLogger log.Logger,
 ) *p2p.Switch {
 
@@ -644,7 +648,7 @@ func createSwitch(
 }
 
 func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
-	p2pLogger log.Logger, nodeKey p2p.NodeKey) (pex.AddrBook, error) {
+	p2pLogger log.Logger, nodeKey types.NodeKey) (pex.AddrBook, error) {
 
 	addrBook := pex.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
 	addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
@@ -709,7 +713,7 @@ func createPEXReactorV2(
 
 func makeNodeInfo(
 	config *cfg.Config,
-	nodeKey p2p.NodeKey,
+	nodeKey types.NodeKey,
 	eventSinks []indexer.EventSink,
 	genDoc *types.GenesisDoc,
 	state sm.State,
@@ -778,7 +782,7 @@ func makeNodeInfo(
 
 func makeSeedNodeInfo(
 	config *cfg.Config,
-	nodeKey p2p.NodeKey,
+	nodeKey types.NodeKey,
 	genDoc *types.GenesisDoc,
 	state sm.State,
 ) (types.NodeInfo, error) {

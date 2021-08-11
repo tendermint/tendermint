@@ -202,7 +202,7 @@ format:
 
 lint:
 	@echo "--> Running linter"
-	@golangci-lint run
+	go run github.com/golangci/golangci-lint/cmd/golangci-lint run
 .PHONY: lint
 
 DESTINATION = ./index.html.md
@@ -230,6 +230,15 @@ build-docker: build-linux
 	docker build --label=tendermint --tag="tendermint/tendermint" DOCKER
 	rm -rf DOCKER/tendermint
 .PHONY: build-docker
+
+
+###############################################################################
+###                       Mocks 											###
+###############################################################################
+
+mockery:
+	go generate -run="mockery" ./...
+.PHONY: mockery
 
 ###############################################################################
 ###                       Local testnet using docker                        ###

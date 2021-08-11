@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/tendermint/tendermint/internal/p2p"
 	tmjson "github.com/tendermint/tendermint/libs/json"
+	"github.com/tendermint/tendermint/types"
 )
 
 // GenNodeKeyCmd allows the generation of a node key. It prints JSON-encoded
@@ -20,7 +20,7 @@ var GenNodeKeyCmd = &cobra.Command{
 }
 
 func genNodeKey(cmd *cobra.Command, args []string) error {
-	nodeKey := p2p.GenNodeKey()
+	nodeKey := types.GenNodeKey()
 
 	bz, err := tmjson.Marshal(nodeKey)
 	if err != nil {
