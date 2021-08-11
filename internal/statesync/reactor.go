@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"runtime/debug"
 	"sort"
 	"time"
 
@@ -94,12 +95,18 @@ const (
 
 	// lightBlockResponseTimeout is how long the dispatcher waits for a peer to
 	// return a light block
-	lightBlockResponseTimeout = 10 * time.Second
+	lightBlockResponseTimeout = 30 * time.Second
 
 	// maxLightBlockRequestRetries is the amount of retries acceptable before
 	// the backfill process aborts
 	maxLightBlockRequestRetries = 20
 )
+
+// SyncReactor defines an interface used for testing abilities of node.startStateSync.
+type SyncReactor interface {
+	Sync(context.Context, StateProvider, time.Duration) (sm.State, error)
+	Backfill(sm.State) error
+}
 
 // Reactor handles state sync, both restoring snapshots for the local node and
 // serving snapshots for other nodes.
@@ -221,6 +228,11 @@ func (r *Reactor) Sync(
 		return sm.State{}, errors.New("a state sync is already in progress")
 	}
 
+	if stateProvider == nil {
+		r.mtx.Unlock()
+		return sm.State{}, errors.New("the stateProvider should not be nil when doing the state sync")
+	}
+
 	r.syncer = newSyncer(
 		r.cfg,
 		r.Logger,
@@ -280,7 +292,9 @@ func (r *Reactor) Backfill(state sm.State) error {
 	return r.backfill(
 		context.Background(),
 		state.ChainID,
-		state.LastBlockHeight, stopHeight,
+		state.LastBlockHeight,
+		stopHeight,
+		state.InitialHeight,
 		state.LastBlockID,
 		stopTime,
 	)
@@ -289,7 +303,7 @@ func (r *Reactor) Backfill(state sm.State) error {
 func (r *Reactor) backfill(
 	ctx context.Context,
 	chainID string,
-	startHeight, stopHeight int64,
+	startHeight, stopHeight, initialHeight int64,
 	trustedBlockID types.BlockID,
 	stopTime time.Time,
 ) error {
@@ -302,7 +316,7 @@ func (r *Reactor) backfill(
 		lastChangeHeight int64 = startHeight
 	)
 
-	queue := newBlockQueue(startHeight, stopHeight, stopTime, maxLightBlockRequestRetries)
+	queue := newBlockQueue(startHeight, stopHeight, initialHeight, stopTime, maxLightBlockRequestRetries)
 
 	// fetch light blocks across four workers. The aim with deploying concurrent
 	// workers is to equate the network messaging time with the verification
@@ -310,12 +324,17 @@ func (r *Reactor) backfill(
 	// waiting on blocks. If it takes 4s to retrieve a block and 1s to verify
 	// it, then steady state involves four workers.
 	for i := 0; i < int(r.cfg.Fetchers); i++ {
+		ctxWithCancel, cancel := context.WithCancel(ctx)
+		defer cancel()
 		go func() {
 			for {
 				select {
 				case height := <-queue.nextHeight():
 					r.Logger.Debug("fetching next block", "height", height)
-					lb, peer, err := r.dispatcher.LightBlock(ctx, height)
+					lb, peer, err := r.dispatcher.LightBlock(ctxWithCancel, height)
+					if errors.Is(err, context.Canceled) {
+						return
+					}
 					if err != nil {
 						queue.retry(height)
 						if errors.Is(err, errNoConnectedPeers) {
@@ -332,8 +351,8 @@ func (r *Reactor) backfill(
 					if lb == nil {
 						r.Logger.Info("backfill: peer didn't have block, fetching from another peer", "height", height)
 						queue.retry(height)
-						// as we are fetching blocks backwards, if this node doesn't have the block it likely doesn't
-						// have any prior ones, thus we remove it from the peer list
+						// As we are fetching blocks backwards, if this node doesn't have the block it likely doesn't
+						// have any prior ones, thus we remove it from the peer list.
 						r.dispatcher.removePeer(peer)
 						continue
 					}
@@ -452,10 +471,11 @@ func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
 		}
 
 		for _, snapshot := range snapshots {
-			logger.Debug(
+			logger.Info(
 				"advertising snapshot",
 				"height", snapshot.Height,
 				"format", snapshot.Format,
+				"peer", envelope.From,
 			)
 			r.snapshotCh.Out <- p2p.Envelope{
 				To: envelope.From,
@@ -622,7 +642,6 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 	case *ssproto.LightBlockResponse:
 		if err := r.dispatcher.respond(msg.LightBlock, envelope.From); err != nil {
 			r.Logger.Error("error processing light block response", "err", err)
-			return err
 		}
 
 	default:
@@ -639,6 +658,11 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
+			r.Logger.Error(
+				"recovering from processing message panic",
+				"err", err,
+				"stack", string(debug.Stack()),
+			)
 		}
 	}()
 

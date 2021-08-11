@@ -61,9 +61,6 @@ func NewCLI() *CLI {
 			defer loadCancel()
 			go func() {
 				err := Load(ctx, cli.testnet, 1)
-				if err != nil {
-					logger.Error(fmt.Sprintf("Transaction load failed: %v", err.Error()))
-				}
 				chLoadResult <- err
 			}()
 
@@ -88,16 +85,16 @@ func NewCLI() *CLI {
 				if err := InjectEvidence(cli.testnet, cli.testnet.Evidence); err != nil {
 					return err
 				}
-				if err := Wait(cli.testnet, 1); err != nil { // ensure chain progress
+				if err := Wait(cli.testnet, 5); err != nil { // ensure chain progress
 					return err
 				}
 			}
 
 			loadCancel()
 			if err := <-chLoadResult; err != nil {
-				return err
+				return fmt.Errorf("transaction load failed: %w", err)
 			}
-			if err := Wait(cli.testnet, 8); err != nil { // wait for network to settle before tests
+			if err := Wait(cli.testnet, 5); err != nil { // wait for network to settle before tests
 				return err
 			}
 			if err := Test(cli.testnet); err != nil {
@@ -238,10 +235,7 @@ func NewCLI() *CLI {
 		Example: "runner logs validator03",
 		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 1 {
-				return execComposeVerbose(cli.testnet.Dir, "logs", args[0])
-			}
-			return execComposeVerbose(cli.testnet.Dir, "logs")
+			return execComposeVerbose(cli.testnet.Dir, append([]string{"logs", "--no-color"}, args...)...)
 		},
 	})
 
@@ -282,9 +276,6 @@ Does not run any perbutations.
 			defer loadCancel()
 			go func() {
 				err := Load(ctx, cli.testnet, 1)
-				if err != nil {
-					logger.Error(fmt.Sprintf("Transaction load failed: %v", err.Error()))
-				}
 				chLoadResult <- err
 			}()
 

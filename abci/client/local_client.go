@@ -232,6 +232,20 @@ func (app *localClient) VerifyVoteExtensionAsync(
 	), nil
 }
 
+func (app *localClient) PrepareProposalAsync(
+	ctx context.Context,
+	req types.RequestPrepareProposal,
+) (*ReqRes, error) {
+  app.mtx.Lock()
+  defer app.mtx.Unlock()
+
+  res := app.Application.PrepareProposal(req)
+	return app.callback(
+		types.ToRequestPrepareProposal(req),
+		types.ToResponsePrepareProposal(res),
+  ), nil
+}
+
 //-------------------------------------------------------
 
 func (app *localClient) FlushSync(ctx context.Context) error {
@@ -393,6 +407,17 @@ func (app *localClient) VerifyVoteExtensionSync(
 	defer app.mtx.Unlock()
 
 	res := app.Application.VerifyVoteExtension(req)
+  return &res, nil
+}
+
+func (app *localClient) PrepareProposalSync(
+	ctx context.Context,
+	req types.RequestPrepareProposal,
+) (*types.ResponsePrepareProposal, error) {
+  app.mtx.Lock()
+  defer app.mtx.Unlock()
+
+	res := app.Application.PrepareProposal(req)
 	return &res, nil
 }
 

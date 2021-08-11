@@ -29,6 +29,7 @@ var (
 		ListenAddr: "0.0.0.0:0",
 		Network:    "test",
 		Moniker:    string(selfID),
+		Channels:   []byte{0x01, 0x02},
 	}
 
 	peerKey  crypto.PrivKey = ed25519.GenPrivKeyFromSecret([]byte{0x84, 0xd7, 0x01, 0xbf, 0x83, 0x20, 0x1c, 0xfe})
@@ -38,5 +39,6 @@ var (
 		ListenAddr: "0.0.0.0:0",
 		Network:    "test",
 		Moniker:    string(peerID),
+		Channels:   []byte{0x01, 0x02},
 	}
 )

@@ -180,6 +180,15 @@ func (app *PersistentKVStoreApplication) VerifyVoteExtension(
 	return types.ResponseVerifyVoteExtension{}
 }
 
+func (app *PersistentKVStoreApplication) PrepareProposal(
+	req types.RequestPrepareProposal) types.ResponsePrepareProposal {
+	if len(req.BlockData) >= 1 {
+		req.BlockData[1] = []byte("modified tx")
+	}
+
+	return types.ResponsePrepareProposal{BlockData: req.BlockData}
+}
+
 //---------------------------------------------
 // update validators
 

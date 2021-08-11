@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPanicOnMaxLength(t *testing.T) {
@@ -252,16 +253,9 @@ func TestScanRightDeleteRandom(t *testing.T) {
 	// time.Sleep(time.Second * 1)
 
 	// And remove all the elements.
-	// we detach the prev/next element in CList.Remove, so just assign l.Front direcly.
-	halfElements := numElements / 2
-	for el := l.Front(); el != nil && halfElements > 0; el = l.Front() {
+	for el := l.Front(); el != nil; el = el.Next() {
 		l.Remove(el)
-		halfElements--
 	}
-
-	// remove the rest half elements in the CList
-	l.Clear()
-
 	if l.Len() != 0 {
 		t.Fatal("Failed to remove all elements from CList")
 	}
@@ -340,4 +334,51 @@ FOR_LOOP2:
 	if pushed != seen {
 		t.Fatalf("number of pushed items (%d) not equal to number of seen items (%d)", pushed, seen)
 	}
+}
+
+func TestRemoved(t *testing.T) {
+	l := New()
+	el1 := l.PushBack(1)
+	el2 := l.PushBack(2)
+	l.Remove(el1)
+	require.True(t, el1.Removed())
+	require.False(t, el2.Removed())
+}
+
+func TestNextWaitChan(t *testing.T) {
+	l := New()
+	el1 := l.PushBack(1)
+	t.Run("tail element should not have a closed nextWaitChan", func(t *testing.T) {
+		select {
+		case <-el1.NextWaitChan():
+			t.Fatal("nextWaitChan should not have been closed")
+		default:
+		}
+	})
+
+	el2 := l.PushBack(2)
+	t.Run("adding element should close tail nextWaitChan", func(t *testing.T) {
+		select {
+		case <-el1.NextWaitChan():
+			require.NotNil(t, el1.Next())
+		default:
+			t.Fatal("nextWaitChan should have been closed")
+		}
+
+		select {
+		case <-el2.NextWaitChan():
+			t.Fatal("nextWaitChan should not have been closed")
+		default:
+		}
+	})
+
+	t.Run("removing element should close its nextWaitChan", func(t *testing.T) {
+		l.Remove(el2)
+		select {
+		case <-el2.NextWaitChan():
+			require.Nil(t, el2.Next())
+		default:
+			t.Fatal("nextWaitChan should have been closed")
+		}
+	})
 }

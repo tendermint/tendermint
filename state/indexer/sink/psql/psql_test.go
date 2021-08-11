@@ -293,6 +293,7 @@ func verifyBlock(h int64) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer rows.Close()
 
 	if !rows.Next() {
 		return false, nil
@@ -308,6 +309,7 @@ func verifyBlock(h int64) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer rows.Close()
 
 	return rows.Next(), nil
 }

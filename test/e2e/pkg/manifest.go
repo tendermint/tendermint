@@ -64,6 +64,9 @@ type Manifest struct {
 
 	// QueueType describes the type of queue that the system uses internally
 	QueueType string `toml:"queue_type"`
+
+	// Number of bytes per tx. Default is 1kb (1024)
+	TxSize int64
 }
 
 // ManifestNode represents a node in a testnet manifest.
@@ -107,6 +110,9 @@ type ManifestNode struct {
 	// Defaults to disabled.
 	FastSync string `toml:"fast_sync"`
 
+	// Mempool specifies which version of mempool to use. Either "v0" or "v1"
+	Mempool string `toml:"mempool_version"`
+
 	// StateSync enables state sync. The runner automatically configures trusted
 	// block hashes and RPC servers. At least one node in the network must have
 	// SnapshotInterval set to non-zero, and the state syncing node must have
@@ -143,10 +149,6 @@ type ManifestNode struct {
 
 	// UseNewP2P enables use of the new p2p layer for this node.
 	DisableLegacyP2P bool `toml:"disable_legacy_p2p"`
-
-	// QueueType describes the type of queue that the p2p layer
-	// uses internally.
-	QueueType string `toml:"queue_type"`
 }
 
 // Save saves the testnet manifest to a file.

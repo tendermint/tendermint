@@ -18,7 +18,7 @@ graceful here, but that's for another day.
 
 It's possible to fool lite clients without there being a fork on the
 main chain - so called Fork-Lite. See the
-[fork accountability](https://docs.tendermint.com/master/spec/consensus/fork-accountability.html)
+[fork accountability](https://docs.tendermint.com/master/spec/light-client/accountability/)
 document for more details. For a sequential lite client, this can happen via
 equivocation or amnesia attacks. For a skipping lite client this can also happen
 via lunatic validator attacks. There must be some way for applications to punish

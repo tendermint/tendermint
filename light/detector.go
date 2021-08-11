@@ -78,7 +78,10 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 				"witness", c.witnesses[e.WitnessIndex], "err", err)
 			witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
 		default:
-			c.logger.Debug("error in light block request to witness", "err", err)
+			if errors.Is(e, context.Canceled) || errors.Is(e, context.DeadlineExceeded) {
+				return e
+			}
+			c.logger.Info("error in light block request to witness", "err", err)
 		}
 	}
 
@@ -115,7 +118,7 @@ func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan erro
 
 	// the witness hasn't been helpful in comparing headers, we mark the response and continue
 	// comparing with the rest of the witnesses
-	case provider.ErrNoResponse, provider.ErrLightBlockNotFound:
+	case provider.ErrNoResponse, provider.ErrLightBlockNotFound, context.DeadlineExceeded, context.Canceled:
 		errc <- err
 		return
 
@@ -128,7 +131,11 @@ func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan erro
 		var isTargetHeight bool
 		isTargetHeight, lightBlock, err = c.getTargetBlockOrLatest(ctx, h.Height, witness)
 		if err != nil {
-			errc <- err
+			if c.providerShouldBeRemoved(err) {
+				errc <- errBadWitness{Reason: err, WitnessIndex: witnessIndex}
+			} else {
+				errc <- err
+			}
 			return
 		}
 
@@ -152,7 +159,11 @@ func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan erro
 		time.Sleep(2*c.maxClockDrift + c.maxBlockLag)
 		isTargetHeight, lightBlock, err = c.getTargetBlockOrLatest(ctx, h.Height, witness)
 		if err != nil {
-			errc <- errBadWitness{Reason: err, WitnessIndex: witnessIndex}
+			if c.providerShouldBeRemoved(err) {
+				errc <- errBadWitness{Reason: err, WitnessIndex: witnessIndex}
+			} else {
+				errc <- err
+			}
 			return
 		}
 		if isTargetHeight {

@@ -140,6 +140,7 @@ func testOutboundPeerConn(
 type remotePeer struct {
 	PrivKey    crypto.PrivKey
 	Config     *config.P2PConfig
+	Network    string
 	addr       *NetAddress
 	channels   bytes.HexBytes
 	listenAddr string
@@ -222,7 +223,7 @@ func (rp *remotePeer) accept() {
 }
 
 func (rp *remotePeer) nodeInfo() types.NodeInfo {
-	return types.NodeInfo{
+	ni := types.NodeInfo{
 		ProtocolVersion: defaultProtocolVersion,
 		NodeID:          rp.Addr().ID,
 		ListenAddr:      rp.listener.Addr().String(),
@@ -231,4 +232,8 @@ func (rp *remotePeer) nodeInfo() types.NodeInfo {
 		Channels:        rp.channels,
 		Moniker:         "remote_peer",
 	}
+	if rp.Network != "" {
+		ni.Network = rp.Network
+	}
+	return ni
 }

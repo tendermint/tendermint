@@ -21,7 +21,9 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [cli] \#6372 Introduce `BootstrapPeers` as part of the new p2p stack. Peers to be connected on  startup (@cmwaters)
   - [config] \#6462 Move `PrivValidator` configuration out of `BaseConfig` into its own section. (@tychoish)
   - [rpc] \#6610 Add MaxPeerBlockHeight into /status rpc call (@JayT106)
-  - [libs/CList] \#6626 Automatically detach the prev/next elements in Remove function (@JayT106)
+  - [fastsync/rpc] \#6620 Add TotalSyncedTime & RemainingTime to SyncInfo in /status RPC  (@JayT106)
+  - [rpc/grpc] \#6725 Mark gRPC in the RPC layer as deprecated.
+  - [blockchain/v2] \#6730 Fast Sync v2 is deprecated, please use v0
 
 - Apps
   - [ABCI] \#6408 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)
@@ -30,6 +32,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [ABCI] \#5818 Use protoio for msg length delimitation. Migrates from int64 to uint64 length delimiters.
   - [Version] \#6494 `TMCoreSemVer` has been renamed to `TMVersion`.
     - It is not required any longer to set ldflags to set version strings
+  - [abci/counter] \#6684 Delete counter example app
 
 - P2P Protocol
 
@@ -66,6 +69,8 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
     Some core types have been kept in the `mempool` package such as `TxCache` and it's implementations, the `Mempool` interface itself
     and `TxInfo`. (@alexanderbez)
   - [crypto/sr25519] \#6526 Do not re-execute the Ed25519-style key derivation step when doing signing and verification.  The derivation is now done once and only once.  This breaks `sr25519.GenPrivKeyFromSecret` output compatibility. (@Yawning)
+  - [types] \#6627 Move `NodeKey` to types to make the type public. 
+  - [config] \#6627 Extend `config` to contain methods `LoadNodeKeyID` and `LoadorGenNodeKeyID`
 
 - Blockchain Protocol
 
@@ -93,6 +98,8 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - Applications that do not specify a priority, i.e. zero, will have transactions reaped by the order in which they are received by the node.
   - Transactions are gossiped in FIFO order as they are in `v0`.
 - [config/indexer] \#6411 Introduce support for custom event indexing data sources, specifically PostgreSQL. (@JayT106)
+- [fastsync/event] \#6619 Emit fastsync status event when switching consensus/fastsync (@JayT106)
+- [statesync/event] \#6700 Emit statesync status start/end event (@JayT106)
 
 ### IMPROVEMENTS
 - [libs/log] Console log formatting changes as a result of \#6534 and \#6589. (@tychoish)
@@ -145,3 +152,5 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [rpc] \#6507 fix RPC client doesn't handle url's without ports (@JayT106)
 - [statesync] \#6463 Adds Reverse Sync feature to fetch historical light blocks after state sync in order to verify any evidence (@cmwaters)
 - [fastsync] \#6590 Update the metrics during fast-sync (@JayT106)
+- [gitignore] \#6668 Fix gitignore of abci-cli (@tanyabouman)
+- [light] \#6687 Fix bug with incorrecly handled contexts in the light client (@cmwaters)

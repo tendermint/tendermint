@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/internal/p2p"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
@@ -76,7 +75,7 @@ func initFilesWithConfig(config *cfg.Config) error {
 	if tmos.FileExists(nodeKeyFile) {
 		logger.Info("Found node key", "path", nodeKeyFile)
 	} else {
-		if _, err := p2p.LoadOrGenNodeKey(nodeKeyFile); err != nil {
+		if _, err := types.LoadOrGenNodeKey(nodeKeyFile); err != nil {
 			return err
 		}
 		logger.Info("Generated node key", "path", nodeKeyFile)
