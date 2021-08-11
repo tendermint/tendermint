@@ -537,14 +537,6 @@ func (pv *FilePV) String() string {
 func (pv *FilePV) UpdatePrivateKey(
 	privateKey crypto.PrivKey, quorumHash crypto.QuorumHash, thresholdPublicKey crypto.PubKey, height int64,
 ) {
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println("Updating the private keys")
-	fmt.Println(quorumHash)
 	pv.Key.PrivateKeys[quorumHash.String()] = crypto.QuorumKeys{
 		PrivKey:            privateKey,
 		PubKey:             privateKey.PubKey(),
@@ -576,11 +568,9 @@ func (pv *FilePV) signVote(
 	}
 
 	sameHRS, err := lss.CheckHRS(height, round, step)
-	fmt.Println("Checking sameHRS")
 	if err != nil {
 		return err
 	}
-	fmt.Println("Passed sameHRS check")
 
 	blockSignID := types.VoteBlockSignID(chainID, vote, quorumType, quorumHash)
 
@@ -595,9 +585,7 @@ func (pv *FilePV) signVote(
 	// If signbytes are the same, use the last signature.
 	// If they only differ by timestamp, use last timestamp and signature
 	// Otherwise, return error
-	fmt.Println("If samhrs")
 	if sameHRS {
-		fmt.Println("It is sameHRS")
 
 		if bytes.Equal(blockSignBytes, lss.BlockSignBytes) && bytes.Equal(stateSignBytes, lss.StateSignBytes) {
 			vote.BlockSignature = lss.BlockSignature
@@ -607,25 +595,11 @@ func (pv *FilePV) signVote(
 		}
 		return err
 	}
-	fmt.Println("Is not sameHRS")
 
-	fmt.Println("Checking if the quorum hash is in the private keys list??")
 	var privKey crypto.PrivKey
-	fmt.Println("Needed Quorum Hash", quorumHash)
-
-	// Failed to sign bug
-	// A quorum has would be in at time t
-	// and be out at time t+1
-	fmt.Println("These are the private keys")
-	fmt.Println(pv.Key.PrivateKeys)
-	for wisdomk, _ := range pv.Key.PrivateKeys {
-		fmt.Println(wisdomk)
-	}
 	if quorumKeys, ok := pv.Key.PrivateKeys[quorumHash.String()]; ok {
-		fmt.Println("In")
 		privKey = quorumKeys.PrivKey
 	} else {
-		fmt.Println("Not in")
 		return fmt.Errorf("file private validator could not sign vote for quorum hash %v", quorumHash)
 	}
 
