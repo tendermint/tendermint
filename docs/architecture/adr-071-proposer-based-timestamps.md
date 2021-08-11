@@ -190,14 +190,12 @@ type Vote struct {
 	Type             tmproto.SignedMsgType `json:"type"`
 	Height           int64                 `json:"height"`
 	Round            int32                 `json:"round"` // proposal/vote round   
-	ForBlock         bool                  `json:"for_block"` // false if vote is nil.
+	BlockID          BlockID               `json:"block_id"` // zero if vote is nil.
 	ValidatorIndex   int32                 `json:"validator_index"`
+	ValidatorAddress Address               `json:"validator_address"`
 	Signature        []byte                `json:"signature"`
 }
 ```
-
-`BlockID` is also dropped as it is also stored by all validators.
-`ValidatorIndex` is all that is needed to determine `ValidatorAddress` so it is dropped as well.
 
 ### New consensus parameters
 
