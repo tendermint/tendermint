@@ -16,7 +16,7 @@ Tendermint currently provides a monotonically increasing source of time known as
 This mechanism for producing a source of time is reasonably simple.
 Each correct validator adds a timestamp to each `Precommit` message it sends.
 The timestamp it sends is either the validator's local time or one millisecond greater than the previous block time, depending on which value is greater.
-When a block is produced, its block timestamp is chosen as the weighted median of the times in all of the `Precommit` message.
+When a block is produced, the proposer chooses the block timestamp as the weighted median of the times in all of the `Precommit` messages the proposer received.
 The weighting is proportional to the amount of voting power, or stake, a validator has on the network.
 This mechanism for producing timestamps is both deterministic and byzantine fault tolerant.
  
