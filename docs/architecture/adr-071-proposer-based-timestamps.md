@@ -109,23 +109,13 @@ The [CommitSig](https://github.com/tendermint/tendermint/blob/a419f4df76fe4aed66
 This timestamp is the local time of the validator when it issued a `Precommit` for the block.
 This timestamp is no longer used and will be removed in this change.
 
-`CommitSig` currently contains the following fields: 
+`CommitSig` will be updated as follows:
 
-```go
+```diff
 type CommitSig struct {
 	BlockIDFlag      BlockIDFlag `json:"block_id_flag"`
 	ValidatorAddress Address     `json:"validator_address"`
-	Timestamp        time.Time   `json:"timestamp"`
-	Signature        []byte      `json:"signature"`
-}
-```
-
-`CommitSig` will be updated to contain the following fields: 
-
-```go
-type CommitSig struct {
-	BlockIDFlag      BlockIDFlag `json:"block_id_flag"`
-	ValidatorAddress Address     `json:"validator_address"`
+--	Timestamp        time.Time   `json:"timestamp"`
 	Signature        []byte      `json:"signature"`
 }
 ```
@@ -136,24 +126,13 @@ The [Commit](https://github.com/tendermint/tendermint/blob/a419f4df76fe4aed668a6
 The timestamps in the `Commit.CommitSig` entries are currently used to build the block timestamp.
 With these timestamps removed, the commit time will instead be stored in the `Commit` struct.
 
-`Commit` currently contains the following fields: 
+`Commit` will be updated as follows. 
 
-```go
+```diff
 type Commit struct {
 	Height     int64       `json:"height"`
 	Round      int32       `json:"round"`
-	BlockID    BlockID     `json:"block_id"`
-	Signatures []CommitSig `json:"signatures"`
-}
-```
-
-`Commit` will be updated to contain the following fields: 
-
-```go
-type Commit struct {
-	Height     int64       `json:"height"`
-	Round      int32       `json:"round"`
-	Timestamp   time.Time   `json:"timestamp"` 
+++	Timestamp   time.Time  `json:"timestamp"` 
 	BlockID    BlockID     `json:"block_id"`
 	Signatures []CommitSig `json:"signatures"`
 }
@@ -169,31 +148,17 @@ For prevotes, this field is unused.
 Proposer-based timestamps will use the [RoundState.Proposal](https://github.com/tendermint/tendermint/blob/c3ae6f5b58e07b29c62bfdc5715b6bf8ae5ee951/internal/consensus/types/round_state.go#L76) timestamp to construct the `signedBytes` `CommitSig`.
 This timestamp is therefore no longer useful and will be dropped.
 
-`Vote` currently contains the following fields:
+`Vote` will be updated as follows:
 
-```go
+```diff
 type Vote struct {
 	Type             tmproto.SignedMsgType `json:"type"`
 	Height           int64                 `json:"height"`
 	Round            int32                 `json:"round"`    
 	BlockID          BlockID               `json:"block_id"` // zero if vote is nil.
-	Timestamp        time.Time             `json:"timestamp"`
+--	Timestamp        time.Time             `json:"timestamp"`
 	ValidatorAddress Address               `json:"validator_address"`
 	ValidatorIndex   int32                 `json:"validator_index"`
-	Signature        []byte                `json:"signature"`
-}
-```
-
-`Vote` will be changed to contain the following fields:
-
-```go
-type Vote struct {
-	Type             tmproto.SignedMsgType `json:"type"`
-	Height           int64                 `json:"height"`
-	Round            int32                 `json:"round"` // proposal/vote round   
-	BlockID          BlockID               `json:"block_id"` // zero if vote is nil.
-	ValidatorIndex   int32                 `json:"validator_index"`
-	ValidatorAddress Address               `json:"validator_address"`
 	Signature        []byte                `json:"signature"`
 }
 ```
@@ -243,46 +208,15 @@ This timestamp is set as the `BFTtime` derived from the block's `LastCommit.Comm
 This timestamp will no longer be derived from the `LastCommit.CommitSig` timestamps and will instead be included directly into the block's `LastCommit`. 
 This timestamp can therefore be dropped from the header as it will be redundant information stored in both the `Header` and the `LastCommit`.
 
-`Header` currently contains the following fields: 
+`Header` will be updated as follows:
 
-```go
+```diff
 type Header struct {
 	// basic block info
 	Version version.Consensus `json:"version"`
 	ChainID string            `json:"chain_id"`
 	Height  int64             `json:"height"`
-	Time    time.Time         `json:"time"`
-
-	// prev block info
-	LastBlockID BlockID `json:"last_block_id"`
-
-	// hashes of block data
-	LastCommitHash tmbytes.HexBytes `json:"last_commit_hash"` 
-	DataHash       tmbytes.HexBytes `json:"data_hash"`        
-
-	// hashes from the app output from the prev block
-	ValidatorsHash     tmbytes.HexBytes `json:"validators_hash"`      
-	NextValidatorsHash tmbytes.HexBytes `json:"next_validators_hash"` 
-	ConsensusHash      tmbytes.HexBytes `json:"consensus_hash"`       
-	AppHash            tmbytes.HexBytes `json:"app_hash"`             
-
-	// root hash of all results from the txs from the previous block
-	LastResultsHash tmbytes.HexBytes `json:"last_results_hash"`
-
-	// consensus info
-	EvidenceHash    tmbytes.HexBytes `json:"evidence_hash"`    
-	ProposerAddress Address          `json:"proposer_address"` 
-}
-```
-
-`Header` will be updated to contain the following fields: 
-
-```go
-type Header struct {
-	// basic block info
-	Version version.Consensus `json:"version"`
-	ChainID string            `json:"chain_id"`
-	Height  int64             `json:"height"`
+--	Time    time.Time         `json:"time"`
 
 	// prev block info
 	LastBlockID BlockID `json:"last_block_id"`
