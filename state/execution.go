@@ -131,11 +131,18 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 func (blockExec *BlockExecutor) ApplyBlock(
 	state State, blockID types.BlockID, block *types.Block,
 ) (State, int64, error) {
+	trc := &Tracer{}
+	defer trc.dump(
+		fmt.Sprintf("ApplyBlock<%d>, tx<%d>", block.Height, len(block.Data.Txs)),
+		blockExec.logger.With("module", "main"),
+	)
 
+	trc.pin("validateBlock")
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, 0, ErrInvalidBlock(err)
 	}
 
+	trc.pin("abci")
 	startTime := time.Now().UnixNano()
 	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
 	endTime := time.Now().UnixNano()
@@ -151,6 +158,8 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	fail.Fail() // XXX
 
+	trc.pin("validate")
+
 	// validate the validator updates and convert to tendermint types
 	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
 	err = validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
@@ -165,11 +174,15 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		blockExec.logger.Info("Updates to validators", "updates", types.ValidatorListString(validatorUpdates))
 	}
 
+	trc.pin("updateState")
+
 	// Update the state with the block and responses.
 	state, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
+
+	trc.pin("commit")
 
 	// Lock mempool, commit app state, update mempoool.
 	appHash, retainHeight, err := blockExec.Commit(state, block, abciResponses.DeliverTxs)
@@ -177,10 +190,14 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
 
+	trc.pin("evpool")
+
 	// Update evpool with the block and state.
 	blockExec.evpool.Update(block, state)
 
 	fail.Fail() // XXX
+
+	trc.pin("saveState")
 
 	// Update the app hash and save the state.
 	state.AppHash = appHash
