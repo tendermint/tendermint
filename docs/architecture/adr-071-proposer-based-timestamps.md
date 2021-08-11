@@ -205,38 +205,40 @@ type TimestampParams struct {
 
 The [Header](https://github.com/tendermint/tendermint/blob/a419f4df76fe4aed668a6c74696deabb9fe73211/types/block.go#L338) struct currently contains a timestamp.
 This timestamp is set as the `BFTtime` derived from the block's `LastCommit.CommitSig` timestamps.
-This timestamp will no longer be derived from the `LastCommit.CommitSig` timestamps and will instead be included directly into the block's `LastCommit`. 
-This timestamp can therefore be dropped from the header as it will be redundant information stored in both the `Header` and the `LastCommit`.
+This timestamp will no longer be derived from the `LastCommit.CommitSig` timestamps and will instead be included directly into the block's `LastCommit`.
+This timestamp will therfore be identical in both the `Header` and the `LastCommit`.
+To clarify that the timestamp in the header corresponds to the `LastCommit`'s time, we will rename this timestamp field to `last_timestamp`.
 
 `Header` will be updated as follows:
 
 ```diff
 type Header struct {
 	// basic block info
-	Version version.Consensus `json:"version"`
-	ChainID string            `json:"chain_id"`
-	Height  int64             `json:"height"`
---	Time    time.Time         `json:"time"`
+	Version       version.Consensus `json:"version"`
+	ChainID       string            `json:"chain_id"`
+	Height        int64             `json:"height"`
+--	Time          time.Time         `json:"time"`
+++	LastTimestamp time.Time         `json:"last_timestamp"`
 
 	// prev block info
 	LastBlockID BlockID `json:"last_block_id"`
 
 	// hashes of block data
-	LastCommitHash tmbytes.HexBytes `json:"last_commit_hash"` 
-	DataHash       tmbytes.HexBytes `json:"data_hash"`        
+	LastCommitHash tmbytes.HexBytes `json:"last_commit_hash"`
+	DataHash       tmbytes.HexBytes `json:"data_hash"`
 
 	// hashes from the app output from the prev block
-	ValidatorsHash     tmbytes.HexBytes `json:"validators_hash"`      
-	NextValidatorsHash tmbytes.HexBytes `json:"next_validators_hash"` 
-	ConsensusHash      tmbytes.HexBytes `json:"consensus_hash"`       
-	AppHash            tmbytes.HexBytes `json:"app_hash"`             
+	ValidatorsHash     tmbytes.HexBytes `json:"validators_hash"`
+	NextValidatorsHash tmbytes.HexBytes `json:"next_validators_hash"`
+	ConsensusHash      tmbytes.HexBytes `json:"consensus_hash"`
+	AppHash            tmbytes.HexBytes `json:"app_hash"`
 
 	// root hash of all results from the txs from the previous block
 	LastResultsHash tmbytes.HexBytes `json:"last_results_hash"`
 
 	// consensus info
-	EvidenceHash    tmbytes.HexBytes `json:"evidence_hash"`    
-	ProposerAddress Address          `json:"proposer_address"` 
+	EvidenceHash    tmbytes.HexBytes `json:"evidence_hash"`
+	ProposerAddress Address          `json:"proposer_address"`
 }
 ```
 
