@@ -397,10 +397,12 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	proposal := types.NewProposal(vss[1].Height, 1, round, -1, blockID)
 	p := proposal.ToProto()
+	fmt.Println("Old sig", p.Signature)
 	if _, err := vss[1].SignProposal(config.ChainID(), genDoc.QuorumType, genDoc.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
+	fmt.Println("New sig", p.Signature)
 
 	// set the proposal block to state on node 0, this will result in a signed prevote,
 	// so we do not need to prevote with it again (hence the vss[1:nVals])
@@ -510,6 +512,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	selfIndex := valIndexFn(0)
 
+	fmt.Println("Number of validators", nVals)
 	// A new validator should come in
 	for i := 0; i < nVals+1; i++ {
 		if i == selfIndex {
@@ -573,9 +576,11 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	ensureNewRound(newRoundCh, height+1, 0)
 
 	// HEIGHT 6
-	//
+	// Remove one validator
 	updatedValidators6, _, newThresholdPublicKey, quorumHash6 := updateConsensusNetRemoveValidators(css, height,
 		1, false)
+	fmt.Println("Len of validator 6")
+	fmt.Println(len(updatedValidators6))
 	height++
 	updateTransactions3 := make([][]byte, len(updatedValidators6)+2)
 	for i := 0; i < len(updatedValidators6); i++ {
