@@ -57,7 +57,7 @@ Specifically, unbonding of delegated staked assets occurs after a period of days
 
 ## Decision
 
-No Decision. 
+Implement proposer-based timestamps and remove `BFTTime`.
 
 ## Detailed Design
 
