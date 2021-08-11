@@ -48,7 +48,8 @@ Using timestamps in our protocol means either accepting the timestamps as not re
 This design requires impacting the protocol’s liveness in order to make the timestamps more reliable.
 An alternate approach is to remove timestamps altogether from the block protocol.
 `BFTTime` is deterministic but may be arbitrarily inaccurate.
-This approach was not selected because a reliable source of time is quite useful for blockchain applications.
+However, having a reliable source of time is quite useful for blockchain applications.
+We therefore decided not to remove the timestamp. 
 Time is much more meaningful to humans than block height.
 Applications may wish for some transactions to occur on a certain day, on a regular period, or after some time following a different event.
 All of these require some meaningful representation of agreed upon time.
