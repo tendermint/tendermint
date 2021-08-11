@@ -16,7 +16,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// InspectCmd represents the base command when called without any subcommands
+// InspectCmd is the command for starting an inspect server.
 var InspectCmd = &cobra.Command{
 	Use:   "inspect",
 	Short: "Run an inspect server",
