@@ -36,6 +36,10 @@ func (env *Environment) NetInfo(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, e
 
 // UnsafeDialSeeds dials the given seeds (comma-separated id@IP:PORT).
 func (env *Environment) UnsafeDialSeeds(ctx *rpctypes.Context, seeds []string) (*ctypes.ResultDialSeeds, error) {
+	if env.P2PPeers == nil {
+		return nil, errors.New("peer management system does not support this operation")
+	}
+
 	if len(seeds) == 0 {
 		return &ctypes.ResultDialSeeds{}, fmt.Errorf("%w: no seeds provided", ctypes.ErrInvalidRequest)
 	}
@@ -52,6 +56,10 @@ func (env *Environment) UnsafeDialPeers(
 	ctx *rpctypes.Context,
 	peers []string,
 	persistent, unconditional, private bool) (*ctypes.ResultDialPeers, error) {
+
+	if env.P2PPeers == nil {
+		return nil, errors.New("peer management system does not support this operation")
+	}
 
 	if len(peers) == 0 {
 		return &ctypes.ResultDialPeers{}, fmt.Errorf("%w: no peers provided", ctypes.ErrInvalidRequest)
