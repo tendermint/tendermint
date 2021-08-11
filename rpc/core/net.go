@@ -13,19 +13,34 @@ import (
 // NetInfo returns network info.
 // More: https://docs.tendermint.com/master/rpc/#/Info/net_info
 func (env *Environment) NetInfo(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, error) {
-	peersList := env.P2PPeers.Peers().List()
-	peers := make([]ctypes.Peer, 0, len(peersList))
-	for _, peer := range peersList {
-		peers = append(peers, ctypes.Peer{
-			NodeInfo:         peer.NodeInfo(),
-			IsOutbound:       peer.IsOutbound(),
-			ConnectionStatus: peer.Status(),
-			RemoteIP:         peer.RemoteIP().String(),
-		})
+	var peers []ctypes.Peer
+
+	if env.P2PPeers != nil {
+		peersList := env.P2PPeers.Peers().List()
+		peers = make([]ctypes.Peer, 0, len(peersList))
+		for _, peer := range peersList {
+			peers = append(peers, ctypes.Peer{
+				ID:  peer.ID(),
+				URL: peer.SocketAddr().String(),
+			})
+		}
+	} else if env.PeerManager != nil {
+		peerList := env.PeerManager.Peers()
+		for _, peer := range peerList {
+			addrs := env.PeerManager.Addresses(peer)
+			if len(addrs) == 0 {
+				continue
+			}
+
+			peers = append(peers, ctypes.Peer{
+				ID:  peer,
+				URL: addrs[0].String(),
+			})
+		}
+	} else {
+		return nil, errors.New("peer management system does not support NetInfo responses.")
 	}
-	// TODO: Should we include PersistentPeers and Seeds in here?
-	// PRO: useful info
-	// CON: privacy
+
 	return &ctypes.ResultNetInfo{
 		Listening: env.P2PTransport.IsListening(),
 		Listeners: env.P2PTransport.Listeners(),
