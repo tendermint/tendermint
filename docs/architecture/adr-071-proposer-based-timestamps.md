@@ -15,26 +15,26 @@
 Tendermint currently provides a monotonically increasing source of time known as [BFTTime](https://github.com/tendermint/spec/blob/master/spec/consensus/bft-time.md).
 This mechanism for producing a source of time is reasonably simple.
 Each correct validator adds a timestamp to each `Precommit` message it sends.
-The timestamp it sends is either the validator's local time or one millisecond greater than the previous block time, depending on which value is greater.
+The timestamp it sends is either the validator's current known Unix time or one millisecond greater than the previous block time, depending on which value is greater.
 When a block is produced, the proposer chooses the block timestamp as the weighted median of the times in all of the `Precommit` messages the proposer received.
 The weighting is proportional to the amount of voting power, or stake, a validator has on the network.
 This mechanism for producing timestamps is both deterministic and byzantine fault tolerant.
  
 This current mechanism for producing timestamps has a few drawbacks.
-Validators do not have to agree at all on how close the selected block timestamp is to their own local time.
+Validators do not have to agree at all on how close the selected block timestamp is to their own currently known Unix time.
 Additionally, any amount of voting power `>1/3` may directly control the block timestamp.
 As a result, it is quite possible that the timestamp is not particularly meaningful.
 
 These drawbacks present issues in the Tendermint protocol.
 Timestamps are used by light clients to verify blocks.
-Light clients rely on correspondence between their local time and the block timestamp to verify blocks they see; 
-However, their local time may be greatly divergent from the block timestamp as a result of the limitations of `BFTtime`.
+Light clients rely on correspondence between their own currently known Unix time and the block timestamp to verify blocks they see; 
+However, their currently known Unix time may be greatly divergent from the block timestamp as a result of the limitations of `BFTTime`.
 
 The proposer-based timestamps specification suggests an alternative approach for producing block timestamps that remedies these issues.
 Proposer-based timestamps alter the current mechanism for producing block timestamps in two main ways:
 
-1. The block proposer is amended to offer up its local time as the timestamp for the next block. 
-1. Correct validators only approve the proposed block timestamp if it is close enough to their own local view of time. 
+1. The block proposer is amended to offer up its currently known Unix time as the timestamp for the next block. 
+1. Correct validators only approve the proposed block timestamp if it is close enough to their own currently known Unix time. 
 
 The result of these changes is a more meaningful timestamp that cannot be controlled by `<= 2/3` of the validator voting power. 
 This document outlines the necessary code changes in Tendermint to implement the corresponding [proposer-based timestamps specification](https://github.com/tendermint/spec/tree/master/spec/consensus/proposer-based-timestamp).
@@ -77,7 +77,7 @@ This design discusses two timestamps: (1) The timestamp in the block and (2) the
 The existence and use of both of these timestamps can get a bit confusing, so some background is given here to clarify their uses.
 
 The [proposal message currently has a timestamp](https://github.com/tendermint/tendermint/blob/e5312942e30331e7c42b75426da2c6c9c00ae476/types/proposal.go#L31).
-This timestamp is the local time of the proposer when sending the `Proposal` message.
+This timestamp is the current Unix time known to the proposer when sending the `Proposal` message.
 This timestamp is not currently used as part of consensus.
 The changes in this ADR will begin using the proposal message timestamp as part of consensus.
 We will refer to this as the **proposal timestamp** throughout this design.
@@ -103,14 +103,14 @@ The `LastCommit` is created at height `H-1` and is saved in the state store to b
 For proposer-based timestamps, the `LastCommit.CommitSig` timestamps will no longer be used to build the timestamps for height `H`.
 Instead, the proposal timestamp from height `H-1` will become the block timestamp for height `H`.
 To enable this, we will add a `Timestamp` field to the `Commit` struct.
-This field will be populated each height with the proposal timestamp decided on at the previous height.
+This field will be populated at each height with the proposal timestamp decided on at the previous height.
 This timestamp will also be saved with the rest of the commit in the state store [when the commit is finalized](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/internal/consensus/state.go#L1611) so that it can be recovered if Tendermint crashes.
 Changes to the `CommitSig` and `Commit` struct are detailed below. 
 
 ### Changes to `CommitSig`
 
 The [CommitSig](https://github.com/tendermint/tendermint/blob/a419f4df76fe4aed668a6c74696deabb9fe73211/types/block.go#L604) struct currently contains a timestamp. 
-This timestamp is the local time of the validator when it issued a `Precommit` for the block.
+This timestamp is the current Unix time known to the validator when it issued a `Precommit` for the block.
 This timestamp is no longer used and will be removed in this change.
 
 `CommitSig` will be updated as follows:
@@ -146,7 +146,7 @@ type Commit struct {
 
 `Precommit` and `Prevote` messages use a common [Vote struct](https://github.com/tendermint/tendermint/blob/a419f4df76fe4aed668a6c74696deabb9fe73211/types/vote.go#L50).
 This struct currently contains a timestamp.
-This timestamp is set using the [voteTime](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/internal/consensus/state.go#L2241) function and therefore vote times correspond to the validator’s local time.
+This timestamp is set using the [voteTime](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/internal/consensus/state.go#L2241) function and therefore vote times correspond to the current Unix time known to the validator.
 For precommits, this timestamp is used to construct the [CommitSig that is included in the block in the LastCommit](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/types/block.go#L754) field.
 For prevotes, this field is unused.
 Proposer-based timestamps will use the [RoundState.Proposal](https://github.com/tendermint/tendermint/blob/c3ae6f5b58e07b29c62bfdc5715b6bf8ae5ee951/internal/consensus/types/round_state.go#L76) timestamp to construct the `signedBytes` `CommitSig`.
@@ -174,13 +174,13 @@ These parameters are `PRECISION`, `MSGDELAY`, and `ACCURACY`.
 
 The `PRECISION` and `MSGDELAY` parameters are used to determine if the proposed timestamp is acceptable.
 A validator will only Prevote a proposal if the proposal timestamp is considered `timely`.
-A proposal timestamp is considered `timely` if it is within `PRECISION` and `MSGDELAY` of the validator’s local time.
+A proposal timestamp is considered `timely` if it is within `PRECISION` and `MSGDELAY` of the Unix time known to the validator.
 More specifically, a proposal timestamp is `timely` if `validatorLocalTime - PRECISION < proposalTime < validatorLocalTime + PRECISION + MSGDELAY`. 
 
 Because the `PRECISION` and `MSGDELAY` parameters must be the same across all validators, they will be added to the [consensus parameters](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/types/params.proto#L13) as [durations](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration).
 
 The proposer-based timestamp specification also includes a [new ACCURACY parameter](https://github.com/tendermint/spec/blob/master/spec/consensus/proposer-based-timestamp/pbts-sysmodel_001_draft.md#pbts-clocksync-external0).
-`ACCURACY` represents the difference between the ‘real’ time and the local time of correct validators.
+`ACCURACY` represents the difference between the ‘real’ time and the currently known Unix time of correct validators.
 This is not something a computer can determine on its own and must be specified as an estimate by the user of Tendermint.
 It is used in the new algorithm to [calculate a timeout for the propose step](https://github.com/tendermint/spec/blob/master/spec/consensus/proposer-based-timestamp/pbts-algorithm_001_draft.md#pbts-alg-startround0).
 `ACCURACY` is assumed to be the same across all validators and therefore should be included as a consensus parameter.
@@ -250,7 +250,7 @@ type Header struct {
 
 #### Proposer selects proposal timestamp
 
-The proposal logic already [sets the validator’s local time](https://github.com/tendermint/tendermint/blob/2abfe20114ee3bb3adfee817589033529a804e4d/types/proposal.go#L44) into the `Proposal` message.
+The proposal logic already [sets the Unix time known to the validator](https://github.com/tendermint/tendermint/blob/2abfe20114ee3bb3adfee817589033529a804e4d/types/proposal.go#L44) into the `Proposal` message.
 This satisfies the proposer-based timestamp specification and does not need to change. 
 
 #### Proposer selects block timestamp
@@ -262,11 +262,11 @@ The proposer will select this timestamp to use as the block timestamp at height 
 
 Block timestamps must be monotonically increasing.
 In `BFTTime`, if a validator’s clock was behind, the [validator added 1 millisecond to the previous block’s time and used that in its vote messages](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/internal/consensus/state.go#L2246).
-A goal of adding proposer-based timestamps is to enforce some degree of clock synchronization, so having a mechanism that completely ignores the validator’s local time no longer works.
+A goal of adding proposer-based timestamps is to enforce some degree of clock synchronization, so having a mechanism that completely ignores the Unix time of the validator time no longer works.
 
 Validator clocks will not be perfectly in sync.
-Therefore, the proposer’s local time may be less than the `LastCommit.Timestamp`.
-If the proposer’s local time is less than the `LastCommit.Timestamp`, the proposer will sleep until its local time exceeds it.
+Therefore, the proposer’s current known Unix time may be less than the `LastCommit.Timestamp`.
+If the proposer’s current known Unix time is less than the `LastCommit.Timestamp`, the proposer will sleep until its known Unix time exceeds `LastCommit.Timestamp`.
 
 This change will require amending the [defaultDecideProposal](https://github.com/tendermint/tendermint/blob/822893615564cb20b002dd5cf3b42b8d364cb7d9/internal/consensus/state.go#L1180) method.
 This method should now block until the proposer’s time is greater than `LastCommit.Timestamp`.
@@ -276,7 +276,7 @@ This method should now block until the proposer’s time is greater than `LastCo
 Currently, a validator waiting for a proposal will proceed past the propose step if the configured propose timeout is reached and no proposal is seen.
 Proposer-based timestamps requires changing this timeout logic. 
 
-The proposer will now wait until its local time exceeds the `LastCommit.Timestamp` to propose a block.
+The proposer will now wait until its current known Unix time exceeds the `LastCommit.Timestamp` to propose a block.
 The validators must now take this and some other factors into account when deciding when to timeout the propose step.
 Specifically, the propose step timeout must also take into account potential inaccuracy in the validator’s clock and in the clock of the proposer.
 Additionally, there may be a delay communicating the proposal message from the proposer to the other validators. 
@@ -297,11 +297,11 @@ Specifically, we will change the validation logic to ensure that the proposal ti
 #### Proposal timestamp validation
 
 Adding proposal timestamp validation is a reasonably straightforward change.
-The proposer’s local time is already included in the [Proposal message](https://github.com/tendermint/tendermint/blob/dc7c212c41a360bfe6eb38a6dd8c709bbc39aae7/types/proposal.go#L31).
+The current Unix time known to the proposer is already included in the [Proposal message](https://github.com/tendermint/tendermint/blob/dc7c212c41a360bfe6eb38a6dd8c709bbc39aae7/types/proposal.go#L31).
 Once the proposal is received, the complete message is stored in the `RoundState.Proposal` field.
 The precommit and prevote validation logic does not currently use this timestamp.
-This validation logic will be updated to check that the proposal timestamp is within `PRECISION` of the validator’s local time.
-If the timestamp is not within `PRECISION` of the validator’s local time, the proposal will not be considered valid.
+This validation logic will be updated to check that the proposal timestamp is within `PRECISION` of the current Unix time known to the validators.
+If the timestamp is not within `PRECISION` of the current Unix time known to the validator, the validator proposal will considered it valid.
 The validator will also check that the proposal time is greater than the block timestamp from the previous height.
 
 If no valid proposal is received by the proposal timeout, the validator will prevote nil.
@@ -361,8 +361,8 @@ It is included in this design for completeness and to clarify that no additional
 
 ### Remove voteTime Completely
 
-[voteTime](https://github.com/tendermint/tendermint/blob/822893615564cb20b002dd5cf3b42b8d364cb7d9/internal/consensus/state.go#L2229) is a mechanism for calculating the next `BFTTime` given both the current local time and the previous block timestamp.
-If the previous block timestamp is greater than the local time, then voteTime returns a value one millisecond greater than the previous block timestamp.
+[voteTime](https://github.com/tendermint/tendermint/blob/822893615564cb20b002dd5cf3b42b8d364cb7d9/internal/consensus/state.go#L2229) is a mechanism for calculating the next `BFTTime` given both the validator's current known Unix time and the previous block timestamp.
+If the previous block timestamp is greater than the validator's current known Unix time, then voteTime returns a value one millisecond greater than the previous block timestamp.
 This logic is used in multiple places and is no longer needed for proposer-based timestamps.
 It should therefore be removed completely.
 
@@ -389,7 +389,7 @@ Liveness will now also require that validators’ clocks move forward, which was
 
 ### Negative
 
-* May increase the length of the propose step if there is a large skew between the previous proposer and the current proposer’s local view of time.
+* May increase the length of the propose step if there is a large skew between the previous proposer and the current proposer’s local Unix time.
 This skew will be bound by the `PRECISION` value, so it is unlikely to be too large.
 
 * Current chains with block timestamps far in the future will either need to pause consensus until after the erroneous block timestamp or must maintain synchronized but very inaccurate clocks.
