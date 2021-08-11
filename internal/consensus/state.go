@@ -1427,7 +1427,7 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 			logger.Error("failed publishing event relock", "err", err)
 		}
 
-    cs.signAddVote(tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader)
+		cs.signAddVote(tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader)
 		return
 	}
 
@@ -2207,22 +2207,17 @@ func (cs *State) signVote(
 	switch msgType {
 	case tmproto.PrecommitType:
 		timeout = cs.config.TimeoutPrecommit
+		// If the signedMessage type is for precommit, add VoteExtension
+		ext, err := cs.blockExec.ExtendVote(vote)
+		if err != nil {
+			return nil, err
+		}
+		vote.VoteExtension = ext
 	case tmproto.PrevoteType:
 		timeout = cs.config.TimeoutPrevote
 	default:
 		timeout = time.Second
 	}
-
-  // If the signedMessage type is for precommit, add VoteExtension
-  switch msgType {
-  case tmproto.PrecommitType:
-    ext, err := cs.blockExec.ExtendVote(vote)
-    if err != nil {
-      return nil, err
-    }
-    vote.VoteExtension = ext
-  default:
-  }
 
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()

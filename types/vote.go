@@ -46,33 +46,45 @@ func NewConflictingVoteError(vote1, vote2 *Vote) *ErrVoteConflictingVotes {
 // Address is hex bytes.
 type Address = crypto.Address
 
-type VoteExtensionSigned struct {
+// VoteExtensionToSign is a subset of VoteExtension
+// that is signed by the validators private key
+type VoteExtensionToSign struct {
 	AppDataToSign []byte `json:"app_data_to_sign"`
 }
 
-func (ext VoteExtensionSigned) BytesPacked() []byte {
+// BytesPacked returns a bytes-packed representation for
+// debugging and human identification. This function should
+// not be used for any logical operations.
+func (ext VoteExtensionToSign) BytesPacked() []byte {
 	res := make([]byte, len(ext.AppDataToSign))
 	copy(res, ext.AppDataToSign)
 	return res
 }
 
-func (ext VoteExtensionSigned) FromSigned() VoteExtension {
+// ToVoteExtension constructs a VoteExtension from a VoteExtensionToSign
+func (ext VoteExtensionToSign) ToVoteExtension() VoteExtension {
 	return VoteExtension{
 		AppDataToSign: ext.AppDataToSign,
 	}
 }
 
+// VoteExtension is a set of data provided by the application
+// that is additionally included in the vote
 type VoteExtension struct {
 	AppDataToSign             []byte `json:"app_data_to_sign"`
 	AppDataSelfAuthenticating []byte `json:"app_data_self_authenticating"`
 }
 
-func (ext VoteExtension) ToSigned() VoteExtensionSigned {
-	return VoteExtensionSigned{
+// ToSign constructs a VoteExtensionToSign from a VoteExtenstion
+func (ext VoteExtension) ToSign() VoteExtensionToSign {
+	return VoteExtensionToSign{
 		AppDataToSign: ext.AppDataToSign,
 	}
 }
 
+// BytesPacked returns a bytes-packed representation for
+// debugging and human identification. This function should
+// not be used for any logical operations.
 func (ext VoteExtension) BytesPacked() []byte {
 	res := make([]byte, len(ext.AppDataToSign)+len(ext.AppDataSelfAuthenticating))
 	copy(res[:len(ext.AppDataToSign)], ext.AppDataToSign)
@@ -115,7 +127,7 @@ func (vote *Vote) CommitSig() CommitSig {
 		ValidatorAddress: vote.ValidatorAddress,
 		Timestamp:        vote.Timestamp,
 		Signature:        vote.Signature,
-		VoteExtension:    vote.VoteExtension.ToSigned(),
+		VoteExtension:    vote.VoteExtension.ToSign(),
 	}
 }
 

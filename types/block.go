@@ -606,11 +606,11 @@ type CommitSig struct {
 	ValidatorAddress Address             `json:"validator_address"`
 	Timestamp        time.Time           `json:"timestamp"`
 	Signature        []byte              `json:"signature"`
-	VoteExtension    VoteExtensionSigned `json:"vote_extension"`
+	VoteExtension    VoteExtensionToSign `json:"vote_extension"`
 }
 
 // NewCommitSigForBlock returns new CommitSig with BlockIDFlagCommit.
-func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time, ext VoteExtensionSigned) CommitSig {
+func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time, ext VoteExtensionToSign) CommitSig {
 	return CommitSig{
 		BlockIDFlag:      BlockIDFlagCommit,
 		ValidatorAddress: valAddr,
@@ -805,7 +805,7 @@ func (commit *Commit) GetVote(valIdx int32) *Vote {
 		ValidatorAddress: commitSig.ValidatorAddress,
 		ValidatorIndex:   valIdx,
 		Signature:        commitSig.Signature,
-		VoteExtension:    commitSig.VoteExtension.FromSigned(),
+		VoteExtension:    commitSig.VoteExtension.ToVoteExtension(),
 	}
 }
 
