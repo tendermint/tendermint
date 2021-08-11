@@ -65,7 +65,11 @@ Implement proposer-based timestamps and remove `BFTTime`.
 ### Overview
 
 Implementing proposer-based timestamps will require a few changes to Tendermint’s code.
-These changes will be to the state package, the vote types, and to the consensus parameters.
+These changes will be to the following components:
+* The `internal/consensus/` package.
+* The `state/` package.
+* The `Vote`, `CommitSig`, `Commit` and `Header` types.
+* The consensus parameters.
 
 ### Proposal Timestamp and Block Timestamp
 
@@ -103,7 +107,7 @@ This field will be populated each height with the proposal timestamp decided on 
 This timestamp will also be saved with the rest of the commit in the state store [when the commit is finalized](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/internal/consensus/state.go#L1611) so that it can be recovered if Tendermint crashes.
 Changes to the `CommitSig` and `Commit` struct are detailed below. 
 
-### Changes to CommitSig
+### Changes to `CommitSig`
 
 The [CommitSig](https://github.com/tendermint/tendermint/blob/a419f4df76fe4aed668a6c74696deabb9fe73211/types/block.go#L604) struct currently contains a timestamp. 
 This timestamp is the local time of the validator when it issued a `Precommit` for the block.
@@ -120,7 +124,7 @@ type CommitSig struct {
 }
 ```
 
-### Changes to Commit
+### Changes to `Commit`
 
 The [Commit](https://github.com/tendermint/tendermint/blob/a419f4df76fe4aed668a6c74696deabb9fe73211/types/block.go#L746) struct does not currently contain a timestamp. 
 The timestamps in the `Commit.CommitSig` entries are currently used to build the block timestamp.
@@ -183,13 +187,13 @@ It is used in the new algorithm to [calculate a timeout for the propose step](ht
 
 The consensus will be updated to include this `Timestamp` field as follows:
 
-```go
+```diff
 type ConsensusParams struct {
 	Block     BlockParams     `json:"block"`
 	Evidence  EvidenceParams  `json:"evidence"`
 	Validator ValidatorParams `json:"validator"`
 	Version   VersionParams   `json:"version"`
-	Timestamp TimestampParams `json:"timestamp"`
+++	Timestamp TimestampParams `json:"timestamp"`
 }
 ```
 
@@ -201,7 +205,7 @@ type TimestampParams struct {
 }
 ```
 
-### Changes to Header
+### Changes to `Header`
 
 The [Header](https://github.com/tendermint/tendermint/blob/a419f4df76fe4aed668a6c74696deabb9fe73211/types/block.go#L338) struct currently contains a timestamp.
 This timestamp is set as the `BFTtime` derived from the block's `LastCommit.CommitSig` timestamps.
@@ -299,6 +303,9 @@ The precommit and prevote validation logic does not currently use this timestamp
 This validation logic will be updated to check that the proposal timestamp is within `PRECISION` of the validator’s local time.
 If the timestamp is not within `PRECISION` of the validator’s local time, the proposal will not be considered valid.
 The validator will also check that the proposal time is greater than the block timestamp from the previous height.
+
+If no valid proposal is received by the proposal timeout, the validator will prevote nil.
+This is identical to the current logic.
 
 #### Block timestamp validation
 
