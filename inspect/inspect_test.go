@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	abci_types "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/inspect"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
@@ -26,11 +25,11 @@ import (
 )
 
 func TestInspectConstructor(t *testing.T) {
-	config := cfg.ResetTestRoot("test")
+	cfg := config.ResetTestRoot("test")
 	t.Cleanup(leaktest.Check(t))
-	defer func() { _ = os.RemoveAll(config.RootDir) }()
+	defer func() { _ = os.RemoveAll(cfg.RootDir) }()
 	t.Run("from config", func(t *testing.T) {
-		d, err := inspect.NewFromConfig(config)
+		d, err := inspect.NewFromConfig(cfg)
 		require.NoError(t, err)
 		require.NotNil(t, d)
 	})
@@ -38,11 +37,11 @@ func TestInspectConstructor(t *testing.T) {
 }
 
 func TestInspectRun(t *testing.T) {
-	config := cfg.ResetTestRoot("test")
+	cfg := config.ResetTestRoot("test")
 	t.Cleanup(leaktest.Check(t))
-	defer func() { _ = os.RemoveAll(config.RootDir) }()
+	defer func() { _ = os.RemoveAll(cfg.RootDir) }()
 	t.Run("from config", func(t *testing.T) {
-		d, err := inspect.NewFromConfig(config)
+		d, err := inspect.NewFromConfig(cfg)
 		require.NoError(t, err)
 		ctx, cancel := context.WithCancel(context.Background())
 		wg := &sync.WaitGroup{}

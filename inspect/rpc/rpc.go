@@ -9,9 +9,7 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	"github.com/tendermint/tendermint/rpc/core"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
-	"github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
@@ -28,7 +26,7 @@ type Server struct {
 
 // Routes returns the set of routes used by the Inspect server.
 func Routes(store state.Store, blockStore state.BlockStore, eventSinks []indexer.EventSink) rpccore.RoutesMap {
-	env := &core.Environment{
+	env := &rpccore.Environment{
 		EventSinks: eventSinks,
 		StateStore: store,
 		BlockStore: blockStore,
@@ -114,7 +112,7 @@ func (srv *Server) ListenAndServeTLS(ctx context.Context, certFile, keyFile stri
 	return rpcserver.ServeTLS(listener, srv.Handler, certFile, keyFile, srv.Logger, serverRPCConfig(srv.Config))
 }
 
-func serverRPCConfig(r *config.RPCConfig) *server.Config {
+func serverRPCConfig(r *config.RPCConfig) *rpcserver.Config {
 	cfg := rpcserver.DefaultConfig()
 	cfg.MaxBodyBytes = r.MaxBodyBytes
 	cfg.MaxHeaderBytes = r.MaxHeaderBytes

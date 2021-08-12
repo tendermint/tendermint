@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/inspect/rpc"
 	inspect_rpc "github.com/tendermint/tendermint/inspect/rpc"
 	"github.com/tendermint/tendermint/libs/log"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
@@ -120,7 +119,7 @@ func startRPCServers(ctx context.Context, rpcConfig *cfg.RPCConfig, logger log.L
 	rootHandler := inspect_rpc.Handler(rpcConfig, routes, logger)
 	errChan := make(chan error)
 	for _, listenerAddr := range listenAddrs {
-		server := rpc.Server{
+		server := inspect_rpc.Server{
 			Logger:  logger,
 			Config:  rpcConfig,
 			Handler: rootHandler,
