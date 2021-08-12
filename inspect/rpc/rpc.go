@@ -89,7 +89,7 @@ func addCORSHandler(rpcConfig *config.RPCConfig, h http.Handler) http.Handler {
 // ListenAndServe listens on the address specified in srv.Addr and handles any
 // incoming requests over HTTP using the Inspect rpc handler specified on the server.
 func (srv *Server) ListenAndServe(ctx context.Context) error {
-	listener, err := rpcserver.Listen(r.Addr, r.Config.MaxOpenConnections)
+	listener, err := rpcserver.Listen(srv.Addr, srv.Config.MaxOpenConnections)
 	if err != nil {
 		return err
 	}
@@ -97,13 +97,13 @@ func (srv *Server) ListenAndServe(ctx context.Context) error {
 		<-ctx.Done()
 		listener.Close()
 	}()
-	return rpcserver.Serve(listener, r.Handler, r.Logger, serverRPCConfig(r.Config))
+	return rpcservesrv.Serve(listener, srv.Handler, srv.Logger, serverRPCConfig(srv.Config))
 }
 
 // ListenAndServeTLS listens on the address specified in srv.Addr. ListenAndServeTLS handles
 // incoming requests over HTTPS using the Inspect rpc handler specified on the server.
 func (srv *Server) ListenAndServeTLS(ctx context.Context, certFile, keyFile string) error {
-	listener, err := rpcserver.Listen(r.Addr, r.Config.MaxOpenConnections)
+	listener, err := rpcserver.Listen(srv.Addr, srv.Config.MaxOpenConnections)
 	if err != nil {
 		return err
 	}
@@ -111,7 +111,7 @@ func (srv *Server) ListenAndServeTLS(ctx context.Context, certFile, keyFile stri
 		<-ctx.Done()
 		listener.Close()
 	}()
-	return rpcserver.ServeTLS(listener, r.Handler, certFile, keyFile, r.Logger, serverRPCConfig(r.Config))
+	return rpcserver.ServeTLS(listener, srv.Handler, certFile, keyFile, srv.Logger, serverRPCConfig(srv.Config))
 }
 
 func serverRPCConfig(r *config.RPCConfig) *server.Config {

@@ -10,16 +10,13 @@ type RoutesMap map[string]*rpc.RPCFunc
 
 // Routes is a map of available routes.
 func (env *Environment) GetRoutes() RoutesMap {
-	return CombineRoutes(env.InfoRoutes(),
-		env.SubscribeRoutes(),
-		env.BroadcastTxRoutes(),
-		env.ABCIQueryRoutes(),
-		env.EvidenceRoutes(),
-	)
-}
-
-func (env *Environment) InfoRoutes() RoutesMap {
 	return RoutesMap{
+		// subscribe/unsubscribe are reserved for websocket events.
+		"subscribe":       rpc.NewWSRPCFunc(env.Subscribe, "query"),
+		"unsubscribe":     rpc.NewWSRPCFunc(env.Unsubscribe, "query"),
+		"unsubscribe_all": rpc.NewWSRPCFunc(env.UnsubscribeAll, ""),
+
+		// info API
 		"health":               rpc.NewRPCFunc(env.Health, "", false),
 		"status":               rpc.NewRPCFunc(env.Status, "", false),
 		"net_info":             rpc.NewRPCFunc(env.NetInfo, "", false),
@@ -40,59 +37,25 @@ func (env *Environment) InfoRoutes() RoutesMap {
 		"consensus_params":     rpc.NewRPCFunc(env.ConsensusParams, "height", true),
 		"unconfirmed_txs":      rpc.NewRPCFunc(env.UnconfirmedTxs, "limit", false),
 		"num_unconfirmed_txs":  rpc.NewRPCFunc(env.NumUnconfirmedTxs, "", false),
-	}
-}
 
-func (env *Environment) SubscribeRoutes() RoutesMap {
-	return RoutesMap{
-		// subscribe/unsubscribe are reserved for websocket events.
-		"subscribe":       rpc.NewWSRPCFunc(env.Subscribe, "query"),
-		"unsubscribe":     rpc.NewWSRPCFunc(env.Unsubscribe, "query"),
-		"unsubscribe_all": rpc.NewWSRPCFunc(env.UnsubscribeAll, ""),
-	}
-}
-
-func (env *Environment) BroadcastTxRoutes() RoutesMap {
-	// tx broadcast API
-	return RoutesMap{
+		// tx broadcast API
 		"broadcast_tx_commit": rpc.NewRPCFunc(env.BroadcastTxCommit, "tx", false),
 		"broadcast_tx_sync":   rpc.NewRPCFunc(env.BroadcastTxSync, "tx", false),
 		"broadcast_tx_async":  rpc.NewRPCFunc(env.BroadcastTxAsync, "tx", false),
-	}
-}
 
-func (env *Environment) EvidenceRoutes() RoutesMap {
-	// evidence API
-	return RoutesMap{
+		// abci API
+		"abci_query": rpc.NewRPCFunc(env.ABCIQuery, "path,data,height,prove", false),
+		"abci_info":  rpc.NewRPCFunc(env.ABCIInfo, "", true),
+
+		// evidence API
 		"broadcast_evidence": rpc.NewRPCFunc(env.BroadcastEvidence, "evidence", false),
 	}
 }
 
-func (env *Environment) ABCIQueryRoutes() RoutesMap {
-	// abci API
-	return RoutesMap{
-		"abci_query": rpc.NewRPCFunc(env.ABCIQuery, "path,data,height,prove", false),
-		"abci_info":  rpc.NewRPCFunc(env.ABCIInfo, "", true),
-	}
-}
-
 // AddUnsafeRoutes adds unsafe routes.
-func (env *Environment) UnsafeRoutes() RoutesMap {
+func (env *Environment) AddUnsafe(routes RoutesMap) {
 	// control API
-	return RoutesMap{
-		"dial_seeds":           rpc.NewRPCFunc(env.UnsafeDialSeeds, "seeds", false),
-		"dial_peers":           rpc.NewRPCFunc(env.UnsafeDialPeers, "peers,persistent,unconditional,private", false),
-		"unsafe_flush_mempool": rpc.NewRPCFunc(env.UnsafeFlushMempool, "", false),
-	}
-}
-
-// CombineRoutes takes a list of RoutesMaps and combines them into a single RoutesMap.
-func CombineRoutes(routesMaps ...RoutesMap) RoutesMap {
-	res := RoutesMap{}
-	for _, routesMap := range routesMaps {
-		for path, rpcFunc := range routesMap {
-			res[path] = rpcFunc
-		}
-	}
-	return res
+	routes["dial_seeds"] = rpc.NewRPCFunc(env.UnsafeDialSeeds, "seeds", false)
+	routes["dial_peers"] = rpc.NewRPCFunc(env.UnsafeDialPeers, "peers,persistent,unconditional,private", false)
+	routes["unsafe_flush_mempool"] = rpc.NewRPCFunc(env.UnsafeFlushMempool, "", false)
 }
