@@ -30,16 +30,24 @@ type Inspect struct {
 
 	rpcConfig *cfg.RPCConfig
 
-	logger log.Logger
+	indexerService *indexer.Service
+	eventBus       *types.EventBus
+	logger         log.Logger
 }
 
 // New constructs a new Inspect from the passed in parameters.
 func New(rpcConfig *cfg.RPCConfig, blockStore sm.BlockStore, stateStore sm.Store, eventSinks []indexer.EventSink, logger log.Logger) *Inspect {
 	routes := inspect_rpc.Routes(stateStore, blockStore, eventSinks)
+	eventBus := types.NewEventBus()
+	eventBus.SetLogger(logger.With("module", "events"))
+	indexerService := indexer.NewIndexerService(eventSinks, eventBus)
+	indexerService.SetLogger(logger.With("module", "txindex"))
 	return &Inspect{
-		routes:    routes,
-		rpcConfig: rpcConfig,
-		logger:    logger,
+		routes:         routes,
+		rpcConfig:      rpcConfig,
+		logger:         logger,
+		eventBus:       eventBus,
+		indexerService: indexerService,
 	}
 }
 
@@ -80,6 +88,17 @@ func NewDefault() (*Inspect, error) {
 // Run starts the Inspect servers and blocks until the servers shut down. The passed
 // in context is used to control the lifecycle of the servers.
 func (inspect *Inspect) Run(ctx context.Context) error {
+	err := inspect.eventBus.Start()
+	if err != nil {
+		return err
+	}
+	defer inspect.eventBus.Stop()
+
+	err = inspect.indexerService.Start()
+	if err != nil {
+		return err
+	}
+	defer inspect.indexerService.Stop()
 	return startRPCServers(ctx, inspect.rpcConfig, inspect.logger, inspect.routes)
 }
 

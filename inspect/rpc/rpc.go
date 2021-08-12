@@ -97,7 +97,7 @@ func (srv *Server) ListenAndServe(ctx context.Context) error {
 		<-ctx.Done()
 		listener.Close()
 	}()
-	return rpcservesrv.Serve(listener, srv.Handler, srv.Logger, serverRPCConfig(srv.Config))
+	return rpcserver.Serve(listener, srv.Handler, srv.Logger, serverRPCConfig(srv.Config))
 }
 
 // ListenAndServeTLS listens on the address specified in srv.Addr. ListenAndServeTLS handles

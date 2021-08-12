@@ -849,7 +849,7 @@ func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 		rpcserver.RegisterRPCFuncs(mux, routes, rpcLogger)
 		listener, err := rpcserver.Listen(
 			listenAddr,
-			config,
+			config.MaxOpenConnections,
 		)
 		if err != nil {
 			return nil, err
@@ -907,7 +907,7 @@ func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 		if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
 			config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
 		}
-		listener, err := rpcserver.Listen(grpcListenAddr, config)
+		listener, err := rpcserver.Listen(grpcListenAddr, config.MaxOpenConnections)
 		if err != nil {
 			return nil, err
 		}
