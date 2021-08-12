@@ -8,6 +8,7 @@ import (
 	"math"
 	"net"
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
+	"strings"
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
@@ -32,26 +33,23 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
-	"github.com/tendermint/tendermint/state/indexer/sink"
+	kv "github.com/tendermint/tendermint/state/indexer/sink/kv"
+	null "github.com/tendermint/tendermint/state/indexer/sink/null"
+	psql "github.com/tendermint/tendermint/state/indexer/sink/psql"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
 
-const (
-	_blockStoreID = "blockstore"
-	_stateStoreID = "state"
-)
-
 func initDBs(config *cfg.Config, dbProvider cfg.DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
 	var blockStoreDB dbm.DB
-	blockStoreDB, err = dbProvider(&cfg.DBContext{ID: _blockStoreID, Config: config})
+	blockStoreDB, err = dbProvider(&cfg.DBContext{ID: "blockstore", Config: config})
 	if err != nil {
 		return
 	}
 	blockStore = store.NewBlockStore(blockStoreDB)
 
-	stateDB, err = dbProvider(&cfg.DBContext{ID: _stateStoreID, Config: config})
+	stateDB, err = dbProvider(&cfg.DBContext{ID: "state", Config: config})
 	return
 }
 
@@ -80,10 +78,58 @@ func createAndStartIndexerService(
 	logger log.Logger,
 	chainID string,
 ) (*indexer.Service, []indexer.EventSink, error) {
-	eventSinks, err := sink.EventSinksFromConfig(config, dbProvider, chainID)
-	if err != nil {
-		return nil, nil, err
+
+	eventSinks := []indexer.EventSink{}
+
+	// check for duplicated sinks
+	sinks := map[string]bool{}
+	for _, s := range config.TxIndex.Indexer {
+		sl := strings.ToLower(s)
+		if sinks[sl] {
+			return nil, nil, errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
+		}
+
+		sinks[sl] = true
 	}
+
+loop:
+	for k := range sinks {
+		switch k {
+		case string(indexer.NULL):
+			// When we see null in the config, the eventsinks will be reset with the
+			// nullEventSink.
+			eventSinks = []indexer.EventSink{null.NewEventSink()}
+			break loop
+
+		case string(indexer.KV):
+			store, err := dbProvider(&cfg.DBContext{ID: "tx_index", Config: config})
+			if err != nil {
+				return nil, nil, err
+			}
+
+			eventSinks = append(eventSinks, kv.NewEventSink(store))
+
+		case string(indexer.PSQL):
+			conn := config.TxIndex.PsqlConn
+			if conn == "" {
+				return nil, nil, errors.New("the psql connection settings cannot be empty")
+			}
+
+			es, _, err := psql.NewEventSink(conn, chainID)
+			if err != nil {
+				return nil, nil, err
+			}
+			eventSinks = append(eventSinks, es)
+
+		default:
+			return nil, nil, errors.New("unsupported event sink type")
+		}
+	}
+
+	if len(eventSinks) == 0 {
+		eventSinks = []indexer.EventSink{null.NewEventSink()}
+	}
+
 	indexerService := indexer.NewIndexerService(eventSinks, eventBus)
 	indexerService.SetLogger(logger.With("module", "txindex"))
 
