@@ -58,7 +58,8 @@ func (env *Environment) DumpConsensusState(ctx *rpctypes.Context) (*ctypes.Resul
 	// Get Peer consensus states.
 
 	var peerStates []ctypes.PeerStateInfo
-	if env.P2PPeers != nil {
+	switch {
+	case env.P2PPeers != nil:
 		peers := env.P2PPeers.Peers().List()
 		peerStates = make([]ctypes.PeerStateInfo, 0, len(peers))
 		for _, peer := range peers {
@@ -77,7 +78,7 @@ func (env *Environment) DumpConsensusState(ctx *rpctypes.Context) (*ctypes.Resul
 				PeerState: peerStateJSON,
 			})
 		}
-	} else if env.PeerManager != nil {
+	case env.PeerManager != nil:
 		peers := env.PeerManager.Peers()
 		peerStates = make([]ctypes.PeerStateInfo, 0, len(peers))
 		for _, pid := range peers {
@@ -101,10 +102,10 @@ func (env *Environment) DumpConsensusState(ctx *rpctypes.Context) (*ctypes.Resul
 				})
 			}
 		}
-	} else {
+	default:
 		return nil, errors.New("no peer system configured")
-
 	}
+
 	// Get self round state.
 	roundState, err := env.ConsensusState.GetRoundStateJSON()
 	if err != nil {

@@ -15,7 +15,8 @@ import (
 func (env *Environment) NetInfo(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, error) {
 	var peers []ctypes.Peer
 
-	if env.P2PPeers != nil {
+	switch {
+	case env.P2PPeers != nil:
 		peersList := env.P2PPeers.Peers().List()
 		peers = make([]ctypes.Peer, 0, len(peersList))
 		for _, peer := range peersList {
@@ -24,7 +25,7 @@ func (env *Environment) NetInfo(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, e
 				URL: peer.SocketAddr().String(),
 			})
 		}
-	} else if env.PeerManager != nil {
+	case env.PeerManager != nil:
 		peerList := env.PeerManager.Peers()
 		for _, peer := range peerList {
 			addrs := env.PeerManager.Addresses(peer)
@@ -37,8 +38,8 @@ func (env *Environment) NetInfo(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, e
 				URL: addrs[0].String(),
 			})
 		}
-	} else {
-		return nil, errors.New("peer management system does not support NetInfo responses.")
+	default:
+		return nil, errors.New("peer management system does not support NetInfo responses")
 	}
 
 	return &ctypes.ResultNetInfo{
