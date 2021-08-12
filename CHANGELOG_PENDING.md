@@ -25,6 +25,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [rpc/grpc] \#6725 Mark gRPC in the RPC layer as deprecated.
   - [blockchain/v2] \#6730 Fast Sync v2 is deprecated, please use v0
   - [rpc] Add genesis_chunked method to support paginated and parallel fetching of large genesis documents.
+  - [rpc] \#6820 Update RPC methods to reflect changes in the p2p layer, disabling support for `UnsafeDialPeers` and `UnsafeDialPeers` when used with the new p2p layer, and changing the response format of the peer list in `NetInfo` for all users.
 
 - Apps
   - [ABCI] \#6408 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)
@@ -33,7 +34,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [ABCI] \#5818 Use protoio for msg length delimitation. Migrates from int64 to uint64 length delimiters.
   - [ABCI] \#3546 Add `mempool_error` field to `ResponseCheckTx`. This field will contain an error string if Tendermint encountered an error while adding a transaction to the mempool. (@williambanfield)
   - [Version] \#6494 `TMCoreSemVer` has been renamed to `TMVersion`.
-    - It is not required any longer to set ldflags to set version strings
+	- It is not required any longer to set ldflags to set version strings
   - [abci/counter] \#6684 Delete counter example app
 
 - P2P Protocol
@@ -56,25 +57,25 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [store] \#5848 Remove block store state in favor of using the db iterators directly (@cmwaters)
   - [state] \#5864 Use an iterator when pruning state (@cmwaters)
   - [types] \#6023 Remove `tm2pb.Header`, `tm2pb.BlockID`, `tm2pb.PartSetHeader` and `tm2pb.NewValidatorUpdate`.
-    - Each of the above types has a `ToProto` and `FromProto` method or function which replaced this logic.
+	- Each of the above types has a `ToProto` and `FromProto` method or function which replaced this logic.
   - [light] \#6054 Move `MaxRetryAttempt` option from client to provider.
-    - `NewWithOptions` now sets the max retry attempts and timeouts (@cmwaters)
+	- `NewWithOptions` now sets the max retry attempts and timeouts (@cmwaters)
   - [all] \#6077 Change spelling from British English to American (@cmwaters)
-    - Rename "Subscription.Cancelled()" to "Subscription.Canceled()" in libs/pubsub
-    - Rename "behaviour" pkg to "behavior" and internalized it in blockchain v2
+	- Rename "Subscription.Cancelled()" to "Subscription.Canceled()" in libs/pubsub
+	- Rename "behaviour" pkg to "behavior" and internalized it in blockchain v2
   - [rpc/client/http] \#6176 Remove `endpoint` arg from `New`, `NewWithTimeout` and `NewWithClient` (@melekes)
   - [rpc/client/http] \#6176 Unexpose `WSEvents` (@melekes)
   - [rpc/jsonrpc/client/ws_client] \#6176 `NewWS` no longer accepts options (use `NewWSWithOptions` and `OnReconnect` funcs to configure the client) (@melekes)
   - [internal/libs] \#6366 Move `autofile`, `clist`,`fail`,`flowrate`, `protoio`, `sync`, `tempfile`, `test` and `timer` lib packages to an internal folder
   - [libs/rand] \#6364 Remove most of libs/rand in favour of standard lib's `math/rand` (@liamsi)
   - [mempool] \#6466 The original mempool reactor has been versioned as `v0` and moved to a sub-package under the root `mempool` package.
-    Some core types have been kept in the `mempool` package such as `TxCache` and it's implementations, the `Mempool` interface itself
-    and `TxInfo`. (@alexanderbez)
+	Some core types have been kept in the `mempool` package such as `TxCache` and it's implementations, the `Mempool` interface itself
+	and `TxInfo`. (@alexanderbez)
   - [crypto/sr25519] \#6526 Do not re-execute the Ed25519-style key derivation step when doing signing and verification.  The derivation is now done once and only once.  This breaks `sr25519.GenPrivKeyFromSecret` output compatibility. (@Yawning)
-  - [types] \#6627 Move `NodeKey` to types to make the type public. 
+  - [types] \#6627 Move `NodeKey` to types to make the type public.
   - [config] \#6627 Extend `config` to contain methods `LoadNodeKeyID` and `LoadorGenNodeKeyID`
   - [blocksync] \#6755 Rename `FastSync` and `Blockchain` package to `BlockSync`
-    (@cmwaters)
+	(@cmwaters)
 
 - Blockchain Protocol
 
