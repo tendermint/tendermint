@@ -3,6 +3,7 @@ package inspect
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"sync"
 
@@ -92,13 +93,24 @@ func (inspect *Inspect) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer inspect.eventBus.Stop()
+	defer func() {
+		err := inspect.eventBus.Stop()
+		if err != nil {
+			inspect.logger.Error("event bus stopped with error", "err", err)
+		}
+	}()
 
 	err = inspect.indexerService.Start()
 	if err != nil {
 		return err
 	}
-	defer inspect.indexerService.Stop()
+	defer func() {
+		fmt.Println("stopping indexer")
+		err := inspect.indexerService.Stop()
+		if err != nil {
+			inspect.logger.Error("indexer stopped with error", "err", err)
+		}
+	}()
 	return startRPCServers(ctx, inspect.rpcConfig, inspect.logger, inspect.routes)
 }
 

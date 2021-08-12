@@ -20,6 +20,8 @@ type Service struct {
 
 	eventSinks []EventSink
 	eventBus   *types.EventBus
+
+	doneChan chan struct{}
 }
 
 // NewIndexerService returns a new service instance.
@@ -27,6 +29,7 @@ func NewIndexerService(es []EventSink, eventBus *types.EventBus) *Service {
 
 	is := &Service{eventSinks: es, eventBus: eventBus}
 	is.BaseService = *service.NewBaseService(nil, "IndexerService", is)
+	is.doneChan = make(chan struct{})
 	return is
 }
 
@@ -51,43 +54,47 @@ func (is *Service) OnStart() error {
 
 	go func() {
 		for {
-			msg := <-blockHeadersSub.Out()
+			select {
+			case <-is.doneChan:
+				return
+			case msg := <-blockHeadersSub.Out():
 
-			eventDataHeader := msg.Data().(types.EventDataNewBlockHeader)
-			height := eventDataHeader.Header.Height
-			batch := NewBatch(eventDataHeader.NumTxs)
+				eventDataHeader := msg.Data().(types.EventDataNewBlockHeader)
+				height := eventDataHeader.Header.Height
+				batch := NewBatch(eventDataHeader.NumTxs)
 
-			for i := int64(0); i < eventDataHeader.NumTxs; i++ {
-				msg2 := <-txsSub.Out()
-				txResult := msg2.Data().(types.EventDataTx).TxResult
+				for i := int64(0); i < eventDataHeader.NumTxs; i++ {
+					msg2 := <-txsSub.Out()
+					txResult := msg2.Data().(types.EventDataTx).TxResult
 
-				if err = batch.Add(&txResult); err != nil {
-					is.Logger.Error(
-						"failed to add tx to batch",
-						"height", height,
-						"index", txResult.Index,
-						"err", err,
-					)
-				}
-			}
-
-			if !IndexingEnabled(is.eventSinks) {
-				continue
-			}
-
-			for _, sink := range is.eventSinks {
-				if err := sink.IndexBlockEvents(eventDataHeader); err != nil {
-					is.Logger.Error("failed to index block", "height", height, "err", err)
-				} else {
-					is.Logger.Debug("indexed block", "height", height, "sink", sink.Type())
+					if err = batch.Add(&txResult); err != nil {
+						is.Logger.Error(
+							"failed to add tx to batch",
+							"height", height,
+							"index", txResult.Index,
+							"err", err,
+						)
+					}
 				}
 
-				if len(batch.Ops) > 0 {
-					err := sink.IndexTxEvents(batch.Ops)
-					if err != nil {
-						is.Logger.Error("failed to index block txs", "height", height, "err", err)
+				if !IndexingEnabled(is.eventSinks) {
+					continue
+				}
+
+				for _, sink := range is.eventSinks {
+					if err := sink.IndexBlockEvents(eventDataHeader); err != nil {
+						is.Logger.Error("failed to index block", "height", height, "err", err)
 					} else {
-						is.Logger.Debug("indexed txs", "height", height, "sink", sink.Type())
+						is.Logger.Debug("indexed block", "height", height, "sink", sink.Type())
+					}
+
+					if len(batch.Ops) > 0 {
+						err := sink.IndexTxEvents(batch.Ops)
+						if err != nil {
+							is.Logger.Error("failed to index block txs", "height", height, "err", err)
+						} else {
+							is.Logger.Debug("indexed txs", "height", height, "sink", sink.Type())
+						}
 					}
 				}
 			}
@@ -108,6 +115,7 @@ func (is *Service) OnStop() {
 			is.Logger.Error("failed to close eventsink", "eventsink", sink.Type(), "err", err)
 		}
 	}
+	close(is.doneChan)
 }
 
 // KVSinkEnabled returns the given eventSinks is containing KVEventSink.

@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/fortytw2/leaktest"
@@ -44,8 +45,14 @@ func TestInspectRun(t *testing.T) {
 		d, err := inspect.NewFromConfig(config)
 		require.NoError(t, err)
 		ctx, cancel := context.WithCancel(context.Background())
-		go d.Run(ctx)
+		wg := &sync.WaitGroup{}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			require.NoError(t, d.Run(ctx))
+		}()
 		cancel()
+		wg.Wait()
 	})
 
 }
@@ -63,12 +70,18 @@ func TestInspectServeInfoRPC(t *testing.T) {
 	blockStoreMock.On("LoadBlockMeta", testHeight).Return(&types.BlockMeta{})
 	blockStoreMock.On("LoadBlock", testHeight).Return(testBlock)
 	eventSinkMock := &indexer_mocks.EventSink{}
+	eventSinkMock.On("Stop").Return(nil)
 
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
 	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 	ctx, cancel := context.WithCancel(context.Background())
-	go d.Run(ctx)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		require.NoError(t, d.Run(ctx))
+	}()
 	requireConnect(t, rpcConfig.ListenAddress, 15)
 	cli, err := http_client.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
@@ -77,6 +90,7 @@ func TestInspectServeInfoRPC(t *testing.T) {
 	require.Equal(t, testBlock.Height, resultBlock.Block.Height)
 	require.Equal(t, testBlock.LastCommitHash, resultBlock.Block.LastCommitHash)
 	cancel()
+	wg.Wait()
 
 	blockStoreMock.AssertExpectations(t)
 	stateStoreMock.AssertExpectations(t)
@@ -95,6 +109,7 @@ func TestInspectTxSearch(t *testing.T) {
 	stateStoreMock := &state_mocks.Store{}
 	blockStoreMock := &state_mocks.BlockStore{}
 	eventSinkMock := &indexer_mocks.EventSink{}
+	eventSinkMock.On("Stop").Return(nil)
 	eventSinkMock.On("Type").Return(indexer.KV)
 	eventSinkMock.On("SearchTxEvents", mock.Anything, mock.MatchedBy(func(q *query.Query) bool { return testQuery == q.String() })).
 		Return([]*abci_types.TxResult{testTxResult}, nil)
@@ -103,7 +118,12 @@ func TestInspectTxSearch(t *testing.T) {
 	l := log.TestingLogger()
 	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 	ctx, cancel := context.WithCancel(context.Background())
-	go d.Run(ctx)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		require.NoError(t, d.Run(ctx))
+	}()
 	requireConnect(t, rpcConfig.ListenAddress, 15)
 	cli, err := http_client.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
@@ -115,8 +135,11 @@ func TestInspectTxSearch(t *testing.T) {
 	require.Equal(t, types.Tx(testTx), resultTxSearch.Txs[0].Tx)
 
 	cancel()
+	wg.Wait()
 
 	eventSinkMock.AssertExpectations(t)
+	stateStoreMock.AssertExpectations(t)
+	blockStoreMock.AssertExpectations(t)
 }
 
 func requireConnect(t testing.TB, addr string, retries int) {
