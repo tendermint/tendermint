@@ -244,9 +244,9 @@ func (NopEventBus) Subscribe(
 	ctx context.Context,
 	subscriber string,
 	query tmpubsub.Query,
-	outCapacity ...int,
-) (Subscription, error) {
-	return nil, nil
+	out chan<- interface{},
+) error {
+	return nil
 }
 
 func (NopEventBus) Unsubscribe(ctx context.Context, args tmpubsub.UnsubscribeArgs) error {
@@ -323,12 +323,4 @@ func (NopEventBus) PublishEventBlockSyncStatus(data EventDataBlockSyncStatus) er
 
 func (NopEventBus) PublishEventStateSyncStatus(data EventDataStateSyncStatus) error {
 	return nil
-}
-
-func (NopEventBus) NumClientSubscriptions(clientID string) int {
-	return 0
-}
-
-func (NopEventBus) NumClients() int {
-	return 0
 }
