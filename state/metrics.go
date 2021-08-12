@@ -1,6 +1,8 @@
 package state
 
 import (
+	"time"
+
 	"github.com/go-kit/kit/metrics"
 	"github.com/go-kit/kit/metrics/discard"
 	"github.com/go-kit/kit/metrics/prometheus"
@@ -17,6 +19,14 @@ const (
 type Metrics struct {
 	// Time between BeginBlock and EndBlock.
 	BlockProcessingTime metrics.Histogram
+
+	// Time between last block and current block.
+	IntervalTime  metrics.Gauge
+	lastBlockTime int64
+	// Time during executes abci
+	AbciTime metrics.Gauge
+	// Time during commiting app state
+	CommitTime metrics.Gauge
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -35,6 +45,25 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Help:      "Time between BeginBlock and EndBlock in ms.",
 			Buckets:   stdprometheus.LinearBuckets(1, 10, 10),
 		}, labels).With(labelsAndValues...),
+		IntervalTime: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "block_interval_time",
+			Help:      "Time between last block and current block in ms.",
+		}, labels).With(labelsAndValues...),
+		lastBlockTime: time.Now().UnixNano(),
+		AbciTime: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "block_abci_time",
+			Help:      "ime during executes abci in ms.",
+		}, labels).With(labelsAndValues...),
+		CommitTime: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "block_commit_time",
+			Help:      "Time during commiting app state in ms.",
+		}, labels).With(labelsAndValues...),
 	}
 }
 
@@ -42,5 +71,9 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 func NopMetrics() *Metrics {
 	return &Metrics{
 		BlockProcessingTime: discard.NewHistogram(),
+		IntervalTime:        discard.NewGauge(),
+		lastBlockTime:       time.Now().UnixNano(),
+		AbciTime:            discard.NewGauge(),
+		CommitTime:          discard.NewGauge(),
 	}
 }

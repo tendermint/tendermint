@@ -132,10 +132,16 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	state State, blockID types.BlockID, block *types.Block,
 ) (State, int64, error) {
 	trc := &Tracer{}
-	defer trc.dump(
-		fmt.Sprintf("ApplyBlock<%d>, tx<%d>", block.Height, len(block.Data.Txs)),
-		blockExec.logger.With("module", "main"),
-	)
+	defer func() {
+		trc.dump(
+			fmt.Sprintf("ApplyBlock<%d>, tx<%d>", block.Height, len(block.Data.Txs)),
+			blockExec.logger.With("module", "main"),
+		)
+
+		now := time.Now().UnixNano()
+		blockExec.metrics.IntervalTime.Set(float64(now-blockExec.metrics.lastBlockTime) / 1000000)
+		blockExec.metrics.lastBlockTime = now
+	}()
 
 	trc.pin("validateBlock")
 	if err := blockExec.ValidateBlock(state, block); err != nil {
@@ -145,8 +151,6 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	trc.pin("abci")
 	startTime := time.Now().UnixNano()
 	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
-	endTime := time.Now().UnixNano()
-	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1000000)
 	if err != nil {
 		return state, 0, ErrProxyAppConn(err)
 	}
@@ -157,6 +161,9 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	SaveABCIResponses(blockExec.db, block.Height, abciResponses)
 
 	fail.Fail() // XXX
+	endTime := time.Now().UnixNano()
+	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1000000)
+	blockExec.metrics.AbciTime.Set(float64(endTime-startTime) / 1000000)
 
 	trc.pin("validate")
 
@@ -183,9 +190,12 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	trc.pin("commit")
+	startTime = time.Now().UnixNano()
 
 	// Lock mempool, commit app state, update mempoool.
 	appHash, retainHeight, err := blockExec.Commit(state, block, abciResponses.DeliverTxs)
+	endTime = time.Now().UnixNano()
+	blockExec.metrics.CommitTime.Set(float64(endTime-startTime) / 1000000)
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
