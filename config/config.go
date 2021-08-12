@@ -659,6 +659,7 @@ func DefaultFuzzConnConfig() *FuzzConnConfig {
 // MempoolConfig defines the configuration options for the Tendermint mempool
 type MempoolConfig struct {
 	RootDir          string `mapstructure:"home"`
+	Sealed           bool   `mapstructure:"sealed"`
 	Recheck          bool   `mapstructure:"recheck"`
 	Broadcast        bool   `mapstructure:"broadcast"`
 	WalPath          string `mapstructure:"wal_dir"`

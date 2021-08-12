@@ -80,7 +80,13 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"consensus.create_empty_blocks_interval",
 		config.Consensus.CreateEmptyBlocksInterval.String(),
 		"The possible interval between empty blocks")
-
+	// mempool flags
+	cmd.Flags().Bool(
+		"mempool.sealed",
+		config.Mempool.Sealed,
+		"Set this to true only for debug mode",
+	)
+	cmd.Flags().MarkHidden("mempool.sealed")
 	// mempool flags
 	cmd.Flags().Bool(
 		"mempool.recheck",
