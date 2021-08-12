@@ -139,7 +139,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		)
 
 		now := time.Now().UnixNano()
-		blockExec.metrics.IntervalTime.Set(float64(now-blockExec.metrics.lastBlockTime) / 1000000)
+		blockExec.metrics.IntervalTime.Set(float64(now-blockExec.metrics.lastBlockTime) / 1e6)
 		blockExec.metrics.lastBlockTime = now
 	}()
 
@@ -162,8 +162,8 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	fail.Fail() // XXX
 	endTime := time.Now().UnixNano()
-	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1000000)
-	blockExec.metrics.AbciTime.Set(float64(endTime-startTime) / 1000000)
+	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1e6)
+	blockExec.metrics.AbciTime.Set(float64(endTime-startTime) / 1e6)
 
 	trc.pin("validate")
 
@@ -195,7 +195,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	// Lock mempool, commit app state, update mempoool.
 	appHash, retainHeight, err := blockExec.Commit(state, block, abciResponses.DeliverTxs)
 	endTime = time.Now().UnixNano()
-	blockExec.metrics.CommitTime.Set(float64(endTime-startTime) / 1000000)
+	blockExec.metrics.CommitTime.Set(float64(endTime-startTime) / 1e6)
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}

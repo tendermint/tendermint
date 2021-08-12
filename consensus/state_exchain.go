@@ -205,15 +205,15 @@ func (cs *State) calcProcessingTime(height int64, stepType cstypes.RoundStepType
 	}
 	switch stepType {
 	case cstypes.RoundStepNewRound:
-		cs.metrics.NewRoundProcessingTime.Set(float64(track.calcPeriod(core.newRoundStepTime, core.newRoundStepTimeEnd)) / 1000000)
+		cs.metrics.NewRoundProcessingTime.Set(float64(track.calcPeriod(core.newRoundStepTime, core.newRoundStepTimeEnd)) / 1e6)
 	case cstypes.RoundStepPropose:
-		cs.metrics.ProposeProcessingTime.Set(float64(track.calcPeriod(core.proposeStepTime, core.proposeStepTimeEnd)) / 1000000)
+		cs.metrics.ProposeProcessingTime.Set(float64(track.calcPeriod(core.proposeStepTime, core.proposeStepTimeEnd)) / 1e6)
 	case cstypes.RoundStepPrevote:
-		cs.metrics.PrevoteProcessingTime.Set(float64(track.calcPeriod(core.prevoteStepTime, core.prevoteStepTimeEnd)) / 1000000)
+		cs.metrics.PrevoteProcessingTime.Set(float64(track.calcPeriod(core.prevoteStepTime, core.prevoteStepTimeEnd)) / 1e6)
 	case cstypes.RoundStepPrecommit:
-		cs.metrics.PrecommitProcessingTime.Set(float64(track.calcPeriod(core.precommitTime, core.precommitTimeEnd)) / 1000000)
+		cs.metrics.PrecommitProcessingTime.Set(float64(track.calcPeriod(core.precommitTime, core.precommitTimeEnd)) / 1e6)
 	case cstypes.RoundStepCommit:
-		cs.metrics.CommitProcessingTime.Set(float64(track.calcPeriod(core.commitTime, core.commitTimeEnd)) / 1000000)
+		cs.metrics.CommitProcessingTime.Set(float64(track.calcPeriod(core.commitTime, core.commitTimeEnd)) / 1e6)
 	default:
 		break
 	}
