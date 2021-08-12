@@ -472,7 +472,7 @@ func TestReactor_P2P_Provider(t *testing.T) {
 		Hash:   lb.Hash(),
 	}
 
-	p2pStateProvider, err := NewP2PStateProvider(ctx, "test-chain", 1, rts.reactor.dispatcher, 
+	p2pStateProvider, err := NewP2PStateProvider(ctx, "test-chain", 1, rts.reactor.dispatcher,
 		to, rts.reactor.paramsCh.Out, log.TestingLogger())
 	require.NoError(t, err)
 	// set the state provider else the test won't think we are state syncing
@@ -661,8 +661,9 @@ func buildLightBlockChain(t *testing.T, fromHeight, toHeight int64, startTime ti
 	return chain
 }
 
-func mockLB(t *testing.T, height int64, time time.Time,
-	lastBlockID types.BlockID, currentVals *types.ValidatorSet, currentPrivVals []types.PrivValidator) (*types.ValidatorSet, []types.PrivValidator, *types.LightBlock) {
+func mockLB(t *testing.T, height int64, time time.Time, lastBlockID types.BlockID,
+	currentVals *types.ValidatorSet, currentPrivVals []types.PrivValidator,
+) (*types.ValidatorSet, []types.PrivValidator, *types.LightBlock) {
 	header, err := factory.MakeHeader(&types.Header{
 		Height:      height,
 		LastBlockID: lastBlockID,

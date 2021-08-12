@@ -48,6 +48,7 @@ func newDispatcher(requestCh chan<- p2p.Envelope, timeout time.Duration) *dispat
 		requestCh:      requestCh,
 		providers:      make(map[types.NodeID]struct{}),
 		calls:          make(map[types.NodeID]chan *types.LightBlock),
+		running:        true,
 	}
 }
 
@@ -69,8 +70,10 @@ func (d *dispatcher) LightBlock(ctx context.Context, height int64) (*types.Light
 	// fetch the next peer id in the list and request a light block from that
 	// peer
 	peer := d.availablePeers.Pop(ctx)
-	defer d.release(peer)
 	lb, err := d.lightBlock(ctx, height, peer)
+
+	// append the peer back to the list
+	d.availablePeers.Append(peer)
 	return lb, peer, err
 }
 
@@ -109,12 +112,6 @@ func (d *dispatcher) stop() {
 		close(call)
 		delete(d.calls, peer)
 	}
-}
-
-func (d *dispatcher) start() {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
-	d.running = true
 }
 
 func (d *dispatcher) lightBlock(ctx context.Context, height int64, peer types.NodeID) (*types.LightBlock, error) {
@@ -235,14 +232,6 @@ func (d *dispatcher) dispatch(peer types.NodeID, height int64) (chan *types.Ligh
 	return ch, nil
 }
 
-// release appends the peer back to the list and deletes the allocated call so
-// that a new call can be made to that peer
-func (d *dispatcher) release(peer types.NodeID) {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
-	d.availablePeers.Append(peer)
-}
-
 //----------------------------------------------------------------
 
 // blockProvider is a p2p based light provider which uses a dispatcher connected
@@ -266,11 +255,17 @@ func (p *blockProvider) LightBlock(ctx context.Context, height int64) (*types.Li
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 	lb, err := p.dispatcher.lightBlock(ctx, height, p.peer)
-	if err != nil {
+	switch err {
+	case nil:
+		if lb == nil {
+			return nil, provider.ErrLightBlockNotFound
+		}
+	case context.DeadlineExceeded, context.Canceled:
+		return nil, err
+	case errNoResponse:
+		return nil, provider.ErrNoResponse
+	default:
 		return nil, provider.ErrUnreliableProvider{Reason: err.Error()}
-	}
-	if lb == nil {
-		return nil, provider.ErrLightBlockNotFound
 	}
 
 	if err := lb.ValidateBasic(p.chainID); err != nil {

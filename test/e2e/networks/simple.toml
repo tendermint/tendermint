@@ -5,8 +5,8 @@ snapshot_interval = 3
 [node.validator03]
 snapshot_interval = 3
 [node.validator04]
+snapshot_interval =3
+[node.validator05]
 state_sync = true
 start_at = 5
-persistent_peers = ["validator01"] 
-[node.validator05]
-snapshot_interval =3
+persistent_peers = ["validator01", "validator02"] 

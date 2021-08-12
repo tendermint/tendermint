@@ -69,6 +69,17 @@ var (
 				MaxSendBytes:        400,
 			},
 		},
+		ParamsChannel: {
+			MsgType: new(ssproto.Message),
+			Descriptor: &p2p.ChannelDescriptor{
+				ID:                  byte(ParamsChannel),
+				Priority:            2,
+				SendQueueCapacity:   10,
+				RecvMessageCapacity: paramMsgSize,
+				RecvBufferCapacity:  128,
+				MaxSendBytes:        400,
+			},
+		},
 	}
 )
 
@@ -96,6 +107,9 @@ const (
 
 	// lightBlockMsgSize is the maximum size of a lightBlockResponseMessage
 	lightBlockMsgSize = int(1e7) // ~10MB
+
+	// paramMsgSize is the maximum size of a paramsResponseMessage
+	paramMsgSize = int(1e5) // ~100kb
 
 	// lightBlockResponseTimeout is how long the dispatcher waits for a peer to
 	// return a light block
@@ -129,12 +143,12 @@ type Reactor struct {
 	peerUpdates *p2p.PeerUpdates
 	closeCh     chan struct{}
 
+	// These will only be set when a state sync is in progress. It is used to feed
+	// received snapshots and chunks into the sync. And to fetch light blocks and
+	// consensus params for verification and building of tendermint state.
+	mtx        tmsync.RWMutex
+	syncer     *syncer
 	dispatcher *dispatcher
-
-	// This will only be set when a state sync is in progress. It is used to feed
-	// received snapshots and chunks into the sync.
-	mtx    tmsync.RWMutex
-	syncer *syncer
 }
 
 // NewReactor returns a reference to a new state sync reactor, which implements
@@ -194,8 +208,6 @@ func (r *Reactor) OnStart() error {
 
 	go r.processPeerUpdates()
 
-	r.dispatcher.start()
-
 	return nil
 }
 
@@ -229,12 +241,12 @@ func (r *Reactor) Sync(
 	initialHeight int64,
 ) (sm.State, error) {
 	r.mtx.Lock()
-	if r.syncer != nil {
+	if r.syncer != nil || r.dispatcher != nil {
 		r.mtx.Unlock()
 		return sm.State{}, errors.New("a state sync is already in progress")
 	}
-
 	r.dispatcher = newDispatcher(r.blockCh.Out, lightBlockResponseTimeout)
+	r.mtx.Unlock()
 
 	to := light.TrustOptions{
 		Period: r.cfg.TrustPeriod,
@@ -263,6 +275,7 @@ func (r *Reactor) Sync(
 		}
 	}
 
+	r.mtx.Lock()
 	r.syncer = newSyncer(
 		r.cfg,
 		r.Logger,
@@ -274,6 +287,12 @@ func (r *Reactor) Sync(
 		r.tempDir,
 	)
 	r.mtx.Unlock()
+	defer func() {
+		r.mtx.Lock()
+		r.syncer = nil
+		r.dispatcher = nil
+		r.mtx.Unlock()
+	}()
 
 	requestSnapshotsHook := func() {
 		// request snapshots from all currently connected peers
@@ -287,10 +306,6 @@ func (r *Reactor) Sync(
 	if err != nil {
 		return sm.State{}, err
 	}
-
-	r.mtx.Lock()
-	r.syncer = nil
-	r.mtx.Unlock()
 
 	err = r.stateStore.Bootstrap(state)
 	if err != nil {
@@ -348,7 +363,7 @@ func (r *Reactor) backfill(
 	const sleepTime = 1 * time.Second
 	var (
 		lastValidatorSet *types.ValidatorSet
-		lastChangeHeight int64 = startHeight
+		lastChangeHeight = startHeight
 	)
 
 	queue := newBlockQueue(startHeight, stopHeight, initialHeight, stopTime, maxLightBlockRequestRetries)
@@ -527,7 +542,7 @@ func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
 			return nil
 		}
 
-		logger.Debug("received snapshot", "height", msg.Height, "format", msg.Format)
+		logger.Info("received snapshot", "height", msg.Height, "format", msg.Format)
 		_, err := r.syncer.AddSnapshot(envelope.From, &snapshot{
 			Height:   msg.Height,
 			Format:   msg.Format,
@@ -669,8 +684,11 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 		}
 
 	case *ssproto.LightBlockResponse:
-		if err := r.dispatcher.respond(msg.LightBlock, envelope.From); err != nil {
-			r.Logger.Error("error processing light block response", "err", err)
+		r.Logger.Info("received light block response")
+		if r.dispatcher != nil {
+			if err := r.dispatcher.respond(msg.LightBlock, envelope.From); err != nil {
+				r.Logger.Error("error processing light block response", "err", err)
+			}
 		}
 
 	default:
@@ -815,22 +833,25 @@ func (r *Reactor) processCh(ch *p2p.Channel, chName string) {
 // handle the PeerUpdate or if a panic is recovered.
 func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	r.Logger.Info("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
-
-	r.mtx.RLock()
-	defer r.mtx.RUnlock()
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
 
 	switch peerUpdate.Status {
 	case p2p.PeerStatusUp:
+		if r.dispatcher != nil {
+			r.dispatcher.addPeer(peerUpdate.NodeID)
+		}
 		if r.syncer != nil {
 			r.syncer.AddPeer(peerUpdate.NodeID)
 		}
-		r.dispatcher.addPeer(peerUpdate.NodeID)
 
 	case p2p.PeerStatusDown:
+		if r.dispatcher != nil {
+			r.dispatcher.removePeer(peerUpdate.NodeID)
+		}
 		if r.syncer != nil {
 			r.syncer.RemovePeer(peerUpdate.NodeID)
 		}
-		r.dispatcher.removePeer(peerUpdate.NodeID)
 	}
 	r.Logger.Info("processed peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 }
