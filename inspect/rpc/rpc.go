@@ -18,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// Server defines parameters for running an Inspect rpc server.
 type Server struct {
 	Addr    string // TCP address to listen on, ":http" if empty
 	Handler http.Handler
@@ -25,6 +26,7 @@ type Server struct {
 	Config  *config.RPCConfig
 }
 
+// Routes returns the set of routes used by the Inspect server.
 func Routes(store state.Store, blockStore state.BlockStore, eventSinks []indexer.EventSink) rpccore.RoutesMap {
 	env := &core.Environment{
 		EventSinks: eventSinks,
@@ -45,6 +47,9 @@ func Routes(store state.Store, blockStore state.BlockStore, eventSinks []indexer
 	}
 }
 
+// Handler returns the http.Handler configured for use with an Inspect server. Handler
+// registers the routes on the http.Handler and also registers the websocket handler
+// and the CORS handler if specified by the configuration options.
 func Handler(rpcConfig *config.RPCConfig, routes rpccore.RoutesMap, logger log.Logger) http.Handler {
 	mux := http.NewServeMux()
 	wmLogger := logger.With("protocol", "websocket")
@@ -81,7 +86,9 @@ func addCORSHandler(rpcConfig *config.RPCConfig, h http.Handler) http.Handler {
 	return h
 }
 
-func (r *Server) ListenAndServe(ctx context.Context) error {
+// ListenAndServe listens on the address specified in srv.Addr and handles any
+// incoming requests over HTTP using the Inspect rpc handler specified on the server.
+func (srv *Server) ListenAndServe(ctx context.Context) error {
 	listener, err := rpcserver.Listen(r.Addr, r.Config.MaxOpenConnections)
 	if err != nil {
 		return err
@@ -93,7 +100,9 @@ func (r *Server) ListenAndServe(ctx context.Context) error {
 	return rpcserver.Serve(listener, r.Handler, r.Logger, serverRPCConfig(r.Config))
 }
 
-func (r *Server) ListenAndServeTLS(ctx context.Context, certFile, keyFile string) error {
+// ListenAndServeTLS listens on the address specified in srv.Addr. ListenAndServeTLS handles
+// incoming requests over HTTPS using the Inspect rpc handler specified on the server.
+func (srv *Server) ListenAndServeTLS(ctx context.Context, certFile, keyFile string) error {
 	listener, err := rpcserver.Listen(r.Addr, r.Config.MaxOpenConnections)
 	if err != nil {
 		return err

@@ -20,8 +20,8 @@ import (
 )
 
 // Inspect manages an RPC service that exports methods to debug a failed node.
-// After a node shuts down due to a consensus failure,, it will no longer start
-// up and cannot easily be inspected. A Inspect value provides a similar interface
+// After a node shuts down due to a consensus failure, it will no longer start
+// up its state cannot easily be inspected. An Inspect value provides a similar interface
 // to the node, using the underlying Tendermint data stores, without bringing up
 // any other components. A caller can query the Inspect service to inspect the
 // persisted state and debug the failure.
@@ -33,6 +33,17 @@ type Inspect struct {
 	logger log.Logger
 }
 
+// New constructs a new Inspect from the passed in parameters.
+func New(rpcConfig *cfg.RPCConfig, blockStore sm.BlockStore, stateStore sm.Store, eventSinks []indexer.EventSink, logger log.Logger) *Inspect {
+	routes := inspect_rpc.Routes(stateStore, blockStore, eventSinks)
+	return &Inspect{
+		routes:    routes,
+		rpcConfig: rpcConfig,
+		logger:    logger,
+	}
+}
+
+// NewFromConfig constructs an Inspect using the values defined in the passed in config.
 func NewFromConfig(config *cfg.Config) (*Inspect, error) {
 	blockStoreDB, err := cfg.DefaultDBProvider(&cfg.DBContext{ID: "blockstore", Config: config})
 	if err != nil {
@@ -56,15 +67,7 @@ func NewFromConfig(config *cfg.Config) (*Inspect, error) {
 	return New(config.RPC, blockStore, stateStore, sinks, l), nil
 }
 
-func New(rpcConfig *cfg.RPCConfig, blockStore sm.BlockStore, stateStore sm.Store, eventSinks []indexer.EventSink, logger log.Logger) *Inspect {
-	routes := inspect_rpc.Routes(stateStore, blockStore, eventSinks)
-	return &Inspect{
-		routes:    routes,
-		rpcConfig: rpcConfig,
-		logger:    logger,
-	}
-}
-
+// NewDefault constructs a new Inspect using the default values.
 func NewDefault() (*Inspect, error) {
 	config := cfg.Config{
 		BaseConfig: cfg.DefaultBaseConfig(),
@@ -74,6 +77,8 @@ func NewDefault() (*Inspect, error) {
 	return NewFromConfig(&config)
 }
 
+// Run starts the Inspect servers and blocks until the servers shut down. The passed
+// in context is used to control the lifecycle of the servers.
 func (inspect *Inspect) Run(ctx context.Context) error {
 	return startRPCServers(ctx, inspect.rpcConfig, inspect.logger, inspect.routes)
 }
