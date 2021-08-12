@@ -9,6 +9,8 @@ import (
 // NOTE: Interfaces used by RPC must be thread safe!
 //------------------------------------------------------
 
+//go:generate ../scripts/mockery_generate.sh BlockStore
+
 //------------------------------------------------------
 // blockstore
 
@@ -30,13 +32,13 @@ type BlockStore interface {
 	LoadBlockPart(height int64, index int) *types.Part
 
 	LoadBlockCommit(height int64) *types.Commit
-	LoadSeenCommit(height int64) *types.Commit
+	LoadSeenCommit() *types.Commit
 }
 
 //-----------------------------------------------------------------------------
 // evidence pool
 
-//go:generate mockery --case underscore --name EvidencePool
+//go:generate ../scripts/mockery_generate.sh EvidencePool
 
 // EvidencePool defines the EvidencePool interface used by State.
 type EvidencePool interface {

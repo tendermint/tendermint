@@ -12,7 +12,7 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-//go:generate mockery --case underscore --name Transport|Connection
+//go:generate ../../scripts/mockery_generate.sh Transport|Connection
 
 const (
 	// defaultProtocol is the default protocol used for NodeAddress when

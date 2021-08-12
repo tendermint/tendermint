@@ -96,28 +96,28 @@ const (
 
 type ReactorOption func(*Reactor)
 
-// Temporary interface for switching to fast sync, we should get rid of v0.
+// NOTE: Temporary interface for switching to block sync, we should get rid of v0.
 // See: https://github.com/tendermint/tendermint/issues/4595
-type FastSyncReactor interface {
-	SwitchToFastSync(sm.State) error
+type BlockSyncReactor interface {
+	SwitchToBlockSync(sm.State) error
 
 	GetMaxPeerBlockHeight() int64
 
-	// GetTotalSyncedTime returns the time duration since the fastsync starting.
+	// GetTotalSyncedTime returns the time duration since the blocksync starting.
 	GetTotalSyncedTime() time.Duration
 
 	// GetRemainingSyncTime returns the estimating time the node will be fully synced,
-	// if will return 0 if the fastsync does not perform or the number of block synced is
+	// if will return 0 if the blocksync does not perform or the number of block synced is
 	// too small (less than 100).
 	GetRemainingSyncTime() time.Duration
 }
 
-//go:generate mockery --case underscore --name ConsSyncReactor
+//go:generate ../../scripts/mockery_generate.sh ConsSyncReactor
 // ConsSyncReactor defines an interface used for testing abilities of node.startStateSync.
 type ConsSyncReactor interface {
 	SwitchToConsensus(sm.State, bool)
 	SetStateSyncingMetrics(float64)
-	SetFastSyncingMetrics(float64)
+	SetBlockSyncingMetrics(float64)
 }
 
 // Reactor defines a reactor for the consensus service.
@@ -265,7 +265,7 @@ func (r *Reactor) SetEventBus(b *types.EventBus) {
 	r.state.SetEventBus(b)
 }
 
-// WaitSync returns whether the consensus reactor is waiting for state/fast sync.
+// WaitSync returns whether the consensus reactor is waiting for state/block sync.
 func (r *Reactor) WaitSync() bool {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
@@ -278,8 +278,8 @@ func ReactorMetrics(metrics *Metrics) ReactorOption {
 	return func(r *Reactor) { r.Metrics = metrics }
 }
 
-// SwitchToConsensus switches from fast-sync mode to consensus mode. It resets
-// the state, turns off fast-sync, and starts the consensus state-machine.
+// SwitchToConsensus switches from block-sync mode to consensus mode. It resets
+// the state, turns off block-sync, and starts the consensus state-machine.
 func (r *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
 	r.Logger.Info("switching to consensus")
 
@@ -296,7 +296,7 @@ func (r *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
 	r.waitSync = false
 	r.mtx.Unlock()
 
-	r.Metrics.FastSyncing.Set(0)
+	r.Metrics.BlockSyncing.Set(0)
 	r.Metrics.StateSyncing.Set(0)
 
 	if skipWAL {
@@ -313,9 +313,9 @@ conR:
 %+v`, err, r.state, r))
 	}
 
-	d := types.EventDataFastSyncStatus{Complete: true, Height: state.LastBlockHeight}
-	if err := r.eventBus.PublishEventFastSyncStatus(d); err != nil {
-		r.Logger.Error("failed to emit the fastsync complete event", "err", err)
+	d := types.EventDataBlockSyncStatus{Complete: true, Height: state.LastBlockHeight}
+	if err := r.eventBus.PublishEventBlockSyncStatus(d); err != nil {
+		r.Logger.Error("failed to emit the blocksync complete event", "err", err)
 	}
 }
 
@@ -969,7 +969,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 			go r.gossipVotesRoutine(ps)
 			go r.queryMaj23Routine(ps)
 
-			// Send our state to the peer. If we're fast-syncing, broadcast a
+			// Send our state to the peer. If we're block-syncing, broadcast a
 			// RoundStepMessage later upon SwitchToConsensus().
 			if !r.waitSync {
 				go r.sendNewRoundStepMessage(ps.peerID)
@@ -1219,7 +1219,7 @@ func (r *Reactor) handleVoteSetBitsMessage(envelope p2p.Envelope, msgI Message) 
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
 //
-// NOTE: We process these messages even when we're fast_syncing. Messages affect
+// NOTE: We process these messages even when we're block syncing. Messages affect
 // either a peer state or the consensus state. Peer state updates can happen in
 // parallel, but processing of proposals, block parts, and votes are ordered by
 // the p2p channel.
@@ -1442,6 +1442,6 @@ func (r *Reactor) SetStateSyncingMetrics(v float64) {
 	r.Metrics.StateSyncing.Set(v)
 }
 
-func (r *Reactor) SetFastSyncingMetrics(v float64) {
-	r.Metrics.FastSyncing.Set(v)
+func (r *Reactor) SetBlockSyncingMetrics(v float64) {
+	r.Metrics.BlockSyncing.Set(v)
 }

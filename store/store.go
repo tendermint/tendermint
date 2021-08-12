@@ -258,12 +258,13 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	return commit
 }
 
-// LoadSeenCommit returns the locally seen Commit for the given height.
-// This is useful when we've seen a commit, but there has not yet been
-// a new block at `height + 1` that includes this commit in its block.LastCommit.
-func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
+// LoadSeenCommit returns the last locally seen Commit before being
+// cannonicalized. This is useful when we've seen a commit, but there
+// has not yet been a new block at `height + 1` that includes this
+// commit in its block.LastCommit.
+func (bs *BlockStore) LoadSeenCommit() *types.Commit {
 	var pbc = new(tmproto.Commit)
-	bz, err := bs.db.Get(seenCommitKey(height))
+	bz, err := bs.db.Get(seenCommitKey())
 	if err != nil {
 		panic(err)
 	}
@@ -326,10 +327,6 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 	}
 
 	if _, err := bs.pruneRange(blockCommitKey(0), blockCommitKey(height), nil); err != nil {
-		return pruned, err
-	}
-
-	if _, err := bs.pruneRange(seenCommitKey(0), seenCommitKey(height), nil); err != nil {
 		return pruned, err
 	}
 
@@ -479,13 +476,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	// Save seen commit (seen +2/3 precommits for block)
 	pbsc := seenCommit.ToProto()
 	seenCommitBytes := mustEncode(pbsc)
-	if err := batch.Set(seenCommitKey(height), seenCommitBytes); err != nil {
-		panic(err)
-	}
-
-	// remove the previous seen commit that we have just replaced with the
-	// canonical commit
-	if err := batch.Delete(seenCommitKey(height - 1)); err != nil {
+	if err := batch.Set(seenCommitKey(), seenCommitBytes); err != nil {
 		panic(err)
 	}
 
@@ -516,7 +507,7 @@ func (bs *BlockStore) SaveSeenCommit(height int64, seenCommit *types.Commit) err
 	if err != nil {
 		return fmt.Errorf("unable to marshal commit: %w", err)
 	}
-	return bs.db.Set(seenCommitKey(height), seenCommitBytes)
+	return bs.db.Set(seenCommitKey(), seenCommitBytes)
 }
 
 func (bs *BlockStore) SaveSignedHeader(sh *types.SignedHeader, blockID types.BlockID) error {
@@ -612,8 +603,8 @@ func blockCommitKey(height int64) []byte {
 	return key
 }
 
-func seenCommitKey(height int64) []byte {
-	key, err := orderedcode.Append(nil, prefixSeenCommit, height)
+func seenCommitKey() []byte {
+	key, err := orderedcode.Append(nil, prefixSeenCommit)
 	if err != nil {
 		panic(err)
 	}

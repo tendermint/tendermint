@@ -1908,17 +1908,19 @@ func (m *ResponseBeginBlock) GetEvents() []Event {
 }
 
 type ResponseCheckTx struct {
-	Code         uint32  `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
-	Data         []byte  `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
-	Log          string  `protobuf:"bytes,3,opt,name=log,proto3" json:"log,omitempty"`
-	Info         string  `protobuf:"bytes,4,opt,name=info,proto3" json:"info,omitempty"`
-	GasWanted    int64   `protobuf:"varint,5,opt,name=gas_wanted,proto3" json:"gas_wanted,omitempty"`
-	GasUsed      int64   `protobuf:"varint,6,opt,name=gas_used,proto3" json:"gas_used,omitempty"`
-	Events       []Event `protobuf:"bytes,7,rep,name=events,proto3" json:"events,omitempty"`
-	Codespace    string  `protobuf:"bytes,8,opt,name=codespace,proto3" json:"codespace,omitempty"`
-	Sender       string  `protobuf:"bytes,9,opt,name=sender,proto3" json:"sender,omitempty"`
-	Priority     int64   `protobuf:"varint,10,opt,name=priority,proto3" json:"priority,omitempty"`
-	MempoolError string  `protobuf:"bytes,11,opt,name=mempool_error,json=mempoolError,proto3" json:"mempool_error,omitempty"`
+	Code      uint32  `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
+	Data      []byte  `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	Log       string  `protobuf:"bytes,3,opt,name=log,proto3" json:"log,omitempty"`
+	Info      string  `protobuf:"bytes,4,opt,name=info,proto3" json:"info,omitempty"`
+	GasWanted int64   `protobuf:"varint,5,opt,name=gas_wanted,proto3" json:"gas_wanted,omitempty"`
+	GasUsed   int64   `protobuf:"varint,6,opt,name=gas_used,proto3" json:"gas_used,omitempty"`
+	Events    []Event `protobuf:"bytes,7,rep,name=events,proto3" json:"events,omitempty"`
+	Codespace string  `protobuf:"bytes,8,opt,name=codespace,proto3" json:"codespace,omitempty"`
+	Sender    string  `protobuf:"bytes,9,opt,name=sender,proto3" json:"sender,omitempty"`
+	Priority  int64   `protobuf:"varint,10,opt,name=priority,proto3" json:"priority,omitempty"`
+	// mempool_error is set by Tendermint.
+	// ABCI applictions creating a ResponseCheckTX should not set mempool_error.
+	MempoolError string `protobuf:"bytes,11,opt,name=mempool_error,json=mempoolError,proto3" json:"mempool_error,omitempty"`
 }
 
 func (m *ResponseCheckTx) Reset()         { *m = ResponseCheckTx{} }
