@@ -40,7 +40,7 @@ func TestMaxOpenConnections(t *testing.T) {
 	})
 	config := DefaultConfig()
 	config.MaxOpenConnections = max
-	l, err := Listen("tcp://127.0.0.1:0", config.MaxOpenConnections)
+	l, err := Listen("tcp://127.0.0.1:0", config)
 	require.NoError(t, err)
 	defer l.Close()
 	go Serve(l, mux, log.TestingLogger(), config) //nolint:errcheck // ignore for tests
