@@ -48,7 +48,9 @@ Using timestamps in our protocol means either accepting the timestamps as not re
 This design requires impacting the protocol’s liveness in order to make the timestamps more reliable.
 An alternate approach is to remove timestamps altogether from the block protocol.
 `BFTTime` is deterministic but may be arbitrarily inaccurate.
-However, having a reliable source of time is quite useful for blockchain applications.
+However, having a reliable source of time is quite useful for blockchain protocols and applications.
+
+
 We therefore decided not to remove the timestamp. 
 Time is much more meaningful to humans than block height.
 Applications may wish for some transactions to occur on a certain day, on a regular period, or after some time following a different event.
@@ -180,7 +182,9 @@ More specifically, a proposal timestamp is `timely` if `validatorLocalTime - PRE
 Because the `PRECISION` and `MSGDELAY` parameters must be the same across all validators, they will be added to the [consensus parameters](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/types/params.proto#L13) as [durations](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration).
 
 The proposer-based timestamp specification also includes a [new ACCURACY parameter](https://github.com/tendermint/spec/blob/master/spec/consensus/proposer-based-timestamp/pbts-sysmodel_001_draft.md#pbts-clocksync-external0).
-`ACCURACY` represents the difference between the ‘real’ time and the currently known Unix time of correct validators.
+Intuitively, `ACCURACY` represents the difference between the ‘real’ time and the currently known time of correct validators.
+The currently known Unix time of any validator is always somewhat different from real time.
+`ACCURACY` is the largest such difference between each validator's time and real time taken as an absolute value. 
 This is not something a computer can determine on its own and must be specified as an estimate by the user of Tendermint.
 It is used in the new algorithm to [calculate a timeout for the propose step](https://github.com/tendermint/spec/blob/master/spec/consensus/proposer-based-timestamp/pbts-algorithm_001_draft.md#pbts-alg-startround0).
 `ACCURACY` is assumed to be the same across all validators and therefore should be included as a consensus parameter.
