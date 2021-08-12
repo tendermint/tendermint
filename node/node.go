@@ -445,8 +445,10 @@ func makeNode(config *cfg.Config,
 			BlockStore:       blockStore,
 			EvidencePool:     evPool,
 			ConsensusState:   csState,
-			P2PPeers:         sw,
 			BlockSyncReactor: bcReactor.(cs.BlockSyncReactor),
+
+			P2PPeers:    sw,
+			PeerManager: peerManager,
 
 			GenDoc:           genDoc,
 			EventSinks:       eventSinks,
