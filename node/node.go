@@ -18,7 +18,6 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	cs "github.com/tendermint/tendermint/internal/consensus"
-	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/pex"
@@ -37,7 +36,6 @@ import (
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
@@ -66,21 +64,17 @@ type nodeImpl struct {
 	eventBus         *types.EventBus // pub/sub for services
 	stateStore       sm.Store
 	blockStore       *store.BlockStore // store the blockchain to disk
-	bcReactor        service.Service   // for fast-syncing
+	bcReactor        service.Service   // for block-syncing
 	mempoolReactor   service.Service   // for gossipping transactions
 	mempool          mempool.Mempool
 	stateSync        bool               // whether the node should state sync on startup
 	stateSyncReactor *statesync.Reactor // for hosting and restoring state sync snapshots
-	consensusState   *cs.State          // latest consensus state
 	consensusReactor *cs.Reactor        // for participating in the consensus
-	pexReactor       *pex.Reactor       // for exchanging peer addresses
-	pexReactorV2     *pex.ReactorV2     // for exchanging peer addresses
-	evidenceReactor  *evidence.Reactor
-	evidencePool     *evidence.Pool // tracking evidence
-	proxyApp         proxy.AppConns // connection to the application
+	pexReactor       service.Service    // for exchanging peer addresses
+	evidenceReactor  service.Service
 	rpcListeners     []net.Listener // rpc servers
-	eventSinks       []indexer.EventSink
-	indexerService   *indexer.Service
+	indexerService   service.Service
+	rpcEnv           *rpccore.Environment
 	prometheusSrv    *http.Server
 }
 
@@ -225,9 +219,9 @@ func makeNode(config *cfg.Config,
 		}
 	}
 
-	// Determine whether we should do fast sync. This must happen after the handshake, since the
+	// Determine whether we should do block sync. This must happen after the handshake, since the
 	// app may modify the validator set, specifying ourself as the only validator.
-	fastSync := config.FastSyncMode && !onlyValidatorIsUs(state, pubKey)
+	blockSync := config.FastSyncMode && !onlyValidatorIsUs(state, pubKey)
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger, config.Mode)
 
@@ -281,15 +275,15 @@ func makeNode(config *cfg.Config,
 
 	csReactorShim, csReactor, csState := createConsensusReactor(
 		config, state, blockExec, blockStore, mp, evPool,
-		privValidator, csMetrics, stateSync || fastSync, eventBus,
+		privValidator, csMetrics, stateSync || blockSync, eventBus,
 		peerManager, router, consensusLogger,
 	)
 
-	// Create the blockchain reactor. Note, we do not start fast sync if we're
+	// Create the blockchain reactor. Note, we do not start block sync if we're
 	// doing a state sync first.
 	bcReactorShim, bcReactor, err := createBlockchainReactor(
 		logger, config, state, blockExec, blockStore, csReactor,
-		peerManager, router, fastSync && !stateSync, csMetrics,
+		peerManager, router, blockSync && !stateSync, csMetrics,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not create blockchain reactor: %w", err)
@@ -303,16 +297,16 @@ func makeNode(config *cfg.Config,
 		bcReactorForSwitch = bcReactor.(p2p.Reactor)
 	}
 
-	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or fast sync first.
+	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or block sync first.
 	// FIXME We need to update metrics here, since other reactors don't have access to them.
 	if stateSync {
 		csMetrics.StateSyncing.Set(1)
-	} else if fastSync {
-		csMetrics.FastSyncing.Set(1)
+	} else if blockSync {
+		csMetrics.BlockSyncing.Set(1)
 	}
 
 	// Set up state sync reactor, and schedule a sync if requested.
-	// FIXME The way we do phased startups (e.g. replay -> fast sync -> consensus) is very messy,
+	// FIXME The way we do phased startups (e.g. replay -> block sync -> consensus) is very messy,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
 	var (
@@ -371,10 +365,9 @@ func makeNode(config *cfg.Config,
 	// Note we currently use the addrBook regardless at least for AddOurAddress
 
 	var (
-		pexReactor   *pex.Reactor
-		pexReactorV2 *pex.ReactorV2
-		sw           *p2p.Switch
-		addrBook     pex.AddrBook
+		pexReactor service.Service
+		sw         *p2p.Switch
+		addrBook   pex.AddrBook
 	)
 
 	pexCh := pex.ChannelDescriptor()
@@ -382,7 +375,7 @@ func makeNode(config *cfg.Config,
 
 	if config.P2P.DisableLegacy {
 		addrBook = nil
-		pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
+		pexReactor, err = createPEXReactorV2(config, logger, peerManager, router)
 		if err != nil {
 			return nil, err
 		}
@@ -436,19 +429,37 @@ func makeNode(config *cfg.Config,
 		bcReactor:        bcReactor,
 		mempoolReactor:   mpReactor,
 		mempool:          mp,
-		consensusState:   csState,
 		consensusReactor: csReactor,
 		stateSyncReactor: stateSyncReactor,
 		stateSync:        stateSync,
 		pexReactor:       pexReactor,
-		pexReactorV2:     pexReactorV2,
 		evidenceReactor:  evReactor,
-		evidencePool:     evPool,
-		proxyApp:         proxyApp,
 		indexerService:   indexerService,
 		eventBus:         eventBus,
-		eventSinks:       eventSinks,
+
+		rpcEnv: &rpccore.Environment{
+			ProxyAppQuery:   proxyApp.Query(),
+			ProxyAppMempool: proxyApp.Mempool(),
+
+			StateStore:       stateStore,
+			BlockStore:       blockStore,
+			EvidencePool:     evPool,
+			ConsensusState:   csState,
+			P2PPeers:         sw,
+			BlockSyncReactor: bcReactor.(cs.BlockSyncReactor),
+
+			GenDoc:           genDoc,
+			EventSinks:       eventSinks,
+			ConsensusReactor: csReactor,
+			EventBus:         eventBus,
+			Mempool:          mp,
+			Logger:           logger.With("module", "rpc"),
+			Config:           *config.RPC,
+		},
 	}
+
+	node.rpcEnv.P2PTransport = node
+
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
 
 	return node, nil
@@ -481,25 +492,6 @@ func makeSeedNode(config *cfg.Config,
 	p2pMetrics := p2p.PrometheusMetrics(config.Instrumentation.Namespace, "chain_id", genDoc.ChainID)
 	p2pLogger := logger.With("module", "p2p")
 	transport := createTransport(p2pLogger, config)
-	sw := createSwitch(
-		config, transport, p2pMetrics, nil, nil,
-		nil, nil, nil, nil, nodeInfo, nodeKey, p2pLogger,
-	)
-
-	err = sw.AddPersistentPeers(strings.SplitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
-	if err != nil {
-		return nil, fmt.Errorf("could not add peers from persistent_peers field: %w", err)
-	}
-
-	err = sw.AddUnconditionalPeerIDs(strings.SplitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
-	if err != nil {
-		return nil, fmt.Errorf("could not add peer ids from unconditional_peer_ids field: %w", err)
-	}
-
-	addrBook, err := createAddrBookAndSetOnSwitch(config, sw, p2pLogger, nodeKey)
-	if err != nil {
-		return nil, fmt.Errorf("could not create addrbook: %w", err)
-	}
 
 	peerManager, err := createPeerManager(config, dbProvider, p2pLogger, nodeKey.ID)
 	if err != nil {
@@ -513,8 +505,9 @@ func makeSeedNode(config *cfg.Config,
 	}
 
 	var (
-		pexReactor   *pex.Reactor
-		pexReactorV2 *pex.ReactorV2
+		pexReactor service.Service
+		sw         *p2p.Switch
+		addrBook   pex.AddrBook
 	)
 
 	// add the pex reactor
@@ -524,11 +517,31 @@ func makeSeedNode(config *cfg.Config,
 	pexCh := pex.ChannelDescriptor()
 	transport.AddChannelDescriptors([]*p2p.ChannelDescriptor{&pexCh})
 	if config.P2P.DisableLegacy {
-		pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
+		pexReactor, err = createPEXReactorV2(config, logger, peerManager, router)
 		if err != nil {
 			return nil, err
 		}
 	} else {
+		sw = createSwitch(
+			config, transport, p2pMetrics, nil, nil,
+			nil, nil, nil, nil, nodeInfo, nodeKey, p2pLogger,
+		)
+
+		err = sw.AddPersistentPeers(strings.SplitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
+		if err != nil {
+			return nil, fmt.Errorf("could not add peers from persistent_peers field: %w", err)
+		}
+
+		err = sw.AddUnconditionalPeerIDs(strings.SplitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
+		if err != nil {
+			return nil, fmt.Errorf("could not add peer ids from unconditional_peer_ids field: %w", err)
+		}
+
+		addrBook, err = createAddrBookAndSetOnSwitch(config, sw, p2pLogger, nodeKey)
+		if err != nil {
+			return nil, fmt.Errorf("could not create addrbook: %w", err)
+		}
+
 		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
 	}
 
@@ -551,8 +564,7 @@ func makeSeedNode(config *cfg.Config,
 		peerManager: peerManager,
 		router:      router,
 
-		pexReactor:   pexReactor,
-		pexReactorV2: pexReactorV2,
+		pexReactor: pexReactor,
 	}
 	node.BaseService = *service.NewBaseService(logger, "SeedNode", node)
 
@@ -593,23 +605,22 @@ func (n *nodeImpl) OnStart() error {
 	}
 
 	n.isListening = true
-
 	n.Logger.Info("p2p service", "legacy_enabled", !n.config.P2P.DisableLegacy)
 
 	if n.config.P2P.DisableLegacy {
-		err = n.router.Start()
+		if err = n.router.Start(); err != nil {
+			return err
+		}
 	} else {
 		// Add private IDs to addrbook to block those peers being added
 		n.addrBook.AddPrivateIDs(strings.SplitAndTrimEmpty(n.config.P2P.PrivatePeerIDs, ",", " "))
-		err = n.sw.Start()
-	}
-	if err != nil {
-		return err
+		if err = n.sw.Start(); err != nil {
+			return err
+		}
 	}
 
 	if n.config.Mode != cfg.ModeSeed {
-		if n.config.FastSync.Version == cfg.BlockchainV0 {
-			// Start the real blockchain reactor separately since the switch uses the shim.
+		if n.config.BlockSync.Version == cfg.BlockSyncV0 {
 			if err := n.bcReactor.Start(); err != nil {
 				return err
 			}
@@ -636,8 +647,8 @@ func (n *nodeImpl) OnStart() error {
 		}
 	}
 
-	if n.config.P2P.DisableLegacy && n.pexReactorV2 != nil {
-		if err := n.pexReactorV2.Start(); err != nil {
+	if n.config.P2P.DisableLegacy {
+		if err := n.pexReactor.Start(); err != nil {
 			return err
 		}
 	} else {
@@ -646,12 +657,11 @@ func (n *nodeImpl) OnStart() error {
 		if err != nil {
 			return fmt.Errorf("could not dial peers from persistent-peers field: %w", err)
 		}
-
 	}
 
 	// Run state sync
 	if n.stateSync {
-		bcR, ok := n.bcReactor.(cs.FastSyncReactor)
+		bcR, ok := n.bcReactor.(cs.BlockSyncReactor)
 		if !ok {
 			return fmt.Errorf("this blockchain reactor does not support switching from state sync")
 		}
@@ -693,7 +703,7 @@ func (n *nodeImpl) OnStop() {
 
 	if n.config.Mode != cfg.ModeSeed {
 		// now stop the reactors
-		if n.config.FastSync.Version == cfg.BlockchainV0 {
+		if n.config.BlockSync.Version == cfg.BlockSyncV0 {
 			// Stop the real blockchain reactor separately since the switch uses the shim.
 			if err := n.bcReactor.Stop(); err != nil {
 				n.Logger.Error("failed to stop the blockchain reactor", "err", err)
@@ -721,10 +731,8 @@ func (n *nodeImpl) OnStop() {
 		}
 	}
 
-	if n.config.P2P.DisableLegacy && n.pexReactorV2 != nil {
-		if err := n.pexReactorV2.Stop(); err != nil {
-			n.Logger.Error("failed to stop the PEX v2 reactor", "err", err)
-		}
+	if err := n.pexReactor.Stop(); err != nil {
+		n.Logger.Error("failed to stop the PEX v2 reactor", "err", err)
 	}
 
 	if n.config.P2P.DisableLegacy {
@@ -765,55 +773,23 @@ func (n *nodeImpl) OnStop() {
 	}
 }
 
-// ConfigureRPC makes sure RPC has all the objects it needs to operate.
-func (n *nodeImpl) ConfigureRPC() (*rpccore.Environment, error) {
-	rpcCoreEnv := rpccore.Environment{
-		ProxyAppQuery:   n.proxyApp.Query(),
-		ProxyAppMempool: n.proxyApp.Mempool(),
-
-		StateStore:     n.stateStore,
-		BlockStore:     n.blockStore,
-		EvidencePool:   n.evidencePool,
-		ConsensusState: n.consensusState,
-		P2PPeers:       n.sw,
-		P2PTransport:   n,
-
-		GenDoc:           n.genesisDoc,
-		EventSinks:       n.eventSinks,
-		ConsensusReactor: n.consensusReactor,
-		EventBus:         n.eventBus,
-		Mempool:          n.mempool,
-
-		Logger: n.Logger.With("module", "rpc"),
-
-		Config:          *n.config.RPC,
-		FastSyncReactor: n.bcReactor.(cs.FastSyncReactor),
-	}
+func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 	if n.config.Mode == cfg.ModeValidator {
 		pubKey, err := n.privValidator.GetPubKey(context.TODO())
 		if pubKey == nil || err != nil {
 			return nil, fmt.Errorf("can't get pubkey: %w", err)
 		}
-		rpcCoreEnv.PubKey = pubKey
+		n.rpcEnv.PubKey = pubKey
 	}
-	if err := rpcCoreEnv.InitGenesisChunks(); err != nil {
-		return nil, err
-	}
-
-	return &rpcCoreEnv, nil
-}
-
-func (n *nodeImpl) startRPC() ([]net.Listener, error) {
-	env, err := n.ConfigureRPC()
-	if err != nil {
+	if err := n.rpcEnv.InitGenesisChunks(); err != nil {
 		return nil, err
 	}
 
 	listenAddrs := strings.SplitAndTrimEmpty(n.config.RPC.ListenAddress, ",", " ")
-	routes := env.GetRoutes()
+	routes := n.rpcEnv.GetRoutes()
 
 	if n.config.RPC.Unsafe {
-		env.AddUnsafe(routes)
+		n.rpcEnv.AddUnsafe(routes)
 	}
 
 	config := rpcserver.DefaultConfig()
@@ -910,7 +886,7 @@ func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 			return nil, err
 		}
 		go func() {
-			if err := grpccore.StartGRPCServer(env, listener); err != nil {
+			if err := grpccore.StartGRPCServer(n.rpcEnv, listener); err != nil {
 				n.Logger.Error("Error starting gRPC server", "err", err)
 			}
 		}()
@@ -943,44 +919,14 @@ func (n *nodeImpl) startPrometheusServer(addr string) *http.Server {
 	return srv
 }
 
-// Switch returns the Node's Switch.
-func (n *nodeImpl) Switch() *p2p.Switch {
-	return n.sw
-}
-
-// BlockStore returns the Node's BlockStore.
-func (n *nodeImpl) BlockStore() *store.BlockStore {
-	return n.blockStore
-}
-
-// ConsensusState returns the Node's ConsensusState.
-func (n *nodeImpl) ConsensusState() *cs.State {
-	return n.consensusState
-}
-
 // ConsensusReactor returns the Node's ConsensusReactor.
 func (n *nodeImpl) ConsensusReactor() *cs.Reactor {
 	return n.consensusReactor
 }
 
-// MempoolReactor returns the Node's mempool reactor.
-func (n *nodeImpl) MempoolReactor() service.Service {
-	return n.mempoolReactor
-}
-
 // Mempool returns the Node's mempool.
 func (n *nodeImpl) Mempool() mempool.Mempool {
 	return n.mempool
-}
-
-// PEXReactor returns the Node's PEXReactor. It returns nil if PEX is disabled.
-func (n *nodeImpl) PEXReactor() *pex.Reactor {
-	return n.pexReactor
-}
-
-// EvidencePool returns the Node's EvidencePool.
-func (n *nodeImpl) EvidencePool() *evidence.Pool {
-	return n.evidencePool
 }
 
 // EventBus returns the Node's EventBus.
@@ -999,19 +945,9 @@ func (n *nodeImpl) GenesisDoc() *types.GenesisDoc {
 	return n.genesisDoc
 }
 
-// ProxyApp returns the Node's AppConns, representing its connections to the ABCI application.
-func (n *nodeImpl) ProxyApp() proxy.AppConns {
-	return n.proxyApp
-}
-
-// Config returns the Node's config.
-func (n *nodeImpl) Config() *cfg.Config {
-	return n.config
-}
-
-// EventSinks returns the Node's event indexing sinks.
-func (n *nodeImpl) EventSinks() []indexer.EventSink {
-	return n.eventSinks
+// RPCEnvironment makes sure RPC has all the objects it needs to operate.
+func (n *nodeImpl) RPCEnvironment() *rpccore.Environment {
+	return n.rpcEnv
 }
 
 //------------------------------------------------------------------------------
@@ -1031,14 +967,14 @@ func (n *nodeImpl) NodeInfo() types.NodeInfo {
 	return n.nodeInfo
 }
 
-// startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
+// startStateSync starts an asynchronous state sync process, then switches to block sync mode.
 func startStateSync(
 	ssR statesync.SyncReactor,
-	bcR cs.FastSyncReactor,
+	bcR cs.BlockSyncReactor,
 	conR cs.ConsSyncReactor,
 	sp statesync.StateProvider,
 	config *cfg.StateSyncConfig,
-	fastSync bool,
+	blockSync bool,
 	stateInitHeight int64,
 	eb *types.EventBus,
 ) error {
@@ -1072,17 +1008,17 @@ func startStateSync(
 			stateSyncLogger.Error("failed to emit the statesync start event", "err", err)
 		}
 
-		if fastSync {
+		if blockSync {
 			// FIXME Very ugly to have these metrics bleed through here.
-			conR.SetFastSyncingMetrics(1)
-			if err := bcR.SwitchToFastSync(state); err != nil {
-				stateSyncLogger.Error("failed to switch to fast sync", "err", err)
+			conR.SetBlockSyncingMetrics(1)
+			if err := bcR.SwitchToBlockSync(state); err != nil {
+				stateSyncLogger.Error("failed to switch to block sync", "err", err)
 				return
 			}
 
-			d := types.EventDataFastSyncStatus{Complete: false, Height: state.LastBlockHeight}
-			if err := eb.PublishEventFastSyncStatus(d); err != nil {
-				stateSyncLogger.Error("failed to emit the fastsync starting event", "err", err)
+			d := types.EventDataBlockSyncStatus{Complete: false, Height: state.LastBlockHeight}
+			if err := eb.PublishEventBlockSyncStatus(d); err != nil {
+				stateSyncLogger.Error("failed to emit the block sync starting event", "err", err)
 			}
 
 		} else {

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/libs/clist"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
@@ -53,6 +54,10 @@ type Reactor struct {
 	// goroutines.
 	peerWG sync.WaitGroup
 
+	// observePanic is a function for observing panics that were recovered in methods on
+	// Reactor. observePanic is called with the recovered value.
+	observePanic func(interface{})
+
 	mtx          tmsync.Mutex
 	peerRoutines map[types.NodeID]*tmsync.Closer
 }
@@ -76,11 +81,14 @@ func NewReactor(
 		peerUpdates:  peerUpdates,
 		closeCh:      make(chan struct{}),
 		peerRoutines: make(map[types.NodeID]*tmsync.Closer),
+		observePanic: defaultObservePanic,
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Mempool", r)
 	return r
 }
+
+func defaultObservePanic(r interface{}) {}
 
 // GetChannelShims returns a map of ChannelDescriptorShim objects, where each
 // object wraps a reference to a legacy p2p ChannelDescriptor and the corresponding
@@ -187,6 +195,7 @@ func (r *Reactor) handleMempoolMessage(envelope p2p.Envelope) error {
 func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
+			r.observePanic(e)
 			err = fmt.Errorf("panic in processing message: %v", e)
 			r.Logger.Error(
 				"recovering from processing message panic",
@@ -306,7 +315,7 @@ func (r *Reactor) processPeerUpdates() {
 
 func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer) {
 	peerMempoolID := r.ids.GetForPeer(peerID)
-	var memTx *WrappedTx
+	var nextGossipTx *clist.CElement
 
 	// remove the peer ID from the map of routines and mark the waitgroup as done
 	defer func() {
@@ -317,6 +326,7 @@ func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer)
 		r.peerWG.Done()
 
 		if e := recover(); e != nil {
+			r.observePanic(e)
 			r.Logger.Error(
 				"recovering from broadcasting mempool loop",
 				"err", e,
@@ -333,10 +343,10 @@ func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer)
 		// This happens because the CElement we were looking at got garbage
 		// collected (removed). That is, .NextWait() returned nil. Go ahead and
 		// start from the beginning.
-		if memTx == nil {
+		if nextGossipTx == nil {
 			select {
 			case <-r.mempool.WaitForNextTx(): // wait until a tx is available
-				if memTx = r.mempool.NextGossipTx(); memTx == nil {
+				if nextGossipTx = r.mempool.NextGossipTx(); nextGossipTx == nil {
 					continue
 				}
 
@@ -351,6 +361,8 @@ func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer)
 				return
 			}
 		}
+
+		memTx := nextGossipTx.Value.(*WrappedTx)
 
 		if r.peerMgr != nil {
 			height := r.peerMgr.GetHeight(peerID)
@@ -380,16 +392,8 @@ func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer)
 		}
 
 		select {
-		case <-memTx.gossipEl.NextWaitChan():
-			// If there is a next element in gossip index, we point memTx to that node's
-			// value, otherwise we reset memTx to nil which will be checked at the
-			// parent for loop.
-			next := memTx.gossipEl.Next()
-			if next != nil {
-				memTx = next.Value.(*WrappedTx)
-			} else {
-				memTx = nil
-			}
+		case <-nextGossipTx.NextWaitChan():
+			nextGossipTx = nextGossipTx.Next()
 
 		case <-closer.Done():
 			// The peer is marked for removal via a PeerUpdate as the doneCh was

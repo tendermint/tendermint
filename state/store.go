@@ -68,7 +68,7 @@ func init() {
 
 //----------------------
 
-//go:generate mockery --case underscore --name Store
+//go:generate ../scripts/mockery_generate.sh Store
 
 // Store defines the state store interface
 //
@@ -661,10 +661,5 @@ func (store dbStore) saveConsensusParamsInfo(
 		return err
 	}
 
-	err = batch.Set(consensusParamsKey(nextHeight), bz)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return batch.Set(consensusParamsKey(nextHeight), bz)
 }

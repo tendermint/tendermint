@@ -513,36 +513,50 @@ func TestNodeSetEventSink(t *testing.T) {
 	config := cfg.ResetTestRoot("node_app_version_test")
 	defer os.RemoveAll(config.RootDir)
 
-	n := getTestNode(t, config, log.TestingLogger())
+	logger := log.TestingLogger()
+	setupTest := func(t *testing.T, conf *cfg.Config) []indexer.EventSink {
+		eventBus, err := createAndStartEventBus(logger)
+		require.NoError(t, err)
 
-	assert.Equal(t, 1, len(n.eventSinks))
-	assert.Equal(t, indexer.KV, n.eventSinks[0].Type())
+		genDoc, err := types.GenesisDocFromFile(config.GenesisFile())
+		require.NoError(t, err)
+
+		indexService, eventSinks, err := createAndStartIndexerService(config,
+			cfg.DefaultDBProvider, eventBus, logger, genDoc.ChainID)
+		require.NoError(t, err)
+		t.Cleanup(func() { require.NoError(t, indexService.Stop()) })
+		return eventSinks
+	}
+
+	eventSinks := setupTest(t, config)
+	assert.Equal(t, 1, len(eventSinks))
+	assert.Equal(t, indexer.KV, eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"null"}
-	n = getTestNode(t, config, log.TestingLogger())
+	eventSinks = setupTest(t, config)
 
-	assert.Equal(t, 1, len(n.eventSinks))
-	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
+	assert.Equal(t, 1, len(eventSinks))
+	assert.Equal(t, indexer.NULL, eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"null", "kv"}
-	n = getTestNode(t, config, log.TestingLogger())
+	eventSinks = setupTest(t, config)
 
-	assert.Equal(t, 1, len(n.eventSinks))
-	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
+	assert.Equal(t, 1, len(eventSinks))
+	assert.Equal(t, indexer.NULL, eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"kvv"}
-	ns, err := newDefaultNode(config, log.TestingLogger())
+	ns, err := newDefaultNode(config, logger)
 	assert.Nil(t, ns)
 	assert.Equal(t, errors.New("unsupported event sink type"), err)
 
 	config.TxIndex.Indexer = []string{}
-	n = getTestNode(t, config, log.TestingLogger())
+	eventSinks = setupTest(t, config)
 
-	assert.Equal(t, 1, len(n.eventSinks))
-	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
+	assert.Equal(t, 1, len(eventSinks))
+	assert.Equal(t, indexer.NULL, eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"psql"}
-	ns, err = newDefaultNode(config, log.TestingLogger())
+	ns, err = newDefaultNode(config, logger)
 	assert.Nil(t, ns)
 	assert.Equal(t, errors.New("the psql connection settings cannot be empty"), err)
 
@@ -550,46 +564,46 @@ func TestNodeSetEventSink(t *testing.T) {
 
 	config.TxIndex.Indexer = []string{"psql"}
 	config.TxIndex.PsqlConn = psqlConn
-	n = getTestNode(t, config, log.TestingLogger())
-	assert.Equal(t, 1, len(n.eventSinks))
-	assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
-	n.OnStop()
+	eventSinks = setupTest(t, config)
+
+	assert.Equal(t, 1, len(eventSinks))
+	assert.Equal(t, indexer.PSQL, eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"psql", "kv"}
 	config.TxIndex.PsqlConn = psqlConn
-	n = getTestNode(t, config, log.TestingLogger())
-	assert.Equal(t, 2, len(n.eventSinks))
+	eventSinks = setupTest(t, config)
+
+	assert.Equal(t, 2, len(eventSinks))
 	// we use map to filter the duplicated sinks, so it's not guarantee the order when append sinks.
-	if n.eventSinks[0].Type() == indexer.KV {
-		assert.Equal(t, indexer.PSQL, n.eventSinks[1].Type())
+	if eventSinks[0].Type() == indexer.KV {
+		assert.Equal(t, indexer.PSQL, eventSinks[1].Type())
 	} else {
-		assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
-		assert.Equal(t, indexer.KV, n.eventSinks[1].Type())
+		assert.Equal(t, indexer.PSQL, eventSinks[0].Type())
+		assert.Equal(t, indexer.KV, eventSinks[1].Type())
 	}
-	n.OnStop()
 
 	config.TxIndex.Indexer = []string{"kv", "psql"}
 	config.TxIndex.PsqlConn = psqlConn
-	n = getTestNode(t, config, log.TestingLogger())
-	assert.Equal(t, 2, len(n.eventSinks))
-	if n.eventSinks[0].Type() == indexer.KV {
-		assert.Equal(t, indexer.PSQL, n.eventSinks[1].Type())
+	eventSinks = setupTest(t, config)
+
+	assert.Equal(t, 2, len(eventSinks))
+	if eventSinks[0].Type() == indexer.KV {
+		assert.Equal(t, indexer.PSQL, eventSinks[1].Type())
 	} else {
-		assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
-		assert.Equal(t, indexer.KV, n.eventSinks[1].Type())
+		assert.Equal(t, indexer.PSQL, eventSinks[0].Type())
+		assert.Equal(t, indexer.KV, eventSinks[1].Type())
 	}
-	n.OnStop()
 
 	var e = errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
 	config.TxIndex.Indexer = []string{"psql", "kv", "Kv"}
 	config.TxIndex.PsqlConn = psqlConn
-	_, err = newDefaultNode(config, log.TestingLogger())
+	_, err = newDefaultNode(config, logger)
 	require.Error(t, err)
 	assert.Equal(t, e, err)
 
 	config.TxIndex.Indexer = []string{"Psql", "kV", "kv", "pSql"}
 	config.TxIndex.PsqlConn = psqlConn
-	_, err = newDefaultNode(config, log.TestingLogger())
+	_, err = newDefaultNode(config, logger)
 	require.Error(t, err)
 	assert.Equal(t, e, err)
 }
@@ -659,7 +673,7 @@ func loadStatefromGenesis(t *testing.T) sm.State {
 
 func TestNodeStartStateSync(t *testing.T) {
 	mockSSR := &statesync.MockSyncReactor{}
-	mockFSR := &consmocks.FastSyncReactor{}
+	mockFSR := &consmocks.BlockSyncReactor{}
 	mockCSR := &consmocks.ConsSyncReactor{}
 	mockSP := &ssmocks.StateProvider{}
 	state := loadStatefromGenesis(t)

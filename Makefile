@@ -237,7 +237,7 @@ build-docker: build-linux
 ###############################################################################
 
 mockery:
-	go generate -run="mockery" ./...
+	go generate -run="./scripts/mockery_generate.sh" ./...
 .PHONY: mockery
 
 ###############################################################################
