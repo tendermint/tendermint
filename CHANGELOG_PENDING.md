@@ -25,6 +25,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [rpc/grpc] \#6725 Mark gRPC in the RPC layer as deprecated.
   - [blockchain/v2] \#6730 Fast Sync v2 is deprecated, please use v0
   - [rpc] Add genesis_chunked method to support paginated and parallel fetching of large genesis documents.
+  - [rpc/jsonrpc/server] \#6785 `Listen` function updated to take an `int` argument, `maxOpenConnections`, instead of an entire config object. (@williambanfield)
 
 - Apps
   - [ABCI] \#6408 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)
@@ -105,6 +106,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [config/indexer] \#6411 Introduce support for custom event indexing data sources, specifically PostgreSQL. (@JayT106)
 - [fastsync/event] \#6619 Emit fastsync status event when switching consensus/fastsync (@JayT106)
 - [statesync/event] \#6700 Emit statesync status start/end event (@JayT106)
+- [inspect] \#6785 Add a new `inspect` command for introspecting the state and block store of a crashed tendermint node. (@williambanfield)
 
 ### IMPROVEMENTS
 - [libs/log] Console log formatting changes as a result of \#6534 and \#6589. (@tychoish)
