@@ -35,6 +35,8 @@ type Inspect struct {
 }
 
 // New constructs a new Inspect from the passed in parameters.
+///
+//nolint:lll
 func New(rpcConfig *cfg.RPCConfig, blockStore sm.BlockStore, stateStore sm.Store, eventSinks []indexer.EventSink, logger log.Logger) *Inspect {
 	routes := inspect_rpc.Routes(stateStore, blockStore, eventSinks)
 	eventBus := types.NewEventBus()

@@ -113,7 +113,8 @@ func TestInspectTxSearch(t *testing.T) {
 	eventSinkMock := &indexer_mocks.EventSink{}
 	eventSinkMock.On("Stop").Return(nil)
 	eventSinkMock.On("Type").Return(indexer.KV)
-	eventSinkMock.On("SearchTxEvents", mock.Anything, mock.MatchedBy(func(q *query.Query) bool { return testQuery == q.String() })).
+	eventSinkMock.On("SearchTxEvents", mock.Anything,
+		mock.MatchedBy(func(q *query.Query) bool { return testQuery == q.String() })).
 		Return([]*abci_types.TxResult{testTxResult}, nil)
 
 	rpcConfig := config.TestRPCConfig()

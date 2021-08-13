@@ -11,6 +11,10 @@ import (
 	"github.com/tendermint/tendermint/state/indexer/sink/psql"
 )
 
+// EventSinksFromConfig constructs a slice of indexer.EventSink using the provided
+// configuration.
+//
+//nolint:lll
 func EventSinksFromConfig(cfg *config.Config, dbProvider config.DBProvider, chainID string) ([]indexer.EventSink, error) {
 	if len(cfg.TxIndex.Indexer) == 0 {
 		return []indexer.EventSink{null.NewEventSink()}, nil
