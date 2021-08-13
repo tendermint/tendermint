@@ -100,7 +100,21 @@ will need to change to accommodate these changes. Most notably:
 
 ### RPC changes
 
+#### gRPC Support
+
 Mark gRPC in the RPC layer as deprecated and to be removed in 0.36.
+
+#### Peer Management Interface
+
+When running with the new P2P Layer, the methods `UnsafeDialSeeds` and
+`UnsafeDialPeers` RPC methods will always return an error. They are
+deprecated and will be removed in 0.36 when the legacy peer stack is
+removed.
+
+Additionally the format of the Peer list returned in the `NetInfo`
+method changes in this release to accommodate the different way that
+the new stack tracks data about peers. This change affects users of
+both stacks.
 
 ### Support for Custom Reactor and Mempool Implementations
 
@@ -110,7 +124,7 @@ used, the introduction of the prioritized mempool covers nearly all of
 the use cases for custom reactors. If you are currently running custom
 reactors and mempools and are having trouble seeing the migration path
 for your project please feel free to reach out to the Tendermint Core
-development team directly. 
+development team directly.
 
 ## v0.34.0
 
