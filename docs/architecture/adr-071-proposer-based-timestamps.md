@@ -48,15 +48,21 @@ Using timestamps in our protocol means either accepting the timestamps as not re
 This design requires impacting the protocol’s liveness in order to make the timestamps more reliable.
 An alternate approach is to remove timestamps altogether from the block protocol.
 `BFTTime` is deterministic but may be arbitrarily inaccurate.
-However, having a reliable source of time is quite useful for blockchain protocols and applications.
-
+However, having a reliable source of time is quite useful for applications and protocols built on top of a blockchain.
 
 We therefore decided not to remove the timestamp. 
-Time is much more meaningful to humans than block height.
-Applications may wish for some transactions to occur on a certain day, on a regular period, or after some time following a different event.
+Applications often wish for some transactions to occur on a certain day, on a regular period, or after some time following a different event.
 All of these require some meaningful representation of agreed upon time.
-Additionally, many block chain protocols rely on a concept of ‘time’.
-Specifically, unbonding of delegated staked assets occurs after a period of days, not heights.
+The following protocols and application features require a reliable source of time:
+* Tendermint Light Clients [rely on correspondence between their known time](https://github.com/tendermint/spec/blob/master/spec/light-client/verification/README.md#definitions-1) and the block time for block verification.
+* Tendermint Evidence validity is determined [either in terms of heights or in terms of time](https://github.com/tendermint/spec/blob/8029cf7a0fcc89a5004e173ec065aa48ad5ba3c8/spec/consensus/evidence.md#verification).
+* Unbonding of staked assets in the Cosmos Hub [occurs after a period of 21 days](https://github.com/cosmos/governance/blob/ce75de4019b0129f6efcbb0e752cd2cc9e6136d3/params-change/Staking.md#unbondingtime).
+* IBC packets can use either a [timestamp or a height to timeout packet delivery](https://docs.cosmos.network/v0.43/ibc/overview.html#acknowledgements).
+
+Finally, inflation distribution in the Cosmos Hub uses an approximation of time to calculate an annual percentage rate. 
+This approximation of time is calculated using [block heights with an estimated number of blocks produced in a year](https://github.com/cosmos/governance/blob/master/params-change/Mint.md#blocksperyear). 
+Proposer-based timestamps will allow this inflation calculation to use a more meaningful and accurate source of time.
+
 
 ## Decision
 
