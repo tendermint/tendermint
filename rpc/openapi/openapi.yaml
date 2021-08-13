@@ -1476,16 +1476,12 @@ components:
     Peer:
       type: object
       properties:
-        node_info:
-          $ref: "#/components/schemas/NodeInfo"
-        is_outbound:
-          type: boolean
-          example: true
-        connection_status:
-          $ref: "#/components/schemas/ConnectionStatus"
-        remote_ip:
+        node_id:
           type: string
-          example: "95.179.155.35"
+          example: ""
+        url:
+          type: string
+          example: "<id>@95.179.155.35:2385>"
     NetInfo:
       type: object
       properties:
