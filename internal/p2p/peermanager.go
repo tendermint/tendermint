@@ -385,7 +385,7 @@ func (m *PeerManager) prunePeers() error {
 		peerID := ranked[i].ID
 		switch {
 		case m.store.Size() <= int(m.options.MaxPeers):
-			break
+			return nil
 		case m.dialing[peerID]:
 		case m.connected[peerID]:
 		default:

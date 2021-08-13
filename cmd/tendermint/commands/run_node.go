@@ -83,7 +83,10 @@ func AddNodeFlags(cmd *cobra.Command) {
 		config.Consensus.CreateEmptyBlocksInterval.String(),
 		"the possible interval between empty blocks")
 
-	// db flags
+	addDBFlags(cmd)
+}
+
+func addDBFlags(cmd *cobra.Command) {
 	cmd.Flags().String(
 		"db-backend",
 		config.DBBackend,

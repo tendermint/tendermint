@@ -27,9 +27,9 @@ const (
 	// These are used for testing the consensus state machine.
 	// They can also be used to build real-time consensus visualizers.
 	EventCompleteProposalValue = "CompleteProposal"
-	// The FastSyncStatus event will be emitted when the node switching
-	// state sync mechanism between the consensus reactor and the fastsync reactor.
-	EventFastSyncStatusValue  = "FastSyncStatus"
+	// The BlockSyncStatus event will be emitted when the node switching
+	// state sync mechanism between the consensus reactor and the blocksync reactor.
+	EventBlockSyncStatusValue = "BlockSyncStatus"
 	EventLockValue            = "Lock"
 	EventNewRoundValue        = "NewRound"
 	EventNewRoundStepValue    = "NewRoundStep"
@@ -104,7 +104,7 @@ func init() {
 	tmjson.RegisterType(EventDataVote{}, "tendermint/event/Vote")
 	tmjson.RegisterType(EventDataValidatorSetUpdates{}, "tendermint/event/ValidatorSetUpdates")
 	tmjson.RegisterType(EventDataString(""), "tendermint/event/ProposalString")
-	tmjson.RegisterType(EventDataFastSyncStatus{}, "tendermint/event/FastSyncStatus")
+	tmjson.RegisterType(EventDataBlockSyncStatus{}, "tendermint/event/FastSyncStatus")
 	tmjson.RegisterType(EventDataStateSyncStatus{}, "tendermint/event/StateSyncStatus")
 }
 
@@ -176,9 +176,9 @@ type EventDataValidatorSetUpdates struct {
 	ValidatorUpdates []*Validator `json:"validator_updates"`
 }
 
-// EventDataFastSyncStatus shows the fastsync status and the
+// EventDataBlockSyncStatus shows the fastsync status and the
 // height when the node state sync mechanism changes.
-type EventDataFastSyncStatus struct {
+type EventDataBlockSyncStatus struct {
 	Complete bool  `json:"complete"`
 	Height   int64 `json:"height"`
 }
@@ -227,7 +227,7 @@ var (
 	EventQueryValidatorSetUpdates = QueryForEvent(EventValidatorSetUpdatesValue)
 	EventQueryValidBlock          = QueryForEvent(EventValidBlockValue)
 	EventQueryVote                = QueryForEvent(EventVoteValue)
-	EventQueryFastSyncStatus      = QueryForEvent(EventFastSyncStatusValue)
+	EventQueryBlockSyncStatus     = QueryForEvent(EventBlockSyncStatusValue)
 	EventQueryStateSyncStatus     = QueryForEvent(EventStateSyncStatusValue)
 )
 

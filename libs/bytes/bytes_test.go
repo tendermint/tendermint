@@ -37,6 +37,7 @@ func TestJSONMarshal(t *testing.T) {
 		{[]byte(``), `{"B1":"","B2":""}`},
 		{[]byte(`a`), `{"B1":"YQ==","B2":"61"}`},
 		{[]byte(`abc`), `{"B1":"YWJj","B2":"616263"}`},
+		{[]byte("\x1a\x2b\x3c"), `{"B1":"Gis8","B2":"1A2B3C"}`},
 	}
 
 	for i, tc := range cases {
