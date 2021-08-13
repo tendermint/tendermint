@@ -3,7 +3,6 @@ package inspect
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"sync"
 
@@ -104,7 +103,6 @@ func (inspect *Inspect) Run(ctx context.Context) error {
 		return err
 	}
 	defer func() {
-		fmt.Println("stopping indexer")
 		err := inspect.indexerService.Stop()
 		if err != nil {
 			inspect.logger.Error("indexer stopped with error", "err", err)

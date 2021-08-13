@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/mock"
@@ -81,6 +82,8 @@ func TestInspectServeInfoRPC(t *testing.T) {
 		defer wg.Done()
 		require.NoError(t, d.Run(ctx))
 	}()
+	// force context switch
+	time.Sleep(10 * time.Millisecond)
 	requireConnect(t, rpcConfig.ListenAddress, 15)
 	cli, err := http_client.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
