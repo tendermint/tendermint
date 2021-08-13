@@ -2205,7 +2205,6 @@ func (cs *State) signVote(
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
 	}
 
-	v := vote.ToProto()
 
 	// If the signedMessageType is for precommit,
 	// use our local precommit Timeout as the max wait time for getting a singed commit. The same goes for prevote.
@@ -2226,7 +2225,9 @@ func (cs *State) signVote(
 		timeout = time.Second
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	v := vote.ToProto()
+
+  ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
 
 	err := cs.privValidator.SignVote(ctx, cs.state.ChainID, v)
