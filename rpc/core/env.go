@@ -60,7 +60,6 @@ type peers interface {
 
 type peerManager interface {
 	Peers() []types.NodeID
-	Add(p2p.NodeAddress) (bool, error)
 	Addresses(types.NodeID) []p2p.NodeAddress
 }
 
@@ -77,9 +76,9 @@ type Environment struct {
 	BlockStore     sm.BlockStore
 	EvidencePool   sm.EvidencePool
 	ConsensusState consensusState
+	P2PPeers       peers
 
 	// Legacy p2p stack
-	P2PPeers     peers
 	P2PTransport transport
 
 	// interfaces for new p2p interfaces
