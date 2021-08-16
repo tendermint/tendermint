@@ -380,7 +380,7 @@ func makeNode(config *cfg.Config,
 	if config.P2P.UseLegacy {
 		// setup Transport and Switch
 		sw = createSwitch(
-			config, transport, p2pMetrics, mpReactorShim, bcReactorForSwitch,
+			config, transport, nodeMetrics.p2p, mpReactorShim, bcReactorForSwitch,
 			stateSyncReactorShim, csReactorShim, evReactorShim, proxyApp, nodeInfo, nodeKey, p2pLogger,
 		)
 
