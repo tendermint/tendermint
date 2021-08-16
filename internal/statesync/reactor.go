@@ -62,7 +62,7 @@ var (
 			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  byte(LightBlockChannel),
-				Priority:            2,
+				Priority:            1,
 				SendQueueCapacity:   10,
 				RecvMessageCapacity: lightBlockMsgSize,
 				RecvBufferCapacity:  128,
@@ -302,6 +302,7 @@ func (r *Reactor) Sync(
 		}
 	}
 
+	r.Logger.Info("sync any starting")
 	state, commit, err := r.syncer.SyncAny(ctx, r.cfg.DiscoveryTime, requestSnapshotsHook)
 	if err != nil {
 		return sm.State{}, err
@@ -560,6 +561,9 @@ func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
 			)
 			return nil
 		}
+		if msg.Height == 3 {
+			fmt.Println("received snapshot for height 3")
+		}
 
 	default:
 		return fmt.Errorf("received unknown message: %T", msg)
@@ -667,6 +671,7 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 			r.Logger.Error("failed to retrieve light block", "err", err, "height", msg.Height)
 			return err
 		}
+		r.Logger.Info("fetched light block", "height", lb.SignedHeader.Header.Height)
 
 		lbproto, err := lb.ToProto()
 		if err != nil {
@@ -682,6 +687,7 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 				LightBlock: lbproto,
 			},
 		}
+		r.Logger.Info("sent light block response", "height", lb.SignedHeader.Header.Height)
 
 	case *ssproto.LightBlockResponse:
 		r.Logger.Info("received light block response")
@@ -709,7 +715,7 @@ func (r *Reactor) handleParamsMessage(envelope p2p.Envelope) error {
 		}
 
 		cpproto := cp.ToProto()
-		r.blockCh.Out <- p2p.Envelope{
+		r.paramsCh.Out <- p2p.Envelope{
 			To: envelope.From,
 			Message: &ssproto.ParamsResponse{
 				Height:          msg.Height,
@@ -813,6 +819,9 @@ func (r *Reactor) processCh(ch *p2p.Channel, chName string) {
 	for {
 		select {
 		case envelope := <-ch.In:
+			if chName == "light block" {
+				fmt.Println("received p2p message for light block")
+			}
 			if err := r.handleMessage(ch.ID, envelope); err != nil {
 				r.Logger.Error(fmt.Sprintf("failed to process %s message", chName),
 					"ch_id", ch.ID, "envelope", envelope, "err", err)

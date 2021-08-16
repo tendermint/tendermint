@@ -75,6 +75,35 @@ func TestDispatcherReturnsNoBlock(t *testing.T) {
 	require.Equal(t, peerFromSet, peerResult)
 }
 
+func TestBlockProviderTimeOutWaitingOnLightBlock(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+	ch := make(chan p2p.Envelope, 100)
+	d := newDispatcher(ch, 1*time.Second)
+	peerFromSet := createPeerSet(1)[0]
+	d.addPeer(peerFromSet)
+	p := d.CreateProvider(peerFromSet, "test-chain")
+	lb, err := p.LightBlock(context.Background(), 1)
+	require.NoError(t, err)
+	require.NotNil(t, lb)
+}
+
+func TestDispatcherTimeOutWaitingOnLightBlock(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+	ch := make(chan p2p.Envelope, 100)
+	d := newDispatcher(ch, 1*time.Second)
+	peerFromSet := createPeerSet(1)[0]
+	d.addPeer(peerFromSet)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancelFunc()
+
+	lb, peerResult, err := d.LightBlock(ctx, 1)
+
+	require.Error(t, err)
+	require.Equal(t, context.DeadlineExceeded, err)
+	require.Nil(t, lb)
+	require.Equal(t, peerFromSet, peerResult)
+}
+
 func TestDispatcherErrorsWhenNoPeers(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 	ch := make(chan p2p.Envelope, 100)
@@ -133,7 +162,7 @@ func TestDispatcherProviders(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
 	ch := make(chan p2p.Envelope, 100)
-	chainID := "state-sync-test"
+	chainID := "test-chain"
 	closeCh := make(chan struct{})
 	defer close(closeCh)
 
@@ -152,8 +181,8 @@ func TestDispatcherProviders(t *testing.T) {
 		require.True(t, ok)
 		assert.Equal(t, string(peers[i]), bp.String(), i)
 		lb, err := p.LightBlock(context.Background(), 10)
-		assert.Error(t, err)
-		assert.Nil(t, lb)
+		assert.NoError(t, err)
+		assert.NotNil(t, lb)
 	}
 	require.Equal(t, 0, d.peerCount())
 }

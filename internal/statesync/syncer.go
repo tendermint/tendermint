@@ -156,6 +156,7 @@ func (s *syncer) SyncAny(
 	discoveryTime time.Duration,
 	requestSnapshots func(),
 ) (sm.State, *types.Commit, error) {
+	s.logger.Info("in sync any")
 
 	if discoveryTime != 0 && discoveryTime < minimumDiscoveryTime {
 		discoveryTime = minimumDiscoveryTime
@@ -197,7 +198,9 @@ func (s *syncer) SyncAny(
 			defer chunks.Close() // in case we forget to close it elsewhere
 		}
 
+		s.logger.Info("starting sync")
 		newState, commit, err := s.Sync(ctx, snapshot, chunks)
+		s.logger.Info("after sync")
 		switch {
 		case err == nil:
 			return newState, commit, nil

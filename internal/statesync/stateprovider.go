@@ -223,6 +223,8 @@ func NewP2PStateProvider(
 		return nil, fmt.Errorf("at least 2 peers are required, got %d", len(providers))
 	}
 
+	logger.Info(fmt.Sprintf("providers list is %d long", len(providers[1:])))
+
 	lc, err := light.NewClient(ctx, chainID, trustOptions, providers[0], providers[1:],
 		lightdb.New(dbm.NewMemDB()), light.Logger(logger))
 	if err != nil {

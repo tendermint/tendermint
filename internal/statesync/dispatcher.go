@@ -3,6 +3,7 @@ package statesync
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -58,6 +59,7 @@ func (d *dispatcher) LightBlock(ctx context.Context, height int64) (*types.Light
 	d.mtx.Lock()
 	// check that the dispatcher is connected to the reactor
 	if !d.running {
+		d.mtx.Unlock()
 		return nil, "", errDisconnected
 	}
 	// check to see that the dispatcher is connected to at least one peer
@@ -70,6 +72,7 @@ func (d *dispatcher) LightBlock(ctx context.Context, height int64) (*types.Light
 	// fetch the next peer id in the list and request a light block from that
 	// peer
 	peer := d.availablePeers.Pop(ctx)
+
 	lb, err := d.lightBlock(ctx, height, peer)
 
 	// append the peer back to the list
@@ -109,8 +112,8 @@ func (d *dispatcher) stop() {
 	defer d.mtx.Unlock()
 	d.running = false
 	for peer, call := range d.calls {
-		close(call)
 		delete(d.calls, peer)
+		close(call)
 	}
 }
 
@@ -125,14 +128,15 @@ func (d *dispatcher) lightBlock(ctx context.Context, height int64, peer types.No
 		d.mtx.Lock()
 		defer d.mtx.Unlock()
 		if call, ok := d.calls[peer]; ok {
-			close(call)
 			delete(d.calls, peer)
+			close(call)
 		}
 	}()
 
 	// wait for a response, cancel or timeout
 	select {
 	case resp := <-callCh:
+		fmt.Printf("received response, height %d peer %v\n", height, peer)
 		return resp, nil
 
 	case <-ctx.Done():
@@ -146,8 +150,10 @@ func (d *dispatcher) lightBlock(ctx context.Context, height int64, peer types.No
 // respond allows the underlying process which receives requests on the
 // requestCh to respond with the respective light block
 func (d *dispatcher) respond(lb *proto.LightBlock, peer types.NodeID) error {
+	fmt.Printf("trying to respond with light block for height %d from %v\n", lb.SignedHeader.Header.Height, peer)
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
+	fmt.Printf("responding with light block for height %d from %v\n", lb.SignedHeader.Header.Height, peer)
 
 	// check that the response came from a request
 	answerCh, ok := d.calls[peer]
@@ -223,12 +229,14 @@ func (d *dispatcher) dispatch(peer types.NodeID, height int64) (chan *types.Ligh
 	d.calls[peer] = ch
 
 	// send request
+	fmt.Printf("sending request dispatch, height %d peer %v\n", height, peer)
 	d.requestCh <- p2p.Envelope{
 		To: peer,
 		Message: &ssproto.LightBlockRequest{
 			Height: uint64(height),
 		},
 	}
+	fmt.Printf("sent request dispatch, height %d peer %v\n", height, peer)
 	return ch, nil
 }
 
@@ -251,6 +259,7 @@ func (p *blockProvider) LightBlock(ctx context.Context, height int64) (*types.Li
 	if !p.dispatcher.isConnected(p.peer) {
 		return nil, provider.ErrConnectionClosed
 	}
+	fmt.Println("fetching block for block provider")
 
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
