@@ -4,18 +4,20 @@ import (
 	"context"
 	"errors"
 	"net"
-	"sync"
 
-	cfg "github.com/tendermint/tendermint/config"
-	inspect_rpc "github.com/tendermint/tendermint/inspect/rpc"
+	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/inspect/rpc"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
-	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/state/indexer/sink"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // Inspect manages an RPC service that exports methods to debug a failed node.
@@ -27,148 +29,124 @@ import (
 type Inspect struct {
 	routes rpccore.RoutesMap
 
-	rpcConfig *cfg.RPCConfig
+	config *config.RPCConfig
 
 	indexerService *indexer.Service
 	eventBus       *types.EventBus
 	logger         log.Logger
 }
 
-// New constructs a new Inspect from the passed in parameters.
+// New returns an Inspect that serves RPC on the given BlockStore and StateStore.
 ///
 //nolint:lll
-func New(rpcConfig *cfg.RPCConfig, blockStore sm.BlockStore, stateStore sm.Store, eventSinks []indexer.EventSink, logger log.Logger) *Inspect {
-	routes := inspect_rpc.Routes(stateStore, blockStore, eventSinks)
-	eventBus := types.NewEventBus()
-	eventBus.SetLogger(logger.With("module", "events"))
-	indexerService := indexer.NewIndexerService(eventSinks, eventBus)
-	indexerService.SetLogger(logger.With("module", "txindex"))
+func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, es []indexer.EventSink, logger log.Logger) *Inspect {
+	routes := rpc.Routes(ss, bs, es)
+	eb := types.NewEventBus()
+	eb.SetLogger(logger.With("module", "events"))
+	is := indexer.NewIndexerService(es, eb)
+	is.SetLogger(logger.With("module", "txindex"))
 	return &Inspect{
 		routes:         routes,
-		rpcConfig:      rpcConfig,
+		config:         cfg,
 		logger:         logger,
-		eventBus:       eventBus,
-		indexerService: indexerService,
+		eventBus:       eb,
+		indexerService: is,
 	}
 }
 
 // NewFromConfig constructs an Inspect using the values defined in the passed in config.
-func NewFromConfig(config *cfg.Config) (*Inspect, error) {
-	blockStoreDB, err := cfg.DefaultDBProvider(&cfg.DBContext{ID: "blockstore", Config: config})
+func NewFromConfig(cfg *config.Config) (*Inspect, error) {
+	bsDB, err := config.DefaultDBProvider(&config.DBContext{ID: "blockstore", Config: cfg})
 	if err != nil {
 		return nil, err
 	}
-	blockStore := store.NewBlockStore(blockStoreDB)
-	stateDB, err := cfg.DefaultDBProvider(&cfg.DBContext{ID: "statestore", Config: config})
+	bs := store.NewBlockStore(bsDB)
+	sDB, err := config.DefaultDBProvider(&config.DBContext{ID: "statestore", Config: cfg})
 	if err != nil {
 		return nil, err
 	}
-	genDoc, err := types.GenesisDocFromFile(config.GenesisFile())
+	genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
 	if err != nil {
 		return nil, err
 	}
-	sinks, err := sink.EventSinksFromConfig(config, cfg.DefaultDBProvider, genDoc.ChainID)
+	sinks, err := sink.EventSinksFromConfig(cfg, config.DefaultDBProvider, genDoc.ChainID)
 	if err != nil {
 		return nil, err
 	}
-	l := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
-	stateStore := sm.NewStore(stateDB)
-	return New(config.RPC, blockStore, stateStore, sinks, l), nil
-}
-
-// NewDefault constructs a new Inspect using the default values.
-func NewDefault() (*Inspect, error) {
-	config := cfg.Config{
-		BaseConfig: cfg.DefaultBaseConfig(),
-		RPC:        cfg.DefaultRPCConfig(),
-		TxIndex:    cfg.DefaultTxIndexConfig(),
-	}
-	return NewFromConfig(&config)
+	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+	ss := state.NewStore(sDB)
+	return New(cfg.RPC, bs, ss, sinks, logger), nil
 }
 
 // Run starts the Inspect servers and blocks until the servers shut down. The passed
 // in context is used to control the lifecycle of the servers.
-func (inspect *Inspect) Run(ctx context.Context) error {
-	err := inspect.eventBus.Start()
+func (ins *Inspect) Run(ctx context.Context) error {
+	err := ins.eventBus.Start()
 	if err != nil {
 		return err
 	}
 	defer func() {
-		err := inspect.eventBus.Stop()
+		err := ins.eventBus.Stop()
 		if err != nil {
-			inspect.logger.Error("event bus stopped with error", "err", err)
+			ins.logger.Error("event bus stopped with error", "err", err)
 		}
 	}()
+	g, tctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		if !errors.Is(ins.indexerService.Start(), pubsub.ErrUnsubscribed) {
+			return err
+		}
+		return nil
+	})
+	g.Go(func() error {
+		return startRPCServers(ctx, ins.config, ins.logger, ins.routes)
+	})
 
-	err = inspect.indexerService.Start()
+	<-tctx.Done()
+	err = ins.indexerService.Stop()
 	if err != nil {
-		return err
+		ins.logger.Error("event bus stopped with error", "err", err)
 	}
-	defer func() {
-		err := inspect.indexerService.Stop()
-		if err != nil {
-			inspect.logger.Error("indexer stopped with error", "err", err)
-		}
-	}()
-	return startRPCServers(ctx, inspect.rpcConfig, inspect.logger, inspect.routes)
+	return g.Wait()
 }
 
-func startRPCServers(ctx context.Context, rpcConfig *cfg.RPCConfig, logger log.Logger, routes rpccore.RoutesMap) error {
-	wg := &sync.WaitGroup{}
-	listenAddrs := tmstrings.SplitAndTrimEmpty(rpcConfig.ListenAddress, ",", " ")
-	rootHandler := inspect_rpc.Handler(rpcConfig, routes, logger)
-	errChan := make(chan error)
+func startRPCServers(ctx context.Context, cfg *config.RPCConfig, logger log.Logger, routes rpccore.RoutesMap) error {
+	g, _ := errgroup.WithContext(ctx)
+	listenAddrs := tmstrings.SplitAndTrimEmpty(cfg.ListenAddress, ",", " ")
+	rh := rpc.Handler(cfg, routes, logger)
 	for _, listenerAddr := range listenAddrs {
-		server := inspect_rpc.Server{
+		server := rpc.Server{
 			Logger:  logger,
-			Config:  rpcConfig,
-			Handler: rootHandler,
+			Config:  cfg,
+			Handler: rh,
 			Addr:    listenerAddr,
 		}
-		if rpcConfig.IsTLSEnabled() {
-			keyFile := rpcConfig.KeyFile()
-			certFile := rpcConfig.CertFile()
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+		if cfg.IsTLSEnabled() {
+			keyFile := cfg.KeyFile()
+			certFile := cfg.CertFile()
+			g.Go(func() error {
 				logger.Info("RPC HTTPS server starting", "address", listenerAddr,
 					"certfile", certFile, "keyfile", keyFile)
 				err := server.ListenAndServeTLS(ctx, certFile, keyFile)
 				if !errors.Is(err, net.ErrClosed) {
 					logger.Error("RPC HTTPS server stopped with error", "address", listenerAddr, "err", err)
-					errChan <- err
-					return
+					return err
 				}
 				logger.Info("RPC HTTPS server stopped", "address", listenerAddr)
-			}()
+				return nil
+			})
 		} else {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			g.Go(func() error {
 				logger.Info("RPC HTTP server starting", "address", listenerAddr)
 				err := server.ListenAndServe(ctx)
 				if !errors.Is(err, net.ErrClosed) {
 					logger.Error("RPC HTTP server stopped with error", "address", listenerAddr, "err", err)
-					errChan <- err
-					return
+					return err
 				}
 				logger.Info("RPC HTTP server stopped", "address", listenerAddr)
-			}()
+				return nil
+			})
 		}
 	}
-	select {
-	case <-chanFromWG(wg):
-		return nil
-	case err := <-errChan:
-		return err
-	}
-}
-
-func chanFromWG(wg *sync.WaitGroup) chan struct{} {
-	ch := make(chan struct{})
-	go func() {
-		wg.Wait()
-		close(ch)
-	}()
-	return ch
+	return g.Wait()
 }

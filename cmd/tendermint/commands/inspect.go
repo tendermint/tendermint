@@ -38,13 +38,14 @@ func init() {
 }
 
 func runInspect(cmd *cobra.Command, args []string) error {
-	ctx, cancelFunc := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(cmd.Context())
+	defer cancel()
 
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+	signal.Notify(c, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
 		<-c
-		cancelFunc()
+		cancel()
 	}()
 
 	blockStoreDB, err := cfg.DefaultDBProvider(&cfg.DBContext{ID: "blockstore", Config: config})
@@ -66,10 +67,10 @@ func runInspect(cmd *cobra.Command, args []string) error {
 	}
 	stateStore := state.NewStore(stateDB)
 
-	d := inspect.New(config.RPC, blockStore, stateStore, sinks, logger)
+	ins := inspect.New(config.RPC, blockStore, stateStore, sinks, logger)
 
 	logger.Info("starting inspect server")
-	if err := d.Run(ctx); err != nil {
+	if err := ins.Run(ctx); err != nil {
 		logger.Error("error encountered while running inspect server", "err", err)
 		return err
 	}

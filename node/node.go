@@ -24,6 +24,7 @@ import (
 	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/libs/strings"
@@ -161,10 +162,16 @@ func makeNode(config *cfg.Config,
 		return nil, err
 	}
 
-	indexerService, eventSinks, err := createAndStartIndexerService(config, dbProvider, eventBus, logger, genDoc.ChainID)
+	indexerService, eventSinks, err := createIndexerService(config, dbProvider, eventBus, logger, genDoc.ChainID)
 	if err != nil {
 		return nil, err
 	}
+
+	go func() {
+		if !errors.Is(ins.indexerService.Start(), pubsub.ErrUnsubscribed) {
+			return err
+		}
+	}()
 
 	// If an address is provided, listen on the socket for a connection from an
 	// external signing process.

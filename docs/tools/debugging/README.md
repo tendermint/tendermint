@@ -73,6 +73,7 @@ entire Tendermint process.
 While in this inconsistent state, a node running Tendermint's consensus engine will not start up. 
 The `inspect` command runs only a subset of Tendermint's RPC endpoints for querying the block store
 and state store. 
+`inspect` allows operators to query a read-only view of the stage.
 `inspect` does not run the consensus engine at all and can therefore be used to debug
 processes that have crashed due to inconsistent state. 
 
