@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.34.12
+
+Special thanks to external contributors on this release: @JayT106.
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### FEATURES
+
+- [rpc] [\#6717](https://github.com/tendermint/tendermint/pull/6717) introduce
+  `/genesis_chunked` rpc endpoint for handling large genesis files by chunking them (@tychoish)
+
+### IMPROVEMENTS
+
+- [rpc] [\#6825](https://github.com/tendermint/tendermint/issues/6825) Remove egregious INFO log from `ABCI#Query` RPC. (@alexanderbez)
+
+### BUG FIXES
+
+- [light] [\#6685](https://github.com/tendermint/tendermint/pull/6685) fix bug
+  with incorrectly handling contexts that would occasionally freeze state sync. (@cmwaters)
+- [privval] [\#6748](https://github.com/tendermint/tendermint/issues/6748) Fix vote timestamp to prevent chain halt (@JayT106)
+
 ## v0.34.11
 
 *June 18, 2021*
@@ -12,25 +33,25 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### BREAKING CHANGES
 
 - Apps
-    - [Version] \#6494 `TMCoreSemVer` is not required to be set as a ldflag any longer.
+    - [Version] [\#6494](https://github.com/tendermint/tendermint/issues/6494) `TMCoreSemVer` is not required to be set as a ldflag any longer.
 
 ### IMPROVEMENTS
 
-- [statesync] \#6566 Allow state sync fetchers and request timeout to be configurable. (@alexanderbez)
-- [statesync] \#6378 Retry requests for snapshots and add a minimum discovery time (5s) for new snapshots. (@tychoish)
-- [statesync] \#6582 Increase chunk priority and add multiple retry chunk requests (@cmwaters)
+- [statesync] [\#6566](https://github.com/tendermint/tendermint/issues/6566) Allow state sync fetchers and request timeout to be configurable. (@alexanderbez)
+- [statesync] [\#6378](https://github.com/tendermint/tendermint/issues/6378) Retry requests for snapshots and add a minimum discovery time (5s) for new snapshots. (@tychoish)
+- [statesync] [\#6582](https://github.com/tendermint/tendermint/issues/6582) Increase chunk priority and add multiple retry chunk requests (@cmwaters)
 
 ### BUG FIXES
 
-- [evidence] \#6375 Fix bug with inconsistent LightClientAttackEvidence hashing (@cmwaters)
+- [evidence] [\#6375](https://github.com/tendermint/tendermint/issues/6375) Fix bug with inconsistent LightClientAttackEvidence hashing (@cmwaters)
 
 ## v0.34.10
 
 *April 14, 2021*
 
-This release fixes a bug where peers would sometimes try to send messages 
+This release fixes a bug where peers would sometimes try to send messages
 on incorrect channels. Special thanks to our friends at Oasis Labs for surfacing
-this issue! 
+this issue!
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
 
