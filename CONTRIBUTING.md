@@ -242,7 +242,7 @@ to these backport branches.
 We use Mergify's [backport feature](https://mergify.io/features/backports) to automatically backport
 to the needed branch. There should be a label for any backport branch that you'll be targeting.
 To notify the bot to backport a pull request, mark the pull request with
-the label `backport-to-<backport_branch>`.
+the label `S:backport-to-<backport_branch>`.
 Once the original pull request is merged, the bot will try to cherry-pick the pull request
 to the backport branch. If the bot fails to backport, it will open a pull request.
 The author of the original pull request is responsible for solving the conflicts and
@@ -256,11 +256,14 @@ Note that, after creating the backport branch, you'll also need to update the ta
 so that `go mod` is able to order the branches correctly. You should tag `master` with a "dev" tag
 that is "greater than" the backport branches tags. See #6072 for more context.
 
+In the following example, we'll assume that we're making a backport branch for
+the 0.35.x line.
+
 1. Start on `master`
 2. Create the backport branch:
-   `git checkout -b vX.X.x`
+   `git checkout -b v0.35.x`
 3. Go back to master and tag it as the dev branch for the _next_ major release and push it back up:
-   `git tag -a vX.[X+1].0-dev; git push vX.[X+1].0-dev`
+   `git tag -a v0.36.0-dev; git push v0.36.0-dev`
 4. Create a new workflow to run the e2e nightlies for this backport branch.
    (See https://github.com/tendermint/tendermint/blob/master/.github/workflows/e2e-nightly-34x.yml
    for an example.)
@@ -272,7 +275,7 @@ release candidate (RC) for our friends and partners to test out. We use git tags
 create RCs, and we build them off of backport branches.
 
 Tags for RCs should follow the "standard" release naming conventions, with `-rcX` at the end
-(`vX.X.X-rcX`).
+(for example, `v0.35.0-rc0`).
 
 (Note that branches and tags _cannot_ have the same names, so it's important that these branches
 have distinct names from the tags/release names.)
@@ -328,9 +331,9 @@ If there were no release candidates, begin by creating a backport branch, as des
    - Add any release notes you would like to be added to the body of the release to `release_notes.md`.
 4. Open a PR with these changes against the backport branch.
 5. Once these changes are on the backport branch, push a tag with prepared release details.
-   This will trigger the actual release `vX.X.0`.
-   - `git tag -a vX.X.0 -m 'Release vX.X.0'`
-   - `git push origin vX.X.0`
+   This will trigger the actual release `v0.35.0`.
+   - `git tag -a v0.35.0 -m 'Release v0.35.0'`
+   - `git push origin v0.35.0`
 7. Make sure that `master` is updated with the latest `CHANGELOG.md`, `CHANGELOG_PENDING.md`, and `UPGRADING.md`.
 
 #### Minor release (point releases)
@@ -342,7 +345,7 @@ Minor releases don't have release candidates by default, although any tricky cha
 
 To create a minor release:
 
-1. Checkout the long-lived backport branch: `git checkout vX.X.x`
+1. Checkout the long-lived backport branch: `git checkout v0.35.x`
 2. Run integration tests (`make test_integrations`) and the nightlies.
 3. Check out a new branch and prepare the release:
    - Copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
@@ -353,10 +356,10 @@ To create a minor release:
      (Note that ABCI follows semver, and that ABCI versions are the only versions
      which can change during minor releases, and only field additions are valid minor changes.)
    - Add any release notes you would like to be added to the body of the release to `release_notes.md`.
-4. Open a PR with these changes that will land them back on `vX.X.x`
+4. Open a PR with these changes that will land them back on `v0.35.x`
 5. Once this change has landed on the backport branch, make sure to pull it locally, then push a tag.
-   - `git tag -a vX.X.x -m 'Release vX.X.x'`
-   - `git push origin vX.X.x`
+   - `git tag -a v0.35.1 -m 'Release v0.35.1'`
+   - `git push origin v0.35.1`
 6. Create a pull request back to master with the CHANGELOG & version changes from the latest release.
    - Remove all `R:minor` labels from the pull requests that were included in the release.
    - Do not merge the backport branch into master.
