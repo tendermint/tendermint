@@ -82,12 +82,6 @@ func createIndexerService(
 	indexerService := indexer.NewIndexerService(eventSinks, eventBus)
 	indexerService.SetLogger(logger.With("module", "txindex"))
 	return indexerService, eventSinks, nil
-
-	if err := indexerService.Start(); err != nil {
-		return nil, nil, err
-	}
-
-	return indexerService, eventSinks, nil
 }
 
 func doHandshake(
