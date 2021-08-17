@@ -21,7 +21,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### FEATURES
 
 - [rpc] [\#6717](https://github.com/tendermint/tendermint/pull/6717) introduce
-  `/genesis_chunked` rpc endpoint for handling large genesis files by chunking them
+  `/genesis_chunked` rpc endpoint for handling large genesis files by chunking them (@tychoish)
 
 ### IMPROVEMENTS
 
