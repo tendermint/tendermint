@@ -10,6 +10,12 @@ set -ex
 
 export PATH="$GOBIN:$PATH"
 export TMHOME=$HOME/.tendermint_app
+MODULEROOT=`go env | grep GOMOD= | sed "s/GOMOD=\"\(.*\)go.mod\"/\1/g"`
+
+# abci-cli must be on the path for these tests to run.
+if [ ! $(which abci-cli) ]; then
+	go install $MODULEROOT/abci/cmd/abci-cli
+fi
 
 function kvstore_over_socket(){
     rm -rf $TMHOME
