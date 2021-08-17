@@ -24,7 +24,6 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [fastsync/rpc] \#6620 Add TotalSyncedTime & RemainingTime to SyncInfo in /status RPC  (@JayT106)
   - [rpc/grpc] \#6725 Mark gRPC in the RPC layer as deprecated.
   - [blockchain/v2] \#6730 Fast Sync v2 is deprecated, please use v0
-  - [rpc] Add genesis_chunked method to support paginated and parallel fetching of large genesis documents.
   - [rpc] \#6820 Update RPC methods to reflect changes in the p2p layer, disabling support for `UnsafeDialPeers` and `UnsafeDialPeers` when used with the new p2p layer, and changing the response format of the peer list in `NetInfo` for all users.
 
 - Apps
@@ -109,7 +108,6 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS
 
-- [rpc] \#6825 Remove egregious INFO log from `ABCI#Query` RPC. (@alexanderbez)
 - [libs/log] Console log formatting changes as a result of \#6534 and \#6589. (@tychoish)
 - [statesync] \#6566 Allow state sync fetchers and request timeout to be configurable. (@alexanderbez)
 - [types] \#6478 Add `block_id` to `newblock` event (@jeebster)
@@ -161,5 +159,3 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [statesync] \#6463 Adds Reverse Sync feature to fetch historical light blocks after state sync in order to verify any evidence (@cmwaters)
 - [fastsync] \#6590 Update the metrics during fast-sync (@JayT106)
 - [gitignore] \#6668 Fix gitignore of abci-cli (@tanyabouman)
-- [light] \#6687 Fix bug with incorrectly handled contexts in the light client (@cmwaters)
-- [privval] \#6748 Fix vote timestamp to prevent chain halt (@JayT106)
