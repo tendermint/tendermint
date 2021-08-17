@@ -31,3 +31,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [light] [\#6685](https://github.com/tendermint/tendermint/pull/6685) fix bug
   with incorrectly handling contexts that would occasionally freeze state sync. (@cmwaters)
+- [privval] \#6748 Fix vote timestamp to prevent chain halt (@JayT106)
