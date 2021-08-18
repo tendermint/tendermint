@@ -26,8 +26,6 @@ func Start(testnet *e2e.Testnet) error {
 		return false
 	})
 
-	initialHieght := testnet.InitialHeight
-
 	sort.SliceStable(nodeQueue, func(i, j int) bool {
 		return nodeQueue[i].StartAt < nodeQueue[j].StartAt
 	})
@@ -52,9 +50,15 @@ func Start(testnet *e2e.Testnet) error {
 		logger.Info(fmt.Sprintf("Node %v up on http://127.0.0.1:%v", node.Name, node.ProxyPort))
 	}
 
+	networkHeight := testnet.InitialHeight
+
 	// Wait for initial height
-	logger.Info(fmt.Sprintf("Waiting for initial height %v...", testnet.InitialHeight))
-	block, blockID, err := waitForHeight(testnet, testnet.InitialHeight)
+	logger.Info("Waiting for initial height",
+		"height", networkHeight,
+		"nodes", len(testnet.Nodes)-len(nodeQueue),
+		"pending", len(nodeQueue))
+
+	block, blockID, err := waitForHeight(testnet, networkHeight)
 	if err != nil {
 		return err
 	}
@@ -70,19 +74,23 @@ func Start(testnet *e2e.Testnet) error {
 	}
 
 	for _, node := range nodeQueue {
-		// if we're starting a node in the "future" relative
-		// to where the network currently is, we should make
-		// sure the network has gotten to that point first.
-		if node.StartAt > initialHieght {
+		if node.StartAt > networkHeight {
+			// if we're starting a node that's ahead of
+			// the last known height of the network, then
+			// we should make sure that the rest of the
+			// network has reached at least the height
+			// that this node will start at before we
+			// start the node.
+
+			networkHeight = node.StartAt
+
 			logger.Info("Waiting for network to advance before starting catch up node",
 				"node", node.Name,
-				"height", node.StartAt)
+				"height", networkHeight)
 
-			if _, _, err := waitForHeight(testnet, node.StartAt); err != nil {
+			if _, _, err := waitForHeight(testnet, networkHeight); err != nil {
 				return err
 			}
-
-			initialHieght = node.StartAt
 		}
 
 		logger.Info(fmt.Sprintf("Starting node %v at height %v...", node.Name, node.StartAt))
