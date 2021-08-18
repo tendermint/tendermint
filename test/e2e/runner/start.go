@@ -25,6 +25,9 @@ func Start(testnet *e2e.Testnet) error {
 		}
 		return false
 	})
+
+	initialHieght := testnet.InitialHeight
+
 	sort.SliceStable(nodeQueue, func(i, j int) bool {
 		return nodeQueue[i].StartAt < nodeQueue[j].StartAt
 	})
@@ -66,8 +69,22 @@ func Start(testnet *e2e.Testnet) error {
 		}
 	}
 
-	// Start up remaining nodes
 	for _, node := range nodeQueue {
+		// if we're starting a node in the "future" relative
+		// to where the network currently is, we should make
+		// sure the network has gotten to that point first.
+		if node.StartAt > initialHieght {
+			logger.Info("Waiting for network to advance before starting catch up node",
+				"node", node.Name,
+				"height", node.StartAt)
+
+			if _, _, err := waitForHeight(testnet, node.StartAt); err != nil {
+				return err
+			}
+
+			initialHieght = node.StartAt
+		}
+
 		logger.Info(fmt.Sprintf("Starting node %v at height %v...", node.Name, node.StartAt))
 		if _, _, err := waitForHeight(testnet, node.StartAt); err != nil {
 			return err
