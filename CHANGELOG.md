@@ -2,6 +2,27 @@
 
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
+## v0.34.12
+
+*August 17, 2021*
+
+Special thanks to external contributors on this release: @JayT106.
+
+### FEATURES
+
+- [rpc] [\#6717](https://github.com/tendermint/tendermint/pull/6717) introduce
+  `/genesis_chunked` rpc endpoint for handling large genesis files by chunking them (@tychoish)
+
+### IMPROVEMENTS
+
+- [rpc] [\#6825](https://github.com/tendermint/tendermint/issues/6825) Remove egregious INFO log from `ABCI#Query` RPC. (@alexanderbez)
+
+### BUG FIXES
+
+- [light] [\#6685](https://github.com/tendermint/tendermint/pull/6685) fix bug
+  with incorrectly handling contexts that would occasionally freeze state sync. (@cmwaters)
+- [privval] [\#6748](https://github.com/tendermint/tendermint/issues/6748) Fix vote timestamp to prevent chain halt (@JayT106)
+
 ## v0.34.11
 
 *June 18, 2021*
@@ -28,9 +49,9 @@ adding two new parameters to the state sync config.
 
 *April 14, 2021*
 
-This release fixes a bug where peers would sometimes try to send messages 
+This release fixes a bug where peers would sometimes try to send messages
 on incorrect channels. Special thanks to our friends at Oasis Labs for surfacing
-this issue! 
+this issue!
 
 - [p2p/node] [\#6339](https://github.com/tendermint/tendermint/issues/6339) Fix bug with using custom channels (@cmwaters)
 - [light] [\#6346](https://github.com/tendermint/tendermint/issues/6346) Correctly handle too high errors to improve client robustness (@cmwaters)
@@ -39,7 +60,7 @@ this issue!
 
 *April 8, 2021*
 
-This release fixes a moderate severity security issue, Security Advisory Alderfly, 
+This release fixes a moderate severity security issue, Security Advisory Alderfly,
 which impacts all networks that rely on Tendermint light clients.
 Further details will be released once networks have upgraded.
 
@@ -112,7 +133,7 @@ shout-out to @marbar3778 for diagnosing it quickly.
 
 ## v0.34.6
 
-*February 18, 2021* 
+*February 18, 2021*
 
 _Tendermint Core v0.34.5 and v0.34.6 have been recalled due to release tooling problems._
 
@@ -120,9 +141,9 @@ _Tendermint Core v0.34.5 and v0.34.6 have been recalled due to release tooling p
 
 *February 11, 2021*
 
-This release includes a fix for a memory leak in the evidence reactor (see #6068, below). 
-All Tendermint clients are recommended to upgrade. 
-Thank you to our friends at Crypto.com for the initial report of this memory leak! 
+This release includes a fix for a memory leak in the evidence reactor (see #6068, below).
+All Tendermint clients are recommended to upgrade.
+Thank you to our friends at Crypto.com for the initial report of this memory leak!
 
 Special thanks to other external contributors on this release: @yayajacky, @odidev, @laniehei, and @c29r3!
 
@@ -132,17 +153,17 @@ Special thanks to other external contributors on this release: @yayajacky, @odid
 - [light] [\#6026](https://github.com/tendermint/tendermint/pull/6026) Fix a bug when height isn't provided for the rpc calls: `/commit` and `/validators` (@cmwaters)
 - [evidence] [\#6068](https://github.com/tendermint/tendermint/pull/6068) Terminate broadcastEvidenceRoutine when peer is stopped (@melekes)
 
-## v0.34.3 
+## v0.34.3
 
 *January 19, 2021*
 
-This release includes a fix for a high-severity security vulnerability, 
+This release includes a fix for a high-severity security vulnerability,
 a DoS-vector that impacted Tendermint Core v0.34.0-v0.34.2. For more details, see
-[Security Advisory Mulberry](https://github.com/tendermint/tendermint/security/advisories/GHSA-p658-8693-mhvg) 
-or https://nvd.nist.gov/vuln/detail/CVE-2021-21271. 
+[Security Advisory Mulberry](https://github.com/tendermint/tendermint/security/advisories/GHSA-p658-8693-mhvg)
+or https://nvd.nist.gov/vuln/detail/CVE-2021-21271.
 
 Tendermint Core v0.34.3 also updates GoGo Protobuf to 1.3.2 in order to pick up the fix for
-https://nvd.nist.gov/vuln/detail/CVE-2021-3121. 
+https://nvd.nist.gov/vuln/detail/CVE-2021-3121.
 
 ### BUG FIXES
 
@@ -234,14 +255,14 @@ Special thanks to external contributors on this release: @james-ray, @fedekunze,
   - [blockchain] [\#4637](https://github.com/tendermint/tendermint/pull/4637) Migrate blockchain reactor(s) to Protobuf encoding (@marbar3778)
   - [evidence] [\#4949](https://github.com/tendermint/tendermint/pull/4949) Migrate evidence reactor to Protobuf encoding (@marbar3778)
   - [mempool] [\#4940](https://github.com/tendermint/tendermint/pull/4940) Migrate mempool from to Protobuf encoding (@marbar3778)
-  - [mempool] [\#5321](https://github.com/tendermint/tendermint/pull/5321) Batch transactions when broadcasting them to peers (@melekes) 
+  - [mempool] [\#5321](https://github.com/tendermint/tendermint/pull/5321) Batch transactions when broadcasting them to peers (@melekes)
      - `MaxBatchBytes` new config setting defines the max size of one batch.
   - [p2p/pex] [\#4973](https://github.com/tendermint/tendermint/pull/4973) Migrate `p2p/pex` reactor to Protobuf encoding (@marbar3778)
   - [statesync] [\#4943](https://github.com/tendermint/tendermint/pull/4943) Migrate state sync reactor to Protobuf encoding (@marbar3778)
 
 - Blockchain Protocol
 
-  - [evidence] [\#4725](https://github.com/tendermint/tendermint/pull/4725) Remove `Pubkey` from `DuplicateVoteEvidence` (@marbar3778) 
+  - [evidence] [\#4725](https://github.com/tendermint/tendermint/pull/4725) Remove `Pubkey` from `DuplicateVoteEvidence` (@marbar3778)
   - [evidence] [\#5499](https://github.com/tendermint/tendermint/pull/5449) Cap evidence to a maximum number of bytes (supercedes [\#4780](https://github.com/tendermint/tendermint/pull/4780)) (@cmwaters)
   - [merkle] [\#5193](https://github.com/tendermint/tendermint/pull/5193) Header hashes are no longer empty for empty inputs, notably `DataHash`, `EvidenceHash`, and `LastResultsHash` (@erikgrinaker)
   - [state] [\#4845](https://github.com/tendermint/tendermint/pull/4845) Include `GasWanted` and `GasUsed` into `LastResultsHash` (@melekes)
@@ -300,7 +321,7 @@ Special thanks to external contributors on this release: @james-ray, @fedekunze,
   - [types] [\#4852](https://github.com/tendermint/tendermint/pull/4852) Vote & Proposal `SignBytes` is now func `VoteSignBytes` & `ProposalSignBytes` (@marbar3778)
   - [types] [\#4798](https://github.com/tendermint/tendermint/pull/4798) Simplify `VerifyCommitTrusting` func + remove extra validation (@melekes)
   - [types] [\#4845](https://github.com/tendermint/tendermint/pull/4845) Remove `ABCIResult` (@melekes)
-  - [types] [\#5029](https://github.com/tendermint/tendermint/pull/5029) Rename all values from `PartsHeader` to `PartSetHeader` to have consistency (@marbar3778) 
+  - [types] [\#5029](https://github.com/tendermint/tendermint/pull/5029) Rename all values from `PartsHeader` to `PartSetHeader` to have consistency (@marbar3778)
   - [types] [\#4939](https://github.com/tendermint/tendermint/pull/4939) `Total` in `Parts` & `PartSetHeader` has been changed from a `int` to a `uint32` (@marbar3778)
   - [types] [\#4939](https://github.com/tendermint/tendermint/pull/4939) Vote: `ValidatorIndex` & `Round` are now `int32` (@marbar3778)
   - [types] [\#4939](https://github.com/tendermint/tendermint/pull/4939) Proposal: `POLRound` & `Round` are now `int32` (@marbar3778)
@@ -338,7 +359,7 @@ Special thanks to external contributors on this release: @james-ray, @fedekunze,
 - [evidence] [\#4722](https://github.com/tendermint/tendermint/pull/4722) Consolidate evidence store and pool types to improve evidence DB (@cmwaters)
 - [evidence] [\#4839](https://github.com/tendermint/tendermint/pull/4839) Reject duplicate evidence from being proposed (@cmwaters)
 - [evidence] [\#5219](https://github.com/tendermint/tendermint/pull/5219) Change the source of evidence time to block time (@cmwaters)
-- [libs] [\#5126](https://github.com/tendermint/tendermint/pull/5126) Add a sync package which wraps sync.(RW)Mutex & deadlock.(RW)Mutex and use a build flag (deadlock) in order to enable deadlock checking (@marbar3778) 
+- [libs] [\#5126](https://github.com/tendermint/tendermint/pull/5126) Add a sync package which wraps sync.(RW)Mutex & deadlock.(RW)Mutex and use a build flag (deadlock) in order to enable deadlock checking (@marbar3778)
 - [light] [\#4935](https://github.com/tendermint/tendermint/pull/4935) Fetch and compare a new header with witnesses in parallel (@melekes)
 - [light] [\#4929](https://github.com/tendermint/tendermint/pull/4929) Compare header with witnesses only when doing bisection (@melekes)
 - [light] [\#4916](https://github.com/tendermint/tendermint/pull/4916) Validate basic for inbound validator sets and headers before further processing them (@cmwaters)
