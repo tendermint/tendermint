@@ -56,7 +56,7 @@ Operators are able to perform queries such as the following:
 
 * Query for all transaction events for a given transaction hash:
 
-  SELECT * FROM tx_events WHERE hash = '3E7D1F...';
+	SELECT * FROM tx_events WHERE hash = '3E7D1F...';
 
 * Query for all transaction events for a given block height:
 
