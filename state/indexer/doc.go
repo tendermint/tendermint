@@ -23,9 +23,9 @@ If an operator wants to completely disable indexing, they may simply just provid
 the "null" sink option in the configuration. All other sinks will be ignored if
 "null" is provided.
 
-If indexing is enabled, index.Service will iterate over all enabled sinks and
-invoke block and transaction indexing via the appropriate IndexBlockEvents and
-IndexTxEvents methods.
+If indexing is enabled, the indexer.Service will iterate over all enabled sinks
+and invoke block and transaction indexing via the appropriate IndexBlockEvents
+and IndexTxEvents methods.
 
 Note, the "kv" sink is considered deprecated and it's query functionality is very
 limited, but does allow users to directly query for block and transaction events
