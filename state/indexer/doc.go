@@ -12,7 +12,7 @@ in the form of <abci.Event.Type>.<abci.EventAttributeKey>=<abci.EventAttributeVa
 e.g. 'transfer.amount=10000'.
 
 An operator can enable one or both of the supported indexing sinks via the
-'tx_index.indexer' Tendermint configuration.
+'tx-index.indexer' Tendermint configuration.
 
 Example:
 
