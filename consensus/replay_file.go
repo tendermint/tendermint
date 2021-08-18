@@ -220,9 +220,19 @@ func (pb *playback) replayConsoleLoop() int {
 			ctx := context.Background()
 			// ensure all new step events are regenerated as expected
 
-			newStepSub, err := pb.cs.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep)
+			newStepSub, err := pb.cs.eventBus.Subscribe(
+				ctx,
+				subscriber,
+				types.EventQueryNewRoundStep,
+			)
 			if err != nil {
-				tmos.Exit(fmt.Sprintf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep))
+				tmos.Exit(
+					fmt.Sprintf(
+						"failed to subscribe %s to %v",
+						subscriber,
+						types.EventQueryNewRoundStep,
+					),
+				)
 			}
 			defer func() {
 				if err := pb.cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep); err != nil {
@@ -323,14 +333,22 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 	// We should be able to just pass nil here for the node pro tx hash
 	handshaker := NewHandshaker(stateStore, state, blockStore, gdoc, nil, csConfig.AppHashSize)
 	handshaker.SetEventBus(eventBus)
-	err = handshaker.Handshake(proxyApp)
+	_, err = handshaker.Handshake(proxyApp)
 	if err != nil {
 		tmos.Exit(fmt.Sprintf("Error on handshake: %v", err))
 	}
 
 	mempool, evpool := emptyMempool{}, sm.EmptyEvidencePool{}
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
-		proxyApp.Query(), mempool, evpool, nil, sm.BlockExecutorWithAppHashSize(csConfig.AppHashSize))
+	blockExec := sm.NewBlockExecutor(
+		stateStore,
+		log.TestingLogger(),
+		proxyApp.Consensus(),
+		proxyApp.Query(),
+		mempool,
+		evpool,
+		nil,
+		sm.BlockExecutorWithAppHashSize(csConfig.AppHashSize),
+	)
 
 	consensusState := NewState(csConfig, state.Copy(), blockExec,
 		blockStore, mempool, evpool)

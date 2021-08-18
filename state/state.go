@@ -263,6 +263,7 @@ func (state State) MakeBlock(
 	commit *types.Commit,
 	evidence []types.Evidence,
 	proposerProTxHash types.ProTxHash,
+	proposedAppVersion uint64,
 ) (*types.Block, *types.PartSet) {
 
 	var coreChainLockHeight uint32
@@ -273,7 +274,7 @@ func (state State) MakeBlock(
 	}
 
 	// Build base block with block data.
-	block := types.MakeBlock(height, coreChainLockHeight, coreChainLock, txs, commit, evidence)
+	block := types.MakeBlock(height, coreChainLockHeight, coreChainLock, txs, commit, evidence, proposedAppVersion)
 
 	// Set time.
 	var timestamp time.Time

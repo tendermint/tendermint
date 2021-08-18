@@ -84,9 +84,16 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	})
 	mempool := emptyMempool{}
 	evpool := sm.EmptyEvidencePool{}
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
-		proxyApp.Query(), mempool, evpool, nil,
-		sm.BlockExecutorWithAppHashSize(config.Consensus.AppHashSize))
+	blockExec := sm.NewBlockExecutor(
+		stateStore,
+		log.TestingLogger(),
+		proxyApp.Consensus(),
+		proxyApp.Query(),
+		mempool,
+		evpool,
+		nil,
+		sm.BlockExecutorWithAppHashSize(config.Consensus.AppHashSize),
+	)
 	consensusState := NewState(config.Consensus, state.Copy(),
 		blockExec, blockStore, mempool, evpool, map[int64]Misbehavior{})
 	consensusState.SetLogger(logger)
@@ -121,7 +128,10 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 		if err := consensusState.Stop(); err != nil {
 			t.Error(err)
 		}
-		return fmt.Errorf("waited too long for tendermint to produce %d blocks (grep logs for `wal_generator`)", numBlocks)
+		return fmt.Errorf(
+			"waited too long for tendermint to produce %d blocks (grep logs for `wal_generator`)",
+			numBlocks,
+		)
 	}
 }
 
@@ -178,7 +188,12 @@ type byteBufferWAL struct {
 // needed for determinism
 var fixedTime, _ = time.Parse(time.RFC3339, "2017-01-02T15:04:05Z")
 
-func newByteBufferWAL(logger log.Logger, enc *WALEncoder, nBlocks int64, signalStop chan<- struct{}) *byteBufferWAL {
+func newByteBufferWAL(
+	logger log.Logger,
+	enc *WALEncoder,
+	nBlocks int64,
+	signalStop chan<- struct{},
+) *byteBufferWAL {
 	return &byteBufferWAL{
 		enc:               enc,
 		heightToStop:      nBlocks,
@@ -197,7 +212,13 @@ func (w *byteBufferWAL) Write(m tmcon.WALMessage) error {
 	}
 
 	if endMsg, ok := m.(tmcon.EndHeightMessage); ok {
-		w.logger.Debug("WAL write end height message", "height", endMsg.Height, "stopHeight", w.heightToStop)
+		w.logger.Debug(
+			"WAL write end height message",
+			"height",
+			endMsg.Height,
+			"stopHeight",
+			w.heightToStop,
+		)
 		if endMsg.Height == w.heightToStop {
 			w.logger.Debug("Stopping WAL at height", "height", endMsg.Height)
 			w.signalWhenStopsTo <- struct{}{}

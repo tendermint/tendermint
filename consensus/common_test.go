@@ -421,7 +421,7 @@ func newStateWithConfigAndBlockStore(
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, proxyAppConnQry, mempool, evpool, nil)
 
 	logger := log.TestingLogger().With("module", "consensus")
-	cs := NewStateWithLogger(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool, logger)
+	cs := NewStateWithLogger(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool, logger, 0)
 	cs.SetLogger(logger)
 	cs.SetPrivValidator(pv)
 

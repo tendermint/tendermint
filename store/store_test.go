@@ -72,7 +72,7 @@ func makeTxs(height int64) (txs []types.Tx) {
 }
 
 func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Block {
-	block, _ := state.MakeBlock(height, nil, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().ProTxHash)
+	block, _ := state.MakeBlock(height, nil, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().ProTxHash, 0)
 	return block
 }
 

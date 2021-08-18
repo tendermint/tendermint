@@ -78,8 +78,9 @@ func init() {
 		"connect to a Tendermint node at this address")
 	LightCmd.Flags().StringVarP(&witnessAddrsJoined, "witnesses", "w", "",
 		"tendermint nodes to cross-check the primary node, comma-separated")
-	LightCmd.Flags().StringVar(&home, "home-dir", os.ExpandEnv(filepath.Join("$HOME", ".tendermint-light")),
-		"specify the home directory")
+	LightCmd.Flags().
+		StringVar(&home, "home-dir", os.ExpandEnv(filepath.Join("$HOME", ".tendermint-light")),
+			"specify the home directory")
 	LightCmd.Flags().IntVar(
 		&maxOpenConnections,
 		"max-open-connections",
@@ -125,8 +126,10 @@ func runProxy(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to retrieve primary or witness from db: %w", err)
 		}
 		if primaryAddr == "" {
-			return errors.New("no primary address was provided nor found. Please provide a primary (using -p)." +
-				" Run the command: tendermint light --help for more information")
+			return errors.New(
+				"no primary address was provided nor found. Please provide a primary (using -p)." +
+					" Run the command: tendermint light --help for more information",
+			)
 		}
 	} else {
 		err := saveProviders(db, primaryAddr, witnessAddrsJoined)
@@ -182,7 +185,14 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		cfg.WriteTimeout = config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
 	}
 
-	p, err := lproxy.NewProxy(c, listenAddr, primaryAddr, cfg, logger, lrpc.KeyPathFn(lrpc.DefaultMerkleKeyPathFn()))
+	p, err := lproxy.NewProxy(
+		c,
+		listenAddr,
+		primaryAddr,
+		cfg,
+		logger,
+		lrpc.KeyPathFn(lrpc.DefaultMerkleKeyPathFn()),
+	)
 	if err != nil {
 		return err
 	}

@@ -115,8 +115,15 @@ func (s *syncer) AddSnapshot(peer p2p.Peer, snapshot *snapshot) (bool, error) {
 		return false, err
 	}
 	if added {
-		s.logger.Info("Discovered new snapshot", "height", snapshot.Height, "format", snapshot.Format,
-			"hash", snapshot.Hash)
+		s.logger.Info(
+			"Discovered new snapshot",
+			"height",
+			snapshot.Height,
+			"format",
+			snapshot.Format,
+			"hash",
+			snapshot.Hash,
+		)
 	}
 	return added, nil
 }
@@ -137,7 +144,10 @@ func (s *syncer) RemovePeer(peer p2p.Peer) {
 // SyncAny tries to sync any of the snapshots in the snapshot pool, waiting to discover further
 // snapshots if none were found and discoveryTime > 0. It returns the latest state and block commit
 // which the caller must use to bootstrap the node.
-func (s *syncer) SyncAny(discoveryTime time.Duration, retryHook func()) (sm.State, *types.Commit, error) {
+func (s *syncer) SyncAny(
+	discoveryTime time.Duration,
+	retryHook func(),
+) (sm.State, *types.Commit, error) {
 	if discoveryTime != 0 && discoveryTime < minimumDiscoveryTime {
 		discoveryTime = 5 * minimumDiscoveryTime
 	}
@@ -206,8 +216,15 @@ func (s *syncer) SyncAny(discoveryTime time.Duration, retryHook func()) (sm.Stat
 			s.logger.Info("Snapshot format rejected", "format", snapshot.Format)
 
 		case errors.Is(err, errRejectSender):
-			s.logger.Info("Snapshot senders rejected", "height", snapshot.Height, "format", snapshot.Format,
-				"hash", snapshot.Hash)
+			s.logger.Info(
+				"Snapshot senders rejected",
+				"height",
+				snapshot.Height,
+				"format",
+				snapshot.Format,
+				"hash",
+				snapshot.Hash,
+			)
 			for _, peer := range s.snapshots.GetPeers(snapshot) {
 				s.snapshots.RejectPeer(peer.ID())
 				s.logger.Info("Snapshot sender rejected", "peer", peer.ID())
@@ -476,6 +493,12 @@ func (s *syncer) verifyApp(snapshot *snapshot) (uint64, error) {
 		return 0, errVerifyFailed
 	}
 
-	s.logger.Info("Verified ABCI app", "height", snapshot.Height, "appHash", snapshot.trustedAppHash)
+	s.logger.Info(
+		"Verified ABCI app",
+		"height",
+		snapshot.Height,
+		"appHash",
+		snapshot.trustedAppHash,
+	)
 	return resp.AppVersion, nil
 }

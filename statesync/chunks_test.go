@@ -94,7 +94,11 @@ func TestChunkQueue(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		c, err := queue.Next()
 		require.NoError(t, err)
-		assert.Equal(t, &chunk{Height: 3, Format: 1, Index: uint32(i), Chunk: []byte{3, 1, byte(i)}}, c)
+		assert.Equal(
+			t,
+			&chunk{Height: 3, Format: 1, Index: uint32(i), Chunk: []byte{3, 1, byte(i)}},
+			c,
+		)
 	}
 	_, err = queue.Next()
 	require.Error(t, err)
@@ -315,9 +319,13 @@ func TestChunkQueue_GetSender(t *testing.T) {
 	queue, teardown := setupChunkQueue(t)
 	defer teardown()
 
-	_, err := queue.Add(&chunk{Height: 3, Format: 1, Index: 0, Chunk: []byte{1}, Sender: p2p.ID("a")})
+	_, err := queue.Add(
+		&chunk{Height: 3, Format: 1, Index: 0, Chunk: []byte{1}, Sender: p2p.ID("a")},
+	)
 	require.NoError(t, err)
-	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 1, Chunk: []byte{2}, Sender: p2p.ID("b")})
+	_, err = queue.Add(
+		&chunk{Height: 3, Format: 1, Index: 1, Chunk: []byte{2}, Sender: p2p.ID("b")},
+	)
 	require.NoError(t, err)
 
 	assert.EqualValues(t, "a", queue.GetSender(0))
@@ -351,7 +359,9 @@ func TestChunkQueue_Next(t *testing.T) {
 	}()
 
 	assert.Empty(t, chNext)
-	_, err := queue.Add(&chunk{Height: 3, Format: 1, Index: 1, Chunk: []byte{3, 1, 1}, Sender: p2p.ID("b")})
+	_, err := queue.Add(
+		&chunk{Height: 3, Format: 1, Index: 1, Chunk: []byte{3, 1, 1}, Sender: p2p.ID("b")},
+	)
 	require.NoError(t, err)
 	select {
 	case <-chNext:
@@ -359,7 +369,9 @@ func TestChunkQueue_Next(t *testing.T) {
 	default:
 	}
 
-	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 0, Chunk: []byte{3, 1, 0}, Sender: p2p.ID("a")})
+	_, err = queue.Add(
+		&chunk{Height: 3, Format: 1, Index: 0, Chunk: []byte{3, 1, 0}, Sender: p2p.ID("a")},
+	)
 	require.NoError(t, err)
 
 	assert.Equal(t,
@@ -369,7 +381,9 @@ func TestChunkQueue_Next(t *testing.T) {
 		&chunk{Height: 3, Format: 1, Index: 1, Chunk: []byte{3, 1, 1}, Sender: p2p.ID("b")},
 		<-chNext)
 
-	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 4, Chunk: []byte{3, 1, 4}, Sender: p2p.ID("e")})
+	_, err = queue.Add(
+		&chunk{Height: 3, Format: 1, Index: 4, Chunk: []byte{3, 1, 4}, Sender: p2p.ID("e")},
+	)
 	require.NoError(t, err)
 	select {
 	case <-chNext:
@@ -377,9 +391,13 @@ func TestChunkQueue_Next(t *testing.T) {
 	default:
 	}
 
-	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 2, Chunk: []byte{3, 1, 2}, Sender: p2p.ID("c")})
+	_, err = queue.Add(
+		&chunk{Height: 3, Format: 1, Index: 2, Chunk: []byte{3, 1, 2}, Sender: p2p.ID("c")},
+	)
 	require.NoError(t, err)
-	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 3, Chunk: []byte{3, 1, 3}, Sender: p2p.ID("d")})
+	_, err = queue.Add(
+		&chunk{Height: 3, Format: 1, Index: 3, Chunk: []byte{3, 1, 3}, Sender: p2p.ID("d")},
+	)
 	require.NoError(t, err)
 
 	assert.Equal(t,

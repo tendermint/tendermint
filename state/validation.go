@@ -53,6 +53,14 @@ func validateBlock(state State, block *types.Block) error {
 			block.Height,
 		)
 	}
+
+	// Validate proposed app version
+	if block.Header.ProposedAppVersion > 0 && block.Header.ProposedAppVersion <= state.Version.Consensus.App {
+		return fmt.Errorf("wrong block.Header.ProposedAppVersion must be higher than %v",
+			state.Version.Consensus.App,
+		)
+	}
+
 	// Validate prev block info.
 	if !block.LastBlockID.Equals(state.LastBlockID) {
 		return fmt.Errorf("wrong Block.Header.LastBlockID.  Expected %v, got %v",
