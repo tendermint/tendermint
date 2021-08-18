@@ -58,6 +58,10 @@ type peers interface {
 	Peers() p2p.IPeerSet
 }
 
+type WaitSyncChecker interface {
+	WaitSync() bool
+}
+
 //----------------------------------------------
 // Environment contains objects and interfaces used by the RPC. It is expected
 // to be setup once during startup.
@@ -67,18 +71,18 @@ type Environment struct {
 	ProxyAppMempool proxy.AppConnMempool
 
 	// interfaces defined in types and above
-	StateStore     sm.Store
-	BlockStore     sm.BlockStore
-	EvidencePool   sm.EvidencePool
-	ConsensusState Consensus
-	P2PPeers       peers
-	P2PTransport   transport
+	StateStore      sm.Store
+	BlockStore      sm.BlockStore
+	EvidencePool    sm.EvidencePool
+	ConsensusState  Consensus
+	WaitSyncChecker WaitSyncChecker
+	P2PPeers        peers
+	P2PTransport    transport
 
 	// objects
 	PubKey           crypto.PubKey
 	GenDoc           *types.GenesisDoc // cache the genesis structure
 	EventSinks       []indexer.EventSink
-	ConsensusReactor *consensus.Reactor
 	EventBus         *types.EventBus // thread safe
 	Mempool          mempl.Mempool
 	BlockSyncReactor consensus.BlockSyncReactor
@@ -190,7 +194,7 @@ func (env *Environment) getHeight(latestHeight int64, heightPtr *int64) (int64, 
 }
 
 func (env *Environment) latestUncommittedHeight() int64 {
-	nodeIsSyncing := env.ConsensusReactor.WaitSync()
+	nodeIsSyncing := env.WaitSyncChecker.WaitSync()
 	if nodeIsSyncing {
 		return env.BlockStore.Height()
 	}

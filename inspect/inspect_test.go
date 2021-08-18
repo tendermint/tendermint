@@ -45,14 +45,14 @@ func TestInspectRun(t *testing.T) {
 		d, err := inspect.NewFromConfig(cfg)
 		require.NoError(t, err)
 		ctx, cancel := context.WithCancel(context.Background())
-		wg := &sync.WaitGroup{}
-		wg.Add(1)
+		stoppedWG := &sync.WaitGroup{}
+		stoppedWG.Add(1)
 		go func() {
-			defer wg.Done()
 			require.NoError(t, d.Run(ctx))
+			stoppedWG.Done()
 		}()
 		cancel()
-		wg.Wait()
+		stoppedWG.Wait()
 	})
 
 }

@@ -3,12 +3,12 @@ package inspect
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/inspect/rpc"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/pubsub"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	"github.com/tendermint/tendermint/state"
@@ -36,11 +36,14 @@ type Inspect struct {
 	logger         log.Logger
 }
 
-// New returns an Inspect that serves RPC on the given BlockStore and StateStore.
+// New returns an Inspect that serves RPC on the specified BlockStore and StateStore.
+// The Inspect type does not modify the state or block stores.
+// The sinks are used to enable block and transaction querying via the RPC server.
+// The caller is responsible for starting and stopping the Inspect service.
 ///
 //nolint:lll
 func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, es []indexer.EventSink, logger log.Logger) *Inspect {
-	routes := rpc.Routes(ss, bs, es)
+	routes := rpc.Routes(*cfg, ss, bs, es)
 	eb := types.NewEventBus()
 	eb.SetLogger(logger.With("module", "events"))
 	is := indexer.NewIndexerService(es, eb)
@@ -61,7 +64,7 @@ func NewFromConfig(cfg *config.Config) (*Inspect, error) {
 		return nil, err
 	}
 	bs := store.NewBlockStore(bsDB)
-	sDB, err := config.DefaultDBProvider(&config.DBContext{ID: "statestore", Config: cfg})
+	sDB, err := config.DefaultDBProvider(&config.DBContext{ID: "state", Config: cfg})
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +86,7 @@ func NewFromConfig(cfg *config.Config) (*Inspect, error) {
 func (ins *Inspect) Run(ctx context.Context) error {
 	err := ins.eventBus.Start()
 	if err != nil {
-		return err
+		return fmt.Errorf("error starting event bus: %s", err)
 	}
 	defer func() {
 		err := ins.eventBus.Stop()
@@ -91,23 +94,17 @@ func (ins *Inspect) Run(ctx context.Context) error {
 			ins.logger.Error("event bus stopped with error", "err", err)
 		}
 	}()
-	g, tctx := errgroup.WithContext(ctx)
-	g.Go(func() error {
-		if !errors.Is(ins.indexerService.Start(), pubsub.ErrUnsubscribed) {
-			return err
-		}
-		return nil
-	})
-	g.Go(func() error {
-		return startRPCServers(tctx, ins.config, ins.logger, ins.routes)
-	})
-
-	<-tctx.Done()
-	err = ins.indexerService.Stop()
+	err = ins.indexerService.Start()
 	if err != nil {
-		ins.logger.Error("event bus stopped with error", "err", err)
+		return fmt.Errorf("error starting indexer service: %s", err)
 	}
-	return g.Wait()
+	defer func() {
+		err := ins.indexerService.Stop()
+		if err != nil {
+			ins.logger.Error("indexer service stopped with error", "err", err)
+		}
+	}()
+	return startRPCServers(ctx, ins.config, ins.logger, ins.routes)
 }
 
 func startRPCServers(ctx context.Context, cfg *config.RPCConfig, logger log.Logger, routes rpccore.RoutesMap) error {
@@ -129,7 +126,6 @@ func startRPCServers(ctx context.Context, cfg *config.RPCConfig, logger log.Logg
 					"certfile", certFile, "keyfile", keyFile)
 				err := server.ListenAndServeTLS(tctx, certFile, keyFile)
 				if !errors.Is(err, net.ErrClosed) {
-					logger.Error("RPC HTTPS server stopped with error", "address", listenerAddr, "err", err)
 					return err
 				}
 				logger.Info("RPC HTTPS server stopped", "address", listenerAddr)
@@ -140,7 +136,6 @@ func startRPCServers(ctx context.Context, cfg *config.RPCConfig, logger log.Logg
 				logger.Info("RPC HTTP server starting", "address", listenerAddr)
 				err := server.ListenAndServe(tctx)
 				if !errors.Is(err, net.ErrClosed) {
-					logger.Error("RPC HTTP server stopped with error", "address", listenerAddr, "err", err)
 					return err
 				}
 				logger.Info("RPC HTTP server stopped", "address", listenerAddr)

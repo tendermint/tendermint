@@ -26,11 +26,13 @@ type Server struct {
 }
 
 // Routes returns the set of routes used by the Inspect server.
-func Routes(s state.Store, bs state.BlockStore, es []indexer.EventSink) core.RoutesMap {
+func Routes(cfg config.RPCConfig, s state.Store, bs state.BlockStore, es []indexer.EventSink) core.RoutesMap {
 	env := &core.Environment{
-		EventSinks: es,
-		StateStore: s,
-		BlockStore: bs,
+		Config:          cfg,
+		EventSinks:      es,
+		StateStore:      s,
+		BlockStore:      bs,
+		WaitSyncChecker: waitSyncCheckerImpl{},
 	}
 	return core.RoutesMap{
 		"blockchain":       server.NewRPCFunc(env.BlockchainInfo, "minHeight,maxHeight", true),
@@ -83,6 +85,12 @@ func addCORSHandler(rpcConfig *config.RPCConfig, h http.Handler) http.Handler {
 	})
 	h = corsMiddleware.Handler(h)
 	return h
+}
+
+type waitSyncCheckerImpl struct{}
+
+func (_ waitSyncCheckerImpl) WaitSync() bool {
+	return false
 }
 
 // ListenAndServe listens on the address specified in srv.Addr and handles any

@@ -68,7 +68,7 @@ func createAndStartEventBus(logger log.Logger) (*types.EventBus, error) {
 	return eventBus, nil
 }
 
-func createIndexerService(
+func createAndStartIndexerService(
 	config *cfg.Config,
 	dbProvider cfg.DBProvider,
 	eventBus *types.EventBus,
@@ -79,8 +79,14 @@ func createIndexerService(
 	if err != nil {
 		return nil, nil, err
 	}
+
 	indexerService := indexer.NewIndexerService(eventSinks, eventBus)
 	indexerService.SetLogger(logger.With("module", "txindex"))
+
+	if err := indexerService.Start(); err != nil {
+		return nil, nil, err
+	}
+
 	return indexerService, eventSinks, nil
 }
 

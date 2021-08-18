@@ -35,6 +35,8 @@ var InspectCmd = &cobra.Command{
 
 func init() {
 	InspectCmd.Flags().String("rpc.laddr", config.RPC.ListenAddress, "RPC listenener address. Port required")
+	InspectCmd.Flags().String("db-backend", config.DBBackend, "database backend: goleveldb | cleveldb | boltdb | rocksdb | badgerdb")
+	InspectCmd.Flags().String("db-dir", config.DBPath, "database directory")
 }
 
 func runInspect(cmd *cobra.Command, args []string) error {
@@ -53,7 +55,7 @@ func runInspect(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	blockStore := store.NewBlockStore(blockStoreDB)
-	stateDB, err := cfg.DefaultDBProvider(&cfg.DBContext{ID: "statestore", Config: config})
+	stateDB, err := cfg.DefaultDBProvider(&cfg.DBContext{ID: "state", Config: config})
 	if err != nil {
 		if err := blockStoreDB.Close(); err != nil {
 			logger.Error("error closing block store db", "error", err)
