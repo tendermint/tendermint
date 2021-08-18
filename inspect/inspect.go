@@ -99,7 +99,7 @@ func (ins *Inspect) Run(ctx context.Context) error {
 		return nil
 	})
 	g.Go(func() error {
-		return startRPCServers(ctx, ins.config, ins.logger, ins.routes)
+		return startRPCServers(tctx, ins.config, ins.logger, ins.routes)
 	})
 
 	<-tctx.Done()
@@ -111,7 +111,7 @@ func (ins *Inspect) Run(ctx context.Context) error {
 }
 
 func startRPCServers(ctx context.Context, cfg *config.RPCConfig, logger log.Logger, routes rpccore.RoutesMap) error {
-	g, _ := errgroup.WithContext(ctx)
+	g, tctx := errgroup.WithContext(ctx)
 	listenAddrs := tmstrings.SplitAndTrimEmpty(cfg.ListenAddress, ",", " ")
 	rh := rpc.Handler(cfg, routes, logger)
 	for _, listenerAddr := range listenAddrs {
@@ -127,7 +127,7 @@ func startRPCServers(ctx context.Context, cfg *config.RPCConfig, logger log.Logg
 			g.Go(func() error {
 				logger.Info("RPC HTTPS server starting", "address", listenerAddr,
 					"certfile", certFile, "keyfile", keyFile)
-				err := server.ListenAndServeTLS(ctx, certFile, keyFile)
+				err := server.ListenAndServeTLS(tctx, certFile, keyFile)
 				if !errors.Is(err, net.ErrClosed) {
 					logger.Error("RPC HTTPS server stopped with error", "address", listenerAddr, "err", err)
 					return err
@@ -138,7 +138,7 @@ func startRPCServers(ctx context.Context, cfg *config.RPCConfig, logger log.Logg
 		} else {
 			g.Go(func() error {
 				logger.Info("RPC HTTP server starting", "address", listenerAddr)
-				err := server.ListenAndServe(ctx)
+				err := server.ListenAndServe(tctx)
 				if !errors.Is(err, net.ErrClosed) {
 					logger.Error("RPC HTTP server stopped with error", "address", listenerAddr, "err", err)
 					return err

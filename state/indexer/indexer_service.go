@@ -20,8 +20,6 @@ type Service struct {
 
 	eventSinks []EventSink
 	eventBus   *types.EventBus
-
-	doneChan chan struct{}
 }
 
 // NewIndexerService returns a new service instance.
@@ -29,7 +27,6 @@ func NewIndexerService(es []EventSink, eventBus *types.EventBus) *Service {
 
 	is := &Service{eventSinks: es, eventBus: eventBus}
 	is.BaseService = *service.NewBaseService(nil, "IndexerService", is)
-	is.doneChan = make(chan struct{})
 	return is
 }
 

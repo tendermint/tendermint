@@ -168,8 +168,9 @@ func makeNode(config *cfg.Config,
 	}
 
 	go func() {
-		if !errors.Is(ins.indexerService.Start(), pubsub.ErrUnsubscribed) {
-			return err
+		err := indexerService.Start()
+		if !errors.Is(err, pubsub.ErrUnsubscribed) {
+			logger.Error("error starting indexer service", "error", err)
 		}
 	}()
 

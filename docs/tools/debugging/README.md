@@ -63,7 +63,7 @@ given destination directory. Each archive will contain:
 Note: goroutine.out and heap.out will only be written if a profile address is
 provided and is operational. This command is blocking and will log any error.
 
-## Tendermint inspect
+## Tendermint Inspect
 
 Tendermint includes an `inspect` command for querying Tendermint's state store and block
 store over Tendermint RPC.

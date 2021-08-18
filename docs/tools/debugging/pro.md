@@ -64,7 +64,7 @@ It won’t kill the node, but it will gather all of the above data and package i
 
 At this point, depending on how severe the degradation is, you may want to restart the process.
 
-## Tendermint inspect
+## Tendermint Inspect
 
 What if the Tendermint node will not start up due to inconsistent consensus state? 
 
