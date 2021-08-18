@@ -8,7 +8,7 @@ indexing:
 2. A Postgres-based sink.
 
 Recall, an ABCI application can emit events during block and transaction execution
-in the form of <abci.Event.Type>.<abci.EventAttributeKey>.<abci.EventAttributeValue>,
+in the form of <abci.Event.Type>.<abci.EventAttributeKey>=<abci.EventAttributeValue>,
 e.g. 'transfer.amount=10000'.
 
 An operator can enable one or both of the supported indexing sinks via the
