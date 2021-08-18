@@ -21,7 +21,7 @@ be encoded as `0xAC020A0B...` where `0xAC02` is the UVarint encoding of 300.
 ## Hashing
 
 Tendermint uses `SHA256` as its hash function.
-Objects are always Amino encoded before being hashed.
+Objects are always serialized before being hashed.
 So `SHA256(obj)` is short for `SHA256(ProtoEncoding(obj))`.
 
 ## Public Key Cryptography

@@ -1,15 +1,16 @@
 # State
 
-
 The state contains information whose cryptographic digest is included in block headers, and thus is
 necessary for validating new blocks. For instance, the validators set and the results of
-transactions are never included in blocks, but their Merkle roots are - the state keeps track of them.
+transactions are never included in blocks, but their Merkle roots are:
+the state keeps track of them.
 
-Note that the `State` object itself is an implementation detail, since it is never
+The `State` object itself is an implementation detail, since it is never
 included in a block or gossiped over the network, and we never compute
-its hash. Thus we do not include here details of how the `State` object is
-persisted or queried. That said, the types it contains are part of the specification, since
-their Merkle roots are included in blocks and their values are used in
+its hash. The persistence or query interface of the `State` object
+is an implementation detail and not included in the specification.
+However, the types in the `State` object are part of the specification, since
+the Merkle roots of the `State` objects are included in blocks and values are used during
 validation.
 
 ```go
