@@ -29,9 +29,9 @@ and IndexTxEvents methods.
 
 Note, the "kv" sink is considered deprecated and it's query functionality is very
 limited, but does allow users to directly query for block and transaction events
-against Tendermint's RPC. Instead, operators are encouraged to instead use the
-"psql" indexing sink when more complex queries are required and for reliability
-purposes as PostgreSQL can scale.
+against Tendermint's RPC. Instead, operators are encouraged to use the "psql"
+indexing sink when more complex queries are required and for reliability purposes
+as PostgreSQL can scale.
 
 Prior to starting Tendermint with the "psql" indexing sink enabled, operators
 must ensure the following:
