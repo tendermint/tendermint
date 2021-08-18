@@ -33,17 +33,17 @@ adding two new parameters to the state sync config.
 ### BREAKING CHANGES
 
 - Apps
-    - [Version] \#6494 `TMCoreSemVer` is not required to be set as a ldflag any longer.
+    - [Version] [\#6494](https://github.com/tendermint/tendermint/pull/6494) `TMCoreSemVer` is not required to be set as a ldflag any longer.
 
 ### IMPROVEMENTS
 
-- [statesync] \#6566 Allow state sync fetchers and request timeout to be configurable. (@alexanderbez)
-- [statesync] \#6378 Retry requests for snapshots and add a minimum discovery time (5s) for new snapshots. (@tychoish)
-- [statesync] \#6582 Increase chunk priority and add multiple retry chunk requests (@cmwaters)
+- [statesync] [\#6566](https://github.com/tendermint/tendermint/pull/6566) Allow state sync fetchers and request timeout to be configurable. (@alexanderbez)
+- [statesync] [\#6378](https://github.com/tendermint/tendermint/pull/6378) Retry requests for snapshots and add a minimum discovery time (5s) for new snapshots. (@tychoish)
+- [statesync] [\#6582](https://github.com/tendermint/tendermint/pull/6582) Increase chunk priority and add multiple retry chunk requests (@cmwaters)
 
 ### BUG FIXES
 
-- [evidence] \#6375 Fix bug with inconsistent LightClientAttackEvidence hashing (@cmwaters)
+- [evidence] [\#6375](https://github.com/tendermint/tendermint/pull/6375) Fix bug with inconsistent LightClientAttackEvidence hashing (@cmwaters)
 
 ## v0.34.10
 
