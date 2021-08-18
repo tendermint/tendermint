@@ -251,7 +251,7 @@ Replace_Secondary(addr Address, root-of-trust LightBlock)
 ```
 
 - Implementation remark
-    - maintain [LCD-INV-ROOT-AGREED.1], that is,
+    - maintain [LC-INV-ROOT-AGREED.1], that is,
     ensure root-of-trust = FetchLightBlock(nsec, root-of-trust.Header.Height)
 - Expected precondition
     - *FullNodes* is nonempty
