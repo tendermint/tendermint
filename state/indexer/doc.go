@@ -53,7 +53,7 @@ Note, using the "psql" indexing sink prohibits queries against the RPC. However,
 this is due to the fact that querying can and should be done directly against
 the PostgreSQL database instead as it offers a rich query language and features.
 
-Operators are able to perform queries such as the following:
+The following are some example SQL queries against the database schema:
 
 * Query for all transaction events for a given transaction hash:
 
