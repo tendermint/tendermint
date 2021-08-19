@@ -380,14 +380,13 @@ func main() {
  }
 
  node.Start()
- defer func() {
-  node.Stop()
-  node.Wait()
- }()
 
  c := make(chan os.Signal, 1)
  signal.Notify(c, os.Interrupt, syscall.SIGTERM)
  <-c
+
+ node.Stop()
+ node.Wait()
  os.Exit(0)
 }
 
@@ -556,14 +555,13 @@ upon receiving SIGTERM or Ctrl-C.
 
 ```go
 node.Start()
-defer func() {
- node.Stop()
- node.Wait()
-}()
 
 c := make(chan os.Signal, 1)
 signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 <-c
+
+node.Stop()
+node.Wait()
 os.Exit(0)
 ```
 
