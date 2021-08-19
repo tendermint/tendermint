@@ -1,8 +1,7 @@
 /*
 Package indexer defines Tendermint's block and transaction event indexing logic.
 
-Currently, Tendermint supports two primary means of block and transaction event
-indexing:
+Tendermint supports two primary means of block and transaction event indexing:
 
 1. A key-value sink via an embedded database with a proprietary query language.
 2. A Postgres-based sink.
