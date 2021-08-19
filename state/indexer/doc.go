@@ -6,9 +6,11 @@ Tendermint supports two primary means of block and transaction event indexing:
 1. A key-value sink via an embedded database with a proprietary query language.
 2. A Postgres-based sink.
 
-Recall, an ABCI application can emit events during block and transaction execution
-in the form of <abci.Event.Type>.<abci.EventAttributeKey>=<abci.EventAttributeValue>,
-e.g. 'transfer.amount=10000'.
+An ABCI application can emit events during block and transaction execution in the form
+
+   <abci.Event.Type>.<abci.EventAttributeKey>=<abci.EventAttributeValue>
+
+for example "transfer.amount=10000".
 
 An operator can enable one or both of the supported indexing sinks via the
 'tx-index.indexer' Tendermint configuration.
