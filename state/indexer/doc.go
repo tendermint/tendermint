@@ -28,7 +28,7 @@ If indexing is enabled, the indexer.Service will iterate over all enabled sinks
 and invoke block and transaction indexing via the appropriate IndexBlockEvents
 and IndexTxEvents methods.
 
-Note, the "kv" sink is considered deprecated and it's query functionality is very
+Note, the "kv" sink is considered deprecated and its query functionality is very
 limited, but does allow users to directly query for block and transaction events
 against Tendermint's RPC. Instead, operators are encouraged to use the "psql"
 indexing sink when more complex queries are required and for reliability purposes
