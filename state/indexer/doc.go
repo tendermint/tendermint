@@ -49,9 +49,8 @@ manually or invoke schema creation via the CLI:
 
 	$ psql <flags> -f state/indexer/sink/psql/schema.sql
 
-Note, using the "psql" indexing sink prohibits queries against the RPC. However,
-this is due to the fact that querying can and should be done directly against
-the PostgreSQL database instead as it offers a rich query language and features.
+The "psql" indexing sink prohibits queries via RPC. When using a PostgreSQL sink,
+queries can and should be made directly against the database using SQL.
 
 The following are some example SQL queries against the database schema:
 
