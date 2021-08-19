@@ -67,9 +67,7 @@ The following are some example SQL queries against the database schema:
 
 	SELECT * FROM tx_events WHERE key LIKE '%transfer.recipient%';
 
-
-Note, if the entire abci.TxResult is needed, a foreign key exists in the tx_events
-table that maps to tx_results. The tx_results table contains the raw Protobuf
-encoded abci.TxResult object.
+Note that if a complete abci.TxResult is needed, you will need to join "tx_events" with
+"tx_results" via a foreign key, to obtain contains the raw protobuf-encoded abci.TxResult.
 */
 package indexer
