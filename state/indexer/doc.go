@@ -44,8 +44,8 @@ must ensure the following:
 Tendermint provides the block and transaction event schemas in the following
 path: state/indexer/sink/psql/schema.sql
 
-To create the schema in a PostgreSQL database, operators can perform the query
-with the schema manually or invoke schema creation via the CLI:
+To create the schema in a PostgreSQL database, perform the schema query
+manually or invoke schema creation via the CLI:
 
 	$ psql <flags> -f state/indexer/sink/psql/schema.sql
 
