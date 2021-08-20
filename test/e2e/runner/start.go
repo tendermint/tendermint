@@ -9,6 +9,9 @@ import (
 )
 
 func Start(testnet *e2e.Testnet) error {
+	if len(testnet.Nodes) == 0 {
+		return fmt.Errorf("no nodes in testnet")
+	}
 
 	// Nodes are already sorted by name. Sort them by name then startAt,
 	// which gives the overall order startAt, mode, name.
@@ -29,9 +32,7 @@ func Start(testnet *e2e.Testnet) error {
 	sort.SliceStable(nodeQueue, func(i, j int) bool {
 		return nodeQueue[i].StartAt < nodeQueue[j].StartAt
 	})
-	if len(nodeQueue) == 0 {
-		return fmt.Errorf("no nodes in testnet")
-	}
+
 	if nodeQueue[0].StartAt > 0 {
 		return fmt.Errorf("no initial nodes in testnet")
 	}
@@ -93,10 +94,8 @@ func Start(testnet *e2e.Testnet) error {
 			}
 		}
 
-		logger.Info(fmt.Sprintf("Starting node %v at height %v...", node.Name, node.StartAt))
-		if _, _, err := waitForHeight(testnet, node.StartAt); err != nil {
-			return err
-		}
+		logger.Info("Starting catch up node", "node", node.Name, "height", node.StartAt)
+
 		if err := execCompose(testnet.Dir, "up", "-d", node.Name); err != nil {
 			return err
 		}
