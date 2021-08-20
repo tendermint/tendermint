@@ -13,7 +13,7 @@ import (
 	tmjson "github.com/tendermint/tendermint/libs/json"
 
 	// necessary for Bitcoin address format
-	"golang.org/x/crypto/ripemd160" // nolint: staticcheck
+	"golang.org/x/crypto/ripemd160" // nolint
 )
 
 //-------------------------------------

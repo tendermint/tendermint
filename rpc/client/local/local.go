@@ -2,6 +2,7 @@ package local
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -46,15 +47,15 @@ type Local struct {
 // NodeService describes the portion of the node interface that the
 // local RPC client constructor needs to build a local client.
 type NodeService interface {
-	ConfigureRPC() (*rpccore.Environment, error)
+	RPCEnvironment() *rpccore.Environment
 	EventBus() *types.EventBus
 }
 
 // New configures a client that calls the Node directly.
 func New(node NodeService) (*Local, error) {
-	env, err := node.ConfigureRPC()
-	if err != nil {
-		return nil, err
+	env := node.RPCEnvironment()
+	if env == nil {
+		return nil, errors.New("rpc is nil")
 	}
 	return &Local{
 		EventBus: node.EventBus(),

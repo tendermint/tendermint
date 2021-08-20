@@ -700,7 +700,7 @@ func createPEXReactorV2(
 	logger log.Logger,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
-) (*pex.ReactorV2, error) {
+) (service.Service, error) {
 
 	channel, err := router.OpenChannel(pex.ChannelDescriptor(), &protop2p.PexMessage{}, 128)
 	if err != nil {
