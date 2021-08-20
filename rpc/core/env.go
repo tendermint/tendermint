@@ -36,7 +36,7 @@ const (
 //----------------------------------------------
 // These interfaces are used by RPC and must be thread safe
 
-type Consensus interface {
+type consensusState interface {
 	GetState() sm.State
 	GetValidators() (int64, []*types.Validator)
 	GetLastHeight() int64
@@ -62,6 +62,11 @@ type WaitSyncChecker interface {
 	WaitSync() bool
 }
 
+type peerManager interface {
+	Peers() []types.NodeID
+	Addresses(types.NodeID) []p2p.NodeAddress
+}
+
 //----------------------------------------------
 // Environment contains objects and interfaces used by the RPC. It is expected
 // to be setup once during startup.
@@ -78,6 +83,13 @@ type Environment struct {
 	WaitSyncChecker WaitSyncChecker
 	P2PPeers        peers
 	P2PTransport    transport
+  
+	// Legacy p2p stack
+	P2PTransport transport
+
+	// interfaces for new p2p interfaces
+	PeerManager peerManager
+
 
 	// objects
 	PubKey           crypto.PubKey

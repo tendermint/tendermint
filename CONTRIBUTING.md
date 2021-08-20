@@ -227,16 +227,96 @@ Fixes #nnnn
 
 Each PR should have one commit once it lands on `master`; this can be accomplished by using the "squash and merge" button on Github. Be sure to edit your commit message, though!
 
-### Release Procedure
+### Release procedure
 
-#### Major Release
+#### A note about backport branches
+Tendermint's `master` branch is under active development.
+Releases are specified using tags and are built from long-lived "backport" branches.
+Each release "line" (e.g. 0.34 or 0.33) has its own long-lived backport branch,
+and the backport branches have names like `v0.34.x` or `v0.33.x`
+(literally, `x`; it is not a placeholder in this case).
+
+As non-breaking changes land on `master`, they should also be backported (cherry-picked)
+to these backport branches.
+
+We use Mergify's [backport feature](https://mergify.io/features/backports) to automatically backport
+to the needed branch. There should be a label for any backport branch that you'll be targeting.
+To notify the bot to backport a pull request, mark the pull request with
+the label `S:backport-to-<backport_branch>`.
+Once the original pull request is merged, the bot will try to cherry-pick the pull request
+to the backport branch. If the bot fails to backport, it will open a pull request.
+The author of the original pull request is responsible for solving the conflicts and
+merging the pull request.
+
+#### Creating a backport branch
+If this is the first release candidate for a major release, you get to have the honor of creating
+the backport branch!
+
+Note that, after creating the backport branch, you'll also need to update the tags on `master`
+so that `go mod` is able to order the branches correctly. You should tag `master` with a "dev" tag
+that is "greater than" the backport branches tags. See #6072 for more context.
+
+In the following example, we'll assume that we're making a backport branch for
+the 0.35.x line.
+
+1. Start on `master`
+2. Create the backport branch:
+   `git checkout -b v0.35.x`
+3. Go back to master and tag it as the dev branch for the _next_ major release and push it back up:
+   `git tag -a v0.36.0-dev; git push v0.36.0-dev`
+4. Create a new workflow to run the e2e nightlies for this backport branch.
+   (See https://github.com/tendermint/tendermint/blob/master/.github/workflows/e2e-nightly-34x.yml
+   for an example.)
+
+#### Release candidates
+
+Before creating an official release, especially a major release, we may want to create a
+release candidate (RC) for our friends and partners to test out. We use git tags to
+create RCs, and we build them off of backport branches.
+
+Tags for RCs should follow the "standard" release naming conventions, with `-rcX` at the end
+(for example, `v0.35.0-rc0`).
+
+(Note that branches and tags _cannot_ have the same names, so it's important that these branches
+have distinct names from the tags/release names.)
+
+If this is the first RC for a major release, you'll have to make a new backport branch (see above).
+Otherwise:
+
+1. Start from the backport branch (e.g. `v0.35.x`).
+1. Run the integration tests and the e2e nightlies
+   (which can be triggered from the Github UI;
+   e.g., https://github.com/tendermint/tendermint/actions/workflows/e2e-nightly-34x.yml).
+1. Prepare the changelog:
+   - Move the changes included in `CHANGELOG_PENDING.md` into `CHANGELOG.md`.
+   - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
+     all PRs
+   - Ensure that UPGRADING.md is up-to-date and includes notes on any breaking changes
+      or other upgrading flows.
+   - Bump TMVersionDefault version in  `version.go`
+   - Bump P2P and block protocol versions in  `version.go`, if necessary
+   - Bump ABCI protocol version in `version.go`, if necessary
+1. Open a PR with these changes against the backport branch.
+1. Once these changes have landed on the backport branch, be sure to pull them back down locally.
+2. Once you have the changes locally, create the new tag, specifying a name and a tag "message":
+   `git tag -a v0.35.0-rc0 -m "Release Candidate v0.35.0-rc0`
+3. Push the tag back up to origin:
+   `git push origin v0.35.0-rc0`
+   Now the tag should be available on the repo's releases page.
+4. Future RCs will continue to be built off of this branch.
+
+Note that this process should only be used for "true" RCs--
+release candidates that, if successful, will be the next release.
+For more experimental "RCs," create a new, short-lived branch and tag that instead.
+
+#### Major release
 
 This major release process assumes that this release was preceded by release candidates.
-If there were no release candidates, and you'd like to cut a major release directly from master, see below.
+If there were no release candidates, begin by creating a backport branch, as described above.
 
-1. Start on the latest RC branch (`RCx/vX.X.0`).
-2. Run integration tests.
-3. Branch off of the RC branch (`git checkout -b release-prep`) and prepare the release:
+1. Start on the backport branch (e.g. `v0.35.x`)
+2. Run integration tests and the e2e nightlies.
+3. Prepare the release:
    - "Squash" changes from the changelog entries for the RCs into a single entry,
       and add all changes included in `CHANGELOG_PENDING.md`.
       (Squashing includes both combining all entries, as well as removing or simplifying
@@ -249,57 +329,24 @@ If there were no release candidates, and you'd like to cut a major release direc
    - Bump P2P and block protocol versions in  `version.go`, if necessary
    - Bump ABCI protocol version in `version.go`, if necessary
    - Add any release notes you would like to be added to the body of the release to `release_notes.md`.
-4. Open a PR with these changes against the RC branch (`RCx/vX.X.0`).
-5. Once these changes are on the RC branch, branch off of the RC branch again to create a release branch:
-   - `git checkout RCx/vX.X.0`
-   - `git checkout -b release/vX.X.0`
-6. Push a tag with prepared release details. This will trigger the actual release `vX.X.0`.
-   - `git tag -a vX.X.0 -m 'Release vX.X.0'`
-   - `git push origin vX.X.0`
+4. Open a PR with these changes against the backport branch.
+5. Once these changes are on the backport branch, push a tag with prepared release details.
+   This will trigger the actual release `v0.35.0`.
+   - `git tag -a v0.35.0 -m 'Release v0.35.0'`
+   - `git push origin v0.35.0`
 7. Make sure that `master` is updated with the latest `CHANGELOG.md`, `CHANGELOG_PENDING.md`, and `UPGRADING.md`.
-8. Create the long-lived minor release branch `RC0/vX.X.1` for the next point release on this
-   new major release series.
 
-##### Major Release (from `master`)
-
-1. Start on `master`
-2. Run integration tests (see `test_integrations` in Makefile)
-3. Prepare release in a pull request against `master` (to be squash merged):
-   - Copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`; if this release
-      had release candidates, squash all the RC updates into one
-   - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
-     all issues
-   - Run `bash ./scripts/authors.sh` to get a list of authors since the latest
-     release, and add the github aliases of external contributors to the top of
-     the changelog. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
-   - Reset the `CHANGELOG_PENDING.md`
-   - Bump TMVersionDefault version in  `version.go`
-   - Bump P2P and block protocol versions in  `version.go`, if necessary
-   - Bump ABCI protocol version in `version.go`, if necessary
-   - Make sure all significant breaking changes are covered in `UPGRADING.md`
-   - Add any release notes you would like to be added to the body of the release to `release_notes.md`.
-4. Push a tag with prepared release details (this will trigger the release `vX.X.0`)
-   - `git tag -a vX.X.x -m 'Release vX.X.x'`
-   - `git push origin vX.X.x`
-5. Update the `CHANGELOG.md` file on master with the releases changelog.
-6. Delete any RC branches and tags for this release (if applicable)
-
-#### Minor Release (Point Releases)
+#### Minor release (point releases)
 
 Minor releases are done differently from major releases: They are built off of long-lived backport branches, rather than from master.
-Each release "line" (e.g. 0.34 or 0.33) has its own long-lived backport branch, and
-the backport branches have names like `v0.34.x` or `v0.33.x` (literally, `x`; it is not a placeholder in this case).
-
 As non-breaking changes land on `master`, they should also be backported (cherry-picked) to these backport branches.
-
-We use Mergify's [backport feature](https://mergify.io/features/backports) to automatically backport to the needed branch. Depending on which backport branch you need to backport to there will be labels for them. To notify the bot to backport a pull request, mark the pull request with the label `backport-to-<backport_branch>`. Once the original pull request is merged, the bot will try to cherry-pick the pull request to the backport branch. If the bot fails to backport, it will open a pull request. The author of the original pull request is responsible for solving the conflicts and merging the pull request.
 
 Minor releases don't have release candidates by default, although any tricky changes may merit a release candidate.
 
 To create a minor release:
 
-1. Checkout the long-lived backport branch: `git checkout vX.X.x`
-2. Run integration tests: `make test_integrations`
+1. Checkout the long-lived backport branch: `git checkout v0.35.x`
+2. Run integration tests (`make test_integrations`) and the nightlies.
 3. Check out a new branch and prepare the release:
    - Copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
    - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
@@ -309,33 +356,13 @@ To create a minor release:
      (Note that ABCI follows semver, and that ABCI versions are the only versions
      which can change during minor releases, and only field additions are valid minor changes.)
    - Add any release notes you would like to be added to the body of the release to `release_notes.md`.
-4. Open a PR with these changes that will land them back on `vX.X.x`
+4. Open a PR with these changes that will land them back on `v0.35.x`
 5. Once this change has landed on the backport branch, make sure to pull it locally, then push a tag.
-   - `git tag -a vX.X.x -m 'Release vX.X.x'`
-   - `git push origin vX.X.x`
+   - `git tag -a v0.35.1 -m 'Release v0.35.1'`
+   - `git push origin v0.35.1`
 6. Create a pull request back to master with the CHANGELOG & version changes from the latest release.
    - Remove all `R:minor` labels from the pull requests that were included in the release.
    - Do not merge the backport branch into master.
-
-#### Release Candidates
-
-Before creating an official release, especially a major release, we may want to create a
-release candidate (RC) for our friends and partners to test out. We use git tags to
-create RCs, and we build them off of RC branches. RC branches typically have names formatted
-like `RCX/vX.X.X` (or, concretely, `RC0/v0.34.0`), while the tags themselves follow
-the "standard" release naming conventions, with `-rcX` at the end (`vX.X.X-rcX`).
-
-(Note that branches and tags _cannot_ have the same names, so it's important that these branches
-have distinct names from the tags/release names.)
-
-1. Start from the RC branch (e.g. `RC0/v0.34.0`).
-2. Create the new tag, specifying a name and a tag "message":
-   `git tag -a v0.34.0-rc0 -m "Release Candidate v0.34.0-rc0`
-3. Push the tag back up to origin:
-   `git push origin v0.34.0-rc4`
-   Now the tag should be available on the repo's releases page.
-4. Create a new release candidate branch for any possible updates to the RC:
-   `git checkout -b RC1/v0.34.0; git push origin RC1/v0.34.0`
 
 ## Testing
 

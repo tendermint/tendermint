@@ -445,9 +445,13 @@ func makeNode(config *cfg.Config,
 			BlockStore:       blockStore,
 			EvidencePool:     evPool,
 			ConsensusState:   csState,
-			P2PPeers:         sw,
+      
 			WaitSyncChecker:  csReactor,
 			BlockSyncReactor: bcReactor.(cs.BlockSyncReactor),
+      
+      P2PPeers:         sw,
+     	PeerManager: peerManager,
+
 
 			GenDoc:     genDoc,
 			EventSinks: eventSinks,
@@ -455,6 +459,17 @@ func makeNode(config *cfg.Config,
 			Mempool:    mp,
 			Logger:     logger.With("module", "rpc"),
 			Config:     *config.RPC,
+
+			P2PPeers:    sw,
+			PeerManager: peerManager,
+
+			GenDoc:           genDoc,
+			EventSinks:       eventSinks,
+			ConsensusReactor: csReactor,
+			EventBus:         eventBus,
+			Mempool:          mp,
+			Logger:           logger.With("module", "rpc"),
+			Config:           *config.RPC,
 		},
 	}
 
