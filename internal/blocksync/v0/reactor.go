@@ -29,10 +29,10 @@ var (
 	// TODO: Remove once p2p refactor is complete.
 	// ref: https://github.com/tendermint/tendermint/issues/5670
 	ChannelShims = map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
-		BlockchainChannel: {
+		BlockSyncChannel: {
 			MsgType: new(bcproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(BlockchainChannel),
+				ID:                  byte(BlockSyncChannel),
 				Priority:            5,
 				SendQueueCapacity:   1000,
 				RecvBufferCapacity:  1024,
@@ -44,8 +44,8 @@ var (
 )
 
 const (
-	// BlockchainChannel is a channel for blocks and status updates
-	BlockchainChannel = p2p.ChannelID(0x40)
+	// BlockSyncChannel is a channel for blocks and status updates
+	BlockSyncChannel = p2p.ChannelID(0x40)
 
 	trySyncIntervalMS = 10
 
@@ -230,7 +230,7 @@ func (r *Reactor) respondToPeer(msg *bcproto.BlockRequest, peerID types.NodeID) 
 }
 
 // handleBlockchainMessage handles envelopes sent from peers on the
-// BlockchainChannel. It returns an error only if the Envelope.Message is unknown
+// BlockSyncChannel. It returns an error only if the Envelope.Message is unknown
 // for this channel. This should never be called outside of handleMessage.
 func (r *Reactor) handleBlockchainMessage(envelope p2p.Envelope) error {
 	logger := r.Logger.With("peer", envelope.From)
@@ -288,7 +288,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	r.Logger.Debug("received message", "message", envelope.Message, "peer", envelope.From)
 
 	switch chID {
-	case BlockchainChannel:
+	case BlockSyncChannel:
 		err = r.handleBlockchainMessage(envelope)
 
 	default:
@@ -299,8 +299,8 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 }
 
 // processBlockchainCh initiates a blocking process where we listen for and handle
-// envelopes on the BlockchainChannel and blockchainOutBridgeCh. Any error encountered during
-// message execution will result in a PeerError being sent on the BlockchainChannel.
+// envelopes on the BlockSyncChannel and blockchainOutBridgeCh. Any error encountered during
+// message execution will result in a PeerError being sent on the BlockSyncChannel.
 // When the reactor is stopped, we will catch the signal and close the p2p Channel
 // gracefully.
 func (r *Reactor) processBlockchainCh() {
