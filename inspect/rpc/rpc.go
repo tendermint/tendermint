@@ -8,6 +8,7 @@ import (
 	"github.com/rs/cors"
 
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/rpc/core"
@@ -28,11 +29,11 @@ type Server struct {
 // Routes returns the set of routes used by the Inspect server.
 func Routes(cfg config.RPCConfig, s state.Store, bs state.BlockStore, es []indexer.EventSink) core.RoutesMap {
 	env := &core.Environment{
-		Config:          cfg,
-		EventSinks:      es,
-		StateStore:      s,
-		BlockStore:      bs,
-		WaitSyncChecker: waitSyncCheckerImpl{},
+		Config:           cfg,
+		EventSinks:       es,
+		StateStore:       s,
+		BlockStore:       bs,
+		ConsensusReactor: waitSyncCheckerImpl{},
 	}
 	return core.RoutesMap{
 		"blockchain":       server.NewRPCFunc(env.BlockchainInfo, "minHeight,maxHeight", true),
@@ -91,6 +92,10 @@ type waitSyncCheckerImpl struct{}
 
 func (_ waitSyncCheckerImpl) WaitSync() bool {
 	return false
+}
+
+func (_ waitSyncCheckerImpl) GetPeerState(peerID types.NodeID) (*consensus.PeerState, bool) {
+	return nil, false
 }
 
 // ListenAndServe listens on the address specified in srv.Addr and handles any

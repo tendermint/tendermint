@@ -58,8 +58,9 @@ type peers interface {
 	Peers() p2p.IPeerSet
 }
 
-type WaitSyncChecker interface {
+type consensusReactor interface {
 	WaitSync() bool
+	GetPeerState(peerID types.NodeID) (*consensus.PeerState, bool)
 }
 
 type peerManager interface {
@@ -76,20 +77,18 @@ type Environment struct {
 	ProxyAppMempool proxy.AppConnMempool
 
 	// interfaces defined in types and above
-	StateStore      sm.Store
-	BlockStore      sm.BlockStore
-	EvidencePool    sm.EvidencePool
-	ConsensusState  Consensus
-	WaitSyncChecker WaitSyncChecker
-	P2PPeers        peers
-	P2PTransport    transport
-  
+	StateStore       sm.Store
+	BlockStore       sm.BlockStore
+	EvidencePool     sm.EvidencePool
+	ConsensusState   consensusState
+	ConsensusReactor consensusReactor
+	P2PPeers         peers
+
 	// Legacy p2p stack
 	P2PTransport transport
 
 	// interfaces for new p2p interfaces
 	PeerManager peerManager
-
 
 	// objects
 	PubKey           crypto.PubKey
@@ -206,7 +205,7 @@ func (env *Environment) getHeight(latestHeight int64, heightPtr *int64) (int64, 
 }
 
 func (env *Environment) latestUncommittedHeight() int64 {
-	nodeIsSyncing := env.WaitSyncChecker.WaitSync()
+	nodeIsSyncing := env.ConsensusReactor.WaitSync()
 	if nodeIsSyncing {
 		return env.BlockStore.Height()
 	}
