@@ -1,14 +1,49 @@
 # ADR 71: Proposer-Based Timestamps
 
+* [Changelog](#changelog)
+* [Status](#status)
+* [Context](#context)
+* [Alternative Approaches](#alternative-approaches)
+	* [Remove timestamps altogether](#remove-timestamps-altogether)
+* [Decision](#decision)
+* [Detailed Design](#detailed-design)
+	* [Overview](#overview)
+	* [Proposal Timestamp and Block Timestamp](#proposal-timestamp-and-block-timestamp)
+	* [Saving the timestamp across heights](#saving-the-timestamp-across-heights)
+	* [Changes to `CommitSig`](#changes-to-commitsig)
+	* [Changes to `Commit`](#changes-to-commit)
+	* [Changes to `Vote` messages](#changes-to-vote-messages)
+	* [New consensus parameters](#new-consensus-parameters)
+	* [Changes to `Header`](#changes-to-header)
+	* [Changes to the block proposal step](#changes-to-the-block-proposal-step)
+		* [Proposer selects proposal timestamp](#proposer-selects-proposal-timestamp)
+		* [Proposer selects block timestamp](#proposer-selects-block-timestamp)
+		* [Proposer waits](#proposer-waits)
+		* [Changes to the propose step timeout](#changes-to-the-propose-step-timeout)
+	* [Changes to validation rules](#changes-to-validation-rules)
+		* [Proposal timestamp validation](#proposal-timestamp-validation)
+		* [Block timestamp validation](#block-timestamp-validation)
+	* [Changes to the prevote step](#changes-to-the-prevote-step)
+	* [Changes to the precommit step](#changes-to-the-precommit-step)
+	* [Changes to locking a block](#changes-to-locking-a-block)
+	* [Remove voteTime Completely](#remove-votetime-completely)
+* [Future Improvements](#future-improvements)
+* [Consequences](#consequences)
+	* [Positive](#positive)
+	* [Neutral](#neutral)
+	* [Negative](#negative)
+* [References](#references)
+
 ## Changelog
 
  - July 15 2021: Created by @williambanfield 
  - Aug 4 2021: Draft completed by @williambanfield
  - Aug 5 2021: Draft updated to include data structure changes by @williambanfield
+ - Aug 20 2021: Language edits completed by @williambanfield
 
 ## Status
 
- * Proposed
+ **Accepted**
 
 ## Context
 
@@ -144,7 +179,7 @@ With these timestamps removed, the commit time will instead be stored in the `Co
 type Commit struct {
 	Height     int64       `json:"height"`
 	Round      int32       `json:"round"`
-++	Timestamp   time.Time  `json:"timestamp"` 
+++	Timestamp  time.Time  `json:"timestamp"` 
 	BlockID    BlockID     `json:"block_id"`
 	Signatures []CommitSig `json:"signatures"`
 }
@@ -191,7 +226,7 @@ The proposer-based timestamp specification also includes a [new ACCURACY paramet
 Intuitively, `ACCURACY` represents the difference between the ‘real’ time and the currently known time of correct validators.
 The currently known Unix time of any validator is always somewhat different from real time.
 `ACCURACY` is the largest such difference between each validator's time and real time taken as an absolute value. 
-This is not something a computer can determine on its own and must be specified as an estimate by the user of Tendermint.
+This is not something a computer can determine on its own and must be specified as an estimate by community running a Tendermint-based chain.
 It is used in the new algorithm to [calculate a timeout for the propose step](https://github.com/tendermint/spec/blob/master/spec/consensus/proposer-based-timestamp/pbts-algorithm_001_draft.md#pbts-alg-startround0).
 `ACCURACY` is assumed to be the same across all validators and therefore should be included as a consensus parameter.
 
@@ -311,7 +346,7 @@ The current Unix time known to the proposer is already included in the [Proposal
 Once the proposal is received, the complete message is stored in the `RoundState.Proposal` field.
 The precommit and prevote validation logic does not currently use this timestamp.
 This validation logic will be updated to check that the proposal timestamp is within `PRECISION` of the current Unix time known to the validators.
-If the timestamp is not within `PRECISION` of the current Unix time known to the validator, the validator proposal will considered it valid.
+If the timestamp is not within `PRECISION` of the current Unix time known to the validator, the proposal will not be considered it valid.
 The validator will also check that the proposal time is greater than the block timestamp from the previous height.
 
 If no valid proposal is received by the proposal timeout, the validator will prevote nil.
