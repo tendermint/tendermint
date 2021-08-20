@@ -31,13 +31,13 @@ func EventSinksFromConfig(cfg *config.Config, dbProvider config.DBProvider, chai
 	}
 	eventSinks := []indexer.EventSink{}
 	for k := range sinks {
-		switch k {
-		case string(indexer.NULL):
+		switch indexer.EventSinkType(k) {
+		case indexer.NULL:
 			// When we see null in the config, the eventsinks will be reset with the
 			// nullEventSink.
 			return []indexer.EventSink{null.NewEventSink()}, nil
 
-		case string(indexer.KV):
+		case indexer.KV:
 			store, err := dbProvider(&config.DBContext{ID: "tx_index", Config: cfg})
 			if err != nil {
 				return nil, err
@@ -45,7 +45,7 @@ func EventSinksFromConfig(cfg *config.Config, dbProvider config.DBProvider, chai
 
 			eventSinks = append(eventSinks, kv.NewEventSink(store))
 
-		case string(indexer.PSQL):
+		case indexer.PSQL:
 			conn := cfg.TxIndex.PsqlConn
 			if conn == "" {
 				return nil, errors.New("the psql connection settings cannot be empty")

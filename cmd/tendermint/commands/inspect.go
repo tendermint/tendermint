@@ -34,9 +34,14 @@ var InspectCmd = &cobra.Command{
 }
 
 func init() {
-	InspectCmd.Flags().String("rpc.laddr", config.RPC.ListenAddress, "RPC listenener address. Port required")
-	InspectCmd.Flags().String("db-backend", config.DBBackend, "database backend: goleveldb | cleveldb | boltdb | rocksdb | badgerdb")
-	InspectCmd.Flags().String("db-dir", config.DBPath, "database directory")
+	InspectCmd.Flags().
+		String("rpc.laddr",
+			config.RPC.ListenAddress, "RPC listenener address. Port required")
+	InspectCmd.Flags().
+		String("db-backend",
+			config.DBBackend, "database backend: goleveldb | cleveldb | boltdb | rocksdb | badgerdb")
+	InspectCmd.Flags().
+		String("db-dir", config.DBPath, "database directory")
 }
 
 func runInspect(cmd *cobra.Command, args []string) error {

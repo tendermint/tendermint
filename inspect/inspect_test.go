@@ -13,15 +13,15 @@ import (
 	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	abci_types "github.com/tendermint/tendermint/abci/types"
+	abcitypes "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/inspect"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
-	http_client "github.com/tendermint/tendermint/rpc/client/http"
+	httpclient "github.com/tendermint/tendermint/rpc/client/http"
 	"github.com/tendermint/tendermint/state/indexer"
-	indexer_mocks "github.com/tendermint/tendermint/state/indexer/mocks"
-	state_mocks "github.com/tendermint/tendermint/state/mocks"
+	indexermocks "github.com/tendermint/tendermint/state/indexer/mocks"
+	statemocks "github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -62,14 +62,14 @@ func TestInspectServeInfoRPC(t *testing.T) {
 	testBlock := new(types.Block)
 	testBlock.Header.Height = testHeight
 	testBlock.Header.LastCommitHash = []byte("test hash")
-	stateStoreMock := &state_mocks.Store{}
+	stateStoreMock := &statemocks.Store{}
 
-	blockStoreMock := &state_mocks.BlockStore{}
+	blockStoreMock := &statemocks.BlockStore{}
 	blockStoreMock.On("Height").Return(testHeight)
 	blockStoreMock.On("Base").Return(int64(0))
 	blockStoreMock.On("LoadBlockMeta", testHeight).Return(&types.BlockMeta{})
 	blockStoreMock.On("LoadBlock", testHeight).Return(testBlock)
-	eventSinkMock := &indexer_mocks.EventSink{}
+	eventSinkMock := &indexermocks.EventSink{}
 	eventSinkMock.On("Stop").Return(nil)
 
 	rpcConfig := config.TestRPCConfig()
@@ -85,7 +85,7 @@ func TestInspectServeInfoRPC(t *testing.T) {
 	// force context switch
 	time.Sleep(10 * time.Millisecond)
 	requireConnect(t, rpcConfig.ListenAddress, 15)
-	cli, err := http_client.New(rpcConfig.ListenAddress)
+	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
 	resultBlock, err := cli.Block(context.Background(), &testHeight)
 	require.NoError(t, err)
@@ -102,20 +102,20 @@ func TestInspectTxSearch(t *testing.T) {
 	testHash := []byte("test")
 	testTx := []byte("tx")
 	testQuery := fmt.Sprintf("tx.hash='%s'", string(testHash))
-	testTxResult := &abci_types.TxResult{
+	testTxResult := &abcitypes.TxResult{
 		Height: 1,
 		Index:  100,
 		Tx:     testTx,
 	}
 
-	stateStoreMock := &state_mocks.Store{}
-	blockStoreMock := &state_mocks.BlockStore{}
-	eventSinkMock := &indexer_mocks.EventSink{}
+	stateStoreMock := &statemocks.Store{}
+	blockStoreMock := &statemocks.BlockStore{}
+	eventSinkMock := &indexermocks.EventSink{}
 	eventSinkMock.On("Stop").Return(nil)
 	eventSinkMock.On("Type").Return(indexer.KV)
 	eventSinkMock.On("SearchTxEvents", mock.Anything,
 		mock.MatchedBy(func(q *query.Query) bool { return testQuery == q.String() })).
-		Return([]*abci_types.TxResult{testTxResult}, nil)
+		Return([]*abcitypes.TxResult{testTxResult}, nil)
 
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
@@ -128,7 +128,7 @@ func TestInspectTxSearch(t *testing.T) {
 		require.NoError(t, d.Run(ctx))
 	}()
 	requireConnect(t, rpcConfig.ListenAddress, 15)
-	cli, err := http_client.New(rpcConfig.ListenAddress)
+	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
 
 	var page int = 1

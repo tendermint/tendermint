@@ -121,6 +121,7 @@ func startRPCServers(ctx context.Context, cfg *config.RPCConfig, logger log.Logg
 		if cfg.IsTLSEnabled() {
 			keyFile := cfg.KeyFile()
 			certFile := cfg.CertFile()
+			listenerAddr := listenerAddr
 			g.Go(func() error {
 				logger.Info("RPC HTTPS server starting", "address", listenerAddr,
 					"certfile", certFile, "keyfile", keyFile)
@@ -132,6 +133,7 @@ func startRPCServers(ctx context.Context, cfg *config.RPCConfig, logger log.Logg
 				return nil
 			})
 		} else {
+			listenerAddr := listenerAddr
 			g.Go(func() error {
 				logger.Info("RPC HTTP server starting", "address", listenerAddr)
 				err := server.ListenAndServe(tctx)
