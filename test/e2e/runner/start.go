@@ -94,9 +94,7 @@ func Start(testnet *e2e.Testnet) error {
 			}
 		}
 
-		logger.Info("Starting catch up node",
-			"node", node.Name,
-			"height", node.StartAt)
+		logger.Info("Starting catch up node", "node", node.Name, "height", node.StartAt)
 
 		if err := execCompose(testnet.Dir, "up", "-d", node.Name); err != nil {
 			return err
