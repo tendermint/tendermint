@@ -19,7 +19,7 @@ import (
 	"github.com/tendermint/tendermint/pkg/consensus"
 	"github.com/tendermint/tendermint/pkg/evidence"
 	"github.com/tendermint/tendermint/pkg/light"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
@@ -237,7 +237,7 @@ func TestMockEvidenceValidateBasic(t *testing.T) {
 }
 
 func makeVote(
-	t *testing.T, val consensus.PrivValidator, chainID string, valIndex int32, height int64, round int32, step int, blockID meta.BlockID,
+	t *testing.T, val consensus.PrivValidator, chainID string, valIndex int32, height int64, round int32, step int, blockID metadata.BlockID,
 	time time.Time) *consensus.Vote {
 	pubKey, err := val.GetPubKey(context.Background())
 	require.NoError(t, err)
@@ -260,8 +260,8 @@ func makeVote(
 	return v
 }
 
-func makeHeaderRandom() *meta.Header {
-	return &meta.Header{
+func makeHeaderRandom() *metadata.Header {
+	return &metadata.Header{
 		Version:            version.Consensus{Block: version.BlockProtocol, App: 1},
 		ChainID:            tmrand.Str(12),
 		Height:             int64(mrand.Uint32() + 1),
@@ -335,12 +335,12 @@ func TestEvidenceVectors(t *testing.T) {
 	commonHeight := height - 1
 	nValidators := 10
 	voteSet, valSet, privVals := test.DeterministicVoteSet(height, 1, tmproto.PrecommitType, 1)
-	header := &meta.Header{
+	header := &metadata.Header{
 		Version:            version.Consensus{Block: 1, App: 1},
 		ChainID:            chainID,
 		Height:             height,
 		Time:               time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC),
-		LastBlockID:        meta.BlockID{},
+		LastBlockID:        metadata.BlockID{},
 		LastCommitHash:     []byte("f2564c78071e26643ae9b3e2a19fa0dc10d4d9e873aa0be808660123f11a1e78"),
 		DataHash:           []byte("f2564c78071e26643ae9b3e2a19fa0dc10d4d9e873aa0be808660123f11a1e78"),
 		ValidatorsHash:     valSet.Hash(),

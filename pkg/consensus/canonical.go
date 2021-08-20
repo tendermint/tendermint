@@ -1,7 +1,7 @@
 package consensus
 
 import (
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -12,7 +12,7 @@ func CanonicalizeProposal(chainID string, proposal *tmproto.Proposal) tmproto.Ca
 		Height:    proposal.Height,       // encoded as sfixed64
 		Round:     int64(proposal.Round), // encoded as sfixed64
 		POLRound:  int64(proposal.PolRound),
-		BlockID:   meta.CanonicalizeBlockID(proposal.BlockID),
+		BlockID:   metadata.CanonicalizeBlockID(proposal.BlockID),
 		Timestamp: proposal.Timestamp,
 		ChainID:   chainID,
 	}
@@ -25,7 +25,7 @@ func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote 
 		Type:      vote.Type,
 		Height:    vote.Height,       // encoded as sfixed64
 		Round:     int64(vote.Round), // encoded as sfixed64
-		BlockID:   meta.CanonicalizeBlockID(vote.BlockID),
+		BlockID:   metadata.CanonicalizeBlockID(vote.BlockID),
 		Timestamp: vote.Timestamp,
 		ChainID:   chainID,
 	}

@@ -11,7 +11,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -655,22 +655,22 @@ func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator) error {
 
 // VerifyCommit verifies +2/3 of the set had signed the given commit and all
 // other signatures are valid
-func (vals *ValidatorSet) VerifyCommit(chainID string, blockID meta.BlockID,
-	height int64, commit *meta.Commit) error {
+func (vals *ValidatorSet) VerifyCommit(chainID string, blockID metadata.BlockID,
+	height int64, commit *metadata.Commit) error {
 	return VerifyCommit(chainID, vals, blockID, height, commit)
 }
 
 // LIGHT CLIENT VERIFICATION METHODS
 
 // VerifyCommitLight verifies +2/3 of the set had signed the given commit.
-func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID meta.BlockID,
-	height int64, commit *meta.Commit) error {
+func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID metadata.BlockID,
+	height int64, commit *metadata.Commit) error {
 	return VerifyCommitLight(chainID, vals, blockID, height, commit)
 }
 
 // VerifyCommitLightTrusting verifies that trustLevel of the validator set signed
 // this commit.
-func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *meta.Commit, trustLevel tmmath.Fraction) error {
+func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *metadata.Commit, trustLevel tmmath.Fraction) error {
 	return VerifyCommitLightTrusting(chainID, vals, commit, trustLevel)
 }
 

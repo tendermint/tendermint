@@ -12,7 +12,7 @@ import (
 	test "github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/pkg/consensus"
 	"github.com/tendermint/tendermint/pkg/light"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -118,7 +118,7 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 	commit := test.MakeRandomCommit(time.Now())
 	chainID := "𠜎"
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
-	h := meta.Header{
+	h := metadata.Header{
 		Version:            version.Consensus{Block: version.BlockProtocol, App: math.MaxInt64},
 		ChainID:            chainID,
 		Height:             commit.Height,
@@ -141,8 +141,8 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 
 	testCases := []struct {
 		testName  string
-		shHeader  *meta.Header
-		shCommit  *meta.Commit
+		shHeader  *metadata.Header
+		shCommit  *metadata.Commit
 		expectErr bool
 	}{
 		{"Valid Signed Header", validSignedHeader.Header, validSignedHeader.Commit, false},

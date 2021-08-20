@@ -18,7 +18,7 @@ import (
 	"github.com/tendermint/tendermint/pkg/block"
 	"github.com/tendermint/tendermint/pkg/evidence"
 	"github.com/tendermint/tendermint/pkg/mempool"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -89,7 +89,7 @@ func TestBlockValidateBasic(t *testing.T) {
 			blk.LastCommit = nil
 		}, true},
 		{"Invalid LastCommit", func(blk *block.Block) {
-			blk.LastCommit = meta.NewCommit(-1, 0, test.MakeBlockID(), nil)
+			blk.LastCommit = metadata.NewCommit(-1, 0, test.MakeBlockID(), nil)
 		}, true},
 		{"Invalid Evidence", func(blk *block.Block) {
 			emptyEv := &evidence.DuplicateVoteEvidence{}
@@ -250,7 +250,7 @@ func TestBlockMaxDataBytesNoEvidence(t *testing.T) {
 func TestBlockProtoBuf(t *testing.T) {
 	h := mrand.Int63()
 	c1 := test.MakeRandomCommit(time.Now())
-	b1 := block.MakeBlock(h, []mempool.Tx{mempool.Tx([]byte{1})}, &meta.Commit{Signatures: []meta.CommitSig{}}, []evidence.Evidence{})
+	b1 := block.MakeBlock(h, []mempool.Tx{mempool.Tx([]byte{1})}, &metadata.Commit{Signatures: []metadata.CommitSig{}}, []evidence.Evidence{})
 	b1.ProposerAddress = tmrand.Bytes(crypto.AddressSize)
 
 	b2 := block.MakeBlock(h, []mempool.Tx{mempool.Tx([]byte{1})}, c1, []evidence.Evidence{})

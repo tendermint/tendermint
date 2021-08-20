@@ -13,7 +13,7 @@ import (
 	"github.com/tendermint/tendermint/pkg/consensus"
 	"github.com/tendermint/tendermint/pkg/evidence"
 	"github.com/tendermint/tendermint/pkg/mempool"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 )
 
 // Reserved event types (alphabetically sorted).
@@ -119,14 +119,14 @@ func init() {
 
 type EventDataNewBlock struct {
 	Block   *block.Block `json:"block"`
-	BlockID meta.BlockID `json:"block_id"`
+	BlockID metadata.BlockID `json:"block_id"`
 
 	ResultBeginBlock abci.ResponseBeginBlock `json:"result_begin_block"`
 	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
 }
 
 type EventDataNewBlockHeader struct {
-	Header meta.Header `json:"header"`
+	Header metadata.Header `json:"header"`
 
 	NumTxs           int64                   `json:"num_txs"` // Number of txs in a block
 	ResultBeginBlock abci.ResponseBeginBlock `json:"result_begin_block"`
@@ -169,7 +169,7 @@ type EventDataCompleteProposal struct {
 	Round  int32  `json:"round"`
 	Step   string `json:"step"`
 
-	BlockID meta.BlockID `json:"block_id"`
+	BlockID metadata.BlockID `json:"block_id"`
 }
 
 type EventDataVote struct {

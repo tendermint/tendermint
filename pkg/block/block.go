@@ -13,7 +13,7 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/pkg/evidence"
 	"github.com/tendermint/tendermint/pkg/mempool"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
@@ -22,10 +22,10 @@ import (
 type Block struct {
 	mtx tmsync.Mutex
 
-	meta.Header `json:"header"`
+	metadata.Header `json:"header"`
 	Data        `json:"data"`
 	Evidence    EvidenceData `json:"evidence"`
-	LastCommit  *meta.Commit `json:"last_commit"`
+	LastCommit  *metadata.Commit `json:"last_commit"`
 }
 
 // ValidateBasic performs basic validation that doesn't involve state data.
@@ -106,7 +106,7 @@ func (b *Block) Hash() tmbytes.HexBytes {
 // MakePartSet returns a PartSet containing parts of a serialized block.
 // This is the form in which the block is gossipped to peers.
 // CONTRACT: partSize is greater than zero.
-func (b *Block) MakePartSet(partSize uint32) *meta.PartSet {
+func (b *Block) MakePartSet(partSize uint32) *metadata.PartSet {
 	if b == nil {
 		return nil
 	}
@@ -121,7 +121,7 @@ func (b *Block) MakePartSet(partSize uint32) *meta.PartSet {
 	if err != nil {
 		panic(err)
 	}
-	return meta.NewPartSetFromData(bz, partSize)
+	return metadata.NewPartSetFromData(bz, partSize)
 }
 
 // HashesTo is a convenience function that checks if a block hashes to the given argument.
@@ -214,7 +214,7 @@ func BlockFromProto(bp *tmproto.Block) (*Block, error) {
 	}
 
 	b := new(Block)
-	h, err := meta.HeaderFromProto(&bp.Header)
+	h, err := metadata.HeaderFromProto(&bp.Header)
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +229,7 @@ func BlockFromProto(bp *tmproto.Block) (*Block, error) {
 	}
 
 	if bp.LastCommit != nil {
-		lc, err := meta.CommitFromProto(bp.LastCommit)
+		lc, err := metadata.CommitFromProto(bp.LastCommit)
 		if err != nil {
 			return nil, err
 		}
@@ -246,9 +246,9 @@ func BlockFromProto(bp *tmproto.Block) (*Block, error) {
 // XXX: Panics on negative result.
 func MaxDataBytes(maxBytes, evidenceBytes int64, valsCount int) int64 {
 	maxDataBytes := maxBytes -
-		meta.MaxOverheadForBlock -
-		meta.MaxHeaderBytes -
-		meta.MaxCommitBytes(valsCount) -
+		metadata.MaxOverheadForBlock -
+		metadata.MaxHeaderBytes -
+		metadata.MaxCommitBytes(valsCount) -
 		evidenceBytes
 
 	if maxDataBytes < 0 {
@@ -269,9 +269,9 @@ func MaxDataBytes(maxBytes, evidenceBytes int64, valsCount int) int64 {
 // XXX: Panics on negative result.
 func MaxDataBytesNoEvidence(maxBytes int64, valsCount int) int64 {
 	maxDataBytes := maxBytes -
-		meta.MaxOverheadForBlock -
-		meta.MaxHeaderBytes -
-		meta.MaxCommitBytes(valsCount)
+		metadata.MaxOverheadForBlock -
+		metadata.MaxHeaderBytes -
+		metadata.MaxCommitBytes(valsCount)
 
 	if maxDataBytes < 0 {
 		panic(fmt.Sprintf(
@@ -287,9 +287,9 @@ func MaxDataBytesNoEvidence(maxBytes int64, valsCount int) int64 {
 // MakeBlock returns a new block with an empty header, except what can be
 // computed from itself.
 // It populates the same set of fields validated by ValidateBasic.
-func MakeBlock(height int64, txs []mempool.Tx, lastCommit *meta.Commit, evidence []evidence.Evidence) *Block {
+func MakeBlock(height int64, txs []mempool.Tx, lastCommit *metadata.Commit, evidence []evidence.Evidence) *Block {
 	block := &Block{
-		Header: meta.Header{
+		Header: metadata.Header{
 			Version: version.Consensus{Block: version.BlockProtocol, App: 0},
 			Height:  height,
 		},

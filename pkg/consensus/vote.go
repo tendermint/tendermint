@@ -9,7 +9,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -52,7 +52,7 @@ type Vote struct {
 	Type             tmproto.SignedMsgType `json:"type"`
 	Height           int64                 `json:"height"`
 	Round            int32                 `json:"round"`    // assume there will not be greater than 2_147_483_647 rounds
-	BlockID          meta.BlockID          `json:"block_id"` // zero if vote is nil.
+	BlockID          metadata.BlockID          `json:"block_id"` // zero if vote is nil.
 	Timestamp        time.Time             `json:"timestamp"`
 	ValidatorAddress Address               `json:"validator_address"`
 	ValidatorIndex   int32                 `json:"validator_index"`
@@ -60,22 +60,22 @@ type Vote struct {
 }
 
 // CommitSig converts the Vote to a CommitSig.
-func (vote *Vote) CommitSig() meta.CommitSig {
+func (vote *Vote) CommitSig() metadata.CommitSig {
 	if vote == nil {
-		return meta.NewCommitSigAbsent()
+		return metadata.NewCommitSigAbsent()
 	}
 
-	var blockIDFlag meta.BlockIDFlag
+	var blockIDFlag metadata.BlockIDFlag
 	switch {
 	case vote.BlockID.IsComplete():
-		blockIDFlag = meta.BlockIDFlagCommit
+		blockIDFlag = metadata.BlockIDFlagCommit
 	case vote.BlockID.IsZero():
-		blockIDFlag = meta.BlockIDFlagNil
+		blockIDFlag = metadata.BlockIDFlagNil
 	default:
 		panic(fmt.Sprintf("Invalid vote %v - expected BlockID to be either empty or complete", vote))
 	}
 
-	return meta.CommitSig{
+	return metadata.CommitSig{
 		BlockIDFlag:      blockIDFlag,
 		ValidatorAddress: vote.ValidatorAddress,
 		Timestamp:        vote.Timestamp,
@@ -86,7 +86,7 @@ func (vote *Vote) CommitSig() meta.CommitSig {
 // GetVote converts the CommitSig for the given valIdx to a Vote.
 // Returns nil if the precommit at valIdx is nil.
 // Panics if valIdx >= commit.Size().
-func GetVoteFromCommit(commit *meta.Commit, valIdx int32) *Vote {
+func GetVoteFromCommit(commit *metadata.Commit, valIdx int32) *Vote {
 	commitSig := commit.Signatures[valIdx]
 	return &Vote{
 		Type:             tmproto.PrecommitType,
@@ -132,7 +132,7 @@ func (vote *Vote) Copy() *Vote {
 // Panics if valIdx >= commit.Size().
 //
 // See VoteSignBytes
-func VoteSignBytesFromCommit(commit *meta.Commit, chainID string, valIdx int32) []byte {
+func VoteSignBytesFromCommit(commit *metadata.Commit, chainID string, valIdx int32) []byte {
 	v := GetVoteFromCommit(commit, valIdx).ToProto()
 	return VoteSignBytes(chainID, v)
 }
@@ -172,7 +172,7 @@ func (vote *Vote) String() string {
 		typeString,
 		tmbytes.Fingerprint(vote.BlockID.Hash),
 		tmbytes.Fingerprint(vote.Signature),
-		meta.CanonicalTime(vote.Timestamp),
+		metadata.CanonicalTime(vote.Timestamp),
 	)
 }
 
@@ -226,8 +226,8 @@ func (vote *Vote) ValidateBasic() error {
 		return errors.New("signature is missing")
 	}
 
-	if len(vote.Signature) > meta.MaxSignatureSize {
-		return fmt.Errorf("signature is too big (max: %d)", meta.MaxSignatureSize)
+	if len(vote.Signature) > metadata.MaxSignatureSize {
+		return fmt.Errorf("signature is too big (max: %d)", metadata.MaxSignatureSize)
 	}
 
 	return nil
@@ -259,7 +259,7 @@ func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 		return nil, errors.New("nil vote")
 	}
 
-	blockID, err := meta.BlockIDFromProto(&pv.BlockID)
+	blockID, err := metadata.BlockIDFromProto(&pv.BlockID)
 	if err != nil {
 		return nil, err
 	}

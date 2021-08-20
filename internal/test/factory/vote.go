@@ -9,7 +9,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/pkg/consensus"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -20,7 +20,7 @@ func MakeVote(
 	height int64,
 	round int32,
 	step int,
-	blockID meta.BlockID,
+	blockID metadata.BlockID,
 	time time.Time,
 ) (*consensus.Vote, error) {
 	pubKey, err := val.GetPubKey(context.Background())

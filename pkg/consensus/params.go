@@ -10,7 +10,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/sr25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -121,16 +121,16 @@ func (val *ValidatorParams) IsValidPubkeyType(pubkeyType string) bool {
 // allowed limits, and returns an error if they are not.
 func (params ConsensusParams) ValidateConsensusParams() error {
 	if params.Block.MaxBytes <= 0 {
-		return fmt.Errorf("meta.MaxBytes must be greater than 0. Got %d",
+		return fmt.Errorf("metadata.MaxBytes must be greater than 0. Got %d",
 			params.Block.MaxBytes)
 	}
-	if params.Block.MaxBytes > meta.MaxBlockSizeBytes {
-		return fmt.Errorf("meta.MaxBytes is too big. %d > %d",
-			params.Block.MaxBytes, meta.MaxBlockSizeBytes)
+	if params.Block.MaxBytes > metadata.MaxBlockSizeBytes {
+		return fmt.Errorf("metadata.MaxBytes is too big. %d > %d",
+			params.Block.MaxBytes, metadata.MaxBlockSizeBytes)
 	}
 
 	if params.Block.MaxGas < -1 {
-		return fmt.Errorf("meta.MaxGas must be greater or equal to -1. Got %d",
+		return fmt.Errorf("metadata.MaxGas must be greater or equal to -1. Got %d",
 			params.Block.MaxGas)
 	}
 

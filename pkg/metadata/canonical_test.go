@@ -1,4 +1,4 @@
-package meta_test
+package metadata_test
 
 import (
 	"reflect"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -32,7 +32,7 @@ func TestCanonicalizeBlockID(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			if got := meta.CanonicalizeBlockID(tt.args); !reflect.DeepEqual(got, tt.want) {
+			if got := metadata.CanonicalizeBlockID(tt.args); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("CanonicalizeBlockID() = %v, want %v", got, tt.want)
 			}
 		})

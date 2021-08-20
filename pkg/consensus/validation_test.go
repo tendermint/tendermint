@@ -11,7 +11,7 @@ import (
 	test "github.com/tendermint/tendermint/internal/test/factory"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/pkg/consensus"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -32,7 +32,7 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 		// vote chainID
 		chainID string
 		// vote blockID
-		blockID meta.BlockID
+		blockID metadata.BlockID
 		valSize int
 
 		// height of the commit
@@ -65,11 +65,11 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			_, valSet, vals := test.RandVoteSet(tc.height, round, tmproto.PrecommitType, tc.valSize, 10)
 			totalVotes := tc.blockVotes + tc.absentVotes + tc.nilVotes
-			sigs := make([]meta.CommitSig, totalVotes)
+			sigs := make([]metadata.CommitSig, totalVotes)
 			vi := 0
 			// add absent sigs first
 			for i := 0; i < tc.absentVotes; i++ {
-				sigs[vi] = meta.NewCommitSigAbsent()
+				sigs[vi] = metadata.NewCommitSigAbsent()
 				vi++
 			}
 			for i := 0; i < tc.blockVotes+tc.nilVotes; i++ {
@@ -86,7 +86,7 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 					Timestamp:        time.Now(),
 				}
 				if i >= tc.blockVotes {
-					vote.BlockID = meta.BlockID{}
+					vote.BlockID = metadata.BlockID{}
 				}
 
 				v := vote.ToProto()
@@ -98,7 +98,7 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 
 				vi++
 			}
-			commit := meta.NewCommit(tc.height, round, tc.blockID, sigs)
+			commit := metadata.NewCommit(tc.height, round, tc.blockID, sigs)
 
 			err := valSet.VerifyCommit(chainID, blockID, height, commit)
 			if tc.expErr {

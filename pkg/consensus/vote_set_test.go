@@ -14,7 +14,7 @@ import (
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/pkg/consensus"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -39,7 +39,7 @@ func TestVoteSet_AddVote_Good(t *testing.T) {
 		Round:            round,
 		Type:             tmproto.PrevoteType,
 		Timestamp:        tmtime.Now(),
-		BlockID:          meta.BlockID{nil, meta.PartSetHeader{}},
+		BlockID:          metadata.BlockID{nil, metadata.PartSetHeader{}},
 	}
 	_, err = test.SignAddVote(val0, vote, voteSet)
 	require.NoError(t, err)
@@ -61,7 +61,7 @@ func TestVoteSet_AddVote_Bad(t *testing.T) {
 		Round:            round,
 		Timestamp:        tmtime.Now(),
 		Type:             tmproto.PrevoteType,
-		BlockID:          meta.BlockID{nil, meta.PartSetHeader{}},
+		BlockID:          metadata.BlockID{nil, metadata.PartSetHeader{}},
 	}
 
 	// val0 votes for nil.
@@ -76,7 +76,7 @@ func TestVoteSet_AddVote_Bad(t *testing.T) {
 		}
 	}
 
-	// val0 votes again for some meta.
+	// val0 votes again for some metadata.
 	{
 		pubKey, err := privValidators[0].GetPubKey(context.Background())
 		require.NoError(t, err)
@@ -136,7 +136,7 @@ func TestVoteSet_2_3Majority(t *testing.T) {
 		Round:            round,
 		Type:             tmproto.PrevoteType,
 		Timestamp:        tmtime.Now(),
-		BlockID:          meta.BlockID{nil, meta.PartSetHeader{}},
+		BlockID:          metadata.BlockID{nil, metadata.PartSetHeader{}},
 	}
 	// 6 out of 10 voted for nil.
 	for i := int32(0); i < 6; i++ {
@@ -181,7 +181,7 @@ func TestVoteSet_2_3MajorityRedux(t *testing.T) {
 
 	blockHash := crypto.CRandBytes(32)
 	blockPartsTotal := uint32(123)
-	blockPartSetHeader := meta.PartSetHeader{blockPartsTotal, crypto.CRandBytes(32)}
+	blockPartSetHeader := metadata.PartSetHeader{blockPartsTotal, crypto.CRandBytes(32)}
 
 	voteProto := &consensus.Vote{
 		ValidatorAddress: nil, // NOTE: must fill in
@@ -190,7 +190,7 @@ func TestVoteSet_2_3MajorityRedux(t *testing.T) {
 		Round:            round,
 		Timestamp:        tmtime.Now(),
 		Type:             tmproto.PrevoteType,
-		BlockID:          meta.BlockID{blockHash, blockPartSetHeader},
+		BlockID:          metadata.BlockID{blockHash, blockPartSetHeader},
 	}
 
 	// 66 out of 100 voted for nil.
@@ -225,7 +225,7 @@ func TestVoteSet_2_3MajorityRedux(t *testing.T) {
 		require.NoError(t, err)
 		addr := pubKey.Address()
 		vote := withValidator(voteProto, addr, 67)
-		blockPartsHeader := meta.PartSetHeader{blockPartsTotal, crypto.CRandBytes(32)}
+		blockPartsHeader := metadata.PartSetHeader{blockPartsTotal, crypto.CRandBytes(32)}
 		_, err = test.SignAddVote(privValidators[67], withBlockPartSetHeader(vote, blockPartsHeader), voteSet)
 		require.NoError(t, err)
 		blockID, ok = voteSet.TwoThirdsMajority()
@@ -239,7 +239,7 @@ func TestVoteSet_2_3MajorityRedux(t *testing.T) {
 		require.NoError(t, err)
 		addr := pubKey.Address()
 		vote := withValidator(voteProto, addr, 68)
-		blockPartsHeader := meta.PartSetHeader{blockPartsTotal + 1, blockPartSetHeader.Hash}
+		blockPartsHeader := metadata.PartSetHeader{blockPartsTotal + 1, blockPartSetHeader.Hash}
 		_, err = test.SignAddVote(privValidators[68], withBlockPartSetHeader(vote, blockPartsHeader), voteSet)
 		require.NoError(t, err)
 		blockID, ok = voteSet.TwoThirdsMajority()
@@ -269,7 +269,7 @@ func TestVoteSet_2_3MajorityRedux(t *testing.T) {
 		_, err = test.SignAddVote(privValidators[70], vote, voteSet)
 		require.NoError(t, err)
 		blockID, ok = voteSet.TwoThirdsMajority()
-		assert.True(t, ok && blockID.Equals(meta.BlockID{blockHash, blockPartSetHeader}),
+		assert.True(t, ok && blockID.Equals(metadata.BlockID{blockHash, blockPartSetHeader}),
 			"there should be 2/3 majority")
 	}
 }
@@ -287,7 +287,7 @@ func TestVoteSet_Conflicts(t *testing.T) {
 		Round:            round,
 		Timestamp:        tmtime.Now(),
 		Type:             tmproto.PrevoteType,
-		BlockID:          meta.BlockID{nil, meta.PartSetHeader{}},
+		BlockID:          metadata.BlockID{nil, metadata.PartSetHeader{}},
 	}
 
 	val0, err := privValidators[0].GetPubKey(context.Background())
@@ -312,7 +312,7 @@ func TestVoteSet_Conflicts(t *testing.T) {
 	}
 
 	// start tracking blockHash1
-	err = voteSet.SetPeerMaj23("peerA", meta.BlockID{blockHash1, meta.PartSetHeader{}})
+	err = voteSet.SetPeerMaj23("peerA", metadata.BlockID{blockHash1, metadata.PartSetHeader{}})
 	require.NoError(t, err)
 
 	// val0 votes again for blockHash1.
@@ -324,7 +324,7 @@ func TestVoteSet_Conflicts(t *testing.T) {
 	}
 
 	// attempt tracking blockHash2, should fail because already set for peerA.
-	err = voteSet.SetPeerMaj23("peerA", meta.BlockID{blockHash2, meta.PartSetHeader{}})
+	err = voteSet.SetPeerMaj23("peerA", metadata.BlockID{blockHash2, metadata.PartSetHeader{}})
 	require.Error(t, err)
 
 	// val0 votes again for blockHash1.
@@ -376,7 +376,7 @@ func TestVoteSet_Conflicts(t *testing.T) {
 	}
 
 	// now attempt tracking blockHash1
-	err = voteSet.SetPeerMaj23("peerB", meta.BlockID{blockHash1, meta.PartSetHeader{}})
+	err = voteSet.SetPeerMaj23("peerB", metadata.BlockID{blockHash1, metadata.PartSetHeader{}})
 	require.NoError(t, err)
 
 	// val2 votes for blockHash1.
@@ -406,7 +406,7 @@ func TestVoteSet_Conflicts(t *testing.T) {
 func TestVoteSet_MakeCommit(t *testing.T) {
 	height, round := int64(1), int32(0)
 	voteSet, _, privValidators := test.RandVoteSet(height, round, tmproto.PrecommitType, 10, 1)
-	blockHash, blockPartSetHeader := crypto.CRandBytes(32), meta.PartSetHeader{123, crypto.CRandBytes(32)}
+	blockHash, blockPartSetHeader := crypto.CRandBytes(32), metadata.PartSetHeader{123, crypto.CRandBytes(32)}
 
 	voteProto := &consensus.Vote{
 		ValidatorAddress: nil,
@@ -415,10 +415,10 @@ func TestVoteSet_MakeCommit(t *testing.T) {
 		Round:            round,
 		Timestamp:        tmtime.Now(),
 		Type:             tmproto.PrecommitType,
-		BlockID:          meta.BlockID{blockHash, blockPartSetHeader},
+		BlockID:          metadata.BlockID{blockHash, blockPartSetHeader},
 	}
 
-	// 6 out of 10 voted for some meta.
+	// 6 out of 10 voted for some metadata.
 	for i := int32(0); i < 6; i++ {
 		pv, err := privValidators[i].GetPubKey(context.Background())
 		assert.NoError(t, err)
@@ -433,14 +433,14 @@ func TestVoteSet_MakeCommit(t *testing.T) {
 	// MakeCommit should fail.
 	assert.Panics(t, func() { voteSet.MakeCommit() }, "Doesn't have +2/3 majority")
 
-	// 7th voted for some other meta.
+	// 7th voted for some other metadata.
 	{
 		pv, err := privValidators[6].GetPubKey(context.Background())
 		assert.NoError(t, err)
 		addr := pv.Address()
 		vote := withValidator(voteProto, addr, 6)
 		vote = withBlockHash(vote, tmrand.Bytes(32))
-		vote = withBlockPartSetHeader(vote, meta.PartSetHeader{123, tmrand.Bytes(32)})
+		vote = withBlockPartSetHeader(vote, metadata.PartSetHeader{123, tmrand.Bytes(32)})
 
 		_, err = test.SignAddVote(privValidators[6], vote, voteSet)
 		require.NoError(t, err)
@@ -462,7 +462,7 @@ func TestVoteSet_MakeCommit(t *testing.T) {
 		assert.NoError(t, err)
 		addr := pv.Address()
 		vote := withValidator(voteProto, addr, 8)
-		vote.BlockID = meta.BlockID{}
+		vote.BlockID = metadata.BlockID{}
 
 		_, err = test.SignAddVote(privValidators[8], vote, voteSet)
 		require.NoError(t, err)
@@ -515,14 +515,14 @@ func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 	)
 
 	type commitVoteTest struct {
-		blockIDs      []meta.BlockID
+		blockIDs      []metadata.BlockID
 		numVotes      []int // must sum to numValidators
 		numValidators int
 		valid         bool
 	}
 
 	testCases := []commitVoteTest{
-		{[]meta.BlockID{blockID, {}}, []int{67, 33}, 100, true},
+		{[]metadata.BlockID{blockID, {}}, []int{67, 33}, 100, true},
 	}
 
 	for _, tc := range testCases {
@@ -599,7 +599,7 @@ func withBlockHash(vote *consensus.Vote, blockHash []byte) *consensus.Vote {
 }
 
 // Convenience: Return new vote with different blockParts
-func withBlockPartSetHeader(vote *consensus.Vote, blockPartsHeader meta.PartSetHeader) *consensus.Vote {
+func withBlockPartSetHeader(vote *consensus.Vote, blockPartsHeader metadata.PartSetHeader) *consensus.Vote {
 	vote = vote.Copy()
 	vote.BlockID.PartSetHeader = blockPartsHeader
 	return vote

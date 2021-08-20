@@ -5,22 +5,22 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 // BlockMeta contains meta information.
 type BlockMeta struct {
-	BlockID   meta.BlockID `json:"block_id"`
+	BlockID   metadata.BlockID `json:"block_id"`
 	BlockSize int          `json:"block_size"`
-	Header    meta.Header  `json:"header"`
+	Header    metadata.Header  `json:"header"`
 	NumTxs    int          `json:"num_txs"`
 }
 
 // NewBlockMeta returns a new BlockMeta.
-func NewBlockMeta(block *Block, blockParts *meta.PartSet) *BlockMeta {
+func NewBlockMeta(block *Block, blockParts *metadata.PartSet) *BlockMeta {
 	return &BlockMeta{
-		BlockID:   meta.BlockID{block.Hash(), blockParts.Header()},
+		BlockID:   metadata.BlockID{block.Hash(), blockParts.Header()},
 		BlockSize: block.Size(),
 		Header:    block.Header,
 		NumTxs:    len(block.Data.Txs),
@@ -48,12 +48,12 @@ func BlockMetaFromProto(pb *tmproto.BlockMeta) (*BlockMeta, error) {
 
 	bm := new(BlockMeta)
 
-	bi, err := meta.BlockIDFromProto(&pb.BlockID)
+	bi, err := metadata.BlockIDFromProto(&pb.BlockID)
 	if err != nil {
 		return nil, err
 	}
 
-	h, err := meta.HeaderFromProto(&pb.Header)
+	h, err := metadata.HeaderFromProto(&pb.Header)
 	if err != nil {
 		return nil, err
 	}

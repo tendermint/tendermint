@@ -17,7 +17,7 @@ import (
 	"github.com/tendermint/tendermint/pkg/events"
 	"github.com/tendermint/tendermint/pkg/evidence"
 	"github.com/tendermint/tendermint/pkg/mempool"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 )
 
 func TestEventBusPublishEventTx(t *testing.T) {
@@ -80,7 +80,7 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	})
 
 	block := block.MakeBlock(0, []mempool.Tx{}, nil, []evidence.Evidence{})
-	blockID := meta.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(meta.BlockPartSizeBytes).Header()}
+	blockID := metadata.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(metadata.BlockPartSizeBytes).Header()}
 	resultBeginBlock := abci.ResponseBeginBlock{
 		Events: []abci.Event{
 			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "baz", Value: "1"}}},

@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/pkg/consensus"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
-func MakeRandomCommit(time time.Time) *meta.Commit {
+func MakeRandomCommit(time time.Time) *metadata.Commit {
 	lastID := MakeBlockID()
 	h := int64(3)
 	voteSet, _, vals := RandVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
@@ -21,8 +21,8 @@ func MakeRandomCommit(time time.Time) *meta.Commit {
 	return commit
 }
 
-func MakeCommit(blockID meta.BlockID, height int64, round int32,
-	voteSet *consensus.VoteSet, validators []consensus.PrivValidator, now time.Time) (*meta.Commit, error) {
+func MakeCommit(blockID metadata.BlockID, height int64, round int32,
+	voteSet *consensus.VoteSet, validators []consensus.PrivValidator, now time.Time) (*metadata.Commit, error) {
 
 	// all sign
 	for i := 0; i < len(validators); i++ {

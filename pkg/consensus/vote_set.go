@@ -8,7 +8,7 @@ import (
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmjson "github.com/tendermint/tendermint/libs/json"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -42,10 +42,10 @@ type P2PID string
 	the first vote seen, but when a 2/3 majority is found, votes for that get
 	priority and are copied over from `.votesByBlock`.
 
-	`.votesByBlock` keeps track of a list of votes for a particular meta.  There
+	`.votesByBlock` keeps track of a list of votes for a particular metadata.  There
 	are two ways a &blockVotes{} gets created in `.votesByBlock`.
-	1. the first vote seen by a validator was for the particular meta.
-	2. a peer claims to have seen 2/3 majority for the particular meta.
+	1. the first vote seen by a validator was for the particular metadata.
+	2. a peer claims to have seen 2/3 majority for the particular metadata.
 
 	Since the first vote from a validator will always get added in `.votesByBlock`
 	, all votes in `.votes` will have a corresponding entry in `.votesByBlock`.
@@ -70,9 +70,9 @@ type VoteSet struct {
 	votesBitArray *bits.BitArray
 	votes         []*Vote                // Primary votes to share
 	sum           int64                  // Sum of voting power for seen votes, discounting conflicts
-	maj23         *meta.BlockID          // First 2/3 majority seen
+	maj23         *metadata.BlockID          // First 2/3 majority seen
 	votesByBlock  map[string]*blockVotes // string(blockHash|blockParts) -> blockVotes
-	peerMaj23s    map[P2PID]meta.BlockID // Maj23 for each peer
+	peerMaj23s    map[P2PID]metadata.BlockID // Maj23 for each peer
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
@@ -92,14 +92,14 @@ func NewVoteSet(chainID string, height int64, round int32,
 		sum:           0,
 		maj23:         nil,
 		votesByBlock:  make(map[string]*blockVotes, valSet.Size()),
-		peerMaj23s:    make(map[P2PID]meta.BlockID),
+		peerMaj23s:    make(map[P2PID]metadata.BlockID),
 	}
 }
 
 // CommitToVoteSet constructs a VoteSet from the Commit and validator set.
 // Panics if signatures from the commit can't be added to the voteset.
 // Inverse of VoteSet.MakeCommit().
-func VoteSetFromCommit(chainID string, commit *meta.Commit, vals *ValidatorSet) *VoteSet {
+func VoteSetFromCommit(chainID string, commit *metadata.Commit, vals *ValidatorSet) *VoteSet {
 	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, tmproto.PrecommitType, vals)
 	for idx, commitSig := range commit.Signatures {
 		if commitSig.Absent() {
@@ -324,7 +324,7 @@ func (voteSet *VoteSet) addVerifiedVote(
 // this can cause memory issues.
 // TODO: implement ability to remove peers too
 // NOTE: VoteSet must not be nil
-func (voteSet *VoteSet) SetPeerMaj23(peerID P2PID, blockID meta.BlockID) error {
+func (voteSet *VoteSet) SetPeerMaj23(peerID P2PID, blockID metadata.BlockID) error {
 	if voteSet == nil {
 		panic("SetPeerMaj23() on nil VoteSet")
 	}
@@ -369,7 +369,7 @@ func (voteSet *VoteSet) BitArray() *bits.BitArray {
 	return voteSet.votesBitArray.Copy()
 }
 
-func (voteSet *VoteSet) BitArrayByBlockID(blockID meta.BlockID) *bits.BitArray {
+func (voteSet *VoteSet) BitArrayByBlockID(blockID metadata.BlockID) *bits.BitArray {
 	if voteSet == nil {
 		return nil
 	}
@@ -445,16 +445,16 @@ func (voteSet *VoteSet) HasAll() bool {
 
 // If there was a +2/3 majority for blockID, return blockID and true.
 // Else, return the empty BlockID{} and false.
-func (voteSet *VoteSet) TwoThirdsMajority() (blockID meta.BlockID, ok bool) {
+func (voteSet *VoteSet) TwoThirdsMajority() (blockID metadata.BlockID, ok bool) {
 	if voteSet == nil {
-		return meta.BlockID{}, false
+		return metadata.BlockID{}, false
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 	if voteSet.maj23 != nil {
 		return *voteSet.maj23, true
 	}
-	return meta.BlockID{}, false
+	return metadata.BlockID{}, false
 }
 
 //--------------------------------------------------------------------------------
@@ -523,7 +523,7 @@ func (voteSet *VoteSet) MarshalJSON() ([]byte, error) {
 type VoteSetJSON struct {
 	Votes         []string               `json:"votes"`
 	VotesBitArray string                 `json:"votes_bit_array"`
-	PeerMaj23s    map[P2PID]meta.BlockID `json:"peer_maj_23s"`
+	PeerMaj23s    map[P2PID]metadata.BlockID `json:"peer_maj_23s"`
 }
 
 // Return the bit-array of votes including
@@ -607,8 +607,8 @@ func (voteSet *VoteSet) sumTotalFrac() (int64, int64, float64) {
 // for the block, which has 2/3+ majority, and nil.
 //
 // Panics if the vote type is not PrecommitType or if there's no +2/3 votes for
-// a single meta.
-func (voteSet *VoteSet) MakeCommit() *meta.Commit {
+// a single metadata.
+func (voteSet *VoteSet) MakeCommit() *metadata.Commit {
 	if voteSet.signedMsgType != tmproto.PrecommitType {
 		panic("Cannot MakeCommit() unless VoteSet.Type is PrecommitType")
 	}
@@ -621,17 +621,17 @@ func (voteSet *VoteSet) MakeCommit() *meta.Commit {
 	}
 
 	// For every validator, get the precommit
-	commitSigs := make([]meta.CommitSig, len(voteSet.votes))
+	commitSigs := make([]metadata.CommitSig, len(voteSet.votes))
 	for i, v := range voteSet.votes {
 		commitSig := v.CommitSig()
 		// if block ID exists but doesn't match, exclude sig
 		if commitSig.ForBlock() && !v.BlockID.Equals(*voteSet.maj23) {
-			commitSig = meta.NewCommitSigAbsent()
+			commitSig = metadata.NewCommitSigAbsent()
 		}
 		commitSigs[i] = commitSig
 	}
 
-	return meta.NewCommit(voteSet.GetHeight(), voteSet.GetRound(), *voteSet.maj23, commitSigs)
+	return metadata.NewCommit(voteSet.GetHeight(), voteSet.GetRound(), *voteSet.maj23, commitSigs)
 }
 
 //--------------------------------------------------------------------------------

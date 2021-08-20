@@ -17,7 +17,7 @@ import (
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/pkg/consensus"
 	"github.com/tendermint/tendermint/pkg/light"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -364,7 +364,7 @@ func (l *LightClientAttackEvidence) GetByzantineValidators(commonVals *consensus
 // to determine whether the conflicting header was the product of a valid state transition
 // or not. If it is then all the deterministic fields of the header should be the same.
 // If not, it is an invalid header and constitutes a lunatic attack.
-func (l *LightClientAttackEvidence) ConflictingHeaderIsInvalid(trustedHeader *meta.Header) bool {
+func (l *LightClientAttackEvidence) ConflictingHeaderIsInvalid(trustedHeader *metadata.Header) bool {
 	return !bytes.Equal(trustedHeader.ValidatorsHash, l.ConflictingBlock.ValidatorsHash) ||
 		!bytes.Equal(trustedHeader.NextValidatorsHash, l.ConflictingBlock.NextValidatorsHash) ||
 		!bytes.Equal(trustedHeader.ConsensusHash, l.ConflictingBlock.ConsensusHash) ||
@@ -691,7 +691,7 @@ func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
 }
 
 func makeMockVote(height int64, round, index int32, addr consensus.Address,
-	blockID meta.BlockID, time time.Time) *consensus.Vote {
+	blockID metadata.BlockID, time time.Time) *consensus.Vote {
 	return &consensus.Vote{
 		Type:             tmproto.SignedMsgType(2),
 		Height:           height,
@@ -703,10 +703,10 @@ func makeMockVote(height int64, round, index int32, addr consensus.Address,
 	}
 }
 
-func randBlockID() meta.BlockID {
-	return meta.BlockID{
+func randBlockID() metadata.BlockID {
+	return metadata.BlockID{
 		Hash: tmrand.Bytes(tmhash.Size),
-		PartSetHeader: meta.PartSetHeader{
+		PartSetHeader: metadata.PartSetHeader{
 			Total: 1,
 			Hash:  tmrand.Bytes(tmhash.Size),
 		},

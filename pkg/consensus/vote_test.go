@@ -13,7 +13,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -26,7 +26,7 @@ func examplePrecommit() *Vote {
 }
 
 func exampleVote(t byte) *Vote {
-	var stamp, err = time.Parse(meta.TimeFormat, "2017-12-25T03:00:01.234Z")
+	var stamp, err = time.Parse(metadata.TimeFormat, "2017-12-25T03:00:01.234Z")
 	if err != nil {
 		panic(err)
 	}
@@ -36,9 +36,9 @@ func exampleVote(t byte) *Vote {
 		Height:    12345,
 		Round:     2,
 		Timestamp: stamp,
-		BlockID: meta.BlockID{
+		BlockID: metadata.BlockID{
 			Hash: tmhash.Sum([]byte("blockID_hash")),
-			PartSetHeader: meta.PartSetHeader{
+			PartSetHeader: metadata.PartSetHeader{
 				Total: 1000000,
 				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
 			},
@@ -245,12 +245,12 @@ func TestVoteValidateBasic(t *testing.T) {
 		{"Negative Height", func(v *Vote) { v.Height = -1 }, true},
 		{"Negative Round", func(v *Vote) { v.Round = -1 }, true},
 		{"Invalid BlockID", func(v *Vote) {
-			v.BlockID = meta.BlockID{[]byte{1, 2, 3}, meta.PartSetHeader{111, []byte("blockparts")}}
+			v.BlockID = metadata.BlockID{[]byte{1, 2, 3}, metadata.PartSetHeader{111, []byte("blockparts")}}
 		}, true},
 		{"Invalid Address", func(v *Vote) { v.ValidatorAddress = make([]byte, 1) }, true},
 		{"Invalid ValidatorIndex", func(v *Vote) { v.ValidatorIndex = -1 }, true},
 		{"Invalid Signature", func(v *Vote) { v.Signature = nil }, true},
-		{"Too big Signature", func(v *Vote) { v.Signature = make([]byte, meta.MaxSignatureSize+1) }, true},
+		{"Too big Signature", func(v *Vote) { v.Signature = make([]byte, metadata.MaxSignatureSize+1) }, true},
 	}
 	for _, tc := range testCases {
 		tc := tc

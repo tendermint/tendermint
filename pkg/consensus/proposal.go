@@ -8,7 +8,7 @@ import (
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmtime "github.com/tendermint/tendermint/libs/time"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -28,14 +28,14 @@ type Proposal struct {
 	Height    int64        `json:"height"`
 	Round     int32        `json:"round"`     // there can not be greater than 2_147_483_647 rounds
 	POLRound  int32        `json:"pol_round"` // -1 if null.
-	BlockID   meta.BlockID `json:"block_id"`
+	BlockID   metadata.BlockID `json:"block_id"`
 	Timestamp time.Time    `json:"timestamp"`
 	Signature []byte       `json:"signature"`
 }
 
 // NewProposal returns a new Proposal.
 // If there is no POLRound, polRound should be -1.
-func NewProposal(height int64, round int32, polRound int32, blockID meta.BlockID) *Proposal {
+func NewProposal(height int64, round int32, polRound int32, blockID metadata.BlockID) *Proposal {
 	return &Proposal{
 		Type:      tmproto.ProposalType,
 		Height:    height,
@@ -74,8 +74,8 @@ func (p *Proposal) ValidateBasic() error {
 		return errors.New("signature is missing")
 	}
 
-	if len(p.Signature) > meta.MaxSignatureSize {
-		return fmt.Errorf("signature is too big (max: %d)", meta.MaxSignatureSize)
+	if len(p.Signature) > metadata.MaxSignatureSize {
+		return fmt.Errorf("signature is too big (max: %d)", metadata.MaxSignatureSize)
 	}
 	return nil
 }
@@ -97,7 +97,7 @@ func (p *Proposal) String() string {
 		p.BlockID,
 		p.POLRound,
 		tmbytes.Fingerprint(p.Signature),
-		meta.CanonicalTime(p.Timestamp))
+		metadata.CanonicalTime(p.Timestamp))
 }
 
 // ProposalSignBytes returns the proto-encoding of the canonicalized Proposal,
@@ -145,7 +145,7 @@ func ProposalFromProto(pp *tmproto.Proposal) (*Proposal, error) {
 
 	p := new(Proposal)
 
-	blockID, err := meta.BlockIDFromProto(&pp.BlockID)
+	blockID, err := metadata.BlockIDFromProto(&pp.BlockID)
 	if err != nil {
 		return nil, err
 	}

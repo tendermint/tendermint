@@ -14,7 +14,7 @@ import (
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/pkg/consensus"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -24,15 +24,15 @@ var (
 )
 
 func init() {
-	var stamp, err = time.Parse(meta.TimeFormat, "2018-02-11T07:09:22.765Z")
+	var stamp, err = time.Parse(metadata.TimeFormat, "2018-02-11T07:09:22.765Z")
 	if err != nil {
 		panic(err)
 	}
 	testProposal = &consensus.Proposal{
 		Height: 12345,
 		Round:  23456,
-		BlockID: meta.BlockID{Hash: []byte("--June_15_2020_amino_was_removed"),
-			PartSetHeader: meta.PartSetHeader{Total: 111, Hash: []byte("--June_15_2020_amino_was_removed")}},
+		BlockID: metadata.BlockID{Hash: []byte("--June_15_2020_amino_was_removed"),
+			PartSetHeader: metadata.PartSetHeader{Total: 111, Hash: []byte("--June_15_2020_amino_was_removed")}},
 		POLRound:  -1,
 		Timestamp: stamp,
 	}
@@ -64,7 +64,7 @@ func TestProposalVerifySignature(t *testing.T) {
 
 	prop := consensus.NewProposal(
 		4, 2, 2,
-		meta.BlockID{tmrand.Bytes(tmhash.Size), meta.PartSetHeader{777, tmrand.Bytes(tmhash.Size)}})
+		metadata.BlockID{tmrand.Bytes(tmhash.Size), metadata.PartSetHeader{777, tmrand.Bytes(tmhash.Size)}})
 	p := prop.ToProto()
 	signBytes := consensus.ProposalSignBytes("test_chain_id", p)
 
@@ -138,16 +138,16 @@ func TestProposalValidateBasic(t *testing.T) {
 		{"Invalid Round", func(p *consensus.Proposal) { p.Round = -1 }, true},
 		{"Invalid POLRound", func(p *consensus.Proposal) { p.POLRound = -2 }, true},
 		{"Invalid BlockId", func(p *consensus.Proposal) {
-			p.BlockID = meta.BlockID{[]byte{1, 2, 3}, meta.PartSetHeader{111, []byte("blockparts")}}
+			p.BlockID = metadata.BlockID{[]byte{1, 2, 3}, metadata.PartSetHeader{111, []byte("blockparts")}}
 		}, true},
 		{"Invalid Signature", func(p *consensus.Proposal) {
 			p.Signature = make([]byte, 0)
 		}, true},
 		{"Too big Signature", func(p *consensus.Proposal) {
-			p.Signature = make([]byte, meta.MaxSignatureSize+1)
+			p.Signature = make([]byte, metadata.MaxSignatureSize+1)
 		}, true},
 	}
-	blockID := meta.BlockID{tmhash.Sum([]byte("blockhash")), meta.PartSetHeader{math.MaxInt32, tmhash.Sum([]byte("partshash"))}}
+	blockID := metadata.BlockID{tmhash.Sum([]byte("blockhash")), metadata.PartSetHeader{math.MaxInt32, tmhash.Sum([]byte("partshash"))}}
 
 	for _, tc := range testCases {
 		tc := tc
@@ -166,9 +166,9 @@ func TestProposalValidateBasic(t *testing.T) {
 }
 
 func TestProposalProtoBuf(t *testing.T) {
-	proposal := consensus.NewProposal(1, 2, 3, meta.BlockID{[]byte("hash"), meta.PartSetHeader{2, []byte("part_set_hash")}})
+	proposal := consensus.NewProposal(1, 2, 3, metadata.BlockID{[]byte("hash"), metadata.PartSetHeader{2, []byte("part_set_hash")}})
 	proposal.Signature = []byte("sig")
-	proposal2 := consensus.NewProposal(1, 2, 3, meta.BlockID{})
+	proposal2 := consensus.NewProposal(1, 2, 3, metadata.BlockID{})
 
 	testCases := []struct {
 		msg     string

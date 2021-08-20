@@ -12,7 +12,7 @@ import (
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmtime "github.com/tendermint/tendermint/libs/time"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 )
 
 //------------------------------------------------------------
@@ -66,8 +66,8 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 	if genDoc.ChainID == "" {
 		return errors.New("genesis doc must include non-empty chain_id")
 	}
-	if len(genDoc.ChainID) > meta.MaxChainIDLen {
-		return fmt.Errorf("chain_id in genesis doc is too long (max: %d)", meta.MaxChainIDLen)
+	if len(genDoc.ChainID) > metadata.MaxChainIDLen {
+		return fmt.Errorf("chain_id in genesis doc is too long (max: %d)", metadata.MaxChainIDLen)
 	}
 	if genDoc.InitialHeight < 0 {
 		return fmt.Errorf("initial_height cannot be negative (got %v)", genDoc.InitialHeight)

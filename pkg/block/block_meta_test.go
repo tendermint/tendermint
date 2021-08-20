@@ -9,12 +9,12 @@ import (
 	test "github.com/tendermint/tendermint/internal/test/factory"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/pkg/block"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 )
 
 func TestBlockMeta_ToProto(t *testing.T) {
 	h := test.MakeRandomHeader()
-	bi := meta.BlockID{Hash: h.Hash(), PartSetHeader: meta.PartSetHeader{Total: 123, Hash: tmrand.Bytes(tmhash.Size)}}
+	bi := metadata.BlockID{Hash: h.Hash(), PartSetHeader: metadata.PartSetHeader{Total: 123, Hash: tmrand.Bytes(tmhash.Size)}}
 
 	bm := &block.BlockMeta{
 		BlockID:   bi,
@@ -51,11 +51,11 @@ func TestBlockMeta_ToProto(t *testing.T) {
 
 func TestBlockMeta_ValidateBasic(t *testing.T) {
 	h := test.MakeRandomHeader()
-	bi := meta.BlockID{Hash: h.Hash(), PartSetHeader: meta.PartSetHeader{Total: 123, Hash: tmrand.Bytes(tmhash.Size)}}
-	bi2 := meta.BlockID{Hash: tmrand.Bytes(tmhash.Size),
-		PartSetHeader: meta.PartSetHeader{Total: 123, Hash: tmrand.Bytes(tmhash.Size)}}
-	bi3 := meta.BlockID{Hash: []byte("incorrect hash"),
-		PartSetHeader: meta.PartSetHeader{Total: 123, Hash: []byte("incorrect hash")}}
+	bi := metadata.BlockID{Hash: h.Hash(), PartSetHeader: metadata.PartSetHeader{Total: 123, Hash: tmrand.Bytes(tmhash.Size)}}
+	bi2 := metadata.BlockID{Hash: tmrand.Bytes(tmhash.Size),
+		PartSetHeader: metadata.PartSetHeader{Total: 123, Hash: tmrand.Bytes(tmhash.Size)}}
+	bi3 := metadata.BlockID{Hash: []byte("incorrect hash"),
+		PartSetHeader: metadata.PartSetHeader{Total: 123, Hash: []byte("incorrect hash")}}
 
 	bm := &block.BlockMeta{
 		BlockID:   bi,

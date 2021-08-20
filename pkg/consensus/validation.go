@@ -6,12 +6,12 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/batch"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/metadata"
 )
 
 const batchVerifyThreshold = 2
 
-func shouldBatchVerify(vals *ValidatorSet, commit *meta.Commit) bool {
+func shouldBatchVerify(vals *ValidatorSet, commit *metadata.Commit) bool {
 	return len(commit.Signatures) >= batchVerifyThreshold && batch.SupportsBatchVerifier(vals.GetProposer().PubKey)
 }
 
@@ -22,8 +22,8 @@ func shouldBatchVerify(vals *ValidatorSet, commit *meta.Commit) bool {
 // application that depends on the LastCommitInfo sent in BeginBlock, which
 // includes which validators signed. For instance, Gaia incentivizes proposers
 // with a bonus for including more than +2/3 of the signatures.
-func VerifyCommit(chainID string, vals *ValidatorSet, blockID meta.BlockID,
-	height int64, commit *meta.Commit) error {
+func VerifyCommit(chainID string, vals *ValidatorSet, blockID metadata.BlockID,
+	height int64, commit *metadata.Commit) error {
 	// run a basic validation of the arguments
 	if err := verifyBasicValsAndCommit(vals, commit, height, blockID); err != nil {
 		return err
@@ -34,10 +34,10 @@ func VerifyCommit(chainID string, vals *ValidatorSet, blockID meta.BlockID,
 	votingPowerNeeded := vals.TotalVotingPower() * 2 / 3
 
 	// ignore all absent signatures
-	ignore := func(c meta.CommitSig) bool { return c.Absent() }
+	ignore := func(c metadata.CommitSig) bool { return c.Absent() }
 
 	// only count the signatures that are for the block
-	count := func(c meta.CommitSig) bool { return c.ForBlock() }
+	count := func(c metadata.CommitSig) bool { return c.ForBlock() }
 
 	// attempt to batch verify
 	if shouldBatchVerify(vals, commit) {
@@ -56,8 +56,8 @@ func VerifyCommit(chainID string, vals *ValidatorSet, blockID meta.BlockID,
 //
 // This method is primarily used by the light client and does not check all the
 // signatures.
-func VerifyCommitLight(chainID string, vals *ValidatorSet, blockID meta.BlockID,
-	height int64, commit *meta.Commit) error {
+func VerifyCommitLight(chainID string, vals *ValidatorSet, blockID metadata.BlockID,
+	height int64, commit *metadata.Commit) error {
 	// run a basic validation of the arguments
 	if err := verifyBasicValsAndCommit(vals, commit, height, blockID); err != nil {
 		return err
@@ -67,10 +67,10 @@ func VerifyCommitLight(chainID string, vals *ValidatorSet, blockID meta.BlockID,
 	votingPowerNeeded := vals.TotalVotingPower() * 2 / 3
 
 	// ignore all commit signatures that are not for the block
-	ignore := func(c meta.CommitSig) bool { return !c.ForBlock() }
+	ignore := func(c metadata.CommitSig) bool { return !c.ForBlock() }
 
 	// count all the remaining signatures
-	count := func(c meta.CommitSig) bool { return true }
+	count := func(c metadata.CommitSig) bool { return true }
 
 	// attempt to batch verify
 	if shouldBatchVerify(vals, commit) {
@@ -91,7 +91,7 @@ func VerifyCommitLight(chainID string, vals *ValidatorSet, blockID meta.BlockID,
 //
 // This method is primarily used by the light client and does not check all the
 // signatures.
-func VerifyCommitLightTrusting(chainID string, vals *ValidatorSet, commit *meta.Commit, trustLevel tmmath.Fraction) error {
+func VerifyCommitLightTrusting(chainID string, vals *ValidatorSet, commit *metadata.Commit, trustLevel tmmath.Fraction) error {
 	// sanity checks
 	if vals == nil {
 		return errors.New("nil validator set")
@@ -111,10 +111,10 @@ func VerifyCommitLightTrusting(chainID string, vals *ValidatorSet, commit *meta.
 	votingPowerNeeded := totalVotingPowerMulByNumerator / int64(trustLevel.Denominator)
 
 	// ignore all commit signatures that are not for the block
-	ignore := func(c meta.CommitSig) bool { return !c.ForBlock() }
+	ignore := func(c metadata.CommitSig) bool { return !c.ForBlock() }
 
 	// count all the remaining signatures
-	count := func(c meta.CommitSig) bool { return true }
+	count := func(c metadata.CommitSig) bool { return true }
 
 	// attempt to batch verify commit. As the validator set doesn't necessarily
 	// correspond with the validator set that signed the block we need to look
@@ -140,10 +140,10 @@ func VerifyCommitLightTrusting(chainID string, vals *ValidatorSet, commit *meta.
 func verifyCommitBatch(
 	chainID string,
 	vals *ValidatorSet,
-	commit *meta.Commit,
+	commit *metadata.Commit,
 	votingPowerNeeded int64,
-	ignoreSig func(meta.CommitSig) bool,
-	countSig func(meta.CommitSig) bool,
+	ignoreSig func(metadata.CommitSig) bool,
+	countSig func(metadata.CommitSig) bool,
 	countAllSignatures bool,
 	lookUpByIndex bool,
 ) error {
@@ -253,10 +253,10 @@ func verifyCommitBatch(
 func verifyCommitSingle(
 	chainID string,
 	vals *ValidatorSet,
-	commit *meta.Commit,
+	commit *metadata.Commit,
 	votingPowerNeeded int64,
-	ignoreSig func(meta.CommitSig) bool,
-	countSig func(meta.CommitSig) bool,
+	ignoreSig func(metadata.CommitSig) bool,
+	countSig func(metadata.CommitSig) bool,
 	countAllSignatures bool,
 	lookUpByIndex bool,
 ) error {
@@ -319,7 +319,7 @@ func verifyCommitSingle(
 	return nil
 }
 
-func verifyBasicValsAndCommit(vals *ValidatorSet, commit *meta.Commit, height int64, blockID meta.BlockID) error {
+func verifyBasicValsAndCommit(vals *ValidatorSet, commit *metadata.Commit, height int64, blockID metadata.BlockID) error {
 	if vals == nil {
 		return errors.New("nil validator set")
 	}
