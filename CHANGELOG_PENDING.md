@@ -24,12 +24,9 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [fastsync/rpc] \#6620 Add TotalSyncedTime & RemainingTime to SyncInfo in /status RPC  (@JayT106)
   - [rpc/grpc] \#6725 Mark gRPC in the RPC layer as deprecated.
   - [blockchain/v2] \#6730 Fast Sync v2 is deprecated, please use v0
-
   - [rpc] Add genesis_chunked method to support paginated and parallel fetching of large genesis documents.
   - [rpc/jsonrpc/server] \#6785 `Listen` function updated to take an `int` argument, `maxOpenConnections`, instead of an entire config object. (@williambanfield)
-
   - [rpc] \#6820 Update RPC methods to reflect changes in the p2p layer, disabling support for `UnsafeDialPeers` and `UnsafeDialPeers` when used with the new p2p layer, and changing the response format of the peer list in `NetInfo` for all users.
-
 
 - Apps
   - [ABCI] \#6408 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)
