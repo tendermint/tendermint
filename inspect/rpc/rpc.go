@@ -90,11 +90,11 @@ func addCORSHandler(rpcConfig *config.RPCConfig, h http.Handler) http.Handler {
 
 type waitSyncCheckerImpl struct{}
 
-func (_ waitSyncCheckerImpl) WaitSync() bool {
+func (waitSyncCheckerImpl) WaitSync() bool {
 	return false
 }
 
-func (_ waitSyncCheckerImpl) GetPeerState(peerID types.NodeID) (*consensus.PeerState, bool) {
+func (waitSyncCheckerImpl) GetPeerState(peerID types.NodeID) (*consensus.PeerState, bool) {
 	return nil, false
 }
 
