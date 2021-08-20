@@ -33,7 +33,7 @@ Simply state it: it parallelize the steps of Tendermint vote protocol, cancel th
 In short, it may not have much creativity in protocol design, but rather the parallel and pipleline implementations of Tendermint, and keeping its safety rule unchanged (in height base).
 
 ## Thoughts
-There are three categories of consensus protocols:
+There are three categories of PoS consensus protocols:
 
 1. Tendermint/HoneyBadger are the category of instant finality: the height h must be finalized before the replica can enter height h+1.
 2. Chained Tendermint is of the same category of CasperFFG, Grandpa and Chained-HotStuff. This category is "not instant finalized, but can be finalized after some heights/checkpoints", and the heights/checkpoints that are needed to finalize an earlier height/checkpoint are not guaranteed.
@@ -52,5 +52,11 @@ Why Heco and Bsc do not like category 1 and 2, but prefer category 3, while eth2
 
 
 Since the cross chain/shard hub chain prefers Category 2 consensus, is Chained Tendermint worth to be considered?
-I think Grandpa protocol is a creative protocol, but it is hard to turn it into pipelined protocol, because it cannot adopt the aggregation of signatures scheme, the vote set includes the votes of different heights. But maybe it does not need to be pipelined, the protocol naturally pick up the common block with the max height that can be committed. As for comparison for performance, I have to write code to implement Chained Tendermint to see.
+I think Grandpa protocol is a creative protocol, but it is hard to turn it into pipelined protocol, because it cannot adopt the aggregation of signatures scheme, the vote set includes the votes of different heights. But maybe it does not need to be pipelined, the protocol naturally picks up the common block with the max height that can be committed. As for comparison for performance, I have to write code to implement Chained Tendermint to see.
 And for CasperFFG, I don't think its liveness is strong. There may be situation that both competing chain forks are hard to continue, because the replica cannot violate the voting rules: s1<h1<s2<h2.   And, it needs the "direct parent" constraint, while Chained Tendermint does not.
+
+
+
+About VDF and the new kind of PoW
+to be continued...
+
