@@ -54,8 +54,8 @@ Just so that there is a consistent format, I also propose that:
    document, and sections for:
 
      * Abstract: A brief, high-level synopsis of the topic.
-	 * Background: Any background necessary to understand the topic.
-	 * Discussion: Detailed discussion of the issue being considered.
+     * Background: Any background necessary to understand the topic.
+     * Discussion: Detailed discussion of the issue being considered.
 
 -  Unlike an ADR, an RFC does _not_ include sections for Decisions, Detailed
    Design, or evaluation of proposed solutions. If an RFC leads to a proposal
