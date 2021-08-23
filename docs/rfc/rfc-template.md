@@ -21,6 +21,10 @@
 ### References
 
 > Links to external materials needed to follow the discussion may be added here.
+>
+> In addition, if the discussion in a request for comments leads to any design
+> decisions, it may be helpful to add links to the ADR documents here after the
+> discussion has settled.
 
 ## Discussion
 
