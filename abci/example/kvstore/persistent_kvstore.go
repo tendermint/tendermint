@@ -166,6 +166,16 @@ func (app *PersistentKVStoreApplication) ApplySnapshotChunk(
 	return types.ResponseApplySnapshotChunk{Result: types.ResponseApplySnapshotChunk_ABORT}
 }
 
+func (app *PersistentKVStoreApplication) ExtendVote(
+	req types.RequestExtendVote) types.ResponseExtendVote {
+	return types.ResponseExtendVote{}
+}
+
+func (app *PersistentKVStoreApplication) VerifyVoteExtension(
+	req types.RequestVerifyVoteExtension) types.ResponseVerifyVoteExtension {
+	return types.ResponseVerifyVoteExtension{}
+}
+
 func (app *PersistentKVStoreApplication) PrepareProposal(
 	req types.RequestPrepareProposal) types.ResponsePrepareProposal {
 	if len(req.BlockData) >= 1 {
