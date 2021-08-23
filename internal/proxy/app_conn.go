@@ -21,6 +21,8 @@ type AppConnConsensus interface {
 	InitChain(context.Context, types.RequestInitChain) (*types.ResponseInitChain, error)
 
 	PrepareProposal(context.Context, types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error)
+	ExtendVote(context.Context, types.RequestExtendVote) (*types.ResponseExtendVote, error)
+	VerifyVoteExtension(context.Context, types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error)
 	BeginBlock(context.Context, types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	DeliverTx(context.Context, types.RequestDeliverTx) (*types.ResponseDeliverTx, error)
 	EndBlock(context.Context, types.RequestEndBlock) (*types.ResponseEndBlock, error)
@@ -94,6 +96,22 @@ func (app *appConnConsensus) PrepareProposal(
 ) (*types.ResponsePrepareProposal, error) {
 	defer addTimeSample(app.metrics.MethodTiming.With("method", "prepare_proposal", "type", "sync"))()
 	return app.appConn.PrepareProposal(ctx, req)
+}
+
+func (app *appConnConsensus) ExtendVote(
+	ctx context.Context,
+	req types.RequestExtendVote,
+) (*types.ResponseExtendVote, error) {
+	defer addTimeSample(app.metrics.MethodTiming.With("method", "extend_vote", "type", "sync"))()
+	return app.appConn.ExtendVote(ctx, req)
+}
+
+func (app *appConnConsensus) VerifyVoteExtension(
+	ctx context.Context,
+	req types.RequestVerifyVoteExtension,
+) (*types.ResponseVerifyVoteExtension, error) {
+	defer addTimeSample(app.metrics.MethodTiming.With("method", "verify_vote_extension", "type", "sync"))()
+	return app.appConn.VerifyVoteExtension(ctx, req)
 }
 
 func (app *appConnConsensus) BeginBlock(
