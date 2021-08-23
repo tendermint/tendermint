@@ -295,6 +295,20 @@ func (cli *socketClient) ApplySnapshotChunkAsync(
 	return cli.queueRequestAsync(ctx, types.ToRequestApplySnapshotChunk(req))
 }
 
+func (cli *socketClient) ExtendVoteAsync(
+	ctx context.Context,
+	req types.RequestExtendVote,
+) (*ReqRes, error) {
+	return cli.queueRequestAsync(ctx, types.ToRequestExtendVote(req))
+}
+
+func (cli *socketClient) VerifyVoteExtensionAsync(
+	ctx context.Context,
+	req types.RequestVerifyVoteExtension,
+) (*ReqRes, error) {
+	return cli.queueRequestAsync(ctx, types.ToRequestVerifyVoteExtension(req))
+}
+
 func (cli *socketClient) PrepareProposalAsync(
 	ctx context.Context,
 	req types.RequestPrepareProposal,
@@ -472,6 +486,28 @@ func (cli *socketClient) ApplySnapshotChunkSync(
 	return reqres.Response.GetApplySnapshotChunk(), nil
 }
 
+func (cli *socketClient) ExtendVoteSync(
+	ctx context.Context,
+	req types.RequestExtendVote) (*types.ResponseExtendVote, error) {
+
+	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestExtendVote(req))
+	if err != nil {
+		return nil, err
+	}
+	return reqres.Response.GetExtendVote(), nil
+}
+
+func (cli *socketClient) VerifyVoteExtensionSync(
+	ctx context.Context,
+	req types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
+
+	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestVerifyVoteExtension(req))
+	if err != nil {
+		return nil, err
+	}
+	return reqres.Response.GetVerifyVoteExtension(), nil
+}
+
 func (cli *socketClient) PrepareProposalSync(
 	ctx context.Context,
 	req types.RequestPrepareProposal,
@@ -610,6 +646,10 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_ListSnapshots)
 	case *types.Request_OfferSnapshot:
 		_, ok = res.Value.(*types.Response_OfferSnapshot)
+	case *types.Request_ExtendVote:
+		_, ok = res.Value.(*types.Response_ExtendVote)
+	case *types.Request_VerifyVoteExtension:
+		_, ok = res.Value.(*types.Response_VerifyVoteExtension)
 	case *types.Request_PrepareProposal:
 		_, ok = res.Value.(*types.Response_PrepareProposal)
 	}

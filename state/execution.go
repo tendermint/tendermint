@@ -265,6 +265,20 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	return state, nil
 }
 
+func (blockExec *BlockExecutor) ExtendVote(vote *types.Vote) (types.VoteExtension, error) {
+  ctx := context.TODO()
+  req := abci.RequestExtendVote{
+    Vote: vote.ToProto(),
+  }
+
+  resp, err := blockExec.proxyApp.ExtendVoteSync(ctx, req)
+  if err != nil {
+    return types.VoteExtension{}, err
+  }
+
+  return types.VoteExtensionFromProto(resp.VoteExtension), nil
+}
+
 // Commit locks the mempool, runs the ABCI Commit message, and updates the
 // mempool.
 // It returns the result of calling abci.Commit (the AppHash) and the height to retain (if any).
@@ -512,7 +526,7 @@ func updateState(
 
 	nextVersion := state.Version
 
-	// NOTE: the AppHash has not been populated.
+	// NOTE: the AppHash and the VoteExtension has not been populated.
 	// It will be filled on state.Save.
 	return State{
 		Version:                          nextVersion,

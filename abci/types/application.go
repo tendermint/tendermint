@@ -23,6 +23,8 @@ type Application interface {
 	DeliverTx(RequestDeliverTx) ResponseDeliverTx    // Deliver a tx for full processing
 	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
 	Commit() ResponseCommit                          // Commit the state and return the application Merkle root hash
+	ExtendVote(RequestExtendVote) ResponseExtendVote                            // Create application specific vote extension
+	VerifyVoteExtension(RequestVerifyVoteExtension) ResponseVerifyVoteExtension // Verify application's vote extension data
 
 	// State Sync Connection
 	ListSnapshots(RequestListSnapshots) ResponseListSnapshots                // List available snapshots
@@ -57,6 +59,14 @@ func (BaseApplication) CheckTx(req RequestCheckTx) ResponseCheckTx {
 
 func (BaseApplication) Commit() ResponseCommit {
 	return ResponseCommit{}
+}
+
+func (BaseApplication) ExtendVote(req RequestExtendVote) ResponseExtendVote {
+	return ResponseExtendVote{}
+}
+
+func (BaseApplication) VerifyVoteExtension(req RequestVerifyVoteExtension) ResponseVerifyVoteExtension {
+	return ResponseVerifyVoteExtension{}
 }
 
 func (BaseApplication) Query(req RequestQuery) ResponseQuery {
@@ -176,6 +186,18 @@ func (app *GRPCApplication) ApplySnapshotChunk(
 	ctx context.Context, req *RequestApplySnapshotChunk) (*ResponseApplySnapshotChunk, error) {
 	res := app.app.ApplySnapshotChunk(*req)
 	return &res, nil
+}
+
+func (app *GRPCApplication) ExtendVote(
+	ctx context.Context, req *RequestExtendVote) (*ResponseExtendVote, error) {
+	res := app.app.ExtendVote(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) VerifyVoteExtension(
+	ctx context.Context, req *RequestVerifyVoteExtension) (*ResponseVerifyVoteExtension, error) {
+	res := app.app.VerifyVoteExtension(*req)
+  return &res, nil
 }
 
 func (app *GRPCApplication) PrepareProposal(

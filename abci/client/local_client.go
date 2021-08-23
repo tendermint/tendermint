@@ -204,18 +204,46 @@ func (app *localClient) ApplySnapshotChunkAsync(
 	), nil
 }
 
-func (app *localClient) PrepareProposalAsync(
+func (app *localClient) ExtendVoteAsync(
 	ctx context.Context,
-	req types.RequestPrepareProposal,
+	req types.RequestExtendVote,
 ) (*ReqRes, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
-	res := app.Application.PrepareProposal(req)
+	res := app.Application.ExtendVote(req)
+	return app.callback(
+		types.ToRequestExtendVote(req),
+		types.ToResponseExtendVote(res),
+	), nil
+}
+
+func (app *localClient) VerifyVoteExtensionAsync(
+	ctx context.Context,
+	req types.RequestVerifyVoteExtension,
+) (*ReqRes, error) {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res := app.Application.VerifyVoteExtension(req)
+	return app.callback(
+		types.ToRequestVerifyVoteExtension(req),
+		types.ToResponseVerifyVoteExtension(res),
+	), nil
+}
+
+func (app *localClient) PrepareProposalAsync(
+	ctx context.Context,
+	req types.RequestPrepareProposal,
+) (*ReqRes, error) {
+  app.mtx.Lock()
+  defer app.mtx.Unlock()
+
+  res := app.Application.PrepareProposal(req)
 	return app.callback(
 		types.ToRequestPrepareProposal(req),
 		types.ToResponsePrepareProposal(res),
-	), nil
+  ), nil
 }
 
 //-------------------------------------------------------
@@ -360,13 +388,34 @@ func (app *localClient) ApplySnapshotChunkSync(
 	return &res, nil
 }
 
+func (app *localClient) ExtendVoteSync(
+	ctx context.Context,
+	req types.RequestExtendVote) (*types.ResponseExtendVote, error) {
+
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res := app.Application.ExtendVote(req)
+	return &res, nil
+}
+
+func (app *localClient) VerifyVoteExtensionSync(
+	ctx context.Context,
+	req types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
+
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res := app.Application.VerifyVoteExtension(req)
+  return &res, nil
+}
+
 func (app *localClient) PrepareProposalSync(
 	ctx context.Context,
 	req types.RequestPrepareProposal,
 ) (*types.ResponsePrepareProposal, error) {
-
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+  app.mtx.Lock()
+  defer app.mtx.Unlock()
 
 	res := app.Application.PrepareProposal(req)
 	return &res, nil

@@ -314,6 +314,44 @@ func (cli *grpcClient) ApplySnapshotChunkAsync(
 	)
 }
 
+// NOTE: call is synchronous, use ctx to break early if needed
+func (cli *grpcClient) ExtendVoteAsync(
+	ctx context.Context,
+	params types.RequestExtendVote,
+) (*ReqRes, error) {
+	req := types.ToRequestExtendVote(params)
+	res, err := cli.client.ExtendVote(ctx, req.GetExtendVote(), grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishAsyncCall(
+		ctx,
+		req,
+		&types.Response{Value: &types.Response_ExtendVote{ExtendVote: res}},
+	)
+}
+
+// NOTE: call is synchronous, use ctx to break early if needed
+func (cli *grpcClient) VerifyVoteExtensionAsync(
+	ctx context.Context,
+	params types.RequestVerifyVoteExtension,
+) (*ReqRes, error) {
+	req := types.ToRequestVerifyVoteExtension(params)
+	res, err := cli.client.VerifyVoteExtension(ctx, req.GetVerifyVoteExtension(), grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishAsyncCall(
+		ctx,
+    req,
+		&types.Response{
+      Value: &types.Response_VerifyVoteExtension{
+        VerifyVoteExtension: res,
+      },
+    },
+  )
+}
+
 func (cli *grpcClient) PrepareProposalAsync(
 	ctx context.Context,
 	params types.RequestPrepareProposal,
@@ -321,13 +359,14 @@ func (cli *grpcClient) PrepareProposalAsync(
 
 	req := types.ToRequestPrepareProposal(params)
 	res, err := cli.client.PrepareProposal(ctx, req.GetPrepareProposal(), grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishAsyncCall(
-		ctx,
-		req,
-		&types.Response{
+  if err != nil {
+    return nil, err
+  }
+
+  return cli.finishAsyncCall(
+    ctx,
+    req,
+    &types.Response{
 			Value: &types.Response_PrepareProposal{
 				PrepareProposal: res,
 			},
@@ -524,6 +563,28 @@ func (cli *grpcClient) ApplySnapshotChunkSync(
 		return nil, err
 	}
 	return cli.finishSyncCall(reqres).GetApplySnapshotChunk(), cli.Error()
+}
+
+func (cli *grpcClient) ExtendVoteSync(
+	ctx context.Context,
+	params types.RequestExtendVote) (*types.ResponseExtendVote, error) {
+
+	reqres, err := cli.ExtendVoteAsync(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishSyncCall(reqres).GetExtendVote(), cli.Error()
+}
+
+func (cli *grpcClient) VerifyVoteExtensionSync(
+	ctx context.Context,
+	params types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
+
+	reqres, err := cli.VerifyVoteExtensionAsync(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+  return cli.finishSyncCall(reqres).GetVerifyVoteExtension(), cli.Error()
 }
 
 func (cli *grpcClient) PrepareProposalSync(
