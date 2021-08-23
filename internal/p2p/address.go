@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tendermint/tendermint/pkg/p2p"
+	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -31,7 +31,7 @@ var (
 // If the URL is opaque, i.e. of the form "scheme:opaque", then the opaque part
 // is expected to contain a node ID.
 type NodeAddress struct {
-	NodeID   p2p.NodeID
+	NodeID   types.NodeID
 	Protocol Protocol
 	Hostname string
 	Port     uint16
@@ -58,13 +58,13 @@ func ParseNodeAddress(urlString string) (NodeAddress, error) {
 
 	// Opaque URLs are expected to contain only a node ID.
 	if url.Opaque != "" {
-		address.NodeID = p2p.NodeID(url.Opaque)
+		address.NodeID = types.NodeID(url.Opaque)
 		return address, address.Validate()
 	}
 
 	// Otherwise, just parse a normal networked URL.
 	if url.User != nil {
-		address.NodeID = p2p.NodeID(strings.ToLower(url.User.Username()))
+		address.NodeID = types.NodeID(strings.ToLower(url.User.Username()))
 	}
 
 	address.Hostname = strings.ToLower(url.Hostname())

@@ -9,8 +9,8 @@ import (
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/light/store"
-	"github.com/tendermint/tendermint/pkg/light"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -45,7 +45,7 @@ func New(db dbm.DB) store.Store {
 // SaveLightBlock persists LightBlock to the db.
 //
 // Safe for concurrent use by multiple goroutines.
-func (s *dbs) SaveLightBlock(lb *light.LightBlock) error {
+func (s *dbs) SaveLightBlock(lb *types.LightBlock) error {
 	if lb.Height <= 0 {
 		panic("negative or zero height")
 	}
@@ -110,7 +110,7 @@ func (s *dbs) DeleteLightBlock(height int64) error {
 // LightBlock retrieves the LightBlock at the given height.
 //
 // Safe for concurrent use by multiple goroutines.
-func (s *dbs) LightBlock(height int64) (*light.LightBlock, error) {
+func (s *dbs) LightBlock(height int64) (*types.LightBlock, error) {
 	if height <= 0 {
 		panic("negative or zero height")
 	}
@@ -129,7 +129,7 @@ func (s *dbs) LightBlock(height int64) (*light.LightBlock, error) {
 		return nil, fmt.Errorf("unmarshal error: %w", err)
 	}
 
-	lightBlock, err := light.LightBlockFromProto(&lbpb)
+	lightBlock, err := types.LightBlockFromProto(&lbpb)
 	if err != nil {
 		return nil, fmt.Errorf("proto conversion error: %w", err)
 	}
@@ -181,7 +181,7 @@ func (s *dbs) FirstLightBlockHeight() (int64, error) {
 // the given height. It returns ErrLightBlockNotFound if no such block exists.
 //
 // Safe for concurrent use by multiple goroutines.
-func (s *dbs) LightBlockBefore(height int64) (*light.LightBlock, error) {
+func (s *dbs) LightBlockBefore(height int64) (*types.LightBlock, error) {
 	if height <= 0 {
 		panic("negative or zero height")
 	}
@@ -202,7 +202,7 @@ func (s *dbs) LightBlockBefore(height int64) (*light.LightBlock, error) {
 			return nil, fmt.Errorf("unmarshal error: %w", err)
 		}
 
-		lightBlock, err := light.LightBlockFromProto(&lbpb)
+		lightBlock, err := types.LightBlockFromProto(&lbpb)
 		if err != nil {
 			return nil, fmt.Errorf("proto conversion error: %w", err)
 		}

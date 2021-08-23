@@ -15,8 +15,8 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
-	pkgp2p "github.com/tendermint/tendermint/pkg/p2p"
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
+	"github.com/tendermint/tendermint/types"
 )
 
 type Peer = p2p.Peer
@@ -94,12 +94,12 @@ type Reactor struct {
 	requestsSent         *cmap.CMap // ID->struct{}: unanswered send requests
 	lastReceivedRequests *cmap.CMap // ID->time.Time: last time peer requested from us
 
-	seedAddrs []*pkgp2p.NetAddress
+	seedAddrs []*p2p.NetAddress
 
 	attemptsToDial sync.Map // address (string) -> {number of attempts (int), last time dialed (time.Time)}
 
 	// seed/crawled mode fields
-	crawlPeerInfos map[pkgp2p.NodeID]crawlPeerInfo
+	crawlPeerInfos map[types.NodeID]crawlPeerInfo
 }
 
 func (r *Reactor) minReceiveRequestInterval() time.Duration {
@@ -139,7 +139,7 @@ func NewReactor(b AddrBook, config *ReactorConfig) *Reactor {
 		ensurePeersPeriod:    defaultEnsurePeersPeriod,
 		requestsSent:         cmap.NewCMap(),
 		lastReceivedRequests: cmap.NewCMap(),
-		crawlPeerInfos:       make(map[pkgp2p.NodeID]crawlPeerInfo),
+		crawlPeerInfos:       make(map[types.NodeID]crawlPeerInfo),
 	}
 	r.BaseReactor = *p2p.NewBaseReactor("PEX", r)
 	return r
@@ -479,7 +479,7 @@ func (r *Reactor) ensurePeers() {
 	// NOTE: range here is [10, 90]. Too high ?
 	newBias := tmmath.MinInt(out, 8)*10 + 10
 
-	toDial := make(map[pkgp2p.NodeID]*pkgp2p.NetAddress)
+	toDial := make(map[types.NodeID]*p2p.NetAddress)
 	// Try maxAttempts times to pick numToDial addresses to dial
 	maxAttempts := numToDial * 3
 
@@ -617,7 +617,7 @@ func (r *Reactor) checkSeeds() (numOnline int, netAddrs []*p2p.NetAddress, err e
 	numOnline = lSeeds - len(errs)
 	for _, err := range errs {
 		switch e := err.(type) {
-		case pkgp2p.ErrNetAddressLookup:
+		case types.ErrNetAddressLookup:
 			r.Logger.Error("Connecting to seed failed", "err", e)
 		default:
 			return 0, nil, fmt.Errorf("seed node configuration has error: %w", e)
@@ -819,7 +819,7 @@ func decodeMsg(bz []byte) (proto.Message, error) {
 // address converters
 
 // NetAddressFromProto converts a Protobuf PexAddress into a native struct.
-func NetAddressFromProto(pb tmp2p.PexAddress) (*p2p.NetAddress, error) {
+func NetAddressFromProto(pb tmp2p.PexAddress) (*types.NetAddress, error) {
 	ip := net.ParseIP(pb.IP)
 	if ip == nil {
 		return nil, fmt.Errorf("invalid IP address %v", pb.IP)
@@ -827,16 +827,16 @@ func NetAddressFromProto(pb tmp2p.PexAddress) (*p2p.NetAddress, error) {
 	if pb.Port >= 1<<16 {
 		return nil, fmt.Errorf("invalid port number %v", pb.Port)
 	}
-	return &p2p.NetAddress{
-		ID:   pkgp2p.NodeID(pb.ID),
+	return &types.NetAddress{
+		ID:   types.NodeID(pb.ID),
 		IP:   ip,
 		Port: uint16(pb.Port),
 	}, nil
 }
 
 // NetAddressesFromProto converts a slice of Protobuf PexAddresses into a native slice.
-func NetAddressesFromProto(pbs []tmp2p.PexAddress) ([]*p2p.NetAddress, error) {
-	nas := make([]*p2p.NetAddress, 0, len(pbs))
+func NetAddressesFromProto(pbs []tmp2p.PexAddress) ([]*types.NetAddress, error) {
+	nas := make([]*types.NetAddress, 0, len(pbs))
 	for _, pb := range pbs {
 		na, err := NetAddressFromProto(pb)
 		if err != nil {
@@ -848,7 +848,7 @@ func NetAddressesFromProto(pbs []tmp2p.PexAddress) ([]*p2p.NetAddress, error) {
 }
 
 // NetAddressesToProto converts a slice of NetAddresses into a Protobuf PexAddress slice.
-func NetAddressesToProto(nas []*p2p.NetAddress) []tmp2p.PexAddress {
+func NetAddressesToProto(nas []*types.NetAddress) []tmp2p.PexAddress {
 	pbs := make([]tmp2p.PexAddress, 0, len(nas))
 	for _, na := range nas {
 		if na != nil {

@@ -9,9 +9,9 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/pkg/consensus"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 // SignerClient implements PrivValidator.
@@ -24,7 +24,7 @@ type SignerClient struct {
 	chainID string
 }
 
-var _ consensus.PrivValidator = (*SignerClient)(nil)
+var _ types.PrivValidator = (*SignerClient)(nil)
 
 // NewSignerClient returns an instance of SignerClient.
 // it will start the endpoint (if not already started)

@@ -6,15 +6,15 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
-	"github.com/tendermint/tendermint/pkg/consensus"
 	cryptoproto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 func DefaultValidationRequestHandler(
 	ctx context.Context,
-	privVal consensus.PrivValidator,
+	privVal types.PrivValidator,
 	req privvalproto.Message,
 	chainID string,
 ) (privvalproto.Message, error) {

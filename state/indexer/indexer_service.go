@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/pkg/events"
+	"github.com/tendermint/tendermint/types"
 )
 
 // XXX/TODO: These types should be moved to the indexer package.
@@ -19,11 +19,12 @@ type Service struct {
 	service.BaseService
 
 	eventSinks []EventSink
-	eventBus   *events.EventBus
+	eventBus   *types.EventBus
 }
 
 // NewIndexerService returns a new service instance.
-func NewIndexerService(es []EventSink, eventBus *events.EventBus) *Service {
+func NewIndexerService(es []EventSink, eventBus *types.EventBus) *Service {
+
 	is := &Service{eventSinks: es, eventBus: eventBus}
 	is.BaseService = *service.NewBaseService(nil, "IndexerService", is)
 	return is
@@ -38,12 +39,12 @@ func (is *Service) OnStart() error {
 	blockHeadersSub, err := is.eventBus.SubscribeUnbuffered(
 		context.Background(),
 		subscriber,
-		events.EventQueryNewBlockHeader)
+		types.EventQueryNewBlockHeader)
 	if err != nil {
 		return err
 	}
 
-	txsSub, err := is.eventBus.SubscribeUnbuffered(context.Background(), subscriber, events.EventQueryTx)
+	txsSub, err := is.eventBus.SubscribeUnbuffered(context.Background(), subscriber, types.EventQueryTx)
 	if err != nil {
 		return err
 	}
@@ -52,13 +53,13 @@ func (is *Service) OnStart() error {
 		for {
 			msg := <-blockHeadersSub.Out()
 
-			eventDataHeader := msg.Data().(events.EventDataNewBlockHeader)
+			eventDataHeader := msg.Data().(types.EventDataNewBlockHeader)
 			height := eventDataHeader.Header.Height
 			batch := NewBatch(eventDataHeader.NumTxs)
 
 			for i := int64(0); i < eventDataHeader.NumTxs; i++ {
 				msg2 := <-txsSub.Out()
-				txResult := msg2.Data().(events.EventDataTx).TxResult
+				txResult := msg2.Data().(types.EventDataTx).TxResult
 
 				if err = batch.Add(&txResult); err != nil {
 					is.Logger.Error(

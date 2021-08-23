@@ -9,10 +9,8 @@ import (
 	"github.com/google/orderedcode"
 	dbm "github.com/tendermint/tm-db"
 
-	"github.com/tendermint/tendermint/pkg/block"
-	"github.com/tendermint/tendermint/pkg/light"
-	"github.com/tendermint/tendermint/pkg/meta"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 /*
@@ -100,7 +98,7 @@ func (bs *BlockStore) Size() int64 {
 }
 
 // LoadBase atomically loads the base block meta, or returns nil if no base is found.
-func (bs *BlockStore) LoadBaseMeta() *block.BlockMeta {
+func (bs *BlockStore) LoadBaseMeta() *types.BlockMeta {
 	iter, err := bs.db.Iterator(
 		blockMetaKey(1),
 		blockMetaKey(1<<63-1),
@@ -117,7 +115,7 @@ func (bs *BlockStore) LoadBaseMeta() *block.BlockMeta {
 			panic(fmt.Errorf("unmarshal to tmproto.BlockMeta: %w", err))
 		}
 
-		blockMeta, err := block.BlockMetaFromProto(pbbm)
+		blockMeta, err := types.BlockMetaFromProto(pbbm)
 		if err != nil {
 			panic(fmt.Errorf("error from proto blockMeta: %w", err))
 		}
@@ -130,7 +128,7 @@ func (bs *BlockStore) LoadBaseMeta() *block.BlockMeta {
 
 // LoadBlock returns the block with the given height.
 // If no block is found for that height, it returns nil.
-func (bs *BlockStore) LoadBlock(height int64) *block.Block {
+func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 	var blockMeta = bs.LoadBlockMeta(height)
 	if blockMeta == nil {
 		return nil
@@ -154,7 +152,7 @@ func (bs *BlockStore) LoadBlock(height int64) *block.Block {
 		panic(fmt.Sprintf("Error reading block: %v", err))
 	}
 
-	block, err := block.BlockFromProto(pbb)
+	block, err := types.BlockFromProto(pbb)
 	if err != nil {
 		panic(fmt.Errorf("error from proto block: %w", err))
 	}
@@ -165,7 +163,7 @@ func (bs *BlockStore) LoadBlock(height int64) *block.Block {
 // LoadBlockByHash returns the block with the given hash.
 // If no block is found for that hash, it returns nil.
 // Panics if it fails to parse height associated with the given hash.
-func (bs *BlockStore) LoadBlockByHash(hash []byte) *block.Block {
+func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
 	bz, err := bs.db.Get(blockHashKey(hash))
 	if err != nil {
 		panic(err)
@@ -186,7 +184,7 @@ func (bs *BlockStore) LoadBlockByHash(hash []byte) *block.Block {
 // LoadBlockPart returns the Part at the given index
 // from the block at the given height.
 // If no part is found for the given height and index, it returns nil.
-func (bs *BlockStore) LoadBlockPart(height int64, index int) *meta.Part {
+func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	var pbpart = new(tmproto.Part)
 
 	bz, err := bs.db.Get(blockPartKey(height, index))
@@ -201,7 +199,7 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *meta.Part {
 	if err != nil {
 		panic(fmt.Errorf("unmarshal to tmproto.Part failed: %w", err))
 	}
-	part, err := meta.PartFromProto(pbpart)
+	part, err := types.PartFromProto(pbpart)
 	if err != nil {
 		panic(fmt.Sprintf("Error reading block part: %v", err))
 	}
@@ -211,7 +209,7 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *meta.Part {
 
 // LoadBlockMeta returns the BlockMeta for the given height.
 // If no block is found for the given height, it returns nil.
-func (bs *BlockStore) LoadBlockMeta(height int64) *block.BlockMeta {
+func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	var pbbm = new(tmproto.BlockMeta)
 	bz, err := bs.db.Get(blockMetaKey(height))
 
@@ -228,7 +226,7 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *block.BlockMeta {
 		panic(fmt.Errorf("unmarshal to tmproto.BlockMeta: %w", err))
 	}
 
-	blockMeta, err := block.BlockMetaFromProto(pbbm)
+	blockMeta, err := types.BlockMetaFromProto(pbbm)
 	if err != nil {
 		panic(fmt.Errorf("error from proto blockMeta: %w", err))
 	}
@@ -240,7 +238,7 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *block.BlockMeta {
 // This commit consists of the +2/3 and other Precommit-votes for block at `height`,
 // and it comes from the block.LastCommit for `height+1`.
 // If no commit is found for the given height, it returns nil.
-func (bs *BlockStore) LoadBlockCommit(height int64) *meta.Commit {
+func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	var pbc = new(tmproto.Commit)
 	bz, err := bs.db.Get(blockCommitKey(height))
 	if err != nil {
@@ -253,7 +251,7 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *meta.Commit {
 	if err != nil {
 		panic(fmt.Errorf("error reading block commit: %w", err))
 	}
-	commit, err := meta.CommitFromProto(pbc)
+	commit, err := types.CommitFromProto(pbc)
 	if err != nil {
 		panic(fmt.Sprintf("Error reading block commit: %v", err))
 	}
@@ -264,7 +262,7 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *meta.Commit {
 // cannonicalized. This is useful when we've seen a commit, but there
 // has not yet been a new block at `height + 1` that includes this
 // commit in its block.LastCommit.
-func (bs *BlockStore) LoadSeenCommit() *meta.Commit {
+func (bs *BlockStore) LoadSeenCommit() *types.Commit {
 	var pbc = new(tmproto.Commit)
 	bz, err := bs.db.Get(seenCommitKey())
 	if err != nil {
@@ -278,7 +276,7 @@ func (bs *BlockStore) LoadSeenCommit() *meta.Commit {
 		panic(fmt.Sprintf("error reading block seen commit: %v", err))
 	}
 
-	commit, err := meta.CommitFromProto(pbc)
+	commit, err := types.CommitFromProto(pbc)
 	if err != nil {
 		panic(fmt.Errorf("error from proto commit: %w", err))
 	}
@@ -304,7 +302,7 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 			return fmt.Errorf("unmarshal to tmproto.BlockMeta: %w", err)
 		}
 
-		blockMeta, err := block.BlockMetaFromProto(pbbm)
+		blockMeta, err := types.BlockMetaFromProto(pbbm)
 		if err != nil {
 			return fmt.Errorf("error from proto blockMeta: %w", err)
 		}
@@ -428,15 +426,15 @@ func (bs *BlockStore) batchDelete(
 //             If all the nodes restart after committing a block,
 //             we need this to reload the precommits to catch-up nodes to the
 //             most recent height.  Otherwise they'd stall at H-1.
-func (bs *BlockStore) SaveBlock(blk *block.Block, blockParts *meta.PartSet, seenCommit *meta.Commit) {
-	if blk == nil {
+func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
+	if block == nil {
 		panic("BlockStore can only save a non-nil block")
 	}
 
 	batch := bs.db.NewBatch()
 
-	height := blk.Height
-	hash := blk.Hash()
+	height := block.Height
+	hash := block.Hash()
 
 	if g, w := height, bs.Height()+1; bs.Base() > 0 && g != w {
 		panic(fmt.Sprintf("BlockStore can only save contiguous blocks. Wanted %v, got %v", w, g))
@@ -454,7 +452,7 @@ func (bs *BlockStore) SaveBlock(blk *block.Block, blockParts *meta.PartSet, seen
 		bs.saveBlockPart(height, i, part, batch)
 	}
 
-	blockMeta := block.NewBlockMeta(blk, blockParts)
+	blockMeta := types.NewBlockMeta(block, blockParts)
 	pbm := blockMeta.ToProto()
 	if pbm == nil {
 		panic("nil blockmeta")
@@ -469,7 +467,7 @@ func (bs *BlockStore) SaveBlock(blk *block.Block, blockParts *meta.PartSet, seen
 		panic(err)
 	}
 
-	pbc := blk.LastCommit.ToProto()
+	pbc := block.LastCommit.ToProto()
 	blockCommitBytes := mustEncode(pbc)
 	if err := batch.Set(blockCommitKey(height-1), blockCommitBytes); err != nil {
 		panic(err)
@@ -491,7 +489,7 @@ func (bs *BlockStore) SaveBlock(blk *block.Block, blockParts *meta.PartSet, seen
 	}
 }
 
-func (bs *BlockStore) saveBlockPart(height int64, index int, part *meta.Part, batch dbm.Batch) {
+func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part, batch dbm.Batch) {
 	pbp, err := part.ToProto()
 	if err != nil {
 		panic(fmt.Errorf("unable to make part into proto: %w", err))
@@ -503,7 +501,7 @@ func (bs *BlockStore) saveBlockPart(height int64, index int, part *meta.Part, ba
 }
 
 // SaveSeenCommit saves a seen commit, used by e.g. the state sync reactor when bootstrapping node.
-func (bs *BlockStore) SaveSeenCommit(height int64, seenCommit *meta.Commit) error {
+func (bs *BlockStore) SaveSeenCommit(height int64, seenCommit *types.Commit) error {
 	pbc := seenCommit.ToProto()
 	seenCommitBytes, err := proto.Marshal(pbc)
 	if err != nil {
@@ -512,7 +510,7 @@ func (bs *BlockStore) SaveSeenCommit(height int64, seenCommit *meta.Commit) erro
 	return bs.db.Set(seenCommitKey(), seenCommitBytes)
 }
 
-func (bs *BlockStore) SaveSignedHeader(sh *light.SignedHeader, blockID meta.BlockID) error {
+func (bs *BlockStore) SaveSignedHeader(sh *types.SignedHeader, blockID types.BlockID) error {
 	// first check that the block store doesn't already have the block
 	bz, err := bs.db.Get(blockMetaKey(sh.Height))
 	if err != nil {
@@ -526,7 +524,7 @@ func (bs *BlockStore) SaveSignedHeader(sh *light.SignedHeader, blockID meta.Bloc
 	// doesn't have complete parity with block meta's thus block size and num
 	// txs are filled with negative numbers. We should aim to find a solution to
 	// this.
-	blockMeta := &block.BlockMeta{
+	blockMeta := &types.BlockMeta{
 		BlockID:   blockID,
 		BlockSize: -1,
 		Header:    *sh.Header,

@@ -3,8 +3,7 @@ package provider
 import (
 	"context"
 
-	"github.com/tendermint/tendermint/pkg/evidence"
-	"github.com/tendermint/tendermint/pkg/light"
+	"github.com/tendermint/tendermint/types"
 )
 
 //go:generate ../../scripts/mockery_generate.sh Provider
@@ -22,8 +21,8 @@ type Provider interface {
 	// issues, an error will be returned.
 	// If there's no LightBlock for the given height, ErrLightBlockNotFound
 	// error is returned.
-	LightBlock(ctx context.Context, height int64) (*light.LightBlock, error)
+	LightBlock(ctx context.Context, height int64) (*types.LightBlock, error)
 
 	// ReportEvidence reports an evidence of misbehavior.
-	ReportEvidence(context.Context, evidence.Evidence) error
+	ReportEvidence(context.Context, types.Evidence) error
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	"github.com/tendermint/tendermint/pkg/p2p"
+	"github.com/tendermint/tendermint/types"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/p2p/conn"
@@ -27,7 +27,7 @@ func CreateRandomPeer(outbound bool) Peer {
 	addr, netAddr := CreateRoutableAddr()
 	p := &peer{
 		peerConn: peerConn{outbound: outbound},
-		nodeInfo: p2p.NodeInfo{
+		nodeInfo: types.NodeInfo{
 			NodeID:     netAddr.ID,
 			ListenAddr: netAddr.DialString(),
 		},
@@ -47,7 +47,7 @@ func CreateRoutableAddr() (addr string, netAddr *NetAddress) {
 			mrand.Int()%256,
 			mrand.Int()%256,
 			mrand.Int()%256)
-		netAddr, err = p2p.NewNetAddressString(addr)
+		netAddr, err = types.NewNetAddressString(addr)
 		if err != nil {
 			panic(err)
 		}
@@ -170,9 +170,9 @@ func MakeSwitch(
 	opts ...SwitchOption,
 ) *Switch {
 
-	nodeKey := p2p.GenNodeKey()
+	nodeKey := types.GenNodeKey()
 	nodeInfo := testNodeInfo(nodeKey.ID, fmt.Sprintf("node%d", i))
-	addr, err := p2p.NewNetAddressString(
+	addr, err := types.NewNetAddressString(
 		nodeKey.ID.AddressString(nodeInfo.ListenAddr),
 	)
 	if err != nil {
@@ -227,12 +227,12 @@ func testPeerConn(
 //----------------------------------------------------------------
 // rand node info
 
-func testNodeInfo(id p2p.NodeID, name string) p2p.NodeInfo {
+func testNodeInfo(id types.NodeID, name string) types.NodeInfo {
 	return testNodeInfoWithNetwork(id, name, "testing")
 }
 
-func testNodeInfoWithNetwork(id p2p.NodeID, name, network string) p2p.NodeInfo {
-	return p2p.NodeInfo{
+func testNodeInfoWithNetwork(id types.NodeID, name, network string) types.NodeInfo {
+	return types.NodeInfo{
 		ProtocolVersion: defaultProtocolVersion,
 		NodeID:          id,
 		ListenAddr:      fmt.Sprintf("127.0.0.1:%d", getFreePort()),
@@ -240,7 +240,7 @@ func testNodeInfoWithNetwork(id p2p.NodeID, name, network string) p2p.NodeInfo {
 		Version:         "1.2.3-rc0-deadbeef",
 		Channels:        []byte{testCh},
 		Moniker:         name,
-		Other: p2p.NodeInfoOther{
+		Other: types.NodeInfoOther{
 			TxIndex:    "on",
 			RPCAddress: fmt.Sprintf("127.0.0.1:%d", getFreePort()),
 		},
@@ -272,7 +272,7 @@ func (book *AddrBookMock) OurAddress(addr *NetAddress) bool {
 	_, ok := book.OurAddrs[addr.String()]
 	return ok
 }
-func (book *AddrBookMock) MarkGood(p2p.NodeID) {}
+func (book *AddrBookMock) MarkGood(types.NodeID) {}
 func (book *AddrBookMock) HasAddress(addr *NetAddress) bool {
 	_, ok := book.Addrs[addr.String()]
 	return ok

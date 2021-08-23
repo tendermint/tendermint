@@ -5,7 +5,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
-	"github.com/tendermint/tendermint/pkg/events"
+	"github.com/tendermint/tendermint/types"
 )
 
 type EventSinkType string
@@ -26,7 +26,7 @@ const (
 type EventSink interface {
 
 	// IndexBlockEvents indexes the blockheader.
-	IndexBlockEvents(events.EventDataNewBlockHeader) error
+	IndexBlockEvents(types.EventDataNewBlockHeader) error
 
 	// IndexTxEvents indexes the given result of transactions. To call it with multi transactions,
 	// must guarantee the index of given transactions are in order.

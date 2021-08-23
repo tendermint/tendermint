@@ -16,7 +16,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/pkg/p2p"
+	"github.com/tendermint/tendermint/types"
 )
 
 const queueBufferDefault = 32
@@ -26,8 +26,8 @@ type ChannelID uint16
 
 // Envelope contains a message with sender/receiver routing info.
 type Envelope struct {
-	From      p2p.NodeID    // sender (empty if outbound)
-	To        p2p.NodeID    // receiver (empty if inbound)
+	From      types.NodeID  // sender (empty if outbound)
+	To        types.NodeID  // receiver (empty if inbound)
 	Broadcast bool          // send to all connected peers (ignores To)
 	Message   proto.Message // message payload
 
@@ -52,7 +52,7 @@ type Envelope struct {
 // It should possibly also allow reactors to request explicit actions, e.g.
 // disconnection or banning, in addition to doing this based on aggregates.
 type PeerError struct {
-	NodeID p2p.NodeID
+	NodeID types.NodeID
 	Err    error
 }
 
@@ -157,7 +157,7 @@ type RouterOptions struct {
 	// but this occurs after the handshake is complete. Filter by
 	// IP address to filter before the handshake. Functions should
 	// return an error to reject the peer.
-	FilterPeerByID func(context.Context, p2p.NodeID) error
+	FilterPeerByID func(context.Context, types.NodeID) error
 
 	// DialSleep controls the amount of time that the router
 	// sleeps between dialing peers. If not set, a default value
@@ -248,7 +248,7 @@ type Router struct {
 	logger             log.Logger
 	metrics            *Metrics
 	options            RouterOptions
-	nodeInfo           p2p.NodeInfo
+	nodeInfo           types.NodeInfo
 	privKey            crypto.PrivKey
 	peerManager        *PeerManager
 	chDescs            []ChannelDescriptor
@@ -258,9 +258,9 @@ type Router struct {
 	stopCh             chan struct{} // signals Router shutdown
 
 	peerMtx    sync.RWMutex
-	peerQueues map[p2p.NodeID]queue // outbound messages per peer for all channels
+	peerQueues map[types.NodeID]queue // outbound messages per peer for all channels
 	// the channels that the peer queue has open
-	peerChannels map[p2p.NodeID]channelIDs
+	peerChannels map[types.NodeID]channelIDs
 	queueFactory func(int) queue
 
 	// FIXME: We don't strictly need to use a mutex for this if we seal the
@@ -277,7 +277,7 @@ type Router struct {
 func NewRouter(
 	logger log.Logger,
 	metrics *Metrics,
-	nodeInfo p2p.NodeInfo,
+	nodeInfo types.NodeInfo,
 	privKey crypto.PrivKey,
 	peerManager *PeerManager,
 	transports []Transport,
@@ -305,8 +305,8 @@ func NewRouter(
 		stopCh:             make(chan struct{}),
 		channelQueues:      map[ChannelID]queue{},
 		channelMessages:    map[ChannelID]proto.Message{},
-		peerQueues:         map[p2p.NodeID]queue{},
-		peerChannels:       make(map[p2p.NodeID]channelIDs),
+		peerQueues:         map[types.NodeID]queue{},
+		peerChannels:       make(map[types.NodeID]channelIDs),
 	}
 
 	router.BaseService = service.NewBaseService(logger, "router", router)
@@ -533,7 +533,7 @@ func (r *Router) filterPeersIP(ctx context.Context, ip net.IP, port uint16) erro
 	return r.options.FilterPeerByIP(ctx, ip, port)
 }
 
-func (r *Router) filterPeersID(ctx context.Context, id p2p.NodeID) error {
+func (r *Router) filterPeersID(ctx context.Context, id types.NodeID) error {
 	if r.options.FilterPeerByID == nil {
 		return nil
 	}
@@ -739,7 +739,7 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 	go r.routePeer(address.NodeID, conn, toChannelIDs(peerInfo.Channels))
 }
 
-func (r *Router) getOrMakeQueue(peerID p2p.NodeID, channels channelIDs) queue {
+func (r *Router) getOrMakeQueue(peerID types.NodeID, channels channelIDs) queue {
 	r.peerMtx.Lock()
 	defer r.peerMtx.Unlock()
 
@@ -808,8 +808,8 @@ func (r *Router) dialPeer(ctx context.Context, address NodeAddress) (Connection,
 func (r *Router) handshakePeer(
 	ctx context.Context,
 	conn Connection,
-	expectID p2p.NodeID,
-) (p2p.NodeInfo, crypto.PubKey, error) {
+	expectID types.NodeID,
+) (types.NodeInfo, crypto.PubKey, error) {
 
 	if r.options.HandshakeTimeout > 0 {
 		var cancel context.CancelFunc
@@ -824,9 +824,9 @@ func (r *Router) handshakePeer(
 	if err = peerInfo.Validate(); err != nil {
 		return peerInfo, peerKey, fmt.Errorf("invalid handshake NodeInfo: %w", err)
 	}
-	if p2p.NodeIDFromPubKey(peerKey) != peerInfo.NodeID {
+	if types.NodeIDFromPubKey(peerKey) != peerInfo.NodeID {
 		return peerInfo, peerKey, fmt.Errorf("peer's public key did not match its node ID %q (expected %q)",
-			peerInfo.NodeID, p2p.NodeIDFromPubKey(peerKey))
+			peerInfo.NodeID, types.NodeIDFromPubKey(peerKey))
 	}
 	if expectID != "" && expectID != peerInfo.NodeID {
 		return peerInfo, peerKey, fmt.Errorf("expected to connect with peer %q, got %q",
@@ -851,7 +851,7 @@ func (r *Router) runWithPeerMutex(fn func() error) error {
 // routePeer routes inbound and outbound messages between a peer and the reactor
 // channels. It will close the given connection and send queue when done, or if
 // they are closed elsewhere it will cause this method to shut down and return.
-func (r *Router) routePeer(peerID p2p.NodeID, conn Connection, channels channelIDs) {
+func (r *Router) routePeer(peerID types.NodeID, conn Connection, channels channelIDs) {
 	r.metrics.Peers.Add(1)
 	r.peerManager.Ready(peerID)
 
@@ -901,7 +901,7 @@ func (r *Router) routePeer(peerID p2p.NodeID, conn Connection, channels channelI
 
 // receivePeer receives inbound messages from a peer, deserializes them and
 // passes them on to the appropriate channel.
-func (r *Router) receivePeer(peerID p2p.NodeID, conn Connection) error {
+func (r *Router) receivePeer(peerID types.NodeID, conn Connection) error {
 	for {
 		chID, bz, err := conn.ReceiveMessage()
 		if err != nil {
@@ -952,7 +952,7 @@ func (r *Router) receivePeer(peerID p2p.NodeID, conn Connection) error {
 }
 
 // sendPeer sends queued messages to a peer.
-func (r *Router) sendPeer(peerID p2p.NodeID, conn Connection, peerQueue queue) error {
+func (r *Router) sendPeer(peerID types.NodeID, conn Connection, peerQueue queue) error {
 	for {
 		start := time.Now().UTC()
 
@@ -1017,7 +1017,7 @@ func (r *Router) evictPeers() {
 }
 
 // NodeInfo returns a copy of the current NodeInfo. Used for testing.
-func (r *Router) NodeInfo() p2p.NodeInfo {
+func (r *Router) NodeInfo() types.NodeInfo {
 	return r.nodeInfo.Copy()
 }
 

@@ -19,8 +19,8 @@ import (
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmtime "github.com/tendermint/tendermint/libs/time"
-	"github.com/tendermint/tendermint/pkg/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 // TODO: type ?
@@ -47,7 +47,7 @@ func voteToStep(vote *tmproto.Vote) int8 {
 
 // FilePVKey stores the immutable part of PrivValidator.
 type FilePVKey struct {
-	Address crypto.Address `json:"address"`
+	Address types.Address  `json:"address"`
 	PubKey  crypto.PubKey  `json:"pub_key"`
 	PrivKey crypto.PrivKey `json:"priv_key"`
 
@@ -154,7 +154,7 @@ type FilePV struct {
 	LastSignState FilePVLastSignState
 }
 
-var _ consensus.PrivValidator = (*FilePV)(nil)
+var _ types.PrivValidator = (*FilePV)(nil)
 
 // NewFilePV generates a new validator from the given key and paths.
 func NewFilePV(privKey crypto.PrivKey, keyFilePath, stateFilePath string) *FilePV {
@@ -176,9 +176,9 @@ func NewFilePV(privKey crypto.PrivKey, keyFilePath, stateFilePath string) *FileP
 // and sets the filePaths, but does not call Save().
 func GenFilePV(keyFilePath, stateFilePath, keyType string) (*FilePV, error) {
 	switch keyType {
-	case consensus.ABCIPubKeyTypeSecp256k1:
+	case types.ABCIPubKeyTypeSecp256k1:
 		return NewFilePV(secp256k1.GenPrivKey(), keyFilePath, stateFilePath), nil
-	case "", consensus.ABCIPubKeyTypeEd25519:
+	case "", types.ABCIPubKeyTypeEd25519:
 		return NewFilePV(ed25519.GenPrivKey(), keyFilePath, stateFilePath), nil
 	default:
 		return nil, fmt.Errorf("key type: %s is not supported", keyType)
@@ -254,7 +254,7 @@ func LoadOrGenFilePV(keyFilePath, stateFilePath string) (*FilePV, error) {
 
 // GetAddress returns the address of the validator.
 // Implements PrivValidator.
-func (pv *FilePV) GetAddress() crypto.Address {
+func (pv *FilePV) GetAddress() types.Address {
 	return pv.Key.Address
 }
 
@@ -326,7 +326,7 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 		return err
 	}
 
-	signBytes := consensus.VoteSignBytes(chainID, vote)
+	signBytes := types.VoteSignBytes(chainID, vote)
 
 	// We might crash before writing to the wal,
 	// causing us to try to re-sign for the same HRS.
@@ -368,7 +368,7 @@ func (pv *FilePV) signProposal(chainID string, proposal *tmproto.Proposal) error
 		return err
 	}
 
-	signBytes := consensus.ProposalSignBytes(chainID, proposal)
+	signBytes := types.ProposalSignBytes(chainID, proposal)
 
 	// We might crash before writing to the wal,
 	// causing us to try to re-sign for the same HRS.

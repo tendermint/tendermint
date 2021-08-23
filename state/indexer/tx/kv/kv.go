@@ -13,7 +13,6 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
-	"github.com/tendermint/tendermint/pkg/mempool"
 	indexer "github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/types"
 )
@@ -68,7 +67,7 @@ func (txi *TxIndex) Index(results []*abci.TxResult) error {
 	defer b.Close()
 
 	for _, result := range results {
-		hash := mempool.Tx(result.Tx).Hash()
+		hash := types.Tx(result.Tx).Hash()
 
 		// index tx by events
 		err := txi.indexEvents(result, hash, b)

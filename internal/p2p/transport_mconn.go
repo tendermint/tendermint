@@ -16,8 +16,8 @@ import (
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	"github.com/tendermint/tendermint/internal/p2p/conn"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/pkg/p2p"
 	p2pproto "github.com/tendermint/tendermint/proto/tendermint/p2p"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -255,12 +255,12 @@ func newMConnConnection(
 // Handshake implements Connection.
 func (c *mConnConnection) Handshake(
 	ctx context.Context,
-	nodeInfo p2p.NodeInfo,
+	nodeInfo types.NodeInfo,
 	privKey crypto.PrivKey,
-) (p2p.NodeInfo, crypto.PubKey, error) {
+) (types.NodeInfo, crypto.PubKey, error) {
 	var (
 		mconn    *conn.MConnection
-		peerInfo p2p.NodeInfo
+		peerInfo types.NodeInfo
 		peerKey  crypto.PubKey
 		errCh    = make(chan error, 1)
 	)
@@ -283,16 +283,16 @@ func (c *mConnConnection) Handshake(
 	select {
 	case <-ctx.Done():
 		_ = c.Close()
-		return p2p.NodeInfo{}, nil, ctx.Err()
+		return types.NodeInfo{}, nil, ctx.Err()
 
 	case err := <-errCh:
 		if err != nil {
-			return p2p.NodeInfo{}, nil, err
+			return types.NodeInfo{}, nil, err
 		}
 		c.mconn = mconn
 		c.logger = mconn.Logger
 		if err = c.mconn.Start(); err != nil {
-			return p2p.NodeInfo{}, nil, err
+			return types.NodeInfo{}, nil, err
 		}
 		return peerInfo, peerKey, nil
 	}
@@ -303,16 +303,16 @@ func (c *mConnConnection) Handshake(
 // unstarted but handshaked MConnection, to avoid concurrent field writes.
 func (c *mConnConnection) handshake(
 	ctx context.Context,
-	nodeInfo p2p.NodeInfo,
+	nodeInfo types.NodeInfo,
 	privKey crypto.PrivKey,
-) (*conn.MConnection, p2p.NodeInfo, crypto.PubKey, error) {
+) (*conn.MConnection, types.NodeInfo, crypto.PubKey, error) {
 	if c.mconn != nil {
-		return nil, p2p.NodeInfo{}, nil, errors.New("connection is already handshaked")
+		return nil, types.NodeInfo{}, nil, errors.New("connection is already handshaked")
 	}
 
 	secretConn, err := conn.MakeSecretConnection(c.conn, privKey)
 	if err != nil {
-		return nil, p2p.NodeInfo{}, nil, err
+		return nil, types.NodeInfo{}, nil, err
 	}
 
 	var pbPeerInfo p2pproto.NodeInfo
@@ -322,17 +322,17 @@ func (c *mConnConnection) handshake(
 		errCh <- err
 	}()
 	go func() {
-		_, err := protoio.NewDelimitedReader(secretConn, p2p.MaxNodeInfoSize()).ReadMsg(&pbPeerInfo)
+		_, err := protoio.NewDelimitedReader(secretConn, types.MaxNodeInfoSize()).ReadMsg(&pbPeerInfo)
 		errCh <- err
 	}()
 	for i := 0; i < cap(errCh); i++ {
 		if err = <-errCh; err != nil {
-			return nil, p2p.NodeInfo{}, nil, err
+			return nil, types.NodeInfo{}, nil, err
 		}
 	}
-	peerInfo, err := p2p.NodeInfoFromProto(&pbPeerInfo)
+	peerInfo, err := types.NodeInfoFromProto(&pbPeerInfo)
 	if err != nil {
-		return nil, p2p.NodeInfo{}, nil, err
+		return nil, types.NodeInfo{}, nil, err
 	}
 
 	mconn := conn.NewMConnectionWithConfig(

@@ -14,11 +14,9 @@ import (
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	"github.com/tendermint/tendermint/pkg/block"
-	pkgmempool "github.com/tendermint/tendermint/pkg/mempool"
 	pubmempool "github.com/tendermint/tendermint/pkg/mempool"
-	"github.com/tendermint/tendermint/pkg/p2p"
 	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/types"
 )
 
 // CListMempool is an ordered in-memory pool for transactions before they are
@@ -203,7 +201,7 @@ func (mem *CListMempool) TxsWaitChan() <-chan struct{} {
 // Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) CheckTx(
 	ctx context.Context,
-	tx pkgmempool.Tx,
+	tx types.Tx,
 	cb func(*abci.Response),
 	txInfo mempool.TxInfo,
 ) error {
@@ -305,7 +303,7 @@ func (mem *CListMempool) globalCb(req *abci.Request, res *abci.Response) {
 func (mem *CListMempool) reqResCb(
 	tx []byte,
 	peerID uint16,
-	peerP2PID p2p.NodeID,
+	peerP2PID types.NodeID,
 	externalCb func(*abci.Response),
 ) func(res *abci.Response) {
 	return func(res *abci.Response) {
@@ -338,7 +336,7 @@ func (mem *CListMempool) addTx(memTx *mempoolTx) {
 // Called from:
 //  - Update (lock held) if tx was committed
 // 	- resCbRecheck (lock not held) if tx was invalidated
-func (mem *CListMempool) removeTx(tx pkgmempool.Tx, elem *clist.CElement, removeFromCache bool) {
+func (mem *CListMempool) removeTx(tx types.Tx, elem *clist.CElement, removeFromCache bool) {
 	mem.txs.Remove(elem)
 	elem.DetachPrev()
 	mem.txsMap.Delete(mempool.TxKey(tx))
@@ -384,7 +382,7 @@ func (mem *CListMempool) isFull(txSize int) error {
 func (mem *CListMempool) resCbFirstTime(
 	tx []byte,
 	peerID uint16,
-	peerP2PID p2p.NodeID,
+	peerP2PID types.NodeID,
 	res *abci.Response,
 ) {
 	switch r := res.Value.(type) {
@@ -506,7 +504,7 @@ func (mem *CListMempool) notifyTxsAvailable() {
 }
 
 // Safe for concurrent use by multiple goroutines.
-func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) pkgmempool.Txs {
+func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	mem.updateMtx.RLock()
 	defer mem.updateMtx.RUnlock()
 
@@ -517,14 +515,14 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) pkgmempool.T
 
 	// TODO: we will get a performance boost if we have a good estimate of avg
 	// size per tx, and set the initial capacity based off of that.
-	// txs := make([]pkgmempool.Tx, 0, tmmath.MinInt(mem.txs.Len(), max/mem.avgTxSize))
-	txs := make([]pkgmempool.Tx, 0, mem.txs.Len())
+	// txs := make([]types.Tx, 0, tmmath.MinInt(mem.txs.Len(), max/mem.avgTxSize))
+	txs := make([]types.Tx, 0, mem.txs.Len())
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
 
 		txs = append(txs, memTx.tx)
 
-		dataSize := block.ComputeProtoSizeForTxs([]pkgmempool.Tx{memTx.tx})
+		dataSize := types.ComputeProtoSizeForTxs([]types.Tx{memTx.tx})
 
 		// Check total size requirement
 		if maxBytes > -1 && runningSize+dataSize > maxBytes {
@@ -547,7 +545,7 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) pkgmempool.T
 }
 
 // Safe for concurrent use by multiple goroutines.
-func (mem *CListMempool) ReapMaxTxs(max int) pkgmempool.Txs {
+func (mem *CListMempool) ReapMaxTxs(max int) types.Txs {
 	mem.updateMtx.RLock()
 	defer mem.updateMtx.RUnlock()
 
@@ -555,7 +553,7 @@ func (mem *CListMempool) ReapMaxTxs(max int) pkgmempool.Txs {
 		max = mem.txs.Len()
 	}
 
-	txs := make([]pkgmempool.Tx, 0, tmmath.MinInt(mem.txs.Len(), max))
+	txs := make([]types.Tx, 0, tmmath.MinInt(mem.txs.Len(), max))
 	for e := mem.txs.Front(); e != nil && len(txs) <= max; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
 		txs = append(txs, memTx.tx)
@@ -566,7 +564,7 @@ func (mem *CListMempool) ReapMaxTxs(max int) pkgmempool.Txs {
 // Lock() must be help by the caller during execution.
 func (mem *CListMempool) Update(
 	height int64,
-	txs pkgmempool.Txs,
+	txs types.Txs,
 	deliverTxResponses []*abci.ResponseDeliverTx,
 	preCheck mempool.PreCheckFunc,
 	postCheck mempool.PostCheckFunc,
@@ -660,9 +658,9 @@ func (mem *CListMempool) recheckTxs() {
 
 // mempoolTx is a transaction that successfully ran
 type mempoolTx struct {
-	height    int64         // height that this tx had been validated in
-	gasWanted int64         // amount of gas this tx states it will require
-	tx        pkgmempool.Tx //
+	height    int64    // height that this tx had been validated in
+	gasWanted int64    // amount of gas this tx states it will require
+	tx        types.Tx //
 
 	// ids of peers who've sent us this tx (as a map for quick lookups).
 	// senders: PeerID -> bool

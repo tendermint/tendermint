@@ -3,21 +3,20 @@ package mempool
 import (
 	"crypto/sha256"
 
-	"github.com/tendermint/tendermint/pkg/mempool"
-	"github.com/tendermint/tendermint/pkg/p2p"
+	"github.com/tendermint/tendermint/types"
 )
 
 // TxKeySize defines the size of the transaction's key used for indexing.
 const TxKeySize = sha256.Size
 
 // TxKey is the fixed length array key used as an index.
-func TxKey(tx mempool.Tx) [TxKeySize]byte {
+func TxKey(tx types.Tx) [TxKeySize]byte {
 	return sha256.Sum256(tx)
 }
 
 // TxHashFromBytes returns the hash of a transaction from raw bytes.
 func TxHashFromBytes(tx []byte) []byte {
-	return mempool.Tx(tx).Hash()
+	return types.Tx(tx).Hash()
 }
 
 // TxInfo are parameters that get passed when attempting to add a tx to the
@@ -29,5 +28,5 @@ type TxInfo struct {
 	SenderID uint16
 
 	// SenderNodeID is the actual types.NodeID of the sender.
-	SenderNodeID p2p.NodeID
+	SenderNodeID types.NodeID
 }

@@ -6,7 +6,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
-	"github.com/tendermint/tendermint/pkg/events"
+	"github.com/tendermint/tendermint/types"
 )
 
 // TxIndexer interface defines methods to index and search transactions.
@@ -31,7 +31,7 @@ type BlockIndexer interface {
 	Has(height int64) (bool, error)
 
 	// Index indexes BeginBlock and EndBlock events for a given block by its height.
-	Index(events.EventDataNewBlockHeader) error
+	Index(types.EventDataNewBlockHeader) error
 
 	// Search performs a query for block heights that match a given BeginBlock
 	// and Endblock event search criteria.

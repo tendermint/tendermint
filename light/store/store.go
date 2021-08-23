@@ -1,8 +1,6 @@
 package store
 
-import (
-	"github.com/tendermint/tendermint/pkg/light"
-)
+import "github.com/tendermint/tendermint/types"
 
 // Store is anything that can persistently store headers.
 type Store interface {
@@ -10,7 +8,7 @@ type Store interface {
 	// ValidatorSet (h: sh.Height).
 	//
 	// height must be > 0.
-	SaveLightBlock(lb *light.LightBlock) error
+	SaveLightBlock(lb *types.LightBlock) error
 
 	// DeleteSignedHeaderAndValidatorSet deletes SignedHeader (h: height) and
 	// ValidatorSet (h: height).
@@ -24,7 +22,7 @@ type Store interface {
 	// height must be > 0.
 	//
 	// If LightBlock is not found, ErrLightBlockNotFound is returned.
-	LightBlock(height int64) (*light.LightBlock, error)
+	LightBlock(height int64) (*types.LightBlock, error)
 
 	// LastLightBlockHeight returns the last (newest) LightBlock height.
 	//
@@ -39,7 +37,7 @@ type Store interface {
 	// LightBlockBefore returns the LightBlock before a certain height.
 	//
 	// height must be > 0 && <= LastLightBlockHeight.
-	LightBlockBefore(height int64) (*light.LightBlock, error)
+	LightBlockBefore(height int64) (*types.LightBlock, error)
 
 	// Prune removes headers & the associated validator sets when Store reaches a
 	// defined size (number of header & validator set pairs).

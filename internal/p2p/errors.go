@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/tendermint/tendermint/pkg/p2p"
+	"github.com/tendermint/tendermint/types"
 )
 
 // ErrFilterTimeout indicates that a filter operation timed out.
@@ -20,7 +20,7 @@ type ErrRejected struct {
 	addr              NetAddress
 	conn              net.Conn
 	err               error
-	id                p2p.NodeID
+	id                types.NodeID
 	isAuthFailure     bool
 	isDuplicate       bool
 	isFiltered        bool
@@ -101,7 +101,7 @@ func (e ErrRejected) IsSelf() bool { return e.isSelf }
 // ErrSwitchDuplicatePeerID to be raised when a peer is connecting with a known
 // ID.
 type ErrSwitchDuplicatePeerID struct {
-	ID p2p.NodeID
+	ID types.NodeID
 }
 
 func (e ErrSwitchDuplicatePeerID) Error() string {
@@ -129,7 +129,7 @@ func (e ErrSwitchConnectToSelf) Error() string {
 
 type ErrSwitchAuthenticationFailure struct {
 	Dialed *NetAddress
-	Got    p2p.NodeID
+	Got    types.NodeID
 }
 
 func (e ErrSwitchAuthenticationFailure) Error() string {

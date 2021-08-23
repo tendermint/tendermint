@@ -9,8 +9,8 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/pkg/consensus"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
+	"github.com/tendermint/tendermint/types"
 )
 
 // SignerServer implements PrivValidatorAPIServer 9generated via protobuf services)
@@ -18,11 +18,11 @@ import (
 type SignerServer struct {
 	logger  log.Logger
 	chainID string
-	privVal consensus.PrivValidator
+	privVal types.PrivValidator
 }
 
 func NewSignerServer(chainID string,
-	privVal consensus.PrivValidator, log log.Logger) *SignerServer {
+	privVal types.PrivValidator, log log.Logger) *SignerServer {
 
 	return &SignerServer{
 		logger:  log,
