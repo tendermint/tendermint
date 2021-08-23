@@ -78,13 +78,13 @@ func TestBeginBlockValidators(t *testing.T) {
 			[]byte("Signature1"),
 			state.Validators.Validators[0].Address,
 			now,
-      types.VoteExtensionSigned{},
+      types.VoteExtensionToSign{},
     )
 		commitSig1 = types.NewCommitSigForBlock(
 			[]byte("Signature2"),
 			state.Validators.Validators[1].Address,
 			now,
-      types.VoteExtensionSigned{},
+      types.VoteExtensionToSign{},
     )
 		absentSig = types.NewCommitSigAbsent()
 	)

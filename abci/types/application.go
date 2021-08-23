@@ -66,7 +66,7 @@ func (BaseApplication) ExtendVote(req RequestExtendVote) ResponseExtendVote {
 }
 
 func (BaseApplication) VerifyVoteExtension(req RequestVerifyVoteExtension) ResponseVerifyVoteExtension {
-	return ResponseVerifyVoteExtension{Code: CodeTypeOK}
+	return ResponseVerifyVoteExtension{}
 }
 
 func (BaseApplication) Query(req RequestQuery) ResponseQuery {
