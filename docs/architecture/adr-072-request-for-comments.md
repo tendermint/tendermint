@@ -25,12 +25,17 @@ Some discussions are more open-ended, however, or don't require a specific
 decision to be made (yet). Such conversations are still valuable to document,
 and several members of the Tendermint team have been doing so by writing gists
 or Google docs to share them around. That works well enough in the moment, but
-gist and docs are hard to discover after the fact. Moreover, these kinds of
-open-ended discussions are very useful to people who come later -- either as
-new team members or as outside contributors seeking to use and understand the
-thoughts behind our architectural decisions.
+gists do not support any kind of collaborative editing, and both gists and docs
+are hard to discover after the fact. Google docs have much better collaborative
+editing, but are worse for discoverability, especially when contributors span
+different Google accounts.
 
-With that in mind, I propose that:
+Discoverability is important, because these kinds of open-ended discussions are
+useful to people who come later -- either as new team members or as outside
+contributors seeking to use and understand the thoughts behind our designs and
+the architectural decisions that arose from those discussion.
+
+With these in mind, I propose that:
 
 -  We re-create a new, initially empty `docs/rfc` directory in the repository,
    and use it to capture these kinds of open-ended discussions in supplement to
