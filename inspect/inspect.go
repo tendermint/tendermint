@@ -43,7 +43,7 @@ type Inspect struct {
 ///
 //nolint:lll
 func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, es []indexer.EventSink, logger log.Logger) *Inspect {
-	routes := rpc.Routes(*cfg, ss, bs, es)
+	routes := rpc.Routes(*cfg, ss, bs, es, logger)
 	eb := types.NewEventBus()
 	eb.SetLogger(logger.With("module", "events"))
 	is := indexer.NewIndexerService(es, eb)

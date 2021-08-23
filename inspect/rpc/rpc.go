@@ -27,13 +27,14 @@ type Server struct {
 }
 
 // Routes returns the set of routes used by the Inspect server.
-func Routes(cfg config.RPCConfig, s state.Store, bs state.BlockStore, es []indexer.EventSink) core.RoutesMap {
+func Routes(cfg config.RPCConfig, s state.Store, bs state.BlockStore, es []indexer.EventSink, logger log.Logger) core.RoutesMap {
 	env := &core.Environment{
 		Config:           cfg,
 		EventSinks:       es,
 		StateStore:       s,
 		BlockStore:       bs,
 		ConsensusReactor: waitSyncCheckerImpl{},
+		Logger:           logger,
 	}
 	return core.RoutesMap{
 		"blockchain":       server.NewRPCFunc(env.BlockchainInfo, "minHeight,maxHeight", true),
