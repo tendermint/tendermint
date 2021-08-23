@@ -30,6 +30,8 @@ service ABCI {
       returns (ResponseApplySnapshotChunk);
   rpc PrepareProposal(RequestPrepareProposal) returns (ResponsePrepareProposal);
   rpc ProcessProposal(RequestProcessProposal) returns (ResponseProcessProposal);
+  rpc ExtendVote(RequestExtendVote) returns (ResponseExtendVote);
+  rpc VerifyVoteExtension(RequestVerifyVoteExtension) returns (ResponseVerifyVoteExtension);
   rpc FinalizeBlock(RequestFinalizeBlock) returns (ResponseFinalizeBlock);
 }
 
@@ -38,20 +40,22 @@ service ABCI {
 
 message Request {
   oneof value {
-    RequestEcho               echo                 = 1;
-    RequestFlush              flush                = 2;
-    RequestInfo               info                 = 3;
-    RequestInitChain          init_chain           = 5;
-    RequestQuery              query                = 6;
-    RequestCheckTx            check_tx             = 8;
-    RequestCommit             commit               = 11;
-    RequestListSnapshots      list_snapshots       = 12;
-    RequestOfferSnapshot      offer_snapshot       = 13;
-    RequestLoadSnapshotChunk  load_snapshot_chunk  = 14;
-    RequestApplySnapshotChunk apply_snapshot_chunk = 15;
-    RequestPrepareProposal    prepare_proposal     = 16;
-    RequestProcessProposal    process_proposal     = 17;
-    RequestFinalizeBlock      finalize_block       = 20;
+    RequestEcho                echo                  = 1;
+    RequestFlush               flush                 = 2;
+    RequestInfo                info                  = 3;
+    RequestInitChain           init_chain            = 5;
+    RequestQuery               query                 = 6;
+    RequestCheckTx             check_tx              = 8;
+    RequestCommit              commit                = 11;
+    RequestListSnapshots       list_snapshots        = 12;
+    RequestOfferSnapshot       offer_snapshot        = 13;
+    RequestLoadSnapshotChunk   load_snapshot_chunk   = 14;
+    RequestApplySnapshotChunk  apply_snapshot_chunk  = 15;
+    RequestPrepareProposal     prepare_proposal      = 16;
+    RequestProcessProposal     process_proposal      = 17;
+    RequestExtendVote          extend_vote           = 18;
+    RequestVerifyVoteExtension verify_vote_extension = 19;
+    RequestFinalizeBlock       finalize_block        = 20;
   }
   reserved 4, 7, 9, 10;  // SetOption, BeginBlock, DeliverTx, EndBlock
 }
@@ -121,6 +125,16 @@ message RequestApplySnapshotChunk {
   string sender = 3;
 }
 
+// Extends a vote with application-side injection
+message RequestExtendVote {
+  types.Vote vote = 1;
+}
+
+// Verify the vote extension
+message RequestVerifyVoteExtension {
+  types.Vote vote = 1;
+}
+
 message RequestPrepareProposal {
   // the modified transactions cannot exceed this size.
   int64 max_tx_bytes = 1;
@@ -167,21 +181,23 @@ message RequestFinalizeBlock {
 
 message Response {
   oneof value {
-    ResponseException          exception            = 1;
-    ResponseEcho               echo                 = 2;
-    ResponseFlush              flush                = 3;
-    ResponseInfo               info                 = 4;
-    ResponseInitChain          init_chain           = 6;
-    ResponseQuery              query                = 7;
-    ResponseCheckTx            check_tx             = 9;
-    ResponseCommit             commit               = 12;
-    ResponseListSnapshots      list_snapshots       = 13;
-    ResponseOfferSnapshot      offer_snapshot       = 14;
-    ResponseLoadSnapshotChunk  load_snapshot_chunk  = 15;
-    ResponseApplySnapshotChunk apply_snapshot_chunk = 16;
-    ResponsePrepareProposal    prepare_proposal     = 17;
-    ResponseProcessProposal    process_proposal     = 18;
-    ResponseFinalizeBlock      finalize_block       = 21;
+    ResponseException           exception             = 1;
+    ResponseEcho                echo                  = 2;
+    ResponseFlush               flush                 = 3;
+    ResponseInfo                info                  = 4;
+    ResponseInitChain           init_chain            = 6;
+    ResponseQuery               query                 = 7;
+    ResponseCheckTx             check_tx              = 9;
+    ResponseCommit              commit                = 12;
+    ResponseListSnapshots       list_snapshots        = 13;
+    ResponseOfferSnapshot       offer_snapshot        = 14;
+    ResponseLoadSnapshotChunk   load_snapshot_chunk   = 15;
+    ResponseApplySnapshotChunk  apply_snapshot_chunk  = 16;
+    ResponsePrepareProposal     prepare_proposal      = 17;
+    ResponseProcessProposal     process_proposal      = 18;
+    ResponseExtendVote          extend_vote           = 19;
+    ResponseVerifyVoteExtension verify_vote_extension = 20;
+    ResponseFinalizeBlock       finalize_block        = 21;
   }
   reserved 5, 8, 10, 11;  // SetOption, BeginBlock, DeliverTx, EndBlock
 }
@@ -282,6 +298,21 @@ message ResponseApplySnapshotChunk {
     RETRY           = 3;  // Retry chunk (combine with refetch and reject)
     RETRY_SNAPSHOT  = 4;  // Retry snapshot (combine with refetch and reject)
     REJECT_SNAPSHOT = 5;  // Reject this snapshot, try others
+  }
+}
+
+message ResponseExtendVote {
+  tendermint.types.VoteExtension vote_extension = 1;
+}
+
+message ResponseVerifyVoteExtension {
+  Result result = 1;
+
+  enum Result {
+    UNKNOWN       = 0;  // Unknown result, treat as ACCEPT by default
+    ACCEPT        = 1;  // Vote extension verified, include the vote
+    SLASH         = 2;  // Vote extension verification aborted, continue but slash validator
+    REJECT        = 3;  // Vote extension invalidated
   }
 }
 

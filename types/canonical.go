@@ -51,16 +51,26 @@ func CanonicalizeProposal(chainID string, proposal *tmproto.Proposal) tmproto.Ca
 	}
 }
 
+func GetVoteExtensionToSign(ext *tmproto.VoteExtension) *tmproto.VoteExtensionToSign {
+	if ext == nil {
+		return nil
+	}
+	return &tmproto.VoteExtensionToSign{
+		AppDataToSign: ext.AppDataToSign,
+	}
+}
+
 // CanonicalizeVote transforms the given Vote to a CanonicalVote, which does
 // not contain ValidatorIndex and ValidatorAddress fields.
 func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote {
 	return tmproto.CanonicalVote{
-		Type:      vote.Type,
-		Height:    vote.Height,       // encoded as sfixed64
-		Round:     int64(vote.Round), // encoded as sfixed64
-		BlockID:   CanonicalizeBlockID(vote.BlockID),
-		Timestamp: vote.Timestamp,
-		ChainID:   chainID,
+		Type:          vote.Type,
+		Height:        vote.Height,       // encoded as sfixed64
+		Round:         int64(vote.Round), // encoded as sfixed64
+		BlockID:       CanonicalizeBlockID(vote.BlockID),
+		Timestamp:     vote.Timestamp,
+		ChainID:       chainID,
+		VoteExtension: GetVoteExtensionToSign(vote.VoteExtension),
 	}
 }
 

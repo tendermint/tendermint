@@ -288,6 +288,18 @@ func (s *SocketServer) handleRequest(ctx context.Context, req *types.Request) (*
 			return nil, err
 		}
 		return types.ToResponseApplySnapshotChunk(res), nil
+	case *types.Request_ExtendVote:
+		res, err := s.app.ExtendVote(ctx, r.ExtendVote)
+		if err != nil {
+			return nil, err
+		}
+		return types.ToResponseExtendVote(res), nil
+	case *types.Request_VerifyVoteExtension:
+		res, err := s.app.VerifyVoteExtension(ctx, r.VerifyVoteExtension)
+		if err != nil {
+			return nil, err
+		}
+		return types.ToResponseVerifyVoteExtension(res), nil
 	default:
 		return nil, fmt.Errorf("unknown request from client: %T", req)
 	}

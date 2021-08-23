@@ -20,6 +20,8 @@ type AppConnConsensus interface {
 	InitChain(context.Context, *types.RequestInitChain) (*types.ResponseInitChain, error)
 	PrepareProposal(context.Context, *types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error)
 	ProcessProposal(context.Context, *types.RequestProcessProposal) (*types.ResponseProcessProposal, error)
+	ExtendVote(context.Context, *types.RequestExtendVote) (*types.ResponseExtendVote, error)
+	VerifyVoteExtension(context.Context, *types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error)
 	FinalizeBlock(context.Context, *types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error)
 	Commit(context.Context) (*types.ResponseCommit, error)
 }
@@ -95,6 +97,14 @@ func (app *appConnConsensus) FinalizeBlock(ctx context.Context, req *types.Reque
 func (app *appConnConsensus) Commit(ctx context.Context) (*types.ResponseCommit, error) {
 	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "commit"))()
 	return app.appConn.Commit(ctx, &types.RequestCommit{})
+}
+
+func (app *appConnConsensus) ExtendVoteSync(req types.RequestExtendVote) (*types.ResponseExtendVote, error) {
+	return app.appConn.ExtendVoteSync(req)
+}
+
+func (app *appConnConsensus) VerifyVoteExtensionSync(req types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
+	return app.appConn.VerifyVoteExtensionSync(req)
 }
 
 //------------------------------------------------

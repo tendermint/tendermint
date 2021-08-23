@@ -20,6 +20,8 @@ type Application interface {
 	ProcessProposal(context.Context, *RequestProcessProposal) (*ResponseProcessProposal, error)
 	// Deliver the decided block with its txs to the Application
 	FinalizeBlock(context.Context, *RequestFinalizeBlock) (*ResponseFinalizeBlock, error)
+	ExtendVote(context.Context, *RequestExtendVote) (*ResponseExtendVote, error)
+	VerifyVoteExtension(context.Context, *RequestVerifyVoteExtension) (*ResponseVerifyVoteExtension, error)
 	// Commit the state and return the application Merkle root hash
 	Commit(context.Context, *RequestCommit) (*ResponseCommit, error)
 
@@ -92,6 +94,14 @@ func (BaseApplication) PrepareProposal(_ context.Context, req *RequestPreparePro
 
 func (BaseApplication) ProcessProposal(_ context.Context, req *RequestProcessProposal) (*ResponseProcessProposal, error) {
 	return &ResponseProcessProposal{Status: ResponseProcessProposal_ACCEPT}, nil
+}
+
+func (BaseApplication) ExtendVote(_ context.Context, req *RequestExtendVote) (*ResponseExtendVote, error) {
+	return &ResponseExtendVote{}, nil
+}
+
+func (BaseApplication) VerifyVoteExtension(_ context.Context, req *RequestVerifyVoteExtension) (*ResponseVerifyVoteExtension, error) {
+	return &ResponseVerifyVoteExtension{Result: OK}, nil
 }
 
 func (BaseApplication) FinalizeBlock(_ context.Context, req *RequestFinalizeBlock) (*ResponseFinalizeBlock, error) {

@@ -164,6 +164,20 @@ func (app *localClient) ProcessProposal(ctx context.Context, req *types.RequestP
 	return app.Application.ProcessProposal(ctx, req)
 }
 
+func (app *localClient) ExtendVote(ctx context.Context, req *types.RequestExtendVote) (*types.ResponseExtendVote, error) {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	return app.Application.ExtendVote(ctx, req)
+}
+
+func (app *localClient) VerifyVoteExtension(ctx context.Context, req *types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	return app.Application.VerifyVoteExtension(ctx, req)
+}
+
 func (app *localClient) FinalizeBlock(ctx context.Context, req *types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()

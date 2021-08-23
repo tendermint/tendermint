@@ -102,6 +102,19 @@ message Vote {
   bytes validator_address = 6;
   int32 validator_index   = 7;
   bytes signature         = 8;
+  VoteExtension vote_extension = 9;
+}
+
+// VoteExtension is app-defined additional information to the validator votes.
+message VoteExtension {
+  bytes app_data_to_sign             = 1;
+  bytes app_data_self_authenticating = 2;
+}
+
+// VoteExtensionToSign is a subset of VoteExtension that is signed by the validators private key.
+// VoteExtensionToSign is extracted from an existing VoteExtension.
+message VoteExtensionToSign {
+  bytes app_data_to_sign = 1;
 }
 
 // Commit contains the evidence that a block was committed by a set of validators.
@@ -119,6 +132,7 @@ message CommitSig {
   google.protobuf.Timestamp timestamp         = 3
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes signature = 4;
+  VoteExtensionToSign vote_extension = 5;
 }
 
 message Proposal {

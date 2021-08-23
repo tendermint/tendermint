@@ -178,11 +178,15 @@ func TestFinalizeBlockValidators(t *testing.T) {
 		commitSig0 = types.NewCommitSigForBlock(
 			[]byte("Signature1"),
 			state.Validators.Validators[0].Address,
-			now)
+			now,
+      types.VoteExtensionToSign{},
+    )
 		commitSig1 = types.NewCommitSigForBlock(
 			[]byte("Signature2"),
 			state.Validators.Validators[1].Address,
-			now)
+			now,
+      types.VoteExtensionToSign{},
+    )
 		absentSig = types.NewCommitSigAbsent()
 	)
 

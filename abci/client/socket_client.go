@@ -379,6 +379,28 @@ func (cli *socketClient) ProcessProposal(ctx context.Context, req *types.Request
 	return reqRes.Response.GetProcessProposal(), cli.Error()
 }
 
+func (cli *socketClient) ExtendVote(ctx context.Context, req *types.RequestExtendVote) (*types.ResponseExtendVote, error) {
+	reqRes, err := cli.queueRequest(ctx, types.ToRequestExtendVote(req))
+	if err != nil {
+		return nil, err
+	}
+	if err := cli.Flush(ctx); err != nil {
+		return nil, err
+	}
+	return reqRes.Response.GetExtendVote(), cli.Error()
+}
+
+func (cli *socketClient) VerifyVoteExtension(ctx context.Context, req *types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
+	reqRes, err := cli.queueRequest(ctx, types.ToRequestVerifyVoteExtension(req))
+	if err != nil {
+		return nil, err
+	}
+	if err := cli.Flush(ctx); err != nil {
+		return nil, err
+	}
+	return reqRes.Response.GetVerifyVoteExtension(), cli.Error()
+}
+
 func (cli *socketClient) FinalizeBlock(ctx context.Context, req *types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
 	reqRes, err := cli.queueRequest(ctx, types.ToRequestFinalizeBlock(req))
 	if err != nil {
@@ -461,6 +483,10 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_ListSnapshots)
 	case *types.Request_OfferSnapshot:
 		_, ok = res.Value.(*types.Response_OfferSnapshot)
+	case *types.Request_ExtendVote:
+		_, ok = res.Value.(*types.Response_ExtendVote)
+	case *types.Request_VerifyVoteExtension:
+		_, ok = res.Value.(*types.Response_VerifyVoteExtension)
 	case *types.Request_PrepareProposal:
 		_, ok = res.Value.(*types.Response_PrepareProposal)
 	case *types.Request_ProcessProposal:
