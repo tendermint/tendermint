@@ -47,8 +47,8 @@ With that in mind, I propose that:
 
 Just so that there is a consistent format, I also propose that:
 
--  RFC files are named `rfc-XXX-title.{md,txt}` and are written in plain text
-   or Markdown.
+-  RFC files are named `rfc-XXX-title.{md,rst,txt}` and are written in plain
+   text, Markdown, or ReStructured Text.
 
 -  Like an ADR, an RFC should include a high-level change log at the top of the
    document, and sections for:
