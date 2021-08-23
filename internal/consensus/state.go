@@ -2218,7 +2218,7 @@ func (cs *State) signVote(
 	switch msgType {
 	case tmproto.PrecommitType:
 		timeout = cs.config.TimeoutPrecommit
-		// If the signedMessage type is for precommit, add VoteExtension
+		// if the signedMessage type is for a precommit, add VoteExtension
 		ext, err := cs.blockExec.ExtendVote(vote)
 		if err != nil {
 			return nil, err
