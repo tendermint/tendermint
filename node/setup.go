@@ -312,7 +312,7 @@ func createBlockchainReactor(
 
 		reactor, err := bcv0.NewReactor(
 			logger, state.Copy(), blockExec, blockStore, csReactor,
-			channels[bcv0.BlockchainChannel], peerUpdates, blockSync,
+			channels[bcv0.BlockSyncChannel], peerUpdates, blockSync,
 			metrics,
 		)
 		if err != nil {
@@ -677,7 +677,7 @@ func makeNodeInfo(
 	var bcChannel byte
 	switch config.BlockSync.Version {
 	case cfg.BlockSyncV0:
-		bcChannel = byte(bcv0.BlockchainChannel)
+		bcChannel = byte(bcv0.BlockSyncChannel)
 
 	case cfg.BlockSyncV2:
 		bcChannel = bcv2.BlockchainChannel
