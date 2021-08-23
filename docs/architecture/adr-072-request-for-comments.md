@@ -42,13 +42,17 @@ With these in mind, I propose that:
    ADRs.
 
 -  Unlike in the previous RFC scheme, documents in this new directory will
-   _not_ be used directly for decision-making.
+   _not_ be used directly for decision-making. This is the key difference
+   between an RFC and an ADR.
 
    Instead, an RFC will exist to document background, articulate general
    principles, and serve as a historical record of discussion and motivation.
 
    In this system, an RFC may _only_ result in a decision indirectly, via ADR
    documents created in response to the RFC.
+
+   **In short:** If a decision is required, write an ADR; otherwise if a
+   sufficiently broad discussion is needed, write an RFC.
 
 Just so that there is a consistent format, I also propose that:
 
