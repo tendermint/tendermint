@@ -4,7 +4,7 @@ import (
 	"container/list"
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/mempool"
 )
 
 // TxCache defines an interface for raw transaction caching in a mempool.
@@ -18,10 +18,10 @@ type TxCache interface {
 
 	// Push adds the given raw transaction to the cache and returns true if it was
 	// newly added. Otherwise, it returns false.
-	Push(tx types.Tx) bool
+	Push(tx mempool.Tx) bool
 
 	// Remove removes the given raw transaction from the cache.
-	Remove(tx types.Tx)
+	Remove(tx mempool.Tx)
 }
 
 var _ TxCache = (*LRUTxCache)(nil)
@@ -57,7 +57,7 @@ func (c *LRUTxCache) Reset() {
 	c.list.Init()
 }
 
-func (c *LRUTxCache) Push(tx types.Tx) bool {
+func (c *LRUTxCache) Push(tx mempool.Tx) bool {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
 
@@ -84,7 +84,7 @@ func (c *LRUTxCache) Push(tx types.Tx) bool {
 	return true
 }
 
-func (c *LRUTxCache) Remove(tx types.Tx) {
+func (c *LRUTxCache) Remove(tx mempool.Tx) {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
 
@@ -102,6 +102,6 @@ type NopTxCache struct{}
 
 var _ TxCache = (*NopTxCache)(nil)
 
-func (NopTxCache) Reset()             {}
-func (NopTxCache) Push(types.Tx) bool { return true }
-func (NopTxCache) Remove(types.Tx)    {}
+func (NopTxCache) Reset()               {}
+func (NopTxCache) Push(mempool.Tx) bool { return true }
+func (NopTxCache) Remove(mempool.Tx)    {}

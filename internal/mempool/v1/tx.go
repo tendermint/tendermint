@@ -7,14 +7,14 @@ import (
 	"github.com/tendermint/tendermint/internal/libs/clist"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
-	"github.com/tendermint/tendermint/types"
+	pkgmempool "github.com/tendermint/tendermint/pkg/mempool"
 )
 
 // WrappedTx defines a wrapper around a raw transaction with additional metadata
 // that is used for indexing.
 type WrappedTx struct {
 	// tx represents the raw binary transaction data
-	tx types.Tx
+	tx pkgmempool.Tx
 
 	// hash defines the transaction hash and the primary key used in the mempool
 	hash [mempool.TxKeySize]byte

@@ -8,13 +8,16 @@ import (
 
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/meta"
+	"github.com/tendermint/tendermint/pkg/p2p"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
 type RoundVoteSet struct {
-	Prevotes   *types.VoteSet
-	Precommits *types.VoteSet
+	Prevotes   *consensus.VoteSet
+	Precommits *consensus.VoteSet
 }
 
 var (
@@ -40,15 +43,15 @@ One for their LastCommit round, and another for the official commit round.
 type HeightVoteSet struct {
 	chainID string
 	height  int64
-	valSet  *types.ValidatorSet
+	valSet  *consensus.ValidatorSet
 
 	mtx               sync.Mutex
-	round             int32                    // max tracked round
-	roundVoteSets     map[int32]RoundVoteSet   // keys: [0...round]
-	peerCatchupRounds map[types.NodeID][]int32 // keys: peer.ID; values: at most 2 rounds
+	round             int32                  // max tracked round
+	roundVoteSets     map[int32]RoundVoteSet // keys: [0...round]
+	peerCatchupRounds map[p2p.NodeID][]int32 // keys: peer.ID; values: at most 2 rounds
 }
 
-func NewHeightVoteSet(chainID string, height int64, valSet *types.ValidatorSet) *HeightVoteSet {
+func NewHeightVoteSet(chainID string, height int64, valSet *consensus.ValidatorSet) *HeightVoteSet {
 	hvs := &HeightVoteSet{
 		chainID: chainID,
 	}
@@ -56,7 +59,7 @@ func NewHeightVoteSet(chainID string, height int64, valSet *types.ValidatorSet) 
 	return hvs
 }
 
-func (hvs *HeightVoteSet) Reset(height int64, valSet *types.ValidatorSet) {
+func (hvs *HeightVoteSet) Reset(height int64, valSet *consensus.ValidatorSet) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 
@@ -103,8 +106,8 @@ func (hvs *HeightVoteSet) addRound(round int32) {
 		panic("addRound() for an existing round")
 	}
 	// log.Debug("addRound(round)", "round", round)
-	prevotes := types.NewVoteSet(hvs.chainID, hvs.height, round, tmproto.PrevoteType, hvs.valSet)
-	precommits := types.NewVoteSet(hvs.chainID, hvs.height, round, tmproto.PrecommitType, hvs.valSet)
+	prevotes := consensus.NewVoteSet(hvs.chainID, hvs.height, round, tmproto.PrevoteType, hvs.valSet)
+	precommits := consensus.NewVoteSet(hvs.chainID, hvs.height, round, tmproto.PrecommitType, hvs.valSet)
 	hvs.roundVoteSets[round] = RoundVoteSet{
 		Prevotes:   prevotes,
 		Precommits: precommits,
@@ -113,10 +116,10 @@ func (hvs *HeightVoteSet) addRound(round int32) {
 
 // Duplicate votes return added=false, err=nil.
 // By convention, peerID is "" if origin is self.
-func (hvs *HeightVoteSet) AddVote(vote *types.Vote, peerID types.NodeID) (added bool, err error) {
+func (hvs *HeightVoteSet) AddVote(vote *consensus.Vote, peerID p2p.NodeID) (added bool, err error) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
-	if !types.IsVoteTypeValid(vote.Type) {
+	if !consensus.IsVoteTypeValid(vote.Type) {
 		return
 	}
 	voteSet := hvs.getVoteSet(vote.Round, vote.Type)
@@ -135,13 +138,13 @@ func (hvs *HeightVoteSet) AddVote(vote *types.Vote, peerID types.NodeID) (added 
 	return
 }
 
-func (hvs *HeightVoteSet) Prevotes(round int32) *types.VoteSet {
+func (hvs *HeightVoteSet) Prevotes(round int32) *consensus.VoteSet {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	return hvs.getVoteSet(round, tmproto.PrevoteType)
 }
 
-func (hvs *HeightVoteSet) Precommits(round int32) *types.VoteSet {
+func (hvs *HeightVoteSet) Precommits(round int32) *consensus.VoteSet {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	return hvs.getVoteSet(round, tmproto.PrecommitType)
@@ -149,7 +152,7 @@ func (hvs *HeightVoteSet) Precommits(round int32) *types.VoteSet {
 
 // Last round and blockID that has +2/3 prevotes for a particular block or nil.
 // Returns -1 if no such round exists.
-func (hvs *HeightVoteSet) POLInfo() (polRound int32, polBlockID types.BlockID) {
+func (hvs *HeightVoteSet) POLInfo() (polRound int32, polBlockID meta.BlockID) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	for r := hvs.round; r >= 0; r-- {
@@ -162,7 +165,7 @@ func (hvs *HeightVoteSet) POLInfo() (polRound int32, polBlockID types.BlockID) {
 	return -1, types.BlockID{}
 }
 
-func (hvs *HeightVoteSet) getVoteSet(round int32, voteType tmproto.SignedMsgType) *types.VoteSet {
+func (hvs *HeightVoteSet) getVoteSet(round int32, voteType tmproto.SignedMsgType) *consensus.VoteSet {
 	rvs, ok := hvs.roundVoteSets[round]
 	if !ok {
 		return nil

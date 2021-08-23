@@ -8,7 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/p2p/conn"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/p2p"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -22,7 +22,7 @@ const (
 
 // defaultProtocolVersion populates the Block and P2P versions using
 // the global values, but not the App.
-var defaultProtocolVersion = types.ProtocolVersion{
+var defaultProtocolVersion = p2p.ProtocolVersion{
 	P2P:   version.P2PProtocol,
 	Block: version.BlockProtocol,
 	App:   0,
@@ -84,7 +84,7 @@ type Connection interface {
 	// FIXME: The handshake should really be the Router's responsibility, but
 	// that requires the connection interface to be byte-oriented rather than
 	// message-oriented (see comment above).
-	Handshake(context.Context, types.NodeInfo, crypto.PrivKey) (types.NodeInfo, crypto.PubKey, error)
+	Handshake(context.Context, p2p.NodeInfo, crypto.PrivKey) (p2p.NodeInfo, crypto.PubKey, error)
 
 	// ReceiveMessage returns the next message received on the connection,
 	// blocking until one is available. Returns io.EOF if closed.
@@ -156,7 +156,7 @@ type Endpoint struct {
 }
 
 // NewEndpoint constructs an Endpoint from a types.NetAddress structure.
-func NewEndpoint(na *types.NetAddress) Endpoint {
+func NewEndpoint(na *p2p.NetAddress) Endpoint {
 	return Endpoint{
 		Protocol: MConnProtocol,
 		IP:       na.IP,
@@ -165,7 +165,7 @@ func NewEndpoint(na *types.NetAddress) Endpoint {
 }
 
 // NodeAddress converts the endpoint into a NodeAddress for the given node ID.
-func (e Endpoint) NodeAddress(nodeID types.NodeID) NodeAddress {
+func (e Endpoint) NodeAddress(nodeID p2p.NodeID) NodeAddress {
 	address := NodeAddress{
 		NodeID:   nodeID,
 		Protocol: e.Protocol,
@@ -184,7 +184,7 @@ func (e Endpoint) String() string {
 	// assume that path is a node ID (to handle opaque URLs of the form
 	// scheme:id).
 	if e.IP == nil {
-		if nodeID, err := types.NewNodeID(e.Path); err == nil {
+		if nodeID, err := p2p.NewNodeID(e.Path); err == nil {
 			return e.NodeAddress(nodeID).String()
 		}
 	}

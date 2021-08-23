@@ -21,7 +21,7 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/types"
+	pkgp2p "github.com/tendermint/tendermint/pkg/p2p"
 )
 
 const (
@@ -60,7 +60,7 @@ type AddrBook interface {
 	PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress
 
 	// Mark address
-	MarkGood(types.NodeID)
+	MarkGood(pkgp2p.NodeID)
 	MarkAttempt(*p2p.NetAddress)
 	MarkBad(*p2p.NetAddress, time.Duration) // Move peer to bad peers list
 	// Add bad peers back to addrBook
@@ -90,9 +90,9 @@ type addrBook struct {
 	// accessed concurrently
 	mtx        tmsync.Mutex
 	ourAddrs   map[string]struct{}
-	privateIDs map[types.NodeID]struct{}
-	addrLookup map[types.NodeID]*knownAddress // new & old
-	badPeers   map[types.NodeID]*knownAddress // blacklisted peers
+	privateIDs map[pkgp2p.NodeID]struct{}
+	addrLookup map[pkgp2p.NodeID]*knownAddress // new & old
+	badPeers   map[pkgp2p.NodeID]*knownAddress // blacklisted peers
 	bucketsOld []map[string]*knownAddress
 	bucketsNew []map[string]*knownAddress
 	nOld       int
@@ -121,9 +121,9 @@ func mustNewHasher() hash.Hash64 {
 func NewAddrBook(filePath string, routabilityStrict bool) AddrBook {
 	am := &addrBook{
 		ourAddrs:          make(map[string]struct{}),
-		privateIDs:        make(map[types.NodeID]struct{}),
-		addrLookup:        make(map[types.NodeID]*knownAddress),
-		badPeers:          make(map[types.NodeID]*knownAddress),
+		privateIDs:        make(map[pkgp2p.NodeID]struct{}),
+		addrLookup:        make(map[pkgp2p.NodeID]*knownAddress),
+		badPeers:          make(map[pkgp2p.NodeID]*knownAddress),
 		filePath:          filePath,
 		routabilityStrict: routabilityStrict,
 	}
@@ -202,7 +202,7 @@ func (a *addrBook) AddPrivateIDs(ids []string) {
 	defer a.mtx.Unlock()
 
 	for _, id := range ids {
-		a.privateIDs[types.NodeID(id)] = struct{}{}
+		a.privateIDs[pkgp2p.NodeID(id)] = struct{}{}
 	}
 }
 
@@ -320,7 +320,7 @@ func (a *addrBook) PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress {
 
 // MarkGood implements AddrBook - it marks the peer as good and
 // moves it into an "old" bucket.
-func (a *addrBook) MarkGood(id types.NodeID) {
+func (a *addrBook) MarkGood(id pkgp2p.NodeID) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 

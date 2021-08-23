@@ -14,9 +14,9 @@ import (
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	pubmempool "github.com/tendermint/tendermint/pkg/mempool"
+	"github.com/tendermint/tendermint/pkg/block"
+	pkgmempool "github.com/tendermint/tendermint/pkg/mempool"
 	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/types"
 )
 
 var _ mempool.Mempool = (*TxMempool)(nil)
@@ -229,7 +229,7 @@ func (txmp *TxMempool) TxsAvailable() <-chan struct{} {
 // - The caller is not to explicitly require any locks for executing CheckTx.
 func (txmp *TxMempool) CheckTx(
 	ctx context.Context,
-	tx types.Tx,
+	tx pkgmempool.Tx,
 	cb func(*abci.Response),
 	txInfo mempool.TxInfo,
 ) error {
@@ -239,7 +239,7 @@ func (txmp *TxMempool) CheckTx(
 
 	txSize := len(tx)
 	if txSize > txmp.config.MaxTxBytes {
-		return pubmempool.ErrTxTooLarge{
+		return pkgmempool.ErrTxTooLarge{
 			Max:    txmp.config.MaxTxBytes,
 			Actual: txSize,
 		}
@@ -247,7 +247,7 @@ func (txmp *TxMempool) CheckTx(
 
 	if txmp.preCheck != nil {
 		if err := txmp.preCheck(tx); err != nil {
-			return pubmempool.ErrPreCheck{
+			return pkgmempool.ErrPreCheck{
 				Reason: err,
 			}
 		}
@@ -267,7 +267,7 @@ func (txmp *TxMempool) CheckTx(
 		if wtx != nil && ok {
 			// We already have the transaction stored and the we've already seen this
 			// transaction from txInfo.SenderID.
-			return pubmempool.ErrTxInCache
+			return pkgmempool.ErrTxInCache
 		}
 
 		txmp.logger.Debug("tx exists already in cache", "tx_hash", tx.Hash())
@@ -333,7 +333,7 @@ func (txmp *TxMempool) Flush() {
 // - A read-lock is acquired.
 // - Transactions returned are not actually removed from the mempool transaction
 //   store or indexes.
-func (txmp *TxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
+func (txmp *TxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) pkgmempool.Txs {
 	txmp.mtx.RLock()
 	defer txmp.mtx.RUnlock()
 
@@ -351,12 +351,12 @@ func (txmp *TxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 		}
 	}()
 
-	txs := make([]types.Tx, 0, txmp.priorityIndex.NumTxs())
+	txs := make([]pkgmempool.Tx, 0, txmp.priorityIndex.NumTxs())
 	for txmp.priorityIndex.NumTxs() > 0 {
 		wtx := txmp.priorityIndex.PopTx()
 		txs = append(txs, wtx.tx)
 		wTxs = append(wTxs, wtx)
-		size := types.ComputeProtoSizeForTxs([]types.Tx{wtx.tx})
+		size := block.ComputeProtoSizeForTxs([]pkgmempool.Tx{wtx.tx})
 
 		// Ensure we have capacity for the transaction with respect to the
 		// transaction size.
@@ -385,7 +385,7 @@ func (txmp *TxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 // - A read-lock is acquired.
 // - Transactions returned are not actually removed from the mempool transaction
 //   store or indexes.
-func (txmp *TxMempool) ReapMaxTxs(max int) types.Txs {
+func (txmp *TxMempool) ReapMaxTxs(max int) pkgmempool.Txs {
 	txmp.mtx.RLock()
 	defer txmp.mtx.RUnlock()
 
@@ -405,7 +405,7 @@ func (txmp *TxMempool) ReapMaxTxs(max int) types.Txs {
 		}
 	}()
 
-	txs := make([]types.Tx, 0, cap)
+	txs := make([]pkgmempool.Tx, 0, cap)
 	for txmp.priorityIndex.NumTxs() > 0 && len(txs) < max {
 		wtx := txmp.priorityIndex.PopTx()
 		txs = append(txs, wtx.tx)
@@ -426,7 +426,7 @@ func (txmp *TxMempool) ReapMaxTxs(max int) types.Txs {
 // - The caller must explicitly acquire a write-lock via Lock().
 func (txmp *TxMempool) Update(
 	blockHeight int64,
-	blockTxs types.Txs,
+	blockTxs pkgmempool.Txs,
 	deliverTxResponses []*abci.ResponseDeliverTx,
 	newPreFn mempool.PreCheckFunc,
 	newPostFn mempool.PostCheckFunc,
@@ -728,7 +728,7 @@ func (txmp *TxMempool) canAddTx(wtx *WrappedTx) error {
 	)
 
 	if numTxs >= txmp.config.Size || int64(wtx.Size())+sizeBytes > txmp.config.MaxTxsBytes {
-		return pubmempool.ErrMempoolIsFull{
+		return pkgmempool.ErrMempoolIsFull{
 			NumTxs:      numTxs,
 			MaxTxs:      txmp.config.Size,
 			TxsBytes:    sizeBytes,

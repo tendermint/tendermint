@@ -4,20 +4,20 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/internal/p2p"
-	"github.com/tendermint/tendermint/types"
+	pkgp2p "github.com/tendermint/tendermint/pkg/p2p"
 )
 
 // knownAddress tracks information about a known network address
 // that is used to determine how viable an address is.
 type knownAddress struct {
-	Addr        *p2p.NetAddress `json:"addr"`
-	Src         *p2p.NetAddress `json:"src"`
-	Buckets     []int           `json:"buckets"`
-	Attempts    int32           `json:"attempts"`
-	BucketType  byte            `json:"bucket_type"`
-	LastAttempt time.Time       `json:"last_attempt"`
-	LastSuccess time.Time       `json:"last_success"`
-	LastBanTime time.Time       `json:"last_ban_time"`
+	Addr        *pkgp2p.NetAddress `json:"addr"`
+	Src         *pkgp2p.NetAddress `json:"src"`
+	Buckets     []int              `json:"buckets"`
+	Attempts    int32              `json:"attempts"`
+	BucketType  byte               `json:"bucket_type"`
+	LastAttempt time.Time          `json:"last_attempt"`
+	LastSuccess time.Time          `json:"last_success"`
+	LastBanTime time.Time          `json:"last_ban_time"`
 }
 
 func newKnownAddress(addr *p2p.NetAddress, src *p2p.NetAddress) *knownAddress {
@@ -31,7 +31,7 @@ func newKnownAddress(addr *p2p.NetAddress, src *p2p.NetAddress) *knownAddress {
 	}
 }
 
-func (ka *knownAddress) ID() types.NodeID {
+func (ka *knownAddress) ID() pkgp2p.NodeID {
 	return ka.Addr.ID
 }
 

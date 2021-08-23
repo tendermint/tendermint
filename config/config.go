@@ -13,7 +13,7 @@ import (
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/p2p"
 )
 
 const (
@@ -288,23 +288,23 @@ func (cfg BaseConfig) NodeKeyFile() string {
 }
 
 // LoadNodeKey loads NodeKey located in filePath.
-func (cfg BaseConfig) LoadNodeKeyID() (types.NodeID, error) {
+func (cfg BaseConfig) LoadNodeKeyID() (p2p.NodeID, error) {
 	jsonBytes, err := ioutil.ReadFile(cfg.NodeKeyFile())
 	if err != nil {
 		return "", err
 	}
-	nodeKey := types.NodeKey{}
+	nodeKey := p2p.NodeKey{}
 	err = tmjson.Unmarshal(jsonBytes, &nodeKey)
 	if err != nil {
 		return "", err
 	}
-	nodeKey.ID = types.NodeIDFromPubKey(nodeKey.PubKey())
+	nodeKey.ID = p2p.NodeIDFromPubKey(nodeKey.PubKey())
 	return nodeKey.ID, nil
 }
 
 // LoadOrGenNodeKey attempts to load the NodeKey from the given filePath. If
 // the file does not exist, it generates and saves a new NodeKey.
-func (cfg BaseConfig) LoadOrGenNodeKeyID() (types.NodeID, error) {
+func (cfg BaseConfig) LoadOrGenNodeKeyID() (p2p.NodeID, error) {
 	if tmos.FileExists(cfg.NodeKeyFile()) {
 		nodeKey, err := cfg.LoadNodeKeyID()
 		if err != nil {
@@ -313,7 +313,7 @@ func (cfg BaseConfig) LoadOrGenNodeKeyID() (types.NodeID, error) {
 		return nodeKey, nil
 	}
 
-	nodeKey := types.GenNodeKey()
+	nodeKey := p2p.GenNodeKey()
 
 	if err := nodeKey.SaveAs(cfg.NodeKeyFile()); err != nil {
 		return "", err
