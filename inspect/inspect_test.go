@@ -577,7 +577,7 @@ func requireConnect(t testing.TB, addr string, retries int) {
 			return
 		}
 		// FIXME attempt to yield and let the other goroutine continue execution.
-		time.Sleep(time.Microsecond)
+		time.Sleep(time.Microsecond * 100)
 	}
 	t.Fatalf("unable to connect to server %s after %d tries: %s", addr, retries, err)
 }
