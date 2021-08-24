@@ -58,6 +58,11 @@ type peers interface {
 	Peers() p2p.IPeerSet
 }
 
+type consensusReactor interface {
+	WaitSync() bool
+	GetPeerState(peerID types.NodeID) (*consensus.PeerState, bool)
+}
+
 type peerManager interface {
 	Peers() []types.NodeID
 	Addresses(types.NodeID) []p2p.NodeAddress
@@ -72,11 +77,12 @@ type Environment struct {
 	ProxyAppMempool proxy.AppConnMempool
 
 	// interfaces defined in types and above
-	StateStore     sm.Store
-	BlockStore     sm.BlockStore
-	EvidencePool   sm.EvidencePool
-	ConsensusState consensusState
-	P2PPeers       peers
+	StateStore       sm.Store
+	BlockStore       sm.BlockStore
+	EvidencePool     sm.EvidencePool
+	ConsensusState   consensusState
+	ConsensusReactor consensusReactor
+	P2PPeers         peers
 
 	// Legacy p2p stack
 	P2PTransport transport
@@ -88,7 +94,6 @@ type Environment struct {
 	PubKey           crypto.PubKey
 	GenDoc           *types.GenesisDoc // cache the genesis structure
 	EventSinks       []indexer.EventSink
-	ConsensusReactor *consensus.Reactor
 	EventBus         *types.EventBus // thread safe
 	Mempool          mempl.Mempool
 	BlockSyncReactor consensus.BlockSyncReactor
