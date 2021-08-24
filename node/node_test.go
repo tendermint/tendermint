@@ -522,7 +522,7 @@ func TestNodeSetEventSink(t *testing.T) {
 		eventBus, err := createAndStartEventBus(logger)
 		require.NoError(t, err)
 
-		genDoc, err := types.GenesisDocFromFile(config.GenesisFile())
+		genDoc, err := consensus.GenesisDocFromFile(config.GenesisFile())
 		require.NoError(t, err)
 
 		indexService, eventSinks, err := createAndStartIndexerService(config,

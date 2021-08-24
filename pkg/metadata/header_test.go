@@ -50,7 +50,7 @@ func TestHeaderHash(t *testing.T) {
 			LastResultsHash:    tmhash.Sum([]byte("last_results_hash")),
 			EvidenceHash:       tmhash.Sum([]byte("evidence_hash")),
 			ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
-		}, hexBytesFromString("F740121F553B5418C3EFBD343C2DBFE9E007BB67B0D020A0741374BAB65242A4")},
+		}, hexBytesFromString("B8C1FA74E943A05664AD19C97D6D89EED19400D6749D912C2F3A4AA15B3D8E92")},
 		{"nil header yields nil", nil, nil},
 		{"nil ValidatorsHash yields nil", &metadata.Header{
 			Version:            version.Consensus{Block: 1, App: 2},
@@ -132,11 +132,14 @@ func TestMaxHeaderBytes(t *testing.T) {
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
 
 	h := metadata.Header{
-		Version:            version.Consensus{Block: math.MaxInt64, App: math.MaxInt64},
-		ChainID:            maxChainID,
-		Height:             math.MaxInt64,
-		Time:               timestamp,
-		LastBlockID:        metadata.BlockID{make([]byte, tmhash.Size), metadata.PartSetHeader{math.MaxInt32, make([]byte, tmhash.Size)}},
+		Version: version.Consensus{Block: math.MaxInt64, App: math.MaxInt64},
+		ChainID: maxChainID,
+		Height:  math.MaxInt64,
+		Time:    timestamp,
+		LastBlockID: metadata.BlockID{
+			Hash:          make([]byte, tmhash.Size),
+			PartSetHeader: metadata.PartSetHeader{math.MaxInt32, make([]byte, tmhash.Size)},
+		},
 		LastCommitHash:     tmhash.Sum([]byte("last_commit_hash")),
 		DataHash:           tmhash.Sum([]byte("data_hash")),
 		ValidatorsHash:     tmhash.Sum([]byte("validators_hash")),

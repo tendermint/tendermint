@@ -12,6 +12,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/pkg/consensus"
 	"github.com/tendermint/tendermint/pkg/metadata"
@@ -147,7 +148,10 @@ func TestProposalValidateBasic(t *testing.T) {
 			p.Signature = make([]byte, metadata.MaxSignatureSize+1)
 		}, true},
 	}
-	blockID := metadata.BlockID{tmhash.Sum([]byte("blockhash")), metadata.PartSetHeader{math.MaxInt32, tmhash.Sum([]byte("partshash"))}}
+	blockID := metadata.BlockID{
+		Hash:          tmhash.Sum([]byte("blockhash")),
+		PartSetHeader: metadata.PartSetHeader{math.MaxInt32, tmhash.Sum([]byte("partshash"))},
+	}
 
 	for _, tc := range testCases {
 		tc := tc
@@ -166,7 +170,7 @@ func TestProposalValidateBasic(t *testing.T) {
 }
 
 func TestProposalProtoBuf(t *testing.T) {
-	proposal := consensus.NewProposal(1, 2, 3, metadata.BlockID{[]byte("hash"), metadata.PartSetHeader{2, []byte("part_set_hash")}})
+	proposal := consensus.NewProposal(1, 2, 3, factory.MakeBlockID())
 	proposal.Signature = []byte("sig")
 	proposal2 := consensus.NewProposal(1, 2, 3, metadata.BlockID{})
 
@@ -180,12 +184,12 @@ func TestProposalProtoBuf(t *testing.T) {
 		{"empty proposal failure validatebasic", &consensus.Proposal{}, false},
 		{"nil proposal", nil, false},
 	}
-	for _, tc := range testCases {
+	for idx, tc := range testCases {
 		protoProposal := tc.p1.ToProto()
 
 		p, err := consensus.ProposalFromProto(protoProposal)
 		if tc.expPass {
-			require.NoError(t, err)
+			require.NoError(t, err, idx)
 			require.Equal(t, tc.p1, p, tc.msg)
 		} else {
 			require.Error(t, err)

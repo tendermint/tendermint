@@ -50,7 +50,7 @@ type Local struct {
 // local RPC client constructor needs to build a local client.
 type NodeService interface {
 	RPCEnvironment() *rpccore.Environment
-	EventBus() *types.EventBus
+	EventBus() *events.EventBus
 }
 
 // New configures a client that calls the Node directly.

@@ -67,7 +67,7 @@ func TestBlockIDValidateBasic(t *testing.T) {
 }
 
 func TestBlockIDProtoBuf(t *testing.T) {
-	blockID := test.MakeBlockIDWithHash([]byte("hash"))
+	blockID := test.MakeBlockIDFromBytes([]byte("hash"))
 	testCases := []struct {
 		msg     string
 		bid1    *metadata.BlockID

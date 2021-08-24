@@ -24,7 +24,8 @@ import (
 
 const chainID = "chain-id"
 
-func dialer(pv consensus.PrivValidator, logger log.Logger) (*grpc.Server, func(context.Context, string) (net.Conn, error)) {
+func dialer(pv consensus.PrivValidator, logger log.Logger,
+) (*grpc.Server, func(context.Context, string) (net.Conn, error)) {
 	listener := bufconn.Listen(1024 * 1024)
 
 	server := grpc.NewServer()

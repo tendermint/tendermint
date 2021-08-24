@@ -670,7 +670,8 @@ func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID metadata.Blo
 
 // VerifyCommitLightTrusting verifies that trustLevel of the validator set signed
 // this commit.
-func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *metadata.Commit, trustLevel tmmath.Fraction) error {
+func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *metadata.Commit,
+	trustLevel tmmath.Fraction) error {
 	return VerifyCommitLightTrusting(chainID, vals, commit, trustLevel)
 }
 

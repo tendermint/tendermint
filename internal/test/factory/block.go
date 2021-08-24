@@ -36,12 +36,16 @@ func MakeBlockID() metadata.BlockID {
 	return MakeBlockIDWithHash(RandomHash())
 }
 
+func MakeBlockIDFromBytes(bytes []byte) metadata.BlockID {
+	return MakeBlockIDWithHash(tmhash.Sum(bytes))
+}
+
 func MakeBlockIDWithHash(hash []byte) metadata.BlockID {
 	return metadata.BlockID{
 		Hash: hash,
 		PartSetHeader: metadata.PartSetHeader{
 			Total: 100,
-			Hash:  RandomHash(),
+			Hash:  tmhash.Sum([]byte("part_set_header")),
 		},
 	}
 }

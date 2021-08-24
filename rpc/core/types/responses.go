@@ -149,8 +149,8 @@ type ResultDialPeers struct {
 
 // A peer
 type Peer struct {
-	ID  types.NodeID `json:"node_id"`
-	URL string       `json:"url"`
+	ID  p2ptypes.NodeID `json:"node_id"`
+	URL string          `json:"url"`
 }
 
 // Validators for a height.

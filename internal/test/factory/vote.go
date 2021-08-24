@@ -57,7 +57,10 @@ func RandVoteSet(
 	return consensus.NewVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
 }
 
-func RandValidatorPrivValSet(numValidators int, votingPower int64) (*consensus.ValidatorSet, []consensus.PrivValidator) {
+func RandValidatorPrivValSet(
+	numValidators int,
+	votingPower int64,
+) (*consensus.ValidatorSet, []consensus.PrivValidator) {
 	var (
 		valz           = make([]*consensus.Validator, numValidators)
 		privValidators = make([]consensus.PrivValidator, numValidators)

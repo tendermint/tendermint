@@ -37,8 +37,8 @@ func TestEvidenceList(t *testing.T) {
 
 func randomDuplicateVoteEvidence(t *testing.T) *evidence.DuplicateVoteEvidence {
 	val := consensus.NewMockPV()
-	blockID := test.MakeBlockIDWithHash([]byte("blockhash"))
-	blockID2 := test.MakeBlockIDWithHash([]byte("blockhash2"))
+	blockID := test.MakeBlockIDFromBytes([]byte("blockhash"))
+	blockID2 := test.MakeBlockIDFromBytes([]byte("blockhash2"))
 	const chainID = "mychain"
 	return &evidence.DuplicateVoteEvidence{
 		VoteA:            makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime),
@@ -59,8 +59,8 @@ func TestDuplicateVoteEvidence(t *testing.T) {
 
 func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 	val := consensus.NewMockPV()
-	blockID := test.MakeBlockIDWithHash(tmhash.Sum([]byte("blockhash")))
-	blockID2 := test.MakeBlockIDWithHash(tmhash.Sum([]byte("blockhash2")))
+	blockID := test.MakeBlockIDFromBytes(tmhash.Sum([]byte("blockhash")))
+	blockID2 := test.MakeBlockIDFromBytes(tmhash.Sum([]byte("blockhash2")))
 	const chainID = "mychain"
 
 	testCases := []struct {
@@ -104,7 +104,7 @@ func TestLightClientAttackEvidenceBasic(t *testing.T) {
 	voteSet, valSet, privVals := test.RandVoteSet(height, 1, tmproto.PrecommitType, nValidators, 1)
 	header := makeHeaderRandom()
 	header.Height = height
-	blockID := test.MakeBlockIDWithHash(tmhash.Sum([]byte("blockhash")))
+	blockID := test.MakeBlockIDFromBytes(tmhash.Sum([]byte("blockhash")))
 	commit, err := test.MakeCommit(blockID, height, 1, voteSet, privVals, defaultVoteTime)
 	require.NoError(t, err)
 	lcae := &evidence.LightClientAttackEvidence{
@@ -236,9 +236,8 @@ func TestMockEvidenceValidateBasic(t *testing.T) {
 	assert.Nil(t, goodEvidence.ValidateBasic())
 }
 
-func makeVote(
-	t *testing.T, val consensus.PrivValidator, chainID string, valIndex int32, height int64, round int32, step int, blockID metadata.BlockID,
-	time time.Time) *consensus.Vote {
+func makeVote(t *testing.T, val consensus.PrivValidator, chainID string, valIndex int32,
+	height int64, round int32, step int, blockID metadata.BlockID, time time.Time) *consensus.Vote {
 	pubKey, err := val.GetPubKey(context.Background())
 	require.NoError(t, err)
 	v := &consensus.Vote{
@@ -378,15 +377,15 @@ func TestEvidenceVectors(t *testing.T) {
 	}{
 		{"duplicateVoteEvidence",
 			evidence.EvidenceList{&evidence.DuplicateVoteEvidence{VoteA: v2, VoteB: v}},
-			"a9ce28d13bb31001fc3e5b7927051baf98f86abdbd64377643a304164c826923",
+			"71fe3d5d3d38e6c28afa7c57ac981178df7817e0ce7b76c41bbb03e5559a8c01",
 		},
 		{"LightClientAttackEvidence",
 			evidence.EvidenceList{lcae},
-			"2f8782163c3905b26e65823ababc977fe54e97b94e60c0360b1e4726b668bb8e",
+			"c4cd12cabaf4159240902766e43997f70ad90b47e01a9f5cf0f1b145e1c75779",
 		},
 		{"LightClientAttackEvidence & DuplicateVoteEvidence",
 			evidence.EvidenceList{&evidence.DuplicateVoteEvidence{VoteA: v2, VoteB: v}, lcae},
-			"eedb4b47d6dbc9d43f53da8aa50bb826e8d9fc7d897da777c8af6a04aa74163e",
+			"735a5b042e6b350711f5296eabbc4688bb5f3b57829edc14c4e9f794361216ef",
 		},
 	}
 

@@ -599,7 +599,10 @@ func ExecCommitBlock(
 			return nil, err
 		}
 
-		blockID := metadata.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(metadata.BlockPartSizeBytes).Header()}
+		blockID := metadata.BlockID{
+			Hash:          block.Hash(),
+			PartSetHeader: block.MakePartSet(metadata.BlockPartSizeBytes).Header(),
+		}
 		fireEvents(be.logger, be.eventBus, block, blockID, abciResponses, validatorUpdates)
 	}
 

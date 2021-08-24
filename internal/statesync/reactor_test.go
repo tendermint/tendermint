@@ -446,7 +446,7 @@ func TestReactor_Backfill(t *testing.T) {
 
 			trackingHeight := startHeight
 			rts.stateStore.On("SaveValidatorSets", mock.AnythingOfType("int64"), mock.AnythingOfType("int64"),
-				mock.AnythingOfType("*types.ValidatorSet")).Return(func(lh, uh int64, vals *consensus.ValidatorSet) error {
+				mock.AnythingOfType("*consensus.ValidatorSet")).Return(func(lh, uh int64, vals *consensus.ValidatorSet) error {
 				require.Equal(t, trackingHeight, lh)
 				require.Equal(t, lh, uh)
 				require.GreaterOrEqual(t, lh, stopHeight)

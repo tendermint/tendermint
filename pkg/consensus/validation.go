@@ -91,7 +91,8 @@ func VerifyCommitLight(chainID string, vals *ValidatorSet, blockID metadata.Bloc
 //
 // This method is primarily used by the light client and does not check all the
 // signatures.
-func VerifyCommitLightTrusting(chainID string, vals *ValidatorSet, commit *metadata.Commit, trustLevel tmmath.Fraction) error {
+func VerifyCommitLightTrusting(chainID string, vals *ValidatorSet, commit *metadata.Commit,
+	trustLevel tmmath.Fraction) error {
 	// sanity checks
 	if vals == nil {
 		return errors.New("nil validator set")
@@ -319,7 +320,8 @@ func verifyCommitSingle(
 	return nil
 }
 
-func verifyBasicValsAndCommit(vals *ValidatorSet, commit *metadata.Commit, height int64, blockID metadata.BlockID) error {
+func verifyBasicValsAndCommit(vals *ValidatorSet, commit *metadata.Commit, height int64,
+	blockID metadata.BlockID) error {
 	if vals == nil {
 		return errors.New("nil validator set")
 	}

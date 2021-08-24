@@ -40,7 +40,10 @@ func TestLightBlockValidateBasic(t *testing.T) {
 		{"valid light block", sh, vals, false},
 		{"hashes don't match", sh, vals2, true},
 		{"invalid validator set", sh, vals3, true},
-		{"invalid signed header", &metadata.SignedHeader{Header: header, Commit: test.MakeRandomCommit(time.Now())}, vals, true},
+		{"invalid signed header", &metadata.SignedHeader{
+			Header: header,
+			Commit: test.MakeRandomCommit(time.Now()),
+		}, vals, true},
 	}
 
 	for _, tc := range testCases {

@@ -49,7 +49,8 @@ func MakeCommit(blockID metadata.BlockID, height int64, round int32,
 	return voteSet.MakeCommit(), nil
 }
 
-func SignAddVote(privVal consensus.PrivValidator, vote *consensus.Vote, voteSet *consensus.VoteSet) (signed bool, err error) {
+func SignAddVote(privVal consensus.PrivValidator, vote *consensus.Vote,
+	voteSet *consensus.VoteSet) (signed bool, err error) {
 	v := vote.ToProto()
 	err = privVal.SignVote(context.Background(), voteSet.ChainID(), v)
 	if err != nil {

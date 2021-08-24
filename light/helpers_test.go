@@ -77,7 +77,8 @@ func (pkz privKeys) ToValidators(init, inc int64) *consensus.ValidatorSet {
 }
 
 // signHeader properly signs the header with all keys from first to last exclusive.
-func (pkz privKeys) signHeader(header *metadata.Header, valSet *consensus.ValidatorSet, first, last int) *metadata.Commit {
+func (pkz privKeys) signHeader(header *metadata.Header, valSet *consensus.ValidatorSet,
+	first, last int) *metadata.Commit {
 	commitSigs := make([]metadata.CommitSig, len(pkz))
 	for i := 0; i < len(pkz); i++ {
 		commitSigs[i] = metadata.NewCommitSigAbsent()
@@ -147,7 +148,8 @@ func genHeader(chainID string, height int64, bTime time.Time, txs mempool.Txs,
 
 // GenSignedHeader calls genHeader and signHeader and combines them into a SignedHeader.
 func (pkz privKeys) GenSignedHeader(chainID string, height int64, bTime time.Time, txs mempool.Txs,
-	valset, nextValset *consensus.ValidatorSet, appHash, consHash, resHash []byte, first, last int) *metadata.SignedHeader {
+	valset, nextValset *consensus.ValidatorSet, appHash, consHash, resHash []byte, first, last int,
+) *metadata.SignedHeader {
 
 	header := genHeader(chainID, height, bTime, txs, valset, nextValset, appHash, consHash, resHash)
 	return &metadata.SignedHeader{

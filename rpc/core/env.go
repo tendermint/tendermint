@@ -61,8 +61,8 @@ type peers interface {
 }
 
 type peerManager interface {
-	Peers() []types.NodeID
-	Addresses(types.NodeID) []p2p.NodeAddress
+	Peers() []p2ptypes.NodeID
+	Addresses(p2ptypes.NodeID) []p2p.NodeAddress
 }
 
 //----------------------------------------------

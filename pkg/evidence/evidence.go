@@ -87,7 +87,8 @@ var _ Evidence = &DuplicateVoteEvidence{}
 
 // NewDuplicateVoteEvidence creates DuplicateVoteEvidence with right ordering given
 // two conflicting votes. If one of the votes is nil, evidence returned is nil as well
-func NewDuplicateVoteEvidence(vote1, vote2 *consensus.Vote, blockTime time.Time, valSet *consensus.ValidatorSet) *DuplicateVoteEvidence {
+func NewDuplicateVoteEvidence(vote1, vote2 *consensus.Vote, blockTime time.Time,
+	valSet *consensus.ValidatorSet) *DuplicateVoteEvidence {
 	var voteA, voteB *consensus.Vote
 	if vote1 == nil || vote2 == nil || valSet == nil {
 		return nil
@@ -274,7 +275,7 @@ type LightClientAttackEvidence struct {
 	CommonHeight     int64
 
 	// abci specific information
-	ByzantineValidators []*consensus.Validator // validators in the validator set that misbehaved in creating the conflicting block
+	ByzantineValidators []*consensus.Validator // validators in the validator set that misbehaved
 	TotalVotingPower    int64                  // total voting power of the validator set at the common height
 	Timestamp           time.Time              // timestamp of the block at the common height
 }

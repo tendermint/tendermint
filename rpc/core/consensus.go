@@ -63,7 +63,7 @@ func (env *Environment) DumpConsensusState(ctx *rpctypes.Context) (*ctypes.Resul
 		peers := env.P2PPeers.Peers().List()
 		peerStates = make([]ctypes.PeerStateInfo, 0, len(peers))
 		for _, peer := range peers {
-			peerState, ok := peer.Get(types.PeerStateKey).(*cm.PeerState)
+			peerState, ok := peer.Get(consensus.PeerStateKey).(*cm.PeerState)
 			if !ok { // peer does not have a state yet
 				continue
 			}

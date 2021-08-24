@@ -14,7 +14,8 @@ import (
 
 func TestBlockMeta_ToProto(t *testing.T) {
 	h := test.MakeRandomHeader()
-	bi := metadata.BlockID{Hash: h.Hash(), PartSetHeader: metadata.PartSetHeader{Total: 123, Hash: tmrand.Bytes(tmhash.Size)}}
+	bi := metadata.BlockID{Hash: h.Hash(),
+		PartSetHeader: metadata.PartSetHeader{Total: 123, Hash: tmrand.Bytes(tmhash.Size)}}
 
 	bm := &block.BlockMeta{
 		BlockID:   bi,
@@ -51,7 +52,8 @@ func TestBlockMeta_ToProto(t *testing.T) {
 
 func TestBlockMeta_ValidateBasic(t *testing.T) {
 	h := test.MakeRandomHeader()
-	bi := metadata.BlockID{Hash: h.Hash(), PartSetHeader: metadata.PartSetHeader{Total: 123, Hash: tmrand.Bytes(tmhash.Size)}}
+	bi := metadata.BlockID{Hash: h.Hash(),
+		PartSetHeader: metadata.PartSetHeader{Total: 123, Hash: tmrand.Bytes(tmhash.Size)}}
 	bi2 := metadata.BlockID{Hash: tmrand.Bytes(tmhash.Size),
 		PartSetHeader: metadata.PartSetHeader{Total: 123, Hash: tmrand.Bytes(tmhash.Size)}}
 	bi3 := metadata.BlockID{Hash: []byte("incorrect hash"),
