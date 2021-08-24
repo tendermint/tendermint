@@ -144,7 +144,7 @@ func TestTxSearch(t *testing.T) {
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
 
-	var page int = 1
+	var page = 1
 	resultTxSearch, err := cli.TxSearch(context.Background(), testQuery, false, &page, &page, "")
 	require.NoError(t, err)
 	require.Len(t, resultTxSearch.Txs, 1)
@@ -576,7 +576,7 @@ func requireConnect(t testing.TB, addr string, retries int) {
 			conn.Close()
 			return
 		}
-		//FIXME attempt to yield and let the other goroutine continue execution.
+		// FIXME attempt to yield and let the other goroutine continue execution.
 		time.Sleep(time.Microsecond)
 	}
 	t.Fatalf("unable to connect to server %s after %d tries: %s", addr, retries, err)
