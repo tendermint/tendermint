@@ -18,7 +18,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// Server defines parameters for running an Inspect rpc server.
+// Server defines parameters for running an Inspector rpc server.
 type Server struct {
 	Addr    string // TCP address to listen on, ":http" if empty
 	Handler http.Handler
@@ -26,7 +26,7 @@ type Server struct {
 	Config  *config.RPCConfig
 }
 
-// Routes returns the set of routes used by the Inspect server.
+// Routes returns the set of routes used by the Inspector server.
 //
 //nolint: lll
 func Routes(cfg config.RPCConfig, s state.Store, bs state.BlockStore, es []indexer.EventSink, logger log.Logger) core.RoutesMap {
@@ -52,7 +52,7 @@ func Routes(cfg config.RPCConfig, s state.Store, bs state.BlockStore, es []index
 	}
 }
 
-// Handler returns the http.Handler configured for use with an Inspect server. Handler
+// Handler returns the http.Handler configured for use with an Inspector server. Handler
 // registers the routes on the http.Handler and also registers the websocket handler
 // and the CORS handler if specified by the configuration options.
 func Handler(rpcConfig *config.RPCConfig, routes core.RoutesMap, logger log.Logger) http.Handler {
@@ -102,7 +102,7 @@ func (waitSyncCheckerImpl) GetPeerState(peerID types.NodeID) (*consensus.PeerSta
 }
 
 // ListenAndServe listens on the address specified in srv.Addr and handles any
-// incoming requests over HTTP using the Inspect rpc handler specified on the server.
+// incoming requests over HTTP using the Inspector rpc handler specified on the server.
 func (srv *Server) ListenAndServe(ctx context.Context) error {
 	listener, err := server.Listen(srv.Addr, srv.Config.MaxOpenConnections)
 	if err != nil {
@@ -116,7 +116,7 @@ func (srv *Server) ListenAndServe(ctx context.Context) error {
 }
 
 // ListenAndServeTLS listens on the address specified in srv.Addr. ListenAndServeTLS handles
-// incoming requests over HTTPS using the Inspect rpc handler specified on the server.
+// incoming requests over HTTPS using the Inspector rpc handler specified on the server.
 func (srv *Server) ListenAndServeTLS(ctx context.Context, certFile, keyFile string) error {
 	listener, err := server.Listen(srv.Addr, srv.Config.MaxOpenConnections)
 	if err != nil {

@@ -20,13 +20,13 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// Inspect manages an RPC service that exports methods to debug a failed node.
+// Inspector manages an RPC service that exports methods to debug a failed node.
 // After a node shuts down due to a consensus failure, it will no longer start
-// up its state cannot easily be inspected. An Inspect value provides a similar interface
+// up its state cannot easily be inspected. An Inspector value provides a similar interface
 // to the node, using the underlying Tendermint data stores, without bringing up
-// any other components. A caller can query the Inspect service to inspect the
+// any other components. A caller can query the Inspector service to inspect the
 // persisted state and debug the failure.
-type Inspect struct {
+type Inspector struct {
 	routes rpccore.RoutesMap
 
 	config *config.RPCConfig
@@ -36,19 +36,19 @@ type Inspect struct {
 	logger         log.Logger
 }
 
-// New returns an Inspect that serves RPC on the specified BlockStore and StateStore.
-// The Inspect type does not modify the state or block stores.
+// New returns an Inspector that serves RPC on the specified BlockStore and StateStore.
+// The Inspector type does not modify the state or block stores.
 // The sinks are used to enable block and transaction querying via the RPC server.
-// The caller is responsible for starting and stopping the Inspect service.
+// The caller is responsible for starting and stopping the Inspector service.
 ///
 //nolint:lll
-func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, es []indexer.EventSink, logger log.Logger) *Inspect {
+func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, es []indexer.EventSink, logger log.Logger) *Inspector {
 	routes := rpc.Routes(*cfg, ss, bs, es, logger)
 	eb := types.NewEventBus()
 	eb.SetLogger(logger.With("module", "events"))
 	is := indexer.NewIndexerService(es, eb)
 	is.SetLogger(logger.With("module", "txindex"))
-	return &Inspect{
+	return &Inspector{
 		routes:         routes,
 		config:         cfg,
 		logger:         logger,
@@ -57,8 +57,8 @@ func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, es []indexe
 	}
 }
 
-// NewFromConfig constructs an Inspect using the values defined in the passed in config.
-func NewFromConfig(cfg *config.Config) (*Inspect, error) {
+// NewFromConfig constructs an Inspector using the values defined in the passed in config.
+func NewFromConfig(cfg *config.Config) (*Inspector, error) {
 	bsDB, err := config.DefaultDBProvider(&config.DBContext{ID: "blockstore", Config: cfg})
 	if err != nil {
 		return nil, err
@@ -81,9 +81,9 @@ func NewFromConfig(cfg *config.Config) (*Inspect, error) {
 	return New(cfg.RPC, bs, ss, sinks, logger), nil
 }
 
-// Run starts the Inspect servers and blocks until the servers shut down. The passed
+// Run starts the Inspector servers and blocks until the servers shut down. The passed
 // in context is used to control the lifecycle of the servers.
-func (ins *Inspect) Run(ctx context.Context) error {
+func (ins *Inspector) Run(ctx context.Context) error {
 	err := ins.eventBus.Start()
 	if err != nil {
 		return fmt.Errorf("error starting event bus: %s", err)
