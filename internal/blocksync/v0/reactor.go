@@ -31,10 +31,10 @@ var (
 	// TODO: Remove once p2p refactor is complete.
 	// ref: https://github.com/tendermint/tendermint/issues/5670
 	ChannelShims = map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
-		BlockchainChannel: {
+		BlockSyncChannel: {
 			MsgType: new(bcproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(BlockchainChannel),
+				ID:                  byte(BlockSyncChannel),
 				Priority:            5,
 				SendQueueCapacity:   1000,
 				RecvBufferCapacity:  1024,
@@ -46,8 +46,8 @@ var (
 )
 
 const (
-	// BlockchainChannel is a channel for blocks and status updates
-	BlockchainChannel = p2p.ChannelID(0x40)
+	// BlockSyncChannel is a channel for blocks and status updates
+	BlockSyncChannel = p2p.ChannelID(0x40)
 
 	trySyncIntervalMS = 10
 
@@ -62,7 +62,7 @@ const (
 )
 
 type consensusReactor interface {
-	// For when we switch from blockchain reactor and block sync to the consensus
+	// For when we switch from block sync reactor to the consensus
 	// machine.
 	SwitchToConsensus(state sm.State, skipWAL bool)
 }
@@ -89,17 +89,17 @@ type Reactor struct {
 	consReactor consensusReactor
 	blockSync   *tmSync.AtomicBool
 
-	blockchainCh *p2p.Channel
-	// blockchainOutBridgeCh defines a channel that acts as a bridge between sending Envelope
-	// messages that the reactor will consume in processBlockchainCh and receiving messages
+	blockSyncCh *p2p.Channel
+	// blockSyncOutBridgeCh defines a channel that acts as a bridge between sending Envelope
+	// messages that the reactor will consume in processBlockSyncCh and receiving messages
 	// from the peer updates channel and other goroutines. We do this instead of directly
-	// sending on blockchainCh.Out to avoid race conditions in the case where other goroutines
-	// send Envelopes directly to the to blockchainCh.Out channel, since processBlockchainCh
-	// may close the blockchainCh.Out channel at the same time that other goroutines send to
-	// blockchainCh.Out.
-	blockchainOutBridgeCh chan p2p.Envelope
-	peerUpdates           *p2p.PeerUpdates
-	closeCh               chan struct{}
+	// sending on blockSyncCh.Out to avoid race conditions in the case where other goroutines
+	// send Envelopes directly to the to blockSyncCh.Out channel, since processBlockSyncCh
+	// may close the blockSyncCh.Out channel at the same time that other goroutines send to
+	// blockSyncCh.Out.
+	blockSyncOutBridgeCh chan p2p.Envelope
+	peerUpdates          *p2p.PeerUpdates
+	closeCh              chan struct{}
 
 	requestsCh <-chan BlockRequest
 	errorsCh   <-chan peerError
@@ -121,7 +121,7 @@ func NewReactor(
 	blockExec *sm.BlockExecutor,
 	store *store.BlockStore,
 	consReactor consensusReactor,
-	blockchainCh *p2p.Channel,
+	blockSyncCh *p2p.Channel,
 	peerUpdates *p2p.PeerUpdates,
 	blockSync bool,
 	metrics *cons.Metrics,
@@ -139,23 +139,23 @@ func NewReactor(
 	errorsCh := make(chan peerError, maxPeerErrBuffer) // NOTE: The capacity should be larger than the peer count.
 
 	r := &Reactor{
-		initialState:          state,
-		blockExec:             blockExec,
-		store:                 store,
-		pool:                  NewBlockPool(startHeight, requestsCh, errorsCh),
-		consReactor:           consReactor,
-		blockSync:             tmSync.NewBool(blockSync),
-		requestsCh:            requestsCh,
-		errorsCh:              errorsCh,
-		blockchainCh:          blockchainCh,
-		blockchainOutBridgeCh: make(chan p2p.Envelope),
-		peerUpdates:           peerUpdates,
-		closeCh:               make(chan struct{}),
-		metrics:               metrics,
-		syncStartTime:         time.Time{},
+		initialState:         state,
+		blockExec:            blockExec,
+		store:                store,
+		pool:                 NewBlockPool(startHeight, requestsCh, errorsCh),
+		consReactor:          consReactor,
+		blockSync:            tmSync.NewBool(blockSync),
+		requestsCh:           requestsCh,
+		errorsCh:             errorsCh,
+		blockSyncCh:          blockSyncCh,
+		blockSyncOutBridgeCh: make(chan p2p.Envelope),
+		peerUpdates:          peerUpdates,
+		closeCh:              make(chan struct{}),
+		metrics:              metrics,
+		syncStartTime:        time.Time{},
 	}
 
-	r.BaseService = *service.NewBaseService(logger, "Blockchain", r)
+	r.BaseService = *service.NewBaseService(logger, "BlockSync", r)
 	return r, nil
 }
 
@@ -176,7 +176,7 @@ func (r *Reactor) OnStart() error {
 		go r.poolRoutine(false)
 	}
 
-	go r.processBlockchainCh()
+	go r.processBlockSyncCh()
 	go r.processPeerUpdates()
 
 	return nil
@@ -201,7 +201,7 @@ func (r *Reactor) OnStop() {
 	// Wait for all p2p Channels to be closed before returning. This ensures we
 	// can easily reason about synchronization of all p2p Channels and ensure no
 	// panics will occur.
-	<-r.blockchainCh.Done()
+	<-r.blockSyncCh.Done()
 	<-r.peerUpdates.Done()
 }
 
@@ -216,7 +216,7 @@ func (r *Reactor) respondToPeer(msg *bcproto.BlockRequest, peerID p2ptypes.NodeI
 			return
 		}
 
-		r.blockchainCh.Out <- p2p.Envelope{
+		r.blockSyncCh.Out <- p2p.Envelope{
 			To:      peerID,
 			Message: &bcproto.BlockResponse{Block: blockProto},
 		}
@@ -225,16 +225,16 @@ func (r *Reactor) respondToPeer(msg *bcproto.BlockRequest, peerID p2ptypes.NodeI
 	}
 
 	r.Logger.Info("peer requesting a block we do not have", "peer", peerID, "height", msg.Height)
-	r.blockchainCh.Out <- p2p.Envelope{
+	r.blockSyncCh.Out <- p2p.Envelope{
 		To:      peerID,
 		Message: &bcproto.NoBlockResponse{Height: msg.Height},
 	}
 }
 
-// handleBlockchainMessage handles envelopes sent from peers on the
-// BlockchainChannel. It returns an error only if the Envelope.Message is unknown
+// handleBlockSyncMessage handles envelopes sent from peers on the
+// BlockSyncChannel. It returns an error only if the Envelope.Message is unknown
 // for this channel. This should never be called outside of handleMessage.
-func (r *Reactor) handleBlockchainMessage(envelope p2p.Envelope) error {
+func (r *Reactor) handleBlockSyncMessage(envelope p2p.Envelope) error {
 	logger := r.Logger.With("peer", envelope.From)
 
 	switch msg := envelope.Message.(type) {
@@ -251,7 +251,7 @@ func (r *Reactor) handleBlockchainMessage(envelope p2p.Envelope) error {
 		r.pool.AddBlock(envelope.From, block, block.Size())
 
 	case *bcproto.StatusRequest:
-		r.blockchainCh.Out <- p2p.Envelope{
+		r.blockSyncCh.Out <- p2p.Envelope{
 			To: envelope.From,
 			Message: &bcproto.StatusResponse{
 				Height: r.store.Height(),
@@ -290,8 +290,8 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	r.Logger.Debug("received message", "message", envelope.Message, "peer", envelope.From)
 
 	switch chID {
-	case BlockchainChannel:
-		err = r.handleBlockchainMessage(envelope)
+	case BlockSyncChannel:
+		err = r.handleBlockSyncMessage(envelope)
 
 	default:
 		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", chID, envelope)
@@ -300,30 +300,30 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	return err
 }
 
-// processBlockchainCh initiates a blocking process where we listen for and handle
-// envelopes on the BlockchainChannel and blockchainOutBridgeCh. Any error encountered during
-// message execution will result in a PeerError being sent on the BlockchainChannel.
+// processBlockSyncCh initiates a blocking process where we listen for and handle
+// envelopes on the BlockSyncChannel and blockSyncOutBridgeCh. Any error encountered during
+// message execution will result in a PeerError being sent on the BlockSyncChannel.
 // When the reactor is stopped, we will catch the signal and close the p2p Channel
 // gracefully.
-func (r *Reactor) processBlockchainCh() {
-	defer r.blockchainCh.Close()
+func (r *Reactor) processBlockSyncCh() {
+	defer r.blockSyncCh.Close()
 
 	for {
 		select {
-		case envelope := <-r.blockchainCh.In:
-			if err := r.handleMessage(r.blockchainCh.ID, envelope); err != nil {
-				r.Logger.Error("failed to process message", "ch_id", r.blockchainCh.ID, "envelope", envelope, "err", err)
-				r.blockchainCh.Error <- p2p.PeerError{
+		case envelope := <-r.blockSyncCh.In:
+			if err := r.handleMessage(r.blockSyncCh.ID, envelope); err != nil {
+				r.Logger.Error("failed to process message", "ch_id", r.blockSyncCh.ID, "envelope", envelope, "err", err)
+				r.blockSyncCh.Error <- p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
 				}
 			}
 
-		case envelope := <-r.blockchainOutBridgeCh:
-			r.blockchainCh.Out <- envelope
+		case envelope := <-r.blockSyncOutBridgeCh:
+			r.blockSyncCh.Out <- envelope
 
 		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on blockchain channel; closing...")
+			r.Logger.Debug("stopped listening on block sync channel; closing...")
 			return
 
 		}
@@ -342,7 +342,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	switch peerUpdate.Status {
 	case p2p.PeerStatusUp:
 		// send a status update the newly added peer
-		r.blockchainOutBridgeCh <- p2p.Envelope{
+		r.blockSyncOutBridgeCh <- p2p.Envelope{
 			To: peerUpdate.NodeID,
 			Message: &bcproto.StatusResponse{
 				Base:   r.store.Base(),
@@ -408,13 +408,13 @@ func (r *Reactor) requestRoutine() {
 			return
 
 		case request := <-r.requestsCh:
-			r.blockchainOutBridgeCh <- p2p.Envelope{
+			r.blockSyncOutBridgeCh <- p2p.Envelope{
 				To:      request.PeerID,
 				Message: &bcproto.BlockRequest{Height: request.Height},
 			}
 
 		case pErr := <-r.errorsCh:
-			r.blockchainCh.Error <- p2p.PeerError{
+			r.blockSyncCh.Error <- p2p.PeerError{
 				NodeID: pErr.peerID,
 				Err:    pErr.err,
 			}
@@ -425,7 +425,7 @@ func (r *Reactor) requestRoutine() {
 			go func() {
 				defer r.poolWG.Done()
 
-				r.blockchainOutBridgeCh <- p2p.Envelope{
+				r.blockSyncOutBridgeCh <- p2p.Envelope{
 					Broadcast: true,
 					Message:   &bcproto.StatusRequest{},
 				}
@@ -556,14 +556,14 @@ FOR_LOOP:
 				// NOTE: We've already removed the peer's request, but we still need
 				// to clean up the rest.
 				peerID := r.pool.RedoRequest(first.Height)
-				r.blockchainCh.Error <- p2p.PeerError{
+				r.blockSyncCh.Error <- p2p.PeerError{
 					NodeID: peerID,
 					Err:    err,
 				}
 
 				peerID2 := r.pool.RedoRequest(second.Height)
 				if peerID2 != peerID {
-					r.blockchainCh.Error <- p2p.PeerError{
+					r.blockSyncCh.Error <- p2p.PeerError{
 						NodeID: peerID2,
 						Err:    err,
 					}

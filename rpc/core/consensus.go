@@ -1,6 +1,8 @@
 package core
 
 import (
+	"errors"
+
 	cm "github.com/tendermint/tendermint/internal/consensus"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/pkg/consensus"
@@ -54,24 +56,56 @@ func (env *Environment) Validators(
 // More: https://docs.tendermint.com/master/rpc/#/Info/dump_consensus_state
 func (env *Environment) DumpConsensusState(ctx *rpctypes.Context) (*ctypes.ResultDumpConsensusState, error) {
 	// Get Peer consensus states.
-	peers := env.P2PPeers.Peers().List()
-	peerStates := make([]ctypes.PeerStateInfo, len(peers))
-	for i, peer := range peers {
-		peerState, ok := peer.Get(consensus.PeerStateKey).(*cm.PeerState)
-		if !ok { // peer does not have a state yet
-			continue
+
+	var peerStates []ctypes.PeerStateInfo
+	switch {
+	case env.P2PPeers != nil:
+		peers := env.P2PPeers.Peers().List()
+		peerStates = make([]ctypes.PeerStateInfo, 0, len(peers))
+		for _, peer := range peers {
+			peerState, ok := peer.Get(types.PeerStateKey).(*cm.PeerState)
+			if !ok { // peer does not have a state yet
+				continue
+			}
+			peerStateJSON, err := peerState.ToJSON()
+			if err != nil {
+				return nil, err
+			}
+			peerStates = append(peerStates, ctypes.PeerStateInfo{
+				// Peer basic info.
+				NodeAddress: peer.SocketAddr().String(),
+				// Peer consensus state.
+				PeerState: peerStateJSON,
+			})
 		}
-		peerStateJSON, err := peerState.ToJSON()
-		if err != nil {
-			return nil, err
+	case env.PeerManager != nil:
+		peers := env.PeerManager.Peers()
+		peerStates = make([]ctypes.PeerStateInfo, 0, len(peers))
+		for _, pid := range peers {
+			peerState, ok := env.ConsensusReactor.GetPeerState(pid)
+			if !ok {
+				continue
+			}
+
+			peerStateJSON, err := peerState.ToJSON()
+			if err != nil {
+				return nil, err
+			}
+
+			addr := env.PeerManager.Addresses(pid)
+			if len(addr) >= 1 {
+				peerStates = append(peerStates, ctypes.PeerStateInfo{
+					// Peer basic info.
+					NodeAddress: addr[0].String(),
+					// Peer consensus state.
+					PeerState: peerStateJSON,
+				})
+			}
 		}
-		peerStates[i] = ctypes.PeerStateInfo{
-			// Peer basic info.
-			NodeAddress: peer.SocketAddr().String(),
-			// Peer consensus state.
-			PeerState: peerStateJSON,
-		}
+	default:
+		return nil, errors.New("no peer system configured")
 	}
+
 	// Get self round state.
 	roundState, err := env.ConsensusState.GetRoundStateJSON()
 	if err != nil {

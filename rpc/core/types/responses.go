@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/pkg/abci"
 	types "github.com/tendermint/tendermint/pkg/block"
@@ -150,10 +149,8 @@ type ResultDialPeers struct {
 
 // A peer
 type Peer struct {
-	NodeInfo         p2ptypes.NodeInfo    `json:"node_info"`
-	IsOutbound       bool                 `json:"is_outbound"`
-	ConnectionStatus p2p.ConnectionStatus `json:"connection_status"`
-	RemoteIP         string               `json:"remote_ip"`
+	ID  types.NodeID `json:"node_id"`
+	URL string       `json:"url"`
 }
 
 // Validators for a height.
