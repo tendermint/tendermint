@@ -33,7 +33,7 @@ func InjectEvidence(testnet *e2e.Testnet, amount int) error {
 	var targetNode *e2e.Node
 
 	for i := 0; i < len(testnet.Nodes)-1; i++ {
-		targetNode = testnet.Nodes[rand.Intn(len(testnet.Nodes))]
+		targetNode = testnet.Nodes[rand.Intn(len(testnet.Nodes))] // nolint: gosec
 		if targetNode.Mode == e2e.ModeSeed {
 			targetNode = nil
 			continue
