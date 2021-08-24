@@ -83,8 +83,9 @@ func TestBlock(t *testing.T) {
 		defer wg.Done()
 		require.NoError(t, d.Run(ctx))
 	}()
-	// force context switch
-	time.Sleep(10 * time.Millisecond)
+	// FIXME: used to induce context switch.
+	// Determine more deterministic method for prompting a context switch
+	time.Sleep(time.Microsecond)
 	requireConnect(t, rpcConfig.ListenAddress, 15)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
@@ -208,8 +209,9 @@ func TestConsensusParams(t *testing.T) {
 		defer wg.Done()
 		require.NoError(t, d.Run(ctx))
 	}()
-	// force context switch
-	time.Sleep(10 * time.Millisecond)
+	// FIXME: used to induce context switch.
+	// Determine more deterministic method for prompting a context switch
+	time.Sleep(time.Microsecond)
 	requireConnect(t, rpcConfig.ListenAddress, 15)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
@@ -254,8 +256,9 @@ func TestBlockResults(t *testing.T) {
 		defer wg.Done()
 		require.NoError(t, d.Run(ctx))
 	}()
-	// force context switch
-	time.Sleep(10 * time.Millisecond)
+	// FIXME: used to induce context switch.
+	// Determine more deterministic method for prompting a context switch
+	time.Sleep(time.Microsecond)
 	requireConnect(t, rpcConfig.ListenAddress, 15)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
@@ -295,8 +298,9 @@ func TestCommit(t *testing.T) {
 		defer wg.Done()
 		require.NoError(t, d.Run(ctx))
 	}()
-	// force context switch
-	time.Sleep(10 * time.Millisecond)
+	// FIXME: used to induce context switch.
+	// Determine more deterministic method for prompting a context switch
+	time.Sleep(time.Microsecond)
 	requireConnect(t, rpcConfig.ListenAddress, 15)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
@@ -342,8 +346,9 @@ func TestBlockByHash(t *testing.T) {
 		defer wg.Done()
 		require.NoError(t, d.Run(ctx))
 	}()
-	// force context switch
-	time.Sleep(10 * time.Millisecond)
+	// FIXME: used to induce context switch.
+	// Determine more deterministic method for prompting a context switch
+	time.Sleep(time.Microsecond)
 	requireConnect(t, rpcConfig.ListenAddress, 15)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
@@ -388,8 +393,9 @@ func TestBlockchain(t *testing.T) {
 		defer wg.Done()
 		require.NoError(t, d.Run(ctx))
 	}()
-	// force context switch
-	time.Sleep(10 * time.Millisecond)
+	// FIXME: used to induce context switch.
+	// Determine more deterministic method for prompting a context switch
+	time.Sleep(time.Microsecond)
 	requireConnect(t, rpcConfig.ListenAddress, 15)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
@@ -434,8 +440,9 @@ func TestValidators(t *testing.T) {
 		defer wg.Done()
 		require.NoError(t, d.Run(ctx))
 	}()
-	// force context switch
-	time.Sleep(10 * time.Millisecond)
+	// FIXME: used to induce context switch.
+	// Determine more deterministic method for prompting a context switch
+	time.Sleep(time.Microsecond)
 	requireConnect(t, rpcConfig.ListenAddress, 15)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
@@ -488,8 +495,9 @@ func TestBlockSearch(t *testing.T) {
 		defer wg.Done()
 		require.NoError(t, d.Run(ctx))
 	}()
-	// force context switch
-	time.Sleep(10 * time.Millisecond)
+	// FIXME: used to induce context switch.
+	// Determine more deterministic method for prompting a context switch
+	time.Sleep(time.Microsecond)
 	requireConnect(t, rpcConfig.ListenAddress, 15)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
