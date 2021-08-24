@@ -35,8 +35,8 @@ type reactorTestSuite struct {
 	app      map[p2ptypes.NodeID]proxy.AppConns
 
 	blockSyncChannels map[p2ptypes.NodeID]*p2p.Channel
-	peerChans          map[p2ptypes.NodeID]chan p2p.PeerUpdate
-	peerUpdates        map[p2ptypes.NodeID]*p2p.PeerUpdates
+	peerChans         map[p2ptypes.NodeID]chan p2p.PeerUpdate
+	peerUpdates       map[p2ptypes.NodeID]*p2p.PeerUpdates
 
 	blockSync bool
 }
@@ -55,15 +55,15 @@ func setup(
 		"must specify at least one block height (nodes)")
 
 	rts := &reactorTestSuite{
-		logger:             log.TestingLogger().With("module", "blockchain", "testCase", t.Name()),
-		network:            p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
-		nodes:              make([]p2ptypes.NodeID, 0, numNodes),
-		reactors:           make(map[p2ptypes.NodeID]*Reactor, numNodes),
-		app:                make(map[p2ptypes.NodeID]proxy.AppConns, numNodes),
+		logger:            log.TestingLogger().With("module", "blockchain", "testCase", t.Name()),
+		network:           p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
+		nodes:             make([]p2ptypes.NodeID, 0, numNodes),
+		reactors:          make(map[p2ptypes.NodeID]*Reactor, numNodes),
+		app:               make(map[p2ptypes.NodeID]proxy.AppConns, numNodes),
 		blockSyncChannels: make(map[p2ptypes.NodeID]*p2p.Channel, numNodes),
-		peerChans:          make(map[p2ptypes.NodeID]chan p2p.PeerUpdate, numNodes),
-		peerUpdates:        make(map[p2ptypes.NodeID]*p2p.PeerUpdates, numNodes),
-		blockSync:          true,
+		peerChans:         make(map[p2ptypes.NodeID]chan p2p.PeerUpdate, numNodes),
+		peerUpdates:       make(map[p2ptypes.NodeID]*p2p.PeerUpdates, numNodes),
+		blockSync:         true,
 	}
 
 	chDesc := p2p.ChannelDescriptor{ID: byte(BlockSyncChannel)}
