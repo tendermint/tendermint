@@ -1,8 +1,8 @@
 package consensus
 
 import (
-	abci "github.com/tendermint/tendermint/abci/types"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/pkg/abci"
 )
 
 //-------------------------------------------------------

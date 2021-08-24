@@ -171,3 +171,8 @@ func ValidatorFromProto(vp *tmproto.Validator) (*Validator, error) {
 
 	return v, nil
 }
+
+type ValidatorInfo struct {
+	Address Address `json:"address"`
+	Index   int32   `json:"index"`
+}

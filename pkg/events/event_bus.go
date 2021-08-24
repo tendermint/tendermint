@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/pkg/abci"
 	"github.com/tendermint/tendermint/pkg/mempool"
 )
 
@@ -107,9 +107,9 @@ func (b *EventBus) Publish(eventValue string, eventData TMEventData) error {
 	ctx := context.Background()
 
 	tokens := strings.Split(EventTypeKey, ".")
-	event := types.Event{
+	event := abci.Event{
 		Type: tokens[0],
-		Attributes: []types.EventAttribute{
+		Attributes: []abci.EventAttribute{
 			{
 				Key:   tokens[1],
 				Value: eventValue,
@@ -117,7 +117,7 @@ func (b *EventBus) Publish(eventValue string, eventData TMEventData) error {
 		},
 	}
 
-	return b.pubsub.PublishWithEvents(ctx, eventData, []types.Event{event})
+	return b.pubsub.PublishWithEvents(ctx, eventData, []abci.Event{event})
 }
 
 func (b *EventBus) PublishEventNewBlock(data EventDataNewBlock) error {
@@ -174,9 +174,9 @@ func (b *EventBus) PublishEventTx(data EventDataTx) error {
 	events = append(events, EventTx)
 
 	tokens := strings.Split(TxHashKey, ".")
-	events = append(events, types.Event{
+	events = append(events, abci.Event{
 		Type: tokens[0],
-		Attributes: []types.EventAttribute{
+		Attributes: []abci.EventAttribute{
 			{
 				Key:   tokens[1],
 				Value: fmt.Sprintf("%X", mempool.Tx(data.Tx).Hash()),
@@ -185,9 +185,9 @@ func (b *EventBus) PublishEventTx(data EventDataTx) error {
 	})
 
 	tokens = strings.Split(TxHeightKey, ".")
-	events = append(events, types.Event{
+	events = append(events, abci.Event{
 		Type: tokens[0],
-		Attributes: []types.EventAttribute{
+		Attributes: []abci.EventAttribute{
 			{
 				Key:   tokens[1],
 				Value: fmt.Sprintf("%d", data.Height),

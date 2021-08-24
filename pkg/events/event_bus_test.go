@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/pkg/abci"
 	"github.com/tendermint/tendermint/pkg/block"
 	"github.com/tendermint/tendermint/pkg/events"
 	"github.com/tendermint/tendermint/pkg/evidence"

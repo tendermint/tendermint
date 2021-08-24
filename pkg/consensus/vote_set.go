@@ -68,10 +68,10 @@ type VoteSet struct {
 
 	mtx           tmsync.Mutex
 	votesBitArray *bits.BitArray
-	votes         []*Vote                // Primary votes to share
-	sum           int64                  // Sum of voting power for seen votes, discounting conflicts
+	votes         []*Vote                    // Primary votes to share
+	sum           int64                      // Sum of voting power for seen votes, discounting conflicts
 	maj23         *metadata.BlockID          // First 2/3 majority seen
-	votesByBlock  map[string]*blockVotes // string(blockHash|blockParts) -> blockVotes
+	votesByBlock  map[string]*blockVotes     // string(blockHash|blockParts) -> blockVotes
 	peerMaj23s    map[P2PID]metadata.BlockID // Maj23 for each peer
 }
 
@@ -521,8 +521,8 @@ func (voteSet *VoteSet) MarshalJSON() ([]byte, error) {
 // NOTE: insufficient for unmarshaling from (compressed votes)
 // TODO: make the peerMaj23s nicer to read (eg just the block hash)
 type VoteSetJSON struct {
-	Votes         []string               `json:"votes"`
-	VotesBitArray string                 `json:"votes_bit_array"`
+	Votes         []string                   `json:"votes"`
+	VotesBitArray string                     `json:"votes_bit_array"`
 	PeerMaj23s    map[P2PID]metadata.BlockID `json:"peer_maj_23s"`
 }
 

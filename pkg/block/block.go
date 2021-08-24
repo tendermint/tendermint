@@ -23,9 +23,9 @@ type Block struct {
 	mtx tmsync.Mutex
 
 	metadata.Header `json:"header"`
-	Data        `json:"data"`
-	Evidence    EvidenceData `json:"evidence"`
-	LastCommit  *metadata.Commit `json:"last_commit"`
+	Data            `json:"data"`
+	Evidence        EvidenceData     `json:"evidence"`
+	LastCommit      *metadata.Commit `json:"last_commit"`
 }
 
 // ValidateBasic performs basic validation that doesn't involve state data.

@@ -494,3 +494,87 @@ func TestHeaderHashVector(t *testing.T) {
 		require.Equal(t, tc.expBytes, hex.EncodeToString(hash))
 	}
 }
+
+func TestSignedHeaderValidateBasic(t *testing.T) {
+	commit := test.MakeRandomCommit(time.Now())
+	chainID := "𠜎"
+	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
+	h := metadata.Header{
+		Version:            version.Consensus{Block: version.BlockProtocol, App: math.MaxInt64},
+		ChainID:            chainID,
+		Height:             commit.Height,
+		Time:               timestamp,
+		LastBlockID:        commit.BlockID,
+		LastCommitHash:     commit.Hash(),
+		DataHash:           commit.Hash(),
+		ValidatorsHash:     commit.Hash(),
+		NextValidatorsHash: commit.Hash(),
+		ConsensusHash:      commit.Hash(),
+		AppHash:            commit.Hash(),
+		LastResultsHash:    commit.Hash(),
+		EvidenceHash:       commit.Hash(),
+		ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
+	}
+
+	validSignedHeader := metadata.SignedHeader{Header: &h, Commit: commit}
+	validSignedHeader.Commit.BlockID.Hash = validSignedHeader.Hash()
+	invalidSignedHeader := metadata.SignedHeader{}
+
+	testCases := []struct {
+		testName  string
+		shHeader  *metadata.Header
+		shCommit  *metadata.Commit
+		expectErr bool
+	}{
+		{"Valid Signed Header", validSignedHeader.Header, validSignedHeader.Commit, false},
+		{"Invalid Signed Header", invalidSignedHeader.Header, validSignedHeader.Commit, true},
+		{"Invalid Signed Header", validSignedHeader.Header, invalidSignedHeader.Commit, true},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			sh := metadata.SignedHeader{
+				Header: tc.shHeader,
+				Commit: tc.shCommit,
+			}
+			err := sh.ValidateBasic(validSignedHeader.Header.ChainID)
+			assert.Equalf(
+				t,
+				tc.expectErr,
+				err != nil,
+				"Validate Basic had an unexpected result",
+				err,
+			)
+		})
+	}
+}
+
+func TestSignedHeaderProtoBuf(t *testing.T) {
+	commit := test.MakeRandomCommit(time.Now())
+	h := test.MakeRandomHeader()
+
+	sh := metadata.SignedHeader{Header: h, Commit: commit}
+
+	testCases := []struct {
+		msg     string
+		sh1     *metadata.SignedHeader
+		expPass bool
+	}{
+		{"empty SignedHeader 2", &metadata.SignedHeader{}, true},
+		{"success", &sh, true},
+		{"failure nil", nil, false},
+	}
+	for _, tc := range testCases {
+		protoSignedHeader := tc.sh1.ToProto()
+
+		sh, err := metadata.SignedHeaderFromProto(protoSignedHeader)
+
+		if tc.expPass {
+			require.NoError(t, err, tc.msg)
+			require.Equal(t, tc.sh1, sh, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+	}
+}

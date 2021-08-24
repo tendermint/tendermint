@@ -109,7 +109,7 @@ func TestLightClientAttackEvidenceBasic(t *testing.T) {
 	require.NoError(t, err)
 	lcae := &evidence.LightClientAttackEvidence{
 		ConflictingBlock: &light.LightBlock{
-			SignedHeader: &light.SignedHeader{
+			SignedHeader: &metadata.SignedHeader{
 				Header: header,
 				Commit: commit,
 			},
@@ -139,7 +139,7 @@ func TestLightClientAttackEvidenceBasic(t *testing.T) {
 	for _, tc := range testCases {
 		lcae := &evidence.LightClientAttackEvidence{
 			ConflictingBlock: &light.LightBlock{
-				SignedHeader: &light.SignedHeader{
+				SignedHeader: &metadata.SignedHeader{
 					Header: header,
 					Commit: commit,
 				},
@@ -169,7 +169,7 @@ func TestLightClientAttackEvidenceValidation(t *testing.T) {
 	require.NoError(t, err)
 	lcae := &evidence.LightClientAttackEvidence{
 		ConflictingBlock: &light.LightBlock{
-			SignedHeader: &light.SignedHeader{
+			SignedHeader: &metadata.SignedHeader{
 				Header: header,
 				Commit: commit,
 			},
@@ -209,7 +209,7 @@ func TestLightClientAttackEvidenceValidation(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			lcae := &evidence.LightClientAttackEvidence{
 				ConflictingBlock: &light.LightBlock{
-					SignedHeader: &light.SignedHeader{
+					SignedHeader: &metadata.SignedHeader{
 						Header: header,
 						Commit: commit,
 					},
@@ -358,7 +358,7 @@ func TestEvidenceVectors(t *testing.T) {
 	require.NoError(t, err)
 	lcae := &evidence.LightClientAttackEvidence{
 		ConflictingBlock: &light.LightBlock{
-			SignedHeader: &light.SignedHeader{
+			SignedHeader: &metadata.SignedHeader{
 				Header: header,
 				Commit: commit,
 			},

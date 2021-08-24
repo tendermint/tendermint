@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/pkg/abci"
 
 	"github.com/tendermint/tendermint/pkg/block"
 	"github.com/tendermint/tendermint/pkg/consensus"
@@ -118,7 +118,7 @@ func init() {
 // but some (an input to a call tx or a receive) are more exotic
 
 type EventDataNewBlock struct {
-	Block   *block.Block `json:"block"`
+	Block   *block.Block     `json:"block"`
 	BlockID metadata.BlockID `json:"block_id"`
 
 	ResultBeginBlock abci.ResponseBeginBlock `json:"result_begin_block"`
@@ -151,17 +151,12 @@ type EventDataRoundState struct {
 	Step   string `json:"step"`
 }
 
-type ValidatorInfo struct {
-	Address consensus.Address `json:"address"`
-	Index   int32             `json:"index"`
-}
-
 type EventDataNewRound struct {
 	Height int64  `json:"height"`
 	Round  int32  `json:"round"`
 	Step   string `json:"step"`
 
-	Proposer ValidatorInfo `json:"proposer"`
+	Proposer consensus.ValidatorInfo `json:"proposer"`
 }
 
 type EventDataCompleteProposal struct {

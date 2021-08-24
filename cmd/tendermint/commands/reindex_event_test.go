@@ -9,12 +9,14 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmcfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/block"
+	"github.com/tendermint/tendermint/pkg/mempool"
 	prototmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
+	evmocks "github.com/tendermint/tendermint/state/indexer/mocks"
 	"github.com/tendermint/tendermint/state/mocks"
-	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -116,27 +118,27 @@ func TestLoadBlockStore(t *testing.T) {
 func TestReIndexEvent(t *testing.T) {
 	mockBlockStore := &mocks.BlockStore{}
 	mockStateStore := &mocks.Store{}
-	mockEventSink := &mocks.EventSink{}
+	mockEventSink := &evmocks.EventSink{}
 
 	mockBlockStore.
 		On("Base").Return(base).
 		On("Height").Return(height).
 		On("LoadBlock", base).Return(nil).Once().
-		On("LoadBlock", base).Return(&types.Block{Data: types.Data{Txs: types.Txs{make(types.Tx, 1)}}}).
-		On("LoadBlock", height).Return(&types.Block{Data: types.Data{Txs: types.Txs{make(types.Tx, 1)}}})
+		On("LoadBlock", base).Return(&block.Block{Data: block.Data{Txs: mempool.Txs{make(mempool.Tx, 1)}}}).
+		On("LoadBlock", height).Return(&block.Block{Data: block.Data{Txs: mempool.Txs{make(mempool.Tx, 1)}}})
 
 	mockEventSink.
 		On("Type").Return(indexer.KV).
-		On("IndexBlockEvents", mock.AnythingOfType("types.EventDataNewBlockHeader")).Return(errors.New("")).Once().
-		On("IndexBlockEvents", mock.AnythingOfType("types.EventDataNewBlockHeader")).Return(nil).
-		On("IndexTxEvents", mock.AnythingOfType("[]*types.TxResult")).Return(errors.New("")).Once().
-		On("IndexTxEvents", mock.AnythingOfType("[]*types.TxResult")).Return(nil)
+		On("IndexBlockEvents", mock.AnythingOfType("events.EventDataNewBlockHeader")).Return(errors.New("")).Once().
+		On("IndexBlockEvents", mock.AnythingOfType("events.EventDataNewBlockHeader")).Return(nil).
+		On("IndexTxEvents", mock.AnythingOfType("[]*abci.TxResult")).Return(errors.New("")).Once().
+		On("IndexTxEvents", mock.AnythingOfType("[]*abci.TxResult")).Return(nil)
 
-	dtx := abcitypes.ResponseDeliverTx{}
+	dtx := abci.ResponseDeliverTx{}
 	abciResp := &prototmstate.ABCIResponses{
-		DeliverTxs: []*abcitypes.ResponseDeliverTx{&dtx},
-		EndBlock:   &abcitypes.ResponseEndBlock{},
-		BeginBlock: &abcitypes.ResponseBeginBlock{},
+		DeliverTxs: []*abci.ResponseDeliverTx{&dtx},
+		EndBlock:   &abci.ResponseEndBlock{},
+		BeginBlock: &abci.ResponseBeginBlock{},
 	}
 
 	mockStateStore.

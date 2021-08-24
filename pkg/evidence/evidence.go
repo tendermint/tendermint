@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/pkg/abci"
 	"github.com/tendermint/tendermint/pkg/consensus"
 	"github.com/tendermint/tendermint/pkg/light"
 	"github.com/tendermint/tendermint/pkg/metadata"
@@ -313,7 +313,7 @@ func (l *LightClientAttackEvidence) Bytes() []byte {
 // the malicious validators were and returns them. This is used both for forming the ByzantineValidators
 // field and for validating that it is correct. Validators are ordered based on validator power
 func (l *LightClientAttackEvidence) GetByzantineValidators(commonVals *consensus.ValidatorSet,
-	trusted *light.SignedHeader) []*consensus.Validator {
+	trusted *metadata.SignedHeader) []*consensus.Validator {
 	var validators []*consensus.Validator
 	// First check if the header is invalid. This means that it is a lunatic attack and therefore we take the
 	// validators who are in the commonVals and voted for the lunatic header
@@ -454,7 +454,7 @@ func (l *LightClientAttackEvidence) ValidateBasic() error {
 // invalid.
 func (l *LightClientAttackEvidence) ValidateABCI(
 	commonVals *consensus.ValidatorSet,
-	trustedHeader *light.SignedHeader,
+	trustedHeader *metadata.SignedHeader,
 	evidenceTime time.Time,
 ) error {
 
@@ -510,7 +510,7 @@ func (l *LightClientAttackEvidence) ValidateABCI(
 // total voting power and byantine validators
 func (l *LightClientAttackEvidence) GenerateABCI(
 	commonVals *consensus.ValidatorSet,
-	trustedHeader *light.SignedHeader,
+	trustedHeader *metadata.SignedHeader,
 	evidenceTime time.Time,
 ) {
 	l.Timestamp = evidenceTime

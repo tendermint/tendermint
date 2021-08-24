@@ -52,7 +52,7 @@ type Vote struct {
 	Type             tmproto.SignedMsgType `json:"type"`
 	Height           int64                 `json:"height"`
 	Round            int32                 `json:"round"`    // assume there will not be greater than 2_147_483_647 rounds
-	BlockID          metadata.BlockID          `json:"block_id"` // zero if vote is nil.
+	BlockID          metadata.BlockID      `json:"block_id"` // zero if vote is nil.
 	Timestamp        time.Time             `json:"timestamp"`
 	ValidatorAddress Address               `json:"validator_address"`
 	ValidatorIndex   int32                 `json:"validator_index"`
