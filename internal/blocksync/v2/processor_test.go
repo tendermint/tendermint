@@ -5,8 +5,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/tendermint/tendermint/pkg/block"
+	"github.com/tendermint/tendermint/pkg/metadata"
+	"github.com/tendermint/tendermint/pkg/p2p"
 	tmState "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
 )
 
 // pcBlock is a test helper structure with simple types. Its purpose is to help with test readability.
@@ -26,8 +28,8 @@ type params struct {
 }
 
 // makePcBlock makes an empty block.
-func makePcBlock(height int64) *types.Block {
-	return &types.Block{Header: types.Header{Height: height}}
+func makePcBlock(height int64) *block.Block {
+	return &block.Block{Header: metadata.Header{Height: height}}
 }
 
 // makeState takes test parameters and creates a specific processor state.
@@ -39,7 +41,7 @@ func makeState(p *params) *pcState {
 	state := newPcState(context)
 
 	for _, item := range p.items {
-		state.enqueue(types.NodeID(item.pid), makePcBlock(item.height), item.height)
+		state.enqueue(p2p.NodeID(item.pid), makePcBlock(item.height), item.height)
 	}
 
 	state.blocksSynced = p.blocksSynced
@@ -47,7 +49,7 @@ func makeState(p *params) *pcState {
 	return state
 }
 
-func mBlockResponse(peerID types.NodeID, height int64) scBlockReceived {
+func mBlockResponse(peerID p2p.NodeID, height int64) scBlockReceived {
 	return scBlockReceived{
 		peerID: peerID,
 		block:  makePcBlock(height),

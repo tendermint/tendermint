@@ -13,8 +13,8 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/pkg/consensus"
 	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -130,7 +130,7 @@ func newMockSignerServer(
 	breakProposalSigning bool,
 	breakVoteSigning bool,
 ) *privval.SignerServer {
-	mockPV := types.NewMockPVWithParams(privKey, breakProposalSigning, breakVoteSigning)
+	mockPV := consensus.NewMockPVWithParams(privKey, breakProposalSigning, breakVoteSigning)
 
 	dialerEndpoint := privval.NewSignerDialerEndpoint(
 		th.logger,

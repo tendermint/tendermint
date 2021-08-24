@@ -3,9 +3,9 @@ package core
 import (
 	cm "github.com/tendermint/tendermint/internal/consensus"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	"github.com/tendermint/tendermint/pkg/consensus"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 // Validators gets the validator set at the given block height.
@@ -57,7 +57,7 @@ func (env *Environment) DumpConsensusState(ctx *rpctypes.Context) (*ctypes.Resul
 	peers := env.P2PPeers.Peers().List()
 	peerStates := make([]ctypes.PeerStateInfo, len(peers))
 	for i, peer := range peers {
-		peerState, ok := peer.Get(types.PeerStateKey).(*cm.PeerState)
+		peerState, ok := peer.Get(consensus.PeerStateKey).(*cm.PeerState)
 		if !ok { // peer does not have a state yet
 			continue
 		}

@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/pkg/mempool"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
-	"github.com/tendermint/tendermint/types"
 )
 
 // Tests that any initial state given in genesis has made it into the app.
@@ -80,7 +80,7 @@ func TestApp_Tx(t *testing.T) {
 
 		key := fmt.Sprintf("testapp-tx-%v", node.Name)
 		value := fmt.Sprintf("%x", bz)
-		tx := types.Tx(fmt.Sprintf("%v=%v", key, value))
+		tx := mempool.Tx(fmt.Sprintf("%v=%v", key, value))
 
 		_, err = client.BroadcastTxSync(ctx, tx)
 		require.NoError(t, err)

@@ -21,7 +21,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abciserver "github.com/tendermint/tendermint/abci/server"
-	"github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/pkg/abci"
 )
 
 func init() {
@@ -35,15 +35,15 @@ func TestKVStore(t *testing.T) {
 
 func TestBaseApp(t *testing.T) {
 	fmt.Println("### Testing BaseApp")
-	testStream(t, types.NewBaseApplication())
+	testStream(t, abci.NewBaseApplication())
 }
 
 func TestGRPC(t *testing.T) {
 	fmt.Println("### Testing GRPC")
-	testGRPCSync(t, types.NewGRPCApplication(types.NewBaseApplication()))
+	testGRPCSync(t, abci.NewGRPCApplication(abci.NewBaseApplication()))
 }
 
-func testStream(t *testing.T, app types.Application) {
+func testStream(t *testing.T, app abci.Application) {
 	const numDeliverTxs = 20000
 	socketFile := fmt.Sprintf("test-%08x.sock", rand.Int31n(1<<30))
 	defer os.Remove(socketFile)
@@ -73,10 +73,10 @@ func testStream(t *testing.T, app types.Application) {
 
 	done := make(chan struct{})
 	counter := 0
-	client.SetResponseCallback(func(req *types.Request, res *types.Response) {
+	client.SetResponseCallback(func(req *abci.Request, res *abci.Response) {
 		// Process response
 		switch r := res.Value.(type) {
-		case *types.Response_DeliverTx:
+		case *abci.Response_DeliverTx:
 			counter++
 			if r.DeliverTx.Code != code.CodeTypeOK {
 				t.Error("DeliverTx failed with ret_code", r.DeliverTx.Code)
@@ -91,7 +91,7 @@ func testStream(t *testing.T, app types.Application) {
 				}()
 				return
 			}
-		case *types.Response_Flush:
+		case *abci.Response_Flush:
 			// ignore
 		default:
 			t.Error("Unexpected response type", reflect.TypeOf(res.Value))
@@ -103,7 +103,7 @@ func testStream(t *testing.T, app types.Application) {
 	// Write requests
 	for counter := 0; counter < numDeliverTxs; counter++ {
 		// Send request
-		_, err = client.DeliverTxAsync(ctx, types.RequestDeliverTx{Tx: []byte("test")})
+		_, err = client.DeliverTxAsync(ctx, abci.RequestDeliverTx{Tx: []byte("test")})
 		require.NoError(t, err)
 
 		// Sometimes send flush messages
@@ -127,7 +127,7 @@ func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
 	return tmnet.Connect(addr)
 }
 
-func testGRPCSync(t *testing.T, app types.ABCIApplicationServer) {
+func testGRPCSync(t *testing.T, app abci.ABCIApplicationServer) {
 	numDeliverTxs := 2000
 	socketFile := fmt.Sprintf("test-%08x.sock", rand.Int31n(1<<30))
 	defer os.Remove(socketFile)
@@ -158,12 +158,12 @@ func testGRPCSync(t *testing.T, app types.ABCIApplicationServer) {
 		}
 	})
 
-	client := types.NewABCIApplicationClient(conn)
+	client := abci.NewABCIApplicationClient(conn)
 
 	// Write requests
 	for counter := 0; counter < numDeliverTxs; counter++ {
 		// Send request
-		response, err := client.DeliverTx(context.Background(), &types.RequestDeliverTx{Tx: []byte("test")})
+		response, err := client.DeliverTx(context.Background(), &abci.RequestDeliverTx{Tx: []byte("test")})
 		if err != nil {
 			t.Fatalf("Error in GRPC DeliverTx: %v", err.Error())
 		}

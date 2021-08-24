@@ -15,15 +15,16 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 const chainID = "chain-id"
 
-func dialer(pv types.PrivValidator, logger log.Logger) (*grpc.Server, func(context.Context, string) (net.Conn, error)) {
+func dialer(pv consensus.PrivValidator, logger log.Logger) (*grpc.Server, func(context.Context, string) (net.Conn, error)) {
 	listener := bufconn.Listen(1024 * 1024)
 
 	server := grpc.NewServer()
@@ -46,7 +47,7 @@ func dialer(pv types.PrivValidator, logger log.Logger) (*grpc.Server, func(conte
 func TestSignerClient_GetPubKey(t *testing.T) {
 
 	ctx := context.Background()
-	mockPV := types.NewMockPV()
+	mockPV := consensus.NewMockPV()
 	logger := log.TestingLogger()
 	srv, dialer := dialer(mockPV, logger)
 	defer srv.Stop()
@@ -68,7 +69,7 @@ func TestSignerClient_GetPubKey(t *testing.T) {
 func TestSignerClient_SignVote(t *testing.T) {
 
 	ctx := context.Background()
-	mockPV := types.NewMockPV()
+	mockPV := consensus.NewMockPV()
 	logger := log.TestingLogger()
 	srv, dialer := dialer(mockPV, logger)
 	defer srv.Stop()
@@ -86,21 +87,21 @@ func TestSignerClient_SignVote(t *testing.T) {
 	hash := tmrand.Bytes(tmhash.Size)
 	valAddr := tmrand.Bytes(crypto.AddressSize)
 
-	want := &types.Vote{
+	want := &consensus.Vote{
 		Type:             tmproto.PrecommitType,
 		Height:           1,
 		Round:            2,
-		BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+		BlockID:          metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 		Timestamp:        ts,
 		ValidatorAddress: valAddr,
 		ValidatorIndex:   1,
 	}
 
-	have := &types.Vote{
+	have := &consensus.Vote{
 		Type:             tmproto.PrecommitType,
 		Height:           1,
 		Round:            2,
-		BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+		BlockID:          metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 		Timestamp:        ts,
 		ValidatorAddress: valAddr,
 		ValidatorIndex:   1,
@@ -121,7 +122,7 @@ func TestSignerClient_SignVote(t *testing.T) {
 func TestSignerClient_SignProposal(t *testing.T) {
 
 	ctx := context.Background()
-	mockPV := types.NewMockPV()
+	mockPV := consensus.NewMockPV()
 	logger := log.TestingLogger()
 	srv, dialer := dialer(mockPV, logger)
 	defer srv.Stop()
@@ -138,20 +139,20 @@ func TestSignerClient_SignProposal(t *testing.T) {
 	ts := time.Now()
 	hash := tmrand.Bytes(tmhash.Size)
 
-	have := &types.Proposal{
+	have := &consensus.Proposal{
 		Type:      tmproto.ProposalType,
 		Height:    1,
 		Round:     2,
 		POLRound:  2,
-		BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+		BlockID:   metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 		Timestamp: ts,
 	}
-	want := &types.Proposal{
+	want := &consensus.Proposal{
 		Type:      tmproto.ProposalType,
 		Height:    1,
 		Round:     2,
 		POLRound:  2,
-		BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+		BlockID:   metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 		Timestamp: ts,
 	}
 

@@ -17,7 +17,8 @@ import (
 	"github.com/tendermint/tendermint/internal/libs/autofile"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtime "github.com/tendermint/tendermint/libs/time"
-	tmtypes "github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/events"
+	"github.com/tendermint/tendermint/pkg/metadata"
 )
 
 const (
@@ -71,7 +72,7 @@ func TestWALTruncate(t *testing.T) {
 	dec := NewWALDecoder(gr)
 	msg, err := dec.Decode()
 	assert.NoError(t, err, "expected to decode a message")
-	rs, ok := msg.Msg.(tmtypes.EventDataRoundState)
+	rs, ok := msg.Msg.(events.EventDataRoundState)
 	assert.True(t, ok, "expected message of type EventDataRoundState")
 	assert.Equal(t, rs.Height, h+1, "wrong height")
 }
@@ -81,7 +82,7 @@ func TestWALEncoderDecoder(t *testing.T) {
 	msgs := []TimedWALMessage{
 		{Time: now, Msg: EndHeightMessage{0}},
 		{Time: now, Msg: timeoutInfo{Duration: time.Second, Height: 1, Round: 1, Step: types.RoundStepPropose}},
-		{Time: now, Msg: tmtypes.EventDataRoundState{Height: 1, Round: 1, Step: ""}},
+		{Time: now, Msg: events.EventDataRoundState{Height: 1, Round: 1, Step: ""}},
 	}
 
 	b := new(bytes.Buffer)
@@ -124,7 +125,7 @@ func TestWALWrite(t *testing.T) {
 	msg := &BlockPartMessage{
 		Height: 1,
 		Round:  1,
-		Part: &tmtypes.Part{
+		Part: &metadata.Part{
 			Index: 1,
 			Bytes: make([]byte, 1),
 			Proof: merkle.Proof{
@@ -164,7 +165,7 @@ func TestWALSearchForEndHeight(t *testing.T) {
 	dec := NewWALDecoder(gr)
 	msg, err := dec.Decode()
 	assert.NoError(t, err, "expected to decode a message")
-	rs, ok := msg.Msg.(tmtypes.EventDataRoundState)
+	rs, ok := msg.Msg.(events.EventDataRoundState)
 	assert.True(t, ok, "expected message of type EventDataRoundState")
 	assert.Equal(t, rs.Height, h+1, "wrong height")
 }

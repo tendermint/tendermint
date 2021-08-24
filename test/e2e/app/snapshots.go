@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/pkg/abci"
 )
 
 const (

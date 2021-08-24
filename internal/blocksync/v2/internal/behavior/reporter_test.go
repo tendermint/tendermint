@@ -5,13 +5,13 @@ import (
 	"testing"
 
 	bh "github.com/tendermint/tendermint/internal/blocksync/v2/internal/behavior"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/p2p"
 )
 
 // TestMockReporter tests the MockReporter's ability to store reported
 // peer behavior in memory indexed by the peerID.
 func TestMockReporter(t *testing.T) {
-	var peerID types.NodeID = "MockPeer"
+	var peerID p2p.NodeID = "MockPeer"
 	pr := bh.NewMockReporter()
 
 	behaviors := pr.GetBehaviors(peerID)
@@ -34,7 +34,7 @@ func TestMockReporter(t *testing.T) {
 }
 
 type scriptItem struct {
-	peerID   types.NodeID
+	peerID   p2p.NodeID
 	behavior bh.PeerBehavior
 }
 
@@ -76,10 +76,10 @@ func equalBehaviors(a []bh.PeerBehavior, b []bh.PeerBehavior) bool {
 // freequencies that those behaviors occur.
 func TestEqualPeerBehaviors(t *testing.T) {
 	var (
-		peerID        types.NodeID = "MockPeer"
-		consensusVote              = bh.ConsensusVote(peerID, "voted")
-		blockPart                  = bh.BlockPart(peerID, "blocked")
-		equals                     = []struct {
+		peerID        p2p.NodeID = "MockPeer"
+		consensusVote            = bh.ConsensusVote(peerID, "voted")
+		blockPart                = bh.BlockPart(peerID, "blocked")
+		equals                   = []struct {
 			left  []bh.PeerBehavior
 			right []bh.PeerBehavior
 		}{
@@ -128,7 +128,7 @@ func TestEqualPeerBehaviors(t *testing.T) {
 func TestMockPeerBehaviorReporterConcurrency(t *testing.T) {
 	var (
 		behaviorScript = []struct {
-			peerID    types.NodeID
+			peerID    p2p.NodeID
 			behaviors []bh.PeerBehavior
 		}{
 			{"1", []bh.PeerBehavior{bh.ConsensusVote("1", "")}},

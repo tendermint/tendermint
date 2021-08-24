@@ -9,31 +9,32 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
-	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/pkg/abci"
+	types "github.com/tendermint/tendermint/pkg/mempool"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 	protomem "github.com/tendermint/tendermint/proto/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/types"
 )
 
 type reactorTestSuite struct {
 	network *p2ptest.Network
 	logger  log.Logger
 
-	reactors       map[types.NodeID]*Reactor
-	mempoolChnnels map[types.NodeID]*p2p.Channel
-	mempools       map[types.NodeID]*CListMempool
-	kvstores       map[types.NodeID]*kvstore.Application
+	reactors       map[p2ptypes.NodeID]*Reactor
+	mempoolChnnels map[p2ptypes.NodeID]*p2p.Channel
+	mempools       map[p2ptypes.NodeID]*CListMempool
+	kvstores       map[p2ptypes.NodeID]*kvstore.Application
 
-	peerChans   map[types.NodeID]chan p2p.PeerUpdate
-	peerUpdates map[types.NodeID]*p2p.PeerUpdates
+	peerChans   map[p2ptypes.NodeID]chan p2p.PeerUpdate
+	peerUpdates map[p2ptypes.NodeID]*p2p.PeerUpdates
 
-	nodes []types.NodeID
+	nodes []p2ptypes.NodeID
 }
 
 func setup(t *testing.T, cfg *cfg.MempoolConfig, numNodes int, chBuf uint) *reactorTestSuite {
@@ -42,12 +43,12 @@ func setup(t *testing.T, cfg *cfg.MempoolConfig, numNodes int, chBuf uint) *reac
 	rts := &reactorTestSuite{
 		logger:         log.TestingLogger().With("testCase", t.Name()),
 		network:        p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
-		reactors:       make(map[types.NodeID]*Reactor, numNodes),
-		mempoolChnnels: make(map[types.NodeID]*p2p.Channel, numNodes),
-		mempools:       make(map[types.NodeID]*CListMempool, numNodes),
-		kvstores:       make(map[types.NodeID]*kvstore.Application, numNodes),
-		peerChans:      make(map[types.NodeID]chan p2p.PeerUpdate, numNodes),
-		peerUpdates:    make(map[types.NodeID]*p2p.PeerUpdates, numNodes),
+		reactors:       make(map[p2ptypes.NodeID]*Reactor, numNodes),
+		mempoolChnnels: make(map[p2ptypes.NodeID]*p2p.Channel, numNodes),
+		mempools:       make(map[p2ptypes.NodeID]*CListMempool, numNodes),
+		kvstores:       make(map[p2ptypes.NodeID]*kvstore.Application, numNodes),
+		peerChans:      make(map[p2ptypes.NodeID]chan p2p.PeerUpdate, numNodes),
+		peerUpdates:    make(map[p2ptypes.NodeID]*p2p.PeerUpdates, numNodes),
 	}
 
 	chDesc := p2p.ChannelDescriptor{ID: byte(mempool.MempoolChannel)}
@@ -118,7 +119,7 @@ func (rts *reactorTestSuite) assertMempoolChannelsDrained(t *testing.T) {
 	}
 }
 
-func (rts *reactorTestSuite) waitForTxns(t *testing.T, txs types.Txs, ids ...types.NodeID) {
+func (rts *reactorTestSuite) waitForTxns(t *testing.T, txs types.Txs, ids ...p2ptypes.NodeID) {
 	t.Helper()
 
 	fn := func(pool *CListMempool) {
@@ -149,7 +150,7 @@ func (rts *reactorTestSuite) waitForTxns(t *testing.T, txs types.Txs, ids ...typ
 		}
 
 		wg.Add(1)
-		func(nid types.NodeID) { defer wg.Done(); fn(rts.reactors[nid].mempool) }(id)
+		func(nid p2ptypes.NodeID) { defer wg.Done(); fn(rts.reactors[nid].mempool) }(id)
 	}
 
 	wg.Wait()
@@ -313,7 +314,7 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 
 	nodeID := rts.nodes[0]
 
-	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
+	peerID, err := p2ptypes.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
 	// ensure the reactor does not panic (i.e. exhaust active IDs)
@@ -357,7 +358,7 @@ func TestMempoolIDsPanicsIfNodeRequestsOvermaxActiveIDs(t *testing.T) {
 	// 0 is already reserved for UnknownPeerID
 	ids := mempool.NewMempoolIDs()
 
-	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
+	peerID, err := p2ptypes.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
 	for i := 0; i < mempool.MaxActiveIDs-1; i++ {

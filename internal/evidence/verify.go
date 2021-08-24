@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/light"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	types "github.com/tendermint/tendermint/pkg/evidence"
+	"github.com/tendermint/tendermint/pkg/metadata"
 )
 
 // verify verifies the evidence fully by checking:
@@ -156,8 +158,8 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 //
 // CONTRACT: must run ValidateBasic() on the evidence before verifying
 //           must check that the evidence has not expired (i.e. is outside the maximum age threshold)
-func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, trustedHeader *types.SignedHeader,
-	commonVals *types.ValidatorSet, now time.Time, trustPeriod time.Duration) error {
+func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, trustedHeader *metadata.SignedHeader,
+	commonVals *consensus.ValidatorSet, now time.Time, trustPeriod time.Duration) error {
 	// In the case of lunatic attack there will be a different commonHeader height. Therefore the node perform a single
 	// verification jump between the common header and the conflicting one
 	if commonHeader.Height != e.ConflictingBlock.Height {
@@ -199,7 +201,7 @@ func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, t
 //      - the height, round, type and validator address of the votes must be the same
 //      - the block ID's must be different
 //      - The signatures must both be valid
-func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string, valSet *types.ValidatorSet) error {
+func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string, valSet *consensus.ValidatorSet) error {
 	_, val := valSet.GetByAddress(e.VoteA.ValidatorAddress)
 	if val == nil {
 		return fmt.Errorf("address %X was not a validator at height %d", e.VoteA.ValidatorAddress, e.Height())
@@ -241,17 +243,17 @@ func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string, valSet 
 	va := e.VoteA.ToProto()
 	vb := e.VoteB.ToProto()
 	// Signatures must be valid
-	if !pubKey.VerifySignature(types.VoteSignBytes(chainID, va), e.VoteA.Signature) {
-		return fmt.Errorf("verifying VoteA: %w", types.ErrVoteInvalidSignature)
+	if !pubKey.VerifySignature(consensus.VoteSignBytes(chainID, va), e.VoteA.Signature) {
+		return fmt.Errorf("verifying VoteA: %w", consensus.ErrVoteInvalidSignature)
 	}
-	if !pubKey.VerifySignature(types.VoteSignBytes(chainID, vb), e.VoteB.Signature) {
-		return fmt.Errorf("verifying VoteB: %w", types.ErrVoteInvalidSignature)
+	if !pubKey.VerifySignature(consensus.VoteSignBytes(chainID, vb), e.VoteB.Signature) {
+		return fmt.Errorf("verifying VoteB: %w", consensus.ErrVoteInvalidSignature)
 	}
 
 	return nil
 }
 
-func getSignedHeader(blockStore BlockStore, height int64) (*types.SignedHeader, error) {
+func getSignedHeader(blockStore BlockStore, height int64) (*metadata.SignedHeader, error) {
 	blockMeta := blockStore.LoadBlockMeta(height)
 	if blockMeta == nil {
 		return nil, fmt.Errorf("don't have header at height #%d", height)
@@ -260,7 +262,7 @@ func getSignedHeader(blockStore BlockStore, height int64) (*types.SignedHeader, 
 	if commit == nil {
 		return nil, fmt.Errorf("don't have commit at height #%d", height)
 	}
-	return &types.SignedHeader{
+	return &metadata.SignedHeader{
 		Header: &blockMeta.Header,
 		Commit: commit,
 	}, nil

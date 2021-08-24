@@ -14,11 +14,12 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/code"
-	abci "github.com/tendermint/tendermint/abci/types"
 	mempl "github.com/tendermint/tendermint/internal/mempool"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/events"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
-	"github.com/tendermint/tendermint/types"
 )
 
 // for testing
@@ -37,7 +38,7 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
-	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
+	newBlockCh := subscribe(cs.eventBus, events.EventQueryNewBlock)
 	startTestRound(cs, height, round)
 
 	ensureNewEventOnChannel(newBlockCh) // first block gets committed
@@ -60,7 +61,7 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 
-	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
+	newBlockCh := subscribe(cs.eventBus, events.EventQueryNewBlock)
 	startTestRound(cs, cs.Height, cs.Round)
 
 	ensureNewEventOnChannel(newBlockCh)   // first block gets committed
@@ -79,10 +80,10 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
-	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
-	newRoundCh := subscribe(cs.eventBus, types.EventQueryNewRound)
-	timeoutCh := subscribe(cs.eventBus, types.EventQueryTimeoutPropose)
-	cs.setProposal = func(proposal *types.Proposal) error {
+	newBlockCh := subscribe(cs.eventBus, events.EventQueryNewBlock)
+	newRoundCh := subscribe(cs.eventBus, events.EventQueryNewRound)
+	timeoutCh := subscribe(cs.eventBus, events.EventQueryTimeoutPropose)
+	cs.setProposal = func(proposal *consensus.Proposal) error {
 		if cs.Height == 2 && cs.Round == 0 {
 			// dont set the proposal in round 0 so we timeout and
 			// go to next round
@@ -129,7 +130,7 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], NewCounterApplication(), blockStore)
 	err := stateStore.Save(state)
 	require.NoError(t, err)
-	newBlockHeaderCh := subscribe(cs.eventBus, types.EventQueryNewBlockHeader)
+	newBlockHeaderCh := subscribe(cs.eventBus, events.EventQueryNewBlockHeader)
 
 	const numTxs int64 = 3000
 	go deliverTxsRange(cs, 0, int(numTxs))
@@ -138,7 +139,7 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	for n := int64(0); n < numTxs; {
 		select {
 		case msg := <-newBlockHeaderCh:
-			headerEvent := msg.Data().(types.EventDataNewBlockHeader)
+			headerEvent := msg.Data().(events.EventDataNewBlockHeader)
 			n += headerEvent.NumTxs
 		case <-time.After(30 * time.Second):
 			t.Fatal("Timed out waiting 30s to commit blocks with transactions")

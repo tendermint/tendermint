@@ -6,16 +6,17 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tendermint/tendermint/pkg/block"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpctypes "github.com/tendermint/tendermint/rpc/core/types"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
-	"github.com/tendermint/tendermint/types"
 )
 
 // waitForHeight waits for the network to reach a certain height (or above),
 // returning the highest height seen. Errors if the network is not making
 // progress at all.
-func waitForHeight(testnet *e2e.Testnet, height int64) (*types.Block, *types.BlockID, error) {
+func waitForHeight(testnet *e2e.Testnet, height int64) (*block.Block, *metadata.BlockID, error) {
 	var (
 		err          error
 		maxResult    *rpctypes.ResultBlock

@@ -1,15 +1,13 @@
 package query
 
-import (
-	"github.com/tendermint/tendermint/abci/types"
-)
+import "github.com/tendermint/tendermint/pkg/abci"
 
 // Empty query matches any set of events.
 type Empty struct {
 }
 
 // Matches always returns true.
-func (Empty) Matches(events []types.Event) (bool, error) {
+func (Empty) Matches(events []abci.Event) (bool, error) {
 	return true, nil
 }
 

@@ -6,10 +6,11 @@ import (
 
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/pkg/block"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/state/indexer"
-	"github.com/tendermint/tendermint/types"
 )
 
 // BlockchainInfo gets block headers for minHeight <= height <= maxHeight.
@@ -40,7 +41,7 @@ func (env *Environment) BlockchainInfo(
 	}
 	env.Logger.Debug("BlockchainInfo", "maxHeight", maxHeight, "minHeight", minHeight)
 
-	blockMetas := make([]*types.BlockMeta, 0, maxHeight-minHeight+1)
+	blockMetas := make([]*block.BlockMeta, 0, maxHeight-minHeight+1)
 	for height := maxHeight; height >= minHeight; height-- {
 		blockMeta := env.BlockStore.LoadBlockMeta(height)
 		if blockMeta != nil {
@@ -98,7 +99,7 @@ func (env *Environment) Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.
 
 	blockMeta := env.BlockStore.LoadBlockMeta(height)
 	if blockMeta == nil {
-		return &ctypes.ResultBlock{BlockID: types.BlockID{}, Block: nil}, nil
+		return &ctypes.ResultBlock{BlockID: metadata.BlockID{}, Block: nil}, nil
 	}
 
 	block := env.BlockStore.LoadBlock(height)
@@ -110,7 +111,7 @@ func (env *Environment) Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.
 func (env *Environment) BlockByHash(ctx *rpctypes.Context, hash []byte) (*ctypes.ResultBlock, error) {
 	block := env.BlockStore.LoadBlockByHash(hash)
 	if block == nil {
-		return &ctypes.ResultBlock{BlockID: types.BlockID{}, Block: nil}, nil
+		return &ctypes.ResultBlock{BlockID: metadata.BlockID{}, Block: nil}, nil
 	}
 	// If block is not nil, then blockMeta can't be nil.
 	blockMeta := env.BlockStore.LoadBlockMeta(block.Height)

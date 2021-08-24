@@ -7,15 +7,16 @@ import (
 	"fmt"
 	"time"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/metadata"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -117,7 +118,7 @@ func (s *syncer) AddChunk(chunk *chunk) (bool, error) {
 
 // AddSnapshot adds a snapshot to the snapshot pool. It returns true if a new, previously unseen
 // snapshot was accepted and added.
-func (s *syncer) AddSnapshot(peerID types.NodeID, snapshot *snapshot) (bool, error) {
+func (s *syncer) AddSnapshot(peerID p2ptypes.NodeID, snapshot *snapshot) (bool, error) {
 	added, err := s.snapshots.Add(peerID, snapshot)
 	if err != nil {
 		return false, err
@@ -131,7 +132,7 @@ func (s *syncer) AddSnapshot(peerID types.NodeID, snapshot *snapshot) (bool, err
 
 // AddPeer adds a peer to the pool. For now we just keep it simple and send a
 // single request to discover snapshots, later we may want to do retries and stuff.
-func (s *syncer) AddPeer(peerID types.NodeID) {
+func (s *syncer) AddPeer(peerID p2ptypes.NodeID) {
 	s.logger.Debug("Requesting snapshots from peer", "peer", peerID)
 	s.snapshotCh <- p2p.Envelope{
 		To:      peerID,
@@ -140,7 +141,7 @@ func (s *syncer) AddPeer(peerID types.NodeID) {
 }
 
 // RemovePeer removes a peer from the pool.
-func (s *syncer) RemovePeer(peerID types.NodeID) {
+func (s *syncer) RemovePeer(peerID p2ptypes.NodeID) {
 	s.logger.Debug("Removing peer from sync", "peer", peerID)
 	s.snapshots.RemovePeer(peerID)
 }
@@ -152,7 +153,7 @@ func (s *syncer) SyncAny(
 	ctx context.Context,
 	discoveryTime time.Duration,
 	requestSnapshots func(),
-) (sm.State, *types.Commit, error) {
+) (sm.State, *metadata.Commit, error) {
 
 	if discoveryTime != 0 && discoveryTime < minimumDiscoveryTime {
 		discoveryTime = minimumDiscoveryTime
@@ -250,7 +251,7 @@ func (s *syncer) SyncAny(
 
 // Sync executes a sync for a specific snapshot, returning the latest state and block commit which
 // the caller must use to bootstrap the node.
-func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.Commit, error) {
+func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueue) (sm.State, *metadata.Commit, error) {
 	s.mtx.Lock()
 	if s.chunks != nil {
 		s.mtx.Unlock()
@@ -389,7 +390,7 @@ func (s *syncer) applyChunks(ctx context.Context, chunks *chunkQueue) error {
 		// Reject any senders as requested by the app
 		for _, sender := range resp.RejectSenders {
 			if sender != "" {
-				peerID := types.NodeID(sender)
+				peerID := p2ptypes.NodeID(sender)
 				s.snapshots.RejectPeer(peerID)
 
 				if err := chunks.DiscardSender(peerID); err != nil {

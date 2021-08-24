@@ -14,19 +14,20 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	mempl "github.com/tendermint/tendermint/internal/mempool"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/mempool"
 	"github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpclocal "github.com/tendermint/tendermint/rpc/client/local"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
-	"github.com/tendermint/tendermint/types"
 )
 
 func getHTTPClient(t *testing.T, conf *config.Config) *rpchttp.HTTP {
@@ -253,7 +254,7 @@ func TestGenesisChunked(t *testing.T) {
 		}
 		doc := []byte(strings.Join(decoded, ""))
 
-		var out types.GenesisDoc
+		var out consensus.GenesisDoc
 		require.NoError(t, tmjson.Unmarshal(doc, &out),
 			"first: %+v, doc: %s", first, string(doc))
 	}
@@ -477,8 +478,8 @@ func TestUnconfirmedTxs(t *testing.T) {
 	ch := make(chan *abci.Response, 1)
 
 	n, conf := NodeSuite(t)
-	mempool := getMempool(t, n)
-	err := mempool.CheckTx(ctx, tx, func(resp *abci.Response) { ch <- resp }, mempl.TxInfo{})
+	m := getMempool(t, n)
+	err := m.CheckTx(ctx, tx, func(resp *abci.Response) { ch <- resp }, mempl.TxInfo{})
 
 	require.NoError(t, err)
 
@@ -497,11 +498,11 @@ func TestUnconfirmedTxs(t *testing.T) {
 
 		assert.Equal(t, 1, res.Count)
 		assert.Equal(t, 1, res.Total)
-		assert.Equal(t, mempool.SizeBytes(), res.TotalBytes)
-		assert.Exactly(t, types.Txs{tx}, types.Txs(res.Txs))
+		assert.Equal(t, m.SizeBytes(), res.TotalBytes)
+		assert.Exactly(t, mempool.Txs{tx}, mempool.Txs(res.Txs))
 	}
 
-	mempool.Flush()
+	m.Flush()
 }
 
 func TestNumUnconfirmedTxs(t *testing.T) {
@@ -572,7 +573,7 @@ func TestTx(t *testing.T) {
 	txHeight := bres.Height
 	txHash := bres.Hash
 
-	anotherTxHash := types.Tx("a different tx").Hash()
+	anotherTxHash := mempool.Tx("a different tx").Hash()
 
 	cases := []struct {
 		valid bool
@@ -652,7 +653,7 @@ func TestTxSearch(t *testing.T) {
 
 	// pick out the last tx to have something to search for in tests
 	find := result.Txs[len(result.Txs)-1]
-	anotherTxHash := types.Tx("a different tx").Hash()
+	anotherTxHash := mempool.Tx("a different tx").Hash()
 
 	for i, c := range GetClients(t, n, conf) {
 		t.Logf("client %d", i)

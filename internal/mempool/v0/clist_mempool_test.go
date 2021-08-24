@@ -17,15 +17,15 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abciserver "github.com/tendermint/tendermint/abci/server"
-	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/pkg/abci"
 	pubmempool "github.com/tendermint/tendermint/pkg/mempool"
+	types "github.com/tendermint/tendermint/pkg/mempool"
 	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/types"
 )
 
 // A cleanupFunc cleans up any config / test files created for a particular

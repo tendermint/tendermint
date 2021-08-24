@@ -3,7 +3,7 @@ package coregrpc
 import (
 	"context"
 
-	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/pkg/abci"
 	core "github.com/tendermint/tendermint/rpc/core"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )

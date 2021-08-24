@@ -5,7 +5,7 @@ import (
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
-	"github.com/tendermint/tendermint/types"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 )
 
 // Reporter provides an interface for reactors to report the behavior
@@ -52,14 +52,14 @@ func (spbr *SwitchReporter) Report(behavior PeerBehavior) error {
 // behavior in manufactured scenarios.
 type MockReporter struct {
 	mtx tmsync.RWMutex
-	pb  map[types.NodeID][]PeerBehavior
+	pb  map[p2ptypes.NodeID][]PeerBehavior
 }
 
 // NewMockReporter returns a Reporter which records all reported
 // behaviors in memory.
 func NewMockReporter() *MockReporter {
 	return &MockReporter{
-		pb: map[types.NodeID][]PeerBehavior{},
+		pb: map[p2ptypes.NodeID][]PeerBehavior{},
 	}
 }
 
@@ -73,7 +73,7 @@ func (mpbr *MockReporter) Report(behavior PeerBehavior) error {
 }
 
 // GetBehaviors returns all behaviors reported on the peer identified by peerID.
-func (mpbr *MockReporter) GetBehaviors(peerID types.NodeID) []PeerBehavior {
+func (mpbr *MockReporter) GetBehaviors(peerID p2ptypes.NodeID) []PeerBehavior {
 	mpbr.mtx.RLock()
 	defer mpbr.mtx.RUnlock()
 	if items, ok := mpbr.pb[peerID]; ok {

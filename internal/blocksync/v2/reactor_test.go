@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/blocksync/v2/internal/behavior"
 	cons "github.com/tendermint/tendermint/internal/consensus"
@@ -23,21 +22,25 @@ import (
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/block"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/metadata"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	sf "github.com/tendermint/tendermint/state/test/factory"
 	tmstore "github.com/tendermint/tendermint/store"
-	"github.com/tendermint/tendermint/types"
 )
 
 type mockPeer struct {
 	service.Service
-	id types.NodeID
+	id p2ptypes.NodeID
 }
 
 func (mp mockPeer) FlushStop()           {}
-func (mp mockPeer) ID() types.NodeID     { return mp.id }
+func (mp mockPeer) ID() p2ptypes.NodeID  { return mp.id }
 func (mp mockPeer) RemoteIP() net.IP     { return net.IP{} }
 func (mp mockPeer) RemoteAddr() net.Addr { return &net.TCPAddr{IP: mp.RemoteIP(), Port: 8800} }
 
@@ -45,8 +48,8 @@ func (mp mockPeer) IsOutbound() bool   { return true }
 func (mp mockPeer) IsPersistent() bool { return true }
 func (mp mockPeer) CloseConn() error   { return nil }
 
-func (mp mockPeer) NodeInfo() types.NodeInfo {
-	return types.NodeInfo{
+func (mp mockPeer) NodeInfo() p2ptypes.NodeInfo {
+	return p2ptypes.NodeInfo{
 		NodeID:     "",
 		ListenAddr: "",
 	}
@@ -62,7 +65,7 @@ func (mp mockPeer) Get(string) interface{}  { return struct{}{} }
 
 //nolint:unused
 type mockBlockStore struct {
-	blocks map[int64]*types.Block
+	blocks map[int64]*block.Block
 }
 
 //nolint:unused
@@ -71,12 +74,12 @@ func (ml *mockBlockStore) Height() int64 {
 }
 
 //nolint:unused
-func (ml *mockBlockStore) LoadBlock(height int64) *types.Block {
+func (ml *mockBlockStore) LoadBlock(height int64) *block.Block {
 	return ml.blocks[height]
 }
 
 //nolint:unused
-func (ml *mockBlockStore) SaveBlock(block *types.Block, part *types.PartSet, commit *types.Commit) {
+func (ml *mockBlockStore) SaveBlock(block *block.Block, part *metadata.PartSet, commit *metadata.Commit) {
 	ml.blocks[block.Height] = block
 }
 
@@ -85,7 +88,7 @@ type mockBlockApplier struct {
 
 // XXX: Add whitelist/blacklist?
 func (mba *mockBlockApplier) ApplyBlock(
-	state sm.State, blockID types.BlockID, block *types.Block,
+	state sm.State, blockID metadata.BlockID, block *block.Block,
 ) (sm.State, error) {
 	state.LastBlockHeight++
 	return state, nil
@@ -113,7 +116,7 @@ func (sio *mockSwitchIo) sendStatusResponse(_, _ int64, _ p2p.Peer) error {
 	return nil
 }
 
-func (sio *mockSwitchIo) sendBlockToPeer(_ *types.Block, _ p2p.Peer) error {
+func (sio *mockSwitchIo) sendBlockToPeer(_ *block.Block, _ p2p.Peer) error {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.numBlockResponse++
@@ -147,8 +150,8 @@ func (sio *mockSwitchIo) sendStatusRequest(_ p2p.Peer) error {
 
 type testReactorParams struct {
 	logger      log.Logger
-	genDoc      *types.GenesisDoc
-	privVals    []types.PrivValidator
+	genDoc      *consensus.GenesisDoc
+	privVals    []consensus.PrivValidator
 	startHeight int64
 	mockA       bool
 }
@@ -419,7 +422,7 @@ func TestReactorHelperMode(t *testing.T) {
 					msgBz, err := proto.Marshal(msgProto)
 					require.NoError(t, err)
 
-					reactor.Receive(channelID, mockPeer{id: types.NodeID(step.peer)}, msgBz)
+					reactor.Receive(channelID, mockPeer{id: p2ptypes.NodeID(step.peer)}, msgBz)
 					assert.Equal(t, old+1, mockSwitch.numStatusResponse)
 				case bcproto.BlockRequest:
 					if ev.Height > params.startHeight {
@@ -431,7 +434,7 @@ func TestReactorHelperMode(t *testing.T) {
 						msgBz, err := proto.Marshal(msgProto)
 						require.NoError(t, err)
 
-						reactor.Receive(channelID, mockPeer{id: types.NodeID(step.peer)}, msgBz)
+						reactor.Receive(channelID, mockPeer{id: p2ptypes.NodeID(step.peer)}, msgBz)
 						assert.Equal(t, old+1, mockSwitch.numNoBlockResponse)
 					} else {
 						old := mockSwitch.numBlockResponse
@@ -442,7 +445,7 @@ func TestReactorHelperMode(t *testing.T) {
 						msgBz, err := proto.Marshal(msgProto)
 						require.NoError(t, err)
 
-						reactor.Receive(channelID, mockPeer{id: types.NodeID(step.peer)}, msgBz)
+						reactor.Receive(channelID, mockPeer{id: p2ptypes.NodeID(step.peer)}, msgBz)
 						assert.Equal(t, old+1, mockSwitch.numBlockResponse)
 					}
 				}
@@ -475,8 +478,8 @@ type testApp struct {
 
 func newReactorStore(
 	t *testing.T,
-	genDoc *types.GenesisDoc,
-	privVals []types.PrivValidator,
+	genDoc *consensus.GenesisDoc,
+	privVals []consensus.PrivValidator,
 	maxBlockHeight int64) (*tmstore.BlockStore, sm.State, *sm.BlockExecutor) {
 	t.Helper()
 
@@ -502,7 +505,7 @@ func newReactorStore(
 
 	// add blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, nil)
+		lastCommit := metadata.NewCommit(blockHeight-1, 0, metadata.BlockID{}, nil)
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
@@ -514,14 +517,14 @@ func newReactorStore(
 				time.Now(),
 			)
 			require.NoError(t, err)
-			lastCommit = types.NewCommit(vote.Height, vote.Round,
-				lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
+			lastCommit = metadata.NewCommit(vote.Height, vote.Round,
+				lastBlockMeta.BlockID, []metadata.CommitSig{vote.CommitSig()})
 		}
 
 		thisBlock := sf.MakeBlock(state, blockHeight, lastCommit)
 
-		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
-		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
+		thisParts := thisBlock.MakePartSet(metadata.BlockPartSizeBytes)
+		blockID := metadata.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
 		state, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		require.NoError(t, err)

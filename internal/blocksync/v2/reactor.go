@@ -14,9 +14,11 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/sync"
+	"github.com/tendermint/tendermint/pkg/block"
+	"github.com/tendermint/tendermint/pkg/metadata"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
 	"github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -25,8 +27,8 @@ const (
 )
 
 type blockStore interface {
-	LoadBlock(height int64) *types.Block
-	SaveBlock(*types.Block, *types.PartSet, *types.Commit)
+	LoadBlock(height int64) *block.Block
+	SaveBlock(*block.Block, *metadata.PartSet, *metadata.Commit)
 	Base() int64
 	Height() int64
 }
@@ -56,7 +58,7 @@ type BlockchainReactor struct {
 }
 
 type blockApplier interface {
-	ApplyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, error)
+	ApplyBlock(state state.State, blockID metadata.BlockID, block *block.Block) (state.State, error)
 }
 
 // XXX: unify naming in this package around tmState
@@ -227,9 +229,9 @@ func (e rProcessBlock) String() string {
 type bcBlockResponse struct {
 	priorityNormal
 	time   time.Time
-	peerID types.NodeID
+	peerID p2ptypes.NodeID
 	size   int64
-	block  *types.Block
+	block  *block.Block
 }
 
 func (resp bcBlockResponse) String() string {
@@ -241,7 +243,7 @@ func (resp bcBlockResponse) String() string {
 type bcNoBlockResponse struct {
 	priorityNormal
 	time   time.Time
-	peerID types.NodeID
+	peerID p2ptypes.NodeID
 	height int64
 }
 
@@ -254,7 +256,7 @@ func (resp bcNoBlockResponse) String() string {
 type bcStatusResponse struct {
 	priorityNormal
 	time   time.Time
-	peerID types.NodeID
+	peerID p2ptypes.NodeID
 	base   int64
 	height int64
 }
@@ -267,7 +269,7 @@ func (resp bcStatusResponse) String() string {
 // new peer is connected
 type bcAddNewPeer struct {
 	priorityNormal
-	peerID types.NodeID
+	peerID p2ptypes.NodeID
 }
 
 func (resp bcAddNewPeer) String() string {
@@ -277,7 +279,7 @@ func (resp bcAddNewPeer) String() string {
 // existing peer is removed
 type bcRemovePeer struct {
 	priorityHigh
-	peerID types.NodeID
+	peerID p2ptypes.NodeID
 	reason interface{}
 }
 
@@ -536,7 +538,7 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		r.mtx.RUnlock()
 
 	case *bcproto.Message_BlockResponse:
-		bi, err := types.BlockFromProto(msg.BlockResponse.Block)
+		bi, err := block.BlockFromProto(msg.BlockResponse.Block)
 		if err != nil {
 			logger.Error("error transitioning block from protobuf", "err", err)
 			_ = r.reporter.Report(behavior.BadMessage(src.ID(), err.Error()))

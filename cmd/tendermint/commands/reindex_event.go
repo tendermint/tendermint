@@ -8,16 +8,16 @@ import (
 	"github.com/spf13/cobra"
 	tmdb "github.com/tendermint/tm-db"
 
-	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmcfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/libs/progressbar"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/events"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/state/indexer/sink/kv"
 	"github.com/tendermint/tendermint/state/indexer/sink/psql"
 	"github.com/tendermint/tendermint/store"
-	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -170,7 +170,7 @@ func eventReIndex(cmd *cobra.Command, es []indexer.EventSink, bs state.BlockStor
 				return fmt.Errorf("not able to load ABCI Response at height %d from the statestore", i)
 			}
 
-			e := types.EventDataNewBlockHeader{
+			e := events.EventDataNewBlockHeader{
 				Header:           b.Header,
 				NumTxs:           int64(len(b.Txs)),
 				ResultBeginBlock: *r.BeginBlock,
@@ -182,7 +182,7 @@ func eventReIndex(cmd *cobra.Command, es []indexer.EventSink, bs state.BlockStor
 				batch = indexer.NewBatch(e.NumTxs)
 
 				for i, tx := range b.Data.Txs {
-					tr := abcitypes.TxResult{
+					tr := abci.TxResult{
 						Height: b.Height,
 						Index:  uint32(i),
 						Tx:     tx,

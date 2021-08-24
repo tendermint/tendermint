@@ -8,7 +8,9 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/light/provider"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/evidence"
+	lighttypes "github.com/tendermint/tendermint/pkg/light"
+	"github.com/tendermint/tendermint/pkg/metadata"
 )
 
 // The detector component of the light client detects and handles attacks on the light client.
@@ -25,7 +27,7 @@ import (
 //
 // If there are no conflictinge headers, the light client deems the verified target header
 // trusted and saves it to the trusted store.
-func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.LightBlock, now time.Time) error {
+func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*lighttypes.LightBlock, now time.Time) error {
 	if primaryTrace == nil || len(primaryTrace) < 2 {
 		return errors.New("nil or single block primary trace")
 	}
@@ -107,7 +109,7 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 // 2: errBadWitness -> the witness has either not responded, doesn't have the header or has given us an invalid one
 //    Note: In the case of an invalid header we remove the witness
 // 3: nil -> the hashes of the two headers match
-func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan error, h *types.SignedHeader,
+func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan error, h *metadata.SignedHeader,
 	witness provider.Provider, witnessIndex int) {
 
 	lightBlock, err := witness.LightBlock(ctx, h.Height)
@@ -203,7 +205,7 @@ func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan erro
 }
 
 // sendEvidence sends evidence to a provider on a best effort basis.
-func (c *Client) sendEvidence(ctx context.Context, ev *types.LightClientAttackEvidence, receiver provider.Provider) {
+func (c *Client) sendEvidence(ctx context.Context, ev *evidence.LightClientAttackEvidence, receiver provider.Provider) {
 	err := receiver.ReportEvidence(ctx, ev)
 	if err != nil {
 		c.logger.Error("failed to report evidence to provider", "ev", ev, "provider", receiver)
@@ -214,8 +216,8 @@ func (c *Client) sendEvidence(ctx context.Context, ev *types.LightClientAttackEv
 // two headers of the same height but with different hashes
 func (c *Client) handleConflictingHeaders(
 	ctx context.Context,
-	primaryTrace []*types.LightBlock,
-	challendingBlock *types.LightBlock,
+	primaryTrace []*lighttypes.LightBlock,
+	challendingBlock *lighttypes.LightBlock,
 	witnessIndex int,
 	now time.Time,
 ) error {
@@ -287,14 +289,14 @@ func (c *Client) handleConflictingHeaders(
 // 3. The
 func (c *Client) examineConflictingHeaderAgainstTrace(
 	ctx context.Context,
-	trace []*types.LightBlock,
-	targetBlock *types.LightBlock,
+	trace []*lighttypes.LightBlock,
+	targetBlock *lighttypes.LightBlock,
 	source provider.Provider, now time.Time,
-) ([]*types.LightBlock, *types.LightBlock, error) {
+) ([]*lighttypes.LightBlock, *lighttypes.LightBlock, error) {
 
 	var (
-		previouslyVerifiedBlock, sourceBlock *types.LightBlock
-		sourceTrace                          []*types.LightBlock
+		previouslyVerifiedBlock, sourceBlock *lighttypes.LightBlock
+		sourceTrace                          []*lighttypes.LightBlock
 		err                                  error
 	)
 
@@ -378,7 +380,7 @@ func (c *Client) getTargetBlockOrLatest(
 	ctx context.Context,
 	height int64,
 	witness provider.Provider,
-) (bool, *types.LightBlock, error) {
+) (bool, *lighttypes.LightBlock, error) {
 	lightBlock, err := witness.LightBlock(ctx, 0)
 	if err != nil {
 		return false, nil, err
@@ -403,8 +405,8 @@ func (c *Client) getTargetBlockOrLatest(
 
 // newLightClientAttackEvidence determines the type of attack and then forms the evidence filling out
 // all the fields such that it is ready to be sent to a full node.
-func newLightClientAttackEvidence(conflicted, trusted, common *types.LightBlock) *types.LightClientAttackEvidence {
-	ev := &types.LightClientAttackEvidence{ConflictingBlock: conflicted}
+func newLightClientAttackEvidence(conflicted, trusted, common *lighttypes.LightBlock) *evidence.LightClientAttackEvidence {
+	ev := &evidence.LightClientAttackEvidence{ConflictingBlock: conflicted}
 	// We use the common height to indicate the form of the attack.
 	// if this is an equivocation or amnesia attack, i.e. the validator sets are the same, then we
 	// return the height of the conflicting block as the common height. If instead it is a lunatic

@@ -9,7 +9,7 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p/pex"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/types"
+	types "github.com/tendermint/tendermint/pkg/p2p"
 	"github.com/tendermint/tendermint/version"
 )
 

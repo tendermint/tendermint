@@ -9,9 +9,11 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/events"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 func TestReactorInvalidPrecommit(t *testing.T) {
@@ -59,7 +61,7 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 		for _, sub := range rts.subs {
 			wg.Add(1)
 
-			go func(s types.Subscription) {
+			go func(s events.Subscription) {
 				<-s.Out()
 				wg.Done()
 			}(sub)
@@ -69,7 +71,7 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	wg.Wait()
 }
 
-func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, r *Reactor, pv types.PrivValidator) {
+func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, r *Reactor, pv consensus.PrivValidator) {
 	// routine to:
 	// - precommit for a random block
 	// - send precommit to all peers
@@ -86,16 +88,16 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, r 
 
 		// precommit a random block
 		blockHash := bytes.HexBytes(tmrand.Bytes(32))
-		precommit := &types.Vote{
+		precommit := &consensus.Vote{
 			ValidatorAddress: addr,
 			ValidatorIndex:   valIndex,
 			Height:           cs.Height,
 			Round:            cs.Round,
 			Timestamp:        cs.voteTime(),
 			Type:             tmproto.PrecommitType,
-			BlockID: types.BlockID{
+			BlockID: metadata.BlockID{
 				Hash:          blockHash,
-				PartSetHeader: types.PartSetHeader{Total: 1, Hash: tmrand.Bytes(32)}},
+				PartSetHeader: metadata.PartSetHeader{Total: 1, Hash: tmrand.Bytes(32)}},
 		}
 
 		p := precommit.ToProto()

@@ -1,9 +1,10 @@
 package state
 
 import (
-	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	"github.com/tendermint/tendermint/types"
 )
 
 //
@@ -21,16 +22,16 @@ import (
 // exclusively and explicitly for testing.
 func UpdateState(
 	state State,
-	blockID types.BlockID,
-	header *types.Header,
+	blockID metadata.BlockID,
+	header *metadata.Header,
 	abciResponses *tmstate.ABCIResponses,
-	validatorUpdates []*types.Validator,
+	validatorUpdates []*consensus.Validator,
 ) (State, error) {
 	return updateState(state, blockID, header, abciResponses, validatorUpdates)
 }
 
 // ValidateValidatorUpdates is an alias for validateValidatorUpdates exported
 // from execution.go, exclusively and explicitly for testing.
-func ValidateValidatorUpdates(abciUpdates []abci.ValidatorUpdate, params types.ValidatorParams) error {
+func ValidateValidatorUpdates(abciUpdates []abci.ValidatorUpdate, params consensus.ValidatorParams) error {
 	return validateValidatorUpdates(abciUpdates, params)
 }

@@ -12,15 +12,16 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	cryptoproto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 type signerTestCase struct {
 	chainID      string
-	mockPV       types.PrivValidator
+	mockPV       consensus.PrivValidator
 	signerClient *SignerClient
 	signerServer *SignerServer
 }
@@ -31,7 +32,7 @@ func getSignerTestCases(t *testing.T) []signerTestCase {
 	// Get test cases for each possible dialer (DialTCP / DialUnix / etc)
 	for _, dtc := range getDialerTestCases(t) {
 		chainID := tmrand.Str(12)
-		mockPV := types.NewMockPV()
+		mockPV := consensus.NewMockPV()
 
 		// get a pair of signer listener, signer dialer endpoints
 		sl, sd := getMockEndpoints(t, dtc.addr, dtc.dialer)
@@ -119,20 +120,20 @@ func TestSignerProposal(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
 		ts := time.Now()
 		hash := tmrand.Bytes(tmhash.Size)
-		have := &types.Proposal{
+		have := &consensus.Proposal{
 			Type:      tmproto.ProposalType,
 			Height:    1,
 			Round:     2,
 			POLRound:  2,
-			BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			BlockID:   metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 			Timestamp: ts,
 		}
-		want := &types.Proposal{
+		want := &consensus.Proposal{
 			Type:      tmproto.ProposalType,
 			Height:    1,
 			Round:     2,
 			POLRound:  2,
-			BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			BlockID:   metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 			Timestamp: ts,
 		}
 
@@ -160,21 +161,21 @@ func TestSignerVote(t *testing.T) {
 		ts := time.Now()
 		hash := tmrand.Bytes(tmhash.Size)
 		valAddr := tmrand.Bytes(crypto.AddressSize)
-		want := &types.Vote{
+		want := &consensus.Vote{
 			Type:             tmproto.PrecommitType,
 			Height:           1,
 			Round:            2,
-			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			BlockID:          metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 			Timestamp:        ts,
 			ValidatorAddress: valAddr,
 			ValidatorIndex:   1,
 		}
 
-		have := &types.Vote{
+		have := &consensus.Vote{
 			Type:             tmproto.PrecommitType,
 			Height:           1,
 			Round:            2,
-			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			BlockID:          metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 			Timestamp:        ts,
 			ValidatorAddress: valAddr,
 			ValidatorIndex:   1,
@@ -204,21 +205,21 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 		ts := time.Now()
 		hash := tmrand.Bytes(tmhash.Size)
 		valAddr := tmrand.Bytes(crypto.AddressSize)
-		want := &types.Vote{
+		want := &consensus.Vote{
 			Type:             tmproto.PrecommitType,
 			Height:           1,
 			Round:            2,
-			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			BlockID:          metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 			Timestamp:        ts,
 			ValidatorAddress: valAddr,
 			ValidatorIndex:   1,
 		}
 
-		have := &types.Vote{
+		have := &consensus.Vote{
 			Type:             tmproto.PrecommitType,
 			Height:           1,
 			Round:            2,
-			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			BlockID:          metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 			Timestamp:        ts,
 			ValidatorAddress: valAddr,
 			ValidatorIndex:   1,
@@ -258,21 +259,21 @@ func TestSignerVoteKeepAlive(t *testing.T) {
 		ts := time.Now()
 		hash := tmrand.Bytes(tmhash.Size)
 		valAddr := tmrand.Bytes(crypto.AddressSize)
-		want := &types.Vote{
+		want := &consensus.Vote{
 			Type:             tmproto.PrecommitType,
 			Height:           1,
 			Round:            2,
-			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			BlockID:          metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 			Timestamp:        ts,
 			ValidatorAddress: valAddr,
 			ValidatorIndex:   1,
 		}
 
-		have := &types.Vote{
+		have := &consensus.Vote{
 			Type:             tmproto.PrecommitType,
 			Height:           1,
 			Round:            2,
-			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			BlockID:          metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 			Timestamp:        ts,
 			ValidatorAddress: valAddr,
 			ValidatorIndex:   1,
@@ -309,8 +310,8 @@ func TestSignerVoteKeepAlive(t *testing.T) {
 func TestSignerSignProposalErrors(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
 		// Replace service with a mock that always fails
-		tc.signerServer.privVal = types.NewErroringMockPV()
-		tc.mockPV = types.NewErroringMockPV()
+		tc.signerServer.privVal = consensus.NewErroringMockPV()
+		tc.mockPV = consensus.NewErroringMockPV()
 
 		tc := tc
 		t.Cleanup(func() {
@@ -326,18 +327,18 @@ func TestSignerSignProposalErrors(t *testing.T) {
 
 		ts := time.Now()
 		hash := tmrand.Bytes(tmhash.Size)
-		proposal := &types.Proposal{
+		proposal := &consensus.Proposal{
 			Type:      tmproto.ProposalType,
 			Height:    1,
 			Round:     2,
 			POLRound:  2,
-			BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			BlockID:   metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 			Timestamp: ts,
 			Signature: []byte("signature"),
 		}
 
 		err := tc.signerClient.SignProposal(context.Background(), tc.chainID, proposal.ToProto())
-		require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
+		require.Equal(t, err.(*RemoteSignerError).Description, consensus.ErroringMockPVErr.Error())
 
 		err = tc.mockPV.SignProposal(context.Background(), tc.chainID, proposal.ToProto())
 		require.Error(t, err)
@@ -352,11 +353,11 @@ func TestSignerSignVoteErrors(t *testing.T) {
 		ts := time.Now()
 		hash := tmrand.Bytes(tmhash.Size)
 		valAddr := tmrand.Bytes(crypto.AddressSize)
-		vote := &types.Vote{
+		vote := &consensus.Vote{
 			Type:             tmproto.PrecommitType,
 			Height:           1,
 			Round:            2,
-			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			BlockID:          metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 			Timestamp:        ts,
 			ValidatorAddress: valAddr,
 			ValidatorIndex:   1,
@@ -364,8 +365,8 @@ func TestSignerSignVoteErrors(t *testing.T) {
 		}
 
 		// Replace signer service privval with one that always fails
-		tc.signerServer.privVal = types.NewErroringMockPV()
-		tc.mockPV = types.NewErroringMockPV()
+		tc.signerServer.privVal = consensus.NewErroringMockPV()
+		tc.mockPV = consensus.NewErroringMockPV()
 
 		tc := tc
 		t.Cleanup(func() {
@@ -380,7 +381,7 @@ func TestSignerSignVoteErrors(t *testing.T) {
 		})
 
 		err := tc.signerClient.SignVote(context.Background(), tc.chainID, vote.ToProto())
-		require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
+		require.Equal(t, err.(*RemoteSignerError).Description, consensus.ErroringMockPVErr.Error())
 
 		err = tc.mockPV.SignVote(context.Background(), tc.chainID, vote.ToProto())
 		require.Error(t, err)
@@ -390,7 +391,7 @@ func TestSignerSignVoteErrors(t *testing.T) {
 	}
 }
 
-func brokenHandler(ctx context.Context, privVal types.PrivValidator, request privvalproto.Message,
+func brokenHandler(ctx context.Context, privVal consensus.PrivValidator, request privvalproto.Message,
 	chainID string) (privvalproto.Message, error) {
 	var res privvalproto.Message
 	var err error
@@ -414,8 +415,8 @@ func brokenHandler(ctx context.Context, privVal types.PrivValidator, request pri
 
 func TestSignerUnexpectedResponse(t *testing.T) {
 	for _, tc := range getSignerTestCases(t) {
-		tc.signerServer.privVal = types.NewMockPV()
-		tc.mockPV = types.NewMockPV()
+		tc.signerServer.privVal = consensus.NewMockPV()
+		tc.mockPV = consensus.NewMockPV()
 
 		tc.signerServer.SetRequestHandler(brokenHandler)
 
@@ -432,7 +433,7 @@ func TestSignerUnexpectedResponse(t *testing.T) {
 		})
 
 		ts := time.Now()
-		want := &types.Vote{Timestamp: ts, Type: tmproto.PrecommitType}
+		want := &consensus.Vote{Timestamp: ts, Type: tmproto.PrecommitType}
 
 		e := tc.signerClient.SignVote(context.Background(), tc.chainID, want.ToProto())
 		assert.EqualError(t, e, "empty response")

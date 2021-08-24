@@ -21,9 +21,13 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/pkg/block"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	types "github.com/tendermint/tendermint/pkg/evidence"
+	"github.com/tendermint/tendermint/pkg/metadata"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -35,11 +39,11 @@ var (
 type reactorTestSuite struct {
 	network          *p2ptest.Network
 	logger           log.Logger
-	reactors         map[types.NodeID]*evidence.Reactor
-	pools            map[types.NodeID]*evidence.Pool
-	evidenceChannels map[types.NodeID]*p2p.Channel
-	peerUpdates      map[types.NodeID]*p2p.PeerUpdates
-	peerChans        map[types.NodeID]chan p2p.PeerUpdate
+	reactors         map[p2ptypes.NodeID]*evidence.Reactor
+	pools            map[p2ptypes.NodeID]*evidence.Pool
+	evidenceChannels map[p2ptypes.NodeID]*p2p.Channel
+	peerUpdates      map[p2ptypes.NodeID]*p2p.PeerUpdates
+	peerChans        map[p2ptypes.NodeID]chan p2p.PeerUpdate
 	nodes            []*p2ptest.Node
 	numStateStores   int
 }
@@ -56,10 +60,10 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 		numStateStores: numStateStores,
 		logger:         log.TestingLogger().With("testCase", t.Name()),
 		network:        p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numStateStores}),
-		reactors:       make(map[types.NodeID]*evidence.Reactor, numStateStores),
-		pools:          make(map[types.NodeID]*evidence.Pool, numStateStores),
-		peerUpdates:    make(map[types.NodeID]*p2p.PeerUpdates, numStateStores),
-		peerChans:      make(map[types.NodeID]chan p2p.PeerUpdate, numStateStores),
+		reactors:       make(map[p2ptypes.NodeID]*evidence.Reactor, numStateStores),
+		pools:          make(map[p2ptypes.NodeID]*evidence.Pool, numStateStores),
+		peerUpdates:    make(map[p2ptypes.NodeID]*p2p.PeerUpdates, numStateStores),
+		peerChans:      make(map[p2ptypes.NodeID]chan p2p.PeerUpdate, numStateStores),
 	}
 
 	chDesc := p2p.ChannelDescriptor{ID: byte(evidence.EvidenceChannel)}
@@ -76,9 +80,9 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 		evidenceDB := dbm.NewMemDB()
 		blockStore := &mocks.BlockStore{}
 		state, _ := stateStores[idx].Load()
-		blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(func(h int64) *types.BlockMeta {
+		blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(func(h int64) *block.BlockMeta {
 			if h <= state.LastBlockHeight {
-				return &types.BlockMeta{Header: types.Header{Time: evidenceTime}}
+				return &block.BlockMeta{Header: metadata.Header{Time: evidenceTime}}
 			}
 			return nil
 		})
@@ -124,7 +128,7 @@ func (rts *reactorTestSuite) start(t *testing.T) {
 		"network does not have expected number of nodes")
 }
 
-func (rts *reactorTestSuite) waitForEvidence(t *testing.T, evList types.EvidenceList, ids ...types.NodeID) {
+func (rts *reactorTestSuite) waitForEvidence(t *testing.T, evList types.EvidenceList, ids ...p2ptypes.NodeID) {
 	t.Helper()
 
 	fn := func(pool *evidence.Pool) {
@@ -188,7 +192,7 @@ func (rts *reactorTestSuite) waitForEvidence(t *testing.T, evList types.Evidence
 		}
 
 		wg.Add(1)
-		go func(id types.NodeID) { defer wg.Done(); fn(rts.pools[id]) }(id)
+		go func(id p2ptypes.NodeID) { defer wg.Done(); fn(rts.pools[id]) }(id)
 	}
 	wg.Wait()
 }
@@ -211,7 +215,7 @@ func (rts *reactorTestSuite) assertEvidenceChannelsEmpty(t *testing.T) {
 func createEvidenceList(
 	t *testing.T,
 	pool *evidence.Pool,
-	val types.PrivValidator,
+	val consensus.PrivValidator,
 	numEvidence int,
 ) types.EvidenceList {
 	t.Helper()
@@ -236,7 +240,7 @@ func createEvidenceList(
 }
 
 func TestReactorMultiDisconnect(t *testing.T) {
-	val := types.NewMockPV()
+	val := consensus.NewMockPV()
 	height := int64(numEvidence) + 10
 
 	stateDB1 := initializeValidatorState(t, val, height)
@@ -275,7 +279,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 
 	// create a stateDB for all test suites (nodes)
 	stateDBs := make([]sm.Store, numPeers)
-	val := types.NewMockPV()
+	val := consensus.NewMockPV()
 
 	// We need all validators saved for heights at least as high as we have
 	// evidence for.
@@ -293,7 +297,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	// primary. As a result, the primary will gossip all evidence to each secondary.
 	primary := rts.network.RandomNode()
 	secondaries := make([]*p2ptest.Node, 0, len(rts.network.NodeIDs())-1)
-	secondaryIDs := make([]types.NodeID, 0, cap(secondaries))
+	secondaryIDs := make([]p2ptypes.NodeID, 0, cap(secondaries))
 	for id := range rts.network.Nodes {
 		if id == primary.NodeID {
 			continue
@@ -329,7 +333,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 // connected to one another but are at different heights. Reactor 1 which is
 // ahead receives a list of evidence.
 func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
-	val := types.NewMockPV()
+	val := consensus.NewMockPV()
 	height1 := int64(numEvidence) + 10
 	height2 := int64(numEvidence) / 2
 
@@ -365,7 +369,7 @@ func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
 }
 
 func TestReactorBroadcastEvidence_Pending(t *testing.T) {
-	val := types.NewMockPV()
+	val := consensus.NewMockPV()
 	height := int64(10)
 
 	stateDB1 := initializeValidatorState(t, val, height)
@@ -405,7 +409,7 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 }
 
 func TestReactorBroadcastEvidence_Committed(t *testing.T) {
-	val := types.NewMockPV()
+	val := consensus.NewMockPV()
 	height := int64(10)
 
 	stateDB1 := initializeValidatorState(t, val, height)
@@ -465,7 +469,7 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 
 	// create a stateDB for all test suites (nodes)
 	stateDBs := make([]sm.Store, numPeers)
-	val := types.NewMockPV()
+	val := consensus.NewMockPV()
 
 	// We need all validators saved for heights at least as high as we have
 	// evidence for.
@@ -506,18 +510,18 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 
 // nolint:lll
 func TestEvidenceListSerialization(t *testing.T) {
-	exampleVote := func(msgType byte) *types.Vote {
-		var stamp, err = time.Parse(types.TimeFormat, "2017-12-25T03:00:01.234Z")
+	exampleVote := func(msgType byte) *consensus.Vote {
+		var stamp, err = time.Parse(metadata.TimeFormat, "2017-12-25T03:00:01.234Z")
 		require.NoError(t, err)
 
-		return &types.Vote{
+		return &consensus.Vote{
 			Type:      tmproto.SignedMsgType(msgType),
 			Height:    3,
 			Round:     2,
 			Timestamp: stamp,
-			BlockID: types.BlockID{
+			BlockID: metadata.BlockID{
 				Hash: tmhash.Sum([]byte("blockID_hash")),
-				PartSetHeader: types.PartSetHeader{
+				PartSetHeader: metadata.PartSetHeader{
 					Total: 1000000,
 					Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
 				},
@@ -527,12 +531,12 @@ func TestEvidenceListSerialization(t *testing.T) {
 		}
 	}
 
-	val := &types.Validator{
+	val := &consensus.Validator{
 		Address:     crypto.AddressHash([]byte("validator_address")),
 		VotingPower: 10,
 	}
 
-	valSet := types.NewValidatorSet([]*types.Validator{val})
+	valSet := consensus.NewValidatorSet([]*consensus.Validator{val})
 
 	dupl := types.NewDuplicateVoteEvidence(
 		exampleVote(1),

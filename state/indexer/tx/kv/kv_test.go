@@ -13,17 +13,17 @@ import (
 
 	db "github.com/tendermint/tm-db"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/mempool"
 	indexer "github.com/tendermint/tendermint/state/indexer"
-	"github.com/tendermint/tendermint/types"
 )
 
 func TestTxIndex(t *testing.T) {
 	txIndexer := NewTxIndex(db.NewMemDB())
 
-	tx := types.Tx("HELLO WORLD")
+	tx := mempool.Tx("HELLO WORLD")
 	txResult := &abci.TxResult{
 		Height: 1,
 		Index:  0,
@@ -46,7 +46,7 @@ func TestTxIndex(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, proto.Equal(txResult, loadedTxResult))
 
-	tx2 := types.Tx("BYE BYE WORLD")
+	tx2 := mempool.Tx("BYE BYE WORLD")
 	txResult2 := &abci.TxResult{
 		Height: 1,
 		Index:  0,
@@ -74,7 +74,7 @@ func TestTxSearch(t *testing.T) {
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "owner", Value: "Ivan", Index: true}}},
 		{Type: "", Attributes: []abci.EventAttribute{{Key: "not_allowed", Value: "Vlad", Index: true}}},
 	})
-	hash := types.Tx(txResult.Tx).Hash()
+	hash := mempool.Tx(txResult.Tx).Hash()
 
 	err := indexer.Index([]*abci.TxResult{txResult})
 	require.NoError(t, err)
@@ -171,16 +171,16 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 	txResult1 := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "number", Value: "1", Index: true}}},
 	})
-	hash1 := types.Tx(txResult1.Tx).Hash()
+	hash1 := mempool.Tx(txResult1.Tx).Hash()
 
 	err := indexer.Index([]*abci.TxResult{txResult1})
 	require.NoError(t, err)
 
 	// index tx also using deprecated indexing (event as key)
 	txResult2 := txResultWithEvents(nil)
-	txResult2.Tx = types.Tx("HELLO WORLD 2")
+	txResult2.Tx = mempool.Tx("HELLO WORLD 2")
 
-	hash2 := types.Tx(txResult2.Tx).Hash()
+	hash2 := mempool.Tx(txResult2.Tx).Hash()
 	b := indexer.store.NewBatch()
 
 	rawBytes, err := proto.Marshal(txResult2)
@@ -273,7 +273,7 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "number", Value: "1", Index: true}}},
 	})
 
-	txResult.Tx = types.Tx("Bob's account")
+	txResult.Tx = mempool.Tx("Bob's account")
 	txResult.Height = 2
 	txResult.Index = 1
 	err := indexer.Index([]*abci.TxResult{txResult})
@@ -283,7 +283,7 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	txResult2 := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "number", Value: "2", Index: true}}},
 	})
-	txResult2.Tx = types.Tx("Alice's account")
+	txResult2.Tx = mempool.Tx("Alice's account")
 	txResult2.Height = 1
 	txResult2.Index = 2
 
@@ -294,7 +294,7 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	txResult3 := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "number", Value: "3", Index: true}}},
 	})
-	txResult3.Tx = types.Tx("Jack's account")
+	txResult3.Tx = mempool.Tx("Jack's account")
 	txResult3.Height = 1
 	txResult3.Index = 1
 	err = indexer.Index([]*abci.TxResult{txResult3})
@@ -305,7 +305,7 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 	txResult4 := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "number.id", Value: "1", Index: true}}},
 	})
-	txResult4.Tx = types.Tx("Mike's account")
+	txResult4.Tx = mempool.Tx("Mike's account")
 	txResult4.Height = 2
 	txResult4.Index = 2
 	err = indexer.Index([]*abci.TxResult{txResult4})
@@ -320,7 +320,7 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 }
 
 func txResultWithEvents(events []abci.Event) *abci.TxResult {
-	tx := types.Tx("HELLO WORLD")
+	tx := mempool.Tx("HELLO WORLD")
 	return &abci.TxResult{
 		Height: 1,
 		Index:  0,

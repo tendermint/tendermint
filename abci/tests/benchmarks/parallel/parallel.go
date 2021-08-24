@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/tendermint/tendermint/abci/types"
 	tmnet "github.com/tendermint/tendermint/libs/net"
+	"github.com/tendermint/tendermint/pkg/abci"
 )
 
 func main() {
@@ -20,8 +20,8 @@ func main() {
 	go func() {
 		counter := 0
 		for {
-			var res = &types.Response{}
-			err := types.ReadMessage(conn, res)
+			var res = &abci.Response{}
+			err := abci.ReadMessage(conn, res)
 			if err != nil {
 				log.Fatal(err.Error())
 			}
@@ -36,9 +36,9 @@ func main() {
 	counter := 0
 	for i := 0; ; i++ {
 		var bufWriter = bufio.NewWriter(conn)
-		var req = types.ToRequestEcho("foobar")
+		var req = abci.ToRequestEcho("foobar")
 
-		err := types.WriteMessage(req, bufWriter)
+		err := abci.WriteMessage(req, bufWriter)
 		if err != nil {
 			log.Fatal(err.Error())
 		}

@@ -13,10 +13,13 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	tmjson "github.com/tendermint/tendermint/libs/json"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/evidence"
+	"github.com/tendermint/tendermint/pkg/light"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
-	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -52,7 +55,7 @@ func InjectEvidence(testnet *e2e.Testnet, amount int) error {
 		return err
 	}
 
-	valSet, err := types.ValidatorSetFromExistingValidators(valRes.Validators)
+	valSet, err := consensus.ValidatorSetFromExistingValidators(valRes.Validators)
 	if err != nil {
 		return err
 	}
@@ -70,7 +73,7 @@ func InjectEvidence(testnet *e2e.Testnet, amount int) error {
 		return err
 	}
 
-	var ev types.Evidence
+	var ev evidence.Evidence
 	for i := 1; i <= amount; i++ {
 		if i%lightClientEvidenceRatio == 0 {
 			ev, err = generateLightClientAttackEvidence(
@@ -103,8 +106,8 @@ func InjectEvidence(testnet *e2e.Testnet, amount int) error {
 	return nil
 }
 
-func getPrivateValidatorKeys(testnet *e2e.Testnet) ([]types.MockPV, error) {
-	privVals := []types.MockPV{}
+func getPrivateValidatorKeys(testnet *e2e.Testnet) ([]consensus.MockPV, error) {
+	privVals := []consensus.MockPV{}
 
 	for _, node := range testnet.Nodes {
 		if node.Mode == e2e.ModeValidator {
@@ -115,7 +118,7 @@ func getPrivateValidatorKeys(testnet *e2e.Testnet) ([]types.MockPV, error) {
 			}
 			// Create mock private validators from the validators private key. MockPV is
 			// stateless which means we can double vote and do other funky stuff
-			privVals = append(privVals, types.NewMockPVWithParams(privKey, false, false))
+			privVals = append(privVals, consensus.NewMockPVWithParams(privKey, false, false))
 		}
 	}
 
@@ -125,12 +128,12 @@ func getPrivateValidatorKeys(testnet *e2e.Testnet) ([]types.MockPV, error) {
 // creates evidence of a lunatic attack. The height provided is the common height.
 // The forged height happens 2 blocks later.
 func generateLightClientAttackEvidence(
-	privVals []types.MockPV,
+	privVals []consensus.MockPV,
 	height int64,
-	vals *types.ValidatorSet,
+	vals *consensus.ValidatorSet,
 	chainID string,
 	evTime time.Time,
-) (*types.LightClientAttackEvidence, error) {
+) (*evidence.LightClientAttackEvidence, error) {
 	// forge a random header
 	forgedHeight := height + 2
 	forgedTime := evTime.Add(1 * time.Second)
@@ -148,15 +151,15 @@ func generateLightClientAttackEvidence(
 
 	// create a commit for the forged header
 	blockID := makeBlockID(header.Hash(), 1000, []byte("partshash"))
-	voteSet := types.NewVoteSet(chainID, forgedHeight, 0, tmproto.SignedMsgType(2), conflictingVals)
+	voteSet := consensus.NewVoteSet(chainID, forgedHeight, 0, tmproto.SignedMsgType(2), conflictingVals)
 	commit, err := factory.MakeCommit(blockID, forgedHeight, 0, voteSet, pv, forgedTime)
 	if err != nil {
 		return nil, err
 	}
 
-	ev := &types.LightClientAttackEvidence{
-		ConflictingBlock: &types.LightBlock{
-			SignedHeader: &types.SignedHeader{
+	ev := &evidence.LightClientAttackEvidence{
+		ConflictingBlock: &light.LightBlock{
+			SignedHeader: &metadata.SignedHeader{
 				Header: header,
 				Commit: commit,
 			},
@@ -166,7 +169,7 @@ func generateLightClientAttackEvidence(
 		TotalVotingPower: vals.TotalVotingPower(),
 		Timestamp:        evTime,
 	}
-	ev.ByzantineValidators = ev.GetByzantineValidators(vals, &types.SignedHeader{
+	ev.ByzantineValidators = ev.GetByzantineValidators(vals, &metadata.SignedHeader{
 		Header: makeHeaderRandom(chainID, forgedHeight),
 	})
 	return ev, nil
@@ -175,12 +178,12 @@ func generateLightClientAttackEvidence(
 // generateDuplicateVoteEvidence picks a random validator from the val set and
 // returns duplicate vote evidence against the validator
 func generateDuplicateVoteEvidence(
-	privVals []types.MockPV,
+	privVals []consensus.MockPV,
 	height int64,
-	vals *types.ValidatorSet,
+	vals *consensus.ValidatorSet,
 	chainID string,
 	time time.Time,
-) (*types.DuplicateVoteEvidence, error) {
+) (*evidence.DuplicateVoteEvidence, error) {
 	// nolint:gosec // G404: Use of weak random number generator
 	privVal := privVals[rand.Intn(len(privVals))]
 
@@ -193,7 +196,7 @@ func generateDuplicateVoteEvidence(
 	if err != nil {
 		return nil, err
 	}
-	ev := types.NewDuplicateVoteEvidence(voteA, voteB, time, vals)
+	ev := evidence.NewDuplicateVoteEvidence(voteA, voteB, time, vals)
 	if ev == nil {
 		return nil, fmt.Errorf("could not generate evidence a=%v b=%v vals=%v", voteA, voteB, vals)
 	}
@@ -215,8 +218,8 @@ func readPrivKey(keyFilePath string) (crypto.PrivKey, error) {
 	return pvKey.PrivKey, nil
 }
 
-func makeHeaderRandom(chainID string, height int64) *types.Header {
-	return &types.Header{
+func makeHeaderRandom(chainID string, height int64) *metadata.Header {
+	return &metadata.Header{
 		Version:            version.Consensus{Block: version.BlockProtocol, App: 1},
 		ChainID:            chainID,
 		Height:             height,
@@ -234,42 +237,42 @@ func makeHeaderRandom(chainID string, height int64) *types.Header {
 	}
 }
 
-func makeRandomBlockID() types.BlockID {
+func makeRandomBlockID() metadata.BlockID {
 	return makeBlockID(crypto.CRandBytes(tmhash.Size), 100, crypto.CRandBytes(tmhash.Size))
 }
 
-func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.BlockID {
+func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) metadata.BlockID {
 	var (
 		h   = make([]byte, tmhash.Size)
 		psH = make([]byte, tmhash.Size)
 	)
 	copy(h, hash)
 	copy(psH, partSetHash)
-	return types.BlockID{
+	return metadata.BlockID{
 		Hash: h,
-		PartSetHeader: types.PartSetHeader{
+		PartSetHeader: metadata.PartSetHeader{
 			Total: partSetSize,
 			Hash:  psH,
 		},
 	}
 }
 
-func mutateValidatorSet(privVals []types.MockPV, vals *types.ValidatorSet,
-) ([]types.PrivValidator, *types.ValidatorSet, error) {
+func mutateValidatorSet(privVals []consensus.MockPV, vals *consensus.ValidatorSet,
+) ([]consensus.PrivValidator, *consensus.ValidatorSet, error) {
 	newVal, newPrivVal := factory.RandValidator(false, 10)
 
-	var newVals *types.ValidatorSet
+	var newVals *consensus.ValidatorSet
 	if vals.Size() > 2 {
-		newVals = types.NewValidatorSet(append(vals.Copy().Validators[:vals.Size()-1], newVal))
+		newVals = consensus.NewValidatorSet(append(vals.Copy().Validators[:vals.Size()-1], newVal))
 	} else {
-		newVals = types.NewValidatorSet(append(vals.Copy().Validators, newVal))
+		newVals = consensus.NewValidatorSet(append(vals.Copy().Validators, newVal))
 	}
 
 	// we need to sort the priv validators with the same index as the validator set
-	pv := make([]types.PrivValidator, newVals.Size())
+	pv := make([]consensus.PrivValidator, newVals.Size())
 	for idx, val := range newVals.Validators {
 		found := false
-		for _, p := range append(privVals, newPrivVal.(types.MockPV)) {
+		for _, p := range append(privVals, newPrivVal.(consensus.MockPV)) {
 			if bytes.Equal(p.PrivKey.PubKey().Address(), val.Address) {
 				pv[idx] = p
 				found = true

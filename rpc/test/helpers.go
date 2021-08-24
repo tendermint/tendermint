@@ -6,12 +6,12 @@ import (
 	"os"
 	"time"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 	nm "github.com/tendermint/tendermint/node"
+	"github.com/tendermint/tendermint/pkg/abci"
 	"github.com/tendermint/tendermint/proxy"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	core_grpc "github.com/tendermint/tendermint/rpc/grpc"

@@ -20,11 +20,12 @@ import (
 
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/pkg/evidence"
+	"github.com/tendermint/tendermint/pkg/mempool"
 	"github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 // Client wraps arbitrary implementations of the various interfaces.
@@ -104,19 +105,19 @@ func (c Client) ABCIQueryWithOptions(
 	return c.env.ABCIQuery(&rpctypes.Context{}, path, data, opts.Height, opts.Prove)
 }
 
-func (c Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+func (c Client) BroadcastTxCommit(ctx context.Context, tx mempool.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	return c.env.BroadcastTxCommit(&rpctypes.Context{}, tx)
 }
 
-func (c Client) BroadcastTxAsync(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+func (c Client) BroadcastTxAsync(ctx context.Context, tx mempool.Tx) (*ctypes.ResultBroadcastTx, error) {
 	return c.env.BroadcastTxAsync(&rpctypes.Context{}, tx)
 }
 
-func (c Client) BroadcastTxSync(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+func (c Client) BroadcastTxSync(ctx context.Context, tx mempool.Tx) (*ctypes.ResultBroadcastTx, error) {
 	return c.env.BroadcastTxSync(&rpctypes.Context{}, tx)
 }
 
-func (c Client) CheckTx(ctx context.Context, tx types.Tx) (*ctypes.ResultCheckTx, error) {
+func (c Client) CheckTx(ctx context.Context, tx mempool.Tx) (*ctypes.ResultCheckTx, error) {
 	return c.env.CheckTx(&rpctypes.Context{}, tx)
 }
 
@@ -178,6 +179,6 @@ func (c Client) Validators(ctx context.Context, height *int64, page, perPage *in
 	return c.env.Validators(&rpctypes.Context{}, height, page, perPage)
 }
 
-func (c Client) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
+func (c Client) BroadcastEvidence(ctx context.Context, ev evidence.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 	return c.env.BroadcastEvidence(&rpctypes.Context{}, ev)
 }

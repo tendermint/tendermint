@@ -5,12 +5,17 @@ import (
 	"errors"
 	"time"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/pkg/abci"
+	types "github.com/tendermint/tendermint/pkg/block"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/events"
+	"github.com/tendermint/tendermint/pkg/mempool"
+	"github.com/tendermint/tendermint/pkg/metadata"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 // List of standardized errors used across RPC
@@ -33,7 +38,7 @@ type ResultBlockchainInfo struct {
 
 // Genesis file
 type ResultGenesis struct {
-	Genesis *types.GenesisDoc `json:"genesis"`
+	Genesis *consensus.GenesisDoc `json:"genesis"`
 }
 
 // ResultGenesisChunk is the output format for the chunked/paginated
@@ -48,14 +53,14 @@ type ResultGenesisChunk struct {
 
 // Single block (with meta)
 type ResultBlock struct {
-	BlockID types.BlockID `json:"block_id"`
-	Block   *types.Block  `json:"block"`
+	BlockID metadata.BlockID `json:"block_id"`
+	Block   *types.Block     `json:"block"`
 }
 
 // Commit and Header
 type ResultCommit struct {
-	types.SignedHeader `json:"signed_header"`
-	CanonicalCommit    bool `json:"canonical"`
+	metadata.SignedHeader `json:"signed_header"`
+	CanonicalCommit       bool `json:"canonical"`
 }
 
 // ABCI results from a block
@@ -71,11 +76,11 @@ type ResultBlockResults struct {
 
 // NewResultCommit is a helper to initialize the ResultCommit with
 // the embedded struct
-func NewResultCommit(header *types.Header, commit *types.Commit,
+func NewResultCommit(header *metadata.Header, commit *metadata.Commit,
 	canonical bool) *ResultCommit {
 
 	return &ResultCommit{
-		SignedHeader: types.SignedHeader{
+		SignedHeader: metadata.SignedHeader{
 			Header: header,
 			Commit: commit,
 		},
@@ -112,9 +117,9 @@ type ValidatorInfo struct {
 
 // Node Status
 type ResultStatus struct {
-	NodeInfo      types.NodeInfo `json:"node_info"`
-	SyncInfo      SyncInfo       `json:"sync_info"`
-	ValidatorInfo ValidatorInfo  `json:"validator_info"`
+	NodeInfo      p2ptypes.NodeInfo `json:"node_info"`
+	SyncInfo      SyncInfo          `json:"sync_info"`
+	ValidatorInfo ValidatorInfo     `json:"validator_info"`
 }
 
 // Is TxIndexing enabled
@@ -145,7 +150,7 @@ type ResultDialPeers struct {
 
 // A peer
 type Peer struct {
-	NodeInfo         types.NodeInfo       `json:"node_info"`
+	NodeInfo         p2ptypes.NodeInfo    `json:"node_info"`
 	IsOutbound       bool                 `json:"is_outbound"`
 	ConnectionStatus p2p.ConnectionStatus `json:"connection_status"`
 	RemoteIP         string               `json:"remote_ip"`
@@ -153,8 +158,8 @@ type Peer struct {
 
 // Validators for a height.
 type ResultValidators struct {
-	BlockHeight int64              `json:"block_height"`
-	Validators  []*types.Validator `json:"validators"`
+	BlockHeight int64                  `json:"block_height"`
+	Validators  []*consensus.Validator `json:"validators"`
 	// Count of actual validators in this result
 	Count int `json:"count"`
 	// Total number of validators
@@ -163,8 +168,8 @@ type ResultValidators struct {
 
 // ConsensusParams for given height
 type ResultConsensusParams struct {
-	BlockHeight     int64                 `json:"block_height"`
-	ConsensusParams types.ConsensusParams `json:"consensus_params"`
+	BlockHeight     int64                     `json:"block_height"`
+	ConsensusParams consensus.ConsensusParams `json:"consensus_params"`
 }
 
 // Info about the consensus state.
@@ -215,8 +220,8 @@ type ResultTx struct {
 	Height   int64                  `json:"height"`
 	Index    uint32                 `json:"index"`
 	TxResult abci.ResponseDeliverTx `json:"tx_result"`
-	Tx       types.Tx               `json:"tx"`
-	Proof    types.TxProof          `json:"proof,omitempty"`
+	Tx       mempool.Tx             `json:"tx"`
+	Proof    mempool.TxProof        `json:"proof,omitempty"`
 }
 
 // Result of searching for txs
@@ -233,10 +238,10 @@ type ResultBlockSearch struct {
 
 // List of mempool txs
 type ResultUnconfirmedTxs struct {
-	Count      int        `json:"n_txs"`
-	Total      int        `json:"total"`
-	TotalBytes int64      `json:"total_bytes"`
-	Txs        []types.Tx `json:"txs"`
+	Count      int          `json:"n_txs"`
+	Total      int          `json:"total"`
+	TotalBytes int64        `json:"total_bytes"`
+	Txs        []mempool.Tx `json:"txs"`
 }
 
 // Info abci msg
@@ -265,8 +270,8 @@ type (
 
 // Event data from a subscription
 type ResultEvent struct {
-	SubscriptionID string            `json:"subscription_id"`
-	Query          string            `json:"query"`
-	Data           types.TMEventData `json:"data"`
-	Events         []abci.Event      `json:"events"`
+	SubscriptionID string             `json:"subscription_id"`
+	Query          string             `json:"query"`
+	Data           events.TMEventData `json:"data"`
+	Events         []abci.Event       `json:"events"`
 }

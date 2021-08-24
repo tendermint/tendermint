@@ -18,9 +18,11 @@ import (
 	"github.com/ory/dockertest/docker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/pkg/abci"
+	types "github.com/tendermint/tendermint/pkg/events"
+	"github.com/tendermint/tendermint/pkg/mempool"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	"github.com/tendermint/tendermint/state/indexer"
-	"github.com/tendermint/tendermint/types"
 )
 
 var db *sql.DB
@@ -94,14 +96,14 @@ func TestTxFuncs(t *testing.T) {
 	err = indexer.IndexTxEvents([]*abci.TxResult{txResult})
 	require.NoError(t, err)
 
-	tx, err := verifyTx(types.Tx(txResult.Tx).Hash())
+	tx, err := verifyTx(mempool.Tx(txResult.Tx).Hash())
 	require.NoError(t, err)
 	assert.Equal(t, txResult, tx)
 
 	require.NoError(t, verifyTimeStamp(TableEventTx))
 	require.NoError(t, verifyTimeStamp(TableResultTx))
 
-	tx, err = indexer.GetTxByHash(types.Tx(txResult.Tx).Hash())
+	tx, err = indexer.GetTxByHash(mempool.Tx(txResult.Tx).Hash())
 	assert.Nil(t, tx)
 	assert.Equal(t, errors.New("getTxByHash is not supported via the postgres event sink"), err)
 
@@ -129,7 +131,7 @@ func TestStop(t *testing.T) {
 
 func getTestBlockHeader() types.EventDataNewBlockHeader {
 	return types.EventDataNewBlockHeader{
-		Header: types.Header{Height: 1},
+		Header: metadata.Header{Height: 1},
 		ResultBeginBlock: abci.ResponseBeginBlock{
 			Events: []abci.Event{
 				{
@@ -187,7 +189,7 @@ func resetDB(t *testing.T) {
 }
 
 func txResultWithEvents(events []abci.Event) *abci.TxResult {
-	tx := types.Tx("HELLO WORLD")
+	tx := mempool.Tx("HELLO WORLD")
 	return &abci.TxResult{
 		Height: 1,
 		Index:  0,

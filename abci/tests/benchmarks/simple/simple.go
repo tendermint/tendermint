@@ -7,8 +7,8 @@ import (
 	"log"
 	"reflect"
 
-	"github.com/tendermint/tendermint/abci/types"
 	tmnet "github.com/tendermint/tendermint/libs/net"
+	"github.com/tendermint/tendermint/pkg/abci"
 )
 
 func main() {
@@ -21,7 +21,7 @@ func main() {
 	// Make a bunch of requests
 	counter := 0
 	for i := 0; ; i++ {
-		req := types.ToRequestEcho("foobar")
+		req := abci.ToRequestEcho("foobar")
 		_, err := makeRequest(conn, req)
 		if err != nil {
 			log.Fatal(err.Error())
@@ -33,15 +33,15 @@ func main() {
 	}
 }
 
-func makeRequest(conn io.ReadWriter, req *types.Request) (*types.Response, error) {
+func makeRequest(conn io.ReadWriter, req *abci.Request) (*abci.Response, error) {
 	var bufWriter = bufio.NewWriter(conn)
 
 	// Write desired request
-	err := types.WriteMessage(req, bufWriter)
+	err := abci.WriteMessage(req, bufWriter)
 	if err != nil {
 		return nil, err
 	}
-	err = types.WriteMessage(types.ToRequestFlush(), bufWriter)
+	err = abci.WriteMessage(abci.ToRequestFlush(), bufWriter)
 	if err != nil {
 		return nil, err
 	}
@@ -51,17 +51,17 @@ func makeRequest(conn io.ReadWriter, req *types.Request) (*types.Response, error
 	}
 
 	// Read desired response
-	var res = &types.Response{}
-	err = types.ReadMessage(conn, res)
+	var res = &abci.Response{}
+	err = abci.ReadMessage(conn, res)
 	if err != nil {
 		return nil, err
 	}
-	var resFlush = &types.Response{}
-	err = types.ReadMessage(conn, resFlush)
+	var resFlush = &abci.Response{}
+	err = abci.ReadMessage(conn, resFlush)
 	if err != nil {
 		return nil, err
 	}
-	if _, ok := resFlush.Value.(*types.Response_Flush); !ok {
+	if _, ok := resFlush.Value.(*abci.Response_Flush); !ok {
 		return nil, fmt.Errorf("expected flush response but got something else: %v", reflect.TypeOf(resFlush))
 	}
 

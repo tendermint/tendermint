@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/tendermint/tendermint/pkg/consensus"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
-	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -45,7 +45,7 @@ var (
 	evidence = uniformChoice{0, 1, 10}
 	txSize   = uniformChoice{1024, 10240} // either 1kb or 10kb
 	ipv6     = uniformChoice{false, true}
-	keyType  = uniformChoice{types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1}
+	keyType  = uniformChoice{consensus.ABCIPubKeyTypeEd25519, consensus.ABCIPubKeyTypeSecp256k1}
 )
 
 // Generate generates random testnets using the given RNG.

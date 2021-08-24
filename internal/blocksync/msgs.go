@@ -1,12 +1,12 @@
 package blocksync
 
 import (
+	"github.com/tendermint/tendermint/pkg/metadata"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
-	"github.com/tendermint/tendermint/types"
 )
 
 const (
-	MaxMsgSize = types.MaxBlockSizeBytes +
+	MaxMsgSize = metadata.MaxBlockSizeBytes +
 		bcproto.BlockResponseMessagePrefixSize +
 		bcproto.BlockResponseMessageFieldKeySize
 )

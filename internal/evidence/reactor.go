@@ -11,8 +11,9 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	types "github.com/tendermint/tendermint/pkg/evidence"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -63,7 +64,7 @@ type Reactor struct {
 	peerWG sync.WaitGroup
 
 	mtx          tmsync.Mutex
-	peerRoutines map[types.NodeID]*tmsync.Closer
+	peerRoutines map[p2ptypes.NodeID]*tmsync.Closer
 }
 
 // NewReactor returns a reference to a new evidence reactor, which implements the
@@ -80,7 +81,7 @@ func NewReactor(
 		evidenceCh:   evidenceCh,
 		peerUpdates:  peerUpdates,
 		closeCh:      make(chan struct{}),
-		peerRoutines: make(map[types.NodeID]*tmsync.Closer),
+		peerRoutines: make(map[p2ptypes.NodeID]*tmsync.Closer),
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Evidence", r)
@@ -291,7 +292,7 @@ func (r *Reactor) processPeerUpdates() {
 // that the peer has already received or may not be ready for.
 //
 // REF: https://github.com/tendermint/tendermint/issues/4727
-func (r *Reactor) broadcastEvidenceLoop(peerID types.NodeID, closer *tmsync.Closer) {
+func (r *Reactor) broadcastEvidenceLoop(peerID p2ptypes.NodeID, closer *tmsync.Closer) {
 	var next *clist.CElement
 
 	defer func() {

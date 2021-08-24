@@ -15,11 +15,15 @@ import (
 	"github.com/tendermint/tendermint/internal/evidence/mocks"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/pkg/block"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	types "github.com/tendermint/tendermint/pkg/evidence"
+	"github.com/tendermint/tendermint/pkg/mempool"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	sm "github.com/tendermint/tendermint/state"
 	smmocks "github.com/tendermint/tendermint/state/mocks"
 	sf "github.com/tendermint/tendermint/state/test/factory"
 	"github.com/tendermint/tendermint/store"
-	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -41,7 +45,7 @@ func TestEvidencePoolBasic(t *testing.T) {
 	valSet, privVals := factory.RandValidatorSet(1, 10)
 
 	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
-		&types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}},
+		&block.BlockMeta{Header: metadata.Header{Time: defaultEvidenceTime}},
 	)
 	stateStore.On("LoadValidators", mock.AnythingOfType("int64")).Return(valSet, nil)
 	stateStore.On("Load").Return(createState(height+1, valSet), nil)
@@ -89,7 +93,7 @@ func TestEvidencePoolBasic(t *testing.T) {
 // Tests inbound evidence for the right time and height
 func TestAddExpiredEvidence(t *testing.T) {
 	var (
-		val                 = types.NewMockPV()
+		val                 = consensus.NewMockPV()
 		height              = int64(30)
 		stateStore          = initializeValidatorState(t, val, height)
 		evidenceDB          = dbm.NewMemDB()
@@ -98,11 +102,11 @@ func TestAddExpiredEvidence(t *testing.T) {
 		expiredHeight       = int64(2)
 	)
 
-	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(func(h int64) *types.BlockMeta {
+	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(func(h int64) *block.BlockMeta {
 		if h == height || h == expiredHeight {
-			return &types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}}
+			return &block.BlockMeta{Header: metadata.Header{Time: defaultEvidenceTime}}
 		}
-		return &types.BlockMeta{Header: types.Header{Time: expiredEvidenceTime}}
+		return &block.BlockMeta{Header: metadata.Header{Time: expiredEvidenceTime}}
 	})
 
 	pool, err := evidence.NewPool(log.TestingLogger(), evidenceDB, stateStore, blockStore)
@@ -141,7 +145,7 @@ func TestReportConflictingVotes(t *testing.T) {
 	var height int64 = 10
 
 	pool, pv := defaultTestPool(t, height)
-	val := types.NewValidator(pv.PrivKey.PubKey(), 10)
+	val := consensus.NewValidator(pv.PrivKey.PubKey(), 10)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height+1, defaultEvidenceTime, pv, evidenceChainID)
 
 	pool.ReportConflictingVotes(ev.VoteA, ev.VoteB)
@@ -161,7 +165,7 @@ func TestReportConflictingVotes(t *testing.T) {
 	state := pool.State()
 	state.LastBlockHeight++
 	state.LastBlockTime = ev.Time()
-	state.LastValidators = types.NewValidatorSet([]*types.Validator{val})
+	state.LastValidators = consensus.NewValidatorSet([]*consensus.Validator{val})
 	pool.Update(state, []types.Evidence{})
 
 	// should be able to retrieve evidence from pool
@@ -202,7 +206,7 @@ func TestEvidencePoolUpdate(t *testing.T) {
 		evidenceChainID,
 	)
 	lastCommit := makeCommit(height, val.PrivKey.PubKey().Address())
-	block := types.MakeBlock(height+1, []types.Tx{}, lastCommit, []types.Evidence{ev})
+	block := block.MakeBlock(height+1, []mempool.Tx{}, lastCommit, []types.Evidence{ev})
 
 	// update state (partially)
 	state.LastBlockHeight = height + 1
@@ -278,7 +282,7 @@ func TestLightClientAttackEvidenceLifecycle(t *testing.T) {
 	state := sm.State{
 		LastBlockTime:   defaultEvidenceTime.Add(2 * time.Hour),
 		LastBlockHeight: 110,
-		ConsensusParams: *types.DefaultConsensusParams(),
+		ConsensusParams: *consensus.DefaultConsensusParams(),
 	}
 
 	stateStore := &smmocks.Store{}
@@ -287,8 +291,8 @@ func TestLightClientAttackEvidenceLifecycle(t *testing.T) {
 	stateStore.On("Load").Return(state, nil)
 
 	blockStore := &mocks.BlockStore{}
-	blockStore.On("LoadBlockMeta", height).Return(&types.BlockMeta{Header: *trusted.Header})
-	blockStore.On("LoadBlockMeta", commonHeight).Return(&types.BlockMeta{Header: *common.Header})
+	blockStore.On("LoadBlockMeta", height).Return(&block.BlockMeta{Header: *trusted.Header})
+	blockStore.On("LoadBlockMeta", commonHeight).Return(&block.BlockMeta{Header: *common.Header})
 	blockStore.On("LoadBlockCommit", height).Return(trusted.Commit)
 	blockStore.On("LoadBlockCommit", commonHeight).Return(common.Commit)
 
@@ -327,7 +331,7 @@ func TestLightClientAttackEvidenceLifecycle(t *testing.T) {
 // pending evidence and continue to gossip it
 func TestRecoverPendingEvidence(t *testing.T) {
 	height := int64(10)
-	val := types.NewMockPV()
+	val := consensus.NewMockPV()
 	valAddress := val.PrivKey.PubKey().Address()
 	evidenceDB := dbm.NewMemDB()
 	stateStore := initializeValidatorState(t, val, height)
@@ -362,12 +366,12 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	newStateStore.On("Load").Return(sm.State{
 		LastBlockTime:   defaultEvidenceTime.Add(25 * time.Minute),
 		LastBlockHeight: height + 15,
-		ConsensusParams: types.ConsensusParams{
-			Block: types.BlockParams{
+		ConsensusParams: consensus.ConsensusParams{
+			Block: consensus.BlockParams{
 				MaxBytes: 22020096,
 				MaxGas:   -1,
 			},
-			Evidence: types.EvidenceParams{
+			Evidence: consensus.EvidenceParams{
 				MaxAgeNumBlocks: 20,
 				MaxAgeDuration:  20 * time.Minute,
 				MaxBytes:        defaultEvidenceMaxBytes,
@@ -385,7 +389,7 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	require.Equal(t, goodEvidence, next.Value.(types.Evidence))
 }
 
-func initializeStateFromValidatorSet(t *testing.T, valSet *types.ValidatorSet, height int64) sm.Store {
+func initializeStateFromValidatorSet(t *testing.T, valSet *consensus.ValidatorSet, height int64) sm.Store {
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
 	state := sm.State{
@@ -397,12 +401,12 @@ func initializeStateFromValidatorSet(t *testing.T, valSet *types.ValidatorSet, h
 		NextValidators:              valSet.CopyIncrementProposerPriority(1),
 		LastValidators:              valSet,
 		LastHeightValidatorsChanged: 1,
-		ConsensusParams: types.ConsensusParams{
-			Block: types.BlockParams{
+		ConsensusParams: consensus.ConsensusParams{
+			Block: consensus.BlockParams{
 				MaxBytes: 22020096,
 				MaxGas:   -1,
 			},
-			Evidence: types.EvidenceParams{
+			Evidence: consensus.EvidenceParams{
 				MaxAgeNumBlocks: 20,
 				MaxAgeDuration:  20 * time.Minute,
 				MaxBytes:        1000,
@@ -419,13 +423,13 @@ func initializeStateFromValidatorSet(t *testing.T, valSet *types.ValidatorSet, h
 	return stateStore
 }
 
-func initializeValidatorState(t *testing.T, privVal types.PrivValidator, height int64) sm.Store {
+func initializeValidatorState(t *testing.T, privVal consensus.PrivValidator, height int64) sm.Store {
 	pubKey, _ := privVal.GetPubKey(context.Background())
-	validator := &types.Validator{Address: pubKey.Address(), VotingPower: 10, PubKey: pubKey}
+	validator := &consensus.Validator{Address: pubKey.Address(), VotingPower: 10, PubKey: pubKey}
 
 	// create validator set and state
-	valSet := &types.ValidatorSet{
-		Validators: []*types.Validator{validator},
+	valSet := &consensus.ValidatorSet{
+		Validators: []*consensus.Validator{validator},
 		Proposer:   validator,
 	}
 
@@ -452,19 +456,19 @@ func initializeBlockStore(db dbm.DB, state sm.State, valAddr []byte) *store.Bloc
 	return blockStore
 }
 
-func makeCommit(height int64, valAddr []byte) *types.Commit {
-	commitSigs := []types.CommitSig{{
-		BlockIDFlag:      types.BlockIDFlagCommit,
+func makeCommit(height int64, valAddr []byte) *metadata.Commit {
+	commitSigs := []metadata.CommitSig{{
+		BlockIDFlag:      metadata.BlockIDFlagCommit,
 		ValidatorAddress: valAddr,
 		Timestamp:        defaultEvidenceTime,
 		Signature:        []byte("Signature"),
 	}}
 
-	return types.NewCommit(height, 0, types.BlockID{}, commitSigs)
+	return metadata.NewCommit(height, 0, metadata.BlockID{}, commitSigs)
 }
 
-func defaultTestPool(t *testing.T, height int64) (*evidence.Pool, types.MockPV) {
-	val := types.NewMockPV()
+func defaultTestPool(t *testing.T, height int64) (*evidence.Pool, consensus.MockPV) {
+	val := consensus.NewMockPV()
 	valAddress := val.PrivKey.PubKey().Address()
 	evidenceDB := dbm.NewMemDB()
 	stateStore := initializeValidatorState(t, val, height)
@@ -477,12 +481,12 @@ func defaultTestPool(t *testing.T, height int64) (*evidence.Pool, types.MockPV) 
 	return pool, val
 }
 
-func createState(height int64, valSet *types.ValidatorSet) sm.State {
+func createState(height int64, valSet *consensus.ValidatorSet) sm.State {
 	return sm.State{
 		ChainID:         evidenceChainID,
 		LastBlockHeight: height,
 		LastBlockTime:   defaultEvidenceTime,
 		Validators:      valSet,
-		ConsensusParams: *types.DefaultConsensusParams(),
+		ConsensusParams: *consensus.DefaultConsensusParams(),
 	}
 }

@@ -17,9 +17,10 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
+	types "github.com/tendermint/tendermint/pkg/block"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/test/factory"
-	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -28,19 +29,19 @@ import (
 type cleanupFunc func()
 
 // make a Commit with a single vote containing just the height and a timestamp
-func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
-	commitSigs := []types.CommitSig{{
-		BlockIDFlag:      types.BlockIDFlagCommit,
+func makeTestCommit(height int64, timestamp time.Time) *metadata.Commit {
+	commitSigs := []metadata.CommitSig{{
+		BlockIDFlag:      metadata.BlockIDFlagCommit,
 		ValidatorAddress: tmrand.Bytes(crypto.AddressSize),
 		Timestamp:        timestamp,
 		Signature:        []byte("Signature"),
 	}}
-	return types.NewCommit(
+	return metadata.NewCommit(
 		height,
 		0,
-		types.BlockID{
+		metadata.BlockID{
 			Hash:          crypto.CRandBytes(32),
-			PartSetHeader: types.PartSetHeader{Hash: crypto.CRandBytes(32), Total: 2},
+			PartSetHeader: metadata.PartSetHeader{Hash: crypto.CRandBytes(32), Total: 2},
 		},
 		commitSigs)
 }
@@ -63,16 +64,16 @@ func freshBlockStore() (*BlockStore, dbm.DB) {
 var (
 	state       sm.State
 	block       *types.Block
-	partSet     *types.PartSet
-	part1       *types.Part
-	part2       *types.Part
-	seenCommit1 *types.Commit
+	partSet     *metadata.PartSet
+	part1       *metadata.Part
+	part2       *metadata.Part
+	seenCommit1 *metadata.Commit
 )
 
 func TestMain(m *testing.M) {
 	var cleanup cleanupFunc
 	state, _, cleanup = makeStateAndBlockStore(log.NewNopLogger())
-	block = factory.MakeBlock(state, 1, new(types.Commit))
+	block = factory.MakeBlock(state, 1, new(metadata.Commit))
 	partSet = block.MakePartSet(2)
 	part1 = partSet.GetPart(0)
 	part2 = partSet.GetPart(1)
@@ -98,19 +99,19 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	}
 
 	// save a block
-	block := factory.MakeBlock(state, bs.Height()+1, new(types.Commit))
+	block := factory.MakeBlock(state, bs.Height()+1, new(metadata.Commit))
 	validPartSet := block.MakePartSet(2)
 	seenCommit := makeTestCommit(10, tmtime.Now())
 	bs.SaveBlock(block, partSet, seenCommit)
 	require.EqualValues(t, 1, bs.Base(), "expecting the new height to be changed")
 	require.EqualValues(t, block.Header.Height, bs.Height(), "expecting the new height to be changed")
 
-	incompletePartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 2})
-	uncontiguousPartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 0})
+	incompletePartSet := metadata.NewPartSetFromHeader(metadata.PartSetHeader{Total: 2})
+	uncontiguousPartSet := metadata.NewPartSetFromHeader(metadata.PartSetHeader{Total: 0})
 	_, err := uncontiguousPartSet.AddPart(part2)
 	require.Error(t, err)
 
-	header1 := types.Header{
+	header1 := metadata.Header{
 		Version:         version.Consensus{Block: version.BlockProtocol},
 		Height:          1,
 		ChainID:         "block_test",
@@ -122,8 +123,8 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	commitAtH10 := makeTestCommit(10, tmtime.Now())
 	tuples := []struct {
 		block      *types.Block
-		parts      *types.PartSet
-		seenCommit *types.Commit
+		parts      *metadata.PartSet
+		seenCommit *metadata.Commit
 		wantPanic  string
 		wantErr    bool
 
@@ -146,7 +147,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 		{
 			block: newBlock( // New block at height 5 in empty block store is fine
-				types.Header{
+				metadata.Header{
 					Version:         version.Consensus{Block: version.BlockProtocol},
 					Height:          5,
 					ChainID:         "block_test",
@@ -210,10 +211,10 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 	type quad struct {
 		block  *types.Block
-		commit *types.Commit
+		commit *metadata.Commit
 		meta   *types.BlockMeta
 
-		seenCommit *types.Commit
+		seenCommit *metadata.Commit
 	}
 
 	for i, tuple := range tuples {
@@ -299,7 +300,7 @@ func TestLoadBaseMeta(t *testing.T) {
 	bs := NewBlockStore(dbm.NewMemDB())
 
 	for h := int64(1); h <= 10; h++ {
-		block := factory.MakeBlock(state, h, new(types.Commit))
+		block := factory.MakeBlock(state, h, new(metadata.Commit))
 		partSet := block.MakePartSet(2)
 		seenCommit := makeTestCommit(h, tmtime.Now())
 		bs.SaveBlock(block, partSet, seenCommit)
@@ -343,7 +344,7 @@ func TestLoadBlockPart(t *testing.T) {
 	gotPart, _, panicErr := doFn(loadPart)
 	require.Nil(t, panicErr, "an existent and proper block should not panic")
 	require.Nil(t, res, "a properly saved block should return a proper block")
-	require.Equal(t, gotPart.(*types.Part), part1,
+	require.Equal(t, gotPart.(*metadata.Part), part1,
 		"expecting successful retrieval of previously saved block")
 }
 
@@ -363,7 +364,7 @@ func TestPruneBlocks(t *testing.T) {
 
 	// make more than 1000 blocks, to test batch deletions
 	for h := int64(1); h <= 1500; h++ {
-		block := factory.MakeBlock(state, h, new(types.Commit))
+		block := factory.MakeBlock(state, h, new(metadata.Commit))
 		partSet := block.MakePartSet(2)
 		seenCommit := makeTestCommit(h, tmtime.Now())
 		bs.SaveBlock(block, partSet, seenCommit)
@@ -447,7 +448,7 @@ func TestLoadBlockMeta(t *testing.T) {
 	require.Contains(t, panicErr.Error(), "unmarshal to tmproto.BlockMeta")
 
 	// 3. A good blockMeta serialized and saved to the DB should be retrievable
-	meta := &types.BlockMeta{Header: types.Header{
+	meta := &types.BlockMeta{Header: metadata.Header{
 		Version: version.Consensus{
 			Block: version.BlockProtocol, App: 0}, Height: 1, ProposerAddress: tmrand.Bytes(crypto.AddressSize)}}
 	pbm := meta.ToProto()
@@ -468,7 +469,7 @@ func TestBlockFetchAtHeight(t *testing.T) {
 	state, bs, cleanup := makeStateAndBlockStore(log.NewNopLogger())
 	defer cleanup()
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
-	block := factory.MakeBlock(state, bs.Height()+1, new(types.Commit))
+	block := factory.MakeBlock(state, bs.Height()+1, new(metadata.Commit))
 
 	partSet := block.MakePartSet(2)
 	seenCommit := makeTestCommit(10, tmtime.Now())
@@ -547,7 +548,7 @@ func doFn(fn func() (interface{}, error)) (res interface{}, err error, panicErr 
 	return res, err, panicErr
 }
 
-func newBlock(hdr types.Header, lastCommit *types.Commit) *types.Block {
+func newBlock(hdr metadata.Header, lastCommit *metadata.Commit) *types.Block {
 	return &types.Block{
 		Header:     hdr,
 		LastCommit: lastCommit,

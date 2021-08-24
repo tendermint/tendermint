@@ -20,7 +20,6 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
-	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
@@ -28,6 +27,11 @@ import (
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/block"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/events"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	"github.com/tendermint/tendermint/privval"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -35,7 +39,6 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	sf "github.com/tendermint/tendermint/state/test/factory"
 	"github.com/tendermint/tendermint/store"
-	"github.com/tendermint/tendermint/types"
 )
 
 // These tests ensure we can always recover from failure at any part of the consensus process.
@@ -84,7 +87,7 @@ func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Confi
 	// in the WAL itself. Assuming the consensus state is running, replay of any
 	// WAL, including the empty one, should eventually be followed by a new
 	// block, or else something is wrong.
-	newBlockSub, err := cs.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
+	newBlockSub, err := cs.eventBus.Subscribe(context.Background(), testSubscriber, events.EventQueryNewBlock)
 	require.NoError(t, err)
 	select {
 	case <-newBlockSub.Out():
@@ -286,8 +289,8 @@ func (w *crashingWAL) Wait()        { w.next.Wait() }
 type simulatorTestSuite struct {
 	GenesisState sm.State
 	Config       *cfg.Config
-	Chain        []*types.Block
-	Commits      []*types.Commit
+	Chain        []*block.Block
+	Commits      []*metadata.Commit
 	CleanupFunc  cleanupFunc
 
 	Mempool mempl.Mempool
@@ -331,10 +334,10 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	sim.GenesisState, _ = sm.MakeGenesisState(genDoc)
 	sim.CleanupFunc = cleanup
 
-	partSize := types.BlockPartSizeBytes
+	partSize := metadata.BlockPartSizeBytes
 
-	newRoundCh := subscribe(css[0].eventBus, types.EventQueryNewRound)
-	proposalCh := subscribe(css[0].eventBus, types.EventQueryCompleteProposal)
+	newRoundCh := subscribe(css[0].eventBus, events.EventQueryNewRound)
+	proposalCh := subscribe(css[0].eventBus, events.EventQueryCompleteProposal)
 
 	vss := make([]*validatorStub, nPeers)
 	for i := 0; i < nPeers; i++ {
@@ -367,9 +370,9 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	assert.Nil(t, err)
 	propBlock, _ := css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	propBlockParts := propBlock.MakePartSet(partSize)
-	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
+	blockID := metadata.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 
-	proposal := types.NewProposal(vss[1].Height, round, -1, blockID)
+	proposal := consensus.NewProposal(vss[1].Height, round, -1, blockID)
 	p := proposal.ToProto()
 	if err := vss[1].SignProposal(context.Background(), config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
@@ -399,9 +402,9 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	assert.Nil(t, err)
 	propBlock, _ = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	propBlockParts = propBlock.MakePartSet(partSize)
-	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
+	blockID = metadata.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 
-	proposal = types.NewProposal(vss[2].Height, round, -1, blockID)
+	proposal = consensus.NewProposal(vss[2].Height, round, -1, blockID)
 	p = proposal.ToProto()
 	if err := vss[2].SignProposal(context.Background(), config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
@@ -438,7 +441,7 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	assert.Nil(t, err)
 	propBlock, _ = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	propBlockParts = propBlock.MakePartSet(partSize)
-	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
+	blockID = metadata.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 	newVss := make([]*validatorStub, nVals+1)
 	copy(newVss, vss[:nVals+1])
 	sort.Sort(ValidatorStubsByPower(newVss))
@@ -460,7 +463,7 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 
 	selfIndex := valIndexFn(0)
 
-	proposal = types.NewProposal(vss[3].Height, round, -1, blockID)
+	proposal = consensus.NewProposal(vss[3].Height, round, -1, blockID)
 	p = proposal.ToProto()
 	if err := vss[3].SignProposal(context.Background(), config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
@@ -517,13 +520,13 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	assert.Nil(t, err)
 	propBlock, _ = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	propBlockParts = propBlock.MakePartSet(partSize)
-	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
+	blockID = metadata.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 	newVss = make([]*validatorStub, nVals+3)
 	copy(newVss, vss[:nVals+3])
 	sort.Sort(ValidatorStubsByPower(newVss))
 
 	selfIndex = valIndexFn(0)
-	proposal = types.NewProposal(vss[1].Height, round, -1, blockID)
+	proposal = consensus.NewProposal(vss[1].Height, round, -1, blockID)
 	p = proposal.ToProto()
 	if err := vss[1].SignProposal(context.Background(), config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
@@ -546,8 +549,8 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	}
 	ensureNewRound(newRoundCh, height+1, 0)
 
-	sim.Chain = make([]*types.Block, 0)
-	sim.Commits = make([]*types.Commit, 0)
+	sim.Chain = make([]*block.Block, 0)
+	sim.Commits = make([]*metadata.Commit, 0)
 	for i := 1; i <= numBlocks; i++ {
 		sim.Chain = append(sim.Chain, css[0].blockStore.LoadBlock(int64(i)))
 		sim.Commits = append(sim.Commits, css[0].blockStore.LoadBlockCommit(int64(i)))
@@ -680,8 +683,8 @@ func tempWALWithData(data []byte) string {
 // Make some blocks. Start a fresh app and apply nBlocks blocks.
 // Then restart the app and sync it up with the remaining blocks
 func testHandshakeReplay(t *testing.T, sim *simulatorTestSuite, nBlocks int, mode uint, testValidatorsChange bool) {
-	var chain []*types.Block
-	var commits []*types.Commit
+	var chain []*block.Block
+	var commits []*metadata.Commit
 	var store *mockBlockStore
 	var stateDB dbm.DB
 	var genesisState sm.State
@@ -695,7 +698,7 @@ func testHandshakeReplay(t *testing.T, sim *simulatorTestSuite, nBlocks int, mod
 
 		genesisState = sim.GenesisState
 		config = sim.Config
-		chain = append([]*types.Block{}, sim.Chain...) // copy chain
+		chain = append([]*block.Block{}, sim.Chain...) // copy chain
 		commits = sim.Commits
 		store = newMockBlockStore(config, genesisState.ConsensusParams)
 	} else { // test single node
@@ -813,13 +816,13 @@ func applyBlock(stateStore sm.Store,
 	mempool mempl.Mempool,
 	evpool sm.EvidencePool,
 	st sm.State,
-	blk *types.Block,
+	blk *block.Block,
 	proxyApp proxy.AppConns,
 	blockStore *mockBlockStore) sm.State {
-	testPartSize := types.BlockPartSizeBytes
+	testPartSize := metadata.BlockPartSizeBytes
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool, blockStore)
 
-	blkID := types.BlockID{Hash: blk.Hash(), PartSetHeader: blk.MakePartSet(testPartSize).Header()}
+	blkID := metadata.BlockID{Hash: blk.Hash(), PartSetHeader: blk.MakePartSet(testPartSize).Header()}
 	newState, err := blockExec.ApplyBlock(st, blkID, blk)
 	if err != nil {
 		panic(err)
@@ -833,7 +836,7 @@ func buildAppStateFromChain(
 	mempool mempl.Mempool,
 	evpool sm.EvidencePool,
 	state sm.State,
-	chain []*types.Block,
+	chain []*block.Block,
 	nBlocks int,
 	mode uint,
 	blockStore *mockBlockStore) {
@@ -844,7 +847,7 @@ func buildAppStateFromChain(
 	defer proxyApp.Stop() //nolint:errcheck // ignore
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion // simulate handshake, receive app version
-	validators := types.TM2PB.ValidatorUpdates(state.Validators)
+	validators := consensus.TM2PB.ValidatorUpdates(state.Validators)
 	if _, err := proxyApp.Consensus().InitChainSync(context.Background(), abci.RequestInitChain{
 		Validators: validators,
 	}); err != nil {
@@ -882,7 +885,7 @@ func buildTMStateFromChain(
 	evpool sm.EvidencePool,
 	stateStore sm.Store,
 	state sm.State,
-	chain []*types.Block,
+	chain []*block.Block,
 	nBlocks int,
 	mode uint,
 	blockStore *mockBlockStore) sm.State {
@@ -899,7 +902,7 @@ func buildTMStateFromChain(
 	defer proxyApp.Stop() //nolint:errcheck
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion // simulate handshake, receive app version
-	validators := types.TM2PB.ValidatorUpdates(state.Validators)
+	validators := consensus.TM2PB.ValidatorUpdates(state.Validators)
 	if _, err := proxyApp.Consensus().InitChainSync(context.Background(), abci.RequestInitChain{
 		Validators: validators,
 	}); err != nil {
@@ -1026,7 +1029,7 @@ func (app *badApp) Commit() abci.ResponseCommit {
 //--------------------------
 // utils for making blocks
 
-func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
+func makeBlockchainFromWAL(wal WAL) ([]*block.Block, []*metadata.Commit, error) {
 	var height int64
 
 	// Search for height marker
@@ -1042,10 +1045,10 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 	// log.Notice("Build a blockchain by reading from the WAL")
 
 	var (
-		blocks          []*types.Block
-		commits         []*types.Commit
-		thisBlockParts  *types.PartSet
-		thisBlockCommit *types.Commit
+		blocks          []*block.Block
+		commits         []*metadata.Commit
+		thisBlockParts  *metadata.PartSet
+		thisBlockCommit *metadata.Commit
 	)
 
 	dec := NewWALDecoder(gr)
@@ -1075,7 +1078,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 				if err != nil {
 					panic(err)
 				}
-				block, err := types.BlockFromProto(pbb)
+				block, err := block.BlockFromProto(pbb)
 				if err != nil {
 					panic(err)
 				}
@@ -1091,17 +1094,17 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 				commits = append(commits, thisBlockCommit)
 				height++
 			}
-		case *types.PartSetHeader:
-			thisBlockParts = types.NewPartSetFromHeader(*p)
-		case *types.Part:
+		case *metadata.PartSetHeader:
+			thisBlockParts = metadata.NewPartSetFromHeader(*p)
+		case *metadata.Part:
 			_, err := thisBlockParts.AddPart(p)
 			if err != nil {
 				return nil, nil, err
 			}
-		case *types.Vote:
+		case *consensus.Vote:
 			if p.Type == tmproto.PrecommitType {
-				thisBlockCommit = types.NewCommit(p.Height, p.Round,
-					p.BlockID, []types.CommitSig{p.CommitSig()})
+				thisBlockCommit = metadata.NewCommit(p.Height, p.Round,
+					p.BlockID, []metadata.CommitSig{p.CommitSig()})
 			}
 		}
 	}
@@ -1115,18 +1118,18 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 	if err != nil {
 		panic(err)
 	}
-	block, err := types.BlockFromProto(pbb)
+	b, err := block.BlockFromProto(pbb)
 	if err != nil {
 		panic(err)
 	}
-	if block.Height != height+1 {
-		panic(fmt.Sprintf("read bad block from wal. got height %d, expected %d", block.Height, height+1))
+	if b.Height != height+1 {
+		panic(fmt.Sprintf("read bad block from wal. got height %d, expected %d", b.Height, height+1))
 	}
 	commitHeight := thisBlockCommit.Height
 	if commitHeight != height+1 {
 		panic(fmt.Sprintf("commit doesnt match. got height %d, expected %d", commitHeight, height+1))
 	}
-	blocks = append(blocks, block)
+	blocks = append(blocks, b)
 	commits = append(commits, thisBlockCommit)
 	return blocks, commits, nil
 }
@@ -1171,39 +1174,39 @@ func stateAndStore(
 
 type mockBlockStore struct {
 	config  *cfg.Config
-	params  types.ConsensusParams
-	chain   []*types.Block
-	commits []*types.Commit
+	params  consensus.ConsensusParams
+	chain   []*block.Block
+	commits []*metadata.Commit
 	base    int64
 }
 
 // TODO: NewBlockStore(db.NewMemDB) ...
-func newMockBlockStore(config *cfg.Config, params types.ConsensusParams) *mockBlockStore {
+func newMockBlockStore(config *cfg.Config, params consensus.ConsensusParams) *mockBlockStore {
 	return &mockBlockStore{config, params, nil, nil, 0}
 }
 
 func (bs *mockBlockStore) Height() int64                       { return int64(len(bs.chain)) }
 func (bs *mockBlockStore) Base() int64                         { return bs.base }
 func (bs *mockBlockStore) Size() int64                         { return bs.Height() - bs.Base() + 1 }
-func (bs *mockBlockStore) LoadBaseMeta() *types.BlockMeta      { return bs.LoadBlockMeta(bs.base) }
-func (bs *mockBlockStore) LoadBlock(height int64) *types.Block { return bs.chain[height-1] }
-func (bs *mockBlockStore) LoadBlockByHash(hash []byte) *types.Block {
+func (bs *mockBlockStore) LoadBaseMeta() *block.BlockMeta      { return bs.LoadBlockMeta(bs.base) }
+func (bs *mockBlockStore) LoadBlock(height int64) *block.Block { return bs.chain[height-1] }
+func (bs *mockBlockStore) LoadBlockByHash(hash []byte) *block.Block {
 	return bs.chain[int64(len(bs.chain))-1]
 }
-func (bs *mockBlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
-	block := bs.chain[height-1]
-	return &types.BlockMeta{
-		BlockID: types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(types.BlockPartSizeBytes).Header()},
-		Header:  block.Header,
+func (bs *mockBlockStore) LoadBlockMeta(height int64) *block.BlockMeta {
+	b := bs.chain[height-1]
+	return &block.BlockMeta{
+		BlockID: metadata.BlockID{Hash: b.Hash(), PartSetHeader: b.MakePartSet(metadata.BlockPartSizeBytes).Header()},
+		Header:  b.Header,
 	}
 }
-func (bs *mockBlockStore) LoadBlockPart(height int64, index int) *types.Part { return nil }
-func (bs *mockBlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
+func (bs *mockBlockStore) LoadBlockPart(height int64, index int) *metadata.Part { return nil }
+func (bs *mockBlockStore) SaveBlock(block *block.Block, blockParts *metadata.PartSet, seenCommit *metadata.Commit) {
 }
-func (bs *mockBlockStore) LoadBlockCommit(height int64) *types.Commit {
+func (bs *mockBlockStore) LoadBlockCommit(height int64) *metadata.Commit {
 	return bs.commits[height-1]
 }
-func (bs *mockBlockStore) LoadSeenCommit() *types.Commit {
+func (bs *mockBlockStore) LoadSeenCommit() *metadata.Commit {
 	return bs.commits[len(bs.commits)-1]
 }
 
@@ -1223,8 +1226,8 @@ func (bs *mockBlockStore) PruneBlocks(height int64) (uint64, error) {
 
 func TestHandshakeUpdatesValidators(t *testing.T) {
 	val, _ := factory.RandValidator(true, 10)
-	vals := types.NewValidatorSet([]*types.Validator{val})
-	app := &initChainApp{vals: types.TM2PB.ValidatorUpdates(vals)}
+	vals := consensus.NewValidatorSet([]*consensus.Validator{val})
+	app := &initChainApp{vals: consensus.TM2PB.ValidatorUpdates(vals)}
 	clientCreator := proxy.NewLocalClientCreator(app)
 
 	config := ResetConfig("handshake_test_")

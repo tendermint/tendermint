@@ -7,16 +7,17 @@ import (
 	"sync/atomic"
 	"time"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/libs/clist"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/block"
 	pubmempool "github.com/tendermint/tendermint/pkg/mempool"
+	types "github.com/tendermint/tendermint/pkg/mempool"
 	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/types"
 )
 
 var _ mempool.Mempool = (*TxMempool)(nil)
@@ -356,7 +357,7 @@ func (txmp *TxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 		wtx := txmp.priorityIndex.PopTx()
 		txs = append(txs, wtx.tx)
 		wTxs = append(wTxs, wtx)
-		size := types.ComputeProtoSizeForTxs([]types.Tx{wtx.tx})
+		size := block.ComputeProtoSizeForTxs([]types.Tx{wtx.tx})
 
 		// Ensure we have capacity for the transaction with respect to the
 		// transaction size.

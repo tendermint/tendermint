@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/orderedcode"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/events"
 )
 
 func intInSlice(a int, list []int) bool {
@@ -34,7 +34,7 @@ func int64ToBytes(i int64) []byte {
 func heightKey(height int64) ([]byte, error) {
 	return orderedcode.Append(
 		nil,
-		types.BlockHeightKey,
+		events.BlockHeightKey,
 		height,
 	)
 }
@@ -87,7 +87,7 @@ func parseValueFromEventKey(key []byte) (string, error) {
 
 func lookForHeight(conditions []query.Condition) (int64, bool) {
 	for _, c := range conditions {
-		if c.CompositeKey == types.BlockHeightKey && c.Op == query.OpEqual {
+		if c.CompositeKey == events.BlockHeightKey && c.Op == query.OpEqual {
 			return c.Operand.(int64), true
 		}
 	}

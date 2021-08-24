@@ -6,7 +6,10 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/libs/bytes"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/block"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/events"
+	"github.com/tendermint/tendermint/pkg/metadata"
 )
 
 //-----------------------------------------------------------------------------
@@ -71,37 +74,37 @@ type RoundState struct {
 	StartTime time.Time     `json:"start_time"`
 
 	// Subjective time when +2/3 precommits for Block at Round were found
-	CommitTime         time.Time           `json:"commit_time"`
-	Validators         *types.ValidatorSet `json:"validators"`
-	Proposal           *types.Proposal     `json:"proposal"`
-	ProposalBlock      *types.Block        `json:"proposal_block"`
-	ProposalBlockParts *types.PartSet      `json:"proposal_block_parts"`
-	LockedRound        int32               `json:"locked_round"`
-	LockedBlock        *types.Block        `json:"locked_block"`
-	LockedBlockParts   *types.PartSet      `json:"locked_block_parts"`
+	CommitTime         time.Time               `json:"commit_time"`
+	Validators         *consensus.ValidatorSet `json:"validators"`
+	Proposal           *consensus.Proposal     `json:"proposal"`
+	ProposalBlock      *block.Block            `json:"proposal_block"`
+	ProposalBlockParts *metadata.PartSet       `json:"proposal_block_parts"`
+	LockedRound        int32                   `json:"locked_round"`
+	LockedBlock        *block.Block            `json:"locked_block"`
+	LockedBlockParts   *metadata.PartSet       `json:"locked_block_parts"`
 
 	// Last known round with POL for non-nil valid block.
 	ValidRound int32        `json:"valid_round"`
-	ValidBlock *types.Block `json:"valid_block"` // Last known block of POL mentioned above.
+	ValidBlock *block.Block `json:"valid_block"` // Last known block of POL mentioned above.
 
 	// Last known block parts of POL mentioned above.
-	ValidBlockParts           *types.PartSet      `json:"valid_block_parts"`
-	Votes                     *HeightVoteSet      `json:"votes"`
-	CommitRound               int32               `json:"commit_round"` //
-	LastCommit                *types.VoteSet      `json:"last_commit"`  // Last precommits at Height-1
-	LastValidators            *types.ValidatorSet `json:"last_validators"`
-	TriggeredTimeoutPrecommit bool                `json:"triggered_timeout_precommit"`
+	ValidBlockParts           *metadata.PartSet       `json:"valid_block_parts"`
+	Votes                     *HeightVoteSet          `json:"votes"`
+	CommitRound               int32                   `json:"commit_round"` //
+	LastCommit                *consensus.VoteSet      `json:"last_commit"`  // Last precommits at Height-1
+	LastValidators            *consensus.ValidatorSet `json:"last_validators"`
+	TriggeredTimeoutPrecommit bool                    `json:"triggered_timeout_precommit"`
 }
 
 // Compressed version of the RoundState for use in RPC
 type RoundStateSimple struct {
-	HeightRoundStep   string              `json:"height/round/step"`
-	StartTime         time.Time           `json:"start_time"`
-	ProposalBlockHash bytes.HexBytes      `json:"proposal_block_hash"`
-	LockedBlockHash   bytes.HexBytes      `json:"locked_block_hash"`
-	ValidBlockHash    bytes.HexBytes      `json:"valid_block_hash"`
-	Votes             json.RawMessage     `json:"height_vote_set"`
-	Proposer          types.ValidatorInfo `json:"proposer"`
+	HeightRoundStep   string                  `json:"height/round/step"`
+	StartTime         time.Time               `json:"start_time"`
+	ProposalBlockHash bytes.HexBytes          `json:"proposal_block_hash"`
+	LockedBlockHash   bytes.HexBytes          `json:"locked_block_hash"`
+	ValidBlockHash    bytes.HexBytes          `json:"valid_block_hash"`
+	Votes             json.RawMessage         `json:"height_vote_set"`
+	Proposer          consensus.ValidatorInfo `json:"proposer"`
 }
 
 // Compress the RoundState to RoundStateSimple
@@ -121,7 +124,7 @@ func (rs *RoundState) RoundStateSimple() RoundStateSimple {
 		LockedBlockHash:   rs.LockedBlock.Hash(),
 		ValidBlockHash:    rs.ValidBlock.Hash(),
 		Votes:             votesJSON,
-		Proposer: types.ValidatorInfo{
+		Proposer: consensus.ValidatorInfo{
 			Address: addr,
 			Index:   idx,
 		},
@@ -129,15 +132,15 @@ func (rs *RoundState) RoundStateSimple() RoundStateSimple {
 }
 
 // NewRoundEvent returns the RoundState with proposer information as an event.
-func (rs *RoundState) NewRoundEvent() types.EventDataNewRound {
+func (rs *RoundState) NewRoundEvent() events.EventDataNewRound {
 	addr := rs.Validators.GetProposer().Address
 	idx, _ := rs.Validators.GetByAddress(addr)
 
-	return types.EventDataNewRound{
+	return events.EventDataNewRound{
 		Height: rs.Height,
 		Round:  rs.Round,
 		Step:   rs.Step.String(),
-		Proposer: types.ValidatorInfo{
+		Proposer: consensus.ValidatorInfo{
 			Address: addr,
 			Index:   idx,
 		},
@@ -145,15 +148,15 @@ func (rs *RoundState) NewRoundEvent() types.EventDataNewRound {
 }
 
 // CompleteProposalEvent returns information about a proposed block as an event.
-func (rs *RoundState) CompleteProposalEvent() types.EventDataCompleteProposal {
+func (rs *RoundState) CompleteProposalEvent() events.EventDataCompleteProposal {
 	// We must construct BlockID from ProposalBlock and ProposalBlockParts
 	// cs.Proposal is not guaranteed to be set when this function is called
-	blockID := types.BlockID{
+	blockID := metadata.BlockID{
 		Hash:          rs.ProposalBlock.Hash(),
 		PartSetHeader: rs.ProposalBlockParts.Header(),
 	}
 
-	return types.EventDataCompleteProposal{
+	return events.EventDataCompleteProposal{
 		Height:  rs.Height,
 		Round:   rs.Round,
 		Step:    rs.Step.String(),
@@ -162,8 +165,8 @@ func (rs *RoundState) CompleteProposalEvent() types.EventDataCompleteProposal {
 }
 
 // RoundStateEvent returns the H/R/S of the RoundState as an event.
-func (rs *RoundState) RoundStateEvent() types.EventDataRoundState {
-	return types.EventDataRoundState{
+func (rs *RoundState) RoundStateEvent() events.EventDataRoundState {
+	return events.EventDataRoundState{
 		Height: rs.Height,
 		Round:  rs.Round,
 		Step:   rs.Step.String(),

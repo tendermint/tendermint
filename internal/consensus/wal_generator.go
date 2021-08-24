@@ -16,11 +16,12 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/events"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
-	"github.com/tendermint/tendermint/types"
 )
 
 // WALGenerateNBlocks generates a consensus WAL. It does this by spinning up a
@@ -46,7 +47,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	if err != nil {
 		return err
 	}
-	genDoc, err := types.GenesisDocFromFile(config.GenesisFile())
+	genDoc, err := consensus.GenesisDocFromFile(config.GenesisFile())
 	if err != nil {
 		return fmt.Errorf("failed to read genesis file: %w", err)
 	}
@@ -75,7 +76,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 		}
 	})
 
-	eventBus := types.NewEventBus()
+	eventBus := events.NewEventBus()
 	eventBus.SetLogger(logger.With("module", "events"))
 	if err := eventBus.Start(); err != nil {
 		return fmt.Errorf("failed to start event bus: %w", err)

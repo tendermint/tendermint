@@ -13,7 +13,6 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	bcv0 "github.com/tendermint/tendermint/internal/blocksync/v0"
@@ -29,6 +28,10 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/events"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 	protop2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -37,7 +40,6 @@ import (
 	null "github.com/tendermint/tendermint/state/indexer/sink/null"
 	psql "github.com/tendermint/tendermint/state/indexer/sink/psql"
 	"github.com/tendermint/tendermint/store"
-	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -62,8 +64,8 @@ func createAndStartProxyAppConns(clientCreator proxy.ClientCreator, logger log.L
 	return proxyApp, nil
 }
 
-func createAndStartEventBus(logger log.Logger) (*types.EventBus, error) {
-	eventBus := types.NewEventBus()
+func createAndStartEventBus(logger log.Logger) (*events.EventBus, error) {
+	eventBus := events.NewEventBus()
 	eventBus.SetLogger(logger.With("module", "events"))
 	if err := eventBus.Start(); err != nil {
 		return nil, err
@@ -74,7 +76,7 @@ func createAndStartEventBus(logger log.Logger) (*types.EventBus, error) {
 func createAndStartIndexerService(
 	config *cfg.Config,
 	dbProvider cfg.DBProvider,
-	eventBus *types.EventBus,
+	eventBus *events.EventBus,
 	logger log.Logger,
 	chainID string,
 ) (*indexer.Service, []indexer.EventSink, error) {
@@ -144,8 +146,8 @@ func doHandshake(
 	stateStore sm.Store,
 	state sm.State,
 	blockStore sm.BlockStore,
-	genDoc *types.GenesisDoc,
-	eventBus types.BlockEventPublisher,
+	genDoc *consensus.GenesisDoc,
+	eventBus events.BlockEventPublisher,
 	proxyApp proxy.AppConns,
 	consensusLogger log.Logger) error {
 
@@ -386,10 +388,10 @@ func createConsensusReactor(
 	blockStore sm.BlockStore,
 	mp mempool.Mempool,
 	evidencePool *evidence.Pool,
-	privValidator types.PrivValidator,
+	privValidator consensus.PrivValidator,
 	csMetrics *cs.Metrics,
 	waitSync bool,
-	eventBus *types.EventBus,
+	eventBus *events.EventBus,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	logger log.Logger,
@@ -458,7 +460,7 @@ func createPeerManager(
 	config *cfg.Config,
 	dbProvider cfg.DBProvider,
 	p2pLogger log.Logger,
-	nodeID types.NodeID,
+	nodeID p2ptypes.NodeID,
 ) (*p2p.PeerManager, error) {
 
 	var maxConns uint16
@@ -484,9 +486,9 @@ func createPeerManager(
 		maxConns = 64
 	}
 
-	privatePeerIDs := make(map[types.NodeID]struct{})
+	privatePeerIDs := make(map[p2ptypes.NodeID]struct{})
 	for _, id := range tmstrings.SplitAndTrimEmpty(config.P2P.PrivatePeerIDs, ",", " ") {
-		privatePeerIDs[types.NodeID(id)] = struct{}{}
+		privatePeerIDs[p2ptypes.NodeID(id)] = struct{}{}
 	}
 
 	options := p2p.PeerManagerOptions{
@@ -541,7 +543,7 @@ func createPeerManager(
 func createRouter(
 	p2pLogger log.Logger,
 	p2pMetrics *p2p.Metrics,
-	nodeInfo types.NodeInfo,
+	nodeInfo p2ptypes.NodeInfo,
 	privKey crypto.PrivKey,
 	peerManager *p2p.PeerManager,
 	transport p2p.Transport,
@@ -569,8 +571,8 @@ func createSwitch(
 	consensusReactor *p2p.ReactorShim,
 	evidenceReactor *p2p.ReactorShim,
 	proxyApp proxy.AppConns,
-	nodeInfo types.NodeInfo,
-	nodeKey types.NodeKey,
+	nodeInfo p2ptypes.NodeInfo,
+	nodeKey p2ptypes.NodeKey,
 	p2pLogger log.Logger,
 ) *p2p.Switch {
 
@@ -648,21 +650,21 @@ func createSwitch(
 }
 
 func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
-	p2pLogger log.Logger, nodeKey types.NodeKey) (pex.AddrBook, error) {
+	p2pLogger log.Logger, nodeKey p2ptypes.NodeKey) (pex.AddrBook, error) {
 
 	addrBook := pex.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
 	addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
 
 	// Add ourselves to addrbook to prevent dialing ourselves
 	if config.P2P.ExternalAddress != "" {
-		addr, err := types.NewNetAddressString(nodeKey.ID.AddressString(config.P2P.ExternalAddress))
+		addr, err := p2ptypes.NewNetAddressString(nodeKey.ID.AddressString(config.P2P.ExternalAddress))
 		if err != nil {
 			return nil, fmt.Errorf("p2p.external_address is incorrect: %w", err)
 		}
 		addrBook.AddOurAddress(addr)
 	}
 	if config.P2P.ListenAddress != "" {
-		addr, err := types.NewNetAddressString(nodeKey.ID.AddressString(config.P2P.ListenAddress))
+		addr, err := p2ptypes.NewNetAddressString(nodeKey.ID.AddressString(config.P2P.ListenAddress))
 		if err != nil {
 			return nil, fmt.Errorf("p2p.laddr is incorrect: %w", err)
 		}
@@ -713,11 +715,11 @@ func createPEXReactorV2(
 
 func makeNodeInfo(
 	config *cfg.Config,
-	nodeKey types.NodeKey,
+	nodeKey p2ptypes.NodeKey,
 	eventSinks []indexer.EventSink,
-	genDoc *types.GenesisDoc,
+	genDoc *consensus.GenesisDoc,
 	state sm.State,
-) (types.NodeInfo, error) {
+) (p2ptypes.NodeInfo, error) {
 	txIndexerStatus := "off"
 
 	if indexer.IndexingEnabled(eventSinks) {
@@ -733,11 +735,11 @@ func makeNodeInfo(
 		bcChannel = bcv2.BlockchainChannel
 
 	default:
-		return types.NodeInfo{}, fmt.Errorf("unknown blocksync version %s", config.BlockSync.Version)
+		return p2ptypes.NodeInfo{}, fmt.Errorf("unknown blocksync version %s", config.BlockSync.Version)
 	}
 
-	nodeInfo := types.NodeInfo{
-		ProtocolVersion: types.ProtocolVersion{
+	nodeInfo := p2ptypes.NodeInfo{
+		ProtocolVersion: p2ptypes.ProtocolVersion{
 			P2P:   version.P2PProtocol, // global
 			Block: state.Version.Consensus.Block,
 			App:   state.Version.Consensus.App,
@@ -758,7 +760,7 @@ func makeNodeInfo(
 			byte(statesync.LightBlockChannel),
 		},
 		Moniker: config.Moniker,
-		Other: types.NodeInfoOther{
+		Other: p2ptypes.NodeInfoOther{
 			TxIndex:    txIndexerStatus,
 			RPCAddress: config.RPC.ListenAddress,
 		},
@@ -782,12 +784,12 @@ func makeNodeInfo(
 
 func makeSeedNodeInfo(
 	config *cfg.Config,
-	nodeKey types.NodeKey,
-	genDoc *types.GenesisDoc,
+	nodeKey p2ptypes.NodeKey,
+	genDoc *consensus.GenesisDoc,
 	state sm.State,
-) (types.NodeInfo, error) {
-	nodeInfo := types.NodeInfo{
-		ProtocolVersion: types.ProtocolVersion{
+) (p2ptypes.NodeInfo, error) {
+	nodeInfo := p2ptypes.NodeInfo{
+		ProtocolVersion: p2ptypes.ProtocolVersion{
 			P2P:   version.P2PProtocol, // global
 			Block: state.Version.Consensus.Block,
 			App:   state.Version.Consensus.App,
@@ -797,7 +799,7 @@ func makeSeedNodeInfo(
 		Version:  version.TMVersion,
 		Channels: []byte{},
 		Moniker:  config.Moniker,
-		Other: types.NodeInfoOther{
+		Other: p2ptypes.NodeInfoOther{
 			TxIndex:    "off",
 			RPCAddress: config.RPC.ListenAddress,
 		},

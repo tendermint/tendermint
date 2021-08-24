@@ -15,7 +15,6 @@ import (
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
-	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
@@ -26,11 +25,16 @@ import (
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/block"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/events"
+	"github.com/tendermint/tendermint/pkg/evidence"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	sm "github.com/tendermint/tendermint/state"
 	statemocks "github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/store"
-	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tm-db"
 )
 
@@ -40,14 +44,14 @@ var (
 
 type reactorTestSuite struct {
 	network             *p2ptest.Network
-	states              map[types.NodeID]*State
-	reactors            map[types.NodeID]*Reactor
-	subs                map[types.NodeID]types.Subscription
-	blocksyncSubs       map[types.NodeID]types.Subscription
-	stateChannels       map[types.NodeID]*p2p.Channel
-	dataChannels        map[types.NodeID]*p2p.Channel
-	voteChannels        map[types.NodeID]*p2p.Channel
-	voteSetBitsChannels map[types.NodeID]*p2p.Channel
+	states              map[p2ptypes.NodeID]*State
+	reactors            map[p2ptypes.NodeID]*Reactor
+	subs                map[p2ptypes.NodeID]events.Subscription
+	blocksyncSubs       map[p2ptypes.NodeID]events.Subscription
+	stateChannels       map[p2ptypes.NodeID]*p2p.Channel
+	dataChannels        map[p2ptypes.NodeID]*p2p.Channel
+	voteChannels        map[p2ptypes.NodeID]*p2p.Channel
+	voteSetBitsChannels map[p2ptypes.NodeID]*p2p.Channel
 }
 
 func chDesc(chID p2p.ChannelID) p2p.ChannelDescriptor {
@@ -61,10 +65,10 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 
 	rts := &reactorTestSuite{
 		network:       p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
-		states:        make(map[types.NodeID]*State),
-		reactors:      make(map[types.NodeID]*Reactor, numNodes),
-		subs:          make(map[types.NodeID]types.Subscription, numNodes),
-		blocksyncSubs: make(map[types.NodeID]types.Subscription, numNodes),
+		states:        make(map[p2ptypes.NodeID]*State),
+		reactors:      make(map[p2ptypes.NodeID]*Reactor, numNodes),
+		subs:          make(map[p2ptypes.NodeID]events.Subscription, numNodes),
+		blocksyncSubs: make(map[p2ptypes.NodeID]events.Subscription, numNodes),
 	}
 
 	rts.stateChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(StateChannel), new(tmcons.Message), size)
@@ -91,10 +95,10 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 
 		reactor.SetEventBus(state.eventBus)
 
-		blocksSub, err := state.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, size)
+		blocksSub, err := state.eventBus.Subscribe(context.Background(), testSubscriber, events.EventQueryNewBlock, size)
 		require.NoError(t, err)
 
-		fsSub, err := state.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryBlockSyncStatus, size)
+		fsSub, err := state.eventBus.Subscribe(context.Background(), testSubscriber, events.EventQueryBlockSyncStatus, size)
 		require.NoError(t, err)
 
 		rts.states[nodeID] = state
@@ -132,7 +136,7 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 	return rts
 }
 
-func validateBlock(block *types.Block, activeVals map[string]struct{}) error {
+func validateBlock(block *block.Block, activeVals map[string]struct{}) error {
 	if block.LastCommit.Size() != len(activeVals) {
 		return fmt.Errorf(
 			"commit size doesn't match number of active validators. Got %d, expected %d",
@@ -153,14 +157,14 @@ func waitForAndValidateBlock(
 	t *testing.T,
 	n int,
 	activeVals map[string]struct{},
-	blocksSubs []types.Subscription,
+	blocksSubs []events.Subscription,
 	states []*State,
 	txs ...[]byte,
 ) {
 
 	fn := func(j int) {
 		msg := <-blocksSubs[j].Out()
-		newBlock := msg.Data().(types.EventDataNewBlock).Block
+		newBlock := msg.Data().(events.EventDataNewBlock).Block
 
 		require.NoError(t, validateBlock(newBlock, activeVals))
 
@@ -186,7 +190,7 @@ func waitForAndValidateBlockWithTx(
 	t *testing.T,
 	n int,
 	activeVals map[string]struct{},
-	blocksSubs []types.Subscription,
+	blocksSubs []events.Subscription,
 	states []*State,
 	txs ...[]byte,
 ) {
@@ -196,7 +200,7 @@ func waitForAndValidateBlockWithTx(
 	BLOCK_TX_LOOP:
 		for {
 			msg := <-blocksSubs[j].Out()
-			newBlock := msg.Data().(types.EventDataNewBlock).Block
+			newBlock := msg.Data().(events.EventDataNewBlock).Block
 
 			require.NoError(t, validateBlock(newBlock, activeVals))
 
@@ -231,17 +235,17 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 	t *testing.T,
 	n int,
 	updatedVals map[string]struct{},
-	blocksSubs []types.Subscription,
+	blocksSubs []events.Subscription,
 	css []*State,
 ) {
 
 	fn := func(j int) {
-		var newBlock *types.Block
+		var newBlock *block.Block
 
 	LOOP:
 		for {
 			msg := <-blocksSubs[j].Out()
-			newBlock = msg.Data().(types.EventDataNewBlock).Block
+			newBlock = msg.Data().(events.EventDataNewBlock).Block
 			if newBlock.LastCommit.Size() == len(updatedVals) {
 				break LOOP
 			}
@@ -265,7 +269,7 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 
 func ensureBlockSyncStatus(t *testing.T, msg tmpubsub.Message, complete bool, height int64) {
 	t.Helper()
-	status, ok := msg.Data().(types.EventDataBlockSyncStatus)
+	status, ok := msg.Data().(events.EventDataBlockSyncStatus)
 
 	require.True(t, ok)
 	require.Equal(t, complete, status.Complete)
@@ -293,7 +297,7 @@ func TestReactorBasic(t *testing.T) {
 		wg.Add(1)
 
 		// wait till everyone makes the first new block
-		go func(s types.Subscription) {
+		go func(s events.Subscription) {
 			defer wg.Done()
 			<-s.Out()
 		}(sub)
@@ -305,7 +309,7 @@ func TestReactorBasic(t *testing.T) {
 		wg.Add(1)
 
 		// wait till everyone makes the consensus switch
-		go func(s types.Subscription) {
+		go func(s events.Subscription) {
 			defer wg.Done()
 			msg := <-s.Out()
 			ensureBlockSyncStatus(t, msg, true, 0)
@@ -338,7 +342,7 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := appFunc()
-		vals := types.TM2PB.ValidatorUpdates(state.Validators)
+		vals := consensus.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 
 		pv := privVals[i]
@@ -360,12 +364,12 @@ func TestReactorWithEvidence(t *testing.T) {
 		// everyone includes evidence of another double signing
 		vIdx := (i + 1) % n
 
-		ev := types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, privVals[vIdx], config.ChainID())
+		ev := evidence.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, privVals[vIdx], config.ChainID())
 		evpool := &statemocks.EvidencePool{}
-		evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
-		evpool.On("PendingEvidence", mock.AnythingOfType("int64")).Return([]types.Evidence{
+		evpool.On("CheckEvidence", mock.AnythingOfType("p2ptypes.EvidenceList")).Return(nil)
+		evpool.On("PendingEvidence", mock.AnythingOfType("int64")).Return([]evidence.Evidence{
 			ev}, int64(len(ev.Bytes())))
-		evpool.On("Update", mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
+		evpool.On("Update", mock.AnythingOfType("state.State"), mock.AnythingOfType("p2ptypes.EvidenceList")).Return()
 
 		evpool2 := sm.EmptyEvidencePool{}
 
@@ -374,7 +378,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 		cs.SetPrivValidator(pv)
 
-		eventBus := types.NewEventBus()
+		eventBus := events.NewEventBus()
 		eventBus.SetLogger(log.TestingLogger().With("module", "events"))
 		err = eventBus.Start()
 		require.NoError(t, err)
@@ -399,9 +403,9 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		// We expect for each validator that is the proposer to propose one piece of
 		// evidence.
-		go func(s types.Subscription) {
+		go func(s events.Subscription) {
 			msg := <-s.Out()
-			block := msg.Data().(types.EventDataNewBlock).Block
+			block := msg.Data().(events.EventDataNewBlock).Block
 
 			require.Len(t, block.Evidence.Evidence, 1)
 			wg.Done()
@@ -452,7 +456,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 		wg.Add(1)
 
 		// wait till everyone makes the first new block
-		go func(s types.Subscription) {
+		go func(s events.Subscription) {
 			<-s.Out()
 			wg.Done()
 		}(sub)
@@ -482,7 +486,7 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 		wg.Add(1)
 
 		// wait till everyone makes the first new block
-		go func(s types.Subscription) {
+		go func(s events.Subscription) {
 			<-s.Out()
 			wg.Done()
 		}(sub)
@@ -557,7 +561,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 		wg.Add(1)
 
 		// wait till everyone makes the first new block
-		go func(s types.Subscription) {
+		go func(s events.Subscription) {
 			<-s.Out()
 			wg.Done()
 		}(sub)
@@ -565,7 +569,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 
 	wg.Wait()
 
-	blocksSubs := []types.Subscription{}
+	blocksSubs := []events.Subscription{}
 	for _, sub := range rts.subs {
 		blocksSubs = append(blocksSubs, sub)
 	}
@@ -657,7 +661,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 		wg.Add(1)
 
 		// wait till everyone makes the first new block
-		go func(s types.Subscription) {
+		go func(s events.Subscription) {
 			<-s.Out()
 			wg.Done()
 		}(sub)
@@ -673,7 +677,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
 
-	blocksSubs := []types.Subscription{}
+	blocksSubs := []events.Subscription{}
 	for _, sub := range rts.subs {
 		blocksSubs = append(blocksSubs, sub)
 	}

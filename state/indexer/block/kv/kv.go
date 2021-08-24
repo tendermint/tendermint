@@ -11,10 +11,10 @@ import (
 	"github.com/google/orderedcode"
 	dbm "github.com/tendermint/tm-db"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/events"
 	"github.com/tendermint/tendermint/state/indexer"
-	"github.com/tendermint/tendermint/types"
 )
 
 var _ indexer.BlockIndexer = (*BlockerIndexer)(nil)
@@ -49,7 +49,7 @@ func (idx *BlockerIndexer) Has(height int64) (bool, error) {
 // primary key: encode(block.height | height) => encode(height)
 // BeginBlock events: encode(eventType.eventAttr|eventValue|height|begin_block) => encode(height)
 // EndBlock events: encode(eventType.eventAttr|eventValue|height|end_block) => encode(height)
-func (idx *BlockerIndexer) Index(bh types.EventDataNewBlockHeader) error {
+func (idx *BlockerIndexer) Index(bh events.EventDataNewBlockHeader) error {
 	batch := idx.store.NewBatch()
 	defer batch.Close()
 
@@ -248,7 +248,7 @@ iter:
 			err        error
 		)
 
-		if qr.Key == types.BlockHeightKey {
+		if qr.Key == events.BlockHeightKey {
 			eventValue, err = parseValueFromPrimaryKey(it.Key())
 		} else {
 			eventValue, err = parseValueFromEventKey(it.Key())
@@ -456,10 +456,10 @@ func (idx *BlockerIndexer) match(
 	return filteredHeights, nil
 }
 
-func (idx *BlockerIndexer) indexEvents(batch dbm.Batch, events []abci.Event, typ string, height int64) error {
+func (idx *BlockerIndexer) indexEvents(batch dbm.Batch, ev []abci.Event, typ string, height int64) error {
 	heightBz := int64ToBytes(height)
 
-	for _, event := range events {
+	for _, event := range ev {
 		// only index events with a non-empty type
 		if len(event.Type) == 0 {
 			continue
@@ -472,7 +472,7 @@ func (idx *BlockerIndexer) indexEvents(batch dbm.Batch, events []abci.Event, typ
 
 			// index iff the event specified index:true and it's not a reserved event
 			compositeKey := fmt.Sprintf("%s.%s", event.Type, attr.Key)
-			if compositeKey == types.BlockHeightKey {
+			if compositeKey == events.BlockHeightKey {
 				return fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeKey)
 			}
 

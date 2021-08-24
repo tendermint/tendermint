@@ -15,7 +15,7 @@ import (
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/code"
 	abciserver "github.com/tendermint/tendermint/abci/server"
-	"github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/pkg/abci"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -26,8 +26,8 @@ const (
 
 var ctx = context.Background()
 
-func testKVStore(t *testing.T, app types.Application, tx []byte, key, value string) {
-	req := types.RequestDeliverTx{Tx: tx}
+func testKVStore(t *testing.T, app abci.Application, tx []byte, key, value string) {
+	req := abci.RequestDeliverTx{Tx: tx}
 	ar := app.DeliverTx(req)
 	require.False(t, ar.IsErr(), ar)
 	// repeating tx doesn't raise error
@@ -36,11 +36,11 @@ func testKVStore(t *testing.T, app types.Application, tx []byte, key, value stri
 	// commit
 	app.Commit()
 
-	info := app.Info(types.RequestInfo{})
+	info := app.Info(abci.RequestInfo{})
 	require.NotZero(t, info.LastBlockHeight)
 
 	// make sure query is fine
-	resQuery := app.Query(types.RequestQuery{
+	resQuery := app.Query(abci.RequestQuery{
 		Path: "/store",
 		Data: []byte(key),
 	})
@@ -50,7 +50,7 @@ func testKVStore(t *testing.T, app types.Application, tx []byte, key, value stri
 	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
 
 	// make sure proof is fine
-	resQuery = app.Query(types.RequestQuery{
+	resQuery = app.Query(abci.RequestQuery{
 		Path:  "/store",
 		Data:  []byte(key),
 		Prove: true,
@@ -98,7 +98,7 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	InitKVStore(kvstore)
 	height := int64(0)
 
-	resInfo := kvstore.Info(types.RequestInfo{})
+	resInfo := kvstore.Info(abci.RequestInfo{})
 	if resInfo.LastBlockHeight != height {
 		t.Fatalf("expected height of %d, got %d", height, resInfo.LastBlockHeight)
 	}
@@ -109,11 +109,11 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	header := tmproto.Header{
 		Height: height,
 	}
-	kvstore.BeginBlock(types.RequestBeginBlock{Hash: hash, Header: header})
-	kvstore.EndBlock(types.RequestEndBlock{Height: header.Height})
+	kvstore.BeginBlock(abci.RequestBeginBlock{Hash: hash, Header: header})
+	kvstore.EndBlock(abci.RequestEndBlock{Height: header.Height})
 	kvstore.Commit()
 
-	resInfo = kvstore.Info(types.RequestInfo{})
+	resInfo = kvstore.Info(abci.RequestInfo{})
 	if resInfo.LastBlockHeight != height {
 		t.Fatalf("expected height of %d, got %d", height, resInfo.LastBlockHeight)
 	}
@@ -133,18 +133,18 @@ func TestValUpdates(t *testing.T) {
 	nInit := 5
 	vals := RandVals(total)
 	// initialize with the first nInit
-	kvstore.InitChain(types.RequestInitChain{
+	kvstore.InitChain(abci.RequestInitChain{
 		Validators: vals[:nInit],
 	})
 
 	vals1, vals2 := vals[:nInit], kvstore.Validators()
 	valsEqual(t, vals1, vals2)
 
-	var v1, v2, v3 types.ValidatorUpdate
+	var v1, v2, v3 abci.ValidatorUpdate
 
 	// add some validators
 	v1, v2 = vals[nInit], vals[nInit+1]
-	diff := []types.ValidatorUpdate{v1, v2}
+	diff := []abci.ValidatorUpdate{v1, v2}
 	tx1 := MakeValSetChangeTx(v1.PubKey, v1.Power)
 	tx2 := MakeValSetChangeTx(v2.PubKey, v2.Power)
 
@@ -158,7 +158,7 @@ func TestValUpdates(t *testing.T) {
 	v1.Power = 0
 	v2.Power = 0
 	v3.Power = 0
-	diff = []types.ValidatorUpdate{v1, v2, v3}
+	diff = []abci.ValidatorUpdate{v1, v2, v3}
 	tx1 = MakeValSetChangeTx(v1.PubKey, v1.Power)
 	tx2 = MakeValSetChangeTx(v2.PubKey, v2.Power)
 	tx3 := MakeValSetChangeTx(v3.PubKey, v3.Power)
@@ -176,12 +176,12 @@ func TestValUpdates(t *testing.T) {
 	} else {
 		v1.Power = 5
 	}
-	diff = []types.ValidatorUpdate{v1}
+	diff = []abci.ValidatorUpdate{v1}
 	tx1 = MakeValSetChangeTx(v1.PubKey, v1.Power)
 
 	makeApplyBlock(t, kvstore, 3, diff, tx1)
 
-	vals1 = append([]types.ValidatorUpdate{v1}, vals1[1:]...)
+	vals1 = append([]abci.ValidatorUpdate{v1}, vals1[1:]...)
 	vals2 = kvstore.Validators()
 	valsEqual(t, vals1, vals2)
 
@@ -189,9 +189,9 @@ func TestValUpdates(t *testing.T) {
 
 func makeApplyBlock(
 	t *testing.T,
-	kvstore types.Application,
+	kvstore abci.Application,
 	heightInt int,
-	diff []types.ValidatorUpdate,
+	diff []abci.ValidatorUpdate,
 	txs ...[]byte) {
 	// make and apply block
 	height := int64(heightInt)
@@ -200,13 +200,13 @@ func makeApplyBlock(
 		Height: height,
 	}
 
-	kvstore.BeginBlock(types.RequestBeginBlock{Hash: hash, Header: header})
+	kvstore.BeginBlock(abci.RequestBeginBlock{Hash: hash, Header: header})
 	for _, tx := range txs {
-		if r := kvstore.DeliverTx(types.RequestDeliverTx{Tx: tx}); r.IsErr() {
+		if r := kvstore.DeliverTx(abci.RequestDeliverTx{Tx: tx}); r.IsErr() {
 			t.Fatal(r)
 		}
 	}
-	resEndBlock := kvstore.EndBlock(types.RequestEndBlock{Height: header.Height})
+	resEndBlock := kvstore.EndBlock(abci.RequestEndBlock{Height: header.Height})
 	kvstore.Commit()
 
 	valsEqual(t, diff, resEndBlock.ValidatorUpdates)
@@ -214,12 +214,12 @@ func makeApplyBlock(
 }
 
 // order doesn't matter
-func valsEqual(t *testing.T, vals1, vals2 []types.ValidatorUpdate) {
+func valsEqual(t *testing.T, vals1, vals2 []abci.ValidatorUpdate) {
 	if len(vals1) != len(vals2) {
 		t.Fatalf("vals dont match in len. got %d, expected %d", len(vals2), len(vals1))
 	}
-	sort.Sort(types.ValidatorUpdates(vals1))
-	sort.Sort(types.ValidatorUpdates(vals2))
+	sort.Sort(abci.ValidatorUpdates(vals1))
+	sort.Sort(abci.ValidatorUpdates(vals2))
 	for i, v1 := range vals1 {
 		v2 := vals2[i]
 		if !v1.PubKey.Equal(v2.PubKey) ||
@@ -229,7 +229,7 @@ func valsEqual(t *testing.T, vals1, vals2 []types.ValidatorUpdate) {
 	}
 }
 
-func makeSocketClientServer(app types.Application, name string) (abcicli.Client, service.Service, error) {
+func makeSocketClientServer(app abci.Application, name string) (abcicli.Client, service.Service, error) {
 	// Start the listener
 	socket := fmt.Sprintf("unix://%s.sock", name)
 	logger := log.TestingLogger()
@@ -253,12 +253,12 @@ func makeSocketClientServer(app types.Application, name string) (abcicli.Client,
 	return client, server, nil
 }
 
-func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, service.Service, error) {
+func makeGRPCClientServer(app abci.Application, name string) (abcicli.Client, service.Service, error) {
 	// Start the listener
 	socket := fmt.Sprintf("unix://%s.sock", name)
 	logger := log.TestingLogger()
 
-	gapp := types.NewGRPCApplication(app)
+	gapp := abci.NewGRPCApplication(app)
 	server := abciserver.NewGRPCServer(socket, gapp)
 	server.SetLogger(logger.With("module", "abci-server"))
 	if err := server.Start(); err != nil {
@@ -326,23 +326,23 @@ func runClientTests(t *testing.T, client abcicli.Client) {
 }
 
 func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) {
-	ar, err := app.DeliverTxSync(ctx, types.RequestDeliverTx{Tx: tx})
+	ar, err := app.DeliverTxSync(ctx, abci.RequestDeliverTx{Tx: tx})
 	require.NoError(t, err)
 	require.False(t, ar.IsErr(), ar)
 	// repeating tx doesn't raise error
-	ar, err = app.DeliverTxSync(ctx, types.RequestDeliverTx{Tx: tx})
+	ar, err = app.DeliverTxSync(ctx, abci.RequestDeliverTx{Tx: tx})
 	require.NoError(t, err)
 	require.False(t, ar.IsErr(), ar)
 	// commit
 	_, err = app.CommitSync(ctx)
 	require.NoError(t, err)
 
-	info, err := app.InfoSync(ctx, types.RequestInfo{})
+	info, err := app.InfoSync(ctx, abci.RequestInfo{})
 	require.NoError(t, err)
 	require.NotZero(t, info.LastBlockHeight)
 
 	// make sure query is fine
-	resQuery, err := app.QuerySync(ctx, types.RequestQuery{
+	resQuery, err := app.QuerySync(ctx, abci.RequestQuery{
 		Path: "/store",
 		Data: []byte(key),
 	})
@@ -353,7 +353,7 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
 
 	// make sure proof is fine
-	resQuery, err = app.QuerySync(ctx, types.RequestQuery{
+	resQuery, err = app.QuerySync(ctx, abci.RequestQuery{
 		Path:  "/store",
 		Data:  []byte(key),
 		Prove: true,

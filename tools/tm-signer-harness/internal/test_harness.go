@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/metadata"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/privval"
@@ -19,7 +21,6 @@ import (
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 // Test harness error codes (which act as exit codes when the test harness fails).
@@ -219,14 +220,14 @@ func (th *TestHarness) TestSignProposal() error {
 	th.logger.Info("TEST: Signing of proposals")
 	// sha256 hash of "hash"
 	hash := tmhash.Sum([]byte("hash"))
-	prop := &types.Proposal{
+	prop := &consensus.Proposal{
 		Type:     tmproto.ProposalType,
 		Height:   100,
 		Round:    0,
 		POLRound: -1,
-		BlockID: types.BlockID{
+		BlockID: metadata.BlockID{
 			Hash: hash,
-			PartSetHeader: types.PartSetHeader{
+			PartSetHeader: metadata.PartSetHeader{
 				Hash:  hash,
 				Total: 1000000,
 			},
@@ -234,7 +235,7 @@ func (th *TestHarness) TestSignProposal() error {
 		Timestamp: time.Now(),
 	}
 	p := prop.ToProto()
-	propBytes := types.ProposalSignBytes(th.chainID, p)
+	propBytes := consensus.ProposalSignBytes(th.chainID, p)
 	if err := th.signerClient.SignProposal(context.Background(), th.chainID, p); err != nil {
 		th.logger.Error("FAILED: Signing of proposal", "err", err)
 		return newTestHarnessError(ErrTestSignProposalFailed, err, "")
@@ -267,13 +268,13 @@ func (th *TestHarness) TestSignVote() error {
 	for _, voteType := range voteTypes {
 		th.logger.Info("Testing vote type", "type", voteType)
 		hash := tmhash.Sum([]byte("hash"))
-		vote := &types.Vote{
+		vote := &consensus.Vote{
 			Type:   voteType,
 			Height: 101,
 			Round:  0,
-			BlockID: types.BlockID{
+			BlockID: metadata.BlockID{
 				Hash: hash,
-				PartSetHeader: types.PartSetHeader{
+				PartSetHeader: metadata.PartSetHeader{
 					Hash:  hash,
 					Total: 1000000,
 				},
@@ -283,7 +284,7 @@ func (th *TestHarness) TestSignVote() error {
 			Timestamp:        time.Now(),
 		}
 		v := vote.ToProto()
-		voteBytes := types.VoteSignBytes(th.chainID, v)
+		voteBytes := consensus.VoteSignBytes(th.chainID, v)
 		// sign the vote
 		if err := th.signerClient.SignVote(context.Background(), th.chainID, v); err != nil {
 			th.logger.Error("FAILED: Signing of vote", "err", err)

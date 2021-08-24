@@ -3,10 +3,10 @@ package null
 import (
 	"context"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/events"
 	"github.com/tendermint/tendermint/state/indexer"
-	"github.com/tendermint/tendermint/types"
 )
 
 var _ indexer.EventSink = (*EventSink)(nil)
@@ -22,7 +22,7 @@ func (nes *EventSink) Type() indexer.EventSinkType {
 	return indexer.NULL
 }
 
-func (nes *EventSink) IndexBlockEvents(bh types.EventDataNewBlockHeader) error {
+func (nes *EventSink) IndexBlockEvents(bh events.EventDataNewBlockHeader) error {
 	return nil
 }
 

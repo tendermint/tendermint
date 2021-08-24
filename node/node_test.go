@@ -22,23 +22,27 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	consmocks "github.com/tendermint/tendermint/internal/consensus/mocks"
-	ssmocks "github.com/tendermint/tendermint/internal/statesync/mocks"
-
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
 	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
 	statesync "github.com/tendermint/tendermint/internal/statesync"
+	ssmocks "github.com/tendermint/tendermint/internal/statesync/mocks"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
+	"github.com/tendermint/tendermint/pkg/block"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/events"
+	evtypes "github.com/tendermint/tendermint/pkg/evidence"
+	"github.com/tendermint/tendermint/pkg/metadata"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/store"
-	"github.com/tendermint/tendermint/types"
 )
 
 func TestNodeStartStop(t *testing.T) {
@@ -56,7 +60,7 @@ func TestNodeStartStop(t *testing.T) {
 	t.Logf("Started node %v", n.sw.NodeInfo())
 
 	// wait for the node to produce a block
-	blocksSub, err := n.EventBus().Subscribe(context.Background(), "node_test", types.EventQueryNewBlock)
+	blocksSub, err := n.EventBus().Subscribe(context.Background(), "node_test", events.EventQueryNewBlock)
 	require.NoError(t, err)
 	select {
 	case <-blocksSub.Out():
@@ -148,7 +152,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	signerServer := privval.NewSignerServer(
 		dialerEndpoint,
 		config.ChainID(),
-		types.NewMockPV(),
+		consensus.NewMockPV(),
 	)
 
 	go func() {
@@ -193,7 +197,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	pvsc := privval.NewSignerServer(
 		dialerEndpoint,
 		config.ChainID(),
-		types.NewMockPV(),
+		consensus.NewMockPV(),
 	)
 
 	go func() {
@@ -257,14 +261,14 @@ func TestCreateProposalBlock(t *testing.T) {
 	// than can fit in a block
 	var currentBytes int64 = 0
 	for currentBytes <= maxEvidenceBytes {
-		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain")
+		ev := evtypes.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain")
 		currentBytes += int64(len(ev.Bytes()))
 		evidencePool.ReportConflictingVotes(ev.VoteA, ev.VoteB)
 	}
 
 	evList, size := evidencePool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
 	require.Less(t, size, state.ConsensusParams.Evidence.MaxBytes+1)
-	evData := &types.EvidenceData{Evidence: evList}
+	evData := &block.EvidenceData{Evidence: evList}
 	require.EqualValues(t, size, evData.ByteSize())
 
 	// fill the mempool with more txs
@@ -285,7 +289,7 @@ func TestCreateProposalBlock(t *testing.T) {
 		blockStore,
 	)
 
-	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
+	commit := metadata.NewCommit(height-1, 0, metadata.BlockID{}, nil)
 	block, _ := blockExec.CreateProposalBlock(
 		height,
 		state, commit,
@@ -296,7 +300,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	partSet := block.MakePartSet(partSize)
 	assert.Less(t, partSet.ByteSize(), int64(maxBytes))
 
-	partSetFromHeader := types.NewPartSetFromHeader(partSet.Header())
+	partSetFromHeader := metadata.NewPartSetFromHeader(partSet.Header())
 	for partSetFromHeader.Count() < partSetFromHeader.Total() {
 		added, err := partSetFromHeader.AddPart(partSet.GetPart(int(partSetFromHeader.Count())))
 		require.NoError(t, err)
@@ -340,7 +344,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	mp.SetLogger(logger)
 
 	// fill the mempool with one txs just below the maximum size
-	txLength := int(types.MaxDataBytesNoEvidence(maxBytes, 1))
+	txLength := int(block.MaxDataBytesNoEvidence(maxBytes, 1))
 	tx := tmrand.Bytes(txLength - 4) // to account for the varint
 	err = mp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{})
 	assert.NoError(t, err)
@@ -354,7 +358,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 		blockStore,
 	)
 
-	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
+	commit := metadata.NewCommit(height-1, 0, metadata.BlockID{}, nil)
 	block, _ := blockExec.CreateProposalBlock(
 		height,
 		state, commit,
@@ -381,7 +385,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	logger := log.TestingLogger()
 
-	state, stateDB, _ := state(types.MaxVotesCount, int64(1))
+	state, stateDB, _ := state(consensus.MaxVotesCount, int64(1))
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	const maxBytes int64 = 1024 * 1024 * 2
@@ -400,7 +404,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	mp.SetLogger(logger)
 
 	// fill the mempool with one txs just below the maximum size
-	txLength := int(types.MaxDataBytesNoEvidence(maxBytes, types.MaxVotesCount))
+	txLength := int(block.MaxDataBytesNoEvidence(maxBytes, consensus.MaxVotesCount))
 	tx := tmrand.Bytes(txLength - 6) // to account for the varint
 	err = mp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{})
 	assert.NoError(t, err)
@@ -421,9 +425,9 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		blockStore,
 	)
 
-	blockID := types.BlockID{
+	blockID := metadata.BlockID{
 		Hash: tmhash.Sum([]byte("blockID_hash")),
-		PartSetHeader: types.PartSetHeader{
+		PartSetHeader: metadata.PartSetHeader{
 			Total: math.MaxInt32,
 			Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
 		},
@@ -439,26 +443,26 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	state.Version.Consensus.Block = math.MaxInt64
 	state.Version.Consensus.App = math.MaxInt64
 	maxChainID := ""
-	for i := 0; i < types.MaxChainIDLen; i++ {
+	for i := 0; i < metadata.MaxChainIDLen; i++ {
 		maxChainID += "𠜎"
 	}
 	state.ChainID = maxChainID
 
-	cs := types.CommitSig{
-		BlockIDFlag:      types.BlockIDFlagNil,
+	cs := metadata.CommitSig{
+		BlockIDFlag:      metadata.BlockIDFlagNil,
 		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
 		Timestamp:        timestamp,
-		Signature:        crypto.CRandBytes(types.MaxSignatureSize),
+		Signature:        crypto.CRandBytes(metadata.MaxSignatureSize),
 	}
 
-	commit := &types.Commit{
+	commit := &metadata.Commit{
 		Height:  math.MaxInt64,
 		Round:   math.MaxInt32,
 		BlockID: blockID,
 	}
 
 	// add maximum amount of signatures to a single commit
-	for i := 0; i < types.MaxVotesCount; i++ {
+	for i := 0; i < consensus.MaxVotesCount; i++ {
 		commit.Signatures = append(commit.Signatures, cs)
 	}
 
@@ -475,8 +479,8 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	require.NoError(t, err)
 
 	// require that the header and commit be the max possible size
-	require.Equal(t, int64(pb.Header.Size()), types.MaxHeaderBytes)
-	require.Equal(t, int64(pb.LastCommit.Size()), types.MaxCommitBytes(types.MaxVotesCount))
+	require.Equal(t, int64(pb.Header.Size()), metadata.MaxHeaderBytes)
+	require.Equal(t, int64(pb.LastCommit.Size()), metadata.MaxCommitBytes(consensus.MaxVotesCount))
 	// make sure that the block is less than the max possible size
 	assert.Equal(t, int64(pb.Size()), maxBytes)
 	// because of the proto overhead we expect the part set bytes to be equal or
@@ -490,7 +494,7 @@ func TestNodeNewSeedNode(t *testing.T) {
 	config.Mode = cfg.ModeSeed
 	defer os.RemoveAll(config.RootDir)
 
-	nodeKey, err := types.LoadOrGenNodeKey(config.NodeKeyFile())
+	nodeKey, err := p2ptypes.LoadOrGenNodeKey(config.NodeKeyFile())
 	require.NoError(t, err)
 
 	ns, err := makeSeedNode(config,
@@ -594,20 +598,20 @@ func TestNodeSetEventSink(t *testing.T) {
 	assert.Equal(t, e, err)
 }
 
-func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
-	privVals := make([]types.PrivValidator, nVals)
-	vals := make([]types.GenesisValidator, nVals)
+func state(nVals int, height int64) (sm.State, dbm.DB, []consensus.PrivValidator) {
+	privVals := make([]consensus.PrivValidator, nVals)
+	vals := make([]consensus.GenesisValidator, nVals)
 	for i := 0; i < nVals; i++ {
-		privVal := types.NewMockPV()
+		privVal := consensus.NewMockPV()
 		privVals[i] = privVal
-		vals[i] = types.GenesisValidator{
+		vals[i] = consensus.GenesisValidator{
 			Address: privVal.PrivKey.PubKey().Address(),
 			PubKey:  privVal.PrivKey.PubKey(),
 			Power:   1000,
 			Name:    fmt.Sprintf("test%d", i),
 		}
 	}
-	s, _ := sm.MakeGenesisState(&types.GenesisDoc{
+	s, _ := sm.MakeGenesisState(&consensus.GenesisDoc{
 		ChainID:    "test-chain",
 		Validators: vals,
 		AppHash:    nil,
@@ -674,7 +678,7 @@ func TestNodeStartStateSync(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, eventBus)
 
-	sub, err := eventBus.Subscribe(context.Background(), "test-client", types.EventQueryStateSyncStatus, 10)
+	sub, err := eventBus.Subscribe(context.Background(), "test-client", events.EventQueryStateSyncStatus, 10)
 	require.NoError(t, err)
 	require.NotNil(t, sub)
 
@@ -712,7 +716,7 @@ func TestNodeStartStateSync(t *testing.T) {
 
 func ensureStateSyncStatus(t *testing.T, msg tmpubsub.Message, complete bool, height int64) {
 	t.Helper()
-	status, ok := msg.Data().(types.EventDataStateSyncStatus)
+	status, ok := msg.Data().(events.EventDataStateSyncStatus)
 
 	require.True(t, ok)
 	require.Equal(t, complete, status.Complete)

@@ -6,12 +6,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/light"
+	"github.com/tendermint/tendermint/pkg/p2p"
 )
 
 type lightBlockResponse struct {
-	block *types.LightBlock
-	peer  types.NodeID
+	block *light.LightBlock
+	peer  p2p.NodeID
 }
 
 // a block queue is used for asynchronously fetching and verifying light blocks
@@ -26,7 +27,7 @@ type blockQueue struct {
 	initialHeight int64
 	stopHeight    int64
 	stopTime      time.Time
-	terminal      *types.LightBlock
+	terminal      *light.LightBlock
 
 	// track failed heights so we know what blocks to try fetch again
 	failed *maxIntHeap

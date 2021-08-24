@@ -11,7 +11,7 @@ import (
 	"github.com/tendermint/tendermint/libs/cmap"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/p2p"
 )
 
 //go:generate ../../scripts/mockery_generate.sh Peer
@@ -23,7 +23,7 @@ type Peer interface {
 	service.Service
 	FlushStop()
 
-	ID() types.NodeID     // peer's cryptographic ID
+	ID() p2p.NodeID       // peer's cryptographic ID
 	RemoteIP() net.IP     // remote IP of the connection
 	RemoteAddr() net.Addr // remote address of the connection
 
@@ -32,7 +32,7 @@ type Peer interface {
 
 	CloseConn() error // close original connection
 
-	NodeInfo() types.NodeInfo // peer's info
+	NodeInfo() p2p.NodeInfo // peer's info
 	Status() tmconn.ConnectionStatus
 	SocketAddr() *NetAddress // actual address of the socket
 
@@ -81,7 +81,7 @@ type peer struct {
 	// peer's node info and the channel it knows about
 	// channels = nodeInfo.Channels
 	// cached to avoid copying nodeInfo in hasChannel
-	nodeInfo    types.NodeInfo
+	nodeInfo    p2p.NodeInfo
 	channels    []byte
 	reactors    map[byte]Reactor
 	onPeerError func(Peer, interface{})
@@ -96,7 +96,7 @@ type peer struct {
 type PeerOption func(*peer)
 
 func newPeer(
-	nodeInfo types.NodeInfo,
+	nodeInfo p2p.NodeInfo,
 	pc peerConn,
 	reactorsByCh map[byte]Reactor,
 	onPeerError func(Peer, interface{}),
@@ -203,7 +203,7 @@ func (p *peer) OnStop() {
 // Implements Peer
 
 // ID returns the peer's ID - the hex encoded hash of its pubkey.
-func (p *peer) ID() types.NodeID {
+func (p *peer) ID() p2p.NodeID {
 	return p.nodeInfo.ID()
 }
 
@@ -218,7 +218,7 @@ func (p *peer) IsPersistent() bool {
 }
 
 // NodeInfo returns a copy of the peer's NodeInfo.
-func (p *peer) NodeInfo() types.NodeInfo {
+func (p *peer) NodeInfo() p2p.NodeInfo {
 	return p.nodeInfo
 }
 

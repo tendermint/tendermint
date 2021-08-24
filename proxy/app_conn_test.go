@@ -9,9 +9,9 @@ import (
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/abci/server"
-	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/pkg/abci"
 )
 
 //----------------------------------------
@@ -19,7 +19,7 @@ import (
 type appConnTestI interface {
 	EchoAsync(ctx context.Context, msg string) (*abcicli.ReqRes, error)
 	FlushSync(context.Context) error
-	InfoSync(context.Context, types.RequestInfo) (*types.ResponseInfo, error)
+	InfoSync(context.Context, abci.RequestInfo) (*abci.ResponseInfo, error)
 }
 
 type appConnTest struct {
@@ -38,7 +38,7 @@ func (app *appConnTest) FlushSync(ctx context.Context) error {
 	return app.appConn.FlushSync(ctx)
 }
 
-func (app *appConnTest) InfoSync(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
+func (app *appConnTest) InfoSync(ctx context.Context, req abci.RequestInfo) (*abci.ResponseInfo, error) {
 	return app.appConn.InfoSync(ctx, req)
 }
 
@@ -143,7 +143,7 @@ func BenchmarkEcho(b *testing.B) {
 	}
 
 	b.StopTimer()
-	// info := proxy.InfoSync(types.RequestInfo{""})
+	// info := proxy.InfoSync(abci.RequestInfo{""})
 	// b.Log("N: ", b.N, info)
 }
 

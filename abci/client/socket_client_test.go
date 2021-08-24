@@ -13,8 +13,8 @@ import (
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/server"
-	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/pkg/abci"
 )
 
 var ctx = context.Background()
@@ -37,7 +37,7 @@ func TestProperSyncCalls(t *testing.T) {
 	resp := make(chan error, 1)
 	go func() {
 		// This is BeginBlockSync unrolled....
-		reqres, err := c.BeginBlockAsync(ctx, types.RequestBeginBlock{})
+		reqres, err := c.BeginBlockAsync(ctx, abci.RequestBeginBlock{})
 		assert.NoError(t, err)
 		err = c.FlushSync(context.Background())
 		assert.NoError(t, err)
@@ -73,7 +73,7 @@ func TestHangingSyncCalls(t *testing.T) {
 	resp := make(chan error, 1)
 	go func() {
 		// Start BeginBlock and flush it
-		reqres, err := c.BeginBlockAsync(ctx, types.RequestBeginBlock{})
+		reqres, err := c.BeginBlockAsync(ctx, abci.RequestBeginBlock{})
 		assert.NoError(t, err)
 		flush, err := c.FlushAsync(ctx)
 		assert.NoError(t, err)
@@ -99,7 +99,7 @@ func TestHangingSyncCalls(t *testing.T) {
 	}
 }
 
-func setupClientServer(t *testing.T, app types.Application) (
+func setupClientServer(t *testing.T, app abci.Application) (
 	service.Service, abcicli.Client) {
 	// some port between 20k and 30k
 	port := 20000 + rand.Int31()%10000
@@ -118,10 +118,10 @@ func setupClientServer(t *testing.T, app types.Application) (
 }
 
 type slowApp struct {
-	types.BaseApplication
+	abci.BaseApplication
 }
 
-func (slowApp) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
+func (slowApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlock {
 	time.Sleep(200 * time.Millisecond)
-	return types.ResponseBeginBlock{}
+	return abci.ResponseBeginBlock{}
 }

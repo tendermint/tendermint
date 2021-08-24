@@ -14,7 +14,8 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/light"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -183,16 +184,16 @@ func Test_Concurrency(t *testing.T) {
 	wg.Wait()
 }
 
-func randLightBlock(height int64) *types.LightBlock {
+func randLightBlock(height int64) *light.LightBlock {
 	vals, _ := factory.RandValidatorSet(2, 1)
-	return &types.LightBlock{
-		SignedHeader: &types.SignedHeader{
-			Header: &types.Header{
+	return &light.LightBlock{
+		SignedHeader: &metadata.SignedHeader{
+			Header: &metadata.Header{
 				Version:            version.Consensus{Block: version.BlockProtocol, App: 0},
 				ChainID:            tmrand.Str(12),
 				Height:             height,
 				Time:               time.Now(),
-				LastBlockID:        types.BlockID{},
+				LastBlockID:        metadata.BlockID{},
 				LastCommitHash:     crypto.CRandBytes(tmhash.Size),
 				DataHash:           crypto.CRandBytes(tmhash.Size),
 				ValidatorsHash:     crypto.CRandBytes(tmhash.Size),
@@ -203,7 +204,7 @@ func randLightBlock(height int64) *types.LightBlock {
 				EvidenceHash:       crypto.CRandBytes(tmhash.Size),
 				ProposerAddress:    crypto.CRandBytes(crypto.AddressSize),
 			},
-			Commit: &types.Commit{},
+			Commit: &metadata.Commit{},
 		},
 		ValidatorSet: vals,
 	}

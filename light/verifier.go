@@ -7,7 +7,8 @@ import (
 	"time"
 
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/metadata"
 )
 
 var (
@@ -31,10 +32,10 @@ var (
 // future.
 // trustedHeader must have a ChainID, Height and Time
 func VerifyNonAdjacent(
-	trustedHeader *types.SignedHeader, // height=X
-	trustedVals *types.ValidatorSet, // height=X or height=X+1
-	untrustedHeader *types.SignedHeader, // height=Y
-	untrustedVals *types.ValidatorSet, // height=Y
+	trustedHeader *metadata.SignedHeader, // height=X
+	trustedVals *consensus.ValidatorSet, // height=X or height=X+1
+	untrustedHeader *metadata.SignedHeader, // height=Y
+	untrustedVals *consensus.ValidatorSet, // height=Y
 	trustingPeriod time.Duration,
 	now time.Time,
 	maxClockDrift time.Duration,
@@ -67,7 +68,7 @@ func VerifyNonAdjacent(
 	err := trustedVals.VerifyCommitLightTrusting(trustedHeader.ChainID, untrustedHeader.Commit, trustLevel)
 	if err != nil {
 		switch e := err.(type) {
-		case types.ErrNotEnoughVotingPowerSigned:
+		case consensus.ErrNotEnoughVotingPowerSigned:
 			return ErrNewValSetCantBeTrusted{e}
 		default:
 			return ErrInvalidHeader{e}
@@ -101,9 +102,9 @@ func VerifyNonAdjacent(
 // future.
 // trustedHeader must have a ChainID, Height, Time and NextValidatorsHash
 func VerifyAdjacent(
-	trustedHeader *types.SignedHeader, // height=X
-	untrustedHeader *types.SignedHeader, // height=X+1
-	untrustedVals *types.ValidatorSet, // height=X+1
+	trustedHeader *metadata.SignedHeader, // height=X
+	untrustedHeader *metadata.SignedHeader, // height=X+1
+	untrustedVals *consensus.ValidatorSet, // height=X+1
 	trustingPeriod time.Duration,
 	now time.Time,
 	maxClockDrift time.Duration) error {
@@ -150,10 +151,10 @@ func VerifyAdjacent(
 
 // Verify combines both VerifyAdjacent and VerifyNonAdjacent functions.
 func Verify(
-	trustedHeader *types.SignedHeader, // height=X
-	trustedVals *types.ValidatorSet, // height=X or height=X+1
-	untrustedHeader *types.SignedHeader, // height=Y
-	untrustedVals *types.ValidatorSet, // height=Y
+	trustedHeader *metadata.SignedHeader, // height=X
+	trustedVals *consensus.ValidatorSet, // height=X or height=X+1
+	untrustedHeader *metadata.SignedHeader, // height=Y
+	untrustedVals *consensus.ValidatorSet, // height=Y
 	trustingPeriod time.Duration,
 	now time.Time,
 	maxClockDrift time.Duration,
@@ -180,7 +181,7 @@ func ValidateTrustLevel(lvl tmmath.Fraction) error {
 }
 
 // HeaderExpired return true if the given header expired.
-func HeaderExpired(h *types.SignedHeader, trustingPeriod time.Duration, now time.Time) bool {
+func HeaderExpired(h *metadata.SignedHeader, trustingPeriod time.Duration, now time.Time) bool {
 	expirationTime := h.Time.Add(trustingPeriod)
 	return !expirationTime.After(now)
 }
@@ -198,7 +199,7 @@ func HeaderExpired(h *types.SignedHeader, trustingPeriod time.Duration, now time
 // or not. These checks are not necessary because the detector never runs during
 // backwards verification and thus evidence that needs to be within a certain
 // time bound is never sent.
-func VerifyBackwards(untrustedHeader, trustedHeader *types.Header) error {
+func VerifyBackwards(untrustedHeader, trustedHeader *metadata.Header) error {
 	if err := untrustedHeader.ValidateBasic(); err != nil {
 		return ErrInvalidHeader{err}
 	}
@@ -228,9 +229,9 @@ func VerifyBackwards(untrustedHeader, trustedHeader *types.Header) error {
 // NOTE: This function assumes that untrustedHeader is after trustedHeader.
 // Do not use for backwards verification.
 func verifyNewHeaderAndVals(
-	untrustedHeader *types.SignedHeader,
-	untrustedVals *types.ValidatorSet,
-	trustedHeader *types.SignedHeader,
+	untrustedHeader *metadata.SignedHeader,
+	untrustedVals *consensus.ValidatorSet,
+	trustedHeader *metadata.SignedHeader,
 	now time.Time,
 	maxClockDrift time.Duration) error {
 
@@ -268,7 +269,7 @@ func verifyNewHeaderAndVals(
 	return nil
 }
 
-func checkRequiredHeaderFields(h *types.SignedHeader) {
+func checkRequiredHeaderFields(h *metadata.SignedHeader) {
 	if h.Height == 0 {
 		panic("height in trusted header must be set (non zero")
 	}

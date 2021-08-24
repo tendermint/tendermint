@@ -9,12 +9,12 @@ import (
 	"github.com/google/orderedcode"
 	dbm "github.com/tendermint/tm-db"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/consensus"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -78,17 +78,17 @@ type Store interface {
 	// Load loads the current state of the blockchain
 	Load() (State, error)
 	// LoadValidators loads the validator set at a given height
-	LoadValidators(int64) (*types.ValidatorSet, error)
+	LoadValidators(int64) (*consensus.ValidatorSet, error)
 	// LoadABCIResponses loads the abciResponse for a given height
 	LoadABCIResponses(int64) (*tmstate.ABCIResponses, error)
 	// LoadConsensusParams loads the consensus params for a given height
-	LoadConsensusParams(int64) (types.ConsensusParams, error)
+	LoadConsensusParams(int64) (consensus.ConsensusParams, error)
 	// Save overwrites the previous state with the updated one
 	Save(State) error
 	// SaveABCIResponses saves ABCIResponses for a given height
 	SaveABCIResponses(int64, *tmstate.ABCIResponses) error
 	// SaveValidatorSet saves the validator set at a given height
-	SaveValidatorSets(int64, int64, *types.ValidatorSet) error
+	SaveValidatorSets(int64, int64, *consensus.ValidatorSet) error
 	// Bootstrap is used for bootstrapping state when not starting from a initial height.
 	Bootstrap(State) error
 	// PruneStates takes the height from which to prune up to (exclusive)
@@ -401,7 +401,7 @@ func (store dbStore) reverseBatchDelete(batch dbm.Batch, start, end []byte) ([]b
 //
 // See merkle.SimpleHashFromByteSlices
 func ABCIResponsesResultsHash(ar *tmstate.ABCIResponses) []byte {
-	return types.NewResults(ar.DeliverTxs).Hash()
+	return abci.NewResults(ar.DeliverTxs).Hash()
 }
 
 // LoadABCIResponses loads the ABCIResponses for the given height from the
@@ -465,7 +465,7 @@ func (store dbStore) saveABCIResponses(height int64, abciResponses *tmstate.ABCI
 // It is exposed so that a backfill operation during state sync can populate
 // the store with the necessary amount of validator sets to verify any evidence
 // it may encounter.
-func (store dbStore) SaveValidatorSets(lowerHeight, upperHeight int64, vals *types.ValidatorSet) error {
+func (store dbStore) SaveValidatorSets(lowerHeight, upperHeight int64, vals *consensus.ValidatorSet) error {
 	batch := store.db.NewBatch()
 	defer batch.Close()
 
@@ -483,7 +483,7 @@ func (store dbStore) SaveValidatorSets(lowerHeight, upperHeight int64, vals *typ
 
 // LoadValidators loads the ValidatorSet for a given height.
 // Returns ErrNoValSetForHeight if the validator set can't be found for this height.
-func (store dbStore) LoadValidators(height int64) (*types.ValidatorSet, error) {
+func (store dbStore) LoadValidators(height int64) (*consensus.ValidatorSet, error) {
 
 	valInfo, err := loadValidatorsInfo(store.db, height)
 	if err != nil {
@@ -501,7 +501,7 @@ func (store dbStore) LoadValidators(height int64) (*types.ValidatorSet, error) {
 				)
 		}
 
-		vs, err := types.ValidatorSetFromProto(valInfo2.ValidatorSet)
+		vs, err := consensus.ValidatorSetFromProto(valInfo2.ValidatorSet)
 		if err != nil {
 			return nil, err
 		}
@@ -516,7 +516,7 @@ func (store dbStore) LoadValidators(height int64) (*types.ValidatorSet, error) {
 		valInfo = valInfo2
 	}
 
-	vip, err := types.ValidatorSetFromProto(valInfo.ValidatorSet)
+	vip, err := consensus.ValidatorSetFromProto(valInfo.ValidatorSet)
 	if err != nil {
 		return nil, err
 	}
@@ -559,7 +559,7 @@ func loadValidatorsInfo(db dbm.DB, height int64) (*tmstate.ValidatorsInfo, error
 // persisted.
 func (store dbStore) saveValidatorsInfo(
 	height, lastHeightChanged int64,
-	valSet *types.ValidatorSet,
+	valSet *consensus.ValidatorSet,
 	batch dbm.Batch,
 ) error {
 	if lastHeightChanged > height {
@@ -592,12 +592,12 @@ func (store dbStore) saveValidatorsInfo(
 
 // Allocate empty Consensus params at compile time to avoid multiple allocations during runtime
 var (
-	empty   = types.ConsensusParams{}
+	empty   = consensus.ConsensusParams{}
 	emptypb = tmproto.ConsensusParams{}
 )
 
 // LoadConsensusParams loads the ConsensusParams for a given height.
-func (store dbStore) LoadConsensusParams(height int64) (types.ConsensusParams, error) {
+func (store dbStore) LoadConsensusParams(height int64) (consensus.ConsensusParams, error) {
 	paramsInfo, err := store.loadConsensusParamsInfo(height)
 	if err != nil {
 		return empty, fmt.Errorf("could not find consensus params for height #%d: %w", height, err)
@@ -617,7 +617,7 @@ func (store dbStore) LoadConsensusParams(height int64) (types.ConsensusParams, e
 		paramsInfo = paramsInfo2
 	}
 
-	return types.ConsensusParamsFromProto(paramsInfo.ConsensusParams), nil
+	return consensus.ConsensusParamsFromProto(paramsInfo.ConsensusParams), nil
 }
 
 func (store dbStore) loadConsensusParamsInfo(height int64) (*tmstate.ConsensusParamsInfo, error) {
@@ -646,7 +646,7 @@ func (store dbStore) loadConsensusParamsInfo(height int64) (*tmstate.ConsensusPa
 // only the last height for which they changed is persisted.
 func (store dbStore) saveConsensusParamsInfo(
 	nextHeight, changeHeight int64,
-	params types.ConsensusParams,
+	params consensus.ConsensusParams,
 	batch dbm.Batch,
 ) error {
 	paramsInfo := &tmstate.ConsensusParamsInfo{

@@ -24,7 +24,7 @@ import (
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p/conn"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/p2p"
 )
 
 var (
@@ -39,7 +39,7 @@ func init() {
 }
 
 type PeerMessage struct {
-	PeerID  types.NodeID
+	PeerID  p2p.NodeID
 	Bytes   []byte
 	Counter int
 }

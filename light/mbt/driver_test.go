@@ -10,7 +10,8 @@ import (
 
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/light"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/metadata"
 )
 
 const jsonDir = "./json"
@@ -101,10 +102,10 @@ type testCase struct {
 }
 
 type initialData struct {
-	SignedHeader     types.SignedHeader `json:"signed_header"`
-	NextValidatorSet types.ValidatorSet `json:"next_validator_set"`
-	TrustingPeriod   uint64             `json:"trusting_period"`
-	Now              time.Time          `json:"now"`
+	SignedHeader     metadata.SignedHeader  `json:"signed_header"`
+	NextValidatorSet consensus.ValidatorSet `json:"next_validator_set"`
+	TrustingPeriod   uint64                 `json:"trusting_period"`
+	Now              time.Time              `json:"now"`
 }
 
 type inputData struct {
@@ -116,7 +117,7 @@ type inputData struct {
 // In tendermint-rs, NextValidatorSet is used to verify new blocks (opposite to
 // Go tendermint).
 type lightBlockWithNextValidatorSet struct {
-	*types.SignedHeader `json:"signed_header"`
-	ValidatorSet        *types.ValidatorSet `json:"validator_set"`
-	NextValidatorSet    *types.ValidatorSet `json:"next_validator_set"`
+	*metadata.SignedHeader `json:"signed_header"`
+	ValidatorSet           *consensus.ValidatorSet `json:"validator_set"`
+	NextValidatorSet       *consensus.ValidatorSet `json:"next_validator_set"`
 }

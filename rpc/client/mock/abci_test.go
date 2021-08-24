@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/mempool"
 	"github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/client/mock"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 func TestABCIMock(t *testing.T) {
@@ -23,8 +23,8 @@ func TestABCIMock(t *testing.T) {
 
 	key, value := []byte("foo"), []byte("bar")
 	height := int64(10)
-	goodTx := types.Tx{0x01, 0xff}
-	badTx := types.Tx{0x12, 0x21}
+	goodTx := mempool.Tx{0x01, 0xff}
+	badTx := mempool.Tx{0x12, 0x21}
 
 	m := mock.ABCIMock{
 		Info: mock.Call{Error: errors.New("foobar")},
@@ -130,7 +130,7 @@ func TestABCIRecorder(t *testing.T) {
 	assert.False(qa.Prove)
 
 	// now add some broadcasts (should all err)
-	txs := []types.Tx{{1}, {2}, {3}}
+	txs := []mempool.Tx{{1}, {2}, {3}}
 	_, err = r.BroadcastTxCommit(context.Background(), txs[0])
 	assert.NotNil(err, "expected err on broadcast")
 	_, err = r.BroadcastTxSync(context.Background(), txs[1])
@@ -172,7 +172,7 @@ func TestABCIApp(t *testing.T) {
 	// add a key
 	key, value := "foo", "bar"
 	tx := fmt.Sprintf("%s=%s", key, value)
-	res, err := m.BroadcastTxCommit(context.Background(), types.Tx(tx))
+	res, err := m.BroadcastTxCommit(context.Background(), mempool.Tx(tx))
 	require.Nil(err)
 	assert.True(res.CheckTx.IsOK())
 	require.NotNil(res.DeliverTx)

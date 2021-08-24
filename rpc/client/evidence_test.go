@@ -9,15 +9,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	types "github.com/tendermint/tendermint/pkg/evidence"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/rpc/client"
-	"github.com/tendermint/tendermint/types"
 )
 
 // For some reason the empty node used in tests has a time of
@@ -27,7 +29,7 @@ import (
 var defaultTestTime = time.Date(2018, 10, 10, 8, 20, 13, 695936996, time.UTC)
 
 func newEvidence(t *testing.T, val *privval.FilePV,
-	vote *types.Vote, vote2 *types.Vote,
+	vote *consensus.Vote, vote2 *consensus.Vote,
 	chainID string) *types.DuplicateVoteEvidence {
 
 	var err error
@@ -35,14 +37,14 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	v := vote.ToProto()
 	v2 := vote2.ToProto()
 
-	vote.Signature, err = val.Key.PrivKey.Sign(types.VoteSignBytes(chainID, v))
+	vote.Signature, err = val.Key.PrivKey.Sign(consensus.VoteSignBytes(chainID, v))
 	require.NoError(t, err)
 
-	vote2.Signature, err = val.Key.PrivKey.Sign(types.VoteSignBytes(chainID, v2))
+	vote2.Signature, err = val.Key.PrivKey.Sign(consensus.VoteSignBytes(chainID, v2))
 	require.NoError(t, err)
 
-	validator := types.NewValidator(val.Key.PubKey, 10)
-	valSet := types.NewValidatorSet([]*types.Validator{validator})
+	validator := consensus.NewValidator(val.Key.PubKey, 10)
+	valSet := consensus.NewValidatorSet([]*consensus.Validator{validator})
 
 	return types.NewDuplicateVoteEvidence(vote, vote2, defaultTestTime, valSet)
 }
@@ -52,16 +54,16 @@ func makeEvidences(
 	val *privval.FilePV,
 	chainID string,
 ) (correct *types.DuplicateVoteEvidence, fakes []*types.DuplicateVoteEvidence) {
-	vote := types.Vote{
+	vote := consensus.Vote{
 		ValidatorAddress: val.Key.Address,
 		ValidatorIndex:   0,
 		Height:           1,
 		Round:            0,
 		Type:             tmproto.PrevoteType,
 		Timestamp:        defaultTestTime,
-		BlockID: types.BlockID{
+		BlockID: metadata.BlockID{
 			Hash: tmhash.Sum(tmrand.Bytes(tmhash.Size)),
-			PartSetHeader: types.PartSetHeader{
+			PartSetHeader: metadata.PartSetHeader{
 				Total: 1000,
 				Hash:  tmhash.Sum([]byte("partset")),
 			},

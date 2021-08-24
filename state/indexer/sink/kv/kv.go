@@ -3,12 +3,12 @@ package kv
 import (
 	"context"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/events"
 	"github.com/tendermint/tendermint/state/indexer"
 	kvb "github.com/tendermint/tendermint/state/indexer/block/kv"
 	kvt "github.com/tendermint/tendermint/state/indexer/tx/kv"
-	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tm-db"
 )
 
@@ -32,7 +32,7 @@ func (kves *EventSink) Type() indexer.EventSinkType {
 	return indexer.KV
 }
 
-func (kves *EventSink) IndexBlockEvents(bh types.EventDataNewBlockHeader) error {
+func (kves *EventSink) IndexBlockEvents(bh events.EventDataNewBlockHeader) error {
 	return kves.bi.Index(bh)
 }
 

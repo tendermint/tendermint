@@ -13,8 +13,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/pkg/light"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
-	"github.com/tendermint/tendermint/types"
 )
 
 func TestDispatcherBasic(t *testing.T) {
@@ -112,7 +113,7 @@ func TestDispatcherReturnsBlockOncePeerAvailable(t *testing.T) {
 
 	go func() {
 		<-dispatcherRequestCh
-		lb := &types.LightBlock{}
+		lb := &light.LightBlock{}
 		asProto, err := lb.ToProto()
 		require.Nil(t, err)
 		err = d.respond(asProto, peerFromSet)
@@ -178,7 +179,7 @@ func TestPeerListBasic(t *testing.T) {
 	}
 	assert.Equal(t, half, peerList.Len())
 
-	peerList.Remove(types.NodeID("lp"))
+	peerList.Remove(p2ptypes.NodeID("lp"))
 	assert.Equal(t, half, peerList.Len())
 
 	peerList.Remove(peerSet[half])
@@ -295,10 +296,10 @@ func handleRequests(t *testing.T, d *dispatcher, ch chan p2p.Envelope, closeCh c
 	}
 }
 
-func createPeerSet(num int) []types.NodeID {
-	peers := make([]types.NodeID, num)
+func createPeerSet(num int) []p2ptypes.NodeID {
+	peers := make([]p2ptypes.NodeID, num)
 	for i := 0; i < num; i++ {
-		peers[i], _ = types.NewNodeID(strings.Repeat(fmt.Sprintf("%d", i), 2*types.NodeIDByteLength))
+		peers[i], _ = p2ptypes.NewNodeID(strings.Repeat(fmt.Sprintf("%d", i), 2*p2ptypes.NodeIDByteLength))
 	}
 	return peers
 }

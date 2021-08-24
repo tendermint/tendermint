@@ -9,9 +9,9 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/mempool"
 )
 
 func BenchmarkTxSearch(b *testing.B) {
@@ -46,7 +46,7 @@ func BenchmarkTxSearch(b *testing.B) {
 		txResult := &abci.TxResult{
 			Height: int64(i),
 			Index:  0,
-			Tx:     types.Tx(string(txBz)),
+			Tx:     mempool.Tx(string(txBz)),
 			Result: abci.ResponseDeliverTx{
 				Data:   []byte{0},
 				Code:   abci.CodeTypeOK,

@@ -15,12 +15,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	tmlog "github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/pkg/abci"
+	types "github.com/tendermint/tendermint/pkg/events"
+	"github.com/tendermint/tendermint/pkg/mempool"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	indexer "github.com/tendermint/tendermint/state/indexer"
 	kv "github.com/tendermint/tendermint/state/indexer/sink/kv"
 	psql "github.com/tendermint/tendermint/state/indexer/sink/psql"
-	"github.com/tendermint/tendermint/types"
 	db "github.com/tendermint/tm-db"
 )
 
@@ -72,14 +74,14 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 
 	// publish block with txs
 	err = eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
-		Header: types.Header{Height: 1},
+		Header: metadata.Header{Height: 1},
 		NumTxs: int64(2),
 	})
 	require.NoError(t, err)
 	txResult1 := &abci.TxResult{
 		Height: 1,
 		Index:  uint32(0),
-		Tx:     types.Tx("foo"),
+		Tx:     mempool.Tx("foo"),
 		Result: abci.ResponseDeliverTx{Code: 0},
 	}
 	err = eventBus.PublishEventTx(types.EventDataTx{TxResult: *txResult1})
@@ -87,7 +89,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	txResult2 := &abci.TxResult{
 		Height: 1,
 		Index:  uint32(1),
-		Tx:     types.Tx("bar"),
+		Tx:     mempool.Tx("bar"),
 		Result: abci.ResponseDeliverTx{Code: 0},
 	}
 	err = eventBus.PublishEventTx(types.EventDataTx{TxResult: *txResult2})
@@ -95,7 +97,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	res, err := eventSinks[0].GetTxByHash(types.Tx("foo").Hash())
+	res, err := eventSinks[0].GetTxByHash(mempool.Tx("foo").Hash())
 	require.NoError(t, err)
 	require.Equal(t, txResult1, res)
 
@@ -103,7 +105,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, ok)
 
-	res, err = eventSinks[0].GetTxByHash(types.Tx("bar").Hash())
+	res, err = eventSinks[0].GetTxByHash(mempool.Tx("bar").Hash())
 	require.NoError(t, err)
 	require.Equal(t, txResult2, res)
 

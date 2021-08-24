@@ -14,23 +14,23 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
 	"github.com/tendermint/tendermint/libs/log"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 	protomem "github.com/tendermint/tendermint/proto/tendermint/mempool"
-	"github.com/tendermint/tendermint/types"
 )
 
 type reactorTestSuite struct {
 	network *p2ptest.Network
 	logger  log.Logger
 
-	reactors        map[types.NodeID]*Reactor
-	mempoolChannels map[types.NodeID]*p2p.Channel
-	mempools        map[types.NodeID]*TxMempool
-	kvstores        map[types.NodeID]*kvstore.Application
+	reactors        map[p2ptypes.NodeID]*Reactor
+	mempoolChannels map[p2ptypes.NodeID]*p2p.Channel
+	mempools        map[p2ptypes.NodeID]*TxMempool
+	kvstores        map[p2ptypes.NodeID]*kvstore.Application
 
-	peerChans   map[types.NodeID]chan p2p.PeerUpdate
-	peerUpdates map[types.NodeID]*p2p.PeerUpdates
+	peerChans   map[p2ptypes.NodeID]chan p2p.PeerUpdate
+	peerUpdates map[p2ptypes.NodeID]*p2p.PeerUpdates
 
-	nodes []types.NodeID
+	nodes []p2ptypes.NodeID
 }
 
 func setupReactors(t *testing.T, numNodes int, chBuf uint) *reactorTestSuite {
@@ -44,12 +44,12 @@ func setupReactors(t *testing.T, numNodes int, chBuf uint) *reactorTestSuite {
 	rts := &reactorTestSuite{
 		logger:          log.TestingLogger().With("testCase", t.Name()),
 		network:         p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
-		reactors:        make(map[types.NodeID]*Reactor, numNodes),
-		mempoolChannels: make(map[types.NodeID]*p2p.Channel, numNodes),
-		mempools:        make(map[types.NodeID]*TxMempool, numNodes),
-		kvstores:        make(map[types.NodeID]*kvstore.Application, numNodes),
-		peerChans:       make(map[types.NodeID]chan p2p.PeerUpdate, numNodes),
-		peerUpdates:     make(map[types.NodeID]*p2p.PeerUpdates, numNodes),
+		reactors:        make(map[p2ptypes.NodeID]*Reactor, numNodes),
+		mempoolChannels: make(map[p2ptypes.NodeID]*p2p.Channel, numNodes),
+		mempools:        make(map[p2ptypes.NodeID]*TxMempool, numNodes),
+		kvstores:        make(map[p2ptypes.NodeID]*kvstore.Application, numNodes),
+		peerChans:       make(map[p2ptypes.NodeID]chan p2p.PeerUpdate, numNodes),
+		peerUpdates:     make(map[p2ptypes.NodeID]*p2p.PeerUpdates, numNodes),
 	}
 
 	chDesc := p2p.ChannelDescriptor{ID: byte(mempool.MempoolChannel)}

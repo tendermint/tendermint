@@ -7,7 +7,7 @@ import (
 	"github.com/tendermint/tendermint/internal/libs/clist"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
-	"github.com/tendermint/tendermint/types"
+	types "github.com/tendermint/tendermint/pkg/mempool"
 )
 
 // WrappedTx defines a wrapper around a raw transaction with additional metadata

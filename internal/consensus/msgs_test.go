@@ -18,18 +18,21 @@ import (
 	"github.com/tendermint/tendermint/libs/bits"
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/events"
+	"github.com/tendermint/tendermint/pkg/metadata"
+	"github.com/tendermint/tendermint/pkg/p2p"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 func TestMsgToProto(t *testing.T) {
-	psh := types.PartSetHeader{
+	psh := metadata.PartSetHeader{
 		Total: 1,
 		Hash:  tmrand.Bytes(32),
 	}
 	pbPsh := psh.ToProto()
-	bi := types.BlockID{
+	bi := metadata.BlockID{
 		Hash:          tmrand.Bytes(32),
 		PartSetHeader: psh,
 	}
@@ -37,7 +40,7 @@ func TestMsgToProto(t *testing.T) {
 	bits := bits.NewBitArray(1)
 	pbBits := bits.ToProto()
 
-	parts := types.Part{
+	parts := metadata.Part{
 		Index: 1,
 		Bytes: []byte("test"),
 		Proof: merkle.Proof{
@@ -50,7 +53,7 @@ func TestMsgToProto(t *testing.T) {
 	pbParts, err := parts.ToProto()
 	require.NoError(t, err)
 
-	proposal := types.Proposal{
+	proposal := consensus.Proposal{
 		Type:      tmproto.ProposalType,
 		Height:    1,
 		Round:     1,
@@ -61,9 +64,9 @@ func TestMsgToProto(t *testing.T) {
 	}
 	pbProposal := proposal.ToProto()
 
-	pv := types.NewMockPV()
+	pv := consensus.NewMockPV()
 	vote, err := factory.MakeVote(pv, factory.DefaultTestChainID,
-		0, 1, 0, 2, types.BlockID{}, time.Now())
+		0, 1, 0, 2, metadata.BlockID{}, time.Now())
 	require.NoError(t, err)
 	pbVote := vote.ToProto()
 
@@ -210,7 +213,7 @@ func TestMsgToProto(t *testing.T) {
 
 func TestWALMsgProto(t *testing.T) {
 
-	parts := types.Part{
+	parts := metadata.Part{
 		Index: 1,
 		Bytes: []byte("test"),
 		Proof: merkle.Proof{
@@ -229,7 +232,7 @@ func TestWALMsgProto(t *testing.T) {
 		want     *tmcons.WALMessage
 		wantErr  bool
 	}{
-		{"successful EventDataRoundState", types.EventDataRoundState{
+		{"successful EventDataRoundState", events.EventDataRoundState{
 			Height: 2,
 			Round:  1,
 			Step:   "ronies",
@@ -248,7 +251,7 @@ func TestWALMsgProto(t *testing.T) {
 				Round:  1,
 				Part:   &parts,
 			},
-			PeerID: types.NodeID("string"),
+			PeerID: p2p.NodeID("string"),
 		}, &tmcons.WALMessage{
 			Sum: &tmcons.WALMessage_MsgInfo{
 				MsgInfo: &tmcons.MsgInfo{
@@ -316,13 +319,13 @@ func TestWALMsgProto(t *testing.T) {
 // nolint:lll //ignore line length for tests
 func TestConsMsgsVectors(t *testing.T) {
 	date := time.Date(2018, 8, 30, 12, 0, 0, 0, time.UTC)
-	psh := types.PartSetHeader{
+	psh := metadata.PartSetHeader{
 		Total: 1,
 		Hash:  []byte("add_more_exclamation_marks_code-"),
 	}
 	pbPsh := psh.ToProto()
 
-	bi := types.BlockID{
+	bi := metadata.BlockID{
 		Hash:          []byte("add_more_exclamation_marks_code-"),
 		PartSetHeader: psh,
 	}
@@ -330,7 +333,7 @@ func TestConsMsgsVectors(t *testing.T) {
 	bits := bits.NewBitArray(1)
 	pbBits := bits.ToProto()
 
-	parts := types.Part{
+	parts := metadata.Part{
 		Index: 1,
 		Bytes: []byte("test"),
 		Proof: merkle.Proof{
@@ -343,7 +346,7 @@ func TestConsMsgsVectors(t *testing.T) {
 	pbParts, err := parts.ToProto()
 	require.NoError(t, err)
 
-	proposal := types.Proposal{
+	proposal := consensus.Proposal{
 		Type:      tmproto.ProposalType,
 		Height:    1,
 		Round:     1,
@@ -354,7 +357,7 @@ func TestConsMsgsVectors(t *testing.T) {
 	}
 	pbProposal := proposal.ToProto()
 
-	v := &types.Vote{
+	v := &consensus.Vote{
 		ValidatorAddress: []byte("add_more_exclamation"),
 		ValidatorIndex:   1,
 		Height:           1,
@@ -431,10 +434,10 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 		invalidSignedMsgType tmproto.SignedMsgType = 0x03
 	)
 
-	validBlockID := types.BlockID{}
-	invalidBlockID := types.BlockID{
+	validBlockID := metadata.BlockID{}
+	invalidBlockID := metadata.BlockID{
 		Hash: bytes.HexBytes{},
-		PartSetHeader: types.PartSetHeader{
+		PartSetHeader: metadata.PartSetHeader{
 			Total: 1,
 			Hash:  []byte{0},
 		},
@@ -446,7 +449,7 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 		messageHeight  int64
 		testName       string
 		messageType    tmproto.SignedMsgType
-		messageBlockID types.BlockID
+		messageBlockID metadata.BlockID
 	}{
 		{false, 0, 0, "Valid Message", validSignedMsgType, validBlockID},
 		{true, -1, 0, "Invalid Message", validSignedMsgType, validBlockID},
@@ -479,15 +482,15 @@ func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
 		{func(msg *VoteSetBitsMessage) { msg.Height = -1 }, "negative Height"},
 		{func(msg *VoteSetBitsMessage) { msg.Type = 0x03 }, "invalid Type"},
 		{func(msg *VoteSetBitsMessage) {
-			msg.BlockID = types.BlockID{
+			msg.BlockID = metadata.BlockID{
 				Hash: bytes.HexBytes{},
-				PartSetHeader: types.PartSetHeader{
+				PartSetHeader: metadata.PartSetHeader{
 					Total: 1,
 					Hash:  []byte{0},
 				},
 			}
 		}, "wrong BlockID: wrong PartSetHeader: wrong Hash:"},
-		{func(msg *VoteSetBitsMessage) { msg.Votes = bits.NewBitArray(types.MaxVotesCount + 1) },
+		{func(msg *VoteSetBitsMessage) { msg.Votes = bits.NewBitArray(consensus.MaxVotesCount + 1) },
 			"votes bit array is too big: 10001, max: 10000"},
 	}
 
@@ -499,7 +502,7 @@ func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
 				Round:   0,
 				Type:    0x01,
 				Votes:   bits.NewBitArray(1),
-				BlockID: types.BlockID{},
+				BlockID: metadata.BlockID{},
 			}
 
 			tc.malleateFn(msg)
@@ -604,7 +607,9 @@ func TestNewValidBlockMessageValidateBasic(t *testing.T) {
 			"empty blockParts",
 		},
 		{
-			func(msg *NewValidBlockMessage) { msg.BlockParts = bits.NewBitArray(int(types.MaxBlockPartsCount) + 1) },
+			func(msg *NewValidBlockMessage) {
+				msg.BlockParts = bits.NewBitArray(int(metadata.MaxBlockPartsCount) + 1)
+			},
 			"blockParts bit array size 1602 not equal to BlockPartSetHeader.Total 1",
 		},
 	}
@@ -615,7 +620,7 @@ func TestNewValidBlockMessageValidateBasic(t *testing.T) {
 			msg := &NewValidBlockMessage{
 				Height: 1,
 				Round:  0,
-				BlockPartSetHeader: types.PartSetHeader{
+				BlockPartSetHeader: metadata.PartSetHeader{
 					Total: 1,
 				},
 				BlockParts: bits.NewBitArray(1),
@@ -639,7 +644,7 @@ func TestProposalPOLMessageValidateBasic(t *testing.T) {
 		{func(msg *ProposalPOLMessage) { msg.Height = -1 }, "negative Height"},
 		{func(msg *ProposalPOLMessage) { msg.ProposalPOLRound = -1 }, "negative ProposalPOLRound"},
 		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = bits.NewBitArray(0) }, "empty ProposalPOL bit array"},
-		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = bits.NewBitArray(types.MaxVotesCount + 1) },
+		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = bits.NewBitArray(consensus.MaxVotesCount + 1) },
 			"proposalPOL bit array is too big: 10001, max: 10000"},
 	}
 
@@ -662,13 +667,13 @@ func TestProposalPOLMessageValidateBasic(t *testing.T) {
 }
 
 func TestBlockPartMessageValidateBasic(t *testing.T) {
-	testPart := new(types.Part)
+	testPart := new(metadata.Part)
 	testPart.Proof.LeafHash = tmhash.Sum([]byte("leaf"))
 	testCases := []struct {
 		testName      string
 		messageHeight int64
 		messageRound  int32
-		messagePart   *types.Part
+		messagePart   *metadata.Part
 		expectErr     bool
 	}{
 		{"Valid Message", 0, 0, testPart, false},
@@ -689,7 +694,7 @@ func TestBlockPartMessageValidateBasic(t *testing.T) {
 		})
 	}
 
-	message := BlockPartMessage{Height: 0, Round: 0, Part: new(types.Part)}
+	message := BlockPartMessage{Height: 0, Round: 0, Part: new(metadata.Part)}
 	message.Part.Index = 1
 
 	assert.Equal(t, true, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")

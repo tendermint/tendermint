@@ -16,7 +16,11 @@ import (
 	"github.com/tendermint/tendermint/light/provider"
 	provider_mocks "github.com/tendermint/tendermint/light/provider/mocks"
 	dbs "github.com/tendermint/tendermint/light/store/db"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/evidence"
+	lighttypes "github.com/tendermint/tendermint/pkg/light"
+	"github.com/tendermint/tendermint/pkg/mempool"
+	"github.com/tendermint/tendermint/pkg/metadata"
 )
 
 func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
@@ -25,8 +29,8 @@ func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 		latestHeight      = int64(3)
 		valSize           = 5
 		divergenceHeight  = int64(2)
-		primaryHeaders    = make(map[int64]*types.SignedHeader, latestHeight)
-		primaryValidators = make(map[int64]*types.ValidatorSet, latestHeight)
+		primaryHeaders    = make(map[int64]*metadata.SignedHeader, latestHeight)
+		primaryValidators = make(map[int64]*consensus.ValidatorSet, latestHeight)
 	)
 
 	witnessHeaders, witnessValidators, chainKeys := genLightBlocksWithKeys(chainID, latestHeight, valSize, 2, bTime)
@@ -52,29 +56,29 @@ func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 	mockWitness := mockNodeFromHeadersAndVals(witnessHeaders, witnessValidators)
 	mockPrimary := mockNodeFromHeadersAndVals(primaryHeaders, primaryValidators)
 
-	mockWitness.On("ReportEvidence", mock.Anything, mock.MatchedBy(func(evidence types.Evidence) bool {
-		evAgainstPrimary := &types.LightClientAttackEvidence{
+	mockWitness.On("ReportEvidence", mock.Anything, mock.MatchedBy(func(ev evidence.Evidence) bool {
+		evAgainstPrimary := &evidence.LightClientAttackEvidence{
 			// after the divergence height the valset doesn't change so we expect the evidence to be for the latest height
-			ConflictingBlock: &types.LightBlock{
+			ConflictingBlock: &lighttypes.LightBlock{
 				SignedHeader: primaryHeaders[latestHeight],
 				ValidatorSet: primaryValidators[latestHeight],
 			},
 			CommonHeight: 1,
 		}
-		return bytes.Equal(evidence.Hash(), evAgainstPrimary.Hash())
+		return bytes.Equal(ev.Hash(), evAgainstPrimary.Hash())
 	})).Return(nil)
 
-	mockPrimary.On("ReportEvidence", mock.Anything, mock.MatchedBy(func(evidence types.Evidence) bool {
-		evAgainstWitness := &types.LightClientAttackEvidence{
+	mockPrimary.On("ReportEvidence", mock.Anything, mock.MatchedBy(func(ev evidence.Evidence) bool {
+		evAgainstWitness := &evidence.LightClientAttackEvidence{
 			// when forming evidence against witness we learn that the canonical chain continued to change validator sets
 			// hence the conflicting block is at 7
-			ConflictingBlock: &types.LightBlock{
+			ConflictingBlock: &lighttypes.LightBlock{
 				SignedHeader: witnessHeaders[divergenceHeight+1],
 				ValidatorSet: witnessValidators[divergenceHeight+1],
 			},
 			CommonHeight: divergenceHeight - 1,
 		}
-		return bytes.Equal(evidence.Hash(), evAgainstWitness.Hash())
+		return bytes.Equal(ev.Hash(), evAgainstWitness.Hash())
 	})).Return(nil)
 
 	c, err := light.NewClient(
@@ -134,9 +138,9 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 			// primary performs an equivocation attack
 			var (
 				valSize        = 5
-				primaryHeaders = make(map[int64]*types.SignedHeader, testCase.latestHeight)
+				primaryHeaders = make(map[int64]*metadata.SignedHeader, testCase.latestHeight)
 				// validators don't change in this network (however we still use a map just for convenience)
-				primaryValidators = make(map[int64]*types.ValidatorSet, testCase.latestHeight)
+				primaryValidators = make(map[int64]*consensus.ValidatorSet, testCase.latestHeight)
 			)
 			witnessHeaders, witnessValidators, chainKeys := genLightBlocksWithKeys(chainID,
 				testCase.latestHeight+1, valSize, 2, bTime)
@@ -149,7 +153,7 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 				// we don't have a network partition so we will make 4/5 (greater than 2/3) malicious and vote again for
 				// a different block (which we do by adding txs)
 				primaryHeaders[height] = chainKeys[height].GenSignedHeader(chainID, height,
-					bTime.Add(time.Duration(height)*time.Minute), []types.Tx{[]byte("abcd")},
+					bTime.Add(time.Duration(height)*time.Minute), []mempool.Tx{[]byte("abcd")},
 					witnessValidators[height], witnessValidators[height+1], hash("app_hash"),
 					hash("cons_hash"), hash("results_hash"), 0, len(chainKeys[height])-1)
 				primaryValidators[height] = witnessValidators[height]
@@ -167,25 +171,25 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 			// Check evidence was sent to both full nodes.
 			// Common height should be set to the height of the divergent header in the instance
 			// of an equivocation attack and the validator sets are the same as what the witness has
-			mockWitness.On("ReportEvidence", mock.Anything, mock.MatchedBy(func(evidence types.Evidence) bool {
-				evAgainstPrimary := &types.LightClientAttackEvidence{
-					ConflictingBlock: &types.LightBlock{
+			mockWitness.On("ReportEvidence", mock.Anything, mock.MatchedBy(func(ev evidence.Evidence) bool {
+				evAgainstPrimary := &evidence.LightClientAttackEvidence{
+					ConflictingBlock: &lighttypes.LightBlock{
 						SignedHeader: primaryHeaders[testCase.divergenceHeight],
 						ValidatorSet: primaryValidators[testCase.divergenceHeight],
 					},
 					CommonHeight: testCase.divergenceHeight,
 				}
-				return bytes.Equal(evidence.Hash(), evAgainstPrimary.Hash())
+				return bytes.Equal(ev.Hash(), evAgainstPrimary.Hash())
 			})).Return(nil)
-			mockPrimary.On("ReportEvidence", mock.Anything, mock.MatchedBy(func(evidence types.Evidence) bool {
-				evAgainstWitness := &types.LightClientAttackEvidence{
-					ConflictingBlock: &types.LightBlock{
+			mockPrimary.On("ReportEvidence", mock.Anything, mock.MatchedBy(func(ev evidence.Evidence) bool {
+				evAgainstWitness := &evidence.LightClientAttackEvidence{
+					ConflictingBlock: &lighttypes.LightBlock{
 						SignedHeader: witnessHeaders[testCase.divergenceHeight],
 						ValidatorSet: witnessValidators[testCase.divergenceHeight],
 					},
 					CommonHeight: testCase.divergenceHeight,
 				}
-				return bytes.Equal(evidence.Hash(), evAgainstWitness.Hash())
+				return bytes.Equal(ev.Hash(), evAgainstWitness.Hash())
 			})).Return(nil)
 
 			c, err := light.NewClient(
@@ -224,8 +228,8 @@ func TestLightClientAttackEvidence_ForwardLunatic(t *testing.T) {
 		valSize           = 5
 		forgedHeight      = int64(12)
 		proofHeight       = int64(11)
-		primaryHeaders    = make(map[int64]*types.SignedHeader, forgedHeight)
-		primaryValidators = make(map[int64]*types.ValidatorSet, forgedHeight)
+		primaryHeaders    = make(map[int64]*metadata.SignedHeader, forgedHeight)
+		primaryValidators = make(map[int64]*consensus.ValidatorSet, forgedHeight)
 	)
 
 	witnessHeaders, witnessValidators, chainKeys := genLightBlocksWithKeys(chainID, latestHeight, valSize, 2, bTime)
@@ -271,16 +275,16 @@ func TestLightClientAttackEvidence_ForwardLunatic(t *testing.T) {
 	mockWitness.On("LightBlock", mock.Anything, int64(0)).Return(lastBlock, nil).Once()
 	mockWitness.On("LightBlock", mock.Anything, int64(12)).Return(nil, provider.ErrHeightTooHigh)
 
-	mockWitness.On("ReportEvidence", mock.Anything, mock.MatchedBy(func(evidence types.Evidence) bool {
+	mockWitness.On("ReportEvidence", mock.Anything, mock.MatchedBy(func(ev evidence.Evidence) bool {
 		// Check evidence was sent to the witness against the full node
-		evAgainstPrimary := &types.LightClientAttackEvidence{
-			ConflictingBlock: &types.LightBlock{
+		evAgainstPrimary := &evidence.LightClientAttackEvidence{
+			ConflictingBlock: &lighttypes.LightBlock{
 				SignedHeader: primaryHeaders[forgedHeight],
 				ValidatorSet: primaryValidators[forgedHeight],
 			},
 			CommonHeight: latestHeight,
 		}
-		return bytes.Equal(evidence.Hash(), evAgainstPrimary.Hash())
+		return bytes.Equal(ev.Hash(), evAgainstPrimary.Hash())
 	})).Return(nil).Twice()
 
 	// In order to perform the attack, the primary needs at least one accomplice as a witness to also
@@ -307,7 +311,7 @@ func TestLightClientAttackEvidence_ForwardLunatic(t *testing.T) {
 	// two seconds later, the supporting withness should receive the header that can be used
 	// to prove that there was an attack
 	vals := chainKeys[latestHeight].ToValidators(2, 0)
-	newLb := &types.LightBlock{
+	newLb := &lighttypes.LightBlock{
 		SignedHeader: chainKeys[latestHeight].GenSignedHeader(
 			chainID,
 			proofHeight,

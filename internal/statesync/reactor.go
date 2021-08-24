@@ -10,17 +10,19 @@ import (
 	"sort"
 	"time"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/light"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
-	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -304,7 +306,7 @@ func (r *Reactor) backfill(
 	ctx context.Context,
 	chainID string,
 	startHeight, stopHeight, initialHeight int64,
-	trustedBlockID types.BlockID,
+	trustedBlockID metadata.BlockID,
 	stopTime time.Time,
 ) error {
 	r.Logger.Info("starting backfill process...", "startHeight", startHeight,
@@ -312,7 +314,7 @@ func (r *Reactor) backfill(
 
 	const sleepTime = 1 * time.Second
 	var (
-		lastValidatorSet *types.ValidatorSet
+		lastValidatorSet *consensus.ValidatorSet
 		lastChangeHeight int64 = startHeight
 	)
 
@@ -811,7 +813,7 @@ func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
 
 // fetchLightBlock works out whether the node has a light block at a particular
 // height and if so returns it so it can be gossiped to peers
-func (r *Reactor) fetchLightBlock(height uint64) (*types.LightBlock, error) {
+func (r *Reactor) fetchLightBlock(height uint64) (*light.LightBlock, error) {
 	h := int64(height)
 
 	blockMeta := r.blockStore.LoadBlockMeta(h)
@@ -832,8 +834,8 @@ func (r *Reactor) fetchLightBlock(height uint64) (*types.LightBlock, error) {
 		return nil, nil
 	}
 
-	return &types.LightBlock{
-		SignedHeader: &types.SignedHeader{
+	return &light.LightBlock{
+		SignedHeader: &metadata.SignedHeader{
 			Header: &blockMeta.Header,
 			Commit: commit,
 		},

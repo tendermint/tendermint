@@ -12,10 +12,13 @@ import (
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/events"
+	"github.com/tendermint/tendermint/pkg/metadata"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -125,11 +128,11 @@ type Reactor struct {
 	service.BaseService
 
 	state    *State
-	eventBus *types.EventBus
+	eventBus *events.EventBus
 	Metrics  *Metrics
 
 	mtx      tmsync.RWMutex
-	peers    map[types.NodeID]*PeerState
+	peers    map[p2ptypes.NodeID]*PeerState
 	waitSync bool
 
 	stateCh       *p2p.Channel
@@ -165,7 +168,7 @@ func NewReactor(
 	r := &Reactor{
 		state:         cs,
 		waitSync:      waitSync,
-		peers:         make(map[types.NodeID]*PeerState),
+		peers:         make(map[p2ptypes.NodeID]*PeerState),
 		Metrics:       NopMetrics(),
 		stateCh:       stateCh,
 		dataCh:        dataCh,
@@ -260,7 +263,7 @@ func (r *Reactor) OnStop() {
 }
 
 // SetEventBus sets the reactor's event bus.
-func (r *Reactor) SetEventBus(b *types.EventBus) {
+func (r *Reactor) SetEventBus(b *events.EventBus) {
 	r.eventBus = b
 	r.state.SetEventBus(b)
 }
@@ -313,7 +316,7 @@ conR:
 %+v`, err, r.state, r))
 	}
 
-	d := types.EventDataBlockSyncStatus{Complete: true, Height: state.LastBlockHeight}
+	d := events.EventDataBlockSyncStatus{Complete: true, Height: state.LastBlockHeight}
 	if err := r.eventBus.PublishEventBlockSyncStatus(d); err != nil {
 		r.Logger.Error("failed to emit the blocksync complete event", "err", err)
 	}
@@ -346,7 +349,7 @@ func (r *Reactor) StringIndented(indent string) string {
 }
 
 // GetPeerState returns PeerState for a given NodeID.
-func (r *Reactor) GetPeerState(peerID types.NodeID) (*PeerState, bool) {
+func (r *Reactor) GetPeerState(peerID p2ptypes.NodeID) (*PeerState, bool) {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 
@@ -375,7 +378,7 @@ func (r *Reactor) broadcastNewValidBlockMessage(rs *cstypes.RoundState) {
 	}
 }
 
-func (r *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
+func (r *Reactor) broadcastHasVoteMessage(vote *consensus.Vote) {
 	r.stateCh.Out <- p2p.Envelope{
 		Broadcast: true,
 		Message: &tmcons.HasVote{
@@ -393,7 +396,7 @@ func (r *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
 func (r *Reactor) subscribeToBroadcastEvents() {
 	err := r.state.evsw.AddListenerForEvent(
 		listenerIDConsensus,
-		types.EventNewRoundStepValue,
+		events.EventNewRoundStepValue,
 		func(data tmevents.EventData) {
 			r.broadcastNewRoundStepMessage(data.(*cstypes.RoundState))
 			select {
@@ -408,7 +411,7 @@ func (r *Reactor) subscribeToBroadcastEvents() {
 
 	err = r.state.evsw.AddListenerForEvent(
 		listenerIDConsensus,
-		types.EventValidBlockValue,
+		events.EventValidBlockValue,
 		func(data tmevents.EventData) {
 			r.broadcastNewValidBlockMessage(data.(*cstypes.RoundState))
 		},
@@ -419,9 +422,9 @@ func (r *Reactor) subscribeToBroadcastEvents() {
 
 	err = r.state.evsw.AddListenerForEvent(
 		listenerIDConsensus,
-		types.EventVoteValue,
+		events.EventVoteValue,
 		func(data tmevents.EventData) {
-			r.broadcastHasVoteMessage(data.(*types.Vote))
+			r.broadcastHasVoteMessage(data.(*consensus.Vote))
 		},
 	)
 	if err != nil {
@@ -443,7 +446,7 @@ func makeRoundStepMessage(rs *cstypes.RoundState) *tmcons.NewRoundStep {
 	}
 }
 
-func (r *Reactor) sendNewRoundStepMessage(peerID types.NodeID) {
+func (r *Reactor) sendNewRoundStepMessage(peerID p2ptypes.NodeID) {
 	rs := r.state.GetRoundState()
 	msg := makeRoundStepMessage(rs)
 	r.stateCh.Out <- p2p.Envelope{
@@ -653,8 +656,25 @@ OUTER_LOOP:
 
 // pickSendVote picks a vote and sends it to the peer. It will return true if
 // there is a vote to send and false otherwise.
-func (r *Reactor) pickSendVote(ps *PeerState, votes types.VoteSetReader) bool {
+func (r *Reactor) pickSendVote(ps *PeerState, votes consensus.VoteSetReader) bool {
 	if vote, ok := ps.PickVoteToSend(votes); ok {
+		r.Logger.Debug("sending vote message", "ps", ps, "vote", vote)
+		r.voteCh.Out <- p2p.Envelope{
+			To: ps.peerID,
+			Message: &tmcons.Vote{
+				Vote: vote.ToProto(),
+			},
+		}
+
+		ps.SetHasVote(vote)
+		return true
+	}
+
+	return false
+}
+
+func (r *Reactor) sendVoteFromCommit(ps *PeerState, commit *metadata.Commit) bool {
+	if vote, ok := ps.PickVoteFromCommit(commit); ok {
 		r.Logger.Debug("sending vote message", "ps", ps, "vote", vote)
 		r.voteCh.Out <- p2p.Envelope{
 			To: ps.peerID,
@@ -781,8 +801,10 @@ OUTER_LOOP:
 		if blockStoreBase > 0 && prs.Height != 0 && rs.Height >= prs.Height+2 && prs.Height >= blockStoreBase {
 			// Load the block commit for prs.Height, which contains precommit
 			// signatures for prs.Height.
+			// FIXME: It's incredibly inefficient to be sending individual votes to a node that is lagging behind.
+			// We should instead be gossiping entire commits
 			if commit := r.state.blockStore.LoadBlockCommit(prs.Height); commit != nil {
-				if r.pickSendVote(ps, commit) {
+				if r.sendVoteFromCommit(ps, commit) {
 					logger.Debug("picked Catchup commit to send", "height", prs.Height)
 					continue OUTER_LOOP
 				}

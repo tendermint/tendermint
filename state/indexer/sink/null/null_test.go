@@ -5,15 +5,15 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/tendermint/tendermint/pkg/events"
 	"github.com/tendermint/tendermint/state/indexer"
-	"github.com/tendermint/tendermint/types"
 )
 
 func TestNullEventSink(t *testing.T) {
 	nullIndexer := NewEventSink()
 
 	assert.Nil(t, nullIndexer.IndexTxEvents(nil))
-	assert.Nil(t, nullIndexer.IndexBlockEvents(types.EventDataNewBlockHeader{}))
+	assert.Nil(t, nullIndexer.IndexBlockEvents(events.EventDataNewBlockHeader{}))
 	val1, err1 := nullIndexer.SearchBlockEvents(context.TODO(), nil)
 	assert.Nil(t, val1)
 	assert.Nil(t, err1)

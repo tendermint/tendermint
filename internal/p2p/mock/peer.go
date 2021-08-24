@@ -6,13 +6,13 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/conn"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/types"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 )
 
 type Peer struct {
 	*service.BaseService
 	ip                   net.IP
-	id                   types.NodeID
+	id                   p2ptypes.NodeID
 	addr                 *p2p.NetAddress
 	kv                   map[string]interface{}
 	Outbound, Persistent bool
@@ -25,9 +25,9 @@ func NewPeer(ip net.IP) *Peer {
 	if ip == nil {
 		_, netAddr = p2p.CreateRoutableAddr()
 	} else {
-		netAddr = types.NewNetAddressIPPort(ip, 26656)
+		netAddr = p2ptypes.NewNetAddressIPPort(ip, 26656)
 	}
-	nodeKey := types.GenNodeKey()
+	nodeKey := p2ptypes.GenNodeKey()
 	netAddr.ID = nodeKey.ID
 	mp := &Peer{
 		ip:   ip,
@@ -45,14 +45,14 @@ func NewPeer(ip net.IP) *Peer {
 func (mp *Peer) FlushStop()                              { mp.Stop() } //nolint:errcheck //ignore error
 func (mp *Peer) TrySend(chID byte, msgBytes []byte) bool { return true }
 func (mp *Peer) Send(chID byte, msgBytes []byte) bool    { return true }
-func (mp *Peer) NodeInfo() types.NodeInfo {
-	return types.NodeInfo{
+func (mp *Peer) NodeInfo() p2ptypes.NodeInfo {
+	return p2ptypes.NodeInfo{
 		NodeID:     mp.addr.ID,
 		ListenAddr: mp.addr.DialString(),
 	}
 }
 func (mp *Peer) Status() conn.ConnectionStatus { return conn.ConnectionStatus{} }
-func (mp *Peer) ID() types.NodeID              { return mp.id }
+func (mp *Peer) ID() p2ptypes.NodeID           { return mp.id }
 func (mp *Peer) IsOutbound() bool              { return mp.Outbound }
 func (mp *Peer) IsPersistent() bool            { return mp.Persistent }
 func (mp *Peer) Get(key string) interface{} {

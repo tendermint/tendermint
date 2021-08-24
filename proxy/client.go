@@ -6,8 +6,8 @@ import (
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
-	"github.com/tendermint/tendermint/abci/types"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/pkg/abci"
 )
 
 //go:generate ../scripts/mockery_generate.sh ClientCreator
@@ -23,12 +23,12 @@ type ClientCreator interface {
 
 type localClientCreator struct {
 	mtx *tmsync.RWMutex
-	app types.Application
+	app abci.Application
 }
 
 // NewLocalClientCreator returns a ClientCreator for the given app,
 // which will be running locally.
-func NewLocalClientCreator(app types.Application) ClientCreator {
+func NewLocalClientCreator(app abci.Application) ClientCreator {
 	return &localClientCreator{
 		mtx: new(tmsync.RWMutex),
 		app: app,
@@ -82,7 +82,7 @@ func DefaultClientCreator(addr, transport, dbDir string) (ClientCreator, io.Clos
 		app := kvstore.NewPersistentKVStoreApplication(dbDir)
 		return NewLocalClientCreator(app), app
 	case "noop":
-		return NewLocalClientCreator(types.NewBaseApplication()), noopCloser{}
+		return NewLocalClientCreator(abci.NewBaseApplication()), noopCloser{}
 	default:
 		mustConnect := false // loop retrying
 		return NewRemoteClientCreator(addr, transport, mustConnect), noopCloser{}

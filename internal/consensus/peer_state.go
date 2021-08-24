@@ -12,8 +12,10 @@ import (
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtime "github.com/tendermint/tendermint/libs/time"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/metadata"
+	"github.com/tendermint/tendermint/pkg/p2p"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -36,7 +38,7 @@ func (pss peerStateStats) String() string {
 // NOTE: THIS GETS DUMPED WITH rpc/core/consensus.go.
 // Be mindful of what you Expose.
 type PeerState struct {
-	peerID types.NodeID
+	peerID p2p.NodeID
 	logger log.Logger
 
 	// NOTE: Modify below using setters, never directly.
@@ -50,7 +52,7 @@ type PeerState struct {
 }
 
 // NewPeerState returns a new PeerState for the given node ID.
-func NewPeerState(logger log.Logger, peerID types.NodeID) *PeerState {
+func NewPeerState(logger log.Logger, peerID p2p.NodeID) *PeerState {
 	return &PeerState{
 		peerID: peerID,
 		logger: logger,
@@ -110,7 +112,7 @@ func (ps *PeerState) GetHeight() int64 {
 }
 
 // SetHasProposal sets the given proposal as known for the peer.
-func (ps *PeerState) SetHasProposal(proposal *types.Proposal) {
+func (ps *PeerState) SetHasProposal(proposal *consensus.Proposal) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -137,7 +139,7 @@ func (ps *PeerState) SetHasProposal(proposal *types.Proposal) {
 
 // InitProposalBlockParts initializes the peer's proposal block parts header
 // and bit array.
-func (ps *PeerState) InitProposalBlockParts(partSetHeader types.PartSetHeader) {
+func (ps *PeerState) InitProposalBlockParts(partSetHeader metadata.PartSetHeader) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -165,7 +167,7 @@ func (ps *PeerState) SetHasProposalBlockPart(height int64, round int32, index in
 // vote was picked.
 //
 // NOTE: `votes` must be the correct Size() for the Height().
-func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (*types.Vote, bool) {
+func (ps *PeerState) PickVoteToSend(votes consensus.VoteSetReader) (*consensus.Vote, bool) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -199,8 +201,21 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (*types.Vote, boo
 	return nil, false
 }
 
+func (ps *PeerState) PickVoteFromCommit(commit *metadata.Commit) (*consensus.Vote, bool) {
+	psVotes := ps.getVoteBitArray(commit.Height, commit.Round, tmproto.PrecommitType)
+	if psVotes == nil {
+		return nil, false // not something worth sending
+	}
+
+	if index, ok := commit.BitArray().Sub(psVotes).PickRandom(); ok {
+		return consensus.GetVoteFromCommit(commit, int32(index)), true
+	}
+
+	return nil, false
+}
+
 func (ps *PeerState) getVoteBitArray(height int64, round int32, votesType tmproto.SignedMsgType) *bits.BitArray {
-	if !types.IsVoteTypeValid(votesType) {
+	if !consensus.IsVoteTypeValid(votesType) {
 		return nil
 	}
 
@@ -357,7 +372,7 @@ func (ps *PeerState) BlockPartsSent() int {
 }
 
 // SetHasVote sets the given vote as known by the peer
-func (ps *PeerState) SetHasVote(vote *types.Vote) {
+func (ps *PeerState) SetHasVote(vote *consensus.Vote) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -404,7 +419,7 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 
 	if psHeight != msg.Height || psRound != msg.Round {
 		ps.PRS.Proposal = false
-		ps.PRS.ProposalBlockPartSetHeader = types.PartSetHeader{}
+		ps.PRS.ProposalBlockPartSetHeader = metadata.PartSetHeader{}
 		ps.PRS.ProposalBlockParts = nil
 		ps.PRS.ProposalPOLRound = -1
 		ps.PRS.ProposalPOL = nil

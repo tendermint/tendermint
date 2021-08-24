@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/tendermint/tendermint/abci/types"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/pkg/abci"
 )
 
 var (
@@ -90,10 +90,10 @@ func (s *Subscription) cancel(err error) {
 type Message struct {
 	subID  string
 	data   interface{}
-	events []types.Event
+	events []abci.Event
 }
 
-func NewMessage(subID string, data interface{}, events []types.Event) Message {
+func NewMessage(subID string, data interface{}, events []abci.Event) Message {
 	return Message{
 		subID:  subID,
 		data:   data,
@@ -109,4 +109,4 @@ func (msg Message) SubscriptionID() string { return msg.subID }
 func (msg Message) Data() interface{} { return msg.data }
 
 // Events returns events, which matched the client's query.
-func (msg Message) Events() []types.Event { return msg.events }
+func (msg Message) Events() []abci.Event { return msg.events }

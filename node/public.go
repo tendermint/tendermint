@@ -7,9 +7,10 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/p2p"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/types"
 )
 
 // NewDefault constructs a tendermint node service for use in go
@@ -29,9 +30,9 @@ func NewDefault(conf *config.Config, logger log.Logger) (service.Service, error)
 func New(conf *config.Config,
 	logger log.Logger,
 	cf proxy.ClientCreator,
-	gen *types.GenesisDoc,
+	gen *consensus.GenesisDoc,
 ) (service.Service, error) {
-	nodeKey, err := types.LoadOrGenNodeKey(conf.NodeKeyFile())
+	nodeKey, err := p2p.LoadOrGenNodeKey(conf.NodeKeyFile())
 	if err != nil {
 		return nil, fmt.Errorf("failed to load or gen node key %s: %w", conf.NodeKeyFile(), err)
 	}
@@ -41,7 +42,7 @@ func New(conf *config.Config,
 	case nil:
 		genProvider = defaultGenesisDocProviderFunc(conf)
 	default:
-		genProvider = func() (*types.GenesisDoc, error) { return gen, nil }
+		genProvider = func() (*consensus.GenesisDoc, error) { return gen, nil }
 	}
 
 	switch conf.Mode {

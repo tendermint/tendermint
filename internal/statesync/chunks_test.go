@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/p2p"
 )
 
 func setupChunkQueue(t *testing.T) (*chunkQueue, func()) {
@@ -274,7 +274,7 @@ func TestChunkQueue_DiscardSender(t *testing.T) {
 	defer teardown()
 
 	// Allocate and add all chunks to the queue
-	senders := []types.NodeID{types.NodeID("a"), types.NodeID("b"), types.NodeID("c")}
+	senders := []p2p.NodeID{p2p.NodeID("a"), p2p.NodeID("b"), p2p.NodeID("c")}
 	for i := uint32(0); i < queue.Size(); i++ {
 		_, err := queue.Allocate()
 		require.NoError(t, err)
@@ -295,14 +295,14 @@ func TestChunkQueue_DiscardSender(t *testing.T) {
 	}
 
 	// Discarding an unknown sender should do nothing
-	err := queue.DiscardSender(types.NodeID("x"))
+	err := queue.DiscardSender(p2p.NodeID("x"))
 	require.NoError(t, err)
 	_, err = queue.Allocate()
 	assert.Equal(t, errDone, err)
 
 	// Discarding sender b should discard chunk 4, but not chunk 1 which has already been
 	// returned.
-	err = queue.DiscardSender(types.NodeID("b"))
+	err = queue.DiscardSender(p2p.NodeID("b"))
 	require.NoError(t, err)
 	index, err := queue.Allocate()
 	require.NoError(t, err)
@@ -315,8 +315,8 @@ func TestChunkQueue_GetSender(t *testing.T) {
 	queue, teardown := setupChunkQueue(t)
 	defer teardown()
 
-	peerAID := types.NodeID("aa")
-	peerBID := types.NodeID("bb")
+	peerAID := p2p.NodeID("aa")
+	peerBID := p2p.NodeID("bb")
 
 	_, err := queue.Add(&chunk{Height: 3, Format: 1, Index: 0, Chunk: []byte{1}, Sender: peerAID})
 	require.NoError(t, err)
@@ -354,7 +354,7 @@ func TestChunkQueue_Next(t *testing.T) {
 	}()
 
 	assert.Empty(t, chNext)
-	_, err := queue.Add(&chunk{Height: 3, Format: 1, Index: 1, Chunk: []byte{3, 1, 1}, Sender: types.NodeID("b")})
+	_, err := queue.Add(&chunk{Height: 3, Format: 1, Index: 1, Chunk: []byte{3, 1, 1}, Sender: p2p.NodeID("b")})
 	require.NoError(t, err)
 	select {
 	case <-chNext:
@@ -362,17 +362,17 @@ func TestChunkQueue_Next(t *testing.T) {
 	default:
 	}
 
-	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 0, Chunk: []byte{3, 1, 0}, Sender: types.NodeID("a")})
+	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 0, Chunk: []byte{3, 1, 0}, Sender: p2p.NodeID("a")})
 	require.NoError(t, err)
 
 	assert.Equal(t,
-		&chunk{Height: 3, Format: 1, Index: 0, Chunk: []byte{3, 1, 0}, Sender: types.NodeID("a")},
+		&chunk{Height: 3, Format: 1, Index: 0, Chunk: []byte{3, 1, 0}, Sender: p2p.NodeID("a")},
 		<-chNext)
 	assert.Equal(t,
-		&chunk{Height: 3, Format: 1, Index: 1, Chunk: []byte{3, 1, 1}, Sender: types.NodeID("b")},
+		&chunk{Height: 3, Format: 1, Index: 1, Chunk: []byte{3, 1, 1}, Sender: p2p.NodeID("b")},
 		<-chNext)
 
-	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 4, Chunk: []byte{3, 1, 4}, Sender: types.NodeID("e")})
+	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 4, Chunk: []byte{3, 1, 4}, Sender: p2p.NodeID("e")})
 	require.NoError(t, err)
 	select {
 	case <-chNext:
@@ -380,19 +380,19 @@ func TestChunkQueue_Next(t *testing.T) {
 	default:
 	}
 
-	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 2, Chunk: []byte{3, 1, 2}, Sender: types.NodeID("c")})
+	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 2, Chunk: []byte{3, 1, 2}, Sender: p2p.NodeID("c")})
 	require.NoError(t, err)
-	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 3, Chunk: []byte{3, 1, 3}, Sender: types.NodeID("d")})
+	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 3, Chunk: []byte{3, 1, 3}, Sender: p2p.NodeID("d")})
 	require.NoError(t, err)
 
 	assert.Equal(t,
-		&chunk{Height: 3, Format: 1, Index: 2, Chunk: []byte{3, 1, 2}, Sender: types.NodeID("c")},
+		&chunk{Height: 3, Format: 1, Index: 2, Chunk: []byte{3, 1, 2}, Sender: p2p.NodeID("c")},
 		<-chNext)
 	assert.Equal(t,
-		&chunk{Height: 3, Format: 1, Index: 3, Chunk: []byte{3, 1, 3}, Sender: types.NodeID("d")},
+		&chunk{Height: 3, Format: 1, Index: 3, Chunk: []byte{3, 1, 3}, Sender: p2p.NodeID("d")},
 		<-chNext)
 	assert.Equal(t,
-		&chunk{Height: 3, Format: 1, Index: 4, Chunk: []byte{3, 1, 4}, Sender: types.NodeID("e")},
+		&chunk{Height: 3, Format: 1, Index: 4, Chunk: []byte{3, 1, 4}, Sender: p2p.NodeID("e")},
 		<-chNext)
 
 	_, ok := <-chNext

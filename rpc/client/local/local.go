@@ -9,11 +9,13 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/pkg/events"
+	"github.com/tendermint/tendermint/pkg/evidence"
+	"github.com/tendermint/tendermint/pkg/mempool"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 /*
@@ -37,7 +39,7 @@ don't need to do anything). It will keep trying indefinitely with exponential
 backoff (10ms -> 20ms -> 40ms) until successful.
 */
 type Local struct {
-	*types.EventBus
+	*events.EventBus
 	Logger log.Logger
 	ctx    *rpctypes.Context
 	env    *rpccore.Environment
@@ -47,7 +49,7 @@ type Local struct {
 // local RPC client constructor needs to build a local client.
 type NodeService interface {
 	ConfigureRPC() (*rpccore.Environment, error)
-	EventBus() *types.EventBus
+	EventBus() *events.EventBus
 }
 
 // New configures a client that calls the Node directly.
@@ -91,15 +93,15 @@ func (c *Local) ABCIQueryWithOptions(
 	return c.env.ABCIQuery(c.ctx, path, data, opts.Height, opts.Prove)
 }
 
-func (c *Local) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+func (c *Local) BroadcastTxCommit(ctx context.Context, tx mempool.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	return c.env.BroadcastTxCommit(c.ctx, tx)
 }
 
-func (c *Local) BroadcastTxAsync(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+func (c *Local) BroadcastTxAsync(ctx context.Context, tx mempool.Tx) (*ctypes.ResultBroadcastTx, error) {
 	return c.env.BroadcastTxAsync(c.ctx, tx)
 }
 
-func (c *Local) BroadcastTxSync(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+func (c *Local) BroadcastTxSync(ctx context.Context, tx mempool.Tx) (*ctypes.ResultBroadcastTx, error) {
 	return c.env.BroadcastTxSync(c.ctx, tx)
 }
 
@@ -111,7 +113,7 @@ func (c *Local) NumUnconfirmedTxs(ctx context.Context) (*ctypes.ResultUnconfirme
 	return c.env.NumUnconfirmedTxs(c.ctx)
 }
 
-func (c *Local) CheckTx(ctx context.Context, tx types.Tx) (*ctypes.ResultCheckTx, error) {
+func (c *Local) CheckTx(ctx context.Context, tx mempool.Tx) (*ctypes.ResultCheckTx, error) {
 	return c.env.CheckTx(c.ctx, tx)
 }
 
@@ -205,7 +207,7 @@ func (c *Local) BlockSearch(
 	return c.env.BlockSearch(c.ctx, query, page, perPage, orderBy)
 }
 
-func (c *Local) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
+func (c *Local) BroadcastEvidence(ctx context.Context, ev evidence.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 	return c.env.BroadcastEvidence(c.ctx, ev)
 }
 
@@ -224,7 +226,7 @@ func (c *Local) Subscribe(
 		outCap = outCapacity[0]
 	}
 
-	var sub types.Subscription
+	var sub events.Subscription
 	if outCap > 0 {
 		sub, err = c.EventBus.Subscribe(ctx, subscriber, q, outCap)
 	} else {
@@ -241,7 +243,7 @@ func (c *Local) Subscribe(
 }
 
 func (c *Local) eventsRoutine(
-	sub types.Subscription,
+	sub events.Subscription,
 	subscriber string,
 	q tmpubsub.Query,
 	outc chan<- ctypes.ResultEvent) {
@@ -281,7 +283,7 @@ func (c *Local) eventsRoutine(
 }
 
 // Try to resubscribe with exponential backoff.
-func (c *Local) resubscribe(subscriber string, q tmpubsub.Query) types.Subscription {
+func (c *Local) resubscribe(subscriber string, q tmpubsub.Query) events.Subscription {
 	attempts := 0
 	for {
 		if !c.IsRunning() {

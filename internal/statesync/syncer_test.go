@@ -11,14 +11,16 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/statesync/mocks"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/metadata"
+	"github.com/tendermint/tendermint/pkg/p2p"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	"github.com/tendermint/tendermint/proxy"
 	proxymocks "github.com/tendermint/tendermint/proxy/mocks"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -36,19 +38,19 @@ func TestSyncer_SyncAny(t *testing.T) {
 		},
 
 		LastBlockHeight: 1,
-		LastBlockID:     types.BlockID{Hash: []byte("blockhash")},
+		LastBlockID:     metadata.BlockID{Hash: []byte("blockhash")},
 		LastBlockTime:   time.Now(),
 		LastResultsHash: []byte("last_results_hash"),
 		AppHash:         []byte("app_hash"),
 
-		LastValidators: &types.ValidatorSet{Proposer: &types.Validator{Address: []byte("val1")}},
-		Validators:     &types.ValidatorSet{Proposer: &types.Validator{Address: []byte("val2")}},
-		NextValidators: &types.ValidatorSet{Proposer: &types.Validator{Address: []byte("val3")}},
+		LastValidators: &consensus.ValidatorSet{Proposer: &consensus.Validator{Address: []byte("val1")}},
+		Validators:     &consensus.ValidatorSet{Proposer: &consensus.Validator{Address: []byte("val2")}},
+		NextValidators: &consensus.ValidatorSet{Proposer: &consensus.Validator{Address: []byte("val3")}},
 
-		ConsensusParams:                  *types.DefaultConsensusParams(),
+		ConsensusParams:                  *consensus.DefaultConsensusParams(),
 		LastHeightConsensusParamsChanged: 1,
 	}
-	commit := &types.Commit{BlockID: types.BlockID{Hash: []byte("blockhash")}}
+	commit := &metadata.Commit{BlockID: metadata.BlockID{Hash: []byte("blockhash")}}
 
 	chunks := []*chunk{
 		{Height: 1, Format: 1, Index: 0, Chunk: []byte{1, 1, 0}},
@@ -65,9 +67,9 @@ func TestSyncer_SyncAny(t *testing.T) {
 	connSnapshot := &proxymocks.AppConnSnapshot{}
 	connQuery := &proxymocks.AppConnQuery{}
 
-	peerAID := types.NodeID("aa")
-	peerBID := types.NodeID("bb")
-	peerCID := types.NodeID("cc")
+	peerAID := p2p.NodeID("aa")
+	peerBID := p2p.NodeID("bb")
+	peerCID := p2p.NodeID("cc")
 	rts := setup(t, connSnapshot, connQuery, stateProvider, 3)
 
 	// Adding a chunk should error when no sync is in progress
@@ -216,7 +218,7 @@ func TestSyncer_SyncAny_abort(t *testing.T) {
 	rts := setup(t, nil, nil, stateProvider, 2)
 
 	s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
-	peerID := types.NodeID("aa")
+	peerID := p2p.NodeID("aa")
 
 	_, err := rts.syncer.AddSnapshot(peerID, s)
 	require.NoError(t, err)
@@ -241,7 +243,7 @@ func TestSyncer_SyncAny_reject(t *testing.T) {
 	s12 := &snapshot{Height: 1, Format: 2, Chunks: 3, Hash: []byte{1, 2, 3}}
 	s11 := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
 
-	peerID := types.NodeID("aa")
+	peerID := p2p.NodeID("aa")
 
 	_, err := rts.syncer.AddSnapshot(peerID, s22)
 	require.NoError(t, err)
@@ -280,7 +282,7 @@ func TestSyncer_SyncAny_reject_format(t *testing.T) {
 	s12 := &snapshot{Height: 1, Format: 2, Chunks: 3, Hash: []byte{1, 2, 3}}
 	s11 := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
 
-	peerID := types.NodeID("aa")
+	peerID := p2p.NodeID("aa")
 
 	_, err := rts.syncer.AddSnapshot(peerID, s22)
 	require.NoError(t, err)
@@ -310,9 +312,9 @@ func TestSyncer_SyncAny_reject_sender(t *testing.T) {
 
 	rts := setup(t, nil, nil, stateProvider, 2)
 
-	peerAID := types.NodeID("aa")
-	peerBID := types.NodeID("bb")
-	peerCID := types.NodeID("cc")
+	peerAID := p2p.NodeID("aa")
+	peerBID := p2p.NodeID("bb")
+	peerCID := p2p.NodeID("cc")
 
 	// sbc will be offered first, which will be rejected with reject_sender, causing all snapshots
 	// submitted by both b and c (i.e. sb, sc, sbc) to be rejected. Finally, sa will reject and
@@ -359,7 +361,7 @@ func TestSyncer_SyncAny_abciError(t *testing.T) {
 	errBoom := errors.New("boom")
 	s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
 
-	peerID := types.NodeID("aa")
+	peerID := p2p.NodeID("aa")
 
 	_, err := rts.syncer.AddSnapshot(peerID, s)
 	require.NoError(t, err)
@@ -560,9 +562,9 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 
 			// Set up three peers across two snapshots, and ask for one of them to be banned.
 			// It should be banned from all snapshots.
-			peerAID := types.NodeID("aa")
-			peerBID := types.NodeID("bb")
-			peerCID := types.NodeID("cc")
+			peerAID := p2p.NodeID("aa")
+			peerBID := p2p.NodeID("bb")
+			peerCID := p2p.NodeID("cc")
 
 			s1 := &snapshot{Height: 1, Format: 1, Chunks: 3}
 			s2 := &snapshot{Height: 2, Format: 1, Chunks: 3}

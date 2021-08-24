@@ -15,9 +15,10 @@ import (
 
 	clist "github.com/tendermint/tendermint/internal/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	types "github.com/tendermint/tendermint/pkg/evidence"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -185,7 +186,7 @@ func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 // the new state called.
 //
 // Votes are not verified.
-func (evpool *Pool) ReportConflictingVotes(voteA, voteB *types.Vote) {
+func (evpool *Pool) ReportConflictingVotes(voteA, voteB *consensus.Vote) {
 	evpool.mtx.Lock()
 	defer evpool.mtx.Unlock()
 	evpool.consensusBuffer = append(evpool.consensusBuffer, duplicateVoteSet{
@@ -581,8 +582,8 @@ func (evpool *Pool) processConsensusBuffer(state sm.State) {
 }
 
 type duplicateVoteSet struct {
-	VoteA *types.Vote
-	VoteB *types.Vote
+	VoteA *consensus.Vote
+	VoteB *consensus.Vote
 }
 
 func bytesToEv(evBytes []byte) (types.Evidence, error) {

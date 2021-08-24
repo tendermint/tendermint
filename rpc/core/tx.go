@@ -7,10 +7,10 @@ import (
 
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/pkg/mempool"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/state/indexer"
-	"github.com/tendermint/tendermint/types"
 )
 
 // Tx allows you to query the transaction results. `nil` could mean the
@@ -34,7 +34,7 @@ func (env *Environment) Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*cty
 			height := r.Height
 			index := r.Index
 
-			var proof types.TxProof
+			var proof mempool.TxProof
 			if prove {
 				block := env.BlockStore.LoadBlock(height)
 				proof = block.Data.Txs.Proof(int(index)) // XXX: overflow on 32-bit machines
@@ -117,14 +117,14 @@ func (env *Environment) TxSearch(
 			for i := skipCount; i < skipCount+pageSize; i++ {
 				r := results[i]
 
-				var proof types.TxProof
+				var proof mempool.TxProof
 				if prove {
 					block := env.BlockStore.LoadBlock(r.Height)
 					proof = block.Data.Txs.Proof(int(r.Index)) // XXX: overflow on 32-bit machines
 				}
 
 				apiResults = append(apiResults, &ctypes.ResultTx{
-					Hash:     types.Tx(r.Tx).Hash(),
+					Hash:     mempool.Tx(r.Tx).Hash(),
 					Height:   r.Height,
 					Index:    r.Index,
 					TxResult: r.Result,

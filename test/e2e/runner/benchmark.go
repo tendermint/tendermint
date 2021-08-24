@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/tendermint/tendermint/pkg/block"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
-	"github.com/tendermint/tendermint/types"
 )
 
 // Benchmark is a simple function for fetching, calculating and printing
@@ -63,7 +63,7 @@ func Benchmark(testnet *e2e.Testnet, benchmarkLength int64) error {
 	return nil
 }
 
-func (t *testnetStats) populateTxns(blocks []*types.BlockMeta) {
+func (t *testnetStats) populateTxns(blocks []*block.BlockMeta) {
 	t.numtxns = 0
 	for _, b := range blocks {
 		t.numtxns += int64(b.NumTxs)
@@ -126,8 +126,8 @@ func (t *testnetStats) String() string {
 
 // fetchBlockChainSample waits for `benchmarkLength` amount of blocks to pass, fetching
 // all of the headers for these blocks from an archive node and returning it.
-func fetchBlockChainSample(testnet *e2e.Testnet, benchmarkLength int64) ([]*types.BlockMeta, error) {
-	var blocks []*types.BlockMeta
+func fetchBlockChainSample(testnet *e2e.Testnet, benchmarkLength int64) ([]*block.BlockMeta, error) {
+	var blocks []*block.BlockMeta
 
 	// Find the first archive node
 	archiveNode := testnet.ArchiveNodes()[0]
@@ -174,7 +174,7 @@ func fetchBlockChainSample(testnet *e2e.Testnet, benchmarkLength int64) ([]*type
 	return blocks, nil
 }
 
-func splitIntoBlockIntervals(blocks []*types.BlockMeta) []time.Duration {
+func splitIntoBlockIntervals(blocks []*block.BlockMeta) []time.Duration {
 	intervals := make([]time.Duration, len(blocks)-1)
 	lastTime := blocks[0].Header.Time
 	for i, block := range blocks {

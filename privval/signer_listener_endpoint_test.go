@@ -12,7 +12,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/consensus"
 )
 
 var (
@@ -68,7 +68,7 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 	SignerDialerEndpointConnRetries(retries)(dialerEndpoint)
 
 	chainID := tmrand.Str(12)
-	mockPV := types.NewMockPV()
+	mockPV := consensus.NewMockPV()
 	signerServer := NewSignerServer(dialerEndpoint, chainID, mockPV)
 
 	err = signerServer.Start()
@@ -92,7 +92,7 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 		var (
 			logger           = log.TestingLogger()
 			chainID          = tmrand.Str(12)
-			mockPV           = types.NewMockPV()
+			mockPV           = consensus.NewMockPV()
 			endpointIsOpenCh = make(chan struct{})
 			thisConnTimeout  = testTimeoutReadWrite
 			listenerEndpoint = newSignerListenerEndpoint(logger, tc.addr, thisConnTimeout)

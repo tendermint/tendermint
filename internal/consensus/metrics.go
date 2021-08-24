@@ -3,7 +3,7 @@ package consensus
 import (
 	"github.com/go-kit/kit/metrics"
 	"github.com/go-kit/kit/metrics/discard"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/block"
 
 	prometheus "github.com/go-kit/kit/metrics/prometheus"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
@@ -221,7 +221,7 @@ func NopMetrics() *Metrics {
 }
 
 // RecordConsMetrics uses for recording the block related metrics during fast-sync.
-func (m *Metrics) RecordConsMetrics(block *types.Block) {
+func (m *Metrics) RecordConsMetrics(block *block.Block) {
 	m.NumTxs.Set(float64(len(block.Data.Txs)))
 	m.TotalTxs.Add(float64(len(block.Data.Txs)))
 	m.BlockSizeBytes.Observe(float64(block.Size()))

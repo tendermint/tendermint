@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"time"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	mempl "github.com/tendermint/tendermint/internal/mempool"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/events"
+	types "github.com/tendermint/tendermint/pkg/mempool"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 //-----------------------------------------------------------------------------
@@ -71,7 +72,7 @@ func (env *Environment) BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*
 	// Subscribe to tx being committed in block.
 	subCtx, cancel := context.WithTimeout(ctx.Context(), SubscribeTimeout)
 	defer cancel()
-	q := types.EventQueryTxFor(tx)
+	q := events.EventQueryTxFor(tx)
 	deliverTxSub, err := env.EventBus.Subscribe(subCtx, subscriber, q)
 	if err != nil {
 		err = fmt.Errorf("failed to subscribe to tx: %w", err)
@@ -112,7 +113,7 @@ func (env *Environment) BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*
 	// Wait for the tx to be included in a block or timeout.
 	select {
 	case msg := <-deliverTxSub.Out(): // The tx was included in a block.
-		deliverTxRes := msg.Data().(types.EventDataTx)
+		deliverTxRes := msg.Data().(events.EventDataTx)
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:   *checkTxRes,
 			DeliverTx: deliverTxRes.Result,

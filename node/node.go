@@ -14,7 +14,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
-	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	cs "github.com/tendermint/tendermint/internal/consensus"
@@ -30,6 +29,10 @@ import (
 	"github.com/tendermint/tendermint/libs/strings"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/light"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/events"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 	"github.com/tendermint/tendermint/privval"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	"github.com/tendermint/tendermint/proxy"
@@ -39,7 +42,6 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/store"
-	"github.com/tendermint/tendermint/types"
 )
 
 // nodeImpl is the highest level interface to a full Tendermint node.
@@ -49,8 +51,8 @@ type nodeImpl struct {
 
 	// config
 	config        *cfg.Config
-	genesisDoc    *types.GenesisDoc   // initial validator set
-	privValidator types.PrivValidator // local node's validator key
+	genesisDoc    *consensus.GenesisDoc   // initial validator set
+	privValidator consensus.PrivValidator // local node's validator key
 
 	// network
 	transport   *p2p.MConnTransport
@@ -58,12 +60,12 @@ type nodeImpl struct {
 	peerManager *p2p.PeerManager
 	router      *p2p.Router
 	addrBook    pex.AddrBook // known peers
-	nodeInfo    types.NodeInfo
-	nodeKey     types.NodeKey // our node privkey
+	nodeInfo    p2ptypes.NodeInfo
+	nodeKey     p2ptypes.NodeKey // our node privkey
 	isListening bool
 
 	// services
-	eventBus         *types.EventBus // pub/sub for services
+	eventBus         *events.EventBus // pub/sub for services
 	stateStore       sm.Store
 	blockStore       *store.BlockStore // store the blockchain to disk
 	bcReactor        service.Service   // for block-syncing
@@ -88,7 +90,7 @@ type nodeImpl struct {
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
 // It implements NodeProvider.
 func newDefaultNode(config *cfg.Config, logger log.Logger) (service.Service, error) {
-	nodeKey, err := types.LoadOrGenNodeKey(config.NodeKeyFile())
+	nodeKey, err := p2ptypes.LoadOrGenNodeKey(config.NodeKeyFile())
 	if err != nil {
 		return nil, fmt.Errorf("failed to load or gen node key %s: %w", config.NodeKeyFile(), err)
 	}
@@ -124,8 +126,8 @@ func newDefaultNode(config *cfg.Config, logger log.Logger) (service.Service, err
 
 // makeNode returns a new, ready to go, Tendermint Node.
 func makeNode(config *cfg.Config,
-	privValidator types.PrivValidator,
-	nodeKey types.NodeKey,
+	privValidator consensus.PrivValidator,
+	nodeKey p2ptypes.NodeKey,
 	clientCreator proxy.ClientCreator,
 	genesisDocProvider genesisDocProvider,
 	dbProvider cfg.DBProvider,
@@ -459,7 +461,7 @@ func makeNode(config *cfg.Config,
 // makeSeedNode returns a new seed node, containing only p2p, pex reactor
 func makeSeedNode(config *cfg.Config,
 	dbProvider cfg.DBProvider,
-	nodeKey types.NodeKey,
+	nodeKey p2ptypes.NodeKey,
 	genesisDocProvider genesisDocProvider,
 	logger log.Logger,
 ) (service.Service, error) {
@@ -586,7 +588,7 @@ func (n *nodeImpl) OnStart() error {
 	}
 
 	// Start the transport.
-	addr, err := types.NewNetAddressString(n.nodeKey.ID.AddressString(n.config.P2P.ListenAddress))
+	addr, err := p2ptypes.NewNetAddressString(n.nodeKey.ID.AddressString(n.config.P2P.ListenAddress))
 	if err != nil {
 		return err
 	}
@@ -986,18 +988,18 @@ func (n *nodeImpl) EvidencePool() *evidence.Pool {
 }
 
 // EventBus returns the Node's EventBus.
-func (n *nodeImpl) EventBus() *types.EventBus {
+func (n *nodeImpl) EventBus() *events.EventBus {
 	return n.eventBus
 }
 
 // PrivValidator returns the Node's PrivValidator.
 // XXX: for convenience only!
-func (n *nodeImpl) PrivValidator() types.PrivValidator {
+func (n *nodeImpl) PrivValidator() consensus.PrivValidator {
 	return n.privValidator
 }
 
 // GenesisDoc returns the Node's GenesisDoc.
-func (n *nodeImpl) GenesisDoc() *types.GenesisDoc {
+func (n *nodeImpl) GenesisDoc() *consensus.GenesisDoc {
 	return n.genesisDoc
 }
 
@@ -1029,7 +1031,7 @@ func (n *nodeImpl) IsListening() bool {
 }
 
 // NodeInfo returns the Node's Info from the Switch.
-func (n *nodeImpl) NodeInfo() types.NodeInfo {
+func (n *nodeImpl) NodeInfo() p2ptypes.NodeInfo {
 	return n.nodeInfo
 }
 
@@ -1042,7 +1044,7 @@ func startStateSync(
 	config *cfg.StateSyncConfig,
 	blockSync bool,
 	stateInitHeight int64,
-	eb *types.EventBus,
+	eb *events.EventBus,
 ) error {
 	stateSyncLogger := eb.Logger.With("module", "statesync")
 
@@ -1050,7 +1052,7 @@ func startStateSync(
 
 	// at the beginning of the statesync start, we use the initialHeight as the event height
 	// because of the statesync doesn't have the concreate state height before fetched the snapshot.
-	d := types.EventDataStateSyncStatus{Complete: false, Height: stateInitHeight}
+	d := events.EventDataStateSyncStatus{Complete: false, Height: stateInitHeight}
 	if err := eb.PublishEventStateSyncStatus(d); err != nil {
 		stateSyncLogger.Error("failed to emit the statesync start event", "err", err)
 	}
@@ -1069,7 +1071,7 @@ func startStateSync(
 
 		conR.SetStateSyncingMetrics(0)
 
-		d := types.EventDataStateSyncStatus{Complete: true, Height: state.LastBlockHeight}
+		d := events.EventDataStateSyncStatus{Complete: true, Height: state.LastBlockHeight}
 		if err := eb.PublishEventStateSyncStatus(d); err != nil {
 			stateSyncLogger.Error("failed to emit the statesync start event", "err", err)
 		}
@@ -1082,7 +1084,7 @@ func startStateSync(
 				return
 			}
 
-			d := types.EventDataBlockSyncStatus{Complete: false, Height: state.LastBlockHeight}
+			d := events.EventDataBlockSyncStatus{Complete: false, Height: state.LastBlockHeight}
 			if err := eb.PublishEventBlockSyncStatus(d); err != nil {
 				stateSyncLogger.Error("failed to emit the block sync starting event", "err", err)
 			}
@@ -1097,13 +1099,13 @@ func startStateSync(
 // genesisDocProvider returns a GenesisDoc.
 // It allows the GenesisDoc to be pulled from sources other than the
 // filesystem, for instance from a distributed key-value store cluster.
-type genesisDocProvider func() (*types.GenesisDoc, error)
+type genesisDocProvider func() (*consensus.GenesisDoc, error)
 
 // defaultGenesisDocProviderFunc returns a GenesisDocProvider that loads
 // the GenesisDoc from the config.GenesisFile() on the filesystem.
 func defaultGenesisDocProviderFunc(config *cfg.Config) genesisDocProvider {
-	return func() (*types.GenesisDoc, error) {
-		return types.GenesisDocFromFile(config.GenesisFile())
+	return func() (*consensus.GenesisDoc, error) {
+		return consensus.GenesisDocFromFile(config.GenesisFile())
 	}
 }
 
@@ -1131,7 +1133,7 @@ func defaultMetricsProvider(config *cfg.InstrumentationConfig) metricsProvider {
 // returns the genesis doc loaded through the given provider.
 func loadStateFromDBOrGenesisDocProvider(
 	stateStore sm.Store,
-	genDoc *types.GenesisDoc,
+	genDoc *consensus.GenesisDoc,
 ) (sm.State, error) {
 
 	// 1. Attempt to load state form the database
@@ -1155,7 +1157,7 @@ func createAndStartPrivValidatorSocketClient(
 	listenAddr,
 	chainID string,
 	logger log.Logger,
-) (types.PrivValidator, error) {
+) (consensus.PrivValidator, error) {
 
 	pve, err := privval.NewSignerListener(listenAddr, logger)
 	if err != nil {
@@ -1186,7 +1188,7 @@ func createAndStartPrivValidatorGRPCClient(
 	config *cfg.Config,
 	chainID string,
 	logger log.Logger,
-) (types.PrivValidator, error) {
+) (consensus.PrivValidator, error) {
 	pvsc, err := tmgrpc.DialRemoteSigner(
 		config.PrivValidator,
 		chainID,
@@ -1216,7 +1218,7 @@ func getRouterConfig(conf *cfg.Config, proxyApp proxy.AppConns) p2p.RouterOption
 	}
 
 	if conf.FilterPeers && proxyApp != nil {
-		opts.FilterPeerByID = func(ctx context.Context, id types.NodeID) error {
+		opts.FilterPeerByID = func(ctx context.Context, id p2ptypes.NodeID) error {
 			res, err := proxyApp.Query().QuerySync(context.Background(), abci.RequestQuery{
 				Path: fmt.Sprintf("/p2p/filter/id/%s", id),
 			})

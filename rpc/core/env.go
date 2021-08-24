@@ -12,11 +12,13 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
+	types "github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/events"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
-	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -47,7 +49,7 @@ type Consensus interface {
 type transport interface {
 	Listeners() []string
 	IsListening() bool
-	NodeInfo() types.NodeInfo
+	NodeInfo() p2ptypes.NodeInfo
 }
 
 type peers interface {
@@ -79,7 +81,7 @@ type Environment struct {
 	GenDoc           *types.GenesisDoc // cache the genesis structure
 	EventSinks       []indexer.EventSink
 	ConsensusReactor *consensus.Reactor
-	EventBus         *types.EventBus // thread safe
+	EventBus         *events.EventBus // thread safe
 	Mempool          mempl.Mempool
 	BlockSyncReactor consensus.BlockSyncReactor
 

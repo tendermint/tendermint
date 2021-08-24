@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/libs/bits"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/metadata"
 )
 
 //-----------------------------------------------------------------------------
@@ -21,9 +21,9 @@ type PeerRoundState struct {
 	StartTime time.Time `json:"start_time"`
 
 	// True if peer has proposal for this round
-	Proposal                   bool                `json:"proposal"`
-	ProposalBlockPartSetHeader types.PartSetHeader `json:"proposal_block_part_set_header"`
-	ProposalBlockParts         *bits.BitArray      `json:"proposal_block_parts"`
+	Proposal                   bool                   `json:"proposal"`
+	ProposalBlockPartSetHeader metadata.PartSetHeader `json:"proposal_block_part_set_header"`
+	ProposalBlockParts         *bits.BitArray         `json:"proposal_block_parts"`
 	// Proposal's POL round. -1 if none.
 	ProposalPOLRound int32 `json:"proposal_pol_round"`
 
@@ -57,7 +57,7 @@ func (prs PeerRoundState) Copy() PeerRoundState {
 
 	hashCopy := make([]byte, len(headerHash))
 	copy(hashCopy, headerHash)
-	prs.ProposalBlockPartSetHeader = types.PartSetHeader{
+	prs.ProposalBlockPartSetHeader = metadata.PartSetHeader{
 		Total: prs.ProposalBlockPartSetHeader.Total,
 		Hash:  hashCopy,
 	}

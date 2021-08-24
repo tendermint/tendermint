@@ -11,7 +11,10 @@ import (
 	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
 	dbs "github.com/tendermint/tendermint/light/store/db"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/evidence"
+	types "github.com/tendermint/tendermint/pkg/light"
+	"github.com/tendermint/tendermint/pkg/metadata"
 )
 
 // NOTE: block is produced every minute. Make sure the verification time
@@ -28,8 +31,8 @@ type providerBenchmarkImpl struct {
 	blocks        map[int64]*types.LightBlock
 }
 
-func newProviderBenchmarkImpl(headers map[int64]*types.SignedHeader,
-	vals map[int64]*types.ValidatorSet) provider.Provider {
+func newProviderBenchmarkImpl(headers map[int64]*metadata.SignedHeader,
+	vals map[int64]*consensus.ValidatorSet) provider.Provider {
 	impl := providerBenchmarkImpl{
 		blocks: make(map[int64]*types.LightBlock, len(headers)),
 	}
@@ -56,7 +59,7 @@ func (impl *providerBenchmarkImpl) LightBlock(ctx context.Context, height int64)
 	return lb, nil
 }
 
-func (impl *providerBenchmarkImpl) ReportEvidence(_ context.Context, _ types.Evidence) error {
+func (impl *providerBenchmarkImpl) ReportEvidence(_ context.Context, _ evidence.Evidence) error {
 	panic("not implemented")
 }
 

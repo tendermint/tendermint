@@ -6,10 +6,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/events"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	blockidxkv "github.com/tendermint/tendermint/state/indexer/block/kv"
-	"github.com/tendermint/tendermint/types"
 	db "github.com/tendermint/tm-db"
 )
 
@@ -17,8 +18,8 @@ func TestBlockIndexer(t *testing.T) {
 	store := db.NewPrefixDB(db.NewMemDB(), []byte("block_events"))
 	indexer := blockidxkv.New(store)
 
-	require.NoError(t, indexer.Index(types.EventDataNewBlockHeader{
-		Header: types.Header{Height: 1},
+	require.NoError(t, indexer.Index(events.EventDataNewBlockHeader{
+		Header: metadata.Header{Height: 1},
 		ResultBeginBlock: abci.ResponseBeginBlock{
 			Events: []abci.Event{
 				{
@@ -55,8 +56,8 @@ func TestBlockIndexer(t *testing.T) {
 			index = true
 		}
 
-		require.NoError(t, indexer.Index(types.EventDataNewBlockHeader{
-			Header: types.Header{Height: int64(i)},
+		require.NoError(t, indexer.Index(events.EventDataNewBlockHeader{
+			Header: metadata.Header{Height: int64(i)},
 			ResultBeginBlock: abci.ResponseBeginBlock{
 				Events: []abci.Event{
 					{

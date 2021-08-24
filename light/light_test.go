@@ -16,8 +16,8 @@ import (
 	"github.com/tendermint/tendermint/light/provider"
 	httpp "github.com/tendermint/tendermint/light/provider/http"
 	dbs "github.com/tendermint/tendermint/light/store/db"
+	lighttypes "github.com/tendermint/tendermint/pkg/light"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
-	"github.com/tendermint/tendermint/types"
 )
 
 // NOTE: these are ports of the tests from example_test.go but
@@ -143,7 +143,7 @@ func TestClientIntegration_VerifyLightBlockAtHeight(t *testing.T) {
 	require.EqualValues(t, 3, h.Height)
 }
 
-func waitForBlock(ctx context.Context, p provider.Provider, height int64) (*types.LightBlock, error) {
+func waitForBlock(ctx context.Context, p provider.Provider, height int64) (*lighttypes.LightBlock, error) {
 	for {
 		block, err := p.LightBlock(ctx, height)
 		switch err {

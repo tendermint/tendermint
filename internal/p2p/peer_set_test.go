@@ -8,22 +8,22 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/p2p"
 )
 
 // mockPeer for testing the PeerSet
 type mockPeer struct {
 	service.BaseService
 	ip net.IP
-	id types.NodeID
+	id p2p.NodeID
 }
 
 func (mp *mockPeer) FlushStop()                              { mp.Stop() } //nolint:errcheck // ignore error
 func (mp *mockPeer) TrySend(chID byte, msgBytes []byte) bool { return true }
 func (mp *mockPeer) Send(chID byte, msgBytes []byte) bool    { return true }
-func (mp *mockPeer) NodeInfo() types.NodeInfo                { return types.NodeInfo{} }
+func (mp *mockPeer) NodeInfo() p2p.NodeInfo                  { return p2p.NodeInfo{} }
 func (mp *mockPeer) Status() ConnectionStatus                { return ConnectionStatus{} }
-func (mp *mockPeer) ID() types.NodeID                        { return mp.id }
+func (mp *mockPeer) ID() p2p.NodeID                          { return mp.id }
 func (mp *mockPeer) IsOutbound() bool                        { return false }
 func (mp *mockPeer) IsPersistent() bool                      { return true }
 func (mp *mockPeer) Get(s string) interface{}                { return s }
@@ -38,7 +38,7 @@ func newMockPeer(ip net.IP) *mockPeer {
 	if ip == nil {
 		ip = net.IP{127, 0, 0, 1}
 	}
-	nodeKey := types.GenNodeKey()
+	nodeKey := p2p.GenNodeKey()
 	return &mockPeer{
 		ip: ip,
 		id: nodeKey.ID,

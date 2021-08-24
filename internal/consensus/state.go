@@ -24,11 +24,16 @@ import (
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/service"
 	tmtime "github.com/tendermint/tendermint/libs/time"
+	"github.com/tendermint/tendermint/pkg/block"
+	types "github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/events"
+	"github.com/tendermint/tendermint/pkg/evidence"
+	"github.com/tendermint/tendermint/pkg/metadata"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 	"github.com/tendermint/tendermint/privval"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
 )
 
 // Consensus sentinel errors
@@ -45,8 +50,8 @@ var msgQueueSize = 1000
 
 // msgs from the reactor which may update the state
 type msgInfo struct {
-	Msg    Message      `json:"msg"`
-	PeerID types.NodeID `json:"peer_key"`
+	Msg    Message         `json:"msg"`
+	PeerID p2ptypes.NodeID `json:"peer_key"`
 }
 
 // internally generated messages which may update the state
@@ -117,7 +122,7 @@ type State struct {
 
 	// we use eventBus to trigger msg broadcasts in the reactor,
 	// and to notify external subscribers, eg. through a websocket
-	eventBus *types.EventBus
+	eventBus *events.EventBus
 
 	// a Write-Ahead Log ensures we can recover from any kind of crash
 	// and helps us avoid signing conflicting votes
@@ -207,7 +212,7 @@ func (cs *State) SetLogger(l log.Logger) {
 }
 
 // SetEventBus sets event bus.
-func (cs *State) SetEventBus(b *types.EventBus) {
+func (cs *State) SetEventBus(b *events.EventBus) {
 	cs.eventBus = b
 	cs.blockExec.SetEventBus(b)
 }
@@ -309,7 +314,7 @@ func (cs *State) SetTimeoutTicker(timeoutTicker TimeoutTicker) {
 }
 
 // LoadCommit loads the commit for a given height.
-func (cs *State) LoadCommit(height int64) *types.Commit {
+func (cs *State) LoadCommit(height int64) *metadata.Commit {
 	cs.mtx.RLock()
 	defer cs.mtx.RUnlock()
 
@@ -500,7 +505,7 @@ func (cs *State) OpenWAL(walFile string) (WAL, error) {
 // TODO: should these return anything or let callers just use events?
 
 // AddVote inputs a vote.
-func (cs *State) AddVote(vote *types.Vote, peerID types.NodeID) (added bool, err error) {
+func (cs *State) AddVote(vote *types.Vote, peerID p2ptypes.NodeID) (added bool, err error) {
 	if peerID == "" {
 		cs.internalMsgQueue <- msgInfo{&VoteMessage{vote}, ""}
 	} else {
@@ -512,7 +517,7 @@ func (cs *State) AddVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 }
 
 // SetProposal inputs a proposal.
-func (cs *State) SetProposal(proposal *types.Proposal, peerID types.NodeID) error {
+func (cs *State) SetProposal(proposal *types.Proposal, peerID p2ptypes.NodeID) error {
 
 	if peerID == "" {
 		cs.internalMsgQueue <- msgInfo{&ProposalMessage{proposal}, ""}
@@ -525,7 +530,7 @@ func (cs *State) SetProposal(proposal *types.Proposal, peerID types.NodeID) erro
 }
 
 // AddProposalBlockPart inputs a part of the proposal block.
-func (cs *State) AddProposalBlockPart(height int64, round int32, part *types.Part, peerID types.NodeID) error {
+func (cs *State) AddProposalBlockPart(height int64, round int32, part *metadata.Part, peerID p2ptypes.NodeID) error {
 
 	if peerID == "" {
 		cs.internalMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, ""}
@@ -540,9 +545,9 @@ func (cs *State) AddProposalBlockPart(height int64, round int32, part *types.Par
 // SetProposalAndBlock inputs the proposal and all block parts.
 func (cs *State) SetProposalAndBlock(
 	proposal *types.Proposal,
-	block *types.Block,
-	parts *types.PartSet,
-	peerID types.NodeID,
+	block *block.Block,
+	parts *metadata.PartSet,
+	peerID p2ptypes.NodeID,
 ) error {
 
 	if err := cs.SetProposal(proposal, peerID); err != nil {
@@ -613,7 +618,7 @@ func (cs *State) reconstructLastCommit(state sm.State) {
 		))
 	}
 
-	lastPrecommits := types.CommitToVoteSet(state.ChainID, commit, state.LastValidators)
+	lastPrecommits := types.VoteSetFromCommit(state.ChainID, commit, state.LastValidators)
 	if !lastPrecommits.HasTwoThirdsMajority() {
 		panic("failed to reconstruct last commit; does not have +2/3 maj")
 	}
@@ -744,7 +749,7 @@ func (cs *State) newStep() {
 			cs.Logger.Error("failed publishing new round step", "err", err)
 		}
 
-		cs.evsw.FireEvent(types.EventNewRoundStepValue, &cs.RoundState)
+		cs.evsw.FireEvent(events.EventNewRoundStepValue, &cs.RoundState)
 	}
 }
 
@@ -1161,8 +1166,8 @@ func (cs *State) isProposer(address []byte) bool {
 }
 
 func (cs *State) defaultDecideProposal(height int64, round int32) {
-	var block *types.Block
-	var blockParts *types.PartSet
+	var block *block.Block
+	var blockParts *metadata.PartSet
 
 	// Decide on block
 	if cs.ValidBlock != nil {
@@ -1183,7 +1188,7 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	}
 
 	// Make proposal
-	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
+	propBlockID := metadata.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockID)
 	p := proposal.ToProto()
 
@@ -1230,17 +1235,17 @@ func (cs *State) isProposalComplete() bool {
 //
 // NOTE: keep it side-effect free for clarity.
 // CONTRACT: cs.privValidator is not nil.
-func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.PartSet) {
+func (cs *State) createProposalBlock() (block *block.Block, blockParts *metadata.PartSet) {
 	if cs.privValidator == nil {
 		panic("entered createProposalBlock with privValidator being nil")
 	}
 
-	var commit *types.Commit
+	var commit *metadata.Commit
 	switch {
 	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
-		commit = types.NewCommit(0, 0, types.BlockID{}, nil)
+		commit = metadata.NewCommit(0, 0, metadata.BlockID{}, nil)
 
 	case cs.LastCommit.HasTwoThirdsMajority():
 		// Make the commit from LastCommit
@@ -1306,7 +1311,7 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 	// If ProposalBlock is nil, prevote nil.
 	if cs.ProposalBlock == nil {
 		logger.Debug("prevote step: ProposalBlock is nil")
-		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
+		cs.signAddVote(tmproto.PrevoteType, nil, metadata.PartSetHeader{})
 		return
 	}
 
@@ -1315,7 +1320,7 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
 		logger.Error("prevote step: ProposalBlock is invalid", "err", err)
-		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
+		cs.signAddVote(tmproto.PrevoteType, nil, metadata.PartSetHeader{})
 		return
 	}
 
@@ -1393,7 +1398,7 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 			logger.Debug("precommit step; no +2/3 prevotes during enterPrecommit; precommitting nil")
 		}
 
-		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
+		cs.signAddVote(tmproto.PrecommitType, nil, metadata.PartSetHeader{})
 		return
 	}
 
@@ -1423,7 +1428,7 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 			}
 		}
 
-		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
+		cs.signAddVote(tmproto.PrecommitType, nil, metadata.PartSetHeader{})
 		return
 	}
 
@@ -1474,14 +1479,14 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 
 	if !cs.ProposalBlockParts.HasHeader(blockID.PartSetHeader) {
 		cs.ProposalBlock = nil
-		cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
+		cs.ProposalBlockParts = metadata.NewPartSetFromHeader(blockID.PartSetHeader)
 	}
 
 	if err := cs.eventBus.PublishEventUnlock(cs.RoundStateEvent()); err != nil {
 		logger.Error("failed publishing event unlock", "err", err)
 	}
 
-	cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
+	cs.signAddVote(tmproto.PrecommitType, nil, metadata.PartSetHeader{})
 }
 
 // Enter: any +2/3 precommits for next round.
@@ -1568,13 +1573,13 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 			// We're getting the wrong block.
 			// Set up ProposalBlockParts and keep waiting.
 			cs.ProposalBlock = nil
-			cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
+			cs.ProposalBlockParts = metadata.NewPartSetFromHeader(blockID.PartSetHeader)
 
 			if err := cs.eventBus.PublishEventValidBlock(cs.RoundStateEvent()); err != nil {
 				logger.Error("failed publishing valid block", "err", err)
 			}
 
-			cs.evsw.FireEvent(types.EventValidBlockValue, &cs.RoundState)
+			cs.evsw.FireEvent(events.EventValidBlockValue, &cs.RoundState)
 		}
 	}
 }
@@ -1690,7 +1695,7 @@ func (cs *State) finalizeCommit(height int64) {
 	// NOTE The block.AppHash wont reflect these txs until the next block.
 	stateCopy, err := cs.blockExec.ApplyBlock(
 		stateCopy,
-		types.BlockID{
+		metadata.BlockID{
 			Hash:          block.Hash(),
 			PartSetHeader: blockParts.Header(),
 		},
@@ -1726,7 +1731,7 @@ func (cs *State) finalizeCommit(height int64) {
 	// * cs.StartTime is set to when we will start round0.
 }
 
-func (cs *State) RecordMetrics(height int64, block *types.Block) {
+func (cs *State) RecordMetrics(height int64, block *block.Block) {
 	cs.metrics.Validators.Set(float64(cs.Validators.Size()))
 	cs.metrics.ValidatorsPower.Set(float64(cs.Validators.TotalVotingPower()))
 
@@ -1791,7 +1796,7 @@ func (cs *State) RecordMetrics(height int64, block *types.Block) {
 	)
 
 	for _, ev := range block.Evidence.Evidence {
-		if dve, ok := ev.(*types.DuplicateVoteEvidence); ok {
+		if dve, ok := ev.(*evidence.DuplicateVoteEvidence); ok {
 			if _, val := cs.Validators.GetByAddress(dve.VoteA.ValidatorAddress); val != nil {
 				byzantineValidatorsCount++
 				byzantineValidatorsPower += val.VotingPower
@@ -1850,7 +1855,7 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 	// This happens if we're already in cstypes.RoundStepCommit or if there is a valid block in the current round.
 	// TODO: We can check if Proposal is for a different block as this is a sign of misbehavior!
 	if cs.ProposalBlockParts == nil {
-		cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockID.PartSetHeader)
+		cs.ProposalBlockParts = metadata.NewPartSetFromHeader(proposal.BlockID.PartSetHeader)
 	}
 
 	cs.Logger.Info("received proposal", "proposal", proposal)
@@ -1860,7 +1865,7 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 // NOTE: block is not necessarily valid.
 // Asynchronously triggers either enterPrevote (before we timeout of propose) or tryFinalizeCommit,
 // once we have the full block.
-func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID types.NodeID) (added bool, err error) {
+func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2ptypes.NodeID) (added bool, err error) {
 	height, round, part := msg.Height, msg.Round, msg.Part
 
 	// Blocks might be reused, so round mismatch is OK
@@ -1904,7 +1909,7 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID types.NodeID
 			return added, err
 		}
 
-		block, err := types.BlockFromProto(pbb)
+		block, err := block.BlockFromProto(pbb)
 		if err != nil {
 			return added, err
 		}
@@ -1958,7 +1963,7 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID types.NodeID
 }
 
 // Attempt to add the vote. if its a duplicate signature, dupeout the validator
-func (cs *State) tryAddVote(vote *types.Vote, peerID types.NodeID) (bool, error) {
+func (cs *State) tryAddVote(vote *types.Vote, peerID p2ptypes.NodeID) (bool, error) {
 	added, err := cs.addVote(vote, peerID)
 	if err != nil {
 		// If the vote height is off, we'll just ignore it,
@@ -2006,7 +2011,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID types.NodeID) (bool, error)
 	return added, nil
 }
 
-func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err error) {
+func (cs *State) addVote(vote *types.Vote, peerID p2ptypes.NodeID) (added bool, err error) {
 	cs.Logger.Debug(
 		"adding vote",
 		"vote_height", vote.Height,
@@ -2030,11 +2035,11 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 		}
 
 		cs.Logger.Debug("added vote to last precommits", "last_commit", cs.LastCommit.StringShort())
-		if err := cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote}); err != nil {
+		if err := cs.eventBus.PublishEventVote(events.EventDataVote{Vote: vote}); err != nil {
 			return added, err
 		}
 
-		cs.evsw.FireEvent(types.EventVoteValue, vote)
+		cs.evsw.FireEvent(events.EventVoteValue, vote)
 
 		// if we can skip timeoutCommit and have all the votes now,
 		if cs.config.SkipTimeoutCommit && cs.LastCommit.HasAll() {
@@ -2060,10 +2065,10 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 		return
 	}
 
-	if err := cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote}); err != nil {
+	if err := cs.eventBus.PublishEventVote(events.EventDataVote{Vote: vote}); err != nil {
 		return added, err
 	}
-	cs.evsw.FireEvent(types.EventVoteValue, vote)
+	cs.evsw.FireEvent(events.EventVoteValue, vote)
 
 	switch vote.Type {
 	case tmproto.PrevoteType:
@@ -2114,10 +2119,10 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 				}
 
 				if !cs.ProposalBlockParts.HasHeader(blockID.PartSetHeader) {
-					cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
+					cs.ProposalBlockParts = metadata.NewPartSetFromHeader(blockID.PartSetHeader)
 				}
 
-				cs.evsw.FireEvent(types.EventValidBlockValue, &cs.RoundState)
+				cs.evsw.FireEvent(events.EventValidBlockValue, &cs.RoundState)
 				if err := cs.eventBus.PublishEventValidBlock(cs.RoundStateEvent()); err != nil {
 					return added, err
 				}
@@ -2184,7 +2189,7 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 func (cs *State) signVote(
 	msgType tmproto.SignedMsgType,
 	hash []byte,
-	header types.PartSetHeader,
+	header metadata.PartSetHeader,
 ) (*types.Vote, error) {
 	// Flush the WAL. Otherwise, we may not recompute the same vote to sign,
 	// and the privValidator will refuse to sign anything.
@@ -2206,7 +2211,7 @@ func (cs *State) signVote(
 		Round:            cs.Round,
 		Timestamp:        cs.voteTime(),
 		Type:             msgType,
-		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
+		BlockID:          metadata.BlockID{Hash: hash, PartSetHeader: header},
 	}
 
 	v := vote.ToProto()
@@ -2259,7 +2264,7 @@ func (cs *State) voteTime() time.Time {
 }
 
 // sign the vote and publish on internalMsgQueue
-func (cs *State) signAddVote(msgType tmproto.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
+func (cs *State) signAddVote(msgType tmproto.SignedMsgType, hash []byte, header metadata.PartSetHeader) *types.Vote {
 	if cs.privValidator == nil { // the node does not have a key
 		return nil
 	}
@@ -2332,7 +2337,7 @@ func (cs *State) checkDoubleSigningRisk(height int64) error {
 			lastCommit := cs.LoadCommit(height - i)
 			if lastCommit != nil {
 				for sigIdx, s := range lastCommit.Signatures {
-					if s.BlockIDFlag == types.BlockIDFlagCommit && bytes.Equal(s.ValidatorAddress, valAddr) {
+					if s.BlockIDFlag == metadata.BlockIDFlagCommit && bytes.Equal(s.ValidatorAddress, valAddr) {
 						cs.Logger.Info("found signature from the same key", "sig", s, "idx", sigIdx, "height", height-i)
 						return ErrSignatureFoundInPastBlocks
 					}

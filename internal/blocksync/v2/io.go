@@ -5,9 +5,9 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/pkg/block"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
 	"github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -16,7 +16,7 @@ var (
 
 type iIO interface {
 	sendBlockRequest(peer p2p.Peer, height int64) error
-	sendBlockToPeer(block *types.Block, peer p2p.Peer) error
+	sendBlockToPeer(block *block.Block, peer p2p.Peer) error
 	sendBlockNotFound(height int64, peer p2p.Peer) error
 	sendStatusResponse(base, height int64, peer p2p.Peer) error
 
@@ -90,7 +90,7 @@ func (sio *switchIO) sendStatusResponse(base int64, height int64, peer p2p.Peer)
 	return nil
 }
 
-func (sio *switchIO) sendBlockToPeer(block *types.Block, peer p2p.Peer) error {
+func (sio *switchIO) sendBlockToPeer(block *block.Block, peer p2p.Peer) error {
 	if block == nil {
 		panic("trying to send nil block")
 	}

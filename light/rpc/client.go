@@ -10,15 +10,17 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	service "github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/evidence"
+	types "github.com/tendermint/tendermint/pkg/light"
+	"github.com/tendermint/tendermint/pkg/mempool"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 // KeyPathFunc builds a merkle path out of the given path and key.
@@ -188,15 +190,15 @@ func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmb
 	return &ctypes.ResultABCIQuery{Response: resp}, nil
 }
 
-func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+func (c *Client) BroadcastTxCommit(ctx context.Context, tx mempool.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	return c.next.BroadcastTxCommit(ctx, tx)
 }
 
-func (c *Client) BroadcastTxAsync(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+func (c *Client) BroadcastTxAsync(ctx context.Context, tx mempool.Tx) (*ctypes.ResultBroadcastTx, error) {
 	return c.next.BroadcastTxAsync(ctx, tx)
 }
 
-func (c *Client) BroadcastTxSync(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+func (c *Client) BroadcastTxSync(ctx context.Context, tx mempool.Tx) (*ctypes.ResultBroadcastTx, error) {
 	return c.next.BroadcastTxSync(ctx, tx)
 }
 
@@ -208,7 +210,7 @@ func (c *Client) NumUnconfirmedTxs(ctx context.Context) (*ctypes.ResultUnconfirm
 	return c.next.NumUnconfirmedTxs(ctx)
 }
 
-func (c *Client) CheckTx(ctx context.Context, tx types.Tx) (*ctypes.ResultCheckTx, error) {
+func (c *Client) CheckTx(ctx context.Context, tx mempool.Tx) (*ctypes.ResultCheckTx, error) {
 	return c.next.CheckTx(ctx, tx)
 }
 
@@ -416,7 +418,7 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*ctypes.Resul
 	}
 
 	// Build a Merkle tree of proto-encoded DeliverTx results and get a hash.
-	results := types.NewResults(res.TxsResults)
+	results := abci.NewResults(res.TxsResults)
 
 	// proto-encode EndBlock events.
 	ebeBytes, err := proto.Marshal(&abci.ResponseEndBlock{
@@ -525,7 +527,7 @@ func (c *Client) Validators(
 		Total:       totalCount}, nil
 }
 
-func (c *Client) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
+func (c *Client) BroadcastEvidence(ctx context.Context, ev evidence.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 	return c.next.BroadcastEvidence(ctx, ev)
 }
 

@@ -5,9 +5,9 @@ import (
 	"time"
 
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/pkg/consensus"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 // Status returns Tendermint status including node info, pubkey, latest block
@@ -80,7 +80,7 @@ func (env *Environment) Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, err
 	return result, nil
 }
 
-func (env *Environment) validatorAtHeight(h int64) *types.Validator {
+func (env *Environment) validatorAtHeight(h int64) *consensus.Validator {
 	valsWithH, err := env.StateStore.LoadValidators(h)
 	if err != nil {
 		return nil

@@ -11,8 +11,9 @@ import (
 	"github.com/tendermint/tendermint/internal/test/factory"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 var config *cfg.Config // NOTE: must be reset for each _test.go file
@@ -57,7 +58,7 @@ func TestPeerCatchupRounds(t *testing.T) {
 
 }
 
-func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []types.PrivValidator) *types.Vote {
+func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []consensus.PrivValidator) *consensus.Vote {
 	privVal := privVals[valIndex]
 	pubKey, err := privVal.GetPubKey(context.Background())
 	if err != nil {
@@ -66,14 +67,14 @@ func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []ty
 
 	randBytes := tmrand.Bytes(tmhash.Size)
 
-	vote := &types.Vote{
+	vote := &consensus.Vote{
 		ValidatorAddress: pubKey.Address(),
 		ValidatorIndex:   valIndex,
 		Height:           height,
 		Round:            round,
 		Timestamp:        tmtime.Now(),
 		Type:             tmproto.PrecommitType,
-		BlockID:          types.BlockID{Hash: randBytes, PartSetHeader: types.PartSetHeader{}},
+		BlockID:          metadata.BlockID{Hash: randBytes, PartSetHeader: metadata.PartSetHeader{}},
 	}
 	chainID := config.ChainID()
 

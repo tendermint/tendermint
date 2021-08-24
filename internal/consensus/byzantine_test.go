@@ -11,18 +11,22 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	abcicli "github.com/tendermint/tendermint/abci/client"
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/evidence"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/events"
+	evtypes "github.com/tendermint/tendermint/pkg/evidence"
+	"github.com/tendermint/tendermint/pkg/metadata"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
-	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tm-db"
 )
 
@@ -54,7 +58,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 			ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 			app := appFunc()
-			vals := types.TM2PB.ValidatorUpdates(state.Validators)
+			vals := consensus.TM2PB.ValidatorUpdates(state.Validators)
 			app.InitChain(abci.RequestInitChain{Validators: vals})
 
 			blockDB := dbm.NewMemDB()
@@ -85,7 +89,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			pv := privVals[i]
 			cs.SetPrivValidator(pv)
 
-			eventBus := types.NewEventBus()
+			eventBus := events.NewEventBus()
 			eventBus.SetLogger(log.TestingLogger().With("module", "events"))
 			err = eventBus.Start()
 			require.NoError(t, err)
@@ -100,7 +104,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	rts := setup(t, nValidators, states, 100) // buffer must be large enough to not deadlock
 
-	var bzNodeID types.NodeID
+	var bzNodeID p2ptypes.NodeID
 
 	// Set the first state's reactor as the dedicated byzantine reactor and grab
 	// the NodeID that corresponds to the state so we can reference the reactor.
@@ -125,7 +129,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			prevote2, err := bzNodeState.signVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
+			prevote2, err := bzNodeState.signVote(tmproto.PrevoteType, nil, metadata.PartSetHeader{})
 			require.NoError(t, err)
 
 			// send two votes to all peers (1st to one half, 2nd to another half)
@@ -167,12 +171,12 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		lazyNodeState.Logger.Info("Lazy Proposer proposing condensed commit")
 		require.NotNil(t, lazyNodeState.privValidator)
 
-		var commit *types.Commit
+		var commit *metadata.Commit
 		switch {
 		case lazyNodeState.Height == lazyNodeState.state.InitialHeight:
 			// We're creating a proposal for the first block.
 			// The commit is empty, but not nil.
-			commit = types.NewCommit(0, 0, types.BlockID{}, nil)
+			commit = metadata.NewCommit(0, 0, metadata.BlockID{}, nil)
 		case lazyNodeState.LastCommit.HasTwoThirdsMajority():
 			// Make the commit from LastCommit
 			commit = lazyNodeState.LastCommit.MakeCommit()
@@ -182,7 +186,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		}
 
 		// omit the last signature in the commit
-		commit.Signatures[len(commit.Signatures)-1] = types.NewCommitSigAbsent()
+		commit.Signatures[len(commit.Signatures)-1] = metadata.NewCommitSigAbsent()
 
 		if lazyNodeState.privValidatorPubKey == nil {
 			// If this node is a validator & proposer in the current round, it will
@@ -203,8 +207,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		}
 
 		// Make proposal
-		propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
-		proposal := types.NewProposal(height, round, lazyNodeState.ValidRound, propBlockID)
+		propBlockID := metadata.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
+		proposal := consensus.NewProposal(height, round, lazyNodeState.ValidRound, propBlockID)
 		p := proposal.ToProto()
 		if err := lazyNodeState.privValidator.SignProposal(context.Background(), lazyNodeState.state.ChainID, p); err == nil {
 			proposal.Signature = p.Signature
@@ -229,20 +233,20 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	// Evidence should be submitted and committed at the third height but
 	// we will check the first six just in case
-	evidenceFromEachValidator := make([]types.Evidence, nValidators)
+	evidenceFromEachValidator := make([]evtypes.Evidence, nValidators)
 
 	wg := new(sync.WaitGroup)
 	i := 0
 	for _, sub := range rts.subs {
 		wg.Add(1)
 
-		go func(j int, s types.Subscription) {
+		go func(j int, s events.Subscription) {
 			defer wg.Done()
 			for {
 				select {
 				case msg := <-s.Out():
 					require.NotNil(t, msg)
-					block := msg.Data().(types.EventDataNewBlock).Block
+					block := msg.Data().(events.EventDataNewBlock).Block
 					if len(block.Evidence.Evidence) != 0 {
 						evidenceFromEachValidator[j] = block.Evidence.Evidence[0]
 						return
@@ -264,7 +268,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	for idx, ev := range evidenceFromEachValidator {
 		if assert.NotNil(t, ev, idx) {
-			ev, ok := ev.(*types.DuplicateVoteEvidence)
+			ev, ok := ev.(*evtypes.DuplicateVoteEvidence)
 			assert.True(t, ok)
 			assert.Equal(t, pubkey.Address(), ev.VoteA.ValidatorAddress)
 			assert.Equal(t, prevoteHeight, ev.Height())

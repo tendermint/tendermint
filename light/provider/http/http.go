@@ -10,11 +10,14 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/light/provider"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/evidence"
+	types "github.com/tendermint/tendermint/pkg/light"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 var defaultOptions = Options{
@@ -148,12 +151,12 @@ func (p *http) LightBlock(ctx context.Context, height int64) (*types.LightBlock,
 }
 
 // ReportEvidence calls `/broadcast_evidence` endpoint.
-func (p *http) ReportEvidence(ctx context.Context, ev types.Evidence) error {
+func (p *http) ReportEvidence(ctx context.Context, ev evidence.Evidence) error {
 	_, err := p.client.BroadcastEvidence(ctx, ev)
 	return err
 }
 
-func (p *http) validatorSet(ctx context.Context, height *int64) (*types.ValidatorSet, error) {
+func (p *http) validatorSet(ctx context.Context, height *int64) (*consensus.ValidatorSet, error) {
 	// Since the malicious node could report a massive number of pages, making us
 	// spend a considerable time iterating, we restrict the number of pages here.
 	// => 10000 validators max
@@ -161,7 +164,7 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 
 	var (
 		perPage = 100
-		vals    = []*types.Validator{}
+		vals    = []*consensus.Validator{}
 		page    = 1
 		total   = -1
 	)
@@ -224,14 +227,14 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 		}
 	}
 
-	valSet, err := types.ValidatorSetFromExistingValidators(vals)
+	valSet, err := consensus.ValidatorSetFromExistingValidators(vals)
 	if err != nil {
 		return nil, provider.ErrBadLightBlock{Reason: err}
 	}
 	return valSet, nil
 }
 
-func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHeader, error) {
+func (p *http) signedHeader(ctx context.Context, height *int64) (*metadata.SignedHeader, error) {
 	// create a for loop to control retries. If p.maxRetryAttempts
 	// is negative we will keep repeating.
 	for attempt := uint16(0); attempt != p.maxRetryAttempts+1; attempt++ {

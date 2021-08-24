@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/events"
 )
 
 // Waiter is informed of current height, decided whether to quit early
@@ -57,13 +57,13 @@ func WaitForHeight(c StatusClient, h int64, waiter Waiter) error {
 // when the timeout duration has expired.
 //
 // This handles subscribing and unsubscribing under the hood
-func WaitForOneEvent(c EventsClient, eventValue string, timeout time.Duration) (types.TMEventData, error) {
+func WaitForOneEvent(c EventsClient, eventValue string, timeout time.Duration) (events.TMEventData, error) {
 	const subscriber = "helpers"
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	// register for the next event of this type
-	eventCh, err := c.Subscribe(ctx, subscriber, types.QueryForEvent(eventValue).String())
+	eventCh, err := c.Subscribe(ctx, subscriber, events.QueryForEvent(eventValue).String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to subscribe: %w", err)
 	}
@@ -77,7 +77,7 @@ func WaitForOneEvent(c EventsClient, eventValue string, timeout time.Duration) (
 
 	select {
 	case event := <-eventCh:
-		return event.Data.(types.TMEventData), nil
+		return event.Data.(events.TMEventData), nil
 	case <-ctx.Done():
 		return nil, errors.New("timed out waiting for event")
 	}

@@ -3,15 +3,15 @@ package pex
 import (
 	"testing"
 
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/p2p"
 )
 
 func BenchmarkAddrBook_hash(b *testing.B) {
 	book := &addrBook{
 		ourAddrs:          make(map[string]struct{}),
-		privateIDs:        make(map[types.NodeID]struct{}),
-		addrLookup:        make(map[types.NodeID]*knownAddress),
-		badPeers:          make(map[types.NodeID]*knownAddress),
+		privateIDs:        make(map[p2p.NodeID]struct{}),
+		addrLookup:        make(map[p2p.NodeID]*knownAddress),
+		badPeers:          make(map[p2p.NodeID]*knownAddress),
 		filePath:          "",
 		routabilityStrict: true,
 	}

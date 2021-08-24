@@ -8,9 +8,12 @@ import (
 	"github.com/tendermint/tendermint/libs/bits"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/events"
+	"github.com/tendermint/tendermint/pkg/metadata"
+	"github.com/tendermint/tendermint/pkg/p2p"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 // Message defines an interface that the consensus domain types implement. When
@@ -95,7 +98,7 @@ func (m *NewRoundStepMessage) String() string {
 type NewValidBlockMessage struct {
 	Height             int64
 	Round              int32
-	BlockPartSetHeader types.PartSetHeader
+	BlockPartSetHeader metadata.PartSetHeader
 	BlockParts         *bits.BitArray
 	IsCommit           bool
 }
@@ -119,8 +122,8 @@ func (m *NewValidBlockMessage) ValidateBasic() error {
 			m.BlockParts.Size(),
 			m.BlockPartSetHeader.Total)
 	}
-	if m.BlockParts.Size() > int(types.MaxBlockPartsCount) {
-		return fmt.Errorf("blockParts bit array is too big: %d, max: %d", m.BlockParts.Size(), types.MaxBlockPartsCount)
+	if m.BlockParts.Size() > int(metadata.MaxBlockPartsCount) {
+		return fmt.Errorf("blockParts bit array is too big: %d, max: %d", m.BlockParts.Size(), metadata.MaxBlockPartsCount)
 	}
 	return nil
 }
@@ -133,7 +136,7 @@ func (m *NewValidBlockMessage) String() string {
 
 // ProposalMessage is sent when a new block is proposed.
 type ProposalMessage struct {
-	Proposal *types.Proposal
+	Proposal *consensus.Proposal
 }
 
 // ValidateBasic performs basic validation.
@@ -164,8 +167,8 @@ func (m *ProposalPOLMessage) ValidateBasic() error {
 	if m.ProposalPOL.Size() == 0 {
 		return errors.New("empty ProposalPOL bit array")
 	}
-	if m.ProposalPOL.Size() > types.MaxVotesCount {
-		return fmt.Errorf("proposalPOL bit array is too big: %d, max: %d", m.ProposalPOL.Size(), types.MaxVotesCount)
+	if m.ProposalPOL.Size() > consensus.MaxVotesCount {
+		return fmt.Errorf("proposalPOL bit array is too big: %d, max: %d", m.ProposalPOL.Size(), consensus.MaxVotesCount)
 	}
 	return nil
 }
@@ -179,7 +182,7 @@ func (m *ProposalPOLMessage) String() string {
 type BlockPartMessage struct {
 	Height int64
 	Round  int32
-	Part   *types.Part
+	Part   *metadata.Part
 }
 
 // ValidateBasic performs basic validation.
@@ -203,7 +206,7 @@ func (m *BlockPartMessage) String() string {
 
 // VoteMessage is sent when voting for a proposal (or lack thereof).
 type VoteMessage struct {
-	Vote *types.Vote
+	Vote *consensus.Vote
 }
 
 // ValidateBasic performs basic validation.
@@ -232,7 +235,7 @@ func (m *HasVoteMessage) ValidateBasic() error {
 	if m.Round < 0 {
 		return errors.New("negative Round")
 	}
-	if !types.IsVoteTypeValid(m.Type) {
+	if !consensus.IsVoteTypeValid(m.Type) {
 		return errors.New("invalid Type")
 	}
 	if m.Index < 0 {
@@ -251,7 +254,7 @@ type VoteSetMaj23Message struct {
 	Height  int64
 	Round   int32
 	Type    tmproto.SignedMsgType
-	BlockID types.BlockID
+	BlockID metadata.BlockID
 }
 
 // ValidateBasic performs basic validation.
@@ -262,7 +265,7 @@ func (m *VoteSetMaj23Message) ValidateBasic() error {
 	if m.Round < 0 {
 		return errors.New("negative Round")
 	}
-	if !types.IsVoteTypeValid(m.Type) {
+	if !consensus.IsVoteTypeValid(m.Type) {
 		return errors.New("invalid Type")
 	}
 	if err := m.BlockID.ValidateBasic(); err != nil {
@@ -283,7 +286,7 @@ type VoteSetBitsMessage struct {
 	Height  int64
 	Round   int32
 	Type    tmproto.SignedMsgType
-	BlockID types.BlockID
+	BlockID metadata.BlockID
 	Votes   *bits.BitArray
 }
 
@@ -292,7 +295,7 @@ func (m *VoteSetBitsMessage) ValidateBasic() error {
 	if m.Height < 0 {
 		return errors.New("negative Height")
 	}
-	if !types.IsVoteTypeValid(m.Type) {
+	if !consensus.IsVoteTypeValid(m.Type) {
 		return errors.New("invalid Type")
 	}
 	if err := m.BlockID.ValidateBasic(); err != nil {
@@ -300,8 +303,8 @@ func (m *VoteSetBitsMessage) ValidateBasic() error {
 	}
 
 	// NOTE: Votes.Size() can be zero if the node does not have any
-	if m.Votes.Size() > types.MaxVotesCount {
-		return fmt.Errorf("votes bit array is too big: %d, max: %d", m.Votes.Size(), types.MaxVotesCount)
+	if m.Votes.Size() > consensus.MaxVotesCount {
+		return fmt.Errorf("votes bit array is too big: %d, max: %d", m.Votes.Size(), consensus.MaxVotesCount)
 	}
 
 	return nil
@@ -465,7 +468,7 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 			LastCommitRound:       msg.NewRoundStep.LastCommitRound,
 		}
 	case *tmcons.Message_NewValidBlock:
-		pbPartSetHeader, err := types.PartSetHeaderFromProto(&msg.NewValidBlock.BlockPartSetHeader)
+		pbPartSetHeader, err := metadata.PartSetHeaderFromProto(&msg.NewValidBlock.BlockPartSetHeader)
 		if err != nil {
 			return nil, fmt.Errorf("parts header to proto error: %w", err)
 		}
@@ -484,7 +487,7 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 			IsCommit:           msg.NewValidBlock.IsCommit,
 		}
 	case *tmcons.Message_Proposal:
-		pbP, err := types.ProposalFromProto(&msg.Proposal.Proposal)
+		pbP, err := consensus.ProposalFromProto(&msg.Proposal.Proposal)
 		if err != nil {
 			return nil, fmt.Errorf("proposal msg to proto error: %w", err)
 		}
@@ -504,7 +507,7 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 			ProposalPOL:      pbBits,
 		}
 	case *tmcons.Message_BlockPart:
-		parts, err := types.PartFromProto(&msg.BlockPart.Part)
+		parts, err := metadata.PartFromProto(&msg.BlockPart.Part)
 		if err != nil {
 			return nil, fmt.Errorf("blockpart msg to proto error: %w", err)
 		}
@@ -514,7 +517,7 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 			Part:   parts,
 		}
 	case *tmcons.Message_Vote:
-		vote, err := types.VoteFromProto(msg.Vote.Vote)
+		vote, err := consensus.VoteFromProto(msg.Vote.Vote)
 		if err != nil {
 			return nil, fmt.Errorf("vote msg to proto error: %w", err)
 		}
@@ -530,7 +533,7 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 			Index:  msg.HasVote.Index,
 		}
 	case *tmcons.Message_VoteSetMaj23:
-		bi, err := types.BlockIDFromProto(&msg.VoteSetMaj23.BlockID)
+		bi, err := metadata.BlockIDFromProto(&msg.VoteSetMaj23.BlockID)
 		if err != nil {
 			return nil, fmt.Errorf("voteSetMaj23 msg to proto error: %w", err)
 		}
@@ -541,7 +544,7 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 			BlockID: *bi,
 		}
 	case *tmcons.Message_VoteSetBits:
-		bi, err := types.BlockIDFromProto(&msg.VoteSetBits.BlockID)
+		bi, err := metadata.BlockIDFromProto(&msg.VoteSetBits.BlockID)
 		if err != nil {
 			return nil, fmt.Errorf("block ID to proto error: %w", err)
 		}
@@ -574,7 +577,7 @@ func WALToProto(msg WALMessage) (*tmcons.WALMessage, error) {
 	var pb tmcons.WALMessage
 
 	switch msg := msg.(type) {
-	case types.EventDataRoundState:
+	case events.EventDataRoundState:
 		pb = tmcons.WALMessage{
 			Sum: &tmcons.WALMessage_EventDataRoundState{
 				EventDataRoundState: &tmproto.EventDataRoundState{
@@ -637,7 +640,7 @@ func WALFromProto(msg *tmcons.WALMessage) (WALMessage, error) {
 
 	switch msg := msg.Sum.(type) {
 	case *tmcons.WALMessage_EventDataRoundState:
-		pb = types.EventDataRoundState{
+		pb = events.EventDataRoundState{
 			Height: msg.EventDataRoundState.Height,
 			Round:  msg.EventDataRoundState.Round,
 			Step:   msg.EventDataRoundState.Step,
@@ -650,7 +653,7 @@ func WALFromProto(msg *tmcons.WALMessage) (WALMessage, error) {
 		}
 		pb = msgInfo{
 			Msg:    walMsg,
-			PeerID: types.NodeID(msg.MsgInfo.PeerID),
+			PeerID: p2p.NodeID(msg.MsgInfo.PeerID),
 		}
 
 	case *tmcons.WALMessage_TimeoutInfo:

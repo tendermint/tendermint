@@ -7,14 +7,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/p2p"
 	dbm "github.com/tendermint/tm-db"
 )
 
 func TestPeerScoring(t *testing.T) {
 	// coppied from p2p_test shared variables
 	selfKey := ed25519.GenPrivKeyFromSecret([]byte{0xf9, 0x1b, 0x08, 0xaa, 0x38, 0xee, 0x34, 0xdd})
-	selfID := types.NodeIDFromPubKey(selfKey.PubKey())
+	selfID := p2p.NodeIDFromPubKey(selfKey.PubKey())
 
 	// create a mock peer manager
 	db := dbm.NewMemDB()
@@ -23,7 +23,7 @@ func TestPeerScoring(t *testing.T) {
 	defer peerManager.Close()
 
 	// create a fake node
-	id := types.NodeID(strings.Repeat("a1", 20))
+	id := p2p.NodeID(strings.Repeat("a1", 20))
 	added, err := peerManager.Add(NodeAddress{NodeID: id, Protocol: "memory"})
 	require.NoError(t, err)
 	require.True(t, added)

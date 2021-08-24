@@ -9,7 +9,8 @@ import (
 
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/light"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/metadata"
 )
 
 const (
@@ -33,8 +34,8 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 	)
 
 	testCases := []struct {
-		newHeader      *types.SignedHeader
-		newVals        *types.ValidatorSet
+		newHeader      *metadata.SignedHeader
+		newVals        *consensus.ValidatorSet
 		trustingPeriod time.Duration
 		now            time.Time
 		expErr         error
@@ -117,7 +118,7 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 			vals,
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
-			light.ErrInvalidHeader{Reason: types.ErrNotEnoughVotingPowerSigned{Got: 50, Needed: 93}},
+			light.ErrInvalidHeader{Reason: consensus.ErrNotEnoughVotingPowerSigned{Got: 50, Needed: 93}},
 			"",
 		},
 		// vals does not match with what we have -> error
@@ -197,8 +198,8 @@ func TestVerifyNonAdjacentHeaders(t *testing.T) {
 	)
 
 	testCases := []struct {
-		newHeader      *types.SignedHeader
-		newVals        *types.ValidatorSet
+		newHeader      *metadata.SignedHeader
+		newVals        *consensus.ValidatorSet
 		trustingPeriod time.Duration
 		now            time.Time
 		expErr         error
@@ -231,7 +232,7 @@ func TestVerifyNonAdjacentHeaders(t *testing.T) {
 			vals,
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
-			light.ErrInvalidHeader{types.ErrNotEnoughVotingPowerSigned{Got: 50, Needed: 93}},
+			light.ErrInvalidHeader{consensus.ErrNotEnoughVotingPowerSigned{Got: 50, Needed: 93}},
 			"",
 		},
 		// 3/3 new vals signed, 2/3 old vals present -> no error
@@ -261,7 +262,7 @@ func TestVerifyNonAdjacentHeaders(t *testing.T) {
 			lessThanOneThirdVals,
 			3 * time.Hour,
 			bTime.Add(2 * time.Hour),
-			light.ErrNewValSetCantBeTrusted{types.ErrNotEnoughVotingPowerSigned{Got: 20, Needed: 46}},
+			light.ErrNewValSetCantBeTrusted{consensus.ErrNotEnoughVotingPowerSigned{Got: 20, Needed: 46}},
 			"",
 		},
 	}

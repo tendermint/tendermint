@@ -9,8 +9,8 @@ import (
 	"strconv"
 
 	"github.com/tendermint/tendermint/abci/example/code"
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/pkg/abci"
 	"github.com/tendermint/tendermint/version"
 )
 

@@ -90,7 +90,7 @@ Create a file called `app.go` with the following content:
 package main
 
 import (
- abcitypes "github.com/tendermint/tendermint/abci/types"
+ abcitypes "github.com/tendermint/tendermint/pkg/abci"
 )
 
 type KVStoreApplication struct {}

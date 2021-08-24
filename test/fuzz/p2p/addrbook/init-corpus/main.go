@@ -13,7 +13,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/internal/p2p"
-	"github.com/tendermint/tendermint/types"
+	types "github.com/tendermint/tendermint/pkg/p2p"
 )
 
 func main() {

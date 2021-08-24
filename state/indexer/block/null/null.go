@@ -5,8 +5,8 @@ import (
 	"errors"
 
 	"github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/pkg/events"
 	"github.com/tendermint/tendermint/state/indexer"
-	"github.com/tendermint/tendermint/types"
 )
 
 var _ indexer.BlockIndexer = (*BlockerIndexer)(nil)
@@ -18,7 +18,7 @@ func (idx *BlockerIndexer) Has(height int64) (bool, error) {
 	return false, errors.New(`indexing is disabled (set 'tx_index = "kv"' in config)`)
 }
 
-func (idx *BlockerIndexer) Index(types.EventDataNewBlockHeader) error {
+func (idx *BlockerIndexer) Index(events.EventDataNewBlockHeader) error {
 	return nil
 }
 

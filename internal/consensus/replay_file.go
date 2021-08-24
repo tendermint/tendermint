@@ -16,10 +16,10 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/pkg/events"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
-	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -54,12 +54,12 @@ func (cs *State) ReplayFile(file string, console bool) error {
 	// ensure all new step events are regenerated as expected
 
 	ctx := context.Background()
-	newStepSub, err := cs.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep)
+	newStepSub, err := cs.eventBus.Subscribe(ctx, subscriber, events.EventQueryNewRoundStep)
 	if err != nil {
-		return fmt.Errorf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep)
+		return fmt.Errorf("failed to subscribe %s to %v", subscriber, events.EventQueryNewRoundStep)
 	}
 	defer func() {
-		args := tmpubsub.UnsubscribeArgs{Subscriber: subscriber, Query: types.EventQueryNewRoundStep}
+		args := tmpubsub.UnsubscribeArgs{Subscriber: subscriber, Query: events.EventQueryNewRoundStep}
 		if err := cs.eventBus.Unsubscribe(ctx, args); err != nil {
 			cs.Logger.Error("Error unsubscribing to event bus", "err", err)
 		}
@@ -125,7 +125,7 @@ func newPlayback(fileName string, fp *os.File, cs *State, genState sm.State) *pl
 }
 
 // go back count steps by resetting the state and running (pb.count - count) steps
-func (pb *playback) replayReset(count int, newStepSub types.Subscription) error {
+func (pb *playback) replayReset(count int, newStepSub events.Subscription) error {
 	if err := pb.cs.Stop(); err != nil {
 		return err
 	}
@@ -222,12 +222,12 @@ func (pb *playback) replayConsoleLoop() int {
 			ctx := context.Background()
 			// ensure all new step events are regenerated as expected
 
-			newStepSub, err := pb.cs.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep)
+			newStepSub, err := pb.cs.eventBus.Subscribe(ctx, subscriber, events.EventQueryNewRoundStep)
 			if err != nil {
-				tmos.Exit(fmt.Sprintf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep))
+				tmos.Exit(fmt.Sprintf("failed to subscribe %s to %v", subscriber, events.EventQueryNewRoundStep))
 			}
 			defer func() {
-				args := tmpubsub.UnsubscribeArgs{Subscriber: subscriber, Query: types.EventQueryNewRoundStep}
+				args := tmpubsub.UnsubscribeArgs{Subscriber: subscriber, Query: events.EventQueryNewRoundStep}
 				if err := pb.cs.eventBus.Unsubscribe(ctx, args); err != nil {
 					pb.cs.Logger.Error("Error unsubscribing from eventBus", "err", err)
 				}
@@ -318,7 +318,7 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 		tmos.Exit(fmt.Sprintf("Error starting proxy app conns: %v", err))
 	}
 
-	eventBus := types.NewEventBus()
+	eventBus := events.NewEventBus()
 	if err := eventBus.Start(); err != nil {
 		tmos.Exit(fmt.Sprintf("Failed to start event bus: %v", err))
 	}

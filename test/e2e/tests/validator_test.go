@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/pkg/consensus"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
-	"github.com/tendermint/tendermint/types"
 )
 
 // Tests that validator sets are available and correct according to
@@ -35,7 +35,7 @@ func TestValidator_Sets(t *testing.T) {
 		valSchedule.Increment(first - node.Testnet.InitialHeight)
 
 		for h := first; h <= last; h++ {
-			validators := []*types.Validator{}
+			validators := []*consensus.Validator{}
 			perPage := 100
 			for page := 1; ; page++ {
 				resp, err := client.Validators(ctx, &(h), &(page), &perPage)
@@ -126,7 +126,7 @@ func TestValidator_Sign(t *testing.T) {
 // validatorSchedule is a validator set iterator, which takes into account
 // validator set updates.
 type validatorSchedule struct {
-	Set     *types.ValidatorSet
+	Set     *consensus.ValidatorSet
 	height  int64
 	updates map[int64]map[*e2e.Node]int64
 }
@@ -138,7 +138,7 @@ func newValidatorSchedule(testnet e2e.Testnet) *validatorSchedule {
 	}
 	return &validatorSchedule{
 		height:  testnet.InitialHeight,
-		Set:     types.NewValidatorSet(makeVals(valMap)),
+		Set:     consensus.NewValidatorSet(makeVals(valMap)),
 		updates: testnet.ValidatorUpdates,
 	}
 }
@@ -159,10 +159,10 @@ func (s *validatorSchedule) Increment(heights int64) {
 	}
 }
 
-func makeVals(valMap map[*e2e.Node]int64) []*types.Validator {
-	vals := make([]*types.Validator, 0, len(valMap))
+func makeVals(valMap map[*e2e.Node]int64) []*consensus.Validator {
+	vals := make([]*consensus.Validator, 0, len(valMap))
 	for node, power := range valMap {
-		vals = append(vals, types.NewValidator(node.PrivvalKey.PubKey(), power))
+		vals = append(vals, consensus.NewValidator(node.PrivvalKey.PubKey(), power))
 	}
 	return vals
 }

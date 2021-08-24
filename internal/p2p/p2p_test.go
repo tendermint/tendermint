@@ -6,7 +6,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/internal/p2p"
-	"github.com/tendermint/tendermint/types"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 )
 
 // Common setup for P2P tests.
@@ -23,8 +23,8 @@ var (
 	}
 
 	selfKey  crypto.PrivKey = ed25519.GenPrivKeyFromSecret([]byte{0xf9, 0x1b, 0x08, 0xaa, 0x38, 0xee, 0x34, 0xdd})
-	selfID                  = types.NodeIDFromPubKey(selfKey.PubKey())
-	selfInfo                = types.NodeInfo{
+	selfID                  = p2ptypes.NodeIDFromPubKey(selfKey.PubKey())
+	selfInfo                = p2ptypes.NodeInfo{
 		NodeID:     selfID,
 		ListenAddr: "0.0.0.0:0",
 		Network:    "test",
@@ -33,8 +33,8 @@ var (
 	}
 
 	peerKey  crypto.PrivKey = ed25519.GenPrivKeyFromSecret([]byte{0x84, 0xd7, 0x01, 0xbf, 0x83, 0x20, 0x1c, 0xfe})
-	peerID                  = types.NodeIDFromPubKey(peerKey.PubKey())
-	peerInfo                = types.NodeInfo{
+	peerID                  = p2ptypes.NodeIDFromPubKey(peerKey.PubKey())
+	peerInfo                = p2ptypes.NodeInfo{
 		NodeID:     peerID,
 		ListenAddr: "0.0.0.0:0",
 		Network:    "test",

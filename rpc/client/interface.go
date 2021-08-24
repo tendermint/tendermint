@@ -25,8 +25,9 @@ import (
 
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/pkg/evidence"
+	"github.com/tendermint/tendermint/pkg/mempool"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 //go:generate ../../scripts/mockery_generate.sh Client
@@ -58,9 +59,9 @@ type ABCIClient interface {
 		opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error)
 
 	// Writing to abci app
-	BroadcastTxCommit(context.Context, types.Tx) (*ctypes.ResultBroadcastTxCommit, error)
-	BroadcastTxAsync(context.Context, types.Tx) (*ctypes.ResultBroadcastTx, error)
-	BroadcastTxSync(context.Context, types.Tx) (*ctypes.ResultBroadcastTx, error)
+	BroadcastTxCommit(context.Context, mempool.Tx) (*ctypes.ResultBroadcastTxCommit, error)
+	BroadcastTxAsync(context.Context, mempool.Tx) (*ctypes.ResultBroadcastTx, error)
+	BroadcastTxSync(context.Context, mempool.Tx) (*ctypes.ResultBroadcastTx, error)
 }
 
 // SignClient groups together the functionality needed to get valid signatures
@@ -136,13 +137,13 @@ type EventsClient interface {
 type MempoolClient interface {
 	UnconfirmedTxs(ctx context.Context, limit *int) (*ctypes.ResultUnconfirmedTxs, error)
 	NumUnconfirmedTxs(context.Context) (*ctypes.ResultUnconfirmedTxs, error)
-	CheckTx(context.Context, types.Tx) (*ctypes.ResultCheckTx, error)
+	CheckTx(context.Context, mempool.Tx) (*ctypes.ResultCheckTx, error)
 }
 
 // EvidenceClient is used for submitting an evidence of the malicious
 // behavior.
 type EvidenceClient interface {
-	BroadcastEvidence(context.Context, types.Evidence) (*ctypes.ResultBroadcastEvidence, error)
+	BroadcastEvidence(context.Context, evidence.Evidence) (*ctypes.ResultBroadcastEvidence, error)
 }
 
 // RemoteClient is a Client, which can also return the remote network address.

@@ -8,9 +8,9 @@ import (
 	"math"
 	"time"
 
+	"github.com/tendermint/tendermint/pkg/mempool"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
-	"github.com/tendermint/tendermint/types"
 )
 
 // Load generates transactions against the network until the given context is
@@ -29,8 +29,8 @@ func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 	initialTimeout := 1 * time.Minute
 	stallTimeout := 30 * time.Second
 
-	chTx := make(chan types.Tx)
-	chSuccess := make(chan types.Tx)
+	chTx := make(chan mempool.Tx)
+	chSuccess := make(chan mempool.Tx)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -66,7 +66,7 @@ func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 }
 
 // loadGenerate generates jobs until the context is canceled
-func loadGenerate(ctx context.Context, chTx chan<- types.Tx, multiplier int, size int64) {
+func loadGenerate(ctx context.Context, chTx chan<- mempool.Tx, multiplier int, size int64) {
 	for i := 0; i < math.MaxInt64; i++ {
 		// We keep generating the same 100 keys over and over, with different values.
 		// This gives a reasonable load without putting too much data in the app.
@@ -77,7 +77,7 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, multiplier int, siz
 		if err != nil {
 			panic(fmt.Sprintf("Failed to read random bytes: %v", err))
 		}
-		tx := types.Tx(fmt.Sprintf("load-%X=%x", id, bz))
+		tx := mempool.Tx(fmt.Sprintf("load-%X=%x", id, bz))
 
 		select {
 		case chTx <- tx:
@@ -92,7 +92,7 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, multiplier int, siz
 }
 
 // loadProcess processes transactions
-func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx, chSuccess chan<- types.Tx) {
+func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan mempool.Tx, chSuccess chan<- mempool.Tx) {
 	// Each worker gets its own client to each node, which allows for some
 	// concurrency while still bounding it.
 	clients := map[string]*rpchttp.HTTP{}

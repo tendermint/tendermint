@@ -17,8 +17,9 @@ import (
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 func TestGenLoadValidator(t *testing.T) {
@@ -60,7 +61,7 @@ func TestResetValidator(t *testing.T) {
 	height, round := int64(10), int32(1)
 	voteType := tmproto.PrevoteType
 	randBytes := tmrand.Bytes(tmhash.Size)
-	blockID := types.BlockID{Hash: randBytes, PartSetHeader: types.PartSetHeader{}}
+	blockID := metadata.BlockID{Hash: randBytes, PartSetHeader: metadata.PartSetHeader{}}
 	vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
 	err = privVal.SignVote(context.Background(), "mychainid", vote.ToProto())
 	assert.NoError(t, err, "expected no error signing vote")
@@ -176,10 +177,10 @@ func TestSignVote(t *testing.T) {
 	randbytes := tmrand.Bytes(tmhash.Size)
 	randbytes2 := tmrand.Bytes(tmhash.Size)
 
-	block1 := types.BlockID{Hash: randbytes,
-		PartSetHeader: types.PartSetHeader{Total: 5, Hash: randbytes}}
-	block2 := types.BlockID{Hash: randbytes2,
-		PartSetHeader: types.PartSetHeader{Total: 10, Hash: randbytes2}}
+	block1 := metadata.BlockID{Hash: randbytes,
+		PartSetHeader: metadata.PartSetHeader{Total: 5, Hash: randbytes}}
+	block2 := metadata.BlockID{Hash: randbytes2,
+		PartSetHeader: metadata.PartSetHeader{Total: 10, Hash: randbytes2}}
 
 	height, round := int64(10), int32(1)
 	voteType := tmproto.PrevoteType
@@ -195,7 +196,7 @@ func TestSignVote(t *testing.T) {
 	assert.NoError(err, "expected no error on signing same vote")
 
 	// now try some bad votes
-	cases := []*types.Vote{
+	cases := []*consensus.Vote{
 		newVote(privVal.Key.Address, 0, height, round-1, voteType, block1),   // round regression
 		newVote(privVal.Key.Address, 0, height-1, round, voteType, block1),   // height regression
 		newVote(privVal.Key.Address, 0, height-2, round+4, voteType, block1), // height regression and different round
@@ -230,10 +231,10 @@ func TestSignProposal(t *testing.T) {
 	randbytes := tmrand.Bytes(tmhash.Size)
 	randbytes2 := tmrand.Bytes(tmhash.Size)
 
-	block1 := types.BlockID{Hash: randbytes,
-		PartSetHeader: types.PartSetHeader{Total: 5, Hash: randbytes}}
-	block2 := types.BlockID{Hash: randbytes2,
-		PartSetHeader: types.PartSetHeader{Total: 10, Hash: randbytes2}}
+	block1 := metadata.BlockID{Hash: randbytes,
+		PartSetHeader: metadata.PartSetHeader{Total: 5, Hash: randbytes}}
+	block2 := metadata.BlockID{Hash: randbytes2,
+		PartSetHeader: metadata.PartSetHeader{Total: 10, Hash: randbytes2}}
 	height, round := int64(10), int32(1)
 
 	// sign a proposal for first time
@@ -247,7 +248,7 @@ func TestSignProposal(t *testing.T) {
 	assert.NoError(err, "expected no error on signing same proposal")
 
 	// now try some bad Proposals
-	cases := []*types.Proposal{
+	cases := []*consensus.Proposal{
 		newProposal(height, round-1, block1),   // round regression
 		newProposal(height-1, round, block1),   // height regression
 		newProposal(height-2, round+4, block1), // height regression and different round
@@ -276,7 +277,7 @@ func TestDifferByTimestamp(t *testing.T) {
 	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
 	require.NoError(t, err)
 	randbytes := tmrand.Bytes(tmhash.Size)
-	block1 := types.BlockID{Hash: randbytes, PartSetHeader: types.PartSetHeader{Total: 5, Hash: randbytes}}
+	block1 := metadata.BlockID{Hash: randbytes, PartSetHeader: metadata.PartSetHeader{Total: 5, Hash: randbytes}}
 	height, round := int64(10), int32(1)
 	chainID := "mychainid"
 
@@ -286,7 +287,7 @@ func TestDifferByTimestamp(t *testing.T) {
 		pb := proposal.ToProto()
 		err := privVal.SignProposal(context.Background(), chainID, pb)
 		assert.NoError(t, err, "expected no error signing proposal")
-		signBytes := types.ProposalSignBytes(chainID, pb)
+		signBytes := consensus.ProposalSignBytes(chainID, pb)
 
 		sig := proposal.Signature
 		timeStamp := proposal.Timestamp
@@ -299,20 +300,20 @@ func TestDifferByTimestamp(t *testing.T) {
 		assert.NoError(t, err, "expected no error on signing same proposal")
 
 		assert.Equal(t, timeStamp, pb.Timestamp)
-		assert.Equal(t, signBytes, types.ProposalSignBytes(chainID, pb))
+		assert.Equal(t, signBytes, consensus.ProposalSignBytes(chainID, pb))
 		assert.Equal(t, sig, proposal.Signature)
 	}
 
 	// test vote
 	{
 		voteType := tmproto.PrevoteType
-		blockID := types.BlockID{Hash: randbytes, PartSetHeader: types.PartSetHeader{}}
+		blockID := metadata.BlockID{Hash: randbytes, PartSetHeader: metadata.PartSetHeader{}}
 		vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
 		v := vote.ToProto()
 		err := privVal.SignVote(context.Background(), "mychainid", v)
 		assert.NoError(t, err, "expected no error signing vote")
 
-		signBytes := types.VoteSignBytes(chainID, v)
+		signBytes := consensus.VoteSignBytes(chainID, v)
 		sig := v.Signature
 		timeStamp := vote.Timestamp
 
@@ -324,14 +325,14 @@ func TestDifferByTimestamp(t *testing.T) {
 		assert.NoError(t, err, "expected no error on signing same vote")
 
 		assert.Equal(t, timeStamp, v.Timestamp)
-		assert.Equal(t, signBytes, types.VoteSignBytes(chainID, v))
+		assert.Equal(t, signBytes, consensus.VoteSignBytes(chainID, v))
 		assert.Equal(t, sig, v.Signature)
 	}
 }
 
-func newVote(addr types.Address, idx int32, height int64, round int32,
-	typ tmproto.SignedMsgType, blockID types.BlockID) *types.Vote {
-	return &types.Vote{
+func newVote(addr consensus.Address, idx int32, height int64, round int32,
+	typ tmproto.SignedMsgType, blockID metadata.BlockID) *consensus.Vote {
+	return &consensus.Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   idx,
 		Height:           height,
@@ -342,8 +343,8 @@ func newVote(addr types.Address, idx int32, height int64, round int32,
 	}
 }
 
-func newProposal(height int64, round int32, blockID types.BlockID) *types.Proposal {
-	return &types.Proposal{
+func newProposal(height int64, round int32, blockID metadata.BlockID) *consensus.Proposal {
+	return &consensus.Proposal{
 		Height:    height,
 		Round:     round,
 		BlockID:   blockID,

@@ -5,13 +5,14 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/block"
+	"github.com/tendermint/tendermint/pkg/evidence"
 )
 
 //-----------------------------------------------------
 // Validate block
 
-func validateBlock(state State, block *types.Block) error {
+func validateBlock(state State, block *block.Block) error {
 	// Validate internal consistency.
 	if err := block.ValidateBasic(); err != nil {
 		return err
@@ -138,7 +139,7 @@ func validateBlock(state State, block *types.Block) error {
 
 	// Check evidence doesn't exceed the limit amount of bytes.
 	if max, got := state.ConsensusParams.Evidence.MaxBytes, block.Evidence.ByteSize(); got > max {
-		return types.NewErrEvidenceOverflow(max, got)
+		return evidence.NewErrEvidenceOverflow(max, got)
 	}
 
 	return nil

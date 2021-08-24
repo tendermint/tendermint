@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"math"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/p2p"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/block"
+	types "github.com/tendermint/tendermint/pkg/mempool"
 )
 
 const (
@@ -108,7 +109,7 @@ type PostCheckFunc func(types.Tx, *abci.ResponseCheckTx) error
 // to the expected maxBytes.
 func PreCheckMaxBytes(maxBytes int64) PreCheckFunc {
 	return func(tx types.Tx) error {
-		txSize := types.ComputeProtoSizeForTxs([]types.Tx{tx})
+		txSize := block.ComputeProtoSizeForTxs([]types.Tx{tx})
 
 		if txSize > maxBytes {
 			return fmt.Errorf("tx size is too big: %d, max: %d", txSize, maxBytes)

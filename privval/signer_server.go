@@ -6,14 +6,14 @@ import (
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/pkg/consensus"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
-	"github.com/tendermint/tendermint/types"
 )
 
 // ValidationRequestHandlerFunc handles different remoteSigner requests
 type ValidationRequestHandlerFunc func(
 	ctx context.Context,
-	privVal types.PrivValidator,
+	privVal consensus.PrivValidator,
 	requestMessage privvalproto.Message,
 	chainID string) (privvalproto.Message, error)
 
@@ -22,13 +22,13 @@ type SignerServer struct {
 
 	endpoint *SignerDialerEndpoint
 	chainID  string
-	privVal  types.PrivValidator
+	privVal  consensus.PrivValidator
 
 	handlerMtx               tmsync.Mutex
 	validationRequestHandler ValidationRequestHandlerFunc
 }
 
-func NewSignerServer(endpoint *SignerDialerEndpoint, chainID string, privVal types.PrivValidator) *SignerServer {
+func NewSignerServer(endpoint *SignerDialerEndpoint, chainID string, privVal consensus.PrivValidator) *SignerServer {
 	ss := &SignerServer{
 		endpoint:                 endpoint,
 		chainID:                  chainID,

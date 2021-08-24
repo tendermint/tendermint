@@ -14,7 +14,8 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/light/store"
-	"github.com/tendermint/tendermint/types"
+	types "github.com/tendermint/tendermint/pkg/light"
+	"github.com/tendermint/tendermint/pkg/metadata"
 )
 
 type mode byte
@@ -451,7 +452,7 @@ func (c *Client) VerifyLightBlockAtHeight(ctx context.Context, height int64, now
 // If, at any moment, a LightBlock is not found by the primary provider as part of
 // verification then the provider will be replaced by another and the process will
 // restart.
-func (c *Client) VerifyHeader(ctx context.Context, newHeader *types.Header, now time.Time) error {
+func (c *Client) VerifyHeader(ctx context.Context, newHeader *metadata.Header, now time.Time) error {
 	if newHeader == nil {
 		return errors.New("nil header")
 	}
@@ -873,12 +874,12 @@ func (c *Client) updateTrustedLightBlock(l *types.LightBlock) error {
 // replaced with another provider and the operation is repeated.
 func (c *Client) backwards(
 	ctx context.Context,
-	trustedHeader *types.Header,
-	newHeader *types.Header) error {
+	trustedHeader *metadata.Header,
+	newHeader *metadata.Header) error {
 
 	var (
 		verifiedHeader = trustedHeader
-		interimHeader  *types.Header
+		interimHeader  *metadata.Header
 	)
 
 	for verifiedHeader.Height > newHeader.Height {
@@ -1069,7 +1070,7 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 
 // compareFirstHeaderWithWitnesses concurrently compares h with all witnesses. If any
 // witness reports a different header than h, the function returns an error.
-func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.SignedHeader) error {
+func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *metadata.SignedHeader) error {
 	compareCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 

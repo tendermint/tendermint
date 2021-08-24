@@ -9,10 +9,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/pkg/block"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpctypes "github.com/tendermint/tendermint/rpc/core/types"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
-	"github.com/tendermint/tendermint/types"
 )
 
 func init() {
@@ -26,7 +26,7 @@ var (
 	ctx             = context.Background()
 	testnetCache    = map[string]e2e.Testnet{}
 	testnetCacheMtx = sync.Mutex{}
-	blocksCache     = map[string][]*types.Block{}
+	blocksCache     = map[string][]*block.Block{}
 	blocksCacheMtx  = sync.Mutex{}
 )
 
@@ -84,7 +84,7 @@ func loadTestnet(t *testing.T) e2e.Testnet {
 
 // fetchBlockChain fetches a complete, up-to-date block history from
 // the freshest testnet archive node.
-func fetchBlockChain(t *testing.T) []*types.Block {
+func fetchBlockChain(t *testing.T) []*block.Block {
 	t.Helper()
 
 	testnet := loadTestnet(t)
@@ -115,7 +115,7 @@ func fetchBlockChain(t *testing.T) []*types.Block {
 	to := status.SyncInfo.LatestBlockHeight
 	blocks, ok := blocksCache[testnet.Name]
 	if !ok {
-		blocks = make([]*types.Block, 0, to-from+1)
+		blocks = make([]*block.Block, 0, to-from+1)
 	}
 	if len(blocks) > 0 {
 		from = blocks[len(blocks)-1].Height + 1

@@ -3,11 +3,12 @@ package proxy
 import (
 	"github.com/tendermint/tendermint/libs/bytes"
 	lrpc "github.com/tendermint/tendermint/light/rpc"
+	"github.com/tendermint/tendermint/pkg/evidence"
+	"github.com/tendermint/tendermint/pkg/mempool"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 func RPCRoutes(c *lrpc.Client) map[string]*rpcserver.RPCFunc {
@@ -230,26 +231,26 @@ func makeNumUnconfirmedTxsFunc(c *lrpc.Client) rpcNumUnconfirmedTxsFunc {
 	}
 }
 
-type rpcBroadcastTxCommitFunc func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error)
+type rpcBroadcastTxCommitFunc func(ctx *rpctypes.Context, tx mempool.Tx) (*ctypes.ResultBroadcastTxCommit, error)
 
 func makeBroadcastTxCommitFunc(c *lrpc.Client) rpcBroadcastTxCommitFunc {
-	return func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+	return func(ctx *rpctypes.Context, tx mempool.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 		return c.BroadcastTxCommit(ctx.Context(), tx)
 	}
 }
 
-type rpcBroadcastTxSyncFunc func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error)
+type rpcBroadcastTxSyncFunc func(ctx *rpctypes.Context, tx mempool.Tx) (*ctypes.ResultBroadcastTx, error)
 
 func makeBroadcastTxSyncFunc(c *lrpc.Client) rpcBroadcastTxSyncFunc {
-	return func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+	return func(ctx *rpctypes.Context, tx mempool.Tx) (*ctypes.ResultBroadcastTx, error) {
 		return c.BroadcastTxSync(ctx.Context(), tx)
 	}
 }
 
-type rpcBroadcastTxAsyncFunc func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error)
+type rpcBroadcastTxAsyncFunc func(ctx *rpctypes.Context, tx mempool.Tx) (*ctypes.ResultBroadcastTx, error)
 
 func makeBroadcastTxAsyncFunc(c *lrpc.Client) rpcBroadcastTxAsyncFunc {
-	return func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+	return func(ctx *rpctypes.Context, tx mempool.Tx) (*ctypes.ResultBroadcastTx, error) {
 		return c.BroadcastTxAsync(ctx.Context(), tx)
 	}
 }
@@ -276,11 +277,11 @@ func makeABCIInfoFunc(c *lrpc.Client) rpcABCIInfoFunc {
 	}
 }
 
-type rpcBroadcastEvidenceFunc func(ctx *rpctypes.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error)
+type rpcBroadcastEvidenceFunc func(ctx *rpctypes.Context, ev evidence.Evidence) (*ctypes.ResultBroadcastEvidence, error)
 
 // nolint: interfacer
 func makeBroadcastEvidenceFunc(c *lrpc.Client) rpcBroadcastEvidenceFunc {
-	return func(ctx *rpctypes.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
+	return func(ctx *rpctypes.Context, ev evidence.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 		return c.BroadcastEvidence(ctx.Context(), ev)
 	}
 }

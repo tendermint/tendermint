@@ -3,16 +3,16 @@ package core
 import (
 	"fmt"
 
+	"github.com/tendermint/tendermint/pkg/evidence"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 // BroadcastEvidence broadcasts evidence of the misbehavior.
 // More: https://docs.tendermint.com/master/rpc/#/Evidence/broadcast_evidence
 func (env *Environment) BroadcastEvidence(
 	ctx *rpctypes.Context,
-	ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
+	ev evidence.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 
 	if ev == nil {
 		return nil, fmt.Errorf("%w: no evidence was provided", ctypes.ErrInvalidRequest)

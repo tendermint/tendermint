@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/pkg/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 // RetrySignerClient wraps SignerClient adding retry for each operation (except
@@ -24,7 +24,7 @@ func NewRetrySignerClient(sc *SignerClient, retries int, timeout time.Duration) 
 	return &RetrySignerClient{sc, retries, timeout}
 }
 
-var _ types.PrivValidator = (*RetrySignerClient)(nil)
+var _ consensus.PrivValidator = (*RetrySignerClient)(nil)
 
 func (sc *RetrySignerClient) Close() error {
 	return sc.next.Close()

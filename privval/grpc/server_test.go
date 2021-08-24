@@ -12,10 +12,11 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 const ChainID = "123"
@@ -24,11 +25,11 @@ func TestGetPubKey(t *testing.T) {
 
 	testCases := []struct {
 		name string
-		pv   types.PrivValidator
+		pv   consensus.PrivValidator
 		err  bool
 	}{
-		{name: "valid", pv: types.NewMockPV(), err: false},
-		{name: "error on pubkey", pv: types.NewErroringMockPV(), err: true},
+		{name: "valid", pv: consensus.NewMockPV(), err: false},
+		{name: "error on pubkey", pv: consensus.NewErroringMockPV(), err: true},
 	}
 
 	for _, tc := range testCases {
@@ -58,42 +59,42 @@ func TestSignVote(t *testing.T) {
 
 	testCases := []struct {
 		name       string
-		pv         types.PrivValidator
-		have, want *types.Vote
+		pv         consensus.PrivValidator
+		have, want *consensus.Vote
 		err        bool
 	}{
-		{name: "valid", pv: types.NewMockPV(), have: &types.Vote{
+		{name: "valid", pv: consensus.NewMockPV(), have: &consensus.Vote{
 			Type:             tmproto.PrecommitType,
 			Height:           1,
 			Round:            2,
-			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			BlockID:          metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 			Timestamp:        ts,
 			ValidatorAddress: valAddr,
 			ValidatorIndex:   1,
-		}, want: &types.Vote{
+		}, want: &consensus.Vote{
 			Type:             tmproto.PrecommitType,
 			Height:           1,
 			Round:            2,
-			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			BlockID:          metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 			Timestamp:        ts,
 			ValidatorAddress: valAddr,
 			ValidatorIndex:   1,
 		},
 			err: false},
-		{name: "invalid vote", pv: types.NewErroringMockPV(), have: &types.Vote{
+		{name: "invalid vote", pv: consensus.NewErroringMockPV(), have: &consensus.Vote{
 			Type:             tmproto.PrecommitType,
 			Height:           1,
 			Round:            2,
-			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			BlockID:          metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 			Timestamp:        ts,
 			ValidatorAddress: valAddr,
 			ValidatorIndex:   1,
 			Signature:        []byte("signed"),
-		}, want: &types.Vote{
+		}, want: &consensus.Vote{
 			Type:             tmproto.PrecommitType,
 			Height:           1,
 			Round:            2,
-			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			BlockID:          metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 			Timestamp:        ts,
 			ValidatorAddress: valAddr,
 			ValidatorIndex:   1,
@@ -129,40 +130,40 @@ func TestSignProposal(t *testing.T) {
 
 	testCases := []struct {
 		name       string
-		pv         types.PrivValidator
-		have, want *types.Proposal
+		pv         consensus.PrivValidator
+		have, want *consensus.Proposal
 		err        bool
 	}{
-		{name: "valid", pv: types.NewMockPV(), have: &types.Proposal{
+		{name: "valid", pv: consensus.NewMockPV(), have: &consensus.Proposal{
 			Type:      tmproto.ProposalType,
 			Height:    1,
 			Round:     2,
 			POLRound:  2,
-			BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			BlockID:   metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 			Timestamp: ts,
-		}, want: &types.Proposal{
+		}, want: &consensus.Proposal{
 			Type:      tmproto.ProposalType,
 			Height:    1,
 			Round:     2,
 			POLRound:  2,
-			BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			BlockID:   metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 			Timestamp: ts,
 		},
 			err: false},
-		{name: "invalid proposal", pv: types.NewErroringMockPV(), have: &types.Proposal{
+		{name: "invalid proposal", pv: consensus.NewErroringMockPV(), have: &consensus.Proposal{
 			Type:      tmproto.ProposalType,
 			Height:    1,
 			Round:     2,
 			POLRound:  2,
-			BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			BlockID:   metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 			Timestamp: ts,
 			Signature: []byte("signed"),
-		}, want: &types.Proposal{
+		}, want: &consensus.Proposal{
 			Type:      tmproto.ProposalType,
 			Height:    1,
 			Round:     2,
 			POLRound:  2,
-			BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			BlockID:   metadata.BlockID{Hash: hash, PartSetHeader: metadata.PartSetHeader{Hash: hash, Total: 2}},
 			Timestamp: ts,
 			Signature: []byte("signed"),
 		},

@@ -15,8 +15,8 @@ import (
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
+	"github.com/tendermint/tendermint/pkg/consensus"
 	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -74,7 +74,7 @@ func init() {
 		"P2P Port")
 	TestnetFilesCmd.Flags().BoolVar(&randomMonikers, "random-monikers", false,
 		"randomize the moniker for each generated node")
-	TestnetFilesCmd.Flags().StringVar(&keyType, "key", types.ABCIPubKeyTypeEd25519,
+	TestnetFilesCmd.Flags().StringVar(&keyType, "key", consensus.ABCIPubKeyTypeEd25519,
 		"Key type to generate privval file with. Options: ed25519, secp256k1")
 }
 
@@ -121,7 +121,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	genVals := make([]types.GenesisValidator, nValidators)
+	genVals := make([]consensus.GenesisValidator, nValidators)
 
 	for i := 0; i < nValidators; i++ {
 		nodeDirName := fmt.Sprintf("%s%d", nodeDirPrefix, i)
@@ -157,7 +157,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("can't get pubkey: %w", err)
 		}
-		genVals[i] = types.GenesisValidator{
+		genVals[i] = consensus.GenesisValidator{
 			Address: pubKey.Address(),
 			PubKey:  pubKey,
 			Power:   1,
@@ -187,16 +187,16 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 	}
 
 	// Generate genesis doc from generated validators
-	genDoc := &types.GenesisDoc{
+	genDoc := &consensus.GenesisDoc{
 		ChainID:         "chain-" + tmrand.Str(6),
 		GenesisTime:     tmtime.Now(),
 		InitialHeight:   initialHeight,
 		Validators:      genVals,
-		ConsensusParams: types.DefaultConsensusParams(),
+		ConsensusParams: consensus.DefaultConsensusParams(),
 	}
 	if keyType == "secp256k1" {
-		genDoc.ConsensusParams.Validator = types.ValidatorParams{
-			PubKeyTypes: []string{types.ABCIPubKeyTypeSecp256k1},
+		genDoc.ConsensusParams.Validator = consensus.ValidatorParams{
+			PubKeyTypes: []string{consensus.ABCIPubKeyTypeSecp256k1},
 		}
 	}
 

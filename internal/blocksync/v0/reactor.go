@@ -12,10 +12,12 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	tmSync "github.com/tendermint/tendermint/libs/sync"
+	"github.com/tendermint/tendermint/pkg/block"
+	"github.com/tendermint/tendermint/pkg/metadata"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
-	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -67,7 +69,7 @@ type consensusReactor interface {
 
 type peerError struct {
 	err    error
-	peerID types.NodeID
+	peerID p2ptypes.NodeID
 }
 
 func (e peerError) Error() string {
@@ -205,7 +207,7 @@ func (r *Reactor) OnStop() {
 
 // respondToPeer loads a block and sends it to the requesting peer, if we have it.
 // Otherwise, we'll respond saying we do not have it.
-func (r *Reactor) respondToPeer(msg *bcproto.BlockRequest, peerID types.NodeID) {
+func (r *Reactor) respondToPeer(msg *bcproto.BlockRequest, peerID p2ptypes.NodeID) {
 	block := r.store.LoadBlock(msg.Height)
 	if block != nil {
 		blockProto, err := block.ToProto()
@@ -240,7 +242,7 @@ func (r *Reactor) handleBlockchainMessage(envelope p2p.Envelope) error {
 		r.respondToPeer(msg, envelope.From)
 
 	case *bcproto.BlockResponse:
-		block, err := types.BlockFromProto(msg.Block)
+		block, err := block.BlockFromProto(msg.Block)
 		if err != nil {
 			logger.Error("failed to convert block from proto", "err", err)
 			return err
@@ -531,9 +533,9 @@ FOR_LOOP:
 			}
 
 			var (
-				firstParts         = first.MakePartSet(types.BlockPartSizeBytes)
+				firstParts         = first.MakePartSet(metadata.BlockPartSizeBytes)
 				firstPartSetHeader = firstParts.Header()
-				firstID            = types.BlockID{Hash: first.Hash(), PartSetHeader: firstPartSetHeader}
+				firstID            = metadata.BlockID{Hash: first.Hash(), PartSetHeader: firstPartSetHeader}
 			)
 
 			// Finally, verify the first block using the second's commit.

@@ -9,10 +9,11 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	proto "github.com/gogo/protobuf/proto"
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/pkg/abci"
+	types "github.com/tendermint/tendermint/pkg/events"
+	"github.com/tendermint/tendermint/pkg/mempool"
 	"github.com/tendermint/tendermint/state/indexer"
-	"github.com/tendermint/tendermint/types"
 )
 
 var _ indexer.EventSink = (*EventSink)(nil)
@@ -121,7 +122,7 @@ func (es *EventSink) IndexTxEvents(txr []*abci.TxResult) error {
 		}
 
 		// index the reserved height and hash indices
-		hash := fmt.Sprintf("%X", types.Tx(tx.Tx).Hash())
+		hash := fmt.Sprintf("%X", mempool.Tx(tx.Tx).Hash())
 
 		sqlStmtEvents = sqlStmtEvents.Values(types.TxHashKey, hash, tx.Height, hash, txid, ts, es.chainID)
 		sqlStmtEvents = sqlStmtEvents.Values(types.TxHeightKey, fmt.Sprint(tx.Height), tx.Height, hash, txid, ts, es.chainID)

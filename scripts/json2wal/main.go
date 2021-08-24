@@ -16,7 +16,7 @@ import (
 
 	cs "github.com/tendermint/tendermint/internal/consensus"
 	tmjson "github.com/tendermint/tendermint/libs/json"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/metadata"
 )
 
 func main() {
@@ -40,7 +40,7 @@ func main() {
 	// the length of tendermint/wal/MsgInfo in the wal.json may exceed the defaultBufSize(4096) of bufio
 	// because of the byte array in BlockPart
 	// leading to unmarshal error: unexpected end of JSON input
-	br := bufio.NewReaderSize(f, int(2*types.BlockPartSizeBytes))
+	br := bufio.NewReaderSize(f, int(2*metadata.BlockPartSizeBytes))
 	dec := cs.NewWALEncoder(walFile)
 
 	for {

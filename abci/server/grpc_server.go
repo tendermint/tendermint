@@ -5,9 +5,9 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/tendermint/tendermint/abci/types"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/pkg/abci"
 )
 
 type GRPCServer struct {
@@ -18,11 +18,11 @@ type GRPCServer struct {
 	listener net.Listener
 	server   *grpc.Server
 
-	app types.ABCIApplicationServer
+	app abci.ABCIApplicationServer
 }
 
 // NewGRPCServer returns a new gRPC ABCI server
-func NewGRPCServer(protoAddr string, app types.ABCIApplicationServer) service.Service {
+func NewGRPCServer(protoAddr string, app abci.ABCIApplicationServer) service.Service {
 	proto, addr := tmnet.ProtocolAndAddress(protoAddr)
 	s := &GRPCServer{
 		proto:    proto,
@@ -44,7 +44,7 @@ func (s *GRPCServer) OnStart() error {
 
 	s.listener = ln
 	s.server = grpc.NewServer()
-	types.RegisterABCIApplicationServer(s.server, s.app)
+	abci.RegisterABCIApplicationServer(s.server, s.app)
 
 	s.Logger.Info("Listening", "proto", s.proto, "addr", s.addr)
 	go func() {

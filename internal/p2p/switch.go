@@ -16,7 +16,7 @@ import (
 	"github.com/tendermint/tendermint/libs/cmap"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/p2p"
 )
 
 const (
@@ -57,7 +57,7 @@ type AddrBook interface {
 	AddPrivateIDs([]string)
 	AddOurAddress(*NetAddress)
 	OurAddress(*NetAddress) bool
-	MarkGood(types.NodeID)
+	MarkGood(p2p.NodeID)
 	RemoveAddress(*NetAddress)
 	HasAddress(*NetAddress) bool
 	Save()
@@ -103,12 +103,12 @@ type Switch struct {
 	peers        *PeerSet
 	dialing      *cmap.CMap
 	reconnecting *cmap.CMap
-	nodeInfo     types.NodeInfo // our node info
-	nodeKey      types.NodeKey  // our node privkey
+	nodeInfo     p2p.NodeInfo // our node info
+	nodeKey      p2p.NodeKey  // our node privkey
 	addrBook     AddrBook
 	// peers addresses with whom we'll maintain constant connection
 	persistentPeersAddrs []*NetAddress
-	unconditionalPeerIDs map[types.NodeID]struct{}
+	unconditionalPeerIDs map[p2p.NodeID]struct{}
 
 	transport Transport
 
@@ -154,7 +154,7 @@ func NewSwitch(
 		metrics:              NopMetrics(),
 		transport:            transport,
 		persistentPeersAddrs: make([]*NetAddress, 0),
-		unconditionalPeerIDs: make(map[types.NodeID]struct{}),
+		unconditionalPeerIDs: make(map[p2p.NodeID]struct{}),
 		filterTimeout:        defaultFilterTimeout,
 		conns:                NewConnSet(),
 	}
@@ -242,19 +242,19 @@ func (sw *Switch) Reactor(name string) Reactor {
 
 // SetNodeInfo sets the switch's NodeInfo for checking compatibility and handshaking with other nodes.
 // NOTE: Not goroutine safe.
-func (sw *Switch) SetNodeInfo(nodeInfo types.NodeInfo) {
+func (sw *Switch) SetNodeInfo(nodeInfo p2p.NodeInfo) {
 	sw.nodeInfo = nodeInfo
 }
 
 // NodeInfo returns the switch's NodeInfo.
 // NOTE: Not goroutine safe.
-func (sw *Switch) NodeInfo() types.NodeInfo {
+func (sw *Switch) NodeInfo() p2p.NodeInfo {
 	return sw.nodeInfo
 }
 
 // SetNodeKey sets the switch's private key for authenticated encryption.
 // NOTE: Not goroutine safe.
-func (sw *Switch) SetNodeKey(nodeKey types.NodeKey) {
+func (sw *Switch) SetNodeKey(nodeKey p2p.NodeKey) {
 	sw.nodeKey = nodeKey
 }
 
@@ -353,7 +353,7 @@ func (sw *Switch) NumPeers() (outbound, inbound, dialing int) {
 	return
 }
 
-func (sw *Switch) IsPeerUnconditional(id types.NodeID) bool {
+func (sw *Switch) IsPeerUnconditional(id p2p.NodeID) bool {
 	_, ok := sw.unconditionalPeerIDs[id]
 	return ok
 }
@@ -518,7 +518,7 @@ func (sw *Switch) DialPeersAsync(peers []string) error {
 	}
 	// return first non-ErrNetAddressLookup error
 	for _, err := range errs {
-		if _, ok := err.(types.ErrNetAddressLookup); ok {
+		if _, ok := err.(p2p.ErrNetAddressLookup); ok {
 			continue
 		}
 		return err
@@ -622,7 +622,7 @@ func (sw *Switch) AddPersistentPeers(addrs []string) error {
 	}
 	// return first non-ErrNetAddressLookup error
 	for _, err := range errs {
-		if _, ok := err.(types.ErrNetAddressLookup); ok {
+		if _, ok := err.(p2p.ErrNetAddressLookup); ok {
 			continue
 		}
 		return err
@@ -634,11 +634,11 @@ func (sw *Switch) AddPersistentPeers(addrs []string) error {
 func (sw *Switch) AddUnconditionalPeerIDs(ids []string) error {
 	sw.Logger.Info("Adding unconditional peer ids", "ids", ids)
 	for i, id := range ids {
-		err := types.NodeID(id).Validate()
+		err := p2p.NodeID(id).Validate()
 		if err != nil {
 			return fmt.Errorf("wrong ID #%d: %w", i, err)
 		}
-		sw.unconditionalPeerIDs[types.NodeID(id)] = struct{}{}
+		sw.unconditionalPeerIDs[p2p.NodeID(id)] = struct{}{}
 	}
 	return nil
 }
@@ -646,7 +646,7 @@ func (sw *Switch) AddUnconditionalPeerIDs(ids []string) error {
 func (sw *Switch) AddPrivatePeerIDs(ids []string) error {
 	validIDs := make([]string, 0, len(ids))
 	for i, id := range ids {
-		err := types.NodeID(id).Validate()
+		err := p2p.NodeID(id).Validate()
 		if err != nil {
 			return fmt.Errorf("wrong ID #%d: %w", i, err)
 		}
@@ -669,7 +669,7 @@ func (sw *Switch) IsPeerPersistent(na *NetAddress) bool {
 
 func (sw *Switch) acceptRoutine() {
 	for {
-		var peerNodeInfo types.NodeInfo
+		var peerNodeInfo p2p.NodeInfo
 		c, err := sw.transport.Accept()
 		if err == nil {
 			// NOTE: The legacy MConn transport did handshaking in Accept(),
@@ -803,7 +803,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	var peerNodeInfo types.NodeInfo
+	var peerNodeInfo p2p.NodeInfo
 	c, err := sw.transport.Dial(ctx, Endpoint{
 		Protocol: MConnProtocol,
 		IP:       addr.IP,
@@ -864,8 +864,8 @@ func (sw *Switch) addOutboundPeerWithConfig(
 
 func (sw *Switch) handshakePeer(
 	c Connection,
-	expectPeerID types.NodeID,
-) (types.NodeInfo, crypto.PubKey, error) {
+	expectPeerID p2p.NodeID,
+) (p2p.NodeInfo, crypto.PubKey, error) {
 	// Moved from transport and hardcoded until legacy P2P stack removal.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -889,7 +889,7 @@ func (sw *Switch) handshakePeer(
 
 	// For outgoing conns, ensure connection key matches dialed key.
 	if expectPeerID != "" {
-		peerID := types.NodeIDFromPubKey(peerKey)
+		peerID := p2p.NodeIDFromPubKey(peerKey)
 		if expectPeerID != peerID {
 			return peerInfo, peerKey, ErrRejected{
 				conn: c.(*mConnConnection).conn,
@@ -906,7 +906,7 @@ func (sw *Switch) handshakePeer(
 
 	if sw.nodeInfo.ID() == peerInfo.ID() {
 		return peerInfo, peerKey, ErrRejected{
-			addr:   *types.NewNetAddress(peerInfo.ID(), c.(*mConnConnection).conn.RemoteAddr()),
+			addr:   *p2p.NewNetAddress(peerInfo.ID(), c.(*mConnConnection).conn.RemoteAddr()),
 			conn:   c.(*mConnConnection).conn,
 			id:     peerInfo.ID(),
 			isSelf: true,
@@ -1054,7 +1054,7 @@ func NewNetAddressStrings(addrs []string) ([]*NetAddress, []error) {
 	netAddrs := make([]*NetAddress, 0)
 	errs := make([]error, 0)
 	for _, addr := range addrs {
-		netAddr, err := types.NewNetAddressString(addr)
+		netAddr, err := p2p.NewNetAddressString(addr)
 		if err != nil {
 			errs = append(errs, err)
 		} else {

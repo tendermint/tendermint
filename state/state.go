@@ -10,9 +10,13 @@ import (
 	"github.com/gogo/protobuf/proto"
 
 	tmtime "github.com/tendermint/tendermint/libs/time"
+	"github.com/tendermint/tendermint/pkg/block"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/evidence"
+	"github.com/tendermint/tendermint/pkg/mempool"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
-	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -73,7 +77,7 @@ type State struct {
 
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
 	LastBlockHeight int64
-	LastBlockID     types.BlockID
+	LastBlockID     metadata.BlockID
 	LastBlockTime   time.Time
 
 	// LastValidators is used to validate block.LastCommit.
@@ -82,14 +86,14 @@ type State struct {
 	// Note that if s.LastBlockHeight causes a valset change,
 	// we set s.LastHeightValidatorsChanged = s.LastBlockHeight + 1 + 1
 	// Extra +1 due to nextValSet delay.
-	NextValidators              *types.ValidatorSet
-	Validators                  *types.ValidatorSet
-	LastValidators              *types.ValidatorSet
+	NextValidators              *consensus.ValidatorSet
+	Validators                  *consensus.ValidatorSet
+	LastValidators              *consensus.ValidatorSet
 	LastHeightValidatorsChanged int64
 
 	// Consensus parameters used for validating blocks.
 	// Changes returned by EndBlock and updated after Commit.
-	ConsensusParams                  types.ConsensusParams
+	ConsensusParams                  consensus.ConsensusParams
 	LastHeightConsensusParamsChanged int64
 
 	// Merkle root of the results from executing prev block
@@ -206,7 +210,7 @@ func StateFromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 	state.ChainID = pb.ChainID
 	state.InitialHeight = pb.InitialHeight
 
-	bi, err := types.BlockIDFromProto(&pb.LastBlockID)
+	bi, err := metadata.BlockIDFromProto(&pb.LastBlockID)
 	if err != nil {
 		return nil, err
 	}
@@ -214,30 +218,30 @@ func StateFromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 	state.LastBlockHeight = pb.LastBlockHeight
 	state.LastBlockTime = pb.LastBlockTime
 
-	vals, err := types.ValidatorSetFromProto(pb.Validators)
+	vals, err := consensus.ValidatorSetFromProto(pb.Validators)
 	if err != nil {
 		return nil, err
 	}
 	state.Validators = vals
 
-	nVals, err := types.ValidatorSetFromProto(pb.NextValidators)
+	nVals, err := consensus.ValidatorSetFromProto(pb.NextValidators)
 	if err != nil {
 		return nil, err
 	}
 	state.NextValidators = nVals
 
 	if state.LastBlockHeight >= 1 { // At Block 1 LastValidators is nil
-		lVals, err := types.ValidatorSetFromProto(pb.LastValidators)
+		lVals, err := consensus.ValidatorSetFromProto(pb.LastValidators)
 		if err != nil {
 			return nil, err
 		}
 		state.LastValidators = lVals
 	} else {
-		state.LastValidators = types.NewValidatorSet(nil)
+		state.LastValidators = consensus.NewValidatorSet(nil)
 	}
 
 	state.LastHeightValidatorsChanged = pb.LastHeightValidatorsChanged
-	state.ConsensusParams = types.ConsensusParamsFromProto(pb.ConsensusParams)
+	state.ConsensusParams = consensus.ConsensusParamsFromProto(pb.ConsensusParams)
 	state.LastHeightConsensusParamsChanged = pb.LastHeightConsensusParamsChanged
 	state.LastResultsHash = pb.LastResultsHash
 	state.AppHash = pb.AppHash
@@ -253,14 +257,14 @@ func StateFromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 // track rounds, and hence does not know the correct proposer. TODO: fix this!
 func (state State) MakeBlock(
 	height int64,
-	txs []types.Tx,
-	commit *types.Commit,
-	evidence []types.Evidence,
+	txs []mempool.Tx,
+	commit *metadata.Commit,
+	evidence []evidence.Evidence,
 	proposerAddress []byte,
-) (*types.Block, *types.PartSet) {
+) (*block.Block, *metadata.PartSet) {
 
 	// Build base block with block data.
-	block := types.MakeBlock(height, txs, commit, evidence)
+	block := block.MakeBlock(height, txs, commit, evidence)
 
 	// Set time.
 	var timestamp time.Time
@@ -279,14 +283,14 @@ func (state State) MakeBlock(
 		proposerAddress,
 	)
 
-	return block, block.MakePartSet(types.BlockPartSizeBytes)
+	return block, block.MakePartSet(metadata.BlockPartSizeBytes)
 }
 
 // MedianTime computes a median time for a given Commit (based on Timestamp field of votes messages) and the
 // corresponding validator set. The computed time is always between timestamps of
 // the votes sent by honest processes, i.e., a faulty processes can not arbitrarily increase or decrease the
 // computed value.
-func MedianTime(commit *types.Commit, validators *types.ValidatorSet) time.Time {
+func MedianTime(commit *metadata.Commit, validators *consensus.ValidatorSet) time.Time {
 	weightedTimes := make([]*tmtime.WeightedTime, len(commit.Signatures))
 	totalVotingPower := int64(0)
 
@@ -321,36 +325,36 @@ func MakeGenesisStateFromFile(genDocFile string) (State, error) {
 }
 
 // MakeGenesisDocFromFile reads and unmarshals genesis doc from the given file.
-func MakeGenesisDocFromFile(genDocFile string) (*types.GenesisDoc, error) {
+func MakeGenesisDocFromFile(genDocFile string) (*consensus.GenesisDoc, error) {
 	genDocJSON, err := ioutil.ReadFile(genDocFile)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't read GenesisDoc file: %v", err)
 	}
-	genDoc, err := types.GenesisDocFromJSON(genDocJSON)
+	genDoc, err := consensus.GenesisDocFromJSON(genDocJSON)
 	if err != nil {
 		return nil, fmt.Errorf("error reading GenesisDoc: %v", err)
 	}
 	return genDoc, nil
 }
 
-// MakeGenesisState creates state from types.GenesisDoc.
-func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
+// MakeGenesisState creates state from consensus.GenesisDoc.
+func MakeGenesisState(genDoc *consensus.GenesisDoc) (State, error) {
 	err := genDoc.ValidateAndComplete()
 	if err != nil {
 		return State{}, fmt.Errorf("error in genesis doc: %w", err)
 	}
 
-	var validatorSet, nextValidatorSet *types.ValidatorSet
+	var validatorSet, nextValidatorSet *consensus.ValidatorSet
 	if genDoc.Validators == nil || len(genDoc.Validators) == 0 {
-		validatorSet = types.NewValidatorSet(nil)
-		nextValidatorSet = types.NewValidatorSet(nil)
+		validatorSet = consensus.NewValidatorSet(nil)
+		nextValidatorSet = consensus.NewValidatorSet(nil)
 	} else {
-		validators := make([]*types.Validator, len(genDoc.Validators))
+		validators := make([]*consensus.Validator, len(genDoc.Validators))
 		for i, val := range genDoc.Validators {
-			validators[i] = types.NewValidator(val.PubKey, val.Power)
+			validators[i] = consensus.NewValidator(val.PubKey, val.Power)
 		}
-		validatorSet = types.NewValidatorSet(validators)
-		nextValidatorSet = types.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
+		validatorSet = consensus.NewValidatorSet(validators)
+		nextValidatorSet = consensus.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
 	}
 
 	return State{
@@ -359,12 +363,12 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		InitialHeight: genDoc.InitialHeight,
 
 		LastBlockHeight: 0,
-		LastBlockID:     types.BlockID{},
+		LastBlockID:     metadata.BlockID{},
 		LastBlockTime:   genDoc.GenesisTime,
 
 		NextValidators:              nextValidatorSet,
 		Validators:                  validatorSet,
-		LastValidators:              types.NewValidatorSet(nil),
+		LastValidators:              consensus.NewValidatorSet(nil),
 		LastHeightValidatorsChanged: genDoc.InitialHeight,
 
 		ConsensusParams:                  *genDoc.ConsensusParams,

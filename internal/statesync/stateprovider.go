@@ -15,9 +15,9 @@ import (
 	lighthttp "github.com/tendermint/tendermint/light/provider/http"
 	lightrpc "github.com/tendermint/tendermint/light/rpc"
 	lightdb "github.com/tendermint/tendermint/light/store/db"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
 )
 
 //go:generate ../../scripts/mockery_generate.sh StateProvider
@@ -28,7 +28,7 @@ type StateProvider interface {
 	// AppHash returns the app hash after the given height has been committed.
 	AppHash(ctx context.Context, height uint64) ([]byte, error)
 	// Commit returns the commit at the given height.
-	Commit(ctx context.Context, height uint64) (*types.Commit, error)
+	Commit(ctx context.Context, height uint64) (*metadata.Commit, error)
 	// State returns a state object at the given height.
 	State(ctx context.Context, height uint64) (sm.State, error)
 }
@@ -148,7 +148,7 @@ func (s *lightClientStateProvider) AppHash(ctx context.Context, height uint64) (
 }
 
 // Commit implements StateProvider.
-func (s *lightClientStateProvider) Commit(ctx context.Context, height uint64) (*types.Commit, error) {
+func (s *lightClientStateProvider) Commit(ctx context.Context, height uint64) (*metadata.Commit, error) {
 	s.Lock()
 	defer s.Unlock()
 	header, err := s.lc.VerifyLightBlockAtHeight(ctx, int64(height), time.Now())

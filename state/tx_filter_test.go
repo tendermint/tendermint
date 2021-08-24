@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/pkg/mempool"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
 )
 
 func TestTxFilter(t *testing.T) {
@@ -19,12 +19,12 @@ func TestTxFilter(t *testing.T) {
 	// Max size of Txs is much smaller than size of block,
 	// since we need to account for commits and evidence.
 	testCases := []struct {
-		tx    types.Tx
+		tx    mempool.Tx
 		isErr bool
 	}{
-		{types.Tx(tmrand.Bytes(2155)), false},
-		{types.Tx(tmrand.Bytes(2156)), true},
-		{types.Tx(tmrand.Bytes(3000)), true},
+		{mempool.Tx(tmrand.Bytes(2155)), false},
+		{mempool.Tx(tmrand.Bytes(2156)), true},
+		{mempool.Tx(tmrand.Bytes(3000)), true},
 	}
 
 	for i, tc := range testCases {

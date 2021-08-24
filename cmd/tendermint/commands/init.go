@@ -11,8 +11,9 @@ import (
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/p2p"
 	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/types"
 )
 
 // InitFilesCmd initializes a fresh Tendermint Core instance.
@@ -30,7 +31,7 @@ var (
 )
 
 func init() {
-	InitFilesCmd.Flags().StringVar(&keyType, "key", types.ABCIPubKeyTypeEd25519,
+	InitFilesCmd.Flags().StringVar(&keyType, "key", consensus.ABCIPubKeyTypeEd25519,
 		"Key type to generate privval file with. Options: ed25519, secp256k1")
 }
 
@@ -75,7 +76,7 @@ func initFilesWithConfig(config *cfg.Config) error {
 	if tmos.FileExists(nodeKeyFile) {
 		logger.Info("Found node key", "path", nodeKeyFile)
 	} else {
-		if _, err := types.LoadOrGenNodeKey(nodeKeyFile); err != nil {
+		if _, err := p2p.LoadOrGenNodeKey(nodeKeyFile); err != nil {
 			return err
 		}
 		logger.Info("Generated node key", "path", nodeKeyFile)
@@ -87,14 +88,14 @@ func initFilesWithConfig(config *cfg.Config) error {
 		logger.Info("Found genesis file", "path", genFile)
 	} else {
 
-		genDoc := types.GenesisDoc{
+		genDoc := consensus.GenesisDoc{
 			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
 			GenesisTime:     tmtime.Now(),
-			ConsensusParams: types.DefaultConsensusParams(),
+			ConsensusParams: consensus.DefaultConsensusParams(),
 		}
 		if keyType == "secp256k1" {
-			genDoc.ConsensusParams.Validator = types.ValidatorParams{
-				PubKeyTypes: []string{types.ABCIPubKeyTypeSecp256k1},
+			genDoc.ConsensusParams.Validator = consensus.ValidatorParams{
+				PubKeyTypes: []string{consensus.ABCIPubKeyTypeSecp256k1},
 			}
 		}
 
@@ -107,7 +108,7 @@ func initFilesWithConfig(config *cfg.Config) error {
 			if err != nil {
 				return fmt.Errorf("can't get pubkey: %w", err)
 			}
-			genDoc.Validators = []types.GenesisValidator{{
+			genDoc.Validators = []consensus.GenesisValidator{{
 				Address: pubKey.Address(),
 				PubKey:  pubKey,
 				Power:   10,

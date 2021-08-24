@@ -7,8 +7,8 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/pkg/consensus"
 	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/types"
 )
 
 // ResetAllCmd removes the database of this Tendermint core
@@ -25,7 +25,7 @@ var keepAddrBook bool
 
 func init() {
 	ResetAllCmd.Flags().BoolVar(&keepAddrBook, "keep-addr-book", false, "keep the address book intact")
-	ResetPrivValidatorCmd.Flags().StringVar(&keyType, "key", types.ABCIPubKeyTypeEd25519,
+	ResetPrivValidatorCmd.Flags().StringVar(&keyType, "key", consensus.ABCIPubKeyTypeEd25519,
 		"Key type to generate privval file with. Options: ed25519, secp256k1")
 }
 

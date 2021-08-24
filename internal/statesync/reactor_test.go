@@ -12,19 +12,22 @@ import (
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/statesync/mocks"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light/provider"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/light"
+	"github.com/tendermint/tendermint/pkg/metadata"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	proxymocks "github.com/tendermint/tendermint/proxy/mocks"
 	smmocks "github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/store"
-	"github.com/tendermint/tendermint/types"
 )
 
 type reactorTestSuite struct {
@@ -166,7 +169,7 @@ func TestReactor_ChunkRequest_InvalidRequest(t *testing.T) {
 	rts := setup(t, nil, nil, nil, 2)
 
 	rts.chunkInCh <- p2p.Envelope{
-		From:    types.NodeID("aa"),
+		From:    p2ptypes.NodeID("aa"),
 		Message: &ssproto.SnapshotsRequest{},
 	}
 
@@ -174,7 +177,7 @@ func TestReactor_ChunkRequest_InvalidRequest(t *testing.T) {
 	require.Error(t, response.Err)
 	require.Empty(t, rts.chunkOutCh)
 	require.Contains(t, response.Err.Error(), "received unknown message")
-	require.Equal(t, types.NodeID("aa"), response.NodeID)
+	require.Equal(t, p2ptypes.NodeID("aa"), response.NodeID)
 }
 
 func TestReactor_ChunkRequest(t *testing.T) {
@@ -220,7 +223,7 @@ func TestReactor_ChunkRequest(t *testing.T) {
 			rts := setup(t, conn, nil, nil, 2)
 
 			rts.chunkInCh <- p2p.Envelope{
-				From:    types.NodeID("aa"),
+				From:    p2ptypes.NodeID("aa"),
 				Message: tc.request,
 			}
 
@@ -237,7 +240,7 @@ func TestReactor_SnapshotsRequest_InvalidRequest(t *testing.T) {
 	rts := setup(t, nil, nil, nil, 2)
 
 	rts.snapshotInCh <- p2p.Envelope{
-		From:    types.NodeID("aa"),
+		From:    p2ptypes.NodeID("aa"),
 		Message: &ssproto.ChunkRequest{},
 	}
 
@@ -245,7 +248,7 @@ func TestReactor_SnapshotsRequest_InvalidRequest(t *testing.T) {
 	require.Error(t, response.Err)
 	require.Empty(t, rts.snapshotOutCh)
 	require.Contains(t, response.Err.Error(), "received unknown message")
-	require.Equal(t, types.NodeID("aa"), response.NodeID)
+	require.Equal(t, p2ptypes.NodeID("aa"), response.NodeID)
 }
 
 func TestReactor_SnapshotsRequest(t *testing.T) {
@@ -297,7 +300,7 @@ func TestReactor_SnapshotsRequest(t *testing.T) {
 			rts := setup(t, conn, nil, nil, 100)
 
 			rts.snapshotInCh <- p2p.Envelope{
-				From:    types.NodeID("aa"),
+				From:    p2ptypes.NodeID("aa"),
 				Message: &ssproto.SnapshotsRequest{},
 			}
 
@@ -329,18 +332,18 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 		blockID, factory.DefaultTestTime)
 	require.NoError(t, err)
 
-	sh := &types.SignedHeader{
+	sh := &metadata.SignedHeader{
 		Header: h,
-		Commit: &types.Commit{
+		Commit: &metadata.Commit{
 			Height:  h.Height,
 			BlockID: blockID,
-			Signatures: []types.CommitSig{
+			Signatures: []metadata.CommitSig{
 				vote.CommitSig(),
 			},
 		},
 	}
 
-	lb := &types.LightBlock{
+	lb := &light.LightBlock{
 		SignedHeader: sh,
 		ValidatorSet: vals,
 	}
@@ -350,7 +353,7 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 	rts.stateStore.On("LoadValidators", height).Return(vals, nil)
 
 	rts.blockInCh <- p2p.Envelope{
-		From: types.NodeID("aa"),
+		From: p2ptypes.NodeID("aa"),
 		Message: &ssproto.LightBlockRequest{
 			Height: 10,
 		},
@@ -359,10 +362,10 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 
 	select {
 	case response := <-rts.blockOutCh:
-		require.Equal(t, types.NodeID("aa"), response.To)
+		require.Equal(t, p2ptypes.NodeID("aa"), response.To)
 		res, ok := response.Message.(*ssproto.LightBlockResponse)
 		require.True(t, ok)
-		receivedLB, err := types.LightBlockFromProto(res.LightBlock)
+		receivedLB, err := light.LightBlockFromProto(res.LightBlock)
 		require.NoError(t, err)
 		require.Equal(t, lb, receivedLB)
 	case <-time.After(1 * time.Second):
@@ -373,11 +376,11 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 func TestReactor_Dispatcher(t *testing.T) {
 	rts := setup(t, nil, nil, nil, 2)
 	rts.peerUpdateCh <- p2p.PeerUpdate{
-		NodeID: types.NodeID("aa"),
+		NodeID: p2ptypes.NodeID("aa"),
 		Status: p2p.PeerStatusUp,
 	}
 	rts.peerUpdateCh <- p2p.PeerUpdate{
-		NodeID: types.NodeID("bb"),
+		NodeID: p2ptypes.NodeID("bb"),
 		Status: p2p.PeerStatusUp,
 	}
 
@@ -436,14 +439,14 @@ func TestReactor_Backfill(t *testing.T) {
 			peers := []string{"a", "b", "c", "d"}
 			for _, peer := range peers {
 				rts.peerUpdateCh <- p2p.PeerUpdate{
-					NodeID: types.NodeID(peer),
+					NodeID: p2ptypes.NodeID(peer),
 					Status: p2p.PeerStatusUp,
 				}
 			}
 
 			trackingHeight := startHeight
 			rts.stateStore.On("SaveValidatorSets", mock.AnythingOfType("int64"), mock.AnythingOfType("int64"),
-				mock.AnythingOfType("*types.ValidatorSet")).Return(func(lh, uh int64, vals *types.ValidatorSet) error {
+				mock.AnythingOfType("*types.ValidatorSet")).Return(func(lh, uh int64, vals *consensus.ValidatorSet) error {
 				require.Equal(t, trackingHeight, lh)
 				require.Equal(t, lh, uh)
 				require.GreaterOrEqual(t, lh, stopHeight)
@@ -500,7 +503,7 @@ func retryUntil(t *testing.T, fn func() bool, timeout time.Duration) {
 }
 
 func handleLightBlockRequests(t *testing.T,
-	chain map[int64]*types.LightBlock,
+	chain map[int64]*light.LightBlock,
 	receiving chan p2p.Envelope,
 	sending chan p2p.Envelope,
 	close chan struct{},
@@ -550,8 +553,8 @@ func handleLightBlockRequests(t *testing.T,
 	}
 }
 
-func buildLightBlockChain(t *testing.T, fromHeight, toHeight int64, startTime time.Time) map[int64]*types.LightBlock {
-	chain := make(map[int64]*types.LightBlock, toHeight-fromHeight)
+func buildLightBlockChain(t *testing.T, fromHeight, toHeight int64, startTime time.Time) map[int64]*light.LightBlock {
+	chain := make(map[int64]*light.LightBlock, toHeight-fromHeight)
 	lastBlockID := factory.MakeBlockID()
 	blockTime := startTime.Add(-5 * time.Minute)
 	for height := fromHeight; height < toHeight; height++ {
@@ -563,8 +566,8 @@ func buildLightBlockChain(t *testing.T, fromHeight, toHeight int64, startTime ti
 }
 
 func mockLB(t *testing.T, height int64, time time.Time,
-	lastBlockID types.BlockID) *types.LightBlock {
-	header, err := factory.MakeHeader(&types.Header{
+	lastBlockID metadata.BlockID) *light.LightBlock {
+	header, err := factory.MakeHeader(&metadata.Header{
 		Height:      height,
 		LastBlockID: lastBlockID,
 		Time:        time,
@@ -573,11 +576,11 @@ func mockLB(t *testing.T, height int64, time time.Time,
 	vals, pv := factory.RandValidatorSet(3, 10)
 	header.ValidatorsHash = vals.Hash()
 	lastBlockID = factory.MakeBlockIDWithHash(header.Hash())
-	voteSet := types.NewVoteSet(factory.DefaultTestChainID, height, 0, tmproto.PrecommitType, vals)
+	voteSet := consensus.NewVoteSet(factory.DefaultTestChainID, height, 0, tmproto.PrecommitType, vals)
 	commit, err := factory.MakeCommit(lastBlockID, height, 0, voteSet, pv, time)
 	require.NoError(t, err)
-	return &types.LightBlock{
-		SignedHeader: &types.SignedHeader{
+	return &light.LightBlock{
+		SignedHeader: &metadata.SignedHeader{
 			Header: header,
 			Commit: commit,
 		},

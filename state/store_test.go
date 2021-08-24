@@ -10,15 +10,15 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/consensus"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -32,7 +32,7 @@ func TestStoreBootstrap(t *testing.T) {
 	val, _ := factory.RandValidator(true, 10)
 	val2, _ := factory.RandValidator(true, 10)
 	val3, _ := factory.RandValidator(true, 10)
-	vals := types.NewValidatorSet([]*types.Validator{val, val2, val3})
+	vals := consensus.NewValidatorSet([]*consensus.Validator{val, val2, val3})
 	bootstrapState := makeRandomStateFromValidatorSet(vals, 100, 100)
 	err := stateStore.Bootstrap(bootstrapState)
 	require.NoError(t, err)
@@ -58,7 +58,7 @@ func TestStoreLoadValidators(t *testing.T) {
 	val, _ := factory.RandValidator(true, 10)
 	val2, _ := factory.RandValidator(true, 10)
 	val3, _ := factory.RandValidator(true, 10)
-	vals := types.NewValidatorSet([]*types.Validator{val, val2, val3})
+	vals := consensus.NewValidatorSet([]*consensus.Validator{val, val2, val3})
 
 	// 1) LoadValidators loads validators using a height where they were last changed
 	// Note that only the next validators at height h + 1 are saved
@@ -142,15 +142,15 @@ func BenchmarkLoadValidators(b *testing.B) {
 func TestStoreLoadConsensusParams(t *testing.T) {
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	err := stateStore.Save(makeRandomStateFromConsensusParams(types.DefaultConsensusParams(), 1, 1))
+	err := stateStore.Save(makeRandomStateFromConsensusParams(consensus.DefaultConsensusParams(), 1, 1))
 	require.NoError(t, err)
 	params, err := stateStore.LoadConsensusParams(1)
 	require.NoError(t, err)
-	require.Equal(t, types.DefaultConsensusParams(), &params)
+	require.Equal(t, consensus.DefaultConsensusParams(), &params)
 
 	// we give the state store different params but say that the height hasn't changed, hence
 	// it should save a pointer to the params at height 1
-	differentParams := types.DefaultConsensusParams()
+	differentParams := consensus.DefaultConsensusParams()
 	differentParams.Block.MaxBytes = 20000
 	err = stateStore.Save(makeRandomStateFromConsensusParams(differentParams, 10, 1))
 	require.NoError(t, err)
@@ -189,9 +189,9 @@ func TestPruneStates(t *testing.T) {
 
 			// Generate a bunch of state data. Validators change for heights ending with 3, and
 			// parameters when ending with 5.
-			validator := &types.Validator{Address: tmrand.Bytes(crypto.AddressSize), VotingPower: 100, PubKey: pk}
-			validatorSet := &types.ValidatorSet{
-				Validators: []*types.Validator{validator},
+			validator := &consensus.Validator{Address: tmrand.Bytes(crypto.AddressSize), VotingPower: 100, PubKey: pk}
+			validatorSet := &consensus.ValidatorSet{
+				Validators: []*consensus.Validator{validator},
 				Proposer:   validator,
 			}
 			valsChanged := int64(0)
@@ -210,8 +210,8 @@ func TestPruneStates(t *testing.T) {
 					LastBlockHeight: h - 1,
 					Validators:      validatorSet,
 					NextValidators:  validatorSet,
-					ConsensusParams: types.ConsensusParams{
-						Block: types.BlockParams{MaxBytes: 10e6},
+					ConsensusParams: consensus.ConsensusParams{
+						Block: consensus.BlockParams{MaxBytes: 10e6},
 					},
 					LastHeightValidatorsChanged:      valsChanged,
 					LastHeightConsensusParamsChanged: paramsChanged,
@@ -256,7 +256,7 @@ func TestPruneStates(t *testing.T) {
 				require.NotNil(t, abci, h)
 			}
 
-			emptyParams := types.ConsensusParams{}
+			emptyParams := consensus.ConsensusParams{}
 
 			for h := tc.startHeight; h < tc.pruneHeight; h++ {
 				vals, err := stateStore.LoadValidators(h)
@@ -297,7 +297,7 @@ func TestABCIResponsesResultsHash(t *testing.T) {
 	root := sm.ABCIResponsesResultsHash(responses)
 
 	// root should be Merkle tree root of DeliverTxs responses
-	results := types.NewResults(responses.DeliverTxs)
+	results := abci.NewResults(responses.DeliverTxs)
 	assert.Equal(t, root, results.Hash())
 
 	// test we can prove first DeliverTx

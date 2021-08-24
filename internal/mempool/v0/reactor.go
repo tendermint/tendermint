@@ -15,8 +15,9 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	types "github.com/tendermint/tendermint/pkg/mempool"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 	protomem "github.com/tendermint/tendermint/proto/tendermint/mempool"
-	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -28,7 +29,7 @@ var (
 // peer information. This should eventually be replaced with a message-oriented
 // approach utilizing the p2p stack.
 type PeerManager interface {
-	GetHeight(types.NodeID) int64
+	GetHeight(p2ptypes.NodeID) int64
 }
 
 // Reactor implements a service that contains mempool of txs that are broadcasted
@@ -55,7 +56,7 @@ type Reactor struct {
 	peerWG sync.WaitGroup
 
 	mtx          tmsync.Mutex
-	peerRoutines map[types.NodeID]*tmsync.Closer
+	peerRoutines map[p2ptypes.NodeID]*tmsync.Closer
 }
 
 // NewReactor returns a reference to a new reactor.
@@ -76,7 +77,7 @@ func NewReactor(
 		mempoolCh:    mempoolCh,
 		peerUpdates:  peerUpdates,
 		closeCh:      make(chan struct{}),
-		peerRoutines: make(map[types.NodeID]*tmsync.Closer),
+		peerRoutines: make(map[p2ptypes.NodeID]*tmsync.Closer),
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Mempool", r)
@@ -305,7 +306,7 @@ func (r *Reactor) processPeerUpdates() {
 	}
 }
 
-func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer) {
+func (r *Reactor) broadcastTxRoutine(peerID p2ptypes.NodeID, closer *tmsync.Closer) {
 	peerMempoolID := r.ids.GetForPeer(peerID)
 	var next *clist.CElement
 

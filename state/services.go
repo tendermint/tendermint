@@ -1,7 +1,10 @@
 package state
 
 import (
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/pkg/block"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/evidence"
+	"github.com/tendermint/tendermint/pkg/metadata"
 )
 
 //------------------------------------------------------
@@ -20,19 +23,19 @@ type BlockStore interface {
 	Height() int64
 	Size() int64
 
-	LoadBaseMeta() *types.BlockMeta
-	LoadBlockMeta(height int64) *types.BlockMeta
-	LoadBlock(height int64) *types.Block
+	LoadBaseMeta() *block.BlockMeta
+	LoadBlockMeta(height int64) *block.BlockMeta
+	LoadBlock(height int64) *block.Block
 
-	SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit)
+	SaveBlock(block *block.Block, blockParts *metadata.PartSet, seenCommit *metadata.Commit)
 
 	PruneBlocks(height int64) (uint64, error)
 
-	LoadBlockByHash(hash []byte) *types.Block
-	LoadBlockPart(height int64, index int) *types.Part
+	LoadBlockByHash(hash []byte) *block.Block
+	LoadBlockPart(height int64, index int) *metadata.Part
 
-	LoadBlockCommit(height int64) *types.Commit
-	LoadSeenCommit() *types.Commit
+	LoadBlockCommit(height int64) *metadata.Commit
+	LoadSeenCommit() *metadata.Commit
 }
 
 //-----------------------------------------------------------------------------
@@ -42,20 +45,20 @@ type BlockStore interface {
 
 // EvidencePool defines the EvidencePool interface used by State.
 type EvidencePool interface {
-	PendingEvidence(maxBytes int64) (ev []types.Evidence, size int64)
-	AddEvidence(types.Evidence) error
-	Update(State, types.EvidenceList)
-	CheckEvidence(types.EvidenceList) error
+	PendingEvidence(maxBytes int64) (ev []evidence.Evidence, size int64)
+	AddEvidence(evidence.Evidence) error
+	Update(State, evidence.EvidenceList)
+	CheckEvidence(evidence.EvidenceList) error
 }
 
 // EmptyEvidencePool is an empty implementation of EvidencePool, useful for testing. It also complies
 // to the consensus evidence pool interface
 type EmptyEvidencePool struct{}
 
-func (EmptyEvidencePool) PendingEvidence(maxBytes int64) (ev []types.Evidence, size int64) {
+func (EmptyEvidencePool) PendingEvidence(maxBytes int64) (ev []evidence.Evidence, size int64) {
 	return nil, 0
 }
-func (EmptyEvidencePool) AddEvidence(types.Evidence) error                { return nil }
-func (EmptyEvidencePool) Update(State, types.EvidenceList)                {}
-func (EmptyEvidencePool) CheckEvidence(evList types.EvidenceList) error   { return nil }
-func (EmptyEvidencePool) ReportConflictingVotes(voteA, voteB *types.Vote) {}
+func (EmptyEvidencePool) AddEvidence(evidence.Evidence) error                 { return nil }
+func (EmptyEvidencePool) Update(State, evidence.EvidenceList)                 {}
+func (EmptyEvidencePool) CheckEvidence(evList evidence.EvidenceList) error    { return nil }
+func (EmptyEvidencePool) ReportConflictingVotes(voteA, voteB *consensus.Vote) {}

@@ -11,10 +11,11 @@ import (
 	"github.com/google/orderedcode"
 	dbm "github.com/tendermint/tm-db"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/events"
+	"github.com/tendermint/tendermint/pkg/mempool"
 	indexer "github.com/tendermint/tendermint/state/indexer"
-	"github.com/tendermint/tendermint/types"
 )
 
 var _ indexer.TxIndexer = (*TxIndex)(nil)
@@ -67,7 +68,7 @@ func (txi *TxIndex) Index(results []*abci.TxResult) error {
 	defer b.Close()
 
 	for _, result := range results {
-		hash := types.Tx(result.Tx).Hash()
+		hash := mempool.Tx(result.Tx).Hash()
 
 		// index tx by events
 		err := txi.indexEvents(result, hash, b)
@@ -110,7 +111,7 @@ func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.Ba
 			// index if `index: true` is set
 			compositeTag := fmt.Sprintf("%s.%s", event.Type, attr.Key)
 			// ensure event does not conflict with a reserved prefix key
-			if compositeTag == types.TxHashKey || compositeTag == types.TxHeightKey {
+			if compositeTag == events.TxHashKey || compositeTag == events.TxHeightKey {
 				return fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeTag)
 			}
 			if attr.GetIndex() {
@@ -240,7 +241,7 @@ hashes:
 
 func lookForHash(conditions []query.Condition) (hash []byte, ok bool, err error) {
 	for _, c := range conditions {
-		if c.CompositeKey == types.TxHashKey {
+		if c.CompositeKey == events.TxHashKey {
 			decoded, err := hex.DecodeString(c.Operand.(string))
 			return decoded, true, err
 		}
@@ -251,7 +252,7 @@ func lookForHash(conditions []query.Condition) (hash []byte, ok bool, err error)
 // lookForHeight returns a height if there is an "height=X" condition.
 func lookForHeight(conditions []query.Condition) (height int64) {
 	for _, c := range conditions {
-		if c.CompositeKey == types.TxHeightKey && c.Op == query.OpEqual {
+		if c.CompositeKey == events.TxHeightKey && c.Op == query.OpEqual {
 			return c.Operand.(int64)
 		}
 	}
@@ -507,7 +508,7 @@ iter:
 func primaryKey(hash []byte) []byte {
 	key, err := orderedcode.Append(
 		nil,
-		types.TxHashKey,
+		events.TxHashKey,
 		string(hash),
 	)
 	if err != nil {
@@ -554,7 +555,7 @@ func keyFromEvent(compositeKey string, value string, result *abci.TxResult) []by
 }
 
 func KeyFromHeight(result *abci.TxResult) []byte {
-	return secondaryKey(types.TxHeightKey, fmt.Sprintf("%d", result.Height), result.Height, result.Index)
+	return secondaryKey(events.TxHeightKey, fmt.Sprintf("%d", result.Height), result.Height, result.Index)
 }
 
 // Prefixes: these represent an initial part of the key and are used by iterators to iterate over a small

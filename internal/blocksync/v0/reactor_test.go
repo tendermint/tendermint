@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cons "github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/mempool/mock"
@@ -15,34 +14,37 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/metadata"
+	p2ptypes "github.com/tendermint/tendermint/pkg/p2p"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	sf "github.com/tendermint/tendermint/state/test/factory"
 	"github.com/tendermint/tendermint/store"
-	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tm-db"
 )
 
 type reactorTestSuite struct {
 	network *p2ptest.Network
 	logger  log.Logger
-	nodes   []types.NodeID
+	nodes   []p2ptypes.NodeID
 
-	reactors map[types.NodeID]*Reactor
-	app      map[types.NodeID]proxy.AppConns
+	reactors map[p2ptypes.NodeID]*Reactor
+	app      map[p2ptypes.NodeID]proxy.AppConns
 
-	blockchainChannels map[types.NodeID]*p2p.Channel
-	peerChans          map[types.NodeID]chan p2p.PeerUpdate
-	peerUpdates        map[types.NodeID]*p2p.PeerUpdates
+	blockchainChannels map[p2ptypes.NodeID]*p2p.Channel
+	peerChans          map[p2ptypes.NodeID]chan p2p.PeerUpdate
+	peerUpdates        map[p2ptypes.NodeID]*p2p.PeerUpdates
 
 	blockSync bool
 }
 
 func setup(
 	t *testing.T,
-	genDoc *types.GenesisDoc,
-	privVal types.PrivValidator,
+	genDoc *consensus.GenesisDoc,
+	privVal consensus.PrivValidator,
 	maxBlockHeights []int64,
 	chBuf uint,
 ) *reactorTestSuite {
@@ -55,12 +57,12 @@ func setup(
 	rts := &reactorTestSuite{
 		logger:             log.TestingLogger().With("module", "blockchain", "testCase", t.Name()),
 		network:            p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
-		nodes:              make([]types.NodeID, 0, numNodes),
-		reactors:           make(map[types.NodeID]*Reactor, numNodes),
-		app:                make(map[types.NodeID]proxy.AppConns, numNodes),
-		blockchainChannels: make(map[types.NodeID]*p2p.Channel, numNodes),
-		peerChans:          make(map[types.NodeID]chan p2p.PeerUpdate, numNodes),
-		peerUpdates:        make(map[types.NodeID]*p2p.PeerUpdates, numNodes),
+		nodes:              make([]p2ptypes.NodeID, 0, numNodes),
+		reactors:           make(map[p2ptypes.NodeID]*Reactor, numNodes),
+		app:                make(map[p2ptypes.NodeID]proxy.AppConns, numNodes),
+		blockchainChannels: make(map[p2ptypes.NodeID]*p2p.Channel, numNodes),
+		peerChans:          make(map[p2ptypes.NodeID]chan p2p.PeerUpdate, numNodes),
+		peerUpdates:        make(map[p2ptypes.NodeID]*p2p.PeerUpdates, numNodes),
 		blockSync:          true,
 	}
 
@@ -89,9 +91,9 @@ func setup(
 }
 
 func (rts *reactorTestSuite) addNode(t *testing.T,
-	nodeID types.NodeID,
-	genDoc *types.GenesisDoc,
-	privVal types.PrivValidator,
+	nodeID p2ptypes.NodeID,
+	genDoc *consensus.GenesisDoc,
+	privVal consensus.PrivValidator,
 	maxBlockHeight int64,
 ) {
 	t.Helper()
@@ -119,7 +121,7 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 	)
 
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, nil)
+		lastCommit := metadata.NewCommit(blockHeight-1, 0, metadata.BlockID{}, nil)
 
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
@@ -134,17 +136,17 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 			)
 			require.NoError(t, err)
 
-			lastCommit = types.NewCommit(
+			lastCommit = metadata.NewCommit(
 				vote.Height,
 				vote.Round,
 				lastBlockMeta.BlockID,
-				[]types.CommitSig{vote.CommitSig()},
+				[]metadata.CommitSig{vote.CommitSig()},
 			)
 		}
 
 		thisBlock := sf.MakeBlock(state, blockHeight, lastCommit)
-		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
-		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
+		thisParts := thisBlock.MakePartSet(metadata.BlockPartSizeBytes)
+		blockID := metadata.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
 		state, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		require.NoError(t, err)

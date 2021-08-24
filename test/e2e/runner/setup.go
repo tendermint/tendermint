@@ -20,9 +20,10 @@ import (
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/p2p"
 	"github.com/tendermint/tendermint/privval"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
-	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -105,7 +106,7 @@ func Setup(testnet *e2e.Testnet) error {
 			return err
 		}
 
-		err = (&types.NodeKey{PrivKey: node.NodeKey}).SaveAs(filepath.Join(nodeDir, "config", "node_key.json"))
+		err = (&p2p.NodeKey{PrivKey: node.NodeKey}).SaveAs(filepath.Join(nodeDir, "config", "node_key.json"))
 		if err != nil {
 			return err
 		}
@@ -185,24 +186,24 @@ services:
 }
 
 // MakeGenesis generates a genesis document.
-func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
-	genesis := types.GenesisDoc{
+func MakeGenesis(testnet *e2e.Testnet) (consensus.GenesisDoc, error) {
+	genesis := consensus.GenesisDoc{
 		GenesisTime:     time.Now(),
 		ChainID:         testnet.Name,
-		ConsensusParams: types.DefaultConsensusParams(),
+		ConsensusParams: consensus.DefaultConsensusParams(),
 		InitialHeight:   testnet.InitialHeight,
 	}
 	switch testnet.KeyType {
-	case "", types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1:
+	case "", consensus.ABCIPubKeyTypeEd25519, consensus.ABCIPubKeyTypeSecp256k1:
 		genesis.ConsensusParams.Validator.PubKeyTypes =
-			append(genesis.ConsensusParams.Validator.PubKeyTypes, types.ABCIPubKeyTypeSecp256k1)
+			append(genesis.ConsensusParams.Validator.PubKeyTypes, consensus.ABCIPubKeyTypeSecp256k1)
 	default:
 		return genesis, errors.New("unsupported KeyType")
 	}
 	genesis.ConsensusParams.Evidence.MaxAgeNumBlocks = e2e.EvidenceAgeHeight
 	genesis.ConsensusParams.Evidence.MaxAgeDuration = e2e.EvidenceAgeTime
 	for validator, power := range testnet.Validators {
-		genesis.Validators = append(genesis.Validators, types.GenesisValidator{
+		genesis.Validators = append(genesis.Validators, consensus.GenesisValidator{
 			Name:    validator.Name,
 			Address: validator.PrivvalKey.PubKey().Address(),
 			PubKey:  validator.PrivvalKey.PubKey(),

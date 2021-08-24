@@ -4,11 +4,14 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/internal/test/factory"
+	types "github.com/tendermint/tendermint/pkg/block"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/mempool"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
 )
 
-func MakeBlocks(n int, state *sm.State, privVal types.PrivValidator) []*types.Block {
+func MakeBlocks(n int, state *sm.State, privVal consensus.PrivValidator) []*types.Block {
 	blocks := make([]*types.Block, 0)
 
 	var (
@@ -35,7 +38,7 @@ func MakeBlocks(n int, state *sm.State, privVal types.PrivValidator) []*types.Bl
 	return blocks
 }
 
-func MakeBlock(state sm.State, height int64, c *types.Commit) *types.Block {
+func MakeBlock(state sm.State, height int64, c *metadata.Commit) *types.Block {
 	block, _ := state.MakeBlock(
 		height,
 		factory.MakeTenTxs(state.LastBlockHeight),
@@ -47,9 +50,9 @@ func MakeBlock(state sm.State, height int64, c *types.Commit) *types.Block {
 }
 
 func makeBlockAndPartSet(state sm.State, lastBlock *types.Block, lastBlockMeta *types.BlockMeta,
-	privVal types.PrivValidator, height int64) (*types.Block, *types.PartSet) {
+	privVal consensus.PrivValidator, height int64) (*types.Block, *metadata.PartSet) {
 
-	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
+	lastCommit := metadata.NewCommit(height-1, 0, metadata.BlockID{}, nil)
 	if height > 1 {
 		vote, _ := factory.MakeVote(
 			privVal,
@@ -57,9 +60,9 @@ func makeBlockAndPartSet(state sm.State, lastBlock *types.Block, lastBlockMeta *
 			1, lastBlock.Header.Height, 0, 2,
 			lastBlockMeta.BlockID,
 			time.Now())
-		lastCommit = types.NewCommit(vote.Height, vote.Round,
-			lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
+		lastCommit = metadata.NewCommit(vote.Height, vote.Round,
+			lastBlockMeta.BlockID, []metadata.CommitSig{vote.CommitSig()})
 	}
 
-	return state.MakeBlock(height, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().Address)
+	return state.MakeBlock(height, []mempool.Tx{}, lastCommit, nil, state.Validators.GetProposer().Address)
 }

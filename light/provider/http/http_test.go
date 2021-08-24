@@ -12,10 +12,10 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/light/provider"
 	lighthttp "github.com/tendermint/tendermint/light/provider/http"
+	"github.com/tendermint/tendermint/pkg/consensus"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
-	"github.com/tendermint/tendermint/types"
 )
 
 func TestNewProvider(t *testing.T) {
@@ -44,7 +44,7 @@ func TestProvider(t *testing.T) {
 	require.NoError(t, err)
 
 	rpcAddr := cfg.RPC.ListenAddress
-	genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
+	genDoc, err := consensus.GenesisDocFromFile(cfg.GenesisFile())
 	require.NoError(t, err)
 
 	chainID := genDoc.ChainID

@@ -9,12 +9,14 @@ import (
 	"reflect"
 	"time"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/pkg/abci"
+	"github.com/tendermint/tendermint/pkg/block"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/events"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
 )
 
 var crc32c = crc32.MakeTable(crc32.Castagnoli)
@@ -36,7 +38,7 @@ var crc32c = crc32.MakeTable(crc32.Castagnoli)
 // Unmarshal and apply a single message to the consensus state as if it were
 // received in receiveRoutine.  Lines that start with "#" are ignored.
 // NOTE: receiveRoutine should not be running.
-func (cs *State) readReplayMessage(msg *TimedWALMessage, newStepSub types.Subscription) error {
+func (cs *State) readReplayMessage(msg *TimedWALMessage, newStepSub events.Subscription) error {
 	// Skip meta messages which exist for demarcating boundaries.
 	if _, ok := msg.Msg.(EndHeightMessage); ok {
 		return nil
@@ -44,14 +46,14 @@ func (cs *State) readReplayMessage(msg *TimedWALMessage, newStepSub types.Subscr
 
 	// for logging
 	switch m := msg.Msg.(type) {
-	case types.EventDataRoundState:
+	case events.EventDataRoundState:
 		cs.Logger.Info("Replay: New Step", "height", m.Height, "round", m.Round, "step", m.Step)
 		// these are playback checks
 		ticker := time.After(time.Second * 2)
 		if newStepSub != nil {
 			select {
 			case stepMsg := <-newStepSub.Out():
-				m2 := stepMsg.Data().(types.EventDataRoundState)
+				m2 := stepMsg.Data().(events.EventDataRoundState)
 				if m.Height != m2.Height || m.Round != m2.Round || m.Step != m2.Step {
 					return fmt.Errorf("roundState mismatch. Got %v; Expected %v", m2, m)
 				}
@@ -202,21 +204,21 @@ type Handshaker struct {
 	stateStore   sm.Store
 	initialState sm.State
 	store        sm.BlockStore
-	eventBus     types.BlockEventPublisher
-	genDoc       *types.GenesisDoc
+	eventBus     events.BlockEventPublisher
+	genDoc       *consensus.GenesisDoc
 	logger       log.Logger
 
 	nBlocks int // number of blocks applied to the state
 }
 
 func NewHandshaker(stateStore sm.Store, state sm.State,
-	store sm.BlockStore, genDoc *types.GenesisDoc) *Handshaker {
+	store sm.BlockStore, genDoc *consensus.GenesisDoc) *Handshaker {
 
 	return &Handshaker{
 		stateStore:   stateStore,
 		initialState: state,
 		store:        store,
-		eventBus:     types.NopEventBus{},
+		eventBus:     events.NopEventBus{},
 		genDoc:       genDoc,
 		logger:       log.NewNopLogger(),
 		nBlocks:      0,
@@ -229,7 +231,7 @@ func (h *Handshaker) SetLogger(l log.Logger) {
 
 // SetEventBus - sets the event bus for publishing block related events.
 // If not called, it defaults to types.NopEventBus.
-func (h *Handshaker) SetEventBus(eventBus types.BlockEventPublisher) {
+func (h *Handshaker) SetEventBus(eventBus events.BlockEventPublisher) {
 	h.eventBus = eventBus
 }
 
@@ -302,12 +304,12 @@ func (h *Handshaker) ReplayBlocks(
 
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain.
 	if appBlockHeight == 0 {
-		validators := make([]*types.Validator, len(h.genDoc.Validators))
+		validators := make([]*consensus.Validator, len(h.genDoc.Validators))
 		for i, val := range h.genDoc.Validators {
-			validators[i] = types.NewValidator(val.PubKey, val.Power)
+			validators[i] = consensus.NewValidator(val.PubKey, val.Power)
 		}
-		validatorSet := types.NewValidatorSet(validators)
-		nextVals := types.TM2PB.ValidatorUpdates(validatorSet)
+		validatorSet := consensus.NewValidatorSet(validators)
+		nextVals := consensus.TM2PB.ValidatorUpdates(validatorSet)
 		pbParams := h.genDoc.ConsensusParams.ToProto()
 		req := abci.RequestInitChain{
 			Time:            h.genDoc.GenesisTime,
@@ -333,12 +335,12 @@ func (h *Handshaker) ReplayBlocks(
 			}
 			// If the app returned validators or consensus params, update the state.
 			if len(res.Validators) > 0 {
-				vals, err := types.PB2TM.ValidatorUpdates(res.Validators)
+				vals, err := consensus.PB2TM.ValidatorUpdates(res.Validators)
 				if err != nil {
 					return nil, err
 				}
-				state.Validators = types.NewValidatorSet(vals)
-				state.NextValidators = types.NewValidatorSet(vals).CopyIncrementProposerPriority(1)
+				state.Validators = consensus.NewValidatorSet(vals)
+				state.NextValidators = consensus.NewValidatorSet(vals).CopyIncrementProposerPriority(1)
 			} else if len(h.genDoc.Validators) == 0 {
 				// If validator set is not set in genesis and still empty after InitChain, exit.
 				return nil, fmt.Errorf("validator set is nil in genesis and still empty after InitChain")
@@ -525,13 +527,13 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	return state, nil
 }
 
-func assertAppHashEqualsOneFromBlock(appHash []byte, block *types.Block) {
-	if !bytes.Equal(appHash, block.AppHash) {
+func assertAppHashEqualsOneFromBlock(appHash []byte, b *block.Block) {
+	if !bytes.Equal(appHash, b.AppHash) {
 		panic(fmt.Sprintf(`block.AppHash does not match AppHash after replay. Got %X, expected %X.
 
 Block: %v
 `,
-			appHash, block.AppHash, block))
+			appHash, b.AppHash, b))
 	}
 }
 

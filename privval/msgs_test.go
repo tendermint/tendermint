@@ -12,23 +12,24 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/pkg/consensus"
+	"github.com/tendermint/tendermint/pkg/metadata"
 	cryptoproto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 	privproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 var stamp = time.Date(2019, 10, 13, 16, 14, 44, 0, time.UTC)
 
-func exampleVote() *types.Vote {
-	return &types.Vote{
+func exampleVote() *consensus.Vote {
+	return &consensus.Vote{
 		Type:      tmproto.SignedMsgType(1),
 		Height:    3,
 		Round:     2,
 		Timestamp: stamp,
-		BlockID: types.BlockID{
+		BlockID: metadata.BlockID{
 			Hash: tmhash.Sum([]byte("blockID_hash")),
-			PartSetHeader: types.PartSetHeader{
+			PartSetHeader: metadata.PartSetHeader{
 				Total: 1000000,
 				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
 			},
@@ -38,18 +39,18 @@ func exampleVote() *types.Vote {
 	}
 }
 
-func exampleProposal() *types.Proposal {
+func exampleProposal() *consensus.Proposal {
 
-	return &types.Proposal{
+	return &consensus.Proposal{
 		Type:      tmproto.SignedMsgType(1),
 		Height:    3,
 		Round:     2,
 		Timestamp: stamp,
 		POLRound:  2,
 		Signature: []byte("it's a signature"),
-		BlockID: types.BlockID{
+		BlockID: metadata.BlockID{
 			Hash: tmhash.Sum([]byte("blockID_hash")),
-			PartSetHeader: types.PartSetHeader{
+			PartSetHeader: metadata.PartSetHeader{
 				Total: 1000000,
 				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
 			},
