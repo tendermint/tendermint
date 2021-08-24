@@ -9,7 +9,6 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 
-	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/types"
@@ -287,7 +286,7 @@ func (state State) MakeBlock(
 // the votes sent by honest processes, i.e., a faulty processes can not arbitrarily increase or decrease the
 // computed value.
 func MedianTime(commit *types.Commit, validators *types.ValidatorSet) time.Time {
-	weightedTimes := make([]*tmtime.WeightedTime, len(commit.Signatures))
+	weightedTimes := make([]*weightedTime, len(commit.Signatures))
 	totalVotingPower := int64(0)
 
 	for i, commitSig := range commit.Signatures {
@@ -298,11 +297,11 @@ func MedianTime(commit *types.Commit, validators *types.ValidatorSet) time.Time 
 		// If there's no condition, TestValidateBlockCommit panics; not needed normally.
 		if validator != nil {
 			totalVotingPower += validator.VotingPower
-			weightedTimes[i] = tmtime.NewWeightedTime(commitSig.Timestamp, validator.VotingPower)
+			weightedTimes[i] = newWeightedTime(commitSig.Timestamp, validator.VotingPower)
 		}
 	}
 
-	return tmtime.WeightedMedian(weightedTimes, totalVotingPower)
+	return weightedMedian(weightedTimes, totalVotingPower)
 }
 
 //------------------------------------------------------------------------
