@@ -302,11 +302,11 @@ func MedianTime(commit *metadata.Commit, validators *consensus.ValidatorSet) tim
 		// If there's no condition, TestValidateBlockCommit panics; not needed normally.
 		if validator != nil {
 			totalVotingPower += validator.VotingPower
-			weightedTimes[i] = tmtime.NewWeightedTime(commitSig.Timestamp, validator.VotingPower)
+			weightedTimes[i] = newWeightedTime(commitSig.Timestamp, validator.VotingPower)
 		}
 	}
 
-	return tmtime.WeightedMedian(weightedTimes, totalVotingPower)
+	return weightedMedian(weightedTimes, totalVotingPower)
 }
 
 //------------------------------------------------------------------------
