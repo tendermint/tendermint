@@ -94,15 +94,19 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, multiplier int, siz
 
 // loadProcess processes transactions
 func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx, chSuccess chan<- types.Tx) {
-	// Each worker gets its own client to each node, which allows for some
-	// concurrency while still bounding it.
-
+	// Each worker gets its own client to each usable node, which
+	// allows for some concurrency while still bounding it.
 	clients := make([]*rpchttp.HTTP, 0, len(testnet.Nodes))
 
 	for idx := range testnet.Nodes {
+		// Construct a list of usable nodes for the creating
+		// load. Don't send load through seed nodes because
+		// they do not provide the RPC endpoints required to
+		// broadcast transaction.
 		if testnet.Nodes[idx].Mode == e2e.ModeSeed {
 			continue
 		}
+
 		client, err := testnet.Nodes[idx].Client()
 		if err != nil {
 			continue
@@ -115,6 +119,8 @@ func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx
 		panic("no clients to process load")
 	}
 
+	// Put the clients in a ring so they can be used in a
+	// round-robin fashion.
 	clientRing := ring.New(len(clients))
 	for idx := range clients {
 		clientRing.Value = clients[idx]
