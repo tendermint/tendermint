@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/ring"
 	"context"
 	"crypto/rand"
 	"errors"
@@ -95,32 +96,56 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, multiplier int, siz
 func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx, chSuccess chan<- types.Tx) {
 	// Each worker gets its own client to each node, which allows for some
 	// concurrency while still bounding it.
-	clients := map[string]*rpchttp.HTTP{}
 
-	var err error
-	for tx := range chTx {
-		node := testnet.RandomNode()
+	clients := make([]*rpchttp.HTTP, 0, len(testnet.Nodes))
 
-		client, ok := clients[node.Name]
-		if !ok {
-			client, err = node.Client()
-			if err != nil {
-				continue
-			}
-
-			// check that the node is up
-			_, err = client.Health(ctx)
-			if err != nil {
-				continue
-			}
-
-			clients[node.Name] = client
+	for idx := range testnet.Nodes {
+		if testnet.Nodes[idx].Mode == e2e.ModeSeed {
+			continue
 		}
-
-		if _, err = client.BroadcastTxSync(ctx, tx); err != nil {
+		client, err := testnet.Nodes[idx].Client()
+		if err != nil {
 			continue
 		}
 
-		chSuccess <- tx
+		clients = append(clients, client)
+	}
+
+	if len(clients) == 0 {
+		panic("no clients to process load")
+	}
+
+	clientRing := ring.New(len(clients))
+	for idx := range clients {
+		clientRing.Value = clients[idx]
+		clientRing = clientRing.Next()
+	}
+
+	var err error
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case tx := <-chTx:
+			clientRing = clientRing.Next()
+			client := clientRing.Value.(*rpchttp.HTTP)
+
+			if _, err := client.Health(ctx); err != nil {
+				continue
+			}
+
+			if _, err = client.BroadcastTxSync(ctx, tx); err != nil {
+				continue
+			}
+
+			select {
+			case chSuccess <- tx:
+				continue
+			case <-ctx.Done():
+				return
+			}
+
+		}
 	}
 }
