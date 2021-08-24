@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/mock"
@@ -79,13 +78,17 @@ func TestBlock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+
+	startedWG := &sync.WaitGroup{}
+	startedWG.Add(1)
 	go func() {
+		startedWG.Done()
 		defer wg.Done()
 		require.NoError(t, d.Run(ctx))
 	}()
 	// FIXME: used to induce context switch.
 	// Determine more deterministic method for prompting a context switch
-	time.Sleep(10 * time.Microsecond)
+	startedWG.Wait()
 	requireConnect(t, rpcConfig.ListenAddress, 20)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
@@ -125,10 +128,17 @@ func TestTxSearch(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+
+	startedWG := &sync.WaitGroup{}
+	startedWG.Add(1)
 	go func() {
+		startedWG.Done()
 		defer wg.Done()
 		require.NoError(t, d.Run(ctx))
 	}()
+	// FIXME: used to induce context switch.
+	// Determine more deterministic method for prompting a context switch
+	startedWG.Wait()
 	requireConnect(t, rpcConfig.ListenAddress, 20)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
@@ -165,10 +175,17 @@ func TestTx(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+
+	startedWG := &sync.WaitGroup{}
+	startedWG.Add(1)
 	go func() {
+		startedWG.Done()
 		defer wg.Done()
 		require.NoError(t, d.Run(ctx))
 	}()
+	// FIXME: used to induce context switch.
+	// Determine more deterministic method for prompting a context switch
+	startedWG.Wait()
 	requireConnect(t, rpcConfig.ListenAddress, 20)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
@@ -205,13 +222,17 @@ func TestConsensusParams(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+
+	startedWG := &sync.WaitGroup{}
+	startedWG.Add(1)
 	go func() {
+		startedWG.Done()
 		defer wg.Done()
 		require.NoError(t, d.Run(ctx))
 	}()
 	// FIXME: used to induce context switch.
 	// Determine more deterministic method for prompting a context switch
-	time.Sleep(10 * time.Microsecond)
+	startedWG.Wait()
 	requireConnect(t, rpcConfig.ListenAddress, 20)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
@@ -252,13 +273,17 @@ func TestBlockResults(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+
+	startedWG := &sync.WaitGroup{}
+	startedWG.Add(1)
 	go func() {
+		startedWG.Done()
 		defer wg.Done()
 		require.NoError(t, d.Run(ctx))
 	}()
 	// FIXME: used to induce context switch.
 	// Determine more deterministic method for prompting a context switch
-	time.Sleep(10 * time.Microsecond)
+	startedWG.Wait()
 	requireConnect(t, rpcConfig.ListenAddress, 20)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
@@ -294,13 +319,17 @@ func TestCommit(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+
+	startedWG := &sync.WaitGroup{}
+	startedWG.Add(1)
 	go func() {
+		startedWG.Done()
 		defer wg.Done()
 		require.NoError(t, d.Run(ctx))
 	}()
 	// FIXME: used to induce context switch.
 	// Determine more deterministic method for prompting a context switch
-	time.Sleep(10 * time.Microsecond)
+	startedWG.Wait()
 	requireConnect(t, rpcConfig.ListenAddress, 20)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
@@ -342,13 +371,17 @@ func TestBlockByHash(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+
+	startedWG := &sync.WaitGroup{}
+	startedWG.Add(1)
 	go func() {
+		startedWG.Done()
 		defer wg.Done()
 		require.NoError(t, d.Run(ctx))
 	}()
 	// FIXME: used to induce context switch.
 	// Determine more deterministic method for prompting a context switch
-	time.Sleep(10 * time.Microsecond)
+	startedWG.Wait()
 	requireConnect(t, rpcConfig.ListenAddress, 20)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
@@ -389,13 +422,17 @@ func TestBlockchain(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+
+	startedWG := &sync.WaitGroup{}
+	startedWG.Add(1)
 	go func() {
+		startedWG.Done()
 		defer wg.Done()
 		require.NoError(t, d.Run(ctx))
 	}()
 	// FIXME: used to induce context switch.
 	// Determine more deterministic method for prompting a context switch
-	time.Sleep(10 * time.Microsecond)
+	startedWG.Wait()
 	requireConnect(t, rpcConfig.ListenAddress, 20)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
@@ -436,13 +473,17 @@ func TestValidators(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+
+	startedWG := &sync.WaitGroup{}
+	startedWG.Add(1)
 	go func() {
+		startedWG.Done()
 		defer wg.Done()
 		require.NoError(t, d.Run(ctx))
 	}()
 	// FIXME: used to induce context switch.
 	// Determine more deterministic method for prompting a context switch
-	time.Sleep(10 * time.Microsecond)
+	startedWG.Wait()
 	requireConnect(t, rpcConfig.ListenAddress, 20)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
@@ -491,13 +532,17 @@ func TestBlockSearch(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+
+	startedWG := &sync.WaitGroup{}
+	startedWG.Add(1)
 	go func() {
+		startedWG.Done()
 		defer wg.Done()
 		require.NoError(t, d.Run(ctx))
 	}()
 	// FIXME: used to induce context switch.
 	// Determine more deterministic method for prompting a context switch
-	time.Sleep(10 * time.Microsecond)
+	startedWG.Wait()
 	requireConnect(t, rpcConfig.ListenAddress, 20)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
