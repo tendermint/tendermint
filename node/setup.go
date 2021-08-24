@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net"
 	"strings"
+
+	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
@@ -30,13 +32,6 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
-	blockidxkv "github.com/tendermint/tendermint/state/indexer/block/kv"
-	blockidxnull "github.com/tendermint/tendermint/state/indexer/block/null"
-	"github.com/tendermint/tendermint/state/indexer/sink/psql"
-	"github.com/tendermint/tendermint/state/txindex"
-	"github.com/tendermint/tendermint/state/txindex/kv"
-	"github.com/tendermint/tendermint/state/txindex/null"
-	"github.com/tendermint/tendermint/statesync"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
@@ -162,39 +157,14 @@ func createAndStartIndexerService(
 	dbProvider DBProvider,
 	eventBus *types.EventBus,
 	logger log.Logger,
-) (*txindex.IndexerService, txindex.TxIndexer, indexer.BlockIndexer, error) {
-	var (
-		txIndexer    txindex.TxIndexer
-		blockIndexer indexer.BlockIndexer
-	)
-
-	switch config.TxIndex.Indexer {
-	case "kv":
-		store, err := dbProvider(&DBContext{"tx_index", config})
-		if err != nil {
-			return nil, nil, nil, err
-		}
-
-		txIndexer = kv.NewTxIndex(store)
-		blockIndexer = blockidxkv.New(dbm.NewPrefixDB(store, []byte("block_events")))
-
-	case "psql":
-		if config.TxIndex.PsqlConn == "" {
-			return nil, nil, nil, errors.New(`no psql-conn is set for the "psql" indexer`)
-		}
-		es, err := psql.NewEventSink(config.TxIndex.PsqlConn, chainID)
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("creating psql indexer: %w", err)
-		}
-		txIndexer = es.TxIndexer()
-		blockIndexer = es.BlockIndexer()
-
-	default:
-		txIndexer = &null.TxIndex{}
-		blockIndexer = &blockidxnull.BlockerIndexer{}
+	chainID string,
+) (*indexer.Service, []indexer.EventSink, error) {
+	eventSinks, err := sink.EventSinksFromConfig(config, dbProvider, chainID)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	indexerService := txindex.NewIndexerService(txIndexer, blockIndexer, eventBus, false)
+	indexerService := indexer.NewIndexerService(eventSinks, eventBus)
 	indexerService.SetLogger(logger.With("module", "txindex"))
 
 	if err := indexerService.Start(); err != nil {

@@ -58,7 +58,17 @@ type peers interface {
 	Peers() p2p.IPeerSet
 }
 
-// ----------------------------------------------
+type consensusReactor interface {
+	WaitSync() bool
+	GetPeerState(peerID types.NodeID) (*consensus.PeerState, bool)
+}
+
+type peerManager interface {
+	Peers() []types.NodeID
+	Addresses(types.NodeID) []p2p.NodeAddress
+}
+
+//----------------------------------------------
 // Environment contains objects and interfaces used by the RPC. It is expected
 // to be setup once during startup.
 type Environment struct {
@@ -70,18 +80,18 @@ type Environment struct {
 	StateStore     sm.Store
 	BlockStore     sm.BlockStore
 	EvidencePool   sm.EvidencePool
-	ConsensusState Consensus
+	ConsensusState consensusState
 	P2PPeers       peers
 	P2PTransport   transport
 
 	// objects
-	PubKey           crypto.PubKey
-	GenDoc           *types.GenesisDoc // cache the genesis structure
-	TxIndexer        txindex.TxIndexer
-	BlockIndexer     indexer.BlockIndexer
-	ConsensusReactor *consensus.Reactor
-	EventBus         *types.EventBus // thread safe
-	Mempool          mempl.Mempool
+	PubKey         crypto.PubKey
+	GenDoc         *types.GenesisDoc // cache the genesis structure
+	TxIndexer      txindex.TxIndexer
+	BlockIndexer   indexer.BlockIndexer
+	ConsensusState consensusState
+	EventBus       *types.EventBus // thread safe
+	Mempool        mempl.Mempool
 
 	Logger log.Logger
 
