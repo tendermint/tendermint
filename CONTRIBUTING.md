@@ -328,7 +328,6 @@ If there were no release candidates, begin by creating a backport branch, as des
    - Bump TMVersionDefault version in  `version.go`
    - Bump P2P and block protocol versions in  `version.go`, if necessary
    - Bump ABCI protocol version in `version.go`, if necessary
-   - Add any release notes you would like to be added to the body of the release to `release_notes.md`.
 4. Open a PR with these changes against the backport branch.
 5. Once these changes are on the backport branch, push a tag with prepared release details.
    This will trigger the actual release `v0.35.0`.
@@ -355,7 +354,6 @@ To create a minor release:
    - Bump the ABCI version number, if necessary.
      (Note that ABCI follows semver, and that ABCI versions are the only versions
      which can change during minor releases, and only field additions are valid minor changes.)
-   - Add any release notes you would like to be added to the body of the release to `release_notes.md`.
 4. Open a PR with these changes that will land them back on `v0.35.x`
 5. Once this change has landed on the backport branch, make sure to pull it locally, then push a tag.
    - `git tag -a v0.35.1 -m 'Release v0.35.1'`
