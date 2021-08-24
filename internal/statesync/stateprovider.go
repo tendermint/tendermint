@@ -201,7 +201,6 @@ func rpcClient(server string) (*rpchttp.HTTP, error) {
 type stateProviderP2P struct {
 	tmsync.Mutex  // light.Client is not concurrency-safe
 	lc            *light.Client
-	dispatcher    *dispatcher
 	initialHeight int64
 	paramsSendCh  chan<- p2p.Envelope
 	paramsRecvCh  chan types.ConsensusParams
@@ -213,12 +212,11 @@ func NewP2PStateProvider(
 	ctx context.Context,
 	chainID string,
 	initialHeight int64,
-	dispatcher *dispatcher,
+	providers []lightprovider.Provider,
 	trustOptions light.TrustOptions,
 	paramsSendCh chan<- p2p.Envelope,
 	logger log.Logger,
 ) (StateProvider, error) {
-	providers := dispatcher.Providers(chainID)
 	if len(providers) < 2 {
 		return nil, fmt.Errorf("at least 2 peers are required, got %d", len(providers))
 	}
@@ -234,7 +232,6 @@ func NewP2PStateProvider(
 	return &stateProviderP2P{
 		lc:            lc,
 		initialHeight: initialHeight,
-		dispatcher:    dispatcher,
 		paramsSendCh:  paramsSendCh,
 		paramsRecvCh:  make(chan types.ConsensusParams),
 	}, nil
@@ -336,10 +333,9 @@ func (s *stateProviderP2P) State(ctx context.Context, height uint64) (sm.State, 
 	return state, nil
 }
 
-func (s *stateProviderP2P) addPeer(peer types.NodeID) {
+func (s *stateProviderP2P) addProvider(p lightprovider.Provider) {
 	if len(s.lc.Witnesses()) < 6 {
-		provider := s.dispatcher.CreateProvider(peer, s.lc.ChainID())
-		s.lc.AddProvider(provider)
+		s.lc.AddProvider(p)
 	}
 }
 

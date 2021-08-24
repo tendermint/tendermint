@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/light"
+	"github.com/tendermint/tendermint/light/provider"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -142,13 +143,14 @@ type Reactor struct {
 	paramsCh    *p2p.Channel
 	peerUpdates *p2p.PeerUpdates
 	closeCh     chan struct{}
+	peers       *peerList
+	dispatcher  *Dispatcher
 
 	// These will only be set when a state sync is in progress. It is used to feed
 	// received snapshots and chunks into the sync. And to fetch light blocks and
 	// consensus params for verification and building of tendermint state.
-	mtx        tmsync.RWMutex
-	syncer     *syncer
-	dispatcher *dispatcher
+	mtx    tmsync.RWMutex
+	syncer *syncer
 }
 
 // NewReactor returns a reference to a new state sync reactor, which implements
@@ -179,6 +181,8 @@ func NewReactor(
 		tempDir:     tempDir,
 		stateStore:  stateStore,
 		blockStore:  blockStore,
+		peers:       newPeerList(),
+		dispatcher:  NewDispatcher(blockCh.Out, lightBlockResponseTimeout),
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "StateSync", r)
@@ -215,7 +219,7 @@ func (r *Reactor) OnStart() error {
 // blocking until they all exit.
 func (r *Reactor) OnStop() {
 	// tell the dispatcher to stop sending any more requests
-	r.dispatcher.stop()
+	r.dispatcher.Stop()
 
 	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
 	// p2p Channels should execute Close().
@@ -241,11 +245,10 @@ func (r *Reactor) Sync(
 	initialHeight int64,
 ) (sm.State, error) {
 	r.mtx.Lock()
-	if r.syncer != nil || r.dispatcher != nil {
+	if r.syncer != nil {
 		r.mtx.Unlock()
 		return sm.State{}, errors.New("a state sync is already in progress")
 	}
-	r.dispatcher = newDispatcher(r.blockCh.Out, lightBlockResponseTimeout)
 	r.mtx.Unlock()
 
 	to := light.TrustOptions{
@@ -263,7 +266,13 @@ func (r *Reactor) Sync(
 		// state provider needs at least two connected peers to initialize
 		spLogger.Info("Generating P2P state provider")
 		r.waitForEnoughPeers(ctx, 2)
-		stateProvider, err = NewP2PStateProvider(ctx, chainID, initialHeight, r.dispatcher, to, r.paramsCh.Out, spLogger)
+		peers := r.peers.All()
+		providers := make([]provider.Provider, len(peers))
+		for idx, p := range peers {
+			providers[idx] = NewBlockProvider(p, chainID, r.dispatcher)
+		}
+
+		stateProvider, err = NewP2PStateProvider(ctx, chainID, initialHeight, providers, to, r.paramsCh.Out, spLogger)
 		if err != nil {
 			return sm.State{}, err
 		}
@@ -381,8 +390,9 @@ func (r *Reactor) backfill(
 			for {
 				select {
 				case height := <-queue.nextHeight():
-					r.Logger.Debug("fetching next block", "height", height)
-					lb, peer, err := r.dispatcher.LightBlock(ctxWithCancel, height)
+					peer := r.peers.Pop(ctx)
+					r.Logger.Debug("fetching next block", "height", height, "peer", peer)
+					lb, err := r.dispatcher.LightBlock(ctxWithCancel, height, peer)
 					if errors.Is(err, context.Canceled) {
 						return
 					}
@@ -404,7 +414,7 @@ func (r *Reactor) backfill(
 						queue.retry(height)
 						// As we are fetching blocks backwards, if this node doesn't have the block it likely doesn't
 						// have any prior ones, thus we remove it from the peer list.
-						r.dispatcher.removePeer(peer)
+						r.peers.Remove(peer)
 						continue
 					}
 
@@ -692,7 +702,7 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 	case *ssproto.LightBlockResponse:
 		r.Logger.Info("received light block response")
 		if r.dispatcher != nil {
-			if err := r.dispatcher.respond(msg.LightBlock, envelope.From); err != nil {
+			if err := r.dispatcher.Respond(msg.LightBlock, envelope.From); err != nil {
 				r.Logger.Error("error processing light block response", "err", err)
 			}
 		}
@@ -847,17 +857,13 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 
 	switch peerUpdate.Status {
 	case p2p.PeerStatusUp:
-		if r.dispatcher != nil {
-			r.dispatcher.addPeer(peerUpdate.NodeID)
-		}
+		r.peers.Append(peerUpdate.NodeID)
 		if r.syncer != nil {
 			r.syncer.AddPeer(peerUpdate.NodeID)
 		}
 
 	case p2p.PeerStatusDown:
-		if r.dispatcher != nil {
-			r.dispatcher.removePeer(peerUpdate.NodeID)
-		}
+		r.peers.Remove(peerUpdate.NodeID)
 		if r.syncer != nil {
 			r.syncer.RemovePeer(peerUpdate.NodeID)
 		}
@@ -960,7 +966,7 @@ func (r *Reactor) waitForEnoughPeers(ctx context.Context, numPeers int) {
 		case <-ctx.Done():
 			return
 		case <-time.After(200 * time.Millisecond):
-			if r.dispatcher.peerCount() >= numPeers {
+			if r.peers.Len() >= numPeers {
 				return
 			}
 		}

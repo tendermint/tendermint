@@ -406,10 +406,6 @@ func TestClientLargeBisectionVerification(t *testing.T) {
 	mockNode.AssertExpectations(t)
 }
 
-func TestHeightThree(t *testing.T) {
-	primary.LightBlock(context.Background(), 3)
-}
-
 func TestClientBisectionBetweenTrustedHeaders(t *testing.T) {
 	mockFullNode := mockNodeFromHeadersAndVals(headerSet, valSet)
 	c, err := light.NewClient(

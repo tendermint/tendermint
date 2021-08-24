@@ -157,7 +157,7 @@ func setup(
 	)
 
 	// override the dispatcher with one with a shorter timeout
-	rts.reactor.dispatcher = newDispatcher(rts.blockChannel.Out, 1*time.Second)
+	rts.reactor.dispatcher = NewDispatcher(rts.blockChannel.Out, 1*time.Second)
 
 	rts.syncer = newSyncer(
 		*cfg,
@@ -389,7 +389,7 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 	}
 }
 
-func TestReactor_Dispatcher(t *testing.T) {
+func TestReactor_BlockProviders(t *testing.T) {
 	rts := setup(t, nil, nil, nil, 2)
 	rts.peerUpdateCh <- p2p.PeerUpdate{
 		NodeID: types.NodeID("aa"),
@@ -406,10 +406,13 @@ func TestReactor_Dispatcher(t *testing.T) {
 	chain := buildLightBlockChain(t, 1, 10, time.Now())
 	go handleLightBlockRequests(t, chain, rts.blockOutCh, rts.blockInCh, closeCh, 0)
 
-	dispatcher := rts.reactor.dispatcher
-	providers := dispatcher.Providers(factory.DefaultTestChainID)
-	require.Len(t, providers, 2)
-	require.Equal(t, 0, dispatcher.peerCount())
+	peers := rts.reactor.peers.All()
+	require.Len(t, peers, 2)
+
+	providers := make([]provider.Provider, len(peers))
+	for idx, peer := range peers {
+		providers[idx] = NewBlockProvider(peer, factory.DefaultTestChainID, rts.reactor.dispatcher)
+	}
 
 	wg := sync.WaitGroup{}
 
@@ -436,7 +439,6 @@ func TestReactor_Dispatcher(t *testing.T) {
 		t.Fail()
 	case <-ctx.Done():
 	}
-	require.Equal(t, 0, dispatcher.peerCount())
 
 }
 
@@ -464,7 +466,9 @@ func TestReactor_P2P_Provider(t *testing.T) {
 	// we now test the p2p state provider
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	lb, _, err := rts.reactor.dispatcher.LightBlock(ctx, 2)
+	peers := rts.reactor.peers.All()
+	require.Len(t, peers, 2)
+	lb, err := rts.reactor.dispatcher.LightBlock(ctx, 2, peers[0])
 	require.NoError(t, err)
 	to := light.TrustOptions{
 		Period: 24 * time.Hour,
@@ -472,7 +476,12 @@ func TestReactor_P2P_Provider(t *testing.T) {
 		Hash:   lb.Hash(),
 	}
 
-	p2pStateProvider, err := NewP2PStateProvider(ctx, "test-chain", 1, rts.reactor.dispatcher,
+	providers := make([]provider.Provider, len(peers))
+	for idx, peer := range peers {
+		providers[idx] = NewBlockProvider(peer, factory.DefaultTestChainID, rts.reactor.dispatcher)
+	}
+
+	p2pStateProvider, err := NewP2PStateProvider(ctx, "test-chain", 1, providers,
 		to, rts.reactor.paramsCh.Out, log.TestingLogger())
 	require.NoError(t, err)
 	// set the state provider else the test won't think we are state syncing

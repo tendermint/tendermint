@@ -137,9 +137,6 @@ func (s *syncer) AddPeer(peerID types.NodeID) {
 		To:      peerID,
 		Message: &ssproto.SnapshotsRequest{},
 	}
-	if stateP2Pprovider, ok := s.stateProvider.(*stateProviderP2P); ok {
-		stateP2Pprovider.addPeer(peerID)
-	}
 }
 
 // RemovePeer removes a peer from the pool.
