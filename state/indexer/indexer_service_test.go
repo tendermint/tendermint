@@ -164,19 +164,16 @@ func setupDB(t *testing.T) (*dockertest.Pool, error) {
 
 	conn := fmt.Sprintf(dsn, user, password, resource.GetPort(port+"/tcp"), dbName)
 
-	if err = pool.Retry(func() error {
-		var err error
-
-		pSink, psqldb, err = psql.NewEventSink(conn, "test-chainID")
-
+	assert.NoError(t, pool.Retry(func() error {
+		sink, err := psql.NewEventSink(conn, "test-chainID")
 		if err != nil {
 			return err
 		}
 
+		pSink = sink
+		psqldb = sink.DB()
 		return psqldb.Ping()
-	}); err != nil {
-		assert.Error(t, err)
-	}
+	}))
 
 	resetDB(t)
 

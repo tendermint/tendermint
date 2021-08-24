@@ -341,19 +341,14 @@ func setupDB(t *testing.T) (*dockertest.Pool, error) {
 
 	conn := fmt.Sprintf(dsn, user, password, resource.GetPort(port+"/tcp"), dbName)
 
-	if err = pool.Retry(func() error {
-		var err error
-
-		_, db, err = NewEventSink(conn, chainID)
-
+	require.NoError(t, pool.Retry(func() error {
+		sink, err := NewEventSink(conn, chainID)
 		if err != nil {
 			return err
 		}
-
+		db = sink.DB() // set global for test use
 		return db.Ping()
-	}); err != nil {
-		require.NoError(t, err)
-	}
+	}))
 
 	resetDB(t)
 
