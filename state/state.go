@@ -9,7 +9,6 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 
-	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/pkg/block"
 	"github.com/tendermint/tendermint/pkg/consensus"
 	"github.com/tendermint/tendermint/pkg/evidence"
@@ -291,7 +290,7 @@ func (state State) MakeBlock(
 // the votes sent by honest processes, i.e., a faulty processes can not arbitrarily increase or decrease the
 // computed value.
 func MedianTime(commit *metadata.Commit, validators *consensus.ValidatorSet) time.Time {
-	weightedTimes := make([]*tmtime.WeightedTime, len(commit.Signatures))
+	weightedTimes := make([]*weightedTime, len(commit.Signatures))
 	totalVotingPower := int64(0)
 
 	for i, commitSig := range commit.Signatures {
