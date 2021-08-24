@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/mock"
@@ -575,6 +576,8 @@ func requireConnect(t testing.TB, addr string, retries int) {
 			conn.Close()
 			return
 		}
+		//FIXME attempt to yield and let the other goroutine continue execution.
+		time.Sleep(time.Microsecond)
 	}
 	t.Fatalf("unable to connect to server %s after %d tries: %s", addr, retries, err)
 }
