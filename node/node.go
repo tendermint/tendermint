@@ -441,22 +441,23 @@ func makeNode(config *cfg.Config,
 			ProxyAppQuery:   proxyApp.Query(),
 			ProxyAppMempool: proxyApp.Mempool(),
 
-			StateStore:       stateStore,
-			BlockStore:       blockStore,
-			EvidencePool:     evPool,
-			ConsensusState:   csState,
+			StateStore:     stateStore,
+			BlockStore:     blockStore,
+			EvidencePool:   evPool,
+			ConsensusState: csState,
+
+			ConsensusReactor: csReactor,
 			BlockSyncReactor: bcReactor.(cs.BlockSyncReactor),
 
 			P2PPeers:    sw,
 			PeerManager: peerManager,
 
-			GenDoc:           genDoc,
-			EventSinks:       eventSinks,
-			ConsensusReactor: csReactor,
-			EventBus:         eventBus,
-			Mempool:          mp,
-			Logger:           logger.With("module", "rpc"),
-			Config:           *config.RPC,
+			GenDoc:     genDoc,
+			EventSinks: eventSinks,
+			EventBus:   eventBus,
+			Mempool:    mp,
+			Logger:     logger.With("module", "rpc"),
+			Config:     *config.RPC,
 		},
 	}
 
@@ -825,7 +826,7 @@ func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 		rpcserver.RegisterRPCFuncs(mux, routes, rpcLogger)
 		listener, err := rpcserver.Listen(
 			listenAddr,
-			config,
+			config.MaxOpenConnections,
 		)
 		if err != nil {
 			return nil, err
@@ -883,7 +884,7 @@ func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 		if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
 			config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
 		}
-		listener, err := rpcserver.Listen(grpcListenAddr, config)
+		listener, err := rpcserver.Listen(grpcListenAddr, config.MaxOpenConnections)
 		if err != nil {
 			return nil, err
 		}
