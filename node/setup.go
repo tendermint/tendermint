@@ -115,7 +115,7 @@ loop:
 				return nil, nil, errors.New("the psql connection settings cannot be empty")
 			}
 
-			es, _, err := psql.NewEventSink(conn, chainID)
+			es, err := psql.NewEventSink(conn, chainID)
 			if err != nil {
 				return nil, nil, err
 			}
