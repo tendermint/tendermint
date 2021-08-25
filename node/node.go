@@ -617,10 +617,8 @@ func (n *nodeImpl) OnStart() error {
 		if err = n.sw.Start(); err != nil {
 			return err
 		}
-	} else {
-		if err = n.router.Start(); err != nil {
-			return err
-		}
+	} else if err = n.router.Start(); err != nil {
+		return err
 	}
 
 	if n.config.Mode != cfg.ModeSeed {
@@ -657,10 +655,8 @@ func (n *nodeImpl) OnStart() error {
 		if err != nil {
 			return fmt.Errorf("could not dial peers from persistent-peers field: %w", err)
 		}
-	} else {
-		if err := n.pexReactor.Start(); err != nil {
-			return err
-		}
+	} else if err := n.pexReactor.Start(); err != nil {
+		return err
 	}
 
 	// Run state sync
