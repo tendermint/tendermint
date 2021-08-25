@@ -14,6 +14,8 @@ Alternatively, some advanced hash algorithm provides faster-hashing speed, it mi
 
 Some previous discussions like [#5632](https://github.com/tendermint/tendermint/issues/5631), would like to use the different hash algorithm into the Merkle tree without forking the repo. [#2186](https://github.com/tendermint/tendermint/issues/2186) and [#2187](https://github.com/tendermint/tendermint/issues/2187) would like to use a faster hash to speed up the project. 
 
+In the SDK, [blake3](https://github.com/BLAKE3-team/BLAKE3) is also being considered as a hasher option. Therefore, we can integrate `blake3` if Tendermint and the SDK want to use the same hash package, i.e. `tmhash`.
+
 ## Decision
 TBD
 
