@@ -271,7 +271,7 @@ pprof-laddr = "{{ .RPC.PprofListenAddress }}"
 [p2p]
 
 # Enable the new p2p layer.
-disable-legacy = {{ .P2P.DisableLegacy }}
+use-legacy = {{ .P2P.UseLegacy }}
 
 # Select the p2p internal queue
 queue-type = "{{ .P2P.QueueType }}"
