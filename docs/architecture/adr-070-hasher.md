@@ -1,109 +1,104 @@
 # ADR 070: hasher 
 
 ## Changelog
-
+- 25 Augest 2021: Revision (@jayt106)
 - 26 July 2021: Initial Draft (@jayt106)
 
 ## Status
-
 Proposed
 
 ## Context
+The current hashing algorithm in the Tendermint core project relies on the Go standard package [sha256](https://pkg.go.dev/crypto/sha256) and the implementation [crypto/tmhash](https://github.com/tendermint/tendermint/blob/master/crypto/tmhash/hash.go) only. The user might want to extend the hash algorithm for the different project's requirements. For example, the [ethermint](https://github.com/tharsis/ethermint) tries to bring the transaction to the Ethereum network but the transaction hash in the Ethereum world represents it in a different way [RLP hash](https://github.com/ethereum/go-ethereum/blob/92b8f28df3255c6cef9605063850d77b46146763/core/types/transaction.go#L368).
 
-The current hashing algorithm in the Tendermint core project relies on the Go standard package [sha256](https://pkg.go.dev/crypto/sha256) and the implementation [crypto/tmhash](https://github.com/tendermint/tendermint/blob/master/crypto/tmhash/hash.go) only. The user might want to extend the hash algorithm for the different project's
-requirements. For example, the [ethermint](https://github.com/tharsis/ethermint) tries to bring the transaction to the Ethereum network but the transaction hash in the Ethereum world represents it in a different way [RLP hash](https://github.com/ethereum/go-ethereum/blob/92b8f28df3255c6cef9605063850d77b46146763/core/types/transaction.go#L368).
+Alternatively, some advanced hash algorithm provides faster-hashing speed, it might increase the scalability to the project, like the mempool processing, trie processing, database data store/retrieve, and so on. For example, the supplementary Go cryptography libraries implemented [blake2b](https://pkg.go.dev/golang.org/x/crypto/blake2b) has roughly 2.25X faster than the `sha256` we mentioned above (both testing under the AVX2 supported CPU processor) [ref](https://github.com/SimonWaldherr/golang-benchmarks#hash). The [sha256-simd](https://github.com/minio/sha256-simd/) provides up to 8x faster than the `crypto/sha256` if the CPU processor supports [AVX512](https://en.wikipedia.org/wiki/AVX-512). The [xxHash](https://github.com/cespare/xxhash) has been using in [Polkadot](https://substrate.dev/docs/en/knowledgebase/advanced/cryptography#hashing-algorithms) project and it provides dramatically speed hashing can be using certain scenarios like the hash of immutable data input.
 
-Alternatively, some advanced hash algorithm provides faster-hashing speed, it might increase some scabilities to the project, like the mempool processing, trie proccessing, database data store/retrieve, and so on. For example, the supplementary Go cryptography libraries implemented [blake2b](https://pkg.go.dev/golang.org/x/crypto/blake2b) has roughly 2.25X faster than the `sha256` we mentioned above (both testing under the AVX2 supported CPU processor) [ref](https://github.com/SimonWaldherr/golang-benchmarks#hash). The [sha256-simd](https://github.com/minio/sha256-simd/) provides up to 8x faster than the `crypto/sha256` if the CPU processor supports [AVX512](https://en.wikipedia.org/wiki/AVX-512). The [xxHash](https://github.com/cespare/xxhash) has been using in [Polkadot](https://substrate.dev/docs/en/knowledgebase/advanced/cryptography#hashing-algorithms) project and it provides dramatically speed hashing can be using certain scenarios like the hash of immutable data input.
+Some previous discussions like [#5632](https://github.com/tendermint/tendermint/issues/5631), would like to use the different hash algorithm into the Merkle tree without forking the repo. [#2186](https://github.com/tendermint/tendermint/issues/2186) and [#2187](https://github.com/tendermint/tendermint/issues/2187) would like to use a faster hash to speed up the project. 
 
 ## Decision
 TBD
 
 ## Detailed Design
+To tackle these issues, we can separate into two directions: configurable global hasher, and the custom transaction hash with `hasher` injection.
 
-### The new hashing struct
-Introduce `Hasher` interface to inherit [hash.Hash](https://pkg.go.dev/hash#Hash) and extend it with the current Tendermint core existing functions. The `Hasher` implementation is required in each supporting hash algorithm.
+### Configuable global Hashers
+Some of the components like: `merkle`, `evidence`, `tx`, and `maps` in SDK rely on the `tmhash.Sum()`, we would like to propose using configurable global Hashers instead of it. The `Hashers` provides a container that can store the different hash algorithms. Therefore, developers can assign the `custom hasher` before running the services. 
 
 ```go
 package tmhash
 
-type Hasher interface {
-    hash.Hash
-    SumTruncated(bz []byte) []byte
-}
-```
-
-We would like to define the HashType for using in the later struct.
-```go
 type HashType string
 const (
     SHA256 HashType = "sha256"
     BLAKE2B HashType = "blake2b"
-    CUSTOM HashType = "custom"
     // SHA256_SIMD HashType = "sha256_simd"
-    // other hash type if the TM core want to support
+    // other hash type if the Tendermint would like to support by default
 )
 
-```
+// A globle hashers
+var Hashers *HasherContainer
 
-The `HasherContainer` provide a container to keep the different `Hasher` instance base on the information
-provides when construcing the node.
-
-```go
 type HasherContainer struct {
-    hasherMap map[HashType]Hasher
-    RegisterType(HashType) error
-    GetHasher(HashType) (Hasher, error)
+	mainHasher HashType // it indicates which hasher is mainly using in the tendermint components.
+	hasherMap  map[HashType]hash.Hash
 }
 
-func (hc HasherContainer) RegisterType(ht HashType, customHasher Hasher) error {
-    switch ht {
-        case string(tmHash.SHA256):
-            hasherMap[ht] := sha256.New()
-            return nil
-        case string(tmHash.BLAKE2B):
-            hasherMap[ht] := blake2b.New()
-            return nil
-        case string(tmHash.CUSTOM):
-            hasherMap[ht] := customhash.New(customHasher)
-            return nil
-        default:
-            return errors.New("register an invalid hash type %w", ht) 
+func init() {
+	Hashers = initContainer()
+}
+
+func initContainer() *HasherContainer {
+	hc := &HasherContainer{
+		hasherMap: map[HashType]hash.Hash{}}
+
+    // during the hashers initialization, it will adds all hasher have been integreted in 
+    // Tendermint crypto library by default. And the mainHasher will be sha256 by default.    
+	hc.RegisterHasher(SHA256, sha256.New(), true)
+	hc.RegisterHasher(BLAKE2B, blake2b.New(), false)
+
+	return hc
+}
+
+// develop can register the custom hasher into the hashers and set it to the main uses.
+func (hc *HasherContainer) RegisterHasher(ht HashType, hasher hash.Hash, isMain bool) {
+	hc.hasherMap[ht] = hasher
+	if isMain {
+		hc.mainHasher = ht
+	}
+}
+
+func (hc *HasherContainer) MainHasher() hash.Hash {
+	return hc.hasherMap[hc.mainHasher]
+}
+
+func (hc *HasherContainer) MainHashType() HashType {
+	return hc.mainHasher
+}
+
+func (hc *HasherContainer) Hasher(ht HashType) hash.Hash {
+	return hc.hasherMap[ht]
+}
+
+func (hc *HasherContainer) SetMainHashType(ht HashType) error {
+    if hc.hasherMap[ht] == nil {
+        return err
     }
-}
 
-func (hc HasherContainer) GetHasher(ht HashType) Hasher {
-    return hc.hasherMap[ht]
+	return nil
 }
-
 ```
 
-### Customizable hashing
-Because of we introduce a customize HashType - `CUSTOM`. The developer will need to implement their customize hasher and register it into the `HasherContainer` by calling `RegisterType(CUSTOM, customHasher)`
+### Custom transaction hash
+The developer might want to use the custom hasher for fulfilling the special requirement, like #6539.
+We would like to implement another `tx.Hash()` in `types/tx.go` function to allow the custom hasher injection when calculates the transaction hash. Therefore, the project construct on top of Tendermint can call this function directly without any changes.
 
 ```go
-package tmhash
-
-type CustomHash struct {
-    hasher tmHash.Hasher
+func (tx TX) Hash(hasher hash.Hash) []byte {
+    return hasher.Sum(tx)
 }
-
-var _ tmHash.Hasher = (*CustomHash)(nil)
-
-func New(hr tmhash.Hasher) tmhash.Hasher {
-    return &CustomHash{hasher: hr}
-}
-
-func (ch *CustomHash) SumTruncated(bz []byte) []byte {
-	return ch.hasher.SumTruncated(bz)
-}
-
-// other implementation for the hash.Hash functions
-...
-``` 
+```
 
 ### Chain parameter settings
-The hash algorithm is part of the consensus parameters. Therefore, we need to add
-new object `hash` into `genesis.json`. There are 2 objects in the `hash` object. `types` will be the hash algorithm be used in the hasher; The `custom_tx_hash_enable` allows the transaction to return its hash using custom hasher. The default value of `types` will be `sha256` and `custom_tx_hash_enable` will be `false` For compatibility, the current `genesis.json` without object `hash` settings will be using the default value above.
+For the project built on top of Tendermint can use `Hashers.RegisterHasher` to change the main hasher it would like to use. For Tendermint itself, it requires a chain parameter to indicate which hasher should be used in the service when the beginning. Therefore, we need to add a `hasher` param into the `genesis.json`.
 
 ```json
 {   "chain_id": "tm-chain",
@@ -113,34 +108,34 @@ new object `hash` into `genesis.json`. There are 2 objects in the `hash` object.
         "evidence": {...},
         "validator": {...},
         "version": {...},
-        "hash": {
-            "types": "sha256",
-            "custom_tx_hash_enable": "true"
-        }
     },
+    ...
+    "hasher" : "sha256",
     ...
 }
 ```
 
 ### Implementation steps
-1. Implement `Hasher`, `HashType`, `HasherContainer`, and `CustomHash` into `tmhash` package.
-2. Initialize the `HasherContainer` in the node constructor. Might require passing the hasher to the reactors.
-3. Replace the hard-coded tmhash function call using `HasherContainer.GetHasher(SHA256)`.
-4. Mock custom hasher and test it.
-5. Add new objects into the genesis file, register `Hasher` base on settings, and implement the custom transaction hash.
-
+1. Adds `tx.Hash(h hash.Hash)` function in `types/tx.go`, can be a small PR and benefit issue #6539.
+2. Decides which hasher should be integrated by default.
+3. Implements configurable global Hashers.
+4. Replaces the hard-coded tmhash call like `tmhash.Sum()` with `tmhash.Hashers.MainHasher().Sum()`
 
 ### Positive
-- Support multiple hash algorithms could improve the project scalability.
-- Provide the customizable hash algorithm ability for the different projects need.
+- Supports multiple hash algorithms that could improve the project scalability.
+- Provides the customizable hash algorithm ability for the different projects need.
 - The Hasher interface lowers the difficulty to integrate the new hash algorithm in the future. 
 
 ### Negative
-- More settings when constructing node service.
+- Must be careful when calling `RegisterHasher` and `SetMainHashType`, it will change the hash behavior of the whole project. Only calling it when constructing the services.
 - Consensus breaks if switching the hash algorithm in the existing network.
 
 ### Neutral
+- if we keep the original tmhash function like `tmhash.Sum()`, it's not a breaking change to the project built on top of Tendermint.
 
 ## References
-
-- https://github.com/tendermint/tendermint/issues/6539
+- modular transaction hashing https://github.com/tendermint/tendermint/issues/6539
+- crypto: Switch tmhash to AVX2 sped up SHA2 https://github.com/tendermint/tendermint/issues/2186
+- Make the tree to merkelize Txs pluggable or at least the underlying hash https://github.com/tendermint/tendermint/issues/5631
+- mempool cache: use a fast hash https://github.com/tendermint/tendermint/issues/2187
+- proposal: Genesis Params https://github.com/tendermint/tendermint/issues/6814
