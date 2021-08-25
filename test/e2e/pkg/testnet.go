@@ -417,16 +417,6 @@ func (t Testnet) ArchiveNodes() []*Node {
 	return nodes
 }
 
-// RandomNode returns a random non-seed node.
-func (t Testnet) RandomNode() *Node {
-	for {
-		node := t.Nodes[rand.Intn(len(t.Nodes))]
-		if node.Mode != ModeSeed {
-			return node
-		}
-	}
-}
-
 // IPv6 returns true if the testnet is an IPv6 network.
 func (t Testnet) IPv6() bool {
 	return t.IP.IP.To4() == nil
