@@ -16,8 +16,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var _ indexer.EventSink = (*EventSink)(nil)
-
 const (
 	TableEventBlock = "block_events"
 	TableEventTx    = "tx_events"

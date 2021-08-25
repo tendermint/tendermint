@@ -23,6 +23,9 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// Verify that the type satisfies the EventSink interface.
+var _ indexer.EventSink = (*EventSink)(nil)
+
 var db *sql.DB
 var resource *dockertest.Resource
 var chainID = "test-chainID"
