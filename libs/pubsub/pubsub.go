@@ -507,7 +507,10 @@ func (state *state) send(msg interface{}, events []types.Event) error {
 			for clientID, subscription := range clientSubscriptions {
 				if cap(subscription.out) == 0 {
 					// block on unbuffered channel
-					subscription.out <- NewMessage(subscription.id, msg, events)
+					select {
+					case subscription.out <- NewMessage(subscription.id, msg, events):
+					case <-subscription.canceled:
+					}
 				} else {
 					// don't block on buffered channels
 					select {
