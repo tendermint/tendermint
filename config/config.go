@@ -694,7 +694,7 @@ type P2PConfig struct { //nolint: maligned
 	// Force dial to fail
 	TestDialFail bool `mapstructure:"test-dial-fail"`
 
-	// UsesLegacy is used mostly for testing to enable or disable the legacy
+	// UseLegacy is used mostly for testing to enable or disable the legacy
 	// P2P stack.
 	UseLegacy bool `mapstructure:"use-legacy"`
 
