@@ -90,8 +90,7 @@ func (hc *HasherContainer) SetMainHashType(ht HashType) error {
 ```
 
 ### Custom transaction hash
-The developer might want to use the custom hasher for fulfilling the special requirement, like #6539.
-We would like to implement another `tx.Hash()` in `types/tx.go` function to allow the custom hasher injection when calculates the transaction hash. Therefore, the project construct on top of Tendermint can call this function directly without any changes.
+The developer might want to use the custom hasher for fulfilling the special requirement, like [#6539](https://github.com/tendermint/tendermint/issues/6539). We would like to implement another `tx.Hash()` in `types/tx.go` function to allow the custom hasher injection when calculates the transaction hash. Therefore, the project construct on top of Tendermint can call this function directly without any changes.
 
 ```go
 func (tx TX) Hash(hasher hash.Hash) []byte {
@@ -118,7 +117,7 @@ For the project built on top of Tendermint can use `Hashers.RegisterHasher` to c
 ```
 
 ### Implementation steps
-1. Adds `tx.Hash(h hash.Hash)` function in `types/tx.go`, can be a small PR and benefit issue #6539.
+1. Adds `tx.Hash(h hash.Hash)` function in `types/tx.go`, can be a small PR and benefit [#6539](https://github.com/tendermint/tendermint/issues/6539).
 2. Decides which hasher should be integrated by default.
 3. Implements configurable global Hashers.
 4. Replaces the hard-coded tmhash call like `tmhash.Sum()` with `tmhash.Hashers.MainHasher().Sum()`
@@ -133,11 +132,11 @@ For the project built on top of Tendermint can use `Hashers.RegisterHasher` to c
 - Consensus breaks if switching the hash algorithm in the existing network.
 
 ### Neutral
-- if we keep the original tmhash function like `tmhash.Sum()`, it's not a breaking change to the project built on top of Tendermint.
+- If we keep the original tmhash function like `tmhash.Sum()`, it's not a breaking change to the project built on top of Tendermint.
 
 ## References
-- modular transaction hashing https://github.com/tendermint/tendermint/issues/6539
-- crypto: Switch tmhash to AVX2 sped up SHA2 https://github.com/tendermint/tendermint/issues/2186
-- Make the tree to merkelize Txs pluggable or at least the underlying hash https://github.com/tendermint/tendermint/issues/5631
-- mempool cache: use a fast hash https://github.com/tendermint/tendermint/issues/2187
-- proposal: Genesis Params https://github.com/tendermint/tendermint/issues/6814
+- [modular transaction hashing](https://github.com/tendermint/tendermint/issues/6539)
+- [crypto: Switch tmhash to AVX2 sped up SHA2](https://github.com/tendermint/tendermint/issues/2186)
+- [Make the tree to merkelize Txs pluggable or at least the underlying hash](https://github.com/tendermint/tendermint/issues/5631)
+- [mempool cache: use a fast hash](https://github.com/tendermint/tendermint/issues/2187)
+- [proposal: Genesis Params](https://github.com/tendermint/tendermint/issues/6814)
