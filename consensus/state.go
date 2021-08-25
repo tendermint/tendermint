@@ -866,8 +866,8 @@ func (cs *State) handleMsg(mi msgInfo) {
 			"height", cs.Height,
 			"round", cs.Round,
 			"peer", peerID,
+			"msg_type", fmt.Sprintf("%T", msg),
 			"err", err,
-			"msg", msg,
 		)
 	}
 }
