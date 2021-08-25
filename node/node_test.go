@@ -43,6 +43,7 @@ import (
 
 func TestNodeStartStop(t *testing.T) {
 	config := cfg.ResetTestRoot("node_node_test")
+
 	defer os.RemoveAll(config.RootDir)
 
 	// create & start node
@@ -52,8 +53,6 @@ func TestNodeStartStop(t *testing.T) {
 
 	n, ok := ns.(*nodeImpl)
 	require.True(t, ok)
-
-	t.Logf("Started node %v", n.sw.NodeInfo())
 
 	// wait for the node to produce a block
 	blocksSub, err := n.EventBus().Subscribe(context.Background(), "node_test", types.EventQueryNewBlock)
