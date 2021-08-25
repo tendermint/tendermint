@@ -11,22 +11,21 @@ Changelog
 Abstract
 --------
 
-This document discusses the future peer network management in tendermint, with
-a particular focus on features, semantics, and the associated roadmap, with
-particular attention to the consider libp2p as a tool kit for implementing
-some fundamentals.
+This document discusses the future of peer network management in tendermint, with
+a particular focus on features, semantics, and a proposed roadmap.
+Specifically, we consider libp2p as a tool kit for implementing some fundamentals.
 
 Background
 ----------
 
 For the 0.35 release cycle the switching/routing layer of tendermint was
-replaced. This work was done "in place," and produced version of tendermint
-that was backwards compatible and interoperable with previous versions of the
+replaced. This work was done "in place," and produced a version of tendermint
+that was backward-compatible and interoperable with previous versions of the
 software. While there are new p2p/peer management constructs in the new
 version (e.g. ``PeerManager`` and ``Router``), the main effect of this change
 was to simplify the ways that the components within tendermint interacted with
-the peer management layer, and to make it possible for higher level concepts,
-the reactors, to exist (and be tested!) more independently.
+the peer management layer, and to make it possible for higher-level components
+(specifically the reactors), to be used and tested more independently.
 
 This refactoring, which was a major undertaking, was entirely necessary to
 enable areas for future development and iteration on this aspect of
@@ -36,12 +35,14 @@ compression, improved resilience to network partitions. Additionally,
 improvements to the p2p system can enable simplification and general
 improvement.
 
-Critique of Current Peer Infrastructure
+Critique of Current Peer-to-Peer Infrastructure
 ---------------------------------------
 
-The current (new) P2P stack is an improvement on the previous iteration
+The current (refactored) P2P stack is an improvement on the previous iteration
 (legacy), but as of 0.35, there remains room for improvement in the design and
-implementation of the P2P layer. The current system is 
+implementation of the P2P layer. 
+
+Some limitations of the current stack include:
 
 - new p2p, and relies on convention (rather than the compiler) to enforce the
   calling conventions and API boundaries.
@@ -54,7 +55,7 @@ implementation of the P2P layer. The current system is
   users with more control.
 
 - heavy reliance on buffering to avoid backups in the flow of components,
-  which is fragile to maintain and can lead to unexpected memory useage
+  which is fragile to maintain and can lead to unexpected memory usage
   patterns and forces the routing layer to make decisions about when messages
   should be discarded. 
   
@@ -93,7 +94,7 @@ Internal Message Passing
 
 Currently, there's no provision for intranode communication using the P2P
 layer, which means when two reactors need to interact with each other they
-have to have dependencies on eachother's interfaces, and
+have to have dependencies on each other's interfaces, and
 initialization. Changing these interactions (e.g. transitions between
 blocksync and consensus) from procedure calls to message passing.
 
@@ -129,19 +130,19 @@ parameters to control quality of service:
   
 - priorities for channels
 
-- queue implementation details for droping stale or oversided messages. 
+- queue implementation details for shedding load.
 
 These end up being quite coarse controls, and changing the settings are
 difficult because as the queues and channels are able to buffer large numbers
 of messages it can be hard to see the impact of a given change, particularly
-in our extant test environment. In general, we should endeavor: 
+in our extant test environment. In general, we should endeavor to: 
 
 - set real timeouts, via contexts, on most message send operations, so that
   senders rather than queues can be responsible for timeout
   logic. Additionally, this will make it possible to avoid sending messages
   during shutdown.
   
-- reduce (to the greatest extent possible,) the amount of buffering in
+- reduce (to the greatest extent possible) the amount of buffering in
   channels and the queues, to more readily surface backpressure and reduce the
   potential for buildup of stale messages.
 
@@ -175,7 +176,7 @@ bottle neck and makes it harder to test and verify components of the system.
 
 In addition to peer's identity and connection information, peers should be
 able to advertise a number of services or capabilities, and node operators or
-develpoers should be able to specify peer topology requirements (e.g. target
+developers should be able to specify peer topology requirements (e.g. target
 at least <x>-percent of peers with <y> capability.)  
 
 These capabilities may be useful in selecting peers to send messages to, it
