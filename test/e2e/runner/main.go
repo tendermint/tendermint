@@ -169,11 +169,20 @@ func NewCLI() *CLI {
 	})
 
 	cli.root.AddCommand(&cobra.Command{
+		Use:   "pause",
+		Short: "Pauses the Docker testnet",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			logger.Info("Pausing testnet")
+			return execCompose(cli.testnet.Dir, "pause")
+		},
+	})
+
+	cli.root.AddCommand(&cobra.Command{
 		Use:   "resume",
 		Short: "Resumes the Docker testnet",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			logger.Info("Resuming testnet")
-			return execCompose(cli.testnet.Dir, "up")
+			return execCompose(cli.testnet.Dir, "unpause")
 		},
 	})
 

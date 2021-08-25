@@ -333,12 +333,16 @@ func (s *stateProviderP2P) State(ctx context.Context, height uint64) (sm.State, 
 	return state, nil
 }
 
+// addProvider dynamically adds a peer as a new witness. A limit of 6 providers is kept as a 
+// heuristic. Too many overburdens the network and too little compromises the second layer of security.
 func (s *stateProviderP2P) addProvider(p lightprovider.Provider) {
 	if len(s.lc.Witnesses()) < 6 {
 		s.lc.AddProvider(p)
 	}
 }
 
+// consensusParams sends out a request for consensus params blocking until one is returned.
+// If it fails to get a valid set of consensus params from any of the providers it returns an error.
 func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (types.ConsensusParams, error) {
 	providers := s.lc.Witnesses()
 	for _, provider := range providers {

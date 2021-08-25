@@ -3,10 +3,8 @@ package statesync
 import (
 	"testing"
 
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/internal/statesync/mocks"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -39,13 +37,10 @@ func TestSnapshot_Key(t *testing.T) {
 }
 
 func TestSnapshotPool_Add(t *testing.T) {
-	stateProvider := &mocks.StateProvider{}
-	stateProvider.On("AppHash", mock.Anything, uint64(1)).Return([]byte("app_hash"), nil)
-
 	peerID := types.NodeID("aa")
 
 	// Adding to the pool should work
-	pool := newSnapshotPool(stateProvider)
+	pool := newSnapshotPool()
 	added, err := pool.Add(peerID, &snapshot{
 		Height: 1,
 		Format: 1,
@@ -66,18 +61,12 @@ func TestSnapshotPool_Add(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, added)
 
-	// The pool should have populated the snapshot with the trusted app hash
 	snapshot := pool.Best()
 	require.NotNil(t, snapshot)
-	require.Equal(t, []byte("app_hash"), snapshot.trustedAppHash)
-
-	stateProvider.AssertExpectations(t)
 }
 
 func TestSnapshotPool_GetPeer(t *testing.T) {
-	stateProvider := &mocks.StateProvider{}
-	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
-	pool := newSnapshotPool(stateProvider)
+	pool := newSnapshotPool()
 
 	s := &snapshot{Height: 1, Format: 1, Chunks: 1, Hash: []byte{1}}
 
@@ -112,9 +101,7 @@ func TestSnapshotPool_GetPeer(t *testing.T) {
 }
 
 func TestSnapshotPool_GetPeers(t *testing.T) {
-	stateProvider := &mocks.StateProvider{}
-	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
-	pool := newSnapshotPool(stateProvider)
+	pool := newSnapshotPool()
 
 	s := &snapshot{Height: 1, Format: 1, Chunks: 1, Hash: []byte{1}}
 
@@ -137,9 +124,7 @@ func TestSnapshotPool_GetPeers(t *testing.T) {
 }
 
 func TestSnapshotPool_Ranked_Best(t *testing.T) {
-	stateProvider := &mocks.StateProvider{}
-	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
-	pool := newSnapshotPool(stateProvider)
+	pool := newSnapshotPool()
 
 	// snapshots in expected order (best to worst). Highest height wins, then highest format.
 	// Snapshots with different chunk hashes are considered different, and the most peers is
@@ -182,9 +167,7 @@ func TestSnapshotPool_Ranked_Best(t *testing.T) {
 }
 
 func TestSnapshotPool_Reject(t *testing.T) {
-	stateProvider := &mocks.StateProvider{}
-	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
-	pool := newSnapshotPool(stateProvider)
+	pool := newSnapshotPool()
 
 	peerID := types.NodeID("aa")
 
@@ -212,9 +195,7 @@ func TestSnapshotPool_Reject(t *testing.T) {
 }
 
 func TestSnapshotPool_RejectFormat(t *testing.T) {
-	stateProvider := &mocks.StateProvider{}
-	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
-	pool := newSnapshotPool(stateProvider)
+	pool := newSnapshotPool()
 
 	peerID := types.NodeID("aa")
 
@@ -243,9 +224,7 @@ func TestSnapshotPool_RejectFormat(t *testing.T) {
 }
 
 func TestSnapshotPool_RejectPeer(t *testing.T) {
-	stateProvider := &mocks.StateProvider{}
-	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
-	pool := newSnapshotPool(stateProvider)
+	pool := newSnapshotPool()
 
 	peerAID := types.NodeID("aa")
 	peerBID := types.NodeID("bb")
@@ -285,9 +264,7 @@ func TestSnapshotPool_RejectPeer(t *testing.T) {
 }
 
 func TestSnapshotPool_RemovePeer(t *testing.T) {
-	stateProvider := &mocks.StateProvider{}
-	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
-	pool := newSnapshotPool(stateProvider)
+	pool := newSnapshotPool()
 
 	peerAID := types.NodeID("aa")
 	peerBID := types.NodeID("bb")

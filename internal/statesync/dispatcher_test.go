@@ -23,6 +23,7 @@ var (
 
 func TestDispatcherBasic(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
+	numPeers := 5
 
 	ch := make(chan p2p.Envelope, 100)
 	closeCh := make(chan struct{})
@@ -31,20 +32,20 @@ func TestDispatcherBasic(t *testing.T) {
 	d := NewDispatcher(ch, 1*time.Second)
 	go handleRequests(t, d, ch, closeCh)
 
-	peers := createPeerSet(5)
+	peers := createPeerSet(numPeers)
 	wg := sync.WaitGroup{}
 
 	// make a bunch of async requests and require that the correct responses are
 	// given
-	for i := 1; i < 10; i++ {
+	for i := 0; i < numPeers; i++ {
 		wg.Add(1)
 		go func(height int64) {
 			defer wg.Done()
-			lb, err := d.LightBlock(context.Background(), height, peers[i])
+			lb, err := d.LightBlock(context.Background(), height, peers[height - 1])
 			require.NoError(t, err)
 			require.NotNil(t, lb)
 			require.Equal(t, lb.Height, height)
-		}(int64(i))
+		}(int64(i + 1))
 	}
 	wg.Wait()
 
@@ -71,21 +72,6 @@ func TestDispatcherReturnsNoBlock(t *testing.T) {
 	require.Nil(t, err)
 }
 
-func TestBlockProviderTimeOutWaitingOnLightBlock(t *testing.T) {
-	t.Cleanup(leaktest.Check(t))
-	ch := make(chan p2p.Envelope, 100)
-	d := NewDispatcher(ch, 1*time.Second)
-
-	closeCh := make(chan struct{})
-	defer close(closeCh)
-	go handleRequests(t, d, ch, closeCh)
-
-	provider := NewBlockProvider(peer, "my-chain", d)
-	lb, err := provider.LightBlock(context.Background(), 1)
-	require.NoError(t, err)
-	require.NotNil(t, lb)
-}
-
 func TestDispatcherTimeOutWaitingOnLightBlock(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 	ch := make(chan p2p.Envelope, 100)
@@ -98,6 +84,21 @@ func TestDispatcherTimeOutWaitingOnLightBlock(t *testing.T) {
 
 	require.Error(t, err)
 	require.Equal(t, context.DeadlineExceeded, err)
+	require.Nil(t, lb)
+}
+
+func TestDispatcherTimeOutWaitingOnLightBlock2(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+	ch := make(chan p2p.Envelope, 100)
+	d := NewDispatcher(ch, 10*time.Millisecond)
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancelFunc()
+
+	lb, err := d.LightBlock(ctx, 1, peer)
+
+	require.Error(t, err)
+	require.Equal(t, errNoResponse, err)
 	require.Nil(t, lb)
 }
 
@@ -125,6 +126,15 @@ func TestDispatcherProviders(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, lb)
 	}
+}
+
+func TestDispatcherStopped(t *testing.T) {
+	ch := make(chan p2p.Envelope, 100)
+	d := NewDispatcher(ch, 5*time.Second)
+	d.Stop()
+
+	_, err := d.LightBlock(context.Background(), 1, peer)
+	require.Error(t, err)
 }
 
 func TestPeerListBasic(t *testing.T) {

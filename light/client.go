@@ -989,7 +989,7 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
 
-	if len(c.witnesses) <= 1 {
+	if len(c.witnesses) < 1 {
 		return nil, ErrNoWitnesses
 	}
 

@@ -19,7 +19,7 @@ import (
 	"github.com/tendermint/tendermint/internal/statesync/mocks"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/light"
+	// "github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -142,6 +142,8 @@ func setup(
 	cfg := config.DefaultStateSyncConfig()
 
 	rts.reactor = NewReactor(
+		factory.DefaultTestChainID,
+		1,
 		*cfg,
 		log.TestingLogger(),
 		conn,
@@ -442,19 +444,20 @@ func TestReactor_BlockProviders(t *testing.T) {
 
 }
 
-func TestReactor_P2P_Provider(t *testing.T) {
+func TestReactor_StateProviderP2P(t *testing.T) {
 	rts := setup(t, nil, nil, nil, 2)
-	rts.peerUpdateCh <- p2p.PeerUpdate{
-		NodeID: types.NodeID(strings.Repeat("a", 2*types.NodeIDByteLength)),
-		Status: p2p.PeerStatusUp,
-	}
-	rts.peerUpdateCh <- p2p.PeerUpdate{
-		NodeID: types.NodeID(strings.Repeat("b", 2*types.NodeIDByteLength)),
-		Status: p2p.PeerStatusUp,
-	}
-
 	// make syncer non nil else test won't think we are state syncing
 	rts.reactor.syncer = rts.syncer
+	peerA := types.NodeID(strings.Repeat("a", 2*types.NodeIDByteLength))
+	peerB := types.NodeID(strings.Repeat("b", 2*types.NodeIDByteLength))
+	rts.peerUpdateCh <- p2p.PeerUpdate{
+		NodeID: peerA,
+		Status: p2p.PeerStatusUp,
+	}
+	rts.peerUpdateCh <- p2p.PeerUpdate{
+		NodeID: peerB,
+		Status: p2p.PeerStatusUp,
+	}
 
 	closeCh := make(chan struct{})
 	defer close(closeCh)
@@ -463,42 +466,32 @@ func TestReactor_P2P_Provider(t *testing.T) {
 	go handleLightBlockRequests(t, chain, rts.blockOutCh, rts.blockInCh, closeCh, 0)
 	go handleConsensusParamsRequest(t, rts.paramsOutCh, rts.paramsInCh, closeCh)
 
-	// we now test the p2p state provider
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	peers := rts.reactor.peers.All()
-	require.Len(t, peers, 2)
-	lb, err := rts.reactor.dispatcher.LightBlock(ctx, 2, peers[0])
+	rts.reactor.cfg.UseP2P = true
+	rts.reactor.cfg.TrustHeight = 1
+	rts.reactor.cfg.TrustHash = fmt.Sprintf("%X", chain[1].Hash())
+	ctx := context.Background()
+	err := rts.reactor.initStateProvider(ctx, factory.DefaultTestChainID, 1)
 	require.NoError(t, err)
-	to := light.TrustOptions{
-		Period: 24 * time.Hour,
-		Height: lb.Height,
-		Hash:   lb.Hash(),
-	}
+	rts.reactor.syncer.stateProvider = rts.reactor.stateProvider
 
-	providers := make([]provider.Provider, len(peers))
-	for idx, peer := range peers {
-		providers[idx] = NewBlockProvider(peer, factory.DefaultTestChainID, rts.reactor.dispatcher)
-	}
-
-	p2pStateProvider, err := NewP2PStateProvider(ctx, "test-chain", 1, providers,
-		to, rts.reactor.paramsCh.Out, log.TestingLogger())
-	require.NoError(t, err)
-	// set the state provider else the test won't think we are state syncing
-	rts.reactor.syncer = rts.syncer
-	rts.syncer.stateProvider = p2pStateProvider
-
-	appHash, err := p2pStateProvider.AppHash(ctx, 5)
+	appHash, err := rts.reactor.stateProvider.AppHash(ctx, 5)
 	require.NoError(t, err)
 	require.Len(t, appHash, 32)
 
-	state, err := p2pStateProvider.State(ctx, 5)
+	state, err := rts.reactor.stateProvider.State(ctx, 5)
 	require.NoError(t, err)
 	require.Equal(t, appHash, state.AppHash)
+	require.Equal(t, types.DefaultConsensusParams(), &state.ConsensusParams)
 
-	commit, err := p2pStateProvider.Commit(ctx, 5)
+	commit, err := rts.reactor.stateProvider.Commit(ctx, 5)
 	require.NoError(t, err)
 	require.Equal(t, commit.BlockID, state.LastBlockID)
+
+	added, err := rts.reactor.syncer.AddSnapshot(peerA, &snapshot{
+		Height: 1, Format: 2, Chunks: 7, Hash: []byte{1, 2}, Metadata: []byte{1},
+	})
+	require.NoError(t, err)
+	require.True(t, added)
 }
 
 func TestReactor_Backfill(t *testing.T) {

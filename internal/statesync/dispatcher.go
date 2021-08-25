@@ -115,10 +115,13 @@ func (d *Dispatcher) dispatch(peer types.NodeID, height int64) (chan *types.Ligh
 // respond allows the underlying process which receives requests on the
 // requestCh to respond with the respective light block
 func (d *Dispatcher) Respond(lb *proto.LightBlock, peer types.NodeID) error {
-	fmt.Printf("trying to respond with light block for height %d from %v\n", lb.SignedHeader.Header.Height, peer)
+	if lb != nil {
+		fmt.Printf("trying to respond with light block for height %d from %v\n", lb.SignedHeader.Header.Height, peer)
+	} else {
+		fmt.Println("responded with empty block")
+	}
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	fmt.Printf("responding with light block for height %d from %v\n", lb.SignedHeader.Header.Height, peer)
 
 	// check that the response came from a request
 	answerCh, ok := d.calls[peer]
@@ -189,7 +192,7 @@ func (p *blockProvider) LightBlock(ctx context.Context, height int64) (*types.Li
 		return nil, provider.ErrLightBlockNotFound
 	case errNoResponse:
 		return nil, provider.ErrNoResponse
-	default:
+	default: // errDisconnected
 		return nil, provider.ErrUnreliableProvider{Reason: err.Error()}
 	}
 

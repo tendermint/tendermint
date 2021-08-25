@@ -84,7 +84,7 @@ func newSyncer(
 		stateProvider: stateProvider,
 		conn:          conn,
 		connQuery:     connQuery,
-		snapshots:     newSnapshotPool(stateProvider),
+		snapshots:     newSnapshotPool(),
 		snapshotCh:    snapshotCh,
 		chunkCh:       chunkCh,
 		tempDir:       tempDir,
@@ -118,6 +118,19 @@ func (s *syncer) AddChunk(chunk *chunk) (bool, error) {
 // AddSnapshot adds a snapshot to the snapshot pool. It returns true if a new, previously unseen
 // snapshot was accepted and added.
 func (s *syncer) AddSnapshot(peerID types.NodeID, snapshot *snapshot) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	defer cancel()
+
+	// Fetch the app hash corresponding to the snapshot
+	// TODO: We do all this computation for each and every snapshot we receive (even after
+	// attempting to fetch the chunks and restore state). We should only do this when a snapshot
+	// is selected and the actual sync begins
+	appHash, err := s.stateProvider.AppHash(ctx, snapshot.Height)
+	if err != nil {
+		return false, fmt.Errorf("failed to get app hash: %w", err)
+	}
+	snapshot.trustedAppHash = appHash
+
 	added, err := s.snapshots.Add(peerID, snapshot)
 	if err != nil {
 		return false, err
