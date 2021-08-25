@@ -13,7 +13,6 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	schema "github.com/adlio/schema"
 	proto "github.com/gogo/protobuf/proto"
-	_ "github.com/lib/pq"
 	dockertest "github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
 	"github.com/stretchr/testify/assert"
@@ -21,6 +20,9 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/types"
+
+	// Register the Postgres database driver.
+	_ "github.com/lib/pq"
 )
 
 // Verify that the type satisfies the EventSink interface.
