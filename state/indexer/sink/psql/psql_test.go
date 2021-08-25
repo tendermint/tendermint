@@ -32,7 +32,7 @@ var db *sql.DB
 var resource *dockertest.Resource
 var chainID = "test-chainID"
 
-var (
+const (
 	user     = "postgres"
 	password = "secret"
 	port     = "5432"
