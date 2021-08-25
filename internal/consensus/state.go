@@ -917,7 +917,6 @@ func (cs *State) handleMsg(mi msgInfo) {
 			"round", cs.Round,
 			"peer", peerID,
 			"err", err,
-			"msg", msg,
 		)
 	}
 }
