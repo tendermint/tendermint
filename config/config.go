@@ -694,8 +694,10 @@ type P2PConfig struct { //nolint: maligned
 	// Force dial to fail
 	TestDialFail bool `mapstructure:"test-dial-fail"`
 
-	// UseLegacy is used mostly for testing to enable or disable the legacy
-	// P2P stack.
+	// UseLegacy enables the "legacy" P2P implementation
+	// deprecated in release 0.34.x and disables the newer default
+	// implementation. This flag will be removed in a future
+	// release.
 	UseLegacy bool `mapstructure:"use-legacy"`
 
 	// Makes it possible to configure which queue backend the p2p
