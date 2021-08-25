@@ -461,6 +461,17 @@ func makeNode(config *cfg.Config,
 		},
 	}
 
+	// this is a terrible hack, because typed nil interfaces are
+	// not == nil, so this is just cleanup to avoid having a
+	// non-nil value in the RPC environment that has the semantic
+	// properties of nil.
+	if sw == nil {
+		node.rpcEnv.P2PPeers = nil
+	} else if peerManager == nil {
+		node.rpcEnv.PeerManager = nil
+	}
+	// end hack
+
 	node.rpcEnv.P2PTransport = node
 
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
