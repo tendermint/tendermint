@@ -92,7 +92,7 @@ type Node struct {
 	PersistentPeers  []*Node
 	Perturbations    []Perturbation
 	LogLevel         string
-	DisableLegacyP2P bool
+	UseLegacyP2P     bool
 	QueueType        string
 }
 
@@ -177,7 +177,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			Perturbations:    []Perturbation{},
 			LogLevel:         manifest.LogLevel,
 			QueueType:        manifest.QueueType,
-			DisableLegacyP2P: manifest.DisableLegacyP2P || nodeManifest.DisableLegacyP2P,
+			UseLegacyP2P:     manifest.UseLegacyP2P && nodeManifest.UseLegacyP2P,
 		}
 
 		if node.StartAt == testnet.InitialHeight {
