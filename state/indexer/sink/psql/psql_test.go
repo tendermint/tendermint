@@ -76,7 +76,7 @@ func TestBlockFuncs(t *testing.T) {
 	assert.Nil(t, r2)
 	assert.Equal(t, errors.New("block search is not supported via the postgres event sink"), err)
 
-	require.NoError(t, verifyTimeStamp(TableEventBlock))
+	require.NoError(t, verifyTimeStamp(tableEventBlock))
 
 	// try to insert the duplicate block events.
 	err = indexer.IndexBlockEvents(getTestBlockHeader())
@@ -103,8 +103,8 @@ func TestTxFuncs(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, txResult, tx)
 
-	require.NoError(t, verifyTimeStamp(TableEventTx))
-	require.NoError(t, verifyTimeStamp(TableResultTx))
+	require.NoError(t, verifyTimeStamp(tableEventTx))
+	require.NoError(t, verifyTimeStamp(tableResultTx))
 
 	tx, err = indexer.GetTxByHash(types.Tx(txResult.Tx).Hash())
 	assert.Nil(t, tx)
@@ -207,10 +207,10 @@ func txResultWithEvents(events []abci.Event) *abci.TxResult {
 }
 
 func verifyTx(hash []byte) (*abci.TxResult, error) {
-	join := fmt.Sprintf("%s ON %s.id = tx_result_id", TableEventTx, TableResultTx)
+	join := fmt.Sprintf("%s ON %s.id = tx_result_id", tableEventTx, tableResultTx)
 	sqlStmt := sq.
-		Select("tx_result", fmt.Sprintf("%s.id", TableResultTx), "tx_result_id", "hash", "chain_id").
-		Distinct().From(TableResultTx).
+		Select("tx_result", fmt.Sprintf("%s.id", tableResultTx), "tx_result_id", "hash", "chain_id").
+		Distinct().From(tableResultTx).
 		InnerJoin(join).
 		Where(fmt.Sprintf("hash = $1 AND chain_id = '%s'", chainID), fmt.Sprintf("%X", hash))
 
@@ -270,7 +270,7 @@ func verifyBlock(h int64) (bool, error) {
 	sqlStmt := sq.
 		Select("height").
 		Distinct().
-		From(TableEventBlock).
+		From(tableEventBlock).
 		Where(fmt.Sprintf("height = %d", h))
 	rows, err := sqlStmt.RunWith(db).Query()
 	if err != nil {
@@ -286,7 +286,7 @@ func verifyBlock(h int64) (bool, error) {
 	sqlStmt = sq.
 		Select("type, height", "chain_id").
 		Distinct().
-		From(TableEventBlock).
+		From(tableEventBlock).
 		Where(fmt.Sprintf("height = %d AND type = '%s' AND chain_id = '%s'", h, types.EventTypeBeginBlock, chainID))
 
 	rows, err = sqlStmt.RunWith(db).Query()
@@ -302,7 +302,7 @@ func verifyBlock(h int64) (bool, error) {
 	sqlStmt = sq.
 		Select("type, height").
 		Distinct().
-		From(TableEventBlock).
+		From(tableEventBlock).
 		Where(fmt.Sprintf("height = %d AND type = '%s'", h, types.EventTypeEndBlock))
 	rows, err = sqlStmt.RunWith(db).Query()
 
@@ -321,7 +321,7 @@ func setupDB(t *testing.T) (*dockertest.Pool, error) {
 	require.NoError(t, err)
 
 	resource, err = pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: DriverName,
+		Repository: driverName,
 		Tag:        "13",
 		Env: []string{
 			"POSTGRES_USER=" + user,

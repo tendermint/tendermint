@@ -17,10 +17,10 @@ import (
 )
 
 const (
-	TableEventBlock = "block_events"
-	TableEventTx    = "tx_events"
-	TableResultTx   = "tx_results"
-	DriverName      = "postgres"
+	tableEventBlock = "block_events"
+	tableEventTx    = "tx_events"
+	tableResultTx   = "tx_results"
+	driverName      = "postgres"
 )
 
 // EventSink is an indexer backend providing the tx/block index services.  This
@@ -35,7 +35,7 @@ type EventSink struct {
 // database specified by connStr. Events written to the sink are attributed to
 // the specified chainID.
 func NewEventSink(connStr, chainID string) (*EventSink, error) {
-	db, err := sql.Open(DriverName, connStr)
+	db, err := sql.Open(driverName, connStr)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (es *EventSink) Type() indexer.EventSinkType { return indexer.PSQL }
 // indexer.EventSink interface.
 func (es *EventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error {
 	sqlStmt := sq.
-		Insert(TableEventBlock).
+		Insert(tableEventBlock).
 		Columns("key", "value", "height", "type", "created_at", "chain_id").
 		PlaceholderFormat(sq.Dollar).
 		Suffix("ON CONFLICT (key,height)").
@@ -90,7 +90,7 @@ func (es *EventSink) IndexTxEvents(txr []*abci.TxResult) error {
 	// index the tx result
 	var txid uint32
 	sqlStmtTxResult := sq.
-		Insert(TableResultTx).
+		Insert(tableResultTx).
 		Columns("tx_result", "created_at").
 		PlaceholderFormat(sq.Dollar).
 		RunWith(es.store).
@@ -99,7 +99,7 @@ func (es *EventSink) IndexTxEvents(txr []*abci.TxResult) error {
 		Suffix("RETURNING \"id\"")
 
 	sqlStmtEvents := sq.
-		Insert(TableEventTx).
+		Insert(tableEventTx).
 		Columns("key", "value", "height", "hash", "tx_result_id", "created_at", "chain_id").
 		PlaceholderFormat(sq.Dollar).
 		Suffix("ON CONFLICT (key,hash)").
