@@ -11,29 +11,29 @@ Changelog
 Abstract
 --------
 
-This document discusses the future of peer network management in tendermint, with
+This document discusses the future of peer network management in Tendermint, with
 a particular focus on features, semantics, and a proposed roadmap.
 Specifically, we consider libp2p as a tool kit for implementing some fundamentals.
 
 Background
 ----------
 
-For the 0.35 release cycle the switching/routing layer of tendermint was
-replaced. This work was done "in place," and produced a version of tendermint
+For the 0.35 release cycle the switching/routing layer of Tendermint was
+replaced. This work was done "in place," and produced a version of Tendermint
 that was backward-compatible and interoperable with previous versions of the
 software. While there are new p2p/peer management constructs in the new
 version (e.g. ``PeerManager`` and ``Router``), the main effect of this change
-was to simplify the ways that the components within tendermint interacted with
+was to simplify the ways that other components within Tendermint interacted with
 the peer management layer, and to make it possible for higher-level components
 (specifically the reactors), to be used and tested more independently.
 
 This refactoring, which was a major undertaking, was entirely necessary to
 enable areas for future development and iteration on this aspect of
-tendermint. There are also a number of potential user-facing features that
+Tendermint. There are also a number of potential user-facing features that
 depend heavily on the p2p layer: additional transport protocols, transport
-compression, improved resilience to network partitions. Additionally,
-improvements to the p2p system can enable simplification and general
-improvement.
+compression, improved resilience to network partitions. These improvements to
+modularity, stability, and reliability of the p2p system will also make
+ongoing maintenance and feature development easier in the rest of Tendermint.
 
 Critique of Current Peer-to-Peer Infrastructure
 ---------------------------------------
@@ -44,50 +44,42 @@ implementation of the P2P layer.
 
 Some limitations of the current stack include:
 
-- new p2p, and relies on convention (rather than the compiler) to enforce the
-  calling conventions and API boundaries.
+- the current p2p stack relies on convention (rather than the compiler) to
+  enforce the API boundaries and conventions between reactors and the router,
+  making it very easy to write "wrong" reactor code or introduce a bad
+  dependency.
 
-- current system is probably more complex and difficult to maintain because
-  the legacy system must coexist with the new components in 0.35. 
+- the current stack is probably more complex and difficult to maintain because
+  the legacy system must coexist with the new components in 0.35. When the
+  legacy stack is removed there are some simple changes that will become
+  possible and could reduce the complexity of the new system.
 
-- current stack is pretty opaque and could be improved by expanding the amount
-  observability provided to users. In many respects the legacy system provided
-  users with more control.
+- the current stack encapsulates a lot of information about peers, and makes it
+  difficult to expose that information to monitoring/observability tools. This
+  general opacity also makes it difficult to interact with the peer system
+  from other areas of the code base (e.g. tests, reactors).
+  
+- the legacy stack provided some control to operators to force the system to
+  dial new peers or seed nodes or manipulate the topology of the system _in
+  stiu_. The current stack can't easily provide this, and while the new stack
+  may have better behavior, it does leave operators hands tied.
 
 - heavy reliance on buffering to avoid backups in the flow of components,
   which is fragile to maintain and can lead to unexpected memory usage
   patterns and forces the routing layer to make decisions about when messages
   should be discarded. 
   
-While some of these issues will be resolved early in the 0.36 cycle, with the
-removal of the legacy componets. It's also the case that the transport
-implementation will be able to change at some point during the 0.36 cycle, as
-this release is not expected to be wire-compatible with previous
-releases.
+Some of these issues will be resolved early in the 0.36 cycle, with the
+removal of the legacy componets.
+
+The 0.36 release also provides the opportunity to make changes to the
+protocol, as the release will not be compatible with previous releases.
 
 Areas for Development
 ---------------------
 
 These section describe features that may make sense to include in a Phase 2 of
 a P2P project.
-
-Synchronous Semantics (Paired Request/Response)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-In the current system, all messages are sent with fire-and-forget semantics,
-and there's no coupling between a request sent via the p2p layer, and a
-response. For some interactions, like gossiping transactions between the
-mempools of different nodes, this is ideal, but for other operations the
-missing link between requests/responses it lead to either inefficiency (as in
-statesync) particularly when a node fails to respond or becomes unavailable,
-or code that is just difficult to follow.
-
-To support this kind of work, the protocol would need to accommodate some kind
-of request/response ID to allow identifying out-of-order responses over a
-single connection. Additionally, expanded the programming model of the
-``p2p.Channel`` to accommodate some kind of _future_ or similar paradigm to
-make it viable to write reactor code without needing for the reactor developer
-to wrestle with lower level concurency constructs.
 
 Internal Message Passing
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -109,12 +101,35 @@ components:
   
 Adding these semantics, particularly if in conjunction with synchronous
 semantics provides a solution to dependency graph problems currently present
-in the tendermint codebase, which will simplify development, make it possible
+in the Tendermint codebase, which will simplify development, make it possible
 to isolate components for testing. 
 
-Eventually, this will also make it possible to have a logical tendermint node
+Eventually, this will also make it possible to have a logical Tendermint node
 running in multiple processes or in a collection of containers, although the
 usecase of this may be debatable.
+
+Synchronous Semantics (Paired Request/Response)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In the current system, all messages are sent with fire-and-forget semantics,
+and there's no coupling between a request sent via the p2p layer, and a
+response. These kinds of semantics would be simplify the implementation of
+state and block sync reactors, and make intra-node message passing more
+powerful.
+
+For some interactions, like gossiping transactions between the mempools of
+different nodes, fire-and-forget semantics make sense, but for other
+operations the missing link between requests/responses leads to either
+inefficiency when a node fails to respond or becomes unavailable, or code that
+is just difficult to follow.
+
+To support this kind of work, the protocol would need to accommodate some kind
+of request/response ID to allow identifying out-of-order responses over a
+single connection. Additionally, expanded the programming model of the
+``p2p.Channel`` to accommodate some kind of _future_ or similar paradigm to
+make it viable to write reactor code without needing for the reactor developer
+to wrestle with lower level concurency constructs.
+
 
 Timeout Handling (QoS)
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -168,15 +183,16 @@ which is primarily stream based.
 Service Discovery
 ~~~~~~~~~~~~~~~~~
 
-In the current system, tendermint assumes that nodes are largely equivelent,
-and nodes tend to be "chatty" making many requests of large numbers of peers
-and waiting for peers to (hopefully) respond. While this works and has allowed
-tendermint to get to a certain point, this both produces a theoretical scaling
-bottle neck and makes it harder to test and verify components of the system. 
+In the current system, Tendermint assumes that all nodes in a network are
+largely equivelent, and nodes tend to be "chatty" making many requests of
+large numbers of peers and waiting for peers to (hopefully) respond. While
+this works and has allowed Tendermint to get to a certain point, this both
+produces a theoretical scaling bottle neck and makes it harder to test and
+verify components of the system.
 
 In addition to peer's identity and connection information, peers should be
 able to advertise a number of services or capabilities, and node operators or
-developers should be able to specify peer topology requirements (e.g. target
+developers should be able to specify peer capability requirements (e.g. target
 at least <x>-percent of peers with <y> capability.)  
 
 These capabilities may be useful in selecting peers to send messages to, it
@@ -243,12 +259,12 @@ In general the API provides the kind of stream-based, multi-protocol
 supporting, and idiomatic baseline for implementing a peer layer. Additionally
 because it handles peer exchange and connection management at a lower
 level, by using libp2p it'd be possible to remove a good deal of code in favor
-of just using libp2p. Having said that, tendermint's P2P layer covers a
+of just using libp2p. Having said that, Tendermint's P2P layer covers a
 greater scope (e.g. message routing to different peers) and that layer is
-something that tendermint might want to retain.
+something that Tendermint might want to retain.
 
 The are a number of unknowns that require more research including how much of
-a peer database the tendermint engine itself needs to maintain, in order to
+a peer database the Tendermint engine itself needs to maintain, in order to
 support higher level operations (consensus, statesync), but it might be the
 case that our internal systems need to know much less about peers than
 otherwise specified. Similarly, the current system has a notion of peer
@@ -274,21 +290,21 @@ Open question include:
   functionality, and if our requirements mean that we should be implementing
   this on top of things ourselves?
 
-- if tendermint was going to use libp2p, how would libp2p's stability
-  guarantees (protocol, etc.) impact/constrain tendermint's stability
+- if Tendermint was going to use libp2p, how would libp2p's stability
+  guarantees (protocol, etc.) impact/constrain Tendermint's stability
   guarantees?
 
 - what kind of introspection does libp2p provide, and to what extend would
-  this change or constrain the kind of observability that tendermint is able
+  this change or constrain the kind of observability that Tendermint is able
   to provide?
 
 - how do efforts to select "the best" (healthy, close, well-behaving, etc.)
-  peers work out if tendermint is not maintaining a local peer database?
+  peers work out if Tendermint is not maintaining a local peer database?
   
 - would adding additional higher level semantics (internal message passing,
   request/response pairs, service discovery, etc.) facilitate removing some of
   the direct linkages between constructs/components in the system and reduce
-  the need for tendermint nodes to maintain state about its peers?
+  the need for Tendermint nodes to maintain state about its peers?
 
 References
 ----------
