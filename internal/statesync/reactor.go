@@ -691,6 +691,7 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 		if err := r.dispatcher.Respond(msg.LightBlock, envelope.From); err != nil {
 			r.Logger.Error("error processing light block response", "err", err)
 		}
+		r.Logger.Info("processed light block response")
 
 	default:
 		return fmt.Errorf("received unknown message: %T", msg)

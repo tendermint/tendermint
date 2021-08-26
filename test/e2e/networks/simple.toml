@@ -1,3 +1,8 @@
+[validators]
+validator01 = 100
+validator02 = 10
+validator03 = 10
+
 [node.validator01]
 snapshot_interval = 3
 [node.validator02]
