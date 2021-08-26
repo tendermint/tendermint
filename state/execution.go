@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"time"
 
-	dbm "github.com/tendermint/tm-db"
-
 	abci "github.com/tendermint/tendermint/abci/types"
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
 )
 
 //-----------------------------------------------------------------------------
@@ -271,8 +271,7 @@ func (blockExec *BlockExecutor) Commit(
 		TxPostCheck(state),
 	)
 
-	memCfg := blockExec.mempool.GetConfig()
-	if !memCfg.Recheck && block.Height%memCfg.ForceRecheckGap == 0 {
+	if !cfg.DynamicConfig.GetMempoolRecheck() && block.Height%cfg.DynamicConfig.GetMempoolForceRecheckGap() == 0 {
 		// reset checkState
 		blockExec.proxyApp.SetOptionAsync(abci.RequestSetOption{
 			Key: "ResetCheckState",

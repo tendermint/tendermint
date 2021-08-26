@@ -727,6 +727,9 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 	if cfg.MaxTxNumPerBlock < 0 {
 		return errors.New("max_tx_num_per_block can't be negative")
 	}
+	if cfg.ForceRecheckGap <= 0 {
+		return errors.New("force_recheck_gap can't be negative or zero")
+	}
 	return nil
 }
 

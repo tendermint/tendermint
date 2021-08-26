@@ -6,11 +6,12 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
 	"math/big"
 	"sort"
 	"sync"
 	"sync/atomic"
+
+	"github.com/pkg/errors"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
@@ -466,9 +467,9 @@ func (mem *CListMempool) isFull(txSize int) error {
 		txsBytes = mem.TxsBytes()
 	)
 
-	if memSize >= mem.config.Size || int64(txSize)+txsBytes > mem.config.MaxTxsBytes {
+	if memSize >= cfg.DynamicConfig.GetMempoolSize() || int64(txSize)+txsBytes > mem.config.MaxTxsBytes {
 		return ErrMempoolIsFull{
-			memSize, mem.config.Size,
+			memSize, cfg.DynamicConfig.GetMempoolSize(),
 			txsBytes, mem.config.MaxTxsBytes,
 		}
 	}
@@ -660,6 +661,7 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 		if totalTxNum >= mem.config.MaxTxNumPerBlock {
 			return txs
 		}
+
 		totalTxNum++
 		totalGas = newTotalGas
 		txs = append(txs, memTx.tx)
@@ -814,7 +816,7 @@ func (mem *CListMempool) Update(
 	// Either recheck non-committed txs to see if they became invalid
 	// or just notify there're some txs left.
 	if mem.Size() > 0 {
-		if mem.config.Recheck || height%mem.config.ForceRecheckGap == 0 {
+		if cfg.DynamicConfig.GetMempoolRecheck() || height%cfg.DynamicConfig.GetMempoolForceRecheckGap() == 0 {
 			mem.logger.Info("Recheck txs", "numtxs", mem.Size(), "height", height)
 			mem.recheckTxs()
 			mem.logger.Info("After Recheck txs", "numtxs", mem.Size(), "height", height)
@@ -824,7 +826,7 @@ func (mem *CListMempool) Update(
 		} else {
 			mem.notifyTxsAvailable()
 		}
-	} else if height%mem.config.ForceRecheckGap == 0 {
+	} else if height%cfg.DynamicConfig.GetMempoolForceRecheckGap() == 0 {
 		// saftly clean dirty data that stucks in the cache
 		mem.cache.Reset()
 	}
