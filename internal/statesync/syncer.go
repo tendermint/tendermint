@@ -40,7 +40,7 @@ var (
 	errRejectSender = errors.New("snapshot sender was rejected")
 	// errVerifyFailed is returned by Sync() when app hash or last height
 	// verification fails.
-	errVerifyFailed = errors.New("verification failed")
+	errVerifyFailed = errors.New("verification with app failed")
 	// errTimeout is returned by Sync() when we've waited too long to receive a chunk.
 	errTimeout = errors.New("timed out waiting for chunk")
 	// errNoSnapshots is returned by SyncAny() if no snapshots are found and discovery is disabled.

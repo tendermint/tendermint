@@ -63,7 +63,7 @@ var (
 			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  byte(LightBlockChannel),
-				Priority:            1,
+				Priority:            11,
 				SendQueueCapacity:   10,
 				RecvMessageCapacity: lightBlockMsgSize,
 				RecvBufferCapacity:  128,
@@ -114,7 +114,7 @@ const (
 
 	// lightBlockResponseTimeout is how long the dispatcher waits for a peer to
 	// return a light block
-	lightBlockResponseTimeout = 30 * time.Second
+	lightBlockResponseTimeout = 10 * time.Second
 
 	// consensusParamsResponseTimeout is the time the p2p state provider waits
 	// before performing a secondary call
@@ -130,11 +130,11 @@ const (
 type Reactor struct {
 	service.BaseService
 
-	chainID string
+	chainID       string
 	initialHeight int64
-	cfg        config.StateSyncConfig
-	stateStore sm.Store
-	blockStore *store.BlockStore
+	cfg           config.StateSyncConfig
+	stateStore    sm.Store
+	blockStore    *store.BlockStore
 
 	conn        proxy.AppConnSnapshot
 	connQuery   proxy.AppConnQuery
@@ -154,9 +154,9 @@ type Reactor struct {
 	// These will only be set when a state sync is in progress. It is used to feed
 	// received snapshots and chunks into the syncer and manage incoming and outgoing
 	// providers.
-	mtx       tmsync.RWMutex
-	syncer *syncer
-	providers map[types.NodeID]*blockProvider
+	mtx           tmsync.RWMutex
+	syncer        *syncer
+	providers     map[types.NodeID]*blockProvider
 	stateProvider StateProvider
 }
 
@@ -178,7 +178,7 @@ func NewReactor(
 	tempDir string,
 ) *Reactor {
 	r := &Reactor{
-		chainID:	chainID,
+		chainID:     chainID,
 		cfg:         cfg,
 		conn:        conn,
 		connQuery:   connQuery,
@@ -242,6 +242,7 @@ func (r *Reactor) OnStop() {
 	<-r.snapshotCh.Done()
 	<-r.chunkCh.Done()
 	<-r.blockCh.Done()
+	<-r.paramsCh.Done()
 	<-r.peerUpdates.Done()
 }
 
@@ -250,19 +251,17 @@ func (r *Reactor) OnStop() {
 // store and persist the commit at that height so that either consensus or
 // blocksync can commence. It will then proceed to backfill the necessary amount
 // of historical blocks before participating in consensus
-func (r *Reactor) Sync(
-	ctx context.Context,
-	chainID string,
-	initialHeight int64,
-) (sm.State, error) {
-	r.waitForEnoughPeers(ctx, 3)
+func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
+	r.waitForEnoughPeers(ctx, 2)
 	r.mtx.Lock()
 	if r.syncer != nil {
 		r.mtx.Unlock()
 		return sm.State{}, errors.New("a state sync is already in progress")
 	}
 
-	r.initStateProvider(ctx, chainID, initialHeight)
+	if err := r.initStateProvider(ctx, r.chainID, r.initialHeight); err != nil {
+		return sm.State{}, err
+	}
 
 	r.syncer = newSyncer(
 		r.cfg,
@@ -979,7 +978,7 @@ func (r *Reactor) initStateProvider(ctx context.Context, chainID string, initial
 
 	if r.cfg.UseP2P {
 		spLogger.Info("Generating P2P state provider")
-		
+
 		peers := r.peers.All()
 		providers := make([]provider.Provider, len(peers))
 		for idx, p := range peers {

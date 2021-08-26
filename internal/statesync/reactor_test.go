@@ -19,6 +19,8 @@ import (
 	"github.com/tendermint/tendermint/internal/statesync/mocks"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/proxy"
+
 	// "github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
@@ -159,7 +161,8 @@ func setup(
 	)
 
 	// override the dispatcher with one with a shorter timeout
-	rts.reactor.dispatcher = NewDispatcher(rts.blockChannel.Out, 1*time.Second)
+	rts.reactor.dispatcher = NewDispatcher(rts.blockChannel.Out,
+		100*time.Millisecond)
 
 	rts.syncer = newSyncer(
 		*cfg,
@@ -181,6 +184,57 @@ func setup(
 	})
 
 	return rts
+}
+
+func TestReactor_Sync(t *testing.T) {
+	var snapshotHeight int64 = 7
+	rts := setup(t, nil, nil, nil, 2)
+	chain := buildLightBlockChain(t, 1, 10, time.Now())
+	// app accepts any snapshot
+	rts.conn.On("OfferSnapshotSync", ctx, mock.AnythingOfType("types.RequestOfferSnapshot")).
+		Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ACCEPT}, nil)
+
+	// app accepts every chunk
+	rts.conn.On("ApplySnapshotChunkSync", ctx, mock.AnythingOfType("types.RequestApplySnapshotChunk")).
+		Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
+
+	// app query returns valid state app hash
+	rts.connQuery.On("InfoSync", ctx, proxy.RequestInfo).Return(&abci.ResponseInfo{
+		AppVersion:       9,
+		LastBlockHeight:  snapshotHeight,
+		LastBlockAppHash: chain[snapshotHeight+1].AppHash,
+	}, nil)
+
+	// store accepts state and validator sets
+	rts.stateStore.On("Bootstrap", mock.AnythingOfType("state.State")).Return(nil)
+	rts.stateStore.On("SaveValidatorSets", mock.AnythingOfType("int64"), mock.AnythingOfType("int64"),
+		mock.AnythingOfType("*types.ValidatorSet")).Return(nil)
+
+	closeCh := make(chan struct{})
+	defer close(closeCh)
+	go handleLightBlockRequests(t, chain, rts.blockOutCh,
+		rts.blockInCh, closeCh, 0)
+	go graduallyAddPeers(rts.peerUpdateCh, closeCh, 1*time.Second)
+	go handleSnapshotRequests(t, rts.snapshotOutCh, rts.snapshotInCh, closeCh, []snapshot{
+		{
+			Height: uint64(snapshotHeight),
+			Format: 1,
+			Chunks: 1,
+		},
+	})
+
+	go handleChunkRequests(t, rts.chunkOutCh, rts.chunkInCh, closeCh, []byte("abc"))
+
+	go handleConsensusParamsRequest(t, rts.paramsOutCh, rts.paramsInCh, closeCh)
+
+	// update the config to use the p2p provider
+	rts.reactor.cfg.UseP2P = true
+	rts.reactor.cfg.TrustHeight = 1
+	rts.reactor.cfg.TrustHash = fmt.Sprintf("%X", chain[1].Hash())
+	rts.reactor.cfg.DiscoveryTime = 2 * time.Second
+
+	_, err := rts.reactor.Sync(context.Background())
+	require.NoError(t, err)
 }
 
 func TestReactor_ChunkRequest_InvalidRequest(t *testing.T) {
@@ -686,5 +740,84 @@ func mockLB(t *testing.T, height int64, time time.Time, lastBlockID types.BlockI
 			Commit: commit,
 		},
 		ValidatorSet: currentVals,
+	}
+}
+
+func graduallyAddPeers(
+	peerUpdateCh chan p2p.PeerUpdate,
+	closeCh chan struct{},
+	interval time.Duration,
+) {
+	ticker := time.NewTicker(interval)
+	for {
+		select {
+		case <-ticker.C:
+			fmt.Println("adding new peer")
+			peerUpdateCh <- p2p.PeerUpdate{
+				NodeID: factory.RandomNodeID(),
+				Status: p2p.PeerStatusUp,
+			}
+		case <-closeCh:
+			return
+		}
+	}
+}
+
+func handleSnapshotRequests(
+	t *testing.T,
+	receivingCh chan p2p.Envelope,
+	sendingCh chan p2p.Envelope,
+	closeCh chan struct{},
+	snapshots []snapshot,
+) {
+	for {
+		select {
+		case envelope := <-receivingCh:
+			_, ok := envelope.Message.(*ssproto.SnapshotsRequest)
+			require.True(t, ok)
+			for _, snapshot := range snapshots {
+				sendingCh <- p2p.Envelope{
+					From: envelope.To,
+					Message: &ssproto.SnapshotsResponse{
+						Height:   snapshot.Height,
+						Format:   snapshot.Format,
+						Chunks:   snapshot.Chunks,
+						Hash:     snapshot.Hash,
+						Metadata: snapshot.Metadata,
+					},
+				}
+			}
+		case <-closeCh:
+			return
+		}
+	}
+}
+
+func handleChunkRequests(
+	t *testing.T,
+	receivingCh chan p2p.Envelope,
+	sendingCh chan p2p.Envelope,
+	closeCh chan struct{},
+	chunk []byte,
+) {
+	for {
+		select {
+		case envelope := <-receivingCh:
+			msg, ok := envelope.Message.(*ssproto.ChunkRequest)
+			require.True(t, ok)
+			sendingCh <- p2p.Envelope{
+				From: envelope.To,
+				Message: &ssproto.ChunkResponse{
+					Height:  msg.Height,
+					Format:  msg.Format,
+					Index:   msg.Index,
+					Chunk:   chunk,
+					Missing: false,
+				},
+			}
+
+		case <-closeCh:
+			return
+		}
 	}
 }

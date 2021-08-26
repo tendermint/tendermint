@@ -87,6 +87,7 @@ func NewRPCStateProvider(
 
 // AppHash implements StateProvider.
 func (s *stateProviderRPC) AppHash(ctx context.Context, height uint64) ([]byte, error) {
+	fmt.Println("requesting app hash")
 	s.Lock()
 	defer s.Unlock()
 
@@ -333,7 +334,7 @@ func (s *stateProviderP2P) State(ctx context.Context, height uint64) (sm.State, 
 	return state, nil
 }
 
-// addProvider dynamically adds a peer as a new witness. A limit of 6 providers is kept as a 
+// addProvider dynamically adds a peer as a new witness. A limit of 6 providers is kept as a
 // heuristic. Too many overburdens the network and too little compromises the second layer of security.
 func (s *stateProviderP2P) addProvider(p lightprovider.Provider) {
 	if len(s.lc.Witnesses()) < 6 {
@@ -350,9 +351,11 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 		if !ok {
 			panic("expected p2p state provider to use p2p block providers")
 		}
+
+		// extract the nodeID of the provider
 		peer, err := types.NewNodeID(p.String())
 		if err != nil {
-			return types.ConsensusParams{}, fmt.Errorf("invalid provider node id: %w", err)
+			return types.ConsensusParams{}, fmt.Errorf("invalid provider node id: %w, provider: %s", err, p.String())
 		}
 
 		select {

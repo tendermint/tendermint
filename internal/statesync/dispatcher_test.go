@@ -41,7 +41,7 @@ func TestDispatcherBasic(t *testing.T) {
 		wg.Add(1)
 		go func(height int64) {
 			defer wg.Done()
-			lb, err := d.LightBlock(context.Background(), height, peers[height - 1])
+			lb, err := d.LightBlock(context.Background(), height, peers[height-1])
 			require.NoError(t, err)
 			require.NotNil(t, lb)
 			require.Equal(t, lb.Height, height)

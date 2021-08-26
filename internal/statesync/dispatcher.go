@@ -66,6 +66,7 @@ func (d *Dispatcher) LightBlock(ctx context.Context, height int64, peer types.No
 		}
 	}()
 
+	fmt.Println("awaiting for a response")
 	// wait for a response, cancel or timeout
 	select {
 	case resp := <-callCh:
@@ -187,10 +188,12 @@ func (p *blockProvider) LightBlock(ctx context.Context, height int64) (*types.Li
 			return nil, provider.ErrLightBlockNotFound
 		}
 	case context.DeadlineExceeded, context.Canceled:
+		fmt.Println("context canceled")
 		return nil, err
 	case errPeerAlreadyBusy:
 		return nil, provider.ErrLightBlockNotFound
 	case errNoResponse:
+		fmt.Println("no response")
 		return nil, provider.ErrNoResponse
 	default: // errDisconnected
 		return nil, provider.ErrUnreliableProvider{Reason: err.Error()}
