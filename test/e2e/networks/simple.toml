@@ -1,13 +1,4 @@
-[validators]
-validator01 = 100
-validator02 = 10
-validator03 = 10
-
 [node.validator01]
-snapshot_interval = 3
 [node.validator02]
-snapshot_interval = 3
 [node.validator03]
-state_sync = true
-start_at = 5
-persistent_peers = ["validator01", "validator02"] 
+[node.validator04]
