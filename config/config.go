@@ -884,16 +884,26 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 type StateSyncConfig struct {
 	Enable  bool   `mapstructure:"enable"`
 	TempDir string `mapstructure:"temp-dir"`
+
 	// Light blocks needed for state verification can be obtained either via
-	// the P2P layer or RPC layer.
-	UseP2P              bool          `mapstructure:"use-p2p"`
-	RPCServers          []string      `mapstructure:"rpc-servers"`
-	TrustPeriod         time.Duration `mapstructure:"trust-period"`
-	TrustHeight         int64         `mapstructure:"trust-height"`
-	TrustHash           string        `mapstructure:"trust-hash"`
+	// the P2P layer or RPC layer. Default is RPC
+	UseP2P bool `mapstructure:"use-p2p"`
+
+	// If using RPC, at least two endpoints need to be provided
+	RPCServers []string `mapstructure:"rpc-servers"`
+
+	// Source of trust. State sync uses a light client for verification so
+	// some trusted source must be provided
+	TrustPeriod time.Duration `mapstructure:"trust-period"`
+	TrustHeight int64         `mapstructure:"trust-height"`
+	TrustHash   string        `mapstructure:"trust-hash"`
+
 	DiscoveryTime       time.Duration `mapstructure:"discovery-time"`
 	ChunkRequestTimeout time.Duration `mapstructure:"chunk-request-timeout"`
-	Fetchers            int32         `mapstructure:"fetchers"`
+
+	// Fetchers defines the amount of parallel workers to fetch statesync chunks
+	// and light blocks
+	Fetchers int32 `mapstructure:"fetchers"`
 }
 
 func (cfg *StateSyncConfig) TrustHashBytes() []byte {

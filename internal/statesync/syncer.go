@@ -45,9 +45,9 @@ var (
 	errTimeout = errors.New("timed out waiting for chunk")
 	// errNoSnapshots is returned by SyncAny() if no snapshots are found and discovery is disabled.
 	errNoSnapshots = errors.New("no suitable snapshots found")
-	// errStateCommitTimeout is returned by Sync() when the timeout for retrieving
+	// errStateProviderTimeout is returned by Sync() when the timeout for retrieving
 	// tendermint state or the commit is exceeded
-	errStateCommitTimeout = errors.New("timed out trying to retrieve state and commit")
+	errStateProviderTimeout = errors.New("state provider timed out")
 )
 
 // syncer runs a state sync against an ABCI app. Use either SyncAny() to automatically attempt to
@@ -118,19 +118,6 @@ func (s *syncer) AddChunk(chunk *chunk) (bool, error) {
 // AddSnapshot adds a snapshot to the snapshot pool. It returns true if a new, previously unseen
 // snapshot was accepted and added.
 func (s *syncer) AddSnapshot(peerID types.NodeID, snapshot *snapshot) (bool, error) {
-	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
-	defer cancel()
-
-	// Fetch the app hash corresponding to the snapshot
-	// TODO: We do all this computation for each and every snapshot we receive (even after
-	// attempting to fetch the chunks and restore state). We should only do this when a snapshot
-	// is selected and the actual sync begins
-	appHash, err := s.stateProvider.AppHash(ctx, snapshot.Height)
-	if err != nil {
-		return false, fmt.Errorf("failed to get app hash: %w", err)
-	}
-	snapshot.trustedAppHash = appHash
-
 	added, err := s.snapshots.Add(peerID, snapshot)
 	if err != nil {
 		return false, err
@@ -195,7 +182,7 @@ func (s *syncer) SyncAny(
 			if discoveryTime == 0 {
 				return sm.State{}, nil, errNoSnapshots
 			}
-			requestSnapshots()
+			// requestSnapshots()
 			s.logger.Info(fmt.Sprintf("Discovering snapshots for %v", discoveryTime))
 			time.Sleep(discoveryTime)
 			continue
@@ -246,7 +233,7 @@ func (s *syncer) SyncAny(
 				s.logger.Info("Snapshot sender rejected", "peer", peer)
 			}
 
-		case errors.Is(err, errStateCommitTimeout):
+		case errors.Is(err, errStateProviderTimeout):
 			s.logger.Info("Timed out retrieving state and commit, rejecting and retrying...", "height", snapshot.Height)
 			s.snapshots.Reject(snapshot)
 
@@ -280,8 +267,21 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 		s.mtx.Unlock()
 	}()
 
+	hctx, hcancel := context.WithTimeout(ctx, 30*time.Second)
+	defer hcancel()
+
+	// Fetch the app hash corresponding to the snapshot
+	appHash, err := s.stateProvider.AppHash(hctx, snapshot.Height)
+	if err != nil {
+		if err == context.DeadlineExceeded && ctx.Err() == nil {
+			return sm.State{}, nil, errStateProviderTimeout
+		}
+		return sm.State{}, nil, fmt.Errorf("failed to get app hash: %w", err)
+	}
+	snapshot.trustedAppHash = appHash
+
 	// Offer snapshot to ABCI app.
-	err := s.offerSnapshot(ctx, snapshot)
+	err = s.offerSnapshot(ctx, snapshot)
 	if err != nil {
 		return sm.State{}, nil, err
 	}
@@ -293,7 +293,7 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 		go s.fetchChunks(fetchCtx, snapshot, chunks)
 	}
 
-	pctx, pcancel := context.WithTimeout(ctx, 30*time.Second)
+	pctx, pcancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer pcancel()
 
 	// Optimistically build new state, so we don't discover any light client failures at the end.
@@ -301,7 +301,7 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 	if err != nil {
 		// check if the provider context exceeded the 10 second deadline
 		if err == context.DeadlineExceeded && ctx.Err() == nil {
-			return sm.State{}, nil, errStateCommitTimeout
+			return sm.State{}, nil, errStateProviderTimeout
 		}
 
 		return sm.State{}, nil, fmt.Errorf("failed to build new state: %w", err)
@@ -310,7 +310,7 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 	if err != nil {
 		// check if the provider context exceeded the 10 second deadline
 		if err == context.DeadlineExceeded && ctx.Err() == nil {
-			return sm.State{}, nil, errStateCommitTimeout
+			return sm.State{}, nil, errStateProviderTimeout
 		}
 
 		return sm.State{}, nil, fmt.Errorf("failed to fetch commit: %w", err)

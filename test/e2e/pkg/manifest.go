@@ -117,7 +117,8 @@ type ManifestNode struct {
 	// block hashes and RPC servers. At least one node in the network must have
 	// SnapshotInterval set to non-zero, and the state syncing node must have
 	// StartAt set to an appropriate height where a snapshot is available.
-	StateSync bool `toml:"state_sync"`
+	// StateSync can either be "p2p" or "rpc" or an empty string to disable
+	StateSync string `toml:"state_sync"`
 
 	// PersistInterval specifies the height interval at which the application
 	// will persist state to disk. Defaults to 1 (every height), setting this to

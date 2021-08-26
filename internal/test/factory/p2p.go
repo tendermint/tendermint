@@ -17,7 +17,7 @@ func NodeID(str string) types.NodeID {
 }
 
 func RandomNodeID() types.NodeID {
-	id, err := types.NewNodeID(hex.EncodeToString(rand.Bytes( types.NodeIDByteLength)))
+	id, err := types.NewNodeID(hex.EncodeToString(rand.Bytes(types.NodeIDByteLength)))
 	if err != nil {
 		panic(err)
 	}

@@ -302,23 +302,23 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 		cfg.BlockSync.Version = node.BlockSync
 	}
 
-	if node.StateSync {
+	switch node.StateSync {
+	case e2e.StateSyncP2P:
 		cfg.StateSync.Enable = true
 		cfg.StateSync.UseP2P = true
-		/*
-			cfg.StateSync.RPCServers = []string{}
-
-			for _, peer := range node.Testnet.ArchiveNodes() {
-				if peer.Name == node.Name {
-					continue
-				}
-				cfg.StateSync.RPCServers = append(cfg.StateSync.RPCServers, peer.AddressRPC())
+	case e2e.StateSyncRPC:
+		cfg.StateSync.Enable = true
+		cfg.StateSync.RPCServers = []string{}
+		for _, peer := range node.Testnet.ArchiveNodes() {
+			if peer.Name == node.Name {
+				continue
 			}
+			cfg.StateSync.RPCServers = append(cfg.StateSync.RPCServers, peer.AddressRPC())
+		}
 
-			if len(cfg.StateSync.RPCServers) < 2 {
-				return nil, errors.New("unable to find 2 suitable state sync RPC servers")
-			}
-		*/
+		if len(cfg.StateSync.RPCServers) < 2 {
+			return nil, errors.New("unable to find 2 suitable state sync RPC servers")
+		}
 	}
 
 	cfg.P2P.Seeds = ""

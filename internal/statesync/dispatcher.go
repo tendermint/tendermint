@@ -66,11 +66,9 @@ func (d *Dispatcher) LightBlock(ctx context.Context, height int64, peer types.No
 		}
 	}()
 
-	fmt.Println("awaiting for a response")
 	// wait for a response, cancel or timeout
 	select {
 	case resp := <-callCh:
-		fmt.Printf("received response, height %d peer %v\n", height, peer)
 		return resp, nil
 
 	case <-ctx.Done():
@@ -102,25 +100,19 @@ func (d *Dispatcher) dispatch(peer types.NodeID, height int64) (chan *types.Ligh
 	d.calls[peer] = ch
 
 	// send request
-	fmt.Printf("sending request dispatch, height %d peer %v\n", height, peer)
 	d.requestCh <- p2p.Envelope{
 		To: peer,
 		Message: &ssproto.LightBlockRequest{
 			Height: uint64(height),
 		},
 	}
-	fmt.Printf("sent request dispatch, height %d peer %v\n", height, peer)
+
 	return ch, nil
 }
 
 // respond allows the underlying process which receives requests on the
 // requestCh to respond with the respective light block
 func (d *Dispatcher) Respond(lb *proto.LightBlock, peer types.NodeID) error {
-	if lb != nil {
-		fmt.Printf("trying to respond with light block for height %d from %v\n", lb.SignedHeader.Header.Height, peer)
-	} else {
-		fmt.Println("responded with empty block")
-	}
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 
@@ -162,6 +154,10 @@ func (d *Dispatcher) Stop() {
 //
 // TODO: This should probably be moved over to the light package but as we're
 // not yet officially supporting p2p light clients we'll leave this here for now.
+//
+// NOTE: blockProvider will return an error with concurrent calls. However, we don't
+// need a mutex because a light client (and the backfill process) will never call a
+// method more than once at the same time
 type blockProvider struct {
 	peer       types.NodeID
 	chainID    string
@@ -180,7 +176,6 @@ func NewBlockProvider(peer types.NodeID, chainID string, dispatcher *Dispatcher)
 // LightBlock fetches a light block from the peer at a specified height returning either a light block
 // or an appropriate error. Concurrently unsafe
 func (p *blockProvider) LightBlock(ctx context.Context, height int64) (*types.LightBlock, error) {
-	fmt.Println("fetching block for block provider")
 	lb, err := p.dispatcher.LightBlock(ctx, height, p.peer)
 	switch err {
 	case nil:
@@ -188,12 +183,10 @@ func (p *blockProvider) LightBlock(ctx context.Context, height int64) (*types.Li
 			return nil, provider.ErrLightBlockNotFound
 		}
 	case context.DeadlineExceeded, context.Canceled:
-		fmt.Println("context canceled")
 		return nil, err
 	case errPeerAlreadyBusy:
 		return nil, provider.ErrLightBlockNotFound
 	case errNoResponse:
-		fmt.Println("no response")
 		return nil, provider.ErrNoResponse
 	default: // errDisconnected
 		return nil, provider.ErrUnreliableProvider{Reason: err.Error()}

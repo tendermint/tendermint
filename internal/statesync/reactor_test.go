@@ -231,8 +231,9 @@ func TestReactor_Sync(t *testing.T) {
 	rts.reactor.cfg.UseP2P = true
 	rts.reactor.cfg.TrustHeight = 1
 	rts.reactor.cfg.TrustHash = fmt.Sprintf("%X", chain[1].Hash())
-	rts.reactor.cfg.DiscoveryTime = 2 * time.Second
+	rts.reactor.cfg.DiscoveryTime = 1 * time.Second
 
+	// Run state sync
 	_, err := rts.reactor.Sync(context.Background())
 	require.NoError(t, err)
 }
@@ -752,7 +753,6 @@ func graduallyAddPeers(
 	for {
 		select {
 		case <-ticker.C:
-			fmt.Println("adding new peer")
 			peerUpdateCh <- p2p.PeerUpdate{
 				NodeID: factory.RandomNodeID(),
 				Status: p2p.PeerStatusUp,

@@ -55,6 +55,7 @@ retain_blocks = 7
 
 [node.validator04]
 abci_protocol = "builtin"
+snapshot_interval = 5
 database = "rocksdb"
 persistent_peers = ["validator01"]
 perturb = ["pause"]

@@ -107,7 +107,7 @@ const (
 	chunkMsgSize = int(16e6) // ~16MB
 
 	// lightBlockMsgSize is the maximum size of a lightBlockResponseMessage
-	lightBlockMsgSize = int(1e7) // ~10MB
+	lightBlockMsgSize = int(1e8) // ~10MB
 
 	// paramMsgSize is the maximum size of a paramsResponseMessage
 	paramMsgSize = int(1e5) // ~100kb
@@ -659,14 +659,12 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 			return err
 		}
 		if lb == nil {
-			r.Logger.Info("returning nil light block", "height", msg.Height)
 			r.blockCh.Out <- p2p.Envelope{
 				To: envelope.From,
 				Message: &ssproto.LightBlockResponse{
 					LightBlock: nil,
 				},
 			}
-			r.Logger.Info("sent light block response", "height", msg.Height)
 			return nil
 		}
 
@@ -684,14 +682,16 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 				LightBlock: lbproto,
 			},
 		}
-		r.Logger.Info("sent light block response", "height", lb.SignedHeader.Header.Height)
 
 	case *ssproto.LightBlockResponse:
-		r.Logger.Info("received light block response")
-		if err := r.dispatcher.Respond(msg.LightBlock, envelope.From); err != nil {
-			r.Logger.Error("error processing light block response", "err", err)
+		var height int64 = 0
+		if msg.LightBlock != nil {
+			height = msg.LightBlock.SignedHeader.Header.Height
 		}
-		r.Logger.Info("processed light block response")
+		r.Logger.Info("received light block response", "peer", envelope.From, "height", height)
+		if err := r.dispatcher.Respond(msg.LightBlock, envelope.From); err != nil {
+			r.Logger.Error("error processing light block response", "err", err, "height", height)
+		}
 
 	default:
 		return fmt.Errorf("received unknown message: %T", msg)
@@ -812,9 +812,6 @@ func (r *Reactor) processCh(ch *p2p.Channel, chName string) {
 	for {
 		select {
 		case envelope := <-ch.In:
-			if chName == "light block" {
-				fmt.Println("received p2p message for light block")
-			}
 			if err := r.handleMessage(ch.ID, envelope); err != nil {
 				r.Logger.Error(fmt.Sprintf("failed to process %s message", chName),
 					"ch_id", ch.ID, "envelope", envelope, "err", err)
@@ -978,8 +975,6 @@ func (r *Reactor) initStateProvider(ctx context.Context, chainID string, initial
 	spLogger := r.Logger.With("module", "stateprovider")
 
 	if r.cfg.UseP2P {
-		spLogger.Info("Generating P2P state provider")
-
 		peers := r.peers.All()
 		providers := make([]provider.Provider, len(peers))
 		for idx, p := range peers {
@@ -990,7 +985,6 @@ func (r *Reactor) initStateProvider(ctx context.Context, chainID string, initial
 		if err != nil {
 			return err
 		}
-		spLogger.Info("Finished generating P2P state provider")
 	} else {
 		r.stateProvider, err = NewRPCStateProvider(ctx, chainID, initialHeight, r.cfg.RPCServers, to, spLogger)
 		if err != nil {
