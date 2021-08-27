@@ -523,7 +523,9 @@ func TestReactor_StateProviderP2P(t *testing.T) {
 	rts.reactor.cfg.TrustHeight = 1
 	rts.reactor.cfg.TrustHash = fmt.Sprintf("%X", chain[1].Hash())
 	ctx := context.Background()
+	rts.reactor.mtx.Lock()
 	err := rts.reactor.initStateProvider(ctx, factory.DefaultTestChainID, 1)
+	rts.reactor.mtx.Unlock()
 	require.NoError(t, err)
 	rts.reactor.syncer.stateProvider = rts.reactor.stateProvider
 
