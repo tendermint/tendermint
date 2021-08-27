@@ -67,7 +67,7 @@ func TestBlockFuncs(t *testing.T) {
 
 	verifyNotImplemented(t, "block search", func() (bool, error) {
 		v, err := indexer.SearchBlockEvents(context.Background(), nil)
-		return v == nil, err
+		return v != nil, err
 	})
 
 	require.NoError(t, verifyTimeStamp(tableBlocks))
@@ -256,6 +256,7 @@ SELECT type, height, chain_id FROM `+viewBlockEvents+`
 // "not supported" message with label prefixed.
 func verifyNotImplemented(t *testing.T, label string, f func() (bool, error)) {
 	t.Helper()
+	t.Logf("Verifying that %q reports it is not implemented", label)
 
 	want := label + " is not supported via the postgres event sink"
 	ok, err := f()
