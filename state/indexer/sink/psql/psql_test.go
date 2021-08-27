@@ -181,13 +181,10 @@ func readSchema() ([]*schema.Migration, error) {
 }
 
 func resetDB(t *testing.T) {
-	q := "DROP TABLE IF EXISTS block_events,tx_events,tx_results"
-	_, err := db.Exec(q)
-
+	_, err := db.Exec(`DROP TABLE IF EXISTS blocks,tx_results,events,attributes CASCADE;`)
 	require.NoError(t, err)
 
-	q = "DROP TYPE IF EXISTS block_event_type"
-	_, err = db.Exec(q)
+	_, err = db.Exec(`DELETE VIEW IF EXISTS event_attributes,block_events,tx_events CASCADE;`)
 	require.NoError(t, err)
 }
 
