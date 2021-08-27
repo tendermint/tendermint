@@ -166,12 +166,12 @@ func createMempoolReactor(
 		peerUpdates *p2p.PeerUpdates
 	)
 
-	if config.P2P.DisableLegacy {
-		channels = makeChannelsFromShims(router, channelShims)
-		peerUpdates = peerManager.Subscribe()
-	} else {
+	if config.P2P.UseLegacy {
 		channels = getChannelsFromShim(reactorShim)
 		peerUpdates = reactorShim.PeerUpdates
+	} else {
+		channels = makeChannelsFromShims(router, channelShims)
+		peerUpdates = peerManager.Subscribe()
 	}
 
 	switch config.Mempool.Version {
@@ -260,12 +260,12 @@ func createEvidenceReactor(
 		peerUpdates *p2p.PeerUpdates
 	)
 
-	if config.P2P.DisableLegacy {
-		channels = makeChannelsFromShims(router, evidence.ChannelShims)
-		peerUpdates = peerManager.Subscribe()
-	} else {
+	if config.P2P.UseLegacy {
 		channels = getChannelsFromShim(reactorShim)
 		peerUpdates = reactorShim.PeerUpdates
+	} else {
+		channels = makeChannelsFromShims(router, evidence.ChannelShims)
+		peerUpdates = peerManager.Subscribe()
 	}
 
 	evidenceReactor := evidence.NewReactor(
@@ -302,12 +302,12 @@ func createBlockchainReactor(
 			peerUpdates *p2p.PeerUpdates
 		)
 
-		if config.P2P.DisableLegacy {
-			channels = makeChannelsFromShims(router, bcv0.ChannelShims)
-			peerUpdates = peerManager.Subscribe()
-		} else {
+		if config.P2P.UseLegacy {
 			channels = getChannelsFromShim(reactorShim)
 			peerUpdates = reactorShim.PeerUpdates
+		} else {
+			channels = makeChannelsFromShims(router, bcv0.ChannelShims)
+			peerUpdates = peerManager.Subscribe()
 		}
 
 		reactor, err := bcv0.NewReactor(
@@ -366,12 +366,12 @@ func createConsensusReactor(
 		peerUpdates *p2p.PeerUpdates
 	)
 
-	if config.P2P.DisableLegacy {
-		channels = makeChannelsFromShims(router, cs.ChannelShims)
-		peerUpdates = peerManager.Subscribe()
-	} else {
+	if config.P2P.UseLegacy {
 		channels = getChannelsFromShim(reactorShim)
 		peerUpdates = reactorShim.PeerUpdates
+	} else {
+		channels = makeChannelsFromShims(router, cs.ChannelShims)
+		peerUpdates = peerManager.Subscribe()
 	}
 
 	reactor := cs.NewReactor(
