@@ -44,6 +44,11 @@ implementation of the P2P layer.
 
 Some limitations of the current stack include:
 
+- heavy reliance on buffering to avoid backups in the flow of components,
+  which is fragile to maintain and can lead to unexpected memory usage
+  patterns and forces the routing layer to make decisions about when messages
+  should be discarded. 
+  
 - the current p2p stack relies on convention (rather than the compiler) to
   enforce the API boundaries and conventions between reactors and the router,
   making it very easy to write "wrong" reactor code or introduce a bad
@@ -52,7 +57,8 @@ Some limitations of the current stack include:
 - the current stack is probably more complex and difficult to maintain because
   the legacy system must coexist with the new components in 0.35. When the
   legacy stack is removed there are some simple changes that will become
-  possible and could reduce the complexity of the new system.
+  possible and could reduce the complexity of the new system. (e.g. `#6598
+  <https://github.com/tendermint/tendermint/issues/6598>`_.)
 
 - the current stack encapsulates a lot of information about peers, and makes it
   difficult to expose that information to monitoring/observability tools. This
@@ -64,11 +70,6 @@ Some limitations of the current stack include:
   situ_. The current stack can't easily provide this, and while the new stack
   may have better behavior, it does leave operators hands tied.
 
-- heavy reliance on buffering to avoid backups in the flow of components,
-  which is fragile to maintain and can lead to unexpected memory usage
-  patterns and forces the routing layer to make decisions about when messages
-  should be discarded. 
-  
 Some of these issues will be resolved early in the 0.36 cycle, with the
 removal of the legacy components.
 
@@ -233,9 +234,10 @@ implementation, upcoming work would include:
   establishment (e.g. handshaking, setup,) which is currently shared between
   three components. 
 
-- increase observability into the state of peers, which are opaque outside of
-  the system. This is constrained at the moment as a side effect of the split
-  responsibility for connection establishment.
+- report better metrics regarding the into the state of peers and network
+  connectivity, which are opaque outside of the system. This is constrained at
+  the moment as a side effect of the split responsibility for connection
+  establishment.
   
 - extend the PEX system to include service information so that ndoes in the
   network weren't necessarily homogeneous.
