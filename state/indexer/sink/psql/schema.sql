@@ -71,7 +71,7 @@ CREATE VIEW event_attributes AS
 
 -- A joined view of all block events (those having tx_id NULL).
 CREATE VIEW block_events AS
-  SELECT blocks.rowid, height, chain_id, type, key, composite_key, value
+  SELECT blocks.rowid as block_id, height, chain_id, type, key, composite_key, value
   FROM blocks JOIN event_attributes ON (blocks.rowid = event_attributes.block_id)
   WHERE event_attributes.tx_id IS NULL;
 
