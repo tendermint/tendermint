@@ -329,5 +329,5 @@ func mustSetupDB(t *testing.T) *dockertest.Pool {
 func mustTeardown(t *testing.T, pool *dockertest.Pool) {
 	t.Helper()
 	require.Nil(t, pool.Purge(resource))
-	require.Nil(db.Close())
+	require.Nil(t, db.Close())
 }
