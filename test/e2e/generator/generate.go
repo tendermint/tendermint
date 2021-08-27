@@ -27,10 +27,10 @@ var (
 
 	// The following specify randomly chosen values for testnet nodes.
 	nodeDatabases = weightedChoice{
-		"goleveldb": 30,
-		"badgerdb":  30,
+		"goleveldb": 35,
+		"badgerdb":  35,
+		"boltdb":    15,
 		"rocksdb":   10,
-		"boltdb":    10,
 		"cleveldb":  5,
 	}
 	nodeABCIProtocols    = uniformChoice{"unix", "tcp", "builtin", "grpc"}
