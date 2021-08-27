@@ -52,33 +52,23 @@ func TestBlockFuncs(t *testing.T) {
 	defer mustTeardown(t, pool)
 
 	indexer := &EventSink{store: db, chainID: chainID}
-	require.NoError(t, indexer.IndexBlockEvents(getTestBlockHeader()))
+	require.NoError(t, indexer.IndexBlockEvents(newTestBlockHeader()))
 
-	r, err := verifyBlock(1)
-	assert.True(t, r)
-	require.NoError(t, err)
+	verifyBlock(t, 1)
+	verifyBlock(t, 2)
 
-	r, err = verifyBlock(2)
-	assert.False(t, r)
-	require.NoError(t, err)
+	verifyNotImplemented(t, "hasBlock", func() (bool, error) { return indexer.HasBlock(1) })
+	verifyNotImplemented(t, "hasBlock", func() (bool, error) { return indexer.HasBlock(2) })
 
-	r, err = indexer.HasBlock(1)
-	assert.False(t, r)
-	assert.Equal(t, errors.New("hasBlock is not supported via the postgres event sink"), err)
-
-	r, err = indexer.HasBlock(2)
-	assert.False(t, r)
-	assert.Equal(t, errors.New("hasBlock is not supported via the postgres event sink"), err)
-
-	r2, err := indexer.SearchBlockEvents(context.TODO(), nil)
-	assert.Nil(t, r2)
-	assert.Equal(t, errors.New("block search is not supported via the postgres event sink"), err)
+	verifyNotImplemented(t, "block search", func() (bool, error) {
+		v, err := indexer.SearchBlockEvents(context.Background(), nil)
+		return v == nil, err
+	})
 
 	require.NoError(t, verifyTimeStamp(tableEventBlock))
 
-	// try to insert the duplicate block events.
-	err = indexer.IndexBlockEvents(getTestBlockHeader())
-	require.NoError(t, err)
+	// Attempting to reindex the same events should gracefully succeed.
+	require.NoError(t, indexer.IndexBlockEvents(newTestBlockHeader()))
 }
 
 func TestTxFuncs(t *testing.T) {
@@ -125,7 +115,9 @@ func TestStop(t *testing.T) {
 	require.NoError(t, pool.Purge(resource))
 }
 
-func getTestBlockHeader() types.EventDataNewBlockHeader {
+// newTestBlockHeader constructs a fresh copy of a block header containing
+// known test values to exercise the indexer.
+func newTestBlockHeader() types.EventDataNewBlockHeader {
 	return types.EventDataNewBlockHeader{
 		Header: types.Header{Height: 1},
 		ResultBeginBlock: abci.ResponseBeginBlock{
@@ -240,52 +232,47 @@ SELECT DISTINCT %[1]s.created_at
 `, tableName), time.Now().Add(-2*time.Second)).Err()
 }
 
-func verifyBlock(h int64) (bool, error) {
-	sqlStmt := sq.
-		Select("height").
-		Distinct().
-		From(tableEventBlock).
-		Where(fmt.Sprintf("height = %d", h))
-	rows, err := sqlStmt.RunWith(db).Query()
-	if err != nil {
-		return false, err
+func verifyBlock(t *testing.T, height int64) {
+	// Check that the blocks table contains an entry for this height.
+	if err := db.QueryRow(`
+SELECT height FROM `+tableBlocks+` WHERE height = ?;
+`, height).Err(); err == sql.ErrNoRows {
+		t.Errorf("No block found for height=%d", height)
+	} else if err != nil {
+		t.Fatalf("Database query failed: %v", err)
 	}
 
-	defer rows.Close()
-
-	if !rows.Next() {
-		return false, nil
+	// Verify the presence of begin_block and end_block events.
+	if err := db.QueryRow(`
+SELECT type, height, chain_id FROM `+viewBlockEvents+`
+  WHERE height = ? AND type = ? AND chain_id = ?;
+`, height, types.EventTypeBeginBlock, chainID).Err(); err == sql.ErrNoRows {
+		t.Errorf("No %q event found for height=%d", types.EventTypeBeginBlock, height)
+	} else if err != nil {
+		t.Fatalf("Database query failed: %v", err)
 	}
 
-	sqlStmt = sq.
-		Select("type, height", "chain_id").
-		Distinct().
-		From(tableEventBlock).
-		Where(fmt.Sprintf("height = %d AND type = '%s' AND chain_id = '%s'", h, types.EventTypeBeginBlock, chainID))
-
-	rows, err = sqlStmt.RunWith(db).Query()
-	if err != nil {
-		return false, err
+	if err := db.QueryRow(`
+SELECT type, height, chain_id FROM `+viewBlockEvents+`
+  WHERE height = ? AND type = ? AND chain_id = ?;
+`, height, types.EventTypeEndBlock, chainID).Err(); err == sql.ErrNoRows {
+		t.Errorf("No %q event found for height=%d", types.EventTypeEndBlock, height)
+	} else if err != nil {
+		t.Fatalf("Database query failed: %v", err)
 	}
-	defer rows.Close()
+}
 
-	if !rows.Next() {
-		return false, nil
-	}
+// verifyNotImplemented calls f and verifies that it returns both a
+// false-valued flag and a non-nil error whose string matching the expected
+// "not supported" message with label prefixed.
+func verifyNotImplemented(t *testing.T, label string, f func() (bool, error)) {
+	t.Helper()
 
-	sqlStmt = sq.
-		Select("type, height").
-		Distinct().
-		From(tableEventBlock).
-		Where(fmt.Sprintf("height = %d AND type = '%s'", h, types.EventTypeEndBlock))
-	rows, err = sqlStmt.RunWith(db).Query()
-
-	if err != nil {
-		return false, err
-	}
-	defer rows.Close()
-
-	return rows.Next(), nil
+	want := label + " is not supported via the postgres event sink"
+	ok, err := f()
+	assert.False(t, ok)
+	require.NotNil(t, err)
+	assert.Equal(t, want, err.Error())
 }
 
 func mustSetupDB(t *testing.T) *dockertest.Pool {
