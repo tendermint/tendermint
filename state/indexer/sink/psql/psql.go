@@ -178,7 +178,7 @@ SELECT rowid FROM `+tableBlocks+` WHERE height = $1 AND chain_id = $2;
 			// Insert a record for this tx_result and capture its ID for indexing events.
 			txID, err := queryWithID(tx, `
 INSERT INTO `+tableTxResults+` (block_id, index, created_at, tx_hash, tx_result)
-  VALUES ($1, $2, $3, $4)
+  VALUES ($1, $2, $3, $4, $5)
   RETURNING rowid;
 `, blockID, txr.Index, ts, txHash, resultData)
 			if err != nil {
