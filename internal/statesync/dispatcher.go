@@ -149,24 +149,24 @@ func (d *Dispatcher) Stop() {
 
 //----------------------------------------------------------------
 
-// blockProvider is a p2p based light provider which uses a dispatcher connected
+// BlockProvider is a p2p based light provider which uses a dispatcher connected
 // to the state sync reactor to serve light blocks to the light client
 //
 // TODO: This should probably be moved over to the light package but as we're
 // not yet officially supporting p2p light clients we'll leave this here for now.
 //
-// NOTE: blockProvider will return an error with concurrent calls. However, we don't
+// NOTE: BlockProvider will return an error with concurrent calls. However, we don't
 // need a mutex because a light client (and the backfill process) will never call a
 // method more than once at the same time
-type blockProvider struct {
+type BlockProvider struct {
 	peer       types.NodeID
 	chainID    string
 	dispatcher *Dispatcher
 }
 
 // Creates a block provider which implements the light client Provider interface.
-func NewBlockProvider(peer types.NodeID, chainID string, dispatcher *Dispatcher) *blockProvider {
-	return &blockProvider{
+func NewBlockProvider(peer types.NodeID, chainID string, dispatcher *Dispatcher) *BlockProvider {
+	return &BlockProvider{
 		peer:       peer,
 		chainID:    chainID,
 		dispatcher: dispatcher,
@@ -175,7 +175,7 @@ func NewBlockProvider(peer types.NodeID, chainID string, dispatcher *Dispatcher)
 
 // LightBlock fetches a light block from the peer at a specified height returning either a light block
 // or an appropriate error. Concurrently unsafe
-func (p *blockProvider) LightBlock(ctx context.Context, height int64) (*types.LightBlock, error) {
+func (p *BlockProvider) LightBlock(ctx context.Context, height int64) (*types.LightBlock, error) {
 	lb, err := p.dispatcher.LightBlock(ctx, height, p.peer)
 	switch err {
 	case nil:
@@ -211,12 +211,12 @@ func (p *blockProvider) LightBlock(ctx context.Context, height int64) (*types.Li
 // attacks. This is a no op as there currently isn't a way to wire this up to
 // the evidence reactor (we should endeavor to do this in the future but for now
 // it's not critical for backwards verification)
-func (p *blockProvider) ReportEvidence(ctx context.Context, ev types.Evidence) error {
+func (p *BlockProvider) ReportEvidence(ctx context.Context, ev types.Evidence) error {
 	return nil
 }
 
 // String implements stringer interface
-func (p *blockProvider) String() string { return string(p.peer) }
+func (p *BlockProvider) String() string { return string(p.peer) }
 
 //----------------------------------------------------------------
 

@@ -347,7 +347,7 @@ func (s *stateProviderP2P) addProvider(p lightprovider.Provider) {
 func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (types.ConsensusParams, error) {
 	providers := s.lc.Witnesses()
 	for _, provider := range providers {
-		p, ok := provider.(*blockProvider)
+		p, ok := provider.(*BlockProvider)
 		if !ok {
 			panic("expected p2p state provider to use p2p block providers")
 		}

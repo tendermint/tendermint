@@ -63,7 +63,7 @@ var (
 			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  byte(LightBlockChannel),
-				Priority:            11,
+				Priority:            5,
 				SendQueueCapacity:   10,
 				RecvMessageCapacity: lightBlockMsgSize,
 				RecvBufferCapacity:  128,
@@ -156,7 +156,7 @@ type Reactor struct {
 	// providers.
 	mtx           tmsync.RWMutex
 	syncer        *syncer
-	providers     map[types.NodeID]*blockProvider
+	providers     map[types.NodeID]*BlockProvider
 	stateProvider StateProvider
 }
 
@@ -193,7 +193,7 @@ func NewReactor(
 		blockStore:  blockStore,
 		peers:       newPeerList(),
 		dispatcher:  NewDispatcher(blockCh.Out, lightBlockResponseTimeout),
-		providers:   make(map[types.NodeID]*blockProvider),
+		providers:   make(map[types.NodeID]*BlockProvider),
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "StateSync", r)

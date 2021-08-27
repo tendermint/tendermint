@@ -114,7 +114,7 @@ func TestDispatcherProviders(t *testing.T) {
 	go handleRequests(t, d, ch, closeCh)
 
 	peers := createPeerSet(5)
-	providers := make([]*blockProvider, len(peers))
+	providers := make([]*BlockProvider, len(peers))
 	for idx, peer := range peers {
 		providers[idx] = NewBlockProvider(peer, chainID, d)
 	}

@@ -608,7 +608,7 @@ func prefixToBytes(prefix int64) []byte {
 }
 
 func keyCommitted(evidence types.Evidence) []byte {
-	var height int64 = evidence.Height()
+	var height = evidence.Height()
 	key, err := orderedcode.Append(nil, prefixCommitted, height, string(evidence.Hash()))
 	if err != nil {
 		panic(err)
@@ -617,7 +617,7 @@ func keyCommitted(evidence types.Evidence) []byte {
 }
 
 func keyPending(evidence types.Evidence) []byte {
-	var height int64 = evidence.Height()
+	var height = evidence.Height()
 	key, err := orderedcode.Append(nil, prefixPending, height, string(evidence.Hash()))
 	if err != nil {
 		panic(err)
