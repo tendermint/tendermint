@@ -13,7 +13,7 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	schema "github.com/adlio/schema"
 	proto "github.com/gogo/protobuf/proto"
-	dockertest "github.com/ory/dockertest"
+	"github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
