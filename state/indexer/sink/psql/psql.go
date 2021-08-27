@@ -72,7 +72,7 @@ func runInTransaction(db *sql.DB, query func(*sql.Tx) error) error {
 }
 
 // queryWithID executes the specified SQL query with the given arguments,
-// expecting a single one-column result containing an ID. If the query
+// expecting a single-row, single-column result containing an ID. If the query
 // succeeds, the ID from the result is returned.
 func queryWithID(tx *sql.Tx, query string, args ...interface{}) (uint32, error) {
 	var id uint32
@@ -98,7 +98,8 @@ func insertEvents(tx *sql.Tx, blockID, txID uint32, evts []abci.Event) error {
 	// adding any attributes the event provides.
 	for _, evt := range evts {
 		eid, err := queryWithID(tx, `
-INSERT INTO `+tableEvents+` (block_id, tx_id, type) VALUES ($1, $2, $3);
+INSERT INTO `+tableEvents+` (block_id, tx_id, type) VALUES ($1, $2, $3)
+  RETURNING rowid;
 `, blockID, txIDArg, evt.Type)
 		if err != nil {
 			return err
@@ -112,7 +113,7 @@ INSERT INTO `+tableEvents+` (block_id, tx_id, type) VALUES ($1, $2, $3);
 			compositeKey := evt.Type + "." + attr.Key
 			if _, err := tx.Exec(`
 INSERT INTO `+tableAttributes+` (event_id, key, composite_key, value)
-  VALUES ($1, $2, $3);
+  VALUES ($1, $2, $3, $4);
 `, eid, attr.Key, compositeKey, attr.Value); err != nil {
 				return err
 			}
@@ -135,7 +136,9 @@ INSERT INTO `+tableBlocks+` (height, chain_id, created_at)
   ON CONFLICT DO NOTHING
   RETURNING rowid;
 `, h.Header.Height, es.chainID, ts)
-		if err != nil {
+		if err == sql.ErrNoRows {
+			return nil // we already saw this block; quietly succeed
+		} else if err != nil {
 			return fmt.Errorf("indexing block header: %w", err)
 		}
 
@@ -175,7 +178,8 @@ SELECT rowid FROM `+tableBlocks+` WHERE height = $1 AND chain_id = $2;
 			// Insert a record for this tx_result and capture its ID for indexing events.
 			txID, err := queryWithID(tx, `
 INSERT INTO `+tableTxResults+` (block_id, index, created_at, tx_hash, tx_result)
-  VALUES ($1, $2, $3, $4);
+  VALUES ($1, $2, $3, $4)
+  RETURNING rowid;
 `, blockID, txr.Index, ts, txHash, resultData)
 			if err != nil {
 				return fmt.Errorf("indexing tx_result: %w", err)
