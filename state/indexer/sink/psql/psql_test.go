@@ -329,8 +329,5 @@ func verifyNotImplemented(t *testing.T, label string, f func() (bool, error)) {
 func waitForInterrupt() {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt)
-	select {
-	case <-ch:
-		return
-	}
+	<-ch
 }
