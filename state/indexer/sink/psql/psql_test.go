@@ -240,27 +240,12 @@ func verifyTx(hash []byte) (*abci.TxResult, error) {
 	return nil, nil
 }
 
-func verifyTimeStamp(tb string) error {
-
-	// We assume the tx indexing time would not exceed 2 second from now
-	sqlStmt := sq.
-		Select(fmt.Sprintf("%s.created_at", tb)).
-		Distinct().From(tb).
-		Where(fmt.Sprintf("%s.created_at >= $1", tb), time.Now().Add(-2*time.Second))
-
-	rows, err := sqlStmt.RunWith(db).Query()
-	if err != nil {
-		return err
-	}
-
-	defer rows.Close()
-
-	if rows.Next() {
-		var ts string
-		return rows.Scan(&ts)
-	}
-
-	return errors.New("no result")
+func verifyTimeStamp(tableName string) error {
+	return db.QueryRow(fmt.Sprintf(`
+SELECT DISTINCT %[1]s.created_at
+  FROM %[1]s
+  WHERE %[1]s.created_at >= ?;
+`, tableName), time.Now().Add(-2*time.Second)).Err()
 }
 
 func verifyBlock(h int64) (bool, error) {
