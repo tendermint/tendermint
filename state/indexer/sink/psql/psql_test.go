@@ -275,6 +275,8 @@ func verifyNotImplemented(t *testing.T, label string, f func() (bool, error)) {
 	assert.Equal(t, want, err.Error())
 }
 
+// mustSetupDB initializes the database and populates the shared globals used
+// by the test. The caller is responsible for tearing down the pool.
 func mustSetupDB(t *testing.T) *dockertest.Pool {
 	t.Helper()
 	pool, err := dockertest.NewPool(os.Getenv("DOCKER_URL"))
