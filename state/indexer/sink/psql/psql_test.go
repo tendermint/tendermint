@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	sq "github.com/Masterminds/squirrel"
 	"github.com/adlio/schema"
 	proto "github.com/gogo/protobuf/proto"
 	"github.com/ory/dockertest"
@@ -84,15 +83,15 @@ func TestTxFuncs(t *testing.T) {
 	})
 	require.NoError(t, indexer.IndexTxEvents([]*abci.TxResult{txResult}))
 
-	tx, err := verifyTx(types.Tx(txResult.Tx).Hash())
+	txr, err := loadTxResult(types.Tx(txResult.Tx).Hash())
 	require.NoError(t, err)
-	assert.Equal(t, txResult, tx)
+	assert.Equal(t, txResult, txr)
 
-	require.NoError(t, verifyTimeStamp(tableEventTx))
-	require.NoError(t, verifyTimeStamp(tableResultTx))
+	require.NoError(t, verifyTimeStamp(tableTxResults))
+	require.NoError(t, verifyTimeStamp(viewTxEvents))
 
-	tx, err = indexer.GetTxByHash(types.Tx(txResult.Tx).Hash())
-	assert.Nil(t, tx)
+	txr, err = indexer.GetTxByHash(types.Tx(txResult.Tx).Hash())
+	assert.Nil(t, txr)
 	assert.Equal(t, errors.New("getTxByHash is not supported via the postgres event sink"), err)
 
 	r2, err := indexer.SearchTxEvents(context.TODO(), nil)
@@ -170,7 +169,7 @@ func resetDB(t *testing.T) {
 	_, err := db.Exec(`DROP TABLE IF EXISTS blocks,tx_results,events,attributes CASCADE;`)
 	assert.NoError(t, err)
 
-	_, err = db.Exec(`DELETE VIEW IF EXISTS event_attributes,block_events,tx_events CASCADE;`)
+	_, err = db.Exec(`DROP VIEW IF EXISTS event_attributes,block_events,tx_events CASCADE;`)
 	assert.NoError(t, err)
 }
 
@@ -190,41 +189,22 @@ func txResultWithEvents(events []abci.Event) *abci.TxResult {
 	}
 }
 
-func verifyTx(hash []byte) (*abci.TxResult, error) {
-	join := fmt.Sprintf("%s ON %s.id = tx_result_id", tableEventTx, tableResultTx)
-	sqlStmt := sq.
-		Select("tx_result", fmt.Sprintf("%s.id", tableResultTx), "tx_result_id", "hash", "chain_id").
-		Distinct().From(tableResultTx).
-		InnerJoin(join).
-		Where(fmt.Sprintf("hash = $1 AND chain_id = '%s'", chainID), fmt.Sprintf("%X", hash))
-
-	rows, err := sqlStmt.RunWith(db).Query()
-	if err != nil {
-		return nil, err
+func loadTxResult(hash []byte) (*abci.TxResult, error) {
+	hashString := fmt.Sprintf("%X", hash)
+	var resultData []byte
+	if err := db.QueryRow(`
+SELECT tx_result FROM `+tableTxResults+`
+  WHERE tx_hash = ? AND chain_id = ?
+`, hashString, chainID).Scan(&resultData); err != nil {
+		return nil, fmt.Errorf("lookup transaction for hash %q failed: %v", hashString, err)
 	}
 
-	defer rows.Close()
-
-	if rows.Next() {
-		var txResult []byte
-		var txResultID, txid int
-		var h, cid string
-		err = rows.Scan(&txResult, &txResultID, &txid, &h, &cid)
-		if err != nil {
-			return nil, nil
-		}
-
-		msg := new(abci.TxResult)
-		err = proto.Unmarshal(txResult, msg)
-		if err != nil {
-			return nil, err
-		}
-
-		return msg, err
+	txr := new(abci.TxResult)
+	if err := proto.Unmarshal(resultData, txr); err != nil {
+		return nil, fmt.Errorf("unmarshaling txr: %v", err)
 	}
 
-	// No result
-	return nil, nil
+	return txr, nil
 }
 
 func verifyTimeStamp(tableName string) error {
