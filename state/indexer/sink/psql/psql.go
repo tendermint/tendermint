@@ -98,7 +98,7 @@ func insertEvents(tx *sql.Tx, blockID, txID uint32, evts []abci.Event) error {
 	// adding any attributes the event provides.
 	for _, evt := range evts {
 		eid, err := queryWithID(tx, `
-INSERT INTO `+tableEvents+` (block_id, tx_id, type) VALUES (?, ?, ?);
+INSERT INTO `+tableEvents+` (block_id, tx_id, type) VALUES ($1, $2, $3);
 `, blockID, txIDArg, evt.Type)
 		if err != nil {
 			return err
@@ -112,7 +112,7 @@ INSERT INTO `+tableEvents+` (block_id, tx_id, type) VALUES (?, ?, ?);
 			compositeKey := evt.Type + "." + attr.Key
 			if _, err := tx.Exec(`
 INSERT INTO `+tableAttributes+` (event_id, key, composite_key, value)
-  VALUES (?, ?, ?);
+  VALUES ($1, $2, $3);
 `, eid, attr.Key, compositeKey, attr.Value); err != nil {
 				return err
 			}
@@ -131,7 +131,7 @@ func (es *EventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error {
 		// in indexing the events for the block.
 		blockID, err := queryWithID(tx, `
 INSERT INTO `+tableBlocks+` (height, chain_id, created_at)
-  VALUES (?, ?, ?)
+  VALUES ($1, $2, $3)
   ON CONFLICT DO NOTHING
   RETURNING rowid;
 `, h.Header.Height, es.chainID, ts)
@@ -166,7 +166,7 @@ func (es *EventSink) IndexTxEvents(txrs []*abci.TxResult) error {
 		if err := runInTransaction(es.store, func(tx *sql.Tx) error {
 			// Find the block associated with this transaction.
 			blockID, err := queryWithID(tx, `
-SELECT rowid FROM `+tableBlocks+` WHERE height=? AND chain_id=?;
+SELECT rowid FROM `+tableBlocks+` WHERE height = $1 AND chain_id = $2;
 `, txr.Height, es.chainID)
 			if err != nil {
 				return fmt.Errorf("finding block ID: %w", err)
@@ -175,7 +175,7 @@ SELECT rowid FROM `+tableBlocks+` WHERE height=? AND chain_id=?;
 			// Insert a record for this tx_result and capture its ID for indexing events.
 			txID, err := queryWithID(tx, `
 INSERT INTO `+tableTxResults+` (block_id, index, created_at, tx_hash, tx_result)
-  VALUES (?, ?, ?, ?);
+  VALUES ($1, $2, $3, $4);
 `, blockID, txr.Index, ts, txHash, resultData)
 			if err != nil {
 				return fmt.Errorf("indexing tx_result: %w", err)
