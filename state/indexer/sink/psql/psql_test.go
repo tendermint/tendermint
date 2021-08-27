@@ -273,9 +273,8 @@ func loadTxResult(hash []byte) (*abci.TxResult, error) {
 	hashString := fmt.Sprintf("%X", hash)
 	var resultData []byte
 	if err := db.QueryRow(`
-SELECT tx_result FROM `+tableTxResults+`
-  WHERE tx_hash = $1 AND chain_id = $2
-`, hashString, chainID).Scan(&resultData); err != nil {
+SELECT tx_result FROM `+tableTxResults+` WHERE tx_hash = $1;
+`, hashString).Scan(&resultData); err != nil {
 		return nil, fmt.Errorf("lookup transaction for hash %q failed: %v", hashString, err)
 	}
 
