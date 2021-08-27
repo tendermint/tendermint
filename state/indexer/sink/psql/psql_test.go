@@ -3,10 +3,10 @@ package psql
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/signal"
 	"testing"
@@ -32,9 +32,7 @@ var _ indexer.EventSink = (*EventSink)(nil)
 var (
 	doDebug = flag.Bool("debug", false, "If true, pause at teardown")
 
-	db       *sql.DB
-	resource *dockertest.Resource
-	chainID  = "test-chainID"
+	db *sql.DB
 )
 
 const (
@@ -44,6 +42,90 @@ const (
 	dsn      = "postgres://%s:%s@localhost:%s/%s?sslmode=disable"
 	dbName   = "postgres"
 )
+
+func TestMain(m *testing.M) {
+	flag.Parse()
+
+	// Set up docker and start a container running PostgreSQL.
+	pool, err := dockertest.NewPool(os.Getenv("DOCKER_URL"))
+	if err != nil {
+		log.Fatalf("Creating docker pool: %v", err)
+	}
+
+	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
+		Repository: driverName,
+		Tag:        "13",
+		Env: []string{
+			"POSTGRES_USER=" + user,
+			"POSTGRES_PASSWORD=" + password,
+			"POSTGRES_DB=" + dbName,
+			"listen_addresses = '*'",
+		},
+		ExposedPorts: []string{port},
+	}, func(config *docker.HostConfig) {
+		// set AutoRemove to true so that stopped container goes away by itself
+		config.AutoRemove = true
+		config.RestartPolicy = docker.RestartPolicy{
+			Name: "no",
+		}
+	})
+	if err != nil {
+		log.Fatalf("Starting docker pool: %v", err)
+	}
+
+	if *doDebug {
+		log.Print("Manual debugging is enabled, containers will not expire")
+	} else {
+		const expireSeconds = 60
+		_ = resource.Expire(expireSeconds)
+		log.Printf("Container expiration set to %d seconds", expireSeconds)
+	}
+
+	// Connect to the database, clear any leftover data, and install the
+	// indexing schema.
+	conn := fmt.Sprintf(dsn, user, password, resource.GetPort(port+"/tcp"), dbName)
+
+	if err := pool.Retry(func() error {
+		sink, err := NewEventSink(conn, chainID)
+		if err != nil {
+			return err
+		}
+		db = sink.DB() // set global for test use
+		return db.Ping()
+	}); err != nil {
+		log.Fatalf("Connecting to database: %v", err)
+	}
+
+	if err := resetDatabase(db); err != nil {
+		log.Fatalf("Flushing database: %v", err)
+	}
+
+	sm, err := readSchema()
+	if err != nil {
+		log.Fatalf("Reading schema: %v", err)
+	} else if err := schema.NewMigrator().Apply(db, sm); err != nil {
+		log.Fatalf("Applying schema: %v", err)
+	}
+
+	// Run the selected test cases.
+	code := m.Run()
+
+	// Clean up and shut down the database container.
+	if *doDebug {
+		log.Print("Testing complete, send SIGINT to resume teardown")
+		waitForInterrupt()
+		log.Print("(resuming)")
+	}
+	log.Print("Shutting down database")
+	if err := pool.Purge(resource); err != nil {
+		log.Printf("WARNING: Purging pool failed: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		log.Printf("WARNING: Closing database failed: %v", err)
+	}
+
+	os.Exit(code)
+}
 
 func TestType(t *testing.T) {
 	pool := mustSetupDB(t)
@@ -171,12 +253,16 @@ func readSchema() ([]*schema.Migration, error) {
 }
 
 // resetDB drops all the data from the test database.
-func resetDB(t *testing.T) {
+func resetDatabase(db *sql.DB) error {
 	_, err := db.Exec(`DROP TABLE IF EXISTS blocks,tx_results,events,attributes CASCADE;`)
-	assert.NoError(t, err)
-
+	if err != nil {
+		return fmt.Errorf("dropping tables: %v", err)
+	}
 	_, err = db.Exec(`DROP VIEW IF EXISTS event_attributes,block_events,tx_events CASCADE;`)
-	assert.NoError(t, err)
+	if err != nil {
+		return fmt.Errorf("dropping views: %v", err)
+	}
+	return nil
 }
 
 // txResultWithEvents constructs a fresh transaction result with fixed values
@@ -265,71 +351,12 @@ func verifyNotImplemented(t *testing.T, label string, f func() (bool, error)) {
 	assert.Equal(t, want, err.Error())
 }
 
-// mustSetupDB initializes the database and populates the shared globals used
-// by the test. The caller is responsible for tearing down the pool.
-func mustSetupDB(t *testing.T) *dockertest.Pool {
-	t.Helper()
-	pool, err := dockertest.NewPool(os.Getenv("DOCKER_URL"))
-	require.NoError(t, err)
-
-	resource, err = pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: driverName,
-		Tag:        "13",
-		Env: []string{
-			"POSTGRES_USER=" + user,
-			"POSTGRES_PASSWORD=" + password,
-			"POSTGRES_DB=" + dbName,
-			"listen_addresses = '*'",
-		},
-		ExposedPorts: []string{port},
-	}, func(config *docker.HostConfig) {
-		// set AutoRemove to true so that stopped container goes away by itself
-		config.AutoRemove = true
-		config.RestartPolicy = docker.RestartPolicy{
-			Name: "no",
-		}
-	})
-
-	require.NoError(t, err)
-
-	// Set the container to expire in a minute to avoid orphaned containers
-	// hanging around
-	if !*doDebug {
-		_ = resource.Expire(60)
+// waitForInterrupt blocks until a SIGINT is received by the process.
+func waitForInterrupt() {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt)
+	select {
+	case <-ch:
+		return
 	}
-
-	conn := fmt.Sprintf(dsn, user, password, resource.GetPort(port+"/tcp"), dbName)
-
-	require.NoError(t, pool.Retry(func() error {
-		sink, err := NewEventSink(conn, chainID)
-		if err != nil {
-			return err
-		}
-		db = sink.DB() // set global for test use
-		return db.Ping()
-	}))
-
-	resetDB(t)
-
-	sm, err := readSchema()
-	require.NoError(t, err)
-	require.NoError(t, schema.NewMigrator().Apply(db, sm))
-	return pool
-}
-
-// mustTeardown purges the pool and closes the test database.
-func mustTeardown(t *testing.T, pool *dockertest.Pool) {
-	t.Helper()
-	if *doDebug {
-		t.Log("Teardown paused: Send SIGINT to resume")
-		ch := make(chan os.Signal, 1)
-		signal.Notify(ch, os.Interrupt)
-		select {
-		case <-ch:
-			break
-		}
-		t.Log("Resumed teardown")
-	}
-	require.Nil(t, pool.Purge(resource))
-	require.Nil(t, db.Close())
 }
