@@ -200,30 +200,14 @@ func newTestBlockHeader() types.EventDataNewBlockHeader {
 		Header: types.Header{Height: 1},
 		ResultBeginBlock: abci.ResponseBeginBlock{
 			Events: []abci.Event{
-				{
-					Type: "begin_event",
-					Attributes: []abci.EventAttribute{
-						{
-							Key:   "proposer",
-							Value: "FCAA001",
-							Index: true,
-						},
-					},
-				},
+				makeIndexedEvent("begin_event.proposer", "FCAA001"),
+				makeIndexedEvent("thingy.whatzit", "O.O"),
 			},
 		},
 		ResultEndBlock: abci.ResponseEndBlock{
 			Events: []abci.Event{
-				{
-					Type: "end_event",
-					Attributes: []abci.EventAttribute{
-						{
-							Key:   "foo",
-							Value: "100",
-							Index: true,
-						},
-					},
-				},
+				makeIndexedEvent("end_event.foo", "100"),
+				makeIndexedEvent("thingy.whatzit", "-.O"),
 			},
 		},
 	}
