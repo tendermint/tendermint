@@ -26,7 +26,13 @@ var (
 	}
 
 	// The following specify randomly chosen values for testnet nodes.
-	nodeDatabases        = uniformChoice{"goleveldb", "cleveldb", "rocksdb", "boltdb", "badgerdb"}
+	nodeDatabases = weightedChoice{
+		"goleveldb": 30,
+		"rocksdb":   10,
+		"badgerdb":  40,
+		"boltdb":    5,
+		"cleveldb":  5,
+	}
 	nodeABCIProtocols    = uniformChoice{"unix", "tcp", "builtin", "grpc"}
 	nodePrivvalProtocols = uniformChoice{"file", "unix", "tcp", "grpc"}
 	// FIXME: v2 disabled due to flake
@@ -270,7 +276,7 @@ func generateNode(
 	node := e2e.ManifestNode{
 		Mode:             string(mode),
 		StartAt:          startAt,
-		Database:         nodeDatabases.Choose(r).(string),
+		Database:         nodeDatabases.Choose(r),
 		ABCIProtocol:     nodeABCIProtocols.Choose(r).(string),
 		PrivvalProtocol:  nodePrivvalProtocols.Choose(r).(string),
 		BlockSync:        nodeBlockSyncs.Choose(r).(string),
@@ -321,7 +327,7 @@ func generateLightNode(r *rand.Rand, startAt int64, providers []string) *e2e.Man
 	return &e2e.ManifestNode{
 		Mode:            string(e2e.ModeLight),
 		StartAt:         startAt,
-		Database:        nodeDatabases.Choose(r).(string),
+		Database:        nodeDatabases.Choose(r),
 		ABCIProtocol:    "builtin",
 		PersistInterval: ptrUint64(0),
 		PersistentPeers: providers,
