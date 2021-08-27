@@ -66,7 +66,7 @@ func runInTransaction(db *sql.DB, query func(*sql.Tx) error) error {
 		return err
 	}
 	if err := query(tx); err != nil {
-		tx.Rollback()
+		_ = tx.Rollback() // report the initial error, not the rollback
 		return err
 	}
 	return tx.Commit()
