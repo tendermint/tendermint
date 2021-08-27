@@ -160,17 +160,16 @@ func getTestBlockHeader() types.EventDataNewBlockHeader {
 }
 
 func readSchema() ([]*schema.Migration, error) {
-
-	filename := "schema.sql"
+	const filename = "schema.sql"
 	contents, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read sql file from '%s': %w", filename, err)
 	}
 
-	mg := &schema.Migration{}
-	mg.ID = time.Now().Local().String() + " db schema"
-	mg.Script = string(contents)
-	return append([]*schema.Migration{}, mg), nil
+	return []*schema.Migration{{
+		ID:     time.Now().Local().String() + " db schema",
+		Script: string(contents),
+	}}, nil
 }
 
 func resetDB(t *testing.T) {
