@@ -172,22 +172,17 @@ func (app *PersistentKVStoreApplication) ApplySnapshotChunk(
 
 func (app *PersistentKVStoreApplication) ExtendVote(
 	req types.RequestExtendVote) types.ResponseExtendVote {
-	return types.RespondExtendVote(req.Vote.ValidatorAddress, nil)
+  return types.ResponseExtendVote{}
 }
 
 func (app *PersistentKVStoreApplication) VerifyVoteExtension(
 	req types.RequestVerifyVoteExtension) types.ResponseVerifyVoteExtension {
-  ok := bytes.Equal(req.Vote.ValidatorAddress, req.Vote.VoteExtension.AppDataToSign)
-  return types.RespondVerifyVoteExtension(ok)
+  return types.ResponseVerifyVoteExtension{}
 }
 
 func (app *PersistentKVStoreApplication) PrepareProposal(
 	req types.RequestPrepareProposal) types.ResponsePrepareProposal {
-	if len(req.BlockData) >= 1 {
-		req.BlockData[1] = []byte("modified tx")
-	}
-
-	return types.ResponsePrepareProposal{BlockData: req.BlockData}
+	return types.ResponsePrepareProposal{}
 }
 
 //---------------------------------------------
