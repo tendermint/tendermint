@@ -18,7 +18,7 @@
 > material, but should provide enough detail that the reader can tell what they
 > need to read to be up-to-date.
 
-## References
+### References
 
 > Links to external materials needed to follow the discussion may be added here.
 >
