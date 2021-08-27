@@ -129,16 +129,11 @@ func TestMain(m *testing.M) {
 }
 
 func TestType(t *testing.T) {
-	pool := mustSetupDB(t)
-	defer mustTeardown(t, pool)
 	psqlSink := &EventSink{store: db, chainID: chainID}
 	assert.Equal(t, indexer.PSQL, psqlSink.Type())
 }
 
 func TestBlockFuncs(t *testing.T) {
-	pool := mustSetupDB(t)
-	defer mustTeardown(t, pool)
-
 	indexer := &EventSink{store: db, chainID: chainID}
 	require.NoError(t, indexer.IndexBlockEvents(newTestBlockHeader()))
 
@@ -160,9 +155,6 @@ func TestBlockFuncs(t *testing.T) {
 }
 
 func TestTxFuncs(t *testing.T) {
-	pool := mustSetupDB(t)
-	defer mustTeardown(t, pool)
-
 	indexer := &EventSink{store: db, chainID: chainID}
 
 	txResult := txResultWithEvents([]abci.Event{
@@ -193,14 +185,8 @@ func TestTxFuncs(t *testing.T) {
 }
 
 func TestStop(t *testing.T) {
-	pool := mustSetupDB(t)
-	// N.B.: This test tears down manually because it's testing shutdown.
-
 	indexer := &EventSink{store: db}
 	require.NoError(t, indexer.Stop())
-
-	defer db.Close()
-	require.NoError(t, pool.Purge(resource))
 }
 
 // newTestBlockHeader constructs a fresh copy of a block header containing
