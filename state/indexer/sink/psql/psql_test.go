@@ -65,7 +65,7 @@ func TestBlockFuncs(t *testing.T) {
 		return v == nil, err
 	})
 
-	require.NoError(t, verifyTimeStamp(tableEventBlock))
+	require.NoError(t, verifyTimeStamp(tableBlocks))
 
 	// Attempting to reindex the same events should gracefully succeed.
 	require.NoError(t, indexer.IndexBlockEvents(newTestBlockHeader()))
@@ -151,6 +151,7 @@ func newTestBlockHeader() types.EventDataNewBlockHeader {
 	}
 }
 
+// readSchema loads the indexing database schema file
 func readSchema() ([]*schema.Migration, error) {
 	const filename = "schema.sql"
 	contents, err := ioutil.ReadFile(filename)
@@ -164,20 +165,22 @@ func readSchema() ([]*schema.Migration, error) {
 	}}, nil
 }
 
+// resetDB drops all the data from the test database.
 func resetDB(t *testing.T) {
 	_, err := db.Exec(`DROP TABLE IF EXISTS blocks,tx_results,events,attributes CASCADE;`)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	_, err = db.Exec(`DELETE VIEW IF EXISTS event_attributes,block_events,tx_events CASCADE;`)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 }
 
+// txResultWithEvents constructs a fresh transaction result with fixed values
+// for testing, that includes the specified events.
 func txResultWithEvents(events []abci.Event) *abci.TxResult {
-	tx := types.Tx("HELLO WORLD")
 	return &abci.TxResult{
 		Height: 1,
 		Index:  0,
-		Tx:     tx,
+		Tx:     types.Tx("HELLO WORLD"),
 		Result: abci.ResponseDeliverTx{
 			Data:   []byte{0},
 			Code:   abci.CodeTypeOK,
@@ -320,8 +323,8 @@ func mustSetupDB(t *testing.T) *dockertest.Pool {
 	resetDB(t)
 
 	sm, err := readSchema()
-	require.Nil(t, err)
-	require.Nil(t, schema.NewMigrator().Apply(db, sm))
+	require.NoError(t, err)
+	require.NoError(t, schema.NewMigrator().Apply(db, sm))
 	return pool
 }
 
