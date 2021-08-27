@@ -30,7 +30,8 @@ import (
 var _ indexer.EventSink = (*EventSink)(nil)
 
 var (
-	doDebug = flag.Bool("debug", false, "If true, pause at teardown")
+	doPauseAtExit = flag.Bool("pause-at-exit", false,
+		"If true, pause the test until interrupted at shutdown, to allow debugging")
 
 	db *sql.DB
 )
@@ -74,8 +75,8 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Starting docker pool: %v", err)
 	}
 
-	if *doDebug {
-		log.Print("Manual debugging is enabled, containers will not expire")
+	if *doPauseAtExit {
+		log.Print("Pause at exit is enabled, containers will not expire")
 	} else {
 		const expireSeconds = 60
 		_ = resource.Expire(expireSeconds)
@@ -112,8 +113,8 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	// Clean up and shut down the database container.
-	if *doDebug {
-		log.Print("Testing complete, send SIGINT to resume teardown")
+	if *doPauseAtExit {
+		log.Print("Testing complete, pausing for inspection. Send SIGINT to resume teardown")
 		waitForInterrupt()
 		log.Print("(resuming)")
 	}
