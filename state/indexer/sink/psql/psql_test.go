@@ -92,8 +92,7 @@ func TestTxFuncs(t *testing.T) {
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "owner", Value: "Ivan", Index: true}}},
 		{Type: "", Attributes: []abci.EventAttribute{{Key: "not_allowed", Value: "Vlad", Index: true}}},
 	})
-	err = indexer.IndexTxEvents([]*abci.TxResult{txResult})
-	require.NoError(t, err)
+	require.NoError(t, indexer.IndexTxEvents([]*abci.TxResult{txResult}))
 
 	tx, err := verifyTx(types.Tx(txResult.Tx).Hash())
 	require.NoError(t, err)
