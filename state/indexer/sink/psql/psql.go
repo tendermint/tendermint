@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	proto "github.com/gogo/protobuf/proto"
@@ -127,6 +128,20 @@ INSERT INTO `+tableAttributes+` (event_id, key, composite_key, value)
 	return nil
 }
 
+// makeIndexedEvent constructs an event from the specified composite key and
+// value. If the key has the form "type.name", the event will have a single
+// attribute with that name and the value; otherwise the event will have only
+// a type and no attributes.
+func makeIndexedEvent(compositeKey, value string) abci.Event {
+	i := strings.Index(compositeKey, ".")
+	if i < 0 {
+		return abci.Event{Type: compositeKey}
+	}
+	return abci.Event{Type: compositeKey[:i], Attributes: []abci.EventAttribute{
+		{Key: compositeKey[i+1:], Value: value, Index: true},
+	}}
+}
+
 // IndexBlockEvents indexes the specified block header, part of the
 // indexer.EventSink interface.
 func (es *EventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error {
@@ -147,12 +162,18 @@ INSERT INTO `+tableBlocks+` (height, chain_id, created_at)
 			return fmt.Errorf("indexing block header: %w", err)
 		}
 
+		// Insert the special block meta-event for height.
+		if err := insertEvents(tx, blockID, 0, []abci.Event{
+			makeIndexedEvent(types.BlockHeightKey, fmt.Sprint(h.Header.Height)),
+		}); err != nil {
+			return fmt.Errorf("block meta-events: %w", err)
+		}
 		// Insert all the block events. Order is important here,
 		if err := insertEvents(tx, blockID, 0, h.ResultBeginBlock.Events); err != nil {
-			return fmt.Errorf("begin block events: %w", err)
+			return fmt.Errorf("begin-block events: %w", err)
 		}
 		if err := insertEvents(tx, blockID, 0, h.ResultEndBlock.Events); err != nil {
-			return fmt.Errorf("end block events: %w", err)
+			return fmt.Errorf("end-block events: %w", err)
 		}
 		return nil
 	})
@@ -195,8 +216,8 @@ INSERT INTO `+tableTxResults+` (block_id, index, created_at, tx_hash, tx_result)
 
 			// Insert the special transaction meta-events for hash and height.
 			if err := insertEvents(tx, blockID, txID, []abci.Event{
-				makeIndexedEvent("tx", "hash", txHash),
-				makeIndexedEvent("tx", "height", fmt.Sprint(txr.Height)),
+				makeIndexedEvent(types.TxHashKey, txHash),
+				makeIndexedEvent(types.TxHeightKey, fmt.Sprint(txr.Height)),
 			}); err != nil {
 				return fmt.Errorf("indexing transaction meta-events: %w", err)
 			}
