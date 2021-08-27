@@ -41,6 +41,7 @@ const (
 	port     = "5432"
 	dsn      = "postgres://%s:%s@localhost:%s/%s?sslmode=disable"
 	dbName   = "postgres"
+	chainID  = "test-chainID"
 )
 
 func TestMain(m *testing.M) {
