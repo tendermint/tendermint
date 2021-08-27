@@ -41,17 +41,14 @@ const (
 )
 
 func TestType(t *testing.T) {
-	pool, err := setupDB(t)
-	require.NoError(t, err)
-
+	pool := mustSetupDB(t)
 	psqlSink := &EventSink{store: db, chainID: chainID}
 	assert.Equal(t, indexer.PSQL, psqlSink.Type())
-	require.NoError(t, teardown(t, pool))
+	mustTeardown(t, pool)
 }
 
 func TestBlockFuncs(t *testing.T) {
-	pool, err := setupDB(t)
-	require.NoError(t, err)
+	pool := mustSetupDB(t)
 
 	indexer := &EventSink{store: db, chainID: chainID}
 	require.NoError(t, indexer.IndexBlockEvents(getTestBlockHeader()))
@@ -82,12 +79,11 @@ func TestBlockFuncs(t *testing.T) {
 	err = indexer.IndexBlockEvents(getTestBlockHeader())
 	require.NoError(t, err)
 
-	require.NoError(t, teardown(t, pool))
+	mustTeardown(t, pool)
 }
 
 func TestTxFuncs(t *testing.T) {
-	pool, err := setupDB(t)
-	assert.Nil(t, err)
+	pool := mustSetupDB(t)
 
 	indexer := &EventSink{store: db, chainID: chainID}
 
@@ -118,12 +114,11 @@ func TestTxFuncs(t *testing.T) {
 	err = indexer.IndexTxEvents([]*abci.TxResult{txResult})
 	require.NoError(t, err)
 
-	assert.Nil(t, teardown(t, pool))
+	mustTeardown(t, pool)
 }
 
 func TestStop(t *testing.T) {
-	pool, err := setupDB(t)
-	require.NoError(t, err)
+	pool := mustSetupDB(t)
 
 	indexer := &EventSink{store: db}
 	require.NoError(t, indexer.Stop())
@@ -296,10 +291,9 @@ func verifyBlock(h int64) (bool, error) {
 	return rows.Next(), nil
 }
 
-func setupDB(t *testing.T) (*dockertest.Pool, error) {
+func mustSetupDB(t *testing.T) *dockertest.Pool {
 	t.Helper()
 	pool, err := dockertest.NewPool(os.Getenv("DOCKER_URL"))
-
 	require.NoError(t, err)
 
 	resource, err = pool.RunWithOptions(&dockertest.RunOptions{
@@ -340,14 +334,14 @@ func setupDB(t *testing.T) (*dockertest.Pool, error) {
 	resetDB(t)
 
 	sm, err := readSchema()
-	assert.Nil(t, err)
-	assert.Nil(t, schema.NewMigrator().Apply(db, sm))
-	return pool, nil
+	require.Nil(t, err)
+	require.Nil(t, schema.NewMigrator().Apply(db, sm))
+	return pool
 }
 
-func teardown(t *testing.T, pool *dockertest.Pool) error {
+// mustTeardown purges the pool and closes the test database.
+func mustTeardown(t *testing.T, pool *dockertest.Pool) {
 	t.Helper()
-	// When you're done, kill and remove the container
-	assert.Nil(t, pool.Purge(resource))
-	return db.Close()
+	require.Nil(t, pool.Purge(resource))
+	require.Nil(db.Close())
 }
