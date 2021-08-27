@@ -59,8 +59,8 @@ type Manifest struct {
 	// by individual nodes.
 	LogLevel string `toml:"log_level"`
 
-	// DisableLegacyP2P enables use of the new p2p layer for all nodes in a test.
-	DisableLegacyP2P bool `toml:"disable_legacy_p2p"`
+	// UseLegacyP2P uses the legacy p2p layer for all nodes in a test.
+	UseLegacyP2P bool `toml:"use_legacy_p2p"`
 
 	// QueueType describes the type of queue that the system uses internally
 	QueueType string `toml:"queue_type"`
@@ -148,8 +148,8 @@ type ManifestNode struct {
 	// level.
 	LogLevel string `toml:"log_level"`
 
-	// UseNewP2P enables use of the new p2p layer for this node.
-	DisableLegacyP2P bool `toml:"disable_legacy_p2p"`
+	// UseLegacyP2P enables use of the legacy p2p layer for this node.
+	UseLegacyP2P bool `toml:"use_legacy_p2p"`
 }
 
 // Save saves the testnet manifest to a file.

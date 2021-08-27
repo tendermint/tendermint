@@ -96,7 +96,7 @@ type Node struct {
 	PersistentPeers  []*Node
 	Perturbations    []Perturbation
 	LogLevel         string
-	DisableLegacyP2P bool
+	UseLegacyP2P     bool
 	QueueType        string
 }
 
@@ -181,7 +181,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			Perturbations:    []Perturbation{},
 			LogLevel:         manifest.LogLevel,
 			QueueType:        manifest.QueueType,
-			DisableLegacyP2P: manifest.DisableLegacyP2P || nodeManifest.DisableLegacyP2P,
+			UseLegacyP2P:     manifest.UseLegacyP2P && nodeManifest.UseLegacyP2P,
 		}
 
 		if node.StartAt == testnet.InitialHeight {
@@ -424,16 +424,6 @@ func (t Testnet) ArchiveNodes() []*Node {
 		}
 	}
 	return nodes
-}
-
-// RandomNode returns a random non-seed node.
-func (t Testnet) RandomNode() *Node {
-	for {
-		node := t.Nodes[rand.Intn(len(t.Nodes))]
-		if node.Mode != ModeSeed {
-			return node
-		}
-	}
 }
 
 // IPv6 returns true if the testnet is an IPv6 network.

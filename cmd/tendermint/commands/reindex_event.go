@@ -31,7 +31,7 @@ var ReIndexEventCmd = &cobra.Command{
 	Long: `
 	reindex-event is an offline tooling to re-index block and tx events to the eventsinks,
 	you can run this command when the event store backend dropped/disconnected or you want to replace the backend.
-	The default start-height is 0, meaning the tooling will start reindex from the base block height(inclusive); and the 
+	The default start-height is 0, meaning the tooling will start reindex from the base block height(inclusive); and the
 	default end-height is 0, meaning the tooling will reindex until the latest block height(inclusive). User can omits
 	either or both arguments.
 	`,
@@ -106,7 +106,7 @@ func loadEventSinks(cfg *tmcfg.Config) ([]indexer.EventSink, error) {
 			if conn == "" {
 				return nil, errors.New("the psql connection settings cannot be empty")
 			}
-			es, _, err := psql.NewEventSink(conn, chainID)
+			es, err := psql.NewEventSink(conn, chainID)
 			if err != nil {
 				return nil, err
 			}

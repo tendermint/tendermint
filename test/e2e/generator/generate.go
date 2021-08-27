@@ -107,11 +107,11 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 
 	switch opt["p2p"].(P2PMode) {
 	case NewP2PMode:
-		manifest.DisableLegacyP2P = true
+		manifest.UseLegacyP2P = true
 	case LegacyP2PMode:
-		manifest.DisableLegacyP2P = false
+		manifest.UseLegacyP2P = false
 	case HybridP2PMode:
-		manifest.DisableLegacyP2P = false
+		manifest.UseLegacyP2P = true
 		p2pNodeFactor = 2
 	default:
 		return manifest, fmt.Errorf("unknown p2p mode %s", opt["p2p"])
@@ -138,9 +138,9 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		node := generateNode(r, e2e.ModeSeed, 0, manifest.InitialHeight, false)
 
 		if p2pNodeFactor == 0 {
-			node.DisableLegacyP2P = manifest.DisableLegacyP2P
+			node.UseLegacyP2P = manifest.UseLegacyP2P
 		} else if p2pNodeFactor%i == 0 {
-			node.DisableLegacyP2P = !manifest.DisableLegacyP2P
+			node.UseLegacyP2P = !manifest.UseLegacyP2P
 		}
 
 		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = node
@@ -162,9 +162,9 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			r, e2e.ModeValidator, startAt, manifest.InitialHeight, i <= 2)
 
 		if p2pNodeFactor == 0 {
-			node.DisableLegacyP2P = manifest.DisableLegacyP2P
+			node.UseLegacyP2P = manifest.UseLegacyP2P
 		} else if p2pNodeFactor%i == 0 {
-			node.DisableLegacyP2P = !manifest.DisableLegacyP2P
+			node.UseLegacyP2P = !manifest.UseLegacyP2P
 		}
 
 		manifest.Nodes[name] = node
@@ -198,9 +198,9 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		node := generateNode(r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
 
 		if p2pNodeFactor == 0 {
-			node.DisableLegacyP2P = manifest.DisableLegacyP2P
+			node.UseLegacyP2P = manifest.UseLegacyP2P
 		} else if p2pNodeFactor%i == 0 {
-			node.DisableLegacyP2P = !manifest.DisableLegacyP2P
+			node.UseLegacyP2P = !manifest.UseLegacyP2P
 		}
 		manifest.Nodes[fmt.Sprintf("full%02d", i)] = node
 	}
