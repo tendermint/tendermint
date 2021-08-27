@@ -77,7 +77,7 @@ CREATE VIEW block_events AS
 
 -- A joined view of all transaction events.
 CREATE VIEW tx_events AS
-  SELECT height, index, chain_id, type, key, composite_key, value
+  SELECT height, index, chain_id, type, key, composite_key, value, tx_results.created_at
   FROM blocks JOIN tx_results ON (blocks.rowid = tx_results.block_id)
   JOIN event_attributes ON (tx_results.rowid = event_attributes.tx_id)
   WHERE event_attributes.tx_id IS NOT NULL;
