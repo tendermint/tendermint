@@ -307,7 +307,7 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 
 	err = r.Backfill(ctx, state)
 	if err != nil {
-		return sm.State{}, err
+		r.Logger.Error("backfill failed. Proceeding optimistically...", "err", err)
 	}
 
 	return state, nil

@@ -85,16 +85,10 @@ func Start(testnet *e2e.Testnet) error {
 
 			networkHeight = node.StartAt
 
-			logger.Info("Waiting for network to advance before starting catch up node",
-				"node", node.Name,
-				"height", networkHeight)
-
 			if _, _, err := waitForHeight(testnet, networkHeight); err != nil {
 				return err
 			}
 		}
-
-		logger.Info("Starting catch up node", "node", node.Name, "height", node.StartAt)
 
 		if err := execCompose(testnet.Dir, "up", "-d", node.Name); err != nil {
 			return err

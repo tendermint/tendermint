@@ -75,7 +75,7 @@ mode = "full"
 start_at = 1010
 # FIXME: should be v2, disabled due to flake
 block_sync = "v0"
-persistent_peers = ["validator01", "validator02", "validator03", "validator04", "validator05"]
+persistent_peers = ["validator01", "validator02", "validator03", "validator04"]
 perturb = ["restart"]
 retain_blocks = 7
 state_sync = "rpc"
