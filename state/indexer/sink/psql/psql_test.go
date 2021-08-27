@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"testing"
 	"time"
 
@@ -27,9 +29,13 @@ import (
 // Verify that the type satisfies the EventSink interface.
 var _ indexer.EventSink = (*EventSink)(nil)
 
-var db *sql.DB
-var resource *dockertest.Resource
-var chainID = "test-chainID"
+var (
+	doDebug = flag.Bool("debug", false, "If true, pause at teardown")
+
+	db       *sql.DB
+	resource *dockertest.Resource
+	chainID  = "test-chainID"
+)
 
 const (
 	user     = "postgres"
@@ -287,7 +293,9 @@ func mustSetupDB(t *testing.T) *dockertest.Pool {
 
 	// Set the container to expire in a minute to avoid orphaned containers
 	// hanging around
-	_ = resource.Expire(60)
+	if !*doDebug {
+		_ = resource.Expire(60)
+	}
 
 	conn := fmt.Sprintf(dsn, user, password, resource.GetPort(port+"/tcp"), dbName)
 
@@ -311,6 +319,16 @@ func mustSetupDB(t *testing.T) *dockertest.Pool {
 // mustTeardown purges the pool and closes the test database.
 func mustTeardown(t *testing.T, pool *dockertest.Pool) {
 	t.Helper()
+	if *doDebug {
+		t.Log("Teardown paused: Send SIGINT to resume")
+		ch := make(chan os.Signal, 1)
+		signal.Notify(ch, os.Interrupt)
+		select {
+		case <-ch:
+			break
+		}
+		t.Log("Resumed teardown")
+	}
 	require.Nil(t, pool.Purge(resource))
 	require.Nil(t, db.Close())
 }
