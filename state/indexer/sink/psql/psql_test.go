@@ -194,7 +194,7 @@ func loadTxResult(hash []byte) (*abci.TxResult, error) {
 	var resultData []byte
 	if err := db.QueryRow(`
 SELECT tx_result FROM `+tableTxResults+`
-  WHERE tx_hash = ? AND chain_id = ?
+  WHERE tx_hash = $1 AND chain_id = $2
 `, hashString, chainID).Scan(&resultData); err != nil {
 		return nil, fmt.Errorf("lookup transaction for hash %q failed: %v", hashString, err)
 	}
@@ -211,14 +211,14 @@ func verifyTimeStamp(tableName string) error {
 	return db.QueryRow(fmt.Sprintf(`
 SELECT DISTINCT %[1]s.created_at
   FROM %[1]s
-  WHERE %[1]s.created_at >= ?;
+  WHERE %[1]s.created_at >= $1;
 `, tableName), time.Now().Add(-2*time.Second)).Err()
 }
 
 func verifyBlock(t *testing.T, height int64) {
 	// Check that the blocks table contains an entry for this height.
 	if err := db.QueryRow(`
-SELECT height FROM `+tableBlocks+` WHERE height = ?;
+SELECT height FROM `+tableBlocks+` WHERE height = $1;
 `, height).Err(); err == sql.ErrNoRows {
 		t.Errorf("No block found for height=%d", height)
 	} else if err != nil {
@@ -228,7 +228,7 @@ SELECT height FROM `+tableBlocks+` WHERE height = ?;
 	// Verify the presence of begin_block and end_block events.
 	if err := db.QueryRow(`
 SELECT type, height, chain_id FROM `+viewBlockEvents+`
-  WHERE height = ? AND type = ? AND chain_id = ?;
+  WHERE height = $1 AND type = $2 AND chain_id = $3;
 `, height, types.EventTypeBeginBlock, chainID).Err(); err == sql.ErrNoRows {
 		t.Errorf("No %q event found for height=%d", types.EventTypeBeginBlock, height)
 	} else if err != nil {
@@ -237,7 +237,7 @@ SELECT type, height, chain_id FROM `+viewBlockEvents+`
 
 	if err := db.QueryRow(`
 SELECT type, height, chain_id FROM `+viewBlockEvents+`
-  WHERE height = ? AND type = ? AND chain_id = ?;
+  WHERE height = $1 AND type = $2 AND chain_id = $3;
 `, height, types.EventTypeEndBlock, chainID).Err(); err == sql.ErrNoRows {
 		t.Errorf("No %q event found for height=%d", types.EventTypeEndBlock, height)
 	} else if err != nil {
