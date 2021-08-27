@@ -42,13 +42,14 @@ const (
 
 func TestType(t *testing.T) {
 	pool := mustSetupDB(t)
+	defer mustTeardown(t, pool)
 	psqlSink := &EventSink{store: db, chainID: chainID}
 	assert.Equal(t, indexer.PSQL, psqlSink.Type())
-	mustTeardown(t, pool)
 }
 
 func TestBlockFuncs(t *testing.T) {
 	pool := mustSetupDB(t)
+	defer mustTeardown(t, pool)
 
 	indexer := &EventSink{store: db, chainID: chainID}
 	require.NoError(t, indexer.IndexBlockEvents(getTestBlockHeader()))
@@ -78,12 +79,11 @@ func TestBlockFuncs(t *testing.T) {
 	// try to insert the duplicate block events.
 	err = indexer.IndexBlockEvents(getTestBlockHeader())
 	require.NoError(t, err)
-
-	mustTeardown(t, pool)
 }
 
 func TestTxFuncs(t *testing.T) {
 	pool := mustSetupDB(t)
+	defer mustTeardown(t, pool)
 
 	indexer := &EventSink{store: db, chainID: chainID}
 
@@ -112,12 +112,11 @@ func TestTxFuncs(t *testing.T) {
 	// try to insert the duplicate tx events.
 	err = indexer.IndexTxEvents([]*abci.TxResult{txResult})
 	require.NoError(t, err)
-
-	mustTeardown(t, pool)
 }
 
 func TestStop(t *testing.T) {
 	pool := mustSetupDB(t)
+	// N.B.: This test tears down manually because it's testing shutdown.
 
 	indexer := &EventSink{store: db}
 	require.NoError(t, indexer.Stop())
