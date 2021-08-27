@@ -178,22 +178,23 @@ func NewReactor(
 	tempDir string,
 ) *Reactor {
 	r := &Reactor{
-		chainID:     chainID,
-		cfg:         cfg,
-		conn:        conn,
-		connQuery:   connQuery,
-		snapshotCh:  snapshotCh,
-		chunkCh:     chunkCh,
-		blockCh:     blockCh,
-		paramsCh:    paramsCh,
-		peerUpdates: peerUpdates,
-		closeCh:     make(chan struct{}),
-		tempDir:     tempDir,
-		stateStore:  stateStore,
-		blockStore:  blockStore,
-		peers:       newPeerList(),
-		dispatcher:  NewDispatcher(blockCh.Out, lightBlockResponseTimeout),
-		providers:   make(map[types.NodeID]*BlockProvider),
+		chainID:       chainID,
+		initialHeight: initialHeight,
+		cfg:           cfg,
+		conn:          conn,
+		connQuery:     connQuery,
+		snapshotCh:    snapshotCh,
+		chunkCh:       chunkCh,
+		blockCh:       blockCh,
+		paramsCh:      paramsCh,
+		peerUpdates:   peerUpdates,
+		closeCh:       make(chan struct{}),
+		tempDir:       tempDir,
+		stateStore:    stateStore,
+		blockStore:    blockStore,
+		peers:         newPeerList(),
+		dispatcher:    NewDispatcher(blockCh.Out, lightBlockResponseTimeout),
+		providers:     make(map[types.NodeID]*BlockProvider),
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "StateSync", r)
@@ -346,7 +347,7 @@ func (r *Reactor) backfill(
 	stopTime time.Time,
 ) error {
 	r.Logger.Info("starting backfill process...", "startHeight", startHeight,
-		"stopHeight", stopHeight, "trustedBlockID", trustedBlockID)
+		"stopHeight", stopHeight, "stopTime", stopTime, "trustedBlockID", trustedBlockID)
 
 	const sleepTime = 1 * time.Second
 	var (

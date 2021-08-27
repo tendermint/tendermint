@@ -687,11 +687,9 @@ func (n *nodeImpl) OnStart() error {
 			return fmt.Errorf("unable to derive state: %w", err)
 		}
 
-		n.Logger.Info("starting state sync...")
-
 		// TODO: we may want to move these events within the respective
 		// reactors.
-		// at the beginning of the statesync start, we use the initialHeight as the event height
+		// At the beginning of the statesync start, we use the initialHeight as the event height
 		// because of the statesync doesn't have the concreate state height before fetched the snapshot.
 		d := types.EventDataStateSyncStatus{Complete: false, Height: state.InitialHeight}
 		if err := n.eventBus.PublishEventStateSyncStatus(d); err != nil {
