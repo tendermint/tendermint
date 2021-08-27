@@ -159,8 +159,10 @@ func TestTxFuncs(t *testing.T) {
 	indexer := &EventSink{store: db, chainID: chainID}
 
 	txResult := txResultWithEvents([]abci.Event{
-		{Type: "account", Attributes: []abci.EventAttribute{{Key: "number", Value: "1", Index: true}}},
-		{Type: "account", Attributes: []abci.EventAttribute{{Key: "owner", Value: "Ivan", Index: true}}},
+		makeIndexedEvent("account.number", "1"),
+		makeIndexedEvent("account.owner", "Ivan"),
+		makeIndexedEvent("account.owner", "Yulieta"),
+
 		{Type: "", Attributes: []abci.EventAttribute{{Key: "not_allowed", Value: "Vlad", Index: true}}},
 	})
 	require.NoError(t, indexer.IndexTxEvents([]*abci.TxResult{txResult}))
