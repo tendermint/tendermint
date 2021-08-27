@@ -171,13 +171,14 @@ func TestTxFuncs(t *testing.T) {
 	require.NoError(t, verifyTimeStamp(tableTxResults))
 	require.NoError(t, verifyTimeStamp(viewTxEvents))
 
-	txr, err = indexer.GetTxByHash(types.Tx(txResult.Tx).Hash())
-	assert.Nil(t, txr)
-	assert.Equal(t, errors.New("getTxByHash is not supported via the postgres event sink"), err)
-
-	r2, err := indexer.SearchTxEvents(context.TODO(), nil)
-	assert.Nil(t, r2)
-	assert.Equal(t, errors.New("tx search is not supported via the postgres event sink"), err)
+	verifyNotImplemented(t, "getTxByHash", func() (bool, error) {
+		txr, err := indexer.GetTxByHash(types.Tx(txResult.Tx).Hash())
+		return txr != nil, err
+	})
+	verifyNotImplemented(t, "tx search", func() (bool, error) {
+		txr, err := indexer.SearchTxEvents(context.Background(), nil)
+		return txr != nil, err
+	})
 
 	// try to insert the duplicate tx events.
 	err = indexer.IndexTxEvents([]*abci.TxResult{txResult})
