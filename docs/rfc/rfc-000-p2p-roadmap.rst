@@ -61,7 +61,7 @@ Some limitations of the current stack include:
   
 - the legacy stack provided some control to operators to force the system to
   dial new peers or seed nodes or manipulate the topology of the system _in
-  stiu_. The current stack can't easily provide this, and while the new stack
+  situ_. The current stack can't easily provide this, and while the new stack
   may have better behavior, it does leave operators hands tied.
 
 - heavy reliance on buffering to avoid backups in the flow of components,
@@ -70,7 +70,7 @@ Some limitations of the current stack include:
   should be discarded. 
   
 Some of these issues will be resolved early in the 0.36 cycle, with the
-removal of the legacy componets.
+removal of the legacy components.
 
 The 0.36 release also provides the opportunity to make changes to the
 protocol, as the release will not be compatible with previous releases.
@@ -78,7 +78,7 @@ protocol, as the release will not be compatible with previous releases.
 Areas for Development
 ---------------------
 
-These section describe features that may make sense to include in a Phase 2 of
+These sections describe features that may make sense to include in a Phase 2 of
 a P2P project.
 
 Internal Message Passing
@@ -113,7 +113,7 @@ Synchronous Semantics (Paired Request/Response)
 
 In the current system, all messages are sent with fire-and-forget semantics,
 and there's no coupling between a request sent via the p2p layer, and a
-response. These kinds of semantics would be simplify the implementation of
+response. These kinds of semantics would simplify the implementation of
 state and block sync reactors, and make intra-node message passing more
 powerful.
 
@@ -138,7 +138,7 @@ Currently, all timeouts, buffering, and QoS features are handled at the router
 layer, and the reactors are implemented in ways that assume/require
 asynchronous operation. This both increases the required complexity at the
 routing layer, and means that misbehavior at the reactor level is difficult to
-detect or attribute. Additionally, the current system provides two main
+detect or attribute. Additionally, the current system provides three main
 parameters to control quality of service:
 
 - buffer sizes for channels and queues.
