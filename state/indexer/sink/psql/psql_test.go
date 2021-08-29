@@ -55,7 +55,7 @@ func TestMain(m *testing.M) {
 	}
 
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: driverName,
+		Repository: "postgres",
 		Tag:        "13",
 		Env: []string{
 			"POSTGRES_USER=" + user,
