@@ -388,7 +388,6 @@ func main() {
  c := make(chan os.Signal, 1)
  signal.Notify(c, os.Interrupt, syscall.SIGTERM)
  <-c
- os.Exit(0)
 }
 
 func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
@@ -564,7 +563,6 @@ defer func() {
 c := make(chan os.Signal, 1)
 signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 <-c
-os.Exit(0)
 ```
 
 ## 1.5 Getting Up and Running
