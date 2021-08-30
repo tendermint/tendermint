@@ -20,9 +20,6 @@ type localClient struct {
 	Callback
 }
 
-<<<<<<< HEAD
-func NewLocalClient(mtx *tmsync.Mutex, app types.Application) Client {
-=======
 var _ Client = (*localClient)(nil)
 
 // NewLocalClient creates a local client, which will be directly calling the
@@ -30,7 +27,6 @@ var _ Client = (*localClient)(nil)
 //
 // Both Async and Sync methods ignore the given context.Context parameter.
 func NewLocalClient(mtx *tmsync.RWMutex, app types.Application) Client {
->>>>>>> 1c4dbe30d (abci: change client to use multi-reader mutexes (#6306))
 	if mtx == nil {
 		mtx = &tmsync.RWMutex{}
 	}
@@ -70,15 +66,9 @@ func (app *localClient) EchoAsync(msg string) *ReqRes {
 	)
 }
 
-<<<<<<< HEAD
-func (app *localClient) InfoAsync(req types.RequestInfo) *ReqRes {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-=======
-func (app *localClient) InfoAsync(ctx context.Context, req types.RequestInfo) (*ReqRes, error) {
+func (app *localClient) InfoAsync(req types.RequestInfo) (*ReqRes, error) {
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
->>>>>>> 1c4dbe30d (abci: change client to use multi-reader mutexes (#6306))
 
 	res := app.Application.Info(req)
 	return app.callback(
@@ -120,15 +110,9 @@ func (app *localClient) CheckTxAsync(req types.RequestCheckTx) *ReqRes {
 	)
 }
 
-<<<<<<< HEAD
-func (app *localClient) QueryAsync(req types.RequestQuery) *ReqRes {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-=======
-func (app *localClient) QueryAsync(ctx context.Context, req types.RequestQuery) (*ReqRes, error) {
+func (app *localClient) QueryAsync(req types.RequestQuery) (*ReqRes, error) {
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
->>>>>>> 1c4dbe30d (abci: change client to use multi-reader mutexes (#6306))
 
 	res := app.Application.Query(req)
 	return app.callback(
@@ -235,15 +219,9 @@ func (app *localClient) EchoSync(msg string) (*types.ResponseEcho, error) {
 	return &types.ResponseEcho{Message: msg}, nil
 }
 
-<<<<<<< HEAD
 func (app *localClient) InfoSync(req types.RequestInfo) (*types.ResponseInfo, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-=======
-func (app *localClient) InfoSync(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
->>>>>>> 1c4dbe30d (abci: change client to use multi-reader mutexes (#6306))
 
 	res := app.Application.Info(req)
 	return &res, nil
@@ -273,18 +251,9 @@ func (app *localClient) CheckTxSync(req types.RequestCheckTx) (*types.ResponseCh
 	return &res, nil
 }
 
-<<<<<<< HEAD
 func (app *localClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-=======
-func (app *localClient) QuerySync(
-	ctx context.Context,
-	req types.RequestQuery,
-) (*types.ResponseQuery, error) {
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
->>>>>>> 1c4dbe30d (abci: change client to use multi-reader mutexes (#6306))
 
 	res := app.Application.Query(req)
 	return &res, nil
