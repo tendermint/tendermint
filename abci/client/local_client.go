@@ -66,7 +66,7 @@ func (app *localClient) EchoAsync(msg string) *ReqRes {
 	)
 }
 
-func (app *localClient) InfoAsync(req types.RequestInfo) (*ReqRes, error) {
+func (app *localClient) InfoAsync(req types.RequestInfo) *ReqRes {
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
 
@@ -110,7 +110,7 @@ func (app *localClient) CheckTxAsync(req types.RequestCheckTx) *ReqRes {
 	)
 }
 
-func (app *localClient) QueryAsync(req types.RequestQuery) (*ReqRes, error) {
+func (app *localClient) QueryAsync(req types.RequestQuery) *ReqRes {
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
 
