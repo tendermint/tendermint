@@ -28,3 +28,14 @@ Validator set changes are effected using the following transaction format:
 where `pubkeyN` is a base64-encoded 32-byte ed25519 key and `powerN` is a new voting power for the validator with `pubkeyN` (possibly a new one).
 To remove a validator from the validator set, set power to `0`.
 There is no sybil protection against new validators joining.
+
+## ABCIPPKVStoreApplication
+
+The ABCIPPKVStoreApplication wraps the KVStoreApplication with ABCI++ specific
+methods.
+
+### Prepare Proposal
+
+Transaction could be
+
+### Vote Extension

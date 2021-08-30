@@ -728,6 +728,7 @@ func (cs *CommitSig) ToProto() *tmproto.CommitSig {
 		ValidatorAddress: cs.ValidatorAddress,
 		Timestamp:        cs.Timestamp,
 		Signature:        cs.Signature,
+    VoteExtension:    cs.VoteExtension.ToProto(),
 	}
 }
 
@@ -739,6 +740,7 @@ func (cs *CommitSig) FromProto(csp tmproto.CommitSig) error {
 	cs.ValidatorAddress = csp.ValidatorAddress
 	cs.Timestamp = csp.Timestamp
 	cs.Signature = csp.Signature
+  cs.VoteExtension = VoteExtensionToSignFromProto(csp.VoteExtension)
 
 	return cs.ValidateBasic()
 }

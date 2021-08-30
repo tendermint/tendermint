@@ -33,6 +33,8 @@ type PersistentKVStoreApplication struct {
 	valAddrToPubKeyMap map[string]pc.PublicKey
 
 	logger log.Logger
+
+  extension []byte
 }
 
 func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication {
@@ -75,6 +77,14 @@ func (app *PersistentKVStoreApplication) DeliverTx(req types.RequestDeliverTx) t
 		// and in app.ValUpdates
 		return app.execValidatorTx(req.Tx)
 	}
+
+  if isPrepareTx(req.Tx) {
+    return app.execPrepareTx(req.Tx)
+  }
+
+  if isExtensionTx(req.Tx) {
+    return app.execExtensionTx(req.Tx)
+  }
 
 	// otherwise, update the key-value store
 	return app.app.DeliverTx(req)
@@ -172,17 +182,18 @@ func (app *PersistentKVStoreApplication) ApplySnapshotChunk(
 
 func (app *PersistentKVStoreApplication) ExtendVote(
 	req types.RequestExtendVote) types.ResponseExtendVote {
-  return types.ResponseExtendVote{}
+  return types.RespondExtendVote(app.constructExtension(req.Vote.ValidatorAddress), nil)
 }
 
 func (app *PersistentKVStoreApplication) VerifyVoteExtension(
 	req types.RequestVerifyVoteExtension) types.ResponseVerifyVoteExtension {
-  return types.ResponseVerifyVoteExtension{}
+  return types.RespondVerifyVoteExtension(
+    app.verifyExtension(req.Vote.ValidatorAddress, req.Vote.VoteExtension.AppDataToSign))
 }
 
 func (app *PersistentKVStoreApplication) PrepareProposal(
 	req types.RequestPrepareProposal) types.ResponsePrepareProposal {
-	return types.ResponsePrepareProposal{}
+    return types.ResponsePrepareProposal{BlockData: app.substPrepareTx(req.BlockData)}
 }
 
 //---------------------------------------------
@@ -298,4 +309,58 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 	app.ValUpdates = append(app.ValUpdates, v)
 
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK}
+}
+
+
+
+// -----------------------------
+
+const PreparePrefix = "prepare"
+
+func isPrepareTx(tx []byte) bool {
+  return strings.HasPrefix(string(tx), PreparePrefix)
+}
+
+// execPrepareTx is noop. tx data is considered as placeholder
+// and is substitute at the PrepareProposal.
+func (app *PersistentKVStoreApplication) execPrepareTx(tx []byte) types.ResponseDeliverTx {
+  // noop
+  return types.ResponseDeliverTx{}
+}
+
+// substPrepareTx subst all the preparetx in the blockdata
+// to null string(could be any arbitrary string).
+func (app *PersistentKVStoreApplication) substPrepareTx(blockData [][]byte) [][]byte {
+  for i, tx := range blockData {
+    if isPrepareTx(tx) {
+      blockData[i] = make([]byte, len(tx))
+    }
+  }
+
+  return blockData
+}
+
+const ExtensionPrefix = "extension"
+
+func isExtensionTx(tx []byte) bool {
+  return strings.HasPrefix(string(tx), ExtensionPrefix)
+}
+
+// execExtensionTx stores the input string in the application struct
+// which must be included in the VoteExtension.AppDataToSign
+func (app *PersistentKVStoreApplication) execExtensionTx(tx []byte) types.ResponseDeliverTx {
+  app.extension = []byte(strings.Split(string(tx), ":")[1])
+
+  return types.ResponseDeliverTx{}
+}
+
+func (app *PersistentKVStoreApplication) constructExtension(valAddr []byte) []byte {
+  ext := make([]byte, len(valAddr)+len(app.extension))
+  copy(ext, valAddr)
+  copy(ext[len(valAddr):], app.extension)
+  return ext
+}
+
+func (app *PersistentKVStoreApplication) verifyExtension(valAddr []byte, ext []byte) bool {
+  return bytes.Equal(app.constructExtension(valAddr), ext)
 }
