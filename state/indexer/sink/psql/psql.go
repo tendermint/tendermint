@@ -193,7 +193,8 @@ func (es *EventSink) IndexTxEvents(txrs []*abci.TxResult) error {
 		txHash := fmt.Sprintf("%X", types.Tx(txr.Tx).Hash())
 
 		if err := runInTransaction(es.store, func(dbtx *sql.Tx) error {
-			// Find the block associated with this transaction.
+			// Find the block associated with this transaction. The block header
+			// must have been indexed prior to the transactions belonging to it.
 			blockID, err := queryWithID(dbtx, `
 SELECT rowid FROM `+tableBlocks+` WHERE height = $1 AND chain_id = $2;
 `, txr.Height, es.chainID)
