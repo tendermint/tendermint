@@ -3,6 +3,8 @@ package main
 import (
 	"math/rand"
 	"sort"
+
+	"github.com/mroth/weightedrand"
 )
 
 // combinations takes input in the form of a map of item lists, and returns a
@@ -82,4 +84,20 @@ func (usc uniformSetChoice) Choose(r *rand.Rand) []string {
 		choices = append(choices, usc[i])
 	}
 	return choices
+}
+
+type weightedChoice map[string]uint
+
+func (wc weightedChoice) Choose(r *rand.Rand) string {
+	choices := make([]weightedrand.Choice, 0, len(wc))
+	for k, v := range wc {
+		choices = append(choices, weightedrand.NewChoice(k, v))
+	}
+
+	chooser, err := weightedrand.NewChooser(choices...)
+	if err != nil {
+		panic(err)
+	}
+
+	return chooser.PickSource(r).(string)
 }
