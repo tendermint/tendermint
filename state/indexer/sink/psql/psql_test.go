@@ -140,58 +140,60 @@ func TestType(t *testing.T) {
 	assert.Equal(t, indexer.PSQL, psqlSink.Type())
 }
 
-func TestBlockFuncs(t *testing.T) {
-	indexer := &EventSink{store: testDB(), chainID: chainID}
-	require.NoError(t, indexer.IndexBlockEvents(newTestBlockHeader()))
+func TestIndexing(t *testing.T) {
+	t.Run("IndexBlockEvents", func(t *testing.T) {
+		indexer := &EventSink{store: testDB(), chainID: chainID}
+		require.NoError(t, indexer.IndexBlockEvents(newTestBlockHeader()))
 
-	verifyBlock(t, 1)
-	verifyBlock(t, 2)
+		verifyBlock(t, 1)
+		verifyBlock(t, 2)
 
-	verifyNotImplemented(t, "hasBlock", func() (bool, error) { return indexer.HasBlock(1) })
-	verifyNotImplemented(t, "hasBlock", func() (bool, error) { return indexer.HasBlock(2) })
+		verifyNotImplemented(t, "hasBlock", func() (bool, error) { return indexer.HasBlock(1) })
+		verifyNotImplemented(t, "hasBlock", func() (bool, error) { return indexer.HasBlock(2) })
 
-	verifyNotImplemented(t, "block search", func() (bool, error) {
-		v, err := indexer.SearchBlockEvents(context.Background(), nil)
-		return v != nil, err
+		verifyNotImplemented(t, "block search", func() (bool, error) {
+			v, err := indexer.SearchBlockEvents(context.Background(), nil)
+			return v != nil, err
+		})
+
+		require.NoError(t, verifyTimeStamp(tableBlocks))
+
+		// Attempting to reindex the same events should gracefully succeed.
+		require.NoError(t, indexer.IndexBlockEvents(newTestBlockHeader()))
 	})
 
-	require.NoError(t, verifyTimeStamp(tableBlocks))
+	t.Run("IndexTxEvents", func(t *testing.T) {
+		indexer := &EventSink{store: testDB(), chainID: chainID}
 
-	// Attempting to reindex the same events should gracefully succeed.
-	require.NoError(t, indexer.IndexBlockEvents(newTestBlockHeader()))
-}
+		txResult := txResultWithEvents([]abci.Event{
+			makeIndexedEvent("account.number", "1"),
+			makeIndexedEvent("account.owner", "Ivan"),
+			makeIndexedEvent("account.owner", "Yulieta"),
 
-func TestTxFuncs(t *testing.T) {
-	indexer := &EventSink{store: testDB(), chainID: chainID}
+			{Type: "", Attributes: []abci.EventAttribute{{Key: "not_allowed", Value: "Vlad", Index: true}}},
+		})
+		require.NoError(t, indexer.IndexTxEvents([]*abci.TxResult{txResult}))
 
-	txResult := txResultWithEvents([]abci.Event{
-		makeIndexedEvent("account.number", "1"),
-		makeIndexedEvent("account.owner", "Ivan"),
-		makeIndexedEvent("account.owner", "Yulieta"),
+		txr, err := loadTxResult(types.Tx(txResult.Tx).Hash())
+		require.NoError(t, err)
+		assert.Equal(t, txResult, txr)
 
-		{Type: "", Attributes: []abci.EventAttribute{{Key: "not_allowed", Value: "Vlad", Index: true}}},
+		require.NoError(t, verifyTimeStamp(tableTxResults))
+		require.NoError(t, verifyTimeStamp(viewTxEvents))
+
+		verifyNotImplemented(t, "getTxByHash", func() (bool, error) {
+			txr, err := indexer.GetTxByHash(types.Tx(txResult.Tx).Hash())
+			return txr != nil, err
+		})
+		verifyNotImplemented(t, "tx search", func() (bool, error) {
+			txr, err := indexer.SearchTxEvents(context.Background(), nil)
+			return txr != nil, err
+		})
+
+		// try to insert the duplicate tx events.
+		err = indexer.IndexTxEvents([]*abci.TxResult{txResult})
+		require.NoError(t, err)
 	})
-	require.NoError(t, indexer.IndexTxEvents([]*abci.TxResult{txResult}))
-
-	txr, err := loadTxResult(types.Tx(txResult.Tx).Hash())
-	require.NoError(t, err)
-	assert.Equal(t, txResult, txr)
-
-	require.NoError(t, verifyTimeStamp(tableTxResults))
-	require.NoError(t, verifyTimeStamp(viewTxEvents))
-
-	verifyNotImplemented(t, "getTxByHash", func() (bool, error) {
-		txr, err := indexer.GetTxByHash(types.Tx(txResult.Tx).Hash())
-		return txr != nil, err
-	})
-	verifyNotImplemented(t, "tx search", func() (bool, error) {
-		txr, err := indexer.SearchTxEvents(context.Background(), nil)
-		return txr != nil, err
-	})
-
-	// try to insert the duplicate tx events.
-	err = indexer.IndexTxEvents([]*abci.TxResult{txResult})
-	require.NoError(t, err)
 }
 
 func TestStop(t *testing.T) {
