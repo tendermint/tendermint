@@ -159,8 +159,7 @@ func setup(
 	)
 
 	// override the dispatcher with one with a shorter timeout
-	rts.reactor.dispatcher = NewDispatcher(rts.blockChannel.Out,
-		100*time.Millisecond)
+	rts.reactor.dispatcher = NewDispatcher(rts.blockChannel.Out)
 
 	rts.syncer = newSyncer(
 		*cfg,

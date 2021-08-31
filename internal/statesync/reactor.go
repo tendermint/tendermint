@@ -107,7 +107,7 @@ const (
 	chunkMsgSize = int(16e6) // ~16MB
 
 	// lightBlockMsgSize is the maximum size of a lightBlockResponseMessage
-	lightBlockMsgSize = int(1e8) // ~10MB
+	lightBlockMsgSize = int(1e7) // ~1MB
 
 	// paramMsgSize is the maximum size of a paramsResponseMessage
 	paramMsgSize = int(1e5) // ~100kb
@@ -147,7 +147,7 @@ type Reactor struct {
 	closeCh     chan struct{}
 
 	// Dispatcher is used to mutex light block requests and responses over multiple
-	// block providers used by the p2p state provider and in reverse sync.
+	// peers used by the p2p state provider and in reverse sync.
 	dispatcher *Dispatcher
 	peers      *peerList
 
@@ -193,7 +193,7 @@ func NewReactor(
 		stateStore:    stateStore,
 		blockStore:    blockStore,
 		peers:         newPeerList(),
-		dispatcher:    NewDispatcher(blockCh.Out, lightBlockResponseTimeout),
+		dispatcher:    NewDispatcher(blockCh.Out),
 		providers:     make(map[types.NodeID]*BlockProvider),
 	}
 
@@ -231,7 +231,7 @@ func (r *Reactor) OnStart() error {
 // blocking until they all exit.
 func (r *Reactor) OnStop() {
 	// tell the dispatcher to stop sending any more requests
-	r.dispatcher.Stop()
+	r.dispatcher.Close()
 
 	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
 	// p2p Channels should execute Close().
@@ -371,7 +371,9 @@ func (r *Reactor) backfill(
 				case height := <-queue.nextHeight():
 					peer := r.peers.Pop(ctx)
 					r.Logger.Debug("fetching next block", "height", height, "peer", peer)
-					lb, err := r.dispatcher.LightBlock(ctxWithCancel, height, peer)
+					subCtx, cancel := context.WithTimeout(ctxWithCancel, lightBlockResponseTimeout)
+					defer cancel()
+					lb, err := r.dispatcher.LightBlock(subCtx, height, peer)
 					r.peers.Append(peer)
 					if errors.Is(err, context.Canceled) {
 						return

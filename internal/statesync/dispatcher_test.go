@@ -30,7 +30,7 @@ func TestDispatcherBasic(t *testing.T) {
 	closeCh := make(chan struct{})
 	defer close(closeCh)
 
-	d := NewDispatcher(ch, 1*time.Second)
+	d := NewDispatcher(ch)
 	go handleRequests(t, d, ch, closeCh)
 
 	peers := createPeerSet(numPeers)
@@ -57,7 +57,7 @@ func TestDispatcherBasic(t *testing.T) {
 func TestDispatcherReturnsNoBlock(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 	ch := make(chan p2p.Envelope, 100)
-	d := NewDispatcher(ch, 1*time.Second)
+	d := NewDispatcher(ch)
 	doneCh := make(chan struct{})
 
 	go func() {
@@ -76,7 +76,7 @@ func TestDispatcherReturnsNoBlock(t *testing.T) {
 func TestDispatcherTimeOutWaitingOnLightBlock(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 	ch := make(chan p2p.Envelope, 100)
-	d := NewDispatcher(ch, 1*time.Second)
+	d := NewDispatcher(ch)
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancelFunc()
@@ -96,7 +96,7 @@ func TestDispatcherProviders(t *testing.T) {
 	closeCh := make(chan struct{})
 	defer close(closeCh)
 
-	d := NewDispatcher(ch, 5*time.Second)
+	d := NewDispatcher(ch)
 	go handleRequests(t, d, ch, closeCh)
 
 	peers := createPeerSet(5)
@@ -112,15 +112,6 @@ func TestDispatcherProviders(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, lb)
 	}
-}
-
-func TestDispatcherStopped(t *testing.T) {
-	ch := make(chan p2p.Envelope, 100)
-	d := NewDispatcher(ch, 5*time.Second)
-	d.Stop()
-
-	_, err := d.LightBlock(context.Background(), 1, peer)
-	require.Error(t, err)
 }
 
 func TestPeerListBasic(t *testing.T) {
@@ -286,7 +277,7 @@ func handleRequests(t *testing.T, d *Dispatcher, ch chan p2p.Envelope, closeCh c
 			block, _ := resp.block.ToProto()
 			require.NoError(t, d.Respond(block, resp.peer))
 		case <-closeCh:
-			d.Stop()
+			d.Close()
 			return
 		}
 	}

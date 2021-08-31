@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/light/provider"
@@ -31,15 +30,12 @@ type Dispatcher struct {
 	mtx sync.Mutex
 	// all pending calls that have been dispatched and are awaiting an answer
 	calls map[types.NodeID]chan *types.LightBlock
-	// signals whether the underlying reactor is still running
-	running bool
 }
 
-func NewDispatcher(requestCh chan<- p2p.Envelope, timeout time.Duration) *Dispatcher {
+func NewDispatcher(requestCh chan<- p2p.Envelope) *Dispatcher {
 	return &Dispatcher{
 		requestCh: requestCh,
 		calls:     make(map[types.NodeID]chan *types.LightBlock),
-		running:   true,
 	}
 }
 
@@ -79,12 +75,6 @@ func (d *Dispatcher) dispatch(peer types.NodeID, height int64) (chan *types.Ligh
 	defer d.mtx.Unlock()
 	ch := make(chan *types.LightBlock, 1)
 
-	// check if the dispatcher is running or not
-	if !d.running {
-		close(ch)
-		return ch, errDisconnected
-	}
-
 	// check if a request for the same peer has already been made
 	if _, ok := d.calls[peer]; ok {
 		close(ch)
@@ -104,7 +94,8 @@ func (d *Dispatcher) dispatch(peer types.NodeID, height int64) (chan *types.Ligh
 }
 
 // Respond allows the underlying process which receives requests on the
-// requestCh to respond with the respective light block
+// requestCh to respond with the respective light block. A nil response is used to
+// represent that the receiver of the request does not have a light block at that height.
 func (d *Dispatcher) Respond(lb *proto.LightBlock, peer types.NodeID) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
@@ -130,12 +121,11 @@ func (d *Dispatcher) Respond(lb *proto.LightBlock, peer types.NodeID) error {
 	return nil
 }
 
-// Stop shuts down the dispatcher and cancels any pending calls awaiting responses.
+// Close shuts down the dispatcher and cancels any pending calls awaiting responses.
 // Peers awaiting responses that have not arrived are delivered a nil block.
-func (d *Dispatcher) Stop() {
+func (d *Dispatcher) Close() {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	d.running = false
 	for peer, call := range d.calls {
 		delete(d.calls, peer)
 		close(call)
