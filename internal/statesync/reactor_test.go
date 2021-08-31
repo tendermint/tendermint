@@ -185,7 +185,7 @@ func setup(
 }
 
 func TestReactor_Sync(t *testing.T) {
-	var snapshotHeight int64 = 7
+	const snapshotHeight = 7
 	rts := setup(t, nil, nil, nil, 2)
 	chain := buildLightBlockChain(t, 1, 10, time.Now())
 	// app accepts any snapshot
@@ -683,6 +683,7 @@ func handleLightBlockRequests(t *testing.T,
 }
 
 func handleConsensusParamsRequest(t *testing.T, receiving, sending chan p2p.Envelope, closeCh chan struct{}) {
+	t.Helper()
 	params := types.DefaultConsensusParams()
 	paramsProto := params.ToProto()
 	for {
@@ -744,6 +745,8 @@ func mockLB(t *testing.T, height int64, time time.Time, lastBlockID types.BlockI
 	}
 }
 
+// graduallyAddPeers delivers a new randomly-generated peer update on peerUpdateCh once
+// per interval, until closeCh is closed. Each peer update is assigned a random node ID.
 func graduallyAddPeers(
 	peerUpdateCh chan p2p.PeerUpdate,
 	closeCh chan struct{},
@@ -770,6 +773,7 @@ func handleSnapshotRequests(
 	closeCh chan struct{},
 	snapshots []snapshot,
 ) {
+	t.Helper()
 	for {
 		select {
 		case envelope := <-receivingCh:
@@ -800,6 +804,7 @@ func handleChunkRequests(
 	closeCh chan struct{},
 	chunk []byte,
 ) {
+	t.Helper()
 	for {
 		select {
 		case envelope := <-receivingCh:

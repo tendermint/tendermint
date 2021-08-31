@@ -192,11 +192,7 @@ func rpcClient(server string) (*rpchttp.HTTP, error) {
 	if !strings.Contains(server, "://") {
 		server = "http://" + server
 	}
-	c, err := rpchttp.New(server)
-	if err != nil {
-		return nil, err
-	}
-	return c, nil
+	return rpchttp.New(server)
 }
 
 type stateProviderP2P struct {
@@ -345,8 +341,7 @@ func (s *stateProviderP2P) addProvider(p lightprovider.Provider) {
 // consensusParams sends out a request for consensus params blocking until one is returned.
 // If it fails to get a valid set of consensus params from any of the providers it returns an error.
 func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (types.ConsensusParams, error) {
-	providers := s.lc.Witnesses()
-	for _, provider := range providers {
+	for _, provider := range s.lc.Witnesses() {
 		p, ok := provider.(*BlockProvider)
 		if !ok {
 			panic("expected p2p state provider to use p2p block providers")
@@ -355,7 +350,7 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 		// extract the nodeID of the provider
 		peer, err := types.NewNodeID(p.String())
 		if err != nil {
-			return types.ConsensusParams{}, fmt.Errorf("invalid provider node id: %w, provider: %s", err, p.String())
+			return types.ConsensusParams{}, fmt.Errorf("invalid provider (%s) node id: %w", p.String(), err)
 		}
 
 		select {
@@ -375,7 +370,10 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 			continue
 		case <-ctx.Done():
 			return types.ConsensusParams{}, ctx.Err()
-		case params := <-s.paramsRecvCh:
+		case params, ok := <-s.paramsRecvCh:
+			if !ok {
+				return types.ConsensusParams{}, errors.New("params channel closed")
+			}
 			return params, nil
 		}
 	}

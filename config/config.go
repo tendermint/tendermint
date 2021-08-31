@@ -884,27 +884,45 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 
 // StateSyncConfig defines the configuration for the Tendermint state sync service
 type StateSyncConfig struct {
-	Enable  bool   `mapstructure:"enable"`
-	TempDir string `mapstructure:"temp-dir"`
+	// State sync rapidly bootstraps a new node by discovering, fetching, and restoring a
+	// state machine snapshot from peers instead of fetching and replaying historical
+	// blocks. Requires some peers in the network to take and serve state machine
+	// snapshots. State sync is not attempted if the node has any local state
+	// (LastBlockHeight > 0). The node will have a truncated block history, starting from
+	// the height of the snapshot.
+	Enable bool `mapstructure:"enable"`
 
-	// Light blocks needed for state verification can be obtained either via
-	// the P2P layer or RPC layer. Default is RPC
+	// State sync uses light client verification to verify state. This can be done either
+	// through the P2P layer or RPC layer. Set this to true to use the P2P layer. If
+	// false (default), RPC layer will be used.
 	UseP2P bool `mapstructure:"use-p2p"`
 
-	// If using RPC, at least two endpoints need to be provided
+	// If using RPC, at least two adresses need to be provided. They should be compatible
+	// with net.Dial, for example: "host.example.com:2125"
 	RPCServers []string `mapstructure:"rpc-servers"`
 
-	// Source of trust. State sync uses a light client for verification so
-	// some trusted source must be provided
-	TrustPeriod time.Duration `mapstructure:"trust-period"`
-	TrustHeight int64         `mapstructure:"trust-height"`
-	TrustHash   string        `mapstructure:"trust-hash"`
+	// The hash and height of a trusted block. Must be within the trust-period.
+	TrustHeight int64  `mapstructure:"trust-height"`
+	TrustHash   string `mapstructure:"trust-hash"`
 
-	DiscoveryTime       time.Duration `mapstructure:"discovery-time"`
+	// The trust period should be set so that Tendermint can detect and gossip
+	// misbehavior before it is considered expired. For chains based on the Cosmos SDK,
+	// one day less than the unbonding period should suffice.
+	TrustPeriod time.Duration `mapstructure:"trust-period"`
+
+	// Time to spend discovering snapshots before initiating a restore.
+	DiscoveryTime time.Duration `mapstructure:"discovery-time"`
+
+	// Temporary directory for state sync snapshot chunks, defaults to the OS tempdir
+	// (typically /tmp). Will create a new, randomly named directory within, and remove
+	// it when done.
+	TempDir string `mapstructure:"temp-dir"`
+
+	// The timeout duration before re-requesting a chunk, possibly from a different
+	// peer (default: 15 seconds).
 	ChunkRequestTimeout time.Duration `mapstructure:"chunk-request-timeout"`
 
-	// Fetchers defines the amount of parallel workers to fetch statesync chunks
-	// and light blocks
+	// The number of concurrent chunk and block fetchers to run (default: 4).
 	Fetchers int32 `mapstructure:"fetchers"`
 }
 
@@ -934,53 +952,51 @@ func TestStateSyncConfig() *StateSyncConfig {
 
 // ValidateBasic performs basic validation.
 func (cfg *StateSyncConfig) ValidateBasic() error {
-	if cfg.Enable {
-		// If we're not using the P2P stack then we need to validate the
-		// RPCServers
-		if !cfg.UseP2P {
-			if len(cfg.RPCServers) == 0 {
-				return errors.New("rpc-servers is required")
-			}
+	if !cfg.Enable {
+		return nil
+	}
 
-			if len(cfg.RPCServers) < 2 {
-				return errors.New("at least two rpc-servers entries is required")
-			}
+	// If we're not using the P2P stack then we need to validate the
+	// RPCServers
+	if !cfg.UseP2P {
+		if len(cfg.RPCServers) < 2 {
+			return errors.New("at least two rpc-servers must be specified")
+		}
 
-			for _, server := range cfg.RPCServers {
-				if len(server) == 0 {
-					return errors.New("found empty rpc-servers entry")
-				}
+		for _, server := range cfg.RPCServers {
+			if server == "" {
+				return errors.New("found empty rpc-servers entry")
 			}
 		}
+	}
 
-		if cfg.DiscoveryTime != 0 && cfg.DiscoveryTime < 5*time.Second {
-			return errors.New("discovery time must be 0s or greater than five seconds")
-		}
+	if cfg.DiscoveryTime != 0 && cfg.DiscoveryTime < 5*time.Second {
+		return errors.New("discovery time must be 0s or greater than five seconds")
+	}
 
-		if cfg.TrustPeriod <= 0 {
-			return errors.New("trusted-period is required")
-		}
+	if cfg.TrustPeriod <= 0 {
+		return errors.New("trusted-period is required")
+	}
 
-		if cfg.TrustHeight <= 0 {
-			return errors.New("trusted-height is required")
-		}
+	if cfg.TrustHeight <= 0 {
+		return errors.New("trusted-height is required")
+	}
 
-		if len(cfg.TrustHash) == 0 {
-			return errors.New("trusted-hash is required")
-		}
+	if len(cfg.TrustHash) == 0 {
+		return errors.New("trusted-hash is required")
+	}
 
-		_, err := hex.DecodeString(cfg.TrustHash)
-		if err != nil {
-			return fmt.Errorf("invalid trusted-hash: %w", err)
-		}
+	_, err := hex.DecodeString(cfg.TrustHash)
+	if err != nil {
+		return fmt.Errorf("invalid trusted-hash: %w", err)
+	}
 
-		if cfg.ChunkRequestTimeout < 5*time.Second {
-			return errors.New("chunk-request-timeout must be at least 5 seconds")
-		}
+	if cfg.ChunkRequestTimeout < 5*time.Second {
+		return errors.New("chunk-request-timeout must be at least 5 seconds")
+	}
 
-		if cfg.Fetchers <= 0 {
-			return errors.New("fetchers is required")
-		}
+	if cfg.Fetchers <= 0 {
+		return errors.New("fetchers is required")
 	}
 
 	return nil

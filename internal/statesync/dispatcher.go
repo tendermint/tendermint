@@ -17,19 +17,16 @@ import (
 var (
 	errNoConnectedPeers    = errors.New("no available peers to dispatch request to")
 	errUnsolicitedResponse = errors.New("unsolicited light block response")
-	errNoResponse          = errors.New("peer failed to respond within timeout")
 	errPeerAlreadyBusy     = errors.New("peer is already processing a request")
 	errDisconnected        = errors.New("provider has been disconnected")
 )
 
-// dispatcher multiplexes concurrent requests by multiple peers for light blocks.
+// A Dispatcher multiplexes concurrent requests by multiple peers for light blocks.
 // Only one request per peer can be sent at a time
 // NOTE: It is not the responsibility of the dispatcher to verify the light blocks.
 type Dispatcher struct {
 	// the channel with which to send light block requests on
 	requestCh chan<- p2p.Envelope
-	// timeout for light block delivery (immutable)
-	timeout time.Duration
 
 	mtx sync.Mutex
 	// all pending calls that have been dispatched and are awaiting an answer
@@ -40,7 +37,6 @@ type Dispatcher struct {
 
 func NewDispatcher(requestCh chan<- p2p.Envelope, timeout time.Duration) *Dispatcher {
 	return &Dispatcher{
-		timeout:   timeout,
 		requestCh: requestCh,
 		calls:     make(map[types.NodeID]chan *types.LightBlock),
 		running:   true,
@@ -73,9 +69,6 @@ func (d *Dispatcher) LightBlock(ctx context.Context, height int64, peer types.No
 
 	case <-ctx.Done():
 		return nil, ctx.Err()
-
-	case <-time.After(d.timeout):
-		return nil, errNoResponse
 	}
 }
 
@@ -110,7 +103,7 @@ func (d *Dispatcher) dispatch(peer types.NodeID, height int64) (chan *types.Ligh
 	return ch, nil
 }
 
-// respond allows the underlying process which receives requests on the
+// Respond allows the underlying process which receives requests on the
 // requestCh to respond with the respective light block
 func (d *Dispatcher) Respond(lb *proto.LightBlock, peer types.NodeID) error {
 	d.mtx.Lock()
@@ -137,6 +130,8 @@ func (d *Dispatcher) Respond(lb *proto.LightBlock, peer types.NodeID) error {
 	return nil
 }
 
+// Stop shuts down the dispatcher and cancels any pending calls awaiting responses.
+// Peers awaiting responses that have not arrived are delivered a nil block.
 func (d *Dispatcher) Stop() {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
@@ -173,8 +168,8 @@ func NewBlockProvider(peer types.NodeID, chainID string, dispatcher *Dispatcher)
 	}
 }
 
-// LightBlock fetches a light block from the peer at a specified height returning either a light block
-// or an appropriate error. Concurrently unsafe
+// LightBlock fetches a light block from the peer at a specified height returning either a
+// light block or an appropriate error.
 func (p *BlockProvider) LightBlock(ctx context.Context, height int64) (*types.LightBlock, error) {
 	lb, err := p.dispatcher.LightBlock(ctx, height, p.peer)
 	switch err {
@@ -186,8 +181,6 @@ func (p *BlockProvider) LightBlock(ctx context.Context, height int64) (*types.Li
 		return nil, err
 	case errPeerAlreadyBusy:
 		return nil, provider.ErrLightBlockNotFound
-	case errNoResponse:
-		return nil, provider.ErrNoResponse
 	default: // errDisconnected
 		return nil, provider.ErrUnreliableProvider{Reason: err.Error()}
 	}

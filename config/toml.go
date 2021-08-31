@@ -270,7 +270,7 @@ pprof-laddr = "{{ .RPC.PprofListenAddress }}"
 #######################################################
 [p2p]
 
-# Enable the new p2p layer.
+# Enable the legacy p2p layer.
 use-legacy = {{ .P2P.UseLegacy }}
 
 # Select the p2p internal queue
@@ -305,6 +305,7 @@ persistent-peers = "{{ .P2P.PersistentPeers }}"
 upnp = {{ .P2P.UPNP }}
 
 # Path to address book
+# TODO: Remove once p2p refactor is complete in favour of peer store.
 addr-book-file = "{{ js .P2P.AddrBook }}"
 
 # Set true for strict address routability rules
@@ -426,17 +427,22 @@ ttl-num-blocks = {{ .Mempool.TTLNumBlocks }}
 # starting from the height of the snapshot.
 enable = {{ .StateSync.Enable }}
 
-# State sync can source light blocks needed to verify state either through the P2P layer or via RPC
-# When using the RPC, at least two (comma-separated) server addresses must be specified
+# State sync uses light client verification to verify state. This can be done either through the
+# P2P layer or RPC layer. Set this to true to use the P2P layer. If false (default), RPC layer
+# will be used.
 use-p2p = {{ .StateSync.UseP2P }}
+
+# If using RPC, at least two adresses need to be provided. They should be compatible with net.Dial,
+# for example: "host.example.com:2125"
 rpc-servers = "{{ StringsJoin .StateSync.RPCServers "," }}"
 
 # The hash and height of a trusted block. Must be within the trust-period.
 trust-height = {{ .StateSync.TrustHeight }}
 trust-hash = "{{ .StateSync.TrustHash }}"
 
-# For Cosmos SDK-based chains, trust-period should usually be about 2/3 of the unbonding time (~2
-# weeks) during which they can be financially punished (slashed) for misbehavior.
+# The trust period should be set so that Tendermint can detect and gossip misbehavior before 
+# it is considered expired. For chains based on the Cosmos SDK, one day less than the unbonding 
+# period should suffice.
 trust-period = "{{ .StateSync.TrustPeriod }}"
 
 # Time to spend discovering snapshots before initiating a restore.

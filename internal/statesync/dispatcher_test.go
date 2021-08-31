@@ -13,17 +13,18 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	"github.com/tendermint/tendermint/types"
 )
 
 var (
-	peer, _ = types.NewNodeID(strings.Repeat("a", 2*types.NodeIDByteLength))
+	peer = factory.NodeID("a")
 )
 
 func TestDispatcherBasic(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
-	numPeers := 5
+	const numPeers = 5
 
 	ch := make(chan p2p.Envelope, 100)
 	closeCh := make(chan struct{})
@@ -84,21 +85,6 @@ func TestDispatcherTimeOutWaitingOnLightBlock(t *testing.T) {
 
 	require.Error(t, err)
 	require.Equal(t, context.DeadlineExceeded, err)
-	require.Nil(t, lb)
-}
-
-func TestDispatcherTimeOutWaitingOnLightBlock2(t *testing.T) {
-	t.Cleanup(leaktest.Check(t))
-	ch := make(chan p2p.Envelope, 100)
-	d := NewDispatcher(ch, 10*time.Millisecond)
-
-	ctx, cancelFunc := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancelFunc()
-
-	lb, err := d.LightBlock(ctx, 1, peer)
-
-	require.Error(t, err)
-	require.Equal(t, errNoResponse, err)
 	require.Nil(t, lb)
 }
 
