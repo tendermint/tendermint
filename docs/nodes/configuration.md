@@ -34,7 +34,7 @@ like the file below, however, double check by inspecting the
 proxy-app = "tcp://127.0.0.1:26658"
 
 # A custom human readable name for this node
-moniker = "Fergalicious.local"
+moniker = "anon"
 
 # Mode of Node: full | validator | seed
 # * validator node
