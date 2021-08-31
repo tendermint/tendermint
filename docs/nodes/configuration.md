@@ -16,8 +16,7 @@ the parameters set with their default values. It will look something
 like the file below, however, double check by inspecting the
 `config.toml` created with your version of `tendermint` installed:
 
-```toml
-# This is a TOML config file.
+```toml# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
 # NOTE: Any path below can be absolute (e.g. "/var/myawesomeapp/data") or
@@ -34,7 +33,7 @@ like the file below, however, double check by inspecting the
 proxy-app = "tcp://127.0.0.1:26658"
 
 # A custom human readable name for this node
-moniker = "anon"
+moniker = "ape"
 
 # Mode of Node: full | validator | seed
 # * validator node
@@ -222,7 +221,7 @@ pprof-laddr = ""
 [p2p]
 
 # Enable the new p2p layer.
-disable-legacy = false
+use-legacy = false
 
 # Select the p2p internal queue
 queue-type = "priority"
@@ -256,6 +255,8 @@ persistent-peers = ""
 upnp = false
 
 # Path to address book
+# TODO: Remove once p2p refactor is complete
+# ref: https:#github.com/tendermint/tendermint/issues/5670
 addr-book-file = "config/addrbook.json"
 
 # Set true for strict address routability rules
@@ -281,21 +282,33 @@ max-connections = 64
 max-incoming-connection-attempts = 100
 
 # List of node IDs, to which a connection will be (re)established ignoring any existing limits
+# TODO: Remove once p2p refactor is complete
+# ref: https:#github.com/tendermint/tendermint/issues/5670
 unconditional-peer-ids = ""
 
 # Maximum pause when redialing a persistent peer (if zero, exponential backoff is used)
+# TODO: Remove once p2p refactor is complete
+# ref: https:#github.com/tendermint/tendermint/issues/5670
 persistent-peers-max-dial-period = "0s"
 
 # Time to wait before flushing messages out on the connection
+# TODO: Remove once p2p refactor is complete
+# ref: https:#github.com/tendermint/tendermint/issues/5670
 flush-throttle-timeout = "100ms"
 
 # Maximum size of a message packet payload, in bytes
+# TODO: Remove once p2p refactor is complete
+# ref: https:#github.com/tendermint/tendermint/issues/5670
 max-packet-msg-payload-size = 1400
 
 # Rate at which packets can be sent, in bytes/second
+# TODO: Remove once p2p refactor is complete
+# ref: https:#github.com/tendermint/tendermint/issues/5670
 send-rate = 5120000
 
 # Rate at which packets can be received, in bytes/second
+# TODO: Remove once p2p refactor is complete
+# ref: https:#github.com/tendermint/tendermint/issues/5670
 recv-rate = 5120000
 
 # Set true to enable the peer-exchange reactor
