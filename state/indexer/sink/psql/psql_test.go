@@ -45,6 +45,9 @@ const (
 	dsn      = "postgres://%s:%s@localhost:%s/%s?sslmode=disable"
 	dbName   = "postgres"
 	chainID  = "test-chainID"
+
+	viewBlockEvents = "block_events"
+	viewTxEvents    = "tx_events"
 )
 
 func TestMain(m *testing.M) {

@@ -20,8 +20,6 @@ const (
 	tableBlocks     = "blocks"
 	tableTxResults  = "tx_results"
 	tableEvents     = "events"
-	viewBlockEvents = "block_events"
-	viewTxEvents    = "tx_events"
 	tableAttributes = "attributes"
 	driverName      = "postgres"
 )
