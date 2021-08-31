@@ -41,7 +41,8 @@ func NewDispatcher(requestCh chan<- p2p.Envelope) *Dispatcher {
 }
 
 // LightBlock uses the request channel to fetch a light block from a given peer
-// tracking, the call and waiting for the reactor to pass back the response. A nil LightBlock response is used to signal that the peer doesn't have the requested LightBlock.
+// tracking, the call and waiting for the reactor to pass back the response. A nil
+// LightBlock response is used to signal that the peer doesn't have the requested LightBlock.
 func (d *Dispatcher) LightBlock(ctx context.Context, height int64, peer types.NodeID) (*types.LightBlock, error) {
 	// dispatch the request to the peer
 	callCh, err := d.dispatch(peer, height)

@@ -305,7 +305,7 @@ persistent-peers = "{{ .P2P.PersistentPeers }}"
 upnp = {{ .P2P.UPNP }}
 
 # Path to address book
-# TODO: Remove once p2p refactor is complete in favour of peer store.
+# TODO: Remove once p2p refactor is complete in favor of peer store.
 addr-book-file = "{{ js .P2P.AddrBook }}"
 
 # Set true for strict address routability rules
@@ -331,6 +331,7 @@ max-connections = {{ .P2P.MaxConnections }}
 max-incoming-connection-attempts = {{ .P2P.MaxIncomingConnectionAttempts }}
 
 # List of node IDs, to which a connection will be (re)established ignoring any existing limits
+# TODO: Remove once p2p refactor is complete.
 unconditional-peer-ids = "{{ .P2P.UnconditionalPeerIDs }}"
 
 # Maximum pause when redialing a persistent peer (if zero, exponential backoff is used)
