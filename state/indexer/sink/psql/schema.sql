@@ -11,6 +11,8 @@ CREATE TABLE blocks (
 
   height     BIGINT NOT NULL,
   chain_id   VARCHAR NOT NULL,
+
+  -- When this block header was logged into the sink, in UTC.
   created_at TIMESTAMPTZ NOT NULL,
 
   UNIQUE (height, chain_id)
@@ -29,7 +31,7 @@ CREATE TABLE tx_results (
   block_id BIGINT NOT NULL REFERENCES blocks(rowid),
   -- The sequential index of the transaction within the block.
   index INTEGER NOT NULL,
-  -- When this result record was logged into the sink.
+  -- When this result record was logged into the sink, in UTC.
   created_at TIMESTAMPTZ NOT NULL,
   -- The hex-encoded hash of the transaction.
   tx_hash VARCHAR NOT NULL,
