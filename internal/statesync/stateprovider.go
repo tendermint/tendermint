@@ -85,9 +85,10 @@ func NewRPCStateProvider(
 	}, nil
 }
 
-// AppHash implements StateProvider.
+// AppHash implements part of StateProvider. It calls the application to verify the
+// light blocks at heights h+1 and h+2 and, if verification succeeds, reports the app
+// hash for the block at height h+1 which correlates to the state at height h.
 func (s *stateProviderRPC) AppHash(ctx context.Context, height uint64) ([]byte, error) {
-	fmt.Println("requesting app hash")
 	s.Lock()
 	defer s.Unlock()
 

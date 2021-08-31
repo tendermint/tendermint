@@ -123,7 +123,7 @@ func MaxBlockLag(d time.Duration) Option {
 	}
 }
 
-// Provider timeout is the maximum time that the light client will wait for a 
+// Provider timeout is the maximum time that the light client will wait for a
 // provider to respond with a light block.
 func ProviderTimeout(d time.Duration) Option {
 	return func(c *Client) {

@@ -146,7 +146,7 @@ type Reactor struct {
 	peerUpdates *p2p.PeerUpdates
 	closeCh     chan struct{}
 
-	// Dispatcher is used to mutex light block requests and responses over multiple
+	// Dispatcher is used to multiplex light block requests and responses over multiple
 	// peers used by the p2p state provider and in reverse sync.
 	dispatcher *Dispatcher
 	peers      *peerList
@@ -203,19 +203,13 @@ func NewReactor(
 
 // OnStart starts separate go routines for each p2p Channel and listens for
 // envelopes on each. In addition, it also listens for peer updates and handles
-// messages on that p2p channel accordingly. The caller must be sure to execute
-// OnStop to ensure the outbound p2p Channels are closed. No error is returned.
+// messages on that p2p channel accordingly. Note, we do not launch a go-routine to
+// handle individual envelopes as to not have to deal with bounding workers or pools.
+// The caller must be sure to execute OnStop to ensure the outbound p2p Channels are
+// closed. No error is returned.
 func (r *Reactor) OnStart() error {
-	// Listen for envelopes on the snapshot p2p Channel in a separate go-routine
-	// as to not block or cause IO contention with the chunk p2p Channel. Note,
-	// we do not launch a go-routine to handle individual envelopes as to not
-	// have to deal with bounding workers or pools.
 	go r.processSnapshotCh()
 
-	// Listen for envelopes on the chunk p2p Channel in a separate go-routine
-	// as to not block or cause IO contention with the snapshot p2p Channel. Note,
-	// we do not launch a go-routine to handle individual envelopes as to not
-	// have to deal with bounding workers or pools.
 	go r.processChunkCh()
 
 	go r.processBlockCh()
@@ -253,6 +247,8 @@ func (r *Reactor) OnStop() {
 // blocksync can commence. It will then proceed to backfill the necessary amount
 // of historical blocks before participating in consensus
 func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
+	// We need at least two peers (for cross-referencing of light blocks) before we can
+	// begin state sync
 	r.waitForEnoughPeers(ctx, 2)
 	r.mtx.Lock()
 	if r.syncer != nil {

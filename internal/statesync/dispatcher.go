@@ -21,7 +21,8 @@ var (
 )
 
 // A Dispatcher multiplexes concurrent requests by multiple peers for light blocks.
-// Only one request per peer can be sent at a time
+// Only one request per peer can be sent at a time. Subsequent concurrent requests will
+// report an error from the LightBlock method.
 // NOTE: It is not the responsibility of the dispatcher to verify the light blocks.
 type Dispatcher struct {
 	// the channel with which to send light block requests on
@@ -39,8 +40,8 @@ func NewDispatcher(requestCh chan<- p2p.Envelope) *Dispatcher {
 	}
 }
 
-// LightBlock uses the request channel to fetch a light block from the next peer
-// in a list, tracks the call and waits for the reactor to pass along the response
+// LightBlock uses the request channel to fetch a light block from a given peer
+// tracking, the call and waiting for the reactor to pass back the response. A nil LightBlock response is used to signal that the peer doesn't have the requested LightBlock.
 func (d *Dispatcher) LightBlock(ctx context.Context, height int64, peer types.NodeID) (*types.LightBlock, error) {
 	// dispatch the request to the peer
 	callCh, err := d.dispatch(peer, height)
@@ -107,6 +108,8 @@ func (d *Dispatcher) Respond(lb *proto.LightBlock, peer types.NodeID) error {
 		return errUnsolicitedResponse
 	}
 
+	// If lb is nil we take that to mean that the peer didn't have the requested light
+	// block and thus pass on the nil to the caller.
 	if lb == nil {
 		answerCh <- nil
 		return nil
