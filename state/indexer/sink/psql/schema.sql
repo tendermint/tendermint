@@ -7,9 +7,9 @@
 -- The blocks table records metadata about each block.
 -- The block record does not include its events or transactions (see tx_results).
 CREATE TABLE blocks (
-  rowid      SERIAL PRIMARY KEY,
+  rowid      BIGSERIAL PRIMARY KEY,
 
-  height     INTEGER NOT NULL,
+  height     BIGINT NOT NULL,
   chain_id   VARCHAR NOT NULL,
   created_at TIMESTAMPTZ NOT NULL,
 
@@ -23,10 +23,10 @@ CREATE INDEX idx_blocks_height_chain ON blocks(height, chain_id);
 -- The tx_results table records metadata about transaction results.  Note that
 -- the events from a transaction are stored separately.
 CREATE TABLE tx_results (
-  rowid SERIAL PRIMARY KEY,
+  rowid BIGSERIAL PRIMARY KEY,
 
   -- The block to which this transaction belongs.
-  block_id INTEGER NOT NULL REFERENCES blocks(rowid),
+  block_id BIGINT NOT NULL REFERENCES blocks(rowid),
   -- The sequential index of the transaction within the block.
   index INTEGER NOT NULL,
   -- When this result record was logged into the sink.
@@ -42,12 +42,12 @@ CREATE TABLE tx_results (
 -- The events table records events. All events (both block and transaction) are
 -- associated with a block ID; transaction events also have a transaction ID.
 CREATE TABLE events (
-  rowid SERIAL PRIMARY KEY,
+  rowid BIGSERIAL PRIMARY KEY,
 
   -- The block and transaction this event belongs to.
   -- If tx_id is NULL, this is a block event.
-  block_id INTEGER NOT NULL REFERENCES blocks(rowid),
-  tx_id    INTEGER NULL REFERENCES tx_results(rowid),
+  block_id BIGINT NOT NULL REFERENCES blocks(rowid),
+  tx_id    BIGINT NULL REFERENCES tx_results(rowid),
 
   -- The application-defined type label for the event.
   type VARCHAR NOT NULL
@@ -55,7 +55,7 @@ CREATE TABLE events (
 
 -- The attributes table records event attributes.
 CREATE TABLE attributes (
-   event_id      INTEGER NOT NULL REFERENCES events(rowid),
+   event_id      BIGINT NOT NULL REFERENCES events(rowid),
    key           VARCHAR NOT NULL, -- bare key
    composite_key VARCHAR NOT NULL, -- composed type.key
    value         VARCHAR NULL,
