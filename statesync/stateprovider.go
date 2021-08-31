@@ -106,10 +106,6 @@ func (s *lightClientStateProvider) AppHash(ctx context.Context, height uint64) (
 	if err != nil {
 		return nil, err
 	}
-	_, err = s.lc.VerifyLightBlockAtHeight(ctx, int64(height), time.Now())
-	if err != nil {
-		return nil, err
-	}
 	return header.AppHash, nil
 }
 

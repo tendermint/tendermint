@@ -247,6 +247,15 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 		s.mtx.Unlock()
 	}()
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	appHash, err := s.stateProvider.AppHash(ctx, snapshot.Height)
+	if err != nil {
+		return sm.State{}, nil, err
+	}
+	snapshot.trustedAppHash = appHash
+
 	// Offer snapshot to ABCI app.
 	err := s.offerSnapshot(snapshot)
 	if err != nil {
