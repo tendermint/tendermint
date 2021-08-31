@@ -50,9 +50,12 @@ We'll start by creating a new Go project.
 ```bash
 mkdir kvstore
 cd kvstore
+go mod init github.com/<github_username>/<repo_name>
 ```
 
 Inside the example directory create a `main.go` file with the following content:
+
+> Note: there is no need to clone or fork Tendermint in this tutorial. 
 
 ```go
 package main
