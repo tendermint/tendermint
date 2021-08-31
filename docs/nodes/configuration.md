@@ -34,24 +34,24 @@ like the file below, however, double check by inspecting the
 proxy-app = "tcp://127.0.0.1:26658"
 
 # A custom human readable name for this node
-moniker = "anonymous"
+moniker = "Fergalicious.local"
 
-# If this node is many blocks behind the tip of the chain, BlockSync
-# allows them to catchup quickly by downloading blocks in parallel
-# and verifying their commits
-fast-sync = true
-
-# Mode of Node: full | validator | seed (default: "validator")
-# * validator node (default)
+# Mode of Node: full | validator | seed
+# * validator node
 #   - all reactors
 #   - with priv_validator_key.json, priv_validator_state.json
-# * full node 
+# * full node
 #   - all reactors
 #   - No priv_validator_key.json, priv_validator_state.json
 # * seed node
 #   - only P2P, PEX Reactor
 #   - No priv_validator_key.json, priv_validator_state.json
 mode = "validator"
+
+# If this node is many blocks behind the tip of the chain, FastSync
+# allows them to catchup quickly by downloading blocks in parallel
+# and verifying their commits
+fast-sync = true
 
 # Database backend: goleveldb | cleveldb | boltdb | rocksdb | badgerdb
 # * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
@@ -88,16 +88,6 @@ log-format = "plain"
 # Path to the JSON file containing the initial validator set and other meta data
 genesis-file = "config/genesis.json"
 
-# Path to the JSON file containing the private key to use as a validator in the consensus protocol
-priv-validator-key-file = "config/priv_validator_key.json"
-
-# Path to the JSON file containing the last sign state of a validator
-priv-validator-state-file = "data/priv_validator_state.json"
-
-# TCP or UNIX socket address for Tendermint to listen on for
-# connections from an external PrivValidator process
-priv-validator-laddr = ""
-
 # Path to the JSON file containing the private key to use for node authentication in the p2p protocol
 node-key-file = "config/node_key.json"
 
@@ -107,6 +97,33 @@ abci = "socket"
 # If true, query the ABCI app on connecting to a new peer
 # so the app can decide if we should keep the connection or not
 filter-peers = false
+
+
+#######################################################
+###       Priv Validator Configuration              ###
+#######################################################
+[priv-validator]
+
+# Path to the JSON file containing the private key to use as a validator in the consensus protocol
+key-file = "config/priv_validator_key.json"
+
+# Path to the JSON file containing the last sign state of a validator
+state-file = "data/priv_validator_state.json"
+
+# TCP or UNIX socket address for Tendermint to listen on for
+# connections from an external PrivValidator process
+# when the listenAddr is prefixed with grpc instead of tcp it will use the gRPC Client
+laddr = ""
+
+# Client certificate generated while creating needed files for secure connection.
+# If a remote validator address is provided but no certificate, the connection will be insecure
+client-certificate-file = ""
+
+# Client key generated while creating certificates for secure connection
+validator-client-key-file = ""
+
+# Path Root Certificate Authority used to sign both client and server certificates
+certificate-authority = ""
 
 
 #######################################################################
@@ -134,6 +151,7 @@ cors-allowed-headers = ["Origin", "Accept", "Content-Type", "X-Requested-With", 
 
 # TCP or UNIX socket address for the gRPC server to listen on
 # NOTE: This server only supports /broadcast_tx_commit
+# Deprecated gRPC  in the RPC layer of Tendermint will be deprecated in 0.36.
 grpc-laddr = ""
 
 # Maximum number of simultaneous connections.
@@ -143,9 +161,10 @@ grpc-laddr = ""
 # 0 - unlimited.
 # Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
 # 1024 - 40 - 10 - 50 = 924 = ~900
+# Deprecated gRPC  in the RPC layer of Tendermint will be deprecated in 0.36.
 grpc-max-open-connections = 900
 
-# Activate unsafe RPC commands like /dial_seeds and /unsafe_flush_mempool
+# Activate unsafe RPC commands like /dial-seeds and /unsafe-flush-mempool
 unsafe = false
 
 # Maximum number of simultaneous connections (including WebSocket).
@@ -202,17 +221,33 @@ pprof-laddr = ""
 #######################################################
 [p2p]
 
+# Enable the new p2p layer.
+disable-legacy = false
+
+# Select the p2p internal queue
+queue-type = "priority"
+
 # Address to listen for incoming connections
 laddr = "tcp://0.0.0.0:26656"
 
 # Address to advertise to peers for them to dial
 # If empty, will use the same port as the laddr,
 # and will introspect on the listener or use UPnP
-# to figure out the address.
+# to figure out the address. ip and port are required
+# example: 159.89.10.97:26656
 external-address = ""
 
 # Comma separated list of seed nodes to connect to
+# We only use these if we can’t connect to peers in the addrbook
+# NOTE: not used by the new PEX reactor. Please use BootstrapPeers instead.
+# TODO: Remove once p2p refactor is complete
+# ref: https:#github.com/tendermint/tendermint/issues/5670
 seeds = ""
+
+# Comma separated list of peers to be added to the peer store
+# on startup. Either BootstrapPeers or PersistentPeers are
+# needed for peer discovery
+bootstrap-peers = ""
 
 # Comma separated list of nodes to keep persistent connections to
 persistent-peers = ""
@@ -228,9 +263,15 @@ addr-book-file = "config/addrbook.json"
 addr-book-strict = true
 
 # Maximum number of inbound peers
+#
+# TODO: Remove once p2p refactor is complete in favor of MaxConnections.
+# ref: https://github.com/tendermint/tendermint/issues/5670
 max-num-inbound-peers = 40
 
 # Maximum number of outbound peers to connect to, excluding persistent peers
+#
+# TODO: Remove once p2p refactor is complete in favor of MaxConnections.
+# ref: https://github.com/tendermint/tendermint/issues/5670
 max-num-outbound-peers = 10
 
 # Maximum number of connections (inbound and outbound).
@@ -249,7 +290,7 @@ persistent-peers-max-dial-period = "0s"
 flush-throttle-timeout = "100ms"
 
 # Maximum size of a message packet payload, in bytes
-max-packet-msg-payload-size = 1024
+max-packet-msg-payload-size = 1400
 
 # Rate at which packets can be sent, in bytes/second
 send-rate = 5120000
@@ -261,6 +302,7 @@ recv-rate = 5120000
 pex = true
 
 # Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
+# Warning: IPs will be exposed at /net_info, for more information https://github.com/tendermint/tendermint/issues/3055
 private-peer-ids = ""
 
 # Toggle to disable guard against peers connecting from the same ip.
@@ -353,14 +395,21 @@ discovery-time = "15s"
 # Will create a new, randomly named directory within, and remove it when done.
 temp-dir = ""
 
+# The timeout duration before re-requesting a chunk, possibly from a different
+# peer (default: 15 seconds).
+chunk-request-timeout = "15s"
+
+# The number of concurrent chunk and block fetchers to run (default: 4).
+fetchers = "4"
+
 #######################################################
-###       BlockSync Configuration Connections       ###
+###       Block Sync Configuration Connections       ###
 #######################################################
 [fastsync]
 
 # Block Sync version to use:
 #   1) "v0" (default) - the legacy block sync implementation
-#   2) "v2" - complete redesign of v0, optimized for testability & readability
+#   2) "v2" - DEPRECATED, please use v0
 version = "v0"
 
 #######################################################
@@ -409,7 +458,8 @@ peer-query-maj23-sleep-duration = "2s"
 #######################################################
 [tx-index]
 
-# What indexer to use for transactions
+# The backend database list to back the indexer.
+# If list contains null, meaning no indexer service will be used.
 #
 # The application will set which txs to index. In some cases a node operator will be able
 # to decide which txs to index based on configuration set in the application.
@@ -417,8 +467,13 @@ peer-query-maj23-sleep-duration = "2s"
 # Options:
 #   1) "null"
 #   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
-#   - When "kv" is chosen "tx.height" and "tx.hash" will always be indexed.
-indexer = "kv"
+# 		- When "kv" is chosen "tx.height" and "tx.hash" will always be indexed.
+#   3) "psql" - the indexer services backed by PostgreSQL.
+indexer = ["kv"]
+
+# The PostgreSQL connection configuration, the connection format:
+#   postgresql://<user>:<password>@<host>:<port>/<db>?<opts>
+psql-conn = ""
 
 #######################################################
 ###       Instrumentation Configuration Options     ###
