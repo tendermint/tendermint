@@ -139,7 +139,7 @@ func setupDB(t *testing.T) (*dockertest.Pool, error) {
 	assert.Nil(t, err)
 
 	resource, err = pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: psql.DriverName,
+		Repository: "postgres",
 		Tag:        "13",
 		Env: []string{
 			"POSTGRES_USER=" + user,
