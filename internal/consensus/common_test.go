@@ -120,6 +120,9 @@ func (vs *validatorStub) signVote(
 		Timestamp:        tmtime.Now(),
 		Type:             voteType,
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
+    VoteExtension:    types.VoteExtension {
+      AppDataToSign: []byte("hello"),
+    },
 	}
 	v := vote.ToProto()
 	if err := vs.PrivValidator.SignVote(context.Background(), config.ChainID(), v); err != nil {
@@ -154,7 +157,7 @@ func signVote(
   // TODO: remove hardcoded vote extension.
   // currently set for abci/examples/kvstore/persistent_kvstore.go
   v.VoteExtension = types.VoteExtension {
-    AppDataToSign: v.ValidatorAddress,
+    AppDataToSign: []byte("hello"),
   }
 
 	vs.lastVote = v

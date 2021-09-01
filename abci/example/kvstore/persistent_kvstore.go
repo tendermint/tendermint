@@ -357,7 +357,7 @@ func (app *PersistentKVStoreApplication) execExtensionTx(tx []byte) types.Respon
 
 func (app *PersistentKVStoreApplication) constructExtension(valAddr []byte) []byte {
   ext := []byte{}
-  ext = append(ext, valAddr...)
+  ext = append(ext, []byte("hello")...)
   ext = append(ext, app.extension...)
   return ext
 }
