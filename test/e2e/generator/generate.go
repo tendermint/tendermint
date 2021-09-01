@@ -33,8 +33,18 @@ var (
 		"rocksdb":   10,
 		"cleveldb":  5,
 	}
-	nodeABCIProtocols    = uniformChoice{"unix", "tcp", "builtin", "grpc"}
-	nodePrivvalProtocols = uniformChoice{"file", "unix", "tcp", "grpc"}
+	nodeABCIProtocols = weightedChoice{
+		"builtin": 50,
+		"tcp":     20,
+		"grpc":    20,
+		"unix":    10,
+	}
+	nodePrivvalProtocols = weightedChoice{
+		"file": 50,
+		"grpc": 20,
+		"tcp":  20,
+		"unix": 10,
+	}
 	// FIXME: v2 disabled due to flake
 	nodeBlockSyncs        = uniformChoice{"v0"} // "v2"
 	nodeMempools          = uniformChoice{"v0", "v1"}
@@ -277,8 +287,8 @@ func generateNode(
 		Mode:             string(mode),
 		StartAt:          startAt,
 		Database:         nodeDatabases.Choose(r),
-		ABCIProtocol:     nodeABCIProtocols.Choose(r).(string),
-		PrivvalProtocol:  nodePrivvalProtocols.Choose(r).(string),
+		ABCIProtocol:     nodeABCIProtocols.Choose(r),
+		PrivvalProtocol:  nodePrivvalProtocols.Choose(r),
 		BlockSync:        nodeBlockSyncs.Choose(r).(string),
 		Mempool:          nodeMempools.Choose(r).(string),
 		StateSync:        nodeStateSyncs.Choose(r).(bool) && startAt > 0,
