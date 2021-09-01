@@ -266,10 +266,10 @@ func (blockExec *BlockExecutor) ApplyBlock(
 }
 
 func (blockExec *BlockExecutor) ExtendVote(vote *types.Vote) (types.VoteExtension, error) {
-  ctx := context.TODO()
-  req := abci.RequestExtendVote{
-    Vote: vote.ToProto(),
-  }
+	ctx := context.TODO()
+	req := abci.RequestExtendVote{
+		Vote: vote.ToProto(),
+	}
 
 	resp, err := blockExec.proxyApp.ExtendVoteSync(ctx, req)
 	if err != nil {
@@ -281,9 +281,9 @@ func (blockExec *BlockExecutor) ExtendVote(vote *types.Vote) (types.VoteExtensio
 
 func (blockExec *BlockExecutor) VerifyVoteExtension(vote *types.Vote) error {
 	ctx := context.Background()
-  req := abci.RequestVerifyVoteExtension{
-    Vote: vote.ToProto(),
-  }
+	req := abci.RequestVerifyVoteExtension{
+		Vote: vote.ToProto(),
+	}
 
 	resp, err := blockExec.proxyApp.VerifyVoteExtensionSync(ctx, req)
 	if err != nil {

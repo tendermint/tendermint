@@ -620,6 +620,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 		states[0].GetRoundState().LastValidators.TotalVotingPower(),
 	)
 }
+
 /*
 func TestReactorValidatorSetChanges(t *testing.T) {
 	config := configSetup(t)

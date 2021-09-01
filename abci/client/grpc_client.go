@@ -343,13 +343,13 @@ func (cli *grpcClient) VerifyVoteExtensionAsync(
 	}
 	return cli.finishAsyncCall(
 		ctx,
-    req,
+		req,
 		&types.Response{
-      Value: &types.Response_VerifyVoteExtension{
-        VerifyVoteExtension: res,
-      },
-    },
-  )
+			Value: &types.Response_VerifyVoteExtension{
+				VerifyVoteExtension: res,
+			},
+		},
+	)
 }
 
 func (cli *grpcClient) PrepareProposalAsync(
@@ -359,14 +359,14 @@ func (cli *grpcClient) PrepareProposalAsync(
 
 	req := types.ToRequestPrepareProposal(params)
 	res, err := cli.client.PrepareProposal(ctx, req.GetPrepareProposal(), grpc.WaitForReady(true))
-  if err != nil {
-    return nil, err
-  }
+	if err != nil {
+		return nil, err
+	}
 
-  return cli.finishAsyncCall(
-    ctx,
-    req,
-    &types.Response{
+	return cli.finishAsyncCall(
+		ctx,
+		req,
+		&types.Response{
 			Value: &types.Response_PrepareProposal{
 				PrepareProposal: res,
 			},
@@ -584,7 +584,7 @@ func (cli *grpcClient) VerifyVoteExtensionSync(
 	if err != nil {
 		return nil, err
 	}
-  return cli.finishSyncCall(reqres).GetVerifyVoteExtension(), cli.Error()
+	return cli.finishSyncCall(reqres).GetVerifyVoteExtension(), cli.Error()
 }
 
 func (cli *grpcClient) PrepareProposalSync(

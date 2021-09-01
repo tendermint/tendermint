@@ -119,7 +119,7 @@ func ToRequestExtendVote(req RequestExtendVote) *Request {
 func ToRequestVerifyVoteExtension(req RequestVerifyVoteExtension) *Request {
 	return &Request{
 		Value: &Request_VerifyVoteExtension{&req},
-  }
+	}
 }
 
 func ToRequestPrepareProposal(req RequestPrepareProposal) *Request {
@@ -228,7 +228,7 @@ func ToResponseExtendVote(res ResponseExtendVote) *Response {
 func ToResponseVerifyVoteExtension(res ResponseVerifyVoteExtension) *Response {
 	return &Response{
 		Value: &Response_VerifyVoteExtension{&res},
-  }
+	}
 }
 
 func ToResponsePrepareProposal(res ResponsePrepareProposal) *Response {

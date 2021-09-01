@@ -63,7 +63,7 @@ func GetClients(t *testing.T, ns service.Service, conf *config.Config) []client.
 	require.NoError(t, err)
 
 	return []client.Client{
-    ncl,
+		ncl,
 		getHTTPClient(t, conf),
 	}
 }

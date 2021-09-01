@@ -2217,7 +2217,6 @@ func (cs *State) signVote(
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
 	}
 
-
 	// If the signedMessageType is for precommit,
 	// use our local precommit Timeout as the max wait time for getting a singed commit. The same goes for prevote.
 	var timeout time.Duration
@@ -2239,13 +2238,12 @@ func (cs *State) signVote(
 
 	v := vote.ToProto()
 
-  ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
 
 	err := cs.privValidator.SignVote(ctx, cs.state.ChainID, v)
 	vote.Signature = v.Signature
 	vote.Timestamp = v.Timestamp
-
 
 	return vote, err
 }
@@ -2276,9 +2274,9 @@ func (cs *State) voteTime() time.Time {
 
 // sign the vote and publish on internalMsgQueue
 func (cs *State) signAddVote(
-  msgType tmproto.SignedMsgType,
-  hash []byte,
-  header types.PartSetHeader,
+	msgType tmproto.SignedMsgType,
+	hash []byte,
+	header types.PartSetHeader,
 ) *types.Vote {
 	if cs.privValidator == nil { // the node does not have a key
 		return nil

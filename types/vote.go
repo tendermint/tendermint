@@ -53,37 +53,37 @@ type VoteExtensionToSign struct {
 }
 
 func (ext VoteExtensionToSign) ToProto() *tmproto.VoteExtensionToSign {
-  if ext.IsEmpty() {
-    return nil
-  }
-  return &tmproto.VoteExtensionToSign {
-    AppDataToSign: ext.AppDataToSign,
-  }
+	if ext.IsEmpty() {
+		return nil
+	}
+	return &tmproto.VoteExtensionToSign{
+		AppDataToSign: ext.AppDataToSign,
+	}
 }
 
 func VoteExtensionToSignFromProto(pext *tmproto.VoteExtensionToSign) VoteExtensionToSign {
-  if pext == nil {
-    return VoteExtensionToSign{}
-  }
-  return VoteExtensionToSign{
-    AppDataToSign: pext.AppDataToSign,
-  }
+	if pext == nil {
+		return VoteExtensionToSign{}
+	}
+	return VoteExtensionToSign{
+		AppDataToSign: pext.AppDataToSign,
+	}
 }
 
 func (ext VoteExtensionToSign) IsEmpty() bool {
-  if len(ext.AppDataToSign) != 0 {
-    return false
-  }
+	if len(ext.AppDataToSign) != 0 {
+		return false
+	}
 
-  return true
+	return true
 }
 
 // BytesPacked returns a bytes-packed representation for
 // debugging and human identification. This function should
 // not be used for any logical operations.
 func (ext VoteExtensionToSign) BytesPacked() []byte {
-  res := []byte{}
-  res = append(res, ext.AppDataToSign...)
+	res := []byte{}
+	res = append(res, ext.AppDataToSign...)
 	return res
 }
 
@@ -112,9 +112,9 @@ func (ext VoteExtension) ToSign() VoteExtensionToSign {
 // debugging and human identification. This function should
 // not be used for any logical operations.
 func (ext VoteExtension) BytesPacked() []byte {
-  res := []byte{}
-  res = append(res, ext.AppDataToSign...)
-  res = append(res, ext.AppDataSelfAuthenticating...)
+	res := []byte{}
+	res = append(res, ext.AppDataToSign...)
+	res = append(res, ext.AppDataSelfAuthenticating...)
 	return res
 }
 
