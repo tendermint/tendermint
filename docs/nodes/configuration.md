@@ -16,8 +16,7 @@ the parameters set with their default values. It will look something
 like the file below, however, double check by inspecting the
 `config.toml` created with your version of `tendermint` installed:
 
-```toml
-# This is a TOML config file.
+```toml# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
 # NOTE: Any path below can be absolute (e.g. "/var/myawesomeapp/data") or
@@ -610,3 +609,39 @@ There are three new parameters, which are enabled is use-legacy is set to false.
 - `max-num-outbound-peers` = is the maximum number of peers you will initiate outbound connects to at one time (where you dial their address and initiate the connection).*This was replaced by `max-connections`*
 - `unconditional-peer-ids` = is similar to `persistent-peers` except that these peers will be connected to even if you are already connected to the maximum number of peers. This can be a validator node ID on your sentry node. *Depreacted*
 - `seeds` = is a list of comma separated seed nodes that you will connect upon a start and ask for peers. A seed node is a node that does not participate in consensus but only helps propagate peers to nodes in the networks *Depreacted*
+
+## Indexing Settings
+
+Operators can configure indexing via the `[tx_index]` section. The `indexer`
+field takes a series of supported indexers. If `null` is included, indexing will
+be turned off regardless of other values provided.
+
+### Supported Indexers
+
+#### KV
+
+The `kv` indexer type is an embedded key-value store supported by the main
+underling Tendermint database. Using the `kv` indexer type allows you to query
+for block and transaction events directly against Tendermint's RPC. However, the
+query syntax is limited and so this indexer type might be deprecated or removed
+entirely in the future.
+
+#### PostgreSQL
+
+The `psql` indexer type allows an operator to enable block and transaction event
+indexing by proxying it to an external PostgreSQL instance allowing for the events
+to be stored in relational models. Since the events are stored in a RDBMS, operators
+can leverage SQL to perform a series of rich and complex queries that are not
+supported by the `kv` indexer type. Since operators can leverage SQL directly,
+searching is not enabled for the `psql` indexer type via Tendermint's RPC -- any
+such query will fail.
+
+Note, the SQL schema is stored in `state/indexer/sink/psql/schema.sql` and operators
+must explicitly create the relations prior to starting Tendermint and enabling
+the `psql` indexer type.
+
+Example:
+
+```shell
+$ psql ... -f state/indexer/sink/psql/schema.sql
+```
