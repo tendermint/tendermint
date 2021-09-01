@@ -12,6 +12,7 @@ import (
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/light"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -265,6 +266,10 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 		if ctx.Err() != nil {
 			return sm.State{}, nil, ctx.Err()
 		}
+		// catch the case where all the light client providers have been exhausted
+		if err == light.ErrNoWitnesses {
+			return sm.State{}, nil, fmt.Errorf("failed to get app hash at height %d. No witnesses remaining", snapshot.Height)
+		}
 		s.logger.Info("failed to get and verify tendermint state. Dropping snapshot and trying again",
 			"err", err, "height", snapshot.Height)
 		return sm.State{}, nil, errRejectSnapshot
@@ -294,6 +299,9 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 		if ctx.Err() != nil {
 			return sm.State{}, nil, ctx.Err()
 		}
+		if err == light.ErrNoWitnesses {
+			return sm.State{}, nil, fmt.Errorf("failed to get tendermint state at height %d. No witnesses remaining", snapshot.Height)
+		}
 		s.logger.Info("failed to get and verify tendermint state. Dropping snapshot and trying again",
 			"err", err, "height", snapshot.Height)
 		return sm.State{}, nil, errRejectSnapshot
@@ -303,6 +311,9 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 		// check if the provider context exceeded the 10 second deadline
 		if ctx.Err() != nil {
 			return sm.State{}, nil, ctx.Err()
+		}
+		if err == light.ErrNoWitnesses {
+			return sm.State{}, nil, fmt.Errorf("failed to get commit at height %d. No witnesses remaining", snapshot.Height)
 		}
 		s.logger.Info("failed to get and verify commit. Dropping snapshot and trying again",
 			"err", err, "height", snapshot.Height)
