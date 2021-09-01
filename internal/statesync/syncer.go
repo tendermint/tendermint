@@ -268,7 +268,8 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 		}
 		// catch the case where all the light client providers have been exhausted
 		if err == light.ErrNoWitnesses {
-			return sm.State{}, nil, fmt.Errorf("failed to get app hash at height %d. No witnesses remaining", snapshot.Height)
+			return sm.State{}, nil,
+				fmt.Errorf("failed to get app hash at height %d. No witnesses remaining", snapshot.Height)
 		}
 		s.logger.Info("failed to get and verify tendermint state. Dropping snapshot and trying again",
 			"err", err, "height", snapshot.Height)
@@ -300,7 +301,8 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 			return sm.State{}, nil, ctx.Err()
 		}
 		if err == light.ErrNoWitnesses {
-			return sm.State{}, nil, fmt.Errorf("failed to get tendermint state at height %d. No witnesses remaining", snapshot.Height)
+			return sm.State{}, nil,
+				fmt.Errorf("failed to get tendermint state at height %d. No witnesses remaining", snapshot.Height)
 		}
 		s.logger.Info("failed to get and verify tendermint state. Dropping snapshot and trying again",
 			"err", err, "height", snapshot.Height)
@@ -313,7 +315,8 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 			return sm.State{}, nil, ctx.Err()
 		}
 		if err == light.ErrNoWitnesses {
-			return sm.State{}, nil, fmt.Errorf("failed to get commit at height %d. No witnesses remaining", snapshot.Height)
+			return sm.State{}, nil,
+				fmt.Errorf("failed to get commit at height %d. No witnesses remaining", snapshot.Height)
 		}
 		s.logger.Info("failed to get and verify commit. Dropping snapshot and trying again",
 			"err", err, "height", snapshot.Height)
