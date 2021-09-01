@@ -59,7 +59,11 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 
 	case e2e.PerturbationRestart:
 		logger.Info(fmt.Sprintf("Restarting node %v...", node.Name))
-		if err := execCompose(testnet.Dir, "restart", node.Name); err != nil {
+		if err := execCompose(testnet.Dir, "kill", "-s", "SIGTERM", node.Name); err != nil {
+			return nil, err
+		}
+		time.Sleep(10 * time.Second)
+		if err := execCompose(testnet.Dir, "start", node.Name); err != nil {
 			return nil, err
 		}
 
