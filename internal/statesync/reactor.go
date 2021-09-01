@@ -982,7 +982,7 @@ func (r *Reactor) initStateProvider(ctx context.Context, chainID string, initial
 		Hash:   r.cfg.TrustHashBytes(),
 	}
 	spLogger := r.Logger.With("module", "stateprovider")
-	spLogger.Info("initializing state provider", "trustPeriod", to.Period, 
+	spLogger.Info("initializing state provider", "trustPeriod", to.Period,
 		"trustHeight", to.Height, "useP2P", r.cfg.UseP2P)
 
 	if r.cfg.UseP2P {
