@@ -2246,6 +2246,7 @@ func (cs *State) signVote(
 	vote.Signature = v.Signature
 	vote.Timestamp = v.Timestamp
 
+
 	return vote, err
 }
 
