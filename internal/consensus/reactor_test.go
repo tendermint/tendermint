@@ -620,7 +620,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 		states[0].GetRoundState().LastValidators.TotalVotingPower(),
 	)
 }
-
+/*
 func TestReactorValidatorSetChanges(t *testing.T) {
 	config := configSetup(t)
 
@@ -754,4 +754,4 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	delete(activeVals, string(newValidatorPubKey3.Address()))
 
 	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, blocksSubs, states)
-}
+}*/

@@ -14,6 +14,7 @@ import (
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/log"
 	pc "github.com/tendermint/tendermint/proto/tendermint/crypto"
+  ptypes "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 const (
@@ -188,7 +189,7 @@ func (app *PersistentKVStoreApplication) ExtendVote(
 func (app *PersistentKVStoreApplication) VerifyVoteExtension(
 	req types.RequestVerifyVoteExtension) types.ResponseVerifyVoteExtension {
   return types.RespondVerifyVoteExtension(
-    app.verifyExtension(req.Vote.ValidatorAddress, req.Vote.VoteExtension.AppDataToSign))
+    app.verifyExtension(req.Vote.ValidatorAddress, req.Vote.VoteExtension))
 }
 
 func (app *PersistentKVStoreApplication) PrepareProposal(
@@ -355,12 +356,15 @@ func (app *PersistentKVStoreApplication) execExtensionTx(tx []byte) types.Respon
 }
 
 func (app *PersistentKVStoreApplication) constructExtension(valAddr []byte) []byte {
-  ext := make([]byte, len(valAddr)+len(app.extension))
-  copy(ext, valAddr)
-  copy(ext[len(valAddr):], app.extension)
+  ext := []byte{}
+  ext = append(ext, valAddr...)
+  ext = append(ext, app.extension...)
   return ext
 }
 
-func (app *PersistentKVStoreApplication) verifyExtension(valAddr []byte, ext []byte) bool {
-  return bytes.Equal(app.constructExtension(valAddr), ext)
+func (app *PersistentKVStoreApplication) verifyExtension(valAddr []byte, ext *ptypes.VoteExtension) bool {
+  if ext == nil {
+    return false
+  }
+  return bytes.Equal(app.constructExtension(valAddr), ext.AppDataToSign)
 }

@@ -151,6 +151,12 @@ func signVote(
 		panic(fmt.Errorf("failed to sign vote: %v", err))
 	}
 
+  // TODO: remove hardcoded vote extension.
+  // currently set for abci/examples/kvstore/persistent_kvstore.go
+  v.VoteExtension = types.VoteExtension {
+    AppDataToSign: v.ValidatorAddress,
+  }
+
 	vs.lastVote = v
 
 	return v
