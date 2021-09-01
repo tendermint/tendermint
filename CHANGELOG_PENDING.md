@@ -108,6 +108,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [fastsync/event] \#6619 Emit fastsync status event when switching consensus/fastsync (@JayT106)
 - [statesync/event] \#6700 Emit statesync status start/end event (@JayT106)
 - [inspect] \#6785 Add a new `inspect` command for introspecting the state and block store of a crashed tendermint node. (@williambanfield)
+- [config/indexer] \#6868 Update the PostgreSQL indexing schema to allow more accurate queries (@creachadair)
 
 ### IMPROVEMENTS
 
