@@ -40,9 +40,9 @@ var (
 		"unix":    10,
 	}
 	nodePrivvalProtocols = weightedChoice{
-		"grpc": 35,
-		"tcp":  35,
-		"file": 20,
+		"file": 50,
+		"grpc": 20,
+		"tcp":  20,
 		"unix": 10,
 	}
 	// FIXME: v2 disabled due to flake
