@@ -68,7 +68,6 @@ func TestSnapshotPool_Add(t *testing.T) {
 	// The pool should have populated the snapshot with the trusted app hash
 	snapshot := pool.Best()
 	require.NotNil(t, snapshot)
-	assert.Equal(t, []byte("app_hash"), snapshot.trustedAppHash)
 }
 
 func TestSnapshotPool_GetPeer(t *testing.T) {
