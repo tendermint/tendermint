@@ -75,7 +75,7 @@ func Start(testnet *e2e.Testnet) error {
 
 			networkHeight = node.StartAt
 
-			block, blockID, err = waitForHeight(testnet, networkHeight); 
+			block, blockID, err = waitForHeight(testnet, networkHeight)
 			if err != nil {
 				return err
 			}
