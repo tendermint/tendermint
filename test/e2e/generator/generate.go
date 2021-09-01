@@ -33,8 +33,18 @@ var (
 		"rocksdb":   10,
 		"cleveldb":  5,
 	}
-	nodeABCIProtocols    = uniformChoice{"unix", "tcp", "builtin", "grpc"}
-	nodePrivvalProtocols = uniformChoice{"file", "unix", "tcp", "grpc"}
+	nodeABCIProtocols = weightedChoice{
+		"builtin": 50,
+		"tcp":     20,
+		"grpc":    20,
+		"unix":    10,
+	}
+	nodePrivvalProtocols = weightedChoice{
+		"grpc": 35,
+		"tcp":  35,
+		"file": 20,
+		"unix": 10,
+	}
 	// FIXME: v2 disabled due to flake
 	nodeBlockSyncs        = uniformChoice{"v0"} // "v2"
 	nodeMempools          = uniformChoice{"v0", "v1"}
