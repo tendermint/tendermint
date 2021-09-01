@@ -56,7 +56,7 @@ type snapshotPool struct {
 	snapshotBlacklist map[snapshotKey]bool
 }
 
-// newSnapshotPool creates a new snapshot pool
+// newSnapshotPool creates a new empty snapshot pool.
 func newSnapshotPool() *snapshotPool {
 	return &snapshotPool{
 		snapshots:         make(map[snapshotKey]*snapshot),

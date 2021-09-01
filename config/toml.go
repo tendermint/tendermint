@@ -332,6 +332,7 @@ max-incoming-connection-attempts = {{ .P2P.MaxIncomingConnectionAttempts }}
 
 # List of node IDs, to which a connection will be (re)established ignoring any existing limits
 # TODO: Remove once p2p refactor is complete.
+# ref: https://github.com/tendermint/tendermint/issues/5670
 unconditional-peer-ids = "{{ .P2P.UnconditionalPeerIDs }}"
 
 # Maximum pause when redialing a persistent peer (if zero, exponential backoff is used)
@@ -433,7 +434,7 @@ enable = {{ .StateSync.Enable }}
 # will be used.
 use-p2p = {{ .StateSync.UseP2P }}
 
-# If using RPC, at least two adresses need to be provided. They should be compatible with net.Dial,
+# If using RPC, at least two addresses need to be provided. They should be compatible with net.Dial,
 # for example: "host.example.com:2125"
 rpc-servers = "{{ StringsJoin .StateSync.RPCServers "," }}"
 
@@ -449,8 +450,9 @@ trust-period = "{{ .StateSync.TrustPeriod }}"
 # Time to spend discovering snapshots before initiating a restore.
 discovery-time = "{{ .StateSync.DiscoveryTime }}"
 
-# Temporary directory for state sync snapshot chunks, defaults to the OS tempdir (typically /tmp).
-# Will create a new, randomly named directory within, and remove it when done.
+# Temporary directory for state sync snapshot chunks, defaults to os.TempDir().
+# The synchronizer will create a new, randomly named directory within this directory
+# and remove it when the sync is complete.
 temp-dir = "{{ .StateSync.TempDir }}"
 
 # The timeout duration before re-requesting a chunk, possibly from a different

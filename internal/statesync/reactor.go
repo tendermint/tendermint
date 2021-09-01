@@ -365,11 +365,17 @@ func (r *Reactor) backfill(
 			for {
 				select {
 				case height := <-queue.nextHeight():
+					// pop the next peer of the list to send a request to
 					peer := r.peers.Pop(ctx)
 					r.Logger.Debug("fetching next block", "height", height, "peer", peer)
 					subCtx, cancel := context.WithTimeout(ctxWithCancel, lightBlockResponseTimeout)
 					defer cancel()
-					lb, err := r.dispatcher.LightBlock(subCtx, height, peer)
+					lb, err := func() (*types.LightBlock, error) {
+						defer cancel()
+						// request the light block with a timeout
+						return r.dispatcher.LightBlock(subCtx, height, peer)
+					}()
+					// once the peer has returned a value, add it back to the peer list to be used again
 					r.peers.Append(peer)
 					if errors.Is(err, context.Canceled) {
 						return
@@ -954,11 +960,13 @@ func (r *Reactor) fetchLightBlock(height uint64) (*types.LightBlock, error) {
 }
 
 func (r *Reactor) waitForEnoughPeers(ctx context.Context, numPeers int) {
+	t := time.NewTicker(200 * time.Millisecond)
+	defer t.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(200 * time.Millisecond):
+		case <-t.C:
 			if r.peers.Len() >= numPeers {
 				return
 			}

@@ -893,12 +893,12 @@ type StateSyncConfig struct {
 	Enable bool `mapstructure:"enable"`
 
 	// State sync uses light client verification to verify state. This can be done either
-	// through the P2P layer or RPC layer. Set this to true to use the P2P layer. If
-	// false (default), RPC layer will be used.
+	// through the P2P layer or the RPC layer. Set this to true to use the P2P layer. If
+	// false (default), the RPC layer will be used.
 	UseP2P bool `mapstructure:"use-p2p"`
 
-	// If using RPC, at least two adresses need to be provided. They should be compatible
-	// with net.Dial, for example: "host.example.com:2125"
+	// If using RPC, at least two addresses need to be provided. They should be compatible
+	// with net.Dial, for example: "host.example.com:2125".
 	RPCServers []string `mapstructure:"rpc-servers"`
 
 	// The hash and height of a trusted block. Must be within the trust-period.
@@ -913,9 +913,9 @@ type StateSyncConfig struct {
 	// Time to spend discovering snapshots before initiating a restore.
 	DiscoveryTime time.Duration `mapstructure:"discovery-time"`
 
-	// Temporary directory for state sync snapshot chunks, defaults to the OS tempdir
-	// (typically /tmp). Will create a new, randomly named directory within, and remove
-	// it when done.
+	// Temporary directory for state sync snapshot chunks, defaults to os.TempDir().
+	// The synchronizer will create a new, randomly named directory within this directory
+	// and remove it when the sync is complete.
 	TempDir string `mapstructure:"temp-dir"`
 
 	// The timeout duration before re-requesting a chunk, possibly from a different

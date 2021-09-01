@@ -18,10 +18,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var (
-	peer = factory.NodeID("a")
-)
-
 func TestDispatcherBasic(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 	const numPeers = 5
@@ -59,6 +55,7 @@ func TestDispatcherReturnsNoBlock(t *testing.T) {
 	ch := make(chan p2p.Envelope, 100)
 	d := NewDispatcher(ch)
 	doneCh := make(chan struct{})
+	peer := factory.NodeID("a")
 
 	go func() {
 		<-ch
@@ -77,6 +74,7 @@ func TestDispatcherTimeOutWaitingOnLightBlock(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 	ch := make(chan p2p.Envelope, 100)
 	d := NewDispatcher(ch)
+	peer := factory.NodeID("a")
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancelFunc()

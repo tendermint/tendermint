@@ -17,7 +17,6 @@ var (
 	errNoConnectedPeers    = errors.New("no available peers to dispatch request to")
 	errUnsolicitedResponse = errors.New("unsolicited light block response")
 	errPeerAlreadyBusy     = errors.New("peer is already processing a request")
-	errDisconnected        = errors.New("provider has been disconnected")
 )
 
 // A Dispatcher multiplexes concurrent requests by multiple peers for light blocks.
@@ -175,7 +174,7 @@ func (p *BlockProvider) LightBlock(ctx context.Context, height int64) (*types.Li
 		return nil, err
 	case errPeerAlreadyBusy:
 		return nil, provider.ErrLightBlockNotFound
-	default: // errDisconnected
+	default:
 		return nil, provider.ErrUnreliableProvider{Reason: err.Error()}
 	}
 

@@ -63,9 +63,7 @@ type Option func(*Client)
 // check the blocks (every block, in ascending height order). Note this is
 // much slower than SkippingVerification, albeit more secure.
 func SequentialVerification() Option {
-	return func(c *Client) {
-		c.verificationMode = sequential
-	}
+	return func(c *Client) { c.verificationMode = sequential }
 }
 
 // SkippingVerification option configures the light client to skip blocks as
@@ -89,24 +87,18 @@ func SkippingVerification(trustLevel tmmath.Fraction) Option {
 // the h amount of light blocks will be removed from the store.
 // Default: 1000. A pruning size of 0 will not prune the light client at all.
 func PruningSize(h uint16) Option {
-	return func(c *Client) {
-		c.pruningSize = h
-	}
+	return func(c *Client) { c.pruningSize = h }
 }
 
 // Logger option can be used to set a logger for the client.
 func Logger(l log.Logger) Option {
-	return func(c *Client) {
-		c.logger = l
-	}
+	return func(c *Client) { c.logger = l }
 }
 
 // MaxClockDrift defines how much new header's time can drift into
 // the future relative to the light clients local time. Default: 10s.
 func MaxClockDrift(d time.Duration) Option {
-	return func(c *Client) {
-		c.maxClockDrift = d
-	}
+	return func(c *Client) { c.maxClockDrift = d }
 }
 
 // MaxBlockLag represents the maximum time difference between the realtime
@@ -118,17 +110,13 @@ func MaxClockDrift(d time.Duration) Option {
 // was 12:00. Then the lag here is 5 minutes.
 // Default: 10s
 func MaxBlockLag(d time.Duration) Option {
-	return func(c *Client) {
-		c.maxBlockLag = d
-	}
+	return func(c *Client) { c.maxBlockLag = d }
 }
 
 // Provider timeout is the maximum time that the light client will wait for a
 // provider to respond with a light block.
 func ProviderTimeout(d time.Duration) Option {
-	return func(c *Client) {
-		c.providerTimeout = d
-	}
+	return func(c *Client) { c.providerTimeout = d }
 }
 
 // Client represents a light client, connected to a single chain, which gets
