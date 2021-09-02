@@ -598,7 +598,7 @@ We will cover the new and deprecated parameters below.
 
 There are three new parameters, which are enabled is use-legacy is set to false.
 
-- `queue-type` = sets a type of queue to use in the p2p layer. There are three options available fifo, priority and wdrr. The default is priority
+- `queue-type` = sets a type of queue to use in the p2p layer. There are three options available `fifo`, `priority` and `wdrr`. The default is priority
 - `bootstrap-peers` = is a list of comma seperated peers which will be used to bootstrap the address book. 
 - `max-connections` = is the max amount of allowed inbound and outbound connections.
 ### Deprecated Parameters
