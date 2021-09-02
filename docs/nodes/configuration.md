@@ -621,7 +621,7 @@ be turned off regardless of other values provided.
 #### KV
 
 The `kv` indexer type is an embedded key-value store supported by the main
-underling Tendermint database. Using the `kv` indexer type allows you to query
+underlying Tendermint database. Using the `kv` indexer type allows you to query
 for block and transaction events directly against Tendermint's RPC. However, the
 query syntax is limited and so this indexer type might be deprecated or removed
 entirely in the future.
