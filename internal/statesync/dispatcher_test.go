@@ -275,7 +275,6 @@ func handleRequests(t *testing.T, d *Dispatcher, ch chan p2p.Envelope, closeCh c
 			block, _ := resp.block.ToProto()
 			require.NoError(t, d.Respond(block, resp.peer))
 		case <-closeCh:
-			d.Close()
 			return
 		}
 	}

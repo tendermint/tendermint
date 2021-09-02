@@ -17,6 +17,7 @@ var (
 	errNoConnectedPeers    = errors.New("no available peers to dispatch request to")
 	errUnsolicitedResponse = errors.New("unsolicited light block response")
 	errPeerAlreadyBusy     = errors.New("peer is already processing a request")
+	errDisconnected        = errors.New("dispatcher disconnected")
 )
 
 // A Dispatcher multiplexes concurrent requests by multiple peers for light blocks.
@@ -26,6 +27,7 @@ var (
 type Dispatcher struct {
 	// the channel with which to send light block requests on
 	requestCh chan<- p2p.Envelope
+	closeCh   chan struct{}
 
 	mtx sync.Mutex
 	// all pending calls that have been dispatched and are awaiting an answer
@@ -35,6 +37,7 @@ type Dispatcher struct {
 func NewDispatcher(requestCh chan<- p2p.Envelope) *Dispatcher {
 	return &Dispatcher{
 		requestCh: requestCh,
+		closeCh:   make(chan struct{}),
 		calls:     make(map[types.NodeID]chan *types.LightBlock),
 	}
 }
@@ -66,6 +69,9 @@ func (d *Dispatcher) LightBlock(ctx context.Context, height int64, peer types.No
 
 	case <-ctx.Done():
 		return nil, ctx.Err()
+
+	case <-d.closeCh:
+		return nil, errDisconnected
 	}
 }
 
@@ -74,6 +80,12 @@ func (d *Dispatcher) LightBlock(ctx context.Context, height int64, peer types.No
 func (d *Dispatcher) dispatch(peer types.NodeID, height int64) (chan *types.LightBlock, error) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
+	select {
+	case <-d.closeCh:
+		return nil, errDisconnected
+	default:
+	}
+
 	ch := make(chan *types.LightBlock, 1)
 
 	// check if a request for the same peer has already been made
@@ -129,10 +141,15 @@ func (d *Dispatcher) Respond(lb *proto.LightBlock, peer types.NodeID) error {
 func (d *Dispatcher) Close() {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
+	close(d.closeCh)
 	for peer, call := range d.calls {
 		delete(d.calls, peer)
 		close(call)
 	}
+}
+
+func (d *Dispatcher) Done() <-chan struct{} {
+	return d.closeCh
 }
 
 //----------------------------------------------------------------

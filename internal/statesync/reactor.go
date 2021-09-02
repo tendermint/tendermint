@@ -226,6 +226,8 @@ func (r *Reactor) OnStart() error {
 func (r *Reactor) OnStop() {
 	// tell the dispatcher to stop sending any more requests
 	r.dispatcher.Close()
+	// wait for any remaining requests to complete
+	<-r.dispatcher.Done()
 
 	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
 	// p2p Channels should execute Close().
@@ -732,7 +734,6 @@ func (r *Reactor) handleParamsMessage(envelope p2p.Envelope) error {
 		cp := types.ConsensusParamsFromProto(msg.ConsensusParams)
 
 		if sp, ok := r.stateProvider.(*stateProviderP2P); ok {
-			r.Logger.Debug("passing along message")
 			select {
 			case sp.paramsRecvCh <- cp:
 			default:
