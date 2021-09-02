@@ -26,9 +26,25 @@ var (
 	}
 
 	// The following specify randomly chosen values for testnet nodes.
-	nodeDatabases        = uniformChoice{"goleveldb", "cleveldb", "rocksdb", "boltdb", "badgerdb"}
-	nodeABCIProtocols    = uniformChoice{"unix", "tcp", "builtin", "grpc"}
-	nodePrivvalProtocols = uniformChoice{"file", "unix", "tcp", "grpc"}
+	nodeDatabases = weightedChoice{
+		"goleveldb": 35,
+		"badgerdb":  35,
+		"boltdb":    15,
+		"rocksdb":   10,
+		"cleveldb":  5,
+	}
+	nodeABCIProtocols = weightedChoice{
+		"builtin": 50,
+		"tcp":     20,
+		"grpc":    20,
+		"unix":    10,
+	}
+	nodePrivvalProtocols = weightedChoice{
+		"file": 50,
+		"grpc": 20,
+		"tcp":  20,
+		"unix": 10,
+	}
 	// FIXME: v2 disabled due to flake
 	nodeBlockSyncs        = uniformChoice{"v0"} // "v2"
 	nodeMempools          = uniformChoice{"v0", "v1"}
@@ -107,11 +123,11 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 
 	switch opt["p2p"].(P2PMode) {
 	case NewP2PMode:
-		manifest.DisableLegacyP2P = true
+		manifest.UseLegacyP2P = true
 	case LegacyP2PMode:
-		manifest.DisableLegacyP2P = false
+		manifest.UseLegacyP2P = false
 	case HybridP2PMode:
-		manifest.DisableLegacyP2P = false
+		manifest.UseLegacyP2P = true
 		p2pNodeFactor = 2
 	default:
 		return manifest, fmt.Errorf("unknown p2p mode %s", opt["p2p"])
@@ -138,9 +154,9 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		node := generateNode(r, e2e.ModeSeed, 0, manifest.InitialHeight, false)
 
 		if p2pNodeFactor == 0 {
-			node.DisableLegacyP2P = manifest.DisableLegacyP2P
+			node.UseLegacyP2P = manifest.UseLegacyP2P
 		} else if p2pNodeFactor%i == 0 {
-			node.DisableLegacyP2P = !manifest.DisableLegacyP2P
+			node.UseLegacyP2P = !manifest.UseLegacyP2P
 		}
 
 		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = node
@@ -162,9 +178,9 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			r, e2e.ModeValidator, startAt, manifest.InitialHeight, i <= 2)
 
 		if p2pNodeFactor == 0 {
-			node.DisableLegacyP2P = manifest.DisableLegacyP2P
+			node.UseLegacyP2P = manifest.UseLegacyP2P
 		} else if p2pNodeFactor%i == 0 {
-			node.DisableLegacyP2P = !manifest.DisableLegacyP2P
+			node.UseLegacyP2P = !manifest.UseLegacyP2P
 		}
 
 		manifest.Nodes[name] = node
@@ -198,9 +214,9 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		node := generateNode(r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
 
 		if p2pNodeFactor == 0 {
-			node.DisableLegacyP2P = manifest.DisableLegacyP2P
+			node.UseLegacyP2P = manifest.UseLegacyP2P
 		} else if p2pNodeFactor%i == 0 {
-			node.DisableLegacyP2P = !manifest.DisableLegacyP2P
+			node.UseLegacyP2P = !manifest.UseLegacyP2P
 		}
 		manifest.Nodes[fmt.Sprintf("full%02d", i)] = node
 	}
@@ -270,9 +286,9 @@ func generateNode(
 	node := e2e.ManifestNode{
 		Mode:             string(mode),
 		StartAt:          startAt,
-		Database:         nodeDatabases.Choose(r).(string),
-		ABCIProtocol:     nodeABCIProtocols.Choose(r).(string),
-		PrivvalProtocol:  nodePrivvalProtocols.Choose(r).(string),
+		Database:         nodeDatabases.Choose(r),
+		ABCIProtocol:     nodeABCIProtocols.Choose(r),
+		PrivvalProtocol:  nodePrivvalProtocols.Choose(r),
 		BlockSync:        nodeBlockSyncs.Choose(r).(string),
 		Mempool:          nodeMempools.Choose(r).(string),
 		StateSync:        nodeStateSyncs.Choose(r).(bool) && startAt > 0,
@@ -321,7 +337,7 @@ func generateLightNode(r *rand.Rand, startAt int64, providers []string) *e2e.Man
 	return &e2e.ManifestNode{
 		Mode:            string(e2e.ModeLight),
 		StartAt:         startAt,
-		Database:        nodeDatabases.Choose(r).(string),
+		Database:        nodeDatabases.Choose(r),
 		ABCIProtocol:    "builtin",
 		PersistInterval: ptrUint64(0),
 		PersistentPeers: providers,
