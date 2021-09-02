@@ -55,6 +55,7 @@ retain_blocks = 7
 
 [node.validator04]
 abci_protocol = "builtin"
+snapshot_interval = 5
 database = "rocksdb"
 persistent_peers = ["validator01"]
 perturb = ["pause"]
@@ -62,6 +63,7 @@ perturb = ["pause"]
 [node.validator05]
 database = "cleveldb" 
 block_sync = "v0" 
+state_sync = "p2p"
 seeds = ["seed01"] 
 start_at = 1005 # Becomes part of the validator set at 1010
 abci_protocol = "grpc"
@@ -73,10 +75,10 @@ mode = "full"
 start_at = 1010
 # FIXME: should be v2, disabled due to flake
 block_sync = "v0"
-persistent_peers = ["validator01", "validator02", "validator03", "validator04", "validator05"]
+persistent_peers = ["validator01", "validator02", "validator03", "validator04"]
 perturb = ["restart"]
 retain_blocks = 7
-state_sync = true
+state_sync = "rpc"
 
 [node.light01]
 mode = "light"

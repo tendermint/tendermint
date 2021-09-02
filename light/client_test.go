@@ -724,51 +724,32 @@ func TestClient_BackwardsVerification(t *testing.T) {
 
 	}
 	{
-		testCases := []struct {
-			headers map[int64]*types.SignedHeader
-			vals    map[int64]*types.ValidatorSet
-		}{
-			{
-				// 7) provides incorrect height
-				headers: map[int64]*types.SignedHeader{
-					2: keys.GenSignedHeader(chainID, 1, bTime.Add(30*time.Minute), nil, vals, vals,
-						hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys)),
-					3: h3,
-				},
-				vals: valSet,
-			},
-			{
-				// 8) provides incorrect hash
-				headers: map[int64]*types.SignedHeader{
-					2: keys.GenSignedHeader(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
-						hash("app_hash2"), hash("cons_hash23"), hash("results_hash30"), 0, len(keys)),
-					3: h3,
-				},
-				vals: valSet,
-			},
+		// 8) provides incorrect hash
+		headers := map[int64]*types.SignedHeader{
+			2: keys.GenSignedHeader(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
+				hash("app_hash2"), hash("cons_hash23"), hash("results_hash30"), 0, len(keys)),
+			3: h3,
 		}
+		vals := valSet
+		mockNode := mockNodeFromHeadersAndVals(headers, vals)
+		c, err := light.NewClient(
+			ctx,
+			chainID,
+			light.TrustOptions{
+				Period: 1 * time.Hour,
+				Height: 3,
+				Hash:   h3.Hash(),
+			},
+			mockNode,
+			[]provider.Provider{mockNode},
+			dbs.New(dbm.NewMemDB()),
+			light.Logger(log.TestingLogger()),
+		)
+		require.NoError(t, err)
 
-		for idx, tc := range testCases {
-			mockNode := mockNodeFromHeadersAndVals(tc.headers, tc.vals)
-			c, err := light.NewClient(
-				ctx,
-				chainID,
-				light.TrustOptions{
-					Period: 1 * time.Hour,
-					Height: 3,
-					Hash:   h3.Hash(),
-				},
-				mockNode,
-				[]provider.Provider{mockNode},
-				dbs.New(dbm.NewMemDB()),
-				light.Logger(log.TestingLogger()),
-			)
-			require.NoError(t, err, idx)
-
-			_, err = c.VerifyLightBlockAtHeight(ctx, 2, bTime.Add(1*time.Hour).Add(1*time.Second))
-			assert.Error(t, err, idx)
-			mockNode.AssertExpectations(t)
-		}
+		_, err = c.VerifyLightBlockAtHeight(ctx, 2, bTime.Add(1*time.Hour).Add(1*time.Second))
+		assert.Error(t, err)
+		mockNode.AssertExpectations(t)
 	}
 }
 

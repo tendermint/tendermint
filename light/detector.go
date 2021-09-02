@@ -110,7 +110,7 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan error, h *types.SignedHeader,
 	witness provider.Provider, witnessIndex int) {
 
-	lightBlock, err := witness.LightBlock(ctx, h.Height)
+	lightBlock, err := c.getLightBlock(ctx, witness, h.Height)
 	switch err {
 	// no error means we move on to checking the hash of the two headers
 	case nil:
@@ -331,7 +331,7 @@ func (c *Client) examineConflictingHeaderAgainstTrace(
 		if traceBlock.Height == targetBlock.Height {
 			sourceBlock = targetBlock
 		} else {
-			sourceBlock, err = source.LightBlock(ctx, traceBlock.Height)
+			sourceBlock, err = c.getLightBlock(ctx, source, traceBlock.Height)
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to examine trace: %w", err)
 			}
@@ -379,7 +379,7 @@ func (c *Client) getTargetBlockOrLatest(
 	height int64,
 	witness provider.Provider,
 ) (bool, *types.LightBlock, error) {
-	lightBlock, err := witness.LightBlock(ctx, 0)
+	lightBlock, err := c.getLightBlock(ctx, witness, 0)
 	if err != nil {
 		return false, nil, err
 	}
@@ -394,7 +394,7 @@ func (c *Client) getTargetBlockOrLatest(
 		// the witness has caught up. We recursively call the function again. However in order
 		// to avoud a wild goose chase where the witness sends us one header below and one header
 		// above the height we set a timeout to the context
-		lightBlock, err := witness.LightBlock(ctx, height)
+		lightBlock, err := c.getLightBlock(ctx, witness, height)
 		return true, lightBlock, err
 	}
 

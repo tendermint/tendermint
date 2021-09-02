@@ -302,10 +302,13 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 		cfg.BlockSync.Version = node.BlockSync
 	}
 
-	if node.StateSync {
+	switch node.StateSync {
+	case e2e.StateSyncP2P:
+		cfg.StateSync.Enable = true
+		cfg.StateSync.UseP2P = true
+	case e2e.StateSyncRPC:
 		cfg.StateSync.Enable = true
 		cfg.StateSync.RPCServers = []string{}
-
 		for _, peer := range node.Testnet.ArchiveNodes() {
 			if peer.Name == node.Name {
 				continue
