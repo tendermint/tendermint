@@ -4,7 +4,6 @@ go 1.16
 
 require (
 	github.com/BurntSushi/toml v0.4.1
-	github.com/Masterminds/squirrel v1.5.0
 	github.com/Workiva/go-datastructures v1.0.53
 	github.com/adlio/schema v1.1.13
 	github.com/btcsuite/btcd v0.22.0-beta
@@ -19,7 +18,7 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/lib/pq v1.10.2
+	github.com/lib/pq v1.10.3
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/minio/highwayhash v1.0.2
 	github.com/mroth/weightedrand v0.4.1
