@@ -45,6 +45,10 @@ func waitForHeight(testnet *e2e.Testnet, height int64) (*types.Block, *types.Blo
 				continue
 			}
 
+			if !node.HasStarted {
+				continue
+			}
+
 			// cache the clients
 			client, ok := clients[node.Name]
 			if !ok {
