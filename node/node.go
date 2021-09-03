@@ -220,7 +220,7 @@ func makeNode(config *cfg.Config,
 
 	// Determine whether we should do block sync. This must happen after the handshake, since the
 	// app may modify the validator set, specifying ourself as the only validator.
-	blockSync := config.FastSyncMode && !onlyValidatorIsUs(state, pubKey)
+	blockSync := config.BlockSyncMode && !onlyValidatorIsUs(state, pubKey)
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger, config.Mode)
 
@@ -716,7 +716,7 @@ func (n *nodeImpl) OnStart() error {
 			// TODO: Some form of orchestrator is needed here between the state
 			// advancing reactors to be able to control which one of the three
 			// is running
-			if n.config.FastSyncMode {
+			if n.config.BlockSyncMode {
 				// FIXME Very ugly to have these metrics bleed through here.
 				n.consensusReactor.SetBlockSyncingMetrics(1)
 				if err := bcR.SwitchToBlockSync(state); err != nil {

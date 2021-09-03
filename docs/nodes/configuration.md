@@ -39,7 +39,7 @@ moniker = "anonymous"
 # If this node is many blocks behind the tip of the chain, BlockSync
 # allows them to catchup quickly by downloading blocks in parallel
 # and verifying their commits
-fast-sync = true
+enable-block-sync = true
 
 # Mode of Node: full | validator | seed (default: "validator")
 # * validator node (default)
@@ -356,7 +356,7 @@ temp-dir = ""
 #######################################################
 ###       BlockSync Configuration Connections       ###
 #######################################################
-[fastsync]
+[blocksync]
 
 # Block Sync version to use:
 #   1) "v0" (default) - the legacy block sync implementation

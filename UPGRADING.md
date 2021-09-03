@@ -17,7 +17,10 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 ### Config Changes
 
-* `fast_sync = "v1"` and `fast_sync = "v2"` are no longer supported. Please use `v0` instead.
+* The configuration variable `fast-sync` and flag `--fast-sync` have been renamed to `enable-block-sync` and `--enable-block-sync`
+  and the field configuration field `[fastsync]` has been renamed to `[blocksync]`.
+
+* `blocksync.version = "v1"` and `blocksync.version = "v2"` (previously `fastsync`) are no longer supported. Please use `v0` instead.
 
 * All config parameters are now hyphen-case (also known as kebab-case) instead of snake_case. Before restarting the node make sure
   you have updated all the variables in your `config.toml` file.
@@ -68,6 +71,8 @@ if needed.
   ```
   $ tendermint gen_node_key > $TMHOME/config/node_key.json
   ```
+
+* The `--fast-sync` flag has been renamed to `--enable-block-sync`.
 
 * CLI commands and flags are all now hyphen-case instead of snake_case.
   Make sure to adjust any scripts that calls a cli command with snake_casing

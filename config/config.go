@@ -76,11 +76,12 @@ type Config struct {
 	P2P             *P2PConfig             `mapstructure:"p2p"`
 	Mempool         *MempoolConfig         `mapstructure:"mempool"`
 	StateSync       *StateSyncConfig       `mapstructure:"statesync"`
-	BlockSync       *BlockSyncConfig       `mapstructure:"fastsync"`
+	BlockSync       *BlockSyncConfig       `mapstructure:"blocksync"`
 	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
 	TxIndex         *TxIndexConfig         `mapstructure:"tx-index"`
 	Instrumentation *InstrumentationConfig `mapstructure:"instrumentation"`
 	PrivValidator   *PrivValidatorConfig   `mapstructure:"priv-validator"`
+	Other           map[string]interface{} `mapstructure:",remain"`
 }
 
 // DefaultConfig returns a default configuration for a Tendermint node
@@ -152,13 +153,25 @@ func (cfg *Config) ValidateBasic() error {
 		return fmt.Errorf("error in [statesync] section: %w", err)
 	}
 	if err := cfg.BlockSync.ValidateBasic(); err != nil {
-		return fmt.Errorf("error in [fastsync] section: %w", err)
+		return fmt.Errorf("error in [blocksync] section: %w", err)
 	}
 	if err := cfg.Consensus.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [consensus] section: %w", err)
 	}
 	if err := cfg.Instrumentation.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [instrumentation] section: %w", err)
+	}
+
+	// TODO: remove this check after the v0.35 release cycle.
+	// This check was added to give users an upgrade prompt to use the new
+	// configuration option in v0.35. In future release cycles they should no longer
+	// be using this configuration parameter so the check can be removed.
+	// The cfg.Other field can likely be removed at the same time if it is not referenced
+	// elsewhere as it was added to service this check.
+	if _, ok := cfg.Other["fastsync"]; ok {
+		return fmt.Errorf("a configuration parameter named 'fastsync' was found in the " +
+			"configuration file. The 'fastsync' parameter has been renamed to " +
+			"'blocksync', please update the 'fastsync' field in your configuration file to 'blocksync'")
 	}
 	return nil
 }
@@ -198,7 +211,7 @@ type BaseConfig struct { //nolint: maligned
 	// allows them to catchup quickly by downloading blocks in parallel
 	// and verifying their commits
 	// TODO: This should be moved to the blocksync config
-	FastSyncMode bool `mapstructure:"fast-sync"`
+	BlockSyncMode bool `mapstructure:"enable-block-sync"`
 
 	// Database backend: goleveldb | cleveldb | boltdb | rocksdb
 	// * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
@@ -242,23 +255,25 @@ type BaseConfig struct { //nolint: maligned
 	// If true, query the ABCI app on connecting to a new peer
 	// so the app can decide if we should keep the connection or not
 	FilterPeers bool `mapstructure:"filter-peers"` // false
+
+	Other map[string]interface{} `mapstructure:",remain"`
 }
 
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
-		Genesis:      defaultGenesisJSONPath,
-		NodeKey:      defaultNodeKeyPath,
-		Mode:         defaultMode,
-		Moniker:      defaultMoniker,
-		ProxyApp:     "tcp://127.0.0.1:26658",
-		ABCI:         "socket",
-		LogLevel:     DefaultLogLevel,
-		LogFormat:    log.LogFormatPlain,
-		FastSyncMode: true,
-		FilterPeers:  false,
-		DBBackend:    "goleveldb",
-		DBPath:       "data",
+		Genesis:       defaultGenesisJSONPath,
+		NodeKey:       defaultNodeKeyPath,
+		Mode:          defaultMode,
+		Moniker:       defaultMoniker,
+		ProxyApp:      "tcp://127.0.0.1:26658",
+		ABCI:          "socket",
+		LogLevel:      DefaultLogLevel,
+		LogFormat:     log.LogFormatPlain,
+		BlockSyncMode: true,
+		FilterPeers:   false,
+		DBBackend:     "goleveldb",
+		DBPath:        "data",
 	}
 }
 
@@ -268,7 +283,7 @@ func TestBaseConfig() BaseConfig {
 	cfg.chainID = "tendermint_test"
 	cfg.Mode = ModeValidator
 	cfg.ProxyApp = "kvstore"
-	cfg.FastSyncMode = false
+	cfg.BlockSyncMode = false
 	cfg.DBBackend = "memdb"
 	return cfg
 }
@@ -343,6 +358,20 @@ func (cfg BaseConfig) ValidateBasic() error {
 
 	default:
 		return fmt.Errorf("unknown mode: %v", cfg.Mode)
+	}
+	// TODO: (@wbanfield) will file an issue for this before merging
+	// remove this check after the v0.35 release cycle.
+	// This check was added to give users an upgrade prompt to use the new
+	// configuration option in v0.35. In future release cycles they should no longer
+	// be using this configuration parameter so the check can be removed.
+	// The cfg.Other field can likely be removed at the same time if it is not referenced
+	// elsewhere as it was added to service this check.
+	if fs, ok := cfg.Other["fast-sync"]; ok {
+		if fs != "" {
+			return fmt.Errorf("a configuration parameter named 'fast-sync' was found in the " +
+				"configuration file. The 'fast-sync' parameter has been renamed to " +
+				"'enable-block-sync', please update the 'fast-sync' field in your configuration file to 'enable-block-sync'")
+		}
 	}
 
 	return nil

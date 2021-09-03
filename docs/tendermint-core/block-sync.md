@@ -17,9 +17,9 @@ consensus gossip protocol.
 
 ## Using Block Sync
 
-To support faster syncing, Tendermint offers a `fast-sync` mode, which
+To support faster syncing, Tendermint offers a `blocksync` mode, which
 is enabled by default, and can be toggled in the `config.toml` or via
-`--fast_sync=false`.
+`--enable-block-sync=false`.
 
 In this mode, the Tendermint daemon will sync hundreds of times faster
 than if it used the real-time consensus process. Once caught up, the
@@ -36,7 +36,7 @@ Note: There are two versions of Block Sync. We recommend using v0 as v2 is still
 #######################################################
 ###       Block Sync Configuration Connections       ###
 #######################################################
-[fastsync]
+[blocksync]
 
 # Block Sync version to use:
 #   1) "v0" (default) - the legacy Block Sync implementation
