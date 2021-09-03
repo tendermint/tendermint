@@ -49,8 +49,8 @@ func AddNodeFlags(cmd *cobra.Command) {
 			return errors.New("--fast-sync has been deprecated, please use --enable-block-sync")
 		})
 	cmd.Flags().AddGoFlagSet(fs)
-	cmd.Flags().MarkHidden("fast-sync")
 
+	cmd.Flags().MarkHidden("fast-sync") //nolint:errcheck
 	cmd.Flags().BytesHexVar(
 		&genesisHash,
 		"genesis-hash",
