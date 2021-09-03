@@ -35,6 +35,10 @@ func waitForHeight(testnet *e2e.Testnet, height int64) (*types.Block, *types.Blo
 				continue
 			}
 
+			if node.Mode == e2e.ModeLight {
+				continue
+			}
+
 			// cache the clients
 			client, ok := clients[node.Name]
 			if !ok {
