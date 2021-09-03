@@ -13,10 +13,6 @@ import (
 func TestBlock_Header(t *testing.T) {
 	blocks := fetchBlockChain(t)
 	testNode(t, func(t *testing.T, node e2e.Node) {
-		if node.Mode == e2e.ModeSeed {
-			return
-		}
-
 		client, err := node.Client()
 		require.NoError(t, err)
 		status, err := client.Status(ctx)
@@ -55,10 +51,6 @@ func TestBlock_Header(t *testing.T) {
 // Tests that the node contains the expected block range.
 func TestBlock_Range(t *testing.T) {
 	testNode(t, func(t *testing.T, node e2e.Node) {
-		if node.Mode == e2e.ModeSeed {
-			return
-		}
-
 		client, err := node.Client()
 		require.NoError(t, err)
 		status, err := client.Status(ctx)
