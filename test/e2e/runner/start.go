@@ -48,6 +48,7 @@ func Start(testnet *e2e.Testnet) error {
 		if _, err := waitForNode(node, 0, time.Minute); err != nil {
 			return err
 		}
+		node.HasStarted = true
 		logger.Info(fmt.Sprintf("Node %v up on http://127.0.0.1:%v", node.Name, node.ProxyPort))
 	}
 
@@ -96,6 +97,7 @@ func Start(testnet *e2e.Testnet) error {
 		if err != nil {
 			return err
 		}
+		node.HasStarted = true
 		logger.Info(fmt.Sprintf("Node %v up on http://127.0.0.1:%v at height %v",
 			node.Name, node.ProxyPort, status.SyncInfo.LatestBlockHeight))
 	}

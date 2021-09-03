@@ -17,21 +17,47 @@ import (
 // progress at all.
 func waitForHeight(testnet *e2e.Testnet, height int64) (*types.Block, *types.BlockID, error) {
 	var (
-		err          error
-		maxResult    *rpctypes.ResultBlock
-		clients      = map[string]*rpchttp.HTTP{}
-		lastIncrease = time.Now()
+		err             error
+		maxResult       *rpctypes.ResultBlock
+		clients         = map[string]*rpchttp.HTTP{}
+		lastIncrease    = time.Now()
+		nodesAtHeight   = map[string]struct{}{}
+		numRunningNodes int
 	)
+	for _, node := range testnet.Nodes {
+		if node.Mode == e2e.ModeSeed {
+			continue
+		}
+
+		if node.Mode == e2e.ModeLight {
+			continue
+		}
+
+		if node.HasStarted {
+			numRunningNodes++
+		}
+	}
 
 	for {
 		for _, node := range testnet.Nodes {
+			// skip nodes that have reached the target height
+			if _, ok := nodesAtHeight[node.Name]; ok {
+				continue
+			}
+
 			if node.Mode == e2e.ModeSeed {
 				continue
 			}
+
 			if node.Mode == e2e.ModeLight {
 				continue
 			}
 
+			if !node.HasStarted {
+				continue
+			}
+
+			// cache the clients
 			client, ok := clients[node.Name]
 			if !ok {
 				client, err = node.Client()
@@ -51,7 +77,23 @@ func waitForHeight(testnet *e2e.Testnet, height int64) (*types.Block, *types.Blo
 				maxResult = result
 				lastIncrease = time.Now()
 			}
+
 			if maxResult != nil && maxResult.Block.Height >= height {
+				// the node has achieved the target height!
+
+				// add this node to the set of target
+				// height nodes
+				nodesAtHeight[node.Name] = struct{}{}
+
+				// if not all of the nodes that we
+				// have clients for have reached the
+				// target height, keep trying.
+				if numRunningNodes > len(nodesAtHeight) {
+					continue
+				}
+
+				// return once all nodes have reached
+				// the target height.
 				return maxResult.Block, &maxResult.BlockID, nil
 			}
 		}
@@ -63,7 +105,12 @@ func waitForHeight(testnet *e2e.Testnet, height int64) (*types.Block, *types.Blo
 			if maxResult == nil {
 				return nil, nil, errors.New("chain stalled at unknown height")
 			}
-			return nil, nil, fmt.Errorf("chain stalled at height %v", maxResult.Block.Height)
+
+			return nil, nil, fmt.Errorf("chain stalled at height %v [%d of %d nodes]",
+				maxResult.Block.Height,
+				len(nodesAtHeight),
+				numRunningNodes)
+
 		}
 		time.Sleep(1 * time.Second)
 	}
