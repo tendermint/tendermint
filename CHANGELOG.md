@@ -21,7 +21,7 @@ Special thanks to external contributors on this release: @JayT106, @bipulprasad,
   - [cli] \#6372 Introduce `BootstrapPeers` as part of the new p2p stack. Peers to be connected on  startup (@cmwaters)
   - [config] \#6462 Move `PrivValidator` configuration out of `BaseConfig` into its own section. (@tychoish)
   - [rpc] \#6610 Add MaxPeerBlockHeight into /status rpc call (@JayT106)
-  - [fastsync/rpc] \#6620 Add TotalSyncedTime & RemainingTime to SyncInfo in /status RPC  (@JayT106)
+  - [blocksync/rpc] \#6620 Add TotalSyncedTime & RemainingTime to SyncInfo in /status RPC  (@JayT106)
   - [rpc/grpc] \#6725 Mark gRPC in the RPC layer as deprecated.
   - [blockchain/v2] \#6730 Fast Sync v2 is deprecated, please use v0
   - [rpc] Add genesis_chunked method to support paginated and parallel fetching of large genesis documents.
@@ -37,8 +37,6 @@ Special thanks to external contributors on this release: @JayT106, @bipulprasad,
   - [Version] \#6494 `TMCoreSemVer` has been renamed to `TMVersion`.
 	- It is not required any longer to set ldflags to set version strings
   - [abci/counter] \#6684 Delete counter example app
-
-- P2P Protocol
 
 - Go API
   - [pubsub] \#6634 The `Query#Matches` method along with other pubsub methods, now accepts a `[]abci.Event` instead of `map[string][]string`. (@alexanderbez)
@@ -75,10 +73,7 @@ Special thanks to external contributors on this release: @JayT106, @bipulprasad,
   - [crypto/sr25519] \#6526 Do not re-execute the Ed25519-style key derivation step when doing signing and verification.  The derivation is now done once and only once.  This breaks `sr25519.GenPrivKeyFromSecret` output compatibility. (@Yawning)
   - [types] \#6627 Move `NodeKey` to types to make the type public.
   - [config] \#6627 Extend `config` to contain methods `LoadNodeKeyID` and `LoadorGenNodeKeyID`
-  - [blocksync] \#6755 Rename `FastSync` and `Blockchain` package to `BlockSync`
-	(@cmwaters)
-
-- Blockchain Protocol
+  - [blocksync] \#6755 Rename `FastSync` and `Blockchain` package to `BlockSync` (@cmwaters)
 
 - Data Storage
   - [store/state/evidence/light] \#5771 Use an order-preserving varint key encoding (@cmwaters)
@@ -96,7 +91,7 @@ Special thanks to external contributors on this release: @JayT106, @bipulprasad,
 - [pex] \#6305 v2 pex reactor with backwards compatability. Introduces two new pex messages to
   accomodate for the new p2p stack. Removes the notion of seeds and crawling. All peer
   exchange reactors behave the same. (@cmwaters)
-- [crypto] \#6376 Enable sr25519 as a validator key
+- [crypto] \#6376 Enable sr25519 as a validator key type
 - [mempool] \#6466 Introduction of a prioritized mempool. (@alexanderbez)
   - `Priority` and `Sender` have been introduced into the `ResponseCheckTx` type, where the `priority` will determine the prioritization of
   the transaction when a proposer reaps transactions for a block proposal. The `sender` field acts as an index.
@@ -105,7 +100,7 @@ Special thanks to external contributors on this release: @JayT106, @bipulprasad,
   - Applications that do not specify a priority, i.e. zero, will have transactions reaped by the order in which they are received by the node.
   - Transactions are gossiped in FIFO order as they are in `v0`.
 - [config/indexer] \#6411 Introduce support for custom event indexing data sources, specifically PostgreSQL. (@JayT106)
-- [fastsync/event] \#6619 Emit fastsync status event when switching consensus/fastsync (@JayT106)
+- [blocksync/event] \#6619 Emit blocksync status event when switching consensus/blocksync (@JayT106)
 - [statesync/event] \#6700 Emit statesync status start/end event (@JayT106)
 - [inspect] \#6785 Add a new `inspect` command for introspecting the state and block store of a crashed tendermint node. (@williambanfield)
 
@@ -161,7 +156,7 @@ Special thanks to external contributors on this release: @JayT106, @bipulprasad,
 - [evidence] \#6375 Fix bug with inconsistent LightClientAttackEvidence hashing (cmwaters)
 - [rpc] \#6507 Ensure RPC client can handle URLs without ports (@JayT106)
 - [statesync] \#6463 Adds Reverse Sync feature to fetch historical light blocks after state sync in order to verify any evidence (@cmwaters)
-- [fastsync] \#6590 Update the metrics during fast-sync (@JayT106)
+- [blocksync] \#6590 Update the metrics during blocksync (@JayT106)
 - [gitignore] \#6668 Fix gitignore of abci-cli (@tanyabouman)
 
 ## v0.34.12
