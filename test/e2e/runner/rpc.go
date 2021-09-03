@@ -25,6 +25,14 @@ func waitForHeight(testnet *e2e.Testnet, height int64) (*types.Block, *types.Blo
 		numRunningNodes int
 	)
 	for _, node := range testnet.Nodes {
+		if node.Mode == e2e.ModeSeed {
+			continue
+		}
+
+		if node.Mode == e2e.ModeLight {
+			continue
+		}
+
 		if node.HasStarted {
 			numRunningNodes++
 		}
@@ -80,7 +88,7 @@ func waitForHeight(testnet *e2e.Testnet, height int64) (*types.Block, *types.Blo
 				// if not all of the nodes that we
 				// have clients for have reached the
 				// target height, keep trying.
-				if len(nodesAtHeight) < numRunningNodes {
+				if numRunningNodes > len(nodesAtHeight) {
 					continue
 				}
 
@@ -93,14 +101,16 @@ func waitForHeight(testnet *e2e.Testnet, height int64) (*types.Block, *types.Blo
 		if len(clients) == 0 {
 			return nil, nil, errors.New("unable to connect to any network nodes")
 		}
-		if time.Since(lastIncrease) >= 2*time.Minute {
+		if time.Since(lastIncrease) >= time.Minute {
 			if maxResult == nil {
 				return nil, nil, errors.New("chain stalled at unknown height")
 			}
+
 			return nil, nil, fmt.Errorf("chain stalled at height %v [%d of %d nodes]",
 				maxResult.Block.Height,
 				len(nodesAtHeight),
 				numRunningNodes)
+
 		}
 		time.Sleep(1 * time.Second)
 	}
