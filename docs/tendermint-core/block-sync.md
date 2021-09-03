@@ -39,8 +39,8 @@ Note: There are two versions of Block Sync. We recommend using v0 as v2 is still
 [blocksync]
 
 # Block Sync version to use:
-#   1) "v0" (default) - the legacy Block Sync implementation
-#   2) "v2" - complete redesign of v0, optimized for testability & readability
+#   1) "v0" (default) - the standard Block Sync implementation
+#   2) "v2" - redesign of v0, deprecated
 version = "v0"
 ```
 
