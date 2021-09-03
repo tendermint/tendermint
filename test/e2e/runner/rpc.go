@@ -17,17 +17,25 @@ import (
 // progress at all.
 func waitForHeight(testnet *e2e.Testnet, height int64) (*types.Block, *types.BlockID, error) {
 	var (
-		err          error
-		maxResult    *rpctypes.ResultBlock
-		clients      = map[string]*rpchttp.HTTP{}
-		lastIncrease = time.Now()
+		err           error
+		maxResult     *rpctypes.ResultBlock
+		clients       = map[string]*rpchttp.HTTP{}
+		lastIncrease  = time.Now()
+		nodesAtHeight = map[string]struct{}{}
 	)
 
 	for {
 		for _, node := range testnet.Nodes {
+			// skip nodes that have reached the target height
+			if _, ok := nodesAtHeight[node.Name]; ok {
+				continue
+			}
+
 			if node.Mode == e2e.ModeSeed {
 				continue
 			}
+
+			// cache the clients
 			client, ok := clients[node.Name]
 			if !ok {
 				client, err = node.Client()
@@ -47,7 +55,23 @@ func waitForHeight(testnet *e2e.Testnet, height int64) (*types.Block, *types.Blo
 				maxResult = result
 				lastIncrease = time.Now()
 			}
+
 			if maxResult != nil && maxResult.Block.Height >= height {
+				// the node has achieved the target height!
+
+				// add this node to the set of target
+				// height nodes
+				nodesAtHeight[node.Name] = struct{}{}
+
+				// if not all of the nodes that we
+				// have clients for have reached the
+				// target height, keep trying.
+				if len(nodesAtHeight) < len(clients) {
+					continue
+				}
+
+				// return once all nodes have reached
+				// the target height.
 				return maxResult.Block, &maxResult.BlockID, nil
 			}
 		}
