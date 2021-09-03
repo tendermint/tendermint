@@ -30,8 +30,9 @@ var (
 	blocksCacheMtx  = sync.Mutex{}
 )
 
-// testNode runs tests for testnet nodes. The callback function is given a
-// single node to test, running as a subtest in parallel with other subtests.
+// testNode runs tests for testnet nodes. The callback function is
+// given a single stateful node to test, running as a subtest in
+// parallel with other subtests.
 //
 // The testnet manifest must be given as the envvar E2E_MANIFEST. If not set,
 // these tests are skipped so that they're not picked up during normal unit
@@ -51,6 +52,11 @@ func testNode(t *testing.T, testFunc func(*testing.T, e2e.Node)) {
 
 	for _, node := range nodes {
 		node := *node
+
+		if node.Stateless() {
+			continue
+		}
+
 		t.Run(node.Name, func(t *testing.T) {
 			t.Parallel()
 			testFunc(t, node)
