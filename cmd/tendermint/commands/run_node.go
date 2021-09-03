@@ -46,7 +46,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 	fs := flag.NewFlagSet("", flag.ExitOnError)
 	fs.Func("fast-sync", "deprecated",
 		func(string) error {
-			return errors.New("--fast-sync has been depcreated, please use --enable-block-sync")
+			return errors.New("--fast-sync has been deprecated, please use --enable-block-sync")
 		})
 	cmd.Flags().AddGoFlagSet(fs)
 	cmd.Flags().MarkHidden("fast-sync")
