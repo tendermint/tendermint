@@ -72,8 +72,6 @@ if needed.
   $ tendermint gen_node_key > $TMHOME/config/node_key.json
   ```
 
-* The `--fast-sync` flag has been renamed to `--enable-block-sync`.
-
 * CLI commands and flags are all now hyphen-case instead of snake_case.
   Make sure to adjust any scripts that calls a cli command with snake_casing
 
