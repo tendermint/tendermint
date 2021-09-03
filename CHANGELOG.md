@@ -3,6 +3,7 @@
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
 
 ## v0.35
+
 Special thanks to external contributors on this release: @JayT106, @bipulprasad, @alessio, @Yawning, @silasdavis,
 @cuonglm, @tanyabouman, @JoeKash, @githubsands, @jeebster, @crypto-facs, @liamsi, and @gotjoshua
 
@@ -11,7 +12,7 @@ Special thanks to external contributors on this release: @JayT106, @bipulprasad,
 - CLI/RPC/Config
   - [pubsub/events] \#6634 The `ResultEvent.Events` field is now of type `[]abci.Event` preserving event order instead of `map[string][]string`. (@alexanderbez)
   - [config] \#5598 The `test_fuzz` and `test_fuzz_config` P2P settings have been removed. (@erikgrinaker)
-  - [config] \#5728 `fast_sync = "v1"` is no longer supported (@melekes)
+  - [config] \#5728 `fastsync.version = "v1"` is no longer supported (@melekes)
   - [cli] \#5772 `gen_node_key` prints JSON-encoded `NodeKey` rather than ID and does not save it to `node_key.json` (@melekes)
   - [cli] \#5777 use hyphen-case instead of snake_case for all cli commands and config parameters (@cmwaters)
   - [rpc] \#6019 standardise RPC errors and return the correct status code (@bipulprasad & @cmwaters)
@@ -23,7 +24,7 @@ Special thanks to external contributors on this release: @JayT106, @bipulprasad,
   - [rpc] \#6610 Add MaxPeerBlockHeight into /status rpc call (@JayT106)
   - [blocksync/rpc] \#6620 Add TotalSyncedTime & RemainingTime to SyncInfo in /status RPC  (@JayT106)
   - [rpc/grpc] \#6725 Mark gRPC in the RPC layer as deprecated.
-  - [blockchain/v2] \#6730 Fast Sync v2 is deprecated, please use v0
+  - [blocksync/v2] \#6730 Fast Sync v2 is deprecated, please use v0
   - [rpc] Add genesis_chunked method to support paginated and parallel fetching of large genesis documents.
   - [rpc/jsonrpc/server] \#6785 `Listen` function updated to take an `int` argument, `maxOpenConnections`, instead of an entire config object. (@williambanfield)
   - [rpc] \#6820 Update RPC methods to reflect changes in the p2p layer, disabling support for `UnsafeDialPeers` and `UnsafeDialPeers` when used with the new p2p layer, and changing the response format of the peer list in `NetInfo` for all users.
@@ -61,7 +62,7 @@ Special thanks to external contributors on this release: @JayT106, @bipulprasad,
 	- `NewWithOptions` now sets the max retry attempts and timeouts (@cmwaters)
   - [all] \#6077 Change spelling from British English to American (@cmwaters)
 	- Rename "Subscription.Cancelled()" to "Subscription.Canceled()" in libs/pubsub
-	- Rename "behaviour" pkg to "behavior" and internalized it in blockchain v2
+	- Rename "behaviour" pkg to "behavior" and internalized it in blocksync v2
   - [rpc/client/http] \#6176 Remove `endpoint` arg from `New`, `NewWithTimeout` and `NewWithClient` (@melekes)
   - [rpc/client/http] \#6176 Unexpose `WSEvents` (@melekes)
   - [rpc/jsonrpc/client/ws_client] \#6176 `NewWS` no longer accepts options (use `NewWSWithOptions` and `OnReconnect` funcs to configure the client) (@melekes)
@@ -118,10 +119,10 @@ Special thanks to external contributors on this release: @JayT106, @bipulprasad,
 - [abci/client] \#5673 `Async` requests return an error if queue is full (@melekes)
 - [mempool] \#5673 Cancel `CheckTx` requests if RPC client disconnects or times out (@melekes)
 - [abci] \#5706 Added `AbciVersion` to `RequestInfo` allowing applications to check ABCI version when connecting to Tendermint. (@marbar3778)
-- [blockchain/v1] \#5728 Remove in favor of v2 (@melekes)
-- [blockchain/v0] \#5741 Relax termination conditions and increase sync timeout (@melekes)
+- [blocksync/v1] \#5728 Remove blocksync v1 (@melekes)
+- [blocksync/v0] \#5741 Relax termination conditions and increase sync timeout (@melekes)
 - [cli] \#5772 `gen_node_key` output now contains node ID (`id` field) (@melekes)
-- [blockchain/v2] \#5774 Send status request when new peer joins (@melekes)
+- [blocksync/v2] \#5774 Send status request when new peer joins (@melekes)
 - [consensus] \#5792 Deprecates the `time_iota_ms` consensus parameter, to reduce the bug surface. The parameter is no longer used. (@valardragon)
 - [store] \#5888 store.SaveBlock saves using batches instead of transactions for now to improve ACID properties. This is a quick fix for underlying issues around tm-db and ACID guarantees. (@githubsands)
 - [consensus] \#5987 Remove `time_iota_ms` from consensus params. Merge `tmproto.ConsensusParams` and `abci.ConsensusParams`. (@marbar3778)
@@ -151,13 +152,10 @@ Special thanks to external contributors on this release: @JayT106, @bipulprasad,
 ### BUG FIXES
 
 - [privval] \#5638 Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
-- [blockchain/v1] [\#5701](https://github.com/tendermint/tendermint/pull/5701) Handle peers without blocks (@melekes)
-- [blockchain/v1] \#5711 Fix deadlock (@melekes)
 - [evidence] \#6375 Fix bug with inconsistent LightClientAttackEvidence hashing (cmwaters)
 - [rpc] \#6507 Ensure RPC client can handle URLs without ports (@JayT106)
 - [statesync] \#6463 Adds Reverse Sync feature to fetch historical light blocks after state sync in order to verify any evidence (@cmwaters)
 - [blocksync] \#6590 Update the metrics during blocksync (@JayT106)
-- [gitignore] \#6668 Fix gitignore of abci-cli (@tanyabouman)
 
 ## v0.34.12
 
