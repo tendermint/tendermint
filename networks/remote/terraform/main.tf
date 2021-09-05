@@ -1,5 +1,14 @@
 #Terraform Configuration
 
+terraform {
+  required_providers {
+    digitalocean = {
+      source = "digitalocean/digitalocean"
+      version = "~> 2.0"
+    }
+  }
+}
+
 variable "DO_API_TOKEN" {
   description = "DigitalOcean Access Token"
 }
@@ -11,7 +20,7 @@ variable "TESTNET_NAME" {
 
 variable "SSH_KEY_FILE" {
   description = "SSH public key file to be used on the nodes"
-  type = "string"
+  type = string
 }
 
 variable "SERVERS" {
