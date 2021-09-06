@@ -12,7 +12,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
-	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -50,9 +49,6 @@ func NewEventSink(connStr, chainID string) (*EventSink, error) {
 // DB returns the underlying Postgres connection used by the sink.
 // This is exported to support testing.
 func (es *EventSink) DB() *sql.DB { return es.store }
-
-// Type returns the structure type for this sink, which is Postgres.
-func (es *EventSink) Type() indexer.EventSinkType { return indexer.PSQL }
 
 // runInTransaction executes query in a fresh database transaction.
 // If query reports an error, the transaction is rolled back and the
