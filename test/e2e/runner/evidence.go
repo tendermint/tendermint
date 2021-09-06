@@ -197,10 +197,10 @@ func generateDuplicateVoteEvidence(
 	chainID string,
 	time time.Time,
 ) (*types.DuplicateVoteEvidence, error) {
-	// nolint:gosec // G404: Use of weak random number generator
-	privVal := privVals[rand.Intn(len(privVals))]
-
-	valIdx, _ := vals.GetByAddress(privVal.PrivKey.PubKey().Address())
+	privVal, valIdx, err := getRandomValidatorIndex(privVals, vals)
+	if err != nil {
+		return nil, err
+	}
 	voteA, err := factory.MakeVote(privVal, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
 	if err != nil {
 		return nil, err
@@ -209,12 +209,23 @@ func generateDuplicateVoteEvidence(
 	if err != nil {
 		return nil, err
 	}
-	ev := types.NewDuplicateVoteEvidence(voteA, voteB, time, vals)
-	if ev == nil {
-		return nil, fmt.Errorf("could not generate evidence a=%v b=%v vals=%v", voteA, voteB, vals)
+	ev, err := types.NewDuplicateVoteEvidence(voteA, voteB, time, vals)
+	if err != nil {
+		return nil, fmt.Errorf("could not generate evidence: %w", err)
 	}
 
 	return ev, nil
+}
+
+func getRandomValidatorIndex(privVals []types.MockPV, vals *types.ValidatorSet) (types.MockPV, int32, error) {
+	for _, idx := range rand.Perm(len(privVals)) {
+		pv := privVals[idx]
+		valIdx, _ := vals.GetByAddress(pv.PrivKey.PubKey().Address())
+		if valIdx >= 0 {
+			return pv, valIdx, nil
+		}
+	}
+	return types.MockPV{}, -1, errors.New("no private validator found in validator set")
 }
 
 func readPrivKey(keyFilePath string) (crypto.PrivKey, error) {

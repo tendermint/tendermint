@@ -47,14 +47,18 @@ var _ Evidence = &DuplicateVoteEvidence{}
 
 // NewDuplicateVoteEvidence creates DuplicateVoteEvidence with right ordering given
 // two conflicting votes. If one of the votes is nil, evidence returned is nil as well
-func NewDuplicateVoteEvidence(vote1, vote2 *Vote, blockTime time.Time, valSet *ValidatorSet) *DuplicateVoteEvidence {
+func NewDuplicateVoteEvidence(vote1, vote2 *Vote, blockTime time.Time, valSet *ValidatorSet,
+) (*DuplicateVoteEvidence, error) {
 	var voteA, voteB *Vote
-	if vote1 == nil || vote2 == nil || valSet == nil {
-		return nil
+	if vote1 == nil || vote2 == nil {
+		return nil, errors.New("missing vote")
+	}
+	if valSet == nil {
+		return nil, errors.New("missing validator set")
 	}
 	idx, val := valSet.GetByAddress(vote1.ValidatorAddress)
 	if idx == -1 {
-		return nil
+		return nil, errors.New("validator not in validator set")
 	}
 
 	if strings.Compare(vote1.BlockID.Key(), vote2.BlockID.Key()) == -1 {
@@ -70,7 +74,7 @@ func NewDuplicateVoteEvidence(vote1, vote2 *Vote, blockTime time.Time, valSet *V
 		TotalVotingPower: valSet.TotalVotingPower(),
 		ValidatorPower:   val.VotingPower,
 		Timestamp:        blockTime,
-	}
+	}, nil
 }
 
 // ABCI returns the application relevant representation of the evidence
@@ -684,7 +688,11 @@ func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
 	vB := voteB.ToProto()
 	_ = pv.SignVote(context.Background(), chainID, vB)
 	voteB.Signature = vB.Signature
-	return NewDuplicateVoteEvidence(voteA, voteB, time, NewValidatorSet([]*Validator{val}))
+	ev, err := NewDuplicateVoteEvidence(voteA, voteB, time, NewValidatorSet([]*Validator{val}))
+	if err != nil {
+		panic(err)
+	}
+	return ev
 }
 
 func makeMockVote(height int64, round, index int32, addr Address,

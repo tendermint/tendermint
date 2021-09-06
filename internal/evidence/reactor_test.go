@@ -534,12 +534,13 @@ func TestEvidenceListSerialization(t *testing.T) {
 
 	valSet := types.NewValidatorSet([]*types.Validator{val})
 
-	dupl := types.NewDuplicateVoteEvidence(
+	dupl, err := types.NewDuplicateVoteEvidence(
 		exampleVote(1),
 		exampleVote(2),
 		defaultEvidenceTime,
 		valSet,
 	)
+	require.NoError(t, err)
 
 	testCases := map[string]struct {
 		evidenceList []types.Evidence
