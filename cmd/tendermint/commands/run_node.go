@@ -118,6 +118,31 @@ func AddNodeFlags(cmd *cobra.Command) {
 		config.Mempool.TxPriceBump,
 		"Minimum price bump percentage to replace an already existing transaction with same nonce",
 	)
+	cmd.Flags().Bool(
+		"mempool.enable_pending_pool",
+		config.Mempool.EnablePendingPool,
+		"Enable pending pool to cache txs with discontinuous nonce",
+	)
+	cmd.Flags().Int(
+		"mempool.pending_pool_size",
+		config.Mempool.PendingPoolSize,
+		"Maximum number of transactions in the pending pool",
+	)
+	cmd.Flags().Int(
+		"mempool.pending_pool_period",
+		config.Mempool.PendingPoolPeriod,
+		"The time period in second to wait to consume the pending pool txs when the mempool is full ",
+	)
+	cmd.Flags().Int(
+		"mempool.pending_pool_reserve_blocks",
+		config.Mempool.PendingPoolReserveBlocks,
+		"The number of blocks that the address is allowed to reserve in the pending pool",
+	)
+	cmd.Flags().Int(
+		"mempool.pending_pool_max_tx_per_address",
+		config.Mempool.PendingPoolMaxTxPerAddress,
+		"Maximum number of transactions per address in the pending pool",
+	)
 
 	// db flags
 	cmd.Flags().String(
