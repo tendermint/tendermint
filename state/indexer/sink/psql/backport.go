@@ -13,6 +13,11 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+const (
+	eventTypeBeginBlock = "begin_block"
+	eventTypeEndBlock   = "end_block"
+)
+
 // TxIndexer returns a bridge from es to the Tendermint v0.34 transaction indexer.
 func (es *EventSink) TxIndexer() BackportTxIndexer {
 	return BackportTxIndexer{psql: es}

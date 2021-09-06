@@ -19,15 +19,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/types"
 
 	// Register the Postgres database driver.
 	_ "github.com/lib/pq"
 )
-
-// Verify that the type satisfies the EventSink interface.
-var _ indexer.EventSink = (*EventSink)(nil)
 
 var (
 	doPauseAtExit = flag.Bool("pause-at-exit", false,
@@ -138,11 +134,6 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestType(t *testing.T) {
-	psqlSink := &EventSink{store: testDB(), chainID: chainID}
-	assert.Equal(t, indexer.PSQL, psqlSink.Type())
-}
-
 func TestIndexing(t *testing.T) {
 	t.Run("IndexBlockEvents", func(t *testing.T) {
 		indexer := &EventSink{store: testDB(), chainID: chainID}
@@ -173,7 +164,13 @@ func TestIndexing(t *testing.T) {
 			makeIndexedEvent("account.owner", "Ivan"),
 			makeIndexedEvent("account.owner", "Yulieta"),
 
-			{Type: "", Attributes: []abci.EventAttribute{{Key: "not_allowed", Value: "Vlad", Index: true}}},
+			{Type: "", Attributes: []abci.EventAttribute{
+				{
+					Key:   []byte("not_allowed"),
+					Value: []byte("Vlad"),
+					Index: true,
+				},
+			}},
 		})
 		require.NoError(t, indexer.IndexTxEvents([]*abci.TxResult{txResult}))
 
@@ -306,8 +303,8 @@ SELECT height FROM `+tableBlocks+` WHERE height = $1;
 	if err := testDB().QueryRow(`
 SELECT type, height, chain_id FROM `+viewBlockEvents+`
   WHERE height = $1 AND type = $2 AND chain_id = $3;
-`, height, types.EventTypeBeginBlock, chainID).Err(); err == sql.ErrNoRows {
-		t.Errorf("No %q event found for height=%d", types.EventTypeBeginBlock, height)
+`, height, eventTypeBeginBlock, chainID).Err(); err == sql.ErrNoRows {
+		t.Errorf("No %q event found for height=%d", eventTypeBeginBlock, height)
 	} else if err != nil {
 		t.Fatalf("Database query failed: %v", err)
 	}
@@ -315,8 +312,8 @@ SELECT type, height, chain_id FROM `+viewBlockEvents+`
 	if err := testDB().QueryRow(`
 SELECT type, height, chain_id FROM `+viewBlockEvents+`
   WHERE height = $1 AND type = $2 AND chain_id = $3;
-`, height, types.EventTypeEndBlock, chainID).Err(); err == sql.ErrNoRows {
-		t.Errorf("No %q event found for height=%d", types.EventTypeEndBlock, height)
+`, height, eventTypeEndBlock, chainID).Err(); err == sql.ErrNoRows {
+		t.Errorf("No %q event found for height=%d", eventTypeEndBlock, height)
 	} else if err != nil {
 		t.Fatalf("Database query failed: %v", err)
 	}
