@@ -1001,14 +1001,14 @@ func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*type
 
 	case provider.ErrNoResponse, provider.ErrLightBlockNotFound, provider.ErrHeightTooHigh:
 		// we find a new witness to replace the primary
-		c.logger.Debug("error from light block request from primary, replacing...",
+		c.logger.Info("error from light block request from primary, replacing...",
 			"error", err, "height", height, "primary", c.primary)
 		return c.findNewPrimary(ctx, height, false)
 
 	default:
 		// The light client has most likely received either provider.ErrUnreliableProvider or provider.ErrBadLightBlock
 		// These errors mean that the light client should drop the primary and try with another provider instead
-		c.logger.Error("error from light block request from primary, removing...",
+		c.logger.Info("error from light block request from primary, removing...",
 			"error", err, "height", height, "primary", c.primary)
 		return c.findNewPrimary(ctx, height, true)
 	}
