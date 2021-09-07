@@ -217,6 +217,8 @@ func generateDuplicateVoteEvidence(
 	return ev, nil
 }
 
+// getRandomValidatorIndex picks a random validator from a slice of mock PrivVals that's
+// also part of the validator set, returning the PrivVal and its index in the validator set
 func getRandomValidatorIndex(privVals []types.MockPV, vals *types.ValidatorSet) (types.MockPV, int32, error) {
 	for _, idx := range rand.Perm(len(privVals)) {
 		pv := privVals[idx]

@@ -46,7 +46,8 @@ type DuplicateVoteEvidence struct {
 var _ Evidence = &DuplicateVoteEvidence{}
 
 // NewDuplicateVoteEvidence creates DuplicateVoteEvidence with right ordering given
-// two conflicting votes. If one of the votes is nil, evidence returned is nil as well
+// two conflicting votes. If either of the votes is nil, the val set is nil or the voter is
+// not in the val set, an error is returned
 func NewDuplicateVoteEvidence(vote1, vote2 *Vote, blockTime time.Time, valSet *ValidatorSet,
 ) (*DuplicateVoteEvidence, error) {
 	var voteA, voteB *Vote
@@ -96,7 +97,7 @@ func (dve *DuplicateVoteEvidence) Bytes() []byte {
 	pbe := dve.ToProto()
 	bz, err := pbe.Marshal()
 	if err != nil {
-		panic(err)
+		panic("marshaling duplicate vote evidence to bytes: " + err.Error())
 	}
 
 	return bz
@@ -264,11 +265,11 @@ func (l *LightClientAttackEvidence) ABCI() []abci.Evidence {
 func (l *LightClientAttackEvidence) Bytes() []byte {
 	pbe, err := l.ToProto()
 	if err != nil {
-		panic(err)
+		panic("converting light client attack evidence to proto: " + err.Error())
 	}
 	bz, err := pbe.Marshal()
 	if err != nil {
-		panic(err)
+		panic("marshaling light client attack evidence to bytes: " + err.Error())
 	}
 	return bz
 }
@@ -690,7 +691,7 @@ func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
 	voteB.Signature = vB.Signature
 	ev, err := NewDuplicateVoteEvidence(voteA, voteB, time, NewValidatorSet([]*Validator{val}))
 	if err != nil {
-		panic(err)
+		panic("constructing mock duplicate vote evidence: " + err.Error())
 	}
 	return ev
 }
