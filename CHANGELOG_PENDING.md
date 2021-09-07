@@ -24,5 +24,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [statesync] #6881 improvements to stateprovider logic (@cmwaters)
 - [ABCI] #6873 change client to use multi-reader mutexes (@tychoish)
+- [indexing] #6906 enable the PostgreSQL indexer sink (@creachadair)
 
 ### BUG FIXES
