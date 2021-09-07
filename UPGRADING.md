@@ -17,8 +17,10 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 ### Config Changes
 
-* The configuration variable `fast-sync` and flag `--fast-sync` have been renamed to `enable-block-sync` and `--enable-block-sync`
-  and the field configuration field `[fastsync]` has been renamed to `[blocksync]`.
+* The configuration file field `[fastsync]` has been renamed to `[blocksync]`.
+
+* The top level configuration file field `fast-sync` has moved under the new `[blocksync]`
+  field as `blocksync.enable`.
 
 * `blocksync.version = "v1"` and `blocksync.version = "v2"` (previously `fastsync`)
   are no longer supported. Please use `v0` instead. During the v0.35 release cycle, `v0` was
@@ -65,6 +67,8 @@ if needed.
 ### CLI Changes
 
 * You must now specify the node mode (validator|full|seed) in `tendermint init [mode]`
+
+* The `--fast-sync` command line option has been renamed to `--blocksync.enable`
 
 * If you had previously used `tendermint gen_node_key` to generate a new node
   key, keep in mind that it no longer saves the output to a file. You can use

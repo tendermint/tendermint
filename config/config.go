@@ -169,8 +169,8 @@ func (cfg *Config) ValidateBasic() error {
 	// The cfg.Other field can likely be removed at the same time if it is not referenced
 	// elsewhere as it was added to service this check.
 	if _, ok := cfg.Other["fastsync"]; ok {
-		return fmt.Errorf("a configuration parameter named 'fastsync' was found in the " +
-			"configuration file. The 'fastsync' parameter has been renamed to " +
+		return fmt.Errorf("a configuration section named 'fastsync' was found in the " +
+			"configuration file. The 'fastsync' section has been renamed to " +
 			"'blocksync', please update the 'fastsync' field in your configuration file to 'blocksync'")
 	}
 	return nil
@@ -206,12 +206,6 @@ type BaseConfig struct { //nolint: maligned
 	//   - only P2P, PEX Reactor
 	//   - No priv_validator_key.json, priv_validator_state.json
 	Mode string `mapstructure:"mode"`
-
-	// If this node is many blocks behind the tip of the chain, FastSync
-	// allows them to catchup quickly by downloading blocks in parallel
-	// and verifying their commits
-	// TODO: This should be moved to the blocksync config
-	BlockSyncMode bool `mapstructure:"enable-block-sync"`
 
 	// Database backend: goleveldb | cleveldb | boltdb | rocksdb
 	// * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
@@ -262,18 +256,17 @@ type BaseConfig struct { //nolint: maligned
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
-		Genesis:       defaultGenesisJSONPath,
-		NodeKey:       defaultNodeKeyPath,
-		Mode:          defaultMode,
-		Moniker:       defaultMoniker,
-		ProxyApp:      "tcp://127.0.0.1:26658",
-		ABCI:          "socket",
-		LogLevel:      DefaultLogLevel,
-		LogFormat:     log.LogFormatPlain,
-		BlockSyncMode: true,
-		FilterPeers:   false,
-		DBBackend:     "goleveldb",
-		DBPath:        "data",
+		Genesis:     defaultGenesisJSONPath,
+		NodeKey:     defaultNodeKeyPath,
+		Mode:        defaultMode,
+		Moniker:     defaultMoniker,
+		ProxyApp:    "tcp://127.0.0.1:26658",
+		ABCI:        "socket",
+		LogLevel:    DefaultLogLevel,
+		LogFormat:   log.LogFormatPlain,
+		FilterPeers: false,
+		DBBackend:   "goleveldb",
+		DBPath:      "data",
 	}
 }
 
@@ -283,7 +276,6 @@ func TestBaseConfig() BaseConfig {
 	cfg.chainID = "tendermint_test"
 	cfg.Mode = ModeValidator
 	cfg.ProxyApp = "kvstore"
-	cfg.BlockSyncMode = false
 	cfg.DBBackend = "memdb"
 	return cfg
 }
@@ -367,9 +359,10 @@ func (cfg BaseConfig) ValidateBasic() error {
 	// elsewhere as it was added to service this check.
 	if fs, ok := cfg.Other["fast-sync"]; ok {
 		if fs != "" {
-			return fmt.Errorf("a configuration parameter named 'fast-sync' was found in the " +
-				"configuration file. The 'fast-sync' parameter has been renamed to " +
-				"'enable-block-sync', please update the 'fast-sync' field in your configuration file to 'enable-block-sync'")
+			return fmt.Errorf("a parameter named 'fast-sync' was found in the " +
+				"configuration file. The parameter to enable or disable quickly syncing with a blockchain" +
+				"has moved to the [blocksync] section of the configuration file as blocksync.enable. " +
+				"Please move the 'fast-sync' field in your configuration file to 'blocksync.enable'")
 		}
 	}
 
@@ -1033,13 +1026,18 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 //-----------------------------------------------------------------------------
 
 // BlockSyncConfig (formerly known as FastSync) defines the configuration for the Tendermint block sync service
+// If this node is many blocks behind the tip of the chain, BlockSync
+// allows them to catchup quickly by downloading blocks in parallel
+// and verifying their commits.
 type BlockSyncConfig struct {
+	Enable  bool   `mapstructure:"enable"`
 	Version string `mapstructure:"version"`
 }
 
 // DefaultBlockSyncConfig returns a default configuration for the block sync service
 func DefaultBlockSyncConfig() *BlockSyncConfig {
 	return &BlockSyncConfig{
+		Enable:  true,
 		Version: BlockSyncV0,
 	}
 }
