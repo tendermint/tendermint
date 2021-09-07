@@ -621,7 +621,6 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	)
 }
 
-
 func TestReactorValidatorSetChanges(t *testing.T) {
 	config := configSetup(t)
 

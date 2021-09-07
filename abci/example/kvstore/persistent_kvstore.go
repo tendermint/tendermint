@@ -34,8 +34,6 @@ type PersistentKVStoreApplication struct {
 	valAddrToPubKeyMap map[string]pc.PublicKey
 
 	logger log.Logger
-
-	extension []byte
 }
 
 func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication {
@@ -81,10 +79,6 @@ func (app *PersistentKVStoreApplication) DeliverTx(req types.RequestDeliverTx) t
 
 	if isPrepareTx(req.Tx) {
 		return app.execPrepareTx(req.Tx)
-	}
-
-	if isExtensionTx(req.Tx) {
-		return app.execExtensionTx(req.Tx)
 	}
 
 	// otherwise, update the key-value store
@@ -183,7 +177,9 @@ func (app *PersistentKVStoreApplication) ApplySnapshotChunk(
 
 func (app *PersistentKVStoreApplication) ExtendVote(
 	req types.RequestExtendVote) types.ResponseExtendVote {
-	return types.RespondExtendVote(app.constructExtension(req.Vote.ValidatorAddress), nil)
+	return types.ResponseExtendVote {
+    VoteExtension: ConstructVoteExtension(req.Vote.ValidatorAddress),
+  }
 }
 
 func (app *PersistentKVStoreApplication) VerifyVoteExtension(
@@ -339,30 +335,23 @@ func (app *PersistentKVStoreApplication) substPrepareTx(blockData [][]byte) [][]
 	return blockData
 }
 
-const ExtensionPrefix = "extension"
-
-func isExtensionTx(tx []byte) bool {
-	return strings.HasPrefix(string(tx), ExtensionPrefix)
-}
-
-// execExtensionTx stores the input string in the application struct
-// which must be included in the VoteExtension.AppDataToSign
-func (app *PersistentKVStoreApplication) execExtensionTx(tx []byte) types.ResponseDeliverTx {
-	app.extension = []byte(strings.Split(string(tx), ":")[1])
-
-	return types.ResponseDeliverTx{}
-}
-
-func (app *PersistentKVStoreApplication) constructExtension(valAddr []byte) []byte {
-	ext := []byte{}
-	ext = append(ext, []byte("hello")...)
-	ext = append(ext, app.extension...)
-	return ext
+func ConstructVoteExtension(valAddr []byte) *ptypes.VoteExtension {
+  return &ptypes.VoteExtension{
+    AppDataToSign: valAddr,
+    AppDataSelfAuthenticating: valAddr,
+  }
 }
 
 func (app *PersistentKVStoreApplication) verifyExtension(valAddr []byte, ext *ptypes.VoteExtension) bool {
 	if ext == nil {
 		return false
 	}
-	return bytes.Equal(app.constructExtension(valAddr), ext.AppDataToSign)
+  canonical := ConstructVoteExtension(valAddr)
+  if !bytes.Equal(canonical.AppDataToSign, ext.AppDataToSign) {
+    return false
+  }
+  if !bytes.Equal(canonical.AppDataSelfAuthenticating, ext.AppDataSelfAuthenticating) {
+    return false
+  }
+  return true
 }
