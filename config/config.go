@@ -162,7 +162,7 @@ func (cfg *Config) ValidateBasic() error {
 		return fmt.Errorf("error in [instrumentation] section: %w", err)
 	}
 
-	// TODO: remove this check after the v0.35 release cycle.
+	// TODO (https://github.com/tendermint/tendermint/issues/6908): remove this check after the v0.35 release cycle.
 	// This check was added to give users an upgrade prompt to use the new
 	// configuration option in v0.35. In future release cycles they should no longer
 	// be using this configuration parameter so the check can be removed.
@@ -359,8 +359,7 @@ func (cfg BaseConfig) ValidateBasic() error {
 	default:
 		return fmt.Errorf("unknown mode: %v", cfg.Mode)
 	}
-	// TODO: (@wbanfield) will file an issue for this before merging
-	// remove this check after the v0.35 release cycle.
+	// TODO (https://github.com/tendermint/tendermint/issues/6908) remove this check after the v0.35 release cycle.
 	// This check was added to give users an upgrade prompt to use the new
 	// configuration option in v0.35. In future release cycles they should no longer
 	// be using this configuration parameter so the check can be removed.
