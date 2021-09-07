@@ -607,8 +607,8 @@ There are three new parameters, which are enabled is use-legacy is set to false.
 
 - `max-num-inbound-peers` = is the maximum number of peers you will accept inbound connections from at one time (where they dial your address and initiate the connection). *This was replaced by `max-connections`*
 - `max-num-outbound-peers` = is the maximum number of peers you will initiate outbound connects to at one time (where you dial their address and initiate the connection).*This was replaced by `max-connections`*
-- `unconditional-peer-ids` = is similar to `persistent-peers` except that these peers will be connected to even if you are already connected to the maximum number of peers. This can be a validator node ID on your sentry node. *Depreacted*
-- `seeds` = is a list of comma separated seed nodes that you will connect upon a start and ask for peers. A seed node is a node that does not participate in consensus but only helps propagate peers to nodes in the networks *Depreacted*
+- `unconditional-peer-ids` = is similar to `persistent-peers` except that these peers will be connected to even if you are already connected to the maximum number of peers. This can be a validator node ID on your sentry node. *Deprecated*
+- `seeds` = is a list of comma separated seed nodes that you will connect upon a start and ask for peers. A seed node is a node that does not participate in consensus but only helps propagate peers to nodes in the networks *Deprecated, replaced by bootstrap peers*
 
 ## Indexing Settings
 
