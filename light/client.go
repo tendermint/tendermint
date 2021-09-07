@@ -239,7 +239,7 @@ func NewClientFromTrustedStore(
 	}
 
 	// Validate the number of witnesses.
-	if len(c.witnesses) < 1 {
+	if len(c.witnesses) == 0 {
 		return nil, ErrNoWitnesses
 	}
 
@@ -1129,7 +1129,7 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
 
-	if len(c.witnesses) < 1 {
+	if len(c.witnesses) == 0 {
 		return ErrNoWitnesses
 	}
 
@@ -1171,7 +1171,7 @@ and remove witness. Otherwise, use the different primary`, e.WitnessIndex), "wit
 
 	// remove witnesses that have misbehaved
 	if err := c.removeWitnesses(witnessesToRemove); err != nil {
-		return err
+		c.logger.Error("failed to remove witnesses", "err", err, "witnessesToRemove", witnessesToRemove)
 	}
 
 	return nil
