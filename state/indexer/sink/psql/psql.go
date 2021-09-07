@@ -141,7 +141,6 @@ func makeIndexedEvent(compositeKey, value string) abci.Event {
 func (es *EventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error {
 	ts := time.Now().UTC()
 
-	//nolint:scopelint
 	return runInTransaction(es.store, func(dbtx *sql.Tx) error {
 		// Add the block to the blocks table and report back its row ID for use
 		// in indexing the events for the block.
@@ -187,7 +186,6 @@ func (es *EventSink) IndexTxEvents(txrs []*abci.TxResult) error {
 		// Index the hash of the underlying transaction as a hex string.
 		txHash := fmt.Sprintf("%X", types.Tx(txr.Tx).Hash())
 
-		//nolint:scopelint
 		if err := runInTransaction(es.store, func(dbtx *sql.Tx) error {
 			// Find the block associated with this transaction. The block header
 			// must have been indexed prior to the transactions belonging to it.
