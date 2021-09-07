@@ -125,11 +125,14 @@ included in this version of Tendermint as a backstop to work around unforeseen
 production issues. The new and legacy version are interoperable. If necessary, 
 you can enable the legacy implementation in the server configuration file.
 
-To make use of the legacy P2P implemementation add the following line to your
-server's configuration file:
+To make use of the legacy P2P implemementation add or update the following field of 
+your server's configuration file under the `[p2p]` section:
 
 ```toml
+[p2p]
+...
 use-legacy = true
+...
 ```
 
 If you need to do this, please consider filing an issue in the Tendermint repository
@@ -154,6 +157,16 @@ peers. Tendermint maintains a channel per message type between peers. Each WDRR
 queue maintains a shared buffered with a fixed capacity through which messages on different
 flows are passed.
 For more information on WDRR scheduling, see: https://en.wikipedia.org/wiki/Deficit_round_robin
+
+To select a queue type, add or update the following field under the `[p2p]`
+section of your server's configuration file.
+
+```toml
+[p2p]
+...
+queue-type = wdrr
+...
+```
 
 
 ### Support for Custom Reactor and Mempool Implementations
