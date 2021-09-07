@@ -120,7 +120,7 @@ both stacks.
 ### Using the updated p2p library
 
 The P2P library was reimplemented in this release. The new implementation is
-enabled by default in this version of Tendermint . The legacy implementation is still
+enabled by default in this version of Tendermint. The legacy implementation is still
 included in this version of Tendermint as a backstop to work around unforeseen
 production issues. The new and legacy version are interoperable. If necessary, 
 you can enable the legacy implementation in the server configuration file.
