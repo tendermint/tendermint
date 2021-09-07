@@ -33,7 +33,7 @@ framework, it's difficult to take advantage of any higher-level features of a
 database engine.
 
 Ideally, developers within Tendermint will be able to interact with persisted
-data via a single interface that can function, approximately like an object
+data via an interface that can function, approximately like an object
 store, and this storage interface will be able to accommodate all existing
 persistence workloads (e.g. block storage, local peer management information
 like the "address book", crash-recovery log like the WAL.) In addition to
@@ -46,7 +46,7 @@ Data Access Patterns
 
 Tendermint's data access patterns have the following characteristics:
 
-- data size often exceeds memory.
+- aggregate data size often exceeds memory.
 
 - data is rarely mutated after it's written for most data (e.g. blocks), but
   small amounts of working data is persisted by nodes and is frequently
@@ -72,7 +72,7 @@ the following high level goals:
 - select a storage engine that does not incur any additional operational
   complexity (e.g. database should be embedded.)
 
-- provide databases semantic with sufficient ACID, snapshots, and
+- provide database semantics with sufficient ACID, snapshots, and
   transactional support.
 
 Open Questions
