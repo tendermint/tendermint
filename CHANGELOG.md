@@ -29,6 +29,7 @@ Special thanks to external contributors on this release: @JayT106, @bipulprasad,
   - [rpc/jsonrpc/server] \#6785 `Listen` function updated to take an `int` argument, `maxOpenConnections`, instead of an entire config object. (@williambanfield)
   - [rpc] \#6820 Update RPC methods to reflect changes in the p2p layer, disabling support for `UnsafeDialPeers` and `UnsafeDialPeers` when used with the new p2p layer, and changing the response format of the peer list in `NetInfo` for all users.
   - [cli] \#6854 Remove deprecated snake case commands. (@tychoish)
+
 - Apps
   - [ABCI] \#6408 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)
   - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
@@ -41,8 +42,7 @@ Special thanks to external contributors on this release: @JayT106, @bipulprasad,
 
 - Go API
   - [pubsub] \#6634 The `Query#Matches` method along with other pubsub methods, now accepts a `[]abci.Event` instead of `map[string][]string`. (@alexanderbez)
-  - [p2p] \#6618 Move `p2p.NodeInfo` into `types` to support use of the SDK. (@tychoish)
-  - [p2p] \#6583 Make `p2p.NodeID` and `p2p.NetAddress` exported types to support their use in the RPC layer. (@tychoish)
+  - [p2p] \#6618 \#6583 Move `p2p.NodeInfo`, `p2p.NodeID` and `p2p.NetAddress` into `types` to support use in external packages. (@tychoish)
   - [node] \#6540 Reduce surface area of the `node` package by making most of the implementation details private. (@tychoish)
   - [p2p] \#6547 Move the entire `p2p` package and all reactor implementations into `internal`.  (@tychoish)
   - [libs/log] \#6534 Remove the existing custom Tendermint logger backed by go-kit. The logging interface, `Logger`, remains. Tendermint still provides a default logger backed by the performant zerolog logger. (@alexanderbez)
@@ -123,9 +123,8 @@ Special thanks to external contributors on this release: @JayT106, @bipulprasad,
 - [blocksync/v0] \#5741 Relax termination conditions and increase sync timeout (@melekes)
 - [cli] \#5772 `gen_node_key` output now contains node ID (`id` field) (@melekes)
 - [blocksync/v2] \#5774 Send status request when new peer joins (@melekes)
-- [consensus] \#5792 Deprecates the `time_iota_ms` consensus parameter, to reduce the bug surface. The parameter is no longer used. (@valardragon)
 - [store] \#5888 store.SaveBlock saves using batches instead of transactions for now to improve ACID properties. This is a quick fix for underlying issues around tm-db and ACID guarantees. (@githubsands)
-- [consensus] \#5987 Remove `time_iota_ms` from consensus params. Merge `tmproto.ConsensusParams` and `abci.ConsensusParams`. (@marbar3778)
+- [consensus] \#5987 and \#5792 Remove the `time_iota_ms` consensus parameter. Merge `tmproto.ConsensusParams` and `abci.ConsensusParams`. (@marbar3778, @valardragon)
 - [types] \#5994 Reduce the use of protobuf types in core logic. (@marbar3778)
   - `ConsensusParams`, `BlockParams`, `ValidatorParams`, `EvidenceParams`, `VersionParams`, `sm.Version` and `version.Consensus` have become native types. They still utilize protobuf when being sent over the wire or written to disk.
 - [rpc/client/http] \#6163 Do not drop events even if the `out` channel is full (@melekes)
