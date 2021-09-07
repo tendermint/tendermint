@@ -2,6 +2,16 @@ package psql
 
 // This file adds code to the psql package that is needed for integration with
 // v0.34, but which is not part of the original implementation.
+//
+// In v0.35, ADR 65 was implemented in which the TxIndexer and BlockIndexer
+// interfaces were merged into a hybrid EventSink interface. The Backport*
+// types defined here bridge the psql EventSink (which was built in terms of
+// the v0.35 interface) to the old interfaces.
+//
+// We took this narrower approach to backporting to avoid pulling in a much
+// wider-reaching set of changes in v0.35 that would have broken several of the
+// v0.34.x APIs. The result is sufficient to work with the node plumbing as it
+// exists in the v0.34 branch.
 
 import (
 	"context"
