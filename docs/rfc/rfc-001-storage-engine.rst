@@ -25,7 +25,7 @@ Background
 Tendermint has a very thin common wrapper that makes Tendermint itself
 (largely) agnostic to the data storage layer (within the realm of the popular
 key-value/embedded databases.) This flexibility is not particularly useful:
-the benefits of a specific database engine in the context of tendermint is not
+the benefits of a specific database engine in the context of Tendermint is not
 particularly well understood, and the maintenance burden for multiple backends
 is not commensurate with the benefit provided. Additionally, because the data
 storage layer is handled generically, and most tests run with an in-memory
@@ -49,7 +49,7 @@ Tendermint's data access patterns have the following characteristics:
 - data size often exceeds memory.
 
 - data is rarely mutated after it's written for most data (e.g. blocks), but
-  small amounts of workding data is persisted by nodes and is frequently
+  small amounts of working data is persisted by nodes and is frequently
   mutated (e.g. peer information, validator information.)
 
 - read patterns can be quite random.
@@ -72,7 +72,7 @@ the following high level goals:
 - select a storage engine that does not incur any additional operational
   complexity (e.g. database should be embedded.)
 
-- provide databases semantics with sufficient ACID, snapshots, and
+- provide databases semantic with sufficient ACID, snapshots, and
   transactional support.
 
 Open Questions
