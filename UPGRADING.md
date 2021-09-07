@@ -141,8 +141,12 @@ The new p2p implementation enables selection of the queue type to be used for
 passing messages between peers.
 
 The following values may be used when selecting which queue type to use:
-* `fifo`: (default) An unbuffered and lossless queue that passes messages through
+
+* `fifo`: (**default**) An unbuffered and lossless queue that passes messages through
 in the order in which they were received.
+
+* `priority`: A priority queue of messages.
+
 * `wdrr`: A queue implementing the Weighted Deficit Round Robin algorithm. A 
 weighted deficit round robin queue is created per peer. Each queue contains a 
 separate 'flow' for each of the channels of communication that exist between any two
@@ -151,7 +155,6 @@ queue maintains a shared buffered with a fixed capacity through which messages o
 flows are passed.
 For more information on WDRR scheduling, see: https://en.wikipedia.org/wiki/Deficit_round_robin
 
-* `priority`: A priority queue of messages.
 
 ### Support for Custom Reactor and Mempool Implementations
 
