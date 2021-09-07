@@ -43,8 +43,8 @@ be turned off regardless of other values provided.
 ```toml
 [tx-index]
 
-# The backend database list to back the indexer.
-# If list contains null, meaning no indexer service will be used.
+# The backend database to back the indexer.
+# If indexer is "null", no indexer service will be used.
 #
 # The application will set which txs to index. In some cases a node operator will be able
 # to decide which txs to index based on configuration set in the application.
@@ -54,7 +54,7 @@ be turned off regardless of other values provided.
 #   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 #     - When "kv" is chosen "tx.height" and "tx.hash" will always be indexed.
 #   3) "psql" - the indexer services backed by PostgreSQL.
-# indexer = []
+# indexer = "kv"
 ```
 
 ### Supported Indexers
