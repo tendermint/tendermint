@@ -1046,7 +1046,7 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
 
-	if len(c.witnesses) <= 1 {
+	if len(c.witnesses) < 1 {
 		return nil, ErrNoWitnesses
 	}
 
@@ -1115,6 +1115,11 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 				"error", response.err, "primary", c.witnesses[response.witnessIndex])
 			witnessesToRemove = append(witnessesToRemove, response.witnessIndex)
 		}
+	}
+
+	// remove witnesses marked as bad. Removal is done in descending order
+	if err := c.removeWitnesses(witnessesToRemove); err != nil {
+		return nil, err
 	}
 
 	return nil, lastError
