@@ -2,7 +2,7 @@
 
 This guide provides instructions for upgrading to specific versions of Tendermint Core.
 
-## Unreleased
+## v0.35
 
 ### ABCI Changes
 
@@ -17,7 +17,10 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 ### Config Changes
 
-* `fast_sync = "v1"` and `fast_sync = "v2"` are no longer supported. Please use `v0` instead.
+* The configuration variable `fast-sync` and flag `--fast-sync` have been renamed to `enable-block-sync` and `--enable-block-sync`
+  and the configuration field `[fastsync]` has been renamed to `[blocksync]`.
+
+* `blocksync.version = "v1"` and `blocksync.version = "v2"` (previously `fastsync`) are no longer supported. Please use `v0` instead.
 
 * All config parameters are now hyphen-case (also known as kebab-case) instead of snake_case. Before restarting the node make sure
   you have updated all the variables in your `config.toml` file.
@@ -35,7 +38,7 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 * The fast sync process as well as the blockchain package and service has all
   been renamed to block sync
 
-### Key Format Changes
+### Database Key Format Changes
 
 The format of all tendermint on-disk database keys changes in
 0.35. Upgrading nodes must either re-sync all data or run a migration
@@ -74,8 +77,8 @@ if needed.
 
 ### API Changes
 
-The p2p layer was reimplemented as part of the 0.35 release cycle, and
-all reactors were refactored. As part of that work these
+The p2p layer was reimplemented as part of the 0.35 release cycle and
+all reactors were refactored to accomodate the change. As part of that work these
 implementations moved into the `internal` package and are no longer
 considered part of the public Go API of tendermint. These packages
 are:
@@ -98,13 +101,11 @@ will need to change to accommodate these changes. Most notably:
   longer exported and have been replaced with `node.New` and
   `node.NewDefault` which provide more functional interfaces.
 
-### RPC changes
-
-#### gRPC Support
+### gRPC Support
 
 Mark gRPC in the RPC layer as deprecated and to be removed in 0.36.
 
-#### Peer Management Interface
+### Peer Management Interface
 
 When running with the new P2P Layer, the methods `UnsafeDialSeeds` and
 `UnsafeDialPeers` RPC methods will always return an error. They are
@@ -115,6 +116,58 @@ Additionally the format of the Peer list returned in the `NetInfo`
 method changes in this release to accommodate the different way that
 the new stack tracks data about peers. This change affects users of
 both stacks.
+
+### Using the updated p2p library
+
+The P2P library was reimplemented in this release. The new implementation is
+enabled by default in this version of Tendermint. The legacy implementation is still
+included in this version of Tendermint as a backstop to work around unforeseen
+production issues. The new and legacy version are interoperable. If necessary, 
+you can enable the legacy implementation in the server configuration file.
+
+To make use of the legacy P2P implemementation add or update the following field of 
+your server's configuration file under the `[p2p]` section:
+
+```toml
+[p2p]
+...
+use-legacy = true
+...
+```
+
+If you need to do this, please consider filing an issue in the Tendermint repository
+to let us know why. We plan to remove the legacy P2P code in the next (v0.36) release.
+
+#### New p2p queue types
+
+The new p2p implementation enables selection of the queue type to be used for
+passing messages between peers.
+
+The following values may be used when selecting which queue type to use:
+
+* `fifo`: (**default**) An unbuffered and lossless queue that passes messages through
+in the order in which they were received.
+
+* `priority`: A priority queue of messages.
+
+* `wdrr`: A queue implementing the Weighted Deficit Round Robin algorithm. A 
+weighted deficit round robin queue is created per peer. Each queue contains a 
+separate 'flow' for each of the channels of communication that exist between any two
+peers. Tendermint maintains a channel per message type between peers. Each WDRR
+queue maintains a shared buffered with a fixed capacity through which messages on different
+flows are passed.
+For more information on WDRR scheduling, see: https://en.wikipedia.org/wiki/Deficit_round_robin
+
+To select a queue type, add or update the following field under the `[p2p]`
+section of your server's configuration file.
+
+```toml
+[p2p]
+...
+queue-type = wdrr
+...
+```
+
 
 ### Support for Custom Reactor and Mempool Implementations
 
