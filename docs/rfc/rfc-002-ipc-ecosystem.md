@@ -93,10 +93,11 @@ The RPC service is exposed in several ways:
   This transport uses more or less the same JSON-RPC plumbing as the HTTP POST
   handler.
 
-  TODO: There appear to be some methods that are _only_ exported via websocket.
-  Figure out what is going on there and why it's that way. I think these may be
-  here for the same reason as the gRPC subset, viz., to support external
-  clients who could now talk directly to the application.
+  TODO: Three methods, maybe related to event subscription, are _only_ exported
+  via websocket. I think these may be used by the light client for
+  synchronization. In any case, the light client appears to be the only direct
+  consumer of the websocket transport at least within the core repository.
+  Figure out whether that's true.
 
 - gRPC: A subset of queries may be issued in protocol buffer format to the gRPC
   interface described above under (4). As noted, this endpoint is deprecated
@@ -177,10 +178,9 @@ For bootstrapping and operations, the RPC mechanism still makes sense, but can
 be further simplified. Here are some specific proposals:
 
 - Remove the HTTP GET interface entirely.
+- Simplify JSON-RPC plumbing to remove unnecessary reflection and wrapping.
 - Remove the gRPC interface (this is already planned for v0.36).
-- Remove the websocket interface (TODO: are websockets used anymore?)
-- Simplify the JSON-RPC plumbing to remove unnecessary reflection and interface
-  wrapping.
+- Remove the websocket interface (possibly depends on light client changes).
 
 These changes would preserve the ability of operators to issue queries with
 curl (but would require using JSON-RPC instead of URI parameters). That would
