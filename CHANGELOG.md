@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.34.13
+
+This release backports improvements to state synchronization and ABCI
+performance under concurrent load, and the PostgreSQL event indexer.
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### IMPROVEMENTS
+
+- [statesync] [\#6881](https://github.com/tendermint/tendermint/issues/6881) improvements to stateprovider logic (@cmwaters)
+- [ABCI] [\#6873](https://github.com/tendermint/tendermint/issues/6873) change client to use multi-reader mutexes (@tychoish)
+- [indexing] [\#6906](https://github.com/tendermint/tendermint/issues/6906) enable the PostgreSQL indexer sink (@creachadair)
+
 ## v0.34.12
 
 Special thanks to external contributors on this release: @JayT106.
