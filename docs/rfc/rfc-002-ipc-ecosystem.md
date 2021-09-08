@@ -66,6 +66,11 @@ two ways:
 - A custom remote procedure protocol built on wire-format protobuf messages
   using a socket (the "socket protocol"): [`abci/server/socket_server.go`][socket-server]
 
+The SDK also provides a [gRPC service][sdk-grpc] accessible from outside the
+application, allowing transactions to be broadcast to the network, look up
+transactions, and simulate transaction costs.
+
+
 ### RPC Transport
 
 The consensus node RPC service allows callers to query consensus parameters
@@ -235,5 +240,6 @@ uses a complex HTTP/2 based transport that is not easily replicated.
 [cosmos-sdk]: https://github.com/cosmos/cosmos-sdk/
 [local-client]: https://github.com/tendermint/tendermint/blob/master/abci/client/local_client.go
 [socket-server]: https://github.com/tendermint/tendermint/blob/master/abci/server/socket_server.go
+[sdk-grpc]: https://pkg.go.dev/github.com/cosmos/cosmos-sdk/types/tx#ServiceServer
 [json-rpc]: https://www.jsonrpc.org/specification
 [adr-57]: https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-057-RPC.md
