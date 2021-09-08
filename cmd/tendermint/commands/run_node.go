@@ -3,6 +3,8 @@ package commands
 import (
 	"bytes"
 	"crypto/sha256"
+	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -33,7 +35,22 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"socket address to listen on for connections from external priv-validator process")
 
 	// node flags
-	cmd.Flags().Bool("fast-sync", config.FastSyncMode, "fast blockchain syncing")
+	cmd.Flags().Bool("blocksync.enable", config.BlockSync.Enable, "enable fast blockchain syncing")
+
+	// TODO (https://github.com/tendermint/tendermint/issues/6908): remove this check after the v0.35 release cycle
+	// This check was added to give users an upgrade prompt to use the new flag for syncing.
+	//
+	// The pflag package does not have a native way to print a depcrecation warning
+	// and return an error. This logic was added to print a deprecation message to the user
+	// and then crash if the user attempts to use the old --fast-sync flag.
+	fs := flag.NewFlagSet("", flag.ExitOnError)
+	fs.Func("fast-sync", "deprecated",
+		func(string) error {
+			return errors.New("--fast-sync has been deprecated, please use --blocksync.enable")
+		})
+	cmd.Flags().AddGoFlagSet(fs)
+
+	cmd.Flags().MarkHidden("fast-sync") //nolint:errcheck
 	cmd.Flags().BytesHexVar(
 		&genesisHash,
 		"genesis-hash",
@@ -158,7 +175,7 @@ func checkGenesisHash(config *cfg.Config) error {
 	// Compare with the flag.
 	if !bytes.Equal(genesisHash, actualHash) {
 		return fmt.Errorf(
-			"--genesis_hash=%X does not match %s hash: %X",
+			"--genesis-hash=%X does not match %s hash: %X",
 			genesisHash, config.GenesisFile(), actualHash)
 	}
 
