@@ -98,6 +98,7 @@ type Node struct {
 	LogLevel         string
 	UseLegacyP2P     bool
 	QueueType        string
+	HasStarted       bool
 }
 
 // LoadTestnet loads a testnet from a manifest file, using the filename to
