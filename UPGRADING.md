@@ -25,7 +25,7 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 * `blocksync.version = "v1"` and `blocksync.version = "v2"` (previously `fastsync`)
   are no longer supported. Please use `v0` instead. During the v0.35 release cycle, `v0` was
   determined to suit the existing needs and the cost of maintaining the `v1` and `v2` modules
-  was determined greater than necessary.
+  was determined to be greater than necessary.
 
 * All config parameters are now hyphen-case (also known as kebab-case) instead of snake_case. Before restarting the node make sure
   you have updated all the variables in your `config.toml` file.
