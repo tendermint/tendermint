@@ -74,7 +74,6 @@ type Vote struct {
 	Height             int64                 `json:"height"`
 	Round              int32                 `json:"round"`    // assume there will not be greater than 2^32 rounds
 	BlockID            BlockID               `json:"block_id"` // zero if vote is nil.
-	StateID            StateID               `json:"state_id"`
 	ValidatorProTxHash ProTxHash             `json:"validator_pro_tx_hash"`
 	ValidatorIndex     int32                 `json:"validator_index"`
 	BlockSignature     []byte                `json:"block_signature"`
@@ -118,16 +117,17 @@ func VoteBlockSignID(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQ
 }
 
 // VoteStateSignBytes returns the 40 bytes of the height + last state app hash.
-func VoteStateSignBytes(chainID string, vote *tmproto.Vote) []byte {
+func VoteStateSignBytes(chainID string, stateID tmproto.StateID) []byte {
 	bz := make([]byte, 8)
-	binary.LittleEndian.PutUint64(bz, uint64(vote.Height-1))
-	bz = append(bz, vote.StateID.LastAppHash...)
+	// TODO: maybe this should be PutInt64 ?
+	binary.LittleEndian.PutUint64(bz, uint64(stateID.Height))
+	bz = append(bz, stateID.LastAppHash...)
 	return bz
 }
 
 // VoteStateSignID returns signID that should be signed for the state
-func VoteStateSignID(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
-	stateSignBytes := VoteStateSignBytes(chainID, vote)
+func VoteStateSignID(chainID string, stateID tmproto.StateID, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
+	stateSignBytes := VoteStateSignBytes(chainID, stateID)
 
 	if stateSignBytes == nil {
 		return nil
@@ -135,7 +135,7 @@ func VoteStateSignID(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQ
 
 	stateMessageHash := crypto.Sha256(stateSignBytes)
 
-	stateRequestID := VoteStateRequestIDProto(vote)
+	stateRequestID := VoteStateRequestIDProto(stateID)
 
 	stateSignID := crypto.SignID(
 		quorumType,
@@ -178,7 +178,7 @@ func (vote *Vote) String() string {
 		panic("Unknown vote type")
 	}
 
-	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X %X %X}",
+	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X %X}",
 		vote.ValidatorIndex,
 		tmbytes.Fingerprint(vote.ValidatorProTxHash),
 		vote.Height,
@@ -187,7 +187,6 @@ func (vote *Vote) String() string {
 		typeString,
 		tmbytes.Fingerprint(vote.BlockID.Hash),
 		tmbytes.Fingerprint(vote.BlockSignature),
-		tmbytes.Fingerprint(vote.StateID.LastAppHash),
 		tmbytes.Fingerprint(vote.StateSignature),
 	)
 }
@@ -229,10 +228,11 @@ func VoteStateRequestID(vote *Vote) []byte {
 	return crypto.Sha256(requestIDMessage)
 }
 
-func VoteStateRequestIDProto(vote *tmproto.Vote) []byte {
+func VoteStateRequestIDProto(stateID tmproto.StateID) []byte {
 	requestIDMessage := []byte("dpsvote")
 	heightByteArray := make([]byte, 8)
-	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height)-1)
+	// TODO: maybe it should be PutInt64?
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(stateID.Height))
 
 	requestIDMessage = append(requestIDMessage, heightByteArray...)
 
@@ -241,7 +241,7 @@ func VoteStateRequestIDProto(vote *tmproto.Vote) []byte {
 
 func (vote *Vote) Verify(
 	chainID string, quorumType btcjson.LLMQType, quorumHash []byte,
-	pubKey crypto.PubKey, proTxHash crypto.ProTxHash) ([]byte, []byte, error) {
+	pubKey crypto.PubKey, proTxHash crypto.ProTxHash, stateID tmproto.StateID) ([]byte, []byte, error) {
 	if !bytes.Equal(proTxHash, vote.ValidatorProTxHash) {
 		return nil, nil, ErrVoteInvalidValidatorProTxHash
 	}
@@ -274,7 +274,7 @@ func (vote *Vote) Verify(
 	stateSignID := []byte(nil)
 	// we must verify the stateID but only if the blockID isn't nil
 	if vote.BlockID.Hash != nil {
-		voteStateSignBytes := VoteStateSignBytes(chainID, v)
+		voteStateSignBytes := VoteStateSignBytes(chainID, stateID)
 		stateMessageHash := crypto.Sha256(voteStateSignBytes)
 
 		stateRequestID := VoteStateRequestID(vote)
@@ -314,10 +314,6 @@ func (vote *Vote) ValidateBasic() error {
 
 	if err := vote.BlockID.ValidateBasic(); err != nil {
 		return fmt.Errorf("wrong BlockID: %v", err)
-	}
-
-	if err := vote.StateID.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong StateID: %v", err)
 	}
 
 	// BlockID.ValidateBasic would not err if we for instance have an empty hash but a
@@ -367,7 +363,6 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 		Height:             vote.Height,
 		Round:              vote.Round,
 		BlockID:            vote.BlockID.ToProto(),
-		StateID:            vote.StateID.ToProto(),
 		ValidatorProTxHash: vote.ValidatorProTxHash,
 		ValidatorIndex:     vote.ValidatorIndex,
 		BlockSignature:     vote.BlockSignature,
@@ -387,17 +382,11 @@ func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 		return nil, err
 	}
 
-	stateID, err := StateIDFromProto(&pv.StateID)
-	if err != nil {
-		return nil, err
-	}
-
 	vote := new(Vote)
 	vote.Type = pv.Type
 	vote.Height = pv.Height
 	vote.Round = pv.Round
 	vote.BlockID = *blockID
-	vote.StateID = *stateID
 	vote.ValidatorProTxHash = pv.ValidatorProTxHash
 	vote.ValidatorIndex = pv.ValidatorIndex
 	vote.BlockSignature = pv.BlockSignature

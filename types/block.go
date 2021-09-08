@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -673,7 +674,6 @@ func (commit *Commit) GetCanonicalVote() *Vote {
 		Height:  commit.Height,
 		Round:   commit.Round,
 		BlockID: commit.BlockID,
-		StateID: commit.StateID,
 	}
 }
 
@@ -717,8 +717,9 @@ func (commit *Commit) CanonicalVoteVerifySignID(chainID string, quorumType btcjs
 // Panics if valIdx >= commit.Size().
 //
 func (commit *Commit) VoteStateSignID(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
-	v := commit.GetCanonicalVote()
-	return VoteStateSignID(chainID, v.ToProto(), quorumType, quorumHash)
+	stateID := commit.StateID.ToProto()
+
+	return VoteStateSignID(chainID, stateID, quorumType, quorumHash)
 }
 
 // VoteStateRequestId returns the requestId Hash of the Vote corresponding to valIdx for
@@ -746,13 +747,13 @@ func (commit *Commit) VoteStateRequestID() []byte {
 //
 // See VoteSignBytes
 func (commit *Commit) CanonicalVoteStateSignBytes(chainID string) []byte {
-	v := commit.GetCanonicalVote()
-	return VoteStateSignBytes(chainID, v.ToProto())
+	stateID := commit.StateID.ToProto()
+	return VoteStateSignBytes(chainID, stateID)
 }
 
 func (commit *Commit) CanonicalVoteStateSignID(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
-	v := commit.GetCanonicalVote()
-	return VoteStateSignID(chainID, v.ToProto(), quorumType, quorumHash)
+	stateID := commit.StateID.ToProto()
+	return VoteStateSignID(chainID, stateID, quorumType, quorumHash)
 }
 
 // Type returns the vote type of the commit, which is always VoteTypePrecommit
@@ -1190,17 +1191,19 @@ func BlockIDFromProto(bID *tmproto.BlockID) (*BlockID, error) {
 
 // StateID
 type StateID struct {
+	Height      int64
 	LastAppHash tmbytes.HexBytes `json:"last_app_hash"`
 }
 
 // Equals returns true if the StateID matches the given StateID
 func (stateID StateID) Equals(other StateID) bool {
-	return bytes.Equal(stateID.LastAppHash, other.LastAppHash)
+	return stateID.Height == other.Height &&
+		bytes.Equal(stateID.LastAppHash, other.LastAppHash)
 }
 
 // Key returns a machine-readable string representation of the StateID
 func (stateID StateID) Key() string {
-	return string(stateID.LastAppHash)
+	return strconv.FormatInt(stateID.Height, 36) + string(stateID.LastAppHash)
 }
 
 // ValidateBasic performs basic validation.
@@ -1209,6 +1212,12 @@ func (stateID StateID) ValidateBasic() error {
 	if err := ValidateAppHash(stateID.LastAppHash); err != nil {
 		return fmt.Errorf("wrong app Hash")
 	}
+
+	// TODO check if this is correct for genesis block
+	if stateID.Height < 1 {
+		return fmt.Errorf("StateID height is not valid: %d < 1", stateID.Height)
+	}
+
 	return nil
 }
 
@@ -1227,7 +1236,7 @@ func (stateID StateID) IsComplete() bool {
 // 1. hash
 //
 func (stateID StateID) String() string {
-	return fmt.Sprintf(`%v`, stateID.LastAppHash)
+	return fmt.Sprintf(`%d:%v`, stateID.Height, stateID.LastAppHash)
 }
 
 // ToProto converts BlockID to protobuf
@@ -1238,6 +1247,7 @@ func (stateID *StateID) ToProto() tmproto.StateID {
 
 	return tmproto.StateID{
 		LastAppHash: stateID.LastAppHash,
+		Height:      stateID.Height,
 	}
 }
 
@@ -1251,6 +1261,7 @@ func StateIDFromProto(sID *tmproto.StateID) (*StateID, error) {
 	stateID := new(StateID)
 
 	stateID.LastAppHash = sID.LastAppHash
+	stateID.Height = sID.Height
 
 	return stateID, stateID.ValidateBasic()
 }

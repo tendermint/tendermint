@@ -64,6 +64,7 @@ type P2PID string
 type VoteSet struct {
 	chainID       string
 	height        int64
+	stateID       tmproto.StateID // ID of state for which this voting is executed
 	round         int32
 	signedMsgType tmproto.SignedMsgType
 	valSet        *ValidatorSet
@@ -73,7 +74,6 @@ type VoteSet struct {
 	votes             []*Vote                // Primary votes to share
 	sum               int64                  // Sum of voting power for seen votes, discounting conflicts
 	maj23             *BlockID               // First 2/3 majority seen
-	stateMaj23        *StateID               // If a 2/3 majority is seen, this is the stateID
 	thresholdBlockSig []byte                 // If a 2/3 majority is seen, recover the block sig
 	thresholdStateSig []byte                 // If a 2/3 majority is seen, recover the state sig
 	votesByBlock      map[string]*blockVotes // string(blockHash|blockParts) -> blockVotes
@@ -82,16 +82,18 @@ type VoteSet struct {
 
 // NewVoteSet constructs a new VoteSet struct used to accumulate votes for given height/round.
 func NewVoteSet(chainID string, height int64, round int32,
-	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet) *VoteSet {
+	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet, stateID tmproto.StateID) *VoteSet {
 	if height == 0 {
 		panic("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
 	if !valSet.HasPublicKeys {
 		panic("Cannot make VoteSet when the validator set doesn't have public keys.")
 	}
+
 	return &VoteSet{
 		chainID:       chainID,
 		height:        height,
+		stateID:       stateID,
 		round:         round,
 		signedMsgType: signedMsgType,
 		valSet:        valSet,
@@ -99,7 +101,6 @@ func NewVoteSet(chainID string, height int64, round int32,
 		votes:         make([]*Vote, valSet.Size()),
 		sum:           0,
 		maj23:         nil,
-		stateMaj23:    nil,
 		votesByBlock:  make(map[string]*blockVotes, valSet.Size()),
 		peerMaj23s:    make(map[P2PID]BlockID),
 	}
@@ -214,8 +215,9 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	}
 
 	// Check signature.
+
 	signID, stateSignID, err := vote.Verify(
-		voteSet.chainID, voteSet.valSet.QuorumType, voteSet.valSet.QuorumHash, val.PubKey, val.ProTxHash)
+		voteSet.chainID, voteSet.valSet.QuorumType, voteSet.valSet.QuorumHash, val.PubKey, val.ProTxHash, voteSet.stateID)
 	if err != nil {
 		return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s ProTxHash %s: %w",
 			voteSet.chainID, val.PubKey, val.ProTxHash, err)
@@ -311,11 +313,9 @@ func (voteSet *VoteSet) addVerifiedVote(
 		// Only consider the first quorum reached
 		if voteSet.maj23 == nil {
 			maj23BlockID := vote.BlockID
-			stateMaj23StateID := vote.StateID
 			// fmt.Printf("vote majority reached at height %d (%d/%d) quorum size %d\n",
 			//  voteSet.height, voteSet.round, voteSet.signedMsgType, quorum)
 			voteSet.maj23 = &maj23BlockID
-			voteSet.stateMaj23 = &stateMaj23StateID
 			if voteSet.signedMsgType == tmproto.PrecommitType {
 				if len(votesByBlock.votes) > 1 {
 					err := voteSet.recoverThresholdSigsAndVerify(votesByBlock, signID, stateSignID)
@@ -701,10 +701,6 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 		panic("Cannot MakeCommit() unless a blockhash has +2/3")
 	}
 
-	if voteSet.stateMaj23 == nil {
-		panic("Cannot MakeCommit() unless a stateMaj23 has been set")
-	}
-
 	if voteSet.thresholdBlockSig == nil {
 		panic("Cannot MakeCommit() unless a thresholdBlockSig has been created")
 	}
@@ -712,12 +708,15 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 	if voteSet.thresholdStateSig == nil {
 		panic("Cannot MakeCommit() unless a thresholdStateSig has been created")
 	}
-
+	sid, err := StateIDFromProto(&voteSet.stateID)
+	if err != nil {
+		panic("Cannot MakeCommit() due to invalid state id: " + err.Error())
+	}
 	return NewCommit(
 		voteSet.GetHeight(),
 		voteSet.GetRound(),
 		*voteSet.maj23,
-		*voteSet.stateMaj23,
+		*sid,
 		voteSet.valSet.QuorumHash,
 		voteSet.thresholdBlockSig,
 		voteSet.thresholdStateSig,
