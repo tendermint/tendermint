@@ -195,7 +195,9 @@ further work to remove that dependency).
 RPC server on any node in the network without impairing the ability of the
 network to function for service of state replication, including light clients.
 
-**Design principle:** Any communication required to operate the network should use P2P.
+**Design principle:** All communication required to implement and monitor the
+consensus network should use P2P, including the various synchronizations.
+
 
 ### Options for RPC Transport
 
