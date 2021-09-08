@@ -137,6 +137,7 @@ message RequestPrepareProposal {
   repeated bytes block_data = 1;
   // If an application decides to populate block_data with extra information, they can not exceed this value.
   int64 block_data_size = 2;
+  repeated types.Vote votes = 3;
 }
 
 //----------------------------------------
@@ -304,6 +305,7 @@ message ResponseVerifyVoteExtension {
 
 message ResponsePrepareProposal {
   repeated bytes block_data = 1;
+  bytes app_data = 2; // consensus enforced arbitrary application data
 }
 
 //----------------------------------------
