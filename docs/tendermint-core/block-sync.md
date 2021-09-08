@@ -45,7 +45,7 @@ enable = true
 
 # Block Sync version to use:
 #   1) "v0" (default) - the standard Block Sync implementation
-#   2) "v2" - redesign of v0, deprecated
+#   2) "v2" - DEPRECATED, please use v0
 version = "v0"
 ```
 
