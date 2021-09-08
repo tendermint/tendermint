@@ -9,6 +9,10 @@ import (
 
 var IgnoreSmbCheck bool = false
 
+func SetIgnoreSmbCheck(check bool) {
+	IgnoreSmbCheck = check
+}
+
 var lastDump int64 = time.Now().UnixNano()
 
 type Tracer struct {
