@@ -57,44 +57,48 @@ func NewCLI() *CLI {
 			}
 
 			chLoadResult := make(chan error)
-			ctx, loadCancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(cmd.Context())
+			defer cancel()
+
+			lctx, loadCancel := context.WithCancel(ctx)
 			defer loadCancel()
 			go func() {
-				err := Load(ctx, cli.testnet)
+				err := Load(lctx, cli.testnet)
 				chLoadResult <- err
 			}()
 
-			if err := Start(cli.testnet); err != nil {
+			if err := Start(ctx, cli.testnet); err != nil {
 				return err
 			}
 
-			if err := Wait(cli.testnet, 5); err != nil { // allow some txs to go through
+			if err := Wait(ctx, cli.testnet, 5); err != nil { // allow some txs to go through
 				return err
 			}
 
 			if cli.testnet.HasPerturbations() {
-				if err := Perturb(cli.testnet); err != nil {
+				if err := Perturb(ctx, cli.testnet); err != nil {
 					return err
 				}
-				if err := Wait(cli.testnet, 5); err != nil { // allow some txs to go through
+				if err := Wait(ctx, cli.testnet, 5); err != nil { // allow some txs to go through
 					return err
 				}
 			}
 
 			if cli.testnet.Evidence > 0 {
-				if err := InjectEvidence(cli.testnet, cli.testnet.Evidence); err != nil {
+				if err := InjectEvidence(ctx, cli.testnet, cli.testnet.Evidence); err != nil {
 					return err
 				}
-				if err := Wait(cli.testnet, 5); err != nil { // ensure chain progress
+				if err := Wait(ctx, cli.testnet, 5); err != nil { // ensure chain progress
 					return err
 				}
 			}
 
 			loadCancel()
+
 			if err := <-chLoadResult; err != nil {
 				return fmt.Errorf("transaction load failed: %w", err)
 			}
-			if err := Wait(cli.testnet, 5); err != nil { // wait for network to settle before tests
+			if err := Wait(ctx, cli.testnet, 5); err != nil { // wait for network to settle before tests
 				return err
 			}
 			if err := Test(cli.testnet); err != nil {
@@ -139,7 +143,7 @@ func NewCLI() *CLI {
 			if err != nil {
 				return err
 			}
-			return Start(cli.testnet)
+			return Start(cmd.Context(), cli.testnet)
 		},
 	})
 
@@ -147,7 +151,7 @@ func NewCLI() *CLI {
 		Use:   "perturb",
 		Short: "Perturbs the Docker testnet, e.g. by restarting or disconnecting nodes",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return Perturb(cli.testnet)
+			return Perturb(cmd.Context(), cli.testnet)
 		},
 	})
 
@@ -155,7 +159,7 @@ func NewCLI() *CLI {
 		Use:   "wait",
 		Short: "Waits for a few blocks to be produced and all nodes to catch up",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return Wait(cli.testnet, 5)
+			return Wait(cmd.Context(), cli.testnet, 5)
 		},
 	})
 
@@ -208,7 +212,7 @@ func NewCLI() *CLI {
 				}
 			}
 
-			return InjectEvidence(cli.testnet, amount)
+			return InjectEvidence(cmd.Context(), cli.testnet, amount)
 		},
 	})
 
@@ -271,23 +275,26 @@ Does not run any perbutations.
 			}
 
 			chLoadResult := make(chan error)
-			ctx, loadCancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(cmd.Context())
+			defer cancel()
+
+			lctx, loadCancel := context.WithCancel(ctx)
 			defer loadCancel()
 			go func() {
-				err := Load(ctx, cli.testnet)
+				err := Load(lctx, cli.testnet)
 				chLoadResult <- err
 			}()
 
-			if err := Start(cli.testnet); err != nil {
+			if err := Start(ctx, cli.testnet); err != nil {
 				return err
 			}
 
-			if err := Wait(cli.testnet, 5); err != nil { // allow some txs to go through
+			if err := Wait(ctx, cli.testnet, 5); err != nil { // allow some txs to go through
 				return err
 			}
 
 			// we benchmark performance over the next 100 blocks
-			if err := Benchmark(cli.testnet, 100); err != nil {
+			if err := Benchmark(ctx, cli.testnet, 100); err != nil {
 				return err
 			}
 

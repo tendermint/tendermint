@@ -28,7 +28,7 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 	initialTimeout := 1 * time.Minute
 	stallTimeout := 30 * time.Second
 
-	chTx := make(chan types.Tx)
+	chTx := make(chan types.Tx, len(testnet.Nodes))
 	chSuccess := make(chan types.Tx)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -82,10 +82,10 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, size int64) {
 		case <-timer.C:
 			// We keep generating the same 100 keys over and over, with different values.
 			// This gives a reasonable load without putting too much data in the app.
-			id := rand.Int63() % 100
+			id := rand.Int63() % 100 // nolint: gosec
 
 			bz := make([]byte, size)
-			_, err := rand.Read(bz)
+			_, err := rand.Read(bz) // nolint: gosec
 			if err != nil {
 				panic(fmt.Sprintf("Failed to read random bytes: %v", err))
 			}
@@ -95,10 +95,14 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, size int64) {
 			case <-ctx.Done():
 				return
 			case chTx <- tx:
+				// sleep for 10ms + a jitter value
+				// that's at least 10ms and at most
+				// 10ms plus 10ms for each
+				fuzzFactor := 10 * (1 + time.Duration(rand.Int63n(int64(cap(chTx))))) // nolint: gosec
+				timer.Reset(fuzzFactor * time.Millisecond)
 				continue
 			}
 
-			timer.Reset(10 * time.Millisecond)
 		}
 	}
 }

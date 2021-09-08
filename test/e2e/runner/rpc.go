@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"time"
 
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
@@ -117,7 +118,7 @@ func waitForHeight(testnet *e2e.Testnet, height int64) (*types.Block, *types.Blo
 }
 
 // waitForNode waits for a node to become available and catch up to the given block height.
-func waitForNode(node *e2e.Node, height int64, timeout time.Duration) (*rpctypes.ResultStatus, error) {
+func waitForNode(ctx context.Context, node *e2e.Node, height int64) (*rpctypes.ResultStatus, error) {
 	if node.Mode == e2e.ModeSeed {
 		return nil, nil
 	}
@@ -125,9 +126,6 @@ func waitForNode(node *e2e.Node, height int64, timeout time.Duration) (*rpctypes
 	if err != nil {
 		return nil, err
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
 
 	for {
 		status, err := client.Status(ctx)
@@ -144,16 +142,19 @@ func waitForNode(node *e2e.Node, height int64, timeout time.Duration) (*rpctypes
 	}
 }
 
-// waitForAllNodes waits for all nodes to become available and catch up to the given block height.
-func waitForAllNodes(testnet *e2e.Testnet, height int64, timeout time.Duration) (int64, error) {
+// waitForAtLeastOneNode waits for all nodes to become available and
+// catch up to the given block height.
+func waitForAtLeastOneNode(ctx context.Context, testnet *e2e.Testnet, height int64) (int64, error) {
 	var lastHeight int64
 
-	for _, node := range testnet.Nodes {
+	for _, idx := range rand.Perm(len(testnet.Nodes)) {
+		node := testnet.Nodes[idx]
+
 		if node.Mode == e2e.ModeSeed {
 			continue
 		}
 
-		status, err := waitForNode(node, height, timeout)
+		status, err := waitForNode(ctx, node, height)
 		if err != nil {
 			return 0, err
 		}
