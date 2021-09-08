@@ -225,7 +225,7 @@ func (sc *DashCoreSignerClient) GetProTxHash() (crypto.ProTxHash, error) {
 // SignVote requests a remote signer to sign a vote
 func (sc *DashCoreSignerClient) SignVote(
 	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
-	protoVote *tmproto.Vote, logger log.Logger) error {
+	protoVote *tmproto.Vote, stateID tmproto.StateID, logger log.Logger) error {
 	if len(quorumHash) != crypto.DefaultHashSize {
 		return fmt.Errorf("quorum hash is not the right length %s", quorumHash.String())
 	}
@@ -285,9 +285,9 @@ func (sc *DashCoreSignerClient) SignVote(
 
 	// Only sign the state when voting for the block
 	if protoVote.BlockID.Hash != nil {
-		stateSignBytes := types.VoteStateSignBytes(chainID, protoVote)
+		stateSignBytes := types.VoteStateSignBytes(chainID, stateID)
 		stateMessageHash := crypto.Sha256(stateSignBytes)
-		stateRequestID := types.VoteStateRequestIDProto(protoVote)
+		stateRequestID := types.VoteStateRequestIDProto(stateID)
 
 		stateResponse, err := sc.dashCoreRPCClient.QuorumSign(
 			sc.defaultQuorumType, stateRequestID, stateMessageHash, quorumHash)

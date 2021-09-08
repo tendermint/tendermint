@@ -65,8 +65,18 @@ func DefaultValidationRequestHandler(
 		vote := r.SignVoteRequest.Vote
 		voteQuorumHash := r.SignVoteRequest.QuorumHash
 		voteQuorumType := r.SignVoteRequest.QuorumType
+		stateID := r.SignVoteRequest.StateId
+		if stateID == nil {
+			res = mustWrapMsg(&privvalproto.SignedVoteResponse{
+				Vote: tmproto.Vote{},
+				Error: &privvalproto.RemoteSignerError{
+					Code:        0,
+					Description: "State ID not provided"},
+			})
+			break
+		}
 
-		err = privVal.SignVote(chainID, btcjson.LLMQType(voteQuorumType), voteQuorumHash, vote, nil)
+		err = privVal.SignVote(chainID, btcjson.LLMQType(voteQuorumType), voteQuorumHash, vote, *stateID, nil)
 		if err != nil {
 			res = mustWrapMsg(&privvalproto.SignedVoteResponse{
 				Vote: tmproto.Vote{}, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})

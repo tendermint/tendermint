@@ -521,14 +521,20 @@ func (c *Client) verifyBlockWithDashCore(ctx context.Context, newLightBlock *typ
 
 	protoVote := newLightBlock.Commit.GetCanonicalVote().ToProto()
 
+	stateID := types.StateID{
+		Height:      c.latestTrustedBlock.Height,
+		LastAppHash: c.latestTrustedBlock.AppHash,
+	}
+	protoStateID := stateID.ToProto()
+
 	blockSignBytes := types.VoteBlockSignBytes(c.chainID, protoVote)
-	stateSignBytes := types.VoteStateSignBytes(c.chainID, protoVote)
+	stateSignBytes := types.VoteStateSignBytes(c.chainID, protoStateID)
 
 	blockMessageHash := crypto.Sha256(blockSignBytes)
 	blockRequestID := types.VoteBlockRequestIDProto(protoVote)
 
 	stateMessageHash := crypto.Sha256(stateSignBytes)
-	stateRequestID := types.VoteStateRequestIDProto(protoVote)
+	stateRequestID := types.VoteStateRequestIDProto(protoStateID)
 	stateSignature := newLightBlock.Commit.ThresholdStateSignature
 
 	blockSignatureIsValid, err := c.dashCoreRPCClient.QuorumVerify(
