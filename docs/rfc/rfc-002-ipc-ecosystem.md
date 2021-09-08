@@ -141,17 +141,21 @@ state should talk to the application. Otherwise, such tools would have to bake
 in knowledge about Tendermint (e.g., its interfaces and data structures) that
 they might otherwise not need or care about.
 
-However, this raises another issue: The consensus node is the ABCI client, so
-it is inconvenient for the application to "push" work into the consensus
-module. In theory you could work around this by having the consensus module
-"poll" the application for work that needs done, but that has unsatisfactory
-implications for performance and robustness, as well as being harder to
-understand.
+However, this raises another issue: The consensus node is the ABCI _client_, so
+it is inconvenient for the application to "push" work into the consensus module
+via ABCI itself. Without the Tendermint RPC service, you could work around this
+(at least in principle) by having the consensus module "poll" the application
+for work that needs done, but that has unsatisfactory implications for
+performance and robustness, as well as being harder to understand. When the
+application is compiled into the same binary as the node, the SDK can use the
+RPC methods via a "local" (direct-call) client; otherwise it uses (I think) the
+`ABCIQuery` method of the consensus node's JSON-RPC service.
 
 There has apparently been some discussion about trying to make a more
 bidirectional communication between the consensus node and the application, but
-this issue seems to still be under discussion. TODO: Impact of ABCI++ for this
-question?
+this issue seems to still be under discussion.
+
+TODO: Impact of ABCI++ for this question?
 
 ### Context: RPC Issues
 
