@@ -74,6 +74,12 @@ func Start(testnet *e2e.Testnet) error {
 			// that this node will start at before we
 			// start the node.
 
+			logger.Info("Waiting for network to advance to height",
+				"node", node.Name,
+				"last_height", networkHeight,
+				"waiting_fo", node.StartAt,
+				"pending", len(nodeQueue))
+
 			networkHeight = node.StartAt
 
 			block, blockID, err = waitForHeight(testnet, networkHeight)

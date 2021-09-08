@@ -3,10 +3,9 @@ package main
 import (
 	"container/ring"
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
-	"math"
+	"math/rand"
 	"time"
 
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
@@ -15,9 +14,8 @@ import (
 )
 
 // Load generates transactions against the network until the given context is
-// canceled. A multiplier of greater than one can be supplied if load needs to
-// be generated beyond a minimum amount.
-func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
+// canceled.
+func Load(ctx context.Context, testnet *e2e.Testnet) error {
 	// Since transactions are executed across all nodes in the network, we need
 	// to reduce transaction load for larger networks to avoid using too much
 	// CPU. This gives high-throughput small networks and low-throughput large ones.
@@ -39,7 +37,7 @@ func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 	logger.Info(fmt.Sprintf("Starting transaction load (%v workers)...", concurrency))
 	started := time.Now()
 
-	go loadGenerate(ctx, chTx, multiplier, testnet.TxSize)
+	go loadGenerate(ctx, chTx, testnet.TxSize)
 
 	for w := 0; w < concurrency; w++ {
 		go loadProcess(ctx, testnet, chTx, chSuccess)
@@ -66,28 +64,41 @@ func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 	}
 }
 
-// loadGenerate generates jobs until the context is canceled
-func loadGenerate(ctx context.Context, chTx chan<- types.Tx, multiplier int, size int64) {
-	for i := 0; i < math.MaxInt64; i++ {
-		// We keep generating the same 100 keys over and over, with different values.
-		// This gives a reasonable load without putting too much data in the app.
-		id := i % 100
+// loadGenerate generates jobs until the context is canceled.
+//
+// The chTx has multiple consumers, thus the rate limiting of the load
+// generation is primarily the result of backpressure from the
+// broadcast transaction, though at most one transaction will be
+// produced every 10ms.
+func loadGenerate(ctx context.Context, chTx chan<- types.Tx, size int64) {
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+	defer close(chTx)
 
-		bz := make([]byte, size)
-		_, err := rand.Read(bz)
-		if err != nil {
-			panic(fmt.Sprintf("Failed to read random bytes: %v", err))
-		}
-		tx := types.Tx(fmt.Sprintf("load-%X=%x", id, bz))
-
+	for {
 		select {
-		case chTx <- tx:
-			sqrtSize := int(math.Sqrt(float64(size)))
-			time.Sleep(10 * time.Millisecond * time.Duration(sqrtSize/multiplier))
-
 		case <-ctx.Done():
-			close(chTx)
 			return
+		case <-timer.C:
+			// We keep generating the same 100 keys over and over, with different values.
+			// This gives a reasonable load without putting too much data in the app.
+			id := rand.Int63() % 100
+
+			bz := make([]byte, size)
+			_, err := rand.Read(bz)
+			if err != nil {
+				panic(fmt.Sprintf("Failed to read random bytes: %v", err))
+			}
+			tx := types.Tx(fmt.Sprintf("load-%X=%x", id, bz))
+
+			select {
+			case <-ctx.Done():
+				return
+			case chTx <- tx:
+				continue
+			}
+
+			timer.Reset(10 * time.Millisecond)
 		}
 	}
 }
