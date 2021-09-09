@@ -3,6 +3,7 @@ package e2e
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/BurntSushi/toml"
 )
@@ -169,4 +170,44 @@ func LoadManifest(file string) (Manifest, error) {
 		return manifest, fmt.Errorf("failed to load testnet manifest %q: %w", file, err)
 	}
 	return manifest, nil
+}
+
+// SortManifests orders (in-place) a list of manifests such that the
+// manifests will be ordered (vaguely) from least complex to most
+// complex.
+func SortManifests(manifests []Manifest) {
+	sort.SliceStable(manifests, func(i, j int) bool {
+		left, right := manifests[i], manifests[j]
+
+		if len(left.Nodes) < len(right.Nodes) {
+			return true
+		}
+
+		if left.InitialHeight < right.InitialHeight {
+			return true
+		}
+
+		if left.TxSize < right.TxSize {
+			return true
+		}
+
+		if left.Evidence < right.Evidence {
+			return true
+		}
+
+		var (
+			leftPerturb  int
+			rightPerturb int
+		)
+
+		for _, n := range left.Nodes {
+			leftPerturb += len(n.Perturb)
+		}
+		for _, n := range right.Nodes {
+			rightPerturb += len(n.Perturb)
+		}
+
+		return leftPerturb < rightPerturb
+
+	})
 }

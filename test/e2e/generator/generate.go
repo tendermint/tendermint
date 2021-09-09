@@ -87,11 +87,19 @@ func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 		}
 		manifests = append(manifests, manifest)
 	}
+
+	if opts.Sorted {
+		// When the sorted flag is set (generally, as long as
+		// groups arent)
+		e2e.SortManifests(manifests)
+	}
+
 	return manifests, nil
 }
 
 type Options struct {
-	P2P P2PMode
+	P2P    P2PMode
+	Sorted bool
 }
 
 type P2PMode string
