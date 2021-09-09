@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -17,8 +18,12 @@ import (
 // transaction is in the mempool, invalidated, or was not sent in the first
 // place.
 // More: https://docs.tendermint.com/master/rpc/#/Info/tx
-func (env *Environment) Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error) {
+func (env *Environment) Tx(ctx *rpctypes.Context, hash bytes.HexBytes, prove bool) (*ctypes.ResultTx, error) {
 	// if index is disabled, return error
+
+	// N.B. The hash parameter is HexBytes so that the reflective parameter
+	// decoding logic in the HTTP service will correctly translate from JSON.
+	// See https://github.com/tendermint/tendermint/issues/6802 for context.
 
 	if !indexer.KVSinkEnabled(env.EventSinks) {
 		return nil, errors.New("transaction querying is disabled due to no kvEventSink")
