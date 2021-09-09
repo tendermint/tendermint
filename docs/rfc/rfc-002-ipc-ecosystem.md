@@ -178,8 +178,8 @@ interfaces and data structures) just because of the mediation.
 For clients to talk directly to the application, however, there is another
 concern: The consensus node is the ABCI _client_, so it is inconvenient for the
 application to "push" work into the consensus module via ABCI itself.  The
-current implementation works around this by either calling the consensus node's
-RPC service, which exposes an `ABCIQuery` kitchen-sink method that allows the
+current implementation works around this by calling the consensus node's RPC
+service, which exposes an `ABCIQuery` kitchen-sink method that allows the
 application a way to poke ABCI messages in the other direction.
 
 Without this RPC method, you could work around this (at least in principle) by
