@@ -27,7 +27,7 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 	}
 
 	chTx := make(chan types.Tx)
-	chSuccess := make(chan int)  // success counts per iteration
+	chSuccess := make(chan int) // success counts per iteration
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -43,13 +43,11 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 
 	// Montior transaction to ensure load propagates to the network
 	//
-	// note: previous versions of this loop ensured that the load
-	// didn't stall for more than 30 seconds, but checking for
-	// stalls here just aborts the load generator earlier, and can
-	// easily reflect backpressure in the test harness. What we
-	// should care about more than stalls is, 80th or 95th
-	// percentile latency, and this is not feasible to track here
-	// right now.
+	// This loop doesn't check or time out for stalls, since a stall here just
+	// aborts the load generator sooner and could obscure backpressure
+	// from the test harness, and there are other checks for
+	// stalls in the framework. Ideally we should monitor latency as a guide
+	// for when to give up, but we don't have a good way to track that yet.
 	success := 0
 	for {
 		select {
