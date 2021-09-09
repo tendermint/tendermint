@@ -108,7 +108,7 @@ database layer. Users of the data layer shouldn't ever need to interact with
 raw byte slices from the database, and should mostly have the experience of
 interacting with Go-types.
 
-Badger is more consistently developed and has a broader featureset than
+Badger is more consistently developed and has a broader feature set than
 Bolt. At the same time, Badger is likely more memory intensive and may have
 more overhead in terms of open file handles given it's model. At first glance,
 Badger is the obvious choice: it's actively developed and it has a lot of
