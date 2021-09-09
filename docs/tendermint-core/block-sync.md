@@ -17,9 +17,9 @@ consensus gossip protocol.
 
 ## Using Block Sync
 
-To support faster syncing, Tendermint offers a `fast-sync` mode, which
+To support faster syncing, Tendermint offers a `blocksync` mode, which
 is enabled by default, and can be toggled in the `config.toml` or via
-`--fast_sync=false`.
+`--blocksync.enable=false`.
 
 In this mode, the Tendermint daemon will sync hundreds of times faster
 than if it used the real-time consensus process. Once caught up, the
@@ -29,18 +29,23 @@ has at least one peer and it's height is at least as high as the max
 reported peer height. See [the IsCaughtUp
 method](https://github.com/tendermint/tendermint/blob/b467515719e686e4678e6da4e102f32a491b85a0/blockchain/pool.go#L128).
 
-Note: There are two versions of Block Sync. We recommend using v0 as v2 is still in beta.
+Note: There are multiple versions of Block Sync. Please use v0 as the other versions are no longer supported.
   If you would like to use a different version you can do so by changing the version in the `config.toml`:
 
 ```toml
 #######################################################
 ###       Block Sync Configuration Connections       ###
 #######################################################
-[fastsync]
+[blocksync]
+
+# If this node is many blocks behind the tip of the chain, BlockSync
+# allows them to catchup quickly by downloading blocks in parallel
+# and verifying their commits
+enable = true
 
 # Block Sync version to use:
-#   1) "v0" (default) - the legacy Block Sync implementation
-#   2) "v2" - complete redesign of v0, optimized for testability & readability
+#   1) "v0" (default) - the standard Block Sync implementation
+#   2) "v2" - DEPRECATED, please use v0
 version = "v0"
 ```
 

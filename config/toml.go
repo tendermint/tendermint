@@ -97,11 +97,6 @@ moniker = "{{ .BaseConfig.Moniker }}"
 #   - No priv_validator_key.json, priv_validator_state.json
 mode = "{{ .BaseConfig.Mode }}"
 
-# If this node is many blocks behind the tip of the chain, FastSync
-# allows them to catchup quickly by downloading blocks in parallel
-# and verifying their commits
-fast-sync = {{ .BaseConfig.FastSyncMode }}
-
 # Database backend: goleveldb | cleveldb | boltdb | rocksdb | badgerdb
 # * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
 #   - pure go
@@ -465,10 +460,15 @@ fetchers = "{{ .StateSync.Fetchers }}"
 #######################################################
 ###       Block Sync Configuration Connections       ###
 #######################################################
-[fastsync]
+[blocksync]
+
+# If this node is many blocks behind the tip of the chain, BlockSync
+# allows them to catchup quickly by downloading blocks in parallel
+# and verifying their commits
+enable = {{ .BlockSync.Enable }}
 
 # Block Sync version to use:
-#   1) "v0" (default) - the legacy block sync implementation
+#   1) "v0" (default) - the standard Block Sync implementation
 #   2) "v2" - DEPRECATED, please use v0
 version = "{{ .BlockSync.Version }}"
 
