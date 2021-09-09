@@ -296,6 +296,12 @@ some advantages over gRPC for our domain. Specifically:
 - It is easy to call JSON-RPC manually from the command-line, which helps with
   a common concern for the RPC service, local debugging and operations.
 
+  Relatedly: JSON is relatively easy for humans to read and write, and it can
+  be easily copied and pasted to share sample queries and debugging results in
+  chat, issue comments, and so on. Ideally, the RPC service will not be used
+  for activities where the costs of a text protocol are important compared to
+  its legibility and manual usability benefits.
+
 - gRPC has an enormous dependency footprint for both clients and servers, and
   many of the features it provides to support security and performance
   (encryption, compression, streaming, etc.) are mostly irrelevant to local
