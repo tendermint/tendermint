@@ -162,35 +162,62 @@ once we no longer need to support both "raw" and gRPC transports.
 ### Context: ABCI Issues
 
 In the original design of ABCI, the presumption was that all access to the
-application would be mediated by the consensus node. This makes sense, since
-outside access could change application state and corrupt the consensus
-process. Of course, even without outside access an application could behave
-nondeterministically, but allowing other programs to send it requests was seen
-as inviting trouble.
+application should be mediated by the consensus node. The idea is that outside
+access could change application state and corrupt the consensus process, which
+relies on the application to be deterministic. Of course, even without outside
+access an application could behave nondeterministically, but allowing other
+programs to send it requests was seen as courting trouble.
 
-Later, however, it was noted that most of the time, tools specific to a
-particular application don't really want to talk to the consensus module
-directly. The application is the "owner" of the state machine the consensus
-engine is replicating, so tools that want to know things about application
-state should talk to the application. Otherwise, such tools would have to bake
-in knowledge about Tendermint (e.g., its interfaces and data structures) that
-they might otherwise not need or care about.
+Conversely, users noted that most of the time, tools written for a particular
+application don't want to talk to the consensus module directly. The
+application "owns" the state machine the consensus engine is replicating, so
+tools that care about application state should talk to the application.
+Otherwise, they would have to bake in knowledge about Tendermint (e.g., its
+interfaces and data structures) just because of the mediation.
 
-However, this raises another issue: The consensus node is the ABCI _client_, so
-it is inconvenient for the application to "push" work into the consensus module
-via ABCI itself. Without the Tendermint RPC service, you could work around this
-(at least in principle) by having the consensus module "poll" the application
-for work that needs done, but that has unsatisfactory implications for
-performance and robustness, as well as being harder to understand. When the
-application is compiled into the same binary as the node, the SDK can use the
-RPC methods via a "local" (direct-call) client; otherwise it uses (I think) the
-`ABCIQuery` method of the consensus node's JSON-RPC service.
+For clients to talk directly to the application, however, there is another
+concern: The consensus node is the ABCI _client_, so it is inconvenient for the
+application to "push" work into the consensus module via ABCI itself.  The
+current implementation works around this by either calling the consensus node's
+RPC service, which exposes an `ABCIQuery` kitchen-sink method that allows the
+application a way to poke ABCI messages in the other direction.
 
-There has apparently been some discussion about trying to make a more
-bidirectional communication between the consensus node and the application, but
-this issue seems to still be under discussion.
+Without this RPC method, you could work around this (at least in principle) by
+having the consensus module "poll" the application for work that needs done,
+but that has unsatisfactory implications for performance and robustness, as
+well as being harder to understand.
 
-TODO: Impact of ABCI++ for this question?
+There has apparently been discussion about trying to make a more bidirectional
+communication between the consensus node and the application, but this issue
+seems to still be unresolved.
+
+Another complication of ABCI is that it requires the application (server) to
+maintain [four separate connections][abci-conn]: One for "consensus" operations
+(BeginBlock, EndBlock, DeliverTx, Commit), one for "mempool" operations, one
+for "query" operations, and one for "snapshot" (state synchronization) operations.
+The rationale seems to have been that these groups of operations should be able
+to proceed concurrently with each other. In practice, it results in a very complex
+state management problem to coordinate state updates between the separate streams.
+While application authors in Go are mostly insulated from that complexity by the
+Cosmos SDK, the plumbing to maintain those separate streams is complicated, hard
+to understand, and we suspect it contains concurrency bugs and/or lock contention
+issues affecting performance that are subtle and difficult to pin down.
+
+Even without changing the semantics of any ABCI operations, this code could be
+made smaller and easier to debug by separating the management of concurrency
+and locking from the IPC transport: If all requests and responses are routed
+through one connection, the server can explicitly maintain priority queues for
+requests and responses, and make less-conservative decisions about when locks
+are (or aren't) required to synchronize state access. With independent queues,
+the server must lock conservatively, and no optimistic scheduling is practical.
+
+This would be a tedious implementation change, but should be achievable without
+breaking any of the existing interfaces. More importantly, it could potentially
+address a lot of difficult concurrency and performance problems we currently
+see anecdotally but have difficultly isolating because of how intertwined these
+separate message streams are at runtime.
+
+TODO: Impact of ABCI++ for this topic?
 
 ### Context: RPC Issues
 
@@ -231,6 +258,9 @@ network to function for service of state replication, including light clients.
 
 **Design principle:** All communication required to implement and monitor the
 consensus network should use P2P, including the various synchronizations.
+
+### Options for ABCI Transport
+
 
 
 ### Options for RPC Transport
@@ -282,4 +312,5 @@ uses a complex HTTP/2 based transport that is not easily replicated.
 [socket-server]: https://github.com/tendermint/tendermint/blob/master/abci/server/socket_server.go
 [sdk-grpc]: https://pkg.go.dev/github.com/cosmos/cosmos-sdk/types/tx#ServiceServer
 [json-rpc]: https://www.jsonrpc.org/specification
+[abci-conn]: https://github.com/tendermint/spec/blob/master/spec/abci/apps.md#state
 [adr-57]: https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-057-RPC.md
