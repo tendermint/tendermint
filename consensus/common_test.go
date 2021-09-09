@@ -112,10 +112,16 @@ func (vs *validatorStub) signVote(
 		Round:              vs.Round,
 		Type:               voteType,
 		BlockID:            types.BlockID{Hash: hash, PartSetHeader: header},
-		StateID:            types.StateID{LastAppHash: lastAppHash},
+	}
+
+	stateID := types.StateID{
+		Height:      vote.Height - 1,
+		LastAppHash: lastAppHash,
 	}
 	v := vote.ToProto()
-	err = vs.PrivValidator.SignVote(config.ChainID(), quorumType, quorumHash, v, nil)
+
+	err = vs.PrivValidator.SignVote(config.ChainID(), quorumType, quorumHash, v, stateID.ToProto(), nil)
+
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
 

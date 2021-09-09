@@ -59,12 +59,12 @@ func makeVote(
 		Round:              1,
 		Type:               tmproto.PrecommitType,
 		BlockID:            blockID,
-		StateID:            stateID,
 	}
 
 	vpb := vote.ToProto()
+	spb := stateID.ToProto()
 
-	_ = privVal.SignVote(header.ChainID, valset.QuorumType, valset.QuorumHash, vpb, nil)
+	_ = privVal.SignVote(header.ChainID, valset.QuorumType, valset.QuorumHash, vpb, spb, nil)
 	vote.BlockSignature = vpb.BlockSignature
 	vote.StateSignature = vpb.StateSignature
 

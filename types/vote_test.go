@@ -37,9 +37,6 @@ func exampleVote(t byte) *Vote {
 				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
 			},
 		},
-		StateID: StateID{
-			LastAppHash: tmhash.Sum([]byte("lastAppState_hash")),
-		},
 		ValidatorProTxHash: crypto.ProTxHashFromSeedBytes([]byte("validator_pro_tx_hash")),
 		ValidatorIndex:     56789,
 	}
@@ -130,22 +127,24 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 func TestVoteStateSignBytesTestVectors(t *testing.T) {
 	tests := []struct {
 		chainID string
-		vote    *Vote
+		height  int64
+		apphash []byte
 		want    []byte
 	}{
 		0: {
-			"", &Vote{Height: 1, StateID: StateID{
-				LastAppHash: crypto.Sha256([]byte("hello")),
-			}},
+			"", 1, []byte("12345678901234567890123456789012"),
 			// NOTE: Height and Round are skipped here. This case needs to be considered while parsing.
-			[]byte{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x2c, 0xf2, 0x4d, 0xba, 0x5f, 0xb0, 0xa3, 0xe, 0x26, 0xe8,
-				0x3b, 0x2a, 0xc5, 0xb9, 0xe2, 0x9e, 0x1b, 0x16, 0x1e, 0x5c, 0x1f, 0xa7, 0x42, 0x5e, 0x73, 0x4, 0x33, 0x62,
-				0x93, 0x8b, 0x98, 0x24},
+			[]byte{0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38,
+				0x39, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x30, 0x31, 0x32, 0x33,
+				0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x30, 0x31, 0x32},
 		},
 	}
 	for i, tc := range tests {
-		v := tc.vote.ToProto()
-		got := VoteStateSignBytes(tc.chainID, v)
+		sid := StateID{
+			Height:      tc.height,
+			LastAppHash: tc.apphash,
+		}
+		got := VoteStateSignBytes(tc.chainID, sid.ToProto())
 		assert.Equal(t, len(tc.want), len(got), "test case #%v: got unexpected sign bytes length for Vote.", i)
 		assert.Equal(t, tc.want, got, "test case #%v: got unexpected sign bytes for Vote.", i)
 	}
@@ -169,12 +168,13 @@ func TestVoteVerifySignature(t *testing.T) {
 
 	vote := examplePrecommit()
 	v := vote.ToProto()
+	stateID := RandStateID().WithHeight(vote.Height - 1)
 	quorumType := btcjson.LLMQType_5_60
 	signID := VoteBlockSignID("test_chain_id", v, quorumType, quorumHash)
-	signStateID := VoteStateSignID("test_chain_id", v, quorumType, quorumHash)
+	signStateID := VoteStateSignID("test_chain_id", stateID.ToProto(), quorumType, quorumHash)
 
 	// sign it
-	err = privVal.SignVote("test_chain_id", quorumType, quorumHash, v, nil)
+	err = privVal.SignVote("test_chain_id", quorumType, quorumHash, v, stateID.ToProto(), nil)
 	require.NoError(t, err)
 
 	// verify the same vote
@@ -194,7 +194,7 @@ func TestVoteVerifySignature(t *testing.T) {
 
 	// verify the transmitted vote
 	newSignID := VoteBlockSignID("test_chain_id", precommit, quorumType, quorumHash)
-	newSignStateID := VoteStateSignID("test_chain_id", precommit, quorumType, quorumHash)
+	newSignStateID := VoteStateSignID("test_chain_id", stateID.ToProto(), quorumType, quorumHash)
 	require.Equal(t, string(signID), string(newSignID))
 	require.Equal(t, string(signStateID), string(newSignStateID))
 	valid = pubkey.VerifySignatureDigest(newSignID, precommit.BlockSignature)
@@ -238,13 +238,15 @@ func TestVoteVerify(t *testing.T) {
 	vote := examplePrevote()
 	vote.ValidatorProTxHash = proTxHash
 
-	_, _, err = vote.Verify(
-		"test_chain_id", quorumType, quorumHash, bls12381.GenPrivKey().PubKey(), crypto.RandProTxHash())
+	stateID := RandStateID().WithHeight(vote.Height - 1)
+	_, _, err = vote.Verify("test_chain_id", quorumType, quorumHash, bls12381.GenPrivKey().PubKey(),
+		crypto.RandProTxHash(), stateID.ToProto())
+
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrVoteInvalidValidatorProTxHash, err)
 	}
 
-	_, _, err = vote.Verify("test_chain_id", quorumType, quorumHash, pubkey, proTxHash)
+	_, _, err = vote.Verify("test_chain_id", quorumType, quorumHash, pubkey, proTxHash, stateID.ToProto())
 	if assert.Error(t, err) {
 		assert.True(
 			t, strings.HasPrefix(err.Error(), ErrVoteInvalidBlockSignature.Error()),
@@ -254,13 +256,13 @@ func TestVoteVerify(t *testing.T) {
 
 func TestVoteString(t *testing.T) {
 	str := examplePrecommit().String()
-	expected := `Vote{56789:959A8F5EF2BE 12345/02/SIGNED_MSG_TYPE_PRECOMMIT(Precommit) 8B01023386C3 000000000000 46E3D8DC8536 000000000000}` //nolint:lll //ignore line length for tests
+	expected := `Vote{56789:959A8F5EF2BE 12345/02/SIGNED_MSG_TYPE_PRECOMMIT(Precommit) 8B01023386C3 000000000000 000000000000}` //nolint:lll //ignore line length for tests
 	if str != expected {
 		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str)
 	}
 
 	str2 := examplePrevote().String()
-	expected = `Vote{56789:959A8F5EF2BE 12345/02/SIGNED_MSG_TYPE_PREVOTE(Prevote) 8B01023386C3 000000000000 46E3D8DC8536 000000000000}` //nolint:lll //ignore line length for tests
+	expected = `Vote{56789:959A8F5EF2BE 12345/02/SIGNED_MSG_TYPE_PREVOTE(Prevote) 8B01023386C3 000000000000 000000000000}` //nolint:lll //ignore line length for tests
 	if str2 != expected {
 		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str2)
 	}
@@ -291,7 +293,8 @@ func TestVoteValidateBasic(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			vote := examplePrecommit()
 			v := vote.ToProto()
-			err := privVal.SignVote("test_chain_id", 0, quorumHash, v, nil)
+			stateID := RandStateID().WithHeight(v.Height - 1)
+			err := privVal.SignVote("test_chain_id", 0, quorumHash, v, stateID.ToProto(), nil)
 			vote.BlockSignature = v.BlockSignature
 			vote.StateSignature = v.StateSignature
 			require.NoError(t, err)
@@ -306,7 +309,8 @@ func TestVoteProtobuf(t *testing.T) {
 	privVal := NewMockPVForQuorum(quorumHash)
 	vote := examplePrecommit()
 	v := vote.ToProto()
-	err := privVal.SignVote("test_chain_id", 0, quorumHash, v, nil)
+	stateID := RandStateID().WithHeight(v.Height - 1)
+	err := privVal.SignVote("test_chain_id", 0, quorumHash, v, stateID.ToProto(), nil)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
 	require.NoError(t, err)

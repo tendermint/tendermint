@@ -29,33 +29,47 @@ func newTestApp() proxy.AppConns {
 	return proxy.NewAppConns(cc)
 }
 
-func makeAndCommitGoodBlock(state sm.State, nodeProTxHash *crypto.ProTxHash, height int64, lastCommit *types.Commit, proposerProTxHash crypto.ProTxHash, blockExec *sm.BlockExecutor, privVals map[string]types.PrivValidator, evidence []types.Evidence, proposedAppVersion uint64) (sm.State, types.BlockID, types.StateID, *types.Commit, error) {
+func makeAndCommitGoodBlock(
+	state sm.State,
+	nodeProTxHash *crypto.ProTxHash,
+	height int64,
+	lastCommit *types.Commit,
+	proposerProTxHash crypto.ProTxHash,
+	blockExec *sm.BlockExecutor,
+	privVals map[string]types.PrivValidator,
+	evidence []types.Evidence, proposedAppVersion uint64,
+) (sm.State, types.BlockID, *types.Commit, error) {
+
 	// A good block passes
-	state, blockID, stateID, err := makeAndApplyGoodBlock(state, nodeProTxHash, height, lastCommit, proposerProTxHash, blockExec, evidence, 0)
+	state, blockID, err := makeAndApplyGoodBlock(state, nodeProTxHash, height, lastCommit, proposerProTxHash, blockExec, evidence, proposedAppVersion)
 	if err != nil {
-		return state, types.BlockID{}, types.StateID{}, nil, err
+		return state, types.BlockID{}, nil, err
 	}
+
+	stateID := state.GetStateID()
 
 	// Simulate a lastCommit for this block from all validators for the next height
 	commit, err := makeValidCommit(height, blockID, stateID, state.Validators, privVals)
 	if err != nil {
-		return state, types.BlockID{}, types.StateID{}, nil, err
+		return state, types.BlockID{}, nil, err
 	}
-	return state, blockID, stateID, commit, nil
+	return state, blockID, commit, nil
 }
 
-func makeAndApplyGoodBlock(state sm.State, nodeProTxHash *crypto.ProTxHash, height int64, lastCommit *types.Commit, proposerProTxHash []byte, blockExec *sm.BlockExecutor, evidence []types.Evidence, proposedAppVersion uint64) (sm.State, types.BlockID, types.StateID, error) {
+func makeAndApplyGoodBlock(state sm.State, nodeProTxHash *crypto.ProTxHash, height int64, lastCommit *types.Commit, proposerProTxHash []byte,
+	blockExec *sm.BlockExecutor, evidence []types.Evidence, proposedAppVersion uint64) (sm.State, types.BlockID, error) {
 	block, _ := state.MakeBlock(height, nil, makeTxs(height), lastCommit, evidence, proposerProTxHash, proposedAppVersion)
 	if err := blockExec.ValidateBlock(state, block); err != nil {
-		return state, types.BlockID{}, types.StateID{}, err
+		return state, types.BlockID{}, err
 	}
 	blockID := types.BlockID{Hash: block.Hash(),
 		PartSetHeader: types.PartSetHeader{Total: 3, Hash: tmrand.Bytes(32)}}
 	state, _, err := blockExec.ApplyBlock(state, nodeProTxHash, blockID, block)
 	if err != nil {
-		return state, types.BlockID{}, types.StateID{}, err
+		return state, types.BlockID{}, err
 	}
-	return state, blockID, types.StateID{LastAppHash: state.AppHash}, nil
+
+	return state, blockID, nil
 }
 
 func makeValidCommit(
@@ -93,7 +107,7 @@ func makeTxs(height int64) (txs []types.Tx) {
 	return txs
 }
 
-func makeState(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValidator) {
+func makeState(nVals int, height int64) (sm.State, dbm.DB, map[string]types.PrivValidator) {
 	privValsByProTxHash := make(map[string]types.PrivValidator, nVals)
 	vals, privVals, quorumHash, thresholdPublicKey := types.GenerateMockGenesisValidators(nVals)
 	// vals and privals are sorted
@@ -116,7 +130,7 @@ func makeState(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValida
 		panic(err)
 	}
 
-	for i := 1; i < height; i++ {
+	for i := int64(1); i < height; i++ {
 		s.LastBlockHeight++
 		s.LastValidators = s.Validators.Copy()
 		if err := stateStore.Save(s); err != nil {

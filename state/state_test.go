@@ -9,22 +9,19 @@ import (
 	"testing"
 
 	"github.com/dashevo/dashd-go/btcjson"
-
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/bls12381"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	dbm "github.com/tendermint/tm-db"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	"github.com/tendermint/tendermint/state"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
 )
 
 // setupTestCase does setup common to all test cases.
@@ -1167,4 +1164,17 @@ func TestStateProto(t *testing.T) {
 			require.Error(t, err, tt.testName)
 		}
 	}
+}
+
+func TestStateGetStateID(t *testing.T) {
+
+	state := state.State{
+		LastBlockHeight: 2,
+
+		AppHash: []byte("Some app hash"),
+	}
+
+	stateID := state.GetStateID()
+	assert.Equal(t, int64(2), stateID.Height)
+	assert.Equal(t, "Some app hash", string(stateID.LastAppHash))
 }

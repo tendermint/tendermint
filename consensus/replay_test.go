@@ -1648,8 +1648,14 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 			}
 		case *types.Vote:
 			if p.Type == tmproto.PrecommitType {
+				// prev block
+				if len(blocks) < 1 {
+					panic("Cannot determine StateID: empty blocks[]")
+				}
+				prevBlock := blocks[len(blocks)-1]
+				stateID := types.StateID{Height: prevBlock.Height, LastAppHash: prevBlock.AppHash}
 				thisBlockCommit = types.NewCommit(p.Height, p.Round,
-					p.BlockID, p.StateID, crypto.RandQuorumHash(), p.BlockSignature, p.StateSignature)
+					p.BlockID, stateID, crypto.RandQuorumHash(), p.BlockSignature, p.StateSignature)
 			}
 		}
 	}

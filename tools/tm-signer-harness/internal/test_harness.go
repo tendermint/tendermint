@@ -271,7 +271,6 @@ func (th *TestHarness) TestSignVote() error {
 	for _, voteType := range voteTypes {
 		th.logger.Info("Testing vote type", "type", voteType)
 		hash := tmhash.Sum([]byte("hash"))
-		lastAppHash := tmhash.Sum([]byte("hash"))
 		vote := &types.Vote{
 			Type:   voteType,
 			Height: 101,
@@ -283,17 +282,18 @@ func (th *TestHarness) TestSignVote() error {
 					Total: 1000000,
 				},
 			},
-			StateID: types.StateID{
-				LastAppHash: lastAppHash,
-			},
 			ValidatorIndex:     0,
 			ValidatorProTxHash: tmhash.Sum([]byte("pro_tx_hash")),
 		}
+
+		stateID := types.RandStateID().WithHeight(vote.Height - 1).ToProto()
+
 		v := vote.ToProto()
+
 		voteBlockID := types.VoteBlockSignID(th.chainID, v, btcjson.LLMQType_5_60, th.quorumHash)
-		voteStateID := types.VoteStateSignID(th.chainID, v, btcjson.LLMQType_5_60, th.quorumHash)
+		voteStateID := types.VoteStateSignID(th.chainID, stateID, btcjson.LLMQType_5_60, th.quorumHash)
 		// sign the vote
-		if err := th.signerClient.SignVote(th.chainID, btcjson.LLMQType_5_60, th.quorumHash, v, nil); err != nil {
+		if err := th.signerClient.SignVote(th.chainID, btcjson.LLMQType_5_60, th.quorumHash, v, stateID, nil); err != nil {
 			th.logger.Error("FAILED: Signing of vote", "err", err)
 			return newTestHarnessError(ErrTestSignVoteFailed, err, fmt.Sprintf("voteType=%d", voteType))
 		}

@@ -129,7 +129,7 @@ func TestValidateBlockHeader(t *testing.T) {
 			A good block passes
 		*/
 		var err error
-		state, _, _, lastCommit, err = makeAndCommitGoodBlock(
+		state, _, lastCommit, err = makeAndCommitGoodBlock(
 			state,
 			nodeProTxHash,
 			height,
@@ -138,9 +138,8 @@ func TestValidateBlockHeader(t *testing.T) {
 			blockExec,
 			privVals,
 			nil,
-			3,
-		)
-		require.NoError(t, err, "height %d", height)
+			3)
+		require.NoError(t, err, "height: %d\nstate:\n%+v\n", height, state)
 	}
 }
 
@@ -282,7 +281,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		var err error
 		var blockID types.BlockID
 		var stateID types.StateID
-		state, blockID, stateID, lastCommit, err = makeAndCommitGoodBlock(
+		state, blockID, lastCommit, err = makeAndCommitGoodBlock(
 			state,
 			nodeProTxHash,
 			height,
@@ -294,6 +293,8 @@ func TestValidateBlockCommit(t *testing.T) {
 			0,
 		)
 		require.NoError(t, err, "height %d", height)
+
+		stateID = state.GetStateID()
 
 		/*
 			wrongSigsCommit is fine except for the extra bad precommit
@@ -318,7 +319,6 @@ func TestValidateBlockCommit(t *testing.T) {
 			Round:              0,
 			Type:               tmproto.PrecommitType,
 			BlockID:            blockID,
-			StateID:            stateID,
 		}
 
 		g := goodVote.ToProto()
@@ -329,6 +329,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			state.Validators.QuorumType,
 			badPrivValQuorumHash,
 			g,
+			stateID.ToProto(),
 			nil,
 		)
 		require.NoError(t, err, "height %d", height)
@@ -337,6 +338,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			state.Validators.QuorumType,
 			badPrivValQuorumHash,
 			b,
+			stateID.ToProto(),
 			nil,
 		)
 		require.NoError(t, err, "height %d", height)
@@ -447,7 +449,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 		}
 
 		var err error
-		state, _, _, lastCommit, err = makeAndCommitGoodBlock(
+		state, _, lastCommit, err = makeAndCommitGoodBlock(
 			state,
 			nodeProTxHash,
 			height,

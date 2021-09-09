@@ -333,10 +333,6 @@ func TestConsMsgsVectors(t *testing.T) {
 		PartSetHeader: psh,
 	}
 
-	si := types.StateID{
-		LastAppHash: make([]byte, 32),
-	}
-
 	pbBi := bi.ToProto()
 	bits := bits.NewBitArray(1)
 	pbBits := bits.ToProto()
@@ -373,7 +369,6 @@ func TestConsMsgsVectors(t *testing.T) {
 		Round:              0,
 		Type:               tmproto.PrecommitType,
 		BlockID:            bi,
-		StateID:            si,
 	}
 	vpb := v.ToProto()
 

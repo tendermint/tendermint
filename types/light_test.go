@@ -14,7 +14,8 @@ import (
 
 func TestLightBlockValidateBasic(t *testing.T) {
 	header := makeRandHeader()
-	commit := randCommit()
+	stateID := RandStateID()
+	commit := randCommit(stateID)
 	vals, _ := GenerateValidatorSet(5)
 	header.Height = commit.Height
 	header.LastBlockID = commit.BlockID
@@ -39,7 +40,7 @@ func TestLightBlockValidateBasic(t *testing.T) {
 		{"valid light block", sh, vals, false},
 		{"hashes don't match", sh, vals2, true},
 		{"invalid validator set", sh, vals3, true},
-		{"invalid signed header", &SignedHeader{Header: &header, Commit: randCommit()}, vals, true},
+		{"invalid signed header", &SignedHeader{Header: &header, Commit: randCommit(stateID)}, vals, true},
 	}
 
 	for _, tc := range testCases {
@@ -59,7 +60,7 @@ func TestLightBlockValidateBasic(t *testing.T) {
 
 func TestLightBlockProtobuf(t *testing.T) {
 	header := makeRandHeader()
-	commit := randCommit()
+	commit := randCommit(RandStateID())
 	vals, _ := GenerateValidatorSet(5)
 	header.Height = commit.Height
 	header.LastBlockID = commit.BlockID
@@ -112,7 +113,7 @@ func TestLightBlockProtobuf(t *testing.T) {
 }
 
 func TestSignedHeaderValidateBasic(t *testing.T) {
-	commit := randCommit()
+	commit := randCommit(RandStateID())
 	chainID := "𠜎"
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
 	h := Header{

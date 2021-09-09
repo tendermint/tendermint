@@ -3,6 +3,8 @@ package types
 import (
 	"fmt"
 
+	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/version"
@@ -112,4 +114,11 @@ func MakeBlock(
 	}
 	block.fillHeader()
 	return block
+}
+
+func RandStateID() StateID {
+	return StateID{
+		Height:      tmrand.Int63(),
+		LastAppHash: tmrand.Bytes(tmhash.Size),
+	}
 }
