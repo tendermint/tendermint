@@ -344,7 +344,7 @@ var ErroringMockPVErr = errors.New("erroringMockPV always returns an error")
 // SignVote Implements PrivValidator.
 func (pv *ErroringMockPV) SignVote(
 	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
-	vote *tmproto.Vote, logger log.Logger) error {
+	vote *tmproto.Vote, stateID tmproto.StateID, logger log.Logger) error {
 	return ErroringMockPVErr
 }
 

@@ -99,7 +99,7 @@ func (state State) Copy() State {
 		LastBlockID:     state.LastBlockID,
 		LastBlockTime:   state.LastBlockTime,
 
-		LastStateID: state.LastStateID,
+		LastStateID: state.LastStateID.Copy(),
 
 		LastCoreChainLockedBlockHeight: state.LastCoreChainLockedBlockHeight,
 
@@ -142,11 +142,12 @@ func (state State) IsEmpty() bool {
 	return state.Validators == nil // XXX can't compare to Empty
 }
 
-func (state State) GetStateID() tmproto.StateID {
+// GetStateID() generates new state ID based on current `state`
+func (state State) GetStateID() types.StateID {
 	lastAppHash := make([]byte, len(state.AppHash))
 	copy(lastAppHash, state.AppHash)
 
-	return tmproto.StateID{
+	return types.StateID{
 		Height:      state.LastBlockHeight,
 		LastAppHash: lastAppHash,
 	}

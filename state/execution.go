@@ -597,7 +597,7 @@ func updateState(
 		InitialHeight:                    state.InitialHeight,
 		LastBlockHeight:                  header.Height,
 		LastBlockID:                      blockID,
-		LastStateID:                      types.StateID{LastAppHash: state.AppHash},
+		LastStateID:                      types.StateID{Height: header.Height, LastAppHash: state.AppHash},
 		LastBlockTime:                    header.Time,
 		LastCoreChainLockedBlockHeight:   header.CoreChainLockedHeight,
 		NextValidators:                   nValSet,

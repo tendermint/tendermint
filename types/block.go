@@ -1195,6 +1195,19 @@ type StateID struct {
 	LastAppHash tmbytes.HexBytes `json:"last_app_hash"`
 }
 
+// Copy returns new StateID that is equal to this one
+func (stateID StateID) Copy() StateID {
+	appHash := make([]byte, len(stateID.LastAppHash))
+	if copy(appHash, stateID.LastAppHash) != len(stateID.LastAppHash) {
+		panic("Cannot copy LastAppHash, this should never happen. Out of memory???")
+	}
+
+	return StateID{
+		Height:      stateID.Height,
+		LastAppHash: appHash,
+	}
+}
+
 // Equals returns true if the StateID matches the given StateID
 func (stateID StateID) Equals(other StateID) bool {
 	return stateID.Height == other.Height &&
@@ -1213,9 +1226,8 @@ func (stateID StateID) ValidateBasic() error {
 		return fmt.Errorf("wrong app Hash")
 	}
 
-	// TODO check if this is correct for genesis block
-	if stateID.Height < 1 {
-		return fmt.Errorf("StateID height is not valid: %d < 1", stateID.Height)
+	if stateID.Height < 0 {
+		return fmt.Errorf("StateID height is not valid: %d < 0", stateID.Height)
 	}
 
 	return nil
@@ -1240,15 +1252,21 @@ func (stateID StateID) String() string {
 }
 
 // ToProto converts BlockID to protobuf
-func (stateID *StateID) ToProto() tmproto.StateID {
-	if stateID == nil {
-		return tmproto.StateID{}
-	}
-
+func (stateID StateID) ToProto() tmproto.StateID {
 	return tmproto.StateID{
 		LastAppHash: stateID.LastAppHash,
 		Height:      stateID.Height,
 	}
+}
+
+// WithHeight returns new copy of stateID with height set to provided value.
+// It is a conveniance method used in tests.
+// Note that this is Last Height from state, so it will be (height-1) for Vote.
+func (stateID StateID) WithHeight(height int64) StateID {
+	ret := stateID.Copy()
+	ret.Height = height
+
+	return ret
 }
 
 // FromProto sets a protobuf BlockID to the given pointer.
