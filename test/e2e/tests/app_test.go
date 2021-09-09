@@ -44,7 +44,7 @@ func TestApp_Hash(t *testing.T) {
 
 		block, err := client.Block(ctx, nil)
 		require.NoError(t, err)
-		require.EqualValues(t, info.Response.LastBlockAppHash, block.Block.AppHash,
+		require.EqualValues(t, info.Response.LastBlockAppHash, block.Block.AppHash.Bytes(),
 			"app hash does not match last block's app hash")
 
 		status, err := client.Status(ctx)

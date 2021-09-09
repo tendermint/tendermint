@@ -68,7 +68,7 @@ func Start(ctx context.Context, testnet *e2e.Testnet) error {
 		"nodes", len(testnet.Nodes)-len(nodeQueue),
 		"pending", len(nodeQueue))
 
-	block, blockID, err := waitForHeight(testnet, networkHeight)
+	block, blockID, err := waitForHeight(ctx, testnet, networkHeight)
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func Start(ctx context.Context, testnet *e2e.Testnet) error {
 
 			networkHeight = node.StartAt
 
-			block, blockID, err = waitForHeight(testnet, networkHeight)
+			block, blockID, err = waitForHeight(ctx, testnet, networkHeight)
 			if err != nil {
 				return err
 			}

@@ -25,11 +25,9 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 	if concurrency == 0 {
 		concurrency = 1
 	}
-	initialTimeout := 1 * time.Minute
-	stallTimeout := 30 * time.Second
 
-	chTx := make(chan types.Tx, len(testnet.Nodes))
-	chSuccess := make(chan types.Tx)
+	chTx := make(chan types.Tx)
+	chSuccess := make(chan int)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -43,22 +41,36 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 		go loadProcess(ctx, testnet, chTx, chSuccess)
 	}
 
-	// Monitor successful transactions, and abort on stalls.
+	// Montior transaction to ensure load propagates to the network
+	//
+	// note: previous versions of this loop ensured that the load
+	// didn't stall for more than 30 seconds, but checking for
+	// stalls here just aborts the load generator earlier, and can
+	// easily reflect backpressure in the test harness. What we
+	// should care about more than stalls is, 80th or 95th
+	// percentile latency, and this is not feasible to track here
+	// right now.
 	success := 0
-	timeout := initialTimeout
 	for {
 		select {
-		case <-chSuccess:
-			success++
-			timeout = stallTimeout
-		case <-time.After(timeout):
-			return fmt.Errorf("unable to submit transactions for %v", timeout)
+		case numSeen := <-chSuccess:
+			success += numSeen
 		case <-ctx.Done():
 			if success == 0 {
 				return errors.New("failed to submit any transactions")
 			}
-			logger.Info(fmt.Sprintf("Ending transaction load after %v txs (%.1f tx/s)...",
-				success, float64(success)/time.Since(started).Seconds()))
+			rate := float64(success) / time.Since(started).Seconds()
+
+			logger.Info("ending transaction load",
+				"dur_secs", time.Since(started).Seconds(),
+				"txns", success,
+				"rate", rate)
+
+			if rate < 2.0 {
+				logger.Error("transaction throughput was low",
+					"rate", rate)
+			}
+
 			return nil
 		}
 	}
@@ -95,12 +107,9 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, size int64) {
 			case <-ctx.Done():
 				return
 			case chTx <- tx:
-				// sleep for 10ms + a jitter value
-				// that's at least 10ms and at most
-				// 10ms plus 10ms for each
-				fuzzFactor := 10 * (1 + time.Duration(rand.Int63n(int64(cap(chTx))))) // nolint: gosec
-				timer.Reset(fuzzFactor * time.Millisecond)
-				continue
+				// sleep for a bit before sending the
+				// next transaction.
+				timer.Reset((10 * time.Millisecond) + time.Duration(rand.Int63n(int64(100*time.Millisecond))))
 			}
 
 		}
@@ -108,7 +117,7 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, size int64) {
 }
 
 // loadProcess processes transactions
-func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx, chSuccess chan<- types.Tx) {
+func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx, chSuccess chan<- int) {
 	// Each worker gets its own client to each usable node, which
 	// allows for some concurrency while still bounding it.
 	clients := make([]*rpchttp.HTTP, 0, len(testnet.Nodes))
@@ -142,8 +151,7 @@ func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx
 		clientRing = clientRing.Next()
 	}
 
-	var err error
-
+	successes := 0
 	for {
 		select {
 		case <-ctx.Done():
@@ -156,15 +164,18 @@ func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx
 				continue
 			}
 
-			if _, err = client.BroadcastTxSync(ctx, tx); err != nil {
+			if _, err := client.BroadcastTxSync(ctx, tx); err != nil {
 				continue
 			}
+			successes++
 
 			select {
-			case chSuccess <- tx:
+			case chSuccess <- successes:
+				successes = 0
 				continue
 			case <-ctx.Done():
 				return
+			default:
 			}
 
 		}

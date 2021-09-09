@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand"
 	"time"
 
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
@@ -16,7 +15,7 @@ import (
 // waitForHeight waits for the network to reach a certain height (or above),
 // returning the highest height seen. Errors if the network is not making
 // progress at all.
-func waitForHeight(testnet *e2e.Testnet, height int64) (*types.Block, *types.BlockID, error) {
+func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*types.Block, *types.BlockID, error) {
 	var (
 		err             error
 		maxResult       *rpctypes.ResultBlock
@@ -39,81 +38,88 @@ func waitForHeight(testnet *e2e.Testnet, height int64) (*types.Block, *types.Blo
 		}
 	}
 
+	timer := time.NewTimer(0)
+	defer timer.Stop()
 	for {
-		for _, node := range testnet.Nodes {
-			// skip nodes that have reached the target height
-			if _, ok := nodesAtHeight[node.Name]; ok {
-				continue
-			}
+		select {
+		case <-ctx.Done():
+			return nil, nil, ctx.Err()
+		case <-timer.C:
+			for _, node := range testnet.Nodes {
+				// skip nodes that have reached the target height
+				if _, ok := nodesAtHeight[node.Name]; ok {
+					continue
+				}
 
-			if node.Mode == e2e.ModeSeed {
-				continue
-			}
+				if node.Mode == e2e.ModeSeed {
+					continue
+				}
 
-			if node.Mode == e2e.ModeLight {
-				continue
-			}
+				if node.Mode == e2e.ModeLight {
+					continue
+				}
 
-			if !node.HasStarted {
-				continue
-			}
+				if !node.HasStarted {
+					continue
+				}
 
-			// cache the clients
-			client, ok := clients[node.Name]
-			if !ok {
-				client, err = node.Client()
+				// cache the clients
+				client, ok := clients[node.Name]
+				if !ok {
+					client, err = node.Client()
+					if err != nil {
+						continue
+					}
+					clients[node.Name] = client
+				}
+
+				wctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+				defer cancel()
+				result, err := client.Block(wctx, nil)
 				if err != nil {
 					continue
 				}
-				clients[node.Name] = client
-			}
-
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-			defer cancel()
-			result, err := client.Block(ctx, nil)
-			if err != nil {
-				continue
-			}
-			if result.Block != nil && (maxResult == nil || result.Block.Height > maxResult.Block.Height) {
-				maxResult = result
-				lastIncrease = time.Now()
-			}
-
-			if maxResult != nil && maxResult.Block.Height >= height {
-				// the node has achieved the target height!
-
-				// add this node to the set of target
-				// height nodes
-				nodesAtHeight[node.Name] = struct{}{}
-
-				// if not all of the nodes that we
-				// have clients for have reached the
-				// target height, keep trying.
-				if numRunningNodes > len(nodesAtHeight) {
-					continue
+				if result.Block != nil && (maxResult == nil || result.Block.Height > maxResult.Block.Height) {
+					maxResult = result
+					lastIncrease = time.Now()
 				}
 
-				// return once all nodes have reached
-				// the target height.
-				return maxResult.Block, &maxResult.BlockID, nil
+				if maxResult != nil && maxResult.Block.Height >= height {
+					// the node has achieved the target height!
+
+					// add this node to the set of target
+					// height nodes
+					nodesAtHeight[node.Name] = struct{}{}
+
+					// if not all of the nodes that we
+					// have clients for have reached the
+					// target height, keep trying.
+					if numRunningNodes > len(nodesAtHeight) {
+						continue
+					}
+
+					// return once all nodes have reached
+					// the target height.
+					return maxResult.Block, &maxResult.BlockID, nil
+				}
 			}
-		}
 
-		if len(clients) == 0 {
-			return nil, nil, errors.New("unable to connect to any network nodes")
-		}
-		if time.Since(lastIncrease) >= time.Minute {
-			if maxResult == nil {
-				return nil, nil, errors.New("chain stalled at unknown height")
+			if len(clients) == 0 {
+				return nil, nil, errors.New("unable to connect to any network nodes")
 			}
+			if time.Since(lastIncrease) >= time.Minute {
+				if maxResult == nil {
+					return nil, nil, errors.New("chain stalled at unknown height")
+				}
 
-			return nil, nil, fmt.Errorf("chain stalled at height %v [%d of %d nodes]",
-				maxResult.Block.Height,
-				len(nodesAtHeight),
-				numRunningNodes)
+				return nil, nil, fmt.Errorf("chain stalled at height %v [%d of %d nodes]",
+					maxResult.Block.Height,
+					len(nodesAtHeight),
+					numRunningNodes)
 
+			}
+			timer.Reset(1 * time.Second)
 		}
-		time.Sleep(1 * time.Second)
 	}
 }
 
@@ -127,42 +133,25 @@ func waitForNode(ctx context.Context, node *e2e.Node, height int64) (*rpctypes.R
 		return nil, err
 	}
 
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
 	for {
-		status, err := client.Status(ctx)
-		switch {
-		case errors.Is(err, context.DeadlineExceeded):
-			return nil, fmt.Errorf("timed out waiting for %v to reach height %v", node.Name, height)
-		case errors.Is(err, context.Canceled):
-			return nil, err
-		case err == nil && status.SyncInfo.LatestBlockHeight >= height:
-			return status, nil
-		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-timer.C:
+			status, err := client.Status(ctx)
+			switch {
+			case errors.Is(err, context.DeadlineExceeded):
+				return nil, fmt.Errorf("timed out waiting for %v to reach height %v", node.Name, height)
+			case errors.Is(err, context.Canceled):
+				return nil, err
+			case err == nil && status.SyncInfo.LatestBlockHeight >= height:
+				return status, nil
+			}
 
-		time.Sleep(300 * time.Millisecond)
-	}
-}
-
-// waitForAtLeastOneNode waits for all nodes to become available and
-// catch up to the given block height.
-func waitForAtLeastOneNode(ctx context.Context, testnet *e2e.Testnet, height int64) (int64, error) {
-	var lastHeight int64
-
-	for _, idx := range rand.Perm(len(testnet.Nodes)) {
-		node := testnet.Nodes[idx]
-
-		if node.Mode == e2e.ModeSeed {
-			continue
-		}
-
-		status, err := waitForNode(ctx, node, height)
-		if err != nil {
-			return 0, err
-		}
-
-		if status.SyncInfo.LatestBlockHeight > lastHeight {
-			lastHeight = status.SyncInfo.LatestBlockHeight
+			timer.Reset(250 * time.Millisecond)
 		}
 	}
-
-	return lastHeight, nil
 }

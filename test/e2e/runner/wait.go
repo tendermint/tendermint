@@ -11,7 +11,7 @@ import (
 // Wait waits for a number of blocks to be produced, and for all nodes to catch
 // up with it.
 func Wait(ctx context.Context, testnet *e2e.Testnet, blocks int64) error {
-	block, _, err := waitForHeight(testnet, 0)
+	block, _, err := waitForHeight(ctx, testnet, 0)
 	if err != nil {
 		return err
 	}
@@ -21,10 +21,9 @@ func Wait(ctx context.Context, testnet *e2e.Testnet, blocks int64) error {
 // WaitUntil waits until a given height has been reached.
 func WaitUntil(ctx context.Context, testnet *e2e.Testnet, height int64) error {
 	logger.Info(fmt.Sprintf("Waiting for all nodes to reach height %v...", height))
-	wctx, wcancel := context.WithTimeout(ctx, waitingTime(len(testnet.Nodes)))
-	defer wcancel()
 
-	_, err := waitForAtLeastOneNode(wctx, testnet, height)
+	_, _, err := waitForHeight(ctx, testnet, height)
+
 	return err
 }
 
