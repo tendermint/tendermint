@@ -39,13 +39,36 @@ The Tendermint state replication engine has a complex IPC footprint.
    The gRPC interface to the consensus node has been deprecated and is slated
    for removal in the forthcoming Tendermint v0.36 release.
 
+5. Consensus nodes may optionally communicate with a "remote signer" that holds
+   a validator key and can provide public keys and signatures to the consensus
+   node. One of the stated goals of this configuration is to allow the signer
+   to be run on a private network, separate from the consensus node, so that a
+   compromise of the consensus node from the public network would be less
+   likely to expose validator keys.
 
-## Discussion
+## Discussion: Transport Mechanisms
 
-TODO: What about the verifier/signer? I think this is maybe baked into the
-consensus node.  Can/does it run separately?  If so, how does it communicate
-with the consensus node?  Does an application ever talk directly to the
-verifier/signer?
+### Remote Signer Transport
+
+A remote signer communicates with the consensus node in one of two ways:
+
+1. "Raw": Using a TCP or Unix-domain socket which carries varint-prefixed
+   protocol buffer messages. In this mode, the consensus node is the server,
+   and the remote signer is the client.
+
+   This mode has been deprecated, and is intended to be removed.
+
+2. gRPC: This mode uses the same protobuf messages as "Raw" node, but uses a
+   standard encrypted gRPC HTTP/2 stub as the transport. In this mode, the
+   remote signer is the server and the consensus node is the client.
+
+TODO: It's not clear to me how meaningfully a remote signer is really isolated
+by this mechanism. The consensus node has to be on a shared network with the
+remote signer, so a compromise of the consensus node from the public network
+leaves the attacker able to communicate with the remote signer anyway. It does
+raise the bar by a constant factor -- now you also have to compromise the
+remote signer too -- but it's not actually isolated in the gRPC configuration.
+
 
 ### ABCI Transport
 
