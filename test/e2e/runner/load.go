@@ -109,7 +109,8 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, size int64) {
 			case chTx <- tx:
 				// sleep for a bit before sending the
 				// next transaction.
-				timer.Reset((10 * time.Millisecond) + time.Duration(rand.Int63n(int64(100*time.Millisecond))))
+				waitTime := (10 * time.Millisecond) + time.Duration(rand.Int63n(int64(100*time.Millisecond))) // nolint: gosec
+				timer.Reset(waitTime)
 			}
 
 		}

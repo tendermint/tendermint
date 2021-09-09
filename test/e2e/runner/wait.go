@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"time"
 
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
@@ -25,10 +24,4 @@ func WaitUntil(ctx context.Context, testnet *e2e.Testnet, height int64) error {
 	_, _, err := waitForHeight(ctx, testnet, height)
 
 	return err
-}
-
-// waitingTime estimates how long it should take for a node to reach the height.
-// More nodes in a network implies we may expect a slower network and may have to wait longer.
-func waitingTime(nodes int) time.Duration {
-	return time.Minute + (time.Duration(nodes) * (30 * time.Second))
 }
