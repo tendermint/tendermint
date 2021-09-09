@@ -62,9 +62,8 @@ func TestApp_Tx(t *testing.T) {
 
 		// Generate a random value, to prevent duplicate tx errors when
 		// manually running the test multiple times for a testnet.
-		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		bz := make([]byte, 32)
-		_, err = r.Read(bz)
+		_, err = rand.Read(bz)
 		require.NoError(t, err)
 
 		key := fmt.Sprintf("testapp-tx-%v", node.Name)
