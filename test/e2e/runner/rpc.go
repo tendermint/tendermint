@@ -73,7 +73,7 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 					clients[node.Name] = client
 				}
 
-				wctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+				wctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 				defer cancel()
 				result, err := client.Block(wctx, nil)
 				if err != nil {
@@ -112,10 +112,11 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 					return nil, nil, errors.New("chain stalled at unknown height")
 				}
 
-				return nil, nil, fmt.Errorf("chain stalled at height %v [%d of %d nodes]",
+				return nil, nil, fmt.Errorf("chain stalled at height %v [%d of %d nodes %+v]",
 					maxResult.Block.Height,
 					len(nodesAtHeight),
-					numRunningNodes)
+					numRunningNodes,
+					nodesAtHeight)
 
 			}
 			timer.Reset(1 * time.Second)
@@ -136,7 +137,24 @@ func waitForNode(ctx context.Context, node *e2e.Node, height int64) (*rpctypes.R
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
+	var (
+		lastFailed bool
+		counter    int
+	)
 	for {
+		counter++
+		if lastFailed {
+			lastFailed = false
+
+			// if there was a problem with the request in
+			// the previous recreate the client to ensure
+			// reconnection
+			client, err = node.Client()
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -149,8 +167,25 @@ func waitForNode(ctx context.Context, node *e2e.Node, height int64) (*rpctypes.R
 				return nil, err
 			case err == nil && status.SyncInfo.LatestBlockHeight >= height:
 				return status, nil
+			case counter%25 == 0:
+				switch {
+				case err != nil:
+					lastFailed = true
+					logger.Error("node not yet ready",
+						"iter", counter,
+						"node", node.Name,
+						"err", err,
+						"target", height,
+					)
+				case status != nil:
+					logger.Error("node not yet ready",
+						"iter", counter,
+						"node", node.Name,
+						"height", status.SyncInfo.LatestBlockHeight,
+						"target", height,
+					)
+				}
 			}
-
 			timer.Reset(250 * time.Millisecond)
 		}
 	}
