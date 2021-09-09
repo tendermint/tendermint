@@ -148,6 +148,17 @@ TODO: Figure out what is going on with the weird pseudo-inheritance service
 interface.  The BaseService type makes sense, but its embeds are more
 complicated.
 
+### Context: Remote Signer Issues
+
+Since the remote signer needs a secure communication channel to exchange keys
+and signatures, and is expected to run truly remotely from the node (i.e., on a
+separate physical server), there is not a whole lot we can do here. We should
+finish the deprecation and removal of the "raw" socket protocol between the
+consensus node and remote signers, but the use of gRPC is appropriate.
+
+The main improvement we can make is to simplify the implementation quite a bit,
+once we no longer need to support both "raw" and gRPC transports.
+
 ### Context: ABCI Issues
 
 In the original design of ABCI, the presumption was that all access to the
