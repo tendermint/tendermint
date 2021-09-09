@@ -1,4 +1,4 @@
-# RFC 002: Taxonomy of potential performance issues in Tendermint 
+# RFC 003: Taxonomy of potential performance issues in Tendermint 
 
 ## Changelog
 
