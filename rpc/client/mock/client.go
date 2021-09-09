@@ -166,7 +166,7 @@ func (c Client) Block(ctx context.Context, height *int64) (*ctypes.ResultBlock, 
 	return c.env.Block(&rpctypes.Context{}, height)
 }
 
-func (c Client) BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBlock, error) {
+func (c Client) BlockByHash(ctx context.Context, hash bytes.HexBytes) (*ctypes.ResultBlock, error) {
 	return c.env.BlockByHash(&rpctypes.Context{}, hash)
 }
 
