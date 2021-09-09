@@ -109,7 +109,7 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, size int64) {
 			case chTx <- tx:
 				// sleep for a bit before sending the
 				// next transaction.
-				waitTime := (10 * time.Millisecond) + time.Duration(rand.Int63n(int64(250*time.Millisecond))) // nolint: gosec
+				waitTime := (10 * time.Millisecond) + time.Duration(rand.Int63n(int64(500*time.Millisecond))) // nolint: gosec
 				timer.Reset(waitTime)
 			}
 
@@ -161,7 +161,9 @@ func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx
 			clientRing = clientRing.Next()
 			client := clientRing.Value.(*rpchttp.HTTP)
 
-			if _, err := client.Health(ctx); err != nil {
+			if status, err := client.Status(ctx); err != nil {
+				continue
+			} else if status.SyncInfo.CatchingUp {
 				continue
 			}
 
