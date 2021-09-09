@@ -38,12 +38,9 @@ func Benchmark(ctx context.Context, testnet *e2e.Testnet, benchmarkLength int64)
 	if err != nil {
 		return err
 	}
-
-	endHeight := block.Height
-
 	dur := time.Since(startAt)
 
-	logger.Info("Ending benchmark period", "height", endHeight)
+	logger.Info("Ending benchmark period", "height", block.Height)
 
 	// fetch a sample of blocks
 	blocks, err := fetchBlockChainSample(testnet, benchmarkLength)

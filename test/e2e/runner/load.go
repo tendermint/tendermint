@@ -27,7 +27,7 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 	}
 
 	chTx := make(chan types.Tx)
-	chSuccess := make(chan int)
+	chSuccess := make(chan int)  // success counts per iteration
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -175,7 +175,7 @@ func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx
 
 			select {
 			case chSuccess <- successes:
-				successes = 0
+				successes = 0 // reset counter for the next iteration
 				continue
 			case <-ctx.Done():
 				return

@@ -11,7 +11,7 @@ import (
 
 // Perturbs a running testnet.
 func Perturb(ctx context.Context, testnet *e2e.Testnet) error {
-	timer := time.NewTimer(0)
+	timer := time.NewTimer(0)  // first tick fires immediately; reset below
 	defer timer.Stop()
 
 	for _, node := range testnet.Nodes {
