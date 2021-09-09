@@ -66,7 +66,7 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 				"txns", success,
 				"rate", rate)
 
-			if rate < 2.0 {
+			if rate < 2 {
 				logger.Error("transaction throughput was low",
 					"rate", rate)
 			}
