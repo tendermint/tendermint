@@ -53,7 +53,7 @@ persist_interval = 3
 perturb = ["kill"]
 privval_protocol = "grpc"
 block_sync = "v0"
-retain_blocks = 7
+retain_blocks = 10
 
 [node.validator04]
 abci_protocol = "builtin"
@@ -79,7 +79,7 @@ start_at = 1010
 block_sync = "v0"
 persistent_peers = ["validator01", "validator02", "validator03", "validator04"]
 perturb = ["restart"]
-retain_blocks = 7
+retain_blocks = 10
 state_sync = "rpc"
 
 [node.light01]
