@@ -6,7 +6,7 @@ coverage:
     project:
       default:
         threshold: 20%
-    patch: on
+    patch: off
     changes: off
 
 github_checks:
