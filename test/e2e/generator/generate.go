@@ -90,7 +90,7 @@ func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 
 	if opts.Sorted {
 		// When the sorted flag is set (generally, as long as
-		// groups arent)
+		// groups aren't set),
 		e2e.SortManifests(manifests)
 	}
 
