@@ -109,11 +109,13 @@ The RPC service is exposed in several ways:
   This transport uses more or less the same JSON-RPC plumbing as the HTTP POST
   handler.
 
-  TODO: Three methods, maybe related to event subscription, are _only_ exported
-  via websocket. I think these may be used by the light client for
-  synchronization. In any case, the light client appears to be the only direct
-  consumer of the websocket transport at least within the core repository.
-  Figure out whether that's true.
+  The websocket endpoint also includes three methods that are _only_ exported
+  via websocket, which appear to support event subscription. I'm not sure what
+  is using these, but the likely candidate is the IBC relayer, which acts like
+  a light client and uses the event system to figure out what to synchronize.
+
+  TODO: Figure out what clients are actually using the websocket interface, and
+  which parts of the RPC service they are using _other_ than event subscription.
 
 - gRPC: A subset of queries may be issued in protocol buffer format to the gRPC
   interface described above under (4). As noted, this endpoint is deprecated
