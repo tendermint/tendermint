@@ -62,13 +62,6 @@ A remote signer communicates with the consensus node in one of two ways:
    standard encrypted gRPC HTTP/2 stub as the transport. In this mode, the
    remote signer is the server and the consensus node is the client.
 
-TODO: It's not clear to me how meaningfully a remote signer is really isolated
-by this mechanism. The consensus node has to be on a shared network with the
-remote signer, so a compromise of the consensus node from the public network
-leaves the attacker able to communicate with the remote signer anyway. It does
-raise the bar by a constant factor -- now you also have to compromise the
-remote signer too -- but it's not actually isolated in the gRPC configuration.
-
 
 ### ABCI Transport
 
