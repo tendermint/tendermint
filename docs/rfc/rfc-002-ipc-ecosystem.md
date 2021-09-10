@@ -135,14 +135,19 @@ application and the consensus node are compiled together into a single binary,
 and the consensus node calls the ABCI methods of the application directly as Go
 functions.
 
-TODO: What are the remaining use cases for the socket protocol and gRPC? Ethan
-mentioned some cases like web-based explorer UIs and possibly other tools.
+We also need a true IPC transport to support ABCI applications _not_ written in
+Go.  There are also several known applications written in Rust, for example
+(including [Anoma](https://github.com/anoma/anoma), Penumbra,
+[Oasis](https://github.com/oasisprotocol/oasis-core), Twilight, and
+[Nomic](https://github.com/nomic-io/nomic)). Ideally we will have at most one
+such transport "built-in": More esoteric cases can be handled by a custom proxy.
+Pragmatically, gRPC is probably the right choice here.
 
-As far as I can tell the primary consumers of the multi-headed "RPC service"
-are the light client and the `tendermint` command-line client. There is
-probably some local use via curl, but I expect that is mostly ad hoc. Ethan
-reports that nodes are often configured with the ports to the RPC service
-blocked, which is good for security but complicates use by the light client.
+The primary consumers of the multi-headed "RPC service" today are the light
+client and the `tendermint` command-line client. There is probably some local
+use via curl, but I expect that is mostly ad hoc. Ethan reports that nodes are
+often configured with the ports to the RPC service blocked, which is good for
+security but complicates use by the light client.
 
 TODO: Figure out what is going on with the weird pseudo-inheritance service
 interface.  The BaseService type makes sense, but its embeds are more
