@@ -1284,7 +1284,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	}
 	proposerProTxHash := cs.privValidatorProTxHash
 
-	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerProTxHash)
+	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerProTxHash, 1)
 }
 
 // Enter: any +2/3 prevotes at next round.

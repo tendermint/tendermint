@@ -221,9 +221,19 @@ func (pb *playback) replayConsoleLoop() int {
 			ctx := context.Background()
 			// ensure all new step events are regenerated as expected
 
-			newStepSub, err := pb.cs.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep)
+			newStepSub, err := pb.cs.eventBus.Subscribe(
+				ctx,
+				subscriber,
+				types.EventQueryNewRoundStep,
+			)
 			if err != nil {
-				tmos.Exit(fmt.Sprintf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep))
+				tmos.Exit(
+					fmt.Sprintf(
+						"failed to subscribe %s to %v",
+						subscriber,
+						types.EventQueryNewRoundStep,
+					),
+				)
 			}
 			defer func() {
 				if err := pb.cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep); err != nil {
@@ -333,8 +343,15 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 	if err != nil {
 		tmos.Exit(fmt.Sprintf("Failed to convert chain lock: %v", err))
 	}
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
-		proxyApp.Query(), mempool, evpool, nextCoreChainLock)
+	blockExec := sm.NewBlockExecutor(
+		stateStore,
+		log.TestingLogger(),
+		proxyApp.Consensus(),
+		proxyApp.Query(),
+		mempool,
+		evpool,
+		nextCoreChainLock,
+	)
 
 	consensusState := NewState(csConfig, state.Copy(), blockExec,
 		blockStore, mempool, evpool, map[int64]Misbehavior{})

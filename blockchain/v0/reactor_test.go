@@ -28,7 +28,9 @@ import (
 var config *cfg.Config
 
 func randGenesisDoc(numValidators int) (*types.GenesisDoc, []types.PrivValidator) {
-	validators, privValidators, quorumHash, thresholdPublicKey := types.GenerateGenesisValidators(numValidators)
+	validators, privValidators, quorumHash, thresholdPublicKey := types.GenerateGenesisValidators(
+		numValidators,
+	)
 	return &types.GenesisDoc{
 		GenesisTime:        tmtime.Now(),
 		ChainID:            config.ChainID(),
@@ -43,8 +45,12 @@ type BlockchainReactorPair struct {
 	app     proxy.AppConns
 }
 
-func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals []types.PrivValidator,
-	maxBlockHeight int64) BlockchainReactorPair {
+func newBlockchainReactor(
+	logger log.Logger,
+	genDoc *types.GenesisDoc,
+	privVals []types.PrivValidator,
+	maxBlockHeight int64,
+) BlockchainReactorPair {
 	if len(privVals) != 1 {
 		panic("only support one validator")
 	}
@@ -79,16 +85,31 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 	fastSync := true
 	db := dbm.NewMemDB()
 	stateStore = sm.NewStore(db)
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), proxyApp.Query(),
-		mock.Mempool{}, sm.EmptyEvidencePool{}, nil)
+	blockExec := sm.NewBlockExecutor(
+		stateStore,
+		log.TestingLogger(),
+		proxyApp.Consensus(),
+		proxyApp.Query(),
+		mock.Mempool{},
+		sm.EmptyEvidencePool{},
+		nil,
+	)
+
 	if err = stateStore.Save(state); err != nil {
 		panic(err)
 	}
 
 	// let's add some blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, types.StateID{LastAppHash: nil},
-			nil, nil, nil)
+		lastCommit := types.NewCommit(
+			blockHeight-1,
+			0,
+			types.BlockID{},
+			types.StateID{LastAppHash: nil},
+			nil,
+			nil,
+			nil,
+		)
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
@@ -206,7 +227,12 @@ func TestBadBlockStopsPeer(t *testing.T) {
 
 	// Other chain needs a different validator set
 	otherGenDoc, otherPrivVals := randGenesisDoc(1)
-	otherChain := newBlockchainReactor(log.TestingLogger(), otherGenDoc, otherPrivVals, maxBlockHeight)
+	otherChain := newBlockchainReactor(
+		log.TestingLogger(),
+		otherGenDoc,
+		otherPrivVals,
+		maxBlockHeight,
+	)
 
 	defer func() {
 		err := otherChain.reactor.Stop()
@@ -230,11 +256,16 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	nodeProTxHashes[2] = &proTxHash
 	nodeProTxHashes[3] = &proTxHash
 
-	switches := p2p.MakeConnectedSwitches(config.P2P, nodeProTxHashes, func(i int, s *p2p.Switch) *p2p.Switch {
-		s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
-		return s
+	switches := p2p.MakeConnectedSwitches(
+		config.P2P,
+		nodeProTxHashes,
+		func(i int, s *p2p.Switch) *p2p.Switch {
+			s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
+			return s
 
-	}, p2p.Connect2Switches)
+		},
+		p2p.Connect2Switches,
+	)
 
 	defer func() {
 		for _, r := range reactorPairs {
@@ -274,17 +305,23 @@ func TestBadBlockStopsPeer(t *testing.T) {
 
 	switches = append(
 		switches,
-		p2p.MakeConnectedSwitches(config.P2P, nodeProTxHashes, func(i int, s *p2p.Switch) *p2p.Switch {
-			s.AddReactor("BLOCKCHAIN", reactorPairs[len(reactorPairs)-1].reactor)
-			return s
-		}, p2p.Connect2Switches)...)
+		p2p.MakeConnectedSwitches(
+			config.P2P,
+			nodeProTxHashes,
+			func(i int, s *p2p.Switch) *p2p.Switch {
+				s.AddReactor("BLOCKCHAIN", reactorPairs[len(reactorPairs)-1].reactor)
+				return s
+			},
+			p2p.Connect2Switches,
+		)...)
 
 	for i := 0; i < len(reactorPairs)-1; i++ {
 		p2p.Connect2Switches(switches, i, len(reactorPairs)-1)
 	}
 
 	for {
-		if lastReactorPair.reactor.pool.IsCaughtUp() || lastReactorPair.reactor.Switch.Peers().Size() == 0 {
+		if lastReactorPair.reactor.pool.IsCaughtUp() ||
+			lastReactorPair.reactor.Switch.Peers().Size() == 0 {
 			break
 		}
 
@@ -306,8 +343,15 @@ func makeTxs(height int64) (txs []types.Tx) {
 
 func makeBlock(height int64, coreChainLock *types.CoreChainLock, state sm.State,
 	lastCommit *types.Commit) *types.Block {
-	block, _ := state.MakeBlock(height, coreChainLock, makeTxs(height), lastCommit,
-		nil, state.Validators.GetProposer().ProTxHash)
+	block, _ := state.MakeBlock(
+		height,
+		coreChainLock,
+		makeTxs(height),
+		lastCommit,
+		nil,
+		state.Validators.GetProposer().ProTxHash,
+		0,
+	)
 	return block
 }
 
