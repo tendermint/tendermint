@@ -279,16 +279,17 @@ general approach works fine and doesn't need to be fundamentally changed.
 For applications _not_ written in Go, the two remaining options are the
 "socket" protocol (another variation on varint-prefixed protobuf messages over
 an unstructured stream) and gRPC. It would be nice if we could get rid of one
-of these to reduce (unneeded?) optionality, and the "socket" protocol is the
-most obvious choice. gRPC is more complex, but is already widely used in the
-rest of the ecosystem (including the Cosmos SDK).
+of these to reduce (unneeded?) optionality.
 
-The main question is whether requiring gRPC imposes an undue burden on the
-authors of applications in languages without good gRPC support. I propose that
-this is not a large constituency -- and if some important use case does arise
-later, it would not be too difficult for that application author to write a
-little proxy (in Go) that bridges the convenient SDK APIs into a simpler
-protocol.
+Since both the socket protocol and gRPC depend on protocol buffers, the
+"socket" protocol is the most obvious choice to remove. While gRPC is more
+complex, the set of languages that _have_ protobuf support but _lack_ gRPC
+support is small. Moreover, gRPC is already widely used in the rest of the
+ecosystem (including the Cosmos SDK).
+
+If some use case did arise later that can't work with gRPC, it would not be too
+difficult for that application author to write a little proxy (in Go) that
+bridges the convenient SDK APIs into a simpler protocol than gRPC.
 
 **Design principle:** It is better for an uncommon special case to carry the
 burdens of its specialness, than to bake an escape hatch into the infrastructure.
