@@ -308,7 +308,9 @@ some advantages over gRPC for our domain. Specifically:
 - gRPC has an enormous dependency footprint for both clients and servers, and
   many of the features it provides to support security and performance
   (encryption, compression, streaming, etc.) are mostly irrelevant to local
-  use.
+  use. Tendermint already needs to include a gRPC client for the remote signer,
+  but if we can avoid the need for a _client_ to depend on gRPC, that is a win
+  for usability.
 
 - If we intend to migrate light clients off RPC to use P2P entirely, there is
   no advantage to forcing a temporary migration to gRPC along the way; and once
