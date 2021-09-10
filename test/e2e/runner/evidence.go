@@ -28,7 +28,7 @@ const lightClientEvidenceRatio = 4
 // evidence and broadcasts it to a random node through the rpc endpoint `/broadcast_evidence`.
 // Evidence is random and can be a mixture of LightClientAttackEvidence and
 // DuplicateVoteEvidence.
-func InjectEvidence(testnet *e2e.Testnet, amount int) error {
+func InjectEvidence(ctx context.Context, testnet *e2e.Testnet, amount int) error {
 	// select a random node
 	var targetNode *e2e.Node
 
@@ -79,9 +79,12 @@ func InjectEvidence(testnet *e2e.Testnet, amount int) error {
 		return err
 	}
 
+	wctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	// wait for the node to reach the height above the forged height so that
 	// it is able to validate the evidence
-	_, err = waitForNode(targetNode, waitHeight, 30*time.Second)
+	_, err = waitForNode(wctx, targetNode, waitHeight)
 	if err != nil {
 		return err
 	}
@@ -107,9 +110,12 @@ func InjectEvidence(testnet *e2e.Testnet, amount int) error {
 		}
 	}
 
+	wctx, cancel = context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
 	// wait for the node to reach the height above the forged height so that
 	// it is able to validate the evidence
-	_, err = waitForNode(targetNode, blockRes.Block.Height+2, 10*time.Second)
+	_, err = waitForNode(wctx, targetNode, blockRes.Block.Height+2)
 	if err != nil {
 		return err
 	}

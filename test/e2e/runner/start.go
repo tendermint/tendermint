@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"time"
@@ -8,7 +9,7 @@ import (
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
-func Start(testnet *e2e.Testnet) error {
+func Start(ctx context.Context, testnet *e2e.Testnet) error {
 	if len(testnet.Nodes) == 0 {
 		return fmt.Errorf("no nodes in testnet")
 	}
@@ -45,7 +46,14 @@ func Start(testnet *e2e.Testnet) error {
 		if err := execCompose(testnet.Dir, "up", "-d", node.Name); err != nil {
 			return err
 		}
-		if _, err := waitForNode(node, 0, time.Minute); err != nil {
+
+		if err := func() error {
+			ctx, cancel := context.WithTimeout(ctx, time.Minute)
+			defer cancel()
+
+			_, err := waitForNode(ctx, node, 0)
+			return err
+		}(); err != nil {
 			return err
 		}
 		node.HasStarted = true
@@ -60,7 +68,7 @@ func Start(testnet *e2e.Testnet) error {
 		"nodes", len(testnet.Nodes)-len(nodeQueue),
 		"pending", len(nodeQueue))
 
-	block, blockID, err := waitForHeight(testnet, networkHeight)
+	block, blockID, err := waitForHeight(ctx, testnet, networkHeight)
 	if err != nil {
 		return err
 	}
@@ -74,9 +82,16 @@ func Start(testnet *e2e.Testnet) error {
 			// that this node will start at before we
 			// start the node.
 
+			logger.Info("Waiting for network to advance to height",
+				"node", node.Name,
+				"last_height", networkHeight,
+				"waiting_for", node.StartAt,
+				"size", len(testnet.Nodes)-len(nodeQueue),
+				"pending", len(nodeQueue))
+
 			networkHeight = node.StartAt
 
-			block, blockID, err = waitForHeight(testnet, networkHeight)
+			block, blockID, err = waitForHeight(ctx, testnet, networkHeight)
 			if err != nil {
 				return err
 			}
@@ -93,10 +108,15 @@ func Start(testnet *e2e.Testnet) error {
 		if err := execCompose(testnet.Dir, "up", "-d", node.Name); err != nil {
 			return err
 		}
-		status, err := waitForNode(node, node.StartAt, 8*time.Minute)
+
+		wctx, wcancel := context.WithTimeout(ctx, 8*time.Minute)
+		status, err := waitForNode(wctx, node, node.StartAt)
 		if err != nil {
+			wcancel()
 			return err
 		}
+		wcancel()
+
 		node.HasStarted = true
 		logger.Info(fmt.Sprintf("Node %v up on http://127.0.0.1:%v at height %v",
 			node.Name, node.ProxyPort, status.SyncInfo.LatestBlockHeight))

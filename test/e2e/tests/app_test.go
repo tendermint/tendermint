@@ -44,7 +44,7 @@ func TestApp_Hash(t *testing.T) {
 
 		block, err := client.Block(ctx, nil)
 		require.NoError(t, err)
-		require.EqualValues(t, info.Response.LastBlockAppHash, block.Block.AppHash,
+		require.EqualValues(t, info.Response.LastBlockAppHash, block.Block.AppHash.Bytes(),
 			"app hash does not match last block's app hash")
 
 		status, err := client.Status(ctx)
@@ -62,9 +62,8 @@ func TestApp_Tx(t *testing.T) {
 
 		// Generate a random value, to prevent duplicate tx errors when
 		// manually running the test multiple times for a testnet.
-		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		bz := make([]byte, 32)
-		_, err = r.Read(bz)
+		_, err = rand.Read(bz)
 		require.NoError(t, err)
 
 		key := fmt.Sprintf("testapp-tx-%v", node.Name)
@@ -75,7 +74,7 @@ func TestApp_Tx(t *testing.T) {
 		require.NoError(t, err)
 
 		hash := tx.Hash()
-		waitTime := 20 * time.Second
+		const waitTime = time.Minute
 
 		require.Eventuallyf(t, func() bool {
 			txResp, err := client.Tx(ctx, hash, false)
