@@ -2,6 +2,7 @@ package e2e_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/rpc/client/http"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/types"
 )
@@ -56,41 +58,91 @@ func TestApp_Hash(t *testing.T) {
 
 // Tests that we can set a value and retrieve it.
 func TestApp_Tx(t *testing.T) {
-	testNode(t, func(t *testing.T, node e2e.Node) {
-		client, err := node.Client()
-		require.NoError(t, err)
+	type broadcastFunc func(context.Context, types.Tx) error
 
-		// Generate a random value, to prevent duplicate tx errors when
-		// manually running the test multiple times for a testnet.
-		bz := make([]byte, 32)
-		_, err = rand.Read(bz)
-		require.NoError(t, err)
+	testCases := []struct {
+		Name        string
+		WaitTime    time.Duration
+		BroadcastTx func(client *http.HTTP) broadcastFunc
+		ShouldSkip  bool
+	}{
+		{
+			Name:     "Sync",
+			WaitTime: 30 * time.Second,
+			BroadcastTx: func(client *http.HTTP) broadcastFunc {
+				return func(ctx context.Context, tx types.Tx) error {
+					_, err := client.BroadcastTxSync(ctx, tx)
+					return err
+				}
+			},
+		},
+		{
+			Name:     "Commit",
+			WaitTime: time.Minute,
+			BroadcastTx: func(client *http.HTTP) broadcastFunc {
+				return func(ctx context.Context, tx types.Tx) error {
+					_, err := client.BroadcastTxCommit(ctx, tx)
+					return err
+				}
+			},
+		},
+		{
+			Name:       "Async",
+			WaitTime:   time.Minute,
+			ShouldSkip: true,
+			BroadcastTx: func(client *http.HTTP) broadcastFunc {
+				return func(ctx context.Context, tx types.Tx) error {
+					_, err := client.BroadcastTxAsync(ctx, tx)
+					return err
+				}
+			},
+		},
+	}
 
-		key := fmt.Sprintf("testapp-tx-%v", node.Name)
-		value := fmt.Sprintf("%x", bz)
-		tx := types.Tx(fmt.Sprintf("%v=%v", key, value))
-
-		_, err = client.BroadcastTxSync(ctx, tx)
-		require.NoError(t, err)
-
-		hash := tx.Hash()
-		const waitTime = time.Minute
-
-		require.Eventuallyf(t, func() bool {
-			txResp, err := client.Tx(ctx, hash, false)
-			return err == nil && bytes.Equal(txResp.Tx, tx)
-		}, waitTime, time.Second,
-			"submitted tx %X wasn't committed after %v", hash, waitTime,
-		)
-
-		// NOTE: we don't test abci query of the light client
-		if node.Mode == e2e.ModeLight {
-			return
+	for idx, test := range testCases {
+		if test.ShouldSkip {
+			continue
 		}
+		t.Run(test.Name, func(t *testing.T) {
+			// testNode calls t.Parallel as well, so we should
+			// have a copy of the
+			test := testCases[idx]
+			testNode(t, func(t *testing.T, node e2e.Node) {
+				client, err := node.Client()
+				require.NoError(t, err)
 
-		abciResp, err := client.ABCIQuery(ctx, "", []byte(key))
-		require.NoError(t, err)
-		assert.Equal(t, key, string(abciResp.Response.Key))
-		assert.Equal(t, value, string(abciResp.Response.Value))
-	})
+				// Generate a random value, to prevent duplicate tx errors when
+				// manually running the test multiple times for a testnet.
+				bz := make([]byte, 32)
+				_, err = rand.Read(bz)
+				require.NoError(t, err)
+
+				key := fmt.Sprintf("testapp-tx-%v", node.Name)
+				value := fmt.Sprintf("%x", bz)
+				tx := types.Tx(fmt.Sprintf("%v=%v", key, value))
+
+				require.NoError(t, test.BroadcastTx(client)(ctx, tx))
+
+				hash := tx.Hash()
+
+				require.Eventuallyf(t, func() bool {
+					txResp, err := client.Tx(ctx, hash, false)
+					return err == nil && bytes.Equal(txResp.Tx, tx)
+				},
+					test.WaitTime, // timeout
+					time.Second,   // interval
+					"submitted tx %X wasn't committed after %v",
+					hash, test.WaitTime,
+				)
+
+				abciResp, err := client.ABCIQuery(ctx, "", []byte(key))
+				require.NoError(t, err)
+				assert.Equal(t, key, string(abciResp.Response.Key))
+				assert.Equal(t, value, string(abciResp.Response.Value))
+			})
+
+		})
+
+	}
+
 }
