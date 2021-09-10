@@ -63,8 +63,7 @@ func NewCLI() *CLI {
 			lctx, loadCancel := context.WithCancel(ctx)
 			defer loadCancel()
 			go func() {
-				err := Load(lctx, cli.testnet)
-				chLoadResult <- err
+				chLoadResult <- Load(lctx, cli.testnet)
 			}()
 
 			if err := Start(ctx, cli.testnet); err != nil {

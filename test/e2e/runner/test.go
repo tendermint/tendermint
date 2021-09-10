@@ -15,5 +15,5 @@ func Test(testnet *e2e.Testnet) error {
 		return err
 	}
 
-	return execVerbose("go", "test", "-count", "1", "./tests/...")
+	return execVerbose("./build/tests", "-test.count", "1")
 }
