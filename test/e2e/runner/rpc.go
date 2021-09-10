@@ -159,7 +159,7 @@ func waitForNode(ctx context.Context, node *e2e.Node, height int64) (*rpctypes.R
 				return nil, err
 			case err == nil && status.SyncInfo.LatestBlockHeight >= height:
 				return status, nil
-			case counter%50 == 0:
+			case counter%100 == 0:
 				switch {
 				case err != nil:
 					lastFailed = true
