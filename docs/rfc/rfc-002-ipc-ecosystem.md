@@ -280,9 +280,12 @@ authors of applications in languages without good gRPC support. I propose that
 this is not a large constituency -- and if some important use case does arise
 later, it would not be too difficult for that application author to write a
 little proxy (in Go) that bridges the convenient SDK APIs into a simpler
-protocol. **Design principle:** It is better for an uncommon special case to
-carry the burdens of its specialness, than to bake an escape hatch into the
-infrastructure.
+protocol.
+
+**Design principle:** It is better for an uncommon special case to carry the
+burdens of its specialness, than to bake an escape hatch into the infrastructure.
+
+**Recommendation:** We should deprecate and remove the socket protocol.
 
 ### Options for RPC Transport
 
