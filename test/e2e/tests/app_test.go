@@ -64,10 +64,12 @@ func TestApp_Tx(t *testing.T) {
 		Name        string
 		WaitTime    time.Duration
 		BroadcastTx func(client *http.HTTP) broadcastFunc
+		SkipCheck   bool
 	}{
 		{
-			Name:     "Sync",
-			WaitTime: 30 * time.Second,
+			Name:      "Sync",
+			WaitTime:  30 * time.Second,
+			SkipCheck: true,
 			BroadcastTx: func(client *http.HTTP) broadcastFunc {
 				return func(ctx context.Context, tx types.Tx) error {
 					_, err := client.BroadcastTxSync(ctx, tx)
@@ -86,7 +88,7 @@ func TestApp_Tx(t *testing.T) {
 			},
 		},
 		{
-			Name:     "Commit",
+			Name:     "Async",
 			WaitTime: time.Minute,
 			BroadcastTx: func(client *http.HTTP) broadcastFunc {
 				return func(ctx context.Context, tx types.Tx) error {
@@ -118,17 +120,19 @@ func TestApp_Tx(t *testing.T) {
 
 				require.NoError(t, test.BroadcastTx(client)(ctx, tx))
 
-				hash := tx.Hash()
+				if !test.SkipCheck {
+					hash := tx.Hash()
 
-				require.Eventuallyf(t, func() bool {
-					txResp, err := client.Tx(ctx, hash, false)
-					return err == nil && bytes.Equal(txResp.Tx, tx)
-				},
-					test.WaitTime, // timeout
-					time.Second,   // interval
-					"submitted tx %X wasn't committed after %v",
-					hash, test.WaitTime,
-				)
+					require.Eventuallyf(t, func() bool {
+						txResp, err := client.Tx(ctx, hash, false)
+						return err == nil && bytes.Equal(txResp.Tx, tx)
+					},
+						test.WaitTime, // timeout
+						time.Second,   // interval
+						"submitted tx %X wasn't committed after %v",
+						hash, test.WaitTime,
+					)
+				}
 
 				abciResp, err := client.ABCIQuery(ctx, "", []byte(key))
 				require.NoError(t, err)
