@@ -3,11 +3,11 @@ on:
   pull_request:
     paths:
       - "**.go"
-      - "!test"
+      - "!test/"
   push:
     paths:
       - "**.go"
-      - "!test"
+      - "!test/"
     branches:
       - master
       - release/**
