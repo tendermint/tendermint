@@ -1,6 +1,9 @@
 name: Test Coverage
 on:
   pull_request:
+    paths:
+      - "**.go"
+      - "!test"
   push:
     branches:
       - master
