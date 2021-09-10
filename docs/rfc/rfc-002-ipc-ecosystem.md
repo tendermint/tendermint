@@ -277,7 +277,7 @@ like an RPC interface, and escape-hatches into the direct call). However, this
 general approach works fine and doesn't need to be fundamentally changed.
 
 For applications _not_ written in Go, the two remaining options are the
-"socket" protocol (another variation on varint-prefiexed protobuf messages over
+"socket" protocol (another variation on varint-prefixed protobuf messages over
 an unstructured stream) and gRPC. It would be nice if we could get rid of one
 of these to reduce (unneeded?) optionality, and the "socket" protocol is the
 most obvious choice. gRPC is more complex, but is already widely used in the
