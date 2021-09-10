@@ -5,6 +5,9 @@ on:
       - "**.go"
       - "!test"
   push:
+    paths:
+      - "**.go"
+      - "!test"
     branches:
       - master
       - release/**
