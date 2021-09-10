@@ -3,7 +3,6 @@ package e2e_test
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 
@@ -71,9 +70,6 @@ func loadTestnet(t *testing.T) e2e.Testnet {
 	manifest := os.Getenv("E2E_MANIFEST")
 	if manifest == "" {
 		t.Skip("E2E_MANIFEST not set, not an end-to-end test run")
-	}
-	if !filepath.IsAbs(manifest) {
-		manifest = filepath.Join("..", manifest)
 	}
 
 	testnetCacheMtx.Lock()
