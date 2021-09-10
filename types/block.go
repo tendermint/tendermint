@@ -1191,7 +1191,10 @@ func BlockIDFromProto(bID *tmproto.BlockID) (*BlockID, error) {
 
 // StateID
 type StateID struct {
-	Height      int64
+
+	// Height of last committed block
+	Height int64 `json:"height"`
+	// LastAppHash used in last committed block
 	LastAppHash tmbytes.HexBytes `json:"last_app_hash"`
 }
 

@@ -57,7 +57,7 @@ type State struct {
 	LastBlockID     types.BlockID
 	LastBlockTime   time.Time
 
-	// The Last StateID is actually the previous App Hash
+	// LastStateID contains App Hash and Height from previous state (at height-1)
 	LastStateID types.StateID
 
 	// Last Chain Lock is the last known chain locked height in consensus
