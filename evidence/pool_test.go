@@ -88,6 +88,7 @@ func TestEvidencePoolSingleValidator(t *testing.T) {
 	next := pool.EvidenceFront()
 	assert.Equal(t, ev, next.Value.(types.Evidence))
 
+	// TODO: evidenceBytes need to be updated
 	const evidenceBytes int64 = 712 // bls is 64 more than edwards
 	evs, size = pool.PendingEvidence(evidenceBytes)
 	assert.Equal(t, 1, len(evs))

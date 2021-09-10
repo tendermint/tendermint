@@ -540,14 +540,13 @@ func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 
 	type commitVoteTest struct {
 		blockIDs      []BlockID
-		stateIDs      []StateID
 		numVotes      []int // must sum to numValidators
 		numValidators int
 		valid         bool
 	}
 
 	testCases := []commitVoteTest{
-		{[]BlockID{blockID, {}}, []StateID{stateID, {}}, []int{67, 33}, 100, true},
+		{[]BlockID{blockID, {}}, []int{67, 33}, 100, true},
 	}
 
 	for _, tc := range testCases {

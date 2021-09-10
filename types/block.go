@@ -1230,7 +1230,7 @@ func (stateID StateID) ValidateBasic() error {
 	}
 
 	if stateID.Height < 0 {
-		return fmt.Errorf("StateID height is not valid: %d < 0", stateID.Height)
+		return fmt.Errorf("stateID height is not valid: %d < 0", stateID.Height)
 	}
 
 	return nil
@@ -1263,7 +1263,7 @@ func (stateID StateID) ToProto() tmproto.StateID {
 }
 
 // WithHeight returns new copy of stateID with height set to provided value.
-// It is a conveniance method used in tests.
+// It is a convenience method used in tests.
 // Note that this is Last Height from state, so it will be (height-1) for Vote.
 func (stateID StateID) WithHeight(height int64) StateID {
 	ret := stateID.Copy()

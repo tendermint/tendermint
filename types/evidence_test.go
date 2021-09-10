@@ -191,8 +191,6 @@ func TestEvidenceProto(t *testing.T) {
 	header2.LastBlockID = blockID
 	header2.ChainID = chainID
 
-	stateID = RandStateID().WithHeight(height - 1)
-
 	tests := []struct {
 		testName     string
 		evidence     Evidence
