@@ -226,7 +226,7 @@ func (p *BlockProvider) String() string { return string(p.peer) }
 // peerList is a rolling list of peers. This is used to distribute the load of
 // retrieving blocks over all the peers the reactor is connected to
 type peerList struct {
-	mtx     sync.Mutex
+	mtx     sync.RWMutex
 	peers   []types.NodeID
 	waiting []chan types.NodeID
 }
@@ -239,8 +239,8 @@ func newPeerList() *peerList {
 }
 
 func (l *peerList) Len() int {
-	l.mtx.Lock()
-	defer l.mtx.Unlock()
+	l.mtx.RLock()
+	defer l.mtx.RUnlock()
 	return len(l.peers)
 }
 
@@ -271,6 +271,10 @@ func (l *peerList) Pop(ctx context.Context) types.NodeID {
 func (l *peerList) Append(peer types.NodeID) {
 	l.mtx.Lock()
 	defer l.mtx.Unlock()
+	l.unsafeAppend(peer)
+}
+
+func (l *peerList) unsafeAppend(peer types.NodeID) {
 	if len(l.waiting) > 0 {
 		wait := l.waiting[0]
 		l.waiting = l.waiting[1:]
@@ -278,6 +282,25 @@ func (l *peerList) Append(peer types.NodeID) {
 		close(wait)
 	} else {
 		l.peers = append(l.peers, peer)
+	}
+}
+
+func (l *peerList) Extend(newPeers []types.NodeID) {
+	l.mtx.Lock()
+	defer l.mtx.Unlock()
+
+	set := make(map[types.NodeID]struct{}, len(l.peers))
+
+	for _, p := range l.peers {
+		set[p] = struct{}{}
+	}
+
+	for _, p := range newPeers {
+		if _, ok := set[p]; ok {
+			continue
+		}
+
+		l.unsafeAppend(p)
 	}
 }
 
@@ -293,7 +316,12 @@ func (l *peerList) Remove(peer types.NodeID) {
 }
 
 func (l *peerList) All() []types.NodeID {
-	l.mtx.Lock()
-	defer l.mtx.Unlock()
-	return l.peers
+	l.mtx.RLock()
+	defer l.mtx.RUnlock()
+
+	out := make([]types.NodeID, len(l.peers))
+
+	copy(out, l.peers)
+
+	return out
 }

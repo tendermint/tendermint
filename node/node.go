@@ -696,6 +696,18 @@ func (n *nodeImpl) OnStart() error {
 			n.eventBus.Logger.Error("failed to emit the statesync start event", "err", err)
 		}
 
+		if n.config.P2P.UseLegacy {
+			pl := n.sw.Peers().List()
+			peers := make([]types.NodeID, 0, len(pl))
+			for _, p := range pl {
+				peers = append(peers, p.ID())
+			}
+
+			n.stateSyncReactor.InitPeers(peers)
+		} else {
+			n.stateSyncReactor.InitPeers(n.peerManager.Peers())
+		}
+
 		// FIXME: We shouldn't allow state sync to silently error out without
 		// bubbling up the error and gracefully shutting down the rest of the node
 		go func() {

@@ -243,6 +243,10 @@ func (r *Reactor) OnStop() {
 	<-r.peerUpdates.Done()
 }
 
+// InitPeers pre-populates the reactors view of the peers and
+// captures running peers that are connected when the reactor starts.
+func (r *Reactor) InitPeers(peers []types.NodeID) { r.peers.Extend(peers) }
+
 // Sync runs a state sync, fetching snapshots and providing chunks to the
 // application. At the close of the operation, Sync will bootstrap the state
 // store and persist the commit at that height so that either consensus or
@@ -847,11 +851,11 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	}
 
 	r.mtx.Lock()
+	defer r.mtx.Unlock()
+
 	if r.syncer == nil {
-		r.mtx.Unlock()
 		return
 	}
-	defer r.mtx.Unlock()
 
 	switch peerUpdate.Status {
 	case p2p.PeerStatusUp:
@@ -963,14 +967,27 @@ func (r *Reactor) fetchLightBlock(height uint64) (*types.LightBlock, error) {
 func (r *Reactor) waitForEnoughPeers(ctx context.Context, numPeers int) {
 	t := time.NewTicker(200 * time.Millisecond)
 	defer t.Stop()
+	var iterCount int
+	var lastCount int
 	for {
+		iterCount++
 		select {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			if r.peers.Len() >= numPeers {
+			lastCount = r.peers.Len()
+			if lastCount >= numPeers {
 				return
 			}
+		}
+
+		// log something about once a minute
+		if iterCount%60000 == 0 {
+			r.Logger.Info("waiting for enough peers to sync",
+				"required", numPeers,
+				"current", lastCount,
+				"iters", iterCount,
+			)
 		}
 	}
 }
@@ -984,6 +1001,7 @@ func (r *Reactor) initStateProvider(ctx context.Context, chainID string, initial
 	}
 	spLogger := r.Logger.With("module", "stateprovider")
 	spLogger.Info("initializing state provider", "trustPeriod", to.Period,
+
 		"trustHeight", to.Height, "useP2P", r.cfg.UseP2P)
 
 	if r.cfg.UseP2P {
