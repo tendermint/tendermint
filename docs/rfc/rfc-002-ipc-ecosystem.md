@@ -239,11 +239,17 @@ Having the RPC server still makes sense for local bootstrapping and operations,
 but can be further simplified. Here are some specific proposals:
 
 - Remove the HTTP GET interface entirely.
+
 - Simplify JSON-RPC plumbing to remove unnecessary reflection and wrapping.
+
 - Remove the gRPC interface (this is already planned for v0.36).
+
 - Separate the websocket interface from the rest of the RPC service, and
   restrict it to only event subscription.
-  - Eventually: Remove the websocket interface entirely.
+
+  Eventually we should try to emove the websocket interface entirely, but we
+  will need to revisit that (probably in a new RFC) once we've done some of the
+  easier things.
 
 These changes would preserve the ability of operators to issue queries with
 curl (but would require using JSON-RPC instead of URI parameters). That would
