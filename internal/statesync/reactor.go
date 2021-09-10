@@ -982,7 +982,7 @@ func (r *Reactor) waitForEnoughPeers(ctx context.Context, numPeers int) {
 		}
 
 		// log something about once a minute
-		if iterCount%60000 == 0 {
+		if iterCount%300 == 0 {
 			r.Logger.Info("waiting for enough peers to sync",
 				"required", numPeers,
 				"current", lastCount,
