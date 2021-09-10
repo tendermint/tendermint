@@ -27,18 +27,6 @@ as we make changes to many of its subsystems. Performance is a central concern f
 upcoming decisions regarding the `p2p` protocol, RPC message encoding and structure,
 database usage and selection, and consensus protocol updates.
 
-### References
-
-* [ADR 57](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-057-RPC.md): 
-Discussion of alternative RPC frameworks for Tendermint.
-* [Issue 1319](https://github.com/tendermint/tendermint/issues/1319): More context 
-on signature aggregation.
-* [Issue 2187](https://github.com/tendermint/tendermint/issues/2187): More context
-on discussions of faster hashing algorithms in Tendermint.
-* [ABCI Commit description](https://github.com/tendermint/spec/blob/master/spec/abci/apps.md#commit):
-More context on locking the mempool during commit.
-* [ABCI local client code](https://github.com/tendermint/tendermint/blob/511bd3eb7f037855a793a27ff4c53c12f085b570/abci/client/local_client.go#L84):
-Clear look at lack of serialization in the local client.
 
 ## Discussion
 
@@ -47,9 +35,12 @@ that are often cited as having performance issues. It raises questions and sugge
 lines of inquiry that may be valuable for better understanding Tendermint's performance issues.
 
 As a note: We should avoid quickly adding many microbenchmarks or package level benchmarks. 
-These are prone to being worse than useless as they can obscure what _should_ be  
-focused on: performance of the system from the perspective of a user. We should, 
-instead, tune performance with an eye towards actions user needs.
+These are prone to being worse than useless as they can obscure what _should_ be
+focused on: performance of the system from the perspective of a user. We should,
+instead, tune performance with an eye towards actions user needs. These users comprise
+both operators of Tendermint chains and the people generating transactions for
+Tendermint chains. Both of these sets of users are largely aligned in wanting an end-to-end
+system that operates quickly and efficiently.
 
 REQUEST: The list below may be incomplete, if there are additional sections that are often
 cited as creating poor performance, please comment so that they may be included.
@@ -71,13 +62,18 @@ issue for the application.
 
 We need more data to understand the problem directly. We want to drive the popularity
 and adoption of Tendermint and this will mean allowing for chains with more validators.
-We should follow up with users experiencing this issue. We may then want to benchmark
-the P2P layer in a few simple ways:
-1. By starting a network with 1000 nodes and sending no messages to determine memory
-and CPU consumption in the presence of 1000 nodes.
-2. By testing two nodes connected to each other via P2P, and attempting to
-generate as much load between the two nodes as possible. This will help inform
-how much load is incurred from message sends in an otherwise unencumbered P2P stack.
+We should follow up with users experiencing this issue. We may then want to add
+a series of metrics to the P2P layer to better understand the inefficiencies it produces.
+
+The following metrics can help us understand the sources of latency in the Tendermint P2P stack:
+
+* Number of messages sent and received per second
+* Time of a message spent on the P2P layer send and receive queues
+
+The following metrics exist and should be leveraged in addition to those added:
+
+* Number of peers node's connected to
+* Number of bytes per channel sent and received from each peer
 
 ### Sync
 
@@ -99,11 +95,16 @@ syncing from.
 We should calculate how quickly this operation _could possibly_ complete for common chains and nodes.
 To calculate how quickly this operation could possibly complete, we should assume that
 a node is reading at line-rate of the NIC and writing at the full drive speed to its
-local storage.
+local storage. Comparing this theoretical upper-limit to the actual sync times
+observed by node operators will give us a good point of comparison for understanding
+how much overhead Tendermint incurs.
 
-Comparing this theoretical upper-limit to the actual sync times observed by node operators will
-give us a good point of comparison for understanding how much room for improvement there is
-within Tendermint.
+We should additionally add metrics to the blocksync operation to more clearly pinpoint
+slow operations. The following metrics should be added to the block syncing operation:
+
+* Time to fetch and validate each block
+* Time to execute a block
+* Blocks sync'd per unit time
 
 ### Application
 
@@ -119,12 +120,13 @@ transaction delivery in Tendermint occurs asynchronously and therefore appears u
 form a bottleneck in ABCI.
 
 After delivering all transactions, Tendermint then calls the `Commit` ABCI method.
-Tendermint locks all access to the mempool while `Commit` proceeds. This means that
-an application that is slow to execute all of its transactions or finalize state during
-the `Commit` method will prevent any new transactions from being added to the mempool. 
-Apps that are slow to commit will prevent consensus from proceeded to the next consensus height
-since Tendermint cannot validate validate block proposals or produce block proposals
-without the AppHash obtained from the `Commit` method.
+Tendermint [locks all access to the mempool][abci-commit-description] while `Commit` 
+proceeds. This means that an application that is slow to execute all of its 
+transactions or finalize state during the `Commit` method will prevent any new 
+transactions from being added to the mempool.  Apps that are slow to commit will 
+prevent consensus from proceeded to the next consensus height since Tendermint 
+cannot validate validate block proposals or produce block proposals without the 
+AppHash obtained from the `Commit` method.
 
 #### ABCI serialization overhead causes slowdown
 
@@ -132,7 +134,8 @@ The most common way to run a Tendermint application is using the Cosmos-SDK.
 The Cosmos-SDK runs the ABCI application within the same process as Tendermint.
 When an application is run in the same process as Tendermint, a serialization penalty
 is not paid. This is because the local ABCI client does not serialize method calls
-and instead passes the protobuf type through through directly.
+and instead passes the protobuf type through through directly. This can be seen
+in [local_client.go][abci-local-client-code].
 
 Serialization and deserialization in the gRPC and socket protocol ABCI methods
 may cause slowdown. While these may cause issue, they are not part of the primary
@@ -153,14 +156,15 @@ likely invoked quite frequently on popular networks. Being able to perform effic
 on this common and critical operation is very important. The current JSON-RPC implementation
 relies heavily on type introspection via reflection, which is known to be very slow in
 Go. We should therefore produce benchmarks of this method to determine how much overhead
-we are added to what is likely to be a very common operation.
+we are adding to what, is likely to be, a very common operation.
 
 The other JSON-RPC methods are much less critical to the core functionality of Tendermint.
 While there may other points of performance consideration within the RPC, methods that do not
 receive high volumes of requests should not be prioritized for performance consideration.
 
-NOTE: There is ongoing work to inspect and alter the JSON-RPC framework, so much of these
-RPC-related performance considerations can either wait until that work is done or be
+NOTE: Previous discussion of the RPC framework was done in [ADR 57][adr-57] and 
+there is ongoing work to inspect and alter the JSON-RPC framework in [RFC 002][rfc-002]. 
+Much of these RPC-related performance considerations can either wait until the work of RFC 002 work is done or be
 considered concordantly with the in-flight changes to the JSON-RPC.
 
 ### Protocol
@@ -179,15 +183,44 @@ performance of the protocol. Given this that number of messages communicated has
 identified as a bottleneck, it would be extremely valuable to gather data on how long
 it takes for popular chains with many validators to gather all votes within a step.
 
+Metrics that would improve visibility into this include:
+
+* Amount of time for a node to gather votes in a step.
+* Number of votes each node sends to gossip (i.e. not its own votes, but votes it is
+transmitting for a peer).
+* Total number of votes each node sends to receives (A node may receive duplicate votes
+so understanding how frequently this occurs will be valuable in evaluating the performance
+of the gossip system).
+
 #### Tx hashes
 
 Using a faster hash algorithm for Tx hashes is currently a point of discussion
-in Tendermint. It is currently unknown if hashing transactions in the Mempool forms
-a significant, although it does not appear to be documented as slow and the open
-github issues do not show it as a frequent source of user pain.
+in Tendermint. Namely, it is being considered as part of the [modular hashing proposal][modular-hashing].
+It is currently unknown if hashing transactions in the Mempool forms a significant bottleneck.
+Although it does not appear to be documented as slow, there are a few open github
+issues that indicate a possible user preference for a faster hashing algorithm,
+including [issue 2187][issue-2187] and [issue 2186][issue-2186]. 
 
 It is likely worth investigating what order of magnitude Tx hashing takes in comparison to other
 aspects of adding a Tx to the mempool. It is not currently clear if the rate of adding Tx
 to the mempool is a source of user pain. We should not endeavor to make large changes to
 consensus critical components without first being certain that the change is highly
 valuable and impactful.
+
+### Digital Signatures
+
+// TODO: (@wbanfield)
+
+### Tendermint Event System
+
+// TODO: (@wbanfield)
+
+### References
+[modular-hashing]: https://github.com/tendermint/tendermint/pull/6773
+[issue-2186]: https://github.com/tendermint/tendermint/issues/2186
+[issue-2187]: https://github.com/tendermint/tendermint/issues/2187
+[rfc-002]: https://github.com/tendermint/tendermint/pull/6913
+[adr-57]: https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-057-RPC.md
+[issue-1319]: https://github.com/tendermint/tendermint/issues/1319
+[abci-commit-description]: https://github.com/tendermint/spec/blob/master/spec/abci/apps.md#commit
+[abci-local-client-code]: https://github.com/tendermint/tendermint/blob/511bd3eb7f037855a793a27ff4c53c12f085b570/abci/client/local_client.go#L84
