@@ -110,12 +110,7 @@ The RPC service is exposed in several ways:
   handler.
 
   The websocket endpoint also includes three methods that are _only_ exported
-  via websocket, which appear to support event subscription. I'm not sure what
-  is using these, but the likely candidate is the IBC relayer, which acts like
-  a light client and uses the event system to figure out what to synchronize.
-
-  TODO: Figure out what clients are actually using the websocket interface, and
-  which parts of the RPC service they are using _other_ than event subscription.
+  via websocket, which appear to support event subscription.
 
 - gRPC: A subset of queries may be issued in protocol buffer format to the gRPC
   interface described above under (4). As noted, this endpoint is deprecated
@@ -221,23 +216,34 @@ The RPC system serves several masters, and has a complex surface area. I
 believe there are some improvements that can be exposed by separating some of
 these concerns.
 
-For light clients, some work is already underway to move toward using P2P
-message passing rather than RPC to synchronize light client state with the rest
-of the network.  Because of the way light client synchronization interacts with
-event logging, this is not as simple as just swapping out the transport: More
-details of the event system will need to be made visible via P2P, and that in
-turn has some implications for fault tolerance (in particular, I think the
-ability of a badly-behaved client to DDoS the network without punishment is a
-concern). However, once this work is done, it should in principle be possible
-to remove the dependency of light clients on the RPC service.
+The Tendermint light client currently uses the RPC service to look up blocks
+and transactions, and to forward ABCI queries to the application.  The light
+client proxy uses the RPC service via a websocket. The Cosmos IBC relayer also
+uses the RPC service via websocket to watch for transaction events, and uses
+the `ABCIQuery` method to fetch information and proofs for posted transactions.
 
-For bootstrapping and operations, the RPC mechanism still makes sense, but can
-be further simplified. Here are some specific proposals:
+Some work is already underway toward using P2P message passing rather than RPC
+to synchronize light client state with the rest of the network.  IBC relaying,
+however, requires access to the event system, which is currently not accessible
+except via the RPC interface. Event subscription _could_ be exposed via P2P,
+but that is a larger project since it adds P2P communication load, and might
+thus have an impact on the performance of consensus.
+
+If event subscription can be moved into the P2P network, we could entirely
+remove the websocket transport, even for clients that still need access to the
+RPC service. Until then, we may still be able to reduce the scope of the
+websocket endpoint to _only_ event subscription, by moving uses of the RPC
+server as a proxy to ABCI over to the gRPC interface.
+
+Having the RPC server still makes sense for local bootstrapping and operations,
+but can be further simplified. Here are some specific proposals:
 
 - Remove the HTTP GET interface entirely.
 - Simplify JSON-RPC plumbing to remove unnecessary reflection and wrapping.
 - Remove the gRPC interface (this is already planned for v0.36).
-- Remove the websocket interface (possibly depends on light client changes).
+- Separate the websocket interface from the rest of the RPC service, and
+  restrict it to only event subscription.
+  - Eventually: Remove the websocket interface entirely.
 
 These changes would preserve the ability of operators to issue queries with
 curl (but would require using JSON-RPC instead of URI parameters). That would
