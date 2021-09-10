@@ -149,10 +149,6 @@ use via curl, but I expect that is mostly ad hoc. Ethan reports that nodes are
 often configured with the ports to the RPC service blocked, which is good for
 security but complicates use by the light client.
 
-TODO: Figure out what is going on with the weird pseudo-inheritance service
-interface.  The BaseService type makes sense, but its embeds are more
-complicated.
-
 ### Context: Remote Signer Issues
 
 Since the remote signer needs a secure communication channel to exchange keys
