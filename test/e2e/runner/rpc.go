@@ -25,11 +25,7 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 		numRunningNodes int
 	)
 	for _, node := range testnet.Nodes {
-		if node.Mode == e2e.ModeSeed {
-			continue
-		}
-
-		if node.Mode == e2e.ModeLight {
+		if node.Stateless() {
 			continue
 		}
 
@@ -51,11 +47,7 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 					continue
 				}
 
-				if node.Mode == e2e.ModeSeed {
-					continue
-				}
-
-				if node.Mode == e2e.ModeLight {
+				if node.Stateless() {
 					continue
 				}
 
@@ -167,7 +159,7 @@ func waitForNode(ctx context.Context, node *e2e.Node, height int64) (*rpctypes.R
 				return nil, err
 			case err == nil && status.SyncInfo.LatestBlockHeight >= height:
 				return status, nil
-			case counter%25 == 0:
+			case counter%50 == 0:
 				switch {
 				case err != nil:
 					lastFailed = true
