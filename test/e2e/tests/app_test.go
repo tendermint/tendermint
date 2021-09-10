@@ -64,6 +64,7 @@ func TestApp_Tx(t *testing.T) {
 		Name        string
 		WaitTime    time.Duration
 		BroadcastTx func(client *http.HTTP) broadcastFunc
+		ShouldSkip  bool
 	}{
 		{
 			Name:     "Sync",
@@ -86,8 +87,9 @@ func TestApp_Tx(t *testing.T) {
 			},
 		},
 		{
-			Name:     "Async",
-			WaitTime: time.Minute,
+			Name:       "Async",
+			WaitTime:   time.Minute,
+			ShouldSkip: true,
 			BroadcastTx: func(client *http.HTTP) broadcastFunc {
 				return func(ctx context.Context, tx types.Tx) error {
 					_, err := client.BroadcastTxAsync(ctx, tx)
@@ -98,6 +100,9 @@ func TestApp_Tx(t *testing.T) {
 	}
 
 	for idx, test := range testCases {
+		if test.ShouldSkip {
+			continue
+		}
 		t.Run(test.Name, func(t *testing.T) {
 			// testNode calls t.Parallel as well, so we should
 			// have a copy of the
