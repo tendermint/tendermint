@@ -29,6 +29,15 @@ func cdcEncode(item interface{}) []byte {
 				return nil
 			}
 			return bz
+		case uint64:
+			i := gogotypes.UInt64Value{
+				Value: item,
+			}
+			bz, err := i.Marshal()
+			if err != nil {
+				return nil
+			}
+			return bz
 		case bytes.HexBytes:
 			i := gogotypes.BytesValue{
 				Value: item,

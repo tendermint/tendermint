@@ -71,10 +71,18 @@ func (q *chunkQueue) Add(chunk *chunk) (bool, error) {
 		return false, nil // queue is closed
 	}
 	if chunk.Height != q.snapshot.Height {
-		return false, fmt.Errorf("invalid chunk height %v, expected %v", chunk.Height, q.snapshot.Height)
+		return false, fmt.Errorf(
+			"invalid chunk height %v, expected %v",
+			chunk.Height,
+			q.snapshot.Height,
+		)
 	}
 	if chunk.Format != q.snapshot.Format {
-		return false, fmt.Errorf("invalid chunk format %v, expected %v", chunk.Format, q.snapshot.Format)
+		return false, fmt.Errorf(
+			"invalid chunk format %v, expected %v",
+			chunk.Format,
+			q.snapshot.Format,
+		)
 	}
 	if chunk.Index >= q.snapshot.Chunks {
 		return false, fmt.Errorf("received unexpected chunk %v", chunk.Index)

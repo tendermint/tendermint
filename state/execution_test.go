@@ -44,11 +44,21 @@ func TestApplyBlock(t *testing.T) {
 	nodeProTxHash := &state.Validators.Validators[0].ProTxHash
 	stateStore := sm.NewStore(stateDB)
 
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), proxyApp.Query(),
-		mmock.Mempool{}, sm.EmptyEvidencePool{}, nil)
+	blockExec := sm.NewBlockExecutor(
+		stateStore,
+		log.TestingLogger(),
+		proxyApp.Consensus(),
+		proxyApp.Query(),
+		mmock.Mempool{},
+		sm.EmptyEvidencePool{},
+		nil,
+	)
 
 	block := makeBlock(state, 1)
-	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
+	blockID := types.BlockID{
+		Hash:          block.Hash(),
+		PartSetHeader: block.MakePartSet(testPartSize).Header(),
+	}
 
 	state, retainHeight, err := blockExec.ApplyBlock(state, nodeProTxHash, blockID, block)
 	require.Nil(t, err)
@@ -75,8 +85,14 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	privVal := privVals[state.Validators.Validators[0].ProTxHash.String()]
 
 	// we don't need to worry about validating the evidence as long as they pass validate basic
-	dve := types.NewMockDuplicateVoteEvidenceWithValidator(3, defaultEvidenceTime, privVal, state.ChainID,
-		state.Validators.QuorumType, state.Validators.QuorumHash)
+	dve := types.NewMockDuplicateVoteEvidenceWithValidator(
+		3,
+		defaultEvidenceTime,
+		privVal,
+		state.ChainID,
+		state.Validators.QuorumType,
+		state.Validators.QuorumHash,
+	)
 	dve.ValidatorPower = types.DefaultDashVotingPower
 
 	ev := []types.Evidence{dve}
@@ -93,16 +109,27 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 
 	evpool := &mocks.EvidencePool{}
 	evpool.On("PendingEvidence", mock.AnythingOfType("int64")).Return(ev, int64(100))
-	evpool.On("Update", mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
+	evpool.On("Update", mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).
+		Return()
 	evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
 
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), proxyApp.Query(),
-		mmock.Mempool{}, evpool, nil)
+	blockExec := sm.NewBlockExecutor(
+		stateStore,
+		log.TestingLogger(),
+		proxyApp.Consensus(),
+		proxyApp.Query(),
+		mmock.Mempool{},
+		evpool,
+		nil,
+	)
 
 	block := makeBlock(state, 1)
 	block.Evidence = types.EvidenceData{Evidence: ev}
 	block.Header.EvidenceHash = block.Evidence.Hash()
-	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
+	blockID := types.BlockID{
+		Hash:          block.Hash(),
+		PartSetHeader: block.MakePartSet(testPartSize).Header(),
+	}
 
 	state, retainHeight, err := blockExec.ApplyBlock(state, nodeProTxHash, blockID, block)
 	require.Nil(t, err)
@@ -123,7 +150,9 @@ func TestValidateValidatorUpdates(t *testing.T) {
 	proTxHash1 := crypto.CRandBytes(32)
 	proTxHash2 := crypto.CRandBytes(32)
 
-	defaultValidatorParams := tmproto.ValidatorParams{PubKeyTypes: []string{types.ABCIPubKeyTypeBLS12381}}
+	defaultValidatorParams := tmproto.ValidatorParams{
+		PubKeyTypes: []string{types.ABCIPubKeyTypeBLS12381},
+	}
 
 	testCases := []struct {
 		name string
@@ -181,9 +210,12 @@ func TestUpdateValidators(t *testing.T) {
 	regeneratedValidatorSet, _ := types.GenerateValidatorSetUsingProTxHashes(combinedProTxHashes)
 	abciRegeneratedValidatorUpdates := regeneratedValidatorSet.ABCIEquivalentValidatorUpdates()
 	removedProTxHashes := combinedValidatorSet.GetProTxHashes()[0 : len(combinedProTxHashes)-2] // these are sorted
-	removedValidatorSet, _ := types.GenerateValidatorSetUsingProTxHashes(removedProTxHashes)    // size 6
+	removedValidatorSet, _ := types.GenerateValidatorSetUsingProTxHashes(
+		removedProTxHashes,
+	) // size 6
 	abciRemovalValidatorUpdates := removedValidatorSet.ABCIEquivalentValidatorUpdates()
-	abciRemovalValidatorUpdates.ValidatorUpdates = append(abciRemovalValidatorUpdates.ValidatorUpdates,
+	abciRemovalValidatorUpdates.ValidatorUpdates = append(
+		abciRemovalValidatorUpdates.ValidatorUpdates,
 		abciRegeneratedValidatorUpdates.ValidatorUpdates[6:]...)
 	abciRemovalValidatorUpdates.ValidatorUpdates[6].Power = 0
 	abciRemovalValidatorUpdates.ValidatorUpdates[7].Power = 0
@@ -230,7 +262,9 @@ func TestUpdateValidators(t *testing.T) {
 			"removing a non-existing validator results in error",
 			removedValidatorSet,
 			&abci.ValidatorSetUpdate{
-				ValidatorUpdates:   []abci.ValidatorUpdate{{ProTxHash: crypto.RandProTxHash(), Power: 0}},
+				ValidatorUpdates: []abci.ValidatorUpdate{
+					{ProTxHash: crypto.RandProTxHash(), Power: 0},
+				},
 				ThresholdPublicKey: pk,
 				QuorumHash:         removedValidatorSet.QuorumHash,
 			},
@@ -245,7 +279,11 @@ func TestUpdateValidators(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			updates, _, _, err := types.PB2TM.ValidatorUpdatesFromValidatorSet(tc.abciUpdates)
 			assert.NoError(t, err)
-			err = tc.currentSet.UpdateWithChangeSet(updates, tc.thresholdPublicKeyUpdate, crypto.RandQuorumHash())
+			err = tc.currentSet.UpdateWithChangeSet(
+				updates,
+				tc.thresholdPublicKeyUpdate,
+				crypto.RandQuorumHash(),
+			)
 			if tc.shouldErr {
 				assert.Error(t, err)
 			} else {
@@ -301,7 +339,10 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	require.NoError(t, err)
 
 	block := makeBlock(state, 1)
-	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
+	blockID := types.BlockID{
+		Hash:          block.Hash(),
+		PartSetHeader: block.MakePartSet(testPartSize).Header(),
+	}
 
 	vals := state.Validators
 	proTxHashes := vals.GetProTxHashes()
@@ -331,10 +372,19 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	select {
 	case msg := <-updatesSub.Out():
 		event, ok := msg.Data().(types.EventDataValidatorSetUpdates)
-		require.True(t, ok, "Expected event of type EventDataValidatorSetUpdates, got %T", msg.Data())
+		require.True(
+			t,
+			ok,
+			"Expected event of type EventDataValidatorSetUpdates, got %T",
+			msg.Data(),
+		)
 		if assert.NotEmpty(t, event.ValidatorUpdates) {
 			assert.Equal(t, addProTxHash, event.ValidatorUpdates[pos].ProTxHash)
-			assert.EqualValues(t, types.DefaultDashVotingPower, event.ValidatorUpdates[1].VotingPower)
+			assert.EqualValues(
+				t,
+				types.DefaultDashVotingPower,
+				event.ValidatorUpdates[1].VotingPower,
+			)
 		}
 	case <-updatesSub.Cancelled():
 		t.Fatalf("updatesSub was cancelled (reason: %v)", updatesSub.Err())
@@ -368,7 +418,10 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	)
 
 	block := makeBlock(state, 1)
-	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
+	blockID := types.BlockID{
+		Hash:          block.Hash(),
+		PartSetHeader: block.MakePartSet(testPartSize).Header(),
+	}
 
 	publicKey, err := cryptoenc.PubKeyToProto(bls12381.GenPrivKey().PubKey())
 	require.NoError(t, err)
@@ -384,7 +437,10 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 		QuorumHash:         state.Validators.QuorumHash,
 	}
 
-	assert.NotPanics(t, func() { state, _, err = blockExec.ApplyBlock(state, nodeProTxHash, blockID, block) })
+	assert.NotPanics(
+		t,
+		func() { state, _, err = blockExec.ApplyBlock(state, nodeProTxHash, blockID, block) },
+	)
 	assert.NotNil(t, err)
 	assert.NotEmpty(t, state.NextValidators.Validators)
 }

@@ -375,6 +375,8 @@ type Header struct {
 	// consensus info
 	EvidenceHash      tmbytes.HexBytes `json:"evidence_hash"`        // evidence included in the block
 	ProposerProTxHash ProTxHash        `json:"proposer_pro_tx_hash"` // original proposer of the block
+
+	ProposedAppVersion uint64 `json:"proposed_protocol_version"` // proposer's latest available app protocol version
 }
 
 // Populate the Header with state-derived data.
@@ -499,6 +501,7 @@ func (h *Header) Hash() tmbytes.HexBytes {
 		cdcEncode(h.LastResultsHash),
 		cdcEncode(h.EvidenceHash),
 		cdcEncode(h.ProposerProTxHash),
+		cdcEncode(h.ProposedAppVersion),
 	})
 }
 
@@ -508,21 +511,22 @@ func (h *Header) StringIndented(indent string) string {
 		return "nil-Header"
 	}
 	return fmt.Sprintf(`Header{
-%s  Version:        %v
-%s  ChainID:        %v
-%s  Height:         %v
-%s  CoreCLHeight:   %v
-%s  Time:           %v
-%s  LastBlockID:    %v
-%s  LastCommitHash: %v
-%s  Data:           %v
-%s  Validators:     %v
-%s  NextValidators: %v
-%s  App:            %v
-%s  Consensus:      %v
-%s  Results:        %v
-%s  Evidence:       %v
-%s  Proposer:       %v
+%s  Version:                 %v
+%s  ChainID:                 %v
+%s  Height:                  %v
+%s  CoreCLHeight:            %v
+%s  Time:                    %v
+%s  LastBlockID:             %v
+%s  LastCommitHash:          %v
+%s  Data:                    %v
+%s  Validators:              %v
+%s  NextValidators:          %v
+%s  App:                     %v
+%s  Consensus:               %v
+%s  Results:                 %v
+%s  Evidence:                %v
+%s  Proposer:                %v
+%s  ProposedAppVersion:      %v
 %s}#%v`,
 		indent, h.Version,
 		indent, h.ChainID,
@@ -539,6 +543,7 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.LastResultsHash,
 		indent, h.EvidenceHash,
 		indent, h.ProposerProTxHash,
+		indent, h.ProposedAppVersion,
 		indent, h.Hash())
 }
 
@@ -564,6 +569,7 @@ func (h *Header) ToProto() *tmproto.Header {
 		LastResultsHash:       h.LastResultsHash,
 		LastCommitHash:        h.LastCommitHash,
 		ProposerProTxHash:     h.ProposerProTxHash,
+		ProposedAppVersion:    h.ProposedAppVersion,
 	}
 }
 
@@ -597,6 +603,7 @@ func HeaderFromProto(ph *tmproto.Header) (Header, error) {
 	h.LastResultsHash = ph.LastResultsHash
 	h.LastCommitHash = ph.LastCommitHash
 	h.ProposerProTxHash = ph.ProposerProTxHash
+	h.ProposedAppVersion = ph.ProposedAppVersion
 
 	return *h, h.ValidateBasic()
 }

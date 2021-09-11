@@ -68,7 +68,9 @@ func ParseMisbehaviors(str string) (map[int64]cs.Misbehavior, error) {
 	}
 	strs := strings.Split(str, ",")
 	if len(strs)%2 != 0 {
-		return misbehaviors, errors.New("missing either height or misbehavior name in the misbehavior flag")
+		return misbehaviors, errors.New(
+			"missing either height or misbehavior name in the misbehavior flag",
+		)
 	}
 OUTER_LOOP:
 	for i := 0; i < len(strs); i += 2 {
@@ -123,10 +125,18 @@ type Provider func(*cfg.Config, log.Logger) (*Node, error)
 // DefaultNewNode returns a Tendermint node with default settings for the
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
 // It implements NodeProvider.
-func DefaultNewNode(config *cfg.Config, logger log.Logger, misbehaviors map[int64]cs.Misbehavior) (*Node, error) {
+func DefaultNewNode(
+	config *cfg.Config,
+	logger log.Logger,
+	misbehaviors map[int64]cs.Misbehavior,
+) (*Node, error) {
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	if err != nil {
-		return nil, fmt.Errorf("failed to load or gen node key %s, err: %w", config.NodeKeyFile(), err)
+		return nil, fmt.Errorf(
+			"failed to load or gen node key %s, err: %w",
+			config.NodeKeyFile(),
+			err,
+		)
 	}
 
 	return NewNode(config,
@@ -269,7 +279,10 @@ type Node struct {
 	dashCoreRPCClient dashcore.Client
 }
 
-func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
+func initDBs(
+	config *cfg.Config,
+	dbProvider DBProvider,
+) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
 	var blockStoreDB dbm.DB
 	blockStoreDB, err = dbProvider(&DBContext{"blockstore", config})
 	if err != nil {
@@ -285,7 +298,10 @@ func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *store.Block
 	return
 }
 
-func createAndStartProxyAppConns(clientCreator proxy.ClientCreator, logger log.Logger) (proxy.AppConns, error) {
+func createAndStartProxyAppConns(
+	clientCreator proxy.ClientCreator,
+	logger log.Logger,
+) (proxy.AppConns, error) {
 	proxyApp := proxy.NewAppConns(clientCreator)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
@@ -339,7 +355,11 @@ func createAndStartIndexerService(
 	return indexerService, txIndexer, blockIndexer, nil
 }
 
-func logNodeStartupInfo(state sm.State, proTxHash *crypto.ProTxHash, logger, consensusLogger log.Logger) {
+func logNodeStartupInfo(
+	state sm.State,
+	proTxHash *crypto.ProTxHash,
+	logger, consensusLogger log.Logger,
+) {
 	// Log the version info.
 	logger.Info("Version info",
 		"software", version.TMCoreSemVer,
@@ -374,8 +394,13 @@ func onlyValidatorIsUs(state sm.State, proTxHash *types.ProTxHash) bool {
 	return bytes.Equal(validatorProTxHash, *proTxHash)
 }
 
-func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
-	state sm.State, memplMetrics *mempl.Metrics, logger log.Logger) (*mempl.Reactor, *mempl.CListMempool) {
+func createMempoolAndMempoolReactor(
+	config *cfg.Config,
+	proxyApp proxy.AppConns,
+	state sm.State,
+	memplMetrics *mempl.Metrics,
+	logger log.Logger,
+) (*mempl.Reactor, *mempl.CListMempool) {
 
 	mempool := mempl.NewCListMempool(
 		config.Mempool,
@@ -395,8 +420,13 @@ func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
 	return mempoolReactor, mempool
 }
 
-func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
-	stateDB dbm.DB, blockStore *store.BlockStore, logger log.Logger) (*evidence.Reactor, *evidence.Pool, error) {
+func createEvidenceReactor(
+	config *cfg.Config,
+	dbProvider DBProvider,
+	stateDB dbm.DB,
+	blockStore *store.BlockStore,
+	logger log.Logger,
+) (*evidence.Reactor, *evidence.Pool, error) {
 
 	evidenceDB, err := dbProvider(&DBContext{"evidence", config})
 	if err != nil {
@@ -422,11 +452,29 @@ func createBlockchainReactor(config *cfg.Config,
 
 	switch config.FastSync.Version {
 	case "v0":
-		bcReactor = bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, nodeProTxHash, fastSync)
+		bcReactor = bcv0.NewBlockchainReactor(
+			state.Copy(),
+			blockExec,
+			blockStore,
+			nodeProTxHash,
+			fastSync,
+		)
 	case "v1":
-		bcReactor = bcv1.NewBlockchainReactor(state.Copy(), blockExec, blockStore, nodeProTxHash, fastSync)
+		bcReactor = bcv1.NewBlockchainReactor(
+			state.Copy(),
+			blockExec,
+			blockStore,
+			nodeProTxHash,
+			fastSync,
+		)
 	case "v2":
-		bcReactor = bcv2.NewBlockchainReactor(state.Copy(), blockExec, blockStore, nodeProTxHash, fastSync)
+		bcReactor = bcv2.NewBlockchainReactor(
+			state.Copy(),
+			blockExec,
+			blockStore,
+			nodeProTxHash,
+			fastSync,
+		)
 	default:
 		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}
@@ -533,7 +581,9 @@ func createTransport(
 	p2p.MultiplexTransportConnFilters(connFilters...)(transport)
 
 	// Limit the number of incoming connections.
-	max := config.P2P.MaxNumInboundPeers + len(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
+	max := config.P2P.MaxNumInboundPeers + len(
+		splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "),
+	)
 	p2p.MultiplexTransportMaxIncomingConnections(max)(transport)
 
 	return transport, peerFilters
@@ -580,14 +630,18 @@ func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
 
 	// Add ourselves to addrbook to prevent dialing ourselves
 	if config.P2P.ExternalAddress != "" {
-		addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.ID(), config.P2P.ExternalAddress))
+		addr, err := p2p.NewNetAddressString(
+			p2p.IDAddressString(nodeKey.ID(), config.P2P.ExternalAddress),
+		)
 		if err != nil {
 			return nil, fmt.Errorf("p2p.external_address is incorrect: %w", err)
 		}
 		addrBook.AddOurAddress(addr)
 	}
 	if config.P2P.ListenAddress != "" {
-		addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.ID(), config.P2P.ListenAddress))
+		addr, err := p2p.NewNetAddressString(
+			p2p.IDAddressString(nodeKey.ID(), config.P2P.ListenAddress),
+		)
 		if err != nil {
 			return nil, fmt.Errorf("p2p.laddr is incorrect: %w", err)
 		}
@@ -621,9 +675,18 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 }
 
 // startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
-func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reactor,
-	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
-	stateStore sm.Store, blockStore *store.BlockStore, state sm.State, dashCoreRPCClient dashcore.Client) error {
+func startStateSync(
+	ssR *statesync.Reactor,
+	bcR fastSyncReactor,
+	conR *cs.Reactor,
+	stateProvider statesync.StateProvider,
+	config *cfg.StateSyncConfig,
+	fastSync bool,
+	stateStore sm.Store,
+	blockStore *store.BlockStore,
+	state sm.State,
+	dashCoreRPCClient dashcore.Client,
+) error {
 	ssR.Logger.Info("Starting state sync")
 
 	if stateProvider == nil {
@@ -716,7 +779,12 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	indexerService, txIndexer, blockIndexer, err := createAndStartIndexerService(config, dbProvider, eventBus, logger)
+	indexerService, txIndexer, blockIndexer, err := createAndStartIndexerService(
+		config,
+		dbProvider,
+		eventBus,
+		logger,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -726,7 +794,11 @@ func NewNode(config *cfg.Config,
 	var privValidator types.PrivValidator
 	switch {
 	case config.PrivValidatorCoreRPCHost != "":
-		logger.Info("Initializing Dash Core Signing", "quorum hash", state.Validators.QuorumHash.String())
+		logger.Info(
+			"Initializing Dash Core Signing",
+			"quorum hash",
+			state.Validators.QuorumHash.String(),
+		)
 		/*
 			llmqType := config.Consensus.QuorumType
 			if llmqType == 0 {
@@ -741,7 +813,11 @@ func NewNode(config *cfg.Config,
 		}
 
 		// If a local port is provided for Dash Core rpc into the service to sign.
-		privValidator, err = createAndStartPrivValidatorRPCClient(config.Consensus.QuorumType, dashCoreRPCClient, logger)
+		privValidator, err = createAndStartPrivValidatorRPCClient(
+			config.Consensus.QuorumType,
+			dashCoreRPCClient,
+			logger,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("error with private validator socket client: %w", err)
 		}
@@ -774,12 +850,19 @@ func NewNode(config *cfg.Config,
 				return nil, fmt.Errorf("can't get proTxHash using dash core signing: %w", err)
 			}
 			proTxHashP = &proTxHash
-			logger.Info("Connected to Private Validator through listen address", "proTxHash", proTxHash.String())
+			logger.Info(
+				"Connected to Private Validator through listen address",
+				"proTxHash",
+				proTxHash.String(),
+			)
 		} else {
 			logger.Info("Connected to Private Validator through listen address")
 		}
 	default:
-		privValidator = privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+		privValidator = privval.LoadOrGenFilePV(
+			config.PrivValidatorKeyFile(),
+			config.PrivValidatorStateFile(),
+		)
 		proTxHash, err := privValidator.GetProTxHash()
 		if err != nil {
 			return nil, fmt.Errorf("can't get proTxHash through file: %w", err)
@@ -810,8 +893,16 @@ func NewNode(config *cfg.Config,
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
 	// and replays any blocks as necessary to sync tendermint with the app.
 	consensusLogger := logger.With("module", "consensus")
+
 	if !stateSync {
-		handshaker := cs.NewHandshaker(stateStore, state, blockStore, genDoc, proTxHashP, config.Consensus.AppHashSize)
+		handshaker := cs.NewHandshaker(
+			stateStore,
+			state,
+			blockStore,
+			genDoc,
+			proTxHashP,
+			config.Consensus.AppHashSize,
+		)
 		handshaker.SetLogger(consensusLogger)
 		handshaker.SetEventBus(eventBus)
 		if err := handshaker.Handshake(proxyApp); err != nil {
@@ -836,10 +927,22 @@ func NewNode(config *cfg.Config,
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
 	// Make Mempool Reactor
-	mempoolReactor, mempool := createMempoolAndMempoolReactor(config, proxyApp, state, memplMetrics, logger)
+	mempoolReactor, mempool := createMempoolAndMempoolReactor(
+		config,
+		proxyApp,
+		state,
+		memplMetrics,
+		logger,
+	)
 
 	// Make Evidence Reactor
-	evidenceReactor, evidencePool, err := createEvidenceReactor(config, dbProvider, stateDB, blockStore, logger)
+	evidenceReactor, evidencePool, err := createEvidenceReactor(
+		config,
+		dbProvider,
+		stateDB,
+		blockStore,
+		logger,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -950,7 +1053,11 @@ func NewNode(config *cfg.Config,
 	if config.RPC.PprofListenAddress != "" {
 		go func() {
 			logger.Info("Starting pprof server", "laddr", config.RPC.PprofListenAddress)
-			logger.Error("pprof server error", "err", http.ListenAndServe(config.RPC.PprofListenAddress, nil))
+			logger.Error(
+				"pprof server error",
+				"err",
+				http.ListenAndServe(config.RPC.PprofListenAddress, nil),
+			)
 		}()
 	}
 
@@ -1022,7 +1129,9 @@ func (n *Node) OnStart() error {
 	}
 
 	// Start the transport.
-	addr, err := p2p.NewNetAddressString(p2p.IDAddressString(n.nodeKey.ID(), n.config.P2P.ListenAddress))
+	addr, err := p2p.NewNetAddressString(
+		p2p.IDAddressString(n.nodeKey.ID(), n.config.P2P.ListenAddress),
+	)
 	if err != nil {
 		return err
 	}
@@ -1057,9 +1166,18 @@ func (n *Node) OnStart() error {
 		if !ok {
 			return fmt.Errorf("this blockchain reactor does not support switching from state sync")
 		}
-		err := startStateSync(n.stateSyncReactor, bcR, n.consensusReactor, n.stateSyncProvider,
-			n.config.StateSync, n.config.FastSyncMode, n.stateStore, n.blockStore, n.stateSyncGenesis,
-			n.dashCoreRPCClient)
+		err := startStateSync(
+			n.stateSyncReactor,
+			bcR,
+			n.consensusReactor,
+			n.stateSyncProvider,
+			n.config.StateSync,
+			n.config.FastSyncMode,
+			n.stateStore,
+			n.blockStore,
+			n.stateSyncGenesis,
+			n.dashCoreRPCClient,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to start state sync: %w", err)
 		}
@@ -1190,7 +1308,13 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 			rpcserver.OnDisconnect(func(remoteAddr string) {
 				err := n.eventBus.UnsubscribeAll(context.Background(), remoteAddr)
 				if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
-					wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
+					wmLogger.Error(
+						"Failed to unsubscribe addr from events",
+						"addr",
+						remoteAddr,
+						"err",
+						err,
+					)
 				}
 			}),
 			rpcserver.ReadLimit(config.MaxBodyBytes),
@@ -1281,7 +1405,9 @@ func (n *Node) startPrometheusServer(addr string) *http.Server {
 		Handler: promhttp.InstrumentMetricHandler(
 			prometheus.DefaultRegisterer, promhttp.HandlerFor(
 				prometheus.DefaultGatherer,
-				promhttp.HandlerOpts{MaxRequestsInFlight: n.config.Instrumentation.MaxOpenConnections},
+				promhttp.HandlerOpts{
+					MaxRequestsInFlight: n.config.Instrumentation.MaxOpenConnections,
+				},
 			),
 		),
 	}
@@ -1491,7 +1617,13 @@ func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
 	var genDoc *types.GenesisDoc
 	err = tmjson.Unmarshal(b, &genDoc)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, b))
+		panic(
+			fmt.Sprintf(
+				"Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)",
+				err,
+				b,
+			),
+		)
 	}
 	return genDoc, nil
 }
@@ -1526,7 +1658,10 @@ func createAndStartPrivValidatorSocketClient(
 	// try to get a pubkey from private validate first time
 	_, err = pvsc.GetPubKey(initialQuorumHash)
 	if err != nil {
-		return nil, fmt.Errorf("can't get pubkey when starting maverick private validator socket client: %w", err)
+		return nil, fmt.Errorf(
+			"can't get pubkey when starting maverick private validator socket client: %w",
+			err,
+		)
 	}
 
 	const (
@@ -1551,7 +1686,10 @@ func createAndStartPrivValidatorRPCClient(
 	// try to get a proTxHash from private validate first time to make sure connection works
 	_, err = pvsc.GetProTxHash()
 	if err != nil {
-		return nil, fmt.Errorf("can't get proTxHash when starting private validator rpc client: %w", err)
+		return nil, fmt.Errorf(
+			"can't get proTxHash when starting private validator rpc client: %w",
+			err,
+		)
 	}
 
 	// const (

@@ -122,9 +122,10 @@ func TestReactor_Receive_SnapshotsRequest(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			// Mock ABCI connection to return local snapshots
 			conn := &proxymocks.AppConnSnapshot{}
-			conn.On("ListSnapshotsSync", abci.RequestListSnapshots{}).Return(&abci.ResponseListSnapshots{
-				Snapshots: tc.snapshots,
-			}, nil)
+			conn.On("ListSnapshotsSync", abci.RequestListSnapshots{}).
+				Return(&abci.ResponseListSnapshots{
+					Snapshots: tc.snapshots,
+				}, nil)
 
 			// Mock peer to catch responses and store them in a slice
 			responses := []*ssproto.SnapshotsResponse{}

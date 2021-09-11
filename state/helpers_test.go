@@ -29,17 +29,9 @@ func newTestApp() proxy.AppConns {
 	return proxy.NewAppConns(cc)
 }
 
-func makeAndCommitGoodBlock(
-	state sm.State,
-	nodeProTxHash *crypto.ProTxHash,
-	height int64,
-	lastCommit *types.Commit,
-	proposerProTxHash crypto.ProTxHash,
-	blockExec *sm.BlockExecutor,
-	privVals map[string]types.PrivValidator,
-	evidence []types.Evidence) (sm.State, types.BlockID, types.StateID, *types.Commit, error) {
+func makeAndCommitGoodBlock(state sm.State, nodeProTxHash *crypto.ProTxHash, height int64, lastCommit *types.Commit, proposerProTxHash crypto.ProTxHash, blockExec *sm.BlockExecutor, privVals map[string]types.PrivValidator, evidence []types.Evidence, proposedAppVersion uint64) (sm.State, types.BlockID, types.StateID, *types.Commit, error) {
 	// A good block passes
-	state, blockID, stateID, err := makeAndApplyGoodBlock(state, nodeProTxHash, height, lastCommit, proposerProTxHash, blockExec, evidence)
+	state, blockID, stateID, err := makeAndApplyGoodBlock(state, nodeProTxHash, height, lastCommit, proposerProTxHash, blockExec, evidence, 0)
 	if err != nil {
 		return state, types.BlockID{}, types.StateID{}, nil, err
 	}
@@ -52,9 +44,8 @@ func makeAndCommitGoodBlock(
 	return state, blockID, stateID, commit, nil
 }
 
-func makeAndApplyGoodBlock(state sm.State, nodeProTxHash *crypto.ProTxHash, height int64, lastCommit *types.Commit, proposerProTxHash []byte,
-	blockExec *sm.BlockExecutor, evidence []types.Evidence) (sm.State, types.BlockID, types.StateID, error) {
-	block, _ := state.MakeBlock(height, nil, makeTxs(height), lastCommit, evidence, proposerProTxHash)
+func makeAndApplyGoodBlock(state sm.State, nodeProTxHash *crypto.ProTxHash, height int64, lastCommit *types.Commit, proposerProTxHash []byte, blockExec *sm.BlockExecutor, evidence []types.Evidence, proposedAppVersion uint64) (sm.State, types.BlockID, types.StateID, error) {
+	block, _ := state.MakeBlock(height, nil, makeTxs(height), lastCommit, evidence, proposerProTxHash, proposedAppVersion)
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, types.BlockID{}, types.StateID{}, err
 	}
@@ -137,14 +128,7 @@ func makeState(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValida
 }
 
 func makeBlock(state sm.State, height int64) *types.Block {
-	block, _ := state.MakeBlock(
-		height,
-		nil,
-		makeTxs(state.LastBlockHeight),
-		new(types.Commit),
-		nil,
-		state.Validators.GetProposer().ProTxHash,
-	)
+	block, _ := state.MakeBlock(height, nil, makeTxs(state.LastBlockHeight), new(types.Commit), nil, state.Validators.GetProposer().ProTxHash, 0)
 	return block
 }
 

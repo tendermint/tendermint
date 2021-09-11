@@ -165,6 +165,7 @@ type ResultBroadcastTx struct {
 	Code      uint32         `json:"code"`
 	Data      bytes.HexBytes `json:"data"`
 	Log       string         `json:"log"`
+	Info      string         `json:"info"`
 	Codespace string         `json:"codespace"`
 
 	Hash bytes.HexBytes `json:"hash"`

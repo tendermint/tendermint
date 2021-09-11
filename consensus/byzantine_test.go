@@ -80,8 +80,15 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		evpool.SetLogger(logger.With("module", "evidence"))
 
 		// Make State
-		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, proxyAppConnQry,
-			mempool, evpool, nil)
+		blockExec := sm.NewBlockExecutor(
+			stateStore,
+			log.TestingLogger(),
+			proxyAppConnCon,
+			proxyAppConnQry,
+			mempool,
+			evpool,
+			nil,
+		)
 		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 		cs.SetLogger(cs.Logger)
 		// set private validator
@@ -113,7 +120,12 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		eventBuses[i] = css[i].eventBus
 		reactors[i].SetEventBus(eventBuses[i])
 
-		blocksSub, err := eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, 100)
+		blocksSub, err := eventBuses[i].Subscribe(
+			context.Background(),
+			testSubscriber,
+			types.EventQueryNewBlock,
+			100,
+		)
 		require.NoError(t, err)
 		blocksSubs = append(blocksSubs, blocksSub)
 
@@ -138,7 +150,11 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		// allow first height to happen normally so that byzantine validator is no longer proposer
 		if height == prevoteHeight {
 			bcs.Logger.Info("Sending two votes")
-			prevote1, err := bcs.signVote(tmproto.PrevoteType, bcs.ProposalBlock.Hash(), bcs.ProposalBlockParts.Header())
+			prevote1, err := bcs.signVote(
+				tmproto.PrevoteType,
+				bcs.ProposalBlock.Hash(),
+				bcs.ProposalBlockParts.Header(),
+			)
 			require.NoError(t, err)
 			prevote2, err := bcs.signVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 			require.NoError(t, err)
@@ -180,7 +196,9 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		case lazyProposer.LastCommit != nil:
 			commit = lazyProposer.LastCommit
 		default: // This shouldn't happen.
-			lazyProposer.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block")
+			lazyProposer.Logger.Error(
+				"enterPropose: Cannot propose anything: No commit for the previous block",
+			)
 			return
 		}
 
@@ -193,7 +211,11 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		proposerProTxHash := lazyProposer.privValidatorProTxHash
 
 		block, blockParts := lazyProposer.blockExec.CreateProposalBlock(
-			lazyProposer.Height, lazyProposer.state, commit, proposerProTxHash,
+			lazyProposer.Height,
+			lazyProposer.state,
+			commit,
+			proposerProTxHash,
+			1,
 		)
 
 		// Flush the WAL. Otherwise, we may not recompute the same proposal to sign,
@@ -222,9 +244,19 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			lazyProposer.sendInternalMessage(msgInfo{&ProposalMessage{proposal}, ""})
 			for i := 0; i < int(blockParts.Total()); i++ {
 				part := blockParts.GetPart(i)
-				lazyProposer.sendInternalMessage(msgInfo{&BlockPartMessage{lazyProposer.Height, lazyProposer.Round, part}, ""})
+				lazyProposer.sendInternalMessage(
+					msgInfo{&BlockPartMessage{lazyProposer.Height, lazyProposer.Round, part}, ""},
+				)
 			}
-			lazyProposer.Logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
+			lazyProposer.Logger.Info(
+				"Signed proposal",
+				"height",
+				height,
+				"round",
+				round,
+				"proposal",
+				proposal,
+			)
 			lazyProposer.Logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))
 		} else if !lazyProposer.replayMode {
 			lazyProposer.Logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
@@ -343,7 +375,11 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 		eventBus.SetLogger(logger.With("module", "events", "validator", i))
 
 		var err error
-		blocksSubs[i], err = eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
+		blocksSubs[i], err = eventBus.Subscribe(
+			context.Background(),
+			testSubscriber,
+			types.EventQueryNewBlock,
+		)
 		require.NoError(t, err)
 
 		conR := NewReactor(css[i], true) // so we don't start the consensus states
@@ -450,13 +486,22 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 //-------------------------------
 // byzantine consensus functions
 
-func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *State, sw *p2p.Switch) {
+func byzantineDecideProposalFunc(
+	t *testing.T,
+	height int64,
+	round int32,
+	cs *State,
+	sw *p2p.Switch,
+) {
 	// byzantine user should create two proposals and try to split the vote.
 	// Avoid sending on internalMsgQueue and running consensus state.
 
 	// Create a new proposal block from state/txs from the mempool.
 	block1, blockParts1 := cs.createProposalBlock()
-	polRound, propBlockID := cs.ValidRound, types.BlockID{Hash: block1.Hash(), PartSetHeader: blockParts1.Header()}
+	polRound, propBlockID := cs.ValidRound, types.BlockID{
+		Hash:          block1.Hash(),
+		PartSetHeader: blockParts1.Header(),
+	}
 	proposal1 := types.NewProposal(height, 1, round, polRound, propBlockID)
 	p1 := proposal1.ToProto()
 	if _, err := cs.privValidator.SignProposal(
@@ -472,7 +517,10 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *St
 
 	// Create a new proposal block from state/txs from the mempool.
 	block2, blockParts2 := cs.createProposalBlock()
-	polRound, propBlockID = cs.ValidRound, types.BlockID{Hash: block2.Hash(), PartSetHeader: blockParts2.Header()}
+	polRound, propBlockID = cs.ValidRound, types.BlockID{
+		Hash:          block2.Hash(),
+		PartSetHeader: blockParts2.Header(),
+	}
 	proposal2 := types.NewProposal(height, 1, round, polRound, propBlockID)
 	p2 := proposal2.ToProto()
 	if _, err := cs.privValidator.SignProposal(
@@ -547,7 +595,8 @@ func NewByzantineReactor(conR *Reactor) *ByzantineReactor {
 	}
 }
 
-func (br *ByzantineReactor) SetSwitch(s *p2p.Switch)               { br.reactor.SetSwitch(s) }
+func (br *ByzantineReactor) SetSwitch(s *p2p.Switch) { br.reactor.SetSwitch(s) }
+
 func (br *ByzantineReactor) GetChannels() []*p2p.ChannelDescriptor { return br.reactor.GetChannels() }
 func (br *ByzantineReactor) AddPeer(peer p2p.Peer) {
 	if !br.reactor.IsRunning() {
