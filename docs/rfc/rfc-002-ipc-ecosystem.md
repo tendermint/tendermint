@@ -342,6 +342,64 @@ lightweight and can be implemented by simple send/receive over TCP or
 Unix-domain sockets with no need for code generation, encryption, etc. gRPC
 uses a complex HTTP/2 based transport that is not easily replicated.
 
+### Future Work
+
+The background and proposals sketched above focus on the existing structure of
+Tendermint and improvements we can make in the short term. It is worthwhile to
+also consider options for longer-term broader changes to the IPC ecosystem.
+The following outlines some ideas at a high level:
+
+- **Consensus service:** Today, the application and the consensus node are
+  nominally connected only via ABCI. Tendermint was originally designed with
+  the assumption that all communication with the application should be mediated
+  by the consensus node.  Based on further experience, however, the design goal
+  is now that the _application_ should be the mediator of application state.
+
+  As noted above, however, ABCI is a client/server protocol, with the
+  application as the server. For outside clients that turns out to have been a
+  good choice, but it complicates the relationship between the application and
+  the consensus node: Previously transactions were entered via the node, now
+  they are entered via the app.
+
+  We have worked around this by using the Tendermint RPC service to give the
+  application a "back channel" to the consensus node, so that it can push
+  transactions back into the consensus network. But the RPC service exposes a
+  lot of other functionality, too, including event subscription, block and
+  transaction queries, and a lot of node status information.
+
+  Even if we can't easily "fix" the orientation of the ABCI relationship, we
+  could improve isolation by splitting out the parts of the RPC service that
+  the application needs as a back-channel, and sharing those _only_ with the
+  application. By defining a "consensus service", we could give the application
+  a way to talk back limited to only the capabilities it needs. This approach
+  has the benefit that we could do it without breaking existing use, and if we
+  later did "fix" the ABCI directionality, we could drop the special case
+  without disrupting the rest of the RPC interface.
+
+- **Event service:** Right now, the IBC relayer relies on the Tendermint RPC
+  service to provide a stream of block and transaction events, which it uses to
+  discover which transactions need relaying to other chains.  While I think
+  that event subscription should eventually be handled via P2P, we could gain
+  some immediate benefit by splitting out event subscription from the rest of
+  the RPC service.
+
+  In this model, an event subscription service would be exposed on the public
+  network, but on a different endpoint. This would remove the need for the RPC
+  service to support the websocket protocol, and would allow operators to
+  isolate potentially sensitive status query results from the public network.
+
+  At the moment the relayers also use the RPC service to get block data for
+  synchronization, but work is already in progress to handle that concern via
+  the P2P layer. Once that's done, event subscription could be separated.
+
+Separating parts of the existing RPC service is not without cost: It would
+require additional connection endpoints, for example. In return, though, it
+would become easier to reduce transport options (we only need one per
+interface), and for operators to independently control access to sensitive
+data. Considering the viability and implications of these ideas is beyond the
+scope of this RFC, but they are documented here since they follow from the
+background we have already discussed.
+
 ## References
 
 [abci]: https://github.com/tendermint/spec/tree/95cf253b6df623066ff7cd4074a94e7a3f147c7a/spec/abci
