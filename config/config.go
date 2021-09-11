@@ -907,6 +907,9 @@ type ConsensusConfig struct {
 
 	// Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 	SkipTimeoutCommit bool `mapstructure:"skip_timeout_commit"`
+	// Don't propose a block if the node is set to the proposer, the block proposal instead
+	// has to be manual (useful for tests)
+	DontAutoPropose bool `mapstructure:"dont_auto_propose'"`
 
 	// EmptyBlocks mode and possible interval between empty blocks
 	CreateEmptyBlocks         bool          `mapstructure:"create_empty_blocks"`
@@ -935,6 +938,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		TimeoutPrecommitDelta:       500 * time.Millisecond,
 		TimeoutCommit:               1000 * time.Millisecond,
 		SkipTimeoutCommit:           false,
+		DontAutoPropose:             false,
 		CreateEmptyBlocks:           true,
 		CreateEmptyBlocksInterval:   0 * time.Second,
 		PeerGossipSleepDuration:     100 * time.Millisecond,

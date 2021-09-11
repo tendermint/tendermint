@@ -1069,7 +1069,9 @@ func (cs *State) enterNewRound(height int64, round int32) {
 			cs.scheduleTimeout(cs.config.CreateEmptyBlocksInterval, height, round,
 				cstypes.RoundStepNewRound)
 		}
-	} else {
+	} else if !cs.config.DontAutoPropose {
+		// DontAutoPropose should always be false, except for
+		// specific tests where proposals are created manually
 		cs.enterPropose(height, round)
 	}
 }
@@ -1366,7 +1368,6 @@ func (cs *State) defaultDoPrevote(height int64, round int32, allowOldBlocks bool
 		err = cs.blockExec.ValidateBlockTime(cs.state, cs.ProposalBlock)
 		if err != nil {
 			// ProposalBlock is invalid, prevote nil.
-			debug.PrintStack()
 			logger.Error("enterPrevote: ProposalBlock time is invalid", "err", err)
 			cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 			return

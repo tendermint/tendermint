@@ -341,14 +341,14 @@ func findProposer(validatorStubs []*validatorStub, proTxHash crypto.ProTxHash) *
 func TestSimulateValidatorsChange(t *testing.T) {
 	nPeers := 7
 	nVals := 4
-	css, genDoc, config, cleanup := randConsensusNetWithPeers(
+	css, genDoc, consensusConfig, cleanup := randConsensusNetWithPeers(
 		nVals,
 		nPeers,
 		"replay_test",
 		newMockTickerFunc(true),
 		newPersistentKVStoreWithPath)
 	fmt.Printf("initial quorum hash is %X\n", genDoc.QuorumHash)
-	sim.Config = config
+	sim.Config = consensusConfig
 	sim.GenesisState, _ = sm.MakeGenesisState(genDoc)
 	sim.CleanupFunc = cleanup
 
@@ -368,6 +368,11 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	incrementHeight(vss...)
 	ensureNewRound(newRoundCh, height, 0)
 	ensureNewProposal(proposalCh, height, round)
+
+	// Stop auto proposing blocks, as this could lead to issues based on the
+	// randomness of proposer selection
+	css[0].config.DontAutoPropose = true
+
 	rs := css[0].GetRoundState()
 	signAddVotes(
 		css[0],
