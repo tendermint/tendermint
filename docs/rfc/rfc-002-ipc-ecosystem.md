@@ -392,13 +392,15 @@ The following outlines some ideas at a high level:
   synchronization, but work is already in progress to handle that concern via
   the P2P layer. Once that's done, event subscription could be separated.
 
-Separating parts of the existing RPC service is not without cost: It would
-require additional connection endpoints, for example. In return, though, it
-would become easier to reduce transport options (we only need one per
-interface), and for operators to independently control access to sensitive
-data. Considering the viability and implications of these ideas is beyond the
-scope of this RFC, but they are documented here since they follow from the
-background we have already discussed.
+Separating parts of the existing RPC service is not without cost: It might
+require additional connection endpoints, for example, though it is also not too
+difficult for multiple otherwise-independent services to share a connection.
+
+In return, though, it would become easier to reduce transport options and for
+operators to independently control access to sensitive data. Considering the
+viability and implications of these ideas is beyond the scope of this RFC, but
+they are documented here since they follow from the background we have already
+discussed.
 
 ## References
 
