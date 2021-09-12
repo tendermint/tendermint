@@ -60,9 +60,6 @@ type Manifest struct {
 	// by individual nodes.
 	LogLevel string `toml:"log_level"`
 
-	// UseLegacyP2P uses the legacy p2p layer for all nodes in a test.
-	UseLegacyP2P bool `toml:"use_legacy_p2p"`
-
 	// QueueType describes the type of queue that the system uses internally
 	QueueType string `toml:"queue_type"`
 

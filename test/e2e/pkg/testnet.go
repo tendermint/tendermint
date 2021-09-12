@@ -182,7 +182,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			Perturbations:    []Perturbation{},
 			LogLevel:         manifest.LogLevel,
 			QueueType:        manifest.QueueType,
-			UseLegacyP2P:     manifest.UseLegacyP2P && nodeManifest.UseLegacyP2P,
+			UseLegacyP2P:     nodeManifest.UseLegacyP2P,
 		}
 
 		if node.StartAt == testnet.InitialHeight {
