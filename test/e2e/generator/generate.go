@@ -127,18 +127,11 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		TxSize:           int64(txSize.Choose(r).(int)),
 	}
 
-	var p2pNodeFactor int
-
-	switch opt["p2p"].(P2PMode) {
-	case NewP2PMode:
-		manifest.UseLegacyP2P = true
-	case LegacyP2PMode:
-		manifest.UseLegacyP2P = false
-	case HybridP2PMode:
-		manifest.UseLegacyP2P = true
-		p2pNodeFactor = 2
+	p2pMode := opt["p2p"].(P2PMode)
+	switch p2pMode {
+	case NewP2PMode, LegacyP2PMode, HybridP2PMode:
 	default:
-		return manifest, fmt.Errorf("unknown p2p mode %s", opt["p2p"])
+		return manifest, fmt.Errorf("unknown p2p mode %s", p2pMode)
 	}
 
 	var numSeeds, numValidators, numFulls, numLightClients int
@@ -161,10 +154,11 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	for i := 1; i <= numSeeds; i++ {
 		node := generateNode(r, e2e.ModeSeed, 0, manifest.InitialHeight, false)
 
-		if p2pNodeFactor == 0 {
-			node.UseLegacyP2P = manifest.UseLegacyP2P
-		} else if p2pNodeFactor%i == 0 {
-			node.UseLegacyP2P = !manifest.UseLegacyP2P
+		switch p2pMode {
+		case LegacyP2PMode:
+			node.UseLegacyP2P = true
+		case HybridP2PMode:
+			node.UseLegacyP2P = r.Intn(2) == 1
 		}
 
 		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = node
@@ -185,10 +179,11 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		node := generateNode(
 			r, e2e.ModeValidator, startAt, manifest.InitialHeight, i <= 2)
 
-		if p2pNodeFactor == 0 {
-			node.UseLegacyP2P = manifest.UseLegacyP2P
-		} else if p2pNodeFactor%i == 0 {
-			node.UseLegacyP2P = !manifest.UseLegacyP2P
+		switch p2pMode {
+		case LegacyP2PMode:
+			node.UseLegacyP2P = true
+		case HybridP2PMode:
+			node.UseLegacyP2P = r.Intn(2) == 1
 		}
 
 		manifest.Nodes[name] = node
@@ -221,11 +216,13 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		}
 		node := generateNode(r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
 
-		if p2pNodeFactor == 0 {
-			node.UseLegacyP2P = manifest.UseLegacyP2P
-		} else if p2pNodeFactor%i == 0 {
-			node.UseLegacyP2P = !manifest.UseLegacyP2P
+		switch p2pMode {
+		case LegacyP2PMode:
+			node.UseLegacyP2P = true
+		case HybridP2PMode:
+			node.UseLegacyP2P = r.Intn(2) == 1
 		}
+
 		manifest.Nodes[fmt.Sprintf("full%02d", i)] = node
 	}
 
