@@ -23,11 +23,21 @@ import (
 //
 // Remember that none of these benchmarks account for network latency.
 var (
-	blocks            = int64(1000)
-	benchmarkFullNode = mockp.New(genMockNode(chainID, blocks, 20, bTime))
+	blocks                    = int64(1000)
+	benchmarkNode *mockp.Mock = nil // lazy-load with getBenchmarkFullNode()
 )
 
+func getBenchmarkFullNode() *mockp.Mock {
+	if benchmarkNode == nil {
+		benchmarkNode = mockp.New(genMockNode(chainID, blocks, 20, bTime))
+	}
+
+	return benchmarkNode
+}
+
 func setupDashCoreRPCMockForBenchmark(b *testing.B) {
+	benchmarkFullNode := getBenchmarkFullNode()
+
 	dashCoreMockClient = dashcore.NewMockClient(chainID, 100, benchmarkFullNode.MockPV, false)
 
 	b.Cleanup(func() {
@@ -36,6 +46,7 @@ func setupDashCoreRPCMockForBenchmark(b *testing.B) {
 }
 
 func BenchmarkSequence(b *testing.B) {
+	benchmarkFullNode := getBenchmarkFullNode()
 	setupDashCoreRPCMockForBenchmark(b)
 
 	c, err := light.NewClient(
@@ -62,6 +73,7 @@ func BenchmarkSequence(b *testing.B) {
 
 func BenchmarkBisection(b *testing.B) {
 	setupDashCoreRPCMockForBenchmark(b)
+	benchmarkFullNode := getBenchmarkFullNode()
 
 	c, err := light.NewClient(
 		context.Background(),
@@ -87,6 +99,8 @@ func BenchmarkBisection(b *testing.B) {
 
 func BenchmarkBackwards(b *testing.B) {
 	setupDashCoreRPCMockForBenchmark(b)
+	benchmarkFullNode := getBenchmarkFullNode()
+
 	_, err := benchmarkFullNode.LightBlock(context.Background(), 0)
 	if err != nil {
 		b.Fatal(err)
