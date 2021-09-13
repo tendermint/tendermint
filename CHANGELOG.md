@@ -156,6 +156,19 @@ Special thanks to external contributors on this release: @JayT106, @bipulprasad,
 - [statesync] \#6463 Adds Reverse Sync feature to fetch historical light blocks after state sync in order to verify any evidence (@cmwaters)
 - [blocksync] \#6590 Update the metrics during blocksync (@JayT106)
 
+## v0.34.13
+
+*September 6, 2021*
+
+This release backports improvements to state synchronization and ABCI
+performance under concurrent load, and the PostgreSQL event indexer.
+
+### IMPROVEMENTS
+
+- [statesync] [\#6881](https://github.com/tendermint/tendermint/issues/6881) improvements to stateprovider logic (@cmwaters)
+- [ABCI] [\#6873](https://github.com/tendermint/tendermint/issues/6873) change client to use multi-reader mutexes (@tychoish)
+- [indexing] [\#6906](https://github.com/tendermint/tendermint/issues/6906) enable the PostgreSQL indexer sink (@creachadair)
+
 ## v0.34.12
 
 *August 17, 2021*
