@@ -79,7 +79,7 @@ func InjectEvidence(ctx context.Context, testnet *e2e.Testnet, amount int) error
 		return err
 	}
 
-	wctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	wctx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
 
 	// wait for the node to reach the height above the forged height so that
@@ -110,7 +110,7 @@ func InjectEvidence(ctx context.Context, testnet *e2e.Testnet, amount int) error
 		}
 	}
 
-	wctx, cancel = context.WithTimeout(ctx, 10*time.Second)
+	wctx, cancel = context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	// wait for the node to reach the height above the forged height so that

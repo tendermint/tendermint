@@ -62,12 +62,8 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 			logger.Info("ending transaction load",
 				"dur_secs", time.Since(started).Seconds(),
 				"txns", success,
-				"rate", rate)
-
-			if rate < 2 {
-				logger.Error("transaction throughput was low",
-					"rate", rate)
-			}
+				"rate", rate,
+				"slow", rate < 1)
 
 			return nil
 		}
@@ -109,7 +105,7 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, size int64) {
 		case chTx <- tx:
 			// sleep for a bit before sending the
 			// next transaction.
-			waitTime := (25 * time.Millisecond) + time.Duration(rand.Int63n(int64(750*time.Millisecond))) // nolint: gosec
+			waitTime := (50 * time.Millisecond) + time.Duration(rand.Int63n(int64(time.Second))) // nolint: gosec
 			timer.Reset(waitTime)
 		}
 
