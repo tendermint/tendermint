@@ -26,6 +26,10 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+type TxInfoParser interface {
+	GetRawTxInfo(tx types.Tx) ExTxInfo
+}
+
 //--------------------------------------------------------------------------------
 
 // CListMempool is an ordered in-memory pool for transactions before they are
@@ -82,6 +86,8 @@ type CListMempool struct {
 	pendingPool       *PendingPool
 	accountRetriever  AccountRetriever
 	pendingPoolNotify chan map[string]uint64
+
+	txInfoparser TxInfoParser
 }
 
 var _ Mempool = &CListMempool{}
@@ -862,15 +868,25 @@ func (mem *CListMempool) Update(
 		// Mempool after:
 		//   100
 		// https://github.com/tendermint/tendermint/issues/3322.
+		addr := ""
+		nonce := uint64(0)
 		if e, ok := mem.txsMap.Load(txKey(tx)); ok {
 			ele := e.(*clist.CElement)
-			if txCode == abci.CodeTypeOK || txCode > abci.CodeTypeNonceInc {
-				toCleanAccMap[ele.Address] = ele.Nonce
-			}
+			addr = ele.Address
+			nonce = ele.Nonce
+
 			mem.removeTx(tx, ele, false)
-			addressNonce[ele.Address] = ele.Nonce
 			mem.logger.Debug("Mempool update", "address", ele.Address, "nonce", ele.Nonce)
+		} else  if mem.txInfoparser!= nil {
+			txInfo := mem.txInfoparser.GetRawTxInfo(tx)
+			addr = txInfo.Sender
+			nonce = txInfo.Nonce
 		}
+
+		if txCode == abci.CodeTypeOK || txCode > abci.CodeTypeNonceInc {
+			toCleanAccMap[addr] = nonce
+		}
+		addressNonce[addr] = nonce
 
 		if mem.pendingPool != nil {
 			mem.pendingPool.removeTxByHash(txID(tx))
@@ -1148,6 +1164,10 @@ type ExTxInfo struct {
 
 func (mem *CListMempool) SetAccountRetriever(retriever AccountRetriever) {
 	mem.accountRetriever = retriever
+}
+
+func (mem *CListMempool) SetTxInfoParser(parser TxInfoParser) {
+	mem.txInfoparser = parser
 }
 
 func (mem *CListMempool) pendingPoolJob() {

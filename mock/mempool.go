@@ -59,5 +59,10 @@ func (Mempool) SetEventBus(eventBus types.TxEventPublisher) {}
 func (Mempool) GetConfig() *cfg.MempoolConfig {
 	return cfg.DefaultMempoolConfig()
 }
+
 func (Mempool) SetAccountRetriever(_ mempl.AccountRetriever) {
+}
+
+func (Mempool) SetTxInfoParser(_ mempl.TxInfoParser) {
+
 }

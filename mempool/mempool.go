@@ -94,6 +94,8 @@ type Mempool interface {
 
 	GetAddressList() []string
 	SetAccountRetriever(retriever AccountRetriever)
+
+	SetTxInfoParser(parser TxInfoParser)
 }
 
 //--------------------------------------------------------------------------------
