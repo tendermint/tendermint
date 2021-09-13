@@ -368,14 +368,13 @@ FOR_LOOP:
 			firstParts := first.MakePartSet(types.BlockPartSizeBytes)
 			firstPartSetHeader := firstParts.Header()
 			firstID := types.BlockID{Hash: first.Hash(), PartSetHeader: firstPartSetHeader}
-			firstStateID := types.StateID{LastAppHash: first.Header.AppHash}
 
 			// Finally, verify the first block using the second's commit
 			// NOTE: we can probably make this more efficient, but note that calling
 			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 			// currently necessary.
 			err := state.Validators.VerifyCommit(
-				chainID, firstID, firstStateID, first.Height, second.LastCommit)
+				chainID, firstID, state.GetStateID(), first.Height, second.LastCommit)
 			if err != nil {
 				bcR.Logger.Error("Error in validation", "err", err)
 				peerID := bcR.pool.RedoRequest(first.Height)

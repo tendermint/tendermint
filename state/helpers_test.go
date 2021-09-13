@@ -46,10 +46,8 @@ func makeAndCommitGoodBlock(
 		return state, types.BlockID{}, nil, err
 	}
 
-	stateID := state.GetStateID()
-
 	// Simulate a lastCommit for this block from all validators for the next height
-	commit, err := makeValidCommit(height, blockID, stateID, state.Validators, privVals)
+	commit, err := makeValidCommit(height, blockID, state.LastStateID, state.Validators, privVals)
 	if err != nil {
 		return state, types.BlockID{}, nil, err
 	}

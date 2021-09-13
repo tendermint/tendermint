@@ -11,7 +11,7 @@ import (
 // BlockMeta contains meta information.
 type BlockMeta struct {
 	BlockID          BlockID `json:"block_id"`
-	StateID          StateID `json:"state_id"`
+	StateID          StateID `json:"state_id"` // TODO maybe remove?
 	BlockSize        int     `json:"block_size"`
 	Header           Header  `json:"header"`
 	HasCoreChainLock bool    `json:"has_core_chain_lock"`

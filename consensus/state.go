@@ -1818,7 +1818,7 @@ func (cs *State) verifyCommit(
 		return false, err
 	}
 
-	stateID := types.StateID{LastAppHash: cs.state.AppHash}
+	stateID := cs.state.GetStateID()
 
 	if rs.Proposal == nil || ignoreProposalBlock {
 		if ignoreProposalBlock {

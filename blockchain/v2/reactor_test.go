@@ -567,7 +567,8 @@ func newReactorStore(
 
 	// add blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, types.StateID{}, nil,
+
+		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, state.LastStateID, nil,
 			nil, nil)
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
@@ -575,7 +576,7 @@ func newReactorStore(
 			vote, err := types.MakeVote(
 				lastBlock.Header.Height,
 				lastBlockMeta.BlockID,
-				lastBlockMeta.StateID,
+				state.LastStateID, // For height-1, we use previous state ID
 				state.Validators,
 				privVals[0],
 				lastBlock.Header.ChainID,
@@ -585,7 +586,7 @@ func newReactorStore(
 			}
 			// since there is only 1 vote, use it as threshold
 			lastCommit = types.NewCommit(vote.Height, vote.Round,
-				lastBlockMeta.BlockID, lastBlockMeta.StateID, nil,
+				lastBlockMeta.BlockID, state.LastStateID, nil,
 				vote.BlockSignature, vote.StateSignature)
 		}
 

@@ -180,6 +180,7 @@ func TestValidateBlockCommit(t *testing.T) {
 	}
 
 	for height := int64(1); height < validationTestsStopHeight; height++ {
+		stateID := state.GetStateID()
 		proTxHash := state.Validators.GetProposer().ProTxHash
 		if height > 1 {
 			/*
@@ -189,7 +190,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			wrongHeightVote, err := types.MakeVote(
 				height,
 				state.LastBlockID,
-				types.StateID{LastAppHash: state.AppHash},
+				stateID,
 				state.Validators,
 				privVals[proTxHash.String()],
 				chainID,
@@ -199,7 +200,7 @@ func TestValidateBlockCommit(t *testing.T) {
 				wrongHeightVote.Height,
 				wrongHeightVote.Round,
 				state.LastBlockID,
-				types.StateID{LastAppHash: state.AppHash},
+				stateID,
 				state.Validators.QuorumHash,
 				wrongHeightVote.BlockSignature,
 				wrongHeightVote.StateSignature,
@@ -280,7 +281,6 @@ func TestValidateBlockCommit(t *testing.T) {
 		*/
 		var err error
 		var blockID types.BlockID
-		var stateID types.StateID
 		state, blockID, lastCommit, err = makeAndCommitGoodBlock(
 			state,
 			nodeProTxHash,
@@ -293,8 +293,6 @@ func TestValidateBlockCommit(t *testing.T) {
 			0,
 		)
 		require.NoError(t, err, "height %d", height)
-
-		stateID = state.GetStateID()
 
 		/*
 			wrongSigsCommit is fine except for the extra bad precommit

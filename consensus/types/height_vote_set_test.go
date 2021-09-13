@@ -28,7 +28,7 @@ func TestMain(m *testing.M) {
 func TestPeerCatchupRounds(t *testing.T) {
 	valSet, privVals := types.GenerateValidatorSet(10)
 
-	stateID := types.StateID{Height: 0}
+	stateID := types.StateID{}
 
 	hvs := NewHeightVoteSet(config.ChainID(), 1, stateID.ToProto(), valSet)
 

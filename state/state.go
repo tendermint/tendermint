@@ -380,6 +380,11 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		).CopyIncrementProposerPriority(1)
 	}
 
+	stateID := types.StateID{
+		Height:      genDoc.InitialHeight - 1,
+		LastAppHash: genDoc.AppHash,
+	}
+
 	return State{
 		Version:       InitStateVersion,
 		ChainID:       genDoc.ChainID,
@@ -387,7 +392,7 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 
 		LastBlockHeight: 0,
 		LastBlockID:     types.BlockID{},
-		LastStateID:     types.StateID{},
+		LastStateID:     stateID,
 		LastBlockTime:   genDoc.GenesisTime,
 
 		LastCoreChainLockedBlockHeight: genDoc.InitialCoreChainLockedHeight,

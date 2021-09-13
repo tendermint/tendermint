@@ -8,11 +8,13 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+	"time"
 
 	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/privval"
@@ -93,6 +95,9 @@ func TestGetPubKey(t *testing.T) {
 	go func() {
 		srv.Start()
 	}()
+
+	// Wait for server to start
+	time.Sleep(50 * time.Millisecond)
 	proTxHash := "6c91363d97b286e921afb5cf7672c88a2f1614d36d32058c34bef8b44e026007"
 	cs := &StaticCoreServer{
 		QuorumInfoResult: btcjson.QuorumInfoResult{
@@ -133,6 +138,7 @@ func TestGetPubKey(t *testing.T) {
 	b, _ := hex.DecodeString(
 		"83349BA8363E5C03E9D6318B0491E38305CF59D9D57CEA2295A86ECFA696622571F266C28BACC78666E8B9B0FB2B3123",
 	)
+	require.NotNil(t, pubKey)
 	assert.True(t, pubKey.Equals(bls12381.PubKey(b)))
 	srv.Stop(ctx)
 }
