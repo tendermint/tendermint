@@ -57,12 +57,14 @@ func NewCLI() *CLI {
 			}
 
 			chLoadResult := make(chan error)
-			ctx, loadCancel := context.WithCancel(context.Background())
-			defer loadCancel()
-			go func() {
-				err := Load(ctx, cli.testnet, 1)
-				chLoadResult <- err
-			}()
+			_, loadCancel := context.WithCancel(context.Background())
+			/*
+				defer loadCancel()
+					go func() {
+						err := Load(ctx, cli.testnet, 1)
+						chLoadResult <- err
+					}()
+			*/
 
 			if err := Start(cli.testnet); err != nil {
 				return err
