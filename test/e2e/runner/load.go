@@ -78,8 +78,8 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 //
 // The chTx has multiple consumers, thus the rate limiting of the load
 // generation is primarily the result of backpressure from the
-// broadcast transaction, though at most one transaction will be
-// produced every 10ms.
+// broadcast transaction, though there is still some timer-based
+// limiting.
 func loadGenerate(ctx context.Context, chTx chan<- types.Tx, size int64) {
 	timer := time.NewTimer(0)
 	defer timer.Stop()
