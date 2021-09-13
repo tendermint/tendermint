@@ -51,7 +51,11 @@ type HeightVoteSet struct {
 	peerCatchupRounds map[p2p.ID][]int32     // keys: peer.ID; values: at most 2 rounds
 }
 
-func NewHeightVoteSet(chainID string, height int64, stateID tmproto.StateID, valSet *types.ValidatorSet) *HeightVoteSet {
+func NewHeightVoteSet(
+	chainID string,
+	height int64,
+	stateID tmproto.StateID,
+	valSet *types.ValidatorSet) *HeightVoteSet {
 	hvs := &HeightVoteSet{
 		chainID: chainID,
 		stateID: stateID,

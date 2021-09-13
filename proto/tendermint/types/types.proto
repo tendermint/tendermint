@@ -155,7 +155,6 @@ message LightBlock {
 
 message BlockMeta {
   BlockID block_id            = 1 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
-  StateID state_id            = 101 [(gogoproto.customname) = "StateID", (gogoproto.nullable) = false];
   int64   block_size          = 2;
   Header  header              = 3 [(gogoproto.nullable) = false];
   int64   num_txs             = 4;

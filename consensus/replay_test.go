@@ -1525,13 +1525,13 @@ func makeBlock(state sm.State, lastBlock *types.Block, lastBlockMeta *types.Bloc
 		vote, _ := types.MakeVote(
 			lastBlock.Header.Height,
 			lastBlockMeta.BlockID,
-			lastBlockMeta.StateID,
+			state.GetStateID(),
 			state.Validators,
 			privVal,
 			lastBlock.Header.ChainID)
 		// since there is only 1 vote, use it as threshold
 		lastCommit = types.NewCommit(vote.Height, vote.Round,
-			lastBlockMeta.BlockID, lastBlockMeta.StateID, crypto.RandQuorumHash(),
+			lastBlockMeta.BlockID, state.GetStateID(), crypto.RandQuorumHash(),
 			vote.BlockSignature, vote.StateSignature)
 	}
 
