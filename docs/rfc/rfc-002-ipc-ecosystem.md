@@ -15,6 +15,9 @@ trustworthy, and usable system, we should document which communication paths
 are essential, which could be removed or reduced in scope, and what we can
 improve for the most important use cases.
 
+This document proposes a variety of possible improvements of varying size and
+scope. Specific design proposals should get their own documentation.
+
 
 ## Background
 
