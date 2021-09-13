@@ -2,6 +2,9 @@ name: Test Coverage
 on:
   pull_request:
   push:
+    paths:
+      - "**.go"
+      - "!test/"
     branches:
       - master
       - release/**
@@ -50,6 +53,7 @@ jobs:
         with:
           PATTERNS: |
             **/**.go
+            "!test/"
             go.mod
             go.sum
       - name: install
