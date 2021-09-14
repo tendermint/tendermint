@@ -26,6 +26,7 @@ func TestServer(t *testing.T) {
 	go func() {
 		srv.Start()
 	}()
+	time.Sleep(10 * time.Microsecond)
 	testCases := []struct {
 		url   string
 		e     string
