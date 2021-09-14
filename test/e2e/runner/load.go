@@ -117,7 +117,7 @@ func loadGenerateWaitTime() time.Duration {
 		max = int64(time.Second)
 	)
 
-	jitter := rand.Int63n(max-min+1) + min
+	jitter := rand.Int63n(max-min+1) + min // nolint: gosec
 
 	return time.Duration(jitter)
 }
