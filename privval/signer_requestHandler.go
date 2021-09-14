@@ -2,6 +2,7 @@ package privval
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/dashevo/dashd-go/btcjson"
 
@@ -65,8 +66,8 @@ func DefaultValidationRequestHandler(
 		vote := r.SignVoteRequest.Vote
 		voteQuorumHash := r.SignVoteRequest.QuorumHash
 		voteQuorumType := r.SignVoteRequest.QuorumType
-		stateID := r.SignVoteRequest.StateId
-		if stateID == nil {
+		stateID := r.SignVoteRequest.GetStateId()
+		if stateID == nil || reflect.DeepEqual(*stateID, tmproto.StateID{}) {
 			res = mustWrapMsg(&privvalproto.SignedVoteResponse{
 				Vote: tmproto.Vote{},
 				Error: &privvalproto.RemoteSignerError{

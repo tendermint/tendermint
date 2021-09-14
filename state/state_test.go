@@ -18,7 +18,6 @@ import (
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/state"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tm-db"
@@ -1168,7 +1167,7 @@ func TestStateProto(t *testing.T) {
 
 func TestStateGetStateID(t *testing.T) {
 
-	state := state.State{
+	state := sm.State{
 		LastBlockHeight: 2,
 
 		AppHash: []byte("Some app hash"),

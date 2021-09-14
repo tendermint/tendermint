@@ -203,8 +203,10 @@ func TestSignerVote(t *testing.T) {
 
 		stateID := types.RandStateID().WithHeight(want.Height - 1)
 
-		require.NoError(t, tc.mockPV.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, want.ToProto(), stateID.ToProto(), nil))
-		require.NoError(t, tc.signerClient.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, have.ToProto(), stateID.ToProto(), nil))
+		require.NoError(t, tc.mockPV.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, want.ToProto(),
+			stateID.ToProto(), nil))
+		require.NoError(t, tc.signerClient.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, have.ToProto(),
+			stateID.ToProto(), nil))
 
 		assert.Equal(t, want.BlockSignature, have.BlockSignature)
 		assert.Equal(t, want.StateSignature, have.StateSignature)
@@ -249,8 +251,10 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 
 		stateID := types.RandStateID().WithHeight(want.Height - 1)
 
-		require.NoError(t, tc.mockPV.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, want.ToProto(), stateID.ToProto(), nil))
-		require.NoError(t, tc.signerClient.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, have.ToProto(), stateID.ToProto(), nil))
+		require.NoError(t,
+			tc.mockPV.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, want.ToProto(), stateID.ToProto(), nil))
+		require.NoError(t,
+			tc.signerClient.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, have.ToProto(), stateID.ToProto(), nil))
 		assert.Equal(t, want.BlockSignature, have.BlockSignature)
 		assert.Equal(t, want.StateSignature, have.StateSignature)
 
@@ -259,8 +263,10 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 		// This would exceed the deadline if it was not extended by the previous message
 		time.Sleep(testTimeoutReadWrite2o3)
 
-		require.NoError(t, tc.mockPV.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, want.ToProto(), stateID.ToProto(), nil))
-		require.NoError(t, tc.signerClient.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, have.ToProto(), stateID.ToProto(), nil))
+		require.NoError(t,
+			tc.mockPV.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, want.ToProto(), stateID.ToProto(), nil))
+		require.NoError(t,
+			tc.signerClient.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, have.ToProto(), stateID.ToProto(), nil))
 		assert.Equal(t, want.BlockSignature, have.BlockSignature)
 		assert.Equal(t, want.StateSignature, have.StateSignature)
 	}
@@ -311,8 +317,10 @@ func TestSignerVoteKeepAlive(t *testing.T) {
 		time.Sleep(testTimeoutReadWrite * 3)
 		tc.signerServer.Logger.Debug("TEST: Forced Wait DONE---------------------------------------------")
 
-		require.NoError(t, tc.mockPV.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, want.ToProto(), stateID.ToProto(), nil))
-		require.NoError(t, tc.signerClient.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, have.ToProto(), stateID.ToProto(), nil))
+		require.NoError(t,
+			tc.mockPV.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, want.ToProto(), stateID.ToProto(), nil))
+		require.NoError(t,
+			tc.signerClient.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, have.ToProto(), stateID.ToProto(), nil))
 
 		assert.Equal(t, want.BlockSignature, have.BlockSignature)
 		assert.Equal(t, want.StateSignature, have.StateSignature)

@@ -29,6 +29,7 @@ var (
 
 func getBenchmarkFullNode() *mockp.Mock {
 	if benchmarkNode == nil {
+		// TODO: Investigate why the line blow takes so much time
 		benchmarkNode = mockp.New(genMockNode(chainID, blocks, 20, bTime))
 	}
 

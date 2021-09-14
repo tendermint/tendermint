@@ -120,10 +120,10 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 		ConsensusParams: *types.DefaultConsensusParams(),
 	}
 	stateStore := &smmocks.Store{}
-	stateStore.On("LoadValidators", int64(height)).Return(valSet, nil)
+	stateStore.On("LoadValidators", height).Return(valSet, nil)
 	stateStore.On("Load").Return(state, nil)
 	blockStore := &mocks.BlockStore{}
-	blockStore.On("LoadBlockMeta", int64(height)).Return(
+	blockStore.On("LoadBlockMeta", height).Return(
 		&types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}},
 	)
 
