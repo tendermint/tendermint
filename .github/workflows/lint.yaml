@@ -58,7 +58,7 @@ jobs:
         run: |
           echo "::set-output name=hash::$(git --git-dir=third_party/bls-signatures/src/.git rev-parse HEAD)"
         shell: bash
-      - uses: technote-space/get-diff-action@v4
+      - uses: technote-space/get-diff-action@v5.0.1
         with:
           PATTERNS: |
             **/**.go
