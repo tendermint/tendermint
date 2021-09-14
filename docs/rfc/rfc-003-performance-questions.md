@@ -3,6 +3,7 @@
 ## Changelog
 
 - 2021-09-02: Created initial draft (@wbanfield)
+- 2021-09-14: Add discussion of the event system (@wbanfield)
 
 ## Abstract
 
