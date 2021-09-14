@@ -2,11 +2,11 @@ package types
 
 import (
 	"math"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-
 	"github.com/tendermint/tendermint/crypto"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/version"
@@ -165,4 +165,48 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 			)
 		})
 	}
+}
+
+func TestLightBlock_GetStateID(t *testing.T) {
+
+	tests := []struct {
+		name        string
+		commit      *Commit
+		want        StateID
+		shouldPanic bool
+	}{
+		{
+			"State ID OK",
+			randCommit(StateID{12, []byte("12345678901234567890123456789012")}),
+			StateID{12, []byte("12345678901234567890123456789012")},
+			false,
+		},
+		{
+			"Short app hash",
+			randCommit(StateID{12, []byte("12345678901234567890")}),
+			StateID{12, []byte("12345678901234567890")},
+			false,
+		},
+		{
+			"Nil app hash",
+			randCommit(StateID{12, nil}),
+			StateID{12, []byte{}},
+			false,
+		},
+	}
+	// nolint:scopelint
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lb := LightBlock{
+				SignedHeader: &SignedHeader{Commit: tt.commit},
+			}
+			if got := lb.GetStateID(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("LightBlock.GetStateID() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+func TestLightBlock_GetStateID_nocommit(t *testing.T) {
+	lb := LightBlock{}
+	assert.Panics(t, func() { lb.GetStateID() })
 }

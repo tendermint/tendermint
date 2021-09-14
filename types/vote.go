@@ -121,7 +121,10 @@ func VoteStateSignBytes(chainID string, stateID tmproto.StateID) []byte {
 	bz := make([]byte, 8)
 	// TODO: maybe this should be PutInt64 ?
 	binary.LittleEndian.PutUint64(bz, uint64(stateID.Height))
-	bz = append(bz, stateID.LastAppHash...)
+
+	lastAppHash := make([]byte, crypto.DefaultAppHashSize)
+	copy(lastAppHash, stateID.LastAppHash)
+	bz = append(bz, lastAppHash...)
 	return bz
 }
 

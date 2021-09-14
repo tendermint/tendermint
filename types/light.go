@@ -43,6 +43,15 @@ func (lb LightBlock) ValidateBasic(chainID string) error {
 	return nil
 }
 
+// GetStateID() returns StateID for a given light block
+func (lb LightBlock) GetStateID() StateID {
+	if lb.Commit == nil {
+		panic("Cannot read state of a block without commit")
+	}
+
+	return lb.Commit.StateID.Copy()
+}
+
 // String returns a string representation of the LightBlock
 func (lb LightBlock) String() string {
 	return lb.StringIndented("")
