@@ -35,8 +35,9 @@ proxy-app = "tcp://127.0.0.1:26658"
 # A custom human readable name for this node
 moniker = "ape"
 
-# Mode of Node: full | validator | seed
-# * validator node
+
+# Mode of Node: full | validator | seed (default: "validator")
+# * validator node (default)
 #   - all reactors
 #   - with priv_validator_key.json, priv_validator_state.json
 # * full node
@@ -418,10 +419,15 @@ fetchers = "4"
 #######################################################
 ###       Block Sync Configuration Connections       ###
 #######################################################
-[fastsync]
+[blocksync]
+
+# If this node is many blocks behind the tip of the chain, BlockSync
+# allows them to catchup quickly by downloading blocks in parallel
+# and verifying their commits
+enable = true
 
 # Block Sync version to use:
-#   1) "v0" (default) - the legacy block sync implementation
+#   1) "v0" (default) - the standard block sync implementation
 #   2) "v2" - DEPRECATED, please use v0
 version = "v0"
 

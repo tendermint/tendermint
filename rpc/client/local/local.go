@@ -166,7 +166,7 @@ func (c *Local) Block(ctx context.Context, height *int64) (*ctypes.ResultBlock, 
 	return c.env.Block(c.ctx, height)
 }
 
-func (c *Local) BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBlock, error) {
+func (c *Local) BlockByHash(ctx context.Context, hash bytes.HexBytes) (*ctypes.ResultBlock, error) {
 	return c.env.BlockByHash(c.ctx, hash)
 }
 
@@ -182,7 +182,7 @@ func (c *Local) Validators(ctx context.Context, height *int64, page, perPage *in
 	return c.env.Validators(c.ctx, height, page, perPage)
 }
 
-func (c *Local) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.ResultTx, error) {
+func (c *Local) Tx(ctx context.Context, hash bytes.HexBytes, prove bool) (*ctypes.ResultTx, error) {
 	return c.env.Tx(c.ctx, hash, prove)
 }
 

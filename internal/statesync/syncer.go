@@ -12,6 +12,7 @@ import (
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/light"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -40,14 +41,11 @@ var (
 	errRejectSender = errors.New("snapshot sender was rejected")
 	// errVerifyFailed is returned by Sync() when app hash or last height
 	// verification fails.
-	errVerifyFailed = errors.New("verification failed")
+	errVerifyFailed = errors.New("verification with app failed")
 	// errTimeout is returned by Sync() when we've waited too long to receive a chunk.
 	errTimeout = errors.New("timed out waiting for chunk")
 	// errNoSnapshots is returned by SyncAny() if no snapshots are found and discovery is disabled.
 	errNoSnapshots = errors.New("no suitable snapshots found")
-	// errStateCommitTimeout is returned by Sync() when the timeout for retrieving
-	// tendermint state or the commit is exceeded
-	errStateCommitTimeout = errors.New("timed out trying to retrieve state and commit")
 )
 
 // syncer runs a state sync against an ABCI app. Use either SyncAny() to automatically attempt to
@@ -84,7 +82,7 @@ func newSyncer(
 		stateProvider: stateProvider,
 		conn:          conn,
 		connQuery:     connQuery,
-		snapshots:     newSnapshotPool(stateProvider),
+		snapshots:     newSnapshotPool(),
 		snapshotCh:    snapshotCh,
 		chunkCh:       chunkCh,
 		tempDir:       tempDir,
@@ -153,7 +151,6 @@ func (s *syncer) SyncAny(
 	discoveryTime time.Duration,
 	requestSnapshots func(),
 ) (sm.State, *types.Commit, error) {
-
 	if discoveryTime != 0 && discoveryTime < minimumDiscoveryTime {
 		discoveryTime = minimumDiscoveryTime
 	}
@@ -181,7 +178,6 @@ func (s *syncer) SyncAny(
 			if discoveryTime == 0 {
 				return sm.State{}, nil, errNoSnapshots
 			}
-			requestSnapshots()
 			s.logger.Info(fmt.Sprintf("Discovering snapshots for %v", discoveryTime))
 			time.Sleep(discoveryTime)
 			continue
@@ -230,10 +226,6 @@ func (s *syncer) SyncAny(
 				s.logger.Info("Snapshot sender rejected", "peer", peer)
 			}
 
-		case errors.Is(err, errStateCommitTimeout):
-			s.logger.Info("Timed out retrieving state and commit, rejecting and retrying...", "height", snapshot.Height)
-			s.snapshots.Reject(snapshot)
-
 		default:
 			return sm.State{}, nil, fmt.Errorf("snapshot restoration failed: %w", err)
 		}
@@ -264,8 +256,29 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 		s.mtx.Unlock()
 	}()
 
+	hctx, hcancel := context.WithTimeout(ctx, 30*time.Second)
+	defer hcancel()
+
+	// Fetch the app hash corresponding to the snapshot
+	appHash, err := s.stateProvider.AppHash(hctx, snapshot.Height)
+	if err != nil {
+		// check if the main context was triggered
+		if ctx.Err() != nil {
+			return sm.State{}, nil, ctx.Err()
+		}
+		// catch the case where all the light client providers have been exhausted
+		if err == light.ErrNoWitnesses {
+			return sm.State{}, nil,
+				fmt.Errorf("failed to get app hash at height %d. No witnesses remaining", snapshot.Height)
+		}
+		s.logger.Info("failed to get and verify tendermint state. Dropping snapshot and trying again",
+			"err", err, "height", snapshot.Height)
+		return sm.State{}, nil, errRejectSnapshot
+	}
+	snapshot.trustedAppHash = appHash
+
 	// Offer snapshot to ABCI app.
-	err := s.offerSnapshot(ctx, snapshot)
+	err = s.offerSnapshot(ctx, snapshot)
 	if err != nil {
 		return sm.State{}, nil, err
 	}
@@ -277,27 +290,37 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 		go s.fetchChunks(fetchCtx, snapshot, chunks)
 	}
 
-	pctx, pcancel := context.WithTimeout(ctx, 30*time.Second)
+	pctx, pcancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer pcancel()
 
 	// Optimistically build new state, so we don't discover any light client failures at the end.
 	state, err := s.stateProvider.State(pctx, snapshot.Height)
 	if err != nil {
-		// check if the provider context exceeded the 10 second deadline
-		if err == context.DeadlineExceeded && ctx.Err() == nil {
-			return sm.State{}, nil, errStateCommitTimeout
+		// check if the main context was triggered
+		if ctx.Err() != nil {
+			return sm.State{}, nil, ctx.Err()
 		}
-
-		return sm.State{}, nil, fmt.Errorf("failed to build new state: %w", err)
+		if err == light.ErrNoWitnesses {
+			return sm.State{}, nil,
+				fmt.Errorf("failed to get tendermint state at height %d. No witnesses remaining", snapshot.Height)
+		}
+		s.logger.Info("failed to get and verify tendermint state. Dropping snapshot and trying again",
+			"err", err, "height", snapshot.Height)
+		return sm.State{}, nil, errRejectSnapshot
 	}
 	commit, err := s.stateProvider.Commit(pctx, snapshot.Height)
 	if err != nil {
 		// check if the provider context exceeded the 10 second deadline
-		if err == context.DeadlineExceeded && ctx.Err() == nil {
-			return sm.State{}, nil, errStateCommitTimeout
+		if ctx.Err() != nil {
+			return sm.State{}, nil, ctx.Err()
 		}
-
-		return sm.State{}, nil, fmt.Errorf("failed to fetch commit: %w", err)
+		if err == light.ErrNoWitnesses {
+			return sm.State{}, nil,
+				fmt.Errorf("failed to get commit at height %d. No witnesses remaining", snapshot.Height)
+		}
+		s.logger.Info("failed to get and verify commit. Dropping snapshot and trying again",
+			"err", err, "height", snapshot.Height)
+		return sm.State{}, nil, errRejectSnapshot
 	}
 
 	// Restore snapshot

@@ -12,3 +12,7 @@ func TestMakeHeader(t *testing.T) {
 	_, err := MakeHeader(&types.Header{})
 	assert.NoError(t, err)
 }
+
+func TestRandomNodeID(t *testing.T) {
+	assert.NotPanics(t, func() { RandomNodeID() })
+}
