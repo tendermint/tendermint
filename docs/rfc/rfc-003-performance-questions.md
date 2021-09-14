@@ -215,7 +215,7 @@ Working with cryptographic signatures can be computationally expensive. The cosm
 hub uses [ed25519 signatures][hub-signature]. The library performing signature
 verification in Tendermint on votes is [benchmarked][ed25519-bench] to be able to perform an `ed25519`
 signature in 75μs on a decently fast CPU. A validator in the Cosmos Hub performs
-3 sets of verifications on the signatures of the other 139 validators in the Hub
+3 sets of verifications on the signatures of the 140 validators in the Hub
 in a consensus round, during block verification, when verifying the prevotes, and
 when verifying the precommits. With no batching, this would be roughly `3ms` per
 round. It is quite unlikely, therefore, that this accounts for any serious amount
