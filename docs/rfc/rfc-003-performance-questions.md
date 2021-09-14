@@ -48,7 +48,7 @@ cited as creating poor performance, please comment so that they may be included.
 
 ### P2P
 
-#### Tendermint cannot scale to large numbers of nodes
+#### Claim: Tendermint cannot scale to large numbers of nodes
 
 A complaint has been reported that Tendermint networks cannot scale to large numbers of nodes.
 The listed number of nodes a user reported as causing issue was in the thousands.
@@ -78,10 +78,10 @@ The following metrics exist and should be leveraged in addition to those added:
 
 ### Sync
 
-#### Block Syncing is slow
+#### Claim: Block Syncing is slow
 
-Bootstrapping a new node in a network to the height of the rest of the network
-takes longer than users would like. Block sync requires fetching all of the blocks from
+Bootstrapping a new node in a network to the height of the rest of the network is believed to
+take longer than users would like. Block sync requires fetching all of the blocks from
 peers and placing them into the local disk for storage. A useful line of inquiry
 is understanding how quickly a perfectly tuned system _could_ fetch all of the state
 over a network so that we understand how much overhead Tendermint actually adds.
@@ -112,7 +112,7 @@ slow operations. The following metrics should be added to the block syncing oper
 Applications performing complex state transitions have the potential to bottleneck
 the Tendermint node.
 
-#### ABCI block delivery could cause slowdown
+#### Claim: ABCI block delivery could cause slowdown
 
 ABCI delivers blocks in several methods: `BeginBlock`, `DeliverTx`, `EndBlock`, `Commit`.
 
@@ -131,7 +131,7 @@ AppHash obtained from the `Commit` method. We should add a metric for each
 step in the ABCI protocol to track the amount of time that a node spends communicating
 with the application at each step.
 
-#### ABCI serialization overhead causes slowdown
+#### Claim: ABCI serialization overhead causes slowdown
 
 The most common way to run a Tendermint application is using the Cosmos-SDK.
 The Cosmos-SDK runs the ABCI application within the same process as Tendermint.
@@ -151,7 +151,7 @@ usecase of Tendermint and do not necessarily need to be addressed at this time.
 * Not yet clear what the use case is for this or if this is the best solve for the need for users to query TM state? 
 * Should we solve this within Tendermint?
 
-#### RPC Serialization
+#### Claim: RPC Serialization may cause slowdown
 
 The Tendermint RPC uses a modified version of JSON-RPC. This RPC powers the `broadcast_tx_*` methods,
 which is a critical method for adding transactions to Tendermint at the moment. This method is
@@ -172,7 +172,7 @@ considered concordantly with the in-flight changes to the JSON-RPC.
 
 ### Protocol
 
-#### Gossiping messages
+#### Claim: Gossiping messages is a slow process
 
 Currently, for any validator to successfully vote in a consensus _step_, it must
 receive votes from greater than 2/3 of the validators on the network. In many cases,
@@ -195,7 +195,7 @@ transmitting for a peer).
 so understanding how frequently this occurs will be valuable in evaluating the performance
 of the gossip system).
 
-#### Tx hashes
+#### Claim: Hashing Txs causes slowdown in Tendermint
 
 Using a faster hash algorithm for Tx hashes is currently a point of discussion
 in Tendermint. Namely, it is being considered as part of the [modular hashing proposal][modular-hashing].
@@ -212,7 +212,7 @@ valuable and impactful.
 
 ### Digital Signatures
 
-#### Verification
+#### Claim: Verification of digital signatures may cause slowdown in Tendermint
 
 Working with cryptographic signatures can be computationally expensive. The cosmos
 hub uses [ed25519 signatures][hub-signature]. The library performing signature
@@ -224,7 +224,7 @@ when verifying the precommits. With no batching, this would be roughly `3ms` per
 round. It is quite unlikely, therefore, that this accounts for any serious amount
 of the ~7 seconds of block time per height in the Hub.
 
-#### Use in gossip protocol
+#### Claim: Our use of digital signatures in the consensus protocol contributes to performance issue
 
 Currently, Tendermint's digital signature verification requires that all validators
 receive all vote messages. Each validator must receive the complete digital signature
@@ -236,6 +236,8 @@ it is highly likely that this amount of gossiping is leading to a significant am
 of the slowdown in the Cosmos Hub and in Tendermint consensus.
 
 ### Tendermint Event System
+
+#### Claim: The event system is a bottleneck in Tendermint
 
 The Tendermint Event system is used to communicate and store information about
 internal Tendermint execution. The system uses channels internally to send messages
