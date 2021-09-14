@@ -209,7 +209,28 @@ valuable and impactful.
 
 ### Digital Signatures
 
-// TODO: (@wbanfield)
+#### Verification
+
+Working with cryptographic signatures can be computationally expensive. The cosmos
+hub uses [ed25519 signatures][hub-signature]. The library performing signature
+verification in Tendermint on votes is [benchmarked][ed25519-bench] to be able to perform an `ed25519`
+signature in 75μs on a decently fast CPU. A validator in the Cosmos Hub performs
+3 sets of verifications on the signatures of the other 139 validators in the Hub
+in a consensus round, during block verification, when verifying the prevotes, and
+when verifying the precommits. With no batching, this would be roughly `3ms` per
+round. It is quite unlikely, therefore, that this accounts for any serious amount
+of the ~7 seconds of block time per height in the Hub.
+
+#### Use in gossip protocol
+
+Currently, Tendermint's digital signature verification requires that all validators
+receive all vote messages. Each validator must receive the complete digital signature
+along with the vote message that it corresponds to. This means that all N validators
+must receive messages from at least 2/3 of the other N-1 validators in each consensus
+round. Given the potential for oddly shaped network topologies and the expected
+variable network roundtrip times of a few hundred milliseconds in a blockchain,
+it is highly likely that this amount of gossiping is leading to a significant amount
+of the slowdown in the Cosmos Hub and in Tendermint consensus.
 
 ### Tendermint Event System
 
@@ -224,3 +245,5 @@ valuable and impactful.
 [issue-1319]: https://github.com/tendermint/tendermint/issues/1319
 [abci-commit-description]: https://github.com/tendermint/spec/blob/master/spec/abci/apps.md#commit
 [abci-local-client-code]: https://github.com/tendermint/tendermint/blob/511bd3eb7f037855a793a27ff4c53c12f085b570/abci/client/local_client.go#L84
+[hub-signature]: https://github.com/cosmos/gaia/blob/0ecb6ed8a244d835807f1ced49217d54a9ca2070/docs/resources/genesis.md#consensus-parameters
+[ed25519-bench]: https://github.com/oasisprotocol/curve25519-voi/blob/d2e7fc59fe38c18ca990c84c4186cba2cc45b1f9/PERFORMANCE.md
