@@ -181,12 +181,12 @@ func (blockExec *BlockExecutor) ValidateBlockChainLock(state State, block *types
 // If the block is invalid, it returns an error.
 // Validation does not mutate state, but does require historical information from the stateDB,
 // ie. to verify evidence from a validator at an old height.
-func (blockExec *BlockExecutor) ValidateBlockTime(state State, block *types.Block) error {
-	err := validateBlockTime(state, block)
-	if err != nil {
-		return err
-	}
-	return err
+func (blockExec *BlockExecutor) ValidateBlockTime(
+	allowedTimeWindow time.Duration,
+	state State,
+	block *types.Block,
+) error {
+	return validateBlockTime(allowedTimeWindow, state, block)
 }
 
 // ApplyBlock validates the block against the state, executes it against the app,
