@@ -113,7 +113,7 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, size int64) {
 
 func loadGenerateWaitTime() time.Duration {
 	const (
-		min = int64(100 * time.Millisecond)
+		min = int64(200 * time.Millisecond)
 		max = int64(time.Second)
 	)
 
