@@ -226,7 +226,7 @@ of the ~7 seconds of block time per height in the Hub.
 Currently, Tendermint's digital signature verification requires that all validators
 receive all vote messages. Each validator must receive the complete digital signature
 along with the vote message that it corresponds to. This means that all N validators
-must receive messages from at least 2/3 of the other N-1 validators in each consensus
+must receive messages from at least 2/3 of the N validators in each consensus
 round. Given the potential for oddly shaped network topologies and the expected
 variable network roundtrip times of a few hundred milliseconds in a blockchain,
 it is highly likely that this amount of gossiping is leading to a significant amount
