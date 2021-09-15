@@ -57,6 +57,10 @@ func NewCLI() *CLI {
 				return fmt.Errorf("p2p mode must be either new, legacy, hybrid or mixed got %s", p2pMode)
 			}
 
+			if groups == 0 {
+				opts.Sorted = true
+			}
+
 			return cli.generate(dir, groups, opts)
 		},
 	}

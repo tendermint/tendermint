@@ -48,10 +48,10 @@ var (
 	// FIXME: v2 disabled due to flake
 	nodeBlockSyncs        = uniformChoice{"v0"} // "v2"
 	nodeMempools          = uniformChoice{"v0", "v1"}
-	nodeStateSyncs        = uniformChoice{false, true}
+	nodeStateSyncs        = uniformChoice{e2e.StateSyncDisabled, e2e.StateSyncP2P, e2e.StateSyncRPC}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 3}
-	nodeRetainBlocks      = uniformChoice{0, int(e2e.EvidenceAgeHeight), int(e2e.EvidenceAgeHeight) + 5}
+	nodeRetainBlocks      = uniformChoice{0, 2 * int(e2e.EvidenceAgeHeight), 4 * int(e2e.EvidenceAgeHeight)}
 	nodePerturbations     = probSetChoice{
 		"disconnect": 0.1,
 		"pause":      0.1,
@@ -87,11 +87,19 @@ func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 		}
 		manifests = append(manifests, manifest)
 	}
+
+	if opts.Sorted {
+		// When the sorted flag is set (generally, as long as
+		// groups aren't set),
+		e2e.SortManifests(manifests)
+	}
+
 	return manifests, nil
 }
 
 type Options struct {
-	P2P P2PMode
+	P2P    P2PMode
+	Sorted bool
 }
 
 type P2PMode string
@@ -119,18 +127,11 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		TxSize:           int64(txSize.Choose(r).(int)),
 	}
 
-	var p2pNodeFactor int
-
-	switch opt["p2p"].(P2PMode) {
-	case NewP2PMode:
-		manifest.UseLegacyP2P = true
-	case LegacyP2PMode:
-		manifest.UseLegacyP2P = false
-	case HybridP2PMode:
-		manifest.UseLegacyP2P = true
-		p2pNodeFactor = 2
+	p2pMode := opt["p2p"].(P2PMode)
+	switch p2pMode {
+	case NewP2PMode, LegacyP2PMode, HybridP2PMode:
 	default:
-		return manifest, fmt.Errorf("unknown p2p mode %s", opt["p2p"])
+		return manifest, fmt.Errorf("unknown p2p mode %s", p2pMode)
 	}
 
 	var numSeeds, numValidators, numFulls, numLightClients int
@@ -153,10 +154,11 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	for i := 1; i <= numSeeds; i++ {
 		node := generateNode(r, e2e.ModeSeed, 0, manifest.InitialHeight, false)
 
-		if p2pNodeFactor == 0 {
-			node.UseLegacyP2P = manifest.UseLegacyP2P
-		} else if p2pNodeFactor%i == 0 {
-			node.UseLegacyP2P = !manifest.UseLegacyP2P
+		switch p2pMode {
+		case LegacyP2PMode:
+			node.UseLegacyP2P = true
+		case HybridP2PMode:
+			node.UseLegacyP2P = r.Intn(2) == 1
 		}
 
 		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = node
@@ -177,10 +179,11 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		node := generateNode(
 			r, e2e.ModeValidator, startAt, manifest.InitialHeight, i <= 2)
 
-		if p2pNodeFactor == 0 {
-			node.UseLegacyP2P = manifest.UseLegacyP2P
-		} else if p2pNodeFactor%i == 0 {
-			node.UseLegacyP2P = !manifest.UseLegacyP2P
+		switch p2pMode {
+		case LegacyP2PMode:
+			node.UseLegacyP2P = true
+		case HybridP2PMode:
+			node.UseLegacyP2P = r.Intn(2) == 1
 		}
 
 		manifest.Nodes[name] = node
@@ -213,11 +216,13 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		}
 		node := generateNode(r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
 
-		if p2pNodeFactor == 0 {
-			node.UseLegacyP2P = manifest.UseLegacyP2P
-		} else if p2pNodeFactor%i == 0 {
-			node.UseLegacyP2P = !manifest.UseLegacyP2P
+		switch p2pMode {
+		case LegacyP2PMode:
+			node.UseLegacyP2P = true
+		case HybridP2PMode:
+			node.UseLegacyP2P = r.Intn(2) == 1
 		}
+
 		manifest.Nodes[fmt.Sprintf("full%02d", i)] = node
 	}
 
@@ -291,11 +296,15 @@ func generateNode(
 		PrivvalProtocol:  nodePrivvalProtocols.Choose(r),
 		BlockSync:        nodeBlockSyncs.Choose(r).(string),
 		Mempool:          nodeMempools.Choose(r).(string),
-		StateSync:        nodeStateSyncs.Choose(r).(bool) && startAt > 0,
+		StateSync:        e2e.StateSyncDisabled,
 		PersistInterval:  ptrUint64(uint64(nodePersistIntervals.Choose(r).(int))),
 		SnapshotInterval: uint64(nodeSnapshotIntervals.Choose(r).(int)),
 		RetainBlocks:     uint64(nodeRetainBlocks.Choose(r).(int)),
 		Perturb:          nodePerturbations.Choose(r),
+	}
+
+	if startAt > 0 {
+		node.StateSync = nodeStateSyncs.Choose(r).(string)
 	}
 
 	// If this node is forced to be an archive node, retain all blocks and
@@ -326,7 +335,7 @@ func generateNode(
 		}
 	}
 
-	if node.StateSync {
+	if node.StateSync != e2e.StateSyncDisabled {
 		node.BlockSync = "v0"
 	}
 

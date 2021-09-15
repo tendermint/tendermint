@@ -1,7 +1,9 @@
 syntax = "proto3";
 package tendermint.statesync;
 
+import "gogoproto/gogo.proto";
 import "tendermint/types/types.proto";
+import "tendermint/types/params.proto";
 
 option go_package = "github.com/tendermint/tendermint/proto/tendermint/statesync";
 
@@ -13,6 +15,8 @@ message Message {
     ChunkResponse      chunk_response       = 4;
     LightBlockRequest  light_block_request  = 5;
     LightBlockResponse light_block_response = 6;
+    ParamsRequest      params_request       = 7;
+    ParamsResponse     params_response      = 8;
   }
 }
 
@@ -46,4 +50,13 @@ message LightBlockRequest {
 
 message LightBlockResponse {
   tendermint.types.LightBlock light_block = 1;
+}
+
+message ParamsRequest {
+  uint64 height = 1;
+}
+
+message ParamsResponse {
+  uint64                           height           = 1;
+  tendermint.types.ConsensusParams consensus_params = 2 [(gogoproto.nullable) = false];
 }

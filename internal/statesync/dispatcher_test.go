@@ -13,145 +13,102 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	"github.com/tendermint/tendermint/types"
 )
 
 func TestDispatcherBasic(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
+	const numPeers = 5
 
 	ch := make(chan p2p.Envelope, 100)
 	closeCh := make(chan struct{})
 	defer close(closeCh)
 
-	d := newDispatcher(ch, 1*time.Second)
-
+	d := NewDispatcher(ch)
 	go handleRequests(t, d, ch, closeCh)
 
-	peers := createPeerSet(5)
-	for _, peer := range peers {
-		d.addPeer(peer)
-	}
-
+	peers := createPeerSet(numPeers)
 	wg := sync.WaitGroup{}
 
 	// make a bunch of async requests and require that the correct responses are
 	// given
-	for i := 1; i < 10; i++ {
+	for i := 0; i < numPeers; i++ {
 		wg.Add(1)
 		go func(height int64) {
 			defer wg.Done()
-			lb, peer, err := d.LightBlock(context.Background(), height)
+			lb, err := d.LightBlock(context.Background(), height, peers[height-1])
 			require.NoError(t, err)
 			require.NotNil(t, lb)
 			require.Equal(t, lb.Height, height)
-			require.Contains(t, peers, peer)
-		}(int64(i))
+		}(int64(i + 1))
 	}
 	wg.Wait()
+
+	// assert that all calls were responded to
+	assert.Empty(t, d.calls)
 }
 
 func TestDispatcherReturnsNoBlock(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 	ch := make(chan p2p.Envelope, 100)
-	d := newDispatcher(ch, 1*time.Second)
-	peerFromSet := createPeerSet(1)[0]
-	d.addPeer(peerFromSet)
+	d := NewDispatcher(ch)
 	doneCh := make(chan struct{})
+	peer := factory.NodeID("a")
 
 	go func() {
 		<-ch
-		require.NoError(t, d.respond(nil, peerFromSet))
+		require.NoError(t, d.Respond(nil, peer))
 		close(doneCh)
 	}()
 
-	lb, peerResult, err := d.LightBlock(context.Background(), 1)
+	lb, err := d.LightBlock(context.Background(), 1, peer)
 	<-doneCh
 
 	require.Nil(t, lb)
 	require.Nil(t, err)
-	require.Equal(t, peerFromSet, peerResult)
 }
 
-func TestDispatcherErrorsWhenNoPeers(t *testing.T) {
+func TestDispatcherTimeOutWaitingOnLightBlock(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 	ch := make(chan p2p.Envelope, 100)
-	d := newDispatcher(ch, 1*time.Second)
+	d := NewDispatcher(ch)
+	peer := factory.NodeID("a")
 
-	lb, peerResult, err := d.LightBlock(context.Background(), 1)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancelFunc()
 
+	lb, err := d.LightBlock(ctx, 1, peer)
+
+	require.Error(t, err)
+	require.Equal(t, context.DeadlineExceeded, err)
 	require.Nil(t, lb)
-	require.Empty(t, peerResult)
-	require.Equal(t, errNoConnectedPeers, err)
-}
-
-func TestDispatcherReturnsBlockOncePeerAvailable(t *testing.T) {
-	t.Cleanup(leaktest.Check(t))
-	dispatcherRequestCh := make(chan p2p.Envelope, 100)
-	d := newDispatcher(dispatcherRequestCh, 1*time.Second)
-	peerFromSet := createPeerSet(1)[0]
-	d.addPeer(peerFromSet)
-	ctx := context.Background()
-	wrapped, cancelFunc := context.WithCancel(ctx)
-
-	doneCh := make(chan struct{})
-	go func() {
-		lb, peerResult, err := d.LightBlock(wrapped, 1)
-		require.Nil(t, lb)
-		require.Equal(t, peerFromSet, peerResult)
-		require.Nil(t, err)
-
-		// calls to dispatcher.Lightblock write into the dispatcher's requestCh.
-		// we read from the requestCh here to unblock the requestCh for future
-		// calls.
-		<-dispatcherRequestCh
-		close(doneCh)
-	}()
-	cancelFunc()
-	<-doneCh
-
-	go func() {
-		<-dispatcherRequestCh
-		lb := &types.LightBlock{}
-		asProto, err := lb.ToProto()
-		require.Nil(t, err)
-		err = d.respond(asProto, peerFromSet)
-		require.Nil(t, err)
-	}()
-
-	lb, peerResult, err := d.LightBlock(context.Background(), 1)
-
-	require.NotNil(t, lb)
-	require.Equal(t, peerFromSet, peerResult)
-	require.Nil(t, err)
 }
 
 func TestDispatcherProviders(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
 	ch := make(chan p2p.Envelope, 100)
-	chainID := "state-sync-test"
+	chainID := "test-chain"
 	closeCh := make(chan struct{})
 	defer close(closeCh)
 
-	d := newDispatcher(ch, 1*time.Second)
-
+	d := NewDispatcher(ch)
 	go handleRequests(t, d, ch, closeCh)
 
 	peers := createPeerSet(5)
-	for _, peer := range peers {
-		d.addPeer(peer)
+	providers := make([]*BlockProvider, len(peers))
+	for idx, peer := range peers {
+		providers[idx] = NewBlockProvider(peer, chainID, d)
 	}
-
-	providers := d.Providers(chainID, 5*time.Second)
 	require.Len(t, providers, 5)
+
 	for i, p := range providers {
-		bp, ok := p.(*blockProvider)
-		require.True(t, ok)
-		assert.Equal(t, bp.String(), string(peers[i]))
+		assert.Equal(t, string(peers[i]), p.String(), i)
 		lb, err := p.LightBlock(context.Background(), 10)
-		assert.Error(t, err)
-		assert.Nil(t, lb)
+		assert.NoError(t, err)
+		assert.NotNil(t, lb)
 	}
 }
 
@@ -166,7 +123,7 @@ func TestPeerListBasic(t *testing.T) {
 		peerList.Append(peer)
 	}
 
-	for idx, peer := range peerList.Peers() {
+	for idx, peer := range peerList.All() {
 		assert.Equal(t, peer, peerSet[idx])
 	}
 
@@ -178,13 +135,22 @@ func TestPeerListBasic(t *testing.T) {
 	}
 	assert.Equal(t, half, peerList.Len())
 
+	// removing a peer that doesn't exist should not change the list
 	peerList.Remove(types.NodeID("lp"))
 	assert.Equal(t, half, peerList.Len())
 
+	// removing a peer that exists should decrease the list size by one
 	peerList.Remove(peerSet[half])
-	half++
-	assert.Equal(t, peerSet[half], peerList.Pop(ctx))
+	assert.Equal(t, numPeers-half-1, peerList.Len())
 
+	// popping the next peer should work as expected
+	assert.Equal(t, peerSet[half+1], peerList.Pop(ctx))
+	assert.Equal(t, numPeers-half-2, peerList.Len())
+
+	// append the two peers back
+	peerList.Append(peerSet[half])
+	peerList.Append(peerSet[half+1])
+	assert.Equal(t, half, peerList.Len())
 }
 
 func TestPeerListBlocksWhenEmpty(t *testing.T) {
@@ -277,9 +243,28 @@ func TestPeerListConcurrent(t *testing.T) {
 	}
 }
 
+func TestPeerListRemove(t *testing.T) {
+	peerList := newPeerList()
+	numPeers := 10
+
+	peerSet := createPeerSet(numPeers)
+	for _, peer := range peerSet {
+		peerList.Append(peer)
+	}
+
+	for _, peer := range peerSet {
+		peerList.Remove(peer)
+		for _, p := range peerList.All() {
+			require.NotEqual(t, p, peer)
+		}
+		numPeers--
+		require.Equal(t, numPeers, peerList.Len())
+	}
+}
+
 // handleRequests is a helper function usually run in a separate go routine to
 // imitate the expected responses of the reactor wired to the dispatcher
-func handleRequests(t *testing.T, d *dispatcher, ch chan p2p.Envelope, closeCh chan struct{}) {
+func handleRequests(t *testing.T, d *Dispatcher, ch chan p2p.Envelope, closeCh chan struct{}) {
 	t.Helper()
 	for {
 		select {
@@ -288,7 +273,7 @@ func handleRequests(t *testing.T, d *dispatcher, ch chan p2p.Envelope, closeCh c
 			peer := request.To
 			resp := mockLBResp(t, peer, int64(height), time.Now())
 			block, _ := resp.block.ToProto()
-			require.NoError(t, d.respond(block, resp.peer))
+			require.NoError(t, d.Respond(block, resp.peer))
 		case <-closeCh:
 			return
 		}

@@ -3,10 +3,9 @@ package main
 import (
 	"container/ring"
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
-	"math"
+	"math/rand"
 	"time"
 
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
@@ -15,9 +14,8 @@ import (
 )
 
 // Load generates transactions against the network until the given context is
-// canceled. A multiplier of greater than one can be supplied if load needs to
-// be generated beyond a minimum amount.
-func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
+// canceled.
+func Load(ctx context.Context, testnet *e2e.Testnet) error {
 	// Since transactions are executed across all nodes in the network, we need
 	// to reduce transaction load for larger networks to avoid using too much
 	// CPU. This gives high-throughput small networks and low-throughput large ones.
@@ -27,11 +25,9 @@ func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 	if concurrency == 0 {
 		concurrency = 1
 	}
-	initialTimeout := 1 * time.Minute
-	stallTimeout := 30 * time.Second
 
 	chTx := make(chan types.Tx)
-	chSuccess := make(chan types.Tx)
+	chSuccess := make(chan int) // success counts per iteration
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -39,61 +35,99 @@ func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 	logger.Info(fmt.Sprintf("Starting transaction load (%v workers)...", concurrency))
 	started := time.Now()
 
-	go loadGenerate(ctx, chTx, multiplier, testnet.TxSize)
+	go loadGenerate(ctx, chTx, testnet.TxSize)
 
 	for w := 0; w < concurrency; w++ {
 		go loadProcess(ctx, testnet, chTx, chSuccess)
 	}
 
-	// Monitor successful transactions, and abort on stalls.
+	// Montior transaction to ensure load propagates to the network
+	//
+	// This loop doesn't check or time out for stalls, since a stall here just
+	// aborts the load generator sooner and could obscure backpressure
+	// from the test harness, and there are other checks for
+	// stalls in the framework. Ideally we should monitor latency as a guide
+	// for when to give up, but we don't have a good way to track that yet.
 	success := 0
-	timeout := initialTimeout
 	for {
 		select {
-		case <-chSuccess:
-			success++
-			timeout = stallTimeout
-		case <-time.After(timeout):
-			return fmt.Errorf("unable to submit transactions for %v", timeout)
+		case numSeen := <-chSuccess:
+			success += numSeen
 		case <-ctx.Done():
 			if success == 0 {
 				return errors.New("failed to submit any transactions")
 			}
-			logger.Info(fmt.Sprintf("Ending transaction load after %v txs (%.1f tx/s)...",
-				success, float64(success)/time.Since(started).Seconds()))
+			rate := float64(success) / time.Since(started).Seconds()
+
+			logger.Info("ending transaction load",
+				"dur_secs", time.Since(started).Seconds(),
+				"txns", success,
+				"rate", rate,
+				"slow", rate < 1)
+
 			return nil
 		}
 	}
 }
 
-// loadGenerate generates jobs until the context is canceled
-func loadGenerate(ctx context.Context, chTx chan<- types.Tx, multiplier int, size int64) {
-	for i := 0; i < math.MaxInt64; i++ {
+// loadGenerate generates jobs until the context is canceled.
+//
+// The chTx has multiple consumers, thus the rate limiting of the load
+// generation is primarily the result of backpressure from the
+// broadcast transaction, though there is still some timer-based
+// limiting.
+func loadGenerate(ctx context.Context, chTx chan<- types.Tx, size int64) {
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+	defer close(chTx)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+		}
+
 		// We keep generating the same 100 keys over and over, with different values.
 		// This gives a reasonable load without putting too much data in the app.
-		id := i % 100
+		id := rand.Int63() % 100 // nolint: gosec
 
 		bz := make([]byte, size)
-		_, err := rand.Read(bz)
+		_, err := rand.Read(bz) // nolint: gosec
 		if err != nil {
 			panic(fmt.Sprintf("Failed to read random bytes: %v", err))
 		}
 		tx := types.Tx(fmt.Sprintf("load-%X=%x", id, bz))
 
 		select {
-		case chTx <- tx:
-			sqrtSize := int(math.Sqrt(float64(size)))
-			time.Sleep(10 * time.Millisecond * time.Duration(sqrtSize/multiplier))
-
 		case <-ctx.Done():
-			close(chTx)
 			return
+		case chTx <- tx:
+			// sleep for a bit before sending the
+			// next transaction.
+			timer.Reset(loadGenerateWaitTime(size))
 		}
+
 	}
 }
 
+func loadGenerateWaitTime(size int64) time.Duration {
+	const (
+		min = int64(100 * time.Millisecond)
+		max = int64(time.Second)
+	)
+
+	var (
+		baseJitter = rand.Int63n(max-min+1) + min // nolint: gosec
+		sizeFactor = size * int64(time.Millisecond)
+		sizeJitter = rand.Int63n(sizeFactor-min+1) + min // nolint: gosec
+	)
+
+	return time.Duration(baseJitter + sizeJitter)
+}
+
 // loadProcess processes transactions
-func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx, chSuccess chan<- types.Tx) {
+func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx, chSuccess chan<- int) {
 	// Each worker gets its own client to each usable node, which
 	// allows for some concurrency while still bounding it.
 	clients := make([]*rpchttp.HTTP, 0, len(testnet.Nodes))
@@ -127,8 +161,7 @@ func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx
 		clientRing = clientRing.Next()
 	}
 
-	var err error
-
+	successes := 0
 	for {
 		select {
 		case <-ctx.Done():
@@ -137,19 +170,24 @@ func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx
 			clientRing = clientRing.Next()
 			client := clientRing.Value.(*rpchttp.HTTP)
 
-			if _, err := client.Health(ctx); err != nil {
+			if status, err := client.Status(ctx); err != nil {
+				continue
+			} else if status.SyncInfo.CatchingUp {
 				continue
 			}
 
-			if _, err = client.BroadcastTxSync(ctx, tx); err != nil {
+			if _, err := client.BroadcastTxSync(ctx, tx); err != nil {
 				continue
 			}
+			successes++
 
 			select {
-			case chSuccess <- tx:
+			case chSuccess <- successes:
+				successes = 0 // reset counter for the next iteration
 				continue
 			case <-ctx.Done():
 				return
+			default:
 			}
 
 		}

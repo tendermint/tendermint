@@ -16,7 +16,7 @@ type wrappedEnvelope struct {
 	size     uint
 }
 
-// assert the WDDR scheduler implements the queue interface at compile-time
+// assert the WDRR scheduler implements the queue interface at compile-time
 var _ queue = (*wdrrScheduler)(nil)
 
 // wdrrQueue implements a Weighted Deficit Round Robin (WDRR) scheduling

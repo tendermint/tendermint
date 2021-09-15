@@ -50,6 +50,10 @@ const (
 
 	EvidenceAgeHeight int64         = 7
 	EvidenceAgeTime   time.Duration = 500 * time.Millisecond
+
+	StateSyncP2P      = "p2p"
+	StateSyncRPC      = "rpc"
+	StateSyncDisabled = ""
 )
 
 // Testnet represents a single testnet.
@@ -81,7 +85,7 @@ type Node struct {
 	StartAt          int64
 	BlockSync        string
 	Mempool          string
-	StateSync        bool
+	StateSync        string
 	Database         string
 	ABCIProtocol     Protocol
 	PrivvalProtocol  Protocol
@@ -94,6 +98,7 @@ type Node struct {
 	LogLevel         string
 	UseLegacyP2P     bool
 	QueueType        string
+	HasStarted       bool
 }
 
 // LoadTestnet loads a testnet from a manifest file, using the filename to
@@ -177,7 +182,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			Perturbations:    []Perturbation{},
 			LogLevel:         manifest.LogLevel,
 			QueueType:        manifest.QueueType,
-			UseLegacyP2P:     manifest.UseLegacyP2P && nodeManifest.UseLegacyP2P,
+			UseLegacyP2P:     nodeManifest.UseLegacyP2P,
 		}
 
 		if node.StartAt == testnet.InitialHeight {
@@ -333,6 +338,11 @@ func (n Node) Validate(testnet Testnet) error {
 	default:
 		return fmt.Errorf("invalid block sync setting %q", n.BlockSync)
 	}
+	switch n.StateSync {
+	case StateSyncDisabled, StateSyncP2P, StateSyncRPC:
+	default:
+		return fmt.Errorf("invalid state sync setting %q", n.StateSync)
+	}
 	switch n.Mempool {
 	case "", "v0", "v1":
 	default:
@@ -366,7 +376,7 @@ func (n Node) Validate(testnet Testnet) error {
 		return fmt.Errorf("cannot start at height %v lower than initial height %v",
 			n.StartAt, n.Testnet.InitialHeight)
 	}
-	if n.StateSync && n.StartAt == 0 {
+	if n.StateSync != StateSyncDisabled && n.StartAt == 0 {
 		return errors.New("state synced nodes cannot start at the initial height")
 	}
 	if n.RetainBlocks != 0 && n.RetainBlocks < uint64(EvidenceAgeHeight) {

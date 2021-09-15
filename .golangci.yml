@@ -1,14 +1,17 @@
 linters:
   enable:
+    - asciicheck
     - bodyclose
     - deadcode
     - depguard
     - dogsled
     - dupl
     - errcheck
+    - exportloopref
     # - funlen
     # - gochecknoglobals
     # - gochecknoinits
+    # - gocognit
     - goconst
     - gocritic
     # - gocyclo
@@ -22,11 +25,11 @@ linters:
     - ineffassign
     # - interfacer
     - lll
-    - misspell
     # - maligned
+    - misspell
     - nakedret
+    - nolintlint
     - prealloc
-    - exportloopref
     - staticcheck
     - structcheck
     - stylecheck
@@ -37,9 +40,6 @@ linters:
     - varcheck
     # - whitespace
     # - wsl
-    # - gocognit
-    - nolintlint
-    - asciicheck
 
 issues:
   exclude-rules:

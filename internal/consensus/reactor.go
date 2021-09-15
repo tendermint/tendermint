@@ -1096,7 +1096,7 @@ func (r *Reactor) handleDataMessage(envelope p2p.Envelope, msgI Message) error {
 	}
 
 	if r.WaitSync() {
-		logger.Info("ignoring message received during sync", "msg", msgI)
+		logger.Info("ignoring message received during sync", "msg", fmt.Sprintf("%T", msgI))
 		return nil
 	}
 
