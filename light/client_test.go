@@ -644,7 +644,7 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 		chainID,
 		trustOptions,
 		mockDeadNode,
-		[]provider.Provider{mockFullNode, mockFullNode},
+		[]provider.Provider{mockDeadNode, mockFullNode},
 		dbs.New(dbm.NewMemDB()),
 		light.Logger(log.TestingLogger()),
 	)
@@ -655,6 +655,32 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 
 	// the primary should no longer be the deadNode
 	assert.NotEqual(t, c.Primary(), mockDeadNode)
+
+	// we should still have the dead node as a witness because it
+	// hasn't repeatedly been unresponsive yet
+	assert.Equal(t, 2, len(c.Witnesses()))
+	mockDeadNode.AssertExpectations(t)
+	mockFullNode.AssertExpectations(t)
+}
+
+func TestClientReplacesPrimaryWithWitnessIfPrimaryDoesntHaveBlock(t *testing.T) {
+	mockFullNode := &provider_mocks.Provider{}
+	mockFullNode.On("LightBlock", mock.Anything, mock.Anything).Return(l1, nil)
+
+	mockDeadNode := &provider_mocks.Provider{}
+	mockDeadNode.On("LightBlock", mock.Anything, mock.Anything).Return(nil, provider.ErrLightBlockNotFound)
+	c, err := light.NewClient(
+		ctx,
+		chainID,
+		trustOptions,
+		mockDeadNode,
+		[]provider.Provider{mockDeadNode, mockFullNode},
+		dbs.New(dbm.NewMemDB()),
+		light.Logger(log.TestingLogger()),
+	)
+	require.NoError(t, err)
+	_, err = c.Update(ctx, bTime.Add(2*time.Hour))
+	require.NoError(t, err)
 
 	// we should still have the dead node as a witness because it
 	// hasn't repeatedly been unresponsive yet
