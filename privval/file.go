@@ -561,8 +561,6 @@ func (pv *FilePV) signVote(
 
 	lss := pv.LastSignState
 
-	// The vote should not have a state ID set if the block ID is set to nil
-
 	sameHRS, err := lss.CheckHRS(height, round, step)
 	if err != nil {
 		return err

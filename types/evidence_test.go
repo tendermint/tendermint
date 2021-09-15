@@ -80,7 +80,7 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 		{"Invalid vote type", func(ev *DuplicateVoteEvidence) {
 			ev.VoteA = makeVote(
 				t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType,
-				quorumHash, math.MaxInt32, 0, blockID2, RandStateID().WithHeight(math.MaxInt64),
+				quorumHash, math.MaxInt32, 0, blockID2, RandStateID().WithHeight(math.MaxInt64-1),
 			)
 		}, true},
 		{"Invalid vote order", func(ev *DuplicateVoteEvidence) {
