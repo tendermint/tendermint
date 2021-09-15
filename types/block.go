@@ -1237,16 +1237,6 @@ func (stateID StateID) ValidateBasic() error {
 	return nil
 }
 
-// IsZero returns true if this is the StateID of a nil block.
-func (stateID StateID) IsZero() bool {
-	return len(stateID.LastAppHash) == 0
-}
-
-// IsComplete returns true if this is a valid StateID of a non-nil block.
-func (stateID StateID) IsComplete() bool {
-	return len(stateID.LastAppHash) == tmhash.Size
-}
-
 // String returns a human readable string representation of the StateID.
 //
 // 1. hash
