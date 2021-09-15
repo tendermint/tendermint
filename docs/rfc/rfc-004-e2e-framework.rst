@@ -35,7 +35,7 @@ Flexible Workload Generation
 Presently the e2e suite contains a single workload generation pattern, which
 exists simply to ensure that the test networks have some work during their
 runs. However, the shape and volume of the work is very consistent and is very
-gentle to ensure that all
+gentle to help ensure test reliability.
 
 We should avoid implementing a complex workload generation framework, but
 being able to have a few different workload shapes available for test
