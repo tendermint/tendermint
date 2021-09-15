@@ -704,7 +704,10 @@ func (n *nodeImpl) OnStart() error {
 			if err != nil {
 				n.Logger.Error("state sync failed", "err", err)
 				// stop the node
-				n.Stop()
+				err := n.Stop()
+				if err != nil {
+					n.Logger.Error("error halting node", "err", err)
+				}
 				return
 			}
 
