@@ -137,7 +137,7 @@ The most common way to run a Tendermint application is using the Cosmos-SDK.
 The Cosmos-SDK runs the ABCI application within the same process as Tendermint.
 When an application is run in the same process as Tendermint, a serialization penalty
 is not paid. This is because the local ABCI client does not serialize method calls
-and instead passes the protobuf type through through directly. This can be seen
+and instead passes the protobuf type through directly. This can be seen
 in [local_client.go][abci-local-client-code].
 
 Serialization and deserialization in the gRPC and socket protocol ABCI methods
