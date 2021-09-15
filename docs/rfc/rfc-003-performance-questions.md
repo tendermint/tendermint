@@ -182,7 +182,7 @@ This produces a quadratic increase in messages that are communicated as more val
 (Each of the N validators must communicate with all other N-1 validators).
 
 This large number of messages communicated per step has been identified to impact
-performance of the protocol. Given this that number of messages communicated has been
+performance of the protocol. Given that the number of messages communicated has been
 identified as a bottleneck, it would be extremely valuable to gather data on how long
 it takes for popular chains with many validators to gather all votes within a step.
 
