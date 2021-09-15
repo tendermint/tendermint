@@ -27,7 +27,9 @@ func MakeTxKV() ([]byte, []byte, []byte) {
 }
 
 func TestHeaderEvents(t *testing.T) {
-	for i, c := range GetClients() {
+	n, conf := NodeSuite(t)
+
+	for i, c := range GetClients(t, n, conf) {
 		i, c := i, c
 		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
 			// start for this test it if it wasn't already running
@@ -42,8 +44,7 @@ func TestHeaderEvents(t *testing.T) {
 				})
 			}
 
-			evtTyp := types.EventNewBlockHeader
-			evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
+			evt, err := client.WaitForOneEvent(c, types.EventNewBlockHeaderValue, waitForEventTimeout)
 			require.Nil(t, err, "%d: %+v", i, err)
 			_, ok := evt.(types.EventDataNewBlockHeader)
 			require.True(t, ok, "%d: %#v", i, evt)
@@ -54,7 +55,8 @@ func TestHeaderEvents(t *testing.T) {
 
 // subscribe to new blocks and make sure height increments by 1
 func TestBlockEvents(t *testing.T) {
-	for _, c := range GetClients() {
+	n, conf := NodeSuite(t)
+	for _, c := range GetClients(t, n, conf) {
 		c := c
 		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
 
@@ -72,7 +74,7 @@ func TestBlockEvents(t *testing.T) {
 
 			const subscriber = "TestBlockEvents"
 
-			eventCh, err := c.Subscribe(context.Background(), subscriber, types.QueryForEvent(types.EventNewBlock).String())
+			eventCh, err := c.Subscribe(context.Background(), subscriber, types.QueryForEvent(types.EventNewBlockValue).String())
 			require.NoError(t, err)
 			t.Cleanup(func() {
 				if err := c.UnsubscribeAll(context.Background(), subscriber); err != nil {
@@ -102,7 +104,8 @@ func TestTxEventsSentWithBroadcastTxAsync(t *testing.T) { testTxEventsSent(t, "a
 func TestTxEventsSentWithBroadcastTxSync(t *testing.T)  { testTxEventsSent(t, "sync") }
 
 func testTxEventsSent(t *testing.T, broadcastMethod string) {
-	for _, c := range GetClients() {
+	n, conf := NodeSuite(t)
+	for _, c := range GetClients(t, n, conf) {
 		c := c
 		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
 
@@ -142,7 +145,7 @@ func testTxEventsSent(t *testing.T, broadcastMethod string) {
 			}()
 
 			// and wait for confirmation
-			evt, err := client.WaitForOneEvent(c, types.EventTx, waitForEventTimeout)
+			evt, err := client.WaitForOneEvent(c, types.EventTxValue, waitForEventTimeout)
 			require.Nil(t, err)
 
 			// and make sure it has the proper info
@@ -163,19 +166,24 @@ func TestClientsResubscribe(t *testing.T) {
 }
 
 func TestHTTPReturnsErrorIfClientIsNotRunning(t *testing.T) {
-	c := getHTTPClient()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_, conf := NodeSuite(t)
+
+	c := getHTTPClient(t, conf)
 
 	// on Subscribe
-	_, err := c.Subscribe(context.Background(), "TestHeaderEvents",
-		types.QueryForEvent(types.EventNewBlockHeader).String())
+	_, err := c.Subscribe(ctx, "TestHeaderEvents",
+		types.QueryForEvent(types.EventNewBlockHeaderValue).String())
 	assert.Error(t, err)
 
 	// on Unsubscribe
-	err = c.Unsubscribe(context.Background(), "TestHeaderEvents",
-		types.QueryForEvent(types.EventNewBlockHeader).String())
+	err = c.Unsubscribe(ctx, "TestHeaderEvents",
+		types.QueryForEvent(types.EventNewBlockHeaderValue).String())
 	assert.Error(t, err)
 
 	// on UnsubscribeAll
-	err = c.UnsubscribeAll(context.Background(), "TestHeaderEvents")
+	err = c.UnsubscribeAll(ctx, "TestHeaderEvents")
 	assert.Error(t, err)
 }

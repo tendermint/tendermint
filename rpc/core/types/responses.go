@@ -2,14 +2,27 @@ package coretypes
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/bytes"
-	"github.com/tendermint/tendermint/p2p"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
+)
+
+// List of standardized errors used across RPC
+var (
+	ErrZeroOrNegativePerPage  = errors.New("zero or negative per_page")
+	ErrPageOutOfRange         = errors.New("page should be within range")
+	ErrZeroOrNegativeHeight   = errors.New("height must be greater than zero")
+	ErrHeightExceedsChainHead = errors.New("height must be less than or equal to the head of the node's blockchain")
+	ErrHeightNotAvailable     = errors.New("height is not available")
+	// ErrInvalidRequest is used as a wrapper to cover more specific cases where the user has
+	// made an invalid request
+	ErrInvalidRequest = errors.New("invalid request")
 )
 
 // List of blocks
@@ -49,6 +62,7 @@ type ResultCommit struct {
 type ResultBlockResults struct {
 	Height                int64                     `json:"height"`
 	TxsResults            []*abci.ResponseDeliverTx `json:"txs_results"`
+	TotalGasUsed          int64                     `json:"total_gas_used"`
 	BeginBlockEvents      []abci.Event              `json:"begin_block_events"`
 	EndBlockEvents        []abci.Event              `json:"end_block_events"`
 	ValidatorUpdates      []abci.ValidatorUpdate    `json:"validator_updates"`
@@ -81,6 +95,8 @@ type SyncInfo struct {
 	EarliestBlockHeight int64          `json:"earliest_block_height"`
 	EarliestBlockTime   time.Time      `json:"earliest_block_time"`
 
+	MaxPeerBlockHeight int64 `json:"max_peer_block_height"`
+
 	CatchingUp bool `json:"catching_up"`
 }
 
@@ -93,9 +109,9 @@ type ValidatorInfo struct {
 
 // Node Status
 type ResultStatus struct {
-	NodeInfo      p2p.DefaultNodeInfo `json:"node_info"`
-	SyncInfo      SyncInfo            `json:"sync_info"`
-	ValidatorInfo ValidatorInfo       `json:"validator_info"`
+	NodeInfo      types.NodeInfo `json:"node_info"`
+	SyncInfo      SyncInfo       `json:"sync_info"`
+	ValidatorInfo ValidatorInfo  `json:"validator_info"`
 }
 
 // Is TxIndexing enabled
@@ -126,7 +142,7 @@ type ResultDialPeers struct {
 
 // A peer
 type Peer struct {
-	NodeInfo         p2p.DefaultNodeInfo  `json:"node_info"`
+	NodeInfo         types.NodeInfo       `json:"node_info"`
 	IsOutbound       bool                 `json:"is_outbound"`
 	ConnectionStatus p2p.ConnectionStatus `json:"connection_status"`
 	RemoteIP         string               `json:"remote_ip"`
@@ -144,8 +160,8 @@ type ResultValidators struct {
 
 // ConsensusParams for given height
 type ResultConsensusParams struct {
-	BlockHeight     int64                   `json:"block_height"`
-	ConsensusParams tmproto.ConsensusParams `json:"consensus_params"`
+	BlockHeight     int64                 `json:"block_height"`
+	ConsensusParams types.ConsensusParams `json:"consensus_params"`
 }
 
 // Info about the consensus state.
@@ -245,7 +261,8 @@ type (
 
 // Event data from a subscription
 type ResultEvent struct {
-	Query  string              `json:"query"`
-	Data   types.TMEventData   `json:"data"`
-	Events map[string][]string `json:"events"`
+	SubscriptionID string            `json:"subscription_id"`
+	Query          string            `json:"query"`
+	Data           types.TMEventData `json:"data"`
+	Events         []abci.Event      `json:"events"`
 }

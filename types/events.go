@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"strings"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmjson "github.com/tendermint/tendermint/libs/json"
@@ -16,26 +17,69 @@ const (
 	// after a block has been committed.
 	// These are also used by the tx indexer for async indexing.
 	// All of this data can be fetched through the rpc.
-	EventNewBlock            = "NewBlock"
-	EventNewBlockHeader      = "NewBlockHeader"
-	EventNewEvidence         = "NewEvidence"
-	EventTx                  = "Tx"
-	EventValidatorSetUpdates = "ValidatorSetUpdates"
+	EventNewBlockValue            = "NewBlock"
+	EventNewBlockHeaderValue      = "NewBlockHeader"
+	EventNewEvidenceValue         = "NewEvidence"
+	EventTxValue                  = "Tx"
+	EventValidatorSetUpdatesValue = "ValidatorSetUpdates"
 
 	// Internal consensus events.
 	// These are used for testing the consensus state machine.
 	// They can also be used to build real-time consensus visualizers.
-	EventCompleteProposal = "CompleteProposal"
-	EventLock             = "Lock"
-	EventNewRound         = "NewRound"
-	EventNewRoundStep     = "NewRoundStep"
-	EventPolka            = "Polka"
-	EventRelock           = "Relock"
-	EventTimeoutPropose   = "TimeoutPropose"
-	EventTimeoutWait      = "TimeoutWait"
-	EventUnlock           = "Unlock"
-	EventValidBlock       = "ValidBlock"
-	EventVote             = "Vote"
+	EventCompleteProposalValue = "CompleteProposal"
+	EventLockValue             = "Lock"
+	EventNewRoundValue         = "NewRound"
+	EventNewRoundStepValue     = "NewRoundStep"
+	EventPolkaValue            = "Polka"
+	EventRelockValue           = "Relock"
+	EventTimeoutProposeValue   = "TimeoutPropose"
+	EventTimeoutWaitValue      = "TimeoutWait"
+	EventUnlockValue           = "Unlock"
+	EventValidBlockValue       = "ValidBlock"
+	EventVoteValue             = "Vote"
+)
+
+// Pre-populated ABCI Tendermint-reserved events
+var (
+	EventNewBlock = abci.Event{
+		Type: strings.Split(EventTypeKey, ".")[0],
+		Attributes: []abci.EventAttribute{
+			{
+				Key:   strings.Split(EventTypeKey, ".")[1],
+				Value: EventNewBlockValue,
+			},
+		},
+	}
+
+	EventNewBlockHeader = abci.Event{
+		Type: strings.Split(EventTypeKey, ".")[0],
+		Attributes: []abci.EventAttribute{
+			{
+				Key:   strings.Split(EventTypeKey, ".")[1],
+				Value: EventNewBlockHeaderValue,
+			},
+		},
+	}
+
+	EventNewEvidence = abci.Event{
+		Type: strings.Split(EventTypeKey, ".")[0],
+		Attributes: []abci.EventAttribute{
+			{
+				Key:   strings.Split(EventTypeKey, ".")[1],
+				Value: EventNewEvidenceValue,
+			},
+		},
+	}
+
+	EventTx = abci.Event{
+		Type: strings.Split(EventTypeKey, ".")[0],
+		Attributes: []abci.EventAttribute{
+			{
+				Key:   strings.Split(EventTypeKey, ".")[1],
+				Value: EventTxValue,
+			},
+		},
+	}
 )
 
 // ENCODING / DECODING
@@ -62,7 +106,8 @@ func init() {
 // but some (an input to a call tx or a receive) are more exotic
 
 type EventDataNewBlock struct {
-	Block *Block `json:"block"`
+	Block   *Block  `json:"block"`
+	BlockID BlockID `json:"block_id"`
 
 	ResultBeginBlock abci.ResponseBeginBlock `json:"result_begin_block"`
 	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
@@ -140,33 +185,36 @@ const (
 	// BlockHeightKey is a reserved key used for indexing BeginBlock and Endblock
 	// events.
 	BlockHeightKey = "block.height"
+
+	EventTypeBeginBlock = "begin_block"
+	EventTypeEndBlock   = "end_block"
 )
 
 var (
-	EventQueryCompleteProposal    = QueryForEvent(EventCompleteProposal)
-	EventQueryLock                = QueryForEvent(EventLock)
-	EventQueryNewBlock            = QueryForEvent(EventNewBlock)
-	EventQueryNewBlockHeader      = QueryForEvent(EventNewBlockHeader)
-	EventQueryNewEvidence         = QueryForEvent(EventNewEvidence)
-	EventQueryNewRound            = QueryForEvent(EventNewRound)
-	EventQueryNewRoundStep        = QueryForEvent(EventNewRoundStep)
-	EventQueryPolka               = QueryForEvent(EventPolka)
-	EventQueryRelock              = QueryForEvent(EventRelock)
-	EventQueryTimeoutPropose      = QueryForEvent(EventTimeoutPropose)
-	EventQueryTimeoutWait         = QueryForEvent(EventTimeoutWait)
-	EventQueryTx                  = QueryForEvent(EventTx)
-	EventQueryUnlock              = QueryForEvent(EventUnlock)
-	EventQueryValidatorSetUpdates = QueryForEvent(EventValidatorSetUpdates)
-	EventQueryValidBlock          = QueryForEvent(EventValidBlock)
-	EventQueryVote                = QueryForEvent(EventVote)
+	EventQueryCompleteProposal    = QueryForEvent(EventCompleteProposalValue)
+	EventQueryLock                = QueryForEvent(EventLockValue)
+	EventQueryNewBlock            = QueryForEvent(EventNewBlockValue)
+	EventQueryNewBlockHeader      = QueryForEvent(EventNewBlockHeaderValue)
+	EventQueryNewEvidence         = QueryForEvent(EventNewEvidenceValue)
+	EventQueryNewRound            = QueryForEvent(EventNewRoundValue)
+	EventQueryNewRoundStep        = QueryForEvent(EventNewRoundStepValue)
+	EventQueryPolka               = QueryForEvent(EventPolkaValue)
+	EventQueryRelock              = QueryForEvent(EventRelockValue)
+	EventQueryTimeoutPropose      = QueryForEvent(EventTimeoutProposeValue)
+	EventQueryTimeoutWait         = QueryForEvent(EventTimeoutWaitValue)
+	EventQueryTx                  = QueryForEvent(EventTxValue)
+	EventQueryUnlock              = QueryForEvent(EventUnlockValue)
+	EventQueryValidatorSetUpdates = QueryForEvent(EventValidatorSetUpdatesValue)
+	EventQueryValidBlock          = QueryForEvent(EventValidBlockValue)
+	EventQueryVote                = QueryForEvent(EventVoteValue)
 )
 
 func EventQueryTxFor(tx Tx) tmpubsub.Query {
-	return tmquery.MustParse(fmt.Sprintf("%s='%s' AND %s='%X'", EventTypeKey, EventTx, TxHashKey, tx.Hash()))
+	return tmquery.MustParse(fmt.Sprintf("%s='%s' AND %s='%X'", EventTypeKey, EventTxValue, TxHashKey, tx.Hash()))
 }
 
-func QueryForEvent(eventType string) tmpubsub.Query {
-	return tmquery.MustParse(fmt.Sprintf("%s='%s'", EventTypeKey, eventType))
+func QueryForEvent(eventValue string) tmpubsub.Query {
+	return tmquery.MustParse(fmt.Sprintf("%s='%s'", EventTypeKey, eventValue))
 }
 
 // BlockEventPublisher publishes all block related events
