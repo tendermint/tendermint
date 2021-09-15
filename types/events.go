@@ -2,7 +2,6 @@ package types
 
 import (
 	"fmt"
-	"strings"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmjson "github.com/tendermint/tendermint/libs/json"
@@ -42,41 +41,41 @@ const (
 // Pre-populated ABCI Tendermint-reserved events
 var (
 	_EventNewBlock = abci.Event{
-		Type: strings.Split(EventTypeKey, ".")[0],
+		Type: eventReservedType,
 		Attributes: []abci.EventAttribute{
 			{
-				Key:   strings.Split(EventTypeKey, ".")[1],
-				Value: EventNewBlock,
+				Key:   []byte(eventReservedKey),
+				Value: []byte(EventNewBlock),
 			},
 		},
 	}
 
 	_EventNewBlockHeader = abci.Event{
-		Type: strings.Split(EventTypeKey, ".")[0],
+		Type: eventReservedType,
 		Attributes: []abci.EventAttribute{
 			{
-				Key:   strings.Split(EventTypeKey, ".")[1],
-				Value: EventNewBlockHeader,
+				Key:   []byte(eventReservedKey),
+				Value: []byte(EventNewBlockHeader),
 			},
 		},
 	}
 
 	_EventNewEvidence = abci.Event{
-		Type: strings.Split(EventTypeKey, ".")[0],
+		Type: eventReservedType,
 		Attributes: []abci.EventAttribute{
 			{
-				Key:   strings.Split(EventTypeKey, ".")[1],
-				Value: EventNewEvidence,
+				Key:   []byte(eventReservedKey),
+				Value: []byte(EventNewEvidence),
 			},
 		},
 	}
 
 	_EventTx = abci.Event{
-		Type: strings.Split(EventTypeKey, ".")[0],
+		Type: eventReservedType,
 		Attributes: []abci.EventAttribute{
 			{
-				Key:   strings.Split(EventTypeKey, ".")[1],
-				Value: EventTx,
+				Key:   []byte(eventReservedKey),
+				Value: []byte(EventTx),
 			},
 		},
 	}
@@ -173,8 +172,12 @@ type EventDataValidatorSetUpdates struct {
 // PUBSUB
 
 const (
+	eventReservedType = "tm"
+	eventReservedKey  = "event"
+
 	// EventTypeKey is a reserved composite key for event name.
-	EventTypeKey = "tm.event"
+	EventTypeKey = eventReservedType + "." + eventReservedKey
+
 	// TxHashKey is a reserved key, used to specify transaction's hash.
 	// see EventBus#PublishEventTx
 	TxHashKey = "tx.hash"

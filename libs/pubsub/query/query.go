@@ -518,8 +518,8 @@ func flattenEvents(events []types.Event) map[string][]string {
 				continue
 			}
 
-			compositeEvent := fmt.Sprintf("%s.%s", event.Type, attr.Key)
-			flattened[compositeEvent] = append(flattened[compositeEvent], attr.Value)
+			compositeEvent := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
+			flattened[compositeEvent] = append(flattened[compositeEvent], string(attr.Value))
 		}
 	}
 
