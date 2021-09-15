@@ -52,6 +52,9 @@ func NewCLI() *CLI {
 			if err := Cleanup(cli.testnet); err != nil {
 				return err
 			}
+			if !cli.preserve {
+				defer Cleanup(cli.testnet)
+			}
 			if err := Setup(cli.testnet); err != nil {
 				return err
 			}
@@ -102,11 +105,6 @@ func NewCLI() *CLI {
 			}
 			if err := Test(cli.testnet); err != nil {
 				return err
-			}
-			if !cli.preserve {
-				if err := Cleanup(cli.testnet); err != nil {
-					return err
-				}
 			}
 			return nil
 		},
