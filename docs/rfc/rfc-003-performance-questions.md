@@ -146,10 +146,14 @@ usecase of Tendermint and do not necessarily need to be addressed at this time.
 
 ### RPC
 
-#### The Query API
+#### Claim: The Query API is slow.
 
-* Not yet clear what the use case is for this or if this is the best solve for the need for users to query TM state? 
-* Should we solve this within Tendermint?
+The query API locks a mutex across the ABCI connections. This causes consensus to
+slow during queries, as ABCI is no longer able to make progress. This is known
+to be causing issue in the cosmos-sdk and is being addressed [in the sdk][sdk-query-fix]
+but a more robust solution may be required. Adding metrics to each ABCI client connection
+and message as described in the Application section of this document would allow us
+to further introspect the issue here. 
 
 #### Claim: RPC Serialization may cause slowdown
 
@@ -276,3 +280,4 @@ event sends. The following metrics would be a good start for tracking this perfo
 [event-buffer-capacity]: https://github.com/tendermint/tendermint/blob/5bd3b286a2b715737f6d6c33051b69061d38f8ef/types/event_bus.go#L14
 [event-indexer-unbuffered]: https://github.com/tendermint/tendermint/blob/5bd3b286a2b715737f6d6c33051b69061d38f8ef/state/indexer/indexer_service.go#L39
 [consensus-event-send]: https://github.com/tendermint/tendermint/blob/5bd3b286a2b715737f6d6c33051b69061d38f8ef/internal/consensus/state.go#L1573
+[sdk-query-fix]: https://github.com/cosmos/cosmos-sdk/pull/10045
