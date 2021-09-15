@@ -944,7 +944,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		PeerGossipSleepDuration:     100 * time.Millisecond,
 		PeerQueryMaj23SleepDuration: 2000 * time.Millisecond,
 		DoubleSignCheckHeight:       int64(0),
-		AppHashSize:                 crypto.SmallAppHashSize,
+		AppHashSize:                 crypto.DefaultAppHashSize,
 		QuorumType:                  btcjson.LLMQType_5_60,
 	}
 }

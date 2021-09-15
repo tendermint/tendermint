@@ -267,7 +267,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.P2P.AddrBookStrict = false
 	cfg.DBBackend = node.Database
 	cfg.StateSync.DiscoveryTime = 5 * time.Second
-	cfg.Consensus.AppHashSize = crypto.DefaultHashSize
+	cfg.Consensus.AppHashSize = crypto.DefaultAppHashSize
 	cfg.BaseConfig.LogLevel = "debug"
 
 	switch node.ABCIProtocol {
