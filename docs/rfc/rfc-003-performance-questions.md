@@ -189,6 +189,7 @@ it takes for popular chains with many validators to gather all votes within a st
 Metrics that would improve visibility into this include:
 
 * Amount of time for a node to gather votes in a step.
+* Amount of time for a node to gather all block parts.
 * Number of votes each node sends to gossip (i.e. not its own votes, but votes it is
 transmitting for a peer).
 * Total number of votes each node sends to receives (A node may receive duplicate votes

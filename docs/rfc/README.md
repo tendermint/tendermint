@@ -38,5 +38,6 @@ sections.
 ## Table of Contents
 
 - [RFC-000: P2P Roadmap](./rfc-000-p2p-roadmap.rst)
+- [RFC-003: Performance Taxonomy](./rfc-003-performance-questions.md)
 
 <!-- - [RFC-NNN: Title](./rfc-NNN-title.md) -->
