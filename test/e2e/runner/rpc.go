@@ -15,6 +15,7 @@ import (
 // waitForHeight waits for the network to reach a certain height (or above),
 // returning the block at the height seen. Errors if the network is not making
 // progress at all.
+// If height == 0, the initial height of the test network is used as the target.
 func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*types.Block, *types.BlockID, error) {
 	var (
 		err             error
@@ -95,17 +96,15 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 					}
 
 					// All nodes are at or above the target height. Now fetch the block for that target height
-					// and return it. This will only ever be nil if the node pruned their block. Min pruning is
-					// set at least double evidence age (14) so this would mean that the node advanced more than 14
-					// blocks since we last queried it.
-					result, err := client.Block(ctx, &height)
-					if err != nil {
-						return nil, nil, err
+					// and return it. We loop again through all clients because some may have pruning set but
+					// at least two of them should be archive nodes.
+					for _, c := range clients {
+						result, err := c.Block(ctx, &height)
+						if err != nil || result == nil || result.Block == nil {
+							continue
+						}
+						return result.Block, &result.BlockID, err
 					}
-					if result == nil || result.Block == nil {
-						return nil, nil, fmt.Errorf("node %v pruned block at height %d", node.Name, height)
-					}
-					return result.Block, &result.BlockID, err
 				}
 			}
 
