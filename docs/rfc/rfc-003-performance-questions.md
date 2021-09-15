@@ -126,7 +126,7 @@ proceeds. This means that an application that is slow to execute all of its
 transactions or finalize state during the `Commit` method will prevent any new
 transactions from being added to the mempool.  Apps that are slow to commit will
 prevent consensus from proceeded to the next consensus height since Tendermint
-cannot validate validate block proposals or produce block proposals without the
+cannot validate block proposals or produce block proposals without the
 AppHash obtained from the `Commit` method. We should add a metric for each
 step in the ABCI protocol to track the amount of time that a node spends communicating
 with the application at each step.
