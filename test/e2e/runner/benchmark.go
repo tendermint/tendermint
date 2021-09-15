@@ -22,7 +22,7 @@ import (
 // Metrics are based of the `benchmarkLength`, the amount of consecutive blocks
 // sampled from in the testnet
 func Benchmark(ctx context.Context, testnet *e2e.Testnet, benchmarkLength int64) error {
-	block, _, err := waitForHeight(ctx, testnet, 0)
+	block, err := getLatestBlock(ctx, testnet)
 	if err != nil {
 		return err
 	}
