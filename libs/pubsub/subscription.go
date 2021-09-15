@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/tendermint/tendermint/abci/types"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 var (
