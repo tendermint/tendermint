@@ -379,6 +379,7 @@ func (c *Client) Update(ctx context.Context, now time.Time) (*types.LightBlock, 
 		return nil, err
 	}
 
+	// If there is a new light block then verify it
 	if latestBlock.Height > lastTrustedHeight {
 		err = c.verifyLightBlock(ctx, latestBlock, now)
 		if err != nil {
@@ -388,7 +389,8 @@ func (c *Client) Update(ctx context.Context, now time.Time) (*types.LightBlock, 
 		return latestBlock, nil
 	}
 
-	return nil, nil
+	// else return the latestTrustedBlock
+	return c.latestTrustedBlock, nil
 }
 
 // VerifyLightBlockAtHeight fetches the light block at the given height

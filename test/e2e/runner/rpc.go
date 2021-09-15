@@ -13,13 +13,13 @@ import (
 )
 
 // waitForHeight waits for the network to reach a certain height (or above),
-// returning the highest height seen. Errors if the network is not making
+// returning the block at the height seen. Errors if the network is not making
 // progress at all.
 func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*types.Block, *types.BlockID, error) {
 	var (
 		err             error
-		maxResult       *rpctypes.ResultBlock
 		clients         = map[string]*rpchttp.HTTP{}
+		lastHeight      int64
 		lastIncrease    = time.Now()
 		nodesAtHeight   = map[string]struct{}{}
 		numRunningNodes int
@@ -47,10 +47,10 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 					continue
 				}
 
+				// skip nodes that don't have state or haven't started yet
 				if node.Stateless() {
 					continue
 				}
-
 				if !node.HasStarted {
 					continue
 				}
@@ -67,16 +67,16 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 
 				wctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 				defer cancel()
-				result, err := client.Block(wctx, nil)
+				result, err := client.Status(wctx)
 				if err != nil {
 					continue
 				}
-				if result.Block != nil && (maxResult == nil || result.Block.Height > maxResult.Block.Height) {
-					maxResult = result
+				if result.SyncInfo.LatestBlockHeight > lastHeight {
+					lastHeight = result.SyncInfo.LatestBlockHeight
 					lastIncrease = time.Now()
 				}
 
-				if maxResult != nil && maxResult.Block.Height >= height {
+				if lastHeight >= height {
 					// the node has achieved the target height!
 
 					// add this node to the set of target
@@ -90,9 +90,15 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 						continue
 					}
 
-					// return once all nodes have reached
-					// the target height.
-					return maxResult.Block, &maxResult.BlockID, nil
+					// All nodes are at or above the target height. Now fetch the block for that target height
+					// and return it. This will only ever be nil if the node pruned their block. Min pruning is
+					// set at least double evidence age (14) so this would mean that the node advanced more than 14
+					// blocks since we last queried it.
+					result, err := client.Block(ctx, &height)
+					if result.Block == nil {
+						return nil, nil, fmt.Errorf("node %v pruned block at height %d", node.Name, height)
+					}
+					return result.Block, &result.BlockID, err
 				}
 			}
 
@@ -100,12 +106,12 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 				return nil, nil, errors.New("unable to connect to any network nodes")
 			}
 			if time.Since(lastIncrease) >= time.Minute {
-				if maxResult == nil {
-					return nil, nil, errors.New("chain stalled at unknown height")
+				if lastHeight == 0 {
+					return nil, nil, errors.New("chain stalled at unknown height (most likely upon starting)")
 				}
 
 				return nil, nil, fmt.Errorf("chain stalled at height %v [%d of %d nodes %+v]",
-					maxResult.Block.Height,
+					lastHeight,
 					len(nodesAtHeight),
 					numRunningNodes,
 					nodesAtHeight)
