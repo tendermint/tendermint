@@ -7,7 +7,7 @@
 
 ## Abstract
 
-This document discusses the various sources of performance issue in Tendermint and
+This document discusses the various sources of performance issues in Tendermint and
 attempts to clarify what work may be required to understand and address them.
 
 ## Background
@@ -38,7 +38,7 @@ lines of inquiry that may be valuable for better understanding Tendermint's perf
 As a note: We should avoid quickly adding many microbenchmarks or package level benchmarks. 
 These are prone to being worse than useless as they can obscure what _should_ be
 focused on: performance of the system from the perspective of a user. We should,
-instead, tune performance with an eye towards actions user needs. These users comprise
+instead, tune performance with an eye towards user needs and actions users make. These users comprise
 both operators of Tendermint chains and the people generating transactions for
 Tendermint chains. Both of these sets of users are largely aligned in wanting an end-to-end
 system that operates quickly and efficiently.
@@ -55,7 +55,7 @@ The listed number of nodes a user reported as causing issue was in the thousands
 We don't currently have evidence about what the upper-limit of nodes that Tendermint's
 P2P stack can scale to.
 
-We need to more concretely understand the source of issue and determine what layer
+We need to more concretely understand the source of issues and determine what layer
 is causing a problem. It's possible that the P2P layer, in the absence of any reactors
 sending data, is perfectly capable of managing thousands of peer connections. For
 a reasonable networking and application setup, thousands of connections should not present any
@@ -224,6 +224,11 @@ in a consensus round, during block verification, when verifying the prevotes, an
 when verifying the precommits. With no batching, this would be roughly `3ms` per
 round. It is quite unlikely, therefore, that this accounts for any serious amount
 of the ~7 seconds of block time per height in the Hub.
+
+This may cause slowdown when syncing, since the process needs to constantly verify
+signatures. It's possible that improved signature aggregation will lead to improved
+light client or other syncing performance. In general, a metric should be added
+to track block rate while blocksyncing.
 
 #### Claim: Our use of digital signatures in the consensus protocol contributes to performance issue
 
