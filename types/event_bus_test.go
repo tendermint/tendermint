@@ -15,6 +15,16 @@ import (
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 )
 
+type kvPair = [2]string
+
+func makeEventAttrs(kvPairs []kvPair) []abci.EventAttribute {
+	var attrs []abci.EventAttribute
+	for _, pair := range kvPairs {
+		attrs = append(attrs, abci.EventAttribute{Key: []byte(pair[0]), Value: []byte(pair[1])})
+	}
+	return attrs
+}
+
 func TestEventBusPublishEventTx(t *testing.T) {
 	eventBus := NewEventBus()
 	err := eventBus.Start()
@@ -29,7 +39,7 @@ func TestEventBusPublishEventTx(t *testing.T) {
 	result := abci.ResponseDeliverTx{
 		Data: []byte("bar"),
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "baz", Value: "1"}}},
+			{Type: "testType", Attributes: makeEventAttrs([]kvPair{{"baz", "1"}})},
 		},
 	}
 
@@ -78,12 +88,12 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	blockID := BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(BlockPartSizeBytes).Header()}
 	resultBeginBlock := abci.ResponseBeginBlock{
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "baz", Value: "1"}}},
+			{Type: "testType", Attributes: makeEventAttrs([]kvPair{{"baz", "1"}})},
 		},
 	}
 	resultEndBlock := abci.ResponseEndBlock{
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "foz", Value: "2"}}},
+			{Type: "testType", Attributes: makeEventAttrs([]kvPair{{"foz", "2"}})},
 		},
 	}
 
@@ -134,27 +144,27 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 		Events: []abci.Event{
 			{
 				Type: "transfer",
-				Attributes: []abci.EventAttribute{
-					{Key: "sender", Value: "foo"},
-					{Key: "recipient", Value: "bar"},
-					{Key: "amount", Value: "5"},
-				},
+				Attributes: makeEventAttrs([]kvPair{
+					{"sender", "foo"},
+					{"recipient", "bar"},
+					{"amount", "5"},
+				}),
 			},
 			{
 				Type: "transfer",
-				Attributes: []abci.EventAttribute{
-					{Key: "sender", Value: "baz"},
-					{Key: "recipient", Value: "cat"},
-					{Key: "amount", Value: "13"},
-				},
+				Attributes: makeEventAttrs([]kvPair{
+					{"sender", "baz"},
+					{"recipient", "cat"},
+					{"amount", "13"},
+				}),
 			},
 			{
 				Type: "withdraw.rewards",
-				Attributes: []abci.EventAttribute{
-					{Key: "address", Value: "bar"},
-					{Key: "source", Value: "iceman"},
-					{Key: "amount", Value: "33"},
-				},
+				Attributes: makeEventAttrs([]kvPair{
+					{"address", "bar"},
+					{"source", "iceman"},
+					{"amount", "33"},
+				}),
 			},
 		},
 	}
@@ -239,12 +249,12 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
 	resultBeginBlock := abci.ResponseBeginBlock{
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "baz", Value: "1"}}},
+			{Type: "testType", Attributes: makeEventAttrs([]kvPair{{"baz", "1"}})},
 		},
 	}
 	resultEndBlock := abci.ResponseEndBlock{
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "foz", Value: "2"}}},
+			{Type: "testType", Attributes: makeEventAttrs([]kvPair{{"foz", "2"}})},
 		},
 	}
 

@@ -105,13 +105,13 @@ func (b *EventBus) Publish(eventValue string, eventData TMEventData) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
 
-	tokens := strings.Split(EventTypeKey, ".")
+	tokens := strings.SplitN(EventTypeKey, ".", 2)
 	event := types.Event{
 		Type: tokens[0],
 		Attributes: []types.EventAttribute{
 			{
-				Key:   tokens[1],
-				Value: eventValue,
+				Key:   []byte(tokens[1]),
+				Value: []byte(eventValue),
 			},
 		},
 	}
@@ -164,24 +164,24 @@ func (b *EventBus) PublishEventTx(data EventDataTx) error {
 	// add Tendermint-reserved events
 	events = append(events, _EventTx)
 
-	tokens := strings.Split(TxHashKey, ".")
+	tokens := strings.SplitN(TxHashKey, ".", 2)
 	events = append(events, types.Event{
 		Type: tokens[0],
 		Attributes: []types.EventAttribute{
 			{
-				Key:   tokens[1],
-				Value: fmt.Sprintf("%X", Tx(data.Tx).Hash()),
+				Key:   []byte(tokens[1]),
+				Value: []byte(fmt.Sprintf("%X", Tx(data.Tx).Hash())),
 			},
 		},
 	})
 
-	tokens = strings.Split(TxHeightKey, ".")
+	tokens = strings.SplitN(TxHeightKey, ".", 2)
 	events = append(events, types.Event{
 		Type: tokens[0],
 		Attributes: []types.EventAttribute{
 			{
-				Key:   tokens[1],
-				Value: fmt.Sprintf("%d", data.Height),
+				Key:   []byte(tokens[1]),
+				Value: []byte(fmt.Sprintf("%d", data.Height)),
 			},
 		},
 	})
