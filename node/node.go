@@ -703,6 +703,8 @@ func (n *nodeImpl) OnStart() error {
 			state, err := n.stateSyncReactor.Sync(context.TODO())
 			if err != nil {
 				n.Logger.Error("state sync failed", "err", err)
+				// stop the node
+				n.Stop()
 				return
 			}
 
