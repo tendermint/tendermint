@@ -267,6 +267,8 @@ Does not run any perbutations.
 			if err := Cleanup(cli.testnet); err != nil {
 				return err
 			}
+			defer Cleanup(cli.testnet)
+
 			if err := Setup(cli.testnet); err != nil {
 				return err
 			}
@@ -297,10 +299,6 @@ Does not run any perbutations.
 
 			loadCancel()
 			if err := <-chLoadResult; err != nil {
-				return err
-			}
-
-			if err := Cleanup(cli.testnet); err != nil {
 				return err
 			}
 
