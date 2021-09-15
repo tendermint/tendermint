@@ -342,7 +342,7 @@ func TestEventBusPublish(t *testing.T) {
 		}
 	}()
 
-	err = eventBus.Publish(EventNewBlockHeaderValue, EventDataNewBlockHeader{})
+	err = eventBus.Publish(EventNewBlockHeader, EventDataNewBlockHeader{})
 	require.NoError(t, err)
 	err = eventBus.PublishEventNewBlock(EventDataNewBlock{})
 	require.NoError(t, err)
@@ -447,7 +447,7 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 		}()
 	}
 
-	eventValue := EventNewBlockValue
+	eventValue := EventNewBlock
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -464,18 +464,18 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 }
 
 var events = []string{
-	EventNewBlockValue,
-	EventNewBlockHeaderValue,
-	EventNewRoundValue,
-	EventNewRoundStepValue,
-	EventTimeoutProposeValue,
-	EventCompleteProposalValue,
-	EventPolkaValue,
-	EventUnlockValue,
-	EventLockValue,
-	EventRelockValue,
-	EventTimeoutWaitValue,
-	EventVoteValue,
+	EventNewBlock,
+	EventNewBlockHeader,
+	EventNewRound,
+	EventNewRoundStep,
+	EventTimeoutPropose,
+	EventCompleteProposal,
+	EventPolka,
+	EventUnlock,
+	EventLock,
+	EventRelock,
+	EventTimeoutWait,
+	EventVote,
 }
 
 func randEventValue() string {

@@ -18,10 +18,10 @@ func TestQueryTxFor(t *testing.T) {
 func TestQueryForEvent(t *testing.T) {
 	assert.Equal(t,
 		"tm.event='NewBlock'",
-		QueryForEvent(EventNewBlockValue).String(),
+		QueryForEvent(EventNewBlock).String(),
 	)
 	assert.Equal(t,
 		"tm.event='NewEvidence'",
-		QueryForEvent(EventNewEvidenceValue).String(),
+		QueryForEvent(EventNewEvidence).String(),
 	)
 }

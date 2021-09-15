@@ -142,15 +142,15 @@ func (b *EventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) erro
 }
 
 func (b *EventBus) PublishEventNewEvidence(evidence EventDataNewEvidence) error {
-	return b.Publish(EventNewEvidenceValue, evidence)
+	return b.Publish(EventNewEvidence, evidence)
 }
 
 func (b *EventBus) PublishEventVote(data EventDataVote) error {
-	return b.Publish(EventVoteValue, data)
+	return b.Publish(EventVote, data)
 }
 
 func (b *EventBus) PublishEventValidBlock(data EventDataRoundState) error {
-	return b.Publish(EventValidBlockValue, data)
+	return b.Publish(EventValidBlock, data)
 }
 
 // PublishEventTx publishes tx event with events from Result. Note it will add
@@ -190,43 +190,43 @@ func (b *EventBus) PublishEventTx(data EventDataTx) error {
 }
 
 func (b *EventBus) PublishEventNewRoundStep(data EventDataRoundState) error {
-	return b.Publish(EventNewRoundStepValue, data)
+	return b.Publish(EventNewRoundStep, data)
 }
 
 func (b *EventBus) PublishEventTimeoutPropose(data EventDataRoundState) error {
-	return b.Publish(EventTimeoutProposeValue, data)
+	return b.Publish(EventTimeoutPropose, data)
 }
 
 func (b *EventBus) PublishEventTimeoutWait(data EventDataRoundState) error {
-	return b.Publish(EventTimeoutWaitValue, data)
+	return b.Publish(EventTimeoutWait, data)
 }
 
 func (b *EventBus) PublishEventNewRound(data EventDataNewRound) error {
-	return b.Publish(EventNewRoundValue, data)
+	return b.Publish(EventNewRound, data)
 }
 
 func (b *EventBus) PublishEventCompleteProposal(data EventDataCompleteProposal) error {
-	return b.Publish(EventCompleteProposalValue, data)
+	return b.Publish(EventCompleteProposal, data)
 }
 
 func (b *EventBus) PublishEventPolka(data EventDataRoundState) error {
-	return b.Publish(EventPolkaValue, data)
+	return b.Publish(EventPolka, data)
 }
 
 func (b *EventBus) PublishEventUnlock(data EventDataRoundState) error {
-	return b.Publish(EventUnlockValue, data)
+	return b.Publish(EventUnlock, data)
 }
 
 func (b *EventBus) PublishEventRelock(data EventDataRoundState) error {
-	return b.Publish(EventRelockValue, data)
+	return b.Publish(EventRelock, data)
 }
 
 func (b *EventBus) PublishEventLock(data EventDataRoundState) error {
-	return b.Publish(EventLockValue, data)
+	return b.Publish(EventLock, data)
 }
 
 func (b *EventBus) PublishEventValidatorSetUpdates(data EventDataValidatorSetUpdates) error {
-	return b.Publish(EventValidatorSetUpdatesValue, data)
+	return b.Publish(EventValidatorSetUpdates, data)
 }
 
 //-----------------------------------------------------------------------------

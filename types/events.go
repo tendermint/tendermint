@@ -17,26 +17,26 @@ const (
 	// after a block has been committed.
 	// These are also used by the tx indexer for async indexing.
 	// All of this data can be fetched through the rpc.
-	EventNewBlockValue            = "NewBlock"
-	EventNewBlockHeaderValue      = "NewBlockHeader"
-	EventNewEvidenceValue         = "NewEvidence"
-	EventTxValue                  = "Tx"
-	EventValidatorSetUpdatesValue = "ValidatorSetUpdates"
+	EventNewBlock            = "NewBlock"
+	EventNewBlockHeader      = "NewBlockHeader"
+	EventNewEvidence         = "NewEvidence"
+	EventTx                  = "Tx"
+	EventValidatorSetUpdates = "ValidatorSetUpdates"
 
 	// Internal consensus events.
 	// These are used for testing the consensus state machine.
 	// They can also be used to build real-time consensus visualizers.
-	EventCompleteProposalValue = "CompleteProposal"
-	EventLockValue             = "Lock"
-	EventNewRoundValue         = "NewRound"
-	EventNewRoundStepValue     = "NewRoundStep"
-	EventPolkaValue            = "Polka"
-	EventRelockValue           = "Relock"
-	EventTimeoutProposeValue   = "TimeoutPropose"
-	EventTimeoutWaitValue      = "TimeoutWait"
-	EventUnlockValue           = "Unlock"
-	EventValidBlockValue       = "ValidBlock"
-	EventVoteValue             = "Vote"
+	EventCompleteProposal = "CompleteProposal"
+	EventLock             = "Lock"
+	EventNewRound         = "NewRound"
+	EventNewRoundStep     = "NewRoundStep"
+	EventPolka            = "Polka"
+	EventRelock           = "Relock"
+	EventTimeoutPropose   = "TimeoutPropose"
+	EventTimeoutWait      = "TimeoutWait"
+	EventUnlock           = "Unlock"
+	EventValidBlock       = "ValidBlock"
+	EventVote             = "Vote"
 )
 
 // Pre-populated ABCI Tendermint-reserved events
@@ -46,7 +46,7 @@ var (
 		Attributes: []abci.EventAttribute{
 			{
 				Key:   strings.Split(EventTypeKey, ".")[1],
-				Value: EventNewBlockValue,
+				Value: EventNewBlock,
 			},
 		},
 	}
@@ -56,7 +56,7 @@ var (
 		Attributes: []abci.EventAttribute{
 			{
 				Key:   strings.Split(EventTypeKey, ".")[1],
-				Value: EventNewBlockHeaderValue,
+				Value: EventNewBlockHeader,
 			},
 		},
 	}
@@ -66,7 +66,7 @@ var (
 		Attributes: []abci.EventAttribute{
 			{
 				Key:   strings.Split(EventTypeKey, ".")[1],
-				Value: EventNewEvidenceValue,
+				Value: EventNewEvidence,
 			},
 		},
 	}
@@ -76,7 +76,7 @@ var (
 		Attributes: []abci.EventAttribute{
 			{
 				Key:   strings.Split(EventTypeKey, ".")[1],
-				Value: EventTxValue,
+				Value: EventTx,
 			},
 		},
 	}
@@ -191,26 +191,26 @@ const (
 )
 
 var (
-	EventQueryCompleteProposal    = QueryForEvent(EventCompleteProposalValue)
-	EventQueryLock                = QueryForEvent(EventLockValue)
-	EventQueryNewBlock            = QueryForEvent(EventNewBlockValue)
-	EventQueryNewBlockHeader      = QueryForEvent(EventNewBlockHeaderValue)
-	EventQueryNewEvidence         = QueryForEvent(EventNewEvidenceValue)
-	EventQueryNewRound            = QueryForEvent(EventNewRoundValue)
-	EventQueryNewRoundStep        = QueryForEvent(EventNewRoundStepValue)
-	EventQueryPolka               = QueryForEvent(EventPolkaValue)
-	EventQueryRelock              = QueryForEvent(EventRelockValue)
-	EventQueryTimeoutPropose      = QueryForEvent(EventTimeoutProposeValue)
-	EventQueryTimeoutWait         = QueryForEvent(EventTimeoutWaitValue)
-	EventQueryTx                  = QueryForEvent(EventTxValue)
-	EventQueryUnlock              = QueryForEvent(EventUnlockValue)
-	EventQueryValidatorSetUpdates = QueryForEvent(EventValidatorSetUpdatesValue)
-	EventQueryValidBlock          = QueryForEvent(EventValidBlockValue)
-	EventQueryVote                = QueryForEvent(EventVoteValue)
+	EventQueryCompleteProposal    = QueryForEvent(EventCompleteProposal)
+	EventQueryLock                = QueryForEvent(EventLock)
+	EventQueryNewBlock            = QueryForEvent(EventNewBlock)
+	EventQueryNewBlockHeader      = QueryForEvent(EventNewBlockHeader)
+	EventQueryNewEvidence         = QueryForEvent(EventNewEvidence)
+	EventQueryNewRound            = QueryForEvent(EventNewRound)
+	EventQueryNewRoundStep        = QueryForEvent(EventNewRoundStep)
+	EventQueryPolka               = QueryForEvent(EventPolka)
+	EventQueryRelock              = QueryForEvent(EventRelock)
+	EventQueryTimeoutPropose      = QueryForEvent(EventTimeoutPropose)
+	EventQueryTimeoutWait         = QueryForEvent(EventTimeoutWait)
+	EventQueryTx                  = QueryForEvent(EventTx)
+	EventQueryUnlock              = QueryForEvent(EventUnlock)
+	EventQueryValidatorSetUpdates = QueryForEvent(EventValidatorSetUpdates)
+	EventQueryValidBlock          = QueryForEvent(EventValidBlock)
+	EventQueryVote                = QueryForEvent(EventVote)
 )
 
 func EventQueryTxFor(tx Tx) tmpubsub.Query {
-	return tmquery.MustParse(fmt.Sprintf("%s='%s' AND %s='%X'", EventTypeKey, EventTxValue, TxHashKey, tx.Hash()))
+	return tmquery.MustParse(fmt.Sprintf("%s='%s' AND %s='%X'", EventTypeKey, EventTx, TxHashKey, tx.Hash()))
 }
 
 func QueryForEvent(eventValue string) tmpubsub.Query {
