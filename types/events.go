@@ -41,7 +41,7 @@ const (
 
 // Pre-populated ABCI Tendermint-reserved events
 var (
-	EventNewBlock = abci.Event{
+	_EventNewBlock = abci.Event{
 		Type: strings.Split(EventTypeKey, ".")[0],
 		Attributes: []abci.EventAttribute{
 			{
@@ -51,7 +51,7 @@ var (
 		},
 	}
 
-	EventNewBlockHeader = abci.Event{
+	_EventNewBlockHeader = abci.Event{
 		Type: strings.Split(EventTypeKey, ".")[0],
 		Attributes: []abci.EventAttribute{
 			{
@@ -61,7 +61,7 @@ var (
 		},
 	}
 
-	EventNewEvidence = abci.Event{
+	_EventNewEvidence = abci.Event{
 		Type: strings.Split(EventTypeKey, ".")[0],
 		Attributes: []abci.EventAttribute{
 			{
@@ -71,7 +71,7 @@ var (
 		},
 	}
 
-	EventTx = abci.Event{
+	_EventTx = abci.Event{
 		Type: strings.Split(EventTypeKey, ".")[0],
 		Attributes: []abci.EventAttribute{
 			{

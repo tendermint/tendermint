@@ -125,7 +125,7 @@ func (b *EventBus) PublishEventNewBlock(data EventDataNewBlock) error {
 	events := append(data.ResultBeginBlock.Events, data.ResultEndBlock.Events...)
 
 	// add Tendermint-reserved new block event
-	events = append(events, EventNewBlock)
+	events = append(events, _EventNewBlock)
 
 	return b.pubsub.PublishWithEvents(ctx, data, events)
 }
@@ -136,7 +136,7 @@ func (b *EventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) erro
 	events := append(data.ResultBeginBlock.Events, data.ResultEndBlock.Events...)
 
 	// add Tendermint-reserved new block header event
-	events = append(events, EventNewBlockHeader)
+	events = append(events, _EventNewBlockHeader)
 
 	return b.pubsub.PublishWithEvents(ctx, data, events)
 }
@@ -162,7 +162,7 @@ func (b *EventBus) PublishEventTx(data EventDataTx) error {
 	events := data.Result.Events
 
 	// add Tendermint-reserved events
-	events = append(events, EventTx)
+	events = append(events, _EventTx)
 
 	tokens := strings.Split(TxHashKey, ".")
 	events = append(events, types.Event{
