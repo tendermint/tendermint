@@ -1190,6 +1190,7 @@ func BlockIDFromProto(bID *tmproto.BlockID) (*BlockID, error) {
 //--------------------------------------------------------------------------------
 
 // StateID
+// TODO: Move to separate file
 type StateID struct {
 
 	// Height of last committed block

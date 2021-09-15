@@ -1,27 +1,25 @@
 package types
 
 import (
-	// it is ok to use math/rand here: we do not need a cryptographically secure random
-	// number generator here and we can run the tests a bit faster
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"math"
 	"os"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/dashevo/dashd-go/btcjson"
-
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	"github.com/tendermint/tendermint/libs/bytes"
+
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
@@ -314,7 +312,7 @@ func TestHeaderHash(t *testing.T) {
 	testCases := []struct {
 		desc       string
 		header     *Header
-		expectHash bytes.HexBytes
+		expectHash tmbytes.HexBytes
 	}{
 		{"Generates expected hash", &Header{
 			Version:               tmversion.Consensus{Block: 1, App: 2},
@@ -372,7 +370,7 @@ func TestHeaderHash(t *testing.T) {
 						s.Type().Field(i).Name)
 
 					switch f := f.Interface().(type) {
-					case int64, uint32, uint64, bytes.HexBytes, string:
+					case int64, uint32, uint64, tmbytes.HexBytes, string:
 						byteSlices = append(byteSlices, cdcEncode(f))
 					case time.Time:
 						bz, err := gogotypes.StdTimeMarshal(f)
@@ -392,7 +390,7 @@ func TestHeaderHash(t *testing.T) {
 					}
 				}
 				assert.Equal(t,
-					bytes.HexBytes(merkle.HashFromByteSlices(byteSlices)), tcRun.header.Hash())
+					tmbytes.HexBytes(merkle.HashFromByteSlices(byteSlices)), tcRun.header.Hash())
 			}
 		})
 	}
@@ -448,12 +446,12 @@ func randCommit(stateID StateID) *Commit {
 	return commit
 }
 
-func hexBytesFromString(s string) bytes.HexBytes {
+func hexBytesFromString(s string) tmbytes.HexBytes {
 	b, err := hex.DecodeString(s)
 	if err != nil {
 		panic(err)
 	}
-	return bytes.HexBytes(b)
+	return tmbytes.HexBytes(b)
 }
 
 func TestBlockMaxDataBytes(t *testing.T) {
@@ -587,10 +585,10 @@ func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 
 func TestBlockIDValidateBasic(t *testing.T) {
 	validBlockID := BlockID{
-		Hash: bytes.HexBytes{},
+		Hash: tmbytes.HexBytes{},
 		PartSetHeader: PartSetHeader{
 			Total: 1,
-			Hash:  bytes.HexBytes{},
+			Hash:  tmbytes.HexBytes{},
 		},
 	}
 
@@ -604,7 +602,7 @@ func TestBlockIDValidateBasic(t *testing.T) {
 
 	testCases := []struct {
 		testName             string
-		blockIDHash          bytes.HexBytes
+		blockIDHash          tmbytes.HexBytes
 		blockIDPartSetHeader PartSetHeader
 		expectErr            bool
 	}{
@@ -861,4 +859,91 @@ func TestBlockIDEquals(t *testing.T) {
 	assert.False(t, blockID.Equals(blockIDEmpty))
 	assert.True(t, blockIDEmpty.Equals(blockIDEmpty))
 	assert.False(t, blockIDEmpty.Equals(blockIDDifferent))
+}
+
+// StateID tests
+
+// TODO: Move to separate file
+
+func TestStateID_Copy(t *testing.T) {
+	state1 := RandStateID()
+	state2 := state1.Copy()
+	assert.Equal(t, state1, state2)
+
+	state2.LastAppHash[5] = 0x12
+	assert.NotEqual(t, state1, state2)
+}
+
+func TestStateID_Equals(t *testing.T) {
+	tests := []struct {
+		state1 StateID
+		state2 StateID
+		equal  bool
+	}{
+		{RandStateID(), RandStateID(), false},
+		{
+			StateID{12, []byte("12345678901234567890123456789012")},
+			StateID{12, []byte("12345678901234567890123456789012")},
+			true,
+		},
+		{
+			StateID{11, []byte("12345678901234567890123456789012")},
+			StateID{12, []byte("12345678901234567890123456789012")},
+			false,
+		},
+		{
+			StateID{12, []byte("12345678901234567890123456789012")},
+			StateID{12, []byte("1234567890123456789012345678901")},
+			false,
+		},
+	}
+	//nolint:scopelint
+	for tcID, tc := range tests {
+		t.Run(strconv.Itoa(tcID), func(t *testing.T) {
+			assert.Equal(t, tc.equal, tc.state1.Equals(tc.state2))
+		})
+	}
+}
+
+func TestStateID_ValidateBasic(t *testing.T) {
+	type fields struct {
+		Height      int64
+		LastAppHash tmbytes.HexBytes
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr bool
+	}{
+		{name: "negative height", fields: fields{-1, nil}, wantErr: true},
+		{name: "zero height - allowed for genesis block", fields: fields{0, nil}, wantErr: false},
+		{name: "nil apphash", fields: fields{12, nil}, wantErr: false},
+		{name: "empty apphash", fields: fields{12, []byte{}}, wantErr: false},
+		{name: "apphash too short", fields: fields{12, []byte{0x1, 0x2, 0x3}}, wantErr: true},
+		{name: "apphash too short 2", fields: fields{12, tmrand.Bytes(crypto.SmallAppHashSize - 1)}, wantErr: true},
+		{name: "apphash small", fields: fields{12, tmrand.Bytes(crypto.SmallAppHashSize)}, wantErr: false},
+		{name: "apphash default", fields: fields{12, tmrand.Bytes(crypto.DefaultAppHashSize)}, wantErr: false},
+		{name: "apphash large", fields: fields{12, tmrand.Bytes(crypto.LargeAppHashSize)}, wantErr: false},
+		{name: "apphash too large", fields: fields{12, tmrand.Bytes(crypto.LargeAppHashSize + 1)}, wantErr: true},
+	}
+	//nolint:scopelint
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stateID := StateID{
+				Height:      tt.fields.Height,
+				LastAppHash: tt.fields.LastAppHash,
+			}
+			if err := stateID.ValidateBasic(); (err != nil) != tt.wantErr {
+				t.Errorf("StateID.ValidateBasic() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestStateID_WithHeight(t *testing.T) {
+	stateID := RandStateID()
+	height := stateID.Height
+	stateIDWithHeight := stateID.WithHeight(height + 1)
+
+	assert.Equal(t, height, stateIDWithHeight.Height-1)
 }
