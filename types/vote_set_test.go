@@ -113,6 +113,78 @@ func TestVoteSet_AddVote_Bad(t *testing.T) {
 	}
 }
 
+// TestVoteSet_AddVote_StateID checks if state signature is verified correctly when adding votes to voteSet
+func TestVoteSet_AddVote_StateID(t *testing.T) {
+	height, round := int64(10), int32(0)
+
+	randStateID1 := RandStateID().WithHeight(height - 1)
+	randStateID2 := RandStateID().WithHeight(height - 1)
+
+	testCases := []struct {
+		name           string
+		voteSetStateID StateID
+		wrongStateID   StateID
+		shouldFail     bool
+	}{
+		{"correct", randStateID1, randStateID1, false},
+		{"wrong apphash", randStateID1, randStateID2, true},
+		{"too low height", randStateID1, randStateID1.WithHeight(height - 5), true},
+		{"too high height", randStateID1, randStateID1.WithHeight(height + 5), true},
+	}
+	//nolint:scopelint
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			voteSet, _, privValidators := randVoteSet(height, round, tmproto.PrevoteType, 10,
+				tc.voteSetStateID.ToProto())
+
+			val0 := privValidators[0]
+			val0ProTxHash, err := val0.GetProTxHash()
+			require.NoError(t, err)
+
+			val1 := privValidators[1]
+			val1ProTxHash, err := val1.GetProTxHash()
+			require.NoError(t, err)
+
+			assert.Nil(t, voteSet.GetByProTxHash(val0ProTxHash))
+			assert.False(t, voteSet.BitArray().GetIndex(0))
+			majorityBlockID, ok := voteSet.TwoThirdsMajority()
+			assert.False(t, ok || !majorityBlockID.IsZero(), "there should be no 2/3 majority")
+			blockID := randBlockID()
+			vote1 := &Vote{
+				ValidatorProTxHash: val0ProTxHash,
+				ValidatorIndex:     0, // since privValidators are in order
+				Height:             height,
+				Round:              round,
+				Type:               tmproto.PrevoteType,
+				BlockID:            blockID,
+			}
+			_, err = signAddVote(val0, vote1, voteSet)
+			require.NoError(t, err)
+
+			vote2 := &Vote{
+				ValidatorProTxHash: val1ProTxHash,
+				ValidatorIndex:     1, // since privValidators are in order
+				Height:             height,
+				Round:              round,
+				Type:               tmproto.PrevoteType,
+				BlockID:            blockID,
+			}
+			_, err = signAddVoteForStateID(val1, vote2, voteSet, tc.wrongStateID.ToProto())
+			if tc.shouldFail {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "invalid state signature")
+			} else {
+				require.NoError(t, err)
+			}
+
+			assert.NotNil(t, voteSet.GetByProTxHash(val0ProTxHash))
+			assert.True(t, voteSet.BitArray().GetIndex(0))
+			majorityBlockID, ok = voteSet.TwoThirdsMajority()
+			assert.False(t, ok || !majorityBlockID.IsZero(), "there should be no 2/3 majority")
+		})
+	}
+}
+
 func TestVoteSet_2_3Majority(t *testing.T) {
 	height, round := int64(1), int32(0)
 	voteSet, _, privValidators := randVoteSet(height, round, tmproto.PrevoteType, 10,

@@ -37,11 +37,18 @@ func MakeCommit(blockID BlockID, stateID StateID, height int64, round int32,
 	return voteSet.MakeCommit(), nil
 }
 
+// signAddVote signs a vote using StateID configured inside voteSet, and adds it to that voteSet
 func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bool, err error) {
+	return signAddVoteForStateID(privVal, vote, voteSet, voteSet.stateID)
+}
+
+// signAddVoteForStateID signs a vote using specific StateID and adds it to voteSet
+func signAddVoteForStateID(privVal PrivValidator, vote *Vote, voteSet *VoteSet,
+	stateID tmproto.StateID) (signed bool, err error) {
 	v := vote.ToProto()
 
 	err = privVal.SignVote(voteSet.ChainID(), voteSet.valSet.QuorumType, voteSet.valSet.QuorumHash,
-		v, voteSet.stateID, nil)
+		v, stateID, nil)
 	if err != nil {
 		return false, err
 	}
