@@ -24,6 +24,10 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 		nodesAtHeight   = map[string]struct{}{}
 		numRunningNodes int
 	)
+	if height == 0 {
+		height = testnet.InitialHeight
+	}
+
 	for _, node := range testnet.Nodes {
 		if node.Stateless() {
 			continue
@@ -76,7 +80,7 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 					lastIncrease = time.Now()
 				}
 
-				if lastHeight >= height {
+				if result.SyncInfo.LatestBlockHeight >= height {
 					// the node has achieved the target height!
 
 					// add this node to the set of target
@@ -95,7 +99,10 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 					// set at least double evidence age (14) so this would mean that the node advanced more than 14
 					// blocks since we last queried it.
 					result, err := client.Block(ctx, &height)
-					if result.Block == nil {
+					if err != nil {
+						return nil, nil, err
+					}
+					if result == nil || result.Block == nil {
 						return nil, nil, fmt.Errorf("node %v pruned block at height %d", node.Name, height)
 					}
 					return result.Block, &result.BlockID, err
@@ -187,4 +194,36 @@ func waitForNode(ctx context.Context, node *e2e.Node, height int64) (*rpctypes.R
 			timer.Reset(250 * time.Millisecond)
 		}
 	}
+}
+
+// getLatestBlock returns the last block that all active nodes in the network have
+// agreed upon i.e. the earlist of each nodes latest block
+func getLatestBlock(ctx context.Context, testnet *e2e.Testnet) (*types.Block, error) {
+	var earliestBlock *types.Block
+	for _, node := range testnet.Nodes {
+		// skip nodes that don't have state or haven't started yet
+		if node.Stateless() {
+			continue
+		}
+		if !node.HasStarted {
+			continue
+		}
+
+		client, err := node.Client()
+		if err != nil {
+			return nil, err
+		}
+
+		wctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+		result, err := client.Block(wctx, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		if result.Block != nil && (earliestBlock == nil || earliestBlock.Height > result.Block.Height) {
+			earliestBlock = result.Block
+		}
+	}
+	return earliestBlock, nil
 }

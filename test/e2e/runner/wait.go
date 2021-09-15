@@ -10,7 +10,7 @@ import (
 // Wait waits for a number of blocks to be produced, and for all nodes to catch
 // up with it.
 func Wait(ctx context.Context, testnet *e2e.Testnet, blocks int64) error {
-	block, _, err := waitForHeight(ctx, testnet, 0)
+	block, err := getLatestBlock(ctx, testnet)
 	if err != nil {
 		return err
 	}
