@@ -71,11 +71,7 @@ func VoteExtensionToSignFromProto(pext *tmproto.VoteExtensionToSign) VoteExtensi
 }
 
 func (ext VoteExtensionToSign) IsEmpty() bool {
-	if len(ext.AppDataToSign) != 0 {
-		return false
-	}
-
-	return true
+	return len(ext.AppDataToSign) == 0
 }
 
 // BytesPacked returns a bytes-packed representation for
