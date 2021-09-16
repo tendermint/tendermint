@@ -21,7 +21,7 @@ func TestEmptyQueryMatchesAnything(t *testing.T) {
 			[]abci.Event{
 				{
 					Type:       "Asher",
-					Attributes: []abci.EventAttribute{{Key: "Roth"}},
+					Attributes: []abci.EventAttribute{{Key: []byte("Roth")}},
 				},
 			},
 		},
@@ -29,7 +29,7 @@ func TestEmptyQueryMatchesAnything(t *testing.T) {
 			[]abci.Event{
 				{
 					Type:       "Route",
-					Attributes: []abci.EventAttribute{{Key: "66"}},
+					Attributes: []abci.EventAttribute{{Key: []byte("66")}},
 				},
 			},
 		},
@@ -37,11 +37,11 @@ func TestEmptyQueryMatchesAnything(t *testing.T) {
 			[]abci.Event{
 				{
 					Type:       "Route",
-					Attributes: []abci.EventAttribute{{Key: "66"}},
+					Attributes: []abci.EventAttribute{{Key: []byte("66")}},
 				},
 				{
 					Type:       "Billy",
-					Attributes: []abci.EventAttribute{{Key: "Blue"}},
+					Attributes: []abci.EventAttribute{{Key: []byte("Blue")}},
 				},
 			},
 		},

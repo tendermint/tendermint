@@ -20,8 +20,8 @@ func expandEvents(flattenedEvents map[string][]string) []abci.Event {
 		attrs := make([]abci.EventAttribute, len(values))
 		for i, v := range values {
 			attrs[i] = abci.EventAttribute{
-				Key:   tokens[len(tokens)-1],
-				Value: v,
+				Key:   []byte(tokens[len(tokens)-1]),
+				Value: []byte(v),
 			}
 		}
 

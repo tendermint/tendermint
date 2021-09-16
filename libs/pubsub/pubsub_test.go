@@ -21,6 +21,16 @@ const (
 	clientID = "test-client"
 )
 
+type kvPair = [2]string
+
+func makeEventAttrs(kvPairs []kvPair) []abci.EventAttribute {
+	var attrs []abci.EventAttribute
+	for _, pair := range kvPairs {
+		attrs = append(attrs, abci.EventAttribute{Key: []byte(pair[0]), Value: []byte(pair[1])})
+	}
+	return attrs
+}
+
 func TestSubscribe(t *testing.T) {
 	s := pubsub.NewServer()
 	s.SetLogger(log.TestingLogger())
@@ -169,7 +179,7 @@ func TestDifferentClients(t *testing.T) {
 	events := []abci.Event{
 		{
 			Type:       "tm.events",
-			Attributes: []abci.EventAttribute{{Key: "type", Value: "NewBlock"}},
+			Attributes: makeEventAttrs([]kvPair{{"type", "NewBlock"}}),
 		},
 	}
 
@@ -186,11 +196,11 @@ func TestDifferentClients(t *testing.T) {
 	events = []abci.Event{
 		{
 			Type:       "tm.events",
-			Attributes: []abci.EventAttribute{{Key: "type", Value: "NewBlock"}},
+			Attributes: makeEventAttrs([]kvPair{{"type", "NewBlock"}}),
 		},
 		{
 			Type:       "abci.account",
-			Attributes: []abci.EventAttribute{{Key: "name", Value: "Igor"}},
+			Attributes: makeEventAttrs([]kvPair{{"name", "Igor"}}),
 		},
 	}
 
@@ -208,7 +218,7 @@ func TestDifferentClients(t *testing.T) {
 	events = []abci.Event{
 		{
 			Type:       "tm.events",
-			Attributes: []abci.EventAttribute{{Key: "type", Value: "NewRoundStep"}},
+			Attributes: makeEventAttrs([]kvPair{{"type", "NewRoundStep"}}),
 		},
 	}
 
@@ -258,19 +268,19 @@ func TestSubscribeDuplicateKeys(t *testing.T) {
 		events := []abci.Event{
 			{
 				Type: "transfer",
-				Attributes: []abci.EventAttribute{
-					{Key: "sender", Value: "foo"},
-					{Key: "sender", Value: "bar"},
-					{Key: "sender", Value: "baz"},
-				},
+				Attributes: makeEventAttrs([]kvPair{
+					{"sender", "foo"},
+					{"sender", "bar"},
+					{"sender", "baz"},
+				}),
 			},
 			{
 				Type: "withdraw",
-				Attributes: []abci.EventAttribute{
-					{Key: "rewards", Value: "1"},
-					{Key: "rewards", Value: "17"},
-					{Key: "rewards", Value: "22"},
-				},
+				Attributes: makeEventAttrs([]kvPair{
+					{"rewards", "1"},
+					{"rewards", "17"},
+					{"rewards", "22"},
+				}),
 			},
 		}
 
@@ -304,7 +314,7 @@ func TestClientSubscribesTwice(t *testing.T) {
 	events := []abci.Event{
 		{
 			Type:       "tm.events",
-			Attributes: []abci.EventAttribute{{Key: "type", Value: "NewBlock"}},
+			Attributes: makeEventAttrs([]kvPair{{"type", "NewBlock"}}),
 		},
 	}
 
@@ -493,11 +503,11 @@ func benchmarkNClients(n int, b *testing.B) {
 		events := []abci.Event{
 			{
 				Type:       "abci.Account",
-				Attributes: []abci.EventAttribute{{Key: "Owner", Value: "Ivan"}},
+				Attributes: makeEventAttrs([]kvPair{{"Owner", "Ivan"}}),
 			},
 			{
 				Type:       "abci.Invoices",
-				Attributes: []abci.EventAttribute{{Key: "Number", Value: string(rune(i))}},
+				Attributes: makeEventAttrs([]kvPair{{"Number", string(rune(i))}}),
 			},
 		}
 
@@ -541,11 +551,11 @@ func benchmarkNClientsOneQuery(n int, b *testing.B) {
 		events := []abci.Event{
 			{
 				Type:       "abci.Account",
-				Attributes: []abci.EventAttribute{{Key: "Owner", Value: "Ivan"}},
+				Attributes: makeEventAttrs([]kvPair{{"Owner", "Ivan"}}),
 			},
 			{
 				Type:       "abci.Invoices",
-				Attributes: []abci.EventAttribute{{Key: "Number", Value: "1"}},
+				Attributes: makeEventAttrs([]kvPair{{"Number", "1"}}),
 			},
 		}
 
