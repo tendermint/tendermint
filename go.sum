@@ -895,8 +895,8 @@ github.com/valyala/bytebufferpool v1.0.0/go.mod h1:6bBcMArwyJ5K/AmCkWv1jt77kVWyC
 github.com/valyala/fasthttp v1.16.0/go.mod h1:YOKImeEosDdBPnxc0gy7INqi3m1zK6A+xl6TwOBhHCA=
 github.com/valyala/quicktemplate v1.6.3/go.mod h1:fwPzK2fHuYEODzJ9pkw0ipCPNHZ2tD5KW4lOuSdPKzY=
 github.com/valyala/tcplisten v0.0.0-20161114210144-ceec8f93295a/go.mod h1:v3UYOV9WzVtRmSR+PDvWpU/qWl4Wa5LApYYX4ZtKbio=
-github.com/vektra/mockery/v2 v2.9.0 h1:+3FhCL3EviR779mTzXwUuhPNnqFUA7sDnt9OFkXaFd4=
-github.com/vektra/mockery/v2 v2.9.0/go.mod h1:2gU4Cf/f8YyC8oEaSXfCnZBMxMjMl/Ko205rlP0fO90=
+github.com/vektra/mockery/v2 v2.9.3 h1:ma6hcGQw4q/lhFUTJ+E9V8/5tsIcht9i2Q4d1qo26SQ=
+github.com/vektra/mockery/v2 v2.9.3/go.mod h1:2gU4Cf/f8YyC8oEaSXfCnZBMxMjMl/Ko205rlP0fO90=
 github.com/viki-org/dnscache v0.0.0-20130720023526-c70c1f23c5d8/go.mod h1:dniwbG03GafCjFohMDmz6Zc6oCuiqgH6tGNyXTkHzXE=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778/go.mod h1:2MuV+tbUrU1zIOPMxZ5EncGwgmMJsa+9ucAQZXxsObs=
