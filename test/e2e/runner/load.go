@@ -54,9 +54,19 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 		case numSeen := <-chSuccess:
 			success += numSeen
 		case <-ctx.Done():
-			if success == 0 {
+			// if we couldn't submit any transactions,
+			// that's probably a problem and the test
+			// should error; however, for very short tests
+			// we shouldn't abort.
+			if success == 0 && time.Since(started) < 2*time.Second {
 				return errors.New("failed to submit any transactions")
 			}
+
+			// TODO test networks should be able to
+			// declare required transaction rates (at the
+			// least,) and we shouldn't treat the 0
+			// submitted transactions as a special case
+			// above.
 			rate := float64(success) / time.Since(started).Seconds()
 
 			logger.Info("ending transaction load",
