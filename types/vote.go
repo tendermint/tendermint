@@ -221,11 +221,11 @@ func VoteBlockRequestIDProto(vote *tmproto.Vote) []byte {
 	return crypto.Sha256(requestIDMessage)
 }
 
-func VoteStateRequestID(vote *Vote) []byte {
+func VoteStateRequestID(stateID StateID) []byte {
 	requestIDMessage := []byte("dpsvote")
 	heightByteArray := make([]byte, 8)
 	// We use height - 1 because we are signing the state at the end of the execution of the previous block
-	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height)-1)
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(stateID.Height))
 
 	requestIDMessage = append(requestIDMessage, heightByteArray...)
 
@@ -281,7 +281,7 @@ func (vote *Vote) Verify(
 		voteStateSignBytes := VoteStateSignBytes(chainID, stateID)
 		stateMessageHash := crypto.Sha256(voteStateSignBytes)
 
-		stateRequestID := VoteStateRequestID(vote)
+		stateRequestID := VoteStateRequestIDProto(stateID)
 
 		stateSignID = crypto.SignID(
 			quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestID),
