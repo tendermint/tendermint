@@ -702,7 +702,11 @@ func (n *nodeImpl) OnStart() error {
 			n.Logger.Info("starting state sync")
 			state, err := n.stateSyncReactor.Sync(context.TODO())
 			if err != nil {
-				n.Logger.Error("state sync failed", "err", err)
+				n.Logger.Error("state sync failed; shutting down this node", "err", err)
+				// stop the node
+				if err := n.Stop(); err != nil {
+					n.Logger.Error("failed to shut down node", "err", err)
+				}
 				return
 			}
 

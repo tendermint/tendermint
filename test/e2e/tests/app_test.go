@@ -68,7 +68,7 @@ func TestApp_Tx(t *testing.T) {
 	}{
 		{
 			Name:     "Sync",
-			WaitTime: 30 * time.Second,
+			WaitTime: time.Minute,
 			BroadcastTx: func(client *http.HTTP) broadcastFunc {
 				return func(ctx context.Context, tx types.Tx) error {
 					_, err := client.BroadcastTxSync(ctx, tx)
@@ -78,7 +78,13 @@ func TestApp_Tx(t *testing.T) {
 		},
 		{
 			Name:     "Commit",
-			WaitTime: time.Minute,
+			WaitTime: 15 * time.Second,
+			// TODO: turn this check back on if it can
+			// return reliably. Currently these calls have
+			// a hard timeout of 10s (server side
+			// configured). The Sync check is probably
+			// safe.
+			ShouldSkip: true,
 			BroadcastTx: func(client *http.HTTP) broadcastFunc {
 				return func(ctx context.Context, tx types.Tx) error {
 					_, err := client.BroadcastTxCommit(ctx, tx)
@@ -87,8 +93,12 @@ func TestApp_Tx(t *testing.T) {
 			},
 		},
 		{
-			Name:       "Async",
-			WaitTime:   time.Minute,
+			Name:     "Async",
+			WaitTime: 90 * time.Second,
+			// TODO: turn this check back on if there's a
+			// way to avoid failures in the case that the
+			// transaction doesn't make it into the
+			// mempool. (retries?)
 			ShouldSkip: true,
 			BroadcastTx: func(client *http.HTTP) broadcastFunc {
 				return func(ctx context.Context, tx types.Tx) error {
