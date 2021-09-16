@@ -35,11 +35,12 @@ x * TestFullRound1 - 1 val, full successful round
 x * TestFullRoundNil - 1 val, full round of nil
 x * TestFullRound2 - 2 vals, both required for full round
 LockSuite
-x * TestLockNoPOL - 2 vals, 4 rounds. one val locked, precommits nil every round except first.
-x * TestLockPOLRelock - 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
-x * TestLockPOLUnlock - 4 vals, one precommits, other 3 polka nil at next round, so we unlock and precomit nil
-x * TestLockPOLSafety1 - 4 vals. We shouldn't change lock based on polka at earlier round
-x * TestLockPOLSafety2 - 4 vals. After unlocking, we shouldn't relock based on polka at earlier round
+x * TestStateLockNoPOL - 2 vals, 4 rounds. one val locked, precommits nil every round except first.
+x * TestStateLockPOLRelock - 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
+x * TestStateLockPOLUnlock - 4 vals, one precommits, other 3 polka nil at next round, so we unlock and precomit nil
+x_*_TestStateLockPOLDoesNotUnlock 4 vals, one precommits, other 3 polka nil at next round, so we precommit nil but maintain lock
+x * TestStateLockPOLSafety1 - 4 vals. We shouldn't change lock based on polka at earlier round
+x * TestStateLockPOLSafety2 - 4 vals. After unlocking, we shouldn't relock based on polka at earlier round
   * TestNetworkLock - once +1/3 precommits, network should be locked
   * TestNetworkLockPOL - once +1/3 precommits, the block with more recent polka is committed
 SlashingSuite
