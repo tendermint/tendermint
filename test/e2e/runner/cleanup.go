@@ -11,7 +11,7 @@ import (
 
 // Cleanup removes the Docker Compose containers and testnet directory.
 func Cleanup(testnet *e2e.Testnet) error {
-	err := cleanupDocker()
+	err := cleanupDocker(testnet.Name)
 	if err != nil {
 		return err
 	}
@@ -20,7 +20,7 @@ func Cleanup(testnet *e2e.Testnet) error {
 
 // cleanupDocker removes all E2E resources (with label e2e=True), regardless
 // of testnet.
-func cleanupDocker() error {
+func cleanupDocker(name string) error {
 	logger.Info("Removing Docker containers and networks")
 
 	// GNU xargs requires the -r flag to not run when input is empty, macOS
@@ -28,13 +28,13 @@ func cleanupDocker() error {
 	xargsR := `$(if [[ $OSTYPE == "linux-gnu"* ]]; then echo -n "-r"; fi)`
 
 	err := exec("bash", "-c", fmt.Sprintf(
-		"docker container ls -qa --filter label=e2e | xargs %v docker container rm -f", xargsR))
+		"docker container ls -qa --filter label=\"name=%v\" | xargs %v docker container rm -f", name, xargsR))
 	if err != nil {
 		return err
 	}
 
 	return exec("bash", "-c", fmt.Sprintf(
-		"docker network ls -q --filter label=e2e | xargs %v docker network rm", xargsR))
+		"docker network ls -q --filter label=\"name=%v\"| xargs %v docker network rm", name, xargsR))
 }
 
 // cleanupDir cleans up a testnet directory
