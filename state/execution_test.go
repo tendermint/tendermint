@@ -17,7 +17,7 @@ import (
 	mmock "github.com/tendermint/tendermint/internal/mempool/mock"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtime "github.com/tendermint/tendermint/libs/time"
-	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/mocks"
 	sf "github.com/tendermint/tendermint/state/test/factory"

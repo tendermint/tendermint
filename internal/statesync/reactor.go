@@ -19,7 +19,7 @@ import (
 	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
-	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"

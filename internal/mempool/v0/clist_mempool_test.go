@@ -15,15 +15,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abciserver "github.com/tendermint/tendermint/abci/server"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/mempool"
+	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -31,11 +32,11 @@ import (
 // test.
 type cleanupFunc func()
 
-func newMempoolWithApp(cc proxy.ClientCreator) (*CListMempool, cleanupFunc) {
+func newMempoolWithApp(cc abcicli.ClientCreator) (*CListMempool, cleanupFunc) {
 	return newMempoolWithAppAndConfig(cc, cfg.ResetTestRoot("mempool_test"))
 }
 
-func newMempoolWithAppAndConfig(cc proxy.ClientCreator, config *cfg.Config) (*CListMempool, cleanupFunc) {
+func newMempoolWithAppAndConfig(cc abcicli.ClientCreator, config *cfg.Config) (*CListMempool, cleanupFunc) {
 	appConnMem, _ := cc.NewABCIClient()
 	appConnMem.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "mempool"))
 	err := appConnMem.Start()
@@ -597,7 +598,7 @@ func newRemoteApp(
 	addr string,
 	app abci.Application,
 ) (
-	clientCreator proxy.ClientCreator,
+	clientCreator abcicli.ClientCreator,
 	server service.Service,
 ) {
 	clientCreator = proxy.NewRemoteClientCreator(addr, "socket", true)

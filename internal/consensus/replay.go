@@ -11,8 +11,8 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )

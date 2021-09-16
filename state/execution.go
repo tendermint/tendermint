@@ -12,7 +12,7 @@ import (
 	mempl "github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/libs/log"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 

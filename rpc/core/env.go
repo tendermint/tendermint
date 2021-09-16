@@ -12,7 +12,7 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/internal/proxy"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
