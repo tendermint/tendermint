@@ -221,7 +221,7 @@ pprof-laddr = ""
 #######################################################
 [p2p]
 
-# Enable the new p2p layer.
+# Enable the legacy p2p layer.
 use-legacy = false
 
 # Select the p2p internal queue
