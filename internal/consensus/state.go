@@ -137,7 +137,7 @@ type State struct {
 	done chan struct{}
 
 	// synchronous pubsub between consensus state and reactor.
-	// state only emits EventNewRoundStep and EventVote
+	// state only emits EventNewRoundStep, EventValidBlock, and EventVote
 	evsw tmevents.EventSwitch
 
 	// for reporting metrics
