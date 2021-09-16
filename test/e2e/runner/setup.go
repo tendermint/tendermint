@@ -139,6 +139,7 @@ networks:
   {{ .Name }}:
     labels:
       e2e: true
+      name: {{ .Name }}
     driver: bridge
 {{- if .IPv6 }}
     enable_ipv6: true
@@ -153,7 +154,8 @@ services:
   {{ .Name }}:
     labels:
       e2e: true
-    container_name: {{ .Name }}
+      name: {{ $.Name }}
+    container_name: {{$.Name}}_{{ .Name }}
     image: tendermint/e2e-node
 {{- if eq .ABCIProtocol "builtin" }}
     entrypoint: /usr/bin/entrypoint-builtin
@@ -162,10 +164,10 @@ services:
 {{- end }}
     init: true
     ports:
-    - 26656
-    - {{ if .ProxyPort }}{{ addUint32 .ProxyPort 1000 }}:{{ end }}26660
-    - {{ if .ProxyPort }}{{ .ProxyPort }}:{{ end }}26657
-    - 6060
+    - 0:26656
+    - 0:26660
+    - 0:26657
+    - 0:6060
     volumes:
     - ./{{ .Name }}:/tendermint
     networks:
