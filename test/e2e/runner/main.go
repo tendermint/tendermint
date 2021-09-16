@@ -54,7 +54,7 @@ func NewCLI() *CLI {
 			}
 			defer func() {
 				if cli.preserve {
-					logger.Print("Preserving testnet contents because -preserve=true")
+					logger.Info("Preserving testnet contents because -preserve=true")
 				} else if err := Cleanup(cli.testnet); err != nil {
 					logger.Error("Error cleaning up testnet contents", "err", err)
 				}
