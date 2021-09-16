@@ -293,7 +293,10 @@ func (c *Local) Unsubscribe(ctx context.Context, subscriber, query string) error
 	if err != nil {
 		return fmt.Errorf("failed to parse query: %w", err)
 	}
-	return c.EventBus.Unsubscribe(ctx, subscriber, q)
+	return c.EventBus.Unsubscribe(ctx, tmpubsub.UnsubscribeArgs{
+		Subscriber: subscriber,
+		Query:      q,
+	})
 }
 
 func (c *Local) UnsubscribeAll(ctx context.Context, subscriber string) error {

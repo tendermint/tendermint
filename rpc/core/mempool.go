@@ -7,6 +7,7 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	mempl "github.com/tendermint/tendermint/mempool"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
@@ -72,7 +73,10 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 		return nil, err
 	}
 	defer func() {
-		if err := env.EventBus.Unsubscribe(context.Background(), subscriber, q); err != nil {
+		if err := env.EventBus.Unsubscribe(context.Background(), pubsub.UnsubscribeArgs{
+			Subscriber: subscriber,
+			Query:      q,
+		}); err != nil {
 			env.Logger.Error("Error unsubscribing from eventBus", "err", err)
 		}
 	}()

@@ -92,7 +92,10 @@ func Unsubscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultUnsubscribe
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse query: %w", err)
 	}
-	err = env.EventBus.Unsubscribe(context.Background(), addr, q)
+	err = env.EventBus.Unsubscribe(context.Background(), tmpubsub.UnsubscribeArgs{
+		Subscriber: addr,
+		Query:      q,
+	})
 	if err != nil {
 		return nil, err
 	}

@@ -16,6 +16,7 @@ import (
 	tmcon "github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
@@ -59,7 +60,10 @@ func (cs *State) ReplayFile(file string, console bool) error {
 		return fmt.Errorf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep)
 	}
 	defer func() {
-		if err := cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep); err != nil {
+		if err := cs.eventBus.Unsubscribe(ctx, pubsub.UnsubscribeArgs{
+			Subscriber: subscriber,
+			Query:      types.EventQueryNewRoundStep,
+		}); err != nil {
 			cs.Logger.Error("Error unsubscribing to event bus", "err", err)
 		}
 	}()
@@ -226,7 +230,10 @@ func (pb *playback) replayConsoleLoop() int {
 				tmos.Exit(fmt.Sprintf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep))
 			}
 			defer func() {
-				if err := pb.cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep); err != nil {
+				if err := pb.cs.eventBus.Unsubscribe(ctx, pubsub.UnsubscribeArgs{
+					Subscriber: subscriber,
+					Query:      types.EventQueryNewRoundStep,
+				}); err != nil {
 					pb.cs.Logger.Error("Error unsubscribing from eventBus", "err", err)
 				}
 			}()
