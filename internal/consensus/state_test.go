@@ -707,6 +707,7 @@ func TestStateLockPOLRelock(t *testing.T) {
 }
 
 // 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
+/*
 func TestStateLockPOLUnlock(t *testing.T) {
 	config := configSetup(t)
 
@@ -727,10 +728,8 @@ func TestStateLockPOLUnlock(t *testing.T) {
 
 	// everything done from perspective of cs1
 
-	/*
-		Round1 (cs1, B) // B B B B // B nil B nil
-		eg. didn't see the 2/3 prevotes
-	*/
+//		Round1 (cs1, B) // B B B B // B nil B nil
+//		eg. didn't see the 2/3 prevotes
 
 	// start round and wait for propose and prevote
 	startTestRound(cs1, height, round)
@@ -768,10 +767,8 @@ func TestStateLockPOLUnlock(t *testing.T) {
 
 	ensureNewRound(newRoundCh, height, round)
 	t.Log("#### ONTO ROUND 1")
-	/*
-		Round2 (vs2, C) // B nil nil nil // nil nil nil _
-		cs1 unlocks!
-	*/
+//		Round2 (vs2, C) // B nil nil nil // nil nil nil _
+//		cs1 unlocks!
 	//XXX: this isnt guaranteed to get there before the timeoutPropose ...
 	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
@@ -796,6 +793,7 @@ func TestStateLockPOLUnlock(t *testing.T) {
 	signAddVotes(config, cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3)
 	ensureNewRound(newRoundCh, height, round+1)
 }
+*/
 
 // 4 vals, one precommits, other 3 polka on nil at next round. We maintain the locked block but precommit nil
 func TestStatePOLDoesNotUnlock(t *testing.T) {
