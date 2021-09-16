@@ -58,15 +58,21 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 			// that's probably a problem and the test
 			// should error; however, for very short tests
 			// we shouldn't abort.
-			if success == 0 && time.Since(started) < 2*time.Second {
+			//
+			// The 2s cut off, is a rough guess based on
+			// the expected value of
+			// loadGenerateWaitTime. If the implementation
+			// of that function changes, then this might
+			// also need to change without more
+			// refactoring.
+			if success == 0 && time.Since(started) > 2*time.Second {
 				return errors.New("failed to submit any transactions")
 			}
 
-			// TODO test networks should be able to
-			// declare required transaction rates (at the
-			// least,) and we shouldn't treat the 0
-			// submitted transactions as a special case
-			// above.
+			// TODO perhaps allow test networks to
+			// declare required transaction rates, which
+			// might allow us to avoid the special case
+			// around 0 txs above.
 			rate := float64(success) / time.Since(started).Seconds()
 
 			logger.Info("ending transaction load",
