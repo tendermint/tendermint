@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abcimocks "github.com/tendermint/tendermint/abci/client/mocks"
-	"github.com/tendermint/tendermint/proxy/mocks"
+	"github.com/tendermint/tendermint/internal/proxy/mocks"
 )
 
 func TestAppConns_Start_Stop(t *testing.T) {

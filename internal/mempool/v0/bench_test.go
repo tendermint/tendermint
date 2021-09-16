@@ -8,7 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/internal/mempool"
-	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/internal/proxy"
 )
 
 func BenchmarkReap(b *testing.B) {

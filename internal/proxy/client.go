@@ -10,14 +10,6 @@ import (
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 )
 
-//go:generate ../scripts/mockery_generate.sh ClientCreator
-
-// ClientCreator creates new ABCI clients.
-type ClientCreator interface {
-	// NewABCIClient returns a new ABCI client.
-	NewABCIClient() (abcicli.Client, error)
-}
-
 //----------------------------------------------------
 // local proxy uses a mutex on an in-proc app
 
@@ -28,7 +20,7 @@ type localClientCreator struct {
 
 // NewLocalClientCreator returns a ClientCreator for the given app,
 // which will be running locally.
-func NewLocalClientCreator(app types.Application) ClientCreator {
+func NewLocalClientCreator(app types.Application) abcicli.ClientCreator {
 	return &localClientCreator{
 		mtx: new(tmsync.RWMutex),
 		app: app,
@@ -51,7 +43,7 @@ type remoteClientCreator struct {
 // NewRemoteClientCreator returns a ClientCreator for the given address (e.g.
 // "192.168.0.1") and transport (e.g. "tcp"). Set mustConnect to true if you
 // want the client to connect before reporting success.
-func NewRemoteClientCreator(addr, transport string, mustConnect bool) ClientCreator {
+func NewRemoteClientCreator(addr, transport string, mustConnect bool) abcicli.ClientCreator {
 	return &remoteClientCreator{
 		addr:        addr,
 		transport:   transport,
@@ -74,7 +66,7 @@ func (r *remoteClientCreator) NewABCIClient() (abcicli.Client, error) {
 //
 // The Closer is a noop except for persistent_kvstore applications,
 // which will clean up the store.
-func DefaultClientCreator(addr, transport, dbDir string) (ClientCreator, io.Closer) {
+func DefaultClientCreator(addr, transport, dbDir string) (abcicli.ClientCreator, io.Closer) {
 	switch addr {
 	case "kvstore":
 		return NewLocalClientCreator(kvstore.NewApplication()), noopCloser{}

@@ -7,7 +7,7 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/mempool"
 	mempoolv1 "github.com/tendermint/tendermint/internal/mempool/v0"
-	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/internal/proxy"
 )
 
 var mp mempool.Mempool
