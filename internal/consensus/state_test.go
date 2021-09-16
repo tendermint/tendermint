@@ -808,7 +808,6 @@ func TestStateNilPrevoteDoesNotUnlock(t *testing.T) {
 
 	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
-	polkaCh := subscribe(cs1.eventBus, types.EventQueryPolka)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
 	pv1, err := cs1.privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
@@ -818,8 +817,7 @@ func TestStateNilPrevoteDoesNotUnlock(t *testing.T) {
 	// everything done from perspective of cs1
 
 	/*
-		Round1 (cs1, B) // B B B B // B nil B nil
-		eg. didn't see the 2/3 prevotes
+		Round2 (vs2, C) // B B B B // B B B nil
 	*/
 
 	// start round and wait for propose and prevote
@@ -835,7 +833,6 @@ func TestStateNilPrevoteDoesNotUnlock(t *testing.T) {
 	validatePrevote(t, cs1, round, vss[0], theBlockHash)
 
 	signAddVotes(config, cs1, tmproto.PrevoteType, theBlockHash, theBlockParts, vs2, vs3, vs4)
-	ensureNewEvent(polkaCh, height, round, time.Minute, "")
 
 	ensurePrecommit(voteCh, height, round)
 	// the proposed block should now be locked and our precommit added
@@ -878,7 +875,7 @@ func TestStateNilPrevoteDoesNotUnlock(t *testing.T) {
 
 	ensurePrecommit(voteCh, height, round)
 
-	// NOTE: since we don't relock on nil, the lock round is -1
+	// verify that we haven't update our locked block since the first round
 	validatePrecommit(t, cs1, round, 0, vss[0], nil, lockedBlockHash)
 
 	signAddVotes(config, cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3)
