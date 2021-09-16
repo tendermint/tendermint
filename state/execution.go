@@ -266,7 +266,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 }
 
 func (blockExec *BlockExecutor) ExtendVote(vote *types.Vote) (types.VoteExtension, error) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	req := abci.RequestExtendVote{
 		Vote: vote.ToProto(),
 	}
