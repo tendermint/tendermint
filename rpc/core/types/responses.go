@@ -109,9 +109,9 @@ type ValidatorInfo struct {
 
 // Node Status
 type ResultStatus struct {
-	NodeInfo      types.NodeInfo `json:"node_info"`
-	SyncInfo      SyncInfo       `json:"sync_info"`
-	ValidatorInfo ValidatorInfo  `json:"validator_info"`
+	NodeInfo      p2p.DefaultNodeInfo `json:"node_info"`
+	SyncInfo      SyncInfo            `json:"sync_info"`
+	ValidatorInfo ValidatorInfo       `json:"validator_info"`
 }
 
 // Is TxIndexing enabled
@@ -142,7 +142,7 @@ type ResultDialPeers struct {
 
 // A peer
 type Peer struct {
-	NodeInfo         types.NodeInfo       `json:"node_info"`
+	NodeInfo         p2p.DefaultNodeInfo  `json:"node_info"`
 	IsOutbound       bool                 `json:"is_outbound"`
 	ConnectionStatus p2p.ConnectionStatus `json:"connection_status"`
 	RemoteIP         string               `json:"remote_ip"`
@@ -160,8 +160,8 @@ type ResultValidators struct {
 
 // ConsensusParams for given height
 type ResultConsensusParams struct {
-	BlockHeight     int64                 `json:"block_height"`
-	ConsensusParams types.ConsensusParams `json:"consensus_params"`
+	BlockHeight     int64                   `json:"block_height"`
+	ConsensusParams tmproto.ConsensusParams `json:"consensus_params"`
 }
 
 // Info about the consensus state.
