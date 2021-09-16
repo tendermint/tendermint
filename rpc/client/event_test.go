@@ -27,9 +27,7 @@ func MakeTxKV() ([]byte, []byte, []byte) {
 }
 
 func TestHeaderEvents(t *testing.T) {
-	n, conf := NodeSuite(t)
-
-	for i, c := range GetClients(t, n, conf) {
+	for i, c := range GetClients() {
 		i, c := i, c
 		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
 			// start for this test it if it wasn't already running
@@ -44,7 +42,8 @@ func TestHeaderEvents(t *testing.T) {
 				})
 			}
 
-			evt, err := client.WaitForOneEvent(c, types.EventNewBlockHeader, waitForEventTimeout)
+			evtTyp := types.EventNewBlockHeader
+			evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
 			require.Nil(t, err, "%d: %+v", i, err)
 			_, ok := evt.(types.EventDataNewBlockHeader)
 			require.True(t, ok, "%d: %#v", i, evt)
@@ -55,8 +54,7 @@ func TestHeaderEvents(t *testing.T) {
 
 // subscribe to new blocks and make sure height increments by 1
 func TestBlockEvents(t *testing.T) {
-	n, conf := NodeSuite(t)
-	for _, c := range GetClients(t, n, conf) {
+	for _, c := range GetClients() {
 		c := c
 		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
 
@@ -104,8 +102,7 @@ func TestTxEventsSentWithBroadcastTxAsync(t *testing.T) { testTxEventsSent(t, "a
 func TestTxEventsSentWithBroadcastTxSync(t *testing.T)  { testTxEventsSent(t, "sync") }
 
 func testTxEventsSent(t *testing.T, broadcastMethod string) {
-	n, conf := NodeSuite(t)
-	for _, c := range GetClients(t, n, conf) {
+	for _, c := range GetClients() {
 		c := c
 		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
 
@@ -166,24 +163,19 @@ func TestClientsResubscribe(t *testing.T) {
 }
 
 func TestHTTPReturnsErrorIfClientIsNotRunning(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	_, conf := NodeSuite(t)
-
-	c := getHTTPClient(t, conf)
+	c := getHTTPClient()
 
 	// on Subscribe
-	_, err := c.Subscribe(ctx, "TestHeaderEvents",
+	_, err := c.Subscribe(context.Background(), "TestHeaderEvents",
 		types.QueryForEvent(types.EventNewBlockHeader).String())
 	assert.Error(t, err)
 
 	// on Unsubscribe
-	err = c.Unsubscribe(ctx, "TestHeaderEvents",
+	err = c.Unsubscribe(context.Background(), "TestHeaderEvents",
 		types.QueryForEvent(types.EventNewBlockHeader).String())
 	assert.Error(t, err)
 
 	// on UnsubscribeAll
-	err = c.UnsubscribeAll(ctx, "TestHeaderEvents")
+	err = c.UnsubscribeAll(context.Background(), "TestHeaderEvents")
 	assert.Error(t, err)
 }
