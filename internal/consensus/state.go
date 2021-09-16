@@ -1361,7 +1361,6 @@ func (cs *State) enterPrevoteWait(height int64, round int32) {
 // Enter: `timeoutPrecommit` after any +2/3 precommits.
 // Enter: +2/3 precomits for block or nil.
 // Lock & precommit the ProposalBlock if we have enough prevotes for it (a POL in this round)
-// else, unlock an existing lock and precommit nil if +2/3 of prevotes were nil,
 // else, precommit nil otherwise.
 func (cs *State) enterPrecommit(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
@@ -1408,21 +1407,9 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 		panic(fmt.Sprintf("this POLRound should be %v but got %v", round, polRound))
 	}
 
-	// +2/3 prevoted nil. Unlock and precommit nil.
+	// +2/3 prevoted nil.
 	if len(blockID.Hash) == 0 {
-		if cs.LockedBlock == nil {
-			logger.Debug("precommit step; +2/3 prevoted for nil")
-		} else {
-			logger.Debug("precommit step; +2/3 prevoted for nil; unlocking")
-			cs.LockedRound = -1
-			cs.LockedBlock = nil
-			cs.LockedBlockParts = nil
-
-			if err := cs.eventBus.PublishEventUnlock(cs.RoundStateEvent()); err != nil {
-				logger.Error("failed publishing event unlock", "err", err)
-			}
-		}
-
+		logger.Debug("precommit step; +2/3 prevoted for nil")
 		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
 		return
 	}
@@ -1468,9 +1455,11 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 	// The +2/3 prevotes for this round is the POL for our unlock.
 	logger.Debug("precommit step; +2/3 prevotes for a block we do not have; voting nil", "block_id", blockID)
 
-	cs.LockedRound = -1
-	cs.LockedBlock = nil
-	cs.LockedBlockParts = nil
+	/*
+		cs.LockedRound = -1
+		cs.LockedBlock = nil
+		cs.LockedBlockParts = nil
+	*/
 
 	if !cs.ProposalBlockParts.HasHeader(blockID.PartSetHeader) {
 		cs.ProposalBlock = nil
@@ -2070,29 +2059,11 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 		prevotes := cs.Votes.Prevotes(vote.Round)
 		cs.Logger.Debug("added vote to prevote", "vote", vote, "prevotes", prevotes.StringShort())
 
-		// If +2/3 prevotes for a block or nil for *any* round:
+		// If +2/3 prevotes for a block for *any* round:
 		if blockID, ok := prevotes.TwoThirdsMajority(); ok {
 			// There was a polka!
-			// If we're locked but this is a recent polka, unlock.
 			// If it matches our ProposalBlock, update the ValidBlock
-
-			// Unlock if `cs.LockedRound < vote.Round <= cs.Round`
-			// NOTE: If vote.Round > cs.Round, we'll deal with it when we get to vote.Round
-			if (cs.LockedBlock != nil) &&
-				(cs.LockedRound < vote.Round) &&
-				(vote.Round <= cs.Round) &&
-				!cs.LockedBlock.HashesTo(blockID.Hash) {
-
-				cs.Logger.Debug("unlocking because of POL", "locked_round", cs.LockedRound, "pol_round", vote.Round)
-
-				cs.LockedRound = -1
-				cs.LockedBlock = nil
-				cs.LockedBlockParts = nil
-
-				if err := cs.eventBus.PublishEventUnlock(cs.RoundStateEvent()); err != nil {
-					return added, err
-				}
-			}
+			// If we're locked but this is a recent polka, lock on the new block.
 
 			// Update Valid* if we can.
 			// NOTE: our proposal block may be nil or not what received a polka..

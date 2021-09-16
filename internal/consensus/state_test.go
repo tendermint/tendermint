@@ -798,7 +798,7 @@ func TestStateLockPOLUnlock(t *testing.T) {
 }
 
 // 4 vals, one precommits, other 3 polka on nil at next round. We maintain the locked block but precommit nil
-func TestStateNilPrevoteDoesNotUnlock(t *testing.T) {
+func TestStatePOLDoesNotUnlock(t *testing.T) {
 	config := configSetup(t)
 
 	cs1, vss := randState(config, 4)
