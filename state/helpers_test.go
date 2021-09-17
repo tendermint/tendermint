@@ -7,6 +7,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	abcicli "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -29,7 +30,7 @@ type paramsChangeTestCase struct {
 
 func newTestApp() proxy.AppConns {
 	app := &testApp{}
-	cc := proxy.NewLocalClientCreator(app)
+	cc := abcicli.NewLocalClientCreator(app)
 	return proxy.NewAppConns(cc)
 }
 

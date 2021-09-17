@@ -14,11 +14,11 @@ import (
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 
+	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/internal/p2p"
-	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/light"
@@ -130,7 +130,7 @@ func startNode(cfg *Config) error {
 
 	n, err := node.New(tmcfg,
 		nodeLogger,
-		proxy.NewLocalClientCreator(app),
+		abcicli.NewLocalClientCreator(app),
 		nil,
 	)
 	if err != nil {

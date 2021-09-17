@@ -8,13 +8,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
-	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	protomem "github.com/tendermint/tendermint/proto/tendermint/mempool"
@@ -55,7 +55,7 @@ func setup(t *testing.T, cfg *cfg.MempoolConfig, numNodes int, chBuf uint) *reac
 
 	for nodeID := range rts.network.Nodes {
 		rts.kvstores[nodeID] = kvstore.NewApplication()
-		cc := proxy.NewLocalClientCreator(rts.kvstores[nodeID])
+		cc := abcicli.NewLocalClientCreator(rts.kvstores[nodeID])
 
 		mempool, memCleanup := newMempoolWithApp(cc)
 		t.Cleanup(memCleanup)
