@@ -741,7 +741,7 @@ func testHandshakeReplay(t *testing.T, sim *simulatorTestSuite, nBlocks int, mod
 		filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_a_r%d", nBlocks, mode, rand.Int())))
 	t.Cleanup(func() { require.NoError(t, kvstoreApp.Close()) })
 
-	clientCreator2 := abciclient.NewLocalClientCreator(kvstoreApp)
+	clientCreator2 := abciclient.NewLocalCreator(kvstoreApp)
 	if nBlocks > 0 {
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
@@ -891,7 +891,7 @@ func buildTMStateFromChain(
 	kvstoreApp := kvstore.NewPersistentKVStoreApplication(
 		filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_t", nBlocks, mode)))
 	defer kvstoreApp.Close()
-	clientCreator := abciclient.NewLocalClientCreator(kvstoreApp)
+	clientCreator := abciclient.NewLocalCreator(kvstoreApp)
 
 	proxyApp := proxy.NewAppConns(clientCreator)
 	if err := proxyApp.Start(); err != nil {
@@ -959,7 +959,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	//		- 0x03
 	{
 		app := &badApp{numBlocks: 3, allHashesAreWrong: true}
-		clientCreator := abciclient.NewLocalClientCreator(app)
+		clientCreator := abciclient.NewLocalCreator(app)
 		proxyApp := proxy.NewAppConns(clientCreator)
 		err := proxyApp.Start()
 		require.NoError(t, err)
@@ -983,7 +983,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	//		- RANDOM HASH
 	{
 		app := &badApp{numBlocks: 3, onlyLastHashIsWrong: true}
-		clientCreator := abciclient.NewLocalClientCreator(app)
+		clientCreator := abciclient.NewLocalCreator(app)
 		proxyApp := proxy.NewAppConns(clientCreator)
 		err := proxyApp.Start()
 		require.NoError(t, err)
@@ -1226,7 +1226,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	val, _ := factory.RandValidator(true, 10)
 	vals := types.NewValidatorSet([]*types.Validator{val})
 	app := &initChainApp{vals: types.TM2PB.ValidatorUpdates(vals)}
-	clientCreator := abciclient.NewLocalClientCreator(app)
+	clientCreator := abciclient.NewLocalCreator(app)
 
 	config := ResetConfig("handshake_test_")
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })

@@ -33,7 +33,7 @@ type AppConns interface {
 }
 
 // NewAppConns calls NewMultiAppConn.
-func NewAppConns(clientCreator abciclient.ClientCreator) AppConns {
+func NewAppConns(clientCreator abciclient.Creator) AppConns {
 	return NewMultiAppConn(clientCreator)
 }
 
@@ -55,11 +55,11 @@ type multiAppConn struct {
 	queryConnClient     abciclient.Client
 	snapshotConnClient  abciclient.Client
 
-	clientCreator abciclient.ClientCreator
+	clientCreator abciclient.Creator
 }
 
 // NewMultiAppConn makes all necessary abci connections to the application.
-func NewMultiAppConn(clientCreator abciclient.ClientCreator) AppConns {
+func NewMultiAppConn(clientCreator abciclient.Creator) AppConns {
 	multiAppConn := &multiAppConn{
 		clientCreator: clientCreator,
 	}

@@ -28,7 +28,7 @@ func NewDefault(conf *config.Config, logger log.Logger) (service.Service, error)
 // value of the final argument.
 func New(conf *config.Config,
 	logger log.Logger,
-	cf abciclient.ClientCreator,
+	cf abciclient.Creator,
 	gen *types.GenesisDoc,
 ) (service.Service, error) {
 	nodeKey, err := types.LoadOrGenNodeKey(conf.NodeKeyFile())

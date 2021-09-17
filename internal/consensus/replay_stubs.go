@@ -54,7 +54,7 @@ func (emptyMempool) CloseWAL()      {}
 // the real app.
 
 func newMockProxyApp(appHash []byte, abciResponses *tmstate.ABCIResponses) proxy.AppConnConsensus {
-	clientCreator := abciclient.NewLocalClientCreator(&mockProxyApp{
+	clientCreator := abciclient.NewLocalCreator(&mockProxyApp{
 		appHash:       appHash,
 		abciResponses: abciResponses,
 	})

@@ -130,7 +130,7 @@ func startNode(cfg *Config) error {
 
 	n, err := node.New(tmcfg,
 		nodeLogger,
-		abciclient.NewLocalClientCreator(app),
+		abciclient.NewLocalCreator(app),
 		nil,
 	)
 	if err != nil {

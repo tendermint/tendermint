@@ -14,18 +14,18 @@ import (
 //
 // The Closer is a noop except for persistent_kvstore applications,
 // which will clean up the store.
-func DefaultClientCreator(addr, transport, dbDir string) (abciclient.ClientCreator, io.Closer) {
+func DefaultClientCreator(addr, transport, dbDir string) (abciclient.Creator, io.Closer) {
 	switch addr {
 	case "kvstore":
-		return abciclient.NewLocalClientCreator(kvstore.NewApplication()), noopCloser{}
+		return abciclient.NewLocalCreator(kvstore.NewApplication()), noopCloser{}
 	case "persistent_kvstore":
 		app := kvstore.NewPersistentKVStoreApplication(dbDir)
-		return abciclient.NewLocalClientCreator(app), app
+		return abciclient.NewLocalCreator(app), app
 	case "noop":
-		return abciclient.NewLocalClientCreator(types.NewBaseApplication()), noopCloser{}
+		return abciclient.NewLocalCreator(types.NewBaseApplication()), noopCloser{}
 	default:
 		mustConnect := false // loop retrying
-		return abciclient.NewRemoteClientCreator(addr, transport, mustConnect), noopCloser{}
+		return abciclient.NewRemoteCreator(addr, transport, mustConnect), noopCloser{}
 	}
 }
 

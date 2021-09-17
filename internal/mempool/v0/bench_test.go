@@ -13,7 +13,7 @@ import (
 
 func BenchmarkReap(b *testing.B) {
 	app := kvstore.NewApplication()
-	cc := abciclient.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 	mp.config.Size = 100000
@@ -34,7 +34,7 @@ func BenchmarkReap(b *testing.B) {
 
 func BenchmarkCheckTx(b *testing.B) {
 	app := kvstore.NewApplication()
-	cc := abciclient.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
@@ -56,7 +56,7 @@ func BenchmarkCheckTx(b *testing.B) {
 
 func BenchmarkParallelCheckTx(b *testing.B) {
 	app := kvstore.NewApplication()
-	cc := abciclient.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
@@ -81,7 +81,7 @@ func BenchmarkParallelCheckTx(b *testing.B) {
 
 func BenchmarkCheckDuplicateTx(b *testing.B) {
 	app := kvstore.NewApplication()
-	cc := abciclient.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 

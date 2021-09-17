@@ -100,7 +100,7 @@ func StartTendermint(ctx context.Context,
 	} else {
 		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 	}
-	papp := abciclient.NewLocalClientCreator(app)
+	papp := abciclient.NewLocalCreator(app)
 	node, err := nm.New(conf, logger, papp, nil)
 	if err != nil {
 		return nil, func(_ context.Context) error { return nil }, err

@@ -164,7 +164,7 @@ func newTestReactor(t *testing.T, p testReactorParams) *BlockchainReactor {
 		appl = &mockBlockApplier{}
 	} else {
 		app := &testApp{}
-		cc := abciclient.NewLocalClientCreator(app)
+		cc := abciclient.NewLocalCreator(app)
 		proxyApp := proxy.NewAppConns(cc)
 		err := proxyApp.Start()
 		require.NoError(t, err)
@@ -483,7 +483,7 @@ func newReactorStore(
 
 	require.Len(t, privVals, 1)
 	app := &testApp{}
-	cc := abciclient.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	if err != nil {

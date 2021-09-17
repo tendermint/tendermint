@@ -16,7 +16,7 @@ import (
 
 func TestCacheAfterUpdate(t *testing.T) {
 	app := kvstore.NewApplication()
-	cc := abciclient.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 

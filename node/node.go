@@ -120,7 +120,7 @@ func newDefaultNode(config *cfg.Config, logger log.Logger) (service.Service, err
 func makeNode(config *cfg.Config,
 	privValidator types.PrivValidator,
 	nodeKey types.NodeKey,
-	clientCreator abciclient.ClientCreator,
+	clientCreator abciclient.Creator,
 	genesisDocProvider genesisDocProvider,
 	dbProvider cfg.DBProvider,
 	logger log.Logger) (service.Service, error) {

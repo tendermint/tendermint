@@ -55,7 +55,7 @@ func setup(t *testing.T, cfg *cfg.MempoolConfig, numNodes int, chBuf uint) *reac
 
 	for nodeID := range rts.network.Nodes {
 		rts.kvstores[nodeID] = kvstore.NewApplication()
-		cc := abciclient.NewLocalClientCreator(rts.kvstores[nodeID])
+		cc := abciclient.NewLocalCreator(rts.kvstores[nodeID])
 
 		mempool, memCleanup := newMempoolWithApp(cc)
 		t.Cleanup(memCleanup)

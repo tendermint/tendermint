@@ -30,7 +30,7 @@ type paramsChangeTestCase struct {
 
 func newTestApp() proxy.AppConns {
 	app := &testApp{}
-	cc := abciclient.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	return proxy.NewAppConns(cc)
 }
 

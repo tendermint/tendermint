@@ -31,11 +31,11 @@ import (
 // test.
 type cleanupFunc func()
 
-func newMempoolWithApp(cc abciclient.ClientCreator) (*CListMempool, cleanupFunc) {
+func newMempoolWithApp(cc abciclient.Creator) (*CListMempool, cleanupFunc) {
 	return newMempoolWithAppAndConfig(cc, cfg.ResetTestRoot("mempool_test"))
 }
 
-func newMempoolWithAppAndConfig(cc abciclient.ClientCreator, config *cfg.Config) (*CListMempool, cleanupFunc) {
+func newMempoolWithAppAndConfig(cc abciclient.Creator, config *cfg.Config) (*CListMempool, cleanupFunc) {
 	appConnMem, _ := cc.NewABCIClient()
 	appConnMem.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "mempool"))
 	err := appConnMem.Start()
@@ -92,7 +92,7 @@ func checkTxs(t *testing.T, mp mempool.Mempool, count int, peerID uint16) types.
 
 func TestReapMaxBytesMaxGas(t *testing.T) {
 	app := kvstore.NewApplication()
-	cc := abciclient.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
@@ -141,7 +141,7 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 
 func TestMempoolFilters(t *testing.T) {
 	app := kvstore.NewApplication()
-	cc := abciclient.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 	emptyTxArr := []types.Tx{[]byte{}}
@@ -180,7 +180,7 @@ func TestMempoolFilters(t *testing.T) {
 
 func TestMempoolUpdate(t *testing.T) {
 	app := kvstore.NewApplication()
-	cc := abciclient.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
@@ -216,7 +216,7 @@ func TestMempoolUpdate(t *testing.T) {
 
 func TestMempool_KeepInvalidTxsInCache(t *testing.T) {
 	app := kvstore.NewApplication()
-	cc := abciclient.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	wcfg := cfg.DefaultConfig()
 	wcfg.Mempool.KeepInvalidTxsInCache = true
 	mp, cleanup := newMempoolWithAppAndConfig(cc, wcfg)
@@ -264,7 +264,7 @@ func TestMempool_KeepInvalidTxsInCache(t *testing.T) {
 
 func TestTxsAvailable(t *testing.T) {
 	app := kvstore.NewApplication()
-	cc := abciclient.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 	mp.EnableTxsAvailable()
@@ -308,7 +308,7 @@ func TestTxsAvailable(t *testing.T) {
 
 func TestSerialReap(t *testing.T) {
 	app := kvstore.NewApplication()
-	cc := abciclient.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
@@ -419,7 +419,7 @@ func TestSerialReap(t *testing.T) {
 
 func TestMempool_CheckTxChecksTxSize(t *testing.T) {
 	app := kvstore.NewApplication()
-	cc := abciclient.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	mempl, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
@@ -464,7 +464,7 @@ func TestMempool_CheckTxChecksTxSize(t *testing.T) {
 
 func TestMempoolTxsBytes(t *testing.T) {
 	app := kvstore.NewApplication()
-	cc := abciclient.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	config := cfg.ResetTestRoot("mempool_test")
 	config.Mempool.MaxTxsBytes = 10
 	mp, cleanup := newMempoolWithAppAndConfig(cc, config)
@@ -507,7 +507,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 
 	// 6. zero after tx is rechecked and removed due to not being valid anymore
 	app2 := kvstore.NewApplication()
-	cc = abciclient.NewLocalClientCreator(app2)
+	cc = abciclient.NewLocalCreator(app2)
 	mp, cleanup = newMempoolWithApp(cc)
 	defer cleanup()
 
@@ -597,10 +597,10 @@ func newRemoteApp(
 	addr string,
 	app abci.Application,
 ) (
-	clientCreator abciclient.ClientCreator,
+	clientCreator abciclient.Creator,
 	server service.Service,
 ) {
-	clientCreator = abciclient.NewRemoteClientCreator(addr, "socket", true)
+	clientCreator = abciclient.NewRemoteCreator(addr, "socket", true)
 
 	// Start server
 	server = abciserver.NewSocketServer(addr, app)

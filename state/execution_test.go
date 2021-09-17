@@ -35,7 +35,7 @@ var (
 
 func TestApplyBlock(t *testing.T) {
 	app := &testApp{}
-	cc := abciclient.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -60,7 +60,7 @@ func TestApplyBlock(t *testing.T) {
 // TestBeginBlockValidators ensures we send absent validators list.
 func TestBeginBlockValidators(t *testing.T) {
 	app := &testApp{}
-	cc := abciclient.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -123,7 +123,7 @@ func TestBeginBlockValidators(t *testing.T) {
 // TestBeginBlockByzantineValidators ensures we send byzantine validators list.
 func TestBeginBlockByzantineValidators(t *testing.T) {
 	app := &testApp{}
-	cc := abciclient.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -348,7 +348,7 @@ func TestUpdateValidators(t *testing.T) {
 // TestEndBlockValidatorUpdates ensures we update validator set and send an event.
 func TestEndBlockValidatorUpdates(t *testing.T) {
 	app := &testApp{}
-	cc := abciclient.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -421,7 +421,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 // would result in empty set causes no panic, an error is raised and NextValidators is not updated
 func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	app := &testApp{}
-	cc := abciclient.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
