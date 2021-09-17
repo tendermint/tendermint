@@ -13,11 +13,14 @@ WORKDIR /src/tenderdash
 # Fetch dependencies separately (for layer caching)
 COPY go.mod go.sum ./
 RUN go mod download
+# Install BLS library
+COPY third_party ./third_party
+COPY Makefile *.mk ./
+RUN make install-bls
 
 # Copy Tenderdash source
 COPY . .
-# Install BLS library
-RUN make install-bls
+
 # Build Tenderdash and install into /usr/bin/tenderdash
 RUN make build && cp build/tenderdash /usr/bin/tenderdash
 COPY test/e2e/docker/entrypoint* /usr/bin/
