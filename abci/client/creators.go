@@ -32,7 +32,7 @@ func NewLocalCreator(app types.Application) Creator {
 	}
 }
 
-func (l *localCreator) NewABCIClient() (Client, error) {
+func (l *localCreator) NewClient() (Client, error) {
 	return NewLocalClient(l.mtx, l.app), nil
 }
 
