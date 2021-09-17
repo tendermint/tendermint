@@ -1455,9 +1455,9 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 	// The +2/3 prevotes for this round is the POL for our unlock.
 	logger.Debug("precommit step; +2/3 prevotes for a block we do not have; voting nil", "block_id", blockID)
 
-	//	cs.LockedRound = -1
-	//	cs.LockedBlock = nil
-	//	cs.LockedBlockParts = nil
+	cs.LockedRound = -1
+	cs.LockedBlock = nil
+	cs.LockedBlockParts = nil
 
 	if !cs.ProposalBlockParts.HasHeader(blockID.PartSetHeader) {
 		cs.ProposalBlock = nil
