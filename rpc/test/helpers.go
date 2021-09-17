@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
@@ -100,7 +100,7 @@ func StartTendermint(ctx context.Context,
 	} else {
 		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 	}
-	papp := abcicli.NewLocalClientCreator(app)
+	papp := abciclient.NewLocalClientCreator(app)
 	node, err := nm.New(conf, logger, papp, nil)
 	if err != nil {
 		return nil, func(_ context.Context) error { return nil }, err

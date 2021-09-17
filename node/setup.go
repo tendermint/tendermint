@@ -12,7 +12,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
@@ -51,7 +51,7 @@ func initDBs(config *cfg.Config, dbProvider cfg.DBProvider) (blockStore *store.B
 	return
 }
 
-func createAndStartProxyAppConns(clientCreator abcicli.ClientCreator, logger log.Logger) (proxy.AppConns, error) {
+func createAndStartProxyAppConns(clientCreator abciclient.ClientCreator, logger log.Logger) (proxy.AppConns, error) {
 	proxyApp := proxy.NewAppConns(clientCreator)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {

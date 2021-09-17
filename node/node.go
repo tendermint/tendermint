@@ -14,7 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
@@ -120,7 +120,7 @@ func newDefaultNode(config *cfg.Config, logger log.Logger) (service.Service, err
 func makeNode(config *cfg.Config,
 	privValidator types.PrivValidator,
 	nodeKey types.NodeKey,
-	clientCreator abcicli.ClientCreator,
+	clientCreator abciclient.ClientCreator,
 	genesisDocProvider genesisDocProvider,
 	dbProvider cfg.DBProvider,
 	logger log.Logger) (service.Service, error) {

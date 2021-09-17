@@ -3,7 +3,7 @@ package v1
 import (
 	"context"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -14,7 +14,7 @@ var mp mempool.Mempool
 
 func init() {
 	app := kvstore.NewApplication()
-	cc := abcicli.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalClientCreator(app)
 	appConnMem, _ := cc.NewABCIClient()
 	err := appConnMem.Start()
 	if err != nil {

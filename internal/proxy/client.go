@@ -3,7 +3,7 @@ package proxy
 import (
 	"io"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/abci/types"
 )
@@ -14,18 +14,18 @@ import (
 //
 // The Closer is a noop except for persistent_kvstore applications,
 // which will clean up the store.
-func DefaultClientCreator(addr, transport, dbDir string) (abcicli.ClientCreator, io.Closer) {
+func DefaultClientCreator(addr, transport, dbDir string) (abciclient.ClientCreator, io.Closer) {
 	switch addr {
 	case "kvstore":
-		return abcicli.NewLocalClientCreator(kvstore.NewApplication()), noopCloser{}
+		return abciclient.NewLocalClientCreator(kvstore.NewApplication()), noopCloser{}
 	case "persistent_kvstore":
 		app := kvstore.NewPersistentKVStoreApplication(dbDir)
-		return abcicli.NewLocalClientCreator(app), app
+		return abciclient.NewLocalClientCreator(app), app
 	case "noop":
-		return abcicli.NewLocalClientCreator(types.NewBaseApplication()), noopCloser{}
+		return abciclient.NewLocalClientCreator(types.NewBaseApplication()), noopCloser{}
 	default:
 		mustConnect := false // loop retrying
-		return abcicli.NewRemoteClientCreator(addr, transport, mustConnect), noopCloser{}
+		return abciclient.NewRemoteClientCreator(addr, transport, mustConnect), noopCloser{}
 	}
 }
 

@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
@@ -55,7 +55,7 @@ func setup(t *testing.T, cfg *cfg.MempoolConfig, numNodes int, chBuf uint) *reac
 
 	for nodeID := range rts.network.Nodes {
 		rts.kvstores[nodeID] = kvstore.NewApplication()
-		cc := abcicli.NewLocalClientCreator(rts.kvstores[nodeID])
+		cc := abciclient.NewLocalClientCreator(rts.kvstores[nodeID])
 
 		mempool, memCleanup := newMempoolWithApp(cc)
 		t.Cleanup(memCleanup)

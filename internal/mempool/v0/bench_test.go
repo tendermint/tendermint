@@ -6,14 +6,14 @@ import (
 	"sync/atomic"
 	"testing"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/internal/mempool"
 )
 
 func BenchmarkReap(b *testing.B) {
 	app := kvstore.NewApplication()
-	cc := abcicli.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalClientCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 	mp.config.Size = 100000
@@ -34,7 +34,7 @@ func BenchmarkReap(b *testing.B) {
 
 func BenchmarkCheckTx(b *testing.B) {
 	app := kvstore.NewApplication()
-	cc := abcicli.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalClientCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
@@ -56,7 +56,7 @@ func BenchmarkCheckTx(b *testing.B) {
 
 func BenchmarkParallelCheckTx(b *testing.B) {
 	app := kvstore.NewApplication()
-	cc := abcicli.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalClientCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
@@ -81,7 +81,7 @@ func BenchmarkParallelCheckTx(b *testing.B) {
 
 func BenchmarkCheckDuplicateTx(b *testing.B) {
 	app := kvstore.NewApplication()
-	cc := abcicli.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalClientCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 

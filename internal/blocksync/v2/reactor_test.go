@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/blocksync/v2/internal/behavior"
@@ -164,7 +164,7 @@ func newTestReactor(t *testing.T, p testReactorParams) *BlockchainReactor {
 		appl = &mockBlockApplier{}
 	} else {
 		app := &testApp{}
-		cc := abcicli.NewLocalClientCreator(app)
+		cc := abciclient.NewLocalClientCreator(app)
 		proxyApp := proxy.NewAppConns(cc)
 		err := proxyApp.Start()
 		require.NoError(t, err)
@@ -483,7 +483,7 @@ func newReactorStore(
 
 	require.Len(t, privVals, 1)
 	app := &testApp{}
-	cc := abcicli.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	if err != nil {

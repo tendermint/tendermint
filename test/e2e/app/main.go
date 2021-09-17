@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -130,7 +130,7 @@ func startNode(cfg *Config) error {
 
 	n, err := node.New(tmcfg,
 		nodeLogger,
-		abcicli.NewLocalClientCreator(app),
+		abciclient.NewLocalClientCreator(app),
 		nil,
 	)
 	if err != nil {

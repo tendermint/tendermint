@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 
 	mock "github.com/stretchr/testify/mock"
 
@@ -64,15 +64,15 @@ func (_m *AppConnConsensus) CommitSync(_a0 context.Context) (*types.ResponseComm
 }
 
 // DeliverTxAsync provides a mock function with given fields: _a0, _a1
-func (_m *AppConnConsensus) DeliverTxAsync(_a0 context.Context, _a1 types.RequestDeliverTx) (*abcicli.ReqRes, error) {
+func (_m *AppConnConsensus) DeliverTxAsync(_a0 context.Context, _a1 types.RequestDeliverTx) (*abciclient.ReqRes, error) {
 	ret := _m.Called(_a0, _a1)
 
-	var r0 *abcicli.ReqRes
-	if rf, ok := ret.Get(0).(func(context.Context, types.RequestDeliverTx) *abcicli.ReqRes); ok {
+	var r0 *abciclient.ReqRes
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestDeliverTx) *abciclient.ReqRes); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*abcicli.ReqRes)
+			r0 = ret.Get(0).(*abciclient.ReqRes)
 		}
 	}
 
@@ -147,6 +147,6 @@ func (_m *AppConnConsensus) InitChainSync(_a0 context.Context, _a1 types.Request
 }
 
 // SetResponseCallback provides a mock function with given fields: _a0
-func (_m *AppConnConsensus) SetResponseCallback(_a0 abcicli.Callback) {
+func (_m *AppConnConsensus) SetResponseCallback(_a0 abciclient.Callback) {
 	_m.Called(_a0)
 }

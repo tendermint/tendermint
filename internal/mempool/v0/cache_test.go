@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -16,7 +16,7 @@ import (
 
 func TestCacheAfterUpdate(t *testing.T) {
 	app := kvstore.NewApplication()
-	cc := abcicli.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalClientCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 

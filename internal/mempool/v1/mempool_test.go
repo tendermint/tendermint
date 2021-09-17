@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -76,7 +76,7 @@ func setup(t testing.TB, cacheSize int, options ...TxMempoolOption) *TxMempool {
 	t.Helper()
 
 	app := &application{kvstore.NewApplication()}
-	cc := abcicli.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalClientCreator(app)
 
 	cfg := config.ResetTestRoot(strings.ReplaceAll(t.Name(), "/", "|"))
 	cfg.Mempool.CacheSize = cacheSize

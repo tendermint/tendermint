@@ -16,7 +16,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
@@ -214,7 +214,7 @@ func testFreeAddr(t *testing.T) string {
 func TestCreateProposalBlock(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
-	cc := abcicli.NewLocalClientCreator(kvstore.NewApplication())
+	cc := abciclient.NewLocalClientCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -306,7 +306,7 @@ func TestCreateProposalBlock(t *testing.T) {
 func TestMaxTxsProposalBlockSize(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
-	cc := abcicli.NewLocalClientCreator(kvstore.NewApplication())
+	cc := abciclient.NewLocalClientCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -368,7 +368,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 func TestMaxProposalBlockSize(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
-	cc := abcicli.NewLocalClientCreator(kvstore.NewApplication())
+	cc := abciclient.NewLocalClientCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
