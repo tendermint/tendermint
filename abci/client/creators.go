@@ -7,7 +7,7 @@ import (
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 )
 
-//go:generate ../scripts/mockery_generate.sh ClientCreator
+//go:generate ../scripts/mockery_generate.sh Creator
 
 // Creator creates new ABCI clients.
 type Creator interface {
