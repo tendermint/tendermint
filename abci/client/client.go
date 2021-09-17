@@ -64,14 +64,6 @@ type Client interface {
 	ApplySnapshotChunkSync(context.Context, types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error)
 }
 
-//go:generate ../scripts/mockery_generate.sh ClientCreator
-
-// ClientCreator creates new ABCI clients.
-type ClientCreator interface {
-	// NewABCIClient returns a new ABCI client.
-	NewABCIClient() (Client, error)
-}
-
 //----------------------------------------
 
 // NewClient returns a new ABCI client of the specified transport type.

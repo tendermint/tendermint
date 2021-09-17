@@ -1,64 +1,12 @@
 package proxy
 
 import (
-	"fmt"
 	"io"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/abci/types"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 )
-
-//----------------------------------------------------
-// local proxy uses a mutex on an in-proc app
-
-type localClientCreator struct {
-	mtx *tmsync.RWMutex
-	app types.Application
-}
-
-// NewLocalClientCreator returns a ClientCreator for the given app,
-// which will be running locally.
-func NewLocalClientCreator(app types.Application) abcicli.ClientCreator {
-	return &localClientCreator{
-		mtx: new(tmsync.RWMutex),
-		app: app,
-	}
-}
-
-func (l *localClientCreator) NewABCIClient() (abcicli.Client, error) {
-	return abcicli.NewLocalClient(l.mtx, l.app), nil
-}
-
-//---------------------------------------------------------------
-// remote proxy opens new connections to an external app process
-
-type remoteClientCreator struct {
-	addr        string
-	transport   string
-	mustConnect bool
-}
-
-// NewRemoteClientCreator returns a ClientCreator for the given address (e.g.
-// "192.168.0.1") and transport (e.g. "tcp"). Set mustConnect to true if you
-// want the client to connect before reporting success.
-func NewRemoteClientCreator(addr, transport string, mustConnect bool) abcicli.ClientCreator {
-	return &remoteClientCreator{
-		addr:        addr,
-		transport:   transport,
-		mustConnect: mustConnect,
-	}
-}
-
-func (r *remoteClientCreator) NewABCIClient() (abcicli.Client, error) {
-	remoteApp, err := abcicli.NewClient(r.addr, r.transport, r.mustConnect)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to proxy: %w", err)
-	}
-
-	return remoteApp, nil
-}
 
 // DefaultClientCreator returns a default ClientCreator, which will create a
 // local client if addr is one of: 'kvstore',
@@ -69,15 +17,15 @@ func (r *remoteClientCreator) NewABCIClient() (abcicli.Client, error) {
 func DefaultClientCreator(addr, transport, dbDir string) (abcicli.ClientCreator, io.Closer) {
 	switch addr {
 	case "kvstore":
-		return NewLocalClientCreator(kvstore.NewApplication()), noopCloser{}
+		return abcicli.NewLocalClientCreator(kvstore.NewApplication()), noopCloser{}
 	case "persistent_kvstore":
 		app := kvstore.NewPersistentKVStoreApplication(dbDir)
-		return NewLocalClientCreator(app), app
+		return abcicli.NewLocalClientCreator(app), app
 	case "noop":
-		return NewLocalClientCreator(types.NewBaseApplication()), noopCloser{}
+		return abcicli.NewLocalClientCreator(types.NewBaseApplication()), noopCloser{}
 	default:
 		mustConnect := false // loop retrying
-		return NewRemoteClientCreator(addr, transport, mustConnect), noopCloser{}
+		return abcicli.NewRemoteClientCreator(addr, transport, mustConnect), noopCloser{}
 	}
 }
 
