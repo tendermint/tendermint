@@ -11,8 +11,8 @@ import (
 
 // Creator creates new ABCI clients.
 type Creator interface {
-	// NewABCIClient returns a new ABCI client.
-	NewABCIClient() (Client, error)
+	// NewClient returns a new ABCI client.
+	NewClient() (Client, error)
 }
 
 //----------------------------------------------------
@@ -56,7 +56,7 @@ func NewRemoteCreator(addr, transport string, mustConnect bool) Creator {
 	}
 }
 
-func (r *remoteCreator) NewABCIClient() (Client, error) {
+func (r *remoteCreator) NewClient() (Client, error) {
 	remoteApp, err := NewClient(r.addr, r.transport, r.mustConnect)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to proxy: %w", err)

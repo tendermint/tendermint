@@ -26,7 +26,7 @@ func TestAppConns_Start_Stop(t *testing.T) {
 	clientMock.On("Stop").Return(nil).Times(4)
 	clientMock.On("Quit").Return(quitCh).Times(4)
 
-	clientCreatorMock.On("NewABCIClient").Return(clientMock, nil).Times(4)
+	clientCreatorMock.On("NewClient").Return(clientMock, nil).Times(4)
 
 	appConns := NewAppConns(clientCreatorMock)
 
@@ -66,7 +66,7 @@ func TestAppConns_Failure(t *testing.T) {
 	clientMock.On("Quit").Return(recvQuitCh)
 	clientMock.On("Error").Return(errors.New("EOF")).Once()
 
-	clientCreatorMock.On("NewABCIClient").Return(clientMock, nil)
+	clientCreatorMock.On("NewClient").Return(clientMock, nil)
 
 	appConns := NewAppConns(clientCreatorMock)
 

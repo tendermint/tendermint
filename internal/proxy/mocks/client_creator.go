@@ -12,8 +12,8 @@ type ClientCreator struct {
 	mock.Mock
 }
 
-// NewABCIClient provides a mock function with given fields:
-func (_m *ClientCreator) NewABCIClient() (abciclient.Client, error) {
+// NewClient provides a mock function with given fields:
+func (_m *ClientCreator) NewClient() (abciclient.Client, error) {
 	ret := _m.Called()
 
 	var r0 abciclient.Client
