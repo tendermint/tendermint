@@ -70,6 +70,8 @@ func TestSyncer_SyncAny(t *testing.T) {
 	peerCID := types.NodeID("cc")
 	rts := setup(t, connSnapshot, connQuery, stateProvider, 3)
 
+	rts.reactor.syncer = rts.syncer
+
 	// Adding a chunk should error when no sync is in progress
 	_, err := rts.syncer.AddChunk(&chunk{Height: 1, Format: 1, Index: 0, Chunk: []byte{1}})
 	require.Error(t, err)

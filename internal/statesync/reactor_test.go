@@ -175,8 +175,6 @@ func setup(
 		rts.reactor.metrics,
 	)
 
-	rts.reactor.syncer = rts.syncer
-
 	require.NoError(t, rts.reactor.Start())
 	require.True(t, rts.reactor.IsRunning())
 
