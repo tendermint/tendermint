@@ -22,4 +22,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS
 
+- [types] #6955 Backport event subscription refactor to unflatten events and order attributes (@creachadair)
+
 ### BUG FIXES
