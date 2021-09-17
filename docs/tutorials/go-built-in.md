@@ -430,7 +430,7 @@ func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
   config,
   pv,
   nodeKey,
-  proxy.NewLocalClientCreator(app),
+  abcicli.NewLocalClientCreator(app),
   nm.DefaultGenesisDocProviderFunc(config),
   nm.DefaultDBProvider,
   nm.DefaultMetricsProvider(config.Instrumentation),
@@ -482,7 +482,7 @@ node, err := nm.NewNode(
  config,
  pv,
  nodeKey,
- proxy.NewLocalClientCreator(app),
+ abcicli.NewLocalClientCreator(app),
  nm.DefaultGenesisDocProviderFunc(config),
  nm.DefaultDBProvider,
  nm.DefaultMetricsProvider(config.Instrumentation),
@@ -495,7 +495,7 @@ if err != nil {
 `NewNode` requires a few things including a configuration file, a private
 validator, a node key and a few others in order to construct the full node.
 
-Note we use `proxy.NewLocalClientCreator` here to create a local client instead
+Note we use `abcicli.NewLocalClientCreator` here to create a local client instead
 of one communicating through a socket or gRPC.
 
 [viper](https://github.com/spf13/viper) is being used for reading the config,
