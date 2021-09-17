@@ -52,6 +52,13 @@ func NewCLI() *CLI {
 			if err := Cleanup(cli.testnet); err != nil {
 				return err
 			}
+			defer func() {
+				if cli.preserve {
+					logger.Info("Preserving testnet contents because -preserve=true")
+				} else if err := Cleanup(cli.testnet); err != nil {
+					logger.Error("Error cleaning up testnet contents", "err", err)
+				}
+			}()
 			if err := Setup(cli.testnet); err != nil {
 				return err
 			}
@@ -102,11 +109,6 @@ func NewCLI() *CLI {
 			}
 			if err := Test(cli.testnet); err != nil {
 				return err
-			}
-			if !cli.preserve {
-				if err := Cleanup(cli.testnet); err != nil {
-					return err
-				}
 			}
 			return nil
 		},
@@ -269,6 +271,12 @@ Does not run any perbutations.
 			if err := Cleanup(cli.testnet); err != nil {
 				return err
 			}
+			defer func() {
+				if err := Cleanup(cli.testnet); err != nil {
+					logger.Error("Error cleaning up testnet contents", "err", err)
+				}
+			}()
+
 			if err := Setup(cli.testnet); err != nil {
 				return err
 			}
@@ -299,10 +307,6 @@ Does not run any perbutations.
 
 			loadCancel()
 			if err := <-chLoadResult; err != nil {
-				return err
-			}
-
-			if err := Cleanup(cli.testnet); err != nil {
 				return err
 			}
 
