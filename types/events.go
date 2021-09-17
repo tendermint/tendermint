@@ -60,16 +60,6 @@ var (
 		},
 	}
 
-	_EventNewEvidence = abci.Event{
-		Type: eventReservedType,
-		Attributes: []abci.EventAttribute{
-			{
-				Key:   []byte(eventReservedKey),
-				Value: []byte(EventNewEvidence),
-			},
-		},
-	}
-
 	_EventTx = abci.Event{
 		Type: eventReservedType,
 		Attributes: []abci.EventAttribute{
