@@ -18,9 +18,9 @@ import (
 type kvPair = [2]string
 
 func makeEventAttrs(kvPairs []kvPair) []abci.EventAttribute {
-	var attrs []abci.EventAttribute
-	for _, pair := range kvPairs {
-		attrs = append(attrs, abci.EventAttribute{Key: []byte(pair[0]), Value: []byte(pair[1])})
+	attrs := make([]abci.EventAttribute, len(kvPairs))
+	for i, pair := range kvPairs {
+		attrs[i] = abci.EventAttribute{Key: []byte(pair[0]), Value: []byte(pair[1])}
 	}
 	return attrs
 }
