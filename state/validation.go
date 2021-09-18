@@ -188,7 +188,7 @@ func validateBlock(state State, block *types.Block) error {
 	return nil
 }
 
-func validateBlockTime(state State, block *types.Block) error {
+func validateBlockTime(allowedTimeWindow time.Duration, state State, block *types.Block) error {
 	if block.Height == state.InitialHeight {
 		afterLast := state.LastBlockTime.Add(5 * time.Second)
 		beforeLast := state.LastBlockTime.Add(-5 * time.Second)
@@ -198,8 +198,8 @@ func validateBlockTime(state State, block *types.Block) error {
 		}
 	} else {
 		// Validate block Time is within a range of current time
-		after := tmtime.Now().Add(20 * time.Second)
-		before := tmtime.Now().Add(-20 * time.Second)
+		after := tmtime.Now().Add(allowedTimeWindow)
+		before := tmtime.Now().Add(-allowedTimeWindow)
 		if block.Time.After(after) || block.Time.Before(before) {
 			return fmt.Errorf("block time %v is out of window [%v, %v]",
 				block.Time, before, after)
