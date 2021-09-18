@@ -280,7 +280,7 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 		select {
 		case <-fastc:
 			// Fast peer connected.
-		case <-time.After(50 * time.Millisecond):
+		case <-time.After(500 * time.Millisecond):
 			// We error if the fast peer didn't succeed.
 			errc <- fmt.Errorf("fast peer timed out")
 		}
