@@ -905,6 +905,11 @@ type ConsensusConfig struct {
 	// NOTE: when modifying, make sure to update time_iota_ms genesis parameter
 	TimeoutCommit time.Duration `mapstructure:"timeout_commit"`
 
+	// The proposed block time window is doubling of the value in twice
+	// that means for 10 sec the window will be 20 sec, 10 sec before NOW and 10 sec after
+	// this value is used to validate a block time
+	ProposedBlockTimeWindow time.Duration `mapstructure:"proposed_block_time_window"`
+
 	// Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 	SkipTimeoutCommit bool `mapstructure:"skip_timeout_commit"`
 	// Don't propose a block if the node is set to the proposer, the block proposal instead
@@ -937,6 +942,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		TimeoutPrecommit:            1000 * time.Millisecond,
 		TimeoutPrecommitDelta:       500 * time.Millisecond,
 		TimeoutCommit:               1000 * time.Millisecond,
+		ProposedBlockTimeWindow:     10 * time.Second,
 		SkipTimeoutCommit:           false,
 		DontAutoPropose:             false,
 		CreateEmptyBlocks:           true,
@@ -1037,6 +1043,9 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 	}
 	if cfg.TimeoutCommit < 0 {
 		return errors.New("timeout_commit can't be negative")
+	}
+	if cfg.ProposedBlockTimeWindow < 0 {
+		return errors.New("proposed_block_time can't be negative")
 	}
 	if cfg.CreateEmptyBlocksInterval < 0 {
 		return errors.New("create_empty_blocks_interval can't be negative")
