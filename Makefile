@@ -4,7 +4,7 @@ OUTPUT?=build/tendermint
 BUILD_TAGS?=tendermint
 LD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
-HTTPS_GIT := https://github.com/tendermint/tendermint.git
+HTTPS_GIT := https://github.com/okex/tendermint.git
 DOCKER_BUF := docker run -v $(shell pwd):/workspace --workdir /workspace bufbuild/buf
 CGO_ENABLED ?= 0
 
@@ -70,15 +70,17 @@ proto-gen-docker:
 .PHONY: proto-gen-docker
 
 proto-lint:
-	@$(DOCKER_BUF) check lint --error-format=json
+	@$(DOCKER_BUF) lint --error-format=json
 .PHONY: proto-lint
 
 proto-check-breaking:
-	@$(DOCKER_BUF) check breaking --against-input .git#branch=master
+
+	@$(DOCKER_BUF) breaking --against .git#branch=main
 .PHONY: proto-check-breaking
 
 proto-check-breaking-ci:
-	@$(DOCKER_BUF) check breaking --against-input $(HTTPS_GIT)#branch=master
+	@$(DOCKER_BUF) breaking --against $(HTTPS_GIT)#branch=main
+
 .PHONY: proto-check-breaking-ci
 
 ###############################################################################

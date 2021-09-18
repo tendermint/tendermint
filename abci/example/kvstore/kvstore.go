@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"math/big"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -59,6 +60,13 @@ func prefixKey(key []byte) []byte {
 
 //---------------------------------------------------
 
+type MockExTxInfo struct {
+	Sender      string   `json:"sender"`
+	SenderNonce uint64   `json:"sender_nonce"`
+	GasPrice    *big.Int `json:"gas_price"`
+	Nonce       uint64   `json:"nonce"`
+}
+
 var _ types.Application = (*Application)(nil)
 
 type Application struct {
@@ -110,7 +118,8 @@ func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 }
 
 func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
-	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
+	data, _ := json.Marshal(&MockExTxInfo{Sender: fmt.Sprintf("%x", req.Tx), GasPrice: big.NewInt(1)})
+	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1, Data: data}
 }
 
 func (app *Application) Commit() types.ResponseCommit {

@@ -119,7 +119,8 @@ func TestGenesisSaveAs(t *testing.T) {
 	genDoc := randomGenesisDoc()
 
 	// save
-	genDoc.SaveAs(tmpfile.Name())
+	err = genDoc.SaveAs(tmpfile.Name())
+	require.NoError(t, err)
 	stat, err := tmpfile.Stat()
 	require.NoError(t, err)
 	if err != nil && stat.Size() <= 0 {
@@ -150,5 +151,6 @@ func randomGenesisDoc() *GenesisDoc {
 		ChainID:         "abc",
 		Validators:      []GenesisValidator{{pubkey.Address(), pubkey, 10, "myval"}},
 		ConsensusParams: DefaultConsensusParams(),
+		AppState:        []byte("{\"appstate\": \"\"}"),
 	}
 }

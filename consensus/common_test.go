@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"sync"
@@ -15,8 +16,6 @@ import (
 	"github.com/go-kit/kit/log/term"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
-
-	"path"
 
 	dbm "github.com/tendermint/tm-db"
 

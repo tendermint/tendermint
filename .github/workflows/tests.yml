@@ -18,11 +18,11 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-go@v2-beta
+      - uses: actions/setup-go@v2
       - name: Set GOBIN
         run: |
-          echo "::add-path::$(go env GOPATH)/bin"
-      - uses: actions/checkout@v2
+          echo "GOBIN=$(go env GOPATH)/bin" >> $GITHUB_ENV
+      - uses: actions/checkout@v2.3.4
       - name: install
         run: make install install_abci
       # Cache bin
@@ -35,11 +35,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: Build
     steps:
-      - uses: actions/setup-go@v2-beta
+      - uses: actions/setup-go@v2
       - name: Set GOBIN
         run: |
-          echo "::add-path::$(go env GOPATH)/bin"
-      - uses: actions/checkout@v2
+          echo "GOBIN=$(go env GOPATH)/bin" >> $GITHUB_ENV
+      - uses: actions/checkout@v2.3.4
       - uses: actions/cache@v1
         with:
           path: ~/go/bin
@@ -52,31 +52,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: Build
     steps:
-      - uses: actions/setup-go@v2-beta
+      - uses: actions/setup-go@v2
       - name: Set GOBIN
         run: |
-          echo "::add-path::$(go env GOPATH)/bin"
-      - uses: actions/checkout@v2
+          echo "GOBIN=$(go env GOPATH)/bin" >> $GITHUB_ENV
+      - uses: actions/checkout@v2.3.4
       - uses: actions/cache@v1
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-go-tm-binary
       - run: abci/tests/test_cli/test.sh
-        shell: bash
-
-  test_apps:
-    runs-on: ubuntu-latest
-    needs: Build
-    steps:
-      - uses: actions/setup-go@v2-beta
-      - name: Set GOBIN
-        run: |
-          echo "::add-path::$(go env GOPATH)/bin"
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v1
-        with:
-          path: ~/go/bin
-          key: ${{ runner.os }}-go-tm-binary
-      - name: test_apps
-        run: test/app/test.sh
         shell: bash

@@ -1,6 +1,9 @@
+version: v1
+
 build:
-  roots:
-    - .
+  excludes:
+    - proto
+    - third_party/proto
 lint:
   use:
     - MINIMAL

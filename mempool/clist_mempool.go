@@ -224,23 +224,14 @@ func (mem *CListMempool) Flush() {
 	mem.updateMtx.Lock()
 	defer mem.updateMtx.Unlock()
 
-	_ = atomic.SwapInt64(&mem.txsBytes, 0)
-	mem.cache.Reset()
-
 	mem.addrMapMtx.Lock()
 	defer mem.addrMapMtx.Unlock()
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		mem.removeTx(e.Value.(*mempoolTx).tx, e, false)
-		//mem.txs.Remove(e)
-		//e.DetachPrev()
-		//
-		//mem.deleteAddrRecord(e)
 	}
 
-	//mem.txsMap.Range(func(key, _ interface{}) bool {
-	//	mem.txsMap.Delete(key)
-	//	return true
-	//})
+	_ = atomic.SwapInt64(&mem.txsBytes, 0)
+	mem.cache.Reset()
 }
 
 // TxsFront returns the first transaction in the ordered list for peer
@@ -877,7 +868,7 @@ func (mem *CListMempool) Update(
 
 			mem.removeTx(tx, ele, false)
 			mem.logger.Debug("Mempool update", "address", ele.Address, "nonce", ele.Nonce)
-		} else  if mem.txInfoparser!= nil {
+		} else if mem.txInfoparser != nil {
 			txInfo := mem.txInfoparser.GetRawTxInfo(tx)
 			addr = txInfo.Sender
 			nonce = txInfo.Nonce

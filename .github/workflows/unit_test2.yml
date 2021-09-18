@@ -1,0 +1,23 @@
+name: Unit_Test2
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - release/**
+
+jobs:
+  unit_test_consensus:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.16.2'
+      - name: Set GOBIN
+        run: |
+          echo "GOBIN=$(go env GOPATH)/bin" >> $GITHUB_ENV
+
+      - name: Go Test consensus
+        run: cd consensus && go test -count=1 ./...

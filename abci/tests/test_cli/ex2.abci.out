@@ -4,9 +4,13 @@
 
 > check_tx 0x00
 -> code: OK
+-> data: {"sender":"00","sender_nonce":0,"gas_price":1,"nonce":0}
+-> data.hex: 0x7B2273656E646572223A223030222C2273656E6465725F6E6F6E6365223A302C226761735F7072696365223A312C226E6F6E6365223A307D
 
 > check_tx 0xff
 -> code: OK
+-> data: {"sender":"ff","sender_nonce":0,"gas_price":1,"nonce":0}
+-> data.hex: 0x7B2273656E646572223A226666222C2273656E6465725F6E6F6E6365223A302C226761735F7072696365223A312C226E6F6E6365223A307D
 
 > deliver_tx 0x00
 -> code: OK

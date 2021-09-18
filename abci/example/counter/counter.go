@@ -2,11 +2,20 @@ package counter
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
+	"math/big"
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
 )
+
+type MockExTxInfo struct {
+	Sender      string   `json:"sender"`
+	SenderNonce uint64   `json:"sender_nonce"`
+	GasPrice    *big.Int `json:"gas_price"`
+	Nonce       uint64   `json:"nonce"`
+}
 
 type Application struct {
 	types.BaseApplication
@@ -78,7 +87,8 @@ func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 				Log:  fmt.Sprintf("Invalid nonce. Expected >= %v, got %v", app.txCount, txValue)}
 		}
 	}
-	return types.ResponseCheckTx{Code: code.CodeTypeOK}
+	data, _ := json.Marshal(&MockExTxInfo{Sender: fmt.Sprintf("%+x", req.Tx), GasPrice: big.NewInt(1)})
+	return types.ResponseCheckTx{Code: code.CodeTypeOK, Data: data}
 }
 
 func (app *Application) Commit() (resp types.ResponseCommit) {

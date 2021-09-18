@@ -1,0 +1,32 @@
+name: Unit_Test1
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - release/**
+
+jobs:
+  unit_test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.16.2'
+      - name: Set GOBIN
+        run: |
+          echo "GOBIN=$(go env GOPATH)/bin" >> $GITHUB_ENV
+
+      - name: Go Test
+        run: go test -count=1 $(go list ./... | grep -v -E "tendermint/consensus|tendermint/mempool|tendermint/lite|libs/async")
+
+      - name: Go Test libs/async
+        run: go test -count=1 -ldflags -s $(go list ./... | grep libs/async)
+
+      - name: Go Test lite/
+        run: cd lite && go test -count=1 ./...
+
+      - name: Go Test mempool/
+        run: cd mempool && go test -count=1 ./...

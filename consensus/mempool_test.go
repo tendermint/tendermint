@@ -2,7 +2,9 @@ package consensus
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 	"testing"
 	"time"
@@ -231,7 +233,8 @@ func (app *CounterApplication) CheckTx(req abci.RequestCheckTx) abci.ResponseChe
 			Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.mempoolTxCount, txValue)}
 	}
 	app.mempoolTxCount++
-	return abci.ResponseCheckTx{Code: code.CodeTypeOK}
+	exinfo, _ := json.Marshal(mempl.ExTxInfo{Sender: fmt.Sprintf("%+x", req.Tx), GasPrice: big.NewInt(1)})
+	return abci.ResponseCheckTx{Code: code.CodeTypeOK, Data: exinfo}
 }
 
 func txAsUint64(tx []byte) uint64 {
