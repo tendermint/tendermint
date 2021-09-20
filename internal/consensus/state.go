@@ -1407,7 +1407,7 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 		panic(fmt.Sprintf("this POLRound should be %v but got %v", round, polRound))
 	}
 
-	// +2/3 prevoted nil.
+	// +2/3 prevoted nil. Precommit nil.
 	if len(blockID.Hash) == 0 {
 		logger.Debug("precommit step; +2/3 prevoted for nil")
 		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
