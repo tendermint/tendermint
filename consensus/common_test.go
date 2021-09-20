@@ -35,6 +35,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
@@ -1009,6 +1010,7 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 		InitialProposalCoreChainLock: coreChainLock.ToProto(),
 		ThresholdPublicKey:           thresholdPublicKey,
 		QuorumHash:                   quorumHash,
+		AppHash:                      tmrand.Bytes(crypto.DefaultAppHashSize),
 	}, privValidators
 }
 

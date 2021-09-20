@@ -33,8 +33,8 @@ func (lb LightBlock) ValidateBasic(chainID string) error {
 		return fmt.Errorf("invalid validator set: %w", err)
 	}
 	// Validate StateID height
-	if lb.Commit.StateID.Height != lb.Height-1 {
-		return fmt.Errorf("invalid stateID height %d for light block height %d",
+	if lb.Commit.StateID.Height != 0 && (lb.Commit.StateID.Height != lb.Height-1) {
+		return fmt.Errorf("invalid commit stateID height %d for light block height %d",
 			lb.Commit.StateID.Height, lb.Height)
 	}
 

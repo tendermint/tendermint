@@ -1280,7 +1280,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
-		commit = types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
+		commit = types.NewCommit(0, 0, types.BlockID{}, cs.state.GetStateID(), nil, nil, nil)
 	case cs.LastCommit != nil:
 		// Make the commit from LastPrecommits
 		commit = cs.LastCommit
