@@ -24,7 +24,7 @@ Current State of Events
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 The event system makes it possible for clients, both internal and external,
-to receive notifications after a series of given events, such as new blocks,
+to receive notifications of state replication events, such as new blocks,
 new transactions, validator set changes, as well as intermediate events during
 consensus. Because the event system is very cross cutting, the behavior and
 performance of the event publication and subscription system has huge impacts
@@ -44,7 +44,7 @@ network, thereby causing nodes to lag.
 Improvements
 ~~~~~~~~~~~~
 
-The current system relies on implicit queues built by the buffered channels,
+The current system relies on implicit, bounded queues built by the buffered channels,
 and though threadsafe, can force all activity within Tendermint to serialize,
 which does not need to happen. Additionally, timeouts for subscription
 consumers related to the implementation of the RPC layer, may complicate the
@@ -93,8 +93,8 @@ Subscription Identification
 
 Before `#6386 <https://github.com/tendermint/tendermint/pull/6386>`_, all
 subscriptions were identified by the combination of a client ID and a query,
-and with that change, all it became possible to identify subscription's based
-on an ID but compatibility with the legacy identification means that there's a
+and with that change, it became possible to identify all subscription given
+only an ID, but compatibility with the legacy identification means that there's a
 good deal of legacy code as well as client side efficiency that could be
 improved. 
 
