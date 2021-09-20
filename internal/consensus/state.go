@@ -1409,21 +1409,7 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 
 	// +2/3 prevoted nil.
 	if len(blockID.Hash) == 0 {
-		/*
-					               if cs.LockedBlock == nil {
-			                       logger.Debug("precommit step; +2/3 prevoted for nil")
-			               } else {
-			                       logger.Debug("precommit step; +2/3 prevoted for nil; unlocking")
-			                       cs.LockedRound = -1
-			                       cs.LockedBlock = nil
-			                       cs.LockedBlockParts = nil
-
-			                       if err := cs.eventBus.PublishEventUnlock(cs.RoundStateEvent()); err != nil {
-			                               logger.Error("failed publishing event unlock", "err", err)
-			                       }
-			               }
-		*/
-
+		logger.Debug("precommit step; +2/3 prevoted for nil")
 		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
 		return
 	}
@@ -2079,10 +2065,9 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 			if (cs.LockedBlock != nil) &&
 				(cs.LockedRound < vote.Round) &&
 				(vote.Round <= cs.Round) &&
-				//	!cs.LockedBlock.HashesTo(blockID.Hash) && len(blockID.Hash) != 0 {
-				!cs.LockedBlock.HashesTo(blockID.Hash) {
+				!cs.LockedBlock.HashesTo(blockID.Hash) && len(blockID.Hash) != 0 {
 
-				cs.Logger.Debug("unlocking because of POL", "locked_round", cs.LockedRound, "pol_round", vote.Round)
+				cs.Logger.Debug("unlocking because of POL for non-nil block", "locked_round", cs.LockedRound, "pol_round", vote.Round)
 
 				cs.LockedRound = -1
 				cs.LockedBlock = nil
@@ -2122,8 +2107,6 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 				}
 			}
 		}
-
-		cs.Logger.Debug("moving to future round!")
 
 		// If +2/3 prevotes for *anything* for future round:
 		switch {
