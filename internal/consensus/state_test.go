@@ -803,7 +803,6 @@ func TestStatePOLDoesNotUnlock(t *testing.T) {
 	// go to prevote, prevote for locked block (not proposal)
 	ensurePrevote(voteCh, height, round)
 	validatePrevote(t, cs1, round, vss[0], theBlockHash)
-
 	// add >2/3 prevotes for nil from all other validators
 	signAddVotes(config, cs1, tmproto.PrevoteType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
@@ -1204,7 +1203,7 @@ func TestProposeValidBlock(t *testing.T) {
 	signAddVotes(config, cs1, tmproto.PrevoteType, propBlockHash, propBlock.MakePartSet(partSize).Header(), vs2, vs3, vs4)
 
 	ensurePrecommit(voteCh, height, round)
-	// we should have precommitted
+	// we should have precommitted the proposed block in this round.
 	validatePrecommit(t, cs1, round, round, vss[0], propBlockHash, propBlockHash)
 
 	signAddVotes(config, cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
@@ -1226,7 +1225,8 @@ func TestProposeValidBlock(t *testing.T) {
 	signAddVotes(config, cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
 	ensurePrecommit(voteCh, height, round)
-	// we should have precommitted
+	// we should have precommitted nil during this round because we received
+	// >2/3 precommits for nil from the other validators.
 	validatePrecommit(t, cs1, round, 0, vss[0], nil, propBlockHash)
 
 	incrementRound(vs2, vs3, vs4)

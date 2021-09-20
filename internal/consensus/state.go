@@ -2061,7 +2061,6 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 		if blockID, ok := prevotes.TwoThirdsMajority(); ok {
 			// There was a polka!
 			// If it matches our ProposalBlock, update the ValidBlock
-			// If we're locked but this is a recent polka, lock on the new block.
 			if (cs.LockedBlock != nil) &&
 				(cs.LockedRound < vote.Round) &&
 				(vote.Round <= cs.Round) &&
