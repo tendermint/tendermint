@@ -15,13 +15,14 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -76,12 +77,12 @@ func setup(t testing.TB, cacheSize int, options ...TxMempoolOption) *TxMempool {
 	t.Helper()
 
 	app := &application{kvstore.NewApplication()}
-	cc := proxy.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 
 	cfg := config.ResetTestRoot(strings.ReplaceAll(t.Name(), "/", "|"))
 	cfg.Mempool.CacheSize = cacheSize
 
-	appConnMem, err := cc.NewABCIClient()
+	appConnMem, err := cc()
 	require.NoError(t, err)
 	require.NoError(t, appConnMem.Start())
 

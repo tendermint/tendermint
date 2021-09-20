@@ -15,7 +15,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/abci/server"
@@ -27,7 +27,7 @@ import (
 
 // client is a global variable so it can be reused by the console
 var (
-	client abcicli.Client
+	client abciclient.Client
 	logger log.Logger
 
 	ctx = context.Background()
@@ -67,7 +67,7 @@ var RootCmd = &cobra.Command{
 
 		if client == nil {
 			var err error
-			client, err = abcicli.NewClient(flagAddress, flagAbci, false)
+			client, err = abciclient.NewClient(flagAddress, flagAbci, false)
 			if err != nil {
 				return err
 			}

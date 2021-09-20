@@ -6,13 +6,13 @@ import (
 	"os"
 	"time"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 	nm "github.com/tendermint/tendermint/node"
-	"github.com/tendermint/tendermint/proxy"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
 	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
@@ -100,7 +100,7 @@ func StartTendermint(ctx context.Context,
 	} else {
 		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 	}
-	papp := proxy.NewLocalClientCreator(app)
+	papp := abciclient.NewLocalCreator(app)
 	node, err := nm.New(conf, logger, papp, nil)
 	if err != nil {
 		return nil, func(_ context.Context) error { return nil }, err

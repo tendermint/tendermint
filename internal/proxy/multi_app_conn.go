@@ -5,7 +5,7 @@ import (
 	"os"
 	"syscall"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	tmlog "github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 )
@@ -33,7 +33,7 @@ type AppConns interface {
 }
 
 // NewAppConns calls NewMultiAppConn.
-func NewAppConns(clientCreator ClientCreator) AppConns {
+func NewAppConns(clientCreator abciclient.Creator) AppConns {
 	return NewMultiAppConn(clientCreator)
 }
 
@@ -50,16 +50,16 @@ type multiAppConn struct {
 	queryConn     AppConnQuery
 	snapshotConn  AppConnSnapshot
 
-	consensusConnClient abcicli.Client
-	mempoolConnClient   abcicli.Client
-	queryConnClient     abcicli.Client
-	snapshotConnClient  abcicli.Client
+	consensusConnClient abciclient.Client
+	mempoolConnClient   abciclient.Client
+	queryConnClient     abciclient.Client
+	snapshotConnClient  abciclient.Client
 
-	clientCreator ClientCreator
+	clientCreator abciclient.Creator
 }
 
 // NewMultiAppConn makes all necessary abci connections to the application.
-func NewMultiAppConn(clientCreator ClientCreator) AppConns {
+func NewMultiAppConn(clientCreator abciclient.Creator) AppConns {
 	multiAppConn := &multiAppConn{
 		clientCreator: clientCreator,
 	}
@@ -178,8 +178,8 @@ func (app *multiAppConn) stopAllClients() {
 	}
 }
 
-func (app *multiAppConn) abciClientFor(conn string) (abcicli.Client, error) {
-	c, err := app.clientCreator.NewABCIClient()
+func (app *multiAppConn) abciClientFor(conn string) (abciclient.Client, error) {
+	c, err := app.clientCreator()
 	if err != nil {
 		return nil, fmt.Errorf("error creating ABCI client (%s connection): %w", conn, err)
 	}

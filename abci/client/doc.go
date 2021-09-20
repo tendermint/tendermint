@@ -1,4 +1,4 @@
-// Package abcicli provides an ABCI implementation in Go.
+// Package abciclient provides an ABCI implementation in Go.
 //
 // There are 3 clients available:
 //		1. socket (unix or TCP)
@@ -26,4 +26,4 @@
 //
 // sync: waits for all Async calls to complete (essentially what Flush does in
 // the socket client) and calls Sync method.
-package abcicli
+package abciclient

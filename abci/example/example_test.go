@@ -17,7 +17,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abciserver "github.com/tendermint/tendermint/abci/server"
@@ -61,7 +61,7 @@ func testStream(t *testing.T, app types.Application) {
 	})
 
 	// Connect to the socket
-	client := abcicli.NewSocketClient(socket, false)
+	client := abciclient.NewSocketClient(socket, false)
 	client.SetLogger(log.TestingLogger().With("module", "abci-client"))
 	err = client.Start()
 	require.NoError(t, err)
