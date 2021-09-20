@@ -40,15 +40,15 @@ Critique of Current Peer-to-Peer Infrastructure
 
 The current (refactored) P2P stack is an improvement on the previous iteration
 (legacy), but as of 0.35, there remains room for improvement in the design and
-implementation of the P2P layer. 
+implementation of the P2P layer.
 
 Some limitations of the current stack include:
 
 - heavy reliance on buffering to avoid backups in the flow of components,
   which is fragile to maintain and can lead to unexpected memory usage
   patterns and forces the routing layer to make decisions about when messages
-  should be discarded. 
-  
+  should be discarded.
+
 - the current p2p stack relies on convention (rather than the compiler) to
   enforce the API boundaries and conventions between reactors and the router,
   making it very easy to write "wrong" reactor code or introduce a bad
@@ -64,7 +64,7 @@ Some limitations of the current stack include:
   difficult to expose that information to monitoring/observability tools. This
   general opacity also makes it difficult to interact with the peer system
   from other areas of the code base (e.g. tests, reactors).
-  
+
 - the legacy stack provided some control to operators to force the system to
   dial new peers or seed nodes or manipulate the topology of the system _in
   situ_. The current stack can't easily provide this, and while the new stack
@@ -94,16 +94,16 @@ blocksync and consensus) from procedure calls to message passing.
 This is a relatively simple change and could be implemented with the following
 components:
 
-- a constant to represent "local" delivery as  the ``To``` field on
+- a constant to represent "local" delivery as  the ``To`` field on
   ``p2p.Envelope``.
-  
+
 - special path for routing local messages that doesn't require message
   serialization (protobuf marshalling/unmarshaling).
-  
+
 Adding these semantics, particularly if in conjunction with synchronous
 semantics provides a solution to dependency graph problems currently present
 in the Tendermint codebase, which will simplify development, make it possible
-to isolate components for testing. 
+to isolate components for testing.
 
 Eventually, this will also make it possible to have a logical Tendermint node
 running in multiple processes or in a collection of containers, although the
@@ -129,7 +129,7 @@ of request/response ID to allow identifying out-of-order responses over a
 single connection. Additionally, expanded the programming model of the
 ``p2p.Channel`` to accommodate some kind of _future_ or similar paradigm to
 make it viable to write reactor code without needing for the reactor developer
-to wrestle with lower level concurency constructs.
+to wrestle with lower level concurrency constructs.
 
 
 Timeout Handling (QoS)
@@ -143,7 +143,7 @@ detect or attribute. Additionally, the current system provides three main
 parameters to control quality of service:
 
 - buffer sizes for channels and queues.
-  
+
 - priorities for channels
 
 - queue implementation details for shedding load.
@@ -151,13 +151,13 @@ parameters to control quality of service:
 These end up being quite coarse controls, and changing the settings are
 difficult because as the queues and channels are able to buffer large numbers
 of messages it can be hard to see the impact of a given change, particularly
-in our extant test environment. In general, we should endeavor to: 
+in our extant test environment. In general, we should endeavor to:
 
 - set real timeouts, via contexts, on most message send operations, so that
   senders rather than queues can be responsible for timeout
   logic. Additionally, this will make it possible to avoid sending messages
   during shutdown.
-  
+
 - reduce (to the greatest extent possible) the amount of buffering in
   channels and the queues, to more readily surface backpressure and reduce the
   potential for buildup of stale messages.
@@ -173,8 +173,8 @@ transport types and makes it more likely that message-based caching and rate
 limiting will be implemented at the transport layer rather than at a more
 appropriate level.
 
-The transport then, would be responsible for negitating the connection and the
-handshake and otherwise behave like a socket/file discriptor with ``Read` and
+The transport then, would be responsible for negotiating the connection and the
+handshake and otherwise behave like a socket/file descriptor with ``Read`` and
 ``Write`` methods.
 
 While this was included in the initial design for the new P2P layer, it may be
@@ -185,7 +185,7 @@ Service Discovery
 ~~~~~~~~~~~~~~~~~
 
 In the current system, Tendermint assumes that all nodes in a network are
-largely equivelent, and nodes tend to be "chatty" making many requests of
+largely equivalent, and nodes tend to be "chatty" making many requests of
 large numbers of peers and waiting for peers to (hopefully) respond. While
 this works and has allowed Tendermint to get to a certain point, this both
 produces a theoretical scaling bottle neck and makes it harder to test and
@@ -194,7 +194,7 @@ verify components of the system.
 In addition to peer's identity and connection information, peers should be
 able to advertise a number of services or capabilities, and node operators or
 developers should be able to specify peer capability requirements (e.g. target
-at least <x>-percent of peers with <y> capability.)  
+at least <x>-percent of peers with <y> capability.)
 
 These capabilities may be useful in selecting peers to send messages to, it
 may make sense to extend Tendermint's message addressing capability to allow
@@ -215,7 +215,7 @@ Continued Homegrown Implementation
 The current peer system is homegrown and is conceptually compatible with the
 needs of the project, and while there are limitations to the system, the p2p
 layer is not (currently as of 0.35) a major source of bugs or friction during
-development. 
+development.
 
 However, the current implementation makes a number of allowances for
 interoperability, and there are a collection of iterative improvements that
@@ -228,18 +228,18 @@ implementation, upcoming work would include:
   connections using different protocols (e.g. QUIC, etc.)
 
 - entirely remove the constructs and implementations of the legacy peer
-  implementation. 
-  
+  implementation.
+
 - establish and enforce clearer chains of responsibility for connection
   establishment (e.g. handshaking, setup,) which is currently shared between
-  three components. 
+  three components.
 
 - report better metrics regarding the into the state of peers and network
   connectivity, which are opaque outside of the system. This is constrained at
   the moment as a side effect of the split responsibility for connection
   establishment.
-  
-- extend the PEX system to include service information so that ndoes in the
+
+- extend the PEX system to include service information so that nodes in the
   network weren't necessarily homogeneous.
 
 While maintaining a bespoke peer management layer would seem to distract from
@@ -272,20 +272,20 @@ case that our internal systems need to know much less about peers than
 otherwise specified. Similarly, the current system has a notion of peer
 scoring that cannot be communicated to libp2p, which may be fine as this is
 only used to support peer exchange (PEX,) which would become a property libp2p
-and not expressed in it's current higher-level form. 
+and not expressed in it's current higher-level form.
 
-In general, the effort to switch to libp2p would involve: 
+In general, the effort to switch to libp2p would involve:
 
 - timing it during an appropriate protocol-breaking window, as it doesn't seem
-  viable to support both libp2p *and* the current p2p protocol. 
-  
+  viable to support both libp2p *and* the current p2p protocol.
+
 - providing some in-memory testing network to support the use case that the
   current ``p2p.MemoryNetwork`` provides.
 
 - re-homing the ``p2p.Router`` implementation on top of libp2p components to
   be able to maintain the current reactor implementations.
-  
-Open question include: 
+
+Open question include:
 
 - how much local buffering should we be doing? It sort of seems like we should
   figure out what the expected behavior is for libp2p for QoS-type
@@ -302,7 +302,7 @@ Open question include:
 
 - how do efforts to select "the best" (healthy, close, well-behaving, etc.)
   peers work out if Tendermint is not maintaining a local peer database?
-  
+
 - would adding additional higher level semantics (internal message passing,
   request/response pairs, service discovery, etc.) facilitate removing some of
   the direct linkages between constructs/components in the system and reduce
@@ -311,6 +311,6 @@ Open question include:
 References
 ----------
 
-- `Tracking Ticket for P2P Refactor Project <https://github.com/tendermint/tendermint/issues/5670>`_ 
+- `Tracking Ticket for P2P Refactor Project <https://github.com/tendermint/tendermint/issues/5670>`_
 - `ADR 61: P2P Refactor Scope <../architecture/adr-061-p2p-refactor-scope.md>`_
 - `ADR 62: P2P Architecture and Abstraction <../architecture/adr-061-p2p-architecture.md>`_
