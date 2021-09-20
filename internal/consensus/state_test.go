@@ -692,6 +692,8 @@ func TestStateLockPOLRelock(t *testing.T) {
 	ensureNewProposal(proposalCh, height, round)
 
 	// go to prevote, node should prevote for locked block (not the new proposal) - this is relocking
+	// TODO: Ensure we prevote for the proposal if it is valid and from a round greater than
+	// the valid round: https://github.com/tendermint/tendermint/issues/6850.
 	ensurePrevote(voteCh, height, round)
 	validatePrevote(t, cs1, round, vss[0], theBlockHash)
 
@@ -799,7 +801,10 @@ func TestStatePOLDoesNotUnlock(t *testing.T) {
 
 	ensureNewProposal(proposalCh, height, round)
 
-	// go to prevote, prevote for locked block (not proposal)
+	// prevote for the locked block. We do not currently prevote for the
+	// proposal.
+	// TODO: do not prevote the locked block if it does not match the proposal.
+	// (https://github.com/tendermint/tendermint/issues/6850)
 	ensurePrevote(voteCh, height, round)
 	validatePrevote(t, cs1, round, vss[0], theBlockHash)
 	// add >2/3 prevotes for nil from all other validators
