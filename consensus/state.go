@@ -1365,7 +1365,7 @@ func (cs *State) defaultDoPrevote(height int64, round int32, allowOldBlocks bool
 
 	// Validate proposal block time
 	if !allowOldBlocks {
-		err = cs.blockExec.ValidateBlockTime(cs.state, cs.ProposalBlock)
+		err = cs.blockExec.ValidateBlockTime(cs.config.ProposedBlockTimeWindow, cs.state, cs.ProposalBlock)
 		if err != nil {
 			// ProposalBlock is invalid, prevote nil.
 			logger.Error("enterPrevote: ProposalBlock time is invalid", "err", err)
