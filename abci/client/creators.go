@@ -7,60 +7,29 @@ import (
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 )
 
-//go:generate ../scripts/mockery_generate.sh Creator
-
 // Creator creates new ABCI clients.
-type Creator interface {
-	// NewClient returns a new ABCI client.
-	NewClient() (Client, error)
-}
+type Creator func() (Client, error)
 
-//----------------------------------------------------
-// local proxy uses a mutex on an in-proc app
-
-type localCreator struct {
-	mtx *tmsync.RWMutex
-	app types.Application
-}
-
-// NewLocalCreator returns a ClientCreator for the given app,
+// NewLocalCreator returns a Creator for the given app,
 // which will be running locally.
 func NewLocalCreator(app types.Application) Creator {
-	return &localCreator{
-		mtx: new(tmsync.RWMutex),
-		app: app,
+	mtx := new(tmsync.RWMutex)
+
+	return func() (Client, error) {
+		return NewLocalClient(mtx, app), nil
 	}
 }
 
-func (l *localCreator) NewClient() (Client, error) {
-	return NewLocalClient(l.mtx, l.app), nil
-}
-
-//---------------------------------------------------------------
-// remote proxy opens new connections to an external app process
-
-type remoteCreator struct {
-	addr        string
-	transport   string
-	mustConnect bool
-}
-
-// NewRemoteCreator returns a ClientCreator for the given address (e.g.
+// NewRemoteCreator returns a Creator for the given address (e.g.
 // "192.168.0.1") and transport (e.g. "tcp"). Set mustConnect to true if you
 // want the client to connect before reporting success.
 func NewRemoteCreator(addr, transport string, mustConnect bool) Creator {
-	return &remoteCreator{
-		addr:        addr,
-		transport:   transport,
-		mustConnect: mustConnect,
-	}
-}
+	return func() (Client, error) {
+		remoteApp, err := NewClient(addr, transport, mustConnect)
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect to proxy: %w", err)
+		}
 
-func (r *remoteCreator) NewClient() (Client, error) {
-	remoteApp, err := NewClient(r.addr, r.transport, r.mustConnect)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to proxy: %w", err)
+		return remoteApp, nil
 	}
-
-	return remoteApp, nil
 }

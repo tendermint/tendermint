@@ -179,7 +179,7 @@ func (app *multiAppConn) stopAllClients() {
 }
 
 func (app *multiAppConn) abciClientFor(conn string) (abciclient.Client, error) {
-	c, err := app.clientCreator.NewClient()
+	c, err := app.clientCreator()
 	if err != nil {
 		return nil, fmt.Errorf("error creating ABCI client (%s connection): %w", conn, err)
 	}

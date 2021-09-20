@@ -82,7 +82,7 @@ func setup(t testing.TB, cacheSize int, options ...TxMempoolOption) *TxMempool {
 	cfg := config.ResetTestRoot(strings.ReplaceAll(t.Name(), "/", "|"))
 	cfg.Mempool.CacheSize = cacheSize
 
-	appConnMem, err := cc.NewClient()
+	appConnMem, err := cc()
 	require.NoError(t, err)
 	require.NoError(t, appConnMem.Start())
 

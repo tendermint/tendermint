@@ -58,7 +58,7 @@ func newMockProxyApp(appHash []byte, abciResponses *tmstate.ABCIResponses) proxy
 		appHash:       appHash,
 		abciResponses: abciResponses,
 	})
-	cli, _ := clientCreator.NewClient()
+	cli, _ := clientCreator()
 	err := cli.Start()
 	if err != nil {
 		panic(err)
