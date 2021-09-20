@@ -714,8 +714,8 @@ func TestStateLockPOLRelock(t *testing.T) {
 	ensureNewRound(newRoundCh, height+1, 0)
 }
 
-// 4 vals, one precommits, other 3 polka on nil at next round.
-// The locked validator should maintain the locked block but precommit nil.
+// TestStatePOLDoesNotUnlock tests that a validator maintains its locked block
+// despite receiving +2/3 nil prevotes and nil precommits from other validators.
 func TestStatePOLDoesNotUnlock(t *testing.T) {
 	config := configSetup(t)
 	/*
@@ -738,7 +738,6 @@ func TestStatePOLDoesNotUnlock(t *testing.T) {
 	addr := pv1.Address()
 	voteCh := subscribeToVoter(cs1, addr)
 
-	t.Log("#### ONTO ROUND 0")
 	/*
 		Round 0:
 		Create a block, B
@@ -747,6 +746,7 @@ func TestStatePOLDoesNotUnlock(t *testing.T) {
 
 		This ensures that cs1 will lock on B in this round.
 	*/
+	t.Log("#### ONTO ROUND 0")
 
 	// start round and wait for propose and prevote
 	startTestRound(cs1, height, round)
@@ -779,24 +779,23 @@ func TestStatePOLDoesNotUnlock(t *testing.T) {
 
 	// timeout to new round
 	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
-	rs = cs1.GetRoundState()
 
-	// before we time out into new round, set next proposal block
-	prop, propBlock := decideProposal(cs1, vs2, vs2.Height, vs2.Round+1)
+	/*
+		Round 1:
+		Send a prevote for nil from >2/3 of the validators to `cs1`.
+		Check that cs1 maintains its lock on B but precommits nil.
+		Send a precommit for nil from >2/3 of the validators to `cs1`.
+	*/
+	t.Log("#### ONTO ROUND 1")
+	round++
+	incrementRound(vs2, vs3, vs4)
+	prop, propBlock := decideProposal(cs1, vs2, vs2.Height, vs2.Round)
 	propBlockParts := propBlock.MakePartSet(types.BlockPartSizeBytes)
 	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, ""); err != nil {
 		t.Fatal(err)
 	}
 
-	round++
-	incrementRound(vs2, vs3, vs4)
 	ensureNewRound(newRoundCh, height, round)
-	t.Log("#### ONTO ROUND 1")
-	/*
-		Round 0:
-		Send a prevote for nil from >2/3 of the validators to `cs1`.
-		Check that cs1 maintains its lock on B but precommits nil.
-	*/
 
 	ensureNewProposal(proposalCh, height, round)
 
@@ -811,8 +810,37 @@ func TestStatePOLDoesNotUnlock(t *testing.T) {
 	// verify that we haven't update our locked block since the first round
 	validatePrecommit(t, cs1, round, 0, vss[0], nil, theBlockHash)
 
-	signAddVotes(config, cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3)
-	ensureNewRound(newRoundCh, height, round+1)
+	signAddVotes(config, cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
+	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
+
+	/*
+		Round 2:
+		The validator cs1 saw >2/3 precommits for nil in the previous round.
+		Send the validator >2/3 prevotes for nil and ensure that it did not
+		unlock its block at the end of the previous round.
+	*/
+	t.Log("#### ONTO ROUND 2")
+	round++
+	incrementRound(vs2, vs3, vs4)
+	prop, propBlock = decideProposal(cs1, vs3, vs3.Height, vs3.Round)
+	propBlockParts = propBlock.MakePartSet(types.BlockPartSizeBytes)
+	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, ""); err != nil {
+		t.Fatal(err)
+	}
+
+	ensureNewRound(newRoundCh, height, round)
+
+	ensureNewProposal(proposalCh, height, round)
+
+	ensurePrevote(voteCh, height, round)
+	validatePrevote(t, cs1, round, vss[0], theBlockHash)
+
+	signAddVotes(config, cs1, tmproto.PrevoteType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
+
+	ensurePrecommit(voteCh, height, round)
+
+	// verify that we haven't update our locked block since the first round
+	validatePrecommit(t, cs1, round, 0, vss[0], nil, theBlockHash)
 }
 
 // 4 vals, v1 locks on proposed block in the first round but the other validators only prevote
