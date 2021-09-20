@@ -15,7 +15,8 @@ functionality, also represents a major infrastructural liability. As part of
 our upcoming review of the RPC interfaces and our ongoing thoughts about
 stability and performance, as well as the preparation for Tendermint 1.0, we
 should revisit the design and implementation of the event system. This
-document discusses both the current state of the system 
+document discusses both the current state of the system and potential
+directions for future improvement.
 
 Background
 ----------
