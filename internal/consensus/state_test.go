@@ -706,8 +706,8 @@ func TestStateLockPOLRelock(t *testing.T) {
 	ensureNewRound(newRoundCh, height+1, 0)
 }
 
-// 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
 /*
+// 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
 func TestStateLockPOLUnlock(t *testing.T) {
 	config := configSetup(t)
 
@@ -728,8 +728,8 @@ func TestStateLockPOLUnlock(t *testing.T) {
 
 	// everything done from perspective of cs1
 
-//		Round1 (cs1, B) // B B B B // B nil B nil
-//		eg. didn't see the 2/3 prevotes
+	//		Round1 (cs1, B) // B B B B // B nil B nil
+	//		eg. didn't see the 2/3 prevotes
 
 	// start round and wait for propose and prevote
 	startTestRound(cs1, height, round)
@@ -767,8 +767,8 @@ func TestStateLockPOLUnlock(t *testing.T) {
 
 	ensureNewRound(newRoundCh, height, round)
 	t.Log("#### ONTO ROUND 1")
-//		Round2 (vs2, C) // B nil nil nil // nil nil nil _
-//		cs1 unlocks!
+	//		Round2 (vs2, C) // B nil nil nil // nil nil nil _
+	//		cs1 unlocks!
 	//XXX: this isnt guaranteed to get there before the timeoutPropose ...
 	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
@@ -1248,7 +1248,7 @@ func TestProposeValidBlock(t *testing.T) {
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
 	timeoutProposeCh := subscribe(cs1.eventBus, types.EventQueryTimeoutPropose)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
-	unlockCh := subscribe(cs1.eventBus, types.EventQueryUnlock)
+	//	unlockCh := subscribe(cs1.eventBus, types.EventQueryUnlock)
 	pv1, err := cs1.privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 	addr := pv1.Address()
@@ -1287,34 +1287,39 @@ func TestProposeValidBlock(t *testing.T) {
 	// timeout of propose
 	ensureNewTimeout(timeoutProposeCh, height, round, cs1.config.Propose(round).Nanoseconds())
 
+	t.Log("### time outed")
+
 	ensurePrevote(voteCh, height, round)
 	validatePrevote(t, cs1, round, vss[0], propBlockHash)
 
-	signAddVotes(config, cs1, tmproto.PrevoteType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
+	t.Log("### prevoted")
+	signAddVotes(config, cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
-	ensureNewUnlock(unlockCh, height, round)
+	//	ensureNewUnlock(unlockCh, height, round)
+	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
 
-	ensurePrecommit(voteCh, height, round)
 	// we should have precommitted
-	validatePrecommit(t, cs1, round, -1, vss[0], nil, nil)
+	validatePrecommit(t, cs1, round, 0, vss[0], nil, propBlockHash)
+
+	t.Log("### precommitted")
 
 	incrementRound(vs2, vs3, vs4)
 	incrementRound(vs2, vs3, vs4)
 
 	signAddVotes(config, cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
+	t.Log("### incremented")
+
 	round += 2 // moving to the next round
 
 	ensureNewRound(newRoundCh, height, round)
-	t.Log("### ONTO ROUND 3")
-
-	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
+	t.Log("### ONTO ROUND 4")
 
 	round++ // moving to the next round
 
 	ensureNewRound(newRoundCh, height, round)
 
-	t.Log("### ONTO ROUND 4")
+	t.Log("### ONTO ROUND 5")
 
 	ensureNewProposal(proposalCh, height, round)
 

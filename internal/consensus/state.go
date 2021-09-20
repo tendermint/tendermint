@@ -1409,7 +1409,21 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 
 	// +2/3 prevoted nil.
 	if len(blockID.Hash) == 0 {
-		logger.Debug("precommit step; +2/3 prevoted for nil")
+		/*
+					               if cs.LockedBlock == nil {
+			                       logger.Debug("precommit step; +2/3 prevoted for nil")
+			               } else {
+			                       logger.Debug("precommit step; +2/3 prevoted for nil; unlocking")
+			                       cs.LockedRound = -1
+			                       cs.LockedBlock = nil
+			                       cs.LockedBlockParts = nil
+
+			                       if err := cs.eventBus.PublishEventUnlock(cs.RoundStateEvent()); err != nil {
+			                               logger.Error("failed publishing event unlock", "err", err)
+			                       }
+			               }
+		*/
+
 		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
 		return
 	}
@@ -2062,6 +2076,22 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 			// There was a polka!
 			// If it matches our ProposalBlock, update the ValidBlock
 			// If we're locked but this is a recent polka, lock on the new block.
+			if (cs.LockedBlock != nil) &&
+				(cs.LockedRound < vote.Round) &&
+				(vote.Round <= cs.Round) &&
+				//	!cs.LockedBlock.HashesTo(blockID.Hash) && len(blockID.Hash) != 0 {
+				!cs.LockedBlock.HashesTo(blockID.Hash) {
+
+				cs.Logger.Debug("unlocking because of POL", "locked_round", cs.LockedRound, "pol_round", vote.Round)
+
+				cs.LockedRound = -1
+				cs.LockedBlock = nil
+				cs.LockedBlockParts = nil
+
+				if err := cs.eventBus.PublishEventUnlock(cs.RoundStateEvent()); err != nil {
+					return added, err
+				}
+			}
 
 			// Update Valid* if we can.
 			// NOTE: our proposal block may be nil or not what received a polka..
@@ -2092,6 +2122,8 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 				}
 			}
 		}
+
+		cs.Logger.Debug("moving to future round!")
 
 		// If +2/3 prevotes for *anything* for future round:
 		switch {
