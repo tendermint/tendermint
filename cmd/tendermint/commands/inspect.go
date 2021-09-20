@@ -10,8 +10,8 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/inspect"
-	"github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/state/indexer/sink"
+	"github.com/tendermint/tendermint/internal/state"
+	"github.com/tendermint/tendermint/internal/state/indexer/sink"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
