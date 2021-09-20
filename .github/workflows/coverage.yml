@@ -98,8 +98,7 @@ jobs:
         if: matrix.goarch == 'amd64' && env.GIT_DIFF != ''
       - name: build
         run: |
-          sudo apt-get install gcc-arm-linux-gnueabihf
-          sudo apt-get install g++-8-arm-linux-gnueabihf
+          sudo apt-get install gcc-arm-linux-gnueabihf g++-8-arm-linux-gnueabihf
           export CC=arm-linux-gnueabihf-gcc
           export CXX=arm-linux-gnueabihf-g++-8
           GOOS=linux GOARCH=${{ matrix.goarch }} sudo make build
