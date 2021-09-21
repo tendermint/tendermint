@@ -1396,6 +1396,27 @@ components:
         remaining_time:
           type: string
           example: "0"
+        total_snapshots:
+          type: string
+          example: "10"      
+        chunk_process_avg_time:
+          type: string
+          example: "1000000000"      
+        snapshot_height:
+          type: string
+          example: "1262196"      
+        snapshot_chunks_count:
+          type: string
+          example: "10"      
+        snapshot_chunks_total:
+          type: string
+          example: "100"      
+        backfilled_blocks:
+          type: string
+          example: "10"      
+        backfill_blocks_total:
+          type: string
+          example: "100"                                                                  
     ValidatorInfo:
       type: object
       properties:
