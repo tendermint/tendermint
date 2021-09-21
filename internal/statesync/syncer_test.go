@@ -70,6 +70,8 @@ func TestSyncer_SyncAny(t *testing.T) {
 	peerCID := types.NodeID("cc")
 	rts := setup(t, connSnapshot, connQuery, stateProvider, 3)
 
+	rts.reactor.syncer = rts.syncer
+
 	// Adding a chunk should error when no sync is in progress
 	_, err := rts.syncer.AddChunk(&chunk{Height: 1, Format: 1, Index: 0, Chunk: []byte{1}})
 	require.Error(t, err)
@@ -194,6 +196,16 @@ func TestSyncer_SyncAny(t *testing.T) {
 
 	require.Equal(t, expectState, newState)
 	require.Equal(t, commit, lastCommit)
+
+	require.Equal(t, len(chunks), int(rts.syncer.processingSnapshot.Chunks))
+	require.Equal(t, expectState.LastBlockHeight, rts.syncer.lastSyncedSnapshotHeight)
+	require.True(t, rts.syncer.avgChunkTime > 0)
+
+	require.Equal(t, int64(rts.syncer.processingSnapshot.Chunks), rts.reactor.SnapshotChunksTotal())
+	require.Equal(t, rts.syncer.lastSyncedSnapshotHeight, rts.reactor.SnapshotHeight())
+	require.Equal(t, time.Duration(rts.syncer.avgChunkTime), rts.reactor.ChunkProcessAvgTime())
+	require.Equal(t, int64(len(rts.syncer.snapshots.snapshots)), rts.reactor.TotalSnapshots())
+	require.Equal(t, int64(0), rts.reactor.SnapshotChunksCount())
 
 	connSnapshot.AssertExpectations(t)
 	connQuery.AssertExpectations(t)
@@ -448,6 +460,9 @@ func TestSyncer_applyChunks_Results(t *testing.T) {
 			body := []byte{1, 2, 3}
 			chunks, err := newChunkQueue(&snapshot{Height: 1, Format: 1, Chunks: 1}, "")
 			require.NoError(t, err)
+
+			fetchStartTime := time.Now()
+
 			_, err = chunks.Add(&chunk{Height: 1, Format: 1, Index: 0, Chunk: body})
 			require.NoError(t, err)
 
@@ -461,7 +476,7 @@ func TestSyncer_applyChunks_Results(t *testing.T) {
 					Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 			}
 
-			err = rts.syncer.applyChunks(ctx, chunks)
+			err = rts.syncer.applyChunks(ctx, chunks, fetchStartTime)
 			if tc.expectErr == unknownErr {
 				require.Error(t, err)
 			} else {
@@ -498,6 +513,9 @@ func TestSyncer_applyChunks_RefetchChunks(t *testing.T) {
 
 			chunks, err := newChunkQueue(&snapshot{Height: 1, Format: 1, Chunks: 3}, "")
 			require.NoError(t, err)
+
+			fetchStartTime := time.Now()
+
 			added, err := chunks.Add(&chunk{Height: 1, Format: 1, Index: 0, Chunk: []byte{0}})
 			require.True(t, added)
 			require.NoError(t, err)
@@ -526,7 +544,7 @@ func TestSyncer_applyChunks_RefetchChunks(t *testing.T) {
 			// check the queue contents, and finally close the queue to end the goroutine.
 			// We don't really care about the result of applyChunks, since it has separate test.
 			go func() {
-				rts.syncer.applyChunks(ctx, chunks) //nolint:errcheck // purposefully ignore error
+				rts.syncer.applyChunks(ctx, chunks, fetchStartTime) //nolint:errcheck // purposefully ignore error
 			}()
 
 			time.Sleep(50 * time.Millisecond)
@@ -588,6 +606,8 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 			chunks, err := newChunkQueue(s1, "")
 			require.NoError(t, err)
 
+			fetchStartTime := time.Now()
+
 			added, err := chunks.Add(&chunk{Height: 1, Format: 1, Index: 0, Chunk: []byte{0}, Sender: peerAID})
 			require.True(t, added)
 			require.NoError(t, err)
@@ -625,7 +645,7 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 			// However, it will block on e.g. retry result, so we spawn a goroutine that will
 			// be shut down when the chunk queue closes.
 			go func() {
-				rts.syncer.applyChunks(ctx, chunks) //nolint:errcheck // purposefully ignore error
+				rts.syncer.applyChunks(ctx, chunks, fetchStartTime) //nolint:errcheck // purposefully ignore error
 			}()
 
 			time.Sleep(50 * time.Millisecond)

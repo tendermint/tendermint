@@ -11,6 +11,7 @@ import (
 	mempl "github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/proxy"
+	"github.com/tendermint/tendermint/internal/statesync"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -91,12 +92,13 @@ type Environment struct {
 	PeerManager peerManager
 
 	// objects
-	PubKey           crypto.PubKey
-	GenDoc           *types.GenesisDoc // cache the genesis structure
-	EventSinks       []indexer.EventSink
-	EventBus         *types.EventBus // thread safe
-	Mempool          mempl.Mempool
-	BlockSyncReactor consensus.BlockSyncReactor
+	PubKey            crypto.PubKey
+	GenDoc            *types.GenesisDoc // cache the genesis structure
+	EventSinks        []indexer.EventSink
+	EventBus          *types.EventBus // thread safe
+	Mempool           mempl.Mempool
+	BlockSyncReactor  consensus.BlockSyncReactor
+	StateSyncMetricer statesync.Metricer
 
 	Logger log.Logger
 
