@@ -24,17 +24,27 @@ import (
 	"context"
 
 	"github.com/tendermint/tendermint/libs/bytes"
-	"github.com/tendermint/tendermint/libs/service"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
 
 //go:generate ../../scripts/mockery_generate.sh Client
 
-// Client wraps most important rpc calls a client would make if you want to
-// listen for events, test if it also implements events.EventSwitch.
+// Client is the interface that must be satisfied by implementations of a
+// client of the Tendermint RPC service.
 type Client interface {
-	service.Service
+	// These methods define the operational structure of the client.
+
+	// Start the client. Start must report an error if the client is running.
+	Start() error
+
+	// Stop the client. Stop must report an error if the client is not running.
+	Stop() error
+
+	// IsRunning reports whether the client is running.
+	IsRunning() bool
+
+	// These embedded interfaces define the callable methods of the service.
 	ABCIClient
 	EventsClient
 	HistoryClient
