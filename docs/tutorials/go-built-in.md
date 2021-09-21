@@ -23,6 +23,8 @@ yourself with the syntax.
 By following along with this guide, you'll create a Tendermint Core project
 called kvstore, a (very) simple distributed BFT key-value store.
 
+> Note: please use a released version of Tendermint with this guide. The guides will work with the latest version. Please, do not use master. 
+
 ## Built-in app vs external app
 
 Running your application inside the same process as Tendermint Core will give
@@ -50,9 +52,12 @@ We'll start by creating a new Go project.
 ```bash
 mkdir kvstore
 cd kvstore
+go mod init github.com/<github_username>/<repo_name>
 ```
 
 Inside the example directory create a `main.go` file with the following content:
+
+> Note: there is no need to clone or fork Tendermint in this tutorial. 
 
 ```go
 package main
