@@ -7,7 +7,7 @@ import (
 	"net"
 
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/inspect/rpc"
+	"github.com/tendermint/tendermint/internal/inspect/rpc"
 	"github.com/tendermint/tendermint/libs/log"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
