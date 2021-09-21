@@ -16,17 +16,21 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/proxy"
+	proxymocks "github.com/tendermint/tendermint/internal/proxy/mocks"
 	"github.com/tendermint/tendermint/internal/statesync/mocks"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light/provider"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/proxy"
-	proxymocks "github.com/tendermint/tendermint/proxy/mocks"
 	smmocks "github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
+)
+
+var (
+	m = PrometheusMetrics(config.TestConfig().Instrumentation.Namespace)
 )
 
 type reactorTestSuite struct {
@@ -156,6 +160,7 @@ func setup(
 		rts.stateStore,
 		rts.blockStore,
 		"",
+		m,
 	)
 
 	rts.syncer = newSyncer(
@@ -167,6 +172,7 @@ func setup(
 		rts.snapshotOutCh,
 		rts.chunkOutCh,
 		"",
+		rts.reactor.metrics,
 	)
 
 	require.NoError(t, rts.reactor.Start())
@@ -596,6 +602,9 @@ func TestReactor_Backfill(t *testing.T) {
 			)
 			if failureRate > 3 {
 				require.Error(t, err)
+
+				require.NotEqual(t, rts.reactor.backfilledBlocks, rts.reactor.backfillBlockTotal)
+				require.Equal(t, startHeight-stopHeight+1, rts.reactor.backfillBlockTotal)
 			} else {
 				require.NoError(t, err)
 
@@ -606,7 +615,12 @@ func TestReactor_Backfill(t *testing.T) {
 
 				require.Nil(t, rts.blockStore.LoadBlockMeta(stopHeight-1))
 				require.Nil(t, rts.blockStore.LoadBlockMeta(startHeight+1))
+
+				require.Equal(t, startHeight-stopHeight+1, rts.reactor.backfilledBlocks)
+				require.Equal(t, startHeight-stopHeight+1, rts.reactor.backfillBlockTotal)
 			}
+			require.Equal(t, rts.reactor.backfilledBlocks, rts.reactor.BackFilledBlocks())
+			require.Equal(t, rts.reactor.backfillBlockTotal, rts.reactor.BackFillBlocksTotal())
 		})
 	}
 }

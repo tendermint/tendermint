@@ -601,6 +601,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /unsafe_flush_mempool:
+    get:
+      summary: Flush mempool of all unconfirmed transactions
+      operationId: unsafe_flush_mempool
+      tags:
+        - Unsafe
+      description: |
+        Flush flushes out the mempool. It acquires a read-lock, fetches all the
+        transactions currently in the transaction store and removes each transaction
+        from the store and all indexes and finally resets the cache.
+
+        Note, flushing the mempool may leave the mempool in an inconsistent state.
+      responses:
+        "200":
+          description: empty answer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmptyResponse"
+        "500":
+          description: empty error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /blockchain:
     get:
       summary: "Get block headers (max: 20) for minHeight <= height <= maxHeight."
@@ -1370,6 +1396,27 @@ components:
         remaining_time:
           type: string
           example: "0"
+        total_snapshots:
+          type: string
+          example: "10"      
+        chunk_process_avg_time:
+          type: string
+          example: "1000000000"      
+        snapshot_height:
+          type: string
+          example: "1262196"      
+        snapshot_chunks_count:
+          type: string
+          example: "10"      
+        snapshot_chunks_total:
+          type: string
+          example: "100"      
+        backfilled_blocks:
+          type: string
+          example: "10"      
+        backfill_blocks_total:
+          type: string
+          example: "100"                                                                  
     ValidatorInfo:
       type: object
       properties:

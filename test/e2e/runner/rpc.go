@@ -13,17 +13,22 @@ import (
 )
 
 // waitForHeight waits for the network to reach a certain height (or above),
-// returning the highest height seen. Errors if the network is not making
+// returning the block at the height seen. Errors if the network is not making
 // progress at all.
+// If height == 0, the initial height of the test network is used as the target.
 func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*types.Block, *types.BlockID, error) {
 	var (
 		err             error
-		maxResult       *rpctypes.ResultBlock
 		clients         = map[string]*rpchttp.HTTP{}
+		lastHeight      int64
 		lastIncrease    = time.Now()
 		nodesAtHeight   = map[string]struct{}{}
 		numRunningNodes int
 	)
+	if height == 0 {
+		height = testnet.InitialHeight
+	}
+
 	for _, node := range testnet.Nodes {
 		if node.Stateless() {
 			continue
@@ -47,10 +52,10 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 					continue
 				}
 
+				// skip nodes that don't have state or haven't started yet
 				if node.Stateless() {
 					continue
 				}
-
 				if !node.HasStarted {
 					continue
 				}
@@ -67,16 +72,16 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 
 				wctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 				defer cancel()
-				result, err := client.Block(wctx, nil)
+				result, err := client.Status(wctx)
 				if err != nil {
 					continue
 				}
-				if result.Block != nil && (maxResult == nil || result.Block.Height > maxResult.Block.Height) {
-					maxResult = result
+				if result.SyncInfo.LatestBlockHeight > lastHeight {
+					lastHeight = result.SyncInfo.LatestBlockHeight
 					lastIncrease = time.Now()
 				}
 
-				if maxResult != nil && maxResult.Block.Height >= height {
+				if result.SyncInfo.LatestBlockHeight >= height {
 					// the node has achieved the target height!
 
 					// add this node to the set of target
@@ -90,9 +95,16 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 						continue
 					}
 
-					// return once all nodes have reached
-					// the target height.
-					return maxResult.Block, &maxResult.BlockID, nil
+					// All nodes are at or above the target height. Now fetch the block for that target height
+					// and return it. We loop again through all clients because some may have pruning set but
+					// at least two of them should be archive nodes.
+					for _, c := range clients {
+						result, err := c.Block(ctx, &height)
+						if err != nil || result == nil || result.Block == nil {
+							continue
+						}
+						return result.Block, &result.BlockID, err
+					}
 				}
 			}
 
@@ -100,12 +112,12 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 				return nil, nil, errors.New("unable to connect to any network nodes")
 			}
 			if time.Since(lastIncrease) >= time.Minute {
-				if maxResult == nil {
-					return nil, nil, errors.New("chain stalled at unknown height")
+				if lastHeight == 0 {
+					return nil, nil, errors.New("chain stalled at unknown height (most likely upon starting)")
 				}
 
 				return nil, nil, fmt.Errorf("chain stalled at height %v [%d of %d nodes %+v]",
-					maxResult.Block.Height,
+					lastHeight,
 					len(nodesAtHeight),
 					numRunningNodes,
 					nodesAtHeight)
@@ -181,4 +193,36 @@ func waitForNode(ctx context.Context, node *e2e.Node, height int64) (*rpctypes.R
 			timer.Reset(250 * time.Millisecond)
 		}
 	}
+}
+
+// getLatestBlock returns the last block that all active nodes in the network have
+// agreed upon i.e. the earlist of each nodes latest block
+func getLatestBlock(ctx context.Context, testnet *e2e.Testnet) (*types.Block, error) {
+	var earliestBlock *types.Block
+	for _, node := range testnet.Nodes {
+		// skip nodes that don't have state or haven't started yet
+		if node.Stateless() {
+			continue
+		}
+		if !node.HasStarted {
+			continue
+		}
+
+		client, err := node.Client()
+		if err != nil {
+			return nil, err
+		}
+
+		wctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+		result, err := client.Block(wctx, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		if result.Block != nil && (earliestBlock == nil || earliestBlock.Height > result.Block.Height) {
+			earliestBlock = result.Block
+		}
+	}
+	return earliestBlock, nil
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
@@ -21,6 +22,7 @@ import (
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/pex"
+	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
@@ -30,7 +32,6 @@ import (
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
-	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
@@ -119,7 +120,7 @@ func newDefaultNode(config *cfg.Config, logger log.Logger) (service.Service, err
 func makeNode(config *cfg.Config,
 	privValidator types.PrivValidator,
 	nodeKey types.NodeKey,
-	clientCreator proxy.ClientCreator,
+	clientCreator abciclient.Creator,
 	genesisDocProvider genesisDocProvider,
 	dbProvider cfg.DBProvider,
 	logger log.Logger) (service.Service, error) {
@@ -239,16 +240,17 @@ func makeNode(config *cfg.Config,
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
 
-	csMetrics, p2pMetrics, memplMetrics, smMetrics := defaultMetricsProvider(config.Instrumentation)(genDoc.ChainID)
+	nodeMetrics :=
+		defaultMetricsProvider(config.Instrumentation)(genDoc.ChainID)
 
-	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey,
+	router, err := createRouter(p2pLogger, nodeMetrics.p2p, nodeInfo, nodeKey.PrivKey,
 		peerManager, transport, getRouterConfig(config, proxyApp))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
 
 	mpReactorShim, mpReactor, mp, err := createMempoolReactor(
-		config, proxyApp, state, memplMetrics, peerManager, router, logger,
+		config, proxyApp, state, nodeMetrics.mempool, peerManager, router, logger,
 	)
 	if err != nil {
 		return nil, err
@@ -269,12 +271,12 @@ func makeNode(config *cfg.Config,
 		mp,
 		evPool,
 		blockStore,
-		sm.BlockExecutorWithMetrics(smMetrics),
+		sm.BlockExecutorWithMetrics(nodeMetrics.state),
 	)
 
 	csReactorShim, csReactor, csState := createConsensusReactor(
 		config, state, blockExec, blockStore, mp, evPool,
-		privValidator, csMetrics, stateSync || blockSync, eventBus,
+		privValidator, nodeMetrics.cs, stateSync || blockSync, eventBus,
 		peerManager, router, consensusLogger,
 	)
 
@@ -282,7 +284,7 @@ func makeNode(config *cfg.Config,
 	// doing a state sync first.
 	bcReactorShim, bcReactor, err := createBlockchainReactor(
 		logger, config, state, blockExec, blockStore, csReactor,
-		peerManager, router, blockSync && !stateSync, csMetrics,
+		peerManager, router, blockSync && !stateSync, nodeMetrics.cs,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not create blockchain reactor: %w", err)
@@ -299,9 +301,9 @@ func makeNode(config *cfg.Config,
 	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or block sync first.
 	// FIXME We need to update metrics here, since other reactors don't have access to them.
 	if stateSync {
-		csMetrics.StateSyncing.Set(1)
+		nodeMetrics.cs.StateSyncing.Set(1)
 	} else if blockSync {
-		csMetrics.BlockSyncing.Set(1)
+		nodeMetrics.cs.BlockSyncing.Set(1)
 	}
 
 	// Set up state sync reactor, and schedule a sync if requested.
@@ -341,6 +343,7 @@ func makeNode(config *cfg.Config,
 		stateStore,
 		blockStore,
 		config.StateSync.TempDir,
+		nodeMetrics.statesync,
 	)
 
 	// add the channel descriptors to both the transports
@@ -378,7 +381,7 @@ func makeNode(config *cfg.Config,
 	if config.P2P.UseLegacy {
 		// setup Transport and Switch
 		sw = createSwitch(
-			config, transport, p2pMetrics, mpReactorShim, bcReactorForSwitch,
+			config, transport, nodeMetrics.p2p, mpReactorShim, bcReactorForSwitch,
 			stateSyncReactorShim, csReactorShim, evReactorShim, proxyApp, nodeInfo, nodeKey, p2pLogger,
 		)
 
@@ -702,7 +705,11 @@ func (n *nodeImpl) OnStart() error {
 			n.Logger.Info("starting state sync")
 			state, err := n.stateSyncReactor.Sync(context.TODO())
 			if err != nil {
-				n.Logger.Error("state sync failed", "err", err)
+				n.Logger.Error("state sync failed; shutting down this node", "err", err)
+				// stop the node
+				if err := n.Stop(); err != nil {
+					n.Logger.Error("failed to shut down node", "err", err)
+				}
 				return
 			}
 
@@ -1030,20 +1037,37 @@ func defaultGenesisDocProviderFunc(config *cfg.Config) genesisDocProvider {
 	}
 }
 
-// metricsProvider returns a consensus, p2p and mempool Metrics.
-type metricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempool.Metrics, *sm.Metrics)
+type nodeMetrics struct {
+	cs        *cs.Metrics
+	p2p       *p2p.Metrics
+	mempool   *mempool.Metrics
+	state     *sm.Metrics
+	statesync *statesync.Metrics
+}
+
+// metricsProvider returns consensus, p2p, mempool, state, statesync Metrics.
+type metricsProvider func(chainID string) *nodeMetrics
 
 // defaultMetricsProvider returns Metrics build using Prometheus client library
 // if Prometheus is enabled. Otherwise, it returns no-op Metrics.
 func defaultMetricsProvider(config *cfg.InstrumentationConfig) metricsProvider {
-	return func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempool.Metrics, *sm.Metrics) {
+	return func(chainID string) *nodeMetrics {
 		if config.Prometheus {
-			return cs.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+			return &nodeMetrics{
+				cs.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				p2p.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				mempool.PrometheusMetrics(config.Namespace, "chain_id", chainID),
-				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID)
+				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+				statesync.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+			}
 		}
-		return cs.NopMetrics(), p2p.NopMetrics(), mempool.NopMetrics(), sm.NopMetrics()
+		return &nodeMetrics{
+			cs.NopMetrics(),
+			p2p.NopMetrics(),
+			mempool.NopMetrics(),
+			sm.NopMetrics(),
+			statesync.NopMetrics(),
+		}
 	}
 }
 

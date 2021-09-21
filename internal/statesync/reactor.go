@@ -14,12 +14,12 @@ import (
 	"github.com/tendermint/tendermint/config"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
-	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -125,6 +125,18 @@ const (
 	maxLightBlockRequestRetries = 20
 )
 
+// Metricer defines an interface used for the rpc sync info query, please see statesync.metrics
+// for the details.
+type Metricer interface {
+	TotalSnapshots() int64
+	ChunkProcessAvgTime() time.Duration
+	SnapshotHeight() int64
+	SnapshotChunksCount() int64
+	SnapshotChunksTotal() int64
+	BackFilledBlocks() int64
+	BackFillBlocksTotal() int64
+}
+
 // Reactor handles state sync, both restoring snapshots for the local node and
 // serving snapshots for other nodes.
 type Reactor struct {
@@ -158,6 +170,10 @@ type Reactor struct {
 	syncer        *syncer
 	providers     map[types.NodeID]*BlockProvider
 	stateProvider StateProvider
+
+	metrics            *Metrics
+	backfillBlockTotal int64
+	backfilledBlocks   int64
 }
 
 // NewReactor returns a reference to a new state sync reactor, which implements
@@ -176,6 +192,7 @@ func NewReactor(
 	stateStore sm.Store,
 	blockStore *store.BlockStore,
 	tempDir string,
+	ssMetrics *Metrics,
 ) *Reactor {
 	r := &Reactor{
 		chainID:       chainID,
@@ -195,6 +212,7 @@ func NewReactor(
 		peers:         newPeerList(),
 		dispatcher:    NewDispatcher(blockCh.Out),
 		providers:     make(map[types.NodeID]*BlockProvider),
+		metrics:       ssMetrics,
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "StateSync", r)
@@ -271,6 +289,7 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 		r.snapshotCh.Out,
 		r.chunkCh.Out,
 		r.tempDir,
+		r.metrics,
 	)
 	r.mtx.Unlock()
 	defer func() {
@@ -346,6 +365,9 @@ func (r *Reactor) backfill(
 ) error {
 	r.Logger.Info("starting backfill process...", "startHeight", startHeight,
 		"stopHeight", stopHeight, "stopTime", stopTime, "trustedBlockID", trustedBlockID)
+
+	r.backfillBlockTotal = startHeight - stopHeight + 1
+	r.metrics.BackFillBlocksTotal.Set(float64(r.backfillBlockTotal))
 
 	const sleepTime = 1 * time.Second
 	var (
@@ -480,6 +502,16 @@ func (r *Reactor) backfill(
 			r.Logger.Info("backfill: verified and stored light block", "height", resp.block.Height)
 
 			lastValidatorSet = resp.block.ValidatorSet
+
+			r.backfilledBlocks++
+			r.metrics.BackFilledBlocks.Add(1)
+
+			// The block height might be less than the stopHeight because of the stopTime condition
+			// hasn't been fulfilled.
+			if resp.block.Height < stopHeight {
+				r.backfillBlockTotal++
+				r.metrics.BackFillBlocksTotal.Set(float64(r.backfillBlockTotal))
+			}
 
 		case <-queue.done():
 			if err := queue.error(); err != nil {
@@ -1004,4 +1036,67 @@ func (r *Reactor) initStateProvider(ctx context.Context, chainID string, initial
 		}
 	}
 	return nil
+}
+
+func (r *Reactor) TotalSnapshots() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	if r.syncer != nil && r.syncer.snapshots != nil {
+		return int64(len(r.syncer.snapshots.snapshots))
+	}
+	return 0
+}
+
+func (r *Reactor) ChunkProcessAvgTime() time.Duration {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	if r.syncer != nil {
+		return time.Duration(r.syncer.avgChunkTime)
+	}
+	return time.Duration(0)
+}
+
+func (r *Reactor) SnapshotHeight() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	if r.syncer != nil {
+		return r.syncer.lastSyncedSnapshotHeight
+	}
+	return 0
+}
+func (r *Reactor) SnapshotChunksCount() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	if r.syncer != nil && r.syncer.chunks != nil {
+		return int64(r.syncer.chunks.numChunksReturned())
+	}
+	return 0
+}
+
+func (r *Reactor) SnapshotChunksTotal() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	if r.syncer != nil && r.syncer.processingSnapshot != nil {
+		return int64(r.syncer.processingSnapshot.Chunks)
+	}
+	return 0
+}
+
+func (r *Reactor) BackFilledBlocks() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	return r.backfilledBlocks
+}
+
+func (r *Reactor) BackFillBlocksTotal() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	return r.backfillBlockTotal
 }

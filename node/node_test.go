@@ -16,21 +16,21 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
 	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
+	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/store"
@@ -214,7 +214,7 @@ func testFreeAddr(t *testing.T) string {
 func TestCreateProposalBlock(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
-	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
+	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -306,7 +306,7 @@ func TestCreateProposalBlock(t *testing.T) {
 func TestMaxTxsProposalBlockSize(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
-	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
+	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -368,7 +368,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 func TestMaxProposalBlockSize(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
-	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
+	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)

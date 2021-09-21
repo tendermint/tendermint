@@ -3,11 +3,12 @@ package consensus
 import (
 	"context"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/libs/clist"
 	mempl "github.com/tendermint/tendermint/internal/mempool"
+	"github.com/tendermint/tendermint/internal/proxy"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -53,11 +54,11 @@ func (emptyMempool) CloseWAL()      {}
 // the real app.
 
 func newMockProxyApp(appHash []byte, abciResponses *tmstate.ABCIResponses) proxy.AppConnConsensus {
-	clientCreator := proxy.NewLocalClientCreator(&mockProxyApp{
+	clientCreator := abciclient.NewLocalCreator(&mockProxyApp{
 		appHash:       appHash,
 		abciResponses: abciResponses,
 	})
-	cli, _ := clientCreator.NewABCIClient()
+	cli, _ := clientCreator()
 	err := cli.Start()
 	if err != nil {
 		panic(err)

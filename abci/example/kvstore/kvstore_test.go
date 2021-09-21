@@ -12,7 +12,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/code"
 	abciserver "github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/abci/types"
@@ -229,7 +229,7 @@ func valsEqual(t *testing.T, vals1, vals2 []types.ValidatorUpdate) {
 	}
 }
 
-func makeSocketClientServer(app types.Application, name string) (abcicli.Client, service.Service, error) {
+func makeSocketClientServer(app types.Application, name string) (abciclient.Client, service.Service, error) {
 	// Start the listener
 	socket := fmt.Sprintf("unix://%s.sock", name)
 	logger := log.TestingLogger()
@@ -241,7 +241,7 @@ func makeSocketClientServer(app types.Application, name string) (abcicli.Client,
 	}
 
 	// Connect to the socket
-	client := abcicli.NewSocketClient(socket, false)
+	client := abciclient.NewSocketClient(socket, false)
 	client.SetLogger(logger.With("module", "abci-client"))
 	if err := client.Start(); err != nil {
 		if err = server.Stop(); err != nil {
@@ -253,7 +253,7 @@ func makeSocketClientServer(app types.Application, name string) (abcicli.Client,
 	return client, server, nil
 }
 
-func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, service.Service, error) {
+func makeGRPCClientServer(app types.Application, name string) (abciclient.Client, service.Service, error) {
 	// Start the listener
 	socket := fmt.Sprintf("unix://%s.sock", name)
 	logger := log.TestingLogger()
@@ -265,7 +265,7 @@ func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, s
 		return nil, nil, err
 	}
 
-	client := abcicli.NewGRPCClient(socket, true)
+	client := abciclient.NewGRPCClient(socket, true)
 	client.SetLogger(logger.With("module", "abci-client"))
 	if err := client.Start(); err != nil {
 		if err := server.Stop(); err != nil {
@@ -313,7 +313,7 @@ func TestClientServer(t *testing.T) {
 	runClientTests(t, gclient)
 }
 
-func runClientTests(t *testing.T, client abcicli.Client) {
+func runClientTests(t *testing.T, client abciclient.Client) {
 	// run some tests....
 	key := testKey
 	value := key
@@ -325,7 +325,7 @@ func runClientTests(t *testing.T, client abcicli.Client) {
 	testClient(t, client, tx, key, value)
 }
 
-func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) {
+func testClient(t *testing.T, app abciclient.Client, tx []byte, key, value string) {
 	ar, err := app.DeliverTxSync(ctx, types.RequestDeliverTx{Tx: tx})
 	require.NoError(t, err)
 	require.False(t, ar.IsErr(), ar)

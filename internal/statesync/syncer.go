@@ -11,10 +11,10 @@ import (
 	"github.com/tendermint/tendermint/config"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
-	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -63,8 +63,13 @@ type syncer struct {
 	fetchers      int32
 	retryTimeout  time.Duration
 
-	mtx    tmsync.RWMutex
-	chunks *chunkQueue
+	mtx     tmsync.RWMutex
+	chunks  *chunkQueue
+	metrics *Metrics
+
+	avgChunkTime             int64
+	lastSyncedSnapshotHeight int64
+	processingSnapshot       *snapshot
 }
 
 // newSyncer creates a new syncer.
@@ -76,6 +81,7 @@ func newSyncer(
 	stateProvider StateProvider,
 	snapshotCh, chunkCh chan<- p2p.Envelope,
 	tempDir string,
+	metrics *Metrics,
 ) *syncer {
 	return &syncer{
 		logger:        logger,
@@ -88,6 +94,7 @@ func newSyncer(
 		tempDir:       tempDir,
 		fetchers:      cfg.Fetchers,
 		retryTimeout:  cfg.ChunkRequestTimeout,
+		metrics:       metrics,
 	}
 }
 
@@ -121,6 +128,7 @@ func (s *syncer) AddSnapshot(peerID types.NodeID, snapshot *snapshot) (bool, err
 		return false, err
 	}
 	if added {
+		s.metrics.TotalSnapshots.Add(1)
 		s.logger.Info("Discovered new snapshot", "height", snapshot.Height, "format", snapshot.Format,
 			"hash", snapshot.Hash)
 	}
@@ -190,9 +198,14 @@ func (s *syncer) SyncAny(
 			defer chunks.Close() // in case we forget to close it elsewhere
 		}
 
+		s.processingSnapshot = snapshot
+		s.metrics.SnapshotChunkTotal.Set(float64(snapshot.Chunks))
+
 		newState, commit, err := s.Sync(ctx, snapshot, chunks)
 		switch {
 		case err == nil:
+			s.metrics.SnapshotHeight.Set(float64(snapshot.Height))
+			s.lastSyncedSnapshotHeight = int64(snapshot.Height)
 			return newState, commit, nil
 
 		case errors.Is(err, errAbort):
@@ -237,6 +250,7 @@ func (s *syncer) SyncAny(
 		}
 		snapshot = nil
 		chunks = nil
+		s.processingSnapshot = nil
 	}
 }
 
@@ -286,6 +300,7 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 	// Spawn chunk fetchers. They will terminate when the chunk queue is closed or context canceled.
 	fetchCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	fetchStartTime := time.Now()
 	for i := int32(0); i < s.fetchers; i++ {
 		go s.fetchChunks(fetchCtx, snapshot, chunks)
 	}
@@ -324,7 +339,7 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 	}
 
 	// Restore snapshot
-	err = s.applyChunks(ctx, chunks)
+	err = s.applyChunks(ctx, chunks, fetchStartTime)
 	if err != nil {
 		return sm.State{}, nil, err
 	}
@@ -381,7 +396,7 @@ func (s *syncer) offerSnapshot(ctx context.Context, snapshot *snapshot) error {
 
 // applyChunks applies chunks to the app. It returns various errors depending on the app's
 // response, or nil once the snapshot is fully restored.
-func (s *syncer) applyChunks(ctx context.Context, chunks *chunkQueue) error {
+func (s *syncer) applyChunks(ctx context.Context, chunks *chunkQueue, start time.Time) error {
 	for {
 		chunk, err := chunks.Next()
 		if err == errDone {
@@ -423,6 +438,9 @@ func (s *syncer) applyChunks(ctx context.Context, chunks *chunkQueue) error {
 
 		switch resp.Result {
 		case abci.ResponseApplySnapshotChunk_ACCEPT:
+			s.metrics.SnapshotChunk.Add(1)
+			s.avgChunkTime = time.Since(start).Nanoseconds() / int64(chunks.numChunksReturned())
+			s.metrics.ChunkProcessAvgTime.Set(float64(s.avgChunkTime))
 		case abci.ResponseApplySnapshotChunk_ABORT:
 			return errAbort
 		case abci.ResponseApplySnapshotChunk_RETRY:

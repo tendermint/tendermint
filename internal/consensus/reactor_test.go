@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
@@ -347,8 +347,8 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		// one for mempool, one for consensus
 		mtx := new(tmsync.RWMutex)
-		proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
-		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+		proxyAppConnMem := abciclient.NewLocalClient(mtx, app)
+		proxyAppConnCon := abciclient.NewLocalClient(mtx, app)
 
 		mempool := mempoolv0.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
 		mempool.SetLogger(log.TestingLogger().With("module", "mempool"))

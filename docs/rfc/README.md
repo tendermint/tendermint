@@ -40,5 +40,7 @@ sections.
 - [RFC-000: P2P Roadmap](./rfc-000-p2p-roadmap.rst)
 - [RFC-001: Storage Engines](./rfc-001-storage-engine.rst)
 - [RFC-002: Interprocess Communication](./rfc-002-ipc-ecosystem.md)
+- [RFC-003: Performance Taxonomy](./rfc-003-performance-questions.md)
+- [RFC-004: E2E Test Framework Enhancements](./rfc-004-e2e-framework.md)
 
 <!-- - [RFC-NNN: Title](./rfc-NNN-title.md) -->
