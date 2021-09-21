@@ -9,7 +9,7 @@ Please ensure you've first read the spec for [ABCI Methods and Types](abci.md)
 
 Here we cover the following components of ABCI applications:
 
-- [Connection State](#state) - the interplay between ABCI connections and application state
+- [Connection State](#connection-state) - the interplay between ABCI connections and application state
   and the differences between `CheckTx` and `DeliverTx`.
 - [Transaction Results](#transaction-results) - rules around transaction
   results and validity
@@ -21,7 +21,7 @@ Here we cover the following components of ABCI applications:
   Tendermint and the application on startup.
 - [State Sync](#state-sync) - rapid bootstrapping of new nodes by restoring state machine snapshots
 
-## State
+## Connection State
 
 Since Tendermint maintains four concurrent ABCI connections, it is typical
 for an application to maintain a distinct state for each, and for the states to
@@ -77,18 +77,13 @@ that's no problem, it just can't be part of the sequential logic of the
 
 ### Consensus Connection
 
-The Consensus Connection should maintain a `DeliverTxState` -
-the working state for block execution. It should be updated by the calls to
-`BeginBlock`, `DeliverTx`, and `EndBlock` during block execution and committed to
-disk as the "latest committed state" during `Commit`.
+The Consensus Connection should maintain a `DeliverTxState` - the working state
+for block execution. It should be updated by the calls to `BeginBlock`, `DeliverTx`,
+and `EndBlock` during block execution and committed to disk as the "latest
+committed state" during `Commit`.
 
-Updates made to the DeliverTxState by each method call must be readable by each subsequent method -
+Updates made to the `DeliverTxState` by each method call must be readable by each subsequent method -
 ie. the updates are linearizable.
-
-- [BeginBlock](#beginblock)
-- [EndBlock](#endblock)
-- [Deliver Tx](#delivertx)
-- [Commit](#commit)
 
 ### Mempool Connection
 
@@ -97,45 +92,32 @@ to sequentially process pending transactions in the mempool that have
 not yet been committed. It should be initialized to the latest committed state
 at the end of every `Commit`.
 
-The CheckTxState may be updated concurrently with the DeliverTxState, as
-messages may be sent concurrently on the Consensus and Mempool connections. However,
-before calling `Commit`, Tendermint will lock and flush the mempool connection,
-ensuring that all existing CheckTx are responded to and no new ones can
-begin.
+Before calling `Commit`, Tendermint will lock and flush the mempool connection,
+ensuring that all existing CheckTx are responded to and no new ones can begin.
+The `CheckTxState` may be updated concurrently with the `DeliverTxState`, as
+messages may be sent concurrently on the Consensus and Mempool connections.
 
-After `Commit`, CheckTx is run again on all transactions that remain in the
-node's local mempool after filtering those included in the block. To prevent the
-mempool from rechecking all transactions every time a block is committed, set
-the configuration option `mempool.recheck=false`. As of Tendermint v0.32.1,
-an additional `Type` parameter is made available to the CheckTx function that
+After `Commit`, while still holding the mempool lock, CheckTx is run again on all transactions that remain in the
+node's local mempool after filtering those included in the block.
+An additional `Type` parameter is made available to the CheckTx function that
 indicates whether an incoming transaction is new (`CheckTxType_New`), or a
 recheck (`CheckTxType_Recheck`).
 
-Finally, the mempool will unlock and new transactions can be processed through CheckTx again.
+Finally, after re-checking transactions in the mempool, Tendermint will unlock
+the mempool connection. New transactions are once again able to be processed through CheckTx.
 
-Note that CheckTx doesn't have to check everything that affects transaction validity; the
-expensive things can be skipped. In fact, CheckTx doesn't have to check
-anything; it might say that any transaction is a valid transaction.
-Unlike DeliverTx, CheckTx is just there as
-a sort of weak filter to keep invalid transactions out of the blockchain. It's
-weak, because a Byzantine node doesn't care about CheckTx; it can propose a
-block full of invalid transactions if it wants.
+Note that CheckTx is just a weak filter to keep invalid transactions out of the block chain.
+CheckTx doesn't have to check everything that affects transaction validity; the
+expensive things can be skipped.  It's weak because a Byzantine node doesn't
+care about CheckTx; it can propose a block full of invalid transactions if it wants.
 
 #### Replay Protection
 
 To prevent old transactions from being replayed, CheckTx must implement
 replay protection.
 
-Tendermint provides the first defense layer by keeping a lightweight
-in-memory cache of 100k (`[mempool] cache_size`) last transactions in
-the mempool. If Tendermint is just started or the clients sent more than
-100k transactions, old transactions may be sent to the application. So
+It is possible for old transactions to be sent to the application. So
 it is important CheckTx implements some logic to handle them.
-
-If there are cases in your application where a transaction may become invalid in some
-future state, you probably want to disable Tendermint's
-cache. You can do that by setting `[mempool] cache_size = 0` in the
-config.
 
 ### Query Connection
 
@@ -145,8 +127,8 @@ below).
 It should always contain the latest committed state associated with the
 latest committed block.
 
-QueryState should be set to the latest `DeliverTxState` at the end of every `Commit`,
-ie. after the full block has been processed and the state committed to disk.
+`QueryState` should be set to the latest `DeliverTxState` at the end of every `Commit`,
+after the full block has been processed and the state committed to disk.
 Otherwise it should never be modified.
 
 Tendermint Core currently uses the Query connection to filter peers upon
@@ -165,6 +147,8 @@ Note: these query formats are subject to change!
 The Snapshot Connection is optional, and is only used to serve state sync snapshots for other nodes
 and/or restore state sync snapshots to a local node being bootstrapped.
 
+For more information, see [the state sync section of this document](#state-sync).
+
 ## Transaction Results
 
 The `Info` and `Log` fields are non-deterministic values for debugging/convenience purposes
@@ -182,7 +166,7 @@ the difference credited back. Tendermint adopts a similar abstraction,
 though uses it only optionally and weakly, allowing applications to define
 their own sense of the cost of execution.
 
-In Tendermint, the `ConsensusParams.Block.MaxGas` limits the amount of `gas` that can be used in a block.
+In Tendermint, the [ConsensusParams.Block.MaxGas](../proto/types/params.proto) limits the amount of `gas` that can be used in a block.
 The default value is `-1`, meaning no limit, or that the concept of gas is
 meaningless.
 
@@ -233,7 +217,7 @@ the Tendermint protocol.
 If DeliverTx returns `Code != 0`, the transaction will be considered invalid,
 though it is still included in the block.
 
-DeliverTx returns a `abci.Result`, which includes a Code, Data, and Log.
+DeliverTx also returns a [Code, Data, and Log](../../proto/abci/types.proto#L189-L191).
 
 `Data` contains the result of the CheckTx transaction execution, if any. It is
 semantically meaningless to Tendermint.
@@ -245,9 +229,9 @@ Both the `Code` and `Data` are included in a structure that is hashed into the
 the transaction by. This allows transactions to be queried according to what
 events took place during their execution.
 
-## Validator Updates
+## Updating the Validator Set
 
-The application may set the validator set during InitChain, and update it during
+The application may set the validator set during InitChain, and may update it during
 EndBlock.
 
 Note that the maximum total power of the validator set is bounded by
@@ -256,16 +240,16 @@ they do not make changes to the validator set that cause it to exceed this
 limit.
 
 Additionally, applications must ensure that a single set of updates does not contain any duplicates -
-a given public key can only appear in an update once. If an update includes
+a given public key can only appear once within a given update. If an update includes
 duplicates, the block execution will fail irrecoverably.
 
 ### InitChain
 
-ResponseInitChain can return a list of validators.
+The `InitChain` method can return a list of validators.
 If the list is empty, Tendermint will use the validators loaded in the genesis
 file.
-If the list is not empty, Tendermint will use it for the validator set.
-This way the application can determine the initial validator set for the
+If the list returned by `InitChain` is not empty, Tendermint will use its contents as the validator set.
+This way the application can set the initial validator set for the
 blockchain.
 
 ### EndBlock
@@ -314,14 +298,14 @@ evidence. They can be set in InitChain and updated in EndBlock.
 The maximum size of a complete Protobuf encoded block.
 This is enforced by Tendermint consensus.
 
-This implies a maximum tx size that is this MaxBytes, less the expected size of
+This implies a maximum transaction size that is this MaxBytes, less the expected size of
 the header, the validator set, and any included evidence in the block.
 
 Must have `0 < MaxBytes < 100 MB`.
 
 ### BlockParams.MaxGas
 
-The maximum of the sum of `GasWanted` in a proposed block.
+The maximum of the sum of `GasWanted` that will be allowed in a proposed block.
 This is *not* enforced by Tendermint consensus.
 It is left to the app to enforce (ie. if txs are included past the
 limit, they should return non-zero codes). It is used by Tendermint to limit the
@@ -329,15 +313,6 @@ txs included in a proposed block.
 
 Must have `MaxGas >= -1`.
 If `MaxGas == -1`, no limit is enforced.
-
-### BlockParams.TimeIotaMs
-
-The minimum time between consecutive blocks (in milliseconds).
-This is enforced by Tendermint consensus.
-
-Must have `TimeIotaMs > 0` to ensure time monotonicity.
-
-> *Note: This is not exposed to the application*
 
 ### EvidenceParams.MaxAgeDuration
 
@@ -368,7 +343,7 @@ This is the maximum number of evidence that can be committed to a single block.
 The product of this and the `MaxEvidenceBytes` must not exceed the size of
 a block minus it's overhead ( ~ `MaxBytes`).
 
-The amount must be a positive number.
+Must have `MaxNum > 0`.
 
 ### Updates
 
@@ -382,16 +357,16 @@ value to be updated to 0.
 #### InitChain
 
 ResponseInitChain includes a ConsensusParams.
-If its nil, Tendermint will use the params loaded in the genesis
-file. If it's not nil, Tendermint will use it.
+If ConsensusParams is nil, Tendermint will use the params loaded in the genesis
+file. If ConsensusParams is not nil, Tendermint will use it.
 This way the application can determine the initial consensus params for the
 blockchain.
 
 #### EndBlock
 
 ResponseEndBlock includes a ConsensusParams.
-If its nil, Tendermint will do nothing.
-If it's not nil, Tendermint will use it.
+If ConsensusParams nil, Tendermint will do nothing.
+If ConsensusParam is not nil, Tendermint will use it.
 This way the application can update the consensus params over time.
 
 Note the updates returned in block `H` will take effect right away for block
@@ -433,8 +408,7 @@ ABCI applications can take advantage of more efficient light-client proofs for
 their state as follows:
 
 - return the Merkle root of the deterministic application state in
-`ResponseCommit.Data`.
-- it will be included as the `AppHash` in the next block.
+`ResponseCommit.Data`. This Merkle root will be included as the `AppHash` in the next block.
 - return efficient Merkle proofs about that application state in `ResponseQuery.Proof`
   that can be verified using the `AppHash` of the corresponding block.
 
@@ -494,7 +468,7 @@ On startup, Tendermint calls the `Info` method on the Info Connection to get the
 committed state of the app. The app MUST return information consistent with the
 last block it succesfully completed Commit for.
 
-If the app succesfully committed block H but not H+1, then `last_block_height = H` and `last_block_app_hash = <hash returned by Commit for block H>`. If the app
+If the app succesfully committed block H, then `last_block_height = H` and `last_block_app_hash = <hash returned by Commit for block H>`. If the app
 failed during the Commit of block H, then `last_block_height = H-1` and
 `last_block_app_hash = <hash returned by Commit for block H-1, which is the hash in the header of block H>`.
 
@@ -507,10 +481,11 @@ stateBlockHeight = height of the last block for which Tendermint completed all
     block processing and saved all ABCI results to disk
 appBlockHeight = height of the last block for which ABCI app succesfully
     completed Commit
+
 ```
 
 Note we always have `storeBlockHeight >= stateBlockHeight` and `storeBlockHeight >= appBlockHeight`
-Note also we never call Commit on an ABCI app twice for the same height.
+Note also Tendermint never calls Commit on an ABCI app twice for the same height.
 
 The procedure is as follows.
 
@@ -595,19 +570,19 @@ sent across the network, snapshot metadata messages are limited to 4 MB.
 When a new node is running state sync and discovering snapshots, Tendermint will query an existing
 application via the ABCI `ListSnapshots` method to discover available snapshots, and load binary
 snapshot chunks via `LoadSnapshotChunk`. The application is free to choose how to implement this
-and which formats to use, but should provide the following guarantees:
+and which formats to use, but must provide the following guarantees:
 
-- **Consistent:** A snapshot should be taken at a single isolated height, unaffected by
-  concurrent writes. This can e.g. be accomplished by using a data store that supports ACID
+- **Consistent:** A snapshot must be taken at a single isolated height, unaffected by
+  concurrent writes. This can be accomplished by using a data store that supports ACID
   transactions with snapshot isolation.
 
-- **Asynchronous:** Taking a snapshot can be time-consuming, so it should not halt chain progress,
+- **Asynchronous:** Taking a snapshot can be time-consuming, so it must not halt chain progress,
   for example by running in a separate thread.
 
-- **Deterministic:** A snapshot taken at the same height in the same format should be identical
+- **Deterministic:** A snapshot taken at the same height in the same format must be identical
   (at the byte level) across nodes, including all metadata. This ensures good availability of
   chunks, and that they fit together across nodes.
-  
+
 A very basic approach might be to use a datastore with MVCC transactions (such as RocksDB),
 start a transaction immediately after block commit, and spawn a new thread which is passed the
 transaction handle. This thread can then export all data items, serialize them using e.g.
@@ -629,10 +604,10 @@ trusted header hash and corresponding height from a trusted source, via the `sta
 configuration section.
 
 Once started, the node will connect to the P2P network and begin discovering snapshots. These
-will be offered to the local application, and once a snapshot is accepted Tendermint will fetch
-and apply the snapshot chunks. After all chunks have been successfully applied, Tendermint verifies
-the app's `AppHash` against the chain using the light client, then switches the node to normal
-consensus operation.
+will be offered to the local application via the `OfferSnapshot` ABCI method. Once a snapshot
+is accepted Tendermint will fetch and apply the snapshot chunks. After all chunks have been
+successfully applied, Tendermint verifies the app's `AppHash` against the chain using the light
+client, then switches the node to normal consensus operation.
 
 #### Snapshot Discovery
 
@@ -651,8 +626,7 @@ any peers that have the same snapshot (i.e. that have identical metadata fields)
 spooled in a temporary directory, and then given to the application in sequential order via
 `ApplySnapshotChunk` until all chunks have been accepted.
 
-As with taking snapshots, the method for restoring them is entirely up to the application, but will
-generally be the inverse of how they are taken.
+The method for restoring snapshot chunks is entirely up to the application.
 
 During restoration, the application can respond to `ApplySnapshotChunk` with instructions for how
 to continue. This will typically be to accept the chunk and await the next one, but it can also
@@ -686,12 +660,12 @@ P2P configuration options to whitelist a set of trusted peers that can provide v
 
 #### Transition to Consensus
 
-Once the snapshot has been restored, Tendermint gathers additional information necessary for
+Once the snapshots have all been restored, Tendermint gathers additional information necessary for
 bootstrapping the node (e.g. chain ID, consensus parameters, validator sets, and block headers)
 from the genesis file and light client RPC servers. It also fetches and records the `AppVersion`
 from the ABCI application.
 
-Once the node is bootstrapped with this information and the restored state machine, it transitions
-to fast sync (if enabled) to fetch any remaining blocks up the the chain head, and then
-transitions to regular consensus operation. At this point the node operates like any other node,
-apart from having a truncated block history at the height of the restored snapshot.
+Once the state machine has been restored and Tendermint has gathered this additional
+information, it transitions to block sync (if enabled) to fetch any remaining blocks up the chain
+head, and then transitions to regular consensus operation. At this point the node operates like
+any other node, apart from having a truncated block history at the height of the restored snapshot.
