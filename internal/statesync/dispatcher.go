@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/light/provider"
@@ -17,93 +16,51 @@ import (
 var (
 	errNoConnectedPeers    = errors.New("no available peers to dispatch request to")
 	errUnsolicitedResponse = errors.New("unsolicited light block response")
-	errNoResponse          = errors.New("peer failed to respond within timeout")
 	errPeerAlreadyBusy     = errors.New("peer is already processing a request")
-	errDisconnected        = errors.New("dispatcher has been disconnected")
+	errDisconnected        = errors.New("dispatcher disconnected")
 )
 
-// dispatcher keeps a list of peers and allows concurrent requests for light
-// blocks. NOTE: It is not the responsibility of the dispatcher to verify the
-// light blocks.
-type dispatcher struct {
-	availablePeers *peerlist
-	requestCh      chan<- p2p.Envelope
-	timeout        time.Duration
+// A Dispatcher multiplexes concurrent requests by multiple peers for light blocks.
+// Only one request per peer can be sent at a time. Subsequent concurrent requests will
+// report an error from the LightBlock method.
+// NOTE: It is not the responsibility of the dispatcher to verify the light blocks.
+type Dispatcher struct {
+	// the channel with which to send light block requests on
+	requestCh chan<- p2p.Envelope
+	closeCh   chan struct{}
 
-	mtx     sync.Mutex
-	calls   map[types.NodeID]chan *types.LightBlock
-	running bool
+	mtx sync.Mutex
+	// all pending calls that have been dispatched and are awaiting an answer
+	calls map[types.NodeID]chan *types.LightBlock
 }
 
-func newDispatcher(requestCh chan<- p2p.Envelope, timeout time.Duration) *dispatcher {
-	return &dispatcher{
-		availablePeers: newPeerList(),
-		timeout:        timeout,
-		requestCh:      requestCh,
-		calls:          make(map[types.NodeID]chan *types.LightBlock),
-		running:        true,
+func NewDispatcher(requestCh chan<- p2p.Envelope) *Dispatcher {
+	return &Dispatcher{
+		requestCh: requestCh,
+		closeCh:   make(chan struct{}),
+		calls:     make(map[types.NodeID]chan *types.LightBlock),
 	}
 }
 
-// LightBlock uses the request channel to fetch a light block from the next peer
-// in a list, tracks the call and waits for the reactor to pass along the response
-func (d *dispatcher) LightBlock(ctx context.Context, height int64) (*types.LightBlock, types.NodeID, error) {
-	d.mtx.Lock()
-	// check to see that the dispatcher is connected to at least one peer
-	if d.availablePeers.Len() == 0 && len(d.calls) == 0 {
-		d.mtx.Unlock()
-		return nil, "", errNoConnectedPeers
-	}
-	d.mtx.Unlock()
-
-	// fetch the next peer id in the list and request a light block from that
-	// peer
-	peer := d.availablePeers.Pop(ctx)
-	lb, err := d.lightBlock(ctx, height, peer)
-	return lb, peer, err
-}
-
-// Providers turns the dispatcher into a set of providers (per peer) which can
-// be used by a light client
-func (d *dispatcher) Providers(chainID string, timeout time.Duration) []provider.Provider {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
-
-	providers := make([]provider.Provider, d.availablePeers.Len())
-	peers := d.availablePeers.Peers()
-	for index, peer := range peers {
-		providers[index] = &blockProvider{
-			peer:       peer,
-			dispatcher: d,
-			chainID:    chainID,
-			timeout:    timeout,
-		}
-	}
-	return providers
-}
-
-func (d *dispatcher) stop() {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
-	d.running = false
-	for peer, call := range d.calls {
-		close(call)
-		delete(d.calls, peer)
-	}
-}
-
-func (d *dispatcher) start() {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
-	d.running = true
-}
-
-func (d *dispatcher) lightBlock(ctx context.Context, height int64, peer types.NodeID) (*types.LightBlock, error) {
+// LightBlock uses the request channel to fetch a light block from a given peer
+// tracking, the call and waiting for the reactor to pass back the response. A nil
+// LightBlock response is used to signal that the peer doesn't have the requested LightBlock.
+func (d *Dispatcher) LightBlock(ctx context.Context, height int64, peer types.NodeID) (*types.LightBlock, error) {
 	// dispatch the request to the peer
 	callCh, err := d.dispatch(peer, height)
 	if err != nil {
 		return nil, err
 	}
+
+	// clean up the call after a response is returned
+	defer func() {
+		d.mtx.Lock()
+		defer d.mtx.Unlock()
+		if call, ok := d.calls[peer]; ok {
+			delete(d.calls, peer)
+			close(call)
+		}
+	}()
 
 	// wait for a response, cancel or timeout
 	select {
@@ -111,75 +68,27 @@ func (d *dispatcher) lightBlock(ctx context.Context, height int64, peer types.No
 		return resp, nil
 
 	case <-ctx.Done():
-		d.release(peer)
-		return nil, nil
+		return nil, ctx.Err()
 
-	case <-time.After(d.timeout):
-		d.release(peer)
-		return nil, errNoResponse
-	}
-}
-
-// respond allows the underlying process which receives requests on the
-// requestCh to respond with the respective light block
-func (d *dispatcher) respond(lb *proto.LightBlock, peer types.NodeID) error {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
-
-	// check that the response came from a request
-	answerCh, ok := d.calls[peer]
-	if !ok {
-		// this can also happen if the response came in after the timeout
-		return errUnsolicitedResponse
-	}
-	// release the peer after returning the response
-	defer d.availablePeers.Append(peer)
-	defer close(answerCh)
-	defer delete(d.calls, peer)
-
-	if lb == nil {
-		answerCh <- nil
-		return nil
-	}
-
-	block, err := types.LightBlockFromProto(lb)
-	if err != nil {
-		fmt.Println("error with converting light block")
-		return err
-	}
-
-	answerCh <- block
-	return nil
-}
-
-func (d *dispatcher) addPeer(peer types.NodeID) {
-	d.availablePeers.Append(peer)
-}
-
-func (d *dispatcher) removePeer(peer types.NodeID) {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
-	if _, ok := d.calls[peer]; ok {
-		delete(d.calls, peer)
-	} else {
-		d.availablePeers.Remove(peer)
+	case <-d.closeCh:
+		return nil, errDisconnected
 	}
 }
 
 // dispatch takes a peer and allocates it a channel so long as it's not already
 // busy and the receiving channel is still running. It then dispatches the message
-func (d *dispatcher) dispatch(peer types.NodeID, height int64) (chan *types.LightBlock, error) {
+func (d *Dispatcher) dispatch(peer types.NodeID, height int64) (chan *types.LightBlock, error) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	ch := make(chan *types.LightBlock, 1)
-
-	// check if the dispatcher is running or not
-	if !d.running {
-		close(ch)
-		return ch, errDisconnected
+	select {
+	case <-d.closeCh:
+		return nil, errDisconnected
+	default:
 	}
 
-	// this should happen only if we add the same peer twice (somehow)
+	ch := make(chan *types.LightBlock, 1)
+
+	// check if a request for the same peer has already been made
 	if _, ok := d.calls[peer]; ok {
 		close(ch)
 		return ch, errPeerAlreadyBusy
@@ -193,47 +102,107 @@ func (d *dispatcher) dispatch(peer types.NodeID, height int64) (chan *types.Ligh
 			Height: uint64(height),
 		},
 	}
+
 	return ch, nil
 }
 
-// release appends the peer back to the list and deletes the allocated call so
-// that a new call can be made to that peer
-func (d *dispatcher) release(peer types.NodeID) {
+// Respond allows the underlying process which receives requests on the
+// requestCh to respond with the respective light block. A nil response is used to
+// represent that the receiver of the request does not have a light block at that height.
+func (d *Dispatcher) Respond(lb *proto.LightBlock, peer types.NodeID) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	if call, ok := d.calls[peer]; ok {
-		close(call)
-		delete(d.calls, peer)
+
+	// check that the response came from a request
+	answerCh, ok := d.calls[peer]
+	if !ok {
+		// this can also happen if the response came in after the timeout
+		return errUnsolicitedResponse
 	}
-	d.availablePeers.Append(peer)
+
+	// If lb is nil we take that to mean that the peer didn't have the requested light
+	// block and thus pass on the nil to the caller.
+	if lb == nil {
+		answerCh <- nil
+		return nil
+	}
+
+	block, err := types.LightBlockFromProto(lb)
+	if err != nil {
+		return err
+	}
+
+	answerCh <- block
+	return nil
+}
+
+// Close shuts down the dispatcher and cancels any pending calls awaiting responses.
+// Peers awaiting responses that have not arrived are delivered a nil block.
+func (d *Dispatcher) Close() {
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
+	close(d.closeCh)
+	for peer, call := range d.calls {
+		delete(d.calls, peer)
+		close(call)
+	}
+}
+
+func (d *Dispatcher) Done() <-chan struct{} {
+	return d.closeCh
 }
 
 //----------------------------------------------------------------
 
-// blockProvider is a p2p based light provider which uses a dispatcher connected
+// BlockProvider is a p2p based light provider which uses a dispatcher connected
 // to the state sync reactor to serve light blocks to the light client
 //
 // TODO: This should probably be moved over to the light package but as we're
 // not yet officially supporting p2p light clients we'll leave this here for now.
-type blockProvider struct {
+//
+// NOTE: BlockProvider will return an error with concurrent calls. However, we don't
+// need a mutex because a light client (and the backfill process) will never call a
+// method more than once at the same time
+type BlockProvider struct {
 	peer       types.NodeID
 	chainID    string
-	timeout    time.Duration
-	dispatcher *dispatcher
+	dispatcher *Dispatcher
 }
 
-func (p *blockProvider) LightBlock(ctx context.Context, height int64) (*types.LightBlock, error) {
-	// FIXME: The provider doesn't know if the dispatcher is still connected to
-	// that peer. If the connection is dropped for whatever reason the
-	// dispatcher needs to be able to relay this back to the provider so it can
-	// return ErrConnectionClosed instead of ErrNoResponse
-	ctx, cancel := context.WithTimeout(ctx, p.timeout)
-	defer cancel()
-	lb, _ := p.dispatcher.lightBlock(ctx, height, p.peer)
-	if lb == nil {
-		return nil, provider.ErrNoResponse
+// Creates a block provider which implements the light client Provider interface.
+func NewBlockProvider(peer types.NodeID, chainID string, dispatcher *Dispatcher) *BlockProvider {
+	return &BlockProvider{
+		peer:       peer,
+		chainID:    chainID,
+		dispatcher: dispatcher,
+	}
+}
+
+// LightBlock fetches a light block from the peer at a specified height returning either a
+// light block or an appropriate error.
+func (p *BlockProvider) LightBlock(ctx context.Context, height int64) (*types.LightBlock, error) {
+	lb, err := p.dispatcher.LightBlock(ctx, height, p.peer)
+	switch err {
+	case nil:
+		if lb == nil {
+			return nil, provider.ErrLightBlockNotFound
+		}
+	case context.DeadlineExceeded, context.Canceled:
+		return nil, err
+	case errPeerAlreadyBusy:
+		return nil, provider.ErrLightBlockNotFound
+	default:
+		return nil, provider.ErrUnreliableProvider{Reason: err.Error()}
 	}
 
+	// check that the height requested is the same one returned
+	if lb.Height != height {
+		return nil, provider.ErrBadLightBlock{
+			Reason: fmt.Errorf("expected height %d, got height %d", height, lb.Height),
+		}
+	}
+
+	// perform basic validation
 	if err := lb.ValidateBasic(p.chainID); err != nil {
 		return nil, provider.ErrBadLightBlock{Reason: err}
 	}
@@ -245,37 +214,37 @@ func (p *blockProvider) LightBlock(ctx context.Context, height int64) (*types.Li
 // attacks. This is a no op as there currently isn't a way to wire this up to
 // the evidence reactor (we should endeavor to do this in the future but for now
 // it's not critical for backwards verification)
-func (p *blockProvider) ReportEvidence(ctx context.Context, ev types.Evidence) error {
+func (p *BlockProvider) ReportEvidence(ctx context.Context, ev types.Evidence) error {
 	return nil
 }
 
 // String implements stringer interface
-func (p *blockProvider) String() string { return string(p.peer) }
+func (p *BlockProvider) String() string { return string(p.peer) }
 
 //----------------------------------------------------------------
 
 // peerList is a rolling list of peers. This is used to distribute the load of
 // retrieving blocks over all the peers the reactor is connected to
-type peerlist struct {
+type peerList struct {
 	mtx     sync.Mutex
 	peers   []types.NodeID
 	waiting []chan types.NodeID
 }
 
-func newPeerList() *peerlist {
-	return &peerlist{
+func newPeerList() *peerList {
+	return &peerList{
 		peers:   make([]types.NodeID, 0),
 		waiting: make([]chan types.NodeID, 0),
 	}
 }
 
-func (l *peerlist) Len() int {
+func (l *peerList) Len() int {
 	l.mtx.Lock()
 	defer l.mtx.Unlock()
 	return len(l.peers)
 }
 
-func (l *peerlist) Pop(ctx context.Context) types.NodeID {
+func (l *peerList) Pop(ctx context.Context) types.NodeID {
 	l.mtx.Lock()
 	if len(l.peers) == 0 {
 		// if we don't have any peers in the list we block until a peer is
@@ -299,7 +268,7 @@ func (l *peerlist) Pop(ctx context.Context) types.NodeID {
 	return peer
 }
 
-func (l *peerlist) Append(peer types.NodeID) {
+func (l *peerList) Append(peer types.NodeID) {
 	l.mtx.Lock()
 	defer l.mtx.Unlock()
 	if len(l.waiting) > 0 {
@@ -312,7 +281,7 @@ func (l *peerlist) Append(peer types.NodeID) {
 	}
 }
 
-func (l *peerlist) Remove(peer types.NodeID) {
+func (l *peerList) Remove(peer types.NodeID) {
 	l.mtx.Lock()
 	defer l.mtx.Unlock()
 	for i, p := range l.peers {
@@ -323,7 +292,7 @@ func (l *peerlist) Remove(peer types.NodeID) {
 	}
 }
 
-func (l *peerlist) Peers() []types.NodeID {
+func (l *peerList) All() []types.NodeID {
 	l.mtx.Lock()
 	defer l.mtx.Unlock()
 	return l.peers

@@ -12,10 +12,9 @@ import (
 	"github.com/tendermint/tendermint/internal/libs/clist"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
+	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	pubmempool "github.com/tendermint/tendermint/pkg/mempool"
-	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -239,7 +238,7 @@ func (txmp *TxMempool) CheckTx(
 
 	txSize := len(tx)
 	if txSize > txmp.config.MaxTxBytes {
-		return pubmempool.ErrTxTooLarge{
+		return types.ErrTxTooLarge{
 			Max:    txmp.config.MaxTxBytes,
 			Actual: txSize,
 		}
@@ -247,7 +246,7 @@ func (txmp *TxMempool) CheckTx(
 
 	if txmp.preCheck != nil {
 		if err := txmp.preCheck(tx); err != nil {
-			return pubmempool.ErrPreCheck{
+			return types.ErrPreCheck{
 				Reason: err,
 			}
 		}
@@ -267,7 +266,7 @@ func (txmp *TxMempool) CheckTx(
 		if wtx != nil && ok {
 			// We already have the transaction stored and the we've already seen this
 			// transaction from txInfo.SenderID.
-			return pubmempool.ErrTxInCache
+			return types.ErrTxInCache
 		}
 
 		txmp.logger.Debug("tx exists already in cache", "tx_hash", tx.Hash())
@@ -728,7 +727,7 @@ func (txmp *TxMempool) canAddTx(wtx *WrappedTx) error {
 	)
 
 	if numTxs >= txmp.config.Size || int64(wtx.Size())+sizeBytes > txmp.config.MaxTxsBytes {
-		return pubmempool.ErrMempoolIsFull{
+		return types.ErrMempoolIsFull{
 			NumTxs:      numTxs,
 			MaxTxs:      txmp.config.Size,
 			TxsBytes:    sizeBytes,

@@ -12,10 +12,9 @@ import (
 	"github.com/tendermint/tendermint/internal/libs/clist"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
+	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	pubmempool "github.com/tendermint/tendermint/pkg/mempool"
-	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -217,7 +216,7 @@ func (mem *CListMempool) CheckTx(
 	}
 
 	if txSize > mem.config.MaxTxBytes {
-		return pubmempool.ErrTxTooLarge{
+		return types.ErrTxTooLarge{
 			Max:    mem.config.MaxTxBytes,
 			Actual: txSize,
 		}
@@ -225,7 +224,7 @@ func (mem *CListMempool) CheckTx(
 
 	if mem.preCheck != nil {
 		if err := mem.preCheck(tx); err != nil {
-			return pubmempool.ErrPreCheck{
+			return types.ErrPreCheck{
 				Reason: err,
 			}
 		}
@@ -248,7 +247,7 @@ func (mem *CListMempool) CheckTx(
 			// its non-trivial since invalid txs can become valid,
 			// but they can spam the same tx with little cost to them atm.
 			if loaded {
-				return pubmempool.ErrTxInCache
+				return types.ErrTxInCache
 			}
 		}
 
@@ -364,7 +363,7 @@ func (mem *CListMempool) isFull(txSize int) error {
 	)
 
 	if memSize >= mem.config.Size || int64(txSize)+txsBytes > mem.config.MaxTxsBytes {
-		return pubmempool.ErrMempoolIsFull{
+		return types.ErrMempoolIsFull{
 			NumTxs:      memSize,
 			MaxTxs:      mem.config.Size,
 			TxsBytes:    txsBytes,

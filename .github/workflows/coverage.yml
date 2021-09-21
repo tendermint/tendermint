@@ -2,6 +2,9 @@ name: Test Coverage
 on:
   pull_request:
   push:
+    paths:
+      - "**.go"
+      - "!test/"
     branches:
       - master
       - release/**
@@ -50,6 +53,7 @@ jobs:
         with:
           PATTERNS: |
             **/**.go
+            "!test/"
             go.mod
             go.sum
       - name: install
@@ -72,6 +76,7 @@ jobs:
         with:
           PATTERNS: |
             **/**.go
+            "!test/"
             go.mod
             go.sum
       - uses: actions/download-artifact@v2
@@ -100,6 +105,7 @@ jobs:
         with:
           PATTERNS: |
             **/**.go
+            "!test/"
             go.mod
             go.sum
       - uses: actions/download-artifact@v2
@@ -121,7 +127,7 @@ jobs:
       - run: |
           cat ./*profile.out | grep -v "mode: atomic" >> coverage.txt
         if: env.GIT_DIFF
-      - uses: codecov/codecov-action@v2.0.3
+      - uses: codecov/codecov-action@v2.1.0
         with:
           file: ./coverage.txt
         if: env.GIT_DIFF

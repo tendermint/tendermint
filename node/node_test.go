@@ -16,25 +16,21 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	consmocks "github.com/tendermint/tendermint/internal/consensus/mocks"
-	ssmocks "github.com/tendermint/tendermint/internal/statesync/mocks"
-
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
 	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
-	statesync "github.com/tendermint/tendermint/internal/statesync"
+	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/store"
@@ -218,7 +214,7 @@ func testFreeAddr(t *testing.T) string {
 func TestCreateProposalBlock(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
-	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
+	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -310,7 +306,7 @@ func TestCreateProposalBlock(t *testing.T) {
 func TestMaxTxsProposalBlockSize(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
-	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
+	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -372,7 +368,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 func TestMaxProposalBlockSize(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
-	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
+	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -668,66 +664,4 @@ func loadStatefromGenesis(t *testing.T) sm.State {
 	require.NotNil(t, state)
 
 	return state
-}
-
-func TestNodeStartStateSync(t *testing.T) {
-	mockSSR := &statesync.MockSyncReactor{}
-	mockFSR := &consmocks.BlockSyncReactor{}
-	mockCSR := &consmocks.ConsSyncReactor{}
-	mockSP := &ssmocks.StateProvider{}
-	state := loadStatefromGenesis(t)
-	config := cfg.ResetTestRoot("load_state_from_genesis")
-
-	eventBus, err := createAndStartEventBus(log.TestingLogger())
-	defer func() {
-		err := eventBus.Stop()
-		require.NoError(t, err)
-	}()
-
-	require.NoError(t, err)
-	require.NotNil(t, eventBus)
-
-	sub, err := eventBus.Subscribe(context.Background(), "test-client", types.EventQueryStateSyncStatus, 10)
-	require.NoError(t, err)
-	require.NotNil(t, sub)
-
-	cfgSS := config.StateSync
-
-	mockSSR.On("Sync", context.TODO(), mockSP, cfgSS.DiscoveryTime).Return(state, nil).
-		On("Backfill", state).Return(nil)
-	mockCSR.On("SetStateSyncingMetrics", float64(0)).Return().
-		On("SwitchToConsensus", state, true).Return()
-
-	require.NoError(t,
-		startStateSync(mockSSR, mockFSR, mockCSR, mockSP, config.StateSync, false, state.InitialHeight, eventBus))
-
-	for cnt := 0; cnt < 2; {
-		select {
-		case <-time.After(3 * time.Second):
-			t.Errorf("StateSyncStatus timeout")
-		case msg := <-sub.Out():
-			if cnt == 0 {
-				ensureStateSyncStatus(t, msg, false, state.InitialHeight)
-				cnt++
-			} else {
-				// the state height = 0 because we are not actually update the state in this test
-				ensureStateSyncStatus(t, msg, true, 0)
-				cnt++
-			}
-		}
-	}
-
-	mockSSR.AssertNumberOfCalls(t, "Sync", 1)
-	mockSSR.AssertNumberOfCalls(t, "Backfill", 1)
-	mockCSR.AssertNumberOfCalls(t, "SetStateSyncingMetrics", 1)
-	mockCSR.AssertNumberOfCalls(t, "SwitchToConsensus", 1)
-}
-
-func ensureStateSyncStatus(t *testing.T, msg tmpubsub.Message, complete bool, height int64) {
-	t.Helper()
-	status, ok := msg.Data().(types.EventDataStateSyncStatus)
-
-	require.True(t, ok)
-	require.Equal(t, complete, status.Complete)
-	require.Equal(t, height, status.Height)
 }

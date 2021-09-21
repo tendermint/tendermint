@@ -19,19 +19,20 @@ import (
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	mempl "github.com/tendermint/tendermint/internal/mempool"
+	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/privval"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	sf "github.com/tendermint/tendermint/state/test/factory"
 	"github.com/tendermint/tendermint/store"
@@ -740,7 +741,7 @@ func testHandshakeReplay(t *testing.T, sim *simulatorTestSuite, nBlocks int, mod
 		filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_a_r%d", nBlocks, mode, rand.Int())))
 	t.Cleanup(func() { require.NoError(t, kvstoreApp.Close()) })
 
-	clientCreator2 := proxy.NewLocalClientCreator(kvstoreApp)
+	clientCreator2 := abciclient.NewLocalCreator(kvstoreApp)
 	if nBlocks > 0 {
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
@@ -890,7 +891,7 @@ func buildTMStateFromChain(
 	kvstoreApp := kvstore.NewPersistentKVStoreApplication(
 		filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_t", nBlocks, mode)))
 	defer kvstoreApp.Close()
-	clientCreator := proxy.NewLocalClientCreator(kvstoreApp)
+	clientCreator := abciclient.NewLocalCreator(kvstoreApp)
 
 	proxyApp := proxy.NewAppConns(clientCreator)
 	if err := proxyApp.Start(); err != nil {
@@ -958,7 +959,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	//		- 0x03
 	{
 		app := &badApp{numBlocks: 3, allHashesAreWrong: true}
-		clientCreator := proxy.NewLocalClientCreator(app)
+		clientCreator := abciclient.NewLocalCreator(app)
 		proxyApp := proxy.NewAppConns(clientCreator)
 		err := proxyApp.Start()
 		require.NoError(t, err)
@@ -982,7 +983,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	//		- RANDOM HASH
 	{
 		app := &badApp{numBlocks: 3, onlyLastHashIsWrong: true}
-		clientCreator := proxy.NewLocalClientCreator(app)
+		clientCreator := abciclient.NewLocalCreator(app)
 		proxyApp := proxy.NewAppConns(clientCreator)
 		err := proxyApp.Start()
 		require.NoError(t, err)
@@ -1225,7 +1226,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	val, _ := factory.RandValidator(true, 10)
 	vals := types.NewValidatorSet([]*types.Validator{val})
 	app := &initChainApp{vals: types.TM2PB.ValidatorUpdates(vals)}
-	clientCreator := proxy.NewLocalClientCreator(app)
+	clientCreator := abciclient.NewLocalCreator(app)
 
 	config := ResetConfig("handshake_test_")
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })

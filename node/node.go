@@ -14,6 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
@@ -21,6 +22,7 @@ import (
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/pex"
+	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
@@ -28,10 +30,8 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/libs/strings"
 	tmtime "github.com/tendermint/tendermint/libs/time"
-	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/privval"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
-	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
@@ -120,7 +120,7 @@ func newDefaultNode(config *cfg.Config, logger log.Logger) (service.Service, err
 func makeNode(config *cfg.Config,
 	privValidator types.PrivValidator,
 	nodeKey types.NodeKey,
-	clientCreator proxy.ClientCreator,
+	clientCreator abciclient.Creator,
 	genesisDocProvider genesisDocProvider,
 	dbProvider cfg.DBProvider,
 	logger log.Logger) (service.Service, error) {
@@ -221,7 +221,7 @@ func makeNode(config *cfg.Config,
 
 	// Determine whether we should do block sync. This must happen after the handshake, since the
 	// app may modify the validator set, specifying ourself as the only validator.
-	blockSync := config.FastSyncMode && !onlyValidatorIsUs(state, pubKey)
+	blockSync := config.BlockSync.Enable && !onlyValidatorIsUs(state, pubKey)
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger, config.Mode)
 
@@ -240,16 +240,17 @@ func makeNode(config *cfg.Config,
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
 
-	csMetrics, p2pMetrics, memplMetrics, smMetrics := defaultMetricsProvider(config.Instrumentation)(genDoc.ChainID)
+	nodeMetrics :=
+		defaultMetricsProvider(config.Instrumentation)(genDoc.ChainID)
 
-	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey,
+	router, err := createRouter(p2pLogger, nodeMetrics.p2p, nodeInfo, nodeKey.PrivKey,
 		peerManager, transport, getRouterConfig(config, proxyApp))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
 
 	mpReactorShim, mpReactor, mp, err := createMempoolReactor(
-		config, proxyApp, state, memplMetrics, peerManager, router, logger,
+		config, proxyApp, state, nodeMetrics.mempool, peerManager, router, logger,
 	)
 	if err != nil {
 		return nil, err
@@ -270,12 +271,12 @@ func makeNode(config *cfg.Config,
 		mp,
 		evPool,
 		blockStore,
-		sm.BlockExecutorWithMetrics(smMetrics),
+		sm.BlockExecutorWithMetrics(nodeMetrics.state),
 	)
 
 	csReactorShim, csReactor, csState := createConsensusReactor(
 		config, state, blockExec, blockStore, mp, evPool,
-		privValidator, csMetrics, stateSync || blockSync, eventBus,
+		privValidator, nodeMetrics.cs, stateSync || blockSync, eventBus,
 		peerManager, router, consensusLogger,
 	)
 
@@ -283,7 +284,7 @@ func makeNode(config *cfg.Config,
 	// doing a state sync first.
 	bcReactorShim, bcReactor, err := createBlockchainReactor(
 		logger, config, state, blockExec, blockStore, csReactor,
-		peerManager, router, blockSync && !stateSync, csMetrics,
+		peerManager, router, blockSync && !stateSync, nodeMetrics.cs,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not create blockchain reactor: %w", err)
@@ -300,9 +301,9 @@ func makeNode(config *cfg.Config,
 	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or block sync first.
 	// FIXME We need to update metrics here, since other reactors don't have access to them.
 	if stateSync {
-		csMetrics.StateSyncing.Set(1)
+		nodeMetrics.cs.StateSyncing.Set(1)
 	} else if blockSync {
-		csMetrics.BlockSyncing.Set(1)
+		nodeMetrics.cs.BlockSyncing.Set(1)
 	}
 
 	// Set up state sync reactor, and schedule a sync if requested.
@@ -328,6 +329,8 @@ func makeNode(config *cfg.Config,
 	}
 
 	stateSyncReactor = statesync.NewReactor(
+		genDoc.ChainID,
+		genDoc.InitialHeight,
 		*config.StateSync,
 		stateSyncReactorShim.Logger,
 		proxyApp.Snapshot(),
@@ -335,10 +338,12 @@ func makeNode(config *cfg.Config,
 		channels[statesync.SnapshotChannel],
 		channels[statesync.ChunkChannel],
 		channels[statesync.LightBlockChannel],
+		channels[statesync.ParamsChannel],
 		peerUpdates,
 		stateStore,
 		blockStore,
 		config.StateSync.TempDir,
+		nodeMetrics.statesync,
 	)
 
 	// add the channel descriptors to both the transports
@@ -376,7 +381,7 @@ func makeNode(config *cfg.Config,
 	if config.P2P.UseLegacy {
 		// setup Transport and Switch
 		sw = createSwitch(
-			config, transport, p2pMetrics, mpReactorShim, bcReactorForSwitch,
+			config, transport, nodeMetrics.p2p, mpReactorShim, bcReactorForSwitch,
 			stateSyncReactorShim, csReactorShim, evReactorShim, proxyApp, nodeInfo, nodeKey, p2pLogger,
 		)
 
@@ -671,6 +676,8 @@ func (n *nodeImpl) OnStart() error {
 	}
 
 	// Run state sync
+	// TODO: We shouldn't run state sync if we already have state that has a
+	// LastBlockHeight that is not InitialHeight
 	if n.stateSync {
 		bcR, ok := n.bcReactor.(cs.BlockSyncReactor)
 		if !ok {
@@ -683,17 +690,56 @@ func (n *nodeImpl) OnStart() error {
 			return fmt.Errorf("unable to derive state: %w", err)
 		}
 
-		ssc := n.config.StateSync
-		sp, err := constructStateProvider(ssc, state, n.Logger.With("module", "light"))
-
-		if err != nil {
-			return fmt.Errorf("failed to set up light client state provider: %w", err)
+		// TODO: we may want to move these events within the respective
+		// reactors.
+		// At the beginning of the statesync start, we use the initialHeight as the event height
+		// because of the statesync doesn't have the concreate state height before fetched the snapshot.
+		d := types.EventDataStateSyncStatus{Complete: false, Height: state.InitialHeight}
+		if err := n.eventBus.PublishEventStateSyncStatus(d); err != nil {
+			n.eventBus.Logger.Error("failed to emit the statesync start event", "err", err)
 		}
 
-		if err := startStateSync(n.stateSyncReactor, bcR, n.consensusReactor, sp,
-			ssc, n.config.FastSyncMode, state.InitialHeight, n.eventBus); err != nil {
-			return fmt.Errorf("failed to start state sync: %w", err)
-		}
+		// FIXME: We shouldn't allow state sync to silently error out without
+		// bubbling up the error and gracefully shutting down the rest of the node
+		go func() {
+			n.Logger.Info("starting state sync")
+			state, err := n.stateSyncReactor.Sync(context.TODO())
+			if err != nil {
+				n.Logger.Error("state sync failed; shutting down this node", "err", err)
+				// stop the node
+				if err := n.Stop(); err != nil {
+					n.Logger.Error("failed to shut down node", "err", err)
+				}
+				return
+			}
+
+			n.consensusReactor.SetStateSyncingMetrics(0)
+
+			d := types.EventDataStateSyncStatus{Complete: true, Height: state.LastBlockHeight}
+			if err := n.eventBus.PublishEventStateSyncStatus(d); err != nil {
+				n.eventBus.Logger.Error("failed to emit the statesync start event", "err", err)
+			}
+
+			// TODO: Some form of orchestrator is needed here between the state
+			// advancing reactors to be able to control which one of the three
+			// is running
+			if n.config.BlockSync.Enable {
+				// FIXME Very ugly to have these metrics bleed through here.
+				n.consensusReactor.SetBlockSyncingMetrics(1)
+				if err := bcR.SwitchToBlockSync(state); err != nil {
+					n.Logger.Error("failed to switch to block sync", "err", err)
+					return
+				}
+
+				d := types.EventDataBlockSyncStatus{Complete: false, Height: state.LastBlockHeight}
+				if err := n.eventBus.PublishEventBlockSyncStatus(d); err != nil {
+					n.eventBus.Logger.Error("failed to emit the block sync starting event", "err", err)
+				}
+
+			} else {
+				n.consensusReactor.SwitchToConsensus(state, true)
+			}
+		}()
 	}
 
 	return nil
@@ -978,67 +1024,6 @@ func (n *nodeImpl) NodeInfo() types.NodeInfo {
 	return n.nodeInfo
 }
 
-// startStateSync starts an asynchronous state sync process, then switches to block sync mode.
-func startStateSync(
-	ssR statesync.SyncReactor,
-	bcR cs.BlockSyncReactor,
-	conR cs.ConsSyncReactor,
-	sp statesync.StateProvider,
-	config *cfg.StateSyncConfig,
-	blockSync bool,
-	stateInitHeight int64,
-	eb *types.EventBus,
-) error {
-	stateSyncLogger := eb.Logger.With("module", "statesync")
-
-	stateSyncLogger.Info("starting state sync...")
-
-	// at the beginning of the statesync start, we use the initialHeight as the event height
-	// because of the statesync doesn't have the concreate state height before fetched the snapshot.
-	d := types.EventDataStateSyncStatus{Complete: false, Height: stateInitHeight}
-	if err := eb.PublishEventStateSyncStatus(d); err != nil {
-		stateSyncLogger.Error("failed to emit the statesync start event", "err", err)
-	}
-
-	go func() {
-		state, err := ssR.Sync(context.TODO(), sp, config.DiscoveryTime)
-		if err != nil {
-			stateSyncLogger.Error("state sync failed", "err", err)
-			return
-		}
-
-		if err := ssR.Backfill(state); err != nil {
-			stateSyncLogger.Error("backfill failed; node has insufficient history to verify all evidence;"+
-				" proceeding optimistically...", "err", err)
-		}
-
-		conR.SetStateSyncingMetrics(0)
-
-		d := types.EventDataStateSyncStatus{Complete: true, Height: state.LastBlockHeight}
-		if err := eb.PublishEventStateSyncStatus(d); err != nil {
-			stateSyncLogger.Error("failed to emit the statesync start event", "err", err)
-		}
-
-		if blockSync {
-			// FIXME Very ugly to have these metrics bleed through here.
-			conR.SetBlockSyncingMetrics(1)
-			if err := bcR.SwitchToBlockSync(state); err != nil {
-				stateSyncLogger.Error("failed to switch to block sync", "err", err)
-				return
-			}
-
-			d := types.EventDataBlockSyncStatus{Complete: false, Height: state.LastBlockHeight}
-			if err := eb.PublishEventBlockSyncStatus(d); err != nil {
-				stateSyncLogger.Error("failed to emit the block sync starting event", "err", err)
-			}
-
-		} else {
-			conR.SwitchToConsensus(state, true)
-		}
-	}()
-	return nil
-}
-
 // genesisDocProvider returns a GenesisDoc.
 // It allows the GenesisDoc to be pulled from sources other than the
 // filesystem, for instance from a distributed key-value store cluster.
@@ -1052,20 +1037,37 @@ func defaultGenesisDocProviderFunc(config *cfg.Config) genesisDocProvider {
 	}
 }
 
-// metricsProvider returns a consensus, p2p and mempool Metrics.
-type metricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempool.Metrics, *sm.Metrics)
+type nodeMetrics struct {
+	cs        *cs.Metrics
+	p2p       *p2p.Metrics
+	mempool   *mempool.Metrics
+	state     *sm.Metrics
+	statesync *statesync.Metrics
+}
+
+// metricsProvider returns consensus, p2p, mempool, state, statesync Metrics.
+type metricsProvider func(chainID string) *nodeMetrics
 
 // defaultMetricsProvider returns Metrics build using Prometheus client library
 // if Prometheus is enabled. Otherwise, it returns no-op Metrics.
 func defaultMetricsProvider(config *cfg.InstrumentationConfig) metricsProvider {
-	return func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempool.Metrics, *sm.Metrics) {
+	return func(chainID string) *nodeMetrics {
 		if config.Prometheus {
-			return cs.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+			return &nodeMetrics{
+				cs.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				p2p.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				mempool.PrometheusMetrics(config.Namespace, "chain_id", chainID),
-				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID)
+				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+				statesync.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+			}
 		}
-		return cs.NopMetrics(), p2p.NopMetrics(), mempool.NopMetrics(), sm.NopMetrics()
+		return &nodeMetrics{
+			cs.NopMetrics(),
+			p2p.NopMetrics(),
+			mempool.NopMetrics(),
+			sm.NopMetrics(),
+			statesync.NopMetrics(),
+		}
 	}
 }
 
@@ -1220,25 +1222,4 @@ func getChannelsFromShim(reactorShim *p2p.ReactorShim) map[p2p.ChannelID]*p2p.Ch
 	}
 
 	return channels
-}
-
-func constructStateProvider(
-	ssc *cfg.StateSyncConfig,
-	state sm.State,
-	logger log.Logger,
-) (statesync.StateProvider, error) {
-	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
-	defer cancel()
-
-	to := light.TrustOptions{
-		Period: ssc.TrustPeriod,
-		Height: ssc.TrustHeight,
-		Hash:   ssc.TrustHashBytes(),
-	}
-
-	return statesync.NewLightClientStateProvider(
-		ctx,
-		state.ChainID, state.Version, state.InitialHeight,
-		ssc.RPCServers, to, logger,
-	)
 }

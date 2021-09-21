@@ -1,4 +1,4 @@
-all: docker generator runner
+all: docker generator runner tests
 
 docker:
 	docker build --tag tendermint/e2e-node -f docker/Dockerfile ../..
@@ -15,4 +15,7 @@ generator:
 runner:
 	go build -o build/runner ./runner
 
-.PHONY: all app docker generator runner 
+tests:
+	go test -o build/tests ./tests
+
+.PHONY: all app docker generator runner tests

@@ -82,32 +82,12 @@ and familiarize yourself with our
 Tendermint uses [Semantic Versioning](http://semver.org/) to determine when and how the version changes.
 According to SemVer, anything in the public API can change at any time before version 1.0.0
 
-To provide some stability to Tendermint users in these 0.X.X days, the MINOR version is used
-to signal breaking changes across a subset of the total public API. This subset includes all
-interfaces exposed to other processes (cli, rpc, p2p, etc.), but does not
-include the Go APIs.
+To provide some stability to users of 0.X.X versions of Tendermint, the MINOR version is used
+to signal breaking changes across Tendermint's API. This API includes all
+publicly exposed types, functions, and methods in non-internal Go packages as well as
+the types and methods accessible via the Tendermint RPC interface.
 
-That said, breaking changes in the following packages will be documented in the
-CHANGELOG even if they don't lead to MINOR version bumps:
-
-- crypto
-- config
-- libs
-    - bits
-    - bytes
-    - json
-    - log
-    - math
-    - net
-    - os
-    - protoio
-    - rand
-    - sync
-    - strings
-    - service
-- node
-- rpc/client
-- types
+Breaking changes to these public APIs will be documented in the CHANGELOG.
 
 ### Upgrades
 
