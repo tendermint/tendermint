@@ -8,12 +8,12 @@ import (
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/inspect/rpc"
+	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
 	"github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/state/indexer/sink"
 	"github.com/tendermint/tendermint/libs/log"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
-	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 
