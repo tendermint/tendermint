@@ -7,16 +7,17 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cons "github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/mempool/mock"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
+	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
-	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	sf "github.com/tendermint/tendermint/state/test/factory"
 	"github.com/tendermint/tendermint/store"
@@ -97,7 +98,7 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 	t.Helper()
 
 	rts.nodes = append(rts.nodes, nodeID)
-	rts.app[nodeID] = proxy.NewAppConns(proxy.NewLocalClientCreator(&abci.BaseApplication{}))
+	rts.app[nodeID] = proxy.NewAppConns(abciclient.NewLocalCreator(&abci.BaseApplication{}))
 	require.NoError(t, rts.app[nodeID].Start())
 
 	blockDB := dbm.NewMemDB()

@@ -8,17 +8,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abcimocks "github.com/tendermint/tendermint/abci/client/mocks"
-	"github.com/tendermint/tendermint/proxy/mocks"
 )
 
 func TestAppConns_Start_Stop(t *testing.T) {
 	quitCh := make(<-chan struct{})
-
-	clientCreatorMock := &mocks.ClientCreator{}
 
 	clientMock := &abcimocks.Client{}
 	clientMock.On("SetLogger", mock.Anything).Return().Times(4)
@@ -26,9 +25,13 @@ func TestAppConns_Start_Stop(t *testing.T) {
 	clientMock.On("Stop").Return(nil).Times(4)
 	clientMock.On("Quit").Return(quitCh).Times(4)
 
-	clientCreatorMock.On("NewABCIClient").Return(clientMock, nil).Times(4)
+	creatorCallCount := 0
+	creator := func() (abciclient.Client, error) {
+		creatorCallCount++
+		return clientMock, nil
+	}
 
-	appConns := NewAppConns(clientCreatorMock)
+	appConns := NewAppConns(creator)
 
 	err := appConns.Start()
 	require.NoError(t, err)
@@ -39,6 +42,7 @@ func TestAppConns_Start_Stop(t *testing.T) {
 	require.NoError(t, err)
 
 	clientMock.AssertExpectations(t)
+	assert.Equal(t, 4, creatorCallCount)
 }
 
 // Upon failure, we call tmos.Kill
@@ -56,8 +60,6 @@ func TestAppConns_Failure(t *testing.T) {
 	var recvQuitCh <-chan struct{} // nolint:gosimple
 	recvQuitCh = quitCh
 
-	clientCreatorMock := &mocks.ClientCreator{}
-
 	clientMock := &abcimocks.Client{}
 	clientMock.On("SetLogger", mock.Anything).Return()
 	clientMock.On("Start").Return(nil)
@@ -66,9 +68,11 @@ func TestAppConns_Failure(t *testing.T) {
 	clientMock.On("Quit").Return(recvQuitCh)
 	clientMock.On("Error").Return(errors.New("EOF")).Once()
 
-	clientCreatorMock.On("NewABCIClient").Return(clientMock, nil)
+	creator := func() (abciclient.Client, error) {
+		return clientMock, nil
+	}
 
-	appConns := NewAppConns(clientCreatorMock)
+	appConns := NewAppConns(creator)
 
 	err := appConns.Start()
 	require.NoError(t, err)

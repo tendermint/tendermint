@@ -355,3 +355,16 @@ func (q *chunkQueue) WaitFor(index uint32) <-chan uint32 {
 
 	return ch
 }
+
+func (q *chunkQueue) numChunksReturned() int {
+	q.Lock()
+	defer q.Unlock()
+
+	cnt := 0
+	for _, b := range q.chunkReturned {
+		if b {
+			cnt++
+		}
+	}
+	return cnt
+}

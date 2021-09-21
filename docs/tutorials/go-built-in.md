@@ -23,6 +23,8 @@ yourself with the syntax.
 By following along with this guide, you'll create a Tendermint Core project
 called kvstore, a (very) simple distributed BFT key-value store.
 
+> Note: please use a released version of Tendermint with this guide. The guides will work with the latest version. Please, do not use master. 
+
 ## Built-in app vs external app
 
 Running your application inside the same process as Tendermint Core will give
@@ -50,9 +52,12 @@ We'll start by creating a new Go project.
 ```bash
 mkdir kvstore
 cd kvstore
+go mod init github.com/<github_username>/<repo_name>
 ```
 
 Inside the example directory create a `main.go` file with the following content:
+
+> Note: there is no need to clone or fork Tendermint in this tutorial. 
 
 ```go
 package main
@@ -430,7 +435,7 @@ func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
   config,
   pv,
   nodeKey,
-  proxy.NewLocalClientCreator(app),
+  abcicli.NewLocalClientCreator(app),
   nm.DefaultGenesisDocProviderFunc(config),
   nm.DefaultDBProvider,
   nm.DefaultMetricsProvider(config.Instrumentation),
@@ -482,7 +487,7 @@ node, err := nm.NewNode(
  config,
  pv,
  nodeKey,
- proxy.NewLocalClientCreator(app),
+ abcicli.NewLocalClientCreator(app),
  nm.DefaultGenesisDocProviderFunc(config),
  nm.DefaultDBProvider,
  nm.DefaultMetricsProvider(config.Instrumentation),
@@ -495,7 +500,7 @@ if err != nil {
 `NewNode` requires a few things including a configuration file, a private
 validator, a node key and a few others in order to construct the full node.
 
-Note we use `proxy.NewLocalClientCreator` here to create a local client instead
+Note we use `abcicli.NewLocalClientCreator` here to create a local client instead
 of one communicating through a socket or gRPC.
 
 [viper](https://github.com/spf13/viper) is being used for reading the config,

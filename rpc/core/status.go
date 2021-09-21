@@ -77,6 +77,16 @@ func (env *Environment) Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, err
 		ValidatorInfo: validatorInfo,
 	}
 
+	if env.StateSyncMetricer != nil {
+		result.SyncInfo.TotalSnapshots = env.StateSyncMetricer.TotalSnapshots()
+		result.SyncInfo.ChunkProcessAvgTime = env.StateSyncMetricer.ChunkProcessAvgTime()
+		result.SyncInfo.SnapshotHeight = env.StateSyncMetricer.SnapshotHeight()
+		result.SyncInfo.SnapshotChunksCount = env.StateSyncMetricer.SnapshotChunksCount()
+		result.SyncInfo.SnapshotChunksTotal = env.StateSyncMetricer.SnapshotChunksTotal()
+		result.SyncInfo.BackFilledBlocks = env.StateSyncMetricer.BackFilledBlocks()
+		result.SyncInfo.BackFillBlocksTotal = env.StateSyncMetricer.BackFillBlocksTotal()
+	}
+
 	return result, nil
 }
 

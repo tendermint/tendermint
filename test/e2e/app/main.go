@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -28,7 +29,6 @@ import (
 	"github.com/tendermint/tendermint/privval"
 	grpcprivval "github.com/tendermint/tendermint/privval/grpc"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
-	"github.com/tendermint/tendermint/proxy"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
@@ -130,7 +130,7 @@ func startNode(cfg *Config) error {
 
 	n, err := node.New(tmcfg,
 		nodeLogger,
-		proxy.NewLocalClientCreator(app),
+		abciclient.NewLocalCreator(app),
 		nil,
 	)
 	if err != nil {

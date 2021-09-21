@@ -16,6 +16,10 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 
 - Go API
 
+  - [crypto/armor]: \#6963 remove package which is unused, and based on
+    deprecated fundamentals. Downstream users should maintain this
+    library. (@tychoish)
+
 - Blockchain Protocol
 
 ### FEATURES
