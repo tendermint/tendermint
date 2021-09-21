@@ -2057,7 +2057,7 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 		prevotes := cs.Votes.Prevotes(vote.Round)
 		cs.Logger.Debug("added vote to prevote", "vote", vote, "prevotes", prevotes.StringShort())
 
-		// If +2/3 prevotes for a block for *any* round:
+		// Check to see if >2/3 of the voting power on the network voted for any non-nil block.
 		if blockID, ok := prevotes.TwoThirdsMajority(); ok {
 			// There was a polka!
 			// If it matches our ProposalBlock, update the ValidBlock
