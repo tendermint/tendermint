@@ -228,6 +228,7 @@ func decideProposal(
 	height int64,
 	round int32,
 ) (proposal *types.Proposal, block *types.Block) {
+	t.Helper()
 	cs1.mtx.Lock()
 	block, blockParts := cs1.createProposalBlock()
 	validRound := cs1.ValidRound
@@ -269,6 +270,7 @@ func signAddVotes(
 }
 
 func validatePrevote(t *testing.T, cs *State, round int32, privVal *validatorStub, blockHash []byte) {
+	t.Helper()
 	prevotes := cs.Votes.Prevotes(round)
 	pubKey, err := privVal.GetPubKey(context.Background())
 	require.NoError(t, err)
@@ -289,6 +291,7 @@ func validatePrevote(t *testing.T, cs *State, round int32, privVal *validatorStu
 }
 
 func validateLastPrecommit(t *testing.T, cs *State, privVal *validatorStub, blockHash []byte) {
+	t.Helper()
 	votes := cs.LastCommit
 	pv, err := privVal.GetPubKey(context.Background())
 	require.NoError(t, err)
@@ -311,6 +314,7 @@ func validatePrecommit(
 	votedBlockHash,
 	lockedBlockHash []byte,
 ) {
+	t.Helper()
 	precommits := cs.Votes.Precommits(thisRound)
 	pv, err := privVal.GetPubKey(context.Background())
 	require.NoError(t, err)
@@ -359,6 +363,7 @@ func validatePrevoteAndPrecommit(
 	votedBlockHash,
 	lockedBlockHash []byte,
 ) {
+	t.Helper()
 	// verify the prevote
 	validatePrevote(t, cs, thisRound, privVal, votedBlockHash)
 	// verify precommit
@@ -741,6 +746,7 @@ func randConsensusState(
 	appFunc func() abci.Application,
 	configOpts ...func(*cfg.Config),
 ) ([]*State, cleanupFunc) {
+	t.Helper()
 
 	genDoc, privVals := factory.RandGenesisDoc(config, nValidators, false, 30)
 	css := make([]*State, nValidators)
