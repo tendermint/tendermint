@@ -107,6 +107,10 @@ func (ins *Inspector) Run(ctx context.Context) error {
 	return startRPCServers(ctx, ins.config, ins.logger, ins.routes)
 }
 
+// SetLogger allows callers to inject a logger into the inspector
+// instance.
+func (ins *Inspector) SetLogger(logger log.Looger) { ins.logger = logger }
+
 func startRPCServers(ctx context.Context, cfg *config.RPCConfig, logger log.Logger, routes rpccore.RoutesMap) error {
 	g, tctx := errgroup.WithContext(ctx)
 	listenAddrs := tmstrings.SplitAndTrimEmpty(cfg.ListenAddress, ",", " ")
