@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/evidence"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
@@ -62,8 +62,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 			// one for mempool, one for consensus
 			mtx := new(tmsync.RWMutex)
-			proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
-			proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+			proxyAppConnMem := abciclient.NewLocalClient(mtx, app)
+			proxyAppConnCon := abciclient.NewLocalClient(mtx, app)
 
 			// Make Mempool
 			mempool := mempoolv0.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)

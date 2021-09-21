@@ -1,4 +1,4 @@
-package abcicli_test
+package abciclient_test
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/service"
@@ -100,7 +100,7 @@ func TestHangingSyncCalls(t *testing.T) {
 }
 
 func setupClientServer(t *testing.T, app types.Application) (
-	service.Service, abcicli.Client) {
+	service.Service, abciclient.Client) {
 	// some port between 20k and 30k
 	port := 20000 + rand.Int31()%10000
 	addr := fmt.Sprintf("localhost:%d", port)
@@ -110,7 +110,7 @@ func setupClientServer(t *testing.T, app types.Application) (
 	err = s.Start()
 	require.NoError(t, err)
 
-	c := abcicli.NewSocketClient(addr, true)
+	c := abciclient.NewSocketClient(addr, true)
 	err = c.Start()
 	require.NoError(t, err)
 

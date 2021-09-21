@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/abci/types"
@@ -17,20 +17,20 @@ import (
 //----------------------------------------
 
 type appConnTestI interface {
-	EchoAsync(ctx context.Context, msg string) (*abcicli.ReqRes, error)
+	EchoAsync(ctx context.Context, msg string) (*abciclient.ReqRes, error)
 	FlushSync(context.Context) error
 	InfoSync(context.Context, types.RequestInfo) (*types.ResponseInfo, error)
 }
 
 type appConnTest struct {
-	appConn abcicli.Client
+	appConn abciclient.Client
 }
 
-func newAppConnTest(appConn abcicli.Client) appConnTestI {
+func newAppConnTest(appConn abciclient.Client) appConnTestI {
 	return &appConnTest{appConn}
 }
 
-func (app *appConnTest) EchoAsync(ctx context.Context, msg string) (*abcicli.ReqRes, error) {
+func (app *appConnTest) EchoAsync(ctx context.Context, msg string) (*abciclient.ReqRes, error) {
 	return app.appConn.EchoAsync(ctx, msg)
 }
 
@@ -48,7 +48,7 @@ var SOCKET = "socket"
 
 func TestEcho(t *testing.T) {
 	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
-	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
+	clientCreator := abciclient.NewRemoteCreator(sockPath, SOCKET, true)
 
 	// Start server
 	s := server.NewSocketServer(sockPath, kvstore.NewApplication())
@@ -63,7 +63,7 @@ func TestEcho(t *testing.T) {
 	})
 
 	// Start client
-	cli, err := clientCreator.NewABCIClient()
+	cli, err := clientCreator()
 	if err != nil {
 		t.Fatalf("Error creating ABCI client: %v", err.Error())
 	}
@@ -96,7 +96,7 @@ func TestEcho(t *testing.T) {
 func BenchmarkEcho(b *testing.B) {
 	b.StopTimer() // Initialize
 	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
-	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
+	clientCreator := abciclient.NewRemoteCreator(sockPath, SOCKET, true)
 
 	// Start server
 	s := server.NewSocketServer(sockPath, kvstore.NewApplication())
@@ -111,7 +111,7 @@ func BenchmarkEcho(b *testing.B) {
 	})
 
 	// Start client
-	cli, err := clientCreator.NewABCIClient()
+	cli, err := clientCreator()
 	if err != nil {
 		b.Fatalf("Error creating ABCI client: %v", err.Error())
 	}
@@ -149,7 +149,7 @@ func BenchmarkEcho(b *testing.B) {
 
 func TestInfo(t *testing.T) {
 	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
-	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
+	clientCreator := abciclient.NewRemoteCreator(sockPath, SOCKET, true)
 
 	// Start server
 	s := server.NewSocketServer(sockPath, kvstore.NewApplication())
@@ -164,7 +164,7 @@ func TestInfo(t *testing.T) {
 	})
 
 	// Start client
-	cli, err := clientCreator.NewABCIClient()
+	cli, err := clientCreator()
 	if err != nil {
 		t.Fatalf("Error creating ABCI client: %v", err.Error())
 	}
