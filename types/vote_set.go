@@ -219,8 +219,9 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	signID, stateSignID, err := vote.Verify(
 		voteSet.chainID, voteSet.valSet.QuorumType, voteSet.valSet.QuorumHash, val.PubKey, val.ProTxHash, voteSet.stateID)
 	if err != nil {
-		return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s ProTxHash %s: %w",
-			voteSet.chainID, val.PubKey, val.ProTxHash, err)
+		return false, ErrInvalidVoteSignature(
+			fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s ProTxHash %s: %w",
+				voteSet.chainID, val.PubKey, val.ProTxHash, err))
 	}
 
 	// Add vote and get conflicting vote if any.
