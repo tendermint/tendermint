@@ -1429,7 +1429,9 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 		return
 	}
 
-	// If +2/3 prevoted for proposal block, stage and precommit it
+	// If greater than 2/3 of the voting power on the network prevoted for
+	// the proposed block, update our locked block to this block and issue a
+	// precommit vote for it.
 	if cs.ProposalBlock.HashesTo(blockID.Hash) {
 		logger.Debug("precommit step; +2/3 prevoted proposal block; locking", "hash", blockID.Hash)
 
