@@ -78,7 +78,7 @@ func TestBlock(t *testing.T) {
 
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
-	d := New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	d := makeInspector(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -128,7 +128,7 @@ func TestTxSearch(t *testing.T) {
 
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
-	d := New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	d := makeInspector(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -175,7 +175,7 @@ func TestTx(t *testing.T) {
 
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
-	d := New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	d := makeInspector(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -221,7 +221,7 @@ func TestConsensusParams(t *testing.T) {
 	eventSinkMock.On("Stop").Return(nil)
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
-	d := New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	d := makeInspector(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
@@ -272,7 +272,7 @@ func TestBlockResults(t *testing.T) {
 	eventSinkMock.On("Stop").Return(nil)
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
-	d := New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	d := makeInspector(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
@@ -318,7 +318,7 @@ func TestCommit(t *testing.T) {
 	eventSinkMock.On("Stop").Return(nil)
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
-	d := New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	d := makeInspector(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
@@ -370,7 +370,7 @@ func TestBlockByHash(t *testing.T) {
 	eventSinkMock.On("Stop").Return(nil)
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
-	d := New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	d := makeInspector(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
@@ -421,7 +421,7 @@ func TestBlockchain(t *testing.T) {
 	eventSinkMock.On("Stop").Return(nil)
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
-	d := New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	d := makeInspector(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
@@ -472,7 +472,7 @@ func TestValidators(t *testing.T) {
 	eventSinkMock.On("Stop").Return(nil)
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
-	d := New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	d := makeInspector(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
@@ -531,7 +531,7 @@ func TestBlockSearch(t *testing.T) {
 		Return([]int64{testHeight}, nil)
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
-	d := New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	d := makeInspector(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
