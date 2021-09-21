@@ -50,12 +50,10 @@ func runInspect(cmd *cobra.Command, args []string) error {
 		cancel()
 	}()
 
-	ins, err := inspect.NewFromConfig(config)
+	ins, err := inspect.NewFromConfig(logger, config)
 	if err != nil {
 		return err
 	}
-
-	ins.SetLogger(logger)
 
 	logger.Info("starting inspect server")
 	if err := ins.Run(ctx); err != nil {

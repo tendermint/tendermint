@@ -58,7 +58,7 @@ func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, es []indexe
 }
 
 // NewFromConfig constructs an Inspector using the values defined in the passed in config.
-func NewFromConfig(cfg *config.Config) (*Inspector, error) {
+func NewFromConfig(logger log.Logger, cfg *config.Config) (*Inspector, error) {
 	bsDB, err := config.DefaultDBProvider(&config.DBContext{ID: "blockstore", Config: cfg})
 	if err != nil {
 		return nil, err
@@ -76,7 +76,6 @@ func NewFromConfig(cfg *config.Config) (*Inspector, error) {
 	if err != nil {
 		return nil, err
 	}
-	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 	ss := state.NewStore(sDB)
 	return New(cfg.RPC, bs, ss, sinks, logger), nil
 }
@@ -106,10 +105,6 @@ func (ins *Inspector) Run(ctx context.Context) error {
 	}()
 	return startRPCServers(ctx, ins.config, ins.logger, ins.routes)
 }
-
-// SetLogger allows callers to inject a logger into the inspector
-// instance.
-func (ins *Inspector) SetLogger(logger log.Logger) { ins.logger = logger }
 
 func startRPCServers(ctx context.Context, cfg *config.RPCConfig, logger log.Logger, routes rpccore.RoutesMap) error {
 	g, tctx := errgroup.WithContext(ctx)
