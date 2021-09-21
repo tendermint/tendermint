@@ -2058,13 +2058,13 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 		cs.Logger.Debug("added vote to prevote", "vote", vote, "prevotes", prevotes.StringShort())
 
 		// Check to see if >2/3 of the voting power on the network voted for any non-nil block.
-		if blockID, ok := prevotes.TwoThirdsMajority(); ok {
+		if blockID, ok := prevotes.TwoThirdsMajority(); ok && len(blockID.Hash) != 0 {
 			// There was a polka!
 			// If it matches our ProposalBlock, update the ValidBlock
 			if (cs.LockedBlock != nil) &&
 				(cs.LockedRound < vote.Round) &&
 				(vote.Round <= cs.Round) &&
-				!cs.LockedBlock.HashesTo(blockID.Hash) && len(blockID.Hash) != 0 {
+				!cs.LockedBlock.HashesTo(blockID.Hash) {
 
 				cs.Logger.Debug("unlocking because of POL for non-nil block", "locked_round", cs.LockedRound, "pol_round", vote.Round)
 
@@ -2078,8 +2078,7 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 			}
 
 			// Update Valid* if we can.
-			// NOTE: our proposal block may be nil or not what received a polka..
-			if len(blockID.Hash) != 0 && (cs.ValidRound < vote.Round) && (vote.Round == cs.Round) {
+			if cs.ValidRound < vote.Round && vote.Round == cs.Round {
 				if cs.ProposalBlock.HashesTo(blockID.Hash) {
 					cs.Logger.Debug("updating valid block because of POL", "valid_round", cs.ValidRound, "pol_round", vote.Round)
 					cs.ValidRound = vote.Round
