@@ -159,14 +159,14 @@ state-file = "{{ js .PrivValidator.State }}"
 # when the listenAddr is prefixed with grpc instead of tcp it will use the gRPC Client
 laddr = "{{ .PrivValidator.ListenAddr }}"
 
-# Client certificate generated while creating needed files for secure connection.
+# Path to the client certificate generated while creating needed files for secure connection.
 # If a remote validator address is provided but no certificate, the connection will be insecure
 client-certificate-file = "{{ js .PrivValidator.ClientCertificate }}"
 
 # Client key generated while creating certificates for secure connection
 validator-client-key-file = "{{ js .PrivValidator.ClientKey }}"
 
-# Path Root Certificate Authority used to sign both client and server certificates
+# Path to the Root Certificate Authority used to sign both client and server certificates
 certificate-authority = "{{ js .PrivValidator.RootCA }}"
 
 
@@ -331,18 +331,28 @@ max-incoming-connection-attempts = {{ .P2P.MaxIncomingConnectionAttempts }}
 unconditional-peer-ids = "{{ .P2P.UnconditionalPeerIDs }}"
 
 # Maximum pause when redialing a persistent peer (if zero, exponential backoff is used)
+# TODO: Remove once p2p refactor is complete
+# ref: https:#github.com/tendermint/tendermint/issues/5670
 persistent-peers-max-dial-period = "{{ .P2P.PersistentPeersMaxDialPeriod }}"
 
 # Time to wait before flushing messages out on the connection
+# TODO: Remove once p2p refactor is complete
+# ref: https:#github.com/tendermint/tendermint/issues/5670
 flush-throttle-timeout = "{{ .P2P.FlushThrottleTimeout }}"
 
 # Maximum size of a message packet payload, in bytes
+# TODO: Remove once p2p refactor is complete
+# ref: https:#github.com/tendermint/tendermint/issues/5670
 max-packet-msg-payload-size = {{ .P2P.MaxPacketMsgPayloadSize }}
 
 # Rate at which packets can be sent, in bytes/second
+# TODO: Remove once p2p refactor is complete
+# ref: https:#github.com/tendermint/tendermint/issues/5670
 send-rate = {{ .P2P.SendRate }}
 
 # Rate at which packets can be received, in bytes/second
+# TODO: Remove once p2p refactor is complete
+# ref: https:#github.com/tendermint/tendermint/issues/5670
 recv-rate = {{ .P2P.RecvRate }}
 
 # Set true to enable the peer-exchange reactor
@@ -519,7 +529,7 @@ peer-query-maj23-sleep-duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 [tx-index]
 
 # The backend database list to back the indexer.
-# If list contains null, meaning no indexer service will be used.
+# If list contains "null" or "", meaning no indexer service will be used.
 #
 # The application will set which txs to index. In some cases a node operator will be able
 # to decide which txs to index based on configuration set in the application.
@@ -527,8 +537,8 @@ peer-query-maj23-sleep-duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 # Options:
 #   1) "null"
 #   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
-# 		- When "kv" is chosen "tx.height" and "tx.hash" will always be indexed.
 #   3) "psql" - the indexer services backed by PostgreSQL.
+# When "kv" or "psql" is chosen "tx.height" and "tx.hash" will always be indexed.
 indexer = [{{ range $i, $e := .TxIndex.Indexer }}{{if $i}}, {{end}}{{ printf "%q" $e}}{{end}}]
 
 # The PostgreSQL connection configuration, the connection format:
