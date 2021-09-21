@@ -36,13 +36,18 @@ type Inspector struct {
 	logger         log.Logger
 }
 
-// New returns an Inspector that serves RPC on the specified BlockStore and StateStore.
+// makeInspector returns an Inspector that serves RPC on the specified BlockStore and StateStore.
 // The Inspector type does not modify the state or block stores.
 // The sinks are used to enable block and transaction querying via the RPC server.
 // The caller is responsible for starting and stopping the Inspector service.
-///
-//nolint:lll
-func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, es []indexer.EventSink, logger log.Logger) *Inspector {
+func makeInspector(
+	cfg *config.RPCConfig,
+	bs state.BlockStore,
+	ss state.Store,
+	es []indexer.EventSink,
+	logger log.Logger,
+) *Inspector {
+
 	routes := rpc.Routes(*cfg, ss, bs, es, logger)
 	eb := types.NewEventBus()
 	eb.SetLogger(logger.With("module", "events"))
@@ -77,7 +82,7 @@ func NewFromConfig(logger log.Logger, cfg *config.Config) (*Inspector, error) {
 		return nil, err
 	}
 	ss := state.NewStore(sDB)
-	return New(cfg.RPC, bs, ss, sinks, logger), nil
+	return makeInspector(cfg.RPC, bs, ss, sinks, logger), nil
 }
 
 // Run starts the Inspector servers and blocks until the servers shut down. The passed
