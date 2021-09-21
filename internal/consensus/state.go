@@ -2059,8 +2059,12 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 
 		// Check to see if >2/3 of the voting power on the network voted for any non-nil block.
 		if blockID, ok := prevotes.TwoThirdsMajority(); ok && len(blockID.Hash) != 0 {
-			// There was a polka!
-			// If it matches our ProposalBlock, update the ValidBlock
+			// Greater than 2/3 of the voting power on the network voted for some
+			// non-nil block
+
+			// If we locked a different block in an earlier round, unlock it.
+			// We are going to relock a new block when we precommit, so this unlock
+			// is only temporary.
 			if (cs.LockedBlock != nil) &&
 				(cs.LockedRound < vote.Round) &&
 				(vote.Round <= cs.Round) &&
