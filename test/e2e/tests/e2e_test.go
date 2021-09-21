@@ -50,6 +50,10 @@ func testNode(t *testing.T, testFunc func(*testing.T, e2e.Node)) {
 	}
 
 	for _, node := range nodes {
+		if node.Stateless() {
+			continue
+		}
+
 		node := *node
 		t.Run(node.Name, func(t *testing.T) {
 			t.Parallel()
