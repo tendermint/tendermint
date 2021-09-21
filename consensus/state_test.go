@@ -13,6 +13,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/counter"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -194,11 +195,8 @@ func TestStateBadProposal(t *testing.T) {
 	round++
 	incrementRound(vss[1:]...)
 
-	// make the block bad by tampering with statehash
-	stateHash := propBlock.AppHash
-	if len(stateHash) == 0 {
-		stateHash = make([]byte, 32)
-	}
+	stateHash := make(tmbytes.HexBytes, len(propBlock.AppHash))
+	copy(stateHash, propBlock.AppHash)
 	stateHash[0] = (stateHash[0] + 1) % 255
 	propBlock.AppHash = stateHash
 	propBlockParts := propBlock.MakePartSet(partSize)

@@ -49,6 +49,7 @@ import (
 
 const (
 	testSubscriber = "test-client"
+	ensureTimeout  = time.Millisecond * 800
 )
 
 // A cleanupFunc cleans up any config / test files created for a particular
@@ -59,7 +60,6 @@ type cleanupFunc func()
 var (
 	config                *cfg.Config // NOTE: must be reset for each _test.go file
 	consensusReplayConfig *cfg.Config
-	ensureTimeout         = time.Millisecond * 800
 )
 
 func ensureDir(dir string, mode os.FileMode) {
