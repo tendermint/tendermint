@@ -4,7 +4,7 @@ import (
 	"context"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	core "github.com/tendermint/tendermint/rpc/core"
+	core "github.com/tendermint/tendermint/internal/rpc/core"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 

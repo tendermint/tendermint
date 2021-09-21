@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc"
 
 	tmnet "github.com/tendermint/tendermint/libs/net"
-	"github.com/tendermint/tendermint/rpc/core"
+	"github.com/tendermint/tendermint/internal/rpc/core"
 )
 
 // Config is an gRPC server configuration.

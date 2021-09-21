@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/tendermint/tendermint/internal/p2p"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	ctypes "github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
