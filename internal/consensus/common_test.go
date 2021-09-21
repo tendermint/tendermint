@@ -622,6 +622,7 @@ func ensureNewUnlock(unlockCh <-chan tmpubsub.Message, height int64, round int32
 	ensureNewEvent(unlockCh, height, round, ensureTimeout,
 		"Timeout expired while waiting for NewUnlock event")
 }
+
 func ensureLock(lockCh <-chan tmpubsub.Message, height int64, round int32) {
 	ensureNewEvent(lockCh, height, round, ensureTimeout,
 		"Timeout expired while waiting for LockValue event")
