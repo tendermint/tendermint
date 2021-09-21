@@ -1272,6 +1272,8 @@ func TestProposeValidBlock(t *testing.T) {
 	ensureNewRound(newRoundCh, height, round)
 	t.Log("### ONTO ROUND 3")
 
+	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
+
 	round++ // moving to the next round
 
 	ensureNewRound(newRoundCh, height, round)
