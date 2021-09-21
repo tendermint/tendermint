@@ -694,8 +694,6 @@ func TestStateLockPOLRelock(t *testing.T) {
 	// now lets add prevotes from everyone else for the new block
 	signAddVotes(config, cs1, tmproto.PrevoteType, propBlockHash, propBlockParts.Header(), vs2, vs3, vs4)
 
-	ensureLock(t, lockCh, height, round)
-
 	ensurePrecommit(t, voteCh, height, round)
 	// we should have unlocked and locked on the new block, sending a precommit for this new block
 	validatePrecommit(t, cs1, round, round, vss[0], propBlockHash, propBlockHash)
@@ -747,9 +745,8 @@ func TestStateLockPOLUnlock(t *testing.T) {
 
 	signAddVotes(config, cs1, tmproto.PrevoteType, theBlockHash, theBlockParts, vs2, vs3, vs4)
 
-
 	ensurePrecommit(t, voteCh, height, round)
-	// the proposed block should now be locked and our should be for this locked block.
+	// the proposed block should now be locked and our precommit added
 	validatePrecommit(t, cs1, round, round, vss[0], theBlockHash, theBlockHash)
 
 	// add precommits from the rest
@@ -757,18 +754,18 @@ func TestStateLockPOLUnlock(t *testing.T) {
 	signAddVotes(config, cs1, tmproto.PrecommitType, theBlockHash, theBlockParts, vs3)
 
 	// before we time out into new round, set next proposal block
-	prop, propBlock := decideProposal(cs1, vs2, vs2.Height, vs2.Round+1)
+	prop, propBlock := decideProposal(t, cs1, vs2, vs2.Height, vs2.Round+1)
 	propBlockParts := propBlock.MakePartSet(partSize)
 
 	// timeout to new round
-	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
+	ensureNewTimeout(t, timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
 	rs = cs1.GetRoundState()
 	lockedBlockHash := rs.LockedBlock.Hash()
 
 	incrementRound(vs2, vs3, vs4)
 	round++ // moving to the next round
 
-	ensureNewRound(newRoundCh, height, round)
+	ensureNewRound(t, newRoundCh, height, round)
 	t.Log("#### ONTO ROUND 1")
 	/*
 		Round2 (vs2, C) // B nil nil nil // nil nil nil _
@@ -1226,7 +1223,7 @@ func TestProposeValidBlock(t *testing.T) {
 	ensureNewRound(t, newRoundCh, height, round)
 	t.Log("### ONTO ROUND 3")
 
-	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
+	ensureNewTimeout(t, timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
 
 	round++ // moving to the next round
 
