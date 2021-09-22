@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cli"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 )
@@ -50,9 +50,9 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 	}
 
 	home := viper.GetString(cli.HomeFlag)
-	conf := cfg.DefaultConfig()
+	conf := config.DefaultConfig()
 	conf = conf.SetRoot(home)
-	cfg.EnsureRoot(conf.RootDir)
+	config.EnsureRoot(conf.RootDir)
 
 	// Create a temporary directory which will contain all the state dumps and
 	// relevant files and directories that will be compressed into a file.

@@ -8,7 +8,7 @@ import (
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
@@ -24,7 +24,7 @@ type Options struct {
 	suppressStdout bool
 }
 
-func waitForRPC(ctx context.Context, conf *cfg.Config) {
+func waitForRPC(ctx context.Context, conf *config.Config) {
 	laddr := conf.RPC.ListenAddress
 	client, err := rpcclient.New(laddr)
 	if err != nil {
@@ -42,7 +42,7 @@ func waitForRPC(ctx context.Context, conf *cfg.Config) {
 	}
 }
 
-func waitForGRPC(ctx context.Context, conf *cfg.Config) {
+func waitForGRPC(ctx context.Context, conf *config.Config) {
 	client := GetGRPCClient(conf)
 	for {
 		_, err := client.Ping(ctx, &core_grpc.RequestPing{})
@@ -66,8 +66,8 @@ func makeAddrs() (string, string, string) {
 		fmt.Sprintf("tcp://127.0.0.1:%d", randPort())
 }
 
-func CreateConfig(testName string) *cfg.Config {
-	c := cfg.ResetTestRoot(testName)
+func CreateConfig(testName string) *config.Config {
+	c := config.ResetTestRoot(testName)
 
 	// and we use random ports to run in parallel
 	tm, rpc, grpc := makeAddrs()
@@ -78,7 +78,7 @@ func CreateConfig(testName string) *cfg.Config {
 	return c
 }
 
-func GetGRPCClient(conf *cfg.Config) core_grpc.BroadcastAPIClient {
+func GetGRPCClient(conf *config.Config) core_grpc.BroadcastAPIClient {
 	grpcAddr := conf.RPC.GRPCListenAddress
 	return core_grpc.StartGRPCClient(grpcAddr)
 }
@@ -86,7 +86,7 @@ func GetGRPCClient(conf *cfg.Config) core_grpc.BroadcastAPIClient {
 type ServiceCloser func(context.Context) error
 
 func StartTendermint(ctx context.Context,
-	conf *cfg.Config,
+	conf *config.Config,
 	app abci.Application,
 	opts ...func(*Options)) (service.Service, ServiceCloser, error) {
 

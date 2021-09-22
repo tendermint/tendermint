@@ -14,7 +14,7 @@ import (
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	bcv0 "github.com/tendermint/tendermint/internal/blocksync/v0"
 	bcv2 "github.com/tendermint/tendermint/internal/blocksync/v2"
@@ -39,15 +39,15 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-func initDBs(config *cfg.Config, dbProvider cfg.DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
+func initDBs(cfg *config.Config, dbProvider config.DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
 	var blockStoreDB dbm.DB
-	blockStoreDB, err = dbProvider(&cfg.DBContext{ID: "blockstore", Config: config})
+	blockStoreDB, err = dbProvider(&config.DBContext{ID: "blockstore", Config: cfg})
 	if err != nil {
 		return
 	}
 	blockStore = store.NewBlockStore(blockStoreDB)
 
-	stateDB, err = dbProvider(&cfg.DBContext{ID: "state", Config: config})
+	stateDB, err = dbProvider(&config.DBContext{ID: "state", Config: cfg})
 	return
 }
 
@@ -70,13 +70,13 @@ func createAndStartEventBus(logger log.Logger) (*types.EventBus, error) {
 }
 
 func createAndStartIndexerService(
-	config *cfg.Config,
-	dbProvider cfg.DBProvider,
+	cfg *config.Config,
+	dbProvider config.DBProvider,
 	eventBus *types.EventBus,
 	logger log.Logger,
 	chainID string,
 ) (*indexer.Service, []indexer.EventSink, error) {
-	eventSinks, err := sink.EventSinksFromConfig(config, dbProvider, chainID)
+	eventSinks, err := sink.EventSinksFromConfig(cfg, dbProvider, chainID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -126,9 +126,9 @@ func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusL
 		)
 	}
 	switch {
-	case mode == cfg.ModeFull:
+	case mode == config.ModeFull:
 		consensusLogger.Info("This node is a fullnode")
-	case mode == cfg.ModeValidator:
+	case mode == config.ModeValidator:
 		addr := pubKey.Address()
 		// Log whether this node is a validator or an observer
 		if state.Validators.HasAddress(addr) {
@@ -149,7 +149,7 @@ func onlyValidatorIsUs(state sm.State, pubKey crypto.PubKey) bool {
 }
 
 func createMempoolReactor(
-	config *cfg.Config,
+	cfg *config.Config,
 	proxyApp proxy.AppConns,
 	state sm.State,
 	memplMetrics *mempool.Metrics,
@@ -158,8 +158,8 @@ func createMempoolReactor(
 	logger log.Logger,
 ) (*p2p.ReactorShim, service.Service, mempool.Mempool, error) {
 
-	logger = logger.With("module", "mempool", "version", config.Mempool.Version)
-	channelShims := mempoolv0.GetChannelShims(config.Mempool)
+	logger = logger.With("module", "mempool", "version", cfg.Mempool.Version)
+	channelShims := mempoolv0.GetChannelShims(cfg.Mempool)
 	reactorShim := p2p.NewReactorShim(logger, "MempoolShim", channelShims)
 
 	var (
@@ -167,7 +167,7 @@ func createMempoolReactor(
 		peerUpdates *p2p.PeerUpdates
 	)
 
-	if config.P2P.UseLegacy {
+	if cfg.P2P.UseLegacy {
 		channels = getChannelsFromShim(reactorShim)
 		peerUpdates = reactorShim.PeerUpdates
 	} else {
@@ -175,10 +175,10 @@ func createMempoolReactor(
 		peerUpdates = peerManager.Subscribe()
 	}
 
-	switch config.Mempool.Version {
-	case cfg.MempoolV0:
+	switch cfg.Mempool.Version {
+	case config.MempoolV0:
 		mp := mempoolv0.NewCListMempool(
-			config.Mempool,
+			cfg.Mempool,
 			proxyApp.Mempool(),
 			state.LastBlockHeight,
 			mempoolv0.WithMetrics(memplMetrics),
@@ -190,23 +190,23 @@ func createMempoolReactor(
 
 		reactor := mempoolv0.NewReactor(
 			logger,
-			config.Mempool,
+			cfg.Mempool,
 			peerManager,
 			mp,
 			channels[mempool.MempoolChannel],
 			peerUpdates,
 		)
 
-		if config.Consensus.WaitForTxs() {
+		if cfg.Consensus.WaitForTxs() {
 			mp.EnableTxsAvailable()
 		}
 
 		return reactorShim, reactor, mp, nil
 
-	case cfg.MempoolV1:
+	case config.MempoolV1:
 		mp := mempoolv1.NewTxMempool(
 			logger,
-			config.Mempool,
+			cfg.Mempool,
 			proxyApp.Mempool(),
 			state.LastBlockHeight,
 			mempoolv1.WithMetrics(memplMetrics),
@@ -216,34 +216,34 @@ func createMempoolReactor(
 
 		reactor := mempoolv1.NewReactor(
 			logger,
-			config.Mempool,
+			cfg.Mempool,
 			peerManager,
 			mp,
 			channels[mempool.MempoolChannel],
 			peerUpdates,
 		)
 
-		if config.Consensus.WaitForTxs() {
+		if cfg.Consensus.WaitForTxs() {
 			mp.EnableTxsAvailable()
 		}
 
 		return reactorShim, reactor, mp, nil
 
 	default:
-		return nil, nil, nil, fmt.Errorf("unknown mempool version: %s", config.Mempool.Version)
+		return nil, nil, nil, fmt.Errorf("unknown mempool version: %s", cfg.Mempool.Version)
 	}
 }
 
 func createEvidenceReactor(
-	config *cfg.Config,
-	dbProvider cfg.DBProvider,
+	cfg *config.Config,
+	dbProvider config.DBProvider,
 	stateDB dbm.DB,
 	blockStore *store.BlockStore,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	logger log.Logger,
 ) (*p2p.ReactorShim, *evidence.Reactor, *evidence.Pool, error) {
-	evidenceDB, err := dbProvider(&cfg.DBContext{ID: "evidence", Config: config})
+	evidenceDB, err := dbProvider(&config.DBContext{ID: "evidence", Config: cfg})
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -261,7 +261,7 @@ func createEvidenceReactor(
 		peerUpdates *p2p.PeerUpdates
 	)
 
-	if config.P2P.UseLegacy {
+	if cfg.P2P.UseLegacy {
 		channels = getChannelsFromShim(reactorShim)
 		peerUpdates = reactorShim.PeerUpdates
 	} else {
@@ -281,7 +281,7 @@ func createEvidenceReactor(
 
 func createBlockchainReactor(
 	logger log.Logger,
-	config *cfg.Config,
+	cfg *config.Config,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore *store.BlockStore,
@@ -294,8 +294,8 @@ func createBlockchainReactor(
 
 	logger = logger.With("module", "blockchain")
 
-	switch config.BlockSync.Version {
-	case cfg.BlockSyncV0:
+	switch cfg.BlockSync.Version {
+	case config.BlockSyncV0:
 		reactorShim := p2p.NewReactorShim(logger, "BlockchainShim", bcv0.ChannelShims)
 
 		var (
@@ -303,7 +303,7 @@ func createBlockchainReactor(
 			peerUpdates *p2p.PeerUpdates
 		)
 
-		if config.P2P.UseLegacy {
+		if cfg.P2P.UseLegacy {
 			channels = getChannelsFromShim(reactorShim)
 			peerUpdates = reactorShim.PeerUpdates
 		} else {
@@ -322,16 +322,16 @@ func createBlockchainReactor(
 
 		return reactorShim, reactor, nil
 
-	case cfg.BlockSyncV2:
+	case config.BlockSyncV2:
 		return nil, nil, errors.New("block sync version v2 is no longer supported. Please use v0")
 
 	default:
-		return nil, nil, fmt.Errorf("unknown block sync version %s", config.BlockSync.Version)
+		return nil, nil, fmt.Errorf("unknown block sync version %s", cfg.BlockSync.Version)
 	}
 }
 
 func createConsensusReactor(
-	config *cfg.Config,
+	cfg *config.Config,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
@@ -347,7 +347,7 @@ func createConsensusReactor(
 ) (*p2p.ReactorShim, *cs.Reactor, *cs.State) {
 
 	consensusState := cs.NewState(
-		config.Consensus,
+		cfg.Consensus,
 		state.Copy(),
 		blockExec,
 		blockStore,
@@ -356,7 +356,7 @@ func createConsensusReactor(
 		cs.StateMetrics(csMetrics),
 	)
 	consensusState.SetLogger(logger)
-	if privValidator != nil && config.Mode == cfg.ModeValidator {
+	if privValidator != nil && cfg.Mode == config.ModeValidator {
 		consensusState.SetPrivValidator(privValidator)
 	}
 
@@ -367,7 +367,7 @@ func createConsensusReactor(
 		peerUpdates *p2p.PeerUpdates
 	)
 
-	if config.P2P.UseLegacy {
+	if cfg.P2P.UseLegacy {
 		channels = getChannelsFromShim(reactorShim)
 		peerUpdates = reactorShim.PeerUpdates
 	} else {
@@ -394,20 +394,20 @@ func createConsensusReactor(
 	return reactorShim, reactor, consensusState
 }
 
-func createTransport(logger log.Logger, config *cfg.Config) *p2p.MConnTransport {
+func createTransport(logger log.Logger, cfg *config.Config) *p2p.MConnTransport {
 	return p2p.NewMConnTransport(
-		logger, p2p.MConnConfig(config.P2P), []*p2p.ChannelDescriptor{},
+		logger, p2p.MConnConfig(cfg.P2P), []*p2p.ChannelDescriptor{},
 		p2p.MConnTransportOptions{
-			MaxAcceptedConnections: uint32(config.P2P.MaxNumInboundPeers +
-				len(tmstrings.SplitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " ")),
+			MaxAcceptedConnections: uint32(cfg.P2P.MaxNumInboundPeers +
+				len(tmstrings.SplitAndTrimEmpty(cfg.P2P.UnconditionalPeerIDs, ",", " ")),
 			),
 		},
 	)
 }
 
 func createPeerManager(
-	config *cfg.Config,
-	dbProvider cfg.DBProvider,
+	cfg *config.Config,
+	dbProvider config.DBProvider,
 	p2pLogger log.Logger,
 	nodeID types.NodeID,
 ) (*p2p.PeerManager, error) {
@@ -415,16 +415,16 @@ func createPeerManager(
 	var maxConns uint16
 
 	switch {
-	case config.P2P.MaxConnections > 0:
-		maxConns = config.P2P.MaxConnections
+	case cfg.P2P.MaxConnections > 0:
+		maxConns = cfg.P2P.MaxConnections
 
-	case config.P2P.MaxNumInboundPeers > 0 && config.P2P.MaxNumOutboundPeers > 0:
-		x := config.P2P.MaxNumInboundPeers + config.P2P.MaxNumOutboundPeers
+	case cfg.P2P.MaxNumInboundPeers > 0 && cfg.P2P.MaxNumOutboundPeers > 0:
+		x := cfg.P2P.MaxNumInboundPeers + cfg.P2P.MaxNumOutboundPeers
 		if x > math.MaxUint16 {
 			return nil, fmt.Errorf(
 				"max inbound peers (%d) + max outbound peers (%d) exceeds maximum (%d)",
-				config.P2P.MaxNumInboundPeers,
-				config.P2P.MaxNumOutboundPeers,
+				cfg.P2P.MaxNumInboundPeers,
+				cfg.P2P.MaxNumOutboundPeers,
 				math.MaxUint16,
 			)
 		}
@@ -436,7 +436,7 @@ func createPeerManager(
 	}
 
 	privatePeerIDs := make(map[types.NodeID]struct{})
-	for _, id := range tmstrings.SplitAndTrimEmpty(config.P2P.PrivatePeerIDs, ",", " ") {
+	for _, id := range tmstrings.SplitAndTrimEmpty(cfg.P2P.PrivatePeerIDs, ",", " ") {
 		privatePeerIDs[types.NodeID(id)] = struct{}{}
 	}
 
@@ -452,7 +452,7 @@ func createPeerManager(
 	}
 
 	peers := []p2p.NodeAddress{}
-	for _, p := range tmstrings.SplitAndTrimEmpty(config.P2P.PersistentPeers, ",", " ") {
+	for _, p := range tmstrings.SplitAndTrimEmpty(cfg.P2P.PersistentPeers, ",", " ") {
 		address, err := p2p.ParseNodeAddress(p)
 		if err != nil {
 			return nil, fmt.Errorf("invalid peer address %q: %w", p, err)
@@ -462,7 +462,7 @@ func createPeerManager(
 		options.PersistentPeers = append(options.PersistentPeers, address.NodeID)
 	}
 
-	for _, p := range tmstrings.SplitAndTrimEmpty(config.P2P.BootstrapPeers, ",", " ") {
+	for _, p := range tmstrings.SplitAndTrimEmpty(cfg.P2P.BootstrapPeers, ",", " ") {
 		address, err := p2p.ParseNodeAddress(p)
 		if err != nil {
 			return nil, fmt.Errorf("invalid peer address %q: %w", p, err)
@@ -470,7 +470,7 @@ func createPeerManager(
 		peers = append(peers, address)
 	}
 
-	peerDB, err := dbProvider(&cfg.DBContext{ID: "peerstore", Config: config})
+	peerDB, err := dbProvider(&config.DBContext{ID: "peerstore", Config: cfg})
 	if err != nil {
 		return nil, err
 	}
@@ -511,7 +511,7 @@ func createRouter(
 }
 
 func createSwitch(
-	config *cfg.Config,
+	cfg *config.Config,
 	transport p2p.Transport,
 	p2pMetrics *p2p.Metrics,
 	mempoolReactor *p2p.ReactorShim,
@@ -530,13 +530,13 @@ func createSwitch(
 		peerFilters = []p2p.PeerFilterFunc{}
 	)
 
-	if !config.P2P.AllowDuplicateIP {
+	if !cfg.P2P.AllowDuplicateIP {
 		connFilters = append(connFilters, p2p.ConnDuplicateIPFilter)
 	}
 
 	// Filter peers by addr or pubkey with an ABCI query.
 	// If the query return code is OK, add peer.
-	if config.FilterPeers {
+	if cfg.FilterPeers {
 		connFilters = append(
 			connFilters,
 			// ABCI query for address filtering.
@@ -575,7 +575,7 @@ func createSwitch(
 	}
 
 	sw := p2p.NewSwitch(
-		config.P2P,
+		cfg.P2P,
 		transport,
 		p2p.WithMetrics(p2pMetrics),
 		p2p.SwitchPeerFilters(peerFilters...),
@@ -583,7 +583,7 @@ func createSwitch(
 	)
 
 	sw.SetLogger(p2pLogger)
-	if config.Mode != cfg.ModeSeed {
+	if cfg.Mode != config.ModeSeed {
 		sw.AddReactor("MEMPOOL", mempoolReactor)
 		sw.AddReactor("BLOCKCHAIN", bcReactor)
 		sw.AddReactor("CONSENSUS", consensusReactor)
@@ -594,26 +594,26 @@ func createSwitch(
 	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
 
-	p2pLogger.Info("P2P Node ID", "ID", nodeKey.ID, "file", config.NodeKeyFile())
+	p2pLogger.Info("P2P Node ID", "ID", nodeKey.ID, "file", cfg.NodeKeyFile())
 	return sw
 }
 
-func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
+func createAddrBookAndSetOnSwitch(cfg *config.Config, sw *p2p.Switch,
 	p2pLogger log.Logger, nodeKey types.NodeKey) (pex.AddrBook, error) {
 
-	addrBook := pex.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
-	addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
+	addrBook := pex.NewAddrBook(cfg.P2P.AddrBookFile(), cfg.P2P.AddrBookStrict)
+	addrBook.SetLogger(p2pLogger.With("book", cfg.P2P.AddrBookFile()))
 
 	// Add ourselves to addrbook to prevent dialing ourselves
-	if config.P2P.ExternalAddress != "" {
-		addr, err := types.NewNetAddressString(nodeKey.ID.AddressString(config.P2P.ExternalAddress))
+	if cfg.P2P.ExternalAddress != "" {
+		addr, err := types.NewNetAddressString(nodeKey.ID.AddressString(cfg.P2P.ExternalAddress))
 		if err != nil {
 			return nil, fmt.Errorf("p2p.external_address is incorrect: %w", err)
 		}
 		addrBook.AddOurAddress(addr)
 	}
-	if config.P2P.ListenAddress != "" {
-		addr, err := types.NewNetAddressString(nodeKey.ID.AddressString(config.P2P.ListenAddress))
+	if cfg.P2P.ListenAddress != "" {
+		addr, err := types.NewNetAddressString(nodeKey.ID.AddressString(cfg.P2P.ListenAddress))
 		if err != nil {
 			return nil, fmt.Errorf("p2p.laddr is incorrect: %w", err)
 		}
@@ -625,19 +625,19 @@ func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
 	return addrBook, nil
 }
 
-func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
+func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, cfg *config.Config,
 	sw *p2p.Switch, logger log.Logger) *pex.Reactor {
 
 	reactorConfig := &pex.ReactorConfig{
-		Seeds:    tmstrings.SplitAndTrimEmpty(config.P2P.Seeds, ",", " "),
-		SeedMode: config.Mode == cfg.ModeSeed,
+		Seeds:    tmstrings.SplitAndTrimEmpty(cfg.P2P.Seeds, ",", " "),
+		SeedMode: cfg.Mode == config.ModeSeed,
 		// See consensus/reactor.go: blocksToContributeToBecomeGoodPeer 10000
 		// blocks assuming 10s blocks ~ 28 hours.
 		// TODO (melekes): make it dynamic based on the actual block latencies
 		// from the live network.
 		// https://github.com/tendermint/tendermint/issues/3523
 		SeedDisconnectWaitPeriod:     28 * time.Hour,
-		PersistentPeersMaxDialPeriod: config.P2P.PersistentPeersMaxDialPeriod,
+		PersistentPeersMaxDialPeriod: cfg.P2P.PersistentPeersMaxDialPeriod,
 	}
 	// TODO persistent peers ? so we can have their DNS addrs saved
 	pexReactor := pex.NewReactor(addrBook, reactorConfig)
@@ -647,7 +647,7 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 }
 
 func createPEXReactorV2(
-	config *cfg.Config,
+	cfg *config.Config,
 	logger log.Logger,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
@@ -663,7 +663,7 @@ func createPEXReactorV2(
 }
 
 func makeNodeInfo(
-	config *cfg.Config,
+	cfg *config.Config,
 	nodeKey types.NodeKey,
 	eventSinks []indexer.EventSink,
 	genDoc *types.GenesisDoc,
@@ -676,15 +676,15 @@ func makeNodeInfo(
 	}
 
 	var bcChannel byte
-	switch config.BlockSync.Version {
-	case cfg.BlockSyncV0:
+	switch cfg.BlockSync.Version {
+	case config.BlockSyncV0:
 		bcChannel = byte(bcv0.BlockSyncChannel)
 
-	case cfg.BlockSyncV2:
+	case config.BlockSyncV2:
 		bcChannel = bcv2.BlockchainChannel
 
 	default:
-		return types.NodeInfo{}, fmt.Errorf("unknown blocksync version %s", config.BlockSync.Version)
+		return types.NodeInfo{}, fmt.Errorf("unknown blocksync version %s", cfg.BlockSync.Version)
 	}
 
 	nodeInfo := types.NodeInfo{
@@ -709,21 +709,21 @@ func makeNodeInfo(
 			byte(statesync.LightBlockChannel),
 			byte(statesync.ParamsChannel),
 		},
-		Moniker: config.Moniker,
+		Moniker: cfg.Moniker,
 		Other: types.NodeInfoOther{
 			TxIndex:    txIndexerStatus,
-			RPCAddress: config.RPC.ListenAddress,
+			RPCAddress: cfg.RPC.ListenAddress,
 		},
 	}
 
-	if config.P2P.PexReactor {
+	if cfg.P2P.PexReactor {
 		nodeInfo.Channels = append(nodeInfo.Channels, pex.PexChannel)
 	}
 
-	lAddr := config.P2P.ExternalAddress
+	lAddr := cfg.P2P.ExternalAddress
 
 	if lAddr == "" {
-		lAddr = config.P2P.ListenAddress
+		lAddr = cfg.P2P.ListenAddress
 	}
 
 	nodeInfo.ListenAddr = lAddr
@@ -733,7 +733,7 @@ func makeNodeInfo(
 }
 
 func makeSeedNodeInfo(
-	config *cfg.Config,
+	cfg *config.Config,
 	nodeKey types.NodeKey,
 	genDoc *types.GenesisDoc,
 	state sm.State,
@@ -748,21 +748,21 @@ func makeSeedNodeInfo(
 		Network:  genDoc.ChainID,
 		Version:  version.TMVersion,
 		Channels: []byte{},
-		Moniker:  config.Moniker,
+		Moniker:  cfg.Moniker,
 		Other: types.NodeInfoOther{
 			TxIndex:    "off",
-			RPCAddress: config.RPC.ListenAddress,
+			RPCAddress: cfg.RPC.ListenAddress,
 		},
 	}
 
-	if config.P2P.PexReactor {
+	if cfg.P2P.PexReactor {
 		nodeInfo.Channels = append(nodeInfo.Channels, pex.PexChannel)
 	}
 
-	lAddr := config.P2P.ExternalAddress
+	lAddr := cfg.P2P.ExternalAddress
 
 	if lAddr == "" {
-		lAddr = config.P2P.ListenAddress
+		lAddr = cfg.P2P.ListenAddress
 	}
 
 	nodeInfo.ListenAddr = lAddr

@@ -11,7 +11,7 @@ import (
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	grpc "google.golang.org/grpc"
@@ -88,15 +88,15 @@ func GenerateTLS(certPath, keyPath, ca string, log log.Logger) grpc.DialOption {
 
 // DialRemoteSigner is  a generalized function to dial the gRPC server.
 func DialRemoteSigner(
-	config *cfg.PrivValidatorConfig,
+	cfg *config.PrivValidatorConfig,
 	chainID string,
 	logger log.Logger,
 	usePrometheus bool,
 ) (*SignerClient, error) {
 	var transportSecurity grpc.DialOption
-	if config.AreSecurityOptionsPresent() {
-		transportSecurity = GenerateTLS(config.ClientCertificateFile(),
-			config.ClientKeyFile(), config.RootCAFile(), logger)
+	if cfg.AreSecurityOptionsPresent() {
+		transportSecurity = GenerateTLS(cfg.ClientCertificateFile(),
+			cfg.ClientKeyFile(), cfg.RootCAFile(), logger)
 	} else {
 		transportSecurity = grpc.WithInsecure()
 		logger.Info("Using an insecure gRPC connection!")
@@ -111,7 +111,7 @@ func DialRemoteSigner(
 	dialOptions = append(dialOptions, transportSecurity)
 
 	ctx := context.Background()
-	_, address := tmnet.ProtocolAndAddress(config.ListenAddr)
+	_, address := tmnet.ProtocolAndAddress(cfg.ListenAddr)
 	conn, err := grpc.DialContext(ctx, address, dialOptions...)
 	if err != nil {
 		logger.Error("unable to connect to server", "target", address, "err", err)
