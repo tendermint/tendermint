@@ -9,7 +9,7 @@ import (
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	tmjson "github.com/tendermint/tendermint/libs/json"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	jsonrpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
@@ -213,7 +213,7 @@ func (w *wsEvents) redoSubscriptionsAfter(d time.Duration) {
 }
 
 func isErrAlreadySubscribed(err error) bool {
-	return strings.Contains(err.Error(), tmpubsub.ErrAlreadySubscribed.Error())
+	return strings.Contains(err.Error(), pubsub.ErrAlreadySubscribed.Error())
 }
 
 func (w *wsEvents) eventListener() {

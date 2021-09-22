@@ -9,7 +9,7 @@ import (
 	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/coretypes"
@@ -244,7 +244,7 @@ func (c *Local) Subscribe(
 func (c *Local) eventsRoutine(
 	sub types.Subscription,
 	subscriber string,
-	q tmpubsub.Query,
+	q pubsub.Query,
 	outc chan<- coretypes.ResultEvent) {
 	for {
 		select {
@@ -266,7 +266,7 @@ func (c *Local) eventsRoutine(
 				}
 			}
 		case <-sub.Canceled():
-			if sub.Err() == tmpubsub.ErrUnsubscribed {
+			if sub.Err() == pubsub.ErrUnsubscribed {
 				return
 			}
 
@@ -282,7 +282,7 @@ func (c *Local) eventsRoutine(
 }
 
 // Try to resubscribe with exponential backoff.
-func (c *Local) resubscribe(subscriber string, q tmpubsub.Query) types.Subscription {
+func (c *Local) resubscribe(subscriber string, q pubsub.Query) types.Subscription {
 	attempts := 0
 	for {
 		if !c.IsRunning() {
@@ -300,7 +300,7 @@ func (c *Local) resubscribe(subscriber string, q tmpubsub.Query) types.Subscript
 }
 
 func (c *Local) Unsubscribe(ctx context.Context, subscriber, query string) error {
-	args := tmpubsub.UnsubscribeArgs{Subscriber: subscriber}
+	args := pubsub.UnsubscribeArgs{Subscriber: subscriber}
 	var err error
 	args.Query, err = tmquery.New(query)
 	if err != nil {
