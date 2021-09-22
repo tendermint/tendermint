@@ -143,6 +143,7 @@ func invalidProposeCoreChainLockFunc(t *testing.T, height int64, round int32, cs
 }
 
 func TestReactorInvalidBlockChainLock(t *testing.T) {
+	// TODO: Leads to race, explore
 	N := 4
 	css, cleanup := randConsensusNet(N, "consensus_chainlocks_test",
 		newMockTickerFunc(true), newCounterWithBackwardsCoreChainLocks)
