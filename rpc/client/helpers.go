@@ -105,7 +105,7 @@ type RunState struct {
 }
 
 // NewRunState returns a new unstarted run state tracker with the given logging
-// label and log sink.
+// label and log sink. If logger == nil, a no-op logger is provided by default.
 func NewRunState(name string, logger log.Logger) *RunState {
 	if logger == nil {
 		logger = log.NewNopLogger()
