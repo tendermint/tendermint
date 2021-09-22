@@ -10,7 +10,7 @@ import (
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
-	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/libs/pubsub/query"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
@@ -188,22 +188,22 @@ func (c *Local) Tx(ctx context.Context, hash bytes.HexBytes, prove bool) (*coret
 
 func (c *Local) TxSearch(
 	_ context.Context,
-	query string,
+	queryString string,
 	prove bool,
 	page,
 	perPage *int,
 	orderBy string,
 ) (*coretypes.ResultTxSearch, error) {
-	return c.env.TxSearch(c.ctx, query, prove, page, perPage, orderBy)
+	return c.env.TxSearch(c.ctx, queryString, prove, page, perPage, orderBy)
 }
 
 func (c *Local) BlockSearch(
 	_ context.Context,
-	query string,
+	queryString string,
 	page, perPage *int,
 	orderBy string,
 ) (*coretypes.ResultBlockSearch, error) {
-	return c.env.BlockSearch(c.ctx, query, page, perPage, orderBy)
+	return c.env.BlockSearch(c.ctx, queryString, page, perPage, orderBy)
 }
 
 func (c *Local) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*coretypes.ResultBroadcastEvidence, error) {
@@ -213,9 +213,9 @@ func (c *Local) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*core
 func (c *Local) Subscribe(
 	ctx context.Context,
 	subscriber,
-	query string,
+	queryString string,
 	outCapacity ...int) (out <-chan coretypes.ResultEvent, err error) {
-	q, err := tmquery.New(query)
+	q, err := query.New(queryString)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse query: %w", err)
 	}
@@ -299,17 +299,17 @@ func (c *Local) resubscribe(subscriber string, q pubsub.Query) types.Subscriptio
 	}
 }
 
-func (c *Local) Unsubscribe(ctx context.Context, subscriber, query string) error {
+func (c *Local) Unsubscribe(ctx context.Context, subscriber, queryString string) error {
 	args := pubsub.UnsubscribeArgs{Subscriber: subscriber}
 	var err error
-	args.Query, err = tmquery.New(query)
+	args.Query, err = query.New(queryString)
 	if err != nil {
 		// if this isn't a valid query it might be an ID, so
 		// we'll try that. It'll turn into an error when we
 		// try to unsubscribe. Eventually, perhaps, we'll want
 		// to change the interface to only allow
 		// unsubscription by ID, but that's a larger change.
-		args.ID = query
+		args.ID = queryString
 	}
 	return c.EventBus.Unsubscribe(ctx, args)
 }
