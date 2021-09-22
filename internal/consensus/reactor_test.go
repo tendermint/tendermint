@@ -17,7 +17,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/crypto/encoding"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
 	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
@@ -573,7 +573,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	val1PubKey, err := states[0].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 
-	val1PubKeyABCI, err := cryptoenc.PubKeyToProto(val1PubKey)
+	val1PubKeyABCI, err := encoding.PubKeyToProto(val1PubKey)
 	require.NoError(t, err)
 
 	updateValidatorTx := kvstore.MakeValSetChangeTx(val1PubKeyABCI, 25)
@@ -668,7 +668,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	newValidatorPubKey1, err := states[nVals].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 
-	valPubKey1ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey1)
+	valPubKey1ABCI, err := encoding.PubKeyToProto(newValidatorPubKey1)
 	require.NoError(t, err)
 
 	newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
@@ -701,7 +701,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	updateValidatorPubKey1, err := states[nVals].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 
-	updatePubKey1ABCI, err := cryptoenc.PubKeyToProto(updateValidatorPubKey1)
+	updatePubKey1ABCI, err := encoding.PubKeyToProto(updateValidatorPubKey1)
 	require.NoError(t, err)
 
 	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
@@ -721,7 +721,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	newValidatorPubKey2, err := states[nVals+1].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 
-	newVal2ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey2)
+	newVal2ABCI, err := encoding.PubKeyToProto(newValidatorPubKey2)
 	require.NoError(t, err)
 
 	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
@@ -729,7 +729,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	newValidatorPubKey3, err := states[nVals+2].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 
-	newVal3ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey3)
+	newVal3ABCI, err := encoding.PubKeyToProto(newValidatorPubKey3)
 	require.NoError(t, err)
 
 	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)

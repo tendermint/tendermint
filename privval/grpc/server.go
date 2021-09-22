@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/tendermint/tendermint/crypto"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/log"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
@@ -44,7 +44,7 @@ func (ss *SignerServer) GetPubKey(ctx context.Context, req *privvalproto.PubKeyR
 		return nil, status.Errorf(codes.NotFound, "error getting pubkey: %v", err)
 	}
 
-	pk, err := cryptoenc.PubKeyToProto(pubKey)
+	pk, err := encoding.PubKeyToProto(pubKey)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error transitioning pubkey to proto: %v", err)
 	}

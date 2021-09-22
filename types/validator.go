@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/tendermint/tendermint/crypto"
-	ce "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/crypto/encoding"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -114,7 +114,7 @@ func ValidatorListString(vals []*Validator) string {
 // as its redundant with the pubkey. This also excludes ProposerPriority
 // which changes every round.
 func (v *Validator) Bytes() []byte {
-	pk, err := ce.PubKeyToProto(v.PubKey)
+	pk, err := encoding.PubKeyToProto(v.PubKey)
 	if err != nil {
 		panic(err)
 	}
@@ -137,7 +137,7 @@ func (v *Validator) ToProto() (*tmproto.Validator, error) {
 		return nil, errors.New("nil validator")
 	}
 
-	pk, err := ce.PubKeyToProto(v.PubKey)
+	pk, err := encoding.PubKeyToProto(v.PubKey)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func ValidatorFromProto(vp *tmproto.Validator) (*Validator, error) {
 		return nil, errors.New("nil validator")
 	}
 
-	pk, err := ce.PubKeyFromProto(vp.PubKey)
+	pk, err := encoding.PubKeyFromProto(vp.PubKey)
 	if err != nil {
 		return nil, err
 	}
