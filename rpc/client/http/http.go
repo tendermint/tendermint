@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/libs/bytes"
-	"github.com/tendermint/tendermint/libs/log"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/coretypes"
 	jsonrpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
@@ -157,11 +156,6 @@ func NewWithClientAndWSOptions(remote string, c *http.Client, wso WSOptions) (*H
 }
 
 var _ rpcclient.Client = (*HTTP)(nil)
-
-// SetLogger sets a logger.
-func (c *HTTP) SetLogger(l log.Logger) {
-	c.wsEvents.SetLogger(l)
-}
 
 // Remote returns the remote network address in a string form.
 func (c *HTTP) Remote() string {

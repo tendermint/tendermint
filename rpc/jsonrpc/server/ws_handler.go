@@ -13,7 +13,7 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/coretypes"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
@@ -86,8 +86,8 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 	}()
 
 	// register connection
-	con := newWSConnection(wsConn, wm.funcMap, wm.wsConnOptions...)
-	con.SetLogger(wm.logger.With("remote", wsConn.RemoteAddr()))
+	logger := wm.logger.With("remote", wsConn.RemoteAddr())
+	con := newWSConnection(wsConn, wm.funcMap, logger, wm.wsConnOptions...)
 	wm.logger.Info("New websocket connection", "remote", con.remoteAddr)
 	err = con.Start() // BLOCKING
 	if err != nil {
@@ -106,7 +106,7 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 //
 // In case of an error, the connection is stopped.
 type wsConnection struct {
-	service.BaseService
+	*client.RunState
 
 	remoteAddr string
 	baseConn   *websocket.Conn
@@ -150,9 +150,11 @@ type wsConnection struct {
 func newWSConnection(
 	baseConn *websocket.Conn,
 	funcMap map[string]*RPCFunc,
+	logger log.Logger,
 	options ...func(*wsConnection),
 ) *wsConnection {
 	wsc := &wsConnection{
+		RunState:          client.NewRunState("wsConnection", logger),
 		remoteAddr:        baseConn.RemoteAddr().String(),
 		baseConn:          baseConn,
 		funcMap:           funcMap,
@@ -166,7 +168,6 @@ func newWSConnection(
 		option(wsc)
 	}
 	wsc.baseConn.SetReadLimit(wsc.readLimit)
-	wsc.BaseService = *service.NewBaseService(nil, "wsConnection", wsc)
 	return wsc
 }
 
@@ -218,9 +219,11 @@ func ReadLimit(readLimit int64) func(*wsConnection) {
 	}
 }
 
-// OnStart implements service.Service by starting the read and write routines. It
-// blocks until there's some error.
-func (wsc *wsConnection) OnStart() error {
+// Start starts the client service routines and blocks until there is an error.
+func (wsc *wsConnection) Start() error {
+	if err := wsc.RunState.Start(); err != nil {
+		return err
+	}
 	wsc.writeChan = make(chan types.RPCResponse, wsc.writeChanCapacity)
 
 	// Read subscriptions/unsubscriptions to events
@@ -231,16 +234,18 @@ func (wsc *wsConnection) OnStart() error {
 	return nil
 }
 
-// OnStop implements service.Service by unsubscribing remoteAddr from all
-// subscriptions.
-func (wsc *wsConnection) OnStop() {
+// Stop unsubscribes the remote from all subscriptions.
+func (wsc *wsConnection) Stop() error {
+	if err := wsc.RunState.Stop(); err != nil {
+		return err
+	}
 	if wsc.onDisconnect != nil {
 		wsc.onDisconnect(wsc.remoteAddr)
 	}
-
 	if wsc.ctx != nil {
 		wsc.cancel()
 	}
+	return nil
 }
 
 // GetRemoteAddr returns the remote address of the underlying connection.
