@@ -8,7 +8,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/consensus"
-	mempl "github.com/tendermint/tendermint/internal/mempool"
+	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -96,7 +96,7 @@ type Environment struct {
 	GenDoc            *types.GenesisDoc // cache the genesis structure
 	EventSinks        []indexer.EventSink
 	EventBus          *types.EventBus // thread safe
-	Mempool           mempl.Mempool
+	Mempool           mempool.Mempool
 	BlockSyncReactor  consensus.BlockSyncReactor
 	StateSyncMetricer statesync.Metricer
 

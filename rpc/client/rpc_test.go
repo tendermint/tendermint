@@ -16,7 +16,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
-	mempl "github.com/tendermint/tendermint/internal/mempool"
+	"github.com/tendermint/tendermint/internal/mempool"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -425,8 +425,8 @@ func TestBroadcastTxSync(t *testing.T) {
 	defer cancel()
 
 	// TODO (melekes): use mempool which is set on RPC rather than getting it from node
-	mempool := getMempool(t, n)
-	initMempoolSize := mempool.Size()
+	pool := getMempool(t, n)
+	initMempoolSize := pool.Size()
 
 	for i, c := range GetClients(t, n, conf) {
 		_, _, tx := MakeTxKV()
@@ -434,18 +434,18 @@ func TestBroadcastTxSync(t *testing.T) {
 		require.Nil(t, err, "%d: %+v", i, err)
 		require.Equal(t, bres.Code, abci.CodeTypeOK) // FIXME
 
-		require.Equal(t, initMempoolSize+1, mempool.Size())
+		require.Equal(t, initMempoolSize+1, pool.Size())
 
-		txs := mempool.ReapMaxTxs(len(tx))
+		txs := pool.ReapMaxTxs(len(tx))
 		require.EqualValues(t, tx, txs[0])
-		mempool.Flush()
+		pool.Flush()
 	}
 }
 
-func getMempool(t *testing.T, srv service.Service) mempl.Mempool {
+func getMempool(t *testing.T, srv service.Service) mempool.Mempool {
 	t.Helper()
 	n, ok := srv.(interface {
-		Mempool() mempl.Mempool
+		Mempool() mempool.Mempool
 	})
 	require.True(t, ok)
 	return n.Mempool()
@@ -457,7 +457,7 @@ func TestBroadcastTxCommit(t *testing.T) {
 
 	n, conf := NodeSuite(t)
 
-	mempool := getMempool(t, n)
+	pool := getMempool(t, n)
 	for i, c := range GetClients(t, n, conf) {
 		_, _, tx := MakeTxKV()
 		bres, err := c.BroadcastTxCommit(ctx, tx)
@@ -465,7 +465,7 @@ func TestBroadcastTxCommit(t *testing.T) {
 		require.True(t, bres.CheckTx.IsOK())
 		require.True(t, bres.DeliverTx.IsOK())
 
-		require.Equal(t, 0, mempool.Size())
+		require.Equal(t, 0, pool.Size())
 	}
 }
 
@@ -477,8 +477,8 @@ func TestUnconfirmedTxs(t *testing.T) {
 	ch := make(chan *abci.Response, 1)
 
 	n, conf := NodeSuite(t)
-	mempool := getMempool(t, n)
-	err := mempool.CheckTx(ctx, tx, func(resp *abci.Response) { ch <- resp }, mempl.TxInfo{})
+	pool := getMempool(t, n)
+	err := pool.CheckTx(ctx, tx, func(resp *abci.Response) { ch <- resp }, mempool.TxInfo{})
 
 	require.NoError(t, err)
 
@@ -497,11 +497,11 @@ func TestUnconfirmedTxs(t *testing.T) {
 
 		assert.Equal(t, 1, res.Count)
 		assert.Equal(t, 1, res.Total)
-		assert.Equal(t, mempool.SizeBytes(), res.TotalBytes)
+		assert.Equal(t, pool.SizeBytes(), res.TotalBytes)
 		assert.Exactly(t, types.Txs{tx}, types.Txs(res.Txs))
 	}
 
-	mempool.Flush()
+	pool.Flush()
 }
 
 func TestNumUnconfirmedTxs(t *testing.T) {
@@ -512,9 +512,9 @@ func TestNumUnconfirmedTxs(t *testing.T) {
 
 	n, conf := NodeSuite(t)
 	ch := make(chan *abci.Response, 1)
-	mempool := getMempool(t, n)
+	pool := getMempool(t, n)
 
-	err := mempool.CheckTx(ctx, tx, func(resp *abci.Response) { ch <- resp }, mempl.TxInfo{})
+	err := pool.CheckTx(ctx, tx, func(resp *abci.Response) { ch <- resp }, mempool.TxInfo{})
 	require.NoError(t, err)
 
 	// wait for tx to arrive in mempoool.
@@ -524,7 +524,7 @@ func TestNumUnconfirmedTxs(t *testing.T) {
 		t.Error("Timed out waiting for CheckTx callback")
 	}
 
-	mempoolSize := mempool.Size()
+	mempoolSize := pool.Size()
 	for i, c := range GetClients(t, n, conf) {
 		mc, ok := c.(client.MempoolClient)
 		require.True(t, ok, "%d", i)
@@ -533,10 +533,10 @@ func TestNumUnconfirmedTxs(t *testing.T) {
 
 		assert.Equal(t, mempoolSize, res.Count)
 		assert.Equal(t, mempoolSize, res.Total)
-		assert.Equal(t, mempool.SizeBytes(), res.TotalBytes)
+		assert.Equal(t, pool.SizeBytes(), res.TotalBytes)
 	}
 
-	mempool.Flush()
+	pool.Flush()
 }
 
 func TestCheckTx(t *testing.T) {
@@ -544,7 +544,7 @@ func TestCheckTx(t *testing.T) {
 	defer cancel()
 
 	n, conf := NodeSuite(t)
-	mempool := getMempool(t, n)
+	pool := getMempool(t, n)
 
 	for _, c := range GetClients(t, n, conf) {
 		_, _, tx := MakeTxKV()
@@ -553,7 +553,7 @@ func TestCheckTx(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, abci.CodeTypeOK, res.Code)
 
-		assert.Equal(t, 0, mempool.Size(), "mempool must be empty")
+		assert.Equal(t, 0, pool.Size(), "mempool must be empty")
 	}
 }
 

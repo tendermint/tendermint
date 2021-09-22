@@ -7,7 +7,7 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	mempl "github.com/tendermint/tendermint/internal/mempool"
+	"github.com/tendermint/tendermint/internal/mempool"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
@@ -21,7 +21,7 @@ import (
 // CheckTx nor DeliverTx results.
 // More: https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_async
 func (env *Environment) BroadcastTxAsync(ctx *rpctypes.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
-	err := env.Mempool.CheckTx(ctx.Context(), tx, nil, mempl.TxInfo{})
+	err := env.Mempool.CheckTx(ctx.Context(), tx, nil, mempool.TxInfo{})
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func (env *Environment) BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*co
 		ctx.Context(),
 		tx,
 		func(res *abci.Response) { resCh <- res },
-		mempl.TxInfo{},
+		mempool.TxInfo{},
 	)
 	if err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func (env *Environment) BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*
 		ctx.Context(),
 		tx,
 		func(res *abci.Response) { checkTxResCh <- res },
-		mempl.TxInfo{},
+		mempool.TxInfo{},
 	)
 	if err != nil {
 		env.Logger.Error("Error on broadcastTxCommit", "err", err)
