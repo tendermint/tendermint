@@ -306,6 +306,23 @@ func (blockExec *BlockExecutor) ExtendVote(vote *types.Vote) (types.VoteExtensio
 	return types.VoteExtensionFromProto(resp.VoteExtension), nil
 }
 
+func (blockExec *BlockExecutor) VerifyVoteExtension(vote *types.Vote) error {
+	req := abci.RequestVerifyVoteExtension{
+		Vote: vote.ToProto(),
+	}
+
+	resp, err := blockExec.proxyApp.VerifyVoteExtensionSync(req)
+	if err != nil {
+		return err
+	}
+
+	if resp.IsErr() {
+		return types.ErrVoteInvalidExtension
+	}
+
+	return nil
+}
+
 // Commit locks the mempool, runs the ABCI Commit message, and updates the
 // mempool.
 // It returns the result of calling abci.Commit (the AppHash) and the height to retain (if any).

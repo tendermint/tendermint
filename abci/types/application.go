@@ -20,7 +20,9 @@ type Application interface {
 	ProcessProposal(context.Context, *RequestProcessProposal) (*ResponseProcessProposal, error)
 	// Deliver the decided block with its txs to the Application
 	FinalizeBlock(context.Context, *RequestFinalizeBlock) (*ResponseFinalizeBlock, error)
+	// Create application specific vote extension
 	ExtendVote(context.Context, *RequestExtendVote) (*ResponseExtendVote, error)
+	// Verify application's vote extension data
 	VerifyVoteExtension(context.Context, *RequestVerifyVoteExtension) (*ResponseVerifyVoteExtension, error)
 	// Commit the state and return the application Merkle root hash
 	Commit(context.Context, *RequestCommit) (*ResponseCommit, error)

@@ -1971,6 +1971,7 @@ func (cs *State) handleCompleteProposal(blockHeight int64) {
 // Attempt to add the vote. if its a duplicate signature, dupeout the validator
 func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 	added, err := cs.addVote(vote, peerID)
+
 	if err != nil {
 		// If the vote height is off, we'll just ignore it,
 		// But if it's a conflicting sig, add it to the cs.evpool.
@@ -2066,6 +2067,13 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 	if vote.Height != cs.Height {
 		cs.Logger.Debug("vote ignored and not added", "vote_height", vote.Height, "cs_height", cs.Height, "peer", peerID)
 		return
+	}
+
+	// Verify VoteExtension if precommit
+	if vote.Type == tmproto.PrecommitType {
+		if err = cs.blockExec.VerifyVoteExtension(vote); err != nil {
+			return false, err
+		}
 	}
 
 	height := cs.Height
@@ -2229,9 +2237,6 @@ func (cs *State) signVote(
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
 	}
 
-	v := vote.ToProto()
-	err := cs.privValidator.SignVote(cs.state.ChainID, v)
-
 	switch msgType {
 	case tmproto.PrecommitType:
 		// if the signedMessage type is for a precommit, add VoteExtension
@@ -2241,6 +2246,8 @@ func (cs *State) signVote(
 		}
 		vote.VoteExtension = ext
 	}
+	v := vote.ToProto()
+	err := cs.privValidator.SignVote(cs.state.ChainID, v)
 	vote.Signature = v.Signature
 	vote.Timestamp = v.Timestamp
 
