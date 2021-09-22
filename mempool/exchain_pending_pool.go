@@ -2,6 +2,8 @@ package mempool
 
 import (
 	"sync"
+
+	"github.com/tendermint/tendermint/types"
 )
 
 type PendingPool struct {
@@ -49,6 +51,13 @@ func (p *PendingPool) getTx(address string, nonce uint64) *PendingTx {
 		return p.addressTxsMap[address][nonce]
 	}
 	return nil
+}
+
+func (p *PendingPool) hasTx(tx types.Tx) bool {
+	p.mtx.RLock()
+	defer p.mtx.RUnlock()
+	_, exist := p.txsMap[txID(tx)]
+	return exist
 }
 
 func (p *PendingPool) addTx(pendingTx *PendingTx) {
@@ -141,7 +150,14 @@ func (p *PendingPool) handlePeriodCounter() {
 	}
 }
 
-func (p *PendingPool) validate(address string) error {
+func (p *PendingPool) validate(address string, tx types.Tx) error {
+	// tx already in pending pool
+	if p.hasTx(tx) {
+		return ErrTxAlreadyInPendingPool{
+			txHash: txID(tx),
+		}
+	}
+
 	poolSize := p.Size()
 	if poolSize >= p.maxSize {
 		return ErrPendingPoolIsFull{

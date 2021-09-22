@@ -503,7 +503,7 @@ func (mem *CListMempool) addPendingTx(memTx *mempoolTx, exTxInfo ExTxInfo) error
 	}
 
 	// add tx to PendingPool
-	if err := mem.pendingPool.validate(exTxInfo.Sender); err != nil {
+	if err := mem.pendingPool.validate(exTxInfo.Sender, memTx.tx); err != nil {
 		return err
 	}
 	pendingTx := &PendingTx{

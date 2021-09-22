@@ -27,3 +27,14 @@ func (e ErrPendingPoolAddressLimit) Error() string {
 		e.address, e.size, e.maxSize,
 	)
 }
+
+// ErrTxAlreadyInPendingPool means the tx already in PendingPool
+type ErrTxAlreadyInPendingPool struct {
+	txHash string
+}
+
+func (e ErrTxAlreadyInPendingPool) Error() string {
+	return fmt.Sprintf(
+		"Tx %s already exists in pending pool", e.txHash,
+	)
+}
