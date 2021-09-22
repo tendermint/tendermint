@@ -622,7 +622,6 @@ func TestStateLockPOLRelock(t *testing.T) {
 	require.NoError(t, err)
 	addr := pv1.Address()
 	voteCh := subscribeToVoter(cs1, addr)
-	unlockCh := subscribe(cs1.eventBus, types.EventQueryUnlock)
 	lockCh := subscribe(cs1.eventBus, types.EventQueryLock)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
 	newBlockCh := subscribe(cs1.eventBus, types.EventQueryNewBlockHeader)
@@ -700,8 +699,6 @@ func TestStateLockPOLRelock(t *testing.T) {
 	// now lets add prevotes from everyone else for the new block
 	signAddVotes(config, cs1, tmproto.PrevoteType, propBlockHash, propBlockParts.Header(), vs2, vs3, vs4)
 
-	// check that we unlock on the old block
-	ensureNewUnlock(t, unlockCh, height, round)
 	// check that we lock on the new block
 	ensureLock(t, lockCh, height, round)
 
@@ -719,6 +716,9 @@ func TestStateLockPOLRelock(t *testing.T) {
 
 // TestStatePOLDoesNotUnlock tests that a validator maintains its locked block
 // despite receiving +2/3 nil prevotes and nil precommits from other validators.
+// Tendermint used to 'unlock' its locked block when greater than 2/3 prevotes
+// for a block nil were seen. This behavior has been removed and this test ensures
+// that it has been completely removed.
 func TestStatePOLDoesNotUnlock(t *testing.T) {
 	config := configSetup(t)
 	/*
@@ -1118,7 +1118,6 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
-	unlockCh := subscribe(cs1.eventBus, types.EventQueryUnlock)
 	pv1, err := cs1.privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 	addr := pv1.Address()
@@ -1194,7 +1193,6 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	*/
 	ensureNewProposal(t, proposalCh, height, round)
 
-	ensureNoNewUnlock(t, unlockCh)
 	ensurePrevote(t, voteCh, height, round)
 	validatePrevote(t, cs1, round, vss[0], propBlockHash1)
 

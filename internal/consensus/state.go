@@ -1453,21 +1453,12 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 	}
 
 	// There was a polka in this round for a block we don't have.
-	// Fetch that block, unlock, and precommit nil.
-	// The +2/3 prevotes for this round is the POL for our unlock.
+	// Fetch that block, and precommit nil.
 	logger.Debug("precommit step; +2/3 prevotes for a block we do not have; voting nil", "block_id", blockID)
-
-	cs.LockedRound = -1
-	cs.LockedBlock = nil
-	cs.LockedBlockParts = nil
 
 	if !cs.ProposalBlockParts.HasHeader(blockID.PartSetHeader) {
 		cs.ProposalBlock = nil
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
-	}
-
-	if err := cs.eventBus.PublishEventUnlock(cs.RoundStateEvent()); err != nil {
-		logger.Error("failed publishing event unlock", "err", err)
 	}
 
 	cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
@@ -2063,25 +2054,6 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 		if blockID, ok := prevotes.TwoThirdsMajority(); ok && !blockID.IsNil() {
 			// Greater than 2/3 of the voting power on the network voted for some
 			// non-nil block
-
-			// If we locked a different block in an earlier round, unlock it.
-			// We are going to relock a new block when we precommit, so this unlock
-			// is only temporary.
-			if (cs.LockedBlock != nil) &&
-				(cs.LockedRound < vote.Round) &&
-				(vote.Round <= cs.Round) &&
-				!cs.LockedBlock.HashesTo(blockID.Hash) {
-
-				cs.Logger.Debug("unlocking because of POL for non-nil block", "locked_round", cs.LockedRound, "pol_round", vote.Round)
-
-				cs.LockedRound = -1
-				cs.LockedBlock = nil
-				cs.LockedBlockParts = nil
-
-				if err := cs.eventBus.PublishEventUnlock(cs.RoundStateEvent()); err != nil {
-					return added, err
-				}
-			}
 
 			// Update Valid* if we can.
 			if cs.ValidRound < vote.Round && vote.Round == cs.Round {
