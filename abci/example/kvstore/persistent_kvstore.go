@@ -76,6 +76,10 @@ func (app *PersistentKVStoreApplication) DeliverTx(req types.RequestDeliverTx) t
 		return app.execValidatorTx(req.Tx)
 	}
 
+	if isPrepareTx(req.Tx) {
+		return app.execPrepareTx(req.Tx)
+	}
+
 	// otherwise, update the key-value store
 	return app.app.DeliverTx(req)
 }
@@ -172,11 +176,7 @@ func (app *PersistentKVStoreApplication) ApplySnapshotChunk(
 
 func (app *PersistentKVStoreApplication) PrepareProposal(
 	req types.RequestPrepareProposal) types.ResponsePrepareProposal {
-	if len(req.BlockData) > 1 && false { // this breaks TC: TestReactorValidatorSetChanges
-		req.BlockData[1] = []byte("modified tx")
-	}
-
-	return types.ResponsePrepareProposal{BlockData: req.BlockData}
+	return types.ResponsePrepareProposal{BlockData: app.substPrepareTx(req.BlockData)}
 }
 
 //---------------------------------------------
@@ -292,4 +292,33 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 	app.ValUpdates = append(app.ValUpdates, v)
 
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK}
+}
+
+// -----------------------------
+
+const PreparePrefix = "prepare"
+
+func isPrepareTx(tx []byte) bool {
+	return strings.HasPrefix(string(tx), PreparePrefix)
+}
+
+// execPrepareTx is noop. tx data is considered as placeholder
+// and is substitute at the PrepareProposal.
+func (app *PersistentKVStoreApplication) execPrepareTx(tx []byte) types.ResponseDeliverTx {
+	// noop
+	return types.ResponseDeliverTx{}
+}
+
+// substPrepareTx subst all the preparetx in the blockdata
+// to null string(could be any arbitrary string).
+func (app *PersistentKVStoreApplication) substPrepareTx(blockData [][]byte) [][]byte {
+	// TODO: this mechanism will change with the current spec of PrepareProposal
+	// We now have a special type for marking a tx as changed
+	for i, tx := range blockData {
+		if isPrepareTx(tx) {
+			blockData[i] = make([]byte, len(tx))
+		}
+	}
+
+	return blockData
 }

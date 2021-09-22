@@ -631,6 +631,7 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 		if commitSig.ForBlock() && !v.BlockID.Equals(*voteSet.maj23) {
 			commitSig = NewCommitSigAbsent()
 		}
+
 		commitSigs[i] = commitSig
 	}
 
