@@ -7,7 +7,7 @@ import (
 
 	proto "github.com/gogo/protobuf/proto"
 
-	bc "github.com/tendermint/tendermint/internal/blocksync"
+	"github.com/tendermint/tendermint/internal/blocksync"
 	"github.com/tendermint/tendermint/internal/blocksync/v2/internal/behavior"
 	"github.com/tendermint/tendermint/internal/consensus"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
@@ -605,7 +605,7 @@ func (r *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 			Priority:            5,
 			SendQueueCapacity:   2000,
 			RecvBufferCapacity:  1024,
-			RecvMessageCapacity: bc.MaxMsgSize,
+			RecvMessageCapacity: blocksync.MaxMsgSize,
 		},
 	}
 }

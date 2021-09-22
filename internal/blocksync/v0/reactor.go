@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	bc "github.com/tendermint/tendermint/internal/blocksync"
+	"github.com/tendermint/tendermint/internal/blocksync"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/p2p"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -36,7 +36,7 @@ var (
 				Priority:            5,
 				SendQueueCapacity:   1000,
 				RecvBufferCapacity:  1024,
-				RecvMessageCapacity: bc.MaxMsgSize,
+				RecvMessageCapacity: blocksync.MaxMsgSize,
 				MaxSendBytes:        100,
 			},
 		},
