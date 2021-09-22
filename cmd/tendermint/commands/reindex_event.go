@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	tmdb "github.com/tendermint/tm-db"
+	dbm "github.com/tendermint/tm-db"
 
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmcfg "github.com/tendermint/tendermint/config"
@@ -129,17 +129,17 @@ func loadEventSinks(cfg *tmcfg.Config) ([]indexer.EventSink, error) {
 }
 
 func loadStateAndBlockStore(cfg *tmcfg.Config) (*store.BlockStore, state.Store, error) {
-	dbType := tmdb.BackendType(cfg.DBBackend)
+	dbType := dbm.BackendType(cfg.DBBackend)
 
 	// Get BlockStore
-	blockStoreDB, err := tmdb.NewDB("blockstore", dbType, cfg.DBDir())
+	blockStoreDB, err := dbm.NewDB("blockstore", dbType, cfg.DBDir())
 	if err != nil {
 		return nil, nil, err
 	}
 	blockStore := store.NewBlockStore(blockStoreDB)
 
 	// Get StateStore
-	stateDB, err := tmdb.NewDB("state", dbType, cfg.DBDir())
+	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())
 	if err != nil {
 		return nil, nil, err
 	}

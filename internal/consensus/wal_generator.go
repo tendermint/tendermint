@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	db "github.com/tendermint/tm-db"
+	dbm "github.com/tendermint/tm-db"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -51,7 +51,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	if err != nil {
 		return fmt.Errorf("failed to read genesis file: %w", err)
 	}
-	blockStoreDB := db.NewMemDB()
+	blockStoreDB := dbm.NewMemDB()
 	stateDB := blockStoreDB
 	stateStore := sm.NewStore(stateDB)
 	state, err := sm.MakeGenesisState(genDoc)
