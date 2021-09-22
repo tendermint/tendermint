@@ -14,7 +14,7 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/rpc/coretypes"
-	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
+	coregrpc "github.com/tendermint/tendermint/rpc/grpc"
 	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 )
 
@@ -45,7 +45,7 @@ func waitForRPC(ctx context.Context, conf *config.Config) {
 func waitForGRPC(ctx context.Context, conf *config.Config) {
 	client := GetGRPCClient(conf)
 	for {
-		_, err := client.Ping(ctx, &core_grpc.RequestPing{})
+		_, err := client.Ping(ctx, &coregrpc.RequestPing{})
 		if err == nil {
 			return
 		}
@@ -78,9 +78,9 @@ func CreateConfig(testName string) *config.Config {
 	return c
 }
 
-func GetGRPCClient(conf *config.Config) core_grpc.BroadcastAPIClient {
+func GetGRPCClient(conf *config.Config) coregrpc.BroadcastAPIClient {
 	grpcAddr := conf.RPC.GRPCListenAddress
-	return core_grpc.StartGRPCClient(grpcAddr)
+	return coregrpc.StartGRPCClient(grpcAddr)
 }
 
 type ServiceCloser func(context.Context) error
