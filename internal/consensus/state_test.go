@@ -716,7 +716,7 @@ func TestStateLockPOLRelock(t *testing.T) {
 // TestStatePOLDoesNotUnlock tests that a validator maintains its locked block
 // despite receiving +2/3 nil prevotes and nil precommits from other validators.
 // Tendermint used to 'unlock' its locked block when greater than 2/3 prevotes
-// for a block nil were seen. This behavior has been removed and this test ensures
+// for a nil block were seen. This behavior has been removed and this test ensures
 // that it has been completely removed.
 func TestStatePOLDoesNotUnlock(t *testing.T) {
 	config := configSetup(t)
