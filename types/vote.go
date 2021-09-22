@@ -68,7 +68,7 @@ func (vote *Vote) CommitSig() CommitSig {
 	switch {
 	case vote.BlockID.IsComplete():
 		blockIDFlag = BlockIDFlagCommit
-	case vote.BlockID.IsZero():
+	case vote.BlockID.IsNil():
 		blockIDFlag = BlockIDFlagNil
 	default:
 		panic(fmt.Sprintf("Invalid vote %v - expected BlockID to be either empty or complete", vote))
@@ -177,7 +177,7 @@ func (vote *Vote) ValidateBasic() error {
 
 	// BlockID.ValidateBasic would not err if we for instance have an empty hash but a
 	// non-empty PartsSetHeader:
-	if !vote.BlockID.IsZero() && !vote.BlockID.IsComplete() {
+	if !vote.BlockID.IsNil() && !vote.BlockID.IsComplete() {
 		return fmt.Errorf("blockID must be either empty or complete, got: %v", vote.BlockID)
 	}
 

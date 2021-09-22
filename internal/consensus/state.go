@@ -1408,7 +1408,7 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 	}
 
 	// +2/3 prevoted nil. Precommit nil.
-	if len(blockID.Hash) == 0 {
+	if blockID.IsNil() {
 		logger.Debug("precommit step; +2/3 prevoted for nil")
 		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
 		return
@@ -1577,7 +1577,7 @@ func (cs *State) tryFinalizeCommit(height int64) {
 	}
 
 	blockID, ok := cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
-	if !ok || len(blockID.Hash) == 0 {
+	if !ok || blockID.IsNil() {
 		logger.Error("failed attempt to finalize commit; there was no +2/3 majority or +2/3 was for nil")
 		return
 	}
@@ -1910,7 +1910,7 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID types.NodeID
 		// Update Valid* if we can.
 		prevotes := cs.Votes.Prevotes(cs.Round)
 		blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
-		if hasTwoThirds && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
+		if hasTwoThirds && !blockID.IsNil() && (cs.ValidRound < cs.Round) {
 			if cs.ProposalBlock.HashesTo(blockID.Hash) {
 				cs.Logger.Debug(
 					"updating valid block to new proposal block",
@@ -2060,7 +2060,7 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 		cs.Logger.Debug("added vote to prevote", "vote", vote, "prevotes", prevotes.StringShort())
 
 		// Check to see if >2/3 of the voting power on the network voted for any non-nil block.
-		if blockID, ok := prevotes.TwoThirdsMajority(); ok && len(blockID.Hash) != 0 {
+		if blockID, ok := prevotes.TwoThirdsMajority(); ok && !blockID.IsNil() {
 			// Greater than 2/3 of the voting power on the network voted for some
 			// non-nil block
 
@@ -2120,7 +2120,7 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 
 		case cs.Round == vote.Round && cstypes.RoundStepPrevote <= cs.Step: // current round
 			blockID, ok := prevotes.TwoThirdsMajority()
-			if ok && (cs.isProposalComplete() || len(blockID.Hash) == 0) {
+			if ok && (cs.isProposalComplete() || blockID.IsNil()) {
 				cs.enterPrecommit(height, vote.Round)
 			} else if prevotes.HasTwoThirdsAny() {
 				cs.enterPrevoteWait(height, vote.Round)
@@ -2148,7 +2148,7 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 			cs.enterNewRound(height, vote.Round)
 			cs.enterPrecommit(height, vote.Round)
 
-			if len(blockID.Hash) != 0 {
+			if !blockID.IsNil() {
 				cs.enterCommit(height, vote.Round)
 				if cs.config.SkipTimeoutCommit && precommits.HasAll() {
 					cs.enterNewRound(cs.Height, 0)
