@@ -565,7 +565,7 @@ func (c *Client) verifyStateIDSignatureWithDashCore(ctx context.Context, newLigh
 	quorumHash := newLightBlock.ValidatorSet.QuorumHash
 	quorumType := newLightBlock.ValidatorSet.QuorumType
 
-	stateID := newLightBlock.GetStateID()
+	stateID := newLightBlock.StateID()
 	protoStateID := stateID.ToProto()
 
 	stateSignBytes := types.VoteStateSignBytes(c.chainID, protoStateID)

@@ -474,11 +474,11 @@ func (bcR *BlockchainReactor) processBlock() error {
 	firstPartSetHeader := firstParts.Header()
 	firstID := types.BlockID{Hash: first.Hash(), PartSetHeader: firstPartSetHeader}
 	firstStateID := types.StateID{Height: first.Height - 1, LastAppHash: first.AppHash}
-	if !firstStateID.Equals(bcR.state.GetStateID()) {
+	if !firstStateID.Equals(bcR.state.StateID()) {
 		// Not sure if this is should ever happen, needs investigation if it does
 		bcR.Logger.Debug("stateID generated from first block doesn't match current state, please investigate",
 			"first.stateID", firstStateID,
-			"state.StateID()", bcR.state.GetStateID())
+			"state.StateID()", bcR.state.StateID())
 	}
 
 	// Finally, verify the first block using the second's commit

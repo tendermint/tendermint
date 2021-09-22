@@ -1479,7 +1479,7 @@ func makeBlocks(n int, state *sm.State, privVal types.PrivValidator) ([]*types.B
 		prevBlockMeta = types.NewBlockMeta(block, parts)
 
 		// update state
-		state.LastStateID = state.GetStateID()
+		state.LastStateID = state.StateID()
 		state.AppHash = make([]byte, crypto.DefaultAppHashSize)
 		state.AppHash[crypto.DefaultAppHashSize-1] = appHeight
 
@@ -1517,10 +1517,10 @@ func makeBlock(state sm.State, lastBlock *types.Block, lastBlockMeta *types.Bloc
 		}
 		// since there is only 1 vote, use it as threshold
 		lastCommit = types.NewCommit(vote.Height, vote.Round,
-			lastBlockMeta.BlockID, state.GetStateID(), crypto.RandQuorumHash(),
+			lastBlockMeta.BlockID, state.StateID(), crypto.RandQuorumHash(),
 			vote.BlockSignature, vote.StateSignature)
 	} else {
-		lastCommit = types.NewCommit(height-1, 0, types.BlockID{}, state.GetStateID(), nil,
+		lastCommit = types.NewCommit(height-1, 0, types.BlockID{}, state.StateID(), nil,
 			nil, nil)
 	}
 

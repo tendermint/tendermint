@@ -1165,7 +1165,7 @@ func TestStateProto(t *testing.T) {
 	}
 }
 
-func TestStateGetStateID(t *testing.T) {
+func TestState_StateID(t *testing.T) {
 
 	state := sm.State{
 		LastBlockHeight: 2,
@@ -1173,7 +1173,7 @@ func TestStateGetStateID(t *testing.T) {
 		AppHash: []byte("Some app hash"),
 	}
 
-	stateID := state.GetStateID()
+	stateID := state.StateID()
 	assert.Equal(t, int64(2), stateID.Height)
 	assert.Equal(t, "Some app hash", string(stateID.LastAppHash))
 }

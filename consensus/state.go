@@ -705,7 +705,7 @@ func (cs *State) updateToState(state sm.State, commit *types.Commit, logger log.
 		}
 	}
 
-	stateID := state.GetStateID()
+	stateID := state.StateID()
 
 	cs.Validators = validators
 	cs.Proposal = nil
@@ -1280,7 +1280,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
-		commit = types.NewCommit(0, 0, types.BlockID{}, cs.state.GetStateID(), nil, nil, nil)
+		commit = types.NewCommit(0, 0, types.BlockID{}, cs.state.StateID(), nil, nil, nil)
 	case cs.LastCommit != nil:
 		// Make the commit from LastPrecommits
 		commit = cs.LastCommit
@@ -1818,7 +1818,7 @@ func (cs *State) verifyCommit(
 		return false, err
 	}
 
-	stateID := cs.state.GetStateID()
+	stateID := cs.state.StateID()
 
 	if rs.Proposal == nil || ignoreProposalBlock {
 		if ignoreProposalBlock {
@@ -2552,7 +2552,7 @@ func (cs *State) signVote(
 
 	// Since the block has already been validated the block.lastAppHash must be the state.AppHash
 
-	stateID := cs.state.GetStateID()
+	stateID := cs.state.StateID()
 
 	vote := &types.Vote{
 		ValidatorProTxHash: proTxHash,

@@ -547,7 +547,7 @@ func updateState(
 	nValSet := state.NextValidators.Copy()
 
 	// We need to generate LastStateID before changing the state
-	lastStateID := state.GetStateID()
+	lastStateID := state.StateID()
 
 	// Update the validator set with the latest abciResponses.
 	lastHeightValsChanged := state.LastHeightValidatorsChanged

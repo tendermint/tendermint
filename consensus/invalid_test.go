@@ -68,7 +68,7 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, sw
 		}
 		valIndex, _ := cs.Validators.GetByProTxHash(proTxHash)
 
-		stateID := cs.state.GetStateID()
+		stateID := cs.state.StateID()
 
 		// precommit a random block
 		blockHash := bytes.HexBytes(tmrand.Bytes(32))

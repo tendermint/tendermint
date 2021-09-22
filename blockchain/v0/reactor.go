@@ -369,11 +369,11 @@ FOR_LOOP:
 			firstPartSetHeader := firstParts.Header()
 			firstID := types.BlockID{Hash: first.Hash(), PartSetHeader: firstPartSetHeader}
 			firstStateID := types.StateID{Height: first.Height - 1, LastAppHash: first.AppHash}
-			if !firstStateID.Equals(state.GetStateID()) {
+			if !firstStateID.Equals(state.StateID()) {
 				// Not sure if this is should ever happen, needs investigation if it does
 				bcR.Logger.Debug("stateID generated from first block doesn't match current state, please investigate",
 					"first.stateID", firstStateID,
-					"state.StateID()", state.GetStateID())
+					"state.StateID()", state.StateID())
 			}
 
 			// Finally, verify the first block using the second's commit

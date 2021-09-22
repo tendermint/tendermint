@@ -167,7 +167,7 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 	}
 }
 
-func TestLightBlock_GetStateID(t *testing.T) {
+func TestLightBlock_StateID(t *testing.T) {
 
 	tests := []struct {
 		name        string
@@ -200,13 +200,13 @@ func TestLightBlock_GetStateID(t *testing.T) {
 			lb := LightBlock{
 				SignedHeader: &SignedHeader{Commit: tt.commit},
 			}
-			if got := lb.GetStateID(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("LightBlock.GetStateID() = %v, want %v", got, tt.want)
+			if got := lb.StateID(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("LightBlock.StateID() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
-func TestLightBlock_GetStateID_nocommit(t *testing.T) {
+func TestLightBlock_StateID_nocommit(t *testing.T) {
 	lb := LightBlock{}
-	assert.Panics(t, func() { lb.GetStateID() })
+	assert.Panics(t, func() { lb.StateID() })
 }

@@ -180,7 +180,7 @@ func TestValidateBlockCommit(t *testing.T) {
 	}
 
 	for height := int64(1); height < validationTestsStopHeight; height++ {
-		stateID := state.GetStateID()
+		stateID := state.StateID()
 		proTxHash := state.Validators.GetProposer().ProTxHash
 		if height > 1 {
 			/*

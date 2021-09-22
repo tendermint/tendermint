@@ -142,8 +142,8 @@ func (state State) IsEmpty() bool {
 	return state.Validators == nil // XXX can't compare to Empty
 }
 
-// GetStateID() generates new state ID based on current `state`
-func (state State) GetStateID() types.StateID {
+// StateID() generates new state ID based on current `state`
+func (state State) StateID() types.StateID {
 	lastAppHash := make([]byte, len(state.AppHash))
 	copy(lastAppHash, state.AppHash)
 
