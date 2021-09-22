@@ -7,7 +7,7 @@ import (
 	"net"
 
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/inspect/rpc"
+	"github.com/tendermint/tendermint/internal/inspect/rpc"
 	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
 	"github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/indexer"
@@ -58,7 +58,7 @@ func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, es []indexe
 }
 
 // NewFromConfig constructs an Inspector using the values defined in the passed in config.
-func NewFromConfig(cfg *config.Config) (*Inspector, error) {
+func NewFromConfig(logger log.Logger, cfg *config.Config) (*Inspector, error) {
 	bsDB, err := config.DefaultDBProvider(&config.DBContext{ID: "blockstore", Config: cfg})
 	if err != nil {
 		return nil, err
@@ -76,7 +76,6 @@ func NewFromConfig(cfg *config.Config) (*Inspector, error) {
 	if err != nil {
 		return nil, err
 	}
-	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 	ss := state.NewStore(sDB)
 	return New(cfg.RPC, bs, ss, sinks, logger), nil
 }
