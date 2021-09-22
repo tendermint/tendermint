@@ -95,6 +95,9 @@ var (
 
 // RunState is a helper that a client implementation can embed to implement
 // common plumbing for keeping track of run state and logging.
+//
+// TODO(creachadair): This type is a temporary measure, and will be removed.
+// See the discussion on #6971.
 type RunState struct {
 	Logger log.Logger
 
