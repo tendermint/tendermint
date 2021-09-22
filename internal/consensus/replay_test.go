@@ -61,7 +61,7 @@ func startNewStateAndWaitForBlock(ctx context.Context, t *testing.T, consensusRe
 	logger := log.TestingLogger()
 	state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 	require.NoError(t, err)
-	privValidator := loadPrivValidator(consensusReplayConfig)
+	privValidator := loadPrivValidator(t, consensusReplayConfig)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	cs := newStateWithConfigAndBlockStore(
 		ctx,
@@ -166,7 +166,7 @@ LOOP:
 		blockStore := store.NewBlockStore(blockDB)
 		state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 		require.NoError(t, err)
-		privValidator := loadPrivValidator(consensusReplayConfig)
+		privValidator := loadPrivValidator(t, consensusReplayConfig)
 		cs := newStateWithConfigAndBlockStore(
 			ctx,
 			logger,
@@ -335,6 +335,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 
 	css, genDoc, cfg, cleanup := randConsensusNetWithPeers(
 		ctx,
+		t,
 		cfg,
 		nVals,
 		nPeers,
@@ -359,15 +360,15 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	// start the machine
 	startTestRound(ctx, css[0], height, round)
 	incrementHeight(vss...)
-	ensureNewRound(newRoundCh, height, 0)
-	ensureNewProposal(proposalCh, height, round)
+	ensureNewRound(t, newRoundCh, height, 0)
+	ensureNewProposal(t, proposalCh, height, round)
 	rs := css[0].GetRoundState()
 
 	signAddVotes(ctx, sim.Config, css[0], tmproto.PrecommitType,
 		rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(),
 		vss[1:nVals]...)
 
-	ensureNewRound(newRoundCh, height+1, 0)
+	ensureNewRound(t, newRoundCh, height+1, 0)
 
 	// HEIGHT 2
 	height++
@@ -394,12 +395,12 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
-	ensureNewProposal(proposalCh, height, round)
+	ensureNewProposal(t, proposalCh, height, round)
 	rs = css[0].GetRoundState()
 	signAddVotes(ctx, sim.Config, css[0], tmproto.PrecommitType,
 		rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(),
 		vss[1:nVals]...)
-	ensureNewRound(newRoundCh, height+1, 0)
+	ensureNewRound(t, newRoundCh, height+1, 0)
 
 	// HEIGHT 3
 	height++
@@ -426,12 +427,12 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
-	ensureNewProposal(proposalCh, height, round)
+	ensureNewProposal(t, proposalCh, height, round)
 	rs = css[0].GetRoundState()
 	signAddVotes(ctx, sim.Config, css[0], tmproto.PrecommitType,
 		rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(),
 		vss[1:nVals]...)
-	ensureNewRound(newRoundCh, height+1, 0)
+	ensureNewRound(t, newRoundCh, height+1, 0)
 
 	// HEIGHT 4
 	height++
@@ -485,7 +486,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
-	ensureNewProposal(proposalCh, height, round)
+	ensureNewProposal(t, proposalCh, height, round)
 
 	removeValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, 0)
 	err = assertMempool(css[0].txNotifier).CheckTx(ctx, removeValidatorTx2, nil, mempool.TxInfo{})
@@ -501,7 +502,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 			rs.ProposalBlockParts.Header(), newVss[i])
 	}
 
-	ensureNewRound(newRoundCh, height+1, 0)
+	ensureNewRound(t, newRoundCh, height+1, 0)
 
 	// HEIGHT 5
 	height++
@@ -511,7 +512,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	newVss[newVssIdx].VotingPower = 25
 	sort.Sort(ValidatorStubsByPower(newVss))
 	selfIndex = valIndexFn(0)
-	ensureNewProposal(proposalCh, height, round)
+	ensureNewProposal(t, proposalCh, height, round)
 	rs = css[0].GetRoundState()
 	for i := 0; i < nVals+1; i++ {
 		if i == selfIndex {
@@ -521,7 +522,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 			tmproto.PrecommitType, rs.ProposalBlock.Hash(),
 			rs.ProposalBlockParts.Header(), newVss[i])
 	}
-	ensureNewRound(newRoundCh, height+1, 0)
+	ensureNewRound(t, newRoundCh, height+1, 0)
 
 	// HEIGHT 6
 	height++
@@ -548,7 +549,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
-	ensureNewProposal(proposalCh, height, round)
+	ensureNewProposal(t, proposalCh, height, round)
 	rs = css[0].GetRoundState()
 	for i := 0; i < nVals+3; i++ {
 		if i == selfIndex {
@@ -558,7 +559,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 			tmproto.PrecommitType, rs.ProposalBlock.Hash(),
 			rs.ProposalBlockParts.Header(), newVss[i])
 	}
-	ensureNewRound(newRoundCh, height+1, 0)
+	ensureNewRound(t, newRoundCh, height+1, 0)
 
 	sim.Chain = make([]*types.Block, 0)
 	sim.Commits = make([]*types.Commit, 0)
