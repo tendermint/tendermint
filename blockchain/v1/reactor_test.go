@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"encoding/binary"
 	"fmt"
 	"os"
 	"sync"
@@ -37,6 +38,7 @@ func randGenesisDoc(numValidators int) (*types.GenesisDoc, []types.PrivValidator
 		Validators:         validators,
 		ThresholdPublicKey: thresholdPublicKey,
 		QuorumHash:         quorumHash,
+		AppHash:            make([]byte, crypto.DefaultAppHashSize),
 	}, privValidators
 }
 
@@ -408,4 +410,21 @@ func makeBlock(height int64, coreChainLock *types.CoreChainLock, state sm.State,
 
 type testApp struct {
 	abci.BaseApplication
+
+	lastHeight int64
+}
+
+func (app *testApp) Commit() abci.ResponseCommit {
+	// Change AppHash
+	appHash := make([]byte, crypto.DefaultAppHashSize)
+	binary.LittleEndian.PutUint64(appHash, uint64(app.lastHeight))
+
+	return abci.ResponseCommit{
+		Data: appHash,
+	}
+}
+
+func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlock {
+	app.lastHeight = req.Header.Height
+	return abci.ResponseBeginBlock{}
 }
