@@ -52,12 +52,34 @@ type VoteExtensionToSign struct {
 	AppDataToSign []byte `json:"app_data_to_sign"`
 }
 
+func (ext VoteExtensionToSign) ToProto() *tmproto.VoteExtensionToSign {
+	if ext.IsEmpty() {
+		return nil
+	}
+	return &tmproto.VoteExtensionToSign{
+		AppDataToSign: ext.AppDataToSign,
+	}
+}
+
+func VoteExtensionToSignFromProto(pext *tmproto.VoteExtensionToSign) VoteExtensionToSign {
+	if pext == nil {
+		return VoteExtensionToSign{}
+	}
+	return VoteExtensionToSign{
+		AppDataToSign: pext.AppDataToSign,
+	}
+}
+
+func (ext VoteExtensionToSign) IsEmpty() bool {
+	return len(ext.AppDataToSign) == 0
+}
+
 // BytesPacked returns a bytes-packed representation for
 // debugging and human identification. This function should
 // not be used for any logical operations.
 func (ext VoteExtensionToSign) BytesPacked() []byte {
-	res := make([]byte, len(ext.AppDataToSign))
-	copy(res, ext.AppDataToSign)
+	res := []byte{}
+	res = append(res, ext.AppDataToSign...)
 	return res
 }
 
@@ -86,9 +108,9 @@ func (ext VoteExtension) ToSign() VoteExtensionToSign {
 // debugging and human identification. This function should
 // not be used for any logical operations.
 func (ext VoteExtension) BytesPacked() []byte {
-	res := make([]byte, len(ext.AppDataToSign)+len(ext.AppDataSelfAuthenticating))
-	copy(res[:len(ext.AppDataToSign)], ext.AppDataToSign)
-	copy(res[len(ext.AppDataToSign):], ext.AppDataSelfAuthenticating)
+	res := []byte{}
+	res = append(res, ext.AppDataToSign...)
+	res = append(res, ext.AppDataSelfAuthenticating...)
 	return res
 }
 
@@ -257,11 +279,9 @@ func (vote *Vote) ValidateBasic() error {
 
 func (ext VoteExtension) Copy() VoteExtension {
 	res := VoteExtension{
-		AppDataToSign:             make([]byte, len(ext.AppDataToSign)),
-		AppDataSelfAuthenticating: make([]byte, len(ext.AppDataSelfAuthenticating)),
+		AppDataToSign:             ext.AppDataToSign,
+		AppDataSelfAuthenticating: ext.AppDataSelfAuthenticating,
 	}
-	copy(res.AppDataToSign, ext.AppDataToSign)
-	copy(res.AppDataSelfAuthenticating, ext.AppDataSelfAuthenticating)
 	return res
 }
 

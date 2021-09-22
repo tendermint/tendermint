@@ -2233,6 +2233,13 @@ func (cs *State) addVote(
 		return
 	}
 
+	// Verify VoteExtension if precommit
+	if vote.Type == tmproto.PrecommitType {
+		if err = cs.blockExec.VerifyVoteExtension(vote); err != nil {
+			return false, err
+		}
+	}
+
 	height := cs.Height
 	added, err = cs.Votes.AddVote(vote, peerID)
 	if !added {
@@ -2370,8 +2377,6 @@ func (cs *State) signVote(
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
 	}
 
-	v := vote.ToProto()
-
 	// If the signedMessageType is for precommit,
 	// use our local precommit Timeout as the max wait time for getting a singed commit. The same goes for prevote.
 	var timeout time.Duration
@@ -2391,6 +2396,8 @@ func (cs *State) signVote(
 		timeout = time.Second
 	}
 
+	v := vote.ToProto()
+
 	ctxto, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -2398,16 +2405,15 @@ func (cs *State) signVote(
 	vote.Signature = v.Signature
 	vote.Timestamp = v.Timestamp
 
-
 	return vote, err
 }
 
 // sign the vote and publish on internalMsgQueue
 func (cs *State) signAddVote(
-  ctx context.Context,
-  msgType tmproto.SignedMsgType,
-  hash []byte,
-  header types.PartSetHeader,
+	ctx context.Context,
+	msgType tmproto.SignedMsgType,
+	hash []byte,
+	header types.PartSetHeader,
 ) *types.Vote {
 	if cs.privValidator == nil { // the node does not have a key
 		return nil
