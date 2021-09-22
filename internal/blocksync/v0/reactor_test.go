@@ -10,7 +10,7 @@ import (
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
-	cons "github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/mempool/mock"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
@@ -165,7 +165,7 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 		rts.blockSyncChannels[nodeID],
 		rts.peerUpdates[nodeID],
 		rts.blockSync,
-		cons.NopMetrics())
+		consensus.NopMetrics())
 	require.NoError(t, err)
 
 	require.NoError(t, rts.reactors[nodeID].Start())

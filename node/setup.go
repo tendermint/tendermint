@@ -18,7 +18,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	bcv0 "github.com/tendermint/tendermint/internal/blocksync/v0"
 	bcv2 "github.com/tendermint/tendermint/internal/blocksync/v2"
-	cs "github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
 	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
@@ -100,7 +100,7 @@ func doHandshake(
 	proxyApp proxy.AppConns,
 	consensusLogger log.Logger) error {
 
-	handshaker := cs.NewHandshaker(stateStore, state, blockStore, genDoc)
+	handshaker := consensus.NewHandshaker(stateStore, state, blockStore, genDoc)
 	handshaker.SetLogger(consensusLogger)
 	handshaker.SetEventBus(eventBus)
 	if err := handshaker.Handshake(proxyApp); err != nil {
@@ -285,11 +285,11 @@ func createBlockchainReactor(
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore *store.BlockStore,
-	csReactor *cs.Reactor,
+	csReactor *consensus.Reactor,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	blockSync bool,
-	metrics *cs.Metrics,
+	metrics *consensus.Metrics,
 ) (*p2p.ReactorShim, service.Service, error) {
 
 	logger = logger.With("module", "blockchain")
@@ -338,29 +338,29 @@ func createConsensusReactor(
 	mp mempool.Mempool,
 	evidencePool *evidence.Pool,
 	privValidator types.PrivValidator,
-	csMetrics *cs.Metrics,
+	csMetrics *consensus.Metrics,
 	waitSync bool,
 	eventBus *types.EventBus,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	logger log.Logger,
-) (*p2p.ReactorShim, *cs.Reactor, *cs.State) {
+) (*p2p.ReactorShim, *consensus.Reactor, *consensus.State) {
 
-	consensusState := cs.NewState(
+	consensusState := consensus.NewState(
 		cfg.Consensus,
 		state.Copy(),
 		blockExec,
 		blockStore,
 		mp,
 		evidencePool,
-		cs.StateMetrics(csMetrics),
+		consensus.StateMetrics(csMetrics),
 	)
 	consensusState.SetLogger(logger)
 	if privValidator != nil && cfg.Mode == config.ModeValidator {
 		consensusState.SetPrivValidator(privValidator)
 	}
 
-	reactorShim := p2p.NewReactorShim(logger, "ConsensusShim", cs.ChannelShims)
+	reactorShim := p2p.NewReactorShim(logger, "ConsensusShim", consensus.ChannelShims)
 
 	var (
 		channels    map[p2p.ChannelID]*p2p.Channel
@@ -371,20 +371,20 @@ func createConsensusReactor(
 		channels = getChannelsFromShim(reactorShim)
 		peerUpdates = reactorShim.PeerUpdates
 	} else {
-		channels = makeChannelsFromShims(router, cs.ChannelShims)
+		channels = makeChannelsFromShims(router, consensus.ChannelShims)
 		peerUpdates = peerManager.Subscribe()
 	}
 
-	reactor := cs.NewReactor(
+	reactor := consensus.NewReactor(
 		logger,
 		consensusState,
-		channels[cs.StateChannel],
-		channels[cs.DataChannel],
-		channels[cs.VoteChannel],
-		channels[cs.VoteSetBitsChannel],
+		channels[consensus.StateChannel],
+		channels[consensus.DataChannel],
+		channels[consensus.VoteChannel],
+		channels[consensus.VoteSetBitsChannel],
 		peerUpdates,
 		waitSync,
-		cs.ReactorMetrics(csMetrics),
+		consensus.ReactorMetrics(csMetrics),
 	)
 
 	// Services which will be publishing and/or subscribing for messages (events)
@@ -698,10 +698,10 @@ func makeNodeInfo(
 		Version: version.TMVersion,
 		Channels: []byte{
 			bcChannel,
-			byte(cs.StateChannel),
-			byte(cs.DataChannel),
-			byte(cs.VoteChannel),
-			byte(cs.VoteSetBitsChannel),
+			byte(consensus.StateChannel),
+			byte(consensus.DataChannel),
+			byte(consensus.VoteChannel),
+			byte(consensus.VoteSetBitsChannel),
 			byte(mempool.MempoolChannel),
 			byte(evidence.EvidenceChannel),
 			byte(statesync.SnapshotChannel),

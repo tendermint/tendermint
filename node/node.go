@@ -18,7 +18,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	cs "github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/pex"
@@ -69,7 +69,7 @@ type nodeImpl struct {
 	mempool          mempool.Mempool
 	stateSync        bool               // whether the node should state sync on startup
 	stateSyncReactor *statesync.Reactor // for hosting and restoring state sync snapshots
-	consensusReactor *cs.Reactor        // for participating in the consensus
+	consensusReactor *consensus.Reactor // for participating in the consensus
 	pexReactor       service.Service    // for exchanging peer addresses
 	evidenceReactor  service.Service
 	rpcListeners     []net.Listener // rpc servers
@@ -276,7 +276,7 @@ func makeNode(cfg *config.Config,
 
 	csReactorShim, csReactor, csState := createConsensusReactor(
 		cfg, state, blockExec, blockStore, mp, evPool,
-		privValidator, nodeMetrics.cs, stateSync || blockSync, eventBus,
+		privValidator, nodeMetrics.consensus, stateSync || blockSync, eventBus,
 		peerManager, router, consensusLogger,
 	)
 
@@ -284,7 +284,7 @@ func makeNode(cfg *config.Config,
 	// doing a state sync first.
 	bcReactorShim, bcReactor, err := createBlockchainReactor(
 		logger, cfg, state, blockExec, blockStore, csReactor,
-		peerManager, router, blockSync && !stateSync, nodeMetrics.cs,
+		peerManager, router, blockSync && !stateSync, nodeMetrics.consensus,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not create blockchain reactor: %w", err)
@@ -301,9 +301,9 @@ func makeNode(cfg *config.Config,
 	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or block sync first.
 	// FIXME We need to update metrics here, since other reactors don't have access to them.
 	if stateSync {
-		nodeMetrics.cs.StateSyncing.Set(1)
+		nodeMetrics.consensus.StateSyncing.Set(1)
 	} else if blockSync {
-		nodeMetrics.cs.BlockSyncing.Set(1)
+		nodeMetrics.consensus.BlockSyncing.Set(1)
 	}
 
 	// Set up state sync reactor, and schedule a sync if requested.
@@ -452,7 +452,7 @@ func makeNode(cfg *config.Config,
 			ConsensusState: csState,
 
 			ConsensusReactor: csReactor,
-			BlockSyncReactor: bcReactor.(cs.BlockSyncReactor),
+			BlockSyncReactor: bcReactor.(consensus.BlockSyncReactor),
 
 			P2PPeers:    sw,
 			PeerManager: peerManager,
@@ -679,7 +679,7 @@ func (n *nodeImpl) OnStart() error {
 	// TODO: We shouldn't run state sync if we already have state that has a
 	// LastBlockHeight that is not InitialHeight
 	if n.stateSync {
-		bcR, ok := n.bcReactor.(cs.BlockSyncReactor)
+		bcR, ok := n.bcReactor.(consensus.BlockSyncReactor)
 		if !ok {
 			return fmt.Errorf("this blockchain reactor does not support switching from state sync")
 		}
@@ -977,7 +977,7 @@ func (n *nodeImpl) startPrometheusServer(addr string) *http.Server {
 }
 
 // ConsensusReactor returns the Node's ConsensusReactor.
-func (n *nodeImpl) ConsensusReactor() *cs.Reactor {
+func (n *nodeImpl) ConsensusReactor() *consensus.Reactor {
 	return n.consensusReactor
 }
 
@@ -1038,7 +1038,7 @@ func defaultGenesisDocProviderFunc(cfg *config.Config) genesisDocProvider {
 }
 
 type nodeMetrics struct {
-	cs        *cs.Metrics
+	consensus *consensus.Metrics
 	p2p       *p2p.Metrics
 	mempool   *mempool.Metrics
 	state     *sm.Metrics
@@ -1054,7 +1054,7 @@ func defaultMetricsProvider(cfg *config.InstrumentationConfig) metricsProvider {
 	return func(chainID string) *nodeMetrics {
 		if cfg.Prometheus {
 			return &nodeMetrics{
-				cs.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				consensus.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 				p2p.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 				mempool.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 				sm.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
@@ -1062,7 +1062,7 @@ func defaultMetricsProvider(cfg *config.InstrumentationConfig) metricsProvider {
 			}
 		}
 		return &nodeMetrics{
-			cs.NopMetrics(),
+			consensus.NopMetrics(),
 			p2p.NopMetrics(),
 			mempool.NopMetrics(),
 			sm.NopMetrics(),

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	bc "github.com/tendermint/tendermint/internal/blocksync"
-	cons "github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/p2p"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/log"
@@ -107,7 +107,7 @@ type Reactor struct {
 	// stopping the p2p Channel(s).
 	poolWG sync.WaitGroup
 
-	metrics *cons.Metrics
+	metrics *consensus.Metrics
 
 	syncStartTime time.Time
 }
@@ -122,7 +122,7 @@ func NewReactor(
 	blockSyncCh *p2p.Channel,
 	peerUpdates *p2p.PeerUpdates,
 	blockSync bool,
-	metrics *cons.Metrics,
+	metrics *consensus.Metrics,
 ) (*Reactor, error) {
 	if state.LastBlockHeight != store.Height() {
 		return nil, fmt.Errorf("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height())

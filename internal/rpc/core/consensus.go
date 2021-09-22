@@ -3,7 +3,7 @@ package core
 import (
 	"errors"
 
-	cm "github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/consensus"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
@@ -63,7 +63,7 @@ func (env *Environment) DumpConsensusState(ctx *rpctypes.Context) (*coretypes.Re
 		peers := env.P2PPeers.Peers().List()
 		peerStates = make([]coretypes.PeerStateInfo, 0, len(peers))
 		for _, peer := range peers {
-			peerState, ok := peer.Get(types.PeerStateKey).(*cm.PeerState)
+			peerState, ok := peer.Get(types.PeerStateKey).(*consensus.PeerState)
 			if !ok { // peer does not have a state yet
 				continue
 			}
