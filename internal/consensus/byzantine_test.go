@@ -52,7 +52,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 			defer os.RemoveAll(thisConfig.RootDir)
 
-			ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+			ensureDir(t, path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 			app := appFunc()
 			vals := types.TM2PB.ValidatorUpdates(state.Validators)
 			app.InitChain(abci.RequestInitChain{Validators: vals})
