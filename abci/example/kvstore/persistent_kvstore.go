@@ -14,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/log"
 	cryptoproto "github.com/tendermint/tendermint/proto/tendermint/crypto"
+	ptypes "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 const (
@@ -70,6 +71,10 @@ func (app *PersistentKVStoreApplication) DeliverTx(req types.RequestDeliverTx) t
 		// update validators in the merkle tree
 		// and in app.ValUpdates
 		return app.execValidatorTx(req.Tx)
+	}
+
+	if isPrepareTx(req.Tx) {
+		return app.execPrepareTx(req.Tx)
 	}
 
 	// otherwise, update the key-value store
@@ -168,21 +173,20 @@ func (app *PersistentKVStoreApplication) ApplySnapshotChunk(
 
 func (app *PersistentKVStoreApplication) ExtendVote(
 	req types.RequestExtendVote) types.ResponseExtendVote {
-	return types.ResponseExtendVote{}
+	return types.ResponseExtendVote{
+		VoteExtension: ConstructVoteExtension(req.Vote.ValidatorAddress),
+	}
 }
 
 func (app *PersistentKVStoreApplication) VerifyVoteExtension(
 	req types.RequestVerifyVoteExtension) types.ResponseVerifyVoteExtension {
-	return types.ResponseVerifyVoteExtension{}
+	return types.RespondVerifyVoteExtension(
+		app.verifyExtension(req.Vote.ValidatorAddress, req.Vote.VoteExtension))
 }
 
 func (app *PersistentKVStoreApplication) PrepareProposal(
 	req types.RequestPrepareProposal) types.ResponsePrepareProposal {
-	if len(req.BlockData) >= 1 {
-		req.BlockData[1] = []byte("modified tx")
-	}
-
-	return types.ResponsePrepareProposal{BlockData: req.BlockData}
+	return types.ResponsePrepareProposal{BlockData: app.substPrepareTx(req.BlockData)}
 }
 
 //---------------------------------------------
@@ -298,4 +302,54 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 	app.ValUpdates = append(app.ValUpdates, v)
 
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK}
+}
+
+// -----------------------------
+
+const PreparePrefix = "prepare"
+
+func isPrepareTx(tx []byte) bool {
+	return strings.HasPrefix(string(tx), PreparePrefix)
+}
+
+// execPrepareTx is noop. tx data is considered as placeholder
+// and is substitute at the PrepareProposal.
+func (app *PersistentKVStoreApplication) execPrepareTx(tx []byte) types.ResponseDeliverTx {
+	// noop
+	return types.ResponseDeliverTx{}
+}
+
+// substPrepareTx subst all the preparetx in the blockdata
+// to null string(could be any arbitrary string).
+func (app *PersistentKVStoreApplication) substPrepareTx(blockData [][]byte) [][]byte {
+	// TODO: this mechanism will change with the current spec of PrepareProposal
+	// We now have a special type for marking a tx as changed
+	for i, tx := range blockData {
+		if isPrepareTx(tx) {
+			blockData[i] = make([]byte, len(tx))
+		}
+	}
+
+	return blockData
+}
+
+func ConstructVoteExtension(valAddr []byte) *ptypes.VoteExtension {
+	return &ptypes.VoteExtension{
+		AppDataToSign:             valAddr,
+		AppDataSelfAuthenticating: valAddr,
+	}
+}
+
+func (app *PersistentKVStoreApplication) verifyExtension(valAddr []byte, ext *ptypes.VoteExtension) bool {
+	if ext == nil {
+		return false
+	}
+	canonical := ConstructVoteExtension(valAddr)
+	if !bytes.Equal(canonical.AppDataToSign, ext.AppDataToSign) {
+		return false
+	}
+	if !bytes.Equal(canonical.AppDataSelfAuthenticating, ext.AppDataSelfAuthenticating) {
+		return false
+	}
+	return true
 }
