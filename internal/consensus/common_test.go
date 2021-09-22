@@ -368,6 +368,7 @@ func validatePrevoteAndPrecommit(
 	votedBlockHash,
 	lockedBlockHash []byte,
 ) {
+	t.Helper()
 	// verify the prevote
 	validatePrevote(ctx, t, cs, thisRound, privVal, votedBlockHash)
 	// verify precommit
@@ -739,6 +740,7 @@ func randConsensusState(
 	appFunc func(t *testing.T, logger log.Logger) abci.Application,
 	configOpts ...func(*config.Config),
 ) ([]*State, cleanupFunc) {
+	t.Helper()
 
 	genDoc, privVals := factory.RandGenesisDoc(ctx, t, cfg, nValidators, false, 30)
 	css := make([]*State, nValidators)
@@ -802,6 +804,7 @@ func randConsensusNetWithPeers(
 
 	genDoc, privVals := factory.RandGenesisDoc(ctx, t, cfg, nValidators, false, testMinPower)
 	css := make([]*State, nPeers)
+	t.Helper()
 	logger := consensusLogger()
 
 	var peer0Config *config.Config

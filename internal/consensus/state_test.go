@@ -1846,7 +1846,7 @@ func TestStateSlashingPrevotes(t *testing.T) {
 	voteCh := subscribeToVoter(ctx, t, cs1, cs1.privValidator.GetAddress())
 
 	// start round and wait for propose and prevote
-	startTestRound(cs1, cs1.Height, 0)
+	startTestRound(ctx, cs1, cs1.Height, 0)
 	<-newRoundCh
 	re := <-proposalCh
 	<-voteCh // prevote
@@ -1881,7 +1881,7 @@ func TestStateSlashingPrecommits(t *testing.T) {
 	voteCh := subscribeToVoter(ctx, t, cs1, cs1.privValidator.GetAddress())
 
 	// start round and wait for propose and prevote
-	startTestRound(cs1, cs1.Height, 0)
+	startTestRound(ctx, cs1, cs1.Height, 0)
 	<-newRoundCh
 	re := <-proposalCh
 	<-voteCh // prevote
