@@ -154,6 +154,7 @@ func newWSConnection(
 	options ...func(*wsConnection),
 ) *wsConnection {
 	wsc := &wsConnection{
+		RunState:          client.NewRunState("wsConnection", logger),
 		remoteAddr:        baseConn.RemoteAddr().String(),
 		baseConn:          baseConn,
 		funcMap:           funcMap,
@@ -167,7 +168,6 @@ func newWSConnection(
 		option(wsc)
 	}
 	wsc.baseConn.SetReadLimit(wsc.readLimit)
-	wsc.RunState = client.NewRunState("wsConnection", logger)
 	return wsc
 }
 
