@@ -12,7 +12,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
-	nm "github.com/tendermint/tendermint/node"
+	"github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
 	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
@@ -101,12 +101,12 @@ func StartTendermint(ctx context.Context,
 		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 	}
 	papp := abciclient.NewLocalCreator(app)
-	node, err := nm.New(conf, logger, papp, nil)
+	tmNode, err := node.New(conf, logger, papp, nil)
 	if err != nil {
 		return nil, func(_ context.Context) error { return nil }, err
 	}
 
-	err = node.Start()
+	err = tmNode.Start()
 	if err != nil {
 		return nil, func(_ context.Context) error { return nil }, err
 	}
@@ -119,11 +119,11 @@ func StartTendermint(ctx context.Context,
 		fmt.Println("Tendermint running!")
 	}
 
-	return node, func(ctx context.Context) error {
-		if err := node.Stop(); err != nil {
+	return tmNode, func(ctx context.Context) error {
+		if err := tmNode.Stop(); err != nil {
 			logger.Error("Error when trying to stop node", "err", err)
 		}
-		node.Wait()
+		tmNode.Wait()
 		os.RemoveAll(conf.RootDir)
 		return nil
 	}, nil
