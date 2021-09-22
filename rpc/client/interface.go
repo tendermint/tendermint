@@ -30,8 +30,7 @@ import (
 
 //go:generate ../../scripts/mockery_generate.sh Client
 
-// Client is the interface that must be satisfied by implementations of a
-// client of the Tendermint RPC service.
+// Client describes the interface of Tendermint RPC client implementations.
 type Client interface {
 	// These methods define the operational structure of the client.
 
