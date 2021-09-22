@@ -127,8 +127,8 @@ func TestStateProposerSelection2(t *testing.T) {
 				prop.Address))
 		}
 
-		rs := cs1.GetRoundState()
-		signAddVotes(config, cs1, tmproto.PrecommitType, nil, rs.ProposalBlockParts.Header(), vss[1:]...)
+		signAddVotes(config, cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vss[1:]...)
+		time.Sleep(time.Second)
 		ensureNewRound(t, newRoundCh, height, i+round+1) // wait for the new round event each round
 		incrementRound(vss[1:]...)
 	}
