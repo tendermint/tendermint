@@ -648,7 +648,7 @@ func TestStateLockPOLRelock(t *testing.T) {
 
 	signAddVotes(config, cs1, tmproto.PrevoteType, theBlockHash, theBlockParts, vs2, vs3, vs4)
 	// check that we lock on the first block
-	ensureLock(lockCh, height, round)
+	ensureLock(t, lockCh, height, round)
 
 	ensurePrecommit(t, voteCh, height, round) // our precommit
 	// the proposed block should now be locked and our precommit added
@@ -793,7 +793,7 @@ func TestStatePOLDoesNotUnlock(t *testing.T) {
 	t.Log("#### ONTO ROUND 1")
 	round++
 	incrementRound(vs2, vs3, vs4)
-	prop, propBlock := decideProposal(cs1, vs2, vs2.Height, vs2.Round)
+	prop, propBlock := decideProposal(t, cs1, vs2, vs2.Height, vs2.Round)
 	propBlockParts := propBlock.MakePartSet(types.BlockPartSizeBytes)
 	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, ""); err != nil {
 		t.Fatal(err)
@@ -829,7 +829,7 @@ func TestStatePOLDoesNotUnlock(t *testing.T) {
 	t.Log("#### ONTO ROUND 2")
 	round++
 	incrementRound(vs2, vs3, vs4)
-	prop, propBlock = decideProposal(cs1, vs3, vs3.Height, vs3.Round)
+	prop, propBlock = decideProposal(t, cs1, vs3, vs3.Height, vs3.Round)
 	propBlockParts = propBlock.MakePartSet(types.BlockPartSizeBytes)
 	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, ""); err != nil {
 		t.Fatal(err)
@@ -1238,7 +1238,7 @@ func TestProposeValidBlock(t *testing.T) {
 	// the others sign a polka
 	signAddVotes(config, cs1, tmproto.PrevoteType, propBlockHash, propBlock.MakePartSet(partSize).Header(), vs2, vs3, vs4)
 
-  ensurePrecommit(t, voteCh, height, round)
+	ensurePrecommit(t, voteCh, height, round)
 	// we should have precommitted the proposed block in this round.
 
 	validatePrecommit(t, cs1, round, round, vss[0], propBlockHash, propBlockHash)
@@ -1253,7 +1253,6 @@ func TestProposeValidBlock(t *testing.T) {
 	ensureNewRound(t, newRoundCh, height, round)
 	t.Log("### ONTO ROUND 1")
 
-
 	// timeout of propose
 	ensureNewTimeout(t, timeoutProposeCh, height, round, cs1.config.Propose(round).Nanoseconds())
 
@@ -1266,7 +1265,6 @@ func TestProposeValidBlock(t *testing.T) {
 	// we should have precommitted nil during this round because we received
 	// >2/3 precommits for nil from the other validators.
 	validatePrecommit(t, cs1, round, 0, vss[0], nil, propBlockHash)
-
 
 	incrementRound(vs2, vs3, vs4)
 	incrementRound(vs2, vs3, vs4)
@@ -1285,7 +1283,6 @@ func TestProposeValidBlock(t *testing.T) {
 	ensureNewRound(t, newRoundCh, height, round)
 
 	ensureNewProposal(t, proposalCh, height, round)
-
 
 	rs = cs1.GetRoundState()
 	assert.True(t, bytes.Equal(rs.ProposalBlock.Hash(), propBlockHash))

@@ -647,10 +647,9 @@ func ensureNewUnlock(t *testing.T, unlockCh <-chan tmpubsub.Message, height int6
 }
 
 func ensureLock(t *testing.T, lockCh <-chan tmpubsub.Message, height int64, round int32) {
-	ensureNewEvent(lockCh, height, round, ensureTimeout,
+	ensureNewEvent(t, lockCh, height, round, ensureTimeout,
 		"Timeout expired while waiting for LockValue event")
 }
-
 
 func ensureProposal(t *testing.T, proposalCh <-chan tmpubsub.Message, height int64, round int32, propID types.BlockID) {
 	t.Helper()
