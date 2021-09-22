@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math"
 	"net"
-	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
@@ -37,6 +36,8 @@ import (
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
+
+	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
 )
 
 func initDBs(cfg *config.Config, dbProvider config.DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {

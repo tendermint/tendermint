@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/adlio/schema"
-	_ "github.com/lib/pq"
+
 	dockertest "github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
 	"github.com/stretchr/testify/assert"
@@ -22,6 +22,9 @@ import (
 	psql "github.com/tendermint/tendermint/internal/state/indexer/sink/psql"
 	tmlog "github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
+
+	// Register the Postgre database driver.
+	_ "github.com/lib/pq"
 )
 
 var psqldb *sql.DB
