@@ -15,9 +15,9 @@ import (
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/proxy"
 	proxymocks "github.com/tendermint/tendermint/internal/proxy/mocks"
+	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/statesync/mocks"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
-	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )

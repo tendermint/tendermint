@@ -8,7 +8,7 @@ import (
 
 	context "context"
 
-	coretypes "github.com/tendermint/tendermint/rpc/core/types"
+	coretypes "github.com/tendermint/tendermint/rpc/coretypes"
 
 	log "github.com/tendermint/tendermint/libs/log"
 
