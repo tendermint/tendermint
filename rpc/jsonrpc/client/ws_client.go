@@ -14,7 +14,7 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	"github.com/tendermint/tendermint/libs/service"
+	tmclient "github.com/tendermint/tendermint/rpc/client"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
@@ -41,6 +41,7 @@ func DefaultWSOptions() WSOptions {
 //
 // WSClient is safe for concurrent use by multiple goroutines.
 type WSClient struct { // nolint: maligned
+	*tmclient.RunState
 	conn *websocket.Conn
 
 	Address  string // IP:PORT or /path/to/socket
@@ -83,8 +84,6 @@ type WSClient struct { // nolint: maligned
 	// Send pings to server with this period. Must be less than readWait. If 0, no pings will be sent.
 	pingPeriod time.Duration
 
-	service.BaseService
-
 	// Time between sending a ping and receiving a pong. See
 	// https://godoc.org/github.com/rcrowley/go-metrics#Timer.
 	PingPongLatencyTimer metrics.Timer
@@ -114,6 +113,7 @@ func NewWSWithOptions(remoteAddr, endpoint string, opts WSOptions) (*WSClient, e
 	}
 
 	c := &WSClient{
+		RunState:             tmclient.NewRunState("WSClient", nil),
 		Address:              parsedURL.GetTrimmedHostWithPath(),
 		Dialer:               dialFn,
 		Endpoint:             endpoint,
@@ -127,7 +127,6 @@ func NewWSWithOptions(remoteAddr, endpoint string, opts WSOptions) (*WSClient, e
 
 		// sentIDs: make(map[types.JSONRPCIntID]bool),
 	}
-	c.BaseService = *service.NewBaseService(nil, "WSClient", c)
 	return c, nil
 }
 
@@ -143,9 +142,11 @@ func (c *WSClient) String() string {
 	return fmt.Sprintf("WSClient{%s (%s)}", c.Address, c.Endpoint)
 }
 
-// OnStart implements service.Service by dialing a server and creating read and
-// write routines.
-func (c *WSClient) OnStart() error {
+// Start dials the specified service address and starts the I/O routines.
+func (c *WSClient) Start() error {
+	if err := c.RunState.Start(); err != nil {
+		return err
+	}
 	err := c.dial()
 	if err != nil {
 		return err
@@ -167,10 +168,9 @@ func (c *WSClient) OnStart() error {
 	return nil
 }
 
-// Stop overrides service.Service#Stop. There is no other way to wait until Quit
-// channel is closed.
+// Stop shuts down the client.
 func (c *WSClient) Stop() error {
-	if err := c.BaseService.Stop(); err != nil {
+	if err := c.RunState.Stop(); err != nil {
 		return err
 	}
 	// only close user-facing channels when we can't write to them

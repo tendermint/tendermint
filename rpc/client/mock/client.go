@@ -20,7 +20,6 @@ import (
 
 	"github.com/tendermint/tendermint/internal/rpc/core"
 	"github.com/tendermint/tendermint/libs/bytes"
-	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
@@ -29,15 +28,7 @@ import (
 
 // Client wraps arbitrary implementations of the various interfaces.
 type Client struct {
-	client.ABCIClient
-	client.SignClient
-	client.HistoryClient
-	client.StatusClient
-	client.EventsClient
-	client.EvidenceClient
-	client.MempoolClient
-	service.Service
-
+	client.Client
 	env *core.Environment
 }
 
