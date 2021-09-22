@@ -3,7 +3,7 @@ package v2
 import (
 	"fmt"
 
-	tmState "github.com/tendermint/tendermint/state"
+	tmState "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/types"
 )
 

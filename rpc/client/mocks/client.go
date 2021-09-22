@@ -8,7 +8,7 @@ import (
 
 	context "context"
 
-	coretypes "github.com/tendermint/tendermint/rpc/core/types"
+	coretypes "github.com/tendermint/tendermint/rpc/coretypes"
 
 	mock "github.com/stretchr/testify/mock"
 

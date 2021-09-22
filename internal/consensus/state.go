@@ -17,6 +17,7 @@ import (
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/libs/fail"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	sm "github.com/tendermint/tendermint/internal/state"
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
@@ -27,7 +28,6 @@ import (
 	"github.com/tendermint/tendermint/privval"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 

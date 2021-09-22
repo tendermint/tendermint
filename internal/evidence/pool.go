@@ -14,9 +14,9 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	clist "github.com/tendermint/tendermint/internal/libs/clist"
+	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 

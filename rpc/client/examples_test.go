@@ -8,7 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	ctypes "github.com/tendermint/tendermint/rpc/coretypes"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 )
 

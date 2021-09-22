@@ -9,11 +9,11 @@ import (
 	bc "github.com/tendermint/tendermint/internal/blocksync"
 	cons "github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/p2p"
+	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	tmSync "github.com/tendermint/tendermint/libs/sync"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
-	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )

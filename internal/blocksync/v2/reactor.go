@@ -12,10 +12,10 @@ import (
 	cons "github.com/tendermint/tendermint/internal/consensus"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/sync"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
-	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
