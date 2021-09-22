@@ -19,12 +19,18 @@ type Application interface {
 	// Consensus Connection
 	InitChain(RequestInitChain) ResponseInitChain // Initialize blockchain w validators/other info from TendermintCore
 	PrepareProposal(RequestPrepareProposal) ResponsePrepareProposal
-	BeginBlock(RequestBeginBlock) ResponseBeginBlock // Signals the beginning of a block
-	DeliverTx(RequestDeliverTx) ResponseDeliverTx    // Deliver a tx for full processing
-	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
-	Commit() ResponseCommit                          // Commit the state and return the application Merkle root hash
-	ExtendVote(RequestExtendVote) ResponseExtendVote                            // Create application specific vote extension
-	VerifyVoteExtension(RequestVerifyVoteExtension) ResponseVerifyVoteExtension // Verify application's vote extension data
+	// Signals the beginning of a block
+	BeginBlock(RequestBeginBlock) ResponseBeginBlock
+	// Deliver a tx for full processing
+	DeliverTx(RequestDeliverTx) ResponseDeliverTx
+	// Signals the end of a block, returns changes to the validator set
+	EndBlock(RequestEndBlock) ResponseEndBlock
+	// Commit the state and return the application Merkle root hash
+	Commit() ResponseCommit
+	// Create application specific vote extension
+	ExtendVote(RequestExtendVote) ResponseExtendVote
+	// Verify application's vote extension data
+	VerifyVoteExtension(RequestVerifyVoteExtension) ResponseVerifyVoteExtension
 
 	// State Sync Connection
 	ListSnapshots(RequestListSnapshots) ResponseListSnapshots                // List available snapshots
@@ -197,7 +203,7 @@ func (app *GRPCApplication) ExtendVote(
 func (app *GRPCApplication) VerifyVoteExtension(
 	ctx context.Context, req *RequestVerifyVoteExtension) (*ResponseVerifyVoteExtension, error) {
 	res := app.app.VerifyVoteExtension(*req)
-  return &res, nil
+	return &res, nil
 }
 
 func (app *GRPCApplication) PrepareProposal(

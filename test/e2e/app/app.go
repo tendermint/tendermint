@@ -206,7 +206,7 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 
 func (app *Application) PrepareProposal(
 	req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
-	return abci.ResponsePrepareProposal{BlockData: req.BlockData} //nolint:gosimple
+	return abci.ResponsePrepareProposal{BlockData: req.BlockData}
 }
 
 // validatorUpdates generates a validator set update.

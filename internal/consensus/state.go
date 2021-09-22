@@ -1960,6 +1960,7 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID types.NodeID
 // Attempt to add the vote. if its a duplicate signature, dupeout the validator
 func (cs *State) tryAddVote(vote *types.Vote, peerID types.NodeID) (bool, error) {
 	added, err := cs.addVote(vote, peerID)
+
 	if err != nil {
 		// If the vote height is off, we'll just ignore it,
 		// But if it's a conflicting sig, add it to the cs.evpool.
@@ -2051,6 +2052,13 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 	if vote.Height != cs.Height {
 		cs.Logger.Debug("vote ignored and not added", "vote_height", vote.Height, "cs_height", cs.Height, "peer", peerID)
 		return
+	}
+
+	// Verify VoteExtension if precommit
+	if vote.Type == tmproto.PrecommitType {
+		if err = cs.blockExec.VerifyVoteExtension(vote); err != nil {
+			return false, err
+		}
 	}
 
 	height := cs.Height
@@ -2209,8 +2217,6 @@ func (cs *State) signVote(
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
 	}
 
-	v := vote.ToProto()
-
 	// If the signedMessageType is for precommit,
 	// use our local precommit Timeout as the max wait time for getting a singed commit. The same goes for prevote.
 	var timeout time.Duration
@@ -2230,13 +2236,14 @@ func (cs *State) signVote(
 		timeout = time.Second
 	}
 
+	v := vote.ToProto()
+
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
 
 	err := cs.privValidator.SignVote(ctx, cs.state.ChainID, v)
 	vote.Signature = v.Signature
 	vote.Timestamp = v.Timestamp
-
 
 	return vote, err
 }
@@ -2267,9 +2274,9 @@ func (cs *State) voteTime() time.Time {
 
 // sign the vote and publish on internalMsgQueue
 func (cs *State) signAddVote(
-  msgType tmproto.SignedMsgType,
-  hash []byte,
-  header types.PartSetHeader,
+	msgType tmproto.SignedMsgType,
+	hash []byte,
+	header types.PartSetHeader,
 ) *types.Vote {
 	if cs.privValidator == nil { // the node does not have a key
 		return nil
