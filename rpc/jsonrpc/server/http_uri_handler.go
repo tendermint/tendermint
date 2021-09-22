@@ -11,7 +11,7 @@ import (
 
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
-	ctypes "github.com/tendermint/tendermint/rpc/coretypes"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
@@ -76,10 +76,10 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 			var res types.RPCResponse
 
 			switch errors.Unwrap(err) {
-			case ctypes.ErrZeroOrNegativeHeight,
-				ctypes.ErrZeroOrNegativePerPage,
-				ctypes.ErrPageOutOfRange,
-				ctypes.ErrInvalidRequest:
+			case coretypes.ErrZeroOrNegativeHeight,
+				coretypes.ErrZeroOrNegativePerPage,
+				coretypes.ErrPageOutOfRange,
+				coretypes.ErrInvalidRequest:
 				res = types.RPCInvalidRequestError(dummyID, err)
 			default: // ctypes.ErrHeightNotAvailable, ctypes.ErrHeightExceedsChainHead:
 				res = types.RPCInternalError(dummyID, err)

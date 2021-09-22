@@ -16,7 +16,7 @@ import (
 	"github.com/tendermint/tendermint/internal/statesync"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
-	ctypes "github.com/tendermint/tendermint/rpc/coretypes"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -113,7 +113,7 @@ type Environment struct {
 func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	// this can only happen if we haven't first run validatePerPage
 	if perPage < 1 {
-		panic(fmt.Errorf("%w (%d)", ctypes.ErrZeroOrNegativePerPage, perPage))
+		panic(fmt.Errorf("%w (%d)", coretypes.ErrZeroOrNegativePerPage, perPage))
 	}
 
 	if pagePtr == nil { // no page parameter
@@ -126,7 +126,7 @@ func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	}
 	page := *pagePtr
 	if page <= 0 || page > pages {
-		return 1, fmt.Errorf("%w expected range: [1, %d], given %d", ctypes.ErrPageOutOfRange, pages, page)
+		return 1, fmt.Errorf("%w expected range: [1, %d], given %d", coretypes.ErrPageOutOfRange, pages, page)
 	}
 
 	return page, nil
@@ -191,15 +191,15 @@ func (env *Environment) getHeight(latestHeight int64, heightPtr *int64) (int64, 
 	if heightPtr != nil {
 		height := *heightPtr
 		if height <= 0 {
-			return 0, fmt.Errorf("%w (requested height: %d)", ctypes.ErrZeroOrNegativeHeight, height)
+			return 0, fmt.Errorf("%w (requested height: %d)", coretypes.ErrZeroOrNegativeHeight, height)
 		}
 		if height > latestHeight {
 			return 0, fmt.Errorf("%w (requested height: %d, blockchain height: %d)",
-				ctypes.ErrHeightExceedsChainHead, height, latestHeight)
+				coretypes.ErrHeightExceedsChainHead, height, latestHeight)
 		}
 		base := env.BlockStore.Base()
 		if height < base {
-			return 0, fmt.Errorf("%w (requested height: %d, base height: %d)", ctypes.ErrHeightNotAvailable, height, base)
+			return 0, fmt.Errorf("%w (requested height: %d, base height: %d)", coretypes.ErrHeightNotAvailable, height, base)
 		}
 		return height, nil
 	}

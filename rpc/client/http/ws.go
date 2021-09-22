@@ -11,7 +11,7 @@ import (
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
-	ctypes "github.com/tendermint/tendermint/rpc/coretypes"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	jsonrpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 )
 
@@ -53,7 +53,7 @@ type wsEvents struct {
 }
 
 type wsSubscription struct {
-	res   chan ctypes.ResultEvent
+	res   chan coretypes.ResultEvent
 	id    string
 	query string
 }
@@ -119,7 +119,7 @@ func (w *wsEvents) Stop() error { return w.ws.Stop() }
 //
 // It returns an error if wsEvents is not running.
 func (w *wsEvents) Subscribe(ctx context.Context, subscriber, query string,
-	outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
+	outCapacity ...int) (out <-chan coretypes.ResultEvent, err error) {
 
 	if !w.IsRunning() {
 		return nil, rpcclient.ErrClientNotRunning
@@ -134,7 +134,7 @@ func (w *wsEvents) Subscribe(ctx context.Context, subscriber, query string,
 		outCap = outCapacity[0]
 	}
 
-	outc := make(chan ctypes.ResultEvent, outCap)
+	outc := make(chan coretypes.ResultEvent, outCap)
 	w.mtx.Lock()
 	defer w.mtx.Unlock()
 	// subscriber param is ignored because Tendermint will override it with
@@ -238,7 +238,7 @@ func (w *wsEvents) eventListener() {
 				continue
 			}
 
-			result := new(ctypes.ResultEvent)
+			result := new(coretypes.ResultEvent)
 			err := tmjson.Unmarshal(resp.Result, result)
 			if err != nil {
 				w.Logger.Error("failed to unmarshal response", "err", err)

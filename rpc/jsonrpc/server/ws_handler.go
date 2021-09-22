@@ -14,7 +14,7 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/rpc/client"
-	ctypes "github.com/tendermint/tendermint/rpc/coretypes"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
@@ -403,8 +403,8 @@ func (wsc *wsConnection) readRoutine() {
 			default: // we need to unwrap the error and parse it accordingly
 				switch errors.Unwrap(err) {
 				// check if the error was due to an invald request
-				case ctypes.ErrZeroOrNegativeHeight, ctypes.ErrZeroOrNegativePerPage,
-					ctypes.ErrPageOutOfRange, ctypes.ErrInvalidRequest:
+				case coretypes.ErrZeroOrNegativeHeight, coretypes.ErrZeroOrNegativePerPage,
+					coretypes.ErrPageOutOfRange, coretypes.ErrInvalidRequest:
 					resp = types.RPCInvalidRequestError(request.ID, err)
 
 				// lastly default all remaining errors as internal errors

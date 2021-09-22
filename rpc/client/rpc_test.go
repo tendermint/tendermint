@@ -24,7 +24,7 @@ import (
 	"github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpclocal "github.com/tendermint/tendermint/rpc/client/local"
-	ctypes "github.com/tendermint/tendermint/rpc/coretypes"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 	"github.com/tendermint/tendermint/types"
 )
@@ -781,10 +781,10 @@ func testBatchedJSONRPCCalls(ctx context.Context, t *testing.T, c *rpchttp.HTTP)
 	require.Len(t, bresults, 2)
 	require.Equal(t, 0, batch.Count())
 
-	bresult1, ok := bresults[0].(*ctypes.ResultBroadcastTxCommit)
+	bresult1, ok := bresults[0].(*coretypes.ResultBroadcastTxCommit)
 	require.True(t, ok)
 	require.Equal(t, *bresult1, *r1)
-	bresult2, ok := bresults[1].(*ctypes.ResultBroadcastTxCommit)
+	bresult2, ok := bresults[1].(*coretypes.ResultBroadcastTxCommit)
 	require.True(t, ok)
 	require.Equal(t, *bresult2, *r2)
 	apph := tmmath.MaxInt64(bresult1.Height, bresult2.Height) + 1
@@ -802,10 +802,10 @@ func testBatchedJSONRPCCalls(ctx context.Context, t *testing.T, c *rpchttp.HTTP)
 	require.Len(t, qresults, 2)
 	require.Equal(t, 0, batch.Count())
 
-	qresult1, ok := qresults[0].(*ctypes.ResultABCIQuery)
+	qresult1, ok := qresults[0].(*coretypes.ResultABCIQuery)
 	require.True(t, ok)
 	require.Equal(t, *qresult1, *q1)
-	qresult2, ok := qresults[1].(*ctypes.ResultABCIQuery)
+	qresult2, ok := qresults[1].(*coretypes.ResultABCIQuery)
 	require.True(t, ok)
 	require.Equal(t, *qresult2, *q2)
 
