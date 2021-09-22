@@ -473,11 +473,19 @@ func (bcR *BlockchainReactor) processBlock() error {
 	firstParts := first.MakePartSet(types.BlockPartSizeBytes)
 	firstPartSetHeader := firstParts.Header()
 	firstID := types.BlockID{Hash: first.Hash(), PartSetHeader: firstPartSetHeader}
+	firstStateID := types.StateID{Height: first.Height - 1, LastAppHash: first.AppHash}
+	if !firstStateID.Equals(bcR.state.GetStateID()) {
+		// Not sure if this is should ever happen, needs investigation if it does
+		bcR.Logger.Debug("stateID generated from first block doesn't match current state, please investigate",
+			"first.stateID", firstStateID,
+			"state.StateID()", bcR.state.GetStateID())
+	}
+
 	// Finally, verify the first block using the second's commit
 	// NOTE: we can probably make this more efficient, but note that calling
 	// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 	// currently necessary.
-	err = bcR.state.Validators.VerifyCommit(chainID, firstID, bcR.state.GetStateID(), first.Height, second.LastCommit)
+	err = bcR.state.Validators.VerifyCommit(chainID, firstID, firstStateID, first.Height, second.LastCommit)
 	if err != nil {
 		bcR.Logger.Error("error during commit verification", "err", err,
 			"first", first.Height, "second", second.Height)
