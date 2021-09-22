@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	cons "github.com/tendermint/tendermint/internal/consensus"
-	"github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/types"
 )
 

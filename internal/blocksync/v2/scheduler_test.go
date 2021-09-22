@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/types"
 )
 
