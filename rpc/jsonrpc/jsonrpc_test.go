@@ -18,8 +18,8 @@ import (
 
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
-	client "github.com/tendermint/tendermint/rpc/jsonrpc/client"
-	server "github.com/tendermint/tendermint/rpc/jsonrpc/server"
+	"github.com/tendermint/tendermint/rpc/jsonrpc/client"
+	"github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
