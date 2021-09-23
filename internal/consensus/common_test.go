@@ -522,7 +522,7 @@ func ensureNoNewTimeout(t *testing.T, stepCh <-chan tmpubsub.Message, timeout in
 		"We should be stuck waiting, not receiving NewTimeout event")
 }
 
-func ensureNewEvent(t *testing.T, ch <-chan tmpubsub.Message, height int64, round int32, timeout time.Duration, errorMessage string) { //nolint: lll
+func ensureNewEvent(t *testing.T, ch <-chan tmpubsub.Message, height int64, round int32, timeout time.Duration, errorMessage string) { // nolint: lll
 	t.Helper()
 	select {
 	case <-time.After(timeout):
