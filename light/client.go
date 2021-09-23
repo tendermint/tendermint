@@ -688,31 +688,41 @@ func (c *Client) lightBlockFromPrimaryAtHeight(ctx context.Context, height int64
 	switch err {
 	case nil:
 		// Everything went smoothly. We reset the lightBlockRequests and return the light block
-		return l, nil
 
 	case provider.ErrLightBlockTooOld:
-		// If the block is too check to see if it the same as our current block
+		// If the block is too old check to see if it the same as our current block
 		// If that's the case the chain has most likely stalled and it is most likely the current block
 		// If the block is higher than our current block height then return it.
 		// Otherwise we need to find a new primary
 		if c.latestTrustedBlock != nil && l.Height < c.latestTrustedBlock.Height {
-			return c.findNewPrimary(ctx, false)
+			l, err = c.findNewPrimary(ctx, height, false)
+		} else {
+			err = nil
 		}
-		return l, nil
 
 	case provider.ErrNoResponse, provider.ErrLightBlockNotFound, provider.ErrHeightTooHigh:
 		// we find a new witness to replace the primary
 		c.logger.Debug("error from light block request from primary, replacing...",
-			"error", err, "primary", c.primary)
-		return c.findNewPrimary(ctx, false)
-
+			"error", err)
+		l, err = c.findNewPrimary(ctx, height, false)
 	default:
 		// The light client has most likely received either provider.ErrUnreliableProvider or provider.ErrBadLightBlock
 		// These errors mean that the light client should drop the primary and try with another provider instead
 		c.logger.Error("error from light block request from primary, removing...",
-			"error", err, "primary", c.primary)
-		return c.findNewPrimary(ctx, true)
+			"error", err)
+		l, err = c.findNewPrimary(ctx, height, true)
 	}
+
+	// err was re-evaluated inside switch statement above
+	if err != nil {
+		return l, err
+	}
+
+	if height != 0 && l.Height != height {
+		return l, fmt.Errorf("invalid height received from primary: expected %d, got %d", height, l.Height)
+	}
+
+	return l, nil
 }
 
 // NOTE: requires a providerMutex lock
@@ -739,11 +749,11 @@ type witnessResponse struct {
 	err          error
 }
 
-// findNewPrimary concurrently sends a light block request, promoting the first witness to return
+// findNewPrimary concurrently sends a light block request at some height, promoting the first witness to return
 // a valid light block as the new primary. The remove option indicates whether the primary should be
 // entire removed or just appended to the back of the witnesses list. This method also handles witness
 // errors. If no witness is available, it returns the last error of the witness.
-func (c *Client) findNewPrimary(ctx context.Context, remove bool) (*types.LightBlock, error) {
+func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) (*types.LightBlock, error) {
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
 
@@ -765,8 +775,7 @@ func (c *Client) findNewPrimary(ctx context.Context, remove bool) (*types.LightB
 		wg.Add(1)
 		go func(witnessIndex int, witnessResponsesC chan witnessResponse) {
 			defer wg.Done()
-
-			lb, err := c.witnesses[witnessIndex].LightBlock(subctx, 0)
+			lb, err := c.witnesses[witnessIndex].LightBlock(subctx, height)
 			witnessResponsesC <- witnessResponse{lb, witnessIndex, err}
 		}(index, witnessResponsesC)
 	}
