@@ -92,13 +92,15 @@ func (cli *CLI) generate() error {
 	if err != nil {
 		return err
 	}
-	if cli.opts.NumGroups <= 0 {
+
+	switch {
+	case cli.opts.NumGroups <= 0:
 		e2e.SortManifests(manifests)
 
 		if err := e2e.WriteManifests(filepath.Join(cli.opts.Directory, "gen"), manifests); err != nil {
 			return err
 		}
-	} else {
+	default:
 		groupManifests := e2e.SplitGroups(cli.opts.NumGroups, manifests)
 
 		for idx, gm := range groupManifests {
@@ -110,7 +112,6 @@ func (cli *CLI) generate() error {
 			}
 		}
 	}
-	return nil
 }
 
 // Run runs the CLI.

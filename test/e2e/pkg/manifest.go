@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"sort"
 
@@ -171,22 +170,46 @@ func LoadManifest(file string) (Manifest, error) {
 }
 
 // SortManifests orders (in-place) a list of manifests such that the
-// manifests will be ordered (vaguely) from least complex to most
-// complex.
+// manifests will be ordered in terms of complexity (or expected
+// runtime). Complexity is determined first by the number of nodes,
+// and then by the total number of perturbations in the network
 func SortManifests(manifests []Manifest) {
 	sort.SliceStable(manifests, func(i, j int) bool {
+		// sort based on a point-based comparison between two
+		// manifests.
 		var (
-			left       = manifests[i]
-			right      = manifests[j]
-			leftScore  = len(left.Nodes) * 10
-			rightScore = len(right.Nodes) * 10
+			left  = manifests[i]
+			right = manifests[j]
 		)
 
+		// scores start with 100 points for each node. The
+		// number of nodes in a network is the most important
+		// factor in the complexity of the test.
+		leftScore := len(left.Nodes) * 100
+		rightScore := len(right.Nodes) * 100
+
+		// add two points for every node perturbation, and one
+		// point for every node that starts after genesis.
 		for _, n := range left.Nodes {
-			leftScore += len(n.Perturb)
+			leftScore += (len(n.Perturb) * 2)
+
+			if n.StartAt > 0 {
+				leftScore++
+			}
 		}
 		for _, n := range right.Nodes {
-			rightScore += len(n.Perturb)
+			rightScore += (len(n.Perturb) * 2)
+			if n.StartAt > 0 {
+				rightScore++
+			}
+		}
+
+		// add one point if the network has evidence.
+		if left.Evidence > 0 {
+			leftScore++
+		}
+		if right.Evidence > 0 {
+			rightScore++
 		}
 
 		return leftScore < rightScore
@@ -196,7 +219,7 @@ func SortManifests(manifests []Manifest) {
 // SplitGroups divides a list of manifests into n groups of
 // manifests.
 func SplitGroups(groups int, manifests []Manifest) [][]Manifest {
-	groupSize := int(math.Ceil(float64(len(manifests)) / float64(groups)))
+	groupSize := (len(manifests) + len(groups) - 1) / len(groups)
 	splitManifests := make([][]Manifest, 0, groups)
 
 	for i := 0; i < len(manifests); i += groupSize {
