@@ -12,7 +12,7 @@ import (
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	tmSync "github.com/tendermint/tendermint/libs/sync"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -85,7 +85,7 @@ type Reactor struct {
 	store       *store.BlockStore
 	pool        *BlockPool
 	consReactor consensusReactor
-	blockSync   *tmSync.AtomicBool
+	blockSync   *tmsync.AtomicBool
 
 	blockSyncCh *p2p.Channel
 	// blockSyncOutBridgeCh defines a channel that acts as a bridge between sending Envelope
@@ -142,7 +142,7 @@ func NewReactor(
 		store:                store,
 		pool:                 NewBlockPool(startHeight, requestsCh, errorsCh),
 		consReactor:          consReactor,
-		blockSync:            tmSync.NewBool(blockSync),
+		blockSync:            tmsync.NewBool(blockSync),
 		requestsCh:           requestsCh,
 		errorsCh:             errorsCh,
 		blockSyncCh:          blockSyncCh,

@@ -3,7 +3,7 @@ package v2
 import (
 	"fmt"
 
-	tmState "github.com/tendermint/tendermint/internal/state"
+	tmstate "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -36,7 +36,7 @@ func (e pcBlockProcessed) String() string {
 type pcFinished struct {
 	priorityNormal
 	blocksSynced int
-	tmState      tmState.State
+	tmState      tmstate.State
 }
 
 func (p pcFinished) Error() string {
@@ -148,11 +148,11 @@ func (state *pcState) handle(event Event) (Event, error) {
 		return noOp, nil
 
 	case rProcessBlock:
-		tmState := state.context.tmState()
+		tmstate := state.context.tmState()
 		firstItem, secondItem, err := state.nextTwo()
 		if err != nil {
 			if state.draining {
-				return pcFinished{tmState: tmState, blocksSynced: state.blocksSynced}, nil
+				return pcFinished{tmState: tmstate, blocksSynced: state.blocksSynced}, nil
 			}
 			return noOp, nil
 		}
@@ -164,7 +164,7 @@ func (state *pcState) handle(event Event) (Event, error) {
 		)
 
 		// verify if +second+ last commit "confirms" +first+ block
-		err = state.context.verifyCommit(tmState.ChainID, firstID, first.Height, second.LastCommit)
+		err = state.context.verifyCommit(tmstate.ChainID, firstID, first.Height, second.LastCommit)
 		if err != nil {
 			state.purgePeer(firstItem.peerID)
 			if firstItem.peerID != secondItem.peerID {
