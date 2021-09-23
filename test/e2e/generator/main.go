@@ -112,6 +112,8 @@ func (cli *CLI) generate() error {
 			}
 		}
 	}
+
+	return nil
 }
 
 // Run runs the CLI.

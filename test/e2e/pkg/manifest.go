@@ -219,7 +219,7 @@ func SortManifests(manifests []Manifest) {
 // SplitGroups divides a list of manifests into n groups of
 // manifests.
 func SplitGroups(groups int, manifests []Manifest) [][]Manifest {
-	groupSize := (len(manifests) + len(groups) - 1) / len(groups)
+	groupSize := (len(manifests) + groups - 1) / groups
 	splitManifests := make([][]Manifest, 0, groups)
 
 	for i := 0; i < len(manifests); i += groupSize {
