@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/adlio/schema"
-
 	dockertest "github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
 	"github.com/stretchr/testify/assert"
