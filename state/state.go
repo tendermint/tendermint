@@ -147,8 +147,13 @@ func (state State) StateID() types.StateID {
 	lastAppHash := make([]byte, len(state.AppHash))
 	copy(lastAppHash, state.AppHash)
 
+	height := state.LastBlockHeight
+	if height == 0 {
+		height = state.InitialHeight - 1
+	}
+
 	return types.StateID{
-		Height:      state.LastBlockHeight,
+		Height:      height,
 		LastAppHash: lastAppHash,
 	}
 }

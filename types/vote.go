@@ -224,7 +224,6 @@ func VoteBlockRequestIDProto(vote *tmproto.Vote) []byte {
 func VoteStateRequestID(stateID StateID) []byte {
 	requestIDMessage := []byte("dpsvote")
 	heightByteArray := make([]byte, 8)
-	// We use height - 1 because we are signing the state at the end of the execution of the previous block
 	binary.LittleEndian.PutUint64(heightByteArray, uint64(stateID.Height))
 
 	requestIDMessage = append(requestIDMessage, heightByteArray...)

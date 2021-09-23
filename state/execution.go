@@ -89,7 +89,7 @@ func NewBlockExecutor(
 		logger:            logger,
 		metrics:           NopMetrics(),
 		// TODO: appHashSize should be read from config
-		appHashSize:       crypto.DefaultAppHashSize,
+		appHashSize: crypto.DefaultAppHashSize,
 	}
 
 	for _, option := range options {

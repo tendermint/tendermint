@@ -370,10 +370,6 @@ FOR_LOOP:
 			firstID := types.BlockID{Hash: first.Hash(), PartSetHeader: firstPartSetHeader}
 
 			firstStateID := types.StateID{Height: first.Height - 1, LastAppHash: first.AppHash}
-			if first.Height == bcR.initialState.InitialHeight {
-				// Genesis state ID should have height 0
-				firstStateID.Height = 0
-			}
 			if !firstStateID.Equals(state.StateID()) {
 				// Not sure if this is should ever happen, needs investigation if it does
 				bcR.Logger.Debug("stateID generated from first block doesn't match current state, please investigate",

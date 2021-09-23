@@ -165,11 +165,6 @@ func (state *pcState) handle(event Event) (Event, error) {
 			firstStateID  = types.StateID{Height: first.Height - 1, LastAppHash: first.AppHash}
 		)
 
-		if first.Height == state.context.tmState().InitialHeight {
-			// Genesis state ID should have height 0
-			firstStateID.Height = 0
-		}
-
 		// verify if +second+ last commit "confirms" +first+ block
 		err = state.context.verifyCommit(tmState.ChainID, firstID, firstStateID, first.Height, second.LastCommit)
 		if err != nil {
