@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/tendermint/tendermint/crypto"
+
 	"github.com/tendermint/tendermint/behaviour"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
@@ -43,8 +45,9 @@ type consensusReactor interface {
 type BlockchainReactor struct {
 	p2p.BaseReactor
 
-	initialState sm.State // immutable
-	state        sm.State
+	initialState  sm.State // immutable
+	state         sm.State
+	nodeProTxHash *crypto.ProTxHash
 
 	blockExec *sm.BlockExecutor
 	store     *store.BlockStore
@@ -70,7 +73,8 @@ type BlockchainReactor struct {
 }
 
 // NewBlockchainReactor returns new reactor instance.
-func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore,
+func NewBlockchainReactor(
+	state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore, nodeProTxHash *crypto.ProTxHash,
 	fastSync bool) *BlockchainReactor {
 
 	if state.LastBlockHeight != store.Height() {
@@ -90,6 +94,7 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *st
 	bcR := &BlockchainReactor{
 		initialState:     state,
 		state:            state,
+		nodeProTxHash:    nodeProTxHash,
 		blockExec:        blockExec,
 		fastSync:         fastSync,
 		store:            store,
@@ -264,7 +269,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		return
 	}
 
-	bcR.Logger.Debug("Receive", "src", src, "chID", chID, "msg", msg)
+	bcR.Logger.P2PDebug("Receive", "src", src, "chID", chID, "msg", msg)
 
 	switch msg := msg.(type) {
 	case *bcproto.BlockRequest:
@@ -473,7 +478,7 @@ func (bcR *BlockchainReactor) processBlock() error {
 	// NOTE: we can probably make this more efficient, but note that calling
 	// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 	// currently necessary.
-	err = bcR.state.Validators.VerifyCommitLight(chainID, firstID, firstStateID, first.Height, second.LastCommit)
+	err = bcR.state.Validators.VerifyCommit(chainID, firstID, firstStateID, first.Height, second.LastCommit)
 	if err != nil {
 		bcR.Logger.Error("error during commit verification", "err", err,
 			"first", first.Height, "second", second.Height)
@@ -482,7 +487,7 @@ func (bcR *BlockchainReactor) processBlock() error {
 
 	bcR.store.SaveBlock(first, firstParts, second.LastCommit)
 
-	bcR.state, _, err = bcR.blockExec.ApplyBlock(bcR.state, firstID, first)
+	bcR.state, _, err = bcR.blockExec.ApplyBlock(bcR.state, bcR.nodeProTxHash, firstID, first)
 	if err != nil {
 		panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 	}

@@ -2,8 +2,8 @@ package light
 
 import (
 	"context"
-	"time"
 
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/light/provider/http"
 	"github.com/tendermint/tendermint/light/store"
@@ -18,10 +18,10 @@ import (
 func NewHTTPClient(
 	ctx context.Context,
 	chainID string,
-	trustOptions TrustOptions,
 	primaryAddress string,
 	witnessesAddresses []string,
 	trustedStore store.Store,
+	dashCoreRPCClient dashcore.Client,
 	options ...Option) (*Client, error) {
 
 	providers, err := providersFromAddresses(append(witnessesAddresses, primaryAddress), chainID)
@@ -32,10 +32,10 @@ func NewHTTPClient(
 	return NewClient(
 		ctx,
 		chainID,
-		trustOptions,
 		providers[len(providers)-1],
 		providers[:len(providers)-1],
 		trustedStore,
+		dashCoreRPCClient,
 		options...)
 }
 
@@ -47,10 +47,10 @@ func NewHTTPClient(
 // See NewClientFromTrustedStore.
 func NewHTTPClientFromTrustedStore(
 	chainID string,
-	trustingPeriod time.Duration,
 	primaryAddress string,
 	witnessesAddresses []string,
 	trustedStore store.Store,
+	dashCoreRPCClient dashcore.Client,
 	options ...Option) (*Client, error) {
 
 	providers, err := providersFromAddresses(append(witnessesAddresses, primaryAddress), chainID)
@@ -60,10 +60,10 @@ func NewHTTPClientFromTrustedStore(
 
 	return NewClientFromTrustedStore(
 		chainID,
-		trustingPeriod,
 		providers[len(providers)-1],
 		providers[:len(providers)-1],
 		trustedStore,
+		dashCoreRPCClient,
 		options...)
 }
 

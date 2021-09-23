@@ -144,7 +144,7 @@ func NewState(
 	// set function defaults (may be overwritten before calling Start)
 	cs.decideProposal = cs.defaultDecideProposal
 
-	// We have no votes, so reconstruct LastCommit from SeenCommit.
+	// We have no votes, so reconstruct LastPrecommits from SeenCommit.
 	if state.LastBlockHeight > 0 {
 		cs.reconstructLastCommit(state)
 	}
@@ -370,17 +370,17 @@ func (cs *State) addVote(
 			cs.Logger.Debug("Precommit vote came in after commit timeout and has been ignored", "vote", vote)
 			return
 		}
-		added, err = cs.LastCommit.AddVote(vote)
+		added, err = cs.LastPrecommits.AddVote(vote)
 		if !added {
 			return
 		}
 
-		cs.Logger.Info(fmt.Sprintf("Added to lastPrecommits: %v", cs.LastCommit.StringShort()))
+		cs.Logger.Info(fmt.Sprintf("Added to lastPrecommits: %v", cs.LastPrecommits.StringShort()))
 		_ = cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote})
 		cs.evsw.FireEvent(types.EventVote, vote)
 
 		// if we can skip timeoutCommit and have all the votes now,
-		if cs.config.SkipTimeoutCommit && cs.LastCommit.HasAll() {
+		if cs.config.SkipTimeoutCommit && cs.LastPrecommits.HasAll() {
 			// go straight to new round (skip timeout commit)
 			// cs.scheduleTimeout(time.Duration(0), cs.Height, 0, cstypes.RoundStepNewHeight)
 			cs.enterNewRound(cs.Height, 0)
@@ -556,7 +556,7 @@ func (cs *State) SetPrivValidator(priv types.PrivValidator) {
 
 	cs.privValidator = priv
 
-	if err := cs.updatePrivValidatorPubKeyAndProTxHash(); err != nil {
+	if err := cs.updatePrivValidatorPubKey(); err != nil {
 		cs.Logger.Error("Can't get private validator pubkey and proTxHash", "err", err)
 	}
 }
@@ -645,11 +645,6 @@ func (cs *State) OnStart() error {
 	// firing on the tockChan until the receiveRoutine is started
 	// to deal with them (by that point, at most one will be valid)
 	if err := cs.timeoutTicker.Start(); err != nil {
-		return err
-	}
-
-	// Double Signing Risk Reduction
-	if err := cs.checkDoubleSigningRisk(cs.Height); err != nil {
 		return err
 	}
 
@@ -811,21 +806,16 @@ func (cs *State) sendInternalMessage(mi msgInfo) {
 	}
 }
 
-// Reconstruct LastCommit from SeenCommit, which we saved along with the block,
+// Reconstruct LastPrecommits from SeenCommit, which we saved along with the block,
 // (which happens even before saving the state)
 func (cs *State) reconstructLastCommit(state sm.State) {
 	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
 	if seenCommit == nil {
-		panic(fmt.Sprintf("Failed to reconstruct LastCommit: seen commit for height %v not found",
+		panic(fmt.Sprintf("Failed to reconstruct LastPrecommits: seen commit for height %v not found",
 			state.LastBlockHeight))
 	}
 
-	lastPrecommits := types.CommitToVoteSet(state.ChainID, seenCommit, state.LastValidators)
-	if !lastPrecommits.HasTwoThirdsMajority() {
-		panic("Failed to reconstruct LastCommit: Does not have +2/3 maj")
-	}
-
-	cs.LastCommit = lastPrecommits
+	cs.LastCommit = seenCommit
 }
 
 // Updates State and increments height to match that of state.
@@ -869,7 +859,7 @@ func (cs *State) updateToState(state sm.State) {
 
 	switch {
 	case state.LastBlockHeight == 0: // Very first commit should be empty.
-		cs.LastCommit = (*types.VoteSet)(nil)
+		cs.LastPrecommits = (*types.VoteSet)(nil)
 	case cs.CommitRound > -1 && cs.Votes != nil: // Otherwise, use cs.Votes
 		if !cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
 			panic(fmt.Sprintf("Wanted to form a Commit, but Precommits (H/R: %d/%d) didn't have 2/3+: %v",
@@ -877,11 +867,11 @@ func (cs *State) updateToState(state sm.State) {
 				cs.CommitRound,
 				cs.Votes.Precommits(cs.CommitRound)))
 		}
-		cs.LastCommit = cs.Votes.Precommits(cs.CommitRound)
-	case cs.LastCommit == nil:
+		cs.LastPrecommits = cs.Votes.Precommits(cs.CommitRound)
+	case cs.LastPrecommits == nil:
 		// NOTE: when Tendermint starts, it has no votes. reconstructLastCommit
-		// must be called to reconstruct LastCommit from SeenCommit.
-		panic(fmt.Sprintf("LastCommit cannot be empty after initial block (H:%d)",
+		// must be called to reconstruct LastPrecommits from SeenCommit.
+		panic(fmt.Sprintf("LastPrecommits cannot be empty after initial block (H:%d)",
 			state.LastBlockHeight+1,
 		))
 	}
@@ -1219,7 +1209,9 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 	proposal := types.NewProposal(height, proposedChainLockHeight, round, cs.ValidRound, propBlockID)
 	p := proposal.ToProto()
-	if err := cs.privValidator.SignProposal(cs.state.ChainID, cs.Validators.QuorumType, cs.Validators.QuorumHash, p); err == nil {
+	if _, err := cs.privValidator.SignProposal(
+		cs.state.ChainID, cs.Validators.QuorumType, cs.Validators.QuorumHash, p,
+	); err == nil {
 		proposal.Signature = p.Signature
 
 		// send proposal and block parts on internal msg queue
@@ -1268,10 +1260,10 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
-		commit = types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil, nil)
-	case cs.LastCommit.HasTwoThirdsMajority():
-		// Make the commit from LastCommit
-		commit = cs.LastCommit.MakeCommit()
+		commit = types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
+	case cs.LastPrecommits.HasTwoThirdsMajority():
+		// Make the commit from LastPrecommits
+		commit = cs.LastPrecommits.MakeCommit()
 	default: // This shouldn't happen.
 		cs.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block")
 		return
@@ -1356,7 +1348,7 @@ func (cs *State) enterPrecommitWait(height int64, round int32) {
 func (cs *State) enterCommit(height int64, commitRound int32) {
 	logger := cs.Logger.With("height", height, "commitRound", commitRound)
 
-	if cs.Height != height || cstypes.RoundStepCommit <= cs.Step {
+	if cs.Height != height || cstypes.RoundStepApplyCommit <= cs.Step {
 		logger.Debug(fmt.Sprintf(
 			"enterCommit(%v/%v): Invalid args. Current step: %v/%v/%v",
 			height,
@@ -1371,7 +1363,7 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 	defer func() {
 		// Done enterCommit:
 		// keep cs.Round the same, commitRound points to the right Precommits set.
-		cs.updateRoundStep(cs.Round, cstypes.RoundStepCommit)
+		cs.updateRoundStep(cs.Round, cstypes.RoundStepApplyCommit)
 		cs.CommitRound = commitRound
 		cs.CommitTime = tmtime.Now()
 		cs.newStep()
@@ -1448,7 +1440,7 @@ func (cs *State) tryFinalizeCommit(height int64) {
 
 // Increment height and goto cstypes.RoundStepNewHeight
 func (cs *State) finalizeCommit(height int64) {
-	if cs.Height != height || cs.Step != cstypes.RoundStepCommit {
+	if cs.Height != height || cs.Step != cstypes.RoundStepApplyCommit {
 		cs.Logger.Debug(fmt.Sprintf(
 			"finalizeCommit(%v): Invalid args. Current step: %v/%v/%v",
 			height,
@@ -1487,7 +1479,7 @@ func (cs *State) finalizeCommit(height int64) {
 	// Save to blockStore.
 	if cs.blockStore.Height() < block.Height {
 		// NOTE: the seenCommit is local justification to commit this block,
-		// but may differ from the LastCommit included in the next block
+		// but may differ from the LastPrecommits included in the next block
 		precommits := cs.Votes.Precommits(cs.CommitRound)
 		seenCommit := precommits.MakeCommit()
 		cs.blockStore.SaveBlock(block, blockParts, seenCommit)
@@ -1528,6 +1520,7 @@ func (cs *State) finalizeCommit(height int64) {
 	var retainHeight int64
 	stateCopy, retainHeight, err = cs.blockExec.ApplyBlock(
 		stateCopy,
+		&cs.privValidatorProTxHash,
 		types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()},
 		block)
 	if err != nil {
@@ -1556,7 +1549,7 @@ func (cs *State) finalizeCommit(height int64) {
 	fail.Fail() // XXX
 
 	// Private validator might have changed it's key pair => refetch pubkey.
-	if err := cs.updatePrivValidatorPubKeyAndProTxHash(); err != nil {
+	if err := cs.updatePrivValidatorPubKey(); err != nil {
 		cs.Logger.Error("Can't get private validator pubkey", "err", err)
 	}
 
@@ -1595,49 +1588,14 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 		missingValidatorsPower int64
 	)
 	// height=0 -> MissingValidators and MissingValidatorsPower are both 0.
-	// Remember that the first LastCommit is intentionally empty, so it's not
+	// Remember that the first LastPrecommits is intentionally empty, so it's not
 	// fair to increment missing validators number.
 	if height > cs.state.InitialHeight {
-		// Sanity check that commit size matches validator set size - only applies
-		// after first block.
-		var (
-			commitSize = block.LastCommit.Size()
-			valSetLen  = len(cs.LastValidators.Validators)
-			proTxHash  types.ProTxHash
-		)
-		if commitSize != valSetLen {
-			panic(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
-				commitSize, valSetLen, block.Height, block.LastCommit.Signatures, cs.LastValidators.Validators))
-		}
-
 		if cs.privValidator != nil {
-			if cs.privValidatorPubKey == nil {
+			if cs.privValidatorProTxHash == nil {
 				// Metrics won't be updated, but it's not critical.
-				cs.Logger.Error(fmt.Sprintf("recordMetrics: %v", errPubKeyIsNotSet))
-			} else {
-				proTxHash = cs.privValidatorProTxHash
+				cs.Logger.Error(fmt.Sprintf("recordMetrics: %v", errProTxHashIsNotSet))
 			}
-		}
-
-		for i, val := range cs.LastValidators.Validators {
-			commitSig := block.LastCommit.Signatures[i]
-			if commitSig.Absent() {
-				missingValidators++
-				missingValidatorsPower += val.VotingPower
-			}
-
-			if bytes.Equal(val.ProTxHash, proTxHash) {
-				label := []string{
-					"validator_pro_tx_hash", val.ProTxHash.String(),
-				}
-				cs.metrics.ValidatorPower.With(label...).Set(float64(val.VotingPower))
-				if commitSig.ForBlock() {
-					cs.metrics.ValidatorLastSignedHeight.With(label...).Set(float64(height))
-				} else {
-					cs.metrics.ValidatorMissedBlocks.With(label...).Add(float64(1))
-				}
-			}
-
 		}
 	}
 	cs.metrics.MissingValidators.Set(float64(missingValidators))
@@ -1754,7 +1712,7 @@ func (cs *State) addProposalBlockPart(msg *tmcon.BlockPartMessage, peerID p2p.ID
 			if hasTwoThirds { // this is optimisation as this will be triggered when prevote is added
 				cs.enterPrecommit(height, cs.Round)
 			}
-		} else if cs.Step == cstypes.RoundStepCommit {
+		} else if cs.Step == cstypes.RoundStepApplyCommit {
 			// If we're waiting on the proposal block...
 			cs.tryFinalizeCommit(height)
 		}
@@ -1846,8 +1804,8 @@ func (cs *State) signVote(
 	}
 
 	v := vote.ToProto()
-	err := cs.privValidator.SignVote(cs.state.ChainID, cs.state.Validators.QuorumType,
-		cs.state.Validators.QuorumHash, v)
+	err := cs.privValidator.SignVote(
+		cs.state.ChainID, cs.state.Validators.QuorumType, cs.state.Validators.QuorumHash, v, nil)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
 
@@ -1903,10 +1861,10 @@ func (cs *State) signAddVote(msgType tmproto.SignedMsgType, hash []byte, header 
 	return nil
 }
 
-// updatePrivValidatorPubKey get's the private validator public key and
+// updatePrivValidatorPubKey gets the private validator public key and
 // memoizes it. This func returns an error if the private validator is not
 // responding or responds with an error.
-func (cs *State) updatePrivValidatorPubKeyAndProTxHash() error {
+func (cs *State) updatePrivValidatorPubKey() error {
 	if cs.privValidator == nil {
 		return nil
 	}
@@ -1915,41 +1873,10 @@ func (cs *State) updatePrivValidatorPubKeyAndProTxHash() error {
 	if err != nil {
 		return err
 	}
-	proTxHash, err := cs.privValidator.GetProTxHash()
-	if err != nil {
-		return err
-	}
 	if len(pubKey.Bytes()) != bls12381.PubKeySize {
 		return fmt.Errorf("maverick pubKey must be 48 bytes")
 	}
 	cs.privValidatorPubKey = pubKey
-	if len(proTxHash.Bytes()) != crypto.ProTxHashSize {
-		return fmt.Errorf("maverick proTxHash must be 32 bytes")
-	}
-	cs.privValidatorProTxHash = proTxHash
-	return nil
-}
-
-// look back to check existence of the node's consensus votes before joining consensus
-func (cs *State) checkDoubleSigningRisk(height int64) error {
-	if cs.privValidator != nil && cs.privValidatorPubKey != nil && cs.config.DoubleSignCheckHeight > 0 && height > 0 {
-		valProTxHash := cs.privValidatorProTxHash
-		doubleSignCheckHeight := cs.config.DoubleSignCheckHeight
-		if doubleSignCheckHeight > height {
-			doubleSignCheckHeight = height
-		}
-		for i := int64(1); i < doubleSignCheckHeight; i++ {
-			lastCommit := cs.blockStore.LoadSeenCommit(height - i)
-			if lastCommit != nil {
-				for sigIdx, s := range lastCommit.Signatures {
-					if s.BlockIDFlag == types.BlockIDFlagCommit && bytes.Equal(s.ValidatorProTxHash, valProTxHash) {
-						cs.Logger.Info("Found signature from the same key", "sig", s, "idx", sigIdx, "height", height-i)
-						return ErrSignatureFoundInPastBlocks
-					}
-				}
-			}
-		}
-	}
 	return nil
 }
 

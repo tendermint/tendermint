@@ -33,8 +33,13 @@ func BodyShouldBeSame(v interface{}) ExpectFunc {
 			return err
 		}
 		req.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
-		if bytes.Compare(body, buf) != 0 {
-			return fmt.Errorf("the request body retried by URL %s is not equal\nexpected: %s\nactual: %s", req.URL.String(), buf, body)
+		if !bytes.Equal(body, buf) {
+			return fmt.Errorf(
+				"the request body retried by URL %s is not equal\nexpected: %s\nactual: %s",
+				req.URL.String(),
+				buf,
+				body,
+			)
 		}
 		return nil
 	}
@@ -112,7 +117,7 @@ func Debug() ExpectFunc {
 			return err
 		}
 		req.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
-		//log.Printf("[DEBUG] Request Body: %s\n", buf)
+		// log.Printf("[DEBUG] Request Body: %s\n", buf)
 		return nil
 	}
 }

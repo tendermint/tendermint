@@ -2,6 +2,7 @@ package conn
 
 import (
 	"bufio"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -51,6 +52,7 @@ type receiveCbFunc func(chID byte, msgBytes []byte)
 type errorCbFunc func(interface{})
 
 /*
+MConnection struct:
 Each peer has one `MConnection` (multiplex connection) instance.
 
 __multiplex__ *noun* a system or signal involving simultaneous transmission of
@@ -318,16 +320,15 @@ func (c *MConnection) OnStop() {
 func (c *MConnection) String() string {
 	if c.conn != nil {
 		return fmt.Sprintf("MConn{%v}", c.conn.RemoteAddr())
-	} else {
-		return "MConn{nil}"
 	}
+	return "MConn{nil}"
 }
 
 func (c *MConnection) flush() {
-	c.Logger.Debug("Flush", "conn", c)
+	c.Logger.P2PDebug("Flush", "conn", c)
 	err := c.bufConnWriter.Flush()
 	if err != nil {
-		c.Logger.Debug("MConnection flush failed", "err", err)
+		c.Logger.P2PDebug("MConnection flush failed", "err", err)
 	}
 }
 
@@ -350,13 +351,13 @@ func (c *MConnection) stopForError(r interface{}) {
 	}
 }
 
-// Queues a message to be sent to channel.
+// Send queues a message to be sent to channel.
 func (c *MConnection) Send(chID byte, msgBytes []byte) bool {
 	if !c.IsRunning() {
 		return false
 	}
 
-	c.Logger.Debug("Send", "channel", chID, "conn", c, "msgBytes", fmt.Sprintf("%X", msgBytes))
+	c.Logger.P2PDebug("Send", "channel", chID, "conn", c, "msgBytes", base64.StdEncoding.EncodeToString(msgBytes))
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chID]
@@ -378,7 +379,7 @@ func (c *MConnection) Send(chID byte, msgBytes []byte) bool {
 	return success
 }
 
-// Queues a message to be sent to channel.
+// TrySend queues a message to be sent to channel.
 // Nonblocking, returns true if successful.
 func (c *MConnection) TrySend(chID byte, msgBytes []byte) bool {
 	if !c.IsRunning() {
@@ -628,8 +629,9 @@ FOR_LOOP:
 				// never block
 			}
 		case *tmp2p.Packet_PacketMsg:
-			channel, ok := c.channelsIdx[byte(pkt.PacketMsg.ChannelID)]
-			if !ok || channel == nil {
+			channelID := byte(pkt.PacketMsg.ChannelID)
+			channel, ok := c.channelsIdx[channelID]
+			if pkt.PacketMsg.ChannelID < 0 || pkt.PacketMsg.ChannelID > math.MaxUint8 || !ok || channel == nil {
 				err := fmt.Errorf("unknown channel %X", pkt.PacketMsg.ChannelID)
 				c.Logger.Debug("Connection failed @ recvRoutine", "conn", c, "err", err)
 				c.stopForError(err)
@@ -645,9 +647,9 @@ FOR_LOOP:
 				break FOR_LOOP
 			}
 			if msgBytes != nil {
-				c.Logger.Debug("Received bytes", "chID", pkt.PacketMsg.ChannelID, "msgBytes", fmt.Sprintf("%X", msgBytes))
+				c.Logger.P2PDebug("Received bytes", "chID", channelID, "msgBytes", base64.StdEncoding.EncodeToString(msgBytes))
 				// NOTE: This means the reactor.Receive runs in the same thread as the p2p recv routine
-				c.onReceive(byte(pkt.PacketMsg.ChannelID), msgBytes)
+				c.onReceive(channelID, msgBytes)
 			}
 		default:
 			err := fmt.Errorf("unknown message type %v", reflect.TypeOf(packet))
@@ -856,7 +858,7 @@ func (ch *Channel) writePacketMsgTo(w io.Writer) (n int, err error) {
 // complete. NOTE message bytes may change on next call to recvPacketMsg.
 // Not goroutine-safe
 func (ch *Channel) recvPacketMsg(packet tmp2p.PacketMsg) ([]byte, error) {
-	ch.Logger.Debug("Read PacketMsg", "conn", ch.conn, "packet", packet)
+	ch.Logger.P2PDebug("Read PacketMsg", "conn", ch.conn, "packetData", base64.StdEncoding.EncodeToString(packet.Data))
 	var recvCap, recvReceived = ch.desc.RecvMessageCapacity, len(ch.recving) + len(packet.Data)
 	if recvCap < recvReceived {
 		return nil, fmt.Errorf("received message exceeds available capacity: %v < %v", recvCap, recvReceived)

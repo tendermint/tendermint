@@ -16,6 +16,7 @@ import (
 type RoundVoteSet struct {
 	Prevotes   *types.VoteSet
 	Precommits *types.VoteSet
+	Commit     *types.Commit
 }
 
 var (
@@ -36,7 +37,7 @@ provides a precommit for a round greater than mtx.round,
 we create a new entry in roundVoteSets but also remember the
 peer to prevent abuse.
 We let each peer provide us with up to 2 unexpected "catchup" rounds.
-One for their LastCommit round, and another for the official commit round.
+One for their LastPrecommits round, and another for the official commit round.
 */
 type HeightVoteSet struct {
 	chainID string
@@ -104,17 +105,25 @@ func (hvs *HeightVoteSet) addRound(round int32) {
 		panic("addRound() for an existing round")
 	}
 	// log.Debug("addRound(round)", "round", round)
-	prevotes := types.NewVoteSet(hvs.chainID, hvs.height, round, tmproto.PrevoteType, hvs.valSet)
-	precommits := types.NewVoteSet(hvs.chainID, hvs.height, round, tmproto.PrecommitType, hvs.valSet)
-	hvs.roundVoteSets[round] = RoundVoteSet{
-		Prevotes:   prevotes,
-		Precommits: precommits,
+	if hvs.valSet.HasPublicKeys {
+		prevotes := types.NewVoteSet(hvs.chainID, hvs.height, round, tmproto.PrevoteType, hvs.valSet)
+		precommits := types.NewVoteSet(hvs.chainID, hvs.height, round, tmproto.PrecommitType, hvs.valSet)
+		hvs.roundVoteSets[round] = RoundVoteSet{
+			Prevotes:   prevotes,
+			Precommits: precommits,
+		}
+	} else {
+		hvs.roundVoteSets[round] = RoundVoteSet{}
 	}
 }
 
+// AddVote adds a vote of a specific type to the round
 // Duplicate votes return added=false, err=nil.
 // By convention, peerID is "" if origin is self.
 func (hvs *HeightVoteSet) AddVote(vote *types.Vote, peerID p2p.ID) (added bool, err error) {
+	if !hvs.valSet.HasPublicKeys {
+		return false, nil
+	}
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	if !types.IsVoteTypeValid(vote.Type) {

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 
@@ -39,6 +40,7 @@ var (
 	ErrVoteInvalidValidatorPubKeySize = errors.New("invalid validator public key size")
 	ErrVoteInvalidBlockSignature      = errors.New("invalid block signature")
 	ErrVoteInvalidStateSignature      = errors.New("invalid state signature")
+	ErrVoteStateSignatureShouldBeNil  = errors.New("state signature when voting for nil block")
 	ErrVoteInvalidBlockHash           = errors.New("invalid block hash")
 	ErrVoteNonDeterministicSignature  = errors.New("non-deterministic signature")
 	ErrVoteNil                        = errors.New("nil vote")
@@ -79,30 +81,6 @@ type Vote struct {
 	StateSignature     []byte                `json:"state_signature"`
 }
 
-// CommitSig converts the Vote to a CommitSig.
-func (vote *Vote) CommitSig() CommitSig {
-	if vote == nil {
-		return NewCommitSigAbsent()
-	}
-
-	var blockIDFlag BlockIDFlag
-	switch {
-	case vote.BlockID.IsComplete():
-		blockIDFlag = BlockIDFlagCommit
-	case vote.BlockID.IsZero():
-		blockIDFlag = BlockIDFlagNil
-	default:
-		panic(fmt.Sprintf("Invalid vote %v - expected BlockID to be either empty or complete", vote))
-	}
-
-	return CommitSig{
-		BlockIDFlag:        blockIDFlag,
-		ValidatorProTxHash: vote.ValidatorProTxHash,
-		BlockSignature:     vote.BlockSignature,
-		StateSignature:     vote.StateSignature,
-	}
-}
-
 // VoteBlockSignBytes returns the proto-encoding of the canonicalized Vote, for
 // signing. Panics is the marshaling fails.
 //
@@ -121,39 +99,34 @@ func VoteBlockSignBytes(chainID string, vote *tmproto.Vote) []byte {
 	return bz
 }
 
-// VoteBlockSignId returns signId that should be signed for the block
-func VoteBlockSignId(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
+// VoteBlockSignID returns signID that should be signed for the block
+func VoteBlockSignID(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
 	blockSignBytes := VoteBlockSignBytes(chainID, vote)
 
 	blockMessageHash := crypto.Sha256(blockSignBytes)
 
-	blockRequestId := VoteBlockRequestIdProto(vote)
+	blockRequestID := VoteBlockRequestIDProto(vote)
 
-	blockSignId := crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
+	blockSignID := crypto.SignID(
+		quorumType,
+		bls12381.ReverseBytes(quorumHash),
+		bls12381.ReverseBytes(blockRequestID),
+		bls12381.ReverseBytes(blockMessageHash),
+	)
 
-	return blockSignId
+	return blockSignID
 }
 
-// VoteStateSignBytes returns the proto-encoding of the canonicalized last app hash state, for
-// signing. Panics is the marshaling fails.
-//
-// The encoded Protobuf message is varint length-prefixed (using MarshalDelimited)
-// for backwards-compatibility with the Amino encoding, due to e.g. hardware
-// devices that rely on this encoding.
-//
-// See CanonicalizeVote
+// VoteStateSignBytes returns the 40 bytes of the height + last state app hash.
 func VoteStateSignBytes(chainID string, vote *tmproto.Vote) []byte {
-	pb := CanonicalizeStateVote(vote)
-	bz, err := protoio.MarshalDelimited(&pb)
-	if err != nil {
-		panic(err)
-	}
-
+	bz := make([]byte, 8)
+	binary.LittleEndian.PutUint64(bz, uint64(vote.Height-1))
+	bz = append(bz, vote.StateID.LastAppHash...)
 	return bz
 }
 
-// VoteStateSignId returns signId that should be signed for the state
-func VoteStateSignId(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
+// VoteStateSignID returns signID that should be signed for the state
+func VoteStateSignID(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
 	stateSignBytes := VoteStateSignBytes(chainID, vote)
 
 	if stateSignBytes == nil {
@@ -162,11 +135,16 @@ func VoteStateSignId(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQ
 
 	stateMessageHash := crypto.Sha256(stateSignBytes)
 
-	stateRequestId := VoteStateRequestIdProto(vote)
+	stateRequestID := VoteStateRequestIDProto(vote)
 
-	stateSignId := crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestId), bls12381.ReverseBytes(stateMessageHash))
+	stateSignID := crypto.SignID(
+		quorumType,
+		bls12381.ReverseBytes(quorumHash),
+		bls12381.ReverseBytes(stateRequestID),
+		bls12381.ReverseBytes(stateMessageHash),
+	)
 
-	return stateSignId
+	return stateSignID
 }
 
 func (vote *Vote) Copy() *Vote {
@@ -214,100 +192,108 @@ func (vote *Vote) String() string {
 	)
 }
 
-func VoteBlockRequestId(vote *Vote) []byte {
-	requestIdMessage := []byte("dpbvote")
+func VoteBlockRequestID(vote *Vote) []byte {
+	requestIDMessage := []byte("dpbvote")
 	heightByteArray := make([]byte, 8)
 	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height))
 	roundByteArray := make([]byte, 4)
 	binary.LittleEndian.PutUint32(roundByteArray, uint32(vote.Round))
 
-	requestIdMessage = append(requestIdMessage, heightByteArray...)
-	requestIdMessage = append(requestIdMessage, roundByteArray...)
+	requestIDMessage = append(requestIDMessage, heightByteArray...)
+	requestIDMessage = append(requestIDMessage, roundByteArray...)
 
-	return crypto.Sha256(requestIdMessage)
+	return crypto.Sha256(requestIDMessage)
 }
 
-func VoteBlockRequestIdProto(vote *tmproto.Vote) []byte {
-	requestIdMessage := []byte("dpbvote")
+func VoteBlockRequestIDProto(vote *tmproto.Vote) []byte {
+	requestIDMessage := []byte("dpbvote")
 	heightByteArray := make([]byte, 8)
 	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height))
 	roundByteArray := make([]byte, 4)
 	binary.LittleEndian.PutUint32(roundByteArray, uint32(vote.Round))
 
-	requestIdMessage = append(requestIdMessage, heightByteArray...)
-	requestIdMessage = append(requestIdMessage, roundByteArray...)
+	requestIDMessage = append(requestIDMessage, heightByteArray...)
+	requestIDMessage = append(requestIDMessage, roundByteArray...)
 
-	return crypto.Sha256(requestIdMessage)
+	return crypto.Sha256(requestIDMessage)
 }
 
-func VoteStateRequestId(vote *Vote) []byte {
-	requestIdMessage := []byte("dpsvote")
+func VoteStateRequestID(vote *Vote) []byte {
+	requestIDMessage := []byte("dpsvote")
 	heightByteArray := make([]byte, 8)
-	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height))
-	roundByteArray := make([]byte, 4)
-	binary.LittleEndian.PutUint32(roundByteArray, uint32(vote.Round))
+	// We use height - 1 because we are signing the state at the end of the execution of the previous block
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height)-1)
 
-	requestIdMessage = append(requestIdMessage, heightByteArray...)
-	requestIdMessage = append(requestIdMessage, roundByteArray...)
+	requestIDMessage = append(requestIDMessage, heightByteArray...)
 
-	return crypto.Sha256(requestIdMessage)
+	return crypto.Sha256(requestIDMessage)
 }
 
-func VoteStateRequestIdProto(vote *tmproto.Vote) []byte {
-	requestIdMessage := []byte("dpsvote")
+func VoteStateRequestIDProto(vote *tmproto.Vote) []byte {
+	requestIDMessage := []byte("dpsvote")
 	heightByteArray := make([]byte, 8)
-	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height))
-	roundByteArray := make([]byte, 4)
-	binary.LittleEndian.PutUint32(roundByteArray, uint32(vote.Round))
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height)-1)
 
-	requestIdMessage = append(requestIdMessage, heightByteArray...)
-	requestIdMessage = append(requestIdMessage, roundByteArray...)
+	requestIDMessage = append(requestIDMessage, heightByteArray...)
 
-	return crypto.Sha256(requestIdMessage)
+	return crypto.Sha256(requestIDMessage)
 }
 
-func (vote *Vote) Verify(chainID string, quorumType btcjson.LLMQType, quorumHash []byte, pubKey crypto.PubKey, proTxHash crypto.ProTxHash) error {
+func (vote *Vote) Verify(
+	chainID string, quorumType btcjson.LLMQType, quorumHash []byte,
+	pubKey crypto.PubKey, proTxHash crypto.ProTxHash) ([]byte, []byte, error) {
 	if !bytes.Equal(proTxHash, vote.ValidatorProTxHash) {
-		return ErrVoteInvalidValidatorProTxHash
+		return nil, nil, ErrVoteInvalidValidatorProTxHash
 	}
 	if len(pubKey.Bytes()) != bls12381.PubKeySize {
-		return ErrVoteInvalidValidatorPubKeySize
+		return nil, nil, ErrVoteInvalidValidatorPubKeySize
 	}
 	v := vote.ToProto()
 	voteBlockSignBytes := VoteBlockSignBytes(chainID, v)
 
 	blockMessageHash := crypto.Sha256(voteBlockSignBytes)
 
-	blockRequestId := VoteBlockRequestId(vote)
+	blockRequestID := VoteBlockRequestID(vote)
 
-	signId := crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
+	signID := crypto.SignID(
+		quorumType,
+		bls12381.ReverseBytes(quorumHash),
+		bls12381.ReverseBytes(blockRequestID),
+		bls12381.ReverseBytes(blockMessageHash),
+	)
 
-	// fmt.Printf("block vote verify sign Id %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(signId), quorumType,
-	//	hex.EncodeToString(quorumHash), hex.EncodeToString(blockRequestId), hex.EncodeToString(blockMessageHash))
+	// fmt.Printf("block vote verify sign ID %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(signID), quorumType,
+	//	hex.EncodeToString(quorumHash), hex.EncodeToString(blockRequestID), hex.EncodeToString(blockMessageHash))
 
-	if !pubKey.VerifySignatureDigest(signId, vote.BlockSignature) {
-		return fmt.Errorf("%s proTxHash %s pubKey %v vote %v sign bytes %s block signature %s", ErrVoteInvalidBlockSignature.Error(),
+	if !pubKey.VerifySignatureDigest(signID, vote.BlockSignature) {
+		return nil, nil, fmt.Errorf(
+			"%s proTxHash %s pubKey %v vote %v sign bytes %s block signature %s", ErrVoteInvalidBlockSignature.Error(),
 			proTxHash, pubKey, vote, hex.EncodeToString(voteBlockSignBytes), hex.EncodeToString(vote.BlockSignature))
 	}
 
+	stateSignID := []byte(nil)
 	// we must verify the stateID but only if the blockID isn't nil
 	if vote.BlockID.Hash != nil {
 		voteStateSignBytes := VoteStateSignBytes(chainID, v)
 		stateMessageHash := crypto.Sha256(voteStateSignBytes)
 
-		stateRequestId := VoteStateRequestId(vote)
+		stateRequestID := VoteStateRequestID(vote)
 
-		stateSignId := crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestId), bls12381.ReverseBytes(stateMessageHash))
+		stateSignID = crypto.SignID(
+			quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestID),
+			bls12381.ReverseBytes(stateMessageHash))
 
-		// fmt.Printf("state vote verify sign Id %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(stateSignId), quorumType,
-		//	hex.EncodeToString(quorumHash), hex.EncodeToString(stateRequestId), hex.EncodeToString(stateMessageHash))
+		// fmt.Printf("state vote verify sign ID %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(stateSignID), quorumType,
+		//	hex.EncodeToString(quorumHash), hex.EncodeToString(stateRequestID), hex.EncodeToString(stateMessageHash))
 
-		if !pubKey.VerifySignatureDigest(stateSignId, vote.StateSignature) {
-			return ErrVoteInvalidStateSignature
+		if !pubKey.VerifySignatureDigest(stateSignID, vote.StateSignature) {
+			return nil, nil, ErrVoteInvalidStateSignature
 		}
+	} else if vote.StateSignature != nil {
+		return nil, nil, ErrVoteStateSignatureShouldBeNil
 	}
 
-	return nil
+	return signID, stateSignID, nil
 }
 
 // ValidateBasic performs basic validation.
@@ -354,16 +340,16 @@ func (vote *Vote) ValidateBasic() error {
 		return errors.New("block signature is missing")
 	}
 
-	if len(vote.BlockSignature) > MaxSignatureSize {
-		return fmt.Errorf("block signature is too big (max: %d)", MaxSignatureSize)
+	if len(vote.BlockSignature) > SignatureSize {
+		return fmt.Errorf("block signature is too big (max: %d)", SignatureSize)
 	}
 
 	if vote.BlockID.Hash != nil && len(vote.StateSignature) == 0 {
 		return errors.New("state signature is missing for a block not voting nil")
 	}
 
-	if len(vote.StateSignature) > MaxSignatureSize {
-		return fmt.Errorf("state signature is too big (max: %d)", MaxSignatureSize)
+	if len(vote.StateSignature) > SignatureSize {
+		return fmt.Errorf("state signature is too big (max: %d)", SignatureSize)
 	}
 
 	return nil

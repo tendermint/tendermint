@@ -30,7 +30,7 @@ const (
 //--------------------------------------------------------
 // replay messages interactively or all at once
 
-// replay the wal file
+// RunReplayFile will replay the wal file
 func RunReplayFile(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig, console bool) {
 	consensusState := newConsensusStateForReplay(config, csConfig)
 
@@ -321,7 +321,7 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 		tmos.Exit(fmt.Sprintf("Failed to start event bus: %v", err))
 	}
 
-	handshaker := NewHandshaker(stateStore, state, blockStore, gdoc)
+	handshaker := NewHandshaker(stateStore, state, blockStore, gdoc, nil, csConfig.AppHashSize)
 	handshaker.SetEventBus(eventBus)
 	err = handshaker.Handshake(proxyApp)
 	if err != nil {

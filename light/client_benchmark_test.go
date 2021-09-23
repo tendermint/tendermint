@@ -5,8 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/libs/log"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"github.com/tendermint/tendermint/light"
+
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light/provider"
 	mockp "github.com/tendermint/tendermint/light/provider/mock"
 	dbs "github.com/tendermint/tendermint/light/store/db"
@@ -21,24 +23,29 @@ import (
 //
 // Remember that none of these benchmarks account for network latency.
 var (
-	benchmarkFullNode = mockp.New(genMockNode(chainID, 1000, 100, bTime))
-	genesisBlock, _   = benchmarkFullNode.LightBlock(context.Background(), 1)
+	blocks            = int64(1000)
+	benchmarkFullNode = mockp.New(genMockNode(chainID, blocks, 20, bTime))
 )
 
+func setupDashCoreRPCMockForBenchmark(b *testing.B) {
+	dashCoreMockClient = dashcore.NewMockClient(chainID, 100, benchmarkFullNode.MockPV, false)
+
+	b.Cleanup(func() {
+		dashCoreMockClient = nil
+	})
+}
+
 func BenchmarkSequence(b *testing.B) {
+	setupDashCoreRPCMockForBenchmark(b)
+
 	c, err := light.NewClient(
 		context.Background(),
 		chainID,
-		light.TrustOptions{
-			Period: 24 * time.Hour,
-			Height: 1,
-			Hash:   genesisBlock.Hash(),
-		},
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
+		dashCoreMockClient,
 		light.Logger(log.TestingLogger()),
-		light.SequentialVerification(),
 	)
 	if err != nil {
 		b.Fatal(err)
@@ -54,17 +61,15 @@ func BenchmarkSequence(b *testing.B) {
 }
 
 func BenchmarkBisection(b *testing.B) {
+	setupDashCoreRPCMockForBenchmark(b)
+
 	c, err := light.NewClient(
 		context.Background(),
 		chainID,
-		light.TrustOptions{
-			Period: 24 * time.Hour,
-			Height: 1,
-			Hash:   genesisBlock.Hash(),
-		},
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
+		dashCoreMockClient,
 		light.Logger(log.TestingLogger()),
 	)
 	if err != nil {
@@ -81,18 +86,19 @@ func BenchmarkBisection(b *testing.B) {
 }
 
 func BenchmarkBackwards(b *testing.B) {
-	trustedBlock, _ := benchmarkFullNode.LightBlock(context.Background(), 0)
+	setupDashCoreRPCMockForBenchmark(b)
+	_, err := benchmarkFullNode.LightBlock(context.Background(), 0)
+	if err != nil {
+		b.Fatal(err)
+	}
+
 	c, err := light.NewClient(
 		context.Background(),
 		chainID,
-		light.TrustOptions{
-			Period: 24 * time.Hour,
-			Height: trustedBlock.Height,
-			Hash:   trustedBlock.Hash(),
-		},
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
+		dashCoreMockClient,
 		light.Logger(log.TestingLogger()),
 	)
 	if err != nil {

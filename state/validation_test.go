@@ -1,6 +1,7 @@
 package state_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -30,6 +31,7 @@ func TestValidateBlockHeader(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(3, 1)
+	nodeProTxHash := &state.Validators.Validators[0].ProTxHash
 	stateStore := sm.NewStore(stateDB)
 	nextChainLock := &types.CoreChainLock{
 		CoreBlockHeight: 100,
@@ -45,7 +47,7 @@ func TestValidateBlockHeader(t *testing.T) {
 		sm.EmptyEvidencePool{},
 		nextChainLock,
 	)
-	lastCommit := types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil, nil)
+	lastCommit := types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
 
 	// some bad values
 	wrongHash := tmhash.Sum([]byte("this hash is wrong"))
@@ -101,7 +103,7 @@ func TestValidateBlockHeader(t *testing.T) {
 			A good block passes
 		*/
 		var err error
-		state, _, _, lastCommit, err = makeAndCommitGoodBlock(state, height, lastCommit, proposerProTxHash,
+		state, _, _, lastCommit, err = makeAndCommitGoodBlock(state, nodeProTxHash, height, lastCommit, proposerProTxHash,
 			blockExec, privVals, nil)
 		require.NoError(t, err, "height %d", height)
 	}
@@ -113,6 +115,7 @@ func TestValidateBlockCommit(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(1, 1)
+	nodeProTxHash := &state.Validators.Validators[0].ProTxHash
 	stateStore := sm.NewStore(stateDB)
 
 	nextChainLock := &types.CoreChainLock{
@@ -130,11 +133,17 @@ func TestValidateBlockCommit(t *testing.T) {
 		sm.EmptyEvidencePool{},
 		nextChainLock,
 	)
-	lastCommit := types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil,
+	lastCommit := types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil,
 		nil, nil)
-	wrongSigsCommit := types.NewCommit(1, 0, types.BlockID{}, types.StateID{}, nil, nil,
+	wrongSignorCommit := types.NewCommit(1, 0, types.BlockID{}, types.StateID{}, nil,
+		nil, nil)
+	wrongVoteMessageSignedCommit := types.NewCommit(1, 0, types.BlockID{}, types.StateID{}, nil,
 		nil, nil)
 	badPrivVal := types.NewMockPV()
+	badPrivValQuorumHash, err := badPrivVal.GetFirstQuorumHash()
+	if err != nil {
+		panic(err)
+	}
 
 	for height := int64(1); height < validationTestsStopHeight; height++ {
 		proTxHash := state.Validators.GetProposer().ProTxHash
@@ -157,7 +166,6 @@ func TestValidateBlockCommit(t *testing.T) {
 				wrongHeightVote.Round,
 				state.LastBlockID,
 				types.StateID{LastAppHash: state.AppHash},
-				[]types.CommitSig{wrongHeightVote.CommitSig()},
 				state.Validators.QuorumHash,
 				wrongHeightVote.BlockSignature,
 				wrongHeightVote.StateSignature,
@@ -165,18 +173,31 @@ func TestValidateBlockCommit(t *testing.T) {
 			block, _ := state.MakeBlock(height, nextChainLock, makeTxs(height), wrongHeightCommit, nil,
 				proTxHash)
 			err = blockExec.ValidateBlock(state, block)
-			_, isErrInvalidCommitHeight := err.(types.ErrInvalidCommitHeight)
-			require.True(t, isErrInvalidCommitHeight, "expected ErrInvalidCommitHeight at height %d but got: %v",
-				height, err)
+			require.True(t, strings.HasPrefix(err.Error(), "error validating block: Invalid commit -- wrong height:"),
+				"expected error on block threshold signature at height %d, but got: %v",
+				height,
+				err,
+			)
+			/*
+				Test that the threshold block signatures are good
+			*/
+			block, _ = state.MakeBlock(height, nextChainLock, makeTxs(height), wrongSignorCommit, nil, proTxHash)
+			err = blockExec.ValidateBlock(state, block)
+			require.Error(t, err)
+			require.True(t, strings.HasPrefix(err.Error(), "error validating block: incorrect threshold block signature"),
+				"expected error on block threshold signature at height %d, but got: %v",
+				height,
+				err,
+			)
 
 			/*
-				#2589: test len(block.LastCommit.Signatures) == state.LastValidators.Size()
+				Test that the threshold block signatures are good
 			*/
-			block, _ = state.MakeBlock(height, nextChainLock, makeTxs(height), wrongSigsCommit, nil, proTxHash)
+			block, _ = state.MakeBlock(height, nextChainLock, makeTxs(height), wrongVoteMessageSignedCommit, nil, proTxHash)
 			err = blockExec.ValidateBlock(state, block)
-			_, isErrInvalidCommitSignatures := err.(types.ErrInvalidCommitSignatures)
-			require.True(t, isErrInvalidCommitSignatures,
-				"expected ErrInvalidCommitSignatures at height %d, but got: %v",
+			require.Error(t, err)
+			require.True(t, strings.HasPrefix(err.Error(), "error validating block: incorrect threshold block signature"),
+				"expected error on block threshold signature at height %d, but got: %v",
 				height,
 				err,
 			)
@@ -190,6 +211,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		var stateID types.StateID
 		state, blockID, stateID, lastCommit, err = makeAndCommitGoodBlock(
 			state,
+			nodeProTxHash,
 			height,
 			lastCommit,
 			proTxHash,
@@ -228,17 +250,21 @@ func TestValidateBlockCommit(t *testing.T) {
 		g := goodVote.ToProto()
 		b := badVote.ToProto()
 
-		err = badPrivVal.SignVote(chainID, state.Validators.QuorumType, state.Validators.QuorumHash, g)
+		err = badPrivVal.SignVote(chainID, state.Validators.QuorumType, badPrivValQuorumHash, g, nil)
 		require.NoError(t, err, "height %d", height)
-		err = badPrivVal.SignVote(chainID, state.Validators.QuorumType, state.Validators.QuorumHash, b)
+		err = badPrivVal.SignVote(chainID, state.Validators.QuorumType, badPrivValQuorumHash, b, nil)
 		require.NoError(t, err, "height %d", height)
 
 		goodVote.BlockSignature, badVote.BlockSignature = g.BlockSignature, b.BlockSignature
 		goodVote.StateSignature, badVote.StateSignature = g.StateSignature, b.StateSignature
 
-		wrongSigsCommit = types.NewCommit(goodVote.Height, goodVote.Round,
-			blockID, stateID, []types.CommitSig{goodVote.CommitSig(), badVote.CommitSig()}, state.Validators.QuorumHash,
+		wrongSignorCommit = types.NewCommit(goodVote.Height, goodVote.Round,
+			blockID, stateID, state.Validators.QuorumHash,
 			goodVote.BlockSignature, goodVote.StateSignature)
+
+		wrongVoteMessageSignedCommit = types.NewCommit(goodVote.Height, goodVote.Round,
+			blockID, stateID, state.Validators.QuorumHash,
+			badVote.BlockSignature, badVote.StateSignature)
 	}
 }
 
@@ -248,6 +274,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(4, 1)
+	nodeProTxHash := &state.Validators.Validators[0].ProTxHash
 	stateStore := sm.NewStore(stateDB)
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
@@ -268,8 +295,8 @@ func TestValidateBlockEvidence(t *testing.T) {
 		evpool,
 		nil,
 	)
-	lastCommit := types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil,
-	nil, nil)
+	lastCommit := types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil,
+		nil, nil)
 
 	for height := int64(1); height < validationTestsStopHeight; height++ {
 		proposerProTxHash := state.Validators.GetProposer().ProTxHash
@@ -317,6 +344,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 		var err error
 		state, _, _, lastCommit, err = makeAndCommitGoodBlock(
 			state,
+			nodeProTxHash,
 			height,
 			lastCommit,
 			proposerProTxHash,

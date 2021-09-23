@@ -69,6 +69,7 @@ func (ml *mockBlockStore) Height() int64 {
 	return int64(len(ml.blocks))
 }
 
+/*
 func (ml *mockBlockStore) CoreChainLockedHeight() uint32 {
 	latestHeight := int64(0)
 	for k := range ml.blocks {
@@ -81,6 +82,7 @@ func (ml *mockBlockStore) CoreChainLockedHeight() uint32 {
 	}
 	return 0
 }
+*/
 
 // nolint:unused // ignore
 func (ml *mockBlockStore) LoadBlock(height int64) *types.Block {
@@ -97,7 +99,7 @@ type mockBlockApplier struct {
 
 // XXX: Add whitelist/blacklist?
 func (mba *mockBlockApplier) ApplyBlock(
-	state sm.State, blockID types.BlockID, block *types.Block,
+	state sm.State, nodeProTxHash *crypto.ProTxHash, blockID types.BlockID, block *types.Block,
 ) (sm.State, int64, error) {
 	state.LastBlockHeight++
 	return state, 0, nil
@@ -159,6 +161,12 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 	store, state, _ := newReactorStore(p.genDoc, p.privVals, p.startHeight)
 	reporter := behaviour.NewMockReporter()
 
+	nodeProTxHash, err := p.privVals[0].GetProTxHash()
+
+	if err != nil {
+		panic(fmt.Errorf("error start app: %w", err))
+	}
+
 	var appl blockApplier
 
 	if p.mockA {
@@ -180,7 +188,7 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 		}
 	}
 
-	r := newReactor(state, store, reporter, appl, true)
+	r := newReactor(state, &nodeProTxHash, store, reporter, appl, true)
 	logger := log.TestingLogger()
 	r.SetLogger(logger.With("module", "blockchain"))
 
@@ -482,13 +490,13 @@ type testApp struct {
 
 func randGenesisDoc(chainID string, numValidators int) (
 	*types.GenesisDoc, []types.PrivValidator) {
-	validators, privValidators, thresholdPublicKey := types.GenerateGenesisValidators(numValidators)
+	validators, privValidators, quorumHash, thresholdPublicKey := types.GenerateGenesisValidators(numValidators)
 	return &types.GenesisDoc{
 		GenesisTime:        tmtime.Now(),
 		ChainID:            chainID,
 		Validators:         validators,
 		ThresholdPublicKey: thresholdPublicKey,
-		QuorumHash:         crypto.RandQuorumHash(),
+		QuorumHash:         quorumHash,
 	}, privValidators
 }
 
@@ -501,10 +509,16 @@ func newReactorStore(
 	if len(privVals) != 1 {
 		panic("only support one validator")
 	}
+
+	nodeProTxHash, err := privVals[0].GetProTxHash()
+	if err != nil {
+		panic(fmt.Errorf("error newReactorStore: %w", err))
+	}
+
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc)
-	err := proxyApp.Start()
+	err = proxyApp.Start()
 	if err != nil {
 		panic(fmt.Errorf("error start app: %w", err))
 	}
@@ -527,7 +541,8 @@ func newReactorStore(
 
 	// add blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, types.StateID{}, nil, nil, nil, nil)
+		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, types.StateID{}, nil,
+			nil, nil)
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
@@ -543,10 +558,9 @@ func newReactorStore(
 				panic(err)
 			}
 			// since there is only 1 vote, use it as threshold
-			commitSig := vote.CommitSig()
 			lastCommit = types.NewCommit(vote.Height, vote.Round,
-				lastBlockMeta.BlockID, lastBlockMeta.StateID, []types.CommitSig{commitSig}, nil,
-				commitSig.BlockSignature, commitSig.StateSignature)
+				lastBlockMeta.BlockID, lastBlockMeta.StateID, nil,
+				vote.BlockSignature, vote.StateSignature)
 		}
 
 		thisBlock := makeBlock(blockHeight, nil, state, lastCommit)
@@ -554,7 +568,7 @@ func newReactorStore(
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
-		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
+		state, _, err = blockExec.ApplyBlock(state, &nodeProTxHash, blockID, thisBlock)
 		if err != nil {
 			panic(fmt.Errorf("error apply block: %w", err))
 		}

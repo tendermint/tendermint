@@ -1,9 +1,13 @@
 package privval
 
 import (
+	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"time"
+
+	"github.com/tendermint/tendermint/libs/log"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -45,14 +49,13 @@ func (sc *RetrySignerClient) Ping() error {
 	return sc.next.Ping()
 }
 
-func (sc *RetrySignerClient) ExtractIntoValidator(height int64, quorumHash crypto.QuorumHash) *types.Validator {
+func (sc *RetrySignerClient) ExtractIntoValidator(quorumHash crypto.QuorumHash) *types.Validator {
 	pubKey, _ := sc.GetPubKey(quorumHash)
 	proTxHash, _ := sc.GetProTxHash()
 	if len(proTxHash) != crypto.DefaultHashSize {
 		panic("proTxHash wrong length")
 	}
 	return &types.Validator{
-		Address:     pubKey.Address(),
 		PubKey:      pubKey,
 		VotingPower: types.DefaultDashVotingPower,
 		ProTxHash:   proTxHash,
@@ -100,10 +103,38 @@ func (sc *RetrySignerClient) GetProTxHash() (crypto.ProTxHash, error) {
 	return nil, fmt.Errorf("exhausted all attempts to get protxhash: %w", err)
 }
 
-func (sc *RetrySignerClient) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
+func (sc *RetrySignerClient) GetFirstQuorumHash() (crypto.QuorumHash, error) {
+	return nil, errors.New("getFirstQuorumHash should not be called on a signer client")
+}
+
+func (sc *RetrySignerClient) GetThresholdPublicKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
+	var (
+		pk  crypto.PubKey
+		err error
+	)
+	for i := 0; i < sc.retries || sc.retries == 0; i++ {
+		pk, err = sc.next.GetThresholdPublicKey(quorumHash)
+		if err == nil {
+			return pk, nil
+		}
+		// If remote signer errors, we don't retry.
+		if _, ok := err.(*RemoteSignerError); ok {
+			return nil, err
+		}
+		time.Sleep(sc.timeout)
+	}
+	return nil, fmt.Errorf("exhausted all attempts to get pubkey: %w", err)
+}
+func (sc *RetrySignerClient) GetHeight(quorumHash crypto.QuorumHash) (int64, error) {
+	return 0, fmt.Errorf("getHeight should not be called on asigner client %s", quorumHash.String())
+}
+
+func (sc *RetrySignerClient) SignVote(
+	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
+	vote *tmproto.Vote, logger log.Logger) error {
 	var err error
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
-		err = sc.next.SignVote(chainID, quorumType, quorumHash, vote)
+		err = sc.next.SignVote(chainID, quorumType, quorumHash, vote, nil)
 		if err == nil {
 			return nil
 		}
@@ -116,23 +147,31 @@ func (sc *RetrySignerClient) SignVote(chainID string, quorumType btcjson.LLMQTyp
 	return fmt.Errorf("exhausted all attempts to sign vote: %w", err)
 }
 
-func (sc *RetrySignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error {
+func (sc *RetrySignerClient) SignProposal(
+	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal,
+) ([]byte, error) {
+	var signID []byte
 	var err error
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
-		err = sc.next.SignProposal(chainID, quorumType, quorumHash, proposal)
+		signID, err = sc.next.SignProposal(chainID, quorumType, quorumHash, proposal)
 		if err == nil {
-			return nil
+			return signID, nil
 		}
 		// If remote signer errors, we don't retry.
 		if _, ok := err.(*RemoteSignerError); ok {
-			return err
+			return nil, err
 		}
 		time.Sleep(sc.timeout)
 	}
-	return fmt.Errorf("exhausted all attempts to sign proposal: %w", err)
+	return signID, fmt.Errorf("exhausted all attempts to sign proposal: %w", err)
 }
 
-func (sc *RetrySignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, height int64) error {
-	// the private key is dealt with on the abci client
-	return nil
+func (sc *RetrySignerClient) UpdatePrivateKey(
+	privateKey crypto.PrivKey, quorumHash crypto.QuorumHash, thresholdPublicKey crypto.PubKey, height int64,
+) {
+
+}
+
+func (sc *RetrySignerClient) GetPrivateKey(quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
+	return nil, nil
 }

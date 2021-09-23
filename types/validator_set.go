@@ -4,18 +4,19 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"math"
 	"math/big"
 	"sort"
 	"strings"
+
+	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/tendermint/tendermint/crypto/merkle"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 
-	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -61,7 +62,8 @@ type ValidatorSet struct {
 	Proposer           *Validator        `json:"proposer"`
 	ThresholdPublicKey crypto.PubKey     `json:"threshold_public_key"`
 	QuorumHash         crypto.QuorumHash `json:"quorum_hash"`
-	QuorumType		   btcjson.LLMQType  `json:"quorum_type"`
+	QuorumType         btcjson.LLMQType  `json:"quorum_type"`
+	HasPublicKeys      bool              `json:"has_public_keys"`
 
 	// cached (unexported)
 	totalVotingPower int64
@@ -77,10 +79,12 @@ type ValidatorSet struct {
 // Note the validator set size has an implied limit equal to that of the
 // MaxVotesCount - commits by a validator set larger than this will fail
 // validation.
-func NewValidatorSet(valz []*Validator, newThresholdPublicKey crypto.PubKey, quorumType	btcjson.LLMQType, quorumHash crypto.QuorumHash) *ValidatorSet {
+func NewValidatorSet(valz []*Validator, newThresholdPublicKey crypto.PubKey, quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash, hasPublicKeys bool) *ValidatorSet {
 	vals := &ValidatorSet{
-		QuorumHash: quorumHash,
-		QuorumType: quorumType,
+		QuorumHash:    quorumHash,
+		QuorumType:    quorumType,
+		HasPublicKeys: hasPublicKeys,
 	}
 	err := vals.updateWithChangeSet(valz, false, newThresholdPublicKey, quorumHash)
 	if err != nil {
@@ -92,9 +96,26 @@ func NewValidatorSet(valz []*Validator, newThresholdPublicKey crypto.PubKey, quo
 	return vals
 }
 
+// NewValidatorSetWithLocalNodeProTxHash initializes a ValidatorSet the same way as NewValidatorSet does,
+// however it does allows to set the localNodeProTxHash to more easily identify if the validator set should have public
+// keys. If the local node is part of the validator set the public keys must be present
+func NewValidatorSetWithLocalNodeProTxHash(
+	valz []*Validator,
+	newThresholdPublicKey crypto.PubKey,
+	quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash,
+	localNodeProTxHash *crypto.ProTxHash,
+) *ValidatorSet {
+	vals := NewValidatorSet(valz, newThresholdPublicKey, quorumType, quorumHash, false)
+	if localNodeProTxHash != nil && vals.HasProTxHash(*localNodeProTxHash) {
+		vals.HasPublicKeys = true
+	}
+	return vals
+}
+
 // NewEmptyValidatorSet initializes a ValidatorSet with no validators
 func NewEmptyValidatorSet() *ValidatorSet {
-	return NewValidatorSet(nil, nil, 0, nil)
+	return NewValidatorSet(nil, nil, 0, nil, false)
 }
 
 func (vals *ValidatorSet) ValidateBasic() error {
@@ -102,9 +123,19 @@ func (vals *ValidatorSet) ValidateBasic() error {
 		return errors.New("validator set is nil or empty")
 	}
 
+	if vals.Proposer == nil {
+		return errors.New("validator set proposer is not set")
+	}
+
 	for idx, val := range vals.Validators {
 		if err := val.ValidateBasic(); err != nil {
 			return fmt.Errorf("invalid validator #%d: %w", idx, err)
+		}
+		// We should only validate the public keys of validators if our local node is in the validator set
+		if vals.HasPublicKeys {
+			if err := val.ValidatePubKey(); err != nil {
+				return fmt.Errorf("invalid validator pub key #%d: %w", idx, err)
+			}
 		}
 	}
 
@@ -157,18 +188,26 @@ func (vals *ValidatorSet) ThresholdPublicKeyValid() error {
 	if len(vals.ThresholdPublicKey.Bytes()) != bls12381.PubKeySize {
 		return errors.New("threshold public key is wrong size")
 	}
-	if len(vals.Validators) == 1 {
+	if len(vals.Validators) == 1 && vals.HasPublicKeys {
 		if !vals.Validators[0].PubKey.Equals(vals.ThresholdPublicKey) {
 			return errors.New("incorrect threshold public key")
 		}
-	} else if len(vals.Validators) > 1 {
-		recoveredThresholdPublicKey, err := bls12381.RecoverThresholdPublicKeyFromPublicKeys(vals.GetPublicKeys(),
-			vals.GetProTxHashesAsByteArrays())
+	} else if len(vals.Validators) > 1 && vals.HasPublicKeys {
+		// if we have validators and our node is in the validator set then verify the recovered threshold public key
+		recoveredThresholdPublicKey, err := bls12381.RecoverThresholdPublicKeyFromPublicKeys(
+			vals.GetPublicKeys(),
+			vals.GetProTxHashesAsByteArrays(),
+		)
 		if err != nil {
 			return err
 		} else if !recoveredThresholdPublicKey.Equals(vals.ThresholdPublicKey) {
-			return fmt.Errorf("incorrect recovered threshold public key recovered %s expected %s keys %v proTxHashes %v",
-				recoveredThresholdPublicKey.String(), vals.ThresholdPublicKey.String(), vals.GetPublicKeys(), vals.GetProTxHashesAsByteArrays())
+			return fmt.Errorf(
+				"incorrect recovered threshold public key recovered %s expected %s keys %v proTxHashes %v",
+				recoveredThresholdPublicKey.String(),
+				vals.ThresholdPublicKey.String(),
+				vals.GetPublicKeys(),
+				vals.GetProTxHashesAsByteArrays(),
+			)
 		}
 	}
 	return nil
@@ -337,25 +376,15 @@ func (vals *ValidatorSet) Copy() *ValidatorSet {
 		ThresholdPublicKey: vals.ThresholdPublicKey,
 		QuorumHash:         vals.QuorumHash,
 		QuorumType:         vals.QuorumType,
+		HasPublicKeys:      vals.HasPublicKeys,
 	}
 }
 
-// HasAddress returns true if address given is in the validator set, false -
+// HasProTxHash returns true if proTxHash given is in the validator set, false -
 // otherwise.
-func (vals *ValidatorSet) HasProTxHash(proTxHash []byte) bool {
+func (vals *ValidatorSet) HasProTxHash(proTxHash crypto.ProTxHash) bool {
 	for _, val := range vals.Validators {
 		if bytes.Equal(val.ProTxHash, proTxHash) {
-			return true
-		}
-	}
-	return false
-}
-
-// HasAddress returns true if address given is in the validator set, false -
-// otherwise.
-func (vals *ValidatorSet) HasAddress(address []byte) bool {
-	for _, val := range vals.Validators {
-		if bytes.Equal(val.Address, address) {
 			return true
 		}
 	}
@@ -367,17 +396,6 @@ func (vals *ValidatorSet) HasAddress(address []byte) bool {
 func (vals *ValidatorSet) GetByProTxHash(proTxHash []byte) (index int32, val *Validator) {
 	for idx, val := range vals.Validators {
 		if bytes.Equal(val.ProTxHash, proTxHash) {
-			return int32(idx), val.Copy()
-		}
-	}
-	return -1, nil
-}
-
-// GetByAddress returns an index of the validator with address and validator
-// itself (copy) if found. Otherwise, -1 and nil are returned.
-func (vals *ValidatorSet) GetByAddress(address []byte) (index int32, val *Validator) {
-	for idx, val := range vals.Validators {
-		if bytes.Equal(val.Address, address) {
 			return int32(idx), val.Copy()
 		}
 	}
@@ -405,7 +423,7 @@ func (vals *ValidatorSet) GetProTxHashes() []crypto.ProTxHash {
 	return proTxHashes
 }
 
-// GetProTxHashes returns the all validator proTxHashes as byte arrays for convenience
+// GetProTxHashesAsByteArrays returns the all validator proTxHashes as byte arrays for convenience
 func (vals *ValidatorSet) GetProTxHashesAsByteArrays() [][]byte {
 	proTxHashes := make([][]byte, len(vals.Validators))
 	for i, val := range vals.Validators {
@@ -423,32 +441,7 @@ func (vals *ValidatorSet) GetPublicKeys() []crypto.PubKey {
 	return publicKeys
 }
 
-// GetAddresses returns the all validator publicKeys
-func (vals *ValidatorSet) GetAddresses() []crypto.Address {
-	addresses := make([]crypto.Address, len(vals.Validators))
-	for i, val := range vals.Validators {
-		if val.Address != nil {
-			addresses[i] = val.Address
-		} else {
-			addresses[i] = val.PubKey.Address()
-		}
-	}
-	return addresses
-}
-
-func (vals *ValidatorSet) GetAddressPowers() map[string]int64 {
-	addresses := make(map[string]int64, len(vals.Validators))
-	for _, val := range vals.Validators {
-		if val.Address != nil {
-			addresses[string(val.Address)] = val.VotingPower
-		} else {
-			addresses[string(val.PubKey.Address())] = val.VotingPower
-		}
-	}
-	return addresses
-}
-
-// GetProTxHashes returns the all validator proTxHashes
+// GetProTxHashesOrdered returns the all validator proTxHashes in order
 func (vals *ValidatorSet) GetProTxHashesOrdered() []crypto.ProTxHash {
 	proTxHashes := make([]crypto.ProTxHash, len(vals.Validators))
 	for i, val := range vals.Validators {
@@ -470,17 +463,32 @@ func (vals *ValidatorSet) RegenerateWithNewKeys() (*ValidatorSet, []PrivValidato
 		valz           = make([]*Validator, numValidators)
 		privValidators = make([]PrivValidator, numValidators)
 	)
-	orderedProTxHashes, privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+	orderedProTxHashes, privateKeys, thresholdPublicKey :=
+		bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+	quorumHash := crypto.RandQuorumHash()
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], orderedProTxHashes[i], false, false)
+		privValidators[i] = NewMockPVWithParams(
+			privateKeys[i],
+			orderedProTxHashes[i],
+			quorumHash,
+			thresholdPublicKey,
+			false,
+			false,
+		)
 		valz[i] = NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), orderedProTxHashes[i])
 	}
 
 	// Just to make sure
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey, vals.QuorumType, crypto.RandQuorumHash()), privValidators
+	return NewValidatorSet(
+		valz,
+		thresholdPublicKey,
+		vals.QuorumType,
+		crypto.RandQuorumHash(),
+		vals.HasPublicKeys,
+	), privValidators
 }
 
 // Forces recalculation of the set's total voting power.
@@ -510,6 +518,50 @@ func (vals *ValidatorSet) TotalVotingPower() int64 {
 	return vals.totalVotingPower
 }
 
+// QuorumVotingPower returns the voting power of the quorum if all the members existed.
+func (vals *ValidatorSet) QuorumVotingPower() int64 {
+	return int64(vals.QuorumTypeMemberCount()) * DefaultDashVotingPower
+}
+
+// QuorumVotingThresholdPower returns the threshold power of the voting power of the quorum if all the members existed.
+func (vals *ValidatorSet) QuorumVotingThresholdPower() int64 {
+	return int64(vals.QuorumTypeThresholdCount()) * DefaultDashVotingPower
+}
+
+func (vals *ValidatorSet) QuorumTypeMemberCount() int {
+	switch vals.QuorumType {
+	case btcjson.LLMQType_50_60:
+		return 50
+	case btcjson.LLMQType_400_60:
+		return 400
+	case btcjson.LLMQType_400_85:
+		return 400
+	case btcjson.LLMQType_100_67:
+		return 100
+	case 101:
+		return 10
+	default:
+		return len(vals.Validators)
+	}
+}
+
+func (vals *ValidatorSet) QuorumTypeThresholdCount() int {
+	switch vals.QuorumType {
+	case btcjson.LLMQType_50_60:
+		return 30
+	case btcjson.LLMQType_400_60:
+		return 240
+	case btcjson.LLMQType_400_85:
+		return 340
+	case btcjson.LLMQType_100_67:
+		return 67
+	case 101:
+		return 6
+	default:
+		return len(vals.Validators)*2/3 + 1
+	}
+}
+
 // GetProposer returns the current proposer. If the validator set is empty, nil
 // is returned.
 func (vals *ValidatorSet) GetProposer() (proposer *Validator) {
@@ -534,10 +586,13 @@ func (vals *ValidatorSet) findProposer() *Validator {
 
 // Hash returns the Quorum Hash.
 func (vals *ValidatorSet) Hash() []byte {
-	if vals.QuorumHash == nil {
+	if vals.QuorumHash == nil || vals.ThresholdPublicKey == nil {
 		return []byte(nil)
 	}
-	return vals.QuorumHash
+	bzs := make([][]byte, 2)
+	bzs[0] = vals.ThresholdPublicKey.Bytes()
+	bzs[1] = vals.QuorumHash
+	return merkle.HashFromByteSlices(bzs)
 }
 
 // Iterate will run the given function over the set.
@@ -854,8 +909,21 @@ func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes
 // - performs scaling and centering of priority values
 // If an error is detected during verification steps, it is returned and the validator set
 // is not changed.
-func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator, newThresholdPublicKey crypto.PubKey, newQuorumHash crypto.QuorumHash) error {
+func (vals *ValidatorSet) UpdateWithChangeSet(
+	changes []*Validator,
+	newThresholdPublicKey crypto.PubKey,
+	newQuorumHash crypto.QuorumHash,
+) error {
 	return vals.updateWithChangeSet(changes, true, newThresholdPublicKey, newQuorumHash)
+}
+
+func (vals *ValidatorSet) CommitSignIds(chainID string, commit *Commit) ([]byte, []byte) {
+
+	blockSignID := commit.CanonicalVoteVerifySignID(chainID, vals.QuorumType, vals.QuorumHash)
+
+	stateSignID := commit.CanonicalVoteStateSignID(chainID, vals.QuorumType, vals.QuorumHash)
+
+	return blockSignID, stateSignID
 }
 
 // VerifyCommit verifies +2/3 of the set had signed the given commit.
@@ -868,10 +936,6 @@ func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator, newThreshold
 func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID StateID,
 	height int64, commit *Commit) error {
 
-	if vals.Size() != len(commit.Signatures) {
-		return NewErrInvalidCommitSignatures(vals.Size(), len(commit.Signatures))
-	}
-
 	// Validate Height and BlockID.
 	if height != commit.Height {
 		return NewErrInvalidCommitHeight(height, commit.Height)
@@ -886,271 +950,24 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 			stateID, commit.StateID)
 	}
 
-	talliedVotingPower := int64(0)
+	blockSignID := commit.CanonicalVoteVerifySignID(chainID, vals.QuorumType, vals.QuorumHash)
 
-	votingPowerNeedMoreThan := vals.TotalVotingPower() * 2 / 3
-
-	for idx, commitSig := range commit.Signatures {
-		if commitSig.Absent() {
-			continue // OK, some signatures can be absent.
-		}
-
-		// The vals and commit have a 1-to-1 correspondence.
-		// This means we don't need the validator address or to do any lookup.
-		val := vals.Validators[idx]
-
-		// It is possible that a vote might sign a nil block to indicate it does not agree with the proposer
-
-		// This is why it must be here
-
-		// Validate block signature.
-		voteBlockSignId := commit.VoteBlockSignId(chainID, int32(idx), vals.QuorumType, vals.QuorumHash)
-
-		if !val.PubKey.VerifySignatureDigest(voteBlockSignId, commitSig.BlockSignature) {
-			voteBlockSignBytes := commit.VoteBlockSignBytes(chainID, int32(idx))
-			return fmt.Errorf("wrong block signature (#%d/proTxHash:%X/pubKey:%X) |"+
-				" voteBlockSignBytes : %X | signature : %X | commitBID: %s | vote :%v | commit sig %v", idx,
-				val.ProTxHash, val.PubKey.Bytes(), voteBlockSignBytes, commitSig.BlockSignature,
-				commit.BlockID.String(), commit.GetVote(int32(idx)), commit.Signatures[idx])
-		}
-		// else {
-		//	fmt.Printf("correct block signature  (#%d/proTxHash:%X/pubKey:%X) | voteBlockSignBytes : %X |" +
-		//  	" signature : %X | commitBID: %s | vote :%v | commit sig %v\n", idx, val.ProTxHash, val.PubKey.Bytes(),
-		// 	voteBlockSignBytes, commitSig.BlockSignature, commit.BlockID.String(), commit.GetVote(int32(idx)),
-		//	commit.Signatures[idx])
-		// }
-
-		// Validate state signature.
-		if commitSig.BlockIDFlag == BlockIDFlagCommit {
-			// Only verify signatures that voted to commit the block
-			voteStateSignId := commit.VoteStateSignId(chainID, int32(idx), vals.QuorumType, vals.QuorumHash)
-
-			if !val.PubKey.VerifySignatureDigest(voteStateSignId, commitSig.StateSignature) {
-				voteStateSignBytes := commit.VoteStateSignBytes(chainID, int32(idx))
-				return fmt.Errorf("wrong state signature (#%d/proTxHash:%X/pubKey:%X) |"+
-					" voteStateSignBytes : %X | signature : %X", idx, val.ProTxHash, val.PubKey.Bytes(),
-					voteStateSignBytes, commitSig.StateSignature)
-			}
-		}
-
-		// Good!
-		if commitSig.ForBlock() {
-			talliedVotingPower += val.VotingPower
-		}
-		// else {
-		// It's OK. We include stray signatures (~votes for nil) to measure
-		// validator availability.
-		// }
-	}
-
-	blockSignId := commit.CanonicalVoteVerifySignId(chainID, vals.QuorumType, vals.QuorumHash)
-
-	if !vals.ThresholdPublicKey.VerifySignatureDigest(blockSignId, commit.ThresholdBlockSignature) {
+	if !vals.ThresholdPublicKey.VerifySignatureDigest(blockSignID, commit.ThresholdBlockSignature) {
 		canonicalVoteBlockSignBytes := commit.CanonicalVoteVerifySignBytes(chainID)
-		return fmt.Errorf("incorrect threshold block signature lc %X %X", canonicalVoteBlockSignBytes,
-			commit.ThresholdBlockSignature)
+		return fmt.Errorf(
+			"incorrect threshold block signature bytes: %X signId %X commit: %v valQuorumType %d valQuorumHash %X valThresholdPublicKey %X", // nolint:lll
+			canonicalVoteBlockSignBytes, blockSignID, commit, vals.QuorumType, vals.QuorumHash, vals.ThresholdPublicKey)
 	}
 
-	stateSignId := commit.CanonicalVoteStateSignId(chainID, vals.QuorumType, vals.QuorumHash)
+	stateSignID := commit.CanonicalVoteStateSignID(chainID, vals.QuorumType, vals.QuorumHash)
 
-	if !vals.ThresholdPublicKey.VerifySignatureDigest(stateSignId, commit.ThresholdStateSignature) {
+	if !vals.ThresholdPublicKey.VerifySignatureDigest(stateSignID, commit.ThresholdStateSignature) {
 		canonicalVoteStateSignBytes := commit.CanonicalVoteStateSignBytes(chainID)
-		return fmt.Errorf("incorrect threshold state signature lc %X %X", canonicalVoteStateSignBytes,
-			commit.ThresholdStateSignature)
-	}
-
-	if got, needed := talliedVotingPower, votingPowerNeedMoreThan; got <= needed {
-		return ErrNotEnoughVotingPowerSigned{Got: got, Needed: needed}
+		return fmt.Errorf("incorrect threshold state signature bytes: %X commit: %v valQuorumHash %X",
+			canonicalVoteStateSignBytes, commit, vals.QuorumHash)
 	}
 
 	return nil
-}
-
-// LIGHT CLIENT VERIFICATION METHODS
-
-// VerifyCommitLight verifies +2/3 of the set had signed the given commit.
-//
-// This method is primarily used by the light client and does not check all the
-// signatures.
-func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID, stateID StateID,
-	height int64, commit *Commit) error {
-
-	if vals.Size() != len(commit.Signatures) {
-		return NewErrInvalidCommitSignatures(vals.Size(), len(commit.Signatures))
-	}
-
-	// Validate Height and BlockID.
-	if height != commit.Height {
-		return NewErrInvalidCommitHeight(height, commit.Height)
-	}
-	if !blockID.Equals(commit.BlockID) {
-		return fmt.Errorf("invalid commit -- wrong block ID: want %v, got %v",
-			blockID, commit.BlockID)
-	}
-
-	if !stateID.Equals(commit.StateID) {
-		return fmt.Errorf("invalid commit -- wrong state ID: want %v, got %v",
-			stateID, commit.StateID)
-	}
-
-	talliedVotingPower := int64(0)
-
-	votingPowerNeeded := vals.TotalVotingPower() * 2 / 3
-
-	for idx, commitSig := range commit.Signatures {
-		// No need to verify absent or nil votes.
-		if !commitSig.ForBlock() {
-			continue
-		}
-
-		// The vals and commit have a 1-to-1 correspondance.
-		// This means we don't need the validator address or to do any lookup.
-		val := vals.Validators[idx]
-
-		// Validate block signature.
-		voteBlockSignId := commit.VoteBlockSignId(chainID, int32(idx), vals.QuorumType, vals.QuorumHash)
-
-		if !val.PubKey.VerifySignatureDigest(voteBlockSignId, commitSig.BlockSignature) {
-			voteBlockSignBytes := commit.VoteBlockSignBytes(chainID, int32(idx))
-			return fmt.Errorf("wrong block signature for light (#%d/proTxHash:%X/pubKey:%X) |"+
-				" voteBlockSignBytes : %X | signature : %X | commitBID: %s | vote :%v | commit sig %v", idx,
-				val.ProTxHash, val.PubKey.Bytes(), voteBlockSignBytes, commitSig.BlockSignature,
-				commit.BlockID.String(), commit.GetVote(int32(idx)), commit.Signatures[idx])
-		}
-
-		// Validate state signature.
-		if commitSig.BlockIDFlag == BlockIDFlagCommit {
-			// Only verify signatures that voted to commit the block
-			voteStateSignId := commit.VoteStateSignId(chainID, int32(idx), vals.QuorumType, vals.QuorumHash)
-
-			if !val.PubKey.VerifySignatureDigest(voteStateSignId, commitSig.StateSignature) {
-				voteStateSignBytes := commit.VoteStateSignBytes(chainID, int32(idx))
-				return fmt.Errorf("wrong state signature for light (#%d/proTxHash:%X/pubKey:%X) |"+
-					" voteStateSignBytes : %X | signature : %X", idx, val.ProTxHash, val.PubKey.Bytes(),
-					voteStateSignBytes, commitSig.StateSignature)
-			}
-		}
-
-		talliedVotingPower += val.VotingPower
-
-		// return as soon as +2/3 of the signatures are verified
-		if talliedVotingPower > votingPowerNeeded {
-			blockSignId := commit.CanonicalVoteVerifySignId(chainID, vals.QuorumType, vals.QuorumHash)
-
-			if !vals.ThresholdPublicKey.VerifySignatureDigest(blockSignId, commit.ThresholdBlockSignature) {
-				canonicalVoteBlockSignBytes := commit.CanonicalVoteVerifySignBytes(chainID)
-				return fmt.Errorf("incorrect threshold block signature lc %X %X", canonicalVoteBlockSignBytes,
-					commit.ThresholdBlockSignature)
-			}
-
-			stateSignId := commit.CanonicalVoteStateSignId(chainID, vals.QuorumType, vals.QuorumHash)
-
-			if !vals.ThresholdPublicKey.VerifySignatureDigest(stateSignId, commit.ThresholdStateSignature) {
-				canonicalVoteStateSignBytes := commit.CanonicalVoteStateSignBytes(chainID)
-				return fmt.Errorf("incorrect threshold state signature lc %X %X", canonicalVoteStateSignBytes,
-					commit.ThresholdStateSignature)
-			}
-
-			return nil
-		}
-	}
-
-	return ErrNotEnoughVotingPowerSigned{Got: talliedVotingPower, Needed: votingPowerNeeded}
-}
-
-// VerifyCommitLightTrusting verifies that trustLevel of the validator set signed
-// this commit.
-//
-// NOTE the given validators do not necessarily correspond to the validator set
-// for this commit, but there may be some intersection.
-//
-// This method is primarily used by the light client and does not check all the
-// signatures.
-func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Commit, trustLevel tmmath.Fraction) error {
-	// sanity check
-	if trustLevel.Denominator == 0 {
-		return errors.New("trustLevel has zero Denominator")
-	}
-
-	var (
-		talliedVotingPower int64
-		seenVals           = make(map[int32]int, len(commit.Signatures)) // validator index -> commit index
-	)
-
-	// Safely calculate voting power needed.
-	totalVotingPowerMulByNumerator, overflow := safeMul(vals.TotalVotingPower(), int64(trustLevel.Numerator))
-	if overflow {
-		return errors.New("int64 overflow while calculating voting power needed. please provide" +
-			" smaller trustLevel numerator")
-	}
-	votingPowerNeeded := totalVotingPowerMulByNumerator / int64(trustLevel.Denominator)
-
-	for idx, commitSig := range commit.Signatures {
-		// No need to verify absent or nil votes.
-		if !commitSig.ForBlock() {
-			continue
-		}
-
-		// We don't know the validators that committed this block, so we have to
-		// check for each vote if its validator is already known.
-		valIdx, val := vals.GetByProTxHash(commitSig.ValidatorProTxHash)
-
-		if val != nil {
-			// check for double vote of validator on the same commit
-			if firstIndex, ok := seenVals[valIdx]; ok {
-				secondIndex := idx
-				return fmt.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
-			}
-			seenVals[valIdx] = idx
-
-			// Validate block signature.
-			voteBlockSignId := commit.VoteBlockSignId(chainID, int32(idx), vals.QuorumType, vals.QuorumHash)
-
-			if !val.PubKey.VerifySignatureDigest(voteBlockSignId, commitSig.BlockSignature) {
-				voteBlockSignBytes := commit.VoteBlockSignBytes(chainID, int32(idx))
-				return fmt.Errorf("wrong block signature for light trusting (#%d/proTxHash:%X/pubKey:%X) |"+
-					" voteBlockSignBytes : %X | signature : %X | commitBID: %s | vote :%v | commit sig %v", idx,
-					val.ProTxHash, val.PubKey.Bytes(), voteBlockSignBytes, commitSig.BlockSignature,
-					commit.BlockID.String(), commit.GetVote(int32(idx)), commit.Signatures[idx])
-			}
-
-			// Validate state signature.
-			if commitSig.BlockIDFlag == BlockIDFlagCommit {
-				// Only verify signatures that voted to commit the block
-				voteStateSignId := commit.VoteStateSignId(chainID, int32(idx), vals.QuorumType, vals.QuorumHash)
-
-				if !val.PubKey.VerifySignatureDigest(voteStateSignId, commitSig.StateSignature) {
-					voteStateSignBytes := commit.VoteStateSignBytes(chainID, int32(idx))
-					return fmt.Errorf("wrong state signature for light trusting (#%d/proTxHash:%X/pubKey:%X) |"+
-						" voteStateSignBytes : %X | signature : %X", idx, val.ProTxHash, val.PubKey.Bytes(),
-						voteStateSignBytes, commitSig.StateSignature)
-				}
-			}
-
-			talliedVotingPower += val.VotingPower
-
-			if talliedVotingPower > votingPowerNeeded {
-				blockSignId := commit.CanonicalVoteVerifySignId(chainID, vals.QuorumType, vals.QuorumHash)
-
-				if !vals.ThresholdPublicKey.VerifySignatureDigest(blockSignId, commit.ThresholdBlockSignature) {
-					canonicalVoteBlockSignBytes := commit.CanonicalVoteVerifySignBytes(chainID)
-					return fmt.Errorf("incorrect threshold block signature lc %X %X", canonicalVoteBlockSignBytes,
-						commit.ThresholdBlockSignature)
-				}
-
-				stateSignId := commit.CanonicalVoteStateSignId(chainID, vals.QuorumType, vals.QuorumHash)
-
-				if !vals.ThresholdPublicKey.VerifySignatureDigest(stateSignId, commit.ThresholdStateSignature) {
-					canonicalVoteStateSignBytes := commit.CanonicalVoteStateSignBytes(chainID)
-					return fmt.Errorf("incorrect threshold state signature lc %X %X", canonicalVoteStateSignBytes,
-						commit.ThresholdStateSignature)
-				}
-				return nil
-			}
-		}
-	}
-
-	return ErrNotEnoughVotingPowerSigned{Got: talliedVotingPower, Needed: votingPowerNeeded}
 }
 
 // findPreviousProposer reverses the compare proposer priority function to find the validator
@@ -1243,6 +1060,36 @@ func (vals *ValidatorSet) StringIndented(indent string) string {
 
 }
 
+// BasicInfoString returns a string representation of ValidatorSet without power and priority.
+//
+// See StringIndented.
+func (vals *ValidatorSet) BasicInfoString() string {
+	return vals.StringIndentedBasic("")
+}
+
+func (vals *ValidatorSet) StringIndentedBasic(indent string) string {
+	if vals == nil {
+		return "nil-ValidatorSet"
+	}
+	var valStrings []string
+	vals.Iterate(func(index int, val *Validator) bool {
+		valStrings = append(valStrings, val.ShortStringBasic())
+		return false
+	})
+	return fmt.Sprintf(`ValidatorSet{
+%s  Proposer: %v
+%s  QuorumHash: %v
+%s  Validators:
+%s    %v
+%s}`,
+		indent, vals.GetProposer().ProTxHash.ShortString(),
+		indent, vals.QuorumHash.String(),
+		indent,
+		indent, strings.Join(valStrings, "\n"+indent+"    "),
+		indent)
+
+}
+
 //-------------------------------------
 
 // ValidatorsByVotingPower implements sort.Interface for []*Validator based on
@@ -1299,7 +1146,9 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 	}
 	vp.Proposer = valProposer
 
-	vp.TotalVotingPower = vals.totalVotingPower
+	// NOTE: Sometimes we use the bytes of the proto form as a hash. This means that we need to
+	// be consistent with cached data
+	vp.TotalVotingPower = 0
 
 	if vals.ThresholdPublicKey == nil {
 		return nil, fmt.Errorf("thresholdPublicKey is not set")
@@ -1318,6 +1167,8 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 	vp.QuorumType = int32(vals.QuorumType)
 
 	vp.QuorumHash = vals.QuorumHash
+
+	vp.HasPublicKeys = vals.HasPublicKeys
 
 	return vp, nil
 }
@@ -1349,7 +1200,12 @@ func ValidatorSetFromProto(vp *tmproto.ValidatorSet) (*ValidatorSet, error) {
 
 	vals.Proposer = p
 
-	vals.totalVotingPower = vp.GetTotalVotingPower()
+	// NOTE: We can't trust the total voting power given to us by other peers. If someone were to
+	// inject a non-zeo value that wasn't the correct voting power we could assume a wrong total
+	// power hence we need to recompute it.
+	// FIXME: We should look to remove TotalVotingPower from proto or add it in the validators hash
+	// so we don't have to do this
+	vals.TotalVotingPower()
 
 	thresholdPublicKey, err := cryptoenc.PubKeyFromProto(vp.ThresholdPublicKey)
 	if err != nil {
@@ -1362,20 +1218,29 @@ func ValidatorSetFromProto(vp *tmproto.ValidatorSet) (*ValidatorSet, error) {
 
 	vals.QuorumHash = vp.QuorumHash
 
+	vals.HasPublicKeys = vp.HasPublicKeys
+
 	return vals, vals.ValidateBasic()
 }
-
 
 // ValidatorSetFromExistingValidators takes an existing array of validators and rebuilds
 // the exact same validator set that corresponds to it without changing the proposer priority or power
 // if any of the validators fail validate basic then an empty set is returned.
-func ValidatorSetFromExistingValidators(valz []*Validator, thresholdPublicKey crypto.PubKey, quorumType btcjson.LLMQType,
-	quorumHash crypto.QuorumHash) (*ValidatorSet, error) {
+func ValidatorSetFromExistingValidators(
+	valz []*Validator,
+	thresholdPublicKey crypto.PubKey,
+	quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash,
+) (*ValidatorSet, error) {
 	if len(valz) == 0 {
 		return nil, errors.New("validator set is empty")
 	}
+	hasPublicKeys := true
 	for _, val := range valz {
 		err := val.ValidateBasic()
+		if val.PubKey == nil {
+			hasPublicKeys = false
+		}
 		if err != nil {
 			return nil, fmt.Errorf("can't create validator set: %w", err)
 		}
@@ -1386,6 +1251,7 @@ func ValidatorSetFromExistingValidators(valz []*Validator, thresholdPublicKey cr
 		ThresholdPublicKey: thresholdPublicKey,
 		QuorumType:         quorumType,
 		QuorumHash:         quorumHash,
+		HasPublicKeys:      hasPublicKeys,
 	}
 	vals.Proposer = vals.findPreviousProposer()
 	vals.updateTotalVotingPower()
@@ -1406,73 +1272,84 @@ func GenerateValidatorSet(numValidators int) (*ValidatorSet, []PrivValidator) {
 	)
 	threshold := numValidators*2/3 + 1
 	privateKeys, proTxHashes, thresholdPublicKey := bls12381.CreatePrivLLMQData(numValidators, threshold)
+	quorumHash := crypto.RandQuorumHash()
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false, false)
+		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], quorumHash,
+			thresholdPublicKey, false, false)
 		valz[i] = NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), proTxHashes[i])
 	}
 
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash()), privValidators
+	return NewValidatorSet(
+		valz,
+		thresholdPublicKey,
+		crypto.SmallQuorumType(),
+		quorumHash,
+		true,
+	), privValidators
 }
 
-func GenerateTestValidatorSetWithAddresses(addresses []crypto.Address, power []int64) (*ValidatorSet, []PrivValidator) {
+func GenerateTestValidatorSetWithProTxHashes(
+	proTxHashes []crypto.ProTxHash,
+	power []int64,
+) (*ValidatorSet, []PrivValidator) {
 	var (
-		numValidators      = len(addresses)
-		proTxHashes        = make([]ProTxHash, numValidators)
-		originalAddressMap = make(map[string][]byte)
-		originalPowerMap   = make(map[string]int64)
-		valz               = make([]*Validator, numValidators)
-		privValidators     = make([]PrivValidator, numValidators)
+		numValidators    = len(proTxHashes)
+		originalPowerMap = make(map[string]int64)
+		valz             = make([]*Validator, numValidators)
+		privValidators   = make([]PrivValidator, numValidators)
 	)
 	for i := 0; i < numValidators; i++ {
-		proTxHashes[i] = crypto.Sha256(addresses[i])
-		originalAddressMap[string(proTxHashes[i])] = addresses[i]
 		originalPowerMap[string(proTxHashes[i])] = power[i]
 	}
-	sort.Sort(crypto.SortProTxHash(proTxHashes))
 
-	orderedProTxHashes, privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+	sortedProTxHashes := proTxHashes
+	sort.Sort(crypto.SortProTxHash(sortedProTxHashes))
+
+	orderedProTxHashes, privateKeys, thresholdPublicKey :=
+		bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(sortedProTxHashes)
+	quorumHash := crypto.RandQuorumHash()
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], orderedProTxHashes[i], false,
-			false)
-		valz[i] = NewValidator(privateKeys[i].PubKey(), originalPowerMap[string(orderedProTxHashes[i])], orderedProTxHashes[i])
-		valz[i].Address = originalAddressMap[string(orderedProTxHashes[i])]
+		privValidators[i] = NewMockPVWithParams(privateKeys[i], orderedProTxHashes[i], quorumHash,
+			thresholdPublicKey, false, false)
+		valz[i] = NewValidator(
+			privateKeys[i].PubKey(),
+			originalPowerMap[string(orderedProTxHashes[i])],
+			orderedProTxHashes[i],
+		)
 	}
 
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash()), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), quorumHash, true), privValidators
 }
 
-func GenerateTestValidatorSetWithAddressesDefaultPower(addresses []crypto.Address) (*ValidatorSet, []PrivValidator) {
+func GenerateTestValidatorSetWithProTxHashesDefaultPower(
+	proTxHashes []crypto.ProTxHash,
+) (*ValidatorSet, []PrivValidator) {
 	var (
-		numValidators      = len(addresses)
-		proTxHashes        = make([]ProTxHash, numValidators)
-		originalAddressMap = make(map[string][]byte)
-		valz               = make([]*Validator, numValidators)
-		privValidators     = make([]PrivValidator, numValidators)
+		numValidators  = len(proTxHashes)
+		valz           = make([]*Validator, numValidators)
+		privValidators = make([]PrivValidator, numValidators)
 	)
-	for i := 0; i < numValidators; i++ {
-		proTxHashes[i] = crypto.Sha256(addresses[i])
-		originalAddressMap[string(proTxHashes[i])] = addresses[i]
-	}
 	sort.Sort(crypto.SortProTxHash(proTxHashes))
 
-	orderedProTxHashes, privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+	orderedProTxHashes, privateKeys, thresholdPublicKey :=
+		bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+	quorumHash := crypto.RandQuorumHash()
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], orderedProTxHashes[i], false,
-			false)
+		privValidators[i] = NewMockPVWithParams(privateKeys[i], orderedProTxHashes[i], quorumHash,
+			thresholdPublicKey, false, false)
 		valz[i] = NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), orderedProTxHashes[i])
-		valz[i].Address = originalAddressMap[string(orderedProTxHashes[i])]
 	}
 
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash()), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), quorumHash, true), privValidators
 }
 
 func GenerateMockValidatorSet(numValidators int) (*ValidatorSet, []*MockPV) {
@@ -1482,28 +1359,39 @@ func GenerateMockValidatorSet(numValidators int) (*ValidatorSet, []*MockPV) {
 	)
 	threshold := numValidators*2/3 + 1
 	privateKeys, proTxHashes, thresholdPublicKey := bls12381.CreatePrivLLMQData(numValidators, threshold)
+	quorumHash := crypto.RandQuorumHash()
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false,
-			false)
+		privValidators[i] = NewMockPVWithParams(
+			privateKeys[i],
+			proTxHashes[i],
+			quorumHash,
+			thresholdPublicKey,
+			false,
+			false,
+		)
 		valz[i] = NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), proTxHashes[i])
 	}
 
 	sort.Sort(MockPrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash()), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), quorumHash, true), privValidators
 }
 
-func GenerateGenesisValidators(numValidators int) ([]GenesisValidator, []PrivValidator, crypto.PubKey) {
+func GenerateGenesisValidators(
+	numValidators int,
+) ([]GenesisValidator, []PrivValidator, crypto.QuorumHash, crypto.PubKey) {
 	var (
 		genesisValidators = make([]GenesisValidator, numValidators)
 		privValidators    = make([]PrivValidator, numValidators)
 	)
-	privateKeys, proTxHashes, thresholdPublicKey := bls12381.CreatePrivLLMQDataDefaultThreshold(numValidators)
+	privateKeys, proTxHashes, thresholdPublicKey :=
+		bls12381.CreatePrivLLMQDataDefaultThreshold(numValidators)
+	quorumHash := crypto.RandQuorumHash()
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false,
-			false)
+		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], quorumHash,
+			thresholdPublicKey, false, false)
 		genesisValidators[i] = GenesisValidator{
 			PubKey:    privateKeys[i].PubKey(),
 			Power:     DefaultDashVotingPower,
@@ -1514,19 +1402,29 @@ func GenerateGenesisValidators(numValidators int) ([]GenesisValidator, []PrivVal
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 	sort.Sort(GenesisValidatorsByProTxHash(genesisValidators))
 
-	return genesisValidators, privValidators, thresholdPublicKey
+	return genesisValidators, privValidators, quorumHash, thresholdPublicKey
 }
 
-func GenerateMockGenesisValidators(numValidators int) ([]GenesisValidator, []*MockPV, crypto.PubKey) {
+func GenerateMockGenesisValidators(
+	numValidators int,
+) ([]GenesisValidator, []*MockPV, crypto.QuorumHash, crypto.PubKey) {
 	var (
 		genesisValidators = make([]GenesisValidator, numValidators)
 		privValidators    = make([]*MockPV, numValidators)
 	)
-	privateKeys, proTxHashes, thresholdPublicKey := bls12381.CreatePrivLLMQDataDefaultThreshold(numValidators)
+	privateKeys, proTxHashes, thresholdPublicKey :=
+		bls12381.CreatePrivLLMQDataDefaultThreshold(numValidators)
+	quorumHash := crypto.RandQuorumHash()
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false,
-			false)
+		privValidators[i] = NewMockPVWithParams(
+			privateKeys[i],
+			proTxHashes[i],
+			quorumHash,
+			thresholdPublicKey,
+			false,
+			false,
+		)
 		genesisValidators[i] = GenesisValidator{
 			PubKey:    privateKeys[i].PubKey(),
 			Power:     DefaultDashVotingPower,
@@ -1537,7 +1435,7 @@ func GenerateMockGenesisValidators(numValidators int) ([]GenesisValidator, []*Mo
 	sort.Sort(MockPrivValidatorsByProTxHash(privValidators))
 	sort.Sort(GenesisValidatorsByProTxHash(genesisValidators))
 
-	return genesisValidators, privValidators, thresholdPublicKey
+	return genesisValidators, privValidators, quorumHash, thresholdPublicKey
 }
 
 func GenerateValidatorSetUsingProTxHashes(proTxHashes []crypto.ProTxHash) (*ValidatorSet, []PrivValidator) {
@@ -1549,17 +1447,25 @@ func GenerateValidatorSetUsingProTxHashes(proTxHashes []crypto.ProTxHash) (*Vali
 		valz           = make([]*Validator, numValidators)
 		privValidators = make([]PrivValidator, numValidators)
 	)
-	orderedProTxHashes, privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+	orderedProTxHashes, privateKeys, thresholdPublicKey :=
+		bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+	quorumHash := crypto.RandQuorumHash()
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], orderedProTxHashes[i], false,
-			false)
+		privValidators[i] = NewMockPVWithParams(
+			privateKeys[i],
+			orderedProTxHashes[i],
+			quorumHash,
+			thresholdPublicKey,
+			false,
+			false,
+		)
 		valz[i] = NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), orderedProTxHashes[i])
 	}
 
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash()), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), quorumHash, true), privValidators
 }
 
 func GenerateMockValidatorSetUsingProTxHashes(proTxHashes []crypto.ProTxHash) (*ValidatorSet, []*MockPV) {
@@ -1571,24 +1477,64 @@ func GenerateMockValidatorSetUsingProTxHashes(proTxHashes []crypto.ProTxHash) (*
 		valz           = make([]*Validator, numValidators)
 		privValidators = make([]*MockPV, numValidators)
 	)
-	orderedProTxHashes, privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+	orderedProTxHashes, privateKeys, thresholdPublicKey :=
+		bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+	quorumHash := crypto.RandQuorumHash()
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], orderedProTxHashes[i], false,
-			false)
+		privValidators[i] = NewMockPVWithParams(privateKeys[i], orderedProTxHashes[i], quorumHash,
+			thresholdPublicKey, false, false)
 		valz[i] = NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), orderedProTxHashes[i])
 	}
 
 	sort.Sort(MockPrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), crypto.RandQuorumHash()), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), quorumHash, true), privValidators
+}
+
+func GenerateMockValidatorSetUpdatingPrivateValidatorsAtHeight(
+	proTxHashes []crypto.ProTxHash,
+	mockPVs map[string]*MockPV,
+	height int64,
+) (*ValidatorSet, []*MockPV) {
+	numValidators := len(mockPVs)
+	if numValidators < 2 {
+		panic("there should be at least 2 validators")
+	}
+	var (
+		valz           = make([]*Validator, numValidators)
+		privValidators = make([]*MockPV, numValidators)
+	)
+	orderedProTxHashes, privateKeys, thresholdPublicKey :=
+		bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+	quorumHash := crypto.RandQuorumHash()
+
+	for i := 0; i < numValidators; i++ {
+		if mockPV, ok := mockPVs[orderedProTxHashes[i].String()]; ok {
+			mockPV.UpdatePrivateKey(privateKeys[i], quorumHash, thresholdPublicKey, height)
+			privValidators[i] = mockPV
+		} else {
+			privValidators[i] = NewMockPVWithParams(privateKeys[i], orderedProTxHashes[i], quorumHash,
+				thresholdPublicKey, false, false)
+		}
+		valz[i] = NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), orderedProTxHashes[i])
+	}
+
+	sort.Sort(MockPrivValidatorsByProTxHash(privValidators))
+
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), quorumHash, true), privValidators
 }
 
 func ValidatorUpdatesRegenerateOnProTxHashes(proTxHashes []crypto.ProTxHash) abci.ValidatorSetUpdate {
-	orderedProTxHashes, privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+	orderedProTxHashes, privateKeys, thresholdPublicKey :=
+		bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
 	var valUpdates []abci.ValidatorUpdate
 	for i := 0; i < len(proTxHashes); i++ {
-		valUpdate := TM2PB.NewValidatorUpdate(privateKeys[i].PubKey(), DefaultDashVotingPower, orderedProTxHashes[i])
+		valUpdate := TM2PB.NewValidatorUpdate(
+			privateKeys[i].PubKey(),
+			DefaultDashVotingPower,
+			orderedProTxHashes[i],
+		)
 		valUpdates = append(valUpdates, valUpdate)
 	}
 	abciThresholdPublicKey, err := cryptoenc.PubKeyToProto(thresholdPublicKey)

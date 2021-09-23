@@ -103,6 +103,24 @@ func MsgToProto(msg Message) (*tmcons.Message, error) {
 				},
 			},
 		}
+	case *CommitMessage:
+		commit := msg.Commit.ToProto()
+		pb = tmcons.Message{
+			Sum: &tmcons.Message_Commit{
+				Commit: &tmcons.Commit{
+					Commit: commit,
+				},
+			},
+		}
+	case *HasCommitMessage:
+		pb = tmcons.Message{
+			Sum: &tmcons.Message_HasCommit{
+				HasCommit: &tmcons.HasCommit{
+					Height: msg.Height,
+					Round:  msg.Round,
+				},
+			},
+		}
 	case *VoteSetMaj23Message:
 		bi := msg.BlockID.ToProto()
 		pb = tmcons.Message{
@@ -222,6 +240,20 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 			Round:  msg.HasVote.Round,
 			Type:   msg.HasVote.Type,
 			Index:  msg.HasVote.Index,
+		}
+	case *tmcons.Message_Commit:
+		commit, err := types.CommitFromProto(msg.Commit.Commit)
+		if err != nil {
+			return nil, fmt.Errorf("commit msg to proto error: %w", err)
+		}
+
+		pb = &CommitMessage{
+			Commit: commit,
+		}
+	case *tmcons.Message_HasCommit:
+		pb = &HasCommitMessage{
+			Height: msg.HasCommit.Height,
+			Round:  msg.HasCommit.Round,
 		}
 	case *tmcons.Message_VoteSetMaj23:
 		bi, err := types.BlockIDFromProto(&msg.VoteSetMaj23.BlockID)

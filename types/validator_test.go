@@ -41,8 +41,11 @@ func TestValidatorProtoBuf(t *testing.T) {
 }
 
 func TestValidatorValidateBasic(t *testing.T) {
-	priv := NewMockPV()
-	pubKey, _ := priv.GetPubKey(crypto.QuorumHash{})
+	quorumHash := crypto.RandQuorumHash()
+	priv := NewMockPVForQuorum(quorumHash)
+	pubKey, err := priv.GetPubKey(quorumHash)
+	require.NoError(t, err)
+
 	testCases := []struct {
 		val *Validator
 		err bool
@@ -51,7 +54,7 @@ func TestValidatorValidateBasic(t *testing.T) {
 		{
 			val: NewValidatorDefaultVotingPower(pubKey, priv.ProTxHash),
 			err: false,
-			msg: "",
+			msg: "no error",
 		},
 		{
 			val: nil,
@@ -60,10 +63,12 @@ func TestValidatorValidateBasic(t *testing.T) {
 		},
 		{
 			val: &Validator{
-				PubKey: nil,
+				PubKey:      nil,
+				ProTxHash:   crypto.RandProTxHash(),
+				VotingPower: 100,
 			},
-			err: true,
-			msg: "validator does not have a public key",
+			err: false,
+			msg: "no error",
 		},
 		{
 			val: NewValidator(pubKey, -1, priv.ProTxHash),
@@ -73,25 +78,14 @@ func TestValidatorValidateBasic(t *testing.T) {
 		{
 			val: &Validator{
 				PubKey:    pubKey,
-				Address:   nil,
-				ProTxHash: priv.ProTxHash,
+				ProTxHash: crypto.CRandBytes(12),
 			},
 			err: true,
-			msg: "validator address is the wrong size: ",
+			msg: "validator proTxHash is the wrong size: 12",
 		},
 		{
 			val: &Validator{
 				PubKey:    pubKey,
-				Address:   []byte{'a'},
-				ProTxHash: priv.ProTxHash,
-			},
-			err: true,
-			msg: "validator address is the wrong size: 61",
-		},
-		{
-			val: &Validator{
-				PubKey:    pubKey,
-				Address:   pubKey.Address(),
 				ProTxHash: nil,
 			},
 			err: true,
@@ -100,13 +94,16 @@ func TestValidatorValidateBasic(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		err := tc.val.ValidateBasic()
-		if tc.err {
-			if assert.Error(t, err) {
-				assert.Equal(t, tc.msg, err.Error())
+		tcRun := tc
+		t.Run(tc.msg, func(t *testing.T) {
+			err := tcRun.val.ValidateBasic()
+			if tcRun.err {
+				if assert.Error(t, err) {
+					assert.Equal(t, tcRun.msg, err.Error())
+				}
+			} else {
+				assert.NoError(t, err)
 			}
-		} else {
-			assert.NoError(t, err)
-		}
+		})
 	}
 }

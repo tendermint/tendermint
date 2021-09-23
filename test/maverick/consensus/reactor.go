@@ -108,7 +108,7 @@ func (conR *Reactor) OnStop() {
 func (conR *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
 	conR.Logger.Info("SwitchToConsensus")
 
-	// We have no votes, so reconstruct LastCommit from SeenCommit.
+	// We have no votes, so reconstruct LastPrecommits from SeenCommit.
 	if state.LastBlockHeight > 0 {
 		conR.conS.reconstructLastCommit(state)
 	}
@@ -225,7 +225,7 @@ func (conR *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 // NOTE: blocks on consensus state for proposals, block parts, and votes
 func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	if !conR.IsRunning() {
-		conR.Logger.Debug("Receive", "src", src, "chId", chID, "bytes", msgBytes)
+		conR.Logger.P2PDebug("Receive", "src", src, "chId", chID, "bytes", msgBytes)
 		return
 	}
 
@@ -242,7 +242,7 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		return
 	}
 
-	conR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
+	conR.Logger.P2PDebug("Receive", "src", src, "chId", chID, "msg", msg)
 
 	// Get peer states
 	ps, ok := src.Get(types.PeerStateKey).(*PeerState)
@@ -267,6 +267,8 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			ps.ApplyNewValidBlockMessage(msg)
 		case *tmcon.HasVoteMessage:
 			ps.ApplyHasVoteMessage(msg)
+		case *tmcon.HasCommitMessage:
+			ps.ApplyHasCommitMessage(msg)
 		case *tmcon.VoteSetMaj23Message:
 			cs := conR.conS
 			cs.mtx.Lock()
@@ -331,7 +333,7 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		case *tmcon.VoteMessage:
 			cs := conR.conS
 			cs.mtx.RLock()
-			height, valSize, lastCommitSize := cs.Height, cs.Validators.Size(), cs.LastCommit.Size()
+			height, valSize, lastCommitSize := cs.Height, cs.Validators.Size(), cs.LastPrecommits.Size()
 			cs.mtx.RUnlock()
 			ps.EnsureVoteBitArrays(height, valSize)
 			ps.EnsureVoteBitArrays(height-1, lastCommitSize)
@@ -439,7 +441,7 @@ func (conR *Reactor) broadcastNewValidBlockMessage(rs *cstypes.RoundState) {
 		Round:              rs.Round,
 		BlockPartSetHeader: rs.ProposalBlockParts.Header(),
 		BlockParts:         rs.ProposalBlockParts.BitArray(),
-		IsCommit:           rs.Step == cstypes.RoundStepCommit,
+		IsCommit:           rs.Step == cstypes.RoundStepApplyCommit,
 	}
 	conR.Switch.Broadcast(StateChannel, tmcon.MustEncode(csMsg))
 }
@@ -479,7 +481,7 @@ func makeRoundStepMessage(rs *cstypes.RoundState) (nrsMsg *tmcon.NewRoundStepMes
 		Round:                 rs.Round,
 		Step:                  rs.Step,
 		SecondsSinceStartTime: int64(time.Since(rs.StartTime).Seconds()),
-		LastCommitRound:       rs.LastCommit.GetRound(),
+		LastCommitRound:       rs.LastPrecommits.GetRound(),
 	}
 	return
 }
@@ -650,7 +652,7 @@ OUTER_LOOP:
 			sleeping = 0
 		}
 
-		// If height matches, then send LastCommit, Prevotes, Precommits.
+		// If height matches, then send LastPrecommits, Prevotes, Precommits.
 		if rs.Height == prs.Height {
 			heightLogger := logger.With("height", prs.Height)
 			if conR.gossipVotesForHeight(heightLogger, rs, prs, ps) {
@@ -659,10 +661,10 @@ OUTER_LOOP:
 		}
 
 		// Special catchup logic.
-		// If peer is lagging by height 1, send LastCommit.
+		// If peer is lagging by height 1, send LastPrecommits.
 		if prs.Height != 0 && rs.Height == prs.Height+1 {
-			if ps.PickSendVote(rs.LastCommit) {
-				logger.Debug("Picked rs.LastCommit to send", "height", prs.Height)
+			if ps.PickSendVote(rs.LastPrecommits) {
+				logger.Debug("Picked rs.LastPrecommits to send", "height", prs.Height)
 				continue OUTER_LOOP
 			}
 		}
@@ -673,7 +675,7 @@ OUTER_LOOP:
 			// Load the block commit for prs.Height,
 			// which contains precommit signatures for prs.Height.
 			if commit := conR.conS.blockStore.LoadBlockCommit(prs.Height); commit != nil {
-				if ps.PickSendVote(commit) {
+				if ps.SendCommit(commit) {
 					logger.Debug("Picked Catchup commit to send", "height", prs.Height)
 					continue OUTER_LOOP
 				}
@@ -705,8 +707,8 @@ func (conR *Reactor) gossipVotesForHeight(
 
 	// If there are lastCommits to send...
 	if prs.Step == cstypes.RoundStepNewHeight {
-		if ps.PickSendVote(rs.LastCommit) {
-			logger.Debug("Picked rs.LastCommit to send")
+		if ps.PickSendVote(rs.LastPrecommits) {
+			logger.Debug("Picked rs.LastPrecommits to send")
 			return true
 		}
 	}
@@ -819,7 +821,7 @@ OUTER_LOOP:
 			}
 		}
 
-		// Little point sending LastCommitRound/LastCommit,
+		// Little point sending LastCommitRound/LastPrecommits,
 		// These are fleeting and non-blocking.
 
 		// Maybe send Height/CatchupCommitRound/CatchupCommit.
@@ -1043,6 +1045,18 @@ func (ps *PeerState) SetHasProposalBlockPart(height int64, round int32, index in
 	ps.PRS.ProposalBlockParts.SetIndex(index, true)
 }
 
+func (ps *PeerState) SendCommit(commit *types.Commit) bool {
+	if commit != nil {
+		msg := &tmcon.CommitMessage{Commit: commit}
+		ps.logger.Debug("Sending commit message", "peer", ps.peer, "ps", ps, "commit", commit)
+		if ps.peer.Send(VoteChannel, tmcon.MustEncode(msg)) {
+			ps.SetHasCommit(commit)
+			return true
+		}
+	}
+	return false
+}
+
 // PickSendVote picks a vote and sends it to the peer.
 // Returns true if vote was sent.
 func (ps *PeerState) PickSendVote(votes types.VoteSetReader) bool {
@@ -1126,7 +1140,7 @@ func (ps *PeerState) getVoteBitArray(height int64, round int32, votesType tmprot
 			case tmproto.PrevoteType:
 				return nil
 			case tmproto.PrecommitType:
-				return ps.PRS.LastCommit
+				return ps.PRS.LastPrecommits
 			}
 		}
 		return nil
@@ -1141,7 +1155,7 @@ func (ps *PeerState) ensureCatchupCommitRound(height int64, round int32, numVali
 	}
 	/*
 		NOTE: This is wrong, 'round' could change.
-		e.g. if orig round is not the same as block LastCommit round.
+		e.g. if orig round is not the same as block LastPrecommits round.
 		if ps.CatchupCommitRound != -1 && ps.CatchupCommitRound != round {
 			panic(fmt.Sprintf(
 				"Conflicting CatchupCommitRound. Height: %v,
@@ -1188,8 +1202,8 @@ func (ps *PeerState) ensureVoteBitArrays(height int64, numValidators int) {
 			ps.PRS.ProposalPOL = bits.NewBitArray(numValidators)
 		}
 	} else if ps.PRS.Height == height+1 {
-		if ps.PRS.LastCommit == nil {
-			ps.PRS.LastCommit = bits.NewBitArray(numValidators)
+		if ps.PRS.LastPrecommits == nil {
+			ps.PRS.LastPrecommits = bits.NewBitArray(numValidators)
 		}
 	}
 }
@@ -1242,17 +1256,36 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 
 func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.SignedMsgType, index int32) {
 	logger := ps.logger.With(
-		"peerH/R",
+		"peerHR",
 		fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
-		"H/R",
+		"HR",
 		fmt.Sprintf("%d/%d", height, round))
-	logger.Debug("setHasVote", "type", voteType, "index", index)
 
 	// NOTE: some may be nil BitArrays -> no side effects.
 	psVotes := ps.getVoteBitArray(height, round, voteType)
 	if psVotes != nil {
 		psVotes.SetIndex(int(index), true)
 	}
+	logger.Debug("peerState setHasVote Maverick", "type", voteType, "index", index, "peerVotes", psVotes)
+}
+
+// SetHasCommit sets the given vote as known by the peer
+func (ps *PeerState) SetHasCommit(commit *types.Commit) {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	ps.setHasCommit(commit.Height, commit.Round)
+}
+
+func (ps *PeerState) setHasCommit(height int64, round int32) {
+	logger := ps.logger.With("peer", ps.peer,
+		"peerHR",
+		fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
+		"HR",
+		fmt.Sprintf("%d/%d", height, round))
+	logger.Debug("setHasCommit")
+
+	ps.PRS.HasCommit = true
 }
 
 // ApplyNewRoundStepMessage updates the peer state for the new round.
@@ -1294,13 +1327,13 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *tmcon.NewRoundStepMessage) {
 		ps.PRS.Precommits = psCatchupCommit
 	}
 	if psHeight != msg.Height {
-		// Shift Precommits to LastCommit.
+		// Shift Precommits to LastPrecommits.
 		if psHeight+1 == msg.Height && psRound == msg.LastCommitRound {
 			ps.PRS.LastCommitRound = msg.LastCommitRound
-			ps.PRS.LastCommit = ps.PRS.Precommits
+			ps.PRS.LastPrecommits = ps.PRS.Precommits
 		} else {
 			ps.PRS.LastCommitRound = msg.LastCommitRound
-			ps.PRS.LastCommit = nil
+			ps.PRS.LastPrecommits = nil
 		}
 		// We'll update the BitArray capacity later.
 		ps.PRS.CatchupCommitRound = -1
@@ -1352,6 +1385,18 @@ func (ps *PeerState) ApplyHasVoteMessage(msg *tmcon.HasVoteMessage) {
 	}
 
 	ps.setHasVote(msg.Height, msg.Round, msg.Type, msg.Index)
+}
+
+// ApplyHasCommitMessage updates the peer state for the new commit.
+func (ps *PeerState) ApplyHasCommitMessage(msg *tmcon.HasCommitMessage) {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	if ps.PRS.Height != msg.Height {
+		return
+	}
+
+	ps.setHasCommit(msg.Height, msg.Round)
 }
 
 // ApplyVoteSetBitsMessage updates the peer state for the bit-array of votes

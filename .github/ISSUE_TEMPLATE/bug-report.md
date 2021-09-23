@@ -1,42 +1,44 @@
 ---
-name: Bug Report
-about: Create a report to help us squash bugs!
+name: Bug report
+about: Create a report to help us improve
+title: ''
+labels: 'bug'
+assignees: ''
 
 ---
-<!--
-Please fill in as much of the template below as you can.
 
-Be ready for followup questions, and please respond in a timely
-manner. We might ask you to provide additional logs and data (tendermint & app).
--->
+<!--- Provide a general summary of the issue in the Title above -->
 
-**Tendermint version** (use `tendermint version` or `git rev-parse --verify HEAD` if installed from source):
+## Expected Behavior
+<!--- Tell us what should happen -->
 
+## Current Behavior
+<!--- Tell us what happens instead of the expected behavior -->
 
-**ABCI app** (name for built-in, URL for self-written if it's publicly available):
+## Possible Solution
+<!--- Not obligatory, but suggest a fix/reason for the bug or discuss what you have tried -->
 
-**Environment**:
-- **OS** (e.g. from /etc/os-release):
-- **Install tools**:
-- **Others**:
+## Steps to Reproduce (for bugs)
+<!--- Provide a link to a live example, or an unambiguous set of steps to -->
+<!--- reproduce this bug. Include code to reproduce, if relevant -->
+1.
+2.
+3.
+4.
 
+## Context
+<!--- How has this issue affected you? What are you trying to accomplish? -->
+<!--- Providing context helps us come up with a solution that is most useful in the real world -->
 
-**What happened**:
-
-
-**What you expected to happen**:
-
+## Your Environment
+<!--- Include as many relevant details about the environment you experienced the bug in -->
+* Version used: <!--- (use `tenderdash version`) -->
+* Operating System and version (desktop, server, or mobile):
+* ABCI app: <!--- name for built-in, URL for self-written if it's publicly available) -->
+* Install tools:
+* Link to your project:
 
 **Have you tried the latest version**: yes/no
 
-**How to reproduce it** (as minimally and precisely as possible):
-
-**Logs (paste a small part showing an error (< 10 lines) or link a pastebin, gist, etc. containing more of the log file)**:
-
-**Config (you can paste only the changes you've made)**:
-
-**node command runtime flags**:
-
-**Please provide the output from the `http://<ip>:<port>/dump_consensus_state` RPC endpoint for consensus bugs**
-
-**Anything else we need to know**:
+## Logs 
+<!--- Paste a small part showing an error (< 10 lines) or link a pastebin, gist, etc. containing more of the log file -->

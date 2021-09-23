@@ -33,10 +33,10 @@ type snapshot struct {
 func (s *snapshot) Key() snapshotKey {
 	// Hash.Write() never returns an error.
 	hasher := sha256.New()
-	hasher.Write([]byte(fmt.Sprintf("%v:%v:%v:%v", s.Height, s.CoreChainLockedHeight, //nolint:errcheck // ignore error
-		s.Format, s.Chunks))) //nolint:errcheck // ignore error
-	hasher.Write(s.Hash)     //nolint:errcheck // ignore error
-	hasher.Write(s.Metadata) //nolint:errcheck // ignore error
+	hasher.Write([]byte(fmt.Sprintf("%v:%v:%v:%v", s.Height, s.CoreChainLockedHeight, // ignore error
+		s.Format, s.Chunks))) // ignore error
+	hasher.Write(s.Hash)     // ignore error
+	hasher.Write(s.Metadata) // ignore error
 	var key snapshotKey
 	copy(key[:], hasher.Sum(nil))
 	return key
@@ -175,8 +175,8 @@ func (p *snapshotPool) Ranked() []*snapshot {
 	defer p.Unlock()
 
 	candidates := make([]*snapshot, 0, len(p.snapshots))
-	for _, snapshot := range p.snapshots {
-		candidates = append(candidates, snapshot)
+	for key := range p.snapshots {
+		candidates = append(candidates, p.snapshots[key])
 	}
 
 	sort.Slice(candidates, func(i, j int) bool {

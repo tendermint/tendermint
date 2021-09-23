@@ -2,6 +2,7 @@ package privval
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -35,10 +36,17 @@ func TestGenLoadValidator(t *testing.T) {
 	height := int64(100)
 	privVal.LastSignState.Height = height
 	privVal.Save()
-	addr := privVal.GetAddress()
-
+	proTxHash, err := privVal.GetProTxHash()
+	assert.NoError(err)
+	publicKey, err := privVal.GetFirstPubKey()
+	assert.NoError(err)
 	privVal = LoadFilePV(tempKeyFile.Name(), tempStateFile.Name())
-	assert.Equal(addr, privVal.GetAddress(), "expected privval addr to be the same")
+	proTxHash2, err := privVal.GetProTxHash()
+	assert.NoError(err)
+	publicKey2, err := privVal.GetFirstPubKey()
+	assert.NoError(err)
+	assert.Equal(proTxHash, proTxHash2, "expected privval proTxHashes to be the same")
+	assert.Equal(publicKey, publicKey2, "expected privval public keys to be the same")
 	assert.Equal(height, privVal.LastSignState.Height, "expected privval.LastHeight to have been saved")
 }
 
@@ -62,7 +70,9 @@ func TestResetValidator(t *testing.T) {
 	blockID := types.BlockID{Hash: randBytes, PartSetHeader: types.PartSetHeader{}}
 	stateID := types.StateID{LastAppHash: randStateBytes}
 	vote := newVote(privVal.Key.ProTxHash, 0, height, round, voteType, blockID, stateID)
-	err = privVal.SignVote("mychainid", 0, crypto.QuorumHash{}, vote.ToProto())
+	quorumHash, err := privVal.GetFirstQuorumHash()
+	assert.NoError(t, err)
+	err = privVal.SignVote("mychainid", 0, quorumHash, vote.ToProto(), nil)
 	assert.NoError(t, err, "expected no error signing vote")
 
 	// priv val after signing is not same as empty
@@ -91,9 +101,17 @@ func TestLoadOrGenValidator(t *testing.T) {
 	}
 
 	privVal := LoadOrGenFilePV(tempKeyFilePath, tempStateFilePath)
-	addr := privVal.GetAddress()
+	proTxHash, err := privVal.GetProTxHash()
+	assert.NoError(err)
+	publicKey, err := privVal.GetFirstPubKey()
+	assert.NoError(err)
 	privVal = LoadOrGenFilePV(tempKeyFilePath, tempStateFilePath)
-	assert.Equal(addr, privVal.GetAddress(), "expected privval addr to be the same")
+	proTxHash2, err := privVal.GetProTxHash()
+	assert.NoError(err)
+	publicKey2, err := privVal.GetFirstPubKey()
+	assert.NoError(err)
+	assert.Equal(proTxHash, proTxHash2, "expected privval proTxHashes to be the same")
+	assert.Equal(publicKey, publicKey2, "expected privval public keys to be the same")
 }
 
 func TestUnmarshalValidatorState(t *testing.T) {
@@ -126,8 +144,8 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 
 	// create some fixed values
 	privKey := bls12381.GenPrivKey()
+	quorumHash := crypto.RandQuorumHash()
 	pubKey := privKey.PubKey()
-	addr := pubKey.Address()
 	pubBytes := pubKey.Bytes()
 	privBytes := privKey.Bytes()
 	pubB64 := base64.StdEncoding.EncodeToString(pubBytes)
@@ -136,28 +154,42 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 	proTxHash := crypto.RandProTxHash()
 
 	serialized := fmt.Sprintf(`{
-  "address": "%s",
-  "pub_key": {
-    "type": "tendermint/PubKeyBLS12381",
-    "value": "%s"
+  "private_keys" : {
+    "%s" : {
+	  "pub_key": {
+	  	"type": "tendermint/PubKeyBLS12381",
+	  	"value": "%s"
+	  },
+	  "priv_key": {
+		"type": "tendermint/PrivKeyBLS12381",
+		"value": "%s"
+	  },
+	  "threshold_public_key": {
+	    "type": "tendermint/PubKeyBLS12381",
+	    "value": "%s"
+	  }
+    }
   },
-  "priv_key": {
-    "type": "tendermint/PrivKeyBLS12381",
-    "value": "%s"
-  },
+  "update_heights":{},
+  "first_height_of_quorums":{},
   "pro_tx_hash": "%s"
-}`, addr, pubB64, privB64, proTxHash)
+}`, quorumHash, pubB64, privB64, pubB64, proTxHash)
 
 	val := FilePVKey{}
 	err := tmjson.Unmarshal([]byte(serialized), &val)
 	require.Nil(err, "%+v", err)
 
 	// make sure the values match
-	assert.EqualValues(addr, val.Address)
-	assert.EqualValues(pubKey, val.PubKey)
-	assert.EqualValues(privKey, val.PrivKey)
 	assert.EqualValues(proTxHash, val.ProTxHash)
-
+	assert.Len(val.PrivateKeys, 1)
+	for quorumHashString, quorumKeys := range val.PrivateKeys {
+		quorumHash2, err := hex.DecodeString(quorumHashString)
+		assert.NoError(err)
+		assert.EqualValues(quorumHash, quorumHash2)
+		assert.EqualValues(pubKey, quorumKeys.PubKey)
+		assert.EqualValues(privKey, quorumKeys.PrivKey)
+		assert.EqualValues(pubKey, quorumKeys.ThresholdPublicKey)
+	}
 	// export it and make sure it is the same
 	out, err := tmjson.Marshal(val)
 	require.Nil(err, "%+v", err)
@@ -190,11 +222,13 @@ func TestSignVote(t *testing.T) {
 	// sign a vote for first time
 	vote := newVote(privVal.Key.ProTxHash, 0, height, round, voteType, block1, state)
 	v := vote.ToProto()
-	err = privVal.SignVote("mychainid", 0, crypto.QuorumHash{}, v)
+	quorumHash, err := privVal.GetFirstQuorumHash()
+	assert.NoError(err)
+	err = privVal.SignVote("mychainid", 0, quorumHash, v, nil)
 	assert.NoError(err, "expected no error signing vote")
 
 	// try to sign the same vote again; should be fine
-	err = privVal.SignVote("mychainid", 0,  crypto.QuorumHash{}, v)
+	err = privVal.SignVote("mychainid", 0, quorumHash, v, nil)
 	assert.NoError(err, "expected no error on signing same vote")
 
 	// now try some bad votes
@@ -207,7 +241,7 @@ func TestSignVote(t *testing.T) {
 
 	for _, c := range cases {
 		cpb := c.ToProto()
-		err = privVal.SignVote("mychainid", 0, crypto.QuorumHash{}, cpb)
+		err = privVal.SignVote("mychainid", 0, crypto.QuorumHash{}, cpb, nil)
 		assert.Error(err, "expected error on signing conflicting vote")
 	}
 
@@ -215,7 +249,7 @@ func TestSignVote(t *testing.T) {
 	blockSignature := vote.BlockSignature
 	stateSignature := vote.StateSignature
 
-	err = privVal.SignVote("mychainid", 0, crypto.QuorumHash{}, v)
+	err = privVal.SignVote("mychainid", 0, crypto.QuorumHash{}, v, nil)
 	assert.NoError(err)
 	assert.Equal(blockSignature, vote.BlockSignature)
 	assert.Equal(stateSignature, vote.StateSignature)
@@ -240,14 +274,17 @@ func TestSignProposal(t *testing.T) {
 		PartSetHeader: types.PartSetHeader{Total: 10, Hash: randbytes2}}
 	height, round := int64(10), int32(1)
 
+	quorumHash, err := privVal.GetFirstQuorumHash()
+	assert.NoError(err)
+
 	// sign a proposal for first time
 	proposal := newProposal(height, 1, round, block1)
 	pbp := proposal.ToProto()
-	err = privVal.SignProposal("mychainid", 0, crypto.QuorumHash{}, pbp)
+	_, err = privVal.SignProposal("mychainid", 0, quorumHash, pbp)
 	assert.NoError(err, "expected no error signing proposal")
 
 	// try to sign the same proposal again; should be fine
-	err = privVal.SignProposal("mychainid", 0, crypto.QuorumHash{}, pbp)
+	_, err = privVal.SignProposal("mychainid", 0, quorumHash, pbp)
 	assert.NoError(err, "expected no error on signing same proposal")
 
 	// now try some bad Proposals
@@ -259,14 +296,14 @@ func TestSignProposal(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		err = privVal.SignProposal("mychainid", 0, crypto.QuorumHash{}, c.ToProto())
+		_, err = privVal.SignProposal("mychainid", 0, crypto.QuorumHash{}, c.ToProto())
 		assert.Error(err, "expected error on signing conflicting proposal")
 	}
 
 	// try signing a proposal with a different time stamp
 	sig := proposal.Signature
 	proposal.Timestamp = proposal.Timestamp.Add(time.Duration(1000))
-	err = privVal.SignProposal("mychainid", 0, crypto.QuorumHash{}, pbp)
+	_, err = privVal.SignProposal("mychainid", 0, crypto.QuorumHash{}, pbp)
 	assert.NoError(err)
 	assert.Equal(sig, proposal.Signature)
 }
@@ -283,11 +320,14 @@ func TestDifferByTimestamp(t *testing.T) {
 	height, round := int64(10), int32(1)
 	chainID := "mychainid"
 
+	quorumHash, err := privVal.GetFirstQuorumHash()
+	assert.NoError(t, err)
+
 	// test proposal
 	{
 		proposal := newProposal(height, 1, round, block1)
 		pb := proposal.ToProto()
-		err := privVal.SignProposal(chainID, 0, crypto.QuorumHash{}, pb)
+		_, err := privVal.SignProposal(chainID, 0, quorumHash, pb)
 		assert.NoError(t, err, "expected no error signing proposal")
 		signBytes := types.ProposalBlockSignBytes(chainID, pb)
 
@@ -298,7 +338,7 @@ func TestDifferByTimestamp(t *testing.T) {
 		pb.Timestamp = pb.Timestamp.Add(time.Millisecond)
 		var emptySig []byte
 		proposal.Signature = emptySig
-		err = privVal.SignProposal("mychainid", 0, crypto.QuorumHash{}, pb)
+		_, err = privVal.SignProposal("mychainid", 0, quorumHash, pb)
 		assert.NoError(t, err, "expected no error on signing same proposal")
 
 		assert.Equal(t, timeStamp, pb.Timestamp)

@@ -127,6 +127,9 @@ log_format = "{{ .BaseConfig.LogFormat }}"
 # Path to the JSON file containing the initial validator set and other meta data
 genesis_file = "{{ js .BaseConfig.Genesis }}"
 
+# Set to whether we are a masternode or not
+is_masternode = {{ .BaseConfig.IsMasternode }}
+
 # Path to the JSON file containing the private key to use as a validator in the consensus protocol
 priv_validator_key_file = "{{ js .BaseConfig.PrivValidatorKey }}"
 
@@ -382,6 +385,13 @@ discovery_time = "{{ .StateSync.DiscoveryTime }}"
 # Will create a new, randomly named directory within, and remove it when done.
 temp_dir = "{{ .StateSync.TempDir }}"
 
+# The timeout duration before re-requesting a chunk, possibly from a different
+# peer (default: 1 minute).
+chunk_request_timeout = "{{ .StateSync.ChunkRequestTimeout }}"
+
+# The number of concurrent chunk fetchers to run (default: 1).
+chunk_fetchers = "{{ .StateSync.ChunkFetchers }}"
+
 #######################################################
 ###       Fast Sync Configuration Connections       ###
 #######################################################
@@ -558,7 +568,7 @@ var testGenesisFmt = `{
       "pro_tx_hash": "51BF39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C45F"
     }
   ],
-  "quorum_hash": "444F39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C433",
+  "quorum_hash": "28405D978AE15B97876411212E3ABD66515A285D901ACE06758DC1012030DA07",
   "threshold_public_key": {
     "type": "tendermint/PubKeyBLS12381",
 	"value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"
@@ -567,15 +577,24 @@ var testGenesisFmt = `{
 }`
 
 var testPrivValidatorKey = `{
-  "address": "DDAD59BB10A10088C5A9CA219C3CF5BB4599B54E",
-  "pub_key": {
-    "type": "tendermint/PubKeyBLS12381",
-    "value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"
-  },
-  "priv_key": {
-    "type": "tendermint/PrivKeyBLS12381",
-    "value": "RokcLOxJWTyBkh5HPbdIACng/B65M8a5PYH1Nw6xn70="
-  },
+	"private_keys" : {
+		"28405D978AE15B97876411212E3ABD66515A285D901ACE06758DC1012030DA07" : {
+		  "pub_key": {
+			"type": "tendermint/PubKeyBLS12381",
+			"value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"
+		  },
+		  "priv_key": {
+			"type": "tendermint/PrivKeyBLS12381",
+			"value": "RokcLOxJWTyBkh5HPbdIACng/B65M8a5PYH1Nw6xn70="
+		  },
+		  "threshold_public_key": {
+			"type": "tendermint/PubKeyBLS12381",
+			"value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"
+		  }
+		}
+    },
+  "update_heights":{},
+  "first_height_of_quorums":{},
   "pro_tx_hash": "51BF39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C45F"
 }`
 

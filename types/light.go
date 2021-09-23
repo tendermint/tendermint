@@ -149,7 +149,7 @@ func (sh SignedHeader) ValidateBasic(chainID string) error {
 	if sh.Commit.Height != sh.Height {
 		return fmt.Errorf("header and commit height mismatch: %d vs %d", sh.Height, sh.Commit.Height)
 	}
-	if hhash, chash := sh.Hash(), sh.Commit.BlockID.Hash; !bytes.Equal(hhash, chash) {
+	if hhash, chash := sh.Header.Hash(), sh.Commit.BlockID.Hash; !bytes.Equal(hhash, chash) {
 		return fmt.Errorf("commit signs block %X, header is block %X", chash, hhash)
 	}
 
@@ -192,7 +192,7 @@ func (sh *SignedHeader) ToProto() *tmproto.SignedHeader {
 	return psh
 }
 
-// FromProto sets a protobuf SignedHeader to the given pointer.
+// SignedHeaderFromProto sets a protobuf SignedHeader to the given pointer.
 // It returns an error if the header or the commit is invalid.
 func SignedHeaderFromProto(shp *tmproto.SignedHeader) (*SignedHeader, error) {
 	if shp == nil {

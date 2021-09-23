@@ -5,7 +5,8 @@ import "fmt"
 type level byte
 
 const (
-	levelDebug level = 1 << iota
+	levelP2PDebug level = 1 << iota
+	levelDebug
 	levelInfo
 	levelError
 )
@@ -44,6 +45,14 @@ func (l *filter) Info(msg string, keyvals ...interface{}) {
 		return
 	}
 	l.next.Info(msg, keyvals...)
+}
+
+func (l *filter) P2PDebug(msg string, keyvals ...interface{}) {
+	levelAllowed := l.allowed&levelP2PDebug != 0
+	if !levelAllowed {
+		return
+	}
+	l.next.P2PDebug(msg, keyvals...)
 }
 
 func (l *filter) Debug(msg string, keyvals ...interface{}) {
@@ -132,6 +141,8 @@ type Option func(*filter)
 // for such level.
 func AllowLevel(lvl string) (Option, error) {
 	switch lvl {
+	case "p2p_debug":
+		return AllowP2PDebug(), nil
 	case "debug":
 		return AllowDebug(), nil
 	case "info":
@@ -141,13 +152,21 @@ func AllowLevel(lvl string) (Option, error) {
 	case "none":
 		return AllowNone(), nil
 	default:
-		return nil, fmt.Errorf("expected either \"info\", \"debug\", \"error\" or \"none\" level, given %s", lvl)
+		return nil, fmt.Errorf(
+			"expected either \"info\", \"debug\", \"p2p_debug\", \"error\" or \"none\" level, given %s",
+			lvl,
+		)
 	}
 }
 
 // AllowAll is an alias for AllowDebug.
 func AllowAll() Option {
-	return AllowDebug()
+	return AllowP2PDebug()
+}
+
+// AllowP2PDebug allows error, info, debug and p2p_debug level log events to pass.
+func AllowP2PDebug() Option {
+	return allowed(levelError | levelInfo | levelDebug | levelP2PDebug)
 }
 
 // AllowDebug allows error, info and debug level log events to pass.
@@ -172,6 +191,13 @@ func AllowNone() Option {
 
 func allowed(allowed level) Option {
 	return func(l *filter) { l.allowed = allowed }
+}
+
+// AllowP2PDebugWith allows error, info, debug and p2p debug level log events to pass for a specific key value pair.
+func AllowP2PDebugWith(key interface{}, value interface{}) Option {
+	return func(l *filter) {
+		l.allowedKeyvals[keyval{key, value}] = levelError | levelInfo | levelDebug | levelP2PDebug
+	}
 }
 
 // AllowDebugWith allows error, info and debug level log events to pass for a specific key value pair.

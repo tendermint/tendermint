@@ -28,7 +28,7 @@ func InitChain(client abcicli.Client) error {
 	}
 	validatorSet := types.UpdateValidatorSet(vals, abciThresholdPublicKey)
 	_, err = client.InitChainSync(types.RequestInitChain{
-		ValidatorSet: validatorSet,
+		ValidatorSet: &validatorSet,
 	})
 	if err != nil {
 		fmt.Printf("Failed test: InitChain - %v\n", err)

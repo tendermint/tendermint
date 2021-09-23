@@ -32,7 +32,9 @@ type PeerRoundState struct {
 	Prevotes        *bits.BitArray `json:"prevotes"`          // All votes peer has for this round
 	Precommits      *bits.BitArray `json:"precommits"`        // All precommits peer has for this round
 	LastCommitRound int32          `json:"last_commit_round"` // Round of commit for last height. -1 if none.
-	LastCommit      *bits.BitArray `json:"last_commit"`       // All commit precommits of commit for last height.
+	LastPrecommits  *bits.BitArray `json:"last_commit"`       // All commit precommits of commit for last height.
+
+	HasCommit bool `json:"has_commit"`
 
 	// Round that we have commit for. Not necessarily unique. -1 if none.
 	CatchupCommitRound int32 `json:"catchup_commit_round"`
@@ -54,7 +56,7 @@ func (prs PeerRoundState) StringIndented(indent string) string {
 %s  POL      %v (round %v)
 %s  Prevotes   %v
 %s  Precommits %v
-%s  LastCommit %v (round %v)
+%s  LastPrecommits %v (round %v)
 %s  Catchup    %v (round %v)
 %s}`,
 		indent, prs.Height, prs.Round, prs.Step, prs.StartTime,
@@ -62,7 +64,7 @@ func (prs PeerRoundState) StringIndented(indent string) string {
 		indent, prs.ProposalPOL, prs.ProposalPOLRound,
 		indent, prs.Prevotes,
 		indent, prs.Precommits,
-		indent, prs.LastCommit, prs.LastCommitRound,
+		indent, prs.LastPrecommits, prs.LastCommitRound,
 		indent, prs.CatchupCommit, prs.CatchupCommitRound,
 		indent)
 }

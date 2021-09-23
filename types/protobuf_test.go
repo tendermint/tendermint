@@ -1,8 +1,9 @@
 package types
 
 import (
-	"github.com/dashevo/dashd-go/btcjson"
 	"testing"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
 
@@ -44,15 +45,12 @@ func TestABCIValidators(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, tmValExpected, tmVals[0])
 
-	abciVals := TM2PB.ValidatorUpdates(NewValidatorSet(tmVals, tmVal.PubKey, btcjson.LLMQType_5_60, quorumHash))
+	abciVals := TM2PB.ValidatorUpdates(NewValidatorSet(tmVals, tmVal.PubKey, btcjson.LLMQType_5_60, quorumHash, true))
 	assert.Equal(t, abci.ValidatorSetUpdate{
 		ValidatorUpdates:   []abci.ValidatorUpdate{abciVal},
-		ThresholdPublicKey: abciVal.PubKey,
+		ThresholdPublicKey: *abciVal.PubKey,
 		QuorumHash:         quorumHash,
 	}, abciVals)
-
-	// val with address
-	tmVal.Address = pkBLS.Address()
 
 	abciVal = TM2PB.ValidatorUpdate(tmVal)
 	tmVals, err = PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{abciVal})
@@ -90,7 +88,7 @@ func TestABCIValidatorFromPubKeyAndPower(t *testing.T) {
 	abciVal := TM2PB.NewValidatorUpdate(pubkey, DefaultDashVotingPower, crypto.RandProTxHash())
 	assert.Equal(t, DefaultDashVotingPower, abciVal.Power)
 
-	assert.Panics(t, func() { TM2PB.NewValidatorUpdate(nil, DefaultDashVotingPower, crypto.RandProTxHash()) })
+	assert.NotPanics(t, func() { TM2PB.NewValidatorUpdate(nil, DefaultDashVotingPower, crypto.RandProTxHash()) })
 	assert.Panics(t, func() { TM2PB.NewValidatorUpdate(pubKeyBLS{}, DefaultDashVotingPower, crypto.RandProTxHash()) })
 }
 

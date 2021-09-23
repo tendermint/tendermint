@@ -2,8 +2,13 @@ package types
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"strconv"
+
+	"github.com/tendermint/tendermint/libs/log"
+
 	"github.com/dashevo/dashd-go/btcjson"
 
 	tmsync "github.com/tendermint/tendermint/libs/sync"
@@ -17,14 +22,27 @@ import (
 // that signs votes and proposals, and never double signs.
 type PrivValidator interface {
 	GetPubKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error)
-	UpdatePrivateKey(privateKey crypto.PrivKey, height int64) error
+	UpdatePrivateKey(
+		privateKey crypto.PrivKey,
+		quorumHash crypto.QuorumHash,
+		thresholdPublicKey crypto.PubKey,
+		height int64,
+	)
 
 	GetProTxHash() (crypto.ProTxHash, error)
+	GetFirstQuorumHash() (crypto.QuorumHash, error)
+	GetPrivateKey(quorumHash crypto.QuorumHash) (crypto.PrivKey, error)
+	GetThresholdPublicKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error)
+	GetHeight(quorumHash crypto.QuorumHash) (int64, error)
 
-	SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error
-	SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error
+	SignVote(
+		chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
+		vote *tmproto.Vote, logger log.Logger) error
+	SignProposal(
+		chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
+		proposal *tmproto.Proposal) ([]byte, error)
 
-	ExtractIntoValidator(height int64, quorumHash crypto.QuorumHash) *Validator
+	ExtractIntoValidator(quorumHash crypto.QuorumHash) *Validator
 }
 
 type PrivValidatorsByProTxHash []PrivValidator
@@ -56,9 +74,11 @@ func (pvs PrivValidatorsByProTxHash) Swap(i, j int) {
 // MockPV implements PrivValidator without any safety or persistence.
 // Only use it for testing.
 type MockPV struct {
-	PrivKey              crypto.PrivKey
-	NextPrivKeys         []crypto.PrivKey
-	NextPrivKeyHeights   []int64
+	PrivateKeys map[string]crypto.QuorumKeys
+	// heightString -> quorumHash
+	UpdateHeights map[string]crypto.QuorumHash
+	// quorumHash -> heightString
+	FirstHeightOfQuorums map[string]string
 	ProTxHash            crypto.ProTxHash
 	mtx                  tmsync.RWMutex
 	breakProposalSigning bool
@@ -66,25 +86,93 @@ type MockPV struct {
 }
 
 func NewMockPV() *MockPV {
-	return &MockPV{PrivKey: bls12381.GenPrivKey(), NextPrivKeys: nil, NextPrivKeyHeights: nil,
-		ProTxHash: crypto.RandProTxHash(), breakProposalSigning: false, breakVoteSigning: false}
+	privKey := bls12381.GenPrivKey()
+	quorumHash := crypto.RandQuorumHash()
+	quorumKeys := crypto.QuorumKeys{
+		PrivKey:            privKey,
+		PubKey:             privKey.PubKey(),
+		ThresholdPublicKey: privKey.PubKey(),
+	}
+	privateKeysMap := make(map[string]crypto.QuorumKeys)
+	privateKeysMap[quorumHash.String()] = quorumKeys
+
+	updateHeightsMap := make(map[string]crypto.QuorumHash)
+	firstHeightOfQuorumsMap := make(map[string]string)
+
+	return &MockPV{
+		PrivateKeys:          privateKeysMap,
+		UpdateHeights:        updateHeightsMap,
+		FirstHeightOfQuorums: firstHeightOfQuorumsMap,
+		ProTxHash:            crypto.RandProTxHash(),
+		breakProposalSigning: false,
+		breakVoteSigning:     false,
+	}
+}
+
+func NewMockPVForQuorum(quorumHash crypto.QuorumHash) *MockPV {
+	privKey := bls12381.GenPrivKey()
+	quorumKeys := crypto.QuorumKeys{
+		PrivKey:            privKey,
+		PubKey:             privKey.PubKey(),
+		ThresholdPublicKey: privKey.PubKey(),
+	}
+	privateKeysMap := make(map[string]crypto.QuorumKeys)
+	privateKeysMap[quorumHash.String()] = quorumKeys
+
+	updateHeightsMap := make(map[string]crypto.QuorumHash)
+	firstHeightOfQuorumsMap := make(map[string]string)
+
+	return &MockPV{
+		PrivateKeys:          privateKeysMap,
+		UpdateHeights:        updateHeightsMap,
+		FirstHeightOfQuorums: firstHeightOfQuorumsMap,
+		ProTxHash:            crypto.RandProTxHash(),
+		breakProposalSigning: false,
+		breakVoteSigning:     false,
+	}
 }
 
 // NewMockPVWithParams allows one to create a MockPV instance, but with finer
 // grained control over the operation of the mock validator. This is useful for
 // mocking test failures.
-func NewMockPVWithParams(privKey crypto.PrivKey, proTxHash []byte, breakProposalSigning,
-	breakVoteSigning bool) *MockPV {
-	return &MockPV{PrivKey: privKey, NextPrivKeys: nil, NextPrivKeyHeights: nil, ProTxHash: proTxHash,
-		breakProposalSigning: breakProposalSigning, breakVoteSigning: breakVoteSigning}
+func NewMockPVWithParams(
+	privKey crypto.PrivKey,
+	proTxHash crypto.ProTxHash,
+	quorumHash crypto.QuorumHash,
+	thresholdPublicKey crypto.PubKey,
+	breakProposalSigning bool,
+	breakVoteSigning bool,
+) *MockPV {
+	quorumKeys := crypto.QuorumKeys{
+		PrivKey:            privKey,
+		PubKey:             privKey.PubKey(),
+		ThresholdPublicKey: thresholdPublicKey,
+	}
+	privateKeysMap := make(map[string]crypto.QuorumKeys)
+	privateKeysMap[quorumHash.String()] = quorumKeys
+
+	updateHeightsMap := make(map[string]crypto.QuorumHash)
+	firstHeightOfQuorumsMap := make(map[string]string)
+
+	return &MockPV{
+		PrivateKeys:          privateKeysMap,
+		UpdateHeights:        updateHeightsMap,
+		FirstHeightOfQuorums: firstHeightOfQuorumsMap,
+		ProTxHash:            proTxHash,
+		breakProposalSigning: breakProposalSigning,
+		breakVoteSigning:     breakVoteSigning,
+	}
 }
 
-// Implements PrivValidator.
+// GetPubKey implements PrivValidator.
 func (pv *MockPV) GetPubKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
-	return pv.PrivKey.PubKey(), nil
+	if keys, ok := pv.PrivateKeys[quorumHash.String()]; ok {
+		return keys.PubKey, nil
+	}
+	return nil, fmt.Errorf("mockPV: no public key for quorum hash %v", quorumHash)
 }
 
-// Implements PrivValidator.
+// GetProTxHash implements PrivValidator.
 func (pv *MockPV) GetProTxHash() (crypto.ProTxHash, error) {
 	if len(pv.ProTxHash) != crypto.ProTxHashSize {
 		return nil, fmt.Errorf("mock proTxHash is invalid size")
@@ -92,18 +180,55 @@ func (pv *MockPV) GetProTxHash() (crypto.ProTxHash, error) {
 	return pv.ProTxHash, nil
 }
 
-// Implements PrivValidator.
-func (pv *MockPV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
-	pv.updateKeyIfNeeded(vote.Height)
+func (pv *MockPV) GetFirstQuorumHash() (crypto.QuorumHash, error) {
+	for quorumHashString := range pv.PrivateKeys {
+		return hex.DecodeString(quorumHashString)
+	}
+	return nil, nil
+}
+
+// GetThresholdPublicKey ...
+func (pv *MockPV) GetThresholdPublicKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
+	return pv.PrivateKeys[quorumHash.String()].ThresholdPublicKey, nil
+}
+
+// PrivateKeyForQuorumHash ...
+func (pv *MockPV) GetPrivateKey(quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
+	return pv.PrivateKeys[quorumHash.String()].PrivKey, nil
+}
+
+// ThresholdPublicKeyForQuorumHash ...
+func (pv *MockPV) ThresholdPublicKeyForQuorumHash(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
+	return pv.PrivateKeys[quorumHash.String()].ThresholdPublicKey, nil
+}
+
+// GetHeight ...
+func (pv *MockPV) GetHeight(quorumHash crypto.QuorumHash) (int64, error) {
+	if intString, ok := pv.FirstHeightOfQuorums[quorumHash.String()]; ok {
+		return strconv.ParseInt(intString, 10, 64)
+	}
+	return -1, fmt.Errorf("quorum hash not found for GetHeight %v", quorumHash.String())
+}
+
+// SignVote implements PrivValidator.
+func (pv *MockPV) SignVote(
+	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
+	vote *tmproto.Vote, logger log.Logger) error {
 	useChainID := chainID
 	if pv.breakVoteSigning {
 		useChainID = "incorrect-chain-id"
 	}
 
-	blockSignId := VoteBlockSignId(useChainID, vote, quorumType, quorumHash)
-	stateSignId := VoteStateSignId(useChainID, vote, quorumType, quorumHash)
+	blockSignID := VoteBlockSignID(useChainID, vote, quorumType, quorumHash)
 
-	blockSignature, err := pv.PrivKey.SignDigest(blockSignId)
+	var privKey crypto.PrivKey
+	if quorumKeys, ok := pv.PrivateKeys[quorumHash.String()]; ok {
+		privKey = quorumKeys.PrivKey
+	} else {
+		return fmt.Errorf("file private validator could not sign vote for quorum hash %v", quorumHash)
+	}
+
+	blockSignature, err := privKey.SignDigest(blockSignID)
 	// fmt.Printf("validator %X signing vote of type %d at height %d with key %X blockSignBytes %X stateSignBytes %X\n",
 	//  pv.ProTxHash, vote.Type, vote.Height, pv.PrivKey.PubKey().Bytes(), blockSignBytes, stateSignBytes)
 	// fmt.Printf("block sign bytes are %X by %X using key %X resulting in sig %X\n", blockSignBytes, pv.ProTxHash,
@@ -113,8 +238,9 @@ func (pv *MockPV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 	}
 	vote.BlockSignature = blockSignature
 
-	if stateSignId != nil {
-		stateSignature, err := pv.PrivKey.SignDigest(stateSignId)
+	if vote.BlockID.Hash != nil {
+		stateSignID := VoteStateSignID(useChainID, vote, quorumType, quorumHash)
+		stateSignature, err := privKey.SignDigest(stateSignID)
 		if err != nil {
 			return err
 		}
@@ -124,76 +250,64 @@ func (pv *MockPV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 	return nil
 }
 
-// Implements PrivValidator.
-func (pv *MockPV) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error {
-	pv.updateKeyIfNeeded(proposal.Height)
+// SignProposal Implements PrivValidator.
+func (pv *MockPV) SignProposal(
+	chainID string,
+	quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash,
+	proposal *tmproto.Proposal,
+) ([]byte, error) {
 	useChainID := chainID
 	if pv.breakProposalSigning {
 		useChainID = "incorrect-chain-id"
 	}
 
-	signId := ProposalBlockSignId(useChainID, proposal, quorumType, quorumHash)
+	signID := ProposalBlockSignID(useChainID, proposal, quorumType, quorumHash)
 
-	fmt.Printf("mock proposer %X \nsigning proposal at height %d \nwith key %X \nquorumType %d \nquorumHash %X\n proposalSignId %X\n", pv.ProTxHash,
-	 proposal.Height, pv.PrivKey.PubKey().Bytes(), quorumType, quorumHash, signId)
-	sig, err := pv.PrivKey.SignDigest(signId)
+	var privKey crypto.PrivKey
+	if quorumKeys, ok := pv.PrivateKeys[quorumHash.String()]; ok {
+		privKey = quorumKeys.PrivKey
+	} else {
+		return signID, fmt.Errorf("file private validator could not sign vote for quorum hash %v", quorumHash)
+	}
+
+	sig, err := privKey.SignDigest(signID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	proposal.Signature = sig
 
-	return nil
+	return signID, nil
 }
 
-func (pv *MockPV) UpdatePrivateKey(privateKey crypto.PrivKey, height int64) error {
+func (pv *MockPV) UpdatePrivateKey(
+	privateKey crypto.PrivKey,
+	quorumHash crypto.QuorumHash,
+	thresholdPublicKey crypto.PubKey,
+	height int64,
+) {
 	// fmt.Printf("mockpv node %X setting a new key %X at height %d\n", pv.ProTxHash,
 	//  privateKey.PubKey().Bytes(), height)
 	pv.mtx.RLock()
-	pv.NextPrivKeys = append(pv.NextPrivKeys, privateKey)
-	pv.NextPrivKeyHeights = append(pv.NextPrivKeyHeights, height)
-	pv.mtx.RUnlock()
-	return nil
-}
-
-func (pv *MockPV) updateKeyIfNeeded(height int64) {
-	pv.mtx.RLock()
-	if pv.NextPrivKeys != nil && len(pv.NextPrivKeys) > 0 && pv.NextPrivKeyHeights != nil &&
-		len(pv.NextPrivKeyHeights) > 0 && height >= pv.NextPrivKeyHeights[0] {
-		// fmt.Printf("mockpv node %X at height %d updating key %X with new key %X\n", pv.ProTxHash,
-		// height, pv.PrivKey.PubKey().Bytes(), pv.NextPrivKeys[0].PubKey().Bytes())
-		pv.PrivKey = pv.NextPrivKeys[0]
-		if len(pv.NextPrivKeys) > 1 {
-			pv.NextPrivKeys = pv.NextPrivKeys[1:]
-			pv.NextPrivKeyHeights = pv.NextPrivKeyHeights[1:]
-		} else {
-			pv.NextPrivKeys = nil
-			pv.NextPrivKeyHeights = nil
-		}
+	pv.PrivateKeys[quorumHash.String()] = crypto.QuorumKeys{
+		PrivKey:            privateKey,
+		PubKey:             privateKey.PubKey(),
+		ThresholdPublicKey: thresholdPublicKey,
 	}
-	// else {
-	//	fmt.Printf("mockpv node %X at height %d did not update key %X with next keys %v\n", pv.ProTxHash,
-	//  	height, pv.PrivKey.PubKey().Bytes(), pv.NextPrivKeyHeights)
-	// }
+	pv.UpdateHeights[strconv.Itoa(int(height))] = quorumHash
+	if _, ok := pv.FirstHeightOfQuorums[quorumHash.String()]; !ok {
+		pv.FirstHeightOfQuorums[quorumHash.String()] = strconv.Itoa(int(height))
+	}
 	pv.mtx.RUnlock()
 }
 
-func (pv *MockPV) ExtractIntoValidator(height int64, quorumHash crypto.QuorumHash) *Validator {
-	var pubKey crypto.PubKey
-	if pv.NextPrivKeys != nil && len(pv.NextPrivKeys) > 0 && height >= pv.NextPrivKeyHeights[0] {
-		for i, nextPrivKeyHeight := range pv.NextPrivKeyHeights {
-			if height >= nextPrivKeyHeight {
-				pubKey = pv.NextPrivKeys[i].PubKey()
-			}
-		}
-	} else {
-		pubKey, _ = pv.GetPubKey(quorumHash)
-	}
+func (pv *MockPV) ExtractIntoValidator(quorumHash crypto.QuorumHash) *Validator {
+	pubKey, _ := pv.GetPubKey(quorumHash)
 	if len(pv.ProTxHash) != crypto.DefaultHashSize {
 		panic("proTxHash wrong length")
 	}
 	return &Validator{
-		Address:     pubKey.Address(),
 		PubKey:      pubKey,
 		VotingPower: DefaultDashVotingPower,
 		ProTxHash:   pv.ProTxHash,
@@ -202,8 +316,8 @@ func (pv *MockPV) ExtractIntoValidator(height int64, quorumHash crypto.QuorumHas
 
 // String returns a string representation of the MockPV.
 func (pv *MockPV) String() string {
-	mpv, _ := pv.GetPubKey([]byte{}) // mockPV will never return an error, ignored here
-	return fmt.Sprintf("MockPV{%v}", mpv.Address())
+	proTxHash, _ := pv.GetProTxHash() // mockPV will never return an error, ignored here
+	return fmt.Sprintf("MockPV{%v}", proTxHash)
 }
 
 // XXX: Implement.
@@ -212,27 +326,61 @@ func (pv *MockPV) DisableChecks() {
 	// as MockPV has no safety checks at all.
 }
 
+func MapMockPVByProTxHashes(privValidators []*MockPV) map[string]*MockPV {
+	privValidatorProTxHashMap := make(map[string]*MockPV)
+	for _, privValidator := range privValidators {
+		proTxHash := privValidator.ProTxHash
+		privValidatorProTxHashMap[proTxHash.String()] = privValidator
+	}
+	return privValidatorProTxHashMap
+}
+
 type ErroringMockPV struct {
 	MockPV
 }
 
 var ErroringMockPVErr = errors.New("erroringMockPV always returns an error")
 
-// Implements PrivValidator.
-func (pv *ErroringMockPV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
+// SignVote Implements PrivValidator.
+func (pv *ErroringMockPV) SignVote(
+	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
+	vote *tmproto.Vote, logger log.Logger) error {
 	return ErroringMockPVErr
 }
 
-// Implements PrivValidator.
-func (pv *ErroringMockPV) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error {
-	return ErroringMockPVErr
+// SignProposal Implements PrivValidator.
+func (pv *ErroringMockPV) SignProposal(
+	chainID string,
+	quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash,
+	proposal *tmproto.Proposal,
+) ([]byte, error) {
+	return nil, ErroringMockPVErr
 }
 
 // NewErroringMockPV returns a MockPV that fails on each signing request. Again, for testing only.
 
 func NewErroringMockPV() *ErroringMockPV {
-	return &ErroringMockPV{MockPV{PrivKey: bls12381.GenPrivKey(), NextPrivKeys: nil, NextPrivKeyHeights: nil,
-		ProTxHash: crypto.RandProTxHash(), breakProposalSigning: false, breakVoteSigning: false}}
+	privKey := bls12381.GenPrivKey()
+	quorumHash := crypto.RandQuorumHash()
+	quorumKeys := crypto.QuorumKeys{
+		PrivKey:            privKey,
+		PubKey:             privKey.PubKey(),
+		ThresholdPublicKey: privKey.PubKey(),
+	}
+	privateKeysMap := make(map[string]crypto.QuorumKeys)
+	privateKeysMap[quorumHash.String()] = quorumKeys
+
+	return &ErroringMockPV{
+		MockPV{
+			PrivateKeys:          privateKeysMap,
+			UpdateHeights:        nil,
+			FirstHeightOfQuorums: nil,
+			ProTxHash:            crypto.RandProTxHash(),
+			breakProposalSigning: false,
+			breakVoteSigning:     false,
+		},
+	}
 }
 
 type MockPrivValidatorsByProTxHash []*MockPV

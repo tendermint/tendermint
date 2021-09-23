@@ -2,12 +2,12 @@ package mockcoreserver
 
 import (
 	"encoding/hex"
+	"fmt"
 	"strconv"
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
-	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/privval"
 )
 
@@ -15,8 +15,10 @@ import (
 type CoreServer interface {
 	QuorumInfo(cmd btcjson.QuorumCmd) btcjson.QuorumInfoResult
 	QuorumSign(cmd btcjson.QuorumCmd) btcjson.QuorumSignResult
+	QuorumVerify(cmd btcjson.QuorumCmd) btcjson.QuorumVerifyResult
 	MasternodeStatus(cmd btcjson.MasternodeCmd) btcjson.MasternodeStatusResult
 	GetNetworkInfo(cmd btcjson.GetNetworkInfoCmd) btcjson.GetNetworkInfoResult
+	Ping(cmd btcjson.PingCmd) error
 }
 
 // MockCoreServer is an implementation of a mock core-server
@@ -33,12 +35,21 @@ func (c *MockCoreServer) QuorumInfo(cmd btcjson.QuorumCmd) btcjson.QuorumInfoRes
 	if err != nil {
 		panic(err)
 	}
-	quorumHash := strVal(cmd.QuorumHash)
-	qq := bytes.HexBytes(quorumHash)
-	pk, err := c.FilePV.GetPubKey(qq)
+	if cmd.QuorumHash == nil {
+		err = fmt.Errorf("quorum hash can not be nil when trying to get quorum info")
+		panic(err)
+	}
+	quorumHashBytes, err := hex.DecodeString(*cmd.QuorumHash)
+	if len(quorumHashBytes) != crypto.DefaultHashSize {
+		err = fmt.Errorf("quorum hash %v is incorrect when trying to get quorum info", *cmd.QuorumHash)
+		panic(err)
+	}
+	quorumHash := crypto.QuorumHash(quorumHashBytes)
 	if err != nil {
 		panic(err)
 	}
+	pk, _ := c.FilePV.GetPubKey(quorumHash)
+	// if the public key isn't found that means the node is not part of the quorum, don't add it as a member
 	if pk != nil {
 		members = append(members, btcjson.QuorumMember{
 			ProTxHash:      proTxHash.String(),
@@ -47,14 +58,18 @@ func (c *MockCoreServer) QuorumInfo(cmd btcjson.QuorumCmd) btcjson.QuorumInfoRes
 			PubKeyShare:    pk.HexString(),
 		})
 	}
-	tpk, err := c.FilePV.GetThresholdPublicKey(qq)
+	tpk, err := c.FilePV.GetThresholdPublicKey(quorumHash)
+	if err != nil {
+		panic(err)
+	}
+	height, err := c.FilePV.GetHeight(quorumHash)
 	if err != nil {
 		panic(err)
 	}
 	return btcjson.QuorumInfoResult{
-		Height:          uint32(c.FilePV.GetHeight(qq)),
+		Height:          uint32(height),
 		Type:            strconv.Itoa(int(c.LLMQType)),
-		QuorumHash:      quorumHash,
+		QuorumHash:      quorumHash.String(),
 		Members:         members,
 		QuorumPublicKey: tpk.String(),
 	}
@@ -71,32 +86,76 @@ func (c *MockCoreServer) QuorumSign(cmd btcjson.QuorumCmd) btcjson.QuorumSignRes
 		panic(err)
 	}
 
-	cmdQuorumHash, err := hex.DecodeString(*cmd.QuorumHash)
+	quorumHashBytes, err := hex.DecodeString(*cmd.QuorumHash)
+	if err != nil {
+		panic(err)
+	}
+	quorumHash := crypto.QuorumHash(quorumHashBytes)
+
+	signID := crypto.SignID(
+		*cmd.LLMQType,
+		bls12381.ReverseBytes(quorumHash),
+		bls12381.ReverseBytes(reqID),
+		bls12381.ReverseBytes(msgHash),
+	)
+	privateKey, err := c.FilePV.Key.PrivateKeyForQuorumHash(quorumHash)
 	if err != nil {
 		panic(err)
 	}
 
-	c.FilePV.UpdateKeysByQuorumHash(cmdQuorumHash)
-
-	qh := c.FilePV.Key.QuorumHash
-	signID := crypto.SignId(
-		*cmd.LLMQType,
-		bls12381.ReverseBytes(qh),
-		bls12381.ReverseBytes(reqID),
-		bls12381.ReverseBytes(msgHash),
-	)
-	sign, err := c.FilePV.Key.PrivKey.SignDigest(signID)
+	sign, err := privateKey.SignDigest(signID)
 	if err != nil {
 		panic(err)
 	}
 
 	res := btcjson.QuorumSignResult{
 		LLMQType:   int(c.LLMQType),
-		QuorumHash: c.FilePV.Key.QuorumHash.String(),
+		QuorumHash: quorumHash.String(),
 		ID:         hex.EncodeToString(reqID),
 		MsgHash:    hex.EncodeToString(msgHash),
 		SignHash:   hex.EncodeToString(signID),
 		Signature:  hex.EncodeToString(sign),
+	}
+	return res
+}
+
+// QuorumVerify returns a quorum-verify result
+func (c *MockCoreServer) QuorumVerify(cmd btcjson.QuorumCmd) btcjson.QuorumVerifyResult {
+	reqID, err := hex.DecodeString(strVal(cmd.RequestID))
+	if err != nil {
+		panic(err)
+	}
+	msgHash, err := hex.DecodeString(strVal(cmd.MessageHash))
+	if err != nil {
+		panic(err)
+	}
+
+	quorumHashBytes, err := hex.DecodeString(*cmd.QuorumHash)
+	if err != nil {
+		panic(err)
+	}
+	quorumHash := crypto.QuorumHash(quorumHashBytes)
+
+	signature, err := hex.DecodeString(*cmd.Signature)
+	if err != nil {
+		panic(err)
+	}
+
+	signID := crypto.SignID(
+		*cmd.LLMQType,
+		bls12381.ReverseBytes(quorumHash),
+		bls12381.ReverseBytes(reqID),
+		bls12381.ReverseBytes(msgHash),
+	)
+	thresholdPublicKey, err := c.FilePV.GetThresholdPublicKey(quorumHash)
+	if err != nil {
+		panic(err)
+	}
+
+	signatureVerified := thresholdPublicKey.VerifySignatureDigest(signID, signature)
+
+	res := btcjson.QuorumVerifyResult{
+		Result: signatureVerified,
 	}
 	return res
 }
@@ -117,22 +176,33 @@ func (c *MockCoreServer) GetNetworkInfo(_ btcjson.GetNetworkInfoCmd) btcjson.Get
 	return btcjson.GetNetworkInfoResult{}
 }
 
+// Ping ...
+func (c *MockCoreServer) Ping(cmd btcjson.PingCmd) error {
+	return nil
+}
+
 // StaticCoreServer is a mock of core-server with static result data
 type StaticCoreServer struct {
 	QuorumInfoResult       btcjson.QuorumInfoResult
 	QuorumSignResult       btcjson.QuorumSignResult
+	QuorumVerifyResult     btcjson.QuorumVerifyResult
 	MasternodeStatusResult btcjson.MasternodeStatusResult
 	GetNetworkInfoResult   btcjson.GetNetworkInfoResult
 }
 
-// Quorum returns constant quorum-info result
+// QuorumInfo returns constant quorum-info result
 func (c *StaticCoreServer) QuorumInfo(_ btcjson.QuorumCmd) btcjson.QuorumInfoResult {
 	return c.QuorumInfoResult
 }
 
-// Quorum returns constant quorum-sign result
+// QuorumSign returns constant quorum-sign result
 func (c *StaticCoreServer) QuorumSign(_ btcjson.QuorumCmd) btcjson.QuorumSignResult {
 	return c.QuorumSignResult
+}
+
+// QuorumVerify returns constant quorum-sign result
+func (c *StaticCoreServer) QuorumVerify(_ btcjson.QuorumCmd) btcjson.QuorumVerifyResult {
+	return c.QuorumVerifyResult
 }
 
 // MasternodeStatus returns constant masternode-status result
@@ -143,6 +213,11 @@ func (c *StaticCoreServer) MasternodeStatus(_ btcjson.MasternodeCmd) btcjson.Mas
 // GetNetworkInfo returns constant network-info result
 func (c *StaticCoreServer) GetNetworkInfo(_ btcjson.GetNetworkInfoCmd) btcjson.GetNetworkInfoResult {
 	return c.GetNetworkInfoResult
+}
+
+// Ping ...
+func (c *StaticCoreServer) Ping(cmd btcjson.PingCmd) error {
+	return nil
 }
 
 func strVal(s *string) string {

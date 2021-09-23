@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/tendermint/tendermint/crypto"
+
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -31,7 +33,7 @@ const (
 )
 
 type consensusReactor interface {
-	// for when we switch from blockchain reactor and fast sync to
+	// SwitchToConsensus is for when we switch from blockchain reactor and fast sync to
 	// the consensus machine
 	SwitchToConsensus(state sm.State, skipWAL bool)
 }
@@ -50,7 +52,8 @@ type BlockchainReactor struct {
 	p2p.BaseReactor
 
 	// immutable
-	initialState sm.State
+	initialState  sm.State
+	nodeProTxHash *crypto.ProTxHash
 
 	blockExec *sm.BlockExecutor
 	store     *store.BlockStore
@@ -62,7 +65,8 @@ type BlockchainReactor struct {
 }
 
 // NewBlockchainReactor returns new reactor instance.
-func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore,
+func NewBlockchainReactor(
+	state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore, nodeProTxHash *crypto.ProTxHash,
 	fastSync bool) *BlockchainReactor {
 
 	if state.LastBlockHeight != store.Height() {
@@ -82,13 +86,14 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *st
 	pool := NewBlockPool(startHeight, requestsCh, errorsCh)
 
 	bcR := &BlockchainReactor{
-		initialState: state,
-		blockExec:    blockExec,
-		store:        store,
-		pool:         pool,
-		fastSync:     fastSync,
-		requestsCh:   requestsCh,
-		errorsCh:     errorsCh,
+		initialState:  state,
+		nodeProTxHash: nodeProTxHash,
+		blockExec:     blockExec,
+		store:         store,
+		pool:          pool,
+		fastSync:      fastSync,
+		requestsCh:    requestsCh,
+		errorsCh:      errorsCh,
 	}
 	bcR.BaseReactor = *p2p.NewBaseReactor("BlockchainReactor", bcR)
 	return bcR
@@ -218,7 +223,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		return
 	}
 
-	bcR.Logger.Debug("Receive", "src", src, "chID", chID, "msg", msg)
+	bcR.Logger.P2PDebug("Receive", "src", src, "chID", chID, "msg", msg)
 
 	switch msg := msg.(type) {
 	case *bcproto.BlockRequest:
@@ -369,7 +374,7 @@ FOR_LOOP:
 			// NOTE: we can probably make this more efficient, but note that calling
 			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 			// currently necessary.
-			err := state.Validators.VerifyCommitLight(
+			err := state.Validators.VerifyCommit(
 				chainID, firstID, firstStateID, first.Height, second.LastCommit)
 			if err != nil {
 				bcR.Logger.Error("Error in validation", "err", err)
@@ -397,7 +402,7 @@ FOR_LOOP:
 				// TODO: same thing for app - but we would need a way to
 				// get the hash without persisting the state
 				var err error
-				state, _, err = bcR.blockExec.ApplyBlock(state, firstID, first)
+				state, _, err = bcR.blockExec.ApplyBlock(state, bcR.nodeProTxHash, firstID, first)
 				if err != nil {
 					// TODO This is bad, are we zombie?
 					panic(fmt.Sprintf("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))

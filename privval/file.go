@@ -2,11 +2,16 @@ package privval
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"io/ioutil"
+	"strconv"
 	"time"
+
+	"github.com/tendermint/tendermint/libs/log"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
 
@@ -47,18 +52,12 @@ func voteToStep(vote *tmproto.Vote) int8 {
 
 // FilePVKey stores the immutable part of PrivValidator.
 type FilePVKey struct {
-	Address            types.Address    `json:"address"`
-	PubKey             crypto.PubKey    `json:"pub_key"`
-	PrivKey            crypto.PrivKey   `json:"priv_key"`
-	NextPrivKeys       []crypto.PrivKey `json:"next_priv_key,omitempty"`
-	NextPrivKeyHeights []int64          `json:"next_priv_key_height,omitempty"`
-	ProTxHash          crypto.ProTxHash `json:"pro_tx_hash"`
-
-	QuorumHash       crypto.QuorumHash   `json:"quorum_hash"`
-	NextQuorumHashes []crypto.QuorumHash `json:"next_quorum_hashes,omitempty"`
-
-	ThresholdPublicKey      crypto.PubKey   `json:"threshold_public_key"`
-	NextThresholdPublicKeys []crypto.PubKey `json:"next_threshold_public_keys,omitempty"`
+	PrivateKeys map[string]crypto.QuorumKeys `json:"private_keys"`
+	// heightString -> quorumHash
+	UpdateHeights map[string]crypto.QuorumHash `json:"update_heights"`
+	// quorumHash -> heightString
+	FirstHeightOfQuorums map[string]string `json:"first_height_of_quorums"`
+	ProTxHash            crypto.ProTxHash  `json:"pro_tx_hash"`
 
 	filePath string
 }
@@ -79,6 +78,27 @@ func (pvKey FilePVKey) Save() {
 		panic(err)
 	}
 
+}
+
+func (pvKey FilePVKey) PrivateKeyForQuorumHash(quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
+	if keys, ok := pvKey.PrivateKeys[quorumHash.String()]; ok {
+		return keys.PrivKey, nil
+	}
+	return nil, fmt.Errorf("no private key for quorum hash %v", quorumHash)
+}
+
+func (pvKey FilePVKey) PublicKeyForQuorumHash(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
+	if keys, ok := pvKey.PrivateKeys[quorumHash.String()]; ok {
+		return keys.PubKey, nil
+	}
+	return nil, fmt.Errorf("no public key for quorum hash %v", quorumHash)
+}
+
+func (pvKey FilePVKey) ThresholdPublicKeyForQuorumHash(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
+	if keys, ok := pvKey.PrivateKeys[quorumHash.String()]; ok {
+		return keys.ThresholdPublicKey, nil
+	}
+	return nil, fmt.Errorf("no threshold public key for quorum hash %v", quorumHash)
 }
 
 //-------------------------------------------------------------------------------
@@ -174,22 +194,33 @@ type FilePV struct {
 // FilePVOption ...
 type FilePVOption func(filePV *FilePV) error
 
-// NewFilePV generates a new validator from the given key and paths.
-func NewFilePV(privKey crypto.PrivKey, proTxHash []byte, nextPrivKeys []crypto.PrivKey, nextPrivHeights []int64,
-	keyFilePath, stateFilePath string) *FilePV {
+// NewFilePVOneKey generates a new validator from the given key and paths.
+func NewFilePVOneKey(
+	privKey crypto.PrivKey, proTxHash []byte, quorumHash crypto.QuorumHash,
+	thresholdPublicKey crypto.PubKey, keyFilePath, stateFilePath string,
+) *FilePV {
 	if len(proTxHash) != crypto.ProTxHashSize {
 		panic("error setting incorrect proTxHash size in NewFilePV")
 	}
 
+	quorumKeys := crypto.QuorumKeys{
+		PrivKey:            privKey,
+		PubKey:             privKey.PubKey(),
+		ThresholdPublicKey: thresholdPublicKey,
+	}
+	privateKeysMap := make(map[string]crypto.QuorumKeys)
+	privateKeysMap[quorumHash.String()] = quorumKeys
+
+	updateHeightsMap := make(map[string]crypto.QuorumHash)
+	firstHeightOfQuorumsMap := make(map[string]string)
+
 	return &FilePV{
 		Key: FilePVKey{
-			Address:            privKey.PubKey().Address(),
-			PubKey:             privKey.PubKey(),
-			PrivKey:            privKey,
-			NextPrivKeys:       nextPrivKeys,
-			NextPrivKeyHeights: nextPrivHeights,
-			ProTxHash:          proTxHash,
-			filePath:           keyFilePath,
+			PrivateKeys:          privateKeysMap,
+			ProTxHash:            proTxHash,
+			filePath:             keyFilePath,
+			UpdateHeights:        updateHeightsMap,
+			FirstHeightOfQuorums: firstHeightOfQuorumsMap,
 		},
 		LastSignState: FilePVLastSignState{
 			Step:     stepNone,
@@ -207,35 +238,61 @@ func WithKeyAndStateFilePaths(keyFilePath, stateFilePath string) FilePVOption {
 	}
 }
 
-// WithNextPrivvalKeys ...
-func WithNextPrivvalKeys(keys []crypto.PrivKey, heights []int64) FilePVOption {
-	return func(filePV *FilePV) error {
-		filePV.Key.NextPrivKeys = keys
-		filePV.Key.NextPrivKeyHeights = heights
-		return nil
+func WithPrivateKey(key crypto.PrivKey, quorumHash crypto.QuorumHash, thresholdPublicKey *crypto.PubKey) FilePVOption {
+	if thresholdPublicKey == nil {
+		return WithPrivateKeys([]crypto.PrivKey{key}, []crypto.QuorumHash{quorumHash}, nil)
 	}
+	return WithPrivateKeys([]crypto.PrivKey{key}, []crypto.QuorumHash{quorumHash}, &[]crypto.PubKey{*thresholdPublicKey})
 }
 
-// WithProTxHash ...
-func WithQuorumHash(quorumHash crypto.QuorumHash, nextHashes map[int64]crypto.QuorumHash) FilePVOption {
+// WithPrivateKeys ...
+func WithPrivateKeys(
+	keys []crypto.PrivKey, quorumHashes []crypto.QuorumHash, thresholdPublicKeys *[]crypto.PubKey,
+) FilePVOption {
 	return func(filePV *FilePV) error {
-		filePV.Key.QuorumHash = quorumHash
-		for _, hash := range nextHashes {
-			if !bytes.Equal(quorumHash, hash) {
-				filePV.Key.NextQuorumHashes = append(filePV.Key.NextQuorumHashes, hash)
-			}
+		if len(keys) == 0 {
+			return errors.New("there must be at least one key")
 		}
+		if len(keys) != len(quorumHashes) {
+			return errors.New("keys must be same length as quorumHashes")
+		}
+		if thresholdPublicKeys != nil && len(*thresholdPublicKeys) != len(quorumHashes) {
+			return errors.New("thresholdPublicKeys must be same length as quorumHashes and keys if they are set")
+		}
+
+		privateKeysMap := make(map[string]crypto.QuorumKeys)
+		for i, key := range keys {
+			quorumKeys := crypto.QuorumKeys{
+				PrivKey: key,
+				PubKey:  key.PubKey(),
+			}
+			if thresholdPublicKeys != nil {
+				quorumKeys.ThresholdPublicKey = (*thresholdPublicKeys)[i]
+			}
+			privateKeysMap[quorumHashes[i].String()] = quorumKeys
+		}
+		filePV.Key.PrivateKeys = privateKeysMap
 		return nil
 	}
 }
 
-// WithThresholdPublicKey ...
-func WithThresholdPublicKey(pubKey crypto.PubKey, nextKeys map[int64]crypto.PubKey) FilePVOption {
+func WithPrivateKeysMap(privateKeysMap map[string]crypto.QuorumKeys) FilePVOption {
 	return func(filePV *FilePV) error {
-		filePV.Key.ThresholdPublicKey = pubKey
-		for _, nextPubKey := range nextKeys {
-			if !bytes.Equal(pubKey.Bytes(), nextPubKey.Bytes()) {
-				filePV.Key.NextThresholdPublicKeys = append(filePV.Key.NextThresholdPublicKeys, nextPubKey)
+
+		filePV.Key.PrivateKeys = privateKeysMap
+		return nil
+	}
+}
+
+func WithUpdateHeights(updateHeights map[string]crypto.QuorumHash) FilePVOption {
+	return func(filePV *FilePV) error {
+		filePV.Key.UpdateHeights = updateHeights
+		if filePV.Key.FirstHeightOfQuorums == nil {
+			filePV.Key.FirstHeightOfQuorums = make(map[string]string)
+		}
+		for height, quorumHash := range updateHeights {
+			if _, ok := filePV.Key.FirstHeightOfQuorums[quorumHash.String()]; !ok {
+				filePV.Key.FirstHeightOfQuorums[quorumHash.String()] = height
 			}
 		}
 		return nil
@@ -249,16 +306,6 @@ func WithProTxHash(proTxHash []byte) FilePVOption {
 			return fmt.Errorf("error setting incorrect proTxHash size in NewFilePV")
 		}
 		filePV.Key.ProTxHash = proTxHash
-		return nil
-	}
-}
-
-// WithPrivKey ...
-func WithPrivKey(privKey crypto.PrivKey) FilePVOption {
-	return func(filePV *FilePV) error {
-		filePV.Key.Address = privKey.PubKey().Address()
-		filePV.Key.PubKey = privKey.PubKey()
-		filePV.Key.PrivKey = privKey
 		return nil
 	}
 }
@@ -278,7 +325,7 @@ func NewFilePVWithOptions(opts ...FilePVOption) (*FilePV, error) {
 // GenFilePV generates a new validator with randomly generated private key
 // and sets the filePaths, but does not call Save().
 func GenFilePV(keyFilePath, stateFilePath string) *FilePV {
-	return NewFilePV(bls12381.GenPrivKey(), crypto.RandProTxHash(), nil, nil,
+	return NewFilePVOneKey(bls12381.GenPrivKey(), crypto.RandProTxHash(), crypto.RandQuorumHash(), nil,
 		keyFilePath, stateFilePath)
 }
 
@@ -311,9 +358,6 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 		tmos.Exit(fmt.Sprintf("loadFilePV proTxHash must be 32 bytes in key file path %s", keyFilePath))
 	}
 
-	// overwrite pubkey and address for convenience
-	pvKey.PubKey = pvKey.PrivKey.PubKey()
-	pvKey.Address = pvKey.PubKey.Address()
 	pvKey.filePath = keyFilePath
 
 	pvState := FilePVLastSignState{}
@@ -350,59 +394,76 @@ func LoadOrGenFilePV(keyFilePath, stateFilePath string) *FilePV {
 	return pv
 }
 
-// GetAddress returns the address of the validator.
-// Implements PrivValidator.
-func (pv *FilePV) GetAddress() types.Address {
-	return pv.Key.Address
-}
-
 // GetPubKey returns the public key of the validator.
 // Implements PrivValidator.
 func (pv *FilePV) GetPubKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
-	return pv.Key.PubKey, nil
+	if keys, ok := pv.Key.PrivateKeys[quorumHash.String()]; ok {
+		return keys.PubKey, nil
+	}
+	return nil, fmt.Errorf("filePV: no public key for quorum hash (get) %v", quorumHash)
 }
 
-// UpdateKeysByQuorumHash ...
-func (pv *FilePV) UpdateKeysByQuorumHash(quorumHash crypto.QuorumHash) {
-	fmt.Printf("[DEBUG] UpdateKeysByQuorumHash for %s\n", quorumHash.String())
-	if len(pv.Key.NextQuorumHashes) == 0 {
-		return
+// GetFirstPubKey returns the first public key of the validator.
+// Implements PrivValidator.
+func (pv *FilePV) GetFirstPubKey() (crypto.PubKey, error) {
+	for _, quorumKeys := range pv.Key.PrivateKeys {
+		return quorumKeys.PubKey, nil
 	}
-	for i, nqh := range pv.Key.NextQuorumHashes {
-		fmt.Printf("[DEBUG] UpdateKeysByQuorumHash:Compare cur %s, next %s\n", quorumHash.String(), nqh.String())
-		if bytes.Compare(nqh.Bytes(), quorumHash.Bytes()) == 0 {
-			pv.updateKeyIfNeeded(pv.Key.NextPrivKeyHeights[i])
+	return nil, nil
+}
+
+func (pv *FilePV) GetQuorumHashes() ([]crypto.QuorumHash, error) {
+	quorumHashes := make([]crypto.QuorumHash, len(pv.Key.PrivateKeys))
+	i := 0
+	for quorumHashString := range pv.Key.PrivateKeys {
+		quorumHash, err := hex.DecodeString(quorumHashString)
+		quorumHashes[i] = quorumHash
+		if err != nil {
+			return nil, err
 		}
+		i++
 	}
+	return quorumHashes, nil
+}
+
+func (pv *FilePV) GetFirstQuorumHash() (crypto.QuorumHash, error) {
+	for quorumHashString := range pv.Key.PrivateKeys {
+		return hex.DecodeString(quorumHashString)
+	}
+	return nil, nil
 }
 
 // GetThresholdPublicKey ...
 func (pv *FilePV) GetThresholdPublicKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
-	return pv.Key.ThresholdPublicKey, nil
+	if keys, ok := pv.Key.PrivateKeys[quorumHash.String()]; ok {
+		return keys.ThresholdPublicKey, nil
+	}
+	return nil, fmt.Errorf("no threshold public key for quorum hash %v", quorumHash)
+}
+
+// GetPrivateKey ...
+func (pv *FilePV) GetPrivateKey(quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
+	if keys, ok := pv.Key.PrivateKeys[quorumHash.String()]; ok {
+		return keys.PrivKey, nil
+	}
+	return nil, fmt.Errorf("no private key for quorum hash %v", quorumHash)
 }
 
 // GetHeight ...
-func (pv *FilePV) GetHeight(quorumHash crypto.QuorumHash) int64 {
-	return 0
+func (pv *FilePV) GetHeight(quorumHash crypto.QuorumHash) (int64, error) {
+	if intString, ok := pv.Key.FirstHeightOfQuorums[quorumHash.String()]; ok {
+		return strconv.ParseInt(intString, 10, 64)
+	}
+	return -1, fmt.Errorf("quorum hash not found for GetHeight %v", quorumHash.String())
 }
 
 // ExtractIntoValidator ...
-func (pv *FilePV) ExtractIntoValidator(height int64, quorumHash crypto.QuorumHash) *types.Validator {
-	var pubKey crypto.PubKey
-	if pv.Key.NextPrivKeys != nil && len(pv.Key.NextPrivKeys) > 0 && height >= pv.Key.NextPrivKeyHeights[0] {
-		for i, nextPrivKeyHeight := range pv.Key.NextPrivKeyHeights {
-			if height >= nextPrivKeyHeight {
-				pubKey = pv.Key.NextPrivKeys[i].PubKey()
-			}
-		}
-	} else {
-		pubKey, _ = pv.GetPubKey(quorumHash)
-	}
+func (pv *FilePV) ExtractIntoValidator(quorumHash crypto.QuorumHash) *types.Validator {
+	pubKey, _ := pv.GetPubKey(quorumHash)
 	if len(pv.Key.ProTxHash) != crypto.DefaultHashSize {
 		panic("proTxHash wrong length")
 	}
 	return &types.Validator{
-		Address:     pubKey.Address(),
 		PubKey:      pubKey,
 		VotingPower: types.DefaultDashVotingPower,
 		ProTxHash:   pv.Key.ProTxHash,
@@ -420,7 +481,9 @@ func (pv *FilePV) GetProTxHash() (crypto.ProTxHash, error) {
 
 // SignVote signs a canonical representation of the vote, along with the
 // chainID. Implements PrivValidator.
-func (pv *FilePV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
+func (pv *FilePV) SignVote(
+	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
+	vote *tmproto.Vote, logger log.Logger) error {
 	if err := pv.signVote(chainID, quorumType, quorumHash, vote); err != nil {
 		return fmt.Errorf("error signing vote: %v", err)
 	}
@@ -429,11 +492,14 @@ func (pv *FilePV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 
 // SignProposal signs a canonical representation of the proposal, along with
 // the chainID. Implements PrivValidator.
-func (pv *FilePV) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error {
-	if err := pv.signProposal(chainID, quorumType, quorumHash, proposal); err != nil {
-		return fmt.Errorf("error signing proposal: %v", err)
+func (pv *FilePV) SignProposal(
+	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal,
+) ([]byte, error) {
+	signID, err := pv.signProposal(chainID, quorumType, quorumHash, proposal)
+	if err != nil {
+		return signID, fmt.Errorf("error signing proposal: %v", err)
 	}
-	return nil
+	return signID, nil
 }
 
 // Save persists the FilePV to disk.
@@ -461,47 +527,25 @@ func (pv *FilePV) Reset() {
 func (pv *FilePV) String() string {
 	return fmt.Sprintf(
 		"PrivValidator{%v LH:%v, LR:%v, LS:%v}",
-		pv.GetAddress(),
+		pv.Key.ProTxHash,
 		pv.LastSignState.Height,
 		pv.LastSignState.Round,
 		pv.LastSignState.Step,
 	)
 }
 
-func (pv *FilePV) UpdatePrivateKey(privateKey crypto.PrivKey, height int64) error {
-	pv.Key.NextPrivKeys = append(pv.Key.NextPrivKeys, privateKey)
-	pv.Key.NextPrivKeyHeights = append(pv.Key.NextPrivKeyHeights, height)
-	return nil
-}
-
-func (pv *FilePV) updateKeyIfNeeded(height int64) {
-	if pv.Key.NextPrivKeys != nil && len(pv.Key.NextPrivKeys) > 0 && pv.Key.NextPrivKeyHeights != nil &&
-		len(pv.Key.NextPrivKeyHeights) > 0 && height >= pv.Key.NextPrivKeyHeights[0] {
-		// fmt.Printf("privval file node %X at height %d updating key %X with new key %X\n", pv.Key.ProTxHash, height,
-		//  pv.Key.PrivKey.PubKey().Bytes(), pv.Key.NextPrivKeys[0].PubKey().Bytes())
-		pv.Key.PrivKey = pv.Key.NextPrivKeys[0]
-		if len(pv.Key.NextPrivKeys) > 1 {
-			pv.Key.NextPrivKeys = pv.Key.NextPrivKeys[1:]
-			pv.Key.NextPrivKeyHeights = pv.Key.NextPrivKeyHeights[1:]
-		} else {
-			pv.Key.NextPrivKeys = nil
-			pv.Key.NextPrivKeyHeights = nil
-		}
-		// update quorum hash
-		if len(pv.Key.NextQuorumHashes) > 0 {
-			pv.Key.QuorumHash = pv.Key.NextQuorumHashes[0]
-			pv.Key.NextQuorumHashes = pv.Key.NextQuorumHashes[1:]
-		}
-		// update threshold public key
-		if len(pv.Key.NextThresholdPublicKeys) > 0 {
-			pv.Key.ThresholdPublicKey = pv.Key.NextThresholdPublicKeys[0]
-			pv.Key.NextThresholdPublicKeys = pv.Key.NextThresholdPublicKeys[1:]
-		}
+func (pv *FilePV) UpdatePrivateKey(
+	privateKey crypto.PrivKey, quorumHash crypto.QuorumHash, thresholdPublicKey crypto.PubKey, height int64,
+) {
+	pv.Key.PrivateKeys[quorumHash.String()] = crypto.QuorumKeys{
+		PrivKey:            privateKey,
+		PubKey:             privateKey.PubKey(),
+		ThresholdPublicKey: thresholdPublicKey,
 	}
-	// else {
-	// fmt.Printf("privval file node %X at height %d did not update key %X with next keys %v\n", pv.Key.ProTxHash,
-	//  height, pv.Key.PrivKey.PubKey().Bytes(), pv.Key.NextPrivKeyHeights)
-	// }
+	pv.Key.UpdateHeights[strconv.Itoa(int(height))] = quorumHash
+	if _, ok := pv.Key.FirstHeightOfQuorums[quorumHash.String()]; !ok {
+		pv.Key.FirstHeightOfQuorums[quorumHash.String()] = strconv.Itoa(int(height))
+	}
 }
 
 //------------------------------------------------------------------------------------
@@ -509,8 +553,9 @@ func (pv *FilePV) updateKeyIfNeeded(height int64) {
 // signVote checks if the vote is good to sign and sets the vote signature.
 // It may need to set the timestamp as well if the vote is otherwise the same as
 // a previously signed vote (ie. we crashed after signing but before the vote hit the WAL).
-func (pv *FilePV) signVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
-	pv.updateKeyIfNeeded(vote.Height)
+func (pv *FilePV) signVote(
+	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote,
+) error {
 	height, round, step := vote.Height, vote.Round, voteToStep(vote)
 
 	lss := pv.LastSignState
@@ -527,9 +572,9 @@ func (pv *FilePV) signVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 		return err
 	}
 
-	blockSignId := types.VoteBlockSignId(chainID, vote, quorumType, quorumHash)
+	blockSignID := types.VoteBlockSignID(chainID, vote, quorumType, quorumHash)
 
-	stateSignId := types.VoteStateSignId(chainID, vote, quorumType, quorumHash)
+	stateSignID := types.VoteStateSignID(chainID, vote, quorumType, quorumHash)
 
 	blockSignBytes := types.VoteBlockSignBytes(chainID, vote)
 
@@ -551,14 +596,21 @@ func (pv *FilePV) signVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 		return err
 	}
 
-	sigBlock, err := pv.Key.PrivKey.SignDigest(blockSignId)
+	var privKey crypto.PrivKey
+	if quorumKeys, ok := pv.Key.PrivateKeys[quorumHash.String()]; ok {
+		privKey = quorumKeys.PrivKey
+	} else {
+		return fmt.Errorf("file private validator could not sign vote for quorum hash %v", quorumHash)
+	}
+
+	sigBlock, err := privKey.SignDigest(blockSignID)
 	if err != nil {
 		return err
 	}
 
 	var sigState []byte
 	if vote.BlockID.Hash != nil {
-		sigState, err = pv.Key.PrivKey.SignDigest(stateSignId)
+		sigState, err = privKey.SignDigest(stateSignID)
 		if err != nil {
 			return err
 		}
@@ -583,18 +635,19 @@ func (pv *FilePV) signVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 // signProposal checks if the proposal is good to sign and sets the proposal signature.
 // It may need to set the timestamp as well if the proposal is otherwise the same as
 // a previously signed proposal ie. we crashed after signing but before the proposal hit the WAL).
-func (pv *FilePV) signProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error {
-	pv.updateKeyIfNeeded(proposal.Height)
+func (pv *FilePV) signProposal(
+	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal,
+) ([]byte, error) {
 	height, round, step := proposal.Height, proposal.Round, stepPropose
 
 	lss := pv.LastSignState
 
 	sameHRS, err := lss.CheckHRS(height, round, step)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	blockSignId := types.ProposalBlockSignId(chainID, proposal, quorumType, quorumHash)
+	blockSignID := types.ProposalBlockSignID(chainID, proposal, quorumType, quorumHash)
 
 	blockSignBytes := types.ProposalBlockSignBytes(chainID, proposal)
 
@@ -612,20 +665,29 @@ func (pv *FilePV) signProposal(chainID string, quorumType btcjson.LLMQType, quor
 		} else {
 			err = fmt.Errorf("conflicting data")
 		}
-		return err
+		return blockSignID, err
+	}
+
+	var privKey crypto.PrivKey
+	if quorumKeys, ok := pv.Key.PrivateKeys[quorumHash.String()]; ok {
+		privKey = quorumKeys.PrivKey
+	} else {
+		return blockSignID, fmt.Errorf("file private validator could not sign vote for quorum hash %v", quorumHash)
 	}
 
 	// It passed the checks. SignDigest the proposal
-	blockSig, err := pv.Key.PrivKey.SignDigest(blockSignId)
+	blockSig, err := privKey.SignDigest(blockSignID)
 	if err != nil {
-		return err
+		return blockSignID, err
 	}
-	// fmt.Printf("file proposer %X \nsigning proposal at height %d \nwith key %X \nproposalSignId %X\n signature %X\n", pv.Key.ProTxHash,
-	//  proposal.Height, pv.Key.PrivKey.PubKey().Bytes(), blockSignId, blockSig)
+	// fmt.Printf(
+	// "file proposer %X \nsigning proposal at height %d \nwith key %X \nproposalSignId %X\n signature %X\n",
+	// pv.Key.ProTxHash,
+	// proposal.Height, pv.Key.PrivKey.PubKey().Bytes(), blockSignID, blockSig)
 
 	pv.saveSigned(height, round, step, blockSignBytes, blockSig, nil, nil)
 	proposal.Signature = blockSig
-	return nil
+	return blockSignID, nil
 }
 
 // Persist height/round/step and signature

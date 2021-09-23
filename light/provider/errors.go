@@ -9,6 +9,9 @@ var (
 	// ErrHeightTooHigh is returned when the height is higher than the last
 	// block that the provider has. The light client will not remove the provider
 	ErrHeightTooHigh = errors.New("height requested is too high")
+	// ErrLightBlockTooOld is returned when requesting the last block, and this last block is very old
+	// The light client will not remove the provider
+	ErrLightBlockTooOld = errors.New("light block is too old")
 	// ErrLightBlockNotFound is returned when a provider can't find the
 	// requested header (i.e. it has been pruned).
 	// The light client will not remove the provider

@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -71,11 +69,10 @@ func TestStateProposerSelection0(t *testing.T) {
 
 	// Commit a block and ensure proposer for the next height is correct.
 	prop := cs1.GetRoundState().Validators.GetProposer()
-	pv, err := cs1.privValidator.GetPubKey(crypto.QuorumHash{})
+	proTxHash, err := cs1.privValidator.GetProTxHash()
 	require.NoError(t, err)
-	address := pv.Address()
-	if !bytes.Equal(prop.Address, address) {
-		t.Fatalf("expected proposer to be validator %d. Got %X", 0, prop.Address)
+	if !bytes.Equal(prop.ProTxHash, proTxHash) {
+		t.Fatalf("expected proposer to be validator %d. Got %X", 0, prop.ProTxHash)
 	}
 
 	// Wait for complete proposal.
@@ -88,11 +85,10 @@ func TestStateProposerSelection0(t *testing.T) {
 	ensureNewRound(newRoundCh, height+1, 0)
 
 	prop = cs1.GetRoundState().Validators.GetProposer()
-	pv1, err := vss[1].GetPubKey(crypto.QuorumHash{})
+	proTxHash, err = vss[1].GetProTxHash()
 	require.NoError(t, err)
-	addr := pv1.Address()
-	if !bytes.Equal(prop.Address, addr) {
-		panic(fmt.Sprintf("expected proposer to be validator %d. Got %X", 1, prop.Address))
+	if !bytes.Equal(prop.ProTxHash, proTxHash) {
+		panic(fmt.Sprintf("expected proposer to be validator %d. Got %X", 1, prop.ProTxHash))
 	}
 }
 
@@ -114,15 +110,14 @@ func TestStateProposerSelection2(t *testing.T) {
 	// everyone just votes nil. we get a new proposer each round
 	for i := int32(0); int(i) < len(vss); i++ {
 		prop := cs1.GetRoundState().Validators.GetProposer()
-		pvk, err := vss[int(i+round)%len(vss)].GetPubKey(crypto.QuorumHash{})
+		proTxHash, err := vss[int(i+round)%len(vss)].GetProTxHash()
 		require.NoError(t, err)
-		addr := pvk.Address()
-		correctProposer := addr
-		if !bytes.Equal(prop.Address, correctProposer) {
+		correctProposer := proTxHash
+		if !bytes.Equal(prop.ProTxHash, correctProposer) {
 			panic(fmt.Sprintf(
 				"expected RoundState.Validators.GetProposer() to be validator %d. Got %X",
 				int(i+2)%len(vss),
-				prop.Address))
+				prop.ProTxHash))
 		}
 
 		rs := cs1.GetRoundState()
@@ -210,7 +205,7 @@ func TestStateBadProposal(t *testing.T) {
 	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 	proposal := types.NewProposal(vs2.Height, 1, round, -1, blockID)
 	p := proposal.ToProto()
-	if err := vs2.SignProposal(config.ChainID(), cs1.Validators.QuorumType, cs1.Validators.QuorumHash, p); err != nil {
+	if _, err := vs2.SignProposal(config.ChainID(), cs1.Validators.QuorumType, cs1.Validators.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 
@@ -264,7 +259,7 @@ func TestStateOversizedBlock(t *testing.T) {
 	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 	proposal := types.NewProposal(height, 1, round, -1, blockID)
 	p := proposal.ToProto()
-	if err := vs2.SignProposal(config.ChainID(), cs1.Validators.QuorumType, cs1.Validators.QuorumHash, p); err != nil {
+	if _, err := vs2.SignProposal(config.ChainID(), cs1.Validators.QuorumType, cs1.Validators.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -339,7 +334,7 @@ func TestStateFullRound1(t *testing.T) {
 	// we're going to roll right into new height
 	ensureNewRound(newRoundCh, height+1, 0)
 
-	validateLastPrecommit(t, cs, vss[0], propBlockHash)
+	validateLastCommit(t, cs, vss[0], propBlockHash)
 }
 
 // nil is proposed, so prevote and precommit nil
@@ -540,6 +535,9 @@ func TestStateLockNoPOL(t *testing.T) {
 	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
 
 	cs2, _ := randState(2) // needed so generated block is different than locked block
+	// Since the quorum hash is also part of the sign ID we must make sure it's the same
+	cs2.LastValidators.QuorumHash = cs1.LastValidators.QuorumHash
+	cs2.Validators.QuorumHash = cs1.Validators.QuorumHash
 	// before we time out into new round, set next proposal block
 	prop, propBlock := decideProposal(cs2, vs2, vs2.Height, vs2.Round+1)
 	if prop == nil || propBlock == nil {
@@ -1086,7 +1084,7 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	// in round 2 we see the polkad block from round 0
 	newProp := types.NewProposal(height, 1, round, 0, propBlockID0)
 	p := newProp.ToProto()
-	if err := vs3.SignProposal(config.ChainID(), cs1.Validators.QuorumType, cs1.Validators.QuorumHash, p); err != nil {
+	if _, err := vs3.SignProposal(config.ChainID(), cs1.Validators.QuorumType, cs1.Validators.QuorumHash, p); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1464,7 +1462,7 @@ func TestEmitNewValidBlockEventOnCommitWithoutBlock(t *testing.T) {
 	ensureNewValidBlock(validBlockCh, height, round)
 
 	rs := cs1.GetRoundState()
-	assert.True(t, rs.Step == cstypes.RoundStepCommit)
+	assert.True(t, rs.Step == cstypes.RoundStepApplyCommit)
 	assert.True(t, rs.ProposalBlock == nil)
 	assert.True(t, rs.ProposalBlockParts.Header().Equals(propBlockParts.Header()))
 
@@ -1498,7 +1496,7 @@ func TestCommitFromPreviousRound(t *testing.T) {
 	ensureNewValidBlock(validBlockCh, height, round)
 
 	rs := cs1.GetRoundState()
-	assert.True(t, rs.Step == cstypes.RoundStepCommit)
+	assert.True(t, rs.Step == cstypes.RoundStepApplyCommit)
 	assert.True(t, rs.CommitRound == vs2.Round)
 	assert.True(t, rs.ProposalBlock == nil)
 	assert.True(t, rs.ProposalBlockParts.Header().Equals(propBlockParts.Header()))
@@ -1762,8 +1760,11 @@ func TestStateHalt1(t *testing.T) {
 	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2) // didnt receive proposal
 	signAddVotes(cs1, tmproto.PrecommitType, propBlock.Hash(), propBlockParts.Header(), vs3)
 	// we receive this later, but vs3 might receive it earlier and with ours will go to commit!
-	precommit4 := signVote(vs4, tmproto.PrecommitType, propBlock.Hash(), cs1.state.AppHash, cs1.state.Validators.QuorumType,
-		cs1.state.Validators.QuorumHash, propBlockParts.Header())
+	precommit4 := signVote(
+		vs4, tmproto.PrecommitType, propBlock.Hash(),
+		cs1.state.AppHash, cs1.state.Validators.QuorumType,
+		cs1.state.Validators.QuorumHash, propBlockParts.Header(),
+	)
 
 	incrementRound(vs2, vs3, vs4)
 

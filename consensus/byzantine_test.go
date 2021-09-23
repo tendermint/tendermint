@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/tendermint/crypto"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -53,7 +55,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		app.InitChain(abci.RequestInitChain{ValidatorSet: vals})
+		app.InitChain(abci.RequestInitChain{ValidatorSet: &vals})
 
 		blockDB := dbm.NewMemDB()
 		blockStore := store.NewBlockStore(blockDB)
@@ -102,6 +104,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	reactors := make([]*Reactor, nValidators)
 	blocksSubs := make([]types.Subscription, 0)
 	eventBuses := make([]*types.EventBus, nValidators)
+	nodeProTxHashes := make([]*crypto.ProTxHash, nValidators)
 	for i := 0; i < nValidators; i++ {
 		reactors[i] = NewReactor(css[i], true) // so we dont start the consensus states
 		reactors[i].SetLogger(css[i].Logger)
@@ -118,9 +121,10 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			err = css[i].blockExec.Store().Save(css[i].state)
 			require.NoError(t, err)
 		}
+		nodeProTxHashes[i] = &css[i].privValidatorProTxHash
 	}
 	// make connected switches and start all reactors
-	p2p.MakeConnectedSwitches(config.P2P, nValidators, func(i int, s *p2p.Switch) *p2p.Switch {
+	p2p.MakeConnectedSwitches(config.P2P, nodeProTxHashes, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("CONSENSUS", reactors[i])
 		s.SetLogger(reactors[i].conS.Logger.With("module", "p2p"))
 		return s
@@ -172,17 +176,13 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		case lazyProposer.Height == lazyProposer.state.InitialHeight:
 			// We're creating a proposal for the first block.
 			// The commit is empty, but not nil.
-			commit = types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil, nil)
-		case lazyProposer.LastCommit.HasTwoThirdsMajority():
-			// Make the commit from LastCommit
-			commit = lazyProposer.LastCommit.MakeCommit()
+			commit = types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
+		case lazyProposer.LastCommit != nil:
+			commit = lazyProposer.LastCommit
 		default: // This shouldn't happen.
 			lazyProposer.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block")
 			return
 		}
-
-		// omit the last signature in the commit
-		commit.Signatures[len(commit.Signatures)-1] = types.NewCommitSigAbsent()
 
 		if lazyProposer.privValidatorProTxHash == nil {
 			// If this node is a validator & proposer in the current round, it will
@@ -204,10 +204,18 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 		// Make proposal
 		propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
-		proposal := types.NewProposal(height, lazyProposer.state.LastCoreChainLockedBlockHeight, round, lazyProposer.ValidRound, propBlockID)
+		proposal := types.NewProposal(
+			height,
+			lazyProposer.state.LastCoreChainLockedBlockHeight,
+			round,
+			lazyProposer.ValidRound,
+			propBlockID,
+		)
 		p := proposal.ToProto()
-		if err := lazyProposer.privValidator.SignProposal(lazyProposer.state.ChainID, lazyProposer.state.Validators.QuorumType,
-			lazyProposer.state.Validators.QuorumHash, p); err == nil {
+		if _, err := lazyProposer.privValidator.SignProposal(
+			lazyProposer.state.ChainID, lazyProposer.state.Validators.QuorumType,
+			lazyProposer.state.Validators.QuorumHash, p,
+		); err == nil {
 			proposal.Signature = p.Signature
 
 			// send proposal and block parts on internal msg queue
@@ -294,11 +302,16 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 
 	switches := make([]*p2p.Switch, N)
 	p2pLogger := logger.With("module", "p2p")
+	nodeProTxHashes := make([]*crypto.ProTxHash, N)
+	for i := 0; i < N; i++ {
+		nodeProTxHashes[i] = &css[i].privValidatorProTxHash
+	}
 	for i := 0; i < N; i++ {
 		switches[i] = p2p.MakeSwitch(
 			config.P2P,
 			i,
 			"foo", "1.0.0",
+			nodeProTxHashes[i],
 			func(i int, sw *p2p.Switch) *p2p.Switch {
 				return sw
 			})
@@ -361,7 +374,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 		}
 	}()
 
-	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
+	p2p.MakeConnectedSwitches(config.P2P, nodeProTxHashes, func(i int, s *p2p.Switch) *p2p.Switch {
 		// ignore new switch s, we already made ours
 		switches[i].AddReactor("CONSENSUS", reactors[i])
 		return switches[i]
@@ -446,7 +459,9 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *St
 	polRound, propBlockID := cs.ValidRound, types.BlockID{Hash: block1.Hash(), PartSetHeader: blockParts1.Header()}
 	proposal1 := types.NewProposal(height, 1, round, polRound, propBlockID)
 	p1 := proposal1.ToProto()
-	if err := cs.privValidator.SignProposal(cs.state.ChainID, cs.Validators.QuorumType, cs.Validators.QuorumHash, p1); err != nil {
+	if _, err := cs.privValidator.SignProposal(
+		cs.state.ChainID, cs.Validators.QuorumType, cs.Validators.QuorumHash, p1,
+	); err != nil {
 		t.Error(err)
 	}
 
@@ -460,7 +475,9 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *St
 	polRound, propBlockID = cs.ValidRound, types.BlockID{Hash: block2.Hash(), PartSetHeader: blockParts2.Header()}
 	proposal2 := types.NewProposal(height, 1, round, polRound, propBlockID)
 	p2 := proposal2.ToProto()
-	if err := cs.privValidator.SignProposal(cs.state.ChainID, cs.Validators.QuorumType,  cs.Validators.QuorumHash, p2); err != nil {
+	if _, err := cs.privValidator.SignProposal(
+		cs.state.ChainID, cs.Validators.QuorumType, cs.Validators.QuorumHash, p2,
+	); err != nil {
 		t.Error(err)
 	}
 

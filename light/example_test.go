@@ -9,15 +9,22 @@ import (
 	"testing"
 	"time"
 
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+	"github.com/tendermint/tendermint/light"
+	"github.com/tendermint/tendermint/types"
+
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
 	httpp "github.com/tendermint/tendermint/light/provider/http"
 	dbs "github.com/tendermint/tendermint/light/store/db"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
+)
+
+var (
+	privval types.PrivValidator
 )
 
 // Automatically getting new headers and verifying them.
@@ -41,7 +48,7 @@ func ExampleClient_Update() {
 		stdlog.Fatal(err)
 	}
 
-	block, err := primary.LightBlock(context.Background(), 2)
+	_, err = primary.LightBlock(context.Background(), 2)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -51,17 +58,15 @@ func ExampleClient_Update() {
 		stdlog.Fatal(err)
 	}
 
+	dashCoreMockClient := dashcore.NewMockClient(chainID, 100, privval, false)
+
 	c, err := light.NewClient(
 		context.Background(),
 		chainID,
-		light.TrustOptions{
-			Period: 504 * time.Hour, // 21 days
-			Height: 2,
-			Hash:   block.Hash(),
-		},
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db, chainID),
+		dashCoreMockClient,
 		light.Logger(log.TestingLogger()),
 	)
 	if err != nil {
@@ -109,7 +114,7 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 		stdlog.Fatal(err)
 	}
 
-	block, err := primary.LightBlock(context.Background(), 2)
+	_, err = primary.LightBlock(context.Background(), 2)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -119,17 +124,15 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 		stdlog.Fatal(err)
 	}
 
+	dashCoreMockClient := dashcore.NewMockClient(chainID, 100, privval, false)
+
 	c, err := light.NewClient(
 		context.Background(),
 		chainID,
-		light.TrustOptions{
-			Period: 504 * time.Hour, // 21 days
-			Height: 2,
-			Hash:   block.Hash(),
-		},
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db, chainID),
+		dashCoreMockClient,
 		light.Logger(log.TestingLogger()),
 	)
 	if err != nil {
@@ -159,7 +162,7 @@ func TestMain(m *testing.M) {
 	// start a tendermint node (and kvstore) in the background to test against
 	app := kvstore.NewApplication()
 	node := rpctest.StartTendermint(app, rpctest.SuppressStdout)
-
+	privval = node.PrivValidator()
 	code := m.Run()
 
 	// and shut down proper at the end

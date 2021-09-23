@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tendermint/tendermint/crypto"
+
 	"github.com/tendermint/tendermint/behaviour"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
@@ -53,18 +55,23 @@ type blockVerifier interface {
 }
 
 type blockApplier interface {
-	ApplyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, int64, error)
+	ApplyBlock(
+		state state.State,
+		nodeProTxHash *crypto.ProTxHash,
+		blockID types.BlockID,
+		block *types.Block,
+	) (state.State, int64, error)
 }
 
 // XXX: unify naming in this package around tmState
-func newReactor(state state.State, store blockStore, reporter behaviour.Reporter,
+func newReactor(state state.State, nodeProTxHash *crypto.ProTxHash, store blockStore, reporter behaviour.Reporter,
 	blockApplier blockApplier, fastSync bool) *BlockchainReactor {
 	initHeight := state.LastBlockHeight + 1
 	if initHeight == 1 {
 		initHeight = state.InitialHeight
 	}
 	scheduler := newScheduler(initHeight, time.Now())
-	pContext := newProcessorContext(store, blockApplier, state)
+	pContext := newProcessorContext(store, nodeProTxHash, blockApplier, state)
 	// TODO: Fix naming to just newProcesssor
 	// newPcState requires a processorContext
 	processor := newPcState(pContext)
@@ -84,9 +91,10 @@ func NewBlockchainReactor(
 	state state.State,
 	blockApplier blockApplier,
 	store blockStore,
+	nodeProTxHash *crypto.ProTxHash,
 	fastSync bool) *BlockchainReactor {
 	reporter := behaviour.NewMockReporter()
-	return newReactor(state, store, reporter, blockApplier, fastSync)
+	return newReactor(state, nodeProTxHash, store, reporter, blockApplier, fastSync)
 }
 
 // SetSwitch implements Reactor interface.
@@ -470,7 +478,7 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		return
 	}
 
-	r.logger.Debug("Receive", "src", src.ID(), "chID", chID, "msg", msg)
+	r.logger.P2PDebug("Receive", "src", src.ID(), "chID", chID, "msg", msg)
 
 	switch msg := msg.(type) {
 	case *bcproto.StatusRequest:

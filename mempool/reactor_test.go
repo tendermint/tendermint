@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/tendermint/crypto"
+
 	"github.com/fortytw2/leaktest"
 	"github.com/go-kit/kit/log/term"
 	"github.com/stretchr/testify/assert"
@@ -293,12 +295,13 @@ func mempoolLogger() log.Logger {
 			}
 		}
 		return term.FgBgColor{}
-	})
+	}, "debug")
 }
 
 // connect N mempool reactors through N switches
 func makeAndConnectReactors(config *cfg.Config, n int) []*Reactor {
 	reactors := make([]*Reactor, n)
+	proTxHashes := make([]*crypto.ProTxHash, n)
 	logger := mempoolLogger()
 	for i := 0; i < n; i++ {
 		app := kvstore.NewApplication()
@@ -310,7 +313,7 @@ func makeAndConnectReactors(config *cfg.Config, n int) []*Reactor {
 		reactors[i].SetLogger(logger.With("validator", i))
 	}
 
-	p2p.MakeConnectedSwitches(config.P2P, n, func(i int, s *p2p.Switch) *p2p.Switch {
+	p2p.MakeConnectedSwitches(config.P2P, proTxHashes, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("MEMPOOL", reactors[i])
 		return s
 

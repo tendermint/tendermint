@@ -1,9 +1,10 @@
 package types
 
 import (
-	"github.com/dashevo/dashd-go/btcjson"
 	"strings"
 	"testing"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
@@ -126,6 +127,30 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 	}
 }
 
+func TestVoteStateSignBytesTestVectors(t *testing.T) {
+	tests := []struct {
+		chainID string
+		vote    *Vote
+		want    []byte
+	}{
+		0: {
+			"", &Vote{Height: 1, StateID: StateID{
+				LastAppHash: crypto.Sha256([]byte("hello")),
+			}},
+			// NOTE: Height and Round are skipped here. This case needs to be considered while parsing.
+			[]byte{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x2c, 0xf2, 0x4d, 0xba, 0x5f, 0xb0, 0xa3, 0xe, 0x26, 0xe8,
+				0x3b, 0x2a, 0xc5, 0xb9, 0xe2, 0x9e, 0x1b, 0x16, 0x1e, 0x5c, 0x1f, 0xa7, 0x42, 0x5e, 0x73, 0x4, 0x33, 0x62,
+				0x93, 0x8b, 0x98, 0x24},
+		},
+	}
+	for i, tc := range tests {
+		v := tc.vote.ToProto()
+		got := VoteStateSignBytes(tc.chainID, v)
+		assert.Equal(t, len(tc.want), len(got), "test case #%v: got unexpected sign bytes length for Vote.", i)
+		assert.Equal(t, tc.want, got, "test case #%v: got unexpected sign bytes for Vote.", i)
+	}
+}
+
 func TestVoteProposalNotEq(t *testing.T) {
 	cv := CanonicalizeVote("", &tmproto.Vote{Height: 1, Round: 1})
 	p := CanonicalizeProposal("", &tmproto.Proposal{Height: 1, Round: 1})
@@ -137,27 +162,27 @@ func TestVoteProposalNotEq(t *testing.T) {
 }
 
 func TestVoteVerifySignature(t *testing.T) {
-	privVal := NewMockPV()
-	pubkey, err := privVal.GetPubKey(crypto.QuorumHash{})
+	quorumHash := crypto.RandQuorumHash()
+	privVal := NewMockPVForQuorum(quorumHash)
+	pubkey, err := privVal.GetPubKey(quorumHash)
 	require.NoError(t, err)
 
 	vote := examplePrecommit()
 	v := vote.ToProto()
 	quorumType := btcjson.LLMQType_5_60
-	quorumHash := crypto.RandQuorumHash()
-	signId := VoteBlockSignId("test_chain_id", v, quorumType, quorumHash)
-	signStateId := VoteStateSignId("test_chain_id", v, quorumType, quorumHash)
+	signID := VoteBlockSignID("test_chain_id", v, quorumType, quorumHash)
+	signStateID := VoteStateSignID("test_chain_id", v, quorumType, quorumHash)
 
 	// sign it
-	err = privVal.SignVote("test_chain_id", quorumType, quorumHash, v)
+	err = privVal.SignVote("test_chain_id", quorumType, quorumHash, v, nil)
 	require.NoError(t, err)
 
 	// verify the same vote
-	valid := pubkey.VerifySignatureDigest(signId, v.BlockSignature)
+	valid := pubkey.VerifySignatureDigest(signID, v.BlockSignature)
 	require.True(t, valid)
 
 	// verify the same vote
-	valid = pubkey.VerifySignatureDigest(signStateId, v.StateSignature)
+	valid = pubkey.VerifySignatureDigest(signStateID, v.StateSignature)
 	require.True(t, valid)
 
 	// serialize, deserialize and verify again....
@@ -168,13 +193,13 @@ func TestVoteVerifySignature(t *testing.T) {
 	require.NoError(t, err)
 
 	// verify the transmitted vote
-	newSignId := VoteBlockSignId("test_chain_id", precommit, quorumType, quorumHash)
-	newSignStateId := VoteStateSignId("test_chain_id", precommit, quorumType, quorumHash)
-	require.Equal(t, string(signId), string(newSignId))
-	require.Equal(t, string(signStateId), string(newSignStateId))
-	valid = pubkey.VerifySignatureDigest(newSignId, precommit.BlockSignature)
+	newSignID := VoteBlockSignID("test_chain_id", precommit, quorumType, quorumHash)
+	newSignStateID := VoteStateSignID("test_chain_id", precommit, quorumType, quorumHash)
+	require.Equal(t, string(signID), string(newSignID))
+	require.Equal(t, string(signStateID), string(newSignStateID))
+	valid = pubkey.VerifySignatureDigest(newSignID, precommit.BlockSignature)
 	require.True(t, valid)
-	valid = pubkey.VerifySignatureDigest(newSignStateId, precommit.StateSignature)
+	valid = pubkey.VerifySignatureDigest(newSignStateID, precommit.StateSignature)
 	require.True(t, valid)
 }
 
@@ -200,12 +225,12 @@ func TestIsVoteTypeValid(t *testing.T) {
 }
 
 func TestVoteVerify(t *testing.T) {
-	privVal := NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	privVal := NewMockPVForQuorum(quorumHash)
 	proTxHash, err := privVal.GetProTxHash()
 	require.NoError(t, err)
 
 	quorumType := btcjson.LLMQType_5_60
-	quorumHash := crypto.RandQuorumHash()
 
 	pubkey, err := privVal.GetPubKey(quorumHash)
 	require.NoError(t, err)
@@ -213,14 +238,17 @@ func TestVoteVerify(t *testing.T) {
 	vote := examplePrevote()
 	vote.ValidatorProTxHash = proTxHash
 
-	err = vote.Verify("test_chain_id", quorumType, quorumHash, bls12381.GenPrivKey().PubKey(), crypto.RandProTxHash())
+	_, _, err = vote.Verify(
+		"test_chain_id", quorumType, quorumHash, bls12381.GenPrivKey().PubKey(), crypto.RandProTxHash())
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrVoteInvalidValidatorProTxHash, err)
 	}
 
-	err = vote.Verify("test_chain_id", quorumType, quorumHash, pubkey, proTxHash)
+	_, _, err = vote.Verify("test_chain_id", quorumType, quorumHash, pubkey, proTxHash)
 	if assert.Error(t, err) {
-		assert.True(t, strings.HasPrefix(err.Error(), ErrVoteInvalidBlockSignature.Error())) // since block signatures are verified first
+		assert.True(
+			t, strings.HasPrefix(err.Error(), ErrVoteInvalidBlockSignature.Error()),
+		) // since block signatures are verified first
 	}
 }
 
@@ -239,7 +267,8 @@ func TestVoteString(t *testing.T) {
 }
 
 func TestVoteValidateBasic(t *testing.T) {
-	privVal := NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	privVal := NewMockPVForQuorum(quorumHash)
 
 	testCases := []struct {
 		testName     string
@@ -255,14 +284,14 @@ func TestVoteValidateBasic(t *testing.T) {
 		{"Invalid ProTxHash", func(v *Vote) { v.ValidatorProTxHash = make([]byte, 1) }, true},
 		{"Invalid ValidatorIndex", func(v *Vote) { v.ValidatorIndex = -1 }, true},
 		{"Invalid Signature", func(v *Vote) { v.BlockSignature = nil }, true},
-		{"Too big Signature", func(v *Vote) { v.BlockSignature = make([]byte, MaxSignatureSize+1) }, true},
+		{"Too big Signature", func(v *Vote) { v.BlockSignature = make([]byte, SignatureSize+1) }, true},
 	}
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			vote := examplePrecommit()
 			v := vote.ToProto()
-			err := privVal.SignVote("test_chain_id", 0, crypto.QuorumHash{}, v)
+			err := privVal.SignVote("test_chain_id", 0, quorumHash, v, nil)
 			vote.BlockSignature = v.BlockSignature
 			vote.StateSignature = v.StateSignature
 			require.NoError(t, err)
@@ -273,10 +302,11 @@ func TestVoteValidateBasic(t *testing.T) {
 }
 
 func TestVoteProtobuf(t *testing.T) {
-	privVal := NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	privVal := NewMockPVForQuorum(quorumHash)
 	vote := examplePrecommit()
 	v := vote.ToProto()
-	err := privVal.SignVote("test_chain_id", 0, crypto.QuorumHash{}, v)
+	err := privVal.SignVote("test_chain_id", 0, quorumHash, v, nil)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
 	require.NoError(t, err)

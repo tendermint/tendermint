@@ -26,6 +26,7 @@ message DefaultNodeInfo {
   bytes                channels         = 6;
   string               moniker          = 7;
   DefaultNodeInfoOther other            = 8 [(gogoproto.nullable) = false];
+  bytes                pro_tx_hash      = 9;
 }
 
 message DefaultNodeInfoOther {

@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"testing"
 
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/stretchr/testify/assert"
 	"github.com/tendermint/tendermint/crypto"
@@ -50,7 +52,7 @@ func TestServer(t *testing.T) {
 			}).
 			Expect(And(BodyShouldBeEmpty(), QueryShouldHave(tc.query))).
 			Once().
-			Respond(JsonBody(tc.e), JsonContentType())
+			Respond(JSONBody(tc.e), JSONContentType())
 		resp, err := http.Get(tc.url)
 		assert.NoError(t, err)
 		data, err := ioutil.ReadAll(resp.Body)
@@ -70,12 +72,14 @@ func TestDashCoreSignerPingMethod(t *testing.T) {
 	go func() {
 		srv.Start()
 	}()
+	cs := &StaticCoreServer{}
 	srv = WithMethods(
 		srv,
-		WithPingMethod(1),
-		WithGetPeerInfoMethod(1),
+		WithPingMethod(cs, 1),
 	)
-	client, err := privval.NewDashCoreSignerClient(addr, "root", "root", btcjson.LLMQType_5_60, "chain-123456")
+	dashCoreRPCClient, err := dashcore.NewRPCClient(addr, "root", "root")
+	assert.NoError(t, err)
+	client, err := privval.NewDashCoreSignerClient(dashCoreRPCClient, btcjson.LLMQType_5_60)
 	assert.NoError(t, err)
 	err = client.Ping()
 	assert.NoError(t, err)
@@ -118,12 +122,17 @@ func TestGetPubKey(t *testing.T) {
 		WithMasternodeMethod(cs, Endless),
 		WithGetNetworkInfoMethod(cs, Endless),
 	)
-	client, err := privval.NewDashCoreSignerClient(addr, "root", "root", btcjson.LLMQType_5_60, "chain-123456")
+
+	dashCoreRPCClient, err := dashcore.NewRPCClient(addr, "root", "root")
+	assert.NoError(t, err)
+	client, err := privval.NewDashCoreSignerClient(dashCoreRPCClient, btcjson.LLMQType_5_60)
 	assert.NoError(t, err)
 	quorumHash := crypto.RandQuorumHash()
 	pubKey, err := client.GetPubKey(quorumHash)
 	assert.NoError(t, err)
-	b, _ := hex.DecodeString("83349BA8363E5C03E9D6318B0491E38305CF59D9D57CEA2295A86ECFA696622571F266C28BACC78666E8B9B0FB2B3123")
+	b, _ := hex.DecodeString(
+		"83349BA8363E5C03E9D6318B0491E38305CF59D9D57CEA2295A86ECFA696622571F266C28BACC78666E8B9B0FB2B3123",
+	)
 	assert.True(t, pubKey.Equals(bls12381.PubKey(b)))
 	srv.Stop(ctx)
 }

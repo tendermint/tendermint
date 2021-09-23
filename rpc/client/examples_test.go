@@ -28,7 +28,7 @@ func ExampleHTTP_simple() {
 	// Create a transaction
 	k := []byte("name")
 	v := []byte("satoshi")
-	tx := append(k, append([]byte("="), v...)...)
+	tx := append(k, append([]byte("="), v...)...) // nolint:gocritic
 
 	// Broadcast the transaction and wait for it to commit (rather use
 	// c.BroadcastTxSync though in production).
@@ -82,11 +82,11 @@ func ExampleHTTP_batching() {
 	// Create our two transactions
 	k1 := []byte("firstName")
 	v1 := []byte("satoshi")
-	tx1 := append(k1, append([]byte("="), v1...)...)
+	tx1 := append(k1, append([]byte("="), v1...)...) // nolint:gocritic
 
 	k2 := []byte("lastName")
 	v2 := []byte("nakamoto")
-	tx2 := append(k2, append([]byte("="), v2...)...)
+	tx2 := append(k2, append([]byte("="), v2...)...) // nolint:gocritic
 
 	txs := [][]byte{tx1, tx2}
 

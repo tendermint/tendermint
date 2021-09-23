@@ -64,7 +64,7 @@ type State struct {
 	// It does not go to 0 if a block had no chain lock and should stay the same as the previous block
 	LastCoreChainLockedBlockHeight uint32
 
-	// LastValidators is used to validate block.LastCommit.
+	// LastValidators is used to validate block.LastPrecommits.
 	// Validators are persisted to the database separately every time they change,
 	// so we can query for historical validator sets.
 	// Note that if s.LastBlockHeight causes a valset change,
@@ -301,6 +301,17 @@ func (state State) MakeBlock(
 	return block, block.MakePartSet(types.BlockPartSizeBytes)
 }
 
+func (state State) ValidatorsAtHeight(height int64) *types.ValidatorSet {
+	switch {
+	case state.LastBlockHeight == height:
+		return state.LastValidators
+	case state.LastBlockHeight+2 == height:
+		return state.NextValidators
+	default:
+		return state.Validators
+	}
+}
+
 //------------------------------------------------------------------------
 // Genesis
 
@@ -338,15 +349,23 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 
 	var validatorSet, nextValidatorSet *types.ValidatorSet
 	if genDoc.Validators == nil {
-		validatorSet = types.NewValidatorSet(nil, nil, genDoc.QuorumType, nil)
-		nextValidatorSet = types.NewValidatorSet(nil, nil, genDoc.QuorumType,nil)
+		validatorSet = types.NewValidatorSet(nil, nil, genDoc.QuorumType, nil, false)
+		nextValidatorSet = types.NewValidatorSet(nil, nil, genDoc.QuorumType, nil, false)
 	} else {
 		validators := make([]*types.Validator, len(genDoc.Validators))
+		hasAllPublicKeys := true
 		for i, val := range genDoc.Validators {
 			validators[i] = types.NewValidatorDefaultVotingPower(val.PubKey, val.ProTxHash)
+			if val.PubKey == nil {
+				hasAllPublicKeys = false
+			}
 		}
-		validatorSet = types.NewValidatorSet(validators, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash)
-		nextValidatorSet = types.NewValidatorSet(validators, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash).CopyIncrementProposerPriority(1)
+		validatorSet = types.NewValidatorSet(
+			validators, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash, hasAllPublicKeys,
+		)
+		nextValidatorSet = types.NewValidatorSet(
+			validators, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash, hasAllPublicKeys,
+		).CopyIncrementProposerPriority(1)
 	}
 
 	return State{
@@ -361,8 +380,8 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 
 		LastCoreChainLockedBlockHeight: genDoc.InitialCoreChainLockedHeight,
 
-		NextValidators:              nextValidatorSet,
-		Validators:                  validatorSet,
+		NextValidators: nextValidatorSet,
+		Validators:     validatorSet,
 		// The quorum type must be 0 on an empty validator set
 		LastValidators:              types.NewEmptyValidatorSet(),
 		LastHeightValidatorsChanged: genDoc.InitialHeight,

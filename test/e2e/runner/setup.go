@@ -32,12 +32,13 @@ const (
 	AppAddressTCP  = "tcp://127.0.0.1:30000"
 	AppAddressUNIX = "unix:///var/run/app.sock"
 
-	PrivvalAddressTCP     = "tcp://0.0.0.0:27559"
-	PrivvalAddressUNIX    = "unix:///var/run/privval.sock"
-	PrivvalKeyFile        = "config/priv_validator_key.json"
-	PrivvalStateFile      = "data/priv_validator_state.json"
-	PrivvalDummyKeyFile   = "config/dummy_validator_key.json"
-	PrivvalDummyStateFile = "data/dummy_validator_state.json"
+	PrivvalAddressTCP      = "tcp://0.0.0.0:27559"
+	PrivvalAddressUNIX     = "unix:///var/run/privval.sock"
+	PrivvalAddressDashCore = "127.0.0.1:19998"
+	PrivvalKeyFile         = "config/priv_validator_key.json"
+	PrivvalStateFile       = "data/priv_validator_state.json"
+	PrivvalDummyKeyFile    = "config/dummy_validator_key.json"
+	PrivvalDummyStateFile  = "data/dummy_validator_state.json"
 )
 
 // Setup sets up the testnet configuration.
@@ -58,12 +59,18 @@ func Setup(testnet *e2e.Testnet) error {
 		return err
 	}
 
-	genesis, err := MakeGenesis(testnet)
+	genesisNodes, err := initGenesisForEveryNode(testnet)
 	if err != nil {
 		return err
 	}
+	withModificators(genesisNodes, pubkeyResettingModificator(shouldResetPubkeys()))
 
 	for _, node := range testnet.Nodes {
+		genesis, ok := genesisNodes[node.Mode]
+		if !ok {
+			return fmt.Errorf("node has unsupported node type: %s", node.Mode)
+		}
+
 		nodeDir := filepath.Join(testnet.Dir, node.Name)
 
 		dirs := []string{
@@ -99,6 +106,12 @@ func Setup(testnet *e2e.Testnet) error {
 
 		if node.Mode == e2e.ModeLight {
 			// stop early if a light client
+			// Set up a dummy validator for light client verification.
+			pv, err := newDefaultFilePV(node, nodeDir)
+			if err != nil {
+				return err
+			}
+			pv.Save()
 			continue
 		}
 
@@ -182,7 +195,9 @@ services:
     - 6060
     volumes:
     - ./{{ .Name }}:/tenderdash
-    - /Users/samuelw/Documents/src/go/github.com/dashevo/tenderdash/test/e2e/build/app:/usr/bin/app
+{{- if ne $.PreCompiledAppPath "" }}
+    - {{ $.PreCompiledAppPath }}:/usr/bin/app
+{{- end }}
     networks:
       {{ $.Name }}:
         ipv{{ if $.IPv6 }}6{{ else }}4{{ end}}_address: {{ .IP }}
@@ -192,7 +207,14 @@ services:
 		return nil, err
 	}
 	var buf bytes.Buffer
-	err = tmpl.Execute(&buf, testnet)
+	data := &struct {
+		*e2e.Testnet
+		PreCompiledAppPath string
+	}{
+		Testnet:            testnet,
+		PreCompiledAppPath: os.Getenv("PRE_COMPILED_APP_PATH"),
+	}
+	err = tmpl.Execute(&buf, data)
 	if err != nil {
 		return nil, err
 	}
@@ -200,20 +222,20 @@ services:
 }
 
 // MakeGenesis generates a genesis document.
-func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
+func MakeGenesis(testnet *e2e.Testnet, genesisTime time.Time) (types.GenesisDoc, error) {
 	genesis := types.GenesisDoc{
-		GenesisTime:        time.Now(),
-		ChainID:            testnet.Name,
-		ConsensusParams:    types.DefaultConsensusParams(),
-		InitialHeight:      testnet.InitialHeight,
-		ThresholdPublicKey: testnet.ThresholdPublicKey,
-		QuorumType:         testnet.QuorumType,
-		QuorumHash:         testnet.QuorumHash,
+		GenesisTime:                  genesisTime,
+		ChainID:                      testnet.Name,
+		ConsensusParams:              types.DefaultConsensusParams(),
+		InitialHeight:                testnet.InitialHeight,
+		InitialCoreChainLockedHeight: testnet.InitialCoreHeight,
+		ThresholdPublicKey:           testnet.ThresholdPublicKey,
+		QuorumType:                   testnet.QuorumType,
+		QuorumHash:                   testnet.QuorumHash,
 	}
 	for validator, pubkey := range testnet.Validators {
 		genesis.Validators = append(genesis.Validators, types.GenesisValidator{
 			Name:      validator.Name,
-			Address:   pubkey.Address(),
 			PubKey:    pubkey,
 			ProTxHash: validator.ProTxHash,
 			Power:     types.DefaultDashVotingPower,
@@ -246,6 +268,8 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.DBBackend = node.Database
 	cfg.StateSync.DiscoveryTime = 5 * time.Second
 	cfg.Consensus.AppHashSize = crypto.DefaultHashSize
+	cfg.BaseConfig.LogLevel = "debug"
+
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:
 		cfg.ProxyApp = AppAddressUNIX
@@ -268,6 +292,10 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.PrivValidatorListenAddr = ""
 	cfg.PrivValidatorKey = PrivvalDummyKeyFile
 	cfg.PrivValidatorState = PrivvalDummyStateFile
+
+	if node.PrivvalProtocol == e2e.ProtocolDashCore {
+		cfg.PrivValidatorCoreRPCHost = "127.0.0.1:19998"
+	}
 
 	switch node.Mode {
 	case e2e.ModeValidator:
@@ -334,16 +362,18 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 // MakeAppConfig generates an ABCI application config for a node.
 func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 	cfg := map[string]interface{}{
-		"chain_id":          node.Testnet.Name,
-		"dir":               "data/app",
-		"listen":            AppAddressUNIX,
-		"mode":              node.Mode,
-		"proxy_port":        node.ProxyPort,
-		"protocol":          "socket",
-		"persist_interval":  node.PersistInterval,
-		"snapshot_interval": node.SnapshotInterval,
-		"retain_blocks":     node.RetainBlocks,
-		"key_type":          node.PrivvalKey.Type(),
+		"chain_id":            node.Testnet.Name,
+		"dir":                 "data/app",
+		"listen":              AppAddressUNIX,
+		"mode":                node.Mode,
+		"proxy_port":          node.ProxyPort,
+		"privval_server_type": "dashcore",
+		"privval_server":      PrivvalAddressDashCore,
+		"protocol":            "socket",
+		"persist_interval":    node.PersistInterval,
+		"snapshot_interval":   node.SnapshotInterval,
+		"retain_blocks":       node.RetainBlocks,
+		"key_type":            bls12381.KeyType,
 	}
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:
@@ -363,17 +393,24 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 		switch node.PrivvalProtocol {
 		case e2e.ProtocolFile:
 		case e2e.ProtocolDashCore:
+			cfg["privval_server_type"] = "dashcore"
+			cfg["privval_server"] = PrivvalAddressDashCore
 		case e2e.ProtocolTCP:
+			cfg["privval_server_type"] = "tcp"
 			cfg["privval_server"] = PrivvalAddressTCP
 			cfg["privval_key"] = PrivvalKeyFile
 			cfg["privval_state"] = PrivvalStateFile
 		case e2e.ProtocolUNIX:
+			cfg["privval_server_type"] = "unix"
 			cfg["privval_server"] = PrivvalAddressUNIX
 			cfg["privval_key"] = PrivvalKeyFile
 			cfg["privval_state"] = PrivvalStateFile
 		default:
 			return nil, fmt.Errorf("unexpected privval protocol setting %q", node.PrivvalProtocol)
 		}
+	} else if node.PrivvalProtocol == e2e.ProtocolDashCore {
+		cfg["privval_server_type"] = "dashcore"
+		cfg["privval_server"] = PrivvalAddressDashCore
 	}
 
 	misbehaviors := make(map[string]string)
@@ -439,13 +476,10 @@ func UpdateConfigStateSync(node *e2e.Node, height int64, hash []byte) error {
 }
 
 func newDefaultFilePV(node *e2e.Node, nodeDir string) (*privval.FilePV, error) {
-	tn := node.Testnet
 	return privval.NewFilePVWithOptions(
-		privval.WithPrivKey(bls12381.GenPrivKey()),
+		privval.WithPrivateKeysMap(node.PrivvalKeys),
 		privval.WithProTxHash(crypto.RandProTxHash()),
-		privval.WithQuorumHash(tn.QuorumHash, tn.QuorumHashUpdates),
-		privval.WithNextPrivvalKeys(node.NextPrivvalKeys, node.NextPrivvalHeights),
-		privval.WithThresholdPublicKey(tn.ThresholdPublicKey, tn.ThresholdPublicKeyUpdates),
+		privval.WithUpdateHeights(node.PrivvalUpdateHeights),
 		privval.WithKeyAndStateFilePaths(
 			filepath.Join(nodeDir, PrivvalDummyKeyFile),
 			filepath.Join(nodeDir, PrivvalDummyStateFile),
@@ -454,16 +488,57 @@ func newDefaultFilePV(node *e2e.Node, nodeDir string) (*privval.FilePV, error) {
 }
 
 func newFilePVFromNode(node *e2e.Node, nodeDir string) (*privval.FilePV, error) {
-	tn := node.Testnet
 	return privval.NewFilePVWithOptions(
-		privval.WithPrivKey(node.PrivvalKey),
+		privval.WithPrivateKeysMap(node.PrivvalKeys),
 		privval.WithProTxHash(node.ProTxHash),
-		privval.WithQuorumHash(tn.QuorumHash, tn.QuorumHashUpdates),
-		privval.WithThresholdPublicKey(tn.ThresholdPublicKey, tn.ThresholdPublicKeyUpdates),
-		privval.WithNextPrivvalKeys(node.NextPrivvalKeys, node.NextPrivvalHeights),
+		privval.WithUpdateHeights(node.PrivvalUpdateHeights),
 		privval.WithKeyAndStateFilePaths(
 			filepath.Join(nodeDir, PrivvalKeyFile),
 			filepath.Join(nodeDir, PrivvalStateFile),
 		),
 	)
+}
+
+func pubkeyResettingModificator(isValidator bool) func(genesis map[e2e.Mode]types.GenesisDoc) {
+	return func(genesis map[e2e.Mode]types.GenesisDoc) {
+		if isValidator {
+			resetPubkey(genesis[e2e.ModeFull].Validators)
+		}
+	}
+}
+
+func resetPubkey(vals []types.GenesisValidator) {
+	for i := 0; i < len(vals); i++ {
+		vals[i].PubKey = nil
+	}
+}
+
+func shouldResetPubkeys() bool {
+	val, ok := os.LookupEnv("FULLNODE_PUBKEY_RESET")
+	if !ok {
+		return false
+	}
+	return val == "true" || val == "1"
+}
+
+func initGenesisForEveryNode(testnet *e2e.Testnet) (map[e2e.Mode]types.GenesisDoc, error) {
+	genesis := make(map[e2e.Mode]types.GenesisDoc)
+	genesisTime := time.Now()
+	for _, tn := range testnet.Nodes {
+		if _, ok := genesis[tn.Mode]; ok {
+			continue
+		}
+		genDoc, err := MakeGenesis(testnet, genesisTime)
+		if err != nil {
+			return nil, err
+		}
+		genesis[tn.Mode] = genDoc
+	}
+	return genesis, nil
+}
+
+func withModificators(genesis map[e2e.Mode]types.GenesisDoc, modFuns ...func(map[e2e.Mode]types.GenesisDoc)) {
+	for _, fn := range modFuns {
+		fn(genesis)
+	}
 }

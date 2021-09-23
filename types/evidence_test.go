@@ -1,10 +1,11 @@
 package types
 
 import (
-	"github.com/dashevo/dashd-go/btcjson"
 	"math"
 	"testing"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,12 +30,12 @@ func TestEvidenceList(t *testing.T) {
 }
 
 func randomDuplicateVoteEvidence(t *testing.T) *DuplicateVoteEvidence {
-	val := NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	val := NewMockPVForQuorum(quorumHash)
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
 	stateID := makeStateID(tmhash.Sum([]byte("statehash")))
 	quorumType := btcjson.LLMQType_5_60
-	quorumHash := crypto.RandQuorumHash()
 	const chainID = "mychain"
 	return &DuplicateVoteEvidence{
 
@@ -56,12 +57,12 @@ func TestDuplicateVoteEvidence(t *testing.T) {
 }
 
 func TestDuplicateVoteEvidenceValidation(t *testing.T) {
-	val := NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	val := NewMockPVForQuorum(quorumHash)
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	stateID := makeStateID(tmhash.Sum([]byte("statehash")))
 	quorumType := btcjson.LLMQType_5_60
-	quorumHash := crypto.RandQuorumHash()
 	const chainID = "mychain"
 
 	testCases := []struct {
@@ -77,7 +78,10 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 			ev.VoteB = nil
 		}, true},
 		{"Invalid vote type", func(ev *DuplicateVoteEvidence) {
-			ev.VoteA = makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType, quorumHash, math.MaxInt32, 0, blockID2, stateID)
+			ev.VoteA = makeVote(
+				t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType,
+				quorumHash, math.MaxInt32, 0, blockID2, stateID,
+			)
 		}, true},
 		{"Invalid vote order", func(ev *DuplicateVoteEvidence) {
 			swap := ev.VoteA.Copy()
@@ -88,140 +92,20 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			vote1 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType, quorumHash, math.MaxInt32, 0x02, blockID, stateID)
-			vote2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType, quorumHash, math.MaxInt32, 0x02, blockID2, stateID)
-			valSet := NewValidatorSet([]*Validator{val.ExtractIntoValidator(0, quorumHash)}, val.PrivKey.PubKey(), quorumType, quorumHash)
+			vote1 := makeVote(
+				t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType,
+				quorumHash, math.MaxInt32, 0x02, blockID, stateID)
+			vote2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType,
+				quorumHash, math.MaxInt32, 0x02, blockID2, stateID)
+			thresholdPublicKey, err := val.GetThresholdPublicKey(quorumHash)
+			assert.NoError(t, err)
+			valSet := NewValidatorSet(
+				[]*Validator{val.ExtractIntoValidator(quorumHash)}, thresholdPublicKey, quorumType, quorumHash, true)
 			ev := NewDuplicateVoteEvidence(vote1, vote2, defaultVoteTime, valSet)
 			tc.malleateEvidence(ev)
 			assert.Equal(t, tc.expectErr, ev.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
 	}
-}
-
-func TestLightClientAttackEvidence(t *testing.T) {
-	height := int64(5)
-	voteSet, valSet, privVals := randVoteSet(height, 1, tmproto.PrecommitType, 10, 1)
-	header := makeHeaderRandom()
-	header.Height = height
-	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
-	stateID := makeStateID(tmhash.Sum([]byte("stateHash")))
-	commit, err := MakeCommit(blockID, stateID, height, 1, voteSet, privVals)
-	require.NoError(t, err)
-	lcae := &LightClientAttackEvidence{
-		ConflictingBlock: &LightBlock{
-			SignedHeader: &SignedHeader{
-				Header: header,
-				Commit: commit,
-			},
-			ValidatorSet: valSet,
-		},
-		CommonHeight: height - 1,
-	}
-	assert.NotNil(t, lcae.String())
-	assert.NotNil(t, lcae.Hash())
-	// only 7 validators sign
-	differentCommit, err := MakeCommit(blockID, stateID, height, 1, voteSet, privVals[:7])
-	require.NoError(t, err)
-	differentEv := &LightClientAttackEvidence{
-		ConflictingBlock: &LightBlock{
-			SignedHeader: &SignedHeader{
-				Header: header,
-				Commit: differentCommit,
-			},
-			ValidatorSet: valSet,
-		},
-		CommonHeight: height - 1,
-	}
-	assert.Equal(t, lcae.Hash(), differentEv.Hash())
-	// different header hash
-	differentHeader := makeHeaderRandom()
-	differentEv = &LightClientAttackEvidence{
-		ConflictingBlock: &LightBlock{
-			SignedHeader: &SignedHeader{
-				Header: differentHeader,
-				Commit: differentCommit,
-			},
-			ValidatorSet: valSet,
-		},
-		CommonHeight: height - 1,
-	}
-	assert.NotEqual(t, lcae.Hash(), differentEv.Hash())
-	// different common height should produce a different header
-	differentEv = &LightClientAttackEvidence{
-		ConflictingBlock: &LightBlock{
-			SignedHeader: &SignedHeader{
-				Header: header,
-				Commit: differentCommit,
-			},
-			ValidatorSet: valSet,
-		},
-		CommonHeight: height - 2,
-	}
-	assert.NotEqual(t, lcae.Hash(), differentEv.Hash())
-	assert.Equal(t, lcae.Height(), int64(4)) // Height should be the common Height
-	assert.NotNil(t, lcae.Bytes())
-}
-
-func TestLightClientAttackEvidenceValidation(t *testing.T) {
-	height := int64(5)
-	voteSet, valSet, privVals := randVoteSet(height, 1, tmproto.PrecommitType, 10, 1)
-	header := makeHeaderRandom()
-	header.Height = height
-	header.ValidatorsHash = valSet.Hash()
-	blockID := makeBlockID(header.Hash(), math.MaxInt32, tmhash.Sum([]byte("partshash")))
-	stateID := makeStateIDRandom()
-	commit, err := MakeCommit(blockID, stateID, height, 1, voteSet, privVals)
-	require.NoError(t, err)
-	lcae := &LightClientAttackEvidence{
-		ConflictingBlock: &LightBlock{
-			SignedHeader: &SignedHeader{
-				Header: header,
-				Commit: commit,
-			},
-			ValidatorSet: valSet,
-		},
-		CommonHeight: height - 1,
-	}
-	assert.NoError(t, lcae.ValidateBasic())
-
-	testCases := []struct {
-		testName         string
-		malleateEvidence func(*LightClientAttackEvidence)
-		expectErr        bool
-	}{
-		{"Good DuplicateVoteEvidence", func(ev *LightClientAttackEvidence) {}, false},
-		{"Negative height", func(ev *LightClientAttackEvidence) { ev.CommonHeight = -10 }, true},
-		{"Height is greater than divergent block", func(ev *LightClientAttackEvidence) {
-			ev.CommonHeight = height + 1
-		}, true},
-		{"Nil conflicting header", func(ev *LightClientAttackEvidence) { ev.ConflictingBlock.Header = nil }, true},
-		{"Nil conflicting blocl", func(ev *LightClientAttackEvidence) { ev.ConflictingBlock = nil }, true},
-		{"Nil validator set", func(ev *LightClientAttackEvidence) {
-			ev.ConflictingBlock.ValidatorSet = &ValidatorSet{}
-		}, true},
-	}
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			lcae := &LightClientAttackEvidence{
-				ConflictingBlock: &LightBlock{
-					SignedHeader: &SignedHeader{
-						Header: header,
-						Commit: commit,
-					},
-					ValidatorSet: valSet,
-				},
-				CommonHeight: height - 1,
-			}
-			tc.malleateEvidence(lcae)
-			if tc.expectErr {
-				assert.Error(t, lcae.ValidateBasic(), tc.testName)
-			} else {
-				assert.NoError(t, lcae.ValidateBasic(), tc.testName)
-			}
-		})
-	}
-
 }
 
 func TestMockEvidenceValidateBasic(t *testing.T) {
@@ -230,9 +114,12 @@ func TestMockEvidenceValidateBasic(t *testing.T) {
 	assert.Nil(t, goodEvidence.ValidateBasic())
 }
 
-func makeVote(t *testing.T, val PrivValidator, chainID string, valIndex int32, height int64, quorumType btcjson.LLMQType,
+func makeVote(
+	t *testing.T, val PrivValidator, chainID string,
+	valIndex int32, height int64, quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash, round int32,
-	step int, blockID BlockID, stateID StateID) *Vote {
+	step int, blockID BlockID, stateID StateID,
+) *Vote {
 	proTxHash, err := val.GetProTxHash()
 	require.NoError(t, err)
 	v := &Vote{
@@ -246,7 +133,7 @@ func makeVote(t *testing.T, val PrivValidator, chainID string, valIndex int32, h
 	}
 
 	vpb := v.ToProto()
-	err = val.SignVote(chainID, quorumType, quorumHash, vpb)
+	err = val.SignVote(chainID, quorumType, quorumHash, vpb, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -276,12 +163,12 @@ func makeHeaderRandom() *Header {
 
 func TestEvidenceProto(t *testing.T) {
 	// -------- Votes --------
-	val := NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	val := NewMockPVForQuorum(quorumHash)
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	stateID := makeStateID(tmhash.Sum([]byte("statehash")))
 	quorumType := btcjson.LLMQType_5_60
-	quorumHash := crypto.RandQuorumHash()
 	const chainID = "mychain"
 	v := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType, quorumHash, 1, 0x01, blockID, stateID)
 	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType, quorumHash, 2, 0x01, blockID2, stateID)

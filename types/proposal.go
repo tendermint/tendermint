@@ -4,11 +4,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
+	"time"
+
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
-	"math"
-	"time"
 
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/protoio"
@@ -83,8 +84,8 @@ func (p *Proposal) ValidateBasic() error {
 		return errors.New("signature is missing")
 	}
 
-	if len(p.Signature) > MaxSignatureSize {
-		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
+	if len(p.Signature) > SignatureSize {
+		return fmt.Errorf("signature is too big (max: %d)", SignatureSize)
 	}
 	return nil
 }
@@ -100,6 +101,9 @@ func (p *Proposal) ValidateBasic() error {
 //
 // See BlockID#String.
 func (p *Proposal) String() string {
+	if p == nil {
+		return "Proposal{nil}"
+	}
 	return fmt.Sprintf("Proposal{%v/%v (%v, %v) %X @ %s}",
 		p.Height,
 		p.Round,
@@ -109,7 +113,7 @@ func (p *Proposal) String() string {
 		CanonicalTime(p.Timestamp))
 }
 
-// ProposalSignBytes returns the proto-encoding of the canonicalized Proposal,
+// ProposalBlockSignBytes returns the proto-encoding of the canonicalized Proposal,
 // for signing. Panics if the marshaling fails.
 //
 // The encoded Protobuf message is varint length-prefixed (using MarshalDelimited)
@@ -127,41 +131,48 @@ func ProposalBlockSignBytes(chainID string, p *tmproto.Proposal) []byte {
 	return bz
 }
 
-func ProposalBlockSignId(chainID string, p *tmproto.Proposal, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) []byte {
+func ProposalBlockSignID(
+	chainID string, p *tmproto.Proposal, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
+) []byte {
 	signBytes := ProposalBlockSignBytes(chainID, p)
 	proposalMessageHash := crypto.Sha256(signBytes)
 
-	proposalRequestId := ProposalRequestIdProto(p)
+	proposalRequestID := ProposalRequestIDProto(p)
 
-	signId := crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(proposalRequestId), bls12381.ReverseBytes(proposalMessageHash))
+	signID := crypto.SignID(
+		quorumType,
+		bls12381.ReverseBytes(quorumHash),
+		bls12381.ReverseBytes(proposalRequestID),
+		bls12381.ReverseBytes(proposalMessageHash),
+	)
 
-	return signId
+	return signID
 }
 
-func ProposalRequestId(p *Proposal) []byte {
-	requestIdMessage := []byte("dpproposal")
+func ProposalRequestID(p *Proposal) []byte {
+	requestIDMessage := []byte("dpproposal")
 	heightByteArray := make([]byte, 8)
 	binary.LittleEndian.PutUint64(heightByteArray, uint64(p.Height))
 	roundByteArray := make([]byte, 4)
 	binary.LittleEndian.PutUint32(roundByteArray, uint32(p.Round))
 
-	requestIdMessage = append(requestIdMessage, heightByteArray...)
-	requestIdMessage = append(requestIdMessage, roundByteArray...)
+	requestIDMessage = append(requestIDMessage, heightByteArray...)
+	requestIDMessage = append(requestIDMessage, roundByteArray...)
 
-	return crypto.Sha256(requestIdMessage)
+	return crypto.Sha256(requestIDMessage)
 }
 
-func ProposalRequestIdProto(p *tmproto.Proposal) []byte {
-	requestIdMessage := []byte("dpproposal")
+func ProposalRequestIDProto(p *tmproto.Proposal) []byte {
+	requestIDMessage := []byte("dpproposal")
 	heightByteArray := make([]byte, 8)
 	binary.LittleEndian.PutUint64(heightByteArray, uint64(p.Height))
 	roundByteArray := make([]byte, 4)
 	binary.LittleEndian.PutUint32(roundByteArray, uint32(p.Round))
 
-	requestIdMessage = append(requestIdMessage, heightByteArray...)
-	requestIdMessage = append(requestIdMessage, roundByteArray...)
+	requestIDMessage = append(requestIDMessage, heightByteArray...)
+	requestIDMessage = append(requestIDMessage, roundByteArray...)
 
-	return crypto.Sha256(requestIdMessage)
+	return crypto.Sha256(requestIDMessage)
 }
 
 // ToProto converts Proposal to protobuf

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"io"
 	"net/http"
-	"sync"
+	// "sync"
 )
 
 var (
@@ -18,10 +18,10 @@ type (
 )
 
 type respOption struct {
-	status      int
-	body        io.Reader
-	header      map[string][]string
-	handlerFunc func(w http.ResponseWriter, req *http.Request)
+	status int
+	body   io.Reader
+	header map[string][]string
+	// handlerFunc func(w http.ResponseWriter, req *http.Request)
 }
 
 // Call is a call expectation structure
@@ -30,7 +30,7 @@ type Call struct {
 	expectFunc  ExpectFunc
 	actualCnt   int
 	expectedCnt int
-	guard       sync.Mutex
+	// guard       sync.Mutex
 }
 
 // Respond sets a response by a request

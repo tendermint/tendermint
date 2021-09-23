@@ -3,10 +3,11 @@ package evidence_test
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
 
@@ -46,16 +47,19 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 
 	// create statedb for everyone
 	stateDBs := make([]sm.Store, N)
-	val := types.NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	val := types.NewMockPVForQuorum(quorumHash)
 	// we need validators saved for heights at least as high as we have evidence for
 	height := int64(numEvidence) + 10
-	quorumHash := crypto.RandQuorumHash()
+
+	proTxHashes := make([]*crypto.ProTxHash, N)
 	for i := 0; i < N; i++ {
 		stateDBs[i] = initializeValidatorState(val, height, btcjson.LLMQType_5_60, quorumHash)
+		proTxHashes[i] = &val.ProTxHash
 	}
 
 	// make reactors from statedb
-	reactors, pools := makeAndConnectReactorsAndPools(config, stateDBs)
+	reactors, pools := makeAndConnectReactorsAndPools(config, stateDBs, proTxHashes)
 
 	// set the peer height on each reactor
 	for _, r := range reactors {
@@ -77,18 +81,21 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 func TestReactorSelectiveBroadcast(t *testing.T) {
 	config := cfg.TestConfig()
 
-	val := types.NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	val := types.NewMockPVForQuorum(quorumHash)
 	height1 := int64(numEvidence) + 10
 	height2 := int64(numEvidence) / 2
-
-	quorumHash := crypto.RandQuorumHash()
 
 	// DB1 is ahead of DB2
 	stateDB1 := initializeValidatorState(val, height1, btcjson.LLMQType_5_60, quorumHash)
 	stateDB2 := initializeValidatorState(val, height2, btcjson.LLMQType_5_60, quorumHash)
 
+	proTxHashes := make([]*crypto.ProTxHash, 2)
+	proTxHashes[0] = &val.ProTxHash
+	proTxHashes[1] = &val.ProTxHash
+
 	// make reactors from statedb
-	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2})
+	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2}, proTxHashes)
 
 	// set the peer height on each reactor
 	for _, r := range reactors {
@@ -122,10 +129,9 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 func TestReactorsGossipNoCommittedEvidence(t *testing.T) {
 	config := cfg.TestConfig()
 
-	val := types.NewMockPV()
-	var height int64 = 10
-
 	quorumHash := crypto.RandQuorumHash()
+	val := types.NewMockPVForQuorum(quorumHash)
+	var height int64 = 10
 
 	// DB1 is ahead of DB2
 	stateDB1 := initializeValidatorState(val, height-1, btcjson.LLMQType_5_60, quorumHash)
@@ -134,8 +140,12 @@ func TestReactorsGossipNoCommittedEvidence(t *testing.T) {
 	require.NoError(t, err)
 	state.LastBlockHeight++
 
+	proTxHashes := make([]*crypto.ProTxHash, 2)
+	proTxHashes[0] = &val.ProTxHash
+	proTxHashes[1] = &val.ProTxHash
+
 	// make reactors from statedb
-	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2})
+	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2}, proTxHashes)
 
 	evList := sendEvidence(t, pools[0], val, 2, btcjson.LLMQType_5_60, quorumHash)
 	pools[0].Update(state, evList)
@@ -203,8 +213,9 @@ func TestReactorBroadcastEvidenceMemoryLeak(t *testing.T) {
 	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
 		&types.BlockMeta{Header: types.Header{Time: evidenceTime}},
 	)
-	val := types.NewMockPV()
 	quorumHash := crypto.RandQuorumHash()
+	val := types.NewMockPVForQuorum(quorumHash)
+
 	stateStore := initializeValidatorState(val, 1, btcjson.LLMQType_5_60, quorumHash)
 	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
 	require.NoError(t, err)
@@ -242,11 +253,15 @@ func evidenceLogger() log.Logger {
 			}
 		}
 		return term.FgBgColor{}
-	})
+	}, "debug")
 }
 
 // connect N evidence reactors through N switches
-func makeAndConnectReactorsAndPools(config *cfg.Config, stateStores []sm.Store) ([]*evidence.Reactor,
+func makeAndConnectReactorsAndPools(
+	config *cfg.Config,
+	stateStores []sm.Store,
+	proTxHashes []*crypto.ProTxHash,
+) ([]*evidence.Reactor,
 	[]*evidence.Pool) {
 	N := len(stateStores)
 
@@ -270,7 +285,7 @@ func makeAndConnectReactorsAndPools(config *cfg.Config, stateStores []sm.Store) 
 		reactors[i].SetLogger(logger.With("validator", i))
 	}
 
-	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
+	p2p.MakeConnectedSwitches(config.P2P, proTxHashes, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("EVIDENCE", reactors[i])
 		return s
 
@@ -384,7 +399,7 @@ func TestEvidenceVectors(t *testing.T) {
 		VotingPower: types.DefaultDashVotingPower,
 	}
 
-	valSet := types.NewValidatorSet([]*types.Validator{val}, val.PubKey, btcjson.LLMQType_5_60, crypto.RandQuorumHash())
+	valSet := types.NewValidatorSet([]*types.Validator{val}, val.PubKey, btcjson.LLMQType_5_60, crypto.RandQuorumHash(), true)
 
 	dupl := types.NewDuplicateVoteEvidence(
 		exampleVote(1),

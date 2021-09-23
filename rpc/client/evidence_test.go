@@ -3,13 +3,12 @@ package client_test
 import (
 	"bytes"
 	"context"
-	"github.com/dashevo/dashd-go/btcjson"
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto"
+	"github.com/dashevo/dashd-go/btcjson"
 
-	"github.com/tendermint/tendermint/crypto/bls12381"
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,20 +39,23 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	v := vote.ToProto()
 	v2 := vote2.ToProto()
 
-	vote.BlockSignature, err = val.Key.PrivKey.SignDigest(types.VoteBlockSignId(chainID, v, quorumType, quorumHash))
+	privKey, err := val.Key.PrivateKeyForQuorumHash(quorumHash)
 	require.NoError(t, err)
 
-	vote2.BlockSignature, err = val.Key.PrivKey.SignDigest(types.VoteBlockSignId(chainID, v2, quorumType, quorumHash))
+	vote.BlockSignature, err = privKey.SignDigest(types.VoteBlockSignID(chainID, v, quorumType, quorumHash))
 	require.NoError(t, err)
 
-	vote.StateSignature, err = val.Key.PrivKey.SignDigest(types.VoteStateSignId(chainID, v, quorumType, quorumHash))
+	vote2.BlockSignature, err = privKey.SignDigest(types.VoteBlockSignID(chainID, v2, quorumType, quorumHash))
 	require.NoError(t, err)
 
-	vote2.StateSignature, err = val.Key.PrivKey.SignDigest(types.VoteStateSignId(chainID, v2, quorumType, quorumHash))
+	vote.StateSignature, err = privKey.SignDigest(types.VoteStateSignID(chainID, v, quorumType, quorumHash))
 	require.NoError(t, err)
 
-	validator := types.NewValidator(val.Key.PubKey, 100, val.Key.ProTxHash)
-	valSet := types.NewValidatorSet([]*types.Validator{validator}, validator.PubKey, quorumType, quorumHash)
+	vote2.StateSignature, err = privKey.SignDigest(types.VoteStateSignID(chainID, v2, quorumType, quorumHash))
+	require.NoError(t, err)
+
+	validator := types.NewValidator(privKey.PubKey(), 100, val.Key.ProTxHash)
+	valSet := types.NewValidatorSet([]*types.Validator{validator}, validator.PubKey, quorumType, quorumHash, true)
 
 	return types.NewDuplicateVoteEvidence(vote, vote2, defaultTestTime, valSet)
 }
@@ -62,7 +64,7 @@ func makeEvidences(
 	t *testing.T,
 	val *privval.FilePV,
 	chainID string,
-    quorumType btcjson.LLMQType,
+	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
 ) (correct *types.DuplicateVoteEvidence, fakes []*types.DuplicateVoteEvidence) {
 	vote := types.Vote{
@@ -135,7 +137,7 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 
 	for i, c := range GetClients() {
 		h := int64(1)
-		vals, err := c.Validators(context.Background(), &h, nil, nil, nil)
+		vals, _ := c.Validators(context.Background(), &h, nil, nil, nil)
 		correct, fakes := makeEvidences(t, pv, chainID, vals.QuorumType, *vals.QuorumHash)
 		t.Logf("client %d", i)
 
@@ -149,8 +151,9 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 		require.NoError(t, err)
 
 		proTxHash := pv.Key.ProTxHash
-		bls12381pub := pv.Key.PubKey.(bls12381.PubKey)
-		rawpub := bls12381pub.Bytes()
+		pubKey, err := pv.GetFirstPubKey()
+		require.NoError(t, err, "private validator must have a public key")
+		rawpub := pubKey.Bytes()
 		result2, err := c.ABCIQuery(context.Background(), "/val", proTxHash.Bytes())
 		require.NoError(t, err)
 		qres := result2.Response
@@ -160,7 +163,7 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 		err = abci.ReadMessage(bytes.NewReader(qres.Value), &v)
 		require.NoError(t, err, "Error reading query result, value %v", qres.Value)
 
-		pk, err := cryptoenc.PubKeyFromProto(v.PubKey)
+		pk, err := cryptoenc.PubKeyFromProto(*v.PubKey)
 		require.NoError(t, err)
 
 		require.EqualValues(t, rawpub, pk, "Stored PubKey not equal with expected, value %v", string(qres.Value))

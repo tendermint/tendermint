@@ -1,38 +1,17 @@
 name: Build & Push
-#  Build & Push rebuilds the tendermint docker image on every push to master and creation of tags
-# and pushes the image to https://hub.docker.com/r/interchainio/simapp/tags
+# Build & Push rebuilds the Tenderdash docker image every time a release is published
+# and pushes the image to https://hub.docker.com/r/dashpay/tenderdash/tags
 on:
-  pull_request:
-  push:
-    branches:
-      - master
-    tags:
-      - "v[0-9]+.[0-9]+.[0-9]+" # Push events to matching v*, i.e. v1.0, v20.15.10
-      - "v[0-9]+.[0-9]+.[0-9]+-rc*" # Push events to matching v*, i.e. v1.0-rc1, v20.15.10-rc5
+  workflow_dispatch:
+  release:
+    types:
+      - published
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@master
-      - name: Prepare
-        id: prep
-        run: |
-          DOCKER_IMAGE=dashpay/tenderdash
-          VERSION=noop
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/}
-          elif [[ $GITHUB_REF == refs/heads/* ]]; then
-            VERSION=$(echo ${GITHUB_REF#refs/heads/} | sed -r 's#/+#-#g')
-            if [ "${{ github.event.repository.default_branch }}" = "$VERSION" ]; then
-              VERSION=latest
-            fi
-          fi
-          TAGS="${DOCKER_IMAGE}:${VERSION}"
-          if [[ $VERSION =~ ^v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-            TAGS="$TAGS,${DOCKER_IMAGE}:${VERSION}"
-          fi
-          echo ::set-output name=tags::${TAGS}
+      - uses: actions/checkout@v2
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@master
@@ -42,12 +21,40 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
 
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
       - name: Login to DockerHub
-        if: ${{ github.event_name != 'pull_request' }}
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set suffix to Docker tags
+        uses: actions/github-script@v3
+        id: suffix
+        with:
+          result-encoding: string
+          script: "return (context.payload.release.tag_name.includes('-dev') ? '-dev' : '');"
+
+      - name: Set Docker tags and labels
+        id: docker_meta
+        uses: docker/metadata-action@v3
+        with:
+          images: dashpay/tenderdash
+          tags: |
+            type=match,pattern=v(\d+),group=1
+            type=match,pattern=v(\d+.\d+),group=1
+            type=match,pattern=v(\d+.\d+.\d+),group=1
+            type=match,pattern=v(.*),group=1,suffix=,enable=${{ contains(github.event.release.tag_name, '-dev') }}
+          flavor: |
+            latest=${{ !contains(github.event.release.tag_name, '-dev') }}
+            suffix=${{ steps.suffix.outputs.result }}
 
       - name: Publish to Docker Hub
         uses: docker/build-push-action@v2
@@ -55,5 +62,19 @@ jobs:
           context: .
           file: ./DOCKER/Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.prep.outputs.tags }}
+          push: true
+          tags: ${{ steps.docker_meta.outputs.tags }}
+          labels: ${{ steps.docker_meta.outputs.labels }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new
+
+      # Temp fix
+      # https://github.com/docker/build-push-action/issues/252
+      # https://github.com/moby/buildkit/issues/1896
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      - name: Show Docker image digest
+        run: echo ${{ steps.docker_build.outputs.digest }}

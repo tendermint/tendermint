@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -34,8 +36,8 @@ type StateProvider interface {
 	State(ctx context.Context, height uint64) (sm.State, error)
 }
 
-// lightClientStateProvider is a state provider using the light client.
-type lightClientStateProvider struct {
+// clientStateProvider is a state provider using the light client.
+type clientStateProvider struct {
 	tmsync.Mutex  // light.Client is not concurrency-safe
 	lc            *light.Client
 	version       tmstate.Version
@@ -50,7 +52,7 @@ func NewLightClientStateProvider(
 	version tmstate.Version,
 	initialHeight int64,
 	servers []string,
-	trustOptions light.TrustOptions,
+	dashCoreRPCClient dashcore.Client,
 	logger log.Logger,
 ) (StateProvider, error) {
 	if len(servers) < 2 {
@@ -71,12 +73,20 @@ func NewLightClientStateProvider(
 		providerRemotes[provider] = server
 	}
 
-	lc, err := light.NewClient(ctx, chainID, trustOptions, providers[0], providers[1:],
-		lightdb.New(dbm.NewMemDB(), ""), light.Logger(logger), light.MaxRetryAttempts(5))
+	lc, err := light.NewClient(
+		ctx,
+		chainID,
+		providers[0],
+		providers[1:],
+		lightdb.New(dbm.NewMemDB(), ""),
+		dashCoreRPCClient,
+		light.Logger(logger),
+		light.MaxRetryAttempts(5),
+	)
 	if err != nil {
 		return nil, err
 	}
-	return &lightClientStateProvider{
+	return &clientStateProvider{
 		lc:            lc,
 		version:       version,
 		initialHeight: initialHeight,
@@ -85,7 +95,7 @@ func NewLightClientStateProvider(
 }
 
 // AppHash implements StateProvider.
-func (s *lightClientStateProvider) AppHash(ctx context.Context, height uint64) ([]byte, error) {
+func (s *clientStateProvider) AppHash(ctx context.Context, height uint64) ([]byte, error) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -114,7 +124,7 @@ func (s *lightClientStateProvider) AppHash(ctx context.Context, height uint64) (
 }
 
 // Commit implements StateProvider.
-func (s *lightClientStateProvider) Commit(ctx context.Context, height uint64) (*types.Commit, error) {
+func (s *clientStateProvider) Commit(ctx context.Context, height uint64) (*types.Commit, error) {
 	s.Lock()
 	defer s.Unlock()
 	header, err := s.lc.VerifyLightBlockAtHeight(ctx, int64(height), time.Now())
@@ -125,7 +135,7 @@ func (s *lightClientStateProvider) Commit(ctx context.Context, height uint64) (*
 }
 
 // State implements StateProvider.
-func (s *lightClientStateProvider) State(ctx context.Context, height uint64) (sm.State, error) {
+func (s *clientStateProvider) State(ctx context.Context, height uint64) (sm.State, error) {
 	s.Lock()
 	defer s.Unlock()
 

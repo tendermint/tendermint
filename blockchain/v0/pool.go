@@ -178,7 +178,7 @@ func (pool *BlockPool) IsCaughtUp() bool {
 	// Ensures we've either received a block or waited some amount of time,
 	// and that we're synced to the highest known height.
 	// Note we use maxPeerHeight - 1 because to sync block H requires block H+1
-	// to verify the LastCommit.
+	// to verify the LastPrecommits.
 	receivedBlockOrTimedOut := pool.height > 0 || time.Since(pool.startTime) > 5*time.Second
 	ourChainIsLongestAmongPeers := pool.maxPeerHeight == 0 || pool.height >= (pool.maxPeerHeight-1)
 	isCaughtUp := receivedBlockOrTimedOut && ourChainIsLongestAmongPeers

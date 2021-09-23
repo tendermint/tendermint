@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/tendermint/tendermint/crypto"
+
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
@@ -28,6 +30,7 @@ func MaxNodeInfoSize() int {
 // and determines if we're compatible.
 type NodeInfo interface {
 	ID() ID
+	GetProTxHash() *crypto.ProTxHash
 	nodeInfoAddress
 	nodeInfoTransport
 }
@@ -84,6 +87,9 @@ type DefaultNodeInfo struct {
 	DefaultNodeID ID     `json:"id"`          // authenticated identifier
 	ListenAddr    string `json:"listen_addr"` // accepting incoming
 
+	// Node Type
+	ProTxHash *crypto.ProTxHash
+
 	// Check compatibility.
 	// Channels are HexBytes so easier to read as JSON
 	Network  string           `json:"network"`  // network/chain ID
@@ -104,6 +110,10 @@ type DefaultNodeInfoOther struct {
 // ID returns the node's peer ID.
 func (info DefaultNodeInfo) ID() ID {
 	return info.DefaultNodeID
+}
+
+func (info DefaultNodeInfo) GetProTxHash() *crypto.ProTxHash {
+	return info.ProTxHash
 }
 
 // Validate checks the self-reported DefaultNodeInfo is safe.
@@ -242,6 +252,9 @@ func (info DefaultNodeInfo) ToProto() *tmp2p.DefaultNodeInfo {
 	dni.Version = info.Version
 	dni.Channels = info.Channels
 	dni.Moniker = info.Moniker
+	if info.ProTxHash != nil {
+		dni.ProTxHash = *info.ProTxHash
+	}
 	dni.Other = tmp2p.DefaultNodeInfoOther{
 		TxIndex:    info.Other.TxIndex,
 		RPCAddress: info.Other.RPCAddress,
@@ -270,6 +283,11 @@ func DefaultNodeInfoFromToProto(pb *tmp2p.DefaultNodeInfo) (DefaultNodeInfo, err
 			TxIndex:    pb.Other.TxIndex,
 			RPCAddress: pb.Other.RPCAddress,
 		},
+	}
+
+	if len(pb.ProTxHash) > 0 {
+		proTxHash := crypto.ProTxHash(pb.ProTxHash)
+		dni.ProTxHash = &proTxHash
 	}
 
 	return dni, nil

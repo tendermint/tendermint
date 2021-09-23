@@ -29,7 +29,7 @@ func RPCRoutes(c *lrpc.Client) map[string]*rpcserver.RPCFunc {
 		"commit":        rpcserver.NewRPCFunc(makeCommitFunc(c), "height"),
 		"tx":            rpcserver.NewRPCFunc(makeTxFunc(c), "hash,prove"),
 		"tx_search":     rpcserver.NewRPCFunc(makeTxSearchFunc(c), "query,prove,page,per_page,order_by"),
-		"validators":    rpcserver.NewRPCFunc(makeValidatorsFunc(c),
+		"validators": rpcserver.NewRPCFunc(makeValidatorsFunc(c),
 			"height,page,per_page,request_threshold_public_key"),
 
 		"dump_consensus_state": rpcserver.NewRPCFunc(makeDumpConsensusStateFunc(c), ""),
@@ -153,6 +153,7 @@ func makeTxSearchFunc(c *lrpc.Client) rpcTxSearchFunc {
 	}
 }
 
+/*
 type rpcBlockSearchFunc func(
 	ctx *rpctypes.Context,
 	query string,
@@ -160,7 +161,9 @@ type rpcBlockSearchFunc func(
 	page, perPage *int,
 	orderBy string,
 ) (*ctypes.ResultBlockSearch, error)
+*/
 
+/*
 func makeBlockSearchFunc(c *lrpc.Client) rpcBlockSearchFunc {
 	return func(
 		ctx *rpctypes.Context,
@@ -171,7 +174,7 @@ func makeBlockSearchFunc(c *lrpc.Client) rpcBlockSearchFunc {
 	) (*ctypes.ResultBlockSearch, error) {
 		return c.BlockSearch(ctx.Context(), query, page, perPage, orderBy)
 	}
-}
+}*/
 
 type rpcValidatorsFunc func(ctx *rpctypes.Context, height *int64,
 	page, perPage *int, requestThresholdPublicKey *bool) (*ctypes.ResultValidators, error)

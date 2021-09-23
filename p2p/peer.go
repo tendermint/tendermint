@@ -161,7 +161,19 @@ func (p *peer) String() string {
 		return fmt.Sprintf("Peer{%v %v out}", p.mconn, p.ID())
 	}
 
-	return fmt.Sprintf("Peer{%v %v in}", p.mconn, p.ID())
+	proTxHash := p.NodeInfo().GetProTxHash()
+	mConnString := fmt.Sprintf("%v", p.mconn)
+	if mConnString == "MConn{pipe}" {
+		mConnString = ""
+	} else {
+		mConnString += " "
+	}
+
+	if proTxHash != nil {
+		return fmt.Sprintf("Peer{%sproTxHash:%v}", mConnString, proTxHash.ShortString())
+	}
+	return fmt.Sprintf("Peer{%speerId:%v}", mConnString, p.ID())
+
 }
 
 //---------------------------------------------------

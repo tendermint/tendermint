@@ -1,6 +1,7 @@
 package os
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -84,16 +85,19 @@ func MustWriteFile(filePath string, contents []byte, mode os.FileMode) {
 
 // CopyFile copies a file. It truncates the destination file if it exists.
 func CopyFile(src, dst string) error {
-	info, err := os.Stat(src)
-	if err != nil {
-		return err
-	}
-
 	srcfile, err := os.Open(src)
 	if err != nil {
 		return err
 	}
 	defer srcfile.Close()
+
+	info, err := srcfile.Stat()
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return errors.New("cannot read from directories")
+	}
 
 	// create new file, truncate if exists and apply same permissions as the original one
 	dstfile, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE|os.O_TRUNC, info.Mode().Perm())

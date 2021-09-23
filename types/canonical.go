@@ -81,7 +81,7 @@ func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote 
 	}
 }
 
-// CanonicalizeVote transforms the given Vote to a CanonicalVote, which does
+// CanonicalizeStateVote transforms the given Vote to a CanonicalStateVote, which does
 // not contain ValidatorIndex and ValidatorProTxHash fields.
 func CanonicalizeStateVote(vote *tmproto.Vote) tmproto.CanonicalStateVote {
 	return tmproto.CanonicalStateVote{

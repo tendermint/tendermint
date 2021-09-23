@@ -206,7 +206,7 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 
 // LoadBlockCommit returns the Commit for the given height.
 // This commit consists of the +2/3 and other Precommit-votes for block at `height`,
-// and it comes from the block.LastCommit for `height+1`.
+// and it comes from the block.LastPrecommits for `height+1`.
 // If no commit is found for the given height, it returns nil.
 func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	var pbc = new(tmproto.Commit)
@@ -230,7 +230,7 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 
 // LoadSeenCommit returns the locally seen Commit for the given height.
 // This is useful when we've seen a commit, but there has not yet been
-// a new block at `height + 1` that includes this commit in its block.LastCommit.
+// a new block at `height + 1` that includes this commit in its block.LastPrecommits.
 func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	var pbc = new(tmproto.Commit)
 	bz, err := bs.db.Get(calcSeenCommitKey(height))

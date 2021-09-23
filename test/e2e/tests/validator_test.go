@@ -2,8 +2,9 @@ package e2e_test
 
 import (
 	"bytes"
-	"github.com/dashevo/dashd-go/btcjson"
 	"testing"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 
@@ -88,7 +89,7 @@ func TestValidator_Propose(t *testing.T) {
 		expectCount := 0
 		proposeCount := 0
 		for _, block := range blocks {
-			if bytes.Equal(valSchedule.Set.Proposer.Address, proTxHash) {
+			if bytes.Equal(valSchedule.Set.Proposer.ProTxHash, proTxHash) {
 				expectCount++
 				if bytes.Equal(block.ProposerProTxHash, proTxHash) {
 					proposeCount++
@@ -101,46 +102,6 @@ func TestValidator_Propose(t *testing.T) {
 			"node did not propose any blocks (expected %v)", expectCount)
 		if expectCount > 5 {
 			require.GreaterOrEqual(t, proposeCount, 3, "validator didn't propose even 3 blocks")
-		}
-	})
-}
-
-// Tests that a validator signs blocks when it's supposed to. It tolerates some
-// missed blocks, e.g. due to testnet perturbations.
-func TestValidator_Sign(t *testing.T) {
-	blocks := fetchBlockChain(t)
-	testNode(t, func(t *testing.T, node e2e.Node) {
-		if node.Mode != e2e.ModeValidator {
-			return
-		}
-		proTxHash := node.ProTxHash
-		valSchedule := newValidatorSchedule(*node.Testnet)
-
-		expectCount := 0
-		signCount := 0
-		for _, block := range blocks[1:] { // Skip first block, since it has no signatures
-			signed := false
-			for _, sig := range block.LastCommit.Signatures {
-				if bytes.Equal(sig.ValidatorProTxHash, proTxHash) {
-					signed = true
-					break
-				}
-			}
-			if valSchedule.Set.HasProTxHash(proTxHash) {
-				expectCount++
-				if signed {
-					signCount++
-				}
-			} else {
-				require.False(t, signed, "unexpected signature for block %v", block.LastCommit.Height)
-			}
-			valSchedule.Increment(1)
-		}
-
-		require.False(t, signCount == 0 && expectCount > 0,
-			"validator did not sign any blocks (expected %v)", expectCount)
-		if expectCount > 7 {
-			require.GreaterOrEqual(t, signCount, 3, "validator didn't sign even 3 blocks (expected %v)", expectCount)
 		}
 	})
 }
@@ -179,7 +140,7 @@ func newValidatorSchedule(testnet e2e.Testnet) *validatorSchedule {
 
 	return &validatorSchedule{
 		height:                    testnet.InitialHeight,
-		Set:                       types.NewValidatorSet(makeVals(valMap), thresholdPublicKey, quorumType, quorumHash),
+		Set:                       types.NewValidatorSet(makeVals(valMap), thresholdPublicKey, quorumType, quorumHash, true),
 		updates:                   testnet.ValidatorUpdates,
 		thresholdPublicKeyUpdates: testnet.ThresholdPublicKeyUpdates,
 		quorumHashUpdates:         testnet.QuorumHashUpdates,
@@ -200,7 +161,8 @@ func (s *validatorSchedule) Increment(heights int64) {
 								panic(err)
 							}
 						} else {
-							s.Set = types.NewValidatorSet(makeVals(update), thresholdPublicKeyUpdate, btcjson.LLMQType_5_60, quorumHashUpdate)
+							s.Set = types.NewValidatorSet(makeVals(update), thresholdPublicKeyUpdate, btcjson.LLMQType_5_60,
+								quorumHashUpdate, true)
 						}
 					}
 				}

@@ -37,7 +37,7 @@ const (
 )
 
 type consensusReactor interface {
-	// for when we switch from blockchain reactor and fast sync to
+	// SwitchToConsensus is for when we switch from blockchain reactor and fast sync to
 	// the consensus machine
 	SwitchToConsensus(state state.State, skipWAL bool)
 }

@@ -36,6 +36,7 @@ const (
 	EventUnlock           = "Unlock"
 	EventValidBlock       = "ValidBlock"
 	EventVote             = "Vote"
+	EventCommit           = "Commit"
 )
 
 // ENCODING / DECODING
@@ -117,6 +118,10 @@ type EventDataCompleteProposal struct {
 
 type EventDataVote struct {
 	Vote *Vote
+}
+
+type EventDataCommit struct {
+	Commit *Commit
 }
 
 type EventDataString string

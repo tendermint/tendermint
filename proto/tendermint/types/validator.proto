@@ -13,11 +13,11 @@ message ValidatorSet {
   tendermint.crypto.PublicKey threshold_public_key = 4 [(gogoproto.nullable) = false];
   int32                       quorum_type          = 5;
   bytes                       quorum_hash          = 6;
+  bool                        has_public_keys      = 7;
 }
 
 message Validator {
-  bytes                       address           = 1;
-  tendermint.crypto.PublicKey pub_key           = 2 [(gogoproto.nullable) = false];
+  tendermint.crypto.PublicKey pub_key           = 2 [(gogoproto.nullable) = true];
   int64                       voting_power      = 3;
   int64                       proposer_priority = 4;
   bytes                       pro_tx_hash       = 5;

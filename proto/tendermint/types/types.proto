@@ -29,6 +29,7 @@ enum SignedMsgType {
   // Votes
   SIGNED_MSG_TYPE_PREVOTE   = 1 [(gogoproto.enumvalue_customname) = "PrevoteType"];
   SIGNED_MSG_TYPE_PRECOMMIT = 2 [(gogoproto.enumvalue_customname) = "PrecommitType"];
+  SIGNED_MSG_TYPE_COMMIT    = 3 [(gogoproto.enumvalue_customname) = "CommitType"];
 
   // Proposals
   SIGNED_MSG_TYPE_PROPOSAL = 32 [(gogoproto.enumvalue_customname) = "ProposalType"];
@@ -54,7 +55,7 @@ message BlockID {
 
 // StateID
 message StateID {
-  bytes         last_app_hash            = 1;
+  bytes last_app_hash = 1;
 }
 
 // --------------------------------
@@ -62,11 +63,11 @@ message StateID {
 // Header defines the structure of a Tendermint block header.
 message Header {
   // basic block info
-  tendermint.version.Consensus version  = 1 [(gogoproto.nullable) = false];
-  string                       chain_id = 2 [(gogoproto.customname) = "ChainID"];
-  int64                        height   = 3;
+  tendermint.version.Consensus version                  = 1 [(gogoproto.nullable) = false];
+  string                       chain_id                 = 2 [(gogoproto.customname) = "ChainID"];
+  int64                        height                   = 3;
   uint32                       core_chain_locked_height = 100;
-  google.protobuf.Timestamp    time     = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  google.protobuf.Timestamp    time                     = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 
   // prev block info
   BlockID last_block_id = 5 [(gogoproto.nullable) = false];
@@ -83,16 +84,16 @@ message Header {
   bytes last_results_hash    = 12;  // root hash of all results from the txs from the previous block
 
   // consensus info
-  bytes evidence_hash    = 13;  // evidence included in the block
+  bytes evidence_hash        = 13;   // evidence included in the block
   bytes proposer_pro_tx_hash = 101;  // original proposer of the block
 }
 
 // CoreChainLock represents a core chain lock for synchronization between state data and core chain
 message CoreChainLock {
-  option (gogoproto.equal)    = true;
+  option (gogoproto.equal) = true;
   uint32 core_block_height = 1;
-  bytes core_block_hash = 2;
-  bytes signature = 3;
+  bytes  core_block_hash   = 2;
+  bytes  signature         = 3;
 }
 
 // Data contains the set of transactions included in the block
@@ -111,42 +112,33 @@ message Vote {
   int32         round    = 3;
   BlockID       block_id = 4
       [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];  // zero if vote is nil.
-  StateID       state_id = 9 [(gogoproto.customname) = "StateID", (gogoproto.nullable) = false];
-  bytes validator_pro_tx_hash = 6;
-  int32 validator_index   = 7;
-  bytes block_signature         = 8;
-  bytes state_signature         = 10;
+  StateID state_id              = 9 [(gogoproto.customname) = "StateID", (gogoproto.nullable) = false];
+  bytes   validator_pro_tx_hash = 6;
+  int32   validator_index       = 7;
+  bytes   block_signature       = 8;
+  bytes   state_signature       = 10;
 }
 
 // Commit contains the evidence that a block was committed by a set of validators.
 message Commit {
-  int64                         height     = 1;
-  int32                         round      = 2;
-  BlockID                       block_id   = 3 [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];
-  StateID                       state_id   = 5 [(gogoproto.nullable) = false, (gogoproto.customname) = "StateID"];
-  repeated CommitSig            signatures = 4 [(gogoproto.nullable) = false];
-  bytes quorum_hash = 6;
-  bytes threshold_block_signature = 7;
-  bytes threshold_state_signature = 8;
-}
-
-// CommitSig is a part of the Vote included in a Commit.
-message CommitSig {
-  BlockIDFlag               block_id_flag     = 1;
-  bytes                     validator_pro_tx_hash = 2;
-  bytes block_signature = 4;
-  bytes state_signature = 5;
+  int64   height                    = 1;
+  int32   round                     = 2;
+  BlockID block_id                  = 3 [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];
+  StateID state_id                  = 4 [(gogoproto.nullable) = false, (gogoproto.customname) = "StateID"];
+  bytes   quorum_hash               = 6;
+  bytes   threshold_block_signature = 7;
+  bytes   threshold_state_signature = 8;
 }
 
 message Proposal {
-  SignedMsgType             type      = 1;
-  int64                     height    = 2;
+  SignedMsgType             type                     = 1;
+  int64                     height                   = 2;
   uint32                    core_chain_locked_height = 100;
-  int32                     round     = 3;
-  int32                     pol_round = 4;
-  BlockID                   block_id  = 5 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
-  google.protobuf.Timestamp timestamp = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  bytes signature = 7;
+  int32                     round                    = 3;
+  int32                     pol_round                = 4;
+  BlockID                   block_id                 = 5 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
+  google.protobuf.Timestamp timestamp                = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  bytes                     signature                = 7;
 }
 
 message SignedHeader {
@@ -160,11 +152,11 @@ message LightBlock {
 }
 
 message BlockMeta {
-  BlockID block_id   = 1 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
-  StateID state_id   = 101 [(gogoproto.customname) = "StateID", (gogoproto.nullable) = false];
-  int64   block_size = 2;
-  Header  header     = 3 [(gogoproto.nullable) = false];
-  int64   num_txs    = 4;
+  BlockID block_id            = 1 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
+  StateID state_id            = 101 [(gogoproto.customname) = "StateID", (gogoproto.nullable) = false];
+  int64   block_size          = 2;
+  Header  header              = 3 [(gogoproto.nullable) = false];
+  int64   num_txs             = 4;
   bool    has_core_chain_lock = 100;
 }
 

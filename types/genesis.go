@@ -1,13 +1,13 @@
 package types
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"io/ioutil"
 	"time"
+
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
 
@@ -32,7 +32,6 @@ const (
 
 // GenesisValidator is an initial validator.
 type GenesisValidator struct {
-	Address   Address          `json:"address"`
 	PubKey    crypto.PubKey    `json:"pub_key"`
 	Power     int64            `json:"power"`
 	Name      string           `json:"name"`
@@ -66,12 +65,10 @@ func (genDoc *GenesisDoc) SaveAs(file string) error {
 
 // ValidatorHash returns the hash of the validator set contained in the GenesisDoc
 func (genDoc *GenesisDoc) ValidatorHash() []byte {
-	vals := make([]*Validator, len(genDoc.Validators))
-	for i, v := range genDoc.Validators {
-		vals[i] = NewValidatorDefaultVotingPower(v.PubKey, v.ProTxHash)
+	if genDoc.QuorumHash == nil {
+		panic("quorum hash should not be nil")
 	}
-	vset := NewValidatorSet(vals, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash)
-	return vset.Hash()
+	return genDoc.QuorumHash
 }
 
 // ValidateAndComplete checks that all necessary fields are present
@@ -107,15 +104,9 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		return err
 	}
 
-	for i, v := range genDoc.Validators {
+	for _, v := range genDoc.Validators {
 		if v.Power == 0 {
 			return fmt.Errorf("the genesis file cannot contain validators with no voting power: %v", v)
-		}
-		if len(v.Address) > 0 && !bytes.Equal(v.PubKey.Address(), v.Address) {
-			return fmt.Errorf("incorrect address for validator %v in the genesis file, should be %v", v, v.PubKey.Address())
-		}
-		if len(v.Address) == 0 {
-			genDoc.Validators[i].Address = v.PubKey.Address()
 		}
 		if len(v.ProTxHash) != crypto.ProTxHashSize {
 			return fmt.Errorf("validators must all contain a pro_tx_hash of size 32")
@@ -133,7 +124,7 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		return fmt.Errorf("the quorum hash must be at least 20 bytes long (%d Validator(s))", len(genDoc.Validators))
 	}
 
-	if genDoc.Validators != nil && genDoc.QuorumType == 0 {
+	if genDoc.QuorumType == 0 {
 		return fmt.Errorf("the quorum type must not be 0 (%d Validator(s))", len(genDoc.Validators))
 	}
 

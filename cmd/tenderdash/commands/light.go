@@ -11,12 +11,13 @@ import (
 	"strings"
 	"time"
 
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+
 	"github.com/spf13/cobra"
 
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
-	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/light"
 	lproxy "github.com/tendermint/tendermint/light/proxy"
@@ -36,8 +37,7 @@ will be verified before passing them back to the caller. Other than
 that, it will present the same interface as a full Tendermint node.
 
 Furthermore to the chainID, a fresh instance of a light client will
-need a primary RPC address, a trusted hash and height and witness RPC addresses
-(if not using sequential verification). To restart the node, thereafter
+need a primary RPC address and witness RPC addresses. To restart the node, thereafter
 only the chainID is required.
 
 When /abci_query is called, the Merkle key path format is:
@@ -61,16 +61,14 @@ var (
 	home               string
 	maxOpenConnections int
 
-	sequential     bool
-	trustingPeriod time.Duration
-	trustedHeight  int64
-	trustedHash    []byte
-	trustLevelStr  string
-
 	verbose bool
 
 	primaryKey   = []byte("primary")
 	witnessesKey = []byte("witnesses")
+
+	dashCoreRPCHost string
+	dashCoreRPCUser string
+	dashCoreRPCPass string
 )
 
 func init() {
@@ -87,17 +85,13 @@ func init() {
 		"max-open-connections",
 		900,
 		"maximum number of simultaneous connections (including WebSocket).")
-	LightCmd.Flags().DurationVar(&trustingPeriod, "trusting-period", 168*time.Hour,
-		"trusting period that headers can be verified within. Should be significantly less than the unbonding period")
-	LightCmd.Flags().Int64Var(&trustedHeight, "height", 1, "Trusted header's height")
-	LightCmd.Flags().BytesHexVar(&trustedHash, "hash", []byte{}, "Trusted header's hash")
 	LightCmd.Flags().BoolVar(&verbose, "verbose", false, "Verbose output")
-	LightCmd.Flags().StringVar(&trustLevelStr, "trust-level", "1/3",
-		"trust level. Must be between 1/3 and 3/3",
-	)
-	LightCmd.Flags().BoolVar(&sequential, "sequential", false,
-		"sequential verification. Verify all headers sequentially as opposed to using skipping verification",
-	)
+	LightCmd.Flags().StringVar(&dashCoreRPCHost, "dchost", "",
+		"host address of the Dash Core RPC node")
+	LightCmd.Flags().StringVar(&dashCoreRPCHost, "dcuser", "",
+		"Dash Core RPC node user")
+	LightCmd.Flags().StringVar(&dashCoreRPCHost, "dcpass", "",
+		"Dash Core RPC node password")
 }
 
 func runProxy(cmd *cobra.Command, args []string) error {
@@ -141,11 +135,6 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	trustLevel, err := tmmath.ParseFraction(trustLevelStr)
-	if err != nil {
-		return fmt.Errorf("can't parse trust level: %w", err)
-	}
-
 	options := []light.Option{
 		light.Logger(logger),
 		light.ConfirmationFunction(func(action string) bool {
@@ -164,39 +153,20 @@ func runProxy(cmd *cobra.Command, args []string) error {
 				}
 			}
 		}),
+		light.DashCoreVerification(),
 	}
 
-	if sequential {
-		options = append(options, light.SequentialVerification())
-	} else {
-		options = append(options, light.SkippingVerification(trustLevel))
-	}
+	dashCoreRPCClient, _ := dashcore.NewRPCClient(dashCoreRPCHost, dashCoreRPCUser, dashCoreRPCPass)
 
-	var c *light.Client
-	if trustedHeight > 0 && len(trustedHash) > 0 { // fresh installation
-		c, err = light.NewHTTPClient(
-			context.Background(),
-			chainID,
-			light.TrustOptions{
-				Period: trustingPeriod,
-				Height: trustedHeight,
-				Hash:   trustedHash,
-			},
-			primaryAddr,
-			witnessesAddrs,
-			dbs.New(db, chainID),
-			options...,
-		)
-	} else { // continue from latest state
-		c, err = light.NewHTTPClientFromTrustedStore(
-			chainID,
-			trustingPeriod,
-			primaryAddr,
-			witnessesAddrs,
-			dbs.New(db, chainID),
-			options...,
-		)
-	}
+	c, err := light.NewHTTPClient(
+		context.Background(),
+		chainID,
+		primaryAddr,
+		witnessesAddrs,
+		dbs.New(db, chainID),
+		dashCoreRPCClient,
+		options...,
+	)
 	if err != nil {
 		return err
 	}
