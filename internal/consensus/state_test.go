@@ -416,7 +416,7 @@ func TestStateFullRound2(t *testing.T) {
 
 // two validators, 4 rounds.
 // two vals take turns proposing. val1 locks on first one, precommits nil on everything else
-func TestStateLockNoPOL(t *testing.T) {
+func TestStateLock_NoPOL(t *testing.T) {
 	config := configSetup(t)
 
 	cs1, vss := randState(config, 2)
@@ -602,12 +602,12 @@ func TestStateLockNoPOL(t *testing.T) {
 	ensurePrecommit(t, voteCh, height, round)
 }
 
-// TestStateLockPOLRelock tests that a validator maintains updates its locked
+// TestStateLock_POLRelock tests that a validator maintains updates its locked
 // block if the following conditions are met within a round:
 // 1. The validator received a valid proposal for the block
 // 2. The validator received prevotes representing greater than 2/3 of the voting
 // power on the network for the block.
-func TestStateLockPOLRelock(t *testing.T) {
+func TestStateLock_POLRelock(t *testing.T) {
 	config := configSetup(t)
 
 	cs1, vss := randState(config, 4)
@@ -706,12 +706,12 @@ func TestStateLockPOLRelock(t *testing.T) {
 	validatePrecommit(t, cs1, round, round, vss[0], propBlockR1Hash, propBlockR1Hash)
 }
 
-// TestStateLockPOLDoesNotUnlock tests that a validator maintains its locked block
+// TestStateLock_POLDoesNotUnlock tests that a validator maintains its locked block
 // despite receiving +2/3 nil prevotes and nil precommits from other validators.
 // Tendermint used to 'unlock' its locked block when greater than 2/3 prevotes
 // for a nil block were seen. This behavior has been removed and this test ensures
 // that it has been completely removed.
-func TestStatePOLDoesNotUnlock(t *testing.T) {
+func TestStateLock_POLDoesNotUnlock(t *testing.T) {
 	config := configSetup(t)
 	/*
 		All of the assertions in this test occur on the `cs1` validator.
@@ -843,11 +843,10 @@ func TestStatePOLDoesNotUnlock(t *testing.T) {
 
 }
 
-// 4 vals, v1 locks on proposed block in the first round but the other validators only prevote
-// In the second round, v1 misses the proposal but sees a majority prevote an unknown block so
-// v1 should unlock and precommit nil. In the third round another block is proposed, all vals
-// prevote and now v1 can lock onto the third block and precommit that
-func TestStateLockPOLUnlockOnUnknownBlock(t *testing.T) {
+// TestStateLock_MissingProposalWhenPOLSeenDoesNotUnlock tests that observing
+// a two thirds majority for a block does not cause a validator to relock on the
+// new block if a proposal was not seen for that block.
+func TestStateLock_MissingProposalWhenPOLSeenDoesNotRelock(t *testing.T) {
 	config := configSetup(t)
 
 	cs1, vss := randState(config, 4)
@@ -975,7 +974,7 @@ func TestStateLockPOLUnlockOnUnknownBlock(t *testing.T) {
 // a polka at round 1 but we miss it
 // then a polka at round 2 that we lock on
 // then we see the polka from round 1 but shouldn't unlock
-func TestStateLockPOLSafety1(t *testing.T) {
+func TestStateLock_POLSafety1(t *testing.T) {
 	config := configSetup(t)
 
 	cs1, vss := randState(config, 4)
@@ -1098,7 +1097,7 @@ func TestStateLockPOLSafety1(t *testing.T) {
 
 // What we want:
 // dont see P0, lock on P1 at R1, dont unlock using P0 at R2
-func TestStateLockPOLSafety2(t *testing.T) {
+func TestStateLock_POLSafety2(t *testing.T) {
 	config := configSetup(t)
 
 	cs1, vss := randState(config, 4)
