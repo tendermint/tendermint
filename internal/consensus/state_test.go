@@ -458,8 +458,8 @@ func TestStateLock_NoPOL(t *testing.T) {
 	signAddVotes(config, cs1, tmproto.PrevoteType, theBlockHash, thePartSetHeader, vs2)
 	ensurePrevote(t, voteCh, height, round) // prevote
 
-	ensurePrecommit(t, voteCh, height, round) // precommit
 	// the proposed block should now be locked and our precommit added
+	ensurePrecommit(t, voteCh, height, round)
 	validatePrecommit(t, cs1, round, round, vss[0], theBlockHash, theBlockHash)
 
 	// we should now be stuck in limbo forever, waiting for more precommits
@@ -491,13 +491,12 @@ func TestStateLock_NoPOL(t *testing.T) {
 	rs := cs1.GetRoundState()
 
 	if rs.ProposalBlock != nil {
-		panic("Expected proposal block to be nil")
+		t.Fatal("Expected proposal block to be nil")
 	}
 
-	// wait to finish prevote
+	// we should have prevoted nil since we did not see a proposal in the round.
 	ensurePrevote(t, voteCh, height, round)
-	// we should have prevoted our locked block
-	validatePrevote(t, cs1, round, vss[0], rs.LockedBlock.Hash())
+	validatePrevote(t, cs1, round, vss[0], nil)
 
 	// add a conflicting prevote from the other validator
 	signAddVotes(config, cs1, tmproto.PrevoteType, hash, rs.LockedBlock.MakePartSet(partSize).Header(), vs2)
@@ -507,9 +506,9 @@ func TestStateLock_NoPOL(t *testing.T) {
 	// and then prevote wait, which should timeout. then wait for precommit
 	ensureNewTimeout(t, timeoutWaitCh, height, round, cs1.config.Prevote(round).Nanoseconds())
 
-	ensurePrecommit(t, voteCh, height, round) // precommit
-	// the proposed block should still be locked and our precommit added
-	// we should precommit nil and be locked on the proposal
+	// the proposed block should still be locked block.
+	// we should precommit nil and be locked on the proposal.
+	ensurePrecommit(t, voteCh, height, round)
 	validatePrecommit(t, cs1, round, 0, vss[0], nil, theBlockHash)
 
 	// add conflicting precommit from vs2
@@ -585,9 +584,10 @@ func TestStateLock_NoPOL(t *testing.T) {
 	}
 
 	ensureNewProposal(t, proposalCh, height, round)
-	ensurePrevote(t, voteCh, height, round) // prevote
-	// prevote for locked block (not proposal)
-	validatePrevote(t, cs1, 3, vss[0], cs1.LockedBlock.Hash())
+
+	// prevote for nil since we did not see a proposal for our locked block in the round.
+	ensurePrevote(t, voteCh, height, round)
+	validatePrevote(t, cs1, 3, vss[0], nil)
 
 	// prevote for proposed block
 	signAddVotes(config, cs1, tmproto.PrevoteType, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)
@@ -692,11 +692,9 @@ func TestStateLock_POLUpdateLock(t *testing.T) {
 	// ensure that the validator receives the proposal.
 	ensureNewProposal(t, proposalCh, height, round)
 
-	// Prevote our locked block.
-	// TODO: Ensure we prevote for the proposal if it is valid and from a round greater than
-	// the valid round: https://github.com/tendermint/tendermint/issues/6850.
+	// Prevote our nil since the proposal does not match our locked block.
 	ensurePrevote(t, voteCh, height, round)
-	validatePrevote(t, cs1, round, vss[0], theBlockHash)
+	validatePrevote(t, cs1, round, vss[0], nil)
 
 	// Add prevotes from the remainder of the validators for the new locked block.
 	signAddVotes(config, cs1, tmproto.PrevoteType, propBlockR1Hash, propBlockR1Parts.Header(), vs2, vs3, vs4)
@@ -720,8 +718,6 @@ func TestStateLock_POLRelock(t *testing.T) {
 	cs1, vss := randState(config, 4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
-
-	//partSize := types.BlockPartSizeBytes
 
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
 	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
@@ -796,9 +792,7 @@ func TestStateLock_POLRelock(t *testing.T) {
 	// ensure that the validator receives the proposal.
 	ensureNewProposal(t, proposalCh, height, round)
 
-	// Prevote our locked block.
-	// TODO: Ensure we prevote for the proposal if it is valid and from a round greater than
-	// the valid round: https://github.com/tendermint/tendermint/issues/6850.
+	// Prevote our locked block since it matches the propsal seen in this round.
 	ensurePrevote(t, voteCh, height, round)
 	validatePrevote(t, cs1, round, vss[0], theBlockHash)
 
@@ -1028,7 +1022,7 @@ func TestStateLock_POLDoesNotUnlock(t *testing.T) {
 	theBlockParts := rs.ProposalBlockParts.Header()
 
 	ensurePrevote(t, voteCh, height, round)
-	validatePrevote(t, cs1, round, vss[0], theBlockHash)
+	validatePrevote(t, cs1, round, vss[0], nil)
 
 	signAddVotes(config, cs1, tmproto.PrevoteType, theBlockHash, theBlockParts, vs2, vs3, vs4)
 
@@ -1060,8 +1054,10 @@ func TestStateLock_POLDoesNotUnlock(t *testing.T) {
 	t.Log("#### ONTO ROUND 1")
 	round++
 	incrementRound(vs2, vs3, vs4)
-	prop, propBlock := decideProposal(t, cs1, vs2, vs2.Height, vs2.Round)
+	cs2 := newState(cs1.state, vs2, kvstore.NewApplication())
+	prop, propBlock := decideProposal(t, cs2, vs2, vs2.Height, vs2.Round)
 	propBlockParts := propBlock.MakePartSet(types.BlockPartSizeBytes)
+	require.NotEqual(t, propBlock.Hash(), theBlockHash)
 	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, ""); err != nil {
 		t.Fatal(err)
 	}
@@ -1070,12 +1066,10 @@ func TestStateLock_POLDoesNotUnlock(t *testing.T) {
 
 	ensureNewProposal(t, proposalCh, height, round)
 
-	// prevote for the locked block. We do not currently prevote for the
-	// proposal.
-	// TODO: do not prevote the locked block if it does not match the proposal.
-	// (https://github.com/tendermint/tendermint/issues/6850)
+	// Prevote for nil since the proposed block does not match our locked block.
 	ensurePrevote(t, voteCh, height, round)
-	validatePrevote(t, cs1, round, vss[0], theBlockHash)
+	validatePrevote(t, cs1, round, vss[0], nil)
+
 	// add >2/3 prevotes for nil from all other validators
 	signAddVotes(config, cs1, tmproto.PrevoteType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
@@ -1096,7 +1090,8 @@ func TestStateLock_POLDoesNotUnlock(t *testing.T) {
 	t.Log("#### ONTO ROUND 2")
 	round++
 	incrementRound(vs2, vs3, vs4)
-	prop, propBlock = decideProposal(t, cs1, vs3, vs3.Height, vs3.Round)
+	cs3 := newState(cs1.state, vs2, kvstore.NewApplication())
+	prop, propBlock = decideProposal(t, cs3, vs3, vs3.Height, vs3.Round)
 	propBlockParts = propBlock.MakePartSet(types.BlockPartSizeBytes)
 	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, ""); err != nil {
 		t.Fatal(err)
@@ -1106,8 +1101,9 @@ func TestStateLock_POLDoesNotUnlock(t *testing.T) {
 
 	ensureNewProposal(t, proposalCh, height, round)
 
+	// Prevote for nil since the proposal does not match our locked block.
 	ensurePrevote(t, voteCh, height, round)
-	validatePrevote(t, cs1, round, vss[0], theBlockHash)
+	validatePrevote(t, cs1, round, vss[0], nil)
 
 	signAddVotes(config, cs1, tmproto.PrevoteType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
@@ -1189,9 +1185,9 @@ func TestStateLock_MissingProposalWhenPOLSeenDoesNotUpdateLock(t *testing.T) {
 
 	ensureNewRound(t, newRoundCh, height, round)
 
-	// go to prevote, node should prevote for locked block (not the new proposal) - this is relocking
+	// prevote for nil since the proposal was not seen.
 	ensurePrevote(t, voteCh, height, round)
-	validatePrevote(t, cs1, round, vss[0], firstBlockHash)
+	validatePrevote(t, cs1, round, vss[0], nil)
 
 	// now lets add prevotes from everyone else for the new block
 	signAddVotes(config, cs1, tmproto.PrevoteType, secondBlockHash, secondBlockParts.Header(), vs2, vs3, vs4)
@@ -1312,8 +1308,6 @@ func TestStateLock_POLSafety1(t *testing.T) {
 		propBlock.Hash(), propBlock.MakePartSet(partSize).Header(),
 		vs2, vs3, vs4)
 
-	t.Logf("old prop hash %v", fmt.Sprintf("%X", propBlock.Hash()))
-
 	// we do see them precommit nil
 	signAddVotes(config, cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
@@ -1322,14 +1316,13 @@ func TestStateLock_POLSafety1(t *testing.T) {
 	ensureNewTimeout(t, timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
 
 	t.Log("### ONTO ROUND 1")
-
-	prop, propBlock := decideProposal(t, cs1, vs2, vs2.Height, vs2.Round+1)
+	incrementRound(vs2, vs3, vs4)
+	round++ // moving to the next round
+	cs2 := newState(cs1.state, vs2, kvstore.NewApplication())
+	prop, propBlock := decideProposal(t, cs2, vs2, vs2.Height, vs2.Round)
 	propBlockHash := propBlock.Hash()
 	propBlockParts := propBlock.MakePartSet(partSize)
 
-	incrementRound(vs2, vs3, vs4)
-
-	round++ // moving to the next round
 	ensureNewRound(t, newRoundCh, height, round)
 
 	//XXX: this isnt guaranteed to get there before the timeoutPropose ...
@@ -1346,9 +1339,8 @@ func TestStateLock_POLSafety1(t *testing.T) {
 	rs = cs1.GetRoundState()
 
 	if rs.LockedBlock != nil {
-		panic("we should not be locked!")
+		t.Fatalf("was not expected to be locked on a block")
 	}
-	t.Logf("new prop hash %v", fmt.Sprintf("%X", propBlockHash))
 
 	// go to prevote, prevote for proposal block
 	ensurePrevote(t, voteCh, height, round)
@@ -1381,15 +1373,13 @@ func TestStateLock_POLSafety1(t *testing.T) {
 	// finish prevote
 	ensurePrevote(t, voteCh, height, round)
 	// we should prevote what we're locked on
-	validatePrevote(t, cs1, round, vss[0], propBlockHash)
+	validatePrevote(t, cs1, round, vss[0], nil)
 
 	newStepCh := subscribe(cs1.eventBus, types.EventQueryNewRoundStep)
 
 	// before prevotes from the previous round are added
 	// add prevotes from the earlier round
 	addVotes(cs1, prevotes...)
-
-	t.Log("Done adding prevotes!")
 
 	ensureNoNewRoundStep(t, newStepCh)
 }
