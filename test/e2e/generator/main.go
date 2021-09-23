@@ -26,6 +26,7 @@ func main() {
 // CLI is the Cobra-based command-line interface.
 type CLI struct {
 	root *cobra.Command
+	opts Options
 }
 
 // NewCLI sets up the CLI.
@@ -37,27 +38,36 @@ func NewCLI() *CLI {
 		SilenceUsage:  true,
 		SilenceErrors: true, // we'll output them ourselves in Run()
 		RunE: func(cmd *cobra.Command, args []string) error {
-			dir, err := cmd.Flags().GetString("dir")
+			var opts Options
+			var err error
+
+			cli.opts.Directory, err = cmd.Flags().GetString("dir")
 			if err != nil {
 				return err
 			}
-			groups, err := cmd.Flags().GetInt("groups")
+
+			cli.opts.NumGroups, err = cmd.Flags().GetInt("groups")
 			if err != nil {
 				return err
 			}
+
+			cli.opts.MinNetworkSize, err = cmd.Flags().GetInt("min-size")
+			if err != nil {
+				return err
+			}
+
 			p2pMode, err := cmd.Flags().GetString("p2p")
 			if err != nil {
 				return err
 			}
-			var opts Options
 			switch mode := P2PMode(p2pMode); mode {
 			case NewP2PMode, LegacyP2PMode, HybridP2PMode, MixedP2PMode:
-				opts = Options{P2P: mode}
+				opts.P2P = mode
 			default:
 				return fmt.Errorf("p2p mode must be either new, legacy, hybrid or mixed got %s", p2pMode)
 			}
 
-			return cli.generate(dir, groups, opts)
+			return cli.generate()
 		},
 	}
 
@@ -66,34 +76,35 @@ func NewCLI() *CLI {
 	cli.root.PersistentFlags().IntP("groups", "g", 0, "Number of groups")
 	cli.root.PersistentFlags().StringP("p2p", "p", string(MixedP2PMode),
 		"P2P typology to be generated [\"new\", \"legacy\", \"hybrid\" or \"mixed\" ]")
+	cli.root.PersistentFlags().IntP("min-size", "m", 1, "Minimum Network Size")
 
 	return cli
 }
 
 // generate generates manifests in a directory.
-func (cli *CLI) generate(dir string, groups int, opts Options) error {
-	err := os.MkdirAll(dir, 0755)
+func (cli *CLI) generate() error {
+	err := os.MkdirAll(cli.opts.Directory, 0755)
 	if err != nil {
 		return err
 	}
 
-	manifests, err := Generate(rand.New(rand.NewSource(randomSeed)), opts)
+	manifests, err := Generate(rand.New(rand.NewSource(randomSeed)), cli.opts)
 	if err != nil {
 		return err
 	}
-	if groups <= 0 {
+	if cli.opts.NumGroups <= 0 {
 		e2e.SortManifests(manifests)
 
-		if err := e2e.WriteManifests(filepath.Join(dir, "gen"), manifests); err != nil {
+		if err := e2e.WriteManifests(filepath.Join(cli.opts.Directory, "gen"), manifests); err != nil {
 			return err
 		}
 	} else {
-		groupManifests := e2e.SplitGroups(groups, manifests)
+		groupManifests := e2e.SplitGroups(cli.opts.NumGroups, manifests)
 
 		for idx, gm := range groupManifests {
 			e2e.SortManifests(gm)
 
-			prefix := filepath.Join(dir, fmt.Sprintf("gen-group%02d", idx))
+			prefix := filepath.Join(cli.opts.Directory, fmt.Sprintf("gen-group%02d", idx))
 			if err := e2e.WriteManifests(prefix, gm); err != nil {
 				return err
 			}
