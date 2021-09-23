@@ -31,6 +31,10 @@ func TestValidator_Sets(t *testing.T) {
 		valSchedule.Increment(first - node.Testnet.InitialHeight)
 
 		for h := first; h <= last; h++ {
+			if h < node.StartAt {
+				continue
+			}
+
 			validators := []*types.Validator{}
 			perPage := 100
 			for page := 1; ; page++ {
