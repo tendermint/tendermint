@@ -13,7 +13,7 @@ import (
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/log"
-	pc "github.com/tendermint/tendermint/proto/tendermint/crypto"
+	cryptoproto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 )
 
 const (
@@ -30,7 +30,7 @@ type PersistentKVStoreApplication struct {
 	// validator set
 	ValUpdates []types.ValidatorUpdate
 
-	valAddrToPubKeyMap map[string]pc.PublicKey
+	valAddrToPubKeyMap map[string]cryptoproto.PublicKey
 
 	logger log.Logger
 }
@@ -46,7 +46,7 @@ func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication
 
 	return &PersistentKVStoreApplication{
 		app:                &Application{state: state},
-		valAddrToPubKeyMap: make(map[string]pc.PublicKey),
+		valAddrToPubKeyMap: make(map[string]cryptoproto.PublicKey),
 		logger:             log.NewNopLogger(),
 	}
 }
@@ -194,7 +194,7 @@ func (app *PersistentKVStoreApplication) Validators() (validators []types.Valida
 	return
 }
 
-func MakeValSetChangeTx(pubkey pc.PublicKey, power int64) []byte {
+func MakeValSetChangeTx(pubkey cryptoproto.PublicKey, power int64) []byte {
 	pk, err := encoding.PubKeyFromProto(pubkey)
 	if err != nil {
 		panic(err)
