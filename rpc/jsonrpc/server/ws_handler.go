@@ -15,7 +15,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/coretypes"
-	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 // WebSocket handler
@@ -111,7 +111,7 @@ type wsConnection struct {
 	remoteAddr string
 	baseConn   *websocket.Conn
 	// writeChan is never closed, to allow WriteRPCResponse() to fail.
-	writeChan chan types.RPCResponse
+	writeChan chan rpctypes.RPCResponse
 
 	// chan, which is closed when/if readRoutine errors
 	// used to abort writeRoutine
@@ -224,7 +224,7 @@ func (wsc *wsConnection) Start() error {
 	if err := wsc.RunState.Start(); err != nil {
 		return err
 	}
-	wsc.writeChan = make(chan types.RPCResponse, wsc.writeChanCapacity)
+	wsc.writeChan = make(chan rpctypes.RPCResponse, wsc.writeChanCapacity)
 
 	// Read subscriptions/unsubscriptions to events
 	go wsc.readRoutine()
@@ -257,7 +257,7 @@ func (wsc *wsConnection) GetRemoteAddr() string {
 // WriteRPCResponse pushes a response to the writeChan, and blocks until it is
 // accepted.
 // It implements WSRPCConnection. It is Goroutine-safe.
-func (wsc *wsConnection) WriteRPCResponse(ctx context.Context, resp types.RPCResponse) error {
+func (wsc *wsConnection) WriteRPCResponse(ctx context.Context, resp rpctypes.RPCResponse) error {
 	select {
 	case <-wsc.Quit():
 		return errors.New("connection was stopped")
@@ -271,7 +271,7 @@ func (wsc *wsConnection) WriteRPCResponse(ctx context.Context, resp types.RPCRes
 // TryWriteRPCResponse attempts to push a response to the writeChan, but does
 // not block.
 // It implements WSRPCConnection. It is Goroutine-safe
-func (wsc *wsConnection) TryWriteRPCResponse(resp types.RPCResponse) bool {
+func (wsc *wsConnection) TryWriteRPCResponse(resp rpctypes.RPCResponse) bool {
 	select {
 	case <-wsc.Quit():
 		return false
@@ -304,7 +304,7 @@ func (wsc *wsConnection) readRoutine() {
 				err = fmt.Errorf("WSJSONRPC: %v", r)
 			}
 			wsc.Logger.Error("Panic in WSJSONRPC handler", "err", err, "stack", string(debug.Stack()))
-			if err := wsc.WriteRPCResponse(writeCtx, types.RPCInternalError(types.JSONRPCIntID(-1), err)); err != nil {
+			if err := wsc.WriteRPCResponse(writeCtx, rpctypes.RPCInternalError(rpctypes.JSONRPCIntID(-1), err)); err != nil {
 				wsc.Logger.Error("Error writing RPC response", "err", err)
 			}
 			go wsc.readRoutine()
@@ -340,11 +340,11 @@ func (wsc *wsConnection) readRoutine() {
 			}
 
 			dec := json.NewDecoder(r)
-			var request types.RPCRequest
+			var request rpctypes.RPCRequest
 			err = dec.Decode(&request)
 			if err != nil {
 				if err := wsc.WriteRPCResponse(writeCtx,
-					types.RPCParseError(fmt.Errorf("error unmarshaling request: %w", err))); err != nil {
+					rpctypes.RPCParseError(fmt.Errorf("error unmarshaling request: %w", err))); err != nil {
 					wsc.Logger.Error("Error writing RPC response", "err", err)
 				}
 				continue
@@ -363,19 +363,19 @@ func (wsc *wsConnection) readRoutine() {
 			// Now, fetch the RPCFunc and execute it.
 			rpcFunc := wsc.funcMap[request.Method]
 			if rpcFunc == nil {
-				if err := wsc.WriteRPCResponse(writeCtx, types.RPCMethodNotFoundError(request.ID)); err != nil {
+				if err := wsc.WriteRPCResponse(writeCtx, rpctypes.RPCMethodNotFoundError(request.ID)); err != nil {
 					wsc.Logger.Error("Error writing RPC response", "err", err)
 				}
 				continue
 			}
 
-			ctx := &types.Context{JSONReq: &request, WSConn: wsc}
+			ctx := &rpctypes.Context{JSONReq: &request, WSConn: wsc}
 			args := []reflect.Value{reflect.ValueOf(ctx)}
 			if len(request.Params) > 0 {
 				fnArgs, err := jsonParamsToArgs(rpcFunc, request.Params)
 				if err != nil {
 					if err := wsc.WriteRPCResponse(writeCtx,
-						types.RPCInvalidParamsError(request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
+						rpctypes.RPCInvalidParamsError(request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
 					); err != nil {
 						wsc.Logger.Error("Error writing RPC response", "err", err)
 					}
@@ -389,27 +389,27 @@ func (wsc *wsConnection) readRoutine() {
 			// TODO: Need to encode args/returns to string if we want to log them
 			wsc.Logger.Info("WSJSONRPC", "method", request.Method)
 
-			var resp types.RPCResponse
+			var resp rpctypes.RPCResponse
 			result, err := unreflectResult(returns)
 			switch e := err.(type) {
 			// if no error then return a success response
 			case nil:
-				resp = types.NewRPCSuccessResponse(request.ID, result)
+				resp = rpctypes.NewRPCSuccessResponse(request.ID, result)
 
 			// if this already of type RPC error then forward that error
-			case *types.RPCError:
-				resp = types.NewRPCErrorResponse(request.ID, e.Code, e.Message, e.Data)
+			case *rpctypes.RPCError:
+				resp = rpctypes.NewRPCErrorResponse(request.ID, e.Code, e.Message, e.Data)
 
 			default: // we need to unwrap the error and parse it accordingly
 				switch errors.Unwrap(err) {
 				// check if the error was due to an invald request
 				case coretypes.ErrZeroOrNegativeHeight, coretypes.ErrZeroOrNegativePerPage,
 					coretypes.ErrPageOutOfRange, coretypes.ErrInvalidRequest:
-					resp = types.RPCInvalidRequestError(request.ID, err)
+					resp = rpctypes.RPCInvalidRequestError(request.ID, err)
 
 				// lastly default all remaining errors as internal errors
 				default: // includes ctypes.ErrHeightNotAvailable and ctypes.ErrHeightExceedsChainHead
-					resp = types.RPCInternalError(request.ID, err)
+					resp = rpctypes.RPCInternalError(request.ID, err)
 				}
 			}
 
