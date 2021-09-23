@@ -36,8 +36,11 @@ x * TestFullRoundNil - 1 val, full round of nil
 x * TestFullRound2 - 2 vals, both required for full round
 LockSuite
 x * TestStateLock_NoPOL - 2 vals, 4 rounds. one val locked, precommits nil every round except first.
-x * TestStateLock_POLRelock - 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
+x * TestStateLock_POLUpdateLock - 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
+x * TestStateLock_POLRelock - 4 vals, polka in round 1 and polka in round 2. Ensure validator updates locked round.
 x_*_TestStateLock_POLDoesNotUnlock 4 vals, one precommits, other 3 polka nil at next round, so we precommit nil but maintain lock
+x * TestStateLock_MissingProposalWhenPOLSeenDoesNotUpdateLock - 4 vals, 1 misses proposal but sees POL.
+x * TestStateLock_MissingProposalWhenPOLSeenDoesNotUnlock - 4 vals, 1 misses proposal but sees POL.
 x * TestStateLock_POLSafety1 - 4 vals. We shouldn't change lock based on polka at earlier round
 x * TestStateLock_POLSafety2 - 4 vals. After unlocking, we shouldn't relock based on polka at earlier round
   * TestNetworkLock - once +1/3 precommits, network should be locked
@@ -602,12 +605,12 @@ func TestStateLock_NoPOL(t *testing.T) {
 	ensurePrecommit(t, voteCh, height, round)
 }
 
-// TestStateLock_POLRelock tests that a validator maintains updates its locked
+// TestStateLock_POLUpdateLock tests that a validator maintains updates its locked
 // block if the following conditions are met within a round:
 // 1. The validator received a valid proposal for the block
 // 2. The validator received prevotes representing greater than 2/3 of the voting
 // power on the network for the block.
-func TestStateLock_POLRelock(t *testing.T) {
+func TestStateLock_POLUpdateLock(t *testing.T) {
 	config := configSetup(t)
 
 	cs1, vss := randState(config, 4)
@@ -844,9 +847,9 @@ func TestStateLock_POLDoesNotUnlock(t *testing.T) {
 }
 
 // TestStateLock_MissingProposalWhenPOLSeenDoesNotUnlock tests that observing
-// a two thirds majority for a block does not cause a validator to relock on the
+// a two thirds majority for a block does not cause a validator to upate its lock on the
 // new block if a proposal was not seen for that block.
-func TestStateLock_MissingProposalWhenPOLSeenDoesNotRelock(t *testing.T) {
+func TestStateLock_MissingProposalWhenPOLSeenDoesNotUpdateLock(t *testing.T) {
 	config := configSetup(t)
 
 	cs1, vss := randState(config, 4)
