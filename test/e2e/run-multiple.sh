@@ -21,7 +21,7 @@ for MANIFEST in "$@"; do
 	START=$SECONDS
 	echo "==> Running testnet: $MANIFEST"
 
-	if ! ./build/runner -p -f "$MANIFEST"; then
+	if ! ./build/runner -f "$MANIFEST"; then
 		echo "==> Testnet $MANIFEST failed, dumping manifest..."
 		cat "$MANIFEST"
 
