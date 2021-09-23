@@ -78,7 +78,7 @@ func (env *Environment) BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*
 				CheckTx: *r,
 				Hash:    tx.Hash(),
 			},
-			errors.New("cannot wait for commit becasue kvEventSync is not enabled")
+			errors.New("cannot wait for commit because kvEventSync is not enabled")
 	}
 
 	startAt := time.Now()
@@ -99,7 +99,8 @@ func (env *Environment) BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*
 		case <-timer.C:
 			txres, err := env.Tx(ctx, tx.Hash(), false)
 			if err != nil {
-				timer.Reset(100*time.Millisecond + time.Duration(rand.Int63n(int64(time.Second))))
+				jitter := 100*time.Millisecond + time.Duration(rand.Int63n(int64(time.Second))) // nolint: gosec
+				timer.Reset(jitter)
 				continue
 			}
 
