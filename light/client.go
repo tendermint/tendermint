@@ -741,10 +741,16 @@ func (c *Client) lightBlockFromPrimaryAtHeight(ctx context.Context, height int64
 		l, err = c.findNewPrimary(ctx, height, true)
 	}
 
-	if err == nil && height != 0 && l.Height != height {
+	// err was re-evaluated inside switch statement above
+	if err != nil {
+		return l, err
+	}
+
+	if height != 0 && l.Height != height {
 		return l, fmt.Errorf("invalid height received from primary: expected %d, got %d", height, l.Height)
 	}
-	return l, err
+
+	return l, nil
 }
 
 // NOTE: requires a providerMutex lock
