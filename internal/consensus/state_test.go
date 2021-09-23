@@ -862,13 +862,15 @@ func TestStateLock_MissingProposalWhenPOLSeenDoesNotRelock(t *testing.T) {
 	addr := pv1.Address()
 	voteCh := subscribeToVoter(cs1, addr)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
-	// everything done from perspective of cs1
-
 	/*
-		Round0 (cs1, A) // A A A A// A nil nil nil
-	*/
+		Round 0:
+		cs1 creates a proposal for block B.
+		Send a prevote for B from each of the validators to cs1.
+		Send a precommit for nil from all of the validators to cs1.
 
-	// start round and wait for propose and prevote
+		This ensures that cs1 will lock on B in this round but not precommit it.
+	*/
+	t.Log("### Starting Round 0")
 	startTestRound(cs1, height, round)
 
 	ensureNewRound(t, newRoundCh, height, round)
@@ -888,9 +890,21 @@ func TestStateLock_MissingProposalWhenPOLSeenDoesNotRelock(t *testing.T) {
 	// add precommits from the rest
 	signAddVotes(config, cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
-	// before we timeout to the new round set the new proposal
+	// timeout to new round
+	ensureNewTimeout(t, timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
+
+	/*
+		Round 1:
+		Create a new block, D but do not send it to cs1.
+		Send a prevote for D from each of the validators to cs1.
+
+		Check that cs1 does not update its locked block to this missed block D.
+	*/
+	t.Log("### Starting Round 1")
+	incrementRound(vs2, vs3, vs4)
+	round++
 	cs2 := newState(cs1.state, vs2, kvstore.NewApplication())
-	prop, propBlock := decideProposal(t, cs2, vs2, vs2.Height, vs2.Round+1)
+	prop, propBlock := decideProposal(t, cs2, vs2, vs2.Height, vs2.Round)
 	if prop == nil || propBlock == nil {
 		t.Fatal("Failed to create proposal block with vs2")
 	}
@@ -898,21 +912,7 @@ func TestStateLock_MissingProposalWhenPOLSeenDoesNotRelock(t *testing.T) {
 	secondBlockHash := propBlock.Hash()
 	require.NotEqual(t, secondBlockHash, firstBlockHash)
 
-	incrementRound(vs2, vs3, vs4)
-
-	// timeout to new round
-	ensureNewTimeout(t, timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
-
-	round++ // moving to the next round
-
 	ensureNewRound(t, newRoundCh, height, round)
-	t.Log("### ONTO ROUND 1")
-
-	/*
-		Round1 (vs2, B) // A B B B // nil nil nil nil)
-	*/
-
-	// now we're on a new round but v1 misses the proposal
 
 	// go to prevote, node should prevote for locked block (not the new proposal) - this is relocking
 	ensurePrevote(t, voteCh, height, round)
@@ -922,8 +922,8 @@ func TestStateLock_MissingProposalWhenPOLSeenDoesNotRelock(t *testing.T) {
 	signAddVotes(config, cs1, tmproto.PrevoteType, secondBlockHash, secondBlockParts.Header(), vs2, vs3, vs4)
 
 	ensurePrecommit(t, voteCh, height, round)
-	// we should have unlocked and locked on the new block, sending a precommit for this new block
-	validatePrecommit(t, cs1, round, -1, vss[0], nil, nil)
+	validatePrecommit(t, cs1, round, 0, vss[0], nil, firstBlockHash)
+}
 
 	if err := cs1.SetProposalAndBlock(prop, propBlock, secondBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
