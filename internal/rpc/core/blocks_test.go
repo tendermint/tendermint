@@ -12,7 +12,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	sm "github.com/tendermint/tendermint/internal/state"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	ctypes "github.com/tendermint/tendermint/rpc/coretypes"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -89,12 +89,12 @@ func TestBlockResults(t *testing.T) {
 	testCases := []struct {
 		height  int64
 		wantErr bool
-		wantRes *ctypes.ResultBlockResults
+		wantRes *coretypes.ResultBlockResults
 	}{
 		{-1, true, nil},
 		{0, true, nil},
 		{101, true, nil},
-		{100, false, &ctypes.ResultBlockResults{
+		{100, false, &coretypes.ResultBlockResults{
 			Height:                100,
 			TxsResults:            results.DeliverTxs,
 			TotalGasUsed:          15,

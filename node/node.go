@@ -6,19 +6,17 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
 	"strconv"
 	"time"
 
-	_ "github.com/lib/pq" // provide the psql db driver
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	cs "github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/pex"
@@ -38,6 +36,10 @@ import (
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	"github.com/tendermint/tendermint/types"
+
+	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
+
+	_ "github.com/lib/pq" // provide the psql db driver
 )
 
 // nodeImpl is the highest level interface to a full Tendermint node.
@@ -46,7 +48,7 @@ type nodeImpl struct {
 	service.BaseService
 
 	// config
-	config        *cfg.Config
+	config        *config.Config
 	genesisDoc    *types.GenesisDoc   // initial validator set
 	privValidator types.PrivValidator // local node's validator key
 
@@ -69,7 +71,7 @@ type nodeImpl struct {
 	mempool          mempool.Mempool
 	stateSync        bool               // whether the node should state sync on startup
 	stateSyncReactor *statesync.Reactor // for hosting and restoring state sync snapshots
-	consensusReactor *cs.Reactor        // for participating in the consensus
+	consensusReactor *consensus.Reactor // for participating in the consensus
 	pexReactor       service.Service    // for exchanging peer addresses
 	evidenceReactor  service.Service
 	rpcListeners     []net.Listener // rpc servers
@@ -81,23 +83,23 @@ type nodeImpl struct {
 // newDefaultNode returns a Tendermint node with default settings for the
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
 // It implements NodeProvider.
-func newDefaultNode(config *cfg.Config, logger log.Logger) (service.Service, error) {
-	nodeKey, err := types.LoadOrGenNodeKey(config.NodeKeyFile())
+func newDefaultNode(cfg *config.Config, logger log.Logger) (service.Service, error) {
+	nodeKey, err := types.LoadOrGenNodeKey(cfg.NodeKeyFile())
 	if err != nil {
-		return nil, fmt.Errorf("failed to load or gen node key %s: %w", config.NodeKeyFile(), err)
+		return nil, fmt.Errorf("failed to load or gen node key %s: %w", cfg.NodeKeyFile(), err)
 	}
-	if config.Mode == cfg.ModeSeed {
-		return makeSeedNode(config,
-			cfg.DefaultDBProvider,
+	if cfg.Mode == config.ModeSeed {
+		return makeSeedNode(cfg,
+			config.DefaultDBProvider,
 			nodeKey,
-			defaultGenesisDocProviderFunc(config),
+			defaultGenesisDocProviderFunc(cfg),
 			logger,
 		)
 	}
 
 	var pval *privval.FilePV
-	if config.Mode == cfg.ModeValidator {
-		pval, err = privval.LoadOrGenFilePV(config.PrivValidator.KeyFile(), config.PrivValidator.StateFile())
+	if cfg.Mode == config.ModeValidator {
+		pval, err = privval.LoadOrGenFilePV(cfg.PrivValidator.KeyFile(), cfg.PrivValidator.StateFile())
 		if err != nil {
 			return nil, err
 		}
@@ -105,27 +107,27 @@ func newDefaultNode(config *cfg.Config, logger log.Logger) (service.Service, err
 		pval = nil
 	}
 
-	appClient, _ := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
-	return makeNode(config,
+	appClient, _ := proxy.DefaultClientCreator(cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
+	return makeNode(cfg,
 		pval,
 		nodeKey,
 		appClient,
-		defaultGenesisDocProviderFunc(config),
-		cfg.DefaultDBProvider,
+		defaultGenesisDocProviderFunc(cfg),
+		config.DefaultDBProvider,
 		logger,
 	)
 }
 
 // makeNode returns a new, ready to go, Tendermint Node.
-func makeNode(config *cfg.Config,
+func makeNode(cfg *config.Config,
 	privValidator types.PrivValidator,
 	nodeKey types.NodeKey,
 	clientCreator abciclient.Creator,
 	genesisDocProvider genesisDocProvider,
-	dbProvider cfg.DBProvider,
+	dbProvider config.DBProvider,
 	logger log.Logger) (service.Service, error) {
 
-	blockStore, stateDB, err := initDBs(config, dbProvider)
+	blockStore, stateDB, err := initDBs(cfg, dbProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -161,31 +163,31 @@ func makeNode(config *cfg.Config,
 		return nil, err
 	}
 
-	indexerService, eventSinks, err := createAndStartIndexerService(config, dbProvider, eventBus, logger, genDoc.ChainID)
+	indexerService, eventSinks, err := createAndStartIndexerService(cfg, dbProvider, eventBus, logger, genDoc.ChainID)
 	if err != nil {
 		return nil, err
 	}
 
 	// If an address is provided, listen on the socket for a connection from an
 	// external signing process.
-	if config.PrivValidator.ListenAddr != "" {
-		protocol, _ := tmnet.ProtocolAndAddress(config.PrivValidator.ListenAddr)
+	if cfg.PrivValidator.ListenAddr != "" {
+		protocol, _ := tmnet.ProtocolAndAddress(cfg.PrivValidator.ListenAddr)
 		// FIXME: we should start services inside OnStart
 		switch protocol {
 		case "grpc":
-			privValidator, err = createAndStartPrivValidatorGRPCClient(config, genDoc.ChainID, logger)
+			privValidator, err = createAndStartPrivValidatorGRPCClient(cfg, genDoc.ChainID, logger)
 			if err != nil {
 				return nil, fmt.Errorf("error with private validator grpc client: %w", err)
 			}
 		default:
-			privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidator.ListenAddr, genDoc.ChainID, logger)
+			privValidator, err = createAndStartPrivValidatorSocketClient(cfg.PrivValidator.ListenAddr, genDoc.ChainID, logger)
 			if err != nil {
 				return nil, fmt.Errorf("error with private validator socket client: %w", err)
 			}
 		}
 	}
 	var pubKey crypto.PubKey
-	if config.Mode == cfg.ModeValidator {
+	if cfg.Mode == config.ModeValidator {
 		pubKey, err = privValidator.GetPubKey(context.TODO())
 		if err != nil {
 			return nil, fmt.Errorf("can't get pubkey: %w", err)
@@ -196,7 +198,7 @@ func makeNode(config *cfg.Config,
 	}
 
 	// Determine whether we should attempt state sync.
-	stateSync := config.StateSync.Enable && !onlyValidatorIsUs(state, pubKey)
+	stateSync := cfg.StateSync.Enable && !onlyValidatorIsUs(state, pubKey)
 	if stateSync && state.LastBlockHeight > 0 {
 		logger.Info("Found local state with non-zero height, skipping state sync")
 		stateSync = false
@@ -221,43 +223,43 @@ func makeNode(config *cfg.Config,
 
 	// Determine whether we should do block sync. This must happen after the handshake, since the
 	// app may modify the validator set, specifying ourself as the only validator.
-	blockSync := config.BlockSync.Enable && !onlyValidatorIsUs(state, pubKey)
+	blockSync := cfg.BlockSync.Enable && !onlyValidatorIsUs(state, pubKey)
 
-	logNodeStartupInfo(state, pubKey, logger, consensusLogger, config.Mode)
+	logNodeStartupInfo(state, pubKey, logger, consensusLogger, cfg.Mode)
 
 	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
 	// TODO: Use a persistent peer database.
-	nodeInfo, err := makeNodeInfo(config, nodeKey, eventSinks, genDoc, state)
+	nodeInfo, err := makeNodeInfo(cfg, nodeKey, eventSinks, genDoc, state)
 	if err != nil {
 		return nil, err
 	}
 
 	p2pLogger := logger.With("module", "p2p")
-	transport := createTransport(p2pLogger, config)
+	transport := createTransport(p2pLogger, cfg)
 
-	peerManager, err := createPeerManager(config, dbProvider, p2pLogger, nodeKey.ID)
+	peerManager, err := createPeerManager(cfg, dbProvider, p2pLogger, nodeKey.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
 
 	nodeMetrics :=
-		defaultMetricsProvider(config.Instrumentation)(genDoc.ChainID)
+		defaultMetricsProvider(cfg.Instrumentation)(genDoc.ChainID)
 
 	router, err := createRouter(p2pLogger, nodeMetrics.p2p, nodeInfo, nodeKey.PrivKey,
-		peerManager, transport, getRouterConfig(config, proxyApp))
+		peerManager, transport, getRouterConfig(cfg, proxyApp))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
 
 	mpReactorShim, mpReactor, mp, err := createMempoolReactor(
-		config, proxyApp, state, nodeMetrics.mempool, peerManager, router, logger,
+		cfg, proxyApp, state, nodeMetrics.mempool, peerManager, router, logger,
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	evReactorShim, evReactor, evPool, err := createEvidenceReactor(
-		config, dbProvider, stateDB, blockStore, peerManager, router, logger,
+		cfg, dbProvider, stateDB, blockStore, peerManager, router, logger,
 	)
 	if err != nil {
 		return nil, err
@@ -275,16 +277,16 @@ func makeNode(config *cfg.Config,
 	)
 
 	csReactorShim, csReactor, csState := createConsensusReactor(
-		config, state, blockExec, blockStore, mp, evPool,
-		privValidator, nodeMetrics.cs, stateSync || blockSync, eventBus,
+		cfg, state, blockExec, blockStore, mp, evPool,
+		privValidator, nodeMetrics.consensus, stateSync || blockSync, eventBus,
 		peerManager, router, consensusLogger,
 	)
 
 	// Create the blockchain reactor. Note, we do not start block sync if we're
 	// doing a state sync first.
 	bcReactorShim, bcReactor, err := createBlockchainReactor(
-		logger, config, state, blockExec, blockStore, csReactor,
-		peerManager, router, blockSync && !stateSync, nodeMetrics.cs,
+		logger, cfg, state, blockExec, blockStore, csReactor,
+		peerManager, router, blockSync && !stateSync, nodeMetrics.consensus,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not create blockchain reactor: %w", err)
@@ -301,9 +303,9 @@ func makeNode(config *cfg.Config,
 	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or block sync first.
 	// FIXME We need to update metrics here, since other reactors don't have access to them.
 	if stateSync {
-		nodeMetrics.cs.StateSyncing.Set(1)
+		nodeMetrics.consensus.StateSyncing.Set(1)
 	} else if blockSync {
-		nodeMetrics.cs.BlockSyncing.Set(1)
+		nodeMetrics.consensus.BlockSyncing.Set(1)
 	}
 
 	// Set up state sync reactor, and schedule a sync if requested.
@@ -320,7 +322,7 @@ func makeNode(config *cfg.Config,
 
 	stateSyncReactorShim = p2p.NewReactorShim(logger.With("module", "statesync"), "StateSyncShim", statesync.ChannelShims)
 
-	if config.P2P.UseLegacy {
+	if cfg.P2P.UseLegacy {
 		channels = getChannelsFromShim(stateSyncReactorShim)
 		peerUpdates = stateSyncReactorShim.PeerUpdates
 	} else {
@@ -331,7 +333,7 @@ func makeNode(config *cfg.Config,
 	stateSyncReactor = statesync.NewReactor(
 		genDoc.ChainID,
 		genDoc.InitialHeight,
-		*config.StateSync,
+		*cfg.StateSync,
 		stateSyncReactorShim.Logger,
 		proxyApp.Snapshot(),
 		proxyApp.Query(),
@@ -342,7 +344,7 @@ func makeNode(config *cfg.Config,
 		peerUpdates,
 		stateStore,
 		blockStore,
-		config.StateSync.TempDir,
+		cfg.StateSync.TempDir,
 		nodeMetrics.statesync,
 	)
 
@@ -378,46 +380,46 @@ func makeNode(config *cfg.Config,
 	pexCh := pex.ChannelDescriptor()
 	transport.AddChannelDescriptors([]*p2p.ChannelDescriptor{&pexCh})
 
-	if config.P2P.UseLegacy {
+	if cfg.P2P.UseLegacy {
 		// setup Transport and Switch
 		sw = createSwitch(
-			config, transport, nodeMetrics.p2p, mpReactorShim, bcReactorForSwitch,
+			cfg, transport, nodeMetrics.p2p, mpReactorShim, bcReactorForSwitch,
 			stateSyncReactorShim, csReactorShim, evReactorShim, proxyApp, nodeInfo, nodeKey, p2pLogger,
 		)
 
-		err = sw.AddPersistentPeers(strings.SplitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
+		err = sw.AddPersistentPeers(strings.SplitAndTrimEmpty(cfg.P2P.PersistentPeers, ",", " "))
 		if err != nil {
 			return nil, fmt.Errorf("could not add peers from persistent-peers field: %w", err)
 		}
 
-		err = sw.AddUnconditionalPeerIDs(strings.SplitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
+		err = sw.AddUnconditionalPeerIDs(strings.SplitAndTrimEmpty(cfg.P2P.UnconditionalPeerIDs, ",", " "))
 		if err != nil {
 			return nil, fmt.Errorf("could not add peer ids from unconditional_peer_ids field: %w", err)
 		}
 
-		addrBook, err = createAddrBookAndSetOnSwitch(config, sw, p2pLogger, nodeKey)
+		addrBook, err = createAddrBookAndSetOnSwitch(cfg, sw, p2pLogger, nodeKey)
 		if err != nil {
 			return nil, fmt.Errorf("could not create addrbook: %w", err)
 		}
 
-		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
+		pexReactor = createPEXReactorAndAddToSwitch(addrBook, cfg, sw, logger)
 	} else {
 		addrBook = nil
-		pexReactor, err = createPEXReactorV2(config, logger, peerManager, router)
+		pexReactor, err = createPEXReactorV2(cfg, logger, peerManager, router)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if config.RPC.PprofListenAddress != "" {
+	if cfg.RPC.PprofListenAddress != "" {
 		go func() {
-			logger.Info("Starting pprof server", "laddr", config.RPC.PprofListenAddress)
-			logger.Error("pprof server error", "err", http.ListenAndServe(config.RPC.PprofListenAddress, nil))
+			logger.Info("Starting pprof server", "laddr", cfg.RPC.PprofListenAddress)
+			logger.Error("pprof server error", "err", http.ListenAndServe(cfg.RPC.PprofListenAddress, nil))
 		}()
 	}
 
 	node := &nodeImpl{
-		config:        config,
+		config:        cfg,
 		genesisDoc:    genDoc,
 		privValidator: privValidator,
 
@@ -452,7 +454,7 @@ func makeNode(config *cfg.Config,
 			ConsensusState: csState,
 
 			ConsensusReactor: csReactor,
-			BlockSyncReactor: bcReactor.(cs.BlockSyncReactor),
+			BlockSyncReactor: bcReactor.(consensus.BlockSyncReactor),
 
 			P2PPeers:    sw,
 			PeerManager: peerManager,
@@ -462,7 +464,7 @@ func makeNode(config *cfg.Config,
 			EventBus:   eventBus,
 			Mempool:    mp,
 			Logger:     logger.With("module", "rpc"),
-			Config:     *config.RPC,
+			Config:     *cfg.RPC,
 		},
 	}
 
@@ -485,8 +487,8 @@ func makeNode(config *cfg.Config,
 }
 
 // makeSeedNode returns a new seed node, containing only p2p, pex reactor
-func makeSeedNode(config *cfg.Config,
-	dbProvider cfg.DBProvider,
+func makeSeedNode(cfg *config.Config,
+	dbProvider config.DBProvider,
 	nodeKey types.NodeKey,
 	genesisDocProvider genesisDocProvider,
 	logger log.Logger,
@@ -502,23 +504,23 @@ func makeSeedNode(config *cfg.Config,
 		return nil, err
 	}
 
-	nodeInfo, err := makeSeedNodeInfo(config, nodeKey, genDoc, state)
+	nodeInfo, err := makeSeedNodeInfo(cfg, nodeKey, genDoc, state)
 	if err != nil {
 		return nil, err
 	}
 
 	// Setup Transport and Switch.
-	p2pMetrics := p2p.PrometheusMetrics(config.Instrumentation.Namespace, "chain_id", genDoc.ChainID)
+	p2pMetrics := p2p.PrometheusMetrics(cfg.Instrumentation.Namespace, "chain_id", genDoc.ChainID)
 	p2pLogger := logger.With("module", "p2p")
-	transport := createTransport(p2pLogger, config)
+	transport := createTransport(p2pLogger, cfg)
 
-	peerManager, err := createPeerManager(config, dbProvider, p2pLogger, nodeKey.ID)
+	peerManager, err := createPeerManager(cfg, dbProvider, p2pLogger, nodeKey.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
 
 	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey,
-		peerManager, transport, getRouterConfig(config, nil))
+		peerManager, transport, getRouterConfig(cfg, nil))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
@@ -536,44 +538,44 @@ func makeSeedNode(config *cfg.Config,
 	pexCh := pex.ChannelDescriptor()
 	transport.AddChannelDescriptors([]*p2p.ChannelDescriptor{&pexCh})
 
-	if config.P2P.UseLegacy {
+	if cfg.P2P.UseLegacy {
 		sw = createSwitch(
-			config, transport, p2pMetrics, nil, nil,
+			cfg, transport, p2pMetrics, nil, nil,
 			nil, nil, nil, nil, nodeInfo, nodeKey, p2pLogger,
 		)
 
-		err = sw.AddPersistentPeers(strings.SplitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
+		err = sw.AddPersistentPeers(strings.SplitAndTrimEmpty(cfg.P2P.PersistentPeers, ",", " "))
 		if err != nil {
 			return nil, fmt.Errorf("could not add peers from persistent_peers field: %w", err)
 		}
 
-		err = sw.AddUnconditionalPeerIDs(strings.SplitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
+		err = sw.AddUnconditionalPeerIDs(strings.SplitAndTrimEmpty(cfg.P2P.UnconditionalPeerIDs, ",", " "))
 		if err != nil {
 			return nil, fmt.Errorf("could not add peer ids from unconditional_peer_ids field: %w", err)
 		}
 
-		addrBook, err = createAddrBookAndSetOnSwitch(config, sw, p2pLogger, nodeKey)
+		addrBook, err = createAddrBookAndSetOnSwitch(cfg, sw, p2pLogger, nodeKey)
 		if err != nil {
 			return nil, fmt.Errorf("could not create addrbook: %w", err)
 		}
 
-		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
+		pexReactor = createPEXReactorAndAddToSwitch(addrBook, cfg, sw, logger)
 	} else {
-		pexReactor, err = createPEXReactorV2(config, logger, peerManager, router)
+		pexReactor, err = createPEXReactorV2(cfg, logger, peerManager, router)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if config.RPC.PprofListenAddress != "" {
+	if cfg.RPC.PprofListenAddress != "" {
 		go func() {
-			logger.Info("Starting pprof server", "laddr", config.RPC.PprofListenAddress)
-			logger.Error("pprof server error", "err", http.ListenAndServe(config.RPC.PprofListenAddress, nil))
+			logger.Info("Starting pprof server", "laddr", cfg.RPC.PprofListenAddress)
+			logger.Error("pprof server error", "err", http.ListenAndServe(cfg.RPC.PprofListenAddress, nil))
 		}()
 	}
 
 	node := &nodeImpl{
-		config:     config,
+		config:     cfg,
 		genesisDoc: genDoc,
 
 		transport:   transport,
@@ -602,7 +604,7 @@ func (n *nodeImpl) OnStart() error {
 
 	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
-	if n.config.RPC.ListenAddress != "" && n.config.Mode != cfg.ModeSeed {
+	if n.config.RPC.ListenAddress != "" && n.config.Mode != config.ModeSeed {
 		listeners, err := n.startRPC()
 		if err != nil {
 			return err
@@ -637,8 +639,8 @@ func (n *nodeImpl) OnStart() error {
 		return err
 	}
 
-	if n.config.Mode != cfg.ModeSeed {
-		if n.config.BlockSync.Version == cfg.BlockSyncV0 {
+	if n.config.Mode != config.ModeSeed {
+		if n.config.BlockSync.Version == config.BlockSyncV0 {
 			if err := n.bcReactor.Start(); err != nil {
 				return err
 			}
@@ -679,7 +681,7 @@ func (n *nodeImpl) OnStart() error {
 	// TODO: We shouldn't run state sync if we already have state that has a
 	// LastBlockHeight that is not InitialHeight
 	if n.stateSync {
-		bcR, ok := n.bcReactor.(cs.BlockSyncReactor)
+		bcR, ok := n.bcReactor.(consensus.BlockSyncReactor)
 		if !ok {
 			return fmt.Errorf("this blockchain reactor does not support switching from state sync")
 		}
@@ -758,9 +760,9 @@ func (n *nodeImpl) OnStop() {
 		n.Logger.Error("Error closing indexerService", "err", err)
 	}
 
-	if n.config.Mode != cfg.ModeSeed {
+	if n.config.Mode != config.ModeSeed {
 		// now stop the reactors
-		if n.config.BlockSync.Version == cfg.BlockSyncV0 {
+		if n.config.BlockSync.Version == config.BlockSyncV0 {
 			// Stop the real blockchain reactor separately since the switch uses the shim.
 			if err := n.bcReactor.Stop(); err != nil {
 				n.Logger.Error("failed to stop the blockchain reactor", "err", err)
@@ -831,7 +833,7 @@ func (n *nodeImpl) OnStop() {
 }
 
 func (n *nodeImpl) startRPC() ([]net.Listener, error) {
-	if n.config.Mode == cfg.ModeValidator {
+	if n.config.Mode == config.ModeValidator {
 		pubKey, err := n.privValidator.GetPubKey(context.TODO())
 		if pubKey == nil || err != nil {
 			return nil, fmt.Errorf("can't get pubkey: %w", err)
@@ -849,15 +851,15 @@ func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 		n.rpcEnv.AddUnsafe(routes)
 	}
 
-	config := rpcserver.DefaultConfig()
-	config.MaxBodyBytes = n.config.RPC.MaxBodyBytes
-	config.MaxHeaderBytes = n.config.RPC.MaxHeaderBytes
-	config.MaxOpenConnections = n.config.RPC.MaxOpenConnections
+	cfg := rpcserver.DefaultConfig()
+	cfg.MaxBodyBytes = n.config.RPC.MaxBodyBytes
+	cfg.MaxHeaderBytes = n.config.RPC.MaxHeaderBytes
+	cfg.MaxOpenConnections = n.config.RPC.MaxOpenConnections
 	// If necessary adjust global WriteTimeout to ensure it's greater than
 	// TimeoutBroadcastTxCommit.
 	// See https://github.com/tendermint/tendermint/issues/3435
-	if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
-		config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
+	if cfg.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
+		cfg.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
 	}
 
 	// we may expose the rpc over both a unix and tcp socket
@@ -873,14 +875,14 @@ func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 					wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
 				}
 			}),
-			rpcserver.ReadLimit(config.MaxBodyBytes),
+			rpcserver.ReadLimit(cfg.MaxBodyBytes),
 		)
 		wm.SetLogger(wmLogger)
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, routes, rpcLogger)
 		listener, err := rpcserver.Listen(
 			listenAddr,
-			config.MaxOpenConnections,
+			cfg.MaxOpenConnections,
 		)
 		if err != nil {
 			return nil, err
@@ -903,7 +905,7 @@ func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 					n.config.RPC.CertFile(),
 					n.config.RPC.KeyFile(),
 					rpcLogger,
-					config,
+					cfg,
 				); err != nil {
 					n.Logger.Error("Error serving server with TLS", "err", err)
 				}
@@ -914,7 +916,7 @@ func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 					listener,
 					rootHandler,
 					rpcLogger,
-					config,
+					cfg,
 				); err != nil {
 					n.Logger.Error("Error serving server", "err", err)
 				}
@@ -927,18 +929,18 @@ func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 	// we expose a simplified api over grpc for convenience to app devs
 	grpcListenAddr := n.config.RPC.GRPCListenAddress
 	if grpcListenAddr != "" {
-		config := rpcserver.DefaultConfig()
-		config.MaxBodyBytes = n.config.RPC.MaxBodyBytes
-		config.MaxHeaderBytes = n.config.RPC.MaxHeaderBytes
+		cfg := rpcserver.DefaultConfig()
+		cfg.MaxBodyBytes = n.config.RPC.MaxBodyBytes
+		cfg.MaxHeaderBytes = n.config.RPC.MaxHeaderBytes
 		// NOTE: GRPCMaxOpenConnections is used, not MaxOpenConnections
-		config.MaxOpenConnections = n.config.RPC.GRPCMaxOpenConnections
+		cfg.MaxOpenConnections = n.config.RPC.GRPCMaxOpenConnections
 		// If necessary adjust global WriteTimeout to ensure it's greater than
 		// TimeoutBroadcastTxCommit.
 		// See https://github.com/tendermint/tendermint/issues/3435
-		if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
-			config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
+		if cfg.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
+			cfg.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
 		}
-		listener, err := rpcserver.Listen(grpcListenAddr, config.MaxOpenConnections)
+		listener, err := rpcserver.Listen(grpcListenAddr, cfg.MaxOpenConnections)
 		if err != nil {
 			return nil, err
 		}
@@ -977,7 +979,7 @@ func (n *nodeImpl) startPrometheusServer(addr string) *http.Server {
 }
 
 // ConsensusReactor returns the Node's ConsensusReactor.
-func (n *nodeImpl) ConsensusReactor() *cs.Reactor {
+func (n *nodeImpl) ConsensusReactor() *consensus.Reactor {
 	return n.consensusReactor
 }
 
@@ -1031,14 +1033,14 @@ type genesisDocProvider func() (*types.GenesisDoc, error)
 
 // defaultGenesisDocProviderFunc returns a GenesisDocProvider that loads
 // the GenesisDoc from the config.GenesisFile() on the filesystem.
-func defaultGenesisDocProviderFunc(config *cfg.Config) genesisDocProvider {
+func defaultGenesisDocProviderFunc(cfg *config.Config) genesisDocProvider {
 	return func() (*types.GenesisDoc, error) {
-		return types.GenesisDocFromFile(config.GenesisFile())
+		return types.GenesisDocFromFile(cfg.GenesisFile())
 	}
 }
 
 type nodeMetrics struct {
-	cs        *cs.Metrics
+	consensus *consensus.Metrics
 	p2p       *p2p.Metrics
 	mempool   *mempool.Metrics
 	state     *sm.Metrics
@@ -1050,19 +1052,19 @@ type metricsProvider func(chainID string) *nodeMetrics
 
 // defaultMetricsProvider returns Metrics build using Prometheus client library
 // if Prometheus is enabled. Otherwise, it returns no-op Metrics.
-func defaultMetricsProvider(config *cfg.InstrumentationConfig) metricsProvider {
+func defaultMetricsProvider(cfg *config.InstrumentationConfig) metricsProvider {
 	return func(chainID string) *nodeMetrics {
-		if config.Prometheus {
+		if cfg.Prometheus {
 			return &nodeMetrics{
-				cs.PrometheusMetrics(config.Namespace, "chain_id", chainID),
-				p2p.PrometheusMetrics(config.Namespace, "chain_id", chainID),
-				mempool.PrometheusMetrics(config.Namespace, "chain_id", chainID),
-				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID),
-				statesync.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+				consensus.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				p2p.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				mempool.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				sm.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				statesync.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 			}
 		}
 		return &nodeMetrics{
-			cs.NopMetrics(),
+			consensus.NopMetrics(),
 			p2p.NopMetrics(),
 			mempool.NopMetrics(),
 			sm.NopMetrics(),
@@ -1130,15 +1132,15 @@ func createAndStartPrivValidatorSocketClient(
 }
 
 func createAndStartPrivValidatorGRPCClient(
-	config *cfg.Config,
+	cfg *config.Config,
 	chainID string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
 	pvsc, err := tmgrpc.DialRemoteSigner(
-		config.PrivValidator,
+		cfg.PrivValidator,
 		chainID,
 		logger,
-		config.Instrumentation.Prometheus,
+		cfg.Instrumentation.Prometheus,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
@@ -1153,7 +1155,7 @@ func createAndStartPrivValidatorGRPCClient(
 	return pvsc, nil
 }
 
-func getRouterConfig(conf *cfg.Config, proxyApp proxy.AppConns) p2p.RouterOptions {
+func getRouterConfig(conf *config.Config, proxyApp proxy.AppConns) p2p.RouterOptions {
 	opts := p2p.RouterOptions{
 		QueueType: conf.P2P.QueueType,
 	}

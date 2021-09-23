@@ -8,12 +8,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	dbm "github.com/tendermint/tm-db"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	mmock "github.com/tendermint/tendermint/internal/mempool/mock"
 	"github.com/tendermint/tendermint/internal/proxy"
@@ -25,7 +26,6 @@ import (
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
-	dbm "github.com/tendermint/tm-db"
 )
 
 var (
@@ -218,9 +218,9 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 func TestValidateValidatorUpdates(t *testing.T) {
 	pubkey1 := ed25519.GenPrivKey().PubKey()
 	pubkey2 := ed25519.GenPrivKey().PubKey()
-	pk1, err := cryptoenc.PubKeyToProto(pubkey1)
+	pk1, err := encoding.PubKeyToProto(pubkey1)
 	assert.NoError(t, err)
-	pk2, err := cryptoenc.PubKeyToProto(pubkey2)
+	pk2, err := encoding.PubKeyToProto(pubkey2)
 	assert.NoError(t, err)
 
 	defaultValidatorParams := types.ValidatorParams{PubKeyTypes: []string{types.ABCIPubKeyTypeEd25519}}
@@ -278,9 +278,9 @@ func TestUpdateValidators(t *testing.T) {
 	pubkey2 := ed25519.GenPrivKey().PubKey()
 	val2 := types.NewValidator(pubkey2, 20)
 
-	pk, err := cryptoenc.PubKeyToProto(pubkey1)
+	pk, err := encoding.PubKeyToProto(pubkey1)
 	require.NoError(t, err)
-	pk2, err := cryptoenc.PubKeyToProto(pubkey2)
+	pk2, err := encoding.PubKeyToProto(pubkey2)
 	require.NoError(t, err)
 
 	testCases := []struct {
@@ -385,7 +385,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
 	pubkey := ed25519.GenPrivKey().PubKey()
-	pk, err := cryptoenc.PubKeyToProto(pubkey)
+	pk, err := encoding.PubKeyToProto(pubkey)
 	require.NoError(t, err)
 	app.ValidatorUpdates = []abci.ValidatorUpdate{
 		{PubKey: pk, Power: 10},
@@ -442,7 +442,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	block := sf.MakeBlock(state, 1, new(types.Commit))
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
-	vp, err := cryptoenc.PubKeyToProto(state.Validators.Validators[0].PubKey)
+	vp, err := encoding.PubKeyToProto(state.Validators.Validators[0].PubKey)
 	require.NoError(t, err)
 	// Remove the only validator
 	app.ValidatorUpdates = []abci.ValidatorUpdate{

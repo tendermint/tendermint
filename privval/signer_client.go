@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/crypto/encoding"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -83,7 +83,7 @@ func (sc *SignerClient) GetPubKey(ctx context.Context) (crypto.PubKey, error) {
 		return nil, &RemoteSignerError{Code: int(resp.Error.Code), Description: resp.Error.Description}
 	}
 
-	pk, err := cryptoenc.PubKeyFromProto(resp.PubKey)
+	pk, err := encoding.PubKeyFromProto(resp.PubKey)
 	if err != nil {
 		return nil, err
 	}

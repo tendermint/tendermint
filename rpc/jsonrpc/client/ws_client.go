@@ -15,7 +15,7 @@ import (
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	tmclient "github.com/tendermint/tendermint/rpc/client"
-	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 // WSOptions for WSClient.
@@ -50,16 +50,16 @@ type WSClient struct { // nolint: maligned
 
 	// Single user facing channel to read RPCResponses from, closed only when the
 	// client is being stopped.
-	ResponsesCh chan types.RPCResponse
+	ResponsesCh chan rpctypes.RPCResponse
 
 	// Callback, which will be called each time after successful reconnect.
 	onReconnect func()
 
 	// internal channels
-	send            chan types.RPCRequest // user requests
-	backlog         chan types.RPCRequest // stores a single user request received during a conn failure
-	reconnectAfter  chan error            // reconnect requests
-	readRoutineQuit chan struct{}         // a way for readRoutine to close writeRoutine
+	send            chan rpctypes.RPCRequest // user requests
+	backlog         chan rpctypes.RPCRequest // stores a single user request received during a conn failure
+	reconnectAfter  chan error               // reconnect requests
+	readRoutineQuit chan struct{}            // a way for readRoutine to close writeRoutine
 
 	// Maximum reconnect attempts (0 or greater; default: 25).
 	maxReconnectAttempts uint
@@ -152,15 +152,15 @@ func (c *WSClient) Start() error {
 		return err
 	}
 
-	c.ResponsesCh = make(chan types.RPCResponse)
+	c.ResponsesCh = make(chan rpctypes.RPCResponse)
 
-	c.send = make(chan types.RPCRequest)
+	c.send = make(chan rpctypes.RPCRequest)
 	// 1 additional error may come from the read/write
 	// goroutine depending on which failed first.
 	c.reconnectAfter = make(chan error, 1)
 	// capacity for 1 request. a user won't be able to send more because the send
 	// channel is unbuffered.
-	c.backlog = make(chan types.RPCRequest, 1)
+	c.backlog = make(chan rpctypes.RPCRequest, 1)
 
 	c.startReadWriteRoutines()
 	go c.reconnectRoutine()
@@ -195,7 +195,7 @@ func (c *WSClient) IsActive() bool {
 // Send the given RPC request to the server. Results will be available on
 // ResponsesCh, errors, if any, on ErrorsCh. Will block until send succeeds or
 // ctx.Done is closed.
-func (c *WSClient) Send(ctx context.Context, request types.RPCRequest) error {
+func (c *WSClient) Send(ctx context.Context, request rpctypes.RPCRequest) error {
 	select {
 	case c.send <- request:
 		c.Logger.Info("sent a request", "req", request)
@@ -210,7 +210,7 @@ func (c *WSClient) Send(ctx context.Context, request types.RPCRequest) error {
 
 // Call enqueues a call request onto the Send queue. Requests are JSON encoded.
 func (c *WSClient) Call(ctx context.Context, method string, params map[string]interface{}) error {
-	request, err := types.MapToRequest(c.nextRequestID(), method, params)
+	request, err := rpctypes.MapToRequest(c.nextRequestID(), method, params)
 	if err != nil {
 		return err
 	}
@@ -220,7 +220,7 @@ func (c *WSClient) Call(ctx context.Context, method string, params map[string]in
 // CallWithArrayParams enqueues a call request onto the Send queue. Params are
 // in a form of array (e.g. []interface{}{"abcd"}). Requests are JSON encoded.
 func (c *WSClient) CallWithArrayParams(ctx context.Context, method string, params []interface{}) error {
-	request, err := types.ArrayToRequest(c.nextRequestID(), method, params)
+	request, err := rpctypes.ArrayToRequest(c.nextRequestID(), method, params)
 	if err != nil {
 		return err
 	}
@@ -229,12 +229,12 @@ func (c *WSClient) CallWithArrayParams(ctx context.Context, method string, param
 
 // Private methods
 
-func (c *WSClient) nextRequestID() types.JSONRPCIntID {
+func (c *WSClient) nextRequestID() rpctypes.JSONRPCIntID {
 	c.mtx.Lock()
 	id := c.nextReqID
 	c.nextReqID++
 	c.mtx.Unlock()
-	return types.JSONRPCIntID(id)
+	return rpctypes.JSONRPCIntID(id)
 }
 
 func (c *WSClient) dial() error {
@@ -462,7 +462,7 @@ func (c *WSClient) readRoutine() {
 			return
 		}
 
-		var response types.RPCResponse
+		var response rpctypes.RPCResponse
 		err = json.Unmarshal(data, &response)
 		if err != nil {
 			c.Logger.Error("failed to parse response", "err", err, "data", string(data))

@@ -3,13 +3,14 @@ package kv
 import (
 	"context"
 
+	dbm "github.com/tendermint/tm-db"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	kvb "github.com/tendermint/tendermint/internal/state/indexer/block/kv"
 	kvt "github.com/tendermint/tendermint/internal/state/indexer/tx/kv"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
 )
 
 var _ indexer.EventSink = (*EventSink)(nil)

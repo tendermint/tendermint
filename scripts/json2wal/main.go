@@ -14,7 +14,7 @@ import (
 	"os"
 	"strings"
 
-	cs "github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/consensus"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/types"
 )
@@ -41,7 +41,7 @@ func main() {
 	// because of the byte array in BlockPart
 	// leading to unmarshal error: unexpected end of JSON input
 	br := bufio.NewReaderSize(f, int(2*types.BlockPartSizeBytes))
-	dec := cs.NewWALEncoder(walFile)
+	dec := consensus.NewWALEncoder(walFile)
 
 	for {
 		msgJSON, _, err := br.ReadLine()
@@ -55,7 +55,7 @@ func main() {
 			continue
 		}
 
-		var msg cs.TimedWALMessage
+		var msg consensus.TimedWALMessage
 		err = tmjson.Unmarshal(msgJSON, &msg)
 		if err != nil {
 			panic(fmt.Errorf("failed to unmarshal json: %v", err))
