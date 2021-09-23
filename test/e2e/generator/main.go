@@ -3,7 +3,6 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -11,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/tendermint/tendermint/libs/log"
+	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
 const (
@@ -57,10 +57,6 @@ func NewCLI() *CLI {
 				return fmt.Errorf("p2p mode must be either new, legacy, hybrid or mixed got %s", p2pMode)
 			}
 
-			if groups == 0 {
-				opts.Sorted = true
-			}
-
 			return cli.generate(dir, groups, opts)
 		},
 	}
@@ -86,21 +82,20 @@ func (cli *CLI) generate(dir string, groups int, opts Options) error {
 		return err
 	}
 	if groups <= 0 {
-		for i, manifest := range manifests {
-			err = manifest.Save(filepath.Join(dir, fmt.Sprintf("gen-%04d.toml", i)))
-			if err != nil {
-				return err
-			}
+		e2e.SortManifests(manifests)
+
+		if err := e2e.WriteManifests(filepath.Join(dir, "gen"), manifests); err != nil {
+			return err
 		}
 	} else {
-		groupSize := int(math.Ceil(float64(len(manifests)) / float64(groups)))
-		for g := 0; g < groups; g++ {
-			for i := 0; i < groupSize && g*groupSize+i < len(manifests); i++ {
-				manifest := manifests[g*groupSize+i]
-				err = manifest.Save(filepath.Join(dir, fmt.Sprintf("gen-group%02d-%04d.toml", g, i)))
-				if err != nil {
-					return err
-				}
+		groupManifests := e2e.SplitGroups(groups, manifests)
+
+		for idx, gm := range groupManifests {
+			e2e.SortManifests(gm)
+
+			prefix := filepath.Join(dir, fmt.Sprintf("gen-group%02d", idx))
+			if err := e2e.WriteManifests(prefix, gm); err != nil {
+				return err
 			}
 		}
 	}

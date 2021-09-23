@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"sort"
 
@@ -174,37 +175,49 @@ func LoadManifest(file string) (Manifest, error) {
 // complex.
 func SortManifests(manifests []Manifest) {
 	sort.SliceStable(manifests, func(i, j int) bool {
-		left, right := manifests[i], manifests[j]
-
-		if len(left.Nodes) < len(right.Nodes) {
-			return true
-		}
-
-		if left.InitialHeight < right.InitialHeight {
-			return true
-		}
-
-		if left.TxSize < right.TxSize {
-			return true
-		}
-
-		if left.Evidence < right.Evidence {
-			return true
-		}
-
 		var (
-			leftPerturb  int
-			rightPerturb int
+			left       = manifests[i]
+			right      = manifests[j]
+			leftScore  = len(left.Nodes) * 10
+			rightScore = len(right.Nodes) * 10
 		)
 
 		for _, n := range left.Nodes {
-			leftPerturb += len(n.Perturb)
+			leftScore += len(n.Perturb)
 		}
 		for _, n := range right.Nodes {
-			rightPerturb += len(n.Perturb)
+			rightScore += len(n.Perturb)
 		}
 
-		return leftPerturb < rightPerturb
-
+		return leftScore < rightScore
 	})
+}
+
+// SplitGroups divides a list of manifests into n groups of
+// manifests.
+func SplitGroups(groups int, manifests []Manifest) [][]Manifest {
+	groupSize := int(math.Ceil(float64(len(manifests)) / float64(groups)))
+	splitManifests := make([][]Manifest, 0, groups)
+
+	for i := 0; i < len(manifests); i += groupSize {
+		end := i + groupSize
+		if end > len(manifests) {
+			end = len(manifests)
+		}
+		splitManifests = append(splitManifests, manifests[i:end])
+	}
+
+	return splitManifests
+}
+
+// WriteManifests writes a collection of manifests into files with the
+// specified path prefix.
+func WriteManifests(prefix string, manifests []Manifest) error {
+	for i, manifest := range manifests {
+		if err := manifest.Save(fmt.Sprintf("%s-%04d.toml", prefix, i)); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
