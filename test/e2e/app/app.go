@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"bytes"
@@ -25,6 +25,23 @@ type Application struct {
 	cfg             *Config
 	restoreSnapshot *abci.Snapshot
 	restoreChunks   [][]byte
+}
+
+type Config struct {
+	Dir              string
+	SnapshotInterval uint64
+	RetainBlocks     uint64
+	KeyType          string
+	PersistInterval  uint64
+	ValidatorUpdates map[string]map[string]uint8 // height <-> pubkey <-> voting power
+}
+
+func DefaultConfig(dir string) *Config {
+	return &Config{
+		PersistInterval:  1,
+		SnapshotInterval: 100,
+		Dir:              dir,
+	}
 }
 
 // NewApplication creates the application.
@@ -134,7 +151,7 @@ func (app *Application) Commit() abci.ResponseCommit {
 		if err != nil {
 			panic(err)
 		}
-		logger.Info("Created state sync snapshot", "height", snapshot.Height)
+		app.logger.Info("Created state sync snapshot", "height", snapshot.Height)
 	}
 	retainHeight := int64(0)
 	if app.cfg.RetainBlocks > 0 {

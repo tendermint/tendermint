@@ -6,6 +6,7 @@ import (
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/abci/types"
+	e2e "github.com/tendermint/tendermint/test/e2e/app"
 )
 
 // DefaultClientCreator returns a default ClientCreator, which will create a
@@ -21,6 +22,12 @@ func DefaultClientCreator(addr, transport, dbDir string) (abciclient.Creator, io
 	case "persistent_kvstore":
 		app := kvstore.NewPersistentKVStoreApplication(dbDir)
 		return abciclient.NewLocalCreator(app), app
+	case "test":
+		app, err := e2e.NewApplication(e2e.DefaultConfig(dbDir))
+		if err != nil {
+			panic(err)
+		}
+		return abciclient.NewLocalCreator(app), noopCloser{}
 	case "noop":
 		return abciclient.NewLocalCreator(types.NewBaseApplication()), noopCloser{}
 	default:
