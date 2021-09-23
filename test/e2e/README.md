@@ -84,6 +84,8 @@ func init() {
 
 ### Debugging Failures
 
+#### Logs
+
 If a command or test fails, the runner simply exits with an error message and
 non-zero status code. The testnet is left running with data in the testnet
 directory, and can be inspected with e.g. `docker ps`, `docker logs`, or
@@ -92,6 +94,8 @@ testnet, run `./build/runner -f <manifest> cleanup`.
 
 If the standard `log_level` is not detailed enough (e.g. you want "debug" level
 logging for certain modules), you can change it in the manifest file.
+
+#### PProf
 
 Each node exposes a [pprof](https://golang.org/pkg/runtime/pprof/) server. To
 find out the local port, run `docker port <NODENAME> 6060 | awk -F: '{print
@@ -109,6 +113,39 @@ go tool pprof http://localhost:$PORT/debug/pprof/threadcreate
 go tool pprof http://localhost:$PORT/debug/pprof/block
 go tool pprof http://localhost:$PORT/debug/pprof/mutex
 ```
+
+#### Delve debugger
+
+You can run container binaries using the Delve debugger. 
+To enable Delve, set the `DEBUG` environment variable when setting up the runner:
+
+```bash
+DEBUG=1 ./build/runner -f networks/ci.toml setup
+```
+
+NOTE: Right now, only built-in app is supported (the one using `entrypoint-builtin` script)
+
+Containers expose DLV on ports starting from 40001 upwards.
+
+Example configuration for Visual Studio Code `launch.json`:
+
+```json
+{
+	"name": "E2E Docker 1",
+	"type": "go",
+	"request": "attach",
+	"mode": "remote",
+	"remotePath": "/src/tenderdash",
+	"port": 40001,
+	"host": "127.0.0.1"
+}
+```
+
+For more details, see: 
+
+* [JetBrains configuration](https://blog.jetbrains.com/go/2020/05/06/debugging-a-go-application-inside-a-docker-container/)
+* [Visual Studio Code configuration](https://medium.com/@kaperys/delve-into-docker-d6c92be2f823)
+
 
 ## Enabling IPv6
 

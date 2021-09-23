@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
+if [ ! -z "$DEBUG" ] ; then
+    DLV="/go/bin/dlv --listen=:40000 --headless=true --api-version=2 --accept-multiclient exec --continue"
+    SEP="--"
+fi
 
 # Forcibly remove any stray UNIX sockets left behind from previous runs
 rm -rf /var/run/privval.sock /var/run/app.sock
 
-/usr/bin/app /tenderdash/config/app.toml
+set -ex
+
+$DLV /usr/bin/app $SEP /tenderdash/config/app.toml
