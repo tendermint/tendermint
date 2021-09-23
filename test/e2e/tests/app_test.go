@@ -44,15 +44,15 @@ func TestApp_Hash(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, info.Response.LastBlockAppHash, "expected app to return app hash")
 
-		block, err := client.Block(ctx, &info.Response.LastBlockHeight)
-		require.NoError(t, err)
-		require.EqualValues(t, info.Response.LastBlockAppHash, block.Block.AppHash.Bytes(),
-			"app hash does not match last block's app hash")
-
 		status, err := client.Status(ctx)
 		require.NoError(t, err)
 		require.EqualValues(t, info.Response.LastBlockAppHash, status.SyncInfo.LatestAppHash,
 			"app hash does not match node status")
+
+		block, err := client.Block(ctx, &info.Response.LastBlockHeight)
+		require.NoError(t, err)
+		require.EqualValues(t, info.Response.LastBlockAppHash, block.Block.AppHash.Bytes(),
+			"app hash does not match last block's app hash")
 	})
 }
 
