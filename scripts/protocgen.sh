@@ -4,13 +4,20 @@ set -eo pipefail
 
 git clone https://github.com/tendermint/spec.git
 
-cp -vr ./spec/proto/tendermint/** ./proto/tendermint
+# Edit this line to clone your branch, if you are modifying protobuf files
+cd spec && git checkout v0.7.1 && cd ..
+
+cp -r ./spec/proto/tendermint/** ./proto/tendermint
 
 buf generate --path proto/tendermint
 
 mv ./proto/tendermint/abci/types.pb.go ./abci/types
 
 mv ./proto/tendermint/rpc/grpc/types.pb.go ./rpc/grpc
+
+echo "proto files have been generated"
+
+echo "removing copied files"
 
 rm -rf ./proto/tendermint/abci/types.proto
 rm -rf ./proto/tendermint/blocksync/types.proto
