@@ -925,49 +925,78 @@ func TestStateLock_MissingProposalWhenPOLSeenDoesNotRelock(t *testing.T) {
 	validatePrecommit(t, cs1, round, 0, vss[0], nil, firstBlockHash)
 }
 
-	if err := cs1.SetProposalAndBlock(prop, propBlock, secondBlockParts, "some peer"); err != nil {
-		t.Fatal(err)
-	}
+// TestStateLock_DoesNotLockOnOldProposal tests that observing
+// a two thirds majority for a block does not cause a validator to lock on the
+// block if a proposal was not seen for that block in the current round, but
+// was seen in a previous round.
+func TestStateLock_DoesNotLockOnOldProposal(t *testing.T) {
+	config := configSetup(t)
 
-	// more prevote creating a majority on the new block and this is then committed
+	cs1, vss := randState(config, 4)
+	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
+	height, round := cs1.Height, cs1.Round
+
+	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
+	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
+	pv1, err := cs1.privValidator.GetPubKey(context.Background())
+	require.NoError(t, err)
+	addr := pv1.Address()
+	voteCh := subscribeToVoter(cs1, addr)
+	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
+	/*
+		Round 0:
+		cs1 creates a proposal for block B.
+		Send a prevote for nil from each of the validators to cs1.
+		Send a precommit for nil from all of the validators to cs1.
+
+		This ensures that cs1 will not lock on B.
+	*/
+	t.Log("### Starting Round 0")
+	startTestRound(cs1, height, round)
+
+	ensureNewRound(t, newRoundCh, height, round)
+	ensureNewProposal(t, proposalCh, height, round)
+	rs := cs1.GetRoundState()
+	firstBlockHash := rs.ProposalBlock.Hash()
+	firstBlockParts := rs.ProposalBlockParts.Header()
+
+	ensurePrevote(t, voteCh, height, round)
+
+	signAddVotes(config, cs1, tmproto.PrevoteType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
+
+	// The proposed block should not have been locked.
+	ensurePrecommit(t, voteCh, height, round)
+	validatePrecommit(t, cs1, round, -1, vss[0], nil, nil)
+
 	signAddVotes(config, cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
-
-	// before we timeout to the new round set the new proposal
-	cs3 := newState(cs1.state, vs3, kvstore.NewApplication())
-	prop, propBlock = decideProposal(t, cs3, vs3, vs3.Height, vs3.Round+1)
-	if prop == nil || propBlock == nil {
-		t.Fatal("Failed to create proposal block with vs2")
-	}
-	thirdPropBlockParts := propBlock.MakePartSet(partSize)
-	thirdPropBlockHash := propBlock.Hash()
-	require.NotEqual(t, secondBlockHash, thirdPropBlockHash)
 
 	incrementRound(vs2, vs3, vs4)
 
 	// timeout to new round
 	ensureNewTimeout(t, timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
 
-	round++ // moving to the next round
-	ensureNewRound(t, newRoundCh, height, round)
-	t.Log("### ONTO ROUND 2")
-
 	/*
-		Round2 (vs3, C) // C C C C // C nil nil nil)
-	*/
+		Round 1:
+		No proposal new proposal is created.
+		Send a prevote for B, the block from round 0, from each of the validators to cs1.
+		Send a precommit for nil from all of the validators to cs1.
 
-	if err := cs1.SetProposalAndBlock(prop, propBlock, thirdPropBlockParts, "some peer"); err != nil {
-		t.Fatal(err)
-	}
+		cs1 saw a POL for the block it saw in round 0. We ensure that it does not
+		lock on this block, since it did not see a proposal for it in this round.
+	*/
+	t.Log("### Starting Round 1")
+	round++
+	ensureNewRound(t, newRoundCh, height, round)
 
 	ensurePrevote(t, voteCh, height, round)
-	// we are no longer locked to the first block so we should be able to prevote
-	validatePrevote(t, cs1, round, vss[0], thirdPropBlockHash)
+	validatePrevote(t, cs1, round, vss[0], nil)
 
-	signAddVotes(config, cs1, tmproto.PrevoteType, thirdPropBlockHash, thirdPropBlockParts.Header(), vs2, vs3, vs4)
+	// All validators prevote for the old block.
+	signAddVotes(config, cs1, tmproto.PrevoteType, firstBlockHash, firstBlockParts, vs2, vs3, vs4)
 
+	// Make sure that cs1 did not lock on the block since it did not receive a proposal for it.
 	ensurePrecommit(t, voteCh, height, round)
-	// we have a majority, now vs1 can change lock to the third block
-	validatePrecommit(t, cs1, round, round, vss[0], thirdPropBlockHash, thirdPropBlockHash)
+	validatePrecommit(t, cs1, round, -1, vss[0], nil, nil)
 }
 
 // 4 vals
