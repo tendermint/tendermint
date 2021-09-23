@@ -102,7 +102,7 @@ func (env *Environment) BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*
 			txres, err := env.Tx(ctx, tx.Hash(), false)
 			if err != nil {
 				jitter := 100*time.Millisecond + time.Duration(rand.Int63n(int64(time.Second))) // nolint: gosec
-				backoff := 100 * count * time.Millisecond
+				backoff := 100 * time.Duration(count) * time.Millisecond
 				timer.Reset(jitter + backoff)
 				continue
 			}
