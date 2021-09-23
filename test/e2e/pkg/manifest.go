@@ -223,11 +223,9 @@ func SplitGroups(groups int, manifests []Manifest) [][]Manifest {
 	splitManifests := make([][]Manifest, 0, groups)
 
 	for i := 0; i < len(manifests); i += groupSize {
-		end := i + groupSize
-		if end > len(manifests) {
-			end = len(manifests)
-		}
-		splitManifests = append(splitManifests, manifests[i:end])
+		grp := make([]Manifest, groupSize)
+		n := copy(grp, manifests[i:])
+		splitManifests = append(splitManifests, grp[:n])
 	}
 
 	return splitManifests
