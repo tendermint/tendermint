@@ -40,7 +40,7 @@ import (
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
 )
 
-func initDBs(cfg *config.Config, dbProvider config.DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
+func initDBs(cfg *config.Config, dbProvider config.DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) { //nolint:lll
 	var blockStoreDB dbm.DB
 	blockStoreDB, err = dbProvider(&config.DBContext{ID: "blockstore", Config: cfg})
 	if err != nil {

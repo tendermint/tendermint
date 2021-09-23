@@ -221,7 +221,8 @@ func checkValidHeight(bs state.BlockStore) error {
 	}
 
 	if startHeight < base {
-		return fmt.Errorf("%s (requested start height: %d, base height: %d)", coretypes.ErrHeightNotAvailable, startHeight, base)
+		return fmt.Errorf("%s (requested start height: %d, base height: %d)",
+			coretypes.ErrHeightNotAvailable, startHeight, base)
 	}
 
 	height := bs.Height()

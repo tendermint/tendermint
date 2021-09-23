@@ -77,7 +77,7 @@ func makeNetInfoFunc(c *lrpc.Client) rpcNetInfoFunc {
 	}
 }
 
-type rpcBlockchainInfoFunc func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error)
+type rpcBlockchainInfoFunc func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) //nolint:lll
 
 func makeBlockchainInfoFunc(c *lrpc.Client) rpcBlockchainInfoFunc {
 	return func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) {
