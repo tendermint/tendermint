@@ -48,18 +48,21 @@ func NewCLI() *CLI {
 			cli.testnet = testnet
 			return nil
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := Cleanup(cli.testnet); err != nil {
+		RunE: func(cmd *cobra.Command, args []string) (err error) {
+			if err = Cleanup(cli.testnet); err != nil {
 				return err
 			}
 			defer func() {
 				if cli.preserve {
 					logger.Info("Preserving testnet contents because -preserve=true")
+				} else if err != nil {
+					logger.Info("Preserving testnet that encountered error",
+						"err", err)
 				} else if err := Cleanup(cli.testnet); err != nil {
 					logger.Error("Error cleaning up testnet contents", "err", err)
 				}
 			}()
-			if err := Setup(cli.testnet); err != nil {
+			if err = Setup(cli.testnet); err != nil {
 				return err
 			}
 
@@ -73,38 +76,38 @@ func NewCLI() *CLI {
 				chLoadResult <- Load(lctx, cli.testnet)
 			}()
 
-			if err := Start(ctx, cli.testnet); err != nil {
+			if err = Start(ctx, cli.testnet); err != nil {
 				return err
 			}
 
-			if err := Wait(ctx, cli.testnet, 5); err != nil { // allow some txs to go through
+			if err = Wait(ctx, cli.testnet, 5); err != nil { // allow some txs to go through
 				return err
 			}
 
 			if cli.testnet.HasPerturbations() {
-				if err := Perturb(ctx, cli.testnet); err != nil {
+				if err = Perturb(ctx, cli.testnet); err != nil {
 					return err
 				}
-				if err := Wait(ctx, cli.testnet, 5); err != nil { // allow some txs to go through
+				if err = Wait(ctx, cli.testnet, 5); err != nil { // allow some txs to go through
 					return err
 				}
 			}
 
 			if cli.testnet.Evidence > 0 {
-				if err := InjectEvidence(ctx, cli.testnet, cli.testnet.Evidence); err != nil {
+				if err = InjectEvidence(ctx, cli.testnet, cli.testnet.Evidence); err != nil {
 					return err
 				}
-				if err := Wait(ctx, cli.testnet, 5); err != nil { // ensure chain progress
+				if err = Wait(ctx, cli.testnet, 5); err != nil { // ensure chain progress
 					return err
 				}
 			}
 
 			loadCancel()
 
-			if err := <-chLoadResult; err != nil {
+			if err = <-chLoadResult; err != nil {
 				return fmt.Errorf("transaction load failed: %w", err)
 			}
-			if err := Wait(ctx, cli.testnet, 5); err != nil { // wait for network to settle before tests
+			if err = Wait(ctx, cli.testnet, 5); err != nil { // wait for network to settle before tests
 				return err
 			}
 			if err := Test(cli.testnet); err != nil {
