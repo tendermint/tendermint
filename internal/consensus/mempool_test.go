@@ -17,7 +17,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	mempl "github.com/tendermint/tendermint/internal/mempool"
 	sm "github.com/tendermint/tendermint/internal/state"
-	"github.com/tendermint/tendermint/store"
+	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/types"
 )
 

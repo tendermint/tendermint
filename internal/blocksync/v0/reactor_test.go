@@ -17,10 +17,10 @@ import (
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
 	sf "github.com/tendermint/tendermint/internal/state/test/factory"
+	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
-	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tm-db"
 )

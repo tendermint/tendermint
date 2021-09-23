@@ -30,11 +30,11 @@ import (
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/state/indexer/sink"
 	"github.com/tendermint/tendermint/internal/statesync"
+	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
 	protop2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
-	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )

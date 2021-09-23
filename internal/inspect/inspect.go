@@ -12,9 +12,9 @@ import (
 	"github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/state/indexer/sink"
+	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
-	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 
 	"golang.org/x/sync/errgroup"
