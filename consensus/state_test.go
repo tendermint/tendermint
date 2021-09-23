@@ -1084,7 +1084,8 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	// in round 2 we see the polkad block from round 0
 	newProp := types.NewProposal(height, 1, round, 0, propBlockID0)
 	p := newProp.ToProto()
-	if _, err := vs3.SignProposal(config.ChainID(), cs1.Validators.QuorumType, cs1.Validators.QuorumHash, p); err != nil {
+	_, valSet := cs1.GetValidatorSet()
+	if _, err := vs3.SignProposal(config.ChainID(), valSet.QuorumType, valSet.QuorumHash, p); err != nil {
 		t.Fatal(err)
 	}
 
