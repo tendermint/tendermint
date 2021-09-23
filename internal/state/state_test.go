@@ -19,7 +19,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/encoding"
 	sm "github.com/tendermint/tendermint/internal/state"
-	sf "github.com/tendermint/tendermint/internal/state/test/factory"
+	statefactory "github.com/tendermint/tendermint/internal/state/test/factory"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -105,7 +105,7 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	state.LastBlockHeight++
 
 	// Build mock responses.
-	block := sf.MakeBlock(state, 2, new(types.Commit))
+	block := statefactory.MakeBlock(state, 2, new(types.Commit))
 
 	abciResponses := new(tmstate.ABCIResponses)
 	dtxs := make([]*abci.ResponseDeliverTx, 2)
@@ -447,7 +447,7 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 	// NewValidatorSet calls IncrementProposerPriority but uses on a copy of val1
 	assert.EqualValues(t, 0, val1.ProposerPriority)
 
-	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
+	block := statefactory.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 	abciResponses := &tmstate.ABCIResponses{
 		BeginBlock: &abci.ResponseBeginBlock{},
@@ -561,7 +561,7 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	// we only have one validator:
 	assert.Equal(t, val1PubKey.Address(), state.Validators.Proposer.Address)
 
-	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
+	block := statefactory.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 	// no updates:
 	abciResponses := &tmstate.ABCIResponses{
@@ -748,7 +748,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
 		require.NoError(t, err)
 
-		block := sf.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
+		block := statefactory.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
 		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
 		updatedState, err := sm.UpdateState(oldState, blockID, &block.Header, abciResponses, validatorUpdates)
@@ -777,7 +777,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		BeginBlock: &abci.ResponseBeginBlock{},
 		EndBlock:   &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{firstAddedVal}},
 	}
-	block := sf.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
+	block := statefactory.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 	updatedState, err := sm.UpdateState(oldState, blockID, &block.Header, abciResponses, validatorUpdates)
 	require.NoError(t, err)
@@ -792,7 +792,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
 		require.NoError(t, err)
 
-		block := sf.MakeBlock(lastState, lastState.LastBlockHeight+1, new(types.Commit))
+		block := statefactory.MakeBlock(lastState, lastState.LastBlockHeight+1, new(types.Commit))
 		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
 		updatedStateInner, err := sm.UpdateState(lastState, blockID, &block.Header, abciResponses, validatorUpdates)
@@ -825,7 +825,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 			BeginBlock: &abci.ResponseBeginBlock{},
 			EndBlock:   &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{addedVal}},
 		}
-		block := sf.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
+		block := statefactory.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
 		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 		state, err = sm.UpdateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
 		require.NoError(t, err)
@@ -840,7 +840,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		BeginBlock: &abci.ResponseBeginBlock{},
 		EndBlock:   &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{removeGenesisVal}},
 	}
-	block = sf.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
+	block = statefactory.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
 	blockID = types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 	validatorUpdates, err = types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
 	require.NoError(t, err)
@@ -861,7 +861,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		}
 		validatorUpdates, err = types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
 		require.NoError(t, err)
-		block = sf.MakeBlock(curState, curState.LastBlockHeight+1, new(types.Commit))
+		block = statefactory.MakeBlock(curState, curState.LastBlockHeight+1, new(types.Commit))
 		blockID = types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 		curState, err = sm.UpdateState(curState, blockID, &block.Header, abciResponses, validatorUpdates)
 		require.NoError(t, err)
@@ -886,7 +886,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
 		require.NoError(t, err)
 
-		block := sf.MakeBlock(updatedState, updatedState.LastBlockHeight+1, new(types.Commit))
+		block := statefactory.MakeBlock(updatedState, updatedState.LastBlockHeight+1, new(types.Commit))
 		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
 		updatedState, err = sm.UpdateState(updatedState, blockID, &block.Header, abciResponses, validatorUpdates)
@@ -981,7 +981,7 @@ func TestStateMakeBlock(t *testing.T) {
 
 	proposerAddress := state.Validators.GetProposer().Address
 	stateVersion := state.Version.Consensus
-	block := sf.MakeBlock(state, 2, new(types.Commit))
+	block := statefactory.MakeBlock(state, 2, new(types.Commit))
 
 	// test we set some fields
 	assert.Equal(t, stateVersion, block.Version)
