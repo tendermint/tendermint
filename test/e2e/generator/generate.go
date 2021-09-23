@@ -80,26 +80,27 @@ func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 			return nil, err
 		}
 
+		if len(manifest.Nodes) < opts.MinNetworkSize {
+			continue
+		}
+
 		if len(manifest.Nodes) == 1 {
 			if opt["p2p"] == HybridP2PMode {
 				continue
 			}
 		}
-		manifests = append(manifests, manifest)
-	}
 
-	if opts.Sorted {
-		// When the sorted flag is set (generally, as long as
-		// groups aren't set),
-		e2e.SortManifests(manifests)
+		manifests = append(manifests, manifest)
 	}
 
 	return manifests, nil
 }
 
 type Options struct {
-	P2P    P2PMode
-	Sorted bool
+	MinNetworkSize int
+	NumGroups      int
+	Directory      string
+	P2P            P2PMode
 }
 
 type P2PMode string
