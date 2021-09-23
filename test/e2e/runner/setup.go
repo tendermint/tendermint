@@ -160,6 +160,9 @@ func MakeDockerCompose(testnet *e2e.Testnet) ([]byte, error) {
 			}
 			return str
 		},
+		"debugPort": func(index int) int {
+			return 40000 + index + 1
+		},
 	}).Parse(`version: '2.4'
 
 networks:
@@ -176,7 +179,7 @@ networks:
       - subnet: {{ .IP }}
 
 services:
-{{- range .Nodes }}
+{{- range $index, $node :=  .Nodes }}
   {{ .Name }}:
     labels:
       e2e: true
@@ -189,10 +192,17 @@ services:
     command: ["node", "--misbehaviors", "{{ misbehaviorsToString .Misbehaviors }}"]
 {{- end }}
     init: true
+{{- if $.Debug }}
+    environment:
+    - DEBUG=1
+{{- end }}
     ports:
     - 26656
     - {{ if .ProxyPort }}{{ .ProxyPort }}:{{ end }}26657
     - 6060
+{{- if $.Debug }}
+    - {{ debugPort $index }}:40000
+{{- end }}
     volumes:
     - ./{{ .Name }}:/tenderdash
 {{- if ne $.PreCompiledAppPath "" }}
@@ -210,9 +220,11 @@ services:
 	data := &struct {
 		*e2e.Testnet
 		PreCompiledAppPath string
+		Debug              bool
 	}{
 		Testnet:            testnet,
 		PreCompiledAppPath: os.Getenv("PRE_COMPILED_APP_PATH"),
+		Debug:              os.Getenv("DEBUG") != "",
 	}
 	err = tmpl.Execute(&buf, data)
 	if err != nil {
