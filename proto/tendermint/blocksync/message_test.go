@@ -5,7 +5,7 @@ import (
 	math "math"
 	"testing"
 
-	proto "github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"

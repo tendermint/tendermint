@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"testing"
 
-	proto "github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	proto "github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 
 	"github.com/tendermint/tendermint/internal/blocksync"
 	"github.com/tendermint/tendermint/internal/blocksync/v2/internal/behavior"

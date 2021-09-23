@@ -2,9 +2,9 @@ package blocksync
 
 import (
 	"errors"
-	fmt "fmt"
+	"fmt"
 
-	proto "github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 )
 
 const (
