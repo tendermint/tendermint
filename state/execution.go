@@ -88,6 +88,7 @@ func NewBlockExecutor(
 		NextCoreChainLock: nextCoreChainLock,
 		logger:            logger,
 		metrics:           NopMetrics(),
+		// TODO: appHashSize should be read from config
 		appHashSize:       crypto.DefaultAppHashSize,
 	}
 
