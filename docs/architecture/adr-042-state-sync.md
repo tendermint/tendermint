@@ -97,8 +97,7 @@ design for tendermint was originally tracked in
 [#828](https://github.com/tendermint/tendermint/issues/828).
 
 #### Eager StateSync
-Warp Sync as implemented in Parity
-["Warp Sync"](https://wiki.parity.io/Warp-Sync-Snapshot-Format.html) to rapidly
+Warp Sync as implemented in OpenEthereum to rapidly
 download both blocks and state snapshots from peers. Data is carved into ~4MB
 chunks and snappy compressed. Hashes of snappy compressed chunks are stored in a
 manifest file which co-ordinates the state-sync. Obtaining a correct manifest
@@ -234,5 +233,3 @@ Proposed
 [WIP General/Lazy State-Sync pseudo-spec](https://github.com/tendermint/tendermint/issues/3639) - Jae Proposal
 [Warp Sync Implementation](https://github.com/tendermint/tendermint/pull/3594) - ackratos
 [Chunk Proposal](https://github.com/tendermint/tendermint/pull/3799) - Bucky proposed
-
-

@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/evidence"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
@@ -35,7 +35,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	prevoteHeight := int64(2)
 	testName := "consensus_byzantine_test"
 	tickerFunc := newMockTickerFunc(true)
-	appFunc := newCounter
+	appFunc := newKVStore
 
 	genDoc, privVals := factory.RandGenesisDoc(config, nValidators, false, 30)
 	states := make([]*State, nValidators)
@@ -62,8 +62,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 			// one for mempool, one for consensus
 			mtx := new(tmsync.RWMutex)
-			proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
-			proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+			proxyAppConnMem := abciclient.NewLocalClient(mtx, app)
+			proxyAppConnCon := abciclient.NewLocalClient(mtx, app)
 
 			// Make Mempool
 			mempool := mempoolv0.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
@@ -100,7 +100,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	rts := setup(t, nValidators, states, 100) // buffer must be large enough to not deadlock
 
-	var bzNodeID p2p.NodeID
+	var bzNodeID types.NodeID
 
 	// Set the first state's reactor as the dedicated byzantine reactor and grab
 	// the NodeID that corresponds to the state so we can reference the reactor.

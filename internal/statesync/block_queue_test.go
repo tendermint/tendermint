@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/test/factory"
+	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -22,10 +22,10 @@ var (
 )
 
 func TestBlockQueueBasic(t *testing.T) {
-	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
+	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
-	queue := newBlockQueue(startHeight, stopHeight, stopTime, 1)
+	queue := newBlockQueue(startHeight, stopHeight, 1, stopTime, 1)
 	wg := &sync.WaitGroup{}
 
 	// asynchronously fetch blocks and add it to the queue
@@ -69,10 +69,10 @@ loop:
 
 // Test with spurious failures and retries
 func TestBlockQueueWithFailures(t *testing.T) {
-	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
+	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
-	queue := newBlockQueue(startHeight, stopHeight, stopTime, 200)
+	queue := newBlockQueue(startHeight, stopHeight, 1, stopTime, 200)
 	wg := &sync.WaitGroup{}
 
 	failureRate := 4
@@ -119,9 +119,9 @@ func TestBlockQueueWithFailures(t *testing.T) {
 // Test that when all the blocks are retrieved that the queue still holds on to
 // it's workers and in the event of failure can still fetch the failed block
 func TestBlockQueueBlocks(t *testing.T) {
-	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
+	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
-	queue := newBlockQueue(startHeight, stopHeight, stopTime, 2)
+	queue := newBlockQueue(startHeight, stopHeight, 1, stopTime, 2)
 	expectedHeight := startHeight
 	retryHeight := stopHeight + 2
 
@@ -166,9 +166,9 @@ loop:
 }
 
 func TestBlockQueueAcceptsNoMoreBlocks(t *testing.T) {
-	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
+	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
-	queue := newBlockQueue(startHeight, stopHeight, stopTime, 1)
+	queue := newBlockQueue(startHeight, stopHeight, 1, stopTime, 1)
 	defer queue.close()
 
 loop:
@@ -191,10 +191,10 @@ loop:
 // Test a scenario where more blocks are needed then just the stopheight because
 // we haven't found a block with a small enough time.
 func TestBlockQueueStopTime(t *testing.T) {
-	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
+	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
-	queue := newBlockQueue(startHeight, stopHeight, stopTime, 1)
+	queue := newBlockQueue(startHeight, stopHeight, 1, stopTime, 1)
 	wg := &sync.WaitGroup{}
 
 	baseTime := stopTime.Add(-50 * time.Second)
@@ -233,9 +233,51 @@ func TestBlockQueueStopTime(t *testing.T) {
 	}
 }
 
-func mockLBResp(t *testing.T, peer p2p.NodeID, height int64, time time.Time) lightBlockResponse {
+func TestBlockQueueInitialHeight(t *testing.T) {
+	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
+	require.NoError(t, err)
+	const initialHeight int64 = 120
+
+	queue := newBlockQueue(startHeight, stopHeight, initialHeight, stopTime, 1)
+	wg := &sync.WaitGroup{}
+
+	// asynchronously fetch blocks and add it to the queue
+	for i := 0; i <= numWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			for {
+				select {
+				case height := <-queue.nextHeight():
+					require.GreaterOrEqual(t, height, initialHeight)
+					queue.add(mockLBResp(t, peerID, height, endTime))
+				case <-queue.done():
+					wg.Done()
+					return
+				}
+			}
+		}()
+	}
+
+loop:
+	for {
+		select {
+		case <-queue.done():
+			wg.Wait()
+			require.NoError(t, queue.error())
+			break loop
+
+		case resp := <-queue.verifyNext():
+			require.GreaterOrEqual(t, resp.block.Height, initialHeight)
+			queue.success(resp.block.Height)
+		}
+	}
+}
+
+func mockLBResp(t *testing.T, peer types.NodeID, height int64, time time.Time) lightBlockResponse {
+	vals, pv := factory.RandValidatorSet(3, 10)
+	_, _, lb := mockLB(t, height, time, factory.MakeBlockID(), vals, pv)
 	return lightBlockResponse{
-		block: mockLB(t, height, time, factory.MakeBlockID()),
+		block: lb,
 		peer:  peer,
 	}
 }

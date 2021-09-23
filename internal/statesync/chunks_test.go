@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/types"
 )
 
 func setupChunkQueue(t *testing.T) (*chunkQueue, func()) {
@@ -274,7 +274,7 @@ func TestChunkQueue_DiscardSender(t *testing.T) {
 	defer teardown()
 
 	// Allocate and add all chunks to the queue
-	senders := []p2p.NodeID{p2p.NodeID("a"), p2p.NodeID("b"), p2p.NodeID("c")}
+	senders := []types.NodeID{types.NodeID("a"), types.NodeID("b"), types.NodeID("c")}
 	for i := uint32(0); i < queue.Size(); i++ {
 		_, err := queue.Allocate()
 		require.NoError(t, err)
@@ -295,14 +295,14 @@ func TestChunkQueue_DiscardSender(t *testing.T) {
 	}
 
 	// Discarding an unknown sender should do nothing
-	err := queue.DiscardSender(p2p.NodeID("x"))
+	err := queue.DiscardSender(types.NodeID("x"))
 	require.NoError(t, err)
 	_, err = queue.Allocate()
 	assert.Equal(t, errDone, err)
 
 	// Discarding sender b should discard chunk 4, but not chunk 1 which has already been
 	// returned.
-	err = queue.DiscardSender(p2p.NodeID("b"))
+	err = queue.DiscardSender(types.NodeID("b"))
 	require.NoError(t, err)
 	index, err := queue.Allocate()
 	require.NoError(t, err)
@@ -315,8 +315,8 @@ func TestChunkQueue_GetSender(t *testing.T) {
 	queue, teardown := setupChunkQueue(t)
 	defer teardown()
 
-	peerAID := p2p.NodeID("aa")
-	peerBID := p2p.NodeID("bb")
+	peerAID := types.NodeID("aa")
+	peerBID := types.NodeID("bb")
 
 	_, err := queue.Add(&chunk{Height: 3, Format: 1, Index: 0, Chunk: []byte{1}, Sender: peerAID})
 	require.NoError(t, err)
@@ -354,7 +354,7 @@ func TestChunkQueue_Next(t *testing.T) {
 	}()
 
 	assert.Empty(t, chNext)
-	_, err := queue.Add(&chunk{Height: 3, Format: 1, Index: 1, Chunk: []byte{3, 1, 1}, Sender: p2p.NodeID("b")})
+	_, err := queue.Add(&chunk{Height: 3, Format: 1, Index: 1, Chunk: []byte{3, 1, 1}, Sender: types.NodeID("b")})
 	require.NoError(t, err)
 	select {
 	case <-chNext:
@@ -362,17 +362,17 @@ func TestChunkQueue_Next(t *testing.T) {
 	default:
 	}
 
-	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 0, Chunk: []byte{3, 1, 0}, Sender: p2p.NodeID("a")})
+	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 0, Chunk: []byte{3, 1, 0}, Sender: types.NodeID("a")})
 	require.NoError(t, err)
 
 	assert.Equal(t,
-		&chunk{Height: 3, Format: 1, Index: 0, Chunk: []byte{3, 1, 0}, Sender: p2p.NodeID("a")},
+		&chunk{Height: 3, Format: 1, Index: 0, Chunk: []byte{3, 1, 0}, Sender: types.NodeID("a")},
 		<-chNext)
 	assert.Equal(t,
-		&chunk{Height: 3, Format: 1, Index: 1, Chunk: []byte{3, 1, 1}, Sender: p2p.NodeID("b")},
+		&chunk{Height: 3, Format: 1, Index: 1, Chunk: []byte{3, 1, 1}, Sender: types.NodeID("b")},
 		<-chNext)
 
-	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 4, Chunk: []byte{3, 1, 4}, Sender: p2p.NodeID("e")})
+	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 4, Chunk: []byte{3, 1, 4}, Sender: types.NodeID("e")})
 	require.NoError(t, err)
 	select {
 	case <-chNext:
@@ -380,19 +380,19 @@ func TestChunkQueue_Next(t *testing.T) {
 	default:
 	}
 
-	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 2, Chunk: []byte{3, 1, 2}, Sender: p2p.NodeID("c")})
+	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 2, Chunk: []byte{3, 1, 2}, Sender: types.NodeID("c")})
 	require.NoError(t, err)
-	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 3, Chunk: []byte{3, 1, 3}, Sender: p2p.NodeID("d")})
+	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 3, Chunk: []byte{3, 1, 3}, Sender: types.NodeID("d")})
 	require.NoError(t, err)
 
 	assert.Equal(t,
-		&chunk{Height: 3, Format: 1, Index: 2, Chunk: []byte{3, 1, 2}, Sender: p2p.NodeID("c")},
+		&chunk{Height: 3, Format: 1, Index: 2, Chunk: []byte{3, 1, 2}, Sender: types.NodeID("c")},
 		<-chNext)
 	assert.Equal(t,
-		&chunk{Height: 3, Format: 1, Index: 3, Chunk: []byte{3, 1, 3}, Sender: p2p.NodeID("d")},
+		&chunk{Height: 3, Format: 1, Index: 3, Chunk: []byte{3, 1, 3}, Sender: types.NodeID("d")},
 		<-chNext)
 	assert.Equal(t,
-		&chunk{Height: 3, Format: 1, Index: 4, Chunk: []byte{3, 1, 4}, Sender: p2p.NodeID("e")},
+		&chunk{Height: 3, Format: 1, Index: 4, Chunk: []byte{3, 1, 4}, Sender: types.NodeID("e")},
 		<-chNext)
 
 	_, ok := <-chNext
@@ -421,15 +421,7 @@ func TestChunkQueue_Retry(t *testing.T) {
 	queue, teardown := setupChunkQueue(t)
 	defer teardown()
 
-	// Allocate and add all chunks to the queue
-	for i := uint32(0); i < queue.Size(); i++ {
-		_, err := queue.Allocate()
-		require.NoError(t, err)
-		_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: i, Chunk: []byte{byte(i)}})
-		require.NoError(t, err)
-		_, err = queue.Next()
-		require.NoError(t, err)
-	}
+	allocateAddChunksToQueue(t, queue)
 
 	// Retrying a couple of chunks makes Next() return them, but they are not allocatable
 	queue.Retry(3)
@@ -454,15 +446,7 @@ func TestChunkQueue_RetryAll(t *testing.T) {
 	queue, teardown := setupChunkQueue(t)
 	defer teardown()
 
-	// Allocate and add all chunks to the queue
-	for i := uint32(0); i < queue.Size(); i++ {
-		_, err := queue.Allocate()
-		require.NoError(t, err)
-		_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: i, Chunk: []byte{byte(i)}})
-		require.NoError(t, err)
-		_, err = queue.Next()
-		require.NoError(t, err)
-	}
+	allocateAddChunksToQueue(t, queue)
 
 	_, err := queue.Next()
 	assert.Equal(t, errDone, err)
@@ -551,4 +535,30 @@ func TestChunkQueue_WaitFor(t *testing.T) {
 	w = queue.WaitFor(3)
 	_, ok = <-w
 	assert.False(t, ok)
+}
+
+func TestNumChunkReturned(t *testing.T) {
+	queue, teardown := setupChunkQueue(t)
+	defer teardown()
+
+	assert.EqualValues(t, 5, queue.Size())
+
+	allocateAddChunksToQueue(t, queue)
+	assert.EqualValues(t, 5, queue.numChunksReturned())
+
+	err := queue.Close()
+	require.NoError(t, err)
+}
+
+// Allocate and add all chunks to the queue
+func allocateAddChunksToQueue(t *testing.T, q *chunkQueue) {
+	t.Helper()
+	for i := uint32(0); i < q.Size(); i++ {
+		_, err := q.Allocate()
+		require.NoError(t, err)
+		_, err = q.Add(&chunk{Height: 3, Format: 1, Index: i, Chunk: []byte{byte(i)}})
+		require.NoError(t, err)
+		_, err = q.Next()
+		require.NoError(t, err)
+	}
 }

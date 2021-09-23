@@ -3,6 +3,7 @@ package mock_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,9 +20,19 @@ func TestStatus(t *testing.T) {
 		Call: mock.Call{
 			Response: &ctypes.ResultStatus{
 				SyncInfo: ctypes.SyncInfo{
-					LatestBlockHash:   bytes.HexBytes("block"),
-					LatestAppHash:     bytes.HexBytes("app"),
-					LatestBlockHeight: 10,
+					LatestBlockHash:     bytes.HexBytes("block"),
+					LatestAppHash:       bytes.HexBytes("app"),
+					LatestBlockHeight:   10,
+					MaxPeerBlockHeight:  20,
+					TotalSyncedTime:     time.Second,
+					RemainingTime:       time.Minute,
+					TotalSnapshots:      10,
+					ChunkProcessAvgTime: time.Duration(10),
+					SnapshotHeight:      10,
+					SnapshotChunksCount: 9,
+					SnapshotChunksTotal: 10,
+					BackFilledBlocks:    9,
+					BackFillBlocksTotal: 10,
 				},
 			}},
 	}
@@ -34,6 +45,9 @@ func TestStatus(t *testing.T) {
 	require.Nil(err, "%+v", err)
 	assert.EqualValues("block", status.SyncInfo.LatestBlockHash)
 	assert.EqualValues(10, status.SyncInfo.LatestBlockHeight)
+	assert.EqualValues(20, status.SyncInfo.MaxPeerBlockHeight)
+	assert.EqualValues(time.Second, status.SyncInfo.TotalSyncedTime)
+	assert.EqualValues(time.Minute, status.SyncInfo.RemainingTime)
 
 	// make sure recorder works properly
 	require.Equal(1, len(r.Calls))
@@ -46,4 +60,15 @@ func TestStatus(t *testing.T) {
 	require.True(ok)
 	assert.EqualValues("block", st.SyncInfo.LatestBlockHash)
 	assert.EqualValues(10, st.SyncInfo.LatestBlockHeight)
+	assert.EqualValues(20, st.SyncInfo.MaxPeerBlockHeight)
+	assert.EqualValues(time.Second, status.SyncInfo.TotalSyncedTime)
+	assert.EqualValues(time.Minute, status.SyncInfo.RemainingTime)
+
+	assert.EqualValues(10, st.SyncInfo.TotalSnapshots)
+	assert.EqualValues(time.Duration(10), st.SyncInfo.ChunkProcessAvgTime)
+	assert.EqualValues(10, st.SyncInfo.SnapshotHeight)
+	assert.EqualValues(9, status.SyncInfo.SnapshotChunksCount)
+	assert.EqualValues(10, status.SyncInfo.SnapshotChunksTotal)
+	assert.EqualValues(9, status.SyncInfo.BackFilledBlocks)
+	assert.EqualValues(10, status.SyncInfo.BackFillBlocksTotal)
 }

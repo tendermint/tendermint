@@ -52,61 +52,63 @@ func NewCLI() *CLI {
 			if err := Cleanup(cli.testnet); err != nil {
 				return err
 			}
+			defer func() {
+				if cli.preserve {
+					logger.Info("Preserving testnet contents because -preserve=true")
+				} else if err := Cleanup(cli.testnet); err != nil {
+					logger.Error("Error cleaning up testnet contents", "err", err)
+				}
+			}()
 			if err := Setup(cli.testnet); err != nil {
 				return err
 			}
 
 			chLoadResult := make(chan error)
-			ctx, loadCancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(cmd.Context())
+			defer cancel()
+
+			lctx, loadCancel := context.WithCancel(ctx)
 			defer loadCancel()
 			go func() {
-				err := Load(ctx, cli.testnet, 1)
-				if err != nil {
-					logger.Error(fmt.Sprintf("Transaction load failed: %v", err.Error()))
-				}
-				chLoadResult <- err
+				chLoadResult <- Load(lctx, cli.testnet)
 			}()
 
-			if err := Start(cli.testnet); err != nil {
+			if err := Start(ctx, cli.testnet); err != nil {
 				return err
 			}
 
-			if err := Wait(cli.testnet, 5); err != nil { // allow some txs to go through
+			if err := Wait(ctx, cli.testnet, 5); err != nil { // allow some txs to go through
 				return err
 			}
 
 			if cli.testnet.HasPerturbations() {
-				if err := Perturb(cli.testnet); err != nil {
+				if err := Perturb(ctx, cli.testnet); err != nil {
 					return err
 				}
-				if err := Wait(cli.testnet, 5); err != nil { // allow some txs to go through
+				if err := Wait(ctx, cli.testnet, 5); err != nil { // allow some txs to go through
 					return err
 				}
 			}
 
 			if cli.testnet.Evidence > 0 {
-				if err := InjectEvidence(cli.testnet, cli.testnet.Evidence); err != nil {
+				if err := InjectEvidence(ctx, cli.testnet, cli.testnet.Evidence); err != nil {
 					return err
 				}
-				if err := Wait(cli.testnet, 1); err != nil { // ensure chain progress
+				if err := Wait(ctx, cli.testnet, 5); err != nil { // ensure chain progress
 					return err
 				}
 			}
 
 			loadCancel()
+
 			if err := <-chLoadResult; err != nil {
-				return err
+				return fmt.Errorf("transaction load failed: %w", err)
 			}
-			if err := Wait(cli.testnet, 8); err != nil { // wait for network to settle before tests
+			if err := Wait(ctx, cli.testnet, 5); err != nil { // wait for network to settle before tests
 				return err
 			}
 			if err := Test(cli.testnet); err != nil {
 				return err
-			}
-			if !cli.preserve {
-				if err := Cleanup(cli.testnet); err != nil {
-					return err
-				}
 			}
 			return nil
 		},
@@ -142,7 +144,7 @@ func NewCLI() *CLI {
 			if err != nil {
 				return err
 			}
-			return Start(cli.testnet)
+			return Start(cmd.Context(), cli.testnet)
 		},
 	})
 
@@ -150,7 +152,7 @@ func NewCLI() *CLI {
 		Use:   "perturb",
 		Short: "Perturbs the Docker testnet, e.g. by restarting or disconnecting nodes",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return Perturb(cli.testnet)
+			return Perturb(cmd.Context(), cli.testnet)
 		},
 	})
 
@@ -158,7 +160,7 @@ func NewCLI() *CLI {
 		Use:   "wait",
 		Short: "Waits for a few blocks to be produced and all nodes to catch up",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return Wait(cli.testnet, 5)
+			return Wait(cmd.Context(), cli.testnet, 5)
 		},
 	})
 
@@ -172,29 +174,28 @@ func NewCLI() *CLI {
 	})
 
 	cli.root.AddCommand(&cobra.Command{
-		Use:   "resume",
-		Short: "Resumes the Docker testnet",
+		Use:   "pause",
+		Short: "Pauses the Docker testnet",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			logger.Info("Resuming testnet")
-			return execCompose(cli.testnet.Dir, "up")
+			logger.Info("Pausing testnet")
+			return execCompose(cli.testnet.Dir, "pause")
 		},
 	})
 
 	cli.root.AddCommand(&cobra.Command{
-		Use:   "load [multiplier]",
-		Args:  cobra.MaximumNArgs(1),
+		Use:   "resume",
+		Short: "Resumes the Docker testnet",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			logger.Info("Resuming testnet")
+			return execCompose(cli.testnet.Dir, "unpause")
+		},
+	})
+
+	cli.root.AddCommand(&cobra.Command{
+		Use:   "load",
 		Short: "Generates transaction load until the command is canceled",
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			m := 1
-
-			if len(args) == 1 {
-				m, err = strconv.Atoi(args[0])
-				if err != nil {
-					return err
-				}
-			}
-
-			return Load(context.Background(), cli.testnet, m)
+			return Load(context.Background(), cli.testnet)
 		},
 	})
 
@@ -212,7 +213,7 @@ func NewCLI() *CLI {
 				}
 			}
 
-			return InjectEvidence(cli.testnet, amount)
+			return InjectEvidence(cmd.Context(), cli.testnet, amount)
 		},
 	})
 
@@ -238,10 +239,7 @@ func NewCLI() *CLI {
 		Example: "runner logs validator03",
 		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 1 {
-				return execComposeVerbose(cli.testnet.Dir, "logs", args[0])
-			}
-			return execComposeVerbose(cli.testnet.Dir, "logs")
+			return execComposeVerbose(cli.testnet.Dir, append([]string{"logs", "--no-color"}, args...)...)
 		},
 	})
 
@@ -273,40 +271,42 @@ Does not run any perbutations.
 			if err := Cleanup(cli.testnet); err != nil {
 				return err
 			}
+			defer func() {
+				if err := Cleanup(cli.testnet); err != nil {
+					logger.Error("Error cleaning up testnet contents", "err", err)
+				}
+			}()
+
 			if err := Setup(cli.testnet); err != nil {
 				return err
 			}
 
 			chLoadResult := make(chan error)
-			ctx, loadCancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(cmd.Context())
+			defer cancel()
+
+			lctx, loadCancel := context.WithCancel(ctx)
 			defer loadCancel()
 			go func() {
-				err := Load(ctx, cli.testnet, 1)
-				if err != nil {
-					logger.Error(fmt.Sprintf("Transaction load failed: %v", err.Error()))
-				}
+				err := Load(lctx, cli.testnet)
 				chLoadResult <- err
 			}()
 
-			if err := Start(cli.testnet); err != nil {
+			if err := Start(ctx, cli.testnet); err != nil {
 				return err
 			}
 
-			if err := Wait(cli.testnet, 5); err != nil { // allow some txs to go through
+			if err := Wait(ctx, cli.testnet, 5); err != nil { // allow some txs to go through
 				return err
 			}
 
 			// we benchmark performance over the next 100 blocks
-			if err := Benchmark(cli.testnet, 100); err != nil {
+			if err := Benchmark(ctx, cli.testnet, 100); err != nil {
 				return err
 			}
 
 			loadCancel()
 			if err := <-chLoadResult; err != nil {
-				return err
-			}
-
-			if err := Cleanup(cli.testnet); err != nil {
 				return err
 			}
 

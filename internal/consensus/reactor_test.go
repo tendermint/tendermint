@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
@@ -25,6 +25,7 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	sm "github.com/tendermint/tendermint/state"
 	statemocks "github.com/tendermint/tendermint/state/mocks"
@@ -39,13 +40,14 @@ var (
 
 type reactorTestSuite struct {
 	network             *p2ptest.Network
-	states              map[p2p.NodeID]*State
-	reactors            map[p2p.NodeID]*Reactor
-	subs                map[p2p.NodeID]types.Subscription
-	stateChannels       map[p2p.NodeID]*p2p.Channel
-	dataChannels        map[p2p.NodeID]*p2p.Channel
-	voteChannels        map[p2p.NodeID]*p2p.Channel
-	voteSetBitsChannels map[p2p.NodeID]*p2p.Channel
+	states              map[types.NodeID]*State
+	reactors            map[types.NodeID]*Reactor
+	subs                map[types.NodeID]types.Subscription
+	blocksyncSubs       map[types.NodeID]types.Subscription
+	stateChannels       map[types.NodeID]*p2p.Channel
+	dataChannels        map[types.NodeID]*p2p.Channel
+	voteChannels        map[types.NodeID]*p2p.Channel
+	voteSetBitsChannels map[types.NodeID]*p2p.Channel
 }
 
 func chDesc(chID p2p.ChannelID) p2p.ChannelDescriptor {
@@ -58,16 +60,19 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 	t.Helper()
 
 	rts := &reactorTestSuite{
-		network:  p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
-		states:   make(map[p2p.NodeID]*State),
-		reactors: make(map[p2p.NodeID]*Reactor, numNodes),
-		subs:     make(map[p2p.NodeID]types.Subscription, numNodes),
+		network:       p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
+		states:        make(map[types.NodeID]*State),
+		reactors:      make(map[types.NodeID]*Reactor, numNodes),
+		subs:          make(map[types.NodeID]types.Subscription, numNodes),
+		blocksyncSubs: make(map[types.NodeID]types.Subscription, numNodes),
 	}
 
 	rts.stateChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(StateChannel), new(tmcons.Message), size)
 	rts.dataChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(DataChannel), new(tmcons.Message), size)
 	rts.voteChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteChannel), new(tmcons.Message), size)
 	rts.voteSetBitsChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteSetBitsChannel), new(tmcons.Message), size)
+
+	_, cancel := context.WithCancel(context.Background())
 
 	i := 0
 	for nodeID, node := range rts.network.Nodes {
@@ -89,9 +94,13 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 		blocksSub, err := state.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, size)
 		require.NoError(t, err)
 
+		fsSub, err := state.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryBlockSyncStatus, size)
+		require.NoError(t, err)
+
 		rts.states[nodeID] = state
 		rts.subs[nodeID] = blocksSub
 		rts.reactors[nodeID] = reactor
+		rts.blocksyncSubs[nodeID] = fsSub
 
 		// simulate handle initChain in handshake
 		if state.state.LastBlockHeight == 0 {
@@ -117,6 +126,7 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 		}
 
 		leaktest.Check(t)
+		cancel()
 	})
 
 	return rts
@@ -253,11 +263,22 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 	wg.Wait()
 }
 
+func ensureBlockSyncStatus(t *testing.T, msg tmpubsub.Message, complete bool, height int64) {
+	t.Helper()
+	status, ok := msg.Data().(types.EventDataBlockSyncStatus)
+
+	require.True(t, ok)
+	require.Equal(t, complete, status.Complete)
+	require.Equal(t, height, status.Height)
+}
+
 func TestReactorBasic(t *testing.T) {
 	config := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(t, config, n, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	states, cleanup := randConsensusState(t,
+		config, n, "consensus_reactor_test",
+		newMockTickerFunc(true), newKVStore)
 	t.Cleanup(cleanup)
 
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
@@ -273,8 +294,21 @@ func TestReactorBasic(t *testing.T) {
 
 		// wait till everyone makes the first new block
 		go func(s types.Subscription) {
+			defer wg.Done()
 			<-s.Out()
-			wg.Done()
+		}(sub)
+	}
+
+	wg.Wait()
+
+	for _, sub := range rts.blocksyncSubs {
+		wg.Add(1)
+
+		// wait till everyone makes the consensus switch
+		go func(s types.Subscription) {
+			defer wg.Done()
+			msg := <-s.Out()
+			ensureBlockSyncStatus(t, msg, true, 0)
 		}(sub)
 	}
 
@@ -287,7 +321,7 @@ func TestReactorWithEvidence(t *testing.T) {
 	n := 4
 	testName := "consensus_reactor_test"
 	tickerFunc := newMockTickerFunc(true)
-	appFunc := newCounter
+	appFunc := newKVStore
 
 	genDoc, privVals := factory.RandGenesisDoc(config, n, false, 30)
 	states := make([]*State, n)
@@ -313,8 +347,8 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		// one for mempool, one for consensus
 		mtx := new(tmsync.RWMutex)
-		proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
-		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+		proxyAppConnMem := abciclient.NewLocalClient(mtx, app)
+		proxyAppConnCon := abciclient.NewLocalClient(mtx, app)
 
 		mempool := mempoolv0.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
 		mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
@@ -387,7 +421,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 		n,
 		"consensus_reactor_test",
 		newMockTickerFunc(true),
-		newCounter,
+		newKVStore,
 		func(c *cfg.Config) {
 			c.Consensus.CreateEmptyBlocks = false
 		},
@@ -431,7 +465,9 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 	config := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(t, config, n, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	states, cleanup := randConsensusState(t,
+		config, n, "consensus_reactor_test",
+		newMockTickerFunc(true), newKVStore)
 	t.Cleanup(cleanup)
 
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock

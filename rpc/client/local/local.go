@@ -2,6 +2,7 @@ package local
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -46,15 +47,15 @@ type Local struct {
 // NodeService describes the portion of the node interface that the
 // local RPC client constructor needs to build a local client.
 type NodeService interface {
-	ConfigureRPC() (*rpccore.Environment, error)
+	RPCEnvironment() *rpccore.Environment
 	EventBus() *types.EventBus
 }
 
 // New configures a client that calls the Node directly.
 func New(node NodeService) (*Local, error) {
-	env, err := node.ConfigureRPC()
-	if err != nil {
-		return nil, err
+	env := node.RPCEnvironment()
+	if env == nil {
+		return nil, errors.New("rpc is nil")
 	}
 	return &Local{
 		EventBus: node.EventBus(),
@@ -165,7 +166,7 @@ func (c *Local) Block(ctx context.Context, height *int64) (*ctypes.ResultBlock, 
 	return c.env.Block(c.ctx, height)
 }
 
-func (c *Local) BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBlock, error) {
+func (c *Local) BlockByHash(ctx context.Context, hash bytes.HexBytes) (*ctypes.ResultBlock, error) {
 	return c.env.BlockByHash(c.ctx, hash)
 }
 
@@ -181,7 +182,7 @@ func (c *Local) Validators(ctx context.Context, height *int64, page, perPage *in
 	return c.env.Validators(c.ctx, height, page, perPage)
 }
 
-func (c *Local) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.ResultTx, error) {
+func (c *Local) Tx(ctx context.Context, hash bytes.HexBytes, prove bool) (*ctypes.ResultTx, error) {
 	return c.env.Tx(c.ctx, hash, prove)
 }
 

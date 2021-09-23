@@ -29,7 +29,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-//go:generate mockery --case underscore --name Client
+//go:generate ../../scripts/mockery_generate.sh Client
 
 // Client wraps most important rpc calls a client would make if you want to
 // listen for events, test if it also implements events.EventSwitch.
@@ -67,11 +67,11 @@ type ABCIClient interface {
 // and prove anything about the chain.
 type SignClient interface {
 	Block(ctx context.Context, height *int64) (*ctypes.ResultBlock, error)
-	BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBlock, error)
+	BlockByHash(ctx context.Context, hash bytes.HexBytes) (*ctypes.ResultBlock, error)
 	BlockResults(ctx context.Context, height *int64) (*ctypes.ResultBlockResults, error)
 	Commit(ctx context.Context, height *int64) (*ctypes.ResultCommit, error)
 	Validators(ctx context.Context, height *int64, page, perPage *int) (*ctypes.ResultValidators, error)
-	Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.ResultTx, error)
+	Tx(ctx context.Context, hash bytes.HexBytes, prove bool) (*ctypes.ResultTx, error)
 
 	// TxSearch defines a method to search for a paginated set of transactions by
 	// DeliverTx event search criteria.

@@ -3,40 +3,44 @@ package sr25519
 import (
 	"fmt"
 
-	schnorrkel "github.com/ChainSafe/go-schnorrkel"
+	"github.com/oasisprotocol/curve25519-voi/primitives/sr25519"
 
 	"github.com/tendermint/tendermint/crypto"
 )
 
-var _ crypto.BatchVerifier = BatchVerifier{}
+var _ crypto.BatchVerifier = &BatchVerifier{}
 
 // BatchVerifier implements batch verification for sr25519.
-// https://github.com/ChainSafe/go-schnorrkel is used for batch verification
 type BatchVerifier struct {
-	*schnorrkel.BatchVerifier
+	*sr25519.BatchVerifier
 }
 
 func NewBatchVerifier() crypto.BatchVerifier {
-	return BatchVerifier{schnorrkel.NewBatchVerifier()}
+	return &BatchVerifier{sr25519.NewBatchVerifier()}
 }
 
-func (b BatchVerifier) Add(key crypto.PubKey, msg, sig []byte) error {
-	var sig64 [SignatureSize]byte
-	copy(sig64[:], sig)
-	signature := new(schnorrkel.Signature)
-	err := signature.Decode(sig64)
-	if err != nil {
-		return fmt.Errorf("unable to decode signature: %w", err)
+func (b *BatchVerifier) Add(key crypto.PubKey, msg, signature []byte) error {
+	pk, ok := key.(PubKey)
+	if !ok {
+		return fmt.Errorf("sr25519: pubkey is not sr25519")
 	}
 
-	signingContext := schnorrkel.NewSigningContext([]byte{}, msg)
+	var srpk sr25519.PublicKey
+	if err := srpk.UnmarshalBinary(pk); err != nil {
+		return fmt.Errorf("sr25519: invalid public key: %w", err)
+	}
 
-	var pk [PubKeySize]byte
-	copy(pk[:], key.Bytes())
+	var sig sr25519.Signature
+	if err := sig.UnmarshalBinary(signature); err != nil {
+		return fmt.Errorf("sr25519: unable to decode signature: %w", err)
+	}
 
-	return b.BatchVerifier.Add(signingContext, signature, schnorrkel.NewPublicKey(pk))
+	st := signingCtx.NewTranscriptBytes(msg)
+	b.BatchVerifier.Add(&srpk, st, &sig)
+
+	return nil
 }
 
-func (b BatchVerifier) Verify() bool {
-	return b.BatchVerifier.Verify()
+func (b *BatchVerifier) Verify() (bool, []bool) {
+	return b.BatchVerifier.Verify(crypto.CReader())
 }

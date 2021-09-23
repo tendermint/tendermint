@@ -33,14 +33,14 @@ func execVerbose(args ...string) error {
 // execCompose runs a Docker Compose command for a testnet.
 func execCompose(dir string, args ...string) error {
 	return exec(append(
-		[]string{"docker-compose", "-f", filepath.Join(dir, "docker-compose.yml")},
+		[]string{"docker-compose", "--ansi=never", "-f", filepath.Join(dir, "docker-compose.yml")},
 		args...)...)
 }
 
 // execComposeVerbose runs a Docker Compose command for a testnet and displays its output.
 func execComposeVerbose(dir string, args ...string) error {
 	return execVerbose(append(
-		[]string{"docker-compose", "-f", filepath.Join(dir, "docker-compose.yml")},
+		[]string{"docker-compose", "--ansi=never", "-f", filepath.Join(dir, "docker-compose.yml")},
 		args...)...)
 }
 

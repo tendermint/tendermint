@@ -2,6 +2,9 @@ name: Test Coverage
 on:
   pull_request:
   push:
+    paths:
+      - "**.go"
+      - "!test/"
     branches:
       - master
       - release/**
@@ -46,10 +49,11 @@ jobs:
         with:
           go-version: "1.16"
       - uses: actions/checkout@v2.3.4
-      - uses: technote-space/get-diff-action@v4
+      - uses: technote-space/get-diff-action@v5
         with:
           PATTERNS: |
             **/**.go
+            "!test/"
             go.mod
             go.sum
       - name: install
@@ -68,10 +72,11 @@ jobs:
         with:
           go-version: "1.16"
       - uses: actions/checkout@v2.3.4
-      - uses: technote-space/get-diff-action@v4
+      - uses: technote-space/get-diff-action@v5
         with:
           PATTERNS: |
             **/**.go
+            "!test/"
             go.mod
             go.sum
       - uses: actions/download-artifact@v2
@@ -96,10 +101,11 @@ jobs:
     needs: tests
     steps:
       - uses: actions/checkout@v2.3.4
-      - uses: technote-space/get-diff-action@v4
+      - uses: technote-space/get-diff-action@v5
         with:
           PATTERNS: |
             **/**.go
+            "!test/"
             go.mod
             go.sum
       - uses: actions/download-artifact@v2
@@ -121,7 +127,7 @@ jobs:
       - run: |
           cat ./*profile.out | grep -v "mode: atomic" >> coverage.txt
         if: env.GIT_DIFF
-      - uses: codecov/codecov-action@v1.5.2
+      - uses: codecov/codecov-action@v2.1.0
         with:
           file: ./coverage.txt
         if: env.GIT_DIFF

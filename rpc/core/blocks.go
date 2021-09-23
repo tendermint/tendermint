@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -96,17 +97,22 @@ func (env *Environment) Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.
 		return nil, err
 	}
 
-	block := env.BlockStore.LoadBlock(height)
 	blockMeta := env.BlockStore.LoadBlockMeta(height)
-	if blockMeta == nil || block == nil {
-		return &ctypes.ResultBlock{BlockID: types.BlockID{}, Block: &types.Block{}}, nil
+	if blockMeta == nil {
+		return &ctypes.ResultBlock{BlockID: types.BlockID{}, Block: nil}, nil
 	}
+
+	block := env.BlockStore.LoadBlock(height)
 	return &ctypes.ResultBlock{BlockID: blockMeta.BlockID, Block: block}, nil
 }
 
 // BlockByHash gets block by hash.
 // More: https://docs.tendermint.com/master/rpc/#/Info/block_by_hash
-func (env *Environment) BlockByHash(ctx *rpctypes.Context, hash []byte) (*ctypes.ResultBlock, error) {
+func (env *Environment) BlockByHash(ctx *rpctypes.Context, hash bytes.HexBytes) (*ctypes.ResultBlock, error) {
+	// N.B. The hash parameter is HexBytes so that the reflective parameter
+	// decoding logic in the HTTP service will correctly translate from JSON.
+	// See https://github.com/tendermint/tendermint/issues/6802 for context.
+
 	block := env.BlockStore.LoadBlockByHash(hash)
 	if block == nil {
 		return &ctypes.ResultBlock{BlockID: types.BlockID{}, Block: nil}, nil
@@ -134,12 +140,19 @@ func (env *Environment) Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes
 	// If the next block has not been committed yet,
 	// use a non-canonical commit
 	if height == env.BlockStore.Height() {
-		commit := env.BlockStore.LoadSeenCommit(height)
-		return ctypes.NewResultCommit(&header, commit, false), nil
+		commit := env.BlockStore.LoadSeenCommit()
+		// NOTE: we can't yet ensure atomicity of operations in asserting
+		// whether this is the latest height and retrieving the seen commit
+		if commit != nil && commit.Height == height {
+			return ctypes.NewResultCommit(&header, commit, false), nil
+		}
 	}
 
 	// Return the canonical commit (comes from the block at height+1)
 	commit := env.BlockStore.LoadBlockCommit(height)
+	if commit == nil {
+		return nil, nil
+	}
 	return ctypes.NewResultCommit(&header, commit, true), nil
 }
 
@@ -161,9 +174,15 @@ func (env *Environment) BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*
 		return nil, err
 	}
 
+	var totalGasUsed int64
+	for _, tx := range results.GetDeliverTxs() {
+		totalGasUsed += tx.GetGasUsed()
+	}
+
 	return &ctypes.ResultBlockResults{
 		Height:                height,
 		TxsResults:            results.DeliverTxs,
+		TotalGasUsed:          totalGasUsed,
 		BeginBlockEvents:      results.BeginBlock.Events,
 		EndBlockEvents:        results.EndBlock.Events,
 		ValidatorUpdates:      results.EndBlock.ValidatorUpdates,

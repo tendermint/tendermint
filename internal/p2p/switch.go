@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/libs/cmap"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -56,7 +57,7 @@ type AddrBook interface {
 	AddPrivateIDs([]string)
 	AddOurAddress(*NetAddress)
 	OurAddress(*NetAddress) bool
-	MarkGood(NodeID)
+	MarkGood(types.NodeID)
 	RemoveAddress(*NetAddress)
 	HasAddress(*NetAddress) bool
 	Save()
@@ -102,12 +103,12 @@ type Switch struct {
 	peers        *PeerSet
 	dialing      *cmap.CMap
 	reconnecting *cmap.CMap
-	nodeInfo     NodeInfo // our node info
-	nodeKey      NodeKey  // our node privkey
+	nodeInfo     types.NodeInfo // our node info
+	nodeKey      types.NodeKey  // our node privkey
 	addrBook     AddrBook
 	// peers addresses with whom we'll maintain constant connection
 	persistentPeersAddrs []*NetAddress
-	unconditionalPeerIDs map[NodeID]struct{}
+	unconditionalPeerIDs map[types.NodeID]struct{}
 
 	transport Transport
 
@@ -153,7 +154,7 @@ func NewSwitch(
 		metrics:              NopMetrics(),
 		transport:            transport,
 		persistentPeersAddrs: make([]*NetAddress, 0),
-		unconditionalPeerIDs: make(map[NodeID]struct{}),
+		unconditionalPeerIDs: make(map[types.NodeID]struct{}),
 		filterTimeout:        defaultFilterTimeout,
 		conns:                NewConnSet(),
 	}
@@ -241,19 +242,19 @@ func (sw *Switch) Reactor(name string) Reactor {
 
 // SetNodeInfo sets the switch's NodeInfo for checking compatibility and handshaking with other nodes.
 // NOTE: Not goroutine safe.
-func (sw *Switch) SetNodeInfo(nodeInfo NodeInfo) {
+func (sw *Switch) SetNodeInfo(nodeInfo types.NodeInfo) {
 	sw.nodeInfo = nodeInfo
 }
 
 // NodeInfo returns the switch's NodeInfo.
 // NOTE: Not goroutine safe.
-func (sw *Switch) NodeInfo() NodeInfo {
+func (sw *Switch) NodeInfo() types.NodeInfo {
 	return sw.nodeInfo
 }
 
 // SetNodeKey sets the switch's private key for authenticated encryption.
 // NOTE: Not goroutine safe.
-func (sw *Switch) SetNodeKey(nodeKey NodeKey) {
+func (sw *Switch) SetNodeKey(nodeKey types.NodeKey) {
 	sw.nodeKey = nodeKey
 }
 
@@ -352,7 +353,7 @@ func (sw *Switch) NumPeers() (outbound, inbound, dialing int) {
 	return
 }
 
-func (sw *Switch) IsPeerUnconditional(id NodeID) bool {
+func (sw *Switch) IsPeerUnconditional(id types.NodeID) bool {
 	_, ok := sw.unconditionalPeerIDs[id]
 	return ok
 }
@@ -517,7 +518,7 @@ func (sw *Switch) DialPeersAsync(peers []string) error {
 	}
 	// return first non-ErrNetAddressLookup error
 	for _, err := range errs {
-		if _, ok := err.(ErrNetAddressLookup); ok {
+		if _, ok := err.(types.ErrNetAddressLookup); ok {
 			continue
 		}
 		return err
@@ -621,7 +622,7 @@ func (sw *Switch) AddPersistentPeers(addrs []string) error {
 	}
 	// return first non-ErrNetAddressLookup error
 	for _, err := range errs {
-		if _, ok := err.(ErrNetAddressLookup); ok {
+		if _, ok := err.(types.ErrNetAddressLookup); ok {
 			continue
 		}
 		return err
@@ -633,11 +634,11 @@ func (sw *Switch) AddPersistentPeers(addrs []string) error {
 func (sw *Switch) AddUnconditionalPeerIDs(ids []string) error {
 	sw.Logger.Info("Adding unconditional peer ids", "ids", ids)
 	for i, id := range ids {
-		err := NodeID(id).Validate()
+		err := types.NodeID(id).Validate()
 		if err != nil {
 			return fmt.Errorf("wrong ID #%d: %w", i, err)
 		}
-		sw.unconditionalPeerIDs[NodeID(id)] = struct{}{}
+		sw.unconditionalPeerIDs[types.NodeID(id)] = struct{}{}
 	}
 	return nil
 }
@@ -645,7 +646,7 @@ func (sw *Switch) AddUnconditionalPeerIDs(ids []string) error {
 func (sw *Switch) AddPrivatePeerIDs(ids []string) error {
 	validIDs := make([]string, 0, len(ids))
 	for i, id := range ids {
-		err := NodeID(id).Validate()
+		err := types.NodeID(id).Validate()
 		if err != nil {
 			return fmt.Errorf("wrong ID #%d: %w", i, err)
 		}
@@ -668,7 +669,7 @@ func (sw *Switch) IsPeerPersistent(na *NetAddress) bool {
 
 func (sw *Switch) acceptRoutine() {
 	for {
-		var peerNodeInfo NodeInfo
+		var peerNodeInfo types.NodeInfo
 		c, err := sw.transport.Accept()
 		if err == nil {
 			// NOTE: The legacy MConn transport did handshaking in Accept(),
@@ -689,12 +690,15 @@ func (sw *Switch) acceptRoutine() {
 			}
 			switch err := err.(type) {
 			case ErrRejected:
+				addr := err.Addr()
 				if err.IsSelf() {
 					// Remove the given address from the address book and add to our addresses
 					// to avoid dialing in the future.
-					addr := err.Addr()
 					sw.addrBook.RemoveAddress(&addr)
 					sw.addrBook.AddOurAddress(&addr)
+				}
+				if err.IsIncompatible() {
+					sw.addrBook.RemoveAddress(&addr)
 				}
 
 				sw.Logger.Info(
@@ -799,7 +803,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	var peerNodeInfo NodeInfo
+	var peerNodeInfo types.NodeInfo
 	c, err := sw.transport.Dial(ctx, Endpoint{
 		Protocol: MConnProtocol,
 		IP:       addr.IP,
@@ -821,9 +825,12 @@ func (sw *Switch) addOutboundPeerWithConfig(
 				// to avoid dialing in the future.
 				sw.addrBook.RemoveAddress(addr)
 				sw.addrBook.AddOurAddress(addr)
-
-				return err
 			}
+			if e.IsIncompatible() {
+				sw.addrBook.RemoveAddress(addr)
+			}
+
+			return err
 		}
 
 		// retry persistent peers after
@@ -855,7 +862,10 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	return nil
 }
 
-func (sw *Switch) handshakePeer(c Connection, expectPeerID NodeID) (NodeInfo, crypto.PubKey, error) {
+func (sw *Switch) handshakePeer(
+	c Connection,
+	expectPeerID types.NodeID,
+) (types.NodeInfo, crypto.PubKey, error) {
 	// Moved from transport and hardcoded until legacy P2P stack removal.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -879,7 +889,7 @@ func (sw *Switch) handshakePeer(c Connection, expectPeerID NodeID) (NodeInfo, cr
 
 	// For outgoing conns, ensure connection key matches dialed key.
 	if expectPeerID != "" {
-		peerID := NodeIDFromPubKey(peerKey)
+		peerID := types.NodeIDFromPubKey(peerKey)
 		if expectPeerID != peerID {
 			return peerInfo, peerKey, ErrRejected{
 				conn: c.(*mConnConnection).conn,
@@ -896,7 +906,7 @@ func (sw *Switch) handshakePeer(c Connection, expectPeerID NodeID) (NodeInfo, cr
 
 	if sw.nodeInfo.ID() == peerInfo.ID() {
 		return peerInfo, peerKey, ErrRejected{
-			addr:   *NewNetAddress(peerInfo.ID(), c.(*mConnConnection).conn.RemoteAddr()),
+			addr:   *types.NewNetAddress(peerInfo.ID(), c.(*mConnConnection).conn.RemoteAddr()),
 			conn:   c.(*mConnConnection).conn,
 			id:     peerInfo.ID(),
 			isSelf: true,
@@ -1036,4 +1046,20 @@ func (sw *Switch) addPeer(p Peer) error {
 	sw.Logger.Info("Added peer", "peer", p)
 
 	return nil
+}
+
+// NewNetAddressStrings returns an array of NetAddress'es build using
+// the provided strings.
+func NewNetAddressStrings(addrs []string) ([]*NetAddress, []error) {
+	netAddrs := make([]*NetAddress, 0)
+	errs := make([]error, 0)
+	for _, addr := range addrs {
+		netAddr, err := types.NewNetAddressString(addr)
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			netAddrs = append(netAddrs, netAddr)
+		}
+	}
+	return netAddrs, errs
 }

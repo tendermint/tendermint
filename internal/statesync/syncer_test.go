@@ -13,11 +13,10 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/proxy"
+	proxymocks "github.com/tendermint/tendermint/internal/proxy/mocks"
 	"github.com/tendermint/tendermint/internal/statesync/mocks"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
-	"github.com/tendermint/tendermint/proxy"
-	proxymocks "github.com/tendermint/tendermint/proxy/mocks"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
@@ -66,10 +65,12 @@ func TestSyncer_SyncAny(t *testing.T) {
 	connSnapshot := &proxymocks.AppConnSnapshot{}
 	connQuery := &proxymocks.AppConnQuery{}
 
-	peerAID := p2p.NodeID("aa")
-	peerBID := p2p.NodeID("bb")
-	peerCID := p2p.NodeID("cc")
+	peerAID := types.NodeID("aa")
+	peerBID := types.NodeID("bb")
+	peerCID := types.NodeID("cc")
 	rts := setup(t, connSnapshot, connQuery, stateProvider, 3)
+
+	rts.reactor.syncer = rts.syncer
 
 	// Adding a chunk should error when no sync is in progress
 	_, err := rts.syncer.AddChunk(&chunk{Height: 1, Format: 1, Index: 0, Chunk: []byte{1}})
@@ -196,6 +197,16 @@ func TestSyncer_SyncAny(t *testing.T) {
 	require.Equal(t, expectState, newState)
 	require.Equal(t, commit, lastCommit)
 
+	require.Equal(t, len(chunks), int(rts.syncer.processingSnapshot.Chunks))
+	require.Equal(t, expectState.LastBlockHeight, rts.syncer.lastSyncedSnapshotHeight)
+	require.True(t, rts.syncer.avgChunkTime > 0)
+
+	require.Equal(t, int64(rts.syncer.processingSnapshot.Chunks), rts.reactor.SnapshotChunksTotal())
+	require.Equal(t, rts.syncer.lastSyncedSnapshotHeight, rts.reactor.SnapshotHeight())
+	require.Equal(t, time.Duration(rts.syncer.avgChunkTime), rts.reactor.ChunkProcessAvgTime())
+	require.Equal(t, int64(len(rts.syncer.snapshots.snapshots)), rts.reactor.TotalSnapshots())
+	require.Equal(t, int64(0), rts.reactor.SnapshotChunksCount())
+
 	connSnapshot.AssertExpectations(t)
 	connQuery.AssertExpectations(t)
 }
@@ -217,7 +228,7 @@ func TestSyncer_SyncAny_abort(t *testing.T) {
 	rts := setup(t, nil, nil, stateProvider, 2)
 
 	s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
-	peerID := p2p.NodeID("aa")
+	peerID := types.NodeID("aa")
 
 	_, err := rts.syncer.AddSnapshot(peerID, s)
 	require.NoError(t, err)
@@ -242,7 +253,7 @@ func TestSyncer_SyncAny_reject(t *testing.T) {
 	s12 := &snapshot{Height: 1, Format: 2, Chunks: 3, Hash: []byte{1, 2, 3}}
 	s11 := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
 
-	peerID := p2p.NodeID("aa")
+	peerID := types.NodeID("aa")
 
 	_, err := rts.syncer.AddSnapshot(peerID, s22)
 	require.NoError(t, err)
@@ -281,7 +292,7 @@ func TestSyncer_SyncAny_reject_format(t *testing.T) {
 	s12 := &snapshot{Height: 1, Format: 2, Chunks: 3, Hash: []byte{1, 2, 3}}
 	s11 := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
 
-	peerID := p2p.NodeID("aa")
+	peerID := types.NodeID("aa")
 
 	_, err := rts.syncer.AddSnapshot(peerID, s22)
 	require.NoError(t, err)
@@ -311,9 +322,9 @@ func TestSyncer_SyncAny_reject_sender(t *testing.T) {
 
 	rts := setup(t, nil, nil, stateProvider, 2)
 
-	peerAID := p2p.NodeID("aa")
-	peerBID := p2p.NodeID("bb")
-	peerCID := p2p.NodeID("cc")
+	peerAID := types.NodeID("aa")
+	peerBID := types.NodeID("bb")
+	peerCID := types.NodeID("cc")
 
 	// sbc will be offered first, which will be rejected with reject_sender, causing all snapshots
 	// submitted by both b and c (i.e. sb, sc, sbc) to be rejected. Finally, sa will reject and
@@ -360,7 +371,7 @@ func TestSyncer_SyncAny_abciError(t *testing.T) {
 	errBoom := errors.New("boom")
 	s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
 
-	peerID := p2p.NodeID("aa")
+	peerID := types.NodeID("aa")
 
 	_, err := rts.syncer.AddSnapshot(peerID, s)
 	require.NoError(t, err)
@@ -449,6 +460,9 @@ func TestSyncer_applyChunks_Results(t *testing.T) {
 			body := []byte{1, 2, 3}
 			chunks, err := newChunkQueue(&snapshot{Height: 1, Format: 1, Chunks: 1}, "")
 			require.NoError(t, err)
+
+			fetchStartTime := time.Now()
+
 			_, err = chunks.Add(&chunk{Height: 1, Format: 1, Index: 0, Chunk: body})
 			require.NoError(t, err)
 
@@ -462,7 +476,7 @@ func TestSyncer_applyChunks_Results(t *testing.T) {
 					Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 			}
 
-			err = rts.syncer.applyChunks(ctx, chunks)
+			err = rts.syncer.applyChunks(ctx, chunks, fetchStartTime)
 			if tc.expectErr == unknownErr {
 				require.Error(t, err)
 			} else {
@@ -499,6 +513,9 @@ func TestSyncer_applyChunks_RefetchChunks(t *testing.T) {
 
 			chunks, err := newChunkQueue(&snapshot{Height: 1, Format: 1, Chunks: 3}, "")
 			require.NoError(t, err)
+
+			fetchStartTime := time.Now()
+
 			added, err := chunks.Add(&chunk{Height: 1, Format: 1, Index: 0, Chunk: []byte{0}})
 			require.True(t, added)
 			require.NoError(t, err)
@@ -527,7 +544,7 @@ func TestSyncer_applyChunks_RefetchChunks(t *testing.T) {
 			// check the queue contents, and finally close the queue to end the goroutine.
 			// We don't really care about the result of applyChunks, since it has separate test.
 			go func() {
-				rts.syncer.applyChunks(ctx, chunks) //nolint:errcheck // purposefully ignore error
+				rts.syncer.applyChunks(ctx, chunks, fetchStartTime) //nolint:errcheck // purposefully ignore error
 			}()
 
 			time.Sleep(50 * time.Millisecond)
@@ -561,9 +578,9 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 
 			// Set up three peers across two snapshots, and ask for one of them to be banned.
 			// It should be banned from all snapshots.
-			peerAID := p2p.NodeID("aa")
-			peerBID := p2p.NodeID("bb")
-			peerCID := p2p.NodeID("cc")
+			peerAID := types.NodeID("aa")
+			peerBID := types.NodeID("bb")
+			peerCID := types.NodeID("cc")
 
 			s1 := &snapshot{Height: 1, Format: 1, Chunks: 3}
 			s2 := &snapshot{Height: 2, Format: 1, Chunks: 3}
@@ -588,6 +605,8 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 
 			chunks, err := newChunkQueue(s1, "")
 			require.NoError(t, err)
+
+			fetchStartTime := time.Now()
 
 			added, err := chunks.Add(&chunk{Height: 1, Format: 1, Index: 0, Chunk: []byte{0}, Sender: peerAID})
 			require.True(t, added)
@@ -626,7 +645,7 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 			// However, it will block on e.g. retry result, so we spawn a goroutine that will
 			// be shut down when the chunk queue closes.
 			go func() {
-				rts.syncer.applyChunks(ctx, chunks) //nolint:errcheck // purposefully ignore error
+				rts.syncer.applyChunks(ctx, chunks, fetchStartTime) //nolint:errcheck // purposefully ignore error
 			}()
 
 			time.Sleep(50 * time.Millisecond)

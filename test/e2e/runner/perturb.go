@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -9,14 +10,24 @@ import (
 )
 
 // Perturbs a running testnet.
-func Perturb(testnet *e2e.Testnet) error {
+func Perturb(ctx context.Context, testnet *e2e.Testnet) error {
+	timer := time.NewTimer(0) // first tick fires immediately; reset below
+	defer timer.Stop()
+
 	for _, node := range testnet.Nodes {
 		for _, perturbation := range node.Perturbations {
-			_, err := PerturbNode(node, perturbation)
-			if err != nil {
-				return err
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-timer.C:
+				_, err := PerturbNode(ctx, node, perturbation)
+				if err != nil {
+					return err
+				}
+
+				// give network some time to recover between each
+				timer.Reset(20 * time.Second)
 			}
-			time.Sleep(3 * time.Second) // give network some time to recover between each
 		}
 	}
 	return nil
@@ -24,7 +35,7 @@ func Perturb(testnet *e2e.Testnet) error {
 
 // PerturbNode perturbs a node with a given perturbation, returning its status
 // after recovering.
-func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.ResultStatus, error) {
+func PerturbNode(ctx context.Context, node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.ResultStatus, error) {
 	testnet := node.Testnet
 	switch perturbation {
 	case e2e.PerturbationDisconnect:
@@ -42,6 +53,7 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 		if err := execCompose(testnet.Dir, "kill", "-s", "SIGKILL", node.Name); err != nil {
 			return nil, err
 		}
+		time.Sleep(10 * time.Second)
 		if err := execCompose(testnet.Dir, "start", node.Name); err != nil {
 			return nil, err
 		}
@@ -58,7 +70,11 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 
 	case e2e.PerturbationRestart:
 		logger.Info(fmt.Sprintf("Restarting node %v...", node.Name))
-		if err := execCompose(testnet.Dir, "restart", node.Name); err != nil {
+		if err := execCompose(testnet.Dir, "kill", "-s", "SIGTERM", node.Name); err != nil {
+			return nil, err
+		}
+		time.Sleep(10 * time.Second)
+		if err := execCompose(testnet.Dir, "start", node.Name); err != nil {
 			return nil, err
 		}
 
@@ -72,7 +88,9 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 		return nil, nil
 	}
 
-	status, err := waitForNode(node, 0, 15*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+	status, err := waitForNode(ctx, node, 0)
 	if err != nil {
 		return nil, err
 	}

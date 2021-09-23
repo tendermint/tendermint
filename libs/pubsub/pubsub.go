@@ -39,6 +39,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/tendermint/tendermint/abci/types"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/libs/service"
@@ -70,7 +71,7 @@ var (
 // allows event types to repeat themselves with the same set of keys and
 // different values.
 type Query interface {
-	Matches(events map[string][]string) (bool, error)
+	Matches(events []types.Event) (bool, error)
 	String() string
 }
 
@@ -102,7 +103,7 @@ type cmd struct {
 
 	// publish
 	msg    interface{}
-	events map[string][]string
+	events []types.Event
 }
 
 // Server allows clients to subscribe/unsubscribe for messages, publishing
@@ -230,34 +231,45 @@ func (s *Server) Unsubscribe(ctx context.Context, args UnsubscribeArgs) error {
 		return err
 	}
 	var qs string
+
 	if args.Query != nil {
 		qs = args.Query.String()
 	}
 
-	s.mtx.RLock()
-	clientSubscriptions, ok := s.subscriptions[args.Subscriber]
-	if args.ID != "" {
-		qs, ok = clientSubscriptions[args.ID]
+	clientSubscriptions, err := func() (map[string]string, error) {
+		s.mtx.RLock()
+		defer s.mtx.RUnlock()
 
-		if ok && args.Query == nil {
-			var err error
-			args.Query, err = query.New(qs)
-			if err != nil {
-				return err
+		clientSubscriptions, ok := s.subscriptions[args.Subscriber]
+		if args.ID != "" {
+			qs, ok = clientSubscriptions[args.ID]
+
+			if ok && args.Query == nil {
+				var err error
+				args.Query, err = query.New(qs)
+				if err != nil {
+					return nil, err
+				}
 			}
+		} else if qs != "" {
+			args.ID, ok = clientSubscriptions[qs]
 		}
-	} else if qs != "" {
-		args.ID, ok = clientSubscriptions[qs]
-	}
 
-	s.mtx.RUnlock()
-	if !ok {
-		return ErrSubscriptionNotFound
+		if !ok {
+			return nil, ErrSubscriptionNotFound
+		}
+
+		return clientSubscriptions, nil
+	}()
+
+	if err != nil {
+		return err
 	}
 
 	select {
 	case s.cmds <- cmd{op: unsub, clientID: args.Subscriber, query: args.Query, subscription: &Subscription{id: args.ID}}:
 		s.mtx.Lock()
+		defer s.mtx.Unlock()
 
 		delete(clientSubscriptions, args.ID)
 		delete(clientSubscriptions, qs)
@@ -265,7 +277,6 @@ func (s *Server) Unsubscribe(ctx context.Context, args UnsubscribeArgs) error {
 		if len(clientSubscriptions) == 0 {
 			delete(s.subscriptions, args.Subscriber)
 		}
-		s.mtx.Unlock()
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
@@ -287,8 +298,10 @@ func (s *Server) UnsubscribeAll(ctx context.Context, clientID string) error {
 	select {
 	case s.cmds <- cmd{op: unsub, clientID: clientID}:
 		s.mtx.Lock()
+		defer s.mtx.Unlock()
+
 		delete(s.subscriptions, clientID)
-		s.mtx.Unlock()
+
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
@@ -314,13 +327,13 @@ func (s *Server) NumClientSubscriptions(clientID string) int {
 // Publish publishes the given message. An error will be returned to the caller
 // if the context is canceled.
 func (s *Server) Publish(ctx context.Context, msg interface{}) error {
-	return s.PublishWithEvents(ctx, msg, make(map[string][]string))
+	return s.PublishWithEvents(ctx, msg, []types.Event{})
 }
 
 // PublishWithEvents publishes the given message with the set of events. The set
 // is matched with clients queries. If there is a match, the message is sent to
 // the client.
-func (s *Server) PublishWithEvents(ctx context.Context, msg interface{}, events map[string][]string) error {
+func (s *Server) PublishWithEvents(ctx context.Context, msg interface{}, events []types.Event) error {
 	select {
 	case s.cmds <- cmd{op: pub, msg: msg, events: events}:
 		return nil
@@ -473,7 +486,7 @@ func (state *state) removeAll(reason error) {
 	}
 }
 
-func (state *state) send(msg interface{}, events map[string][]string) error {
+func (state *state) send(msg interface{}, events []types.Event) error {
 	for qStr, clientSubscriptions := range state.subscriptions {
 		if sub, ok := clientSubscriptions[qStr]; ok && sub.id == qStr {
 			continue
@@ -494,7 +507,10 @@ func (state *state) send(msg interface{}, events map[string][]string) error {
 			for clientID, subscription := range clientSubscriptions {
 				if cap(subscription.out) == 0 {
 					// block on unbuffered channel
-					subscription.out <- NewMessage(subscription.id, msg, events)
+					select {
+					case subscription.out <- NewMessage(subscription.id, msg, events):
+					case <-subscription.canceled:
+					}
 				} else {
 					// don't block on buffered channels
 					select {

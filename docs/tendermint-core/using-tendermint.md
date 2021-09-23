@@ -185,51 +185,65 @@ the argument name and use `_` as a placeholder.
 
 ### Formatting
 
-The following nuances when sending/formatting transactions should be
-taken into account:
+When sending transactions to the RPC interface, the following formatting rules
+must be followed:
 
-With `GET`:
+Using `GET` (with parameters in the URL):
 
-To send a UTF8 string byte array, quote the value of the tx parameter:
+To send a UTF8 string as transaction data, enclose the value of the `tx`
+parameter in double quotes:
 
 ```sh
 curl 'http://localhost:26657/broadcast_tx_commit?tx="hello"'
 ```
 
-which sends a 5 byte transaction: "h e l l o" \[68 65 6c 6c 6f\].
+which sends a 5-byte transaction: "h e l l o" \[68 65 6c 6c 6f\].
 
-Note the URL must be wrapped with single quotes, else bash will ignore
-the double quotes. To avoid the single quotes, escape the double quotes:
+Note that the URL in this example is enclosed in single quotes to prevent the
+shell from interpreting the double quotes. Alternatively, you may escape the
+double quotes with backslashes:
 
 ```sh
 curl http://localhost:26657/broadcast_tx_commit?tx=\"hello\"
 ```
 
-Using a special character:
+The double-quoted format works with for multibyte characters, as long as they
+are valid UTF8, for example:
 
 ```sh
 curl 'http://localhost:26657/broadcast_tx_commit?tx="€5"'
 ```
 
-sends a 4 byte transaction: "€5" (UTF8) \[e2 82 ac 35\].
+sends a 4-byte transaction: "€5" (UTF8) \[e2 82 ac 35\].
 
-To send as raw hex, omit quotes AND prefix the hex string with `0x`:
-
-```sh
-curl http://localhost:26657/broadcast_tx_commit?tx=0x01020304
-```
-
-which sends a 4 byte transaction: \[01 02 03 04\].
-
-With `POST` (using `json`), the raw hex must be `base64` encoded:
+Arbitrary (non-UTF8) transaction data may also be encoded as a string of
+hexadecimal digits (2 digits per byte). To do this, omit the quotation marks
+and prefix the hex string with `0x`:
 
 ```sh
-curl --data-binary '{"jsonrpc":"2.0","id":"anything","method":"broadcast_tx_commit","params": {"tx": "AQIDBA=="}}' -H 'content-type:text/plain;' http://localhost:26657
+curl http://localhost:26657/broadcast_tx_commit?tx=0x68656C6C6F
 ```
 
-which sends the same 4 byte transaction: \[01 02 03 04\].
+which sends the 5-byte transaction: \[68 65 6c 6c 6f\].
 
-Note that raw hex cannot be used in `POST` transactions.
+Using `POST` (with parameters in JSON), the transaction data are sent as a JSON
+string in base64 encoding:
+
+```sh
+curl http://localhost:26657 -H 'Content-Type: application/json' --data-binary '{
+  "jsonrpc": "2.0",
+  "id": "anything",
+  "method": "broadcast_tx_commit",
+  "params": {
+    "tx": "aGVsbG8="
+  }
+}'
+```
+
+which sends the same 5-byte transaction: \[68 65 6c 6c 6f\].
+
+Note that the hexadecimal encoding of transaction data is _not_ supported in
+JSON (`POST`) requests.
 
 ## Reset
 
@@ -552,8 +566,7 @@ To make a Tendermint network that can tolerate one of the validators
 failing, you need at least four validator nodes (e.g., 2/3).
 
 Updating validators in a live network is supported but must be
-explicitly programmed by the application developer. See the [application
-developers guide](../app-dev/app-development.md) for more details.
+explicitly programmed by the application developer.
 
 ### Local Network
 

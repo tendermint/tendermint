@@ -484,7 +484,7 @@ paths:
       tags:
         - Info
       description: |
-        Get Tendermint status including node info, pubkey, latest block hash, app hash, block height and time.
+        Get Tendermint status including node info, pubkey, latest block hash, app hash, block height, current max peer height, and time.
       responses:
         "200":
           description: Status of the node
@@ -601,6 +601,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /unsafe_flush_mempool:
+    get:
+      summary: Flush mempool of all unconfirmed transactions
+      operationId: unsafe_flush_mempool
+      tags:
+        - Unsafe
+      description: |
+        Flush flushes out the mempool. It acquires a read-lock, fetches all the
+        transactions currently in the transaction store and removes each transaction
+        from the store and all indexes and finally resets the cache.
+
+        Note, flushing the mempool may leave the mempool in an inconsistent state.
+      responses:
+        "200":
+          description: empty answer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmptyResponse"
+        "500":
+          description: empty error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /blockchain:
     get:
       summary: "Get block headers (max: 20) for minHeight <= height <= maxHeight."
@@ -806,6 +832,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
   /genesis:
     get:
       summary: Get Genesis
@@ -813,7 +840,7 @@ paths:
       tags:
         - Info
       description: |
-        Get genesis.
+        Get the genesis document.
       responses:
         "200":
           description: Genesis results.
@@ -827,6 +854,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /genesis_chunked:
+    get:
+      summary: Get Genesis in paginated chunks
+      operationId: genesis_chunked
+      tags:
+        - Info
+      description: |
+        Get genesis document in a paginated/chunked format to make it
+        easier to iterate through larger genesis structures.
+      parameters:
+        - in: query
+          name: chunkID
+          description: Sequence number of the chunk to download.
+          schema:
+            type: integer
+            default: 0
+            example: 1
+      responses:
+        "200":
+          description: Genesis results.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenesisChunkedResponse"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
   /dump_consensus_state:
     get:
       summary: Get consensus state
@@ -1008,7 +1068,7 @@ paths:
         - Info
       responses:
         "200":
-          description: List of unconfirmed transactions
+          description: List of transactions
           content:
             application/json:
               schema:
@@ -1098,10 +1158,10 @@ paths:
       tags:
         - Info
       description: |
-        Get a trasasction
+        Get a transaction
       responses:
         "200":
-          description: Get a transaction`
+          description: Get a transaction
           content:
             application/json:
               schema:
@@ -1324,9 +1384,39 @@ components:
         earliest_block_time:
           type: string
           example: "2019-08-01T11:52:22.818762194Z"
+        max_peer_block_height:
+          type: string
+          example: "1262196"
         catching_up:
           type: boolean
           example: false
+        total_synced_time:
+          type: string
+          example: "1000000000"
+        remaining_time:
+          type: string
+          example: "0"
+        total_snapshots:
+          type: string
+          example: "10"      
+        chunk_process_avg_time:
+          type: string
+          example: "1000000000"      
+        snapshot_height:
+          type: string
+          example: "1262196"      
+        snapshot_chunks_count:
+          type: string
+          example: "10"      
+        snapshot_chunks_total:
+          type: string
+          example: "100"      
+        backfilled_blocks:
+          type: string
+          example: "10"      
+        backfill_blocks_total:
+          type: string
+          example: "100"                                                                  
     ValidatorInfo:
       type: object
       properties:
@@ -1433,16 +1523,12 @@ components:
     Peer:
       type: object
       properties:
-        node_info:
-          $ref: "#/components/schemas/NodeInfo"
-        is_outbound:
-          type: boolean
-          example: true
-        connection_status:
-          $ref: "#/components/schemas/ConnectionStatus"
-        remote_ip:
+        node_id:
           type: string
-          example: "95.179.155.35"
+          example: ""
+        url:
+          type: string
+          example: "<id>@95.179.155.35:2385>"
     NetInfo:
       type: object
       properties:
@@ -1663,6 +1749,9 @@ components:
                   codespace:
                     type: string
                     example: "ibc"
+            total_gas_used:
+              type: string
+              example: "100"
             begin_block_events:
               type: array
               nullable: true
@@ -1881,6 +1970,35 @@ components:
                 app_state:
                   properties: {}
                   type: object
+
+    GenesisChunkedResponse:
+      type: object
+      required:
+        - "jsonrpc"
+        - "id"
+        - "result"
+      properties:
+        jsonrpc:
+          type: string
+          example: "2.0"
+        id:
+          type: integer
+          example: 0
+        result:
+          required:
+            - "chunk"
+            - "total"
+            - "data"
+          properties:
+            chunk:
+              type: integer
+              example: 0
+            total:
+              type: integer
+              example: 1
+            data:
+              type: string
+              example: "Z2VuZXNpcwo="
 
     DumpConsensusResponse:
       type: object

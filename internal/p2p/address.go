@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"net"
@@ -11,19 +10,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tendermint/tendermint/crypto"
-)
-
-const (
-	// NodeIDByteLength is the length of a crypto.Address. Currently only 20.
-	// FIXME: support other length addresses?
-	NodeIDByteLength = crypto.AddressSize
+	"github.com/tendermint/tendermint/types"
 )
 
 var (
-	// reNodeID is a regexp for valid node IDs.
-	reNodeID = regexp.MustCompile(`^[0-9a-f]{40}$`)
-
 	// stringHasScheme tries to detect URLs with schemes. It looks for a : before a / (if any).
 	stringHasScheme = func(str string) bool {
 		return strings.Contains(str, "://")
@@ -34,48 +24,6 @@ var (
 	reSchemeIsHost = regexp.MustCompile(`^[^/:]+:\d+(/|$)`)
 )
 
-// NodeID is a hex-encoded crypto.Address. It must be lowercased
-// (for uniqueness) and of length 2*NodeIDByteLength.
-type NodeID string
-
-// NewNodeID returns a lowercased (normalized) NodeID, or errors if the
-// node ID is invalid.
-func NewNodeID(nodeID string) (NodeID, error) {
-	n := NodeID(strings.ToLower(nodeID))
-	return n, n.Validate()
-}
-
-// NodeIDFromPubKey creates a node ID from a given PubKey address.
-func NodeIDFromPubKey(pubKey crypto.PubKey) NodeID {
-	return NodeID(hex.EncodeToString(pubKey.Address()))
-}
-
-// Bytes converts the node ID to its binary byte representation.
-func (id NodeID) Bytes() ([]byte, error) {
-	bz, err := hex.DecodeString(string(id))
-	if err != nil {
-		return nil, fmt.Errorf("invalid node ID encoding: %w", err)
-	}
-	return bz, nil
-}
-
-// Validate validates the NodeID.
-func (id NodeID) Validate() error {
-	switch {
-	case len(id) == 0:
-		return errors.New("empty node ID")
-
-	case len(id) != 2*NodeIDByteLength:
-		return fmt.Errorf("invalid node ID length %d, expected %d", len(id), 2*NodeIDByteLength)
-
-	case !reNodeID.MatchString(string(id)):
-		return fmt.Errorf("node ID can only contain lowercased hex digits")
-
-	default:
-		return nil
-	}
-}
-
 // NodeAddress is a node address URL. It differs from a transport Endpoint in
 // that it contains the node's ID, and that the address hostname may be resolved
 // into multiple IP addresses (and thus multiple endpoints).
@@ -83,7 +31,7 @@ func (id NodeID) Validate() error {
 // If the URL is opaque, i.e. of the form "scheme:opaque", then the opaque part
 // is expected to contain a node ID.
 type NodeAddress struct {
-	NodeID   NodeID
+	NodeID   types.NodeID
 	Protocol Protocol
 	Hostname string
 	Port     uint16
@@ -110,13 +58,13 @@ func ParseNodeAddress(urlString string) (NodeAddress, error) {
 
 	// Opaque URLs are expected to contain only a node ID.
 	if url.Opaque != "" {
-		address.NodeID = NodeID(url.Opaque)
+		address.NodeID = types.NodeID(url.Opaque)
 		return address, address.Validate()
 	}
 
 	// Otherwise, just parse a normal networked URL.
 	if url.User != nil {
-		address.NodeID = NodeID(strings.ToLower(url.User.Username()))
+		address.NodeID = types.NodeID(strings.ToLower(url.User.Username()))
 	}
 
 	address.Hostname = strings.ToLower(url.Hostname())

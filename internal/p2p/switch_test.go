@@ -24,6 +24,7 @@ import (
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p/conn"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -38,7 +39,7 @@ func init() {
 }
 
 type PeerMessage struct {
-	PeerID  NodeID
+	PeerID  types.NodeID
 	Bytes   []byte
 	Counter int
 }
@@ -212,6 +213,26 @@ func TestSwitchFiltersOutItself(t *testing.T) {
 	assertNoPeersAfterTimeout(t, s1, 100*time.Millisecond)
 }
 
+func TestSwitchDialFailsOnIncompatiblePeer(t *testing.T) {
+	s1 := MakeSwitch(cfg, 1, "127.0.0.1", "123.123.123", initSwitchFunc, log.TestingLogger())
+	ni := s1.NodeInfo()
+	ni.Network = "network-a"
+	s1.SetNodeInfo(ni)
+
+	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg, Network: "network-b"}
+	rp.Start()
+	defer rp.Stop()
+
+	err := s1.DialPeerWithAddress(rp.Addr())
+	require.Error(t, err)
+	errRejected, ok := err.(ErrRejected)
+	require.True(t, ok, "expected error to be of type IsRejected")
+	require.True(t, errRejected.IsIncompatible(), "expected error to be IsIncompatible")
+
+	// remote peer should not have been added to the addressbook
+	require.False(t, s1.addrBook.HasAddress(rp.Addr()))
+}
+
 func TestSwitchPeerFilter(t *testing.T) {
 	var (
 		filters = []PeerFilterFunc{
@@ -242,7 +263,7 @@ func TestSwitchPeerFilter(t *testing.T) {
 	rp.Start()
 	t.Cleanup(rp.Stop)
 
-	c, err := sw.transport.Dial(ctx, rp.Addr().Endpoint())
+	c, err := sw.transport.Dial(ctx, NewEndpoint(rp.Addr()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -299,7 +320,7 @@ func TestSwitchPeerFilterTimeout(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	c, err := sw.transport.Dial(ctx, rp.Addr().Endpoint())
+	c, err := sw.transport.Dial(ctx, NewEndpoint(rp.Addr()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -335,7 +356,7 @@ func TestSwitchPeerFilterDuplicate(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	c, err := sw.transport.Dial(ctx, rp.Addr().Endpoint())
+	c, err := sw.transport.Dial(ctx, NewEndpoint(rp.Addr()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -390,7 +411,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	c, err := sw.transport.Dial(ctx, rp.Addr().Endpoint())
+	c, err := sw.transport.Dial(ctx, NewEndpoint(rp.Addr()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -696,6 +717,36 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 	}
 }
 
+func TestSwitchRejectsIncompatiblePeers(t *testing.T) {
+	sw := MakeSwitch(cfg, 1, "127.0.0.1", "123.123.123", initSwitchFunc, log.TestingLogger())
+	ni := sw.NodeInfo()
+	ni.Network = "network-a"
+	sw.SetNodeInfo(ni)
+
+	err := sw.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err := sw.Stop()
+		require.NoError(t, err)
+	})
+
+	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg, Network: "network-b"}
+	rp.Start()
+	defer rp.Stop()
+
+	assert.Equal(t, 0, sw.Peers().Size())
+
+	conn, err := rp.Dial(sw.NetAddress())
+	assert.Nil(t, err)
+
+	one := make([]byte, 1)
+	_ = conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
+	_, err = conn.Read(one)
+	assert.Error(t, err)
+
+	assert.Equal(t, 0, sw.Peers().Size())
+}
+
 type errorTransport struct {
 	acceptErr error
 }
@@ -869,4 +920,13 @@ func BenchmarkSwitchBroadcast(b *testing.B) {
 	}
 
 	b.Logf("success: %v, failure: %v", numSuccess, numFailure)
+}
+
+func TestNewNetAddressStrings(t *testing.T) {
+	addrs, errs := NewNetAddressStrings([]string{
+		"127.0.0.1:8080",
+		"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+		"deadbeefdeadbeefdeadbeefdeadbeefdeadbeed@127.0.0.2:8080"})
+	assert.Len(t, errs, 1)
+	assert.Equal(t, 2, len(addrs))
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	abciclient "github.com/tendermint/tendermint/abci/client"
+	abciclientent "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abciserver "github.com/tendermint/tendermint/abci/server"
 )
@@ -20,7 +20,7 @@ func TestClientServerNoAddrPrefix(t *testing.T) {
 	err = server.Start()
 	assert.NoError(t, err, "expected no error on server.Start")
 
-	client, err := abciclient.NewClient(addr, transport, true)
+	client, err := abciclientent.NewClient(addr, transport, true)
 	assert.NoError(t, err, "expected no error on NewClient")
 	err = client.Start()
 	assert.NoError(t, err, "expected no error on client.Start")

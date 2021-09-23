@@ -10,9 +10,10 @@ import (
 	"github.com/tendermint/tendermint/internal/consensus"
 	mempl "github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/proxy"
+	"github.com/tendermint/tendermint/internal/statesync"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/proxy"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
@@ -36,7 +37,7 @@ const (
 //----------------------------------------------
 // These interfaces are used by RPC and must be thread safe
 
-type Consensus interface {
+type consensusState interface {
 	GetState() sm.State
 	GetValidators() (int64, []*types.Validator)
 	GetLastHeight() int64
@@ -47,7 +48,7 @@ type Consensus interface {
 type transport interface {
 	Listeners() []string
 	IsListening() bool
-	NodeInfo() p2p.NodeInfo
+	NodeInfo() types.NodeInfo
 }
 
 type peers interface {
@@ -56,6 +57,16 @@ type peers interface {
 	AddPrivatePeerIDs([]string) error
 	DialPeersAsync([]string) error
 	Peers() p2p.IPeerSet
+}
+
+type consensusReactor interface {
+	WaitSync() bool
+	GetPeerState(peerID types.NodeID) (*consensus.PeerState, bool)
+}
+
+type peerManager interface {
+	Peers() []types.NodeID
+	Addresses(types.NodeID) []p2p.NodeAddress
 }
 
 //----------------------------------------------
@@ -67,20 +78,27 @@ type Environment struct {
 	ProxyAppMempool proxy.AppConnMempool
 
 	// interfaces defined in types and above
-	StateStore     sm.Store
-	BlockStore     sm.BlockStore
-	EvidencePool   sm.EvidencePool
-	ConsensusState Consensus
-	P2PPeers       peers
-	P2PTransport   transport
+	StateStore       sm.Store
+	BlockStore       sm.BlockStore
+	EvidencePool     sm.EvidencePool
+	ConsensusState   consensusState
+	ConsensusReactor consensusReactor
+	P2PPeers         peers
+
+	// Legacy p2p stack
+	P2PTransport transport
+
+	// interfaces for new p2p interfaces
+	PeerManager peerManager
 
 	// objects
-	PubKey           crypto.PubKey
-	GenDoc           *types.GenesisDoc // cache the genesis structure
-	EventSinks       []indexer.EventSink
-	ConsensusReactor *consensus.Reactor
-	EventBus         *types.EventBus // thread safe
-	Mempool          mempl.Mempool
+	PubKey            crypto.PubKey
+	GenDoc            *types.GenesisDoc // cache the genesis structure
+	EventSinks        []indexer.EventSink
+	EventBus          *types.EventBus // thread safe
+	Mempool           mempl.Mempool
+	BlockSyncReactor  consensus.BlockSyncReactor
+	StateSyncMetricer statesync.Metricer
 
 	Logger log.Logger
 

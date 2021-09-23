@@ -3,6 +3,7 @@ package e2e
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/BurntSushi/toml"
 )
@@ -59,11 +60,11 @@ type Manifest struct {
 	// by individual nodes.
 	LogLevel string `toml:"log_level"`
 
-	// DisableLegacyP2P enables use of the new p2p layer for all nodes in a test.
-	DisableLegacyP2P bool `toml:"disable_legacy_p2p"`
-
 	// QueueType describes the type of queue that the system uses internally
 	QueueType string `toml:"queue_type"`
+
+	// Number of bytes per tx. Default is 1kb (1024)
+	TxSize int64
 }
 
 // ManifestNode represents a node in a testnet manifest.
@@ -103,15 +104,19 @@ type ManifestNode struct {
 	// runner will wait for the network to reach at least this block height.
 	StartAt int64 `toml:"start_at"`
 
-	// FastSync specifies the fast sync mode: "" (disable), "v0" or "v2".
+	// BlockSync specifies the block sync mode: "" (disable), "v0" or "v2".
 	// Defaults to disabled.
-	FastSync string `toml:"fast_sync"`
+	BlockSync string `toml:"block_sync"`
+
+	// Mempool specifies which version of mempool to use. Either "v0" or "v1"
+	Mempool string `toml:"mempool_version"`
 
 	// StateSync enables state sync. The runner automatically configures trusted
 	// block hashes and RPC servers. At least one node in the network must have
 	// SnapshotInterval set to non-zero, and the state syncing node must have
 	// StartAt set to an appropriate height where a snapshot is available.
-	StateSync bool `toml:"state_sync"`
+	// StateSync can either be "p2p" or "rpc" or an empty string to disable
+	StateSync string `toml:"state_sync"`
 
 	// PersistInterval specifies the height interval at which the application
 	// will persist state to disk. Defaults to 1 (every height), setting this to
@@ -141,12 +146,8 @@ type ManifestNode struct {
 	// level.
 	LogLevel string `toml:"log_level"`
 
-	// UseNewP2P enables use of the new p2p layer for this node.
-	DisableLegacyP2P bool `toml:"disable_legacy_p2p"`
-
-	// QueueType describes the type of queue that the p2p layer
-	// uses internally.
-	QueueType string `toml:"queue_type"`
+	// UseLegacyP2P enables use of the legacy p2p layer for this node.
+	UseLegacyP2P bool `toml:"use_legacy_p2p"`
 }
 
 // Save saves the testnet manifest to a file.
@@ -166,4 +167,44 @@ func LoadManifest(file string) (Manifest, error) {
 		return manifest, fmt.Errorf("failed to load testnet manifest %q: %w", file, err)
 	}
 	return manifest, nil
+}
+
+// SortManifests orders (in-place) a list of manifests such that the
+// manifests will be ordered (vaguely) from least complex to most
+// complex.
+func SortManifests(manifests []Manifest) {
+	sort.SliceStable(manifests, func(i, j int) bool {
+		left, right := manifests[i], manifests[j]
+
+		if len(left.Nodes) < len(right.Nodes) {
+			return true
+		}
+
+		if left.InitialHeight < right.InitialHeight {
+			return true
+		}
+
+		if left.TxSize < right.TxSize {
+			return true
+		}
+
+		if left.Evidence < right.Evidence {
+			return true
+		}
+
+		var (
+			leftPerturb  int
+			rightPerturb int
+		)
+
+		for _, n := range left.Nodes {
+			leftPerturb += len(n.Perturb)
+		}
+		for _, n := range right.Nodes {
+			rightPerturb += len(n.Perturb)
+		}
+
+		return leftPerturb < rightPerturb
+
+	})
 }

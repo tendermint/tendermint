@@ -12,10 +12,9 @@ import (
 	"github.com/tendermint/tendermint/internal/libs/clist"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
-	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -217,7 +216,7 @@ func (mem *CListMempool) CheckTx(
 	}
 
 	if txSize > mem.config.MaxTxBytes {
-		return mempool.ErrTxTooLarge{
+		return types.ErrTxTooLarge{
 			Max:    mem.config.MaxTxBytes,
 			Actual: txSize,
 		}
@@ -225,7 +224,7 @@ func (mem *CListMempool) CheckTx(
 
 	if mem.preCheck != nil {
 		if err := mem.preCheck(tx); err != nil {
-			return mempool.ErrPreCheck{
+			return types.ErrPreCheck{
 				Reason: err,
 			}
 		}
@@ -248,7 +247,7 @@ func (mem *CListMempool) CheckTx(
 			// its non-trivial since invalid txs can become valid,
 			// but they can spam the same tx with little cost to them atm.
 			if loaded {
-				return mempool.ErrTxInCache
+				return types.ErrTxInCache
 			}
 		}
 
@@ -303,7 +302,7 @@ func (mem *CListMempool) globalCb(req *abci.Request, res *abci.Response) {
 func (mem *CListMempool) reqResCb(
 	tx []byte,
 	peerID uint16,
-	peerP2PID p2p.NodeID,
+	peerP2PID types.NodeID,
 	externalCb func(*abci.Response),
 ) func(res *abci.Response) {
 	return func(res *abci.Response) {
@@ -364,7 +363,7 @@ func (mem *CListMempool) isFull(txSize int) error {
 	)
 
 	if memSize >= mem.config.Size || int64(txSize)+txsBytes > mem.config.MaxTxsBytes {
-		return mempool.ErrMempoolIsFull{
+		return types.ErrMempoolIsFull{
 			NumTxs:      memSize,
 			MaxTxs:      mem.config.Size,
 			TxsBytes:    txsBytes,
@@ -382,7 +381,7 @@ func (mem *CListMempool) isFull(txSize int) error {
 func (mem *CListMempool) resCbFirstTime(
 	tx []byte,
 	peerID uint16,
-	peerP2PID p2p.NodeID,
+	peerP2PID types.NodeID,
 	res *abci.Response,
 ) {
 	switch r := res.Value.(type) {

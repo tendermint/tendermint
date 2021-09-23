@@ -19,7 +19,7 @@ import (
 
 var defaultOptions = Options{
 	MaxRetryAttempts:    5,
-	Timeout:             3 * time.Second,
+	Timeout:             5 * time.Second,
 	NoBlockThreshold:    5,
 	NoResponseThreshold: 5,
 }
@@ -125,7 +125,7 @@ func (p *http) LightBlock(ctx context.Context, height int64) (*types.LightBlock,
 
 	if sh.Header == nil {
 		return nil, provider.ErrBadLightBlock{
-			Reason: errors.New("header is nil unexpectedly"),
+			Reason: errors.New("returned header is nil unexpectedly"),
 		}
 	}
 
@@ -205,6 +205,11 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 				return nil, p.parseRPCError(e)
 
 			default:
+				// check if the error stems from the context
+				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+					return nil, err
+				}
+
 				// If we don't know the error then by default we return an unreliable provider error and
 				// terminate the connection with the peer.
 				return nil, provider.ErrUnreliableProvider{Reason: e.Error()}
@@ -236,11 +241,19 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 			return &commit.SignedHeader, nil
 
 		case *url.Error:
+			// check if the request timed out
 			if e.Timeout() {
 				// we wait and try again with exponential backoff
 				time.Sleep(backoffTimeout(attempt))
 				continue
 			}
+
+			// check if the connection was refused or dropped
+			if strings.Contains(e.Error(), "connection refused") {
+				return nil, provider.ErrConnectionClosed
+			}
+
+			// else, as a catch all, we return the error as a bad light block response
 			return nil, provider.ErrBadLightBlock{Reason: e}
 
 		case *rpctypes.RPCError:
@@ -248,6 +261,11 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 			return nil, p.parseRPCError(e)
 
 		default:
+			// check if the error stems from the context
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return nil, err
+			}
+
 			// If we don't know the error then by default we return an unreliable provider error and
 			// terminate the connection with the peer.
 			return nil, provider.ErrUnreliableProvider{Reason: e.Error()}

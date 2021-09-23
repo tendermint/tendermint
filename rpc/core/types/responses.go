@@ -7,7 +7,6 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -62,6 +61,7 @@ type ResultCommit struct {
 type ResultBlockResults struct {
 	Height                int64                     `json:"height"`
 	TxsResults            []*abci.ResponseDeliverTx `json:"txs_results"`
+	TotalGasUsed          int64                     `json:"total_gas_used"`
 	BeginBlockEvents      []abci.Event              `json:"begin_block_events"`
 	EndBlockEvents        []abci.Event              `json:"end_block_events"`
 	ValidatorUpdates      []abci.ValidatorUpdate    `json:"validator_updates"`
@@ -94,7 +94,20 @@ type SyncInfo struct {
 	EarliestBlockHeight int64          `json:"earliest_block_height"`
 	EarliestBlockTime   time.Time      `json:"earliest_block_time"`
 
+	MaxPeerBlockHeight int64 `json:"max_peer_block_height"`
+
 	CatchingUp bool `json:"catching_up"`
+
+	TotalSyncedTime time.Duration `json:"total_synced_time"`
+	RemainingTime   time.Duration `json:"remaining_time"`
+
+	TotalSnapshots      int64         `json:"total_snapshots"`
+	ChunkProcessAvgTime time.Duration `json:"chunk_process_avg_time"`
+	SnapshotHeight      int64         `json:"snapshot_height"`
+	SnapshotChunksCount int64         `json:"snapshot_chunks_count"`
+	SnapshotChunksTotal int64         `json:"snapshot_chunks_total"`
+	BackFilledBlocks    int64         `json:"backfilled_blocks"`
+	BackFillBlocksTotal int64         `json:"backfill_blocks_total"`
 }
 
 // Info about the node's validator
@@ -106,9 +119,9 @@ type ValidatorInfo struct {
 
 // Node Status
 type ResultStatus struct {
-	NodeInfo      p2p.NodeInfo  `json:"node_info"`
-	SyncInfo      SyncInfo      `json:"sync_info"`
-	ValidatorInfo ValidatorInfo `json:"validator_info"`
+	NodeInfo      types.NodeInfo `json:"node_info"`
+	SyncInfo      SyncInfo       `json:"sync_info"`
+	ValidatorInfo ValidatorInfo  `json:"validator_info"`
 }
 
 // Is TxIndexing enabled
@@ -139,10 +152,8 @@ type ResultDialPeers struct {
 
 // A peer
 type Peer struct {
-	NodeInfo         p2p.NodeInfo         `json:"node_info"`
-	IsOutbound       bool                 `json:"is_outbound"`
-	ConnectionStatus p2p.ConnectionStatus `json:"connection_status"`
-	RemoteIP         string               `json:"remote_ip"`
+	ID  types.NodeID `json:"node_id"`
+	URL string       `json:"url"`
 }
 
 // Validators for a height.
@@ -181,10 +192,11 @@ type ResultConsensusState struct {
 
 // CheckTx result
 type ResultBroadcastTx struct {
-	Code      uint32         `json:"code"`
-	Data      bytes.HexBytes `json:"data"`
-	Log       string         `json:"log"`
-	Codespace string         `json:"codespace"`
+	Code         uint32         `json:"code"`
+	Data         bytes.HexBytes `json:"data"`
+	Log          string         `json:"log"`
+	Codespace    string         `json:"codespace"`
+	MempoolError string         `json:"mempool_error"`
 
 	Hash bytes.HexBytes `json:"hash"`
 }
@@ -258,8 +270,8 @@ type (
 
 // Event data from a subscription
 type ResultEvent struct {
-	SubscriptionID string              `json:"subscription_id"`
-	Query          string              `json:"query"`
-	Data           types.TMEventData   `json:"data"`
-	Events         map[string][]string `json:"events"`
+	SubscriptionID string            `json:"subscription_id"`
+	Query          string            `json:"query"`
+	Data           types.TMEventData `json:"data"`
+	Events         []abci.Event      `json:"events"`
 }

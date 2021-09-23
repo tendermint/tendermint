@@ -4,13 +4,14 @@ import (
 	"net"
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/types"
 )
 
 // IPeerSet has a (immutable) subset of the methods of PeerSet.
 type IPeerSet interface {
-	Has(key NodeID) bool
+	Has(key types.NodeID) bool
 	HasIP(ip net.IP) bool
-	Get(key NodeID) Peer
+	Get(key types.NodeID) Peer
 	List() []Peer
 	Size() int
 }
@@ -21,7 +22,7 @@ type IPeerSet interface {
 // Iteration over the peers is super fast and thread-safe.
 type PeerSet struct {
 	mtx    tmsync.Mutex
-	lookup map[NodeID]*peerSetItem
+	lookup map[types.NodeID]*peerSetItem
 	list   []Peer
 }
 
@@ -33,7 +34,7 @@ type peerSetItem struct {
 // NewPeerSet creates a new peerSet with a list of initial capacity of 256 items.
 func NewPeerSet() *PeerSet {
 	return &PeerSet{
-		lookup: make(map[NodeID]*peerSetItem),
+		lookup: make(map[types.NodeID]*peerSetItem),
 		list:   make([]Peer, 0, 256),
 	}
 }
@@ -58,7 +59,7 @@ func (ps *PeerSet) Add(peer Peer) error {
 
 // Has returns true if the set contains the peer referred to by this
 // peerKey, otherwise false.
-func (ps *PeerSet) Has(peerKey NodeID) bool {
+func (ps *PeerSet) Has(peerKey types.NodeID) bool {
 	ps.mtx.Lock()
 	_, ok := ps.lookup[peerKey]
 	ps.mtx.Unlock()
@@ -88,7 +89,7 @@ func (ps *PeerSet) hasIP(peerIP net.IP) bool {
 
 // Get looks up a peer by the provided peerKey. Returns nil if peer is not
 // found.
-func (ps *PeerSet) Get(peerKey NodeID) Peer {
+func (ps *PeerSet) Get(peerKey types.NodeID) Peer {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	item, ok := ps.lookup[peerKey]

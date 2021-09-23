@@ -35,11 +35,11 @@ var (
 type reactorTestSuite struct {
 	network          *p2ptest.Network
 	logger           log.Logger
-	reactors         map[p2p.NodeID]*evidence.Reactor
-	pools            map[p2p.NodeID]*evidence.Pool
-	evidenceChannels map[p2p.NodeID]*p2p.Channel
-	peerUpdates      map[p2p.NodeID]*p2p.PeerUpdates
-	peerChans        map[p2p.NodeID]chan p2p.PeerUpdate
+	reactors         map[types.NodeID]*evidence.Reactor
+	pools            map[types.NodeID]*evidence.Pool
+	evidenceChannels map[types.NodeID]*p2p.Channel
+	peerUpdates      map[types.NodeID]*p2p.PeerUpdates
+	peerChans        map[types.NodeID]chan p2p.PeerUpdate
 	nodes            []*p2ptest.Node
 	numStateStores   int
 }
@@ -56,10 +56,10 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 		numStateStores: numStateStores,
 		logger:         log.TestingLogger().With("testCase", t.Name()),
 		network:        p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numStateStores}),
-		reactors:       make(map[p2p.NodeID]*evidence.Reactor, numStateStores),
-		pools:          make(map[p2p.NodeID]*evidence.Pool, numStateStores),
-		peerUpdates:    make(map[p2p.NodeID]*p2p.PeerUpdates, numStateStores),
-		peerChans:      make(map[p2p.NodeID]chan p2p.PeerUpdate, numStateStores),
+		reactors:       make(map[types.NodeID]*evidence.Reactor, numStateStores),
+		pools:          make(map[types.NodeID]*evidence.Pool, numStateStores),
+		peerUpdates:    make(map[types.NodeID]*p2p.PeerUpdates, numStateStores),
+		peerChans:      make(map[types.NodeID]chan p2p.PeerUpdate, numStateStores),
 	}
 
 	chDesc := p2p.ChannelDescriptor{ID: byte(evidence.EvidenceChannel)}
@@ -124,7 +124,7 @@ func (rts *reactorTestSuite) start(t *testing.T) {
 		"network does not have expected number of nodes")
 }
 
-func (rts *reactorTestSuite) waitForEvidence(t *testing.T, evList types.EvidenceList, ids ...p2p.NodeID) {
+func (rts *reactorTestSuite) waitForEvidence(t *testing.T, evList types.EvidenceList, ids ...types.NodeID) {
 	t.Helper()
 
 	fn := func(pool *evidence.Pool) {
@@ -188,7 +188,7 @@ func (rts *reactorTestSuite) waitForEvidence(t *testing.T, evList types.Evidence
 		}
 
 		wg.Add(1)
-		go func(id p2p.NodeID) { defer wg.Done(); fn(rts.pools[id]) }(id)
+		go func(id types.NodeID) { defer wg.Done(); fn(rts.pools[id]) }(id)
 	}
 	wg.Wait()
 }
@@ -293,7 +293,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	// primary. As a result, the primary will gossip all evidence to each secondary.
 	primary := rts.network.RandomNode()
 	secondaries := make([]*p2ptest.Node, 0, len(rts.network.NodeIDs())-1)
-	secondaryIDs := make([]p2p.NodeID, 0, cap(secondaries))
+	secondaryIDs := make([]types.NodeID, 0, cap(secondaries))
 	for id := range rts.network.Nodes {
 		if id == primary.NodeID {
 			continue
@@ -534,12 +534,13 @@ func TestEvidenceListSerialization(t *testing.T) {
 
 	valSet := types.NewValidatorSet([]*types.Validator{val})
 
-	dupl := types.NewDuplicateVoteEvidence(
+	dupl, err := types.NewDuplicateVoteEvidence(
 		exampleVote(1),
 		exampleVote(2),
 		defaultEvidenceTime,
 		valSet,
 	)
+	require.NoError(t, err)
 
 	testCases := map[string]struct {
 		evidenceList []types.Evidence

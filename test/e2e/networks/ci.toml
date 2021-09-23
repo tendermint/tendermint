@@ -30,11 +30,6 @@ validator05 = 50
 [node.seed01]
 mode = "seed"
 perturb = ["restart"]
-seeds = ["seed02"]
-
-[node.seed02]
-mode = "seed"
-seeds = ["seed01"]
 
 [node.validator01]
 perturb = ["disconnect"]
@@ -47,51 +42,45 @@ database = "boltdb"
 persist_interval = 0
 perturb = ["restart"]
 privval_protocol = "tcp"
-seeds = ["seed02"]
+seeds = ["seed01"]
+block_sync = "v0"
 
 [node.validator03]
 database = "badgerdb"
 seeds = ["seed01"]
-# FIXME: should be grpc, disabled due to https://github.com/tendermint/tendermint/issues/5439
-#abci_protocol = "grpc"
+abci_protocol = "grpc"
 persist_interval = 3
 perturb = ["kill"]
 privval_protocol = "grpc"
-retain_blocks = 5
+block_sync = "v0"
+retain_blocks = 10
 
 [node.validator04]
 abci_protocol = "builtin"
+snapshot_interval = 5
 database = "rocksdb"
 persistent_peers = ["validator01"]
 perturb = ["pause"]
+block_sync = "v0"
 
 [node.validator05]
-database = "cleveldb" 
-fast_sync = "v0" 
-seeds = ["seed02"] 
+database = "cleveldb"
+block_sync = "v0"
+state_sync = "p2p"
+seeds = ["seed01"]
 start_at = 1005 # Becomes part of the validator set at 1010
-# FIXME: should be grpc, disabled due to https://github.com/tendermint/tendermint/issues/5439
-#abci_protocol = "grpc"
-perturb = ["kill", "pause", "disconnect", "restart"]
+abci_protocol = "grpc"
+perturb = ["pause", "disconnect", "restart"]
 privval_protocol = "tcp"
 
 [node.full01]
 mode = "full"
 start_at = 1010
-# FIXME: should be v2, disabled due to flake
-fast_sync = "v0"
-persistent_peers = ["validator01", "validator02", "validator03", "validator04", "validator05"]
+block_sync = "v0"
+persistent_peers = ["validator01", "validator02", "validator03", "validator04"]
 perturb = ["restart"]
-retain_blocks = 5
-
-[node.full02]
-mode = "full"
-start_at = 1015
-# FIXME: should be v2, disabled due to flake
-fast_sync = "v0"
-perturb = ["restart"]
-seeds = ["seed01"]
-state_sync = true
+retain_blocks = 10
+state_sync = "rpc"
 
 [node.light01]
 mode = "light"

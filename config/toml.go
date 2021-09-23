@@ -97,11 +97,6 @@ moniker = "{{ .BaseConfig.Moniker }}"
 #   - No priv_validator_key.json, priv_validator_state.json
 mode = "{{ .BaseConfig.Mode }}"
 
-# If this node is many blocks behind the tip of the chain, FastSync
-# allows them to catchup quickly by downloading blocks in parallel
-# and verifying their commits
-fast-sync = {{ .BaseConfig.FastSyncMode }}
-
 # Database backend: goleveldb | cleveldb | boltdb | rocksdb | badgerdb
 # * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
 #   - pure go
@@ -164,14 +159,14 @@ state-file = "{{ js .PrivValidator.State }}"
 # when the listenAddr is prefixed with grpc instead of tcp it will use the gRPC Client
 laddr = "{{ .PrivValidator.ListenAddr }}"
 
-# Client certificate generated while creating needed files for secure connection.
+# Path to the client certificate generated while creating needed files for secure connection.
 # If a remote validator address is provided but no certificate, the connection will be insecure
 client-certificate-file = "{{ js .PrivValidator.ClientCertificate }}"
 
 # Client key generated while creating certificates for secure connection
 validator-client-key-file = "{{ js .PrivValidator.ClientKey }}"
 
-# Path Root Certificate Authority used to sign both client and server certificates
+# Path to the Root Certificate Authority used to sign both client and server certificates
 certificate-authority = "{{ js .PrivValidator.RootCA }}"
 
 
@@ -200,6 +195,7 @@ cors-allowed-headers = [{{ range .RPC.CORSAllowedHeaders }}{{ printf "%q, " . }}
 
 # TCP or UNIX socket address for the gRPC server to listen on
 # NOTE: This server only supports /broadcast_tx_commit
+# Deprecated gRPC  in the RPC layer of Tendermint will be deprecated in 0.36.
 grpc-laddr = "{{ .RPC.GRPCListenAddress }}"
 
 # Maximum number of simultaneous connections.
@@ -209,6 +205,7 @@ grpc-laddr = "{{ .RPC.GRPCListenAddress }}"
 # 0 - unlimited.
 # Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
 # 1024 - 40 - 10 - 50 = 924 = ~900
+# Deprecated gRPC  in the RPC layer of Tendermint will be deprecated in 0.36.
 grpc-max-open-connections = {{ .RPC.GRPCMaxOpenConnections }}
 
 # Activate unsafe RPC commands like /dial-seeds and /unsafe-flush-mempool
@@ -268,8 +265,8 @@ pprof-laddr = "{{ .RPC.PprofListenAddress }}"
 #######################################################
 [p2p]
 
-# Enable the new p2p layer.
-disable-legacy = {{ .P2P.DisableLegacy }}
+# Enable the legacy p2p layer.
+use-legacy = {{ .P2P.UseLegacy }}
 
 # Select the p2p internal queue
 queue-type = "{{ .P2P.QueueType }}"
@@ -280,7 +277,8 @@ laddr = "{{ .P2P.ListenAddress }}"
 # Address to advertise to peers for them to dial
 # If empty, will use the same port as the laddr,
 # and will introspect on the listener or use UPnP
-# to figure out the address.
+# to figure out the address. ip and port are required
+# example: 159.89.10.97:26656
 external-address = "{{ .P2P.ExternalAddress }}"
 
 # Comma separated list of seed nodes to connect to
@@ -302,6 +300,7 @@ persistent-peers = "{{ .P2P.PersistentPeers }}"
 upnp = {{ .P2P.UPNP }}
 
 # Path to address book
+# TODO: Remove once p2p refactor is complete in favor of peer store.
 addr-book-file = "{{ js .P2P.AddrBook }}"
 
 # Set true for strict address routability rules
@@ -327,21 +326,33 @@ max-connections = {{ .P2P.MaxConnections }}
 max-incoming-connection-attempts = {{ .P2P.MaxIncomingConnectionAttempts }}
 
 # List of node IDs, to which a connection will be (re)established ignoring any existing limits
+# TODO: Remove once p2p refactor is complete.
+# ref: https://github.com/tendermint/tendermint/issues/5670
 unconditional-peer-ids = "{{ .P2P.UnconditionalPeerIDs }}"
 
 # Maximum pause when redialing a persistent peer (if zero, exponential backoff is used)
+# TODO: Remove once p2p refactor is complete
+# ref: https:#github.com/tendermint/tendermint/issues/5670
 persistent-peers-max-dial-period = "{{ .P2P.PersistentPeersMaxDialPeriod }}"
 
 # Time to wait before flushing messages out on the connection
+# TODO: Remove once p2p refactor is complete
+# ref: https:#github.com/tendermint/tendermint/issues/5670
 flush-throttle-timeout = "{{ .P2P.FlushThrottleTimeout }}"
 
 # Maximum size of a message packet payload, in bytes
+# TODO: Remove once p2p refactor is complete
+# ref: https:#github.com/tendermint/tendermint/issues/5670
 max-packet-msg-payload-size = {{ .P2P.MaxPacketMsgPayloadSize }}
 
 # Rate at which packets can be sent, in bytes/second
+# TODO: Remove once p2p refactor is complete
+# ref: https:#github.com/tendermint/tendermint/issues/5670
 send-rate = {{ .P2P.SendRate }}
 
 # Rate at which packets can be received, in bytes/second
+# TODO: Remove once p2p refactor is complete
+# ref: https:#github.com/tendermint/tendermint/issues/5670
 recv-rate = {{ .P2P.RecvRate }}
 
 # Set true to enable the peer-exchange reactor
@@ -396,6 +407,22 @@ max-tx-bytes = {{ .Mempool.MaxTxBytes }}
 # XXX: Unused due to https://github.com/tendermint/tendermint/issues/5796
 max-batch-bytes = {{ .Mempool.MaxBatchBytes }}
 
+# ttl-duration, if non-zero, defines the maximum amount of time a transaction
+# can exist for in the mempool.
+#
+# Note, if ttl-num-blocks is also defined, a transaction will be removed if it
+# has existed in the mempool at least ttl-num-blocks number of blocks or if it's
+# insertion time into the mempool is beyond ttl-duration.
+ttl-duration = "{{ .Mempool.TTLDuration }}"
+
+# ttl-num-blocks, if non-zero, defines the maximum number of blocks a transaction
+# can exist for in the mempool.
+#
+# Note, if ttl-duration is also defined, a transaction will be removed if it
+# has existed in the mempool at least ttl-num-blocks number of blocks or if
+# it's insertion time into the mempool is beyond ttl-duration.
+ttl-num-blocks = {{ .Mempool.TTLNumBlocks }}
+
 #######################################################
 ###         State Sync Configuration Options        ###
 #######################################################
@@ -407,22 +434,30 @@ max-batch-bytes = {{ .Mempool.MaxBatchBytes }}
 # starting from the height of the snapshot.
 enable = {{ .StateSync.Enable }}
 
-# RPC servers (comma-separated) for light client verification of the synced state machine and
-# retrieval of state data for node bootstrapping. Also needs a trusted height and corresponding
-# header hash obtained from a trusted source, and a period during which validators can be trusted.
-#
-# For Cosmos SDK-based chains, trust-period should usually be about 2/3 of the unbonding time (~2
-# weeks) during which they can be financially punished (slashed) for misbehavior.
+# State sync uses light client verification to verify state. This can be done either through the
+# P2P layer or RPC layer. Set this to true to use the P2P layer. If false (default), RPC layer
+# will be used.
+use-p2p = {{ .StateSync.UseP2P }}
+
+# If using RPC, at least two addresses need to be provided. They should be compatible with net.Dial,
+# for example: "host.example.com:2125"
 rpc-servers = "{{ StringsJoin .StateSync.RPCServers "," }}"
+
+# The hash and height of a trusted block. Must be within the trust-period.
 trust-height = {{ .StateSync.TrustHeight }}
 trust-hash = "{{ .StateSync.TrustHash }}"
+
+# The trust period should be set so that Tendermint can detect and gossip misbehavior before 
+# it is considered expired. For chains based on the Cosmos SDK, one day less than the unbonding 
+# period should suffice.
 trust-period = "{{ .StateSync.TrustPeriod }}"
 
 # Time to spend discovering snapshots before initiating a restore.
 discovery-time = "{{ .StateSync.DiscoveryTime }}"
 
-# Temporary directory for state sync snapshot chunks, defaults to the OS tempdir (typically /tmp).
-# Will create a new, randomly named directory within, and remove it when done.
+# Temporary directory for state sync snapshot chunks, defaults to os.TempDir().
+# The synchronizer will create a new, randomly named directory within this directory
+# and remove it when the sync is complete.
 temp-dir = "{{ .StateSync.TempDir }}"
 
 # The timeout duration before re-requesting a chunk, possibly from a different
@@ -433,14 +468,19 @@ chunk-request-timeout = "{{ .StateSync.ChunkRequestTimeout }}"
 fetchers = "{{ .StateSync.Fetchers }}"
 
 #######################################################
-###       Fast Sync Configuration Connections       ###
+###       Block Sync Configuration Connections       ###
 #######################################################
-[fastsync]
+[blocksync]
 
-# Fast Sync version to use:
-#   1) "v0" (default) - the legacy fast sync implementation
-#   2) "v2" - complete redesign of v0, optimized for testability & readability
-version = "{{ .FastSync.Version }}"
+# If this node is many blocks behind the tip of the chain, BlockSync
+# allows them to catchup quickly by downloading blocks in parallel
+# and verifying their commits
+enable = {{ .BlockSync.Enable }}
+
+# Block Sync version to use:
+#   1) "v0" (default) - the standard Block Sync implementation
+#   2) "v2" - DEPRECATED, please use v0
+version = "{{ .BlockSync.Version }}"
 
 #######################################################
 ###         Consensus Configuration Options         ###
@@ -489,7 +529,7 @@ peer-query-maj23-sleep-duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 [tx-index]
 
 # The backend database list to back the indexer.
-# If list contains null, meaning no indexer service will be used.
+# If list contains "null" or "", meaning no indexer service will be used.
 #
 # The application will set which txs to index. In some cases a node operator will be able
 # to decide which txs to index based on configuration set in the application.
@@ -497,8 +537,8 @@ peer-query-maj23-sleep-duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 # Options:
 #   1) "null"
 #   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
-# 		- When "kv" is chosen "tx.height" and "tx.hash" will always be indexed.
 #   3) "psql" - the indexer services backed by PostgreSQL.
+# When "kv" or "psql" is chosen "tx.height" and "tx.hash" will always be indexed.
 indexer = [{{ range $i, $e := .TxIndex.Indexer }}{{if $i}}, {{end}}{{ printf "%q" $e}}{{end}}]
 
 # The PostgreSQL connection configuration, the connection format:

@@ -11,7 +11,7 @@ import (
 )
 
 // Status returns Tendermint status including node info, pubkey, latest block
-// hash, app hash, block height and time.
+// hash, app hash, block height, current max peer block height, and time.
 // More: https://docs.tendermint.com/master/rpc/#/Info/status
 func (env *Environment) Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 	var (
@@ -69,9 +69,22 @@ func (env *Environment) Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, err
 			EarliestAppHash:     earliestAppHash,
 			EarliestBlockHeight: earliestBlockHeight,
 			EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
+			MaxPeerBlockHeight:  env.BlockSyncReactor.GetMaxPeerBlockHeight(),
 			CatchingUp:          env.ConsensusReactor.WaitSync(),
+			TotalSyncedTime:     env.BlockSyncReactor.GetTotalSyncedTime(),
+			RemainingTime:       env.BlockSyncReactor.GetRemainingSyncTime(),
 		},
 		ValidatorInfo: validatorInfo,
+	}
+
+	if env.StateSyncMetricer != nil {
+		result.SyncInfo.TotalSnapshots = env.StateSyncMetricer.TotalSnapshots()
+		result.SyncInfo.ChunkProcessAvgTime = env.StateSyncMetricer.ChunkProcessAvgTime()
+		result.SyncInfo.SnapshotHeight = env.StateSyncMetricer.SnapshotHeight()
+		result.SyncInfo.SnapshotChunksCount = env.StateSyncMetricer.SnapshotChunksCount()
+		result.SyncInfo.SnapshotChunksTotal = env.StateSyncMetricer.SnapshotChunksTotal()
+		result.SyncInfo.BackFilledBlocks = env.StateSyncMetricer.BackFilledBlocks()
+		result.SyncInfo.BackFillBlocksTotal = env.StateSyncMetricer.BackFillBlocksTotal()
 	}
 
 	return result, nil

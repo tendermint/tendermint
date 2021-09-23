@@ -179,7 +179,7 @@ This then ends the process and the verify function that was called at the start 
 the user.
 
 For a detailed overview of how each of these three attacks can be conducted please refer to the
-[fork accountability spec]((https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)).
+[fork accountability spec](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md).
 
 ## Full Node Verification
 

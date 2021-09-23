@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"strings"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmjson "github.com/tendermint/tendermint/libs/json"
@@ -16,26 +17,73 @@ const (
 	// after a block has been committed.
 	// These are also used by the tx indexer for async indexing.
 	// All of this data can be fetched through the rpc.
-	EventNewBlock            = "NewBlock"
-	EventNewBlockHeader      = "NewBlockHeader"
-	EventNewEvidence         = "NewEvidence"
-	EventTx                  = "Tx"
-	EventValidatorSetUpdates = "ValidatorSetUpdates"
+	EventNewBlockValue            = "NewBlock"
+	EventNewBlockHeaderValue      = "NewBlockHeader"
+	EventNewEvidenceValue         = "NewEvidence"
+	EventTxValue                  = "Tx"
+	EventValidatorSetUpdatesValue = "ValidatorSetUpdates"
 
 	// Internal consensus events.
 	// These are used for testing the consensus state machine.
 	// They can also be used to build real-time consensus visualizers.
-	EventCompleteProposal = "CompleteProposal"
-	EventLock             = "Lock"
-	EventNewRound         = "NewRound"
-	EventNewRoundStep     = "NewRoundStep"
-	EventPolka            = "Polka"
-	EventRelock           = "Relock"
-	EventTimeoutPropose   = "TimeoutPropose"
-	EventTimeoutWait      = "TimeoutWait"
-	EventUnlock           = "Unlock"
-	EventValidBlock       = "ValidBlock"
-	EventVote             = "Vote"
+	EventCompleteProposalValue = "CompleteProposal"
+	// The BlockSyncStatus event will be emitted when the node switching
+	// state sync mechanism between the consensus reactor and the blocksync reactor.
+	EventBlockSyncStatusValue = "BlockSyncStatus"
+	EventLockValue            = "Lock"
+	EventNewRoundValue        = "NewRound"
+	EventNewRoundStepValue    = "NewRoundStep"
+	EventPolkaValue           = "Polka"
+	EventRelockValue          = "Relock"
+	EventStateSyncStatusValue = "StateSyncStatus"
+	EventTimeoutProposeValue  = "TimeoutPropose"
+	EventTimeoutWaitValue     = "TimeoutWait"
+	EventUnlockValue          = "Unlock"
+	EventValidBlockValue      = "ValidBlock"
+	EventVoteValue            = "Vote"
+)
+
+// Pre-populated ABCI Tendermint-reserved events
+var (
+	EventNewBlock = abci.Event{
+		Type: strings.Split(EventTypeKey, ".")[0],
+		Attributes: []abci.EventAttribute{
+			{
+				Key:   strings.Split(EventTypeKey, ".")[1],
+				Value: EventNewBlockValue,
+			},
+		},
+	}
+
+	EventNewBlockHeader = abci.Event{
+		Type: strings.Split(EventTypeKey, ".")[0],
+		Attributes: []abci.EventAttribute{
+			{
+				Key:   strings.Split(EventTypeKey, ".")[1],
+				Value: EventNewBlockHeaderValue,
+			},
+		},
+	}
+
+	EventNewEvidence = abci.Event{
+		Type: strings.Split(EventTypeKey, ".")[0],
+		Attributes: []abci.EventAttribute{
+			{
+				Key:   strings.Split(EventTypeKey, ".")[1],
+				Value: EventNewEvidenceValue,
+			},
+		},
+	}
+
+	EventTx = abci.Event{
+		Type: strings.Split(EventTypeKey, ".")[0],
+		Attributes: []abci.EventAttribute{
+			{
+				Key:   strings.Split(EventTypeKey, ".")[1],
+				Value: EventTxValue,
+			},
+		},
+	}
 )
 
 // ENCODING / DECODING
@@ -56,6 +104,8 @@ func init() {
 	tmjson.RegisterType(EventDataVote{}, "tendermint/event/Vote")
 	tmjson.RegisterType(EventDataValidatorSetUpdates{}, "tendermint/event/ValidatorSetUpdates")
 	tmjson.RegisterType(EventDataString(""), "tendermint/event/ProposalString")
+	tmjson.RegisterType(EventDataBlockSyncStatus{}, "tendermint/event/FastSyncStatus")
+	tmjson.RegisterType(EventDataStateSyncStatus{}, "tendermint/event/StateSyncStatus")
 }
 
 // Most event messages are basic types (a block, a transaction)
@@ -126,6 +176,20 @@ type EventDataValidatorSetUpdates struct {
 	ValidatorUpdates []*Validator `json:"validator_updates"`
 }
 
+// EventDataBlockSyncStatus shows the fastsync status and the
+// height when the node state sync mechanism changes.
+type EventDataBlockSyncStatus struct {
+	Complete bool  `json:"complete"`
+	Height   int64 `json:"height"`
+}
+
+// EventDataStateSyncStatus shows the statesync status and the
+// height when the node state sync mechanism changes.
+type EventDataStateSyncStatus struct {
+	Complete bool  `json:"complete"`
+	Height   int64 `json:"height"`
+}
+
 // PUBSUB
 
 const (
@@ -147,30 +211,32 @@ const (
 )
 
 var (
-	EventQueryCompleteProposal    = QueryForEvent(EventCompleteProposal)
-	EventQueryLock                = QueryForEvent(EventLock)
-	EventQueryNewBlock            = QueryForEvent(EventNewBlock)
-	EventQueryNewBlockHeader      = QueryForEvent(EventNewBlockHeader)
-	EventQueryNewEvidence         = QueryForEvent(EventNewEvidence)
-	EventQueryNewRound            = QueryForEvent(EventNewRound)
-	EventQueryNewRoundStep        = QueryForEvent(EventNewRoundStep)
-	EventQueryPolka               = QueryForEvent(EventPolka)
-	EventQueryRelock              = QueryForEvent(EventRelock)
-	EventQueryTimeoutPropose      = QueryForEvent(EventTimeoutPropose)
-	EventQueryTimeoutWait         = QueryForEvent(EventTimeoutWait)
-	EventQueryTx                  = QueryForEvent(EventTx)
-	EventQueryUnlock              = QueryForEvent(EventUnlock)
-	EventQueryValidatorSetUpdates = QueryForEvent(EventValidatorSetUpdates)
-	EventQueryValidBlock          = QueryForEvent(EventValidBlock)
-	EventQueryVote                = QueryForEvent(EventVote)
+	EventQueryCompleteProposal    = QueryForEvent(EventCompleteProposalValue)
+	EventQueryLock                = QueryForEvent(EventLockValue)
+	EventQueryNewBlock            = QueryForEvent(EventNewBlockValue)
+	EventQueryNewBlockHeader      = QueryForEvent(EventNewBlockHeaderValue)
+	EventQueryNewEvidence         = QueryForEvent(EventNewEvidenceValue)
+	EventQueryNewRound            = QueryForEvent(EventNewRoundValue)
+	EventQueryNewRoundStep        = QueryForEvent(EventNewRoundStepValue)
+	EventQueryPolka               = QueryForEvent(EventPolkaValue)
+	EventQueryRelock              = QueryForEvent(EventRelockValue)
+	EventQueryTimeoutPropose      = QueryForEvent(EventTimeoutProposeValue)
+	EventQueryTimeoutWait         = QueryForEvent(EventTimeoutWaitValue)
+	EventQueryTx                  = QueryForEvent(EventTxValue)
+	EventQueryUnlock              = QueryForEvent(EventUnlockValue)
+	EventQueryValidatorSetUpdates = QueryForEvent(EventValidatorSetUpdatesValue)
+	EventQueryValidBlock          = QueryForEvent(EventValidBlockValue)
+	EventQueryVote                = QueryForEvent(EventVoteValue)
+	EventQueryBlockSyncStatus     = QueryForEvent(EventBlockSyncStatusValue)
+	EventQueryStateSyncStatus     = QueryForEvent(EventStateSyncStatusValue)
 )
 
 func EventQueryTxFor(tx Tx) tmpubsub.Query {
-	return tmquery.MustParse(fmt.Sprintf("%s='%s' AND %s='%X'", EventTypeKey, EventTx, TxHashKey, tx.Hash()))
+	return tmquery.MustParse(fmt.Sprintf("%s='%s' AND %s='%X'", EventTypeKey, EventTxValue, TxHashKey, tx.Hash()))
 }
 
-func QueryForEvent(eventType string) tmpubsub.Query {
-	return tmquery.MustParse(fmt.Sprintf("%s='%s'", EventTypeKey, eventType))
+func QueryForEvent(eventValue string) tmpubsub.Query {
+	return tmquery.MustParse(fmt.Sprintf("%s='%s'", EventTypeKey, eventValue))
 }
 
 // BlockEventPublisher publishes all block related events

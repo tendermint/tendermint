@@ -16,6 +16,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
@@ -24,13 +25,12 @@ import (
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
 	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
-	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/store"
@@ -39,6 +39,7 @@ import (
 
 func TestNodeStartStop(t *testing.T) {
 	config := cfg.ResetTestRoot("node_node_test")
+
 	defer os.RemoveAll(config.RootDir)
 
 	// create & start node
@@ -48,8 +49,6 @@ func TestNodeStartStop(t *testing.T) {
 
 	n, ok := ns.(*nodeImpl)
 	require.True(t, ok)
-
-	t.Logf("Started node %v", n.sw.NodeInfo())
 
 	// wait for the node to produce a block
 	blocksSub, err := n.EventBus().Subscribe(context.Background(), "node_test", types.EventQueryNewBlock)
@@ -215,7 +214,7 @@ func testFreeAddr(t *testing.T) string {
 func TestCreateProposalBlock(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
-	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
+	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -307,7 +306,7 @@ func TestCreateProposalBlock(t *testing.T) {
 func TestMaxTxsProposalBlockSize(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
-	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
+	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -369,7 +368,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 func TestMaxProposalBlockSize(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
-	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
+	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -486,7 +485,7 @@ func TestNodeNewSeedNode(t *testing.T) {
 	config.Mode = cfg.ModeSeed
 	defer os.RemoveAll(config.RootDir)
 
-	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
+	nodeKey, err := types.LoadOrGenNodeKey(config.NodeKeyFile())
 	require.NoError(t, err)
 
 	ns, err := makeSeedNode(config,
@@ -509,36 +508,50 @@ func TestNodeSetEventSink(t *testing.T) {
 	config := cfg.ResetTestRoot("node_app_version_test")
 	defer os.RemoveAll(config.RootDir)
 
-	n := getTestNode(t, config, log.TestingLogger())
+	logger := log.TestingLogger()
+	setupTest := func(t *testing.T, conf *cfg.Config) []indexer.EventSink {
+		eventBus, err := createAndStartEventBus(logger)
+		require.NoError(t, err)
 
-	assert.Equal(t, 1, len(n.eventSinks))
-	assert.Equal(t, indexer.KV, n.eventSinks[0].Type())
+		genDoc, err := types.GenesisDocFromFile(config.GenesisFile())
+		require.NoError(t, err)
+
+		indexService, eventSinks, err := createAndStartIndexerService(config,
+			cfg.DefaultDBProvider, eventBus, logger, genDoc.ChainID)
+		require.NoError(t, err)
+		t.Cleanup(func() { require.NoError(t, indexService.Stop()) })
+		return eventSinks
+	}
+
+	eventSinks := setupTest(t, config)
+	assert.Equal(t, 1, len(eventSinks))
+	assert.Equal(t, indexer.KV, eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"null"}
-	n = getTestNode(t, config, log.TestingLogger())
+	eventSinks = setupTest(t, config)
 
-	assert.Equal(t, 1, len(n.eventSinks))
-	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
+	assert.Equal(t, 1, len(eventSinks))
+	assert.Equal(t, indexer.NULL, eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"null", "kv"}
-	n = getTestNode(t, config, log.TestingLogger())
+	eventSinks = setupTest(t, config)
 
-	assert.Equal(t, 1, len(n.eventSinks))
-	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
+	assert.Equal(t, 1, len(eventSinks))
+	assert.Equal(t, indexer.NULL, eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"kvv"}
-	ns, err := newDefaultNode(config, log.TestingLogger())
+	ns, err := newDefaultNode(config, logger)
 	assert.Nil(t, ns)
 	assert.Equal(t, errors.New("unsupported event sink type"), err)
 
 	config.TxIndex.Indexer = []string{}
-	n = getTestNode(t, config, log.TestingLogger())
+	eventSinks = setupTest(t, config)
 
-	assert.Equal(t, 1, len(n.eventSinks))
-	assert.Equal(t, indexer.NULL, n.eventSinks[0].Type())
+	assert.Equal(t, 1, len(eventSinks))
+	assert.Equal(t, indexer.NULL, eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"psql"}
-	ns, err = newDefaultNode(config, log.TestingLogger())
+	ns, err = newDefaultNode(config, logger)
 	assert.Nil(t, ns)
 	assert.Equal(t, errors.New("the psql connection settings cannot be empty"), err)
 
@@ -546,46 +559,46 @@ func TestNodeSetEventSink(t *testing.T) {
 
 	config.TxIndex.Indexer = []string{"psql"}
 	config.TxIndex.PsqlConn = psqlConn
-	n = getTestNode(t, config, log.TestingLogger())
-	assert.Equal(t, 1, len(n.eventSinks))
-	assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
-	n.OnStop()
+	eventSinks = setupTest(t, config)
+
+	assert.Equal(t, 1, len(eventSinks))
+	assert.Equal(t, indexer.PSQL, eventSinks[0].Type())
 
 	config.TxIndex.Indexer = []string{"psql", "kv"}
 	config.TxIndex.PsqlConn = psqlConn
-	n = getTestNode(t, config, log.TestingLogger())
-	assert.Equal(t, 2, len(n.eventSinks))
+	eventSinks = setupTest(t, config)
+
+	assert.Equal(t, 2, len(eventSinks))
 	// we use map to filter the duplicated sinks, so it's not guarantee the order when append sinks.
-	if n.eventSinks[0].Type() == indexer.KV {
-		assert.Equal(t, indexer.PSQL, n.eventSinks[1].Type())
+	if eventSinks[0].Type() == indexer.KV {
+		assert.Equal(t, indexer.PSQL, eventSinks[1].Type())
 	} else {
-		assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
-		assert.Equal(t, indexer.KV, n.eventSinks[1].Type())
+		assert.Equal(t, indexer.PSQL, eventSinks[0].Type())
+		assert.Equal(t, indexer.KV, eventSinks[1].Type())
 	}
-	n.OnStop()
 
 	config.TxIndex.Indexer = []string{"kv", "psql"}
 	config.TxIndex.PsqlConn = psqlConn
-	n = getTestNode(t, config, log.TestingLogger())
-	assert.Equal(t, 2, len(n.eventSinks))
-	if n.eventSinks[0].Type() == indexer.KV {
-		assert.Equal(t, indexer.PSQL, n.eventSinks[1].Type())
+	eventSinks = setupTest(t, config)
+
+	assert.Equal(t, 2, len(eventSinks))
+	if eventSinks[0].Type() == indexer.KV {
+		assert.Equal(t, indexer.PSQL, eventSinks[1].Type())
 	} else {
-		assert.Equal(t, indexer.PSQL, n.eventSinks[0].Type())
-		assert.Equal(t, indexer.KV, n.eventSinks[1].Type())
+		assert.Equal(t, indexer.PSQL, eventSinks[0].Type())
+		assert.Equal(t, indexer.KV, eventSinks[1].Type())
 	}
-	n.OnStop()
 
 	var e = errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
 	config.TxIndex.Indexer = []string{"psql", "kv", "Kv"}
 	config.TxIndex.PsqlConn = psqlConn
-	_, err = newDefaultNode(config, log.TestingLogger())
+	_, err = newDefaultNode(config, logger)
 	require.Error(t, err)
 	assert.Equal(t, e, err)
 
 	config.TxIndex.Indexer = []string{"Psql", "kV", "kv", "pSql"}
 	config.TxIndex.PsqlConn = psqlConn
-	_, err = newDefaultNode(config, log.TestingLogger())
+	_, err = newDefaultNode(config, logger)
 	require.Error(t, err)
 	assert.Equal(t, e, err)
 }
@@ -627,6 +640,12 @@ func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
 }
 
 func TestLoadStateFromGenesis(t *testing.T) {
+	_ = loadStatefromGenesis(t)
+}
+
+func loadStatefromGenesis(t *testing.T) sm.State {
+	t.Helper()
+
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
 	config := cfg.ResetTestRoot("load_state_from_genesis")
@@ -643,4 +662,6 @@ func TestLoadStateFromGenesis(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.NotNil(t, state)
+
+	return state
 }

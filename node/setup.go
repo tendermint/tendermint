@@ -8,16 +8,16 @@ import (
 	"math"
 	"net"
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
-	"strings"
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	bcv0 "github.com/tendermint/tendermint/internal/blockchain/v0"
-	bcv2 "github.com/tendermint/tendermint/internal/blockchain/v2"
+	bcv0 "github.com/tendermint/tendermint/internal/blocksync/v0"
+	bcv2 "github.com/tendermint/tendermint/internal/blocksync/v2"
 	cs "github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -25,17 +25,15 @@ import (
 	mempoolv1 "github.com/tendermint/tendermint/internal/mempool/v1"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/pex"
+	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
 	protop2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
-	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
-	kv "github.com/tendermint/tendermint/state/indexer/sink/kv"
-	null "github.com/tendermint/tendermint/state/indexer/sink/null"
-	psql "github.com/tendermint/tendermint/state/indexer/sink/psql"
+	"github.com/tendermint/tendermint/state/indexer/sink"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
@@ -53,7 +51,7 @@ func initDBs(config *cfg.Config, dbProvider cfg.DBProvider) (blockStore *store.B
 	return
 }
 
-func createAndStartProxyAppConns(clientCreator proxy.ClientCreator, logger log.Logger) (proxy.AppConns, error) {
+func createAndStartProxyAppConns(clientCreator abciclient.Creator, logger log.Logger) (proxy.AppConns, error) {
 	proxyApp := proxy.NewAppConns(clientCreator)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
@@ -78,49 +76,9 @@ func createAndStartIndexerService(
 	logger log.Logger,
 	chainID string,
 ) (*indexer.Service, []indexer.EventSink, error) {
-
-	eventSinks := []indexer.EventSink{}
-
-	// Check duplicated sinks.
-	sinks := map[string]bool{}
-	for _, s := range config.TxIndex.Indexer {
-		sl := strings.ToLower(s)
-		if sinks[sl] {
-			return nil, nil, errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
-		}
-		sinks[sl] = true
-	}
-
-loop:
-	for k := range sinks {
-		switch k {
-		case string(indexer.NULL):
-			// when we see null in the config, the eventsinks will be reset with the nullEventSink.
-			eventSinks = []indexer.EventSink{null.NewEventSink()}
-			break loop
-		case string(indexer.KV):
-			store, err := dbProvider(&cfg.DBContext{ID: "tx_index", Config: config})
-			if err != nil {
-				return nil, nil, err
-			}
-			eventSinks = append(eventSinks, kv.NewEventSink(store))
-		case string(indexer.PSQL):
-			conn := config.TxIndex.PsqlConn
-			if conn == "" {
-				return nil, nil, errors.New("the psql connection settings cannot be empty")
-			}
-			es, _, err := psql.NewEventSink(conn, chainID)
-			if err != nil {
-				return nil, nil, err
-			}
-			eventSinks = append(eventSinks, es)
-		default:
-			return nil, nil, errors.New("unsupported event sink type")
-		}
-	}
-
-	if len(eventSinks) == 0 {
-		eventSinks = []indexer.EventSink{null.NewEventSink()}
+	eventSinks, err := sink.EventSinksFromConfig(config, dbProvider, chainID)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	indexerService := indexer.NewIndexerService(eventSinks, eventBus)
@@ -209,12 +167,12 @@ func createMempoolReactor(
 		peerUpdates *p2p.PeerUpdates
 	)
 
-	if config.P2P.DisableLegacy {
-		channels = makeChannelsFromShims(router, channelShims)
-		peerUpdates = peerManager.Subscribe()
-	} else {
+	if config.P2P.UseLegacy {
 		channels = getChannelsFromShim(reactorShim)
 		peerUpdates = reactorShim.PeerUpdates
+	} else {
+		channels = makeChannelsFromShims(router, channelShims)
+		peerUpdates = peerManager.Subscribe()
 	}
 
 	switch config.Mempool.Version {
@@ -303,12 +261,12 @@ func createEvidenceReactor(
 		peerUpdates *p2p.PeerUpdates
 	)
 
-	if config.P2P.DisableLegacy {
-		channels = makeChannelsFromShims(router, evidence.ChannelShims)
-		peerUpdates = peerManager.Subscribe()
-	} else {
+	if config.P2P.UseLegacy {
 		channels = getChannelsFromShim(reactorShim)
 		peerUpdates = reactorShim.PeerUpdates
+	} else {
+		channels = makeChannelsFromShims(router, evidence.ChannelShims)
+		peerUpdates = peerManager.Subscribe()
 	}
 
 	evidenceReactor := evidence.NewReactor(
@@ -330,13 +288,14 @@ func createBlockchainReactor(
 	csReactor *cs.Reactor,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
-	fastSync bool,
+	blockSync bool,
+	metrics *cs.Metrics,
 ) (*p2p.ReactorShim, service.Service, error) {
 
 	logger = logger.With("module", "blockchain")
 
-	switch config.FastSync.Version {
-	case cfg.BlockchainV0:
+	switch config.BlockSync.Version {
+	case cfg.BlockSyncV0:
 		reactorShim := p2p.NewReactorShim(logger, "BlockchainShim", bcv0.ChannelShims)
 
 		var (
@@ -344,17 +303,18 @@ func createBlockchainReactor(
 			peerUpdates *p2p.PeerUpdates
 		)
 
-		if config.P2P.DisableLegacy {
-			channels = makeChannelsFromShims(router, bcv0.ChannelShims)
-			peerUpdates = peerManager.Subscribe()
-		} else {
+		if config.P2P.UseLegacy {
 			channels = getChannelsFromShim(reactorShim)
 			peerUpdates = reactorShim.PeerUpdates
+		} else {
+			channels = makeChannelsFromShims(router, bcv0.ChannelShims)
+			peerUpdates = peerManager.Subscribe()
 		}
 
 		reactor, err := bcv0.NewReactor(
 			logger, state.Copy(), blockExec, blockStore, csReactor,
-			channels[bcv0.BlockchainChannel], peerUpdates, fastSync,
+			channels[bcv0.BlockSyncChannel], peerUpdates, blockSync,
+			metrics,
 		)
 		if err != nil {
 			return nil, nil, err
@@ -362,14 +322,11 @@ func createBlockchainReactor(
 
 		return reactorShim, reactor, nil
 
-	case cfg.BlockchainV2:
-		reactor := bcv2.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
-		reactor.SetLogger(logger)
-
-		return nil, reactor, nil
+	case cfg.BlockSyncV2:
+		return nil, nil, errors.New("block sync version v2 is no longer supported. Please use v0")
 
 	default:
-		return nil, nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
+		return nil, nil, fmt.Errorf("unknown block sync version %s", config.BlockSync.Version)
 	}
 }
 
@@ -410,12 +367,12 @@ func createConsensusReactor(
 		peerUpdates *p2p.PeerUpdates
 	)
 
-	if config.P2P.DisableLegacy {
-		channels = makeChannelsFromShims(router, cs.ChannelShims)
-		peerUpdates = peerManager.Subscribe()
-	} else {
+	if config.P2P.UseLegacy {
 		channels = getChannelsFromShim(reactorShim)
 		peerUpdates = reactorShim.PeerUpdates
+	} else {
+		channels = makeChannelsFromShims(router, cs.ChannelShims)
+		peerUpdates = peerManager.Subscribe()
 	}
 
 	reactor := cs.NewReactor(
@@ -452,7 +409,7 @@ func createPeerManager(
 	config *cfg.Config,
 	dbProvider cfg.DBProvider,
 	p2pLogger log.Logger,
-	nodeID p2p.NodeID,
+	nodeID types.NodeID,
 ) (*p2p.PeerManager, error) {
 
 	var maxConns uint16
@@ -478,9 +435,9 @@ func createPeerManager(
 		maxConns = 64
 	}
 
-	privatePeerIDs := make(map[p2p.NodeID]struct{})
+	privatePeerIDs := make(map[types.NodeID]struct{})
 	for _, id := range tmstrings.SplitAndTrimEmpty(config.P2P.PrivatePeerIDs, ",", " ") {
-		privatePeerIDs[p2p.NodeID(id)] = struct{}{}
+		privatePeerIDs[types.NodeID(id)] = struct{}{}
 	}
 
 	options := p2p.PeerManagerOptions{
@@ -535,7 +492,7 @@ func createPeerManager(
 func createRouter(
 	p2pLogger log.Logger,
 	p2pMetrics *p2p.Metrics,
-	nodeInfo p2p.NodeInfo,
+	nodeInfo types.NodeInfo,
 	privKey crypto.PrivKey,
 	peerManager *p2p.PeerManager,
 	transport p2p.Transport,
@@ -563,8 +520,8 @@ func createSwitch(
 	consensusReactor *p2p.ReactorShim,
 	evidenceReactor *p2p.ReactorShim,
 	proxyApp proxy.AppConns,
-	nodeInfo p2p.NodeInfo,
-	nodeKey p2p.NodeKey,
+	nodeInfo types.NodeInfo,
+	nodeKey types.NodeKey,
 	p2pLogger log.Logger,
 ) *p2p.Switch {
 
@@ -642,21 +599,21 @@ func createSwitch(
 }
 
 func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
-	p2pLogger log.Logger, nodeKey p2p.NodeKey) (pex.AddrBook, error) {
+	p2pLogger log.Logger, nodeKey types.NodeKey) (pex.AddrBook, error) {
 
 	addrBook := pex.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
 	addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
 
 	// Add ourselves to addrbook to prevent dialing ourselves
 	if config.P2P.ExternalAddress != "" {
-		addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.ID, config.P2P.ExternalAddress))
+		addr, err := types.NewNetAddressString(nodeKey.ID.AddressString(config.P2P.ExternalAddress))
 		if err != nil {
 			return nil, fmt.Errorf("p2p.external_address is incorrect: %w", err)
 		}
 		addrBook.AddOurAddress(addr)
 	}
 	if config.P2P.ListenAddress != "" {
-		addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.ID, config.P2P.ListenAddress))
+		addr, err := types.NewNetAddressString(nodeKey.ID.AddressString(config.P2P.ListenAddress))
 		if err != nil {
 			return nil, fmt.Errorf("p2p.laddr is incorrect: %w", err)
 		}
@@ -694,9 +651,9 @@ func createPEXReactorV2(
 	logger log.Logger,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
-) (*pex.ReactorV2, error) {
+) (service.Service, error) {
 
-	channel, err := router.OpenChannel(pex.ChannelDescriptor(), &protop2p.PexMessage{}, 4096)
+	channel, err := router.OpenChannel(pex.ChannelDescriptor(), &protop2p.PexMessage{}, 128)
 	if err != nil {
 		return nil, err
 	}
@@ -707,11 +664,11 @@ func createPEXReactorV2(
 
 func makeNodeInfo(
 	config *cfg.Config,
-	nodeKey p2p.NodeKey,
+	nodeKey types.NodeKey,
 	eventSinks []indexer.EventSink,
 	genDoc *types.GenesisDoc,
 	state sm.State,
-) (p2p.NodeInfo, error) {
+) (types.NodeInfo, error) {
 	txIndexerStatus := "off"
 
 	if indexer.IndexingEnabled(eventSinks) {
@@ -719,23 +676,23 @@ func makeNodeInfo(
 	}
 
 	var bcChannel byte
-	switch config.FastSync.Version {
-	case cfg.BlockchainV0:
-		bcChannel = byte(bcv0.BlockchainChannel)
+	switch config.BlockSync.Version {
+	case cfg.BlockSyncV0:
+		bcChannel = byte(bcv0.BlockSyncChannel)
 
-	case cfg.BlockchainV2:
+	case cfg.BlockSyncV2:
 		bcChannel = bcv2.BlockchainChannel
 
 	default:
-		return p2p.NodeInfo{}, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
+		return types.NodeInfo{}, fmt.Errorf("unknown blocksync version %s", config.BlockSync.Version)
 	}
 
-	nodeInfo := p2p.NodeInfo{
-		ProtocolVersion: p2p.NewProtocolVersion(
-			version.P2PProtocol, // global
-			state.Version.Consensus.Block,
-			state.Version.Consensus.App,
-		),
+	nodeInfo := types.NodeInfo{
+		ProtocolVersion: types.ProtocolVersion{
+			P2P:   version.P2PProtocol, // global
+			Block: state.Version.Consensus.Block,
+			App:   state.Version.Consensus.App,
+		},
 		NodeID:  nodeKey.ID,
 		Network: genDoc.ChainID,
 		Version: version.TMVersion,
@@ -750,9 +707,10 @@ func makeNodeInfo(
 			byte(statesync.SnapshotChannel),
 			byte(statesync.ChunkChannel),
 			byte(statesync.LightBlockChannel),
+			byte(statesync.ParamsChannel),
 		},
 		Moniker: config.Moniker,
-		Other: p2p.NodeInfoOther{
+		Other: types.NodeInfoOther{
 			TxIndex:    txIndexerStatus,
 			RPCAddress: config.RPC.ListenAddress,
 		},
@@ -776,22 +734,22 @@ func makeNodeInfo(
 
 func makeSeedNodeInfo(
 	config *cfg.Config,
-	nodeKey p2p.NodeKey,
+	nodeKey types.NodeKey,
 	genDoc *types.GenesisDoc,
 	state sm.State,
-) (p2p.NodeInfo, error) {
-	nodeInfo := p2p.NodeInfo{
-		ProtocolVersion: p2p.NewProtocolVersion(
-			version.P2PProtocol, // global
-			state.Version.Consensus.Block,
-			state.Version.Consensus.App,
-		),
+) (types.NodeInfo, error) {
+	nodeInfo := types.NodeInfo{
+		ProtocolVersion: types.ProtocolVersion{
+			P2P:   version.P2PProtocol, // global
+			Block: state.Version.Consensus.Block,
+			App:   state.Version.Consensus.App,
+		},
 		NodeID:   nodeKey.ID,
 		Network:  genDoc.ChainID,
 		Version:  version.TMVersion,
 		Channels: []byte{},
 		Moniker:  config.Moniker,
-		Other: p2p.NodeInfoOther{
+		Other: types.NodeInfoOther{
 			TxIndex:    "off",
 			RPCAddress: config.RPC.ListenAddress,
 		},

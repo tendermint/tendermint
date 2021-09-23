@@ -72,9 +72,9 @@ func TestBlockchainInfo(t *testing.T) {
 func TestBlockResults(t *testing.T) {
 	results := &tmstate.ABCIResponses{
 		DeliverTxs: []*abci.ResponseDeliverTx{
-			{Code: 0, Data: []byte{0x01}, Log: "ok"},
-			{Code: 0, Data: []byte{0x02}, Log: "ok"},
-			{Code: 1, Log: "not ok"},
+			{Code: 0, Data: []byte{0x01}, Log: "ok", GasUsed: 10},
+			{Code: 0, Data: []byte{0x02}, Log: "ok", GasUsed: 5},
+			{Code: 1, Log: "not ok", GasUsed: 0},
 		},
 		EndBlock:   &abci.ResponseEndBlock{},
 		BeginBlock: &abci.ResponseBeginBlock{},
@@ -97,6 +97,7 @@ func TestBlockResults(t *testing.T) {
 		{100, false, &ctypes.ResultBlockResults{
 			Height:                100,
 			TxsResults:            results.DeliverTxs,
+			TotalGasUsed:          15,
 			BeginBlockEvents:      results.BeginBlock.Events,
 			EndBlockEvents:        results.EndBlock.Events,
 			ValidatorUpdates:      results.EndBlock.ValidatorUpdates,
@@ -128,7 +129,7 @@ func (mockBlockStore) LoadBlock(height int64) *types.Block               { retur
 func (mockBlockStore) LoadBlockByHash(hash []byte) *types.Block          { return nil }
 func (mockBlockStore) LoadBlockPart(height int64, index int) *types.Part { return nil }
 func (mockBlockStore) LoadBlockCommit(height int64) *types.Commit        { return nil }
-func (mockBlockStore) LoadSeenCommit(height int64) *types.Commit         { return nil }
+func (mockBlockStore) LoadSeenCommit() *types.Commit                     { return nil }
 func (mockBlockStore) PruneBlocks(height int64) (uint64, error)          { return 0, nil }
 func (mockBlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
 }

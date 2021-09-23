@@ -25,7 +25,7 @@ import (
 type KeyPathFunc func(path string, key []byte) (merkle.KeyPath, error)
 
 // LightClient is an interface that contains functionality needed by Client from the light client.
-//go:generate mockery --case underscore --name LightClient
+//go:generate ../../scripts/mockery_generate.sh LightClient
 type LightClient interface {
 	ChainID() string
 	Update(ctx context.Context, now time.Time) (*types.LightBlock, error)
@@ -341,7 +341,7 @@ func (c *Client) Block(ctx context.Context, height *int64) (*ctypes.ResultBlock,
 }
 
 // BlockByHash calls rpcclient#BlockByHash and then verifies the result.
-func (c *Client) BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBlock, error) {
+func (c *Client) BlockByHash(ctx context.Context, hash tmbytes.HexBytes) (*ctypes.ResultBlock, error) {
 	res, err := c.next.BlockByHash(ctx, hash)
 	if err != nil {
 		return nil, err
@@ -454,7 +454,7 @@ func (c *Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommi
 
 // Tx calls rpcclient#Tx method and then verifies the proof if such was
 // requested.
-func (c *Client) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.ResultTx, error) {
+func (c *Client) Tx(ctx context.Context, hash tmbytes.HexBytes, prove bool) (*ctypes.ResultTx, error) {
 	res, err := c.next.Tx(ctx, hash, prove)
 	if err != nil || !prove {
 		return res, err

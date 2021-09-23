@@ -20,7 +20,6 @@ import (
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/privval"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/types"
@@ -106,7 +105,7 @@ func Setup(testnet *e2e.Testnet) error {
 			return err
 		}
 
-		err = (&p2p.NodeKey{PrivKey: node.NodeKey}).SaveAs(filepath.Join(nodeDir, "config", "node_key.json"))
+		err = (&types.NodeKey{PrivKey: node.NodeKey}).SaveAs(filepath.Join(nodeDir, "config", "node_key.json"))
 		if err != nil {
 			return err
 		}
@@ -239,7 +238,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.RPC.PprofListenAddress = ":6060"
 	cfg.P2P.ExternalAddress = fmt.Sprintf("tcp://%v", node.AddressP2P(false))
 	cfg.P2P.AddrBookStrict = false
-	cfg.P2P.DisableLegacy = node.DisableLegacyP2P
+	cfg.P2P.UseLegacy = node.UseLegacyP2P
 	cfg.P2P.QueueType = node.QueueType
 	cfg.DBBackend = node.Database
 	cfg.StateSync.DiscoveryTime = 5 * time.Second
@@ -293,16 +292,23 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 		return nil, fmt.Errorf("unexpected mode %q", node.Mode)
 	}
 
-	if node.FastSync == "" {
-		cfg.FastSyncMode = false
-	} else {
-		cfg.FastSync.Version = node.FastSync
+	if node.Mempool != "" {
+		cfg.Mempool.Version = node.Mempool
 	}
 
-	if node.StateSync {
+	if node.BlockSync == "" {
+		cfg.BlockSync.Enable = false
+	} else {
+		cfg.BlockSync.Version = node.BlockSync
+	}
+
+	switch node.StateSync {
+	case e2e.StateSyncP2P:
+		cfg.StateSync.Enable = true
+		cfg.StateSync.UseP2P = true
+	case e2e.StateSyncRPC:
 		cfg.StateSync.Enable = true
 		cfg.StateSync.RPCServers = []string{}
-
 		for _, peer := range node.Testnet.ArchiveNodes() {
 			if peer.Name == node.Name {
 				continue
@@ -339,17 +345,17 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 // MakeAppConfig generates an ABCI application config for a node.
 func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 	cfg := map[string]interface{}{
-		"chain_id":           node.Testnet.Name,
-		"dir":                "data/app",
-		"listen":             AppAddressUNIX,
-		"mode":               node.Mode,
-		"proxy_port":         node.ProxyPort,
-		"protocol":           "socket",
-		"persist_interval":   node.PersistInterval,
-		"snapshot_interval":  node.SnapshotInterval,
-		"retain_blocks":      node.RetainBlocks,
-		"key_type":           node.PrivvalKey.Type(),
-		"disable_legacy_p2p": node.DisableLegacyP2P,
+		"chain_id":          node.Testnet.Name,
+		"dir":               "data/app",
+		"listen":            AppAddressUNIX,
+		"mode":              node.Mode,
+		"proxy_port":        node.ProxyPort,
+		"protocol":          "socket",
+		"persist_interval":  node.PersistInterval,
+		"snapshot_interval": node.SnapshotInterval,
+		"retain_blocks":     node.RetainBlocks,
+		"key_type":          node.PrivvalKey.Type(),
+		"use_legacy_p2p":    node.UseLegacyP2P,
 	}
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -27,7 +28,7 @@ var (
 // peer information. This should eventually be replaced with a message-oriented
 // approach utilizing the p2p stack.
 type PeerManager interface {
-	GetHeight(p2p.NodeID) int64
+	GetHeight(types.NodeID) int64
 }
 
 // Reactor implements a service that contains mempool of txs that are broadcasted
@@ -54,7 +55,7 @@ type Reactor struct {
 	peerWG sync.WaitGroup
 
 	mtx          tmsync.Mutex
-	peerRoutines map[p2p.NodeID]*tmsync.Closer
+	peerRoutines map[types.NodeID]*tmsync.Closer
 }
 
 // NewReactor returns a reference to a new reactor.
@@ -75,7 +76,7 @@ func NewReactor(
 		mempoolCh:    mempoolCh,
 		peerUpdates:  peerUpdates,
 		closeCh:      make(chan struct{}),
-		peerRoutines: make(map[p2p.NodeID]*tmsync.Closer),
+		peerRoutines: make(map[types.NodeID]*tmsync.Closer),
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Mempool", r)
@@ -104,8 +105,8 @@ func GetChannelShims(config *cfg.MempoolConfig) map[p2p.ChannelID]*p2p.ChannelDe
 				ID:                  byte(mempool.MempoolChannel),
 				Priority:            5,
 				RecvMessageCapacity: batchMsg.Size(),
-
-				MaxSendBytes: 5000,
+				RecvBufferCapacity:  128,
+				MaxSendBytes:        5000,
 			},
 		},
 	}
@@ -188,6 +189,11 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
+			r.Logger.Error(
+				"recovering from processing message panic",
+				"err", err,
+				"stack", string(debug.Stack()),
+			)
 		}
 	}()
 
@@ -299,7 +305,7 @@ func (r *Reactor) processPeerUpdates() {
 	}
 }
 
-func (r *Reactor) broadcastTxRoutine(peerID p2p.NodeID, closer *tmsync.Closer) {
+func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer) {
 	peerMempoolID := r.ids.GetForPeer(peerID)
 	var next *clist.CElement
 
@@ -312,7 +318,11 @@ func (r *Reactor) broadcastTxRoutine(peerID p2p.NodeID, closer *tmsync.Closer) {
 		r.peerWG.Done()
 
 		if e := recover(); e != nil {
-			r.Logger.Error("recovering from broadcasting mempool loop", "err", e)
+			r.Logger.Error(
+				"recovering from broadcasting mempool loop",
+				"err", e,
+				"stack", string(debug.Stack()),
+			)
 		}
 	}()
 

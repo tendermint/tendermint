@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"fmt"
+	"runtime/debug"
 	"time"
 
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
@@ -33,11 +34,11 @@ var (
 			MsgType: new(tmcons.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  byte(StateChannel),
-				Priority:            6,
-				SendQueueCapacity:   100,
+				Priority:            8,
+				SendQueueCapacity:   64,
 				RecvMessageCapacity: maxMsgSize,
-
-				MaxSendBytes: 12000,
+				RecvBufferCapacity:  128,
+				MaxSendBytes:        12000,
 			},
 		},
 		DataChannel: {
@@ -47,36 +48,33 @@ var (
 				// stuff. Once we gossip the whole block there is nothing left to send
 				// until next height or round.
 				ID:                  byte(DataChannel),
-				Priority:            10,
-				SendQueueCapacity:   100,
-				RecvBufferCapacity:  50 * 4096,
+				Priority:            12,
+				SendQueueCapacity:   64,
+				RecvBufferCapacity:  512,
 				RecvMessageCapacity: maxMsgSize,
-
-				MaxSendBytes: 40000,
+				MaxSendBytes:        40000,
 			},
 		},
 		VoteChannel: {
 			MsgType: new(tmcons.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  byte(VoteChannel),
-				Priority:            7,
-				SendQueueCapacity:   100,
-				RecvBufferCapacity:  100 * 100,
+				Priority:            10,
+				SendQueueCapacity:   64,
+				RecvBufferCapacity:  128,
 				RecvMessageCapacity: maxMsgSize,
-
-				MaxSendBytes: 150,
+				MaxSendBytes:        150,
 			},
 		},
 		VoteSetBitsChannel: {
 			MsgType: new(tmcons.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  byte(VoteSetBitsChannel),
-				Priority:            1,
-				SendQueueCapacity:   2,
-				RecvBufferCapacity:  1024,
+				Priority:            5,
+				SendQueueCapacity:   8,
+				RecvBufferCapacity:  128,
 				RecvMessageCapacity: maxMsgSize,
-
-				MaxSendBytes: 50,
+				MaxSendBytes:        50,
 			},
 		},
 	}
@@ -98,6 +96,30 @@ const (
 
 type ReactorOption func(*Reactor)
 
+// NOTE: Temporary interface for switching to block sync, we should get rid of v0.
+// See: https://github.com/tendermint/tendermint/issues/4595
+type BlockSyncReactor interface {
+	SwitchToBlockSync(sm.State) error
+
+	GetMaxPeerBlockHeight() int64
+
+	// GetTotalSyncedTime returns the time duration since the blocksync starting.
+	GetTotalSyncedTime() time.Duration
+
+	// GetRemainingSyncTime returns the estimating time the node will be fully synced,
+	// if will return 0 if the blocksync does not perform or the number of block synced is
+	// too small (less than 100).
+	GetRemainingSyncTime() time.Duration
+}
+
+//go:generate ../../scripts/mockery_generate.sh ConsSyncReactor
+// ConsSyncReactor defines an interface used for testing abilities of node.startStateSync.
+type ConsSyncReactor interface {
+	SwitchToConsensus(sm.State, bool)
+	SetStateSyncingMetrics(float64)
+	SetBlockSyncingMetrics(float64)
+}
+
 // Reactor defines a reactor for the consensus service.
 type Reactor struct {
 	service.BaseService
@@ -107,7 +129,7 @@ type Reactor struct {
 	Metrics  *Metrics
 
 	mtx      tmsync.RWMutex
-	peers    map[p2p.NodeID]*PeerState
+	peers    map[types.NodeID]*PeerState
 	waitSync bool
 
 	stateCh       *p2p.Channel
@@ -143,7 +165,7 @@ func NewReactor(
 	r := &Reactor{
 		state:         cs,
 		waitSync:      waitSync,
-		peers:         make(map[p2p.NodeID]*PeerState),
+		peers:         make(map[types.NodeID]*PeerState),
 		Metrics:       NopMetrics(),
 		stateCh:       stateCh,
 		dataCh:        dataCh,
@@ -243,7 +265,7 @@ func (r *Reactor) SetEventBus(b *types.EventBus) {
 	r.state.SetEventBus(b)
 }
 
-// WaitSync returns whether the consensus reactor is waiting for state/fast sync.
+// WaitSync returns whether the consensus reactor is waiting for state/block sync.
 func (r *Reactor) WaitSync() bool {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
@@ -256,8 +278,8 @@ func ReactorMetrics(metrics *Metrics) ReactorOption {
 	return func(r *Reactor) { r.Metrics = metrics }
 }
 
-// SwitchToConsensus switches from fast-sync mode to consensus mode. It resets
-// the state, turns off fast-sync, and starts the consensus state-machine.
+// SwitchToConsensus switches from block-sync mode to consensus mode. It resets
+// the state, turns off block-sync, and starts the consensus state-machine.
 func (r *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
 	r.Logger.Info("switching to consensus")
 
@@ -274,7 +296,7 @@ func (r *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
 	r.waitSync = false
 	r.mtx.Unlock()
 
-	r.Metrics.FastSyncing.Set(0)
+	r.Metrics.BlockSyncing.Set(0)
 	r.Metrics.StateSyncing.Set(0)
 
 	if skipWAL {
@@ -289,6 +311,11 @@ conS:
 
 conR:
 %+v`, err, r.state, r))
+	}
+
+	d := types.EventDataBlockSyncStatus{Complete: true, Height: state.LastBlockHeight}
+	if err := r.eventBus.PublishEventBlockSyncStatus(d); err != nil {
+		r.Logger.Error("failed to emit the blocksync complete event", "err", err)
 	}
 }
 
@@ -319,7 +346,7 @@ func (r *Reactor) StringIndented(indent string) string {
 }
 
 // GetPeerState returns PeerState for a given NodeID.
-func (r *Reactor) GetPeerState(peerID p2p.NodeID) (*PeerState, bool) {
+func (r *Reactor) GetPeerState(peerID types.NodeID) (*PeerState, bool) {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 
@@ -366,7 +393,7 @@ func (r *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
 func (r *Reactor) subscribeToBroadcastEvents() {
 	err := r.state.evsw.AddListenerForEvent(
 		listenerIDConsensus,
-		types.EventNewRoundStep,
+		types.EventNewRoundStepValue,
 		func(data tmevents.EventData) {
 			r.broadcastNewRoundStepMessage(data.(*cstypes.RoundState))
 			select {
@@ -381,7 +408,7 @@ func (r *Reactor) subscribeToBroadcastEvents() {
 
 	err = r.state.evsw.AddListenerForEvent(
 		listenerIDConsensus,
-		types.EventValidBlock,
+		types.EventValidBlockValue,
 		func(data tmevents.EventData) {
 			r.broadcastNewValidBlockMessage(data.(*cstypes.RoundState))
 		},
@@ -392,7 +419,7 @@ func (r *Reactor) subscribeToBroadcastEvents() {
 
 	err = r.state.evsw.AddListenerForEvent(
 		listenerIDConsensus,
-		types.EventVote,
+		types.EventVoteValue,
 		func(data tmevents.EventData) {
 			r.broadcastHasVoteMessage(data.(*types.Vote))
 		},
@@ -416,7 +443,7 @@ func makeRoundStepMessage(rs *cstypes.RoundState) *tmcons.NewRoundStep {
 	}
 }
 
-func (r *Reactor) sendNewRoundStepMessage(peerID p2p.NodeID) {
+func (r *Reactor) sendNewRoundStepMessage(peerID types.NodeID) {
 	rs := r.state.GetRoundState()
 	msg := makeRoundStepMessage(rs)
 	r.stateCh.Out <- p2p.Envelope{
@@ -942,7 +969,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 			go r.gossipVotesRoutine(ps)
 			go r.queryMaj23Routine(ps)
 
-			// Send our state to the peer. If we're fast-syncing, broadcast a
+			// Send our state to the peer. If we're block-syncing, broadcast a
 			// RoundStepMessage later upon SwitchToConsensus().
 			if !r.waitSync {
 				go r.sendNewRoundStepMessage(ps.peerID)
@@ -1069,7 +1096,7 @@ func (r *Reactor) handleDataMessage(envelope p2p.Envelope, msgI Message) error {
 	}
 
 	if r.WaitSync() {
-		logger.Info("ignoring message received during sync", "msg", msgI)
+		logger.Info("ignoring message received during sync", "msg", fmt.Sprintf("%T", msgI))
 		return nil
 	}
 
@@ -1192,20 +1219,23 @@ func (r *Reactor) handleVoteSetBitsMessage(envelope p2p.Envelope, msgI Message) 
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
 //
+// NOTE: We process these messages even when we're block syncing. Messages affect
+// either a peer state or the consensus state. Peer state updates can happen in
+// parallel, but processing of proposals, block parts, and votes are ordered by
+// the p2p channel.
+//
 // NOTE: We block on consensus state for proposals, block parts, and votes.
 func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
-			r.Logger.Error("recovering from processing message panic", "err", err)
+			r.Logger.Error(
+				"recovering from processing message panic",
+				"err", err,
+				"stack", string(debug.Stack()),
+			)
 		}
 	}()
-
-	// Just skip the entire message during syncing so that we can
-	// process fewer messages.
-	if r.WaitSync() {
-		return
-	}
 
 	// We wrap the envelope's message in a Proto wire type so we can convert back
 	// the domain type that individual channel message handlers can work with. We
@@ -1402,4 +1432,16 @@ func (r *Reactor) peerStatsRoutine() {
 			return
 		}
 	}
+}
+
+func (r *Reactor) GetConsensusState() *State {
+	return r.state
+}
+
+func (r *Reactor) SetStateSyncingMetrics(v float64) {
+	r.Metrics.StateSyncing.Set(v)
+}
+
+func (r *Reactor) SetBlockSyncingMetrics(v float64) {
+	r.Metrics.BlockSyncing.Set(v)
 }

@@ -18,7 +18,7 @@ jobs:
         with:
           go-version: '1.16'
       - uses: actions/checkout@v2.3.4
-      - uses: technote-space/get-diff-action@v4
+      - uses: technote-space/get-diff-action@v5
         with:
           PATTERNS: |
             **/**.go
@@ -28,7 +28,7 @@ jobs:
       - name: Build
         working-directory: test/e2e
         # Run two make jobs in parallel, since we can't run steps in parallel.
-        run: make -j2 docker runner
+        run: make -j2 docker runner tests
         if: "env.GIT_DIFF != ''"
 
       - name: Run CI testnet
