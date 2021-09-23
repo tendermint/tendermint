@@ -36,8 +36,10 @@ x * TestFullRoundNil - 1 val, full round of nil
 x * TestFullRound2 - 2 vals, both required for full round
 LockSuite
 x * TestStateLock_NoPOL - 2 vals, 4 rounds. one val locked, precommits nil every round except first.
-x * TestStateLock_POLUpdateLock - 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
-x * TestStateLock_POLRelock - 4 vals, polka in round 1 and polka in round 2. Ensure validator updates locked round.
+x * TestStateLock_POLUpdateLock - 4 vals, one precommits,
+other 3 polka at next round, so we unlock and precomit the polka
+x * TestStateLock_POLRelock - 4 vals, polka in round 1 and polka in round 2.
+Ensure validator updates locked round.
 x_*_TestStateLock_POLDoesNotUnlock 4 vals, one precommits, other 3 polka nil at next round, so we precommit nil but maintain lock
 x * TestStateLock_MissingProposalWhenPOLSeenDoesNotUpdateLock - 4 vals, 1 misses proposal but sees POL.
 x * TestStateLock_MissingProposalWhenPOLSeenDoesNotUnlock - 4 vals, 1 misses proposal but sees POL.
