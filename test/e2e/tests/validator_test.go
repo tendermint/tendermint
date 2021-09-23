@@ -20,6 +20,10 @@ func TestValidator_Sets(t *testing.T) {
 		require.NoError(t, err)
 
 		first := status.SyncInfo.EarliestBlockHeight
+		if node.StartAt > first {
+			first = node.StartAt
+		}
+
 		last := status.SyncInfo.LatestBlockHeight
 
 		// skip first block if node is pruning blocks, to avoid race conditions
@@ -31,10 +35,6 @@ func TestValidator_Sets(t *testing.T) {
 		valSchedule.Increment(first - node.Testnet.InitialHeight)
 
 		for h := first; h <= last; h++ {
-			if h < node.StartAt {
-				continue
-			}
-
 			validators := []*types.Validator{}
 			perPage := 100
 			for page := 1; ; page++ {
