@@ -1319,6 +1319,13 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 		return
 	}
 
+	// If a block is locked and it does not match the proposal, prevote nil.
+	if cs.LockedBlock != nil && !cs.LockedBlock.HashesTo(cs.ProposalBlock.Hash()) {
+		logger.Debug("prevote step; already locked on a block that does not match proposal; prevoting nil")
+		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
+		return
+	}
+
 	// Prevote cs.ProposalBlock
 	// NOTE: the proposal signature is validated when it is received,
 	// and the proposal block parts are validated as they are received (against the merkle hash in the proposal)
