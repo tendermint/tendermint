@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/tendermint/tendermint/crypto"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/log"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -62,7 +62,7 @@ func (sc *SignerClient) GetPubKey(ctx context.Context) (crypto.PubKey, error) {
 		return nil, errStatus.Err()
 	}
 
-	pk, err := cryptoenc.PubKeyFromProto(resp.PubKey)
+	pk, err := encoding.PubKeyFromProto(resp.PubKey)
 	if err != nil {
 		return nil, err
 	}

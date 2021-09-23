@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/adlio/schema"
-	_ "github.com/lib/pq"
 	dockertest "github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	indexer "github.com/tendermint/tendermint/internal/state/indexer"
@@ -21,7 +21,9 @@ import (
 	psql "github.com/tendermint/tendermint/internal/state/indexer/sink/psql"
 	tmlog "github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
-	db "github.com/tendermint/tm-db"
+
+	// Register the Postgre database driver.
+	_ "github.com/lib/pq"
 )
 
 var psqldb *sql.DB
@@ -55,7 +57,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	pool, err := setupDB(t)
 	assert.Nil(t, err)
 
-	store := db.NewMemDB()
+	store := dbm.NewMemDB()
 	eventSinks := []indexer.EventSink{kv.NewEventSink(store), pSink}
 	assert.True(t, indexer.KVSinkEnabled(eventSinks))
 	assert.True(t, indexer.IndexingEnabled(eventSinks))

@@ -2,9 +2,9 @@ package statesync
 
 import (
 	"errors"
-	fmt "fmt"
+	"fmt"
 
-	proto "github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 )
 
 // Wrap implements the p2p Wrapper interface and wraps a state sync proto message.

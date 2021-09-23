@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/libs/clist"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -32,7 +32,7 @@ type CListMempool struct {
 	notifiedTxsAvailable bool
 	txsAvailable         chan struct{} // fires once for each height, when the mempool is not empty
 
-	config *cfg.MempoolConfig
+	config *config.MempoolConfig
 
 	// Exclusive mutex for Update method to prevent concurrent execution of
 	// CheckTx or ReapMaxBytesMaxGas(ReapMaxTxs) methods.
@@ -69,14 +69,14 @@ type CListMempoolOption func(*CListMempool)
 // NewCListMempool returns a new mempool with the given configuration and
 // connection to an application.
 func NewCListMempool(
-	config *cfg.MempoolConfig,
+	cfg *config.MempoolConfig,
 	proxyAppConn proxy.AppConnMempool,
 	height int64,
 	options ...CListMempoolOption,
 ) *CListMempool {
 
 	mp := &CListMempool{
-		config:        config,
+		config:        cfg,
 		proxyAppConn:  proxyAppConn,
 		txs:           clist.New(),
 		height:        height,
@@ -86,8 +86,8 @@ func NewCListMempool(
 		metrics:       mempool.NopMetrics(),
 	}
 
-	if config.CacheSize > 0 {
-		mp.cache = mempool.NewLRUTxCache(config.CacheSize)
+	if cfg.CacheSize > 0 {
+		mp.cache = mempool.NewLRUTxCache(cfg.CacheSize)
 	} else {
 		mp.cache = mempool.NopTxCache{}
 	}

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	tmdb "github.com/tendermint/tm-db"
+	dbm "github.com/tendermint/tm-db"
 
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmcfg "github.com/tendermint/tendermint/config"
@@ -15,7 +15,7 @@ import (
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/state/indexer/sink/kv"
 	"github.com/tendermint/tendermint/internal/state/indexer/sink/psql"
-	ctypes "github.com/tendermint/tendermint/rpc/coretypes"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
@@ -129,17 +129,17 @@ func loadEventSinks(cfg *tmcfg.Config) ([]indexer.EventSink, error) {
 }
 
 func loadStateAndBlockStore(cfg *tmcfg.Config) (*store.BlockStore, state.Store, error) {
-	dbType := tmdb.BackendType(cfg.DBBackend)
+	dbType := dbm.BackendType(cfg.DBBackend)
 
 	// Get BlockStore
-	blockStoreDB, err := tmdb.NewDB("blockstore", dbType, cfg.DBDir())
+	blockStoreDB, err := dbm.NewDB("blockstore", dbType, cfg.DBDir())
 	if err != nil {
 		return nil, nil, err
 	}
 	blockStore := store.NewBlockStore(blockStoreDB)
 
 	// Get StateStore
-	stateDB, err := tmdb.NewDB("state", dbType, cfg.DBDir())
+	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -221,14 +221,15 @@ func checkValidHeight(bs state.BlockStore) error {
 	}
 
 	if startHeight < base {
-		return fmt.Errorf("%s (requested start height: %d, base height: %d)", ctypes.ErrHeightNotAvailable, startHeight, base)
+		return fmt.Errorf("%s (requested start height: %d, base height: %d)",
+			coretypes.ErrHeightNotAvailable, startHeight, base)
 	}
 
 	height := bs.Height()
 
 	if startHeight > height {
 		return fmt.Errorf(
-			"%s (requested start height: %d, store height: %d)", ctypes.ErrHeightNotAvailable, startHeight, height)
+			"%s (requested start height: %d, store height: %d)", coretypes.ErrHeightNotAvailable, startHeight, height)
 	}
 
 	if endHeight == 0 || endHeight > height {
@@ -238,13 +239,13 @@ func checkValidHeight(bs state.BlockStore) error {
 
 	if endHeight < base {
 		return fmt.Errorf(
-			"%s (requested end height: %d, base height: %d)", ctypes.ErrHeightNotAvailable, endHeight, base)
+			"%s (requested end height: %d, base height: %d)", coretypes.ErrHeightNotAvailable, endHeight, base)
 	}
 
 	if endHeight < startHeight {
 		return fmt.Errorf(
 			"%s (requested the end height: %d is less than the start height: %d)",
-			ctypes.ErrInvalidRequest, startHeight, endHeight)
+			coretypes.ErrInvalidRequest, startHeight, endHeight)
 	}
 
 	return nil

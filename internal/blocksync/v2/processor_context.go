@@ -3,7 +3,7 @@ package v2
 import (
 	"fmt"
 
-	cons "github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -21,10 +21,10 @@ type pContext struct {
 	store   blockStore
 	applier blockApplier
 	state   state.State
-	metrics *cons.Metrics
+	metrics *consensus.Metrics
 }
 
-func newProcessorContext(st blockStore, ex blockApplier, s state.State, m *cons.Metrics) *pContext {
+func newProcessorContext(st blockStore, ex blockApplier, s state.State, m *consensus.Metrics) *pContext {
 	return &pContext{
 		store:   st,
 		applier: ex,

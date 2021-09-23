@@ -5,7 +5,7 @@ import (
 	"time"
 
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
-	ctypes "github.com/tendermint/tendermint/rpc/coretypes"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -13,7 +13,7 @@ import (
 // Status returns Tendermint status including node info, pubkey, latest block
 // hash, app hash, block height, current max peer block height, and time.
 // More: https://docs.tendermint.com/master/rpc/#/Info/status
-func (env *Environment) Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
+func (env *Environment) Status(ctx *rpctypes.Context) (*coretypes.ResultStatus, error) {
 	var (
 		earliestBlockHeight   int64
 		earliestBlockHash     tmbytes.HexBytes
@@ -50,17 +50,17 @@ func (env *Environment) Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, err
 	if val := env.validatorAtHeight(env.latestUncommittedHeight()); val != nil {
 		votingPower = val.VotingPower
 	}
-	validatorInfo := ctypes.ValidatorInfo{}
+	validatorInfo := coretypes.ValidatorInfo{}
 	if env.PubKey != nil {
-		validatorInfo = ctypes.ValidatorInfo{
+		validatorInfo = coretypes.ValidatorInfo{
 			Address:     env.PubKey.Address(),
 			PubKey:      env.PubKey,
 			VotingPower: votingPower,
 		}
 	}
-	result := &ctypes.ResultStatus{
+	result := &coretypes.ResultStatus{
 		NodeInfo: env.P2PTransport.NodeInfo(),
-		SyncInfo: ctypes.SyncInfo{
+		SyncInfo: coretypes.SyncInfo{
 			LatestBlockHash:     latestBlockHash,
 			LatestAppHash:       latestAppHash,
 			LatestBlockHeight:   latestHeight,

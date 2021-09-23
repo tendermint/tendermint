@@ -9,7 +9,7 @@ import (
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
-	ctypes "github.com/tendermint/tendermint/rpc/coretypes"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -18,7 +18,7 @@ import (
 // transaction is in the mempool, invalidated, or was not sent in the first
 // place.
 // More: https://docs.tendermint.com/master/rpc/#/Info/tx
-func (env *Environment) Tx(ctx *rpctypes.Context, hash bytes.HexBytes, prove bool) (*ctypes.ResultTx, error) {
+func (env *Environment) Tx(ctx *rpctypes.Context, hash bytes.HexBytes, prove bool) (*coretypes.ResultTx, error) {
 	// if index is disabled, return error
 
 	// N.B. The hash parameter is HexBytes so that the reflective parameter
@@ -45,7 +45,7 @@ func (env *Environment) Tx(ctx *rpctypes.Context, hash bytes.HexBytes, prove boo
 				proof = block.Data.Txs.Proof(int(index)) // XXX: overflow on 32-bit machines
 			}
 
-			return &ctypes.ResultTx{
+			return &coretypes.ResultTx{
 				Hash:     hash,
 				Height:   height,
 				Index:    index,
@@ -68,7 +68,7 @@ func (env *Environment) TxSearch(
 	prove bool,
 	pagePtr, perPagePtr *int,
 	orderBy string,
-) (*ctypes.ResultTxSearch, error) {
+) (*coretypes.ResultTxSearch, error) {
 
 	if !indexer.KVSinkEnabled(env.EventSinks) {
 		return nil, fmt.Errorf("transaction searching is disabled due to no kvEventSink")
@@ -103,7 +103,7 @@ func (env *Environment) TxSearch(
 					return results[i].Height < results[j].Height
 				})
 			default:
-				return nil, fmt.Errorf("expected order_by to be either `asc` or `desc` or empty: %w", ctypes.ErrInvalidRequest)
+				return nil, fmt.Errorf("expected order_by to be either `asc` or `desc` or empty: %w", coretypes.ErrInvalidRequest)
 			}
 
 			// paginate results
@@ -118,7 +118,7 @@ func (env *Environment) TxSearch(
 			skipCount := validateSkipCount(page, perPage)
 			pageSize := tmmath.MinInt(perPage, totalCount-skipCount)
 
-			apiResults := make([]*ctypes.ResultTx, 0, pageSize)
+			apiResults := make([]*coretypes.ResultTx, 0, pageSize)
 			for i := skipCount; i < skipCount+pageSize; i++ {
 				r := results[i]
 
@@ -128,7 +128,7 @@ func (env *Environment) TxSearch(
 					proof = block.Data.Txs.Proof(int(r.Index)) // XXX: overflow on 32-bit machines
 				}
 
-				apiResults = append(apiResults, &ctypes.ResultTx{
+				apiResults = append(apiResults, &coretypes.ResultTx{
 					Hash:     types.Tx(r.Tx).Hash(),
 					Height:   r.Height,
 					Index:    r.Index,
@@ -138,7 +138,7 @@ func (env *Environment) TxSearch(
 				})
 			}
 
-			return &ctypes.ResultTxSearch{Txs: apiResults, TotalCount: totalCount}, nil
+			return &coretypes.ResultTxSearch{Txs: apiResults, TotalCount: totalCount}, nil
 		}
 	}
 

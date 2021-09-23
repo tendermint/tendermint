@@ -13,7 +13,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
@@ -113,7 +113,7 @@ func (c *evilConn) Read(data []byte) (n int, err error) {
 	case 1:
 		signature := c.signChallenge()
 		if !c.badAuthSignature {
-			pkpb, err := cryptoenc.PubKeyToProto(c.privKey.PubKey())
+			pkpb, err := encoding.PubKeyToProto(c.privKey.PubKey())
 			if err != nil {
 				panic(err)
 			}

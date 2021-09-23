@@ -3,9 +3,9 @@ package core
 import (
 	"errors"
 
-	cm "github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/consensus"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	ctypes "github.com/tendermint/tendermint/rpc/coretypes"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -20,7 +20,7 @@ import (
 func (env *Environment) Validators(
 	ctx *rpctypes.Context,
 	heightPtr *int64,
-	pagePtr, perPagePtr *int) (*ctypes.ResultValidators, error) {
+	pagePtr, perPagePtr *int) (*coretypes.ResultValidators, error) {
 
 	// The latest validator that we know is the NextValidator of the last block.
 	height, err := env.getHeight(env.latestUncommittedHeight(), heightPtr)
@@ -44,7 +44,7 @@ func (env *Environment) Validators(
 
 	v := validators.Validators[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
 
-	return &ctypes.ResultValidators{
+	return &coretypes.ResultValidators{
 		BlockHeight: height,
 		Validators:  v,
 		Count:       len(v),
@@ -54,16 +54,16 @@ func (env *Environment) Validators(
 // DumpConsensusState dumps consensus state.
 // UNSTABLE
 // More: https://docs.tendermint.com/master/rpc/#/Info/dump_consensus_state
-func (env *Environment) DumpConsensusState(ctx *rpctypes.Context) (*ctypes.ResultDumpConsensusState, error) {
+func (env *Environment) DumpConsensusState(ctx *rpctypes.Context) (*coretypes.ResultDumpConsensusState, error) {
 	// Get Peer consensus states.
 
-	var peerStates []ctypes.PeerStateInfo
+	var peerStates []coretypes.PeerStateInfo
 	switch {
 	case env.P2PPeers != nil:
 		peers := env.P2PPeers.Peers().List()
-		peerStates = make([]ctypes.PeerStateInfo, 0, len(peers))
+		peerStates = make([]coretypes.PeerStateInfo, 0, len(peers))
 		for _, peer := range peers {
-			peerState, ok := peer.Get(types.PeerStateKey).(*cm.PeerState)
+			peerState, ok := peer.Get(types.PeerStateKey).(*consensus.PeerState)
 			if !ok { // peer does not have a state yet
 				continue
 			}
@@ -71,7 +71,7 @@ func (env *Environment) DumpConsensusState(ctx *rpctypes.Context) (*ctypes.Resul
 			if err != nil {
 				return nil, err
 			}
-			peerStates = append(peerStates, ctypes.PeerStateInfo{
+			peerStates = append(peerStates, coretypes.PeerStateInfo{
 				// Peer basic info.
 				NodeAddress: peer.SocketAddr().String(),
 				// Peer consensus state.
@@ -80,7 +80,7 @@ func (env *Environment) DumpConsensusState(ctx *rpctypes.Context) (*ctypes.Resul
 		}
 	case env.PeerManager != nil:
 		peers := env.PeerManager.Peers()
-		peerStates = make([]ctypes.PeerStateInfo, 0, len(peers))
+		peerStates = make([]coretypes.PeerStateInfo, 0, len(peers))
 		for _, pid := range peers {
 			peerState, ok := env.ConsensusReactor.GetPeerState(pid)
 			if !ok {
@@ -94,7 +94,7 @@ func (env *Environment) DumpConsensusState(ctx *rpctypes.Context) (*ctypes.Resul
 
 			addr := env.PeerManager.Addresses(pid)
 			if len(addr) >= 1 {
-				peerStates = append(peerStates, ctypes.PeerStateInfo{
+				peerStates = append(peerStates, coretypes.PeerStateInfo{
 					// Peer basic info.
 					NodeAddress: addr[0].String(),
 					// Peer consensus state.
@@ -111,7 +111,7 @@ func (env *Environment) DumpConsensusState(ctx *rpctypes.Context) (*ctypes.Resul
 	if err != nil {
 		return nil, err
 	}
-	return &ctypes.ResultDumpConsensusState{
+	return &coretypes.ResultDumpConsensusState{
 		RoundState: roundState,
 		Peers:      peerStates}, nil
 }
@@ -119,10 +119,10 @@ func (env *Environment) DumpConsensusState(ctx *rpctypes.Context) (*ctypes.Resul
 // ConsensusState returns a concise summary of the consensus state.
 // UNSTABLE
 // More: https://docs.tendermint.com/master/rpc/#/Info/consensus_state
-func (env *Environment) GetConsensusState(ctx *rpctypes.Context) (*ctypes.ResultConsensusState, error) {
+func (env *Environment) GetConsensusState(ctx *rpctypes.Context) (*coretypes.ResultConsensusState, error) {
 	// Get self round state.
 	bz, err := env.ConsensusState.GetRoundStateSimpleJSON()
-	return &ctypes.ResultConsensusState{RoundState: bz}, err
+	return &coretypes.ResultConsensusState{RoundState: bz}, err
 }
 
 // ConsensusParams gets the consensus parameters at the given block height.
@@ -130,7 +130,7 @@ func (env *Environment) GetConsensusState(ctx *rpctypes.Context) (*ctypes.Result
 // More: https://docs.tendermint.com/master/rpc/#/Info/consensus_params
 func (env *Environment) ConsensusParams(
 	ctx *rpctypes.Context,
-	heightPtr *int64) (*ctypes.ResultConsensusParams, error) {
+	heightPtr *int64) (*coretypes.ResultConsensusParams, error) {
 
 	// The latest consensus params that we know is the consensus params after the
 	// last block.
@@ -144,7 +144,7 @@ func (env *Environment) ConsensusParams(
 		return nil, err
 	}
 
-	return &ctypes.ResultConsensusParams{
+	return &coretypes.ResultConsensusParams{
 		BlockHeight:     height,
 		ConsensusParams: consensusParams}, nil
 }

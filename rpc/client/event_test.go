@@ -13,7 +13,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/rpc/client"
-	ctypes "github.com/tendermint/tendermint/rpc/coretypes"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -127,7 +127,7 @@ func testTxEventsSent(t *testing.T, broadcastMethod string) {
 			// send
 			go func() {
 				var (
-					txres *ctypes.ResultBroadcastTx
+					txres *coretypes.ResultBroadcastTx
 					err   error
 					ctx   = context.Background()
 				)
