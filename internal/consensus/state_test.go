@@ -35,16 +35,16 @@ x * TestFullRound1 - 1 val, full successful round
 x * TestFullRoundNil - 1 val, full round of nil
 x * TestFullRound2 - 2 vals, both required for full round
 LockSuite
-x * TestStateLockNoPOL - 2 vals, 4 rounds. one val locked, precommits nil every round except first.
-x * TestStateLockPOLRelock - 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
-x_*_TestStateLockPOLDoesNotUnlock 4 vals, one precommits, other 3 polka nil at next round, so we precommit nil but maintain lock
-x * TestStateLockPOLSafety1 - 4 vals. We shouldn't change lock based on polka at earlier round
-x * TestStateLockPOLSafety2 - 4 vals. After unlocking, we shouldn't relock based on polka at earlier round
+x * TestStateLock_NoPOL - 2 vals, 4 rounds. one val locked, precommits nil every round except first.
+x * TestStateLock_POLRelock - 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
+x_*_TestStateLock_POLDoesNotUnlock 4 vals, one precommits, other 3 polka nil at next round, so we precommit nil but maintain lock
+x * TestStateLock_POLSafety1 - 4 vals. We shouldn't change lock based on polka at earlier round
+x * TestStateLock_POLSafety2 - 4 vals. After unlocking, we shouldn't relock based on polka at earlier round
   * TestNetworkLock - once +1/3 precommits, network should be locked
   * TestNetworkLockPOL - once +1/3 precommits, the block with more recent polka is committed
 SlashingSuite
-x * TestSlashingPrevotes - a validator prevoting twice in a round gets slashed
-x * TestSlashingPrecommits - a validator precomitting twice in a round gets slashed
+x * TestSlashing_Prevotes - a validator prevoting twice in a round gets slashed
+x * TestSlashing_Precommits - a validator precomitting twice in a round gets slashed
 CatchupSuite
   * TestCatchup - if we might be behind and we've seen any 2/3 prevotes, round skip to new round, precommit, or prevote
 HaltSuite
@@ -1750,7 +1750,7 @@ func TestResetTimeoutPrecommitUponNewHeight(t *testing.T) {
 // TODO: Slashing
 
 /*
-func TestStateSlashingPrevotes(t *testing.T) {
+func TestStateSlashing_Prevotes(t *testing.T) {
 	cs1, vss := randState(2)
 	vs2 := vss[1]
 
@@ -1785,7 +1785,7 @@ func TestStateSlashingPrevotes(t *testing.T) {
 	// XXX: Check for existence of Dupeout info
 }
 
-func TestStateSlashingPrecommits(t *testing.T) {
+func TestStateSlashing_Precommits(t *testing.T) {
 	cs1, vss := randState(2)
 	vs2 := vss[1]
 
