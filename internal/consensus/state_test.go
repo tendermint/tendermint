@@ -43,8 +43,8 @@ x * TestStateLock_POLSafety2 - 4 vals. After unlocking, we shouldn't relock base
   * TestNetworkLock - once +1/3 precommits, network should be locked
   * TestNetworkLockPOL - once +1/3 precommits, the block with more recent polka is committed
 SlashingSuite
-x * TestSlashing_Prevotes - a validator prevoting twice in a round gets slashed
-x * TestSlashing_Precommits - a validator precomitting twice in a round gets slashed
+x * TestStateSlashing_Prevotes - a validator prevoting twice in a round gets slashed
+x * TestStateSlashing_Precommits - a validator precomitting twice in a round gets slashed
 CatchupSuite
   * TestCatchup - if we might be behind and we've seen any 2/3 prevotes, round skip to new round, precommit, or prevote
 HaltSuite
