@@ -24,6 +24,7 @@ import (
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
 	sm "github.com/tendermint/tendermint/internal/state"
+	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
@@ -32,7 +33,6 @@ import (
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 

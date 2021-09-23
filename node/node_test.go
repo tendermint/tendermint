@@ -27,12 +27,12 @@ import (
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/indexer"
+	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
