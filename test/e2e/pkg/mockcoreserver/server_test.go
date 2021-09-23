@@ -69,14 +69,14 @@ func TestDashCoreSignerPingMethod(t *testing.T) {
 	addr := "localhost:19998"
 	ctx := context.Background()
 	srv := NewJRPCServer(addr, "/")
-	go func() {
-		srv.Start()
-	}()
 	cs := &StaticCoreServer{}
 	srv = WithMethods(
 		srv,
 		WithPingMethod(cs, 1),
 	)
+	go func() {
+		srv.Start()
+	}()
 	dashCoreRPCClient, err := dashcore.NewRPCClient(addr, "root", "root")
 	assert.NoError(t, err)
 	client, err := privval.NewDashCoreSignerClient(dashCoreRPCClient, btcjson.LLMQType_5_60)
@@ -90,9 +90,6 @@ func TestGetPubKey(t *testing.T) {
 	addr := "localhost:19998"
 	ctx := context.Background()
 	srv := NewJRPCServer(addr, "/")
-	go func() {
-		srv.Start()
-	}()
 	proTxHash := "6c91363d97b286e921afb5cf7672c88a2f1614d36d32058c34bef8b44e026007"
 	cs := &StaticCoreServer{
 		QuorumInfoResult: btcjson.QuorumInfoResult{
@@ -122,6 +119,9 @@ func TestGetPubKey(t *testing.T) {
 		WithMasternodeMethod(cs, Endless),
 		WithGetNetworkInfoMethod(cs, Endless),
 	)
+	go func() {
+		srv.Start()
+	}()
 
 	dashCoreRPCClient, err := dashcore.NewRPCClient(addr, "root", "root")
 	assert.NoError(t, err)
