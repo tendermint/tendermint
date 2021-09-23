@@ -16,7 +16,7 @@ const (
 	PSQL EventSinkType = "psql"
 )
 
-//go:generate ../../scripts/mockery_generate.sh EventSink
+//go:generate ../../../scripts/mockery_generate.sh EventSink
 
 // EventSink interface is defined the APIs for the IndexerService to interact with the data store,
 // including the block/transaction indexing and the search functions.
