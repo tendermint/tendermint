@@ -22,6 +22,9 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 	// This also limits the number of TCP connections, since each worker has
 	// a connection to all nodes.
 	concurrency := len(testnet.Nodes) * 8
+	if concurrency > 64 {
+		concurrency = 64
+	}
 
 	chTx := make(chan types.Tx)
 	chSuccess := make(chan int) // success counts per iteration
