@@ -6,14 +6,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 func TestUnsafeDialSeeds(t *testing.T) {
-	sw := p2p.MakeSwitch(cfg.DefaultP2PConfig(), 1, "testing", "123.123.123",
+	sw := p2p.MakeSwitch(config.DefaultP2PConfig(), 1, "testing", "123.123.123",
 		func(n int, sw *p2p.Switch) *p2p.Switch { return sw }, log.TestingLogger())
 	err := sw.Start()
 	require.NoError(t, err)
@@ -48,7 +48,7 @@ func TestUnsafeDialSeeds(t *testing.T) {
 }
 
 func TestUnsafeDialPeers(t *testing.T) {
-	sw := p2p.MakeSwitch(cfg.DefaultP2PConfig(), 1, "testing", "123.123.123",
+	sw := p2p.MakeSwitch(config.DefaultP2PConfig(), 1, "testing", "123.123.123",
 		func(n int, sw *p2p.Switch) *p2p.Switch { return sw }, log.TestingLogger())
 	sw.SetAddrBook(&p2p.AddrBookMock{
 		Addrs:        make(map[string]struct{}),

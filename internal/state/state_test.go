@@ -16,7 +16,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/encoding"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -27,21 +27,21 @@ import (
 
 // setupTestCase does setup common to all test cases.
 func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, sm.State) {
-	config := cfg.ResetTestRoot("state_")
-	dbType := dbm.BackendType(config.DBBackend)
-	stateDB, err := dbm.NewDB("state", dbType, config.DBDir())
+	cfg := config.ResetTestRoot("state_")
+	dbType := dbm.BackendType(cfg.DBBackend)
+	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())
 	require.NoError(t, err)
 	stateStore := sm.NewStore(stateDB)
 	state, err := stateStore.Load()
 	require.NoError(t, err)
 	require.Empty(t, state)
-	state, err = sm.MakeGenesisStateFromFile(config.GenesisFile())
+	state, err = sm.MakeGenesisStateFromFile(cfg.GenesisFile())
 	assert.NoError(t, err)
 	assert.NotNil(t, state)
 	err = stateStore.Save(state)
 	require.NoError(t, err)
 
-	tearDown := func(t *testing.T) { os.RemoveAll(config.RootDir) }
+	tearDown := func(t *testing.T) { os.RemoveAll(cfg.RootDir) }
 
 	return tearDown, stateDB, state
 }

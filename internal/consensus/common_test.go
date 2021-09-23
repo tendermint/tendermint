@@ -21,7 +21,7 @@ import (
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
@@ -49,10 +49,10 @@ const (
 // test.
 type cleanupFunc func()
 
-func configSetup(t *testing.T) *cfg.Config {
+func configSetup(t *testing.T) *config.Config {
 	t.Helper()
 
-	config := ResetConfig("consensus_reactor_test")
+	cfg := ResetConfig("consensus_reactor_test")
 
 	consensusReplayConfig := ResetConfig("consensus_replay_test")
 	configStateTest := ResetConfig("consensus_state_test")
@@ -60,13 +60,13 @@ func configSetup(t *testing.T) *cfg.Config {
 	configByzantineTest := ResetConfig("consensus_byzantine_test")
 
 	t.Cleanup(func() {
-		os.RemoveAll(config.RootDir)
+		os.RemoveAll(cfg.RootDir)
 		os.RemoveAll(consensusReplayConfig.RootDir)
 		os.RemoveAll(configStateTest.RootDir)
 		os.RemoveAll(configMempoolTest.RootDir)
 		os.RemoveAll(configByzantineTest.RootDir)
 	})
-	return config
+	return cfg
 }
 
 func ensureDir(dir string, mode os.FileMode) {
@@ -75,8 +75,8 @@ func ensureDir(dir string, mode os.FileMode) {
 	}
 }
 
-func ResetConfig(name string) *cfg.Config {
-	return cfg.ResetTestRoot(name)
+func ResetConfig(name string) *config.Config {
+	return config.ResetTestRoot(name)
 }
 
 //-------------------------------------------------------------------------------
@@ -102,7 +102,7 @@ func newValidatorStub(privValidator types.PrivValidator, valIndex int32) *valida
 }
 
 func (vs *validatorStub) signVote(
-	config *cfg.Config,
+	cfg *config.Config,
 	voteType tmproto.SignedMsgType,
 	hash []byte,
 	header types.PartSetHeader) (*types.Vote, error) {
@@ -122,7 +122,7 @@ func (vs *validatorStub) signVote(
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
 	}
 	v := vote.ToProto()
-	if err := vs.PrivValidator.SignVote(context.Background(), config.ChainID(), v); err != nil {
+	if err := vs.PrivValidator.SignVote(context.Background(), cfg.ChainID(), v); err != nil {
 		return nil, fmt.Errorf("sign vote failed: %w", err)
 	}
 
@@ -141,12 +141,12 @@ func (vs *validatorStub) signVote(
 // Sign vote for type/hash/header
 func signVote(
 	vs *validatorStub,
-	config *cfg.Config,
+	cfg *config.Config,
 	voteType tmproto.SignedMsgType,
 	hash []byte,
 	header types.PartSetHeader) *types.Vote {
 
-	v, err := vs.signVote(config, voteType, hash, header)
+	v, err := vs.signVote(cfg, voteType, hash, header)
 	if err != nil {
 		panic(fmt.Errorf("failed to sign vote: %v", err))
 	}
@@ -157,14 +157,14 @@ func signVote(
 }
 
 func signVotes(
-	config *cfg.Config,
+	cfg *config.Config,
 	voteType tmproto.SignedMsgType,
 	hash []byte,
 	header types.PartSetHeader,
 	vss ...*validatorStub) []*types.Vote {
 	votes := make([]*types.Vote, len(vss))
 	for i, vs := range vss {
-		votes[i] = signVote(vs, config, voteType, hash, header)
+		votes[i] = signVote(vs, cfg, voteType, hash, header)
 	}
 	return votes
 }
@@ -255,14 +255,14 @@ func addVotes(to *State, votes ...*types.Vote) {
 }
 
 func signAddVotes(
-	config *cfg.Config,
+	cfg *config.Config,
 	to *State,
 	voteType tmproto.SignedMsgType,
 	hash []byte,
 	header types.PartSetHeader,
 	vss ...*validatorStub,
 ) {
-	votes := signVotes(config, voteType, hash, header, vss...)
+	votes := signVotes(cfg, voteType, hash, header, vss...)
 	addVotes(to, votes...)
 }
 
@@ -387,12 +387,12 @@ func subscribeToVoter(cs *State, addr []byte) <-chan tmpubsub.Message {
 // consensus states
 
 func newState(state sm.State, pv types.PrivValidator, app abci.Application) *State {
-	config := cfg.ResetTestRoot("consensus_state_test")
-	return newStateWithConfig(config, state, pv, app)
+	cfg := config.ResetTestRoot("consensus_state_test")
+	return newStateWithConfig(cfg, state, pv, app)
 }
 
 func newStateWithConfig(
-	thisConfig *cfg.Config,
+	thisConfig *config.Config,
 	state sm.State,
 	pv types.PrivValidator,
 	app abci.Application,
@@ -402,7 +402,7 @@ func newStateWithConfig(
 }
 
 func newStateWithConfigAndBlockStore(
-	thisConfig *cfg.Config,
+	thisConfig *config.Config,
 	state sm.State,
 	pv types.PrivValidator,
 	app abci.Application,
@@ -444,10 +444,10 @@ func newStateWithConfigAndBlockStore(
 	return cs
 }
 
-func loadPrivValidator(config *cfg.Config) *privval.FilePV {
-	privValidatorKeyFile := config.PrivValidator.KeyFile()
+func loadPrivValidator(cfg *config.Config) *privval.FilePV {
+	privValidatorKeyFile := cfg.PrivValidator.KeyFile()
 	ensureDir(filepath.Dir(privValidatorKeyFile), 0700)
-	privValidatorStateFile := config.PrivValidator.StateFile()
+	privValidatorStateFile := cfg.PrivValidator.StateFile()
 	privValidator, err := privval.LoadOrGenFilePV(privValidatorKeyFile, privValidatorStateFile)
 	if err != nil {
 		panic(err)
@@ -456,9 +456,9 @@ func loadPrivValidator(config *cfg.Config) *privval.FilePV {
 	return privValidator
 }
 
-func randState(config *cfg.Config, nValidators int) (*State, []*validatorStub) {
+func randState(cfg *config.Config, nValidators int) (*State, []*validatorStub) {
 	// Get State
-	state, privVals := randGenesisState(config, nValidators, false, 10)
+	state, privVals := randGenesisState(cfg, nValidators, false, 10)
 
 	vss := make([]*validatorStub, nValidators)
 
@@ -704,15 +704,15 @@ func consensusLogger() log.Logger {
 
 func randConsensusState(
 	t *testing.T,
-	config *cfg.Config,
+	cfg *config.Config,
 	nValidators int,
 	testName string,
 	tickerFunc func() TimeoutTicker,
 	appFunc func() abci.Application,
-	configOpts ...func(*cfg.Config),
+	configOpts ...func(*config.Config),
 ) ([]*State, cleanupFunc) {
 
-	genDoc, privVals := factory.RandGenesisDoc(config, nValidators, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, nValidators, false, 30)
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
 
@@ -759,18 +759,18 @@ func randConsensusState(
 
 // nPeers = nValidators + nNotValidator
 func randConsensusNetWithPeers(
-	config *cfg.Config,
+	cfg *config.Config,
 	nValidators,
 	nPeers int,
 	testName string,
 	tickerFunc func() TimeoutTicker,
 	appFunc func(string) abci.Application,
-) ([]*State, *types.GenesisDoc, *cfg.Config, cleanupFunc) {
-	genDoc, privVals := factory.RandGenesisDoc(config, nValidators, false, testMinPower)
+) ([]*State, *types.GenesisDoc, *config.Config, cleanupFunc) {
+	genDoc, privVals := factory.RandGenesisDoc(cfg, nValidators, false, testMinPower)
 	css := make([]*State, nPeers)
 	logger := consensusLogger()
 
-	var peer0Config *cfg.Config
+	var peer0Config *config.Config
 	configRootDirs := make([]string, 0, nPeers)
 	for i := 0; i < nPeers; i++ {
 		state, _ := sm.MakeGenesisState(genDoc)
@@ -799,7 +799,7 @@ func randConsensusNetWithPeers(
 			}
 		}
 
-		app := appFunc(path.Join(config.DBDir(), fmt.Sprintf("%s_%d", testName, i)))
+		app := appFunc(path.Join(cfg.DBDir(), fmt.Sprintf("%s_%d", testName, i)))
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		if _, ok := app.(*kvstore.PersistentKVStoreApplication); ok {
 			// simulate handshake, receive app version. If don't do this, replay test will fail
@@ -820,12 +820,12 @@ func randConsensusNetWithPeers(
 }
 
 func randGenesisState(
-	config *cfg.Config,
+	cfg *config.Config,
 	numValidators int,
 	randPower bool,
 	minPower int64) (sm.State, []types.PrivValidator) {
 
-	genDoc, privValidators := factory.RandGenesisDoc(config, numValidators, randPower, minPower)
+	genDoc, privValidators := factory.RandGenesisDoc(cfg, numValidators, randPower, minPower)
 	s0, _ := sm.MakeGenesisState(genDoc)
 	return s0, privValidators
 }

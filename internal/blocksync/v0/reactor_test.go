@@ -9,7 +9,7 @@ import (
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/mempool/mock"
 	"github.com/tendermint/tendermint/internal/p2p"
@@ -182,10 +182,10 @@ func (rts *reactorTestSuite) start(t *testing.T) {
 }
 
 func TestReactor_AbruptDisconnect(t *testing.T) {
-	config := cfg.ResetTestRoot("block_sync_reactor_test")
-	defer os.RemoveAll(config.RootDir)
+	cfg := config.ResetTestRoot("block_sync_reactor_test")
+	defer os.RemoveAll(cfg.RootDir)
 
-	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
 	maxBlockHeight := int64(64)
 
 	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
@@ -217,10 +217,10 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 }
 
 func TestReactor_SyncTime(t *testing.T) {
-	config := cfg.ResetTestRoot("block_sync_reactor_test")
-	defer os.RemoveAll(config.RootDir)
+	cfg := config.ResetTestRoot("block_sync_reactor_test")
+	defer os.RemoveAll(cfg.RootDir)
 
-	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
 	maxBlockHeight := int64(101)
 
 	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
@@ -240,10 +240,10 @@ func TestReactor_SyncTime(t *testing.T) {
 }
 
 func TestReactor_NoBlockResponse(t *testing.T) {
-	config := cfg.ResetTestRoot("block_sync_reactor_test")
-	defer os.RemoveAll(config.RootDir)
+	cfg := config.ResetTestRoot("block_sync_reactor_test")
+	defer os.RemoveAll(cfg.RootDir)
 
-	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
 	maxBlockHeight := int64(65)
 
 	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
@@ -287,11 +287,11 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	// See: https://github.com/tendermint/tendermint/issues/6005
 	t.SkipNow()
 
-	config := cfg.ResetTestRoot("block_sync_reactor_test")
-	defer os.RemoveAll(config.RootDir)
+	cfg := config.ResetTestRoot("block_sync_reactor_test")
+	defer os.RemoveAll(cfg.RootDir)
 
 	maxBlockHeight := int64(48)
-	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
 
 	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0, 0, 0, 0}, 1000)
 
@@ -325,7 +325,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	//
 	// XXX: This causes a potential race condition.
 	// See: https://github.com/tendermint/tendermint/issues/6005
-	otherGenDoc, otherPrivVals := factory.RandGenesisDoc(config, 1, false, 30)
+	otherGenDoc, otherPrivVals := factory.RandGenesisDoc(cfg, 1, false, 30)
 	newNode := rts.network.MakeNode(t, p2ptest.NodeOptions{
 		MaxPeers:     uint16(len(rts.nodes) + 1),
 		MaxConnected: uint16(len(rts.nodes) + 1),

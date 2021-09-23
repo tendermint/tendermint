@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -102,7 +102,7 @@ type Environment struct {
 
 	Logger log.Logger
 
-	Config cfg.RPCConfig
+	Config config.RPCConfig
 
 	// cache of chunked genesis data.
 	genChunks []string

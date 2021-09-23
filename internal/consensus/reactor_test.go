@@ -16,7 +16,7 @@ import (
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/encoding"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -273,11 +273,11 @@ func ensureBlockSyncStatus(t *testing.T, msg tmpubsub.Message, complete bool, he
 }
 
 func TestReactorBasic(t *testing.T) {
-	config := configSetup(t)
+	cfg := configSetup(t)
 
 	n := 4
 	states, cleanup := randConsensusState(t,
-		config, n, "consensus_reactor_test",
+		cfg, n, "consensus_reactor_test",
 		newMockTickerFunc(true), newKVStore)
 	t.Cleanup(cleanup)
 
@@ -316,14 +316,14 @@ func TestReactorBasic(t *testing.T) {
 }
 
 func TestReactorWithEvidence(t *testing.T) {
-	config := configSetup(t)
+	cfg := configSetup(t)
 
 	n := 4
 	testName := "consensus_reactor_test"
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newKVStore
 
-	genDoc, privVals := factory.RandGenesisDoc(config, n, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, n, false, 30)
 	states := make([]*State, n)
 	logger := consensusLogger()
 
@@ -360,7 +360,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		// everyone includes evidence of another double signing
 		vIdx := (i + 1) % n
 
-		ev := types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, privVals[vIdx], config.ChainID())
+		ev := types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, privVals[vIdx], cfg.ChainID())
 		evpool := &statemocks.EvidencePool{}
 		evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
 		evpool.On("PendingEvidence", mock.AnythingOfType("int64")).Return([]types.Evidence{
@@ -412,17 +412,17 @@ func TestReactorWithEvidence(t *testing.T) {
 }
 
 func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
-	config := configSetup(t)
+	cfg := configSetup(t)
 
 	n := 4
 	states, cleanup := randConsensusState(
 		t,
-		config,
+		cfg,
 		n,
 		"consensus_reactor_test",
 		newMockTickerFunc(true),
 		newKVStore,
-		func(c *cfg.Config) {
+		func(c *config.Config) {
 			c.Consensus.CreateEmptyBlocks = false
 		},
 	)
@@ -462,11 +462,11 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 }
 
 func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
-	config := configSetup(t)
+	cfg := configSetup(t)
 
 	n := 4
 	states, cleanup := randConsensusState(t,
-		config, n, "consensus_reactor_test",
+		cfg, n, "consensus_reactor_test",
 		newMockTickerFunc(true), newKVStore)
 	t.Cleanup(cleanup)
 
@@ -521,12 +521,12 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 }
 
 func TestReactorVotingPowerChange(t *testing.T) {
-	config := configSetup(t)
+	cfg := configSetup(t)
 
 	n := 4
 	states, cleanup := randConsensusState(
 		t,
-		config,
+		cfg,
 		n,
 		"consensus_voting_power_changes_test",
 		newMockTickerFunc(true),
@@ -622,12 +622,12 @@ func TestReactorVotingPowerChange(t *testing.T) {
 }
 
 func TestReactorValidatorSetChanges(t *testing.T) {
-	config := configSetup(t)
+	cfg := configSetup(t)
 
 	nPeers := 7
 	nVals := 4
 	states, _, _, cleanup := randConsensusNetWithPeers(
-		config,
+		cfg,
 		nVals,
 		nPeers,
 		"consensus_val_set_changes_test",

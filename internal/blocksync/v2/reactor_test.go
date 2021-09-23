@@ -15,7 +15,7 @@ import (
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/blocksync/v2/internal/behavior"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/mempool/mock"
@@ -365,9 +365,9 @@ func TestReactorHelperMode(t *testing.T) {
 		channelID = byte(0x40)
 	)
 
-	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
-	defer os.RemoveAll(config.RootDir)
-	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
+	cfg := config.ResetTestRoot("blockchain_reactor_v2_test")
+	defer os.RemoveAll(cfg.RootDir)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
 
 	params := testReactorParams{
 		logger:      log.TestingLogger(),
@@ -455,9 +455,9 @@ func TestReactorHelperMode(t *testing.T) {
 }
 
 func TestReactorSetSwitchNil(t *testing.T) {
-	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
-	defer os.RemoveAll(config.RootDir)
-	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
+	cfg := config.ResetTestRoot("blockchain_reactor_v2_test")
+	defer os.RemoveAll(cfg.RootDir)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
 
 	reactor := newTestReactor(t, testReactorParams{
 		logger:   log.TestingLogger(),
