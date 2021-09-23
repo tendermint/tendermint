@@ -602,10 +602,11 @@ func TestStateLockNoPOL(t *testing.T) {
 	ensurePrecommit(t, voteCh, height, round)
 }
 
-// 4 vals in two rounds,
-// in round one: v1 precommits, other 3 only prevote so the block isn't committed
-// in round two: v1 prevotes the same block that the node is locked on
-// the others prevote a new block hence v1 changes lock and precommits the new block with the others
+// TestStateLockPOLRelock tests that a validator maintains updates its locked
+// block if the following conditions are met within a round:
+// 1. The validator received a valid proposal for the block
+// 2. The validator received prevotes representing greater than 2/3 of the voting
+// power on the network for the block.
 func TestStateLockPOLRelock(t *testing.T) {
 	config := configSetup(t)
 
@@ -623,17 +624,17 @@ func TestStateLockPOLRelock(t *testing.T) {
 	voteCh := subscribeToVoter(cs1, addr)
 	lockCh := subscribe(cs1.eventBus, types.EventQueryLock)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
-	newBlockCh := subscribe(cs1.eventBus, types.EventQueryNewBlockHeader)
-
-	// everything done from perspective of cs1
 
 	/*
-		Round1 (cs1, B) // B B B B// B nil B nil
+		Round 0:
+		cs1 creates a proposal for block B.
+		Send a prevote for B from each of the validators to cs1.
+		Send a precommit for nil from all of the validators to cs1.
 
-		eg. vs2 and vs4 didn't see the 2/3 prevotes
+		This ensures that cs1 will lock on B in this round but not precommit it.
 	*/
+	t.Log("### Starting Round 0")
 
-	// start round and wait for propose and prevote
 	startTestRound(cs1, height, round)
 
 	ensureNewRound(t, newRoundCh, height, round)
@@ -642,78 +643,70 @@ func TestStateLockPOLRelock(t *testing.T) {
 	theBlockHash := rs.ProposalBlock.Hash()
 	theBlockParts := rs.ProposalBlockParts.Header()
 
-	ensurePrevote(t, voteCh, height, round) // prevote
+	ensurePrevote(t, voteCh, height, round)
 
 	signAddVotes(config, cs1, tmproto.PrevoteType, theBlockHash, theBlockParts, vs2, vs3, vs4)
-	// check that we lock on the first block
+
+	// check that the validator generates a Lock event.
 	ensureLock(t, lockCh, height, round)
 
-	ensurePrecommit(t, voteCh, height, round) // our precommit
-	// the proposed block should now be locked and our precommit added
+	// the proposed block should now be locked and our precommit added.
+	ensurePrecommit(t, voteCh, height, round)
 	validatePrecommit(t, cs1, round, round, vss[0], theBlockHash, theBlockHash)
 
-	// add precommits from the rest
+	// add precommits from the rest of the validators.
 	signAddVotes(config, cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
-	// before we timeout to the new round set the new proposal
-	cs2 := newState(cs1.state, vs2, kvstore.NewApplication())
-	prop, propBlock := decideProposal(t, cs2, vs2, vs2.Height, vs2.Round+1)
-	if prop == nil || propBlock == nil {
-		t.Fatal("Failed to create proposal block with vs2")
-	}
-	propBlockParts := propBlock.MakePartSet(partSize)
-	propBlockHash := propBlock.Hash()
-	require.NotEqual(t, propBlockHash, theBlockHash)
-
-	incrementRound(vs2, vs3, vs4)
-
-	// timeout to new round
+	// timeout to new round.
 	ensureNewTimeout(t, timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
 
-	round++ // moving to the next round
-	//XXX: this isnt guaranteed to get there before the timeoutPropose ...
-	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer"); err != nil {
+	/*
+		Round 1:
+		Create a block, D and send a proposal for it to cs1
+		Send a prevote for D from each of the validators to cs1.
+		Send a precommit for nil from all of the validtors to cs1.
+
+		Check that cs1 is now locked on the new block, D and no longer on the old block.
+	*/
+	t.Log("### Starting Round 1")
+	incrementRound(vs2, vs3, vs4)
+	round++
+
+	// Generate a new proposal block.
+	cs2 := newState(cs1.state, vs2, kvstore.NewApplication())
+	propR1, propBlockR1 := decideProposal(t, cs2, vs2, vs2.Height, vs2.Round)
+	propBlockR1Parts := propBlockR1.MakePartSet(partSize)
+	propBlockR1Hash := propBlockR1.Hash()
+	require.NotEqual(t, propBlockR1Hash, theBlockHash)
+	if err := cs1.SetProposalAndBlock(propR1, propBlockR1, propBlockR1Parts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 
 	ensureNewRound(t, newRoundCh, height, round)
-	t.Log("### ONTO ROUND 1")
 
-	/*
-		Round2 (vs2, C) // B C C C // C C C _)
-
-		cs1 changes lock!
-	*/
-
-	// now we're on a new round and not the proposer
-	// but we should receive the proposal
+	// ensure that the validator receives the proposal.
 	ensureNewProposal(t, proposalCh, height, round)
 
-	// go to prevote, node should prevote for locked block (not the new proposal) - this is relocking
+	// Prevote our locked block.
 	// TODO: Ensure we prevote for the proposal if it is valid and from a round greater than
 	// the valid round: https://github.com/tendermint/tendermint/issues/6850.
 	ensurePrevote(t, voteCh, height, round)
 	validatePrevote(t, cs1, round, vss[0], theBlockHash)
 
-	// now lets add prevotes from everyone else for the new block
-	signAddVotes(config, cs1, tmproto.PrevoteType, propBlockHash, propBlockParts.Header(), vs2, vs3, vs4)
+	// Add prevotes from the remainder of the validators for the new locked block.
+	signAddVotes(config, cs1, tmproto.PrevoteType, propBlockR1Hash, propBlockR1Parts.Header(), vs2, vs3, vs4)
 
-	// check that we lock on the new block
+	// Check that we lock on a new block.
 	ensureLock(t, lockCh, height, round)
 
 	ensurePrecommit(t, voteCh, height, round)
 
-	// we should have unlocked and locked on the new block, sending a precommit for this new block
-	validatePrecommit(t, cs1, round, round, vss[0], propBlockHash, propBlockHash)
-
-	// more prevote creating a majority on the new block and this is then committed
-	signAddVotes(config, cs1, tmproto.PrecommitType, propBlockHash, propBlockParts.Header(), vs2, vs3)
-	ensureNewBlockHeader(t, newBlockCh, height, propBlockHash)
-
-	ensureNewRound(t, newRoundCh, height+1, 0)
+	// We should now be locked on the new block and prevote it since we saw a sufficient amount
+	// prevote for the block.
+	validatePrecommit(t, cs1, round, round, vss[0], propBlockR1Hash, propBlockR1Hash)
 }
 
-// TestStatePOLDoesNotUnlock tests that a validator maintains its locked block
+// TestStateLockPOLDoesNotUnlock tests that a validator maintains its locked block
 // despite receiving +2/3 nil prevotes and nil precommits from other validators.
 // Tendermint used to 'unlock' its locked block when greater than 2/3 prevotes
 // for a nil block were seen. This behavior has been removed and this test ensures
