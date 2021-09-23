@@ -15,8 +15,8 @@ import (
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/state/indexer/sink/kv"
 	"github.com/tendermint/tendermint/internal/state/indexer/sink/psql"
+	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/rpc/coretypes"
-	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
