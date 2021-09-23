@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/test/factory"
@@ -46,13 +46,13 @@ func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 }
 
 func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFunc) {
-	config := cfg.ResetTestRoot("blockchain_reactor_test")
+	cfg := config.ResetTestRoot("blockchain_reactor_test")
 	blockDB := dbm.NewMemDB()
-	state, err := sm.MakeGenesisStateFromFile(config.GenesisFile())
+	state, err := sm.MakeGenesisStateFromFile(cfg.GenesisFile())
 	if err != nil {
 		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}
-	return state, NewBlockStore(blockDB), func() { os.RemoveAll(config.RootDir) }
+	return state, NewBlockStore(blockDB), func() { os.RemoveAll(cfg.RootDir) }
 }
 
 func freshBlockStore() (*BlockStore, dbm.DB) {
@@ -292,9 +292,9 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 }
 
 func TestLoadBaseMeta(t *testing.T) {
-	config := cfg.ResetTestRoot("blockchain_reactor_test")
-	defer os.RemoveAll(config.RootDir)
-	state, err := sm.MakeGenesisStateFromFile(config.GenesisFile())
+	cfg := config.ResetTestRoot("blockchain_reactor_test")
+	defer os.RemoveAll(cfg.RootDir)
+	state, err := sm.MakeGenesisStateFromFile(cfg.GenesisFile())
 	require.NoError(t, err)
 	bs := NewBlockStore(dbm.NewMemDB())
 
@@ -348,9 +348,9 @@ func TestLoadBlockPart(t *testing.T) {
 }
 
 func TestPruneBlocks(t *testing.T) {
-	config := cfg.ResetTestRoot("blockchain_reactor_test")
-	defer os.RemoveAll(config.RootDir)
-	state, err := sm.MakeGenesisStateFromFile(config.GenesisFile())
+	cfg := config.ResetTestRoot("blockchain_reactor_test")
+	defer os.RemoveAll(cfg.RootDir)
+	state, err := sm.MakeGenesisStateFromFile(cfg.GenesisFile())
 	require.NoError(t, err)
 	db := dbm.NewMemDB()
 	bs := NewBlockStore(db)

@@ -8,7 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
-	ctypes "github.com/tendermint/tendermint/rpc/coretypes"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 )
 
@@ -138,7 +138,7 @@ func ExampleHTTP_batching() {
 	// Each result in the returned list is the deserialized result of each
 	// respective ABCIQuery response
 	for _, result := range results {
-		qr, ok := result.(*ctypes.ResultABCIQuery)
+		qr, ok := result.(*coretypes.ResultABCIQuery)
 		if !ok {
 			log.Fatal("invalid result type from ABCIQuery request")
 		}

@@ -3,13 +3,13 @@ package factory
 import (
 	"sort"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/types"
 )
 
 func RandGenesisDoc(
-	config *cfg.Config,
+	cfg *config.Config,
 	numValidators int,
 	randPower bool,
 	minPower int64) (*types.GenesisDoc, []types.PrivValidator) {
@@ -29,7 +29,7 @@ func RandGenesisDoc(
 	return &types.GenesisDoc{
 		GenesisTime:   tmtime.Now(),
 		InitialHeight: 1,
-		ChainID:       config.ChainID(),
+		ChainID:       cfg.ChainID(),
 		Validators:    validators,
 	}, privValidators
 }

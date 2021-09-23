@@ -6,15 +6,16 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	dbm "github.com/tendermint/tm-db"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	blockidxkv "github.com/tendermint/tendermint/internal/state/indexer/block/kv"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/types"
-	db "github.com/tendermint/tm-db"
 )
 
 func TestBlockIndexer(t *testing.T) {
-	store := db.NewPrefixDB(db.NewMemDB(), []byte("block_events"))
+	store := dbm.NewPrefixDB(dbm.NewMemDB(), []byte("block_events"))
 	indexer := blockidxkv.New(store)
 
 	require.NoError(t, indexer.Index(types.EventDataNewBlockHeader{

@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -15,19 +15,19 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var config *cfg.Config // NOTE: must be reset for each _test.go file
+var cfg *config.Config // NOTE: must be reset for each _test.go file
 
 func TestMain(m *testing.M) {
-	config = cfg.ResetTestRoot("consensus_height_vote_set_test")
+	cfg = config.ResetTestRoot("consensus_height_vote_set_test")
 	code := m.Run()
-	os.RemoveAll(config.RootDir)
+	os.RemoveAll(cfg.RootDir)
 	os.Exit(code)
 }
 
 func TestPeerCatchupRounds(t *testing.T) {
 	valSet, privVals := factory.RandValidatorSet(10, 1)
 
-	hvs := NewHeightVoteSet(config.ChainID(), 1, valSet)
+	hvs := NewHeightVoteSet(cfg.ChainID(), 1, valSet)
 
 	vote999_0 := makeVoteHR(t, 1, 0, 999, privVals)
 	added, err := hvs.AddVote(vote999_0, "peer1")
@@ -75,7 +75,7 @@ func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []ty
 		Type:             tmproto.PrecommitType,
 		BlockID:          types.BlockID{Hash: randBytes, PartSetHeader: types.PartSetHeader{}},
 	}
-	chainID := config.ChainID()
+	chainID := cfg.ChainID()
 
 	v := vote.ToProto()
 	err = privVal.SignVote(context.Background(), chainID, v)

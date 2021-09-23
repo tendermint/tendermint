@@ -6,13 +6,13 @@ import (
 	"sync"
 	"time"
 
-	bc "github.com/tendermint/tendermint/internal/blocksync"
-	cons "github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/blocksync"
+	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/p2p"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	tmSync "github.com/tendermint/tendermint/libs/sync"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -36,7 +36,7 @@ var (
 				Priority:            5,
 				SendQueueCapacity:   1000,
 				RecvBufferCapacity:  1024,
-				RecvMessageCapacity: bc.MaxMsgSize,
+				RecvMessageCapacity: blocksync.MaxMsgSize,
 				MaxSendBytes:        100,
 			},
 		},
@@ -85,7 +85,7 @@ type Reactor struct {
 	store       *store.BlockStore
 	pool        *BlockPool
 	consReactor consensusReactor
-	blockSync   *tmSync.AtomicBool
+	blockSync   *tmsync.AtomicBool
 
 	blockSyncCh *p2p.Channel
 	// blockSyncOutBridgeCh defines a channel that acts as a bridge between sending Envelope
@@ -107,7 +107,7 @@ type Reactor struct {
 	// stopping the p2p Channel(s).
 	poolWG sync.WaitGroup
 
-	metrics *cons.Metrics
+	metrics *consensus.Metrics
 
 	syncStartTime time.Time
 }
@@ -122,7 +122,7 @@ func NewReactor(
 	blockSyncCh *p2p.Channel,
 	peerUpdates *p2p.PeerUpdates,
 	blockSync bool,
-	metrics *cons.Metrics,
+	metrics *consensus.Metrics,
 ) (*Reactor, error) {
 	if state.LastBlockHeight != store.Height() {
 		return nil, fmt.Errorf("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height())
@@ -142,7 +142,7 @@ func NewReactor(
 		store:                store,
 		pool:                 NewBlockPool(startHeight, requestsCh, errorsCh),
 		consReactor:          consReactor,
-		blockSync:            tmSync.NewBool(blockSync),
+		blockSync:            tmsync.NewBool(blockSync),
 		requestsCh:           requestsCh,
 		errorsCh:             errorsCh,
 		blockSyncCh:          blockSyncCh,

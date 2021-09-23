@@ -24,7 +24,7 @@ import (
 	"context"
 
 	"github.com/tendermint/tendermint/libs/bytes"
-	ctypes "github.com/tendermint/tendermint/rpc/coretypes"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -61,26 +61,26 @@ type Client interface {
 // is easier to mock.
 type ABCIClient interface {
 	// Reading from abci app
-	ABCIInfo(context.Context) (*ctypes.ResultABCIInfo, error)
-	ABCIQuery(ctx context.Context, path string, data bytes.HexBytes) (*ctypes.ResultABCIQuery, error)
+	ABCIInfo(context.Context) (*coretypes.ResultABCIInfo, error)
+	ABCIQuery(ctx context.Context, path string, data bytes.HexBytes) (*coretypes.ResultABCIQuery, error)
 	ABCIQueryWithOptions(ctx context.Context, path string, data bytes.HexBytes,
-		opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error)
+		opts ABCIQueryOptions) (*coretypes.ResultABCIQuery, error)
 
 	// Writing to abci app
-	BroadcastTxCommit(context.Context, types.Tx) (*ctypes.ResultBroadcastTxCommit, error)
-	BroadcastTxAsync(context.Context, types.Tx) (*ctypes.ResultBroadcastTx, error)
-	BroadcastTxSync(context.Context, types.Tx) (*ctypes.ResultBroadcastTx, error)
+	BroadcastTxCommit(context.Context, types.Tx) (*coretypes.ResultBroadcastTxCommit, error)
+	BroadcastTxAsync(context.Context, types.Tx) (*coretypes.ResultBroadcastTx, error)
+	BroadcastTxSync(context.Context, types.Tx) (*coretypes.ResultBroadcastTx, error)
 }
 
 // SignClient groups together the functionality needed to get valid signatures
 // and prove anything about the chain.
 type SignClient interface {
-	Block(ctx context.Context, height *int64) (*ctypes.ResultBlock, error)
-	BlockByHash(ctx context.Context, hash bytes.HexBytes) (*ctypes.ResultBlock, error)
-	BlockResults(ctx context.Context, height *int64) (*ctypes.ResultBlockResults, error)
-	Commit(ctx context.Context, height *int64) (*ctypes.ResultCommit, error)
-	Validators(ctx context.Context, height *int64, page, perPage *int) (*ctypes.ResultValidators, error)
-	Tx(ctx context.Context, hash bytes.HexBytes, prove bool) (*ctypes.ResultTx, error)
+	Block(ctx context.Context, height *int64) (*coretypes.ResultBlock, error)
+	BlockByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultBlock, error)
+	BlockResults(ctx context.Context, height *int64) (*coretypes.ResultBlockResults, error)
+	Commit(ctx context.Context, height *int64) (*coretypes.ResultCommit, error)
+	Validators(ctx context.Context, height *int64, page, perPage *int) (*coretypes.ResultValidators, error)
+	Tx(ctx context.Context, hash bytes.HexBytes, prove bool) (*coretypes.ResultTx, error)
 
 	// TxSearch defines a method to search for a paginated set of transactions by
 	// DeliverTx event search criteria.
@@ -90,7 +90,7 @@ type SignClient interface {
 		prove bool,
 		page, perPage *int,
 		orderBy string,
-	) (*ctypes.ResultTxSearch, error)
+	) (*coretypes.ResultTxSearch, error)
 
 	// BlockSearch defines a method to search for a paginated set of blocks by
 	// BeginBlock and EndBlock event search criteria.
@@ -99,29 +99,29 @@ type SignClient interface {
 		query string,
 		page, perPage *int,
 		orderBy string,
-	) (*ctypes.ResultBlockSearch, error)
+	) (*coretypes.ResultBlockSearch, error)
 }
 
 // HistoryClient provides access to data from genesis to now in large chunks.
 type HistoryClient interface {
-	Genesis(context.Context) (*ctypes.ResultGenesis, error)
-	GenesisChunked(context.Context, uint) (*ctypes.ResultGenesisChunk, error)
-	BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error)
+	Genesis(context.Context) (*coretypes.ResultGenesis, error)
+	GenesisChunked(context.Context, uint) (*coretypes.ResultGenesisChunk, error)
+	BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error)
 }
 
 // StatusClient provides access to general chain info.
 type StatusClient interface {
-	Status(context.Context) (*ctypes.ResultStatus, error)
+	Status(context.Context) (*coretypes.ResultStatus, error)
 }
 
 // NetworkClient is general info about the network state. May not be needed
 // usually.
 type NetworkClient interface {
-	NetInfo(context.Context) (*ctypes.ResultNetInfo, error)
-	DumpConsensusState(context.Context) (*ctypes.ResultDumpConsensusState, error)
-	ConsensusState(context.Context) (*ctypes.ResultConsensusState, error)
-	ConsensusParams(ctx context.Context, height *int64) (*ctypes.ResultConsensusParams, error)
-	Health(context.Context) (*ctypes.ResultHealth, error)
+	NetInfo(context.Context) (*coretypes.ResultNetInfo, error)
+	DumpConsensusState(context.Context) (*coretypes.ResultDumpConsensusState, error)
+	ConsensusState(context.Context) (*coretypes.ResultConsensusState, error)
+	ConsensusParams(ctx context.Context, height *int64) (*coretypes.ResultConsensusParams, error)
+	Health(context.Context) (*coretypes.ResultHealth, error)
 }
 
 // EventsClient is reactive, you can subscribe to any message, given the proper
@@ -134,7 +134,7 @@ type EventsClient interface {
 	//
 	// ctx cannot be used to unsubscribe. To unsubscribe, use either Unsubscribe
 	// or UnsubscribeAll.
-	Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error)
+	Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan coretypes.ResultEvent, err error) //nolint:lll
 	// Unsubscribe unsubscribes given subscriber from query.
 	Unsubscribe(ctx context.Context, subscriber, query string) error
 	// UnsubscribeAll unsubscribes given subscriber from all the queries.
@@ -143,15 +143,15 @@ type EventsClient interface {
 
 // MempoolClient shows us data about current mempool state.
 type MempoolClient interface {
-	UnconfirmedTxs(ctx context.Context, limit *int) (*ctypes.ResultUnconfirmedTxs, error)
-	NumUnconfirmedTxs(context.Context) (*ctypes.ResultUnconfirmedTxs, error)
-	CheckTx(context.Context, types.Tx) (*ctypes.ResultCheckTx, error)
+	UnconfirmedTxs(ctx context.Context, limit *int) (*coretypes.ResultUnconfirmedTxs, error)
+	NumUnconfirmedTxs(context.Context) (*coretypes.ResultUnconfirmedTxs, error)
+	CheckTx(context.Context, types.Tx) (*coretypes.ResultCheckTx, error)
 }
 
 // EvidenceClient is used for submitting an evidence of the malicious
 // behavior.
 type EvidenceClient interface {
-	BroadcastEvidence(context.Context, types.Evidence) (*ctypes.ResultBroadcastEvidence, error)
+	BroadcastEvidence(context.Context, types.Evidence) (*coretypes.ResultBroadcastEvidence, error)
 }
 
 // RemoteClient is a Client, which can also return the remote network address.

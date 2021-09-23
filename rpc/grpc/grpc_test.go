@@ -9,7 +9,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/service"
-	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
+	coregrpc "github.com/tendermint/tendermint/rpc/grpc"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 )
 
@@ -37,7 +37,7 @@ func TestBroadcastTx(t *testing.T) {
 
 	res, err := rpctest.GetGRPCClient(conf).BroadcastTx(
 		context.Background(),
-		&core_grpc.RequestBroadcastTx{Tx: []byte("this is a tx")},
+		&coregrpc.RequestBroadcastTx{Tx: []byte("this is a tx")},
 	)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.CheckTx.Code)

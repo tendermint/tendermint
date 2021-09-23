@@ -12,7 +12,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/libs/fail"
@@ -80,7 +80,7 @@ type State struct {
 	service.BaseService
 
 	// config details
-	config            *cfg.ConsensusConfig
+	config            *config.ConsensusConfig
 	privValidator     types.PrivValidator // for signing votes
 	privValidatorType types.PrivValidatorType
 
@@ -152,7 +152,7 @@ type StateOption func(*State)
 
 // NewState returns a new State.
 func NewState(
-	config *cfg.ConsensusConfig,
+	cfg *config.ConsensusConfig,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
@@ -161,7 +161,7 @@ func NewState(
 	options ...StateOption,
 ) *State {
 	cs := &State{
-		config:           config,
+		config:           cfg,
 		blockExec:        blockExec,
 		blockStore:       blockStore,
 		txNotifier:       txNotifier,
