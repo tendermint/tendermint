@@ -85,7 +85,9 @@ func (env *Environment) BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
+	count := 0
 	for {
+		count++
 		select {
 		case <-ctx.Context().Done():
 			env.Logger.Error("Error on broadcastTxCommit",
@@ -100,7 +102,8 @@ func (env *Environment) BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*
 			txres, err := env.Tx(ctx, tx.Hash(), false)
 			if err != nil {
 				jitter := 100*time.Millisecond + time.Duration(rand.Int63n(int64(time.Second))) // nolint: gosec
-				timer.Reset(jitter)
+				backoff := 100 * time.Duration(count) * time.Millisecond
+				timer.Reset(jitter + backoff)
 				continue
 			}
 
