@@ -40,7 +40,8 @@ x * TestStateLock_POLUpdateLock - 4 vals, one precommits,
 other 3 polka at next round, so we unlock and precomit the polka
 x * TestStateLock_POLRelock - 4 vals, polka in round 1 and polka in round 2.
 Ensure validator updates locked round.
-x_*_TestStateLock_POLDoesNotUnlock 4 vals, one precommits, other 3 polka nil at next round, so we precommit nil but maintain lock
+x_*_TestStateLock_POLDoesNotUnlock 4 vals, one precommits, other 3 polka nil at
+next round, so we precommit nil but maintain lock
 x * TestStateLock_MissingProposalWhenPOLSeenDoesNotUpdateLock - 4 vals, 1 misses proposal but sees POL.
 x * TestStateLock_MissingProposalWhenPOLSeenDoesNotUnlock - 4 vals, 1 misses proposal but sees POL.
 x * TestStateLock_POLSafety1 - 4 vals. We shouldn't change lock based on polka at earlier round
@@ -720,8 +721,6 @@ func TestStateLock_POLRelock(t *testing.T) {
 	cs1, vss := randState(config, 4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
-
-	//partSize := types.BlockPartSizeBytes
 
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
 	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
