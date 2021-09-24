@@ -22,7 +22,7 @@ func DefaultClientCreator(addr, transport, dbDir string) (abciclient.Creator, io
 	case "persistent_kvstore":
 		app := kvstore.NewPersistentKVStoreApplication(dbDir)
 		return abciclient.NewLocalCreator(app), app
-	case "test":
+	case "e2e":
 		app, err := e2e.NewApplication(e2e.DefaultConfig(dbDir))
 		if err != nil {
 			panic(err)
