@@ -148,7 +148,7 @@ func TestReactorNoThreshold(t *testing.T) {
 
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 
-	ensurePrevote(voteCh, 1, 0)
+	ensurePrevote(voteCh, css[0].state.InitialHeight, 0)
 	waitForAndValidateNoBlock(t, T, blocksSubs, css)
 }
 
@@ -299,7 +299,7 @@ func TestReactorReceiveDoesNotPanicIfAddPeerHasntBeenCalledYet(t *testing.T) {
 	var (
 		reactor = reactors[0]
 		peer    = p2pmock.NewPeer(nil)
-		msg     = MustEncode(&HasVoteMessage{Height: 1,
+		msg     = MustEncode(&HasVoteMessage{Height: css[0].state.InitialHeight,
 			Round: 1, Index: 1, Type: tmproto.PrevoteType})
 	)
 
@@ -322,7 +322,7 @@ func TestReactorReceivePanicsIfInitPeerHasntBeenCalledYet(t *testing.T) {
 	var (
 		reactor = reactors[0]
 		peer    = p2pmock.NewPeer(nil)
-		msg     = MustEncode(&HasVoteMessage{Height: 1,
+		msg     = MustEncode(&HasVoteMessage{Height: css[0].state.InitialHeight,
 			Round: 1, Index: 1, Type: tmproto.PrevoteType})
 	)
 

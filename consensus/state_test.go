@@ -1801,7 +1801,7 @@ func TestStateOutputsBlockPartsStats(t *testing.T) {
 	// 1) new block part
 	parts := types.NewPartSetFromData(tmrand.Bytes(100), 10)
 	msg := &BlockPartMessage{
-		Height: 1,
+		Height: cs.state.InitialHeight,
 		Round:  0,
 		Part:   parts.GetPart(0),
 	}

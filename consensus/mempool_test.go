@@ -28,7 +28,9 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
 	defer os.RemoveAll(config.RootDir)
 	config.Consensus.CreateEmptyBlocks = false
+
 	state, privVals := randGenesisState(1, false, 100)
+
 	cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
@@ -48,7 +50,9 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 
 	config.Consensus.CreateEmptyBlocksInterval = ensureTimeout
+
 	state, privVals := randGenesisState(1, false, 10)
+
 	cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
 
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
@@ -73,7 +77,7 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	newRoundCh := subscribe(cs.eventBus, types.EventQueryNewRound)
 	timeoutCh := subscribe(cs.eventBus, types.EventQueryTimeoutPropose)
 	cs.setProposal = func(proposal *types.Proposal) error {
-		if cs.Height == 2 && cs.Round == 0 {
+		if cs.Height == cs.state.InitialHeight+1 && cs.Round == 0 {
 			// dont set the proposal in round 0 so we timeout and
 			// go to next round
 			cs.Logger.Info("Ignoring set proposal at height 2, round 0")

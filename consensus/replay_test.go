@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -359,7 +360,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	vss := make([]*validatorStub, nPeers)
 	for i := 0; i < nPeers; i++ {
-		vss[i] = newValidatorStub(css[i].privValidator, int32(i))
+		vss[i] = newValidatorStub(css[i].privValidator, int32(i), genDoc.InitialHeight)
 	}
 	height, round := css[0].Height, css[0].Round
 
@@ -1465,9 +1466,7 @@ func makeBlocks(n int, state *sm.State, privVal types.PrivValidator) ([]*types.B
 		prevBlockMeta *types.BlockMeta
 	)
 
-	appHeight := byte(0x01)
-	for i := 0; i < n; i++ {
-		height := int64(i + 1)
+	for height := state.InitialHeight; height < state.InitialHeight+int64(n); height++ {
 
 		block, parts, err := makeBlock(*state, prevBlock, prevBlockMeta, privVal, height)
 		if err != nil {
@@ -1481,9 +1480,8 @@ func makeBlocks(n int, state *sm.State, privVal types.PrivValidator) ([]*types.B
 		// update state
 		state.LastStateID = state.StateID()
 		state.AppHash = make([]byte, crypto.DefaultAppHashSize)
-		state.AppHash[crypto.DefaultAppHashSize-1] = appHeight
+		binary.BigEndian.PutUint64(state.AppHash, uint64(height))
 
-		appHeight++
 		state.LastBlockHeight = height
 	}
 
@@ -1501,10 +1499,10 @@ func makeBlock(state sm.State, lastBlock *types.Block, lastBlockMeta *types.Bloc
 	}
 
 	if lastBlock != nil && state.LastBlockHeight != lastBlock.Height {
-		return nil, nil, fmt.Errorf("Last block height mismatch: %d while state has %d",
+		return nil, nil, fmt.Errorf("last block height mismatch: %d while state has %d",
 			lastBlock.Height, state.LastBlockHeight)
 	}
-	if height > 1 {
+	if height > state.InitialHeight {
 		vote, err := types.MakeVote(
 			lastBlock.Header.Height,
 			lastBlockMeta.BlockID,

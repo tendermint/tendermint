@@ -47,7 +47,8 @@ func TestValidProposalChainLocks(t *testing.T) {
 			msg := <-blocksSubs[j].Out()
 			block := msg.Data().(types.EventDataNewBlock).Block
 			// this is true just because of this test where each new height has a new chain lock that is incremented by 1
-			assert.EqualValues(t, block.Header.Height, block.Header.CoreChainLockedHeight)
+			assert.EqualValues(t, i+1, block.Header.CoreChainLockedHeight)                  //nolint:scopelint
+			assert.EqualValues(t, css[0].state.InitialHeight+int64(i), block.Header.Height) //nolint:scopelint
 		}, css)
 	}
 }
@@ -87,7 +88,8 @@ func TestReactorInvalidProposalHeightForChainLocks(t *testing.T) {
 			msg := <-blocksSubs[j].Out()
 			block := msg.Data().(types.EventDataNewBlock).Block
 			// this is true just because of this test where each new height has a new chain lock that is incremented by 1
-			assert.EqualValues(t, block.Header.Height, block.Header.CoreChainLockedHeight)
+			assert.EqualValues(t, i+1, block.Header.CoreChainLockedHeight)                  //nolint:scopelint
+			assert.EqualValues(t, css[0].state.InitialHeight+int64(i), block.Header.Height) //nolint:scopelint
 		}, css)
 	}
 }
@@ -164,7 +166,7 @@ func TestReactorInvalidBlockChainLock(t *testing.T) {
 			msg := <-blocksSubs[j].Out()
 			block := msg.Data().(types.EventDataNewBlock).Block
 			// this is true just because of this test where each new height has a new chain lock that is incremented by 1
-			if block.Header.Height == 1 {
+			if block.Header.Height == css[0].state.InitialHeight {
 				assert.EqualValues(t, 1, block.Header.CoreChainLockedHeight)
 			} else {
 				// We started at 1 then 99, then try 98, 97, 96...

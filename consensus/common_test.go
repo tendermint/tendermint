@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -85,11 +86,12 @@ type validatorStub struct {
 
 var testMinPower int64 = types.DefaultDashVotingPower
 
-func newValidatorStub(privValidator types.PrivValidator, valIndex int32) *validatorStub {
+func newValidatorStub(privValidator types.PrivValidator, valIndex int32, initialHeight int64) *validatorStub {
 	return &validatorStub{
 		Index:         valIndex,
 		PrivValidator: privValidator,
 		VotingPower:   testMinPower,
+		Height:        initialHeight,
 	}
 }
 
@@ -460,10 +462,8 @@ func randState(nValidators int) (*State, []*validatorStub) {
 	cs := newState(state, privVals[0], counter.NewApplication(true))
 
 	for i := 0; i < nValidators; i++ {
-		vss[i] = newValidatorStub(privVals[i], int32(i))
+		vss[i] = newValidatorStub(privVals[i], int32(i), cs.state.InitialHeight)
 	}
-	// since cs1 starts at 1
-	incrementHeight(vss[1:]...)
 
 	return cs, vss
 }
@@ -1003,7 +1003,7 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 
 	return &types.GenesisDoc{
 		GenesisTime:                  tmtime.Now(),
-		InitialHeight:                1,
+		InitialHeight:                tmrand.Int63n(math.MaxInt64-1000000) + 1,
 		ChainID:                      config.ChainID(),
 		Validators:                   validators,
 		InitialCoreChainLockedHeight: 1,
