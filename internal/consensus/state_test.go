@@ -1022,7 +1022,7 @@ func TestStateLock_POLDoesNotUnlock(t *testing.T) {
 	theBlockParts := rs.ProposalBlockParts.Header()
 
 	ensurePrevote(t, voteCh, height, round)
-	validatePrevote(t, cs1, round, vss[0], nil)
+	validatePrevote(t, cs1, round, vss[0], theBlockHash)
 
 	signAddVotes(config, cs1, tmproto.PrevoteType, theBlockHash, theBlockParts, vs2, vs3, vs4)
 
@@ -1668,8 +1668,9 @@ func TestProposeValidBlock(t *testing.T) {
 	// timeout of propose
 	ensureNewTimeout(t, timeoutProposeCh, height, round, cs1.config.Propose(round).Nanoseconds())
 
+	// We did not see a valid proposal within this round, so prevote nil.
 	ensurePrevote(t, voteCh, height, round)
-	validatePrevote(t, cs1, round, vss[0], propBlockHash)
+	validatePrevote(t, cs1, round, vss[0], nil)
 
 	signAddVotes(config, cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
@@ -2305,13 +2306,13 @@ func TestStateHalt1(t *testing.T) {
 
 	t.Log("### ONTO ROUND 1")
 	/*Round2
-	// we timeout and prevote our lock
+	// we timeout and prevote
 	// a polka happened but we didn't see it!
 	*/
 
-	// go to prevote, prevote for locked block
+	// prevote for nil since we did not receive a proposal in this round.
 	ensurePrevote(t, voteCh, height, round)
-	validatePrevote(t, cs1, round, vss[0], rs.LockedBlock.Hash())
+	validatePrevote(t, cs1, round, vss[0], nil)
 
 	// now we receive the precommit from the previous round
 	addVotes(cs1, precommit4)
