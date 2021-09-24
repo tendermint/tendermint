@@ -11,7 +11,7 @@ import (
 
 // DefaultClientCreator returns a default ClientCreator, which will create a
 // local client if addr is one of: 'kvstore',
-// 'persistent_kvstore' or 'noop', otherwise - a remote client.
+// 'persistent_kvstore', 'e2e', or 'noop', otherwise - a remote client.
 //
 // The Closer is a noop except for persistent_kvstore applications,
 // which will clean up the store.
