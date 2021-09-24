@@ -19,6 +19,9 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [crypto/armor]: \#6963 remove package which is unused, and based on
     deprecated fundamentals. Downstream users should maintain this
     library. (@tychoish)
+  - [state] [store] [proxy] [rpc/core]: \#6937 move packages to
+    `internal` to prevent consumption of these internal APIs by
+    external users. (@tychoish)
 
 - Blockchain Protocol
 
