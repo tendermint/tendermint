@@ -337,44 +337,57 @@ func (s *stateProviderP2P) addProvider(p lightprovider.Provider) {
 	}
 }
 
-// consensusParams sends out a request for consensus params blocking until one is returned.
-// If it fails to get a valid set of consensus params from any of the providers it returns an error.
+// consensusParams sends out a request for consensus params blocking
+// until one is returned.
+//
+// If it fails to get a valid set of consensus params from any of the
+// providers it returns an error; however, it will retry indefinitely
+// (with backoff) until the context is canceled.
 func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (types.ConsensusParams, error) {
-	for _, provider := range s.lc.Witnesses() {
-		p, ok := provider.(*BlockProvider)
-		if !ok {
-			panic("expected p2p state provider to use p2p block providers")
-		}
-
-		// extract the nodeID of the provider
-		peer, err := types.NewNodeID(p.String())
-		if err != nil {
-			return types.ConsensusParams{}, fmt.Errorf("invalid provider (%s) node id: %w", p.String(), err)
-		}
-
-		select {
-		case s.paramsSendCh <- p2p.Envelope{
-			To: peer,
-			Message: &ssproto.ParamsRequest{
-				Height: uint64(height),
-			},
-		}:
-		case <-ctx.Done():
-			return types.ConsensusParams{}, ctx.Err()
-		}
-
-		select {
-		// if we get no response from this provider we move on to the next one
-		case <-time.After(consensusParamsResponseTimeout):
-			continue
-		case <-ctx.Done():
-			return types.ConsensusParams{}, ctx.Err()
-		case params, ok := <-s.paramsRecvCh:
+	iterCount := 0
+	for {
+		for _, provider := range s.lc.Witnesses() {
+			p, ok := provider.(*BlockProvider)
 			if !ok {
-				return types.ConsensusParams{}, errors.New("params channel closed")
+				panic("expected p2p state provider to use p2p block providers")
 			}
-			return params, nil
+
+			// extract the nodeID of the provider
+			peer, err := types.NewNodeID(p.String())
+			if err != nil {
+				return types.ConsensusParams{}, fmt.Errorf("invalid provider (%s) node id: %w", p.String(), err)
+			}
+
+			select {
+			case s.paramsSendCh <- p2p.Envelope{
+				To: peer,
+				Message: &ssproto.ParamsRequest{
+					Height: uint64(height),
+				},
+			}:
+			case <-ctx.Done():
+				return types.ConsensusParams{}, ctx.Err()
+			}
+
+			select {
+			// if we get no response from this provider we move on to the next one
+			case <-time.After(consensusParamsResponseTimeout):
+				continue
+			case <-ctx.Done():
+				return types.ConsensusParams{}, ctx.Err()
+			case params, ok := <-s.paramsRecvCh:
+				if !ok {
+					return types.ConsensusParams{}, errors.New("params channel closed")
+				}
+				return params, nil
+			}
+		}
+		iterCount++
+
+		select {
+		case <-ctx.Done():
+			return types.ConsensusParams{}, ctx.Err()
+		case <-time.After(time.Duration(iterCount) * consensusParamsResponseTimeout):
 		}
 	}
-	return types.ConsensusParams{}, errors.New("unable to fetch consensus params from connected providers")
 }

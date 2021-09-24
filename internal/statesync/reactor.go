@@ -1004,7 +1004,7 @@ func (r *Reactor) fetchLightBlock(height uint64) (*types.LightBlock, error) {
 
 func (r *Reactor) waitForEnoughPeers(ctx context.Context, numPeers int) error {
 	startAt := time.Now()
-	t := time.NewTicker(200 * time.Millisecond)
+	t := time.NewTicker(100 * time.Millisecond)
 	defer t.Stop()
 	for r.peers.Len() < numPeers {
 		select {
