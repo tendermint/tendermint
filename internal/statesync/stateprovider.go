@@ -365,7 +365,7 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 
 // tryGetConsensusParamsFromWitnesses attempts to get consensus
 // parameters from the light clients available witnesses. If both
-// return paramters are nil, then it can be retried.
+// return parameters are nil, then it can be retried.
 func (s *stateProviderP2P) tryGetConsensusParamsFromWitnesses(
 	ctx context.Context,
 	height int64,
