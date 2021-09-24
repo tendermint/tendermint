@@ -1312,18 +1312,46 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 		return
 	}
 
-	// If a block is locked and it does not match the proposal, prevote nil.
-	if cs.LockedBlock != nil && !cs.LockedBlock.HashesTo(cs.ProposalBlock.Hash()) {
-		logger.Debug("prevote step; already locked on a block that does not match proposal; prevoting nil")
-		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
-		return
+	/*
+		22: upon <PROPOSAL, hp, roundp, v, −1> from proposer(hp, roundp) while stepp = propose do
+		23: if valid(v) && (lockedRoundp = −1 || lockedValuep = v) then
+		24: broadcast <PREVOTE, hp, roundp, id(v)>
+	*/
+	if cs.Proposal.POLRound == -1 {
+		if cs.LockedRound == -1 {
+			logger.Debug("prevote step: ProposalBlock is valid and there is no locked block; prevoting the proposal")
+			cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+			return
+		}
+		if cs.ProposalBlock.HashesTo(cs.LockedBlock.Hash()) {
+			logger.Debug("prevote step: ProposalBlock is valid and matches our locked block; prevoting the proposal")
+			cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+			return
+		}
 	}
 
-	// Prevote cs.ProposalBlock
-	// NOTE: the proposal signature is validated when it is received,
-	// and the proposal block parts are validated as they are received (against the merkle hash in the proposal)
-	logger.Debug("prevote step: ProposalBlock is valid")
-	cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+	/*
+		28:	upon <PROPOSAL, hp, roundp, v, vr> from proposer(hp, roundp) AND 2f + 1 <PREVOTE, hp, vr, id(v)> while
+		stepp = propose && (vr ≥ 0 && vr < roundp) do
+		29: if valid(v) && (lockedRoundp ≤ vr || lockedValuep = v) then
+		30: broadcast <PREVOTE, hp, roundp, id(v)>
+	*/
+	blockID, ok := cs.Votes.Prevotes(cs.Proposal.POLRound).TwoThirdsMajority()
+	if ok && cs.ProposalBlock.HashesTo(blockID.Hash) && cs.Proposal.POLRound >= 0 && cs.Proposal.POLRound < cs.Round {
+		if cs.LockedRound <= cs.Proposal.POLRound {
+			logger.Debug("prevote step: ProposalBlock is valid and already received a 2/3 majority in a round; prevoting the proposal")
+			cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+			return
+		}
+		if cs.ProposalBlock.HashesTo(cs.LockedBlock.Hash()) {
+			logger.Debug("prevote step: ProposalBlock is valid and matches our locked block; prevoting the proposal")
+			cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+			return
+		}
+	}
+
+	logger.Debug("prevote step: ProposalBlock is valid but did not receive a majority in a round; prevoting nil")
+	cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 }
 
 // Enter: any +2/3 prevotes at next round.
