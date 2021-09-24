@@ -35,7 +35,7 @@ func InjectEvidence(ctx context.Context, testnet *e2e.Testnet, amount int) error
 	for _, idx := range rand.Perm(len(testnet.Nodes)) {
 		targetNode = testnet.Nodes[idx]
 
-		if targetNode.Mode == e2e.ModeSeed {
+		if targetNode.Mode == e2e.ModeSeed || targetNode.Mode == e2e.ModeLight {
 			targetNode = nil
 			continue
 		}
