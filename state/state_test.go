@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -1169,11 +1170,15 @@ func TestState_StateID(t *testing.T) {
 
 	state := sm.State{
 		LastBlockHeight: 2,
-
-		AppHash: []byte("Some app hash"),
 	}
+	state.AppHash = make([]byte, crypto.DefaultAppHashSize)
+	want := tmrand.Bytes(32)
+	copy(state.AppHash, want)
 
 	stateID := state.StateID()
 	assert.Equal(t, int64(2), stateID.Height)
-	assert.Equal(t, "Some app hash", string(stateID.LastAppHash))
+	assert.EqualValues(t, want, stateID.LastAppHash)
+
+	err := stateID.ValidateBasic()
+	assert.NoError(t, err, "StateID validation failed")
 }

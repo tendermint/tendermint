@@ -61,6 +61,12 @@ type cleanupFunc func()
 var (
 	config                *cfg.Config // NOTE: must be reset for each _test.go file
 	consensusReplayConfig *cfg.Config
+	genesisAppHash        = tmbytes.HexBytes{ // read-only, do not modify
+		0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00,
+		0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00,
+		0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00,
+		0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00,
+	}
 )
 
 func ensureDir(dir string, mode os.FileMode) {
@@ -1010,7 +1016,7 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 		InitialProposalCoreChainLock: coreChainLock.ToProto(),
 		ThresholdPublicKey:           thresholdPublicKey,
 		QuorumHash:                   quorumHash,
-		AppHash:                      tmrand.Bytes(crypto.DefaultAppHashSize),
+		AppHash:                      genesisAppHash,
 	}, privValidators
 }
 

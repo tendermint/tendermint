@@ -254,8 +254,11 @@ func txAsUint64(tx []byte) uint64 {
 func (app *CounterApplication) Commit() abci.ResponseCommit {
 	app.mempoolTxCount = app.txCount
 	if app.txCount == 0 {
-		return abci.ResponseCommit{}
+		return abci.ResponseCommit{
+			Data: genesisAppHash,
+		}
 	}
+
 	hash := make([]byte, 32)
 	binary.BigEndian.PutUint64(hash, uint64(app.txCount))
 	return abci.ResponseCommit{Data: hash}
