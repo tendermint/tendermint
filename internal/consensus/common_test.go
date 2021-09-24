@@ -547,14 +547,6 @@ func ensureNoNewRoundStep(t *testing.T, stepCh <-chan tmpubsub.Message) {
 		"We should be stuck waiting, not receiving NewRoundStep event")
 }
 
-func ensureNoNewUnlock(t *testing.T, unlockCh <-chan tmpubsub.Message) {
-	t.Helper()
-	ensureNoNewEvent(t,
-		unlockCh,
-		ensureTimeout,
-		"We should be stuck waiting, not receiving Unlock event")
-}
-
 func ensureNoNewTimeout(t *testing.T, stepCh <-chan tmpubsub.Message, timeout int64) {
 	t.Helper()
 	timeoutDuration := time.Duration(timeout*10) * time.Nanosecond
@@ -653,10 +645,16 @@ func ensureNewBlockHeader(t *testing.T, blockCh <-chan tmpubsub.Message, height 
 	}
 }
 
-func ensureNewUnlock(t *testing.T, unlockCh <-chan tmpubsub.Message, height int64, round int32) {
+func ensureLock(t *testing.T, lockCh <-chan tmpubsub.Message, height int64, round int32) {
 	t.Helper()
-	ensureNewEvent(t, unlockCh, height, round, ensureTimeout,
-		"Timeout expired while waiting for NewUnlock event")
+	ensureNewEvent(t, lockCh, height, round, ensureTimeout,
+		"Timeout expired while waiting for LockValue event")
+}
+
+func ensureRelock(t *testing.T, relockCh <-chan tmpubsub.Message, height int64, round int32) {
+	t.Helper()
+	ensureNewEvent(t, relockCh, height, round, ensureTimeout,
+		"Timeout expired while waiting for RelockValue event")
 }
 
 func ensureProposal(t *testing.T, proposalCh <-chan tmpubsub.Message, height int64, round int32, propID types.BlockID) {
