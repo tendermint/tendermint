@@ -21,7 +21,7 @@ func CanonicalizeBlockID(bid tmproto.BlockID) *tmproto.CanonicalBlockID {
 		panic(err)
 	}
 	var cbid *tmproto.CanonicalBlockID
-	if rbid == nil || rbid.IsZero() {
+	if rbid == nil || rbid.IsNil() {
 		cbid = nil
 	} else {
 		cbid = &tmproto.CanonicalBlockID{

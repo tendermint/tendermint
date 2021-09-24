@@ -382,7 +382,6 @@ func TestEventBusPublish(t *testing.T) {
 	require.NoError(t, eventBus.PublishEventNewRound(types.EventDataNewRound{}))
 	require.NoError(t, eventBus.PublishEventCompleteProposal(types.EventDataCompleteProposal{}))
 	require.NoError(t, eventBus.PublishEventPolka(types.EventDataRoundState{}))
-	require.NoError(t, eventBus.PublishEventUnlock(types.EventDataRoundState{}))
 	require.NoError(t, eventBus.PublishEventRelock(types.EventDataRoundState{}))
 	require.NoError(t, eventBus.PublishEventLock(types.EventDataRoundState{}))
 	require.NoError(t, eventBus.PublishEventValidatorSetUpdates(types.EventDataValidatorSetUpdates{}))
@@ -488,7 +487,6 @@ var events = []string{
 	types.EventTimeoutProposeValue,
 	types.EventCompleteProposalValue,
 	types.EventPolkaValue,
-	types.EventUnlockValue,
 	types.EventLockValue,
 	types.EventRelockValue,
 	types.EventTimeoutWaitValue,
@@ -509,7 +507,6 @@ var queries = []tmpubsub.Query{
 	types.EventQueryTimeoutPropose,
 	types.EventQueryCompleteProposal,
 	types.EventQueryPolka,
-	types.EventQueryUnlock,
 	types.EventQueryLock,
 	types.EventQueryRelock,
 	types.EventQueryTimeoutWait,

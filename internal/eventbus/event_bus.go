@@ -202,10 +202,6 @@ func (b *EventBus) PublishEventPolka(data types.EventDataRoundState) error {
 	return b.Publish(types.EventPolkaValue, data)
 }
 
-func (b *EventBus) PublishEventUnlock(data types.EventDataRoundState) error {
-	return b.Publish(types.EventUnlockValue, data)
-}
-
 func (b *EventBus) PublishEventRelock(data types.EventDataRoundState) error {
 	return b.Publish(types.EventRelockValue, data)
 }
