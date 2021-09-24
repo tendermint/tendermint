@@ -59,7 +59,7 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 		case <-ctx.Done():
 			if success == 0 {
 				return fmt.Errorf("failed to submit transactions in %s by %d workers",
-					concurrency, time.Since(started))
+					time.Since(started), concurrency)
 			}
 
 			// TODO perhaps allow test networks to
