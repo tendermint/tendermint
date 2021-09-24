@@ -95,7 +95,7 @@ func (env *Environment) BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*
 					CheckTx: *r,
 					Hash:    tx.Hash(),
 				}, fmt.Errorf("timeout waiting for commit of tx %s (%s)",
-					tx.String(), time.Since(startAt))
+					tx.Hash(), time.Since(startAt))
 		case <-timer.C:
 			txres, err := env.Tx(ctx, tx.Hash(), false)
 			if err != nil {
