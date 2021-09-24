@@ -112,8 +112,8 @@ func NewCLI() *CLI {
 			// TODO allow the load generator to report
 			// successful transactions to avoid needing
 			// this sleep.
-			if time.Since(startAt) < 15*time.Second {
-				time.Sleep(15*time.Second - time.Since(startAt))
+			if rest := time.Since(startAt); rest < 15*time.Second {
+				time.Sleep(15*time.Second - rest)
 			}
 
 			loadCancel()
