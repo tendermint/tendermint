@@ -1332,7 +1332,7 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 	}
 
 	/*
-		28:	upon <PROPOSAL, hp, roundp, v, vr> from proposer(hp, roundp) AND 2f + 1 <PREVOTE, hp, vr, id(v)> while
+		28: upon <PROPOSAL, hp, roundp, v, vr> from proposer(hp, roundp) AND 2f + 1 <PREVOTE, hp, vr, id(v)> while
 		stepp = propose && (vr ≥ 0 && vr < roundp) do
 		29: if valid(v) && (lockedRoundp ≤ vr || lockedValuep = v) then
 		30: broadcast <PREVOTE, hp, roundp, id(v)>
