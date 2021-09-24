@@ -1483,6 +1483,135 @@ func TestStateLock_POLSafety2(t *testing.T) {
 
 }
 
+func TestState_PrevotePOLFromPreviousRound(t *testing.T) {
+	config := configSetup(t)
+
+	cs1, vss := randState(config, 4)
+	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
+	height, round := cs1.Height, cs1.Round
+
+	partSize := types.BlockPartSizeBytes
+
+	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
+	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
+	pv1, err := cs1.privValidator.GetPubKey(context.Background())
+	require.NoError(t, err)
+	addr := pv1.Address()
+	voteCh := subscribeToVoter(cs1, addr)
+	lockCh := subscribe(cs1.eventBus, types.EventQueryLock)
+	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
+
+	/*
+		Round 0:
+		cs1 creates a proposal for block B.
+		Send a prevote for B from each of the validators to cs1.
+		Send a precommit for nil from all of the validators to cs1.
+
+		This ensures that cs1 will lock on B in this round but not precommit it.
+	*/
+	t.Log("### Starting Round 0")
+
+	startTestRound(cs1, height, round)
+
+	ensureNewRound(t, newRoundCh, height, round)
+	ensureNewProposal(t, proposalCh, height, round)
+	rs := cs1.GetRoundState()
+	theBlockHash := rs.ProposalBlock.Hash()
+	theBlockParts := rs.ProposalBlockParts.Header()
+
+	ensurePrevote(t, voteCh, height, round)
+
+	signAddVotes(config, cs1, tmproto.PrevoteType, theBlockHash, theBlockParts, vs2, vs3, vs4)
+
+	// check that the validator generates a Lock event.
+	ensureLock(t, lockCh, height, round)
+
+	// the proposed block should now be locked and our precommit added.
+	ensurePrecommit(t, voteCh, height, round)
+	validatePrecommit(t, cs1, round, round, vss[0], theBlockHash, theBlockHash)
+
+	// add precommits from the rest of the validators.
+	signAddVotes(config, cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
+
+	// timeout to new round.
+	ensureNewTimeout(t, timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
+
+	/*
+		Round 1:
+		Create a block, D but do not send a proposal for it to cs1.
+		Send a prevote for D from each of the validators to cs1 so that cs1 sees a POL.
+		Send a precommit for nil from all of the validtors to cs1.
+
+		cs1 has now seen greater than 2/3 of the voting power prevote D in this round
+		but cs1 did not see the proposal for D in this round so it will not prevote or precommit it.
+	*/
+	t.Log("### Starting Round 1")
+	incrementRound(vs2, vs3, vs4)
+	round++
+	// Generate a new proposal block.
+	cs2 := newState(cs1.state, vs2, kvstore.NewApplication())
+	cs2.ValidRound = 1
+	propR1, propBlockR1 := decideProposal(t, cs2, vs2, vs2.Height, round)
+	t.Log(propR1.POLRound)
+	propBlockR1Parts := propBlockR1.MakePartSet(partSize)
+	propBlockR1Hash := propBlockR1.Hash()
+	require.NotEqual(t, propBlockR1Hash, theBlockHash)
+
+	ensureNewRound(t, newRoundCh, height, round)
+
+	signAddVotes(config, cs1, tmproto.PrevoteType, propBlockR1Hash, propBlockR1Parts.Header(), vs2, vs3, vs4)
+
+	ensurePrevote(t, voteCh, height, round)
+	validatePrevote(t, cs1, round, vss[0], nil)
+
+	signAddVotes(config, cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
+
+	ensurePrecommit(t, voteCh, height, round)
+
+	// timeout to new round.
+	ensureNewTimeout(t, timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
+
+	/*
+		Round 2:
+		Create a new proposal for D, the same block from Round 1.
+		cs1 already saw greater than 2/3 of the voting power on the network vote for
+		D in a previous round, so it should prevote D once it receives a proposal for it.
+
+		cs1 does not need to receive prevotes from other validators in this round in order
+		for it to prevote vote for D in this round.
+	*/
+	t.Log("### Starting Round 2")
+	incrementRound(vs2, vs3, vs4)
+	round++
+	propBlockID := types.BlockID{Hash: propBlockR1Hash, PartSetHeader: propBlockR1Parts.Header()}
+	propR2 := types.NewProposal(height, round, 1, propBlockID)
+	p := propR2.ToProto()
+	if err := vs3.SignProposal(context.Background(), cs1.state.ChainID, p); err != nil {
+		t.Fatalf("error signing proposal: %s", err)
+	}
+	propR2.Signature = p.Signature
+	if err := cs1.SetProposalAndBlock(propR2, propBlockR1, propBlockR1Parts, ""); err != nil {
+		t.Fatal(err)
+	}
+
+	ensureNewRound(t, newRoundCh, height, round)
+
+	if err := cs1.SetProposalAndBlock(propR1, propBlockR1, propBlockR1Parts, "some peer"); err != nil {
+		t.Fatal(err)
+	}
+
+	ensureNewProposal(t, proposalCh, height, round)
+
+	ensurePrevote(t, voteCh, height, round)
+	validatePrevote(t, cs1, round, vss[0], propBlockR1Hash)
+
+	signAddVotes(config, cs1, tmproto.PrevoteType, propBlockR1Hash, propBlockR1Parts.Header(), vs2, vs3, vs4)
+
+	ensurePrecommit(t, voteCh, height, round)
+
+	validatePrecommit(t, cs1, round, round, vss[0], propBlockR1Hash, propBlockR1Hash)
+}
+
 // 4 vals.
 // polka P0 at R0 for B0. We lock B0 on P0 at R0.
 
