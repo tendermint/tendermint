@@ -537,6 +537,7 @@ func TestStateLockNoPOL(t *testing.T) {
 	cs2, _ := randState(2) // needed so generated block is different than locked block
 	// Since the quorum hash is also part of the sign ID we must make sure it's the same
 	cs2.LastValidators.QuorumHash = cs1.LastValidators.QuorumHash
+
 	_, valSet := cs1.GetValidatorSet()
 	cs2.Validators.QuorumHash = valSet.QuorumHash
 	// before we time out into new round, set next proposal block
