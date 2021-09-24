@@ -1,10 +1,10 @@
-all: node docker generator runner tests
+all: docker generator runner tests
 
 docker:
 	docker build --tag tendermint/e2e-node -f docker/Dockerfile ../..
 
 node:
-	go build -o build/node ./node
+	go build -o build/node -tags badgerdb,boltdb,cleveldb,rocksdb ./node
 
 generator:
 	go build -o build/generator ./generator
@@ -15,4 +15,4 @@ runner:
 tests:
 	go test -o build/tests ./tests
 
-.PHONY: all app docker generator runner tests node
+.PHONY: all docker generator runner tests node
