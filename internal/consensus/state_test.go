@@ -1484,6 +1484,9 @@ func TestStateLock_POLSafety2(t *testing.T) {
 
 }
 
+// TestState_PrevotePOLFromPreviousRound tests that a validator will prevote
+// for a block if it is locked on a different block but saw a POL for the block
+// it is not locked on in a previous round.
 func TestState_PrevotePOLFromPreviousRound(t *testing.T) {
 	config := configSetup(t)
 
@@ -1578,8 +1581,11 @@ func TestState_PrevotePOLFromPreviousRound(t *testing.T) {
 		cs1 already saw greater than 2/3 of the voting power on the network vote for
 		D in a previous round, so it should prevote D once it receives a proposal for it.
 
-		cs1 does not need to receive prevotes from other validators in this round in order
-		for it to prevote vote for D in this round.
+		cs1 does not need to receive prevotes from other validators before the proposal
+		in this round. It will still prevote the block.
+
+		Send cs1 prevotes for nil and check that it still prevotes its locked block
+		and not the block that it prevoted.
 	*/
 	t.Log("### Starting Round 2")
 	incrementRound(vs2, vs3, vs4)
@@ -1591,26 +1597,27 @@ func TestState_PrevotePOLFromPreviousRound(t *testing.T) {
 		t.Fatalf("error signing proposal: %s", err)
 	}
 	propR2.Signature = p.Signature
+
+	// cs1 receives a proposal for D, the block that received a POL in round 1.
 	if err := cs1.SetProposalAndBlock(propR2, propBlockR1, propBlockR1Parts, ""); err != nil {
 		t.Fatal(err)
 	}
 
 	ensureNewRound(t, newRoundCh, height, round)
 
-	if err := cs1.SetProposalAndBlock(propR1, propBlockR1, propBlockR1Parts, "some peer"); err != nil {
-		t.Fatal(err)
-	}
-
 	ensureNewProposal(t, proposalCh, height, round)
 
+	// We should now prevote this block, despite being locked on the block from
+	// round 0.
 	ensurePrevote(t, voteCh, height, round)
 	validatePrevote(t, cs1, round, vss[0], propBlockR1Hash)
 
-	signAddVotes(config, cs1, tmproto.PrevoteType, propBlockR1Hash, propBlockR1Parts.Header(), vs2, vs3, vs4)
+	signAddVotes(config, cs1, tmproto.PrevoteType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
+	// cs1 did not receive a POL within this round, so it should remain locked
+	// on the block from round 0.
 	ensurePrecommit(t, voteCh, height, round)
-
-	validatePrecommit(t, cs1, round, round, vss[0], propBlockR1Hash, propBlockR1Hash)
+	validatePrecommit(t, cs1, round, 0, vss[0], nil, theBlockHash)
 }
 
 // 4 vals.
