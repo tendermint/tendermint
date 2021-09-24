@@ -2,7 +2,6 @@ package privval
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/dashevo/dashd-go/btcjson"
 
@@ -66,13 +65,19 @@ func DefaultValidationRequestHandler(
 		vote := r.SignVoteRequest.Vote
 		voteQuorumHash := r.SignVoteRequest.QuorumHash
 		voteQuorumType := r.SignVoteRequest.QuorumType
-		stateID := r.SignVoteRequest.GetStateId()
-		if stateID == nil || reflect.DeepEqual(*stateID, tmproto.StateID{}) {
+		stateIDProto := r.SignVoteRequest.GetStateId()
+
+		// Convert and validate StateID
+		stateID, err := types.StateIDFromProto(stateIDProto)
+		if err == nil {
+			err = stateID.ValidateBasic()
+		}
+		if err != nil {
 			res = mustWrapMsg(&privvalproto.SignedVoteResponse{
 				Vote: tmproto.Vote{},
 				Error: &privvalproto.RemoteSignerError{
 					Code:        0,
-					Description: "State ID not provided"},
+					Description: fmt.Sprintf("Cannot parse State ID: %s", err.Error())},
 			})
 			break
 		}

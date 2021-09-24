@@ -580,7 +580,7 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 	vote2 := *vote
 	blockSig2, err := privKey.SignDigest(VoteBlockSignBytes("EpsilonEridani", v))
 	require.NoError(t, err)
-	stateSig2, err := privKey.SignDigest(StateIDSignBytesProto("EpsilonEridani", stateID.ToProto()))
+	stateSig2, err := privKey.SignDigest(stateID.SignBytes("EpsilonEridani"))
 	require.NoError(t, err)
 	vote2.BlockSignature = blockSig2
 	vote2.StateSignature = stateSig2
@@ -634,14 +634,14 @@ func TestValidatorSet_VerifyCommit_CheckThresholdSignatures(t *testing.T) {
 		stateID = RandStateID().WithHeight(h - 1)
 	)
 
-	voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, 4, stateID.ToProto())
+	voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, 4, stateID)
 	commit, err := MakeCommit(blockID, stateID, h, 0, voteSet, vals)
 	require.NoError(t, err)
 
 	// malleate threshold sigs signature
 	vote := voteSet.GetByIndex(3)
 	v := vote.ToProto()
-	err = vals[3].SignVote("CentaurusA", valSet.QuorumType, valSet.QuorumHash, v, stateID.ToProto(), nil)
+	err = vals[3].SignVote("CentaurusA", valSet.QuorumType, valSet.QuorumHash, v, stateID, nil)
 	require.NoError(t, err)
 	commit.ThresholdBlockSignature = v.BlockSignature
 	commit.ThresholdStateSignature = v.StateSignature

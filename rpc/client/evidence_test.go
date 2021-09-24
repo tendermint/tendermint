@@ -32,7 +32,7 @@ var defaultTestTime = time.Date(2018, 10, 10, 8, 20, 13, 695936996, time.UTC)
 
 func newEvidence(t *testing.T, val *privval.FilePV,
 	vote *types.Vote, vote2 *types.Vote,
-	chainID string, stateID tmproto.StateID,
+	chainID string, stateID types.StateID,
 	quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) *types.DuplicateVoteEvidence {
 
 	var err error
@@ -49,10 +49,10 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	vote2.BlockSignature, err = privKey.SignDigest(types.VoteBlockSignID(chainID, v2, quorumType, quorumHash))
 	require.NoError(t, err)
 
-	vote.StateSignature, err = privKey.SignDigest(types.StateIDSignIDProto(chainID, stateID, quorumType, quorumHash))
+	vote.StateSignature, err = privKey.SignDigest(stateID.SignID(chainID, quorumType, quorumHash))
 	require.NoError(t, err)
 
-	vote2.StateSignature, err = privKey.SignDigest(types.StateIDSignIDProto(chainID, stateID, quorumType, quorumHash))
+	vote2.StateSignature, err = privKey.SignDigest(stateID.SignID(chainID, quorumType, quorumHash))
 	require.NoError(t, err)
 
 	validator := types.NewValidator(privKey.PubKey(), 100, val.Key.ProTxHash)
@@ -87,7 +87,7 @@ func makeEvidences(
 
 	vote2 := vote
 	vote2.BlockID.Hash = tmhash.Sum([]byte("blockhash2"))
-	correct = newEvidence(t, val, &vote, &vote2, chainID, stateID.ToProto(), quorumType, quorumHash)
+	correct = newEvidence(t, val, &vote, &vote2, chainID, stateID, quorumType, quorumHash)
 
 	fakes = make([]*types.DuplicateVoteEvidence, 0)
 
@@ -95,34 +95,34 @@ func makeEvidences(
 	{
 		v := vote2
 		v.ValidatorProTxHash = []byte("some_pro_tx_hash")
-		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID.ToProto(), quorumType, quorumHash))
+		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID, quorumType, quorumHash))
 	}
 
 	// different height
 	{
 		v := vote2
 		v.Height = vote.Height + 1
-		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID.ToProto(), quorumType, quorumHash))
+		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID, quorumType, quorumHash))
 	}
 
 	// different round
 	{
 		v := vote2
 		v.Round = vote.Round + 1
-		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID.ToProto(), quorumType, quorumHash))
+		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID, quorumType, quorumHash))
 	}
 
 	// different type
 	{
 		v := vote2
 		v.Type = tmproto.PrecommitType
-		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID.ToProto(), quorumType, quorumHash))
+		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID, quorumType, quorumHash))
 	}
 
 	// exactly same vote
 	{
 		v := vote
-		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID.ToProto(), quorumType, quorumHash))
+		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID, quorumType, quorumHash))
 	}
 
 	return correct, fakes

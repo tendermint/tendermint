@@ -188,7 +188,7 @@ func VoteBlockRequestIDProto(vote *tmproto.Vote) []byte {
 
 func (vote *Vote) Verify(
 	chainID string, quorumType btcjson.LLMQType, quorumHash []byte,
-	pubKey crypto.PubKey, proTxHash crypto.ProTxHash, stateID tmproto.StateID) ([]byte, []byte, error) {
+	pubKey crypto.PubKey, proTxHash crypto.ProTxHash, stateID StateID) ([]byte, []byte, error) {
 	if !bytes.Equal(proTxHash, vote.ValidatorProTxHash) {
 		return nil, nil, ErrVoteInvalidValidatorProTxHash
 	}
@@ -221,10 +221,10 @@ func (vote *Vote) Verify(
 	stateSignID := []byte(nil)
 	// we must verify the stateID but only if the blockID isn't nil
 	if vote.BlockID.Hash != nil {
-		voteStateSignBytes := StateIDSignBytesProto(chainID, stateID)
+		voteStateSignBytes := stateID.SignBytes(chainID)
 		stateMessageHash := crypto.Sha256(voteStateSignBytes)
 
-		stateRequestID := StateIDRequestIDProto(stateID)
+		stateRequestID := stateID.SignRequestID()
 
 		stateSignID = crypto.SignID(
 			quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestID),

@@ -44,7 +44,7 @@ func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bo
 
 // signAddVoteForStateID signs a vote using specific StateID and adds it to voteSet
 func signAddVoteForStateID(privVal PrivValidator, vote *Vote, voteSet *VoteSet,
-	stateID tmproto.StateID) (signed bool, err error) {
+	stateID StateID) (signed bool, err error) {
 	v := vote.ToProto()
 
 	err = privVal.SignVote(voteSet.ChainID(), voteSet.valSet.QuorumType, voteSet.valSet.QuorumHash,
@@ -82,9 +82,8 @@ func MakeVote(
 		BlockID:            blockID,
 	}
 	v := vote.ToProto()
-	sid := stateID.ToProto()
 
-	if err := privVal.SignVote(chainID, valSet.QuorumType, valSet.QuorumHash, v, sid, nil); err != nil {
+	if err := privVal.SignVote(chainID, valSet.QuorumType, valSet.QuorumHash, v, stateID, nil); err != nil {
 		return nil, err
 	}
 

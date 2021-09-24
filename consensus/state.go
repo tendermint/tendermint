@@ -718,7 +718,7 @@ func (cs *State) updateToState(state sm.State, commit *types.Commit, logger log.
 	cs.ValidBlock = nil
 	cs.ValidBlockParts = nil
 	cs.Commit = nil
-	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, stateID.ToProto(), validators)
+	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, stateID, validators)
 	cs.CommitRound = -1
 	cs.LastValidators = state.LastValidators
 	cs.TriggeredTimeoutPrecommit = false
@@ -2568,7 +2568,7 @@ func (cs *State) signVote(
 	// fmt.Printf("validators for signing vote are %v\n", cs.state.Validators)
 	err := cs.privValidator.SignVote(
 		cs.state.ChainID, cs.state.Validators.QuorumType, cs.state.Validators.QuorumHash,
-		protoVote, stateID.ToProto(), cs.Logger)
+		protoVote, stateID, cs.Logger)
 	vote.BlockSignature = protoVote.BlockSignature
 	vote.StateSignature = protoVote.StateSignature
 

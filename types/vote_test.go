@@ -174,7 +174,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	signStateID := stateID.SignID("test_chain_id", quorumType, quorumHash)
 
 	// sign it
-	err = privVal.SignVote("test_chain_id", quorumType, quorumHash, v, stateID.ToProto(), nil)
+	err = privVal.SignVote("test_chain_id", quorumType, quorumHash, v, stateID, nil)
 	require.NoError(t, err)
 
 	// verify the same vote
@@ -240,13 +240,13 @@ func TestVoteVerify(t *testing.T) {
 
 	stateID := RandStateID().WithHeight(vote.Height - 1)
 	_, _, err = vote.Verify("test_chain_id", quorumType, quorumHash, bls12381.GenPrivKey().PubKey(),
-		crypto.RandProTxHash(), stateID.ToProto())
+		crypto.RandProTxHash(), stateID)
 
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrVoteInvalidValidatorProTxHash, err)
 	}
 
-	_, _, err = vote.Verify("test_chain_id", quorumType, quorumHash, pubkey, proTxHash, stateID.ToProto())
+	_, _, err = vote.Verify("test_chain_id", quorumType, quorumHash, pubkey, proTxHash, stateID)
 	if assert.Error(t, err) {
 		assert.True(
 			t, strings.HasPrefix(err.Error(), ErrVoteInvalidBlockSignature.Error()),
@@ -294,7 +294,7 @@ func TestVoteValidateBasic(t *testing.T) {
 			vote := examplePrecommit()
 			v := vote.ToProto()
 			stateID := RandStateID().WithHeight(v.Height - 1)
-			err := privVal.SignVote("test_chain_id", 0, quorumHash, v, stateID.ToProto(), nil)
+			err := privVal.SignVote("test_chain_id", 0, quorumHash, v, stateID, nil)
 			vote.BlockSignature = v.BlockSignature
 			vote.StateSignature = v.StateSignature
 			require.NoError(t, err)
@@ -310,7 +310,7 @@ func TestVoteProtobuf(t *testing.T) {
 	vote := examplePrecommit()
 	v := vote.ToProto()
 	stateID := RandStateID().WithHeight(v.Height - 1)
-	err := privVal.SignVote("test_chain_id", 0, quorumHash, v, stateID.ToProto(), nil)
+	err := privVal.SignVote("test_chain_id", 0, quorumHash, v, stateID, nil)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
 	require.NoError(t, err)

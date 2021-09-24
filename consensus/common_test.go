@@ -129,7 +129,7 @@ func (vs *validatorStub) signVote(
 	}
 	v := vote.ToProto()
 
-	err = vs.PrivValidator.SignVote(config.ChainID(), quorumType, quorumHash, v, stateID.ToProto(), nil)
+	err = vs.PrivValidator.SignVote(config.ChainID(), quorumType, quorumHash, v, stateID, nil)
 
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature

@@ -483,7 +483,7 @@ func (pv *FilePV) GetProTxHash() (crypto.ProTxHash, error) {
 // chainID. Implements PrivValidator.
 func (pv *FilePV) SignVote(
 	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
-	vote *tmproto.Vote, stateID tmproto.StateID, logger log.Logger) error {
+	vote *tmproto.Vote, stateID types.StateID, logger log.Logger) error {
 	if err := pv.signVote(chainID, quorumType, quorumHash, vote, stateID); err != nil {
 		return fmt.Errorf("error signing vote: %v", err)
 	}
@@ -555,7 +555,7 @@ func (pv *FilePV) UpdatePrivateKey(
 // a previously signed vote (ie. we crashed after signing but before the vote hit the WAL).
 func (pv *FilePV) signVote(
 	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
-	vote *tmproto.Vote, stateID tmproto.StateID,
+	vote *tmproto.Vote, stateID types.StateID,
 ) error {
 	height, round, step := vote.Height, vote.Round, voteToStep(vote)
 
@@ -573,11 +573,11 @@ func (pv *FilePV) signVote(
 
 	blockSignID := types.VoteBlockSignID(chainID, vote, quorumType, quorumHash)
 
-	stateSignID := types.StateIDSignIDProto(chainID, stateID, quorumType, quorumHash)
+	stateSignID := stateID.SignID(chainID, quorumType, quorumHash)
 
 	blockSignBytes := types.VoteBlockSignBytes(chainID, vote)
 
-	stateSignBytes := types.StateIDSignBytesProto(chainID, stateID)
+	stateSignBytes := stateID.SignBytes(chainID)
 
 	// We might crash before writing to the wal,
 	// causing us to try to re-sign for the same HRS.

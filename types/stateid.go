@@ -71,18 +71,50 @@ func (stateID StateID) Signable() Signable {
 }
 
 // SignBytes returns bytes that should be signed
+// TODO why we don't simply use stateID.Marshal() ?
 func (stateID StateID) SignBytes(chainID string) []byte {
+	bz := make([]byte, 8)
+	binary.LittleEndian.PutUint64(bz, uint64(stateID.Height))
 
-	return StateIDSignBytesProto(chainID, stateID.ToProto())
+	lastAppHash := make([]byte, len(stateID.LastAppHash))
+	copy(lastAppHash, stateID.LastAppHash)
+	bz = append(bz, lastAppHash...)
+	return bz
 }
 
 // SignID returns sign ID for provided state
 func (stateID StateID) SignID(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
-	return StateIDSignIDProto(chainID, stateID.ToProto(), quorumType, quorumHash)
+
+	stateSignBytes := stateID.SignBytes(chainID)
+
+	if stateSignBytes == nil {
+		return nil
+	}
+
+	stateMessageHash := crypto.Sha256(stateSignBytes)
+
+	stateRequestID := stateID.SignRequestID()
+
+	stateSignID := crypto.SignID(
+		quorumType,
+		bls12381.ReverseBytes(quorumHash),
+		bls12381.ReverseBytes(stateRequestID),
+		bls12381.ReverseBytes(stateMessageHash),
+	)
+
+	return stateSignID
+
 }
 
 func (stateID StateID) SignRequestID() []byte {
-	return StateIDRequestIDProto(stateID.ToProto())
+	requestIDMessage := []byte("dpsvote")
+	heightByteArray := make([]byte, 8)
+
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(stateID.Height))
+
+	requestIDMessage = append(requestIDMessage, heightByteArray...)
+
+	return crypto.Sha256(requestIDMessage)
 }
 
 // String returns a human readable string representation of the StateID.
@@ -111,8 +143,6 @@ func (stateID StateID) WithHeight(height int64) StateID {
 	return ret
 }
 
-// ******** PROTOBUF FUNCTIONS ********* //
-
 // FromProto sets a protobuf BlockID to the given pointer.
 // It returns an error if the block id is invalid.
 func StateIDFromProto(sID *tmproto.StateID) (*StateID, error) {
@@ -126,53 +156,4 @@ func StateIDFromProto(sID *tmproto.StateID) (*StateID, error) {
 	stateID.Height = sID.Height
 
 	return stateID, stateID.ValidateBasic()
-}
-
-// StateIDSignBytesProto returns bytes that should be signed for provided protobuf StateID
-// See also: StateID.SignBytes()
-// TODO why we don't simply use stateID.Marshal() ?
-func StateIDSignBytesProto(chainID string, stateID tmproto.StateID) []byte {
-
-	bz := make([]byte, 8)
-	binary.LittleEndian.PutUint64(bz, uint64(stateID.Height))
-
-	lastAppHash := make([]byte, len(stateID.LastAppHash))
-	copy(lastAppHash, stateID.LastAppHash)
-	bz = append(bz, lastAppHash...)
-	return bz
-}
-
-// StateIDSignIDProto returns signID that should be used to sign the protobuf stateID
-func StateIDSignIDProto(chainID string, stateID tmproto.StateID,
-	quorumType btcjson.LLMQType, quorumHash []byte) []byte {
-
-	stateSignBytes := StateIDSignBytesProto(chainID, stateID)
-
-	if stateSignBytes == nil {
-		return nil
-	}
-
-	stateMessageHash := crypto.Sha256(stateSignBytes)
-
-	stateRequestID := StateIDRequestIDProto(stateID)
-
-	stateSignID := crypto.SignID(
-		quorumType,
-		bls12381.ReverseBytes(quorumHash),
-		bls12381.ReverseBytes(stateRequestID),
-		bls12381.ReverseBytes(stateMessageHash),
-	)
-
-	return stateSignID
-}
-
-func StateIDRequestIDProto(stateID tmproto.StateID) []byte {
-	requestIDMessage := []byte("dpsvote")
-	heightByteArray := make([]byte, 8)
-
-	binary.LittleEndian.PutUint64(heightByteArray, uint64(stateID.Height))
-
-	requestIDMessage = append(requestIDMessage, heightByteArray...)
-
-	return crypto.Sha256(requestIDMessage)
 }

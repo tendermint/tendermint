@@ -133,7 +133,7 @@ func makeVote(
 	}
 
 	vpb := v.ToProto()
-	err = val.SignVote(chainID, quorumType, quorumHash, vpb, stateID.ToProto(), nil)
+	err = val.SignVote(chainID, quorumType, quorumHash, vpb, stateID, nil)
 	if err != nil {
 		panic(err)
 	}

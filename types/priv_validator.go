@@ -37,7 +37,7 @@ type PrivValidator interface {
 
 	SignVote(
 		chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
-		vote *tmproto.Vote, stateID tmproto.StateID, logger log.Logger) error
+		vote *tmproto.Vote, stateID StateID, logger log.Logger) error
 	SignProposal(
 		chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
 		proposal *tmproto.Proposal) ([]byte, error)
@@ -213,7 +213,7 @@ func (pv *MockPV) GetHeight(quorumHash crypto.QuorumHash) (int64, error) {
 // SignVote implements PrivValidator.
 func (pv *MockPV) SignVote(
 	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
-	vote *tmproto.Vote, stateID tmproto.StateID, logger log.Logger) error {
+	vote *tmproto.Vote, stateID StateID, logger log.Logger) error {
 	useChainID := chainID
 	if pv.breakVoteSigning {
 		useChainID = "incorrect-chain-id"
@@ -239,7 +239,7 @@ func (pv *MockPV) SignVote(
 	vote.BlockSignature = blockSignature
 
 	if vote.BlockID.Hash != nil {
-		stateSignID := StateIDSignIDProto(useChainID, stateID, quorumType, quorumHash)
+		stateSignID := stateID.SignID(useChainID, quorumType, quorumHash)
 		stateSignature, err := privKey.SignDigest(stateSignID)
 		if err != nil {
 			return err
@@ -344,7 +344,7 @@ var ErroringMockPVErr = errors.New("erroringMockPV always returns an error")
 // SignVote Implements PrivValidator.
 func (pv *ErroringMockPV) SignVote(
 	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
-	vote *tmproto.Vote, stateID tmproto.StateID, logger log.Logger) error {
+	vote *tmproto.Vote, stateID StateID, logger log.Logger) error {
 	return ErroringMockPVErr
 }
 

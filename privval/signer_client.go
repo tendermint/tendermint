@@ -169,14 +169,16 @@ func (sc *SignerClient) GetHeight(quorumHash crypto.QuorumHash) (int64, error) {
 // SignVote requests a remote signer to sign a vote
 func (sc *SignerClient) SignVote(
 	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
-	vote *tmproto.Vote, stateID tmproto.StateID, logger log.Logger) error {
+	vote *tmproto.Vote, stateID types.StateID, logger log.Logger) error {
 	// fmt.Printf("--> sending request to sign vote (%d/%d) %v - %v", vote.Height, vote.Round, vote.BlockID, vote)
+	stateIDProto := stateID.ToProto()
+
 	voteRequest := privvalproto.SignVoteRequest{
 		Vote:       vote,
 		ChainId:    chainID,
 		QuorumType: int32(quorumType),
 		QuorumHash: quorumHash,
-		StateId:    &stateID,
+		StateId:    &stateIDProto,
 	}
 
 	response, err := sc.endpoint.SendRequest(mustWrapMsg(&voteRequest))

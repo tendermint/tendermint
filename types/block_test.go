@@ -40,7 +40,7 @@ func TestBlockAddEvidence(t *testing.T) {
 
 	coreChainLock := NewMockChainLock(1)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, stateID.ToProto())
+	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, stateID)
 	commit, err := MakeCommit(lastID, stateID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -63,7 +63,7 @@ func TestBlockValidateBasic(t *testing.T) {
 
 	stateID := RandStateID().WithHeight(h - 2)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, stateID.ToProto())
+	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, stateID)
 	commit, err := MakeCommit(lastID, stateID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -138,7 +138,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	h := int64(3)
 	stateID := RandStateID().WithHeight(h - 2)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, stateID.ToProto())
+	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, stateID)
 	commit, err := MakeCommit(lastID, stateID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -161,7 +161,7 @@ func TestBlockHashesTo(t *testing.T) {
 	h := int64(3)
 	stateID := RandStateID().WithHeight(h - 2)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, stateID.ToProto())
+	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, stateID)
 	commit, err := MakeCommit(lastID, stateID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -242,7 +242,7 @@ func TestCommit(t *testing.T) {
 	h := int64(3)
 	stateID := RandStateID().WithHeight(h - 2)
 
-	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, stateID.ToProto())
+	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, stateID)
 	commit, err := MakeCommit(lastID, stateID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -438,7 +438,7 @@ func randCommit(stateID StateID) *Commit {
 	lastID := makeBlockIDRandom()
 	height := stateID.Height + 1
 
-	voteSet, _, vals := randVoteSet(height, 1, tmproto.PrecommitType, 10, stateID.ToProto())
+	voteSet, _, vals := randVoteSet(height, 1, tmproto.PrecommitType, 10, stateID)
 	commit, err := MakeCommit(lastID, stateID, height, 1, voteSet, vals)
 	if err != nil {
 		panic(err)
@@ -548,7 +548,7 @@ func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		voteSet, valSet, vals := randVoteSet(height-1, round, tmproto.PrecommitType, tc.numValidators, stateID.ToProto())
+		voteSet, valSet, vals := randVoteSet(height-1, round, tmproto.PrecommitType, tc.numValidators, stateID)
 
 		vi := int32(0)
 		for n := range tc.blockIDs {

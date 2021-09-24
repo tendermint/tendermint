@@ -30,7 +30,7 @@ func TestPeerCatchupRounds(t *testing.T) {
 
 	stateID := types.StateID{}
 
-	hvs := NewHeightVoteSet(config.ChainID(), 1, stateID.ToProto(), valSet)
+	hvs := NewHeightVoteSet(config.ChainID(), 1, stateID, valSet)
 
 	vote999_0 := makeVoteHR(t, 1, 0, 999, privVals, valSet.QuorumType, valSet.QuorumHash, stateID)
 	added, err := hvs.AddVote(vote999_0, "peer1")
@@ -81,7 +81,7 @@ func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []ty
 	chainID := config.ChainID()
 
 	v := vote.ToProto()
-	err = privVal.SignVote(chainID, quorumType, quorumHash, v, stateID.ToProto(), nil)
+	err = privVal.SignVote(chainID, quorumType, quorumHash, v, stateID, nil)
 	if err != nil {
 		panic(fmt.Sprintf("Error signing vote: %v", err))
 	}

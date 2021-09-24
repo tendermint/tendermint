@@ -73,7 +73,7 @@ func TestResetValidator(t *testing.T) {
 	vote := newVote(privVal.Key.ProTxHash, 0, height, round, voteType, blockID, stateID)
 	quorumHash, err := privVal.GetFirstQuorumHash()
 	assert.NoError(t, err)
-	err = privVal.SignVote("mychainid", 0, quorumHash, vote.ToProto(), stateID.ToProto(), nil)
+	err = privVal.SignVote("mychainid", 0, quorumHash, vote.ToProto(), stateID, nil)
 	assert.NoError(t, err, "expected no error signing vote")
 
 	// priv val after signing is not same as empty
@@ -225,11 +225,11 @@ func TestSignVote(t *testing.T) {
 	v := vote.ToProto()
 	quorumHash, err := privVal.GetFirstQuorumHash()
 	assert.NoError(err)
-	err = privVal.SignVote("mychainid", 0, quorumHash, v, stateID.ToProto(), nil)
+	err = privVal.SignVote("mychainid", 0, quorumHash, v, stateID, nil)
 	assert.NoError(err, "expected no error signing vote")
 
 	// try to sign the same vote again; should be fine
-	err = privVal.SignVote("mychainid", 0, quorumHash, v, stateID.ToProto(), nil)
+	err = privVal.SignVote("mychainid", 0, quorumHash, v, stateID, nil)
 	assert.NoError(err, "expected no error on signing same vote")
 
 	// now try some bad votes
@@ -242,7 +242,7 @@ func TestSignVote(t *testing.T) {
 
 	for _, c := range cases {
 		cpb := c.ToProto()
-		err = privVal.SignVote("mychainid", 0, crypto.QuorumHash{}, cpb, stateID.ToProto(), nil)
+		err = privVal.SignVote("mychainid", 0, crypto.QuorumHash{}, cpb, stateID, nil)
 		assert.Error(err, "expected error on signing conflicting vote")
 	}
 
@@ -250,7 +250,7 @@ func TestSignVote(t *testing.T) {
 	blockSignature := vote.BlockSignature
 	stateSignature := vote.StateSignature
 
-	err = privVal.SignVote("mychainid", 0, crypto.QuorumHash{}, v, stateID.ToProto(), nil)
+	err = privVal.SignVote("mychainid", 0, crypto.QuorumHash{}, v, stateID, nil)
 	assert.NoError(err)
 	assert.Equal(blockSignature, vote.BlockSignature)
 	assert.Equal(stateSignature, vote.StateSignature)

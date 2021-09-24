@@ -64,7 +64,7 @@ type P2PID string
 type VoteSet struct {
 	chainID       string
 	height        int64
-	stateID       tmproto.StateID // ID of state for which this voting is executed
+	stateID       StateID // ID of state for which this voting is executed
 	round         int32
 	signedMsgType tmproto.SignedMsgType
 	valSet        *ValidatorSet
@@ -82,7 +82,7 @@ type VoteSet struct {
 
 // NewVoteSet constructs a new VoteSet struct used to accumulate votes for given height/round.
 func NewVoteSet(chainID string, height int64, round int32,
-	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet, stateID tmproto.StateID) *VoteSet {
+	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet, stateID StateID) *VoteSet {
 	if height == 0 {
 		panic("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
@@ -709,15 +709,12 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 	if voteSet.thresholdStateSig == nil {
 		panic("Cannot MakeCommit() unless a thresholdStateSig has been created")
 	}
-	sid, err := StateIDFromProto(&voteSet.stateID)
-	if err != nil {
-		panic("Cannot MakeCommit() due to invalid state id: " + err.Error())
-	}
+
 	return NewCommit(
 		voteSet.GetHeight(),
 		voteSet.GetRound(),
 		*voteSet.maj23,
-		*sid,
+		voteSet.stateID,
 		voteSet.valSet.QuorumHash,
 		voteSet.thresholdBlockSig,
 		voteSet.thresholdStateSig,

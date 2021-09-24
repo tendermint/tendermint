@@ -50,11 +50,11 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 
 	vote1 := makeVote(t, val, chainID, quorumType, quorumHash, 0, height, 2, 1, blockID, stateID)
 	v1 := vote1.ToProto()
-	err = val.SignVote(chainID, quorumType, quorumHash, v1, stateID.ToProto(), nil)
+	err = val.SignVote(chainID, quorumType, quorumHash, v1, stateID, nil)
 	require.NoError(t, err)
 	badVote := makeVote(t, val, chainID, quorumType, quorumHash, 0, height, 2, 1, blockID, stateID)
 	bv := badVote.ToProto()
-	err = val2.SignVote(chainID, quorumType, quorumHash, bv, stateID.ToProto(), nil)
+	err = val2.SignVote(chainID, quorumType, quorumHash, bv, stateID, nil)
 	require.NoError(t, err)
 
 	vote1.BlockSignature = v1.BlockSignature
@@ -170,7 +170,7 @@ func makeVote(
 	}
 
 	vpb := v.ToProto()
-	err = val.SignVote(chainID, quorumType, quorumHash, vpb, stateID.ToProto(), nil)
+	err = val.SignVote(chainID, quorumType, quorumHash, vpb, stateID, nil)
 	if err != nil {
 		panic(err)
 	}

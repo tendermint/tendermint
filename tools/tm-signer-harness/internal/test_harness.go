@@ -286,12 +286,12 @@ func (th *TestHarness) TestSignVote() error {
 			ValidatorProTxHash: tmhash.Sum([]byte("pro_tx_hash")),
 		}
 
-		stateID := types.RandStateID().WithHeight(vote.Height - 1).ToProto()
+		stateID := types.RandStateID().WithHeight(vote.Height - 1)
 
 		v := vote.ToProto()
 
 		voteBlockID := types.VoteBlockSignID(th.chainID, v, btcjson.LLMQType_5_60, th.quorumHash)
-		stateIDSignID := types.StateIDSignIDProto(th.chainID, stateID, btcjson.LLMQType_5_60, th.quorumHash)
+		stateIDSignID := stateID.SignID(th.chainID, btcjson.LLMQType_5_60, th.quorumHash)
 		// sign the vote
 		if err := th.signerClient.SignVote(th.chainID, btcjson.LLMQType_5_60, th.quorumHash, v, stateID, nil); err != nil {
 			th.logger.Error("FAILED: Signing of vote", "err", err)

@@ -88,7 +88,7 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, sw
 		}
 		p := precommit.ToProto()
 		err = cs.privValidator.SignVote(cs.state.ChainID, cs.Validators.QuorumType, cs.Validators.QuorumHash,
-			p, stateID.ToProto(), nil)
+			p, stateID, nil)
 		if err != nil {
 			t.Error(err)
 		}

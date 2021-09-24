@@ -327,7 +327,7 @@ func NewMockDuplicateVoteEvidenceWithValidator(
 		panic(err)
 	}
 
-	stateID := RandStateID().WithHeight(height - 1).ToProto()
+	stateID := RandStateID().WithHeight(height - 1)
 
 	proTxHash, _ := pv.GetProTxHash()
 	val := NewValidator(pubKey, DefaultDashVotingPower, proTxHash)
@@ -356,7 +356,7 @@ func NewMockDuplicateVoteEvidenceWithPrivValInValidatorSet(height int64, time ti
 	quorumHash crypto.QuorumHash) *DuplicateVoteEvidence {
 	proTxHash, _ := pv.GetProTxHash()
 
-	stateID := RandStateID().WithHeight(height - 1).ToProto()
+	stateID := RandStateID().WithHeight(height - 1)
 
 	voteA := makeMockVote(height, 0, 0, proTxHash, randBlockID())
 	vA := voteA.ToProto()

@@ -327,7 +327,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			state.Validators.QuorumType,
 			badPrivValQuorumHash,
 			g,
-			stateID.ToProto(),
+			stateID,
 			nil,
 		)
 		require.NoError(t, err, "height %d", height)
@@ -336,7 +336,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			state.Validators.QuorumType,
 			badPrivValQuorumHash,
 			b,
-			stateID.ToProto(),
+			stateID,
 			nil,
 		)
 		require.NoError(t, err, "height %d", height)

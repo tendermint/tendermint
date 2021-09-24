@@ -42,7 +42,7 @@ One for their LastPrecommits round, and another for the official commit round.
 type HeightVoteSet struct {
 	chainID string
 	height  int64
-	stateID tmproto.StateID // State ID describing current state (eg. previous height and previous app hash)
+	stateID types.StateID // State ID describing current state (eg. previous height and previous app hash)
 	valSet  *types.ValidatorSet
 
 	mtx               sync.Mutex
@@ -54,7 +54,7 @@ type HeightVoteSet struct {
 func NewHeightVoteSet(
 	chainID string,
 	height int64,
-	stateID tmproto.StateID,
+	stateID types.StateID,
 	valSet *types.ValidatorSet) *HeightVoteSet {
 	hvs := &HeightVoteSet{
 		chainID: chainID,
