@@ -2317,7 +2317,6 @@ func TestStateHalt1(t *testing.T) {
 	round++ // moving to the next round
 
 	ensureNewRound(t, newRoundCh, height, round)
-	rs = cs1.GetRoundState()
 
 	t.Log("### ONTO ROUND 1")
 	/*Round2
