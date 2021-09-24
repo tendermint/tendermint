@@ -63,13 +63,13 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 			// should error; however, for very short tests
 			// we shouldn't abort.
 			//
-			// The 2s cut off, is a rough guess based on
-			// the expected value of
-			// loadGenerateWaitTime. If the implementation
-			// of that function changes, then this might
-			// also need to change without more
-			// refactoring.
-			if success == 0 && time.Since(started) > 2*time.Second {
+			// The 5s cut off, is a rough guess based on
+			// the expected value of loadGenerateWaitTime
+			// and typical throughput of the load
+			// generation. If these implementations
+			// changes, then this might also need to
+			// change without more refactoring.
+			if success == 0 && time.Since(started) > 5*time.Second {
 				return errors.New("failed to submit any transactions")
 			}
 
@@ -141,9 +141,14 @@ func loadGenerateWaitTime(size int64) time.Duration {
 		baseJitter = rand.Int63n(max-min+1) + min // nolint: gosec
 		sizeFactor = size * int64(time.Millisecond)
 		sizeJitter = rand.Int63n(sizeFactor-min+1) + min // nolint: gosec
+		waitTime   = time.Duration(baseJitter + sizeJitter)
 	)
 
-	return time.Duration(baseJitter + sizeJitter)
+	if size == 1 {
+		return waitTime / 2
+	}
+
+	return waitTime
 }
 
 // loadProcess processes transactions
