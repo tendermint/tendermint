@@ -144,7 +144,7 @@ func TestVoteStateSignBytesTestVectors(t *testing.T) {
 			Height:      tc.height,
 			LastAppHash: tc.apphash,
 		}
-		got := VoteStateSignBytes(tc.chainID, sid.ToProto())
+		got := sid.SignBytes(tc.chainID)
 		assert.Equal(t, len(tc.want), len(got), "test case #%v: got unexpected sign bytes length for Vote.", i)
 		assert.Equal(t, tc.want, got, "test case #%v: got unexpected sign bytes for Vote.", i)
 	}
@@ -171,7 +171,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	stateID := RandStateID().WithHeight(vote.Height - 1)
 	quorumType := btcjson.LLMQType_5_60
 	signID := VoteBlockSignID("test_chain_id", v, quorumType, quorumHash)
-	signStateID := VoteStateSignID("test_chain_id", stateID.ToProto(), quorumType, quorumHash)
+	signStateID := stateID.SignID("test_chain_id", quorumType, quorumHash)
 
 	// sign it
 	err = privVal.SignVote("test_chain_id", quorumType, quorumHash, v, stateID.ToProto(), nil)
@@ -194,7 +194,7 @@ func TestVoteVerifySignature(t *testing.T) {
 
 	// verify the transmitted vote
 	newSignID := VoteBlockSignID("test_chain_id", precommit, quorumType, quorumHash)
-	newSignStateID := VoteStateSignID("test_chain_id", stateID.ToProto(), quorumType, quorumHash)
+	newSignStateID := stateID.SignID("test_chain_id", quorumType, quorumHash)
 	require.Equal(t, string(signID), string(newSignID))
 	require.Equal(t, string(signStateID), string(newSignStateID))
 	valid = pubkey.VerifySignatureDigest(newSignID, precommit.BlockSignature)

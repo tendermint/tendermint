@@ -573,11 +573,11 @@ func (pv *FilePV) signVote(
 
 	blockSignID := types.VoteBlockSignID(chainID, vote, quorumType, quorumHash)
 
-	stateSignID := types.VoteStateSignID(chainID, stateID, quorumType, quorumHash)
+	stateSignID := types.StateIDSignIDProto(chainID, stateID, quorumType, quorumHash)
 
 	blockSignBytes := types.VoteBlockSignBytes(chainID, vote)
 
-	stateSignBytes := types.VoteStateSignBytes(chainID, stateID)
+	stateSignBytes := types.StateIDSignBytesProto(chainID, stateID)
 
 	// We might crash before writing to the wal,
 	// causing us to try to re-sign for the same HRS.

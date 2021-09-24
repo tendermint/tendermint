@@ -164,7 +164,7 @@ func makeVote(header *types.Header, valset *types.ValidatorSet, proTxHash crypto
 	}
 
 	// SignDigest the state
-	stateSignID := types.VoteStateSignID(header.ChainID, stateID.ToProto(), valset.QuorumType, valset.QuorumHash)
+	stateSignID := stateID.SignID(header.ChainID, valset.QuorumType, valset.QuorumHash)
 	sigState, err := key.SignDigest(stateSignID)
 	if err != nil {
 		panic(err)

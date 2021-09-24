@@ -239,7 +239,7 @@ func (pv *MockPV) SignVote(
 	vote.BlockSignature = blockSignature
 
 	if vote.BlockID.Hash != nil {
-		stateSignID := VoteStateSignID(useChainID, stateID, quorumType, quorumHash)
+		stateSignID := StateIDSignIDProto(useChainID, stateID, quorumType, quorumHash)
 		stateSignature, err := privKey.SignDigest(stateSignID)
 		if err != nil {
 			return err

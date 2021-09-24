@@ -116,41 +116,6 @@ func VoteBlockSignID(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQ
 	return blockSignID
 }
 
-// VoteStateSignBytes returns the 40 bytes of the height + last state app hash.
-func VoteStateSignBytes(chainID string, stateID tmproto.StateID) []byte {
-	bz := make([]byte, 8)
-	// TODO: maybe this should be PutInt64 ?
-	binary.LittleEndian.PutUint64(bz, uint64(stateID.Height))
-
-	// We use `LargeAppHashSize`, to ensure we always fit full App Hash
-	lastAppHash := make([]byte, crypto.LargeAppHashSize)
-	copy(lastAppHash, stateID.LastAppHash)
-	bz = append(bz, lastAppHash...)
-	return bz
-}
-
-// VoteStateSignID returns signID that should be signed for the state
-func VoteStateSignID(chainID string, stateID tmproto.StateID, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
-	stateSignBytes := VoteStateSignBytes(chainID, stateID)
-
-	if stateSignBytes == nil {
-		return nil
-	}
-
-	stateMessageHash := crypto.Sha256(stateSignBytes)
-
-	stateRequestID := VoteStateRequestIDProto(stateID)
-
-	stateSignID := crypto.SignID(
-		quorumType,
-		bls12381.ReverseBytes(quorumHash),
-		bls12381.ReverseBytes(stateRequestID),
-		bls12381.ReverseBytes(stateMessageHash),
-	)
-
-	return stateSignID
-}
-
 func (vote *Vote) Copy() *Vote {
 	voteCopy := *vote
 	return &voteCopy
@@ -221,27 +186,6 @@ func VoteBlockRequestIDProto(vote *tmproto.Vote) []byte {
 	return crypto.Sha256(requestIDMessage)
 }
 
-func VoteStateRequestID(stateID StateID) []byte {
-	requestIDMessage := []byte("dpsvote")
-	heightByteArray := make([]byte, 8)
-	binary.LittleEndian.PutUint64(heightByteArray, uint64(stateID.Height))
-
-	requestIDMessage = append(requestIDMessage, heightByteArray...)
-
-	return crypto.Sha256(requestIDMessage)
-}
-
-func VoteStateRequestIDProto(stateID tmproto.StateID) []byte {
-	requestIDMessage := []byte("dpsvote")
-	heightByteArray := make([]byte, 8)
-	// TODO: maybe it should be PutInt64?
-	binary.LittleEndian.PutUint64(heightByteArray, uint64(stateID.Height))
-
-	requestIDMessage = append(requestIDMessage, heightByteArray...)
-
-	return crypto.Sha256(requestIDMessage)
-}
-
 func (vote *Vote) Verify(
 	chainID string, quorumType btcjson.LLMQType, quorumHash []byte,
 	pubKey crypto.PubKey, proTxHash crypto.ProTxHash, stateID tmproto.StateID) ([]byte, []byte, error) {
@@ -277,10 +221,10 @@ func (vote *Vote) Verify(
 	stateSignID := []byte(nil)
 	// we must verify the stateID but only if the blockID isn't nil
 	if vote.BlockID.Hash != nil {
-		voteStateSignBytes := VoteStateSignBytes(chainID, stateID)
+		voteStateSignBytes := StateIDSignBytesProto(chainID, stateID)
 		stateMessageHash := crypto.Sha256(voteStateSignBytes)
 
-		stateRequestID := VoteStateRequestIDProto(stateID)
+		stateRequestID := StateIDRequestIDProto(stateID)
 
 		stateSignID = crypto.SignID(
 			quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestID),

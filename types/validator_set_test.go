@@ -563,7 +563,7 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 
 	blockSig, err := privKey.SignDigest(VoteBlockSignID(chainID, v, btcjson.LLMQType_5_60, quorumHash))
 	require.NoError(t, err)
-	stateSig, err := privKey.SignDigest(VoteStateSignID(chainID, stateID.ToProto(), btcjson.LLMQType_5_60, quorumHash))
+	stateSig, err := privKey.SignDigest(stateID.SignID(chainID, btcjson.LLMQType_5_60, quorumHash))
 	require.NoError(t, err)
 	vote.BlockSignature = blockSig
 	vote.StateSignature = stateSig
@@ -580,7 +580,7 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 	vote2 := *vote
 	blockSig2, err := privKey.SignDigest(VoteBlockSignBytes("EpsilonEridani", v))
 	require.NoError(t, err)
-	stateSig2, err := privKey.SignDigest(VoteStateSignBytes("EpsilonEridani", stateID.ToProto()))
+	stateSig2, err := privKey.SignDigest(StateIDSignBytesProto("EpsilonEridani", stateID.ToProto()))
 	require.NoError(t, err)
 	vote2.BlockSignature = blockSig2
 	vote2.StateSignature = stateSig2

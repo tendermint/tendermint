@@ -285,9 +285,9 @@ func (sc *DashCoreSignerClient) SignVote(
 
 	// Only sign the state when voting for the block
 	if protoVote.BlockID.Hash != nil {
-		stateSignBytes := types.VoteStateSignBytes(chainID, stateID)
+		stateSignBytes := types.StateIDSignBytesProto(chainID, stateID)
 		stateMessageHash := crypto.Sha256(stateSignBytes)
-		stateRequestID := types.VoteStateRequestIDProto(stateID)
+		stateRequestID := types.StateIDRequestIDProto(stateID)
 
 		stateResponse, err := sc.dashCoreRPCClient.QuorumSign(
 			sc.defaultQuorumType, stateRequestID, stateMessageHash, quorumHash)

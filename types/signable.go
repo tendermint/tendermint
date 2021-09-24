@@ -1,6 +1,7 @@
 package types
 
 import (
+	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 )
 
@@ -16,4 +17,6 @@ var (
 // NOTE: Expected to panic if there is an error marshalling.
 type Signable interface {
 	SignBytes(chainID string) []byte
+	SignRequestID() []byte
+	SignID(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte
 }

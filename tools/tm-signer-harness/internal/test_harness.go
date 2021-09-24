@@ -291,7 +291,7 @@ func (th *TestHarness) TestSignVote() error {
 		v := vote.ToProto()
 
 		voteBlockID := types.VoteBlockSignID(th.chainID, v, btcjson.LLMQType_5_60, th.quorumHash)
-		voteStateID := types.VoteStateSignID(th.chainID, stateID, btcjson.LLMQType_5_60, th.quorumHash)
+		stateIDSignID := types.StateIDSignIDProto(th.chainID, stateID, btcjson.LLMQType_5_60, th.quorumHash)
 		// sign the vote
 		if err := th.signerClient.SignVote(th.chainID, btcjson.LLMQType_5_60, th.quorumHash, v, stateID, nil); err != nil {
 			th.logger.Error("FAILED: Signing of vote", "err", err)
@@ -318,7 +318,7 @@ func (th *TestHarness) TestSignVote() error {
 			return newTestHarnessError(ErrTestSignVoteFailed, nil, "signature validation failed")
 		}
 
-		if sck.VerifySignatureDigest(voteStateID, vote.StateSignature) {
+		if sck.VerifySignatureDigest(stateIDSignID, vote.StateSignature) {
 			th.logger.Info("Successfully validated vote signature", "type", voteType)
 		} else {
 			th.logger.Error("FAILED: Vote signature validation failed", "type", voteType)

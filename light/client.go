@@ -566,12 +566,11 @@ func (c *Client) verifyStateIDSignatureWithDashCore(ctx context.Context, newLigh
 	quorumType := newLightBlock.ValidatorSet.QuorumType
 
 	stateID := newLightBlock.StateID()
-	protoStateID := stateID.ToProto()
 
-	stateSignBytes := types.VoteStateSignBytes(c.chainID, protoStateID)
+	stateSignBytes := stateID.SignBytes(c.chainID)
 
 	stateMessageHash := crypto.Sha256(stateSignBytes)
-	stateRequestID := types.VoteStateRequestIDProto(protoStateID)
+	stateRequestID := stateID.SignRequestID()
 	stateSignature := newLightBlock.Commit.ThresholdStateSignature
 
 	stateSignatureIsValid, err := c.dashCoreRPCClient.QuorumVerify(
