@@ -221,10 +221,6 @@ func (b *EventBus) PublishEventPolka(data EventDataRoundState) error {
 	return b.Publish(EventPolkaValue, data)
 }
 
-func (b *EventBus) PublishEventUnlock(data EventDataRoundState) error {
-	return b.Publish(EventUnlockValue, data)
-}
-
 func (b *EventBus) PublishEventRelock(data EventDataRoundState) error {
 	return b.Publish(EventRelockValue, data)
 }
@@ -298,10 +294,6 @@ func (NopEventBus) PublishEventCompleteProposal(data EventDataRoundState) error 
 }
 
 func (NopEventBus) PublishEventPolka(data EventDataRoundState) error {
-	return nil
-}
-
-func (NopEventBus) PublishEventUnlock(data EventDataRoundState) error {
 	return nil
 }
 

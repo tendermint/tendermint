@@ -883,7 +883,7 @@ func (commit *Commit) ValidateBasic() error {
 	}
 
 	if commit.Height >= 1 {
-		if commit.BlockID.IsZero() {
+		if commit.BlockID.IsNil() {
 			return errors.New("commit cannot be for nil block")
 		}
 
@@ -1204,8 +1204,8 @@ func (blockID BlockID) ValidateBasic() error {
 	return nil
 }
 
-// IsZero returns true if this is the BlockID of a nil block.
-func (blockID BlockID) IsZero() bool {
+// IsNil returns true if this is the BlockID of a nil block.
+func (blockID BlockID) IsNil() bool {
 	return len(blockID.Hash) == 0 &&
 		blockID.PartSetHeader.IsZero()
 }
