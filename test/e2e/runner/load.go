@@ -3,7 +3,6 @@ package main
 import (
 	"container/ring"
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"time"
@@ -58,19 +57,9 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 		case numSeen := <-chSuccess:
 			success += numSeen
 		case <-ctx.Done():
-			// if we couldn't submit any transactions,
-			// that's probably a problem and the test
-			// should error; however, for very short tests
-			// we shouldn't abort.
-			//
-			// The 5s cut off, is a rough guess based on
-			// the expected value of loadGenerateWaitTime
-			// and typical throughput of the load
-			// generation. If these implementations
-			// changes, then this might also need to
-			// change without more refactoring.
-			if success == 0 && time.Since(started) > 5*time.Second {
-				return errors.New("failed to submit any transactions")
+			if success == 0 {
+				return fmt.Errorf("failed to submit transactions in %s by %d workers",
+					concurrency, time.Since(started))
 			}
 
 			// TODO perhaps allow test networks to
