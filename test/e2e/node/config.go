@@ -27,6 +27,7 @@ type Config struct {
 	KeyType          string                      `toml:"key_type"`
 }
 
+// App extracts out the application specific configuration parameters
 func (cfg *Config) App() *app.Config {
 	return &app.Config{
 		SnapshotInterval: cfg.SnapshotInterval,
