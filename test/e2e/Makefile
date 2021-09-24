@@ -15,4 +15,4 @@ runner:
 tests:
 	go test -o build/tests ./tests
 
-.PHONY: all app docker generator runner tests
+.PHONY: all app docker generator runner tests node
