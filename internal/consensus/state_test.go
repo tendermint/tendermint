@@ -45,6 +45,7 @@ x * TestStateLock_MissingProposalWhenPOLSeenDoesNotUpdateLock - 4 vals, 1 misses
 x * TestStateLock_MissingProposalWhenPOLSeenDoesNotUnlock - 4 vals, 1 misses proposal but sees POL.
 x * TestStateLock_POLSafety1 - 4 vals. We shouldn't change lock based on polka at earlier round
 x * TestStateLock_POLSafety2 - 4 vals. After unlocking, we shouldn't relock based on polka at earlier round
+x_*_TestState_PrevotePOLFromPreviousRound 4 vals, prevote a proposal if a POL was seen for it in a previous round.
   * TestNetworkLock - once +1/3 precommits, network should be locked
   * TestNetworkLockPOL - once +1/3 precommits, the block with more recent polka is committed
 SlashingSuite
