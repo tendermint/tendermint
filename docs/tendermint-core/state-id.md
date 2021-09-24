@@ -39,12 +39,5 @@ graph TD
 
 As a result:
 
- * verification of a vote for the block at height `N` requires information about the state at height `N-1`
- * block at height `N` contains a commit referring to state ID at height `N-2`
- 
- ## Initial state ID
-
- Initial state ID inside first block contains:
- 
- * height: 0
- * LastAppHash equal to genesis doc AppHash
+* verification of a vote for the block at height `N` requires information about the state at height `N-1`
+* block at height `N` contains a commit referring to state ID at height `N-2`
