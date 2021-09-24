@@ -63,14 +63,6 @@ func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote 
 	}
 }
 
-// CanonicalizeStateVote transforms the given Vote to a CanonicalStateVote, which does
-// not contain ValidatorIndex and ValidatorProTxHash fields.
-func CanonicalizeStateVote(vote *tmproto.Vote) tmproto.CanonicalStateVote {
-	return tmproto.CanonicalStateVote{
-		Height: vote.Height, // encoded as sfixed64
-	}
-}
-
 // CanonicalTime can be used to stringify time in a canonical way.
 func CanonicalTime(t time.Time) string {
 	// Note that sending time over amino resets it to

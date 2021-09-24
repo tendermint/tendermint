@@ -34,7 +34,3 @@ message CanonicalVote {
   CanonicalBlockID block_id = 4 [(gogoproto.customname) = "BlockID"];
   string           chain_id = 6 [(gogoproto.customname) = "ChainID"];
 }
-
-message CanonicalStateVote {
-  sfixed64         height   = 1;  // canonicalization requires fixed size encoding here
-}
