@@ -123,7 +123,12 @@ To enable Delve, set the `DEBUG` environment variable when setting up the runner
 DEBUG=1 ./build/runner -f networks/ci.toml setup
 ```
 
-NOTE: Right now, only built-in app is supported (the one using `entrypoint-builtin` script)
+If you set DEBUG to `stop`, the app won't start automatically. 
+You'll need to connect to each app (each container) with your debugger
+and start it manually.
+
+NOTE: Right now, only the built-in app is supported(the one using
+`entrypoint-builtin` script)
 
 Containers expose DLV on ports starting from 40001 upwards.
 

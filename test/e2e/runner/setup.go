@@ -195,13 +195,14 @@ services:
 {{- if $.Debug }}
     environment:
     - DEBUG=1
+    - DEBUG_PORT={{ debugPort $index }}
 {{- end }}
     ports:
     - 26656
     - {{ if .ProxyPort }}{{ .ProxyPort }}:{{ end }}26657
     - 6060
 {{- if $.Debug }}
-    - {{ debugPort $index }}:40000
+    - {{ debugPort $index }}:{{ debugPort $index }}
 {{- end }}
     volumes:
     - ./{{ .Name }}:/tenderdash
