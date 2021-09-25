@@ -64,7 +64,7 @@ func NewCLI() *CLI {
 	cli.root.PersistentFlags().StringP("p2p", "p", string(MixedP2PMode),
 		"P2P typology to be generated [\"new\", \"legacy\", \"hybrid\" or \"mixed\" ]")
 	cli.root.PersistentFlags().IntVarP(&cli.opts.MinNetworkSize, "min-size", "", 1, "Minimum Network Size")
-	cli.root.PersistentFlags().IntVarP(&cli.opts.MaxNetworkSize, "max-size", "", 0, "Maxmum Network Size, default is 0 and unlimited")
+	cli.root.PersistentFlags().IntVarP(&cli.opts.MaxNetworkSize, "max-size", "", 0, "Maxmum Network Size, 0 is unlimited")
 
 	return cli
 }
