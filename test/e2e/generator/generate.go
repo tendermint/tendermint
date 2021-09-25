@@ -46,9 +46,13 @@ var (
 		"unix": 10,
 	}
 	// FIXME: v2 disabled due to flake
-	nodeBlockSyncs        = uniformChoice{"v0"} // "v2"
-	nodeMempools          = uniformChoice{"v0", "v1"}
-	nodeStateSyncs        = uniformChoice{e2e.StateSyncDisabled, e2e.StateSyncP2P, e2e.StateSyncRPC}
+	nodeBlockSyncs = uniformChoice{"v0"} // "v2"
+	nodeMempools   = uniformChoice{"v0", "v1"}
+	nodeStateSyncs = weightedChoice{
+		e2e.StateSyncDisabled: 20,
+		e2e.StateSyncP2P:      40,
+		e2e.StateSyncRPC:      40,
+	}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 3}
 	nodeRetainBlocks      = uniformChoice{0, 2 * int(e2e.EvidenceAgeHeight), 4 * int(e2e.EvidenceAgeHeight)}
@@ -176,9 +180,11 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	// the initial validator set, and validator set updates for delayed nodes.
 	nextStartAt := manifest.InitialHeight + 5
 	quorum := numValidators*2/3 + 1
+	numValdatorStateSyncing := 0
 	for i := 1; i <= numValidators; i++ {
 		startAt := int64(0)
-		if i > quorum {
+		if i > quorum && numValdatorStateSyncing < 2 && r.Float64() >= 0.5 {
+			numValdatorStateSyncing++
 			startAt = nextStartAt
 			nextStartAt += 5
 		}
@@ -273,7 +279,12 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		if len(seedNames) > 0 && (i == 0 || r.Float64() >= 0.5) {
 			manifest.Nodes[name].Seeds = uniformSetChoice(seedNames).Choose(r)
 		} else if i > 0 {
-			manifest.Nodes[name].PersistentPeers = uniformSetChoice(peerNames[:i]).Choose(r)
+			peers := uniformSetChoice(peerNames[:i])
+			if manifest.Nodes[name].StateSync == e2e.StateSyncP2P {
+				manifest.Nodes[name].PersistentPeers = peers.ChooseAtLeast(r, 2)
+			} else {
+				manifest.Nodes[name].PersistentPeers = peers.Choose(r)
+			}
 		}
 	}
 
@@ -311,7 +322,7 @@ func generateNode(
 	}
 
 	if startAt > 0 {
-		node.StateSync = nodeStateSyncs.Choose(r).(string)
+		node.StateSync = nodeStateSyncs.Choose(r)
 	}
 
 	// If this node is forced to be an archive node, retain all blocks and
