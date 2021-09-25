@@ -90,7 +90,7 @@ func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 			}
 		}
 
-		if opts.MaxNetworkSize > 0 && len(manifest.Nodes) > opts.MaxNetworkSize {
+		if opts.MaxNetworkSize > 0 && len(manifest.Nodes) >= opts.MaxNetworkSize {
 			continue
 		}
 
