@@ -279,14 +279,12 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		if len(seedNames) > 0 && (i == 0 || r.Float64() >= 0.5) {
 			manifest.Nodes[name].Seeds = uniformSetChoice(seedNames).Choose(r)
 		} else if i > 0 {
-			ppeers := uniformSetChoice(peerNames[:i]).Choose(r)
-			if len(ppeers) < 2 && manifest.Nodes[name].StateSync == e2e.StateSyncP2P {
-				// statesyncing (w/p2p) should have at
-				// least 2 peers configured.
-				continue
+			peers := uniformSetChoice(peerNames[:i])
+			if manifest.Nodes[name].StateSync == e2e.StateSyncP2P {
+				manifest.Nodes[name].PersistentPeers = peers.ChooseAtLeast(r, 2)
+			} else {
+				manifest.Nodes[name].PersistentPeers = peers.Choose(r)
 			}
-
-			manifest.Nodes[name].PersistentPeers = ppeers
 		}
 	}
 
@@ -324,7 +322,7 @@ func generateNode(
 	}
 
 	if startAt > 0 {
-		node.StateSync = nodeStateSyncs.Choose(r).(string)
+		node.StateSync = nodeStateSyncs.Choose(r)
 	}
 
 	// If this node is forced to be an archive node, retain all blocks and
