@@ -165,7 +165,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		case LegacyP2PMode:
 			node.UseLegacyP2P = true
 		case HybridP2PMode:
-			node.UseLegacyP2P = r.Intn(2) == 1
+			node.UseLegacyP2P = r.Intn(5) < 2
 		}
 
 		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = node
@@ -190,7 +190,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		case LegacyP2PMode:
 			node.UseLegacyP2P = true
 		case HybridP2PMode:
-			node.UseLegacyP2P = r.Intn(2) == 1
+			node.UseLegacyP2P = r.Intn(5) < 2
 		}
 
 		manifest.Nodes[name] = node
@@ -227,7 +227,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		case LegacyP2PMode:
 			node.UseLegacyP2P = true
 		case HybridP2PMode:
-			node.UseLegacyP2P = r.Intn(2) == 1
+			node.UseLegacyP2P = r.Intn(5) < 2
 		}
 
 		manifest.Nodes[fmt.Sprintf("full%02d", i)] = node
