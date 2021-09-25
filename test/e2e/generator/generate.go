@@ -176,9 +176,11 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	// the initial validator set, and validator set updates for delayed nodes.
 	nextStartAt := manifest.InitialHeight + 5
 	quorum := numValidators*2/3 + 1
+	numValdatorStateSyncing := 0
 	for i := 1; i <= numValidators; i++ {
 		startAt := int64(0)
-		if i > quorum {
+		if i > quorum && numValdatorStateSyncing < 2 && r.Float64() >= 0.5 {
+			numValdatorStateSyncing++
 			startAt = nextStartAt
 			nextStartAt += 5
 		}
@@ -273,7 +275,14 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		if len(seedNames) > 0 && (i == 0 || r.Float64() >= 0.5) {
 			manifest.Nodes[name].Seeds = uniformSetChoice(seedNames).Choose(r)
 		} else if i > 0 {
-			manifest.Nodes[name].PersistentPeers = uniformSetChoice(peerNames[:i]).Choose(r)
+			ppeers := uniformSetChoice(peerNames[:i]).Choose(r)
+			if len(ppeers) < 2 && manifest.Nodes[name].StateSync == e2e.StateSyncP2P {
+				// statesyncing (w/p2p) should have at
+				// least 2 peers configured.
+				continue
+			}
+
+			manifest.Nodes[name].PersistentPeers = ppeers
 		}
 	}
 
