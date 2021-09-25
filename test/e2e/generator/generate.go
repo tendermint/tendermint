@@ -46,9 +46,13 @@ var (
 		"unix": 10,
 	}
 	// FIXME: v2 disabled due to flake
-	nodeBlockSyncs        = uniformChoice{"v0"} // "v2"
-	nodeMempools          = uniformChoice{"v0", "v1"}
-	nodeStateSyncs        = uniformChoice{e2e.StateSyncDisabled, e2e.StateSyncP2P, e2e.StateSyncRPC}
+	nodeBlockSyncs = uniformChoice{"v0"} // "v2"
+	nodeMempools   = uniformChoice{"v0", "v1"}
+	nodeStateSyncs = weightedChoice{
+		e2e.StateSyncDisabled: 20,
+		e2e.StateSyncP2P:      40,
+		e2e.StateSyncRPC:      40,
+	}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 3}
 	nodeRetainBlocks      = uniformChoice{0, 2 * int(e2e.EvidenceAgeHeight), 4 * int(e2e.EvidenceAgeHeight)}
