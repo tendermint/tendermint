@@ -90,6 +90,10 @@ func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 			}
 		}
 
+		if opts.MaxNetworkSize > 0 && len(manifest.Nodes) > opts.MaxNetworkSize {
+			continue
+		}
+
 		manifests = append(manifests, manifest)
 	}
 
@@ -98,9 +102,11 @@ func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 
 type Options struct {
 	MinNetworkSize int
+	MaxNetworkSize int
 	NumGroups      int
 	Directory      string
 	P2P            P2PMode
+	Reverse        bool
 }
 
 type P2PMode string
