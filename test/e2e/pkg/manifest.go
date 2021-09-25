@@ -172,8 +172,11 @@ func LoadManifest(file string) (Manifest, error) {
 // SortManifests orders (in-place) a list of manifests such that the
 // manifests will be ordered in terms of complexity (or expected
 // runtime). Complexity is determined first by the number of nodes,
-// and then by the total number of perturbations in the network
-func SortManifests(manifests []Manifest) {
+// and then by the total number of perturbations in the network.
+//
+// If reverse is true, then the manifests are ordered with the most
+// complex networks before the less complex networks.
+func SortManifests(manifests []Manifest, reverse bool) {
 	sort.SliceStable(manifests, func(i, j int) bool {
 		// sort based on a point-based comparison between two
 		// manifests.
@@ -194,22 +197,35 @@ func SortManifests(manifests []Manifest) {
 			leftScore += (len(n.Perturb) * 2)
 
 			if n.StartAt > 0 {
-				leftScore++
+				leftScore += 3
 			}
 		}
 		for _, n := range right.Nodes {
 			rightScore += (len(n.Perturb) * 2)
 			if n.StartAt > 0 {
-				rightScore++
+				rightScore += 3
 			}
 		}
 
 		// add one point if the network has evidence.
 		if left.Evidence > 0 {
+			leftScore += 2
+		}
+
+		if right.Evidence > 0 {
+			rightScore += 2
+		}
+
+		if left.TxSize > right.TxSize {
 			leftScore++
 		}
-		if right.Evidence > 0 {
+
+		if right.TxSize > left.TxSize {
 			rightScore++
+		}
+
+		if reverse {
+			return leftScore >= rightScore
 		}
 
 		return leftScore < rightScore

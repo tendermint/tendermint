@@ -90,6 +90,10 @@ func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 			}
 		}
 
+		if opts.MaxNetworkSize > 0 && len(manifest.Nodes) >= opts.MaxNetworkSize {
+			continue
+		}
+
 		manifests = append(manifests, manifest)
 	}
 
@@ -98,9 +102,11 @@ func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 
 type Options struct {
 	MinNetworkSize int
+	MaxNetworkSize int
 	NumGroups      int
 	Directory      string
 	P2P            P2PMode
+	Reverse        bool
 }
 
 type P2PMode string
@@ -159,7 +165,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		case LegacyP2PMode:
 			node.UseLegacyP2P = true
 		case HybridP2PMode:
-			node.UseLegacyP2P = r.Intn(2) == 1
+			node.UseLegacyP2P = r.Intn(5) < 2
 		}
 
 		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = node
@@ -184,7 +190,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		case LegacyP2PMode:
 			node.UseLegacyP2P = true
 		case HybridP2PMode:
-			node.UseLegacyP2P = r.Intn(2) == 1
+			node.UseLegacyP2P = r.Intn(5) < 2
 		}
 
 		manifest.Nodes[name] = node
@@ -221,7 +227,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		case LegacyP2PMode:
 			node.UseLegacyP2P = true
 		case HybridP2PMode:
-			node.UseLegacyP2P = r.Intn(2) == 1
+			node.UseLegacyP2P = r.Intn(5) < 2
 		}
 
 		manifest.Nodes[fmt.Sprintf("full%02d", i)] = node
