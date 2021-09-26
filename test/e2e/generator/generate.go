@@ -49,9 +49,9 @@ var (
 	nodeBlockSyncs = uniformChoice{"v0"} // "v2"
 	nodeMempools   = uniformChoice{"v0", "v1"}
 	nodeStateSyncs = weightedChoice{
-		e2e.StateSyncDisabled: 20,
-		e2e.StateSyncP2P:      40,
-		e2e.StateSyncRPC:      40,
+		e2e.StateSyncDisabled: 10,
+		e2e.StateSyncP2P:      45,
+		e2e.StateSyncRPC:      45,
 	}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 3}
@@ -163,7 +163,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 
 	// First we generate seed nodes, starting at the initial height.
 	for i := 1; i <= numSeeds; i++ {
-		node := generateNode(r, e2e.ModeSeed, 0, manifest.InitialHeight, false)
+		node := generateNode(r, manifest, e2e.ModeSeed, 0, false)
 
 		switch p2pMode {
 		case LegacyP2PMode:
@@ -180,17 +180,16 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	// the initial validator set, and validator set updates for delayed nodes.
 	nextStartAt := manifest.InitialHeight + 5
 	quorum := numValidators*2/3 + 1
-	numValdatorStateSyncing := 0
+	numSyncingNodes := 0
 	for i := 1; i <= numValidators; i++ {
 		startAt := int64(0)
-		if i > quorum && numValdatorStateSyncing < 2 && r.Float64() >= 0.5 {
-			numValdatorStateSyncing++
+		if i > quorum && numSyncingNodes < 2 && r.Float64() >= 0.25 {
+			numSyncingNodes++
 			startAt = nextStartAt
 			nextStartAt += 5
 		}
 		name := fmt.Sprintf("validator%02d", i)
-		node := generateNode(
-			r, e2e.ModeValidator, startAt, manifest.InitialHeight, i <= 2)
+		node := generateNode(r, manifest, e2e.ModeValidator, startAt, i <= 2)
 
 		switch p2pMode {
 		case LegacyP2PMode:
@@ -227,7 +226,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			startAt = nextStartAt
 			nextStartAt += 5
 		}
-		node := generateNode(r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
+		node := generateNode(r, manifest, e2e.ModeFull, startAt, false)
 
 		switch p2pMode {
 		case LegacyP2PMode:
@@ -304,7 +303,11 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 // here, since we need to know the overall network topology and startup
 // sequencing.
 func generateNode(
-	r *rand.Rand, mode e2e.Mode, startAt int64, initialHeight int64, forceArchive bool,
+	r *rand.Rand,
+	manifest e2e.Manifest,
+	mode e2e.Mode,
+	startAt int64,
+	forceArchive bool,
 ) *e2e.ManifestNode {
 	node := e2e.ManifestNode{
 		Mode:             string(mode),
@@ -323,6 +326,14 @@ func generateNode(
 
 	if startAt > 0 {
 		node.StateSync = nodeStateSyncs.Choose(r)
+		if manifest.InitialHeight-startAt <= 5 && node.StateSync == e2e.StateSyncDisabled {
+			// avoid needint to blocsync more than five
+			// total blocks.
+			node.StateSync = uniformSetChoice([]string{
+				e2e.StateSyncP2P,
+				e2e.StateSyncRPC,
+			}).Choose(r)[0]
+		}
 	}
 
 	// If this node is forced to be an archive node, retain all blocks and
