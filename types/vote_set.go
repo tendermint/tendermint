@@ -227,7 +227,7 @@ func (voteSet *VoteSet) getVote(valIndex int32, blockKey string) (vote *Vote, ok
 }
 
 func (voteSet *VoteSet) GetVotes() []*Vote {
-  return voteSet.votes
+	return voteSet.votes
 }
 
 // Assumes signature is valid.

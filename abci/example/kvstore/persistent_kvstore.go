@@ -177,9 +177,9 @@ func (app *PersistentKVStoreApplication) ApplySnapshotChunk(
 
 func (app *PersistentKVStoreApplication) ExtendVote(
 	req types.RequestExtendVote) types.ResponseExtendVote {
-	return types.ResponseExtendVote {
-    VoteExtension: ConstructVoteExtension(req.Vote.ValidatorAddress),
-  }
+	return types.ResponseExtendVote{
+		VoteExtension: ConstructVoteExtension(req.Vote.ValidatorAddress),
+	}
 }
 
 func (app *PersistentKVStoreApplication) VerifyVoteExtension(
@@ -346,12 +346,12 @@ func (app *PersistentKVStoreApplication) verifyExtension(valAddr []byte, ext *pt
 	if ext == nil {
 		return false
 	}
-  canonical := ConstructVoteExtension(valAddr)
-  if !bytes.Equal(canonical.AppDataToSign, ext.AppDataToSign) {
-    return false
-  }
-  if !bytes.Equal(canonical.AppDataSelfAuthenticating, ext.AppDataSelfAuthenticating) {
-    return false
-  }
-  return true
+	canonical := ConstructVoteExtension(valAddr)
+	if !bytes.Equal(canonical.AppDataToSign, ext.AppDataToSign) {
+		return false
+	}
+	if !bytes.Equal(canonical.AppDataSelfAuthenticating, ext.AppDataSelfAuthenticating) {
+		return false
+	}
+	return true
 }

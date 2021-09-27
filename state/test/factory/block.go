@@ -40,7 +40,7 @@ func MakeBlock(state sm.State, height int64, c *types.Commit) *types.Block {
 		height,
 		factory.MakeTenTxs(state.LastBlockHeight),
 		c,
-    nil,
+		nil,
 		nil,
 		state.Validators.GetProposer().Address,
 	)

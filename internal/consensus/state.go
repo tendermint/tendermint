@@ -1236,7 +1236,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	}
 
 	var commit *types.Commit
-  var votes []*types.Vote
+	var votes []*types.Vote
 	switch {
 	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
@@ -1246,7 +1246,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	case cs.LastCommit.HasTwoThirdsMajority():
 		// Make the commit from LastCommit
 		commit = cs.LastCommit.MakeCommit()
-    votes = cs.LastCommit.GetVotes()
+		votes = cs.LastCommit.GetVotes()
 
 	default: // This shouldn't happen.
 		cs.Logger.Error("propose step; cannot propose anything without commit for the previous block")

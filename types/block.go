@@ -357,8 +357,8 @@ type Header struct {
 	EvidenceHash    tmbytes.HexBytes `json:"evidence_hash"`    // evidence included in the block
 	ProposerAddress Address          `json:"proposer_address"` // original proposer of the block
 
-  // application data
-  AppData tmbytes.HexBytes `json:"app_data"`
+	// application data
+	AppData tmbytes.HexBytes `json:"app_data"`
 }
 
 // Populate the Header with state-derived data.
@@ -369,7 +369,7 @@ func (h *Header) Populate(
 	valHash, nextValHash []byte,
 	consensusHash, appHash, lastResultsHash []byte,
 	proposerAddress Address,
-  appdata []byte,
+	appdata []byte,
 ) {
 	h.Version = version
 	h.ChainID = chainID
@@ -381,7 +381,7 @@ func (h *Header) Populate(
 	h.AppHash = appHash
 	h.LastResultsHash = lastResultsHash
 	h.ProposerAddress = proposerAddress
-  h.AppData = appdata
+	h.AppData = appdata
 }
 
 // ValidateBasic performs stateless validation on a Header returning an error
@@ -485,7 +485,7 @@ func (h *Header) Hash() tmbytes.HexBytes {
 		cdcEncode(h.LastResultsHash),
 		cdcEncode(h.EvidenceHash),
 		cdcEncode(h.ProposerAddress),
-    cdcEncode(h.AppData),
+		cdcEncode(h.AppData),
 	})
 }
 
@@ -525,9 +525,9 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.LastResultsHash,
 		indent, h.EvidenceHash,
 		indent, h.ProposerAddress,
-    indent, h.AppData,
+		indent, h.AppData,
 		indent, h.Hash(),
-  )
+	)
 }
 
 // ToProto converts Header to protobuf
@@ -551,7 +551,7 @@ func (h *Header) ToProto() *tmproto.Header {
 		LastResultsHash:    h.LastResultsHash,
 		LastCommitHash:     h.LastCommitHash,
 		ProposerAddress:    h.ProposerAddress,
-    AppData:            h.AppData,
+		AppData:            h.AppData,
 	}
 }
 
@@ -584,7 +584,7 @@ func HeaderFromProto(ph *tmproto.Header) (Header, error) {
 	h.LastResultsHash = ph.LastResultsHash
 	h.LastCommitHash = ph.LastCommitHash
 	h.ProposerAddress = ph.ProposerAddress
-  h.AppData = ph.AppData
+	h.AppData = ph.AppData
 
 	return *h, h.ValidateBasic()
 }

@@ -254,7 +254,7 @@ func (state State) MakeBlock(
 	height int64,
 	txs []types.Tx,
 	commit *types.Commit,
-  appdata []byte,
+	appdata []byte,
 	evidence []types.Evidence,
 	proposerAddress []byte,
 ) (*types.Block, *types.PartSet) {
@@ -277,7 +277,7 @@ func (state State) MakeBlock(
 		state.Validators.Hash(), state.NextValidators.Hash(),
 		state.ConsensusParams.HashConsensusParams(), state.AppHash, state.LastResultsHash,
 		proposerAddress,
-    appdata,
+		appdata,
 	)
 
 	return block, block.MakePartSet(types.BlockPartSizeBytes)
