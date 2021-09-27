@@ -155,8 +155,8 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		// FIXME Networks are kept small since large ones use too much CPU.
 		numSeeds = r.Intn(1)
 		numLightClients = r.Intn(2)
-		numValidators = 4 + r.Intn(5)
-		numFulls = r.Intn(5)
+		numValidators = 4 + r.Intn(4)
+		numFulls = r.Intn(4)
 	default:
 		return manifest, fmt.Errorf("unknown topology %q", opt["topology"])
 	}
