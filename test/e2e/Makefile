@@ -3,11 +3,8 @@ all: docker generator runner tests
 docker:
 	docker build --tag tendermint/e2e-node -f docker/Dockerfile ../..
 
-# We need to build support for database backends into the app in
-# order to build a binary with a Tendermint node in it (for built-in
-# ABCI testing).
-app:
-	go build -o build/app -tags badgerdb,boltdb,cleveldb,rocksdb ./app
+node:
+	go build -o build/node -tags badgerdb,boltdb,cleveldb,rocksdb ./node
 
 generator:
 	go build -o build/generator ./generator
@@ -18,4 +15,4 @@ runner:
 tests:
 	go test -o build/tests ./tests
 
-.PHONY: all app docker generator runner tests
+.PHONY: all docker generator runner tests node
