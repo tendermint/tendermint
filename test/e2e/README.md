@@ -82,6 +82,23 @@ func init() {
 }
 ```
 
+Also, If you need to keep fullnode pubkey(s), set env `FULLNODE_PUBKEY_KEEP=1`, the keys are reset by default.
+
+### Speed up running e2e tests
+Running the e2e tests using `make runner {network}` takes time because the command builds docker image every time
+when you run it which is not necessarily. Therefore, to speed up the launch of the e2e test you can manually create
+an image once and use this image to run the tests with a new app version for testing.
+Also, you have to set `PRE_COMPILED_APP_PATH` with path to compiled `app`, by default compiled files
+are put in `build` folder.
+
+Look into `Makefile` to find all available commands for fast running, every command should have prefix `runner/`
+The command compiles tenderdash using prebuild `tenderdash/e2e-node` docker image.
+
+For instance, this command runs e2e test for `dashcore` network using precompiled app binary:
+```bash
+PRE_COMPILED_APP_PATH=/Users/dashuser/go/src/github.com/dashevo/tenderdash/test/e2e/build/app make runner/dashcore
+```
+
 ### Debugging Failures
 
 #### Logs
@@ -116,7 +133,7 @@ go tool pprof http://localhost:$PORT/debug/pprof/mutex
 
 #### Delve debugger
 
-You can run container binaries using the Delve debugger. 
+You can run container binaries using the Delve debugger.
 To enable Delve, set the `DEBUG` environment variable when setting up the runner:
 
 ```bash
@@ -141,7 +158,7 @@ Example configuration for Visual Studio Code `launch.json`:
 }
 ```
 
-For more details, see: 
+For more details, see:
 
 * [JetBrains configuration](https://blog.jetbrains.com/go/2020/05/06/debugging-a-go-application-inside-a-docker-container/)
 * [Visual Studio Code configuration](https://medium.com/@kaperys/delve-into-docker-d6c92be2f823)
