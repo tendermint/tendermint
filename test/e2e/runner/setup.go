@@ -512,9 +512,9 @@ func newFilePVFromNode(node *e2e.Node, nodeDir string) (*privval.FilePV, error) 
 	)
 }
 
-func pubkeyResettingModificator(isValidator bool) func(genesis map[e2e.Mode]types.GenesisDoc) {
+func pubkeyResettingModificator(shouldReset bool) func(genesis map[e2e.Mode]types.GenesisDoc) {
 	return func(genesis map[e2e.Mode]types.GenesisDoc) {
-		if isValidator {
+		if shouldReset {
 			resetPubkey(genesis[e2e.ModeFull].Validators)
 		}
 	}
@@ -527,11 +527,16 @@ func resetPubkey(vals []types.GenesisValidator) {
 }
 
 func shouldResetPubkeys() bool {
-	val, ok := os.LookupEnv("FULLNODE_PUBKEY_RESET")
-	if !ok {
-		return false
+	s := os.Getenv("FULLNODE_PUBKEY_KEEP")
+	if s == "" {
+		// reset pubkeys - default behavior
+		return true
 	}
-	return val == "true" || val == "1"
+	val, err := strconv.ParseBool(s)
+	if err != nil {
+		panic(err.Error()) // panic if passed a value that cannot be parsed
+	}
+	return !val
 }
 
 func initGenesisForEveryNode(testnet *e2e.Testnet) (map[e2e.Mode]types.GenesisDoc, error) {
