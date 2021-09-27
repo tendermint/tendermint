@@ -4,7 +4,6 @@ on:
   push:
     paths:
       - "**.go"
-      - "!test/"
     branches:
       - master
       - release/**
@@ -89,7 +88,7 @@ jobs:
           go-version: 1.16
       - name: test & coverage report creation
         run: |
-          cat pkgs.txt.part.${{ matrix.part }} | xargs go test -mod=readonly -timeout 8m -race -coverprofile=${{ matrix.part }}profile.out -covermode=atomic
+          cat pkgs.txt.part.${{ matrix.part }} | xargs go test -mod=readonly -timeout 8m -race -coverprofile=${{ matrix.part }}profile.out
         if: env.GIT_DIFF
       - uses: actions/upload-artifact@v2
         with:
@@ -125,7 +124,7 @@ jobs:
           name: "${{ github.sha }}-03-coverage"
         if: env.GIT_DIFF
       - run: |
-          cat ./*profile.out | grep -v "mode: atomic" >> coverage.txt
+          cat ./*profile.out | grep -v "mode: set" >> coverage.txt
         if: env.GIT_DIFF
       - uses: codecov/codecov-action@v2.1.0
         with:
