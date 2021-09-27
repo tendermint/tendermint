@@ -91,7 +91,7 @@ func waitForTxsOnReactors(t *testing.T, txs types.Txs, reactors []*Reactor) {
 func waitForTxsOnReactor(t *testing.T, txs types.Txs, reactor *Reactor, reactorIndex int) {
 	mempool := reactor.mempool
 	for mempool.Size() < len(txs) {
-		time.Sleep(time.Millisecond * 100)
+		time.Sleep(time.Millisecond * 50)
 	}
 
 	reapedTxs := mempool.ReapMaxTxs(len(txs))

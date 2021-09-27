@@ -26,6 +26,8 @@ type Metrics struct {
 	RecheckTimes metrics.Counter
 	// Size of the pending pool
 	PendingPoolSize metrics.Gauge
+	// Size of the pending pool
+	GasUsed metrics.Gauge
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -68,6 +70,12 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "pending_pool_size",
 			Help:      "Size of the pending pool (number of transactions in pending pool).",
 		}, labels).With(labelsAndValues...),
+		GasUsed: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "gas_used",
+			Help:      "Total amount of gas used in one block",
+		}, labels).With(labelsAndValues...),
 	}
 }
 
@@ -79,5 +87,6 @@ func NopMetrics() *Metrics {
 		FailedTxs:       discard.NewCounter(),
 		RecheckTimes:    discard.NewCounter(),
 		PendingPoolSize: discard.NewGauge(),
+		GasUsed:         discard.NewGauge(),
 	}
 }
