@@ -16,11 +16,19 @@ initial_core_chain_locked_height = 3400
 validator01 = 100
 
 [validator_update.0]
+validator01 = 100
 validator02 = 100
 validator03 = 100
 validator04 = 100
 
+[validator_update.1008]
+validator01 = 100
+
 [validator_update.1010]
+validator01 = 100
+validator02 = 100
+validator03 = 100
+validator04 = 100
 validator05 = 100
 
 [node.seed01]
