@@ -1343,11 +1343,12 @@ func (ps *PeerState) SetHasVote(vote *types.Vote, cs *State) {
 	peerProTxHash := ps.peer.NodeInfo().GetProTxHash()
 	logger := log.Logger(nil)
 	if cs != nil {
+		roundState := cs.GetRoundState()
 		logger = ps.logger.With("peer", peerProTxHash.ShortString(),
 			"peerHR",
 			fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
 			"HR",
-			fmt.Sprintf("%d/%d", cs.RoundState.Height, cs.RoundState.Round))
+			fmt.Sprintf("%d/%d", roundState.Height, roundState.Round))
 	}
 
 	ps.setHasVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex, logger)

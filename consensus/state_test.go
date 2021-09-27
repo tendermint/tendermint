@@ -535,7 +535,9 @@ func TestStateLockNoPOL(t *testing.T) {
 	cs2, _ := randState(2) // needed so generated block is different than locked block
 	// Since the quorum hash is also part of the sign ID we must make sure it's the same
 	cs2.LastValidators.QuorumHash = cs1.LastValidators.QuorumHash
-	cs2.Validators.QuorumHash = cs1.Validators.QuorumHash
+
+	_, valSet := cs1.GetValidatorSet()
+	cs2.Validators.QuorumHash = valSet.QuorumHash
 	// before we time out into new round, set next proposal block
 	prop, propBlock := decideProposal(cs2, vs2, vs2.Height, vs2.Round+1)
 	if prop == nil || propBlock == nil {
@@ -1082,7 +1084,8 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	// in round 2 we see the polkad block from round 0
 	newProp := types.NewProposal(height, 1, round, 0, propBlockID0)
 	p := newProp.ToProto()
-	if _, err := vs3.SignProposal(config.ChainID(), cs1.Validators.QuorumType, cs1.Validators.QuorumHash, p); err != nil {
+	_, valSet := cs1.GetValidatorSet()
+	if _, err := vs3.SignProposal(config.ChainID(), valSet.QuorumType, valSet.QuorumHash, p); err != nil {
 		t.Fatal(err)
 	}
 
