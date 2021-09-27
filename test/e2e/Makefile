@@ -17,6 +17,9 @@ runner/ci: runner e2e/app/compile
 runner/dashcore: runner e2e/app/compile
 	./build/runner -f networks/dashcore.toml
 
+runner/rotate: runner e2e/app/compile
+	./build/runner -f networks/rotate.toml
+
 # We need to build support for database backends into the app in
 # order to build a binary with a Tenderdash node in it (for built-in
 # ABCI testing).
