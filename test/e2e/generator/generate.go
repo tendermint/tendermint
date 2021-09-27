@@ -185,9 +185,8 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = node
 	}
 
-	numSyncingNodes := 0
-
 	var (
+		numSyncingNodes = 0
 		hybridNumNew    = 0
 		hybridNumLegacy = 0
 	)
