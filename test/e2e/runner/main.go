@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -75,7 +76,7 @@ func NewCLI() *CLI {
 			go func() {
 				chLoadResult <- Load(lctx, cli.testnet)
 			}()
-
+			startAt := time.Now()
 			if err = Start(ctx, cli.testnet); err != nil {
 				return err
 			}
@@ -100,6 +101,19 @@ func NewCLI() *CLI {
 				if err = Wait(ctx, cli.testnet, 5); err != nil { // ensure chain progress
 					return err
 				}
+			}
+
+			// to help make sure that we don't run into
+			// situations where 0 transactions have
+			// happened on quick cases, we make sure that
+			// it's been at least 10s before canceling the
+			// load generator.
+			//
+			// TODO allow the load generator to report
+			// successful transactions to avoid needing
+			// this sleep.
+			if rest := time.Since(startAt); rest < 15*time.Second {
+				time.Sleep(15*time.Second - rest)
 			}
 
 			loadCancel()

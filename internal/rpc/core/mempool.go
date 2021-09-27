@@ -1,14 +1,14 @@
 package core
 
 import (
-	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/mempool"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
@@ -60,87 +60,60 @@ func (env *Environment) BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*co
 // BroadcastTxCommit returns with the responses from CheckTx and DeliverTx.
 // More: https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_commit
 func (env *Environment) BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*coretypes.ResultBroadcastTxCommit, error) { //nolint:lll
-	subscriber := ctx.RemoteAddr()
-
-	if env.EventBus.NumClients() >= env.Config.MaxSubscriptionClients {
-		return nil, fmt.Errorf("max_subscription_clients %d reached", env.Config.MaxSubscriptionClients)
-	} else if env.EventBus.NumClientSubscriptions(subscriber) >= env.Config.MaxSubscriptionsPerClient {
-		return nil, fmt.Errorf("max_subscriptions_per_client %d reached", env.Config.MaxSubscriptionsPerClient)
-	}
-
-	// Subscribe to tx being committed in block.
-	subCtx, cancel := context.WithTimeout(ctx.Context(), SubscribeTimeout)
-	defer cancel()
-	q := types.EventQueryTxFor(tx)
-	deliverTxSub, err := env.EventBus.Subscribe(subCtx, subscriber, q)
-	if err != nil {
-		err = fmt.Errorf("failed to subscribe to tx: %w", err)
-		env.Logger.Error("Error on broadcast_tx_commit", "err", err)
-		return nil, err
-	}
-	defer func() {
-		args := tmpubsub.UnsubscribeArgs{Subscriber: subscriber, Query: q}
-		if err := env.EventBus.Unsubscribe(context.Background(), args); err != nil {
-			env.Logger.Error("Error unsubscribing from eventBus", "err", err)
-		}
-	}()
-
-	// Broadcast tx and wait for CheckTx result
-	checkTxResCh := make(chan *abci.Response, 1)
-	err = env.Mempool.CheckTx(
+	resCh := make(chan *abci.Response, 1)
+	err := env.Mempool.CheckTx(
 		ctx.Context(),
 		tx,
-		func(res *abci.Response) { checkTxResCh <- res },
+		func(res *abci.Response) { resCh <- res },
 		mempool.TxInfo{},
 	)
 	if err != nil {
-		env.Logger.Error("Error on broadcastTxCommit", "err", err)
-		return nil, fmt.Errorf("error on broadcastTxCommit: %v", err)
+		return nil, err
 	}
 
-	checkTxResMsg := <-checkTxResCh
-	checkTxRes := checkTxResMsg.GetCheckTx()
+	r := (<-resCh).GetCheckTx()
 
-	if checkTxRes.Code != abci.CodeTypeOK {
+	if !indexer.KVSinkEnabled(env.EventSinks) {
 		return &coretypes.ResultBroadcastTxCommit{
-			CheckTx:   *checkTxRes,
-			DeliverTx: abci.ResponseDeliverTx{},
-			Hash:      tx.Hash(),
-		}, nil
+				CheckTx: *r,
+				Hash:    tx.Hash(),
+			},
+			errors.New("cannot wait for commit because kvEventSync is not enabled")
 	}
 
-	// Wait for the tx to be included in a block or timeout.
-	select {
-	case msg := <-deliverTxSub.Out(): // The tx was included in a block.
-		deliverTxRes := msg.Data().(types.EventDataTx)
-		return &coretypes.ResultBroadcastTxCommit{
-			CheckTx:   *checkTxRes,
-			DeliverTx: deliverTxRes.Result,
-			Hash:      tx.Hash(),
-			Height:    deliverTxRes.Height,
-		}, nil
-	case <-deliverTxSub.Canceled():
-		var reason string
-		if deliverTxSub.Err() == nil {
-			reason = "Tendermint exited"
-		} else {
-			reason = deliverTxSub.Err().Error()
+	startAt := time.Now()
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
+	count := 0
+	for {
+		count++
+		select {
+		case <-ctx.Context().Done():
+			env.Logger.Error("Error on broadcastTxCommit",
+				"duration", time.Since(startAt),
+				"err", err)
+			return &coretypes.ResultBroadcastTxCommit{
+					CheckTx: *r,
+					Hash:    tx.Hash(),
+				}, fmt.Errorf("timeout waiting for commit of tx %s (%s)",
+					tx.Hash(), time.Since(startAt))
+		case <-timer.C:
+			txres, err := env.Tx(ctx, tx.Hash(), false)
+			if err != nil {
+				jitter := 100*time.Millisecond + time.Duration(rand.Int63n(int64(time.Second))) // nolint: gosec
+				backoff := 100 * time.Duration(count) * time.Millisecond
+				timer.Reset(jitter + backoff)
+				continue
+			}
+
+			return &coretypes.ResultBroadcastTxCommit{
+				CheckTx:   *r,
+				DeliverTx: txres.TxResult,
+				Hash:      tx.Hash(),
+				Height:    txres.Height,
+			}, nil
 		}
-		err = fmt.Errorf("deliverTxSub was canceled (reason: %s)", reason)
-		env.Logger.Error("Error on broadcastTxCommit", "err", err)
-		return &coretypes.ResultBroadcastTxCommit{
-			CheckTx:   *checkTxRes,
-			DeliverTx: abci.ResponseDeliverTx{},
-			Hash:      tx.Hash(),
-		}, err
-	case <-time.After(env.Config.TimeoutBroadcastTxCommit):
-		err = errors.New("timed out waiting for tx to be included in a block")
-		env.Logger.Error("Error on broadcastTxCommit", "err", err)
-		return &coretypes.ResultBroadcastTxCommit{
-			CheckTx:   *checkTxRes,
-			DeliverTx: abci.ResponseDeliverTx{},
-			Hash:      tx.Hash(),
-		}, err
 	}
 }
 
