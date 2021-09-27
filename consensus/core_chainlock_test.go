@@ -29,7 +29,8 @@ func newCounterWithBackwardsCoreChainLocks() abci.Application {
 
 func TestValidProposalChainLocks(t *testing.T) {
 	N := 4
-	css, cleanup := randConsensusNet(N, "consensus_chainlocks_test", newMockTickerFunc(true), newCounterWithCoreChainLocks)
+	css, cleanup := randConsensusNet(N, 1, "consensus_chainlocks_test",
+		newMockTickerFunc(true), newCounterWithCoreChainLocks)
 	defer cleanup()
 
 	for i := 0; i < 4; i++ {
@@ -56,7 +57,8 @@ func TestValidProposalChainLocks(t *testing.T) {
 // one byz val sends a proposal for a height 1 less than it should, but then sends the correct block after it
 func TestReactorInvalidProposalHeightForChainLocks(t *testing.T) {
 	N := 4
-	css, cleanup := randConsensusNet(N, "consensus_chainlocks_test", newMockTickerFunc(true), newCounterWithCoreChainLocks)
+	css, cleanup := randConsensusNet(N, 1, "consensus_chainlocks_test",
+		newMockTickerFunc(true), newCounterWithCoreChainLocks)
 	defer cleanup()
 
 	for i := 0; i < 4; i++ {
@@ -147,7 +149,7 @@ func invalidProposeCoreChainLockFunc(t *testing.T, height int64, round int32, cs
 func TestReactorInvalidBlockChainLock(t *testing.T) {
 	// TODO: Leads to race, explore
 	N := 4
-	css, cleanup := randConsensusNet(N, "consensus_chainlocks_test",
+	css, cleanup := randConsensusNet(N, 1, "consensus_chainlocks_test",
 		newMockTickerFunc(true), newCounterWithBackwardsCoreChainLocks)
 	defer cleanup()
 

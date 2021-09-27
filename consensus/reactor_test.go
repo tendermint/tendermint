@@ -1,4 +1,3 @@
-//nolint:lll
 package consensus
 
 import (
@@ -116,152 +115,192 @@ func stopConsensusNet(logger log.Logger, reactors []*Reactor, eventBuses []*type
 
 // Ensure a testnet makes blocks
 func TestReactorBasic(t *testing.T) {
-	N := 4
-	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
-	defer cleanup()
-	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, N)
-	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
-	// wait till everyone makes the first new block
-	timeoutWaitGroup(t, N, func(j int) {
-		<-blocksSubs[j].Out()
-	}, css)
+
+	testCases := []struct {
+		name          string
+		nValidators   int
+		initialHeight int64
+	}{
+		{"initialHeight 1", 4, 1},
+		{"initialHeight 10000", 6, 10000},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			nValidators := tc.nValidators     // nolint:scopelint
+			initialHeight := tc.initialHeight // nolint:scopelint
+			css, cleanup := randConsensusNet(nValidators, initialHeight, "consensus_reactor_test",
+				newMockTickerFunc(true), newCounter)
+			defer cleanup()
+			reactors, blocksSubs, eventBuses := startConsensusNet(t, css, nValidators)
+			defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
+			// wait till everyone makes the first new block
+			timeoutWaitGroup(t, nValidators, func(j int) {
+				<-blocksSubs[j].Out()
+			}, css)
+		})
+	}
 }
 
-// Ensure a testnet doesn't make blocks if only 4 out of 7 nodes in a quorum are online
-func TestReactorNoThreshold(t *testing.T) {
-	N := 7
-	T := 4
-	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
-	for i := 0; i < N; i++ {
-		css[i].config.SkipTimeoutCommit = false
+// Ensure the testnet makes blocks only if there are enough nodes
+// Note that each negative test can take up to ~ 30 seconds here - see timeout in timeoutWaitNoBlockGroup()
+// Run with at least -test.timeout 90s
+func TestReactorThreshold(t *testing.T) {
+	testCases := []struct {
+		activeValidators    int
+		allValidators       int
+		initialHeight       int64
+		skipTimeoutCommit   bool
+		shouldGenerateBlock bool
+	}{
+		{4, 7, 1, false, false},     // doesn't make blocks if only 4 out of 7 nodes in a quorum are online
+		{4, 7, 10000, false, false}, // doesn't make blocks if only 4 out of 7 nodes in a quorum are online
+		{5, 7, 1, false, true},      // testnet makes blocks if only 5 out of 7 nodes in a quorum are online
+		{7, 7, 10000, false, true},  // testnet makes blocks if only 5 out of 7 nodes in a quorum are online
 	}
-	defer cleanup()
-	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, T)
-	voteCh := subscribe(css[0].eventBus, types.EventQueryVote)
-	// map of active validators
-	activeVals := make(map[string]struct{})
-	for i := 0; i < T; i++ {
-		proTxHash, err := css[i].privValidator.GetProTxHash()
-		require.NoError(t, err)
-		activeVals[string(proTxHash)] = struct{}{}
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("%d of %d,h=%d", tc.activeValidators, tc.allValidators, tc.initialHeight), func(t *testing.T) {
+			allValidators := tc.allValidators        // nolint:scopelint
+			activeValidators := tc.activeValidators  // nolint:scopelint
+			initialHeight := tc.initialHeight        // nolint:scopelint
+			shouldGenerate := tc.shouldGenerateBlock // nolint:scopelint
+
+			logger := log.TestingLogger()
+
+			css, cleanup := randConsensusNet(allValidators, initialHeight, "consensus_reactor_test",
+				newMockTickerFunc(true), newCounter)
+			for i := 0; i < allValidators; i++ {
+				// TODO document why we need this
+				css[i].config.SkipTimeoutCommit = tc.skipTimeoutCommit // nolint:scopelint
+			}
+			defer cleanup()
+
+			reactors, blocksSubs, eventBuses := startConsensusNet(t, css, activeValidators)
+
+			voteCh := subscribe(css[0].eventBus, types.EventQueryVote)
+			// map of active validators
+			activeVals := make(map[string]struct{})
+			for i := 0; i < activeValidators; i++ {
+				proTxHash, err := css[i].privValidator.GetProTxHash()
+				require.NoError(t, err)
+				activeVals[string(proTxHash)] = struct{}{}
+			}
+
+			defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
+
+			if shouldGenerate {
+				waitForAndValidateBlock(t, activeValidators, activeVals, blocksSubs, css)
+				logger.Info("->Passed block 2")
+			} else {
+				ensurePrevote(voteCh, css[0].state.InitialHeight, 0)
+				waitForAndValidateNoBlock(t, activeValidators, blocksSubs, css)
+			}
+		})
 	}
-
-	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
-
-	ensurePrevote(voteCh, css[0].state.InitialHeight, 0)
-	waitForAndValidateNoBlock(t, T, blocksSubs, css)
-}
-
-// Ensure a testnet makes blocks if only 5 out of 7 nodes in a quorum are online
-func TestReactorAtThreshold(t *testing.T) {
-	N := 7
-	T := 5
-	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
-	defer cleanup()
-	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, T)
-
-	logger := log.TestingLogger()
-
-	// map of active validators
-	activeVals := make(map[string]struct{})
-	for i := 0; i < T; i++ {
-		proTxHash, err := css[i].privValidator.GetProTxHash()
-		require.NoError(t, err)
-		activeVals[string(proTxHash)] = struct{}{}
-	}
-
-	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
-	// wait till everyone makes the first new block
-	waitForAndValidateBlock(t, T, activeVals, blocksSubs, css)
-	logger.Info("->Passed block 2")
 }
 
 // Ensure we can process blocks with evidence
 func TestReactorWithEvidence(t *testing.T) {
-	nValidators := 4
-	testName := "consensus_reactor_test"
-	tickerFunc := newMockTickerFunc(true)
-	appFunc := newCounter
 
-	// heed the advice from https://www.sandimetz.com/blog/2016/1/20/the-wrong-abstraction
-	// to unroll unwieldy abstractions. Here we duplicate the code from:
-	// css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
-
-	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
-	css := make([]*State, nValidators)
-	logger := consensusLogger()
-	for i := 0; i < nValidators; i++ {
-		stateDB := dbm.NewMemDB() // each state needs its own db
-		stateStore := sm.NewStore(stateDB)
-		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
-		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
-		defer os.RemoveAll(thisConfig.RootDir)
-		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
-		app := appFunc()
-		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		app.InitChain(abci.RequestInitChain{ValidatorSet: &vals})
-
-		pv := privVals[i]
-		// duplicate code from:
-		// css[i] = newStateWithConfig(thisConfig, state, privVals[i], app)
-
-		blockDB := dbm.NewMemDB()
-		blockStore := store.NewBlockStore(blockDB)
-
-		// one for mempool, one for consensus
-		mtx := new(tmsync.Mutex)
-		proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
-		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
-		proxyAppConnQry := abcicli.NewLocalClient(mtx, app)
-
-		// Make Mempool
-		mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
-		mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
-		if thisConfig.Consensus.WaitForTxs() {
-			mempool.EnableTxsAvailable()
-		}
-
-		// mock the evidence pool
-		// everyone includes evidence of another double signing
-		vIdx := (i + 1) % nValidators
-		ev := types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, privVals[vIdx], config.ChainID(),
-			btcjson.LLMQType_5_60, state.Validators.QuorumHash)
-		evpool := &statemocks.EvidencePool{}
-		evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
-		evpool.On("PendingEvidence", mock.AnythingOfType("int64")).Return([]types.Evidence{
-			ev}, int64(len(ev.Bytes())))
-		evpool.On("Update", mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
-
-		evpool2 := sm.EmptyEvidencePool{}
-
-		// Make State
-		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, proxyAppConnQry, mempool, evpool, nil)
-		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool2)
-		cs.SetLogger(log.TestingLogger().With("module", "consensus"))
-		cs.SetPrivValidator(pv)
-
-		eventBus := types.NewEventBus()
-		eventBus.SetLogger(log.TestingLogger().With("module", "events"))
-		err := eventBus.Start()
-		require.NoError(t, err)
-		cs.SetEventBus(eventBus)
-
-		cs.SetTimeoutTicker(tickerFunc())
-		cs.SetLogger(logger.With("validator", i, "module", "consensus"))
-
-		css[i] = cs
+	testCases := []struct {
+		name          string
+		nValidators   int
+		initialHeight int64
+	}{
+		{"initialHeight 1", 4, 1},
+		{"initialHeight 10000", 6, 10000},
 	}
 
-	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, nValidators)
-	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			nValidators := tc.nValidators     // nolint:scopelint
+			initialHeight := tc.initialHeight // nolint:scopelint
+			testName := "consensus_reactor_test"
+			tickerFunc := newMockTickerFunc(true)
+			appFunc := newCounter
 
-	// we expect for each validator that is the proposer to propose one piece of evidence.
-	for i := 0; i < nValidators; i++ {
-		timeoutWaitGroup(t, nValidators, func(j int) {
-			msg := <-blocksSubs[j].Out()
-			block := msg.Data().(types.EventDataNewBlock).Block
-			assert.Len(t, block.Evidence.Evidence, 1)
-		}, css)
+			// heed the advice from https://www.sandimetz.com/blog/2016/1/20/the-wrong-abstraction
+			// to unroll unwieldy abstractions. Here we duplicate the code from:
+			// css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+
+			genDoc, privVals := randGenesisDoc(nValidators, false, 30, initialHeight)
+			css := make([]*State, nValidators)
+			logger := consensusLogger()
+			for i := 0; i < nValidators; i++ {
+				stateDB := dbm.NewMemDB() // each state needs its own db
+				stateStore := sm.NewStore(stateDB)
+				state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
+				thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+				defer os.RemoveAll(thisConfig.RootDir)
+				ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+				app := appFunc()
+				vals := types.TM2PB.ValidatorUpdates(state.Validators)
+				app.InitChain(abci.RequestInitChain{ValidatorSet: &vals})
+
+				pv := privVals[i]
+				// duplicate code from:
+				// css[i] = newStateWithConfig(thisConfig, state, privVals[i], app)
+
+				blockDB := dbm.NewMemDB()
+				blockStore := store.NewBlockStore(blockDB)
+
+				// one for mempool, one for consensus
+				mtx := new(tmsync.Mutex)
+				proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
+				proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+				proxyAppConnQry := abcicli.NewLocalClient(mtx, app)
+
+				// Make Mempool
+				mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
+				mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
+				if thisConfig.Consensus.WaitForTxs() {
+					mempool.EnableTxsAvailable()
+				}
+
+				// mock the evidence pool
+				// everyone includes evidence of another double signing
+				vIdx := (i + 1) % nValidators
+				ev := types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, privVals[vIdx], config.ChainID(),
+					btcjson.LLMQType_5_60, state.Validators.QuorumHash)
+				evpool := &statemocks.EvidencePool{}
+				evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
+				evpool.On("PendingEvidence", mock.AnythingOfType("int64")).Return([]types.Evidence{
+					ev}, int64(len(ev.Bytes())))
+				evpool.On("Update", mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
+
+				evpool2 := sm.EmptyEvidencePool{}
+
+				// Make State
+				blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(),
+					proxyAppConnCon, proxyAppConnQry, mempool, evpool, nil)
+				cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool2)
+				cs.SetLogger(log.TestingLogger().With("module", "consensus"))
+				cs.SetPrivValidator(pv)
+
+				eventBus := types.NewEventBus()
+				eventBus.SetLogger(log.TestingLogger().With("module", "events"))
+				err := eventBus.Start()
+				require.NoError(t, err)
+				cs.SetEventBus(eventBus)
+
+				cs.SetTimeoutTicker(tickerFunc())
+				cs.SetLogger(logger.With("validator", i, "module", "consensus"))
+
+				css[i] = cs
+			}
+
+			reactors, blocksSubs, eventBuses := startConsensusNet(t, css, nValidators)
+			defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
+
+			// we expect for each validator that is the proposer to propose one piece of evidence.
+			for i := 0; i < nValidators; i++ {
+				timeoutWaitGroup(t, nValidators, func(j int) {
+					msg := <-blocksSubs[j].Out()
+					block := msg.Data().(types.EventDataNewBlock).Block
+					assert.Len(t, block.Evidence.Evidence, 1)
+				}, css)
+			}
+		})
 	}
 }
 
@@ -269,29 +308,45 @@ func TestReactorWithEvidence(t *testing.T) {
 
 // Ensure a testnet makes blocks when there are txs
 func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
-	N := 4
-	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter,
-		func(c *cfg.Config) {
-			c.Consensus.CreateEmptyBlocks = false
-		})
-	defer cleanup()
-	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, N)
-	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 
-	// send a tx
-	if err := assertMempool(css[3].txNotifier).CheckTx([]byte{1, 2, 3}, nil, mempl.TxInfo{}); err != nil {
-		t.Error(err)
+	testCases := []struct {
+		nValidators   int
+		initialHeight int64
+	}{
+		{nValidators: 4, initialHeight: 1},
+		{nValidators: 5, initialHeight: 10000},
 	}
 
-	// wait till everyone makes the first new block
-	timeoutWaitGroup(t, N, func(j int) {
-		<-blocksSubs[j].Out()
-	}, css)
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("N:%d H:%d", tc.nValidators, tc.initialHeight), func(t *testing.T) {
+			nValidators := tc.nValidators     // nolint:scopelint
+			initialHeight := tc.initialHeight // nolint:scopelint
+
+			css, cleanup := randConsensusNet(nValidators, initialHeight, "consensus_reactor_test",
+				newMockTickerFunc(true), newCounter,
+				func(c *cfg.Config) {
+					c.Consensus.CreateEmptyBlocks = false
+				})
+			defer cleanup()
+			reactors, blocksSubs, eventBuses := startConsensusNet(t, css, nValidators)
+			defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
+
+			// send a tx
+			if err := assertMempool(css[3].txNotifier).CheckTx([]byte{1, 2, 3}, nil, mempl.TxInfo{}); err != nil {
+				t.Error(err)
+			}
+
+			// wait till everyone makes the first new block
+			timeoutWaitGroup(t, nValidators, func(j int) {
+				<-blocksSubs[j].Out()
+			}, css)
+		})
+	}
 }
 
 func TestReactorReceiveDoesNotPanicIfAddPeerHasntBeenCalledYet(t *testing.T) {
 	N := 1
-	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	css, cleanup := randConsensusNet(N, 1, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
 	defer cleanup()
 	reactors, _, eventBuses := startConsensusNet(t, css, N)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
@@ -314,7 +369,7 @@ func TestReactorReceiveDoesNotPanicIfAddPeerHasntBeenCalledYet(t *testing.T) {
 
 func TestReactorReceivePanicsIfInitPeerHasntBeenCalledYet(t *testing.T) {
 	N := 1
-	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	css, cleanup := randConsensusNet(N, 1, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
 	defer cleanup()
 	reactors, _, eventBuses := startConsensusNet(t, css, N)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
@@ -337,7 +392,7 @@ func TestReactorReceivePanicsIfInitPeerHasntBeenCalledYet(t *testing.T) {
 // Test we record stats about votes and block parts from other peers.
 func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 	N := 4
-	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	css, cleanup := randConsensusNet(N, 1, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
 	defer cleanup()
 	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, N)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
@@ -390,7 +445,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	// css contains all peers, the first 4 here are validators, so we will take the 5th peer and add it as a validator
 
-	updatedValidators, newValidatorProTxHashes, newThresholdPublicKey, quorumHash := updateConsensusNetAddNewValidators(css, 2, 1, true)
+	updatedValidators, newValidatorProTxHashes, newThresholdPublicKey, quorumHash :=
+		updateConsensusNetAddNewValidators(css, 2, 1, true)
 
 	updateTransactions := make([][]byte, len(updatedValidators)+2)
 	for i := 0; i < len(updatedValidators); i++ {
@@ -432,7 +488,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	//---------------------------------------------------------------------------
 	logger.Info("---------------------------- Testing adding two validators at once")
 
-	updatedValidators, newValidatorProTxHashes, newThresholdPublicKey, quorumHash = updateConsensusNetAddNewValidators(css, 7, 2, true)
+	updatedValidators, newValidatorProTxHashes, newThresholdPublicKey, quorumHash =
+		updateConsensusNetAddNewValidators(css, 7, 2, true)
 
 	updateTransactions2 := make([][]byte, len(updatedValidators)+2)
 	for i := 0; i < len(updatedValidators); i++ {
@@ -466,7 +523,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	// since the quorum hash is changing, we do not need to set the removed validators
 
-	updatedValidators, removedValidators, newThresholdPublicKey, newQuorumHash := updateConsensusNetRemoveValidators(css, 12, 2, true)
+	updatedValidators, removedValidators, newThresholdPublicKey, newQuorumHash :=
+		updateConsensusNetRemoveValidators(css, 12, 2, true)
 
 	updateTransactions3 := make([][]byte, len(updatedValidators)+2)
 	for i := 0; i < len(updatedValidators); i++ {
@@ -499,7 +557,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 // Check we can make blocks with skip_timeout_commit=false
 func TestReactorWithTimeoutCommit(t *testing.T) {
 	N := 4
-	css, cleanup := randConsensusNet(N, "consensus_reactor_with_timeout_commit_test", newMockTickerFunc(false), newCounter)
+	css, cleanup := randConsensusNet(N, 1, "consensus_reactor_with_timeout_commit_test",
+		newMockTickerFunc(false), newCounter)
 	defer cleanup()
 	// override default SkipTimeoutCommit == true for tests
 	for i := 0; i < N; i++ {
