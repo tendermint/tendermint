@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/tendermint/tendermint/test/e2e/app"
 )
 
 // Config is the application configuration.
@@ -22,8 +24,19 @@ type Config struct {
 	PrivValServer    string                      `toml:"privval_server"`
 	PrivValKey       string                      `toml:"privval_key"`
 	PrivValState     string                      `toml:"privval_state"`
-	Misbehaviors     map[string]string           `toml:"misbehaviors"`
 	KeyType          string                      `toml:"key_type"`
+}
+
+// App extracts out the application specific configuration parameters
+func (cfg *Config) App() *app.Config {
+	return &app.Config{
+		Dir:              cfg.Dir,
+		SnapshotInterval: cfg.SnapshotInterval,
+		RetainBlocks:     cfg.RetainBlocks,
+		KeyType:          cfg.KeyType,
+		ValidatorUpdates: cfg.ValidatorUpdates,
+		PersistInterval:  cfg.PersistInterval,
+	}
 }
 
 // LoadConfig loads the configuration from disk.
