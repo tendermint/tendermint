@@ -80,7 +80,7 @@ message Header {
   bytes evidence_hash    = 13;  // evidence included in the block
   bytes proposer_address = 14;  // original proposer of the block
 
-  bytes app_data = 15; // arbitrary bytes set by the aplication
+  bytes app_data = 15; // arbitrary bytes set by the aplication, nondeterministic
 }
 
 // Data contains the set of transactions included in the block

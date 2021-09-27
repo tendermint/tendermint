@@ -137,6 +137,8 @@ message RequestPrepareProposal {
   repeated bytes block_data = 1;
   // If an application decides to populate block_data with extra information, they can not exceed this value.
   int64 block_data_size = 2;
+  // votes includes the previous blocks' validator vote in order to reflect the vote data(including vote extension)
+  // in the app_data field of the header.
   repeated types.Vote votes = 3;
 }
 
