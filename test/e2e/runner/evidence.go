@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -29,7 +30,22 @@ const lightClientEvidenceRatio = 4
 // DuplicateVoteEvidence.
 func InjectEvidence(testnet *e2e.Testnet, amount int) error {
 	// select a random node
-	targetNode := testnet.RandomNode()
+	var targetNode *e2e.Node
+
+	for _, idx := range rand.Perm(len(testnet.Nodes)) {
+		targetNode = testnet.Nodes[idx]
+
+		if targetNode.Mode == e2e.ModeSeed {
+			targetNode = nil
+			continue
+		}
+
+		break
+	}
+
+	if targetNode == nil {
+		return errors.New("could not find node to inject evidence into")
+	}
 
 	logger.Info(fmt.Sprintf("Injecting evidence through %v (amount: %d)...", targetNode.Name, amount))
 

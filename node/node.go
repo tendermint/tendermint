@@ -319,12 +319,12 @@ func makeNode(config *cfg.Config,
 
 	stateSyncReactorShim = p2p.NewReactorShim(logger.With("module", "statesync"), "StateSyncShim", statesync.ChannelShims)
 
-	if config.P2P.DisableLegacy {
-		channels = makeChannelsFromShims(router, statesync.ChannelShims)
-		peerUpdates = peerManager.Subscribe()
-	} else {
+	if config.P2P.UseLegacy {
 		channels = getChannelsFromShim(stateSyncReactorShim)
 		peerUpdates = stateSyncReactorShim.PeerUpdates
+	} else {
+		channels = makeChannelsFromShims(router, statesync.ChannelShims)
+		peerUpdates = peerManager.Subscribe()
 	}
 
 	stateSyncReactor = statesync.NewReactor(
@@ -373,13 +373,7 @@ func makeNode(config *cfg.Config,
 	pexCh := pex.ChannelDescriptor()
 	transport.AddChannelDescriptors([]*p2p.ChannelDescriptor{&pexCh})
 
-	if config.P2P.DisableLegacy {
-		addrBook = nil
-		pexReactor, err = createPEXReactorV2(config, logger, peerManager, router)
-		if err != nil {
-			return nil, err
-		}
-	} else {
+	if config.P2P.UseLegacy {
 		// setup Transport and Switch
 		sw = createSwitch(
 			config, transport, p2pMetrics, mpReactorShim, bcReactorForSwitch,
@@ -402,6 +396,12 @@ func makeNode(config *cfg.Config,
 		}
 
 		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
+	} else {
+		addrBook = nil
+		pexReactor, err = createPEXReactorV2(config, logger, peerManager, router)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if config.RPC.PprofListenAddress != "" {
@@ -441,22 +441,36 @@ func makeNode(config *cfg.Config,
 			ProxyAppQuery:   proxyApp.Query(),
 			ProxyAppMempool: proxyApp.Mempool(),
 
-			StateStore:       stateStore,
-			BlockStore:       blockStore,
-			EvidencePool:     evPool,
-			ConsensusState:   csState,
-			P2PPeers:         sw,
+			StateStore:     stateStore,
+			BlockStore:     blockStore,
+			EvidencePool:   evPool,
+			ConsensusState: csState,
+
+			ConsensusReactor: csReactor,
 			BlockSyncReactor: bcReactor.(cs.BlockSyncReactor),
 
-			GenDoc:           genDoc,
-			EventSinks:       eventSinks,
-			ConsensusReactor: csReactor,
-			EventBus:         eventBus,
-			Mempool:          mp,
-			Logger:           logger.With("module", "rpc"),
-			Config:           *config.RPC,
+			P2PPeers:    sw,
+			PeerManager: peerManager,
+
+			GenDoc:     genDoc,
+			EventSinks: eventSinks,
+			EventBus:   eventBus,
+			Mempool:    mp,
+			Logger:     logger.With("module", "rpc"),
+			Config:     *config.RPC,
 		},
 	}
+
+	// this is a terrible, because typed nil interfaces are not ==
+	// nil, so this is just cleanup to avoid having a non-nil
+	// value in the RPC environment that has the semantic
+	// properties of nil.
+	if sw == nil {
+		node.rpcEnv.P2PPeers = nil
+	} else if peerManager == nil {
+		node.rpcEnv.PeerManager = nil
+	}
+	// end hack
 
 	node.rpcEnv.P2PTransport = node
 
@@ -516,12 +530,8 @@ func makeSeedNode(config *cfg.Config,
 	// p2p stack is removed.
 	pexCh := pex.ChannelDescriptor()
 	transport.AddChannelDescriptors([]*p2p.ChannelDescriptor{&pexCh})
-	if config.P2P.DisableLegacy {
-		pexReactor, err = createPEXReactorV2(config, logger, peerManager, router)
-		if err != nil {
-			return nil, err
-		}
-	} else {
+
+	if config.P2P.UseLegacy {
 		sw = createSwitch(
 			config, transport, p2pMetrics, nil, nil,
 			nil, nil, nil, nil, nodeInfo, nodeKey, p2pLogger,
@@ -543,6 +553,11 @@ func makeSeedNode(config *cfg.Config,
 		}
 
 		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
+	} else {
+		pexReactor, err = createPEXReactorV2(config, logger, peerManager, router)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if config.RPC.PprofListenAddress != "" {
@@ -605,18 +620,16 @@ func (n *nodeImpl) OnStart() error {
 	}
 
 	n.isListening = true
-	n.Logger.Info("p2p service", "legacy_enabled", !n.config.P2P.DisableLegacy)
+	n.Logger.Info("p2p service", "legacy_enabled", n.config.P2P.UseLegacy)
 
-	if n.config.P2P.DisableLegacy {
-		if err = n.router.Start(); err != nil {
-			return err
-		}
-	} else {
+	if n.config.P2P.UseLegacy {
 		// Add private IDs to addrbook to block those peers being added
 		n.addrBook.AddPrivateIDs(strings.SplitAndTrimEmpty(n.config.P2P.PrivatePeerIDs, ",", " "))
 		if err = n.sw.Start(); err != nil {
 			return err
 		}
+	} else if err = n.router.Start(); err != nil {
+		return err
 	}
 
 	if n.config.Mode != cfg.ModeSeed {
@@ -647,16 +660,14 @@ func (n *nodeImpl) OnStart() error {
 		}
 	}
 
-	if n.config.P2P.DisableLegacy {
-		if err := n.pexReactor.Start(); err != nil {
-			return err
-		}
-	} else {
+	if n.config.P2P.UseLegacy {
 		// Always connect to persistent peers
 		err = n.sw.DialPeersAsync(strings.SplitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
 		if err != nil {
 			return fmt.Errorf("could not dial peers from persistent-peers field: %w", err)
 		}
+	} else if err := n.pexReactor.Start(); err != nil {
+		return err
 	}
 
 	// Run state sync
@@ -735,13 +746,13 @@ func (n *nodeImpl) OnStop() {
 		n.Logger.Error("failed to stop the PEX v2 reactor", "err", err)
 	}
 
-	if n.config.P2P.DisableLegacy {
-		if err := n.router.Stop(); err != nil {
-			n.Logger.Error("failed to stop router", "err", err)
-		}
-	} else {
+	if n.config.P2P.UseLegacy {
 		if err := n.sw.Stop(); err != nil {
 			n.Logger.Error("failed to stop switch", "err", err)
+		}
+	} else {
+		if err := n.router.Stop(); err != nil {
+			n.Logger.Error("failed to stop router", "err", err)
 		}
 	}
 
@@ -823,7 +834,7 @@ func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 		rpcserver.RegisterRPCFuncs(mux, routes, rpcLogger)
 		listener, err := rpcserver.Listen(
 			listenAddr,
-			config,
+			config.MaxOpenConnections,
 		)
 		if err != nil {
 			return nil, err
@@ -881,7 +892,7 @@ func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 		if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
 			config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
 		}
-		listener, err := rpcserver.Listen(grpcListenAddr, config)
+		listener, err := rpcserver.Listen(grpcListenAddr, config.MaxOpenConnections)
 		if err != nil {
 			return nil, err
 		}

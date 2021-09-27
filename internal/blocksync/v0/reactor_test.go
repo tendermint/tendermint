@@ -32,9 +32,9 @@ type reactorTestSuite struct {
 	reactors map[types.NodeID]*Reactor
 	app      map[types.NodeID]proxy.AppConns
 
-	blockchainChannels map[types.NodeID]*p2p.Channel
-	peerChans          map[types.NodeID]chan p2p.PeerUpdate
-	peerUpdates        map[types.NodeID]*p2p.PeerUpdates
+	blockSyncChannels map[types.NodeID]*p2p.Channel
+	peerChans         map[types.NodeID]chan p2p.PeerUpdate
+	peerUpdates       map[types.NodeID]*p2p.PeerUpdates
 
 	blockSync bool
 }
@@ -53,19 +53,19 @@ func setup(
 		"must specify at least one block height (nodes)")
 
 	rts := &reactorTestSuite{
-		logger:             log.TestingLogger().With("module", "blockchain", "testCase", t.Name()),
-		network:            p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
-		nodes:              make([]types.NodeID, 0, numNodes),
-		reactors:           make(map[types.NodeID]*Reactor, numNodes),
-		app:                make(map[types.NodeID]proxy.AppConns, numNodes),
-		blockchainChannels: make(map[types.NodeID]*p2p.Channel, numNodes),
-		peerChans:          make(map[types.NodeID]chan p2p.PeerUpdate, numNodes),
-		peerUpdates:        make(map[types.NodeID]*p2p.PeerUpdates, numNodes),
-		blockSync:          true,
+		logger:            log.TestingLogger().With("module", "block_sync", "testCase", t.Name()),
+		network:           p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
+		nodes:             make([]types.NodeID, 0, numNodes),
+		reactors:          make(map[types.NodeID]*Reactor, numNodes),
+		app:               make(map[types.NodeID]proxy.AppConns, numNodes),
+		blockSyncChannels: make(map[types.NodeID]*p2p.Channel, numNodes),
+		peerChans:         make(map[types.NodeID]chan p2p.PeerUpdate, numNodes),
+		peerUpdates:       make(map[types.NodeID]*p2p.PeerUpdates, numNodes),
+		blockSync:         true,
 	}
 
-	chDesc := p2p.ChannelDescriptor{ID: byte(BlockchainChannel)}
-	rts.blockchainChannels = rts.network.MakeChannelsNoCleanup(t, chDesc, new(bcproto.Message), int(chBuf))
+	chDesc := p2p.ChannelDescriptor{ID: byte(BlockSyncChannel)}
+	rts.blockSyncChannels = rts.network.MakeChannelsNoCleanup(t, chDesc, new(bcproto.Message), int(chBuf))
 
 	i := 0
 	for nodeID := range rts.network.Nodes {
@@ -161,7 +161,7 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 		blockExec,
 		blockStore,
 		nil,
-		rts.blockchainChannels[nodeID],
+		rts.blockSyncChannels[nodeID],
 		rts.peerUpdates[nodeID],
 		rts.blockSync,
 		cons.NopMetrics())
@@ -181,7 +181,7 @@ func (rts *reactorTestSuite) start(t *testing.T) {
 }
 
 func TestReactor_AbruptDisconnect(t *testing.T) {
-	config := cfg.ResetTestRoot("blockchain_reactor_test")
+	config := cfg.ResetTestRoot("block_sync_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 
 	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
@@ -216,7 +216,7 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 }
 
 func TestReactor_SyncTime(t *testing.T) {
-	config := cfg.ResetTestRoot("blockchain_reactor_test")
+	config := cfg.ResetTestRoot("block_sync_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 
 	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
@@ -239,7 +239,7 @@ func TestReactor_SyncTime(t *testing.T) {
 }
 
 func TestReactor_NoBlockResponse(t *testing.T) {
-	config := cfg.ResetTestRoot("blockchain_reactor_test")
+	config := cfg.ResetTestRoot("block_sync_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 
 	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
@@ -286,7 +286,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	// See: https://github.com/tendermint/tendermint/issues/6005
 	t.SkipNow()
 
-	config := cfg.ResetTestRoot("blockchain_reactor_test")
+	config := cfg.ResetTestRoot("block_sync_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 
 	maxBlockHeight := int64(48)

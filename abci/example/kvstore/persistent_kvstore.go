@@ -336,10 +336,10 @@ func (app *PersistentKVStoreApplication) substPrepareTx(blockData [][]byte) [][]
 }
 
 func ConstructVoteExtension(valAddr []byte) *ptypes.VoteExtension {
-  return &ptypes.VoteExtension{
-    AppDataToSign: valAddr,
-    AppDataSelfAuthenticating: valAddr,
-  }
+	return &ptypes.VoteExtension{
+		AppDataToSign:             valAddr,
+		AppDataSelfAuthenticating: valAddr,
+	}
 }
 
 func (app *PersistentKVStoreApplication) verifyExtension(valAddr []byte, ext *ptypes.VoteExtension) bool {

@@ -98,3 +98,5 @@ Note the context/background should be written in the present tense.
 - [ADR-045: ABCI-Evidence](./adr-045-abci-evidence.md)
 - [ADR-057: RPC](./adr-057-RPC.md)
 - [ADR-069: Node Initialization](./adr-069-flexible-node-initialization.md)
+- [ADR-071: Proposer-Based Timestamps](adr-071-proposer-based-timestamps.md)
+- [ADR-072: Restore Requests for Comments](./adr-072-request-for-comments.md)

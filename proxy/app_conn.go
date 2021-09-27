@@ -113,11 +113,15 @@ func (app *appConnConsensus) CommitSync(ctx context.Context) (*types.ResponseCom
 	return app.appConn.CommitSync(ctx)
 }
 
-func (app *appConnConsensus) ExtendVoteSync(ctx context.Context, req types.RequestExtendVote) (*types.ResponseExtendVote, error) {
+func (app *appConnConsensus) ExtendVoteSync(
+	ctx context.Context, req types.RequestExtendVote,
+) (*types.ResponseExtendVote, error) {
 	return app.appConn.ExtendVoteSync(ctx, req)
 }
 
-func (app *appConnConsensus) VerifyVoteExtensionSync(ctx context.Context, req types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
+func (app *appConnConsensus) VerifyVoteExtensionSync(
+	ctx context.Context, req types.RequestVerifyVoteExtension,
+) (*types.ResponseVerifyVoteExtension, error) {
 	return app.appConn.VerifyVoteExtensionSync(ctx, req)
 }
 

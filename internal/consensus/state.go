@@ -916,8 +916,8 @@ func (cs *State) handleMsg(mi msgInfo) {
 			"height", cs.Height,
 			"round", cs.Round,
 			"peer", peerID,
+			"msg_type", fmt.Sprintf("%T", msg),
 			"err", err,
-			"msg", msg,
 		)
 	}
 }
@@ -2059,7 +2059,7 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 	// Verify VoteExtension if precommit
 	if vote.Type == tmproto.PrecommitType {
 		if err = cs.blockExec.VerifyVoteExtension(vote); err != nil {
-			return
+			return false, err
 		}
 	}
 

@@ -24,6 +24,7 @@
 - April 1, 2021: Initial Draft (@alexanderbez)
 - April 28, 2021: Specify search capabilities are only supported through the KV indexer (@marbar3778)
 - May 19, 2021: Update the SQL schema and the eventsink interface (@jayt106)
+- Aug 30, 2021: Update the SQL schema and the psql implementation (@creachadair)
 
 ## Status
 
@@ -145,163 +146,190 @@ The postgres eventsink will not support `tx_search`, `block_search`, `GetTxByHas
 ```sql
 -- Table Definition ----------------------------------------------
 
-CREATE TYPE block_event_type AS ENUM ('begin_block', 'end_block', '');
+-- The blocks table records metadata about each block.
+-- The block record does not include its events or transactions (see tx_results).
+CREATE TABLE blocks (
+  rowid      BIGSERIAL PRIMARY KEY,
 
-CREATE TABLE block_events (
-    id SERIAL PRIMARY KEY,
-    key VARCHAR NOT NULL,
-    value VARCHAR NOT NULL,
-    height INTEGER NOT NULL,
-    type block_event_type,
-    created_at TIMESTAMPTZ NOT NULL,
-    chain_id VARCHAR NOT NULL
+  height     BIGINT NOT NULL,
+  chain_id   VARCHAR NOT NULL,
+
+  -- When this block header was logged into the sink, in UTC.
+  created_at TIMESTAMPTZ NOT NULL,
+
+  UNIQUE (height, chain_id)
 );
 
+-- Index blocks by height and chain, since we need to resolve block IDs when
+-- indexing transaction records and transaction events.
+CREATE INDEX idx_blocks_height_chain ON blocks(height, chain_id);
+
+-- The tx_results table records metadata about transaction results.  Note that
+-- the events from a transaction are stored separately.
 CREATE TABLE tx_results (
-    id SERIAL PRIMARY KEY,
-    tx_result BYTEA NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL
+  rowid BIGSERIAL PRIMARY KEY,
+
+  -- The block to which this transaction belongs.
+  block_id BIGINT NOT NULL REFERENCES blocks(rowid),
+  -- The sequential index of the transaction within the block.
+  index INTEGER NOT NULL,
+  -- When this result record was logged into the sink, in UTC.
+  created_at TIMESTAMPTZ NOT NULL,
+  -- The hex-encoded hash of the transaction.
+  tx_hash VARCHAR NOT NULL,
+  -- The protobuf wire encoding of the TxResult message.
+  tx_result BYTEA NOT NULL,
+
+  UNIQUE (block_id, index)
 );
 
-CREATE TABLE tx_events (
-    id SERIAL PRIMARY KEY,
-    key VARCHAR NOT NULL,
-    value VARCHAR NOT NULL,
-    height INTEGER NOT NULL,
-    hash VARCHAR NOT NULL,
-    tx_result_id SERIAL,
-    created_at TIMESTAMPTZ NOT NULL,
-    chain_id VARCHAR NOT NULL,
-    FOREIGN KEY (tx_result_id)
-        REFERENCES tx_results(id)
-        ON DELETE CASCADE
+-- The events table records events. All events (both block and transaction) are
+-- associated with a block ID; transaction events also have a transaction ID.
+CREATE TABLE events (
+  rowid BIGSERIAL PRIMARY KEY,
+
+  -- The block and transaction this event belongs to.
+  -- If tx_id is NULL, this is a block event.
+  block_id BIGINT NOT NULL REFERENCES blocks(rowid),
+  tx_id    BIGINT NULL REFERENCES tx_results(rowid),
+
+  -- The application-defined type label for the event.
+  type VARCHAR NOT NULL
 );
 
--- Indices -------------------------------------------------------
+-- The attributes table records event attributes.
+CREATE TABLE attributes (
+   event_id      BIGINT NOT NULL REFERENCES events(rowid),
+   key           VARCHAR NOT NULL, -- bare key
+   composite_key VARCHAR NOT NULL, -- composed type.key
+   value         VARCHAR NULL,
 
-CREATE INDEX idx_block_events_key_value ON block_events(key, value);
-CREATE INDEX idx_tx_events_key_value ON tx_events(key, value);
-CREATE INDEX idx_tx_events_hash ON tx_events(hash);
+   UNIQUE (event_id, key)
+);
+
+-- A joined view of events and their attributes. Events that do not have any
+-- attributes are represented as a single row with empty key and value fields.
+CREATE VIEW event_attributes AS
+  SELECT block_id, tx_id, type, key, composite_key, value
+  FROM events LEFT JOIN attributes ON (events.rowid = attributes.event_id);
+
+-- A joined view of all block events (those having tx_id NULL).
+CREATE VIEW block_events AS
+  SELECT blocks.rowid as block_id, height, chain_id, type, key, composite_key, value
+  FROM blocks JOIN event_attributes ON (blocks.rowid = event_attributes.block_id)
+  WHERE event_attributes.tx_id IS NULL;
+
+-- A joined view of all transaction events.
+CREATE VIEW tx_events AS
+  SELECT height, index, chain_id, type, key, composite_key, value, tx_results.created_at
+  FROM blocks JOIN tx_results ON (blocks.rowid = tx_results.block_id)
+  JOIN event_attributes ON (tx_results.rowid = event_attributes.tx_id)
+  WHERE event_attributes.tx_id IS NOT NULL;
 ```
 
 The `PSQLEventSink` will implement the `EventSink` interface as follows
 (some details omitted for brevity):
 
-
 ```go
-func NewPSQLEventSink(connStr string, chainID string) (*PSQLEventSink, error) {
-  db, err := sql.Open("postgres", connStr)
-  if err != nil {
-    return nil, err
-  }
+func NewEventSink(connStr, chainID string) (*EventSink, error) {
+	db, err := sql.Open(driverName, connStr)
+	// ...
 
-  // ...
+	return &EventSink{
+		store:   db,
+		chainID: chainID,
+	}, nil
 }
 
-func (es *PSQLEventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error {
-  sqlStmt := sq.Insert("block_events").Columns("key", "value", "height", "type", "created_at", "chain_id")
+func (es *EventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error {
+	ts := time.Now().UTC()
 
-  // index the reserved block height index
-  ts := time.Now()
-  sqlStmt = sqlStmt.Values(types.BlockHeightKey, h.Header.Height, h.Header.Height, "", ts, es.chainID)
+	return runInTransaction(es.store, func(tx *sql.Tx) error {
+		// Add the block to the blocks table and report back its row ID for use
+		// in indexing the events for the block.
+		blockID, err := queryWithID(tx, `
+INSERT INTO blocks (height, chain_id, created_at)
+  VALUES ($1, $2, $3)
+  ON CONFLICT DO NOTHING
+  RETURNING rowid;
+`, h.Header.Height, es.chainID, ts)
+		// ...
 
-  for _, event := range h.ResultBeginBlock.Events {
-    // only index events with a non-empty type
-    if len(event.Type) == 0 {
-      continue
-    }
-
-    for _, attr := range event.Attributes {
-      if len(attr.Key) == 0 {
-        continue
-      }
-
-      // index iff the event specified index:true and it's not a reserved event
-      compositeKey := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
-      if compositeKey == types.BlockHeightKey {
-        return fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeKey)
-      }
-
-      if attr.GetIndex() {
-        sqlStmt = sqlStmt.Values(compositeKey, string(attr.Value), h.Header.Height, BlockEventTypeBeginBlock, ts, es.chainID)
-      }
-    }
-  }
-
-  // index end_block events...
-  // execute sqlStmt db query...
+		// Insert the special block meta-event for height.
+		if err := insertEvents(tx, blockID, 0, []abci.Event{
+			makeIndexedEvent(types.BlockHeightKey, fmt.Sprint(h.Header.Height)),
+		}); err != nil {
+			return fmt.Errorf("block meta-events: %w", err)
+		}
+		// Insert all the block events. Order is important here,
+		if err := insertEvents(tx, blockID, 0, h.ResultBeginBlock.Events); err != nil {
+			return fmt.Errorf("begin-block events: %w", err)
+		}
+		if err := insertEvents(tx, blockID, 0, h.ResultEndBlock.Events); err != nil {
+			return fmt.Errorf("end-block events: %w", err)
+		}
+		return nil
+	})
 }
 
-func (es *PSQLEventSink) IndexTxEvents(txr []*abci.TxResult) error {
-  sqlStmtEvents := sq.Insert("tx_events").Columns("key", "value", "height", "hash", "tx_result_id", "created_at", "chain_id")
-  sqlStmtTxResult := sq.Insert("tx_results").Columns("tx_result", "created_at")
+func (es *EventSink) IndexTxEvents(txrs []*abci.TxResult) error {
+	ts := time.Now().UTC()
 
-  ts := time.Now()
-  for _, tx := range txr {
-    // store the tx result
-    txBz, err := proto.Marshal(tx)
-    if err != nil {
-      return err
-    }
+	for _, txr := range txrs {
+		// Encode the result message in protobuf wire format for indexing.
+		resultData, err := proto.Marshal(txr)
+		// ...
 
-    sqlStmtTxResult = sqlStmtTxResult.Values(txBz, ts)
+		// Index the hash of the underlying transaction as a hex string.
+		txHash := fmt.Sprintf("%X", types.Tx(txr.Tx).Hash())
 
-    // execute sqlStmtTxResult db query...
-    var txID uint32
-    err = sqlStmtTxResult.QueryRow().Scan(&txID)
-		if err != nil {
+		if err := runInTransaction(es.store, func(tx *sql.Tx) error {
+			// Find the block associated with this transaction.
+			blockID, err := queryWithID(tx, `
+SELECT rowid FROM blocks WHERE height = $1 AND chain_id = $2;
+`, txr.Height, es.chainID)
+			// ...
+
+			// Insert a record for this tx_result and capture its ID for indexing events.
+			txID, err := queryWithID(tx, `
+INSERT INTO tx_results (block_id, index, created_at, tx_hash, tx_result)
+  VALUES ($1, $2, $3, $4, $5)
+  ON CONFLICT DO NOTHING
+  RETURNING rowid;
+`, blockID, txr.Index, ts, txHash, resultData)
+			// ...
+
+			// Insert the special transaction meta-events for hash and height.
+			if err := insertEvents(tx, blockID, txID, []abci.Event{
+				makeIndexedEvent(types.TxHashKey, txHash),
+				makeIndexedEvent(types.TxHeightKey, fmt.Sprint(txr.Height)),
+			}); err != nil {
+				return fmt.Errorf("indexing transaction meta-events: %w", err)
+			}
+			// Index any events packaged with the transaction.
+			if err := insertEvents(tx, blockID, txID, txr.Result.Events); err != nil {
+				return fmt.Errorf("indexing transaction events: %w", err)
+			}
+			return nil
+
+		}); err != nil {
 			return err
 		}
-
-    // index the reserved height and hash indices
-    hash := types.Tx(tx.Tx).Hash()
-    sqlStmtEvents = sqlStmtEvents.Values(types.TxHashKey, hash, tx.Height, hash, txID, ts, es.chainID)
-    sqlStmtEvents = sqlStmtEvents.Values(types.TxHeightKey, tx.Height, tx.Height, hash, txID, ts, es.chainID)
-
-    for _, event := range result.Result.Events {
-      // only index events with a non-empty type
-      if len(event.Type) == 0 {
-        continue
-      }
-
-      for _, attr := range event.Attributes {
-        if len(attr.Key) == 0 {
-          continue
-        }
-
-        // index if `index: true` is set
-        compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
-			
-        // ensure event does not conflict with a reserved prefix key
-        if compositeTag == types.TxHashKey || compositeTag == types.TxHeightKey {
-          return fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeTag)
-        }
-		
-        if attr.GetIndex() {
-          sqlStmtEvents = sqlStmtEvents.Values(compositeKey, string(attr.Value), tx.Height, hash, txID, ts, es.chainID)
-        }
-      }
-    }
-  }
-  
-  // execute sqlStmtEvents db query...
+	}
+	return nil
 }
 
-func (es *PSQLEventSink) SearchBlockEvents(ctx context.Context, q *query.Query) ([]int64, error) {
-  return nil, errors.New("block search is not supported via the postgres event sink")
-}
+// SearchBlockEvents is not implemented by this sink, and reports an error for all queries.
+func (es *EventSink) SearchBlockEvents(ctx context.Context, q *query.Query) ([]int64, error)
 
-func (es *PSQLEventSink) SearchTxEvents(ctx context.Context, q *query.Query) ([]*abci.TxResult, error) {
-  return nil, errors.New("tx search is not supported via the postgres event sink")
-}
+// SearchTxEvents is not implemented by this sink, and reports an error for all queries.
+func (es *EventSink) SearchTxEvents(ctx context.Context, q *query.Query) ([]*abci.TxResult, error)
 
-func (es *PSQLEventSink) GetTxByHash(hash []byte) (*abci.TxResult, error) {
-	return nil, errors.New("getTxByHash is not supported via the postgres event sink")
-}
+// GetTxByHash is not implemented by this sink, and reports an error for all queries.
+func (es *EventSink) GetTxByHash(hash []byte) (*abci.TxResult, error)
 
-func (es *PSQLEventSink) HasBlock(h int64) (bool, error) {
-	return false, errors.New("hasBlock is not supported via the postgres event sink")
-}
+// HasBlock is not implemented by this sink, and reports an error for all queries.
+func (es *EventSink) HasBlock(h int64) (bool, error)
 ```
 
 ### Configuration
