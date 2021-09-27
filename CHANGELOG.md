@@ -2,7 +2,29 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
-## v0.35
+## v0.35.0-rc2
+
+September 27, 2021
+
+### BREAKING CHANGES
+
+- Go API
+
+  - [crypto/armor]: \#6963 remove package which is unused, and based on
+    deprecated fundamentals. Downstream users should maintain this
+    library. (@tychoish)
+  - [state] [store] [proxy] [rpc/core]: \#6937 move packages to
+    `internal` to prevent consumption of these internal APIs by
+    external users. (@tychoish)
+
+### FEATURES
+
+- [\#6982](https://github.com/tendermint/tendermint/pull/6982) tendermint binary has built-in suppport for running the e2e application (with state sync support) (@cmwaters).
+
+
+## v0.35.0-rc1
+
+September 8, 2021
 
 Special thanks to external contributors on this release: @JayT106, @bipulprasad, @alessio, @Yawning, @silasdavis,
 @cuonglm, @tanyabouman, @JoeKash, @githubsands, @jeebster, @crypto-facs, @liamsi, and @gotjoshua
