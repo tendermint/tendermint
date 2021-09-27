@@ -336,7 +336,8 @@ func TestHeaderHash(t *testing.T) {
 			LastResultsHash:    tmhash.Sum([]byte("last_results_hash")),
 			EvidenceHash:       tmhash.Sum([]byte("evidence_hash")),
 			ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
-		}, hexBytesFromString("F740121F553B5418C3EFBD343C2DBFE9E007BB67B0D020A0741374BAB65242A4")},
+			AppData:            tmhash.Sum([]byte("app_data")),
+		}, hexBytesFromString("4D7E5C42ED5FB838E40915D0FEE00C87B2B41A42D6CA198CF3E163ACB2C033C3")},
 		{"nil header yields nil", nil, nil},
 		{"nil ValidatorsHash yields nil", &Header{
 			Version:            version.Consensus{Block: 1, App: 2},
@@ -353,6 +354,7 @@ func TestHeaderHash(t *testing.T) {
 			LastResultsHash:    tmhash.Sum([]byte("last_results_hash")),
 			EvidenceHash:       tmhash.Sum([]byte("evidence_hash")),
 			ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
+			AppData:            tmhash.Sum([]byte("app_data")),
 		}, nil},
 	}
 	for _, tc := range testCases {
@@ -1339,7 +1341,8 @@ func TestHeaderHashVector(t *testing.T) {
 		header   Header
 		expBytes string
 	}{
-		{header: h, expBytes: "87b6117ac7f827d656f178a3d6d30b24b205db2b6a3a053bae8baf4618570bfc"},
+
+		{header: h, expBytes: "c1c2aadb058840a0bf6760198a6f7ccf7ef3ac4fc632f7c28c7986ea20fa67b4"},
 	}
 
 	for _, tc := range testCases {

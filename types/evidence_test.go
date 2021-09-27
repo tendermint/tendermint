@@ -377,11 +377,11 @@ func TestEvidenceVectors(t *testing.T) {
 		},
 		{"LightClientAttackEvidence",
 			EvidenceList{lcae},
-			"2f8782163c3905b26e65823ababc977fe54e97b94e60c0360b1e4726b668bb8e",
+			"8071c5fa82ca2056bb65519e30e7e68d028e790b6d8a6d740846808f00d2653e",
 		},
 		{"LightClientAttackEvidence & DuplicateVoteEvidence",
 			EvidenceList{&DuplicateVoteEvidence{VoteA: v2, VoteB: v}, lcae},
-			"eedb4b47d6dbc9d43f53da8aa50bb826e8d9fc7d897da777c8af6a04aa74163e",
+			"7679a9dc13e1775d36a8bfa29273c8fdf10fc85ec70f5321a1e595be084605a9",
 		},
 	}
 
