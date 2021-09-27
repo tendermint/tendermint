@@ -166,8 +166,10 @@ To make things simpler the e2e application can also be run in the tendermint bin
 by running
 
 ```bash
-tendermint start --proxy-app test
+tendermint start --proxy-app e2e
 ```
+
+However this won't offer the same level of configurability of the application.
 
 **Socket**
 
