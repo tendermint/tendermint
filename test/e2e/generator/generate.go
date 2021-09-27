@@ -303,7 +303,17 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		}
 	})
 	for i, name := range peerNames {
-		if len(seedNames) > 0 && (i == 0 || r.Float64() >= 0.5) {
+		// there are seeds, statesync is disabled, and it's
+		// either the first peer by the sort order, and
+		// (randomly half of the remaining peers use a seed
+		// node; otherwise, choose some remaining set of the
+		// peers.
+
+		if len(seedNames) > 0 &&
+			manifest.Nodes[name].StateSync == e2e.StateSyncDisabled &&
+			(i == 0 || r.Float64() >= 0.5) {
+
+			// choose one of the seeds
 			manifest.Nodes[name].Seeds = uniformSetChoice(seedNames).Choose(r)
 		} else if i > 0 {
 			peers := uniformSetChoice(peerNames[:i])
