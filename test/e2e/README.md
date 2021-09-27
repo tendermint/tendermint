@@ -82,8 +82,6 @@ func init() {
 }
 ```
 
-Also, If you need to keep fullnode pubkey(s), set env `FULLNODE_PUBKEY_KEEP=1`, the keys are reset by default.
-
 ### Speed up running e2e tests
 Running the e2e tests using `make runner {network}` takes time because the command builds docker image every time
 when you run it which is not necessarily. Therefore, to speed up the launch of the e2e test you can manually create
