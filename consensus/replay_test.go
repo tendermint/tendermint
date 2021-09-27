@@ -364,9 +364,9 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	}
 	height, round := css[0].Height, css[0].Round
 
-	// start the machine
+	// start the machine; note height should be equal to InitialHeight here,
+	// so we don't need to increment it
 	startTestRound(css[0], height, round)
-	incrementHeight(vss...)
 	ensureNewRound(newRoundCh, height, 0)
 	ensureNewProposal(proposalCh, height, round)
 
@@ -1120,7 +1120,7 @@ func testHandshakeReplay(
 				t.Error(err)
 			}
 		})
-		chain, commits, err = makeBlockchainFromWAL(wal)
+		chain, commits, err = makeBlockchainFromWAL(wal, gdoc)
 		require.NoError(t, err)
 		pubKey, err := privVal.GetPubKey(gdoc.QuorumHash)
 		require.NoError(t, err)
@@ -1562,7 +1562,7 @@ func (app *badApp) Commit() abci.ResponseCommit {
 //--------------------------
 // utils for making blocks
 
-func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
+func makeBlockchainFromWAL(wal WAL, genDoc *types.GenesisDoc) ([]*types.Block, []*types.Commit, error) {
 	var height int64
 
 	// Search for height marker
@@ -1636,12 +1636,15 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 			}
 		case *types.Vote:
 			if p.Type == tmproto.PrecommitType {
-				// prev block
-				if len(blocks) < 1 {
-					panic("Cannot determine StateID: empty blocks[]")
+				// previous block, needed to detemine StateID
+				var stateID types.StateID
+				if len(blocks) >= 1 {
+					prevBlock := blocks[len(blocks)-1]
+					stateID = types.StateID{Height: prevBlock.Height, LastAppHash: prevBlock.AppHash}
+				} else {
+					stateID = types.StateID{Height: genDoc.InitialHeight, LastAppHash: genDoc.AppHash}
 				}
-				prevBlock := blocks[len(blocks)-1]
-				stateID := types.StateID{Height: prevBlock.Height, LastAppHash: prevBlock.AppHash}
+
 				thisBlockCommit = types.NewCommit(p.Height, p.Round,
 					p.BlockID, stateID, crypto.RandQuorumHash(), p.BlockSignature, p.StateSignature)
 			}
