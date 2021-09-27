@@ -7,11 +7,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -102,13 +101,13 @@ func TestStoreLoadValidators(t *testing.T) {
 func BenchmarkLoadValidators(b *testing.B) {
 	const valSetSize = 100
 
-	config := cfg.ResetTestRoot("state_")
-	defer os.RemoveAll(config.RootDir)
-	dbType := dbm.BackendType(config.DBBackend)
-	stateDB, err := dbm.NewDB("state", dbType, config.DBDir())
+	cfg := config.ResetTestRoot("state_")
+	defer os.RemoveAll(cfg.RootDir)
+	dbType := dbm.BackendType(cfg.DBBackend)
+	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())
 	require.NoError(b, err)
 	stateStore := sm.NewStore(stateDB)
-	state, err := sm.MakeGenesisStateFromFile(config.GenesisFile())
+	state, err := sm.MakeGenesisStateFromFile(cfg.GenesisFile())
 	if err != nil {
 		b.Fatal(err)
 	}

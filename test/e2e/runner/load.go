@@ -3,7 +3,6 @@ package main
 import (
 	"container/ring"
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"time"
@@ -21,9 +20,9 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 	// CPU. This gives high-throughput small networks and low-throughput large ones.
 	// This also limits the number of TCP connections, since each worker has
 	// a connection to all nodes.
-	concurrency := 64 / len(testnet.Nodes)
-	if concurrency == 0 {
-		concurrency = 1
+	concurrency := len(testnet.Nodes) * 8
+	if concurrency > 64 {
+		concurrency = 64
 	}
 
 	chTx := make(chan types.Tx)
@@ -32,7 +31,11 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 	defer cancel()
 
 	// Spawn job generator and processors.
-	logger.Info(fmt.Sprintf("Starting transaction load (%v workers)...", concurrency))
+	logger.Info("starting transaction load",
+		"workers", concurrency,
+		"nodes", len(testnet.Nodes),
+		"tx", testnet.TxSize)
+
 	started := time.Now()
 
 	go loadGenerate(ctx, chTx, testnet.TxSize)
@@ -54,19 +57,9 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 		case numSeen := <-chSuccess:
 			success += numSeen
 		case <-ctx.Done():
-			// if we couldn't submit any transactions,
-			// that's probably a problem and the test
-			// should error; however, for very short tests
-			// we shouldn't abort.
-			//
-			// The 2s cut off, is a rough guess based on
-			// the expected value of
-			// loadGenerateWaitTime. If the implementation
-			// of that function changes, then this might
-			// also need to change without more
-			// refactoring.
-			if success == 0 && time.Since(started) > 2*time.Second {
-				return errors.New("failed to submit any transactions")
+			if success == 0 {
+				return fmt.Errorf("failed to submit transactions in %s by %d workers",
+					time.Since(started), concurrency)
 			}
 
 			// TODO perhaps allow test networks to
@@ -78,8 +71,8 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 			logger.Info("ending transaction load",
 				"dur_secs", time.Since(started).Seconds(),
 				"txns", success,
-				"rate", rate,
-				"slow", rate < 1)
+				"workers", concurrency,
+				"rate", rate)
 
 			return nil
 		}
@@ -129,17 +122,22 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, size int64) {
 
 func loadGenerateWaitTime(size int64) time.Duration {
 	const (
-		min = int64(100 * time.Millisecond)
-		max = int64(time.Second)
+		min = int64(10 * time.Millisecond)
+		max = int64(100 * time.Millisecond)
 	)
 
 	var (
 		baseJitter = rand.Int63n(max-min+1) + min // nolint: gosec
 		sizeFactor = size * int64(time.Millisecond)
 		sizeJitter = rand.Int63n(sizeFactor-min+1) + min // nolint: gosec
+		waitTime   = time.Duration(baseJitter + sizeJitter)
 	)
 
-	return time.Duration(baseJitter + sizeJitter)
+	if size == 1 {
+		return waitTime / 2
+	}
+
+	return waitTime
 }
 
 // loadProcess processes transactions

@@ -9,7 +9,7 @@ import (
 	"path"
 	"path/filepath"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 )
 
@@ -48,7 +48,7 @@ func dumpConsensusState(rpc *rpchttp.HTTP, dir, filename string) error {
 
 // copyWAL copies the Tendermint node's WAL file. It returns an error if the
 // WAL file cannot be read or copied.
-func copyWAL(conf *cfg.Config, dir string) error {
+func copyWAL(conf *config.Config, dir string) error {
 	walPath := conf.Consensus.WalFile()
 	walFile := filepath.Base(walPath)
 

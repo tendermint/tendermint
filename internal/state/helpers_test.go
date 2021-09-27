@@ -11,7 +11,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
 	sf "github.com/tendermint/tendermint/internal/state/test/factory"
@@ -148,11 +148,11 @@ func makeHeaderPartsResponsesValPubKeyChange(
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
-		vPbPk, err := cryptoenc.PubKeyToProto(val.PubKey)
+		vPbPk, err := encoding.PubKeyToProto(val.PubKey)
 		if err != nil {
 			panic(err)
 		}
-		pbPk, err := cryptoenc.PubKeyToProto(pubkey)
+		pbPk, err := encoding.PubKeyToProto(pubkey)
 		if err != nil {
 			panic(err)
 		}
@@ -181,7 +181,7 @@ func makeHeaderPartsResponsesValPowerChange(
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
 	if val.VotingPower != power {
-		vPbPk, err := cryptoenc.PubKeyToProto(val.PubKey)
+		vPbPk, err := encoding.PubKeyToProto(val.PubKey)
 		if err != nil {
 			panic(err)
 		}

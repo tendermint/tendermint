@@ -74,17 +74,23 @@ func (pc probSetChoice) Choose(r *rand.Rand) []string {
 // uniformSetChoice picks a set of strings with uniform probability, picking at least one.
 type uniformSetChoice []string
 
-func (usc uniformSetChoice) Choose(r *rand.Rand) []string {
+func (usc uniformSetChoice) Choose(r *rand.Rand) []string { return usc.ChooseAtLeast(r, 1) }
+
+func (usc uniformSetChoice) ChooseAtLeast(r *rand.Rand, num int) []string {
 	choices := []string{}
 	indexes := r.Perm(len(usc))
-	if len(indexes) > 1 {
-		indexes = indexes[:1+r.Intn(len(indexes)-1)]
+	if num < len(indexes) {
+		indexes = indexes[:1+randomInRange(r, num, len(indexes)-1)]
 	}
+
 	for _, i := range indexes {
 		choices = append(choices, usc[i])
 	}
+
 	return choices
 }
+
+func randomInRange(r *rand.Rand, min, max int) int { return r.Intn(max-min+1) + min }
 
 type weightedChoice map[string]uint
 

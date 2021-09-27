@@ -30,6 +30,7 @@ import (
 	grpcprivval "github.com/tendermint/tendermint/privval/grpc"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
+	"github.com/tendermint/tendermint/test/e2e/app"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
@@ -97,7 +98,7 @@ func run(configFile string) error {
 
 // startApp starts the application server, listening for connections from Tendermint.
 func startApp(cfg *Config) error {
-	app, err := NewApplication(cfg)
+	app, err := app.NewApplication(cfg.App())
 	if err != nil {
 		return err
 	}
@@ -118,7 +119,7 @@ func startApp(cfg *Config) error {
 //
 // FIXME There is no way to simply load the configuration from a file, so we need to pull in Viper.
 func startNode(cfg *Config) error {
-	app, err := NewApplication(cfg)
+	app, err := app.NewApplication(cfg.App())
 	if err != nil {
 		return err
 	}

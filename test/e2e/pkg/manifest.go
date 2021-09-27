@@ -170,41 +170,91 @@ func LoadManifest(file string) (Manifest, error) {
 }
 
 // SortManifests orders (in-place) a list of manifests such that the
-// manifests will be ordered (vaguely) from least complex to most
-// complex.
-func SortManifests(manifests []Manifest) {
+// manifests will be ordered in terms of complexity (or expected
+// runtime). Complexity is determined first by the number of nodes,
+// and then by the total number of perturbations in the network.
+//
+// If reverse is true, then the manifests are ordered with the most
+// complex networks before the less complex networks.
+func SortManifests(manifests []Manifest, reverse bool) {
 	sort.SliceStable(manifests, func(i, j int) bool {
-		left, right := manifests[i], manifests[j]
-
-		if len(left.Nodes) < len(right.Nodes) {
-			return true
-		}
-
-		if left.InitialHeight < right.InitialHeight {
-			return true
-		}
-
-		if left.TxSize < right.TxSize {
-			return true
-		}
-
-		if left.Evidence < right.Evidence {
-			return true
-		}
-
+		// sort based on a point-based comparison between two
+		// manifests.
 		var (
-			leftPerturb  int
-			rightPerturb int
+			left  = manifests[i]
+			right = manifests[j]
 		)
 
+		// scores start with 100 points for each node. The
+		// number of nodes in a network is the most important
+		// factor in the complexity of the test.
+		leftScore := len(left.Nodes) * 100
+		rightScore := len(right.Nodes) * 100
+
+		// add two points for every node perturbation, and one
+		// point for every node that starts after genesis.
 		for _, n := range left.Nodes {
-			leftPerturb += len(n.Perturb)
+			leftScore += (len(n.Perturb) * 2)
+
+			if n.StartAt > 0 {
+				leftScore += 3
+			}
 		}
 		for _, n := range right.Nodes {
-			rightPerturb += len(n.Perturb)
+			rightScore += (len(n.Perturb) * 2)
+			if n.StartAt > 0 {
+				rightScore += 3
+			}
 		}
 
-		return leftPerturb < rightPerturb
+		// add one point if the network has evidence.
+		if left.Evidence > 0 {
+			leftScore += 2
+		}
 
+		if right.Evidence > 0 {
+			rightScore += 2
+		}
+
+		if left.TxSize > right.TxSize {
+			leftScore++
+		}
+
+		if right.TxSize > left.TxSize {
+			rightScore++
+		}
+
+		if reverse {
+			return leftScore >= rightScore
+		}
+
+		return leftScore < rightScore
 	})
+}
+
+// SplitGroups divides a list of manifests into n groups of
+// manifests.
+func SplitGroups(groups int, manifests []Manifest) [][]Manifest {
+	groupSize := (len(manifests) + groups - 1) / groups
+	splitManifests := make([][]Manifest, 0, groups)
+
+	for i := 0; i < len(manifests); i += groupSize {
+		grp := make([]Manifest, groupSize)
+		n := copy(grp, manifests[i:])
+		splitManifests = append(splitManifests, grp[:n])
+	}
+
+	return splitManifests
+}
+
+// WriteManifests writes a collection of manifests into files with the
+// specified path prefix.
+func WriteManifests(prefix string, manifests []Manifest) error {
+	for i, manifest := range manifests {
+		if err := manifest.Save(fmt.Sprintf("%s-%04d.toml", prefix, i)); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

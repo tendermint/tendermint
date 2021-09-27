@@ -8,13 +8,13 @@ import (
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
-	nm "github.com/tendermint/tendermint/node"
-	ctypes "github.com/tendermint/tendermint/rpc/coretypes"
-	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
+	"github.com/tendermint/tendermint/node"
+	"github.com/tendermint/tendermint/rpc/coretypes"
+	coregrpc "github.com/tendermint/tendermint/rpc/grpc"
 	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 )
 
@@ -24,13 +24,13 @@ type Options struct {
 	suppressStdout bool
 }
 
-func waitForRPC(ctx context.Context, conf *cfg.Config) {
+func waitForRPC(ctx context.Context, conf *config.Config) {
 	laddr := conf.RPC.ListenAddress
 	client, err := rpcclient.New(laddr)
 	if err != nil {
 		panic(err)
 	}
-	result := new(ctypes.ResultStatus)
+	result := new(coretypes.ResultStatus)
 	for {
 		_, err := client.Call(ctx, "status", map[string]interface{}{}, result)
 		if err == nil {
@@ -42,10 +42,10 @@ func waitForRPC(ctx context.Context, conf *cfg.Config) {
 	}
 }
 
-func waitForGRPC(ctx context.Context, conf *cfg.Config) {
+func waitForGRPC(ctx context.Context, conf *config.Config) {
 	client := GetGRPCClient(conf)
 	for {
-		_, err := client.Ping(ctx, &core_grpc.RequestPing{})
+		_, err := client.Ping(ctx, &coregrpc.RequestPing{})
 		if err == nil {
 			return
 		}
@@ -66,8 +66,8 @@ func makeAddrs() (string, string, string) {
 		fmt.Sprintf("tcp://127.0.0.1:%d", randPort())
 }
 
-func CreateConfig(testName string) *cfg.Config {
-	c := cfg.ResetTestRoot(testName)
+func CreateConfig(testName string) *config.Config {
+	c := config.ResetTestRoot(testName)
 
 	// and we use random ports to run in parallel
 	tm, rpc, grpc := makeAddrs()
@@ -78,15 +78,15 @@ func CreateConfig(testName string) *cfg.Config {
 	return c
 }
 
-func GetGRPCClient(conf *cfg.Config) core_grpc.BroadcastAPIClient {
+func GetGRPCClient(conf *config.Config) coregrpc.BroadcastAPIClient {
 	grpcAddr := conf.RPC.GRPCListenAddress
-	return core_grpc.StartGRPCClient(grpcAddr)
+	return coregrpc.StartGRPCClient(grpcAddr)
 }
 
 type ServiceCloser func(context.Context) error
 
 func StartTendermint(ctx context.Context,
-	conf *cfg.Config,
+	conf *config.Config,
 	app abci.Application,
 	opts ...func(*Options)) (service.Service, ServiceCloser, error) {
 
@@ -101,12 +101,12 @@ func StartTendermint(ctx context.Context,
 		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 	}
 	papp := abciclient.NewLocalCreator(app)
-	node, err := nm.New(conf, logger, papp, nil)
+	tmNode, err := node.New(conf, logger, papp, nil)
 	if err != nil {
 		return nil, func(_ context.Context) error { return nil }, err
 	}
 
-	err = node.Start()
+	err = tmNode.Start()
 	if err != nil {
 		return nil, func(_ context.Context) error { return nil }, err
 	}
@@ -119,11 +119,11 @@ func StartTendermint(ctx context.Context,
 		fmt.Println("Tendermint running!")
 	}
 
-	return node, func(ctx context.Context) error {
-		if err := node.Stop(); err != nil {
+	return tmNode, func(ctx context.Context) error {
+		if err := tmNode.Stop(); err != nil {
 			logger.Error("Error when trying to stop node", "err", err)
 		}
-		node.Wait()
+		tmNode.Wait()
 		os.RemoveAll(conf.RootDir)
 		return nil
 	}, nil

@@ -15,20 +15,20 @@ import (
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/blocksync/v2/internal/behavior"
-	cons "github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/mempool/mock"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/conn"
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
 	sf "github.com/tendermint/tendermint/internal/state/test/factory"
+	tmstore "github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
-	tmstore "github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -177,7 +177,7 @@ func newTestReactor(t *testing.T, p testReactorParams) *BlockchainReactor {
 		require.NoError(t, err)
 	}
 
-	r := newReactor(state, store, reporter, appl, true, cons.NopMetrics())
+	r := newReactor(state, store, reporter, appl, true, consensus.NopMetrics())
 	logger := log.TestingLogger()
 	r.SetLogger(logger.With("module", "blockchain"))
 
@@ -365,9 +365,9 @@ func TestReactorHelperMode(t *testing.T) {
 		channelID = byte(0x40)
 	)
 
-	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
-	defer os.RemoveAll(config.RootDir)
-	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
+	cfg := config.ResetTestRoot("blockchain_reactor_v2_test")
+	defer os.RemoveAll(cfg.RootDir)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
 
 	params := testReactorParams{
 		logger:      log.TestingLogger(),
@@ -455,9 +455,9 @@ func TestReactorHelperMode(t *testing.T) {
 }
 
 func TestReactorSetSwitchNil(t *testing.T) {
-	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
-	defer os.RemoveAll(config.RootDir)
-	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
+	cfg := config.ResetTestRoot("blockchain_reactor_v2_test")
+	defer os.RemoveAll(cfg.RootDir)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
 
 	reactor := newTestReactor(t, testReactorParams{
 		logger:   log.TestingLogger(),

@@ -12,13 +12,13 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
+	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -31,8 +31,8 @@ const (
 // replay messages interactively or all at once
 
 // replay the wal file
-func RunReplayFile(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig, console bool) {
-	consensusState := newConsensusStateForReplay(config, csConfig)
+func RunReplayFile(cfg config.BaseConfig, csConfig *config.ConsensusConfig, console bool) {
+	consensusState := newConsensusStateForReplay(cfg, csConfig)
 
 	if err := consensusState.ReplayFile(csConfig.WalFile(), console); err != nil {
 		tmos.Exit(fmt.Sprintf("Error during consensus replay: %v", err))
@@ -286,22 +286,22 @@ func (pb *playback) replayConsoleLoop() int {
 //--------------------------------------------------------------------------------
 
 // convenience for replay mode
-func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig) *State {
-	dbType := dbm.BackendType(config.DBBackend)
+func newConsensusStateForReplay(cfg config.BaseConfig, csConfig *config.ConsensusConfig) *State {
+	dbType := dbm.BackendType(cfg.DBBackend)
 	// Get BlockStore
-	blockStoreDB, err := dbm.NewDB("blockstore", dbType, config.DBDir())
+	blockStoreDB, err := dbm.NewDB("blockstore", dbType, cfg.DBDir())
 	if err != nil {
 		tmos.Exit(err.Error())
 	}
 	blockStore := store.NewBlockStore(blockStoreDB)
 
 	// Get State
-	stateDB, err := dbm.NewDB("state", dbType, config.DBDir())
+	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())
 	if err != nil {
 		tmos.Exit(err.Error())
 	}
 	stateStore := sm.NewStore(stateDB)
-	gdoc, err := sm.MakeGenesisDocFromFile(config.GenesisFile())
+	gdoc, err := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
 	if err != nil {
 		tmos.Exit(err.Error())
 	}
@@ -311,7 +311,7 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 	}
 
 	// Create proxyAppConn connection (consensus, mempool, query)
-	clientCreator, _ := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
+	clientCreator, _ := proxy.DefaultClientCreator(cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
 	proxyApp := proxy.NewAppConns(clientCreator)
 	err = proxyApp.Start()
 	if err != nil {

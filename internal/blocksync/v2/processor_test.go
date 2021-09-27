@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	tmState "github.com/tendermint/tendermint/internal/state"
+	tmstate "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -33,7 +33,7 @@ func makePcBlock(height int64) *types.Block {
 // makeState takes test parameters and creates a specific processor state.
 func makeState(p *params) *pcState {
 	var (
-		tmState = tmState.State{LastBlockHeight: p.height}
+		tmState = tmstate.State{LastBlockHeight: p.height}
 		context = newMockProcessorContext(tmState, p.verBL, p.appBL)
 	)
 	state := newPcState(context)
@@ -207,7 +207,7 @@ func TestRProcessBlockSuccess(t *testing.T) {
 				{ // finish when H+1 or/and H+2 are missing
 					event:         rProcessBlock{},
 					wantState:     &params{height: 1, items: []pcBlock{{"P2", 2}, {"P1", 4}}, blocksSynced: 1, draining: true},
-					wantNextEvent: pcFinished{tmState: tmState.State{LastBlockHeight: 1}, blocksSynced: 1},
+					wantNextEvent: pcFinished{tmState: tmstate.State{LastBlockHeight: 1}, blocksSynced: 1},
 				},
 			},
 		},
@@ -271,7 +271,7 @@ func TestScFinishedEv(t *testing.T) {
 				{
 					currentState: &params{height: 100, items: []pcBlock{}, blocksSynced: 100}, event: scFinishedEv{},
 					wantState:     &params{height: 100, items: []pcBlock{}, blocksSynced: 100},
-					wantNextEvent: pcFinished{tmState: tmState.State{LastBlockHeight: 100}, blocksSynced: 100},
+					wantNextEvent: pcFinished{tmState: tmstate.State{LastBlockHeight: 100}, blocksSynced: 100},
 				},
 			},
 		},
@@ -282,7 +282,7 @@ func TestScFinishedEv(t *testing.T) {
 					currentState: &params{height: 100, items: []pcBlock{
 						{"P1", 101}}, blocksSynced: 100}, event: scFinishedEv{},
 					wantState:     &params{height: 100, items: []pcBlock{{"P1", 101}}, blocksSynced: 100},
-					wantNextEvent: pcFinished{tmState: tmState.State{LastBlockHeight: 100}, blocksSynced: 100},
+					wantNextEvent: pcFinished{tmState: tmstate.State{LastBlockHeight: 100}, blocksSynced: 100},
 				},
 			},
 		},
