@@ -150,6 +150,7 @@ type ManifestNode struct {
 	UseLegacyP2P bool `toml:"use_legacy_p2p"`
 }
 
+// Stateless reports whether m is a node that does not own state, including light and seed nodes.
 func (m ManifestNode) Stateless() bool {
 	return m.Mode == string(ModeLight) || m.Mode == string(ModeSeed)
 }

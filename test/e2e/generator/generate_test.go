@@ -16,7 +16,7 @@ func TestGenerator(t *testing.T) {
 
 	// this just means that the numbers reported by the test
 	// failures map to the test cases that you'd see locally.
-	e2e.SortManifests(manifests, false)
+	e2e.SortManifests(manifests, false /* ascending */)
 
 	for idx, m := range manifests {
 		t.Run(fmt.Sprintf("Case%04d", idx), func(t *testing.T) {
