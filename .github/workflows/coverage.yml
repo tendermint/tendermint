@@ -125,7 +125,7 @@ jobs:
           name: "${{ github.sha }}-03-coverage"
         if: env.GIT_DIFF
       - run: |
-          cat ./*profile.out | grep -v "mode: atomic" >> coverage.txt
+          cat ./*profile.out | grep -v "mode: set" >> coverage.txt
         if: env.GIT_DIFF
       - uses: codecov/codecov-action@v2.1.0
         with:
