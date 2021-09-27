@@ -4,7 +4,7 @@
 
 Special thanks to external contributors on this release:
 
-Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
 ### BREAKING CHANGES
 

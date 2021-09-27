@@ -1,6 +1,6 @@
 # Changelog
 
-Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
 ## v0.35
 
