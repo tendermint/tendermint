@@ -162,7 +162,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	case "large":
 		// FIXME Networks are kept small since large ones use too much CPU.
 		numSeeds = r.Intn(2)
-		numLightClients = r.Intn(3)
+		numLightClients = r.Intn(2)
 		numValidators = 4 + r.Intn(4)
 		numFulls = r.Intn(4)
 	default:
@@ -187,12 +187,16 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 
 	numSyncingNodes := 0
 
+	var (
+		hybridNumNew    = 0
+		hybridNumLegacy = 0
+	)
+
 	// Next, we generate validators. We make sure a BFT quorum of validators start
 	// at the initial height, and that we have two archive nodes. We also set up
 	// the initial validator set, and validator set updates for delayed nodes.
 	nextStartAt := manifest.InitialHeight + 5
 	quorum := numValidators*2/3 + 1
-	hasHybridValidator := false
 	for i := 1; i <= numValidators; i++ {
 		startAt := int64(0)
 		if i > quorum && numSyncingNodes < 2 && r.Float64() >= 0.25 {
@@ -208,12 +212,21 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			node.UseLegacyP2P = true
 		case HybridP2PMode:
 			node.UseLegacyP2P = r.Float64() < legacyP2PFactor
-
 			if node.UseLegacyP2P {
-				hasHybridValidator = true
-			} else if !hasHybridValidator {
-				hasHybridValidator = true
-				node.UseLegacyP2P = true
+				hybridNumLegacy++
+				if hybridNumNew == 0 {
+					hybridNumNew++
+					hybridNumLegacy--
+					node.UseLegacyP2P = false
+				}
+			} else {
+				hybridNumNew++
+				if hybridNumLegacy == 0 {
+					hybridNumNew--
+					hybridNumLegacy++
+					node.UseLegacyP2P = true
+
+				}
 			}
 		}
 
@@ -238,7 +251,6 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		return manifest, fmt.Errorf("invalid validators option %q", opt["validators"])
 	}
 
-	hasHybridFull := false
 	// Finally, we generate random full nodes.
 	for i := 1; i <= numFulls; i++ {
 		startAt := int64(0)
@@ -254,13 +266,6 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			node.UseLegacyP2P = true
 		case HybridP2PMode:
 			node.UseLegacyP2P = r.Float64() > legacyP2PFactor
-
-			if node.UseLegacyP2P {
-				hasHybridFull = true
-			} else if !hasHybridFull {
-				hasHybridFull = true
-				node.UseLegacyP2P = true
-			}
 		}
 
 		manifest.Nodes[fmt.Sprintf("full%02d", i)] = node
