@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
+VERS=0.7.1
+
 set -eo pipefail
 
-git clone https://github.com/tendermint/spec.git
-
 # Edit this line to clone your branch, if you are modifying protobuf files
-cd spec && git checkout v0.7.1 && cd ..
+curl -qL "https://github.com/tendermint/spec/archive/refs/tags/v${VERS}.tar.gz" | tar -xjf - spec-"$VERS"/proto/
 
-cp -r ./spec/proto/tendermint/** ./proto/tendermint
+cp -r ./spec-"$VERS"/proto/tendermint/** ./proto/tendermint
 
 buf generate --path proto/tendermint
 
@@ -19,7 +19,7 @@ echo "proto files have been generated"
 
 echo "removing copied files"
 
-rm -rf ./proto/tendermint/abci/types.proto
+# rm -rf ./proto/tendermint/abci/types.proto
 rm -rf ./proto/tendermint/blocksync/types.proto
 rm -rf ./proto/tendermint/consensus/types.proto
 rm -rf ./proto/tendermint/mempool/types.proto
@@ -33,4 +33,4 @@ rm -rf ./proto/tendermint/types/types.proto
 rm -rf ./proto/tendermint/types/validator.proto
 rm -rf ./proto/tendermint/version/version.proto
 
-rm -rf ./spec
+rm -rf ./spec-"$VERS"
