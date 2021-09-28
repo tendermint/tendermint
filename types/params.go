@@ -91,6 +91,7 @@ func DefaultConsensusParams() *ConsensusParams {
 		Evidence:  DefaultEvidenceParams(),
 		Validator: DefaultValidatorParams(),
 		Version:   DefaultVersionParams(),
+		Timestamp: DefaultTimestampParams(),
 	}
 }
 
@@ -120,6 +121,15 @@ func DefaultValidatorParams() ValidatorParams {
 }
 
 func DefaultVersionParams() VersionParams {
+	// TODO (@wbanfield) fill these with meaningful values
+	return TimestampParams{
+		Accuracy:     5 * time.Second,
+		Precision:    5 * time.Second,
+		MessageDelay: 5 * time.Second,
+	}
+}
+
+func DefaultTimestampParams() TimestampParams {
 	return VersionParams{
 		AppVersion: 0,
 	}
@@ -175,6 +185,19 @@ func (params ConsensusParams) ValidateConsensusParams() error {
 		return errors.New("len(Validator.PubKeyTypes) must be greater than 0")
 	}
 
+	if params.Timestamp.Accuracy <= 0 {
+		return fmt.Errorf("evidence.Accuracy must be non negative. Got: %d",
+			params.Timestamp.Accuracy)
+	}
+	if params.Timestamp.Precision <= 0 {
+		return fmt.Errorf("evidence.MaxBytes must be non negative. Got: %d",
+			params.Timestamp.Precision)
+	}
+	if params.Timestamp.MessageDelay <= 0 {
+		return fmt.Errorf("evidence.MessageDelay must be non negative. Got: %d",
+			params.Timestamp.MessageDelay)
+	}
+
 	// Check if keyType is a known ABCIPubKeyType
 	for i := 0; i < len(params.Validator.PubKeyTypes); i++ {
 		keyType := params.Validator.PubKeyTypes[i]
@@ -214,7 +237,8 @@ func (params ConsensusParams) HashConsensusParams() []byte {
 func (params *ConsensusParams) Equals(params2 *ConsensusParams) bool {
 	return params.Block == params2.Block &&
 		params.Evidence == params2.Evidence &&
-		tmstrings.StringSliceEqual(params.Validator.PubKeyTypes, params2.Validator.PubKeyTypes)
+		tmstrings.StringSliceEqual(params.Validator.PubKeyTypes, params2.Validator.PubKeyTypes) &&
+		params.Timestamp == params2.Timestamp
 }
 
 // Update returns a copy of the params with updates from the non-zero fields of p2.
