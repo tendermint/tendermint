@@ -3,6 +3,7 @@ package cmap
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -66,4 +67,47 @@ func BenchmarkCMapHas(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		m.Has(string(rune(i)))
 	}
+}
+
+func TestCMap_GetOrSet_Parallel(t *testing.T) {
+
+	tests := []struct {
+		name        string
+		newValue    interface{}
+		parallelism int
+	}{
+		{"test1", "a", 4},
+		{"test2", "a", 40},
+		{"test3", "a", 1},
+	}
+
+	//nolint:scopelint
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cm := NewCMap()
+
+			wg := sync.WaitGroup{}
+			wg.Add(tt.parallelism)
+			for i := 0; i < tt.parallelism; i++ {
+				go func() {
+					defer wg.Done()
+					gotValue, _ := cm.GetOrSet(tt.name, tt.newValue)
+					assert.EqualValues(t, tt.newValue, gotValue)
+				}()
+			}
+			wg.Wait()
+		})
+	}
+}
+
+func TestCMap_GetOrSet_Exists(t *testing.T) {
+	cm := NewCMap()
+
+	gotValue, exists := cm.GetOrSet("key", 1000)
+	assert.False(t, exists)
+	assert.EqualValues(t, 1000, gotValue)
+
+	gotValue, exists = cm.GetOrSet("key", 2000)
+	assert.True(t, exists)
+	assert.EqualValues(t, 1000, gotValue)
 }
