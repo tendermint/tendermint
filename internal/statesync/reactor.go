@@ -1006,13 +1006,25 @@ func (r *Reactor) waitForEnoughPeers(ctx context.Context, numPeers int) error {
 	startAt := time.Now()
 	t := time.NewTicker(100 * time.Millisecond)
 	defer t.Stop()
+	logT := time.NewTicker(time.Minute)
+	defer logT.Stop()
+	var iter int
 	for r.peers.Len() < numPeers {
+		iter++
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("operation canceled while waiting for peers after %s", time.Since(startAt))
 		case <-r.closeCh:
 			return fmt.Errorf("shutdown while waiting for peers after %s", time.Since(startAt))
 		case <-t.C:
+			continue
+		case <-logT.C:
+			r.Logger.Info("waiting for sufficient peers to start statesync",
+				"duration", time.Since(startAt).String(),
+				"target", numPeers,
+				"peers", r.peers.Len(),
+				"iters", iter,
+			)
 			continue
 		}
 	}

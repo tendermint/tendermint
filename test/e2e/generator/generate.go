@@ -73,7 +73,15 @@ func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 	manifests := []e2e.Manifest{}
 	switch opts.P2P {
 	case NewP2PMode, LegacyP2PMode, HybridP2PMode:
+		defer func() {
+			// avoid modifying the global state.
+			original := make([]interface{}, len(testnetCombinations["p2p"]))
+			copy(original, testnetCombinations["p2p"])
+			testnetCombinations["p2p"] = original
+		}()
+
 		testnetCombinations["p2p"] = []interface{}{opts.P2P}
+
 	default:
 		testnetCombinations["p2p"] = []interface{}{NewP2PMode, LegacyP2PMode, HybridP2PMode}
 	}
@@ -153,13 +161,15 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		numValidators = 4
 	case "large":
 		// FIXME Networks are kept small since large ones use too much CPU.
-		numSeeds = r.Intn(2)
-		numLightClients = r.Intn(3)
+		numSeeds = r.Intn(1)
+		numLightClients = r.Intn(2)
 		numValidators = 4 + r.Intn(4)
 		numFulls = r.Intn(4)
 	default:
 		return manifest, fmt.Errorf("unknown topology %q", opt["topology"])
 	}
+
+	const legacyP2PFactor float64 = 0.5
 
 	// First we generate seed nodes, starting at the initial height.
 	for i := 1; i <= numSeeds; i++ {
@@ -169,18 +179,23 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		case LegacyP2PMode:
 			node.UseLegacyP2P = true
 		case HybridP2PMode:
-			node.UseLegacyP2P = r.Intn(5) < 2
+			node.UseLegacyP2P = r.Float64() < legacyP2PFactor
 		}
 
 		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = node
 	}
+
+	var (
+		numSyncingNodes = 0
+		hybridNumNew    = 0
+		hybridNumLegacy = 0
+	)
 
 	// Next, we generate validators. We make sure a BFT quorum of validators start
 	// at the initial height, and that we have two archive nodes. We also set up
 	// the initial validator set, and validator set updates for delayed nodes.
 	nextStartAt := manifest.InitialHeight + 5
 	quorum := numValidators*2/3 + 1
-	numSyncingNodes := 0
 	for i := 1; i <= numValidators; i++ {
 		startAt := int64(0)
 		if i > quorum && numSyncingNodes < 2 && r.Float64() >= 0.25 {
@@ -195,7 +210,23 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		case LegacyP2PMode:
 			node.UseLegacyP2P = true
 		case HybridP2PMode:
-			node.UseLegacyP2P = r.Intn(5) < 2
+			node.UseLegacyP2P = r.Float64() < legacyP2PFactor
+			if node.UseLegacyP2P {
+				hybridNumLegacy++
+				if hybridNumNew == 0 {
+					hybridNumNew++
+					hybridNumLegacy--
+					node.UseLegacyP2P = false
+				}
+			} else {
+				hybridNumNew++
+				if hybridNumLegacy == 0 {
+					hybridNumNew--
+					hybridNumLegacy++
+					node.UseLegacyP2P = true
+
+				}
+			}
 		}
 
 		manifest.Nodes[name] = node
@@ -222,7 +253,8 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	// Finally, we generate random full nodes.
 	for i := 1; i <= numFulls; i++ {
 		startAt := int64(0)
-		if r.Float64() >= 0.5 {
+		if numSyncingNodes < 2 && r.Float64() >= 0.5 {
+			numSyncingNodes++
 			startAt = nextStartAt
 			nextStartAt += 5
 		}
@@ -232,7 +264,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		case LegacyP2PMode:
 			node.UseLegacyP2P = true
 		case HybridP2PMode:
-			node.UseLegacyP2P = r.Intn(5) < 2
+			node.UseLegacyP2P = r.Float64() > legacyP2PFactor
 		}
 
 		manifest.Nodes[fmt.Sprintf("full%02d", i)] = node
@@ -275,7 +307,17 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		}
 	})
 	for i, name := range peerNames {
-		if len(seedNames) > 0 && (i == 0 || r.Float64() >= 0.5) {
+		// there are seeds, statesync is disabled, and it's
+		// either the first peer by the sort order, and
+		// (randomly half of the remaining peers use a seed
+		// node; otherwise, choose some remaining set of the
+		// peers.
+
+		if len(seedNames) > 0 &&
+			manifest.Nodes[name].StateSync == e2e.StateSyncDisabled &&
+			(i == 0 || r.Float64() >= 0.5) {
+
+			// choose one of the seeds
 			manifest.Nodes[name].Seeds = uniformSetChoice(seedNames).Choose(r)
 		} else if i > 0 {
 			peers := uniformSetChoice(peerNames[:i])
