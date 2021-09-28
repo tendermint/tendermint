@@ -81,8 +81,7 @@ func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 		}()
 
 		testnetCombinations["p2p"] = []interface{}{opts.P2P}
-
-	default:
+	case MixedP2PMode:
 		testnetCombinations["p2p"] = []interface{}{NewP2PMode, LegacyP2PMode, HybridP2PMode}
 	}
 
