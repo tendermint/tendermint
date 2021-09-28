@@ -9,10 +9,20 @@ built from the files in this (`/docs`) directory for
 
 ## How It Works
 
-There is a CircleCI job listening for changes in the `/docs` directory, on both
-the `master` branch. Any updates to files in this directory
-on those branches will automatically trigger a website deployment. Under the hood,
-the private website repository has a `make build-docs` target consumed by a CircleCI job in that repo.
+There is a [GitHub Actions workflow](https://github.com/tendermint/docs/actions/workflows/deployment.yml)
+in the `tendermint/docs` repository that clones and builds the documentation
+site from the contents of this `/docs` directory, for `master` and each
+supported release branch. Under the hood, this workflow runs `make build-docs`
+from the [Makefile](../Makefile).
+
+The list of spuported versions are defined in [`config.js`](./.vuepress/config.js),
+which defines the UI menu on the documentation site, and also in
+[`docs/versions`](./versions), which determines which branches are built.
+
+The last entry in the `docs/versions` file determines which version is linked
+by default from the generated `index.html`. This should generally be the most
+recent release, rather than `master`, so that new users are not confused by
+documentation for unreleased features.
 
 ## README
 
