@@ -11,6 +11,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - CLI/RPC/Config
 
 - Apps
+  - [proto/tendermint] \#6976 Remove core protobuf files in favor of only housing them in the [tendermint/spec](https://github.com/tendermint/spec) repository.
 
 - P2P Protocol
 
@@ -32,4 +33,3 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 ### IMPROVEMENTS
 
 ### BUG FIXES
-

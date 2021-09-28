@@ -109,7 +109,7 @@ We use [Protocol Buffers](https://developers.google.com/protocol-buffers) along 
 
 For linting, checking breaking changes and generating proto stubs, we use [buf](https://buf.build/). If you would like to run linting and check if the changes you have made are breaking then you will need to have docker running locally. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`.
 
-We use [Docker](https://www.docker.com/) to generate the protobuf stubs. To generate the stubs yourself, make sure docker is running then run `make proto-gen`.
+We use [Docker](https://www.docker.com/) to generate the protobuf stubs. To generate the stubs yourself, make sure docker is running then run `make proto-gen`. This command uses the spec repo to get the necessary protobuf files for generating the go code. If you are modifying the proto files manually for changes in the core data structures, you will need to clone them into the go repo and comment out lines 22-37 of the file `./scripts/protocgen.sh`.
 
 ### Visual Studio Code
 

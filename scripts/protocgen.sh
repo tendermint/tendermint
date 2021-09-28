@@ -19,13 +19,14 @@ echo "proto files have been generated"
 
 echo "removing copied files"
 
-# rm -rf ./proto/tendermint/abci/types.proto
+rm -rf ./proto/tendermint/abci/types.proto
 rm -rf ./proto/tendermint/blocksync/types.proto
 rm -rf ./proto/tendermint/consensus/types.proto
 rm -rf ./proto/tendermint/mempool/types.proto
 rm -rf ./proto/tendermint/p2p/types.proto
 rm -rf ./proto/tendermint/p2p/conn.proto
 rm -rf ./proto/tendermint/p2p/pex.proto
+rm -rf ./proto/tendermint/statesync/types.proto
 rm -rf ./proto/tendermint/types/block.proto
 rm -rf ./proto/tendermint/types/evidence.proto
 rm -rf ./proto/tendermint/types/params.proto
