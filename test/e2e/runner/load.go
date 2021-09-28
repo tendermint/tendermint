@@ -102,7 +102,7 @@ func loadGenerate(ctx context.Context, r *rand.Rand, chTx chan<- types.Tx, txSiz
 		id := rand.Int63() % 100 // nolint: gosec
 
 		bz := make([]byte, txSize)
-		_, err := r.Read(bz) // nolint: gosec
+		_, err := r.Read(bz)
 		if err != nil {
 			panic(fmt.Sprintf("Failed to read random bytes: %v", err))
 		}
@@ -127,9 +127,9 @@ func loadGenerateWaitTime(r *rand.Rand, size int) time.Duration {
 	)
 
 	var (
-		baseJitter = r.Int63n(max-min+1) + min // nolint: gosec
+		baseJitter = r.Int63n(max-min+1) + min
 		sizeFactor = int64(size) * min
-		sizeJitter = r.Int63n(sizeFactor-min+1) + min // nolint: gosec
+		sizeJitter = r.Int63n(sizeFactor-min+1) + min
 	)
 
 	return time.Duration(baseJitter + sizeJitter)

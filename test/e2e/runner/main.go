@@ -68,7 +68,7 @@ func NewCLI() *CLI {
 				return err
 			}
 
-			r := rand.New(rand.NewSource(randomSeed))
+			r := rand.New(rand.NewSource(randomSeed)) // nolint: gosec
 
 			chLoadResult := make(chan error)
 			ctx, cancel := context.WithCancel(cmd.Context())
@@ -217,7 +217,7 @@ func NewCLI() *CLI {
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			return Load(
 				cmd.Context(),
-				rand.New(rand.NewSource(randomSeed)),
+				rand.New(rand.NewSource(randomSeed)), // nolint: gosec
 				cli.testnet,
 			)
 		},
@@ -239,7 +239,7 @@ func NewCLI() *CLI {
 
 			return InjectEvidence(
 				cmd.Context(),
-				rand.New(rand.NewSource(randomSeed)),
+				rand.New(rand.NewSource(randomSeed)), // nolint: gosec
 				cli.testnet,
 				amount,
 			)
@@ -314,7 +314,7 @@ Does not run any perbutations.
 			ctx, cancel := context.WithCancel(cmd.Context())
 			defer cancel()
 
-			r := rand.New(rand.NewSource(randomSeed))
+			r := rand.New(rand.NewSource(randomSeed)) // nolint: gosec
 
 			lctx, loadCancel := context.WithCancel(ctx)
 			defer loadCancel()
