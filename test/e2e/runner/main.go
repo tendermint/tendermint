@@ -14,7 +14,7 @@ import (
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
-const randomSeed int64 = 2308084734268
+const randomSeed = 2308084734268
 
 var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 
