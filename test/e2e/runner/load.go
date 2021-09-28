@@ -20,7 +20,7 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 	// CPU. This gives high-throughput small networks and low-throughput large ones.
 	// This also limits the number of TCP connections, since each worker has
 	// a connection to all nodes.
-	concurrency := len(testnet.Nodes) * 4
+	concurrency := len(testnet.Nodes) * 2
 	if concurrency > 32 {
 		concurrency = 32
 	}
@@ -122,13 +122,13 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, txSize int64, netwo
 
 func loadGenerateWaitTime(size int) time.Duration {
 	const (
-		min = int64(10 * time.Millisecond)
-		max = int64(100 * time.Millisecond)
+		min = int64(100 * time.Millisecond)
+		max = int64(time.Second)
 	)
 
 	var (
 		baseJitter = rand.Int63n(max-min+1) + min // nolint: gosec
-		sizeFactor = int64(size)*int64(time.Millisecond) + min
+		sizeFactor = int64(size) * 100 * int64(time.Millisecond)
 		sizeJitter = rand.Int63n(sizeFactor-min+1) + min // nolint: gosec
 		waitTime   = time.Duration(baseJitter + sizeJitter)
 	)
