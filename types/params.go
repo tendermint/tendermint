@@ -69,9 +69,9 @@ type EvidenceParams struct {
 // TimestampParams define the acceptable amount of clock skew among different
 // validators on a network.
 type TimestampParams struct {
-	Accuracy     int64         `json:"accuracy"`
+	Accuracy     time.Duration `json:"accuracy"`
 	Precision    time.Duration `json:"precision"`
-	MessageDelay int64         `json:"message_delay"`
+	MessageDelay time.Duration `json:"message_delay"`
 }
 
 // ValidatorParams restrict the public key types validators can use.
@@ -244,6 +244,11 @@ func (params ConsensusParams) UpdateConsensusParams(params2 *tmproto.ConsensusPa
 	if params2.Version != nil {
 		res.Version.AppVersion = params2.Version.AppVersion
 	}
+	if params2.Timestamp != nil {
+		res.Timestamp.Accuracy = params2.Timestamp.Accuracy
+		res.Timestamp.Precision = params2.Timestamp.Precision
+		res.Timestamp.MessageDelay = params2.Timestamp.MessageDelay
+	}
 	return res
 }
 
@@ -264,6 +269,11 @@ func (params *ConsensusParams) ToProto() tmproto.ConsensusParams {
 		Version: &tmproto.VersionParams{
 			AppVersion: params.Version.AppVersion,
 		},
+		Timestamp: &tmproto.TimestampParams{
+			Accuracy:     params.Timestamp.Accuracy,
+			Precision:    params.Timestamp.Precision,
+			MessageDelay: params.Timestamp.MessageDelay,
+		},
 	}
 }
 
@@ -283,6 +293,11 @@ func ConsensusParamsFromProto(pbParams tmproto.ConsensusParams) ConsensusParams 
 		},
 		Version: VersionParams{
 			AppVersion: pbParams.Version.AppVersion,
+		},
+		Timestamp: TimestampParams{
+			Accuracy:     pbParams.Timestamp.Accuracy,
+			Precision:    pbParams.Timestamp.Precision,
+			MessageDelay: pbParams.Timestamp.MessageDelay,
 		},
 	}
 }

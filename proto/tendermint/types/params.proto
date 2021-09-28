@@ -15,7 +15,7 @@ message ConsensusParams {
   EvidenceParams  evidence  = 2;
   ValidatorParams validator = 3;
   VersionParams   version   = 4;
-  TimestampParams Params = 5;
+  TimestampParams timestamp = 5;
 }
 
 // BlockParams contains limits on the block size.
@@ -62,6 +62,12 @@ message VersionParams {
 }
 
 message TimestampParams {
+  google.protobuf.Duration accuracy = 1
+      [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
+  google.protobuf.Duration precision = 2
+      [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
+  google.protobuf.Duration message_delay = 3
+      [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
 }
 
 // HashedParams is a subset of ConsensusParams.
