@@ -349,11 +349,10 @@ func (r *Reactor) receiveRequest(src Peer) error {
 // request out for this peer.
 func (r *Reactor) RequestAddrs(p Peer) {
 	id := string(p.ID())
-	if r.requestsSent.Has(id) {
+	if _, exists := r.requestsSent.GetOrSet(id, struct{}{}); exists {
 		return
 	}
 	r.Logger.Debug("Request addrs", "from", p)
-	r.requestsSent.Set(id, struct{}{})
 	p.Send(PexChannel, mustEncode(&tmp2p.PexRequest{}))
 }
 

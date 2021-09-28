@@ -432,10 +432,9 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 //  - ie. if we're getting ErrDuplicatePeer we can stop
 //  	because the addrbook got us the peer back already
 func (sw *Switch) reconnectToPeer(addr *NetAddress) {
-	if sw.reconnecting.Has(string(addr.ID)) {
+	if _, exists := sw.reconnecting.GetOrSet(string(addr.ID), addr); exists {
 		return
 	}
-	sw.reconnecting.Set(string(addr.ID), addr)
 	defer sw.reconnecting.Delete(string(addr.ID))
 
 	start := time.Now()
