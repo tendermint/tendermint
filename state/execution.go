@@ -143,12 +143,11 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		blockExec.metrics.lastBlockTime = now
 	}()
 
-	trc.pin("validateBlock")
+	trc.pin("abci")
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, 0, ErrInvalidBlock(err)
 	}
 
-	trc.pin("abci")
 	startTime := time.Now().UnixNano()
 	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
 	if err != nil {
@@ -165,8 +164,6 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1e6)
 	blockExec.metrics.AbciTime.Set(float64(endTime-startTime) / 1e6)
 
-	trc.pin("validate")
-
 	// validate the validator updates and convert to tendermint types
 	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
 	err = validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
@@ -180,8 +177,6 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	if len(validatorUpdates) > 0 {
 		blockExec.logger.Info("Updates to validators", "updates", types.ValidatorListString(validatorUpdates))
 	}
-
-	trc.pin("updateState")
 
 	// Update the state with the block and responses.
 	state, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
@@ -199,8 +194,6 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
-
-	trc.pin("evpool")
 
 	// Update evpool with the block and state.
 	blockExec.evpool.Update(block, state)
