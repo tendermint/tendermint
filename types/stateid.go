@@ -82,7 +82,8 @@ func (stateID StateID) SignBytes(chainID string) []byte {
 	return bz
 }
 
-// SignID returns sign ID for provided state
+// SignID returns signing session data that will be signed to get threshold signature share.
+// See DIP-0007
 func (stateID StateID) SignID(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
 
 	stateSignBytes := stateID.SignBytes(chainID)
