@@ -41,6 +41,11 @@ jobs:
         working-directory: test/e2e
         run: ./run-multiple.sh networks/nightly/${{ matrix.p2p }}/*-group${{ matrix.group }}-*.toml
 
+      - name: Run reproducer test cases
+        working-directory: test/e2e
+        run: ./build/runner -f networks/apphash-fail.toml
+
+
   e2e-nightly-fail-2:
     needs: e2e-nightly-test-2
     if: ${{ failure() }}
