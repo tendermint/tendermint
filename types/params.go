@@ -41,6 +41,7 @@ type ConsensusParams struct {
 	Evidence  EvidenceParams  `json:"evidence"`
 	Validator ValidatorParams `json:"validator"`
 	Version   VersionParams   `json:"version"`
+	Timestamp TimestampParams `json:"timestamp"`
 }
 
 // HashedParams is a subset of ConsensusParams.
@@ -63,6 +64,14 @@ type EvidenceParams struct {
 	MaxAgeNumBlocks int64         `json:"max_age_num_blocks"` // only accept new evidence more recent than this
 	MaxAgeDuration  time.Duration `json:"max_age_duration"`
 	MaxBytes        int64         `json:"max_bytes"`
+}
+
+// TimestampParams define the acceptable amount of clock skew among different
+// validators on a network.
+type TimestampParams struct {
+	Accuracy     int64         `json:"accuracy"`
+	Precision    time.Duration `json:"precision"`
+	MessageDelay int64         `json:"message_delay"`
 }
 
 // ValidatorParams restrict the public key types validators can use.

@@ -15,6 +15,7 @@ message ConsensusParams {
   EvidenceParams  evidence  = 2;
   ValidatorParams validator = 3;
   VersionParams   version   = 4;
+  TimestampParams Params = 5;
 }
 
 // BlockParams contains limits on the block size.
@@ -58,6 +59,9 @@ message ValidatorParams {
 // VersionParams contains the ABCI application version.
 message VersionParams {
   uint64 app_version = 1;
+}
+
+message TimestampParams {
 }
 
 // HashedParams is a subset of ConsensusParams.
