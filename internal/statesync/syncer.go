@@ -373,10 +373,6 @@ func (s *syncer) Close() {
 	close(s.closeCh)
 }
 
-func (s *syncer) Done() <-chan struct{} {
-	return s.closeCh
-}
-
 // offerSnapshot offers a snapshot to the app. It returns various errors depending on the app's
 // response, or nil if the snapshot was accepted.
 func (s *syncer) offerSnapshot(ctx context.Context, snapshot *snapshot) error {

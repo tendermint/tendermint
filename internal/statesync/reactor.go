@@ -249,8 +249,6 @@ func (r *Reactor) OnStop() {
 
 	if r.syncer != nil {
 		r.syncer.Close()
-
-		<-r.syncer.Done()
 	}
 
 	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
