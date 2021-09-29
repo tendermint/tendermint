@@ -249,6 +249,7 @@ The author of the original pull request is responsible for solving the conflicts
 merging the pull request.
 
 #### Creating a backport branch
+
 If this is the first release candidate for a major release, you get to have the honor of creating
 the backport branch!
 
@@ -334,6 +335,14 @@ If there were no release candidates, begin by creating a backport branch, as des
    - `git tag -a v0.35.0 -m 'Release v0.35.0'`
    - `git push origin v0.35.0`
 7. Make sure that `master` is updated with the latest `CHANGELOG.md`, `CHANGELOG_PENDING.md`, and `UPGRADING.md`.
+8. Add the release to the documentation site generator config (see
+   [DOCS_README.md](./docs/DOCS_README.md) for more details. In summary:
+   - Start on branch `master`.
+   - Add a new line at the bottom of [`docs/versions`](./docs/versions) to
+     ensure the newest release is the default for the landing page.
+   - Add a new entry to `themeConfig.versions` in
+     [`docs/.vuepress/config.js`](./docs/.vuepress/config.js) to include the
+	 release in the dropdown versions menu.
 
 #### Minor release (point releases)
 
