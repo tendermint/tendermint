@@ -247,10 +247,6 @@ func (r *Reactor) OnStop() {
 	// wait for any remaining requests to complete
 	<-r.dispatcher.Done()
 
-	if r.syncer != nil {
-		r.syncer.Close()
-	}
-
 	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
 	// p2p Channels should execute Close().
 	close(r.closeCh)
@@ -296,6 +292,7 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 		r.stateProvider,
 		r.snapshotCh.Out,
 		r.chunkCh.Out,
+		r.snapshotCh.Done(),
 		r.tempDir,
 		r.metrics,
 	)
@@ -872,10 +869,13 @@ func (r *Reactor) processCh(ch *p2p.Channel, chName string) {
 					Err:    err,
 				}
 			}
-
-		case <-r.closeCh:
-			r.Logger.Debug(fmt.Sprintf("stopped listening on %s channel; closing...", chName))
-			return
+		default:
+			select {
+			case <-r.closeCh:
+				r.Logger.Debug(fmt.Sprintf("stopped listening on %s channel; closing...", chName))
+				return
+			default:
+			}
 		}
 	}
 }

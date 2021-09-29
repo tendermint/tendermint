@@ -70,7 +70,7 @@ type syncer struct {
 	avgChunkTime             int64
 	lastSyncedSnapshotHeight int64
 	processingSnapshot       *snapshot
-	closeCh                  chan struct{}
+	closeCh                  <-chan struct{}
 }
 
 // newSyncer creates a new syncer.
@@ -82,6 +82,7 @@ func newSyncer(
 	stateProvider StateProvider,
 	snapshotCh chan<- p2p.Envelope,
 	chunkCh chan<- p2p.Envelope,
+	closeCh <-chan struct{},
 	tempDir string,
 	metrics *Metrics,
 ) *syncer {
@@ -97,7 +98,7 @@ func newSyncer(
 		fetchers:      cfg.Fetchers,
 		retryTimeout:  cfg.ChunkRequestTimeout,
 		metrics:       metrics,
-		closeCh:       make(chan struct{}),
+		closeCh:       closeCh,
 	}
 }
 
@@ -150,8 +151,7 @@ func (s *syncer) AddPeer(peerID types.NodeID) {
 
 	select {
 	case <-s.closeCh:
-	default:
-		s.snapshotCh <- msg
+	case s.snapshotCh <- msg:
 	}
 }
 
@@ -366,11 +366,6 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 		"hash", snapshot.Hash)
 
 	return state, commit, nil
-}
-
-// Close signals to the syncer that it should stop processing any updates.
-func (s *syncer) Close() {
-	close(s.closeCh)
 }
 
 // offerSnapshot offers a snapshot to the app. It returns various errors depending on the app's
