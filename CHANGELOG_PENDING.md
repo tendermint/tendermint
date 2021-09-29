@@ -20,6 +20,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### FEATURES
 
+- [\#6982](https://github.com/tendermint/tendermint/pull/6982) tendermint binary has built-in suppport for running the end to end application (with state sync support) (@cmwaters).
+
 ### IMPROVEMENTS
 
 ### BUG FIXES

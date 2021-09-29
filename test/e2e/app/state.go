@@ -1,5 +1,5 @@
 //nolint: gosec
-package main
+package app
 
 import (
 	"crypto/sha256"
