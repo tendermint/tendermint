@@ -15,7 +15,7 @@ site from the contents of this `/docs` directory, for `master` and each
 supported release branch. Under the hood, this workflow runs `make build-docs`
 from the [Makefile](../Makefile).
 
-The list of spuported versions are defined in [`config.js`](./.vuepress/config.js),
+The list of supported versions are defined in [`config.js`](./.vuepress/config.js),
 which defines the UI menu on the documentation site, and also in
 [`docs/versions`](./versions), which determines which branches are built.
 
