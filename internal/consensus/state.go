@@ -241,8 +241,12 @@ func (cs *State) GetLastHeight() int64 {
 // GetRoundState returns a shallow copy of the internal consensus state.
 func (cs *State) GetRoundState() *cstypes.RoundState {
 	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
+
+	// NOTE: this might be dodgy, as RoundState itself isn't thread
+	// safe as it contains a number of pointers and is explicitly
+	// not thread safe.
 	rs := cs.RoundState // copy
-	cs.mtx.RUnlock()
 	return &rs
 }
 

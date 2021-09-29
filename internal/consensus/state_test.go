@@ -331,7 +331,7 @@ func TestStateFullRound1(t *testing.T) {
 		t.Error(err)
 	}
 
-	voteCh := subscribeUnBuffered(cs.eventBus, types.EventQueryVote)
+	voteCh := subscribe(cs.eventBus, types.EventQueryVote)
 	propCh := subscribe(cs.eventBus, types.EventQueryCompleteProposal)
 	newRoundCh := subscribe(cs.eventBus, types.EventQueryNewRound)
 
