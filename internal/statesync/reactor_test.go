@@ -525,7 +525,15 @@ func TestReactor_StateProviderP2P(t *testing.T) {
 	rts.reactor.cfg.UseP2P = true
 	rts.reactor.cfg.TrustHeight = 1
 	rts.reactor.cfg.TrustHash = fmt.Sprintf("%X", chain[1].Hash())
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+
+	for _, p := range []types.NodeID{peerA, peerB} {
+		if !rts.reactor.peers.Contains(p) {
+			rts.reactor.peers.Append(p)
+		}
+	}
+	require.True(t, rts.reactor.peers.Len() >= 2, "peer network not configured")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
 	rts.reactor.mtx.Lock()

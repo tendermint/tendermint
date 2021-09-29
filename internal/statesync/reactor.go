@@ -254,11 +254,11 @@ func (r *Reactor) OnStop() {
 	// Wait for all p2p Channels to be closed before returning. This ensures we
 	// can easily reason about synchronization of all p2p Channels and ensure no
 	// panics will occur.
+	<-r.peerUpdates.Done()
 	<-r.snapshotCh.Done()
 	<-r.chunkCh.Done()
 	<-r.blockCh.Done()
 	<-r.paramsCh.Done()
-	<-r.peerUpdates.Done()
 }
 
 // Sync runs a state sync, fetching snapshots and providing chunks to the
@@ -1013,9 +1013,11 @@ func (r *Reactor) waitForEnoughPeers(ctx context.Context, numPeers int) error {
 		iter++
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("operation canceled while waiting for peers after %s", time.Since(startAt))
+			return fmt.Errorf("operation canceled while waiting for peers after %2fs [%d/%d]",
+				time.Since(startAt).Seconds(), r.peers.Len(), numPeers)
 		case <-r.closeCh:
-			return fmt.Errorf("shutdown while waiting for peers after %s", time.Since(startAt))
+			return fmt.Errorf("shutdown while waiting for peers after %02fs [%d/%d]",
+				time.Since(startAt).Seconds(), r.peers.Len(), numPeers)
 		case <-t.C:
 			continue
 		case <-logT.C:
