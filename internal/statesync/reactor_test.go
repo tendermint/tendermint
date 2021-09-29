@@ -171,7 +171,6 @@ func setup(
 		stateProvider,
 		rts.snapshotOutCh,
 		rts.chunkOutCh,
-		rts.snapshotChannel.Done(),
 		"",
 		rts.reactor.metrics,
 	)
