@@ -47,6 +47,9 @@ func TestGenerator(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, len(manifests) >= 16, "insufficient combinations: %d", len(manifests))
 
+		// failures map to the test cases that you'd see locally.
+		e2e.SortManifests(manifests, false /* ascending */)
+
 		for idx, m := range manifests {
 			t.Run(fmt.Sprintf("Case%04d", idx), func(t *testing.T) {
 				require.True(t, len(m.Nodes) > 1)
@@ -66,5 +69,43 @@ func TestGenerator(t *testing.T) {
 					numNew, len(m.Nodes))
 			})
 		}
+	})
+	t.Run("UnmixedP2P", func(t *testing.T) {
+		t.Run("New", func(t *testing.T) {
+			manifests, err := Generate(rand.New(rand.NewSource(randomSeed)), Options{P2P: NewP2PMode})
+			require.NoError(t, err)
+			require.True(t, len(manifests) >= 16, "insufficient combinations: %d", len(manifests))
+
+			// failures map to the test cases that you'd see locally.
+			e2e.SortManifests(manifests, false /* ascending */)
+
+			for idx, m := range manifests {
+				t.Run(fmt.Sprintf("Case%04d", idx), func(t *testing.T) {
+					for name, node := range m.Nodes {
+						t.Run(name, func(t *testing.T) {
+							require.False(t, node.UseLegacyP2P)
+						})
+					}
+				})
+			}
+		})
+		t.Run("Legacy", func(t *testing.T) {
+			manifests, err := Generate(rand.New(rand.NewSource(randomSeed)), Options{P2P: LegacyP2PMode})
+			require.NoError(t, err)
+			require.True(t, len(manifests) >= 16, "insufficient combinations: %d", len(manifests))
+
+			// failures map to the test cases that you'd see locally.
+			e2e.SortManifests(manifests, false /* ascending */)
+
+			for idx, m := range manifests {
+				t.Run(fmt.Sprintf("Case%04d", idx), func(t *testing.T) {
+					for name, node := range m.Nodes {
+						t.Run(name, func(t *testing.T) {
+							require.True(t, node.UseLegacyP2P)
+						})
+					}
+				})
+			}
+		})
 	})
 }

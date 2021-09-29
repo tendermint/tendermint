@@ -81,8 +81,7 @@ func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 		}()
 
 		testnetCombinations["p2p"] = []interface{}{opts.P2P}
-
-	default:
+	case MixedP2PMode:
 		testnetCombinations["p2p"] = []interface{}{NewP2PMode, LegacyP2PMode, HybridP2PMode}
 	}
 
@@ -332,9 +331,20 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	// lastly, set up the light clients
 	for i := 1; i <= numLightClients; i++ {
 		startAt := manifest.InitialHeight + 5
-		manifest.Nodes[fmt.Sprintf("light%02d", i)] = generateLightNode(
+
+		node := generateLightNode(
 			r, startAt+(5*int64(i)), lightProviders,
 		)
+
+		switch p2pMode {
+		case LegacyP2PMode:
+			node.UseLegacyP2P = true
+		case HybridP2PMode:
+			node.UseLegacyP2P = r.Float64() < legacyP2PFactor
+		}
+
+		manifest.Nodes[fmt.Sprintf("light%02d", i)] = node
+
 	}
 
 	return manifest, nil

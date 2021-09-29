@@ -38,7 +38,6 @@ func NewCLI() *CLI {
 		SilenceUsage:  true,
 		SilenceErrors: true, // we'll output them ourselves in Run()
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var opts Options
 			var err error
 
 			p2pMode, err := cmd.Flags().GetString("p2p")
@@ -48,7 +47,7 @@ func NewCLI() *CLI {
 
 			switch mode := P2PMode(p2pMode); mode {
 			case NewP2PMode, LegacyP2PMode, HybridP2PMode, MixedP2PMode:
-				opts.P2P = mode
+				cli.opts.P2P = mode
 			default:
 				return fmt.Errorf("p2p mode must be either new, legacy, hybrid or mixed got %s", p2pMode)
 			}
