@@ -8,6 +8,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/abci/types"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
+	e2e "github.com/tendermint/tendermint/test/e2e/app"
 )
 
 // ClientCreator creates new ABCI clients.
@@ -79,6 +80,12 @@ func DefaultClientCreator(addr, transport, dbDir string) ClientCreator {
 		return NewLocalClientCreator(kvstore.NewApplication())
 	case "persistent_kvstore":
 		return NewLocalClientCreator(kvstore.NewPersistentKVStoreApplication(dbDir))
+	case "e2e":
+		app, err := e2e.NewApplication(e2e.DefaultConfig(dbDir))
+		if err != nil {
+			panic(err)
+		}
+		return NewLocalClientCreator(app)
 	case "noop":
 		return NewLocalClientCreator(types.NewBaseApplication())
 	default:
