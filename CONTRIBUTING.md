@@ -336,7 +336,7 @@ If there were no release candidates, begin by creating a backport branch, as des
    - `git push origin v0.35.0`
 7. Make sure that `master` is updated with the latest `CHANGELOG.md`, `CHANGELOG_PENDING.md`, and `UPGRADING.md`.
 8. Add the release to the documentation site generator config (see
-   [DOCS_README.md](./docs/DOCS_README.md) for more details. In summary:
+   [DOCS_README.md](./docs/DOCS_README.md) for more details). In summary:
    - Start on branch `master`.
    - Add a new line at the bottom of [`docs/versions`](./docs/versions) to
      ensure the newest release is the default for the landing page.
