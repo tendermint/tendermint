@@ -545,7 +545,7 @@ func TestReactor_StateProviderP2P(t *testing.T) {
 	require.NoError(t, err)
 	rts.reactor.syncer.stateProvider = rts.reactor.stateProvider
 
-	actx, cancel := context.WithTimeout(bctx, 5*time.Second)
+	actx, cancel := context.WithTimeout(bctx, 10*time.Second)
 
 	appHash, err := rts.reactor.stateProvider.AppHash(ctx, 5)
 	require.NoError(t, err)
