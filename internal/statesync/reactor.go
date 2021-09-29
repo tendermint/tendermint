@@ -1013,10 +1013,10 @@ func (r *Reactor) waitForEnoughPeers(ctx context.Context, numPeers int) error {
 		iter++
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("operation canceled while waiting for peers after %2fs [%d/%d]",
+			return fmt.Errorf("operation canceled while waiting for peers after %.2fs [%d/%d]",
 				time.Since(startAt).Seconds(), r.peers.Len(), numPeers)
 		case <-r.closeCh:
-			return fmt.Errorf("shutdown while waiting for peers after %02fs [%d/%d]",
+			return fmt.Errorf("shutdown while waiting for peers after %.2fs [%d/%d]",
 				time.Since(startAt).Seconds(), r.peers.Len(), numPeers)
 		case <-t.C:
 			continue
