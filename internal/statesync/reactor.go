@@ -274,12 +274,14 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 	}
 
 	r.mtx.Lock()
+	defer r.mtx.Unlock()
 	if r.syncer != nil {
 		r.mtx.Unlock()
 		return sm.State{}, errors.New("a state sync is already in progress")
 	}
 
 	if err := r.initStateProvider(ctx, r.chainID, r.initialHeight); err != nil {
+		r.mtx.Unlock()
 		return sm.State{}, err
 	}
 
@@ -889,11 +891,10 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	}
 
 	r.mtx.Lock()
+	defer r.mtx.Unlock()
 	if r.syncer == nil {
-		r.mtx.Unlock()
 		return
 	}
-	defer r.mtx.Unlock()
 
 	switch peerUpdate.Status {
 	case p2p.PeerStatusUp:
