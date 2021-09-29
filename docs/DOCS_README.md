@@ -13,7 +13,7 @@ There is a [GitHub Actions workflow](https://github.com/tendermint/docs/actions/
 in the `tendermint/docs` repository that clones and builds the documentation
 site from the contents of this `/docs` directory, for `master` and each
 supported release branch. Under the hood, this workflow runs `make build-docs`
-from the [Makefile](../Makefile).
+from the [Makefile](../Makefile#L214).
 
 The list of supported versions are defined in [`config.js`](./.vuepress/config.js),
 which defines the UI menu on the documentation site, and also in
