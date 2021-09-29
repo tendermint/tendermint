@@ -29,11 +29,12 @@ var ReIndexEventCmd = &cobra.Command{
 	Use:   "reindex-event",
 	Short: "reindex events to the event store backends",
 	Long: `
-	reindex-event is an offline tooling to re-index block and tx events to the eventsinks,
-	you can run this command when the event store backend dropped/disconnected or you want to replace the backend.
-	The default start-height is 0, meaning the tooling will start reindex from the base block height(inclusive); and the
-	default end-height is 0, meaning the tooling will reindex until the latest block height(inclusive). User can omits
-	either or both arguments.
+reindex-event is an offline tooling to re-index block and tx events to the eventsinks,
+you can run this command when the event store backend dropped/disconnected or you want to 
+replace the backend. The default start-height is 0, meaning the tooling will start 
+reindex from the base block height(inclusive); and the default end-height is 0, meaning 
+the tooling will reindex until the latest block height(inclusive). User can omit
+either or both arguments.
 	`,
 	Example: `
 	tendermint reindex-event
