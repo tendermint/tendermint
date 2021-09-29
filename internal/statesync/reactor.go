@@ -274,7 +274,6 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 	}
 
 	r.mtx.Lock()
-	defer r.mtx.Unlock()
 	if r.syncer != nil {
 		r.mtx.Unlock()
 		return sm.State{}, errors.New("a state sync is already in progress")
