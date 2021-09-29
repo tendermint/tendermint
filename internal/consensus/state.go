@@ -1340,7 +1340,8 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 	blockID, ok := cs.Votes.Prevotes(cs.Proposal.POLRound).TwoThirdsMajority()
 	if ok && cs.ProposalBlock.HashesTo(blockID.Hash) && cs.Proposal.POLRound >= 0 && cs.Proposal.POLRound < cs.Round {
 		if cs.LockedRound <= cs.Proposal.POLRound {
-			logger.Debug("prevote step: ProposalBlock is valid and already received a 2/3 majority in a round; prevoting the proposal")
+			logger.Debug("prevote step: ProposalBlock is valid and received a 2/3" +
+				"majority in a round later than the locked round; prevoting the proposal")
 			cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
 			return
 		}
