@@ -247,9 +247,11 @@ func (r *Reactor) OnStop() {
 	// wait for any remaining requests to complete
 	<-r.dispatcher.Done()
 
-	r.syncer.Close()
+	if r.syncer != nil {
+		r.syncer.Close()
 
-	<-r.dispatcher.Done()
+		<-r.syncer.Done()
+	}
 
 	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
 	// p2p Channels should execute Close().
