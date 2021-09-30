@@ -11,9 +11,9 @@ import (
 // NetInfo returns network info.
 // More: https://docs.tendermint.com/master/rpc/#/Info/net_info
 func (env *Environment) NetInfo(ctx *rpctypes.Context) (*coretypes.ResultNetInfo, error) {
-	var peers []coretypes.Peer
-
 	peerList := env.PeerManager.Peers()
+
+	peers := make([]coretypes.Peer, 0, len(peerList))
 	for _, peer := range peerList {
 		addrs := env.PeerManager.Addresses(peer)
 		if len(addrs) == 0 {
