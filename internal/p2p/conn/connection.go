@@ -752,7 +752,7 @@ func (chDesc ChannelDescriptor) FillDefaults() (filled ChannelDescriptor) {
 // NOTE: not goroutine-safe.
 type Channel struct {
 	// Exponential moving average.
-	// This field must be read atomically.
+	// This field must be accessed atomically.
 	// It is first in the struct to ensure correct alignment.
 	// See https://github.com/tendermint/tendermint/issues/7000.
 	recentlySent int64
