@@ -238,7 +238,6 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.RPC.PprofListenAddress = ":6060"
 	cfg.P2P.ExternalAddress = fmt.Sprintf("tcp://%v", node.AddressP2P(false))
 	cfg.P2P.AddrBookStrict = false
-	cfg.P2P.UseLegacy = node.UseLegacyP2P
 	cfg.P2P.QueueType = node.QueueType
 	cfg.DBBackend = node.Database
 	cfg.StateSync.DiscoveryTime = 5 * time.Second
@@ -355,7 +354,6 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 		"snapshot_interval": node.SnapshotInterval,
 		"retain_blocks":     node.RetainBlocks,
 		"key_type":          node.PrivvalKey.Type(),
-		"use_legacy_p2p":    node.UseLegacyP2P,
 	}
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:
