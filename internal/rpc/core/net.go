@@ -3,9 +3,7 @@ package core
 import (
 	"errors"
 	"fmt"
-	"strings"
 
-	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
@@ -66,19 +64,4 @@ func (env *Environment) GenesisChunked(ctx *rpctypes.Context, chunk uint) (*core
 		ChunkNumber: id,
 		Data:        env.genChunks[id],
 	}, nil
-}
-
-func getIDs(peers []string) ([]string, error) {
-	ids := make([]string, 0, len(peers))
-
-	for _, peer := range peers {
-
-		spl := strings.Split(peer, "@")
-		if len(spl) != 2 {
-			return nil, p2p.ErrNetAddressNoID{Addr: peer}
-		}
-		ids = append(ids, spl[0])
-
-	}
-	return ids, nil
 }

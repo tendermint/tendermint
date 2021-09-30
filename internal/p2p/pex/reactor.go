@@ -21,8 +21,6 @@ var (
 	_ p2p.Wrapper     = (*protop2p.PexMessage)(nil)
 )
 
-const ()
-
 // TODO: Consolidate with params file.
 // See https://github.com/tendermint/tendermint/issues/6371
 const (
@@ -33,6 +31,10 @@ const (
 	// hexID (40) + IP (16) + Port (2) + Name (100) ...
 	// NOTE: dont use massive DNS name ..
 	maxAddressSize = 256
+
+	// max addresses returned by GetSelection
+	// NOTE: this must match "maxMsgSize"
+	maxGetSelection = 250
 
 	// NOTE: amplificaiton factor!
 	// small request results in up to maxMsgSize response

@@ -9,7 +9,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/p2p/conn"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 //go:generate ../../scripts/mockery_generate.sh Transport|Connection
@@ -19,14 +18,6 @@ const (
 	// a protocol isn't explicitly given as a URL scheme.
 	defaultProtocol Protocol = MConnProtocol
 )
-
-// defaultProtocolVersion populates the Block and P2P versions using
-// the global values, but not the App.
-var defaultProtocolVersion = types.ProtocolVersion{
-	P2P:   version.P2PProtocol,
-	Block: version.BlockProtocol,
-	App:   0,
-}
 
 // Protocol identifies a transport protocol.
 type Protocol string

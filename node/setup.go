@@ -576,11 +576,3 @@ func makeSeedNodeInfo(
 	err := nodeInfo.Validate()
 	return nodeInfo, err
 }
-func getChannelsFromShim(reactorShim *p2p.ReactorShim) map[p2p.ChannelID]*p2p.Channel {
-	channels := map[p2p.ChannelID]*p2p.Channel{}
-	for chID := range reactorShim.Channels {
-		channels[chID] = reactorShim.GetChannel(chID)
-	}
-
-	return channels
-}
