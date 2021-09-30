@@ -36,7 +36,7 @@ const (
 	// NOTE: this must match "maxMsgSize"
 	maxGetSelection = 250
 
-	// NOTE: amplificaiton factor!
+	// NOTE: amplification factor!
 	// small request results in up to maxMsgSize response
 	maxMsgSize = maxAddressSize * maxGetSelection
 

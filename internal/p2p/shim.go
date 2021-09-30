@@ -74,7 +74,7 @@ func NewChannelShim(cds *ChannelDescriptorShim, buf uint) *ChannelShim {
 	}
 }
 
-// MConnConfig returns an MConnConfig with fields updated
+// MConnConfig returns an MConnConfig based on the defaults, with fields updated
 // from the P2PConfig.
 func MConnConfig(cfg *config.P2PConfig) conn.MConnConfig {
 	mConfig := conn.DefaultMConnConfig()

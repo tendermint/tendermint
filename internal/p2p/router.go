@@ -21,7 +21,7 @@ import (
 
 const queueBufferDefault = 32
 
-const dialRandomizerIntervalMilliseconds = 3000
+const dialRandomizerInterval = 3000*time.Millisecond
 
 // ChannelID is an arbitrary channel ID.
 type ChannelID uint16

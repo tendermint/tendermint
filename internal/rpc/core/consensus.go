@@ -68,7 +68,7 @@ func (env *Environment) DumpConsensusState(ctx *rpctypes.Context) (*coretypes.Re
 		}
 
 		addr := env.PeerManager.Addresses(pid)
-		if len(addr) >= 1 {
+		if len(addr) != 0 {
 			peerStates = append(peerStates, coretypes.PeerStateInfo{
 				// Peer basic info.
 				NodeAddress: addr[0].String(),
