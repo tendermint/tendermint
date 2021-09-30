@@ -751,13 +751,18 @@ func (chDesc ChannelDescriptor) FillDefaults() (filled ChannelDescriptor) {
 // TODO: lowercase.
 // NOTE: not goroutine-safe.
 type Channel struct {
+	// Exponential moving average.
+	// This field must be accessed atomically.
+	// It is first in the struct to ensure correct alignment.
+	// See https://github.com/tendermint/tendermint/issues/7000.
+	recentlySent int64
+
 	conn          *MConnection
 	desc          ChannelDescriptor
 	sendQueue     chan []byte
 	sendQueueSize int32 // atomic.
 	recving       []byte
 	sending       []byte
-	recentlySent  int64 // exponential moving average
 
 	maxPacketMsgPayloadSize int
 
