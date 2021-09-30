@@ -22,11 +22,11 @@ jobs:
 
       - name: Build
         working-directory: test/e2e
-        run: make -j2 docker generator runner tests
+        run: make -j2 docker runner tests
 
       - name: Run reproducer test cases
         working-directory: test/e2e
-        run: ./build/runner -f networks/regression/apphash-fail.toml
+        run: ./run-multiple.sh networks/regression/*.toml
 
   e2e-nightly-fail:
     needs: e2e-nightly-test
