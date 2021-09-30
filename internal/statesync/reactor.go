@@ -902,7 +902,11 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	case p2p.PeerStatusUp:
 		newProvider := NewBlockProvider(peerUpdate.NodeID, r.chainID, r.dispatcher)
 		r.providers[peerUpdate.NodeID] = newProvider
-		r.syncer.AddPeer(peerUpdate.NodeID)
+		err := r.syncer.AddPeer(peerUpdate.NodeID)
+		if err != nil {
+			r.Logger.Error("error adding peer to syncer", "error", err)
+			return
+		}
 		if sp, ok := r.stateProvider.(*stateProviderP2P); ok {
 			// we do this in a separate routine to not block whilst waiting for the light client to finish
 			// whatever call it's currently executing
