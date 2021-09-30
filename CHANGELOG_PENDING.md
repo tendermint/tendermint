@@ -25,3 +25,5 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS
 
 ### BUG FIXES
+
+- [config] #7036 Update default config template to match mapstructure keys (@creachadair)
