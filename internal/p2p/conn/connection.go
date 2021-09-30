@@ -755,7 +755,7 @@ type Channel struct {
 	// This field must be read atomically.
 	// It is first in the struct to ensure correct alignment.
 	// See https://github.com/tendermint/tendermint/issues/7000.
-	recentlySent  int64
+	recentlySent int64
 
 	conn          *MConnection
 	desc          ChannelDescriptor
