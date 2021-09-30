@@ -202,3 +202,7 @@ func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx
 		}
 	}
 }
+
+func loadSingleNode(ctx context.Context, rpcEndpoint string, chTx <-chan types.Tx) {
+
+}

@@ -16,6 +16,9 @@ import (
 
 const (
 	snapshotChunkSize = 1e6
+	
+	// keep only the most recent 10 snapshots. Older snapshots are pruned
+	maxSnapshotCount = 10
 )
 
 // SnapshotStore stores state sync snapshots. Snapshots are stored simply as
@@ -103,6 +106,23 @@ func (s *SnapshotStore) Create(state *State) (abci.Snapshot, error) {
 		return abci.Snapshot{}, err
 	}
 	return snapshot, nil
+}
+
+// Prune removes old snapshots ensuring only the most recent n snapshots remain
+func (s *SnapshotStore) Prune(n int) error { 
+	s.Lock()
+	defer s.Unlock()
+	// snapshots are appended to the metadata struct, hence pruning removes from
+	// the front of the array
+	i := 0
+	for ; i < len(s.metadata) - n; i++ {
+		h := s.metadata[i].Height
+		if err := os.Remove(filepath.Join(s.dir, fmt.Sprintf("%v.json", h))); err != nil {
+			return err
+		}
+	}
+	s.metadata = s.metadata[i:]
+	return nil
 }
 
 // List lists available snapshots.
