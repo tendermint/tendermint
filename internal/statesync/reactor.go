@@ -869,6 +869,7 @@ func (r *Reactor) processCh(ch *p2p.Channel, chName string) {
 					Err:    err,
 				}
 			}
+
 		case <-r.closeCh:
 			r.Logger.Debug(fmt.Sprintf("stopped listening on %s channel; closing...", chName))
 			return
