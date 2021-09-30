@@ -387,6 +387,9 @@ func (r *Reactor) SwitchToBlockSync(state sm.State) error {
 	r.syncStartTime = time.Now()
 
 	r.poolWG.Add(1)
+	go r.requestRoutine()
+
+	r.poolWG.Add(1)
 	go r.poolRoutine(true)
 
 	return nil
