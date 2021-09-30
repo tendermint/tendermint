@@ -1,5 +1,5 @@
 # This file represents an attempt at reproducing a commonly observed failure in 
-# the generated Tendermint e2e tests suite. The failure manifests as an node whose
+# the generated Tendermint e2e test suite. The failure manifests as an node whose
 # AppHash as reported by /status does not agree with the AppHash as reported by the
 # block of the same height in the chain.
 
