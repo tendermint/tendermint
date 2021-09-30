@@ -13,14 +13,12 @@ var RollbackStateCmd = &cobra.Command{
 	Use:   "rollback",
 	Short: "rollback tendermint state by one height",
 	Long: `
-rollbacking state should be performed in the event of a non-deterministic app hash where 
-Tendermint has persisted an incorrect app hash and is thus stuck and unable to make 
-progress. By default this will rollback the very last height. Note: this does not remove 
-any blocks from the blockstore, rather alter the state store such that Tendermint can 
-replay blocks from the new starting point.
-`,
-	Example: `
-tendermint rollback
+Rollbacking state should be performed in the event of an incorrect applicate state transition
+whereby Tendermint has persisted an incorrect app hash and is thus unable to make 
+progress. This takes a state at height n and overwrites it with the state at height n - 1. 
+It is expected that the application also rolls back to height n - 1. No blocks are removed 
+so upon restarting Tendermint, the transactions in block n will be reexecuted against the 
+application.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// use the parsed config to load the block and state store
