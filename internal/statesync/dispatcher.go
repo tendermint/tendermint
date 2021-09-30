@@ -297,3 +297,16 @@ func (l *peerList) All() []types.NodeID {
 	defer l.mtx.Unlock()
 	return l.peers
 }
+
+func (l *peerList) Contains(id types.NodeID) bool {
+	l.mtx.Lock()
+	defer l.mtx.Unlock()
+
+	for _, p := range l.peers {
+		if id == p {
+			return true
+		}
+	}
+
+	return false
+}
