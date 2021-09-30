@@ -143,6 +143,10 @@ func (s *syncer) AddSnapshot(peerID types.NodeID, snapshot *snapshot) (bool, err
 // single request to discover snapshots, later we may want to do retries and stuff.
 func (s *syncer) AddPeer(peerID types.NodeID) (err error) {
 	defer func() {
+		// TODO: remove panic recover once AddPeer can no longer accientally send on
+		// closed channel.
+		// This recover was added to protect against the p2p message being sent
+		// to the snapshot channel after the snapshot channel was closed.
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic sending peer snapshot request: %v", r)
 		}
