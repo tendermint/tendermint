@@ -12,7 +12,7 @@ import (
 func TestGenerator(t *testing.T) {
 	manifests, err := Generate(rand.New(rand.NewSource(randomSeed)), Options{})
 	require.NoError(t, err)
-	require.True(t, len(manifests) >= 64, "insufficient combinations")
+	require.True(t, len(manifests) >= 24, "insufficient combinations %d", len(manifests))
 
 	// this just means that the numbers reported by the test
 	// failures map to the test cases that you'd see locally.
