@@ -1,6 +1,6 @@
 name: e2e-regression
 on:
-  workflow_dispatch: # allow running workflow manually
+  workflow_dispatch:
   schedule:
     - cron: '0 2 * * *'
 
@@ -27,3 +27,35 @@ jobs:
       - name: Run reproducer test cases
         working-directory: test/e2e
         run: ./build/runner -f networks/regression/apphash-fail.toml
+
+  e2e-nightly-fail:
+    needs: e2e-nightly-test
+    if: ${{ failure() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack on failure
+        uses: rtCamp/action-slack-notify@12e36fc18b0689399306c2e0b3e0f2978b7f1ee7
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_CHANNEL: tendermint-internal
+          SLACK_USERNAME: Nightly E2E Tests
+          SLACK_ICON_EMOI: ':skull:'
+          SLACK_COLOR: danger
+          SLACK_MESSAGE: Nightly E2E regression tests failed on master
+          SLACK_FOOTER: ''
+
+  e2e-nightly-success: 
+    needs: e2e-nightly-test
+    if: ${{ success() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack on success
+        uses: rtCamp/action-slack-notify@12e36fc18b0689399306c2e0b3e0f2978b7f1ee7
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_CHANNEL: tendermint-internal
+          SLACK_USERNAME: Nightly E2E Tests
+          SLACK_ICON_EMOI: ':white_check_mark:'
+          SLACK_COLOR: good
+          SLACK_MESSAGE: Nightly E2E regression tests passed on master
+          SLACK_FOOTER: ''
