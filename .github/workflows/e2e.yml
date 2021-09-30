@@ -39,4 +39,4 @@ jobs:
       - name: Emit logs on failure
         if: ${{ failure() }}
         working-directory: test/e2e
-        run: ./build/runner -f networks/ci.toml logs
+        run: ./run-multiple.sh networks/regression/*.toml

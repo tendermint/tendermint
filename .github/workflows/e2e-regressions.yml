@@ -1,0 +1,29 @@
+name: e2e-regression
+on:
+  workflow_dispatch: # allow running workflow manually
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+  e2e-nightly-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.16'
+      - uses: actions/checkout@v2.3.4
+      - uses: technote-space/get-diff-action@v5
+        with:
+          PATTERNS: |
+            **/**.go
+            go.mod
+            go.sum
+
+      - name: Build
+        working-directory: test/e2e
+        run: make -j2 docker generator runner tests
+
+      - name: Run reproducer test cases
+        working-directory: test/e2e
+        run: ./build/runner -f networks/regression/apphash-fail.toml

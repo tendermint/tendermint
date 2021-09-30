@@ -38,10 +38,9 @@ terraform.tfstate.backup
 terraform.tfstate.d
 test/app/grpc_client
 test/e2e/build
-test/e2e/networks/ci
-test/e2e/networks/gen
-test/e2e/networks/simple
-test/e2e/networks/single
+test/e2e/networks/*
+test/e2e/networks/regression/*/
+!test/e2e/networks/regression/*
 test/logs
 test/p2p/data/
 vendor

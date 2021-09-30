@@ -43,7 +43,7 @@ jobs:
 
       - name: Run reproducer test cases
         working-directory: test/e2e
-        run: ./build/runner -f networks/apphash-fail.toml
+        run: ./build/runner -f networks/regression/apphash-fail.toml
 
 
   e2e-nightly-fail-2:

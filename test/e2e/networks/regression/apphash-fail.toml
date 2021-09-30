@@ -64,5 +64,5 @@ TxSize = 20480
     state_sync = "p2p"
     persist_interval = 5
     retain_blocks = 14
-    perturb = ["kill", "kill", "kill"]
+    perturb = ["kill", "kill"]
     use_legacy_p2p = true
