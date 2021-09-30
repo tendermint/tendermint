@@ -83,7 +83,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 	require.Equal(t, &ssproto.SnapshotsRequest{}, e.Message)
 	require.Equal(t, peerAID, e.To)
 
-	rts.syncer.AddPeer(peerBID)
+	err = rts.syncer.AddPeer(peerBID)
 	require.NoError(t, err)
 	e = <-rts.snapshotOutCh
 	require.Equal(t, &ssproto.SnapshotsRequest{}, e.Message)
