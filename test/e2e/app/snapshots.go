@@ -17,7 +17,7 @@ import (
 const (
 	snapshotChunkSize = 1e6
 
-	// keep only the most recent 10 snapshots. Older snapshots are pruned
+	// Keep only the most recent 10 snapshots. Older snapshots are pruned
 	maxSnapshotCount = 10
 )
 
@@ -121,7 +121,11 @@ func (s *SnapshotStore) Prune(n int) error {
 			return err
 		}
 	}
-	s.metadata = s.metadata[i:]
+
+	// update metadata by removing the deleted snapshots
+	pruned := make([]abci.Snapshot, len(s.metadata[i:]))
+	copy(pruned, s.metadata[i:])
+	s.metadata = pruned
 	return nil
 }
 
