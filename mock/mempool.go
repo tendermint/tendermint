@@ -66,3 +66,4 @@ func (Mempool) SetAccountRetriever(_ mempl.AccountRetriever) {
 func (Mempool) SetTxInfoParser(_ mempl.TxInfoParser) {
 
 }
+func (Mempool) LastBlockGasUsed() uint64 { return 0 }

@@ -134,7 +134,11 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	trc := &Tracer{}
 	defer func() {
 		trc.dump(
-			fmt.Sprintf("ApplyBlock<%d>, tx<%d>", block.Height, len(block.Data.Txs)),
+			fmt.Sprintf("ApplyBlock<%d>, tx<%d>, gasUsed<%d>",
+				block.Height,
+				len(block.Data.Txs),
+				blockExec.mempool.LastBlockGasUsed(),
+			),
 			blockExec.logger.With("module", "main"),
 		)
 

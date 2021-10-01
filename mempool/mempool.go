@@ -96,6 +96,7 @@ type Mempool interface {
 	SetAccountRetriever(retriever AccountRetriever)
 
 	SetTxInfoParser(parser TxInfoParser)
+	LastBlockGasUsed() uint64
 }
 
 //--------------------------------------------------------------------------------
