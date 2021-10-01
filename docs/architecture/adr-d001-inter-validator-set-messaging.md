@@ -118,8 +118,22 @@ through another Validator) to any other Validator which is a member of the same 
 
 ### What new APIs will be needed, what APIs will change?
 
-In the ABCI protocol, we add a network address ( `tendermint.p2p. NetAddress` ) of each member of the active Validator
-Set to the `ResponseEndBlock.ValidatorSetUpdate` structure.
+In the ABCI protocol, we add a network address of each member of the active Validator Set to the
+`ResponseEndBlock.ValidatorSetUpdate.ValidatorUpdate` structure. The network address structure is as follows:
+
+```protobuf
+enum NetAddressType {
+  IPv4 = 0;
+};
+
+message NetAddress {
+  reserved 1; // Reserved for compatibility with tendermint.p2p.NetAddress
+  reserved "id"; // Reserved for compatibility with tendermint.p2p.NetAddress
+  string address = 2;
+  uint32 port = 3;
+  NetAddressType address_type = 4;
+}
+```
 
 ### What are the efficiency considerations (time/space)?
 
