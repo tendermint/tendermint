@@ -1,6 +1,7 @@
 package state
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/tendermint/tendermint/version"
@@ -12,6 +13,9 @@ func Rollback(bs BlockStore, ss Store) (int64, []byte, error) {
 	invalidState, err := ss.Load()
 	if err != nil {
 		return -1, []byte{}, err
+	}
+	if invalidState.IsEmpty() {
+		return -1, []byte{}, errors.New("no state found")
 	}
 
 	rollbackHeight := invalidState.LastBlockHeight

@@ -98,7 +98,7 @@ func TestRollbackNoState(t *testing.T) {
 
 	_, _, err := state.Rollback(blockStore, stateStore)
 	require.Error(t, err)
-	require.EqualValues(t, state.ErrNoState, err)
+	require.Contains(t, err.Error(), "no state found")
 }
 
 func TestRollbackNoBlocks(t *testing.T) {
