@@ -779,7 +779,7 @@ func (r *Reactor) handleParamsMessage(envelope p2p.Envelope) error {
 		if sp, ok := r.stateProvider.(*stateProviderP2P); ok {
 			select {
 			case sp.paramsRecvCh <- cp:
-			default:
+			case <-time.After(time.Second): // Wait for the p2p stateprovider to be ready to receive the response.
 			}
 		} else {
 			r.Logger.Debug("received unexpected params response; using RPC state provider", "peer", envelope.From)
