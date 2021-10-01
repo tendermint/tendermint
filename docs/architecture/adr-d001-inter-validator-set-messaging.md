@@ -10,10 +10,10 @@
 1. [Context](#context)
    1. [Definitions](#definitions)
    2. [Problem statement](#problem-statement)
-   3. [Solution](#solution)
 2. [Alternative Approaches](#alternative-approaches)
-   1. [Rotate on Tenderdash](#rotate-on-tenderdash)
-   2. [TODO](#todo)
+   1. [Scenario 1: Trigger rotation from ABCI app passing addresses of all quorum members](#scenario-1-trigger-rotation-from-abci-app-passing-addresses-of-all-quorum-members)
+   2. [Scenario 2: Trigger rotation from ABCI app passing quorum id to rotate](#scenario-2-trigger-rotation-from-abci-app-passing-quorum-id-to-rotate)
+   3. [Scenario 3: Rotate on Tenderdash](#scenario-3-rotate-on-tenderdash)
 3. [Decision](#decision)
 4. [Detailed Design](#detailed-design)
    1. [What are the user requirements?](#what-are-the-user-requirements)
@@ -61,7 +61,9 @@ between Full and Validator nodes, and there is no method to ensure that each Val
 Validators) connected to all other Validators. In an extreme case, a Validator node can be connected only to Full
 nodes, effectively blocking its communication and excluding it from participation in the consensus.
 
-### Solution
+## Alternative Approaches
+
+### Scenario 1: Trigger rotation from ABCI app passing addresses of all quorum members
 
 Each Validator node shall allocate a preconfigured number of connectivity slots for communication with other Validators
 that belong to the same Validator Set.
@@ -78,9 +80,15 @@ This solution introduces a risk of delayed propagation of new block due to limit
 Validator nodes. To mitigate this risk, we can tune the number of Full node connection slots independently from
 Validator node connection slots.
 
-## Alternative Approaches
+### Scenario 2: Trigger rotation from ABCI app passing quorum id to rotate
 
-### Rotate on Tenderdash
+This scenario is very similar to Scenario 1. However, instead of passing addresses of all Validators that are members of
+a Validator Set, only quorum ID is passed.
+
+This solution requires Tendermint to determine Validators addresses, effectively re-implementing logic already done in
+the ABCI App.
+
+### Scenario 3: Rotate on Tenderdash
 
 ABCI application can send the whole master node list and quorum list to Tenderdash and
 potentially rotate on its side. However, it would split the responsibility for the
@@ -89,13 +97,12 @@ much more additional implementation. It would be better to keep the current Tend
 design and concept being a logic-less consensus library and keep all business logic in
 the ABCI application.
 
-### TODO
-
 ## Decision
 
-> TODO: This section records the decision.
-> It is best to record as much info as possible from the discussion that happened. This aids in not having to go back
-> to the Pull Request to get the needed information.
+After discussion, we will implement the solution described in **Scenario 1**. It will allow us to:
+
+* reuse logic already implemented as part of ABCI App,
+* keep Tenderdash a logic-less consensus library.
 
 ## Detailed Design
 
