@@ -66,6 +66,11 @@ func init() {
 	}
 }
 
+var (
+	// generic errors
+	ErrNoState = errors.New("no state found")
+)
+
 //----------------------
 
 //go:generate ../../scripts/mockery_generate.sh Store
@@ -118,7 +123,7 @@ func (store dbStore) loadState(key []byte) (state State, err error) {
 		return state, err
 	}
 	if len(buf) == 0 {
-		return state, nil
+		return state, ErrNoState
 	}
 
 	sp := new(tmstate.State)
