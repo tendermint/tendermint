@@ -42,6 +42,7 @@ func testKVStore(t *testing.T, app types.Application, tx []byte, key, value stri
 		Path: "/store",
 		Data: []byte(key),
 	})
+
 	require.Equal(t, code.CodeTypeOK, resQuery.Code)
 	require.Equal(t, key, string(resQuery.Key))
 	require.Equal(t, value, string(resQuery.Value))
