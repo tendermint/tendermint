@@ -62,6 +62,7 @@ message SignVoteRequest {
   string                chain_id    = 2;
   int32                 quorum_type = 3;
   bytes                 quorum_hash = 4;
+  tendermint.types.StateID state_id  = 5;
 }
 
 // SignedVoteResponse is a response containing a signed vote or an error

@@ -109,6 +109,7 @@ func (pkz privKeys) signHeader(header *types.Header, valSet *types.ValidatorSet,
 	}
 
 	stateID := types.StateID{
+		Height:      header.Height - 1,
 		LastAppHash: header.AppHash,
 	}
 
@@ -152,19 +153,18 @@ func makeVote(header *types.Header, valset *types.ValidatorSet, proTxHash crypto
 		Round:              1,
 		Type:               tmproto.PrecommitType,
 		BlockID:            blockID,
-		StateID:            stateID,
 	}
 
 	v := vote.ToProto()
-	// SignDigest it
+	// SignDigest the vote
 	signID := types.VoteBlockSignID(header.ChainID, v, valset.QuorumType, valset.QuorumHash)
 	sig, err := key.SignDigest(signID)
 	if err != nil {
 		panic(err)
 	}
 
-	// SignDigest it
-	stateSignID := types.VoteStateSignID(header.ChainID, v, valset.QuorumType, valset.QuorumHash)
+	// SignDigest the state
+	stateSignID := stateID.SignID(header.ChainID, valset.QuorumType, valset.QuorumHash)
 	sigState, err := key.SignDigest(stateSignID)
 	if err != nil {
 		panic(err)

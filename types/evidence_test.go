@@ -34,13 +34,14 @@ func randomDuplicateVoteEvidence(t *testing.T) *DuplicateVoteEvidence {
 	val := NewMockPVForQuorum(quorumHash)
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
-	stateID := makeStateID(tmhash.Sum([]byte("statehash")))
 	quorumType := btcjson.LLMQType_5_60
 	const chainID = "mychain"
+	const height = int64(10)
+	stateID := RandStateID().WithHeight(height - 1)
 	return &DuplicateVoteEvidence{
 
-		VoteA:            makeVote(t, val, chainID, 0, 10, quorumType, quorumHash, 2, 1, blockID, stateID),
-		VoteB:            makeVote(t, val, chainID, 0, 10, quorumType, quorumHash, 2, 1, blockID2, stateID),
+		VoteA:            makeVote(t, val, chainID, 0, height, quorumType, quorumHash, 2, 1, blockID, stateID),
+		VoteB:            makeVote(t, val, chainID, 0, height, quorumType, quorumHash, 2, 1, blockID2, stateID),
 		TotalVotingPower: 3 * DefaultDashVotingPower,
 		ValidatorPower:   DefaultDashVotingPower,
 		Timestamp:        defaultVoteTime,
@@ -61,7 +62,6 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 	val := NewMockPVForQuorum(quorumHash)
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
-	stateID := makeStateID(tmhash.Sum([]byte("statehash")))
 	quorumType := btcjson.LLMQType_5_60
 	const chainID = "mychain"
 
@@ -80,7 +80,7 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 		{"Invalid vote type", func(ev *DuplicateVoteEvidence) {
 			ev.VoteA = makeVote(
 				t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType,
-				quorumHash, math.MaxInt32, 0, blockID2, stateID,
+				quorumHash, math.MaxInt32, 0, blockID2, RandStateID().WithHeight(math.MaxInt64-1),
 			)
 		}, true},
 		{"Invalid vote order", func(ev *DuplicateVoteEvidence) {
@@ -92,10 +92,11 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			vote1 := makeVote(
-				t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType,
+			const height int64 = math.MaxInt64
+			stateID := RandStateID().WithHeight(height - 1)
+			vote1 := makeVote(t, val, chainID, math.MaxInt32, height, quorumType,
 				quorumHash, math.MaxInt32, 0x02, blockID, stateID)
-			vote2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType,
+			vote2 := makeVote(t, val, chainID, math.MaxInt32, height, quorumType,
 				quorumHash, math.MaxInt32, 0x02, blockID2, stateID)
 			thresholdPublicKey, err := val.GetThresholdPublicKey(quorumHash)
 			assert.NoError(t, err)
@@ -129,11 +130,10 @@ func makeVote(
 		Round:              round,
 		Type:               tmproto.SignedMsgType(step),
 		BlockID:            blockID,
-		StateID:            stateID,
 	}
 
 	vpb := v.ToProto()
-	err = val.SignVote(chainID, quorumType, quorumHash, vpb, nil)
+	err = val.SignVote(chainID, quorumType, quorumHash, vpb, stateID, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -167,14 +167,16 @@ func TestEvidenceProto(t *testing.T) {
 	val := NewMockPVForQuorum(quorumHash)
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
-	stateID := makeStateID(tmhash.Sum([]byte("statehash")))
 	quorumType := btcjson.LLMQType_5_60
 	const chainID = "mychain"
-	v := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType, quorumHash, 1, 0x01, blockID, stateID)
-	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType, quorumHash, 2, 0x01, blockID2, stateID)
+	var height int64 = math.MaxInt64
+	stateID := RandStateID().WithHeight(height - 1)
+
+	v := makeVote(t, val, chainID, math.MaxInt32, height, quorumType, quorumHash, 1, 0x01, blockID, stateID)
+	v2 := makeVote(t, val, chainID, math.MaxInt32, height, quorumType, quorumHash, 2, 0x01, blockID2, stateID)
 
 	// -------- SignedHeaders --------
-	const height int64 = 37
+	height = int64(37)
 
 	var (
 		header1 = makeHeaderRandom()

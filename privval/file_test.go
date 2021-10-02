@@ -66,13 +66,14 @@ func TestResetValidator(t *testing.T) {
 	height, round := int64(10), int32(1)
 	voteType := tmproto.PrevoteType
 	randBytes := tmrand.Bytes(tmhash.Size)
-	randStateBytes := tmrand.Bytes(tmhash.Size)
 	blockID := types.BlockID{Hash: randBytes, PartSetHeader: types.PartSetHeader{}}
-	stateID := types.StateID{LastAppHash: randStateBytes}
+
+	stateID := types.RandStateID().WithHeight(height - 1)
+
 	vote := newVote(privVal.Key.ProTxHash, 0, height, round, voteType, blockID, stateID)
 	quorumHash, err := privVal.GetFirstQuorumHash()
 	assert.NoError(t, err)
-	err = privVal.SignVote("mychainid", 0, quorumHash, vote.ToProto(), nil)
+	err = privVal.SignVote("mychainid", 0, quorumHash, vote.ToProto(), stateID, nil)
 	assert.NoError(t, err, "expected no error signing vote")
 
 	// priv val after signing is not same as empty
@@ -208,40 +209,40 @@ func TestSignVote(t *testing.T) {
 
 	randbytes := tmrand.Bytes(tmhash.Size)
 	randbytes2 := tmrand.Bytes(tmhash.Size)
-	randLastAppHash := tmrand.Bytes(tmhash.Size)
 
 	block1 := types.BlockID{Hash: randbytes,
 		PartSetHeader: types.PartSetHeader{Total: 5, Hash: randbytes}}
 	block2 := types.BlockID{Hash: randbytes2,
 		PartSetHeader: types.PartSetHeader{Total: 10, Hash: randbytes2}}
-	state := types.StateID{LastAppHash: randLastAppHash}
 
 	height, round := int64(10), int32(1)
 	voteType := tmproto.PrevoteType
 
+	stateID := types.RandStateID().WithHeight(height - 1)
+
 	// sign a vote for first time
-	vote := newVote(privVal.Key.ProTxHash, 0, height, round, voteType, block1, state)
+	vote := newVote(privVal.Key.ProTxHash, 0, height, round, voteType, block1, stateID)
 	v := vote.ToProto()
 	quorumHash, err := privVal.GetFirstQuorumHash()
 	assert.NoError(err)
-	err = privVal.SignVote("mychainid", 0, quorumHash, v, nil)
+	err = privVal.SignVote("mychainid", 0, quorumHash, v, stateID, nil)
 	assert.NoError(err, "expected no error signing vote")
 
 	// try to sign the same vote again; should be fine
-	err = privVal.SignVote("mychainid", 0, quorumHash, v, nil)
+	err = privVal.SignVote("mychainid", 0, quorumHash, v, stateID, nil)
 	assert.NoError(err, "expected no error on signing same vote")
 
 	// now try some bad votes
 	cases := []*types.Vote{
-		newVote(privVal.Key.ProTxHash, 0, height, round-1, voteType, block1, state),   // round regression
-		newVote(privVal.Key.ProTxHash, 0, height-1, round, voteType, block1, state),   // height regression
-		newVote(privVal.Key.ProTxHash, 0, height-2, round+4, voteType, block1, state), // height reg and diff round
-		newVote(privVal.Key.ProTxHash, 0, height, round, voteType, block2, state),     // different block
+		newVote(privVal.Key.ProTxHash, 0, height, round-1, voteType, block1, stateID),   // round regression
+		newVote(privVal.Key.ProTxHash, 0, height-1, round, voteType, block1, stateID),   // height regression
+		newVote(privVal.Key.ProTxHash, 0, height-2, round+4, voteType, block1, stateID), // height reg and diff round
+		newVote(privVal.Key.ProTxHash, 0, height, round, voteType, block2, stateID),     // different block
 	}
 
 	for _, c := range cases {
 		cpb := c.ToProto()
-		err = privVal.SignVote("mychainid", 0, crypto.QuorumHash{}, cpb, nil)
+		err = privVal.SignVote("mychainid", 0, crypto.QuorumHash{}, cpb, stateID, nil)
 		assert.Error(err, "expected error on signing conflicting vote")
 	}
 
@@ -249,7 +250,7 @@ func TestSignVote(t *testing.T) {
 	blockSignature := vote.BlockSignature
 	stateSignature := vote.StateSignature
 
-	err = privVal.SignVote("mychainid", 0, crypto.QuorumHash{}, v, nil)
+	err = privVal.SignVote("mychainid", 0, crypto.QuorumHash{}, v, stateID, nil)
 	assert.NoError(err)
 	assert.Equal(blockSignature, vote.BlockSignature)
 	assert.Equal(stateSignature, vote.StateSignature)
@@ -356,7 +357,6 @@ func newVote(proTxHash types.ProTxHash, idx int32, height int64, round int32,
 		Round:              round,
 		Type:               typ,
 		BlockID:            blockID,
-		StateID:            stateID,
 	}
 }
 

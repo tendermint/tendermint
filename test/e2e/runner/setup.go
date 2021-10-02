@@ -195,13 +195,14 @@ services:
 {{- if $.Debug }}
     environment:
     - DEBUG=1
+    - DEBUG_PORT={{ debugPort $index }}
 {{- end }}
     ports:
     - 26656
     - {{ if .ProxyPort }}{{ .ProxyPort }}:{{ end }}26657
     - 6060
 {{- if $.Debug }}
-    - {{ debugPort $index }}:40000
+    - {{ debugPort $index }}:{{ debugPort $index }}
 {{- end }}
     volumes:
     - ./{{ .Name }}:/tenderdash
@@ -279,7 +280,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.P2P.AddrBookStrict = false
 	cfg.DBBackend = node.Database
 	cfg.StateSync.DiscoveryTime = 5 * time.Second
-	cfg.Consensus.AppHashSize = crypto.DefaultHashSize
+	cfg.Consensus.AppHashSize = crypto.DefaultAppHashSize
 	cfg.BaseConfig.LogLevel = "debug"
 
 	switch node.ABCIProtocol {

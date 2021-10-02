@@ -896,6 +896,8 @@ func (cs *State) updateToState(state sm.State) {
 		cs.StartTime = cs.config.Commit(cs.CommitTime)
 	}
 
+	stateID := cs.state.StateID()
+
 	cs.Validators = validators
 	cs.Proposal = nil
 	cs.ProposalBlock = nil
@@ -906,7 +908,7 @@ func (cs *State) updateToState(state sm.State) {
 	cs.ValidRound = -1
 	cs.ValidBlock = nil
 	cs.ValidBlockParts = nil
-	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators)
+	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, stateID, validators)
 	cs.CommitRound = -1
 	cs.LastValidators = state.LastValidators
 	cs.TriggeredTimeoutPrecommit = false
@@ -1260,7 +1262,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
-		commit = types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
+		commit = types.NewCommit(0, 0, types.BlockID{}, cs.state.StateID(), nil, nil, nil)
 	case cs.LastPrecommits.HasTwoThirdsMajority():
 		// Make the commit from LastPrecommits
 		commit = cs.LastPrecommits.MakeCommit()
@@ -1795,17 +1797,13 @@ func (cs *State) signVote(
 		Round:              cs.Round,
 		Type:               msgType,
 		BlockID:            types.BlockID{Hash: hash, PartSetHeader: header},
-		StateID:            types.StateID{LastAppHash: cs.state.AppHash},
-	}
-
-	// if hash is nil no need to send the state id
-	if hash == nil {
-		vote.StateID.LastAppHash = nil
 	}
 
 	v := vote.ToProto()
+	stateID := cs.state.StateID()
+
 	err := cs.privValidator.SignVote(
-		cs.state.ChainID, cs.state.Validators.QuorumType, cs.state.Validators.QuorumHash, v, nil)
+		cs.state.ChainID, cs.state.Validators.QuorumType, cs.state.Validators.QuorumHash, v, stateID, nil)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
 

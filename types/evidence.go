@@ -313,6 +313,7 @@ func NewMockDuplicateVoteEvidence(
 
 // NewMockDuplicateVoteEvidenceWithValidator assumes voting power to be DefaultDashVotingPower and
 // validator to be the only one in the set
+// TODO: discuss if this might be moved to some *_test.go file
 func NewMockDuplicateVoteEvidenceWithValidator(
 	height int64,
 	time time.Time,
@@ -325,17 +326,20 @@ func NewMockDuplicateVoteEvidenceWithValidator(
 	if err != nil {
 		panic(err)
 	}
+
+	stateID := RandStateID().WithHeight(height - 1)
+
 	proTxHash, _ := pv.GetProTxHash()
 	val := NewValidator(pubKey, DefaultDashVotingPower, proTxHash)
 
-	voteA := makeMockVote(height, 0, 0, proTxHash, randBlockID(), randStateID())
+	voteA := makeMockVote(height, 0, 0, proTxHash, randBlockID())
 	vA := voteA.ToProto()
-	_ = pv.SignVote(chainID, quorumType, quorumHash, vA, nil)
+	_ = pv.SignVote(chainID, quorumType, quorumHash, vA, stateID, nil)
 	voteA.BlockSignature = vA.BlockSignature
 	voteA.StateSignature = vA.StateSignature
-	voteB := makeMockVote(height, 0, 0, proTxHash, randBlockID(), randStateID())
+	voteB := makeMockVote(height, 0, 0, proTxHash, randBlockID())
 	vB := voteB.ToProto()
-	_ = pv.SignVote(chainID, quorumType, quorumHash, vB, nil)
+	_ = pv.SignVote(chainID, quorumType, quorumHash, vB, stateID, nil)
 	voteB.BlockSignature = vB.BlockSignature
 	voteB.StateSignature = vB.StateSignature
 	return NewDuplicateVoteEvidence(
@@ -352,21 +356,23 @@ func NewMockDuplicateVoteEvidenceWithPrivValInValidatorSet(height int64, time ti
 	quorumHash crypto.QuorumHash) *DuplicateVoteEvidence {
 	proTxHash, _ := pv.GetProTxHash()
 
-	voteA := makeMockVote(height, 0, 0, proTxHash, randBlockID(), randStateID())
+	stateID := RandStateID().WithHeight(height - 1)
+
+	voteA := makeMockVote(height, 0, 0, proTxHash, randBlockID())
 	vA := voteA.ToProto()
-	_ = pv.SignVote(chainID, quorumType, quorumHash, vA, nil)
+	_ = pv.SignVote(chainID, quorumType, quorumHash, vA, stateID, nil)
 	voteA.BlockSignature = vA.BlockSignature
 	voteA.StateSignature = vA.StateSignature
-	voteB := makeMockVote(height, 0, 0, proTxHash, randBlockID(), randStateID())
+	voteB := makeMockVote(height, 0, 0, proTxHash, randBlockID())
 	vB := voteB.ToProto()
-	_ = pv.SignVote(chainID, quorumType, quorumHash, vB, nil)
+	_ = pv.SignVote(chainID, quorumType, quorumHash, vB, stateID, nil)
 	voteB.BlockSignature = vB.BlockSignature
 	voteB.StateSignature = vB.StateSignature
 	return NewDuplicateVoteEvidence(voteA, voteB, time, valSet)
 }
 
 func makeMockVote(height int64, round, index int32, proTxHash crypto.ProTxHash,
-	blockID BlockID, stateID StateID) *Vote {
+	blockID BlockID) *Vote {
 	return &Vote{
 		Type:               tmproto.SignedMsgType(2),
 		Height:             height,
@@ -374,7 +380,6 @@ func makeMockVote(height int64, round, index int32, proTxHash crypto.ProTxHash,
 		BlockID:            blockID,
 		ValidatorProTxHash: proTxHash,
 		ValidatorIndex:     index,
-		StateID:            stateID,
 	}
 }
 
@@ -385,11 +390,5 @@ func randBlockID() BlockID {
 			Total: 1,
 			Hash:  tmrand.Bytes(tmhash.Size),
 		},
-	}
-}
-
-func randStateID() StateID {
-	return StateID{
-		LastAppHash: tmrand.Bytes(tmhash.Size),
 	}
 }
