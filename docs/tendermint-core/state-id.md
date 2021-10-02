@@ -2,7 +2,13 @@
 
 ## State ID definition
 
-`StateID` is a unique identifier of the most recent state validated in consensus at the time of block generation.
+`StateID` is a unique identifier of the most recent application state validated in consensus at the time of block generation.
+
+## State ID rationale
+
+In Dash Platform documents are returned to clients that request them. The validity of these documents is verified by checking that the root hash of the document tree is signed by the one of the platform quorums which are used as Tenderdash validator sets.
+
+Before the introduction of the `StateID` verification that the last app hash was properly signed would have required passing all the components that are used in the blockID generation to light clients. StateID should be considered a subset of the BlockID which allows for small proofs for Dash Platform clients.
 
 ## State ID logic
 
@@ -13,7 +19,7 @@ Let's define the following:
 * `Block(height=N)` - Block at `height == N`
 * `Vote(height=B, stateID=S)` - Vote for `Block(height=B)`, with state ID generated from `State(height=S)`
 * `Commit(height=B, stateID=S)` - Commit for `Block(height=B)`, with state ID generated from `State(height=S)`
- 
+
 StateID logic works as follows:
 
 1. System is in `State(height=N-1)`
@@ -24,7 +30,7 @@ StateID logic works as follows:
 6. New block `Block(height=N+1)` is proposed that contains last commit  `Commit(height=N, stateID=N-1)`
 
 
-```mermaid 
+```mermaid
 graph TD
     subgraph "StateID logic diagram"
 
