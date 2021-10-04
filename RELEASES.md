@@ -102,7 +102,7 @@ If there were no release candidates, begin by creating a backport branch, as des
       any intra-RC changes. It may also help to alphabetize the entries by package name.)
    - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
      all PRs
-   - Ensure that UPGRADING.md is up-to-date and includes notes on any breaking changes
+   - Ensure that `UPGRADING.md` is up-to-date and includes notes on any breaking changes
       or other upgrading flows.
    - Bump TMVersionDefault version in  `version.go`
    - Bump P2P and block protocol versions in  `version.go`, if necessary
