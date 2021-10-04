@@ -70,7 +70,7 @@ Otherwise:
      it's own changelog section. These will be squashed when the final candidate is released.
    - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
      all PRs
-   - Ensure that UPGRADING.md is up-to-date and includes notes on any breaking changes
+   - Ensure that `UPGRADING.md` is up-to-date and includes notes on any breaking changes
       or other upgrading flows.
    - Bump TMVersionDefault version in  `version.go`
    - Bump P2P and block protocol versions in  `version.go`, if necessary
