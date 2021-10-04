@@ -169,6 +169,8 @@ func (r *Reactor) OnStart() error {
 		if err := r.pool.Start(); err != nil {
 			return err
 		}
+		r.poolWG.Add(1)
+		go r.requestRoutine()
 
 		r.poolWG.Add(1)
 		go r.poolRoutine(false)
@@ -385,6 +387,9 @@ func (r *Reactor) SwitchToBlockSync(state sm.State) error {
 	r.syncStartTime = time.Now()
 
 	r.poolWG.Add(1)
+	go r.requestRoutine()
+
+	r.poolWG.Add(1)
 	go r.poolRoutine(true)
 
 	return nil
@@ -394,7 +399,6 @@ func (r *Reactor) requestRoutine() {
 	statusUpdateTicker := time.NewTicker(statusUpdateIntervalSeconds * time.Second)
 	defer statusUpdateTicker.Stop()
 
-	r.poolWG.Add(1)
 	defer r.poolWG.Done()
 
 	for {
@@ -454,8 +458,6 @@ func (r *Reactor) poolRoutine(stateSynced bool) {
 
 	defer trySyncTicker.Stop()
 	defer switchToConsensusTicker.Stop()
-
-	go r.requestRoutine()
 
 	defer r.poolWG.Done()
 
@@ -604,6 +606,8 @@ FOR_LOOP:
 			continue FOR_LOOP
 
 		case <-r.closeCh:
+			break FOR_LOOP
+		case <-r.pool.Quit():
 			break FOR_LOOP
 		}
 	}
