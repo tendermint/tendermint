@@ -267,10 +267,6 @@ func createBlockchainReactor(
 
 	logger = logger.With("module", "blockchain")
 
-	if cfg.BlockSync.Version != config.BlockSyncV0 {
-		return nil, nil, fmt.Errorf("unknown block sync version %s", cfg.BlockSync.Version)
-	}
-
 	reactorShim := p2p.NewReactorShim(logger, "BlockchainShim", bcv0.ChannelShims)
 	channels := makeChannelsFromShims(router, bcv0.ChannelShims)
 	peerUpdates := peerManager.Subscribe()
@@ -491,7 +487,7 @@ func makeNodeInfo(
 		txIndexerStatus = "on"
 	}
 
-	var bcChannel byte = byte(bcv0.BlockSyncChannel)
+	bcChannel := byte(bcv0.BlockSyncChannel)
 
 	nodeInfo := types.NodeInfo{
 		ProtocolVersion: types.ProtocolVersion{

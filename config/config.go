@@ -30,7 +30,6 @@ const (
 	ModeSeed      = "seed"
 
 	BlockSyncV0 = "v0"
-	BlockSyncV2 = "v2"
 
 	MempoolV0 = "v0"
 	MempoolV1 = "v1"
@@ -1019,15 +1018,13 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 // allows them to catchup quickly by downloading blocks in parallel
 // and verifying their commits.
 type BlockSyncConfig struct {
-	Enable  bool   `mapstructure:"enable"`
-	Version string `mapstructure:"version"`
+	Enable bool `mapstructure:"enable"`
 }
 
 // DefaultBlockSyncConfig returns a default configuration for the block sync service
 func DefaultBlockSyncConfig() *BlockSyncConfig {
 	return &BlockSyncConfig{
-		Enable:  true,
-		Version: BlockSyncV0,
+		Enable: true,
 	}
 }
 
@@ -1037,16 +1034,7 @@ func TestBlockSyncConfig() *BlockSyncConfig {
 }
 
 // ValidateBasic performs basic validation.
-func (cfg *BlockSyncConfig) ValidateBasic() error {
-	switch cfg.Version {
-	case BlockSyncV0:
-		return nil
-	case BlockSyncV2:
-		return errors.New("blocksync version v2 is no longer supported. Please use v0")
-	default:
-		return fmt.Errorf("unknown blocksync version %s", cfg.Version)
-	}
-}
+func (cfg *BlockSyncConfig) ValidateBasic() error { return nil }
 
 //-----------------------------------------------------------------------------
 // ConsensusConfig
