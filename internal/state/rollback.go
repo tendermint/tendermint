@@ -7,31 +7,32 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-// Rollback takes a state at height n and overwrites it with the state
-// at height n - 1. Note state here refers to tendermint state not application state.
+// Rollback overwrites the current Tendermint state (height n) with the most
+// recent previous state (height n - 1).
+// Note that this function does not affect application state.
 func Rollback(bs BlockStore, ss Store) (int64, []byte, error) {
 	invalidState, err := ss.Load()
 	if err != nil {
-		return -1, []byte{}, err
+		return -1, nil, err
 	}
 	if invalidState.IsEmpty() {
-		return -1, []byte{}, errors.New("no state found")
+		return -1, nil, errors.New("no state found")
 	}
 
 	rollbackHeight := invalidState.LastBlockHeight
 	rollbackBlock := bs.LoadBlockMeta(rollbackHeight)
 	if rollbackBlock == nil {
-		return -1, []byte{}, fmt.Errorf("block at height %d not found", rollbackHeight)
+		return -1, nil, fmt.Errorf("block at height %d not found", rollbackHeight)
 	}
 
 	previousValidatorSet, err := ss.LoadValidators(rollbackHeight - 1)
 	if err != nil {
-		return -1, []byte{}, err
+		return -1, nil, err
 	}
 
 	previousParams, err := ss.LoadConsensusParams(rollbackHeight)
 	if err != nil {
-		return -1, []byte{}, err
+		return -1, nil, err
 	}
 
 	valChangeHeight := invalidState.LastHeightValidatorsChanged
@@ -47,7 +48,7 @@ func Rollback(bs BlockStore, ss Store) (int64, []byte, error) {
 	}
 
 	// build the new state from the old state and the prior block
-	newState := State{
+	rolledBackState := State{
 		Version: Version{
 			Consensus: version.Consensus{
 				Block: version.BlockProtocol,
@@ -78,9 +79,9 @@ func Rollback(bs BlockStore, ss Store) (int64, []byte, error) {
 	// persist the new state. This overrides the invalid one. NOTE: this will also
 	// persist the validator set and consensus params over the existing structures,
 	// but both should be the same
-	if err := ss.Save(newState); err != nil {
-		return -1, []byte{}, err
+	if err := ss.Save(rolledBackState); err != nil {
+		return -1, nil, fmt.Errorf("failed to save rolled back state: %w", err)
 	}
 
-	return newState.LastBlockHeight, newState.AppHash, nil
+	return rolledBackState.LastBlockHeight, rolledBackState.AppHash, nil
 }
