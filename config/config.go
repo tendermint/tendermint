@@ -1024,8 +1024,7 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 // allows them to catchup quickly by downloading blocks in parallel
 // and verifying their commits.
 type BlockSyncConfig struct {
-	Enable  bool   `mapstructure:"enable"`
-	Version string `mapstructure:"version"`
+	Enable bool `mapstructure:"enable"`
 }
 
 // DefaultBlockSyncConfig returns a default configuration for the block sync service

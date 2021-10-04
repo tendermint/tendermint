@@ -13,10 +13,9 @@ will no longer blocksync and thus no longer run the blocksync process.
 Note, the blocksync reactor Service gossips entire block and relevant data such
 that each receiving peer may construct the entire view of the blocksync state.
 
-There is currently only one version of the blocksync reactor Service:
-
-- v0: The initial implementation that is battle-tested, but whose test coverage
-	is lacking and is not formally verifiable.
+There is currently only one version of the blocksync reactor Service
+that is battle-tested, but whose test coverage is lacking and is not
+formally verified.
 
 The v0 blocksync reactor Service has one p2p channel, BlockchainChannel. This
 channel is responsible for handling messages that both request blocks and respond
