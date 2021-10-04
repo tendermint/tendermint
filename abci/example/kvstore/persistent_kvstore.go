@@ -453,7 +453,8 @@ func copyValidatorSetUpdate(vsu types.ValidatorSetUpdate) types.ValidatorSetUpda
 	vsu.ValidatorUpdates = make([]types.ValidatorUpdate, 0, len(vsu.ValidatorUpdates))
 	for _, vu := range vsu.ValidatorUpdates {
 		cvu := vu
-		cvu.PubKey = &(*vu.PubKey)
+		pkv := *vu.PubKey
+		cvu.PubKey = &pkv
 		cvu.ProTxHash = append([]byte{}, vu.ProTxHash...)
 		vsu.ValidatorUpdates = append(vsu.ValidatorUpdates, cvu)
 	}
