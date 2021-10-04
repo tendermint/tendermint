@@ -4,10 +4,14 @@ Tendermint uses [semantic versioning](https://semver.org/) with each release fol
 a `vX.Y.Z` format. The `master` branch is used for active development and thus it's
 advisable not to build against it.
 
-Releases are specified using tags and are built from long-lived "backport" branches.
+The latest changes are always initially merged into `master`.
+Releases are specified using tags and are built from long-lived "backport" branches
+that are cut from `master` when the release process begins.
 Each release "line" (e.g. 0.34 or 0.33) has its own long-lived backport branch,
 and the backport branches have names like `v0.34.x` or `v0.33.x`
-(literally, `x`; it is not a placeholder in this case). Tendermint only maintains the last two releases at a time (the oldest release is predominantly just security patches).
+(literally, `x`; it is not a placeholder in this case). Tendermint only
+maintains the last two releases at a time (the oldest release is predominantly
+just security patches).
 
 ## Backporting
 
