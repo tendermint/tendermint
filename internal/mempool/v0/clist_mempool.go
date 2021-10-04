@@ -348,11 +348,11 @@ func (mem *CListMempool) removeTx(tx types.Tx, elem *clist.CElement, removeFromC
 }
 
 // RemoveTxByKey removes a transaction from the mempool by its TxKey index.
-func (mem *CListMempool) RemoveTxByKey(txKey types.TxKey, removeFromCache bool) error {
+func (mem *CListMempool) RemoveTxByKey(txKey types.TxKey) error {
 	if e, ok := mem.txsMap.Load(txKey); ok {
 		memTx := e.(*clist.CElement).Value.(*mempoolTx)
 		if memTx != nil {
-			mem.removeTx(memTx.tx, e.(*clist.CElement), removeFromCache)
+			mem.removeTx(memTx.tx, e.(*clist.CElement), false)
 			return nil
 		}
 		return errors.New("transaction not found")

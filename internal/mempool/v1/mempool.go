@@ -305,13 +305,13 @@ func (txmp *TxMempool) CheckTx(
 	return nil
 }
 
-func (txmp *TxMempool) RemoveTxByKey(txKey types.TxKey, removeFromCache bool) error {
+func (txmp *TxMempool) RemoveTxByKey(txKey types.TxKey) error {
 	txmp.Lock()
 	defer txmp.Unlock()
 
 	// remove the committed transaction from the transaction store and indexes
 	if wtx := txmp.txStore.GetTxByHash(txKey); wtx != nil {
-		txmp.removeTx(wtx, removeFromCache)
+		txmp.removeTx(wtx, false)
 		return nil
 	}
 

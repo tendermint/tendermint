@@ -34,7 +34,7 @@ type Mempool interface {
 
 	// RemoveTxByKey removes a transaction, identified by its key,
 	// from the mempool.
-	RemoveTxByKey(txKey types.TxKey, removeFromCache bool) error
+	RemoveTxByKey(txKey types.TxKey) error
 
 	// ReapMaxBytesMaxGas reaps transactions from the mempool up to maxBytes
 	// bytes total with the condition that the total gasWanted must be less than
