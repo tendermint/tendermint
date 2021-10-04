@@ -229,26 +229,15 @@ func (r *Reactor) OnStop() {
 		r.state.Wait()
 	}
 
-	peers := make(map[types.NodeID]*PeerState)
 	r.mtx.Lock()
-
-	// Here, we make a copy of the map of peer states.
-	// The code below proceeds to access entries from the map outside of a lock.
-	// Goroutines launched by other functions may be deleting from the map but should
-	// no longer be appending to it since we waited for the peerUpdates channel to complete.
-	// Each of the methods below is safe to perform concurrently on the peers.
-	for id, state := range r.peers {
-		peers[id] = state
+	// Close and wait for each of the peers to shutdown.
+	// This is safe to perform with the lock since none of the peers require the
+	// lock to complete any of the methods that the waitgroup is waiting on.
+	for _, state := range r.peers {
+		state.closer.Close()
+		state.broadcastWG.Wait()
 	}
 	r.mtx.Unlock()
-
-	// wait for all spawned peer goroutines to gracefully exit
-	for _, ps := range peers {
-		ps.closer.Close()
-	}
-	for _, ps := range peers {
-		ps.broadcastWG.Wait()
-	}
 
 	// Close the StateChannel goroutine separately since it uses its own channel
 	// to signal closure.
