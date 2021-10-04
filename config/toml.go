@@ -477,11 +477,6 @@ fetchers = "{{ .StateSync.Fetchers }}"
 # and verifying their commits
 enable = {{ .BlockSync.Enable }}
 
-# Block Sync version to use:
-#   1) "v0" (default) - the standard Block Sync implementation
-#   2) "v2" - DEPRECATED, please use v0
-version = "{{ .BlockSync.Version }}"
-
 #######################################################
 ###         Consensus Configuration Options         ###
 #######################################################
