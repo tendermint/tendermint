@@ -130,10 +130,12 @@ If there were no release candidates, begin by creating a backport branch, as des
 
 ## Minor release (point releases)
 
-Minor releases are done differently from major releases: They are built off of long-lived backport branches, rather than from master.
-As non-breaking changes land on `master`, they should also be backported (cherry-picked) to these backport branches.
+Minor releases are done differently from major releases: They are built off of
+long-lived backport branches, rather than from master.  As non-breaking changes
+land on `master`, they should also be backported into these backport branches.
 
-Minor releases don't have release candidates by default, although any tricky changes may merit a release candidate.
+Minor releases don't have release candidates by default, although any tricky
+changes may merit a release candidate.
 
 To create a minor release:
 
