@@ -230,16 +230,14 @@ func (r *Reactor) OnStop() {
 	}
 
 	r.mtx.Lock()
-	peers := r.peers
+	// Close and wait for each of the peers to shutdown.
+	// This is safe to perform with the lock since none of the peers require the
+	// lock to complete any of the methods that the waitgroup is waiting on.
+	for _, state := range r.peers {
+		state.closer.Close()
+		state.broadcastWG.Wait()
+	}
 	r.mtx.Unlock()
-
-	// wait for all spawned peer goroutines to gracefully exit
-	for _, ps := range peers {
-		ps.closer.Close()
-	}
-	for _, ps := range peers {
-		ps.broadcastWG.Wait()
-	}
 
 	// Close the StateChannel goroutine separately since it uses its own channel
 	// to signal closure.
