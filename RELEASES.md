@@ -36,8 +36,8 @@ In the following example, we'll assume that we're making a backport branch for
 the 0.35.x line.
 
 1. Start on `master`
-2. Create the backport branch:
-   `git checkout -b v0.35.x`
+2. Create and push the backport branch:
+   `git checkout -b v0.35.x; git push origin v0.35.x`
 3. Go back to master and tag it as the dev branch for the _next_ major release and push it back up:
    `git tag -a v0.36.0-dev; git push v0.36.0-dev`
 4. Create a new workflow to run the e2e nightlies for this backport branch.
