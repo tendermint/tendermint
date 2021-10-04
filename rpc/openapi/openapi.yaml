@@ -249,14 +249,14 @@ paths:
           name: txKey
           required: true
           schema:
-            type: [32]byte
+            type: string
             example: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
           description: The transaction key
       responses:
         "200":
           description: empty response.
         "500":
-          description: empty error
+          description: empty error.
           content:
             application/json:
               schema:
