@@ -32,9 +32,11 @@ merging the pull request.
 If this is the first release candidate for a major release, you get to have the honor of creating
 the backport branch!
 
-Note that, after creating the backport branch, you'll also need to update the tags on `master`
-so that `go mod` is able to order the branches correctly. You should tag `master` with a "dev" tag
-that is "greater than" the backport branches tags. See #6072 for more context.
+Note that, after creating the backport branch, you'll also need to update the
+tags on `master` so that `go mod` is able to order the branches correctly. You
+should tag `master` with a "dev" tag that is "greater than" the backport
+branches tags. See [#6072](https://github.com/tendermint/tendermint/pull/6072)
+for more context.
 
 In the following example, we'll assume that we're making a backport branch for
 the 0.35.x line.
