@@ -241,7 +241,7 @@ func (mem *CListMempool) CheckTx(
 		// Note it's possible a tx is still in the cache but no longer in the mempool
 		// (eg. after committing a block, txs are removed from mempool but not cache),
 		// so we only record the sender for txs still in the mempool.
-		if e, ok := mem.txsMap.Load(mempool.TxKey(tx)); ok {
+		if e, ok := mem.txsMap.Load(tx.Key()); ok {
 			memTx := e.(*clist.CElement).Value.(*mempoolTx)
 			_, loaded := memTx.senders.LoadOrStore(txInfo.SenderID, true)
 			// TODO: consider punishing peer for dups,
@@ -328,7 +328,7 @@ func (mem *CListMempool) reqResCb(
 //  - resCbFirstTime (lock not held) if tx is valid
 func (mem *CListMempool) addTx(memTx *mempoolTx) {
 	e := mem.txs.PushBack(memTx)
-	mem.txsMap.Store(mempool.TxKey(memTx.tx), e)
+	mem.txsMap.Store(memTx.tx.Key(), e)
 	atomic.AddInt64(&mem.txsBytes, int64(len(memTx.tx)))
 	mem.metrics.TxSizeBytes.Observe(float64(len(memTx.tx)))
 }
@@ -339,7 +339,7 @@ func (mem *CListMempool) addTx(memTx *mempoolTx) {
 func (mem *CListMempool) removeTx(tx types.Tx, elem *clist.CElement, removeFromCache bool) {
 	mem.txs.Remove(elem)
 	elem.DetachPrev()
-	mem.txsMap.Delete(mempool.TxKey(tx))
+	mem.txsMap.Delete(tx.Key())
 	atomic.AddInt64(&mem.txsBytes, int64(-len(tx)))
 
 	if removeFromCache {
@@ -348,7 +348,7 @@ func (mem *CListMempool) removeTx(tx types.Tx, elem *clist.CElement, removeFromC
 }
 
 // RemoveTxByKey removes a transaction from the mempool by its TxKey index.
-func (mem *CListMempool) RemoveTxByKey(txKey [mempool.TxKeySize]byte, removeFromCache bool) error {
+func (mem *CListMempool) RemoveTxByKey(txKey types.TxKey, removeFromCache bool) error {
 	if e, ok := mem.txsMap.Load(txKey); ok {
 		memTx := e.(*clist.CElement).Value.(*mempoolTx)
 		if memTx != nil {
@@ -413,7 +413,7 @@ func (mem *CListMempool) resCbFirstTime(
 			mem.addTx(memTx)
 			mem.logger.Debug(
 				"added good transaction",
-				"tx", mempool.TxHashFromBytes(tx),
+				"tx", types.TxHashFromBytes(tx),
 				"res", r,
 				"height", memTx.height,
 				"total", mem.Size(),
@@ -423,7 +423,7 @@ func (mem *CListMempool) resCbFirstTime(
 			// ignore bad transaction
 			mem.logger.Debug(
 				"rejected bad transaction",
-				"tx", mempool.TxHashFromBytes(tx),
+				"tx", types.TxHashFromBytes(tx),
 				"peerID", peerP2PID,
 				"res", r,
 				"err", postCheckErr,
@@ -464,7 +464,7 @@ func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 			// Good, nothing to do.
 		} else {
 			// Tx became invalidated due to newly committed block.
-			mem.logger.Debug("tx is no longer valid", "tx", mempool.TxHashFromBytes(tx), "res", r, "err", postCheckErr)
+			mem.logger.Debug("tx is no longer valid", "tx", types.TxHashFromBytes(tx), "res", r, "err", postCheckErr)
 			// NOTE: we remove tx from the cache because it might be good later
 			mem.removeTx(tx, mem.recheckCursor, !mem.config.KeepInvalidTxsInCache)
 		}
@@ -602,7 +602,7 @@ func (mem *CListMempool) Update(
 		// Mempool after:
 		//   100
 		// https://github.com/tendermint/tendermint/issues/3322.
-		if e, ok := mem.txsMap.Load(mempool.TxKey(tx)); ok {
+		if e, ok := mem.txsMap.Load(tx.Key()); ok {
 			mem.removeTx(tx, e.(*clist.CElement), false)
 		}
 	}

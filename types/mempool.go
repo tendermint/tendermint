@@ -1,14 +1,24 @@
 package types
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 )
 
-var (
-	// ErrTxInCache is returned to the client if we saw tx earlier
-	ErrTxInCache = errors.New("tx already exists in cache")
-)
+// ErrTxInCache is returned to the client if we saw tx earlier
+var ErrTxInCache = errors.New("tx already exists in cache")
+
+// TxKeySize defines the size of the transaction's key used for indexing.
+const TxKeySize = sha256.Size
+
+// TxKey is the fixed length array key used as an index.
+type TxKey [TxKeySize]byte
+
+// TxHashFromBytes returns the hash of a transaction from raw bytes.
+func TxHashFromBytes(tx []byte) []byte {
+	return Tx(tx).Hash()
+}
 
 // ErrTxTooLarge defines an error when a transaction is too big to be sent in a
 // message to other peers.
