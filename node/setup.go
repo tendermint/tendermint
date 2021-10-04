@@ -293,36 +293,31 @@ func createBlockchainReactor(
 
 	logger = logger.With("module", "blockchain")
 
-	switch cfg.BlockSync.Version {
-	case config.BlockSyncV0:
-		reactorShim := p2p.NewReactorShim(logger, "BlockchainShim", bcv0.ChannelShims)
+	reactorShim := p2p.NewReactorShim(logger, "BlockchainShim", bcv0.ChannelShims)
 
-		var (
-			channels    map[p2p.ChannelID]*p2p.Channel
-			peerUpdates *p2p.PeerUpdates
-		)
+	var (
+		channels    map[p2p.ChannelID]*p2p.Channel
+		peerUpdates *p2p.PeerUpdates
+	)
 
-		if cfg.P2P.UseLegacy {
-			channels = getChannelsFromShim(reactorShim)
-			peerUpdates = reactorShim.PeerUpdates
-		} else {
-			channels = makeChannelsFromShims(router, bcv0.ChannelShims)
-			peerUpdates = peerManager.Subscribe()
-		}
-
-		reactor, err := bcv0.NewReactor(
-			logger, state.Copy(), blockExec, blockStore, csReactor,
-			channels[bcv0.BlockSyncChannel], peerUpdates, blockSync,
-			metrics,
-		)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		return reactorShim, reactor, nil
-	default:
-		return nil, nil, fmt.Errorf("unknown block sync version %s", cfg.BlockSync.Version)
+	if cfg.P2P.UseLegacy {
+		channels = getChannelsFromShim(reactorShim)
+		peerUpdates = reactorShim.PeerUpdates
+	} else {
+		channels = makeChannelsFromShims(router, bcv0.ChannelShims)
+		peerUpdates = peerManager.Subscribe()
 	}
+
+	reactor, err := bcv0.NewReactor(
+		logger, state.Copy(), blockExec, blockStore, csReactor,
+		channels[bcv0.BlockSyncChannel], peerUpdates, blockSync,
+		metrics,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return reactorShim, reactor, nil
 }
 
 func createConsensusReactor(
@@ -670,13 +665,7 @@ func makeNodeInfo(
 		txIndexerStatus = "on"
 	}
 
-	var bcChannel byte
-	switch cfg.BlockSync.Version {
-	case config.BlockSyncV0:
-		bcChannel = byte(bcv0.BlockSyncChannel)
-	default:
-		return types.NodeInfo{}, fmt.Errorf("unknown blocksync version %s", cfg.BlockSync.Version)
-	}
+	bcChannel := byte(bcv0.BlockSyncChannel)
 
 	nodeInfo := types.NodeInfo{
 		ProtocolVersion: types.ProtocolVersion{

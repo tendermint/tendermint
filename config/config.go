@@ -1030,8 +1030,7 @@ type BlockSyncConfig struct {
 // DefaultBlockSyncConfig returns a default configuration for the block sync service
 func DefaultBlockSyncConfig() *BlockSyncConfig {
 	return &BlockSyncConfig{
-		Enable:  true,
-		Version: BlockSyncV0,
+		Enable: true,
 	}
 }
 
@@ -1041,14 +1040,7 @@ func TestBlockSyncConfig() *BlockSyncConfig {
 }
 
 // ValidateBasic performs basic validation.
-func (cfg *BlockSyncConfig) ValidateBasic() error {
-	switch cfg.Version {
-	case BlockSyncV0:
-		return nil
-	default:
-		return fmt.Errorf("unknown blocksync version %s", cfg.Version)
-	}
-}
+func (cfg *BlockSyncConfig) ValidateBasic() error { return nil }
 
 //-----------------------------------------------------------------------------
 // ConsensusConfig
