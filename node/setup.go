@@ -3,7 +3,6 @@ package node
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -16,7 +15,6 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	bcv0 "github.com/tendermint/tendermint/internal/blocksync/v0"
-	bcv2 "github.com/tendermint/tendermint/internal/blocksync/v2"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -322,10 +320,6 @@ func createBlockchainReactor(
 		}
 
 		return reactorShim, reactor, nil
-
-	case config.BlockSyncV2:
-		return nil, nil, errors.New("block sync version v2 is no longer supported. Please use v0")
-
 	default:
 		return nil, nil, fmt.Errorf("unknown block sync version %s", cfg.BlockSync.Version)
 	}
@@ -680,10 +674,6 @@ func makeNodeInfo(
 	switch cfg.BlockSync.Version {
 	case config.BlockSyncV0:
 		bcChannel = byte(bcv0.BlockSyncChannel)
-
-	case config.BlockSyncV2:
-		bcChannel = bcv2.BlockchainChannel
-
 	default:
 		return types.NodeInfo{}, fmt.Errorf("unknown blocksync version %s", cfg.BlockSync.Version)
 	}

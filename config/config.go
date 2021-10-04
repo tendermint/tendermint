@@ -30,7 +30,6 @@ const (
 	ModeSeed      = "seed"
 
 	BlockSyncV0 = "v0"
-	BlockSyncV2 = "v2"
 
 	MempoolV0 = "v0"
 	MempoolV1 = "v1"
@@ -1047,8 +1046,6 @@ func (cfg *BlockSyncConfig) ValidateBasic() error {
 	switch cfg.Version {
 	case BlockSyncV0:
 		return nil
-	case BlockSyncV2:
-		return errors.New("blocksync version v2 is no longer supported. Please use v0")
 	default:
 		return fmt.Errorf("unknown blocksync version %s", cfg.Version)
 	}
