@@ -252,7 +252,7 @@ func (r *Reactor) OnStop() {
 	// Here, we make a copy of the map of peer states.
 	// The code below proceeds to access entries from the map outside of a lock.
 	// Goroutines launched by other functions may be deleting from the map but should
-	// to it since we waited for the peerUpdates channel to complete.
+	// no longer be appending to it since we waited for the peerUpdates channel to complete.
 	// Each of the methods below is safe to perform concurrently on the peers.
 	for id, state := range r.peers {
 		peers[id] = state
