@@ -151,3 +151,7 @@ func (env *Environment) CheckTx(ctx *rpctypes.Context, tx types.Tx) (*coretypes.
 	}
 	return &coretypes.ResultCheckTx{ResponseCheckTx: *res}, nil
 }
+
+func (env *Environment) RemoveTx(ctx *rpctypes.Context, txkey [mempool.TxKeySize]byte, removeFromCache bool) error {
+	return env.Mempool.RemoveTxByKey(txkey, removeFromCache)
+}

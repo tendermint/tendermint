@@ -3,6 +3,7 @@ package v0
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -347,13 +348,16 @@ func (mem *CListMempool) removeTx(tx types.Tx, elem *clist.CElement, removeFromC
 }
 
 // RemoveTxByKey removes a transaction from the mempool by its TxKey index.
-func (mem *CListMempool) RemoveTxByKey(txKey [mempool.TxKeySize]byte, removeFromCache bool) {
+func (mem *CListMempool) RemoveTxByKey(txKey [mempool.TxKeySize]byte, removeFromCache bool) error {
 	if e, ok := mem.txsMap.Load(txKey); ok {
 		memTx := e.(*clist.CElement).Value.(*mempoolTx)
 		if memTx != nil {
 			mem.removeTx(memTx.tx, e.(*clist.CElement), removeFromCache)
+			return nil
 		}
+		return errors.New("transaction not found")
 	}
+	return errors.New("invalid transaction found")
 }
 
 func (mem *CListMempool) isFull(txSize int) error {

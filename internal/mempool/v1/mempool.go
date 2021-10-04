@@ -3,6 +3,7 @@ package v1
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -302,6 +303,19 @@ func (txmp *TxMempool) CheckTx(
 	})
 
 	return nil
+}
+
+func (txmp *TxMempool) RemoveTxByKey(txKey [mempool.TxKeySize]byte, removeFromCache bool) error {
+	txmp.Lock()
+	defer txmp.Unlock()
+
+	// remove the committed transaction from the transaction store and indexes
+	if wtx := txmp.txStore.GetTxByHash(txKey); wtx != nil {
+		txmp.removeTx(wtx, removeFromCache)
+		return nil
+	}
+
+	return errors.New("transaction not found")
 }
 
 // Flush flushes out the mempool. It acquires a read-lock, fetches all the
