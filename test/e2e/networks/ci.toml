@@ -35,6 +35,7 @@ perturb = ["restart"]
 perturb = ["disconnect"]
 seeds = ["seed01"]
 snapshot_interval = 5
+block_sync = "v0"
 
 [node.validator02]
 abci_protocol = "tcp"
