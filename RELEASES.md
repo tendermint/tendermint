@@ -11,7 +11,7 @@ and the backport branches have names like `v0.34.x` or `v0.33.x`
 
 ## Backporting
 
-As non-breaking changes land on `master`, they should also be backported (cherry-picked)
+As non-breaking changes land on `master`, they should also be backported
 to these backport branches.
 
 We use Mergify's [backport feature](https://mergify.io/features/backports) to automatically backport
