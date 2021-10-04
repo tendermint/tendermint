@@ -21,7 +21,7 @@ var (
 
 // TMVersionDefault is the used as the fallback version of Tendermint Core
 // when not using git describe. It is formatted with semantic versioning.
-const TMVersionDefault = "0.34.11"
+const TMVersionDefault = "v0.35.0-unreleased"
 
 type Consensus struct {
 	Block uint64 `json:"block"`
