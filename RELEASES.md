@@ -20,8 +20,8 @@ to these backport branches.
 
 We use Mergify's [backport feature](https://mergify.io/features/backports) to automatically backport
 to the needed branch. There should be a label for any backport branch that you'll be targeting.
-To notify the bot to backport a pull request, mark the pull request with
-the label `S:backport-to-<backport_branch>`.
+To notify the bot to backport a pull request, mark the pull request with the label corresponding
+to the correct backport branch. For example, to backport to v0.35.x, add the label `S:backport-to-v0.35.x`.
 Once the original pull request is merged, the bot will try to cherry-pick the pull request
 to the backport branch. If the bot fails to backport, it will open a pull request.
 The author of the original pull request is responsible for solving the conflicts and
