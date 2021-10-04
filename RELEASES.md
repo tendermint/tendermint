@@ -94,7 +94,7 @@ This major release process assumes that this release was preceded by release can
 If there were no release candidates, begin by creating a backport branch, as described above.
 
 1. Start on the backport branch (e.g. `v0.35.x`)
-2. Run integration tests and the e2e nightlies.
+2. Run integration tests (`make test_integrations`) and the e2e nightlies.
 3. Prepare the release:
    - "Squash" changes from the changelog entries for the RCs into a single entry,
       and add all changes included in `CHANGELOG_PENDING.md`.
