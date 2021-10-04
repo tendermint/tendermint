@@ -46,7 +46,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: "1.16"
+          go-version: "1.17"
       - uses: actions/checkout@v2.3.4
       - uses: technote-space/get-diff-action@v5
         with:
@@ -69,7 +69,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: "1.16"
+          go-version: "1.17"
       - uses: actions/checkout@v2.3.4
       - uses: technote-space/get-diff-action@v5
         with:
@@ -85,7 +85,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.16
+          go-version: "1.17"
       - name: test & coverage report creation
         run: |
           cat pkgs.txt.part.${{ matrix.part }} | xargs go test -mod=readonly -timeout 8m -race -coverprofile=${{ matrix.part }}profile.out
