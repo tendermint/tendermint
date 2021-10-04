@@ -41,7 +41,7 @@ the 0.35.x line.
 3. Go back to master and tag it as the dev branch for the _next_ major release and push it back up:
    `git tag -a v0.36.0-dev; git push v0.36.0-dev`
 4. Create a new workflow to run the e2e nightlies for this backport branch.
-   (See https://github.com/tendermint/tendermint/blob/master/.github/workflows/e2e-nightly-34x.yml
+   (See https://github.com/tendermint/tendermint/blob/master/.github/workflows/e2e-nightly-master.yml
    for an example.)
 5. Add a new section to the Mergify config (`.github/mergify.yml`) to enable the
    backport bot to work on this branch, and add a corresponding `S:backport-to-v0.35.x`
