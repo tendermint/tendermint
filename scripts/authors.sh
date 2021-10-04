@@ -8,7 +8,7 @@ else
 cat << EOF
 Usage:
 	./authors.sh <ref>
-		Print a list of all authors who have committed to develop since the supplied commit ref. 
+		Print a list of all authors who have committed to the codebase since the supplied commit ref. 
 EOF
 fi
 
