@@ -18,11 +18,11 @@ Special thanks to external contributors on this release:
 
 - Go API
 
-  - [mempool, rpc] \#7041  Add removeTx operation to the RPC layer. (@tychoish)
-
 - Blockchain Protocol
 
 ### FEATURES
+
+- [mempool, rpc] \#7041  Add removeTx operation to the RPC layer. (@tychoish)
 
 ### IMPROVEMENTS
 
