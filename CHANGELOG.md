@@ -46,13 +46,12 @@ Special thanks to external contributors on this release: @JayT106, @bipulprasad,
   - [crypto/armor]: [\#6963](https://github.com/tendermint/tendermint/pull/6963) remove package which is unused, and based on
     deprecated fundamentals. Downstream users should maintain this
     library. (@tychoish)
-  - [state] [store] [proxy] [rpc/core]: [\#6937](https://github.com/tendermint/tendermint/pull/6937) move packages to
-    `internal` to prevent consumption of these internal APIs by
-    external users. (@tychoish)
+  - [state] [store] [p2p] [proxy] [rpc/core]: [\#6937](https://github.com/tendermint/tendermint/pull/6937) and
+    [\#6547](https://github.com/tendermint/tendermint/pull/6547) move packages to `internal` to prevent consumption of these internal
+	APIs by external users. (@tychoish)
   - [pubsub] [\#6634](https://github.com/tendermint/tendermint/pull/6634) The `Query#Matches` method along with other pubsub methods, now accepts a `[]abci.Event` instead of `map[string][]string`. (@alexanderbez)
   - [p2p] [\#6618](https://github.com/tendermint/tendermint/pull/6618) [\#6583](https://github.com/tendermint/tendermint/pull/6583) Move `p2p.NodeInfo`, `p2p.NodeID` and `p2p.NetAddress` into `types` to support use in external packages. (@tychoish)
   - [node] [\#6540](https://github.com/tendermint/tendermint/pull/6540) Reduce surface area of the `node` package by making most of the implementation details private. (@tychoish)
-  - [p2p] [\#6547](https://github.com/tendermint/tendermint/pull/6547) Move the entire `p2p` package and all reactor implementations into `internal`.  (@tychoish)
   - [libs/log] [\#6534](https://github.com/tendermint/tendermint/pull/6534) Remove the existing custom Tendermint logger backed by go-kit. The logging interface, `Logger`, remains. Tendermint still provides a default logger backed by the performant zerolog logger. (@alexanderbez)
   - [libs/time] [\#6495](https://github.com/tendermint/tendermint/pull/6495) Move types/time to libs/time to improve consistency. (@tychoish)
   - [mempool] [\#6529](https://github.com/tendermint/tendermint/pull/6529) The `Context` field has been removed from the `TxInfo` type. `CheckTx` now requires a `Context` argument. (@alexanderbez)
