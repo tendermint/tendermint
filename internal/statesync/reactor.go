@@ -779,7 +779,8 @@ func (r *Reactor) handleParamsMessage(envelope p2p.Envelope) error {
 		if sp, ok := r.stateProvider.(*stateProviderP2P); ok {
 			select {
 			case sp.paramsRecvCh <- cp:
-			default:
+			case <-time.After(time.Second):
+				return errors.New("failed to send consensus params, stateprovider not ready for response")
 			}
 		} else {
 			r.Logger.Debug("received unexpected params response; using RPC state provider", "peer", envelope.From)
