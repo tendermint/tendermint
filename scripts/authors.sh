@@ -1,5 +1,7 @@
 #! /bin/bash
 
+set -euo pipefail
+
 ref=$1
 
 if [[ ! -z "$ref" ]]; then
