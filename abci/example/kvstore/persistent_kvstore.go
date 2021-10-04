@@ -448,7 +448,6 @@ func (app *PersistentKVStoreApplication) updateQuorumHash(
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK}
 }
 
-// Copy makes and returns a copy of ValidatorSetUpdate structure
 func copyValidatorSetUpdate(vsu types.ValidatorSetUpdate) types.ValidatorSetUpdate {
 	vsu.QuorumHash = append([]byte{}, vsu.QuorumHash...)
 	vsu.ValidatorUpdates = make([]types.ValidatorUpdate, 0, len(vsu.ValidatorUpdates))
