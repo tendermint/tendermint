@@ -2,7 +2,7 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
-## vX.X
+## vX.Y
 
 Month, DD, YYYY
 
@@ -11,6 +11,7 @@ Special thanks to external contributors on this release:
 ### BREAKING CHANGES
 
 - CLI/RPC/Config
+  - [config] [\#7054] Make ABCI semantic versions match the TM version (@creachadair)
 
   - [rpc] Remove the deprecated gRPC interface to the RPC service. (@creachadair)
   - [blocksync] \#7159 Remove support for disabling blocksync in any circumstance. (@tychoish)
