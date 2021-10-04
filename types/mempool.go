@@ -15,11 +15,6 @@ const TxKeySize = sha256.Size
 // TxKey is the fixed length array key used as an index.
 type TxKey [TxKeySize]byte
 
-// TxHashFromBytes returns the hash of a transaction from raw bytes.
-func TxHashFromBytes(tx []byte) []byte {
-	return Tx(tx).Hash()
-}
-
 // ErrTxTooLarge defines an error when a transaction is too big to be sent in a
 // message to other peers.
 type ErrTxTooLarge struct {

@@ -661,7 +661,7 @@ func (txmp *TxMempool) defaultTxCallback(req *abci.Request, res *abci.Response) 
 				txmp.logger.Debug(
 					"existing transaction no longer valid; failed re-CheckTx callback",
 					"priority", wtx.priority,
-					"tx", fmt.Sprintf("%X", types.TxHashFromBytes(wtx.tx)),
+					"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
 					"err", err,
 					"code", checkTxRes.CheckTx.Code,
 				)

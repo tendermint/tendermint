@@ -413,7 +413,7 @@ func (mem *CListMempool) resCbFirstTime(
 			mem.addTx(memTx)
 			mem.logger.Debug(
 				"added good transaction",
-				"tx", types.TxHashFromBytes(tx),
+				"tx", types.Tx(tx).Hash(),
 				"res", r,
 				"height", memTx.height,
 				"total", mem.Size(),
@@ -423,7 +423,7 @@ func (mem *CListMempool) resCbFirstTime(
 			// ignore bad transaction
 			mem.logger.Debug(
 				"rejected bad transaction",
-				"tx", types.TxHashFromBytes(tx),
+				"tx", types.Tx(tx).Hash(),
 				"peerID", peerP2PID,
 				"res", r,
 				"err", postCheckErr,
@@ -464,7 +464,7 @@ func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 			// Good, nothing to do.
 		} else {
 			// Tx became invalidated due to newly committed block.
-			mem.logger.Debug("tx is no longer valid", "tx", types.TxHashFromBytes(tx), "res", r, "err", postCheckErr)
+			mem.logger.Debug("tx is no longer valid", "tx", types.Tx(tx).Hash(), "res", r, "err", postCheckErr)
 			// NOTE: we remove tx from the cache because it might be good later
 			mem.removeTx(tx, mem.recheckCursor, !mem.config.KeepInvalidTxsInCache)
 		}

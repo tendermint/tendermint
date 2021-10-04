@@ -146,7 +146,7 @@ type MempoolClient interface {
 	UnconfirmedTxs(ctx context.Context, limit *int) (*coretypes.ResultUnconfirmedTxs, error)
 	NumUnconfirmedTxs(context.Context) (*coretypes.ResultUnconfirmedTxs, error)
 	CheckTx(context.Context, types.Tx) (*coretypes.ResultCheckTx, error)
-	RemoveTx(context.Context, types.Tx) error
+	RemoveTx(context.Context, types.TxKey) error
 }
 
 // EvidenceClient is used for submitting an evidence of the malicious
