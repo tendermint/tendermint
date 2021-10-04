@@ -544,7 +544,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 	err = mp.CheckTx(context.Background(), []byte{0x06}, nil, mempool.TxInfo{})
 	require.NoError(t, err)
 	assert.EqualValues(t, 9, mp.SizeBytes())
-	assert.NoError(t, mp.RemoveTxByKey(types.Tx([]byte{0x07}).Key()))
+	assert.Error(t, mp.RemoveTxByKey(types.Tx([]byte{0x07}).Key()))
 	assert.EqualValues(t, 9, mp.SizeBytes())
 	assert.NoError(t, mp.RemoveTxByKey(types.Tx([]byte{0x06}).Key()))
 	assert.EqualValues(t, 8, mp.SizeBytes())
