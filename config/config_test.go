@@ -128,13 +128,6 @@ func TestStateSyncConfigValidateBasic(t *testing.T) {
 func TestBlockSyncConfigValidateBasic(t *testing.T) {
 	cfg := TestBlockSyncConfig()
 	assert.NoError(t, cfg.ValidateBasic())
-
-	// tamper with version
-	cfg.Version = "v2"
-	assert.Error(t, cfg.ValidateBasic())
-
-	cfg.Version = "invalid"
-	assert.Error(t, cfg.ValidateBasic())
 }
 
 func TestConsensusConfig_ValidateBasic(t *testing.T) {

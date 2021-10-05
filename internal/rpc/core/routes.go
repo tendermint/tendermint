@@ -56,7 +56,5 @@ func (env *Environment) GetRoutes() RoutesMap {
 // AddUnsafeRoutes adds unsafe routes.
 func (env *Environment) AddUnsafe(routes RoutesMap) {
 	// control API
-	routes["dial_seeds"] = rpc.NewRPCFunc(env.UnsafeDialSeeds, "seeds", false)
-	routes["dial_peers"] = rpc.NewRPCFunc(env.UnsafeDialPeers, "peers,persistent,unconditional,private", false)
 	routes["unsafe_flush_mempool"] = rpc.NewRPCFunc(env.UnsafeFlushMempool, "", false)
 }

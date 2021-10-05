@@ -140,20 +140,6 @@ func (c *Local) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
 	return c.env.Health(c.ctx)
 }
 
-func (c *Local) DialSeeds(ctx context.Context, seeds []string) (*coretypes.ResultDialSeeds, error) {
-	return c.env.UnsafeDialSeeds(c.ctx, seeds)
-}
-
-func (c *Local) DialPeers(
-	ctx context.Context,
-	peers []string,
-	persistent,
-	unconditional,
-	private bool,
-) (*coretypes.ResultDialPeers, error) {
-	return c.env.UnsafeDialPeers(c.ctx, peers, persistent, unconditional, private)
-}
-
 func (c *Local) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) { //nolint:lll
 	return c.env.BlockchainInfo(c.ctx, minHeight, maxHeight)
 }

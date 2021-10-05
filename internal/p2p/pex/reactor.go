@@ -24,6 +24,22 @@ var (
 // TODO: Consolidate with params file.
 // See https://github.com/tendermint/tendermint/issues/6371
 const (
+	// PexChannel is a channel for PEX messages
+	PexChannel = byte(0x00)
+
+	// over-estimate of max NetAddress size
+	// hexID (40) + IP (16) + Port (2) + Name (100) ...
+	// NOTE: dont use massive DNS name ..
+	maxAddressSize = 256
+
+	// max addresses returned by GetSelection
+	// NOTE: this must match "maxMsgSize"
+	maxGetSelection = 250
+
+	// NOTE: amplification factor!
+	// small request results in up to maxMsgSize response
+	maxMsgSize = maxAddressSize * maxGetSelection
+
 	// the minimum time one peer can send another request to the same peer
 	minReceiveRequestInterval = 100 * time.Millisecond
 

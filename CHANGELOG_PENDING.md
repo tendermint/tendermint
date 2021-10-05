@@ -16,7 +16,14 @@ Special thanks to external contributors on this release:
 
 - P2P Protocol
 
+  - [p2p] \#7035 Remove legacy P2P routing implementation and
+    associated configuration (@tychoish)
+
 - Go API
+
+  - [blocksync] \#7046 Remove v2 implementation of the blocksync
+    service and recactor, which was disabled in the previous release
+    (@tychoish)
 
 - Blockchain Protocol
 
