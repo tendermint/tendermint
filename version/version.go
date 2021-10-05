@@ -44,11 +44,11 @@ func (c Consensus) ToProto() tmversion.Consensus {
 // version on its major and minor revisions, and does not have a patch version.
 //
 // For example TM "v0.35.11" corresponds to ABCI "v0.35".
-// This function will panic if tmVersion does not have a sensible format.
+// If tmVersion does not have a sensible format, a placeholder is returned.
 func tmToABCIVersion(tmVersion string) string {
 	parts := strings.SplitN(tmVersion, ".", 3)
 	if len(parts) < 2 {
-		panic("invalid semantic version string: " + tmVersion)
+		return tmVersion + "-unknown-abci"
 	}
 	return strings.Join(parts[:2], ".")
 }
