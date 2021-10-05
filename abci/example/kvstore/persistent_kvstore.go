@@ -7,12 +7,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tendermint/tendermint/crypto"
-
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/log"
 	pc "github.com/tendermint/tendermint/proto/tendermint/crypto"
@@ -168,8 +168,9 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 }
 
 // Update the validator set
-func (app *PersistentKVStoreApplication) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
-	return types.ResponseEndBlock{ValidatorSetUpdate: &app.ValidatorSetUpdates}
+func (app *PersistentKVStoreApplication) EndBlock(_ types.RequestEndBlock) types.ResponseEndBlock {
+	c := proto.Clone(&app.ValidatorSetUpdates).(*types.ValidatorSetUpdate)
+	return types.ResponseEndBlock{ValidatorSetUpdate: c}
 }
 
 func (app *PersistentKVStoreApplication) ListSnapshots(
