@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/internal/mempool"
+	"github.com/tendermint/tendermint/types"
 )
 
 func TestTxStore_GetTxBySender(t *testing.T) {
@@ -39,7 +39,7 @@ func TestTxStore_GetTxByHash(t *testing.T) {
 		timestamp: time.Now(),
 	}
 
-	key := mempool.TxKey(wtx.tx)
+	key := wtx.tx.Key()
 	res := txs.GetTxByHash(key)
 	require.Nil(t, res)
 
@@ -58,7 +58,7 @@ func TestTxStore_SetTx(t *testing.T) {
 		timestamp: time.Now(),
 	}
 
-	key := mempool.TxKey(wtx.tx)
+	key := wtx.tx.Key()
 	txs.SetTx(wtx)
 
 	res := txs.GetTxByHash(key)
@@ -81,10 +81,10 @@ func TestTxStore_GetOrSetPeerByTxHash(t *testing.T) {
 		timestamp: time.Now(),
 	}
 
-	key := mempool.TxKey(wtx.tx)
+	key := wtx.tx.Key()
 	txs.SetTx(wtx)
 
-	res, ok := txs.GetOrSetPeerByTxHash(mempool.TxKey([]byte("test_tx_2")), 15)
+	res, ok := txs.GetOrSetPeerByTxHash(types.Tx([]byte("test_tx_2")).Key(), 15)
 	require.Nil(t, res)
 	require.False(t, ok)
 
@@ -110,7 +110,7 @@ func TestTxStore_RemoveTx(t *testing.T) {
 
 	txs.SetTx(wtx)
 
-	key := mempool.TxKey(wtx.tx)
+	key := wtx.tx.Key()
 	res := txs.GetTxByHash(key)
 	require.NotNil(t, res)
 
