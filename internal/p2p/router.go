@@ -21,6 +21,8 @@ import (
 
 const queueBufferDefault = 32
 
+const dialRandomizerIntervalMillisecond = 3000
+
 // ChannelID is an arbitrary channel ID.
 type ChannelID uint16
 
@@ -544,7 +546,7 @@ func (r *Router) filterPeersID(ctx context.Context, id types.NodeID) error {
 func (r *Router) dialSleep(ctx context.Context) {
 	if r.options.DialSleep == nil {
 		// nolint:gosec // G404: Use of weak random number generator
-		timer := time.NewTimer(time.Duration(rand.Int63n(dialRandomizerIntervalMilliseconds)) * time.Millisecond)
+		timer := time.NewTimer(time.Duration(rand.Int63n(dialRandomizerIntervalMillisecond)) * time.Millisecond)
 		defer timer.Stop()
 
 		select {
