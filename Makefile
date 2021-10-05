@@ -7,7 +7,7 @@ BUILD_TAGS?=tendermint
 
 # If building a release, please checkout the version tag to get the correct version setting
 ifneq ($(shell git symbolic-ref -q --short HEAD),)
-VERSION := unreleased-$(shell git symbolic-ref -q --short HEAD)-$(shell git rev-parse HEAD)
+VERSION := v0.0.0-unreleased-$(shell git symbolic-ref -q --short HEAD)-$(shell git rev-parse HEAD)
 else
 VERSION := $(shell git describe)
 endif
