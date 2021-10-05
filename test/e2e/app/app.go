@@ -184,6 +184,10 @@ func (app *Application) Commit() abci.ResponseCommit {
 			panic(err)
 		}
 		app.logger.Info("Created state sync snapshot", "height", snapshot.Height)
+		err = app.snapshots.Prune(maxSnapshotCount)
+		if err != nil {
+			app.logger.Error("Failed to prune snapshots", "err", err)
+		}
 	}
 	retainHeight := int64(0)
 	if app.cfg.RetainBlocks > 0 {
