@@ -53,7 +53,7 @@ var (
 		e2e.StateSyncRPC:      45,
 	}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
-	nodeSnapshotIntervals = uniformChoice{0, 3}
+	nodeSnapshotIntervals = uniformChoice{0, 5}
 	nodeRetainBlocks      = uniformChoice{0, 2 * int(e2e.EvidenceAgeHeight), 4 * int(e2e.EvidenceAgeHeight)}
 	nodePerturbations     = probSetChoice{
 		"disconnect": 0.1,
