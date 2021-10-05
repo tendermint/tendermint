@@ -22,6 +22,8 @@ Special thanks to external contributors on this release:
 
 ### FEATURES
 
+- [mempool, rpc] \#7041  Add removeTx operation to the RPC layer. (@tychoish)
+
 ### IMPROVEMENTS
 
 ### BUG FIXES
