@@ -25,6 +25,7 @@
 - April 28, 2021: Specify search capabilities are only supported through the KV indexer (@marbar3778)
 - May 19, 2021: Update the SQL schema and the eventsink interface (@jayt106)
 - Aug 30, 2021: Update the SQL schema and the psql implementation (@creachadair)
+- Oct 5, 2021: Clarify goals and implementation changes (@creachadair)
 
 ## Status
 
@@ -73,19 +74,38 @@ the database used.
 We will adopt a similar approach to that of the Cosmos SDK's `KVStore` state
 listening described in [ADR-038](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-038-state-listening.md).
 
-Namely, we will perform the following:
+We will implement the following changes:
 
 - Introduce a new interface, `EventSink`, that all data sinks must implement.
 - Augment the existing `tx_index.indexer` configuration to now accept a series
-  of one or more indexer types, i.e sinks.
+  of one or more indexer types, i.e., sinks.
 - Combine the current `TxIndexer` and `BlockIndexer` into a single `KVEventSink`
   that implements the `EventSink` interface.
-- Introduce an additional `EventSink` that is backed by [PostgreSQL](https://www.postgresql.org/).
-  - Implement the necessary schemas to support both block and transaction event
-  indexing.
+- Introduce an additional `EventSink` implementation that is backed by
+  [PostgreSQL](https://www.postgresql.org/).
+  - Implement the necessary schemas to support both block and transaction event indexing.
 - Update `IndexerService` to use a series of `EventSinks`.
-- Proxy queries to the relevant sink's native query layer.
-- Update all relevant RPC methods.
+
+In addition:
+
+- The Postgres indexer implementation will _not_ implement the proprietary `kv`
+  query language. Users wishing to write queries against the Postgres indexer
+  will connect to the underlying DBMS directly and use SQL queries based on the
+  indexing schema.
+
+  Future custom indexer implementations will not be required to support the
+  proprietary query language either.
+
+- For now, the existing `kv` indexer will be left in place with its current
+  query support, but will be marked as deprecated in a subsequent release, and
+  the documentation will be updated to encourage users who need to query the
+  event index to migrate to the Postgres indexer.
+
+- In the future we may remove the `kv` indexer entirely, or replace it with a
+  different implementation; that decision is deferred as future work.
+
+- In the future, we may remove the index query endpoints from the RPC service
+  entirely; that decision is deferred as future work, but recommended.
 
 
 ## Detailed Design
