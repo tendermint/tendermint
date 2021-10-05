@@ -4,8 +4,11 @@ import (
 	"testing"
 	"time"
 
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/tendermint/tendermint/libs/log"
 )
+
+type testMessage = gogotypes.StringValue
 
 func TestCloseWhileDequeueFull(t *testing.T) {
 	enqueueLength := 5
