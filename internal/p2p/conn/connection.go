@@ -265,43 +265,6 @@ func (c *MConnection) stopServices() (alreadyStopped bool) {
 	return false
 }
 
-// FlushStop replicates the logic of OnStop.
-// It additionally ensures that all successful
-// .Send() calls will get flushed before closing
-// the connection.
-func (c *MConnection) FlushStop() {
-	if c.stopServices() {
-		return
-	}
-
-	// this block is unique to FlushStop
-	{
-		// wait until the sendRoutine exits
-		// so we dont race on calling sendSomePacketMsgs
-		<-c.doneSendRoutine
-
-		// Send and flush all pending msgs.
-		// Since sendRoutine has exited, we can call this
-		// safely
-		eof := c.sendSomePacketMsgs()
-		for !eof {
-			eof = c.sendSomePacketMsgs()
-		}
-		c.flush()
-
-		// Now we can close the connection
-	}
-
-	c.conn.Close()
-
-	// We can't close pong safely here because
-	// recvRoutine may write to it after we've stopped.
-	// Though it doesn't need to get closed at all,
-	// we close it @ recvRoutine.
-
-	// c.Stop()
-}
-
 // OnStop implements BaseService
 func (c *MConnection) OnStop() {
 	if c.stopServices() {
@@ -682,37 +645,12 @@ func (c *MConnection) maxPacketMsgSize() int {
 	return len(bz)
 }
 
-type ConnectionStatus struct {
-	Duration    time.Duration
-	SendMonitor flow.Status
-	RecvMonitor flow.Status
-	Channels    []ChannelStatus
-}
-
 type ChannelStatus struct {
 	ID                byte
 	SendQueueCapacity int
 	SendQueueSize     int
 	Priority          int
 	RecentlySent      int64
-}
-
-func (c *MConnection) Status() ConnectionStatus {
-	var status ConnectionStatus
-	status.Duration = time.Since(c.created)
-	status.SendMonitor = c.sendMonitor.Status()
-	status.RecvMonitor = c.recvMonitor.Status()
-	status.Channels = make([]ChannelStatus, len(c.channels))
-	for i, channel := range c.channels {
-		status.Channels[i] = ChannelStatus{
-			ID:                channel.desc.ID,
-			SendQueueCapacity: cap(channel.sendQueue),
-			SendQueueSize:     int(atomic.LoadInt32(&channel.sendQueueSize)),
-			Priority:          channel.desc.Priority,
-			RecentlySent:      atomic.LoadInt64(&channel.recentlySent),
-		}
-	}
-	return status
 }
 
 //-----------------------------------------------------------------------------

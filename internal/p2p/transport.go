@@ -7,7 +7,6 @@ import (
 	"net"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/internal/p2p/conn"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -82,19 +81,7 @@ type Connection interface {
 	ReceiveMessage() (ChannelID, []byte, error)
 
 	// SendMessage sends a message on the connection. Returns io.EOF if closed.
-	//
-	// FIXME: For compatibility with the legacy P2P stack, it returns an
-	// additional boolean false if the message timed out waiting to be accepted
-	// into the send buffer. This should be removed.
-	SendMessage(ChannelID, []byte) (bool, error)
-
-	// TrySendMessage is a non-blocking version of SendMessage that returns
-	// immediately if the message buffer is full. It returns true if the message
-	// was accepted.
-	//
-	// FIXME: This method is here for backwards-compatibility with the legacy
-	// P2P stack and should be removed.
-	TrySendMessage(ChannelID, []byte) (bool, error)
+	SendMessage(ChannelID, []byte) error
 
 	// LocalEndpoint returns the local endpoint for the connection.
 	LocalEndpoint() Endpoint
@@ -104,18 +91,6 @@ type Connection interface {
 
 	// Close closes the connection.
 	Close() error
-
-	// FlushClose flushes all pending sends and then closes the connection.
-	//
-	// FIXME: This only exists for backwards-compatibility with the current
-	// MConnection implementation. There should really be a separate Flush()
-	// method, but there is no easy way to synchronously flush pending data with
-	// the current MConnection code.
-	FlushClose() error
-
-	// Status returns the current connection status.
-	// FIXME: Only here for compatibility with the current Peer code.
-	Status() conn.ConnectionStatus
 
 	// Stringer is used to display the connection, e.g. in logs.
 	//

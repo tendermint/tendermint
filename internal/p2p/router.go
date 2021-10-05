@@ -972,8 +972,7 @@ func (r *Router) sendPeer(peerID types.NodeID, conn Connection, peerQueue queue)
 				continue
 			}
 
-			_, err = conn.SendMessage(envelope.channelID, bz)
-			if err != nil {
+			if err = conn.SendMessage(envelope.channelID, bz); err != nil {
 				return err
 			}
 

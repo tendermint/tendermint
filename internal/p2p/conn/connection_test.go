@@ -69,9 +69,6 @@ func TestMConnectionSendFlushStop(t *testing.T) {
 		errCh <- err
 	}()
 
-	// stop the conn - it should flush all conns
-	clientConn.FlushStop()
-
 	timer := time.NewTimer(3 * time.Second)
 	select {
 	case <-errCh:
@@ -143,20 +140,6 @@ func TestMConnectionReceive(t *testing.T) {
 	case <-time.After(500 * time.Millisecond):
 		t.Fatalf("Did not receive %s message in 500ms", msg)
 	}
-}
-
-func TestMConnectionStatus(t *testing.T) {
-	server, client := NetPipe()
-	t.Cleanup(closeAll(t, client, server))
-
-	mconn := createTestMConnection(client)
-	err := mconn.Start()
-	require.Nil(t, err)
-	t.Cleanup(stopAll(t, mconn))
-
-	status := mconn.Status()
-	assert.NotNil(t, status)
-	assert.Zero(t, status.Channels[0].SendQueueSize)
 }
 
 func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
