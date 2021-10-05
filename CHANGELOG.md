@@ -2,9 +2,29 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
-## v0.35.0
+## v0.35.0-rc2
 
-October 4, 2021
+September 27, 2021
+
+### BREAKING CHANGES
+
+- Go API
+
+  - [crypto/armor]: [\#6963](https://github.com/tendermint/tendermint/pull/6963) remove package which is unused, and based on
+    deprecated fundamentals. Downstream users should maintain this
+    library. (@tychoish)
+  - [state] [store] [proxy] [rpc/core]: [\#6937](https://github.com/tendermint/tendermint/pull/6937) move packages to
+    `internal` to prevent consumption of these internal APIs by
+    external users. (@tychoish)
+
+### FEATURES
+
+- [\#6982](https://github.com/tendermint/tendermint/pull/6982) tendermint binary has built-in suppport for running the e2e application (with state sync support) (@cmwaters).
+
+
+## v0.35.0-rc1
+
+September 8, 2021
 
 Special thanks to external contributors on this release: @JayT106, @bipulprasad, @alessio, @Yawning, @silasdavis,
 @cuonglm, @tanyabouman, @JoeKash, @githubsands, @jeebster, @crypto-facs, @liamsi, and @gotjoshua
@@ -43,15 +63,10 @@ Special thanks to external contributors on this release: @JayT106, @bipulprasad,
   - [abci/counter] [\#6684](https://github.com/tendermint/tendermint/pull/6684) Delete counter example app
 
 - Go API
-  - [crypto/armor]: [\#6963](https://github.com/tendermint/tendermint/pull/6963) remove package which is unused, and based on
-    deprecated fundamentals. Downstream users should maintain this
-    library. (@tychoish)
-  - [state] [store] [p2p] [proxy] [rpc/core]: [\#6937](https://github.com/tendermint/tendermint/pull/6937) and
-    [\#6547](https://github.com/tendermint/tendermint/pull/6547) move packages to `internal` to prevent consumption of these internal
-	APIs by external users. (@tychoish)
   - [pubsub] [\#6634](https://github.com/tendermint/tendermint/pull/6634) The `Query#Matches` method along with other pubsub methods, now accepts a `[]abci.Event` instead of `map[string][]string`. (@alexanderbez)
   - [p2p] [\#6618](https://github.com/tendermint/tendermint/pull/6618) [\#6583](https://github.com/tendermint/tendermint/pull/6583) Move `p2p.NodeInfo`, `p2p.NodeID` and `p2p.NetAddress` into `types` to support use in external packages. (@tychoish)
   - [node] [\#6540](https://github.com/tendermint/tendermint/pull/6540) Reduce surface area of the `node` package by making most of the implementation details private. (@tychoish)
+  - [p2p] [\#6547](https://github.com/tendermint/tendermint/pull/6547) Move the entire `p2p` package and all reactor implementations into `internal`.  (@tychoish)
   - [libs/log] [\#6534](https://github.com/tendermint/tendermint/pull/6534) Remove the existing custom Tendermint logger backed by go-kit. The logging interface, `Logger`, remains. Tendermint still provides a default logger backed by the performant zerolog logger. (@alexanderbez)
   - [libs/time] [\#6495](https://github.com/tendermint/tendermint/pull/6495) Move types/time to libs/time to improve consistency. (@tychoish)
   - [mempool] [\#6529](https://github.com/tendermint/tendermint/pull/6529) The `Context` field has been removed from the `TxInfo` type. `CheckTx` now requires a `Context` argument. (@alexanderbez)
@@ -94,7 +109,6 @@ Special thanks to external contributors on this release: @JayT106, @bipulprasad,
 
 ### FEATURES
 
-- [\#6982](https://github.com/tendermint/tendermint/pull/6982) tendermint binary has built-in suppport for running the e2e application (with state sync support) (@cmwaters).
 - [config] Add `--mode` flag and config variable. See [ADR-52](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md) @dongsam
 - [rpc] [\#6329](https://github.com/tendermint/tendermint/pull/6329) Don't cap page size in unsafe mode (@gotjoshua, @cmwaters)
 - [pex] [\#6305](https://github.com/tendermint/tendermint/pull/6305) v2 pex reactor with backwards compatability. Introduces two new pex messages to
