@@ -58,6 +58,7 @@ func (env *Environment) Status(ctx *rpctypes.Context) (*coretypes.ResultStatus, 
 			VotingPower: votingPower,
 		}
 	}
+
 	result := &coretypes.ResultStatus{
 		NodeInfo: env.P2PTransport.NodeInfo(),
 		SyncInfo: coretypes.SyncInfo{

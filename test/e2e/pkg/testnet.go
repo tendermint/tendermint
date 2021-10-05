@@ -96,7 +96,6 @@ type Node struct {
 	PersistentPeers  []*Node
 	Perturbations    []Perturbation
 	LogLevel         string
-	UseLegacyP2P     bool
 	QueueType        string
 	HasStarted       bool
 }
@@ -182,7 +181,6 @@ func LoadTestnet(file string) (*Testnet, error) {
 			Perturbations:    []Perturbation{},
 			LogLevel:         manifest.LogLevel,
 			QueueType:        manifest.QueueType,
-			UseLegacyP2P:     nodeManifest.UseLegacyP2P,
 		}
 
 		if node.StartAt == testnet.InitialHeight {

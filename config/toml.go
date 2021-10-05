@@ -265,9 +265,6 @@ pprof-laddr = "{{ .RPC.PprofListenAddress }}"
 #######################################################
 [p2p]
 
-# Enable the legacy p2p layer.
-use-legacy = {{ .P2P.UseLegacy }}
-
 # Select the p2p internal queue
 queue-type = "{{ .P2P.QueueType }}"
 
@@ -476,11 +473,6 @@ fetchers = "{{ .StateSync.Fetchers }}"
 # allows them to catchup quickly by downloading blocks in parallel
 # and verifying their commits
 enable = {{ .BlockSync.Enable }}
-
-# Block Sync version to use:
-#   1) "v0" (default) - the standard Block Sync implementation
-#   2) "v2" - DEPRECATED, please use v0
-version = "{{ .BlockSync.Version }}"
 
 #######################################################
 ###         Consensus Configuration Options         ###

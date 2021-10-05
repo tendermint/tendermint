@@ -1,7 +1,6 @@
 # This testnet is run by CI, and attempts to cover a broad range of
 # functionality with a single network.
 
-disable_legacy_p2p = false
 evidence = 5
 initial_height = 1000
 initial_state = {initial01 = "a", initial02 = "b", initial03 = "c"}
@@ -35,6 +34,7 @@ perturb = ["restart"]
 perturb = ["disconnect"]
 seeds = ["seed01"]
 snapshot_interval = 5
+block_sync = "v0"
 
 [node.validator02]
 abci_protocol = "tcp"
