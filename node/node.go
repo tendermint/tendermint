@@ -19,7 +19,6 @@ import (
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
-	"github.com/tendermint/tendermint/internal/p2p/pex"
 	"github.com/tendermint/tendermint/internal/proxy"
 	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -249,14 +248,14 @@ func makeNode(cfg *config.Config,
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
 
-	mpReactorShim, mpReactor, mp, err := createMempoolReactor(
+	mpReactor, mp, err := createMempoolReactor(
 		cfg, proxyApp, state, nodeMetrics.mempool, peerManager, router, logger,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	evReactorShim, evReactor, evPool, err := createEvidenceReactor(
+	evReactor, evPool, err := createEvidenceReactor(
 		cfg, dbProvider, stateDB, blockStore, peerManager, router, logger,
 	)
 	if err != nil {
@@ -274,15 +273,18 @@ func makeNode(cfg *config.Config,
 		sm.BlockExecutorWithMetrics(nodeMetrics.state),
 	)
 
-	csReactorShim, csReactor, csState := createConsensusReactor(
+	csReactor, csState, err := createConsensusReactor(
 		cfg, state, blockExec, blockStore, mp, evPool,
 		privValidator, nodeMetrics.consensus, stateSync || blockSync, eventBus,
 		peerManager, router, consensusLogger,
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	// Create the blockchain reactor. Note, we do not start block sync if we're
 	// doing a state sync first.
-	bcReactorShim, bcReactor, err := createBlockchainReactor(
+	bcReactor, err := createBlockchainReactor(
 		logger, cfg, state, blockExec, blockStore, csReactor,
 		peerManager, router, blockSync && !stateSync, nodeMetrics.consensus,
 	)
@@ -304,8 +306,10 @@ func makeNode(cfg *config.Config,
 	// https://github.com/tendermint/tendermint/issues/4644
 	ssLogger := logger.With("module", "statesync")
 
-	ssReactorShim := p2p.NewReactorShim(statesync.ChannelShims)
-	channels := makeChannelsFromShims(router, statesync.ChannelShims)
+	channels, err := makeChannelsFromShims(router, statesync.ChannelShims)
+	if err != nil {
+		return nil, err
+	}
 
 	peerUpdates := peerManager.Subscribe()
 	stateSyncReactor := statesync.NewReactor(
@@ -326,16 +330,6 @@ func makeNode(cfg *config.Config,
 		nodeMetrics.statesync,
 	)
 
-	// add the channel descriptors to both the transports
-	// FIXME: This should be removed when the legacy p2p stack is removed and
-	// transports can either be agnostic to channel descriptors or can be
-	// declared in the constructor.
-	transport.AddChannelDescriptors(mpReactorShim.GetChannels())
-	transport.AddChannelDescriptors(bcReactorShim.GetChannels())
-	transport.AddChannelDescriptors(csReactorShim.GetChannels())
-	transport.AddChannelDescriptors(evReactorShim.GetChannels())
-	transport.AddChannelDescriptors(ssReactorShim.GetChannels())
-
 	// Optionally, start the pex reactor
 	//
 	// TODO:
@@ -350,9 +344,6 @@ func makeNode(cfg *config.Config,
 	// Note we currently use the addrBook regardless at least for AddOurAddress
 
 	var pexReactor service.Service
-
-	pexCh := pex.ChannelDescriptor()
-	transport.AddChannelDescriptors([]p2p.ChannelDescriptor{pexCh})
 
 	pexReactor, err = createPEXReactorV2(cfg, logger, peerManager, router)
 	if err != nil {
@@ -462,12 +453,6 @@ func makeSeedNode(cfg *config.Config,
 	var pexReactor service.Service
 
 	// add the pex reactor
-	// FIXME: we add channel descriptors to both the router and the transport but only the router
-	// should be aware of channel info. We should remove this from transport once the legacy
-	// p2p stack is removed.
-	pexCh := pex.ChannelDescriptor()
-	transport.AddChannelDescriptors([]p2p.ChannelDescriptor{pexCh})
-
 	pexReactor, err = createPEXReactorV2(cfg, logger, peerManager, router)
 	if err != nil {
 		return nil, err
@@ -1080,20 +1065,16 @@ func getRouterConfig(conf *config.Config, proxyApp proxy.AppConns) p2p.RouterOpt
 }
 
 // FIXME: Temporary helper function, shims should be removed.
-func makeChannelsFromShims(
-	router *p2p.Router,
-	chs []p2p.ChannelDescriptor,
-) map[p2p.ChannelID]*p2p.Channel {
+func makeChannelsFromShims(router *p2p.Router, chs []p2p.ChannelDescriptor) (map[p2p.ChannelID]*p2p.Channel, error) {
+	channels := make(map[p2p.ChannelID]*p2p.Channel, len(chs))
 
-	channels := map[p2p.ChannelID]*p2p.Channel{}
 	for idx := range chs {
 		ch, err := router.OpenChannel(chs[idx])
 		if err != nil {
-			panic(fmt.Sprintf("failed to open channel %v: %v", ch.ID, err))
+			return nil, fmt.Errorf("failed to open channel %v: %w", ch.ID, err)
 		}
-
 		channels[ch.ID] = ch
 	}
 
-	return channels
+	return channels, nil
 }

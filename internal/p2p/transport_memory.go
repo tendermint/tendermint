@@ -139,6 +139,8 @@ func (t *MemoryTransport) Endpoints() []Endpoint {
 	}
 }
 
+func (t *MemoryTransport) RegisterChannel(chDesc ChannelDescriptor) {}
+
 // Accept implements Transport.
 func (t *MemoryTransport) Accept() (Connection, error) {
 	select {

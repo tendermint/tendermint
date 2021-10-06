@@ -384,6 +384,10 @@ func (r *Router) OpenChannel(chDesc ChannelDescriptor) (*Channel, error) {
 	// add the channel to the nodeInfo if it's not already there.
 	r.nodeInfo.AddChannel(uint16(chDesc.ID))
 
+	for _, transport := range r.transports {
+		transport.RegisterChannel(chDesc)
+	}
+
 	go func() {
 		defer func() {
 			r.channelMtx.Lock()

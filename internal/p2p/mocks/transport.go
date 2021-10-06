@@ -5,7 +5,10 @@ package mocks
 import (
 	context "context"
 
+	conn "github.com/tendermint/tendermint/internal/p2p/conn"
+
 	mock "github.com/stretchr/testify/mock"
+
 	p2p "github.com/tendermint/tendermint/internal/p2p"
 )
 
@@ -104,6 +107,11 @@ func (_m *Transport) Protocols() []p2p.Protocol {
 	}
 
 	return r0
+}
+
+// RegisterChannel provides a mock function with given fields: _a0
+func (_m *Transport) RegisterChannel(_a0 conn.ChannelDescriptor) {
+	_m.Called(_a0)
 }
 
 // String provides a mock function with given fields:
