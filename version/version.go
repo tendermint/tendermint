@@ -3,21 +3,13 @@ package version
 import tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 
 var (
+	// TMVersion is the semantic version of Tendermint Core.
 	TMVersion = TMVersionDefault
-)
 
-const (
+	// ABCISemVer and ABCIVersion give the semantic version of the ABCI library.
+	ABCISemVer  = TMVersion
+	ABCIVersion = TMVersion
 
-	// TMVersionDefault is the used as the fallback version of Tendermint Core
-	// when not using git describe. It is formatted with semantic versioning.
-	TMVersionDefault = "0.35.0-unreleased"
-	// ABCISemVer is the semantic version of the ABCI library
-	ABCISemVer = "0.17.0"
-
-	ABCIVersion = ABCISemVer
-)
-
-var (
 	// P2PProtocol versions all p2p behavior and msgs.
 	// This includes proposer selection.
 	P2PProtocol uint64 = 8
@@ -26,6 +18,10 @@ var (
 	// This includes validity of blocks and state updates.
 	BlockProtocol uint64 = 11
 )
+
+// TMVersionDefault is the used as the fallback version of Tendermint Core
+// when not using git describe. It is formatted with semantic versioning.
+const TMVersionDefault = "0.34.11"
 
 type Consensus struct {
 	Block uint64 `json:"block"`
