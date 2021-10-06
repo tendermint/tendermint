@@ -28,7 +28,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
-	protop2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 
@@ -156,7 +155,7 @@ func createMempoolReactor(
 
 	logger = logger.With("module", "mempool", "version", cfg.Mempool.Version)
 	channelShims := mempoolv0.GetChannelShims(cfg.Mempool)
-	reactorShim := p2p.NewReactorShim(logger, "MempoolShim", channelShims)
+	reactorShim := p2p.NewReactorShim("MempoolShim", channelShims)
 
 	channels := makeChannelsFromShims(router, channelShims)
 	peerUpdates := peerManager.Subscribe()
@@ -235,7 +234,7 @@ func createEvidenceReactor(
 	}
 
 	logger = logger.With("module", "evidence")
-	reactorShim := p2p.NewReactorShim(logger, "EvidenceShim", evidence.ChannelShims)
+	reactorShim := p2p.NewReactorShim("EvidenceShim", evidence.ChannelShims)
 
 	evidencePool, err := evidence.NewPool(logger, evidenceDB, sm.NewStore(stateDB), blockStore)
 	if err != nil {
@@ -267,7 +266,7 @@ func createBlockchainReactor(
 
 	logger = logger.With("module", "blockchain")
 
-	reactorShim := p2p.NewReactorShim(logger, "BlockchainShim", bcv0.ChannelShims)
+	reactorShim := p2p.NewReactorShim("BlockchainShim", bcv0.ChannelShims)
 	channels := makeChannelsFromShims(router, bcv0.ChannelShims)
 	peerUpdates := peerManager.Subscribe()
 
@@ -313,7 +312,7 @@ func createConsensusReactor(
 		consensusState.SetPrivValidator(privValidator)
 	}
 
-	reactorShim := p2p.NewReactorShim(logger, "ConsensusShim", consensus.ChannelShims)
+	reactorShim := p2p.NewReactorShim("ConsensusShim", consensus.ChannelShims)
 
 	var (
 		channels    map[p2p.ChannelID]*p2p.Channel
@@ -465,7 +464,7 @@ func createPEXReactorV2(
 	router *p2p.Router,
 ) (service.Service, error) {
 
-	channel, err := router.OpenChannel(pex.ChannelDescriptor(), &protop2p.PexMessage{}, 128)
+	channel, err := router.OpenChannel(pex.ChannelDescriptor())
 	if err != nil {
 		return nil, err
 	}

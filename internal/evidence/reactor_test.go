@@ -62,11 +62,13 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 		peerChans:      make(map[types.NodeID]chan p2p.PeerUpdate, numStateStores),
 	}
 
-	chDesc := p2p.ChannelDescriptor{ID: byte(evidence.EvidenceChannel)}
-	rts.evidenceChannels = rts.network.MakeChannelsNoCleanup(t,
-		chDesc,
-		new(tmproto.EvidenceList),
-		int(chBuf))
+	chDesc := p2p.ChannelDescriptor{
+		ID:                  byte(evidence.EvidenceChannel),
+		MsgType:             new(tmproto.EvidenceList),
+		RecvMessageCapacity: int(chBuf),
+		SendQueueCapacity:   int(chBuf),
+	}
+	rts.evidenceChannels = rts.network.MakeChannelsNoCleanup(t, chDesc)
 	require.Len(t, rts.network.RandomNode().PeerManager.Peers(), 0)
 
 	idx := 0

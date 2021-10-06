@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
@@ -138,12 +137,10 @@ func (n *Network) NodeIDs() []types.NodeID {
 func (n *Network) MakeChannels(
 	t *testing.T,
 	chDesc p2p.ChannelDescriptor,
-	messageType proto.Message,
-	size int,
 ) map[types.NodeID]*p2p.Channel {
 	channels := map[types.NodeID]*p2p.Channel{}
 	for _, node := range n.Nodes {
-		channels[node.NodeID] = node.MakeChannel(t, chDesc, messageType, size)
+		channels[node.NodeID] = node.MakeChannel(t, chDesc)
 	}
 	return channels
 }
@@ -154,12 +151,10 @@ func (n *Network) MakeChannels(
 func (n *Network) MakeChannelsNoCleanup(
 	t *testing.T,
 	chDesc p2p.ChannelDescriptor,
-	messageType proto.Message,
-	size int,
 ) map[types.NodeID]*p2p.Channel {
 	channels := map[types.NodeID]*p2p.Channel{}
 	for _, node := range n.Nodes {
-		channels[node.NodeID] = node.MakeChannelNoCleanup(t, chDesc, messageType, size)
+		channels[node.NodeID] = node.MakeChannelNoCleanup(t, chDesc)
 	}
 	return channels
 }
@@ -281,9 +276,8 @@ func (n *Network) MakeNode(t *testing.T, opts NodeOptions) *Node {
 // MakeChannel opens a channel, with automatic error handling and cleanup. On
 // test cleanup, it also checks that the channel is empty, to make sure
 // all expected messages have been asserted.
-func (n *Node) MakeChannel(t *testing.T, chDesc p2p.ChannelDescriptor,
-	messageType proto.Message, size int) *p2p.Channel {
-	channel, err := n.Router.OpenChannel(chDesc, messageType, size)
+func (n *Node) MakeChannel(t *testing.T, chDesc p2p.ChannelDescriptor) *p2p.Channel {
+	channel, err := n.Router.OpenChannel(chDesc)
 	require.NoError(t, err)
 	require.Contains(t, n.Router.NodeInfo().Channels, chDesc.ID)
 	t.Cleanup(func() {
@@ -295,14 +289,8 @@ func (n *Node) MakeChannel(t *testing.T, chDesc p2p.ChannelDescriptor,
 
 // MakeChannelNoCleanup opens a channel, with automatic error handling. The
 // caller must ensure proper cleanup of the channel.
-func (n *Node) MakeChannelNoCleanup(
-	t *testing.T,
-	chDesc p2p.ChannelDescriptor,
-	messageType proto.Message,
-	size int,
-) *p2p.Channel {
-
-	channel, err := n.Router.OpenChannel(chDesc, messageType, size)
+func (n *Node) MakeChannelNoCleanup(t *testing.T, chDesc p2p.ChannelDescriptor) *p2p.Channel {
+	channel, err := n.Router.OpenChannel(chDesc)
 	require.NoError(t, err)
 	return channel
 }
@@ -336,6 +324,7 @@ func (n *Node) MakePeerUpdatesNoRequireEmpty(t *testing.T) *p2p.PeerUpdates {
 func MakeChannelDesc(chID p2p.ChannelID) p2p.ChannelDescriptor {
 	return p2p.ChannelDescriptor{
 		ID:                  byte(chID),
+		MsgType:             new(Message),
 		Priority:            5,
 		SendQueueCapacity:   10,
 		RecvMessageCapacity: 10,

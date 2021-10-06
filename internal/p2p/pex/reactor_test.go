@@ -11,6 +11,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/p2p/conn"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
 	"github.com/tendermint/tendermint/internal/p2p/pex"
 	"github.com/tendermint/tendermint/libs/log"
@@ -289,7 +290,7 @@ func setupSingle(t *testing.T) *singleTestReactor {
 	pexOutCh := make(chan p2p.Envelope, chBuf)
 	pexErrCh := make(chan p2p.PeerError, chBuf)
 	pexCh := p2p.NewChannel(
-		p2p.ChannelID(pex.PexChannel),
+		conn.ChannelDescriptor{ID: pex.PexChannel},
 		new(p2pproto.PexMessage),
 		pexInCh,
 		pexOutCh,
@@ -380,9 +381,10 @@ func setupNetwork(t *testing.T, opts testOptions) *reactorTestSuite {
 
 	// NOTE: we don't assert that the channels get drained after stopping the
 	// reactor
-	rts.pexChannels = rts.network.MakeChannelsNoCleanup(
-		t, pex.ChannelDescriptor(), new(p2pproto.PexMessage), chBuf,
-	)
+	chDesc := pex.ChannelDescriptor()
+	chDesc.RecvMessageCapacity = chBuf
+	chDesc.SendQueueCapacity = chBuf
+	rts.pexChannels = rts.network.MakeChannelsNoCleanup(t, chDesc)
 
 	idx := 0
 	for nodeID := range rts.network.Nodes {
@@ -446,9 +448,10 @@ func (r *reactorTestSuite) addNodes(t *testing.T, nodes int) {
 		})
 		r.network.Nodes[node.NodeID] = node
 		nodeID := node.NodeID
-		r.pexChannels[nodeID] = node.MakeChannelNoCleanup(
-			t, pex.ChannelDescriptor(), new(p2pproto.PexMessage), r.opts.BufferSize,
-		)
+		chDesc := pex.ChannelDescriptor()
+		chDesc.SendQueueCapacity = r.opts.BufferSize
+		chDesc.RecvMessageCapacity = r.opts.BufferSize
+		r.pexChannels[nodeID] = node.MakeChannelNoCleanup(t, chDesc)
 		r.peerChans[nodeID] = make(chan p2p.PeerUpdate, r.opts.BufferSize)
 		r.peerUpdates[nodeID] = p2p.NewPeerUpdates(r.peerChans[nodeID], r.opts.BufferSize)
 		r.network.Nodes[nodeID].PeerManager.Register(r.peerUpdates[nodeID])

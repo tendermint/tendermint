@@ -28,17 +28,15 @@ var (
 	//
 	// TODO: Remove once p2p refactor is complete.
 	// ref: https://github.com/tendermint/tendermint/issues/5670
-	ChannelShims = map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
+	ChannelShims = map[p2p.ChannelID]p2p.ChannelDescriptor{
 		BlockSyncChannel: {
-			MsgType: new(bcproto.Message),
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(BlockSyncChannel),
-				Priority:            5,
-				SendQueueCapacity:   1000,
-				RecvBufferCapacity:  1024,
-				RecvMessageCapacity: blocksync.MaxMsgSize,
-				MaxSendBytes:        100,
-			},
+			ID:                  byte(BlockSyncChannel),
+			MsgType:             new(bcproto.Message),
+			Priority:            5,
+			SendQueueCapacity:   1000,
+			RecvBufferCapacity:  1024,
+			RecvMessageCapacity: blocksync.MaxMsgSize,
+			MaxSendBytes:        100,
 		},
 	}
 )

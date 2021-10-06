@@ -52,8 +52,13 @@ func setupReactors(t *testing.T, numNodes int, chBuf uint) *reactorTestSuite {
 		peerUpdates:     make(map[types.NodeID]*p2p.PeerUpdates, numNodes),
 	}
 
-	chDesc := p2p.ChannelDescriptor{ID: byte(mempool.MempoolChannel)}
-	rts.mempoolChannels = rts.network.MakeChannelsNoCleanup(t, chDesc, new(protomem.Message), int(chBuf))
+	chDesc := p2p.ChannelDescriptor{
+		ID:                  byte(mempool.MempoolChannel),
+		MsgType:             new(protomem.Message),
+		SendQueueCapacity:   int(chBuf),
+		RecvMessageCapacity: int(chBuf),
+	}
+	rts.mempoolChannels = rts.network.MakeChannelsNoCleanup(t, chDesc)
 
 	for nodeID := range rts.network.Nodes {
 		rts.kvstores[nodeID] = kvstore.NewApplication()

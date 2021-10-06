@@ -36,50 +36,42 @@ var (
 	//
 	// TODO: Remove once p2p refactor is complete.
 	// ref: https://github.com/tendermint/tendermint/issues/5670
-	ChannelShims = map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
+	ChannelShims = map[p2p.ChannelID]p2p.ChannelDescriptor{
 		SnapshotChannel: {
-			MsgType: new(ssproto.Message),
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(SnapshotChannel),
-				Priority:            6,
-				SendQueueCapacity:   10,
-				RecvMessageCapacity: snapshotMsgSize,
-				RecvBufferCapacity:  128,
-				MaxSendBytes:        400,
-			},
+			ID:                  byte(SnapshotChannel),
+			MsgType:             new(ssproto.Message),
+			Priority:            6,
+			SendQueueCapacity:   10,
+			RecvMessageCapacity: snapshotMsgSize,
+			RecvBufferCapacity:  128,
+			MaxSendBytes:        400,
 		},
 		ChunkChannel: {
-			MsgType: new(ssproto.Message),
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(ChunkChannel),
-				Priority:            3,
-				SendQueueCapacity:   4,
-				RecvMessageCapacity: chunkMsgSize,
-				RecvBufferCapacity:  128,
-				MaxSendBytes:        400,
-			},
+			ID:                  byte(ChunkChannel),
+			MsgType:             new(ssproto.Message),
+			Priority:            3,
+			SendQueueCapacity:   4,
+			RecvMessageCapacity: chunkMsgSize,
+			RecvBufferCapacity:  128,
+			MaxSendBytes:        400,
 		},
 		LightBlockChannel: {
-			MsgType: new(ssproto.Message),
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(LightBlockChannel),
-				Priority:            5,
-				SendQueueCapacity:   10,
-				RecvMessageCapacity: lightBlockMsgSize,
-				RecvBufferCapacity:  128,
-				MaxSendBytes:        400,
-			},
+			ID:                  byte(LightBlockChannel),
+			MsgType:             new(ssproto.Message),
+			Priority:            5,
+			SendQueueCapacity:   10,
+			RecvMessageCapacity: lightBlockMsgSize,
+			RecvBufferCapacity:  128,
+			MaxSendBytes:        400,
 		},
 		ParamsChannel: {
-			MsgType: new(ssproto.Message),
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(ParamsChannel),
-				Priority:            2,
-				SendQueueCapacity:   10,
-				RecvMessageCapacity: paramMsgSize,
-				RecvBufferCapacity:  128,
-				MaxSendBytes:        400,
-			},
+			ID:                  byte(ParamsChannel),
+			MsgType:             new(ssproto.Message),
+			Priority:            2,
+			SendQueueCapacity:   10,
+			RecvMessageCapacity: paramMsgSize,
+			RecvBufferCapacity:  128,
+			MaxSendBytes:        400,
 		},
 	}
 )

@@ -25,16 +25,14 @@ var (
 	//
 	// TODO: Remove once p2p refactor is complete.
 	// ref: https://github.com/tendermint/tendermint/issues/5670
-	ChannelShims = map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
+	ChannelShims = map[p2p.ChannelID]p2p.ChannelDescriptor{
 		EvidenceChannel: {
-			MsgType: new(tmproto.EvidenceList),
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(EvidenceChannel),
-				Priority:            6,
-				RecvMessageCapacity: maxMsgSize,
-				RecvBufferCapacity:  32,
-				MaxSendBytes:        400,
-			},
+			ID:                  byte(EvidenceChannel),
+			MsgType:             new(tmproto.EvidenceList),
+			Priority:            6,
+			RecvMessageCapacity: maxMsgSize,
+			RecvBufferCapacity:  32,
+			MaxSendBytes:        400,
 		},
 	}
 )

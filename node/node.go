@@ -303,7 +303,7 @@ func makeNode(cfg *config.Config,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
 	ssLogger := logger.With("module", "statesync")
-	ssReactorShim := p2p.NewReactorShim(ssLogger, "StateSyncShim", statesync.ChannelShims)
+	ssReactorShim := p2p.NewReactorShim("StateSyncShim", statesync.ChannelShims)
 	channels := makeChannelsFromShims(router, statesync.ChannelShims)
 	peerUpdates := peerManager.Subscribe()
 	stateSyncReactor := statesync.NewReactor(
@@ -1084,12 +1084,12 @@ func getRouterConfig(conf *config.Config, proxyApp proxy.AppConns) p2p.RouterOpt
 // FIXME: Temporary helper function, shims should be removed.
 func makeChannelsFromShims(
 	router *p2p.Router,
-	chShims map[p2p.ChannelID]*p2p.ChannelDescriptorShim,
+	chShims map[p2p.ChannelID]p2p.ChannelDescriptor,
 ) map[p2p.ChannelID]*p2p.Channel {
 
 	channels := map[p2p.ChannelID]*p2p.Channel{}
 	for chID, chShim := range chShims {
-		ch, err := router.OpenChannel(*chShim.Descriptor, chShim.MsgType, chShim.Descriptor.RecvBufferCapacity)
+		ch, err := router.OpenChannel(chShim)
 		if err != nil {
 			panic(fmt.Sprintf("failed to open channel %v: %v", chID, err))
 		}

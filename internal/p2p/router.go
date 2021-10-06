@@ -14,6 +14,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/internal/p2p/conn"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
@@ -66,6 +67,7 @@ type Channel struct {
 	Out   chan<- Envelope  // outbound messages (reactors to peers)
 	Error chan<- PeerError // peer error reporting
 
+	descriptor  conn.ChannelDescriptor
 	messageType proto.Message // the channel's message type, used for unmarshaling
 	closeCh     chan struct{}
 	closeOnce   sync.Once
@@ -74,14 +76,15 @@ type Channel struct {
 // NewChannel creates a new channel. It is primarily for internal and test
 // use, reactors should use Router.OpenChannel().
 func NewChannel(
-	id ChannelID,
+	descriptor conn.ChannelDescriptor,
 	messageType proto.Message,
 	inCh <-chan Envelope,
 	outCh chan<- Envelope,
 	errCh chan<- PeerError,
 ) *Channel {
 	return &Channel{
-		ID:          id,
+		ID:          ChannelID(descriptor.ID),
+		descriptor:  descriptor,
 		messageType: messageType,
 		In:          inCh,
 		Out:         outCh,
@@ -357,7 +360,7 @@ func (r *Router) createQueueFactory() (func(int) queue, error) {
 // implement Wrapper to automatically (un)wrap multiple message types in a
 // wrapper message. The caller may provide a size to make the channel buffered,
 // which internally makes the inbound, outbound, and error channel buffered.
-func (r *Router) OpenChannel(chDesc ChannelDescriptor, messageType proto.Message, size int) (*Channel, error) {
+func (r *Router) OpenChannel(chDesc ChannelDescriptor) (*Channel, error) {
 	r.channelMtx.Lock()
 	defer r.channelMtx.Unlock()
 
@@ -367,18 +370,19 @@ func (r *Router) OpenChannel(chDesc ChannelDescriptor, messageType proto.Message
 	}
 	r.chDescs = append(r.chDescs, chDesc)
 
-	queue := r.queueFactory(size)
-	outCh := make(chan Envelope, size)
-	errCh := make(chan PeerError, size)
-	channel := NewChannel(id, messageType, queue.dequeue(), outCh, errCh)
+	// TODO use different queue buffering strategies
+	queue := r.queueFactory(chDesc.RecvMessageCapacity)
+	outCh := make(chan Envelope, chDesc.SendQueueCapacity)
+	errCh := make(chan PeerError)
+	channel := NewChannel(chDesc, chDesc.MsgType, queue.dequeue(), outCh, errCh)
 
 	var wrapper Wrapper
-	if w, ok := messageType.(Wrapper); ok {
+	if w, ok := chDesc.MsgType.(Wrapper); ok {
 		wrapper = w
 	}
 
 	r.channelQueues[id] = queue
-	r.channelMessages[id] = messageType
+	r.channelMessages[id] = chDesc.MsgType
 
 	// add the channel to the nodeInfo if it's not already there.
 	r.nodeInfo.AddChannel(uint16(chDesc.ID))

@@ -721,7 +721,10 @@ type ChannelDescriptor struct {
 	ID       byte
 	Priority int
 
-	// TODO: Remove once p2p refactor is complete.
+	MsgType proto.Message
+
+	// TODO: These provide limits for number of _messages_ and
+	// should be removed when possible.
 	SendQueueCapacity   int
 	RecvMessageCapacity int
 
