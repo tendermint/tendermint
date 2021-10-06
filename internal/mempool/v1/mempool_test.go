@@ -226,10 +226,10 @@ func TestTxMempool_ReapMaxBytesMaxGas(t *testing.T) {
 	require.Equal(t, len(tTxs), txmp.Size())
 	require.Equal(t, int64(5690), txmp.SizeBytes())
 
-	txMap := make(map[[mempool.TxKeySize]byte]testTx)
+	txMap := make(map[types.TxKey]testTx)
 	priorities := make([]int64, len(tTxs))
 	for i, tTx := range tTxs {
-		txMap[mempool.TxKey(tTx.tx)] = tTx
+		txMap[tTx.tx.Key()] = tTx
 		priorities[i] = tTx.priority
 	}
 
@@ -241,7 +241,7 @@ func TestTxMempool_ReapMaxBytesMaxGas(t *testing.T) {
 	ensurePrioritized := func(reapedTxs types.Txs) {
 		reapedPriorities := make([]int64, len(reapedTxs))
 		for i, rTx := range reapedTxs {
-			reapedPriorities[i] = txMap[mempool.TxKey(rTx)].priority
+			reapedPriorities[i] = txMap[rTx.Key()].priority
 		}
 
 		require.Equal(t, priorities[:len(reapedPriorities)], reapedPriorities)
@@ -276,10 +276,10 @@ func TestTxMempool_ReapMaxTxs(t *testing.T) {
 	require.Equal(t, len(tTxs), txmp.Size())
 	require.Equal(t, int64(5690), txmp.SizeBytes())
 
-	txMap := make(map[[mempool.TxKeySize]byte]testTx)
+	txMap := make(map[types.TxKey]testTx)
 	priorities := make([]int64, len(tTxs))
 	for i, tTx := range tTxs {
-		txMap[mempool.TxKey(tTx.tx)] = tTx
+		txMap[tTx.tx.Key()] = tTx
 		priorities[i] = tTx.priority
 	}
 
@@ -291,7 +291,7 @@ func TestTxMempool_ReapMaxTxs(t *testing.T) {
 	ensurePrioritized := func(reapedTxs types.Txs) {
 		reapedPriorities := make([]int64, len(reapedTxs))
 		for i, rTx := range reapedTxs {
-			reapedPriorities[i] = txMap[mempool.TxKey(rTx)].priority
+			reapedPriorities[i] = txMap[rTx.Key()].priority
 		}
 
 		require.Equal(t, priorities[:len(reapedPriorities)], reapedPriorities)

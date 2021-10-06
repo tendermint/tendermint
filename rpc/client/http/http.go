@@ -315,6 +315,14 @@ func (c *baseRPCClient) CheckTx(ctx context.Context, tx types.Tx) (*coretypes.Re
 	return result, nil
 }
 
+func (c *baseRPCClient) RemoveTx(ctx context.Context, txKey types.TxKey) error {
+	_, err := c.caller.Call(ctx, "remove_tx", map[string]interface{}{"tx_key": txKey}, nil)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (c *baseRPCClient) NetInfo(ctx context.Context) (*coretypes.ResultNetInfo, error) {
 	result := new(coretypes.ResultNetInfo)
 	_, err := c.caller.Call(ctx, "net_info", map[string]interface{}{}, result)

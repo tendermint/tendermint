@@ -15,7 +15,7 @@ var (
 	// separate testnet for each combination (Cartesian product) of options.
 	testnetCombinations = map[string][]interface{}{
 		"topology":      {"single", "quad", "large"},
-		"queueType":     {"priority"}, // "fifo", "wdrr"
+		"queueType":     {"priority"}, // "fifo"
 		"initialHeight": {0, 1000},
 		"initialState": {
 			map[string]string{},
@@ -53,7 +53,7 @@ var (
 		e2e.StateSyncRPC:      45,
 	}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
-	nodeSnapshotIntervals = uniformChoice{0, 3}
+	nodeSnapshotIntervals = uniformChoice{0, 5}
 	nodeRetainBlocks      = uniformChoice{0, 2 * int(e2e.EvidenceAgeHeight), 4 * int(e2e.EvidenceAgeHeight)}
 	nodePerturbations     = probSetChoice{
 		"disconnect": 0.1,
