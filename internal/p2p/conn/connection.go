@@ -691,30 +691,6 @@ func (ch *Channel) sendBytes(bytes []byte) bool {
 	}
 }
 
-// Queues message to send to this channel.
-// Nonblocking, returns true if successful.
-// Goroutine-safe
-func (ch *Channel) trySendBytes(bytes []byte) bool {
-	select {
-	case ch.sendQueue <- bytes:
-		atomic.AddInt32(&ch.sendQueueSize, 1)
-		return true
-	default:
-		return false
-	}
-}
-
-// Goroutine-safe
-func (ch *Channel) loadSendQueueSize() (size int) {
-	return int(atomic.LoadInt32(&ch.sendQueueSize))
-}
-
-// Goroutine-safe
-// Use only as a heuristic.
-func (ch *Channel) canSend() bool {
-	return ch.loadSendQueueSize() < defaultSendQueueCapacity
-}
-
 // Returns true if any PacketMsgs are pending to be sent.
 // Call before calling nextPacketMsg()
 // Goroutine-safe
