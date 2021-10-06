@@ -158,8 +158,8 @@ type testReactorParams struct {
 	mockA       bool
 }
 
-func newTestReactor(p testReactorParams) *BlockchainReactor {
-	store, state, _ := newReactorStore(p.genDoc, p.privVals, p.startHeight)
+func newTestReactor(p testReactorParams, t *testing.T) *BlockchainReactor {
+	store, state, _ := newReactorStore(p.genDoc, p.privVals, p.startHeight, t)
 	reporter := behaviour.NewMockReporter()
 
 	nodeProTxHash, err := p.privVals[0].GetProTxHash()
@@ -423,7 +423,7 @@ func TestReactorHelperMode(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			reactor := newTestReactor(params)
+			reactor := newTestReactor(params, t)
 			mockSwitch := &mockSwitchIo{switchedToConsensus: false}
 			reactor.io = mockSwitch
 			err := reactor.Start()
@@ -470,7 +470,7 @@ func TestReactorSetSwitchNil(t *testing.T) {
 		logger:   log.TestingLogger(),
 		genDoc:   genDoc,
 		privVals: privVals,
-	})
+	}, t)
 	reactor.SetSwitch(nil)
 
 	assert.Nil(t, reactor.Switch)
@@ -533,6 +533,7 @@ func randGenesisDoc(chainID string, numValidators int) (
 		Validators:         validators,
 		ThresholdPublicKey: thresholdPublicKey,
 		QuorumHash:         quorumHash,
+		AppHash:            make([]byte, crypto.DefaultAppHashSize),
 	}, privValidators
 }
 
@@ -541,7 +542,8 @@ func randGenesisDoc(chainID string, numValidators int) (
 func newReactorStore(
 	genDoc *types.GenesisDoc,
 	privVals []types.PrivValidator,
-	maxBlockHeight int64) (*store.BlockStore, sm.State, *sm.BlockExecutor) {
+	maxBlockHeight int64,
+	t *testing.T) (*store.BlockStore, sm.State, *sm.BlockExecutor) {
 	if len(privVals) != 1 {
 		panic("only support one validator")
 	}
@@ -615,6 +617,24 @@ func newReactorStore(
 		state, _, err = blockExec.ApplyBlock(state, &nodeProTxHash, blockID, thisBlock)
 		if err != nil {
 			panic(fmt.Errorf("error apply block: %w", err))
+		}
+
+		// Assert state
+		assert.EqualValues(t, blockHeight, state.LastBlockHeight)
+		assert.EqualValues(t, blockHeight, binary.LittleEndian.Uint64(state.AppHash))
+		// Assert some StateID params
+		assert.EqualValues(t, blockHeight-1, state.LastStateID.Height)
+		require.GreaterOrEqual(t, len(state.LastStateID.LastAppHash), crypto.SmallAppHashSize)
+		assert.EqualValues(t, blockHeight-1, binary.LittleEndian.Uint64(state.LastStateID.LastAppHash))
+
+		// Assert last commit
+		assert.EqualValues(t, blockHeight-1, lastCommit.Height)
+		if blockHeight >= 2 {
+			assert.EqualValues(t, blockHeight-2, lastCommit.StateID.Height)
+			assert.EqualValues(t, blockHeight-2, binary.LittleEndian.Uint64(lastCommit.StateID.LastAppHash))
+		} else {
+			assert.EqualValues(t, 0, lastCommit.StateID.Height)
+			assert.EqualValues(t, 0, binary.LittleEndian.Uint64(lastCommit.StateID.LastAppHash))
 		}
 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
