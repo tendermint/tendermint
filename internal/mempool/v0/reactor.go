@@ -90,7 +90,7 @@ func NewReactor(
 //
 // TODO: Remove once p2p refactor is complete.
 // ref: https://github.com/tendermint/tendermint/issues/5670
-func GetChannelShims(cfg *config.MempoolConfig) []p2p.ChannelDescriptor {
+func GetChannelDescriptor(cfg *config.MempoolConfig) p2p.ChannelDescriptor {
 	largestTx := make([]byte, cfg.MaxTxBytes)
 	batchMsg := protomem.Message{
 		Sum: &protomem.Message_Txs{
@@ -98,15 +98,13 @@ func GetChannelShims(cfg *config.MempoolConfig) []p2p.ChannelDescriptor {
 		},
 	}
 
-	return []p2p.ChannelDescriptor{
-		{
-			ID:                  mempool.MempoolChannel,
-			MsgType:             new(protomem.Message),
-			Priority:            5,
-			RecvMessageCapacity: batchMsg.Size(),
-			RecvBufferCapacity:  128,
-			MaxSendBytes:        5000,
-		},
+	return p2p.ChannelDescriptor{
+		ID:                  mempool.MempoolChannel,
+		MsgType:             new(protomem.Message),
+		Priority:            5,
+		RecvMessageCapacity: batchMsg.Size(),
+		RecvBufferCapacity:  128,
+		MaxSendBytes:        5000,
 	}
 }
 

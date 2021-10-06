@@ -154,9 +154,8 @@ func createMempoolReactor(
 ) (service.Service, mempool.Mempool, error) {
 
 	logger = logger.With("module", "mempool", "version", cfg.Mempool.Version)
-	channelShims := mempoolv0.GetChannelShims(cfg.Mempool)
 
-	channels, err := makeChannelsFromShims(router, channelShims)
+	channel, err := router.OpenChannel(mempoolv0.GetChannelDescriptor(cfg.Mempool))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -181,7 +180,7 @@ func createMempoolReactor(
 			cfg.Mempool,
 			peerManager,
 			mp,
-			channels[mempool.MempoolChannel],
+			channel,
 			peerUpdates,
 		)
 
@@ -207,7 +206,7 @@ func createMempoolReactor(
 			cfg.Mempool,
 			peerManager,
 			mp,
-			channels[mempool.MempoolChannel],
+			channel,
 			peerUpdates,
 		)
 
@@ -243,7 +242,7 @@ func createEvidenceReactor(
 		return nil, nil, fmt.Errorf("creating evidence pool: %w", err)
 	}
 
-	channels, err := makeChannelsFromShims(router, evidence.ChannelShims)
+	channel, err := router.OpenChannel(evidence.GetChannelDescriptor())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -273,7 +272,7 @@ func createBlockchainReactor(
 
 	logger = logger.With("module", "blockchain")
 
-	channels, err := makeChannelsFromShims(router, bcv0.ChannelShims)
+	channel, err := router.OpenChannel(bcv0.GetChannelDescriptor())
 	if err != nil {
 		return nil, err
 	}
