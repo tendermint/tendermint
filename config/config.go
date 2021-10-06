@@ -681,17 +681,12 @@ func DefaultP2PConfig() *P2PConfig {
 		UPNP:                          false,
 		MaxConnections:                64,
 		MaxIncomingConnectionAttempts: 100,
-		// The MTU (Maximum Transmission Unit) for Ethernet is 1500 bytes.
-		// The IP header and the TCP header take up 20 bytes each at least (unless
-		// optional header fields are used) and thus the max for (non-Jumbo frame)
-		// Ethernet is 1500 - 20 -20 = 1460
-		// Source: https://stackoverflow.com/a/3074427/820520
-		PexReactor:       true,
-		AllowDuplicateIP: false,
-		HandshakeTimeout: 20 * time.Second,
-		DialTimeout:      3 * time.Second,
-		TestDialFail:     false,
-		QueueType:        "priority",
+		PexReactor:                    true,
+		AllowDuplicateIP:              false,
+		HandshakeTimeout:              20 * time.Second,
+		DialTimeout:                   3 * time.Second,
+		TestDialFail:                  false,
+		QueueType:                     "priority",
 	}
 }
 
