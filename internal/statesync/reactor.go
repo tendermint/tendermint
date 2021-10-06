@@ -36,9 +36,9 @@ var (
 	//
 	// TODO: Remove once p2p refactor is complete.
 	// ref: https://github.com/tendermint/tendermint/issues/5670
-	ChannelShims = map[p2p.ChannelID]p2p.ChannelDescriptor{
-		SnapshotChannel: {
-			ID:                  byte(SnapshotChannel),
+	ChannelShims = []p2p.ChannelDescriptor{
+		{
+			ID:                  SnapshotChannel,
 			MsgType:             new(ssproto.Message),
 			Priority:            6,
 			SendQueueCapacity:   10,
@@ -46,8 +46,8 @@ var (
 			RecvBufferCapacity:  128,
 			MaxSendBytes:        400,
 		},
-		ChunkChannel: {
-			ID:                  byte(ChunkChannel),
+		{
+			ID:                  ChunkChannel,
 			MsgType:             new(ssproto.Message),
 			Priority:            3,
 			SendQueueCapacity:   4,
@@ -55,8 +55,8 @@ var (
 			RecvBufferCapacity:  128,
 			MaxSendBytes:        400,
 		},
-		LightBlockChannel: {
-			ID:                  byte(LightBlockChannel),
+		{
+			ID:                  LightBlockChannel,
 			MsgType:             new(ssproto.Message),
 			Priority:            5,
 			SendQueueCapacity:   10,
@@ -64,8 +64,8 @@ var (
 			RecvBufferCapacity:  128,
 			MaxSendBytes:        400,
 		},
-		ParamsChannel: {
-			ID:                  byte(ParamsChannel),
+		{
+			ID:                  ParamsChannel,
 			MsgType:             new(ssproto.Message),
 			Priority:            2,
 			SendQueueCapacity:   10,

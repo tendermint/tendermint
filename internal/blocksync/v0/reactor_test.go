@@ -66,7 +66,7 @@ func setup(
 	}
 
 	chDesc := p2p.ChannelDescriptor{
-		ID:                  byte(BlockSyncChannel),
+		ID:                  BlockSyncChannel,
 		MsgType:             new(bcproto.Message),
 		SendQueueCapacity:   int(chBuf),
 		RecvMessageCapacity: int(chBuf),

@@ -63,7 +63,7 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 	}
 
 	chDesc := p2p.ChannelDescriptor{
-		ID:                  byte(evidence.EvidenceChannel),
+		ID:                  evidence.EvidenceChannel,
 		MsgType:             new(tmproto.EvidenceList),
 		RecvMessageCapacity: int(chBuf),
 		SendQueueCapacity:   int(chBuf),

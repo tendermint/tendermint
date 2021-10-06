@@ -48,7 +48,7 @@ const (
 	defaultPongTimeout         = 45 * time.Second
 )
 
-type receiveCbFunc func(chID byte, msgBytes []byte)
+type receiveCbFunc func(chID ChannelID, msgBytes []byte)
 type errorCbFunc func(interface{})
 
 /*
@@ -82,7 +82,7 @@ type MConnection struct {
 	send          chan struct{}
 	pong          chan struct{}
 	channels      []*Channel
-	channelsIdx   map[byte]*Channel
+	channelsIdx   map[ChannelID]*Channel
 	onReceive     receiveCbFunc
 	onError       errorCbFunc
 	errored       uint32
@@ -147,7 +147,7 @@ func DefaultMConnConfig() MConnConfig {
 // NewMConnection wraps net.Conn and creates multiplex connection
 func NewMConnection(
 	conn net.Conn,
-	chDescs []*ChannelDescriptor,
+	chDescs []ChannelDescriptor,
 	onReceive receiveCbFunc,
 	onError errorCbFunc,
 ) *MConnection {
@@ -162,7 +162,7 @@ func NewMConnection(
 // NewMConnectionWithConfig wraps net.Conn and creates multiplex connection with a config
 func NewMConnectionWithConfig(
 	conn net.Conn,
-	chDescs []*ChannelDescriptor,
+	chDescs []ChannelDescriptor,
 	onReceive receiveCbFunc,
 	onError errorCbFunc,
 	config MConnConfig,
@@ -186,11 +186,11 @@ func NewMConnectionWithConfig(
 	}
 
 	// Create channels
-	var channelsIdx = map[byte]*Channel{}
+	var channelsIdx = map[ChannelID]*Channel{}
 	var channels = []*Channel{}
 
-	for _, desc := range chDescs {
-		channel := newChannel(mconn, *desc)
+	for idx := range chDescs {
+		channel := newChannel(mconn, chDescs[idx])
 		channelsIdx[channel.desc.ID] = channel
 		channels = append(channels, channel)
 	}
@@ -307,7 +307,7 @@ func (c *MConnection) stopForError(r interface{}) {
 }
 
 // Queues a message to be sent to channel.
-func (c *MConnection) Send(chID byte, msgBytes []byte) bool {
+func (c *MConnection) Send(chID ChannelID, msgBytes []byte) bool {
 	if !c.IsRunning() {
 		return false
 	}
@@ -540,7 +540,7 @@ FOR_LOOP:
 				// never block
 			}
 		case *tmp2p.Packet_PacketMsg:
-			channelID := byte(pkt.PacketMsg.ChannelID)
+			channelID := ChannelID(pkt.PacketMsg.ChannelID)
 			channel, ok := c.channelsIdx[channelID]
 			if pkt.PacketMsg.ChannelID < 0 || pkt.PacketMsg.ChannelID > math.MaxUint8 || !ok || channel == nil {
 				err := fmt.Errorf("unknown channel %X", pkt.PacketMsg.ChannelID)
@@ -608,8 +608,11 @@ type ChannelStatus struct {
 
 //-----------------------------------------------------------------------------
 
+// ChannelID is an arbitrary channel ID.
+type ChannelID uint16
+
 type ChannelDescriptor struct {
-	ID       byte
+	ID       ChannelID
 	Priority int
 
 	MsgType proto.Message

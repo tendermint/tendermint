@@ -303,8 +303,10 @@ func makeNode(cfg *config.Config,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
 	ssLogger := logger.With("module", "statesync")
-	ssReactorShim := p2p.NewReactorShim("StateSyncShim", statesync.ChannelShims)
+
+	ssReactorShim := p2p.NewReactorShim(statesync.ChannelShims)
 	channels := makeChannelsFromShims(router, statesync.ChannelShims)
+
 	peerUpdates := peerManager.Subscribe()
 	stateSyncReactor := statesync.NewReactor(
 		genDoc.ChainID,
@@ -350,7 +352,7 @@ func makeNode(cfg *config.Config,
 	var pexReactor service.Service
 
 	pexCh := pex.ChannelDescriptor()
-	transport.AddChannelDescriptors([]*p2p.ChannelDescriptor{&pexCh})
+	transport.AddChannelDescriptors([]p2p.ChannelDescriptor{pexCh})
 
 	pexReactor, err = createPEXReactorV2(cfg, logger, peerManager, router)
 	if err != nil {
@@ -464,7 +466,7 @@ func makeSeedNode(cfg *config.Config,
 	// should be aware of channel info. We should remove this from transport once the legacy
 	// p2p stack is removed.
 	pexCh := pex.ChannelDescriptor()
-	transport.AddChannelDescriptors([]*p2p.ChannelDescriptor{&pexCh})
+	transport.AddChannelDescriptors([]p2p.ChannelDescriptor{pexCh})
 
 	pexReactor, err = createPEXReactorV2(cfg, logger, peerManager, router)
 	if err != nil {
@@ -1080,17 +1082,17 @@ func getRouterConfig(conf *config.Config, proxyApp proxy.AppConns) p2p.RouterOpt
 // FIXME: Temporary helper function, shims should be removed.
 func makeChannelsFromShims(
 	router *p2p.Router,
-	chShims map[p2p.ChannelID]p2p.ChannelDescriptor,
+	chs []p2p.ChannelDescriptor,
 ) map[p2p.ChannelID]*p2p.Channel {
 
 	channels := map[p2p.ChannelID]*p2p.Channel{}
-	for chID, chShim := range chShims {
-		ch, err := router.OpenChannel(chShim)
+	for idx := range chs {
+		ch, err := router.OpenChannel(chs[idx])
 		if err != nil {
-			panic(fmt.Sprintf("failed to open channel %v: %v", chID, err))
+			panic(fmt.Sprintf("failed to open channel %v: %v", ch.ID, err))
 		}
 
-		channels[chID] = ch
+		channels[ch.ID] = ch
 	}
 
 	return channels

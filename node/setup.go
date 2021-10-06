@@ -155,7 +155,7 @@ func createMempoolReactor(
 
 	logger = logger.With("module", "mempool", "version", cfg.Mempool.Version)
 	channelShims := mempoolv0.GetChannelShims(cfg.Mempool)
-	reactorShim := p2p.NewReactorShim("MempoolShim", channelShims)
+	reactorShim := p2p.NewReactorShim(channelShims)
 
 	channels := makeChannelsFromShims(router, channelShims)
 	peerUpdates := peerManager.Subscribe()
@@ -234,7 +234,7 @@ func createEvidenceReactor(
 	}
 
 	logger = logger.With("module", "evidence")
-	reactorShim := p2p.NewReactorShim("EvidenceShim", evidence.ChannelShims)
+	reactorShim := p2p.NewReactorShim(evidence.ChannelShims)
 
 	evidencePool, err := evidence.NewPool(logger, evidenceDB, sm.NewStore(stateDB), blockStore)
 	if err != nil {
@@ -266,7 +266,7 @@ func createBlockchainReactor(
 
 	logger = logger.With("module", "blockchain")
 
-	reactorShim := p2p.NewReactorShim("BlockchainShim", bcv0.ChannelShims)
+	reactorShim := p2p.NewReactorShim(bcv0.ChannelShims)
 	channels := makeChannelsFromShims(router, bcv0.ChannelShims)
 	peerUpdates := peerManager.Subscribe()
 
@@ -312,7 +312,7 @@ func createConsensusReactor(
 		consensusState.SetPrivValidator(privValidator)
 	}
 
-	reactorShim := p2p.NewReactorShim("ConsensusShim", consensus.ChannelShims)
+	reactorShim := p2p.NewReactorShim(consensus.ChannelShims)
 
 	var (
 		channels    map[p2p.ChannelID]*p2p.Channel
@@ -343,7 +343,7 @@ func createConsensusReactor(
 
 func createTransport(logger log.Logger, cfg *config.Config) *p2p.MConnTransport {
 	return p2p.NewMConnTransport(
-		logger, conn.DefaultMConnConfig(), []*p2p.ChannelDescriptor{},
+		logger, conn.DefaultMConnConfig(), []p2p.ChannelDescriptor{},
 		p2p.MConnTransportOptions{
 			MaxAcceptedConnections: uint32(cfg.P2P.MaxConnections),
 		},
@@ -502,7 +502,7 @@ func makeNodeInfo(
 	}
 
 	if cfg.P2P.PexReactor {
-		nodeInfo.Channels = append(nodeInfo.Channels, pex.PexChannel)
+		nodeInfo.Channels = append(nodeInfo.Channels, byte(pex.PexChannel))
 	}
 
 	lAddr := cfg.P2P.ExternalAddress
@@ -541,7 +541,7 @@ func makeSeedNodeInfo(
 	}
 
 	if cfg.P2P.PexReactor {
-		nodeInfo.Channels = append(nodeInfo.Channels, pex.PexChannel)
+		nodeInfo.Channels = append(nodeInfo.Channels, byte(pex.PexChannel))
 	}
 
 	lAddr := cfg.P2P.ExternalAddress

@@ -51,7 +51,7 @@ func setup(t *testing.T, config *config.MempoolConfig, numNodes int, chBuf uint)
 	}
 
 	chDesc := p2p.ChannelDescriptor{
-		ID:                  byte(mempool.MempoolChannel),
+		ID:                  mempool.MempoolChannel,
 		MsgType:             new(protomem.Message),
 		SendQueueCapacity:   int(chBuf),
 		RecvMessageCapacity: int(chBuf),

@@ -25,7 +25,7 @@ var (
 // See https://github.com/tendermint/tendermint/issues/6371
 const (
 	// PexChannel is a channel for PEX messages
-	PexChannel = byte(0x00)
+	PexChannel = p2p.ChannelID(0x00)
 
 	// over-estimate of max NetAddress size
 	// hexID (40) + IP (16) + Port (2) + Name (100) ...

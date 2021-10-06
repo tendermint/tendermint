@@ -29,9 +29,9 @@ var (
 	//
 	// TODO: Remove once p2p refactor is complete.
 	// ref: https://github.com/tendermint/tendermint/issues/5670
-	ChannelShims = map[p2p.ChannelID]p2p.ChannelDescriptor{
-		StateChannel: {
-			ID:                  byte(StateChannel),
+	ChannelShims = []p2p.ChannelDescriptor{
+		{
+			ID:                  StateChannel,
 			MsgType:             new(tmcons.Message),
 			Priority:            8,
 			SendQueueCapacity:   64,
@@ -39,11 +39,11 @@ var (
 			RecvBufferCapacity:  128,
 			MaxSendBytes:        12000,
 		},
-		DataChannel: {
+		{
 			// TODO: Consider a split between gossiping current block and catchup
 			// stuff. Once we gossip the whole block there is nothing left to send
 			// until next height or round.
-			ID:                  byte(DataChannel),
+			ID:                  DataChannel,
 			MsgType:             new(tmcons.Message),
 			Priority:            12,
 			SendQueueCapacity:   64,
@@ -51,8 +51,8 @@ var (
 			RecvMessageCapacity: maxMsgSize,
 			MaxSendBytes:        40000,
 		},
-		VoteChannel: {
-			ID:                  byte(VoteChannel),
+		{
+			ID:                  VoteChannel,
 			MsgType:             new(tmcons.Message),
 			Priority:            10,
 			SendQueueCapacity:   64,
@@ -60,8 +60,8 @@ var (
 			RecvMessageCapacity: maxMsgSize,
 			MaxSendBytes:        150,
 		},
-		VoteSetBitsChannel: {
-			ID:                  byte(VoteSetBitsChannel),
+		{
+			ID:                  VoteSetBitsChannel,
 			MsgType:             new(tmcons.Message),
 			Priority:            5,
 			SendQueueCapacity:   8,

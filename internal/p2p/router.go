@@ -24,9 +24,6 @@ const queueBufferDefault = 32
 
 const dialRandomizerIntervalMillisecond = 3000
 
-// ChannelID is an arbitrary channel ID.
-type ChannelID uint16
-
 // Envelope contains a message with sender/receiver routing info.
 type Envelope struct {
 	From      types.NodeID  // sender (empty if outbound)

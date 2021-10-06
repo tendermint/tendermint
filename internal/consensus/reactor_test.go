@@ -53,7 +53,7 @@ type reactorTestSuite struct {
 
 func mkChDesc(chID p2p.ChannelID, msg proto.Message, size int) p2p.ChannelDescriptor {
 	return p2p.ChannelDescriptor{
-		ID:                  byte(chID),
+		ID:                  chID,
 		MsgType:             msg,
 		SendQueueCapacity:   size,
 		RecvMessageCapacity: size,

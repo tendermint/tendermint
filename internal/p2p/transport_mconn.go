@@ -43,7 +43,7 @@ type MConnTransport struct {
 	logger       log.Logger
 	options      MConnTransportOptions
 	mConnConfig  conn.MConnConfig
-	channelDescs []*ChannelDescriptor
+	channelDescs []ChannelDescriptor
 	closeCh      chan struct{}
 	closeOnce    sync.Once
 
@@ -56,7 +56,7 @@ type MConnTransport struct {
 func NewMConnTransport(
 	logger log.Logger,
 	mConnConfig conn.MConnConfig,
-	channelDescs []*ChannelDescriptor,
+	channelDescs []ChannelDescriptor,
 	options MConnTransportOptions,
 ) *MConnTransport {
 	return &MConnTransport{
@@ -193,7 +193,7 @@ func (m *MConnTransport) Close() error {
 // descriptors should be managed by the router. The underlying transport and
 // connections should be agnostic to everything but the channel ID's which are
 // initialized in the handshake.
-func (m *MConnTransport) AddChannelDescriptors(channelDesc []*ChannelDescriptor) {
+func (m *MConnTransport) AddChannelDescriptors(channelDesc []ChannelDescriptor) {
 	m.channelDescs = append(m.channelDescs, channelDesc...)
 }
 
@@ -219,7 +219,7 @@ type mConnConnection struct {
 	logger       log.Logger
 	conn         net.Conn
 	mConnConfig  conn.MConnConfig
-	channelDescs []*ChannelDescriptor
+	channelDescs []ChannelDescriptor
 	receiveCh    chan mConnMessage
 	errorCh      chan error
 	closeCh      chan struct{}
@@ -239,7 +239,7 @@ func newMConnConnection(
 	logger log.Logger,
 	conn net.Conn,
 	mConnConfig conn.MConnConfig,
-	channelDescs []*ChannelDescriptor,
+	channelDescs []ChannelDescriptor,
 ) *mConnConnection {
 	return &mConnConnection{
 		logger:       logger,
@@ -348,9 +348,9 @@ func (c *mConnConnection) handshake(
 }
 
 // onReceive is a callback for MConnection received messages.
-func (c *mConnConnection) onReceive(chID byte, payload []byte) {
+func (c *mConnConnection) onReceive(chID ChannelID, payload []byte) {
 	select {
-	case c.receiveCh <- mConnMessage{channelID: ChannelID(chID), payload: payload}:
+	case c.receiveCh <- mConnMessage{channelID: chID, payload: payload}:
 	case <-c.closeCh:
 	}
 }
@@ -387,7 +387,7 @@ func (c *mConnConnection) SendMessage(chID ChannelID, msg []byte) error {
 	case <-c.closeCh:
 		return io.EOF
 	default:
-		if ok := c.mconn.Send(byte(chID), msg); !ok {
+		if ok := c.mconn.Send(chID, msg); !ok {
 			return errors.New("sending message timed out")
 		}
 

@@ -16,7 +16,7 @@ var (
 	ctx    = context.Background()
 	chID   = p2p.ChannelID(1)
 	chDesc = p2p.ChannelDescriptor{
-		ID:           byte(chID),
+		ID:           chID,
 		MsgType:      &p2ptest.Message{},
 		Priority:     5,
 		MaxSendBytes: 1000,

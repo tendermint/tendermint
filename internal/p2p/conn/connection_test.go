@@ -20,7 +20,7 @@ import (
 const maxPingPongPacketSize = 1024 // bytes
 
 func createTestMConnection(conn net.Conn) *MConnection {
-	onReceive := func(chID byte, msgBytes []byte) {
+	onReceive := func(chID ChannelID, msgBytes []byte) {
 	}
 	onError := func(r interface{}) {
 	}
@@ -31,13 +31,13 @@ func createTestMConnection(conn net.Conn) *MConnection {
 
 func createMConnectionWithCallbacks(
 	conn net.Conn,
-	onReceive func(chID byte, msgBytes []byte),
+	onReceive func(chID ChannelID, msgBytes []byte),
 	onError func(r interface{}),
 ) *MConnection {
 	cfg := DefaultMConnConfig()
 	cfg.PingInterval = 90 * time.Millisecond
 	cfg.PongTimeout = 45 * time.Millisecond
-	chDescs := []*ChannelDescriptor{{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
+	chDescs := []ChannelDescriptor{{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
 	c := NewMConnectionWithConfig(conn, chDescs, onReceive, onError, cfg)
 	c.SetLogger(log.TestingLogger())
 	return c
@@ -111,7 +111,7 @@ func TestMConnectionReceive(t *testing.T) {
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
-	onReceive := func(chID byte, msgBytes []byte) {
+	onReceive := func(chID ChannelID, msgBytes []byte) {
 		receivedCh <- msgBytes
 	}
 	onError := func(r interface{}) {
@@ -146,7 +146,7 @@ func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
-	onReceive := func(chID byte, msgBytes []byte) {
+	onReceive := func(chID ChannelID, msgBytes []byte) {
 		receivedCh <- msgBytes
 	}
 	onError := func(r interface{}) {
@@ -184,7 +184,7 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
-	onReceive := func(chID byte, msgBytes []byte) {
+	onReceive := func(chID ChannelID, msgBytes []byte) {
 		receivedCh <- msgBytes
 	}
 	onError := func(r interface{}) {
@@ -238,7 +238,7 @@ func TestMConnectionMultiplePings(t *testing.T) {
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
-	onReceive := func(chID byte, msgBytes []byte) {
+	onReceive := func(chID ChannelID, msgBytes []byte) {
 		receivedCh <- msgBytes
 	}
 	onError := func(r interface{}) {
@@ -285,7 +285,7 @@ func TestMConnectionPingPongs(t *testing.T) {
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
-	onReceive := func(chID byte, msgBytes []byte) {
+	onReceive := func(chID ChannelID, msgBytes []byte) {
 		receivedCh <- msgBytes
 	}
 	onError := func(r interface{}) {
@@ -342,7 +342,7 @@ func TestMConnectionStopsAndReturnsError(t *testing.T) {
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
-	onReceive := func(chID byte, msgBytes []byte) {
+	onReceive := func(chID ChannelID, msgBytes []byte) {
 		receivedCh <- msgBytes
 	}
 	onError := func(r interface{}) {
@@ -371,11 +371,11 @@ func TestMConnectionStopsAndReturnsError(t *testing.T) {
 func newClientAndServerConnsForReadErrors(t *testing.T, chOnErr chan struct{}) (*MConnection, *MConnection) {
 	server, client := NetPipe()
 
-	onReceive := func(chID byte, msgBytes []byte) {}
+	onReceive := func(chID ChannelID, msgBytes []byte) {}
 	onError := func(r interface{}) {}
 
 	// create client conn with two channels
-	chDescs := []*ChannelDescriptor{
+	chDescs := []ChannelDescriptor{
 		{ID: 0x01, Priority: 1, SendQueueCapacity: 1},
 		{ID: 0x02, Priority: 1, SendQueueCapacity: 1},
 	}
@@ -443,7 +443,7 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(t, chOnErr)
 	t.Cleanup(stopAll(t, mconnClient, mconnServer))
 
-	mconnServer.onReceive = func(chID byte, msgBytes []byte) {
+	mconnServer.onReceive = func(chID ChannelID, msgBytes []byte) {
 		chOnRcv <- struct{}{}
 	}
 
@@ -538,7 +538,7 @@ func TestMConnectionChannelOverflow(t *testing.T) {
 	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(t, chOnErr)
 	t.Cleanup(stopAll(t, mconnClient, mconnServer))
 
-	mconnServer.onReceive = func(chID byte, msgBytes []byte) {
+	mconnServer.onReceive = func(chID ChannelID, msgBytes []byte) {
 		chOnRcv <- struct{}{}
 	}
 
