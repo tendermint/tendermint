@@ -8,7 +8,7 @@ October 6, 2021
 
 ### FEATURES
 
-- [rpc] \#7065 mempool,rpc: add removetx rpc method (backport of #7047) (@tychoish).
+- [mempool, rpc] \#7065 add removetx rpc method (backport of #7047) (@tychoish).
 
 ### BUG FIXES
 
