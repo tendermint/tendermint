@@ -80,7 +80,7 @@ func NewChannel(
 	errCh chan<- PeerError,
 ) *Channel {
 	return &Channel{
-		ID:          ChannelID(descriptor.ID),
+		ID:          descriptor.ID,
 		descriptor:  descriptor,
 		messageType: messageType,
 		In:          inCh,
@@ -361,9 +361,8 @@ func (r *Router) OpenChannel(chDesc ChannelDescriptor) (*Channel, error) {
 	r.channelMtx.Lock()
 	defer r.channelMtx.Unlock()
 
-	id := ChannelID(chDesc.ID)
-	if _, ok := r.channelQueues[id]; ok {
-		return nil, fmt.Errorf("channel %v already exists", id)
+	if _, ok := r.channelQueues[chDesc.ID]; ok {
+		return nil, fmt.Errorf("channel %v already exists", chDesc.ID)
 	}
 	r.chDescs = append(r.chDescs, chDesc)
 
@@ -378,8 +377,8 @@ func (r *Router) OpenChannel(chDesc ChannelDescriptor) (*Channel, error) {
 		wrapper = w
 	}
 
-	r.channelQueues[id] = queue
-	r.channelMessages[id] = chDesc.MsgType
+	r.channelQueues[chDesc.ID] = queue
+	r.channelMessages[chDesc.ID] = chDesc.MsgType
 
 	// add the channel to the nodeInfo if it's not already there.
 	r.nodeInfo.AddChannel(uint16(chDesc.ID))
@@ -391,13 +390,13 @@ func (r *Router) OpenChannel(chDesc ChannelDescriptor) (*Channel, error) {
 	go func() {
 		defer func() {
 			r.channelMtx.Lock()
-			delete(r.channelQueues, id)
-			delete(r.channelMessages, id)
+			delete(r.channelQueues, chDesc.ID)
+			delete(r.channelMessages, chDesc.ID)
 			r.channelMtx.Unlock()
 			queue.close()
 		}()
 
-		r.routeChannel(id, outCh, errCh, wrapper)
+		r.routeChannel(chDesc.ID, outCh, errCh, wrapper)
 	}()
 
 	return channel, nil

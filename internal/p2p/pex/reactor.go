@@ -396,9 +396,8 @@ func (r *ReactorV2) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (er
 	r.Logger.Debug("received PEX message", "peer", envelope.From)
 
 	switch chID {
-	case p2p.ChannelID(PexChannel):
+	case PexChannel:
 		err = r.handlePexMessage(envelope)
-
 	default:
 		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", chID, envelope)
 	}
