@@ -359,7 +359,7 @@ func (s *Server) send(data interface{}, events []types.Event) error {
 	for si := range s.subs.index.all {
 		match, err := si.query.Matches(events)
 		if err != nil {
-			return fmt.Errorf("match failed against query %q: %w", si.query.String(), err)
+			return fmt.Errorf("match failed against query: %w", err)
 			// TODO(creachadair): Should we evict this subscription?
 		} else if !match {
 			continue
