@@ -5,7 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/tendermint/tendermint/libs/cli"
+	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/state"
 )
 
 var RollbackStateCmd = &cobra.Command{
@@ -20,7 +21,7 @@ restarting Tendermint the transactions in block n will be re-executed against th
 application.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		height, hash, err := cli.RollbackState(config)
+		height, hash, err := RollbackState(config)
 		if err != nil {
 			return fmt.Errorf("failed to rollback state: %w", err)
 		}
@@ -28,4 +29,18 @@ application.
 		fmt.Printf("Rolled back state to height %d and hash %v", height, hash)
 		return nil
 	},
+}
+
+// RollbackState takes the state at the current height n and overwrites it with the state
+// at height n - 1. Note state here refers to tendermint state not application state.
+// Returns the latest state height and app hash alongside an error if there was one.
+func RollbackState(config *cfg.Config) (int64, []byte, error) {
+	// use the parsed config to load the block and state store
+	blockStore, stateStore, err := loadStateAndBlockStore(config)
+	if err != nil {
+		return -1, nil, err
+	}
+
+	// rollback the last state
+	return state.Rollback(blockStore, stateStore)
 }
