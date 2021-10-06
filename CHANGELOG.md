@@ -2,6 +2,19 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.35.0-rc3
+
+October 6, 2021
+
+### FEATURES
+
+- [rpc] \#7065 mempool,rpc: add removetx rpc method (backport of #7047) (@tychoish).
+
+### BUG FIXES
+
+- [consensus]: [\#7060](https://github.com/tendermint/tendermint/pull/7060)
+  wait until peerUpdates channel is closed to close remaining peers (@williambanfield)
+
 ## v0.35.0-rc2
 
 September 27, 2021
