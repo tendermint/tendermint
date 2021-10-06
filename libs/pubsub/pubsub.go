@@ -383,6 +383,5 @@ func (s *Server) send(data interface{}, events []types.Event) error {
 		}
 	}
 
-	// If we had a matching error, report it back.
 	return nil
 }
