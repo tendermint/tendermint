@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 
@@ -16,15 +17,14 @@ import (
 // Might we want types here ?
 type Tx []byte
 
+// Key produces a fixed-length key for use in indexing.
+func (tx Tx) Key() TxKey { return sha256.Sum256(tx) }
+
 // Hash computes the TMHASH hash of the wire encoded transaction.
-func (tx Tx) Hash() []byte {
-	return tmhash.Sum(tx)
-}
+func (tx Tx) Hash() []byte { return tmhash.Sum(tx) }
 
 // String returns the hex-encoded transaction as a string.
-func (tx Tx) String() string {
-	return fmt.Sprintf("Tx{%X}", []byte(tx))
-}
+func (tx Tx) String() string { return fmt.Sprintf("Tx{%X}", []byte(tx)) }
 
 // Txs is a slice of Tx.
 type Txs []Tx

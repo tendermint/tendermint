@@ -116,6 +116,10 @@ func (c *Local) CheckTx(ctx context.Context, tx types.Tx) (*coretypes.ResultChec
 	return c.env.CheckTx(c.ctx, tx)
 }
 
+func (c *Local) RemoveTx(ctx context.Context, txKey types.TxKey) error {
+	return c.env.Mempool.RemoveTxByKey(txKey)
+}
+
 func (c *Local) NetInfo(ctx context.Context) (*coretypes.ResultNetInfo, error) {
 	return c.env.NetInfo(c.ctx)
 }
@@ -134,20 +138,6 @@ func (c *Local) ConsensusParams(ctx context.Context, height *int64) (*coretypes.
 
 func (c *Local) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
 	return c.env.Health(c.ctx)
-}
-
-func (c *Local) DialSeeds(ctx context.Context, seeds []string) (*coretypes.ResultDialSeeds, error) {
-	return c.env.UnsafeDialSeeds(c.ctx, seeds)
-}
-
-func (c *Local) DialPeers(
-	ctx context.Context,
-	peers []string,
-	persistent,
-	unconditional,
-	private bool,
-) (*coretypes.ResultDialPeers, error) {
-	return c.env.UnsafeDialPeers(c.ctx, peers, persistent, unconditional, private)
 }
 
 func (c *Local) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) { //nolint:lll

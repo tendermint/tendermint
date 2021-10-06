@@ -131,20 +131,6 @@ func (c Client) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
 	return c.env.Health(&rpctypes.Context{})
 }
 
-func (c Client) DialSeeds(ctx context.Context, seeds []string) (*coretypes.ResultDialSeeds, error) {
-	return c.env.UnsafeDialSeeds(&rpctypes.Context{}, seeds)
-}
-
-func (c Client) DialPeers(
-	ctx context.Context,
-	peers []string,
-	persistent,
-	unconditional,
-	private bool,
-) (*coretypes.ResultDialPeers, error) {
-	return c.env.UnsafeDialPeers(&rpctypes.Context{}, peers, persistent, unconditional, private)
-}
-
 func (c Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) { //nolint:lll
 	return c.env.BlockchainInfo(&rpctypes.Context{}, minHeight, maxHeight)
 }
