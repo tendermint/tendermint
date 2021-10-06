@@ -82,26 +82,6 @@ func TestRPCConfigValidateBasic(t *testing.T) {
 	}
 }
 
-func TestP2PConfigValidateBasic(t *testing.T) {
-	cfg := TestP2PConfig()
-	assert.NoError(t, cfg.ValidateBasic())
-
-	fieldsToTest := []string{
-		"MaxNumInboundPeers",
-		"MaxNumOutboundPeers",
-		"FlushThrottleTimeout",
-		"MaxPacketMsgPayloadSize",
-		"SendRate",
-		"RecvRate",
-	}
-
-	for _, fieldName := range fieldsToTest {
-		reflect.ValueOf(cfg).Elem().FieldByName(fieldName).SetInt(-1)
-		assert.Error(t, cfg.ValidateBasic())
-		reflect.ValueOf(cfg).Elem().FieldByName(fieldName).SetInt(0)
-	}
-}
-
 func TestMempoolConfigValidateBasic(t *testing.T) {
 	cfg := TestMempoolConfig()
 	assert.NoError(t, cfg.ValidateBasic())
