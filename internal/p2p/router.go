@@ -21,6 +21,8 @@ import (
 
 const queueBufferDefault = 32
 
+const dialRandomizerIntervalMillisecond = 3000
+
 // ChannelID is an arbitrary channel ID.
 type ChannelID uint16
 
@@ -131,8 +133,8 @@ type RouterOptions struct {
 	// no timeout.
 	HandshakeTimeout time.Duration
 
-	// QueueType must be "wdrr" (Weighed Deficit Round Robin), "priority", or
-	// "fifo". Defaults to "fifo".
+	// QueueType must be, "priority", or "fifo". Defaults to
+	// "fifo".
 	QueueType string
 
 	// MaxIncomingConnectionAttempts rate limits the number of incoming connection
@@ -174,7 +176,6 @@ type RouterOptions struct {
 const (
 	queueTypeFifo     = "fifo"
 	queueTypePriority = "priority"
-	queueTypeWDRR     = "wdrr"
 )
 
 // Validate validates router options.
@@ -182,8 +183,8 @@ func (o *RouterOptions) Validate() error {
 	switch o.QueueType {
 	case "":
 		o.QueueType = queueTypeFifo
-	case queueTypeFifo, queueTypeWDRR, queueTypePriority:
-		// passI me
+	case queueTypeFifo, queueTypePriority:
+		// pass
 	default:
 		return fmt.Errorf("queue type %q is not supported", o.QueueType)
 	}
@@ -341,17 +342,6 @@ func (r *Router) createQueueFactory() (func(int) queue, error) {
 			}
 
 			q := newPQScheduler(r.logger, r.metrics, r.chDescs, uint(size)/2, uint(size)/2, defaultCapacity)
-			q.start()
-			return q
-		}, nil
-
-	case queueTypeWDRR:
-		return func(size int) queue {
-			if size%2 != 0 {
-				size++
-			}
-
-			q := newWDRRScheduler(r.logger, r.metrics, r.chDescs, uint(size)/2, uint(size)/2, defaultCapacity)
 			q.start()
 			return q
 		}, nil
@@ -544,7 +534,7 @@ func (r *Router) filterPeersID(ctx context.Context, id types.NodeID) error {
 func (r *Router) dialSleep(ctx context.Context) {
 	if r.options.DialSleep == nil {
 		// nolint:gosec // G404: Use of weak random number generator
-		timer := time.NewTimer(time.Duration(rand.Int63n(dialRandomizerIntervalMilliseconds)) * time.Millisecond)
+		timer := time.NewTimer(time.Duration(rand.Int63n(dialRandomizerIntervalMillisecond)) * time.Millisecond)
 		defer timer.Stop()
 
 		select {

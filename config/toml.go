@@ -164,10 +164,10 @@ laddr = "{{ .PrivValidator.ListenAddr }}"
 client-certificate-file = "{{ js .PrivValidator.ClientCertificate }}"
 
 # Client key generated while creating certificates for secure connection
-validator-client-key-file = "{{ js .PrivValidator.ClientKey }}"
+client-key-file = "{{ js .PrivValidator.ClientKey }}"
 
 # Path to the Root Certificate Authority used to sign both client and server certificates
-certificate-authority = "{{ js .PrivValidator.RootCA }}"
+root-ca-file = "{{ js .PrivValidator.RootCA }}"
 
 
 #######################################################################
@@ -264,9 +264,6 @@ pprof-laddr = "{{ .RPC.PprofListenAddress }}"
 ###           P2P Configuration Options             ###
 #######################################################
 [p2p]
-
-# Enable the legacy p2p layer.
-use-legacy = {{ .P2P.UseLegacy }}
 
 # Select the p2p internal queue
 queue-type = "{{ .P2P.QueueType }}"
@@ -447,8 +444,8 @@ rpc-servers = "{{ StringsJoin .StateSync.RPCServers "," }}"
 trust-height = {{ .StateSync.TrustHeight }}
 trust-hash = "{{ .StateSync.TrustHash }}"
 
-# The trust period should be set so that Tendermint can detect and gossip misbehavior before 
-# it is considered expired. For chains based on the Cosmos SDK, one day less than the unbonding 
+# The trust period should be set so that Tendermint can detect and gossip misbehavior before
+# it is considered expired. For chains based on the Cosmos SDK, one day less than the unbonding
 # period should suffice.
 trust-period = "{{ .StateSync.TrustPeriod }}"
 
@@ -476,11 +473,6 @@ fetchers = "{{ .StateSync.Fetchers }}"
 # allows them to catchup quickly by downloading blocks in parallel
 # and verifying their commits
 enable = {{ .BlockSync.Enable }}
-
-# Block Sync version to use:
-#   1) "v0" (default) - the standard Block Sync implementation
-#   2) "v2" - DEPRECATED, please use v0
-version = "{{ .BlockSync.Version }}"
 
 #######################################################
 ###         Consensus Configuration Options         ###

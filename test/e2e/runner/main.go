@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"strconv"
 	"time"
@@ -13,9 +14,9 @@ import (
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
-var (
-	logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
-)
+const randomSeed = 2308084734268
+
+var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 
 func main() {
 	NewCLI().Run()
@@ -67,6 +68,8 @@ func NewCLI() *CLI {
 				return err
 			}
 
+			r := rand.New(rand.NewSource(randomSeed)) // nolint: gosec
+
 			chLoadResult := make(chan error)
 			ctx, cancel := context.WithCancel(cmd.Context())
 			defer cancel()
@@ -74,7 +77,7 @@ func NewCLI() *CLI {
 			lctx, loadCancel := context.WithCancel(ctx)
 			defer loadCancel()
 			go func() {
-				chLoadResult <- Load(lctx, cli.testnet)
+				chLoadResult <- Load(lctx, r, cli.testnet)
 			}()
 			startAt := time.Now()
 			if err = Start(ctx, cli.testnet); err != nil {
@@ -95,7 +98,7 @@ func NewCLI() *CLI {
 			}
 
 			if cli.testnet.Evidence > 0 {
-				if err = InjectEvidence(ctx, cli.testnet, cli.testnet.Evidence); err != nil {
+				if err = InjectEvidence(ctx, r, cli.testnet, cli.testnet.Evidence); err != nil {
 					return err
 				}
 				if err = Wait(ctx, cli.testnet, 5); err != nil { // ensure chain progress
@@ -212,7 +215,11 @@ func NewCLI() *CLI {
 		Use:   "load",
 		Short: "Generates transaction load until the command is canceled",
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			return Load(context.Background(), cli.testnet)
+			return Load(
+				cmd.Context(),
+				rand.New(rand.NewSource(randomSeed)), // nolint: gosec
+				cli.testnet,
+			)
 		},
 	})
 
@@ -230,7 +237,12 @@ func NewCLI() *CLI {
 				}
 			}
 
-			return InjectEvidence(cmd.Context(), cli.testnet, amount)
+			return InjectEvidence(
+				cmd.Context(),
+				rand.New(rand.NewSource(randomSeed)), // nolint: gosec
+				cli.testnet,
+				amount,
+			)
 		},
 	})
 
@@ -302,10 +314,12 @@ Does not run any perbutations.
 			ctx, cancel := context.WithCancel(cmd.Context())
 			defer cancel()
 
+			r := rand.New(rand.NewSource(randomSeed)) // nolint: gosec
+
 			lctx, loadCancel := context.WithCancel(ctx)
 			defer loadCancel()
 			go func() {
-				err := Load(lctx, cli.testnet)
+				err := Load(lctx, r, cli.testnet)
 				chLoadResult <- err
 			}()
 

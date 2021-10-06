@@ -28,6 +28,7 @@ func (env *Environment) GetRoutes() RoutesMap {
 		"block_results":        rpc.NewRPCFunc(env.BlockResults, "height", true),
 		"commit":               rpc.NewRPCFunc(env.Commit, "height", true),
 		"check_tx":             rpc.NewRPCFunc(env.CheckTx, "tx", true),
+		"remove_tx":            rpc.NewRPCFunc(env.RemoveTx, "txkey", false),
 		"tx":                   rpc.NewRPCFunc(env.Tx, "hash,prove", true),
 		"tx_search":            rpc.NewRPCFunc(env.TxSearch, "query,prove,page,per_page,order_by", false),
 		"block_search":         rpc.NewRPCFunc(env.BlockSearch, "query,page,per_page,order_by", false),
@@ -55,7 +56,5 @@ func (env *Environment) GetRoutes() RoutesMap {
 // AddUnsafeRoutes adds unsafe routes.
 func (env *Environment) AddUnsafe(routes RoutesMap) {
 	// control API
-	routes["dial_seeds"] = rpc.NewRPCFunc(env.UnsafeDialSeeds, "seeds", false)
-	routes["dial_peers"] = rpc.NewRPCFunc(env.UnsafeDialPeers, "peers,persistent,unconditional,private", false)
 	routes["unsafe_flush_mempool"] = rpc.NewRPCFunc(env.UnsafeFlushMempool, "", false)
 }

@@ -51,14 +51,6 @@ type transport interface {
 	NodeInfo() types.NodeInfo
 }
 
-type peers interface {
-	AddPersistentPeers([]string) error
-	AddUnconditionalPeerIDs([]string) error
-	AddPrivatePeerIDs([]string) error
-	DialPeersAsync([]string) error
-	Peers() p2p.IPeerSet
-}
-
 type consensusReactor interface {
 	WaitSync() bool
 	GetPeerState(peerID types.NodeID) (*consensus.PeerState, bool)
@@ -83,7 +75,6 @@ type Environment struct {
 	EvidencePool     sm.EvidencePool
 	ConsensusState   consensusState
 	ConsensusReactor consensusReactor
-	P2PPeers         peers
 
 	// Legacy p2p stack
 	P2PTransport transport

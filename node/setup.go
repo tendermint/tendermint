@@ -2,21 +2,16 @@ package node
 
 import (
 	"bytes"
-	"context"
-	"errors"
 	"fmt"
 	"math"
-	"net"
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	bcv0 "github.com/tendermint/tendermint/internal/blocksync/v0"
-	bcv2 "github.com/tendermint/tendermint/internal/blocksync/v2"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -163,18 +158,8 @@ func createMempoolReactor(
 	channelShims := mempoolv0.GetChannelShims(cfg.Mempool)
 	reactorShim := p2p.NewReactorShim(logger, "MempoolShim", channelShims)
 
-	var (
-		channels    map[p2p.ChannelID]*p2p.Channel
-		peerUpdates *p2p.PeerUpdates
-	)
-
-	if cfg.P2P.UseLegacy {
-		channels = getChannelsFromShim(reactorShim)
-		peerUpdates = reactorShim.PeerUpdates
-	} else {
-		channels = makeChannelsFromShims(router, channelShims)
-		peerUpdates = peerManager.Subscribe()
-	}
+	channels := makeChannelsFromShims(router, channelShims)
+	peerUpdates := peerManager.Subscribe()
 
 	switch cfg.Mempool.Version {
 	case config.MempoolV0:
@@ -257,23 +242,10 @@ func createEvidenceReactor(
 		return nil, nil, nil, fmt.Errorf("creating evidence pool: %w", err)
 	}
 
-	var (
-		channels    map[p2p.ChannelID]*p2p.Channel
-		peerUpdates *p2p.PeerUpdates
-	)
-
-	if cfg.P2P.UseLegacy {
-		channels = getChannelsFromShim(reactorShim)
-		peerUpdates = reactorShim.PeerUpdates
-	} else {
-		channels = makeChannelsFromShims(router, evidence.ChannelShims)
-		peerUpdates = peerManager.Subscribe()
-	}
-
 	evidenceReactor := evidence.NewReactor(
 		logger,
-		channels[evidence.EvidenceChannel],
-		peerUpdates,
+		makeChannelsFromShims(router, evidence.ChannelShims)[evidence.EvidenceChannel],
+		peerManager.Subscribe(),
 		evidencePool,
 	)
 
@@ -295,40 +267,20 @@ func createBlockchainReactor(
 
 	logger = logger.With("module", "blockchain")
 
-	switch cfg.BlockSync.Version {
-	case config.BlockSyncV0:
-		reactorShim := p2p.NewReactorShim(logger, "BlockchainShim", bcv0.ChannelShims)
+	reactorShim := p2p.NewReactorShim(logger, "BlockchainShim", bcv0.ChannelShims)
+	channels := makeChannelsFromShims(router, bcv0.ChannelShims)
+	peerUpdates := peerManager.Subscribe()
 
-		var (
-			channels    map[p2p.ChannelID]*p2p.Channel
-			peerUpdates *p2p.PeerUpdates
-		)
-
-		if cfg.P2P.UseLegacy {
-			channels = getChannelsFromShim(reactorShim)
-			peerUpdates = reactorShim.PeerUpdates
-		} else {
-			channels = makeChannelsFromShims(router, bcv0.ChannelShims)
-			peerUpdates = peerManager.Subscribe()
-		}
-
-		reactor, err := bcv0.NewReactor(
-			logger, state.Copy(), blockExec, blockStore, csReactor,
-			channels[bcv0.BlockSyncChannel], peerUpdates, blockSync,
-			metrics,
-		)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		return reactorShim, reactor, nil
-
-	case config.BlockSyncV2:
-		return nil, nil, errors.New("block sync version v2 is no longer supported. Please use v0")
-
-	default:
-		return nil, nil, fmt.Errorf("unknown block sync version %s", cfg.BlockSync.Version)
+	reactor, err := bcv0.NewReactor(
+		logger, state.Copy(), blockExec, blockStore, csReactor,
+		channels[bcv0.BlockSyncChannel], peerUpdates, blockSync,
+		metrics,
+	)
+	if err != nil {
+		return nil, nil, err
 	}
+
+	return reactorShim, reactor, nil
 }
 
 func createConsensusReactor(
@@ -368,13 +320,8 @@ func createConsensusReactor(
 		peerUpdates *p2p.PeerUpdates
 	)
 
-	if cfg.P2P.UseLegacy {
-		channels = getChannelsFromShim(reactorShim)
-		peerUpdates = reactorShim.PeerUpdates
-	} else {
-		channels = makeChannelsFromShims(router, consensus.ChannelShims)
-		peerUpdates = peerManager.Subscribe()
-	}
+	channels = makeChannelsFromShims(router, consensus.ChannelShims)
+	peerUpdates = peerManager.Subscribe()
 
 	reactor := consensus.NewReactor(
 		logger,
@@ -511,142 +458,6 @@ func createRouter(
 	)
 }
 
-func createSwitch(
-	cfg *config.Config,
-	transport p2p.Transport,
-	p2pMetrics *p2p.Metrics,
-	mempoolReactor *p2p.ReactorShim,
-	bcReactor p2p.Reactor,
-	stateSyncReactor *p2p.ReactorShim,
-	consensusReactor *p2p.ReactorShim,
-	evidenceReactor *p2p.ReactorShim,
-	proxyApp proxy.AppConns,
-	nodeInfo types.NodeInfo,
-	nodeKey types.NodeKey,
-	p2pLogger log.Logger,
-) *p2p.Switch {
-
-	var (
-		connFilters = []p2p.ConnFilterFunc{}
-		peerFilters = []p2p.PeerFilterFunc{}
-	)
-
-	if !cfg.P2P.AllowDuplicateIP {
-		connFilters = append(connFilters, p2p.ConnDuplicateIPFilter)
-	}
-
-	// Filter peers by addr or pubkey with an ABCI query.
-	// If the query return code is OK, add peer.
-	if cfg.FilterPeers {
-		connFilters = append(
-			connFilters,
-			// ABCI query for address filtering.
-			func(_ p2p.ConnSet, c net.Conn, _ []net.IP) error {
-				res, err := proxyApp.Query().QuerySync(context.Background(), abci.RequestQuery{
-					Path: fmt.Sprintf("/p2p/filter/addr/%s", c.RemoteAddr().String()),
-				})
-				if err != nil {
-					return err
-				}
-				if res.IsErr() {
-					return fmt.Errorf("error querying abci app: %v", res)
-				}
-
-				return nil
-			},
-		)
-
-		peerFilters = append(
-			peerFilters,
-			// ABCI query for ID filtering.
-			func(_ p2p.IPeerSet, p p2p.Peer) error {
-				res, err := proxyApp.Query().QuerySync(context.Background(), abci.RequestQuery{
-					Path: fmt.Sprintf("/p2p/filter/id/%s", p.ID()),
-				})
-				if err != nil {
-					return err
-				}
-				if res.IsErr() {
-					return fmt.Errorf("error querying abci app: %v", res)
-				}
-
-				return nil
-			},
-		)
-	}
-
-	sw := p2p.NewSwitch(
-		cfg.P2P,
-		transport,
-		p2p.WithMetrics(p2pMetrics),
-		p2p.SwitchPeerFilters(peerFilters...),
-		p2p.SwitchConnFilters(connFilters...),
-	)
-
-	sw.SetLogger(p2pLogger)
-	if cfg.Mode != config.ModeSeed {
-		sw.AddReactor("MEMPOOL", mempoolReactor)
-		sw.AddReactor("BLOCKCHAIN", bcReactor)
-		sw.AddReactor("CONSENSUS", consensusReactor)
-		sw.AddReactor("EVIDENCE", evidenceReactor)
-		sw.AddReactor("STATESYNC", stateSyncReactor)
-	}
-
-	sw.SetNodeInfo(nodeInfo)
-	sw.SetNodeKey(nodeKey)
-
-	p2pLogger.Info("P2P Node ID", "ID", nodeKey.ID, "file", cfg.NodeKeyFile())
-	return sw
-}
-
-func createAddrBookAndSetOnSwitch(cfg *config.Config, sw *p2p.Switch,
-	p2pLogger log.Logger, nodeKey types.NodeKey) (pex.AddrBook, error) {
-
-	addrBook := pex.NewAddrBook(cfg.P2P.AddrBookFile(), cfg.P2P.AddrBookStrict)
-	addrBook.SetLogger(p2pLogger.With("book", cfg.P2P.AddrBookFile()))
-
-	// Add ourselves to addrbook to prevent dialing ourselves
-	if cfg.P2P.ExternalAddress != "" {
-		addr, err := types.NewNetAddressString(nodeKey.ID.AddressString(cfg.P2P.ExternalAddress))
-		if err != nil {
-			return nil, fmt.Errorf("p2p.external_address is incorrect: %w", err)
-		}
-		addrBook.AddOurAddress(addr)
-	}
-	if cfg.P2P.ListenAddress != "" {
-		addr, err := types.NewNetAddressString(nodeKey.ID.AddressString(cfg.P2P.ListenAddress))
-		if err != nil {
-			return nil, fmt.Errorf("p2p.laddr is incorrect: %w", err)
-		}
-		addrBook.AddOurAddress(addr)
-	}
-
-	sw.SetAddrBook(addrBook)
-
-	return addrBook, nil
-}
-
-func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, cfg *config.Config,
-	sw *p2p.Switch, logger log.Logger) *pex.Reactor {
-
-	reactorConfig := &pex.ReactorConfig{
-		Seeds:    tmstrings.SplitAndTrimEmpty(cfg.P2P.Seeds, ",", " "),
-		SeedMode: cfg.Mode == config.ModeSeed,
-		// See consensus/reactor.go: blocksToContributeToBecomeGoodPeer 10000
-		// blocks assuming 10s blocks ~ 28 hours.
-		// TODO (melekes): make it dynamic based on the actual block latencies
-		// from the live network.
-		// https://github.com/tendermint/tendermint/issues/3523
-		SeedDisconnectWaitPeriod:     28 * time.Hour,
-		PersistentPeersMaxDialPeriod: cfg.P2P.PersistentPeersMaxDialPeriod,
-	}
-	// TODO persistent peers ? so we can have their DNS addrs saved
-	pexReactor := pex.NewReactor(addrBook, reactorConfig)
-	pexReactor.SetLogger(logger.With("module", "pex"))
-	sw.AddReactor("PEX", pexReactor)
-	return pexReactor
-}
-
 func createPEXReactorV2(
 	cfg *config.Config,
 	logger log.Logger,
@@ -676,17 +487,7 @@ func makeNodeInfo(
 		txIndexerStatus = "on"
 	}
 
-	var bcChannel byte
-	switch cfg.BlockSync.Version {
-	case config.BlockSyncV0:
-		bcChannel = byte(bcv0.BlockSyncChannel)
-
-	case config.BlockSyncV2:
-		bcChannel = bcv2.BlockchainChannel
-
-	default:
-		return types.NodeInfo{}, fmt.Errorf("unknown blocksync version %s", cfg.BlockSync.Version)
-	}
+	bcChannel := byte(bcv0.BlockSyncChannel)
 
 	nodeInfo := types.NodeInfo{
 		ProtocolVersion: types.ProtocolVersion{

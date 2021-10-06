@@ -254,11 +254,11 @@ func (r *Reactor) OnStop() {
 	// Wait for all p2p Channels to be closed before returning. This ensures we
 	// can easily reason about synchronization of all p2p Channels and ensure no
 	// panics will occur.
+	<-r.peerUpdates.Done()
 	<-r.snapshotCh.Done()
 	<-r.chunkCh.Done()
 	<-r.blockCh.Done()
 	<-r.paramsCh.Done()
-	<-r.peerUpdates.Done()
 }
 
 // Sync runs a state sync, fetching snapshots and providing chunks to the
@@ -280,6 +280,7 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 	}
 
 	if err := r.initStateProvider(ctx, r.chainID, r.initialHeight); err != nil {
+		r.mtx.Unlock()
 		return sm.State{}, err
 	}
 
@@ -778,7 +779,8 @@ func (r *Reactor) handleParamsMessage(envelope p2p.Envelope) error {
 		if sp, ok := r.stateProvider.(*stateProviderP2P); ok {
 			select {
 			case sp.paramsRecvCh <- cp:
-			default:
+			case <-time.After(time.Second):
+				return errors.New("failed to send consensus params, stateprovider not ready for response")
 			}
 		} else {
 			r.Logger.Debug("received unexpected params response; using RPC state provider", "peer", envelope.From)
@@ -889,17 +891,20 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	}
 
 	r.mtx.Lock()
+	defer r.mtx.Unlock()
 	if r.syncer == nil {
-		r.mtx.Unlock()
 		return
 	}
-	defer r.mtx.Unlock()
 
 	switch peerUpdate.Status {
 	case p2p.PeerStatusUp:
 		newProvider := NewBlockProvider(peerUpdate.NodeID, r.chainID, r.dispatcher)
 		r.providers[peerUpdate.NodeID] = newProvider
-		r.syncer.AddPeer(peerUpdate.NodeID)
+		err := r.syncer.AddPeer(peerUpdate.NodeID)
+		if err != nil {
+			r.Logger.Error("error adding peer to syncer", "error", err)
+			return
+		}
 		if sp, ok := r.stateProvider.(*stateProviderP2P); ok {
 			// we do this in a separate routine to not block whilst waiting for the light client to finish
 			// whatever call it's currently executing
@@ -1013,9 +1018,11 @@ func (r *Reactor) waitForEnoughPeers(ctx context.Context, numPeers int) error {
 		iter++
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("operation canceled while waiting for peers after %s", time.Since(startAt))
+			return fmt.Errorf("operation canceled while waiting for peers after %.2fs [%d/%d]",
+				time.Since(startAt).Seconds(), r.peers.Len(), numPeers)
 		case <-r.closeCh:
-			return fmt.Errorf("shutdown while waiting for peers after %s", time.Since(startAt))
+			return fmt.Errorf("shutdown while waiting for peers after %.2fs [%d/%d]",
+				time.Since(startAt).Seconds(), r.peers.Len(), numPeers)
 		case <-t.C:
 			continue
 		case <-logT.C:

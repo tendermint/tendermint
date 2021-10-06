@@ -38,14 +38,6 @@ func TestRouter_ConstructQueueFactory(t *testing.T) {
 		require.True(t, ok)
 		defer q.close()
 	})
-	t.Run("WDRR", func(t *testing.T) {
-		opts := RouterOptions{QueueType: queueTypeWDRR}
-		r, err := NewRouter(log.NewNopLogger(), nil, types.NodeInfo{}, nil, nil, nil, opts)
-		require.NoError(t, err)
-		q, ok := r.queueFactory(1).(*wdrrScheduler)
-		require.True(t, ok)
-		defer q.close()
-	})
 	t.Run("NonExistant", func(t *testing.T) {
 		opts := RouterOptions{QueueType: "fast"}
 		_, err := NewRouter(log.NewNopLogger(), nil, types.NodeInfo{}, nil, nil, nil, opts)

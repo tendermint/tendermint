@@ -38,21 +38,6 @@ func NewCLI() *CLI {
 		SilenceUsage:  true,
 		SilenceErrors: true, // we'll output them ourselves in Run()
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var opts Options
-			var err error
-
-			p2pMode, err := cmd.Flags().GetString("p2p")
-			if err != nil {
-				return err
-			}
-
-			switch mode := P2PMode(p2pMode); mode {
-			case NewP2PMode, LegacyP2PMode, HybridP2PMode, MixedP2PMode:
-				opts.P2P = mode
-			default:
-				return fmt.Errorf("p2p mode must be either new, legacy, hybrid or mixed got %s", p2pMode)
-			}
-
 			return cli.generate()
 		},
 	}
@@ -61,8 +46,6 @@ func NewCLI() *CLI {
 	_ = cli.root.MarkPersistentFlagRequired("dir")
 	cli.root.Flags().BoolVarP(&cli.opts.Reverse, "reverse", "r", false, "Reverse sort order")
 	cli.root.PersistentFlags().IntVarP(&cli.opts.NumGroups, "groups", "g", 0, "Number of groups")
-	cli.root.PersistentFlags().StringP("p2p", "p", string(MixedP2PMode),
-		"P2P typology to be generated [\"new\", \"legacy\", \"hybrid\" or \"mixed\" ]")
 	cli.root.PersistentFlags().IntVarP(&cli.opts.MinNetworkSize, "min-size", "", 1,
 		"Minimum network size (nodes)")
 	cli.root.PersistentFlags().IntVarP(&cli.opts.MaxNetworkSize, "max-size", "", 0,

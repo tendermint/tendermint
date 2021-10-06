@@ -96,7 +96,6 @@ type Node struct {
 	PersistentPeers  []*Node
 	Perturbations    []Perturbation
 	LogLevel         string
-	UseLegacyP2P     bool
 	QueueType        string
 	HasStarted       bool
 }
@@ -182,7 +181,6 @@ func LoadTestnet(file string) (*Testnet, error) {
 			Perturbations:    []Perturbation{},
 			LogLevel:         manifest.LogLevel,
 			QueueType:        manifest.QueueType,
-			UseLegacyP2P:     nodeManifest.UseLegacyP2P,
 		}
 
 		if node.StartAt == testnet.InitialHeight {
@@ -349,7 +347,7 @@ func (n Node) Validate(testnet Testnet) error {
 		return fmt.Errorf("invalid mempool version %q", n.Mempool)
 	}
 	switch n.QueueType {
-	case "", "priority", "wdrr", "fifo":
+	case "", "priority", "fifo":
 	default:
 		return fmt.Errorf("unsupported p2p queue type: %s", n.QueueType)
 	}
