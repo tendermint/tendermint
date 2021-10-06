@@ -94,16 +94,14 @@ func TestMConnectionSend(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	assert.True(t, mconn.CanSend(0x01))
 
 	msg = []byte("Spider-Man")
-	assert.True(t, mconn.TrySend(0x01, msg))
+	assert.True(t, mconn.Send(0x01, msg))
 	_, err = server.Read(make([]byte, len(msg)))
 	if err != nil {
 		t.Error(err)
 	}
 
-	assert.False(t, mconn.CanSend(0x05), "CanSend should return false because channel is unknown")
 	assert.False(t, mconn.Send(0x05, []byte("Absorbing Man")), "Send should return false because channel is unknown")
 }
 
@@ -497,18 +495,15 @@ func TestMConnectionTrySend(t *testing.T) {
 
 	msg := []byte("Semicolon-Woman")
 	resultCh := make(chan string, 2)
-	assert.True(t, mconn.TrySend(0x01, msg))
+	assert.True(t, mconn.Send(0x01, msg))
 	_, err = server.Read(make([]byte, len(msg)))
 	require.NoError(t, err)
-	assert.True(t, mconn.CanSend(0x01))
-	assert.True(t, mconn.TrySend(0x01, msg))
-	assert.False(t, mconn.CanSend(0x01))
+	assert.True(t, mconn.Send(0x01, msg))
 	go func() {
-		mconn.TrySend(0x01, msg)
+		mconn.Send(0x01, msg)
 		resultCh <- "TrySend"
 	}()
-	assert.False(t, mconn.CanSend(0x01))
-	assert.False(t, mconn.TrySend(0x01, msg))
+	assert.False(t, mconn.Send(0x01, msg))
 	assert.Equal(t, "TrySend", <-resultCh)
 }
 

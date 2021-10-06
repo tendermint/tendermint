@@ -64,14 +64,10 @@ initialization of the connection.
 
 There are two methods for sending messages:
 	func (m MConnection) Send(chID byte, msgBytes []byte) bool {}
-	func (m MConnection) TrySend(chID byte, msgBytes []byte}) bool {}
 
 `Send(chID, msgBytes)` is a blocking call that waits until `msg` is
 successfully queued for the channel with the given id byte `chID`, or until the
 request times out.  The message `msg` is serialized using Protobuf.
-
-`TrySend(chID, msgBytes)` is a nonblocking call that returns false if the
-channel's queue is full.
 
 Inbound message bytes are handled with an onReceive callback function.
 */
@@ -336,49 +332,6 @@ func (c *MConnection) Send(chID byte, msgBytes []byte) bool {
 		c.Logger.Debug("Send failed", "channel", chID, "conn", c, "msgBytes", msgBytes)
 	}
 	return success
-}
-
-// Queues a message to be sent to channel.
-// Nonblocking, returns true if successful.
-func (c *MConnection) TrySend(chID byte, msgBytes []byte) bool {
-	if !c.IsRunning() {
-		return false
-	}
-
-	c.Logger.Debug("TrySend", "channel", chID, "conn", c, "msgBytes", msgBytes)
-
-	// Send message to channel.
-	channel, ok := c.channelsIdx[chID]
-	if !ok {
-		c.Logger.Error(fmt.Sprintf("Cannot send bytes, unknown channel %X", chID))
-		return false
-	}
-
-	ok = channel.trySendBytes(msgBytes)
-	if ok {
-		// Wake up sendRoutine if necessary
-		select {
-		case c.send <- struct{}{}:
-		default:
-		}
-	}
-
-	return ok
-}
-
-// CanSend returns true if you can send more data onto the chID, false
-// otherwise. Use only as a heuristic.
-func (c *MConnection) CanSend(chID byte) bool {
-	if !c.IsRunning() {
-		return false
-	}
-
-	channel, ok := c.channelsIdx[chID]
-	if !ok {
-		c.Logger.Error(fmt.Sprintf("Unknown channel %X", chID))
-		return false
-	}
-	return channel.canSend()
 }
 
 // sendRoutine polls for packets to send from channels.
