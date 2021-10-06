@@ -249,7 +249,7 @@ func createEvidenceReactor(
 
 	evidenceReactor := evidence.NewReactor(
 		logger,
-		channels[evidence.EvidenceChannel],
+		channel,
 		peerManager.Subscribe(),
 		evidencePool,
 	)
@@ -281,8 +281,7 @@ func createBlockchainReactor(
 
 	reactor, err := bcv0.NewReactor(
 		logger, state.Copy(), blockExec, blockStore, csReactor,
-		channels[bcv0.BlockSyncChannel], peerUpdates, blockSync,
-		metrics,
+		channel, peerUpdates, blockSync, metrics,
 	)
 	if err != nil {
 		return nil, err
