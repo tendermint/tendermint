@@ -3,7 +3,6 @@ package node
 import (
 	"bytes"
 	"fmt"
-	"math"
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
@@ -18,6 +17,7 @@ import (
 	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
 	mempoolv1 "github.com/tendermint/tendermint/internal/mempool/v1"
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/p2p/conn"
 	"github.com/tendermint/tendermint/internal/p2p/pex"
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -343,11 +343,9 @@ func createConsensusReactor(
 
 func createTransport(logger log.Logger, cfg *config.Config) *p2p.MConnTransport {
 	return p2p.NewMConnTransport(
-		logger, p2p.MConnConfig(cfg.P2P), []*p2p.ChannelDescriptor{},
+		logger, conn.DefaultMConnConfig(), []*p2p.ChannelDescriptor{},
 		p2p.MConnTransportOptions{
-			MaxAcceptedConnections: uint32(cfg.P2P.MaxNumInboundPeers +
-				len(tmstrings.SplitAndTrimEmpty(cfg.P2P.UnconditionalPeerIDs, ",", " ")),
-			),
+			MaxAcceptedConnections: uint32(cfg.P2P.MaxConnections),
 		},
 	)
 }
@@ -364,20 +362,6 @@ func createPeerManager(
 	switch {
 	case cfg.P2P.MaxConnections > 0:
 		maxConns = cfg.P2P.MaxConnections
-
-	case cfg.P2P.MaxNumInboundPeers > 0 && cfg.P2P.MaxNumOutboundPeers > 0:
-		x := cfg.P2P.MaxNumInboundPeers + cfg.P2P.MaxNumOutboundPeers
-		if x > math.MaxUint16 {
-			return nil, fmt.Errorf(
-				"max inbound peers (%d) + max outbound peers (%d) exceeds maximum (%d)",
-				cfg.P2P.MaxNumInboundPeers,
-				cfg.P2P.MaxNumOutboundPeers,
-				math.MaxUint16,
-			)
-		}
-
-		maxConns = uint16(x)
-
 	default:
 		maxConns = 64
 	}

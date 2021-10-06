@@ -2,9 +2,6 @@ package p2p
 
 import (
 	"sort"
-
-	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/internal/p2p/conn"
 )
 
 // ReactorShim defines a generic shim wrapper around a BaseReactor. It is
@@ -39,17 +36,6 @@ func makeChannel(cd ChannelDescriptor, buf uint) *Channel {
 		make(chan Envelope, buf),  // out-channel
 		make(chan PeerError, buf), // err-channel
 	)
-}
-
-// MConnConfig returns an MConnConfig based on the defaults, with fields updated
-// from the P2PConfig.
-func MConnConfig(cfg *config.P2PConfig) conn.MConnConfig {
-	mConfig := conn.DefaultMConnConfig()
-	mConfig.FlushThrottle = cfg.FlushThrottleTimeout
-	mConfig.SendRate = cfg.SendRate
-	mConfig.RecvRate = cfg.RecvRate
-	mConfig.MaxPacketMsgPayloadSize = cfg.MaxPacketMsgPayloadSize
-	return mConfig
 }
 
 // GetChannels implements the legacy Reactor interface for getting a slice of all

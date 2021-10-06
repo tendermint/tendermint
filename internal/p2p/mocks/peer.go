@@ -3,7 +3,6 @@
 package mocks
 
 import (
-	conn "github.com/tendermint/tendermint/internal/p2p/conn"
 	log "github.com/tendermint/tendermint/libs/log"
 
 	mock "github.com/stretchr/testify/mock"
@@ -267,20 +266,6 @@ func (_m *Peer) Start() error {
 		r0 = rf()
 	} else {
 		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// Status provides a mock function with given fields:
-func (_m *Peer) Status() conn.ConnectionStatus {
-	ret := _m.Called()
-
-	var r0 conn.ConnectionStatus
-	if rf, ok := ret.Get(0).(func() conn.ConnectionStatus); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(conn.ConnectionStatus)
 	}
 
 	return r0
