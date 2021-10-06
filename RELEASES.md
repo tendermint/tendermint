@@ -80,7 +80,8 @@ Otherwise:
    - Ensure that `UPGRADING.md` is up-to-date and includes notes on any breaking changes
       or other upgrading flows.
    - Bump TMVersionDefault version in  `version.go`
-   - Bump P2P and block protocol versions in  `version.go`, if necessary
+   - Bump P2P and block protocol versions in  `version.go`, if necessary.
+     Check the changelog for breaking changes in these components.
    - Bump ABCI protocol version in `version.go`, if necessary
 4. Open a PR with these changes against the backport branch.
 5. Once these changes have landed on the backport branch, be sure to pull them back down locally.
