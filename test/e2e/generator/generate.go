@@ -15,7 +15,7 @@ var (
 	// separate testnet for each combination (Cartesian product) of options.
 	testnetCombinations = map[string][]interface{}{
 		"topology":      {"single", "quad", "large"},
-		"queueType":     {"priority"}, // "fifo", "wdrr"
+		"queueType":     {"priority"}, // "fifo"
 		"initialHeight": {0, 1000},
 		"initialState": {
 			map[string]string{},

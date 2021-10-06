@@ -178,7 +178,7 @@ func (r *Reactor) handleMempoolMessage(envelope p2p.Envelope) error {
 
 		for _, tx := range protoTxs {
 			if err := r.mempool.CheckTx(context.Background(), types.Tx(tx), nil, txInfo); err != nil {
-				logger.Error("checktx failed for tx", "tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(tx)), "err", err)
+				logger.Error("checktx failed for tx", "tx", fmt.Sprintf("%X", types.Tx(tx).Hash()), "err", err)
 			}
 		}
 
@@ -386,7 +386,7 @@ func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer)
 			}
 			r.Logger.Debug(
 				"gossiped tx to peer",
-				"tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(memTx.tx)),
+				"tx", fmt.Sprintf("%X", memTx.tx.Hash()),
 				"peer", peerID,
 			)
 		}

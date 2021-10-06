@@ -24,10 +24,13 @@ Special thanks to external contributors on this release:
   - [blocksync] \#7046 Remove v2 implementation of the blocksync
     service and recactor, which was disabled in the previous release
     (@tychoish)
+  - [p2p] \#7064 Remove WDRR queue implementation. (@tychoish)
 
 - Blockchain Protocol
 
 ### FEATURES
+
+- [mempool, rpc] \#7041  Add removeTx operation to the RPC layer. (@tychoish)
 
 ### IMPROVEMENTS
 

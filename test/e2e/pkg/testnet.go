@@ -347,7 +347,7 @@ func (n Node) Validate(testnet Testnet) error {
 		return fmt.Errorf("invalid mempool version %q", n.Mempool)
 	}
 	switch n.QueueType {
-	case "", "priority", "wdrr", "fifo":
+	case "", "priority", "fifo":
 	default:
 		return fmt.Errorf("unsupported p2p queue type: %s", n.QueueType)
 	}

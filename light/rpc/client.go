@@ -212,6 +212,10 @@ func (c *Client) CheckTx(ctx context.Context, tx types.Tx) (*coretypes.ResultChe
 	return c.next.CheckTx(ctx, tx)
 }
 
+func (c *Client) RemoveTx(ctx context.Context, txKey types.TxKey) error {
+	return c.next.RemoveTx(ctx, txKey)
+}
+
 func (c *Client) NetInfo(ctx context.Context) (*coretypes.ResultNetInfo, error) {
 	return c.next.NetInfo(ctx)
 }
