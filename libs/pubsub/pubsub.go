@@ -297,7 +297,7 @@ func (s *Server) publish(ctx context.Context, data interface{}, events []types.E
 }
 
 func (s *Server) run() {
-	// The server runs until ctx is cancelled.
+	// The server runs until ctx is canceled.
 	ctx, cancel := context.WithCancel(context.Background())
 	s.done = ctx.Done()
 	s.stop = cancel
