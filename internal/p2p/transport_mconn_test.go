@@ -195,7 +195,6 @@ func TestMConnTransport_Listen(t *testing.T) {
 			_ = conn.Close()
 			<-dialedChan
 
-			time.Sleep(time.Minute)
 			// closing the connection should not error
 			require.NoError(t, peerConn.Close())
 

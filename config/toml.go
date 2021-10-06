@@ -296,61 +296,11 @@ persistent-peers = "{{ .P2P.PersistentPeers }}"
 # UPNP port forwarding
 upnp = {{ .P2P.UPNP }}
 
-# Path to address book
-# TODO: Remove once p2p refactor is complete in favor of peer store.
-addr-book-file = "{{ js .P2P.AddrBook }}"
-
-# Set true for strict address routability rules
-# Set false for private or local networks
-addr-book-strict = {{ .P2P.AddrBookStrict }}
-
-# Maximum number of inbound peers
-#
-# TODO: Remove once p2p refactor is complete in favor of MaxConnections.
-# ref: https://github.com/tendermint/tendermint/issues/5670
-max-num-inbound-peers = {{ .P2P.MaxNumInboundPeers }}
-
-# Maximum number of outbound peers to connect to, excluding persistent peers
-#
-# TODO: Remove once p2p refactor is complete in favor of MaxConnections.
-# ref: https://github.com/tendermint/tendermint/issues/5670
-max-num-outbound-peers = {{ .P2P.MaxNumOutboundPeers }}
-
 # Maximum number of connections (inbound and outbound).
 max-connections = {{ .P2P.MaxConnections }}
 
 # Rate limits the number of incoming connection attempts per IP address.
 max-incoming-connection-attempts = {{ .P2P.MaxIncomingConnectionAttempts }}
-
-# List of node IDs, to which a connection will be (re)established ignoring any existing limits
-# TODO: Remove once p2p refactor is complete.
-# ref: https://github.com/tendermint/tendermint/issues/5670
-unconditional-peer-ids = "{{ .P2P.UnconditionalPeerIDs }}"
-
-# Maximum pause when redialing a persistent peer (if zero, exponential backoff is used)
-# TODO: Remove once p2p refactor is complete
-# ref: https:#github.com/tendermint/tendermint/issues/5670
-persistent-peers-max-dial-period = "{{ .P2P.PersistentPeersMaxDialPeriod }}"
-
-# Time to wait before flushing messages out on the connection
-# TODO: Remove once p2p refactor is complete
-# ref: https:#github.com/tendermint/tendermint/issues/5670
-flush-throttle-timeout = "{{ .P2P.FlushThrottleTimeout }}"
-
-# Maximum size of a message packet payload, in bytes
-# TODO: Remove once p2p refactor is complete
-# ref: https:#github.com/tendermint/tendermint/issues/5670
-max-packet-msg-payload-size = {{ .P2P.MaxPacketMsgPayloadSize }}
-
-# Rate at which packets can be sent, in bytes/second
-# TODO: Remove once p2p refactor is complete
-# ref: https:#github.com/tendermint/tendermint/issues/5670
-send-rate = {{ .P2P.SendRate }}
-
-# Rate at which packets can be received, in bytes/second
-# TODO: Remove once p2p refactor is complete
-# ref: https:#github.com/tendermint/tendermint/issues/5670
-recv-rate = {{ .P2P.RecvRate }}
 
 # Set true to enable the peer-exchange reactor
 pex = {{ .P2P.PexReactor }}
