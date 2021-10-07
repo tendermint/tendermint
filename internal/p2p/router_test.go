@@ -369,6 +369,7 @@ func TestRouter_AcceptPeers(t *testing.T) {
 			mockTransport := &mocks.Transport{}
 			mockTransport.On("String").Maybe().Return("mock")
 			mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
+			mockTransport.On("RecieveMessage").Return(0, nil, nil).Maybe()
 			mockTransport.On("Close").Return(nil)
 			mockTransport.On("Accept").Once().Return(mockConnection, nil)
 			mockTransport.On("Accept").Once().Return(nil, io.EOF)
