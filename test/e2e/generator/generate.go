@@ -44,9 +44,7 @@ var (
 		"tcp":  20,
 		"unix": 10,
 	}
-	// FIXME: v2 disabled due to flake
-	nodeBlockSyncs = uniformChoice{"v0"} // "v2"
-	nodeMempools   = weightedChoice{
+	nodeMempools = weightedChoice{
 		"v0": 20,
 		"v1": 80,
 	}
@@ -253,9 +251,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	for i := 1; i <= numLightClients; i++ {
 		startAt := manifest.InitialHeight + 5
 
-		node := generateLightNode(
-			r, startAt+(5*int64(i)), lightProviders,
-		)
+		node := generateLightNode(r, startAt+(5*int64(i)), lightProviders)
 
 		manifest.Nodes[fmt.Sprintf("light%02d", i)] = node
 
@@ -281,7 +277,6 @@ func generateNode(
 		Database:         nodeDatabases.Choose(r),
 		ABCIProtocol:     nodeABCIProtocols.Choose(r),
 		PrivvalProtocol:  nodePrivvalProtocols.Choose(r),
-		BlockSync:        nodeBlockSyncs.Choose(r).(string),
 		Mempool:          nodeMempools.Choose(r),
 		StateSync:        e2e.StateSyncDisabled,
 		PersistInterval:  ptrUint64(uint64(nodePersistIntervals.Choose(r).(int))),
@@ -327,10 +322,6 @@ func generateNode(
 		if node.RetainBlocks < node.SnapshotInterval {
 			node.RetainBlocks = node.SnapshotInterval
 		}
-	}
-
-	if node.StateSync != e2e.StateSyncDisabled {
-		node.BlockSync = "v0"
 	}
 
 	return &node
