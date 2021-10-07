@@ -351,6 +351,21 @@ func (r *Router) createQueueFactory() (func(int) queue, error) {
 	}
 }
 
+// HailingFrequencies is a joke shim for use during refactoring. We
+// shouldn't commit it.
+func HailingFrequencies(r *Router, chDesc ChannelDescriptor) (*Channel, error) {
+	ch, err := r.OpenChannel(chDesc)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, transport := range r.transports {
+		transport.RegisterChannel(chDesc)
+	}
+
+	return ch, nil
+}
+
 // OpenChannel opens a new channel for the given message type. The caller must
 // close the channel when done, before stopping the Router. messageType is the
 // type of message passed through the channel (used for unmarshaling), which can
@@ -382,10 +397,6 @@ func (r *Router) OpenChannel(chDesc ChannelDescriptor) (*Channel, error) {
 
 	// add the channel to the nodeInfo if it's not already there.
 	r.nodeInfo.AddChannel(uint16(chDesc.ID))
-
-	for _, transport := range r.transports {
-		transport.RegisterChannel(chDesc)
-	}
 
 	go func() {
 		defer func() {

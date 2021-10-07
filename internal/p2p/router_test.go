@@ -121,7 +121,7 @@ func TestRouter_Channel_Basic(t *testing.T) {
 	// Opening a channel should work.
 	channel, err := router.OpenChannel(chDesc)
 	require.NoError(t, err)
-	require.Contains(t, router.NodeInfo().Channels, chDesc.ID)
+	require.Contains(t, router.NodeInfo().Channels, byte(chDesc.ID))
 
 	// Opening the same channel again should fail.
 	_, err = router.OpenChannel(chDesc)
@@ -131,7 +131,7 @@ func TestRouter_Channel_Basic(t *testing.T) {
 	chDesc2 := p2p.ChannelDescriptor{ID: 2, MsgType: &p2ptest.Message{}}
 	_, err = router.OpenChannel(chDesc2)
 	require.NoError(t, err)
-	require.Contains(t, router.NodeInfo().Channels, chDesc2.ID)
+	require.Contains(t, router.NodeInfo().Channels, byte(chDesc2.ID))
 
 	// Closing the channel, then opening it again should be fine.
 	channel.Close()

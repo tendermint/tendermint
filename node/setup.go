@@ -155,7 +155,7 @@ func createMempoolReactor(
 
 	logger = logger.With("module", "mempool", "version", cfg.Mempool.Version)
 
-	channel, err := router.OpenChannel(mempoolv0.GetChannelDescriptor(cfg.Mempool))
+	channel, err := p2p.HailingFrequencies(router, mempoolv0.GetChannelDescriptor(cfg.Mempool))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -242,7 +242,7 @@ func createEvidenceReactor(
 		return nil, nil, fmt.Errorf("creating evidence pool: %w", err)
 	}
 
-	channel, err := router.OpenChannel(evidence.GetChannelDescriptor())
+	channel, err := p2p.HailingFrequencies(router, evidence.GetChannelDescriptor())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -272,7 +272,7 @@ func createBlockchainReactor(
 
 	logger = logger.With("module", "blockchain")
 
-	channel, err := router.OpenChannel(bcv0.GetChannelDescriptor())
+	channel, err := p2p.HailingFrequencies(router, bcv0.GetChannelDescriptor())
 	if err != nil {
 		return nil, err
 	}
@@ -453,7 +453,7 @@ func createPEXReactorV2(
 	router *p2p.Router,
 ) (service.Service, error) {
 
-	channel, err := router.OpenChannel(pex.ChannelDescriptor())
+	channel, err := p2p.HailingFrequencies(router, pex.ChannelDescriptor())
 	if err != nil {
 		return nil, err
 	}

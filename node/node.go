@@ -1069,7 +1069,7 @@ func makeChannelsFromShims(router *p2p.Router, chs []p2p.ChannelDescriptor) (map
 	channels := make(map[p2p.ChannelID]*p2p.Channel, len(chs))
 
 	for idx := range chs {
-		ch, err := router.OpenChannel(chs[idx])
+		ch, err := p2p.HailingFrequencies(router, chs[idx])
 		if err != nil {
 			return nil, fmt.Errorf("failed to open channel %v: %w", ch.ID, err)
 		}
