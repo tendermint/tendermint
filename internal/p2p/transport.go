@@ -7,6 +7,7 @@ import (
 	"net"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/internal/p2p/conn"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -44,8 +45,7 @@ type Transport interface {
 	// Close stops accepting new connections, but does not close active connections.
 	Close() error
 
-	// RegisterChannel registers a channel at the transport layer
-	RegisterChannel(ChannelDescriptor)
+	RegisterChannel(conn.ChannelDescriptor) error
 
 	// Stringer is used to display the transport, e.g. in logs.
 	//

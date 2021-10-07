@@ -139,7 +139,7 @@ func (t *MemoryTransport) Endpoints() []Endpoint {
 	}
 }
 
-func (t *MemoryTransport) RegisterChannel(chDesc ChannelDescriptor) {}
+func (t *MemoryTransport) RegisterChannel(ch ChannelDescriptor) error { return nil }
 
 // Accept implements Transport.
 func (t *MemoryTransport) Accept() (Connection, error) {

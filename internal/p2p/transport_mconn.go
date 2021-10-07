@@ -7,6 +7,7 @@ import (
 	"io"
 	"math"
 	"net"
+	"sort"
 	"strconv"
 	"sync"
 
@@ -76,6 +77,20 @@ func (m *MConnTransport) String() string {
 // Protocols implements Transport. We support tcp for backwards-compatibility.
 func (m *MConnTransport) Protocols() []Protocol {
 	return []Protocol{MConnProtocol, TCPProtocol}
+}
+
+func (m *MConnTransport) RegisterChannel(ch ChannelDescriptor) error {
+	for _, desc := range m.channelDescs {
+		if desc.ID == ch.ID {
+			return fmt.Errorf("cannot re-register channel %d", ch.ID)
+		}
+	}
+
+	m.channelDescs = append(m.channelDescs, ch)
+	sort.SliceStable(m.channelDescs, func(i, j int) bool {
+		return m.channelDescs[i].ID < m.channelDescs[j].ID
+	})
+	return nil
 }
 
 // Endpoints implements Transport.
@@ -184,11 +199,6 @@ func (m *MConnTransport) Close() error {
 		}
 	})
 	return err
-}
-
-// RegisterChannel informs the transport of a routable channel.
-func (m *MConnTransport) RegisterChannel(channelDesc ChannelDescriptor) {
-	m.channelDescs = append(m.channelDescs, channelDesc)
 }
 
 // validateEndpoint validates an endpoint.

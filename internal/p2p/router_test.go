@@ -870,7 +870,8 @@ func TestRouter_DontSendOnInvalidChannel(t *testing.T) {
 
 	mockTransport := &mocks.Transport{}
 	mockTransport.On("String").Maybe().Return("mock")
-	mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
+	mockTransport.On("Protocols").Maybe().Return([]p2p.Protocol{"mock"})
+	mockTransport.On("RegisterChannel", mock.AnythingOfType("conn.ChannelDescriptor")).Maybe().Return(nil)
 	mockTransport.On("Close").Return(nil)
 	mockTransport.On("Accept").Once().Return(mockConnection, nil)
 	mockTransport.On("Accept").Once().Return(nil, io.EOF)

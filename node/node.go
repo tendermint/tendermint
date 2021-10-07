@@ -309,7 +309,7 @@ func makeNode(cfg *config.Config,
 	ssChans := map[p2p.ChannelID]*p2p.Channel{}
 	for idx := range statesync.ChannelShims {
 		chDesc := statesync.ChannelShims[idx]
-		ssChans[chDesc.ID], err = p2p.HailingFrequencies(router, chDesc)
+		ssChans[chDesc.ID], err = router.OpenChannel(chDesc)
 		if err != nil {
 			return nil, err
 		}
