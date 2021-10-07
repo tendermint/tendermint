@@ -152,6 +152,9 @@ func LoadTestnet(file string) (*Testnet, error) {
 	if manifest.InitialHeight > 0 {
 		testnet.InitialHeight = manifest.InitialHeight
 	}
+	if testnet.ABCIProtocol == "" {
+		testnet.ABCIProtocol = string(ProtocolBuiltin)
+	}
 
 	// Set up nodes, in alphabetical order (IPs and ports get same order).
 	nodeNames := []string{}
