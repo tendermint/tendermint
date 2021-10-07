@@ -320,9 +320,14 @@ func createConsensusReactor(
 		consensusState.SetPrivValidator(privValidator)
 	}
 
-	channels, err := makeChannelsFromShims(router, consensus.ChannelShims)
-	if err != nil {
-		return nil, nil, err
+	var err error
+	chans := map[p2p.ChannelID]*p2p.Channel{}
+	for idx := range consensus.ChannelShims {
+		chDesc := consensus.ChannelShims[idx]
+		chans[chDesc.ID], err = p2p.HailingFrequencies(router, chDesc)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	peerUpdates := peerManager.Subscribe()
@@ -330,10 +335,10 @@ func createConsensusReactor(
 	reactor := consensus.NewReactor(
 		logger,
 		consensusState,
-		channels[consensus.StateChannel],
-		channels[consensus.DataChannel],
-		channels[consensus.VoteChannel],
-		channels[consensus.VoteSetBitsChannel],
+		chans[consensus.StateChannel],
+		chans[consensus.DataChannel],
+		chans[consensus.VoteChannel],
+		chans[consensus.VoteSetBitsChannel],
 		peerUpdates,
 		waitSync,
 		consensus.ReactorMetrics(csMetrics),

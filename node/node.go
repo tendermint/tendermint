@@ -306,9 +306,13 @@ func makeNode(cfg *config.Config,
 	// https://github.com/tendermint/tendermint/issues/4644
 	ssLogger := logger.With("module", "statesync")
 
-	channels, err := makeChannelsFromShims(router, statesync.ChannelShims)
-	if err != nil {
-		return nil, err
+	ssChans := map[p2p.ChannelID]*p2p.Channel{}
+	for idx := range statesync.ChannelShims {
+		chDesc := statesync.ChannelShims[idx]
+		ssChans[chDesc.ID], err = p2p.HailingFrequencies(router, chDesc)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	peerUpdates := peerManager.Subscribe()
@@ -319,10 +323,10 @@ func makeNode(cfg *config.Config,
 		ssLogger,
 		proxyApp.Snapshot(),
 		proxyApp.Query(),
-		channels[statesync.SnapshotChannel],
-		channels[statesync.ChunkChannel],
-		channels[statesync.LightBlockChannel],
-		channels[statesync.ParamsChannel],
+		ssChans[statesync.SnapshotChannel],
+		ssChans[statesync.ChunkChannel],
+		ssChans[statesync.LightBlockChannel],
+		ssChans[statesync.ParamsChannel],
 		peerUpdates,
 		stateStore,
 		blockStore,
@@ -1062,19 +1066,4 @@ func getRouterConfig(conf *config.Config, proxyApp proxy.AppConns) p2p.RouterOpt
 	}
 
 	return opts
-}
-
-// FIXME: Temporary helper function, shims should be removed.
-func makeChannelsFromShims(router *p2p.Router, chs []p2p.ChannelDescriptor) (map[p2p.ChannelID]*p2p.Channel, error) {
-	channels := make(map[p2p.ChannelID]*p2p.Channel, len(chs))
-
-	for idx := range chs {
-		ch, err := p2p.HailingFrequencies(router, chs[idx])
-		if err != nil {
-			return nil, fmt.Errorf("failed to open channel %v: %w", ch.ID, err)
-		}
-		channels[ch.ID] = ch
-	}
-
-	return channels, nil
 }
