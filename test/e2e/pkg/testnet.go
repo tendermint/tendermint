@@ -71,6 +71,7 @@ type Testnet struct {
 	Evidence         int
 	LogLevel         string
 	TxSize           int64
+	ABCIProtocol     string
 }
 
 // Node represents a Tendermint node in a testnet.
@@ -140,6 +141,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 		KeyType:          "ed25519",
 		LogLevel:         manifest.LogLevel,
 		TxSize:           manifest.TxSize,
+		ABCIProtocol:     manifest.ABCIProtocol,
 	}
 	if len(manifest.KeyType) != 0 {
 		testnet.KeyType = manifest.KeyType
@@ -169,7 +171,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			ProxyPort:        proxyPortGen.Next(),
 			Mode:             ModeValidator,
 			Database:         "goleveldb",
-			ABCIProtocol:     ProtocolBuiltin,
+			ABCIProtocol:     Protocol(testnet.ABCIProtocol),
 			PrivvalProtocol:  ProtocolFile,
 			StartAt:          nodeManifest.StartAt,
 			BlockSync:        nodeManifest.BlockSync,
@@ -191,9 +193,6 @@ func LoadTestnet(file string) (*Testnet, error) {
 		}
 		if nodeManifest.Database != "" {
 			node.Database = nodeManifest.Database
-		}
-		if nodeManifest.ABCIProtocol != "" {
-			node.ABCIProtocol = Protocol(nodeManifest.ABCIProtocol)
 		}
 		if nodeManifest.PrivvalProtocol != "" {
 			node.PrivvalProtocol = Protocol(nodeManifest.PrivvalProtocol)
