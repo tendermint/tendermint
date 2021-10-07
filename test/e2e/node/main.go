@@ -79,7 +79,7 @@ func run(configFile string) error {
 		case string(e2e.ModeLight):
 			err = startLightNode(cfg)
 		case string(e2e.ModeSeed):
-			err = startSeedNode(cfg)
+			err = startSeedNode()
 		default:
 			err = startNode(cfg)
 		}
@@ -140,7 +140,7 @@ func startNode(cfg *Config) error {
 	return n.Start()
 }
 
-func startSeedNode(cfg *Config) error {
+func startSeedNode() error {
 	tmcfg, nodeLogger, err := setupNode()
 	if err != nil {
 		return fmt.Errorf("failed to setup config: %w", err)

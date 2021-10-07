@@ -509,7 +509,7 @@ func (r *Reactor) backfill(
 			}
 
 			trustedBlockID = resp.block.LastBlockID
-			queue.success(resp.block.Height)
+			queue.success()
 			r.Logger.Info("backfill: verified and stored light block", "height", resp.block.Height)
 
 			lastValidatorSet = resp.block.ValidatorSet

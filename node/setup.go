@@ -254,7 +254,6 @@ func createEvidenceReactor(
 
 func createBlockchainReactor(
 	logger log.Logger,
-	cfg *config.Config,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore *store.BlockStore,
@@ -354,7 +353,6 @@ func createTransport(logger log.Logger, cfg *config.Config) *p2p.MConnTransport 
 func createPeerManager(
 	cfg *config.Config,
 	dbProvider config.DBProvider,
-	p2pLogger log.Logger,
 	nodeID types.NodeID,
 ) (*p2p.PeerManager, error) {
 
@@ -443,7 +441,6 @@ func createRouter(
 }
 
 func createPEXReactorV2(
-	cfg *config.Config,
 	logger log.Logger,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
