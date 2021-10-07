@@ -18,7 +18,7 @@ Special thanks to external contributors on this release:
 - P2P Protocol
 
   - [p2p] \#7035 Remove legacy P2P routing implementation and
-    associated configuration (@tychoish)
+    associated configuration options (@tychoish)
 
 - Go API
 

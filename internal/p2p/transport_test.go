@@ -315,22 +315,16 @@ func TestConnection_FlushClose(t *testing.T) {
 		b := makeTransport(t)
 		ab, _ := dialAcceptHandshake(t, a, b)
 
-		// FIXME: FlushClose should be removed (and replaced by separate Flush
-		// and Close calls if necessary). We can't reliably test it, so we just
-		// make sure it closes both ends and that it's idempotent.
-		err := ab.FlushClose()
+		err := ab.Close()
 		require.NoError(t, err)
 
 		_, _, err = ab.ReceiveMessage()
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
 
-		_, err = ab.SendMessage(chID, []byte("closed"))
+		err = ab.SendMessage(chID, []byte("closed"))
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
-
-		err = ab.FlushClose()
-		require.NoError(t, err)
 	})
 }
 
@@ -355,9 +349,8 @@ func TestConnection_SendReceive(t *testing.T) {
 		ab, ba := dialAcceptHandshake(t, a, b)
 
 		// Can send and receive a to b.
-		ok, err := ab.SendMessage(chID, []byte("foo"))
+		err := ab.SendMessage(chID, []byte("foo"))
 		require.NoError(t, err)
-		require.True(t, ok)
 
 		ch, msg, err := ba.ReceiveMessage()
 		require.NoError(t, err)
@@ -365,22 +358,12 @@ func TestConnection_SendReceive(t *testing.T) {
 		require.Equal(t, chID, ch)
 
 		// Can send and receive b to a.
-		_, err = ba.SendMessage(chID, []byte("bar"))
+		err = ba.SendMessage(chID, []byte("bar"))
 		require.NoError(t, err)
 
 		_, msg, err = ab.ReceiveMessage()
 		require.NoError(t, err)
 		require.Equal(t, []byte("bar"), msg)
-
-		// TrySendMessage also works.
-		ok, err = ba.TrySendMessage(chID, []byte("try"))
-		require.NoError(t, err)
-		require.True(t, ok)
-
-		ch, msg, err = ab.ReceiveMessage()
-		require.NoError(t, err)
-		require.Equal(t, []byte("try"), msg)
-		require.Equal(t, chID, ch)
 
 		// Connections should still be active after closing the transports.
 		err = a.Close()
@@ -388,7 +371,7 @@ func TestConnection_SendReceive(t *testing.T) {
 		err = b.Close()
 		require.NoError(t, err)
 
-		_, err = ab.SendMessage(chID, []byte("still here"))
+		err = ab.SendMessage(chID, []byte("still here"))
 		require.NoError(t, err)
 		ch, msg, err = ba.ReceiveMessage()
 		require.NoError(t, err)
@@ -403,34 +386,18 @@ func TestConnection_SendReceive(t *testing.T) {
 		_, _, err = ab.ReceiveMessage()
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
-		_, err = ab.TrySendMessage(chID, []byte("closed try"))
-		require.Error(t, err)
-		require.Equal(t, io.EOF, err)
-		_, err = ab.SendMessage(chID, []byte("closed"))
+
+		err = ab.SendMessage(chID, []byte("closed"))
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
 
 		_, _, err = ba.ReceiveMessage()
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
-		_, err = ba.TrySendMessage(chID, []byte("closed try"))
+
+		err = ba.SendMessage(chID, []byte("closed"))
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
-		_, err = ba.SendMessage(chID, []byte("closed"))
-		require.Error(t, err)
-		require.Equal(t, io.EOF, err)
-	})
-}
-
-func TestConnection_Status(t *testing.T) {
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
-		a := makeTransport(t)
-		b := makeTransport(t)
-		ab, _ := dialAcceptHandshake(t, a, b)
-
-		// FIXME: This isn't implemented in all transports, so for now we just
-		// check that it doesn't panic, which isn't really much of a test.
-		ab.Status()
 	})
 }
 

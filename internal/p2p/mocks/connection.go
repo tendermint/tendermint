@@ -5,11 +5,8 @@ package mocks
 import (
 	context "context"
 
-	conn "github.com/tendermint/tendermint/internal/p2p/conn"
-
-	crypto "github.com/tendermint/tendermint/crypto"
-
 	mock "github.com/stretchr/testify/mock"
+	crypto "github.com/tendermint/tendermint/crypto"
 
 	p2p "github.com/tendermint/tendermint/internal/p2p"
 
@@ -23,20 +20,6 @@ type Connection struct {
 
 // Close provides a mock function with given fields:
 func (_m *Connection) Close() error {
-	ret := _m.Called()
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// FlushClose provides a mock function with given fields:
-func (_m *Connection) FlushClose() error {
 	ret := _m.Called()
 
 	var r0 error
@@ -138,35 +121,14 @@ func (_m *Connection) RemoteEndpoint() p2p.Endpoint {
 }
 
 // SendMessage provides a mock function with given fields: _a0, _a1
-func (_m *Connection) SendMessage(_a0 p2p.ChannelID, _a1 []byte) (bool, error) {
+func (_m *Connection) SendMessage(_a0 p2p.ChannelID, _a1 []byte) error {
 	ret := _m.Called(_a0, _a1)
 
-	var r0 bool
-	if rf, ok := ret.Get(0).(func(p2p.ChannelID, []byte) bool); ok {
+	var r0 error
+	if rf, ok := ret.Get(0).(func(p2p.ChannelID, []byte) error); ok {
 		r0 = rf(_a0, _a1)
 	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(p2p.ChannelID, []byte) error); ok {
-		r1 = rf(_a0, _a1)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// Status provides a mock function with given fields:
-func (_m *Connection) Status() conn.ConnectionStatus {
-	ret := _m.Called()
-
-	var r0 conn.ConnectionStatus
-	if rf, ok := ret.Get(0).(func() conn.ConnectionStatus); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(conn.ConnectionStatus)
+		r0 = ret.Error(0)
 	}
 
 	return r0
@@ -184,25 +146,4 @@ func (_m *Connection) String() string {
 	}
 
 	return r0
-}
-
-// TrySendMessage provides a mock function with given fields: _a0, _a1
-func (_m *Connection) TrySendMessage(_a0 p2p.ChannelID, _a1 []byte) (bool, error) {
-	ret := _m.Called(_a0, _a1)
-
-	var r0 bool
-	if rf, ok := ret.Get(0).(func(p2p.ChannelID, []byte) bool); ok {
-		r0 = rf(_a0, _a1)
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(p2p.ChannelID, []byte) error); ok {
-		r1 = rf(_a0, _a1)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
 }

@@ -226,7 +226,6 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 	for i := 0; i < nValidators+nNonValidators; i++ {
 		nodeDir := filepath.Join(outputDir, fmt.Sprintf("%s%d", nodeDirPrefix, i))
 		config.SetRoot(nodeDir)
-		config.P2P.AddrBookStrict = false
 		config.P2P.AllowDuplicateIP = true
 		if populatePersistentPeers {
 			persistentPeersWithoutSelf := make([]string, 0)

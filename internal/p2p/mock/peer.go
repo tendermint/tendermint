@@ -4,7 +4,6 @@ import (
 	"net"
 
 	"github.com/tendermint/tendermint/internal/p2p"
-	"github.com/tendermint/tendermint/internal/p2p/conn"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
 )
@@ -51,10 +50,10 @@ func (mp *Peer) NodeInfo() types.NodeInfo {
 		ListenAddr: mp.addr.DialString(),
 	}
 }
-func (mp *Peer) Status() conn.ConnectionStatus { return conn.ConnectionStatus{} }
-func (mp *Peer) ID() types.NodeID              { return mp.id }
-func (mp *Peer) IsOutbound() bool              { return mp.Outbound }
-func (mp *Peer) IsPersistent() bool            { return mp.Persistent }
+
+func (mp *Peer) ID() types.NodeID   { return mp.id }
+func (mp *Peer) IsOutbound() bool   { return mp.Outbound }
+func (mp *Peer) IsPersistent() bool { return mp.Persistent }
 func (mp *Peer) Get(key string) interface{} {
 	if value, ok := mp.kv[key]; ok {
 		return value
