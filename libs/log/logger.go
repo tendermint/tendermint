@@ -3,7 +3,7 @@ package log
 import (
 	"io"
 
-	kitlog "github.com/go-kit/kit/log"
+	kitlog "github.com/go-kit/log"
 )
 
 // Logger is what any Tendermint library should take.

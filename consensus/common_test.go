@@ -18,7 +18,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 
-	"github.com/go-kit/kit/log/term"
+	"github.com/go-kit/log/term"
 	"github.com/stretchr/testify/require"
 
 	"path"

@@ -15,6 +15,7 @@ require (
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/go-chi/chi v4.1.2+incompatible // indirect
 	github.com/go-kit/kit v0.12.0
+	github.com/go-kit/log v0.2.0
 	github.com/go-logfmt/logfmt v0.5.1
 	github.com/go-pkgz/jrpc v0.2.0
 	github.com/go-pkgz/rest v1.11.0 // indirect
