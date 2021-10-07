@@ -1043,10 +1043,6 @@ func getRouterConfig(conf *config.Config, proxyApp proxy.AppConns) p2p.RouterOpt
 		QueueType: conf.P2P.QueueType,
 	}
 
-	if conf.P2P.MaxNumInboundPeers > 0 {
-		opts.MaxIncomingConnectionAttempts = conf.P2P.MaxIncomingConnectionAttempts
-	}
-
 	if conf.FilterPeers && proxyApp != nil {
 		opts.FilterPeerByID = func(ctx context.Context, id types.NodeID) error {
 			res, err := proxyApp.Query().QuerySync(context.Background(), abci.RequestQuery{
