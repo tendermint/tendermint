@@ -3,7 +3,7 @@
 // single Server instance.
 //
 // Clients register subscriptions with a query to select which messages they
-// wish to receive. When a message is published, they are broadcast to all
+// wish to receive. When messages are published, they are broadcast to all
 // clients whose subscription query matches that message. Queries are
 // constructed using the github.com/tendermint/tendermint/libs/pubsub/query
 // package.
@@ -14,7 +14,7 @@
 //     if err != nil {
 //         return err
 //     }
-//     ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
+//     ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 //     defer cancel()
 //     subscription, err := pubsub.Subscribe(ctx, "johns-transactions", q)
 //     if err != nil {
