@@ -584,6 +584,7 @@ func newReactorStore(
 		panic(err)
 	}
 
+	var prevBlock *types.Block
 	// add blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
 
@@ -620,24 +621,27 @@ func newReactorStore(
 		}
 
 		// Assert state
+		require.GreaterOrEqual(t, len(state.LastStateID.LastAppHash), crypto.SmallAppHashSize)
 		assert.EqualValues(t, blockHeight, state.LastBlockHeight)
 		assert.EqualValues(t, blockHeight, binary.LittleEndian.Uint64(state.AppHash))
+
 		// Assert some StateID params
 		assert.EqualValues(t, blockHeight-1, state.LastStateID.Height)
-		require.GreaterOrEqual(t, len(state.LastStateID.LastAppHash), crypto.SmallAppHashSize)
 		assert.EqualValues(t, blockHeight-1, binary.LittleEndian.Uint64(state.LastStateID.LastAppHash))
 
 		// Assert last commit
 		assert.EqualValues(t, blockHeight-1, lastCommit.Height)
-		if blockHeight >= 2 {
-			assert.EqualValues(t, blockHeight-2, lastCommit.StateID.Height)
-			assert.EqualValues(t, blockHeight-2, binary.LittleEndian.Uint64(lastCommit.StateID.LastAppHash))
+		if blockHeight > state.InitialHeight {
+			// verify StateID of commit for block N-1 (which is in thisBlock)
+			assert.EqualValues(t, thisBlock.Height-2, thisBlock.LastCommit.StateID.Height)
+			assert.EqualValues(t, prevBlock.Header.AppHash, thisBlock.LastCommit.StateID.LastAppHash)
 		} else {
 			assert.EqualValues(t, 0, lastCommit.StateID.Height)
 			assert.EqualValues(t, 0, binary.LittleEndian.Uint64(lastCommit.StateID.LastAppHash))
 		}
 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
+		prevBlock = thisBlock
 	}
 	return blockStore, state, blockExec
 }
