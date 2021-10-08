@@ -118,7 +118,7 @@ type Option func(*Server)
 
 // NewServer returns a new server. See the commentary on the Option functions
 // for a detailed description of how to configure buffering. If no options are
-// provided, the resulting server's queue buffers at most one item.
+// provided, the resulting server's queue is unbuffered.
 func NewServer(options ...Option) *Server {
 	s := new(Server)
 	for _, opt := range options {
