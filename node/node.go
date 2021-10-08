@@ -524,7 +524,7 @@ func (n *nodeImpl) OnStart() error {
 	if err != nil {
 		return err
 	}
-	if err := n.transport.Listen(*ep); err != nil {
+	if err := n.transport.Listen(ep); err != nil {
 		return err
 	}
 
