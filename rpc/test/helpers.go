@@ -73,6 +73,7 @@ func CreateConfig(testName string) *config.Config {
 	tm, rpc, grpc := makeAddrs()
 	c.P2P.ListenAddress = tm
 	c.RPC.ListenAddress = rpc
+	c.Consensus.WalPath = "rpc-test"
 	c.RPC.CORSAllowedOrigins = []string{"https://tendermint.com/"}
 	c.RPC.GRPCListenAddress = grpc
 	return c
