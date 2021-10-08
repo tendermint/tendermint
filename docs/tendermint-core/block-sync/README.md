@@ -1,7 +1,7 @@
 ---
 order: 1
 parent:
-  title: Fast Sync
+  title: Block Sync
   order: 6
 ---
 
