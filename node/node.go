@@ -352,7 +352,7 @@ func makeNode(cfg *config.Config,
 	pexCh := pex.ChannelDescriptor()
 	transport.AddChannelDescriptors([]*p2p.ChannelDescriptor{&pexCh})
 
-	pexReactor, err = createPEXReactorV2(logger, peerManager, router)
+	pexReactor, err = createPEXReactor(logger, peerManager, router)
 	if err != nil {
 		return nil, err
 	}
@@ -466,7 +466,7 @@ func makeSeedNode(cfg *config.Config,
 	pexCh := pex.ChannelDescriptor()
 	transport.AddChannelDescriptors([]*p2p.ChannelDescriptor{&pexCh})
 
-	pexReactor, err = createPEXReactorV2(logger, peerManager, router)
+	pexReactor, err = createPEXReactor(logger, peerManager, router)
 	if err != nil {
 		return nil, err
 	}
