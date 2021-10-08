@@ -16,13 +16,15 @@ package crypto_test
 
 import (
 	"fmt"
+	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto"
 )
 
-func ExampleSha256() {
+func TestSha256Checksum(t *testing.T) {
 	sum := crypto.Sha256([]byte("This is Tendermint"))
-	fmt.Printf("%x\n", sum)
-	// Output:
-	// f91afb642f3d1c87c17eb01aae5cb65c242dfdbe7cf1066cc260f4ce5d33b94e
+	require.EqualValues(t,
+		"f91afb642f3d1c87c17eb01aae5cb65c242dfdbe7cf1066cc260f4ce5d33b94e",
+		fmt.Sprintf("%x", sum))
 }

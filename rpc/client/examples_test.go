@@ -3,16 +3,19 @@ package client_test
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"log"
+	"testing"
+	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 )
 
-func ExampleHTTP_simple() {
+func TestingHTTPSimple(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -29,9 +32,7 @@ func ExampleHTTP_simple() {
 	// Create our RPC client
 	rpcAddr := conf.RPC.ListenAddress
 	c, err := rpchttp.New(rpcAddr)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create a transaction
 	k := []byte("name")
@@ -41,6 +42,7 @@ func ExampleHTTP_simple() {
 	// Broadcast the transaction and wait for it to commit (rather use
 	// c.BroadcastTxSync though in production).
 	bres, err := c.BroadcastTxCommit(context.Background(), tx)
+	require.NoError(t, err)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -50,30 +52,19 @@ func ExampleHTTP_simple() {
 
 	// Now try to fetch the value for the key
 	qres, err := c.ABCIQuery(context.Background(), "/key", k)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if qres.Response.IsErr() {
-		log.Fatal("ABCIQuery failed")
-	}
-	if !bytes.Equal(qres.Response.Key, k) {
-		log.Fatal("returned key does not match queried key")
-	}
-	if !bytes.Equal(qres.Response.Value, v) {
-		log.Fatal("returned value does not match sent value")
-	}
+	require.NoError(t, err)
+	require.False(t, qres.Response.IsErr(), "ABCIQuery failed")
+	require.True(t, bytes.Equal(qres.Response.Key, k),
+		"returned key does not match queried key")
+	require.False(t, bytes.Equal(qres.Response.Value, v),
+		"returned value does not match sent value")
 
-	fmt.Println("Sent tx     :", string(tx))
-	fmt.Println("Queried for :", string(qres.Response.Key))
-	fmt.Println("Got value   :", string(qres.Response.Value))
-
-	// Output:
-	// Sent tx     : name=satoshi
-	// Queried for : name
-	// Got value   : satoshi
+	assert.Equal(t, "name=satoshi", string(tx), "sent tx")
+	assert.Equal(t, "name", string(qres.Response.Key), "queried for")
+	assert.Equal(t, "satoshi", string(qres.Response.Value), "got value")
 }
 
-func ExampleHTTP_batching() {
+func TestHTTPBatching(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -89,9 +80,7 @@ func ExampleHTTP_batching() {
 
 	rpcAddr := conf.RPC.ListenAddress
 	c, err := rpchttp.New(rpcAddr)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create our two transactions
 	k1 := []byte("firstName")
@@ -111,41 +100,43 @@ func ExampleHTTP_batching() {
 	for _, tx := range txs {
 		// Broadcast the transaction and wait for it to commit (rather use
 		// c.BroadcastTxSync though in production).
-		if _, err := batch.BroadcastTxCommit(context.Background(), tx); err != nil {
-			log.Fatal(err)
-		}
+		_, err := batch.BroadcastTxSync(context.Background(), tx)
+		require.NoError(t, err)
 	}
 
 	// Send the batch of 2 transactions
-	if _, err := batch.Send(context.Background()); err != nil {
-		log.Fatal(err)
-	}
+	_, err = batch.Send(context.Background())
+	require.NoError(t, err)
+
+	// wait for the transaction to land, we could poll more for
+	// the transactions to land definitively.
+	time.Sleep(3 * time.Second)
 
 	// Now let's query for the original results as a batch
 	keys := [][]byte{k1, k2}
 	for _, key := range keys {
-		if _, err := batch.ABCIQuery(context.Background(), "/key", key); err != nil {
-			log.Fatal(err)
-		}
+		_, err := batch.ABCIQuery(context.Background(), "/key", key)
+		require.NoError(t, err)
 	}
 
 	// Send the 2 queries and keep the results
 	results, err := batch.Send(context.Background())
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
 
+	require.Len(t, results, 2)
 	// Each result in the returned list is the deserialized result of each
 	// respective ABCIQuery response
 	for _, result := range results {
 		qr, ok := result.(*coretypes.ResultABCIQuery)
-		if !ok {
-			log.Fatal("invalid result type from ABCIQuery request")
-		}
-		fmt.Println(string(qr.Response.Key), "=", string(qr.Response.Value))
-	}
+		require.True(t, ok, "invalid result type from ABCIQuery request")
 
-	// Output:
-	// firstName = satoshi
-	// lastName = nakamoto
+		switch string(qr.Response.Key) {
+		case "firstName":
+			require.Equal(t, "satoshi", string(qr.Response.Value))
+		case "lastName":
+			require.Equal(t, "nakamoto", string(qr.Response.Value))
+		default:
+			t.Fatalf("encountered unknown key %q", string(qr.Response.Key))
+		}
+	}
 }
