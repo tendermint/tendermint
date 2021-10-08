@@ -212,6 +212,12 @@ func (s *Server) Unsubscribe(ctx context.Context, args UnsubscribeArgs) error {
 		return ErrServerStopped
 	}
 
+	// TODO(creachadair): Do we need to support unsubscription for an "empty"
+	// query?  I believe that case is not possible by the Query grammar, but we
+	// should make sure.
+	//
+	// Revisit this logic once we are able to remove indexing by query.
+
 	var evict subInfoSet
 	if args.Subscriber != "" {
 		evict = s.subs.index.findClientID(args.Subscriber)
