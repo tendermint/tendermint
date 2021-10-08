@@ -449,7 +449,7 @@ func createRouter(
 	)
 }
 
-func createPEXReactorV2(
+func createPEXReactor(
 	logger log.Logger,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
@@ -461,7 +461,7 @@ func createPEXReactorV2(
 	}
 
 	peerUpdates := peerManager.Subscribe()
-	return pex.NewReactorV2(logger, peerManager, channel, peerUpdates), nil
+	return pex.NewReactor(logger, peerManager, channel, peerUpdates), nil
 }
 
 func makeNodeInfo(

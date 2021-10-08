@@ -273,7 +273,7 @@ func TestReactorIntegrationWithLegacyHandleResponse(t *testing.T) {
 }
 
 type singleTestReactor struct {
-	reactor  *pex.ReactorV2
+	reactor  *pex.Reactor
 	pexInCh  chan p2p.Envelope
 	pexOutCh chan p2p.Envelope
 	pexErrCh chan p2p.PeerError
@@ -302,7 +302,7 @@ func setupSingle(t *testing.T) *singleTestReactor {
 	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 
-	reactor := pex.NewReactorV2(log.TestingLogger(), peerManager, pexCh, peerUpdates)
+	reactor := pex.NewReactor(log.TestingLogger(), peerManager, pexCh, peerUpdates)
 	require.NoError(t, reactor.Start())
 	t.Cleanup(func() {
 		err := reactor.Stop()
@@ -328,7 +328,7 @@ type reactorTestSuite struct {
 	network *p2ptest.Network
 	logger  log.Logger
 
-	reactors    map[types.NodeID]*pex.ReactorV2
+	reactors    map[types.NodeID]*pex.Reactor
 	pexChannels map[types.NodeID]*p2p.Channel
 
 	peerChans   map[types.NodeID]chan p2p.PeerUpdate
@@ -371,7 +371,7 @@ func setupNetwork(t *testing.T, opts testOptions) *reactorTestSuite {
 	rts := &reactorTestSuite{
 		logger:      log.TestingLogger().With("testCase", t.Name()),
 		network:     p2ptest.MakeNetwork(t, networkOpts),
-		reactors:    make(map[types.NodeID]*pex.ReactorV2, realNodes),
+		reactors:    make(map[types.NodeID]*pex.Reactor, realNodes),
 		pexChannels: make(map[types.NodeID]*p2p.Channel, opts.TotalNodes),
 		peerChans:   make(map[types.NodeID]chan p2p.PeerUpdate, opts.TotalNodes),
 		peerUpdates: make(map[types.NodeID]*p2p.PeerUpdates, opts.TotalNodes),
@@ -396,7 +396,7 @@ func setupNetwork(t *testing.T, opts testOptions) *reactorTestSuite {
 		if idx < opts.MockNodes {
 			rts.mocks = append(rts.mocks, nodeID)
 		} else {
-			rts.reactors[nodeID] = pex.NewReactorV2(
+			rts.reactors[nodeID] = pex.NewReactor(
 				rts.logger.With("nodeID", nodeID),
 				rts.network.Nodes[nodeID].PeerManager,
 				rts.pexChannels[nodeID],
@@ -455,7 +455,7 @@ func (r *reactorTestSuite) addNodes(t *testing.T, nodes int) {
 		r.peerChans[nodeID] = make(chan p2p.PeerUpdate, r.opts.BufferSize)
 		r.peerUpdates[nodeID] = p2p.NewPeerUpdates(r.peerChans[nodeID], r.opts.BufferSize)
 		r.network.Nodes[nodeID].PeerManager.Register(r.peerUpdates[nodeID])
-		r.reactors[nodeID] = pex.NewReactorV2(
+		r.reactors[nodeID] = pex.NewReactor(
 			r.logger.With("nodeID", nodeID),
 			r.network.Nodes[nodeID].PeerManager,
 			r.pexChannels[nodeID],

@@ -349,7 +349,7 @@ func makeNode(cfg *config.Config,
 
 	var pexReactor service.Service
 
-	pexReactor, err = createPEXReactorV2(logger, peerManager, router)
+	pexReactor, err = createPEXReactor(logger, peerManager, router)
 	if err != nil {
 		return nil, err
 	}
@@ -457,7 +457,7 @@ func makeSeedNode(cfg *config.Config,
 	var pexReactor service.Service
 
 	// add the pex reactor
-	pexReactor, err = createPEXReactorV2(logger, peerManager, router)
+	pexReactor, err = createPEXReactor(logger, peerManager, router)
 	if err != nil {
 		return nil, err
 	}
