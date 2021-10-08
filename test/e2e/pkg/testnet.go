@@ -60,6 +60,7 @@ type Testnet struct {
 	ValidatorUpdates map[int64]map[*Node]int64
 	Nodes            []*Node
 	KeyType          string
+	ABCIProtocol     string
 }
 
 // Node represents a Tendermint node in a testnet.
@@ -122,9 +123,16 @@ func LoadTestnet(file string) (*Testnet, error) {
 		Validators:       map[*Node]int64{},
 		ValidatorUpdates: map[int64]map[*Node]int64{},
 		Nodes:            []*Node{},
+		ABCIProtocol:     manifest.ABCIProtocol,
+	}
+	if len(manifest.KeyType) != 0 {
+		testnet.KeyType = manifest.KeyType
 	}
 	if manifest.InitialHeight > 0 {
 		testnet.InitialHeight = manifest.InitialHeight
+	}
+	if testnet.ABCIProtocol == "" {
+		testnet.ABCIProtocol = string(ProtocolBuiltin)
 	}
 
 	// Set up nodes, in alphabetical order (IPs and ports get same order).
@@ -145,7 +153,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			ProxyPort:        proxyPortGen.Next(),
 			Mode:             ModeValidator,
 			Database:         "goleveldb",
-			ABCIProtocol:     ProtocolBuiltin,
+			ABCIProtocol:     Protocol(testnet.ABCIProtocol),
 			PrivvalProtocol:  ProtocolFile,
 			StartAt:          nodeManifest.StartAt,
 			FastSync:         nodeManifest.FastSync,
@@ -164,9 +172,6 @@ func LoadTestnet(file string) (*Testnet, error) {
 		}
 		if nodeManifest.Database != "" {
 			node.Database = nodeManifest.Database
-		}
-		if nodeManifest.ABCIProtocol != "" {
-			node.ABCIProtocol = Protocol(nodeManifest.ABCIProtocol)
 		}
 		if nodeManifest.PrivvalProtocol != "" {
 			node.PrivvalProtocol = Protocol(nodeManifest.PrivvalProtocol)
