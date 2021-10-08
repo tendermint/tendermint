@@ -27,6 +27,12 @@ func main() {
 		cmd.ShowNodeIDCmd,
 		cmd.GenNodeKeyCmd,
 		cmd.VersionCmd,
+<<<<<<< HEAD
+=======
+		cmd.InspectCmd,
+		cmd.RollbackStateCmd,
+		cmd.MakeKeyMigrateCommand(),
+>>>>>>> 4ca130d22 (cli: allow node operator to rollback last state (#7033))
 		debug.DebugCmd,
 		cli.NewCompletionCmd(rootCmd, true),
 	)
