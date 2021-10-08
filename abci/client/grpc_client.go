@@ -309,6 +309,28 @@ func (cli *grpcClient) PrepareProposalAsync(params types.RequestPrepareProposal)
 	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_PrepareProposal{PrepareProposal: res}})
 }
 
+func (cli *grpcClient) ProcessProposalAsync(
+	ctx context.Context,
+	params types.RequestProcessProposal,
+) (*ReqRes, error) {
+
+	req := types.ToRequestProcessProposal(params)
+	res, err := cli.client.ProcessProposal(ctx, req.GetProcessProposal(), grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+
+	return cli.finishAsyncCall(
+		ctx,
+		req,
+		&types.Response{
+			Value: &types.Response_ProcessProposal{
+				ProcessProposal: res,
+			},
+		},
+	)
+}
+
 // finishAsyncCall creates a ReqRes for an async call, and immediately populates it
 // with the response. We don't complete it until it's been ordered via the channel.
 func (cli *grpcClient) finishAsyncCall(req *types.Request, res *types.Response) *ReqRes {
@@ -431,4 +453,16 @@ func (cli *grpcClient) PrepareProposalSync(
 	params types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
 	reqres := cli.PrepareProposalAsync(params)
 	return cli.finishSyncCall(reqres).GetPrepareProposal(), cli.Error()
+}
+
+func (cli *grpcClient) ProcessProposalSync(
+	ctx context.Context,
+	params types.RequestProcessProposal,
+) (*types.ResponseProcessProposal, error) {
+
+	reqres, err := cli.ProcessProposalAsync(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishSyncCall(reqres).GetProcessProposal(), cli.Error()
 }

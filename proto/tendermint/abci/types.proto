@@ -37,6 +37,7 @@ message Request {
     RequestLoadSnapshotChunk  load_snapshot_chunk  = 14;
     RequestApplySnapshotChunk apply_snapshot_chunk = 15;
     RequestPrepareProposal    prepare_proposal     = 16;
+    RequestProcessProposal    process_proposal     = 17;
   }
 }
 
@@ -134,6 +135,11 @@ message RequestPrepareProposal {
   int64 block_data_size = 2;
 }
 
+message RequestProcessProposal {
+  tendermint.types.Header header = 1 [(gogoproto.nullable) = false];
+  repeated bytes txs = 2;
+}
+
 //----------------------------------------
 // Response types
 
@@ -156,7 +162,7 @@ message Response {
     ResponseLoadSnapshotChunk  load_snapshot_chunk  = 15;
     ResponseApplySnapshotChunk apply_snapshot_chunk = 16;
     ResponsePrepareProposal    prepare_proposal     = 17;
-
+    ResponseProcessProposal    process_proposal     = 18;
   }
 }
 
@@ -298,6 +304,17 @@ message ResponsePrepareProposal {
   repeated bytes block_data = 1;
 }
 
+message ResponseProcessProposal {
+  Result result = 1;
+  repeated bytes evidence = 2;
+
+  enum Result {
+    UNKNOWN       = 0;  // Unknown result, invalidate
+    ACCEPT        = 1;  // proposal verified, vote on the proposal
+    REJECT        = 2;  // proposal invalidated
+  }
+}
+
 //----------------------------------------
 // Misc.
 
@@ -427,4 +444,5 @@ service ABCIApplication {
   rpc ApplySnapshotChunk(RequestApplySnapshotChunk)
       returns (ResponseApplySnapshotChunk);
   rpc PrepareProposal(RequestPrepareProposal) returns (ResponsePrepareProposal);
+  rpc ProcessProposal(RequestProcessProposal) returns (ResponseProcessProposal);
 }
