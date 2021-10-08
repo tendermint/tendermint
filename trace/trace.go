@@ -2,22 +2,23 @@ package trace
 
 import (
 	"fmt"
-	"time"
 	"github.com/tendermint/tendermint/libs/log"
+	"time"
 )
 
-
 const (
-	GasUsed      = "GasUsed"
-	Produce      = "Produce"
-	RunTx        = "RunTx"
-	Height       = "Height"
-	Tx           = "Tx"
-	Elapsed      = "Elapsed"
-	CommitRound  = "CommitRound"
-	Round        = "Round"
-
-
+	GasUsed     = "GasUsed"
+	Produce     = "Produce"
+	RunTx       = "RunTx"
+	Height      = "Height"
+	Tx          = "Tx"
+	Elapsed     = "Elapsed"
+	CommitRound = "CommitRound"
+	Round       = "Round"
+	Evm         = "Evm"
+	EvmRead     = "read"
+	EvmWrite    = "write"
+	EvmExecute  = "execute"
 )
 
 type IElapsedTimeInfos interface {
@@ -25,7 +26,7 @@ type IElapsedTimeInfos interface {
 	Dump(logger log.Logger)
 }
 
-func SetInfoObject(e IElapsedTimeInfos)  {
+func SetInfoObject(e IElapsedTimeInfos) {
 	if e != nil {
 		elapsedInfo = e
 	}
@@ -37,8 +38,6 @@ func GetElapsedInfo() IElapsedTimeInfos {
 	return elapsedInfo
 }
 
-
-
 func NewTracer() *Tracer {
 	t := &Tracer{
 		startTime: time.Now().UnixNano(),
@@ -46,15 +45,13 @@ func NewTracer() *Tracer {
 	return t
 }
 
-
 type Tracer struct {
-	startTime int64
-	lastPin  string
+	startTime        int64
+	lastPin          string
 	lastPinStartTime int64
-	pins  []string
-	intervals []int64
+	pins             []string
+	intervals        []int64
 }
-
 
 func (t *Tracer) Pin(format string, args ...interface{}) {
 	t.pinByFormat(fmt.Sprintf(format, args...))
@@ -81,7 +78,6 @@ func (t *Tracer) pinByFormat(tag string) {
 	t.lastPin = tag
 }
 
-
 func (t *Tracer) Format() string {
 	if len(t.pins) == 0 {
 		return ""
@@ -100,7 +96,6 @@ func (t *Tracer) Format() string {
 	return info
 }
 
-
 func (t *Tracer) Reset() {
 	t.startTime = time.Now().UnixNano()
 	t.lastPin = ""
@@ -108,5 +103,3 @@ func (t *Tracer) Reset() {
 	t.pins = nil
 	t.intervals = nil
 }
-
-
