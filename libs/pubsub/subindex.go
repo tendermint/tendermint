@@ -40,6 +40,10 @@ type subIndex struct {
 	all      subInfoSet            // all subscriptions
 	byClient map[string]subInfoSet // per-client subscriptions
 	byQuery  map[string]subInfoSet // per-query subscriptions
+
+	// TODO(creachadair): We allow indexing by query to support existing use by
+	// the RPC service methods for event streaming. Fix up those methods not to
+	// require this, and then remove indexing by query.
 }
 
 // newSubIndex constructs a new, empty subscription index.
