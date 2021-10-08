@@ -108,6 +108,7 @@ type Options struct {
 func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, error) {
 	manifest := e2e.Manifest{
 		IPv6:             ipv6.Choose(r).(bool),
+		ABCIProtocol:     nodeABCIProtocols.Choose(r),
 		InitialHeight:    int64(opt["initialHeight"].(int)),
 		InitialState:     opt["initialState"].(map[string]string),
 		Validators:       &map[string]int64{},
@@ -275,7 +276,6 @@ func generateNode(
 		Mode:             string(mode),
 		StartAt:          startAt,
 		Database:         nodeDatabases.Choose(r),
-		ABCIProtocol:     nodeABCIProtocols.Choose(r),
 		PrivvalProtocol:  nodePrivvalProtocols.Choose(r),
 		Mempool:          nodeMempools.Choose(r),
 		StateSync:        e2e.StateSyncDisabled,
@@ -332,7 +332,6 @@ func generateLightNode(r *rand.Rand, startAt int64, providers []string) *e2e.Man
 		Mode:            string(e2e.ModeLight),
 		StartAt:         startAt,
 		Database:        nodeDatabases.Choose(r),
-		ABCIProtocol:    "builtin",
 		PersistInterval: ptrUint64(0),
 		PersistentPeers: providers,
 	}
