@@ -359,6 +359,9 @@ func (s *Server) send(data interface{}, events []types.Event) error {
 		}
 	}()
 
+	// N.B. Order is important here. We must acquire and defer the lock release
+	// AFTER deferring the eviction cleanup: The cleanup must happen after the
+	// reader lock has released, or it will deadlock.
 	s.subs.RLock()
 	defer s.subs.RUnlock()
 
