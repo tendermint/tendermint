@@ -36,8 +36,9 @@ message Request {
     RequestLoadSnapshotChunk   load_snapshot_chunk  = 13;
     RequestApplySnapshotChunk  apply_snapshot_chunk = 14;
     RequestPrepareProposal     prepare_proposal     = 15;
-    RequestExtendVote          extend_vote           = 16;
-    RequestVerifyVoteExtension verify_vote_extension = 17;
+    RequestProcessProposal     process_proposal     = 16;
+    RequestExtendVote          extend_vote           = 17;
+    RequestVerifyVoteExtension verify_vote_extension = 18;
   }
 }
 
@@ -139,6 +140,11 @@ message RequestPrepareProposal {
   int64 block_data_size = 2;
 }
 
+message RequestProcessProposal {
+  tendermint.types.Header header = 1 [(gogoproto.nullable) = false];
+  repeated bytes txs = 2;
+}
+
 //----------------------------------------
 // Response types
 
@@ -160,8 +166,9 @@ message Response {
     ResponseLoadSnapshotChunk   load_snapshot_chunk  = 14;
     ResponseApplySnapshotChunk  apply_snapshot_chunk = 15;
     ResponsePrepareProposal     prepare_proposal     = 16;
-    ResponseExtendVote          extend_vote          = 17;
-    ResponseVerifyVoteExtension verify_vote_extension = 18;
+    ResponseProcessProposal     process_proposal     = 17;
+    ResponseExtendVote          extend_vote          = 18;
+    ResponseVerifyVoteExtension verify_vote_extension = 19;
   }
 }
 
@@ -306,6 +313,17 @@ message ResponsePrepareProposal {
   repeated bytes block_data = 1;
 }
 
+message ResponseProcessProposal {
+  Result result = 1;
+  repeated bytes evidence = 2;
+
+  enum Result {
+    UNKNOWN       = 0;  // Unknown result, treat as ACCEPT by default
+    ACCEPT        = 1;  // proposal verified, vote on the proposal
+    REJECT        = 2;  // proposal invalidated
+  }
+}
+
 //----------------------------------------
 // Misc.
 
@@ -413,4 +431,5 @@ service ABCIApplication {
   rpc ExtendVote(RequestExtendVote) returns (ResponseExtendVote);
   rpc VerifyVoteExtension(RequestVerifyVoteExtension) returns (ResponseVerifyVoteExtension);
   rpc PrepareProposal(RequestPrepareProposal) returns (ResponsePrepareProposal);
+  rpc ProcessProposal(RequestProcessProposal) returns (ResponseProcessProposal);
 }

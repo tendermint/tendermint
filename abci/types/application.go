@@ -19,6 +19,7 @@ type Application interface {
 	// Consensus Connection
 	InitChain(RequestInitChain) ResponseInitChain // Initialize blockchain w validators/other info from TendermintCore
 	PrepareProposal(RequestPrepareProposal) ResponsePrepareProposal
+	ProcessProposal(RequestProcessProposal) ResponseProcessProposal
 	// Signals the beginning of a block
 	BeginBlock(RequestBeginBlock) ResponseBeginBlock
 	// Deliver a tx for full processing
@@ -109,6 +110,10 @@ func (BaseApplication) ApplySnapshotChunk(req RequestApplySnapshotChunk) Respons
 
 func (BaseApplication) PrepareProposal(req RequestPrepareProposal) ResponsePrepareProposal {
 	return ResponsePrepareProposal{}
+}
+
+func (BaseApplication) ProcessProposal(req RequestProcessProposal) ResponseProcessProposal {
+	return ResponseProcessProposal{}
 }
 
 //-------------------------------------------------------
@@ -209,5 +214,11 @@ func (app *GRPCApplication) VerifyVoteExtension(
 func (app *GRPCApplication) PrepareProposal(
 	ctx context.Context, req *RequestPrepareProposal) (*ResponsePrepareProposal, error) {
 	res := app.app.PrepareProposal(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) ProcessProposal(
+	ctx context.Context, req *RequestProcessProposal) (*ResponseProcessProposal, error) {
+	res := app.app.ProcessProposal(*req)
 	return &res, nil
 }

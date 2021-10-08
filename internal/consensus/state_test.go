@@ -1235,9 +1235,9 @@ func TestProposeValidBlock(t *testing.T) {
 
 	rs = cs1.GetRoundState()
 	assert.True(t, bytes.Equal(rs.ProposalBlock.Hash(), propBlockHash))
-	assert.True(t, bytes.Equal(rs.ProposalBlock.Hash(), rs.ValidBlock.Hash()))
-	assert.True(t, rs.Proposal.POLRound == rs.ValidRound)
-	assert.True(t, bytes.Equal(rs.Proposal.BlockID.Hash, rs.ValidBlock.Hash()))
+	assert.True(t, bytes.Equal(rs.ProposalBlock.Hash(), rs.TwoThirdPrevoteBlock.Hash()))
+	assert.True(t, rs.Proposal.POLRound == rs.TwoThirdPrevoteRound)
+	assert.True(t, bytes.Equal(rs.Proposal.BlockID.Hash, rs.TwoThirdPrevoteBlock.Hash()))
 }
 
 // What we want:
@@ -1287,9 +1287,9 @@ func TestSetValidBlockOnDelayedPrevote(t *testing.T) {
 
 	rs = cs1.GetRoundState()
 
-	assert.True(t, rs.ValidBlock == nil)
-	assert.True(t, rs.ValidBlockParts == nil)
-	assert.True(t, rs.ValidRound == -1)
+	assert.True(t, rs.TwoThirdPrevoteBlock == nil)
+	assert.True(t, rs.TwoThirdPrevoteBlockParts == nil)
+	assert.True(t, rs.TwoThirdPrevoteRound == -1)
 
 	// vs2 send (delayed) prevote for propBlock
 	signAddVotes(config, cs1, tmproto.PrevoteType, propBlockHash, propBlockParts.Header(), vs4)
@@ -1298,9 +1298,9 @@ func TestSetValidBlockOnDelayedPrevote(t *testing.T) {
 
 	rs = cs1.GetRoundState()
 
-	assert.True(t, bytes.Equal(rs.ValidBlock.Hash(), propBlockHash))
-	assert.True(t, rs.ValidBlockParts.Header().Equals(propBlockParts.Header()))
-	assert.True(t, rs.ValidRound == round)
+	assert.True(t, bytes.Equal(rs.TwoThirdPrevoteBlock.Hash(), propBlockHash))
+	assert.True(t, rs.TwoThirdPrevoteBlockParts.Header().Equals(propBlockParts.Header()))
+	assert.True(t, rs.TwoThirdPrevoteRound == round)
 }
 
 // What we want:
@@ -1356,9 +1356,9 @@ func TestSetValidBlockOnDelayedProposal(t *testing.T) {
 	ensureNewProposal(proposalCh, height, round)
 	rs := cs1.GetRoundState()
 
-	assert.True(t, bytes.Equal(rs.ValidBlock.Hash(), propBlockHash))
-	assert.True(t, rs.ValidBlockParts.Header().Equals(propBlockParts.Header()))
-	assert.True(t, rs.ValidRound == round)
+	assert.True(t, bytes.Equal(rs.TwoThirdPrevoteBlock.Hash(), propBlockHash))
+	assert.True(t, rs.TwoThirdPrevoteBlockParts.Header().Equals(propBlockParts.Header()))
+	assert.True(t, rs.TwoThirdPrevoteRound == round)
 }
 
 // 4 vals, 3 Nil Precommits at P0

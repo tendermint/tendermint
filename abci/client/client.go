@@ -49,6 +49,7 @@ type Client interface {
 	ExtendVoteAsync(context.Context, types.RequestExtendVote) (*ReqRes, error)
 	VerifyVoteExtensionAsync(context.Context, types.RequestVerifyVoteExtension) (*ReqRes, error)
 	PrepareProposalAsync(context.Context, types.RequestPrepareProposal) (*ReqRes, error)
+  ProcessProposalAsync(context.Context, types.RequestProcessProposal) (*ReqRes, error)
 
 	// Synchronous requests
 	FlushSync(context.Context) error
@@ -68,6 +69,7 @@ type Client interface {
 	ExtendVoteSync(context.Context, types.RequestExtendVote) (*types.ResponseExtendVote, error)
 	VerifyVoteExtensionSync(context.Context, types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error)
 	PrepareProposalSync(context.Context, types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error)
+  ProcessProposalSync(context.Context, types.RequestProcessProposal) (*types.ResponseProcessProposal, error)
 }
 
 //----------------------------------------

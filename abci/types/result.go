@@ -53,6 +53,17 @@ func (r ResponseVerifyVoteExtension) IsErr() bool {
 	return r.Result > ResponseVerifyVoteExtension_ACCEPT
 }
 
+// IsOK returns true if Code is OK
+func (r ResponseProcessProposal) IsOK() bool {
+	return r.Result <= ResponseProcessProposal_ACCEPT
+}
+
+// IsErr returns true if Code is something other than OK.
+func (r ResponseProcessProposal) IsErr() bool {
+	return r.Result > ResponseProcessProposal_ACCEPT
+}
+
+
 //---------------------------------------------------------------------------
 // override JSON marshaling so we emit defaults (ie. disable omitempty)
 

@@ -316,6 +316,13 @@ func (cli *socketClient) PrepareProposalAsync(
 	return cli.queueRequestAsync(ctx, types.ToRequestPrepareProposal(req))
 }
 
+func (cli *socketClient) ProcessProposalAsync(
+	ctx context.Context,
+	req types.RequestProcessProposal,
+) (*ReqRes, error) {
+	return cli.queueRequestAsync(ctx, types.ToRequestProcessProposal(req))
+}
+
 //----------------------------------------
 
 func (cli *socketClient) FlushSync(ctx context.Context) error {
@@ -518,6 +525,18 @@ func (cli *socketClient) PrepareProposalSync(
 		return nil, err
 	}
 	return reqres.Response.GetPrepareProposal(), nil
+}
+
+func (cli *socketClient) ProcessProposalSync(
+	ctx context.Context,
+	req types.RequestProcessProposal,
+) (*types.ResponseProcessProposal, error) {
+
+	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestProcessProposal(req))
+	if err != nil {
+		return nil, err
+	}
+	return reqres.Response.GetProcessProposal(), nil
 }
 
 //----------------------------------------
