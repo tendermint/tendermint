@@ -60,13 +60,7 @@ type Testnet struct {
 	ValidatorUpdates map[int64]map[*Node]int64
 	Nodes            []*Node
 	KeyType          string
-<<<<<<< HEAD
-=======
-	Evidence         int
-	LogLevel         string
-	TxSize           int64
 	ABCIProtocol     string
->>>>>>> f2a8f5e05 (e2e: abci protocol should be consistent across networks (#7078))
 }
 
 // Node represents a Tendermint node in a testnet.
@@ -129,20 +123,10 @@ func LoadTestnet(file string) (*Testnet, error) {
 		Validators:       map[*Node]int64{},
 		ValidatorUpdates: map[int64]map[*Node]int64{},
 		Nodes:            []*Node{},
-<<<<<<< HEAD
-=======
-		Evidence:         manifest.Evidence,
-		KeyType:          "ed25519",
-		LogLevel:         manifest.LogLevel,
-		TxSize:           manifest.TxSize,
 		ABCIProtocol:     manifest.ABCIProtocol,
 	}
 	if len(manifest.KeyType) != 0 {
 		testnet.KeyType = manifest.KeyType
-	}
-	if testnet.TxSize <= 0 {
-		testnet.TxSize = 1024
->>>>>>> f2a8f5e05 (e2e: abci protocol should be consistent across networks (#7078))
 	}
 	if manifest.InitialHeight > 0 {
 		testnet.InitialHeight = manifest.InitialHeight

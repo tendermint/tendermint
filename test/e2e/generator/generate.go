@@ -67,7 +67,7 @@ func Generate(r *rand.Rand) ([]e2e.Manifest, error) {
 func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, error) {
 	manifest := e2e.Manifest{
 		IPv6:             ipv6.Choose(r).(bool),
-		ABCIProtocol:     nodeABCIProtocols.Choose(r),
+		ABCIProtocol:     nodeABCIProtocols.Choose(r).(string),
 		InitialHeight:    int64(opt["initialHeight"].(int)),
 		InitialState:     opt["initialState"].(map[string]string),
 		Validators:       &map[string]int64{},
@@ -207,18 +207,10 @@ func generateNode(
 	node := e2e.ManifestNode{
 		Mode:             string(mode),
 		StartAt:          startAt,
-<<<<<<< HEAD
 		Database:         nodeDatabases.Choose(r).(string),
-		ABCIProtocol:     nodeABCIProtocols.Choose(r).(string),
 		PrivvalProtocol:  nodePrivvalProtocols.Choose(r).(string),
 		FastSync:         nodeFastSyncs.Choose(r).(string),
 		StateSync:        nodeStateSyncs.Choose(r).(bool) && startAt > 0,
-=======
-		Database:         nodeDatabases.Choose(r),
-		PrivvalProtocol:  nodePrivvalProtocols.Choose(r),
-		Mempool:          nodeMempools.Choose(r),
-		StateSync:        e2e.StateSyncDisabled,
->>>>>>> f2a8f5e05 (e2e: abci protocol should be consistent across networks (#7078))
 		PersistInterval:  ptrUint64(uint64(nodePersistIntervals.Choose(r).(int))),
 		SnapshotInterval: uint64(nodeSnapshotIntervals.Choose(r).(int)),
 		RetainBlocks:     uint64(nodeRetainBlocks.Choose(r).(int)),
@@ -271,12 +263,7 @@ func generateLightNode(r *rand.Rand, startAt int64, providers []string) *e2e.Man
 	return &e2e.ManifestNode{
 		Mode:            string(e2e.ModeLight),
 		StartAt:         startAt,
-<<<<<<< HEAD
 		Database:        nodeDatabases.Choose(r).(string),
-		ABCIProtocol:    "builtin",
-=======
-		Database:        nodeDatabases.Choose(r),
->>>>>>> f2a8f5e05 (e2e: abci protocol should be consistent across networks (#7078))
 		PersistInterval: ptrUint64(0),
 		PersistentPeers: providers,
 	}
