@@ -378,6 +378,11 @@ func (s *Server) send(data interface{}, events []types.Event) error {
 		// are intended for internal use such as indexing, where we don't want to
 		// penalize a slow reader. Buffered subscribers must keep up with their
 		// queue, or they will be terminated.
+		//
+		// TODO(creachadair): Unbuffered subscriptions used by the event indexer
+		// to avoid losing events if it happens to be slow. Rework this so that
+		// use case doesn't require this affordance, and then remove unbuffered
+		// subscriptions.
 		msg := NewMessage(si.sub.id, data, events)
 		if cap(si.sub.out) == 0 {
 			si.sub.out <- msg
