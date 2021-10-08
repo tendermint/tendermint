@@ -30,6 +30,7 @@ Special thanks to external contributors on this release:
 
 ### FEATURES
 
+- [cli] [#7033](https://github.com/tendermint/tendermint/pull/7033) Add a `rollback` command to rollback to the previous tendermint state in the event of non-determinstic app hash or reverting an upgrade.
 - [mempool, rpc] \#7041  Add removeTx operation to the RPC layer. (@tychoish)
 
 ### IMPROVEMENTS

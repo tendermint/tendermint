@@ -11,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -116,6 +117,11 @@ func (app *Application) InitChain(req abci.RequestInitChain) abci.ResponseInitCh
 	}
 	resp := abci.ResponseInitChain{
 		AppHash: app.state.Hash,
+		ConsensusParams: &types.ConsensusParams{
+			Version: &types.VersionParams{
+				AppVersion: 1,
+			},
+		},
 	}
 	if resp.Validators, err = app.validatorUpdates(0); err != nil {
 		panic(err)
