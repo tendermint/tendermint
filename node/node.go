@@ -234,7 +234,7 @@ func makeNode(cfg *config.Config,
 	p2pLogger := logger.With("module", "p2p")
 	transport := createTransport(p2pLogger, cfg)
 
-	peerManager, err := createPeerManager(cfg, dbProvider, p2pLogger, nodeKey.ID)
+	peerManager, err := createPeerManager(cfg, dbProvider, nodeKey.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
@@ -285,7 +285,7 @@ func makeNode(cfg *config.Config,
 	// Create the blockchain reactor. Note, we do not start block sync if we're
 	// doing a state sync first.
 	bcReactor, err := createBlockchainReactor(
-		logger, cfg, state, blockExec, blockStore, csReactor,
+		logger, state, blockExec, blockStore, csReactor,
 		peerManager, router, blockSync && !stateSync, nodeMetrics.consensus,
 	)
 	if err != nil {
@@ -349,7 +349,7 @@ func makeNode(cfg *config.Config,
 
 	var pexReactor service.Service
 
-	pexReactor, err = createPEXReactorV2(cfg, logger, peerManager, router)
+	pexReactor, err = createPEXReactorV2(logger, peerManager, router)
 	if err != nil {
 		return nil, err
 	}
@@ -443,7 +443,7 @@ func makeSeedNode(cfg *config.Config,
 	p2pLogger := logger.With("module", "p2p")
 	transport := createTransport(p2pLogger, cfg)
 
-	peerManager, err := createPeerManager(cfg, dbProvider, p2pLogger, nodeKey.ID)
+	peerManager, err := createPeerManager(cfg, dbProvider, nodeKey.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
@@ -457,7 +457,7 @@ func makeSeedNode(cfg *config.Config,
 	var pexReactor service.Service
 
 	// add the pex reactor
-	pexReactor, err = createPEXReactorV2(cfg, logger, peerManager, router)
+	pexReactor, err = createPEXReactorV2(logger, peerManager, router)
 	if err != nil {
 		return nil, err
 	}

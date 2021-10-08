@@ -31,8 +31,8 @@ func TestGenerator(t *testing.T) {
 					}
 					if node.StateSync != e2e.StateSyncDisabled {
 						require.Zero(t, node.Seeds, node.StateSync)
-						require.True(t, len(node.PersistentPeers) >= 2)
-						require.Equal(t, "v0", node.BlockSync)
+						require.True(t, len(node.PersistentPeers) >= 2 || len(node.PersistentPeers) == 0,
+							"peers: %v", node.PersistentPeers)
 					}
 
 				})
