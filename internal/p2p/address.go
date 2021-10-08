@@ -38,7 +38,7 @@ type NodeAddress struct {
 	Path     string
 }
 
-// ParseNodeAddress parses a node address URL into a NodeAddress, normalizing
+// ParseNodeAddress parses a node address URL into a NodeAddress, 1normalizing
 // and validating it.
 func ParseNodeAddress(urlString string) (NodeAddress, error) {
 	// url.Parse requires a scheme, so if it fails to parse a scheme-less URL

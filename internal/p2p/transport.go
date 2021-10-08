@@ -122,12 +122,17 @@ type Endpoint struct {
 }
 
 // NewEndpoint constructs an Endpoint from a types.NetAddress structure.
-func NewEndpoint(na *types.NetAddress) Endpoint {
-	return Endpoint{
-		Protocol: MConnProtocol,
-		IP:       na.IP,
-		Port:     na.Port,
+func NewEndpoint(addr string) (*Endpoint, error) {
+	ip, port, err := types.ParseAddressString(addr)
+	if err != nil {
+		return nil, err
 	}
+
+	return &Endpoint{
+		Protocol: MConnProtocol,
+		IP:       ip,
+		Port:     port,
+	}, nil
 }
 
 // NodeAddress converts the endpoint into a NodeAddress for the given node ID.

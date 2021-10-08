@@ -520,11 +520,11 @@ func (n *nodeImpl) OnStart() error {
 	}
 
 	// Start the transport.
-	addr, err := types.NewNetAddressString(n.nodeKey.ID.AddressString(n.config.P2P.ListenAddress))
+	ep, err := p2p.NewEndpoint(n.nodeKey.ID.AddressString(n.config.P2P.ListenAddress))
 	if err != nil {
 		return err
 	}
-	if err := n.transport.Listen(p2p.NewEndpoint(addr)); err != nil {
+	if err := n.transport.Listen(*ep); err != nil {
 		return err
 	}
 

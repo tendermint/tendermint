@@ -13,7 +13,6 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
-	p2pmock "github.com/tendermint/tendermint/internal/p2p/mock"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -1864,7 +1863,8 @@ func TestStateOutputsBlockPartsStats(t *testing.T) {
 
 	// create dummy peer
 	cs, _ := randState(config, 1)
-	peer := p2pmock.NewPeer(nil)
+	peerID, err := types.NewNodeID("aaa")
+	require.NoError(t, err)
 
 	// 1) new block part
 	parts := types.NewPartSetFromData(tmrand.Bytes(100), 10)
@@ -1875,26 +1875,26 @@ func TestStateOutputsBlockPartsStats(t *testing.T) {
 	}
 
 	cs.ProposalBlockParts = types.NewPartSetFromHeader(parts.Header())
-	cs.handleMsg(msgInfo{msg, peer.ID()})
+	cs.handleMsg(msgInfo{msg, peerID})
 
 	statsMessage := <-cs.statsMsgQueue
 	require.Equal(t, msg, statsMessage.Msg, "")
-	require.Equal(t, peer.ID(), statsMessage.PeerID, "")
+	require.Equal(t, peerID, statsMessage.PeerID, "")
 
 	// sending the same part from different peer
 	cs.handleMsg(msgInfo{msg, "peer2"})
 
 	// sending the part with the same height, but different round
 	msg.Round = 1
-	cs.handleMsg(msgInfo{msg, peer.ID()})
+	cs.handleMsg(msgInfo{msg, peerID})
 
 	// sending the part from the smaller height
 	msg.Height = 0
-	cs.handleMsg(msgInfo{msg, peer.ID()})
+	cs.handleMsg(msgInfo{msg, peerID})
 
 	// sending the part from the bigger height
 	msg.Height = 3
-	cs.handleMsg(msgInfo{msg, peer.ID()})
+	cs.handleMsg(msgInfo{msg, peerID})
 
 	select {
 	case <-cs.statsMsgQueue:
@@ -1909,18 +1909,19 @@ func TestStateOutputVoteStats(t *testing.T) {
 
 	cs, vss := randState(config, 2)
 	// create dummy peer
-	peer := p2pmock.NewPeer(nil)
+	peerID, err := types.NewNodeID("aaa")
+	require.NoError(t, err)
 
 	randBytes := tmrand.Bytes(tmhash.Size)
 
 	vote := signVote(vss[1], config, tmproto.PrecommitType, randBytes, types.PartSetHeader{})
 
 	voteMessage := &VoteMessage{vote}
-	cs.handleMsg(msgInfo{voteMessage, peer.ID()})
+	cs.handleMsg(msgInfo{voteMessage, peerID})
 
 	statsMessage := <-cs.statsMsgQueue
 	require.Equal(t, voteMessage, statsMessage.Msg, "")
-	require.Equal(t, peer.ID(), statsMessage.PeerID, "")
+	require.Equal(t, peerID, statsMessage.PeerID, "")
 
 	// sending the same part from different peer
 	cs.handleMsg(msgInfo{&VoteMessage{vote}, "peer2"})
@@ -1929,7 +1930,7 @@ func TestStateOutputVoteStats(t *testing.T) {
 	incrementHeight(vss[1])
 	vote = signVote(vss[1], config, tmproto.PrecommitType, randBytes, types.PartSetHeader{})
 
-	cs.handleMsg(msgInfo{&VoteMessage{vote}, peer.ID()})
+	cs.handleMsg(msgInfo{&VoteMessage{vote}, peerID})
 
 	select {
 	case <-cs.statsMsgQueue:
