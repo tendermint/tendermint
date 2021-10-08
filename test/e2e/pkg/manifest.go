@@ -50,6 +50,29 @@ type Manifest struct {
 	// KeyType sets the curve that will be used by validators.
 	// Options are ed25519 & secp256k1
 	KeyType string `toml:"key_type"`
+<<<<<<< HEAD
+=======
+
+	// Evidence indicates the amount of evidence that will be injected into the
+	// testnet via the RPC endpoint of a random node. Default is 0
+	Evidence int `toml:"evidence"`
+
+	// LogLevel sets the log level of the entire testnet. This can be overridden
+	// by individual nodes.
+	LogLevel string `toml:"log_level"`
+
+	// QueueType describes the type of queue that the system uses internally
+	QueueType string `toml:"queue_type"`
+
+	// Number of bytes per tx. Default is 1kb (1024)
+	TxSize int64
+
+	// ABCIProtocol specifies the protocol used to communicate with the ABCI
+	// application: "unix", "tcp", "grpc", or "builtin". Defaults to builtin.
+	// builtin will build a complete Tendermint node into the application and
+	// launch it instead of launching a separate Tendermint process.
+	ABCIProtocol string `toml:"abci_protocol"`
+>>>>>>> f2a8f5e05 (e2e: abci protocol should be consistent across networks (#7078))
 }
 
 // ManifestNode represents a node in a testnet manifest.
@@ -71,12 +94,6 @@ type ManifestNode struct {
 	// Database specifies the database backend: "goleveldb", "cleveldb",
 	// "rocksdb", "boltdb", or "badgerdb". Defaults to goleveldb.
 	Database string `toml:"database"`
-
-	// ABCIProtocol specifies the protocol used to communicate with the ABCI
-	// application: "unix", "tcp", "grpc", or "builtin". Defaults to unix.
-	// builtin will build a complete Tendermint node into the application and
-	// launch it instead of launching a separate Tendermint process.
-	ABCIProtocol string `toml:"abci_protocol"`
 
 	// PrivvalProtocol specifies the protocol used to sign consensus messages:
 	// "file", "unix", or "tcp". Defaults to "file". For unix and tcp, the ABCI
