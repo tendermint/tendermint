@@ -99,8 +99,15 @@ func (idx *subIndex) removeAll(s subInfoSet) {
 	for si := range s {
 		idx.all.remove(si)
 		idx.byClient[si.clientID].remove(si)
+		if len(idx.byClient[si.clientID]) == 0 {
+			delete(idx.byClient, si.clientID)
+		}
 		if si.query != nil {
-			idx.byQuery[si.query.String()].remove(si)
+			qs := si.query.String()
+			idx.byQuery[qs].remove(si)
+			if len(idx.byQuery[qs]) == 0 {
+				delete(idx.byQuery, qs)
+			}
 		}
 	}
 }
