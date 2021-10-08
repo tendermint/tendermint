@@ -68,7 +68,7 @@ func ChannelDescriptor() conn.ChannelDescriptor {
 		MsgType:             &protop2p.PexMessage{},
 		Priority:            1,
 		SendQueueCapacity:   10,
-		RecvMessageCapacity: 64,
+		RecvMessageCapacity: 128,
 		RecvBufferCapacity:  maxMsgSize,
 		MaxSendBytes:        200,
 	}
