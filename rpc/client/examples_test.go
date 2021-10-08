@@ -56,8 +56,8 @@ func TestTTPSimple(t *testing.T) {
 	require.False(t, qres.Response.IsErr(), "ABCIQuery failed")
 	require.True(t, bytes.Equal(qres.Response.Key, k),
 		"returned key does not match queried key")
-	require.False(t, bytes.Equal(qres.Response.Value, v),
-		"returned value does not match sent value")
+	require.True(t, bytes.Equal(qres.Response.Value, v),
+		"returned value does not match sent value [%s]", string(v))
 
 	assert.Equal(t, "name=satoshi", string(tx), "sent tx")
 	assert.Equal(t, "name", string(qres.Response.Key), "queried for")
@@ -110,14 +110,22 @@ func TestHTTPBatching(t *testing.T) {
 
 	// wait for the transaction to land, we could poll more for
 	// the transactions to land definitively.
-	time.Sleep(3 * time.Second)
+	require.Eventually(t,
+		func() bool {
+			// Now let's query for the original results as a batch
+			exists := 0
+			for _, key := range [][]byte{k1, k2} {
+				_, err := batch.ABCIQuery(context.Background(), "/key", key)
+				if err == nil {
+					exists++
 
-	// Now let's query for the original results as a batch
-	keys := [][]byte{k1, k2}
-	for _, key := range keys {
-		_, err := batch.ABCIQuery(context.Background(), "/key", key)
-		require.NoError(t, err)
-	}
+				}
+			}
+			return exists == 2
+		},
+		10*time.Second,
+		time.Second,
+	)
 
 	// Send the 2 queries and keep the results
 	results, err := batch.Send(context.Background())
