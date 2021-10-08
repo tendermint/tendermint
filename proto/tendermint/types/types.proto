@@ -56,6 +56,7 @@ message BlockID {
 // StateID
 message StateID {
   bytes last_app_hash = 1;
+  int64 height = 2;
 }
 
 // --------------------------------
@@ -114,7 +115,6 @@ message Vote {
   int32         round    = 3;
   BlockID       block_id = 4
       [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];  // zero if vote is nil.
-  StateID state_id              = 9 [(gogoproto.customname) = "StateID", (gogoproto.nullable) = false];
   bytes   validator_pro_tx_hash = 6;
   int32   validator_index       = 7;
   bytes   block_signature       = 8;
@@ -155,7 +155,6 @@ message LightBlock {
 
 message BlockMeta {
   BlockID block_id            = 1 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
-  StateID state_id            = 101 [(gogoproto.customname) = "StateID", (gogoproto.nullable) = false];
   int64   block_size          = 2;
   Header  header              = 3 [(gogoproto.nullable) = false];
   int64   num_txs             = 4;

@@ -921,7 +921,7 @@ func (vals *ValidatorSet) CommitSignIds(chainID string, commit *Commit) ([]byte,
 
 	blockSignID := commit.CanonicalVoteVerifySignID(chainID, vals.QuorumType, vals.QuorumHash)
 
-	stateSignID := commit.CanonicalVoteStateSignID(chainID, vals.QuorumType, vals.QuorumHash)
+	stateSignID := commit.StateID.SignID(chainID, vals.QuorumType, vals.QuorumHash)
 
 	return blockSignID, stateSignID
 }
@@ -953,18 +953,19 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 	blockSignID := commit.CanonicalVoteVerifySignID(chainID, vals.QuorumType, vals.QuorumHash)
 
 	if !vals.ThresholdPublicKey.VerifySignatureDigest(blockSignID, commit.ThresholdBlockSignature) {
-		canonicalVoteBlockSignBytes := commit.CanonicalVoteVerifySignBytes(chainID)
+		canonicalVoteBlockSignBytes := commit.StateID.SignBytes(chainID)
 		return fmt.Errorf(
 			"incorrect threshold block signature bytes: %X signId %X commit: %v valQuorumType %d valQuorumHash %X valThresholdPublicKey %X", // nolint:lll
 			canonicalVoteBlockSignBytes, blockSignID, commit, vals.QuorumType, vals.QuorumHash, vals.ThresholdPublicKey)
 	}
 
-	stateSignID := commit.CanonicalVoteStateSignID(chainID, vals.QuorumType, vals.QuorumHash)
+	stateSignID := commit.StateID.SignID(chainID, vals.QuorumType, vals.QuorumHash)
 
 	if !vals.ThresholdPublicKey.VerifySignatureDigest(stateSignID, commit.ThresholdStateSignature) {
-		canonicalVoteStateSignBytes := commit.CanonicalVoteStateSignBytes(chainID)
+		commit.StateID.SignBytes(chainID)
+		stateSignBytes := commit.StateID.SignBytes(chainID)
 		return fmt.Errorf("incorrect threshold state signature bytes: %X commit: %v valQuorumHash %X",
-			canonicalVoteStateSignBytes, commit, vals.QuorumHash)
+			stateSignBytes, commit, vals.QuorumHash)
 	}
 
 	return nil

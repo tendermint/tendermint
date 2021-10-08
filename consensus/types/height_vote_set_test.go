@@ -28,21 +28,23 @@ func TestMain(m *testing.M) {
 func TestPeerCatchupRounds(t *testing.T) {
 	valSet, privVals := types.GenerateValidatorSet(10)
 
-	hvs := NewHeightVoteSet(config.ChainID(), 1, valSet)
+	stateID := types.StateID{}
 
-	vote999_0 := makeVoteHR(t, 1, 0, 999, privVals, valSet.QuorumType, valSet.QuorumHash)
+	hvs := NewHeightVoteSet(config.ChainID(), 1, stateID, valSet)
+
+	vote999_0 := makeVoteHR(t, 1, 0, 999, privVals, valSet.QuorumType, valSet.QuorumHash, stateID)
 	added, err := hvs.AddVote(vote999_0, "peer1")
 	if !added || err != nil {
 		t.Error("Expected to successfully add vote from peer", added, err)
 	}
 
-	vote1000_0 := makeVoteHR(t, 1, 0, 1000, privVals, valSet.QuorumType, valSet.QuorumHash)
+	vote1000_0 := makeVoteHR(t, 1, 0, 1000, privVals, valSet.QuorumType, valSet.QuorumHash, stateID)
 	added, err = hvs.AddVote(vote1000_0, "peer1")
 	if !added || err != nil {
 		t.Error("Expected to successfully add vote from peer", added, err)
 	}
 
-	vote1001_0 := makeVoteHR(t, 1, 0, 1001, privVals, valSet.QuorumType, valSet.QuorumHash)
+	vote1001_0 := makeVoteHR(t, 1, 0, 1001, privVals, valSet.QuorumType, valSet.QuorumHash, stateID)
 	added, err = hvs.AddVote(vote1001_0, "peer1")
 	if err != ErrGotVoteFromUnwantedRound {
 		t.Errorf("expected GotVoteFromUnwantedRoundError, but got %v", err)
@@ -59,7 +61,7 @@ func TestPeerCatchupRounds(t *testing.T) {
 }
 
 func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []types.PrivValidator,
-	quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) *types.Vote {
+	quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, stateID types.StateID) *types.Vote {
 	privVal := privVals[valIndex]
 	proTxHash, err := privVal.GetProTxHash()
 	if err != nil {
@@ -67,7 +69,6 @@ func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []ty
 	}
 
 	randBytes1 := tmrand.Bytes(tmhash.Size)
-	randBytes2 := tmrand.Bytes(tmhash.Size)
 
 	vote := &types.Vote{
 		ValidatorProTxHash: proTxHash,
@@ -76,12 +77,11 @@ func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []ty
 		Round:              round,
 		Type:               tmproto.PrecommitType,
 		BlockID:            types.BlockID{Hash: randBytes1, PartSetHeader: types.PartSetHeader{}},
-		StateID:            types.StateID{LastAppHash: randBytes2},
 	}
 	chainID := config.ChainID()
 
 	v := vote.ToProto()
-	err = privVal.SignVote(chainID, quorumType, quorumHash, v, nil)
+	err = privVal.SignVote(chainID, quorumType, quorumHash, v, stateID, nil)
 	if err != nil {
 		panic(fmt.Sprintf("Error signing vote: %v", err))
 	}

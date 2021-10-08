@@ -32,6 +32,11 @@ func (lb LightBlock) ValidateBasic(chainID string) error {
 	if err := lb.ValidatorSet.ValidateBasic(); err != nil {
 		return fmt.Errorf("invalid validator set: %w", err)
 	}
+	// Validate StateID height
+	if lb.Commit.StateID.Height != lb.Height-1 {
+		return fmt.Errorf("invalid commit stateID height %d for light block height %d",
+			lb.Commit.StateID.Height, lb.Height)
+	}
 
 	// make sure the validator set is consistent with the header
 	if valSetHash := lb.ValidatorSet.Hash(); !bytes.Equal(lb.SignedHeader.ValidatorsHash, valSetHash) {
@@ -41,6 +46,15 @@ func (lb LightBlock) ValidateBasic(chainID string) error {
 	}
 
 	return nil
+}
+
+// StateID() returns StateID for a given light block
+func (lb LightBlock) StateID() StateID {
+	if lb.Commit == nil {
+		panic("Cannot read state of a block without commit")
+	}
+
+	return lb.Commit.StateID.Copy()
 }
 
 // String returns a string representation of the LightBlock

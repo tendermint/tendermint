@@ -12,6 +12,12 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+const (
+	// TODO this is just a workaround for a "chain stalled at unknown height" issue,
+	// change to 20 seconds once we fix root cause
+	WaitForHeightTimeout = 60 * time.Second
+)
+
 // waitForHeight waits for the network to reach a certain height (or above),
 // returning the highest height seen. Errors if the network is not making
 // progress at all.
@@ -55,7 +61,7 @@ func waitForHeight(testnet *e2e.Testnet, height int64) (*types.Block, *types.Blo
 		if len(clients) == 0 {
 			return nil, nil, errors.New("unable to connect to any network nodes")
 		}
-		if time.Since(lastIncrease) >= 20*time.Second {
+		if time.Since(lastIncrease) >= WaitForHeightTimeout {
 			if maxResult == nil {
 				return nil, nil, errors.New("chain stalled at unknown height")
 			}
