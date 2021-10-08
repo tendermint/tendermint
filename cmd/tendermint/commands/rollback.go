@@ -5,8 +5,11 @@ import (
 
 	"github.com/spf13/cobra"
 
+	dbm "github.com/tendermint/tm-db"
+
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/internal/state"
+	"github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/store"
 )
 
 var RollbackStateCmd = &cobra.Command{
@@ -43,4 +46,24 @@ func RollbackState(config *cfg.Config) (int64, []byte, error) {
 
 	// rollback the last state
 	return state.Rollback(blockStore, stateStore)
+}
+
+func loadStateAndBlockStore(config *cfg.Config) (*store.BlockStore, state.Store, error) {
+	dbType := dbm.BackendType(config.DBBackend)
+
+	// Get BlockStore
+	blockStoreDB, err := dbm.NewDB("blockstore", dbType, config.DBDir())
+	if err != nil {
+		return nil, nil, err
+	}
+	blockStore := store.NewBlockStore(blockStoreDB)
+
+	// Get StateStore
+	stateDB, err := dbm.NewDB("state", dbType, config.DBDir())
+	if err != nil {
+		return nil, nil, err
+	}
+	stateStore := state.NewStore(stateDB)
+
+	return blockStore, stateStore, nil
 }

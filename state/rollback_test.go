@@ -1,14 +1,17 @@
 package state_test
 
 import (
+	"crypto/rand"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
-	"github.com/tendermint/tendermint/internal/state"
-	"github.com/tendermint/tendermint/internal/state/mocks"
-	"github.com/tendermint/tendermint/internal/test/factory"
+	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
+	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
+	"github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
@@ -21,7 +24,7 @@ func TestRollback(t *testing.T) {
 		appVersion uint64 = 10
 	)
 
-	valSet, _ := factory.RandValidatorSet(5, 10)
+	valSet, _ := types.RandValidatorSet(5, 10)
 
 	params := types.DefaultConsensusParams()
 	params.Version.AppVersion = appVersion
@@ -29,18 +32,18 @@ func TestRollback(t *testing.T) {
 	newParams.Block.MaxBytes = 10000
 
 	initialState := state.State{
-		Version: state.Version{
-			Consensus: version.Consensus{
+		Version: tmstate.Version{
+			Consensus: tmversion.Consensus{
 				Block: version.BlockProtocol,
 				App:   10,
 			},
-			Software: version.TMVersion,
+			Software: version.TMCoreSemVer,
 		},
-		ChainID:                          factory.DefaultTestChainID,
+		ChainID:                          "test-chain",
 		InitialHeight:                    10,
-		LastBlockID:                      factory.MakeBlockID(),
-		AppHash:                          factory.RandomHash(),
-		LastResultsHash:                  factory.RandomHash(),
+		LastBlockID:                      makeBlockIDRandom(),
+		AppHash:                          tmhash.Sum([]byte("app_hash")),
+		LastResultsHash:                  tmhash.Sum([]byte("last_results_hash")),
 		LastBlockHeight:                  height,
 		LastValidators:                   valSet,
 		Validators:                       valSet.CopyIncrementProposerPriority(1),
@@ -67,8 +70,8 @@ func TestRollback(t *testing.T) {
 	nextState := initialState.Copy()
 	nextState.LastBlockHeight = height
 	nextState.Version.Consensus.App = appVersion
-	nextState.LastBlockID = factory.MakeBlockID()
-	nextState.AppHash = factory.RandomHash()
+	nextState.LastBlockID = makeBlockIDRandom()
+	nextState.AppHash = tmhash.Sum([]byte("next_app_hash"))
 	nextState.LastValidators = initialState.Validators
 	nextState.Validators = initialState.NextValidators
 	nextState.NextValidators = initialState.NextValidators.CopyIncrementProposerPriority(1)
@@ -109,7 +112,7 @@ func TestRollbackNoBlocks(t *testing.T) {
 		appVersion uint64 = 10
 	)
 
-	valSet, _ := factory.RandValidatorSet(5, 10)
+	valSet, _ := types.RandValidatorSet(5, 10)
 
 	params := types.DefaultConsensusParams()
 	params.Version.AppVersion = appVersion
@@ -117,18 +120,18 @@ func TestRollbackNoBlocks(t *testing.T) {
 	newParams.Block.MaxBytes = 10000
 
 	initialState := state.State{
-		Version: state.Version{
-			Consensus: version.Consensus{
+		Version: tmstate.Version{
+			Consensus: tmversion.Consensus{
 				Block: version.BlockProtocol,
 				App:   10,
 			},
-			Software: version.TMVersion,
+			Software: version.TMCoreSemVer,
 		},
-		ChainID:                          factory.DefaultTestChainID,
+		ChainID:                          "test-chain",
 		InitialHeight:                    10,
-		LastBlockID:                      factory.MakeBlockID(),
-		AppHash:                          factory.RandomHash(),
-		LastResultsHash:                  factory.RandomHash(),
+		LastBlockID:                      makeBlockIDRandom(),
+		AppHash:                          tmhash.Sum([]byte("app_hash")),
+		LastResultsHash:                  tmhash.Sum([]byte("last_results_hash")),
 		LastBlockHeight:                  height,
 		LastValidators:                   valSet,
 		Validators:                       valSet.CopyIncrementProposerPriority(1),
@@ -143,4 +146,14 @@ func TestRollbackNoBlocks(t *testing.T) {
 	_, _, err := state.Rollback(blockStore, stateStore)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "block at height 100 not found")
+}
+
+func makeBlockIDRandom() types.BlockID {
+	var (
+		blockHash   = make([]byte, tmhash.Size)
+		partSetHash = make([]byte, tmhash.Size)
+	)
+	rand.Read(blockHash)   //nolint: errcheck // ignore errcheck for read
+	rand.Read(partSetHash) //nolint: errcheck // ignore errcheck for read
+	return types.BlockID{blockHash, types.PartSetHeader{123, partSetHash}}
 }

@@ -46,13 +46,7 @@ var InitStateVersion = tmstate.Version{
 // Instead, use state.Copy() or state.NextState(...).
 // NOTE: not goroutine-safe.
 type State struct {
-<<<<<<< HEAD:state/state.go
 	Version tmstate.Version
-=======
-	// FIXME: This can be removed as TMVersion is a constant, and version.Consensus should
-	// eventually be replaced by VersionParams in ConsensusParams
-	Version Version
->>>>>>> 4ca130d22 (cli: allow node operator to rollback last state (#7033)):internal/state/state.go
 
 	// immutable
 	ChainID       string
