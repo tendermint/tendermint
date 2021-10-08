@@ -29,6 +29,7 @@ func main() {
 		cmd.GenNodeKeyCmd,
 		cmd.VersionCmd,
 		cmd.InspectCmd,
+		cmd.RollbackStateCmd,
 		cmd.MakeKeyMigrateCommand(),
 		debug.DebugCmd,
 		cli.NewCompletionCmd(rootCmd, true),
