@@ -65,6 +65,12 @@ type Manifest struct {
 
 	// Number of bytes per tx. Default is 1kb (1024)
 	TxSize int64
+
+	// ABCIProtocol specifies the protocol used to communicate with the ABCI
+	// application: "unix", "tcp", "grpc", or "builtin". Defaults to builtin.
+	// builtin will build a complete Tendermint node into the application and
+	// launch it instead of launching a separate Tendermint process.
+	ABCIProtocol string `toml:"abci_protocol"`
 }
 
 // ManifestNode represents a node in a testnet manifest.
@@ -86,12 +92,6 @@ type ManifestNode struct {
 	// Database specifies the database backend: "goleveldb", "cleveldb",
 	// "rocksdb", "boltdb", or "badgerdb". Defaults to goleveldb.
 	Database string `toml:"database"`
-
-	// ABCIProtocol specifies the protocol used to communicate with the ABCI
-	// application: "unix", "tcp", "grpc", or "builtin". Defaults to unix.
-	// builtin will build a complete Tendermint node into the application and
-	// launch it instead of launching a separate Tendermint process.
-	ABCIProtocol string `toml:"abci_protocol"`
 
 	// PrivvalProtocol specifies the protocol used to sign consensus messages:
 	// "file", "unix", "tcp", or "grpc". Defaults to "file". For tcp and unix, the ABCI
