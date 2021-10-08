@@ -31,24 +31,61 @@ For example:
 
 would be equal to the composite key of `jack.account.number`.
 
-Let's take a look at the `[tx_index]` config section:
+By default, Tendermint will index all transactions by their respective hashes
+and height and blocks by their height.
+
+## Configuration
+
+Operators can configure indexing via the `[tx_index]` section. The `indexer`
+field takes a series of supported indexers. If `null` is included, indexing will
+be turned off regardless of other values provided.
 
 ```toml
-##### transactions indexer configuration options #####
-[tx_index]
+[tx-index]
 
-# What indexer to use for transactions
+# The backend database to back the indexer.
+# If indexer is "null", no indexer service will be used.
+#
+# The application will set which txs to index. In some cases a node operator will be able
+# to decide which txs to index based on configuration set in the application.
 #
 # Options:
 #   1) "null"
 #   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
-indexer = "kv"
+#     - When "kv" is chosen "tx.height" and "tx.hash" will always be indexed.
+#   3) "psql" - the indexer services backed by PostgreSQL.
+# indexer = "kv"
 ```
 
-By default, Tendermint will index all transactions by their respective hashes
-and height and blocks by their height.
+### Supported Indexers
 
-You can turn off indexing completely by setting `tx_index` to `null`.
+#### KV
+
+The `kv` indexer type is an embedded key-value store supported by the main
+underlying Tendermint database. Using the `kv` indexer type allows you to query
+for block and transaction events directly against Tendermint's RPC. However, the
+query syntax is limited and so this indexer type might be deprecated or removed
+entirely in the future.
+
+#### PostgreSQL
+
+The `psql` indexer type allows an operator to enable block and transaction event
+indexing by proxying it to an external PostgreSQL instance allowing for the events
+to be stored in relational models. Since the events are stored in a RDBMS, operators
+can leverage SQL to perform a series of rich and complex queries that are not
+supported by the `kv` indexer type. Since operators can leverage SQL directly,
+searching is not enabled for the `psql` indexer type via Tendermint's RPC -- any
+such query will fail.
+
+Note, the SQL schema is stored in `state/indexer/sink/psql/schema.sql` and operators
+must explicitly create the relations prior to starting Tendermint and enabling
+the `psql` indexer type.
+
+Example:
+
+```shell
+$ psql ... -f state/indexer/sink/psql/schema.sql
+```
 
 ## Default Indexes
 

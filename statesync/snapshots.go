@@ -1,12 +1,10 @@
 package statesync
 
 import (
-	"context"
 	"crypto/sha256"
 	"fmt"
 	"math/rand"
 	"sort"
-	"time"
 
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
@@ -42,8 +40,6 @@ func (s *snapshot) Key() snapshotKey {
 
 // snapshotPool discovers and aggregates snapshots across peers.
 type snapshotPool struct {
-	stateProvider StateProvider
-
 	tmsync.Mutex
 	snapshots     map[snapshotKey]*snapshot
 	snapshotPeers map[snapshotKey]map[p2p.ID]p2p.Peer
@@ -60,9 +56,8 @@ type snapshotPool struct {
 }
 
 // newSnapshotPool creates a new snapshot pool. The state source is used for
-func newSnapshotPool(stateProvider StateProvider) *snapshotPool {
+func newSnapshotPool() *snapshotPool {
 	return &snapshotPool{
-		stateProvider:     stateProvider,
 		snapshots:         make(map[snapshotKey]*snapshot),
 		snapshotPeers:     make(map[snapshotKey]map[p2p.ID]p2p.Peer),
 		formatIndex:       make(map[uint32]map[snapshotKey]bool),
@@ -78,14 +73,6 @@ func newSnapshotPool(stateProvider StateProvider) *snapshotPool {
 // returns true if this was a new, non-blacklisted snapshot. The snapshot height is verified using
 // the light client, and the expected app hash is set for the snapshot.
 func (p *snapshotPool) Add(peer p2p.Peer, snapshot *snapshot) (bool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	appHash, err := p.stateProvider.AppHash(ctx, snapshot.Height)
-	if err != nil {
-		return false, err
-	}
-	snapshot.trustedAppHash = appHash
 	key := snapshot.Key()
 
 	p.Lock()
