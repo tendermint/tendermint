@@ -47,6 +47,9 @@ func Start(testnet *e2e.Testnet) error {
 			return err
 		}
 		logger.Info(fmt.Sprintf("Node %v up on http://127.0.0.1:%v", node.Name, node.ProxyPort))
+		// TODO this is just a workaround for "chain stalled at unknown height", we need to
+		// find and fix root cause
+		time.Sleep(1 * time.Second)
 	}
 
 	// Wait for initial height

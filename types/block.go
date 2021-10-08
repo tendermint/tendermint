@@ -673,7 +673,6 @@ func (commit *Commit) GetCanonicalVote() *Vote {
 		Height:  commit.Height,
 		Round:   commit.Round,
 		BlockID: commit.BlockID,
-		StateID: commit.StateID,
 	}
 }
 
@@ -709,50 +708,6 @@ func (commit *Commit) CanonicalVoteVerifySignID(chainID string, quorumType btcjs
 	voteCanonical := commit.GetCanonicalVote()
 	vCanonical := voteCanonical.ToProto()
 	return VoteBlockSignID(chainID, vCanonical, quorumType, quorumHash)
-}
-
-// VoteStateSignID returns the signID bytes of the state for the Vote corresponding to valIdx for
-// signing.
-//
-// Panics if valIdx >= commit.Size().
-//
-func (commit *Commit) VoteStateSignID(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
-	v := commit.GetCanonicalVote()
-	return VoteStateSignID(chainID, v.ToProto(), quorumType, quorumHash)
-}
-
-// VoteStateRequestId returns the requestId Hash of the Vote corresponding to valIdx for
-// signing.
-//
-// Panics if valIdx >= commit.Size().
-//
-func (commit *Commit) VoteStateRequestID() []byte {
-	requestIDMessage := []byte("dpsvote")
-	heightByteArray := make([]byte, 8)
-	binary.LittleEndian.PutUint64(heightByteArray, uint64(commit.Height))
-	roundByteArray := make([]byte, 4)
-	binary.LittleEndian.PutUint32(roundByteArray, uint32(commit.Round))
-
-	requestIDMessage = append(requestIDMessage, heightByteArray...)
-	requestIDMessage = append(requestIDMessage, roundByteArray...)
-
-	return crypto.Sha256(requestIDMessage)
-}
-
-// CanonicalVoteStateSignBytes returns the bytes of the State corresponding to valIdx for
-// signing.
-//
-// Panics if valIdx >= commit.Size().
-//
-// See VoteSignBytes
-func (commit *Commit) CanonicalVoteStateSignBytes(chainID string) []byte {
-	v := commit.GetCanonicalVote()
-	return VoteStateSignBytes(chainID, v.ToProto())
-}
-
-func (commit *Commit) CanonicalVoteStateSignID(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
-	v := commit.GetCanonicalVote()
-	return VoteStateSignID(chainID, v.ToProto(), quorumType, quorumHash)
 }
 
 // Type returns the vote type of the commit, which is always VoteTypePrecommit
@@ -1184,73 +1139,4 @@ func BlockIDFromProto(bID *tmproto.BlockID) (*BlockID, error) {
 	blockID.Hash = bID.Hash
 
 	return blockID, blockID.ValidateBasic()
-}
-
-//--------------------------------------------------------------------------------
-
-// StateID
-type StateID struct {
-	LastAppHash tmbytes.HexBytes `json:"last_app_hash"`
-}
-
-// Equals returns true if the StateID matches the given StateID
-func (stateID StateID) Equals(other StateID) bool {
-	return bytes.Equal(stateID.LastAppHash, other.LastAppHash)
-}
-
-// Key returns a machine-readable string representation of the StateID
-func (stateID StateID) Key() string {
-	return string(stateID.LastAppHash)
-}
-
-// ValidateBasic performs basic validation.
-func (stateID StateID) ValidateBasic() error {
-	// LastAppHash can be empty in case of genesis block.
-	if err := ValidateAppHash(stateID.LastAppHash); err != nil {
-		return fmt.Errorf("wrong app Hash")
-	}
-	return nil
-}
-
-// IsZero returns true if this is the StateID of a nil block.
-func (stateID StateID) IsZero() bool {
-	return len(stateID.LastAppHash) == 0
-}
-
-// IsComplete returns true if this is a valid StateID of a non-nil block.
-func (stateID StateID) IsComplete() bool {
-	return len(stateID.LastAppHash) == tmhash.Size
-}
-
-// String returns a human readable string representation of the StateID.
-//
-// 1. hash
-//
-func (stateID StateID) String() string {
-	return fmt.Sprintf(`%v`, stateID.LastAppHash)
-}
-
-// ToProto converts BlockID to protobuf
-func (stateID *StateID) ToProto() tmproto.StateID {
-	if stateID == nil {
-		return tmproto.StateID{}
-	}
-
-	return tmproto.StateID{
-		LastAppHash: stateID.LastAppHash,
-	}
-}
-
-// FromProto sets a protobuf BlockID to the given pointer.
-// It returns an error if the block id is invalid.
-func StateIDFromProto(sID *tmproto.StateID) (*StateID, error) {
-	if sID == nil {
-		return nil, errors.New("nil StateID")
-	}
-
-	stateID := new(StateID)
-
-	stateID.LastAppHash = sID.LastAppHash
-
-	return stateID, stateID.ValidateBasic()
 }

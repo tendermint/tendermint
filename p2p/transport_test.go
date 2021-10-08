@@ -569,7 +569,7 @@ func TestTransportHandshake(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
+	time.Sleep(10 * time.Microsecond)
 	var (
 		peerPV       = ed25519.GenPrivKey()
 		peerNodeInfo = testNodeInfo(PubKeyToID(peerPV.PubKey()), defaultNodeName, nil)

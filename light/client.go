@@ -513,23 +513,32 @@ func (c *Client) verifyLightBlock(ctx context.Context, newLightBlock *types.Ligh
 	return c.updateTrustedLightBlock(newLightBlock)
 }
 
+// verifyBlockWithDashCore verifies block and StateID signature using Dash Core RPC service
 // This method is called from verifyLightBlock if verification mode is dashcore,
 // verifyLightBlock in its turn is called by VerifyHeader.
 func (c *Client) verifyBlockWithDashCore(ctx context.Context, newLightBlock *types.LightBlock) error {
+	if err := c.verifyBlockSignatureWithDashCore(ctx, newLightBlock); err != nil {
+		return err
+	}
+
+	if err := c.verifyStateIDSignatureWithDashCore(ctx, newLightBlock); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) verifyBlockSignatureWithDashCore(ctx context.Context, newLightBlock *types.LightBlock) error {
+
 	quorumHash := newLightBlock.ValidatorSet.QuorumHash
 	quorumType := newLightBlock.ValidatorSet.QuorumType
 
 	protoVote := newLightBlock.Commit.GetCanonicalVote().ToProto()
 
 	blockSignBytes := types.VoteBlockSignBytes(c.chainID, protoVote)
-	stateSignBytes := types.VoteStateSignBytes(c.chainID, protoVote)
 
 	blockMessageHash := crypto.Sha256(blockSignBytes)
 	blockRequestID := types.VoteBlockRequestIDProto(protoVote)
-
-	stateMessageHash := crypto.Sha256(stateSignBytes)
-	stateRequestID := types.VoteStateRequestIDProto(protoVote)
-	stateSignature := newLightBlock.Commit.ThresholdStateSignature
 
 	blockSignatureIsValid, err := c.dashCoreRPCClient.QuorumVerify(
 		quorumType,
@@ -546,6 +555,23 @@ func (c *Client) verifyBlockWithDashCore(ctx context.Context, newLightBlock *typ
 	if !blockSignatureIsValid {
 		return fmt.Errorf("block signature is invalid")
 	}
+
+	return nil
+}
+
+// This method is called from verifyLightBlock if verification mode is dashcore,
+// verifyLightBlock in its turn is called by VerifyHeader.
+func (c *Client) verifyStateIDSignatureWithDashCore(ctx context.Context, newLightBlock *types.LightBlock) error {
+	quorumHash := newLightBlock.ValidatorSet.QuorumHash
+	quorumType := newLightBlock.ValidatorSet.QuorumType
+
+	stateID := newLightBlock.StateID()
+
+	stateSignBytes := stateID.SignBytes(c.chainID)
+
+	stateMessageHash := crypto.Sha256(stateSignBytes)
+	stateRequestID := stateID.SignRequestID()
+	stateSignature := newLightBlock.Commit.ThresholdStateSignature
 
 	stateSignatureIsValid, err := c.dashCoreRPCClient.QuorumVerify(
 		quorumType,
@@ -680,6 +706,7 @@ func (c *Client) lightBlockFromPrimary(ctx context.Context) (*types.LightBlock, 
 	return c.lightBlockFromPrimaryAtHeight(ctx, 0)
 }
 
+// lightBlockFromPrimaryAtHeight retrieves a light block from the primary provider
 func (c *Client) lightBlockFromPrimaryAtHeight(ctx context.Context, height int64) (*types.LightBlock, error) {
 	c.providerMutex.Lock()
 	l, err := c.primary.LightBlock(ctx, height)

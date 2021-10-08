@@ -88,7 +88,8 @@ func NewBlockExecutor(
 		NextCoreChainLock: nextCoreChainLock,
 		logger:            logger,
 		metrics:           NopMetrics(),
-		appHashSize:       crypto.DefaultAppHashSize,
+		// TODO: appHashSize should be read from config
+		appHashSize: crypto.DefaultAppHashSize,
 	}
 
 	for _, option := range options {
@@ -546,6 +547,9 @@ func updateState(
 	// and update s.LastValidators and s.Validators.
 	nValSet := state.NextValidators.Copy()
 
+	// We need to generate LastStateID before changing the state
+	lastStateID := state.StateID()
+
 	// Update the validator set with the latest abciResponses.
 	lastHeightValsChanged := state.LastHeightValidatorsChanged
 	if len(validatorUpdates) > 0 {
@@ -597,7 +601,7 @@ func updateState(
 		InitialHeight:                    state.InitialHeight,
 		LastBlockHeight:                  header.Height,
 		LastBlockID:                      blockID,
-		LastStateID:                      types.StateID{LastAppHash: state.AppHash},
+		LastStateID:                      lastStateID,
 		LastBlockTime:                    header.Time,
 		LastCoreChainLockedBlockHeight:   header.CoreChainLockedHeight,
 		NextValidators:                   nValSet,
