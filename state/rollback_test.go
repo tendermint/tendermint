@@ -155,5 +155,11 @@ func makeBlockIDRandom() types.BlockID {
 	)
 	rand.Read(blockHash)   //nolint: errcheck // ignore errcheck for read
 	rand.Read(partSetHash) //nolint: errcheck // ignore errcheck for read
-	return types.BlockID{blockHash, types.PartSetHeader{123, partSetHash}}
+	return types.BlockID{
+		Hash: blockHash,
+		PartSetHeader: types.PartSetHeader{
+			Total: 123,
+			Hash:  partSetHash,
+		},
+	}
 }
