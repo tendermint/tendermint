@@ -17,7 +17,7 @@ func (e ErrFilterTimeout) Error() string {
 // ErrRejected indicates that a Peer was rejected carrying additional
 // information as to the reason.
 type ErrRejected struct {
-	addr              NetAddress
+	addr              NodeAddress
 	conn              net.Conn
 	err               error
 	id                types.NodeID
@@ -30,7 +30,7 @@ type ErrRejected struct {
 }
 
 // Addr returns the NetAddress for the rejected Peer.
-func (e ErrRejected) Addr() NetAddress {
+func (e ErrRejected) Addr() NodeAddress {
 	return e.addr
 }
 
@@ -120,15 +120,15 @@ func (e ErrSwitchDuplicatePeerIP) Error() string {
 
 // ErrSwitchConnectToSelf to be raised when trying to connect to itself.
 type ErrSwitchConnectToSelf struct {
-	Addr *NetAddress
+	Addr *NodeAddress
 }
 
 func (e ErrSwitchConnectToSelf) Error() string {
-	return fmt.Sprintf("connect to self: %v", e.Addr)
+	return fmt.Sprintf("connect to self: %s", e.Addr)
 }
 
 type ErrSwitchAuthenticationFailure struct {
-	Dialed *NetAddress
+	Dialed *NodeAddress
 	Got    types.NodeID
 }
 

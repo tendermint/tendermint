@@ -372,7 +372,7 @@ func TestRouter_AcceptPeers(t *testing.T) {
 			mockTransport.On("RecieveMessage").Return(0, nil, nil).Maybe()
 			mockTransport.On("Close").Return(nil)
 			mockTransport.On("Accept").Once().Return(mockConnection, nil)
-			mockTransport.On("Accept").Once().Return(nil, io.EOF)
+			mockTransport.On("Accept").Maybe().Return(nil, io.EOF)
 
 			// Set up and start the router.
 			peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
@@ -760,7 +760,7 @@ func TestRouter_EvictPeers(t *testing.T) {
 	mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
 	mockTransport.On("Close").Return(nil)
 	mockTransport.On("Accept").Once().Return(mockConnection, nil)
-	mockTransport.On("Accept").Once().Return(nil, io.EOF)
+	mockTransport.On("Accept").Maybe().Return(nil, io.EOF)
 
 	// Set up and start the router.
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
@@ -875,7 +875,7 @@ func TestRouter_DontSendOnInvalidChannel(t *testing.T) {
 	mockTransport.On("RegisterChannel", mock.AnythingOfType("conn.ChannelDescriptor")).Maybe().Return(nil)
 	mockTransport.On("Close").Return(nil)
 	mockTransport.On("Accept").Once().Return(mockConnection, nil)
-	mockTransport.On("Accept").Once().Return(nil, io.EOF)
+	mockTransport.On("Accept").Maybe().Return(nil, io.EOF)
 
 	// Set up and start the router.
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
