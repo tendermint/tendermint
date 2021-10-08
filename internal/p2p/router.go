@@ -610,7 +610,7 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 	// The Router should do the handshake and have a final ack/fail
 	// message to make sure both ends have accepted the connection, such
 	// that it can be coordinated with the peer manager.
-	peerInfo, _, err := r.handshakePeer(ctx, conn, "")
+	peerInfo, err := r.handshakePeer(ctx, conn, "")
 	switch {
 	case errors.Is(err, context.Canceled):
 		return
@@ -704,7 +704,7 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 		return
 	}
 
-	peerInfo, _, err := r.handshakePeer(ctx, conn, address.NodeID)
+	peerInfo, err := r.handshakePeer(ctx, conn, address.NodeID)
 	switch {
 	case errors.Is(err, context.Canceled):
 		conn.Close()
@@ -799,7 +799,7 @@ func (r *Router) handshakePeer(
 	ctx context.Context,
 	conn Connection,
 	expectID types.NodeID,
-) (types.NodeInfo, crypto.PubKey, error) {
+) (types.NodeInfo, error) {
 
 	if r.options.HandshakeTimeout > 0 {
 		var cancel context.CancelFunc
@@ -809,27 +809,27 @@ func (r *Router) handshakePeer(
 
 	peerInfo, peerKey, err := conn.Handshake(ctx, r.nodeInfo, r.privKey)
 	if err != nil {
-		return peerInfo, peerKey, err
+		return peerInfo, err
 	}
 	if err = peerInfo.Validate(); err != nil {
-		return peerInfo, peerKey, fmt.Errorf("invalid handshake NodeInfo: %w", err)
+		return peerInfo, fmt.Errorf("invalid handshake NodeInfo: %w", err)
 	}
 	if types.NodeIDFromPubKey(peerKey) != peerInfo.NodeID {
-		return peerInfo, peerKey, fmt.Errorf("peer's public key did not match its node ID %q (expected %q)",
+		return peerInfo, fmt.Errorf("peer's public key did not match its node ID %q (expected %q)",
 			peerInfo.NodeID, types.NodeIDFromPubKey(peerKey))
 	}
 	if expectID != "" && expectID != peerInfo.NodeID {
-		return peerInfo, peerKey, fmt.Errorf("expected to connect with peer %q, got %q",
+		return peerInfo, fmt.Errorf("expected to connect with peer %q, got %q",
 			expectID, peerInfo.NodeID)
 	}
 	if err := r.nodeInfo.CompatibleWith(peerInfo); err != nil {
-		return peerInfo, peerKey, ErrRejected{
+		return peerInfo, ErrRejected{
 			err:            err,
 			id:             peerInfo.ID(),
 			isIncompatible: true,
 		}
 	}
-	return peerInfo, peerKey, nil
+	return peerInfo, nil
 }
 
 func (r *Router) runWithPeerMutex(fn func() error) error {

@@ -64,6 +64,8 @@ func VersionFromProto(v tmstate.Version) Version {
 // Instead, use state.Copy() or updateState(...).
 // NOTE: not goroutine-safe.
 type State struct {
+	// FIXME: This can be removed as TMVersion is a constant, and version.Consensus should
+	// eventually be replaced by VersionParams in ConsensusParams
 	Version Version
 
 	// immutable
