@@ -58,7 +58,7 @@ loop:
 			// assert that the queue serializes the blocks
 			require.Equal(t, resp.block.Height, trackingHeight)
 			trackingHeight--
-			queue.success(resp.block.Height)
+			queue.success()
 		}
 
 	}
@@ -105,7 +105,7 @@ func TestBlockQueueWithFailures(t *testing.T) {
 				queue.retry(resp.block.Height)
 			} else {
 				trackingHeight--
-				queue.success(resp.block.Height)
+				queue.success()
 			}
 
 		case <-queue.done():
@@ -223,7 +223,7 @@ func TestBlockQueueStopTime(t *testing.T) {
 			// assert that the queue serializes the blocks
 			assert.Equal(t, resp.block.Height, trackingHeight)
 			trackingHeight--
-			queue.success(resp.block.Height)
+			queue.success()
 
 		case <-queue.done():
 			wg.Wait()
@@ -268,7 +268,7 @@ loop:
 
 		case resp := <-queue.verifyNext():
 			require.GreaterOrEqual(t, resp.block.Height, initialHeight)
-			queue.success(resp.block.Height)
+			queue.success()
 		}
 	}
 }
