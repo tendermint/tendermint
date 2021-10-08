@@ -23,6 +23,7 @@ import (
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/trace"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -88,7 +89,6 @@ type CListMempool struct {
 	pendingPoolNotify chan map[string]uint64
 
 	txInfoparser TxInfoParser
-	lastBlockGasConsumed uint64
 }
 
 var _ Mempool = &CListMempool{}
@@ -889,7 +889,7 @@ func (mem *CListMempool) Update(
 		}
 	}
 	mem.metrics.GasUsed.Set(float64(gasUsed))
-	mem.lastBlockGasConsumed = gasUsed
+	trace.GetElapsedInfo().AddInfo(trace.GasUsed, fmt.Sprintf("%d", gasUsed))
 
 	for accAddr, accMaxNonce := range toCleanAccMap {
 		if txsRecord, ok := mem.addressRecord[accAddr]; ok {
@@ -1167,9 +1167,7 @@ func (mem *CListMempool) SetAccountRetriever(retriever AccountRetriever) {
 func (mem *CListMempool) SetTxInfoParser(parser TxInfoParser) {
 	mem.txInfoparser = parser
 }
-func (mem *CListMempool) LastBlockGasUsed() uint64 {
-	return mem.lastBlockGasConsumed
-}
+
 func (mem *CListMempool) pendingPoolJob() {
 	for addressNonce := range mem.pendingPoolNotify {
 		timeStart := time.Now()

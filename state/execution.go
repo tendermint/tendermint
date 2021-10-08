@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tendermint/tendermint/trace"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/fail"
@@ -131,23 +133,20 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 func (blockExec *BlockExecutor) ApplyBlock(
 	state State, blockID types.BlockID, block *types.Block,
 ) (State, int64, error) {
-	trc := &Tracer{}
+
+	trc := trace.NewTracer()
+
 	defer func() {
-		trc.dump(
-			fmt.Sprintf("ApplyBlock<%d>, tx<%d>, gasUsed<%d>",
-				block.Height,
-				len(block.Data.Txs),
-				blockExec.mempool.LastBlockGasUsed(),
-			),
-			blockExec.logger.With("module", "main"),
-		)
+		trace.GetElapsedInfo().AddInfo(trace.Height, fmt.Sprintf("%d", block.Height))
+		trace.GetElapsedInfo().AddInfo(trace.Tx, fmt.Sprintf("%d", len(block.Data.Txs)))
+		trace.GetElapsedInfo().AddInfo(trace.RunTx, trc.Format())
 
 		now := time.Now().UnixNano()
 		blockExec.metrics.IntervalTime.Set(float64(now-blockExec.metrics.lastBlockTime) / 1e6)
 		blockExec.metrics.lastBlockTime = now
 	}()
 
-	trc.pin("abci")
+	trc.Pin("abci")
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, 0, ErrInvalidBlock(err)
 	}
@@ -188,7 +187,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
 
-	trc.pin("commit")
+	trc.Pin("persist")
 	startTime = time.Now().UnixNano()
 
 	// Lock mempool, commit app state, update mempoool.
@@ -204,7 +203,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	fail.Fail() // XXX
 
-	trc.pin("saveState")
+	trc.Pin("saveState")
 
 	// Update the app hash and save the state.
 	state.AppHash = appHash

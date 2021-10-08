@@ -69,7 +69,8 @@ func (c *consensusTrack) setIsProposer(height int64, bTurn bool) {
 	}
 }
 
-func (c *consensusTrack) set(height int64, r cstypes.RoundStepType, begin bool) {
+func (c *consensusTrack) setTrace(height int64, r cstypes.RoundStepType, begin bool) {
+
 	if !c.trackSwitch {
 		return
 	}

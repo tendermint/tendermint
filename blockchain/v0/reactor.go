@@ -343,7 +343,7 @@ FOR_LOOP:
 				// TODO: same thing for app - but we would need a way to
 				// get the hash without persisting the state
 				var err error
-				state, _, err = bcR.blockExec.ApplyBlock(state, firstID, first)
+				state, _, err = bcR.blockExec.ApplyBlock(state, firstID, first) // rpc
 				if err != nil {
 					// TODO This is bad, are we zombie?
 					panic(fmt.Sprintf("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
