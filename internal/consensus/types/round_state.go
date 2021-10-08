@@ -82,11 +82,11 @@ type RoundState struct {
 	LockedBlockParts    *types.PartSet      `json:"locked_block_parts"`
 
 	// Last known round with POL for non-nil valid block.
-	ValidRound int32        `json:"valid_round"`
-	ValidBlock *types.Block `json:"valid_block"` // Last known block of POL mentioned above.
+	TwoThirdPrevoteRound int32        `json:"valid_round"`
+	TwoThirdPrevoteBlock *types.Block `json:"valid_block"` // Last known block of POL mentioned above.
 
 	// Last known block parts of POL mentioned above.
-	ValidBlockParts           *types.PartSet      `json:"valid_block_parts"`
+	TwoThirdPrevoteBlockParts *types.PartSet      `json:"valid_block_parts"`
 	Votes                     *HeightVoteSet      `json:"votes"`
 	CommitRound               int32               `json:"commit_round"` //
 	LastCommit                *types.VoteSet      `json:"last_commit"`  // Last precommits at Height-1
@@ -120,7 +120,7 @@ func (rs *RoundState) RoundStateSimple() RoundStateSimple {
 		StartTime:         rs.StartTime,
 		ProposalBlockHash: rs.ProposalBlock.Hash(),
 		LockedBlockHash:   rs.LockedBlock.Hash(),
-		ValidBlockHash:    rs.ValidBlock.Hash(),
+		ValidBlockHash:    rs.TwoThirdPrevoteBlock.Hash(),
 		Votes:             votesJSON,
 		Proposer: types.ValidatorInfo{
 			Address: addr,
@@ -187,8 +187,8 @@ func (rs *RoundState) StringIndented(indent string) string {
 %s  ProposalBlock: %v %v
 %s  LockedRound:   %v
 %s  LockedBlock:   %v %v
-%s  ValidRound:   %v
-%s  ValidBlock:   %v %v
+%s  TwoThirdPrevoteRound:   %v
+%s  TwoThirdPrevoteBlock:   %v %v
 %s  Votes:         %v
 %s  LastCommit:    %v
 %s  LastValidators:%v
@@ -201,8 +201,8 @@ func (rs *RoundState) StringIndented(indent string) string {
 		indent, rs.ProposalBlockParts.StringShort(), rs.ProposalBlock.StringShort(),
 		indent, rs.LockedRound,
 		indent, rs.LockedBlockParts.StringShort(), rs.LockedBlock.StringShort(),
-		indent, rs.ValidRound,
-		indent, rs.ValidBlockParts.StringShort(), rs.ValidBlock.StringShort(),
+		indent, rs.TwoThirdPrevoteRound,
+		indent, rs.TwoThirdPrevoteBlockParts.StringShort(), rs.TwoThirdPrevoteBlock.StringShort(),
 		indent, rs.Votes.StringIndented(indent+"  "),
 		indent, rs.LastCommit.StringShort(),
 		indent, rs.LastValidators.StringIndented(indent+"  "),

@@ -24,6 +24,7 @@ import (
 	"github.com/tendermint/tendermint/internal/state/mocks"
 	sf "github.com/tendermint/tendermint/internal/state/test/factory"
 	"github.com/tendermint/tendermint/internal/store"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/types"
@@ -237,6 +238,38 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 
 	// TODO check state and mempool
 	assert.Equal(t, abciEv, app.ByzantineValidators)
+}
+
+func TestProcessProposal(t *testing.T) {
+	height := 1
+	runTest := func(txs types.Txs, expectAccept bool) {
+		app := &testApp{}
+		cc := proxy.NewLocalClientCreator(app)
+		proxyApp := proxy.NewAppConns(cc)
+		err := proxyApp.Start()
+		require.Nil(t, err)
+		defer proxyApp.Stop() //nolint:errcheck // ignore for tests
+
+		state, stateDB, _ := makeState(1, height)
+		stateStore := sm.NewStore(stateDB)
+
+		blockStore := store.NewBlockStore(dbm.NewMemDB())
+
+		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
+			mmock.Mempool{}, sm.EmptyEvidencePool{}, blockStore)
+
+		block := sf.MakeBlock(state, int64(height), new(types.Commit))
+		block.Txs = txs
+		acceptBlock, err := blockExec.ProcessProposal(block)
+		require.Nil(t, err)
+		require.Equal(t, expectAccept, acceptBlock)
+	}
+	goodTxs := factory.MakeTenTxs(int64(height))
+	runTest(goodTxs, true)
+	// testApp has process proposal fail if any tx is 0-len
+	badTxs := factory.MakeTenTxs(int64(height))
+	badTxs[0] = types.Tx{}
+	runTest(badTxs, false)
 }
 
 func TestValidateValidatorUpdates(t *testing.T) {

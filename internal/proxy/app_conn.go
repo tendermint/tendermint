@@ -21,6 +21,7 @@ type AppConnConsensus interface {
 	InitChain(context.Context, types.RequestInitChain) (*types.ResponseInitChain, error)
 
 	PrepareProposal(context.Context, types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error)
+	ProcessProposal(context.Context, types.RequestProcessProposal) (*types.ResponseProcessProposal, error)
 	ExtendVote(context.Context, types.RequestExtendVote) (*types.ResponseExtendVote, error)
 	VerifyVoteExtension(context.Context, types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error)
 	BeginBlock(context.Context, types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
@@ -96,6 +97,14 @@ func (app *appConnConsensus) PrepareProposal(
 ) (*types.ResponsePrepareProposal, error) {
 	defer addTimeSample(app.metrics.MethodTiming.With("method", "prepare_proposal", "type", "sync"))()
 	return app.appConn.PrepareProposal(ctx, req)
+}
+
+func (app *appConnConsensus) ProcessProposal(
+       ctx context.Context,
+       req types.RequestProcessProposal,
+) (*types.ResponseProcessProposal, error) {
+	defer addTimeSample(app.metrics.MethodTiming.With("method", "process_proposal", "type", "sync"))()
+	return app.appConn.ProcessProposal(ctx, req)
 }
 
 func (app *appConnConsensus) ExtendVote(
