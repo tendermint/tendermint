@@ -12,6 +12,8 @@ import (
 //------------------------------------------------------
 // blockstore
 
+//go:generate mockery --case underscore --name BlockStore
+
 // BlockStore defines the interface used by the ConsensusState.
 type BlockStore interface {
 	Base() int64
