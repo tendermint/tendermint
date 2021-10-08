@@ -1863,7 +1863,7 @@ func TestStateOutputsBlockPartsStats(t *testing.T) {
 
 	// create dummy peer
 	cs, _ := randState(config, 1)
-	peerID, err := types.NewNodeID("aaa")
+	peerID, err := types.NewNodeID("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
 	require.NoError(t, err)
 
 	// 1) new block part
@@ -1909,7 +1909,7 @@ func TestStateOutputVoteStats(t *testing.T) {
 
 	cs, vss := randState(config, 2)
 	// create dummy peer
-	peerID, err := types.NewNodeID("aaa")
+	peerID, err := types.NewNodeID("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
 	require.NoError(t, err)
 
 	randBytes := tmrand.Bytes(tmhash.Size)
