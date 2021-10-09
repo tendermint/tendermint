@@ -3,6 +3,7 @@ package rpctest
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -26,7 +27,7 @@ type Options struct {
 
 func waitForRPC(ctx context.Context, conf *config.Config) {
 	laddr := conf.RPC.ListenAddress
-	client, err := rpcclient.New(laddr)
+	client, err := rpcclient.NewWithHTTPClient(laddr, http.DefaultClient)
 	if err != nil {
 		panic(err)
 	}
@@ -74,6 +75,7 @@ func CreateConfig(testName string) *config.Config {
 
 	// and we use random ports to run in parallel
 	tm, rpc, grpc := makeAddrs()
+	c.P2P.QueueType = "fifo"
 	c.P2P.ListenAddress = tm
 	c.RPC.ListenAddress = rpc
 	c.Consensus.WalPath = "rpc-test"

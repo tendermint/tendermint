@@ -17,7 +17,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var waitForEventTimeout = 8 * time.Second
+var waitForEventTimeout = 2 * time.Second
 
 // MakeTxKV returns a text transaction, allong with expected key, value pair
 func MakeTxKV() ([]byte, []byte, []byte) {
@@ -55,6 +55,9 @@ func TestHeaderEvents(t *testing.T) {
 
 // subscribe to new blocks and make sure height increments by 1
 func TestBlockEvents(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	n, conf := NodeSuite(t)
 	for _, c := range GetClients(t, n, conf) {
 		c := c
@@ -74,10 +77,10 @@ func TestBlockEvents(t *testing.T) {
 
 			const subscriber = "TestBlockEvents"
 
-			eventCh, err := c.Subscribe(context.Background(), subscriber, types.QueryForEvent(types.EventNewBlockValue).String())
+			eventCh, err := c.Subscribe(ctx, subscriber, types.QueryForEvent(types.EventNewBlockValue).String())
 			require.NoError(t, err)
 			t.Cleanup(func() {
-				if err := c.UnsubscribeAll(context.Background(), subscriber); err != nil {
+				if err := c.UnsubscribeAll(ctx, subscriber); err != nil {
 					t.Error(err)
 				}
 			})
@@ -105,6 +108,10 @@ func TestTxEventsSentWithBroadcastTxSync(t *testing.T)  { testTxEventsSent(t, "s
 
 func testTxEventsSent(t *testing.T, broadcastMethod string) {
 	n, conf := NodeSuite(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for _, c := range GetClients(t, n, conf) {
 		c := c
 		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
@@ -129,7 +136,6 @@ func testTxEventsSent(t *testing.T, broadcastMethod string) {
 				var (
 					txres *coretypes.ResultBroadcastTx
 					err   error
-					ctx   = context.Background()
 				)
 				switch broadcastMethod {
 				case "async":
@@ -159,19 +165,13 @@ func testTxEventsSent(t *testing.T, broadcastMethod string) {
 	}
 }
 
-// Test HTTPClient resubscribes upon disconnect && subscription error.
-// Test Local client resubscribes upon subscription error.
-func TestClientsResubscribe(t *testing.T) {
-	// TODO(melekes)
-}
-
 func TestHTTPReturnsErrorIfClientIsNotRunning(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	_, conf := NodeSuite(t)
 
-	c := getHTTPClient(t, conf)
+	c := getHTTPClientWithTimeout(t, conf, 100*time.Millisecond)
 
 	// on Subscribe
 	_, err := c.Subscribe(ctx, "TestHeaderEvents",

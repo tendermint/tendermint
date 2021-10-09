@@ -16,7 +16,7 @@ import (
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 )
 
-func TestTTPSimple(t *testing.T) {
+func TestHTTPSimple(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
