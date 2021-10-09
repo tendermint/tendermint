@@ -63,7 +63,6 @@ func (r ResponseProcessProposal) IsErr() bool {
 	return r.Result > ResponseProcessProposal_ACCEPT
 }
 
-
 //---------------------------------------------------------------------------
 // override JSON marshaling so we emit defaults (ie. disable omitempty)
 

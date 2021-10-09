@@ -85,7 +85,7 @@ type RoundState struct {
 	TwoThirdPrevoteBlock *types.Block `json:"valid_block"` // Last known block of POL mentioned above.
 
 	// Last known block parts of POL mentioned above.
-	TwoThirdPrevoteBlockParts           *types.PartSet      `json:"valid_block_parts"`
+	TwoThirdPrevoteBlockParts *types.PartSet      `json:"valid_block_parts"`
 	Votes                     *HeightVoteSet      `json:"votes"`
 	CommitRound               int32               `json:"commit_round"` //
 	LastCommit                *types.VoteSet      `json:"last_commit"`  // Last precommits at Height-1

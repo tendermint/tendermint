@@ -148,20 +148,20 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 }
 
 func (blockExec *BlockExecutor) ProcessProposal(
-  block *types.Block,
+	block *types.Block,
 ) (bool, error) {
-  ctx := context.Background()
-  req := abci.RequestProcessProposal {
-    Txs: block.Data.Txs.ToSliceOfBytes(),
-    Header: *block.Header.ToProto(),
-  }
+	ctx := context.Background()
+	req := abci.RequestProcessProposal{
+		Txs:    block.Data.Txs.ToSliceOfBytes(),
+		Header: *block.Header.ToProto(),
+	}
 
-  resp, err := blockExec.proxyApp.ProcessProposalSync(ctx, req)
-  if err != nil {
-    return false, ErrInvalidBlock(err)
-  }
+	resp, err := blockExec.proxyApp.ProcessProposalSync(ctx, req)
+	if err != nil {
+		return false, ErrInvalidBlock(err)
+	}
 
-  return resp.IsOK(), nil
+	return resp.IsOK(), nil
 }
 
 // ValidateBlock validates the given block against the given state.

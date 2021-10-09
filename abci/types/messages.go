@@ -133,6 +133,7 @@ func ToRequestProcessProposal(req RequestProcessProposal) *Request {
 		Value: &Request_ProcessProposal{&req},
 	}
 }
+
 //----------------------------------------
 
 func ToResponseException(errStr string) *Response {

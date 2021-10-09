@@ -260,7 +260,6 @@ func (app *localClient) ProcessProposalAsync(
 	), nil
 }
 
-
 //-------------------------------------------------------
 
 func (app *localClient) FlushSync(ctx context.Context) error {
@@ -446,7 +445,6 @@ func (app *localClient) ProcessProposalSync(
 	res := app.Application.ProcessProposal(req)
 	return &res, nil
 }
-
 
 //-------------------------------------------------------
 
