@@ -39,7 +39,7 @@ type Reactor struct {
 
 	cfg     *config.MempoolConfig
 	mempool *CListMempool
-	ids     *mempool.MempoolIDs
+	ids     *mempool.IDs
 
 	// XXX: Currently, this is the only way to get information about a peer. Ideally,
 	// we rely on message-oriented communication to get necessary peer data.

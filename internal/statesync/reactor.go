@@ -726,7 +726,7 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 		}
 
 	case *ssproto.LightBlockResponse:
-		var height int64 = 0
+		var height int64
 		if msg.LightBlock != nil {
 			height = msg.LightBlock.SignedHeader.Header.Height
 		}

@@ -71,7 +71,7 @@ func iotest(writer protoio.WriteCloser, reader protoio.ReadCloser) error {
 			return err
 		}
 		if n != len(bz)+visize {
-			return fmt.Errorf("WriteMsg() wrote %v bytes, expected %v", n, len(bz)+visize) // nolint
+			return fmt.Errorf("WriteMsg() wrote %v bytes, expected %v", n, len(bz)+visize)
 		}
 		lens[i] = n
 	}
