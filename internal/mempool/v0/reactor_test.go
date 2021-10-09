@@ -50,7 +50,7 @@ func setup(t *testing.T, config *config.MempoolConfig, numNodes int, chBuf uint)
 		peerUpdates:    make(map[types.NodeID]*p2p.PeerUpdates, numNodes),
 	}
 
-	chDesc := p2p.ChannelDescriptor{
+	chDesc := &p2p.ChannelDescriptor{
 		ID:                  mempool.MempoolChannel,
 		MsgType:             new(protomem.Message),
 		SendQueueCapacity:   int(chBuf),

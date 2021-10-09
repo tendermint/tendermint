@@ -136,7 +136,7 @@ func (n *Network) NodeIDs() []types.NodeID {
 // doing error checks and cleanups.
 func (n *Network) MakeChannels(
 	t *testing.T,
-	chDesc p2p.ChannelDescriptor,
+	chDesc *p2p.ChannelDescriptor,
 ) map[types.NodeID]*p2p.Channel {
 	channels := map[types.NodeID]*p2p.Channel{}
 	for _, node := range n.Nodes {
@@ -150,7 +150,7 @@ func (n *Network) MakeChannels(
 // all the channels.
 func (n *Network) MakeChannelsNoCleanup(
 	t *testing.T,
-	chDesc p2p.ChannelDescriptor,
+	chDesc *p2p.ChannelDescriptor,
 ) map[types.NodeID]*p2p.Channel {
 	channels := map[types.NodeID]*p2p.Channel{}
 	for _, node := range n.Nodes {
@@ -276,7 +276,7 @@ func (n *Network) MakeNode(t *testing.T, opts NodeOptions) *Node {
 // MakeChannel opens a channel, with automatic error handling and cleanup. On
 // test cleanup, it also checks that the channel is empty, to make sure
 // all expected messages have been asserted.
-func (n *Node) MakeChannel(t *testing.T, chDesc p2p.ChannelDescriptor) *p2p.Channel {
+func (n *Node) MakeChannel(t *testing.T, chDesc *p2p.ChannelDescriptor) *p2p.Channel {
 	channel, err := n.Router.OpenChannel(chDesc)
 	require.NoError(t, err)
 	require.Contains(t, n.Router.NodeInfo().Channels, byte(chDesc.ID))
@@ -289,7 +289,7 @@ func (n *Node) MakeChannel(t *testing.T, chDesc p2p.ChannelDescriptor) *p2p.Chan
 
 // MakeChannelNoCleanup opens a channel, with automatic error handling. The
 // caller must ensure proper cleanup of the channel.
-func (n *Node) MakeChannelNoCleanup(t *testing.T, chDesc p2p.ChannelDescriptor) *p2p.Channel {
+func (n *Node) MakeChannelNoCleanup(t *testing.T, chDesc *p2p.ChannelDescriptor) *p2p.Channel {
 	channel, err := n.Router.OpenChannel(chDesc)
 	require.NoError(t, err)
 	return channel
@@ -321,8 +321,8 @@ func (n *Node) MakePeerUpdatesNoRequireEmpty(t *testing.T) *p2p.PeerUpdates {
 	return sub
 }
 
-func MakeChannelDesc(chID p2p.ChannelID) p2p.ChannelDescriptor {
-	return p2p.ChannelDescriptor{
+func MakeChannelDesc(chID p2p.ChannelID) *p2p.ChannelDescriptor {
+	return &p2p.ChannelDescriptor{
 		ID:                  chID,
 		MsgType:             new(Message),
 		Priority:            5,

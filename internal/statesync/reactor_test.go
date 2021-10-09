@@ -109,32 +109,40 @@ func setup(
 	rts.peerUpdates = p2p.NewPeerUpdates(rts.peerUpdateCh, int(chBuf))
 
 	rts.snapshotChannel = p2p.NewChannel(
-		p2p.ChannelDescriptor{ID: SnapshotChannel},
-		new(ssproto.Message),
+		&p2p.ChannelDescriptor{
+			ID:      SnapshotChannel,
+			MsgType: new(ssproto.Message),
+		},
 		rts.snapshotInCh,
 		rts.snapshotOutCh,
 		rts.snapshotPeerErrCh,
 	)
 
 	rts.chunkChannel = p2p.NewChannel(
-		p2p.ChannelDescriptor{ID: ChunkChannel},
-		new(ssproto.Message),
+		&p2p.ChannelDescriptor{
+			ID:      ChunkChannel,
+			MsgType: new(ssproto.Message),
+		},
 		rts.chunkInCh,
 		rts.chunkOutCh,
 		rts.chunkPeerErrCh,
 	)
 
 	rts.blockChannel = p2p.NewChannel(
-		p2p.ChannelDescriptor{ID: LightBlockChannel},
-		new(ssproto.Message),
+		&p2p.ChannelDescriptor{
+			ID:      LightBlockChannel,
+			MsgType: new(ssproto.Message),
+		},
 		rts.blockInCh,
 		rts.blockOutCh,
 		rts.blockPeerErrCh,
 	)
 
 	rts.paramsChannel = p2p.NewChannel(
-		p2p.ChannelDescriptor{ID: ParamsChannel},
-		new(ssproto.Message),
+		&p2p.ChannelDescriptor{
+			ID:      ParamsChannel,
+			MsgType: new(ssproto.Message),
+		},
 		rts.paramsInCh,
 		rts.paramsOutCh,
 		rts.paramsPeerErrCh,

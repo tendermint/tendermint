@@ -128,7 +128,7 @@ func TestRouter_Channel_Basic(t *testing.T) {
 	require.Error(t, err)
 
 	// Opening a different channel should work.
-	chDesc2 := p2p.ChannelDescriptor{ID: 2, MsgType: &p2ptest.Message{}}
+	chDesc2 := &p2p.ChannelDescriptor{ID: 2, MsgType: &p2ptest.Message{}}
 	_, err = router.OpenChannel(chDesc2)
 	require.NoError(t, err)
 	require.Contains(t, router.NodeInfo().Channels, byte(chDesc2.ID))

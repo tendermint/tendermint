@@ -15,7 +15,7 @@ import (
 var (
 	ctx    = context.Background()
 	chID   = p2p.ChannelID(1)
-	chDesc = p2p.ChannelDescriptor{
+	chDesc = &p2p.ChannelDescriptor{
 		ID:           chID,
 		MsgType:      &p2ptest.Message{},
 		Priority:     5,

@@ -290,8 +290,10 @@ func setupSingle(t *testing.T) *singleTestReactor {
 	pexOutCh := make(chan p2p.Envelope, chBuf)
 	pexErrCh := make(chan p2p.PeerError, chBuf)
 	pexCh := p2p.NewChannel(
-		conn.ChannelDescriptor{ID: pex.PexChannel},
-		new(p2pproto.PexMessage),
+		&conn.ChannelDescriptor{
+			ID:      pex.PexChannel,
+			MsgType: new(p2pproto.PexMessage),
+		},
 		pexInCh,
 		pexOutCh,
 		pexErrCh,
