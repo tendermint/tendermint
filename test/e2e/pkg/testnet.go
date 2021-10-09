@@ -189,12 +189,14 @@ func LoadTestnet(file string) (*Testnet, error) {
 			QueueType:        manifest.QueueType,
 			UseLegacyP2P:     nodeManifest.UseLegacyP2P,
 		}
-
 		if node.StartAt == testnet.InitialHeight {
 			node.StartAt = 0 // normalize to 0 for initial nodes, since code expects this
 		}
 		if nodeManifest.Mode != "" {
 			node.Mode = Mode(nodeManifest.Mode)
+		}
+		if node.Mode == ModeLight {
+			node.ABCIProtocol = ProtocolBuiltin
 		}
 		if nodeManifest.Database != "" {
 			node.Database = nodeManifest.Database
