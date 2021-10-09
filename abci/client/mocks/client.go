@@ -761,6 +761,52 @@ func (_m *Client) PrepareProposalSync(_a0 context.Context, _a1 types.RequestPrep
 	return r0, r1
 }
 
+// ProcessProposalAsync provides a mock function with given fields: _a0, _a1
+func (_m *Client) ProcessProposalAsync(_a0 context.Context, _a1 types.RequestProcessProposal) (*abcicli.ReqRes, error) {
+	ret := _m.Called(_a0, _a1)
+
+	var r0 *abcicli.ReqRes
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestProcessProposal) *abcicli.ReqRes); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*abcicli.ReqRes)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, types.RequestProcessProposal) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ProcessProposalSync provides a mock function with given fields: _a0, _a1
+func (_m *Client) ProcessProposalSync(_a0 context.Context, _a1 types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
+	ret := _m.Called(_a0, _a1)
+
+	var r0 *types.ResponseProcessProposal
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestProcessProposal) *types.ResponseProcessProposal); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.ResponseProcessProposal)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, types.RequestProcessProposal) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // QueryAsync provides a mock function with given fields: _a0, _a1
 func (_m *Client) QueryAsync(_a0 context.Context, _a1 types.RequestQuery) (*abcicli.ReqRes, error) {
 	ret := _m.Called(_a0, _a1)

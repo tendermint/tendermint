@@ -123,6 +123,29 @@ func (_m *AppConnConsensus) Error() error {
 	return r0
 }
 
+// ExtendVoteSync provides a mock function with given fields: _a0, _a1
+func (_m *AppConnConsensus) ExtendVoteSync(_a0 context.Context, _a1 types.RequestExtendVote) (*types.ResponseExtendVote, error) {
+	ret := _m.Called(_a0, _a1)
+
+	var r0 *types.ResponseExtendVote
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestExtendVote) *types.ResponseExtendVote); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.ResponseExtendVote)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, types.RequestExtendVote) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // InitChainSync provides a mock function with given fields: _a0, _a1
 func (_m *AppConnConsensus) InitChainSync(_a0 context.Context, _a1 types.RequestInitChain) (*types.ResponseInitChain, error) {
 	ret := _m.Called(_a0, _a1)
@@ -169,7 +192,53 @@ func (_m *AppConnConsensus) PrepareProposalSync(_a0 context.Context, _a1 types.R
 	return r0, r1
 }
 
+// ProcessProposalSync provides a mock function with given fields: _a0, _a1
+func (_m *AppConnConsensus) ProcessProposalSync(_a0 context.Context, _a1 types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
+	ret := _m.Called(_a0, _a1)
+
+	var r0 *types.ResponseProcessProposal
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestProcessProposal) *types.ResponseProcessProposal); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.ResponseProcessProposal)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, types.RequestProcessProposal) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // SetResponseCallback provides a mock function with given fields: _a0
 func (_m *AppConnConsensus) SetResponseCallback(_a0 abcicli.Callback) {
 	_m.Called(_a0)
+}
+
+// VerifyVoteExtensionSync provides a mock function with given fields: _a0, _a1
+func (_m *AppConnConsensus) VerifyVoteExtensionSync(_a0 context.Context, _a1 types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
+	ret := _m.Called(_a0, _a1)
+
+	var r0 *types.ResponseVerifyVoteExtension
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestVerifyVoteExtension) *types.ResponseVerifyVoteExtension); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.ResponseVerifyVoteExtension)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, types.RequestVerifyVoteExtension) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
