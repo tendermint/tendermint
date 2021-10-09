@@ -352,7 +352,7 @@ func createConsensusReactor(
 
 func createTransport(logger log.Logger, cfg *config.Config) *p2p.MConnTransport {
 	return p2p.NewMConnTransport(
-		logger, conn.DefaultMConnConfig(), []p2p.ChannelDescriptor{},
+		logger, conn.DefaultMConnConfig(), []*p2p.ChannelDescriptor{},
 		p2p.MConnTransportOptions{
 			MaxAcceptedConnections: uint32(cfg.P2P.MaxConnections),
 		},

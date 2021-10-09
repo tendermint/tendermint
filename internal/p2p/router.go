@@ -64,7 +64,7 @@ type Channel struct {
 	Out   chan<- Envelope  // outbound messages (reactors to peers)
 	Error chan<- PeerError // peer error reporting
 
-	descriptor  conn.ChannelDescriptor
+	descriptor  *conn.ChannelDescriptor
 	messageType proto.Message // the channel's message type, used for unmarshaling
 	closeCh     chan struct{}
 	closeOnce   sync.Once
@@ -73,7 +73,7 @@ type Channel struct {
 // NewChannel creates a new channel. It is primarily for internal and test
 // use, reactors should use Router.OpenChannel().
 func NewChannel(
-	descriptor conn.ChannelDescriptor,
+	descriptor *conn.ChannelDescriptor,
 	messageType proto.Message,
 	inCh <-chan Envelope,
 	outCh chan<- Envelope,
@@ -252,7 +252,7 @@ type Router struct {
 	nodeInfo           types.NodeInfo
 	privKey            crypto.PrivKey
 	peerManager        *PeerManager
-	chDescs            []ChannelDescriptor
+	chDescs            []*ChannelDescriptor
 	transports         []Transport
 	connTracker        connectionTracker
 	protocolTransports map[Protocol]Transport
@@ -298,7 +298,7 @@ func NewRouter(
 			options.MaxIncomingConnectionAttempts,
 			options.IncomingConnectionWindow,
 		),
-		chDescs:            []ChannelDescriptor{},
+		chDescs:            []*ChannelDescriptor{},
 		transports:         transports,
 		protocolTransports: map[Protocol]Transport{},
 		peerManager:        peerManager,
@@ -357,7 +357,7 @@ func (r *Router) createQueueFactory() (func(int) queue, error) {
 // implement Wrapper to automatically (un)wrap multiple message types in a
 // wrapper message. The caller may provide a size to make the channel buffered,
 // which internally makes the inbound, outbound, and error channel buffered.
-func (r *Router) OpenChannel(chDesc ChannelDescriptor) (*Channel, error) {
+func (r *Router) OpenChannel(chDesc *ChannelDescriptor) (*Channel, error) {
 	r.channelMtx.Lock()
 	defer r.channelMtx.Unlock()
 

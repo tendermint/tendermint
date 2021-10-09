@@ -20,8 +20,8 @@ import (
 
 var _ service.Service = (*Reactor)(nil)
 
-func GetChannelDescriptor() p2p.ChannelDescriptor {
-	return p2p.ChannelDescriptor{
+func GetChannelDescriptor() *p2p.ChannelDescriptor {
+	return &p2p.ChannelDescriptor{
 		ID:                  BlockSyncChannel,
 		MsgType:             new(bcproto.Message),
 		Priority:            5,

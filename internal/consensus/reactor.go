@@ -29,7 +29,7 @@ var (
 	//
 	// TODO: Remove once p2p refactor is complete.
 	// ref: https://github.com/tendermint/tendermint/issues/5670
-	ChannelShims = []p2p.ChannelDescriptor{
+	ChannelShims = []*p2p.ChannelDescriptor{
 		{
 			ID:                  StateChannel,
 			MsgType:             new(tmcons.Message),

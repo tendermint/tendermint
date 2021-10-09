@@ -62,8 +62,8 @@ const (
 // within each reactor (as they are now) or, considering that the reactor doesn't
 // really need to care about the channel descriptors, if they should be housed
 // in the node module.
-func ChannelDescriptor() conn.ChannelDescriptor {
-	return conn.ChannelDescriptor{
+func ChannelDescriptor() *conn.ChannelDescriptor {
+	return &conn.ChannelDescriptor{
 		ID:                  PexChannel,
 		MsgType:             &protop2p.PexMessage{},
 		Priority:            1,

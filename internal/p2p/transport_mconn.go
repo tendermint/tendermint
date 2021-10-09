@@ -7,7 +7,6 @@ import (
 	"io"
 	"math"
 	"net"
-	"sort"
 	"strconv"
 	"sync"
 
@@ -44,7 +43,7 @@ type MConnTransport struct {
 	logger       log.Logger
 	options      MConnTransportOptions
 	mConnConfig  conn.MConnConfig
-	channelDescs []ChannelDescriptor
+	channelDescs []*ChannelDescriptor
 	closeCh      chan struct{}
 	closeOnce    sync.Once
 
@@ -57,7 +56,7 @@ type MConnTransport struct {
 func NewMConnTransport(
 	logger log.Logger,
 	mConnConfig conn.MConnConfig,
-	channelDescs []ChannelDescriptor,
+	channelDescs []*ChannelDescriptor,
 	options MConnTransportOptions,
 ) *MConnTransport {
 	return &MConnTransport{
@@ -79,7 +78,7 @@ func (m *MConnTransport) Protocols() []Protocol {
 	return []Protocol{MConnProtocol, TCPProtocol}
 }
 
-func (m *MConnTransport) RegisterChannel(ch ChannelDescriptor) error {
+func (m *MConnTransport) RegisterChannel(ch *ChannelDescriptor) error {
 	for _, desc := range m.channelDescs {
 		if desc.ID == ch.ID {
 			return fmt.Errorf("cannot re-register channel %d", ch.ID)
@@ -87,9 +86,6 @@ func (m *MConnTransport) RegisterChannel(ch ChannelDescriptor) error {
 	}
 
 	m.channelDescs = append(m.channelDescs, ch)
-	sort.SliceStable(m.channelDescs, func(i, j int) bool {
-		return m.channelDescs[i].ID < m.channelDescs[j].ID
-	})
 	return nil
 }
 
@@ -223,7 +219,7 @@ type mConnConnection struct {
 	logger       log.Logger
 	conn         net.Conn
 	mConnConfig  conn.MConnConfig
-	channelDescs []ChannelDescriptor
+	channelDescs []*ChannelDescriptor
 	receiveCh    chan mConnMessage
 	errorCh      chan error
 	closeCh      chan struct{}
@@ -243,7 +239,7 @@ func newMConnConnection(
 	logger log.Logger,
 	conn net.Conn,
 	mConnConfig conn.MConnConfig,
-	channelDescs []ChannelDescriptor,
+	channelDescs []*ChannelDescriptor,
 ) *mConnConnection {
 	return &mConnConnection{
 		logger:       logger,

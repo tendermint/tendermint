@@ -71,7 +71,7 @@ type pqScheduler struct {
 	size         uint
 	sizes        map[uint]uint // cumulative priority sizes
 	pq           *priorityQueue
-	chDescs      []ChannelDescriptor
+	chDescs      []*ChannelDescriptor
 	capacity     uint
 	chPriorities map[ChannelID]uint
 
@@ -84,12 +84,12 @@ type pqScheduler struct {
 func newPQScheduler(
 	logger log.Logger,
 	m *Metrics,
-	chDescs []ChannelDescriptor,
+	chDescs []*ChannelDescriptor,
 	enqueueBuf, dequeueBuf, capacity uint,
 ) *pqScheduler {
 
 	// copy each ChannelDescriptor and sort them by ascending channel priority
-	chDescsCopy := make([]ChannelDescriptor, len(chDescs))
+	chDescsCopy := make([]*ChannelDescriptor, len(chDescs))
 	copy(chDescsCopy, chDescs)
 	sort.Slice(chDescsCopy, func(i, j int) bool { return chDescsCopy[i].Priority < chDescsCopy[j].Priority })
 

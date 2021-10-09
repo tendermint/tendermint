@@ -147,7 +147,7 @@ func DefaultMConnConfig() MConnConfig {
 // NewMConnection wraps net.Conn and creates multiplex connection
 func NewMConnection(
 	conn net.Conn,
-	chDescs []ChannelDescriptor,
+	chDescs []*ChannelDescriptor,
 	onReceive receiveCbFunc,
 	onError errorCbFunc,
 ) *MConnection {
@@ -162,7 +162,7 @@ func NewMConnection(
 // NewMConnectionWithConfig wraps net.Conn and creates multiplex connection with a config
 func NewMConnectionWithConfig(
 	conn net.Conn,
-	chDescs []ChannelDescriptor,
+	chDescs []*ChannelDescriptor,
 	onReceive receiveCbFunc,
 	onError errorCbFunc,
 	config MConnConfig,
@@ -631,7 +631,7 @@ type ChannelDescriptor struct {
 	MaxSendBytes uint
 }
 
-func (chDesc ChannelDescriptor) FillDefaults() (filled ChannelDescriptor) {
+func (chDesc *ChannelDescriptor) FillDefaults() (filled *ChannelDescriptor) {
 	if chDesc.SendQueueCapacity == 0 {
 		chDesc.SendQueueCapacity = defaultSendQueueCapacity
 	}
@@ -655,7 +655,7 @@ type Channel struct {
 	recentlySent int64
 
 	conn          *MConnection
-	desc          ChannelDescriptor
+	desc          *ChannelDescriptor
 	sendQueue     chan []byte
 	sendQueueSize int32 // atomic.
 	recving       []byte
@@ -666,7 +666,7 @@ type Channel struct {
 	Logger log.Logger
 }
 
-func newChannel(conn *MConnection, desc ChannelDescriptor) *Channel {
+func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
 	desc = desc.FillDefaults()
 	if desc.Priority <= 0 {
 		panic("Channel default priority must be a positive integer")
