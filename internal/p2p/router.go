@@ -64,29 +64,26 @@ type Channel struct {
 	Out   chan<- Envelope  // outbound messages (reactors to peers)
 	Error chan<- PeerError // peer error reporting
 
-	descriptor  *conn.ChannelDescriptor
-	messageType proto.Message // the channel's message type, used for unmarshaling
-	closeCh     chan struct{}
-	closeOnce   sync.Once
+	descriptor *conn.ChannelDescriptor
+	closeCh    chan struct{}
+	closeOnce  sync.Once
 }
 
 // NewChannel creates a new channel. It is primarily for internal and test
 // use, reactors should use Router.OpenChannel().
 func NewChannel(
 	descriptor *conn.ChannelDescriptor,
-	messageType proto.Message,
 	inCh <-chan Envelope,
 	outCh chan<- Envelope,
 	errCh chan<- PeerError,
 ) *Channel {
 	return &Channel{
-		ID:          descriptor.ID,
-		descriptor:  descriptor,
-		messageType: messageType,
-		In:          inCh,
-		Out:         outCh,
-		Error:       errCh,
-		closeCh:     make(chan struct{}),
+		ID:         descriptor.ID,
+		descriptor: descriptor,
+		In:         inCh,
+		Out:        outCh,
+		Error:      errCh,
+		closeCh:    make(chan struct{}),
 	}
 }
 
@@ -370,7 +367,7 @@ func (r *Router) OpenChannel(chDesc *ChannelDescriptor) (*Channel, error) {
 	queue := r.queueFactory(chDesc.RecvMessageCapacity)
 	outCh := make(chan Envelope, chDesc.RecvMessageCapacity)
 	errCh := make(chan PeerError, chDesc.RecvMessageCapacity)
-	channel := NewChannel(chDesc, chDesc.MsgType, queue.dequeue(), outCh, errCh)
+	channel := NewChannel(chDesc, queue.dequeue(), outCh, errCh)
 
 	var wrapper Wrapper
 	if w, ok := chDesc.MsgType.(Wrapper); ok {
