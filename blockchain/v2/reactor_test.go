@@ -138,7 +138,6 @@ type testReactorParams struct {
 func newTestReactor(p testReactorParams) *BlockchainReactor {
 	store, state, _ := newReactorStore(p.genDoc, p.privVals, p.startHeight)
 	reporter := behaviour.NewMockReporter()
-
 	var appl blockApplier
 
 	if p.mockA {
