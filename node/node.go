@@ -819,9 +819,11 @@ func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 			return nil, err
 		}
 		go func() {
-			if err := grpccore.StartGRPCServer(n.rpcEnv, listener); err != nil {
+			closer, err := grpccore.StartGRPCServer(n.rpcEnv, listener)
+			if err != nil {
 				n.Logger.Error("Error starting gRPC server", "err", err)
 			}
+			closer()
 		}()
 		listeners = append(listeners, listener)
 

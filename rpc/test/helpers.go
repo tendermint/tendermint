@@ -42,12 +42,15 @@ func waitForRPC(ctx context.Context, conf *config.Config) {
 	}
 }
 
-func waitForGRPC(ctx context.Context, conf *config.Config) {
-	client := GetGRPCClient(conf)
+func waitForGRPC(ctx context.Context, conf *config.Config) coregrpc.Closer {
+	client, closer := GetGRPCClient(conf)
 	for {
 		_, err := client.Ping(ctx, &coregrpc.RequestPing{})
 		if err == nil {
-			return
+			return closer
+		}
+		if ctx.Err() != nil {
+			return closer
 		}
 	}
 }
@@ -79,7 +82,7 @@ func CreateConfig(testName string) *config.Config {
 	return c
 }
 
-func GetGRPCClient(conf *config.Config) coregrpc.BroadcastAPIClient {
+func GetGRPCClient(conf *config.Config) (coregrpc.BroadcastAPIClient, coregrpc.Closer) {
 	grpcAddr := conf.RPC.GRPCListenAddress
 	return coregrpc.StartGRPCClient(grpcAddr)
 }
@@ -114,7 +117,7 @@ func StartTendermint(ctx context.Context,
 
 	// wait for rpc
 	waitForRPC(ctx, conf)
-	waitForGRPC(ctx, conf)
+	closeGrpc := waitForGRPC(ctx, conf)
 
 	if !nodeOpts.suppressStdout {
 		fmt.Println("Tendermint running!")
@@ -124,6 +127,7 @@ func StartTendermint(ctx context.Context,
 		if err := tmNode.Stop(); err != nil {
 			logger.Error("Error when trying to stop node", "err", err)
 		}
+		closeGrpc()
 		tmNode.Wait()
 		os.RemoveAll(conf.RootDir)
 		return nil

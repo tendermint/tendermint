@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -151,11 +152,11 @@ func New(remote string) (*Client, error) {
 }
 
 // NewWithHTTPClient returns a Client pointed at the given address using a
-// custom http client. An error is returned on invalid remote. The function
-// panics when client is nil.
+// custom http client. An error is returned on invalid remote or the
+// client is nil.
 func NewWithHTTPClient(remote string, c *http.Client) (*Client, error) {
 	if c == nil {
-		panic("nil http.Client")
+		return nil, errors.New("nil http.Client")
 	}
 
 	parsedURL, err := newParsedURL(remote)

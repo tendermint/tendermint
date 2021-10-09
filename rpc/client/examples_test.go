@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"log"
+	"net/http"
 	"testing"
 	"time"
 
@@ -79,7 +80,7 @@ func TestHTTPBatching(t *testing.T) {
 	defer func() { _ = closer(ctx) }()
 
 	rpcAddr := conf.RPC.ListenAddress
-	c, err := rpchttp.New(rpcAddr)
+	c, err := rpchttp.NewWithClient(rpcAddr, http.DefaultClient)
 	require.NoError(t, err)
 
 	// Create our two transactions
@@ -100,12 +101,12 @@ func TestHTTPBatching(t *testing.T) {
 	for _, tx := range txs {
 		// Broadcast the transaction and wait for it to commit (rather use
 		// c.BroadcastTxSync though in production).
-		_, err := batch.BroadcastTxSync(context.Background(), tx)
+		_, err := batch.BroadcastTxSync(ctx, tx)
 		require.NoError(t, err)
 	}
 
 	// Send the batch of 2 transactions
-	_, err = batch.Send(context.Background())
+	_, err = batch.Send(ctx)
 	require.NoError(t, err)
 
 	// wait for the transaction to land, we could poll more for
@@ -128,7 +129,7 @@ func TestHTTPBatching(t *testing.T) {
 	)
 
 	// Send the 2 queries and keep the results
-	results, err := batch.Send(context.Background())
+	results, err := batch.Send(ctx)
 	require.NoError(t, err)
 
 	require.Len(t, results, 2)

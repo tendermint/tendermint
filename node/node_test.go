@@ -49,8 +49,11 @@ func TestNodeStartStop(t *testing.T) {
 	n, ok := ns.(*nodeImpl)
 	require.True(t, ok)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// wait for the node to produce a block
-	blocksSub, err := n.EventBus().Subscribe(context.Background(), "node_test", types.EventQueryNewBlock)
+	blocksSub, err := n.EventBus().Subscribe(ctx, "node_test", types.EventQueryNewBlock)
 	require.NoError(t, err)
 	select {
 	case <-blocksSub.Out():
@@ -211,6 +214,9 @@ func testFreeAddr(t *testing.T) string {
 // create a proposal block using real and full
 // mempool and evidence pool and validate it.
 func TestCreateProposalBlock(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cfg := config.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(cfg.RootDir)
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
@@ -266,7 +272,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	txLength := 100
 	for i := 0; i <= maxBytes/txLength; i++ {
 		tx := tmrand.Bytes(txLength)
-		err := mp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{})
+		err := mp.CheckTx(ctx, tx, nil, mempool.TxInfo{})
 		assert.NoError(t, err)
 	}
 
@@ -303,6 +309,9 @@ func TestCreateProposalBlock(t *testing.T) {
 }
 
 func TestMaxTxsProposalBlockSize(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cfg := config.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(cfg.RootDir)
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
@@ -336,7 +345,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	// fill the mempool with one txs just below the maximum size
 	txLength := int(types.MaxDataBytesNoEvidence(maxBytes, 1))
 	tx := tmrand.Bytes(txLength - 4) // to account for the varint
-	err = mp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{})
+	err = mp.CheckTx(ctx, tx, nil, mempool.TxInfo{})
 	assert.NoError(t, err)
 
 	blockExec := sm.NewBlockExecutor(
@@ -365,6 +374,9 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 }
 
 func TestMaxProposalBlockSize(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cfg := config.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(cfg.RootDir)
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
@@ -402,7 +414,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	// At the end of the test, only the single big tx should be added
 	for i := 0; i < 10; i++ {
 		tx := tmrand.Bytes(10)
-		err = mp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{})
+		err = mp.CheckTx(ctx, tx, nil, mempool.TxInfo{})
 		assert.NoError(t, err)
 	}
 
@@ -493,14 +505,15 @@ func TestNodeNewSeedNode(t *testing.T) {
 		defaultGenesisDocProviderFunc(cfg),
 		log.TestingLogger(),
 	)
+
 	require.NoError(t, err)
 	n, ok := ns.(*nodeImpl)
 	require.True(t, ok)
 
 	err = n.Start()
 	require.NoError(t, err)
-
 	assert.True(t, n.pexReactor.IsRunning())
+	require.NoError(t, n.Stop())
 }
 
 func TestNodeSetEventSink(t *testing.T) {
