@@ -170,6 +170,9 @@ func LoadTestnet(file string) (*Testnet, error) {
 		if nodeManifest.Mode != "" {
 			node.Mode = Mode(nodeManifest.Mode)
 		}
+		if node.Mode == ModeLight {
+			node.ABCIProtocol = ProtocolBuiltin
+		}
 		if nodeManifest.Database != "" {
 			node.Database = nodeManifest.Database
 		}
