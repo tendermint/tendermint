@@ -9,7 +9,9 @@ parent:
 
 *Last Updated: Friday 8 October*
 
-This document endeavours to inform the wider Tendermint community on the planned work, what they encompass, their priorities and when they expect to be delivered. It should ideally reflect the interests of those same sets of users: application developers, node operators, integrators and finally of the engineering and research teams themselves. The first step for anyone wishing to propose work to be a part of this roadmap should do so by opening an [issue](https://github.com/tendermint/spec/issues/new/choose) in the spec.
+This document endeavours to inform the wider Tendermint community on upcoming work, what they encompass, their priorities and when they expect to be delivered. It should ideally reflect the interests of those same sets of users: application developers, node operators, integrators and finally of the engineering and research teams themselves. 
+
+The first step for anyone wishing to propose work to be a part of this roadmap should do so by opening an [issue](https://github.com/tendermint/spec/issues/new/choose) in the spec.
 
 Like any attempt to predict the future, this roadmap comes with a certain degree of flexibility with features closer to now having greater specificity and certainty than those later on. It will be, however, updated at a regular cadence to give the most accurate signal possible.
 
