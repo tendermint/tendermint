@@ -33,10 +33,14 @@ func NodeSuite(t *testing.T) (service.Service, *config.Config) {
 }
 
 func TestBroadcastTx(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	_, conf := NodeSuite(t)
 
-	res, err := rpctest.GetGRPCClient(conf).BroadcastTx(
-		context.Background(),
+	client, closer := rpctest.GetGRPCClient(conf)
+	defer func() { require.NoError(t, closer()) }()
+	res, err := client.BroadcastTx(ctx,
 		&coregrpc.RequestBroadcastTx{Tx: []byte("this is a tx")},
 	)
 	require.NoError(t, err)

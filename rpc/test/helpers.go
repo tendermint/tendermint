@@ -129,7 +129,9 @@ func StartTendermint(ctx context.Context,
 		if err := tmNode.Stop(); err != nil {
 			logger.Error("Error when trying to stop node", "err", err)
 		}
-		closeGrpc()
+		if err := closeGrpc(); err != nil {
+			logger.Error("Error when trying to stop grpc", "err", err)
+		}
 		tmNode.Wait()
 		os.RemoveAll(conf.RootDir)
 		return nil

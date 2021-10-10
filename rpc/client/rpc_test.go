@@ -450,7 +450,7 @@ func getMempool(t *testing.T, srv service.Service) mempool.Mempool {
 // these cases are roughly the same as the TestClientMethodCalls, but
 // they have to loop over their clients in the individual test cases,
 // so making a separate suite makes more sense, though isn't strictly
-// speaking desireable.
+// speaking desirable.
 func TestClientMethodCallsAdvanced(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

@@ -17,8 +17,6 @@ type Config struct {
 
 type Closer func() error
 
-var noopCloser Closer = func() error { return nil }
-
 func mkCloser(fn func()) Closer { return func() error { fn(); return nil } }
 
 // StartGRPCServer starts a new gRPC BroadcastAPIServer using the given
