@@ -15,20 +15,27 @@ var _ Client = (*committingClient)(nil)
 type committingClient struct {
 	service.BaseService
 
+	// Obtain a read-init lock when calling Application methods that result in a
+	// state read.  This is currently:
+	// CheckTx
+	// DeliverTx
+	// Query
+	//
 	// Only obtain a write lock when calling Application methods that are expected
 	// to result in a state mutation.  This is currently:
 	// SetOption
 	// InitChain
-	// Commit
+	// Commit - sets the Initialized state
 	// ApplySnapshotChunk
-	mtx *tmsync.RWMutex
+	mtx *tmsync.RWInitMutex
+
 	types.Application
 	Callback
 }
 
-func NewCommittingClient(mtx *tmsync.RWMutex, app types.Application) Client {
+func NewCommittingClient(mtx *tmsync.RWInitMutex, app types.Application) Client {
 	if mtx == nil {
-		mtx = new(tmsync.RWMutex)
+		mtx = tmsync.NewRWInitMutex()
 	}
 	cli := &committingClient{
 		mtx:         mtx,
@@ -39,7 +46,7 @@ func NewCommittingClient(mtx *tmsync.RWMutex, app types.Application) Client {
 }
 
 func (app *committingClient) SetResponseCallback(cb Callback) {
-	// Write lock
+	// Need to block all readers
 	app.mtx.Lock()
 	app.Callback = cb
 	app.mtx.Unlock()
@@ -56,6 +63,7 @@ func (app *committingClient) FlushAsync() *ReqRes {
 }
 
 func (app *committingClient) EchoAsync(msg string) *ReqRes {
+	// Blocked only by state writers
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
 
@@ -66,6 +74,7 @@ func (app *committingClient) EchoAsync(msg string) *ReqRes {
 }
 
 func (app *committingClient) InfoAsync(req types.RequestInfo) *ReqRes {
+	// Blocked only by state writers
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
 
@@ -77,7 +86,7 @@ func (app *committingClient) InfoAsync(req types.RequestInfo) *ReqRes {
 }
 
 func (app *committingClient) SetOptionAsync(req types.RequestSetOption) *ReqRes {
-	// Write lock
+	// Need to block all readers
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -89,8 +98,9 @@ func (app *committingClient) SetOptionAsync(req types.RequestSetOption) *ReqRes 
 }
 
 func (app *committingClient) DeliverTxAsync(params types.RequestDeliverTx) *ReqRes {
-	app.mtx.RLock()
-	defer app.mtx.RUnlock()
+	// Blocked until state is initialized, then by state writers
+	app.mtx.RInitLock()
+	defer app.mtx.RInitUnlock()
 
 	res := app.Application.DeliverTx(params)
 	return app.callback(
@@ -100,8 +110,9 @@ func (app *committingClient) DeliverTxAsync(params types.RequestDeliverTx) *ReqR
 }
 
 func (app *committingClient) CheckTxAsync(req types.RequestCheckTx) *ReqRes {
-	app.mtx.RLock()
-	defer app.mtx.RUnlock()
+	// Blocked until state is initialized, then by state writers
+	app.mtx.RInitLock()
+	defer app.mtx.RInitUnlock()
 
 	res := app.Application.CheckTx(req)
 	return app.callback(
@@ -111,8 +122,9 @@ func (app *committingClient) CheckTxAsync(req types.RequestCheckTx) *ReqRes {
 }
 
 func (app *committingClient) QueryAsync(req types.RequestQuery) *ReqRes {
-	app.mtx.RLock()
-	defer app.mtx.RUnlock()
+	// Blocked until state is initialized, then by state writers
+	app.mtx.RInitLock()
+	defer app.mtx.RInitUnlock()
 
 	res := app.Application.Query(req)
 	return app.callback(
@@ -122,11 +134,13 @@ func (app *committingClient) QueryAsync(req types.RequestQuery) *ReqRes {
 }
 
 func (app *committingClient) CommitAsync() *ReqRes {
-	// Write lock
+	// Need to block all readers
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
 	res := app.Application.Commit()
+	app.mtx.Initialize()
+
 	return app.callback(
 		types.ToRequestCommit(),
 		types.ToResponseCommit(res),
@@ -134,7 +148,7 @@ func (app *committingClient) CommitAsync() *ReqRes {
 }
 
 func (app *committingClient) InitChainAsync(req types.RequestInitChain) *ReqRes {
-	// Write lock
+	// Need to block all readers
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -146,6 +160,7 @@ func (app *committingClient) InitChainAsync(req types.RequestInitChain) *ReqRes 
 }
 
 func (app *committingClient) BeginBlockAsync(req types.RequestBeginBlock) *ReqRes {
+	// Blocked only by state writers
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
 
@@ -157,6 +172,7 @@ func (app *committingClient) BeginBlockAsync(req types.RequestBeginBlock) *ReqRe
 }
 
 func (app *committingClient) EndBlockAsync(req types.RequestEndBlock) *ReqRes {
+	// Blocked only by state writers
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
 
@@ -168,6 +184,7 @@ func (app *committingClient) EndBlockAsync(req types.RequestEndBlock) *ReqRes {
 }
 
 func (app *committingClient) ListSnapshotsAsync(req types.RequestListSnapshots) *ReqRes {
+	// Blocked only by state writers
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
 
@@ -179,6 +196,7 @@ func (app *committingClient) ListSnapshotsAsync(req types.RequestListSnapshots) 
 }
 
 func (app *committingClient) OfferSnapshotAsync(req types.RequestOfferSnapshot) *ReqRes {
+	// Blocked only by state writers
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
 
@@ -190,6 +208,7 @@ func (app *committingClient) OfferSnapshotAsync(req types.RequestOfferSnapshot) 
 }
 
 func (app *committingClient) LoadSnapshotChunkAsync(req types.RequestLoadSnapshotChunk) *ReqRes {
+	// Blocked only by state writers
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
 
@@ -201,7 +220,7 @@ func (app *committingClient) LoadSnapshotChunkAsync(req types.RequestLoadSnapsho
 }
 
 func (app *committingClient) ApplySnapshotChunkAsync(req types.RequestApplySnapshotChunk) *ReqRes {
-	// Write lock
+	// Need to block all readers
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -215,14 +234,17 @@ func (app *committingClient) ApplySnapshotChunkAsync(req types.RequestApplySnaps
 //-------------------------------------------------------
 
 func (app *committingClient) FlushSync() error {
+	// Never blocked
 	return nil
 }
 
 func (app *committingClient) EchoSync(msg string) (*types.ResponseEcho, error) {
+	// Never blocked
 	return &types.ResponseEcho{Message: msg}, nil
 }
 
 func (app *committingClient) InfoSync(req types.RequestInfo) (*types.ResponseInfo, error) {
+	// Blocked only by state writers
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
 
@@ -231,7 +253,7 @@ func (app *committingClient) InfoSync(req types.RequestInfo) (*types.ResponseInf
 }
 
 func (app *committingClient) SetOptionSync(req types.RequestSetOption) (*types.ResponseSetOption, error) {
-	// Write lock
+	// Need to block all readers
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -240,40 +262,45 @@ func (app *committingClient) SetOptionSync(req types.RequestSetOption) (*types.R
 }
 
 func (app *committingClient) DeliverTxSync(req types.RequestDeliverTx) (*types.ResponseDeliverTx, error) {
-	app.mtx.RLock()
-	defer app.mtx.RUnlock()
+	// Blocked until state is initialized, then by state writers
+	app.mtx.RInitLock()
+	defer app.mtx.RInitUnlock()
 
 	res := app.Application.DeliverTx(req)
 	return &res, nil
 }
 
 func (app *committingClient) CheckTxSync(req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
-	app.mtx.RLock()
-	defer app.mtx.RUnlock()
+	// Blocked until state is initialized, then by state writers
+	app.mtx.RInitLock()
+	defer app.mtx.RInitUnlock()
 
 	res := app.Application.CheckTx(req)
 	return &res, nil
 }
 
 func (app *committingClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery, error) {
-	app.mtx.RLock()
-	defer app.mtx.RUnlock()
+	// Blocked until state is initialized, then by state writers
+	app.mtx.RInitLock()
+	defer app.mtx.RInitUnlock()
 
 	res := app.Application.Query(req)
 	return &res, nil
 }
 
 func (app *committingClient) CommitSync() (*types.ResponseCommit, error) {
-	// Write lock
+	// Need to block all readers
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
 	res := app.Application.Commit()
+	app.mtx.Initialize()
+
 	return &res, nil
 }
 
 func (app *committingClient) InitChainSync(req types.RequestInitChain) (*types.ResponseInitChain, error) {
-	// Write lock
+	// Need to block all readers
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -282,6 +309,7 @@ func (app *committingClient) InitChainSync(req types.RequestInitChain) (*types.R
 }
 
 func (app *committingClient) BeginBlockSync(req types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {
+	// Blocked only by state writers
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
 
@@ -290,6 +318,7 @@ func (app *committingClient) BeginBlockSync(req types.RequestBeginBlock) (*types
 }
 
 func (app *committingClient) EndBlockSync(req types.RequestEndBlock) (*types.ResponseEndBlock, error) {
+	// Blocked only by state writers
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
 
@@ -298,6 +327,7 @@ func (app *committingClient) EndBlockSync(req types.RequestEndBlock) (*types.Res
 }
 
 func (app *committingClient) ListSnapshotsSync(req types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
+	// Blocked only by state writers
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
 
@@ -306,6 +336,7 @@ func (app *committingClient) ListSnapshotsSync(req types.RequestListSnapshots) (
 }
 
 func (app *committingClient) OfferSnapshotSync(req types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
+	// Blocked only by state writers
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
 
@@ -315,6 +346,7 @@ func (app *committingClient) OfferSnapshotSync(req types.RequestOfferSnapshot) (
 
 func (app *committingClient) LoadSnapshotChunkSync(
 	req types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
+	// Blocked only by state writers
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
 
@@ -324,7 +356,7 @@ func (app *committingClient) LoadSnapshotChunkSync(
 
 func (app *committingClient) ApplySnapshotChunkSync(
 	req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
-	// Write lock
+	// Need to block all readers
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -335,6 +367,7 @@ func (app *committingClient) ApplySnapshotChunkSync(
 //-------------------------------------------------------
 
 func (app *committingClient) callback(req *types.Request, res *types.Response) *ReqRes {
+	// Never blocked
 	app.Callback(req, res)
 	return newLocalReqRes(req, res)
 }
