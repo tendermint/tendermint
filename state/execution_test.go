@@ -15,7 +15,7 @@ import (
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	mmock "github.com/tendermint/tendermint/internal/mempool/mock"
-  "github.com/tendermint/tendermint/internal/test/factory"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/proxy"
@@ -229,10 +229,10 @@ func TestProcessProposal(t *testing.T) {
 		require.Nil(t, err)
 		defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
-    state, stateDB, _ := makeState(1, height)
+		state, stateDB, _ := makeState(1, height)
 		stateStore := sm.NewStore(stateDB)
 
-    blockStore := store.NewBlockStore(dbm.NewMemDB())
+		blockStore := store.NewBlockStore(dbm.NewMemDB())
 
 		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
 			mmock.Mempool{}, sm.EmptyEvidencePool{}, blockStore)
