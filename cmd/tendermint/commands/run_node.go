@@ -108,6 +108,11 @@ func AddNodeFlags(cmd *cobra.Command) {
 		config.Mempool.MaxTxNumPerBlock,
 		"Maximum number of transactions in a block",
 	)
+	cmd.Flags().Int64(
+		"mempool.max_gas_used_per_block",
+		config.Mempool.MaxGasUsedPerBlock,
+		"Maximum gas used of transactions in a block",
+	)
 	cmd.Flags().Bool(
 		"mempool.sort_tx_by_gp",
 		config.Mempool.SortTxByGp,
