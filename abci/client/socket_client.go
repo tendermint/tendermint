@@ -39,7 +39,7 @@ type socketClient struct {
 
 	reqQueue chan *reqResWithContext
 
-	mtx     tmsync.RWMutex
+	mtx     tmsync.Mutex
 	err     error
 	reqSent *list.List                            // list of requests sent, waiting for response
 	resCb   func(*types.Request, *types.Response) // called on all requests, if set.
@@ -102,8 +102,8 @@ func (cli *socketClient) OnStop() {
 
 // Error returns an error if the client was stopped abruptly.
 func (cli *socketClient) Error() error {
-	cli.mtx.RLock()
-	defer cli.mtx.RUnlock()
+	cli.mtx.Lock()
+	defer cli.mtx.Unlock()
 	return cli.err
 }
 
@@ -113,8 +113,8 @@ func (cli *socketClient) Error() error {
 // NOTE: callback may get internally generated flush responses.
 func (cli *socketClient) SetResponseCallback(resCb Callback) {
 	cli.mtx.Lock()
-	defer cli.mtx.Unlock()
 	cli.resCb = resCb
+	cli.mtx.Unlock()
 }
 
 //----------------------------------------
