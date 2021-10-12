@@ -105,7 +105,7 @@ func getTestNode(t *testing.T, conf *config.Config, logger log.Logger) *nodeImpl
 			ns.Wait()
 		}
 	})
-	t.Log("produced node for", t.Name())
+
 	return n
 }
 
