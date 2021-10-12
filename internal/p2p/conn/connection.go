@@ -187,7 +187,7 @@ func NewMConnectionWithConfig(
 
 	// Create channels
 	channelsIdx := make(map[ChannelID]*Channel)
-	var channels []*Channel
+	channels := make([]*Channel, 0, len(chDescs))
 
 	for idx := range chDescs {
 		channel := newChannel(mconn, chDescs[idx])
