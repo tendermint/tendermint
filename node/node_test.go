@@ -46,6 +46,11 @@ func TestNodeStartStop(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, ns.Start())
 
+	t.Cleanup(func() {
+		ns.Stop()
+		ns.Wait()
+	})
+
 	n, ok := ns.(*nodeImpl)
 	require.True(t, ok)
 
@@ -90,6 +95,13 @@ func getTestNode(t *testing.T, conf *config.Config, logger log.Logger) *nodeImpl
 
 	n, ok := ns.(*nodeImpl)
 	require.True(t, ok)
+
+	t.Cleanup(func() {
+		if ns.IsRunning() {
+			require.NoError(t, ns.Stop())
+		}
+	})
+
 	return n
 }
 
@@ -103,7 +115,6 @@ func TestNodeDelayedStart(t *testing.T) {
 	n.GenesisDoc().GenesisTime = now.Add(2 * time.Second)
 
 	require.NoError(t, n.Start())
-	defer n.Stop() //nolint:errcheck // ignore for tests
 
 	startTime := tmtime.Now()
 	assert.Equal(t, true, startTime.After(n.GenesisDoc().GenesisTime))
@@ -513,7 +524,9 @@ func TestNodeNewSeedNode(t *testing.T) {
 	err = n.Start()
 	require.NoError(t, err)
 	assert.True(t, n.pexReactor.IsRunning())
+
 	require.NoError(t, n.Stop())
+
 }
 
 func TestNodeSetEventSink(t *testing.T) {
