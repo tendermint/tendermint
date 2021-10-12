@@ -180,7 +180,7 @@ func (o *PeerManagerOptions) Validate() error {
 
 	if o.MaxPeers > 0 {
 		if o.MaxConnected == 0 || o.MaxConnected+o.MaxConnectedUpgrade > o.MaxPeers {
-			return fmt.Errorf("MaxConnected %v and MaxConnectedUpgrade %v can't exceed MaxPeers %v", // nolint
+			return fmt.Errorf("MaxConnected %v and MaxConnectedUpgrade %v can't exceed MaxPeers %v",
 				o.MaxConnected, o.MaxConnectedUpgrade, o.MaxPeers)
 		}
 	}
@@ -190,7 +190,7 @@ func (o *PeerManagerOptions) Validate() error {
 			return errors.New("can't set MaxRetryTime without MinRetryTime")
 		}
 		if o.MinRetryTime > o.MaxRetryTime {
-			return fmt.Errorf("MinRetryTime %v is greater than MaxRetryTime %v", // nolint
+			return fmt.Errorf("MinRetryTime %v is greater than MaxRetryTime %v",
 				o.MinRetryTime, o.MaxRetryTime)
 		}
 	}
@@ -200,7 +200,7 @@ func (o *PeerManagerOptions) Validate() error {
 			return errors.New("can't set MaxRetryTimePersistent without MinRetryTime")
 		}
 		if o.MinRetryTime > o.MaxRetryTimePersistent {
-			return fmt.Errorf("MinRetryTime %v is greater than MaxRetryTimePersistent %v", // nolint
+			return fmt.Errorf("MinRetryTime %v is greater than MaxRetryTimePersistent %v",
 				o.MinRetryTime, o.MaxRetryTimePersistent)
 		}
 	}

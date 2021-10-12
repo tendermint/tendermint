@@ -3,6 +3,9 @@ package types
 import (
 	"errors"
 	"fmt"
+	"net"
+	"strconv"
+	"strings"
 
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
@@ -74,16 +77,9 @@ func (info NodeInfo) ID() NodeID {
 // url-encoding), and we just need to be careful with how we handle that in our
 // clients. (e.g. off by default).
 func (info NodeInfo) Validate() error {
-
-	// ID is already validated.
-
-	// Validate ListenAddr.
-	_, err := NewNetAddressString(info.ID().AddressString(info.ListenAddr))
-	if err != nil {
+	if _, _, err := ParseAddressString(info.ID().AddressString(info.ListenAddr)); err != nil {
 		return err
 	}
-
-	// Network is validated in CompatibleWith.
 
 	// Validate Version
 	if len(info.Version) > 0 &&
@@ -163,15 +159,6 @@ OUTER_LOOP:
 	return nil
 }
 
-// NetAddress returns a NetAddress derived from the NodeInfo -
-// it includes the authenticated peer ID and the self-reported
-// ListenAddr. Note that the ListenAddr is not authenticated and
-// may not match that address actually dialed if its an outbound peer.
-func (info NodeInfo) NetAddress() (*NetAddress, error) {
-	idAddr := info.ID().AddressString(info.ListenAddr)
-	return NewNetAddressString(idAddr)
-}
-
 // AddChannel is used by the router when a channel is opened to add it to the node info
 func (info *NodeInfo) AddChannel(channel uint16) {
 	// check that the channel doesn't already exist
@@ -243,4 +230,59 @@ func NodeInfoFromProto(pb *tmp2p.NodeInfo) (NodeInfo, error) {
 	}
 
 	return dni, nil
+}
+
+// ParseAddressString reads an address string, and returns the IP
+// address and port information, returning an error for any validation
+// errors.
+func ParseAddressString(addr string) (net.IP, uint16, error) {
+	addrWithoutProtocol := removeProtocolIfDefined(addr)
+	spl := strings.Split(addrWithoutProtocol, "@")
+	if len(spl) != 2 {
+		return nil, 0, errors.New("invalid address")
+	}
+
+	id, err := NewNodeID(spl[0])
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if err := id.Validate(); err != nil {
+		return nil, 0, err
+	}
+
+	addrWithoutProtocol = spl[1]
+
+	// get host and port
+	host, portStr, err := net.SplitHostPort(addrWithoutProtocol)
+	if err != nil {
+		return nil, 0, err
+	}
+	if len(host) == 0 {
+		return nil, 0, err
+	}
+
+	ip := net.ParseIP(host)
+	if ip == nil {
+		ips, err := net.LookupIP(host)
+		if err != nil {
+			return nil, 0, err
+		}
+		ip = ips[0]
+	}
+
+	port, err := strconv.ParseUint(portStr, 10, 16)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return ip, uint16(port), nil
+}
+
+func removeProtocolIfDefined(addr string) string {
+	if strings.Contains(addr, "://") {
+		return strings.Split(addr, "://")[1]
+	}
+	return addr
+
 }
