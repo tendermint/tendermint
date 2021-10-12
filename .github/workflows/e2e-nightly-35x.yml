@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/setup-go@v2
-        with:b
+        with:
           go-version: '1.17'
 
       - uses: actions/checkout@v2.3.4
