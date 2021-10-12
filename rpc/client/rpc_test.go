@@ -205,12 +205,13 @@ func TestClientMethodCalls(t *testing.T) {
 				assert.Equal(t, moniker, status.NodeInfo.Moniker)
 			})
 			t.Run("Info", func(t *testing.T) {
-				// status, err := c.Status()
-				// require.Nil(t, err, "%+v", err)
 				info, err := c.ABCIInfo(ctx)
-				require.Nil(t, err, "%d: %+v", i, err)
-				// TODO: this is not correct - fix merkleeyes!
-				// assert.EqualValues(t, status.SyncInfo.LatestBlockHeight, info.Response.LastBlockHeight)
+				require.NoError(t, err)
+
+				status, err := c.Status(ctx)
+				require.NoError(t, err)
+
+				assert.GreaterOrEqual(t, status.SyncInfo.LatestBlockHeight, info.Response.LastBlockHeight)
 				assert.True(t, strings.Contains(info.Response.Data, "size"))
 			})
 			t.Run("NetInfo", func(t *testing.T) {
@@ -530,10 +531,9 @@ func TestClientMethodCallsAdvanced(t *testing.T) {
 
 	t.Run("UnconfirmedTxs", func(t *testing.T) {
 		_, _, tx := MakeTxKV()
-		ch := make(chan *abci.Response, 1)
+		ch := make(chan struct{})
 
-		err := pool.CheckTx(ctx, tx, func(resp *abci.Response) { ch <- resp }, mempool.TxInfo{})
-
+		err := pool.CheckTx(ctx, tx, func(_ *abci.Response) { close(ch) }, mempool.TxInfo{})
 		require.NoError(t, err)
 
 		// wait for tx to arrive in mempoool.
@@ -558,12 +558,13 @@ func TestClientMethodCallsAdvanced(t *testing.T) {
 		pool.Flush()
 	})
 	t.Run("NumUnconfirmedTxs", func(t *testing.T) {
-		ch := make(chan *abci.Response, 1)
+		ch := make(chan struct{})
+
 		pool := getMempool(t, n)
 
 		_, _, tx := MakeTxKV()
 
-		err := pool.CheckTx(ctx, tx, func(resp *abci.Response) { ch <- resp }, mempool.TxInfo{})
+		err := pool.CheckTx(ctx, tx, func(_ *abci.Response) { close(ch) }, mempool.TxInfo{})
 		require.NoError(t, err)
 
 		// wait for tx to arrive in mempoool.
