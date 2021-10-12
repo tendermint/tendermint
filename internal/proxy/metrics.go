@@ -28,6 +28,7 @@ func PrometheusMetrics(namespace string, defaultLabelsAndValues ...string) *Metr
 			Subsystem: MetricsSubsystem,
 			Name:      "method_timing",
 			Help:      "ABCI Method Timing",
+			Buckets:   []float64{.0001, .0004, .002, .009, .02, .1, .65, 2, 6, 25},
 		}, append(defaultLabels, []string{"method", "type"}...)).With(defaultLabelsAndValues...),
 	}
 }
