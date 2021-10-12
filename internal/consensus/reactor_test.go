@@ -71,10 +71,10 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 		blocksyncSubs: make(map[types.NodeID]types.Subscription, numNodes),
 	}
 
-	rts.stateChs = rts.network.MakeChannelsNoCleanup(t, newChDesc(StateChannel, (*tmcons.Message)(nil), size))
-	rts.dataChs = rts.network.MakeChannelsNoCleanup(t, newChDesc(DataChannel, (*tmcons.Message)(nil), size))
-	rts.voteChs = rts.network.MakeChannelsNoCleanup(t, newChDesc(VoteChannel, (*tmcons.Message)(nil), size))
-	rts.voteSetBitsChs = rts.network.MakeChannelsNoCleanup(t, newChDesc(VoteSetBitsChannel, (*tmcons.Message)(nil), size))
+	rts.stateChs = rts.network.MakeChannelsNoCleanup(t, newChDesc(StateChannel, new(tmcons.Message), size))
+	rts.dataChs = rts.network.MakeChannelsNoCleanup(t, newChDesc(DataChannel, new(tmcons.Message), size))
+	rts.voteChs = rts.network.MakeChannelsNoCleanup(t, newChDesc(VoteChannel, new(tmcons.Message), size))
+	rts.voteSetBitsChs = rts.network.MakeChannelsNoCleanup(t, newChDesc(VoteSetBitsChannel, new(tmcons.Message), size))
 
 	_, cancel := context.WithCancel(context.Background())
 
