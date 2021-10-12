@@ -31,6 +31,7 @@ import (
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/libs/service"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
@@ -49,8 +50,8 @@ func TestNodeStartStop(t *testing.T) {
 	t.Cleanup(func() {
 		if ns.IsRunning() {
 			assert.NoError(t, ns.Stop())
+			ns.Wait()
 		}
-		ns.Wait()
 	})
 
 	n, ok := ns.(*nodeImpl)
@@ -101,10 +102,10 @@ func getTestNode(t *testing.T, conf *config.Config, logger log.Logger) *nodeImpl
 	t.Cleanup(func() {
 		if ns.IsRunning() {
 			assert.NoError(t, ns.Stop())
+			ns.Wait()
 		}
-		ns.Wait()
 	})
-
+	t.Log("produced node for", t.Name())
 	return n
 }
 
@@ -182,8 +183,13 @@ func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
 	defer os.RemoveAll(cfg.RootDir)
 	cfg.PrivValidator.ListenAddr = addrNoPrefix
 
-	_, err := newDefaultNode(cfg, log.TestingLogger())
+	n, err := newDefaultNode(cfg, log.TestingLogger())
 	assert.Error(t, err)
+
+	if n != nil && n.IsRunning() {
+		assert.NoError(t, n.Stop())
+		n.Wait()
+	}
 }
 
 func TestNodeSetPrivValIPC(t *testing.T) {
@@ -242,7 +248,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	logger := log.TestingLogger()
 
 	const height int64 = 1
-	state, stateDB, privVals := state(1, height)
+	state, stateDB, privVals := state(t, 1, height)
 	stateStore := sm.NewStore(stateDB)
 	maxBytes := 16384
 	const partSize uint32 = 256
@@ -337,7 +343,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	logger := log.TestingLogger()
 
 	const height int64 = 1
-	state, stateDB, _ := state(1, height)
+	state, stateDB, _ := state(t, 1, height)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	const maxBytes int64 = 16384
@@ -401,7 +407,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	logger := log.TestingLogger()
 
-	state, stateDB, _ := state(types.MaxVotesCount, int64(1))
+	state, stateDB, _ := state(t, types.MaxVotesCount, int64(1))
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	const maxBytes int64 = 1024 * 1024 * 2
@@ -540,7 +546,7 @@ func TestNodeSetEventSink(t *testing.T) {
 	setupTest := func(t *testing.T, conf *config.Config) []indexer.EventSink {
 		eventBus, err := createAndStartEventBus(logger)
 		require.NoError(t, err)
-
+		t.Cleanup(func() { require.NoError(t, eventBus.Stop()) })
 		genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
 		require.NoError(t, err)
 
@@ -549,6 +555,22 @@ func TestNodeSetEventSink(t *testing.T) {
 		require.NoError(t, err)
 		t.Cleanup(func() { require.NoError(t, indexService.Stop()) })
 		return eventSinks
+	}
+	cleanup := func(ns service.Service) func() {
+		return func() {
+			n, ok := ns.(*nodeImpl)
+			if !ok {
+				return
+			}
+			if n == nil {
+				return
+			}
+			if !n.IsRunning() {
+				return
+			}
+			assert.NoError(t, n.Stop())
+			n.Wait()
+		}
 	}
 
 	eventSinks := setupTest(t, cfg)
@@ -571,6 +593,7 @@ func TestNodeSetEventSink(t *testing.T) {
 	ns, err := newDefaultNode(cfg, logger)
 	assert.Nil(t, ns)
 	assert.Equal(t, errors.New("unsupported event sink type"), err)
+	t.Cleanup(cleanup(ns))
 
 	cfg.TxIndex.Indexer = []string{}
 	eventSinks = setupTest(t, cfg)
@@ -582,6 +605,7 @@ func TestNodeSetEventSink(t *testing.T) {
 	ns, err = newDefaultNode(cfg, logger)
 	assert.Nil(t, ns)
 	assert.Equal(t, errors.New("the psql connection settings cannot be empty"), err)
+	t.Cleanup(cleanup(ns))
 
 	var psqlConn = "test"
 
@@ -620,18 +644,21 @@ func TestNodeSetEventSink(t *testing.T) {
 	var e = errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
 	cfg.TxIndex.Indexer = []string{"psql", "kv", "Kv"}
 	cfg.TxIndex.PsqlConn = psqlConn
-	_, err = newDefaultNode(cfg, logger)
+	ns, err = newDefaultNode(cfg, logger)
 	require.Error(t, err)
 	assert.Equal(t, e, err)
+	t.Cleanup(cleanup(ns))
 
 	cfg.TxIndex.Indexer = []string{"Psql", "kV", "kv", "pSql"}
 	cfg.TxIndex.PsqlConn = psqlConn
-	_, err = newDefaultNode(cfg, logger)
+	ns, err = newDefaultNode(cfg, logger)
 	require.Error(t, err)
 	assert.Equal(t, e, err)
+	t.Cleanup(cleanup(ns))
 }
 
-func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
+func state(t *testing.T, nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
+	t.Helper()
 	privVals := make([]types.PrivValidator, nVals)
 	vals := make([]types.GenesisValidator, nVals)
 	for i := 0; i < nVals; i++ {
@@ -652,17 +679,15 @@ func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
 
 	// save validators to db for 2 heights
 	stateDB := dbm.NewMemDB()
+	t.Cleanup(func() { require.NoError(t, stateDB.Close()) })
+
 	stateStore := sm.NewStore(stateDB)
-	if err := stateStore.Save(s); err != nil {
-		panic(err)
-	}
+	require.NoError(t, stateStore.Save(s))
 
 	for i := 1; i < int(height); i++ {
 		s.LastBlockHeight++
 		s.LastValidators = s.Validators.Copy()
-		if err := stateStore.Save(s); err != nil {
-			panic(err)
-		}
+		require.NoError(t, stateStore.Save(s))
 	}
 	return s, stateDB, privVals
 }
