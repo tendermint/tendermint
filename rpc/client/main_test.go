@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/config"
@@ -30,9 +31,11 @@ func NodeSuite(t *testing.T) (service.Service, *config.Config) {
 	node, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		_ = closer(ctx)
 		cancel()
-		app.Close()
+		assert.NoError(t, node.Stop())
+		assert.NoError(t, closer(ctx))
+		assert.NoError(t, app.Close())
+		node.Wait()
 		_ = os.RemoveAll(dir)
 	})
 	return node, conf
