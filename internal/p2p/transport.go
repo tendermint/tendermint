@@ -46,7 +46,7 @@ type Transport interface {
 	Close() error
 
 	// RegisterChannel informs the transport of a routable
-	// channel. Errors if the channel is already registered.
+	// channel. It reports an error if the channel is already registered.
 	RegisterChannel(*conn.ChannelDescriptor) error
 
 	// Stringer is used to display the transport, e.g. in logs.
