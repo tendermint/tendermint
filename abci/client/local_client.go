@@ -15,7 +15,7 @@ var _ Client = (*localClient)(nil)
 type localClient struct {
 	service.BaseService
 
-	mtx *tmsync.RWMutex
+	mtx *tmsync.Mutex
 	types.Application
 	Callback
 }
@@ -26,24 +26,22 @@ var _ Client = (*localClient)(nil)
 // methods of the given app.
 //
 // Both Async and Sync methods ignore the given context.Context parameter.
-func NewLocalClient(mtx *tmsync.RWMutex, app types.Application) Client {
+func NewLocalClient(mtx *tmsync.Mutex, app types.Application) Client {
 	if mtx == nil {
-		mtx = &tmsync.RWMutex{}
+		mtx = new(tmsync.Mutex)
 	}
-
 	cli := &localClient{
 		mtx:         mtx,
 		Application: app,
 	}
-
 	cli.BaseService = *service.NewBaseService(nil, "localClient", cli)
 	return cli
 }
 
 func (app *localClient) SetResponseCallback(cb Callback) {
 	app.mtx.Lock()
-	defer app.mtx.Unlock()
 	app.Callback = cb
+	app.mtx.Unlock()
 }
 
 // TODO: change types.Application to include Error()?
@@ -67,8 +65,8 @@ func (app *localClient) EchoAsync(msg string) *ReqRes {
 }
 
 func (app *localClient) InfoAsync(req types.RequestInfo) *ReqRes {
-	app.mtx.RLock()
-	defer app.mtx.RUnlock()
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
 
 	res := app.Application.Info(req)
 	return app.callback(
@@ -111,8 +109,8 @@ func (app *localClient) CheckTxAsync(req types.RequestCheckTx) *ReqRes {
 }
 
 func (app *localClient) QueryAsync(req types.RequestQuery) *ReqRes {
-	app.mtx.RLock()
-	defer app.mtx.RUnlock()
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
 
 	res := app.Application.Query(req)
 	return app.callback(
@@ -220,8 +218,8 @@ func (app *localClient) EchoSync(msg string) (*types.ResponseEcho, error) {
 }
 
 func (app *localClient) InfoSync(req types.RequestInfo) (*types.ResponseInfo, error) {
-	app.mtx.RLock()
-	defer app.mtx.RUnlock()
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
 
 	res := app.Application.Info(req)
 	return &res, nil
@@ -252,8 +250,8 @@ func (app *localClient) CheckTxSync(req types.RequestCheckTx) (*types.ResponseCh
 }
 
 func (app *localClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery, error) {
-	app.mtx.RLock()
-	defer app.mtx.RUnlock()
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
 
 	res := app.Application.Query(req)
 	return &res, nil
