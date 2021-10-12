@@ -4,7 +4,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/cosmos).
 
 ## v0.34.14
 
-This release backports the `rollback` feature to allow recovery in the event of an incorrect app hash. 
+This release backports the `rollback` feature to allow recovery in the event of an incorrect app hash.
 
 ### FEATURES
 
@@ -18,6 +18,7 @@ This release backports the `rollback` feature to allow recovery in the event of 
 ### BUG FIXES
 
 - [\#7057](https://github.com/tendermint/tendermint/pull/7057) Import Postgres driver support for the psql indexer (@creachadair).
+- [ABCI] [\#7110](https://github.com/tendermint/tendermint/issues/7110) Revert "change client to use multi-reader mutexes (#6873)" (@tychoish).
 
 ## v0.34.13
 
