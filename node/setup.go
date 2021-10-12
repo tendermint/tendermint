@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"strings"
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
@@ -40,20 +41,57 @@ import (
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
 )
 
-func initDBs(cfg *config.Config, dbProvider config.DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) { //nolint:lll
-	var blockStoreDB dbm.DB
-	blockStoreDB, err = dbProvider(&config.DBContext{ID: "blockstore", Config: cfg})
-	if err != nil {
-		return nil, nil, fmt.Errorf("unable to initialize blockstore: %w", err)
-	}
-	blockStore = store.NewBlockStore(blockStoreDB)
+type closer func() error
 
-	stateDB, err = dbProvider(&config.DBContext{ID: "state", Config: cfg})
-	if err != nil {
-		return nil, nil, fmt.Errorf("unable to initialize statestore: %w", err)
+func makeCloser(cs []closer) closer {
+	return func() error {
+		errs := make([]string, 0, len(cs))
+		for _, cl := range cs {
+			if err := cl(); err != nil {
+				errs = append(errs, err.Error())
+			}
+		}
+		if len(errs) >= 0 {
+			return errors.New(strings.Join(errs, "; "))
+		}
+		return nil
+	}
+}
+
+func combineCloseError(err error, cl closer) error {
+	if err == nil {
+		return cl()
 	}
 
-	return blockStore, stateDB, nil
+	clerr := cl()
+	if clerr == nil {
+		return err
+	}
+
+	return fmt.Errorf("error=%q closerError=%q", err.Error(), clerr.Error())
+}
+
+func initDBs(
+	cfg *config.Config,
+	dbProvider config.DBProvider,
+) (*store.BlockStore, dbm.DB, closer, error) {
+
+	blockStoreDB, err := dbProvider(&config.DBContext{ID: "blockstore", Config: cfg})
+	if err != nil {
+		return nil, nil, func() error { return nil }, fmt.Errorf("unable to initialize blockstore: %w", err)
+	}
+	closers := []closer{}
+	blockStore := store.NewBlockStore(blockStoreDB)
+	closers = append(closers, blockStoreDB.Close)
+
+	stateDB, err := dbProvider(&config.DBContext{ID: "state", Config: cfg})
+	if err != nil {
+		return nil, nil, makeCloser(closers), fmt.Errorf("unable to initialize statestore: %w", err)
+	}
+
+	closers = append(closers, stateDB.Close)
+
+	return blockStore, stateDB, makeCloser(closers), nil
 }
 
 // nolint:lll
@@ -421,11 +459,11 @@ func createPeerManager(
 	dbProvider config.DBProvider,
 	p2pLogger log.Logger,
 	nodeID types.NodeID,
-) (*p2p.PeerManager, error) {
+) (*p2p.PeerManager, closer, error) {
 
 	selfAddr, err := p2p.ParseNodeAddress(nodeID.AddressString(cfg.P2P.ExternalAddress))
 	if err != nil {
-		return nil, fmt.Errorf("couldn't parse ExternalAddress %q: %w", cfg.P2P.ExternalAddress, err)
+		return nil, func() error { return nil }, fmt.Errorf("couldn't parse ExternalAddress %q: %w", cfg.P2P.ExternalAddress, err)
 	}
 
 	var maxConns uint16
@@ -437,7 +475,7 @@ func createPeerManager(
 	case cfg.P2P.MaxNumInboundPeers > 0 && cfg.P2P.MaxNumOutboundPeers > 0:
 		x := cfg.P2P.MaxNumInboundPeers + cfg.P2P.MaxNumOutboundPeers
 		if x > math.MaxUint16 {
-			return nil, fmt.Errorf(
+			return nil, func() error { return nil }, fmt.Errorf(
 				"max inbound peers (%d) + max outbound peers (%d) exceeds maximum (%d)",
 				cfg.P2P.MaxNumInboundPeers,
 				cfg.P2P.MaxNumOutboundPeers,
@@ -472,7 +510,7 @@ func createPeerManager(
 	for _, p := range tmstrings.SplitAndTrimEmpty(cfg.P2P.PersistentPeers, ",", " ") {
 		address, err := p2p.ParseNodeAddress(p)
 		if err != nil {
-			return nil, fmt.Errorf("invalid peer address %q: %w", p, err)
+			return nil, func() error { return nil }, fmt.Errorf("invalid peer address %q: %w", p, err)
 		}
 
 		peers = append(peers, address)
@@ -482,28 +520,28 @@ func createPeerManager(
 	for _, p := range tmstrings.SplitAndTrimEmpty(cfg.P2P.BootstrapPeers, ",", " ") {
 		address, err := p2p.ParseNodeAddress(p)
 		if err != nil {
-			return nil, fmt.Errorf("invalid peer address %q: %w", p, err)
+			return nil, func() error { return nil }, fmt.Errorf("invalid peer address %q: %w", p, err)
 		}
 		peers = append(peers, address)
 	}
 
 	peerDB, err := dbProvider(&config.DBContext{ID: "peerstore", Config: cfg})
 	if err != nil {
-		return nil, fmt.Errorf("unable to initialize peer store: %w", err)
+		return nil, func() error { return nil }, fmt.Errorf("unable to initialize peer store: %w", err)
 	}
 
 	peerManager, err := p2p.NewPeerManager(nodeID, peerDB, options)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create peer manager: %w", err)
+		return nil, peerDB.Close, fmt.Errorf("failed to create peer manager: %w", err)
 	}
 
 	for _, peer := range peers {
 		if _, err := peerManager.Add(peer); err != nil {
-			return nil, fmt.Errorf("failed to add peer %q: %w", peer, err)
+			return nil, peerDB.Close, fmt.Errorf("failed to add peer %q: %w", peer, err)
 		}
 	}
 
-	return peerManager, nil
+	return peerManager, peerDB.Close, nil
 }
 
 func createRouter(
