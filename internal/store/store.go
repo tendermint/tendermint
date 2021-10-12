@@ -345,7 +345,7 @@ func (bs *BlockStore) pruneRange(
 	var (
 		err         error
 		pruned      uint64
-		totalPruned uint64 = 0
+		totalPruned uint64
 	)
 
 	batch := bs.db.NewBatch()
@@ -392,7 +392,7 @@ func (bs *BlockStore) batchDelete(
 	start, end []byte,
 	preDeletionHook func(key, value []byte, batch dbm.Batch) error,
 ) (uint64, []byte, error) {
-	var pruned uint64 = 0
+	var pruned uint64
 	iter, err := bs.db.Iterator(start, end)
 	if err != nil {
 		return pruned, start, err
