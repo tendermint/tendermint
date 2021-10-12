@@ -169,6 +169,23 @@ func TestClientOperations(t *testing.T) {
 			wg.Wait()
 		})
 	})
+	t.Run("HTTPReturnsErrorIfClientIsNotRunning", func(t *testing.T) {
+		c := getHTTPClientWithTimeout(t, conf, 100*time.Millisecond)
+
+		// on Subscribe
+		_, err := c.Subscribe(ctx, "TestHeaderEvents",
+			types.QueryForEvent(types.EventNewBlockHeaderValue).String())
+		assert.Error(t, err)
+
+		// on Unsubscribe
+		err = c.Unsubscribe(ctx, "TestHeaderEvents",
+			types.QueryForEvent(types.EventNewBlockHeaderValue).String())
+		assert.Error(t, err)
+
+		// on UnsubscribeAll
+		err = c.UnsubscribeAll(ctx, "TestHeaderEvents")
+		assert.Error(t, err)
+	})
 }
 
 // Make sure info is correct (we connect properly)
@@ -433,6 +450,59 @@ func TestClientMethodCalls(t *testing.T) {
 				assert.Equal(t, abci.CodeTypeOK, res.Code)
 
 				assert.Equal(t, 0, pool.Size(), "mempool must be empty")
+			})
+			t.Run("Events", func(t *testing.T) {
+				// start for this test it if it wasn't already running
+				if !c.IsRunning() {
+					// if so, then we start it, listen, and stop it.
+					err := c.Start()
+					require.Nil(t, err)
+					t.Cleanup(func() {
+						if err := c.Stop(); err != nil {
+							t.Error(err)
+						}
+					})
+				}
+
+				t.Run("Header", func(t *testing.T) {
+					evt, err := client.WaitForOneEvent(c, types.EventNewBlockHeaderValue, waitForEventTimeout)
+					require.Nil(t, err, "%d: %+v", i, err)
+					_, ok := evt.(types.EventDataNewBlockHeader)
+					require.True(t, ok, "%d: %#v", i, evt)
+					// TODO: more checks...
+				})
+				t.Run("Block", func(t *testing.T) {
+					const subscriber = "TestBlockEvents"
+
+					eventCh, err := c.Subscribe(ctx, subscriber, types.QueryForEvent(types.EventNewBlockValue).String())
+					require.NoError(t, err)
+					t.Cleanup(func() {
+						if err := c.UnsubscribeAll(ctx, subscriber); err != nil {
+							t.Error(err)
+						}
+					})
+
+					var firstBlockHeight int64
+					for i := int64(0); i < 3; i++ {
+						event := <-eventCh
+						blockEvent, ok := event.Data.(types.EventDataNewBlock)
+						require.True(t, ok)
+
+						block := blockEvent.Block
+
+						if firstBlockHeight == 0 {
+							firstBlockHeight = block.Header.Height
+						}
+
+						require.Equal(t, firstBlockHeight+i, block.Header.Height)
+					}
+				})
+				t.Run("BroadcastTxAsync", func(t *testing.T) {
+					testTxEventsSent(ctx, t, "async", c)
+				})
+				t.Run("BroadcastTxSync", func(t *testing.T) {
+					testTxEventsSent(ctx, t, "sync", c)
+				})
 			})
 		})
 	}
