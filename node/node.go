@@ -133,8 +133,7 @@ func makeNode(cfg *config.Config,
 
 	blockStore, stateDB, dbCloser, err := initDBs(cfg, dbProvider)
 	if err != nil {
-		dbCloser()
-		return nil, err
+		return nil, combineCloseError(err, dbCloser)
 	}
 	closers = append(closers, dbCloser)
 
