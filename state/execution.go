@@ -200,7 +200,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
-
+	trc.Pin("evpoolUpdate")
 	// Update evpool with the block and state.
 	blockExec.evpool.Update(block, state)
 
@@ -216,6 +216,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
+	trc.Pin("fireEvents")
 	fireEvents(blockExec.logger, blockExec.eventBus, block, abciResponses, validatorUpdates)
 
 	return state, retainHeight, nil
