@@ -23,6 +23,7 @@ import (
 	"github.com/tendermint/tendermint/internal/proxy"
 	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
 	sm "github.com/tendermint/tendermint/internal/state"
+	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
@@ -62,6 +63,7 @@ type nodeImpl struct {
 
 	// services
 	eventBus         *types.EventBus // pub/sub for services
+	eventSinks       []indexer.EventSink
 	stateStore       sm.Store
 	blockStore       *store.BlockStore // store the blockchain to disk
 	bcReactor        service.Service   // for block-syncing
@@ -421,6 +423,7 @@ func makeNode(cfg *config.Config,
 		evidenceReactor:  evReactor,
 		indexerService:   indexerService,
 		eventBus:         eventBus,
+		eventSinks:       eventSinks,
 
 		shutdownOps: makeCloser(closers),
 
@@ -693,6 +696,12 @@ func (n *nodeImpl) OnStop() {
 		n.Logger.Error("Error closing indexerService", "err", err)
 	}
 
+	for _, es := range n.eventSinks {
+		if err := es.Stop(); err != nil {
+			n.Logger.Error("failed to stop event sink", "err", err)
+		}
+	}
+
 	if n.config.Mode != config.ModeSeed {
 		// now stop the reactors
 		if n.config.BlockSync.Enable {
@@ -756,6 +765,7 @@ func (n *nodeImpl) OnStop() {
 			// Error from closing listeners, or context timeout:
 			n.Logger.Error("Prometheus HTTP server Shutdown", "err", err)
 		}
+
 	}
 	if err := n.shutdownOps(); err != nil {
 		n.Logger.Error("problem shutting down additional services", "err", err)
