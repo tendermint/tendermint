@@ -4,12 +4,12 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/cosmos).
 
 ## v0.34.14
 
-This release introduces a `rollback` feature in the event of an incorrect app hash. 
+This release backports the `rollback` feature to allow recovery in the event of an incorrect app hash. 
 
 ### FEATURES
 
-- [\#6982](https://github.com/tendermint/tendermint/pull/6982) tendermint binary has built-in suppport for running the end to end application (with state sync support) (@cmwaters).
-- [cli] [#7033](https://github.com/tendermint/tendermint/pull/7033) Add a `rollback` command to rollback to the previous tendermint state in the event of non-determinstic app hash or reverting an upgrade. @cmwaters
+- [\#6982](https://github.com/tendermint/tendermint/pull/6982) The tendermint binary now has built-in suppport for running the end-to-end test application (with state sync support) (@cmwaters).
+- [cli] [#7033](https://github.com/tendermint/tendermint/pull/7033) Add a `rollback` command to rollback to the previous tendermint state. This may be useful in the event of non-determinstic app hash or when reverting an upgrade. @cmwaters
 
 ### IMPROVEMENTS
 
