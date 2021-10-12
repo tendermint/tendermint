@@ -32,7 +32,7 @@ var (
 	ChannelShims = []*p2p.ChannelDescriptor{
 		{
 			ID:                  StateChannel,
-			MsgType:             new(tmcons.Message),
+			MsgType:             (*tmcons.Message)(nil),
 			Priority:            8,
 			SendQueueCapacity:   64,
 			RecvMessageCapacity: maxMsgSize,
@@ -44,7 +44,7 @@ var (
 			// stuff. Once we gossip the whole block there is nothing left to send
 			// until next height or round.
 			ID:                  DataChannel,
-			MsgType:             new(tmcons.Message),
+			MsgType:             (*tmcons.Message)(nil),
 			Priority:            12,
 			SendQueueCapacity:   64,
 			RecvBufferCapacity:  512,
@@ -53,7 +53,7 @@ var (
 		},
 		{
 			ID:                  VoteChannel,
-			MsgType:             new(tmcons.Message),
+			MsgType:             (*tmcons.Message)(nil),
 			Priority:            10,
 			SendQueueCapacity:   64,
 			RecvBufferCapacity:  128,
@@ -62,7 +62,7 @@ var (
 		},
 		{
 			ID:                  VoteSetBitsChannel,
-			MsgType:             new(tmcons.Message),
+			MsgType:             (*tmcons.Message)(nil),
 			Priority:            5,
 			SendQueueCapacity:   8,
 			RecvBufferCapacity:  128,

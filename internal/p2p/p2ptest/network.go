@@ -324,7 +324,7 @@ func (n *Node) MakePeerUpdatesNoRequireEmpty(t *testing.T) *p2p.PeerUpdates {
 func MakeChannelDesc(chID p2p.ChannelID) *p2p.ChannelDescriptor {
 	return &p2p.ChannelDescriptor{
 		ID:                  chID,
-		MsgType:             new(Message),
+		MsgType:             (*Message)(nil),
 		Priority:            5,
 		SendQueueCapacity:   10,
 		RecvMessageCapacity: 10,

@@ -111,7 +111,7 @@ func setup(
 	rts.snapshotChannel = p2p.NewChannel(
 		&p2p.ChannelDescriptor{
 			ID:      SnapshotChannel,
-			MsgType: new(ssproto.Message),
+			MsgType: (*ssproto.Message)(nil),
 		},
 		rts.snapshotInCh,
 		rts.snapshotOutCh,
@@ -121,7 +121,7 @@ func setup(
 	rts.chunkChannel = p2p.NewChannel(
 		&p2p.ChannelDescriptor{
 			ID:      ChunkChannel,
-			MsgType: new(ssproto.Message),
+			MsgType: (*ssproto.Message)(nil),
 		},
 		rts.chunkInCh,
 		rts.chunkOutCh,
@@ -131,7 +131,7 @@ func setup(
 	rts.blockChannel = p2p.NewChannel(
 		&p2p.ChannelDescriptor{
 			ID:      LightBlockChannel,
-			MsgType: new(ssproto.Message),
+			MsgType: (*ssproto.Message)(nil),
 		},
 		rts.blockInCh,
 		rts.blockOutCh,
@@ -141,7 +141,7 @@ func setup(
 	rts.paramsChannel = p2p.NewChannel(
 		&p2p.ChannelDescriptor{
 			ID:      ParamsChannel,
-			MsgType: new(ssproto.Message),
+			MsgType: (*ssproto.Message)(nil),
 		},
 		rts.paramsInCh,
 		rts.paramsOutCh,

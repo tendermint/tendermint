@@ -54,7 +54,7 @@ func setupReactors(t *testing.T, numNodes int, chBuf uint) *reactorTestSuite {
 
 	chDesc := &p2p.ChannelDescriptor{
 		ID:                  mempool.MempoolChannel,
-		MsgType:             new(protomem.Message),
+		MsgType:             (*protomem.Message)(nil),
 		SendQueueCapacity:   int(chBuf),
 		RecvMessageCapacity: int(chBuf),
 	}

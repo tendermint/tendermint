@@ -338,13 +338,14 @@ func makeNode(cfg *config.Config,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
 	ssLogger := logger.With("module", "statesync")
-	ssChans := map[p2p.ChannelID]*p2p.Channel{}
+	ssChans := make(map[p2p.ChannelID]*p2p.Channel)
 	for idx := range statesync.ChannelShims {
 		chDesc := statesync.ChannelShims[idx]
-		ssChans[chDesc.ID], err = router.OpenChannel(chDesc)
+		ch, err := router.OpenChannel(chDesc)
 		if err != nil {
 			return nil, err
 		}
+		ssChans[chDesc.ID] = ch
 	}
 
 	peerUpdates := peerManager.Subscribe()

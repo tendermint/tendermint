@@ -17,7 +17,7 @@ var (
 	chID   = p2p.ChannelID(1)
 	chDesc = &p2p.ChannelDescriptor{
 		ID:           chID,
-		MsgType:      &p2ptest.Message{},
+		MsgType:      (*p2ptest.Message)(nil),
 		Priority:     5,
 		MaxSendBytes: 1000,
 	}

@@ -65,7 +65,7 @@ const (
 func ChannelDescriptor() *conn.ChannelDescriptor {
 	return &conn.ChannelDescriptor{
 		ID:                  PexChannel,
-		MsgType:             &protop2p.PexMessage{},
+		MsgType:             (*protop2p.PexMessage)(nil),
 		Priority:            1,
 		SendQueueCapacity:   10,
 		RecvMessageCapacity: 128,

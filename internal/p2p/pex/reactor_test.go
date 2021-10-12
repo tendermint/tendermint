@@ -292,7 +292,7 @@ func setupSingle(t *testing.T) *singleTestReactor {
 	pexCh := p2p.NewChannel(
 		&conn.ChannelDescriptor{
 			ID:      pex.PexChannel,
-			MsgType: new(p2pproto.PexMessage),
+			MsgType: (*p2pproto.PexMessage)(nil),
 		},
 		pexInCh,
 		pexOutCh,
