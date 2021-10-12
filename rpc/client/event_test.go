@@ -16,7 +16,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var waitForEventTimeout = 2 * time.Second
+const waitForEventTimeout = 2 * time.Second
 
 // MakeTxKV returns a text transaction, allong with expected key, value pair
 func MakeTxKV() ([]byte, []byte, []byte) {
@@ -30,7 +30,9 @@ func testTxEventsSent(ctx context.Context, t *testing.T, broadcastMethod string,
 	_, _, tx := MakeTxKV()
 
 	// send
+	done := make(chan struct{})
 	go func() {
+		defer close(done)
 		var (
 			txres *coretypes.ResultBroadcastTx
 			err   error
@@ -59,4 +61,5 @@ func testTxEventsSent(ctx context.Context, t *testing.T, broadcastMethod string,
 	// make sure this is the proper tx
 	require.EqualValues(t, tx, txe.Tx)
 	require.True(t, txe.Result.IsOK())
+	<-done
 }
