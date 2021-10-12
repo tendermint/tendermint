@@ -67,7 +67,7 @@ func setup(
 
 	rts.blockSyncChannels = rts.network.MakeChannelsNoCleanup(t, &p2p.ChannelDescriptor{
 		ID:                  BlockSyncChannel,
-		MsgType:             (*bcproto.Message)(nil),
+		MsgType:             new(bcproto.Message),
 		SendQueueCapacity:   int(chBuf),
 		RecvMessageCapacity: int(chBuf),
 	})

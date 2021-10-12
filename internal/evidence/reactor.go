@@ -20,7 +20,7 @@ var _ service.Service = (*Reactor)(nil)
 func GetChannelDescriptor() *p2p.ChannelDescriptor {
 	return &p2p.ChannelDescriptor{
 		ID:                  EvidenceChannel,
-		MsgType:             (*tmproto.EvidenceList)(nil),
+		MsgType:             new(tmproto.EvidenceList),
 		Priority:            6,
 		RecvMessageCapacity: maxMsgSize,
 		RecvBufferCapacity:  32,

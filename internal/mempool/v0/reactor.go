@@ -100,7 +100,7 @@ func GetChannelDescriptor(cfg *config.MempoolConfig) *p2p.ChannelDescriptor {
 
 	return &p2p.ChannelDescriptor{
 		ID:                  mempool.MempoolChannel,
-		MsgType:             (*protomem.Message)(nil),
+		MsgType:             new(protomem.Message),
 		Priority:            5,
 		RecvMessageCapacity: batchMsg.Size(),
 		RecvBufferCapacity:  128,

@@ -39,7 +39,7 @@ var (
 	ChannelShims = []*p2p.ChannelDescriptor{
 		{
 			ID:                  SnapshotChannel,
-			MsgType:             (*ssproto.Message)(nil),
+			MsgType:             new(ssproto.Message),
 			Priority:            6,
 			SendQueueCapacity:   10,
 			RecvMessageCapacity: snapshotMsgSize,
@@ -48,7 +48,7 @@ var (
 		},
 		{
 			ID:                  ChunkChannel,
-			MsgType:             (*ssproto.Message)(nil),
+			MsgType:             new(ssproto.Message),
 			Priority:            3,
 			SendQueueCapacity:   4,
 			RecvMessageCapacity: chunkMsgSize,
@@ -57,7 +57,7 @@ var (
 		},
 		{
 			ID:                  LightBlockChannel,
-			MsgType:             (*ssproto.Message)(nil),
+			MsgType:             new(ssproto.Message),
 			Priority:            5,
 			SendQueueCapacity:   10,
 			RecvMessageCapacity: lightBlockMsgSize,
@@ -66,7 +66,7 @@ var (
 		},
 		{
 			ID:                  ParamsChannel,
-			MsgType:             (*ssproto.Message)(nil),
+			MsgType:             new(ssproto.Message),
 			Priority:            2,
 			SendQueueCapacity:   10,
 			RecvMessageCapacity: paramMsgSize,

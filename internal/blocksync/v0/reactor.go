@@ -25,7 +25,7 @@ var _ service.Service = (*Reactor)(nil)
 func GetChannelDescriptor() *p2p.ChannelDescriptor {
 	return &p2p.ChannelDescriptor{
 		ID:                  BlockSyncChannel,
-		MsgType:             (*bcproto.Message)(nil),
+		MsgType:             new(bcproto.Message),
 		Priority:            5,
 		SendQueueCapacity:   1000,
 		RecvBufferCapacity:  1024,
