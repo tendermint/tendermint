@@ -113,8 +113,7 @@ func TestClientOperations(t *testing.T) {
 		origin := conf.RPC.CORSAllowedOrigins[0]
 		remote := strings.ReplaceAll(conf.RPC.ListenAddress, "tcp", "http")
 
-		req, err := http.NewRequest("GET", remote, nil)
-		req = req.WithContext(ctx)
+		req, err := http.NewRequestWithContext(ctx, "GET", remote, nil)
 		require.Nil(t, err, "%+v", err)
 		req.Header.Set("Origin", origin)
 		resp, err := http.DefaultClient.Do(req)
@@ -199,10 +198,9 @@ func TestClientMethodCalls(t *testing.T) {
 	for i, c := range GetClients(t, n, conf) {
 		t.Run(fmt.Sprintf("%T", c), func(t *testing.T) {
 			t.Run("Status", func(t *testing.T) {
-				moniker := conf.Moniker
 				status, err := c.Status(ctx)
 				require.Nil(t, err, "%d: %+v", i, err)
-				assert.Equal(t, moniker, status.NodeInfo.Moniker)
+				assert.Equal(t, conf.Moniker, status.NodeInfo.Moniker)
 			})
 			t.Run("Info", func(t *testing.T) {
 				info, err := c.ABCIInfo(ctx)
