@@ -30,9 +30,21 @@ func NewBitArray(bits int) *BitArray {
 	if bits <= 0 {
 		return nil
 	}
-	return &BitArray{
-		Bits:  bits,
-		Elems: make([]uint64, numElems(bits)),
+	bA := &BitArray{}
+	bA.reset(bits)
+	return bA
+}
+
+// reset changes size of BitArray to `bits` and re-allocates (zeroed) data buffer
+func (bA *BitArray) reset(bits int) {
+	bA.mtx.Lock()
+	defer bA.mtx.Unlock()
+
+	bA.Bits = bits
+	if bits == 0 {
+		bA.Elems = nil
+	} else {
+		bA.Elems = make([]uint64, numElems(bits))
 	}
 }
 
@@ -399,8 +411,7 @@ func (bA *BitArray) UnmarshalJSON(bz []byte) error {
 	if b == "null" {
 		// This is required e.g. for encoding/json when decoding
 		// into a pointer with pre-allocated BitArray.
-		bA.Bits = 0
-		bA.Elems = nil
+		bA.reset(0)
 		return nil
 	}
 
@@ -410,16 +421,15 @@ func (bA *BitArray) UnmarshalJSON(bz []byte) error {
 		return fmt.Errorf("bitArray in JSON should be a string of format %q but got %s", bitArrayJSONRegexp.String(), b)
 	}
 	bits := match[1]
-
-	// Construct new BitArray and copy over.
 	numBits := len(bits)
-	bA2 := NewBitArray(numBits)
+
+	bA.reset(numBits)
 	for i := 0; i < numBits; i++ {
 		if bits[i] == 'x' {
-			bA2.SetIndex(i, true)
+			bA.SetIndex(i, true)
 		}
 	}
-	*bA = *bA2 //nolint:govet
+
 	return nil
 }
 
