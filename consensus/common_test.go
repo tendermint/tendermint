@@ -389,9 +389,15 @@ func newStateWithConfigAndBlockStore(
 	blockStore := store.NewBlockStore(blockDB)
 
 	// one for mempool, one for consensus
+<<<<<<< HEAD:consensus/common_test.go
 	mtx := new(tmsync.RWMutex)
 	proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
 	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+=======
+	mtx := new(tmsync.Mutex)
+	proxyAppConnMem := abciclient.NewLocalClient(mtx, app)
+	proxyAppConnCon := abciclient.NewLocalClient(mtx, app)
+>>>>>>> 34a3fcd8f (Revert "abci: change client to use multi-reader mutexes (#6306)" (#7106)):internal/consensus/common_test.go
 
 	// Make Mempool
 	mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
