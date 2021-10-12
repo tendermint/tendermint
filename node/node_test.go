@@ -105,6 +105,7 @@ func getTestNode(t *testing.T, conf *config.Config, logger log.Logger) *nodeImpl
 			ns.Wait()
 		}
 	})
+
 	return n
 }
 
@@ -591,7 +592,7 @@ func TestNodeSetEventSink(t *testing.T) {
 	cfg.TxIndex.Indexer = []string{"kvv"}
 	ns, err := newDefaultNode(cfg, logger)
 	assert.Nil(t, ns)
-	assert.Equal(t, errors.New("unsupported event sink type"), err)
+	assert.Contains(t, err.Error(), "unsupported event sink type")
 	t.Cleanup(cleanup(ns))
 
 	cfg.TxIndex.Indexer = []string{}
@@ -603,7 +604,7 @@ func TestNodeSetEventSink(t *testing.T) {
 	cfg.TxIndex.Indexer = []string{"psql"}
 	ns, err = newDefaultNode(cfg, logger)
 	assert.Nil(t, ns)
-	assert.Equal(t, errors.New("the psql connection settings cannot be empty"), err)
+	assert.Contains(t, err.Error(), "the psql connection settings cannot be empty")
 	t.Cleanup(cleanup(ns))
 
 	var psqlConn = "test"
@@ -645,14 +646,14 @@ func TestNodeSetEventSink(t *testing.T) {
 	cfg.TxIndex.PsqlConn = psqlConn
 	ns, err = newDefaultNode(cfg, logger)
 	require.Error(t, err)
-	assert.Equal(t, e, err)
+	assert.Contains(t, err.Error(), e.Error())
 	t.Cleanup(cleanup(ns))
 
 	cfg.TxIndex.Indexer = []string{"Psql", "kV", "kv", "pSql"}
 	cfg.TxIndex.PsqlConn = psqlConn
 	ns, err = newDefaultNode(cfg, logger)
 	require.Error(t, err)
-	assert.Equal(t, e, err)
+	assert.Contains(t, err.Error(), e.Error())
 	t.Cleanup(cleanup(ns))
 }
 

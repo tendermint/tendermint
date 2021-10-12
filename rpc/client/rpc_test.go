@@ -123,7 +123,7 @@ func TestClientOperations(t *testing.T) {
 		assert.Equal(t, resp.Header.Get("Access-Control-Allow-Origin"), origin)
 	})
 	t.Run("Batching", func(t *testing.T) {
-		t.Run("JSONRPCCals", func(t *testing.T) {
+		t.Run("JSONRPCCalls", func(t *testing.T) {
 			c := getHTTPClient(t, conf)
 			testBatchedJSONRPCCalls(ctx, t, c)
 		})
@@ -150,7 +150,7 @@ func TestClientOperations(t *testing.T) {
 			_, err := batch.Send(ctx)
 			require.Error(t, err, "sending an empty batch of JSON RPC requests should result in an error")
 		})
-		t.Run("ClearingEmpryRequest", func(t *testing.T) {
+		t.Run("ClearingEmptyRequest", func(t *testing.T) {
 			c := getHTTPClient(t, conf)
 			batch := c.NewBatch()
 			require.Zero(t, batch.Clear(), "clearing an empty batch of JSON RPC requests should result in a 0 result")
