@@ -47,7 +47,9 @@ func TestNodeStartStop(t *testing.T) {
 	require.NoError(t, ns.Start())
 
 	t.Cleanup(func() {
-		ns.Stop()
+		if ns.IsRunning() {
+			require.NoError(t, ns.Stop())
+		}
 		ns.Wait()
 	})
 
