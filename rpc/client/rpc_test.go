@@ -123,7 +123,7 @@ func TestClientOperations(t *testing.T) {
 		assert.Equal(t, resp.Header.Get("Access-Control-Allow-Origin"), origin)
 	})
 	t.Run("Batching", func(t *testing.T) {
-		t.Run("JSONRPCCals", func(t *testing.T) {
+		t.Run("JSONRPCCalls", func(t *testing.T) {
 			c := getHTTPClient(t, conf)
 			testBatchedJSONRPCCalls(ctx, t, c)
 		})
