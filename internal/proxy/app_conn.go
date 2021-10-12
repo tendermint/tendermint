@@ -81,8 +81,10 @@ func (app *appConnConsensus) InitChainSync(
 	req types.RequestInitChain,
 ) (*types.ResponseInitChain, error) {
 	start := time.Now()
-	defer app.metrics.MethodTiming.With("method", "init_chain",
-		"type", "sync").Observe(time.Since(start).Seconds())
+	defer func() {
+		app.metrics.MethodTiming.With("method", "init_chain",
+			"type", "sync").Observe(time.Since(start).Seconds())
+	}()
 	return app.appConn.InitChainSync(ctx, req)
 }
 
@@ -91,8 +93,10 @@ func (app *appConnConsensus) BeginBlockSync(
 	req types.RequestBeginBlock,
 ) (*types.ResponseBeginBlock, error) {
 	start := time.Now()
-	defer app.metrics.MethodTiming.With("method", "begin_block",
-		"type", "sync").Observe(time.Since(start).Seconds())
+	defer func() {
+		app.metrics.MethodTiming.With("method", "begin_block",
+			"type", "sync").Observe(time.Since(start).Seconds())
+	}()
 	return app.appConn.BeginBlockSync(ctx, req)
 }
 
@@ -101,8 +105,10 @@ func (app *appConnConsensus) DeliverTxAsync(
 	req types.RequestDeliverTx,
 ) (*abciclient.ReqRes, error) {
 	start := time.Now()
-	defer app.metrics.MethodTiming.With("method", "deliver_tx",
-		"type", "aync").Observe(time.Since(start).Seconds())
+	defer func() {
+		app.metrics.MethodTiming.With("method", "deliver_tx",
+			"type", "aync").Observe(time.Since(start).Seconds())
+	}()
 	return app.appConn.DeliverTxAsync(ctx, req)
 }
 
@@ -111,15 +117,19 @@ func (app *appConnConsensus) EndBlockSync(
 	req types.RequestEndBlock,
 ) (*types.ResponseEndBlock, error) {
 	start := time.Now()
-	defer app.metrics.MethodTiming.With("method", "deliver_tx",
-		"type", "sync").Observe(time.Since(start).Seconds())
+	defer func() {
+		app.metrics.MethodTiming.With("method", "deliver_tx",
+			"type", "sync").Observe(time.Since(start).Seconds())
+	}()
 	return app.appConn.EndBlockSync(ctx, req)
 }
 
 func (app *appConnConsensus) CommitSync(ctx context.Context) (*types.ResponseCommit, error) {
 	start := time.Now()
-	defer app.metrics.MethodTiming.With("method", "commit",
-		"type", "sync").Observe(time.Since(start).Seconds())
+	defer func() {
+		app.metrics.MethodTiming.With("method", "commit",
+			"type", "sync").Observe(time.Since(start).Seconds())
+	}()
 	return app.appConn.CommitSync(ctx)
 }
 
@@ -148,15 +158,19 @@ func (app *appConnMempool) Error() error {
 
 func (app *appConnMempool) FlushAsync(ctx context.Context) (*abciclient.ReqRes, error) {
 	start := time.Now()
-	defer app.metrics.MethodTiming.With("method", "flush",
-		"type", "sync").Observe(time.Since(start).Seconds())
+	defer func() {
+		app.metrics.MethodTiming.With("method", "flush",
+			"type", "sync").Observe(time.Since(start).Seconds())
+	}()
 	return app.appConn.FlushAsync(ctx)
 }
 
 func (app *appConnMempool) FlushSync(ctx context.Context) error {
 	start := time.Now()
-	defer app.metrics.MethodTiming.With("method", "flush",
-		"type", "sync").Observe(time.Since(start).Seconds())
+	defer func() {
+		app.metrics.MethodTiming.With("method", "flush",
+			"type", "sync").Observe(time.Since(start).Seconds())
+	}()
 	return app.appConn.FlushSync(ctx)
 }
 
@@ -169,8 +183,10 @@ func (app *appConnMempool) CheckTxAsync(ctx context.Context, req types.RequestCh
 
 func (app *appConnMempool) CheckTxSync(ctx context.Context, req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
 	start := time.Now()
-	defer app.metrics.MethodTiming.With("method", "check_tx",
-		"type", "sync").Observe(time.Since(start).Seconds())
+	defer func() {
+		app.metrics.MethodTiming.With("method", "check_tx",
+			"type", "sync").Observe(time.Since(start).Seconds())
+	}()
 	return app.appConn.CheckTxSync(ctx, req)
 }
 
@@ -195,22 +211,28 @@ func (app *appConnQuery) Error() error {
 
 func (app *appConnQuery) EchoSync(ctx context.Context, msg string) (*types.ResponseEcho, error) {
 	start := time.Now()
-	defer app.metrics.MethodTiming.With("method", "echo",
-		"type", "sync").Observe(time.Since(start).Seconds())
+	defer func() {
+		app.metrics.MethodTiming.With("method", "echo",
+			"type", "sync").Observe(time.Since(start).Seconds())
+	}()
 	return app.appConn.EchoSync(ctx, msg)
 }
 
 func (app *appConnQuery) InfoSync(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
 	start := time.Now()
-	defer app.metrics.MethodTiming.With("method", "info",
-		"type", "sync").Observe(time.Since(start).Seconds())
+	defer func() {
+		app.metrics.MethodTiming.With("method", "info",
+			"type", "sync").Observe(time.Since(start).Seconds())
+	}()
 	return app.appConn.InfoSync(ctx, req)
 }
 
 func (app *appConnQuery) QuerySync(ctx context.Context, reqQuery types.RequestQuery) (*types.ResponseQuery, error) {
 	start := time.Now()
-	defer app.metrics.MethodTiming.With("method", "query",
-		"type", "sync").Observe(time.Since(start).Seconds())
+	defer func() {
+		app.metrics.MethodTiming.With("method", "query",
+			"type", "sync").Observe(time.Since(start).Seconds())
+	}()
 	return app.appConn.QuerySync(ctx, reqQuery)
 }
 
@@ -238,8 +260,10 @@ func (app *appConnSnapshot) ListSnapshotsSync(
 	req types.RequestListSnapshots,
 ) (*types.ResponseListSnapshots, error) {
 	start := time.Now()
-	defer app.metrics.MethodTiming.With("method", "list_snapshots",
-		"type", "sync").Observe(time.Since(start).Seconds())
+	defer func() {
+		app.metrics.MethodTiming.With("method", "list_snapshots",
+			"type", "sync").Observe(time.Since(start).Seconds())
+	}()
 	return app.appConn.ListSnapshotsSync(ctx, req)
 }
 
@@ -248,8 +272,10 @@ func (app *appConnSnapshot) OfferSnapshotSync(
 	req types.RequestOfferSnapshot,
 ) (*types.ResponseOfferSnapshot, error) {
 	start := time.Now()
-	defer app.metrics.MethodTiming.With("method", "offer_snapshot",
-		"type", "sync").Observe(time.Since(start).Seconds())
+	defer func() {
+		app.metrics.MethodTiming.With("method", "offer_snapshot",
+			"type", "sync").Observe(time.Since(start).Seconds())
+	}()
 	return app.appConn.OfferSnapshotSync(ctx, req)
 }
 
@@ -257,8 +283,10 @@ func (app *appConnSnapshot) LoadSnapshotChunkSync(
 	ctx context.Context,
 	req types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
 	start := time.Now()
-	defer app.metrics.MethodTiming.With("method", "load_snapshot_chunk",
-		"type", "sync").Observe(time.Since(start).Seconds())
+	defer func() {
+		app.metrics.MethodTiming.With("method", "load_snapshot_chunk",
+			"type", "sync").Observe(time.Since(start).Seconds())
+	}()
 	return app.appConn.LoadSnapshotChunkSync(ctx, req)
 }
 
@@ -266,7 +294,9 @@ func (app *appConnSnapshot) ApplySnapshotChunkSync(
 	ctx context.Context,
 	req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
 	start := time.Now()
-	defer app.metrics.MethodTiming.With("method", "apply_snapshot_chunk",
-		"type", "sync").Observe(time.Since(start).Seconds())
+	defer func() {
+		app.metrics.MethodTiming.With("method", "apply_snapshot_chunk",
+			"type", "sync").Observe(time.Since(start).Seconds())
+	}()
 	return app.appConn.ApplySnapshotChunkSync(ctx, req)
 }

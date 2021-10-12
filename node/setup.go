@@ -48,7 +48,7 @@ func initDBs(cfg *config.Config, dbProvider config.DBProvider) (blockStore *stor
 }
 
 func createAndStartProxyAppConns(clientCreator abciclient.Creator, logger log.Logger, metrics *proxy.Metrics) (proxy.AppConns, error) {
-	proxyApp := proxy.NewAppConns(clientCreator, metrics)
+	proxyApp := proxy.NewAppConns(clientCreator, metrics, proxy.NopMetrics())
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
 		return nil, fmt.Errorf("error starting proxy app connections: %v", err)
