@@ -94,5 +94,6 @@ Has the same feature set as V0.37 but with a focus towards testing, protocol cor
 - Improved block propagation with erasure coding and/or compact blocks. [More](https://github.com/tendermint/spec/issues/347)
 - Conensus engine refactor (pipelining)
 - Bidirectional ABCI
+- Randomized Leader Election
 - ZK proofs / other cryptographic primatives
 - Multichain Tendermint
