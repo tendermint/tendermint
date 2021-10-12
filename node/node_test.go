@@ -541,7 +541,7 @@ func TestNodeSetEventSink(t *testing.T) {
 	cfg.TxIndex.Indexer = []string{"kvv"}
 	ns, err := newDefaultNode(cfg, logger)
 	assert.Nil(t, ns)
-	assert.Equal(t, errors.New("unsupported event sink type"), err)
+	assert.Contains(t, err.Error(), "unsupported event sink type")
 
 	cfg.TxIndex.Indexer = []string{}
 	eventSinks = setupTest(t, cfg)
@@ -552,7 +552,7 @@ func TestNodeSetEventSink(t *testing.T) {
 	cfg.TxIndex.Indexer = []string{"psql"}
 	ns, err = newDefaultNode(cfg, logger)
 	assert.Nil(t, ns)
-	assert.Equal(t, errors.New("the psql connection settings cannot be empty"), err)
+	assert.Contains(t, err.Error(), "the psql connection settings cannot be empty")
 
 	var psqlConn = "test"
 
@@ -593,13 +593,13 @@ func TestNodeSetEventSink(t *testing.T) {
 	cfg.TxIndex.PsqlConn = psqlConn
 	_, err = newDefaultNode(cfg, logger)
 	require.Error(t, err)
-	assert.Equal(t, e, err)
+	assert.Contains(t, err.Error(), e.Error())
 
 	cfg.TxIndex.Indexer = []string{"Psql", "kV", "kv", "pSql"}
 	cfg.TxIndex.PsqlConn = psqlConn
 	_, err = newDefaultNode(cfg, logger)
 	require.Error(t, err)
-	assert.Equal(t, e, err)
+	assert.Contains(t, err.Error(), e.Error())
 }
 
 func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
