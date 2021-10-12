@@ -100,8 +100,9 @@ func getTestNode(t *testing.T, conf *config.Config, logger log.Logger) *nodeImpl
 
 	t.Cleanup(func() {
 		if ns.IsRunning() {
-			require.NoError(t, ns.Stop())
+			assert.NoError(t, ns.Stop())
 		}
+		ns.Wait()
 	})
 
 	return n
