@@ -13,12 +13,12 @@ linters:
     # - gochecknoinits
     # - gocognit
     - goconst
-    - gocritic
+    # - gocritic
     # - gocyclo
     # - godox
     - gofmt
     - goimports
-    - golint
+    - revive
     - gosec
     - gosimple
     - govet

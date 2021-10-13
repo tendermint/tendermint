@@ -187,12 +187,14 @@ func LoadTestnet(file string) (*Testnet, error) {
 			LogLevel:         manifest.LogLevel,
 			QueueType:        manifest.QueueType,
 		}
-
 		if node.StartAt == testnet.InitialHeight {
 			node.StartAt = 0 // normalize to 0 for initial nodes, since code expects this
 		}
 		if nodeManifest.Mode != "" {
 			node.Mode = Mode(nodeManifest.Mode)
+		}
+		if node.Mode == ModeLight {
+			node.ABCIProtocol = ProtocolBuiltin
 		}
 		if nodeManifest.Database != "" {
 			node.Database = nodeManifest.Database
