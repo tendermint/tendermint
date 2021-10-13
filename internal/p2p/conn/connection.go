@@ -627,7 +627,7 @@ type ChannelDescriptor struct {
 	RecvBufferCapacity int
 }
 
-func (chDesc *ChannelDescriptor) FillDefaults() (filled *ChannelDescriptor) {
+func (chDesc *ChannelDescriptor) FillDefaults() {
 	if chDesc.SendQueueCapacity == 0 {
 		chDesc.SendQueueCapacity = defaultSendQueueCapacity
 	}
@@ -637,8 +637,6 @@ func (chDesc *ChannelDescriptor) FillDefaults() (filled *ChannelDescriptor) {
 	if chDesc.RecvMessageCapacity == 0 {
 		chDesc.RecvMessageCapacity = defaultRecvMessageCapacity
 	}
-	filled = chDesc
-	return
 }
 
 // TODO: lowercase.
@@ -663,7 +661,7 @@ type Channel struct {
 }
 
 func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
-	desc = desc.FillDefaults()
+	desc.FillDefaults()
 	if desc.Priority <= 0 {
 		panic("Channel default priority must be a positive integer")
 	}
