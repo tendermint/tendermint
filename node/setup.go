@@ -47,6 +47,7 @@ func initDBs(cfg *config.Config, dbProvider config.DBProvider) (blockStore *stor
 	return
 }
 
+// nolint:lll
 func createAndStartProxyAppConns(clientCreator abciclient.Creator, logger log.Logger, metrics *proxy.Metrics) (proxy.AppConns, error) {
 	proxyApp := proxy.NewAppConns(clientCreator, metrics)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
