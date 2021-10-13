@@ -156,7 +156,6 @@ OUTER_LOOP:
 					quorumType = res.QuorumType
 				}
 				page++
-				//break
 				continue OUTER_LOOP
 
 			case regexpTooHigh.MatchString(err.Error()):
