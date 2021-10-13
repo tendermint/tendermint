@@ -31,6 +31,7 @@ import (
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/libs/service"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
@@ -46,11 +47,21 @@ func TestNodeStartStop(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, ns.Start())
 
+	t.Cleanup(func() {
+		if ns.IsRunning() {
+			assert.NoError(t, ns.Stop())
+			ns.Wait()
+		}
+	})
+
 	n, ok := ns.(*nodeImpl)
 	require.True(t, ok)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// wait for the node to produce a block
-	blocksSub, err := n.EventBus().Subscribe(context.Background(), "node_test", types.EventQueryNewBlock)
+	blocksSub, err := n.EventBus().Subscribe(ctx, "node_test", types.EventQueryNewBlock)
 	require.NoError(t, err)
 	select {
 	case <-blocksSub.Out():
@@ -87,6 +98,14 @@ func getTestNode(t *testing.T, conf *config.Config, logger log.Logger) *nodeImpl
 
 	n, ok := ns.(*nodeImpl)
 	require.True(t, ok)
+
+	t.Cleanup(func() {
+		if ns.IsRunning() {
+			assert.NoError(t, ns.Stop())
+			ns.Wait()
+		}
+	})
+
 	return n
 }
 
@@ -100,7 +119,6 @@ func TestNodeDelayedStart(t *testing.T) {
 	n.GenesisDoc().GenesisTime = now.Add(2 * time.Second)
 
 	require.NoError(t, n.Start())
-	defer n.Stop() //nolint:errcheck // ignore for tests
 
 	startTime := tmtime.Now()
 	assert.Equal(t, true, startTime.After(n.GenesisDoc().GenesisTime))
@@ -165,8 +183,13 @@ func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
 	defer os.RemoveAll(cfg.RootDir)
 	cfg.PrivValidator.ListenAddr = addrNoPrefix
 
-	_, err := newDefaultNode(cfg, log.TestingLogger())
+	n, err := newDefaultNode(cfg, log.TestingLogger())
 	assert.Error(t, err)
+
+	if n != nil && n.IsRunning() {
+		assert.NoError(t, n.Stop())
+		n.Wait()
+	}
 }
 
 func TestNodeSetPrivValIPC(t *testing.T) {
@@ -211,6 +234,9 @@ func testFreeAddr(t *testing.T) string {
 // create a proposal block using real and full
 // mempool and evidence pool and validate it.
 func TestCreateProposalBlock(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cfg := config.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(cfg.RootDir)
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
@@ -222,7 +248,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	logger := log.TestingLogger()
 
 	const height int64 = 1
-	state, stateDB, privVals := state(1, height)
+	state, stateDB, privVals := state(t, 1, height)
 	stateStore := sm.NewStore(stateDB)
 	maxBytes := 16384
 	const partSize uint32 = 256
@@ -266,7 +292,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	txLength := 100
 	for i := 0; i <= maxBytes/txLength; i++ {
 		tx := tmrand.Bytes(txLength)
-		err := mp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{})
+		err := mp.CheckTx(ctx, tx, nil, mempool.TxInfo{})
 		assert.NoError(t, err)
 	}
 
@@ -303,6 +329,9 @@ func TestCreateProposalBlock(t *testing.T) {
 }
 
 func TestMaxTxsProposalBlockSize(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cfg := config.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(cfg.RootDir)
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
@@ -314,7 +343,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	logger := log.TestingLogger()
 
 	const height int64 = 1
-	state, stateDB, _ := state(1, height)
+	state, stateDB, _ := state(t, 1, height)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	const maxBytes int64 = 16384
@@ -336,7 +365,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	// fill the mempool with one txs just below the maximum size
 	txLength := int(types.MaxDataBytesNoEvidence(maxBytes, 1))
 	tx := tmrand.Bytes(txLength - 4) // to account for the varint
-	err = mp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{})
+	err = mp.CheckTx(ctx, tx, nil, mempool.TxInfo{})
 	assert.NoError(t, err)
 
 	blockExec := sm.NewBlockExecutor(
@@ -365,6 +394,9 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 }
 
 func TestMaxProposalBlockSize(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cfg := config.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(cfg.RootDir)
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
@@ -375,7 +407,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	logger := log.TestingLogger()
 
-	state, stateDB, _ := state(types.MaxVotesCount, int64(1))
+	state, stateDB, _ := state(t, types.MaxVotesCount, int64(1))
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	const maxBytes int64 = 1024 * 1024 * 2
@@ -402,7 +434,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	// At the end of the test, only the single big tx should be added
 	for i := 0; i < 10; i++ {
 		tx := tmrand.Bytes(10)
-		err = mp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{})
+		err = mp.CheckTx(ctx, tx, nil, mempool.TxInfo{})
 		assert.NoError(t, err)
 	}
 
@@ -493,14 +525,17 @@ func TestNodeNewSeedNode(t *testing.T) {
 		defaultGenesisDocProviderFunc(cfg),
 		log.TestingLogger(),
 	)
+
 	require.NoError(t, err)
 	n, ok := ns.(*nodeImpl)
 	require.True(t, ok)
 
 	err = n.Start()
 	require.NoError(t, err)
-
 	assert.True(t, n.pexReactor.IsRunning())
+
+	require.NoError(t, n.Stop())
+
 }
 
 func TestNodeSetEventSink(t *testing.T) {
@@ -511,7 +546,7 @@ func TestNodeSetEventSink(t *testing.T) {
 	setupTest := func(t *testing.T, conf *config.Config) []indexer.EventSink {
 		eventBus, err := createAndStartEventBus(logger)
 		require.NoError(t, err)
-
+		t.Cleanup(func() { require.NoError(t, eventBus.Stop()) })
 		genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
 		require.NoError(t, err)
 
@@ -520,6 +555,22 @@ func TestNodeSetEventSink(t *testing.T) {
 		require.NoError(t, err)
 		t.Cleanup(func() { require.NoError(t, indexService.Stop()) })
 		return eventSinks
+	}
+	cleanup := func(ns service.Service) func() {
+		return func() {
+			n, ok := ns.(*nodeImpl)
+			if !ok {
+				return
+			}
+			if n == nil {
+				return
+			}
+			if !n.IsRunning() {
+				return
+			}
+			assert.NoError(t, n.Stop())
+			n.Wait()
+		}
 	}
 
 	eventSinks := setupTest(t, cfg)
@@ -541,7 +592,8 @@ func TestNodeSetEventSink(t *testing.T) {
 	cfg.TxIndex.Indexer = []string{"kvv"}
 	ns, err := newDefaultNode(cfg, logger)
 	assert.Nil(t, ns)
-	assert.Equal(t, errors.New("unsupported event sink type"), err)
+	assert.Contains(t, err.Error(), "unsupported event sink type")
+	t.Cleanup(cleanup(ns))
 
 	cfg.TxIndex.Indexer = []string{}
 	eventSinks = setupTest(t, cfg)
@@ -552,7 +604,8 @@ func TestNodeSetEventSink(t *testing.T) {
 	cfg.TxIndex.Indexer = []string{"psql"}
 	ns, err = newDefaultNode(cfg, logger)
 	assert.Nil(t, ns)
-	assert.Equal(t, errors.New("the psql connection settings cannot be empty"), err)
+	assert.Contains(t, err.Error(), "the psql connection settings cannot be empty")
+	t.Cleanup(cleanup(ns))
 
 	var psqlConn = "test"
 
@@ -591,18 +644,21 @@ func TestNodeSetEventSink(t *testing.T) {
 	var e = errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
 	cfg.TxIndex.Indexer = []string{"psql", "kv", "Kv"}
 	cfg.TxIndex.PsqlConn = psqlConn
-	_, err = newDefaultNode(cfg, logger)
+	ns, err = newDefaultNode(cfg, logger)
 	require.Error(t, err)
-	assert.Equal(t, e, err)
+	assert.Contains(t, err.Error(), e.Error())
+	t.Cleanup(cleanup(ns))
 
 	cfg.TxIndex.Indexer = []string{"Psql", "kV", "kv", "pSql"}
 	cfg.TxIndex.PsqlConn = psqlConn
-	_, err = newDefaultNode(cfg, logger)
+	ns, err = newDefaultNode(cfg, logger)
 	require.Error(t, err)
-	assert.Equal(t, e, err)
+	assert.Contains(t, err.Error(), e.Error())
+	t.Cleanup(cleanup(ns))
 }
 
-func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
+func state(t *testing.T, nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
+	t.Helper()
 	privVals := make([]types.PrivValidator, nVals)
 	vals := make([]types.GenesisValidator, nVals)
 	for i := 0; i < nVals; i++ {
@@ -623,17 +679,15 @@ func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
 
 	// save validators to db for 2 heights
 	stateDB := dbm.NewMemDB()
+	t.Cleanup(func() { require.NoError(t, stateDB.Close()) })
+
 	stateStore := sm.NewStore(stateDB)
-	if err := stateStore.Save(s); err != nil {
-		panic(err)
-	}
+	require.NoError(t, stateStore.Save(s))
 
 	for i := 1; i < int(height); i++ {
 		s.LastBlockHeight++
 		s.LastValidators = s.Validators.Copy()
-		if err := stateStore.Save(s); err != nil {
-			panic(err)
-		}
+		require.NoError(t, stateStore.Save(s))
 	}
 	return s, stateDB, privVals
 }

@@ -227,13 +227,13 @@ build-docs:
 
 build-docker: build-linux
 	cp $(BUILDDIR)/tendermint DOCKER/tendermint
-	docker build --label=tendermint --tag="tendermint/tendermint" DOCKER
+	docker build --label=tendermint --tag="tendermint/tendermint" -f DOCKER/Dockerfile .
 	rm -rf DOCKER/tendermint
 .PHONY: build-docker
 
 
 ###############################################################################
-###                       Mocks 											###
+###                                Mocks                                    ###
 ###############################################################################
 
 mockery:
