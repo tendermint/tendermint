@@ -34,7 +34,6 @@ import (
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
-	grpccore "github.com/tendermint/tendermint/rpc/grpc"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	"github.com/tendermint/tendermint/types"
 
@@ -869,35 +868,7 @@ func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 		listeners[i] = listener
 	}
 
-	// we expose a simplified api over grpc for convenience to app devs
-	grpcListenAddr := n.config.RPC.GRPCListenAddress
-	if grpcListenAddr != "" {
-		cfg := rpcserver.DefaultConfig()
-		cfg.MaxBodyBytes = n.config.RPC.MaxBodyBytes
-		cfg.MaxHeaderBytes = n.config.RPC.MaxHeaderBytes
-		// NOTE: GRPCMaxOpenConnections is used, not MaxOpenConnections
-		cfg.MaxOpenConnections = n.config.RPC.GRPCMaxOpenConnections
-		// If necessary adjust global WriteTimeout to ensure it's greater than
-		// TimeoutBroadcastTxCommit.
-		// See https://github.com/tendermint/tendermint/issues/3435
-		if cfg.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
-			cfg.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
-		}
-		listener, err := rpcserver.Listen(grpcListenAddr, cfg.MaxOpenConnections)
-		if err != nil {
-			return nil, err
-		}
-		go func() {
-			if err := grpccore.StartGRPCServer(n.rpcEnv, listener); err != nil {
-				n.Logger.Error("Error starting gRPC server", "err", err)
-			}
-		}()
-		listeners = append(listeners, listener)
-
-	}
-
 	return listeners, nil
-
 }
 
 // startPrometheusServer starts a Prometheus HTTP server, listening for metrics
