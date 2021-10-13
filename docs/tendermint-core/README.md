@@ -18,4 +18,4 @@ This section dives into the internals of Go-Tendermint.
 - [Mempool](./mempool.md)
 - [Light Client](./light-client.md)
 
-For full specifications refer to the [spec repo](https://github.com/tendermint/spec)
+For full specifications refer to the [spec repo](https://github.com/tendermint/spec).
