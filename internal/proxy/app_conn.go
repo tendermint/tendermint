@@ -138,7 +138,7 @@ func (app *appConnMempool) Error() error {
 }
 
 func (app *appConnMempool) FlushAsync(ctx context.Context) (*abciclient.ReqRes, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "flush", "type", "sync"))()
+	defer addTimeSample(app.metrics.MethodTiming.With("method", "flush", "type", "async"))()
 	return app.appConn.FlushAsync(ctx)
 }
 
