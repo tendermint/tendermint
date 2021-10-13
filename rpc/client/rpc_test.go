@@ -517,7 +517,6 @@ func TestClientMethodCalls(t *testing.T) {
 					chainID := conf.ChainID()
 
 					correct, fakes := makeEvidences(t, pv, chainID)
-					t.Logf("client %d", i)
 
 					// make sure that the node has produced enough blocks
 					waitForBlock(ctx, t, c, 2)
