@@ -240,6 +240,9 @@ func (app *appConnSnapshot) ApplySnapshotChunkSync(
 	return app.appConn.ApplySnapshotChunkSync(ctx, req)
 }
 
+// addTimeSample returns a function that, when called, adds a sample to m for
+// the time elapsed since the original call to addTimeSample. This function should
+// be deferred near the start of a function to be sampled.
 func addTimeSample(m metrics.Histogram) func() {
 	start := time.Now()
 	return func() { m.Observe(time.Since(start).Seconds()) }
