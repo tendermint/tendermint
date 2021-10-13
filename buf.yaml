@@ -11,6 +11,3 @@ lint:
 breaking:
   use:
     - FILE
-  ignore:
-    # TODO(#7075): Remove after file deletion is merged.
-    - tendermint/rpc
