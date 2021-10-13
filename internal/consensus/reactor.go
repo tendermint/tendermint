@@ -37,7 +37,6 @@ var (
 			SendQueueCapacity:   64,
 			RecvMessageCapacity: maxMsgSize,
 			RecvBufferCapacity:  128,
-			MaxSendBytes:        12000,
 		},
 		{
 			// TODO: Consider a split between gossiping current block and catchup
@@ -49,7 +48,6 @@ var (
 			SendQueueCapacity:   64,
 			RecvBufferCapacity:  512,
 			RecvMessageCapacity: maxMsgSize,
-			MaxSendBytes:        40000,
 		},
 		{
 			ID:                  VoteChannel,
@@ -58,7 +56,6 @@ var (
 			SendQueueCapacity:   64,
 			RecvBufferCapacity:  128,
 			RecvMessageCapacity: maxMsgSize,
-			MaxSendBytes:        150,
 		},
 		{
 			ID:                  VoteSetBitsChannel,
@@ -67,7 +64,6 @@ var (
 			SendQueueCapacity:   8,
 			RecvBufferCapacity:  128,
 			RecvMessageCapacity: maxMsgSize,
-			MaxSendBytes:        50,
 		},
 	}
 )

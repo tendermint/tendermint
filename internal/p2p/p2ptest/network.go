@@ -328,6 +328,5 @@ func MakeChannelDesc(chID p2p.ChannelID) *p2p.ChannelDescriptor {
 		Priority:            5,
 		SendQueueCapacity:   10,
 		RecvMessageCapacity: 10,
-		MaxSendBytes:        1000,
 	}
 }

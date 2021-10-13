@@ -625,10 +625,6 @@ type ChannelDescriptor struct {
 	// RecvBufferCapacity defines the max buffer size of inbound messages for a
 	// given p2p Channel queue.
 	RecvBufferCapacity int
-
-	// MaxSendBytes defines the maximum number of bytes that can be sent at any
-	// given moment from a Channel to a peer.
-	MaxSendBytes uint
 }
 
 func (chDesc *ChannelDescriptor) FillDefaults() (filled *ChannelDescriptor) {

@@ -44,7 +44,6 @@ var (
 			SendQueueCapacity:   10,
 			RecvMessageCapacity: snapshotMsgSize,
 			RecvBufferCapacity:  128,
-			MaxSendBytes:        400,
 		},
 		{
 			ID:                  ChunkChannel,
@@ -53,7 +52,6 @@ var (
 			SendQueueCapacity:   4,
 			RecvMessageCapacity: chunkMsgSize,
 			RecvBufferCapacity:  128,
-			MaxSendBytes:        400,
 		},
 		{
 			ID:                  LightBlockChannel,
@@ -62,7 +60,6 @@ var (
 			SendQueueCapacity:   10,
 			RecvMessageCapacity: lightBlockMsgSize,
 			RecvBufferCapacity:  128,
-			MaxSendBytes:        400,
 		},
 		{
 			ID:                  ParamsChannel,
@@ -71,7 +68,6 @@ var (
 			SendQueueCapacity:   10,
 			RecvMessageCapacity: paramMsgSize,
 			RecvBufferCapacity:  128,
-			MaxSendBytes:        400,
 		},
 	}
 )

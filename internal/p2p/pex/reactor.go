@@ -70,7 +70,6 @@ func ChannelDescriptor() *conn.ChannelDescriptor {
 		SendQueueCapacity:   10,
 		RecvMessageCapacity: 128,
 		RecvBufferCapacity:  maxMsgSize,
-		MaxSendBytes:        200,
 	}
 }
 

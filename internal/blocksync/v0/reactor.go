@@ -30,7 +30,6 @@ func GetChannelDescriptor() *p2p.ChannelDescriptor {
 		SendQueueCapacity:   1000,
 		RecvBufferCapacity:  1024,
 		RecvMessageCapacity: blocksync.MaxMsgSize,
-		MaxSendBytes:        100,
 	}
 }
 
