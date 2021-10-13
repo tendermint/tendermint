@@ -197,7 +197,7 @@ func TestClientMethodCalls(t *testing.T) {
 	defer cancel()
 	n, conf := NodeSuite(t)
 
-	// for braodcast tx tests
+	// for broadcast tx tests
 	pool := getMempool(t, n)
 
 	// for evidence tests
