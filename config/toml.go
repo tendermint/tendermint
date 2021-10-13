@@ -193,26 +193,10 @@ cors-allowed-methods = [{{ range .RPC.CORSAllowedMethods }}{{ printf "%q, " . }}
 # A list of non simple headers the client is allowed to use with cross-domain requests
 cors-allowed-headers = [{{ range .RPC.CORSAllowedHeaders }}{{ printf "%q, " . }}{{end}}]
 
-# TCP or UNIX socket address for the gRPC server to listen on
-# NOTE: This server only supports /broadcast_tx_commit
-# Deprecated gRPC  in the RPC layer of Tendermint will be deprecated in 0.36.
-grpc-laddr = "{{ .RPC.GRPCListenAddress }}"
-
-# Maximum number of simultaneous connections.
-# Does not include RPC (HTTP&WebSocket) connections. See max-open-connections
-# If you want to accept a larger number than the default, make sure
-# you increase your OS limits.
-# 0 - unlimited.
-# Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
-# 1024 - 40 - 10 - 50 = 924 = ~900
-# Deprecated gRPC  in the RPC layer of Tendermint will be deprecated in 0.36.
-grpc-max-open-connections = {{ .RPC.GRPCMaxOpenConnections }}
-
 # Activate unsafe RPC commands like /dial-seeds and /unsafe-flush-mempool
 unsafe = {{ .RPC.Unsafe }}
 
 # Maximum number of simultaneous connections (including WebSocket).
-# Does not include gRPC connections. See grpc-max-open-connections
 # If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
@@ -226,8 +210,8 @@ max-open-connections = {{ .RPC.MaxOpenConnections }}
 max-subscription-clients = {{ .RPC.MaxSubscriptionClients }}
 
 # Maximum number of unique queries a given client can /subscribe to
-# If you're using GRPC (or Local RPC client) and /broadcast_tx_commit, set to
-# the estimated # maximum number of broadcast_tx_commit calls per block.
+# If you're using a Local RPC client and /broadcast_tx_commit, set this
+# to the estimated maximum number of broadcast_tx_commit calls per block.
 max-subscriptions-per-client = {{ .RPC.MaxSubscriptionsPerClient }}
 
 # How long to wait for a tx to be committed during /broadcast_tx_commit.
