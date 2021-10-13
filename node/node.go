@@ -269,7 +269,7 @@ func makeNode(cfg *config.Config,
 			fmt.Errorf("failed to create peer manager: %w", err),
 			makeCloser(closers))
 	}
-  
+
 	router, err := createRouter(p2pLogger, nodeMetrics.p2p, nodeInfo, nodeKey.PrivKey,
 		peerManager, transport, getRouterConfig(cfg, proxyApp))
 	if err != nil {
