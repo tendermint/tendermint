@@ -167,13 +167,12 @@ func (s *pqScheduler) process() {
 				timestamp: time.Now().UTC(),
 			}
 
-			s.metrics.PeerPendingSendBytes.With("peer_id", string(pqEnv.envelope.To)).Add(float64(pqEnv.size))
-
 			// enqueue
 
 			// Check if we have sufficient capacity to simply enqueue the incoming
 			// Envelope.
 			if s.size+pqEnv.size <= s.capacity {
+				s.metrics.PeerPendingSendBytes.With("peer_id", string(pqEnv.envelope.To)).Add(float64(pqEnv.size))
 				// enqueue the incoming Envelope
 				s.push(pqEnv)
 			} else {
@@ -212,6 +211,8 @@ func (s *pqScheduler) process() {
 									"msg_size", pqEnvTmp.size,
 									"capacity", s.capacity,
 								)
+
+								s.metrics.PeerPendingSendBytes.With("peer_id", string(pqEnvTmp.envelope.To)).Add(float64(-pqEnvTmp.size))
 
 								// dequeue/drop from the priority queue
 								heap.Remove(s.pq, pqEnvTmp.index)
