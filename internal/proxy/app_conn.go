@@ -97,7 +97,7 @@ func (app *appConnConsensus) DeliverTxAsync(
 	ctx context.Context,
 	req types.RequestDeliverTx,
 ) (*abciclient.ReqRes, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "deliver_tx", "type", "aync"))()
+	defer addTimeSample(app.metrics.MethodTiming.With("method", "deliver_tx", "type", "async"))()
 	return app.appConn.DeliverTxAsync(ctx, req)
 }
 
@@ -138,7 +138,7 @@ func (app *appConnMempool) Error() error {
 }
 
 func (app *appConnMempool) FlushAsync(ctx context.Context) (*abciclient.ReqRes, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "flush", "type", "sync"))()
+	defer addTimeSample(app.metrics.MethodTiming.With("method", "flush", "type", "async"))()
 	return app.appConn.FlushAsync(ctx)
 }
 
@@ -148,9 +148,7 @@ func (app *appConnMempool) FlushSync(ctx context.Context) error {
 }
 
 func (app *appConnMempool) CheckTxAsync(ctx context.Context, req types.RequestCheckTx) (*abciclient.ReqRes, error) {
-	start := time.Now()
-	defer app.metrics.MethodTiming.With("method", "check_tx",
-		"type", "sync").Observe(time.Since(start).Seconds())
+	defer addTimeSample(app.metrics.MethodTiming.With("method", "check_tx", "type", "async"))()
 	return app.appConn.CheckTxAsync(ctx, req)
 }
 
