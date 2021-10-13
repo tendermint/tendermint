@@ -98,11 +98,11 @@ proto-format:
 .PHONY: proto-format
 
 proto-check-breaking:
-	@$(DOCKER_BUF) check breaking --against-input .git#branch=master
+	@$(DOCKER_BUF) breaking --against-input .git#branch=master
 .PHONY: proto-check-breaking
 
 proto-check-breaking-ci:
-	@$(DOCKER_BUF) check breaking --against-input $(HTTPS_GIT)#branch=master
+	@$(DOCKER_BUF) breaking --against-input $(HTTPS_GIT)#branch=master
 .PHONY: proto-check-breaking-ci
 
 ###############################################################################
