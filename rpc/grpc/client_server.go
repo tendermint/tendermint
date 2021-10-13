@@ -16,10 +16,6 @@ type Config struct {
 	MaxOpenConnections int
 }
 
-type closer func() error
-
-func (c closer) Close() error { return c() } // to satisfy io.Closer
-
 type emptyCloser func()
 
 func (ec emptyCloser) Close() error { ec(); return nil } // to satisfy io.Closer
