@@ -36,3 +36,5 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS
 
 ### BUG FIXES
+
+- fix: assignment copies lock value in `BitArray.UnmarshalJSON()` (@lklimek)
