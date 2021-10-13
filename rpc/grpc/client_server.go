@@ -22,7 +22,7 @@ func (c closer) Close() error { return c() } // to satisfy io.Closer
 
 type emptyCloser func()
 
-func (ec emptyCloser) Close() error { c(); return nil } // to satisfy io.Closer
+func (ec emptyCloser) Close() error { ec(); return nil } // to satisfy io.Closer
 
 // StartGRPCServer starts a new gRPC BroadcastAPIServer using the given
 // net.Listener.
