@@ -1,17 +1,12 @@
 package client_test
 
 import (
-	"bytes"
 	"context"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/privval"
@@ -111,64 +106,6 @@ func makeEvidences(
 	}
 
 	return correct, fakes
-}
-
-func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	n, config := NodeSuite(t)
-	chainID := config.ChainID()
-
-	pv, err := privval.LoadOrGenFilePV(config.PrivValidator.KeyFile(), config.PrivValidator.StateFile())
-	require.NoError(t, err)
-
-	for i, c := range GetClients(t, n, config) {
-		correct, fakes := makeEvidences(t, pv, chainID)
-		t.Logf("client %d", i)
-
-		// make sure that the node has produced enough blocks
-		waitForBlock(ctx, t, c, 2)
-
-		result, err := c.BroadcastEvidence(ctx, correct)
-		require.NoError(t, err, "BroadcastEvidence(%s) failed", correct)
-		assert.Equal(t, correct.Hash(), result.Hash, "expected result hash to match evidence hash")
-
-		status, err := c.Status(ctx)
-		require.NoError(t, err)
-		err = client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
-		require.NoError(t, err)
-
-		ed25519pub := pv.Key.PubKey.(ed25519.PubKey)
-		rawpub := ed25519pub.Bytes()
-		result2, err := c.ABCIQuery(ctx, "/val", rawpub)
-		require.NoError(t, err)
-		qres := result2.Response
-		require.True(t, qres.IsOK())
-
-		var v abci.ValidatorUpdate
-		err = abci.ReadMessage(bytes.NewReader(qres.Value), &v)
-		require.NoError(t, err, "Error reading query result, value %v", qres.Value)
-
-		pk, err := encoding.PubKeyFromProto(v.PubKey)
-		require.NoError(t, err)
-
-		require.EqualValues(t, rawpub, pk, "Stored PubKey not equal with expected, value %v", string(qres.Value))
-		require.Equal(t, int64(9), v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
-
-		for _, fake := range fakes {
-			_, err := c.BroadcastEvidence(ctx, fake)
-			require.Error(t, err, "BroadcastEvidence(%s) succeeded, but the evidence was fake", fake)
-		}
-	}
-}
-
-func TestBroadcastEmptyEvidence(t *testing.T) {
-	n, conf := NodeSuite(t)
-	for _, c := range GetClients(t, n, conf) {
-		_, err := c.BroadcastEvidence(context.Background(), nil)
-		assert.Error(t, err)
-	}
 }
 
 func waitForBlock(ctx context.Context, t *testing.T, c client.Client, height int64) {

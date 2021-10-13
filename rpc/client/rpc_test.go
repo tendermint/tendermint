@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -16,11 +17,14 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/internal/mempool"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpclocal "github.com/tendermint/tendermint/rpc/client/local"
@@ -193,7 +197,12 @@ func TestClientMethodCalls(t *testing.T) {
 	defer cancel()
 	n, conf := NodeSuite(t)
 
+	// for broadcast tx tests
 	pool := getMempool(t, n)
+
+	// for evidence tests
+	pv, err := privval.LoadOrGenFilePV(conf.PrivValidator.KeyFile(), conf.PrivValidator.StateFile())
+	require.NoError(t, err)
 
 	for i, c := range GetClients(t, n, conf) {
 		t.Run(fmt.Sprintf("%T", c), func(t *testing.T) {
@@ -501,6 +510,52 @@ func TestClientMethodCalls(t *testing.T) {
 				})
 				t.Run("BroadcastTxSync", func(t *testing.T) {
 					testTxEventsSent(ctx, t, "sync", c)
+				})
+			})
+			t.Run("Evidence", func(t *testing.T) {
+				t.Run("BraodcastDuplicateVote", func(t *testing.T) {
+					chainID := conf.ChainID()
+
+					correct, fakes := makeEvidences(t, pv, chainID)
+
+					// make sure that the node has produced enough blocks
+					waitForBlock(ctx, t, c, 2)
+
+					result, err := c.BroadcastEvidence(ctx, correct)
+					require.NoError(t, err, "BroadcastEvidence(%s) failed", correct)
+					assert.Equal(t, correct.Hash(), result.Hash, "expected result hash to match evidence hash")
+
+					status, err := c.Status(ctx)
+					require.NoError(t, err)
+					err = client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
+					require.NoError(t, err)
+
+					ed25519pub := pv.Key.PubKey.(ed25519.PubKey)
+					rawpub := ed25519pub.Bytes()
+					result2, err := c.ABCIQuery(ctx, "/val", rawpub)
+					require.NoError(t, err)
+					qres := result2.Response
+					require.True(t, qres.IsOK())
+
+					var v abci.ValidatorUpdate
+					err = abci.ReadMessage(bytes.NewReader(qres.Value), &v)
+					require.NoError(t, err, "Error reading query result, value %v", qres.Value)
+
+					pk, err := encoding.PubKeyFromProto(v.PubKey)
+					require.NoError(t, err)
+
+					require.EqualValues(t, rawpub, pk, "Stored PubKey not equal with expected, value %v", string(qres.Value))
+					require.Equal(t, int64(9), v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
+
+					for _, fake := range fakes {
+						_, err := c.BroadcastEvidence(ctx, fake)
+						require.Error(t, err, "BroadcastEvidence(%s) succeeded, but the evidence was fake", fake)
+					}
+
+				})
+				t.Run("BroadcastEmpty", func(t *testing.T) {
+					_, err := c.BroadcastEvidence(ctx, nil)
+					assert.Error(t, err)
 				})
 			})
 		})
