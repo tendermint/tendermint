@@ -19,7 +19,6 @@ import (
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
 	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 )
 
@@ -54,14 +53,19 @@ func waitForRPC() {
 	}
 }
 
-func waitForGRPC() {
-	client := GetGRPCClient()
-	for {
-		_, err := client.Ping(context.Background(), &core_grpc.RequestPing{})
-		if err == nil {
-			return
-		}
+func randPort() int {
+	port, err := tmnet.GetFreePort()
+	if err != nil {
+		panic(err)
 	}
+	return port
+}
+
+// makeAddrs constructs local listener addresses for node services.  This
+// implementation uses random ports so test instances can run concurrently.
+func makeAddrs() (p2pAddr, rpcAddr string) {
+	const addrTemplate = "tcp://127.0.0.1:%d"
+	return fmt.Sprintf(addrTemplate, randPort()), fmt.Sprintf(addrTemplate, randPort())
 }
 
 // f**ing long, but unique for each test
@@ -76,30 +80,15 @@ func makePathname() string {
 	return strings.ReplaceAll(p, sep, "_")
 }
 
-func randPort() int {
-	port, err := tmnet.GetFreePort()
-	if err != nil {
-		panic(err)
-	}
-	return port
-}
-
-func makeAddrs() (string, string, string) {
-	return fmt.Sprintf("tcp://127.0.0.1:%d", randPort()),
-		fmt.Sprintf("tcp://127.0.0.1:%d", randPort()),
-		fmt.Sprintf("tcp://127.0.0.1:%d", randPort())
-}
-
 func createConfig() *cfg.Config {
 	pathname := makePathname()
 	c := test.ResetTestRoot(pathname)
 
 	// and we use random ports to run in parallel
-	tm, rpc, grpc := makeAddrs()
+	tm, rpc := makeAddrs()
 	c.P2P.ListenAddress = tm
 	c.RPC.ListenAddress = rpc
 	c.RPC.CORSAllowedOrigins = []string{"https://tendermint.com/"}
-	c.RPC.GRPCListenAddress = grpc
 	return c
 }
 
@@ -111,10 +100,7 @@ func GetConfig(forceCreate ...bool) *cfg.Config {
 	return globalConfig
 }
 
-func GetGRPCClient() core_grpc.BroadcastAPIClient {
-	grpcAddr := globalConfig.RPC.GRPCListenAddress
-	return core_grpc.StartGRPCClient(grpcAddr)
-}
+type ServiceCloser func(context.Context) error
 
 // StartTendermint starts a test tendermint server in a go routine and returns when it is initialized
 func StartTendermint(app abci.Application, opts ...func(*Options)) *nm.Node {
@@ -128,9 +114,7 @@ func StartTendermint(app abci.Application, opts ...func(*Options)) *nm.Node {
 		panic(err)
 	}
 
-	// wait for rpc
 	waitForRPC()
-	waitForGRPC()
 
 	if !nodeOpts.suppressStdout {
 		fmt.Println("Tendermint running!")

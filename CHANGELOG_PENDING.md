@@ -6,6 +6,8 @@
 
 - CLI/RPC/Config
 
+  - [rpc] Remove the deprecated gRPC interface to the RPC service (@creachadair).
+
 - Apps
 
 - P2P Protocol

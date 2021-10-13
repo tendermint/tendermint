@@ -141,22 +141,22 @@ func randPort() int {
 	return base + tmrand.Intn(spread)
 }
 
-func makeAddrs() (string, string, string) {
+// makeAddrs constructs local TCP addresses for node services.
+// It uses consecutive ports from a random starting point, so that concurrent
+// instances are less likely to collide.
+func makeAddrs() (p2pAddr, rpcAddr string) {
+	const addrTemplate = "tcp://127.0.0.1:%d"
 	start := randPort()
-	return fmt.Sprintf("tcp://127.0.0.1:%d", start),
-		fmt.Sprintf("tcp://127.0.0.1:%d", start+1),
-		fmt.Sprintf("tcp://127.0.0.1:%d", start+2)
+	return fmt.Sprintf(addrTemplate, start), fmt.Sprintf(addrTemplate, start+1)
 }
 
 // getConfig returns a config for test cases
 func getConfig(t *testing.T) *cfg.Config {
 	c := test.ResetTestRoot(t.Name())
 
-	// and we use random ports to run in parallel
-	tm, rpc, grpc := makeAddrs()
-	c.P2P.ListenAddress = tm
-	c.RPC.ListenAddress = rpc
-	c.RPC.GRPCListenAddress = grpc
+	p2pAddr, rpcAddr := makeAddrs()
+	c.P2P.ListenAddress = p2pAddr
+	c.RPC.ListenAddress = rpcAddr
 	return c
 }
 

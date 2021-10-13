@@ -71,7 +71,6 @@ func TestRPCConfigValidateBasic(t *testing.T) {
 	assert.NoError(t, cfg.ValidateBasic())
 
 	fieldsToTest := []string{
-		"GRPCMaxOpenConnections",
 		"MaxOpenConnections",
 		"MaxSubscriptionClients",
 		"MaxSubscriptionsPerClient",
