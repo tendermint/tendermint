@@ -28,7 +28,6 @@ validator05 = 50
 
 [node.seed01]
 mode = "seed"
-perturb = ["restart"]
 
 [node.validator01]
 perturb = ["disconnect"]
