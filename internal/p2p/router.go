@@ -352,8 +352,7 @@ func (r *Router) createQueueFactory() (func(int) queue, error) {
 // close the channel when done, before stopping the Router. messageType is the
 // type of message passed through the channel (used for unmarshaling), which can
 // implement Wrapper to automatically (un)wrap multiple message types in a
-// wrapper message. The caller may provide a size to make the channel buffered,
-// which internally makes the inbound, outbound, and error channel buffered.
+// wrapper message.
 func (r *Router) OpenChannel(chDesc *ChannelDescriptor) (*Channel, error) {
 	r.channelMtx.Lock()
 	defer r.channelMtx.Unlock()
@@ -364,9 +363,9 @@ func (r *Router) OpenChannel(chDesc *ChannelDescriptor) (*Channel, error) {
 	r.chDescs = append(r.chDescs, chDesc)
 
 	// TODO use different queue buffering strategies
-	queue := r.queueFactory(chDesc.RecvBufferCapacity / 2)
-	outCh := make(chan Envelope, chDesc.RecvBufferCapacity/2)
-	errCh := make(chan PeerError, chDesc.RecvBufferCapacity/4+1)
+	queue := r.queu2eFactory(chDesc.RecvBufferCapacity)
+	outCh := make(chan Envelope, chDesc.SendQueueCapacity)
+	errCh := make(chan PeerError, chDesc.SendQueueCapacity)
 	channel := NewChannel(chDesc, queue.dequeue(), outCh, errCh)
 
 	var wrapper Wrapper
