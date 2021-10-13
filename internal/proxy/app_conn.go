@@ -148,9 +148,7 @@ func (app *appConnMempool) FlushSync(ctx context.Context) error {
 }
 
 func (app *appConnMempool) CheckTxAsync(ctx context.Context, req types.RequestCheckTx) (*abciclient.ReqRes, error) {
-	start := time.Now()
-	defer app.metrics.MethodTiming.With("method", "check_tx",
-		"type", "sync").Observe(time.Since(start).Seconds())
+	defer addTimeSample(app.metrics.MethodTiming.With("method", "check_tx", "type", "async"))()
 	return app.appConn.CheckTxAsync(ctx, req)
 }
 
