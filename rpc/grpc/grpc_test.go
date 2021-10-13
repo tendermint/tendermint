@@ -39,7 +39,7 @@ func TestBroadcastTx(t *testing.T) {
 	_, conf := NodeSuite(t)
 
 	client, closer := rpctest.GetGRPCClient(conf)
-	defer func() { require.NoError(t, closer()) }()
+	defer func() { require.NoError(t, closer.Close()) }()
 	res, err := client.BroadcastTx(ctx,
 		&coregrpc.RequestBroadcastTx{Tx: []byte("this is a tx")},
 	)

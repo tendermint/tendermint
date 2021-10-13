@@ -882,7 +882,7 @@ func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 			if err != nil {
 				n.Logger.Error("Error starting gRPC server", "err", err)
 			}
-			if err := closer(); err != nil {
+			if err := closer.Close(); err != nil {
 				n.Logger.Error("Error stopping gRPC server", "err", err)
 			}
 		}()

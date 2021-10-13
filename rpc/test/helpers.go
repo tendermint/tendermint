@@ -3,6 +3,7 @@ package rpctest
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -43,7 +44,7 @@ func waitForRPC(ctx context.Context, conf *config.Config) {
 	}
 }
 
-func waitForGRPC(ctx context.Context, conf *config.Config) coregrpc.Closer {
+func waitForGRPC(ctx context.Context, conf *config.Config) io.Closer {
 	client, closer := GetGRPCClient(conf)
 	for {
 		_, err := client.Ping(ctx, &coregrpc.RequestPing{})
@@ -84,7 +85,7 @@ func CreateConfig(testName string) *config.Config {
 	return c
 }
 
-func GetGRPCClient(conf *config.Config) (coregrpc.BroadcastAPIClient, coregrpc.Closer) {
+func GetGRPCClient(conf *config.Config) (coregrpc.BroadcastAPIClient, io.Closer) {
 	grpcAddr := conf.RPC.GRPCListenAddress
 	return coregrpc.StartGRPCClient(grpcAddr)
 }
@@ -129,7 +130,7 @@ func StartTendermint(ctx context.Context,
 		if err := tmNode.Stop(); err != nil {
 			logger.Error("Error when trying to stop node", "err", err)
 		}
-		if err := closeGrpc(); err != nil {
+		if err := closeGrpc.Close(); err != nil {
 			logger.Error("Error when trying to stop grpc", "err", err)
 		}
 		tmNode.Wait()
