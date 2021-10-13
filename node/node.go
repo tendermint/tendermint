@@ -152,7 +152,7 @@ func makeNode(cfg *config.Config,
 	nodeMetrics := defaultMetricsProvider(cfg.Instrumentation)(genDoc.ChainID)
 
 	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
-	proxyApp, err := createAndStartProxyAppConns(clientCreator, logger)
+	proxyApp, err := createAndStartProxyAppConns(clientCreator, logger, nodeMetrics.proxy)
 	if err != nil {
 		return nil, err
 	}
@@ -1060,6 +1060,7 @@ type nodeMetrics struct {
 	p2p       *p2p.Metrics
 	state     *sm.Metrics
 	statesync *statesync.Metrics
+	proxy     *proxy.Metrics
 }
 
 // metricsProvider returns consensus, p2p, mempool, state, statesync Metrics.
