@@ -5,6 +5,8 @@ import (
 	bls "github.com/dashpay/bls-signatures/go-bindings"
 )
 
+// SignID returns signing session data that will be signed to get threshold signature share.
+// See DIP-0007
 func SignID(llmqType btcjson.LLMQType, quorumHash QuorumHash, requestID []byte, messageHash []byte) []byte {
 	var blsQuorumHash bls.Hash
 	copy(blsQuorumHash[:], quorumHash.Bytes())

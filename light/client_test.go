@@ -2,24 +2,22 @@ package light_test
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
 
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
-	"github.com/tendermint/tendermint/light"
-	"github.com/tendermint/tendermint/light/store"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	dbm "github.com/tendermint/tm-db"
-
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
 	mockp "github.com/tendermint/tendermint/light/provider/mock"
+	"github.com/tendermint/tendermint/light/store"
 	dbs "github.com/tendermint/tendermint/light/store/db"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
 )
 
 const (
@@ -565,31 +563,33 @@ func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
-		setupTrustedStore(t)
-		badNode := mockp.New(
-			chainID,
-			tc.headers,
-			tc.vals,
-			privVals[0],
-		)
-		c, err := light.NewClient(
-			ctx,
-			chainID,
-			badNode,
-			[]provider.Provider{badNode, badNode},
-			trustedStore,
-			dashCoreMockClient,
-			light.MaxRetryAttempts(1),
-		)
-		require.NoError(t, err)
+	//nolint:scopelint
+	for tcID, tc := range testCases {
+		t.Run(fmt.Sprintf("tc_%d", tcID), func(t *testing.T) {
+			setupTrustedStore(t)
+			badNode := mockp.New(
+				chainID,
+				tc.headers,
+				tc.vals,
+				privVals[0],
+			)
+			c, err := light.NewClient(
+				ctx,
+				chainID,
+				badNode,
+				[]provider.Provider{badNode, badNode},
+				trustedStore,
+				dashCoreMockClient,
+				light.MaxRetryAttempts(1),
+			)
+			require.NoError(t, err)
 
-		_, err = c.VerifyLightBlockAtHeight(ctx, 3, bTime.Add(2*time.Hour))
-		if tc.err {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
+			_, err = c.VerifyLightBlockAtHeight(ctx, 3, bTime.Add(2*time.Hour))
+			if tc.err {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
-
 }

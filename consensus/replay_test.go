@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -359,13 +360,13 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	vss := make([]*validatorStub, nPeers)
 	for i := 0; i < nPeers; i++ {
-		vss[i] = newValidatorStub(css[i].privValidator, int32(i))
+		vss[i] = newValidatorStub(css[i].privValidator, int32(i), genDoc.InitialHeight)
 	}
 	height, round := css[0].Height, css[0].Round
 
-	// start the machine
+	// start the machine; note height should be equal to InitialHeight here,
+	// so we don't need to increment it
 	startTestRound(css[0], height, round)
-	incrementHeight(vss...)
 	ensureNewRound(newRoundCh, height, 0)
 	ensureNewProposal(proposalCh, height, round)
 
@@ -1119,7 +1120,7 @@ func testHandshakeReplay(
 				t.Error(err)
 			}
 		})
-		chain, commits, err = makeBlockchainFromWAL(wal)
+		chain, commits, err = makeBlockchainFromWAL(wal, gdoc)
 		require.NoError(t, err)
 		pubKey, err := privVal.GetPubKey(gdoc.QuorumHash)
 		require.NoError(t, err)
@@ -1390,7 +1391,8 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
 	state.LastValidators = state.Validators.Copy()
 	// mode = 0 for committing all the blocks
-	blocks := makeBlocks(3, &state, privVal)
+	blocks, err := makeBlocks(3, &state, privVal)
+	assert.NoError(t, err)
 	store.chain = blocks
 
 	// 2. Tendermint must panic if app returns wrong hash for the first block
@@ -1456,7 +1458,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	}
 }
 
-func makeBlocks(n int, state *sm.State, privVal types.PrivValidator) []*types.Block {
+func makeBlocks(n int, state *sm.State, privVal types.PrivValidator) ([]*types.Block, error) {
 	blocks := make([]*types.Block, 0)
 
 	var (
@@ -1464,78 +1466,63 @@ func makeBlocks(n int, state *sm.State, privVal types.PrivValidator) []*types.Bl
 		prevBlockMeta *types.BlockMeta
 	)
 
-	appHeight := byte(0x01)
-	for i := 0; i < n; i++ {
-		height := int64(i + 1)
+	for height := state.InitialHeight; height < state.InitialHeight+int64(n); height++ {
 
-		block, parts := makeBlock(*state, prevBlock, prevBlockMeta, privVal, height)
+		block, parts, err := makeBlock(*state, prevBlock, prevBlockMeta, privVal, height)
+		if err != nil {
+			return nil, err
+		}
 		blocks = append(blocks, block)
 
 		prevBlock = block
 		prevBlockMeta = types.NewBlockMeta(block, parts)
 
 		// update state
-		state.AppHash = []byte{
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			appHeight,
-		}
-		appHeight++
+		state.LastStateID = state.StateID()
+		state.AppHash = make([]byte, crypto.DefaultAppHashSize)
+		binary.BigEndian.PutUint64(state.AppHash, uint64(height))
+
 		state.LastBlockHeight = height
 	}
 
-	return blocks
+	return blocks, nil
 }
 
 func makeBlock(state sm.State, lastBlock *types.Block, lastBlockMeta *types.BlockMeta,
-	privVal types.PrivValidator, height int64) (*types.Block, *types.PartSet) {
+	privVal types.PrivValidator, height int64) (*types.Block, *types.PartSet, error) {
 
-	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil,
-		nil, nil)
-	if height > 1 {
-		vote, _ := types.MakeVote(
+	var lastCommit *types.Commit
+
+	if state.LastBlockHeight != (height - 1) {
+		return nil, nil, fmt.Errorf("requested height %d should be 1 more than last block height %d",
+			height, state.LastBlockHeight)
+	}
+
+	if lastBlock != nil && state.LastBlockHeight != lastBlock.Height {
+		return nil, nil, fmt.Errorf("last block height mismatch: %d while state has %d",
+			lastBlock.Height, state.LastBlockHeight)
+	}
+	if height > state.InitialHeight {
+		vote, err := types.MakeVote(
 			lastBlock.Header.Height,
 			lastBlockMeta.BlockID,
-			lastBlockMeta.StateID,
+			state.LastStateID,
 			state.Validators,
 			privVal,
 			lastBlock.Header.ChainID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error when creating vote at height %d: %s", height, err)
+		}
 		// since there is only 1 vote, use it as threshold
 		lastCommit = types.NewCommit(vote.Height, vote.Round,
-			lastBlockMeta.BlockID, lastBlockMeta.StateID, crypto.RandQuorumHash(),
+			lastBlockMeta.BlockID, state.StateID(), crypto.RandQuorumHash(),
 			vote.BlockSignature, vote.StateSignature)
+	} else {
+		lastCommit = types.NewCommit(height-1, 0, types.BlockID{}, state.StateID(), nil,
+			nil, nil)
 	}
 
-	return state.MakeBlock(
+	block, partset := state.MakeBlock(
 		height,
 		nil,
 		[]types.Tx{},
@@ -1544,6 +1531,7 @@ func makeBlock(state sm.State, lastBlock *types.Block, lastBlockMeta *types.Bloc
 		state.Validators.GetProposer().ProTxHash,
 		0,
 	)
+	return block, partset, nil
 }
 
 type badApp struct {
@@ -1574,7 +1562,7 @@ func (app *badApp) Commit() abci.ResponseCommit {
 //--------------------------
 // utils for making blocks
 
-func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
+func makeBlockchainFromWAL(wal WAL, genDoc *types.GenesisDoc) ([]*types.Block, []*types.Commit, error) {
 	var height int64
 
 	// Search for height marker
@@ -1648,8 +1636,17 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 			}
 		case *types.Vote:
 			if p.Type == tmproto.PrecommitType {
+				// previous block, needed to detemine StateID
+				var stateID types.StateID
+				if len(blocks) >= 1 {
+					prevBlock := blocks[len(blocks)-1]
+					stateID = types.StateID{Height: prevBlock.Height, LastAppHash: prevBlock.AppHash}
+				} else {
+					stateID = types.StateID{Height: genDoc.InitialHeight, LastAppHash: genDoc.AppHash}
+				}
+
 				thisBlockCommit = types.NewCommit(p.Height, p.Round,
-					p.BlockID, p.StateID, crypto.RandQuorumHash(), p.BlockSignature, p.StateSignature)
+					p.BlockID, stateID, crypto.RandQuorumHash(), p.BlockSignature, p.StateSignature)
 			}
 		}
 	}

@@ -29,7 +29,8 @@ func newCounterWithBackwardsCoreChainLocks() abci.Application {
 
 func TestValidProposalChainLocks(t *testing.T) {
 	N := 4
-	css, cleanup := randConsensusNet(N, "consensus_chainlocks_test", newMockTickerFunc(true), newCounterWithCoreChainLocks)
+	css, cleanup := randConsensusNet(N, 1, "consensus_chainlocks_test",
+		newMockTickerFunc(true), newCounterWithCoreChainLocks)
 	defer cleanup()
 
 	for i := 0; i < 4; i++ {
@@ -47,7 +48,8 @@ func TestValidProposalChainLocks(t *testing.T) {
 			msg := <-blocksSubs[j].Out()
 			block := msg.Data().(types.EventDataNewBlock).Block
 			// this is true just because of this test where each new height has a new chain lock that is incremented by 1
-			assert.EqualValues(t, block.Header.Height, block.Header.CoreChainLockedHeight)
+			assert.EqualValues(t, i+1, block.Header.CoreChainLockedHeight)                  //nolint:scopelint
+			assert.EqualValues(t, css[0].state.InitialHeight+int64(i), block.Header.Height) //nolint:scopelint
 		}, css)
 	}
 }
@@ -55,7 +57,8 @@ func TestValidProposalChainLocks(t *testing.T) {
 // one byz val sends a proposal for a height 1 less than it should, but then sends the correct block after it
 func TestReactorInvalidProposalHeightForChainLocks(t *testing.T) {
 	N := 4
-	css, cleanup := randConsensusNet(N, "consensus_chainlocks_test", newMockTickerFunc(true), newCounterWithCoreChainLocks)
+	css, cleanup := randConsensusNet(N, 1, "consensus_chainlocks_test",
+		newMockTickerFunc(true), newCounterWithCoreChainLocks)
 	defer cleanup()
 
 	for i := 0; i < 4; i++ {
@@ -87,7 +90,8 @@ func TestReactorInvalidProposalHeightForChainLocks(t *testing.T) {
 			msg := <-blocksSubs[j].Out()
 			block := msg.Data().(types.EventDataNewBlock).Block
 			// this is true just because of this test where each new height has a new chain lock that is incremented by 1
-			assert.EqualValues(t, block.Header.Height, block.Header.CoreChainLockedHeight)
+			assert.EqualValues(t, i+1, block.Header.CoreChainLockedHeight)                  //nolint:scopelint
+			assert.EqualValues(t, css[0].state.InitialHeight+int64(i), block.Header.Height) //nolint:scopelint
 		}, css)
 	}
 }
@@ -145,7 +149,7 @@ func invalidProposeCoreChainLockFunc(t *testing.T, height int64, round int32, cs
 func TestReactorInvalidBlockChainLock(t *testing.T) {
 	// TODO: Leads to race, explore
 	N := 4
-	css, cleanup := randConsensusNet(N, "consensus_chainlocks_test",
+	css, cleanup := randConsensusNet(N, 1, "consensus_chainlocks_test",
 		newMockTickerFunc(true), newCounterWithBackwardsCoreChainLocks)
 	defer cleanup()
 
@@ -164,7 +168,7 @@ func TestReactorInvalidBlockChainLock(t *testing.T) {
 			msg := <-blocksSubs[j].Out()
 			block := msg.Data().(types.EventDataNewBlock).Block
 			// this is true just because of this test where each new height has a new chain lock that is incremented by 1
-			if block.Header.Height == 1 {
+			if block.Header.Height == css[0].state.InitialHeight {
 				assert.EqualValues(t, 1, block.Header.CoreChainLockedHeight)
 			} else {
 				// We started at 1 then 99, then try 98, 97, 96...

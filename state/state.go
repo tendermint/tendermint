@@ -57,7 +57,7 @@ type State struct {
 	LastBlockID     types.BlockID
 	LastBlockTime   time.Time
 
-	// The Last StateID is actually the previous App Hash
+	// LastStateID contains App Hash and Height from previous state (at height-1)
 	LastStateID types.StateID
 
 	// Last Chain Lock is the last known chain locked height in consensus
@@ -99,7 +99,7 @@ func (state State) Copy() State {
 		LastBlockID:     state.LastBlockID,
 		LastBlockTime:   state.LastBlockTime,
 
-		LastStateID: state.LastStateID,
+		LastStateID: state.LastStateID.Copy(),
 
 		LastCoreChainLockedBlockHeight: state.LastCoreChainLockedBlockHeight,
 
@@ -140,6 +140,22 @@ func (state State) Bytes() []byte {
 // IsEmpty returns true if the State is equal to the empty State.
 func (state State) IsEmpty() bool {
 	return state.Validators == nil // XXX can't compare to Empty
+}
+
+// StateID() generates new state ID based on current `state`
+func (state State) StateID() types.StateID {
+	lastAppHash := make([]byte, len(state.AppHash))
+	copy(lastAppHash, state.AppHash)
+
+	height := state.LastBlockHeight
+	if height == 0 {
+		height = state.InitialHeight - 1
+	}
+
+	return types.StateID{
+		Height:      height,
+		LastAppHash: lastAppHash,
+	}
 }
 
 // ToProto takes the local state type and returns the equivalent proto type
@@ -369,6 +385,11 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		).CopyIncrementProposerPriority(1)
 	}
 
+	stateID := types.StateID{
+		Height:      genDoc.InitialHeight - 1,
+		LastAppHash: genDoc.AppHash,
+	}
+
 	return State{
 		Version:       InitStateVersion,
 		ChainID:       genDoc.ChainID,
@@ -376,7 +397,7 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 
 		LastBlockHeight: 0,
 		LastBlockID:     types.BlockID{},
-		LastStateID:     types.StateID{},
+		LastStateID:     stateID,
 		LastBlockTime:   genDoc.GenesisTime,
 
 		LastCoreChainLockedBlockHeight: genDoc.InitialCoreChainLockedHeight,

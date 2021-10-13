@@ -33,23 +33,6 @@ func CanonicalizeBlockID(bid tmproto.BlockID) *tmproto.CanonicalBlockID {
 	return cbid
 }
 
-func CanonicalizeStateID(sid tmproto.StateID) *tmproto.CanonicalStateID {
-	rsid, err := StateIDFromProto(&sid)
-	if err != nil {
-		panic(err)
-	}
-	var csid *tmproto.CanonicalStateID
-	if rsid == nil || rsid.IsZero() {
-		csid = nil
-	} else {
-		csid = &tmproto.CanonicalStateID{
-			LastAppHash: sid.LastAppHash,
-		}
-	}
-
-	return csid
-}
-
 // CanonicalizeVote transforms the given PartSetHeader to a CanonicalPartSetHeader.
 func CanonicalizePartSetHeader(psh tmproto.PartSetHeader) tmproto.CanonicalPartSetHeader {
 	return tmproto.CanonicalPartSetHeader(psh)
@@ -76,17 +59,7 @@ func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote 
 		Height:  vote.Height,       // encoded as sfixed64
 		Round:   int64(vote.Round), // encoded as sfixed64
 		BlockID: CanonicalizeBlockID(vote.BlockID),
-		StateID: CanonicalizeStateID(vote.StateID),
 		ChainID: chainID,
-	}
-}
-
-// CanonicalizeStateVote transforms the given Vote to a CanonicalStateVote, which does
-// not contain ValidatorIndex and ValidatorProTxHash fields.
-func CanonicalizeStateVote(vote *tmproto.Vote) tmproto.CanonicalStateVote {
-	return tmproto.CanonicalStateVote{
-		Height:  vote.Height, // encoded as sfixed64
-		StateID: CanonicalizeStateID(vote.StateID),
 	}
 }
 
