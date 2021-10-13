@@ -364,9 +364,9 @@ func (r *Router) OpenChannel(chDesc *ChannelDescriptor) (*Channel, error) {
 	r.chDescs = append(r.chDescs, chDesc)
 
 	// TODO use different queue buffering strategies
-	queue := r.queueFactory(chDesc.RecvMessageCapacity)
-	outCh := make(chan Envelope, chDesc.RecvMessageCapacity)
-	errCh := make(chan PeerError, chDesc.RecvMessageCapacity)
+	queue := r.queueFactory(chDesc.RecvBufferCapacity / 2)
+	outCh := make(chan Envelope, chDesc.RecvBufferCapacity/2)
+	errCh := make(chan PeerError, chDesc.RecvBufferCapacity/4+1)
 	channel := NewChannel(chDesc, queue.dequeue(), outCh, errCh)
 
 	var wrapper Wrapper
