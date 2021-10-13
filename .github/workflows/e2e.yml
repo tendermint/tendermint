@@ -33,10 +33,6 @@ jobs:
 
       - name: Run CI testnet
         working-directory: test/e2e
-        run: ./build/runner -f networks/ci.toml
+        run: ./run-multiple.sh networks/ci.toml
         if: "env.GIT_DIFF != ''"
 
-      - name: Emit logs on failure
-        if: ${{ failure() }}
-        working-directory: test/e2e
-        run: ./build/runner -f networks/ci.toml logs
