@@ -97,7 +97,7 @@ func (app *appConnConsensus) DeliverTxAsync(
 	ctx context.Context,
 	req types.RequestDeliverTx,
 ) (*abciclient.ReqRes, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "deliver_tx", "type", "aync"))()
+	defer addTimeSample(app.metrics.MethodTiming.With("method", "deliver_tx", "type", "async"))()
 	return app.appConn.DeliverTxAsync(ctx, req)
 }
 
