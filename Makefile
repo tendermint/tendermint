@@ -89,7 +89,7 @@ proto-gen:
 .PHONY: proto-gen
 
 proto-lint:
-	@$(DOCKER_BUF) check lint --error-format=json
+	@$(DOCKER_BUF) lint --error-format=json
 .PHONY: proto-lint
 
 proto-format:
