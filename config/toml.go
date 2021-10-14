@@ -426,6 +426,7 @@ timeout_precommit_delta = "{{ .Consensus.TimeoutPrecommitDelta }}"
 # height (this gives us a chance to receive some more precommits, even
 # though we already have +2/3).
 timeout_commit = "{{ .Consensus.TimeoutCommit }}"
+proposed_block_time_window = "{{ .Consensus.ProposedBlockTimeWindow }}"
 
 # How many blocks to look back to check existence of the node's consensus votes before joining consensus
 # When non-zero, the node will panic upon restart

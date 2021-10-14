@@ -65,9 +65,15 @@ func TestSyncer_SyncAny(t *testing.T) {
 		LastResultsHash: []byte("last_results_hash"),
 		AppHash:         []byte("app_hash"),
 
-		LastValidators: &types.ValidatorSet{Proposer: &types.Validator{ProTxHash: crypto.Sha256([]byte("val1"))}},
-		Validators:     &types.ValidatorSet{Proposer: &types.Validator{ProTxHash: crypto.Sha256([]byte("val2"))}},
-		NextValidators: &types.ValidatorSet{Proposer: &types.Validator{ProTxHash: crypto.Sha256([]byte("val3"))}},
+		LastValidators: &types.ValidatorSet{
+			Proposer: &types.Validator{ProTxHash: crypto.Sha256([]byte("val1"))},
+		},
+		Validators: &types.ValidatorSet{
+			Proposer: &types.Validator{ProTxHash: crypto.Sha256([]byte("val2"))},
+		},
+		NextValidators: &types.ValidatorSet{
+			Proposer: &types.Validator{ProTxHash: crypto.Sha256([]byte("val3"))},
+		},
 
 		ConsensusParams:                  *types.DefaultConsensusParams(),
 		LastHeightConsensusParamsChanged: 1,
@@ -373,8 +379,14 @@ func TestSyncer_offerSnapshot(t *testing.T) {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			syncer, connSnapshot := setupOfferSyncer(t)
-			s := &snapshot{Height: 1, CoreChainLockedHeight: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3},
-				trustedAppHash: []byte("app_hash")}
+			s := &snapshot{
+				Height:                1,
+				CoreChainLockedHeight: 1,
+				Format:                1,
+				Chunks:                3,
+				Hash:                  []byte{1, 2, 3},
+				trustedAppHash:        []byte("app_hash"),
+			}
 			connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 				Snapshot: toABCI(s),
 				AppHash:  []byte("app_hash"),
@@ -402,11 +414,15 @@ func TestSyncer_applyChunks_Results(t *testing.T) {
 		err       error
 		expectErr error
 	}{
-		"accept":           {abci.ResponseApplySnapshotChunk_ACCEPT, nil, nil},
-		"abort":            {abci.ResponseApplySnapshotChunk_ABORT, nil, errAbort},
-		"retry":            {abci.ResponseApplySnapshotChunk_RETRY, nil, nil},
-		"retry_snapshot":   {abci.ResponseApplySnapshotChunk_RETRY_SNAPSHOT, nil, errRetrySnapshot},
-		"reject_snapshot":  {abci.ResponseApplySnapshotChunk_REJECT_SNAPSHOT, nil, errRejectSnapshot},
+		"accept":         {abci.ResponseApplySnapshotChunk_ACCEPT, nil, nil},
+		"abort":          {abci.ResponseApplySnapshotChunk_ABORT, nil, errAbort},
+		"retry":          {abci.ResponseApplySnapshotChunk_RETRY, nil, nil},
+		"retry_snapshot": {abci.ResponseApplySnapshotChunk_RETRY_SNAPSHOT, nil, errRetrySnapshot},
+		"reject_snapshot": {
+			abci.ResponseApplySnapshotChunk_REJECT_SNAPSHOT,
+			nil,
+			errRejectSnapshot,
+		},
 		"unknown":          {abci.ResponseApplySnapshotChunk_UNKNOWN, nil, unknownErr},
 		"error":            {0, boom, boom},
 		"unknown non-zero": {9, nil, unknownErr},
@@ -417,10 +433,18 @@ func TestSyncer_applyChunks_Results(t *testing.T) {
 			connQuery := &proxymocks.AppConnQuery{}
 			connSnapshot := &proxymocks.AppConnSnapshot{}
 			stateProvider := &mocks.StateProvider{}
-			stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
+			stateProvider.On("AppHash", mock.Anything, mock.Anything).
+				Return([]byte("app_hash"), nil)
 
 			cfg := config.DefaultStateSyncConfig()
-			syncer := newSyncer(*cfg, log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
+			syncer := newSyncer(
+				*cfg,
+				log.NewNopLogger(),
+				connSnapshot,
+				connQuery,
+				stateProvider,
+				"",
+			)
 
 			body := []byte{1, 2, 3}
 			chunks, err := newChunkQueue(&snapshot{Height: 1, Format: 1, Chunks: 1}, "")
@@ -470,10 +494,18 @@ func TestSyncer_applyChunks_RefetchChunks(t *testing.T) {
 			connQuery := &proxymocks.AppConnQuery{}
 			connSnapshot := &proxymocks.AppConnSnapshot{}
 			stateProvider := &mocks.StateProvider{}
-			stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
+			stateProvider.On("AppHash", mock.Anything, mock.Anything).
+				Return([]byte("app_hash"), nil)
 
 			cfg := config.DefaultStateSyncConfig()
-			syncer := newSyncer(*cfg, log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
+			syncer := newSyncer(
+				*cfg,
+				log.NewNopLogger(),
+				connSnapshot,
+				connQuery,
+				stateProvider,
+				"",
+			)
 
 			chunks, err := newChunkQueue(&snapshot{Height: 1, Format: 1, Chunks: 3}, "")
 			require.NoError(t, err)
@@ -535,10 +567,18 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 			connQuery := &proxymocks.AppConnQuery{}
 			connSnapshot := &proxymocks.AppConnSnapshot{}
 			stateProvider := &mocks.StateProvider{}
-			stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
+			stateProvider.On("AppHash", mock.Anything, mock.Anything).
+				Return([]byte("app_hash"), nil)
 
 			cfg := config.DefaultStateSyncConfig()
-			syncer := newSyncer(*cfg, log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
+			syncer := newSyncer(
+				*cfg,
+				log.NewNopLogger(),
+				connSnapshot,
+				connQuery,
+				stateProvider,
+				"",
+			)
 
 			// Set up three peers across two snapshots, and ask for one of them to be banned.
 			// It should be banned from all snapshots.
@@ -563,13 +603,19 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 
 			chunks, err := newChunkQueue(s1, "")
 			require.NoError(t, err)
-			added, err := chunks.Add(&chunk{Height: 1, Format: 1, Index: 0, Chunk: []byte{0}, Sender: peerA.ID()})
+			added, err := chunks.Add(
+				&chunk{Height: 1, Format: 1, Index: 0, Chunk: []byte{0}, Sender: peerA.ID()},
+			)
 			require.True(t, added)
 			require.NoError(t, err)
-			added, err = chunks.Add(&chunk{Height: 1, Format: 1, Index: 1, Chunk: []byte{1}, Sender: peerB.ID()})
+			added, err = chunks.Add(
+				&chunk{Height: 1, Format: 1, Index: 1, Chunk: []byte{1}, Sender: peerB.ID()},
+			)
 			require.True(t, added)
 			require.NoError(t, err)
-			added, err = chunks.Add(&chunk{Height: 1, Format: 1, Index: 2, Chunk: []byte{2}, Sender: peerC.ID()})
+			added, err = chunks.Add(
+				&chunk{Height: 1, Format: 1, Index: 2, Chunk: []byte{2}, Sender: peerC.ID()},
+			)
 			require.True(t, added)
 			require.NoError(t, err)
 
@@ -621,8 +667,14 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 
 func TestSyncer_verifyApp(t *testing.T) {
 	boom := errors.New("boom")
-	s := &snapshot{Height: 3, CoreChainLockedHeight: 10, Format: 1, Chunks: 5, Hash: []byte{1, 2, 3},
-		trustedAppHash: []byte("app_hash")}
+	s := &snapshot{
+		Height:                3,
+		CoreChainLockedHeight: 10,
+		Format:                1,
+		Chunks:                5,
+		Hash:                  []byte{1, 2, 3},
+		trustedAppHash:        []byte("app_hash"),
+	}
 
 	testcases := map[string]struct {
 		response  *abci.ResponseInfo
@@ -655,7 +707,14 @@ func TestSyncer_verifyApp(t *testing.T) {
 			stateProvider := &mocks.StateProvider{}
 
 			cfg := config.DefaultStateSyncConfig()
-			syncer := newSyncer(*cfg, log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
+			syncer := newSyncer(
+				*cfg,
+				log.NewNopLogger(),
+				connSnapshot,
+				connQuery,
+				stateProvider,
+				"",
+			)
 
 			connQuery.On("InfoSync", proxy.RequestInfo).Return(tc.response, tc.err)
 			version, err := syncer.verifyApp(s)

@@ -145,6 +145,9 @@ type State struct {
 
 	// for reporting metrics
 	metrics *Metrics
+
+	// proposer's latest available app protocol version that goes to block header
+	proposedAppVersion uint64
 }
 
 // StateOption sets an optional parameter on the State.
@@ -160,7 +163,7 @@ func NewState(
 	evpool evidencePool,
 	options ...StateOption,
 ) *State {
-	return NewStateWithLogger(config, state, blockExec, blockStore, txNotifier, evpool, nil, options...)
+	return NewStateWithLogger(config, state, blockExec, blockStore, txNotifier, evpool, nil, 0, options...)
 }
 
 // NewStateWithLogger returns a new State with the logger set.
@@ -172,23 +175,25 @@ func NewStateWithLogger(
 	txNotifier txNotifier,
 	evpool evidencePool,
 	logger log.Logger,
+	proposedAppVersion uint64,
 	options ...StateOption,
 ) *State {
 	cs := &State{
-		config:           config,
-		blockExec:        blockExec,
-		blockStore:       blockStore,
-		txNotifier:       txNotifier,
-		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
-		internalMsgQueue: make(chan msgInfo, msgQueueSize),
-		timeoutTicker:    NewTimeoutTicker(),
-		statsMsgQueue:    make(chan msgInfo, msgQueueSize),
-		done:             make(chan struct{}),
-		doWALCatchup:     true,
-		wal:              nilWAL{},
-		evpool:           evpool,
-		evsw:             tmevents.NewEventSwitch(),
-		metrics:          NopMetrics(),
+		config:             config,
+		blockExec:          blockExec,
+		blockStore:         blockStore,
+		txNotifier:         txNotifier,
+		peerMsgQueue:       make(chan msgInfo, msgQueueSize),
+		internalMsgQueue:   make(chan msgInfo, msgQueueSize),
+		timeoutTicker:      NewTimeoutTicker(),
+		statsMsgQueue:      make(chan msgInfo, msgQueueSize),
+		done:               make(chan struct{}),
+		doWALCatchup:       true,
+		wal:                nilWAL{},
+		evpool:             evpool,
+		evsw:               tmevents.NewEventSwitch(),
+		metrics:            NopMetrics(),
+		proposedAppVersion: proposedAppVersion,
 	}
 
 	// set function defaults (may be overwritten before calling Start)
@@ -1064,7 +1069,9 @@ func (cs *State) enterNewRound(height int64, round int32) {
 			cs.scheduleTimeout(cs.config.CreateEmptyBlocksInterval, height, round,
 				cstypes.RoundStepNewRound)
 		}
-	} else {
+	} else if !cs.config.DontAutoPropose {
+		// DontAutoPropose should always be false, except for
+		// specific tests where proposals are created manually
 		cs.enterPropose(height, round)
 	}
 }
@@ -1288,7 +1295,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	}
 	proposerProTxHash := cs.privValidatorProTxHash
 
-	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerProTxHash)
+	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerProTxHash, cs.proposedAppVersion)
 }
 
 // Enter: `timeoutPropose` after entering Propose.
@@ -1358,10 +1365,9 @@ func (cs *State) defaultDoPrevote(height int64, round int32, allowOldBlocks bool
 
 	// Validate proposal block time
 	if !allowOldBlocks {
-		err = cs.blockExec.ValidateBlockTime(cs.state, cs.ProposalBlock)
+		err = cs.blockExec.ValidateBlockTime(cs.config.ProposedBlockTimeWindow, cs.state, cs.ProposalBlock)
 		if err != nil {
 			// ProposalBlock is invalid, prevote nil.
-			debug.PrintStack()
 			logger.Error("enterPrevote: ProposalBlock time is invalid", "err", err)
 			cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 			return

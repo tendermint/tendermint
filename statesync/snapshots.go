@@ -33,8 +33,10 @@ type snapshot struct {
 func (s *snapshot) Key() snapshotKey {
 	// Hash.Write() never returns an error.
 	hasher := sha256.New()
-	hasher.Write([]byte(fmt.Sprintf("%v:%v:%v:%v", s.Height, s.CoreChainLockedHeight, // ignore error
-		s.Format, s.Chunks))) // ignore error
+	hasher.Write(
+		[]byte(fmt.Sprintf("%v:%v:%v:%v", s.Height, s.CoreChainLockedHeight, // ignore error
+			s.Format, s.Chunks)),
+	) // ignore error
 	hasher.Write(s.Hash)     // ignore error
 	hasher.Write(s.Metadata) // ignore error
 	var key snapshotKey

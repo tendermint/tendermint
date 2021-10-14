@@ -49,7 +49,7 @@ func TestBlockAddEvidence(t *testing.T) {
 		valSet.QuorumHash)
 	evList := []Evidence{ev}
 
-	block := MakeBlock(h, coreChainLock.CoreBlockHeight, &coreChainLock, txs, commit, evList)
+	block := MakeBlock(h, coreChainLock.CoreBlockHeight, &coreChainLock, txs, commit, evList, 0)
 	require.NotNil(t, block)
 	require.Equal(t, 1, len(block.Evidence.Evidence))
 	require.NotNil(t, block.EvidenceHash)
@@ -109,7 +109,7 @@ func TestBlockValidateBasic(t *testing.T) {
 		tcRun := tc
 		j := i
 		t.Run(tcRun.testName, func(t *testing.T) {
-			block := MakeBlock(h, 0, nil, txs, commit, evList)
+			block := MakeBlock(h, 0, nil, txs, commit, evList, 0)
 			block.ProposerProTxHash = valSet.GetProposer().ProTxHash
 			tcRun.malleateBlock(block)
 			err = block.ValidateBasic()
@@ -120,13 +120,13 @@ func TestBlockValidateBasic(t *testing.T) {
 
 func TestBlockHash(t *testing.T) {
 	assert.Nil(t, (*Block)(nil).Hash())
-	assert.Nil(t, MakeBlock(int64(3), 0, nil, []Tx{Tx("Hello World")}, nil, nil).Hash())
+	assert.Nil(t, MakeBlock(int64(3), 0, nil, []Tx{Tx("Hello World")}, nil, nil, 0).Hash())
 }
 
 func TestBlockMakePartSet(t *testing.T) {
 	assert.Nil(t, (*Block)(nil).MakePartSet(2))
 
-	partSet := MakeBlock(int64(3), 0, nil, []Tx{Tx("Hello World")}, nil, nil).MakePartSet(1024)
+	partSet := MakeBlock(int64(3), 0, nil, []Tx{Tx("Hello World")}, nil, nil, 0).MakePartSet(1024)
 	assert.NotNil(t, partSet)
 	assert.EqualValues(t, 1, partSet.Total())
 }
@@ -146,7 +146,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 		valSet.QuorumHash)
 	evList := []Evidence{ev}
 
-	block := MakeBlock(h, 0, nil, []Tx{Tx("Hello World")}, commit, evList)
+	block := MakeBlock(h, 0, nil, []Tx{Tx("Hello World")}, commit, evList, 0)
 	partSet := block.MakePartSet(512)
 	assert.NotNil(t, partSet)
 	// The part set can be either 3 or 4 parts, this is because of variance in sizes due to the non second part of
@@ -169,7 +169,7 @@ func TestBlockHashesTo(t *testing.T) {
 		valSet.QuorumHash)
 	evList := []Evidence{ev}
 
-	block := MakeBlock(h, 0, nil, []Tx{Tx("Hello World")}, commit, evList)
+	block := MakeBlock(h, 0, nil, []Tx{Tx("Hello World")}, commit, evList, 0)
 	block.ValidatorsHash = valSet.Hash()
 	assert.False(t, block.HashesTo([]byte{}))
 	assert.False(t, block.HashesTo([]byte("something else")))
@@ -177,7 +177,7 @@ func TestBlockHashesTo(t *testing.T) {
 }
 
 func TestBlockSize(t *testing.T) {
-	size := MakeBlock(int64(3), 0, nil, []Tx{Tx("Hello World")}, nil, nil).Size()
+	size := MakeBlock(int64(3), 0, nil, []Tx{Tx("Hello World")}, nil, nil, 0).Size()
 	if size <= 0 {
 		t.Fatal("Size of the block is zero or negative")
 	}
@@ -188,7 +188,7 @@ func TestBlockString(t *testing.T) {
 	assert.Equal(t, "nil-Block", (*Block)(nil).StringIndented(""))
 	assert.Equal(t, "nil-Block", (*Block)(nil).StringShort())
 
-	block := MakeBlock(int64(3), 0, nil, []Tx{Tx("Hello World")}, nil, nil)
+	block := MakeBlock(int64(3), 0, nil, []Tx{Tx("Hello World")}, nil, nil, 0)
 	assert.NotEqual(t, "nil-Block", block.String())
 	assert.NotEqual(t, "nil-Block", block.StringIndented(""))
 	assert.NotEqual(t, "nil-Block", block.StringShort())
@@ -346,7 +346,8 @@ func TestHeaderHash(t *testing.T) {
 			LastResultsHash:       tmhash.Sum([]byte("last_results_hash")),
 			EvidenceHash:          tmhash.Sum([]byte("evidence_hash")),
 			ProposerProTxHash:     crypto.ProTxHashFromSeedBytes([]byte("proposer_pro_tx_hash")),
-		}, hexBytesFromString("786FFBA7845BC39A1C3BB3216288CA157D82FEED634E74A1F151476CF66E4EFB")},
+			ProposedAppVersion:    1,
+		}, hexBytesFromString("74EEFDA2F09ACE19D46DE191EC2745CE14B42F7DE48AF86E6D65B17939B08D3E")},
 		{"nil header yields nil", nil, nil},
 		{"nil ValidatorsHash yields nil", &Header{
 			Version:               tmversion.Consensus{Block: 1, App: 2},
@@ -364,6 +365,7 @@ func TestHeaderHash(t *testing.T) {
 			LastResultsHash:       tmhash.Sum([]byte("last_results_hash")),
 			EvidenceHash:          tmhash.Sum([]byte("evidence_hash")),
 			ProposerProTxHash:     crypto.ProTxHashFromSeedBytes([]byte("proposer_pro_tx_hash")),
+			ProposedAppVersion:    1,
 		}, nil},
 	}
 	for _, tc := range testCases {
@@ -384,7 +386,7 @@ func TestHeaderHash(t *testing.T) {
 						s.Type().Field(i).Name)
 
 					switch f := f.Interface().(type) {
-					case int64, uint32, bytes.HexBytes, string:
+					case int64, uint32, uint64, bytes.HexBytes, string:
 						byteSlices = append(byteSlices, cdcEncode(f))
 					case time.Time:
 						bz, err := gogotypes.StdTimeMarshal(f)
@@ -640,10 +642,10 @@ func TestBlockIDValidateBasic(t *testing.T) {
 func TestBlockProtoBuf(t *testing.T) {
 	h := tmrand.Int63()
 	c1 := randCommit()
-	b1 := MakeBlock(h, 0, nil, []Tx{Tx([]byte{1})}, &Commit{}, []Evidence{})
+	b1 := MakeBlock(h, 0, nil, []Tx{Tx([]byte{1})}, &Commit{}, []Evidence{}, 0)
 	b1.ProposerProTxHash = tmrand.Bytes(crypto.DefaultHashSize)
 
-	b2 := MakeBlock(h, 0, nil, []Tx{Tx([]byte{1})}, c1, []Evidence{})
+	b2 := MakeBlock(h, 0, nil, []Tx{Tx([]byte{1})}, c1, []Evidence{}, 0)
 	b2.ProposerProTxHash = tmrand.Bytes(crypto.DefaultHashSize)
 	evidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	evi := NewMockDuplicateVoteEvidence(
@@ -656,7 +658,7 @@ func TestBlockProtoBuf(t *testing.T) {
 	b2.Evidence = EvidenceData{Evidence: EvidenceList{evi}}
 	b2.EvidenceHash = b2.Evidence.Hash()
 
-	b3 := MakeBlock(h, 0, nil, []Tx{}, c1, []Evidence{})
+	b3 := MakeBlock(h, 0, nil, []Tx{}, c1, []Evidence{}, 0)
 	b3.ProposerProTxHash = tmrand.Bytes(crypto.DefaultHashSize)
 	testCases := []struct {
 		msg      string

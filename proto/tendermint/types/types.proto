@@ -86,6 +86,8 @@ message Header {
   // consensus info
   bytes evidence_hash        = 13;   // evidence included in the block
   bytes proposer_pro_tx_hash = 101;  // original proposer of the block
+
+  uint64 proposed_app_version = 102; // proposer's latest available app protocol version
 }
 
 // CoreChainLock represents a core chain lock for synchronization between state data and core chain

@@ -10,19 +10,28 @@ RUN apt-get -qq install -y cmake sudo libgmp-dev libleveldb-dev librocksdb-dev >
 ENV TENDERMINT_BUILD_OPTIONS badgerdb,boltdb,cleveldb,rocksdb
 WORKDIR /src/tenderdash
 
+# Install DLV debugger
+ENV DEBUG ""
+RUN go get github.com/go-delve/delve/cmd/dlv
+
 # Fetch dependencies separately (for layer caching)
 COPY go.mod go.sum ./
 RUN go mod download
 
+# Install BLS library
+COPY third_party ./third_party
+COPY Makefile *.mk ./
+RUN make install-bls
+
 # Copy Tenderdash source
 COPY . .
-# Install BLS library
-RUN make install-bls
+
 # Build Tenderdash and install into /usr/bin/tenderdash
 RUN make build && cp build/tenderdash /usr/bin/tenderdash
 COPY test/e2e/docker/entrypoint* /usr/bin/
-RUN cd test/e2e && make maverick && cp build/maverick /usr/bin/maverick
-RUN cd test/e2e && make app && cp build/app /usr/bin/app
+
+RUN cd test/e2e && GOFLAGS='-gcflags="all=-N' make maverick && cp build/maverick /usr/bin/maverick
+RUN cd test/e2e && GOFLAGS='-gcflags="all=-N' make app && cp build/app /usr/bin/app
 
 # Set up runtime directory. We don't use a separate runtime image since we need
 # e.g. leveldb and rocksdb which are already installed in the build image.

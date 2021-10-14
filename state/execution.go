@@ -114,8 +114,10 @@ func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) 
 // The rest is given to txs, up to the max gas.
 func (blockExec *BlockExecutor) CreateProposalBlock(
 	height int64,
-	state State, commit *types.Commit,
+	state State,
+	commit *types.Commit,
 	proposerProTxHash []byte,
+	proposedAppVersion uint64,
 ) (*types.Block, *types.PartSet) {
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
@@ -130,11 +132,25 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 
 	nextCoreChainLock := blockExec.NextCoreChainLock
 
-	if nextCoreChainLock != nil && nextCoreChainLock.CoreBlockHeight <= state.LastCoreChainLockedBlockHeight {
+	if nextCoreChainLock != nil &&
+		nextCoreChainLock.CoreBlockHeight <= state.LastCoreChainLockedBlockHeight {
 		nextCoreChainLock = nil
 	}
 
-	return state.MakeBlock(height, nextCoreChainLock, txs, commit, evidence, proposerProTxHash)
+	// Pass proposed app version only if it's higher than current network app version
+	if proposedAppVersion <= state.Version.Consensus.App {
+		proposedAppVersion = 0
+	}
+
+	return state.MakeBlock(
+		height,
+		nextCoreChainLock,
+		txs,
+		commit,
+		evidence,
+		proposerProTxHash,
+		proposedAppVersion,
+	)
 }
 
 // ValidateBlock validates the given block against the given state.
@@ -165,12 +181,12 @@ func (blockExec *BlockExecutor) ValidateBlockChainLock(state State, block *types
 // If the block is invalid, it returns an error.
 // Validation does not mutate state, but does require historical information from the stateDB,
 // ie. to verify evidence from a validator at an old height.
-func (blockExec *BlockExecutor) ValidateBlockTime(state State, block *types.Block) error {
-	err := validateBlockTime(state, block)
-	if err != nil {
-		return err
-	}
-	return err
+func (blockExec *BlockExecutor) ValidateBlockTime(
+	allowedTimeWindow time.Duration,
+	state State,
+	block *types.Block,
+) error {
+	return validateBlockTime(allowedTimeWindow, state, block)
 }
 
 // ApplyBlock validates the block against the state, executes it against the app,
@@ -187,7 +203,11 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 // ApplyBlockWithLogger calls ApplyBlock with a specified logger making things easier for debugging
 func (blockExec *BlockExecutor) ApplyBlockWithLogger(
-	state State, nodeProTxHash *crypto.ProTxHash, blockID types.BlockID, block *types.Block, logger log.Logger,
+	state State,
+	nodeProTxHash *crypto.ProTxHash,
+	blockID types.BlockID,
+	block *types.Block,
+	logger log.Logger,
 ) (State, int64, error) {
 
 	if err := validateBlock(state, block); err != nil {
@@ -220,7 +240,9 @@ func (blockExec *BlockExecutor) ApplyBlockWithLogger(
 		return state, 0, fmt.Errorf("error in validator updates: %v", err)
 	}
 
-	nextCoreChainLock, err := types.CoreChainLockFromProto(abciResponses.EndBlock.NextCoreChainLockUpdate)
+	nextCoreChainLock, err := types.CoreChainLockFromProto(
+		abciResponses.EndBlock.NextCoreChainLockUpdate,
+	)
 	if err != nil {
 		return state, 0, fmt.Errorf("error in chain lock from proto: %v", err)
 	}
@@ -231,8 +253,15 @@ func (blockExec *BlockExecutor) ApplyBlockWithLogger(
 		return state, 0, fmt.Errorf("error when converting abci validator updates: %v", err)
 	}
 	if len(validatorUpdates) > 0 {
-		blockExec.logger.Debug("updates to validators", "quorumHash", quorumHash, "thresholdPublicKey",
-			thresholdPublicKeyUpdate, "updates", types.ValidatorListString(validatorUpdates))
+		blockExec.logger.Debug(
+			"updates to validators",
+			"quorumHash",
+			quorumHash,
+			"thresholdPublicKey",
+			thresholdPublicKeyUpdate,
+			"updates",
+			types.ValidatorListString(validatorUpdates),
+		)
 	}
 
 	/*
@@ -415,7 +444,9 @@ func execBlockOnProxyApp(
 	}
 
 	// End block.
-	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
+	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(
+		abci.RequestEndBlock{Height: block.Height},
+	)
 	if err != nil {
 		logger.Error("error in proxyAppConn.EndBlock", "err", err)
 		return nil, err
@@ -429,12 +460,16 @@ func execBlockOnProxyApp(
 	return abciResponses, nil
 }
 
-func validateValidatorSetUpdate(abciValidatorSetUpdate *abci.ValidatorSetUpdate, params tmproto.ValidatorParams) error {
+func validateValidatorSetUpdate(
+	abciValidatorSetUpdate *abci.ValidatorSetUpdate,
+	params tmproto.ValidatorParams,
+) error {
 	// if there was no update return no error
 	if abciValidatorSetUpdate == nil {
 		return nil
 	}
-	if len(abciValidatorSetUpdate.ValidatorUpdates) != 0 && abciValidatorSetUpdate.ThresholdPublicKey.Sum == nil {
+	if len(abciValidatorSetUpdate.ValidatorUpdates) != 0 &&
+		abciValidatorSetUpdate.ThresholdPublicKey.Sum == nil {
 		return fmt.Errorf("received validator updates without a threshold public key")
 	}
 	return validateValidatorUpdates(abciValidatorSetUpdate.ValidatorUpdates, params)
@@ -458,8 +493,11 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 				return err
 			}
 			if !types.IsValidPubkeyType(params, pk.Type()) {
-				return fmt.Errorf("validator %v is using pubkey %s, which is unsupported for consensus",
-					valUpdate, pk.Type())
+				return fmt.Errorf(
+					"validator %v is using pubkey %s, which is unsupported for consensus",
+					valUpdate,
+					pk.Type(),
+				)
 			}
 
 			if len(pk.Bytes()) != bls12381.PubKeySize {
@@ -475,13 +513,18 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 		}
 
 		if valUpdate.ProTxHash == nil {
-			return fmt.Errorf("validator %v does not have a protxhash, which is needed for consensus",
-				valUpdate)
+			return fmt.Errorf(
+				"validator %v does not have a protxhash, which is needed for consensus",
+				valUpdate,
+			)
 		}
 
 		if len(valUpdate.ProTxHash) != 32 {
-			return fmt.Errorf("validator %v is using protxhash %s, which is not the required length",
-				valUpdate, valUpdate.ProTxHash)
+			return fmt.Errorf(
+				"validator %v is using protxhash %s, which is not the required length",
+				valUpdate,
+				valUpdate.ProTxHash,
+			)
 		}
 	}
 	return nil
@@ -529,7 +572,10 @@ func updateState(
 	lastHeightParamsChanged := state.LastHeightConsensusParamsChanged
 	if abciResponses.EndBlock.ConsensusParamUpdates != nil {
 		// NOTE: must not mutate s.ConsensusParams
-		nextParams = types.UpdateConsensusParams(state.ConsensusParams, abciResponses.EndBlock.ConsensusParamUpdates)
+		nextParams = types.UpdateConsensusParams(
+			state.ConsensusParams,
+			abciResponses.EndBlock.ConsensusParamUpdates,
+		)
 		err := types.ValidateConsensusParams(nextParams)
 		if err != nil {
 			return state, fmt.Errorf("error updating consensus params: %v", err)

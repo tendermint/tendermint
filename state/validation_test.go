@@ -70,20 +70,39 @@ func TestValidateBlockHeader(t *testing.T) {
 		}},
 		{"Time wrong", func(block *types.Block) { block.Time = block.Time.Add(-time.Second * 1) }},
 
-		{"LastBlockID wrong", func(block *types.Block) { block.LastBlockID.PartSetHeader.Total += 10 }},
+		{
+			"LastBlockID wrong",
+			func(block *types.Block) { block.LastBlockID.PartSetHeader.Total += 10 },
+		},
 		{"LastCommitHash wrong", func(block *types.Block) { block.LastCommitHash = wrongHash }},
 		{"DataHash wrong", func(block *types.Block) { block.DataHash = wrongHash }},
 
 		{"ValidatorsHash wrong", func(block *types.Block) { block.ValidatorsHash = wrongHash }},
-		{"NextValidatorsHash wrong", func(block *types.Block) { block.NextValidatorsHash = wrongHash }},
+		{
+			"NextValidatorsHash wrong",
+			func(block *types.Block) { block.NextValidatorsHash = wrongHash },
+		},
 		{"ConsensusHash wrong", func(block *types.Block) { block.ConsensusHash = wrongHash }},
 		{"AppHash wrong", func(block *types.Block) { block.AppHash = wrongHash }},
 		{"LastResultsHash wrong", func(block *types.Block) { block.LastResultsHash = wrongHash }},
 
 		{"EvidenceHash wrong", func(block *types.Block) { block.EvidenceHash = wrongHash }},
-		{"Proposer wrong", func(block *types.Block) { block.ProposerProTxHash = crypto.RandProTxHash() }},
-		{"Proposer invalid", func(block *types.Block) { block.ProposerProTxHash = []byte("wrong size") }},
+		{
+			"Proposer wrong",
+			func(block *types.Block) { block.ProposerProTxHash = crypto.RandProTxHash() },
+		},
+		{
+			"Proposer invalid",
+			func(block *types.Block) { block.ProposerProTxHash = []byte("wrong size") },
+		},
+		// Set appVersion to 2 allow "invalid proposed app version" case
+		{
+			"Proposed app version is invalid",
+			func(block *types.Block) { block.ProposedAppVersion = 1; state.Version.Consensus.App = 2 },
+		},
 	}
+
+	// Set appVersion to 2 allow "invalid proposed app version" case
 
 	// Build up state for multiple heights
 	for height := int64(1); height < validationTestsStopHeight; height++ {
@@ -92,8 +111,15 @@ func TestValidateBlockHeader(t *testing.T) {
 			Invalid blocks don't pass
 		*/
 		for _, tc := range testCases {
-			block, _ := state.MakeBlock(height, nextChainLock, makeTxs(height), lastCommit, nil,
-				proposerProTxHash)
+			block, _ := state.MakeBlock(
+				height,
+				nextChainLock,
+				makeTxs(height),
+				lastCommit,
+				nil,
+				proposerProTxHash,
+				0,
+			)
 			tc.malleateBlock(block)
 			err := blockExec.ValidateBlock(state, block)
 			require.Error(t, err, tc.name)
@@ -103,8 +129,17 @@ func TestValidateBlockHeader(t *testing.T) {
 			A good block passes
 		*/
 		var err error
-		state, _, _, lastCommit, err = makeAndCommitGoodBlock(state, nodeProTxHash, height, lastCommit, proposerProTxHash,
-			blockExec, privVals, nil)
+		state, _, _, lastCommit, err = makeAndCommitGoodBlock(
+			state,
+			nodeProTxHash,
+			height,
+			lastCommit,
+			proposerProTxHash,
+			blockExec,
+			privVals,
+			nil,
+			3,
+		)
 		require.NoError(t, err, "height %d", height)
 	}
 }
@@ -170,10 +205,22 @@ func TestValidateBlockCommit(t *testing.T) {
 				wrongHeightVote.BlockSignature,
 				wrongHeightVote.StateSignature,
 			)
-			block, _ := state.MakeBlock(height, nextChainLock, makeTxs(height), wrongHeightCommit, nil,
-				proTxHash)
+			block, _ := state.MakeBlock(
+				height,
+				nextChainLock,
+				makeTxs(height),
+				wrongHeightCommit,
+				nil,
+				proTxHash,
+				0,
+			)
 			err = blockExec.ValidateBlock(state, block)
-			require.True(t, strings.HasPrefix(err.Error(), "error validating block: Invalid commit -- wrong height:"),
+			require.True(
+				t,
+				strings.HasPrefix(
+					err.Error(),
+					"error validating block: Invalid commit -- wrong height:",
+				),
 				"expected error on block threshold signature at height %d, but got: %v",
 				height,
 				err,
@@ -181,10 +228,23 @@ func TestValidateBlockCommit(t *testing.T) {
 			/*
 				Test that the threshold block signatures are good
 			*/
-			block, _ = state.MakeBlock(height, nextChainLock, makeTxs(height), wrongSignorCommit, nil, proTxHash)
+			block, _ = state.MakeBlock(
+				height,
+				nextChainLock,
+				makeTxs(height),
+				wrongSignorCommit,
+				nil,
+				proTxHash,
+				0,
+			)
 			err = blockExec.ValidateBlock(state, block)
 			require.Error(t, err)
-			require.True(t, strings.HasPrefix(err.Error(), "error validating block: incorrect threshold block signature"),
+			require.True(
+				t,
+				strings.HasPrefix(
+					err.Error(),
+					"error validating block: incorrect threshold block signature",
+				),
 				"expected error on block threshold signature at height %d, but got: %v",
 				height,
 				err,
@@ -193,10 +253,23 @@ func TestValidateBlockCommit(t *testing.T) {
 			/*
 				Test that the threshold block signatures are good
 			*/
-			block, _ = state.MakeBlock(height, nextChainLock, makeTxs(height), wrongVoteMessageSignedCommit, nil, proTxHash)
+			block, _ = state.MakeBlock(
+				height,
+				nextChainLock,
+				makeTxs(height),
+				wrongVoteMessageSignedCommit,
+				nil,
+				proTxHash,
+				0,
+			)
 			err = blockExec.ValidateBlock(state, block)
 			require.Error(t, err)
-			require.True(t, strings.HasPrefix(err.Error(), "error validating block: incorrect threshold block signature"),
+			require.True(
+				t,
+				strings.HasPrefix(
+					err.Error(),
+					"error validating block: incorrect threshold block signature",
+				),
 				"expected error on block threshold signature at height %d, but got: %v",
 				height,
 				err,
@@ -218,6 +291,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			blockExec,
 			privVals,
 			nil,
+			0,
 		)
 		require.NoError(t, err, "height %d", height)
 
@@ -250,9 +324,21 @@ func TestValidateBlockCommit(t *testing.T) {
 		g := goodVote.ToProto()
 		b := badVote.ToProto()
 
-		err = badPrivVal.SignVote(chainID, state.Validators.QuorumType, badPrivValQuorumHash, g, nil)
+		err = badPrivVal.SignVote(
+			chainID,
+			state.Validators.QuorumType,
+			badPrivValQuorumHash,
+			g,
+			nil,
+		)
 		require.NoError(t, err, "height %d", height)
-		err = badPrivVal.SignVote(chainID, state.Validators.QuorumType, badPrivValQuorumHash, b, nil)
+		err = badPrivVal.SignVote(
+			chainID,
+			state.Validators.QuorumType,
+			badPrivValQuorumHash,
+			b,
+			nil,
+		)
 		require.NoError(t, err, "height %d", height)
 
 		goodVote.BlockSignature, badVote.BlockSignature = g.BlockSignature, b.BlockSignature
@@ -315,12 +401,25 @@ func TestValidateBlockEvidence(t *testing.T) {
 				evidence = append(evidence, newEv)
 				currentBytes += int64(len(newEv.Bytes()))
 			}
-			block, _ := state.MakeBlock(height, nil, makeTxs(height), lastCommit, evidence, proposerProTxHash)
+			block, _ := state.MakeBlock(
+				height,
+				nil,
+				makeTxs(height),
+				lastCommit,
+				evidence,
+				proposerProTxHash,
+				0,
+			)
 			err := blockExec.ValidateBlock(state, block)
 			if assert.Error(t, err) {
 				_, ok := err.(*types.ErrEvidenceOverflow)
-				require.True(t, ok, "expected error to be of type ErrEvidenceOverflow at height %d but got %v",
-					height, err)
+				require.True(
+					t,
+					ok,
+					"expected error to be of type ErrEvidenceOverflow at height %d but got %v",
+					height,
+					err,
+				)
 			}
 		}
 
@@ -332,8 +431,14 @@ func TestValidateBlockEvidence(t *testing.T) {
 		// precisely the amount of allowed evidence
 		for {
 			proposerProTxHashString := proposerProTxHash.String()
-			newEv := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime,
-				privVals[proposerProTxHashString], chainID, state.Validators.QuorumType, state.Validators.QuorumHash)
+			newEv := types.NewMockDuplicateVoteEvidenceWithValidator(
+				height,
+				defaultEvidenceTime,
+				privVals[proposerProTxHashString],
+				chainID,
+				state.Validators.QuorumType,
+				state.Validators.QuorumHash,
+			)
 			currentBytes += int64(len(newEv.Bytes()))
 			if currentBytes >= maxBytesEvidence {
 				break
@@ -351,6 +456,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 			blockExec,
 			privVals,
 			evidence,
+			0,
 		)
 		require.NoError(t, err, "height %d", height)
 	}
