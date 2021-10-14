@@ -120,8 +120,7 @@ func createAndStartIndexerService(
 	chainID string,
 ) (*indexer.Service, []indexer.EventSink, error) {
 
-	// TODO: user-controlled
-	registerSinks(dbProvider)
+	registerDefaultSinks(dbProvider)
 
 	eventSinks, err := sink.EventSinksFromConfig(cfg, chainID)
 	if err != nil {
@@ -138,8 +137,8 @@ func createAndStartIndexerService(
 	return indexerService, eventSinks, nil
 }
 
-// registerSinks registers the default transaction indexer sinks.
-func registerSinks(dbProvider config.DBProvider) {
+// registerDefaultSinks registers the default transaction indexer sinks.
+func registerDefaultSinks(dbProvider config.DBProvider) {
 	kv.Register(dbProvider)
 	null.Register()
 	psql.Register()
