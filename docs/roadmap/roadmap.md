@@ -62,7 +62,8 @@ We are working on a suite of tools and patterns to make it easier for both node 
 - Remove the global mutex from the local ABCI client to enable application-controlled concurrency. [More](https://github.com/tendermint/tendermint/issues/7073)
 - Enable P2P support for light clients
 - Node orchestration of services + Node initialization and composibility
-- Remove redundancy in several data structures. Remove unused components.
+- Remove redundancy in several data structures. Remove unused components such as the block sync v2 reactor, gRPC in the RPC layer, and the socket-based remote signer.
+- Improve node visibility by introducing more metrics
 
 ## V0.37 (expected Q3 2022)
 
