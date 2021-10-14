@@ -25,6 +25,9 @@ import (
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/state/indexer/sink"
+	"github.com/tendermint/tendermint/internal/state/indexer/sink/kv"
+	"github.com/tendermint/tendermint/internal/state/indexer/sink/null"
+	"github.com/tendermint/tendermint/internal/state/indexer/sink/psql"
 	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
@@ -116,7 +119,11 @@ func createAndStartIndexerService(
 	logger log.Logger,
 	chainID string,
 ) (*indexer.Service, []indexer.EventSink, error) {
-	eventSinks, err := sink.EventSinksFromConfig(cfg, dbProvider, chainID)
+
+	// TODO: user-controlled
+	registerSinks(dbProvider)
+
+	eventSinks, err := sink.EventSinksFromConfig(cfg, chainID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -129,6 +136,13 @@ func createAndStartIndexerService(
 	}
 
 	return indexerService, eventSinks, nil
+}
+
+// registerSinks registers the default transaction indexer sinks.
+func registerSinks(dbProvider config.DBProvider) {
+	kv.Register(dbProvider)
+	null.Register()
+	psql.Register()
 }
 
 func doHandshake(

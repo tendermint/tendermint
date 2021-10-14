@@ -39,6 +39,7 @@ import (
 
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
 
+	// todo: should be in main package
 	_ "github.com/lib/pq" // provide the psql db driver
 )
 

@@ -4,12 +4,19 @@ import (
 	"context"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/types"
 )
 
 var _ indexer.EventSink = (*EventSink)(nil)
+
+func Register() {
+	indexer.RegisterSink(string(indexer.NULL), func(_ *config.Config, _ string) (indexer.EventSink, error) {
+		return NewEventSink(), nil
+	})
+}
 
 // EventSink implements a no-op indexer.
 type EventSink struct{}

@@ -11,6 +11,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/types"
@@ -23,6 +24,16 @@ const (
 	tableAttributes = "attributes"
 	driverName      = "postgres"
 )
+
+func Register() {
+	indexer.RegisterSink(string(indexer.PSQL), func(cfg *config.Config, chainID string) (indexer.EventSink, error) {
+		conn := cfg.TxIndex.PsqlConn
+		if conn == "" {
+			return nil, errors.New("the psql connection settings cannot be empty")
+		}
+		return NewEventSink(conn, chainID)
+	})
+}
 
 // EventSink is an indexer backend providing the tx/block index services.  This
 // implementation stores records in a PostgreSQL database using the schema

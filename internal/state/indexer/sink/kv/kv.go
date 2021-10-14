@@ -6,6 +6,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	kvb "github.com/tendermint/tendermint/internal/state/indexer/block/kv"
 	kvt "github.com/tendermint/tendermint/internal/state/indexer/tx/kv"
@@ -14,6 +15,16 @@ import (
 )
 
 var _ indexer.EventSink = (*EventSink)(nil)
+
+func Register(dbProvider config.DBProvider) {
+	indexer.RegisterSink(string(indexer.KV), func(cfg *config.Config, _ string) (indexer.EventSink, error) {
+		store, err := dbProvider(&config.DBContext{ID: "tx_index", Config: cfg})
+		if err != nil {
+			return nil, err
+		}
+		return NewEventSink(store), nil
+	})
+}
 
 // The EventSink is an aggregator for redirecting the call path of the tx/block kvIndexer.
 // For the implementation details please see the kv.go in the indexer/block and indexer/tx folder.
