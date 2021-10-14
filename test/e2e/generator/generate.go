@@ -68,7 +68,7 @@ var (
 	}
 	evidence = uniformChoice{0, 1, 10}
 	txSize   = uniformChoice{1024, 4096} // either 1kb or 4kb
-	ipv6     = uniformChoice{false, true}
+	ipv6     = uniformChoice{false}      // was: {false, true}
 	keyType  = uniformChoice{types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1}
 )
 
