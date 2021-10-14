@@ -226,6 +226,7 @@ func NopMetrics() *Metrics {
 		BlockSyncing:    discard.NewGauge(),
 		StateSyncing:    discard.NewGauge(),
 		BlockParts:      discard.NewCounter(),
+		StepTime:        discard.NewHistogram(),
 	}
 }
 

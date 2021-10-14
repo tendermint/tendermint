@@ -41,6 +41,15 @@ var (
 	errPubKeyIsNotSet = errors.New("pubkey is not set. Look for \"Can't get private validator pubkey\" errors")
 )
 
+type updateRoundStepReason int
+
+const (
+	timeout updateRoundStepReason = iota
+	maj23
+	skip
+	unknown
+)
+
 var msgQueueSize = 1000
 
 // msgs from the reactor which may update the state
@@ -142,6 +151,9 @@ type State struct {
 
 	// for reporting metrics
 	metrics *Metrics
+	// local clocks retained for calculating metrics for the current round and step
+	localClockRoundStart time.Time
+	localClockStepStart  time.Time
 
 	// wait the channel event happening for shutting down the state gracefully
 	onStopCh chan *cstypes.RoundState
@@ -571,7 +583,11 @@ func (cs *State) updateHeight(height int64) {
 	cs.Height = height
 }
 
-func (cs *State) updateRoundStep(round int32, step cstypes.RoundStepType) {
+func (cs *State) updateRoundStep(round int32, step cstypes.RoundStepType, r updateRoundStepReason) {
+	if round > 0 {
+		cs.metrics.StepTime.With("reason", r.String(), "step", cs.Step.String()).Observe(time.Since(cs.localClockStepStart).Seconds())
+	}
+	cs.localClockStepStart = time.Now()
 	cs.Round = round
 	cs.Step = step
 }
@@ -741,6 +757,7 @@ func (cs *State) newStep() {
 	}
 
 	cs.nSteps++
+	cs.localClockStepStart = time.Now()
 
 	// newStep is called by updateToState in NewState before the eventBus is set!
 	if cs.eventBus != nil {
@@ -1022,6 +1039,9 @@ func (cs *State) enterNewRound(height int64, round int32) {
 		return
 	}
 
+	cs.localClockRoundStart = time.Now()
+	cs.localClockRoundStart = time.Now()
+
 	if now := tmtime.Now(); cs.StartTime.After(now) {
 		logger.Debug("need to set a buffer and log message here for sanity", "start_time", cs.StartTime, "now", now)
 	}
@@ -1284,7 +1304,12 @@ func (cs *State) enterPrevote(height int64, round int32) {
 
 	defer func() {
 		// Done enterPrevote:
-		cs.updateRoundStep(round, cstypes.RoundStepPrevote)
+
+		reason := timeout
+		if cs.isProposalComplete() {
+			reason = maj23
+		}
+		cs.updateRoundStep(round, cstypes.RoundStepPrevote, reason)
 		cs.newStep()
 	}()
 
@@ -1382,7 +1407,8 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 
 	defer func() {
 		// Done enterPrecommit:
-		cs.updateRoundStep(round, cstypes.RoundStepPrecommit)
+		reason := timeout
+		cs.updateRoundStep(round, cstypes.RoundStepPrecommit, reason)
 		cs.newStep()
 	}()
 
