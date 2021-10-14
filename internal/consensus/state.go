@@ -1332,10 +1332,10 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 	}
 
 	/*
-		28: upon <PROPOSAL, hp, roundp, v, vr> from proposer(hp, roundp) AND 2f + 1 <PREVOTE, hp, vr, id(v)> while
-		stepp = propose && (vr ≥ 0 && vr < roundp) do
-		29: if valid(v) && (lockedRoundp ≤ vr || lockedValuep = v) then
-		30: broadcast <PREVOTE, hp, roundp, id(v)>
+		28: upon <PROPOSAL, h_p, round_p, v, v_r> from proposer(h_p, round_p) AND 2f + 1 <PREVOTE, h_p, v_r, id(v)> while
+		step_p = propose && (v_r ≥ 0 && v_r < round_p) do
+		29: if valid(v) && (lockedRound_p ≤ v_r || lockedValue_p = v) then
+		30: broadcast <PREVOTE, h_p, round_p, id(v)>
 	*/
 	blockID, ok := cs.Votes.Prevotes(cs.Proposal.POLRound).TwoThirdsMajority()
 	if ok && cs.ProposalBlock.HashesTo(blockID.Hash) && cs.Proposal.POLRound >= 0 && cs.Proposal.POLRound < cs.Round {
