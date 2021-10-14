@@ -1317,6 +1317,14 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 		22: upon <PROPOSAL, h_p, round_p, v, −1> from proposer(h_p, round_p) while step_p = propose do
 		23: if valid(v) && (lockedRound_p = −1 || lockedValue_p = v) then
 		24: broadcast <PREVOTE, h_p, round_p, id(v)>
+
+		Here, cs.Proposal.POLRound corresponds to the -1 in the above algorithm rule.
+		This means that the proposer is producing a new proposal that has not previously
+		seen a 2/3 majority by the network.
+
+		If we have already locked on a different value that is different from the proposed value,
+		we prevote nil since we are locked on a different value. Otherwise, if we're not locked on a block
+		or the proposal matches our locked block, we prevote the proposal.
 	*/
 	if cs.Proposal.POLRound == -1 {
 		if cs.LockedRound == -1 {
@@ -1336,6 +1344,16 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 		step_p = propose && (v_r ≥ 0 && v_r < round_p) do
 		29: if valid(v) && (lockedRound_p ≤ v_r || lockedValue_p = v) then
 		30: broadcast <PREVOTE, h_p, round_p, id(v)>
+
+		This rule is a bit confusing but breaks down as follows:
+
+		If we see a proposal in the current round for value 'v' that lists its valid round as 'v_r'
+		AND this validator saw a 2/3 majority of the voting power prevote 'v' in round 'v_r', then we will
+		issue a prevote for 'v' in this round if 'v' is valid and either matches our locked value OR 'v_r' is a round greater than
+		our current locked round.
+
+		'v_r' can be a round greater than our current locked round if a 2/3 majority of the network prevoted a value
+		in round 'v_r' but we did not lock on it, possibly because we missed the proposal in round 'v_r'.
 	*/
 	blockID, ok := cs.Votes.Prevotes(cs.Proposal.POLRound).TwoThirdsMajority()
 	if ok && cs.ProposalBlock.HashesTo(blockID.Hash) && cs.Proposal.POLRound >= 0 && cs.Proposal.POLRound < cs.Round {
