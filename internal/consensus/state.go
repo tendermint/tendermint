@@ -1370,7 +1370,7 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 		}
 	}
 
-	logger.Debug("prevote step: ProposalBlock is valid but did not receive a majority in a round; prevoting nil")
+	logger.Debug("prevote step: ProposalBlock is valid but was not our locked block or did not receive a more recent majority; prevoting nil")
 	cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 }
 
