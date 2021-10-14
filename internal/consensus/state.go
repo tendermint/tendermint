@@ -1314,9 +1314,9 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 	}
 
 	/*
-		22: upon <PROPOSAL, hp, roundp, v, −1> from proposer(hp, roundp) while stepp = propose do
-		23: if valid(v) && (lockedRoundp = −1 || lockedValuep = v) then
-		24: broadcast <PREVOTE, hp, roundp, id(v)>
+		22: upon <PROPOSAL, h_p, round_p, v, −1> from proposer(h_p, round_p) while step_p = propose do
+		23: if valid(v) && (lockedRound_p = −1 || lockedValue_p = v) then
+		24: broadcast <PREVOTE, h_p, round_p, id(v)>
 	*/
 	if cs.Proposal.POLRound == -1 {
 		if cs.LockedRound == -1 {
