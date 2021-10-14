@@ -3,7 +3,6 @@ package rpctest
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"time"
@@ -16,7 +15,6 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/rpc/coretypes"
-	coregrpc "github.com/tendermint/tendermint/rpc/grpc"
 	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 )
 
@@ -26,6 +24,7 @@ type Options struct {
 	suppressStdout bool
 }
 
+// waitForRPC connects to the RPC service and blocks until a /status call succeeds.
 func waitForRPC(ctx context.Context, conf *config.Config) {
 	laddr := conf.RPC.ListenAddress
 	client, err := rpcclient.NewWithHTTPClient(laddr, http.DefaultClient)
@@ -44,19 +43,6 @@ func waitForRPC(ctx context.Context, conf *config.Config) {
 	}
 }
 
-func waitForGRPC(ctx context.Context, conf *config.Config) io.Closer {
-	client, closer := GetGRPCClient(conf)
-	for {
-		_, err := client.Ping(ctx, &coregrpc.RequestPing{})
-		if err == nil {
-			return closer
-		}
-		if ctx.Err() != nil {
-			return closer
-		}
-	}
-}
-
 func randPort() int {
 	port, err := tmnet.GetFreePort()
 	if err != nil {
@@ -65,29 +51,22 @@ func randPort() int {
 	return port
 }
 
-func makeAddrs() (string, string, string) {
-	return fmt.Sprintf("tcp://127.0.0.1:%d", randPort()),
-		fmt.Sprintf("tcp://127.0.0.1:%d", randPort()),
-		fmt.Sprintf("tcp://127.0.0.1:%d", randPort())
+// makeAddrs constructs local listener addresses for node services.  This
+// implementation uses random ports so test instances can run concurrently.
+func makeAddrs() (p2pAddr, rpcAddr string) {
+	const addrTemplate = "tcp://127.0.0.1:%d"
+	return fmt.Sprintf(addrTemplate, randPort()), fmt.Sprintf(addrTemplate, randPort())
 }
 
 func CreateConfig(testName string) *config.Config {
 	c := config.ResetTestRoot(testName)
 
-	// and we use random ports to run in parallel
-	tm, rpc, grpc := makeAddrs()
-	c.P2P.QueueType = "fifo"
-	c.P2P.ListenAddress = tm
-	c.RPC.ListenAddress = rpc
+	p2pAddr, rpcAddr := makeAddrs()
+	c.P2P.ListenAddress = p2pAddr
+	c.RPC.ListenAddress = rpcAddr
 	c.Consensus.WalPath = "rpc-test"
 	c.RPC.CORSAllowedOrigins = []string{"https://tendermint.com/"}
-	c.RPC.GRPCListenAddress = grpc
 	return c
-}
-
-func GetGRPCClient(conf *config.Config) (coregrpc.BroadcastAPIClient, io.Closer) {
-	grpcAddr := conf.RPC.GRPCListenAddress
-	return coregrpc.StartGRPCClient(grpcAddr)
 }
 
 type ServiceCloser func(context.Context) error
@@ -118,9 +97,7 @@ func StartTendermint(ctx context.Context,
 		return nil, func(_ context.Context) error { return nil }, err
 	}
 
-	// wait for rpc
 	waitForRPC(ctx, conf)
-	closeGrpc := waitForGRPC(ctx, conf)
 
 	if !nodeOpts.suppressStdout {
 		fmt.Println("Tendermint running!")
@@ -129,9 +106,6 @@ func StartTendermint(ctx context.Context,
 	return tmNode, func(ctx context.Context) error {
 		if err := tmNode.Stop(); err != nil {
 			logger.Error("Error when trying to stop node", "err", err)
-		}
-		if err := closeGrpc.Close(); err != nil {
-			logger.Error("Error when trying to stop grpc", "err", err)
 		}
 		tmNode.Wait()
 		os.RemoveAll(conf.RootDir)

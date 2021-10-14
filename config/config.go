@@ -455,24 +455,10 @@ type RPCConfig struct {
 	// A list of non simple headers the client is allowed to use with cross-domain requests.
 	CORSAllowedHeaders []string `mapstructure:"cors-allowed-headers"`
 
-	// TCP or UNIX socket address for the gRPC server to listen on
-	// NOTE: This server only supports /broadcast_tx_commit
-	// Deprecated: gRPC in the RPC layer of Tendermint will be removed in 0.36.
-	GRPCListenAddress string `mapstructure:"grpc-laddr"`
-
-	// Maximum number of simultaneous connections.
-	// Does not include RPC (HTTP&WebSocket) connections. See max-open-connections
-	// If you want to accept a larger number than the default, make sure
-	// you increase your OS limits.
-	// 0 - unlimited.
-	// Deprecated: gRPC in the RPC layer of Tendermint will be removed in 0.36.
-	GRPCMaxOpenConnections int `mapstructure:"grpc-max-open-connections"`
-
 	// Activate unsafe RPC commands like /dial-persistent-peers and /unsafe-flush-mempool
 	Unsafe bool `mapstructure:"unsafe"`
 
 	// Maximum number of simultaneous connections (including WebSocket).
-	// Does not include gRPC connections. See grpc-max-open-connections
 	// If you want to accept a larger number than the default, make sure
 	// you increase your OS limits.
 	// 0 - unlimited.
@@ -486,7 +472,7 @@ type RPCConfig struct {
 	MaxSubscriptionClients int `mapstructure:"max-subscription-clients"`
 
 	// Maximum number of unique queries a given client can /subscribe to
-	// If you're using GRPC (or Local RPC client) and /broadcast_tx_commit, set
+	// If you're using a Local RPC client and /broadcast_tx_commit, set this
 	// to the estimated maximum number of broadcast_tx_commit calls per block.
 	MaxSubscriptionsPerClient int `mapstructure:"max-subscriptions-per-client"`
 
@@ -527,12 +513,10 @@ type RPCConfig struct {
 // DefaultRPCConfig returns a default configuration for the RPC server
 func DefaultRPCConfig() *RPCConfig {
 	return &RPCConfig{
-		ListenAddress:          "tcp://127.0.0.1:26657",
-		CORSAllowedOrigins:     []string{},
-		CORSAllowedMethods:     []string{http.MethodHead, http.MethodGet, http.MethodPost},
-		CORSAllowedHeaders:     []string{"Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"},
-		GRPCListenAddress:      "",
-		GRPCMaxOpenConnections: 900,
+		ListenAddress:      "tcp://127.0.0.1:26657",
+		CORSAllowedOrigins: []string{},
+		CORSAllowedMethods: []string{http.MethodHead, http.MethodGet, http.MethodPost},
+		CORSAllowedHeaders: []string{"Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"},
 
 		Unsafe:             false,
 		MaxOpenConnections: 900,
@@ -553,7 +537,6 @@ func DefaultRPCConfig() *RPCConfig {
 func TestRPCConfig() *RPCConfig {
 	cfg := DefaultRPCConfig()
 	cfg.ListenAddress = "tcp://127.0.0.1:36657"
-	cfg.GRPCListenAddress = "tcp://127.0.0.1:36658"
 	cfg.Unsafe = true
 	return cfg
 }
@@ -561,9 +544,6 @@ func TestRPCConfig() *RPCConfig {
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg *RPCConfig) ValidateBasic() error {
-	if cfg.GRPCMaxOpenConnections < 0 {
-		return errors.New("grpc-max-open-connections can't be negative")
-	}
 	if cfg.MaxOpenConnections < 0 {
 		return errors.New("max-open-connections can't be negative")
 	}

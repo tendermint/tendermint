@@ -12,6 +12,8 @@ Special thanks to external contributors on this release:
 
 - CLI/RPC/Config
 
+  - [rpc] Remove the deprecated gRPC interface to the RPC service (@creachadair).
+
 - Apps
 
 - P2P Protocol

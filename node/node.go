@@ -33,7 +33,6 @@ import (
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
-	grpccore "github.com/tendermint/tendermint/rpc/grpc"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	"github.com/tendermint/tendermint/types"
 
@@ -156,8 +155,10 @@ func makeNode(cfg *config.Config,
 
 	}
 
+	nodeMetrics := defaultMetricsProvider(cfg.Instrumentation)(genDoc.ChainID)
+
 	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
-	proxyApp, err := createAndStartProxyAppConns(clientCreator, logger)
+	proxyApp, err := createAndStartProxyAppConns(clientCreator, logger, nodeMetrics.proxy)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 
@@ -266,8 +267,6 @@ func makeNode(cfg *config.Config,
 			fmt.Errorf("failed to create peer manager: %w", err),
 			makeCloser(closers))
 	}
-
-	nodeMetrics := defaultMetricsProvider(cfg.Instrumentation)(genDoc.ChainID)
 
 	router, err := createRouter(p2pLogger, nodeMetrics.p2p, nodeInfo, nodeKey.PrivKey,
 		peerManager, transport, getRouterConfig(cfg, proxyApp))
@@ -859,39 +858,7 @@ func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 		listeners[i] = listener
 	}
 
-	// we expose a simplified api over grpc for convenience to app devs
-	grpcListenAddr := n.config.RPC.GRPCListenAddress
-	if grpcListenAddr != "" {
-		cfg := rpcserver.DefaultConfig()
-		cfg.MaxBodyBytes = n.config.RPC.MaxBodyBytes
-		cfg.MaxHeaderBytes = n.config.RPC.MaxHeaderBytes
-		// NOTE: GRPCMaxOpenConnections is used, not MaxOpenConnections
-		cfg.MaxOpenConnections = n.config.RPC.GRPCMaxOpenConnections
-		// If necessary adjust global WriteTimeout to ensure it's greater than
-		// TimeoutBroadcastTxCommit.
-		// See https://github.com/tendermint/tendermint/issues/3435
-		if cfg.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
-			cfg.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
-		}
-		listener, err := rpcserver.Listen(grpcListenAddr, cfg.MaxOpenConnections)
-		if err != nil {
-			return nil, err
-		}
-		go func() {
-			closer, err := grpccore.StartGRPCServer(n.rpcEnv, listener)
-			if err != nil {
-				n.Logger.Error("Error starting gRPC server", "err", err)
-			}
-			if err := closer.Close(); err != nil {
-				n.Logger.Error("Error stopping gRPC server", "err", err)
-			}
-		}()
-		listeners = append(listeners, listener)
-
-	}
-
 	return listeners, nil
-
 }
 
 // startPrometheusServer starts a Prometheus HTTP server, listening for metrics
@@ -982,6 +949,7 @@ type nodeMetrics struct {
 	mempool   *mempool.Metrics
 	state     *sm.Metrics
 	statesync *statesync.Metrics
+	proxy     *proxy.Metrics
 }
 
 // metricsProvider returns consensus, p2p, mempool, state, statesync Metrics.
@@ -998,6 +966,7 @@ func defaultMetricsProvider(cfg *config.InstrumentationConfig) metricsProvider {
 				mempool.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 				sm.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 				statesync.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				proxy.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 			}
 		}
 		return &nodeMetrics{
@@ -1006,6 +975,7 @@ func defaultMetricsProvider(cfg *config.InstrumentationConfig) metricsProvider {
 			mempool.NopMetrics(),
 			sm.NopMetrics(),
 			statesync.NopMetrics(),
+			proxy.NopMetrics(),
 		}
 	}
 }
