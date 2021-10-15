@@ -726,7 +726,6 @@ func (cs *State) updateToState(state sm.State) {
 	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators)
 	cs.CommitRound = -1
 	cs.LastValidators = state.LastValidators
-	cs.TriggeredTimeoutPrecommit = false
 
 	cs.state = state
 
@@ -1052,7 +1051,6 @@ func (cs *State) enterNewRound(height int64, round int32) {
 	}
 
 	cs.Votes.SetRound(tmmath.SafeAddInt32(round, 1)) // also track next round (round+1) to allow round-skipping
-	cs.TriggeredTimeoutPrecommit = false
 
 	if err := cs.eventBus.PublishEventNewRound(cs.NewRoundEvent()); err != nil {
 		cs.Logger.Error("failed publishing new round", "err", err)
@@ -1491,12 +1489,10 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 // Enter: any +2/3 precommits for next round.
 func (cs *State) enterPrecommitWait(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
-
-	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.TriggeredTimeoutPrecommit) {
+	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPrecommitWait <= cs.Step) {
 		logger.Debug(
 			"entering precommit wait step with invalid args",
-			"triggered_timeout", cs.TriggeredTimeoutPrecommit,
-			"current", fmt.Sprintf("%v/%v", cs.Height, cs.Round),
+			"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
 		)
 		return
 	}
@@ -1512,7 +1508,7 @@ func (cs *State) enterPrecommitWait(height int64, round int32) {
 
 	defer func() {
 		// Done enterPrecommitWait:
-		cs.TriggeredTimeoutPrecommit = true
+		cs.updateRoundStep(round, cstypes.RoundStepPrecommitWait)
 		cs.newStep()
 	}()
 

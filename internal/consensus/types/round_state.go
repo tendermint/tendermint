@@ -85,12 +85,11 @@ type RoundState struct {
 	ValidBlock *types.Block `json:"valid_block"` // Last known block of POL mentioned above.
 
 	// Last known block parts of POL mentioned above.
-	ValidBlockParts           *types.PartSet      `json:"valid_block_parts"`
-	Votes                     *HeightVoteSet      `json:"votes"`
-	CommitRound               int32               `json:"commit_round"` //
-	LastCommit                *types.VoteSet      `json:"last_commit"`  // Last precommits at Height-1
-	LastValidators            *types.ValidatorSet `json:"last_validators"`
-	TriggeredTimeoutPrecommit bool                `json:"triggered_timeout_precommit"`
+	ValidBlockParts *types.PartSet      `json:"valid_block_parts"`
+	Votes           *HeightVoteSet      `json:"votes"`
+	CommitRound     int32               `json:"commit_round"` //
+	LastCommit      *types.VoteSet      `json:"last_commit"`  // Last precommits at Height-1
+	LastValidators  *types.ValidatorSet `json:"last_validators"`
 }
 
 // Compressed version of the RoundState for use in RPC
