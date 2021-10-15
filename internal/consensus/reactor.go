@@ -21,15 +21,12 @@ import (
 var (
 	_ service.Service = (*Reactor)(nil)
 	_ p2p.Wrapper     = (*tmcons.Message)(nil)
+)
 
-	// ChannelShims contains a map of ChannelDescriptorShim objects, where each
-	// object wraps a reference to a legacy p2p ChannelDescriptor and the corresponding
-	// p2p proto.Message the new p2p Channel is responsible for handling.
-	//
-	//
-	// TODO: Remove once p2p refactor is complete.
-	// ref: https://github.com/tendermint/tendermint/issues/5670
-	ChannelShims = []*p2p.ChannelDescriptor{
+// GetChannelDescriptor produces an instance of a descriptor for this
+// package's required channels.
+func GetChannelDescriptors() []*p2p.ChannelDescriptor {
+	return []*p2p.ChannelDescriptor{
 		{
 			ID:                  StateChannel,
 			MessageType:         new(tmcons.Message),
@@ -66,7 +63,7 @@ var (
 			RecvMessageCapacity: maxMsgSize,
 		},
 	}
-)
+}
 
 const (
 	StateChannel       = p2p.ChannelID(0x20)

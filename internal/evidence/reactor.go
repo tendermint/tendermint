@@ -15,26 +15,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var (
-	_ service.Service = (*Reactor)(nil)
-
-	// ChannelShims contains a map of ChannelDescriptorShim objects, where each
-	// object wraps a reference to a legacy p2p ChannelDescriptor and the corresponding
-	// p2p proto.Message the new p2p Channel is responsible for handling.
-	//
-	//
-	// TODO: Remove once p2p refactor is complete.
-	// ref: https://github.com/tendermint/tendermint/issues/5670
-	ChannelShims = []*p2p.ChannelDescriptor{
-		{
-			ID:                  EvidenceChannel,
-			MessageType:         new(tmproto.EvidenceList),
-			Priority:            6,
-			RecvMessageCapacity: maxMsgSize,
-			RecvBufferCapacity:  32,
-		},
-	}
-)
+var _ service.Service = (*Reactor)(nil)
 
 const (
 	EvidenceChannel = p2p.ChannelID(0x38)
@@ -47,6 +28,18 @@ const (
 	// just over the block production rate before sending evidence again.
 	broadcastEvidenceIntervalS = 10
 )
+
+// GetChannelDescriptor produces an instance of a descriptor for this
+// package's required channels.
+func GetChannelDescriptor() *p2p.ChannelDescriptor {
+	return &p2p.ChannelDescriptor{
+		ID:                  EvidenceChannel,
+		MessageType:         new(tmproto.EvidenceList),
+		Priority:            6,
+		RecvMessageCapacity: maxMsgSize,
+		RecvBufferCapacity:  32,
+	}
+}
 
 // Reactor handles evpool evidence broadcasting amongst peers.
 type Reactor struct {
