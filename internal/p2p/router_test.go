@@ -251,6 +251,14 @@ func TestRouter_Channel_Wrapper(t *testing.T) {
 
 	ids := network.NodeIDs()
 	aID, bID := ids[0], ids[1]
+	chDesc := &p2p.ChannelDescriptor{
+		ID:                  chID,
+		MessageType:         &wrapperMessage{},
+		Priority:            5,
+		SendQueueCapacity:   10,
+		RecvMessageCapacity: 10,
+	}
+
 	channels := network.MakeChannels(t, chDesc)
 	a, b := channels[aID], channels[bID]
 
