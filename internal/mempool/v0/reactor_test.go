@@ -51,7 +51,7 @@ func setup(t *testing.T, config *config.MempoolConfig, numNodes int, chBuf uint)
 	}
 
 	chDesc := GetChannelShims(config)[0]
-	chDesc.RecvBufferCapacity = 0
+	chDesc.RecvBufferCapacity = int(chBuf)
 	rts.mempoolChnnels = rts.network.MakeChannelsNoCleanup(t, chDesc)
 
 	for nodeID := range rts.network.Nodes {
