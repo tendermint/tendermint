@@ -49,10 +49,6 @@ module.exports = {
           title: 'Resources',
           children: [
             {
-              title: 'Developer Sessions',
-              path: '/DEV_SESSIONS.html'
-            },
-            {
               title: 'RPC',
               path: 'https://docs.tendermint.com/master/rpc/',
               static: true
