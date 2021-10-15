@@ -52,7 +52,7 @@ func setupReactors(t *testing.T, numNodes int, chBuf uint) *reactorTestSuite {
 		peerUpdates:     make(map[types.NodeID]*p2p.PeerUpdates, numNodes),
 	}
 
-	chDesc := p2p.ChannelDescriptor{ID: mempool.MempoolChannel}
+	chDesc := &p2p.ChannelDescriptor{ID: mempool.MempoolChannel}
 	rts.mempoolChannels = rts.network.MakeChannelsNoCleanup(t, chDesc, new(protomem.Message), int(chBuf))
 
 	for nodeID := range rts.network.Nodes {

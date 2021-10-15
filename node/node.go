@@ -1092,17 +1092,18 @@ func getRouterConfig(conf *config.Config, proxyApp proxy.AppConns) p2p.RouterOpt
 // FIXME: Temporary helper function, shims should be removed.
 func makeChannelsFromShims(
 	router *p2p.Router,
-	chShims map[p2p.ChannelID]*p2p.ChannelDescriptorShim,
+	chDescs []*p2p.ChannelDescriptor,
 ) map[p2p.ChannelID]*p2p.Channel {
 
 	channels := map[p2p.ChannelID]*p2p.Channel{}
-	for chID, chShim := range chShims {
-		ch, err := router.OpenChannel(*chShim.Descriptor, chShim.Descriptor.MessageType, chShim.Descriptor.RecvBufferCapacity)
+	for idx := range chDescs {
+		chDesc := chDescs[idx]
+		ch, err := router.OpenChannel(chDesc, chDesc.MessageType, chDesc.RecvBufferCapacity)
 		if err != nil {
-			panic(fmt.Sprintf("failed to open channel %v: %v", chID, err))
+			panic(fmt.Sprintf("failed to open channel %v: %v", chDesc.ID, err))
 		}
 
-		channels[chID] = ch
+		channels[chDesc.ID] = ch
 	}
 
 	return channels

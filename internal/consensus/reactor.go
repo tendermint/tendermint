@@ -29,49 +29,41 @@ var (
 	//
 	// TODO: Remove once p2p refactor is complete.
 	// ref: https://github.com/tendermint/tendermint/issues/5670
-	ChannelShims = map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
-		StateChannel: {
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  StateChannel,
-				MessageType:         new(tmcons.Message),
-				Priority:            8,
-				SendQueueCapacity:   64,
-				RecvMessageCapacity: maxMsgSize,
-				RecvBufferCapacity:  128,
-			},
+	ChannelShims = []*p2p.ChannelDescriptor{
+		{
+			ID:                  StateChannel,
+			MessageType:         new(tmcons.Message),
+			Priority:            8,
+			SendQueueCapacity:   64,
+			RecvMessageCapacity: maxMsgSize,
+			RecvBufferCapacity:  128,
 		},
-		DataChannel: {
-			Descriptor: &p2p.ChannelDescriptor{
-				// TODO: Consider a split between gossiping current block and catchup
-				// stuff. Once we gossip the whole block there is nothing left to send
-				// until next height or round.
-				ID:                  DataChannel,
-				MessageType:         new(tmcons.Message),
-				Priority:            12,
-				SendQueueCapacity:   64,
-				RecvBufferCapacity:  512,
-				RecvMessageCapacity: maxMsgSize,
-			},
+		{
+			// TODO: Consider a split between gossiping current block and catchup
+			// stuff. Once we gossip the whole block there is nothing left to send
+			// until next height or round.
+			ID:                  DataChannel,
+			MessageType:         new(tmcons.Message),
+			Priority:            12,
+			SendQueueCapacity:   64,
+			RecvBufferCapacity:  512,
+			RecvMessageCapacity: maxMsgSize,
 		},
-		VoteChannel: {
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  VoteChannel,
-				MessageType:         new(tmcons.Message),
-				Priority:            10,
-				SendQueueCapacity:   64,
-				RecvBufferCapacity:  128,
-				RecvMessageCapacity: maxMsgSize,
-			},
+		{
+			ID:                  VoteChannel,
+			MessageType:         new(tmcons.Message),
+			Priority:            10,
+			SendQueueCapacity:   64,
+			RecvBufferCapacity:  128,
+			RecvMessageCapacity: maxMsgSize,
 		},
-		VoteSetBitsChannel: {
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  VoteSetBitsChannel,
-				MessageType:         new(tmcons.Message),
-				Priority:            5,
-				SendQueueCapacity:   8,
-				RecvBufferCapacity:  128,
-				RecvMessageCapacity: maxMsgSize,
-			},
+		{
+			ID:                  VoteSetBitsChannel,
+			MessageType:         new(tmcons.Message),
+			Priority:            5,
+			SendQueueCapacity:   8,
+			RecvBufferCapacity:  128,
+			RecvMessageCapacity: maxMsgSize,
 		},
 	}
 )

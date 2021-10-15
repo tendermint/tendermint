@@ -36,46 +36,38 @@ var (
 	//
 	// TODO: Remove once p2p refactor is complete.
 	// ref: https://github.com/tendermint/tendermint/issues/5670
-	ChannelShims = map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
-		SnapshotChannel: {
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  SnapshotChannel,
-				MessageType:         new(ssproto.Message),
-				Priority:            6,
-				SendQueueCapacity:   10,
-				RecvMessageCapacity: snapshotMsgSize,
-				RecvBufferCapacity:  128,
-			},
+	ChannelShims = []*p2p.ChannelDescriptor{
+		{
+			ID:                  SnapshotChannel,
+			MessageType:         new(ssproto.Message),
+			Priority:            6,
+			SendQueueCapacity:   10,
+			RecvMessageCapacity: snapshotMsgSize,
+			RecvBufferCapacity:  128,
 		},
-		ChunkChannel: {
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  ChunkChannel,
-				Priority:            3,
-				MessageType:         new(ssproto.Message),
-				SendQueueCapacity:   4,
-				RecvMessageCapacity: chunkMsgSize,
-				RecvBufferCapacity:  128,
-			},
+		{
+			ID:                  ChunkChannel,
+			Priority:            3,
+			MessageType:         new(ssproto.Message),
+			SendQueueCapacity:   4,
+			RecvMessageCapacity: chunkMsgSize,
+			RecvBufferCapacity:  128,
 		},
-		LightBlockChannel: {
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  LightBlockChannel,
-				MessageType:         new(ssproto.Message),
-				Priority:            5,
-				SendQueueCapacity:   10,
-				RecvMessageCapacity: lightBlockMsgSize,
-				RecvBufferCapacity:  128,
-			},
+		{
+			ID:                  LightBlockChannel,
+			MessageType:         new(ssproto.Message),
+			Priority:            5,
+			SendQueueCapacity:   10,
+			RecvMessageCapacity: lightBlockMsgSize,
+			RecvBufferCapacity:  128,
 		},
-		ParamsChannel: {
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  ParamsChannel,
-				MessageType:         new(ssproto.Message),
-				Priority:            2,
-				SendQueueCapacity:   10,
-				RecvMessageCapacity: paramMsgSize,
-				RecvBufferCapacity:  128,
-			},
+		{
+			ID:                  ParamsChannel,
+			MessageType:         new(ssproto.Message),
+			Priority:            2,
+			SendQueueCapacity:   10,
+			RecvMessageCapacity: paramMsgSize,
+			RecvBufferCapacity:  128,
 		},
 	}
 )
