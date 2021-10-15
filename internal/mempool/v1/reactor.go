@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/libs/clist"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -37,9 +37,9 @@ type PeerManager interface {
 type Reactor struct {
 	service.BaseService
 
-	config  *cfg.MempoolConfig
+	cfg     *config.MempoolConfig
 	mempool *TxMempool
-	ids     *mempool.MempoolIDs
+	ids     *mempool.IDs
 
 	// XXX: Currently, this is the only way to get information about a peer. Ideally,
 	// we rely on message-oriented communication to get necessary peer data.
@@ -65,7 +65,7 @@ type Reactor struct {
 // NewReactor returns a reference to a new reactor.
 func NewReactor(
 	logger log.Logger,
-	config *cfg.MempoolConfig,
+	cfg *config.MempoolConfig,
 	peerMgr PeerManager,
 	txmp *TxMempool,
 	mempoolCh *p2p.Channel,
@@ -73,7 +73,7 @@ func NewReactor(
 ) *Reactor {
 
 	r := &Reactor{
-		config:       config,
+		cfg:          cfg,
 		peerMgr:      peerMgr,
 		mempool:      txmp,
 		ids:          mempool.NewMempoolIDs(),
@@ -97,8 +97,8 @@ func defaultObservePanic(r interface{}) {}
 //
 // TODO: Remove once p2p refactor is complete.
 // ref: https://github.com/tendermint/tendermint/issues/5670
-func GetChannelShims(config *cfg.MempoolConfig) map[p2p.ChannelID]*p2p.ChannelDescriptorShim {
-	largestTx := make([]byte, config.MaxTxBytes)
+func GetChannelShims(cfg *config.MempoolConfig) map[p2p.ChannelID]*p2p.ChannelDescriptorShim {
+	largestTx := make([]byte, cfg.MaxTxBytes)
 	batchMsg := protomem.Message{
 		Sum: &protomem.Message_Txs{
 			Txs: &protomem.Txs{Txs: [][]byte{largestTx}},
@@ -124,7 +124,7 @@ func GetChannelShims(config *cfg.MempoolConfig) map[p2p.ChannelID]*p2p.ChannelDe
 // messages on that p2p channel accordingly. The caller must be sure to execute
 // OnStop to ensure the outbound p2p Channels are closed.
 func (r *Reactor) OnStart() error {
-	if !r.config.Broadcast {
+	if !r.cfg.Broadcast {
 		r.Logger.Info("tx broadcasting is disabled")
 	}
 
@@ -178,7 +178,7 @@ func (r *Reactor) handleMempoolMessage(envelope p2p.Envelope) error {
 
 		for _, tx := range protoTxs {
 			if err := r.mempool.CheckTx(context.Background(), types.Tx(tx), nil, txInfo); err != nil {
-				logger.Error("checktx failed for tx", "tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(tx)), "err", err)
+				logger.Error("checktx failed for tx", "tx", fmt.Sprintf("%X", types.Tx(tx).Hash()), "err", err)
 			}
 		}
 
@@ -262,7 +262,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 			return
 		}
 
-		if r.config.Broadcast {
+		if r.cfg.Broadcast {
 			// Check if we've already started a goroutine for this peer, if not we create
 			// a new done channel so we can explicitly close the goroutine if the peer
 			// is later removed, we increment the waitgroup so the reactor can stop
@@ -386,7 +386,7 @@ func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer)
 			}
 			r.Logger.Debug(
 				"gossiped tx to peer",
-				"tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(memTx.tx)),
+				"tx", fmt.Sprintf("%X", memTx.tx.Hash()),
 				"peer", peerID,
 			)
 		}

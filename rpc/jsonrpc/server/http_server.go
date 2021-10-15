@@ -16,7 +16,7 @@ import (
 	"golang.org/x/net/netutil"
 
 	"github.com/tendermint/tendermint/libs/log"
-	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 // Config is a RPC server configuration.
@@ -105,7 +105,7 @@ func ServeTLS(
 // source: https://www.jsonrpc.org/historical/json-rpc-over-http.html
 func WriteRPCResponseHTTPError(
 	w http.ResponseWriter,
-	res types.RPCResponse,
+	res rpctypes.RPCResponse,
 ) error {
 	if res.Error == nil {
 		panic("tried to write http error response without RPC error")
@@ -134,7 +134,7 @@ func WriteRPCResponseHTTPError(
 
 // WriteRPCResponseHTTP marshals res as JSON (with indent) and writes it to w.
 // If the rpc response can be cached, add cache-control to the response header.
-func WriteRPCResponseHTTP(w http.ResponseWriter, c bool, res ...types.RPCResponse) error {
+func WriteRPCResponseHTTP(w http.ResponseWriter, c bool, res ...rpctypes.RPCResponse) error {
 	var v interface{}
 	if len(res) == 1 {
 		v = res[0]
@@ -189,7 +189,7 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 			if e := recover(); e != nil {
 
 				// If RPCResponse
-				if res, ok := e.(types.RPCResponse); ok {
+				if res, ok := e.(rpctypes.RPCResponse); ok {
 					if wErr := WriteRPCResponseHTTP(rww, false, res); wErr != nil {
 						logger.Error("failed to write response", "res", res, "err", wErr)
 					}
@@ -208,7 +208,7 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 
 					logger.Error("panic in RPC HTTP handler", "err", e, "stack", string(debug.Stack()))
 
-					res := types.RPCInternalError(types.JSONRPCIntID(-1), err)
+					res := rpctypes.RPCInternalError(rpctypes.JSONRPCIntID(-1), err)
 					if wErr := WriteRPCResponseHTTPError(rww, res); wErr != nil {
 						logger.Error("failed to write response", "res", res, "err", wErr)
 					}

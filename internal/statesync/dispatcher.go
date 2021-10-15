@@ -9,7 +9,7 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/light/provider"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
-	proto "github.com/tendermint/tendermint/proto/tendermint/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -109,7 +109,7 @@ func (d *Dispatcher) dispatch(peer types.NodeID, height int64) (chan *types.Ligh
 // Respond allows the underlying process which receives requests on the
 // requestCh to respond with the respective light block. A nil response is used to
 // represent that the receiver of the request does not have a light block at that height.
-func (d *Dispatcher) Respond(lb *proto.LightBlock, peer types.NodeID) error {
+func (d *Dispatcher) Respond(lb *tmproto.LightBlock, peer types.NodeID) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 
@@ -296,4 +296,17 @@ func (l *peerList) All() []types.NodeID {
 	l.mtx.Lock()
 	defer l.mtx.Unlock()
 	return l.peers
+}
+
+func (l *peerList) Contains(id types.NodeID) bool {
+	l.mtx.Lock()
+	defer l.mtx.Unlock()
+
+	for _, p := range l.peers {
+		if id == p {
+			return true
+		}
+	}
+
+	return false
 }

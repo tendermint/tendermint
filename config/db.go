@@ -1,9 +1,10 @@
 package config
 
 import (
+	dbm "github.com/tendermint/tm-db"
+
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	db "github.com/tendermint/tm-db"
 )
 
 // ServiceProvider takes a config and a logger and returns a ready to go Node.
@@ -16,11 +17,11 @@ type DBContext struct {
 }
 
 // DBProvider takes a DBContext and returns an instantiated DB.
-type DBProvider func(*DBContext) (db.DB, error)
+type DBProvider func(*DBContext) (dbm.DB, error)
 
 // DefaultDBProvider returns a database using the DBBackend and DBDir
 // specified in the Config.
-func DefaultDBProvider(ctx *DBContext) (db.DB, error) {
-	dbType := db.BackendType(ctx.Config.DBBackend)
-	return db.NewDB(ctx.ID, dbType, ctx.Config.DBDir())
+func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
+	dbType := dbm.BackendType(ctx.Config.DBBackend)
+	return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBDir())
 }

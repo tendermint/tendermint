@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/tendermint/tendermint/rpc/client"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 )
 
 // StatusMock returns the result specified by the Call
@@ -17,12 +17,12 @@ var (
 	_ client.StatusClient = (*StatusRecorder)(nil)
 )
 
-func (m *StatusMock) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
+func (m *StatusMock) Status(ctx context.Context) (*coretypes.ResultStatus, error) {
 	res, err := m.GetResponse(nil)
 	if err != nil {
 		return nil, err
 	}
-	return res.(*ctypes.ResultStatus), nil
+	return res.(*coretypes.ResultStatus), nil
 }
 
 // StatusRecorder can wrap another type (StatusMock, full client)
@@ -43,7 +43,7 @@ func (r *StatusRecorder) addCall(call Call) {
 	r.Calls = append(r.Calls, call)
 }
 
-func (r *StatusRecorder) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
+func (r *StatusRecorder) Status(ctx context.Context) (*coretypes.ResultStatus, error) {
 	res, err := r.Client.Status(ctx)
 	r.addCall(Call{
 		Name:     "status",

@@ -14,7 +14,7 @@ import (
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/client/mock"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -36,7 +36,7 @@ func TestABCIMock(t *testing.T) {
 		// Broadcast commit depends on call
 		BroadcastCommit: mock.Call{
 			Args: goodTx,
-			Response: &ctypes.ResultBroadcastTxCommit{
+			Response: &coretypes.ResultBroadcastTxCommit{
 				CheckTx:   abci.ResponseCheckTx{Data: bytes.HexBytes("stand")},
 				DeliverTx: abci.ResponseDeliverTx{Data: bytes.HexBytes("deliver")},
 			},
@@ -112,7 +112,7 @@ func TestABCIRecorder(t *testing.T) {
 	assert.Nil(info.Error)
 	assert.Nil(info.Args)
 	require.NotNil(info.Response)
-	ir, ok := info.Response.(*ctypes.ResultABCIInfo)
+	ir, ok := info.Response.(*coretypes.ResultABCIInfo)
 	require.True(ok)
 	assert.Equal("data", ir.Response.Data)
 	assert.Equal("v0.9.9", ir.Response.Version)

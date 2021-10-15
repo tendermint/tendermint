@@ -6,18 +6,18 @@ import (
 	"fmt"
 
 	tmjson "github.com/tendermint/tendermint/libs/json"
-	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 func unmarshalResponseBytes(
 	responseBytes []byte,
-	expectedID types.JSONRPCIntID,
+	expectedID rpctypes.JSONRPCIntID,
 	result interface{},
 ) (interface{}, error) {
 
 	// Read response.  If rpc/core/types is imported, the result will unmarshal
 	// into the correct type.
-	response := &types.RPCResponse{}
+	response := &rpctypes.RPCResponse{}
 	if err := json.Unmarshal(responseBytes, response); err != nil {
 		return nil, fmt.Errorf("error unmarshaling: %w", err)
 	}
@@ -40,12 +40,12 @@ func unmarshalResponseBytes(
 
 func unmarshalResponseBytesArray(
 	responseBytes []byte,
-	expectedIDs []types.JSONRPCIntID,
+	expectedIDs []rpctypes.JSONRPCIntID,
 	results []interface{},
 ) ([]interface{}, error) {
 
 	var (
-		responses []types.RPCResponse
+		responses []rpctypes.RPCResponse
 	)
 
 	if err := json.Unmarshal(responseBytes, &responses); err != nil {
@@ -64,10 +64,10 @@ func unmarshalResponseBytesArray(
 	}
 
 	// Intersect IDs from responses with expectedIDs.
-	ids := make([]types.JSONRPCIntID, len(responses))
+	ids := make([]rpctypes.JSONRPCIntID, len(responses))
 	var ok bool
 	for i, resp := range responses {
-		ids[i], ok = resp.ID.(types.JSONRPCIntID)
+		ids[i], ok = resp.ID.(rpctypes.JSONRPCIntID)
 		if !ok {
 			return nil, fmt.Errorf("expected JSONRPCIntID, got %T", resp.ID)
 		}
@@ -85,8 +85,8 @@ func unmarshalResponseBytesArray(
 	return results, nil
 }
 
-func validateResponseIDs(ids, expectedIDs []types.JSONRPCIntID) error {
-	m := make(map[types.JSONRPCIntID]bool, len(expectedIDs))
+func validateResponseIDs(ids, expectedIDs []rpctypes.JSONRPCIntID) error {
+	m := make(map[rpctypes.JSONRPCIntID]bool, len(expectedIDs))
 	for _, expectedID := range expectedIDs {
 		m[expectedID] = true
 	}
@@ -104,11 +104,11 @@ func validateResponseIDs(ids, expectedIDs []types.JSONRPCIntID) error {
 
 // From the JSON-RPC 2.0 spec:
 // id: It MUST be the same as the value of the id member in the Request Object.
-func validateAndVerifyID(res *types.RPCResponse, expectedID types.JSONRPCIntID) error {
+func validateAndVerifyID(res *rpctypes.RPCResponse, expectedID rpctypes.JSONRPCIntID) error {
 	if err := validateResponseID(res.ID); err != nil {
 		return err
 	}
-	if expectedID != res.ID.(types.JSONRPCIntID) { // validateResponseID ensured res.ID has the right type
+	if expectedID != res.ID.(rpctypes.JSONRPCIntID) { // validateResponseID ensured res.ID has the right type
 		return fmt.Errorf("response ID (%d) does not match request ID (%d)", res.ID, expectedID)
 	}
 	return nil
@@ -118,7 +118,7 @@ func validateResponseID(id interface{}) error {
 	if id == nil {
 		return errors.New("no ID")
 	}
-	_, ok := id.(types.JSONRPCIntID)
+	_, ok := id.(rpctypes.JSONRPCIntID)
 	if !ok {
 		return fmt.Errorf("expected JSONRPCIntID, but got: %T", id)
 	}

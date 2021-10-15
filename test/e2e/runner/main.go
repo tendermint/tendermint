@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -12,9 +14,9 @@ import (
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
-var (
-	logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
-)
+const randomSeed = 2308084734268
+
+var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 
 func main() {
 	NewCLI().Run()
@@ -48,20 +50,25 @@ func NewCLI() *CLI {
 			cli.testnet = testnet
 			return nil
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := Cleanup(cli.testnet); err != nil {
+		RunE: func(cmd *cobra.Command, args []string) (err error) {
+			if err = Cleanup(cli.testnet); err != nil {
 				return err
 			}
 			defer func() {
 				if cli.preserve {
 					logger.Info("Preserving testnet contents because -preserve=true")
+				} else if err != nil {
+					logger.Info("Preserving testnet that encountered error",
+						"err", err)
 				} else if err := Cleanup(cli.testnet); err != nil {
 					logger.Error("Error cleaning up testnet contents", "err", err)
 				}
 			}()
-			if err := Setup(cli.testnet); err != nil {
+			if err = Setup(cli.testnet); err != nil {
 				return err
 			}
+
+			r := rand.New(rand.NewSource(randomSeed)) // nolint: gosec
 
 			chLoadResult := make(chan error)
 			ctx, cancel := context.WithCancel(cmd.Context())
@@ -70,41 +77,54 @@ func NewCLI() *CLI {
 			lctx, loadCancel := context.WithCancel(ctx)
 			defer loadCancel()
 			go func() {
-				chLoadResult <- Load(lctx, cli.testnet)
+				chLoadResult <- Load(lctx, r, cli.testnet)
 			}()
-
-			if err := Start(ctx, cli.testnet); err != nil {
+			startAt := time.Now()
+			if err = Start(ctx, cli.testnet); err != nil {
 				return err
 			}
 
-			if err := Wait(ctx, cli.testnet, 5); err != nil { // allow some txs to go through
+			if err = Wait(ctx, cli.testnet, 5); err != nil { // allow some txs to go through
 				return err
 			}
 
 			if cli.testnet.HasPerturbations() {
-				if err := Perturb(ctx, cli.testnet); err != nil {
+				if err = Perturb(ctx, cli.testnet); err != nil {
 					return err
 				}
-				if err := Wait(ctx, cli.testnet, 5); err != nil { // allow some txs to go through
+				if err = Wait(ctx, cli.testnet, 5); err != nil { // allow some txs to go through
 					return err
 				}
 			}
 
 			if cli.testnet.Evidence > 0 {
-				if err := InjectEvidence(ctx, cli.testnet, cli.testnet.Evidence); err != nil {
+				if err = InjectEvidence(ctx, r, cli.testnet, cli.testnet.Evidence); err != nil {
 					return err
 				}
-				if err := Wait(ctx, cli.testnet, 5); err != nil { // ensure chain progress
+				if err = Wait(ctx, cli.testnet, 5); err != nil { // ensure chain progress
 					return err
 				}
+			}
+
+			// to help make sure that we don't run into
+			// situations where 0 transactions have
+			// happened on quick cases, we make sure that
+			// it's been at least 10s before canceling the
+			// load generator.
+			//
+			// TODO allow the load generator to report
+			// successful transactions to avoid needing
+			// this sleep.
+			if rest := time.Since(startAt); rest < 15*time.Second {
+				time.Sleep(15*time.Second - rest)
 			}
 
 			loadCancel()
 
-			if err := <-chLoadResult; err != nil {
+			if err = <-chLoadResult; err != nil {
 				return fmt.Errorf("transaction load failed: %w", err)
 			}
-			if err := Wait(ctx, cli.testnet, 5); err != nil { // wait for network to settle before tests
+			if err = Wait(ctx, cli.testnet, 5); err != nil { // wait for network to settle before tests
 				return err
 			}
 			if err := Test(cli.testnet); err != nil {
@@ -195,7 +215,11 @@ func NewCLI() *CLI {
 		Use:   "load",
 		Short: "Generates transaction load until the command is canceled",
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			return Load(context.Background(), cli.testnet)
+			return Load(
+				cmd.Context(),
+				rand.New(rand.NewSource(randomSeed)), // nolint: gosec
+				cli.testnet,
+			)
 		},
 	})
 
@@ -213,7 +237,12 @@ func NewCLI() *CLI {
 				}
 			}
 
-			return InjectEvidence(cmd.Context(), cli.testnet, amount)
+			return InjectEvidence(
+				cmd.Context(),
+				rand.New(rand.NewSource(randomSeed)), // nolint: gosec
+				cli.testnet,
+				amount,
+			)
 		},
 	})
 
@@ -285,10 +314,12 @@ Does not run any perbutations.
 			ctx, cancel := context.WithCancel(cmd.Context())
 			defer cancel()
 
+			r := rand.New(rand.NewSource(randomSeed)) // nolint: gosec
+
 			lctx, loadCancel := context.WithCancel(ctx)
 			defer loadCancel()
 			go func() {
-				err := Load(lctx, cli.testnet)
+				err := Load(lctx, r, cli.testnet)
 				chLoadResult <- err
 			}()
 

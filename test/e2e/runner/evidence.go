@@ -28,14 +28,14 @@ const lightClientEvidenceRatio = 4
 // evidence and broadcasts it to a random node through the rpc endpoint `/broadcast_evidence`.
 // Evidence is random and can be a mixture of LightClientAttackEvidence and
 // DuplicateVoteEvidence.
-func InjectEvidence(ctx context.Context, testnet *e2e.Testnet, amount int) error {
+func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amount int) error {
 	// select a random node
 	var targetNode *e2e.Node
 
-	for _, idx := range rand.Perm(len(testnet.Nodes)) {
+	for _, idx := range r.Perm(len(testnet.Nodes)) {
 		targetNode = testnet.Nodes[idx]
 
-		if targetNode.Mode == e2e.ModeSeed {
+		if targetNode.Mode == e2e.ModeSeed || targetNode.Mode == e2e.ModeLight {
 			targetNode = nil
 			continue
 		}

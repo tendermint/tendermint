@@ -89,7 +89,7 @@ proto-gen:
 .PHONY: proto-gen
 
 proto-lint:
-	@$(DOCKER_BUF) check lint --error-format=json
+	@$(DOCKER_BUF) lint --error-format=json
 .PHONY: proto-lint
 
 proto-format:
@@ -98,11 +98,11 @@ proto-format:
 .PHONY: proto-format
 
 proto-check-breaking:
-	@$(DOCKER_BUF) check breaking --against-input .git#branch=master
+	@$(DOCKER_BUF) breaking --against .git#branch=master
 .PHONY: proto-check-breaking
 
 proto-check-breaking-ci:
-	@$(DOCKER_BUF) check breaking --against-input $(HTTPS_GIT)#branch=master
+	@$(DOCKER_BUF) breaking --against $(HTTPS_GIT)#branch=master
 .PHONY: proto-check-breaking-ci
 
 ###############################################################################
@@ -131,11 +131,11 @@ generate_test_cert:
 	# generate server cerificate
 	@certstrap request-cert -cn server -ip 127.0.0.1
 	# self-sign server cerificate with rootCA
-	@certstrap sign server --CA "root CA" 
+	@certstrap sign server --CA "root CA"
 	# generate client cerificate
 	@certstrap request-cert -cn client -ip 127.0.0.1
 	# self-sign client cerificate with rootCA
-	@certstrap sign client --CA "root CA" 
+	@certstrap sign client --CA "root CA"
 .PHONY: generate_test_cert
 
 ###############################################################################
@@ -214,7 +214,7 @@ DESTINATION = ./index.html.md
 build-docs:
 	@cd docs && \
 	while read -r branch path_prefix; do \
-		(git checkout $${branch} && npm install && VUEPRESS_BASE="/$${path_prefix}/" npm run build) ; \
+		(git checkout $${branch} && npm ci && VUEPRESS_BASE="/$${path_prefix}/" npm run build) ; \
 		mkdir -p ~/output/$${path_prefix} ; \
 		cp -r .vuepress/dist/* ~/output/$${path_prefix}/ ; \
 		cp ~/output/$${path_prefix}/index.html ~/output ; \
@@ -227,13 +227,13 @@ build-docs:
 
 build-docker: build-linux
 	cp $(BUILDDIR)/tendermint DOCKER/tendermint
-	docker build --label=tendermint --tag="tendermint/tendermint" DOCKER
+	docker build --label=tendermint --tag="tendermint/tendermint" -f DOCKER/Dockerfile .
 	rm -rf DOCKER/tendermint
 .PHONY: build-docker
 
 
 ###############################################################################
-###                       Mocks 											###
+###                                Mocks                                    ###
 ###############################################################################
 
 mockery:

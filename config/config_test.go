@@ -66,33 +66,12 @@ func TestRPCConfigValidateBasic(t *testing.T) {
 	assert.NoError(t, cfg.ValidateBasic())
 
 	fieldsToTest := []string{
-		"GRPCMaxOpenConnections",
 		"MaxOpenConnections",
 		"MaxSubscriptionClients",
 		"MaxSubscriptionsPerClient",
 		"TimeoutBroadcastTxCommit",
 		"MaxBodyBytes",
 		"MaxHeaderBytes",
-	}
-
-	for _, fieldName := range fieldsToTest {
-		reflect.ValueOf(cfg).Elem().FieldByName(fieldName).SetInt(-1)
-		assert.Error(t, cfg.ValidateBasic())
-		reflect.ValueOf(cfg).Elem().FieldByName(fieldName).SetInt(0)
-	}
-}
-
-func TestP2PConfigValidateBasic(t *testing.T) {
-	cfg := TestP2PConfig()
-	assert.NoError(t, cfg.ValidateBasic())
-
-	fieldsToTest := []string{
-		"MaxNumInboundPeers",
-		"MaxNumOutboundPeers",
-		"FlushThrottleTimeout",
-		"MaxPacketMsgPayloadSize",
-		"SendRate",
-		"RecvRate",
 	}
 
 	for _, fieldName := range fieldsToTest {
@@ -128,13 +107,6 @@ func TestStateSyncConfigValidateBasic(t *testing.T) {
 func TestBlockSyncConfigValidateBasic(t *testing.T) {
 	cfg := TestBlockSyncConfig()
 	assert.NoError(t, cfg.ValidateBasic())
-
-	// tamper with version
-	cfg.Version = "v2"
-	assert.Error(t, cfg.ValidateBasic())
-
-	cfg.Version = "invalid"
-	assert.Error(t, cfg.ValidateBasic())
 }
 
 func TestConsensusConfig_ValidateBasic(t *testing.T) {

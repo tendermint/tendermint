@@ -71,6 +71,7 @@ type Testnet struct {
 	Evidence         int
 	LogLevel         string
 	TxSize           int64
+	ABCIProtocol     string
 }
 
 // Node represents a Tendermint node in a testnet.
@@ -96,7 +97,6 @@ type Node struct {
 	PersistentPeers  []*Node
 	Perturbations    []Perturbation
 	LogLevel         string
-	UseLegacyP2P     bool
 	QueueType        string
 	HasStarted       bool
 }
@@ -141,6 +141,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 		KeyType:          "ed25519",
 		LogLevel:         manifest.LogLevel,
 		TxSize:           manifest.TxSize,
+		ABCIProtocol:     manifest.ABCIProtocol,
 	}
 	if len(manifest.KeyType) != 0 {
 		testnet.KeyType = manifest.KeyType
@@ -150,6 +151,9 @@ func LoadTestnet(file string) (*Testnet, error) {
 	}
 	if manifest.InitialHeight > 0 {
 		testnet.InitialHeight = manifest.InitialHeight
+	}
+	if testnet.ABCIProtocol == "" {
+		testnet.ABCIProtocol = string(ProtocolBuiltin)
 	}
 
 	// Set up nodes, in alphabetical order (IPs and ports get same order).
@@ -170,10 +174,10 @@ func LoadTestnet(file string) (*Testnet, error) {
 			ProxyPort:        proxyPortGen.Next(),
 			Mode:             ModeValidator,
 			Database:         "goleveldb",
-			ABCIProtocol:     ProtocolBuiltin,
+			ABCIProtocol:     Protocol(testnet.ABCIProtocol),
 			PrivvalProtocol:  ProtocolFile,
 			StartAt:          nodeManifest.StartAt,
-			BlockSync:        nodeManifest.BlockSync,
+			BlockSync:        "v0",
 			Mempool:          nodeManifest.Mempool,
 			StateSync:        nodeManifest.StateSync,
 			PersistInterval:  1,
@@ -182,20 +186,18 @@ func LoadTestnet(file string) (*Testnet, error) {
 			Perturbations:    []Perturbation{},
 			LogLevel:         manifest.LogLevel,
 			QueueType:        manifest.QueueType,
-			UseLegacyP2P:     nodeManifest.UseLegacyP2P,
 		}
-
 		if node.StartAt == testnet.InitialHeight {
 			node.StartAt = 0 // normalize to 0 for initial nodes, since code expects this
 		}
 		if nodeManifest.Mode != "" {
 			node.Mode = Mode(nodeManifest.Mode)
 		}
+		if node.Mode == ModeLight {
+			node.ABCIProtocol = ProtocolBuiltin
+		}
 		if nodeManifest.Database != "" {
 			node.Database = nodeManifest.Database
-		}
-		if nodeManifest.ABCIProtocol != "" {
-			node.ABCIProtocol = Protocol(nodeManifest.ABCIProtocol)
 		}
 		if nodeManifest.PrivvalProtocol != "" {
 			node.PrivvalProtocol = Protocol(nodeManifest.PrivvalProtocol)
@@ -349,7 +351,7 @@ func (n Node) Validate(testnet Testnet) error {
 		return fmt.Errorf("invalid mempool version %q", n.Mempool)
 	}
 	switch n.QueueType {
-	case "", "priority", "wdrr", "fifo":
+	case "", "priority", "fifo":
 	default:
 		return fmt.Errorf("unsupported p2p queue type: %s", n.QueueType)
 	}

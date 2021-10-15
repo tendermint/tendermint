@@ -7,7 +7,7 @@ import (
 	"time"
 
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
-	rpctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/coretypes"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/types"
 )
@@ -171,18 +171,18 @@ func waitForNode(ctx context.Context, node *e2e.Node, height int64) (*rpctypes.R
 				return nil, err
 			case err == nil && status.SyncInfo.LatestBlockHeight >= height:
 				return status, nil
-			case counter%100 == 0:
+			case counter%500 == 0:
 				switch {
 				case err != nil:
 					lastFailed = true
 					logger.Error("node not yet ready",
 						"iter", counter,
 						"node", node.Name,
-						"err", err,
 						"target", height,
+						"err", err,
 					)
 				case status != nil:
-					logger.Error("node not yet ready",
+					logger.Info("node not yet ready",
 						"iter", counter,
 						"node", node.Name,
 						"height", status.SyncInfo.LatestBlockHeight,

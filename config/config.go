@@ -30,7 +30,6 @@ const (
 	ModeSeed      = "seed"
 
 	BlockSyncV0 = "v0"
-	BlockSyncV2 = "v2"
 
 	MempoolV0 = "v0"
 	MempoolV1 = "v1"
@@ -54,16 +53,14 @@ var (
 	defaultPrivValKeyName   = "priv_validator_key.json"
 	defaultPrivValStateName = "priv_validator_state.json"
 
-	defaultNodeKeyName  = "node_key.json"
-	defaultAddrBookName = "addrbook.json"
+	defaultNodeKeyName = "node_key.json"
 
 	defaultConfigFilePath   = filepath.Join(defaultConfigDir, defaultConfigFileName)
 	defaultGenesisJSONPath  = filepath.Join(defaultConfigDir, defaultGenesisJSONName)
 	defaultPrivValKeyPath   = filepath.Join(defaultConfigDir, defaultPrivValKeyName)
 	defaultPrivValStatePath = filepath.Join(defaultDataDir, defaultPrivValStateName)
 
-	defaultNodeKeyPath  = filepath.Join(defaultConfigDir, defaultNodeKeyName)
-	defaultAddrBookPath = filepath.Join(defaultConfigDir, defaultAddrBookName)
+	defaultNodeKeyPath = filepath.Join(defaultConfigDir, defaultNodeKeyName)
 )
 
 // Config defines the top level configuration for a Tendermint node
@@ -141,9 +138,6 @@ func (cfg *Config) ValidateBasic() error {
 	}
 	if err := cfg.RPC.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [rpc] section: %w", err)
-	}
-	if err := cfg.P2P.ValidateBasic(); err != nil {
-		return fmt.Errorf("error in [p2p] section: %w", err)
 	}
 	if err := cfg.Mempool.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [mempool] section: %w", err)
@@ -461,24 +455,10 @@ type RPCConfig struct {
 	// A list of non simple headers the client is allowed to use with cross-domain requests.
 	CORSAllowedHeaders []string `mapstructure:"cors-allowed-headers"`
 
-	// TCP or UNIX socket address for the gRPC server to listen on
-	// NOTE: This server only supports /broadcast_tx_commit
-	// Deprecated: gRPC in the RPC layer of Tendermint will be removed in 0.36.
-	GRPCListenAddress string `mapstructure:"grpc-laddr"`
-
-	// Maximum number of simultaneous connections.
-	// Does not include RPC (HTTP&WebSocket) connections. See max-open-connections
-	// If you want to accept a larger number than the default, make sure
-	// you increase your OS limits.
-	// 0 - unlimited.
-	// Deprecated: gRPC in the RPC layer of Tendermint will be removed in 0.36.
-	GRPCMaxOpenConnections int `mapstructure:"grpc-max-open-connections"`
-
 	// Activate unsafe RPC commands like /dial-persistent-peers and /unsafe-flush-mempool
 	Unsafe bool `mapstructure:"unsafe"`
 
 	// Maximum number of simultaneous connections (including WebSocket).
-	// Does not include gRPC connections. See grpc-max-open-connections
 	// If you want to accept a larger number than the default, make sure
 	// you increase your OS limits.
 	// 0 - unlimited.
@@ -492,7 +472,7 @@ type RPCConfig struct {
 	MaxSubscriptionClients int `mapstructure:"max-subscription-clients"`
 
 	// Maximum number of unique queries a given client can /subscribe to
-	// If you're using GRPC (or Local RPC client) and /broadcast_tx_commit, set
+	// If you're using a Local RPC client and /broadcast_tx_commit, set this
 	// to the estimated maximum number of broadcast_tx_commit calls per block.
 	MaxSubscriptionsPerClient int `mapstructure:"max-subscriptions-per-client"`
 
@@ -533,12 +513,10 @@ type RPCConfig struct {
 // DefaultRPCConfig returns a default configuration for the RPC server
 func DefaultRPCConfig() *RPCConfig {
 	return &RPCConfig{
-		ListenAddress:          "tcp://127.0.0.1:26657",
-		CORSAllowedOrigins:     []string{},
-		CORSAllowedMethods:     []string{http.MethodHead, http.MethodGet, http.MethodPost},
-		CORSAllowedHeaders:     []string{"Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"},
-		GRPCListenAddress:      "",
-		GRPCMaxOpenConnections: 900,
+		ListenAddress:      "tcp://127.0.0.1:26657",
+		CORSAllowedOrigins: []string{},
+		CORSAllowedMethods: []string{http.MethodHead, http.MethodGet, http.MethodPost},
+		CORSAllowedHeaders: []string{"Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"},
 
 		Unsafe:             false,
 		MaxOpenConnections: 900,
@@ -559,7 +537,6 @@ func DefaultRPCConfig() *RPCConfig {
 func TestRPCConfig() *RPCConfig {
 	cfg := DefaultRPCConfig()
 	cfg.ListenAddress = "tcp://127.0.0.1:36657"
-	cfg.GRPCListenAddress = "tcp://127.0.0.1:36658"
 	cfg.Unsafe = true
 	return cfg
 }
@@ -567,9 +544,6 @@ func TestRPCConfig() *RPCConfig {
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg *RPCConfig) ValidateBasic() error {
-	if cfg.GRPCMaxOpenConnections < 0 {
-		return errors.New("grpc-max-open-connections can't be negative")
-	}
 	if cfg.MaxOpenConnections < 0 {
 		return errors.New("max-open-connections can't be negative")
 	}
@@ -647,25 +621,6 @@ type P2PConfig struct { //nolint: maligned
 	// UPNP port forwarding
 	UPNP bool `mapstructure:"upnp"`
 
-	// Path to address book
-	AddrBook string `mapstructure:"addr-book-file"`
-
-	// Set true for strict address routability rules
-	// Set false for private or local networks
-	AddrBookStrict bool `mapstructure:"addr-book-strict"`
-
-	// Maximum number of inbound peers
-	//
-	// TODO: Remove once p2p refactor is complete in favor of MaxConnections.
-	// ref: https://github.com/tendermint/tendermint/issues/5670
-	MaxNumInboundPeers int `mapstructure:"max-num-inbound-peers"`
-
-	// Maximum number of outbound peers to connect to, excluding persistent peers.
-	//
-	// TODO: Remove once p2p refactor is complete in favor of MaxConnections.
-	// ref: https://github.com/tendermint/tendermint/issues/5670
-	MaxNumOutboundPeers int `mapstructure:"max-num-outbound-peers"`
-
 	// MaxConnections defines the maximum number of connected peers (inbound and
 	// outbound).
 	MaxConnections uint16 `mapstructure:"max-connections"`
@@ -673,24 +628,6 @@ type P2PConfig struct { //nolint: maligned
 	// MaxIncomingConnectionAttempts rate limits the number of incoming connection
 	// attempts per IP address.
 	MaxIncomingConnectionAttempts uint `mapstructure:"max-incoming-connection-attempts"`
-
-	// List of node IDs, to which a connection will be (re)established ignoring any existing limits
-	UnconditionalPeerIDs string `mapstructure:"unconditional-peer-ids"`
-
-	// Maximum pause when redialing a persistent peer (if zero, exponential backoff is used)
-	PersistentPeersMaxDialPeriod time.Duration `mapstructure:"persistent-peers-max-dial-period"`
-
-	// Time to wait before flushing messages out on the connection
-	FlushThrottleTimeout time.Duration `mapstructure:"flush-throttle-timeout"`
-
-	// Maximum size of a message packet payload, in bytes
-	MaxPacketMsgPayloadSize int `mapstructure:"max-packet-msg-payload-size"`
-
-	// Rate at which packets can be sent, in bytes/second
-	SendRate int64 `mapstructure:"send-rate"`
-
-	// Rate at which packets can be received, in bytes/second
-	RecvRate int64 `mapstructure:"recv-rate"`
 
 	// Set true to enable the peer-exchange reactor
 	PexReactor bool `mapstructure:"pex"`
@@ -710,13 +647,8 @@ type P2PConfig struct { //nolint: maligned
 	// Force dial to fail
 	TestDialFail bool `mapstructure:"test-dial-fail"`
 
-	// UseLegacy enables the "legacy" P2P implementation and
-	// disables the newer default implementation. This flag will
-	// be removed in a future release.
-	UseLegacy bool `mapstructure:"use-legacy"`
-
 	// Makes it possible to configure which queue backend the p2p
-	// layer uses. Options are: "fifo", "priority" and "wdrr",
+	// layer uses. Options are: "fifo" and "priority",
 	// with the default being "priority".
 	QueueType string `mapstructure:"queue-type"`
 }
@@ -727,29 +659,14 @@ func DefaultP2PConfig() *P2PConfig {
 		ListenAddress:                 "tcp://0.0.0.0:26656",
 		ExternalAddress:               "",
 		UPNP:                          false,
-		AddrBook:                      defaultAddrBookPath,
-		AddrBookStrict:                true,
-		MaxNumInboundPeers:            40,
-		MaxNumOutboundPeers:           10,
 		MaxConnections:                64,
 		MaxIncomingConnectionAttempts: 100,
-		PersistentPeersMaxDialPeriod:  0 * time.Second,
-		FlushThrottleTimeout:          100 * time.Millisecond,
-		// The MTU (Maximum Transmission Unit) for Ethernet is 1500 bytes.
-		// The IP header and the TCP header take up 20 bytes each at least (unless
-		// optional header fields are used) and thus the max for (non-Jumbo frame)
-		// Ethernet is 1500 - 20 -20 = 1460
-		// Source: https://stackoverflow.com/a/3074427/820520
-		MaxPacketMsgPayloadSize: 1400,
-		SendRate:                5120000, // 5 mB/s
-		RecvRate:                5120000, // 5 mB/s
-		PexReactor:              true,
-		AllowDuplicateIP:        false,
-		HandshakeTimeout:        20 * time.Second,
-		DialTimeout:             3 * time.Second,
-		TestDialFail:            false,
-		QueueType:               "priority",
-		UseLegacy:               false,
+		PexReactor:                    true,
+		AllowDuplicateIP:              false,
+		HandshakeTimeout:              20 * time.Second,
+		DialTimeout:                   3 * time.Second,
+		TestDialFail:                  false,
+		QueueType:                     "priority",
 	}
 }
 
@@ -757,41 +674,8 @@ func DefaultP2PConfig() *P2PConfig {
 func TestP2PConfig() *P2PConfig {
 	cfg := DefaultP2PConfig()
 	cfg.ListenAddress = "tcp://127.0.0.1:36656"
-	cfg.FlushThrottleTimeout = 10 * time.Millisecond
 	cfg.AllowDuplicateIP = true
 	return cfg
-}
-
-// AddrBookFile returns the full path to the address book
-func (cfg *P2PConfig) AddrBookFile() string {
-	return rootify(cfg.AddrBook, cfg.RootDir)
-}
-
-// ValidateBasic performs basic validation (checking param bounds, etc.) and
-// returns an error if any check fails.
-func (cfg *P2PConfig) ValidateBasic() error {
-	if cfg.MaxNumInboundPeers < 0 {
-		return errors.New("max-num-inbound-peers can't be negative")
-	}
-	if cfg.MaxNumOutboundPeers < 0 {
-		return errors.New("max-num-outbound-peers can't be negative")
-	}
-	if cfg.FlushThrottleTimeout < 0 {
-		return errors.New("flush-throttle-timeout can't be negative")
-	}
-	if cfg.PersistentPeersMaxDialPeriod < 0 {
-		return errors.New("persistent-peers-max-dial-period can't be negative")
-	}
-	if cfg.MaxPacketMsgPayloadSize < 0 {
-		return errors.New("max-packet-msg-payload-size can't be negative")
-	}
-	if cfg.SendRate < 0 {
-		return errors.New("send-rate can't be negative")
-	}
-	if cfg.RecvRate < 0 {
-		return errors.New("recv-rate can't be negative")
-	}
-	return nil
 }
 
 //-----------------------------------------------------------------------------
@@ -1025,15 +909,13 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 // allows them to catchup quickly by downloading blocks in parallel
 // and verifying their commits.
 type BlockSyncConfig struct {
-	Enable  bool   `mapstructure:"enable"`
-	Version string `mapstructure:"version"`
+	Enable bool `mapstructure:"enable"`
 }
 
 // DefaultBlockSyncConfig returns a default configuration for the block sync service
 func DefaultBlockSyncConfig() *BlockSyncConfig {
 	return &BlockSyncConfig{
-		Enable:  true,
-		Version: BlockSyncV0,
+		Enable: true,
 	}
 }
 
@@ -1043,16 +925,7 @@ func TestBlockSyncConfig() *BlockSyncConfig {
 }
 
 // ValidateBasic performs basic validation.
-func (cfg *BlockSyncConfig) ValidateBasic() error {
-	switch cfg.Version {
-	case BlockSyncV0:
-		return nil
-	case BlockSyncV2:
-		return errors.New("blocksync version v2 is no longer supported. Please use v0")
-	default:
-		return fmt.Errorf("unknown blocksync version %s", cfg.Version)
-	}
-}
+func (cfg *BlockSyncConfig) ValidateBasic() error { return nil }
 
 //-----------------------------------------------------------------------------
 // ConsensusConfig

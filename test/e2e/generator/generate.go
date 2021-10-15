@@ -15,8 +15,7 @@ var (
 	// separate testnet for each combination (Cartesian product) of options.
 	testnetCombinations = map[string][]interface{}{
 		"topology":      {"single", "quad", "large"},
-		"p2p":           {NewP2PMode, LegacyP2PMode, HybridP2PMode},
-		"queueType":     {"priority"}, // "fifo", "wdrr"
+		"queueType":     {"priority"}, // "fifo"
 		"initialHeight": {0, 1000},
 		"initialState": {
 			map[string]string{},
@@ -45,21 +44,30 @@ var (
 		"tcp":  20,
 		"unix": 10,
 	}
-	// FIXME: v2 disabled due to flake
-	nodeBlockSyncs        = uniformChoice{"v0"} // "v2"
-	nodeMempools          = uniformChoice{"v0", "v1"}
-	nodeStateSyncs        = uniformChoice{e2e.StateSyncDisabled, e2e.StateSyncP2P, e2e.StateSyncRPC}
+	nodeMempools = weightedChoice{
+		"v0": 20,
+		"v1": 80,
+	}
+	nodeStateSyncs = weightedChoice{
+		e2e.StateSyncDisabled: 10,
+		e2e.StateSyncP2P:      45,
+		e2e.StateSyncRPC:      45,
+	}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
-	nodeSnapshotIntervals = uniformChoice{0, 3}
-	nodeRetainBlocks      = uniformChoice{0, 2 * int(e2e.EvidenceAgeHeight), 4 * int(e2e.EvidenceAgeHeight)}
-	nodePerturbations     = probSetChoice{
+	nodeSnapshotIntervals = uniformChoice{0, 5}
+	nodeRetainBlocks      = uniformChoice{
+		0,
+		2 * int(e2e.EvidenceAgeHeight),
+		4 * int(e2e.EvidenceAgeHeight),
+	}
+	nodePerturbations = probSetChoice{
 		"disconnect": 0.1,
 		"pause":      0.1,
 		"kill":       0.1,
 		"restart":    0.1,
 	}
 	evidence = uniformChoice{0, 1, 10}
-	txSize   = uniformChoice{1024, 10240} // either 1kb or 10kb
+	txSize   = uniformChoice{1024, 4096} // either 1kb or 4kb
 	ipv6     = uniformChoice{false, true}
 	keyType  = uniformChoice{types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1}
 )
@@ -67,12 +75,6 @@ var (
 // Generate generates random testnets using the given RNG.
 func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 	manifests := []e2e.Manifest{}
-	switch opts.P2P {
-	case NewP2PMode, LegacyP2PMode, HybridP2PMode:
-		testnetCombinations["p2p"] = []interface{}{opts.P2P}
-	default:
-		testnetCombinations["p2p"] = []interface{}{NewP2PMode, LegacyP2PMode, HybridP2PMode}
-	}
 
 	for _, opt := range combinations(testnetCombinations) {
 		manifest, err := generateTestnet(r, opt)
@@ -80,42 +82,33 @@ func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 			return nil, err
 		}
 
-		if len(manifest.Nodes) == 1 {
-			if opt["p2p"] == HybridP2PMode {
-				continue
-			}
+		if len(manifest.Nodes) < opts.MinNetworkSize {
+			continue
 		}
-		manifests = append(manifests, manifest)
-	}
 
-	if opts.Sorted {
-		// When the sorted flag is set (generally, as long as
-		// groups aren't set),
-		e2e.SortManifests(manifests)
+		if opts.MaxNetworkSize > 0 && len(manifest.Nodes) >= opts.MaxNetworkSize {
+			continue
+		}
+
+		manifests = append(manifests, manifest)
 	}
 
 	return manifests, nil
 }
 
 type Options struct {
-	P2P    P2PMode
-	Sorted bool
+	MinNetworkSize int
+	MaxNetworkSize int
+	NumGroups      int
+	Directory      string
+	Reverse        bool
 }
-
-type P2PMode string
-
-const (
-	NewP2PMode    P2PMode = "new"
-	LegacyP2PMode P2PMode = "legacy"
-	HybridP2PMode P2PMode = "hybrid"
-	// mixed means that all combination are generated
-	MixedP2PMode P2PMode = "mixed"
-)
 
 // generateTestnet generates a single testnet with the given options.
 func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, error) {
 	manifest := e2e.Manifest{
 		IPv6:             ipv6.Choose(r).(bool),
+		ABCIProtocol:     nodeABCIProtocols.Choose(r),
 		InitialHeight:    int64(opt["initialHeight"].(int)),
 		InitialState:     opt["initialState"].(map[string]string),
 		Validators:       &map[string]int64{},
@@ -127,13 +120,6 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		TxSize:           int64(txSize.Choose(r).(int)),
 	}
 
-	p2pMode := opt["p2p"].(P2PMode)
-	switch p2pMode {
-	case NewP2PMode, LegacyP2PMode, HybridP2PMode:
-	default:
-		return manifest, fmt.Errorf("unknown p2p mode %s", p2pMode)
-	}
-
 	var numSeeds, numValidators, numFulls, numLightClients int
 	switch opt["topology"].(string) {
 	case "single":
@@ -142,8 +128,8 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		numValidators = 4
 	case "large":
 		// FIXME Networks are kept small since large ones use too much CPU.
-		numSeeds = r.Intn(2)
-		numLightClients = r.Intn(3)
+		numSeeds = r.Intn(1)
+		numLightClients = r.Intn(2)
 		numValidators = 4 + r.Intn(4)
 		numFulls = r.Intn(4)
 	default:
@@ -152,17 +138,11 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 
 	// First we generate seed nodes, starting at the initial height.
 	for i := 1; i <= numSeeds; i++ {
-		node := generateNode(r, e2e.ModeSeed, 0, manifest.InitialHeight, false)
-
-		switch p2pMode {
-		case LegacyP2PMode:
-			node.UseLegacyP2P = true
-		case HybridP2PMode:
-			node.UseLegacyP2P = r.Intn(2) == 1
-		}
-
+		node := generateNode(r, manifest, e2e.ModeSeed, 0, false)
 		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = node
 	}
+
+	var numSyncingNodes = 0
 
 	// Next, we generate validators. We make sure a BFT quorum of validators start
 	// at the initial height, and that we have two archive nodes. We also set up
@@ -171,20 +151,13 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	quorum := numValidators*2/3 + 1
 	for i := 1; i <= numValidators; i++ {
 		startAt := int64(0)
-		if i > quorum {
+		if i > quorum && numSyncingNodes < 2 && r.Float64() >= 0.25 {
+			numSyncingNodes++
 			startAt = nextStartAt
 			nextStartAt += 5
 		}
 		name := fmt.Sprintf("validator%02d", i)
-		node := generateNode(
-			r, e2e.ModeValidator, startAt, manifest.InitialHeight, i <= 2)
-
-		switch p2pMode {
-		case LegacyP2PMode:
-			node.UseLegacyP2P = true
-		case HybridP2PMode:
-			node.UseLegacyP2P = r.Intn(2) == 1
-		}
+		node := generateNode(r, manifest, e2e.ModeValidator, startAt, i <= 2)
 
 		manifest.Nodes[name] = node
 
@@ -210,18 +183,12 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	// Finally, we generate random full nodes.
 	for i := 1; i <= numFulls; i++ {
 		startAt := int64(0)
-		if r.Float64() >= 0.5 {
+		if numSyncingNodes < 2 && r.Float64() >= 0.5 {
+			numSyncingNodes++
 			startAt = nextStartAt
 			nextStartAt += 5
 		}
-		node := generateNode(r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
-
-		switch p2pMode {
-		case LegacyP2PMode:
-			node.UseLegacyP2P = true
-		case HybridP2PMode:
-			node.UseLegacyP2P = r.Intn(2) == 1
-		}
+		node := generateNode(r, manifest, e2e.ModeFull, startAt, false)
 
 		manifest.Nodes[fmt.Sprintf("full%02d", i)] = node
 	}
@@ -263,19 +230,32 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		}
 	})
 	for i, name := range peerNames {
-		if len(seedNames) > 0 && (i == 0 || r.Float64() >= 0.5) {
+		// there are seeds, statesync is disabled, and it's
+		// either the first peer by the sort order, and
+		// (randomly half of the remaining peers use a seed
+		// node; otherwise, choose some remaining set of the
+		// peers.
+
+		if len(seedNames) > 0 &&
+			manifest.Nodes[name].StateSync == e2e.StateSyncDisabled &&
+			(i == 0 || r.Float64() >= 0.5) {
+
+			// choose one of the seeds
 			manifest.Nodes[name].Seeds = uniformSetChoice(seedNames).Choose(r)
-		} else if i > 0 {
-			manifest.Nodes[name].PersistentPeers = uniformSetChoice(peerNames[:i]).Choose(r)
+		} else if i > 1 && r.Float64() >= 0.5 {
+			peers := uniformSetChoice(peerNames[:i])
+			manifest.Nodes[name].PersistentPeers = peers.ChooseAtLeast(r, 2)
 		}
 	}
 
 	// lastly, set up the light clients
 	for i := 1; i <= numLightClients; i++ {
 		startAt := manifest.InitialHeight + 5
-		manifest.Nodes[fmt.Sprintf("light%02d", i)] = generateLightNode(
-			r, startAt+(5*int64(i)), lightProviders,
-		)
+
+		node := generateLightNode(r, startAt+(5*int64(i)), lightProviders)
+
+		manifest.Nodes[fmt.Sprintf("light%02d", i)] = node
+
 	}
 
 	return manifest, nil
@@ -286,16 +266,18 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 // here, since we need to know the overall network topology and startup
 // sequencing.
 func generateNode(
-	r *rand.Rand, mode e2e.Mode, startAt int64, initialHeight int64, forceArchive bool,
+	r *rand.Rand,
+	manifest e2e.Manifest,
+	mode e2e.Mode,
+	startAt int64,
+	forceArchive bool,
 ) *e2e.ManifestNode {
 	node := e2e.ManifestNode{
 		Mode:             string(mode),
 		StartAt:          startAt,
 		Database:         nodeDatabases.Choose(r),
-		ABCIProtocol:     nodeABCIProtocols.Choose(r),
 		PrivvalProtocol:  nodePrivvalProtocols.Choose(r),
-		BlockSync:        nodeBlockSyncs.Choose(r).(string),
-		Mempool:          nodeMempools.Choose(r).(string),
+		Mempool:          nodeMempools.Choose(r),
 		StateSync:        e2e.StateSyncDisabled,
 		PersistInterval:  ptrUint64(uint64(nodePersistIntervals.Choose(r).(int))),
 		SnapshotInterval: uint64(nodeSnapshotIntervals.Choose(r).(int)),
@@ -304,7 +286,14 @@ func generateNode(
 	}
 
 	if startAt > 0 {
-		node.StateSync = nodeStateSyncs.Choose(r).(string)
+		node.StateSync = nodeStateSyncs.Choose(r)
+		if manifest.InitialHeight-startAt <= 5 && node.StateSync == e2e.StateSyncDisabled {
+			// avoid needing to blocsync more than five total blocks.
+			node.StateSync = uniformSetChoice([]string{
+				e2e.StateSyncP2P,
+				e2e.StateSyncRPC,
+			}).Choose(r)[0]
+		}
 	}
 
 	// If this node is forced to be an archive node, retain all blocks and
@@ -335,10 +324,6 @@ func generateNode(
 		}
 	}
 
-	if node.StateSync != e2e.StateSyncDisabled {
-		node.BlockSync = "v0"
-	}
-
 	return &node
 }
 
@@ -347,7 +332,6 @@ func generateLightNode(r *rand.Rand, startAt int64, providers []string) *e2e.Man
 		Mode:            string(e2e.ModeLight),
 		StartAt:         startAt,
 		Database:        nodeDatabases.Choose(r),
-		ABCIProtocol:    "builtin",
 		PersistInterval: ptrUint64(0),
 		PersistentPeers: providers,
 	}

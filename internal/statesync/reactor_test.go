@@ -18,14 +18,14 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/proxy"
 	proxymocks "github.com/tendermint/tendermint/internal/proxy/mocks"
+	smmocks "github.com/tendermint/tendermint/internal/state/mocks"
 	"github.com/tendermint/tendermint/internal/statesync/mocks"
+	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light/provider"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	smmocks "github.com/tendermint/tendermint/state/mocks"
-	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -171,6 +171,7 @@ func setup(
 		stateProvider,
 		rts.snapshotOutCh,
 		rts.chunkOutCh,
+		rts.snapshotChannel.Done(),
 		"",
 		rts.reactor.metrics,
 	)
@@ -524,23 +525,39 @@ func TestReactor_StateProviderP2P(t *testing.T) {
 	rts.reactor.cfg.UseP2P = true
 	rts.reactor.cfg.TrustHeight = 1
 	rts.reactor.cfg.TrustHash = fmt.Sprintf("%X", chain[1].Hash())
-	ctx := context.Background()
+
+	for _, p := range []types.NodeID{peerA, peerB} {
+		if !rts.reactor.peers.Contains(p) {
+			rts.reactor.peers.Append(p)
+		}
+	}
+	require.True(t, rts.reactor.peers.Len() >= 2, "peer network not configured")
+
+	bctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ictx, cancel := context.WithTimeout(bctx, time.Second)
+	defer cancel()
+
 	rts.reactor.mtx.Lock()
-	err := rts.reactor.initStateProvider(ctx, factory.DefaultTestChainID, 1)
+	err := rts.reactor.initStateProvider(ictx, factory.DefaultTestChainID, 1)
 	rts.reactor.mtx.Unlock()
 	require.NoError(t, err)
 	rts.reactor.syncer.stateProvider = rts.reactor.stateProvider
 
-	appHash, err := rts.reactor.stateProvider.AppHash(ctx, 5)
+	actx, cancel := context.WithTimeout(bctx, 10*time.Second)
+	defer cancel()
+
+	appHash, err := rts.reactor.stateProvider.AppHash(actx, 5)
 	require.NoError(t, err)
 	require.Len(t, appHash, 32)
 
-	state, err := rts.reactor.stateProvider.State(ctx, 5)
+	state, err := rts.reactor.stateProvider.State(actx, 5)
 	require.NoError(t, err)
 	require.Equal(t, appHash, state.AppHash)
 	require.Equal(t, types.DefaultConsensusParams(), &state.ConsensusParams)
 
-	commit, err := rts.reactor.stateProvider.Commit(ctx, 5)
+	commit, err := rts.reactor.stateProvider.Commit(actx, 5)
 	require.NoError(t, err)
 	require.Equal(t, commit.BlockID, state.LastBlockID)
 

@@ -10,7 +10,7 @@ import (
 
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/rpc/client/mock"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 )
 
 func TestStatus(t *testing.T) {
@@ -18,8 +18,8 @@ func TestStatus(t *testing.T) {
 
 	m := &mock.StatusMock{
 		Call: mock.Call{
-			Response: &ctypes.ResultStatus{
-				SyncInfo: ctypes.SyncInfo{
+			Response: &coretypes.ResultStatus{
+				SyncInfo: coretypes.SyncInfo{
 					LatestBlockHash:     bytes.HexBytes("block"),
 					LatestAppHash:       bytes.HexBytes("app"),
 					LatestBlockHeight:   10,
@@ -56,7 +56,7 @@ func TestStatus(t *testing.T) {
 	assert.Nil(rs.Args)
 	assert.Nil(rs.Error)
 	require.NotNil(rs.Response)
-	st, ok := rs.Response.(*ctypes.ResultStatus)
+	st, ok := rs.Response.(*coretypes.ResultStatus)
 	require.True(ok)
 	assert.EqualValues("block", st.SyncInfo.LatestBlockHash)
 	assert.EqualValues(10, st.SyncInfo.LatestBlockHeight)

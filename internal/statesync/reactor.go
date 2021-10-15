@@ -15,13 +15,13 @@ import (
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/proxy"
+	sm "github.com/tendermint/tendermint/internal/state"
+	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -254,11 +254,11 @@ func (r *Reactor) OnStop() {
 	// Wait for all p2p Channels to be closed before returning. This ensures we
 	// can easily reason about synchronization of all p2p Channels and ensure no
 	// panics will occur.
+	<-r.peerUpdates.Done()
 	<-r.snapshotCh.Done()
 	<-r.chunkCh.Done()
 	<-r.blockCh.Done()
 	<-r.paramsCh.Done()
-	<-r.peerUpdates.Done()
 }
 
 // Sync runs a state sync, fetching snapshots and providing chunks to the
@@ -269,7 +269,10 @@ func (r *Reactor) OnStop() {
 func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 	// We need at least two peers (for cross-referencing of light blocks) before we can
 	// begin state sync
-	r.waitForEnoughPeers(ctx, 2)
+	if err := r.waitForEnoughPeers(ctx, 2); err != nil {
+		return sm.State{}, err
+	}
+
 	r.mtx.Lock()
 	if r.syncer != nil {
 		r.mtx.Unlock()
@@ -277,6 +280,7 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 	}
 
 	if err := r.initStateProvider(ctx, r.chainID, r.initialHeight); err != nil {
+		r.mtx.Unlock()
 		return sm.State{}, err
 	}
 
@@ -288,6 +292,7 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 		r.stateProvider,
 		r.snapshotCh.Out,
 		r.chunkCh.Out,
+		r.snapshotCh.Done(),
 		r.tempDir,
 		r.metrics,
 	)
@@ -302,9 +307,15 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 
 	requestSnapshotsHook := func() {
 		// request snapshots from all currently connected peers
-		r.snapshotCh.Out <- p2p.Envelope{
+		msg := p2p.Envelope{
 			Broadcast: true,
 			Message:   &ssproto.SnapshotsRequest{},
+		}
+
+		select {
+		case <-ctx.Done():
+		case <-r.closeCh:
+		case r.snapshotCh.Out <- msg:
 		}
 	}
 
@@ -498,7 +509,7 @@ func (r *Reactor) backfill(
 			}
 
 			trustedBlockID = resp.block.LastBlockID
-			queue.success(resp.block.Height)
+			queue.success()
 			r.Logger.Info("backfill: verified and stored light block", "height", resp.block.Height)
 
 			lastValidatorSet = resp.block.ValidatorSet
@@ -723,7 +734,7 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 		}
 
 	case *ssproto.LightBlockResponse:
-		var height int64 = 0
+		var height int64
 		if msg.LightBlock != nil {
 			height = msg.LightBlock.SignedHeader.Header.Height
 		}
@@ -768,7 +779,8 @@ func (r *Reactor) handleParamsMessage(envelope p2p.Envelope) error {
 		if sp, ok := r.stateProvider.(*stateProviderP2P); ok {
 			select {
 			case sp.paramsRecvCh <- cp:
-			default:
+			case <-time.After(time.Second):
+				return errors.New("failed to send consensus params, stateprovider not ready for response")
 			}
 		} else {
 			r.Logger.Debug("received unexpected params response; using RPC state provider", "peer", envelope.From)
@@ -879,17 +891,20 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	}
 
 	r.mtx.Lock()
+	defer r.mtx.Unlock()
 	if r.syncer == nil {
-		r.mtx.Unlock()
 		return
 	}
-	defer r.mtx.Unlock()
 
 	switch peerUpdate.Status {
 	case p2p.PeerStatusUp:
 		newProvider := NewBlockProvider(peerUpdate.NodeID, r.chainID, r.dispatcher)
 		r.providers[peerUpdate.NodeID] = newProvider
-		r.syncer.AddPeer(peerUpdate.NodeID)
+		err := r.syncer.AddPeer(peerUpdate.NodeID)
+		if err != nil {
+			r.Logger.Error("error adding peer to syncer", "error", err)
+			return
+		}
 		if sp, ok := r.stateProvider.(*stateProviderP2P); ok {
 			// we do this in a separate routine to not block whilst waiting for the light client to finish
 			// whatever call it's currently executing
@@ -992,19 +1007,35 @@ func (r *Reactor) fetchLightBlock(height uint64) (*types.LightBlock, error) {
 	}, nil
 }
 
-func (r *Reactor) waitForEnoughPeers(ctx context.Context, numPeers int) {
-	t := time.NewTicker(200 * time.Millisecond)
+func (r *Reactor) waitForEnoughPeers(ctx context.Context, numPeers int) error {
+	startAt := time.Now()
+	t := time.NewTicker(100 * time.Millisecond)
 	defer t.Stop()
-	for {
+	logT := time.NewTicker(time.Minute)
+	defer logT.Stop()
+	var iter int
+	for r.peers.Len() < numPeers {
+		iter++
 		select {
 		case <-ctx.Done():
-			return
+			return fmt.Errorf("operation canceled while waiting for peers after %.2fs [%d/%d]",
+				time.Since(startAt).Seconds(), r.peers.Len(), numPeers)
+		case <-r.closeCh:
+			return fmt.Errorf("shutdown while waiting for peers after %.2fs [%d/%d]",
+				time.Since(startAt).Seconds(), r.peers.Len(), numPeers)
 		case <-t.C:
-			if r.peers.Len() >= numPeers {
-				return
-			}
+			continue
+		case <-logT.C:
+			r.Logger.Info("waiting for sufficient peers to start statesync",
+				"duration", time.Since(startAt).String(),
+				"target", numPeers,
+				"peers", r.peers.Len(),
+				"iters", iter,
+			)
+			continue
 		}
 	}
+	return nil
 }
 
 func (r *Reactor) initStateProvider(ctx context.Context, chainID string, initialHeight int64) error {
@@ -1019,6 +1050,10 @@ func (r *Reactor) initStateProvider(ctx context.Context, chainID string, initial
 		"trustHeight", to.Height, "useP2P", r.cfg.UseP2P)
 
 	if r.cfg.UseP2P {
+		if err := r.waitForEnoughPeers(ctx, 2); err != nil {
+			return err
+		}
+
 		peers := r.peers.All()
 		providers := make([]provider.Provider, len(peers))
 		for idx, p := range peers {

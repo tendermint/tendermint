@@ -11,7 +11,7 @@ import (
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
@@ -36,7 +36,7 @@ type reactorTestSuite struct {
 	nodes []types.NodeID
 }
 
-func setup(t *testing.T, cfg *cfg.MempoolConfig, numNodes int, chBuf uint) *reactorTestSuite {
+func setup(t *testing.T, config *config.MempoolConfig, numNodes int, chBuf uint) *reactorTestSuite {
 	t.Helper()
 
 	rts := &reactorTestSuite{
@@ -68,7 +68,7 @@ func setup(t *testing.T, cfg *cfg.MempoolConfig, numNodes int, chBuf uint) *reac
 
 		rts.reactors[nodeID] = NewReactor(
 			rts.logger.With("nodeID", nodeID),
-			cfg,
+			config,
 			rts.network.Nodes[nodeID].PeerManager,
 			mempool,
 			rts.mempoolChnnels[nodeID],
@@ -158,9 +158,9 @@ func (rts *reactorTestSuite) waitForTxns(t *testing.T, txs types.Txs, ids ...typ
 func TestReactorBroadcastTxs(t *testing.T) {
 	numTxs := 1000
 	numNodes := 10
-	config := cfg.TestConfig()
+	cfg := config.TestConfig()
 
-	rts := setup(t, config.Mempool, numNodes, 0)
+	rts := setup(t, cfg.Mempool, numNodes, 0)
 
 	primary := rts.nodes[0]
 	secondaries := rts.nodes[1:]
@@ -185,9 +185,9 @@ func TestReactorBroadcastTxs(t *testing.T) {
 func TestReactorConcurrency(t *testing.T) {
 	numTxs := 5
 	numNodes := 2
-	config := cfg.TestConfig()
+	cfg := config.TestConfig()
 
-	rts := setup(t, config.Mempool, numNodes, 0)
+	rts := setup(t, cfg.Mempool, numNodes, 0)
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
@@ -244,9 +244,9 @@ func TestReactorConcurrency(t *testing.T) {
 func TestReactorNoBroadcastToSender(t *testing.T) {
 	numTxs := 1000
 	numNodes := 2
-	config := cfg.TestConfig()
+	cfg := config.TestConfig()
 
-	rts := setup(t, config.Mempool, numNodes, uint(numTxs))
+	rts := setup(t, cfg.Mempool, numNodes, uint(numTxs))
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
@@ -267,16 +267,16 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 
 func TestReactor_MaxTxBytes(t *testing.T) {
 	numNodes := 2
-	config := cfg.TestConfig()
+	cfg := config.TestConfig()
 
-	rts := setup(t, config.Mempool, numNodes, 0)
+	rts := setup(t, cfg.Mempool, numNodes, 0)
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
 
 	// Broadcast a tx, which has the max size and ensure it's received by the
 	// second reactor.
-	tx1 := tmrand.Bytes(config.Mempool.MaxTxBytes)
+	tx1 := tmrand.Bytes(cfg.Mempool.MaxTxBytes)
 	err := rts.reactors[primary].mempool.CheckTx(
 		context.Background(),
 		tx1,
@@ -297,7 +297,7 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	rts.reactors[secondary].mempool.Flush()
 
 	// broadcast a tx, which is beyond the max size and ensure it's not sent
-	tx2 := tmrand.Bytes(config.Mempool.MaxTxBytes + 1)
+	tx2 := tmrand.Bytes(cfg.Mempool.MaxTxBytes + 1)
 	err = rts.mempools[primary].CheckTx(context.Background(), tx2, nil, mempool.TxInfo{SenderID: mempool.UnknownPeerID})
 	require.Error(t, err)
 
@@ -305,11 +305,11 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 }
 
 func TestDontExhaustMaxActiveIDs(t *testing.T) {
-	config := cfg.TestConfig()
+	cfg := config.TestConfig()
 
 	// we're creating a single node network, but not starting the
 	// network.
-	rts := setup(t, config.Mempool, 1, mempool.MaxActiveIDs+1)
+	rts := setup(t, cfg.Mempool, 1, mempool.MaxActiveIDs+1)
 
 	nodeID := rts.nodes[0]
 
@@ -374,9 +374,9 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 		t.Skip("skipping test in short mode")
 	}
 
-	config := cfg.TestConfig()
+	cfg := config.TestConfig()
 
-	rts := setup(t, config.Mempool, 2, 0)
+	rts := setup(t, cfg.Mempool, 2, 0)
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]

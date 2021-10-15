@@ -37,7 +37,7 @@ var ResetPrivValidatorCmd = &cobra.Command{
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func resetAll(cmd *cobra.Command, args []string) error {
-	return ResetAll(config.DBDir(), config.P2P.AddrBookFile(), config.PrivValidator.KeyFile(),
+	return ResetAll(config.DBDir(), config.PrivValidator.KeyFile(),
 		config.PrivValidator.StateFile(), logger)
 }
 
@@ -49,12 +49,7 @@ func resetPrivValidator(cmd *cobra.Command, args []string) error {
 
 // ResetAll removes address book files plus all data, and resets the privValdiator data.
 // Exported so other CLI tools can use it.
-func ResetAll(dbDir, addrBookFile, privValKeyFile, privValStateFile string, logger log.Logger) error {
-	if keepAddrBook {
-		logger.Info("The address book remains intact")
-	} else {
-		removeAddrBook(addrBookFile, logger)
-	}
+func ResetAll(dbDir, privValKeyFile, privValStateFile string, logger log.Logger) error {
 	if err := os.RemoveAll(dbDir); err == nil {
 		logger.Info("Removed all blockchain history", "dir", dbDir)
 	} else {
@@ -86,12 +81,4 @@ func resetFilePV(privValKeyFile, privValStateFile string, logger log.Logger) err
 			"stateFile", privValStateFile)
 	}
 	return nil
-}
-
-func removeAddrBook(addrBookFile string, logger log.Logger) {
-	if err := os.Remove(addrBookFile); err == nil {
-		logger.Info("Removed existing address book", "file", addrBookFile)
-	} else if !os.IsNotExist(err) {
-		logger.Info("Error removing address book", "file", addrBookFile, "err", err)
-	}
 }

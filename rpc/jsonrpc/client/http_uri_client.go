@@ -7,12 +7,12 @@ import (
 	"net/http"
 	"strings"
 
-	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 const (
 	// URIClientRequestID in a request ID used by URIClient
-	URIClientRequestID = types.JSONRPCIntID(-1)
+	URIClientRequestID = rpctypes.JSONRPCIntID(-1)
 )
 
 // URIClient is a JSON-RPC client, which sends POST form HTTP requests to the

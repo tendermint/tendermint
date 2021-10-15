@@ -12,7 +12,7 @@ import (
 	"github.com/tendermint/tendermint/light/provider"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -300,11 +300,11 @@ func (p *http) noBlock(e error) error {
 func (p *http) parseRPCError(e *rpctypes.RPCError) error {
 	switch {
 	// 1) check if the error indicates that the peer doesn't have the block
-	case strings.Contains(e.Data, ctypes.ErrHeightNotAvailable.Error()):
+	case strings.Contains(e.Data, coretypes.ErrHeightNotAvailable.Error()):
 		return p.noBlock(provider.ErrLightBlockNotFound)
 
 	// 2) check if the height requested is too high
-	case strings.Contains(e.Data, ctypes.ErrHeightExceedsChainHead.Error()):
+	case strings.Contains(e.Data, coretypes.ErrHeightExceedsChainHead.Error()):
 		return p.noBlock(provider.ErrHeightTooHigh)
 
 	// 3) check if the provider closed the connection

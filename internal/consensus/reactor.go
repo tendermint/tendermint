@@ -8,13 +8,13 @@ import (
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
+	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -230,16 +230,14 @@ func (r *Reactor) OnStop() {
 	}
 
 	r.mtx.Lock()
-	peers := r.peers
+	// Close and wait for each of the peers to shutdown.
+	// This is safe to perform with the lock since none of the peers require the
+	// lock to complete any of the methods that the waitgroup is waiting on.
+	for _, state := range r.peers {
+		state.closer.Close()
+		state.broadcastWG.Wait()
+	}
 	r.mtx.Unlock()
-
-	// wait for all spawned peer goroutines to gracefully exit
-	for _, ps := range peers {
-		ps.closer.Close()
-	}
-	for _, ps := range peers {
-		ps.broadcastWG.Wait()
-	}
 
 	// Close the StateChannel goroutine separately since it uses its own channel
 	// to signal closure.

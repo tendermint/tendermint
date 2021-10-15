@@ -9,14 +9,11 @@ import (
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	tmjson "github.com/tendermint/tendermint/libs/json"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	jsonrpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 )
-
-var errNotRunning = errors.New("client is not running. Use .Start() method to start")
 
 // WSOptions for the WS part of the HTTP client.
 type WSOptions struct {
@@ -48,7 +45,7 @@ func (wso WSOptions) Validate() error {
 
 // wsEvents is a wrapper around WSClient, which implements EventsClient.
 type wsEvents struct {
-	service.BaseService
+	*rpcclient.RunState
 	ws *jsonrpcclient.WSClient
 
 	mtx           tmsync.RWMutex
@@ -56,7 +53,7 @@ type wsEvents struct {
 }
 
 type wsSubscription struct {
-	res   chan ctypes.ResultEvent
+	res   chan coretypes.ResultEvent
 	id    string
 	query string
 }
@@ -78,7 +75,7 @@ func newWsEvents(remote string, wso WSOptions) (*wsEvents, error) {
 	w := &wsEvents{
 		subscriptions: make(map[string]*wsSubscription),
 	}
-	w.BaseService = *service.NewBaseService(nil, "wsEvents", w)
+	w.RunState = rpcclient.NewRunState("wsEvents", nil)
 
 	var err error
 	w.ws, err = jsonrpcclient.NewWSWithOptions(remote, wso.Path, wso.WSOptions)
@@ -94,23 +91,20 @@ func newWsEvents(remote string, wso WSOptions) (*wsEvents, error) {
 	return w, nil
 }
 
-// OnStart implements service.Service by starting WSClient and event loop.
-func (w *wsEvents) OnStart() error {
+// Start starts the websocket client and the event loop.
+func (w *wsEvents) Start() error {
 	if err := w.ws.Start(); err != nil {
 		return err
 	}
-
 	go w.eventListener()
-
 	return nil
 }
 
-// OnStop implements service.Service by stopping WSClient.
-func (w *wsEvents) OnStop() {
-	if err := w.ws.Stop(); err != nil {
-		w.Logger.Error("Can't stop ws client", "err", err)
-	}
-}
+// IsRunning reports whether the websocket client is running.
+func (w *wsEvents) IsRunning() bool { return w.ws.IsRunning() }
+
+// Stop shuts down the websocket client.
+func (w *wsEvents) Stop() error { return w.ws.Stop() }
 
 // Subscribe implements EventsClient by using WSClient to subscribe given
 // subscriber to query. By default, it returns a channel with cap=1. Error is
@@ -125,10 +119,10 @@ func (w *wsEvents) OnStop() {
 //
 // It returns an error if wsEvents is not running.
 func (w *wsEvents) Subscribe(ctx context.Context, subscriber, query string,
-	outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
+	outCapacity ...int) (out <-chan coretypes.ResultEvent, err error) {
 
 	if !w.IsRunning() {
-		return nil, errNotRunning
+		return nil, rpcclient.ErrClientNotRunning
 	}
 
 	if err := w.ws.Subscribe(ctx, query); err != nil {
@@ -140,7 +134,7 @@ func (w *wsEvents) Subscribe(ctx context.Context, subscriber, query string,
 		outCap = outCapacity[0]
 	}
 
-	outc := make(chan ctypes.ResultEvent, outCap)
+	outc := make(chan coretypes.ResultEvent, outCap)
 	w.mtx.Lock()
 	defer w.mtx.Unlock()
 	// subscriber param is ignored because Tendermint will override it with
@@ -156,7 +150,7 @@ func (w *wsEvents) Subscribe(ctx context.Context, subscriber, query string,
 // It returns an error if wsEvents is not running.
 func (w *wsEvents) Unsubscribe(ctx context.Context, subscriber, query string) error {
 	if !w.IsRunning() {
-		return errNotRunning
+		return rpcclient.ErrClientNotRunning
 	}
 
 	if err := w.ws.Unsubscribe(ctx, query); err != nil {
@@ -182,7 +176,7 @@ func (w *wsEvents) Unsubscribe(ctx context.Context, subscriber, query string) er
 // It returns an error if wsEvents is not running.
 func (w *wsEvents) UnsubscribeAll(ctx context.Context, subscriber string) error {
 	if !w.IsRunning() {
-		return errNotRunning
+		return rpcclient.ErrClientNotRunning
 	}
 
 	if err := w.ws.UnsubscribeAll(ctx); err != nil {
@@ -219,7 +213,7 @@ func (w *wsEvents) redoSubscriptionsAfter(d time.Duration) {
 }
 
 func isErrAlreadySubscribed(err error) bool {
-	return strings.Contains(err.Error(), tmpubsub.ErrAlreadySubscribed.Error())
+	return strings.Contains(err.Error(), pubsub.ErrAlreadySubscribed.Error())
 }
 
 func (w *wsEvents) eventListener() {
@@ -244,7 +238,7 @@ func (w *wsEvents) eventListener() {
 				continue
 			}
 
-			result := new(ctypes.ResultEvent)
+			result := new(coretypes.ResultEvent)
 			err := tmjson.Unmarshal(resp.Result, result)
 			if err != nil {
 				w.Logger.Error("failed to unmarshal response", "err", err)
