@@ -12,7 +12,7 @@ import (
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	bcv0 "github.com/tendermint/tendermint/internal/blocksync/v0"
+	bcv0 "github.com/tendermint/tendermint/internal/blocksync"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
