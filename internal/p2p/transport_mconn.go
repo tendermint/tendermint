@@ -350,7 +350,7 @@ func (c *mConnConnection) handshake(
 // onReceive is a callback for MConnection received messages.
 func (c *mConnConnection) onReceive(chID ChannelID, payload []byte) {
 	select {
-	case c.receiveCh <- mConnMessage{channelID: ChannelID(chID), payload: payload}:
+	case c.receiveCh <- mConnMessage{channelID: chID, payload: payload}:
 	case <-c.closeCh:
 	}
 }

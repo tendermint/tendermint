@@ -358,7 +358,7 @@ func (r *Router) OpenChannel(chDesc ChannelDescriptor, messageType proto.Message
 	r.channelMtx.Lock()
 	defer r.channelMtx.Unlock()
 
-	id := ChannelID(chDesc.ID)
+	id := chDesc.ID
 	if _, ok := r.channelQueues[id]; ok {
 		return nil, fmt.Errorf("channel %v already exists", id)
 	}
