@@ -47,10 +47,11 @@ type updateRoundStepReason int
 
 const (
 	updateReasonTimeout updateRoundStepReason = iota
-	updateReasonProposalComplete
 	updateReasonStart
+	updateReasonProposalComplete
 	updateReasonMaj23
 	updateReasonSkip
+	updateReasonNone
 	updateReasonUnknown
 )
 
