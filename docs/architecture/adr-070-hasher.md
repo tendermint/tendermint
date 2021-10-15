@@ -40,25 +40,24 @@ const (
 var Hashers *HasherContainer
 
 type HasherContainer struct {
-	defaultHasher HashType // it indicates which hasher is mainly using in the tendermint components.
-	hasherMap  map[HashType]hash.Hash
+    defaultHasher HashType // it indicates which hasher is mainly using in the tendermint components.
+    hasherMap  map[HashType]hash.Hash
     seal bool
 }
 
 func init() {
-	Hashers = initContainer()
+    Hashers = initContainer()
 }
 
 func initContainer() *HasherContainer {
-	hc := &HasherContainer{
-		hasherMap: map[HashType]hash.Hash{}}
+    hc := &HasherContainer{hasherMap: map[HashType]hash.Hash{}}
 
     // during the hashers initialization, it will adds all hasher have been integreted in 
     // the Tendermint crypto library by default. And the defaultHasher will be sha256.
-	hc.RegisterHasher(SHA256, sha256.New(), true)
-	hc.RegisterHasher(BLAKE2B, blake2b.New(), false)
+    hc.RegisterHasher(SHA256, sha256.New(), true)
+    hc.RegisterHasher(BLAKE2B, blake2b.New(), false)
 
-	return hc
+    return hc
 }
 
 // Register the custom hasher into the hashers and set it to the default. Return false if hasher is sealed.
@@ -67,10 +66,10 @@ func (hc *HasherContainer) RegisterHasher(ht HashType, hasher hash.Hash, isDefau
         return false
     }
 
-	hc.hasherMap[ht] = hasher
-	if isDefault {
-		hc.defaultHasher = ht
-	}
+    hc.hasherMap[ht] = hasher
+    if isDefault {
+        hc.defaultHasher = ht
+    }
 
     return true
 }
@@ -81,15 +80,15 @@ func (hc *HasherContaine) Seal() {
 }
 
 func (hc *HasherContainer) DefaultHasher() hash.Hash {
-	return hc.hasherMap[hc.defaultHasher]
+    return hc.hasherMap[hc.defaultHasher]
 }
 
 func (hc *HasherContainer) DefaultHashType() HashType {
-	return hc.defaultHasher
+    return hc.defaultHasher
 }
 
 func (hc *HasherContainer) Hasher(ht HashType) hash.Hash {
-	return hc.hasherMap[ht]
+    return hc.hasherMap[ht]
 }
 ```
 
