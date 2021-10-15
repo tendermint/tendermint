@@ -17,27 +17,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var (
-	_ service.Service = (*Reactor)(nil)
-
-	// ChannelShims contains a map of ChannelDescriptorShim objects, where each
-	// object wraps a reference to a legacy p2p ChannelDescriptor and the corresponding
-	// p2p proto.Message the new p2p Channel is responsible for handling.
-	//
-	//
-	// TODO: Remove once p2p refactor is complete.
-	// ref: https://github.com/tendermint/tendermint/issues/5670
-	ChannelShims = []*p2p.ChannelDescriptor{
-		{
-			ID:                  BlockSyncChannel,
-			MessageType:         new(bcproto.Message),
-			Priority:            5,
-			SendQueueCapacity:   1000,
-			RecvBufferCapacity:  1024,
-			RecvMessageCapacity: MaxMsgSize,
-		},
-	}
-)
+var _ service.Service = (*Reactor)(nil)
 
 const (
 	// BlockSyncChannel is a channel for blocks and status updates
@@ -54,6 +34,17 @@ const (
 	// switch to consensus after this duration of inactivity
 	syncTimeout = 60 * time.Second
 )
+
+func GetChannelDescriptor() *p2p.ChannelDescriptor {
+	return &p2p.ChannelDescriptor{
+		ID:                  BlockSyncChannel,
+		MessageType:         new(bcproto.Message),
+		Priority:            5,
+		SendQueueCapacity:   1000,
+		RecvBufferCapacity:  1024,
+		RecvMessageCapacity: MaxMsgSize,
+	}
+}
 
 type consensusReactor interface {
 	// For when we switch from block sync reactor to the consensus

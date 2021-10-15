@@ -198,13 +198,15 @@ func createMempoolReactor(
 ) (service.Service, mempool.Mempool, error) {
 
 	logger = logger.With("module", "mempool", "version", cfg.Mempool.Version)
-	channelShims := mempoolv0.GetChannelShims(cfg.Mempool)
-
-	channels := makeChannelsFromShims(router, channelShims)
 	peerUpdates := peerManager.Subscribe()
 
 	switch cfg.Mempool.Version {
 	case config.MempoolV0:
+		ch, err := router.OpenChannel(mempoolv0.GetChannelDescriptor(cfg.Mempool))
+		if err != nil {
+			return nil, nil, err
+		}
+
 		mp := mempoolv0.NewCListMempool(
 			cfg.Mempool,
 			proxyApp.Mempool(),
@@ -221,7 +223,7 @@ func createMempoolReactor(
 			cfg.Mempool,
 			peerManager,
 			mp,
-			channels[mempool.MempoolChannel],
+			ch,
 			peerUpdates,
 		)
 
@@ -232,6 +234,11 @@ func createMempoolReactor(
 		return reactor, mp, nil
 
 	case config.MempoolV1:
+		ch, err := router.OpenChannel(mempoolv1.GetChannelDescriptor(cfg.Mempool))
+		if err != nil {
+			return nil, nil, err
+		}
+
 		mp := mempoolv1.NewTxMempool(
 			logger,
 			cfg.Mempool,
@@ -247,7 +254,7 @@ func createMempoolReactor(
 			cfg.Mempool,
 			peerManager,
 			mp,
-			channels[mempool.MempoolChannel],
+			ch,
 			peerUpdates,
 		)
 
@@ -283,9 +290,14 @@ func createEvidenceReactor(
 		return nil, nil, fmt.Errorf("creating evidence pool: %w", err)
 	}
 
+	ch, err := router.OpenChannel(evidence.GetChannelDescriptor())
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating evidence channel: %w", err)
+	}
+
 	evidenceReactor := evidence.NewReactor(
 		logger,
-		makeChannelsFromShims(router, evidence.ChannelShims)[evidence.EvidenceChannel],
+		ch,
 		peerManager.Subscribe(),
 		evidencePool,
 	)
@@ -307,12 +319,12 @@ func createBlockchainReactor(
 
 	logger = logger.With("module", "blockchain")
 
-	channels := makeChannelsFromShims(router, blocksync.ChannelShims)
+	ch, err := router.OpenChannel(blocksync.GetChannelDescriptor())
 	peerUpdates := peerManager.Subscribe()
 
 	reactor, err := blocksync.NewReactor(
 		logger, state.Copy(), blockExec, blockStore, csReactor,
-		channels[blocksync.BlockSyncChannel], peerUpdates, blockSync,
+		ch, peerUpdates, blockSync,
 		metrics,
 	)
 	if err != nil {
@@ -336,7 +348,7 @@ func createConsensusReactor(
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	logger log.Logger,
-) (*consensus.Reactor, *consensus.State) {
+) (*consensus.Reactor, *consensus.State, error) {
 
 	consensusState := consensus.NewState(
 		cfg.Consensus,
@@ -352,13 +364,19 @@ func createConsensusReactor(
 		consensusState.SetPrivValidator(privValidator)
 	}
 
-	var (
-		channels    map[p2p.ChannelID]*p2p.Channel
-		peerUpdates *p2p.PeerUpdates
-	)
+	csChDesc := consensus.GetChannelDescriptors()
+	channels := make(map[p2p.ChannelID]*p2p.Channel, len(csChDesc))
+	for idx := range csChDesc {
+		chd := csChDesc[idx]
+		ch, err := router.OpenChannel(chd)
+		if err != nil {
+			return nil, nil, err
+		}
 
-	channels = makeChannelsFromShims(router, consensus.ChannelShims)
-	peerUpdates = peerManager.Subscribe()
+		channels[ch.ID] = ch
+	}
+
+	peerUpdates := peerManager.Subscribe()
 
 	reactor := consensus.NewReactor(
 		logger,
@@ -376,7 +394,7 @@ func createConsensusReactor(
 	// consensusReactor will set it on consensusState and blockExecutor.
 	reactor.SetEventBus(eventBus)
 
-	return reactor, consensusState
+	return reactor, consensusState, nil
 }
 
 func createTransport(logger log.Logger, cfg *config.Config) *p2p.MConnTransport {

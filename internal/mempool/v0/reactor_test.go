@@ -50,7 +50,7 @@ func setup(t *testing.T, config *config.MempoolConfig, numNodes int, chBuf uint)
 		peerUpdates:    make(map[types.NodeID]*p2p.PeerUpdates, numNodes),
 	}
 
-	chDesc := GetChannelShims(config)[0]
+	chDesc := GetChannelDescriptor(config)
 	chDesc.RecvBufferCapacity = int(chBuf)
 	rts.mempoolChnnels = rts.network.MakeChannelsNoCleanup(t, chDesc)
 

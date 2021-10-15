@@ -303,11 +303,14 @@ func makeNode(cfg *config.Config,
 		sm.BlockExecutorWithMetrics(nodeMetrics.state),
 	)
 
-	csReactor, csState := createConsensusReactor(
+	csReactor, csState, err := createConsensusReactor(
 		cfg, state, blockExec, blockStore, mp, evPool,
 		privValidator, nodeMetrics.consensus, stateSync || blockSync, eventBus,
 		peerManager, router, consensusLogger,
 	)
+	if err != nil {
+		return nil, combineCloseError(err, makeCloser(closers))
+	}
 
 	// Create the blockchain reactor. Note, we do not start block sync if we're
 	// doing a state sync first.
@@ -334,7 +337,17 @@ func makeNode(cfg *config.Config,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
 	ssLogger := logger.With("module", "statesync")
-	channels := makeChannelsFromShims(router, statesync.ChannelShims)
+	ssChDesc := statesync.GetChannelDescriptors()
+	channels := make(map[p2p.ChannelID]*p2p.Channel, len(ssChDesc))
+	for idx := range ssChDesc {
+		chd := ssChDesc[idx]
+		ch, err := router.OpenChannel(chd)
+		if err != nil {
+			return nil, err
+		}
+
+		channels[ch.ID] = ch
+	}
 
 	peerUpdates := peerManager.Subscribe()
 	stateSyncReactor := statesync.NewReactor(
@@ -1087,24 +1100,4 @@ func getRouterConfig(conf *config.Config, proxyApp proxy.AppConns) p2p.RouterOpt
 	}
 
 	return opts
-}
-
-// FIXME: Temporary helper function, shims should be removed.
-func makeChannelsFromShims(
-	router *p2p.Router,
-	chDescs []*p2p.ChannelDescriptor,
-) map[p2p.ChannelID]*p2p.Channel {
-
-	channels := map[p2p.ChannelID]*p2p.Channel{}
-	for idx := range chDescs {
-		chDesc := chDescs[idx]
-		ch, err := router.OpenChannel(chDesc)
-		if err != nil {
-			panic(fmt.Sprintf("failed to open channel %v: %v", chDesc.ID, err))
-		}
-
-		channels[chDesc.ID] = ch
-	}
-
-	return channels
 }

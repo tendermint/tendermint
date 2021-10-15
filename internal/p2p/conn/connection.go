@@ -81,8 +81,8 @@ type MConnection struct {
 	recvMonitor   *flow.Monitor
 	send          chan struct{}
 	pong          chan struct{}
-	channels      []*Channel
-	channelsIdx   map[ChannelID]*Channel
+	channels      []*channel
+	channelsIdx   map[ChannelID]*channel
 	onReceive     receiveCbFunc
 	onError       errorCbFunc
 	errored       uint32
@@ -186,8 +186,8 @@ func NewMConnectionWithConfig(
 	}
 
 	// Create channels
-	var channelsIdx = map[ChannelID]*Channel{}
-	var channels = []*Channel{}
+	var channelsIdx = map[ChannelID]*channel{}
+	var channels = []*channel{}
 
 	for _, desc := range chDescs {
 		channel := newChannel(mconn, *desc)
@@ -436,7 +436,7 @@ func (c *MConnection) sendPacketMsg() bool {
 	// Choose a channel to create a PacketMsg from.
 	// The chosen channel will be the one whose recentlySent/priority is the least.
 	var leastRatio float32 = math.MaxFloat32
-	var leastChannel *Channel
+	var leastChannel *channel
 	for _, channel := range c.channels {
 		// If nothing to send, skip this channel
 		if !channel.isSendPending() {
@@ -641,7 +641,7 @@ func (chDesc ChannelDescriptor) FillDefaults() (filled ChannelDescriptor) {
 
 // TODO: lowercase.
 // NOTE: not goroutine-safe.
-type Channel struct {
+type channel struct {
 	// Exponential moving average.
 	// This field must be accessed atomically.
 	// It is first in the struct to ensure correct alignment.
@@ -660,12 +660,12 @@ type Channel struct {
 	Logger log.Logger
 }
 
-func newChannel(conn *MConnection, desc ChannelDescriptor) *Channel {
+func newChannel(conn *MConnection, desc ChannelDescriptor) *channel {
 	desc = desc.FillDefaults()
 	if desc.Priority <= 0 {
 		panic("Channel default priority must be a positive integer")
 	}
-	return &Channel{
+	return &channel{
 		conn:                    conn,
 		desc:                    desc,
 		sendQueue:               make(chan []byte, desc.SendQueueCapacity),
@@ -674,14 +674,14 @@ func newChannel(conn *MConnection, desc ChannelDescriptor) *Channel {
 	}
 }
 
-func (ch *Channel) SetLogger(l log.Logger) {
+func (ch *channel) SetLogger(l log.Logger) {
 	ch.Logger = l
 }
 
 // Queues message to send to this channel.
 // Goroutine-safe
 // Times out (and returns false) after defaultSendTimeout
-func (ch *Channel) sendBytes(bytes []byte) bool {
+func (ch *channel) sendBytes(bytes []byte) bool {
 	select {
 	case ch.sendQueue <- bytes:
 		atomic.AddInt32(&ch.sendQueueSize, 1)
@@ -694,7 +694,7 @@ func (ch *Channel) sendBytes(bytes []byte) bool {
 // Returns true if any PacketMsgs are pending to be sent.
 // Call before calling nextPacketMsg()
 // Goroutine-safe
-func (ch *Channel) isSendPending() bool {
+func (ch *channel) isSendPending() bool {
 	if len(ch.sending) == 0 {
 		if len(ch.sendQueue) == 0 {
 			return false
@@ -706,7 +706,7 @@ func (ch *Channel) isSendPending() bool {
 
 // Creates a new PacketMsg to send.
 // Not goroutine-safe
-func (ch *Channel) nextPacketMsg() tmp2p.PacketMsg {
+func (ch *channel) nextPacketMsg() tmp2p.PacketMsg {
 	packet := tmp2p.PacketMsg{ChannelID: int32(ch.desc.ID)}
 	maxSize := ch.maxPacketMsgPayloadSize
 	packet.Data = ch.sending[:tmmath.MinInt(maxSize, len(ch.sending))]
@@ -723,7 +723,7 @@ func (ch *Channel) nextPacketMsg() tmp2p.PacketMsg {
 
 // Writes next PacketMsg to w and updates c.recentlySent.
 // Not goroutine-safe
-func (ch *Channel) writePacketMsgTo(w io.Writer) (n int, err error) {
+func (ch *channel) writePacketMsgTo(w io.Writer) (n int, err error) {
 	packet := ch.nextPacketMsg()
 	n, err = protoio.NewDelimitedWriter(w).WriteMsg(mustWrapPacket(&packet))
 	atomic.AddInt64(&ch.recentlySent, int64(n))
@@ -733,7 +733,7 @@ func (ch *Channel) writePacketMsgTo(w io.Writer) (n int, err error) {
 // Handles incoming PacketMsgs. It returns a message bytes if message is
 // complete, which is owned by the caller and will not be modified.
 // Not goroutine-safe
-func (ch *Channel) recvPacketMsg(packet tmp2p.PacketMsg) ([]byte, error) {
+func (ch *channel) recvPacketMsg(packet tmp2p.PacketMsg) ([]byte, error) {
 	ch.Logger.Debug("Read PacketMsg", "conn", ch.conn, "packet", packet)
 	var recvCap, recvReceived = ch.desc.RecvMessageCapacity, len(ch.recving) + len(packet.Data)
 	if recvCap < recvReceived {
@@ -750,7 +750,7 @@ func (ch *Channel) recvPacketMsg(packet tmp2p.PacketMsg) ([]byte, error) {
 
 // Call this periodically to update stats for throttling purposes.
 // Not goroutine-safe
-func (ch *Channel) updateStats() {
+func (ch *channel) updateStats() {
 	// Exponential decay of stats.
 	// TODO: optimize.
 	atomic.StoreInt64(&ch.recentlySent, int64(float64(atomic.LoadInt64(&ch.recentlySent))*0.8))
