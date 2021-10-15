@@ -33,7 +33,7 @@ var (
 		StateChannel: {
 			MsgType: new(tmcons.Message),
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(StateChannel),
+				ID:                  StateChannel,
 				Priority:            8,
 				SendQueueCapacity:   64,
 				RecvMessageCapacity: maxMsgSize,
@@ -47,7 +47,7 @@ var (
 				// TODO: Consider a split between gossiping current block and catchup
 				// stuff. Once we gossip the whole block there is nothing left to send
 				// until next height or round.
-				ID:                  byte(DataChannel),
+				ID:                  DataChannel,
 				Priority:            12,
 				SendQueueCapacity:   64,
 				RecvBufferCapacity:  512,
@@ -58,7 +58,7 @@ var (
 		VoteChannel: {
 			MsgType: new(tmcons.Message),
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(VoteChannel),
+				ID:                  VoteChannel,
 				Priority:            10,
 				SendQueueCapacity:   64,
 				RecvBufferCapacity:  128,
@@ -69,7 +69,7 @@ var (
 		VoteSetBitsChannel: {
 			MsgType: new(tmcons.Message),
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(VoteSetBitsChannel),
+				ID:                  VoteSetBitsChannel,
 				Priority:            5,
 				SendQueueCapacity:   8,
 				RecvBufferCapacity:  128,

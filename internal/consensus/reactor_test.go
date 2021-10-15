@@ -52,7 +52,7 @@ type reactorTestSuite struct {
 
 func chDesc(chID p2p.ChannelID) p2p.ChannelDescriptor {
 	return p2p.ChannelDescriptor{
-		ID: byte(chID),
+		ID: chID,
 	}
 }
 

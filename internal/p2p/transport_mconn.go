@@ -348,7 +348,7 @@ func (c *mConnConnection) handshake(
 }
 
 // onReceive is a callback for MConnection received messages.
-func (c *mConnConnection) onReceive(chID byte, payload []byte) {
+func (c *mConnConnection) onReceive(chID ChannelID, payload []byte) {
 	select {
 	case c.receiveCh <- mConnMessage{channelID: ChannelID(chID), payload: payload}:
 	case <-c.closeCh:
@@ -387,7 +387,7 @@ func (c *mConnConnection) SendMessage(chID ChannelID, msg []byte) error {
 	case <-c.closeCh:
 		return io.EOF
 	default:
-		if ok := c.mconn.Send(byte(chID), msg); !ok {
+		if ok := c.mconn.Send(chID, msg); !ok {
 			return errors.New("sending message timed out")
 		}
 

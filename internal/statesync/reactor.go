@@ -40,7 +40,7 @@ var (
 		SnapshotChannel: {
 			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(SnapshotChannel),
+				ID:                  SnapshotChannel,
 				Priority:            6,
 				SendQueueCapacity:   10,
 				RecvMessageCapacity: snapshotMsgSize,
@@ -51,7 +51,7 @@ var (
 		ChunkChannel: {
 			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(ChunkChannel),
+				ID:                  ChunkChannel,
 				Priority:            3,
 				SendQueueCapacity:   4,
 				RecvMessageCapacity: chunkMsgSize,
@@ -62,7 +62,7 @@ var (
 		LightBlockChannel: {
 			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(LightBlockChannel),
+				ID:                  LightBlockChannel,
 				Priority:            5,
 				SendQueueCapacity:   10,
 				RecvMessageCapacity: lightBlockMsgSize,
@@ -73,7 +73,7 @@ var (
 		ParamsChannel: {
 			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(ParamsChannel),
+				ID:                  ParamsChannel,
 				Priority:            2,
 				SendQueueCapacity:   10,
 				RecvMessageCapacity: paramMsgSize,

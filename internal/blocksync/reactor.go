@@ -31,7 +31,7 @@ var (
 		BlockSyncChannel: {
 			MsgType: new(bcproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(BlockSyncChannel),
+				ID:                  BlockSyncChannel,
 				Priority:            5,
 				SendQueueCapacity:   1000,
 				RecvBufferCapacity:  1024,
