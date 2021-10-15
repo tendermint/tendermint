@@ -643,7 +643,12 @@ func (txmp *TxMempool) defaultTxCallback(req *abci.Request, res *abci.Response) 
 		tx := req.GetCheckTx().Tx
 		wtx := txmp.recheckCursor.Value.(*WrappedTx)
 		if !bytes.Equal(tx, wtx.tx) {
-			panic(fmt.Sprintf("re-CheckTx transaction mismatch; got: %X, expected: %X", wtx.tx.Hash(), types.Tx(tx).Key()))
+			txmp.logger.Error(
+				"re-CheckTx transaction mismatch",
+				"got", wtx.tx.Hash(),
+				"expected", types.Tx(tx).Key(),
+			)
+			return
 		}
 
 		// Only evaluate transactions that have not been removed. This can happen

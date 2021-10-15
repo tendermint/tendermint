@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -451,10 +450,12 @@ func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 		tx := req.GetCheckTx().Tx
 		memTx := mem.recheckCursor.Value.(*mempoolTx)
 		if !bytes.Equal(tx, memTx.tx) {
-			panic(fmt.Sprintf(
-				"Unexpected tx response from proxy during recheck\nExpected %X, got %X",
-				memTx.tx,
-				tx))
+			mem.logger.Error(
+				"re-CheckTx transaction mismatch",
+				"got", tx,
+				"expected", memTx.tx,
+			)
+			return
 		}
 		var postCheckErr error
 		if mem.postCheck != nil {
