@@ -1639,13 +1639,14 @@ func TestStartNextHeightCorrectlyAfterTimeout(t *testing.T) {
 
 	ensureNewTimeout(timeoutProposeCh, height+1, round, cs1.config.Propose(round).Nanoseconds())
 	rs = cs1.GetRoundState()
-	assert.False(
+	assert.Less(
 		t,
-		rs.TriggeredTimeoutPrecommit,
-		"triggeredTimeoutPrecommit should be false at the beginning of each round")
+		rs.Step,
+		cstypes.RoundStepPrecommitWait,
+		"RoundStep should be less than 'PrecommitWait' at the beginning of each round")
 }
 
-func TestResetTimeoutPrecommitUponNewHeight(t *testing.T) {
+func TestNotEnteredTimeoutPrecommitUponNewHeight(t *testing.T) {
 	config := configSetup(t)
 
 	config.Consensus.SkipTimeoutCommit = false
@@ -1698,10 +1699,11 @@ func TestResetTimeoutPrecommitUponNewHeight(t *testing.T) {
 	ensureNewProposal(proposalCh, height+1, 0)
 
 	rs = cs1.GetRoundState()
-	assert.False(
+	assert.Less(
 		t,
-		rs.TriggeredTimeoutPrecommit,
-		"triggeredTimeoutPrecommit should be false at the beginning of each height")
+		rs.Step,
+		cstypes.RoundStepPrecommitWait,
+		"RoundStep should be less than 'PrecommitWait' at the beginning of each round")
 }
 
 //------------------------------------------------------------------------------------------
