@@ -639,7 +639,6 @@ func (chDesc ChannelDescriptor) FillDefaults() (filled ChannelDescriptor) {
 	return
 }
 
-// TODO: lowercase.
 // NOTE: not goroutine-safe.
 type channel struct {
 	// Exponential moving average.
