@@ -1354,8 +1354,9 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 		issue a prevote for 'v' in this round if 'v' is valid and either matches our locked value OR
 		'v_r' is a round greater than our current locked round.
 
-		'v_r' can be a round greater than our current locked round if a 2/3 majority of the network prevoted a value
-		in round 'v_r' but we did not lock on it, possibly because we missed the proposal in round 'v_r'.
+		'v_r' can be a round greater than or equal to our current locked round if a 2/3 majority of
+		the network prevoted a value in round 'v_r' but we did not lock on it, possibly because we
+		missed the proposal in round 'v_r'.
 	*/
 	blockID, ok := cs.Votes.Prevotes(cs.Proposal.POLRound).TwoThirdsMajority()
 	if ok && cs.ProposalBlock.HashesTo(blockID.Hash) && cs.Proposal.POLRound >= 0 && cs.Proposal.POLRound < cs.Round {
