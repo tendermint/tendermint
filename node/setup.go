@@ -320,6 +320,10 @@ func createBlockchainReactor(
 	logger = logger.With("module", "blockchain")
 
 	ch, err := router.OpenChannel(blocksync.GetChannelDescriptor())
+	if err != nil {
+		return nil, err
+	}
+
 	peerUpdates := peerManager.Subscribe()
 
 	reactor, err := blocksync.NewReactor(
