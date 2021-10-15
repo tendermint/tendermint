@@ -865,7 +865,6 @@ func TestStateLock_PrevoteNilWhenLockedAndMissProposal(t *testing.T) {
 
 	/*
 		Round 1:
-		Create a proposal for block B, the same block from round 1.
 		Send a prevote for nil from each of the validators to cs1.
 		Send a precommit for nil from all of the validtors to cs1.
 
@@ -882,7 +881,7 @@ func TestStateLock_PrevoteNilWhenLockedAndMissProposal(t *testing.T) {
 	ensurePrevote(t, voteCh, height, round)
 	validatePrevote(t, cs1, round, vss[0], nil)
 
-	// Add prevotes from the remainder of the validators for the locked block.
+	// Add prevotes from the remainder of the validators nil.
 	signAddVotes(config, cs1, tmproto.PrevoteType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 	ensurePrecommit(t, voteCh, height, round)
 	// We should now be locked on the same block but with an updated locked round.
@@ -975,7 +974,7 @@ func TestStateLock_PrevoteNilWhenLockedAndDifferentProposal(t *testing.T) {
 	ensurePrevote(t, voteCh, height, round)
 	validatePrevote(t, cs1, round, vss[0], nil)
 
-	// Add prevotes from the remainder of the validators for the locked block.
+	// Add prevotes from the remainder of the validators for nil.
 	signAddVotes(config, cs1, tmproto.PrevoteType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
 	// We should now be locked on the same block but prevote nil.
@@ -1380,7 +1379,7 @@ func TestStateLock_POLSafety1(t *testing.T) {
 
 	// finish prevote
 	ensurePrevote(t, voteCh, height, round)
-	// we should prevote what we're locked on
+	// we should prevote for nil
 	validatePrevote(t, cs1, round, vss[0], nil)
 
 	newStepCh := subscribe(cs1.eventBus, types.EventQueryNewRoundStep)

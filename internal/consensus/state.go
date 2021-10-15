@@ -1265,7 +1265,9 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 
 // Enter: `timeoutPropose` after entering Propose.
 // Enter: proposal block and POL is ready.
-// If we received a valid proposal within this round that matches the block we are
+// If we received a valid proposal within this round and we are not locked on a block,
+// we will prevote for block.
+// Otherwise, if we receive a valid proposal that matches the block we are
 // locked on or matches a block that received a POL in a round later than our
 // locked round, prevote for the proposal, otherwise vote nil.
 func (cs *State) enterPrevote(height int64, round int32) {
