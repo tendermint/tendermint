@@ -1,4 +1,4 @@
-package v0
+package blocksync
 
 import (
 	"fmt"
@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tendermint/tendermint/internal/blocksync"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/p2p"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -29,7 +28,7 @@ func GetChannelDescriptor() *p2p.ChannelDescriptor {
 		Priority:            5,
 		SendQueueCapacity:   1000,
 		RecvBufferCapacity:  1024,
-		RecvMessageCapacity: blocksync.MaxMsgSize,
+		RecvMessageCapacity: MaxMsgSize,
 	}
 }
 

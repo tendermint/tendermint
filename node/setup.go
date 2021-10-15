@@ -12,7 +12,7 @@ import (
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	bcv0 "github.com/tendermint/tendermint/internal/blocksync/v0"
+	"github.com/tendermint/tendermint/internal/blocksync"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -315,14 +315,14 @@ func createBlockchainReactor(
 
 	logger = logger.With("module", "blockchain")
 
-	channel, err := router.OpenChannel(bcv0.GetChannelDescriptor())
+	channel, err := router.OpenChannel(blocksync.GetChannelDescriptor())
 	if err != nil {
 		return nil, err
 	}
 
 	peerUpdates := peerManager.Subscribe()
 
-	reactor, err := bcv0.NewReactor(
+	reactor, err := blocksync.NewReactor(
 		logger, state.Copy(), blockExec, blockStore, csReactor,
 		channel, peerUpdates, blockSync, metrics,
 	)
@@ -521,7 +521,7 @@ func makeNodeInfo(
 		txIndexerStatus = "on"
 	}
 
-	bcChannel := byte(bcv0.BlockSyncChannel)
+	bcChannel := byte(blocksync.BlockSyncChannel)
 
 	nodeInfo := types.NodeInfo{
 		ProtocolVersion: types.ProtocolVersion{
