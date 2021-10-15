@@ -50,9 +50,11 @@ type reactorTestSuite struct {
 	voteSetBitsChannels map[types.NodeID]*p2p.Channel
 }
 
-func chDesc(chID p2p.ChannelID) *p2p.ChannelDescriptor {
+func chDesc(chID p2p.ChannelID, size int) *p2p.ChannelDescriptor {
 	return &p2p.ChannelDescriptor{
-		ID: chID,
+		ID:                 chID,
+		MessageType:        new(tmcons.Message),
+		RecvBufferCapacity: size,
 	}
 }
 
@@ -67,10 +69,10 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 		blocksyncSubs: make(map[types.NodeID]types.Subscription, numNodes),
 	}
 
-	rts.stateChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(StateChannel), new(tmcons.Message), size)
-	rts.dataChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(DataChannel), new(tmcons.Message), size)
-	rts.voteChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteChannel), new(tmcons.Message), size)
-	rts.voteSetBitsChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteSetBitsChannel), new(tmcons.Message), size)
+	rts.stateChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(StateChannel, size))
+	rts.dataChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(DataChannel, size))
+	rts.voteChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteChannel, size))
+	rts.voteSetBitsChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteSetBitsChannel, size))
 
 	_, cancel := context.WithCancel(context.Background())
 
