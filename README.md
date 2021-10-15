@@ -35,6 +35,8 @@ See below for more details about [versioning](#versioning).
 In any case, if you intend to run Tendermint in production, we're happy to help. You can
 contact us [over email](mailto:hello@interchain.berlin) or [join the chat](https://discord.gg/cosmosnetwork).
 
+More on how releases are conducted can be found [here](./RELEASES.md).
+
 ## Security
 
 To report a security vulnerability, see our [bug bounty
@@ -111,6 +113,8 @@ in [UPGRADING.md](./UPGRADING.md).
 ## Resources
 
 ### Tendermint Core
+
+We keep a public up-to-date version of our roadmap [here](./docs/roadmap/roadmap.md)
 
 For details about the blockchain data structures and the p2p protocols, see the
 [Tendermint specification](https://docs.tendermint.com/master/spec/).

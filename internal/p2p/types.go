@@ -5,3 +5,4 @@ import (
 )
 
 type ChannelDescriptor = conn.ChannelDescriptor
+type ChannelID = conn.ChannelID

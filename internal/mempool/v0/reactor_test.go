@@ -50,8 +50,9 @@ func setup(t *testing.T, config *config.MempoolConfig, numNodes int, chBuf uint)
 		peerUpdates:    make(map[types.NodeID]*p2p.PeerUpdates, numNodes),
 	}
 
-	chDesc := p2p.ChannelDescriptor{ID: byte(mempool.MempoolChannel)}
-	rts.mempoolChnnels = rts.network.MakeChannelsNoCleanup(t, chDesc, new(protomem.Message), int(chBuf))
+	chDesc := GetChannelDescriptor(config)
+	chDesc.RecvBufferCapacity = int(chBuf)
+	rts.mempoolChnnels = rts.network.MakeChannelsNoCleanup(t, chDesc)
 
 	for nodeID := range rts.network.Nodes {
 		rts.kvstores[nodeID] = kvstore.NewApplication()

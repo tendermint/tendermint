@@ -6,6 +6,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -14,12 +15,12 @@ import (
 var (
 	ctx    = context.Background()
 	chID   = p2p.ChannelID(1)
-	chDesc = p2p.ChannelDescriptor{
-		ID:                  byte(chID),
+	chDesc = &p2p.ChannelDescriptor{
+		ID:                  chID,
+		MessageType:         &p2ptest.Message{},
 		Priority:            5,
 		SendQueueCapacity:   10,
 		RecvMessageCapacity: 10,
-		MaxSendBytes:        1000,
 	}
 
 	selfKey  crypto.PrivKey = ed25519.GenPrivKeyFromSecret([]byte{0xf9, 0x1b, 0x08, 0xaa, 0x38, 0xee, 0x34, 0xdd})

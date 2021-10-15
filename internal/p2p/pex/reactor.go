@@ -25,7 +25,7 @@ var (
 // See https://github.com/tendermint/tendermint/issues/6371
 const (
 	// PexChannel is a channel for PEX messages
-	PexChannel = byte(0x00)
+	PexChannel = 0x00
 
 	// over-estimate of max NetAddress size
 	// hexID (40) + IP (16) + Port (2) + Name (100) ...
@@ -62,14 +62,14 @@ const (
 // within each reactor (as they are now) or, considering that the reactor doesn't
 // really need to care about the channel descriptors, if they should be housed
 // in the node module.
-func ChannelDescriptor() conn.ChannelDescriptor {
-	return conn.ChannelDescriptor{
+func ChannelDescriptor() *conn.ChannelDescriptor {
+	return &conn.ChannelDescriptor{
 		ID:                  PexChannel,
+		MessageType:         new(protop2p.PexMessage),
 		Priority:            1,
 		SendQueueCapacity:   10,
 		RecvMessageCapacity: maxMsgSize,
-		RecvBufferCapacity:  32,
-		MaxSendBytes:        200,
+		RecvBufferCapacity:  128,
 	}
 }
 

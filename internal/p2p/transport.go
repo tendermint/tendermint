@@ -44,6 +44,10 @@ type Transport interface {
 	// Close stops accepting new connections, but does not close active connections.
 	Close() error
 
+	// AddChannelDescriptors is only part of this interface
+	// temporarily
+	AddChannelDescriptors([]*ChannelDescriptor)
+
 	// Stringer is used to display the transport, e.g. in logs.
 	//
 	// Without this, the logger may use reflection to access and display
