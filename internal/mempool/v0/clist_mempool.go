@@ -462,7 +462,7 @@ func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 
 			mem.logger.Error(
 				"re-CheckTx transaction mismatch",
-				"got", tx,
+				"got", types.Tx(tx),
 				"expected", memTx.tx,
 			)
 
