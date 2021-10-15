@@ -99,7 +99,7 @@ func newPQScheduler(
 	)
 
 	for _, chDesc := range chDescsCopy {
-		chID := ChannelID(chDesc.ID)
+		chID := chDesc.ID
 		chPriorities[chID] = uint(chDesc.Priority)
 		sizes[uint(chDesc.Priority)] = 0
 	}

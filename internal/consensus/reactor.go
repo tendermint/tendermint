@@ -32,7 +32,7 @@ var (
 	ChannelShims = map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
 		StateChannel: {
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(StateChannel),
+				ID:                  StateChannel,
 				MessageType:         new(tmcons.Message),
 				Priority:            8,
 				SendQueueCapacity:   64,
@@ -45,7 +45,7 @@ var (
 				// TODO: Consider a split between gossiping current block and catchup
 				// stuff. Once we gossip the whole block there is nothing left to send
 				// until next height or round.
-				ID:                  byte(DataChannel),
+				ID:                  DataChannel,
 				MessageType:         new(tmcons.Message),
 				Priority:            12,
 				SendQueueCapacity:   64,
@@ -55,7 +55,7 @@ var (
 		},
 		VoteChannel: {
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(VoteChannel),
+				ID:                  VoteChannel,
 				MessageType:         new(tmcons.Message),
 				Priority:            10,
 				SendQueueCapacity:   64,
@@ -65,7 +65,7 @@ var (
 		},
 		VoteSetBitsChannel: {
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(VoteSetBitsChannel),
+				ID:                  VoteSetBitsChannel,
 				MessageType:         new(tmcons.Message),
 				Priority:            5,
 				SendQueueCapacity:   8,

@@ -285,7 +285,7 @@ func (n *Node) MakeChannel(t *testing.T, chDesc p2p.ChannelDescriptor,
 	messageType proto.Message, size int) *p2p.Channel {
 	channel, err := n.Router.OpenChannel(chDesc, messageType, size)
 	require.NoError(t, err)
-	require.Contains(t, n.Router.NodeInfo().Channels, chDesc.ID)
+	require.Contains(t, n.Router.NodeInfo().Channels, byte(chDesc.ID))
 	t.Cleanup(func() {
 		RequireEmpty(t, channel)
 		channel.Close()
@@ -335,7 +335,7 @@ func (n *Node) MakePeerUpdatesNoRequireEmpty(t *testing.T) *p2p.PeerUpdates {
 
 func MakeChannelDesc(chID p2p.ChannelID) p2p.ChannelDescriptor {
 	return p2p.ChannelDescriptor{
-		ID:                  byte(chID),
+		ID:                  chID,
 		Priority:            5,
 		SendQueueCapacity:   10,
 		RecvMessageCapacity: 10,

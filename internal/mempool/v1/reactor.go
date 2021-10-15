@@ -108,7 +108,7 @@ func GetChannelShims(cfg *config.MempoolConfig) map[p2p.ChannelID]*p2p.ChannelDe
 	return map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
 		mempool.MempoolChannel: {
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(mempool.MempoolChannel),
+				ID:                  mempool.MempoolChannel,
 				MessageType:         new(protomem.Message),
 				Priority:            5,
 				RecvMessageCapacity: batchMsg.Size(),

@@ -5,7 +5,10 @@ package mocks
 import (
 	context "context"
 
+	conn "github.com/tendermint/tendermint/internal/p2p/conn"
+
 	mock "github.com/stretchr/testify/mock"
+
 	p2p "github.com/tendermint/tendermint/internal/p2p"
 )
 
@@ -35,6 +38,11 @@ func (_m *Transport) Accept() (p2p.Connection, error) {
 	}
 
 	return r0, r1
+}
+
+// AddChannelDescriptors provides a mock function with given fields: _a0
+func (_m *Transport) AddChannelDescriptors(_a0 []*conn.ChannelDescriptor) {
+	_m.Called(_a0)
 }
 
 // Close provides a mock function with given fields:

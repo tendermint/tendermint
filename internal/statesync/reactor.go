@@ -39,7 +39,7 @@ var (
 	ChannelShims = map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
 		SnapshotChannel: {
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(SnapshotChannel),
+				ID:                  SnapshotChannel,
 				MessageType:         new(ssproto.Message),
 				Priority:            6,
 				SendQueueCapacity:   10,
@@ -49,7 +49,7 @@ var (
 		},
 		ChunkChannel: {
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(ChunkChannel),
+				ID:                  ChunkChannel,
 				Priority:            3,
 				MessageType:         new(ssproto.Message),
 				SendQueueCapacity:   4,
@@ -59,7 +59,7 @@ var (
 		},
 		LightBlockChannel: {
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(LightBlockChannel),
+				ID:                  LightBlockChannel,
 				MessageType:         new(ssproto.Message),
 				Priority:            5,
 				SendQueueCapacity:   10,
@@ -69,7 +69,7 @@ var (
 		},
 		ParamsChannel: {
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(ParamsChannel),
+				ID:                  ParamsChannel,
 				MessageType:         new(ssproto.Message),
 				Priority:            2,
 				SendQueueCapacity:   10,

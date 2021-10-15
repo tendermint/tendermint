@@ -30,7 +30,7 @@ var (
 	ChannelShims = map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
 		BlockSyncChannel: {
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(BlockSyncChannel),
+				ID:                  BlockSyncChannel,
 				MessageType:         new(bcproto.Message),
 				Priority:            5,
 				SendQueueCapacity:   1000,

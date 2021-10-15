@@ -65,7 +65,7 @@ func setup(
 		blockSync:         true,
 	}
 
-	chDesc := p2p.ChannelDescriptor{ID: byte(BlockSyncChannel)}
+	chDesc := p2p.ChannelDescriptor{ID: BlockSyncChannel}
 	rts.blockSyncChannels = rts.network.MakeChannelsNoCleanup(t, chDesc, new(bcproto.Message), int(chBuf))
 
 	i := 0

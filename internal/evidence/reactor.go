@@ -28,7 +28,7 @@ var (
 	ChannelShims = map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
 		EvidenceChannel: {
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(EvidenceChannel),
+				ID:                  EvidenceChannel,
 				MessageType:         new(tmproto.EvidenceList),
 				Priority:            6,
 				RecvMessageCapacity: maxMsgSize,

@@ -196,11 +196,10 @@ func createMempoolReactor(
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	logger log.Logger,
-) (*p2p.ReactorShim, service.Service, mempool.Mempool, error) {
+) (service.Service, mempool.Mempool, error) {
 
 	logger = logger.With("module", "mempool", "version", cfg.Mempool.Version)
 	channelShims := mempoolv0.GetChannelShims(cfg.Mempool)
-	reactorShim := p2p.NewReactorShim(logger, "MempoolShim", channelShims)
 
 	channels := makeChannelsFromShims(router, channelShims)
 	peerUpdates := peerManager.Subscribe()
@@ -231,7 +230,7 @@ func createMempoolReactor(
 			mp.EnableTxsAvailable()
 		}
 
-		return reactorShim, reactor, mp, nil
+		return reactor, mp, nil
 
 	case config.MempoolV1:
 		mp := mempoolv1.NewTxMempool(
@@ -257,10 +256,10 @@ func createMempoolReactor(
 			mp.EnableTxsAvailable()
 		}
 
-		return reactorShim, reactor, mp, nil
+		return reactor, mp, nil
 
 	default:
-		return nil, nil, nil, fmt.Errorf("unknown mempool version: %s", cfg.Mempool.Version)
+		return nil, nil, fmt.Errorf("unknown mempool version: %s", cfg.Mempool.Version)
 	}
 }
 
@@ -272,18 +271,17 @@ func createEvidenceReactor(
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	logger log.Logger,
-) (*p2p.ReactorShim, *evidence.Reactor, *evidence.Pool, error) {
+) (*evidence.Reactor, *evidence.Pool, error) {
 	evidenceDB, err := dbProvider(&config.DBContext{ID: "evidence", Config: cfg})
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	logger = logger.With("module", "evidence")
-	reactorShim := p2p.NewReactorShim(logger, "EvidenceShim", evidence.ChannelShims)
 
 	evidencePool, err := evidence.NewPool(logger, evidenceDB, sm.NewStore(stateDB), blockStore)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("creating evidence pool: %w", err)
+		return nil, nil, fmt.Errorf("creating evidence pool: %w", err)
 	}
 
 	evidenceReactor := evidence.NewReactor(
@@ -293,7 +291,7 @@ func createEvidenceReactor(
 		evidencePool,
 	)
 
-	return reactorShim, evidenceReactor, evidencePool, nil
+	return evidenceReactor, evidencePool, nil
 }
 
 func createBlockchainReactor(
@@ -306,11 +304,10 @@ func createBlockchainReactor(
 	router *p2p.Router,
 	blockSync bool,
 	metrics *consensus.Metrics,
-) (*p2p.ReactorShim, service.Service, error) {
+) (service.Service, error) {
 
 	logger = logger.With("module", "blockchain")
 
-	reactorShim := p2p.NewReactorShim(logger, "BlockchainShim", blocksync.ChannelShims)
 	channels := makeChannelsFromShims(router, blocksync.ChannelShims)
 	peerUpdates := peerManager.Subscribe()
 
@@ -320,10 +317,10 @@ func createBlockchainReactor(
 		metrics,
 	)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return reactorShim, reactor, nil
+	return reactor, nil
 }
 
 func createConsensusReactor(
@@ -340,7 +337,7 @@ func createConsensusReactor(
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	logger log.Logger,
-) (*p2p.ReactorShim, *consensus.Reactor, *consensus.State) {
+) (*consensus.Reactor, *consensus.State) {
 
 	consensusState := consensus.NewState(
 		cfg.Consensus,
@@ -355,8 +352,6 @@ func createConsensusReactor(
 	if privValidator != nil && cfg.Mode == config.ModeValidator {
 		consensusState.SetPrivValidator(privValidator)
 	}
-
-	reactorShim := p2p.NewReactorShim(logger, "ConsensusShim", consensus.ChannelShims)
 
 	var (
 		channels    map[p2p.ChannelID]*p2p.Channel
@@ -382,7 +377,7 @@ func createConsensusReactor(
 	// consensusReactor will set it on consensusState and blockExecutor.
 	reactor.SetEventBus(eventBus)
 
-	return reactorShim, reactor, consensusState
+	return reactor, consensusState
 }
 
 func createTransport(logger log.Logger, cfg *config.Config) *p2p.MConnTransport {

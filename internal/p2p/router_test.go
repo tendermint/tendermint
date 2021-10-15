@@ -121,17 +121,17 @@ func TestRouter_Channel_Basic(t *testing.T) {
 	// Opening a channel should work.
 	channel, err := router.OpenChannel(chDesc, &p2ptest.Message{}, 0)
 	require.NoError(t, err)
-	require.Contains(t, router.NodeInfo().Channels, chDesc.ID)
+	require.Contains(t, router.NodeInfo().Channels, byte(chDesc.ID))
 
 	// Opening the same channel again should fail.
 	_, err = router.OpenChannel(chDesc, &p2ptest.Message{}, 0)
 	require.Error(t, err)
 
 	// Opening a different channel should work.
-	chDesc2 := p2p.ChannelDescriptor{ID: byte(2)}
+	chDesc2 := p2p.ChannelDescriptor{ID: 2}
 	_, err = router.OpenChannel(chDesc2, &p2ptest.Message{}, 0)
 	require.NoError(t, err)
-	require.Contains(t, router.NodeInfo().Channels, chDesc2.ID)
+	require.Contains(t, router.NodeInfo().Channels, byte(chDesc2.ID))
 
 	// Closing the channel, then opening it again should be fine.
 	channel.Close()
@@ -865,6 +865,7 @@ func TestRouter_DontSendOnInvalidChannel(t *testing.T) {
 	mockConnection.On("ReceiveMessage").Return(chID, nil, io.EOF)
 
 	mockTransport := &mocks.Transport{}
+	mockTransport.On("AddChannelDescriptors", mock.Anything).Return()
 	mockTransport.On("String").Maybe().Return("mock")
 	mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
 	mockTransport.On("Close").Return(nil)

@@ -23,9 +23,6 @@ const queueBufferDefault = 32
 
 const dialRandomizerIntervalMillisecond = 3000
 
-// ChannelID is an arbitrary channel ID.
-type ChannelID uint16
-
 // Envelope contains a message with sender/receiver routing info.
 type Envelope struct {
 	From      types.NodeID  // sender (empty if outbound)
@@ -361,7 +358,7 @@ func (r *Router) OpenChannel(chDesc ChannelDescriptor, messageType proto.Message
 	r.channelMtx.Lock()
 	defer r.channelMtx.Unlock()
 
-	id := ChannelID(chDesc.ID)
+	id := chDesc.ID
 	if _, ok := r.channelQueues[id]; ok {
 		return nil, fmt.Errorf("channel %v already exists", id)
 	}
@@ -382,6 +379,10 @@ func (r *Router) OpenChannel(chDesc ChannelDescriptor, messageType proto.Message
 
 	// add the channel to the nodeInfo if it's not already there.
 	r.nodeInfo.AddChannel(uint16(chDesc.ID))
+
+	for _, t := range r.transports {
+		t.AddChannelDescriptors([]*ChannelDescriptor{&chDesc})
+	}
 
 	go func() {
 		defer func() {
