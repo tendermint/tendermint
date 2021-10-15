@@ -31,50 +31,46 @@ var (
 	// ref: https://github.com/tendermint/tendermint/issues/5670
 	ChannelShims = map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
 		StateChannel: {
-			MsgType: new(tmcons.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  byte(StateChannel),
+				MessageType:         new(tmcons.Message),
 				Priority:            8,
 				SendQueueCapacity:   64,
 				RecvMessageCapacity: maxMsgSize,
 				RecvBufferCapacity:  128,
-				MaxSendBytes:        12000,
 			},
 		},
 		DataChannel: {
-			MsgType: new(tmcons.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				// TODO: Consider a split between gossiping current block and catchup
 				// stuff. Once we gossip the whole block there is nothing left to send
 				// until next height or round.
 				ID:                  byte(DataChannel),
+				MessageType:         new(tmcons.Message),
 				Priority:            12,
 				SendQueueCapacity:   64,
 				RecvBufferCapacity:  512,
 				RecvMessageCapacity: maxMsgSize,
-				MaxSendBytes:        40000,
 			},
 		},
 		VoteChannel: {
-			MsgType: new(tmcons.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  byte(VoteChannel),
+				MessageType:         new(tmcons.Message),
 				Priority:            10,
 				SendQueueCapacity:   64,
 				RecvBufferCapacity:  128,
 				RecvMessageCapacity: maxMsgSize,
-				MaxSendBytes:        150,
 			},
 		},
 		VoteSetBitsChannel: {
-			MsgType: new(tmcons.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  byte(VoteSetBitsChannel),
+				MessageType:         new(tmcons.Message),
 				Priority:            5,
 				SendQueueCapacity:   8,
 				RecvBufferCapacity:  128,
 				RecvMessageCapacity: maxMsgSize,
-				MaxSendBytes:        50,
 			},
 		},
 	}

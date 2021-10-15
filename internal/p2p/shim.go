@@ -3,7 +3,6 @@ package p2p
 import (
 	"sort"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/log"
 )
 
@@ -12,7 +11,6 @@ import (
 // A ChannelDescriptorShim is not contained in ReactorShim, but is rather
 // used to construct a ReactorShim.
 type ChannelDescriptorShim struct {
-	MsgType    proto.Message
 	Descriptor *ChannelDescriptor
 }
 
@@ -61,7 +59,7 @@ func NewChannelShim(cds *ChannelDescriptorShim, buf uint) *ChannelShim {
 		Descriptor: cds.Descriptor,
 		Channel: NewChannel(
 			ChannelID(cds.Descriptor.ID),
-			cds.MsgType,
+			cds.Descriptor.MessageType,
 			inCh,
 			outCh,
 			errCh,
