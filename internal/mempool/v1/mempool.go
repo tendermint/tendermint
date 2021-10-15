@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"sync/atomic"
 	"time"
 
@@ -640,6 +641,10 @@ func (txmp *TxMempool) defaultTxCallback(req *abci.Request, res *abci.Response) 
 
 	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
 	if !ok {
+		txmp.logger.Error("received incorrect type in mempool callback",
+			"expected", reflect.TypeOf(&abci.Response_CheckTx{}).Name(),
+			"got", reflect.TypeOf(res.Value).Name(),
+		)
 		return
 	}
 	tx := req.GetCheckTx().Tx
