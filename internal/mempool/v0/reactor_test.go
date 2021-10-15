@@ -97,7 +97,79 @@ func setup(t *testing.T, config *config.MempoolConfig, numNodes int, chBuf uint)
 }
 
 func (rts *reactorTestSuite) start(t *testing.T) {
-	art(t)
+	t.Helper()
+	rts.network.Start(t)
+	require.Len(t,
+		rts.network.RandomNode().PeerManager.Peers(),
+		len(rts.nodes)-1,
+		"network does not have expected number of nodes")
+}
+
+func (rts *reactorTestSuite) assertMempoolChannelsDrained(t *testing.T) {
+	t.Helper()
+
+	for id, r := range rts.reactors {
+		require.NoError(t, r.Stop(), "stopping reactor %s", id)
+		r.Wait()
+		require.False(t, r.IsRunning(), "reactor %s did not stop", id)
+	}
+
+	for _, mch := range rts.mempoolChnnels {
+		require.Empty(t, mch.Out, "checking channel %q (len=%d)", mch.ID, len(mch.Out))
+	}
+}
+
+func (rts *reactorTestSuite) waitForTxns(t *testing.T, txs types.Txs, ids ...types.NodeID) {
+	t.Helper()
+
+	fn := func(pool *CListMempool) {
+		for pool.Size() < len(txs) {
+			time.Sleep(50 * time.Millisecond)
+		}
+
+		reapedTxs := pool.ReapMaxTxs(len(txs))
+		require.Equal(t, len(txs), len(reapedTxs))
+		for i, tx := range txs {
+			require.Equalf(t,
+				tx,
+				reapedTxs[i],
+				"txs at index %d in reactor mempool mismatch; got: %v, expected: %v", i, tx, reapedTxs[i],
+			)
+		}
+	}
+
+	if len(ids) == 1 {
+		fn(rts.reactors[ids[0]].mempool)
+		return
+	}
+
+	wg := &sync.WaitGroup{}
+	for id := range rts.mempools {
+		if len(ids) > 0 && !p2ptest.NodeInSlice(id, ids) {
+			continue
+		}
+
+		wg.Add(1)
+		func(nid types.NodeID) { defer wg.Done(); fn(rts.reactors[nid].mempool) }(id)
+	}
+
+	wg.Wait()
+}
+
+func TestReactorBroadcastTxs(t *testing.T) {
+	numTxs := 1000
+	numNodes := 10
+	cfg := config.TestConfig()
+
+	rts := setup(t, cfg.Mempool, numNodes, 0)
+
+	primary := rts.nodes[0]
+	secondaries := rts.nodes[1:]
+
+	txs := checkTxs(t, rts.reactors[primary].mempool, numTxs, mempool.UnknownPeerID)
+
+	// run the router
+	rts.start(t)
 
 	// Wait till all secondary suites (reactor) received all mempool txs from the
 	// primary suite (node).
