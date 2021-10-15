@@ -252,7 +252,8 @@ func TestMempoolUpdateDoesNotPanicWhenApplicationMissedTx(t *testing.T) {
 	err := mp.Update(0, []types.Tx{txs[0]}, abciResponses(1, abci.CodeTypeOK), nil, nil)
 	require.Nil(t, err)
 
-	// The mempool has now sent its callbacks off to the client to be rechecked.
+	// The mempool has now sent its requests off to the client to be rechecked
+	// and is waiting for the corresponding callbacks to be called.
 	// We now call the mempool-supplied callback on the first and third transaction.
 	// This simulates the client dropping the second request.
 	// Previous versions of this code panicked when the ABCI application missed
