@@ -27,13 +27,12 @@ var (
 	// ref: https://github.com/tendermint/tendermint/issues/5670
 	ChannelShims = map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
 		EvidenceChannel: {
-			MsgType: new(tmproto.EvidenceList),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  EvidenceChannel,
+				MessageType:         new(tmproto.EvidenceList),
 				Priority:            6,
 				RecvMessageCapacity: maxMsgSize,
 				RecvBufferCapacity:  32,
-				MaxSendBytes:        400,
 			},
 		},
 	}

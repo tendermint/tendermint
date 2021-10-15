@@ -38,47 +38,43 @@ var (
 	// ref: https://github.com/tendermint/tendermint/issues/5670
 	ChannelShims = map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
 		SnapshotChannel: {
-			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  SnapshotChannel,
+				MessageType:         new(ssproto.Message),
 				Priority:            6,
 				SendQueueCapacity:   10,
 				RecvMessageCapacity: snapshotMsgSize,
 				RecvBufferCapacity:  128,
-				MaxSendBytes:        400,
 			},
 		},
 		ChunkChannel: {
-			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  ChunkChannel,
 				Priority:            3,
+				MessageType:         new(ssproto.Message),
 				SendQueueCapacity:   4,
 				RecvMessageCapacity: chunkMsgSize,
 				RecvBufferCapacity:  128,
-				MaxSendBytes:        400,
 			},
 		},
 		LightBlockChannel: {
-			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  LightBlockChannel,
+				MessageType:         new(ssproto.Message),
 				Priority:            5,
 				SendQueueCapacity:   10,
 				RecvMessageCapacity: lightBlockMsgSize,
 				RecvBufferCapacity:  128,
-				MaxSendBytes:        400,
 			},
 		},
 		ParamsChannel: {
-			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  ParamsChannel,
+				MessageType:         new(ssproto.Message),
 				Priority:            2,
 				SendQueueCapacity:   10,
 				RecvMessageCapacity: paramMsgSize,
 				RecvBufferCapacity:  128,
-				MaxSendBytes:        400,
 			},
 		},
 	}

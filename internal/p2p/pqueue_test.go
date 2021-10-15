@@ -13,7 +13,7 @@ type testMessage = gogotypes.StringValue
 func TestCloseWhileDequeueFull(t *testing.T) {
 	enqueueLength := 5
 	chDescs := []ChannelDescriptor{
-		{ID: 0x01, Priority: 1, MaxSendBytes: 4},
+		{ID: 0x01, Priority: 1},
 	}
 	pqueue := newPQScheduler(log.NewNopLogger(), NopMetrics(), chDescs, uint(enqueueLength), 1, 120)
 

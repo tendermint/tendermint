@@ -19,7 +19,6 @@ var (
 		Priority:            5,
 		SendQueueCapacity:   10,
 		RecvMessageCapacity: 10,
-		MaxSendBytes:        1000,
 	}
 
 	selfKey  crypto.PrivKey = ed25519.GenPrivKeyFromSecret([]byte{0xf9, 0x1b, 0x08, 0xaa, 0x38, 0xee, 0x34, 0xdd})
