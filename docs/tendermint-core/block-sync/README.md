@@ -66,9 +66,6 @@ another event for exposing the fast-sync `complete` status and the state `height
 The user can query the events by subscribing `EventQueryBlockSyncStatus`
 Please check [types](https://pkg.go.dev/github.com/tendermint/tendermint/types?utm_source=godoc#pkg-constants) for the details.
 
-## Implementations
+## Implementation
 
-There are two implementations of the protocol. The first is `bcv0`, this is the original implementation and `bcv2` which is the most recent implementation. Both versions can be used in a production node.
-
-- [bcv0](./bcv0/README.md)
-- [bcv2](./bcv2/README.md)
+To read more on the implamentation please see the [reactor doc](./reactor.md) and the [implementation doc](./implementation.md)
