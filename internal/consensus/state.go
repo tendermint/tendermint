@@ -1299,7 +1299,7 @@ func (cs *State) enterPrevote(height int64, round int32) {
 func (cs *State) defaultDoPrevote(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
-	// We did not receive a proposal within this round.
+	// We did not receive a proposal within this round. (and thus executing this from a timeout)
 	if cs.ProposalBlock == nil {
 		logger.Debug("prevote step: ProposalBlock is nil")
 		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
