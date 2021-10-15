@@ -41,13 +41,17 @@ var (
 	errPubKeyIsNotSet = errors.New("pubkey is not set. Look for \"Can't get private validator pubkey\" errors")
 )
 
+// udpateRoundStepReason is an enum that is used to report why a validator proceeded from
+// one round step to the next.
 type updateRoundStepReason int
 
 const (
-	timeout updateRoundStepReason = iota
-	maj23
-	skip
-	unknown
+	updateReasonTimeout updateRoundStepReason = iota
+	updateReasonProposalComplete
+	updateReasonStart
+	updateReasonMaj23
+	updateReasonSkip
+	updateReasonUnknown
 )
 
 var msgQueueSize = 1000
@@ -68,6 +72,24 @@ type timeoutInfo struct {
 
 func (ti *timeoutInfo) String() string {
 	return fmt.Sprintf("%v ; %d/%d %v", ti.Duration, ti.Height, ti.Round, ti.Step)
+}
+
+func (u updateRoundStepReason) String() string {
+	switch u {
+	case updateReasonTimeout:
+		return "timeout"
+	case updateReasonProposalComplete:
+		return "proposal_complete"
+	case updateReasonStart:
+		return "start"
+	case updateReasonMaj23:
+		return "two_thirds_majority"
+	case updateReasonSkip:
+		return "skip"
+	case updateReasonUnknown:
+		return "unknown"
+	}
+	panic("unreachable")
 }
 
 // interface to the mempool
@@ -583,10 +605,8 @@ func (cs *State) updateHeight(height int64) {
 	cs.Height = height
 }
 
-func (cs *State) updateRoundStep(round int32, step cstypes.RoundStepType, r updateRoundStepReason) {
-	if round > 0 {
-		cs.metrics.StepTime.With("reason", r.String(), "step", cs.Step.String()).Observe(time.Since(cs.localClockStepStart).Seconds())
-	}
+func (cs *State) updateRoundStep(round int32, step cstypes.RoundStepType) {
+	cs.metrics.StepTime.With("step", cs.Step.String()).Observe(time.Since(cs.localClockStepStart).Seconds())
 	cs.localClockStepStart = time.Now()
 	cs.Round = round
 	cs.Step = step
@@ -757,7 +777,6 @@ func (cs *State) newStep() {
 	}
 
 	cs.nSteps++
-	cs.localClockStepStart = time.Now()
 
 	// newStep is called by updateToState in NewState before the eventBus is set!
 	if cs.eventBus != nil {
@@ -1039,9 +1058,6 @@ func (cs *State) enterNewRound(height int64, round int32) {
 		return
 	}
 
-	cs.localClockRoundStart = time.Now()
-	cs.localClockRoundStart = time.Now()
-
 	if now := tmtime.Now(); cs.StartTime.After(now) {
 		logger.Debug("need to set a buffer and log message here for sanity", "start_time", cs.StartTime, "now", now)
 	}
@@ -1058,6 +1074,7 @@ func (cs *State) enterNewRound(height int64, round int32) {
 	// Setup new round
 	// we don't fire newStep for this step,
 	// but we fire an event, so update the round step first
+	cs.localClockStepStart = time.Now()
 	cs.updateRoundStep(round, cstypes.RoundStepNewRound)
 	cs.Validators = validators
 	if round == 0 {
@@ -1305,11 +1322,7 @@ func (cs *State) enterPrevote(height int64, round int32) {
 	defer func() {
 		// Done enterPrevote:
 
-		reason := timeout
-		if cs.isProposalComplete() {
-			reason = maj23
-		}
-		cs.updateRoundStep(round, cstypes.RoundStepPrevote, reason)
+		cs.updateRoundStep(round, cstypes.RoundStepPrevote)
 		cs.newStep()
 	}()
 
@@ -1405,18 +1418,17 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 
 	logger.Debug("entering precommit step", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
 
+	// check for a polka
+	blockID, hasPolka := cs.Votes.Prevotes(round).TwoThirdsMajority()
+
 	defer func() {
 		// Done enterPrecommit:
-		reason := timeout
-		cs.updateRoundStep(round, cstypes.RoundStepPrecommit, reason)
+		cs.updateRoundStep(round, cstypes.RoundStepPrecommit)
 		cs.newStep()
 	}()
 
-	// check for a polka
-	blockID, ok := cs.Votes.Prevotes(round).TwoThirdsMajority()
-
 	// If we don't have a polka, we must precommit nil.
-	if !ok {
+	if !hasPolka {
 		if cs.LockedBlock != nil {
 			logger.Debug("precommit step; no +2/3 prevotes during enterPrecommit while we are locked; precommitting nil")
 		} else {

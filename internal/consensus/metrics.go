@@ -195,7 +195,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Subsystem: MetricsSubsystem,
 			Name:      "step_time",
 			Help:      "Time spent per step.",
-		}, append(labels, "step", "reason")).With(labelsAndValues...),
+		}, append(labels, "step")).With(labelsAndValues...),
 	}
 }
 
