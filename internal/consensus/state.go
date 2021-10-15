@@ -1352,9 +1352,9 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 		If we see a proposal in the current round for value 'v' that lists its valid round as 'v_r'
 		AND this validator saw a 2/3 majority of the voting power prevote 'v' in round 'v_r', then we will
 		issue a prevote for 'v' in this round if 'v' is valid and either matches our locked value OR
-		'v_r' is a round greater than our current locked round.
+		'v_r' is a round greater than or equal to our current locked round.
 
-		'v_r' can be a round greater than or equal to our current locked round if a 2/3 majority of
+		'v_r' can be a round greater than to our current locked round if a 2/3 majority of
 		the network prevoted a value in round 'v_r' but we did not lock on it, possibly because we
 		missed the proposal in round 'v_r'.
 	*/
