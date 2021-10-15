@@ -6,6 +6,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -16,6 +17,7 @@ var (
 	chID   = p2p.ChannelID(1)
 	chDesc = &p2p.ChannelDescriptor{
 		ID:                  chID,
+		MessageType:         &p2ptest.Message{},
 		Priority:            5,
 		SendQueueCapacity:   10,
 		RecvMessageCapacity: 10,

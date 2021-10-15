@@ -1098,7 +1098,7 @@ func makeChannelsFromShims(
 	channels := map[p2p.ChannelID]*p2p.Channel{}
 	for idx := range chDescs {
 		chDesc := chDescs[idx]
-		ch, err := router.OpenChannel(chDesc, chDesc.MessageType, chDesc.RecvBufferCapacity)
+		ch, err := router.OpenChannel(chDesc)
 		if err != nil {
 			panic(fmt.Sprintf("failed to open channel %v: %v", chDesc.ID, err))
 		}
