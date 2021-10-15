@@ -40,8 +40,9 @@ const (
 var Hashers *HasherContainer
 
 type HasherContainer struct {
-	mainHasher HashType // it indicates which hasher is mainly using in the tendermint components.
+	defaultHasher HashType // it indicates which hasher is mainly using in the tendermint components.
 	hasherMap  map[HashType]hash.Hash
+    seal bool
 }
 
 func init() {
@@ -53,39 +54,42 @@ func initContainer() *HasherContainer {
 		hasherMap: map[HashType]hash.Hash{}}
 
     // during the hashers initialization, it will adds all hasher have been integreted in 
-    // Tendermint crypto library by default. And the mainHasher will be sha256 by default.    
+    // the Tendermint crypto library by default. And the defaultHasher will be sha256.
 	hc.RegisterHasher(SHA256, sha256.New(), true)
 	hc.RegisterHasher(BLAKE2B, blake2b.New(), false)
 
 	return hc
 }
 
-// develop can register the custom hasher into the hashers and set it to the main uses.
-func (hc *HasherContainer) RegisterHasher(ht HashType, hasher hash.Hash, isMain bool) {
+// Register the custom hasher into the hashers and set it to the default. Return false if hasher is sealed.
+func (hc *HasherContainer) RegisterHasher(ht HashType, hasher hash.Hash, isDefault bool) bool {
+    if hc.seal {
+        return false
+    }
+
 	hc.hasherMap[ht] = hasher
-	if isMain {
-		hc.mainHasher = ht
+	if isDefault {
+		hc.defaultHasher = ht
 	}
+
+    return true
 }
 
-func (hc *HasherContainer) MainHasher() hash.Hash {
-	return hc.hasherMap[hc.mainHasher]
+// When the node initialization, we should call Seal to avoid overwriting the exisitng hasher.
+func (hc *HasherContaine) Seal() {
+    hc.seal = true
 }
 
-func (hc *HasherContainer) MainHashType() HashType {
-	return hc.mainHasher
+func (hc *HasherContainer) DefaultHasher() hash.Hash {
+	return hc.hasherMap[hc.defaultHasher]
+}
+
+func (hc *HasherContainer) DefaultHashType() HashType {
+	return hc.defaultHasher
 }
 
 func (hc *HasherContainer) Hasher(ht HashType) hash.Hash {
 	return hc.hasherMap[ht]
-}
-
-func (hc *HasherContainer) SetMainHashType(ht HashType) error {
-    if hc.hasherMap[ht] == nil {
-        return err
-    }
-
-	return nil
 }
 ```
 
