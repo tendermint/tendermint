@@ -49,7 +49,7 @@ func TestValidProposalChainLocks(t *testing.T) {
 			block := msg.Data().(types.EventDataNewBlock).Block
 			// this is true just because of this test where each new height has a new chain lock that is incremented by 1
 			state := css[0].GetState()
-			assert.EqualValues(t, i+1, block.Header.CoreChainLockedHeight)                  //nolint:scopelint
+			assert.EqualValues(t, i+1, block.Header.CoreChainLockedHeight)           //nolint:scopelint
 			assert.EqualValues(t, state.InitialHeight+int64(i), block.Header.Height) //nolint:scopelint
 		}, css)
 	}
