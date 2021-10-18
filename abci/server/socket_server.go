@@ -240,22 +240,15 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 
 // Pull responses from 'responses' and write them to conn.
 func (s *SocketServer) handleResponses(closeConn chan error, conn io.Writer, responses <-chan *types.Response) {
-	var count int
-	var bufWriter = bufio.NewWriter(conn)
-	for {
-		var res = <-responses
-		err := types.WriteMessage(res, bufWriter)
-		if err != nil {
+	bw := bufio.NewWriter(conn)
+	for res := range responses {
+		if err := types.WriteMessage(res, bw); err != nil {
 			closeConn <- fmt.Errorf("error writing message: %w", err)
 			return
 		}
-		if _, ok := res.Value.(*types.Response_Flush); ok {
-			err = bufWriter.Flush()
-			if err != nil {
-				closeConn <- fmt.Errorf("error flushing write buffer: %w", err)
-				return
-			}
+		if err := bw.Flush(); err != nil {
+			closeConn <- fmt.Errorf("error flushing write buffer: %w", err)
+			return
 		}
-		count++
 	}
 }

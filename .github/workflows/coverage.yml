@@ -2,6 +2,8 @@ name: Test Coverage
 on:
   pull_request:
   push:
+    paths:
+      - "**.go"
     branches:
       - master
       - release/**
@@ -44,12 +46,13 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: "1.16"
+          go-version: "1.17"
       - uses: actions/checkout@v2.3.4
-      - uses: technote-space/get-diff-action@v4
+      - uses: technote-space/get-diff-action@v5
         with:
           PATTERNS: |
             **/**.go
+            "!test/"
             go.mod
             go.sum
       - name: install
@@ -66,12 +69,13 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: "1.16"
+          go-version: "1.17"
       - uses: actions/checkout@v2.3.4
-      - uses: technote-space/get-diff-action@v4
+      - uses: technote-space/get-diff-action@v5
         with:
           PATTERNS: |
             **/**.go
+            "!test/"
             go.mod
             go.sum
       - uses: actions/download-artifact@v2
@@ -81,10 +85,10 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.16
+          go-version: "1.17"
       - name: test & coverage report creation
         run: |
-          cat pkgs.txt.part.${{ matrix.part }} | xargs go test -mod=readonly -timeout 8m -race -coverprofile=${{ matrix.part }}profile.out -covermode=atomic
+          cat pkgs.txt.part.${{ matrix.part }} | xargs go test -mod=readonly -timeout 8m -race -coverprofile=${{ matrix.part }}profile.out
         if: env.GIT_DIFF
       - uses: actions/upload-artifact@v2
         with:
@@ -96,10 +100,11 @@ jobs:
     needs: tests
     steps:
       - uses: actions/checkout@v2.3.4
-      - uses: technote-space/get-diff-action@v4
+      - uses: technote-space/get-diff-action@v5
         with:
           PATTERNS: |
             **/**.go
+            "!test/"
             go.mod
             go.sum
       - uses: actions/download-artifact@v2
@@ -119,9 +124,9 @@ jobs:
           name: "${{ github.sha }}-03-coverage"
         if: env.GIT_DIFF
       - run: |
-          cat ./*profile.out | grep -v "mode: atomic" >> coverage.txt
+          cat ./*profile.out | grep -v "mode: set" >> coverage.txt
         if: env.GIT_DIFF
-      - uses: codecov/codecov-action@v2.0.2
+      - uses: codecov/codecov-action@v2.1.0
         with:
           file: ./coverage.txt
         if: env.GIT_DIFF

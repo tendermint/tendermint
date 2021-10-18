@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/libs/log"
-	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 func TestWebsocketManagerHandler(t *testing.T) {
@@ -26,8 +26,8 @@ func TestWebsocketManagerHandler(t *testing.T) {
 	}
 
 	// check basic functionality works
-	req, err := types.MapToRequest(
-		types.JSONRPCStringID("TestWebsocketManager"),
+	req, err := rpctypes.MapToRequest(
+		rpctypes.JSONRPCStringID("TestWebsocketManager"),
 		"c",
 		map[string]interface{}{"s": "a", "i": 10},
 	)
@@ -35,7 +35,7 @@ func TestWebsocketManagerHandler(t *testing.T) {
 	err = c.WriteJSON(req)
 	require.NoError(t, err)
 
-	var resp types.RPCResponse
+	var resp rpctypes.RPCResponse
 	err = c.ReadJSON(&resp)
 	require.NoError(t, err)
 	require.Nil(t, resp.Error)
@@ -44,7 +44,7 @@ func TestWebsocketManagerHandler(t *testing.T) {
 
 func newWSServer() *httptest.Server {
 	funcMap := map[string]*RPCFunc{
-		"c": NewWSRPCFunc(func(ctx *types.Context, s string, i int) (string, error) { return "foo", nil }, "s,i"),
+		"c": NewWSRPCFunc(func(ctx *rpctypes.Context, s string, i int) (string, error) { return "foo", nil }, "s,i"),
 	}
 	wm := NewWebsocketManager(funcMap)
 	wm.SetLogger(log.TestingLogger())

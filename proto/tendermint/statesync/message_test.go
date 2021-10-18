@@ -4,11 +4,12 @@ import (
 	"encoding/hex"
 	"testing"
 
-	proto "github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 func TestValidateMsg(t *testing.T) {
@@ -160,6 +161,35 @@ func TestStateSyncVectors(t *testing.T) {
 				Chunk:  []byte("it's a chunk"),
 			},
 			"2214080110021803220c697427732061206368756e6b",
+		},
+		{
+			"LightBlockRequest",
+			&ssproto.LightBlockRequest{
+				Height: 100,
+			},
+			"2a020864",
+		},
+		{
+			"LightBlockResponse",
+			&ssproto.LightBlockResponse{
+				LightBlock: nil,
+			},
+			"3200",
+		},
+		{
+			"ParamsRequest",
+			&ssproto.ParamsRequest{
+				Height: 9001,
+			},
+			"3a0308a946",
+		},
+		{
+			"ParamsResponse",
+			&ssproto.ParamsResponse{
+				Height:          9001,
+				ConsensusParams: types.DefaultConsensusParams().ToProto(),
+			},
+			"423408a946122f0a10088080c00a10ffffffffffffffffff01120e08a08d0612040880c60a188080401a090a07656432353531392200",
 		},
 	}
 

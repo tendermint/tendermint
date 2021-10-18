@@ -6,7 +6,6 @@ import (
 
 	"github.com/tendermint/tendermint/internal/libs/clist"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -17,7 +16,7 @@ type WrappedTx struct {
 	tx types.Tx
 
 	// hash defines the transaction hash and the primary key used in the mempool
-	hash [mempool.TxKeySize]byte
+	hash types.TxKey
 
 	// height defines the height at which the transaction was validated at
 	height int64
@@ -66,14 +65,14 @@ func (wtx *WrappedTx) Size() int {
 //   need mutative access.
 type TxStore struct {
 	mtx       tmsync.RWMutex
-	hashTxs   map[[mempool.TxKeySize]byte]*WrappedTx // primary index
-	senderTxs map[string]*WrappedTx                  // sender is defined by the ABCI application
+	hashTxs   map[types.TxKey]*WrappedTx // primary index
+	senderTxs map[string]*WrappedTx      // sender is defined by the ABCI application
 }
 
 func NewTxStore() *TxStore {
 	return &TxStore{
 		senderTxs: make(map[string]*WrappedTx),
-		hashTxs:   make(map[[mempool.TxKeySize]byte]*WrappedTx),
+		hashTxs:   make(map[types.TxKey]*WrappedTx),
 	}
 }
 
@@ -110,7 +109,7 @@ func (txs *TxStore) GetTxBySender(sender string) *WrappedTx {
 }
 
 // GetTxByHash returns a *WrappedTx by the transaction's hash.
-func (txs *TxStore) GetTxByHash(hash [mempool.TxKeySize]byte) *WrappedTx {
+func (txs *TxStore) GetTxByHash(hash types.TxKey) *WrappedTx {
 	txs.mtx.RLock()
 	defer txs.mtx.RUnlock()
 
@@ -119,7 +118,7 @@ func (txs *TxStore) GetTxByHash(hash [mempool.TxKeySize]byte) *WrappedTx {
 
 // IsTxRemoved returns true if a transaction by hash is marked as removed and
 // false otherwise.
-func (txs *TxStore) IsTxRemoved(hash [mempool.TxKeySize]byte) bool {
+func (txs *TxStore) IsTxRemoved(hash types.TxKey) bool {
 	txs.mtx.RLock()
 	defer txs.mtx.RUnlock()
 
@@ -142,7 +141,7 @@ func (txs *TxStore) SetTx(wtx *WrappedTx) {
 		txs.senderTxs[wtx.sender] = wtx
 	}
 
-	txs.hashTxs[mempool.TxKey(wtx.tx)] = wtx
+	txs.hashTxs[wtx.tx.Key()] = wtx
 }
 
 // RemoveTx removes a *WrappedTx from the transaction store. It deletes all
@@ -155,13 +154,13 @@ func (txs *TxStore) RemoveTx(wtx *WrappedTx) {
 		delete(txs.senderTxs, wtx.sender)
 	}
 
-	delete(txs.hashTxs, mempool.TxKey(wtx.tx))
+	delete(txs.hashTxs, wtx.tx.Key())
 	wtx.removed = true
 }
 
 // TxHasPeer returns true if a transaction by hash has a given peer ID and false
 // otherwise. If the transaction does not exist, false is returned.
-func (txs *TxStore) TxHasPeer(hash [mempool.TxKeySize]byte, peerID uint16) bool {
+func (txs *TxStore) TxHasPeer(hash types.TxKey, peerID uint16) bool {
 	txs.mtx.RLock()
 	defer txs.mtx.RUnlock()
 
@@ -179,7 +178,7 @@ func (txs *TxStore) TxHasPeer(hash [mempool.TxKeySize]byte, peerID uint16) bool 
 // We return true if we've already recorded the given peer for this transaction
 // and false otherwise. If the transaction does not exist by hash, we return
 // (nil, false).
-func (txs *TxStore) GetOrSetPeerByTxHash(hash [mempool.TxKeySize]byte, peerID uint16) (*WrappedTx, bool) {
+func (txs *TxStore) GetOrSetPeerByTxHash(hash types.TxKey, peerID uint16) (*WrappedTx, bool) {
 	txs.mtx.Lock()
 	defer txs.mtx.Unlock()
 

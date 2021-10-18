@@ -348,9 +348,9 @@ func (c *mConnConnection) handshake(
 }
 
 // onReceive is a callback for MConnection received messages.
-func (c *mConnConnection) onReceive(chID byte, payload []byte) {
+func (c *mConnConnection) onReceive(chID ChannelID, payload []byte) {
 	select {
-	case c.receiveCh <- mConnMessage{channelID: ChannelID(chID), payload: payload}:
+	case c.receiveCh <- mConnMessage{channelID: chID, payload: payload}:
 	case <-c.closeCh:
 	}
 }
@@ -377,32 +377,21 @@ func (c *mConnConnection) String() string {
 }
 
 // SendMessage implements Connection.
-func (c *mConnConnection) SendMessage(chID ChannelID, msg []byte) (bool, error) {
+func (c *mConnConnection) SendMessage(chID ChannelID, msg []byte) error {
 	if chID > math.MaxUint8 {
-		return false, fmt.Errorf("MConnection only supports 1-byte channel IDs (got %v)", chID)
+		return fmt.Errorf("MConnection only supports 1-byte channel IDs (got %v)", chID)
 	}
 	select {
 	case err := <-c.errorCh:
-		return false, err
+		return err
 	case <-c.closeCh:
-		return false, io.EOF
+		return io.EOF
 	default:
-		return c.mconn.Send(byte(chID), msg), nil
-	}
-}
+		if ok := c.mconn.Send(chID, msg); !ok {
+			return errors.New("sending message timed out")
+		}
 
-// TrySendMessage implements Connection.
-func (c *mConnConnection) TrySendMessage(chID ChannelID, msg []byte) (bool, error) {
-	if chID > math.MaxUint8 {
-		return false, fmt.Errorf("MConnection only supports 1-byte channel IDs (got %v)", chID)
-	}
-	select {
-	case err := <-c.errorCh:
-		return false, err
-	case <-c.closeCh:
-		return false, io.EOF
-	default:
-		return c.mconn.TrySend(byte(chID), msg), nil
+		return nil
 	}
 }
 
@@ -442,34 +431,12 @@ func (c *mConnConnection) RemoteEndpoint() Endpoint {
 	return endpoint
 }
 
-// Status implements Connection.
-func (c *mConnConnection) Status() conn.ConnectionStatus {
-	if c.mconn == nil {
-		return conn.ConnectionStatus{}
-	}
-	return c.mconn.Status()
-}
-
 // Close implements Connection.
 func (c *mConnConnection) Close() error {
 	var err error
 	c.closeOnce.Do(func() {
 		if c.mconn != nil && c.mconn.IsRunning() {
 			err = c.mconn.Stop()
-		} else {
-			err = c.conn.Close()
-		}
-		close(c.closeCh)
-	})
-	return err
-}
-
-// FlushClose implements Connection.
-func (c *mConnConnection) FlushClose() error {
-	var err error
-	c.closeOnce.Do(func() {
-		if c.mconn != nil && c.mconn.IsRunning() {
-			c.mconn.FlushStop()
 		} else {
 			err = c.conn.Close()
 		}

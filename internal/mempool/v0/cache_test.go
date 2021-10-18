@@ -7,16 +7,16 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/mempool"
-	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
 func TestCacheAfterUpdate(t *testing.T) {
 	app := kvstore.NewApplication()
-	cc := proxy.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
@@ -61,7 +61,7 @@ func TestCacheAfterUpdate(t *testing.T) {
 			require.NotEqual(t, len(tc.txsInCache), counter,
 				"cache larger than expected on testcase %d", tcIndex)
 
-			nodeVal := node.Value.([sha256.Size]byte)
+			nodeVal := node.Value.(types.TxKey)
 			expectedBz := sha256.Sum256([]byte{byte(tc.txsInCache[len(tc.txsInCache)-counter-1])})
 			// Reference for reading the errors:
 			// >>> sha256('\x00').hexdigest()
@@ -71,7 +71,7 @@ func TestCacheAfterUpdate(t *testing.T) {
 			// >>> sha256('\x02').hexdigest()
 			// 'dbc1b4c900ffe48d575b5da5c638040125f65db0fe3e24494b76ea986457d986'
 
-			require.Equal(t, expectedBz, nodeVal, "Equality failed on index %d, tc %d", counter, tcIndex)
+			require.EqualValues(t, expectedBz, nodeVal, "Equality failed on index %d, tc %d", counter, tcIndex)
 			counter++
 			node = node.Next()
 		}

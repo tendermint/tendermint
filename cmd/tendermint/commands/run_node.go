@@ -3,6 +3,8 @@ package commands
 import (
 	"bytes"
 	"crypto/sha256"
+	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -33,7 +35,22 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"socket address to listen on for connections from external priv-validator process")
 
 	// node flags
-	cmd.Flags().Bool("fast-sync", config.FastSyncMode, "fast blockchain syncing")
+	cmd.Flags().Bool("blocksync.enable", config.BlockSync.Enable, "enable fast blockchain syncing")
+
+	// TODO (https://github.com/tendermint/tendermint/issues/6908): remove this check after the v0.35 release cycle
+	// This check was added to give users an upgrade prompt to use the new flag for syncing.
+	//
+	// The pflag package does not have a native way to print a depcrecation warning
+	// and return an error. This logic was added to print a deprecation message to the user
+	// and then crash if the user attempts to use the old --fast-sync flag.
+	fs := flag.NewFlagSet("", flag.ExitOnError)
+	fs.Func("fast-sync", "deprecated",
+		func(string) error {
+			return errors.New("--fast-sync has been deprecated, please use --blocksync.enable")
+		})
+	cmd.Flags().AddGoFlagSet(fs)
+
+	cmd.Flags().MarkHidden("fast-sync") //nolint:errcheck
 	cmd.Flags().BytesHexVar(
 		&genesisHash,
 		"genesis-hash",
@@ -48,15 +65,11 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"proxy-app",
 		config.ProxyApp,
 		"proxy app address, or one of: 'kvstore',"+
-			" 'persistent_kvstore' or 'noop' for local testing.")
+			" 'persistent_kvstore', 'e2e' or 'noop' for local testing.")
 	cmd.Flags().String("abci", config.ABCI, "specify abci transport (socket | grpc)")
 
 	// rpc flags
 	cmd.Flags().String("rpc.laddr", config.RPC.ListenAddress, "RPC listen address. Port required")
-	cmd.Flags().String(
-		"rpc.grpc-laddr",
-		config.RPC.GRPCListenAddress,
-		"GRPC listen address (BroadcastTx only). Port required")
 	cmd.Flags().Bool("rpc.unsafe", config.RPC.Unsafe, "enabled unsafe rpc methods")
 	cmd.Flags().String("rpc.pprof-laddr", config.RPC.PprofListenAddress, "pprof listen address (https://golang.org/pkg/net/http/pprof)")
 
@@ -67,8 +80,6 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"node listen address. (0.0.0.0:0 means any interface, any port)")
 	cmd.Flags().String("p2p.seeds", config.P2P.Seeds, "comma-delimited ID@host:port seed nodes")
 	cmd.Flags().String("p2p.persistent-peers", config.P2P.PersistentPeers, "comma-delimited ID@host:port persistent peers")
-	cmd.Flags().String("p2p.unconditional-peer-ids",
-		config.P2P.UnconditionalPeerIDs, "comma-delimited IDs of unconditional peers")
 	cmd.Flags().Bool("p2p.upnp", config.P2P.UPNP, "enable/disable UPNP port forwarding")
 	cmd.Flags().Bool("p2p.pex", config.P2P.PexReactor, "enable/disable Peer-Exchange")
 	cmd.Flags().String("p2p.private-peer-ids", config.P2P.PrivatePeerIDs, "comma-delimited private peer IDs")
@@ -83,7 +94,10 @@ func AddNodeFlags(cmd *cobra.Command) {
 		config.Consensus.CreateEmptyBlocksInterval.String(),
 		"the possible interval between empty blocks")
 
-	// db flags
+	addDBFlags(cmd)
+}
+
+func addDBFlags(cmd *cobra.Command) {
 	cmd.Flags().String(
 		"db-backend",
 		config.DBBackend,
@@ -155,7 +169,7 @@ func checkGenesisHash(config *cfg.Config) error {
 	// Compare with the flag.
 	if !bytes.Equal(genesisHash, actualHash) {
 		return fmt.Errorf(
-			"--genesis_hash=%X does not match %s hash: %X",
+			"--genesis-hash=%X does not match %s hash: %X",
 			genesisHash, config.GenesisFile(), actualHash)
 	}
 

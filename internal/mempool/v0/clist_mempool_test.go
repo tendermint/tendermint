@@ -15,16 +15,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abciserver "github.com/tendermint/tendermint/abci/server"
 	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
-	pubmempool "github.com/tendermint/tendermint/pkg/mempool"
-	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -32,22 +31,22 @@ import (
 // test.
 type cleanupFunc func()
 
-func newMempoolWithApp(cc proxy.ClientCreator) (*CListMempool, cleanupFunc) {
-	return newMempoolWithAppAndConfig(cc, cfg.ResetTestRoot("mempool_test"))
+func newMempoolWithApp(cc abciclient.Creator) (*CListMempool, cleanupFunc) {
+	return newMempoolWithAppAndConfig(cc, config.ResetTestRoot("mempool_test"))
 }
 
-func newMempoolWithAppAndConfig(cc proxy.ClientCreator, config *cfg.Config) (*CListMempool, cleanupFunc) {
-	appConnMem, _ := cc.NewABCIClient()
+func newMempoolWithAppAndConfig(cc abciclient.Creator, cfg *config.Config) (*CListMempool, cleanupFunc) {
+	appConnMem, _ := cc()
 	appConnMem.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "mempool"))
 	err := appConnMem.Start()
 	if err != nil {
 		panic(err)
 	}
 
-	mp := NewCListMempool(config.Mempool, appConnMem, 0)
+	mp := NewCListMempool(cfg.Mempool, appConnMem, 0)
 	mp.SetLogger(log.TestingLogger())
 
-	return mp, func() { os.RemoveAll(config.RootDir) }
+	return mp, func() { os.RemoveAll(cfg.RootDir) }
 }
 
 func ensureNoFire(t *testing.T, ch <-chan struct{}, timeoutMS int) {
@@ -82,7 +81,7 @@ func checkTxs(t *testing.T, mp mempool.Mempool, count int, peerID uint16) types.
 			// Skip invalid txs.
 			// TestMempoolFilters will fail otherwise. It asserts a number of txs
 			// returned.
-			if pubmempool.IsPreCheckError(err) {
+			if types.IsPreCheckError(err) {
 				continue
 			}
 			t.Fatalf("CheckTx failed: %v while checking #%d tx", err, i)
@@ -93,7 +92,7 @@ func checkTxs(t *testing.T, mp mempool.Mempool, count int, peerID uint16) types.
 
 func TestReapMaxBytesMaxGas(t *testing.T) {
 	app := kvstore.NewApplication()
-	cc := proxy.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
@@ -142,7 +141,7 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 
 func TestMempoolFilters(t *testing.T) {
 	app := kvstore.NewApplication()
-	cc := proxy.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 	emptyTxArr := []types.Tx{[]byte{}}
@@ -181,7 +180,7 @@ func TestMempoolFilters(t *testing.T) {
 
 func TestMempoolUpdate(t *testing.T) {
 	app := kvstore.NewApplication()
-	cc := proxy.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
@@ -217,8 +216,8 @@ func TestMempoolUpdate(t *testing.T) {
 
 func TestMempool_KeepInvalidTxsInCache(t *testing.T) {
 	app := kvstore.NewApplication()
-	cc := proxy.NewLocalClientCreator(app)
-	wcfg := cfg.DefaultConfig()
+	cc := abciclient.NewLocalCreator(app)
+	wcfg := config.DefaultConfig()
 	wcfg.Mempool.KeepInvalidTxsInCache = true
 	mp, cleanup := newMempoolWithAppAndConfig(cc, wcfg)
 	defer cleanup()
@@ -265,7 +264,7 @@ func TestMempool_KeepInvalidTxsInCache(t *testing.T) {
 
 func TestTxsAvailable(t *testing.T) {
 	app := kvstore.NewApplication()
-	cc := proxy.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 	mp.EnableTxsAvailable()
@@ -309,12 +308,12 @@ func TestTxsAvailable(t *testing.T) {
 
 func TestSerialReap(t *testing.T) {
 	app := kvstore.NewApplication()
-	cc := proxy.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
-	appConnCon, _ := cc.NewABCIClient()
+	appConnCon, _ := cc()
 	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
 	err := appConnCon.Start()
 	require.Nil(t, err)
@@ -420,7 +419,7 @@ func TestSerialReap(t *testing.T) {
 
 func TestMempool_CheckTxChecksTxSize(t *testing.T) {
 	app := kvstore.NewApplication()
-	cc := proxy.NewLocalClientCreator(app)
+	cc := abciclient.NewLocalCreator(app)
 	mempl, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
@@ -455,7 +454,7 @@ func TestMempool_CheckTxChecksTxSize(t *testing.T) {
 		if !testCase.err {
 			require.NoError(t, err, caseString)
 		} else {
-			require.Equal(t, err, pubmempool.ErrTxTooLarge{
+			require.Equal(t, err, types.ErrTxTooLarge{
 				Max:    maxTxSize,
 				Actual: testCase.len,
 			}, caseString)
@@ -465,10 +464,10 @@ func TestMempool_CheckTxChecksTxSize(t *testing.T) {
 
 func TestMempoolTxsBytes(t *testing.T) {
 	app := kvstore.NewApplication()
-	cc := proxy.NewLocalClientCreator(app)
-	config := cfg.ResetTestRoot("mempool_test")
-	config.Mempool.MaxTxsBytes = 10
-	mp, cleanup := newMempoolWithAppAndConfig(cc, config)
+	cc := abciclient.NewLocalCreator(app)
+	cfg := config.ResetTestRoot("mempool_test")
+	cfg.Mempool.MaxTxsBytes = 10
+	mp, cleanup := newMempoolWithAppAndConfig(cc, cfg)
 	defer cleanup()
 
 	// 1. zero by default
@@ -503,12 +502,12 @@ func TestMempoolTxsBytes(t *testing.T) {
 
 	err = mp.CheckTx(context.Background(), []byte{0x05}, nil, mempool.TxInfo{})
 	if assert.Error(t, err) {
-		assert.IsType(t, pubmempool.ErrMempoolIsFull{}, err)
+		assert.IsType(t, types.ErrMempoolIsFull{}, err)
 	}
 
 	// 6. zero after tx is rechecked and removed due to not being valid anymore
 	app2 := kvstore.NewApplication()
-	cc = proxy.NewLocalClientCreator(app2)
+	cc = abciclient.NewLocalCreator(app2)
 	mp, cleanup = newMempoolWithApp(cc)
 	defer cleanup()
 
@@ -519,7 +518,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 	require.NoError(t, err)
 	assert.EqualValues(t, 8, mp.SizeBytes())
 
-	appConnCon, _ := cc.NewABCIClient()
+	appConnCon, _ := cc()
 	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
 	err = appConnCon.Start()
 	require.Nil(t, err)
@@ -545,9 +544,9 @@ func TestMempoolTxsBytes(t *testing.T) {
 	err = mp.CheckTx(context.Background(), []byte{0x06}, nil, mempool.TxInfo{})
 	require.NoError(t, err)
 	assert.EqualValues(t, 9, mp.SizeBytes())
-	mp.RemoveTxByKey(mempool.TxKey([]byte{0x07}), true)
+	assert.Error(t, mp.RemoveTxByKey(types.Tx([]byte{0x07}).Key()))
 	assert.EqualValues(t, 9, mp.SizeBytes())
-	mp.RemoveTxByKey(mempool.TxKey([]byte{0x06}), true)
+	assert.NoError(t, mp.RemoveTxByKey(types.Tx([]byte{0x06}).Key()))
 	assert.EqualValues(t, 8, mp.SizeBytes())
 
 }
@@ -565,8 +564,8 @@ func TestMempoolRemoteAppConcurrency(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	config := cfg.ResetTestRoot("mempool_test")
-	mp, cleanup := newMempoolWithAppAndConfig(cc, config)
+	cfg := config.ResetTestRoot("mempool_test")
+	mp, cleanup := newMempoolWithAppAndConfig(cc, cfg)
 	defer cleanup()
 
 	// generate small number of txs
@@ -578,7 +577,7 @@ func TestMempoolRemoteAppConcurrency(t *testing.T) {
 	}
 
 	// simulate a group of peers sending them over and over
-	N := config.Mempool.Size
+	N := cfg.Mempool.Size
 	maxPeers := 5
 	for i := 0; i < N; i++ {
 		peerID := mrand.Intn(maxPeers)
@@ -598,10 +597,10 @@ func newRemoteApp(
 	addr string,
 	app abci.Application,
 ) (
-	clientCreator proxy.ClientCreator,
+	clientCreator abciclient.Creator,
 	server service.Service,
 ) {
-	clientCreator = proxy.NewRemoteClientCreator(addr, "socket", true)
+	clientCreator = abciclient.NewRemoteCreator(addr, "socket", true)
 
 	// Start server
 	server = abciserver.NewSocketServer(addr, app)

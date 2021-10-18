@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/libs/log"
-	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 type sampleResult struct {
@@ -39,8 +39,7 @@ func TestMaxOpenConnections(t *testing.T) {
 		fmt.Fprint(w, "some body")
 	})
 	config := DefaultConfig()
-	config.MaxOpenConnections = max
-	l, err := Listen("tcp://127.0.0.1:0", config)
+	l, err := Listen("tcp://127.0.0.1:0", max)
 	require.NoError(t, err)
 	defer l.Close()
 	go Serve(l, mux, log.TestingLogger(), config) //nolint:errcheck // ignore for tests
@@ -108,11 +107,11 @@ func TestServeTLS(t *testing.T) {
 }
 
 func TestWriteRPCResponseHTTP(t *testing.T) {
-	id := types.JSONRPCIntID(-1)
+	id := rpctypes.JSONRPCIntID(-1)
 
 	// one argument
 	w := httptest.NewRecorder()
-	err := WriteRPCResponseHTTP(w, true, types.NewRPCSuccessResponse(id, &sampleResult{"hello"}))
+	err := WriteRPCResponseHTTP(w, true, rpctypes.NewRPCSuccessResponse(id, &sampleResult{"hello"}))
 	require.NoError(t, err)
 	resp := w.Result()
 	body, err := ioutil.ReadAll(resp.Body)
@@ -133,8 +132,8 @@ func TestWriteRPCResponseHTTP(t *testing.T) {
 	w = httptest.NewRecorder()
 	err = WriteRPCResponseHTTP(w,
 		false,
-		types.NewRPCSuccessResponse(id, &sampleResult{"hello"}),
-		types.NewRPCSuccessResponse(id, &sampleResult{"world"}))
+		rpctypes.NewRPCSuccessResponse(id, &sampleResult{"hello"}),
+		rpctypes.NewRPCSuccessResponse(id, &sampleResult{"world"}))
 	require.NoError(t, err)
 	resp = w.Result()
 	body, err = ioutil.ReadAll(resp.Body)
@@ -163,7 +162,7 @@ func TestWriteRPCResponseHTTP(t *testing.T) {
 
 func TestWriteRPCResponseHTTPError(t *testing.T) {
 	w := httptest.NewRecorder()
-	err := WriteRPCResponseHTTPError(w, types.RPCInternalError(types.JSONRPCIntID(-1), errors.New("foo")))
+	err := WriteRPCResponseHTTPError(w, rpctypes.RPCInternalError(rpctypes.JSONRPCIntID(-1), errors.New("foo")))
 	require.NoError(t, err)
 	resp := w.Result()
 	body, err := ioutil.ReadAll(resp.Body)

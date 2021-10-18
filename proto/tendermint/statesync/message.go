@@ -2,9 +2,9 @@ package statesync
 
 import (
 	"errors"
-	fmt "fmt"
+	"fmt"
 
-	proto "github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 )
 
 // Wrap implements the p2p Wrapper interface and wraps a state sync proto message.
@@ -27,6 +27,12 @@ func (m *Message) Wrap(pb proto.Message) error {
 
 	case *LightBlockResponse:
 		m.Sum = &Message_LightBlockResponse{LightBlockResponse: msg}
+
+	case *ParamsRequest:
+		m.Sum = &Message_ParamsRequest{ParamsRequest: msg}
+
+	case *ParamsResponse:
+		m.Sum = &Message_ParamsResponse{ParamsResponse: msg}
 
 	default:
 		return fmt.Errorf("unknown message: %T", msg)
@@ -56,6 +62,12 @@ func (m *Message) Unwrap() (proto.Message, error) {
 
 	case *Message_LightBlockResponse:
 		return m.GetLightBlockResponse(), nil
+
+	case *Message_ParamsRequest:
+		return m.GetParamsRequest(), nil
+
+	case *Message_ParamsResponse:
+		return m.GetParamsResponse(), nil
 
 	default:
 		return nil, fmt.Errorf("unknown message: %T", msg)
@@ -105,6 +117,17 @@ func (m *Message) Validate() error {
 
 	// light block validation handled by the backfill process
 	case *Message_LightBlockResponse:
+
+	case *Message_ParamsRequest:
+		if m.GetParamsRequest().Height == 0 {
+			return errors.New("height cannot be 0")
+		}
+
+	case *Message_ParamsResponse:
+		resp := m.GetParamsResponse()
+		if resp.Height == 0 {
+			return errors.New("height cannot be 0")
+		}
 
 	default:
 		return fmt.Errorf("unknown message type: %T", msg)

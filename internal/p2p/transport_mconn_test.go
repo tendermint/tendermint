@@ -21,7 +21,7 @@ func init() {
 		transport := p2p.NewMConnTransport(
 			log.TestingLogger(),
 			conn.DefaultMConnConfig(),
-			[]*p2p.ChannelDescriptor{{ID: byte(chID), Priority: 1}},
+			[]*p2p.ChannelDescriptor{{ID: chID, Priority: 1}},
 			p2p.MConnTransportOptions{},
 		)
 		err := transport.Listen(p2p.Endpoint{
@@ -43,7 +43,7 @@ func TestMConnTransport_AcceptBeforeListen(t *testing.T) {
 	transport := p2p.NewMConnTransport(
 		log.TestingLogger(),
 		conn.DefaultMConnConfig(),
-		[]*p2p.ChannelDescriptor{{ID: byte(chID), Priority: 1}},
+		[]*p2p.ChannelDescriptor{{ID: chID, Priority: 1}},
 		p2p.MConnTransportOptions{
 			MaxAcceptedConnections: 2,
 		},
@@ -61,7 +61,7 @@ func TestMConnTransport_AcceptMaxAcceptedConnections(t *testing.T) {
 	transport := p2p.NewMConnTransport(
 		log.TestingLogger(),
 		conn.DefaultMConnConfig(),
-		[]*p2p.ChannelDescriptor{{ID: byte(chID), Priority: 1}},
+		[]*p2p.ChannelDescriptor{{ID: chID, Priority: 1}},
 		p2p.MConnTransportOptions{
 			MaxAcceptedConnections: 2,
 		},
@@ -148,7 +148,7 @@ func TestMConnTransport_Listen(t *testing.T) {
 			transport := p2p.NewMConnTransport(
 				log.TestingLogger(),
 				conn.DefaultMConnConfig(),
-				[]*p2p.ChannelDescriptor{{ID: byte(chID), Priority: 1}},
+				[]*p2p.ChannelDescriptor{{ID: chID, Priority: 1}},
 				p2p.MConnTransportOptions{},
 			)
 
@@ -195,7 +195,6 @@ func TestMConnTransport_Listen(t *testing.T) {
 			_ = conn.Close()
 			<-dialedChan
 
-			time.Sleep(time.Minute)
 			// closing the connection should not error
 			require.NoError(t, peerConn.Close())
 

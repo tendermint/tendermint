@@ -4,11 +4,11 @@ package node
 import (
 	"fmt"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -28,7 +28,7 @@ func NewDefault(conf *config.Config, logger log.Logger) (service.Service, error)
 // value of the final argument.
 func New(conf *config.Config,
 	logger log.Logger,
-	cf proxy.ClientCreator,
+	cf abciclient.Creator,
 	gen *types.GenesisDoc,
 ) (service.Service, error) {
 	nodeKey, err := types.LoadOrGenNodeKey(conf.NodeKeyFile())

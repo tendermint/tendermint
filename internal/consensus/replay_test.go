@@ -17,12 +17,13 @@ import (
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
-	mempl "github.com/tendermint/tendermint/internal/mempool"
+	"github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -47,7 +48,7 @@ import (
 // and which ones we need the wal for - then we'd also be able to only flush the
 // wal writer when we need to, instead of with every message.
 
-func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Config,
+func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *config.Config,
 	lastBlockHeight int64, blockDB dbm.DB, stateStore sm.Store) {
 	logger := log.TestingLogger()
 	state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
@@ -96,7 +97,7 @@ func sendTxs(ctx context.Context, cs *State) {
 			return
 		default:
 			tx := []byte{byte(i)}
-			if err := assertMempool(cs.txNotifier).CheckTx(context.Background(), tx, nil, mempl.TxInfo{}); err != nil {
+			if err := assertMempool(cs.txNotifier).CheckTx(context.Background(), tx, nil, mempool.TxInfo{}); err != nil {
 				panic(err)
 			}
 			i++
@@ -130,7 +131,7 @@ func TestWALCrash(t *testing.T) {
 	}
 }
 
-func crashWALandCheckLiveness(t *testing.T, consensusReplayConfig *cfg.Config,
+func crashWALandCheckLiveness(t *testing.T, consensusReplayConfig *config.Config,
 	initFn func(dbm.DB, *State, context.Context), heightToStop int64) {
 	walPanicked := make(chan error)
 	crashingWal := &crashingWAL{panicCh: walPanicked, heightToStop: heightToStop}
@@ -279,12 +280,12 @@ func (w *crashingWAL) Wait()        { w.next.Wait() }
 //------------------------------------------------------------------------------------------
 type simulatorTestSuite struct {
 	GenesisState sm.State
-	Config       *cfg.Config
+	Config       *config.Config
 	Chain        []*types.Block
 	Commits      []*types.Commit
 	CleanupFunc  cleanupFunc
 
-	Mempool mempl.Mempool
+	Mempool mempool.Mempool
 	Evpool  sm.EvidencePool
 }
 
@@ -304,7 +305,7 @@ var modes = []uint{0, 1, 2, 3}
 // This is actually not a test, it's for storing validator change tx data for testHandshakeReplay
 func setupSimulator(t *testing.T) *simulatorTestSuite {
 	t.Helper()
-	config := configSetup(t)
+	cfg := configSetup(t)
 
 	sim := &simulatorTestSuite{
 		Mempool: emptyMempool{},
@@ -314,14 +315,14 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	nPeers := 7
 	nVals := 4
 
-	css, genDoc, config, cleanup := randConsensusNetWithPeers(
-		config,
+	css, genDoc, cfg, cleanup := randConsensusNetWithPeers(
+		cfg,
 		nVals,
 		nPeers,
 		"replay_test",
 		newMockTickerFunc(true),
 		newPersistentKVStoreWithPath)
-	sim.Config = config
+	sim.Config = cfg
 	sim.GenesisState, _ = sm.MakeGenesisState(genDoc)
 	sim.CleanupFunc = cleanup
 
@@ -354,10 +355,10 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	incrementHeight(vss...)
 	newValidatorPubKey1, err := css[nVals].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
-	valPubKey1ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey1)
+	valPubKey1ABCI, err := encoding.PubKeyToProto(newValidatorPubKey1)
 	require.NoError(t, err)
 	newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
-	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), newValidatorTx1, nil, mempl.TxInfo{})
+	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), newValidatorTx1, nil, mempool.TxInfo{})
 	assert.Nil(t, err)
 	propBlock, _ := css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	propBlockParts := propBlock.MakePartSet(partSize)
@@ -365,7 +366,7 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 
 	proposal := types.NewProposal(vss[1].Height, round, -1, blockID)
 	p := proposal.ToProto()
-	if err := vss[1].SignProposal(context.Background(), config.ChainID(), p); err != nil {
+	if err := vss[1].SignProposal(context.Background(), cfg.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -386,10 +387,10 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	incrementHeight(vss...)
 	updateValidatorPubKey1, err := css[nVals].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
-	updatePubKey1ABCI, err := cryptoenc.PubKeyToProto(updateValidatorPubKey1)
+	updatePubKey1ABCI, err := encoding.PubKeyToProto(updateValidatorPubKey1)
 	require.NoError(t, err)
 	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
-	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), updateValidatorTx1, nil, mempl.TxInfo{})
+	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), updateValidatorTx1, nil, mempool.TxInfo{})
 	assert.Nil(t, err)
 	propBlock, _ = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	propBlockParts = propBlock.MakePartSet(partSize)
@@ -397,7 +398,7 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 
 	proposal = types.NewProposal(vss[2].Height, round, -1, blockID)
 	p = proposal.ToProto()
-	if err := vss[2].SignProposal(context.Background(), config.ChainID(), p); err != nil {
+	if err := vss[2].SignProposal(context.Background(), cfg.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -418,17 +419,17 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	incrementHeight(vss...)
 	newValidatorPubKey2, err := css[nVals+1].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
-	newVal2ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey2)
+	newVal2ABCI, err := encoding.PubKeyToProto(newValidatorPubKey2)
 	require.NoError(t, err)
 	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
-	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), newValidatorTx2, nil, mempl.TxInfo{})
+	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), newValidatorTx2, nil, mempool.TxInfo{})
 	assert.Nil(t, err)
 	newValidatorPubKey3, err := css[nVals+2].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
-	newVal3ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey3)
+	newVal3ABCI, err := encoding.PubKeyToProto(newValidatorPubKey3)
 	require.NoError(t, err)
 	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
-	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), newValidatorTx3, nil, mempl.TxInfo{})
+	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), newValidatorTx3, nil, mempool.TxInfo{})
 	assert.Nil(t, err)
 	propBlock, _ = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	propBlockParts = propBlock.MakePartSet(partSize)
@@ -456,7 +457,7 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 
 	proposal = types.NewProposal(vss[3].Height, round, -1, blockID)
 	p = proposal.ToProto()
-	if err := vss[3].SignProposal(context.Background(), config.ChainID(), p); err != nil {
+	if err := vss[3].SignProposal(context.Background(), cfg.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -468,7 +469,7 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	ensureNewProposal(proposalCh, height, round)
 
 	removeValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, 0)
-	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), removeValidatorTx2, nil, mempl.TxInfo{})
+	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), removeValidatorTx2, nil, mempool.TxInfo{})
 	assert.Nil(t, err)
 
 	rs = css[0].GetRoundState()
@@ -507,7 +508,7 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	height++
 	incrementHeight(vss...)
 	removeValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, 0)
-	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), removeValidatorTx3, nil, mempl.TxInfo{})
+	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), removeValidatorTx3, nil, mempool.TxInfo{})
 	assert.Nil(t, err)
 	propBlock, _ = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	propBlockParts = propBlock.MakePartSet(partSize)
@@ -519,7 +520,7 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	selfIndex = valIndexFn(0)
 	proposal = types.NewProposal(vss[1].Height, round, -1, blockID)
 	p = proposal.ToProto()
-	if err := vss[1].SignProposal(context.Background(), config.ChainID(), p); err != nil {
+	if err := vss[1].SignProposal(context.Background(), cfg.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -569,7 +570,7 @@ func tempWALWithData(data []byte) string {
 }
 
 func applyBlock(stateStore sm.Store,
-	mempool mempl.Mempool,
+	mempool mempool.Mempool,
 	evpool sm.EvidencePool,
 	st sm.State,
 	blk *types.Block,
@@ -589,7 +590,7 @@ func applyBlock(stateStore sm.Store,
 func buildAppStateFromChain(
 	proxyApp proxy.AppConns,
 	stateStore sm.Store,
-	mempool mempl.Mempool,
+	mempool mempool.Mempool,
 	evpool sm.EvidencePool,
 	state sm.State,
 	chain []*types.Block,
@@ -636,8 +637,8 @@ func buildAppStateFromChain(
 }
 
 func buildTMStateFromChain(
-	config *cfg.Config,
-	mempool mempl.Mempool,
+	cfg *config.Config,
+	mempool mempool.Mempool,
 	evpool sm.EvidencePool,
 	stateStore sm.Store,
 	state sm.State,
@@ -647,11 +648,11 @@ func buildTMStateFromChain(
 	blockStore *mockBlockStore) sm.State {
 	// run the whole chain against this client to build up the tendermint state
 	kvstoreApp := kvstore.NewPersistentKVStoreApplication(
-		filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_t", nBlocks, mode)))
+		filepath.Join(cfg.DBDir(), fmt.Sprintf("replay_test_%d_%d_t", nBlocks, mode)))
 	defer kvstoreApp.Close()
-	clientCreator := proxy.NewLocalClientCreator(kvstoreApp)
+	clientCreator := abciclient.NewLocalCreator(kvstoreApp)
 
-	proxyApp := proxy.NewAppConns(clientCreator)
+	proxyApp := proxy.NewAppConns(clientCreator, proxy.NopMetrics())
 	if err := proxyApp.Start(); err != nil {
 		panic(err)
 	}
@@ -842,14 +843,14 @@ func readPieceFromWAL(msg *TimedWALMessage) interface{} {
 
 // fresh state and mock store
 func stateAndStore(
-	config *cfg.Config,
+	cfg *config.Config,
 	pubKey crypto.PubKey,
 	appVersion uint64) (dbm.DB, sm.State, *mockBlockStore) {
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	state, _ := sm.MakeGenesisStateFromFile(config.GenesisFile())
+	state, _ := sm.MakeGenesisStateFromFile(cfg.GenesisFile())
 	state.Version.Consensus.App = appVersion
-	store := newMockBlockStore(config, state.ConsensusParams)
+	store := newMockBlockStore(cfg, state.ConsensusParams)
 	if err := stateStore.Save(state); err != nil {
 		panic(err)
 	}
@@ -860,7 +861,7 @@ func stateAndStore(
 // mock block store
 
 type mockBlockStore struct {
-	config  *cfg.Config
+	cfg     *config.Config
 	params  types.ConsensusParams
 	chain   []*types.Block
 	commits []*types.Commit
@@ -868,8 +869,8 @@ type mockBlockStore struct {
 }
 
 // TODO: NewBlockStore(db.NewMemDB) ...
-func newMockBlockStore(config *cfg.Config, params types.ConsensusParams) *mockBlockStore {
-	return &mockBlockStore{config, params, nil, nil, 0}
+func newMockBlockStore(cfg *config.Config, params types.ConsensusParams) *mockBlockStore {
+	return &mockBlockStore{cfg, params, nil, nil, 0}
 }
 
 func (bs *mockBlockStore) Height() int64                       { return int64(len(bs.chain)) }

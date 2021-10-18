@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cli"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 )
@@ -65,9 +65,9 @@ func dumpCmdHandler(_ *cobra.Command, args []string) error {
 	}
 
 	home := viper.GetString(cli.HomeFlag)
-	conf := cfg.DefaultConfig()
+	conf := config.DefaultConfig()
 	conf = conf.SetRoot(home)
-	cfg.EnsureRoot(conf.RootDir)
+	config.EnsureRoot(conf.RootDir)
 
 	dumpDebugData(outDir, conf, rpc)
 
@@ -79,7 +79,7 @@ func dumpCmdHandler(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func dumpDebugData(outDir string, conf *cfg.Config, rpc *rpchttp.HTTP) {
+func dumpDebugData(outDir string, conf *config.Config, rpc *rpchttp.HTTP) {
 	start := time.Now().UTC()
 
 	tmpDir, err := ioutil.TempDir(outDir, "tendermint_debug_tmp")

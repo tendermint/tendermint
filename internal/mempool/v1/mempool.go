@@ -3,6 +3,7 @@ package v1
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -12,10 +13,9 @@ import (
 	"github.com/tendermint/tendermint/internal/libs/clist"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
+	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	pubmempool "github.com/tendermint/tendermint/pkg/mempool"
-	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -239,7 +239,7 @@ func (txmp *TxMempool) CheckTx(
 
 	txSize := len(tx)
 	if txSize > txmp.config.MaxTxBytes {
-		return pubmempool.ErrTxTooLarge{
+		return types.ErrTxTooLarge{
 			Max:    txmp.config.MaxTxBytes,
 			Actual: txSize,
 		}
@@ -247,7 +247,7 @@ func (txmp *TxMempool) CheckTx(
 
 	if txmp.preCheck != nil {
 		if err := txmp.preCheck(tx); err != nil {
-			return pubmempool.ErrPreCheck{
+			return types.ErrPreCheck{
 				Reason: err,
 			}
 		}
@@ -257,7 +257,7 @@ func (txmp *TxMempool) CheckTx(
 		return err
 	}
 
-	txHash := mempool.TxKey(tx)
+	txHash := tx.Key()
 
 	// We add the transaction to the mempool's cache and if the transaction already
 	// exists, i.e. false is returned, then we check if we've seen this transaction
@@ -267,7 +267,7 @@ func (txmp *TxMempool) CheckTx(
 		if wtx != nil && ok {
 			// We already have the transaction stored and the we've already seen this
 			// transaction from txInfo.SenderID.
-			return pubmempool.ErrTxInCache
+			return types.ErrTxInCache
 		}
 
 		txmp.logger.Debug("tx exists already in cache", "tx_hash", tx.Hash())
@@ -303,6 +303,19 @@ func (txmp *TxMempool) CheckTx(
 	})
 
 	return nil
+}
+
+func (txmp *TxMempool) RemoveTxByKey(txKey types.TxKey) error {
+	txmp.Lock()
+	defer txmp.Unlock()
+
+	// remove the committed transaction from the transaction store and indexes
+	if wtx := txmp.txStore.GetTxByHash(txKey); wtx != nil {
+		txmp.removeTx(wtx, false)
+		return nil
+	}
+
+	return errors.New("transaction not found")
 }
 
 // Flush flushes out the mempool. It acquires a read-lock, fetches all the
@@ -452,7 +465,7 @@ func (txmp *TxMempool) Update(
 		}
 
 		// remove the committed transaction from the transaction store and indexes
-		if wtx := txmp.txStore.GetTxByHash(mempool.TxKey(tx)); wtx != nil {
+		if wtx := txmp.txStore.GetTxByHash(tx.Key()); wtx != nil {
 			txmp.removeTx(wtx, false)
 		}
 	}
@@ -630,7 +643,7 @@ func (txmp *TxMempool) defaultTxCallback(req *abci.Request, res *abci.Response) 
 		tx := req.GetCheckTx().Tx
 		wtx := txmp.recheckCursor.Value.(*WrappedTx)
 		if !bytes.Equal(tx, wtx.tx) {
-			panic(fmt.Sprintf("re-CheckTx transaction mismatch; got: %X, expected: %X", wtx.tx.Hash(), mempool.TxKey(tx)))
+			panic(fmt.Sprintf("re-CheckTx transaction mismatch; got: %X, expected: %X", wtx.tx.Hash(), types.Tx(tx).Key()))
 		}
 
 		// Only evaluate transactions that have not been removed. This can happen
@@ -648,7 +661,7 @@ func (txmp *TxMempool) defaultTxCallback(req *abci.Request, res *abci.Response) 
 				txmp.logger.Debug(
 					"existing transaction no longer valid; failed re-CheckTx callback",
 					"priority", wtx.priority,
-					"tx", fmt.Sprintf("%X", mempool.TxHashFromBytes(wtx.tx)),
+					"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
 					"err", err,
 					"code", checkTxRes.CheckTx.Code,
 				)
@@ -728,7 +741,7 @@ func (txmp *TxMempool) canAddTx(wtx *WrappedTx) error {
 	)
 
 	if numTxs >= txmp.config.Size || int64(wtx.Size())+sizeBytes > txmp.config.MaxTxsBytes {
-		return pubmempool.ErrMempoolIsFull{
+		return types.ErrMempoolIsFull{
 			NumTxs:      numTxs,
 			MaxTxs:      txmp.config.Size,
 			TxsBytes:    sizeBytes,
@@ -785,13 +798,13 @@ func (txmp *TxMempool) removeTx(wtx *WrappedTx, removeFromCache bool) {
 // the height and time based indexes.
 func (txmp *TxMempool) purgeExpiredTxs(blockHeight int64) {
 	now := time.Now()
-	expiredTxs := make(map[[mempool.TxKeySize]byte]*WrappedTx)
+	expiredTxs := make(map[types.TxKey]*WrappedTx)
 
 	if txmp.config.TTLNumBlocks > 0 {
 		purgeIdx := -1
 		for i, wtx := range txmp.heightIndex.txs {
 			if (blockHeight - wtx.height) > txmp.config.TTLNumBlocks {
-				expiredTxs[mempool.TxKey(wtx.tx)] = wtx
+				expiredTxs[wtx.tx.Key()] = wtx
 				purgeIdx = i
 			} else {
 				// since the index is sorted, we know no other txs can be be purged
@@ -808,7 +821,7 @@ func (txmp *TxMempool) purgeExpiredTxs(blockHeight int64) {
 		purgeIdx := -1
 		for i, wtx := range txmp.timestampIndex.txs {
 			if now.Sub(wtx.timestamp) > txmp.config.TTLDuration {
-				expiredTxs[mempool.TxKey(wtx.tx)] = wtx
+				expiredTxs[wtx.tx.Key()] = wtx
 				purgeIdx = i
 			} else {
 				// since the index is sorted, we know no other txs can be be purged

@@ -12,26 +12,26 @@ import (
 	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	dbm "github.com/tendermint/tm-db"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/crypto/encoding"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
 	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
+	sm "github.com/tendermint/tendermint/internal/state"
+	statemocks "github.com/tendermint/tendermint/internal/state/mocks"
+	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
-	sm "github.com/tendermint/tendermint/state"
-	statemocks "github.com/tendermint/tendermint/state/mocks"
-	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
 )
 
 var (
@@ -50,9 +50,11 @@ type reactorTestSuite struct {
 	voteSetBitsChannels map[types.NodeID]*p2p.Channel
 }
 
-func chDesc(chID p2p.ChannelID) p2p.ChannelDescriptor {
-	return p2p.ChannelDescriptor{
-		ID: byte(chID),
+func chDesc(chID p2p.ChannelID, size int) *p2p.ChannelDescriptor {
+	return &p2p.ChannelDescriptor{
+		ID:                 chID,
+		MessageType:        new(tmcons.Message),
+		RecvBufferCapacity: size,
 	}
 }
 
@@ -67,10 +69,10 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 		blocksyncSubs: make(map[types.NodeID]types.Subscription, numNodes),
 	}
 
-	rts.stateChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(StateChannel), new(tmcons.Message), size)
-	rts.dataChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(DataChannel), new(tmcons.Message), size)
-	rts.voteChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteChannel), new(tmcons.Message), size)
-	rts.voteSetBitsChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteSetBitsChannel), new(tmcons.Message), size)
+	rts.stateChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(StateChannel, size))
+	rts.dataChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(DataChannel, size))
+	rts.voteChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteChannel, size))
+	rts.voteSetBitsChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteSetBitsChannel, size))
 
 	_, cancel := context.WithCancel(context.Background())
 
@@ -273,11 +275,11 @@ func ensureBlockSyncStatus(t *testing.T, msg tmpubsub.Message, complete bool, he
 }
 
 func TestReactorBasic(t *testing.T) {
-	config := configSetup(t)
+	cfg := configSetup(t)
 
 	n := 4
 	states, cleanup := randConsensusState(t,
-		config, n, "consensus_reactor_test",
+		cfg, n, "consensus_reactor_test",
 		newMockTickerFunc(true), newKVStore)
 	t.Cleanup(cleanup)
 
@@ -316,14 +318,14 @@ func TestReactorBasic(t *testing.T) {
 }
 
 func TestReactorWithEvidence(t *testing.T) {
-	config := configSetup(t)
+	cfg := configSetup(t)
 
 	n := 4
 	testName := "consensus_reactor_test"
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newKVStore
 
-	genDoc, privVals := factory.RandGenesisDoc(config, n, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, n, false, 30)
 	states := make([]*State, n)
 	logger := consensusLogger()
 
@@ -346,9 +348,9 @@ func TestReactorWithEvidence(t *testing.T) {
 		blockStore := store.NewBlockStore(blockDB)
 
 		// one for mempool, one for consensus
-		mtx := new(tmsync.RWMutex)
-		proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
-		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+		mtx := new(tmsync.Mutex)
+		proxyAppConnMem := abciclient.NewLocalClient(mtx, app)
+		proxyAppConnCon := abciclient.NewLocalClient(mtx, app)
 
 		mempool := mempoolv0.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
 		mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
@@ -360,7 +362,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		// everyone includes evidence of another double signing
 		vIdx := (i + 1) % n
 
-		ev := types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, privVals[vIdx], config.ChainID())
+		ev := types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, privVals[vIdx], cfg.ChainID())
 		evpool := &statemocks.EvidencePool{}
 		evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
 		evpool.On("PendingEvidence", mock.AnythingOfType("int64")).Return([]types.Evidence{
@@ -412,17 +414,17 @@ func TestReactorWithEvidence(t *testing.T) {
 }
 
 func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
-	config := configSetup(t)
+	cfg := configSetup(t)
 
 	n := 4
 	states, cleanup := randConsensusState(
 		t,
-		config,
+		cfg,
 		n,
 		"consensus_reactor_test",
 		newMockTickerFunc(true),
 		newKVStore,
-		func(c *cfg.Config) {
+		func(c *config.Config) {
 			c.Consensus.CreateEmptyBlocks = false
 		},
 	)
@@ -462,11 +464,11 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 }
 
 func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
-	config := configSetup(t)
+	cfg := configSetup(t)
 
 	n := 4
 	states, cleanup := randConsensusState(t,
-		config, n, "consensus_reactor_test",
+		cfg, n, "consensus_reactor_test",
 		newMockTickerFunc(true), newKVStore)
 	t.Cleanup(cleanup)
 
@@ -521,12 +523,12 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 }
 
 func TestReactorVotingPowerChange(t *testing.T) {
-	config := configSetup(t)
+	cfg := configSetup(t)
 
 	n := 4
 	states, cleanup := randConsensusState(
 		t,
-		config,
+		cfg,
 		n,
 		"consensus_voting_power_changes_test",
 		newMockTickerFunc(true),
@@ -573,7 +575,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	val1PubKey, err := states[0].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 
-	val1PubKeyABCI, err := cryptoenc.PubKeyToProto(val1PubKey)
+	val1PubKeyABCI, err := encoding.PubKeyToProto(val1PubKey)
 	require.NoError(t, err)
 
 	updateValidatorTx := kvstore.MakeValSetChangeTx(val1PubKeyABCI, 25)
@@ -622,12 +624,12 @@ func TestReactorVotingPowerChange(t *testing.T) {
 }
 
 func TestReactorValidatorSetChanges(t *testing.T) {
-	config := configSetup(t)
+	cfg := configSetup(t)
 
 	nPeers := 7
 	nVals := 4
 	states, _, _, cleanup := randConsensusNetWithPeers(
-		config,
+		cfg,
 		nVals,
 		nPeers,
 		"consensus_val_set_changes_test",
@@ -668,7 +670,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	newValidatorPubKey1, err := states[nVals].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 
-	valPubKey1ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey1)
+	valPubKey1ABCI, err := encoding.PubKeyToProto(newValidatorPubKey1)
 	require.NoError(t, err)
 
 	newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
@@ -701,7 +703,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	updateValidatorPubKey1, err := states[nVals].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 
-	updatePubKey1ABCI, err := cryptoenc.PubKeyToProto(updateValidatorPubKey1)
+	updatePubKey1ABCI, err := encoding.PubKeyToProto(updateValidatorPubKey1)
 	require.NoError(t, err)
 
 	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
@@ -721,7 +723,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	newValidatorPubKey2, err := states[nVals+1].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 
-	newVal2ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey2)
+	newVal2ABCI, err := encoding.PubKeyToProto(newValidatorPubKey2)
 	require.NoError(t, err)
 
 	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
@@ -729,7 +731,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	newValidatorPubKey3, err := states[nVals+2].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 
-	newVal3ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey3)
+	newVal3ABCI, err := encoding.PubKeyToProto(newValidatorPubKey3)
 	require.NoError(t, err)
 
 	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)

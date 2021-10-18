@@ -10,7 +10,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	"github.com/tendermint/tendermint/internal/p2p/conn"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
 )
@@ -117,6 +116,8 @@ func newMemoryTransport(network *MemoryNetwork, nodeID types.NodeID) *MemoryTran
 func (t *MemoryTransport) String() string {
 	return string(MemoryProtocol)
 }
+
+func (t *MemoryTransport) AddChannelDescriptors([]*ChannelDescriptor) {}
 
 // Protocols implements Transport.
 func (t *MemoryTransport) Protocols() []Protocol {
@@ -262,11 +263,6 @@ func (c *MemoryConnection) RemoteEndpoint() Endpoint {
 	}
 }
 
-// Status implements Connection.
-func (c *MemoryConnection) Status() conn.ConnectionStatus {
-	return conn.ConnectionStatus{}
-}
-
 // Handshake implements Connection.
 func (c *MemoryConnection) Handshake(
 	ctx context.Context,
@@ -316,42 +312,21 @@ func (c *MemoryConnection) ReceiveMessage() (ChannelID, []byte, error) {
 }
 
 // SendMessage implements Connection.
-func (c *MemoryConnection) SendMessage(chID ChannelID, msg []byte) (bool, error) {
+func (c *MemoryConnection) SendMessage(chID ChannelID, msg []byte) error {
 	// Check close first, since channels are buffered. Otherwise, below select
 	// may non-deterministically return non-error even when closed.
 	select {
 	case <-c.closer.Done():
-		return false, io.EOF
+		return io.EOF
 	default:
 	}
 
 	select {
 	case c.sendCh <- memoryMessage{channelID: chID, message: msg}:
 		c.logger.Debug("sent message", "chID", chID, "msg", msg)
-		return true, nil
+		return nil
 	case <-c.closer.Done():
-		return false, io.EOF
-	}
-}
-
-// TrySendMessage implements Connection.
-func (c *MemoryConnection) TrySendMessage(chID ChannelID, msg []byte) (bool, error) {
-	// Check close first, since channels are buffered. Otherwise, below select
-	// may non-deterministically return non-error even when closed.
-	select {
-	case <-c.closer.Done():
-		return false, io.EOF
-	default:
-	}
-
-	select {
-	case c.sendCh <- memoryMessage{channelID: chID, message: msg}:
-		c.logger.Debug("sent message", "chID", chID, "msg", msg)
-		return true, nil
-	case <-c.closer.Done():
-		return false, io.EOF
-	default:
-		return false, nil
+		return io.EOF
 	}
 }
 
@@ -365,9 +340,4 @@ func (c *MemoryConnection) Close() error {
 		c.logger.Info("closed connection")
 	}
 	return nil
-}
-
-// FlushClose implements Connection.
-func (c *MemoryConnection) FlushClose() error {
-	return c.Close()
 }

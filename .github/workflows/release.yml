@@ -2,7 +2,7 @@ name: "Release"
 
 on:
   push:
-    branches: 
+    branches:
       - "RC[0-9]/**"
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+" # Push events to matching v*, i.e. v1.0, v20.15.10
@@ -18,10 +18,7 @@ jobs:
 
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.16'
-
-      - run: echo https://github.com/tendermint/tendermint/blob/${GITHUB_REF#refs/tags/}/CHANGELOG.md#${GITHUB_REF#refs/tags/} > ../release_notes.md 
-        if: startsWith(github.ref, 'refs/tags/')
+          go-version: '1.17'
 
       - name: Build
         uses: goreleaser/goreleaser-action@v2
@@ -35,6 +32,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           version: latest
-          args: release --rm-dist --release-notes=../release_notes.md
+          args: release --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -9,7 +9,7 @@ Or [Blockchain](<https://en.wikipedia.org/wiki/Blockchain_(database)>), for shor
 [![version](https://img.shields.io/github/tag/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/releases/latest)
 [![API Reference](https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667)](https://pkg.go.dev/github.com/tendermint/tendermint)
 [![Go version](https://img.shields.io/badge/go-1.16-blue.svg)](https://github.com/moovweb/gvm)
-[![Discord chat](https://img.shields.io/discord/669268347736686612.svg)](https://discord.gg/vcExX9T)
+[![Discord chat](https://img.shields.io/discord/669268347736686612.svg)](https://discord.gg/cosmosnetwork)
 [![license](https://img.shields.io/github/license/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/blob/master/LICENSE)
 [![tendermint/tendermint](https://tokei.rs/b1/github/tendermint/tendermint?category=lines)](https://github.com/tendermint/tendermint)
 [![Sourcegraph](https://sourcegraph.com/github.com/tendermint/tendermint/-/badge.svg)](https://sourcegraph.com/github.com/tendermint/tendermint?badge)
@@ -33,7 +33,9 @@ Tendermint has been in the production of private and public environments, most n
 See below for more details about [versioning](#versioning).
 
 In any case, if you intend to run Tendermint in production, we're happy to help. You can
-contact us [over email](mailto:hello@interchain.berlin) or [join the chat](https://discord.gg/vcExX9T).
+contact us [over email](mailto:hello@interchain.berlin) or [join the chat](https://discord.gg/cosmosnetwork).
+
+More on how releases are conducted can be found [here](./RELEASES.md).
 
 ## Security
 
@@ -82,32 +84,12 @@ and familiarize yourself with our
 Tendermint uses [Semantic Versioning](http://semver.org/) to determine when and how the version changes.
 According to SemVer, anything in the public API can change at any time before version 1.0.0
 
-To provide some stability to Tendermint users in these 0.X.X days, the MINOR version is used
-to signal breaking changes across a subset of the total public API. This subset includes all
-interfaces exposed to other processes (cli, rpc, p2p, etc.), but does not
-include the Go APIs.
+To provide some stability to users of 0.X.X versions of Tendermint, the MINOR version is used
+to signal breaking changes across Tendermint's API. This API includes all
+publicly exposed types, functions, and methods in non-internal Go packages as well as
+the types and methods accessible via the Tendermint RPC interface.
 
-That said, breaking changes in the following packages will be documented in the
-CHANGELOG even if they don't lead to MINOR version bumps:
-
-- crypto
-- config
-- libs
-    - bits
-    - bytes
-    - json
-    - log
-    - math
-    - net
-    - os
-    - protoio
-    - rand
-    - sync
-    - strings
-    - service
-- node
-- rpc/client
-- types
+Breaking changes to these public APIs will be documented in the CHANGELOG.
 
 ### Upgrades
 
@@ -131,6 +113,8 @@ in [UPGRADING.md](./UPGRADING.md).
 ## Resources
 
 ### Tendermint Core
+
+We keep a public up-to-date version of our roadmap [here](./docs/roadmap/roadmap.md)
 
 For details about the blockchain data structures and the p2p protocols, see the
 [Tendermint specification](https://docs.tendermint.com/master/spec/).

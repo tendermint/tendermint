@@ -32,6 +32,10 @@ type Mempool interface {
 	// its validity and whether it should be added to the mempool.
 	CheckTx(ctx context.Context, tx types.Tx, callback func(*abci.Response), txInfo TxInfo) error
 
+	// RemoveTxByKey removes a transaction, identified by its key,
+	// from the mempool.
+	RemoveTxByKey(txKey types.TxKey) error
+
 	// ReapMaxBytesMaxGas reaps transactions from the mempool up to maxBytes
 	// bytes total with the condition that the total gasWanted must be less than
 	// maxGas.

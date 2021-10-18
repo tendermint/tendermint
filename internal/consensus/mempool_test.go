@@ -10,20 +10,19 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
-	mempl "github.com/tendermint/tendermint/internal/mempool"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/store"
+	"github.com/tendermint/tendermint/internal/mempool"
+	sm "github.com/tendermint/tendermint/internal/state"
+	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/types"
 )
 
 // for testing
-func assertMempool(txn txNotifier) mempl.Mempool {
-	return txn.(mempl.Mempool)
+func assertMempool(txn txNotifier) mempool.Mempool {
+	return txn.(mempool.Mempool)
 }
 
 func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
@@ -113,7 +112,7 @@ func deliverTxsRange(cs *State, start, end int) {
 	for i := start; i < end; i++ {
 		txBytes := make([]byte, 8)
 		binary.BigEndian.PutUint64(txBytes, uint64(i))
-		err := assertMempool(cs.txNotifier).CheckTx(context.Background(), txBytes, nil, mempl.TxInfo{})
+		err := assertMempool(cs.txNotifier).CheckTx(context.Background(), txBytes, nil, mempool.TxInfo{})
 		if err != nil {
 			panic(fmt.Sprintf("Error after CheckTx: %v", err))
 		}
@@ -179,7 +178,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 				return
 			}
 			checkTxRespCh <- struct{}{}
-		}, mempl.TxInfo{})
+		}, mempool.TxInfo{})
 		if err != nil {
 			t.Errorf("error after CheckTx: %v", err)
 			return

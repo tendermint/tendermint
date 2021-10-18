@@ -11,10 +11,11 @@ import (
 	"github.com/tendermint/tendermint/config"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/proxy"
+	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/light"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
-	"github.com/tendermint/tendermint/proxy"
-	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -40,14 +41,11 @@ var (
 	errRejectSender = errors.New("snapshot sender was rejected")
 	// errVerifyFailed is returned by Sync() when app hash or last height
 	// verification fails.
-	errVerifyFailed = errors.New("verification failed")
+	errVerifyFailed = errors.New("verification with app failed")
 	// errTimeout is returned by Sync() when we've waited too long to receive a chunk.
 	errTimeout = errors.New("timed out waiting for chunk")
 	// errNoSnapshots is returned by SyncAny() if no snapshots are found and discovery is disabled.
 	errNoSnapshots = errors.New("no suitable snapshots found")
-	// errStateCommitTimeout is returned by Sync() when the timeout for retrieving
-	// tendermint state or the commit is exceeded
-	errStateCommitTimeout = errors.New("timed out trying to retrieve state and commit")
 )
 
 // syncer runs a state sync against an ABCI app. Use either SyncAny() to automatically attempt to
@@ -65,8 +63,14 @@ type syncer struct {
 	fetchers      int32
 	retryTimeout  time.Duration
 
-	mtx    tmsync.RWMutex
-	chunks *chunkQueue
+	mtx     tmsync.RWMutex
+	chunks  *chunkQueue
+	metrics *Metrics
+
+	avgChunkTime             int64
+	lastSyncedSnapshotHeight int64
+	processingSnapshot       *snapshot
+	closeCh                  <-chan struct{}
 }
 
 // newSyncer creates a new syncer.
@@ -76,20 +80,25 @@ func newSyncer(
 	conn proxy.AppConnSnapshot,
 	connQuery proxy.AppConnQuery,
 	stateProvider StateProvider,
-	snapshotCh, chunkCh chan<- p2p.Envelope,
+	snapshotCh chan<- p2p.Envelope,
+	chunkCh chan<- p2p.Envelope,
+	closeCh <-chan struct{},
 	tempDir string,
+	metrics *Metrics,
 ) *syncer {
 	return &syncer{
 		logger:        logger,
 		stateProvider: stateProvider,
 		conn:          conn,
 		connQuery:     connQuery,
-		snapshots:     newSnapshotPool(stateProvider),
+		snapshots:     newSnapshotPool(),
 		snapshotCh:    snapshotCh,
 		chunkCh:       chunkCh,
 		tempDir:       tempDir,
 		fetchers:      cfg.Fetchers,
 		retryTimeout:  cfg.ChunkRequestTimeout,
+		metrics:       metrics,
+		closeCh:       closeCh,
 	}
 }
 
@@ -123,6 +132,7 @@ func (s *syncer) AddSnapshot(peerID types.NodeID, snapshot *snapshot) (bool, err
 		return false, err
 	}
 	if added {
+		s.metrics.TotalSnapshots.Add(1)
 		s.logger.Info("Discovered new snapshot", "height", snapshot.Height, "format", snapshot.Format,
 			"hash", snapshot.Hash)
 	}
@@ -131,12 +141,29 @@ func (s *syncer) AddSnapshot(peerID types.NodeID, snapshot *snapshot) (bool, err
 
 // AddPeer adds a peer to the pool. For now we just keep it simple and send a
 // single request to discover snapshots, later we may want to do retries and stuff.
-func (s *syncer) AddPeer(peerID types.NodeID) {
+func (s *syncer) AddPeer(peerID types.NodeID) (err error) {
+	defer func() {
+		// TODO: remove panic recover once AddPeer can no longer accientally send on
+		// closed channel.
+		// This recover was added to protect against the p2p message being sent
+		// to the snapshot channel after the snapshot channel was closed.
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic sending peer snapshot request: %v", r)
+		}
+	}()
+
 	s.logger.Debug("Requesting snapshots from peer", "peer", peerID)
-	s.snapshotCh <- p2p.Envelope{
+
+	msg := p2p.Envelope{
 		To:      peerID,
 		Message: &ssproto.SnapshotsRequest{},
 	}
+
+	select {
+	case <-s.closeCh:
+	case s.snapshotCh <- msg:
+	}
+	return err
 }
 
 // RemovePeer removes a peer from the pool.
@@ -153,7 +180,6 @@ func (s *syncer) SyncAny(
 	discoveryTime time.Duration,
 	requestSnapshots func(),
 ) (sm.State, *types.Commit, error) {
-
 	if discoveryTime != 0 && discoveryTime < minimumDiscoveryTime {
 		discoveryTime = minimumDiscoveryTime
 	}
@@ -181,7 +207,6 @@ func (s *syncer) SyncAny(
 			if discoveryTime == 0 {
 				return sm.State{}, nil, errNoSnapshots
 			}
-			requestSnapshots()
 			s.logger.Info(fmt.Sprintf("Discovering snapshots for %v", discoveryTime))
 			time.Sleep(discoveryTime)
 			continue
@@ -194,9 +219,14 @@ func (s *syncer) SyncAny(
 			defer chunks.Close() // in case we forget to close it elsewhere
 		}
 
+		s.processingSnapshot = snapshot
+		s.metrics.SnapshotChunkTotal.Set(float64(snapshot.Chunks))
+
 		newState, commit, err := s.Sync(ctx, snapshot, chunks)
 		switch {
 		case err == nil:
+			s.metrics.SnapshotHeight.Set(float64(snapshot.Height))
+			s.lastSyncedSnapshotHeight = int64(snapshot.Height)
 			return newState, commit, nil
 
 		case errors.Is(err, errAbort):
@@ -230,10 +260,6 @@ func (s *syncer) SyncAny(
 				s.logger.Info("Snapshot sender rejected", "peer", peer)
 			}
 
-		case errors.Is(err, errStateCommitTimeout):
-			s.logger.Info("Timed out retrieving state and commit, rejecting and retrying...", "height", snapshot.Height)
-			s.snapshots.Reject(snapshot)
-
 		default:
 			return sm.State{}, nil, fmt.Errorf("snapshot restoration failed: %w", err)
 		}
@@ -245,6 +271,7 @@ func (s *syncer) SyncAny(
 		}
 		snapshot = nil
 		chunks = nil
+		s.processingSnapshot = nil
 	}
 }
 
@@ -264,8 +291,29 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 		s.mtx.Unlock()
 	}()
 
+	hctx, hcancel := context.WithTimeout(ctx, 30*time.Second)
+	defer hcancel()
+
+	// Fetch the app hash corresponding to the snapshot
+	appHash, err := s.stateProvider.AppHash(hctx, snapshot.Height)
+	if err != nil {
+		// check if the main context was triggered
+		if ctx.Err() != nil {
+			return sm.State{}, nil, ctx.Err()
+		}
+		// catch the case where all the light client providers have been exhausted
+		if err == light.ErrNoWitnesses {
+			return sm.State{}, nil,
+				fmt.Errorf("failed to get app hash at height %d. No witnesses remaining", snapshot.Height)
+		}
+		s.logger.Info("failed to get and verify tendermint state. Dropping snapshot and trying again",
+			"err", err, "height", snapshot.Height)
+		return sm.State{}, nil, errRejectSnapshot
+	}
+	snapshot.trustedAppHash = appHash
+
 	// Offer snapshot to ABCI app.
-	err := s.offerSnapshot(ctx, snapshot)
+	err = s.offerSnapshot(ctx, snapshot)
 	if err != nil {
 		return sm.State{}, nil, err
 	}
@@ -273,35 +321,46 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 	// Spawn chunk fetchers. They will terminate when the chunk queue is closed or context canceled.
 	fetchCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	fetchStartTime := time.Now()
 	for i := int32(0); i < s.fetchers; i++ {
 		go s.fetchChunks(fetchCtx, snapshot, chunks)
 	}
 
-	pctx, pcancel := context.WithTimeout(ctx, 30*time.Second)
+	pctx, pcancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer pcancel()
 
 	// Optimistically build new state, so we don't discover any light client failures at the end.
 	state, err := s.stateProvider.State(pctx, snapshot.Height)
 	if err != nil {
-		// check if the provider context exceeded the 10 second deadline
-		if err == context.DeadlineExceeded && ctx.Err() == nil {
-			return sm.State{}, nil, errStateCommitTimeout
+		// check if the main context was triggered
+		if ctx.Err() != nil {
+			return sm.State{}, nil, ctx.Err()
 		}
-
-		return sm.State{}, nil, fmt.Errorf("failed to build new state: %w", err)
+		if err == light.ErrNoWitnesses {
+			return sm.State{}, nil,
+				fmt.Errorf("failed to get tendermint state at height %d. No witnesses remaining", snapshot.Height)
+		}
+		s.logger.Info("failed to get and verify tendermint state. Dropping snapshot and trying again",
+			"err", err, "height", snapshot.Height)
+		return sm.State{}, nil, errRejectSnapshot
 	}
 	commit, err := s.stateProvider.Commit(pctx, snapshot.Height)
 	if err != nil {
 		// check if the provider context exceeded the 10 second deadline
-		if err == context.DeadlineExceeded && ctx.Err() == nil {
-			return sm.State{}, nil, errStateCommitTimeout
+		if ctx.Err() != nil {
+			return sm.State{}, nil, ctx.Err()
 		}
-
-		return sm.State{}, nil, fmt.Errorf("failed to fetch commit: %w", err)
+		if err == light.ErrNoWitnesses {
+			return sm.State{}, nil,
+				fmt.Errorf("failed to get commit at height %d. No witnesses remaining", snapshot.Height)
+		}
+		s.logger.Info("failed to get and verify commit. Dropping snapshot and trying again",
+			"err", err, "height", snapshot.Height)
+		return sm.State{}, nil, errRejectSnapshot
 	}
 
 	// Restore snapshot
-	err = s.applyChunks(ctx, chunks)
+	err = s.applyChunks(ctx, chunks, fetchStartTime)
 	if err != nil {
 		return sm.State{}, nil, err
 	}
@@ -358,7 +417,7 @@ func (s *syncer) offerSnapshot(ctx context.Context, snapshot *snapshot) error {
 
 // applyChunks applies chunks to the app. It returns various errors depending on the app's
 // response, or nil once the snapshot is fully restored.
-func (s *syncer) applyChunks(ctx context.Context, chunks *chunkQueue) error {
+func (s *syncer) applyChunks(ctx context.Context, chunks *chunkQueue, start time.Time) error {
 	for {
 		chunk, err := chunks.Next()
 		if err == errDone {
@@ -400,6 +459,9 @@ func (s *syncer) applyChunks(ctx context.Context, chunks *chunkQueue) error {
 
 		switch resp.Result {
 		case abci.ResponseApplySnapshotChunk_ACCEPT:
+			s.metrics.SnapshotChunk.Add(1)
+			s.avgChunkTime = time.Since(start).Nanoseconds() / int64(chunks.numChunksReturned())
+			s.metrics.ChunkProcessAvgTime.Set(float64(s.avgChunkTime))
 		case abci.ResponseApplySnapshotChunk_ABORT:
 			return errAbort
 		case abci.ResponseApplySnapshotChunk_RETRY:
@@ -432,6 +494,8 @@ func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *ch
 				select {
 				case <-ctx.Done():
 					return
+				case <-s.closeCh:
+					return
 				case <-time.After(2 * time.Second):
 					continue
 				}
@@ -458,6 +522,8 @@ func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *ch
 
 		case <-ctx.Done():
 			return
+		case <-s.closeCh:
+			return
 		}
 
 		ticker.Stop()
@@ -481,13 +547,18 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 		"peer", peer,
 	)
 
-	s.chunkCh <- p2p.Envelope{
+	msg := p2p.Envelope{
 		To: peer,
 		Message: &ssproto.ChunkRequest{
 			Height: snapshot.Height,
 			Format: snapshot.Format,
 			Index:  chunk,
 		},
+	}
+
+	select {
+	case s.chunkCh <- msg:
+	case <-s.closeCh:
 	}
 }
 

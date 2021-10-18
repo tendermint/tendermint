@@ -97,11 +97,6 @@ moniker = "{{ .BaseConfig.Moniker }}"
 #   - No priv_validator_key.json, priv_validator_state.json
 mode = "{{ .BaseConfig.Mode }}"
 
-# If this node is many blocks behind the tip of the chain, FastSync
-# allows them to catchup quickly by downloading blocks in parallel
-# and verifying their commits
-fast-sync = {{ .BaseConfig.FastSyncMode }}
-
 # Database backend: goleveldb | cleveldb | boltdb | rocksdb | badgerdb
 # * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
 #   - pure go
@@ -164,15 +159,15 @@ state-file = "{{ js .PrivValidator.State }}"
 # when the listenAddr is prefixed with grpc instead of tcp it will use the gRPC Client
 laddr = "{{ .PrivValidator.ListenAddr }}"
 
-# Client certificate generated while creating needed files for secure connection.
+# Path to the client certificate generated while creating needed files for secure connection.
 # If a remote validator address is provided but no certificate, the connection will be insecure
 client-certificate-file = "{{ js .PrivValidator.ClientCertificate }}"
 
 # Client key generated while creating certificates for secure connection
-validator-client-key-file = "{{ js .PrivValidator.ClientKey }}"
+client-key-file = "{{ js .PrivValidator.ClientKey }}"
 
-# Path Root Certificate Authority used to sign both client and server certificates
-certificate-authority = "{{ js .PrivValidator.RootCA }}"
+# Path to the Root Certificate Authority used to sign both client and server certificates
+root-ca-file = "{{ js .PrivValidator.RootCA }}"
 
 
 #######################################################################
@@ -198,26 +193,10 @@ cors-allowed-methods = [{{ range .RPC.CORSAllowedMethods }}{{ printf "%q, " . }}
 # A list of non simple headers the client is allowed to use with cross-domain requests
 cors-allowed-headers = [{{ range .RPC.CORSAllowedHeaders }}{{ printf "%q, " . }}{{end}}]
 
-# TCP or UNIX socket address for the gRPC server to listen on
-# NOTE: This server only supports /broadcast_tx_commit
-# Deprecated gRPC  in the RPC layer of Tendermint will be deprecated in 0.36.
-grpc-laddr = "{{ .RPC.GRPCListenAddress }}"
-
-# Maximum number of simultaneous connections.
-# Does not include RPC (HTTP&WebSocket) connections. See max-open-connections
-# If you want to accept a larger number than the default, make sure
-# you increase your OS limits.
-# 0 - unlimited.
-# Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
-# 1024 - 40 - 10 - 50 = 924 = ~900
-# Deprecated gRPC  in the RPC layer of Tendermint will be deprecated in 0.36.
-grpc-max-open-connections = {{ .RPC.GRPCMaxOpenConnections }}
-
 # Activate unsafe RPC commands like /dial-seeds and /unsafe-flush-mempool
 unsafe = {{ .RPC.Unsafe }}
 
 # Maximum number of simultaneous connections (including WebSocket).
-# Does not include gRPC connections. See grpc-max-open-connections
 # If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
@@ -231,8 +210,8 @@ max-open-connections = {{ .RPC.MaxOpenConnections }}
 max-subscription-clients = {{ .RPC.MaxSubscriptionClients }}
 
 # Maximum number of unique queries a given client can /subscribe to
-# If you're using GRPC (or Local RPC client) and /broadcast_tx_commit, set to
-# the estimated # maximum number of broadcast_tx_commit calls per block.
+# If you're using a Local RPC client and /broadcast_tx_commit, set this
+# to the estimated maximum number of broadcast_tx_commit calls per block.
 max-subscriptions-per-client = {{ .RPC.MaxSubscriptionsPerClient }}
 
 # How long to wait for a tx to be committed during /broadcast_tx_commit.
@@ -270,9 +249,6 @@ pprof-laddr = "{{ .RPC.PprofListenAddress }}"
 #######################################################
 [p2p]
 
-# Enable the new p2p layer.
-disable-legacy = {{ .P2P.DisableLegacy }}
-
 # Select the p2p internal queue
 queue-type = "{{ .P2P.QueueType }}"
 
@@ -304,48 +280,11 @@ persistent-peers = "{{ .P2P.PersistentPeers }}"
 # UPNP port forwarding
 upnp = {{ .P2P.UPNP }}
 
-# Path to address book
-addr-book-file = "{{ js .P2P.AddrBook }}"
-
-# Set true for strict address routability rules
-# Set false for private or local networks
-addr-book-strict = {{ .P2P.AddrBookStrict }}
-
-# Maximum number of inbound peers
-#
-# TODO: Remove once p2p refactor is complete in favor of MaxConnections.
-# ref: https://github.com/tendermint/tendermint/issues/5670
-max-num-inbound-peers = {{ .P2P.MaxNumInboundPeers }}
-
-# Maximum number of outbound peers to connect to, excluding persistent peers
-#
-# TODO: Remove once p2p refactor is complete in favor of MaxConnections.
-# ref: https://github.com/tendermint/tendermint/issues/5670
-max-num-outbound-peers = {{ .P2P.MaxNumOutboundPeers }}
-
 # Maximum number of connections (inbound and outbound).
 max-connections = {{ .P2P.MaxConnections }}
 
 # Rate limits the number of incoming connection attempts per IP address.
 max-incoming-connection-attempts = {{ .P2P.MaxIncomingConnectionAttempts }}
-
-# List of node IDs, to which a connection will be (re)established ignoring any existing limits
-unconditional-peer-ids = "{{ .P2P.UnconditionalPeerIDs }}"
-
-# Maximum pause when redialing a persistent peer (if zero, exponential backoff is used)
-persistent-peers-max-dial-period = "{{ .P2P.PersistentPeersMaxDialPeriod }}"
-
-# Time to wait before flushing messages out on the connection
-flush-throttle-timeout = "{{ .P2P.FlushThrottleTimeout }}"
-
-# Maximum size of a message packet payload, in bytes
-max-packet-msg-payload-size = {{ .P2P.MaxPacketMsgPayloadSize }}
-
-# Rate at which packets can be sent, in bytes/second
-send-rate = {{ .P2P.SendRate }}
-
-# Rate at which packets can be received, in bytes/second
-recv-rate = {{ .P2P.RecvRate }}
 
 # Set true to enable the peer-exchange reactor
 pex = {{ .P2P.PexReactor }}
@@ -426,22 +365,30 @@ ttl-num-blocks = {{ .Mempool.TTLNumBlocks }}
 # starting from the height of the snapshot.
 enable = {{ .StateSync.Enable }}
 
-# RPC servers (comma-separated) for light client verification of the synced state machine and
-# retrieval of state data for node bootstrapping. Also needs a trusted height and corresponding
-# header hash obtained from a trusted source, and a period during which validators can be trusted.
-#
-# For Cosmos SDK-based chains, trust-period should usually be about 2/3 of the unbonding time (~2
-# weeks) during which they can be financially punished (slashed) for misbehavior.
+# State sync uses light client verification to verify state. This can be done either through the
+# P2P layer or RPC layer. Set this to true to use the P2P layer. If false (default), RPC layer
+# will be used.
+use-p2p = {{ .StateSync.UseP2P }}
+
+# If using RPC, at least two addresses need to be provided. They should be compatible with net.Dial,
+# for example: "host.example.com:2125"
 rpc-servers = "{{ StringsJoin .StateSync.RPCServers "," }}"
+
+# The hash and height of a trusted block. Must be within the trust-period.
 trust-height = {{ .StateSync.TrustHeight }}
 trust-hash = "{{ .StateSync.TrustHash }}"
+
+# The trust period should be set so that Tendermint can detect and gossip misbehavior before
+# it is considered expired. For chains based on the Cosmos SDK, one day less than the unbonding
+# period should suffice.
 trust-period = "{{ .StateSync.TrustPeriod }}"
 
 # Time to spend discovering snapshots before initiating a restore.
 discovery-time = "{{ .StateSync.DiscoveryTime }}"
 
-# Temporary directory for state sync snapshot chunks, defaults to the OS tempdir (typically /tmp).
-# Will create a new, randomly named directory within, and remove it when done.
+# Temporary directory for state sync snapshot chunks, defaults to os.TempDir().
+# The synchronizer will create a new, randomly named directory within this directory
+# and remove it when the sync is complete.
 temp-dir = "{{ .StateSync.TempDir }}"
 
 # The timeout duration before re-requesting a chunk, possibly from a different
@@ -454,12 +401,12 @@ fetchers = "{{ .StateSync.Fetchers }}"
 #######################################################
 ###       Block Sync Configuration Connections       ###
 #######################################################
-[fastsync]
+[blocksync]
 
-# Block Sync version to use:
-#   1) "v0" (default) - the legacy block sync implementation
-#   2) "v2" - DEPRECATED, please use v0
-version = "{{ .BlockSync.Version }}"
+# If this node is many blocks behind the tip of the chain, BlockSync
+# allows them to catchup quickly by downloading blocks in parallel
+# and verifying their commits
+enable = {{ .BlockSync.Enable }}
 
 #######################################################
 ###         Consensus Configuration Options         ###
@@ -508,7 +455,7 @@ peer-query-maj23-sleep-duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 [tx-index]
 
 # The backend database list to back the indexer.
-# If list contains null, meaning no indexer service will be used.
+# If list contains "null" or "", meaning no indexer service will be used.
 #
 # The application will set which txs to index. In some cases a node operator will be able
 # to decide which txs to index based on configuration set in the application.
@@ -516,8 +463,8 @@ peer-query-maj23-sleep-duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 # Options:
 #   1) "null"
 #   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
-# 		- When "kv" is chosen "tx.height" and "tx.hash" will always be indexed.
 #   3) "psql" - the indexer services backed by PostgreSQL.
+# When "kv" or "psql" is chosen "tx.height" and "tx.hash" will always be indexed.
 indexer = [{{ range $i, $e := .TxIndex.Indexer }}{{if $i}}, {{end}}{{ printf "%q" $e}}{{end}}]
 
 # The PostgreSQL connection configuration, the connection format:

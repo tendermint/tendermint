@@ -71,7 +71,7 @@ type pqScheduler struct {
 	size         uint
 	sizes        map[uint]uint // cumulative priority sizes
 	pq           *priorityQueue
-	chDescs      []ChannelDescriptor
+	chDescs      []*ChannelDescriptor
 	capacity     uint
 	chPriorities map[ChannelID]uint
 
@@ -84,12 +84,12 @@ type pqScheduler struct {
 func newPQScheduler(
 	logger log.Logger,
 	m *Metrics,
-	chDescs []ChannelDescriptor,
+	chDescs []*ChannelDescriptor,
 	enqueueBuf, dequeueBuf, capacity uint,
 ) *pqScheduler {
 
 	// copy each ChannelDescriptor and sort them by ascending channel priority
-	chDescsCopy := make([]ChannelDescriptor, len(chDescs))
+	chDescsCopy := make([]*ChannelDescriptor, len(chDescs))
 	copy(chDescsCopy, chDescs)
 	sort.Slice(chDescsCopy, func(i, j int) bool { return chDescsCopy[i].Priority < chDescsCopy[j].Priority })
 
@@ -99,7 +99,7 @@ func newPQScheduler(
 	)
 
 	for _, chDesc := range chDescsCopy {
-		chID := ChannelID(chDesc.ID)
+		chID := chDesc.ID
 		chPriorities[chID] = uint(chDesc.Priority)
 		sizes[uint(chDesc.Priority)] = 0
 	}
@@ -167,13 +167,12 @@ func (s *pqScheduler) process() {
 				timestamp: time.Now().UTC(),
 			}
 
-			s.metrics.PeerPendingSendBytes.With("peer_id", string(pqEnv.envelope.To)).Add(float64(pqEnv.size))
-
 			// enqueue
 
 			// Check if we have sufficient capacity to simply enqueue the incoming
 			// Envelope.
 			if s.size+pqEnv.size <= s.capacity {
+				s.metrics.PeerPendingSendBytes.With("peer_id", string(pqEnv.envelope.To)).Add(float64(pqEnv.size))
 				// enqueue the incoming Envelope
 				s.push(pqEnv)
 			} else {
@@ -212,6 +211,8 @@ func (s *pqScheduler) process() {
 									"msg_size", pqEnvTmp.size,
 									"capacity", s.capacity,
 								)
+
+								s.metrics.PeerPendingSendBytes.With("peer_id", string(pqEnvTmp.envelope.To)).Add(float64(-pqEnvTmp.size))
 
 								// dequeue/drop from the priority queue
 								heap.Remove(s.pq, pqEnvTmp.index)
@@ -257,6 +258,8 @@ func (s *pqScheduler) process() {
 				s.metrics.PeerSendBytesTotal.With(
 					"chID", chIDStr,
 					"peer_id", string(pqEnv.envelope.To)).Add(float64(pqEnv.size))
+				s.metrics.PeerPendingSendBytes.With(
+					"peer_id", string(pqEnv.envelope.To)).Add(float64(-pqEnv.size))
 				select {
 				case s.dequeueCh <- pqEnv.envelope:
 				case <-s.closer.Done():
