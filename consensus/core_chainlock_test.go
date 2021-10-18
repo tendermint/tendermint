@@ -170,7 +170,8 @@ func TestReactorInvalidBlockChainLock(t *testing.T) {
 			msg := <-blocksSubs[j].Out()
 			block := msg.Data().(types.EventDataNewBlock).Block
 			// this is true just because of this test where each new height has a new chain lock that is incremented by 1
-			if block.Header.Height == css[0].state.InitialHeight {
+			state := css[0].GetState()
+			if block.Header.Height == state.InitialHeight {
 				assert.EqualValues(t, 1, block.Header.CoreChainLockedHeight)
 			} else {
 				// We started at 1 then 99, then try 98, 97, 96...
