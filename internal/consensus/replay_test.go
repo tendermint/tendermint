@@ -745,7 +745,7 @@ func testHandshakeReplay(t *testing.T, sim *simulatorTestSuite, nBlocks int, mod
 	if nBlocks > 0 {
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
-		proxyApp := proxy.NewAppConns(clientCreator2)
+		proxyApp := proxy.NewAppConns(clientCreator2, proxy.NopMetrics())
 		stateDB1 := dbm.NewMemDB()
 		stateStore := sm.NewStore(stateDB1)
 		err := stateStore.Save(genesisState)
@@ -765,7 +765,7 @@ func testHandshakeReplay(t *testing.T, sim *simulatorTestSuite, nBlocks int, mod
 	// now start the app using the handshake - it should sync
 	genDoc, _ := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
 	handshaker := NewHandshaker(stateStore, state, store, genDoc)
-	proxyApp := proxy.NewAppConns(clientCreator2)
+	proxyApp := proxy.NewAppConns(clientCreator2, proxy.NopMetrics())
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
 	}
@@ -893,7 +893,7 @@ func buildTMStateFromChain(
 	defer kvstoreApp.Close()
 	clientCreator := abciclient.NewLocalCreator(kvstoreApp)
 
-	proxyApp := proxy.NewAppConns(clientCreator)
+	proxyApp := proxy.NewAppConns(clientCreator, proxy.NopMetrics())
 	if err := proxyApp.Start(); err != nil {
 		panic(err)
 	}
@@ -960,7 +960,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	{
 		app := &badApp{numBlocks: 3, allHashesAreWrong: true}
 		clientCreator := abciclient.NewLocalCreator(app)
-		proxyApp := proxy.NewAppConns(clientCreator)
+		proxyApp := proxy.NewAppConns(clientCreator, proxy.NopMetrics())
 		err := proxyApp.Start()
 		require.NoError(t, err)
 		t.Cleanup(func() {
@@ -984,7 +984,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	{
 		app := &badApp{numBlocks: 3, onlyLastHashIsWrong: true}
 		clientCreator := abciclient.NewLocalCreator(app)
-		proxyApp := proxy.NewAppConns(clientCreator)
+		proxyApp := proxy.NewAppConns(clientCreator, proxy.NopMetrics())
 		err := proxyApp.Start()
 		require.NoError(t, err)
 		t.Cleanup(func() {
@@ -1243,7 +1243,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	// now start the app using the handshake - it should sync
 	genDoc, _ := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
 	handshaker := NewHandshaker(stateStore, state, store, genDoc)
-	proxyApp := proxy.NewAppConns(clientCreator)
+	proxyApp := proxy.NewAppConns(clientCreator, proxy.NopMetrics())
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
 	}

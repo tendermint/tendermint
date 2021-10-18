@@ -39,7 +39,7 @@ type Reactor struct {
 
 	cfg     *config.MempoolConfig
 	mempool *TxMempool
-	ids     *mempool.MempoolIDs
+	ids     *mempool.IDs
 
 	// XXX: Currently, this is the only way to get information about a peer. Ideally,
 	// we rely on message-oriented communication to get necessary peer data.
@@ -90,14 +90,9 @@ func NewReactor(
 
 func defaultObservePanic(r interface{}) {}
 
-// GetChannelShims returns a map of ChannelDescriptorShim objects, where each
-// object wraps a reference to a legacy p2p ChannelDescriptor and the corresponding
-// p2p proto.Message the new p2p Channel is responsible for handling.
-//
-//
-// TODO: Remove once p2p refactor is complete.
-// ref: https://github.com/tendermint/tendermint/issues/5670
-func GetChannelShims(cfg *config.MempoolConfig) map[p2p.ChannelID]*p2p.ChannelDescriptorShim {
+// GetChannelDescriptor produces an instance of a descriptor for this
+// package's required channels.
+func GetChannelDescriptor(cfg *config.MempoolConfig) *p2p.ChannelDescriptor {
 	largestTx := make([]byte, cfg.MaxTxBytes)
 	batchMsg := protomem.Message{
 		Sum: &protomem.Message_Txs{
@@ -105,17 +100,12 @@ func GetChannelShims(cfg *config.MempoolConfig) map[p2p.ChannelID]*p2p.ChannelDe
 		},
 	}
 
-	return map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
-		mempool.MempoolChannel: {
-			MsgType: new(protomem.Message),
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(mempool.MempoolChannel),
-				Priority:            5,
-				RecvMessageCapacity: batchMsg.Size(),
-				RecvBufferCapacity:  128,
-				MaxSendBytes:        5000,
-			},
-		},
+	return &p2p.ChannelDescriptor{
+		ID:                  mempool.MempoolChannel,
+		MessageType:         new(protomem.Message),
+		Priority:            5,
+		RecvMessageCapacity: batchMsg.Size(),
+		RecvBufferCapacity:  128,
 	}
 }
 

@@ -12,6 +12,8 @@ Special thanks to external contributors on this release:
 
 - CLI/RPC/Config
 
+  - [rpc] Remove the deprecated gRPC interface to the RPC service (@creachadair).
+
 - Apps
   - [proto/tendermint] \#6976 Remove core protobuf files in favor of only housing them in the [tendermint/spec](https://github.com/tendermint/spec) repository.
 
@@ -31,8 +33,11 @@ Special thanks to external contributors on this release:
 
 ### FEATURES
 
+- [cli] [#7033](https://github.com/tendermint/tendermint/pull/7033) Add a `rollback` command to rollback to the previous tendermint state in the event of non-determinstic app hash or reverting an upgrade.
 - [mempool, rpc] \#7041  Add removeTx operation to the RPC layer. (@tychoish)
 
 ### IMPROVEMENTS
 
 ### BUG FIXES
+
+- fix: assignment copies lock value in `BitArray.UnmarshalJSON()` (@lklimek)

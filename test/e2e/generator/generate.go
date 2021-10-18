@@ -44,9 +44,10 @@ var (
 		"tcp":  20,
 		"unix": 10,
 	}
-	// FIXME: v2 disabled due to flake
-	nodeBlockSyncs = uniformChoice{"v0"} // "v2"
-	nodeMempools   = uniformChoice{"v0", "v1"}
+	nodeMempools = weightedChoice{
+		"v0": 20,
+		"v1": 80,
+	}
 	nodeStateSyncs = weightedChoice{
 		e2e.StateSyncDisabled: 10,
 		e2e.StateSyncP2P:      45,
@@ -54,8 +55,12 @@ var (
 	}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 5}
-	nodeRetainBlocks      = uniformChoice{0, 2 * int(e2e.EvidenceAgeHeight), 4 * int(e2e.EvidenceAgeHeight)}
-	nodePerturbations     = probSetChoice{
+	nodeRetainBlocks      = uniformChoice{
+		0,
+		2 * int(e2e.EvidenceAgeHeight),
+		4 * int(e2e.EvidenceAgeHeight),
+	}
+	nodePerturbations = probSetChoice{
 		"disconnect": 0.1,
 		"pause":      0.1,
 		"kill":       0.1,
@@ -103,6 +108,7 @@ type Options struct {
 func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, error) {
 	manifest := e2e.Manifest{
 		IPv6:             ipv6.Choose(r).(bool),
+		ABCIProtocol:     nodeABCIProtocols.Choose(r),
 		InitialHeight:    int64(opt["initialHeight"].(int)),
 		InitialState:     opt["initialState"].(map[string]string),
 		Validators:       &map[string]int64{},
@@ -236,13 +242,9 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 
 			// choose one of the seeds
 			manifest.Nodes[name].Seeds = uniformSetChoice(seedNames).Choose(r)
-		} else if i > 0 {
+		} else if i > 1 && r.Float64() >= 0.5 {
 			peers := uniformSetChoice(peerNames[:i])
-			if manifest.Nodes[name].StateSync == e2e.StateSyncP2P {
-				manifest.Nodes[name].PersistentPeers = peers.ChooseAtLeast(r, 2)
-			} else {
-				manifest.Nodes[name].PersistentPeers = peers.Choose(r)
-			}
+			manifest.Nodes[name].PersistentPeers = peers.ChooseAtLeast(r, 2)
 		}
 	}
 
@@ -250,9 +252,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	for i := 1; i <= numLightClients; i++ {
 		startAt := manifest.InitialHeight + 5
 
-		node := generateLightNode(
-			r, startAt+(5*int64(i)), lightProviders,
-		)
+		node := generateLightNode(r, startAt+(5*int64(i)), lightProviders)
 
 		manifest.Nodes[fmt.Sprintf("light%02d", i)] = node
 
@@ -276,10 +276,8 @@ func generateNode(
 		Mode:             string(mode),
 		StartAt:          startAt,
 		Database:         nodeDatabases.Choose(r),
-		ABCIProtocol:     nodeABCIProtocols.Choose(r),
 		PrivvalProtocol:  nodePrivvalProtocols.Choose(r),
-		BlockSync:        nodeBlockSyncs.Choose(r).(string),
-		Mempool:          nodeMempools.Choose(r).(string),
+		Mempool:          nodeMempools.Choose(r),
 		StateSync:        e2e.StateSyncDisabled,
 		PersistInterval:  ptrUint64(uint64(nodePersistIntervals.Choose(r).(int))),
 		SnapshotInterval: uint64(nodeSnapshotIntervals.Choose(r).(int)),
@@ -326,10 +324,6 @@ func generateNode(
 		}
 	}
 
-	if node.StateSync != e2e.StateSyncDisabled {
-		node.BlockSync = "v0"
-	}
-
 	return &node
 }
 
@@ -338,7 +332,6 @@ func generateLightNode(r *rand.Rand, startAt int64, providers []string) *e2e.Man
 		Mode:            string(e2e.ModeLight),
 		StartAt:         startAt,
 		Database:        nodeDatabases.Choose(r),
-		ABCIProtocol:    "builtin",
 		PersistInterval: ptrUint64(0),
 		PersistentPeers: providers,
 	}

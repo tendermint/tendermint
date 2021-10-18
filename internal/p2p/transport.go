@@ -44,6 +44,10 @@ type Transport interface {
 	// Close stops accepting new connections, but does not close active connections.
 	Close() error
 
+	// AddChannelDescriptors is only part of this interface
+	// temporarily
+	AddChannelDescriptors([]*ChannelDescriptor)
+
 	// Stringer is used to display the transport, e.g. in logs.
 	//
 	// Without this, the logger may use reflection to access and display
@@ -122,12 +126,17 @@ type Endpoint struct {
 }
 
 // NewEndpoint constructs an Endpoint from a types.NetAddress structure.
-func NewEndpoint(na *types.NetAddress) Endpoint {
+func NewEndpoint(addr string) (Endpoint, error) {
+	ip, port, err := types.ParseAddressString(addr)
+	if err != nil {
+		return Endpoint{}, err
+	}
+
 	return Endpoint{
 		Protocol: MConnProtocol,
-		IP:       na.IP,
-		Port:     na.Port,
-	}
+		IP:       ip,
+		Port:     port,
+	}, nil
 }
 
 // NodeAddress converts the endpoint into a NodeAddress for the given node ID.

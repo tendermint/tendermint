@@ -24,6 +24,8 @@ func RequireEmpty(t *testing.T, channels ...*p2p.Channel) {
 
 // RequireReceive requires that the given envelope is received on the channel.
 func RequireReceive(t *testing.T, channel *p2p.Channel, expect p2p.Envelope) {
+	t.Helper()
+
 	timer := time.NewTimer(time.Second) // not time.After due to goroutine leaks
 	defer timer.Stop()
 
