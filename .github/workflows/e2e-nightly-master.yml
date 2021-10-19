@@ -24,7 +24,7 @@ jobs:
         with:
           go-version: '1.17'
 
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v2.3.5
 
       - name: Build
         working-directory: test/e2e
