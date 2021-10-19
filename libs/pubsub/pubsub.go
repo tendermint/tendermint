@@ -277,7 +277,11 @@ func (s *Server) PublishWithEvents(ctx context.Context, msg interface{}, events 
 }
 
 // OnStop implements Service.OnStop by shutting down the server.
-func (s *Server) OnStop() { s.stop(); <-s.exited }
+func (s *Server) OnStop() { s.stop() }
+
+// Wait implements Service.Wait by blocking until the server has exited, then
+// yielding to the base service wait.
+func (s *Server) Wait() { <-s.exited; s.BaseService.Wait() }
 
 // OnStart implements Service.OnStart by starting the server.
 func (s *Server) OnStart() error { s.run(); return nil }
