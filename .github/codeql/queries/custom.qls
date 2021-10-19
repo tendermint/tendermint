@@ -1,0 +1,11 @@
+- description: Custom CodeQL queries from experimental
+- qlpack: codeql-go
+- include:
+    id: go/examples/deferinloop
+- include:
+    id: go/divide-by-zero
+- include:
+    id: go/wrong-usage-of-unsafe
+- qlpack: chain-custom
+- include:
+    id: go/map-iteration

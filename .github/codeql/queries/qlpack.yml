@@ -1,0 +1,6 @@
+name: chain-custom
+version: 0.0.0
+dependencies:
+  # This uses the latest version of the codeql/go-all library.
+  # You may want to change to a more precise semver string.
+  codeql/go-all: "*"
