@@ -15,6 +15,7 @@ Special thanks to external contributors on this release:
   - [rpc] Remove the deprecated gRPC interface to the RPC service (@creachadair).
 
 - Apps
+  - [proto/tendermint] \#6976 Remove core protobuf files in favor of only housing them in the [tendermint/spec](https://github.com/tendermint/spec) repository.
 
 - P2P Protocol
 
