@@ -36,15 +36,17 @@ func TestGenerator(t *testing.T) {
 								"peers: %v", node.PersistentPeers)
 						}
 					})
-					t.Run("Mempool", func(t *testing.T) {
-						require.NotZero(t, node.Mempool)
-					})
-					t.Run("PrivvalProtocol", func(t *testing.T) {
-						require.NotZero(t, node.PrivvalProtocol)
-					})
-					t.Run("BlockSync", func(t *testing.T) {
-						require.NotZero(t, node.BlockSync)
-					})
+					if node.Mode != e2e.ModeLight {
+						t.Run("Mempool", func(t *testing.T) {
+							require.NotZero(t, node.Mempool)
+						})
+						t.Run("PrivvalProtocol", func(t *testing.T) {
+							require.NotZero(t, node.PrivvalProtocol)
+						})
+						t.Run("BlockSync", func(t *testing.T) {
+							require.NotZero(t, node.BlockSync)
+						})
+					}
 				})
 			}
 			require.True(t, numStateSyncs <= 2)
