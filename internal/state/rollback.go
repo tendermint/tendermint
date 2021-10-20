@@ -19,6 +19,24 @@ func Rollback(bs BlockStore, ss Store) (int64, []byte, error) {
 		return -1, nil, errors.New("no state found")
 	}
 
+	height := bs.Height()
+	switch {
+	// NOTE: persistence of state and blocks don't happen atomically. Therefore it is possible that
+	// when the user stopped the node the state wasn't updated but the blockstore was. In this situation
+	// we don't need to rollback any state and can just return early
+	case height == invalidState.LastBlockHeight+1:
+		return invalidState.LastBlockHeight, invalidState.AppHash, errors.New("")
+
+	// If the state store isn't one below nor equal to the blockstore height than this violates the
+	// invariant
+	case height != invalidState.LastBlockHeight:
+		return -1, nil, fmt.Errorf("statestore height (%d) is not one below or equal to blockstore height (%d)",
+			invalidState.LastBlockHeight, height)
+
+	// state store height is equal to blockstore height. We're good to proceed with rolling back state
+	default:
+	}
+
 	rollbackHeight := invalidState.LastBlockHeight
 	rollbackBlock := bs.LoadBlockMeta(rollbackHeight)
 	if rollbackBlock == nil {
