@@ -27,9 +27,9 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/proxy"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/store"
+	"github.com/tendermint/tendermint/internal/proxy"
+	sm "github.com/tendermint/tendermint/internal/state"
+	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/types"
 )
 

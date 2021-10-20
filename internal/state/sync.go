@@ -1,4 +1,4 @@
-package node
+package state
 
 import (
 	"bytes"
@@ -7,37 +7,34 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
-	"github.com/tendermint/tendermint/internal/libs/clist"
-	mempl "github.com/tendermint/tendermint/internal/mempool"
+	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/libs/log"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	"github.com/tendermint/tendermint/proxy"
-	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
-// syncWithApplication is called every time on start up. It handshakes with the app
+// SyncWithApplication is called every time on start up. It handshakes with the app
 // to understand the current state of the app. If this is the first time running
 // Tendermint it will call InitChain, feeding in the genesis doc and produce
 // the initial state. If the application is behind, Tendermint will replay all
 // blocks in between and assert that the app hashes produced are the same as
 // before.
-func syncWithApplication(
-	stateStore sm.Store,
-	blockStore sm.BlockStore,
+func SyncWithApplication(
+	stateStore Store,
+	blockStore BlockStore,
 	genDoc *types.GenesisDoc,
-	state sm.State,
+	state State,
 	eventBus types.BlockEventPublisher,
 	proxyApp proxy.AppConns,
 	stateSync bool,
 	logger log.Logger,
-) (sm.State, error) {
+) (State, error) {
 
 	// Handshake is done via ABCI Info on the query conn. This gives the node
 	// information on the app's latest height, hash and version
 	res, err := proxyApp.Query().InfoSync(context.Background(), proxy.RequestInfo)
 	if err != nil {
-		return sm.State{}, fmt.Errorf("error calling Info: %v", err)
+		return State{}, fmt.Errorf("error calling Info: %v", err)
 	}
 	appHash := res.LastBlockAppHash
 	appBlockHeight := res.LastBlockHeight
@@ -56,7 +53,7 @@ func syncWithApplication(
 	if appBlockHeight == 0 || !stateSync {
 		state, err = initializeChain(proxyApp, stateStore, state, genDoc, logger)
 		if err != nil {
-			return sm.State{}, fmt.Errorf("error initializing chain: %w", err)
+			return State{}, fmt.Errorf("error initializing chain: %w", err)
 		}
 
 		appHash = state.AppHash
@@ -77,15 +74,15 @@ func syncWithApplication(
 	case appBlockHeight == 0 && state.InitialHeight < storeBlockBase:
 		// the app has no state, and the block store is truncated above the
 		// initial height. The node can't replay those blocks.
-		return sm.State{}, sm.ErrAppBlockHeightTooLow{AppHeight: appBlockHeight, StoreBase: storeBlockBase}
+		return State{}, ErrAppBlockHeightTooLow{AppHeight: appBlockHeight, StoreBase: storeBlockBase}
 
 	case appBlockHeight > 0 && appBlockHeight < storeBlockBase-1:
 		// the app is too far behind truncated store (can be 1 behind since we replay the next)
-		return sm.State{}, sm.ErrAppBlockHeightTooLow{AppHeight: appBlockHeight, StoreBase: storeBlockBase}
+		return State{}, ErrAppBlockHeightTooLow{AppHeight: appBlockHeight, StoreBase: storeBlockBase}
 
 	case storeBlockHeight < appBlockHeight:
 		// the app should never be ahead of the store (but this is under app's control)
-		return sm.State{}, sm.ErrAppBlockHeightTooHigh{CoreHeight: storeBlockHeight, AppHeight: appBlockHeight}
+		return State{}, ErrAppBlockHeightTooHigh{CoreHeight: storeBlockHeight, AppHeight: appBlockHeight}
 
 	case storeBlockHeight < stateBlockHeight:
 		// the state should never be ahead of the store (this is under Tendermint's control)
@@ -120,7 +117,7 @@ func syncWithApplication(
 		case appBlockHeight < stateBlockHeight:
 			// the app is further behind than it should be, so replay blocks
 			// up to storeBlockHeight and run the
-			state, err := replayBlocks(state, proxyApp, blockStore, stateStore, appBlockHeight, storeBlockHeight, 
+			err = replayBlocks(state, proxyApp, blockStore, stateStore, appBlockHeight, storeBlockHeight,
 				true, eventBus, genDoc, logger)
 
 		case appBlockHeight == stateBlockHeight:
@@ -129,26 +126,26 @@ func syncWithApplication(
 			logger.Info("Replay last block using real app")
 			state, err = replayBlock(state, blockStore, stateStore, storeBlockHeight, proxyApp.Consensus(), eventBus, logger)
 			if err != nil {
-				return sm.State{}, err
+				return State{}, err
 			}
 
 		case appBlockHeight == storeBlockHeight:
 			// We ran Commit, but didn't save the state, so replayBlock with mock app.
 			abciResponses, err := stateStore.LoadABCIResponses(storeBlockHeight)
 			if err != nil {
-				return sm.State{}, err
+				return State{}, err
 			}
 			mockApp := newMockProxyApp(appHash, abciResponses)
 			logger.Info("Replay last block using mock app")
 			state, err = replayBlock(state, blockStore, stateStore, storeBlockHeight, mockApp, eventBus, logger)
 			if err != nil {
-				return sm.State{}, err
+				return State{}, err
 			}
 		}
 
 		// Save the new state.
 		if err := stateStore.Save(state); err != nil {
-			return sm.State{}, err
+			return State{}, err
 		}
 
 		return state, nil
@@ -163,11 +160,11 @@ func syncWithApplication(
 // from the app, applies them and then persists the initial state.
 func initializeChain(
 	proxyApp proxy.AppConns,
-	stateStore sm.Store,
-	currentState sm.State,
+	stateStore Store,
+	currentState State,
 	genDoc *types.GenesisDoc,
 	logger log.Logger,
-) (sm.State, error) {
+) (State, error) {
 	logger.Info("Initializing Chain with Application")
 
 	validators := make([]*types.Validator, len(genDoc.Validators))
@@ -187,7 +184,7 @@ func initializeChain(
 	}
 	res, err := proxyApp.Consensus().InitChainSync(context.Background(), req)
 	if err != nil {
-		return sm.State{}, err
+		return State{}, err
 	}
 
 	// we only update state when we are in initial state
@@ -202,13 +199,13 @@ func initializeChain(
 		if len(res.Validators) > 0 {
 			vals, err := types.PB2TM.ValidatorUpdates(res.Validators)
 			if err != nil {
-				return sm.State{}, err
+				return State{}, err
 			}
 			currentState.Validators = types.NewValidatorSet(vals)
 			currentState.NextValidators = types.NewValidatorSet(vals).CopyIncrementProposerPriority(1)
 		} else if len(genDoc.Validators) == 0 {
 			// If validator set is not set in genesis and still empty after InitChain, exit.
-			return sm.State{}, fmt.Errorf("validator set is nil in genesis and still empty after InitChain")
+			return State{}, fmt.Errorf("validator set is nil in genesis and still empty after InitChain")
 		}
 
 		if res.ConsensusParams != nil {
@@ -220,7 +217,7 @@ func initializeChain(
 
 		// We now save the initial state to the stateStore
 		if err := stateStore.Save(currentState); err != nil {
-			return sm.State{}, err
+			return State{}, err
 		}
 	}
 
@@ -233,10 +230,10 @@ func initializeChain(
 // mutate Tendermint state in anyway except for when mutateState is true in
 // which case we persist the response from the final block.
 func replayBlocks(
-	state sm.State,
+	state State,
 	proxyApp proxy.AppConns,
-	blockStore sm.BlockStore,
-	stateStore sm.Store,
+	blockStore BlockStore,
+	stateStore Store,
 	appBlockHeight,
 	storeBlockHeight int64,
 	mutateState bool,
@@ -268,16 +265,16 @@ func replayBlocks(
 		if i == finalBlock && !mutateState {
 			// We emit events for the index services at the final block due to the sync issue when
 			// the node shutdown during the block committing status.
-			blockExec := sm.NewBlockExecutor(
-				stateStore, logger, proxyApp.Consensus(), emptyMempool{}, sm.EmptyEvidencePool{}, blockStore)
+			blockExec := NewBlockExecutor(
+				stateStore, logger, proxyApp.Consensus(), emptyMempool{}, EmptyEvidencePool{}, blockStore)
 			blockExec.SetEventBus(eventBus)
-			appHash, err = sm.ExecCommitBlock(
+			appHash, err = ExecCommitBlock(
 				blockExec, proxyApp.Consensus(), block, logger, stateStore, genDoc.InitialHeight, state)
 			if err != nil {
 				return err
 			}
 		} else {
-			appHash, err = sm.ExecCommitBlock(
+			appHash, err = ExecCommitBlock(
 				nil, proxyApp.Consensus(), block, logger, stateStore, genDoc.InitialHeight, state)
 			if err != nil {
 				return err
@@ -299,26 +296,26 @@ func replayBlocks(
 
 // replayBlock uses the block executor to
 func replayBlock(
-	state sm.State,
-	store sm.BlockStore,
-	stateStore sm.Store,
+	state State,
+	store BlockStore,
+	stateStore Store,
 	height int64,
 	proxyApp proxy.AppConnConsensus,
 	eventBus types.BlockEventPublisher,
 	logger log.Logger,
-) (sm.State, error) {
+) (State, error) {
 	block := store.LoadBlock(height)
 	meta := store.LoadBlockMeta(height)
 
 	// Use stubs for both mempool and evidence pool since no transactions nor
 	// evidence are needed here - block already exists.
-	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp, emptyMempool{}, sm.EmptyEvidencePool{}, store)
+	blockExec := NewBlockExecutor(stateStore, logger, proxyApp, emptyMempool{}, EmptyEvidencePool{}, store)
 	blockExec.SetEventBus(eventBus)
 
 	var err error
 	state, err = blockExec.ApplyBlock(state, meta.BlockID, block)
 	if err != nil {
-		return sm.State{}, err
+		return State{}, err
 	}
 
 	return state, nil
@@ -368,38 +365,3 @@ func (mock *mockProxyApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlo
 func (mock *mockProxyApp) Commit() abci.ResponseCommit {
 	return abci.ResponseCommit{Data: mock.appHash}
 }
-
-//-----------------------------------------------------------------------------
-
-type emptyMempool struct{}
-
-var _ mempl.Mempool = emptyMempool{}
-
-func (emptyMempool) Lock()     {}
-func (emptyMempool) Unlock()   {}
-func (emptyMempool) Size() int { return 0 }
-func (emptyMempool) CheckTx(_ context.Context, _ types.Tx, _ func(*abci.Response), _ mempl.TxInfo) error {
-	return nil
-}
-func (emptyMempool) ReapMaxBytesMaxGas(_, _ int64) types.Txs { return types.Txs{} }
-func (emptyMempool) ReapMaxTxs(n int) types.Txs              { return types.Txs{} }
-func (emptyMempool) Update(
-	_ int64,
-	_ types.Txs,
-	_ []*abci.ResponseDeliverTx,
-	_ mempl.PreCheckFunc,
-	_ mempl.PostCheckFunc,
-) error {
-	return nil
-}
-func (emptyMempool) Flush()                        {}
-func (emptyMempool) FlushAppConn() error           { return nil }
-func (emptyMempool) TxsAvailable() <-chan struct{} { return make(chan struct{}) }
-func (emptyMempool) EnableTxsAvailable()           {}
-func (emptyMempool) SizeBytes() int64              { return 0 }
-
-func (emptyMempool) TxsFront() *clist.CElement    { return nil }
-func (emptyMempool) TxsWaitChan() <-chan struct{} { return nil }
-
-func (emptyMempool) InitWAL() error { return nil }
-func (emptyMempool) CloseWAL()      {}
