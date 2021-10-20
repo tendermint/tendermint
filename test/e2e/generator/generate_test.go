@@ -36,7 +36,7 @@ func TestGenerator(t *testing.T) {
 								"peers: %v", node.PersistentPeers)
 						}
 					})
-					if node.Mode != e2e.ModeLight {
+					if e2e.Mode(node.Mode) != e2e.ModeLight {
 						t.Run("Mempool", func(t *testing.T) {
 							require.NotZero(t, node.Mempool)
 						})
