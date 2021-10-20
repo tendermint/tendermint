@@ -78,7 +78,7 @@ func TestRollbackNoState(t *testing.T) {
 }
 
 func TestRollbackNoBlocks(t *testing.T) {
-	height := int64(100)
+	const height = int64(100)
 	stateStore := setupStateStore(t, height)
 	blockStore := &mocks.BlockStore{}
 	blockStore.On("Height").Return(height)
@@ -90,7 +90,7 @@ func TestRollbackNoBlocks(t *testing.T) {
 }
 
 func TestRollbackDifferentStateHeight(t *testing.T) {
-	height := int64(100)
+	const height = int64(100)
 	stateStore := setupStateStore(t, height)
 	blockStore := &mocks.BlockStore{}
 	blockStore.On("Height").Return(height + 2)
