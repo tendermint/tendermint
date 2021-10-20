@@ -178,6 +178,24 @@ Special thanks to external contributors on this release: @JayT106, @bipulprasad,
 - [statesync] [\#6463](https://github.com/tendermint/tendermint/pull/6463) Adds Reverse Sync feature to fetch historical light blocks after state sync in order to verify any evidence (@cmwaters)
 - [blocksync] [\#6590](https://github.com/tendermint/tendermint/pull/6590) Update the metrics during blocksync (@JayT106)
 
+## v0.34.14
+
+This release backports the `rollback` feature to allow recovery in the event of an incorrect app hash.
+
+### FEATURES
+
+- [\#6982](https://github.com/tendermint/tendermint/pull/6982) The tendermint binary now has built-in suppport for running the end-to-end test application (with state sync support) (@cmwaters).
+- [cli] [#7033](https://github.com/tendermint/tendermint/pull/7033) Add a `rollback` command to rollback to the previous tendermint state. This may be useful in the event of non-determinstic app hash or when reverting an upgrade. @cmwaters
+
+### IMPROVEMENTS
+
+- [\#7103](https://github.com/tendermint/tendermint/pull/7104) Remove IAVL dependency (backport of #6550) (@cmwaters)
+
+### BUG FIXES
+
+- [\#7057](https://github.com/tendermint/tendermint/pull/7057) Import Postgres driver support for the psql indexer (@creachadair).
+- [ABCI] [\#7110](https://github.com/tendermint/tendermint/issues/7110) Revert "change client to use multi-reader mutexes (#6873)" (@tychoish).
+
 ## v0.34.13
 
 *September 6, 2021*

@@ -23,9 +23,6 @@ const queueBufferDefault = 32
 
 const dialRandomizerIntervalMillisecond = 3000
 
-// ChannelID is an arbitrary channel ID.
-type ChannelID uint16
-
 // Envelope contains a message with sender/receiver routing info.
 type Envelope struct {
 	From      types.NodeID  // sender (empty if outbound)
@@ -252,7 +249,7 @@ type Router struct {
 	nodeInfo           types.NodeInfo
 	privKey            crypto.PrivKey
 	peerManager        *PeerManager
-	chDescs            []ChannelDescriptor
+	chDescs            []*ChannelDescriptor
 	transports         []Transport
 	connTracker        connectionTracker
 	protocolTransports map[Protocol]Transport
@@ -298,7 +295,7 @@ func NewRouter(
 			options.MaxIncomingConnectionAttempts,
 			options.IncomingConnectionWindow,
 		),
-		chDescs:            make([]ChannelDescriptor, 0),
+		chDescs:            make([]*ChannelDescriptor, 0),
 		transports:         transports,
 		protocolTransports: map[Protocol]Transport{},
 		peerManager:        peerManager,
@@ -357,19 +354,21 @@ func (r *Router) createQueueFactory() (func(int) queue, error) {
 // implement Wrapper to automatically (un)wrap multiple message types in a
 // wrapper message. The caller may provide a size to make the channel buffered,
 // which internally makes the inbound, outbound, and error channel buffered.
-func (r *Router) OpenChannel(chDesc ChannelDescriptor, messageType proto.Message, size int) (*Channel, error) {
+func (r *Router) OpenChannel(chDesc *ChannelDescriptor) (*Channel, error) {
 	r.channelMtx.Lock()
 	defer r.channelMtx.Unlock()
 
-	id := ChannelID(chDesc.ID)
+	id := chDesc.ID
 	if _, ok := r.channelQueues[id]; ok {
 		return nil, fmt.Errorf("channel %v already exists", id)
 	}
 	r.chDescs = append(r.chDescs, chDesc)
 
-	queue := r.queueFactory(size)
-	outCh := make(chan Envelope, size)
-	errCh := make(chan PeerError, size)
+	messageType := chDesc.MessageType
+
+	queue := r.queueFactory(chDesc.RecvBufferCapacity)
+	outCh := make(chan Envelope, chDesc.RecvBufferCapacity)
+	errCh := make(chan PeerError, chDesc.RecvBufferCapacity)
 	channel := NewChannel(id, messageType, queue.dequeue(), outCh, errCh)
 
 	var wrapper Wrapper
@@ -382,6 +381,10 @@ func (r *Router) OpenChannel(chDesc ChannelDescriptor, messageType proto.Message
 
 	// add the channel to the nodeInfo if it's not already there.
 	r.nodeInfo.AddChannel(uint16(chDesc.ID))
+
+	for _, t := range r.transports {
+		t.AddChannelDescriptors([]*ChannelDescriptor{chDesc})
+	}
 
 	go func() {
 		defer func() {

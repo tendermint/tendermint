@@ -44,9 +44,7 @@ func NewSubscription(outCapacity int) *Subscription {
 // Out returns a channel onto which messages and events are published.
 // Unsubscribe/UnsubscribeAll does not close the channel to avoid clients from
 // receiving a nil message.
-func (s *Subscription) Out() <-chan Message {
-	return s.out
-}
+func (s *Subscription) Out() <-chan Message { return s.out }
 
 func (s *Subscription) ID() string { return s.id }
 

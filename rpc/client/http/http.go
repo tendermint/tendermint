@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -120,20 +121,20 @@ func NewWithTimeout(remote string, t time.Duration) (*HTTP, error) {
 }
 
 // NewWithClient allows you to set a custom http client. An error is returned
-// on invalid remote. The function panics when client is nil.
+// on invalid remote. The function returns an error when client is nil
+// or an invalid remote.
 func NewWithClient(remote string, c *http.Client) (*HTTP, error) {
 	if c == nil {
-		panic("nil http.Client")
+		return nil, errors.New("nil client")
 	}
 	return NewWithClientAndWSOptions(remote, c, DefaultWSOptions())
 }
 
 // NewWithClientAndWSOptions allows you to set a custom http client and
-// WebSocket options. An error is returned on invalid remote. The function
-// panics when client is nil.
+// WebSocket options. An error is returned on invalid remote or nil client.
 func NewWithClientAndWSOptions(remote string, c *http.Client, wso WSOptions) (*HTTP, error) {
 	if c == nil {
-		panic("nil http.Client")
+		return nil, errors.New("nil client")
 	}
 	rpc, err := jsonrpcclient.NewWithHTTPClient(remote, c)
 	if err != nil {

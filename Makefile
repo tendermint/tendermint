@@ -89,7 +89,7 @@ proto-gen:
 .PHONY: proto-gen
 
 proto-lint:
-	@$(DOCKER_BUF) check lint --error-format=json
+	@$(DOCKER_BUF) lint --error-format=json
 .PHONY: proto-lint
 
 proto-format:
@@ -98,11 +98,11 @@ proto-format:
 .PHONY: proto-format
 
 proto-check-breaking:
-	@$(DOCKER_BUF) check breaking --against-input .git#branch=master
+	@$(DOCKER_BUF) breaking --against .git#branch=master
 .PHONY: proto-check-breaking
 
 proto-check-breaking-ci:
-	@$(DOCKER_BUF) check breaking --against-input $(HTTPS_GIT)#branch=master
+	@$(DOCKER_BUF) breaking --against $(HTTPS_GIT)#branch=master
 .PHONY: proto-check-breaking-ci
 
 ###############################################################################
@@ -227,13 +227,13 @@ build-docs:
 
 build-docker: build-linux
 	cp $(BUILDDIR)/tendermint DOCKER/tendermint
-	docker build --label=tendermint --tag="tendermint/tendermint" DOCKER
+	docker build --label=tendermint --tag="tendermint/tendermint" -f DOCKER/Dockerfile .
 	rm -rf DOCKER/tendermint
 .PHONY: build-docker
 
 
 ###############################################################################
-###                       Mocks 											###
+###                                Mocks                                    ###
 ###############################################################################
 
 mockery:

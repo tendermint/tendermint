@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -155,7 +156,7 @@ func New(remote string) (*Client, error) {
 // panics when client is nil.
 func NewWithHTTPClient(remote string, c *http.Client) (*Client, error) {
 	if c == nil {
-		panic("nil http.Client")
+		return nil, errors.New("nil client")
 	}
 
 	parsedURL, err := newParsedURL(remote)

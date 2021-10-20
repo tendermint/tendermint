@@ -78,7 +78,7 @@ func (env *Environment) BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*
 				CheckTx: *r,
 				Hash:    tx.Hash(),
 			},
-			errors.New("cannot wait for commit because kvEventSync is not enabled")
+			errors.New("cannot confirm transaction because kvEventSink is not enabled")
 	}
 
 	startAt := time.Now()

@@ -19,10 +19,10 @@ import (
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
-	"github.com/tendermint/tendermint/internal/p2p/pex"
 	"github.com/tendermint/tendermint/internal/proxy"
 	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
 	sm "github.com/tendermint/tendermint/internal/state"
+	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
@@ -33,7 +33,6 @@ import (
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
-	grpccore "github.com/tendermint/tendermint/rpc/grpc"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	"github.com/tendermint/tendermint/types"
 
@@ -62,6 +61,7 @@ type nodeImpl struct {
 
 	// services
 	eventBus         *types.EventBus // pub/sub for services
+	eventSinks       []indexer.EventSink
 	stateStore       sm.Store
 	blockStore       *store.BlockStore // store the blockchain to disk
 	bcReactor        service.Service   // for block-syncing
@@ -73,6 +73,7 @@ type nodeImpl struct {
 	pexReactor       service.Service    // for exchanging peer addresses
 	evidenceReactor  service.Service
 	rpcListeners     []net.Listener // rpc servers
+	shutdownOps      closer
 	indexerService   service.Service
 	rpcEnv           *rpccore.Environment
 	prometheusSrv    *http.Server
@@ -106,6 +107,7 @@ func newDefaultNode(cfg *config.Config, logger log.Logger) (service.Service, err
 	}
 
 	appClient, _ := proxy.DefaultClientCreator(cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
+
 	return makeNode(cfg,
 		pval,
 		nodeKey,
@@ -123,33 +125,43 @@ func makeNode(cfg *config.Config,
 	clientCreator abciclient.Creator,
 	genesisDocProvider genesisDocProvider,
 	dbProvider config.DBProvider,
-	logger log.Logger) (service.Service, error) {
+	logger log.Logger,
+) (service.Service, error) {
+	closers := []closer{}
 
-	blockStore, stateDB, err := initDBs(cfg, dbProvider)
+	blockStore, stateDB, dbCloser, err := initDBs(cfg, dbProvider)
 	if err != nil {
-		return nil, err
+		return nil, combineCloseError(err, dbCloser)
 	}
+	closers = append(closers, dbCloser)
+
 	stateStore := sm.NewStore(stateDB)
 
 	genDoc, err := genesisDocProvider()
 	if err != nil {
-		return nil, err
+		return nil, combineCloseError(err, makeCloser(closers))
 	}
 
 	err = genDoc.ValidateAndComplete()
 	if err != nil {
-		return nil, fmt.Errorf("error in genesis doc: %w", err)
+		return nil, combineCloseError(
+			fmt.Errorf("error in genesis doc: %w", err),
+			makeCloser(closers))
 	}
 
 	state, err := loadStateFromDBOrGenesisDocProvider(stateStore, genDoc)
 	if err != nil {
-		return nil, err
+		return nil, combineCloseError(err, makeCloser(closers))
+
 	}
 
+	nodeMetrics := defaultMetricsProvider(cfg.Instrumentation)(genDoc.ChainID)
+
 	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
-	proxyApp, err := createAndStartProxyAppConns(clientCreator, logger)
+	proxyApp, err := createAndStartProxyAppConns(clientCreator, logger, nodeMetrics.proxy)
 	if err != nil {
-		return nil, err
+		return nil, combineCloseError(err, makeCloser(closers))
+
 	}
 
 	// EventBus and IndexerService must be started before the handshake because
@@ -158,12 +170,13 @@ func makeNode(cfg *config.Config,
 	// but before it indexed the txs, or, endblocker panicked)
 	eventBus, err := createAndStartEventBus(logger)
 	if err != nil {
-		return nil, err
+		return nil, combineCloseError(err, makeCloser(closers))
+
 	}
 
 	indexerService, eventSinks, err := createAndStartIndexerService(cfg, dbProvider, eventBus, logger, genDoc.ChainID)
 	if err != nil {
-		return nil, err
+		return nil, combineCloseError(err, makeCloser(closers))
 	}
 
 	// If an address is provided, listen on the socket for a connection from an
@@ -175,12 +188,16 @@ func makeNode(cfg *config.Config,
 		case "grpc":
 			privValidator, err = createAndStartPrivValidatorGRPCClient(cfg, genDoc.ChainID, logger)
 			if err != nil {
-				return nil, fmt.Errorf("error with private validator grpc client: %w", err)
+				return nil, combineCloseError(
+					fmt.Errorf("error with private validator grpc client: %w", err),
+					makeCloser(closers))
 			}
 		default:
 			privValidator, err = createAndStartPrivValidatorSocketClient(cfg.PrivValidator.ListenAddr, genDoc.ChainID, logger)
 			if err != nil {
-				return nil, fmt.Errorf("error with private validator socket client: %w", err)
+				return nil, combineCloseError(
+					fmt.Errorf("error with private validator socket client: %w", err),
+					makeCloser(closers))
 			}
 		}
 	}
@@ -188,10 +205,14 @@ func makeNode(cfg *config.Config,
 	if cfg.Mode == config.ModeValidator {
 		pubKey, err = privValidator.GetPubKey(context.TODO())
 		if err != nil {
-			return nil, fmt.Errorf("can't get pubkey: %w", err)
+			return nil, combineCloseError(fmt.Errorf("can't get pubkey: %w", err),
+				makeCloser(closers))
+
 		}
 		if pubKey == nil {
-			return nil, errors.New("could not retrieve public key from private validator")
+			return nil, combineCloseError(
+				errors.New("could not retrieve public key from private validator"),
+				makeCloser(closers))
 		}
 	}
 
@@ -207,7 +228,8 @@ func makeNode(cfg *config.Config,
 	consensusLogger := logger.With("module", "consensus")
 	if !stateSync {
 		if err := doHandshake(stateStore, state, blockStore, genDoc, eventBus, proxyApp, consensusLogger); err != nil {
-			return nil, err
+			return nil, combineCloseError(err, makeCloser(closers))
+
 		}
 
 		// Reload the state. It will have the Version.Consensus.App set by the
@@ -215,7 +237,9 @@ func makeNode(cfg *config.Config,
 		// what happened during block replay).
 		state, err = stateStore.Load()
 		if err != nil {
-			return nil, fmt.Errorf("cannot load state: %w", err)
+			return nil, combineCloseError(
+				fmt.Errorf("cannot load state: %w", err),
+				makeCloser(closers))
 		}
 	}
 
@@ -229,38 +253,43 @@ func makeNode(cfg *config.Config,
 	// TODO: Use a persistent peer database.
 	nodeInfo, err := makeNodeInfo(cfg, nodeKey, eventSinks, genDoc, state)
 	if err != nil {
-		return nil, err
+		return nil, combineCloseError(err, makeCloser(closers))
+
 	}
 
 	p2pLogger := logger.With("module", "p2p")
 	transport := createTransport(p2pLogger, cfg)
 
-	peerManager, err := createPeerManager(cfg, dbProvider, nodeKey.ID)
+	peerManager, peerCloser, err := createPeerManager(cfg, dbProvider, nodeKey.ID)
+	closers = append(closers, peerCloser)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create peer manager: %w", err)
+		return nil, combineCloseError(
+			fmt.Errorf("failed to create peer manager: %w", err),
+			makeCloser(closers))
 	}
-
-	nodeMetrics :=
-		defaultMetricsProvider(cfg.Instrumentation)(genDoc.ChainID)
 
 	router, err := createRouter(p2pLogger, nodeMetrics.p2p, nodeInfo, nodeKey.PrivKey,
 		peerManager, transport, getRouterConfig(cfg, proxyApp))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create router: %w", err)
+		return nil, combineCloseError(
+			fmt.Errorf("failed to create router: %w", err),
+			makeCloser(closers))
 	}
 
-	mpReactorShim, mpReactor, mp, err := createMempoolReactor(
+	mpReactor, mp, err := createMempoolReactor(
 		cfg, proxyApp, state, nodeMetrics.mempool, peerManager, router, logger,
 	)
 	if err != nil {
-		return nil, err
+		return nil, combineCloseError(err, makeCloser(closers))
+
 	}
 
-	evReactorShim, evReactor, evPool, err := createEvidenceReactor(
+	evReactor, evPool, err := createEvidenceReactor(
 		cfg, dbProvider, stateDB, blockStore, peerManager, router, logger,
 	)
 	if err != nil {
-		return nil, err
+		return nil, combineCloseError(err, makeCloser(closers))
+
 	}
 
 	// make block executor for consensus and blockchain reactors to execute blocks
@@ -274,20 +303,25 @@ func makeNode(cfg *config.Config,
 		sm.BlockExecutorWithMetrics(nodeMetrics.state),
 	)
 
-	csReactorShim, csReactor, csState := createConsensusReactor(
+	csReactor, csState, err := createConsensusReactor(
 		cfg, state, blockExec, blockStore, mp, evPool,
 		privValidator, nodeMetrics.consensus, stateSync || blockSync, eventBus,
 		peerManager, router, consensusLogger,
 	)
+	if err != nil {
+		return nil, combineCloseError(err, makeCloser(closers))
+	}
 
 	// Create the blockchain reactor. Note, we do not start block sync if we're
 	// doing a state sync first.
-	bcReactorShim, bcReactor, err := createBlockchainReactor(
+	bcReactor, err := createBlockchainReactor(
 		logger, state, blockExec, blockStore, csReactor,
 		peerManager, router, blockSync && !stateSync, nodeMetrics.consensus,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("could not create blockchain reactor: %w", err)
+		return nil, combineCloseError(
+			fmt.Errorf("could not create blockchain reactor: %w", err),
+			makeCloser(closers))
 	}
 
 	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or block sync first.
@@ -303,8 +337,18 @@ func makeNode(cfg *config.Config,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
 	ssLogger := logger.With("module", "statesync")
-	ssReactorShim := p2p.NewReactorShim(ssLogger, "StateSyncShim", statesync.ChannelShims)
-	channels := makeChannelsFromShims(router, statesync.ChannelShims)
+	ssChDesc := statesync.GetChannelDescriptors()
+	channels := make(map[p2p.ChannelID]*p2p.Channel, len(ssChDesc))
+	for idx := range ssChDesc {
+		chd := ssChDesc[idx]
+		ch, err := router.OpenChannel(chd)
+		if err != nil {
+			return nil, err
+		}
+
+		channels[ch.ID] = ch
+	}
+
 	peerUpdates := peerManager.Subscribe()
 	stateSyncReactor := statesync.NewReactor(
 		genDoc.ChainID,
@@ -324,16 +368,6 @@ func makeNode(cfg *config.Config,
 		nodeMetrics.statesync,
 	)
 
-	// add the channel descriptors to both the transports
-	// FIXME: This should be removed when the legacy p2p stack is removed and
-	// transports can either be agnostic to channel descriptors or can be
-	// declared in the constructor.
-	transport.AddChannelDescriptors(mpReactorShim.GetChannels())
-	transport.AddChannelDescriptors(bcReactorShim.GetChannels())
-	transport.AddChannelDescriptors(csReactorShim.GetChannels())
-	transport.AddChannelDescriptors(evReactorShim.GetChannels())
-	transport.AddChannelDescriptors(ssReactorShim.GetChannels())
-
 	// Optionally, start the pex reactor
 	//
 	// TODO:
@@ -349,12 +383,10 @@ func makeNode(cfg *config.Config,
 
 	var pexReactor service.Service
 
-	pexCh := pex.ChannelDescriptor()
-	transport.AddChannelDescriptors([]*p2p.ChannelDescriptor{&pexCh})
-
 	pexReactor, err = createPEXReactor(logger, peerManager, router)
 	if err != nil {
-		return nil, err
+		return nil, combineCloseError(err, makeCloser(closers))
+
 	}
 
 	if cfg.RPC.PprofListenAddress != "" {
@@ -387,6 +419,9 @@ func makeNode(cfg *config.Config,
 		evidenceReactor:  evReactor,
 		indexerService:   indexerService,
 		eventBus:         eventBus,
+		eventSinks:       eventSinks,
+
+		shutdownOps: makeCloser(closers),
 
 		rpcEnv: &rpccore.Environment{
 			ProxyAppQuery:   proxyApp.Query(),
@@ -434,6 +469,7 @@ func makeSeedNode(cfg *config.Config,
 	state, err := sm.MakeGenesisState(genDoc)
 	if err != nil {
 		return nil, err
+
 	}
 
 	nodeInfo, err := makeSeedNodeInfo(cfg, nodeKey, genDoc, state)
@@ -446,29 +482,27 @@ func makeSeedNode(cfg *config.Config,
 	p2pLogger := logger.With("module", "p2p")
 	transport := createTransport(p2pLogger, cfg)
 
-	peerManager, err := createPeerManager(cfg, dbProvider, nodeKey.ID)
+	peerManager, closer, err := createPeerManager(cfg, dbProvider, nodeKey.ID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create peer manager: %w", err)
+		return nil, combineCloseError(
+			fmt.Errorf("failed to create peer manager: %w", err),
+			closer)
 	}
 
 	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey,
 		peerManager, transport, getRouterConfig(cfg, nil))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create router: %w", err)
+		return nil, combineCloseError(
+			fmt.Errorf("failed to create router: %w", err),
+			closer)
 	}
 
 	var pexReactor service.Service
 
-	// add the pex reactor
-	// FIXME: we add channel descriptors to both the router and the transport but only the router
-	// should be aware of channel info. We should remove this from transport once the legacy
-	// p2p stack is removed.
-	pexCh := pex.ChannelDescriptor()
-	transport.AddChannelDescriptors([]*p2p.ChannelDescriptor{&pexCh})
-
 	pexReactor, err = createPEXReactor(logger, peerManager, router)
 	if err != nil {
-		return nil, err
+		return nil, combineCloseError(err, closer)
+
 	}
 
 	if cfg.RPC.PprofListenAddress != "" {
@@ -487,6 +521,8 @@ func makeSeedNode(cfg *config.Config,
 		nodeKey:     nodeKey,
 		peerManager: peerManager,
 		router:      router,
+
+		shutdownOps: closer,
 
 		pexReactor: pexReactor,
 	}
@@ -641,12 +677,22 @@ func (n *nodeImpl) OnStop() {
 
 	n.Logger.Info("Stopping Node")
 
-	// first stop the non-reactor services
-	if err := n.eventBus.Stop(); err != nil {
-		n.Logger.Error("Error closing eventBus", "err", err)
+	if n.eventBus != nil {
+		// first stop the non-reactor services
+		if err := n.eventBus.Stop(); err != nil {
+			n.Logger.Error("Error closing eventBus", "err", err)
+		}
 	}
-	if err := n.indexerService.Stop(); err != nil {
-		n.Logger.Error("Error closing indexerService", "err", err)
+	if n.indexerService != nil {
+		if err := n.indexerService.Stop(); err != nil {
+			n.Logger.Error("Error closing indexerService", "err", err)
+		}
+	}
+
+	for _, es := range n.eventSinks {
+		if err := es.Stop(); err != nil {
+			n.Logger.Error("failed to stop event sink", "err", err)
+		}
 	}
 
 	if n.config.Mode != config.ModeSeed {
@@ -712,6 +758,10 @@ func (n *nodeImpl) OnStop() {
 			// Error from closing listeners, or context timeout:
 			n.Logger.Error("Prometheus HTTP server Shutdown", "err", err)
 		}
+
+	}
+	if err := n.shutdownOps(); err != nil {
+		n.Logger.Error("problem shutting down additional services", "err", err)
 	}
 }
 
@@ -809,35 +859,7 @@ func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 		listeners[i] = listener
 	}
 
-	// we expose a simplified api over grpc for convenience to app devs
-	grpcListenAddr := n.config.RPC.GRPCListenAddress
-	if grpcListenAddr != "" {
-		cfg := rpcserver.DefaultConfig()
-		cfg.MaxBodyBytes = n.config.RPC.MaxBodyBytes
-		cfg.MaxHeaderBytes = n.config.RPC.MaxHeaderBytes
-		// NOTE: GRPCMaxOpenConnections is used, not MaxOpenConnections
-		cfg.MaxOpenConnections = n.config.RPC.GRPCMaxOpenConnections
-		// If necessary adjust global WriteTimeout to ensure it's greater than
-		// TimeoutBroadcastTxCommit.
-		// See https://github.com/tendermint/tendermint/issues/3435
-		if cfg.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
-			cfg.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
-		}
-		listener, err := rpcserver.Listen(grpcListenAddr, cfg.MaxOpenConnections)
-		if err != nil {
-			return nil, err
-		}
-		go func() {
-			if err := grpccore.StartGRPCServer(n.rpcEnv, listener); err != nil {
-				n.Logger.Error("Error starting gRPC server", "err", err)
-			}
-		}()
-		listeners = append(listeners, listener)
-
-	}
-
 	return listeners, nil
-
 }
 
 // startPrometheusServer starts a Prometheus HTTP server, listening for metrics
@@ -928,6 +950,7 @@ type nodeMetrics struct {
 	mempool   *mempool.Metrics
 	state     *sm.Metrics
 	statesync *statesync.Metrics
+	proxy     *proxy.Metrics
 }
 
 // metricsProvider returns consensus, p2p, mempool, state, statesync Metrics.
@@ -944,6 +967,7 @@ func defaultMetricsProvider(cfg *config.InstrumentationConfig) metricsProvider {
 				mempool.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 				sm.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 				statesync.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				proxy.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 			}
 		}
 		return &nodeMetrics{
@@ -952,6 +976,7 @@ func defaultMetricsProvider(cfg *config.InstrumentationConfig) metricsProvider {
 			mempool.NopMetrics(),
 			sm.NopMetrics(),
 			statesync.NopMetrics(),
+			proxy.NopMetrics(),
 		}
 	}
 }
@@ -1075,23 +1100,4 @@ func getRouterConfig(conf *config.Config, proxyApp proxy.AppConns) p2p.RouterOpt
 	}
 
 	return opts
-}
-
-// FIXME: Temporary helper function, shims should be removed.
-func makeChannelsFromShims(
-	router *p2p.Router,
-	chShims map[p2p.ChannelID]*p2p.ChannelDescriptorShim,
-) map[p2p.ChannelID]*p2p.Channel {
-
-	channels := map[p2p.ChannelID]*p2p.Channel{}
-	for chID, chShim := range chShims {
-		ch, err := router.OpenChannel(*chShim.Descriptor, chShim.MsgType, chShim.Descriptor.RecvBufferCapacity)
-		if err != nil {
-			panic(fmt.Sprintf("failed to open channel %v: %v", chID, err))
-		}
-
-		channels[chID] = ch
-	}
-
-	return channels
 }

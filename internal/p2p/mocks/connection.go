@@ -5,8 +5,11 @@ package mocks
 import (
 	context "context"
 
-	mock "github.com/stretchr/testify/mock"
+	conn "github.com/tendermint/tendermint/internal/p2p/conn"
+
 	crypto "github.com/tendermint/tendermint/crypto"
+
+	mock "github.com/stretchr/testify/mock"
 
 	p2p "github.com/tendermint/tendermint/internal/p2p"
 
@@ -77,14 +80,14 @@ func (_m *Connection) LocalEndpoint() p2p.Endpoint {
 }
 
 // ReceiveMessage provides a mock function with given fields:
-func (_m *Connection) ReceiveMessage() (p2p.ChannelID, []byte, error) {
+func (_m *Connection) ReceiveMessage() (conn.ChannelID, []byte, error) {
 	ret := _m.Called()
 
-	var r0 p2p.ChannelID
-	if rf, ok := ret.Get(0).(func() p2p.ChannelID); ok {
+	var r0 conn.ChannelID
+	if rf, ok := ret.Get(0).(func() conn.ChannelID); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(p2p.ChannelID)
+		r0 = ret.Get(0).(conn.ChannelID)
 	}
 
 	var r1 []byte
@@ -121,11 +124,11 @@ func (_m *Connection) RemoteEndpoint() p2p.Endpoint {
 }
 
 // SendMessage provides a mock function with given fields: _a0, _a1
-func (_m *Connection) SendMessage(_a0 p2p.ChannelID, _a1 []byte) error {
+func (_m *Connection) SendMessage(_a0 conn.ChannelID, _a1 []byte) error {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(p2p.ChannelID, []byte) error); ok {
+	if rf, ok := ret.Get(0).(func(conn.ChannelID, []byte) error); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Error(0)

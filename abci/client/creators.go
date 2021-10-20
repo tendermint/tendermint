@@ -13,7 +13,7 @@ type Creator func() (Client, error)
 // NewLocalCreator returns a Creator for the given app,
 // which will be running locally.
 func NewLocalCreator(app types.Application) Creator {
-	mtx := new(tmsync.RWMutex)
+	mtx := new(tmsync.Mutex)
 
 	return func() (Client, error) {
 		return NewLocalClient(mtx, app), nil

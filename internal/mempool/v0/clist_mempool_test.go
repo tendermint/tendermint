@@ -13,9 +13,11 @@ import (
 	"github.com/gogo/protobuf/proto"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
+	abciclimocks "github.com/tendermint/tendermint/abci/client/mocks"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abciserver "github.com/tendermint/tendermint/abci/server"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -212,6 +214,57 @@ func TestMempoolUpdate(t *testing.T) {
 		err = mp.CheckTx(context.Background(), []byte{0x03}, nil, mempool.TxInfo{})
 		require.NoError(t, err)
 	}
+}
+
+func TestMempoolUpdateDoesNotPanicWhenApplicationMissedTx(t *testing.T) {
+	var callback abciclient.Callback
+	mockClient := new(abciclimocks.Client)
+	mockClient.On("Start").Return(nil)
+	mockClient.On("SetLogger", mock.Anything)
+
+	mockClient.On("Error").Return(nil).Times(4)
+	mockClient.On("FlushAsync", mock.Anything).Return(abciclient.NewReqRes(abci.ToRequestFlush()), nil)
+	mockClient.On("SetResponseCallback", mock.MatchedBy(func(cb abciclient.Callback) bool { callback = cb; return true }))
+
+	cc := func() (abciclient.Client, error) {
+		return mockClient, nil
+	}
+
+	mp, cleanup := newMempoolWithApp(cc)
+	defer cleanup()
+
+	// Add 4 transactions to the mempool by calling the mempool's `CheckTx` on each of them.
+	txs := []types.Tx{[]byte{0x01}, []byte{0x02}, []byte{0x03}, []byte{0x04}}
+	for _, tx := range txs {
+		reqRes := abciclient.NewReqRes(abci.ToRequestCheckTx(abci.RequestCheckTx{Tx: tx}))
+		reqRes.Response = abci.ToResponseCheckTx(abci.ResponseCheckTx{Code: abci.CodeTypeOK})
+		// SetDone allows the ReqRes to process its callback synchronously.
+		// This simulates the Response being ready for the client immediately.
+		reqRes.SetDone()
+
+		mockClient.On("CheckTxAsync", mock.Anything, mock.Anything).Return(reqRes, nil)
+		err := mp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{})
+		require.NoError(t, err)
+	}
+
+	// Calling update to remove the first transaction from the mempool.
+	// This call also triggers the mempool to recheck its remaining transactions.
+	err := mp.Update(0, []types.Tx{txs[0]}, abciResponses(1, abci.CodeTypeOK), nil, nil)
+	require.Nil(t, err)
+
+	// The mempool has now sent its requests off to the client to be rechecked
+	// and is waiting for the corresponding callbacks to be called.
+	// We now call the mempool-supplied callback on the first and third transaction.
+	// This simulates the client dropping the second request.
+	// Previous versions of this code panicked when the ABCI application missed
+	// a recheck-tx request.
+	resp := abci.ResponseCheckTx{Code: abci.CodeTypeOK}
+	req := abci.RequestCheckTx{Tx: txs[1]}
+	callback(abci.ToRequestCheckTx(req), abci.ToResponseCheckTx(resp))
+
+	req = abci.RequestCheckTx{Tx: txs[3]}
+	callback(abci.ToRequestCheckTx(req), abci.ToResponseCheckTx(resp))
+	mockClient.AssertExpectations(t)
 }
 
 func TestMempool_KeepInvalidTxsInCache(t *testing.T) {

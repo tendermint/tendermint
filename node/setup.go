@@ -2,7 +2,9 @@ package node
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
@@ -10,7 +12,7 @@ import (
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	bcv0 "github.com/tendermint/tendermint/internal/blocksync/v0"
+	"github.com/tendermint/tendermint/internal/blocksync"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -28,27 +30,68 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
-	protop2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
 )
 
-func initDBs(cfg *config.Config, dbProvider config.DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) { //nolint:lll
-	var blockStoreDB dbm.DB
-	blockStoreDB, err = dbProvider(&config.DBContext{ID: "blockstore", Config: cfg})
-	if err != nil {
-		return
-	}
-	blockStore = store.NewBlockStore(blockStoreDB)
+type closer func() error
 
-	stateDB, err = dbProvider(&config.DBContext{ID: "state", Config: cfg})
-	return
+func makeCloser(cs []closer) closer {
+	return func() error {
+		errs := make([]string, 0, len(cs))
+		for _, cl := range cs {
+			if err := cl(); err != nil {
+				errs = append(errs, err.Error())
+			}
+		}
+		if len(errs) >= 0 {
+			return errors.New(strings.Join(errs, "; "))
+		}
+		return nil
+	}
 }
 
-func createAndStartProxyAppConns(clientCreator abciclient.Creator, logger log.Logger) (proxy.AppConns, error) {
-	proxyApp := proxy.NewAppConns(clientCreator)
+func combineCloseError(err error, cl closer) error {
+	if err == nil {
+		return cl()
+	}
+
+	clerr := cl()
+	if clerr == nil {
+		return err
+	}
+
+	return fmt.Errorf("error=%q closerError=%q", err.Error(), clerr.Error())
+}
+
+func initDBs(
+	cfg *config.Config,
+	dbProvider config.DBProvider,
+) (*store.BlockStore, dbm.DB, closer, error) {
+
+	blockStoreDB, err := dbProvider(&config.DBContext{ID: "blockstore", Config: cfg})
+	if err != nil {
+		return nil, nil, func() error { return nil }, err
+	}
+	closers := []closer{}
+	blockStore := store.NewBlockStore(blockStoreDB)
+	closers = append(closers, blockStoreDB.Close)
+
+	stateDB, err := dbProvider(&config.DBContext{ID: "state", Config: cfg})
+	if err != nil {
+		return nil, nil, makeCloser(closers), err
+	}
+
+	closers = append(closers, stateDB.Close)
+
+	return blockStore, stateDB, makeCloser(closers), nil
+}
+
+// nolint:lll
+func createAndStartProxyAppConns(clientCreator abciclient.Creator, logger log.Logger, metrics *proxy.Metrics) (proxy.AppConns, error) {
+	proxyApp := proxy.NewAppConns(clientCreator, metrics)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
 		return nil, fmt.Errorf("error starting proxy app connections: %v", err)
@@ -152,17 +195,18 @@ func createMempoolReactor(
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	logger log.Logger,
-) (*p2p.ReactorShim, service.Service, mempool.Mempool, error) {
+) (service.Service, mempool.Mempool, error) {
 
 	logger = logger.With("module", "mempool", "version", cfg.Mempool.Version)
-	channelShims := mempoolv0.GetChannelShims(cfg.Mempool)
-	reactorShim := p2p.NewReactorShim(logger, "MempoolShim", channelShims)
-
-	channels := makeChannelsFromShims(router, channelShims)
 	peerUpdates := peerManager.Subscribe()
 
 	switch cfg.Mempool.Version {
 	case config.MempoolV0:
+		ch, err := router.OpenChannel(mempoolv0.GetChannelDescriptor(cfg.Mempool))
+		if err != nil {
+			return nil, nil, err
+		}
+
 		mp := mempoolv0.NewCListMempool(
 			cfg.Mempool,
 			proxyApp.Mempool(),
@@ -179,7 +223,7 @@ func createMempoolReactor(
 			cfg.Mempool,
 			peerManager,
 			mp,
-			channels[mempool.MempoolChannel],
+			ch,
 			peerUpdates,
 		)
 
@@ -187,9 +231,14 @@ func createMempoolReactor(
 			mp.EnableTxsAvailable()
 		}
 
-		return reactorShim, reactor, mp, nil
+		return reactor, mp, nil
 
 	case config.MempoolV1:
+		ch, err := router.OpenChannel(mempoolv1.GetChannelDescriptor(cfg.Mempool))
+		if err != nil {
+			return nil, nil, err
+		}
+
 		mp := mempoolv1.NewTxMempool(
 			logger,
 			cfg.Mempool,
@@ -205,7 +254,7 @@ func createMempoolReactor(
 			cfg.Mempool,
 			peerManager,
 			mp,
-			channels[mempool.MempoolChannel],
+			ch,
 			peerUpdates,
 		)
 
@@ -213,10 +262,10 @@ func createMempoolReactor(
 			mp.EnableTxsAvailable()
 		}
 
-		return reactorShim, reactor, mp, nil
+		return reactor, mp, nil
 
 	default:
-		return nil, nil, nil, fmt.Errorf("unknown mempool version: %s", cfg.Mempool.Version)
+		return nil, nil, fmt.Errorf("unknown mempool version: %s", cfg.Mempool.Version)
 	}
 }
 
@@ -228,28 +277,32 @@ func createEvidenceReactor(
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	logger log.Logger,
-) (*p2p.ReactorShim, *evidence.Reactor, *evidence.Pool, error) {
+) (*evidence.Reactor, *evidence.Pool, error) {
 	evidenceDB, err := dbProvider(&config.DBContext{ID: "evidence", Config: cfg})
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	logger = logger.With("module", "evidence")
-	reactorShim := p2p.NewReactorShim(logger, "EvidenceShim", evidence.ChannelShims)
 
 	evidencePool, err := evidence.NewPool(logger, evidenceDB, sm.NewStore(stateDB), blockStore)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("creating evidence pool: %w", err)
+		return nil, nil, fmt.Errorf("creating evidence pool: %w", err)
+	}
+
+	ch, err := router.OpenChannel(evidence.GetChannelDescriptor())
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating evidence channel: %w", err)
 	}
 
 	evidenceReactor := evidence.NewReactor(
 		logger,
-		makeChannelsFromShims(router, evidence.ChannelShims)[evidence.EvidenceChannel],
+		ch,
 		peerManager.Subscribe(),
 		evidencePool,
 	)
 
-	return reactorShim, evidenceReactor, evidencePool, nil
+	return evidenceReactor, evidencePool, nil
 }
 
 func createBlockchainReactor(
@@ -262,24 +315,27 @@ func createBlockchainReactor(
 	router *p2p.Router,
 	blockSync bool,
 	metrics *consensus.Metrics,
-) (*p2p.ReactorShim, service.Service, error) {
+) (service.Service, error) {
 
 	logger = logger.With("module", "blockchain")
 
-	reactorShim := p2p.NewReactorShim(logger, "BlockchainShim", bcv0.ChannelShims)
-	channels := makeChannelsFromShims(router, bcv0.ChannelShims)
+	ch, err := router.OpenChannel(blocksync.GetChannelDescriptor())
+	if err != nil {
+		return nil, err
+	}
+
 	peerUpdates := peerManager.Subscribe()
 
-	reactor, err := bcv0.NewReactor(
+	reactor, err := blocksync.NewReactor(
 		logger, state.Copy(), blockExec, blockStore, csReactor,
-		channels[bcv0.BlockSyncChannel], peerUpdates, blockSync,
+		ch, peerUpdates, blockSync,
 		metrics,
 	)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return reactorShim, reactor, nil
+	return reactor, nil
 }
 
 func createConsensusReactor(
@@ -296,7 +352,7 @@ func createConsensusReactor(
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	logger log.Logger,
-) (*p2p.ReactorShim, *consensus.Reactor, *consensus.State) {
+) (*consensus.Reactor, *consensus.State, error) {
 
 	consensusState := consensus.NewState(
 		cfg.Consensus,
@@ -312,15 +368,19 @@ func createConsensusReactor(
 		consensusState.SetPrivValidator(privValidator)
 	}
 
-	reactorShim := p2p.NewReactorShim(logger, "ConsensusShim", consensus.ChannelShims)
+	csChDesc := consensus.GetChannelDescriptors()
+	channels := make(map[p2p.ChannelID]*p2p.Channel, len(csChDesc))
+	for idx := range csChDesc {
+		chd := csChDesc[idx]
+		ch, err := router.OpenChannel(chd)
+		if err != nil {
+			return nil, nil, err
+		}
 
-	var (
-		channels    map[p2p.ChannelID]*p2p.Channel
-		peerUpdates *p2p.PeerUpdates
-	)
+		channels[ch.ID] = ch
+	}
 
-	channels = makeChannelsFromShims(router, consensus.ChannelShims)
-	peerUpdates = peerManager.Subscribe()
+	peerUpdates := peerManager.Subscribe()
 
 	reactor := consensus.NewReactor(
 		logger,
@@ -338,7 +398,7 @@ func createConsensusReactor(
 	// consensusReactor will set it on consensusState and blockExecutor.
 	reactor.SetEventBus(eventBus)
 
-	return reactorShim, reactor, consensusState
+	return reactor, consensusState, nil
 }
 
 func createTransport(logger log.Logger, cfg *config.Config) *p2p.MConnTransport {
@@ -354,7 +414,7 @@ func createPeerManager(
 	cfg *config.Config,
 	dbProvider config.DBProvider,
 	nodeID types.NodeID,
-) (*p2p.PeerManager, error) {
+) (*p2p.PeerManager, closer, error) {
 
 	var maxConns uint16
 
@@ -385,7 +445,7 @@ func createPeerManager(
 	for _, p := range tmstrings.SplitAndTrimEmpty(cfg.P2P.PersistentPeers, ",", " ") {
 		address, err := p2p.ParseNodeAddress(p)
 		if err != nil {
-			return nil, fmt.Errorf("invalid peer address %q: %w", p, err)
+			return nil, func() error { return nil }, fmt.Errorf("invalid peer address %q: %w", p, err)
 		}
 
 		peers = append(peers, address)
@@ -395,28 +455,28 @@ func createPeerManager(
 	for _, p := range tmstrings.SplitAndTrimEmpty(cfg.P2P.BootstrapPeers, ",", " ") {
 		address, err := p2p.ParseNodeAddress(p)
 		if err != nil {
-			return nil, fmt.Errorf("invalid peer address %q: %w", p, err)
+			return nil, func() error { return nil }, fmt.Errorf("invalid peer address %q: %w", p, err)
 		}
 		peers = append(peers, address)
 	}
 
 	peerDB, err := dbProvider(&config.DBContext{ID: "peerstore", Config: cfg})
 	if err != nil {
-		return nil, err
+		return nil, func() error { return nil }, err
 	}
 
 	peerManager, err := p2p.NewPeerManager(nodeID, peerDB, options)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create peer manager: %w", err)
+		return nil, peerDB.Close, fmt.Errorf("failed to create peer manager: %w", err)
 	}
 
 	for _, peer := range peers {
 		if _, err := peerManager.Add(peer); err != nil {
-			return nil, fmt.Errorf("failed to add peer %q: %w", peer, err)
+			return nil, peerDB.Close, fmt.Errorf("failed to add peer %q: %w", peer, err)
 		}
 	}
 
-	return peerManager, nil
+	return peerManager, peerDB.Close, nil
 }
 
 func createRouter(
@@ -446,7 +506,7 @@ func createPEXReactor(
 	router *p2p.Router,
 ) (service.Service, error) {
 
-	channel, err := router.OpenChannel(pex.ChannelDescriptor(), &protop2p.PexMessage{}, 128)
+	channel, err := router.OpenChannel(pex.ChannelDescriptor())
 	if err != nil {
 		return nil, err
 	}
@@ -468,7 +528,7 @@ func makeNodeInfo(
 		txIndexerStatus = "on"
 	}
 
-	bcChannel := byte(bcv0.BlockSyncChannel)
+	bcChannel := byte(blocksync.BlockSyncChannel)
 
 	nodeInfo := types.NodeInfo{
 		ProtocolVersion: types.ProtocolVersion{
