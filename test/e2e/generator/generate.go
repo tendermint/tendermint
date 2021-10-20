@@ -286,6 +286,13 @@ func generateNode(
 		Perturb:          nodePerturbations.Choose(r),
 	}
 
+	if node.Mempool == "" {
+		node.Mempool = "v1"
+	}
+	if node.PrivvalProtocol == "" {
+		node.PrivvalProtocol = "file"
+	}
+
 	if startAt > 0 {
 		node.StateSync = nodeStateSyncs.Choose(r)
 		if manifest.InitialHeight-startAt <= 5 && node.StateSync == e2e.StateSyncDisabled {

@@ -26,15 +26,25 @@ func TestGenerator(t *testing.T) {
 					numStateSyncs++
 				}
 				t.Run(name, func(t *testing.T) {
-					if node.StartAt > m.InitialHeight+5 && !node.Stateless() {
-						require.NotEqual(t, node.StateSync, e2e.StateSyncDisabled)
-					}
-					if node.StateSync != e2e.StateSyncDisabled {
-						require.Zero(t, node.Seeds, node.StateSync)
-						require.True(t, len(node.PersistentPeers) >= 2 || len(node.PersistentPeers) == 0,
-							"peers: %v", node.PersistentPeers)
-					}
-
+					t.Run("StateSync", func(t *testing.T) {
+						if node.StartAt > m.InitialHeight+5 && !node.Stateless() {
+							require.NotEqual(t, node.StateSync, e2e.StateSyncDisabled)
+						}
+						if node.StateSync != e2e.StateSyncDisabled {
+							require.Zero(t, node.Seeds, node.StateSync)
+							require.True(t, len(node.PersistentPeers) >= 2 || len(node.PersistentPeers) == 0,
+								"peers: %v", node.PersistentPeers)
+						}
+					})
+					t.Run("Mempool", func(t *testing.T) {
+						require.NotZero(t, node.Mempool)
+					})
+					t.Run("PrivvalProtocol", func(t *testing.T) {
+						require.NotZero(t, node.PrivvalProtocol)
+					})
+					t.Run("BlockSync", func(t *testing.T) {
+						require.NotZero(t, node.BlockSync)
+					})
 				})
 			}
 			require.True(t, numStateSyncs <= 2)
