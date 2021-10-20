@@ -101,8 +101,8 @@ func (tx TX) Hash(hasher hash.Hash) []byte {
 }
 ```
 
-### Chain parameter settings
-For the project built on top of Tendermint can use `Hashers.RegisterHasher` to change the main hasher it would like to use. For Tendermint itself, it requires a chain parameter to indicate which hasher should be used in the service when the beginning. Therefore, we need to add a `hasher` param into the `genesis.json`.
+### Genesis parameter settings
+For the project built on top of Tendermint can use `Hashers.RegisterHasher` to change the main hasher it would like to use. For Tendermint itself, it requires a genesis parameter to indicate which hasher should be used in the service when the beginning. Therefore, we need to add a `hasher` param into the `genesis.json`.
 
 ```json
 {   "chain_id": "tm-chain",
