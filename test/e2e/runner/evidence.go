@@ -55,7 +55,7 @@ func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amo
 	}
 
 	// request the latest block and validator set from the node
-	blockRes, err := client.Block(context.Background(), nil)
+	blockRes, err := client.Block(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amo
 	waitHeight := blockRes.Block.Height + 3
 
 	nValidators := 100
-	valRes, err := client.Validators(context.Background(), &evidenceHeight, nil, &nValidators)
+	valRes, err := client.Validators(ctx, &evidenceHeight, nil, &nValidators)
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amo
 		return err
 	}
 
-	wctx, cancel := context.WithTimeout(ctx, time.Minute)
+	wctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 
 	// wait for the node to reach the height above the forged height so that
@@ -104,13 +104,13 @@ func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amo
 			return err
 		}
 
-		_, err := client.BroadcastEvidence(context.Background(), ev)
+		_, err := client.BroadcastEvidence(ctx, ev)
 		if err != nil {
 			return err
 		}
 	}
 
-	wctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+	wctx, cancel = context.WithTimeout(ctx, time.Minute)
 	defer cancel()
 
 	// wait for the node to reach the height above the forged height so that
