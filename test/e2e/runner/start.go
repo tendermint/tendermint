@@ -93,7 +93,8 @@ func Start(ctx context.Context, testnet *e2e.Testnet) error {
 
 			block, blockID, err = waitForHeight(ctx, testnet, networkHeight)
 			if err != nil {
-				return err
+				return fmt.Errorf("waiting for node %q to get to %q: %w",
+					node.Name, networkHeight, err)
 			}
 		}
 
@@ -106,14 +107,15 @@ func Start(ctx context.Context, testnet *e2e.Testnet) error {
 		}
 
 		if err := execCompose(testnet.Dir, "up", "-d", node.Name); err != nil {
-			return err
+			return fmt.Errorf("starting node %q: %w", node.Name, err)
 		}
 
 		wctx, wcancel := context.WithTimeout(ctx, 8*time.Minute)
 		status, err := waitForNode(wctx, node, node.StartAt)
 		if err != nil {
 			wcancel()
-			return err
+			return fmt.Errorf("waiting for %q to progress to %d: %w",
+				node.Name, node.StartAt, err)
 		}
 		wcancel()
 
