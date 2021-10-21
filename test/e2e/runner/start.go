@@ -110,6 +110,13 @@ func Start(ctx context.Context, testnet *e2e.Testnet) error {
 			return fmt.Errorf("starting node %q: %w", node.Name, err)
 		}
 
+		if node.Mode == e2e.ModeLight {
+			logger.Info(fmt.Sprintf("Light node %q up on http://127.0.0.1:%v",
+				node.Name, node.ProxyPort, status.SyncInfo.LatestBlockHeight))
+
+			continue
+		}
+
 		wctx, wcancel := context.WithTimeout(ctx, 8*time.Minute)
 		status, err := waitForNode(wctx, node, node.StartAt)
 		if err != nil {
