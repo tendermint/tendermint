@@ -10,7 +10,7 @@ In Dash Platform documents are returned to clients that request them. The validi
 
 Before the introduction of the `StateID` verification that the last app hash was properly signed would have required passing all the components that are used in the blockID generation to light clients. StateID should be considered a subset of the BlockID which allows for small proofs for Dash Platform clients.
 
-## State ID logic
+## State ID generation
 
 Let's define the following:
 
@@ -45,5 +45,18 @@ graph TD
 
 As a result:
 
-* verification of a vote for the block at height `N` requires information about the state at height `N-1`
-* block at height `N` contains a commit referring to state ID at height `N-2`
+* verification of a vote for the block at height `N` requires information about the AppHash returned from ABCI App in response to a commit for the height `N-1`,
+* block at height `N` contains the commit referring to state ID at height `N-2`.
+
+## Commit StateID verification
+
+Commit for a block at height `N` is a part of block `N+1`. This commit requires AppHash generated after the commit of
+block `N-2`. To verify StateID, blocks `N` and `N+1` are needed.
+
+To verify StateID from a commit at height `N` :
+
+1. Fetch block `Block(Height=N+1)`  which contains the commit to verify
+2. Fetch block `Block(Height=N)` which contains AppHash needed for the verification
+3. Ensure `Block(Height=N+1).LastCommit.StateID.Height == N-1`
+4. Ensure `Block(Height=N+1).LastCommit.StateID.LastAppHash == Block(Height=N).Header.AppHash`
+5. Ensure `Block(Height=N+1).LastCommit.StateSignature` is correct
