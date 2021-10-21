@@ -130,7 +130,7 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 
 // waitForNode waits for a node to become available and catch up to the given block height.
 func waitForNode(ctx context.Context, node *e2e.Node, height int64) (*rpctypes.ResultStatus, error) {
-	if node.Stateless() {
+	if node.Mode == e2e.ModeSeed {
 		return nil, nil
 	}
 
