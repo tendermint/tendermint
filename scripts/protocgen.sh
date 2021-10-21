@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-VERS=0.7.1
+VERS=master
 
 set -eo pipefail
 
 # Edit this line to clone your branch, if you are modifying protobuf files
-curl -qL "https://github.com/tendermint/spec/archive/refs/tags/v${VERS}.tar.gz" | tar -xjf - spec-"$VERS"/proto/
+curl -qL "https://github.com/tendermint/spec/archive/master.tar.gz" | tar -xjf - spec-"$VERS"/proto/
 
 cp -r ./spec-"$VERS"/proto/tendermint/** ./proto/tendermint
 
