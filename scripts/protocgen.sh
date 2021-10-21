@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 
-VERS=master
-
 set -eo pipefail
 
+VERS=master
+URL_PATH=archive/
+if [[ VERS -ne master ]]; then
+    URL_PATH=archive/refs/tags/v
+fi
+
 # Edit this line to clone your branch, if you are modifying protobuf files
-curl -qL "https://github.com/tendermint/spec/archive/master.tar.gz" | tar -xjf - spec-"$VERS"/proto/
+curl -qL "https://github.com/tendermint/spec/${URL_PATH}${VERS}.tar.gz" | tar -xjf - spec-"$VERS"/proto/
 
 cp -r ./spec-"$VERS"/proto/tendermint/** ./proto/tendermint
 
