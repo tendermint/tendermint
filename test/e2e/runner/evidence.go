@@ -101,7 +101,11 @@ func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amo
 		}
 	}
 
-	logger.Info("Finished sending evidence")
+	logger.Info("Finished sending evidence",
+		"node", testnet.Name,
+		"amount", amount,
+		"height", evidenceHeight,
+	)
 
 	wctx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
