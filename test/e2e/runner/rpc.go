@@ -70,7 +70,7 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 					clients[node.Name] = client
 				}
 
-				wctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+				wctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 				defer cancel()
 				result, err := client.Status(wctx)
 				if err != nil {
@@ -111,7 +111,7 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 			if len(clients) == 0 {
 				return nil, nil, errors.New("unable to connect to any network nodes")
 			}
-			if time.Since(lastIncrease) >= time.Minute {
+			if time.Since(lastIncrease) >= 2*time.Minute {
 				if lastHeight == 0 {
 					return nil, nil, errors.New("chain stalled at unknown height (most likely upon starting)")
 				}
@@ -130,9 +130,10 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 
 // waitForNode waits for a node to become available and catch up to the given block height.
 func waitForNode(ctx context.Context, node *e2e.Node, height int64) (*rpctypes.ResultStatus, error) {
-	if node.Mode == e2e.ModeSeed {
+	if node.Stateless() {
 		return nil, nil
 	}
+
 	client, err := node.Client()
 	if err != nil {
 		return nil, err
@@ -168,7 +169,7 @@ func waitForNode(ctx context.Context, node *e2e.Node, height int64) (*rpctypes.R
 			case errors.Is(err, context.DeadlineExceeded):
 				return nil, fmt.Errorf("timed out waiting for %v to reach height %v", node.Name, height)
 			case errors.Is(err, context.Canceled):
-				return nil, err
+				return nil, fmt.Errorf("cancellation while waiting for %v", node.Name, err)
 			case err == nil && status.SyncInfo.LatestBlockHeight >= height:
 				return status, nil
 			case counter%500 == 0:

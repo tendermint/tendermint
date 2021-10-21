@@ -48,13 +48,13 @@ func Start(ctx context.Context, testnet *e2e.Testnet) error {
 		}
 
 		if err := func() error {
-			ctx, cancel := context.WithTimeout(ctx, time.Minute)
+			ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 			defer cancel()
 
 			_, err := waitForNode(ctx, node, 0)
 			return err
 		}(); err != nil {
-			return err
+			return fmt.Errorf("problem starting node %q: %w", node.Name, err)
 		}
 		node.HasStarted = true
 		logger.Info(fmt.Sprintf("Node %v up on http://127.0.0.1:%v", node.Name, node.ProxyPort))
