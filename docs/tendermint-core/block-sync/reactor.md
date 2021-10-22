@@ -3,30 +3,30 @@ order: 2
 ---
 # Reactor
 
-The Blockchain Reactor's high level responsibility is to enable peers who are
+The Blocksync Reactor's high level responsibility is to enable peers who are
 far behind the current state of the consensus to quickly catch up by downloading
 many blocks in parallel, verifying their commits, and executing them against the
 ABCI application.
 
-Tendermint full nodes run the Blockchain Reactor as a service to provide blocks
-to new nodes. New nodes run the Blockchain Reactor in "fast_sync" mode,
+Tendermint full nodes run the Blocksync Reactor as a service to provide blocks
+to new nodes. New nodes run the Blocksync Reactor in "fast_sync" mode,
 where they actively make requests for more blocks until they sync up.
 Once caught up, "fast_sync" mode is disabled and the node switches to
 using (and turns on) the Consensus Reactor.
 
 ## Architecture and algorithm
 
-The Blockchain reactor is organised as a set of concurrent tasks:
+The Blocksync reactor is organised as a set of concurrent tasks:
 
-- Receive routine of Blockchain Reactor
+- Receive routine of Blocksync Reactor
 - Task for creating Requesters
 - Set of Requesters tasks and - Controller task.
 
-![Blockchain Reactor Architecture Diagram](img/bc-reactor.png)
+![Blocksync Reactor Architecture Diagram](img/bc-reactor.png)
 
 ### Data structures
 
-These are the core data structures necessarily to provide the Blockchain Reactor logic.
+These are the core data structures necessarily to provide the Blocksync Reactor logic.
 
 Requester data structure is used to track assignment of request for `block` at position `height` to a peer with id equals to `peerID`.
 
@@ -77,9 +77,9 @@ type BlockRequest {
 }
 ```
 
-### Receive routine of Blockchain Reactor
+### Receive routine of Blocksync Reactor
 
-It is executed upon message reception on the BlockchainChannel inside p2p receive routine. There is a separate p2p receive routine (and therefore receive routine of the Blockchain Reactor) executed for each peer. Note that try to send will not block (returns immediately) if outgoing buffer is full.
+It is executed upon message reception on the BlocksyncChannel inside p2p receive routine. There is a separate p2p receive routine (and therefore receive routine of the Blocksync Reactor) executed for each peer. Note that try to send will not block (returns immediately) if outgoing buffer is full.
 
 ```go
 handleMsg(pool, m):
@@ -211,7 +211,7 @@ createRequesters(pool):
       pool.mtx.Unlock()
 ```
 
-### Main blockchain reactor controller task
+### Main blocksync reactor controller task
 
 ```go
 main(pool):

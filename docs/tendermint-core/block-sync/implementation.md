@@ -4,7 +4,7 @@ order: 3
 
 # Implementation
 
-## Blockchain Reactor
+## Blocksync Reactor
 
 - coordinates the pool for syncing
 - coordinates the store for persistence
@@ -42,6 +42,6 @@ order: 3
         - we receive a block
             - gotBlockCh is strange
 
-## Go Routines in Blockchain Reactor
+## Go Routines in Blocksync Reactor
 
 ![Go Routines Diagram](img/bc-reactor-routines.png)
