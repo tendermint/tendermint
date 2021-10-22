@@ -16,11 +16,8 @@ This section dives into the internals of Go-Tendermint.
 - [State Sync](./state-sync.md)
 - [Mempool](./mempool.md)
 - [Light Client](./light-client.md)
-<<<<<<< HEAD
-=======
 - [Consensus](./consensus/README.md)
 - [Pex](./pex/README.md)
 - [Evidence](./evidence/README.md)
 
 For full specifications refer to the [spec repo](https://github.com/tendermint/spec).
->>>>>>> 0d68161cc (docs: add reactor sections (#6510))
