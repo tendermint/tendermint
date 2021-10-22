@@ -14,7 +14,7 @@ var (
 	// testnetCombinations defines global testnet options, where we generate a
 	// separate testnet for each combination (Cartesian product) of options.
 	testnetCombinations = map[string][]interface{}{
-		"topology":      {"single", "quad", "large"},
+		"topology":      {"quad", "large"},
 		"queueType":     {"priority"}, // "fifo"
 		"initialHeight": {0, 1000},
 		"initialState": {
@@ -26,32 +26,32 @@ var (
 
 	// The following specify randomly chosen values for testnet nodes.
 	nodeDatabases = weightedChoice{
-		"goleveldb": 35,
-		"badgerdb":  35,
-		"boltdb":    15,
-		"rocksdb":   10,
-		"cleveldb":  5,
+		// "goleveldb": 35,
+		"badgerdb": 35,
+		// "boltdb":    15,
+		// "rocksdb":   10,
+		// "cleveldb":  5,
 	}
 	nodeABCIProtocols = weightedChoice{
 		"builtin": 50,
-		"tcp":     20,
-		"grpc":    20,
-		"unix":    10,
+		// "tcp":     20,
+		// "grpc":    20,
+		// "unix":    10,
 	}
 	nodePrivvalProtocols = weightedChoice{
 		"file": 50,
-		"grpc": 20,
-		"tcp":  20,
-		"unix": 10,
+		// "grpc": 20,
+		// "tcp":  20,
+		// "unix": 10,
 	}
 	nodeMempools = weightedChoice{
-		"v0": 20,
+		// "v0": 20,
 		"v1": 80,
 	}
 	nodeStateSyncs = weightedChoice{
-		e2e.StateSyncDisabled: 10,
-		e2e.StateSyncP2P:      45,
-		e2e.StateSyncRPC:      45,
+		// e2e.StateSyncDisabled: 10,
+		e2e.StateSyncP2P: 45,
+		e2e.StateSyncRPC: 45,
 	}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 5}
@@ -66,9 +66,9 @@ var (
 		"kill":       0.1,
 		"restart":    0.1,
 	}
-	evidence = uniformChoice{0, 1, 10}
+	evidence = uniformChoice{0}          // , 1, 10
 	txSize   = uniformChoice{1024, 4096} // either 1kb or 4kb
-	ipv6     = uniformChoice{false, true}
+	ipv6     = uniformChoice{false}      // , true
 	keyType  = uniformChoice{types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1}
 )
 
