@@ -2,7 +2,7 @@
 
 set -eo pipefail
 
-VERS=master
+: ${VERS:=master}
 URL_PATH=archive/
 if [[ VERS -ne master ]]; then
     URL_PATH=archive/refs/tags/v
@@ -21,7 +21,7 @@ echo "proto files have been generated"
 
 echo "removing copied files"
 
-rm -rf ./proto/tendermint/abci/types.proto
+rm -rf ./proto/tendermint/abci
 rm -rf ./proto/tendermint/blocksync/types.proto
 rm -rf ./proto/tendermint/consensus/types.proto
 rm -rf ./proto/tendermint/mempool/types.proto
@@ -34,6 +34,6 @@ rm -rf ./proto/tendermint/types/evidence.proto
 rm -rf ./proto/tendermint/types/params.proto
 rm -rf ./proto/tendermint/types/types.proto
 rm -rf ./proto/tendermint/types/validator.proto
-rm -rf ./proto/tendermint/version/version.proto
+rm -rf ./proto/tendermint/version/types.proto
 
 rm -rf ./spec-"$VERS"

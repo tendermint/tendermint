@@ -26,7 +26,6 @@ const (
 	firstNode  = 0
 	secondNode = 1
 	thirdNode  = 2
-	fourthNode = 3
 )
 
 func TestReactorBasic(t *testing.T) {
@@ -504,25 +503,6 @@ func (r *reactorTestSuite) listenForResponse(
 	conditional := func(msg p2p.Envelope) bool {
 		_, ok := msg.Message.(*p2pproto.PexResponse)
 		r.logger.Info("message", msg, "ok", ok)
-		return ok && msg.From == from
-	}
-	assertion := func(t *testing.T, msg p2p.Envelope) bool {
-		require.Equal(t, &p2pproto.PexResponse{Addresses: addresses}, msg.Message)
-		return true
-	}
-	r.listenFor(t, to, conditional, assertion, waitPeriod)
-}
-
-func (r *reactorTestSuite) listenForLegacyResponse(
-	t *testing.T,
-	fromNode, toNode int,
-	waitPeriod time.Duration,
-	addresses []p2pproto.PexAddress,
-) {
-	r.logger.Info("Listening for response", "from", fromNode, "to", toNode)
-	to, from := r.checkNodePair(t, toNode, fromNode)
-	conditional := func(msg p2p.Envelope) bool {
-		_, ok := msg.Message.(*p2pproto.PexResponse)
 		return ok && msg.From == from
 	}
 	assertion := func(t *testing.T, msg p2p.Envelope) bool {
