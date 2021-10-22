@@ -922,8 +922,8 @@ func (cs *State) handleMsg(mi msgInfo, fromReplay bool) {
 			"height", cs.Height,
 			"round", cs.Round,
 			"peer", peerID,
+			"msg_type", fmt.Sprintf("%T", msg),
 			"err", err,
-			"msg", msg,
 		)
 	}
 }

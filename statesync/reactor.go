@@ -154,6 +154,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				Hash:     msg.Hash,
 				Metadata: msg.Metadata,
 			})
+			// TODO: We may want to consider punishing the peer for certain errors
 			if err != nil {
 				r.Logger.Error("Failed to add snapshot", "height", msg.Height, "format", msg.Format,
 					"peer", src.ID(), "err", err)

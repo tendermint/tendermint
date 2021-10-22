@@ -201,7 +201,6 @@ func TestReactorThreshold(t *testing.T) {
 
 // Ensure we can process blocks with evidence
 func TestReactorWithEvidence(t *testing.T) {
-
 	testCases := []struct {
 		name          string
 		nValidators   int
@@ -245,7 +244,7 @@ func TestReactorWithEvidence(t *testing.T) {
 				blockStore := store.NewBlockStore(blockDB)
 
 				// one for mempool, one for consensus
-				mtx := new(tmsync.Mutex)
+				mtx := new(tmsync.RWMutex)
 				proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
 				proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 				proxyAppConnQry := abcicli.NewLocalClient(mtx, app)

@@ -229,7 +229,7 @@ func NewClientFromTrustedStore(
 	}
 
 	// Validate the number of witnesses.
-	if len(c.witnesses) < 1 {
+	if len(c.witnesses) == 0 {
 		return nil, ErrNoWitnesses
 	}
 
@@ -727,17 +727,21 @@ func (c *Client) lightBlockFromPrimaryAtHeight(ctx context.Context, height int64
 			err = nil
 		}
 
+	case context.Canceled, context.DeadlineExceeded:
+		return l, err
+
 	case provider.ErrNoResponse, provider.ErrLightBlockNotFound, provider.ErrHeightTooHigh:
 		// we find a new witness to replace the primary
-		c.logger.Debug("error from light block request from primary, replacing...",
-			"error", err)
-		l, err = c.findNewPrimary(ctx, height, false)
+		c.logger.Info("error from light block request from primary, replacing...",
+			"error", err, "height", height, "primary", c.primary)
+		return c.findNewPrimary(ctx, height, false)
+
 	default:
 		// The light client has most likely received either provider.ErrUnreliableProvider or provider.ErrBadLightBlock
 		// These errors mean that the light client should drop the primary and try with another provider instead
-		c.logger.Error("error from light block request from primary, removing...",
-			"error", err)
-		l, err = c.findNewPrimary(ctx, height, true)
+		c.logger.Info("error from light block request from primary, removing...",
+			"error", err, "height", height, "primary", c.primary)
+		return c.findNewPrimary(ctx, height, true)
 	}
 
 	// err was re-evaluated inside switch statement above
@@ -784,7 +788,7 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
 
-	if len(c.witnesses) <= 1 {
+	if len(c.witnesses) == 0 {
 		return nil, ErrNoWitnesses
 	}
 
@@ -854,6 +858,11 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 		}
 	}
 
+	// remove witnesses marked as bad. Removal is done in descending order
+	if err := c.removeWitnesses(witnessesToRemove); err != nil {
+		c.logger.Error("failed to remove witnesses", "err", err, "witnessesToRemove", witnessesToRemove)
+	}
+
 	return nil, lastError
 }
 
@@ -866,7 +875,7 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
 
-	if len(c.witnesses) < 1 {
+	if len(c.witnesses) == 0 {
 		return ErrNoWitnesses
 	}
 
@@ -904,7 +913,7 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 
 	// remove witnesses that have misbehaved
 	if err := c.removeWitnesses(witnessesToRemove); err != nil {
-		return err
+		c.logger.Error("failed to remove witnesses", "err", err, "witnessesToRemove", witnessesToRemove)
 	}
 
 	return nil

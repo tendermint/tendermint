@@ -45,3 +45,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### BUG FIXES
 
+- [light] [\#6685](https://github.com/tendermint/tendermint/pull/6685) fix bug
+  with incorrecly handling contexts which occasionally froze state sync.
+- [statesync] #6881 improvements to stateprovider logic (@cmwaters)
+- [ABCI] #6873 change client to use multi-reader mutexes (@tychoish)
+
