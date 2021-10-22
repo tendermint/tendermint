@@ -9,7 +9,6 @@ For the purposes of this document, they are described
 in a toml file, but some of them can also be passed in as
 environmental variables.
 
-
 Config:
 
 ```toml
@@ -49,9 +48,7 @@ max-batch-bytes = 0
 
 Environment: `TM_MEMPOOL_RECHECK=false` -->
 
-
 ## Recheck
-
 
 Recheck determines if the mempool rechecks all pending
 transactions after a block was committed. Once a block
@@ -60,6 +57,7 @@ that were successfully included in the block.
 
 If `recheck` is true, then it will rerun CheckTx on
 all remaining transactions with the new block state.
+
 ## Broadcast
 
 Determines whether this node gossips any valid transactions
@@ -67,6 +65,7 @@ that arrive in mempool. Default is to gossip anything that
 passes checktx. If this is disabled, transactions are not
 gossiped, but instead stored locally and added to the next
 block this node is the proposer.
+
 ## WalDir
 
 This defines the directory where mempool writes the write-ahead
@@ -79,9 +78,9 @@ appended to home directory of the tendermint process to
 generate an absolute path to the wal directory
 (default `$HOME/.tendermint` or set via `TM_HOME` or `--home`)
 
-## Size 
+## Size
 
-Size defines the total amount of transactions stored in the mempool. Default is `5_000` but can be adjusted to any number you would like. The higher the size the more strain on the node. 
+Size defines the total amount of transactions stored in the mempool. Default is `5_000` but can be adjusted to any number you would like. The higher the size the more strain on the node.
 
 ## Max Transactions Bytes
 
