@@ -33,14 +33,10 @@ func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amo
 	var targetNode *e2e.Node
 
 	for _, idx := range r.Perm(len(testnet.Nodes)) {
-		targetNode = testnet.Nodes[idx]
-
-		if targetNode.Mode == e2e.ModeSeed || targetNode.Mode == e2e.ModeLight {
-			targetNode = nil
-			continue
+		if !testnet.Nodes[idx].Stateless() {
+			targetNode = testnet.Nodes[idx]
+			break
 		}
-
-		break
 	}
 
 	if targetNode == nil {
@@ -55,15 +51,14 @@ func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amo
 	}
 
 	// request the latest block and validator set from the node
-	blockRes, err := client.Block(context.Background(), nil)
+	blockRes, err := client.Block(ctx, nil)
 	if err != nil {
 		return err
 	}
-	evidenceHeight := blockRes.Block.Height
-	waitHeight := blockRes.Block.Height + 3
+	evidenceHeight := blockRes.Block.Height - 3
 
 	nValidators := 100
-	valRes, err := client.Validators(context.Background(), &evidenceHeight, nil, &nValidators)
+	valRes, err := client.Validators(ctx, &evidenceHeight, nil, &nValidators)
 	if err != nil {
 		return err
 	}
@@ -79,12 +74,8 @@ func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amo
 		return err
 	}
 
-	wctx, cancel := context.WithTimeout(ctx, time.Minute)
-	defer cancel()
-
-	// wait for the node to reach the height above the forged height so that
-	// it is able to validate the evidence
-	_, err = waitForNode(wctx, targetNode, waitHeight)
+	// request the latest block and validator set from the node
+	blockRes, err = client.Block(ctx, &evidenceHeight)
 	if err != nil {
 		return err
 	}
@@ -104,23 +95,27 @@ func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amo
 			return err
 		}
 
-		_, err := client.BroadcastEvidence(context.Background(), ev)
+		_, err := client.BroadcastEvidence(ctx, ev)
 		if err != nil {
 			return err
 		}
 	}
 
-	wctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+	logger.Info("Finished sending evidence",
+		"node", testnet.Name,
+		"amount", amount,
+		"height", evidenceHeight,
+	)
+
+	wctx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
 
-	// wait for the node to reach the height above the forged height so that
-	// it is able to validate the evidence
-	_, err = waitForNode(wctx, targetNode, blockRes.Block.Height+2)
+	// wait for the node to make progress after submitting
+	// evidence (3 (forged height) + 1 (progress))
+	_, err = waitForNode(wctx, targetNode, evidenceHeight+4)
 	if err != nil {
 		return err
 	}
-
-	logger.Info(fmt.Sprintf("Finished sending evidence (height %d)", blockRes.Block.Height+2))
 
 	return nil
 }

@@ -46,3 +46,10 @@ test/fuzz/**/corpus
 test/fuzz/**/crashers
 test/fuzz/**/suppressions
 test/fuzz/**/*.zip
+proto/tendermint/blocksync/types.proto
+proto/tendermint/consensus/types.proto
+proto/tendermint/mempool/*.proto
+proto/tendermint/p2p/*.proto
+proto/tendermint/statesync/*.proto
+proto/tendermint/types/*.proto
+proto/tendermint/version/*.proto
