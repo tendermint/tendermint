@@ -286,7 +286,7 @@ func generateNode(
 		Perturb:          nodePerturbations.Choose(r),
 	}
 
-	node.Mempool = "v0"
+	node.Perturb = []string{}
 	if node.Mempool == "" {
 		node.Mempool = "v1"
 	}
