@@ -250,9 +250,11 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 
 	// lastly, set up the light clients
 	for i := 1; i <= numLightClients; i++ {
-		// startAt := manifest.InitialHeight + 5
+		startAt := manifest.InitialHeight /// + 5
 
-		node := generateLightNode(r, startAt+(5*int64(i)), lightProviders)
+		node := generateLightNode(r,
+			startAt, // +(5*int64(i)),
+			lightProviders)
 
 		manifest.Nodes[fmt.Sprintf("light%02d", i)] = node
 
