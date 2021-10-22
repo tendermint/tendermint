@@ -147,7 +147,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	// Next, we generate validators. We make sure a BFT quorum of validators start
 	// at the initial height, and that we have two archive nodes. We also set up
 	// the initial validator set, and validator set updates for delayed nodes.
-	nextStartAt := 0 // manifest.InitialHeight + 5
+	// nextStartAt := 0 // manifest.InitialHeight + 5
 	quorum := numValidators*2/3 + 1
 	for i := 1; i <= numValidators; i++ {
 		startAt := int64(0)
