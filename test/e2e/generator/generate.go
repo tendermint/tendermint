@@ -128,7 +128,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		numValidators = 4
 	case "large":
 		// FIXME Networks are kept small since large ones use too much CPU.
-		numSeeds = r.Intn(1)
+		numSeeds = 0 // r.Intn(1)
 		numLightClients = r.Intn(2)
 		numValidators = 4 + r.Intn(4)
 		numFulls = r.Intn(4)
@@ -147,14 +147,14 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	// Next, we generate validators. We make sure a BFT quorum of validators start
 	// at the initial height, and that we have two archive nodes. We also set up
 	// the initial validator set, and validator set updates for delayed nodes.
-	nextStartAt := manifest.InitialHeight + 5
+	nextStartAt := 0 // manifest.InitialHeight + 5
 	quorum := numValidators*2/3 + 1
 	for i := 1; i <= numValidators; i++ {
 		startAt := int64(0)
 		if i > quorum && numSyncingNodes < 2 && r.Float64() >= 0.25 {
-			numSyncingNodes++
-			startAt = nextStartAt
-			nextStartAt += 5
+			// numSyncingNodes++
+			// startAt = nextStartAt
+			// nextStartAt += 5
 		}
 		name := fmt.Sprintf("validator%02d", i)
 		node := generateNode(r, manifest, e2e.ModeValidator, startAt, i <= 2)
@@ -184,9 +184,9 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	for i := 1; i <= numFulls; i++ {
 		startAt := int64(0)
 		if numSyncingNodes < 2 && r.Float64() >= 0.5 {
-			numSyncingNodes++
-			startAt = nextStartAt
-			nextStartAt += 5
+			// numSyncingNodes++
+			// startAt = nextStartAt
+			// nextStartAt += 5
 		}
 		node := generateNode(r, manifest, e2e.ModeFull, startAt, false)
 
@@ -250,7 +250,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 
 	// lastly, set up the light clients
 	for i := 1; i <= numLightClients; i++ {
-		startAt := manifest.InitialHeight + 5
+		// startAt := manifest.InitialHeight + 5
 
 		node := generateLightNode(r, startAt+(5*int64(i)), lightProviders)
 
