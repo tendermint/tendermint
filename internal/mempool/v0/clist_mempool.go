@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -450,12 +449,35 @@ func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 	case *abci.Response_CheckTx:
 		tx := req.GetCheckTx().Tx
 		memTx := mem.recheckCursor.Value.(*mempoolTx)
-		if !bytes.Equal(tx, memTx.tx) {
-			panic(fmt.Sprintf(
-				"Unexpected tx response from proxy during recheck\nExpected %X, got %X",
-				memTx.tx,
-				tx))
+
+		// Search through the remaining list of tx to recheck for a transaction that matches
+		// the one we received from the ABCI application.
+		for {
+			if bytes.Equal(tx, memTx.tx) {
+				// We've found a tx in the recheck list that matches the tx that we
+				// received from the ABCI application.
+				// Break, and use this transaction for further checks.
+				break
+			}
+
+			mem.logger.Error(
+				"re-CheckTx transaction mismatch",
+				"got", types.Tx(tx),
+				"expected", memTx.tx,
+			)
+
+			if mem.recheckCursor == mem.recheckEnd {
+				// we reached the end of the recheckTx list without finding a tx
+				// matching the one we received from the ABCI application.
+				// Return without processing any tx.
+				mem.recheckCursor = nil
+				return
+			}
+
+			mem.recheckCursor = mem.recheckCursor.Next()
+			memTx = mem.recheckCursor.Value.(*mempoolTx)
 		}
+
 		var postCheckErr error
 		if mem.postCheck != nil {
 			postCheckErr = mem.postCheck(tx, r.CheckTx)

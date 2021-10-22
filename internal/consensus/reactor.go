@@ -21,64 +21,49 @@ import (
 var (
 	_ service.Service = (*Reactor)(nil)
 	_ p2p.Wrapper     = (*tmcons.Message)(nil)
+)
 
-	// ChannelShims contains a map of ChannelDescriptorShim objects, where each
-	// object wraps a reference to a legacy p2p ChannelDescriptor and the corresponding
-	// p2p proto.Message the new p2p Channel is responsible for handling.
-	//
-	//
-	// TODO: Remove once p2p refactor is complete.
-	// ref: https://github.com/tendermint/tendermint/issues/5670
-	ChannelShims = map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
-		StateChannel: {
-			MsgType: new(tmcons.Message),
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(StateChannel),
-				Priority:            8,
-				SendQueueCapacity:   64,
-				RecvMessageCapacity: maxMsgSize,
-				RecvBufferCapacity:  128,
-				MaxSendBytes:        12000,
-			},
+// GetChannelDescriptor produces an instance of a descriptor for this
+// package's required channels.
+func GetChannelDescriptors() []*p2p.ChannelDescriptor {
+	return []*p2p.ChannelDescriptor{
+		{
+			ID:                  StateChannel,
+			MessageType:         new(tmcons.Message),
+			Priority:            8,
+			SendQueueCapacity:   64,
+			RecvMessageCapacity: maxMsgSize,
+			RecvBufferCapacity:  128,
 		},
-		DataChannel: {
-			MsgType: new(tmcons.Message),
-			Descriptor: &p2p.ChannelDescriptor{
-				// TODO: Consider a split between gossiping current block and catchup
-				// stuff. Once we gossip the whole block there is nothing left to send
-				// until next height or round.
-				ID:                  byte(DataChannel),
-				Priority:            12,
-				SendQueueCapacity:   64,
-				RecvBufferCapacity:  512,
-				RecvMessageCapacity: maxMsgSize,
-				MaxSendBytes:        40000,
-			},
+		{
+			// TODO: Consider a split between gossiping current block and catchup
+			// stuff. Once we gossip the whole block there is nothing left to send
+			// until next height or round.
+			ID:                  DataChannel,
+			MessageType:         new(tmcons.Message),
+			Priority:            12,
+			SendQueueCapacity:   64,
+			RecvBufferCapacity:  512,
+			RecvMessageCapacity: maxMsgSize,
 		},
-		VoteChannel: {
-			MsgType: new(tmcons.Message),
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(VoteChannel),
-				Priority:            10,
-				SendQueueCapacity:   64,
-				RecvBufferCapacity:  128,
-				RecvMessageCapacity: maxMsgSize,
-				MaxSendBytes:        150,
-			},
+		{
+			ID:                  VoteChannel,
+			MessageType:         new(tmcons.Message),
+			Priority:            10,
+			SendQueueCapacity:   64,
+			RecvBufferCapacity:  128,
+			RecvMessageCapacity: maxMsgSize,
 		},
-		VoteSetBitsChannel: {
-			MsgType: new(tmcons.Message),
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(VoteSetBitsChannel),
-				Priority:            5,
-				SendQueueCapacity:   8,
-				RecvBufferCapacity:  128,
-				RecvMessageCapacity: maxMsgSize,
-				MaxSendBytes:        50,
-			},
+		{
+			ID:                  VoteSetBitsChannel,
+			MessageType:         new(tmcons.Message),
+			Priority:            5,
+			SendQueueCapacity:   8,
+			RecvBufferCapacity:  128,
+			RecvMessageCapacity: maxMsgSize,
 		},
 	}
-)
+}
 
 const (
 	StateChannel       = p2p.ChannelID(0x20)
