@@ -1,6 +1,10 @@
 ---
-order: 10
+order: 1
+parent:
+  title: Block Sync
+  order: 6
 ---
+
 
 # Block Sync
 *Formerly known as Fast Sync*
@@ -61,3 +65,7 @@ another event for exposing the fast-sync `complete` status and the state `height
 
 The user can query the events by subscribing `EventQueryBlockSyncStatus`
 Please check [types](https://pkg.go.dev/github.com/tendermint/tendermint/types?utm_source=godoc#pkg-constants) for the details.
+
+## Implementation
+
+To read more on the implamentation please see the [reactor doc](./reactor.md) and the [implementation doc](./implementation.md)

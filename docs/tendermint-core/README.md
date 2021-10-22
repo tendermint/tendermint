@@ -5,8 +5,6 @@ parent:
   order: 5
 ---
 
-# Overview
-
 This section dives into the internals of Go-Tendermint.
 
 - [Using Tendermint](./using-tendermint.md)
@@ -18,3 +16,8 @@ This section dives into the internals of Go-Tendermint.
 - [State Sync](./state-sync.md)
 - [Mempool](./mempool.md)
 - [Light Client](./light-client.md)
+- [Consensus](./consensus/README.md)
+- [Pex](./pex/README.md)
+- [Evidence](./evidence/README.md)
+
+For full specifications refer to the [spec repo](https://github.com/tendermint/spec).
