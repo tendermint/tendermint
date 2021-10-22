@@ -7,7 +7,7 @@ parent:
 
 # Peer Strategy and Exchange
 
-Here we outline the design of the AddressBook
+Here we outline the design of the PeerStore
 and how it used by the Peer Exchange Reactor (PEX) to ensure we are connected
 to good peers and to gossip peers to others.
 
@@ -17,10 +17,10 @@ Certain peers are special in that they are specified by the user as `persistent`
 which means we auto-redial them if the connection fails, or if we fail to dial
 them.
 Some peers can be marked as `private`, which means
-we will not put them in the address book or gossip them to others.
+we will not put them in the peer store or gossip them to others.
 
 All peers except private peers and peers coming from them are tracked using the
-address book.
+peer store.
 
 The rest of our peers are only distinguished by being either
 inbound (they dialed our public address) or outbound (we dialed them).
@@ -57,10 +57,10 @@ NodeInfo during handshakes with other peers. Peers accept up to
 ## Address Book
 
 Peers are tracked via their ID (their PubKey.Address()).
-Peers are added to the address book from the PEX when they first connect to us or
+Peers are added to the peer store from the PEX when they first connect to us or
 when we hear about them from other peers.
 
-The address book is arranged in sets of buckets, and distinguishes between
+The peer store is arranged in sets of buckets, and distinguishes between
 vetted (old) and unvetted (new) peers. It keeps different sets of buckets for
 vetted and unvetted peers. Buckets provide randomization over peer selection.
 Peers are put in buckets according to their IP groups.
@@ -110,7 +110,7 @@ If a peer becomes vetted but there are already too many vetted peers,
 a randomly selected one of the vetted peers becomes unvetted.
 
 If a peer becomes unvetted (either a new peer, or one that was previously vetted),
-a randomly selected one of the unvetted peers is removed from the address book.
+a randomly selected one of the unvetted peers is removed from the peer store.
 
 More fine-grained tracking of peer behaviour can be done using
 a trust metric (see below), but it's best to start with something simple.
@@ -131,7 +131,7 @@ the selection process happens every `ensurePeersPeriod`, we might not end up
 dialing a peer for much longer than the backoff duration.
 
 If we fail to connect to the peer after 16 tries (with exponential backoff), we
-remove from address book completely. But for persistent peers, we indefinitely try to
+remove from peer store completely. But for persistent peers, we indefinitely try to
 dial all persistent peers unless `persistent_peers_max_dial_period` is configured to zero
 
 ## Select Peers to Exchange
@@ -147,7 +147,7 @@ Send the selected peers. Note we select peers for sending without bias for vette
 ## Preventing Spam
 
 There are various cases where we decide a peer has misbehaved and we disconnect from them.
-When this happens, the peer is removed from the address book and black listed for
+When this happens, the peer is removed from the peer store and black listed for
 some amount of time. We call this "Disconnect and Mark".
 Note that the bad behaviour may be detected outside the PEX reactor itself
 (for instance, in the mconnection, or another reactor), but it must be communicated to the PEX reactor
