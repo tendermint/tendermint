@@ -1269,8 +1269,11 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 
 // Enter: `timeoutPropose` after entering Propose.
 // Enter: proposal block and POL is ready.
-// Prevote for LockedBlock if we're locked, or ProposalBlock if valid.
-// Otherwise vote nil.
+// If we received a valid proposal within this round and we are not locked on a block,
+// we will prevote for block.
+// Otherwise, if we receive a valid proposal that matches the block we are
+// locked on or matches a block that received a POL in a round later than our
+// locked round, prevote for the proposal, otherwise vote nil.
 func (cs *State) enterPrevote(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
@@ -1300,14 +1303,7 @@ func (cs *State) enterPrevote(height int64, round int32) {
 func (cs *State) defaultDoPrevote(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
-	// If a block is locked, prevote that.
-	if cs.LockedBlock != nil {
-		logger.Debug("prevote step; already locked on a block; prevoting locked block")
-		cs.signAddVote(tmproto.PrevoteType, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
-		return
-	}
-
-	// If ProposalBlock is nil, prevote nil.
+	// We did not receive a proposal within this round. (and thus executing this from a timeout)
 	if cs.ProposalBlock == nil {
 		logger.Debug("prevote step: ProposalBlock is nil")
 		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
@@ -1323,11 +1319,67 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 		return
 	}
 
-	// Prevote cs.ProposalBlock
-	// NOTE: the proposal signature is validated when it is received,
-	// and the proposal block parts are validated as they are received (against the merkle hash in the proposal)
-	logger.Debug("prevote step: ProposalBlock is valid")
-	cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+	/*
+		22: upon <PROPOSAL, h_p, round_p, v, −1> from proposer(h_p, round_p) while step_p = propose do
+		23: if valid(v) && (lockedRound_p = −1 || lockedValue_p = v) then
+		24: broadcast <PREVOTE, h_p, round_p, id(v)>
+
+		Here, cs.Proposal.POLRound corresponds to the -1 in the above algorithm rule.
+		This means that the proposer is producing a new proposal that has not previously
+		seen a 2/3 majority by the network.
+
+		If we have already locked on a different value that is different from the proposed value,
+		we prevote nil since we are locked on a different value. Otherwise, if we're not locked on a block
+		or the proposal matches our locked block, we prevote the proposal.
+	*/
+	if cs.Proposal.POLRound == -1 {
+		if cs.LockedRound == -1 {
+			logger.Debug("prevote step: ProposalBlock is valid and there is no locked block; prevoting the proposal")
+			cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+			return
+		}
+		if cs.ProposalBlock.HashesTo(cs.LockedBlock.Hash()) {
+			logger.Debug("prevote step: ProposalBlock is valid and matches our locked block; prevoting the proposal")
+			cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+			return
+		}
+	}
+
+	/*
+		28: upon <PROPOSAL, h_p, round_p, v, v_r> from proposer(h_p, round_p) AND 2f + 1 <PREVOTE, h_p, v_r, id(v)> while
+		step_p = propose && (v_r ≥ 0 && v_r < round_p) do
+		29: if valid(v) && (lockedRound_p ≤ v_r || lockedValue_p = v) then
+		30: broadcast <PREVOTE, h_p, round_p, id(v)>
+
+		This rule is a bit confusing but breaks down as follows:
+
+		If we see a proposal in the current round for value 'v' that lists its valid round as 'v_r'
+		AND this validator saw a 2/3 majority of the voting power prevote 'v' in round 'v_r', then we will
+		issue a prevote for 'v' in this round if 'v' is valid and either matches our locked value OR
+		'v_r' is a round greater than or equal to our current locked round.
+
+		'v_r' can be a round greater than to our current locked round if a 2/3 majority of
+		the network prevoted a value in round 'v_r' but we did not lock on it, possibly because we
+		missed the proposal in round 'v_r'.
+	*/
+	blockID, ok := cs.Votes.Prevotes(cs.Proposal.POLRound).TwoThirdsMajority()
+	if ok && cs.ProposalBlock.HashesTo(blockID.Hash) && cs.Proposal.POLRound >= 0 && cs.Proposal.POLRound < cs.Round {
+		if cs.LockedRound <= cs.Proposal.POLRound {
+			logger.Debug("prevote step: ProposalBlock is valid and received a 2/3" +
+				"majority in a round later than the locked round; prevoting the proposal")
+			cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+			return
+		}
+		if cs.ProposalBlock.HashesTo(cs.LockedBlock.Hash()) {
+			logger.Debug("prevote step: ProposalBlock is valid and matches our locked block; prevoting the proposal")
+			cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+			return
+		}
+	}
+
+	logger.Debug("prevote step: ProposalBlock is valid but was not our locked block or" +
+		"did not receive a more recent majority; prevoting nil")
+	cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 }
 
 // Enter: any +2/3 prevotes at next round.
