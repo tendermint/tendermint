@@ -78,7 +78,7 @@ Implementing proposer-based timestamps will require a few changes to Tendermintâ
 These changes will be to the following components:
 * The `internal/consensus/` package.
 * The `state/` package.
-* The `CommitSig` and `Header` types.
+* The `Vote`, `CommitSig` and `Header` types.
 * The consensus parameters.
 
 ### Changes to `CommitSig`
