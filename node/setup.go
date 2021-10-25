@@ -402,8 +402,14 @@ func createConsensusReactor(
 }
 
 func createTransport(logger log.Logger, cfg *config.Config) *p2p.MConnTransport {
+	conf := conn.DefaultMConnConfig()
+	conf.FlushThrottle = cfg.FlushThrottleTimeout
+	conf.SendRate = cfg.SendRate
+	conf.RecvRate = cfg.RecvRate
+	conf.MaxPacketMsgPayloadSize = cfg.MaxPacketMsgPayloadSize
+
 	return p2p.NewMConnTransport(
-		logger, conn.DefaultMConnConfig(), []*p2p.ChannelDescriptor{},
+		logger, conf, []*p2p.ChannelDescriptor{},
 		p2p.MConnTransportOptions{
 			MaxAcceptedConnections: uint32(cfg.P2P.MaxConnections),
 		},
