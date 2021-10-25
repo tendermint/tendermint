@@ -3,10 +3,14 @@ module github.com/tendermint/tendermint
 go 1.15
 
 require (
+	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/BurntSushi/toml v0.4.1
+	github.com/Microsoft/go-winio v0.5.0 // indirect
 	github.com/Workiva/go-datastructures v1.0.53
+	github.com/adlio/schema v1.1.13
 	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
+	github.com/containerd/continuity v0.1.0 // indirect
 	github.com/dashevo/dashd-go v0.0.0-20210630125816-b417ad8eb165
 	github.com/dashpay/bls-signatures/go-bindings v0.0.0-20201127091120-745324b80143
 	github.com/dgraph-io/badger/v2 v2.2007.3 // indirect
@@ -25,9 +29,12 @@ require (
 	github.com/google/orderedcode v0.0.1
 	github.com/gorilla/websocket v1.4.2
 	github.com/gtank/merlin v0.1.1
+	github.com/lib/pq v1.2.0
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/mimoo/StrobeGo v0.0.0-20210601165009-122bf33a46e0 // indirect
 	github.com/minio/highwayhash v1.0.2
+	github.com/opencontainers/runc v1.0.2 // indirect
+	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/common v0.31.1 // indirect
