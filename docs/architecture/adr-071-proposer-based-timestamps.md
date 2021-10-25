@@ -195,7 +195,7 @@ A goal of adding proposer-based timestamps is to enforce some degree of clock sy
 
 Validator clocks will not be perfectly in sync.
 Therefore, the proposer’s current known Unix time may be less than the previous block's `Header.Time`.
-If the proposer’s current known Unix time is less than previous block's `Header.Time`, the proposer will sleep until its known Unix time exceeds it.
+If the proposer’s current known Unix time is less than the previous block's `Header.Time`, the proposer will sleep until its known Unix time exceeds it.
 
 This change will require amending the [defaultDecideProposal](https://github.com/tendermint/tendermint/blob/822893615564cb20b002dd5cf3b42b8d364cb7d9/internal/consensus/state.go#L1180) method.
 This method should now block until the proposer’s time is greater than the previous block's `Header.Time`.
