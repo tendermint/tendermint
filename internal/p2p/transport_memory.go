@@ -117,7 +117,7 @@ func (t *MemoryTransport) String() string {
 	return string(MemoryProtocol)
 }
 
-func (t *MemoryTransport) Listen(ep Endpoint) error { return nil }
+func (MemoryTransport) Listen(Endpoint) error { return nil }
 
 func (t *MemoryTransport) AddChannelDescriptors([]*ChannelDescriptor) {}
 
