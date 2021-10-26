@@ -21,8 +21,6 @@ import (
 
 const queueBufferDefault = 32
 
-const dialRandomizerIntervalMillisecond = 3000
-
 // Envelope contains a message with sender/receiver routing info.
 type Envelope struct {
 	From      types.NodeID  // sender (empty if outbound)
@@ -536,8 +534,15 @@ func (r *Router) filterPeersID(ctx context.Context, id types.NodeID) error {
 
 func (r *Router) dialSleep(ctx context.Context) {
 	if r.options.DialSleep == nil {
+		const (
+			maxDialerInterval = 3000
+			minDialerInterval = 250
+		)
+
 		// nolint:gosec // G404: Use of weak random number generator
-		timer := time.NewTimer(time.Duration(rand.Int63n(dialRandomizerIntervalMillisecond)) * time.Millisecond)
+		dur := time.Duration(rand.Int63n(maxDialerInterval-minDialerInterval+1) + minDialerInterval)
+
+		timer := time.NewTimer(dur * time.Millisecond)
 		defer timer.Stop()
 
 		select {

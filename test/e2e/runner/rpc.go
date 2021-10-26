@@ -70,9 +70,7 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 					clients[node.Name] = client
 				}
 
-				wctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-				defer cancel()
-				result, err := client.Status(wctx)
+				result, err := client.Status(ctx)
 				if err != nil {
 					continue
 				}

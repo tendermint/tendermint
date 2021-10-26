@@ -639,6 +639,18 @@ type P2PConfig struct { //nolint: maligned
 	// Toggle to disable guard against peers connecting from the same ip.
 	AllowDuplicateIP bool `mapstructure:"allow-duplicate-ip"`
 
+	// Time to wait before flushing messages out on the connection
+	FlushThrottleTimeout time.Duration `mapstructure:"flush-throttle-timeout"`
+
+	// Maximum size of a message packet payload, in bytes
+	MaxPacketMsgPayloadSize int `mapstructure:"max-packet-msg-payload-size"`
+
+	// Rate at which packets can be sent, in bytes/second
+	SendRate int64 `mapstructure:"send-rate"`
+
+	// Rate at which packets can be received, in bytes/second
+	RecvRate int64 `mapstructure:"recv-rate"`
+
 	// Peer connection configuration.
 	HandshakeTimeout time.Duration `mapstructure:"handshake-timeout"`
 	DialTimeout      time.Duration `mapstructure:"dial-timeout"`
@@ -661,13 +673,40 @@ func DefaultP2PConfig() *P2PConfig {
 		UPNP:                          false,
 		MaxConnections:                64,
 		MaxIncomingConnectionAttempts: 100,
-		PexReactor:                    true,
-		AllowDuplicateIP:              false,
-		HandshakeTimeout:              20 * time.Second,
-		DialTimeout:                   3 * time.Second,
-		TestDialFail:                  false,
-		QueueType:                     "priority",
+		FlushThrottleTimeout:          100 * time.Millisecond,
+		// The MTU (Maximum Transmission Unit) for Ethernet is 1500 bytes.
+		// The IP header and the TCP header take up 20 bytes each at least (unless
+		// optional header fields are used) and thus the max for (non-Jumbo frame)
+		// Ethernet is 1500 - 20 -20 = 1460
+		// Source: https://stackoverflow.com/a/3074427/820520
+		MaxPacketMsgPayloadSize: 1400,
+		SendRate:                5120000, // 5 mB/s
+		RecvRate:                5120000, // 5 mB/s
+		PexReactor:              true,
+		AllowDuplicateIP:        false,
+		HandshakeTimeout:        20 * time.Second,
+		DialTimeout:             3 * time.Second,
+		TestDialFail:            false,
+		QueueType:               "priority",
 	}
+}
+
+// ValidateBasic performs basic validation (checking param bounds, etc.) and
+// returns an error if any check fails.
+func (cfg *P2PConfig) ValidateBasic() error {
+	if cfg.FlushThrottleTimeout < 0 {
+		return errors.New("flush-throttle-timeout can't be negative")
+	}
+	if cfg.MaxPacketMsgPayloadSize < 0 {
+		return errors.New("max-packet-msg-payload-size can't be negative")
+	}
+	if cfg.SendRate < 0 {
+		return errors.New("send-rate can't be negative")
+	}
+	if cfg.RecvRate < 0 {
+		return errors.New("recv-rate can't be negative")
+	}
+	return nil
 }
 
 // TestP2PConfig returns a configuration for testing the peer-to-peer layer
@@ -675,6 +714,8 @@ func TestP2PConfig() *P2PConfig {
 	cfg := DefaultP2PConfig()
 	cfg.ListenAddress = "tcp://127.0.0.1:36656"
 	cfg.AllowDuplicateIP = true
+	cfg.FlushThrottleTimeout = 10 * time.Millisecond
+
 	return cfg
 }
 
