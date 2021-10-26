@@ -160,7 +160,7 @@ func NopMetrics() *Metrics {
 // type that is passed in.
 // This method uses a map on the Metrics struct so that each label name only needs
 // to be produced once to prevent expensive string operations.
-func (m *Metrics) ValueToMetricLabel(i interface{}) string {
+func (m *Metrics) ValueToMetricLabelRW(i interface{}) string {
 	t := reflect.TypeOf(i)
 	m.mtx.RLock()
 
@@ -177,4 +177,28 @@ func (m *Metrics) ValueToMetricLabel(i interface{}) string {
 	defer m.mtx.Unlock()
 	m.messageLabelNames[t] = l
 	return l
+}
+
+// ValueToMetricLabel is a method that is used to produce a prometheus label value of the golang
+// type that is passed in.
+// This method uses a map on the Metrics struct so that each label name only needs
+// to be produced once to prevent expensive string operations.
+func (m *Metrics) ValueToMetricLabelM(i interface{}) string {
+	t := reflect.TypeOf(i)
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	if s, ok := m.messageLabelNames[t]; ok {
+		return s
+	}
+
+	s := t.String()
+	ss := valueToLabelRegexp.FindStringSubmatch(s)
+	l := fmt.Sprintf("%s_%s", ss[1], ss[2])
+	m.messageLabelNames[t] = l
+	return l
+}
+
+func (m *Metrics) ValueToMetricLabel(i interface{}) string {
+	return m.ValueToMetricLabelRW(i)
 }
