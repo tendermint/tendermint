@@ -29,8 +29,6 @@ const (
 	ModeValidator = "validator"
 	ModeSeed      = "seed"
 
-	BlockSyncV0 = "v0"
-
 	MempoolV0 = "v0"
 	MempoolV1 = "v1"
 )
@@ -73,7 +71,6 @@ type Config struct {
 	P2P             *P2PConfig             `mapstructure:"p2p"`
 	Mempool         *MempoolConfig         `mapstructure:"mempool"`
 	StateSync       *StateSyncConfig       `mapstructure:"statesync"`
-	BlockSync       *BlockSyncConfig       `mapstructure:"blocksync"`
 	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
 	TxIndex         *TxIndexConfig         `mapstructure:"tx-index"`
 	Instrumentation *InstrumentationConfig `mapstructure:"instrumentation"`
@@ -88,7 +85,6 @@ func DefaultConfig() *Config {
 		P2P:             DefaultP2PConfig(),
 		Mempool:         DefaultMempoolConfig(),
 		StateSync:       DefaultStateSyncConfig(),
-		BlockSync:       DefaultBlockSyncConfig(),
 		Consensus:       DefaultConsensusConfig(),
 		TxIndex:         DefaultTxIndexConfig(),
 		Instrumentation: DefaultInstrumentationConfig(),
@@ -111,7 +107,6 @@ func TestConfig() *Config {
 		P2P:             TestP2PConfig(),
 		Mempool:         TestMempoolConfig(),
 		StateSync:       TestStateSyncConfig(),
-		BlockSync:       TestBlockSyncConfig(),
 		Consensus:       TestConsensusConfig(),
 		TxIndex:         TestTxIndexConfig(),
 		Instrumentation: TestInstrumentationConfig(),
@@ -144,9 +139,6 @@ func (cfg *Config) ValidateBasic() error {
 	}
 	if err := cfg.StateSync.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [statesync] section: %w", err)
-	}
-	if err := cfg.BlockSync.ValidateBasic(); err != nil {
-		return fmt.Errorf("error in [blocksync] section: %w", err)
 	}
 	if err := cfg.Consensus.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [consensus] section: %w", err)
@@ -331,28 +323,6 @@ func (cfg BaseConfig) ValidateBasic() error {
 
 	default:
 		return fmt.Errorf("unknown mode: %v", cfg.Mode)
-	}
-
-	// TODO (https://github.com/tendermint/tendermint/issues/6908) remove this check after the v0.35 release cycle.
-	// This check was added to give users an upgrade prompt to use the new
-	// configuration option in v0.35. In future release cycles they should no longer
-	// be using this configuration parameter so the check can be removed.
-	// The cfg.Other field can likely be removed at the same time if it is not referenced
-	// elsewhere as it was added to service this check.
-	if fs, ok := cfg.Other["fastsync"]; ok {
-		if _, ok := fs.(map[string]interface{}); ok {
-			return fmt.Errorf("a configuration section named 'fastsync' was found in the " +
-				"configuration file. The 'fastsync' section has been renamed to " +
-				"'blocksync', please update the 'fastsync' field in your configuration file to 'blocksync'")
-		}
-	}
-	if fs, ok := cfg.Other["fast-sync"]; ok {
-		if fs != "" {
-			return fmt.Errorf("a parameter named 'fast-sync' was found in the " +
-				"configuration file. The parameter to enable or disable quickly syncing with a blockchain" +
-				"has moved to the [blocksync] section of the configuration file as blocksync.enable. " +
-				"Please move the 'fast-sync' field in your configuration file to 'blocksync.enable'")
-		}
 	}
 
 	return nil
@@ -942,31 +912,6 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 
 	return nil
 }
-
-//-----------------------------------------------------------------------------
-
-// BlockSyncConfig (formerly known as FastSync) defines the configuration for the Tendermint block sync service
-// If this node is many blocks behind the tip of the chain, BlockSync
-// allows them to catchup quickly by downloading blocks in parallel
-// and verifying their commits.
-type BlockSyncConfig struct {
-	Enable bool `mapstructure:"enable"`
-}
-
-// DefaultBlockSyncConfig returns a default configuration for the block sync service
-func DefaultBlockSyncConfig() *BlockSyncConfig {
-	return &BlockSyncConfig{
-		Enable: true,
-	}
-}
-
-// TestBlockSyncConfig returns a default configuration for the block sync.
-func TestBlockSyncConfig() *BlockSyncConfig {
-	return DefaultBlockSyncConfig()
-}
-
-// ValidateBasic performs basic validation.
-func (cfg *BlockSyncConfig) ValidateBasic() error { return nil }
 
 //-----------------------------------------------------------------------------
 // ConsensusConfig
