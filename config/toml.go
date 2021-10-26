@@ -300,6 +300,23 @@ allow-duplicate-ip = {{ .P2P.AllowDuplicateIP }}
 handshake-timeout = "{{ .P2P.HandshakeTimeout }}"
 dial-timeout = "{{ .P2P.DialTimeout }}"
 
+# Time to wait before flushing messages out on the connection
+# TODO: Remove once MConnConnection is removed.
+flush-throttle-timeout = "{{ .P2P.FlushThrottleTimeout }}"
+
+# Maximum size of a message packet payload, in bytes
+# TODO: Remove once MConnConnection is removed.
+max-packet-msg-payload-size = {{ .P2P.MaxPacketMsgPayloadSize }}
+
+# Rate at which packets can be sent, in bytes/second
+# TODO: Remove once MConnConnection is removed.
+send-rate = {{ .P2P.SendRate }}
+
+# Rate at which packets can be received, in bytes/second
+# TODO: Remove once MConnConnection is removed.
+recv-rate = {{ .P2P.RecvRate }}
+
+
 #######################################################
 ###          Mempool Configuration Option          ###
 #######################################################
