@@ -174,6 +174,34 @@ For more details, see:
 * [JetBrains configuration](https://blog.jetbrains.com/go/2020/05/06/debugging-a-go-application-inside-a-docker-container/)
 * [Visual Studio Code configuration](https://medium.com/@kaperys/delve-into-docker-d6c92be2f823)
 
+#### Core dumps
+
+To analyze core dumps:
+
+1. Examine [Dockerfile](docker/Dockerfile) to ensure `ENV TENDERMINT_BUILD_OPTIONS`  contains `nostrip` option AND `GOTRACEBACK` is set to `crash`, for example: 
+   
+   ```docker
+	ENV TENDERMINT_BUILD_OPTIONS badgerdb,boltdb,cleveldb,rocksdb,nostrip
+	ENV GOTRACEBACK=crash
+   ```
+   
+2. Build the container with `make`
+3. On the **host** machine, set the location of core files:
+   
+   ```bash
+   echo /core.%p | sudo tee /proc/sys/kernel/core_pattern
+   ```
+
+4. After the container stops due to panic, you can export its contents and run delve debugger:
+
+	```bash
+	CONTAINER=<container name>
+	docker export -o ${CONTAINER}.tar ${CONTAINER}
+	mkdir ${CONTAINER}
+	cd ${CONTAINER}
+	tar -xf ../${CONTAINER}.tar
+	dlv core ./usr/bin/tenderdash ./core.*
+	```
 
 ## Enabling IPv6
 

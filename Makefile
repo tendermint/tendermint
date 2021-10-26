@@ -19,6 +19,9 @@ CGO_ENABLED ?= 1
 ifeq (,$(findstring nostrip,$(TENDERMINT_BUILD_OPTIONS)))
   BUILD_FLAGS += -trimpath
   LD_FLAGS += -s -w
+else
+  BUILD_FLAGS += -gcflags=all="-N -l"
+  export GOTRACEBACK = crash
 endif
 
 # handle race
