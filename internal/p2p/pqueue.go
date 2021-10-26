@@ -256,7 +256,14 @@ func (s *pqScheduler) process() {
 
 				s.metrics.PeerSendBytesTotal.With(
 					"chID", chIDStr,
+<<<<<<< HEAD
 					"peer_id", string(pqEnv.envelope.To)).Add(float64(pqEnv.size))
+=======
+					"peer_id", string(pqEnv.envelope.To),
+					"message_type", s.metrics.ValueToMetricLabel(pqEnv.envelope.Message)).Add(float64(pqEnv.size))
+				s.metrics.PeerPendingSendBytes.With(
+					"peer_id", string(pqEnv.envelope.To)).Add(float64(-pqEnv.size))
+>>>>>>> b4bc6bb4e (p2p: add message type into the send/recv bytes metrics (#7155))
 				select {
 				case s.dequeueCh <- pqEnv.envelope:
 				case <-s.closer.Done():
