@@ -80,12 +80,23 @@ func (p *http) LightBlock(ctx context.Context, height int64) (*types.LightBlock,
 		return nil, err
 	}
 
+	if sh.Commit == nil {
+		return nil, provider.ErrBadLightBlock{
+			Reason: fmt.Errorf("height %d responded with nil commit: %+v", height, sh),
+		}
+	}
+
+	if sh.Header == nil {
+		return nil, provider.ErrBadLightBlock{
+			Reason: fmt.Errorf("height %d responded with nil header: %+v", height, sh),
+		}
+	}
+
 	if height != 0 && sh.Height != height {
 		return nil, provider.ErrBadLightBlock{
 			Reason: fmt.Errorf("height %d responded doesn't match height %d requested", sh.Height, height),
 		}
 	}
-
 	vs, err := p.validatorSet(ctx, &sh.Height)
 	if err != nil {
 		return nil, err
@@ -193,10 +204,6 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 				return nil, provider.ErrLightBlockNotFound
 			}
 			// we wait and try again with exponential backoff
-			time.Sleep(backoffTimeout(uint16(attempt)))
-			continue
-		}
-		if commit == nil {
 			time.Sleep(backoffTimeout(uint16(attempt)))
 			continue
 		}

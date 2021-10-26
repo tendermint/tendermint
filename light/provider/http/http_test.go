@@ -13,7 +13,11 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/light/provider"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	rpcmock "github.com/tendermint/tendermint/rpc/client/mocks"
+
+	testify "github.com/stretchr/testify/mock"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
+	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
@@ -88,4 +92,42 @@ func TestProvider(t *testing.T) {
 	_, err = p.LightBlock(context.Background(), 1)
 	require.Error(t, err)
 	assert.Equal(t, provider.ErrLightBlockNotFound, err)
+}
+
+// TestLightClient_NilCommit ensures correct handling of a case where commit returned by http client is nil
+func TestLightClient_NilCommit(t *testing.T) {
+	chainID := "none"
+	c := &rpcmock.RemoteClient{}
+	p := lighthttp.NewWithClient(chainID, c)
+	require.NotNil(t, p)
+
+	c.On("Commit", testify.Anything, testify.Anything).Return(
+		&coretypes.ResultCommit{
+			SignedHeader: types.SignedHeader{
+				Header: &types.Header{},
+				Commit: nil,
+			}}, nil)
+
+	sh, err := p.LightBlock(context.Background(), 0)
+	require.Error(t, err)
+	require.Nil(t, sh)
+}
+
+// TestLightClient_NilCommit ensures correct handling of a case where header returned by http client is nil
+func TestLightClient_NilHeader(t *testing.T) {
+	chainID := "none"
+	c := &rpcmock.RemoteClient{}
+	p := lighthttp.NewWithClient(chainID, c)
+	require.NotNil(t, p)
+
+	c.On("Commit", testify.Anything, testify.Anything).Return(
+		&coretypes.ResultCommit{
+			SignedHeader: types.SignedHeader{
+				Header: nil,
+				Commit: &types.Commit{},
+			}}, nil)
+
+	sh, err := p.LightBlock(context.Background(), 0)
+	require.Error(t, err)
+	require.Nil(t, sh)
 }
