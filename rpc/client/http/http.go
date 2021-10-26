@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -444,6 +445,12 @@ func (c *baseRPCClient) Commit(ctx context.Context, height *int64) (*ctypes.Resu
 	_, err := c.caller.Call(ctx, "commit", params, result)
 	if err != nil {
 		return nil, err
+	}
+	if result.Commit == nil {
+		return nil, fmt.Errorf("cannot fetch commit: commit is nil: %+v", result)
+	}
+	if result.Header == nil {
+		return nil, fmt.Errorf("cannot fetch commit: header is nil: %+v", result)
 	}
 	return result, nil
 }
