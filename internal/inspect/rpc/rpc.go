@@ -26,6 +26,15 @@ type Server struct {
 	Config  *config.RPCConfig
 }
 
+type eventBusSubscriber interface {
+	Subscribe(ctx context.Context, subscriber string, query pubsub.Query, outCapacity ...int) (types.Subscription, error)
+	Unsubscribe(ctx context.Context, args pubsub.UnsubscribeArgs) error
+	UnsubscribeAll(ctx context.Context, subscriber string) error
+
+	NumClients() int
+	NumClientSubscriptions(clientID string) int
+}
+
 // Routes returns the set of routes used by the Inspector server.
 //
 //nolint: lll
@@ -59,7 +68,7 @@ func Handler(rpcConfig *config.RPCConfig, routes core.RoutesMap, logger log.Logg
 	mux := http.NewServeMux()
 	wmLogger := logger.With("protocol", "websocket")
 
-	var eventBus types.EventBusSubscriber
+	var eventBus eventBusSubscriber
 
 	websocketDisconnectFn := func(remoteAddr string) {
 		err := eventBus.UnsubscribeAll(context.Background(), remoteAddr)

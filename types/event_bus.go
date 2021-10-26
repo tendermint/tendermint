@@ -13,15 +13,6 @@ import (
 
 const defaultCapacity = 0
 
-type EventBusSubscriber interface {
-	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, outCapacity ...int) (Subscription, error)
-	Unsubscribe(ctx context.Context, args tmpubsub.UnsubscribeArgs) error
-	UnsubscribeAll(ctx context.Context, subscriber string) error
-
-	NumClients() int
-	NumClientSubscriptions(clientID string) int
-}
-
 type Subscription interface {
 	ID() string
 	Out() <-chan tmpubsub.Message
