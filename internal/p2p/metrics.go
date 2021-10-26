@@ -22,7 +22,7 @@ var (
 	// valueToLabelRegexp is used to find the golang package name and type name
 	// so that the name can be turned into a prometheus label where the characters
 	// in the label do not include prometheus special characters such as '*' and '.'.
-	valueToLabelRegexp = regexp.MustCompile("\\*?([a-zA-Z0-0]+)\\.(.*)")
+	valueToLabelRegexp = regexp.MustCompile(`\*?(\w+)\.(.*)`)
 )
 
 // Metrics contains metrics exposed by this package.
@@ -156,7 +156,7 @@ func NopMetrics() *Metrics {
 	}
 }
 
-// ValueToMetricLabel is a function that is used to produce a prometheus label value of the golang
+// ValueToMetricLabel is a method that is used to produce a prometheus label value of the golang
 // type that is passed in.
 // This method uses a map on the Metrics struct so that each label name only needs
 // to be produced once to prevent expensive string operations.
