@@ -245,7 +245,7 @@ func makeNode(cfg *config.Config,
 
 	// Determine whether we should do block sync. This must happen after the handshake, since the
 	// app may modify the validator set, specifying ourself as the only validator.
-	blockSync := cfg.BlockSync.Enable && !onlyValidatorIsUs(state, pubKey)
+	blockSync := !onlyValidatorIsUs(state, pubKey)
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger, cfg.Mode)
 
@@ -571,10 +571,8 @@ func (n *nodeImpl) OnStart() error {
 	}
 
 	if n.config.Mode != config.ModeSeed {
-		if n.config.BlockSync.Enable {
-			if err := n.bcReactor.Start(); err != nil {
-				return err
-			}
+		if err := n.bcReactor.Start(); err != nil {
+			return err
 		}
 
 		// Start the real consensus reactor separately since the switch uses the shim.
@@ -642,29 +640,32 @@ func (n *nodeImpl) OnStart() error {
 
 			n.consensusReactor.SetStateSyncingMetrics(0)
 
-			d := types.EventDataStateSyncStatus{Complete: true, Height: state.LastBlockHeight}
-			if err := n.eventBus.PublishEventStateSyncStatus(d); err != nil {
+			if err := n.eventBus.PublishEventStateSyncStatus(
+				types.EventDataStateSyncStatus{
+					Complete: true,
+					Height:   state.LastBlockHeight,
+				}); err != nil {
+
 				n.eventBus.Logger.Error("failed to emit the statesync start event", "err", err)
 			}
 
 			// TODO: Some form of orchestrator is needed here between the state
 			// advancing reactors to be able to control which one of the three
 			// is running
-			if n.config.BlockSync.Enable {
-				// FIXME Very ugly to have these metrics bleed through here.
-				n.consensusReactor.SetBlockSyncingMetrics(1)
-				if err := bcR.SwitchToBlockSync(state); err != nil {
-					n.Logger.Error("failed to switch to block sync", "err", err)
-					return
-				}
+			// FIXME Very ugly to have these metrics bleed through here.
+			n.consensusReactor.SetBlockSyncingMetrics(1)
+			if err := bcR.SwitchToBlockSync(state); err != nil {
+				n.Logger.Error("failed to switch to block sync", "err", err)
+				return
+			}
 
-				d := types.EventDataBlockSyncStatus{Complete: false, Height: state.LastBlockHeight}
-				if err := n.eventBus.PublishEventBlockSyncStatus(d); err != nil {
-					n.eventBus.Logger.Error("failed to emit the block sync starting event", "err", err)
-				}
+			if err := n.eventBus.PublishEventBlockSyncStatus(
+				types.EventDataBlockSyncStatus{
+					Complete: false,
+					Height:   state.LastBlockHeight,
+				}); err != nil {
 
-			} else {
-				n.consensusReactor.SwitchToConsensus(state, true)
+				n.eventBus.Logger.Error("failed to emit the block sync starting event", "err", err)
 			}
 		}()
 	}
@@ -697,11 +698,10 @@ func (n *nodeImpl) OnStop() {
 
 	if n.config.Mode != config.ModeSeed {
 		// now stop the reactors
-		if n.config.BlockSync.Enable {
-			// Stop the real blockchain reactor separately since the switch uses the shim.
-			if err := n.bcReactor.Stop(); err != nil {
-				n.Logger.Error("failed to stop the blockchain reactor", "err", err)
-			}
+
+		// Stop the real blockchain reactor separately since the switch uses the shim.
+		if err := n.bcReactor.Stop(); err != nil {
+			n.Logger.Error("failed to stop the blockchain reactor", "err", err)
 		}
 
 		// Stop the real consensus reactor separately since the switch uses the shim.

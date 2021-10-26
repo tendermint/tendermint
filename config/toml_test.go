@@ -70,7 +70,6 @@ func checkConfig(t *testing.T, configFile string) {
 		"moniker",
 		"seeds",
 		"proxy-app",
-		"blocksync",
 		"create-empty-blocks",
 		"peer",
 		"timeout",
