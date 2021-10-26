@@ -249,6 +249,7 @@ type Router struct {
 	peerManager        *PeerManager
 	chDescs            []*ChannelDescriptor
 	transports         []Transport
+	endpoints          []Endpoint
 	connTracker        connectionTracker
 	protocolTransports map[Protocol]Transport
 	stopCh             chan struct{} // signals Router shutdown
@@ -277,6 +278,7 @@ func NewRouter(
 	privKey crypto.PrivKey,
 	peerManager *PeerManager,
 	transports []Transport,
+	endpoints []Endpoint,
 	options RouterOptions,
 ) (*Router, error) {
 
@@ -295,6 +297,7 @@ func NewRouter(
 		),
 		chDescs:            make([]*ChannelDescriptor, 0),
 		transports:         transports,
+		endpoints:          endpoints,
 		protocolTransports: map[Protocol]Transport{},
 		peerManager:        peerManager,
 		options:            options,
@@ -1021,11 +1024,20 @@ func (r *Router) NodeInfo() types.NodeInfo {
 
 // OnStart implements service.Service.
 func (r *Router) OnStart() error {
+	for _, transport := range r.transports {
+		for _, endpoint := range r.endpoints {
+			if err := transport.Listen(endpoint); err != nil {
+				return err
+			}
+		}
+	}
+
 	r.Logger.Info(
 		"starting router",
 		"node_id", r.nodeInfo.NodeID,
 		"channels", r.nodeInfo.Channels,
 		"listen_addr", r.nodeInfo.ListenAddr,
+		"transports", len(r.transports),
 	)
 
 	go r.dialPeers()

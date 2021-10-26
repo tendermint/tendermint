@@ -52,7 +52,6 @@ type nodeImpl struct {
 	privValidator types.PrivValidator // local node's validator key
 
 	// network
-	transport   *p2p.MConnTransport
 	peerManager *p2p.PeerManager
 	router      *p2p.Router
 	nodeInfo    types.NodeInfo
@@ -257,9 +256,6 @@ func makeNode(cfg *config.Config,
 
 	}
 
-	p2pLogger := logger.With("module", "p2p")
-	transport := createTransport(p2pLogger, cfg)
-
 	peerManager, peerCloser, err := createPeerManager(cfg, dbProvider, nodeKey.ID)
 	closers = append(closers, peerCloser)
 	if err != nil {
@@ -268,8 +264,8 @@ func makeNode(cfg *config.Config,
 			makeCloser(closers))
 	}
 
-	router, err := createRouter(p2pLogger, nodeMetrics.p2p, nodeInfo, nodeKey.PrivKey,
-		peerManager, transport, getRouterConfig(cfg, proxyApp))
+	router, err := createRouter(logger, nodeMetrics.p2p, nodeInfo, nodeKey,
+		peerManager, cfg, proxyApp)
 	if err != nil {
 		return nil, combineCloseError(
 			fmt.Errorf("failed to create router: %w", err),
@@ -381,12 +377,9 @@ func makeNode(cfg *config.Config,
 	// If PEX is on, it should handle dialing the seeds. Otherwise the switch does it.
 	// Note we currently use the addrBook regardless at least for AddOurAddress
 
-	var pexReactor service.Service
-
-	pexReactor, err = createPEXReactor(logger, peerManager, router)
+	pexReactor, err := createPEXReactor(logger, peerManager, router)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
-
 	}
 
 	if cfg.RPC.PprofListenAddress != "" {
@@ -401,7 +394,6 @@ func makeNode(cfg *config.Config,
 		genesisDoc:    genDoc,
 		privValidator: privValidator,
 
-		transport:   transport,
 		peerManager: peerManager,
 		router:      router,
 		nodeInfo:    nodeInfo,
@@ -479,8 +471,6 @@ func makeSeedNode(cfg *config.Config,
 
 	// Setup Transport and Switch.
 	p2pMetrics := p2p.PrometheusMetrics(cfg.Instrumentation.Namespace, "chain_id", genDoc.ChainID)
-	p2pLogger := logger.With("module", "p2p")
-	transport := createTransport(p2pLogger, cfg)
 
 	peerManager, closer, err := createPeerManager(cfg, dbProvider, nodeKey.ID)
 	if err != nil {
@@ -489,8 +479,8 @@ func makeSeedNode(cfg *config.Config,
 			closer)
 	}
 
-	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey,
-		peerManager, transport, getRouterConfig(cfg, nil))
+	router, err := createRouter(logger, p2pMetrics, nodeInfo, nodeKey,
+		peerManager, cfg, nil)
 	if err != nil {
 		return nil, combineCloseError(
 			fmt.Errorf("failed to create router: %w", err),
@@ -516,7 +506,6 @@ func makeSeedNode(cfg *config.Config,
 		config:     cfg,
 		genesisDoc: genDoc,
 
-		transport:   transport,
 		nodeInfo:    nodeInfo,
 		nodeKey:     nodeKey,
 		peerManager: peerManager,
@@ -556,19 +545,10 @@ func (n *nodeImpl) OnStart() error {
 	}
 
 	// Start the transport.
-	ep, err := p2p.NewEndpoint(n.nodeKey.ID.AddressString(n.config.P2P.ListenAddress))
-	if err != nil {
+	if err := n.router.Start(); err != nil {
 		return err
 	}
-	if err := n.transport.Listen(ep); err != nil {
-		return err
-	}
-
 	n.isListening = true
-
-	if err = n.router.Start(); err != nil {
-		return err
-	}
 
 	if n.config.Mode != config.ModeSeed {
 		if err := n.bcReactor.Start(); err != nil {
@@ -732,11 +712,6 @@ func (n *nodeImpl) OnStop() {
 	if err := n.router.Stop(); err != nil {
 		n.Logger.Error("failed to stop router", "err", err)
 	}
-
-	if err := n.transport.Close(); err != nil {
-		n.Logger.Error("Error closing transport", "err", err)
-	}
-
 	n.isListening = false
 
 	// finally stop the listeners / external services
