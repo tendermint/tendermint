@@ -35,7 +35,6 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"socket address to listen on for connections from external priv-validator process")
 
 	// node flags
-	cmd.Flags().Bool("blocksync.enable", config.BlockSync.Enable, "enable fast blockchain syncing")
 
 	// TODO (https://github.com/tendermint/tendermint/issues/6908): remove this check after the v0.35 release cycle
 	// This check was added to give users an upgrade prompt to use the new flag for syncing.
