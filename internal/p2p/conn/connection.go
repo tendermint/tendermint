@@ -14,7 +14,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 
-	flow "github.com/tendermint/tendermint/internal/libs/flowrate"
+	"github.com/tendermint/tendermint/internal/libs/flowrate"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/libs/timer"
@@ -77,8 +77,8 @@ type MConnection struct {
 	conn          net.Conn
 	bufConnReader *bufio.Reader
 	bufConnWriter *bufio.Writer
-	sendMonitor   *flow.Monitor
-	recvMonitor   *flow.Monitor
+	sendMonitor   *flowrate.Monitor
+	recvMonitor   *flowrate.Monitor
 	send          chan struct{}
 	pong          chan struct{}
 	channels      []*channel
@@ -175,8 +175,8 @@ func NewMConnectionWithConfig(
 		conn:          conn,
 		bufConnReader: bufio.NewReaderSize(conn, minReadBufferSize),
 		bufConnWriter: bufio.NewWriterSize(conn, minWriteBufferSize),
-		sendMonitor:   flow.New(0, 0),
-		recvMonitor:   flow.New(0, 0),
+		sendMonitor:   flowrate.New(0, 0),
+		recvMonitor:   flowrate.New(0, 0),
 		send:          make(chan struct{}, 1),
 		pong:          make(chan struct{}, 1),
 		onReceive:     onReceive,
