@@ -12,21 +12,20 @@ Special thanks to external contributors on this release:
 
 - CLI/RPC/Config
 
-  - [rpc] Remove the deprecated gRPC interface to the RPC service (@creachadair).
+  - [rpc] Remove the deprecated gRPC interface to the RPC service. (@creachadair)
+  - [blocksync] \#7159 Remove support for disabling blocksync in any circumstance. (@tychoish)
 
 - Apps
+
   - [proto/tendermint] \#6976 Remove core protobuf files in favor of only housing them in the [tendermint/spec](https://github.com/tendermint/spec) repository.
 
 - P2P Protocol
 
-  - [p2p] \#7035 Remove legacy P2P routing implementation and
-    associated configuration options (@tychoish)
+  - [p2p] \#7035 Remove legacy P2P routing implementation and associated configuration options. (@tychoish)
 
 - Go API
 
-  - [blocksync] \#7046 Remove v2 implementation of the blocksync
-    service and recactor, which was disabled in the previous release
-    (@tychoish)
+  - [blocksync] \#7046 Remove v2 implementation of the blocksync service and recactor, which was disabled in the previous release. (@tychoish)
   - [p2p] \#7064 Remove WDRR queue implementation. (@tychoish)
 
 - Blockchain Protocol

@@ -294,11 +294,6 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 		cfg.Mempool.Version = node.Mempool
 	}
 
-	cfg.BlockSync.Enable = true
-	if node.BlockSync == "" {
-		cfg.BlockSync.Enable = false
-	}
-
 	switch node.StateSync {
 	case e2e.StateSyncP2P:
 		cfg.StateSync.Enable = true

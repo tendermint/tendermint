@@ -416,16 +416,6 @@ chunk-request-timeout = "{{ .StateSync.ChunkRequestTimeout }}"
 fetchers = "{{ .StateSync.Fetchers }}"
 
 #######################################################
-###       Block Sync Configuration Connections       ###
-#######################################################
-[blocksync]
-
-# If this node is many blocks behind the tip of the chain, BlockSync
-# allows them to catchup quickly by downloading blocks in parallel
-# and verifying their commits
-enable = {{ .BlockSync.Enable }}
-
-#######################################################
 ###         Consensus Configuration Options         ###
 #######################################################
 [consensus]
