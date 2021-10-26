@@ -486,15 +486,17 @@ func createPeerManager(
 }
 
 func createRouter(
-	p2pLogger log.Logger,
+	logger log.Logger,
 	p2pMetrics *p2p.Metrics,
 	nodeInfo types.NodeInfo,
 	nodeKey types.NodeKey,
 	peerManager *p2p.PeerManager,
-	transport p2p.Transport,
 	conf *config.Config,
 	proxyApp proxy.AppConns,
 ) (*p2p.Router, error) {
+
+	p2pLogger := logger.With("module", "p2p")
+	transport := createTransport(p2pLogger, conf)
 
 	ep, err := p2p.NewEndpoint(nodeKey.ID.AddressString(conf.P2P.ListenAddress))
 	if err != nil {

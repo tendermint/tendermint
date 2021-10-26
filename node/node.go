@@ -256,9 +256,6 @@ func makeNode(cfg *config.Config,
 
 	}
 
-	p2pLogger := logger.With("module", "p2p")
-	transport := createTransport(p2pLogger, cfg)
-
 	peerManager, peerCloser, err := createPeerManager(cfg, dbProvider, nodeKey.ID)
 	closers = append(closers, peerCloser)
 	if err != nil {
@@ -267,8 +264,8 @@ func makeNode(cfg *config.Config,
 			makeCloser(closers))
 	}
 
-	router, err := createRouter(p2pLogger, nodeMetrics.p2p, nodeInfo, nodeKey,
-		peerManager, transport, cfg, proxyApp)
+	router, err := createRouter(logger, nodeMetrics.p2p, nodeInfo, nodeKey,
+		peerManager, cfg, proxyApp)
 	if err != nil {
 		return nil, combineCloseError(
 			fmt.Errorf("failed to create router: %w", err),
@@ -474,8 +471,6 @@ func makeSeedNode(cfg *config.Config,
 
 	// Setup Transport and Switch.
 	p2pMetrics := p2p.PrometheusMetrics(cfg.Instrumentation.Namespace, "chain_id", genDoc.ChainID)
-	p2pLogger := logger.With("module", "p2p")
-	transport := createTransport(p2pLogger, cfg)
 
 	peerManager, closer, err := createPeerManager(cfg, dbProvider, nodeKey.ID)
 	if err != nil {
@@ -484,8 +479,8 @@ func makeSeedNode(cfg *config.Config,
 			closer)
 	}
 
-	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey,
-		peerManager, transport, cfg, nil)
+	router, err := createRouter(logger, p2pMetrics, nodeInfo, nodeKey,
+		peerManager, cfg, nil)
 	if err != nil {
 		return nil, combineCloseError(
 			fmt.Errorf("failed to create router: %w", err),
