@@ -256,7 +256,8 @@ func (s *pqScheduler) process() {
 
 				s.metrics.PeerSendBytesTotal.With(
 					"chID", chIDStr,
-					"peer_id", string(pqEnv.envelope.To)).Add(float64(pqEnv.size))
+					"peer_id", string(pqEnv.envelope.To),
+					"message_type", s.metrics.ValueToMetricLabel(pqEnv.envelope.Message)).Add(float64(pqEnv.size))
 				select {
 				case s.dequeueCh <- pqEnv.envelope:
 				case <-s.closer.Done():
