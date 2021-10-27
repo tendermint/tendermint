@@ -23,7 +23,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
-	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/indexer"
@@ -265,15 +264,12 @@ func TestCreateProposalBlock(t *testing.T) {
 	state.ConsensusParams.Evidence.MaxBytes = maxEvidenceBytes
 	proposerAddr, _ := state.Validators.GetByIndex(0)
 
-	mp := mempoolv0.NewCListMempool(
+	mp := mempool.NewTxMempool(
+		logger.With("module", "mempool"),
 		cfg.Mempool,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
-		mempoolv0.WithMetrics(mempool.NopMetrics()),
-		mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
-		mempoolv0.WithPostCheck(sm.TxPostCheck(state)),
 	)
-	mp.SetLogger(logger)
 
 	// Make EvidencePool
 	evidenceDB := dbm.NewMemDB()
@@ -362,15 +358,13 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	proposerAddr, _ := state.Validators.GetByIndex(0)
 
 	// Make Mempool
-	mp := mempoolv0.NewCListMempool(
+
+	mp := mempool.NewTxMempool(
+		logger.With("module", "mempool"),
 		cfg.Mempool,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
-		mempoolv0.WithMetrics(mempool.NopMetrics()),
-		mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
-		mempoolv0.WithPostCheck(sm.TxPostCheck(state)),
 	)
-	mp.SetLogger(logger)
 
 	// fill the mempool with one txs just below the maximum size
 	txLength := int(types.MaxDataBytesNoEvidence(maxBytes, 1))
@@ -426,15 +420,12 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	proposerAddr, _ := state.Validators.GetByIndex(0)
 
 	// Make Mempool
-	mp := mempoolv0.NewCListMempool(
+	mp := mempool.NewTxMempool(
+		logger.With("module", "mempool"),
 		cfg.Mempool,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
-		mempoolv0.WithMetrics(mempool.NopMetrics()),
-		mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
-		mempoolv0.WithPostCheck(sm.TxPostCheck(state)),
 	)
-	mp.SetLogger(logger)
 
 	// fill the mempool with one txs just below the maximum size
 	txLength := int(types.MaxDataBytesNoEvidence(maxBytes, types.MaxVotesCount))

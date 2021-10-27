@@ -1,4 +1,4 @@
-package v1
+package mempool
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/internal/mempool"
 )
 
 func BenchmarkTxMempool_CheckTx(b *testing.B) {
@@ -27,6 +26,6 @@ func BenchmarkTxMempool_CheckTx(b *testing.B) {
 		tx := []byte(fmt.Sprintf("%X=%d", prefix, priority))
 		b.StartTimer()
 
-		require.NoError(b, txmp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{}))
+		require.NoError(b, txmp.CheckTx(context.Background(), tx, nil, TxInfo{}))
 	}
 }

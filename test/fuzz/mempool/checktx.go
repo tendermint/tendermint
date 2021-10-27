@@ -1,4 +1,4 @@
-package v1
+package mempool
 
 import (
 	"context"
@@ -7,10 +7,11 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/mempool"
-	mempoolv1 "github.com/tendermint/tendermint/internal/mempool/v0"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
-var mp mempool.Mempool
+var mp *mempool.TxMempool
+var getMp func() mempool.Mempool
 
 func init() {
 	app := kvstore.NewApplication()
@@ -24,11 +25,22 @@ func init() {
 	cfg := config.DefaultMempoolConfig()
 	cfg.Broadcast = false
 
-	mp = mempoolv1.NewCListMempool(cfg, appConnMem, 0)
+	getMp = func() mempool.Mempool {
+		if mp == nil {
+			mp = mempool.NewTxMempool(
+				log.TestingLogger().With("module", "mempool"),
+				cfg,
+				appConnMem,
+				0,
+			)
+
+		}
+		return mp
+	}
 }
 
 func Fuzz(data []byte) int {
-	err := mp.CheckTx(context.Background(), data, nil, mempool.TxInfo{})
+	err := getMp().CheckTx(context.Background(), data, nil, mempool.TxInfo{})
 	if err != nil {
 		return 0
 	}

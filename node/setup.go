@@ -16,8 +16,6 @@ import (
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
-	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
-	mempoolv1 "github.com/tendermint/tendermint/internal/mempool/v1"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/conn"
 	"github.com/tendermint/tendermint/internal/p2p/pex"
@@ -197,76 +195,37 @@ func createMempoolReactor(
 	logger log.Logger,
 ) (service.Service, mempool.Mempool, error) {
 
-	logger = logger.With("module", "mempool", "version", cfg.Mempool.Version)
-	peerUpdates := peerManager.Subscribe()
+	logger = logger.With("module", "mempool")
 
-	switch cfg.Mempool.Version {
-	case config.MempoolV0:
-		ch, err := router.OpenChannel(mempoolv0.GetChannelDescriptor(cfg.Mempool))
-		if err != nil {
-			return nil, nil, err
-		}
-
-		mp := mempoolv0.NewCListMempool(
-			cfg.Mempool,
-			proxyApp.Mempool(),
-			state.LastBlockHeight,
-			mempoolv0.WithMetrics(memplMetrics),
-			mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
-			mempoolv0.WithPostCheck(sm.TxPostCheck(state)),
-		)
-
-		mp.SetLogger(logger)
-
-		reactor := mempoolv0.NewReactor(
-			logger,
-			cfg.Mempool,
-			peerManager,
-			mp,
-			ch,
-			peerUpdates,
-		)
-
-		if cfg.Consensus.WaitForTxs() {
-			mp.EnableTxsAvailable()
-		}
-
-		return reactor, mp, nil
-
-	case config.MempoolV1:
-		ch, err := router.OpenChannel(mempoolv1.GetChannelDescriptor(cfg.Mempool))
-		if err != nil {
-			return nil, nil, err
-		}
-
-		mp := mempoolv1.NewTxMempool(
-			logger,
-			cfg.Mempool,
-			proxyApp.Mempool(),
-			state.LastBlockHeight,
-			mempoolv1.WithMetrics(memplMetrics),
-			mempoolv1.WithPreCheck(sm.TxPreCheck(state)),
-			mempoolv1.WithPostCheck(sm.TxPostCheck(state)),
-		)
-
-		reactor := mempoolv1.NewReactor(
-			logger,
-			cfg.Mempool,
-			peerManager,
-			mp,
-			ch,
-			peerUpdates,
-		)
-
-		if cfg.Consensus.WaitForTxs() {
-			mp.EnableTxsAvailable()
-		}
-
-		return reactor, mp, nil
-
-	default:
-		return nil, nil, fmt.Errorf("unknown mempool version: %s", cfg.Mempool.Version)
+	ch, err := router.OpenChannel(mempool.GetChannelDescriptor(cfg.Mempool))
+	if err != nil {
+		return nil, nil, err
 	}
+
+	mp := mempool.NewTxMempool(
+		logger,
+		cfg.Mempool,
+		proxyApp.Mempool(),
+		state.LastBlockHeight,
+		mempool.WithMetrics(memplMetrics),
+		mempool.WithPreCheck(sm.TxPreCheck(state)),
+		mempool.WithPostCheck(sm.TxPostCheck(state)),
+	)
+
+	reactor := mempool.NewReactor(
+		logger,
+		cfg.Mempool,
+		peerManager,
+		mp,
+		ch,
+		peerManager.Subscribe(),
+	)
+
+	if cfg.Consensus.WaitForTxs() {
+		mp.EnableTxsAvailable()
+	}
+
+	return reactor, mp, nil
 }
 
 func createEvidenceReactor(
