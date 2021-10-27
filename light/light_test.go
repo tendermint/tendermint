@@ -29,7 +29,8 @@ func TestClientIntegration_Update(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	conf := rpctest.CreateConfig(t.Name())
+	conf, err := rpctest.CreateConfig(t.Name())
+	require.NoError(t, err)
 
 	// Start a test application
 	app := kvstore.NewApplication()
@@ -89,7 +90,8 @@ func TestClientIntegration_VerifyLightBlockAtHeight(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	conf := rpctest.CreateConfig(t.Name())
+	conf, err := rpctest.CreateConfig(t.Name())
+	require.NoError(t, err)
 
 	// Start a test application
 	app := kvstore.NewApplication()

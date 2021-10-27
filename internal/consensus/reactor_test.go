@@ -334,7 +334,8 @@ func TestReactorWithEvidence(t *testing.T) {
 		stateStore := sm.NewStore(stateDB)
 		state, err := sm.MakeGenesisState(genDoc)
 		require.NoError(t, err)
-		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+		thisConfig, err := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+		require.NoError(t, err)
 
 		defer os.RemoveAll(thisConfig.RootDir)
 

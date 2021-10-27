@@ -57,15 +57,18 @@ func makeAddrs() (p2pAddr, rpcAddr string) {
 	return fmt.Sprintf(addrTemplate, randPort()), fmt.Sprintf(addrTemplate, randPort())
 }
 
-func CreateConfig(testName string) *config.Config {
-	c := config.ResetTestRoot(testName)
+func CreateConfig(testName string) (*config.Config, error) {
+	c, err := config.ResetTestRoot(testName)
+	if err != nil {
+		return nil, err
+	}
 
 	p2pAddr, rpcAddr := makeAddrs()
 	c.P2P.ListenAddress = p2pAddr
 	c.RPC.ListenAddress = rpcAddr
 	c.Consensus.WalPath = "rpc-test"
 	c.RPC.CORSAllowedOrigins = []string{"https://tendermint.com/"}
-	return c
+	return c, nil
 }
 
 type ServiceCloser func(context.Context) error
