@@ -249,6 +249,7 @@ func (n *Network) MakeNode(t *testing.T, opts NodeOptions) *Node {
 		privKey,
 		peerManager,
 		[]p2p.Transport{transport},
+		transport.Endpoints(),
 		p2p.RouterOptions{DialSleep: func(_ context.Context) {}},
 	)
 	require.NoError(t, err)
