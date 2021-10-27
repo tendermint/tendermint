@@ -117,6 +117,8 @@ func (t *MemoryTransport) String() string {
 	return string(MemoryProtocol)
 }
 
+func (*MemoryTransport) Listen(Endpoint) error { return nil }
+
 func (t *MemoryTransport) AddChannelDescriptors([]*ChannelDescriptor) {}
 
 // Protocols implements Transport.

@@ -104,11 +104,6 @@ func TestStateSyncConfigValidateBasic(t *testing.T) {
 	require.NoError(t, cfg.ValidateBasic())
 }
 
-func TestBlockSyncConfigValidateBasic(t *testing.T) {
-	cfg := TestBlockSyncConfig()
-	assert.NoError(t, cfg.ValidateBasic())
-}
-
 func TestConsensusConfig_ValidateBasic(t *testing.T) {
 	// nolint: lll
 	testcases := map[string]struct {

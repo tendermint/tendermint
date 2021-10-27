@@ -43,9 +43,6 @@ func TestGenerator(t *testing.T) {
 						t.Run("PrivvalProtocol", func(t *testing.T) {
 							require.NotZero(t, node.PrivvalProtocol)
 						})
-						t.Run("BlockSync", func(t *testing.T) {
-							require.NotZero(t, node.BlockSync)
-						})
 					}
 				})
 			}

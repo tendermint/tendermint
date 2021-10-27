@@ -1,6 +1,11 @@
 package p2p
 
 import (
+	"fmt"
+	"reflect"
+	"regexp"
+	"sync"
+
 	"github.com/go-kit/kit/metrics"
 	"github.com/go-kit/kit/metrics/discard"
 	"github.com/go-kit/kit/metrics/prometheus"
@@ -11,6 +16,13 @@ const (
 	// MetricsSubsystem is a subsystem shared by all metrics exposed by this
 	// package.
 	MetricsSubsystem = "p2p"
+)
+
+var (
+	// valueToLabelRegexp is used to find the golang package name and type name
+	// so that the name can be turned into a prometheus label where the characters
+	// in the label do not include prometheus special characters such as '*' and '.'.
+	valueToLabelRegexp = regexp.MustCompile(`\*?(\w+)\.(.*)`)
 )
 
 // Metrics contains metrics exposed by this package.
@@ -43,6 +55,9 @@ type Metrics struct {
 	// PeerQueueMsgSize defines the average size of messages sent over a peer's
 	// queue for a specific flow (i.e. Channel).
 	PeerQueueMsgSize metrics.Gauge
+
+	mtx               *sync.RWMutex
+	messageLabelNames map[reflect.Type]string
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -68,14 +83,14 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Subsystem: MetricsSubsystem,
 			Name:      "peer_receive_bytes_total",
 			Help:      "Number of bytes received from a given peer.",
-		}, append(labels, "peer_id", "chID")).With(labelsAndValues...),
+		}, append(labels, "peer_id", "chID", "message_type")).With(labelsAndValues...),
 
 		PeerSendBytesTotal: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "peer_send_bytes_total",
 			Help:      "Number of bytes sent to a given peer.",
-		}, append(labels, "peer_id", "chID")).With(labelsAndValues...),
+		}, append(labels, "peer_id", "chID", "message_type")).With(labelsAndValues...),
 
 		PeerPendingSendBytes: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
@@ -118,6 +133,9 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "router_channel_queue_msg_size",
 			Help:      "The size of messages sent over a peer's queue for a specific p2p Channel.",
 		}, append(labels, "ch_id")).With(labelsAndValues...),
+
+		mtx:               &sync.RWMutex{},
+		messageLabelNames: map[reflect.Type]string{},
 	}
 }
 
@@ -133,5 +151,30 @@ func NopMetrics() *Metrics {
 		RouterChannelQueueSend: discard.NewHistogram(),
 		PeerQueueDroppedMsgs:   discard.NewCounter(),
 		PeerQueueMsgSize:       discard.NewGauge(),
+		mtx:                    &sync.RWMutex{},
+		messageLabelNames:      map[reflect.Type]string{},
 	}
+}
+
+// ValueToMetricLabel is a method that is used to produce a prometheus label value of the golang
+// type that is passed in.
+// This method uses a map on the Metrics struct so that each label name only needs
+// to be produced once to prevent expensive string operations.
+func (m *Metrics) ValueToMetricLabel(i interface{}) string {
+	t := reflect.TypeOf(i)
+	m.mtx.RLock()
+
+	if s, ok := m.messageLabelNames[t]; ok {
+		m.mtx.RUnlock()
+		return s
+	}
+	m.mtx.RUnlock()
+
+	s := t.String()
+	ss := valueToLabelRegexp.FindStringSubmatch(s)
+	l := fmt.Sprintf("%s_%s", ss[1], ss[2])
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	m.messageLabelNames[t] = l
+	return l
 }
