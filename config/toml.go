@@ -528,7 +528,10 @@ func ResetTestRootWithChainID(testName string, chainID string) (*Config, error) 
 	privStateFilePath := filepath.Join(rootDir, conf.PrivValidator.State)
 
 	// Write default config file if missing.
-	writeDefaultConfigFileIfNone(rootDir)
+	if err := writeDefaultConfigFileIfNone(rootDir); err != nil {
+		return nil, err
+	}
+
 	if !tmos.FileExists(genesisFilePath) {
 		if chainID == "" {
 			chainID = "tendermint_test"

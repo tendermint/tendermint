@@ -118,16 +118,6 @@ func checkTxs(t *testing.T, txmp *TxMempool, numTxs int, peerID uint16) []testTx
 	return txs
 }
 
-func convertTex(in []testTx) types.Txs {
-	out := make([]types.Tx, len(in))
-
-	for idx := range in {
-		out[idx] = in[idx].tx
-	}
-
-	return out
-}
-
 func TestTxMempool_TxsAvailable(t *testing.T) {
 	txmp := setup(t, 0)
 	txmp.EnableTxsAvailable()
