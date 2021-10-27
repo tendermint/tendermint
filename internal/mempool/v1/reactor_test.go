@@ -107,19 +107,21 @@ func (rts *reactorTestSuite) start(t *testing.T) {
 		"network does not have expected number of nodes")
 }
 
-// NOTE: these are noops just as shims for hte legacy tests. we might
-// want to implement them.
 func (rts *reactorTestSuite) assertMempoolChannelsDrained(t *testing.T) {
 	t.Helper()
 
+	rts.stop(t)
+
+	for _, mch := range rts.mempoolChannels {
+		require.Empty(t, mch.Out, "checking channel %q (len=%d)", mch.ID, len(mch.Out))
+	}
+}
+
+func (rts *reactorTestSuite) stop(t *testing.T) {
 	for id, r := range rts.reactors {
 		require.NoError(t, r.Stop(), "stopping reactor %s", id)
 		r.Wait()
 		require.False(t, r.IsRunning(), "reactor %s did not stop", id)
-	}
-
-	for _, mch := range rts.mempoolChannels {
-		require.Empty(t, mch.Out, "checking channel %q (len=%d)", mch.ID, len(mch.Out))
 	}
 }
 
@@ -195,14 +197,22 @@ func TestReactorBroadcastTxs(t *testing.T) {
 	// primary suite (node).
 	rts.waitForTxns(t, convertTex(txs), secondaries...)
 
+	// ensure that the transactions get fully broadcast to the
+	// rest of the network
+	wg := &sync.WaitGroup{}
 	for _, pool := range rts.mempools {
-		require.Eventually(t, func() bool { return len(txs) == pool.Size() },
-			10*time.Second,
-			50*time.Millisecond,
-		)
+		wg.Add(1)
+		go func(pool *TxMempool) {
+			defer wg.Done()
+			require.Eventually(t, func() bool { return len(txs) == pool.Size() },
+				time.Minute,
+				100*time.Millisecond,
+			)
+		}(pool)
 	}
+	wg.Wait()
 
-	rts.assertMempoolChannelsDrained(t)
+	rts.stop(t)
 }
 
 // regression test for https://github.com/tendermint/tendermint/issues/5408
