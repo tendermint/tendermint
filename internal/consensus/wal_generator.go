@@ -154,7 +154,8 @@ func makeAddrs() (string, string, string) {
 
 // getConfig returns a config for test cases
 func getConfig(t *testing.T) *config.Config {
-	c := config.ResetTestRoot(t.Name())
+	c, err := config.ResetTestRoot(t.Name())
+	require.NoError(t, err)
 
 	// and we use random ports to run in parallel
 	tm, rpc, grpc := makeAddrs()

@@ -28,7 +28,8 @@ func assertMempool(txn txNotifier) mempool.Mempool {
 func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	baseConfig := configSetup(t)
 
-	config := ResetConfig("consensus_mempool_txs_available_test")
+	config, err := ResetConfig("consensus_mempool_txs_available_test")
+	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
 	config.Consensus.CreateEmptyBlocks = false
@@ -50,7 +51,8 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	baseConfig := configSetup(t)
 
-	config := ResetConfig("consensus_mempool_txs_available_test")
+	config, err := ResetConfig("consensus_mempool_txs_available_test")
+	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
 	config.Consensus.CreateEmptyBlocksInterval = ensureTimeout
@@ -70,7 +72,8 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 func TestMempoolProgressInHigherRound(t *testing.T) {
 	baseConfig := configSetup(t)
 
-	config := ResetConfig("consensus_mempool_txs_available_test")
+	config, err := ResetConfig("consensus_mempool_txs_available_test")
+	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
 	config.Consensus.CreateEmptyBlocks = false

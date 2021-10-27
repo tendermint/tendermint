@@ -131,7 +131,8 @@ func TestWALCrash(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			consensusReplayConfig := ResetConfig(tc.name)
+			consensusReplayConfig, err := ResetConfig(tc.name)
+			require.NoError(t, err)
 			crashWALandCheckLiveness(t, consensusReplayConfig, tc.initFn, tc.heightToStop)
 		})
 	}
@@ -690,7 +691,8 @@ func testHandshakeReplay(t *testing.T, sim *simulatorTestSuite, nBlocks int, mod
 	cfg := sim.Config
 
 	if testValidatorsChange {
-		testConfig := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), mode))
+		testConfig, err := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), mode))
+		require.NoError(t, err)
 		defer func() { _ = os.RemoveAll(testConfig.RootDir) }()
 		stateDB = dbm.NewMemDB()
 
@@ -700,7 +702,8 @@ func testHandshakeReplay(t *testing.T, sim *simulatorTestSuite, nBlocks int, mod
 		commits = sim.Commits
 		store = newMockBlockStore(cfg, genesisState.ConsensusParams)
 	} else { // test single node
-		testConfig := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), mode))
+		testConfig, err := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), mode))
+		require.NoError(t, err)
 		defer func() { _ = os.RemoveAll(testConfig.RootDir) }()
 		walBody, err := WALWithNBlocks(t, numBlocks)
 		require.NoError(t, err)
@@ -938,7 +941,8 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	//		- 0x01
 	//		- 0x02
 	//		- 0x03
-	cfg := ResetConfig("handshake_test_")
+	cfg, err := ResetConfig("handshake_test_")
+	require.NoError(t, err)
 	t.Cleanup(func() { os.RemoveAll(cfg.RootDir) })
 	privVal, err := privval.LoadFilePV(cfg.PrivValidator.KeyFile(), cfg.PrivValidator.StateFile())
 	require.NoError(t, err)
@@ -1228,7 +1232,8 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	app := &initChainApp{vals: types.TM2PB.ValidatorUpdates(vals)}
 	clientCreator := abciclient.NewLocalCreator(app)
 
-	cfg := ResetConfig("handshake_test_")
+	cfg, err := ResetConfig("handshake_test_")
+	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(cfg.RootDir) })
 
 	privVal, err := privval.LoadFilePV(cfg.PrivValidator.KeyFile(), cfg.PrivValidator.StateFile())

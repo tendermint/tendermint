@@ -33,8 +33,14 @@ import (
 // test.
 type cleanupFunc func()
 
-func newMempoolWithApp(cc abciclient.Creator) (*CListMempool, cleanupFunc) {
-	return newMempoolWithAppAndConfig(cc, config.ResetTestRoot("mempool_test"))
+func newMempoolWithApp(cc abciclient.Creator) (*CListMempool, cleanupFunc, error) {
+	conf, err := config.ResetTestRoot("mempool_test")
+	if err != nil {
+		return nil, func() {}, err
+	}
+
+	mp, cu := newMempoolWithAppAndConfig(cc, conf)
+	return mp, cu, nil
 }
 
 func newMempoolWithAppAndConfig(cc abciclient.Creator, cfg *config.Config) (*CListMempool, cleanupFunc) {
@@ -95,7 +101,8 @@ func checkTxs(t *testing.T, mp mempool.Mempool, count int, peerID uint16) types.
 func TestReapMaxBytesMaxGas(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := abciclient.NewLocalCreator(app)
-	mp, cleanup := newMempoolWithApp(cc)
+	mp, cleanup, err := newMempoolWithApp(cc)
+	require.NoError(t, err)
 	defer cleanup()
 
 	// Ensure gas calculation behaves as expected
@@ -144,7 +151,8 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 func TestMempoolFilters(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := abciclient.NewLocalCreator(app)
-	mp, cleanup := newMempoolWithApp(cc)
+	mp, cleanup, err := newMempoolWithApp(cc)
+	require.NoError(t, err)
 	defer cleanup()
 	emptyTxArr := []types.Tx{[]byte{}}
 
@@ -183,7 +191,8 @@ func TestMempoolFilters(t *testing.T) {
 func TestMempoolUpdate(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := abciclient.NewLocalCreator(app)
-	mp, cleanup := newMempoolWithApp(cc)
+	mp, cleanup, err := newMempoolWithApp(cc)
+	require.NoError(t, err)
 	defer cleanup()
 
 	// 1. Adds valid txs to the cache
@@ -230,7 +239,8 @@ func TestMempoolUpdateDoesNotPanicWhenApplicationMissedTx(t *testing.T) {
 		return mockClient, nil
 	}
 
-	mp, cleanup := newMempoolWithApp(cc)
+	mp, cleanup, err := newMempoolWithApp(cc)
+	require.NoError(t, err)
 	defer cleanup()
 
 	// Add 4 transactions to the mempool by calling the mempool's `CheckTx` on each of them.
@@ -249,7 +259,7 @@ func TestMempoolUpdateDoesNotPanicWhenApplicationMissedTx(t *testing.T) {
 
 	// Calling update to remove the first transaction from the mempool.
 	// This call also triggers the mempool to recheck its remaining transactions.
-	err := mp.Update(0, []types.Tx{txs[0]}, abciResponses(1, abci.CodeTypeOK), nil, nil)
+	err = mp.Update(0, []types.Tx{txs[0]}, abciResponses(1, abci.CodeTypeOK), nil, nil)
 	require.Nil(t, err)
 
 	// The mempool has now sent its requests off to the client to be rechecked
@@ -318,7 +328,8 @@ func TestMempool_KeepInvalidTxsInCache(t *testing.T) {
 func TestTxsAvailable(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := abciclient.NewLocalCreator(app)
-	mp, cleanup := newMempoolWithApp(cc)
+	mp, cleanup, err := newMempoolWithApp(cc)
+	require.NoError(t, err)
 	defer cleanup()
 	mp.EnableTxsAvailable()
 
@@ -363,12 +374,13 @@ func TestSerialReap(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := abciclient.NewLocalCreator(app)
 
-	mp, cleanup := newMempoolWithApp(cc)
+	mp, cleanup, err := newMempoolWithApp(cc)
+	require.NoError(t, err)
 	defer cleanup()
 
 	appConnCon, _ := cc()
 	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
-	err := appConnCon.Start()
+	err = appConnCon.Start()
 	require.Nil(t, err)
 
 	cacheMap := make(map[string]struct{})
@@ -473,7 +485,8 @@ func TestSerialReap(t *testing.T) {
 func TestMempool_CheckTxChecksTxSize(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := abciclient.NewLocalCreator(app)
-	mempl, cleanup := newMempoolWithApp(cc)
+	mempl, cleanup, err := newMempoolWithApp(cc)
+	require.NoError(t, err)
 	defer cleanup()
 
 	maxTxSize := mempl.config.MaxTxBytes
@@ -518,7 +531,9 @@ func TestMempool_CheckTxChecksTxSize(t *testing.T) {
 func TestMempoolTxsBytes(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := abciclient.NewLocalCreator(app)
-	cfg := config.ResetTestRoot("mempool_test")
+	cfg, err := config.ResetTestRoot("mempool_test")
+	require.NoError(t, err)
+
 	cfg.Mempool.MaxTxsBytes = 10
 	mp, cleanup := newMempoolWithAppAndConfig(cc, cfg)
 	defer cleanup()
@@ -527,7 +542,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 	assert.EqualValues(t, 0, mp.SizeBytes())
 
 	// 2. len(tx) after CheckTx
-	err := mp.CheckTx(context.Background(), []byte{0x01}, nil, mempool.TxInfo{})
+	err = mp.CheckTx(context.Background(), []byte{0x01}, nil, mempool.TxInfo{})
 	require.NoError(t, err)
 	assert.EqualValues(t, 1, mp.SizeBytes())
 
@@ -561,7 +576,8 @@ func TestMempoolTxsBytes(t *testing.T) {
 	// 6. zero after tx is rechecked and removed due to not being valid anymore
 	app2 := kvstore.NewApplication()
 	cc = abciclient.NewLocalCreator(app2)
-	mp, cleanup = newMempoolWithApp(cc)
+	mp, cleanup, err = newMempoolWithApp(cc)
+	require.NoError(t, err)
 	defer cleanup()
 
 	txBytes := make([]byte, 8)
@@ -617,7 +633,9 @@ func TestMempoolRemoteAppConcurrency(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	cfg := config.ResetTestRoot("mempool_test")
+	cfg, err := config.ResetTestRoot("mempool_test")
+	require.NoError(t, err)
+
 	mp, cleanup := newMempoolWithAppAndConfig(cc, cfg)
 	defer cleanup()
 
@@ -640,7 +658,7 @@ func TestMempoolRemoteAppConcurrency(t *testing.T) {
 		// this will err with ErrTxInCache many times ...
 		mp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{SenderID: uint16(peerID)}) //nolint: errcheck // will error
 	}
-	err := mp.FlushAppConn()
+	err = mp.FlushAppConn()
 	require.NoError(t, err)
 }
 

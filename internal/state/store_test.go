@@ -101,7 +101,9 @@ func TestStoreLoadValidators(t *testing.T) {
 func BenchmarkLoadValidators(b *testing.B) {
 	const valSetSize = 100
 
-	cfg := config.ResetTestRoot("state_")
+	cfg, err := config.ResetTestRoot("state_")
+	require.NoError(b, err)
+
 	defer os.RemoveAll(cfg.RootDir)
 	dbType := dbm.BackendType(cfg.DBBackend)
 	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())
