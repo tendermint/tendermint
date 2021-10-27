@@ -55,6 +55,9 @@ func TestSubscribe(t *testing.T) {
 
 		err = s.Publish(ctx, "Ivan")
 		require.NoError(t, err)
+
+		err = s.Publish(ctx, "Natasha")
+		require.NoError(t, err)
 	}()
 
 	select {
@@ -145,6 +148,8 @@ func TestSlowClientIsRemovedWithErrOutOfCapacity(t *testing.T) {
 	err = s.Publish(ctx, "Fat Cobra")
 	require.NoError(t, err)
 	err = s.Publish(ctx, "Viper")
+	require.NoError(t, err)
+	err = s.Publish(ctx, "Black Panther")
 	require.NoError(t, err)
 
 	assertCanceled(t, subscription, pubsub.ErrOutOfCapacity)
