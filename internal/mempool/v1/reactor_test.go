@@ -409,6 +409,7 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 		Status: p2p.PeerStatusDown,
 		NodeID: secondary,
 	}
+	time.Sleep(500 * time.Millisecond)
 
 	txs := checkTxs(t, rts.reactors[primary].mempool, 4, mempool.UnknownPeerID)
 	require.Equal(t, 4, len(txs))
