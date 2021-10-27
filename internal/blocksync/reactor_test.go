@@ -182,7 +182,8 @@ func (rts *reactorTestSuite) start(t *testing.T) {
 }
 
 func TestReactor_AbruptDisconnect(t *testing.T) {
-	cfg := config.ResetTestRoot("block_sync_reactor_test")
+	cfg, err := config.ResetTestRoot("block_sync_reactor_test")
+	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
 	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
@@ -217,7 +218,8 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 }
 
 func TestReactor_SyncTime(t *testing.T) {
-	cfg := config.ResetTestRoot("block_sync_reactor_test")
+	cfg, err := config.ResetTestRoot("block_sync_reactor_test")
+	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
 	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
@@ -240,7 +242,9 @@ func TestReactor_SyncTime(t *testing.T) {
 }
 
 func TestReactor_NoBlockResponse(t *testing.T) {
-	cfg := config.ResetTestRoot("block_sync_reactor_test")
+	cfg, err := config.ResetTestRoot("block_sync_reactor_test")
+	require.NoError(t, err)
+
 	defer os.RemoveAll(cfg.RootDir)
 
 	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
@@ -287,7 +291,8 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	// See: https://github.com/tendermint/tendermint/issues/6005
 	t.SkipNow()
 
-	cfg := config.ResetTestRoot("block_sync_reactor_test")
+	cfg, err := config.ResetTestRoot("block_sync_reactor_test")
+	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
 	maxBlockHeight := int64(48)

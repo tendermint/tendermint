@@ -22,7 +22,11 @@ import (
 func ExampleClient() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	conf := rpctest.CreateConfig("ExampleClient_VerifyLightBlockAtHeight")
+	conf, err := rpctest.CreateConfig("ExampleClient_VerifyLightBlockAtHeight")
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+
 	logger := log.TestingLogger()
 
 	// Start a test application

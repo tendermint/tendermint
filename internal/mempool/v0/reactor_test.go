@@ -58,7 +58,8 @@ func setup(t *testing.T, config *config.MempoolConfig, numNodes int, chBuf uint)
 		rts.kvstores[nodeID] = kvstore.NewApplication()
 		cc := abciclient.NewLocalCreator(rts.kvstores[nodeID])
 
-		mempool, memCleanup := newMempoolWithApp(cc)
+		mempool, memCleanup, err := newMempoolWithApp(cc)
+		require.NoError(t, err)
 		t.Cleanup(memCleanup)
 		mempool.SetLogger(rts.logger)
 		rts.mempools[nodeID] = mempool
