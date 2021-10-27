@@ -128,12 +128,24 @@ func (rts *reactorTestSuite) stop(t *testing.T) {
 func (rts *reactorTestSuite) waitForTxns(t *testing.T, txs []types.Tx, ids ...types.NodeID) {
 	t.Helper()
 
-	// NOTE: in the legacy version of these tests, there was more
-	// complex logic that waited for the mempool to drain. The
-	// tests pass without that (modulo adding a simple one second
-	// sleep, in a test. This is likely because trasactions are
-	// less likely to "hang out" in a buffer in the new reactor,
-	// which is what this prevented in the legacy tests.
+	// ensure that the transactions get fully broadcast to the
+	// rest of the network
+	wg := &sync.WaitGroup{}
+	for name, pool := range rts.mempools {
+		if !p2ptest.NodeInSlice(name, ids) {
+			continue
+		}
+
+		wg.Add(1)
+		go func(pool *TxMempool) {
+			defer wg.Done()
+			require.Eventually(t, func() bool { return len(txs) == pool.Size() },
+				time.Minute,
+				100*time.Millisecond,
+			)
+		}(pool)
+	}
+	wg.Wait()
 }
 
 func TestReactorBroadcastDoesNotPanic(t *testing.T) {
@@ -196,21 +208,6 @@ func TestReactorBroadcastTxs(t *testing.T) {
 	// Wait till all secondary suites (reactor) received all mempool txs from the
 	// primary suite (node).
 	rts.waitForTxns(t, convertTex(txs), secondaries...)
-
-	// ensure that the transactions get fully broadcast to the
-	// rest of the network
-	wg := &sync.WaitGroup{}
-	for _, pool := range rts.mempools {
-		wg.Add(1)
-		go func(pool *TxMempool) {
-			defer wg.Done()
-			require.Eventually(t, func() bool { return len(txs) == pool.Size() },
-				time.Minute,
-				100*time.Millisecond,
-			)
-		}(pool)
-	}
-	wg.Wait()
 
 	rts.stop(t)
 }
@@ -321,10 +318,6 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 
 	rts.start(t)
 
-	// Wait till all secondary suites (reactor) received all mempool txs from the
-	// primary suite (node).
-	rts.waitForTxns(t, []types.Tx{tx1}, secondary)
-
 	rts.reactors[primary].mempool.Flush()
 	rts.reactors[secondary].mempool.Flush()
 
@@ -416,4 +409,9 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 		Status: p2p.PeerStatusDown,
 		NodeID: secondary,
 	}
+
+	txs := checkTxs(t, rts.reactors[primary].mempool, 4, mempool.UnknownPeerID)
+	require.Equal(t, 4, len(txs))
+	require.Equal(t, 4, rts.mempools[primary].Size())
+	require.Equal(t, 0, rts.mempools[secondary].Size())
 }
