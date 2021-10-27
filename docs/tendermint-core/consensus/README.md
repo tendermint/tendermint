@@ -5,6 +5,7 @@ parent:
   order: 6
 ---
 
+# Consensus
 
 Tendermint Consensus is a distributed protocol executed by validator processes to agree on
 the next block to be added to the Tendermint blockchain. The protocol proceeds in rounds, where

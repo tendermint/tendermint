@@ -1,4 +1,4 @@
-# tm-signer-harness
+# Remote Signer
 
 Located under the `tools/tm-signer-harness` folder in the [Tendermint
 repository](https://github.com/tendermint/tendermint).

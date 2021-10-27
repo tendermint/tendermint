@@ -1,8 +1,5 @@
 ---
-order: false
-parent:
-  title: Roadmap
-  order: 7
+order: 1
 ---
 
 # Tendermint Roadmap
