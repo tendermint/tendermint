@@ -17,7 +17,8 @@ import (
 func TestCacheAfterUpdate(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := abciclient.NewLocalCreator(app)
-	mp, cleanup := newMempoolWithApp(cc)
+	mp, cleanup, err := newMempoolWithApp(cc)
+	require.NoError(t, err)
 	defer cleanup()
 
 	// reAddIndices & txsInCache can have elements > numTxsToCreate

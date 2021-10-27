@@ -34,10 +34,9 @@ type reactorTestSuite struct {
 func setupReactors(t *testing.T, numNodes int, chBuf uint) *reactorTestSuite {
 	t.Helper()
 
-	cfg := config.ResetTestRoot(strings.ReplaceAll(t.Name(), "/", "|"))
-	t.Cleanup(func() {
-		os.RemoveAll(cfg.RootDir)
-	})
+	cfg, err := config.ResetTestRoot(strings.ReplaceAll(t.Name(), "/", "|"))
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(cfg.RootDir) })
 
 	rts := &reactorTestSuite{
 		logger:          log.TestingLogger().With("testCase", t.Name()),

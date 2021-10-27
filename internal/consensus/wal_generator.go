@@ -156,7 +156,8 @@ func makeAddrs() (p2pAddr, rpcAddr string) {
 
 // getConfig returns a config for test cases
 func getConfig(t *testing.T) *config.Config {
-	c := config.ResetTestRoot(t.Name())
+	c, err := config.ResetTestRoot(t.Name())
+	require.NoError(t, err)
 
 	p2pAddr, rpcAddr := makeAddrs()
 	c.P2P.ListenAddress = p2pAddr

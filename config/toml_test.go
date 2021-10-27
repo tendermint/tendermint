@@ -47,7 +47,8 @@ func TestEnsureTestRoot(t *testing.T) {
 	testName := "ensureTestRoot"
 
 	// create root dir
-	cfg := ResetTestRoot(testName)
+	cfg, err := ResetTestRoot(testName)
+	require.NoError(err)
 	defer os.RemoveAll(cfg.RootDir)
 	rootDir := cfg.RootDir
 

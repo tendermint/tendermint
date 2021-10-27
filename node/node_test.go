@@ -38,7 +38,8 @@ import (
 )
 
 func TestNodeStartStop(t *testing.T) {
-	cfg := config.ResetTestRoot("node_node_test")
+	cfg, err := config.ResetTestRoot("node_node_test")
+	require.NoError(t, err)
 
 	defer os.RemoveAll(cfg.RootDir)
 
@@ -110,7 +111,9 @@ func getTestNode(t *testing.T, conf *config.Config, logger log.Logger) *nodeImpl
 }
 
 func TestNodeDelayedStart(t *testing.T) {
-	cfg := config.ResetTestRoot("node_delayed_start_test")
+	cfg, err := config.ResetTestRoot("node_delayed_start_test")
+	require.NoError(t, err)
+
 	defer os.RemoveAll(cfg.RootDir)
 	now := tmtime.Now()
 
@@ -125,7 +128,8 @@ func TestNodeDelayedStart(t *testing.T) {
 }
 
 func TestNodeSetAppVersion(t *testing.T) {
-	cfg := config.ResetTestRoot("node_app_version_test")
+	cfg, err := config.ResetTestRoot("node_app_version_test")
+	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
 	// create node
@@ -146,7 +150,8 @@ func TestNodeSetAppVersion(t *testing.T) {
 func TestNodeSetPrivValTCP(t *testing.T) {
 	addr := "tcp://" + testFreeAddr(t)
 
-	cfg := config.ResetTestRoot("node_priv_val_tcp_test")
+	cfg, err := config.ResetTestRoot("node_priv_val_tcp_test")
+	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	cfg.PrivValidator.ListenAddr = addr
 
@@ -179,7 +184,8 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
 	addrNoPrefix := testFreeAddr(t)
 
-	cfg := config.ResetTestRoot("node_priv_val_tcp_test")
+	cfg, err := config.ResetTestRoot("node_priv_val_tcp_test")
+	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	cfg.PrivValidator.ListenAddr = addrNoPrefix
 
@@ -196,7 +202,8 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	tmpfile := "/tmp/kms." + tmrand.Str(6) + ".sock"
 	defer os.Remove(tmpfile) // clean up
 
-	cfg := config.ResetTestRoot("node_priv_val_tcp_test")
+	cfg, err := config.ResetTestRoot("node_priv_val_tcp_test")
+	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	cfg.PrivValidator.ListenAddr = "unix://" + tmpfile
 
@@ -237,11 +244,12 @@ func TestCreateProposalBlock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg := config.ResetTestRoot("node_create_proposal")
+	cfg, err := config.ResetTestRoot("node_create_proposal")
+	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
-	err := proxyApp.Start()
+	err = proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
@@ -332,11 +340,13 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg := config.ResetTestRoot("node_create_proposal")
+	cfg, err := config.ResetTestRoot("node_create_proposal")
+	require.NoError(t, err)
+
 	defer os.RemoveAll(cfg.RootDir)
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
-	err := proxyApp.Start()
+	err = proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
@@ -397,11 +407,12 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg := config.ResetTestRoot("node_create_proposal")
+	cfg, err := config.ResetTestRoot("node_create_proposal")
+	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
-	err := proxyApp.Start()
+	err = proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
@@ -512,7 +523,8 @@ func TestMaxProposalBlockSize(t *testing.T) {
 }
 
 func TestNodeNewSeedNode(t *testing.T) {
-	cfg := config.ResetTestRoot("node_new_node_custom_reactors_test")
+	cfg, err := config.ResetTestRoot("node_new_node_custom_reactors_test")
+	require.NoError(t, err)
 	cfg.Mode = config.ModeSeed
 	defer os.RemoveAll(cfg.RootDir)
 
@@ -539,7 +551,9 @@ func TestNodeNewSeedNode(t *testing.T) {
 }
 
 func TestNodeSetEventSink(t *testing.T) {
-	cfg := config.ResetTestRoot("node_app_version_test")
+	cfg, err := config.ResetTestRoot("node_app_version_test")
+	require.NoError(t, err)
+
 	defer os.RemoveAll(cfg.RootDir)
 
 	logger := log.TestingLogger()
@@ -701,7 +715,8 @@ func loadStatefromGenesis(t *testing.T) sm.State {
 
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	cfg := config.ResetTestRoot("load_state_from_genesis")
+	cfg, err := config.ResetTestRoot("load_state_from_genesis")
+	require.NoError(t, err)
 
 	loadedState, err := stateStore.Load()
 	require.NoError(t, err)
