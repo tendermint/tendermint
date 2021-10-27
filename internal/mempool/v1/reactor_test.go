@@ -195,10 +195,11 @@ func TestReactorBroadcastTxs(t *testing.T) {
 	// primary suite (node).
 	rts.waitForTxns(t, convertTex(txs), secondaries...)
 
-	time.Sleep(time.Second)
-
 	for _, pool := range rts.mempools {
-		require.Equal(t, len(txs), pool.Size())
+		require.Eventually(t, func() bool { return len(txs) == pool.Size() },
+			5*time.Second,
+			50*time.Millisecond,
+		)
 	}
 
 	rts.assertMempoolChannelsDrained(t)
