@@ -46,7 +46,7 @@ func EnsureRoot(rootDir string) {
 // WriteConfigFile renders config using the template and writes it to configFilePath.
 // This function is called by cmd/tendermint/commands/init.go
 func WriteConfigFile(rootDir string, config *Config) error {
-	return WriteConfig(filepath.Join(rootDir, defaultConfigFilePath))
+	return WriteConfig(config, filepath.Join(rootDir, defaultConfigFilePath))
 }
 
 // WriteConfig writes the config to the file specified by the path,
@@ -54,7 +54,7 @@ func WriteConfigFile(rootDir string, config *Config) error {
 func WriteConfig(conf *Config, path string) error {
 	var buffer bytes.Buffer
 
-	if err := configTemplate.Execute(&buffer, config); err != nil {
+	if err := configTemplate.Execute(&buffer, conf); err != nil {
 		return err
 	}
 
