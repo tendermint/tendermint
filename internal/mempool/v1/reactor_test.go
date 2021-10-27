@@ -197,7 +197,7 @@ func TestReactorBroadcastTxs(t *testing.T) {
 
 	for _, pool := range rts.mempools {
 		require.Eventually(t, func() bool { return len(txs) == pool.Size() },
-			5*time.Second,
+			10*time.Second,
 			50*time.Millisecond,
 		)
 	}
