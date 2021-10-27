@@ -304,6 +304,24 @@ func MedianTime(commit *types.Commit, validators *types.ValidatorSet) time.Time 
 	return weightedMedian(weightedTimes, totalVotingPower)
 }
 
+// IsTimely validates that the passed in block timestamp is 'timely' according to the proposer-based timestamp algorithm.
+// To evaluate if a timestamp is timely, it is compared to the local time of the validator along with the configured
+// Precision and MsgDelay parameters.
+// Specifically, a proposed block timestamp is considered timely if it is satisfies the following inequalities:
+//
+// proposedBlockTime < validatorLocalTime + Precision + MsgDelay && proposedBlockTime > validatorLocaltime - Precision.
+//
+// For more information on the meaning of 'timely', see the proposer-based timestamp specification:
+// https://github.com/tendermint/spec/tree/master/spec/consensus/proposer-based-timestamp
+func IsTimely(bt time.Time, lt time.Time, precision time.Duration, msgDelay time.Duration) bool {
+	lhs := lt.Add(-precision).UnixMilli()
+	rhs := lt.Add(precision).Add(msgDelay).UnixMilli()
+	if lhs < bt.UnixMilli() && bt.UnixMilli() < rhs {
+		return true
+	}
+	return false
+}
+
 //------------------------------------------------------------------------
 // Genesis
 
