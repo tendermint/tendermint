@@ -116,7 +116,7 @@ func (q *Queue) Add(item interface{}) error {
 	q.back = e
 	q.queueLen++
 	if q.queueLen == 1 { // was empty
-		q.nempty.Broadcast()
+		q.nempty.Signal()
 	}
 	return nil
 }
