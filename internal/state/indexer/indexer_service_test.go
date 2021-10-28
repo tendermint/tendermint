@@ -3,22 +3,21 @@ package indexer_test
 import (
 	"database/sql"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/adlio/schema"
-	dockertest "github.com/ory/dockertest"
+	"github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	indexer "github.com/tendermint/tendermint/internal/state/indexer"
-	kv "github.com/tendermint/tendermint/internal/state/indexer/sink/kv"
-	psql "github.com/tendermint/tendermint/internal/state/indexer/sink/psql"
+	"github.com/tendermint/tendermint/internal/state/indexer"
+	"github.com/tendermint/tendermint/internal/state/indexer/sink/kv"
+	"github.com/tendermint/tendermint/internal/state/indexer/sink/psql"
 	tmlog "github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
 
@@ -114,7 +113,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 
 func readSchema() ([]*schema.Migration, error) {
 	filename := "./sink/psql/schema.sql"
-	contents, err := ioutil.ReadFile(filename)
+	contents, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read sql file from '%s': %w", filename, err)
 	}

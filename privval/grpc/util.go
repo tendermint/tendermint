@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -14,7 +13,7 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
-	grpc "google.golang.org/grpc"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 )
@@ -65,7 +64,7 @@ func GenerateTLS(certPath, keyPath, ca string, log log.Logger) grpc.DialOption {
 	}
 
 	certPool := x509.NewCertPool()
-	bs, err := ioutil.ReadFile(ca)
+	bs, err := os.ReadFile(ca)
 	if err != nil {
 		log.Error("failed to read ca cert:", "error", err)
 		os.Exit(1)

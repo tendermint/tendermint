@@ -2,7 +2,6 @@ package light_test
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -41,7 +40,7 @@ func TestClientIntegration_Update(t *testing.T) {
 	// give Tendermint time to generate some blocks
 	time.Sleep(5 * time.Second)
 
-	dbDir, err := ioutil.TempDir("", "light-client-test-update-example")
+	dbDir, err := os.MkdirTemp("", "light-client-test-update-example")
 	require.NoError(t, err)
 	defer os.RemoveAll(dbDir)
 
@@ -100,7 +99,7 @@ func TestClientIntegration_VerifyLightBlockAtHeight(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { require.NoError(t, closer(ctx)) }()
 
-	dbDir, err := ioutil.TempDir("", "light-client-test-verify-example")
+	dbDir, err := os.MkdirTemp("", "light-client-test-verify-example")
 	require.NoError(t, err)
 	defer os.RemoveAll(dbDir)
 

@@ -2,7 +2,6 @@ package light_test
 
 import (
 	"context"
-	"io/ioutil"
 	stdlog "log"
 	"os"
 	"time"
@@ -38,7 +37,7 @@ func ExampleClient() {
 	}
 	defer func() { _ = closer(ctx) }()
 
-	dbDir, err := ioutil.TempDir("", "light-client-example")
+	dbDir, err := os.MkdirTemp("", "light-client-example")
 	if err != nil {
 		stdlog.Fatal(err)
 	}
