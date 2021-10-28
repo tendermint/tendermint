@@ -2,13 +2,27 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.35.0-rc4
+
+October 29, 2001
+
+### FEATURES
+
+- [cli] [#7033](https://github.com/tendermint/tendermint/pull/7033) Add a `rollback` command to rollback to the previous tendermint state in the event of an incorrect app hash. (@cmwaters)
+
+### BUG FIXES
+
+- [\#7106](https://github.com/tendermint/tendermint/pull/7106) Revert mutex change to ABCI Clients (@tychoish).
+- [\#7142](https://github.com/tendermint/tendermint/pull/7142) mempool: remove panic when recheck-tx was not sent to ABCI application (@williambanfield).
+
+
 ## v0.35.0-rc3
 
 October 6, 2021
 
 ### FEATURES
 
-- [mempool, rpc] \#7065 add removetx rpc method (backport of #7047) (@tychoish).
+- [mempool, rpc] [\#7065](https://github.com/tendermint/tendermint/pull/7065) add removetx rpc method (backport of #7047) (@tychoish).
 
 ### BUG FIXES
 
