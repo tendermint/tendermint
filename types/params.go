@@ -41,6 +41,7 @@ type ConsensusParams struct {
 	Evidence  EvidenceParams  `json:"evidence"`
 	Validator ValidatorParams `json:"validator"`
 	Version   VersionParams   `json:"version"`
+	Timestamp TimestampParams `json:"timestamp"`
 }
 
 // HashedParams is a subset of ConsensusParams.
@@ -73,6 +74,13 @@ type ValidatorParams struct {
 
 type VersionParams struct {
 	AppVersion uint64 `json:"app_version"`
+}
+
+// TimestampParams influence the validity of block timestamps.
+type TimestampParams struct {
+	Precision time.Duration `json:"precision"`
+	Accuracy  time.Duration `json:"accuracy"`
+	MsgDelay  time.Duration `json:"msg_delay"`
 }
 
 // DefaultConsensusParams returns a default ConsensusParams.
