@@ -108,7 +108,7 @@ func (q *Queue) Add(item interface{}) error {
 		// the soft quota. This has the effect of reducing the credit cap and the
 		// amount of credit given for removing items to better approximate the
 		// rate at which the consumer is servicing the queue.
-		q.credit -= 1
+		q.credit--
 		q.softQuota = q.queueLen + 1
 	}
 	e := &entry{item: item}
