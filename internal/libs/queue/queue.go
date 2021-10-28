@@ -20,6 +20,10 @@ var (
 	// ErrQueueClosed is returned by the Add method of a closed queue, and by
 	// the Wait method of a closed empty queue.
 	ErrQueueClosed = errors.New("queue is closed")
+
+	// Sentinel errors reported by the New constructor.
+	errHardLimit   = errors.New("hard limit must be > 0 and ≥ soft quota")
+	errBurstCredit = errors.New("burst credit must be non-negative")
 )
 
 // A Queue is a limited-capacity FIFO queue of arbitrary data items.
@@ -57,13 +61,14 @@ type Queue struct {
 // New constructs a new empty queue with the specified options.  It reports an
 // error if any of the option values are invalid.
 func New(opts Options) (*Queue, error) {
-	switch {
-	case opts.SoftQuota <= 0:
-		return nil, errors.New("soft quota must be positive")
-	case opts.HardLimit < opts.SoftQuota:
-		return nil, errors.New("hard limit must be no less than the soft quota")
-	case opts.BurstCredit < 0:
-		return nil, errors.New("burst credit must be non-negative")
+	if opts.HardLimit <= 0 || opts.HardLimit < opts.SoftQuota {
+		return nil, errHardLimit
+	}
+	if opts.BurstCredit < 0 {
+		return nil, errBurstCredit
+	}
+	if opts.SoftQuota <= 0 {
+		opts.SoftQuota = opts.HardLimit
 	}
 	if opts.BurstCredit == 0 {
 		opts.BurstCredit = float64(opts.SoftQuota)
@@ -200,18 +205,19 @@ func (q *Queue) popFront() interface{} {
 
 // Options are the initial settings for a Queue.
 type Options struct {
-	// The initial expected maximum number of items the queue should contain on
-	// an average workload. This value must be positive. The soft quota is
-	// adjusted from the initial value dynamically as the queue is used.
-	SoftQuota int
-
 	// The maximum number of items the queue will ever be permitted to hold.
-	// This value must be greater than or equal to SoftQuota. The hard limit is
-	// fixed and does not change as the queue is used.
+	// This value must be positive, and greater than or equal to SoftQuota. The
+	// hard limit is fixed and does not change as the queue is used.
 	//
 	// The hard limit should be chosen to exceed the largest burst size expected
 	// under normal operating conditions.
 	HardLimit int
+
+	// The initial expected maximum number of items the queue should contain on
+	// an average workload. If this value is zero, it is initialized to the hard
+	// limit. The soft quota is adjusted from the initial value dynamically as
+	// the queue is used.
+	SoftQuota int
 
 	// The initial burst credit score.  This value must be greater than or equal
 	// to zero. If it is zero, the soft quota is used.
