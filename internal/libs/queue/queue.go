@@ -50,9 +50,10 @@ type Queue struct {
 	queueLen  int     // number of entries in the queue list
 	credit    float64 // current burst credit
 
-	closed      bool
-	nempty      *sync.Cond
-	back, front *entry
+	closed bool
+	nempty *sync.Cond
+	back   *entry
+	front  *entry
 
 	// The queue is singly-linked. Front points to the sentinel and back points
 	// to the newest entry. The oldest entry is front.link if it exists.
