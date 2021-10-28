@@ -93,6 +93,7 @@ func DefaultConsensusParams() *ConsensusParams {
 }
 
 // DefaultBlockParams returns a default BlockParams.
+// TODO (@wbanfield): add link to proposer-based timestamp spec when completed.
 func DefaultBlockParams() BlockParams {
 	return BlockParams{
 		MaxBytes: 22020096, // 21MB
