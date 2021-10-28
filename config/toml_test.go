@@ -1,7 +1,6 @@
 package config
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,7 +22,7 @@ func TestEnsureRoot(t *testing.T) {
 	require := require.New(t)
 
 	// setup temp dir for test
-	tmpDir, err := ioutil.TempDir("", "config-test")
+	tmpDir, err := os.MkdirTemp("", "config-test")
 	require.NoError(err)
 	defer os.RemoveAll(tmpDir)
 
@@ -33,7 +32,7 @@ func TestEnsureRoot(t *testing.T) {
 	require.NoError(WriteConfigFile(tmpDir, DefaultConfig()))
 
 	// make sure config is set properly
-	data, err := ioutil.ReadFile(filepath.Join(tmpDir, defaultConfigFilePath))
+	data, err := os.ReadFile(filepath.Join(tmpDir, defaultConfigFilePath))
 	require.NoError(err)
 
 	checkConfig(t, string(data))
@@ -53,7 +52,7 @@ func TestEnsureTestRoot(t *testing.T) {
 	rootDir := cfg.RootDir
 
 	// make sure config is set properly
-	data, err := ioutil.ReadFile(filepath.Join(rootDir, defaultConfigFilePath))
+	data, err := os.ReadFile(filepath.Join(rootDir, defaultConfigFilePath))
 	require.Nil(err)
 
 	checkConfig(t, string(data))

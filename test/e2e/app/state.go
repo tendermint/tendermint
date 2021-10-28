@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sort"
 	"sync"
@@ -45,7 +44,7 @@ func NewState(file string, persistInterval uint64) (*State, error) {
 // load loads state from disk. It does not take out a lock, since it is called
 // during construction.
 func (s *State) load() error {
-	bz, err := ioutil.ReadFile(s.file)
+	bz, err := os.ReadFile(s.file)
 	if err != nil {
 		return fmt.Errorf("failed to read state from %q: %w", s.file, err)
 	}
@@ -66,7 +65,7 @@ func (s *State) save() error {
 	// We write the state to a separate file and move it to the destination, to
 	// make it atomic.
 	newFile := fmt.Sprintf("%v.new", s.file)
-	err = ioutil.WriteFile(newFile, bz, 0644)
+	err = os.WriteFile(newFile, bz, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to write state to %q: %w", s.file, err)
 	}

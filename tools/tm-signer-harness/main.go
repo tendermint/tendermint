@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -149,7 +148,7 @@ func extractKey(tmhome, outputPath string) {
 		os.Exit(1)
 	}
 	pkb := []byte(fpv.Key.PrivKey.(ed25519.PrivKey))
-	if err := ioutil.WriteFile(internal.ExpandPath(outputPath), pkb[:32], 0600); err != nil {
+	if err := os.WriteFile(internal.ExpandPath(outputPath), pkb[:32], 0600); err != nil {
 		logger.Info("Failed to write private key", "output", outputPath, "err", err)
 		os.Exit(1)
 	}
