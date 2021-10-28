@@ -46,15 +46,16 @@ func EnsureRoot(rootDir string) {
 // WriteConfigFile renders config using the template and writes it to configFilePath.
 // This function is called by cmd/tendermint/commands/init.go
 func WriteConfigFile(rootDir string, config *Config) error {
-	return WriteConfig(config, filepath.Join(rootDir, defaultConfigFilePath))
+	return config.WriteToTemplate(config, filepath.Join(rootDir, defaultConfigFilePath))
 }
 
-// WriteConfig writes the config to the file specified by the path,
-// and does not mangle the path or filename.
-func WriteConfig(conf *Config, path string) error {
+// WriteToTemplate writes the config to the exact file specified by
+// the path, in the default toml template and does not mangle the path
+// or filename at all.
+func (cfg *Config) WriteToTemplate(path string) error {
 	var buffer bytes.Buffer
 
-	if err := configTemplate.Execute(&buffer, conf); err != nil {
+	if err := configTemplate.Execute(&buffer, cfg); err != nil {
 		return err
 	}
 
