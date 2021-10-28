@@ -261,6 +261,7 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 		labels := []string{
 			"peer_id", string(p.ID()),
 			"chID", fmt.Sprintf("%#x", chID),
+			"message_type", "bytes",
 		}
 		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
 	}
