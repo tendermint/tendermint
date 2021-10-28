@@ -233,6 +233,9 @@ func (txmp *TxMempool) CheckTx(
 	cb func(*abci.Response),
 	txInfo TxInfo,
 ) error {
+	if ctx == nil {
+		ctx = context.TODO()
+	}
 
 	txmp.mtx.RLock()
 	defer txmp.mtx.RUnlock()
@@ -269,10 +272,6 @@ func (txmp *TxMempool) CheckTx(
 
 		txmp.logger.Debug("tx exists already in cache", "tx_hash", tx.Hash())
 		return nil
-	}
-
-	if ctx == nil {
-		ctx = context.Background()
 	}
 
 	reqRes, err := txmp.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{Tx: tx})
