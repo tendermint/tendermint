@@ -75,6 +75,12 @@ type VersionParams struct {
 	AppVersion uint64 `json:"app_version"`
 }
 
+type TimestampParams struct {
+	Precision time.Duration `json:"precision"`
+	Accuracy  time.Duration `json:"accuracy"`
+	MsgDelay  time.Duration `json:"msg_delay"`
+}
+
 // DefaultConsensusParams returns a default ConsensusParams.
 func DefaultConsensusParams() *ConsensusParams {
 	return &ConsensusParams{

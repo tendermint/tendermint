@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 )
 
@@ -55,54 +54,4 @@ func TestWeightedMedian(t *testing.T) {
 	// median always returns value between values of correct processes
 	assert.Equal(t, true, (median.After(t1) || median.Equal(t1)) &&
 		(median.Before(t4) || median.Equal(t4)))
-}
-
-func TestIsTimely(t *testing.T) {
-	genesisTime, err := time.Parse(time.RFC3339, "2019-03-13T23:00:00Z")
-	require.NoError(t, err)
-	testCases := []struct {
-		name         string
-		blockTime    time.Time
-		localTime    time.Time
-		precision    time.Duration
-		msgDelay     time.Duration
-		expectTimely bool
-	}{
-		{
-			// Checking that the following inequality evaluates to true:
-			// 1 - 2 < 0 < 1 + 2 + 1
-			name:         "basic timely",
-			blockTime:    genesisTime,
-			localTime:    genesisTime.Add(1 * time.Millisecond),
-			precision:    time.Millisecond * 2,
-			msgDelay:     time.Millisecond,
-			expectTimely: true,
-		},
-		{
-			// Checking that the following inequality evaluates to false:
-			// 3 - 2 < 0 < 3 + 2 + 1
-			name:         "local time too large",
-			blockTime:    genesisTime,
-			localTime:    genesisTime.Add(3 * time.Millisecond),
-			precision:    time.Millisecond * 2,
-			msgDelay:     time.Millisecond,
-			expectTimely: false,
-		},
-		{
-			// Checking that the following inequality evaluates to false:
-			// 0 - 2 < 2 < 2 + 1
-			name:         "block time too large",
-			blockTime:    genesisTime.Add(4 * time.Millisecond),
-			localTime:    genesisTime,
-			precision:    time.Millisecond * 2,
-			msgDelay:     time.Millisecond,
-			expectTimely: false,
-		},
-	}
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
-			ti := IsTimely(testCase.blockTime, testCase.localTime, testCase.precision, testCase.msgDelay)
-			assert.Equal(t, testCase.expectTimely, ti)
-		})
-	}
 }

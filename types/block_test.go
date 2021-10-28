@@ -24,6 +24,7 @@ import (
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
+	tmtimemocks "github.com/tendermint/tendermint/libs/time/mocks"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/version"
@@ -1345,5 +1346,69 @@ func TestHeaderHashVector(t *testing.T) {
 	for _, tc := range testCases {
 		hash := tc.header.Hash()
 		require.Equal(t, tc.expBytes, hex.EncodeToString(hash))
+	}
+}
+
+func TestIsTimely(t *testing.T) {
+	genesisTime, err := time.Parse(time.RFC3339, "2019-03-13T23:00:00Z")
+	require.NoError(t, err)
+	testCases := []struct {
+		name         string
+		blockTime    time.Time
+		localTime    time.Time
+		precision    time.Duration
+		msgDelay     time.Duration
+		expectTimely bool
+	}{
+		{
+			// Checking that the following inequality evaluates to true:
+			// 1 - 2 < 0 < 1 + 2 + 1
+			name:         "basic timely",
+			blockTime:    genesisTime,
+			localTime:    genesisTime.Add(1 * time.Millisecond),
+			precision:    time.Millisecond * 2,
+			msgDelay:     time.Millisecond,
+			expectTimely: true,
+		},
+		{
+			// Checking that the following inequality evaluates to false:
+			// 3 - 2 < 0 < 3 + 2 + 1
+			name:         "local time too large",
+			blockTime:    genesisTime,
+			localTime:    genesisTime.Add(3 * time.Millisecond),
+			precision:    time.Millisecond * 2,
+			msgDelay:     time.Millisecond,
+			expectTimely: false,
+		},
+		{
+			// Checking that the following inequality evaluates to false:
+			// 0 - 2 < 2 < 2 + 1
+			name:         "block time too large",
+			blockTime:    genesisTime.Add(4 * time.Millisecond),
+			localTime:    genesisTime,
+			precision:    time.Millisecond * 2,
+			msgDelay:     time.Millisecond,
+			expectTimely: false,
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			b := Block{
+				Header: Header{
+					Time: testCase.blockTime,
+				},
+			}
+
+			p := TimestampParams{
+				Precision: testCase.precision,
+				MsgDelay:  testCase.msgDelay,
+			}
+
+			mockSource := new(tmtimemocks.Source)
+			mockSource.On("Now").Return(testCase.localTime)
+
+			ti := b.IsTimely(mockSource, p)
+			assert.Equal(t, testCase.expectTimely, ti)
+		})
 	}
 }
