@@ -190,7 +190,7 @@ func (s *Server) subscribe(ctx context.Context, clientID string, query Query, ou
 		return nil, ErrAlreadySubscribed
 	}
 
-	sub, err := NewSubscription(outCapacity)
+	sub, err := newSubscription(outCapacity)
 	if err != nil {
 		return nil, err
 	}

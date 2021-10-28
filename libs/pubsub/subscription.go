@@ -37,7 +37,7 @@ type Subscription struct {
 }
 
 // newSubscription returns a new subscription with the given outCapacity.
-func NewSubscription(outCapacity int) (*Subscription, error) {
+func newSubscription(outCapacity int) (*Subscription, error) {
 	sub := &Subscription{
 		id:       uuid.NewString(),
 		out:      make(chan Message),
