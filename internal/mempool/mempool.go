@@ -174,7 +174,7 @@ func (txmp *TxMempool) SizeBytes() int64 {
 
 // FlushAppConn executes FlushSync on the mempool's proxyAppConn.
 //
-// NOTE: The caller must obtain a write-lock via Lock() prior to execution.
+// NOTE: The caller must obtain a write-lock prior to execution.
 func (txmp *TxMempool) FlushAppConn() error {
 	return txmp.proxyAppConn.FlushSync(context.Background())
 }
@@ -340,7 +340,6 @@ func (txmp *TxMempool) Flush() {
 // and gas constraints. Transaction are retrieved in priority order.
 //
 // NOTE:
-// - A read-lock is acquired.
 // - Transactions returned are not removed from the mempool transaction
 //   store or indexes.
 func (txmp *TxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
@@ -392,7 +391,6 @@ func (txmp *TxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 // transactions bound. Transaction are retrieved in priority order.
 //
 // NOTE:
-// - A read-lock is acquired.
 // - Transactions returned are not removed from the mempool transaction
 //   store or indexes.
 func (txmp *TxMempool) ReapMaxTxs(max int) types.Txs {
@@ -429,7 +427,7 @@ func (txmp *TxMempool) ReapMaxTxs(max int) types.Txs {
 // transactions are available.
 //
 // NOTE:
-// - The caller must explicitly acquire a write-lock via Lock().
+// - The caller must explicitly acquire a write-lock.
 func (txmp *TxMempool) Update(
 	blockHeight int64,
 	blockTxs types.Txs,
