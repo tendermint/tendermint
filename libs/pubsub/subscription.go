@@ -36,8 +36,8 @@ type Subscription struct {
 	err      error
 }
 
-// NewSubscription returns a new subscription with the given outCapacity.
-func NewSubscription(outCapacity int) *Subscription {
+// newSubscription returns a new subscription with the given outCapacity.
+func NewSubscription(outCapacity int) (*Subscription, error) {
 	sub := &Subscription{
 		id:       uuid.NewString(),
 		out:      make(chan Message),
@@ -50,31 +50,31 @@ func NewSubscription(outCapacity int) *Subscription {
 
 	if outCapacity == 0 {
 		sub.stop = func() { close(sub.canceled) }
-	} else {
-		q, err := queue.New(queue.Options{
-			SoftQuota: outCapacity,
-			HardLimit: outCapacity,
-		})
-		if err != nil {
-			panic("queue creation failed: " + err.Error())
-		}
-		sub.queue = q
-		sub.stop = func() { q.Close(); close(sub.canceled) }
-
-		// Start a goroutine to bridge messages from the queue to the channel.
-		// TODO(creachadair): This is a temporary hack until we can change the
-		// interface not to expose the channel directly.
-		go func() {
-			for {
-				next, err := q.Wait(context.Background())
-				if err != nil {
-					return // the subscription was terminated
-				}
-				sub.out <- next.(Message)
-			}
-		}()
+		return sub, nil
 	}
-	return sub
+	q, err := queue.New(queue.Options{
+		SoftQuota: outCapacity,
+		HardLimit: outCapacity,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("creating queue: %w", err)
+	}
+	sub.queue = q
+	sub.stop = func() { q.Close(); close(sub.canceled) }
+
+	// Start a goroutine to bridge messages from the queue to the channel.
+	// TODO(creachadair): This is a temporary hack until we can change the
+	// interface not to expose the channel directly.
+	go func() {
+		for {
+			next, err := q.Wait(context.Background())
+			if err != nil {
+				return // the subscription was terminated
+			}
+			sub.out <- next.(Message)
+		}
+	}()
+	return sub, nil
 }
 
 // putMessage transmits msg to the subscriber. If s is unbuffered, this blocks

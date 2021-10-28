@@ -190,7 +190,10 @@ func (s *Server) subscribe(ctx context.Context, clientID string, query Query, ou
 		return nil, ErrAlreadySubscribed
 	}
 
-	sub := NewSubscription(outCapacity)
+	sub, err := NewSubscription(outCapacity)
+	if err != nil {
+		return nil, err
+	}
 	s.subs.index.add(&subInfo{
 		clientID: clientID,
 		query:    query,
