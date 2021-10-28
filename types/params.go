@@ -75,6 +75,7 @@ type VersionParams struct {
 	AppVersion uint64 `json:"app_version"`
 }
 
+// TimestampParams influence the validity of block timestamps.
 type TimestampParams struct {
 	Precision time.Duration `json:"precision"`
 	Accuracy  time.Duration `json:"accuracy"`
