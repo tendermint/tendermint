@@ -43,7 +43,7 @@ var (
 //
 // A Queue is safe for concurrent use by multiple goroutines.
 type Queue struct {
-	mu *sync.Mutex // protects the fields below
+	mu sync.Mutex // protects the fields below
 
 	softQuota int     // adjusted dynamically (see Add, Remove)
 	hardLimit int     // fixed for the lifespan of the queue
@@ -75,16 +75,15 @@ func New(opts Options) (*Queue, error) {
 		opts.BurstCredit = float64(opts.SoftQuota)
 	}
 	sentinel := new(entry)
-	mu := new(sync.Mutex)
-	return &Queue{
-		mu:        mu,
+	q := &Queue{
 		softQuota: opts.SoftQuota,
 		hardLimit: opts.HardLimit,
 		credit:    opts.BurstCredit,
-		nempty:    sync.NewCond(mu),
 		back:      sentinel,
 		front:     sentinel,
-	}, nil
+	}
+	q.nempty = sync.NewCond(&q.mu)
+	return q, nil
 }
 
 // Add adds item to the back of the queue. It reports an error and does not
