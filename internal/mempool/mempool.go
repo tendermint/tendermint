@@ -237,8 +237,7 @@ func (txmp *TxMempool) CheckTx(
 	txmp.mtx.RLock()
 	defer txmp.mtx.RUnlock()
 
-	txSize := len(tx)
-	if txSize > txmp.config.MaxTxBytes {
+	if txSize := len(tx); txSize > txmp.config.MaxTxBytes {
 		return types.ErrTxTooLarge{
 			Max:    txmp.config.MaxTxBytes,
 			Actual: txSize,
@@ -247,9 +246,7 @@ func (txmp *TxMempool) CheckTx(
 
 	if txmp.preCheck != nil {
 		if err := txmp.preCheck(tx); err != nil {
-			return types.ErrPreCheck{
-				Reason: err,
-			}
+			return types.ErrPreCheck{Reason: err}
 		}
 	}
 
@@ -318,7 +315,7 @@ func (txmp *TxMempool) RemoveTxByKey(txKey types.TxKey) error {
 	return errors.New("transaction not found")
 }
 
-// Flush flushes out the mempool. It acquires a read-lock, fetches all the
+// Flush empties the mempool. It acquires a read-lock, fetches all the
 // transactions currently in the transaction store and removes each transaction
 // from the store and all indexes and finally resets the cache.
 //
@@ -344,7 +341,7 @@ func (txmp *TxMempool) Flush() {
 //
 // NOTE:
 // - A read-lock is acquired.
-// - Transactions returned are not actually removed from the mempool transaction
+// - Transactions returned are not removed from the mempool transaction
 //   store or indexes.
 func (txmp *TxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	txmp.mtx.RLock()
@@ -396,7 +393,7 @@ func (txmp *TxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 //
 // NOTE:
 // - A read-lock is acquired.
-// - Transactions returned are not actually removed from the mempool transaction
+// - Transactions returned are not removed from the mempool transaction
 //   store or indexes.
 func (txmp *TxMempool) ReapMaxTxs(max int) types.Txs {
 	txmp.mtx.RLock()
@@ -412,26 +409,22 @@ func (txmp *TxMempool) ReapMaxTxs(max int) types.Txs {
 	// wTxs contains a list of *WrappedTx retrieved from the priority queue that
 	// need to be re-enqueued prior to returning.
 	wTxs := make([]*WrappedTx, 0, cap)
-	defer func() {
-		for _, wtx := range wTxs {
-			txmp.priorityIndex.PushTx(wtx)
-		}
-	}()
-
 	txs := make([]types.Tx, 0, cap)
 	for txmp.priorityIndex.NumTxs() > 0 && len(txs) < max {
 		wtx := txmp.priorityIndex.PopTx()
 		txs = append(txs, wtx.tx)
 		wTxs = append(wTxs, wtx)
 	}
-
+	for _, wtx := range wTxs {
+		txmp.priorityIndex.PushTx(wtx)
+	}
 	return txs
 }
 
-// Update iterates over all the transactions provided by the caller, i.e. the
-// block producer, and removes them from the cache (if applicable) and removes
+// Update iterates over all the transactions provided by the block producer,
+// removes them from the cache (if applicable), and removes
 // the transactions from the main transaction store and associated indexes.
-// Finally, if there are trainsactions remaining in the mempool, we initiate a
+// If there are transactions remaining in the mempool, we initiate a
 // re-CheckTx for them (if applicable), otherwise, we notify the caller more
 // transactions are available.
 //
@@ -492,26 +485,22 @@ func (txmp *TxMempool) Update(
 	return nil
 }
 
-// initTxCallback performs the initial, i.e. the first, callback after CheckTx
-// has been executed by the ABCI application. In other words, initTxCallback is
-// called after executing CheckTx when we see a unique transaction for the first
-// time. CheckTx can be called again for the same transaction at a later point
-// in time when re-checking, however, this callback will not be called.
+// initTxCallback is the callback invoked for a new unique transaction after CheckTx
+// has been executed by the ABCI application for the first time on that transaction.
+// CheckTx can be called again for the same transaction later when re-checking;
+// however, this callback will not be called.
 //
-// After the ABCI application executes CheckTx, initTxCallback is called with
-// the ABCI *Response object and TxInfo. If postCheck is defined on the mempool,
-// we execute that first. If there is no error from postCheck (if defined) and
-// the ABCI CheckTx response code is OK, we attempt to insert the transaction.
+// initTxCallback runs after the ABCI application executes CheckTx.
+// It runs the postCheck hook if one is defined on the mempool.
+// If the CheckTx response response code is not OK, or if the postCheck hook
+// reports an error, the transaction is rejected. Otherwise, we attempt to insert
+// the transaction into the mempool.
 //
-// When attempting to insert the transaction, we first check if there is
-// sufficient capacity. If there is sufficient capacity, the transaction is
-// inserted into the txStore and indexed across all indexes. Otherwise, if the
-// mempool is full, we attempt to find a lower priority transaction to evict in
-// place of the new incoming transaction. If no such transaction exists, the
-// new incoming transaction is rejected.
-//
-// If the new incoming transaction fails CheckTx or postCheck fails, we reject
-// the new incoming transaction.
+// When inserting a transaction, we first check if there is sufficient capacity.
+// If there is, the transaction is added to the txStore and all indexes.
+// Otherwise, if the mempool is full, we attempt to find a lower priority transaction
+// to evict in place of the new incoming transaction. If no such transaction exists,
+// the new incoming transaction is rejected.
 //
 // NOTE:
 // - An explicit lock is NOT required.
@@ -620,17 +609,14 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 		"num_txs", txmp.Size(),
 	)
 	txmp.notifyTxsAvailable()
-
 }
 
-// defaultTxCallback performs the default CheckTx application callback. This is
-// NOT executed when a transaction is first seen/received. Instead, this callback
-// is executed during re-checking transactions (if enabled). A caller, i.e a
-// block proposer, acquires a mempool write-lock via Lock() and when executing
-// Update(), if the mempool is non-empty and Recheck is enabled, then all
-// remaining transactions will be rechecked via CheckTxAsync. The order in which
-// they are rechecked must be the same order in which this callback is called
-// per transaction.
+// defaultTxCallback is the CheckTx application callback used when a transaction
+// is being re-checked (if re-checking is enabled). The caller must hold a mempool
+// write-lock (via Lock()) and when executing Update(), if the mempool is non-empty
+// and Recheck is enabled, then all remaining transactions will be rechecked via
+// CheckTxAsync. The order transactions are rechecked must be the same as the
+// order in which this callback is called.
 func (txmp *TxMempool) defaultTxCallback(req *abci.Request, res *abci.Response) {
 	if txmp.recheckCursor == nil {
 		return
@@ -723,7 +709,7 @@ func (txmp *TxMempool) defaultTxCallback(req *abci.Request, res *abci.Response) 
 	txmp.metrics.Size.Set(float64(txmp.Size()))
 }
 
-// updateReCheckTxs updates the recheck cursors by using the gossipIndex. For
+// updateReCheckTxs updates the recheck cursors using the gossipIndex. For
 // each transaction, it executes CheckTxAsync. The global callback defined on
 // the proxyAppConn will be executed for each transaction after CheckTx is
 // executed.
@@ -762,8 +748,8 @@ func (txmp *TxMempool) updateReCheckTxs() {
 }
 
 // canAddTx returns an error if we cannot insert the provided *WrappedTx into
-// the mempool due to mempool configured constraints. Otherwise, nil is returned
-// and the transaction can be inserted into the mempool.
+// the mempool due to mempool configured constraints. If it returns nil,
+// the transaction can be inserted into the mempool.
 func (txmp *TxMempool) canAddTx(wtx *WrappedTx) error {
 	var (
 		numTxs    = txmp.Size()
@@ -820,8 +806,8 @@ func (txmp *TxMempool) removeTx(wtx *WrappedTx, removeFromCache bool) {
 }
 
 // purgeExpiredTxs removes all transactions that have exceeded their respective
-// height and/or time based TTLs from their respective indexes. Every expired
-// transaction will be removed from the mempool entirely, except for the cache.
+// height- and/or time-based TTLs from their respective indexes. Every expired
+// transaction will be removed from the mempool, but preserved in the cache.
 //
 // NOTE: purgeExpiredTxs must only be called during TxMempool#Update in which
 // the caller has a write-lock on the mempool and so we can safely iterate over
