@@ -134,10 +134,10 @@ func (q *Queue) Remove() (interface{}, bool) {
 	return q.popFront(), true
 }
 
-// Wait blocks until q is non-empty, and then returns the frontmost (oldest)
-// item from the queue. If ctx ends before an item is available, Wait returns a
-// nil value and a context error. If the queue is closed while it is still
-// empty, Wait returns nil, ErrQueueClosed.
+// Wait blocks until q is non-empty or closed, and then returns the frontmost
+// (oldest) item from the queue. If ctx ends before an item is available, Wait
+// returns a nil value and a context error. If the queue is closed while it is
+// still empty, Wait returns nil, ErrQueueClosed.
 func (q *Queue) Wait(ctx context.Context) (interface{}, error) {
 	// If the context terminates, wake the waiter.
 	ctx, cancel := context.WithCancel(ctx)
@@ -162,7 +162,9 @@ func (q *Queue) Wait(ctx context.Context) (interface{}, error) {
 }
 
 // Close closes the queue. After closing, any further Add calls will report an
-// error, and Wait calls will report an error if the queue is empty.
+// error, but items that were added to the queue prior to closing will still be
+// available for Remove and Wait. Wait will report an error without blocking if
+// it is called on a closed, empty queue.
 func (q *Queue) Close() error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
