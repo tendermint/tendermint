@@ -1898,6 +1898,7 @@ func TestStateOutputsBlockPartsStats(t *testing.T) {
 
 	// create dummy peer
 	cs, _, err := randState(config, 1)
+	require.NoError(t, err)
 	peer := p2pmock.NewPeer(nil)
 
 	// 1) new block part

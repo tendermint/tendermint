@@ -171,7 +171,7 @@ func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
 	defer os.RemoveAll(cfg.RootDir)
 	cfg.PrivValidator.ListenAddr = addrNoPrefix
 
-	_, err := newDefaultNode(cfg, log.TestingLogger())
+	_, err = newDefaultNode(cfg, log.TestingLogger())
 	assert.Error(t, err)
 }
 
