@@ -9,6 +9,7 @@ October 29, 2001
 ### FEATURES
 
 - [cli] [#7033](https://github.com/tendermint/tendermint/pull/7033) Add a `rollback` command to rollback to the previous tendermint state in the event of an incorrect app hash. (@cmwaters)
+- [config] \#7174 expose ability to write config to arbitrary paths. (@tychoish)
 
 ### BUG FIXES
 
