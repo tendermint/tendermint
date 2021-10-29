@@ -8,24 +8,27 @@ import (
 
 func TestNew(t *testing.T) {
 	tests := []struct {
+		desc string
 		opts Options
 		want error
 	}{
-		{Options{}, errHardLimit},
-		{Options{SoftQuota: -1}, errHardLimit},
-		{Options{SoftQuota: 0}, errHardLimit},
-		{Options{SoftQuota: 1, HardLimit: 0}, errHardLimit},
-		{Options{SoftQuota: 5, HardLimit: 3}, errHardLimit},
-		{Options{SoftQuota: 1, HardLimit: 1, BurstCredit: -6}, errBurstCredit},
-		{Options{SoftQuota: 1, HardLimit: 2, BurstCredit: 0}, nil},
-		{Options{SoftQuota: 1, HardLimit: 5, BurstCredit: 10}, nil},
+		{"empty options", Options{}, errHardLimit},
+		{"zero limit negative quota", Options{SoftQuota: -1}, errHardLimit},
+		{"zero limit and quota", Options{SoftQuota: 0}, errHardLimit},
+		{"zero limit", Options{SoftQuota: 1, HardLimit: 0}, errHardLimit},
+		{"limit less than quota", Options{SoftQuota: 5, HardLimit: 3}, errHardLimit},
+		{"negative credit", Options{SoftQuota: 1, HardLimit: 1, BurstCredit: -6}, errBurstCredit},
+		{"valid default credit", Options{SoftQuota: 1, HardLimit: 2, BurstCredit: 0}, nil},
+		{"valid explicit credit", Options{SoftQuota: 1, HardLimit: 5, BurstCredit: 10}, nil},
 	}
 
 	for _, test := range tests {
-		got, err := New(test.opts)
-		if err != test.want {
-			t.Errorf("New(%+v): got (%+v, %v), want err=%v", test.opts, got, err, test.want)
-		}
+		t.Run(test.desc, func(t *testing.T) {
+			got, err := New(test.opts)
+			if err != test.want {
+				t.Errorf("New(%+v): got (%+v, %v), want err=%v", test.opts, got, err, test.want)
+			}
+		})
 	}
 }
 
