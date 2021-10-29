@@ -13,7 +13,7 @@ linters:
     # - gochecknoinits
     # - gocognit
     - goconst
-    - gocritic
+    # - gocritic
     # - gocyclo
     # - godox
     - gofmt
