@@ -1,4 +1,4 @@
-package types
+package eventbus
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/types"
 )
 
 func TestEventBusPublishEventTx(t *testing.T) {
@@ -25,7 +26,7 @@ func TestEventBusPublishEventTx(t *testing.T) {
 		}
 	})
 
-	tx := Tx("foo")
+	tx := types.Tx("foo")
 	result := abci.ResponseDeliverTx{
 		Data: []byte("bar"),
 		Events: []abci.Event{
@@ -41,7 +42,7 @@ func TestEventBusPublishEventTx(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		msg := <-txsSub.Out()
-		edt := msg.Data().(EventDataTx)
+		edt := msg.Data().(types.EventDataTx)
 		assert.Equal(t, int64(1), edt.Height)
 		assert.Equal(t, uint32(0), edt.Index)
 		assert.EqualValues(t, tx, edt.Tx)
@@ -49,12 +50,14 @@ func TestEventBusPublishEventTx(t *testing.T) {
 		close(done)
 	}()
 
-	err = eventBus.PublishEventTx(EventDataTx{abci.TxResult{
-		Height: 1,
-		Index:  0,
-		Tx:     tx,
-		Result: result,
-	}})
+	err = eventBus.PublishEventTx(types.EventDataTx{
+		abci.TxResult{
+			Height: 1,
+			Index:  0,
+			Tx:     tx,
+			Result: result,
+		},
+	})
 	assert.NoError(t, err)
 
 	select {
@@ -74,8 +77,8 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 		}
 	})
 
-	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
-	blockID := BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(BlockPartSizeBytes).Header()}
+	block := types.MakeBlock(0, []types.Tx{}, nil, []types.Evidence{})
+	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(types.BlockPartSizeBytes).Header()}
 	resultBeginBlock := abci.ResponseBeginBlock{
 		Events: []abci.Event{
 			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "baz", Value: "1"}}},
@@ -95,7 +98,7 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		msg := <-blocksSub.Out()
-		edt := msg.Data().(EventDataNewBlock)
+		edt := msg.Data().(types.EventDataNewBlock)
 		assert.Equal(t, block, edt.Block)
 		assert.Equal(t, blockID, edt.BlockID)
 		assert.Equal(t, resultBeginBlock, edt.ResultBeginBlock)
@@ -103,7 +106,7 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 		close(done)
 	}()
 
-	err = eventBus.PublishEventNewBlock(EventDataNewBlock{
+	err = eventBus.PublishEventNewBlock(types.EventDataNewBlock{
 		Block:            block,
 		BlockID:          blockID,
 		ResultBeginBlock: resultBeginBlock,
@@ -128,7 +131,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 		}
 	})
 
-	tx := Tx("foo")
+	tx := types.Tx("foo")
 	result := abci.ResponseDeliverTx{
 		Data: []byte("bar"),
 		Events: []abci.Event{
@@ -194,7 +197,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 		go func() {
 			select {
 			case msg := <-sub.Out():
-				data := msg.Data().(EventDataTx)
+				data := msg.Data().(types.EventDataTx)
 				assert.Equal(t, int64(1), data.Height)
 				assert.Equal(t, uint32(0), data.Index)
 				assert.EqualValues(t, tx, data.Tx)
@@ -205,12 +208,14 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 			}
 		}()
 
-		err = eventBus.PublishEventTx(EventDataTx{abci.TxResult{
-			Height: 1,
-			Index:  0,
-			Tx:     tx,
-			Result: result,
-		}})
+		err = eventBus.PublishEventTx(types.EventDataTx{
+			abci.TxResult{
+				Height: 1,
+				Index:  0,
+				Tx:     tx,
+				Result: result,
+			},
+		})
 		assert.NoError(t, err)
 
 		select {
@@ -236,7 +241,7 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 		}
 	})
 
-	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
+	block := types.MakeBlock(0, []types.Tx{}, nil, []types.Evidence{})
 	resultBeginBlock := abci.ResponseBeginBlock{
 		Events: []abci.Event{
 			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "baz", Value: "1"}}},
@@ -256,14 +261,14 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		msg := <-headersSub.Out()
-		edt := msg.Data().(EventDataNewBlockHeader)
+		edt := msg.Data().(types.EventDataNewBlockHeader)
 		assert.Equal(t, block.Header, edt.Header)
 		assert.Equal(t, resultBeginBlock, edt.ResultBeginBlock)
 		assert.Equal(t, resultEndBlock, edt.ResultEndBlock)
 		close(done)
 	}()
 
-	err = eventBus.PublishEventNewBlockHeader(EventDataNewBlockHeader{
+	err = eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
 		Header:           block.Header,
 		ResultBeginBlock: resultBeginBlock,
 		ResultEndBlock:   resultEndBlock,
@@ -287,7 +292,7 @@ func TestEventBusPublishEventNewEvidence(t *testing.T) {
 		}
 	})
 
-	ev := NewMockDuplicateVoteEvidence(1, time.Now(), "test-chain-id")
+	ev := types.NewMockDuplicateVoteEvidence(1, time.Now(), "test-chain-id")
 
 	query := "tm.event='NewEvidence'"
 	evSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
@@ -296,13 +301,13 @@ func TestEventBusPublishEventNewEvidence(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		msg := <-evSub.Out()
-		edt := msg.Data().(EventDataNewEvidence)
+		edt := msg.Data().(types.EventDataNewEvidence)
 		assert.Equal(t, ev, edt.Evidence)
 		assert.Equal(t, int64(4), edt.Height)
 		close(done)
 	}()
 
-	err = eventBus.PublishEventNewEvidence(EventDataNewEvidence{
+	err = eventBus.PublishEventNewEvidence(types.EventDataNewEvidence{
 		Evidence: ev,
 		Height:   4,
 	})
@@ -342,37 +347,37 @@ func TestEventBusPublish(t *testing.T) {
 		}
 	}()
 
-	err = eventBus.Publish(EventNewBlockHeaderValue, EventDataNewBlockHeader{})
+	err = eventBus.Publish(types.EventNewBlockHeaderValue, types.EventDataNewBlockHeader{})
 	require.NoError(t, err)
-	err = eventBus.PublishEventNewBlock(EventDataNewBlock{})
+	err = eventBus.PublishEventNewBlock(types.EventDataNewBlock{})
 	require.NoError(t, err)
-	err = eventBus.PublishEventNewBlockHeader(EventDataNewBlockHeader{})
+	err = eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{})
 	require.NoError(t, err)
-	err = eventBus.PublishEventVote(EventDataVote{})
+	err = eventBus.PublishEventVote(types.EventDataVote{})
 	require.NoError(t, err)
-	err = eventBus.PublishEventNewRoundStep(EventDataRoundState{})
+	err = eventBus.PublishEventNewRoundStep(types.EventDataRoundState{})
 	require.NoError(t, err)
-	err = eventBus.PublishEventTimeoutPropose(EventDataRoundState{})
+	err = eventBus.PublishEventTimeoutPropose(types.EventDataRoundState{})
 	require.NoError(t, err)
-	err = eventBus.PublishEventTimeoutWait(EventDataRoundState{})
+	err = eventBus.PublishEventTimeoutWait(types.EventDataRoundState{})
 	require.NoError(t, err)
-	err = eventBus.PublishEventNewRound(EventDataNewRound{})
+	err = eventBus.PublishEventNewRound(types.EventDataNewRound{})
 	require.NoError(t, err)
-	err = eventBus.PublishEventCompleteProposal(EventDataCompleteProposal{})
+	err = eventBus.PublishEventCompleteProposal(types.EventDataCompleteProposal{})
 	require.NoError(t, err)
-	err = eventBus.PublishEventPolka(EventDataRoundState{})
+	err = eventBus.PublishEventPolka(types.EventDataRoundState{})
 	require.NoError(t, err)
-	err = eventBus.PublishEventUnlock(EventDataRoundState{})
+	err = eventBus.PublishEventUnlock(types.EventDataRoundState{})
 	require.NoError(t, err)
-	err = eventBus.PublishEventRelock(EventDataRoundState{})
+	err = eventBus.PublishEventRelock(types.EventDataRoundState{})
 	require.NoError(t, err)
-	err = eventBus.PublishEventLock(EventDataRoundState{})
+	err = eventBus.PublishEventLock(types.EventDataRoundState{})
 	require.NoError(t, err)
-	err = eventBus.PublishEventValidatorSetUpdates(EventDataValidatorSetUpdates{})
+	err = eventBus.PublishEventValidatorSetUpdates(types.EventDataValidatorSetUpdates{})
 	require.NoError(t, err)
-	err = eventBus.PublishEventBlockSyncStatus(EventDataBlockSyncStatus{})
+	err = eventBus.PublishEventBlockSyncStatus(types.EventDataBlockSyncStatus{})
 	require.NoError(t, err)
-	err = eventBus.PublishEventStateSyncStatus(EventDataStateSyncStatus{})
+	err = eventBus.PublishEventStateSyncStatus(types.EventDataStateSyncStatus{})
 	require.NoError(t, err)
 
 	select {
@@ -430,7 +435,7 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 	})
 
 	ctx := context.Background()
-	q := EventQueryNewBlock
+	q := types.EventQueryNewBlock
 
 	for i := 0; i < numClients; i++ {
 		if randQueries {
@@ -451,7 +456,7 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 		}()
 	}
 
-	eventValue := EventNewBlockValue
+	eventValue := types.EventNewBlockValue
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -460,7 +465,7 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 			eventValue = randEventValue()
 		}
 
-		err := eventBus.Publish(eventValue, EventDataString("Gamora"))
+		err := eventBus.Publish(eventValue, types.EventDataString("Gamora"))
 		if err != nil {
 			b.Error(err)
 		}
@@ -468,42 +473,41 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 }
 
 var events = []string{
-	EventNewBlockValue,
-	EventNewBlockHeaderValue,
-	EventNewRoundValue,
-	EventNewRoundStepValue,
-	EventTimeoutProposeValue,
-	EventCompleteProposalValue,
-	EventPolkaValue,
-	EventUnlockValue,
-	EventLockValue,
-	EventRelockValue,
-	EventTimeoutWaitValue,
-	EventVoteValue,
-	EventBlockSyncStatusValue,
-	EventStateSyncStatusValue,
+	types.EventNewBlockValue,
+	types.EventNewBlockHeaderValue,
+	types.EventNewRoundValue,
+	types.EventNewRoundStepValue,
+	types.EventTimeoutProposeValue,
+	types.EventCompleteProposalValue,
+	types.EventPolkaValue,
+	types.EventUnlockValue,
+	types.EventLockValue,
+	types.EventRelockValue,
+	types.EventTimeoutWaitValue,
+	types.EventVoteValue,
+	types.EventBlockSyncStatusValue,
+	types.EventStateSyncStatusValue,
 }
 
 func randEventValue() string {
-
 	return events[mrand.Intn(len(events))]
 }
 
 var queries = []tmpubsub.Query{
-	EventQueryNewBlock,
-	EventQueryNewBlockHeader,
-	EventQueryNewRound,
-	EventQueryNewRoundStep,
-	EventQueryTimeoutPropose,
-	EventQueryCompleteProposal,
-	EventQueryPolka,
-	EventQueryUnlock,
-	EventQueryLock,
-	EventQueryRelock,
-	EventQueryTimeoutWait,
-	EventQueryVote,
-	EventQueryBlockSyncStatus,
-	EventQueryStateSyncStatus,
+	types.EventQueryNewBlock,
+	types.EventQueryNewBlockHeader,
+	types.EventQueryNewRound,
+	types.EventQueryNewRoundStep,
+	types.EventQueryTimeoutPropose,
+	types.EventQueryCompleteProposal,
+	types.EventQueryPolka,
+	types.EventQueryUnlock,
+	types.EventQueryLock,
+	types.EventQueryRelock,
+	types.EventQueryTimeoutWait,
+	types.EventQueryVote,
+	types.EventQueryBlockSyncStatus,
+	types.EventQueryStateSyncStatus,
 }
 
 func randQuery() tmpubsub.Query {
