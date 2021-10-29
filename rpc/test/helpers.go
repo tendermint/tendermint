@@ -66,8 +66,11 @@ func makeAddrs() (string, string, string) {
 		fmt.Sprintf("tcp://127.0.0.1:%d", randPort())
 }
 
-func CreateConfig(testName string) *config.Config {
-	c := config.ResetTestRoot(testName)
+func CreateConfig(testName string) (*config.Config, error) {
+	c, err := config.ResetTestRoot(testName)
+	if err != nil {
+		return nil, err
+	}
 
 	// and we use random ports to run in parallel
 	tm, rpc, grpc := makeAddrs()
@@ -75,7 +78,7 @@ func CreateConfig(testName string) *config.Config {
 	c.RPC.ListenAddress = rpc
 	c.RPC.CORSAllowedOrigins = []string{"https://tendermint.com/"}
 	c.RPC.GRPCListenAddress = grpc
-	return c
+	return c, nil
 }
 
 func GetGRPCClient(conf *config.Config) coregrpc.BroadcastAPIClient {

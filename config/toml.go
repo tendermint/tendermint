@@ -45,23 +45,29 @@ func EnsureRoot(rootDir string) {
 
 // WriteConfigFile renders config using the template and writes it to configFilePath.
 // This function is called by cmd/tendermint/commands/init.go
-func WriteConfigFile(rootDir string, config *Config) {
-	var buffer bytes.Buffer
-
-	if err := configTemplate.Execute(&buffer, config); err != nil {
-		panic(err)
-	}
-
-	configFilePath := filepath.Join(rootDir, defaultConfigFilePath)
-
-	mustWriteFile(configFilePath, buffer.Bytes(), 0644)
+func WriteConfigFile(rootDir string, config *Config) error {
+	return config.WriteToTemplate(filepath.Join(rootDir, defaultConfigFilePath))
 }
 
-func writeDefaultConfigFileIfNone(rootDir string) {
+// WriteToTemplate writes the config to the exact file specified by
+// the path, in the default toml template and does not mangle the path
+// or filename at all.
+func (cfg *Config) WriteToTemplate(path string) error {
+	var buffer bytes.Buffer
+
+	if err := configTemplate.Execute(&buffer, cfg); err != nil {
+		return err
+	}
+
+	return writeFile(path, buffer.Bytes(), 0644)
+}
+
+func writeDefaultConfigFileIfNone(rootDir string) error {
 	configFilePath := filepath.Join(rootDir, defaultConfigFilePath)
 	if !tmos.FileExists(configFilePath) {
-		WriteConfigFile(rootDir, DefaultConfig())
+		return WriteConfigFile(rootDir, DefaultConfig())
 	}
+	return nil
 }
 
 // Note: any changes to the comments/variables/mapstructure
@@ -570,22 +576,22 @@ namespace = "{{ .Instrumentation.Namespace }}"
 
 /****** these are for test settings ***********/
 
-func ResetTestRoot(testName string) *Config {
+func ResetTestRoot(testName string) (*Config, error) {
 	return ResetTestRootWithChainID(testName, "")
 }
 
-func ResetTestRootWithChainID(testName string, chainID string) *Config {
+func ResetTestRootWithChainID(testName string, chainID string) (*Config, error) {
 	// create a unique, concurrency-safe test directory under os.TempDir()
 	rootDir, err := ioutil.TempDir("", fmt.Sprintf("%s-%s_", chainID, testName))
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	// ensure config and data subdirs are created
 	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
-		panic(err)
+		return nil, err
 	}
 	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	conf := DefaultConfig()
@@ -594,26 +600,36 @@ func ResetTestRootWithChainID(testName string, chainID string) *Config {
 	privStateFilePath := filepath.Join(rootDir, conf.PrivValidator.State)
 
 	// Write default config file if missing.
-	writeDefaultConfigFileIfNone(rootDir)
+	if err := writeDefaultConfigFileIfNone(rootDir); err != nil {
+		return nil, err
+	}
+
 	if !tmos.FileExists(genesisFilePath) {
 		if chainID == "" {
 			chainID = "tendermint_test"
 		}
 		testGenesis := fmt.Sprintf(testGenesisFmt, chainID)
-		mustWriteFile(genesisFilePath, []byte(testGenesis), 0644)
+		if err := writeFile(genesisFilePath, []byte(testGenesis), 0644); err != nil {
+			return nil, err
+		}
 	}
 	// we always overwrite the priv val
-	mustWriteFile(privKeyFilePath, []byte(testPrivValidatorKey), 0644)
-	mustWriteFile(privStateFilePath, []byte(testPrivValidatorState), 0644)
+	if err := writeFile(privKeyFilePath, []byte(testPrivValidatorKey), 0644); err != nil {
+		return nil, err
+	}
+	if err := writeFile(privStateFilePath, []byte(testPrivValidatorState), 0644); err != nil {
+		return nil, err
+	}
 
 	config := TestConfig().SetRoot(rootDir)
-	return config
+	return config, nil
 }
 
-func mustWriteFile(filePath string, contents []byte, mode os.FileMode) {
+func writeFile(filePath string, contents []byte, mode os.FileMode) error {
 	if err := ioutil.WriteFile(filePath, contents, mode); err != nil {
-		tmos.Exit(fmt.Sprintf("failed to write file: %v", err))
+		return fmt.Errorf("failed to write file: %w", err)
 	}
+	return nil
 }
 
 var testGenesisFmt = `{

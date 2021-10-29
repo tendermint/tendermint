@@ -500,7 +500,9 @@ func TestAveragingInIncrementProposerPriority(t *testing.T) {
 				{Address: []byte("a"), ProposerPriority: 1},
 				{Address: []byte("b"), ProposerPriority: 2},
 				{Address: []byte("c"), ProposerPriority: 3}}},
-			1, 2},
+			1,
+			2,
+		},
 		1: {ValidatorSet{
 			Validators: []*Validator{
 				{Address: []byte("a"), ProposerPriority: 10},
@@ -508,13 +510,17 @@ func TestAveragingInIncrementProposerPriority(t *testing.T) {
 				{Address: []byte("c"), ProposerPriority: 1}}},
 			// this should average twice but the average should be 0 after the first iteration
 			// (voting power is 0 -> no changes)
-			11, 1 / 3},
+			11,
+			0, // 1 / 3,
+		},
 		2: {ValidatorSet{
 			Validators: []*Validator{
 				{Address: []byte("a"), ProposerPriority: 100},
 				{Address: []byte("b"), ProposerPriority: -10},
 				{Address: []byte("c"), ProposerPriority: 1}}},
-			1, 91 / 3},
+			1,
+			91 / 3,
+		},
 	}
 	for i, tc := range tcs {
 		// work on copy to have the old ProposerPriorities:

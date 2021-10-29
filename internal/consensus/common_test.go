@@ -50,20 +50,26 @@ type cleanupFunc func()
 func configSetup(t *testing.T) *config.Config {
 	t.Helper()
 
-	cfg := ResetConfig("consensus_reactor_test")
+	cfg, err := ResetConfig("consensus_reactor_test")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(cfg.RootDir) })
 
-	consensusReplayConfig := ResetConfig("consensus_replay_test")
-	configStateTest := ResetConfig("consensus_state_test")
-	configMempoolTest := ResetConfig("consensus_mempool_test")
-	configByzantineTest := ResetConfig("consensus_byzantine_test")
+	consensusReplayConfig, err := ResetConfig("consensus_replay_test")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(consensusReplayConfig.RootDir) })
 
-	t.Cleanup(func() {
-		os.RemoveAll(cfg.RootDir)
-		os.RemoveAll(consensusReplayConfig.RootDir)
-		os.RemoveAll(configStateTest.RootDir)
-		os.RemoveAll(configMempoolTest.RootDir)
-		os.RemoveAll(configByzantineTest.RootDir)
-	})
+	configStateTest, err := ResetConfig("consensus_state_test")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(configStateTest.RootDir) })
+
+	configMempoolTest, err := ResetConfig("consensus_mempool_test")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(configMempoolTest.RootDir) })
+
+	configByzantineTest, err := ResetConfig("consensus_byzantine_test")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(configByzantineTest.RootDir) })
+
 	return cfg
 }
 
@@ -73,7 +79,7 @@ func ensureDir(dir string, mode os.FileMode) {
 	}
 }
 
-func ResetConfig(name string) *config.Config {
+func ResetConfig(name string) (*config.Config, error) {
 	return config.ResetTestRoot(name)
 }
 
@@ -384,9 +390,12 @@ func subscribeToVoter(cs *State, addr []byte) <-chan tmpubsub.Message {
 //-------------------------------------------------------------------------------
 // consensus states
 
-func newState(state sm.State, pv types.PrivValidator, app abci.Application) *State {
-	cfg := config.ResetTestRoot("consensus_state_test")
-	return newStateWithConfig(cfg, state, pv, app)
+func newState(state sm.State, pv types.PrivValidator, app abci.Application) (*State, error) {
+	cfg, err := config.ResetTestRoot("consensus_state_test")
+	if err != nil {
+		return nil, err
+	}
+	return newStateWithConfig(cfg, state, pv, app), nil
 }
 
 func newStateWithConfig(
@@ -454,13 +463,16 @@ func loadPrivValidator(cfg *config.Config) *privval.FilePV {
 	return privValidator
 }
 
-func randState(cfg *config.Config, nValidators int) (*State, []*validatorStub) {
+func randState(cfg *config.Config, nValidators int) (*State, []*validatorStub, error) {
 	// Get State
 	state, privVals := randGenesisState(cfg, nValidators, false, 10)
 
 	vss := make([]*validatorStub, nValidators)
 
-	cs := newState(state, privVals[0], kvstore.NewApplication())
+	cs, err := newState(state, privVals[0], kvstore.NewApplication())
+	if err != nil {
+		return nil, nil, err
+	}
 
 	for i := 0; i < nValidators; i++ {
 		vss[i] = newValidatorStub(privVals[i], int32(i))
@@ -468,7 +480,7 @@ func randState(cfg *config.Config, nValidators int) (*State, []*validatorStub) {
 	// since cs1 starts at 1
 	incrementHeight(vss[1:]...)
 
-	return cs, vss
+	return cs, vss, nil
 }
 
 //-------------------------------------------------------------------------------
@@ -722,7 +734,9 @@ func randConsensusState(
 		blockStore := store.NewBlockStore(dbm.NewMemDB()) // each state needs its own db
 		state, err := sm.MakeGenesisState(genDoc)
 		require.NoError(t, err)
-		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+		thisConfig, err := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+		require.NoError(t, err)
+
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
 
 		for _, opt := range configOpts {
@@ -772,7 +786,11 @@ func randConsensusNetWithPeers(
 	configRootDirs := make([]string, 0, nPeers)
 	for i := 0; i < nPeers; i++ {
 		state, _ := sm.MakeGenesisState(genDoc)
-		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+		thisConfig, err := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+		if err != nil {
+			panic(err)
+		}
+
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
 		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		if i == 0 {

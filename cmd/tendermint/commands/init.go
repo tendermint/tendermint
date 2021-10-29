@@ -121,7 +121,9 @@ func initFilesWithConfig(config *cfg.Config) error {
 	}
 
 	// write config file
-	cfg.WriteConfigFile(config.RootDir, config)
+	if err := cfg.WriteConfigFile(config.RootDir, config); err != nil {
+		return err
+	}
 	logger.Info("Generated config", "mode", config.Mode)
 
 	return nil

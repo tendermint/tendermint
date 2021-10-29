@@ -24,17 +24,17 @@ func TestEnsureRoot(t *testing.T) {
 
 	// setup temp dir for test
 	tmpDir, err := ioutil.TempDir("", "config-test")
-	require.Nil(err)
+	require.NoError(err)
 	defer os.RemoveAll(tmpDir)
 
 	// create root dir
 	EnsureRoot(tmpDir)
 
-	WriteConfigFile(tmpDir, DefaultConfig())
+	require.NoError(WriteConfigFile(tmpDir, DefaultConfig()))
 
 	// make sure config is set properly
 	data, err := ioutil.ReadFile(filepath.Join(tmpDir, defaultConfigFilePath))
-	require.Nil(err)
+	require.NoError(err)
 
 	checkConfig(t, string(data))
 
@@ -47,7 +47,8 @@ func TestEnsureTestRoot(t *testing.T) {
 	testName := "ensureTestRoot"
 
 	// create root dir
-	cfg := ResetTestRoot(testName)
+	cfg, err := ResetTestRoot(testName)
+	require.NoError(err)
 	defer os.RemoveAll(cfg.RootDir)
 	rootDir := cfg.RootDir
 

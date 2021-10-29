@@ -365,7 +365,8 @@ func TestReactorHelperMode(t *testing.T) {
 		channelID = byte(0x40)
 	)
 
-	cfg := config.ResetTestRoot("blockchain_reactor_v2_test")
+	cfg, err := config.ResetTestRoot("blockchain_reactor_v2_test")
+	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
 
@@ -455,7 +456,8 @@ func TestReactorHelperMode(t *testing.T) {
 }
 
 func TestReactorSetSwitchNil(t *testing.T) {
-	cfg := config.ResetTestRoot("blockchain_reactor_v2_test")
+	cfg, err := config.ResetTestRoot("blockchain_reactor_v2_test")
+	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
 

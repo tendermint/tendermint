@@ -18,7 +18,8 @@ func NodeSuite(t *testing.T) (service.Service, *config.Config) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	conf := rpctest.CreateConfig(t.Name())
+	conf, err := rpctest.CreateConfig(t.Name())
+	require.NoError(t, err)
 
 	// start a tendermint node in the background to test against
 	app := kvstore.NewApplication()

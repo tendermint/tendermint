@@ -18,7 +18,11 @@ import (
 var cfg *config.Config // NOTE: must be reset for each _test.go file
 
 func TestMain(m *testing.M) {
-	cfg = config.ResetTestRoot("consensus_height_vote_set_test")
+	var err error
+	cfg, err = config.ResetTestRoot("consensus_height_vote_set_test")
+	if err != nil {
+		panic(err)
+	}
 	code := m.Run()
 	os.RemoveAll(cfg.RootDir)
 	os.Exit(code)
