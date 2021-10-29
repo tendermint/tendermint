@@ -18,7 +18,7 @@ linters:
     # - godox
     - gofmt
     - goimports
-    - golint
+    # - golint
     - gosec
     - gosimple
     - govet

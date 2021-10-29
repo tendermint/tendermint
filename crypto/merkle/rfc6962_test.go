@@ -90,7 +90,7 @@ func TestRFC6962HasherCollisions(t *testing.T) {
 	_, subHash1Trail := trailsFromByteSlices([][]byte{hash1, hash2})
 	subHash1 := subHash1Trail.Hash
 	// Check that this is not the same as a leaf hash of their concatenation.
-	preimage := append(hash1, hash2...)
+	preimage := append(hash1, hash2...) // nolint: gocritic
 	_, forgedHashTrail := trailsFromByteSlices([][]byte{preimage})
 	forgedHash := forgedHashTrail.Hash
 	if bytes.Equal(subHash1, forgedHash) {
