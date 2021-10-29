@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/types/eventbus"
 )
 
 /*
@@ -38,7 +39,7 @@ don't need to do anything). It will keep trying indefinitely with exponential
 backoff (10ms -> 20ms -> 40ms) until successful.
 */
 type Local struct {
-	*types.EventBus
+	*eventbus.EventBus
 	Logger log.Logger
 	ctx    *rpctypes.Context
 	env    *rpccore.Environment
@@ -48,7 +49,7 @@ type Local struct {
 // local RPC client constructor needs to build a local client.
 type NodeService interface {
 	RPCEnvironment() *rpccore.Environment
-	EventBus() *types.EventBus
+	EventBus() *eventbus.EventBus
 }
 
 // New configures a client that calls the Node directly.
@@ -215,7 +216,7 @@ func (c *Local) Subscribe(
 		outCap = outCapacity[0]
 	}
 
-	var sub types.Subscription
+	var sub eventbus.Subscription
 	if outCap > 0 {
 		sub, err = c.EventBus.Subscribe(ctx, subscriber, q, outCap)
 	} else {
@@ -232,7 +233,7 @@ func (c *Local) Subscribe(
 }
 
 func (c *Local) eventsRoutine(
-	sub types.Subscription,
+	sub eventbus.Subscription,
 	subscriber string,
 	q pubsub.Query,
 	outc chan<- coretypes.ResultEvent) {
@@ -272,7 +273,7 @@ func (c *Local) eventsRoutine(
 }
 
 // Try to resubscribe with exponential backoff.
-func (c *Local) resubscribe(subscriber string, q pubsub.Query) types.Subscription {
+func (c *Local) resubscribe(subscriber string, q pubsub.Query) eventbus.Subscription {
 	attempts := 0
 	for {
 		if !c.IsRunning() {

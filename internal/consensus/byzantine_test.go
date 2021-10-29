@@ -25,6 +25,7 @@ import (
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/types/eventbus"
 )
 
 // Byzantine node sends two different prevotes (nil and blockID) to the same
@@ -92,7 +93,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			pv := privVals[i]
 			cs.SetPrivValidator(pv)
 
-			eventBus := types.NewEventBus()
+			eventBus := eventbus.NewDefault()
 			eventBus.SetLogger(log.TestingLogger().With("module", "events"))
 			err = eventBus.Start()
 			require.NoError(t, err)
@@ -243,7 +244,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	for _, sub := range rts.subs {
 		wg.Add(1)
 
-		go func(j int, s types.Subscription) {
+		go func(j int, s eventbus.Subscription) {
 			defer wg.Done()
 			for {
 				select {

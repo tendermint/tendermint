@@ -14,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/types/eventbus"
 )
 
 //-----------------------------------------------------------------------------
@@ -69,7 +70,7 @@ func NewBlockExecutor(
 	res := &BlockExecutor{
 		store:      stateStore,
 		proxyApp:   proxyApp,
-		eventBus:   types.NopEventBus{},
+		eventBus:   eventbus.NopEventBus{},
 		mempool:    pool,
 		evpool:     evpool,
 		logger:     logger,

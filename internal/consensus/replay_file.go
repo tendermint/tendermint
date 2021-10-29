@@ -20,6 +20,7 @@ import (
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/types/eventbus"
 )
 
 const (
@@ -125,7 +126,7 @@ func newPlayback(fileName string, fp *os.File, cs *State, genState sm.State) *pl
 }
 
 // go back count steps by resetting the state and running (pb.count - count) steps
-func (pb *playback) replayReset(count int, newStepSub types.Subscription) error {
+func (pb *playback) replayReset(count int, newStepSub eventbus.Subscription) error {
 	if err := pb.cs.Stop(); err != nil {
 		return err
 	}
@@ -318,7 +319,7 @@ func newConsensusStateForReplay(cfg config.BaseConfig, csConfig *config.Consensu
 		tmos.Exit(fmt.Sprintf("Error starting proxy app conns: %v", err))
 	}
 
-	eventBus := types.NewEventBus()
+	eventBus := eventbus.NewDefault()
 	if err := eventBus.Start(); err != nil {
 		tmos.Exit(fmt.Sprintf("Failed to start event bus: %v", err))
 	}

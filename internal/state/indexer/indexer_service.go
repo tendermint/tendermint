@@ -5,6 +5,7 @@ import (
 
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/types/eventbus"
 )
 
 // XXX/TODO: These types should be moved to the indexer package.
@@ -19,11 +20,11 @@ type Service struct {
 	service.BaseService
 
 	eventSinks []EventSink
-	eventBus   *types.EventBus
+	eventBus   *eventbus.EventBus
 }
 
 // NewIndexerService returns a new service instance.
-func NewIndexerService(es []EventSink, eventBus *types.EventBus) *Service {
+func NewIndexerService(es []EventSink, eventBus *eventbus.EventBus) *Service {
 
 	is := &Service{eventSinks: es, eventBus: eventBus}
 	is.BaseService = *service.NewBaseService(nil, "IndexerService", is)

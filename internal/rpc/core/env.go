@@ -18,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/types/eventbus"
 )
 
 const (
@@ -86,7 +87,7 @@ type Environment struct {
 	PubKey            crypto.PubKey
 	GenDoc            *types.GenesisDoc // cache the genesis structure
 	EventSinks        []indexer.EventSink
-	EventBus          *types.EventBus // thread safe
+	EventBus          *eventbus.EventBus // thread safe
 	Mempool           mempool.Mempool
 	BlockSyncReactor  consensus.BlockSyncReactor
 	StateSyncMetricer statesync.Metricer

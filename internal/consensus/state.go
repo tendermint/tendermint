@@ -29,6 +29,7 @@ import (
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/types/eventbus"
 )
 
 // Consensus sentinel errors
@@ -117,7 +118,7 @@ type State struct {
 
 	// we use eventBus to trigger msg broadcasts in the reactor,
 	// and to notify external subscribers, eg. through a websocket
-	eventBus *types.EventBus
+	eventBus *eventbus.EventBus
 
 	// a Write-Ahead Log ensures we can recover from any kind of crash
 	// and helps us avoid signing conflicting votes
@@ -207,7 +208,7 @@ func (cs *State) SetLogger(l log.Logger) {
 }
 
 // SetEventBus sets event bus.
-func (cs *State) SetEventBus(b *types.EventBus) {
+func (cs *State) SetEventBus(b *eventbus.EventBus) {
 	cs.eventBus = b
 	cs.blockExec.SetEventBus(b)
 }

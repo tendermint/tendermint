@@ -16,6 +16,7 @@ import (
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/types/eventbus"
 )
 
 var (
@@ -110,7 +111,7 @@ type Reactor struct {
 	service.BaseService
 
 	state    *State
-	eventBus *types.EventBus
+	eventBus *eventbus.EventBus
 	Metrics  *Metrics
 
 	mtx      tmsync.RWMutex
@@ -243,7 +244,7 @@ func (r *Reactor) OnStop() {
 }
 
 // SetEventBus sets the reactor's event bus.
-func (r *Reactor) SetEventBus(b *types.EventBus) {
+func (r *Reactor) SetEventBus(b *eventbus.EventBus) {
 	r.eventBus = b
 	r.state.SetEventBus(b)
 }

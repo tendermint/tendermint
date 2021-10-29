@@ -12,6 +12,7 @@ import (
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/types/eventbus"
 )
 
 func TestReactorInvalidPrecommit(t *testing.T) {
@@ -59,7 +60,7 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 		for _, sub := range rts.subs {
 			wg.Add(1)
 
-			go func(s types.Subscription) {
+			go func(s eventbus.Subscription) {
 				<-s.Out()
 				wg.Done()
 			}(sub)

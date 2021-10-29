@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/types/eventbus"
 )
 
 // Server defines parameters for running an Inspector rpc server.
@@ -27,7 +28,7 @@ type Server struct {
 }
 
 type eventBusSubscriber interface {
-	Subscribe(ctx context.Context, subscriber string, query pubsub.Query, outCapacity ...int) (types.Subscription, error)
+	Subscribe(ctx context.Context, subscriber string, query pubsub.Query, outCapacity ...int) (eventbus.Subscription, error)
 	Unsubscribe(ctx context.Context, args pubsub.UnsubscribeArgs) error
 	UnsubscribeAll(ctx context.Context, subscriber string) error
 

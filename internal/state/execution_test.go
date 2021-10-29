@@ -25,6 +25,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/types/eventbus"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -367,7 +368,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 		blockStore,
 	)
 
-	eventBus := types.NewEventBus()
+	eventBus := eventbus.NewDefault()
 	err = eventBus.Start()
 	require.NoError(t, err)
 	defer eventBus.Stop() //nolint:errcheck // ignore for tests

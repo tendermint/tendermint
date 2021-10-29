@@ -20,6 +20,7 @@ import (
 	"github.com/tendermint/tendermint/internal/state/indexer/sink/psql"
 	tmlog "github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/types/eventbus"
 
 	// Register the Postgre database driver.
 	_ "github.com/lib/pq"
@@ -39,7 +40,7 @@ var (
 
 func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	// event bus
-	eventBus := types.NewEventBus()
+	eventBus := eventbus.NewDefault()
 	eventBus.SetLogger(tmlog.TestingLogger())
 	err := eventBus.Start()
 	require.NoError(t, err)

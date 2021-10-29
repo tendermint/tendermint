@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/types/eventbus"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -32,7 +33,7 @@ type Inspector struct {
 	config *config.RPCConfig
 
 	indexerService *indexer.Service
-	eventBus       *types.EventBus
+	eventBus       *eventbus.EventBus
 	logger         log.Logger
 }
 
@@ -44,7 +45,7 @@ type Inspector struct {
 //nolint:lll
 func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, es []indexer.EventSink, logger log.Logger) *Inspector {
 	routes := rpc.Routes(*cfg, ss, bs, es, logger)
-	eb := types.NewEventBus()
+	eb := eventbus.NewDefault()
 	eb.SetLogger(logger.With("module", "events"))
 	is := indexer.NewIndexerService(es, eb)
 	is.SetLogger(logger.With("module", "txindex"))
