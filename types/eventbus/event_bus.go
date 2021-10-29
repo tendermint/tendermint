@@ -12,8 +12,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-const defaultCapacity = 0
-
 type Subscription interface {
 	ID() string
 	Out() <-chan tmpubsub.Message
@@ -31,8 +29,7 @@ type EventBus struct {
 
 // NewDefault returns a new event bus with default options.
 func NewDefault() *EventBus {
-	// capacity could be exposed later if needed
-	pubsub := tmpubsub.NewServer(tmpubsub.BufferCapacity(defaultCapacity))
+	pubsub := tmpubsub.NewServer(tmpubsub.BufferCapacity(0))
 	b := &EventBus{pubsub: pubsub}
 	b.BaseService = *service.NewBaseService(nil, "EventBus", b)
 	return b
