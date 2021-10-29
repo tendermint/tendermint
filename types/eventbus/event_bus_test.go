@@ -17,7 +17,7 @@ import (
 )
 
 func TestEventBusPublishEventTx(t *testing.T) {
-	eventBus := NewEventBus()
+	eventBus := NewDefault()
 	err := eventBus.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -68,7 +68,7 @@ func TestEventBusPublishEventTx(t *testing.T) {
 }
 
 func TestEventBusPublishEventNewBlock(t *testing.T) {
-	eventBus := NewEventBus()
+	eventBus := NewDefault()
 	err := eventBus.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -122,7 +122,7 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 }
 
 func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
-	eventBus := NewEventBus()
+	eventBus := NewDefault()
 	err := eventBus.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -232,7 +232,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 }
 
 func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
-	eventBus := NewEventBus()
+	eventBus := NewDefault()
 	err := eventBus.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -283,7 +283,7 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 }
 
 func TestEventBusPublishEventNewEvidence(t *testing.T) {
-	eventBus := NewEventBus()
+	eventBus := NewDefault()
 	err := eventBus.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -321,7 +321,7 @@ func TestEventBusPublishEventNewEvidence(t *testing.T) {
 }
 
 func TestEventBusPublish(t *testing.T) {
-	eventBus := NewEventBus()
+	eventBus := NewDefault()
 	err := eventBus.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {

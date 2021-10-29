@@ -29,8 +29,8 @@ type EventBus struct {
 	pubsub *tmpubsub.Server
 }
 
-// NewEventBus returns a new event bus.
-func NewEventBus() *EventBus {
+// NewDefault returns a new event bus with default options.
+func NewDefault() *EventBus {
 	return NewEventBusWithBufferCapacity(defaultCapacity)
 }
 
