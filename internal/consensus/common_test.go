@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -806,11 +805,11 @@ func randConsensusNetWithPeers(
 		if i < nValidators {
 			privVal = privVals[i]
 		} else {
-			tempKeyFile, err := ioutil.TempFile("", "priv_validator_key_")
+			tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
 			if err != nil {
 				panic(err)
 			}
-			tempStateFile, err := ioutil.TempFile("", "priv_validator_state_")
+			tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
 			if err != nil {
 				panic(err)
 			}
@@ -898,7 +897,7 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 func (*mockTicker) SetLogger(log.Logger) {}
 
 func newPersistentKVStore() abci.Application {
-	dir, err := ioutil.TempDir("", "persistent-kvstore")
+	dir, err := os.MkdirTemp("", "persistent-kvstore")
 	if err != nil {
 		panic(err)
 	}

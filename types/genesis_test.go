@@ -1,7 +1,6 @@
 package types
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -122,7 +121,7 @@ func TestGenesisGood(t *testing.T) {
 }
 
 func TestGenesisSaveAs(t *testing.T) {
-	tmpfile, err := ioutil.TempFile("", "genesis")
+	tmpfile, err := os.CreateTemp("", "genesis")
 	require.NoError(t, err)
 	defer os.Remove(tmpfile.Name())
 

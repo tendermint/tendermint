@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -70,7 +69,7 @@ func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *config.Co
 	)
 	cs.SetLogger(logger)
 
-	bytes, _ := ioutil.ReadFile(cs.config.WalFile())
+	bytes, _ := os.ReadFile(cs.config.WalFile())
 	t.Logf("====== WAL: \n\r%X\n", bytes)
 
 	err = cs.Start()
@@ -665,7 +664,7 @@ func TestMockProxyApp(t *testing.T) {
 }
 
 func tempWALWithData(data []byte) string {
-	walFile, err := ioutil.TempFile("", "wal")
+	walFile, err := os.CreateTemp("", "wal")
 	if err != nil {
 		panic(fmt.Sprintf("failed to create temp WAL file: %v", err))
 	}
@@ -1072,7 +1071,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 			// if its not the first one, we have a full block
 			if thisBlockParts != nil {
 				var pbb = new(tmproto.Block)
-				bz, err := ioutil.ReadAll(thisBlockParts.GetReader())
+				bz, err := io.ReadAll(thisBlockParts.GetReader())
 				if err != nil {
 					panic(err)
 				}
@@ -1111,7 +1110,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 		}
 	}
 	// grab the last block too
-	bz, err := ioutil.ReadAll(thisBlockParts.GetReader())
+	bz, err := io.ReadAll(thisBlockParts.GetReader())
 	if err != nil {
 		panic(err)
 	}

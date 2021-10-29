@@ -1,7 +1,7 @@
 package types
 
 import (
-	"io/ioutil"
+	"os"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -33,7 +33,7 @@ func (nodeKey NodeKey) SaveAs(filePath string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(filePath, jsonBytes, 0600)
+	return os.WriteFile(filePath, jsonBytes, 0600)
 }
 
 // LoadOrGenNodeKey attempts to load the NodeKey from the given filePath. If
@@ -67,7 +67,7 @@ func GenNodeKey() NodeKey {
 
 // LoadNodeKey loads NodeKey located in filePath.
 func LoadNodeKey(filePath string) (NodeKey, error) {
-	jsonBytes, err := ioutil.ReadFile(filePath)
+	jsonBytes, err := os.ReadFile(filePath)
 	if err != nil {
 		return NodeKey{}, err
 	}

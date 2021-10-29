@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -266,7 +265,7 @@ func (cfg BaseConfig) NodeKeyFile() string {
 
 // LoadNodeKey loads NodeKey located in filePath.
 func (cfg BaseConfig) LoadNodeKeyID() (types.NodeID, error) {
-	jsonBytes, err := ioutil.ReadFile(cfg.NodeKeyFile())
+	jsonBytes, err := os.ReadFile(cfg.NodeKeyFile())
 	if err != nil {
 		return "", err
 	}

@@ -3,7 +3,6 @@ package debug
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -56,7 +55,7 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 
 	// Create a temporary directory which will contain all the state dumps and
 	// relevant files and directories that will be compressed into a file.
-	tmpDir, err := ioutil.TempDir(os.TempDir(), "tendermint_debug_tmp")
+	tmpDir, err := os.MkdirTemp(os.TempDir(), "tendermint_debug_tmp")
 	if err != nil {
 		return fmt.Errorf("failed to create temporary directory: %w", err)
 	}
