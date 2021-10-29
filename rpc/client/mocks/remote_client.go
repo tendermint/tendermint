@@ -436,6 +436,29 @@ func (_m *RemoteClient) Genesis(_a0 context.Context) (*coretypes.ResultGenesis, 
 	return r0, r1
 }
 
+// GenesisChunked provides a mock function with given fields: _a0, _a1
+func (_m *RemoteClient) GenesisChunked(_a0 context.Context, _a1 uint) (*coretypes.ResultGenesisChunk, error) {
+	ret := _m.Called(_a0, _a1)
+
+	var r0 *coretypes.ResultGenesisChunk
+	if rf, ok := ret.Get(0).(func(context.Context, uint) *coretypes.ResultGenesisChunk); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*coretypes.ResultGenesisChunk)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, uint) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Health provides a mock function with given fields: _a0
 func (_m *RemoteClient) Health(_a0 context.Context) (*coretypes.ResultHealth, error) {
 	ret := _m.Called(_a0)
