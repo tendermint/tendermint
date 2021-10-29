@@ -1968,7 +1968,6 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID types.NodeID) (bool, error)
 		// If the vote height is off, we'll just ignore it,
 		// But if it's a conflicting sig, add it to the cs.evpool.
 		// If it's otherwise invalid, punish peer.
-		// nolint: gocritic
 		if voteErr, ok := err.(*types.ErrVoteConflictingVotes); ok {
 			if cs.privValidatorPubKey == nil {
 				return false, errPubKeyIsNotSet

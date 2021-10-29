@@ -485,7 +485,7 @@ func makeLunaticEvidence(
 
 	conflictingVals := phantomValSet.Copy()
 	require.NoError(t, conflictingVals.UpdateWithChangeSet(byzValSet))
-	conflictingPrivVals := append(phantomPrivVals, byzPrivVals...) // nolint:gocritic
+	conflictingPrivVals := append(phantomPrivVals, byzPrivVals...)
 
 	conflictingPrivVals = orderPrivValsByValSet(t, conflictingVals, conflictingPrivVals)
 

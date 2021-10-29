@@ -38,7 +38,7 @@ func TestNodeInfoValidate(t *testing.T) {
 	}{
 		{
 			"Too Many Channels",
-			func(ni *NodeInfo) { ni.Channels = append(channels, byte(maxNumChannels)) }, // nolint: gocritic
+			func(ni *NodeInfo) { ni.Channels = append(channels, byte(maxNumChannels)) },
 			true,
 		},
 		{"Duplicate Channel", func(ni *NodeInfo) { ni.Channels = dupChannels }, true},
