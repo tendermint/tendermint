@@ -1,4 +1,4 @@
-package v1
+package mempool
 
 import (
 	"bytes"
@@ -21,7 +21,6 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
 )
@@ -97,7 +96,7 @@ func setup(t testing.TB, cacheSize int, options ...TxMempoolOption) *TxMempool {
 
 func checkTxs(t *testing.T, txmp *TxMempool, numTxs int, peerID uint16) []testTx {
 	txs := make([]testTx, numTxs)
-	txInfo := mempool.TxInfo{SenderID: peerID}
+	txInfo := TxInfo{SenderID: peerID}
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -338,13 +337,13 @@ func TestTxMempool_CheckTxExceedsMaxSize(t *testing.T) {
 	_, err := rng.Read(tx)
 	require.NoError(t, err)
 
-	require.Error(t, txmp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{SenderID: 0}))
+	require.Error(t, txmp.CheckTx(context.Background(), tx, nil, TxInfo{SenderID: 0}))
 
 	tx = make([]byte, txmp.config.MaxTxBytes-1)
 	_, err = rng.Read(tx)
 	require.NoError(t, err)
 
-	require.NoError(t, txmp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{SenderID: 0}))
+	require.NoError(t, txmp.CheckTx(context.Background(), tx, nil, TxInfo{SenderID: 0}))
 }
 
 func TestTxMempool_CheckTxSamePeer(t *testing.T) {
@@ -358,8 +357,8 @@ func TestTxMempool_CheckTxSamePeer(t *testing.T) {
 
 	tx := []byte(fmt.Sprintf("sender-0=%X=%d", prefix, 50))
 
-	require.NoError(t, txmp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{SenderID: peerID}))
-	require.Error(t, txmp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{SenderID: peerID}))
+	require.NoError(t, txmp.CheckTx(context.Background(), tx, nil, TxInfo{SenderID: peerID}))
+	require.Error(t, txmp.CheckTx(context.Background(), tx, nil, TxInfo{SenderID: peerID}))
 }
 
 func TestTxMempool_CheckTxSameSender(t *testing.T) {
@@ -378,9 +377,9 @@ func TestTxMempool_CheckTxSameSender(t *testing.T) {
 	tx1 := []byte(fmt.Sprintf("sender-0=%X=%d", prefix1, 50))
 	tx2 := []byte(fmt.Sprintf("sender-0=%X=%d", prefix2, 50))
 
-	require.NoError(t, txmp.CheckTx(context.Background(), tx1, nil, mempool.TxInfo{SenderID: peerID}))
+	require.NoError(t, txmp.CheckTx(context.Background(), tx1, nil, TxInfo{SenderID: peerID}))
 	require.Equal(t, 1, txmp.Size())
-	require.NoError(t, txmp.CheckTx(context.Background(), tx2, nil, mempool.TxInfo{SenderID: peerID}))
+	require.NoError(t, txmp.CheckTx(context.Background(), tx2, nil, TxInfo{SenderID: peerID}))
 	require.Equal(t, 1, txmp.Size())
 }
 
@@ -533,7 +532,7 @@ func TestTxMempool_CheckTxPostCheckError(t *testing.T) {
 				}
 				require.Equal(t, expectedErrString, checkTxRes.CheckTx.MempoolError)
 			}
-			require.NoError(t, txmp.CheckTx(context.Background(), tx, callback, mempool.TxInfo{SenderID: 0}))
+			require.NoError(t, txmp.CheckTx(context.Background(), tx, callback, TxInfo{SenderID: 0}))
 		})
 	}
 }

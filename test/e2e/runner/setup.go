@@ -291,10 +291,6 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 		return nil, fmt.Errorf("unexpected mode %q", node.Mode)
 	}
 
-	if node.Mempool != "" {
-		cfg.Mempool.Version = node.Mempool
-	}
-
 	switch node.StateSync {
 	case e2e.StateSyncP2P:
 		cfg.StateSync.Enable = true

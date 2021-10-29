@@ -27,9 +27,6 @@ const (
 	ModeFull      = "full"
 	ModeValidator = "validator"
 	ModeSeed      = "seed"
-
-	MempoolV0 = "v0"
-	MempoolV1 = "v1"
 )
 
 // NOTE: Most of the structs & relevant comments + the
@@ -693,7 +690,6 @@ func TestP2PConfig() *P2PConfig {
 
 // MempoolConfig defines the configuration options for the Tendermint mempool.
 type MempoolConfig struct {
-	Version   string `mapstructure:"version"`
 	RootDir   string `mapstructure:"home"`
 	Recheck   bool   `mapstructure:"recheck"`
 	Broadcast bool   `mapstructure:"broadcast"`
@@ -743,7 +739,6 @@ type MempoolConfig struct {
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool.
 func DefaultMempoolConfig() *MempoolConfig {
 	return &MempoolConfig{
-		Version:   MempoolV1,
 		Recheck:   true,
 		Broadcast: true,
 		// Each signature verification takes .5ms, Size reduced until we implement

@@ -21,7 +21,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/encoding"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
-	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -353,8 +352,13 @@ func TestReactorWithEvidence(t *testing.T) {
 		proxyAppConnMem := abciclient.NewLocalClient(mtx, app)
 		proxyAppConnCon := abciclient.NewLocalClient(mtx, app)
 
-		mempool := mempoolv0.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
-		mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
+		mempool := mempool.NewTxMempool(
+			log.TestingLogger().With("module", "mempool"),
+			thisConfig.Mempool,
+			proxyAppConnMem,
+			0,
+		)
+
 		if thisConfig.Consensus.WaitForTxs() {
 			mempool.EnableTxsAvailable()
 		}

@@ -1,18 +1,18 @@
-package v0
+package mempool
 
 import (
 	"context"
+	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
-
-	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/internal/mempool"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
 	"github.com/tendermint/tendermint/libs/log"
@@ -25,10 +25,10 @@ type reactorTestSuite struct {
 	network *p2ptest.Network
 	logger  log.Logger
 
-	reactors       map[types.NodeID]*Reactor
-	mempoolChnnels map[types.NodeID]*p2p.Channel
-	mempools       map[types.NodeID]*CListMempool
-	kvstores       map[types.NodeID]*kvstore.Application
+	reactors        map[types.NodeID]*Reactor
+	mempoolChannels map[types.NodeID]*p2p.Channel
+	mempools        map[types.NodeID]*TxMempool
+	kvstores        map[types.NodeID]*kvstore.Application
 
 	peerChans   map[types.NodeID]chan p2p.PeerUpdate
 	peerUpdates map[types.NodeID]*p2p.PeerUpdates
@@ -36,32 +36,31 @@ type reactorTestSuite struct {
 	nodes []types.NodeID
 }
 
-func setup(t *testing.T, config *config.MempoolConfig, numNodes int, chBuf uint) *reactorTestSuite {
+func setupReactors(t *testing.T, numNodes int, chBuf uint) *reactorTestSuite {
 	t.Helper()
 
+	cfg, err := config.ResetTestRoot(strings.ReplaceAll(t.Name(), "/", "|"))
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(cfg.RootDir) })
+
 	rts := &reactorTestSuite{
-		logger:         log.TestingLogger().With("testCase", t.Name()),
-		network:        p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
-		reactors:       make(map[types.NodeID]*Reactor, numNodes),
-		mempoolChnnels: make(map[types.NodeID]*p2p.Channel, numNodes),
-		mempools:       make(map[types.NodeID]*CListMempool, numNodes),
-		kvstores:       make(map[types.NodeID]*kvstore.Application, numNodes),
-		peerChans:      make(map[types.NodeID]chan p2p.PeerUpdate, numNodes),
-		peerUpdates:    make(map[types.NodeID]*p2p.PeerUpdates, numNodes),
+		logger:          log.TestingLogger().With("testCase", t.Name()),
+		network:         p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
+		reactors:        make(map[types.NodeID]*Reactor, numNodes),
+		mempoolChannels: make(map[types.NodeID]*p2p.Channel, numNodes),
+		mempools:        make(map[types.NodeID]*TxMempool, numNodes),
+		kvstores:        make(map[types.NodeID]*kvstore.Application, numNodes),
+		peerChans:       make(map[types.NodeID]chan p2p.PeerUpdate, numNodes),
+		peerUpdates:     make(map[types.NodeID]*p2p.PeerUpdates, numNodes),
 	}
 
-	chDesc := GetChannelDescriptor(config)
-	chDesc.RecvBufferCapacity = int(chBuf)
-	rts.mempoolChnnels = rts.network.MakeChannelsNoCleanup(t, chDesc)
+	chDesc := GetChannelDescriptor(cfg.Mempool)
+	rts.mempoolChannels = rts.network.MakeChannelsNoCleanup(t, chDesc)
 
 	for nodeID := range rts.network.Nodes {
 		rts.kvstores[nodeID] = kvstore.NewApplication()
-		cc := abciclient.NewLocalCreator(rts.kvstores[nodeID])
 
-		mempool, memCleanup, err := newMempoolWithApp(cc)
-		require.NoError(t, err)
-		t.Cleanup(memCleanup)
-		mempool.SetLogger(rts.logger)
+		mempool := setup(t, 0)
 		rts.mempools[nodeID] = mempool
 
 		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
@@ -70,10 +69,10 @@ func setup(t *testing.T, config *config.MempoolConfig, numNodes int, chBuf uint)
 
 		rts.reactors[nodeID] = NewReactor(
 			rts.logger.With("nodeID", nodeID),
-			config,
+			cfg.Mempool,
 			rts.network.Nodes[nodeID].PeerManager,
 			mempool,
-			rts.mempoolChnnels[nodeID],
+			rts.mempoolChannels[nodeID],
 			rts.peerUpdates[nodeID],
 		)
 
@@ -109,87 +108,114 @@ func (rts *reactorTestSuite) start(t *testing.T) {
 func (rts *reactorTestSuite) assertMempoolChannelsDrained(t *testing.T) {
 	t.Helper()
 
+	rts.stop(t)
+
+	for _, mch := range rts.mempoolChannels {
+		require.Empty(t, mch.Out, "checking channel %q (len=%d)", mch.ID, len(mch.Out))
+	}
+}
+
+func (rts *reactorTestSuite) stop(t *testing.T) {
 	for id, r := range rts.reactors {
 		require.NoError(t, r.Stop(), "stopping reactor %s", id)
 		r.Wait()
 		require.False(t, r.IsRunning(), "reactor %s did not stop", id)
 	}
-
-	for _, mch := range rts.mempoolChnnels {
-		require.Empty(t, mch.Out, "checking channel %q (len=%d)", mch.ID, len(mch.Out))
-	}
 }
 
-func (rts *reactorTestSuite) waitForTxns(t *testing.T, txs types.Txs, ids ...types.NodeID) {
+func (rts *reactorTestSuite) waitForTxns(t *testing.T, txs []types.Tx, ids ...types.NodeID) {
 	t.Helper()
 
-	fn := func(pool *CListMempool) {
-		for pool.Size() < len(txs) {
-			time.Sleep(50 * time.Millisecond)
-		}
-
-		reapedTxs := pool.ReapMaxTxs(len(txs))
-		require.Equal(t, len(txs), len(reapedTxs))
-		for i, tx := range txs {
-			require.Equalf(t,
-				tx,
-				reapedTxs[i],
-				"txs at index %d in reactor mempool mismatch; got: %v, expected: %v", i, tx, reapedTxs[i],
-			)
-		}
-	}
-
-	if len(ids) == 1 {
-		fn(rts.reactors[ids[0]].mempool)
-		return
-	}
-
+	// ensure that the transactions get fully broadcast to the
+	// rest of the network
 	wg := &sync.WaitGroup{}
-	for id := range rts.mempools {
-		if len(ids) > 0 && !p2ptest.NodeInSlice(id, ids) {
+	for name, pool := range rts.mempools {
+		if !p2ptest.NodeInSlice(name, ids) {
 			continue
 		}
 
 		wg.Add(1)
-		func(nid types.NodeID) { defer wg.Done(); fn(rts.reactors[nid].mempool) }(id)
+		go func(pool *TxMempool) {
+			defer wg.Done()
+			require.Eventually(t, func() bool { return len(txs) == pool.Size() },
+				time.Minute,
+				100*time.Millisecond,
+			)
+		}(pool)
+	}
+	wg.Wait()
+}
+
+func TestReactorBroadcastDoesNotPanic(t *testing.T) {
+	numNodes := 2
+	rts := setupReactors(t, numNodes, 0)
+
+	observePanic := func(r interface{}) {
+		t.Fatal("panic detected in reactor")
 	}
 
+	primary := rts.nodes[0]
+	secondary := rts.nodes[1]
+	primaryReactor := rts.reactors[primary]
+	primaryMempool := primaryReactor.mempool
+	secondaryReactor := rts.reactors[secondary]
+
+	primaryReactor.observePanic = observePanic
+	secondaryReactor.observePanic = observePanic
+
+	firstTx := &WrappedTx{}
+	primaryMempool.insertTx(firstTx)
+
+	// run the router
+	rts.start(t)
+
+	closer := tmsync.NewCloser()
+	primaryReactor.peerWG.Add(1)
+	go primaryReactor.broadcastTxRoutine(secondary, closer)
+
+	wg := &sync.WaitGroup{}
+	for i := 0; i < 50; i++ {
+		next := &WrappedTx{}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			primaryMempool.insertTx(next)
+		}()
+	}
+
+	err := primaryReactor.Stop()
+	require.NoError(t, err)
+	primaryReactor.peerWG.Wait()
 	wg.Wait()
 }
 
 func TestReactorBroadcastTxs(t *testing.T) {
 	numTxs := 1000
 	numNodes := 10
-	cfg := config.TestConfig()
 
-	rts := setup(t, cfg.Mempool, numNodes, 0)
+	rts := setupReactors(t, numNodes, 0)
 
 	primary := rts.nodes[0]
 	secondaries := rts.nodes[1:]
 
-	txs := checkTxs(t, rts.reactors[primary].mempool, numTxs, mempool.UnknownPeerID)
+	txs := checkTxs(t, rts.reactors[primary].mempool, numTxs, UnknownPeerID)
 
 	// run the router
 	rts.start(t)
 
 	// Wait till all secondary suites (reactor) received all mempool txs from the
 	// primary suite (node).
-	rts.waitForTxns(t, txs, secondaries...)
+	rts.waitForTxns(t, convertTex(txs), secondaries...)
 
-	for _, pool := range rts.mempools {
-		require.Equal(t, len(txs), pool.Size())
-	}
-
-	rts.assertMempoolChannelsDrained(t)
+	rts.stop(t)
 }
 
 // regression test for https://github.com/tendermint/tendermint/issues/5408
 func TestReactorConcurrency(t *testing.T) {
 	numTxs := 5
 	numNodes := 2
-	cfg := config.TestConfig()
 
-	rts := setup(t, cfg.Mempool, numNodes, 0)
+	rts := setupReactors(t, numNodes, 0)
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
@@ -204,7 +230,7 @@ func TestReactorConcurrency(t *testing.T) {
 		// 1. submit a bunch of txs
 		// 2. update the whole mempool
 
-		txs := checkTxs(t, rts.reactors[primary].mempool, numTxs, mempool.UnknownPeerID)
+		txs := checkTxs(t, rts.reactors[primary].mempool, numTxs, UnknownPeerID)
 		go func() {
 			defer wg.Done()
 
@@ -218,12 +244,12 @@ func TestReactorConcurrency(t *testing.T) {
 				deliverTxResponses[i] = &abci.ResponseDeliverTx{Code: 0}
 			}
 
-			require.NoError(t, mempool.Update(1, txs, deliverTxResponses, nil, nil))
+			require.NoError(t, mempool.Update(1, convertTex(txs), deliverTxResponses, nil, nil))
 		}()
 
 		// 1. submit a bunch of txs
 		// 2. update none
-		_ = checkTxs(t, rts.reactors[secondary].mempool, numTxs, mempool.UnknownPeerID)
+		_ = checkTxs(t, rts.reactors[secondary].mempool, numTxs, UnknownPeerID)
 		go func() {
 			defer wg.Done()
 
@@ -246,9 +272,8 @@ func TestReactorConcurrency(t *testing.T) {
 func TestReactorNoBroadcastToSender(t *testing.T) {
 	numTxs := 1000
 	numNodes := 2
-	cfg := config.TestConfig()
 
-	rts := setup(t, cfg.Mempool, numNodes, uint(numTxs))
+	rts := setupReactors(t, numNodes, uint(numTxs))
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
@@ -271,7 +296,7 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	numNodes := 2
 	cfg := config.TestConfig()
 
-	rts := setup(t, cfg.Mempool, numNodes, 0)
+	rts := setupReactors(t, numNodes, 0)
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
@@ -283,35 +308,29 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 		context.Background(),
 		tx1,
 		nil,
-		mempool.TxInfo{
-			SenderID: mempool.UnknownPeerID,
+		TxInfo{
+			SenderID: UnknownPeerID,
 		},
 	)
 	require.NoError(t, err)
 
 	rts.start(t)
 
-	// Wait till all secondary suites (reactor) received all mempool txs from the
-	// primary suite (node).
-	rts.waitForTxns(t, []types.Tx{tx1}, secondary)
-
 	rts.reactors[primary].mempool.Flush()
 	rts.reactors[secondary].mempool.Flush()
 
 	// broadcast a tx, which is beyond the max size and ensure it's not sent
 	tx2 := tmrand.Bytes(cfg.Mempool.MaxTxBytes + 1)
-	err = rts.mempools[primary].CheckTx(context.Background(), tx2, nil, mempool.TxInfo{SenderID: mempool.UnknownPeerID})
+	err = rts.mempools[primary].CheckTx(context.Background(), tx2, nil, TxInfo{SenderID: UnknownPeerID})
 	require.Error(t, err)
 
 	rts.assertMempoolChannelsDrained(t)
 }
 
 func TestDontExhaustMaxActiveIDs(t *testing.T) {
-	cfg := config.TestConfig()
-
 	// we're creating a single node network, but not starting the
 	// network.
-	rts := setup(t, cfg.Mempool, 1, mempool.MaxActiveIDs+1)
+	rts := setupReactors(t, 1, MaxActiveIDs+1)
 
 	nodeID := rts.nodes[0]
 
@@ -319,13 +338,13 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 	require.NoError(t, err)
 
 	// ensure the reactor does not panic (i.e. exhaust active IDs)
-	for i := 0; i < mempool.MaxActiveIDs+1; i++ {
+	for i := 0; i < MaxActiveIDs+1; i++ {
 		rts.peerChans[nodeID] <- p2p.PeerUpdate{
 			Status: p2p.PeerStatusUp,
 			NodeID: peerID,
 		}
 
-		rts.mempoolChnnels[nodeID].Out <- p2p.Envelope{
+		rts.mempoolChannels[nodeID].Out <- p2p.Envelope{
 			To: peerID,
 			Message: &protomem.Txs{
 				Txs: [][]byte{},
@@ -336,7 +355,7 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 	require.Eventually(
 		t,
 		func() bool {
-			for _, mch := range rts.mempoolChnnels {
+			for _, mch := range rts.mempoolChannels {
 				if len(mch.Out) > 0 {
 					return false
 				}
@@ -357,12 +376,12 @@ func TestMempoolIDsPanicsIfNodeRequestsOvermaxActiveIDs(t *testing.T) {
 	}
 
 	// 0 is already reserved for UnknownPeerID
-	ids := mempool.NewMempoolIDs()
+	ids := NewMempoolIDs()
 
 	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
-	for i := 0; i < mempool.MaxActiveIDs-1; i++ {
+	for i := 0; i < MaxActiveIDs-1; i++ {
 		ids.ReserveForPeer(peerID)
 	}
 
@@ -376,9 +395,7 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 		t.Skip("skipping test in short mode")
 	}
 
-	cfg := config.TestConfig()
-
-	rts := setup(t, cfg.Mempool, 2, 0)
+	rts := setupReactors(t, 2, 0)
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
@@ -390,4 +407,10 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 		Status: p2p.PeerStatusDown,
 		NodeID: secondary,
 	}
+	time.Sleep(500 * time.Millisecond)
+
+	txs := checkTxs(t, rts.reactors[primary].mempool, 4, UnknownPeerID)
+	require.Equal(t, 4, len(txs))
+	require.Equal(t, 4, rts.mempools[primary].Size())
+	require.Equal(t, 0, rts.mempools[secondary].Size())
 }

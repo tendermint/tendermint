@@ -327,11 +327,6 @@ recv-rate = {{ .P2P.RecvRate }}
 #######################################################
 [mempool]
 
-# Mempool version to use:
-#   1) "v0" - The legacy non-prioritized mempool reactor.
-#   2) "v1" (default) - The prioritized mempool reactor.
-version = "{{ .Mempool.Version }}"
-
 recheck = {{ .Mempool.Recheck }}
 broadcast = {{ .Mempool.Broadcast }}
 

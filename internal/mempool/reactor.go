@@ -1,4 +1,4 @@
-package v0
+package mempool
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/libs/clist"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -38,8 +37,8 @@ type Reactor struct {
 	service.BaseService
 
 	cfg     *config.MempoolConfig
-	mempool *CListMempool
-	ids     *mempool.IDs
+	mempool *TxMempool
+	ids     *IDs
 
 	// XXX: Currently, this is the only way to get information about a peer. Ideally,
 	// we rely on message-oriented communication to get necessary peer data.
@@ -54,6 +53,10 @@ type Reactor struct {
 	// goroutines.
 	peerWG sync.WaitGroup
 
+	// observePanic is a function for observing panics that were recovered in methods on
+	// Reactor. observePanic is called with the recovered value.
+	observePanic func(interface{})
+
 	mtx          tmsync.Mutex
 	peerRoutines map[types.NodeID]*tmsync.Closer
 }
@@ -63,7 +66,7 @@ func NewReactor(
 	logger log.Logger,
 	cfg *config.MempoolConfig,
 	peerMgr PeerManager,
-	mp *CListMempool,
+	txmp *TxMempool,
 	mempoolCh *p2p.Channel,
 	peerUpdates *p2p.PeerUpdates,
 ) *Reactor {
@@ -71,17 +74,20 @@ func NewReactor(
 	r := &Reactor{
 		cfg:          cfg,
 		peerMgr:      peerMgr,
-		mempool:      mp,
-		ids:          mempool.NewMempoolIDs(),
+		mempool:      txmp,
+		ids:          NewMempoolIDs(),
 		mempoolCh:    mempoolCh,
 		peerUpdates:  peerUpdates,
 		closeCh:      make(chan struct{}),
 		peerRoutines: make(map[types.NodeID]*tmsync.Closer),
+		observePanic: defaultObservePanic,
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Mempool", r)
 	return r
 }
+
+func defaultObservePanic(r interface{}) {}
 
 // GetChannelDescriptor produces an instance of a descriptor for this
 // package's required channels.
@@ -94,7 +100,7 @@ func GetChannelDescriptor(cfg *config.MempoolConfig) *p2p.ChannelDescriptor {
 	}
 
 	return &p2p.ChannelDescriptor{
-		ID:                  mempool.MempoolChannel,
+		ID:                  MempoolChannel,
 		MessageType:         new(protomem.Message),
 		Priority:            5,
 		RecvMessageCapacity: batchMsg.Size(),
@@ -154,7 +160,7 @@ func (r *Reactor) handleMempoolMessage(envelope p2p.Envelope) error {
 			return errors.New("empty txs received from peer")
 		}
 
-		txInfo := mempool.TxInfo{SenderID: r.ids.GetForPeer(envelope.From)}
+		txInfo := TxInfo{SenderID: r.ids.GetForPeer(envelope.From)}
 		if len(envelope.From) != 0 {
 			txInfo.SenderNodeID = envelope.From
 		}
@@ -178,6 +184,7 @@ func (r *Reactor) handleMempoolMessage(envelope p2p.Envelope) error {
 func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
+			r.observePanic(e)
 			err = fmt.Errorf("panic in processing message: %v", e)
 			r.Logger.Error(
 				"recovering from processing message panic",
@@ -190,11 +197,11 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	r.Logger.Debug("received message", "peer", envelope.From)
 
 	switch chID {
-	case mempool.MempoolChannel:
+	case MempoolChannel:
 		err = r.handleMempoolMessage(envelope)
 
 	default:
-		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", chID, envelope)
+		err = fmt.Errorf("unknown channel ID (%d) for envelope (%T)", chID, envelope.Message)
 	}
 
 	return err
@@ -297,7 +304,7 @@ func (r *Reactor) processPeerUpdates() {
 
 func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer) {
 	peerMempoolID := r.ids.GetForPeer(peerID)
-	var next *clist.CElement
+	var nextGossipTx *clist.CElement
 
 	// remove the peer ID from the map of routines and mark the waitgroup as done
 	defer func() {
@@ -308,6 +315,7 @@ func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer)
 		r.peerWG.Done()
 
 		if e := recover(); e != nil {
+			r.observePanic(e)
 			r.Logger.Error(
 				"recovering from broadcasting mempool loop",
 				"err", e,
@@ -324,10 +332,10 @@ func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer)
 		// This happens because the CElement we were looking at got garbage
 		// collected (removed). That is, .NextWait() returned nil. Go ahead and
 		// start from the beginning.
-		if next == nil {
+		if nextGossipTx == nil {
 			select {
-			case <-r.mempool.TxsWaitChan(): // wait until a tx is available
-				if next = r.mempool.TxsFront(); next == nil {
+			case <-r.mempool.WaitForNextTx(): // wait until a tx is available
+				if nextGossipTx = r.mempool.NextGossipTx(); nextGossipTx == nil {
 					continue
 				}
 
@@ -343,21 +351,20 @@ func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer)
 			}
 		}
 
-		memTx := next.Value.(*mempoolTx)
+		memTx := nextGossipTx.Value.(*WrappedTx)
 
 		if r.peerMgr != nil {
 			height := r.peerMgr.GetHeight(peerID)
-			if height > 0 && height < memTx.Height()-1 {
+			if height > 0 && height < memTx.height-1 {
 				// allow for a lag of one block
-				time.Sleep(mempool.PeerCatchupSleepIntervalMS * time.Millisecond)
+				time.Sleep(PeerCatchupSleepIntervalMS * time.Millisecond)
 				continue
 			}
 		}
 
 		// NOTE: Transaction batching was disabled due to:
 		// https://github.com/tendermint/tendermint/issues/5796
-
-		if _, ok := memTx.senders.Load(peerMempoolID); !ok {
+		if ok := r.mempool.txStore.TxHasPeer(memTx.hash, peerMempoolID); !ok {
 			// Send the mempool tx to the corresponding peer. Note, the peer may be
 			// behind and thus would not be able to process the mempool tx correctly.
 			r.mempoolCh.Out <- p2p.Envelope{
@@ -374,9 +381,8 @@ func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer)
 		}
 
 		select {
-		case <-next.NextWaitChan():
-			// see the start of the for loop for nil check
-			next = next.Next()
+		case <-nextGossipTx.NextWaitChan():
+			nextGossipTx = nextGossipTx.Next()
 
 		case <-closer.Done():
 			// The peer is marked for removal via a PeerUpdate as the doneCh was

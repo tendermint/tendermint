@@ -37,9 +37,6 @@ func TestGenerator(t *testing.T) {
 						}
 					})
 					if e2e.Mode(node.Mode) != e2e.ModeLight {
-						t.Run("Mempool", func(t *testing.T) {
-							require.NotZero(t, node.Mempool)
-						})
 						t.Run("PrivvalProtocol", func(t *testing.T) {
 							require.NotZero(t, node.PrivvalProtocol)
 						})

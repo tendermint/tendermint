@@ -21,7 +21,7 @@ import (
 	"github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
+	"github.com/tendermint/tendermint/internal/mempool"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
@@ -420,8 +420,14 @@ func newStateWithConfigAndBlockStore(
 	proxyAppConnCon := abciclient.NewLocalClient(mtx, app)
 
 	// Make Mempool
-	mempool := mempoolv0.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
-	mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
+
+	mempool := mempool.NewTxMempool(
+		log.TestingLogger().With("module", "mempool"),
+		thisConfig.Mempool,
+		proxyAppConnMem,
+		0,
+	)
+
 	if thisConfig.Consensus.WaitForTxs() {
 		mempool.EnableTxsAvailable()
 	}

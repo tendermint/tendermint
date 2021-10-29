@@ -44,10 +44,6 @@ var (
 		"tcp":  20,
 		"unix": 10,
 	}
-	nodeMempools = weightedChoice{
-		"v0": 20,
-		"v1": 80,
-	}
 	nodeStateSyncs = weightedChoice{
 		e2e.StateSyncDisabled: 10,
 		e2e.StateSyncP2P:      45,
@@ -277,7 +273,6 @@ func generateNode(
 		StartAt:          startAt,
 		Database:         nodeDatabases.Choose(r),
 		PrivvalProtocol:  nodePrivvalProtocols.Choose(r),
-		Mempool:          nodeMempools.Choose(r),
 		StateSync:        e2e.StateSyncDisabled,
 		PersistInterval:  ptrUint64(uint64(nodePersistIntervals.Choose(r).(int))),
 		SnapshotInterval: uint64(nodeSnapshotIntervals.Choose(r).(int)),
@@ -285,9 +280,6 @@ func generateNode(
 		Perturb:          nodePerturbations.Choose(r),
 	}
 
-	if node.Mempool == "" {
-		node.Mempool = "v1"
-	}
 	if node.PrivvalProtocol == "" {
 		node.PrivvalProtocol = "file"
 	}

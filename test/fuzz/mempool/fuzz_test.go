@@ -1,4 +1,4 @@
-package v0_test
+package mempool_test
 
 import (
 	"io"
@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	mempoolv0 "github.com/tendermint/tendermint/test/fuzz/mempool/v0"
+	mempool "github.com/tendermint/tendermint/test/fuzz/mempool"
 )
 
 const testdataCasesDir = "testdata/cases"
@@ -27,7 +27,7 @@ func TestMempoolTestdataCases(t *testing.T) {
 			require.NoError(t, err)
 			input, err := io.ReadAll(f)
 			require.NoError(t, err)
-			mempoolv0.Fuzz(input)
+			mempool.Fuzz(input)
 		})
 	}
 }
