@@ -96,8 +96,8 @@ func (b *Block) ValidateBasic() error {
 }
 
 // IsTimely validates that the block timestamp is 'timely' according to the proposer-based timestamp algorithm.
-// To evaluate if a block is timely, its timestamp is compared to the local time of the validator along with the configured
-// Precision and MsgDelay parameters.
+// To evaluate if a block is timely, its timestamp is compared to the local time of the validator along with the
+// configured Precision and MsgDelay parameters.
 // Specifically, a proposed block timestamp is considered timely if it is satisfies the following inequalities:
 //
 // proposedBlockTime > validatorLocaltime - Precision && proposedBlockTime < validatorLocalTime + Precision + MsgDelay.
