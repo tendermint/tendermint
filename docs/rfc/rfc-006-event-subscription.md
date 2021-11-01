@@ -147,8 +147,11 @@ mutually exclusive.
    - Switch to gRPC: Preserves a persistent connection and gives us a more
      efficient binary wire format (protobuf), at the cost of much more work for
      clients and harder debugging. This may be the best option if performance
-     and server load are our top concerns. (Given that we are currently using
-     JSON-RPC, however, I'm not convinced throughput is the bottleneck here).
+     and server load are our top concerns.
+
+     Given that we are currently using JSON-RPC, however, I'm not convinced the
+     costs of encoding and sending messages on the event subscription channel
+     are the limiting factor on subscription efficiency, however.
 
 3. **Delegate event subscriptions to a proxy.** Give responsibility for
      managing event subscription to a proxy that runs separately from the node,
