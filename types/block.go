@@ -100,15 +100,15 @@ func (b *Block) ValidateBasic() error {
 // Precision and MsgDelay parameters.
 // Specifically, a proposed block timestamp is considered timely if it is satisfies the following inequalities:
 //
-// proposedBlockTime < validatorLocalTime + Precision + MsgDelay && proposedBlockTime > validatorLocaltime - Precision.
+// proposedBlockTime > validatorLocaltime - Precision && proposedBlockTime < validatorLocalTime + Precision + MsgDelay.
 //
 // For more information on the meaning of 'timely', see the proposer-based timestamp specification:
 // https://github.com/tendermint/spec/tree/master/spec/consensus/proposer-based-timestamp
 func (b *Block) IsTimely(clock tmtime.Source, p TimestampParams) bool {
 	lt := clock.Now()
-	lhs := lt.Add(-p.Precision).UnixMilli()
-	rhs := lt.Add(p.Precision).Add(p.MsgDelay).UnixMilli()
-	if lhs < b.Header.Time.UnixMilli() && b.Header.Time.UnixMilli() < rhs {
+	lhs := lt.Add(-p.Precision)
+	rhs := lt.Add(p.Precision).Add(p.MsgDelay)
+	if lhs.Before(b.Header.Time) && b.Header.Time.Before(rhs) {
 		return true
 	}
 	return false

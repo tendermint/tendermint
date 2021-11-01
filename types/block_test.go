@@ -1365,9 +1365,9 @@ func TestIsTimely(t *testing.T) {
 			// 1 - 2 < 0 < 1 + 2 + 1
 			name:         "basic timely",
 			blockTime:    genesisTime,
-			localTime:    genesisTime.Add(1 * time.Millisecond),
-			precision:    time.Millisecond * 2,
-			msgDelay:     time.Millisecond,
+			localTime:    genesisTime.Add(1 * time.Nanosecond),
+			precision:    time.Nanosecond * 2,
+			msgDelay:     time.Nanosecond,
 			expectTimely: true,
 		},
 		{
@@ -1375,19 +1375,19 @@ func TestIsTimely(t *testing.T) {
 			// 3 - 2 < 0 < 3 + 2 + 1
 			name:         "local time too large",
 			blockTime:    genesisTime,
-			localTime:    genesisTime.Add(3 * time.Millisecond),
-			precision:    time.Millisecond * 2,
-			msgDelay:     time.Millisecond,
+			localTime:    genesisTime.Add(3 * time.Nanosecond),
+			precision:    time.Nanosecond * 2,
+			msgDelay:     time.Nanosecond,
 			expectTimely: false,
 		},
 		{
 			// Checking that the following inequality evaluates to false:
 			// 0 - 2 < 2 < 2 + 1
 			name:         "block time too large",
-			blockTime:    genesisTime.Add(4 * time.Millisecond),
+			blockTime:    genesisTime.Add(4 * time.Nanosecond),
 			localTime:    genesisTime,
-			precision:    time.Millisecond * 2,
-			msgDelay:     time.Millisecond,
+			precision:    time.Nanosecond * 2,
+			msgDelay:     time.Nanosecond,
 			expectTimely: false,
 		},
 	}
