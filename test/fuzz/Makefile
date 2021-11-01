@@ -1,17 +1,9 @@
 #!/usr/bin/make -f
 
 .PHONY: fuzz-mempool
-fuzz-mempool-v1:
+fuzz-mempool:
 	cd mempool && \
 		rm -f *-fuzz.zip && \
-		go-fuzz-build && \
-		go-fuzz
-
-.PHONY: fuzz-p2p-pex
-fuzz-p2p-pex:
-	cd p2p/pex && \
-		rm -f *-fuzz.zip && \
-		go run ./init-corpus/main.go && \
 		go-fuzz-build && \
 		go-fuzz
 
