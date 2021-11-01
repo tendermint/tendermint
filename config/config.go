@@ -27,6 +27,9 @@ const (
 	ModeFull      = "full"
 	ModeValidator = "validator"
 	ModeSeed      = "seed"
+
+	defaultMaxResponseBufferSize = 100
+	minResponseBufferSize        = 100
 )
 
 // NOTE: Most of the structs & relevant comments + the
@@ -454,6 +457,15 @@ type RPCConfig struct {
 	// Maximum size of request header, in bytes
 	MaxHeaderBytes int `mapstructure:"max-header-bytes"`
 
+	// The maximum number of outgoing responses we can buffer for
+	// WebSocket-based connections.
+	//
+	// If this is set to too low a value, it may fill up too quickly and, if
+	// clients cannot read messages quickly enough, they will be disconnected.
+	//
+	// See https://github.com/tendermint/tendermint/issues/6729
+	MaxResponseBufferSize int `mapstructure:"max-response-buffer-size"`
+
 	// The path to a file containing certificate that is used to create the HTTPS server.
 	// Might be either absolute path or path related to Tendermint's config directory.
 	//
@@ -494,6 +506,8 @@ func DefaultRPCConfig() *RPCConfig {
 		MaxBodyBytes:   int64(1000000), // 1MB
 		MaxHeaderBytes: 1 << 20,        // same as the net/http default
 
+		MaxResponseBufferSize: defaultMaxResponseBufferSize,
+
 		TLSCertFile: "",
 		TLSKeyFile:  "",
 	}
@@ -527,6 +541,9 @@ func (cfg *RPCConfig) ValidateBasic() error {
 	}
 	if cfg.MaxHeaderBytes < 0 {
 		return errors.New("max-header-bytes can't be negative")
+	}
+	if cfg.MaxResponseBufferSize < minResponseBufferSize {
+		return errors.New(fmt.Sprintf("max-response-buffer-size must be greater than or equal to %d", minResponseBufferSize))
 	}
 	return nil
 }

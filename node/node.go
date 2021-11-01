@@ -769,6 +769,7 @@ func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 	if cfg.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
 		cfg.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
 	}
+	cfg.MaxResponseBufferSize = n.config.RPC.MaxResponseBufferSize
 
 	// we may expose the rpc over both a unix and tcp socket
 	listeners := make([]net.Listener, len(listenAddrs))
@@ -784,6 +785,7 @@ func (n *nodeImpl) startRPC() ([]net.Listener, error) {
 				}
 			}),
 			rpcserver.ReadLimit(cfg.MaxBodyBytes),
+			rpcserver.WriteChanCapacity(cfg.MaxResponseBufferSize),
 		)
 		wm.SetLogger(wmLogger)
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)

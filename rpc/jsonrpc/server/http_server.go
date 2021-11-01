@@ -32,16 +32,20 @@ type Config struct {
 	MaxBodyBytes int64
 	// mirrors http.Server#MaxHeaderBytes
 	MaxHeaderBytes int
+	// The maximum number of responses that can be buffered for a single
+	// WebSocket connection.
+	MaxResponseBufferSize int
 }
 
 // DefaultConfig returns a default configuration.
 func DefaultConfig() *Config {
 	return &Config{
-		MaxOpenConnections: 0, // unlimited
-		ReadTimeout:        10 * time.Second,
-		WriteTimeout:       10 * time.Second,
-		MaxBodyBytes:       int64(1000000), // 1MB
-		MaxHeaderBytes:     1 << 20,        // same as the net/http default
+		MaxOpenConnections:    0, // unlimited
+		ReadTimeout:           10 * time.Second,
+		WriteTimeout:          10 * time.Second,
+		MaxBodyBytes:          int64(1000000), // 1MB
+		MaxHeaderBytes:        1 << 20,        // same as the net/http default
+		MaxResponseBufferSize: 100,
 	}
 }
 
