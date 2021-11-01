@@ -10,11 +10,14 @@
 //
 // Example:
 //
-//     q, err := query.New("account.name='John'")
+//     q, err := query.New(`account.name='John'`)
 //     if err != nil {
 //         return err
 //     }
-//     sub, err := pubsub.Subscribe(ctx, "johns-transactions", q)
+//     sub, err := pubsub.Subscribe(ctx, pubsub.SubscribeArgs{
+//         ClientID: "johns-transactions",
+//         Query:    q,
+//     })
 //     if err != nil {
 //         return err
 //     }
@@ -64,6 +67,14 @@ var (
 type Query interface {
 	Matches(events []types.Event) (bool, error)
 	String() string
+}
+
+// SubscribeArgs are the parameters to create a new subscription.
+type SubscribeArgs struct {
+	ClientID string // Client ID
+	Query    Query  // filter query for events (required)
+	Limit    int    // subscription queue capacity limit (0 means 1)
+	Quota    int    // subscription queue soft quota (0 uses Limit)
 }
 
 // UnsubscribeArgs are the parameters to remove a subscription.
@@ -148,54 +159,32 @@ func BufferCapacity(cap int) Option {
 // BufferCapacity returns capacity of the publication queue.
 func (s *Server) BufferCapacity() int { return cap(s.queue) }
 
-// Subscribe creates a subscription for the given client.
-//
-// An error will be returned to the caller if the context is canceled or if
-// subscription already exist for pair clientID and query.
-//
-// outCapacity can be used to set a capacity for Subscription#Out channel (1 by
-// default). Panics if outCapacity is less than or equal to zero. If you want
-// an unbuffered channel, use SubscribeUnbuffered.
-func (s *Server) Subscribe(
-	ctx context.Context,
-	clientID string,
-	query Query,
-	outCapacity ...int) (*Subscription, error) {
-	outCap := 1
-	if len(outCapacity) > 0 {
-		if outCapacity[0] <= 0 {
-			panic("Negative or zero capacity. Use SubscribeUnbuffered if you want an unbuffered channel")
-		}
-		outCap = outCapacity[0]
+// Subscribe creates a subscription for the given arguments.  It is an error if
+// the query is nil, a subscription already exists for the specified client ID
+// and query, or if the capacity arguments are invalid.
+func (s *Server) Subscribe(ctx context.Context, args SubscribeArgs) (*Subscription, error) {
+	if args.Query == nil {
+		return nil, errors.New("query is nil")
 	}
-
-	return s.subscribe(ctx, clientID, query, outCap)
-}
-
-// SubscribeUnbuffered does the same as Subscribe, except it returns a
-// subscription with unbuffered channel. Use with caution as it can freeze the
-// server.
-func (s *Server) SubscribeUnbuffered(ctx context.Context, clientID string, query Query) (*Subscription, error) {
-	return s.subscribe(ctx, clientID, query, 0)
-}
-
-func (s *Server) subscribe(ctx context.Context, clientID string, query Query, outCapacity int) (*Subscription, error) {
 	s.subs.Lock()
 	defer s.subs.Unlock()
 
 	if s.subs.index == nil {
 		return nil, ErrServerStopped
-	} else if s.subs.index.contains(clientID, query.String()) {
+	} else if s.subs.index.contains(args.ClientID, args.Query.String()) {
 		return nil, ErrAlreadySubscribed
 	}
 
-	sub, err := newSubscription(outCapacity, outCapacity)
+	if args.Limit == 0 {
+		args.Limit = 1
+	}
+	sub, err := newSubscription(args.Quota, args.Limit)
 	if err != nil {
 		return nil, err
 	}
 	s.subs.index.add(&subInfo{
-		clientID: clientID,
-		query:    query,
+		clientID: args.ClientID,
+		query:    args.Query,
 		subID:    sub.id,
 		sub:      sub,
 	})
