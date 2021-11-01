@@ -14,20 +14,19 @@
 //     if err != nil {
 //         return err
 //     }
-//     ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-//     defer cancel()
-//     subscription, err := pubsub.Subscribe(ctx, "johns-transactions", q)
+//     sub, err := pubsub.Subscribe(ctx, "johns-transactions", q)
 //     if err != nil {
 //         return err
 //     }
 //
 //     for {
-//         select {
-//         case msg <- subscription.Out():
-//             // handle msg.Data() and msg.Events()
-//         case <-subscription.Canceled():
-//             return subscription.Err()
+//         next, err := sub.Next(ctx)
+//         if err == pubsub.ErrTerminated {
+//            return err // terminated by publisher
+//         } else if err != nil {
+//            return err // timed out, client unsubscribed, etc.
 //         }
+//         process(next)
 //     }
 //
 package pubsub
@@ -190,7 +189,7 @@ func (s *Server) subscribe(ctx context.Context, clientID string, query Query, ou
 		return nil, ErrAlreadySubscribed
 	}
 
-	sub, err := newSubscription(outCapacity)
+	sub, err := newSubscription(outCapacity, outCapacity)
 	if err != nil {
 		return nil, err
 	}
@@ -334,11 +333,11 @@ func (s *Server) run() {
 				s.Logger.Error("Error sending event", "err", err)
 			}
 		}
-		// Terminate all subscribers without error before exit.
+		// Terminate all subscribers before exit.
 		s.subs.Lock()
 		defer s.subs.Unlock()
 		for si := range s.subs.index.all {
-			si.sub.cancel(nil)
+			si.sub.stop(ErrTerminated)
 		}
 		s.subs.index = nil
 	}()
@@ -348,7 +347,7 @@ func (s *Server) run() {
 // error. The caller must hold the s.subs lock.
 func (s *Server) removeSubs(evict subInfoSet, reason error) {
 	for si := range evict {
-		si.sub.cancel(reason)
+		si.sub.stop(reason)
 	}
 	s.subs.index.removeAll(evict)
 }
@@ -362,7 +361,7 @@ func (s *Server) send(data interface{}, events []types.Event) error {
 		if len(evict) != 0 {
 			s.subs.Lock()
 			defer s.subs.Unlock()
-			s.removeSubs(evict, ErrOutOfCapacity)
+			s.removeSubs(evict, ErrTerminated)
 		}
 	}()
 
@@ -381,18 +380,14 @@ func (s *Server) send(data interface{}, events []types.Event) error {
 			continue
 		}
 
-		// Subscriptions may be buffered or unbuffered. Unbuffered subscriptions
-		// are intended for internal use such as indexing, where we don't want to
-		// penalize a slow reader. Buffered subscribers must keep up with their
-		// queue, or they will be terminated.
-		//
-		// TODO(creachadair): Unbuffered subscriptions used by the event indexer
-		// to avoid losing events if it happens to be slow. Rework this so that
-		// use case doesn't require this affordance, and then remove unbuffered
-		// subscriptions.
-		msg := NewMessage(si.sub.id, data, events)
-		if err := si.sub.putMessage(msg); err != nil {
-			// The subscriber was too slow, cancel them.
+		// Publish the events to the subscriber's queue. If this fails, e.g.,
+		// because the queue is over capacity or out of quota, evict the
+		// subscription from the index.
+		if err := si.sub.publish(Message{
+			subID:  si.sub.id,
+			data:   data,
+			events: events,
+		}); err != nil {
 			evict.add(si)
 		}
 	}
