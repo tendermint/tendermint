@@ -231,6 +231,15 @@ max-body-bytes = {{ .RPC.MaxBodyBytes }}
 # Maximum size of request header, in bytes
 max-header-bytes = {{ .RPC.MaxHeaderBytes }}
 
+# The maximum number of outgoing responses the node can buffer for a single
+# WebSocket connection.
+#
+# The lower this value, the less memory will be used, but the higher the
+# likelihood that clients will be disconnected for not being able to read
+# responses fast enough from the WebSocket endpoint. This therefore needs to be
+# tuned for your particular use case.
+max-response-buffer-size = {{ .RPC.MaxResponseBufferSize }}
+
 # The path to a file containing certificate that is used to create the HTTPS server.
 # Might be either absolute path or path related to Tendermint's config directory.
 # If the certificate is signed by a certificate authority,
