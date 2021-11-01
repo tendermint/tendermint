@@ -141,7 +141,7 @@ mutually exclusive.
      better library support for clients not written in Go. The protocol would
      be more chatty, but we could mitigate that with batching.
 
-	 This has a nice incidental benefit that it would become easier to debug
+     This has a nice incidental benefit that it would become easier to debug
      subscriptions from the command-line, like the other RPC methods.
 
    - Switch to gRPC: Preserves a persistent connection and gives us a more
