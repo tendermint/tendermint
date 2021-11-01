@@ -1,11 +1,13 @@
 package pubsub
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/internal/libs/queue"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 )
 
@@ -24,21 +26,66 @@ var (
 // 2) channel which is closed if a client is too slow or choose to unsubscribe
 // 3) err indicating the reason for (2)
 type Subscription struct {
-	id  string
-	out chan Message
+	id    string
+	out   chan Message
+	queue *queue.Queue
 
 	canceled chan struct{}
+	stop     func()
 	mtx      tmsync.RWMutex
 	err      error
 }
 
-// NewSubscription returns a new subscription with the given outCapacity.
-func NewSubscription(outCapacity int) *Subscription {
-	return &Subscription{
+// newSubscription returns a new subscription with the given outCapacity.
+func newSubscription(outCapacity int) (*Subscription, error) {
+	sub := &Subscription{
 		id:       uuid.NewString(),
-		out:      make(chan Message, outCapacity),
+		out:      make(chan Message),
 		canceled: make(chan struct{}),
+
+		// N.B. The output channel is always unbuffered. For an unbuffered
+		// subscription that was already the case, and for a buffered one the
+		// queue now serves as the buffer.
 	}
+
+	if outCapacity == 0 {
+		sub.stop = func() { close(sub.canceled) }
+		return sub, nil
+	}
+	q, err := queue.New(queue.Options{
+		SoftQuota: outCapacity,
+		HardLimit: outCapacity,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("creating queue: %w", err)
+	}
+	sub.queue = q
+	sub.stop = func() { q.Close(); close(sub.canceled) }
+
+	// Start a goroutine to bridge messages from the queue to the channel.
+	// TODO(creachadair): This is a temporary hack until we can change the
+	// interface not to expose the channel directly.
+	go func() {
+		for {
+			next, err := q.Wait(context.Background())
+			if err != nil {
+				return // the subscription was terminated
+			}
+			sub.out <- next.(Message)
+		}
+	}()
+	return sub, nil
+}
+
+// putMessage transmits msg to the subscriber. If s is unbuffered, this blocks
+// until msg is delivered and returns nil; otherwise it reports an error if the
+// queue cannot accept any further messages.
+func (s *Subscription) putMessage(msg Message) error {
+	if s.queue != nil {
+		return s.queue.Add(msg)
+	}
+	s.out <- msg
+	return nil
 }
 
 // Out returns a channel onto which messages and events are published.
@@ -81,7 +128,7 @@ func (s *Subscription) cancel(err error) {
 		s.err = err
 	}
 
-	close(s.canceled)
+	s.stop()
 }
 
 // Message glues data and events together.

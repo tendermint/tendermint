@@ -190,7 +190,10 @@ func (s *Server) subscribe(ctx context.Context, clientID string, query Query, ou
 		return nil, ErrAlreadySubscribed
 	}
 
-	sub := NewSubscription(outCapacity)
+	sub, err := newSubscription(outCapacity)
+	if err != nil {
+		return nil, err
+	}
 	s.subs.index.add(&subInfo{
 		clientID: clientID,
 		query:    query,
@@ -388,15 +391,8 @@ func (s *Server) send(data interface{}, events []types.Event) error {
 		// use case doesn't require this affordance, and then remove unbuffered
 		// subscriptions.
 		msg := NewMessage(si.sub.id, data, events)
-		if cap(si.sub.out) == 0 {
-			si.sub.out <- msg
-			continue
-		}
-		select {
-		case si.sub.out <- msg:
-			// ok, delivered
-		default:
-			// slow subscriber, cancel them
+		if err := si.sub.putMessage(msg); err != nil {
+			// The subscriber was too slow, cancel them.
 			evict.add(si)
 		}
 	}
