@@ -76,6 +76,7 @@ type VersionParams struct {
 }
 
 // TimestampParams influence the validity of block timestamps.
+// TODO (@wbanfield): add link to proposer-based timestamp spec when completed.
 type TimestampParams struct {
 	Precision time.Duration `json:"precision"`
 	Accuracy  time.Duration `json:"accuracy"`
@@ -89,11 +90,11 @@ func DefaultConsensusParams() *ConsensusParams {
 		Evidence:  DefaultEvidenceParams(),
 		Validator: DefaultValidatorParams(),
 		Version:   DefaultVersionParams(),
+		Timestamp: DefaultTimestampParams(),
 	}
 }
 
 // DefaultBlockParams returns a default BlockParams.
-// TODO (@wbanfield): add link to proposer-based timestamp spec when completed.
 func DefaultBlockParams() BlockParams {
 	return BlockParams{
 		MaxBytes: 22020096, // 21MB
@@ -121,6 +122,14 @@ func DefaultValidatorParams() ValidatorParams {
 func DefaultVersionParams() VersionParams {
 	return VersionParams{
 		AppVersion: 0,
+	}
+}
+
+func DefaultTimestampParams() TimestampParams {
+	return TimestampParams{
+		Precision: 0,
+		Accuracy:  0,
+		MsgDelay:  0,
 	}
 }
 
