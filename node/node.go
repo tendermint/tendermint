@@ -485,8 +485,8 @@ func (n *nodeImpl) OnStart() error {
 
 	if n.config.RPC.PprofListenAddress != "" {
 		go func() {
-			logger.Info("Starting pprof server", "laddr", n.config.RPC.PprofListenAddress)
-			logger.Error("pprof server error", "err", http.ListenAndServe(n.config.RPC.PprofListenAddress, nil))
+			n.Logger.Info("Starting pprof server", "laddr", n.config.RPC.PprofListenAddress)
+			n.Logger.Error("pprof server error", "err", http.ListenAndServe(n.config.RPC.PprofListenAddress, nil))
 		}()
 	}
 
