@@ -86,7 +86,7 @@ jobs:
         run: ./build/runner -f networks/dashcore.toml
         if: "env.GIT_DIFF != ''"
 
-      - name: Emit logs on failure for dashcore testnet
+      - name: Emit dashcore logs on failure
         if: ${{ failure() }}
         working-directory: test/e2e
         run: ./build/runner -f networks/dashcore.toml logs
