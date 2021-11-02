@@ -13,9 +13,7 @@ import (
 )
 
 const (
-	// TODO this is just a workaround for a "chain stalled at unknown height" issue,
-	// change to 20 seconds once we fix root cause
-	WaitForHeightTimeout = 60 * time.Second
+	WaitForHeightTimeout = 20 * time.Second
 )
 
 // waitForHeight waits for the network to reach a certain height (or above),

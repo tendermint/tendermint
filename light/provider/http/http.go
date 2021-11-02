@@ -81,12 +81,23 @@ func (p *http) LightBlock(ctx context.Context, height int64) (*types.LightBlock,
 		return nil, err
 	}
 
+	if sh.Commit == nil {
+		return nil, provider.ErrBadLightBlock{
+			Reason: fmt.Errorf("height %d responded with nil commit: %+v", height, sh),
+		}
+	}
+
+	if sh.Header == nil {
+		return nil, provider.ErrBadLightBlock{
+			Reason: fmt.Errorf("height %d responded with nil header: %+v", height, sh),
+		}
+	}
+
 	if height != 0 && sh.Height != height {
 		return nil, provider.ErrBadLightBlock{
 			Reason: fmt.Errorf("height %d responded doesn't match height %d requested", sh.Height, height),
 		}
 	}
-
 	vs, err := p.validatorSet(ctx, &sh.Height)
 	if err != nil {
 		return nil, err

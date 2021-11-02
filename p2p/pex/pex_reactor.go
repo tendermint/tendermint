@@ -671,6 +671,14 @@ func (r *Reactor) crawlPeersRoutine() {
 		select {
 		case <-ticker.C:
 			r.attemptDisconnects()
+
+			// If we got disconnected from the whole network, we reconnect to seeds
+			out, in, dial := r.Switch.NumPeers()
+			if out+in+dial < 1 {
+				r.Logger.Info("All peers disconnected, dialing seeds")
+				r.dialSeeds()
+			}
+
 			r.crawlPeers(r.book.GetSelection())
 			r.cleanupCrawlPeerInfos()
 		case <-r.Quit():

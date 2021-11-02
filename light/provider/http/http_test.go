@@ -7,14 +7,16 @@ import (
 	"testing"
 	"time"
 
-	lighthttp "github.com/tendermint/tendermint/light/provider/http"
-
 	"github.com/stretchr/testify/assert"
+	testify "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/light/provider"
+	lighthttp "github.com/tendermint/tendermint/light/provider/http"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
+	rpcmock "github.com/tendermint/tendermint/rpc/client/mocks"
+	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
@@ -90,4 +92,42 @@ func TestProvider(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "connection refused")
 	require.Nil(t, lb)
+}
+
+// TestLightClient_NilCommit ensures correct handling of a case where commit returned by http client is nil
+func TestLightClient_NilCommit(t *testing.T) {
+	chainID := "none"
+	c := &rpcmock.RemoteClient{}
+	p := lighthttp.NewWithClient(chainID, c)
+	require.NotNil(t, p)
+
+	c.On("Commit", testify.Anything, testify.Anything).
+		Return(&coretypes.ResultCommit{
+			SignedHeader: types.SignedHeader{
+				Header: &types.Header{},
+				Commit: nil,
+			}}, nil)
+
+	sh, err := p.LightBlock(context.Background(), 0)
+	require.Error(t, err)
+	require.Nil(t, sh)
+}
+
+// TestLightClient_NilCommit ensures correct handling of a case where header returned by http client is nil
+func TestLightClient_NilHeader(t *testing.T) {
+	chainID := "none"
+	c := &rpcmock.RemoteClient{}
+	p := lighthttp.NewWithClient(chainID, c)
+	require.NotNil(t, p)
+
+	c.On("Commit", testify.Anything, testify.Anything).Return(
+		&coretypes.ResultCommit{
+			SignedHeader: types.SignedHeader{
+				Header: nil,
+				Commit: &types.Commit{},
+			}}, nil)
+
+	sh, err := p.LightBlock(context.Background(), 0)
+	require.Error(t, err)
+	require.Nil(t, sh)
 }
