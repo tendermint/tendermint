@@ -7,17 +7,15 @@ import (
 	"testing"
 	"time"
 
-	lighthttp "github.com/tendermint/tendermint/light/provider/http"
-
 	"github.com/stretchr/testify/assert"
+	testify "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/light/provider"
+	lighthttp "github.com/tendermint/tendermint/light/provider/http"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
-	rpcmock "github.com/tendermint/tendermint/rpc/client/mocks"
-
-	testify "github.com/stretchr/testify/mock"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
+	rpcmock "github.com/tendermint/tendermint/rpc/client/mocks"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
@@ -103,8 +101,8 @@ func TestLightClient_NilCommit(t *testing.T) {
 	p := lighthttp.NewWithClient(chainID, c)
 	require.NotNil(t, p)
 
-	c.On("Commit", testify.Anything, testify.Anything).Return(
-		&coretypes.ResultCommit{
+	c.On("Commit", testify.Anything, testify.Anything).
+		Return(&coretypes.ResultCommit{
 			SignedHeader: types.SignedHeader{
 				Header: &types.Header{},
 				Commit: nil,
