@@ -543,7 +543,7 @@ func (cfg *RPCConfig) ValidateBasic() error {
 		return errors.New("max-header-bytes can't be negative")
 	}
 	if cfg.MaxResponseBufferSize < minResponseBufferSize {
-		return errors.New(fmt.Sprintf("max-response-buffer-size must be greater than or equal to %d", minResponseBufferSize))
+		return fmt.Errorf("max-response-buffer-size must be greater than or equal to %d", minResponseBufferSize)
 	}
 	return nil
 }
