@@ -36,6 +36,10 @@ Special thanks to external contributors on this release:
 
 - [cli] [#7033](https://github.com/tendermint/tendermint/pull/7033) Add a `rollback` command to rollback to the previous tendermint state in the event of non-determinstic app hash or reverting an upgrade.
 - [mempool, rpc] \#7041  Add removeTx operation to the RPC layer. (@tychoish)
+- [rpc] \#7159 Add a `max-response-buffer-size` parameter to the `rpc`
+  configuration section to allow node operators control over how many
+  WebSocket-based responses (e.g. events) the node will buffer per connection
+  (@thanethomson)
 
 ### IMPROVEMENTS
 
