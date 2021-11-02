@@ -135,18 +135,20 @@ func doHandshake(
 	genDoc *types.GenesisDoc,
 	eventBus types.BlockEventPublisher,
 	proxyApp proxy.AppConns,
-	consensusLogger log.Logger) error {
+	logger log.Logger,
+) error {
 
 	handshaker := consensus.NewHandshaker(stateStore, state, blockStore, genDoc)
-	handshaker.SetLogger(consensusLogger)
+	handshaker.SetLogger(logger.With("module", "handshaker"))
 	handshaker.SetEventBus(eventBus)
+
 	if err := handshaker.Handshake(proxyApp); err != nil {
 		return fmt.Errorf("error during handshake: %v", err)
 	}
 	return nil
 }
 
-func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusLogger log.Logger, mode string) {
+func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger log.Logger, mode string) {
 	// Log the version info.
 	logger.Info("Version info",
 		"tmVersion", version.TMVersion,
@@ -162,17 +164,23 @@ func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusL
 			"state", state.Version.Consensus.Block,
 		)
 	}
-	switch {
-	case mode == config.ModeFull:
-		consensusLogger.Info("This node is a fullnode")
-	case mode == config.ModeValidator:
+
+	switch mode {
+	case config.ModeFull:
+		logger.Info("This node is a fullnode")
+	case config.ModeValidator:
 		addr := pubKey.Address()
 		// Log whether this node is a validator or an observer
 		if state.Validators.HasAddress(addr) {
-			consensusLogger.Info("This node is a validator", "addr", addr, "pubKey", pubKey.Bytes())
+			logger.Info("This node is a validator",
+				"addr", addr,
+				"pubKey", pubKey.Bytes(),
+			)
 		} else {
-			consensusLogger.Info("This node is a validator (NOT in the active validator set)",
-				"addr", addr, "pubKey", pubKey.Bytes())
+			logger.Info("This node is a validator (NOT in the active validator set)",
+				"addr", addr,
+				"pubKey", pubKey.Bytes(),
+			)
 		}
 	}
 }
@@ -312,6 +320,7 @@ func createConsensusReactor(
 	router *p2p.Router,
 	logger log.Logger,
 ) (*consensus.Reactor, *consensus.State, error) {
+	logger = logger.With("module", "consensus")
 
 	consensusState := consensus.NewState(
 		cfg.Consensus,
@@ -339,8 +348,6 @@ func createConsensusReactor(
 		channels[ch.ID] = ch
 	}
 
-	peerUpdates := peerManager.Subscribe()
-
 	reactor := consensus.NewReactor(
 		logger,
 		consensusState,
@@ -348,7 +355,7 @@ func createConsensusReactor(
 		channels[consensus.DataChannel],
 		channels[consensus.VoteChannel],
 		channels[consensus.VoteSetBitsChannel],
-		peerUpdates,
+		peerManager.Subscribe(),
 		waitSync,
 		consensus.ReactorMetrics(csMetrics),
 	)
@@ -381,6 +388,11 @@ func createPeerManager(
 	nodeID types.NodeID,
 ) (*p2p.PeerManager, closer, error) {
 
+	privatePeerIDs := make(map[types.NodeID]struct{})
+	for _, id := range tmstrings.SplitAndTrimEmpty(cfg.P2P.PrivatePeerIDs, ",", " ") {
+		privatePeerIDs[types.NodeID(id)] = struct{}{}
+	}
+
 	var maxConns uint16
 
 	switch {
@@ -388,11 +400,6 @@ func createPeerManager(
 		maxConns = cfg.P2P.MaxConnections
 	default:
 		maxConns = 64
-	}
-
-	privatePeerIDs := make(map[types.NodeID]struct{})
-	for _, id := range tmstrings.SplitAndTrimEmpty(cfg.P2P.PrivatePeerIDs, ",", " ") {
-		privatePeerIDs[types.NodeID(id)] = struct{}{}
 	}
 
 	options := p2p.PeerManagerOptions{
@@ -485,8 +492,7 @@ func createPEXReactor(
 		return nil, err
 	}
 
-	peerUpdates := peerManager.Subscribe()
-	return pex.NewReactor(logger, peerManager, channel, peerUpdates), nil
+	return pex.NewReactor(logger, peerManager, channel, peerManager.Subscribe()), nil
 }
 
 func makeNodeInfo(
