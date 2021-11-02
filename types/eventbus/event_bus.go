@@ -14,9 +14,7 @@ import (
 
 type Subscription interface {
 	ID() string
-	Out() <-chan tmpubsub.Message
-	Canceled() <-chan struct{}
-	Err() error
+	Next(context.Context) (tmpubsub.Message, error)
 }
 
 // EventBus is a common bus for all events going through the system. All calls
@@ -58,23 +56,8 @@ func (b *EventBus) NumClientSubscriptions(clientID string) int {
 	return b.pubsub.NumClientSubscriptions(clientID)
 }
 
-func (b *EventBus) Subscribe(
-	ctx context.Context,
-	subscriber string,
-	query tmpubsub.Query,
-	outCapacity ...int,
-) (Subscription, error) {
-	return b.pubsub.Subscribe(ctx, subscriber, query, outCapacity...)
-}
-
-// This method can be used for a local consensus explorer and synchronous
-// testing. Do not use for for public facing / untrusted subscriptions!
-func (b *EventBus) SubscribeUnbuffered(
-	ctx context.Context,
-	subscriber string,
-	query tmpubsub.Query,
-) (Subscription, error) {
-	return b.pubsub.SubscribeUnbuffered(ctx, subscriber, query)
+func (b *EventBus) Subscribe(ctx context.Context, args tmpubsub.SubscribeArgs) (Subscription, error) {
+	return b.pubsub.Subscribe(ctx, args)
 }
 
 func (b *EventBus) Unsubscribe(ctx context.Context, args tmpubsub.UnsubscribeArgs) error {
