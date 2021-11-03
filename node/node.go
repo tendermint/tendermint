@@ -355,9 +355,12 @@ func makeNode(cfg *config.Config,
 		nodeMetrics.statesync,
 	)
 
-	pexReactor, err := createPEXReactor(logger, peerManager, router)
-	if err != nil {
-		return nil, combineCloseError(err, makeCloser(closers))
+	var pexReactor service.Service
+	if cfg.P2P.PexReactor {
+		pexReactor, err = createPEXReactor(logger, peerManager, router)
+		if err != nil {
+			return nil, combineCloseError(err, makeCloser(closers))
+		}
 	}
 
 	node := &nodeImpl{
@@ -423,6 +426,9 @@ func makeSeedNode(cfg *config.Config,
 	genesisDocProvider genesisDocProvider,
 	logger log.Logger,
 ) (service.Service, error) {
+	if !cfg.P2P.PexReactor {
+		return nil, errors.New("cannot run seed nodes with PEX disabled")
+	}
 
 	genDoc, err := genesisDocProvider()
 	if err != nil {
@@ -546,8 +552,10 @@ func (n *nodeImpl) OnStart() error {
 		}
 	}
 
-	if err := n.pexReactor.Start(); err != nil {
-		return err
+	if n.config.P2P.PexReactor {
+		if err := n.pexReactor.Start(); err != nil {
+			return err
+		}
 	}
 
 	// Run state sync
