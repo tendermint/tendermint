@@ -1,5 +1,6 @@
 linters:
   enable:
+    - asciicheck
     - bodyclose
     - deadcode
     - depguard
@@ -10,24 +11,25 @@ linters:
     # - funlen
     # - gochecknoglobals
     # - gochecknoinits
+    # - gocognit
     - goconst
-    - gocritic
+    # - gocritic
     # - gocyclo
     # - godox
     - gofmt
     - goimports
-    - golint
+    - revive
     - gosec
     - gosimple
     - govet
     - ineffassign
     # - interfacer
     - lll
-    - misspell
     # - maligned
+    - misspell
     - nakedret
+    - nolintlint
     - prealloc
-    # - scopelint
     - staticcheck
     - structcheck
     - stylecheck
@@ -38,8 +40,6 @@ linters:
     - varcheck
     # - whitespace
     # - wsl
-    # - gocognit
-    - nolintlint
 
 issues:
   exclude-rules:
@@ -54,9 +54,9 @@ issues:
 linters-settings:
   dogsled:
     max-blank-identifiers: 3
-  maligned:
-    suggest-new: true
-  # govet:
-  #   check-shadowing: true
   golint:
     min-confidence: 0
+  maligned:
+    suggest-new: true
+  misspell:
+    locale: US
