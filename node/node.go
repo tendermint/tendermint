@@ -348,7 +348,6 @@ func makeNode(cfg *config.Config,
 		nodeMetrics.statesync,
 	)
 
-<<<<<<< HEAD
 	// add the channel descriptors to both the transports
 	// FIXME: This should be removed when the legacy p2p stack is removed and
 	// transports can either be agnostic to channel descriptors or can be
@@ -403,28 +402,23 @@ func makeNode(cfg *config.Config,
 			return nil, fmt.Errorf("could not create addrbook: %w", err)
 		}
 
-		pexReactor = createPEXReactorAndAddToSwitch(addrBook, cfg, sw, logger)
+		if n.config.P2P.PexReactor {
+			pexReactor = createPEXReactorAndAddToSwitch(addrBook, cfg, sw, logger)
+		}
 	} else {
 		addrBook = nil
-		pexReactor, err = createPEXReactorV2(cfg, logger, peerManager, router)
-		if err != nil {
-			return nil, err
+		if n.config.P2P.PexReactor {
+			pexReactor, err = createPEXReactorV2(cfg, logger, peerManager, router)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
-
 	if cfg.RPC.PprofListenAddress != "" {
 		go func() {
 			logger.Info("Starting pprof server", "laddr", cfg.RPC.PprofListenAddress)
 			logger.Error("pprof server error", "err", http.ListenAndServe(cfg.RPC.PprofListenAddress, nil))
 		}()
-=======
-	var pexReactor service.Service
-	if cfg.P2P.PexReactor {
-		pexReactor, err = createPEXReactor(logger, peerManager, router)
-		if err != nil {
-			return nil, combineCloseError(err, makeCloser(closers))
-		}
->>>>>>> ffcd347ef (pex: allow disabled pex reactor (#7198))
 	}
 
 	node := &nodeImpl{
@@ -571,11 +565,15 @@ func makeSeedNode(cfg *config.Config,
 			return nil, fmt.Errorf("could not create addrbook: %w", err)
 		}
 
-		pexReactor = createPEXReactorAndAddToSwitch(addrBook, cfg, sw, logger)
+		if n.config.P2P.PexReactor {
+			pexReactor = createPEXReactorAndAddToSwitch(addrBook, cfg, sw, logger)
+		}
 	} else {
-		pexReactor, err = createPEXReactorV2(cfg, logger, peerManager, router)
-		if err != nil {
-			return nil, err
+		if n.config.P2P.PexReactor {
+			pexReactor, err = createPEXReactorV2(cfg, logger, peerManager, router)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -679,21 +677,18 @@ func (n *nodeImpl) OnStart() error {
 		}
 	}
 
-<<<<<<< HEAD
 	if n.config.P2P.UseLegacy {
 		// Always connect to persistent peers
 		err = n.sw.DialPeersAsync(strings.SplitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
 		if err != nil {
 			return fmt.Errorf("could not dial peers from persistent-peers field: %w", err)
 		}
-	} else if err := n.pexReactor.Start(); err != nil {
-		return err
-=======
+	}
+
 	if n.config.P2P.PexReactor {
 		if err := n.pexReactor.Start(); err != nil {
 			return err
 		}
->>>>>>> ffcd347ef (pex: allow disabled pex reactor (#7198))
 	}
 
 	// Run state sync
