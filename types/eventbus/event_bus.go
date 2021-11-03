@@ -75,6 +75,10 @@ func (b *EventBus) UnsubscribeAll(ctx context.Context, subscriber string) error 
 	return b.pubsub.UnsubscribeAll(ctx, subscriber)
 }
 
+func (b *EventBus) Observe(ctx context.Context, observe func(tmpubsub.Message) error, queries ...tmpubsub.Query) error {
+	return b.pubsub.Observe(ctx, observe, queries...)
+}
+
 func (b *EventBus) Publish(eventValue string, eventData types.TMEventData) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
