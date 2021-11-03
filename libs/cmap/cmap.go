@@ -7,7 +7,7 @@ import (
 // CMap is a goroutine-safe map
 type CMap struct {
 	m map[string]interface{}
-	l tmsync.Mutex
+	l tmsync.RWMutex
 }
 
 func NewCMap() *CMap {
@@ -22,8 +22,9 @@ func (cm *CMap) Set(key string, value interface{}) {
 	cm.l.Unlock()
 }
 
-// GetOrSet returns the existing value if present. Othewise, it stores `newValue` and returns it.
-func (cm *CMap) GetOrSet(key string, newValue interface{}) (value interface{}, alreadyExists bool) {
+// GetOrSet returns the existing value if present. Otherwise, it stores `newValue` and returns it.
+// The loaded result is true if the value was loaded, false if stored.
+func (cm *CMap) GetOrSet(key string, newValue interface{}) (value interface{}, loaded bool) {
 
 	cm.l.Lock()
 	defer cm.l.Unlock()
@@ -37,16 +38,16 @@ func (cm *CMap) GetOrSet(key string, newValue interface{}) (value interface{}, a
 }
 
 func (cm *CMap) Get(key string) interface{} {
-	cm.l.Lock()
+	cm.l.RLock()
 	val := cm.m[key]
-	cm.l.Unlock()
+	cm.l.RUnlock()
 	return val
 }
 
 func (cm *CMap) Has(key string) bool {
-	cm.l.Lock()
+	cm.l.RLock()
 	_, ok := cm.m[key]
-	cm.l.Unlock()
+	cm.l.RUnlock()
 	return ok
 }
 
@@ -57,9 +58,9 @@ func (cm *CMap) Delete(key string) {
 }
 
 func (cm *CMap) Size() int {
-	cm.l.Lock()
+	cm.l.RLock()
 	size := len(cm.m)
-	cm.l.Unlock()
+	cm.l.RUnlock()
 	return size
 }
 
@@ -70,22 +71,22 @@ func (cm *CMap) Clear() {
 }
 
 func (cm *CMap) Keys() []string {
-	cm.l.Lock()
+	cm.l.RLock()
 
 	keys := make([]string, 0, len(cm.m))
 	for k := range cm.m {
 		keys = append(keys, k)
 	}
-	cm.l.Unlock()
+	cm.l.RUnlock()
 	return keys
 }
 
 func (cm *CMap) Values() []interface{} {
-	cm.l.Lock()
+	cm.l.RLock()
 	items := make([]interface{}, 0, len(cm.m))
 	for _, v := range cm.m {
 		items = append(items, v)
 	}
-	cm.l.Unlock()
+	cm.l.RUnlock()
 	return items
 }
