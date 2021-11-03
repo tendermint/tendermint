@@ -348,6 +348,16 @@ type RPCConfig struct {
 	// returning `ErrOutOfCapacity`.
 	SubscriptionBufferSize int `mapstructure:"experimental_subscription_buffer_size"`
 
+	// The maximum number of responses that can be buffered per WebSocket
+	// client. If clients cannot read from the WebSocket endpoint fast enough,
+	// they will be disconnected, so increasing this parameter may reduce the
+	// chances of them being disconnected (but will cause the node to use more
+	// memory).
+	//
+	// Must be at least the same as `SubscriptionBufferSize`, otherwise
+	// connections may be dropped unnecessarily.
+	WebSocketWriteBufferSize int `mapstructure:"experimental_websocket_write_buffer_size"`
+
 	// How long to wait for a tx to be committed during /broadcast_tx_commit
 	// WARNING: Using a value larger than 10s will result in increasing the
 	// global HTTP write timeout, which applies to all connections and endpoints.
@@ -399,6 +409,7 @@ func DefaultRPCConfig() *RPCConfig {
 		MaxSubscriptionsPerClient: 5,
 		SubscriptionBufferSize:    minSubscriptionBufferSize,
 		TimeoutBroadcastTxCommit:  10 * time.Second,
+		WebSocketWriteBufferSize:  minSubscriptionBufferSize,
 
 		MaxBodyBytes:   int64(1000000), // 1MB
 		MaxHeaderBytes: 1 << 20,        // same as the net/http default
@@ -434,6 +445,9 @@ func (cfg *RPCConfig) ValidateBasic() error {
 	}
 	if cfg.SubscriptionBufferSize < minSubscriptionBufferSize {
 		return fmt.Errorf("experimental_subscription_buffer_size must be at least %d", minSubscriptionBufferSize)
+	}
+	if cfg.WebSocketWriteBufferSize < cfg.SubscriptionBufferSize {
+		return fmt.Errorf("experimental_websocket_write_buffer_size must be at least the same as experimental_subscription_buffer_size (%d)", cfg.SubscriptionBufferSize)
 	}
 	if cfg.TimeoutBroadcastTxCommit < 0 {
 		return errors.New("timeout_broadcast_tx_commit can't be negative")
