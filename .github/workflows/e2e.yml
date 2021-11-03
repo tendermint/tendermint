@@ -90,3 +90,13 @@ jobs:
         if: ${{ failure() }}
         working-directory: test/e2e
         run: ./build/runner -f networks/dashcore.toml logs
+
+      - name: Run CI rotate testnet
+        working-directory: test/e2e
+        run: ./build/runner -f networks/rotate.toml
+        if: "env.GIT_DIFF != ''"
+
+      - name: Emit rotate logs on failure
+        if: ${{ failure() }}
+        working-directory: test/e2e
+        run: ./build/runner -f networks/rotate.toml logs
