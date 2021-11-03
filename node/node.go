@@ -482,8 +482,10 @@ func makeSeedNode(cfg *config.Config,
 
 // OnStart starts the Node. It implements service.Service.
 func (n *nodeImpl) OnStart() error {
-
 	if n.config.RPC.PprofListenAddress != "" {
+		// this service is not cleaned up (I believe that we'd
+		// need to have another thread and a potentially a
+		// context to get this functionality.)
 		go func() {
 			n.Logger.Info("Starting pprof server", "laddr", n.config.RPC.PprofListenAddress)
 			n.Logger.Error("pprof server error", "err", http.ListenAndServe(n.config.RPC.PprofListenAddress, nil))
