@@ -402,12 +402,12 @@ func makeNode(cfg *config.Config,
 			return nil, fmt.Errorf("could not create addrbook: %w", err)
 		}
 
-		if n.config.P2P.PexReactor {
+		if cfg.P2P.PexReactor {
 			pexReactor = createPEXReactorAndAddToSwitch(addrBook, cfg, sw, logger)
 		}
 	} else {
 		addrBook = nil
-		if n.config.P2P.PexReactor {
+		if cfg.P2P.PexReactor {
 			pexReactor, err = createPEXReactorV2(cfg, logger, peerManager, router)
 			if err != nil {
 				return nil, err
@@ -565,11 +565,11 @@ func makeSeedNode(cfg *config.Config,
 			return nil, fmt.Errorf("could not create addrbook: %w", err)
 		}
 
-		if n.config.P2P.PexReactor {
+		if cfg.P2P.PexReactor {
 			pexReactor = createPEXReactorAndAddToSwitch(addrBook, cfg, sw, logger)
 		}
 	} else {
-		if n.config.P2P.PexReactor {
+		if cfg.P2P.PexReactor {
 			pexReactor, err = createPEXReactorV2(cfg, logger, peerManager, router)
 			if err != nil {
 				return nil, err
