@@ -49,6 +49,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: bls-signatures
     timeout-minutes: 15
+    env:
+      FULLNODE_PUBKEY_KEEP: false
     steps:
       - uses: actions/setup-go@v2
         with:
@@ -81,12 +83,22 @@ jobs:
         run: make -j2 docker runner
         if: "env.GIT_DIFF != ''"
 
-      - name: Run CI testnet
+      - name: Run CI dashcore testnet
         working-directory: test/e2e
-        run: ./build/runner -f networks/ci.toml
+        run: ./build/runner -f networks/dashcore.toml
         if: "env.GIT_DIFF != ''"
 
-      - name: Emit logs on failure
+      - name: Emit dashcore logs on failure
         if: ${{ failure() }}
         working-directory: test/e2e
-        run: ./build/runner -f networks/ci.toml logs
+        run: ./build/runner -f networks/dashcore.toml logs
+
+      - name: Run CI rotate testnet
+        working-directory: test/e2e
+        run: ./build/runner -f networks/rotate.toml
+        if: "env.GIT_DIFF != ''"
+
+      - name: Emit rotate logs on failure
+        if: ${{ failure() }}
+        working-directory: test/e2e
+        run: ./build/runner -f networks/rotate.toml logs
