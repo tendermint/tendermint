@@ -20,12 +20,12 @@ const (
 	clientID = "test-client"
 )
 
-func TestSubscribe(t *testing.T) {
+func TestSubscribeWithArgs(t *testing.T) {
 	s := newTestServer(t)
 	ctx := context.Background()
 
 	t.Run("DefaultLimit", func(t *testing.T) {
-		sub := newTestSub(t).must(s.Subscribe(ctx, pubsub.SubscribeArgs{
+		sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 			ClientID: clientID,
 			Query:    query.Empty{},
 		}))
@@ -37,7 +37,7 @@ func TestSubscribe(t *testing.T) {
 		sub.mustReceive(ctx, "Ka-Zar")
 	})
 	t.Run("PositiveLimit", func(t *testing.T) {
-		sub := newTestSub(t).must(s.Subscribe(ctx, pubsub.SubscribeArgs{
+		sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 			ClientID: clientID + "-2",
 			Query:    query.Empty{},
 			Limit:    10,
@@ -51,7 +51,7 @@ func TestPublishDoesNotBlock(t *testing.T) {
 	s := newTestServer(t)
 	ctx := context.Background()
 
-	sub := newTestSub(t).must(s.Subscribe(ctx, pubsub.SubscribeArgs{
+	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
 		Query:    query.Empty{},
 	}))
@@ -78,11 +78,11 @@ func TestSubscribeErrors(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("EmptyQueryErr", func(t *testing.T) {
-		_, err := s.Subscribe(ctx, pubsub.SubscribeArgs{ClientID: clientID})
+		_, err := s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{ClientID: clientID})
 		require.Error(t, err)
 	})
 	t.Run("NegativeLimitErr", func(t *testing.T) {
-		_, err := s.Subscribe(ctx, pubsub.SubscribeArgs{
+		_, err := s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 			ClientID: clientID,
 			Query:    query.Empty{},
 			Limit:    -5,
@@ -95,7 +95,7 @@ func TestSlowSubscriber(t *testing.T) {
 	s := newTestServer(t)
 	ctx := context.Background()
 
-	sub := newTestSub(t).must(s.Subscribe(ctx, pubsub.SubscribeArgs{
+	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
 		Query:    query.Empty{},
 	}))
@@ -114,7 +114,7 @@ func TestDifferentClients(t *testing.T) {
 	s := newTestServer(t)
 	ctx := context.Background()
 
-	sub1 := newTestSub(t).must(s.Subscribe(ctx, pubsub.SubscribeArgs{
+	sub1 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: "client-1",
 		Query:    query.MustParse("tm.events.type='NewBlock'"),
 	}))
@@ -127,7 +127,7 @@ func TestDifferentClients(t *testing.T) {
 	require.NoError(t, s.PublishWithEvents(ctx, "Iceman", events))
 	sub1.mustReceive(ctx, "Iceman")
 
-	sub2 := newTestSub(t).must(s.Subscribe(ctx, pubsub.SubscribeArgs{
+	sub2 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: "client-2",
 		Query:    query.MustParse("tm.events.type='NewBlock' AND abci.account.name='Igor'"),
 	}))
@@ -147,7 +147,7 @@ func TestDifferentClients(t *testing.T) {
 	sub1.mustReceive(ctx, "Ultimo")
 	sub2.mustReceive(ctx, "Ultimo")
 
-	sub3 := newTestSub(t).must(s.Subscribe(ctx, pubsub.SubscribeArgs{
+	sub3 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: "client-3",
 		Query:    query.MustParse("tm.events.type='NewRoundStep' AND abci.account.name='Igor' AND abci.invoice.number = 10"),
 	}))
@@ -179,7 +179,7 @@ func TestSubscribeDuplicateKeys(t *testing.T) {
 		id := fmt.Sprintf("client-%d", i)
 		q := query.MustParse(tc.query)
 		t.Run(id, func(t *testing.T) {
-			sub := newTestSub(t).must(s.Subscribe(ctx, pubsub.SubscribeArgs{
+			sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 				ClientID: id,
 				Query:    q,
 			}))
@@ -224,7 +224,7 @@ func TestClientSubscribesTwice(t *testing.T) {
 		Attributes: []abci.EventAttribute{{Key: "type", Value: "NewBlock"}},
 	}}
 
-	sub1 := newTestSub(t).must(s.Subscribe(ctx, pubsub.SubscribeArgs{
+	sub1 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
 		Query:    q,
 	}))
@@ -234,7 +234,7 @@ func TestClientSubscribesTwice(t *testing.T) {
 
 	// Subscribing a second time with the same client ID and query fails.
 	{
-		sub2, err := s.Subscribe(ctx, pubsub.SubscribeArgs{
+		sub2, err := s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 			ClientID: clientID,
 			Query:    q,
 		})
@@ -251,7 +251,7 @@ func TestUnsubscribe(t *testing.T) {
 	s := newTestServer(t)
 	ctx := context.Background()
 
-	sub := newTestSub(t).must(s.Subscribe(ctx, pubsub.SubscribeArgs{
+	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
 		Query:    query.MustParse("tm.events.type='NewBlock'"),
 	}))
@@ -273,7 +273,7 @@ func TestClientUnsubscribesTwice(t *testing.T) {
 	s := newTestServer(t)
 	ctx := context.Background()
 
-	newTestSub(t).must(s.Subscribe(ctx, pubsub.SubscribeArgs{
+	newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
 		Query:    query.MustParse("tm.events.type='NewBlock'"),
 	}))
@@ -296,14 +296,14 @@ func TestResubscribe(t *testing.T) {
 		ClientID: clientID,
 		Query:    query.Empty{},
 	}
-	newTestSub(t).must(s.Subscribe(ctx, args))
+	newTestSub(t).must(s.SubscribeWithArgs(ctx, args))
 
 	require.NoError(t, s.Unsubscribe(ctx, pubsub.UnsubscribeArgs{
 		Subscriber: clientID,
 		Query:      query.Empty{},
 	}))
 
-	sub := newTestSub(t).must(s.Subscribe(ctx, args))
+	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, args))
 
 	require.NoError(t, s.Publish(ctx, "Cable"))
 	sub.mustReceive(ctx, "Cable")
@@ -313,11 +313,11 @@ func TestUnsubscribeAll(t *testing.T) {
 	s := newTestServer(t)
 	ctx := context.Background()
 
-	sub1 := newTestSub(t).must(s.Subscribe(ctx, pubsub.SubscribeArgs{
+	sub1 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
 		Query:    query.MustParse("tm.events.type='NewBlock'"),
 	}))
-	sub2 := newTestSub(t).must(s.Subscribe(ctx, pubsub.SubscribeArgs{
+	sub2 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
 		Query:    query.MustParse("tm.events.type='NewBlockHeader'"),
 	}))

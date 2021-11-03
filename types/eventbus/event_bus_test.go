@@ -37,7 +37,7 @@ func TestEventBusPublishEventTx(t *testing.T) {
 	// PublishEventTx adds 3 composite keys, so the query below should work
 	ctx := context.Background()
 	query := fmt.Sprintf("tm.event='Tx' AND tx.height=1 AND tx.hash='%X' AND testType.baz=1", tx.Hash())
-	txsSub, err := eventBus.Subscribe(ctx, tmpubsub.SubscribeArgs{
+	txsSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: "test",
 		Query:    tmquery.MustParse(query),
 	})
@@ -99,7 +99,7 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	// PublishEventNewBlock adds the tm.event compositeKey, so the query below should work
 	ctx := context.Background()
 	query := "tm.event='NewBlock' AND testType.baz=1 AND testType.foz=2"
-	blocksSub, err := eventBus.Subscribe(ctx, tmpubsub.SubscribeArgs{
+	blocksSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: "test",
 		Query:    tmquery.MustParse(query),
 	})
@@ -202,7 +202,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 
 	for i, tc := range testCases {
 		ctx := context.Background()
-		sub, err := eventBus.Subscribe(ctx, tmpubsub.SubscribeArgs{
+		sub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 			ClientID: fmt.Sprintf("client-%d", i),
 			Query:    tmquery.MustParse(tc.query),
 		})
@@ -265,7 +265,7 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	// PublishEventNewBlockHeader adds the tm.event compositeKey, so the query below should work
 	ctx := context.Background()
 	query := "tm.event='NewBlockHeader' AND testType.baz=1 AND testType.foz=2"
-	headersSub, err := eventBus.Subscribe(ctx, tmpubsub.SubscribeArgs{
+	headersSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: "test",
 		Query:    tmquery.MustParse(query),
 	})
@@ -311,7 +311,7 @@ func TestEventBusPublishEventNewEvidence(t *testing.T) {
 
 	ctx := context.Background()
 	const query = `tm.event='NewEvidence'`
-	evSub, err := eventBus.Subscribe(ctx, tmpubsub.SubscribeArgs{
+	evSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: "test",
 		Query:    tmquery.MustParse(query),
 	})
@@ -354,7 +354,7 @@ func TestEventBusPublish(t *testing.T) {
 	const numEventsExpected = 14
 
 	ctx := context.Background()
-	sub, err := eventBus.Subscribe(ctx, tmpubsub.SubscribeArgs{
+	sub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: "test",
 		Query:    tmquery.Empty{},
 		Limit:    numEventsExpected,
@@ -450,7 +450,7 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 		if randQueries {
 			q = randQuery()
 		}
-		sub, err := eventBus.Subscribe(ctx, tmpubsub.SubscribeArgs{
+		sub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 			ClientID: fmt.Sprintf("client-%d", i),
 			Query:    q,
 		})

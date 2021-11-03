@@ -15,7 +15,7 @@ func TestExample(t *testing.T) {
 	s := newTestServer(t)
 	ctx := context.Background()
 
-	sub := newTestSub(t).must(s.Subscribe(ctx, pubsub.SubscribeArgs{
+	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: "example-client",
 		Query:    query.MustParse("abci.account.name='John'"),
 	}))

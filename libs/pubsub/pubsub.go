@@ -14,7 +14,7 @@
 //     if err != nil {
 //         return err
 //     }
-//     sub, err := pubsub.Subscribe(ctx, pubsub.SubscribeArgs{
+//     sub, err := pubsub.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 //         ClientID: "johns-transactions",
 //         Query:    q,
 //     })
@@ -159,10 +159,28 @@ func BufferCapacity(cap int) Option {
 // BufferCapacity returns capacity of the publication queue.
 func (s *Server) BufferCapacity() int { return cap(s.queue) }
 
-// Subscribe creates a subscription for the given arguments.  It is an error if
-// the query is nil, a subscription already exists for the specified client ID
-// and query, or if the capacity arguments are invalid.
-func (s *Server) Subscribe(ctx context.Context, args SubscribeArgs) (*Subscription, error) {
+// Subscribe creates a subscription for the given client ID and query.
+// If len(capacities) > 0, its first value is used as the queue capacity.
+//
+// Deprecated: Use SubscribeWithArgs. This method will be removed in v0.36.
+func (s *Server) Subscribe(ctx context.Context,
+	clientID string, query Query, capacities ...int) (*Subscription, error) {
+
+	args := SubscribeArgs{
+		ClientID: clientID,
+		Query:    query,
+		Limit:    1,
+	}
+	if len(capacities) > 0 && capacities[0] > 0 {
+		args.Limit = capacities[0]
+	}
+	return s.SubscribeWithArgs(ctx, args)
+}
+
+// SubscribeWithArgs creates a subscription for the given arguments.  It is an
+// error if the query is nil, a subscription already exists for the specified
+// client ID and query, or if the capacity arguments are invalid.
+func (s *Server) SubscribeWithArgs(ctx context.Context, args SubscribeArgs) (*Subscription, error) {
 	if args.Query == nil {
 		return nil, errors.New("query is nil")
 	}

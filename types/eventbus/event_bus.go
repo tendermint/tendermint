@@ -56,8 +56,15 @@ func (b *EventBus) NumClientSubscriptions(clientID string) int {
 	return b.pubsub.NumClientSubscriptions(clientID)
 }
 
-func (b *EventBus) Subscribe(ctx context.Context, args tmpubsub.SubscribeArgs) (Subscription, error) {
-	return b.pubsub.Subscribe(ctx, args)
+// Deprecated: Use SubscribeWithArgs instead.
+func (b *EventBus) Subscribe(ctx context.Context,
+	clientID string, query tmpubsub.Query, capacities ...int) (Subscription, error) {
+
+	return b.pubsub.Subscribe(ctx, clientID, query, capacities...)
+}
+
+func (b *EventBus) SubscribeWithArgs(ctx context.Context, args tmpubsub.SubscribeArgs) (Subscription, error) {
+	return b.pubsub.SubscribeWithArgs(ctx, args)
 }
 
 func (b *EventBus) Unsubscribe(ctx context.Context, args tmpubsub.UnsubscribeArgs) error {
