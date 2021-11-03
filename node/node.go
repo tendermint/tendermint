@@ -402,15 +402,18 @@ func makeNode(cfg *config.Config,
 			return nil, fmt.Errorf("could not create addrbook: %w", err)
 		}
 
-		pexReactor = createPEXReactorAndAddToSwitch(addrBook, cfg, sw, logger)
+		if cfg.P2P.PexReactor {
+			pexReactor = createPEXReactorAndAddToSwitch(addrBook, cfg, sw, logger)
+		}
 	} else {
 		addrBook = nil
-		pexReactor, err = createPEXReactorV2(cfg, logger, peerManager, router)
-		if err != nil {
-			return nil, err
+		if cfg.P2P.PexReactor {
+			pexReactor, err = createPEXReactorV2(cfg, logger, peerManager, router)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
-
 	if cfg.RPC.PprofListenAddress != "" {
 		go func() {
 			logger.Info("Starting pprof server", "laddr", cfg.RPC.PprofListenAddress)
@@ -493,6 +496,9 @@ func makeSeedNode(cfg *config.Config,
 	genesisDocProvider genesisDocProvider,
 	logger log.Logger,
 ) (service.Service, error) {
+	if !cfg.P2P.PexReactor {
+		return nil, errors.New("cannot run seed nodes with PEX disabled")
+	}
 
 	genDoc, err := genesisDocProvider()
 	if err != nil {
@@ -559,11 +565,15 @@ func makeSeedNode(cfg *config.Config,
 			return nil, fmt.Errorf("could not create addrbook: %w", err)
 		}
 
-		pexReactor = createPEXReactorAndAddToSwitch(addrBook, cfg, sw, logger)
+		if cfg.P2P.PexReactor {
+			pexReactor = createPEXReactorAndAddToSwitch(addrBook, cfg, sw, logger)
+		}
 	} else {
-		pexReactor, err = createPEXReactorV2(cfg, logger, peerManager, router)
-		if err != nil {
-			return nil, err
+		if cfg.P2P.PexReactor {
+			pexReactor, err = createPEXReactorV2(cfg, logger, peerManager, router)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -673,8 +683,12 @@ func (n *nodeImpl) OnStart() error {
 		if err != nil {
 			return fmt.Errorf("could not dial peers from persistent-peers field: %w", err)
 		}
-	} else if err := n.pexReactor.Start(); err != nil {
-		return err
+	}
+
+	if n.config.P2P.PexReactor {
+		if err := n.pexReactor.Start(); err != nil {
+			return err
+		}
 	}
 
 	// Run state sync
