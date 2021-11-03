@@ -116,6 +116,11 @@ type Server struct {
 	subs struct {
 		sync.RWMutex
 		index *subIndex
+
+		// This function is called synchronously with each message published
+		// before it is delivered to any other subscriber. This allows an index
+		// to be persisted before any subscribers see the messages.
+		observe func(Message) error
 	}
 
 	// TODO(creachadair): Rework the options so that this does not need to live
@@ -175,6 +180,45 @@ func (s *Server) Subscribe(ctx context.Context,
 		args.Limit = capacities[0]
 	}
 	return s.SubscribeWithArgs(ctx, args)
+}
+
+// Observe registers an observer function that will be called synchronously
+// with each published message matching any of the given queries, prior to it
+// being forwarded to any subscriber.  If no queries are specified, all
+// messages will be observed. An error is reported if an observer is already
+// registered.
+func (s *Server) Observe(ctx context.Context, observe func(Message) error, queries ...Query) error {
+	s.subs.Lock()
+	defer s.subs.Unlock()
+	if observe == nil {
+		return errors.New("observe callback is nil")
+	} else if s.subs.observe != nil {
+		return errors.New("an observer is already registered")
+	}
+
+	// Compile the message filter.
+	var matches func(Message) bool
+	if len(queries) == 0 {
+		matches = func(Message) bool { return true }
+	} else {
+		matches = func(msg Message) bool {
+			for _, q := range queries {
+				match, err := q.Matches(msg.events)
+				if err == nil && match {
+					return true
+				}
+			}
+			return false
+		}
+	}
+
+	s.subs.observe = func(msg Message) error {
+		if matches(msg) {
+			return observe(msg)
+		}
+		return nil // nothing to do for this message
+	}
+	return nil
 }
 
 // SubscribeWithArgs creates a subscription for the given arguments.  It is an
@@ -377,6 +421,19 @@ func (s *Server) send(data interface{}, events []types.Event) error {
 	// reader lock has released, or it will deadlock.
 	s.subs.RLock()
 	defer s.subs.RUnlock()
+
+	// If an observer is defined, give it control of the message before
+	// attempting to deliver it to any matching subscribers. If the observer
+	// fails, the message will not be forwarded.
+	if s.subs.observe != nil {
+		err := s.subs.observe(Message{
+			data:   data,
+			events: events,
+		})
+		if err != nil {
+			return fmt.Errorf("observer failed on message: %w", err)
+		}
+	}
 
 	for si := range s.subs.index.all {
 		match, err := si.query.Matches(events)

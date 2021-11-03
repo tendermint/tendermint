@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"testing"
 	"time"
 
@@ -45,6 +44,33 @@ func TestSubscribeWithArgs(t *testing.T) {
 		require.NoError(t, s.Publish(ctx, "Aggamon"))
 		sub.mustReceive(ctx, "Aggamon")
 	})
+}
+
+func TestObserver(t *testing.T) {
+	s := newTestServer(t)
+	ctx := context.Background()
+
+	done := make(chan struct{})
+	var got interface{}
+	require.NoError(t, s.Observe(ctx, func(msg pubsub.Message) error {
+		defer close(done)
+		got = msg.Data()
+		return nil
+	}))
+
+	const input = "Lions and tigers and bears, oh my!"
+	require.NoError(t, s.Publish(ctx, input))
+	<-done
+	require.Equal(t, got, input)
+}
+
+func TestObserverErrors(t *testing.T) {
+	s := newTestServer(t)
+	ctx := context.Background()
+
+	require.Error(t, s.Observe(ctx, nil, query.Empty{}))
+	require.NoError(t, s.Observe(ctx, func(pubsub.Message) error { return nil }))
+	require.Error(t, s.Observe(ctx, func(pubsub.Message) error { return nil }, query.Empty{}))
 }
 
 func TestPublishDoesNotBlock(t *testing.T) {
