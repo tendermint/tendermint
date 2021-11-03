@@ -370,20 +370,17 @@ func validatePrevoteAndPrecommit(
 }
 
 func subscribeToVoter(cs *State, addr []byte) <-chan tmpubsub.Message {
-	votesSub, err := cs.eventBus.SubscribeUnbuffered(context.Background(), testSubscriber, types.EventQueryVote)
-	if err != nil {
-		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, types.EventQueryVote))
-	}
-	ch := make(chan tmpubsub.Message)
-	go func() {
-		for msg := range votesSub.Out() {
-			vote := msg.Data().(types.EventDataVote)
-			// we only fire for our own votes
-			if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
-				ch <- msg
-			}
+	ch := make(chan tmpubsub.Message, 1)
+	if err := cs.eventBus.Observe(context.Background(), func(msg tmpubsub.Message) error {
+		vote := msg.Data().(types.EventDataVote)
+		// we only fire for our own votes
+		if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
+			ch <- msg
 		}
-	}()
+		return nil
+	}, types.EventQueryVote); err != nil {
+		panic(fmt.Sprintf("failed to observe: %v", err))
+	}
 	return ch
 }
 

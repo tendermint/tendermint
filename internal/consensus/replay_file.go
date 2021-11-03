@@ -55,7 +55,10 @@ func (cs *State) ReplayFile(file string, console bool) error {
 	// ensure all new step events are regenerated as expected
 
 	ctx := context.Background()
-	newStepSub, err := cs.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep)
+	newStepSub, err := cs.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
+		ClientID: subscriber,
+		Query:    types.EventQueryNewRoundStep,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep)
 	}
@@ -223,7 +226,10 @@ func (pb *playback) replayConsoleLoop() int {
 			ctx := context.Background()
 			// ensure all new step events are regenerated as expected
 
-			newStepSub, err := pb.cs.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep)
+			newStepSub, err := pb.cs.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
+				ClientID: subscriber,
+				Query:    types.EventQueryNewRoundStep,
+			})
 			if err != nil {
 				tmos.Exit(fmt.Sprintf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep))
 			}

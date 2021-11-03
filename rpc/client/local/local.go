@@ -212,75 +212,67 @@ func (c *Local) Subscribe(
 	}
 
 	outCap := 1
-	if len(outCapacity) > 0 {
+	if len(outCapacity) > 0 && outCapacity[0] > 0 {
 		outCap = outCapacity[0]
 	}
 
-	var sub eventbus.Subscription
-	if outCap > 0 {
-		sub, err = c.EventBus.Subscribe(ctx, subscriber, q, outCap)
-	} else {
-		sub, err = c.EventBus.SubscribeUnbuffered(ctx, subscriber, q)
+	subArgs := pubsub.SubscribeArgs{
+		ClientID: subscriber,
+		Query:    q,
+		Limit:    outCap,
 	}
+	sub, err := c.EventBus.SubscribeWithArgs(ctx, subArgs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to subscribe: %w", err)
 	}
 
 	outc := make(chan coretypes.ResultEvent, outCap)
-	go c.eventsRoutine(sub, subscriber, q, outc)
+	go c.eventsRoutine(sub, subArgs, outc)
 
 	return outc, nil
 }
 
 func (c *Local) eventsRoutine(
 	sub eventbus.Subscription,
-	subscriber string,
-	q pubsub.Query,
-	outc chan<- coretypes.ResultEvent) {
+	subArgs pubsub.SubscribeArgs,
+	outc chan<- coretypes.ResultEvent,
+) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { <-c.Quit(); cancel() }()
+	qstr := subArgs.Query.String()
+
 	for {
-		select {
-		case msg := <-sub.Out():
-			result := coretypes.ResultEvent{
-				SubscriptionID: msg.SubscriptionID(),
-				Query:          q.String(),
-				Data:           msg.Data(),
-				Events:         msg.Events(),
+		msg, err := sub.Next(ctx)
+		if errors.Is(err, pubsub.ErrUnsubscribed) {
+			return // client unsubscribed
+		} else if err != nil {
+			c.Logger.Error("subscription was canceled, resubscribing",
+				"err", err, "query", subArgs.Query.String())
+			sub = c.resubscribe(subArgs)
+			if sub == nil {
+				return // client terminated
 			}
-
-			if cap(outc) == 0 {
-				outc <- result
-			} else {
-				select {
-				case outc <- result:
-				default:
-					c.Logger.Error("wanted to publish ResultEvent, but out channel is full", "result", result, "query", result.Query)
-				}
-			}
-		case <-sub.Canceled():
-			if sub.Err() == pubsub.ErrUnsubscribed {
-				return
-			}
-
-			c.Logger.Error("subscription was canceled, resubscribing...", "err", sub.Err(), "query", q.String())
-			sub = c.resubscribe(subscriber, q)
-			if sub == nil { // client was stopped
-				return
-			}
-		case <-c.Quit():
-			return
+			continue
+		}
+		outc <- coretypes.ResultEvent{
+			SubscriptionID: msg.SubscriptionID(),
+			Query:          qstr,
+			Data:           msg.Data(),
+			Events:         msg.Events(),
 		}
 	}
 }
 
 // Try to resubscribe with exponential backoff.
-func (c *Local) resubscribe(subscriber string, q pubsub.Query) eventbus.Subscription {
+func (c *Local) resubscribe(subArgs pubsub.SubscribeArgs) eventbus.Subscription {
 	attempts := 0
 	for {
 		if !c.IsRunning() {
 			return nil
 		}
 
-		sub, err := c.EventBus.Subscribe(context.Background(), subscriber, q)
+		sub, err := c.EventBus.SubscribeWithArgs(context.Background(), subArgs)
 		if err == nil {
 			return sub
 		}

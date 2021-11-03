@@ -2004,9 +2004,22 @@ func TestSignSameVoteTwice(t *testing.T) {
 
 // subscribe subscribes test client to the given query and returns a channel with cap = 1.
 func subscribe(eventBus *eventbus.EventBus, q tmpubsub.Query) <-chan tmpubsub.Message {
-	sub, err := eventBus.Subscribe(context.Background(), testSubscriber, q)
+	sub, err := eventBus.SubscribeWithArgs(context.Background(), tmpubsub.SubscribeArgs{
+		ClientID: testSubscriber,
+		Query:    q,
+	})
 	if err != nil {
 		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, q))
 	}
-	return sub.Out()
+	ch := make(chan tmpubsub.Message)
+	go func() {
+		for {
+			next, err := sub.Next(context.Background())
+			if err != nil {
+				panic(fmt.Sprintf("Subscription for %v unexpectedly terminated: %v", q, err))
+			}
+			ch <- next
+		}
+	}()
+	return ch
 }

@@ -23,6 +23,7 @@ import (
 	sf "github.com/tendermint/tendermint/internal/state/test/factory"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/types/eventbus"
@@ -375,11 +376,10 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 
 	blockExec.SetEventBus(eventBus)
 
-	updatesSub, err := eventBus.Subscribe(
-		context.Background(),
-		"TestEndBlockValidatorUpdates",
-		types.EventQueryValidatorSetUpdates,
-	)
+	updatesSub, err := eventBus.SubscribeWithArgs(context.Background(), pubsub.SubscribeArgs{
+		ClientID: "TestEndBlockValidatorUpdates",
+		Query:    types.EventQueryValidatorSetUpdates,
+	})
 	require.NoError(t, err)
 
 	block := sf.MakeBlock(state, 1, new(types.Commit))
@@ -403,18 +403,15 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	}
 
 	// test we threw an event
-	select {
-	case msg := <-updatesSub.Out():
-		event, ok := msg.Data().(types.EventDataValidatorSetUpdates)
-		require.True(t, ok, "Expected event of type EventDataValidatorSetUpdates, got %T", msg.Data())
-		if assert.NotEmpty(t, event.ValidatorUpdates) {
-			assert.Equal(t, pubkey, event.ValidatorUpdates[0].PubKey)
-			assert.EqualValues(t, 10, event.ValidatorUpdates[0].VotingPower)
-		}
-	case <-updatesSub.Canceled():
-		t.Fatalf("updatesSub was canceled (reason: %v)", updatesSub.Err())
-	case <-time.After(1 * time.Second):
-		t.Fatal("Did not receive EventValidatorSetUpdates within 1 sec.")
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	msg, err := updatesSub.Next(ctx)
+	require.NoError(t, err)
+	event, ok := msg.Data().(types.EventDataValidatorSetUpdates)
+	require.True(t, ok, "Expected event of type EventDataValidatorSetUpdates, got %T", msg.Data())
+	if assert.NotEmpty(t, event.ValidatorUpdates) {
+		assert.Equal(t, pubkey, event.ValidatorUpdates[0].PubKey)
+		assert.EqualValues(t, 10, event.ValidatorUpdates[0].VotingPower)
 	}
 }
 

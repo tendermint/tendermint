@@ -247,16 +247,14 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		go func(j int, s eventbus.Subscription) {
 			defer wg.Done()
 			for {
-				select {
-				case msg := <-s.Out():
-					require.NotNil(t, msg)
-					block := msg.Data().(types.EventDataNewBlock).Block
-					if len(block.Evidence.Evidence) != 0 {
-						evidenceFromEachValidator[j] = block.Evidence.Evidence[0]
-						return
-					}
-				case <-s.Canceled():
-					require.Fail(t, "subscription failed for %d", j)
+				msg, err := s.Next(context.Background())
+				if !assert.NoError(t, err) {
+					return
+				}
+				require.NotNil(t, msg)
+				block := msg.Data().(types.EventDataNewBlock).Block
+				if len(block.Evidence.Evidence) != 0 {
+					evidenceFromEachValidator[j] = block.Evidence.Evidence[0]
 					return
 				}
 			}

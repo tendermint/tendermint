@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -48,18 +49,18 @@ func (cs *State) readReplayMessage(msg *TimedWALMessage, newStepSub eventbus.Sub
 	case types.EventDataRoundState:
 		cs.Logger.Info("Replay: New Step", "height", m.Height, "round", m.Round, "step", m.Step)
 		// these are playback checks
-		ticker := time.After(time.Second * 2)
 		if newStepSub != nil {
-			select {
-			case stepMsg := <-newStepSub.Out():
-				m2 := stepMsg.Data().(types.EventDataRoundState)
-				if m.Height != m2.Height || m.Round != m2.Round || m.Step != m2.Step {
-					return fmt.Errorf("roundState mismatch. Got %v; Expected %v", m2, m)
-				}
-			case <-newStepSub.Canceled():
-				return fmt.Errorf("failed to read off newStepSub.Out(). newStepSub was canceled")
-			case <-ticker:
-				return fmt.Errorf("failed to read off newStepSub.Out()")
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			stepMsg, err := newStepSub.Next(ctx)
+			if errors.Is(err, context.DeadlineExceeded) {
+				return fmt.Errorf("subscription timed out: %w", err)
+			} else if err != nil {
+				return fmt.Errorf("subscription canceled: %w", err)
+			}
+			m2 := stepMsg.Data().(types.EventDataRoundState)
+			if m.Height != m2.Height || m.Round != m2.Round || m.Step != m2.Step {
+				return fmt.Errorf("roundState mismatch. Got %v; Expected %v", m2, m)
 			}
 		}
 	case msgInfo:

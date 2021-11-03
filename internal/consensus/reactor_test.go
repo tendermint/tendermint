@@ -93,10 +93,18 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 
 		reactor.SetEventBus(state.eventBus)
 
-		blocksSub, err := state.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, size)
+		blocksSub, err := state.eventBus.SubscribeWithArgs(context.Background(), tmpubsub.SubscribeArgs{
+			ClientID: testSubscriber,
+			Query:    types.EventQueryNewBlock,
+			Limit:    size,
+		})
 		require.NoError(t, err)
 
-		fsSub, err := state.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryBlockSyncStatus, size)
+		fsSub, err := state.eventBus.SubscribeWithArgs(context.Background(), tmpubsub.SubscribeArgs{
+			ClientID: testSubscriber,
+			Query:    types.EventQueryBlockSyncStatus,
+			Limit:    size,
+		})
 		require.NoError(t, err)
 
 		rts.states[nodeID] = state
@@ -161,9 +169,10 @@ func waitForAndValidateBlock(
 ) {
 
 	fn := func(j int) {
-		msg := <-blocksSubs[j].Out()
-		newBlock := msg.Data().(types.EventDataNewBlock).Block
+		msg, err := blocksSubs[j].Next(context.Background())
+		require.NoError(t, err)
 
+		newBlock := msg.Data().(types.EventDataNewBlock).Block
 		require.NoError(t, validateBlock(newBlock, activeVals))
 
 		for _, tx := range txs {
@@ -197,9 +206,10 @@ func waitForAndValidateBlockWithTx(
 		ntxs := 0
 	BLOCK_TX_LOOP:
 		for {
-			msg := <-blocksSubs[j].Out()
-			newBlock := msg.Data().(types.EventDataNewBlock).Block
+			msg, err := blocksSubs[j].Next(context.Background())
+			require.NoError(t, err)
 
+			newBlock := msg.Data().(types.EventDataNewBlock).Block
 			require.NoError(t, validateBlock(newBlock, activeVals))
 
 			// check that txs match the txs we're waiting for.
@@ -242,7 +252,9 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 
 	LOOP:
 		for {
-			msg := <-blocksSubs[j].Out()
+			msg, err := blocksSubs[j].Next(context.Background())
+			require.NoError(t, err)
+
 			newBlock = msg.Data().(types.EventDataNewBlock).Block
 			if newBlock.LastCommit.Size() == len(updatedVals) {
 				break LOOP
@@ -297,7 +309,8 @@ func TestReactorBasic(t *testing.T) {
 		// wait till everyone makes the first new block
 		go func(s eventbus.Subscription) {
 			defer wg.Done()
-			<-s.Out()
+			_, err := s.Next(context.Background())
+			require.NoError(t, err)
 		}(sub)
 	}
 
@@ -309,7 +322,8 @@ func TestReactorBasic(t *testing.T) {
 		// wait till everyone makes the consensus switch
 		go func(s eventbus.Subscription) {
 			defer wg.Done()
-			msg := <-s.Out()
+			msg, err := s.Next(context.Background())
+			require.NoError(t, err)
 			ensureBlockSyncStatus(t, msg, true, 0)
 		}(sub)
 	}
@@ -408,9 +422,10 @@ func TestReactorWithEvidence(t *testing.T) {
 		// We expect for each validator that is the proposer to propose one piece of
 		// evidence.
 		go func(s eventbus.Subscription) {
-			msg := <-s.Out()
-			block := msg.Data().(types.EventDataNewBlock).Block
+			msg, err := s.Next(context.Background())
+			require.NoError(t, err)
 
+			block := msg.Data().(types.EventDataNewBlock).Block
 			require.Len(t, block.Evidence.Evidence, 1)
 			wg.Done()
 		}(sub)
@@ -461,8 +476,9 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 
 		// wait till everyone makes the first new block
 		go func(s eventbus.Subscription) {
-			<-s.Out()
-			wg.Done()
+			defer wg.Done()
+			_, err := s.Next(context.Background())
+			require.NoError(t, err)
 		}(sub)
 	}
 
@@ -491,8 +507,9 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 
 		// wait till everyone makes the first new block
 		go func(s eventbus.Subscription) {
-			<-s.Out()
-			wg.Done()
+			defer wg.Done()
+			_, err := s.Next(context.Background())
+			require.NoError(t, err)
 		}(sub)
 	}
 
@@ -566,8 +583,9 @@ func TestReactorVotingPowerChange(t *testing.T) {
 
 		// wait till everyone makes the first new block
 		go func(s eventbus.Subscription) {
-			<-s.Out()
-			wg.Done()
+			defer wg.Done()
+			_, err := s.Next(context.Background())
+			require.NoError(t, err)
 		}(sub)
 	}
 
@@ -666,8 +684,9 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 		// wait till everyone makes the first new block
 		go func(s eventbus.Subscription) {
-			<-s.Out()
-			wg.Done()
+			defer wg.Done()
+			_, err := s.Next(context.Background())
+			require.NoError(t, err)
 		}(sub)
 	}
 

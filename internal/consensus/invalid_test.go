@@ -61,8 +61,9 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 			wg.Add(1)
 
 			go func(s eventbus.Subscription) {
-				<-s.Out()
-				wg.Done()
+				defer wg.Done()
+				_, err := s.Next(context.Background())
+				require.NoError(t, err)
 			}(sub)
 		}
 	}
