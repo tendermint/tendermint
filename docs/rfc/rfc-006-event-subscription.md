@@ -162,11 +162,15 @@ mutually exclusive.
      are the limiting factor on subscription efficiency, however.
 
 3. **Delegate event subscriptions to a proxy.** Give responsibility for
-     managing event subscription to a proxy that runs separately from the node,
-     and switch the node to push events to the proxy (like a webhook) instead
-     of serving subscribers directly.  This is more work for the operator
-     (another process to configure and run) but may scale better for big
-     networks.
+   managing event subscription to a proxy that runs separately from the node,
+   and switch the node to push events to the proxy (like a webhook) instead of
+   serving subscribers directly.  This is more work for the operator (another
+   process to configure and run) but may scale better for big networks.
+
+   I mention this option for completeness, but making this change would be a
+   fairly substantial project.  If we want to consider shifting responsibility
+   for event subscription outside the node anyway, we should probably be more
+   systematic about it. For a more principled approach, see point (4) below.
 
 4. **Move event subscription downstream of indexing.** We are already planning
    to give applications more control over event indexing. By extension, we
