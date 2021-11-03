@@ -28,7 +28,7 @@ func init() {
 	getMp = func() mempool.Mempool {
 		if mp == nil {
 			mp = mempool.NewTxMempool(
-				log.TestingLogger().With("module", "mempool"),
+				log.NewNopLogger(),
 				cfg,
 				appConnMem,
 				0,
