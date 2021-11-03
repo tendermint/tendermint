@@ -206,6 +206,12 @@ max_subscription_clients = {{ .RPC.MaxSubscriptionClients }}
 # the estimated # maximum number of broadcast_tx_commit calls per block.
 max_subscriptions_per_client = {{ .RPC.MaxSubscriptionsPerClient }}
 
+# Experimental parameter to specify the maximum number of events a node will
+# buffer, per subscription, before returning an error and closing the
+# subscription. Must be set to at least 100, but higher values will accommodate
+# higher event throughput rates (and will use more memory).
+experimental_subscription_buffer_size = {{ .RPC.SubscriptionBufferSize }}
+
 # How long to wait for a tx to be committed during /broadcast_tx_commit.
 # WARNING: Using a value larger than 10s will result in increasing the
 # global HTTP write timeout, which applies to all connections and endpoints.
