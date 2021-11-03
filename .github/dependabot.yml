@@ -8,15 +8,42 @@ updates:
     labels:
       - T:dependencies
       - S:automerge
+
   - package-ecosystem: npm
     directory: "/docs"
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+
+  ###################################
+  ##
+  ## Update All Go Dependencies
+
   - package-ecosystem: gomod
     directory: "/"
     schedule:
       interval: daily
+    target-branch: "master"
+    open-pull-requests-limit: 10
+    labels:
+      - T:dependencies
+      - S:automerge
+
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: daily
+    target-branch: "v0.34.x"
+    open-pull-requests-limit: 10
+    labels:
+      - T:dependencies
+      - S:automerge
+
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: daily
+    target-branch: "v0.35.x"
     open-pull-requests-limit: 10
     labels:
       - T:dependencies
