@@ -124,6 +124,8 @@ mutually exclusive.
 
    This would make it easy to disable or firewall outside access to sensitive
    RPC methods, without blocking access to event subscription (and vice versa).
+   This is probably worth doing, even if we don't take any of the other steps
+   described here.
 
 2. **Use a different protocol for event subscription.** There are various ways
    we could approach this, depending how much we're willing to shake up the
@@ -138,10 +140,16 @@ mutually exclusive.
    - Switch from websocket to plain HTTP, and rework the subscription API to
      use a more conventional request/response pattern instead of streaming.
      This is a little more up-front work for existing clients, but leverages
-     better library support for clients not written in Go. The protocol would
-     be more chatty, but we could mitigate that with batching.
+     better library support for clients not written in Go.
 
-     This has a nice incidental benefit that it would become easier to debug
+     The protocol would become more chatty, but we could mitigate that with
+     batching, and in return we would get more control over what to do about
+     slow clients: Instead of simply silently dropping them, as we do now, we
+     could drop messages and signal the client that they missed some data ("M
+     dropped messages since your last poll").
+
+     This option is probably the best balance between work, API change, and
+     benefit, and has a nice incidental effect that it would be easier to debug
      subscriptions from the command-line, like the other RPC methods.
 
    - Switch to gRPC: Preserves a persistent connection and gives us a more
