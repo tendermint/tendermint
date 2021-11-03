@@ -13,7 +13,7 @@ Special thanks to external contributors on this release: @JayT106,
 ### FEATURES
 
 - [cli] [#7033](https://github.com/tendermint/tendermint/pull/7033) Add a `rollback` command to rollback to the previous tendermint state in the event of an incorrect app hash. (@cmwaters)
-- [config] \#7174 expose ability to write config to arbitrary paths. (@tychoish)
+- [config] [\#7174](https://github.com/tendermint/tendermint/pull/7174) expose ability to write config to arbitrary paths. (@tychoish)
 - [mempool, rpc] [\#7065](https://github.com/tendermint/tendermint/pull/7065) add removetx rpc method (backport of #7047) (@tychoish).
 - [\#6982](https://github.com/tendermint/tendermint/pull/6982) tendermint binary has built-in suppport for running the e2e application (with state sync support) (@cmwaters).
 - [config] Add `--mode` flag and config variable. See [ADR-52](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md) @dongsam
