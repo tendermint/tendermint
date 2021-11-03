@@ -444,10 +444,16 @@ func (cfg *RPCConfig) ValidateBasic() error {
 		return errors.New("max_subscriptions_per_client can't be negative")
 	}
 	if cfg.SubscriptionBufferSize < minSubscriptionBufferSize {
-		return fmt.Errorf("experimental_subscription_buffer_size must be at least %d", minSubscriptionBufferSize)
+		return fmt.Errorf(
+			"experimental_subscription_buffer_size must be >= %d",
+			minSubscriptionBufferSize,
+		)
 	}
 	if cfg.WebSocketWriteBufferSize < cfg.SubscriptionBufferSize {
-		return fmt.Errorf("experimental_websocket_write_buffer_size must be at least the same as experimental_subscription_buffer_size (%d)", cfg.SubscriptionBufferSize)
+		return fmt.Errorf(
+			"experimental_websocket_write_buffer_size must be >= experimental_subscription_buffer_size (%d)",
+			cfg.SubscriptionBufferSize,
+		)
 	}
 	if cfg.TimeoutBroadcastTxCommit < 0 {
 		return errors.New("timeout_broadcast_tx_commit can't be negative")
