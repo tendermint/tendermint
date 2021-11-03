@@ -49,6 +49,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: bls-signatures
     timeout-minutes: 15
+    env:
+      FULLNODE_PUBKEY_KEEP: false
     steps:
       - uses: actions/setup-go@v2
         with:
