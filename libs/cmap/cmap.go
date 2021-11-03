@@ -25,14 +25,11 @@ func (cm *CMap) Set(key string, value interface{}) {
 // GetOrSet returns the existing value if present. Otherwise, it stores `newValue` and returns it.
 // The loaded result is true if the value was loaded, false if stored.
 func (cm *CMap) GetOrSet(key string, newValue interface{}) (value interface{}, loaded bool) {
-
 	cm.l.Lock()
 	defer cm.l.Unlock()
-
 	if v, ok := cm.m[key]; ok {
 		return v, true
 	}
-
 	cm.m[key] = newValue
 	return newValue, false
 }
@@ -72,7 +69,6 @@ func (cm *CMap) Clear() {
 
 func (cm *CMap) Keys() []string {
 	cm.l.RLock()
-
 	keys := make([]string, 0, len(cm.m))
 	for k := range cm.m {
 		keys = append(keys, k)
