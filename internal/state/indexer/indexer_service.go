@@ -9,12 +9,6 @@ import (
 	"github.com/tendermint/tendermint/types/eventbus"
 )
 
-// XXX/TODO: These types should be moved to the indexer package.
-
-const (
-	subscriber = "IndexerService"
-)
-
 // Service connects event bus, transaction and block indexers together in
 // order to index transactions and blocks coming from the event bus.
 type Service struct {
@@ -37,14 +31,14 @@ func NewIndexerService(es []EventSink, eventBus *eventbus.EventBus) *Service {
 	return is
 }
 
-// Publish publishes a pubsub message to the service. The service blocks until
+// publish publishes a pubsub message to the service. The service blocks until
 // the message has been fully processed.
-func (is *Service) Publish(msg pubsub.Message) error {
+func (is *Service) publish(msg pubsub.Message) error {
 	// Indexing has three states. Initially, no block is in progress (WAIT) and
 	// we expect a block header. Upon seeing a header, we are waiting for zero
 	// or more transactions (GATHER). Once all the expected transactions have
 	// been delivered (in some order), we are ready to index. After indexing a
-	// block,
+	// block, we revert to the WAIT state for the next block.
 
 	if is.currentBlock.batch == nil {
 		// WAIT: Start a new block.
@@ -102,83 +96,25 @@ func (is *Service) Publish(msg pubsub.Message) error {
 	return nil
 }
 
-// OnStart implements service.Service by subscribing for all transactions
-// and indexing them by events.
+// OnStart implements part of service.Service. It registers an observer for the
+// indexer if the underlying event sinks support indexing.
+//
+// TODO(creachadair): Can we get rid of the "enabled" check?
 func (is *Service) OnStart() error {
-	// Use SubscribeUnbuffered here to ensure both subscriptions does not get
-	// canceled due to not pulling messages fast enough. Cause this might
-	// sometimes happen when there are no other subscribers.
-	blockHeadersSub, err := is.eventBus.SubscribeUnbuffered(
-		context.Background(),
-		subscriber,
-		types.EventQueryNewBlockHeader)
-	if err != nil {
-		return err
-	}
-
-	txsSub, err := is.eventBus.SubscribeUnbuffered(context.Background(), subscriber, types.EventQueryTx)
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		for {
-			select {
-			case <-blockHeadersSub.Canceled():
-				return
-			case msg := <-blockHeadersSub.Out():
-
-				eventDataHeader := msg.Data().(types.EventDataNewBlockHeader)
-				height := eventDataHeader.Header.Height
-				batch := NewBatch(eventDataHeader.NumTxs)
-
-				for i := int64(0); i < eventDataHeader.NumTxs; i++ {
-					msg2 := <-txsSub.Out()
-					txResult := msg2.Data().(types.EventDataTx).TxResult
-
-					if err = batch.Add(&txResult); err != nil {
-						is.Logger.Error(
-							"failed to add tx to batch",
-							"height", height,
-							"index", txResult.Index,
-							"err", err,
-						)
-					}
-				}
-
-				if !IndexingEnabled(is.eventSinks) {
-					continue
-				}
-
-				for _, sink := range is.eventSinks {
-					if err := sink.IndexBlockEvents(eventDataHeader); err != nil {
-						is.Logger.Error("failed to index block", "height", height, "err", err)
-					} else {
-						is.Logger.Debug("indexed block", "height", height, "sink", sink.Type())
-					}
-
-					if len(batch.Ops) > 0 {
-						err := sink.IndexTxEvents(batch.Ops)
-						if err != nil {
-							is.Logger.Error("failed to index block txs", "height", height, "err", err)
-						} else {
-							is.Logger.Debug("indexed txs", "height", height, "sink", sink.Type())
-						}
-					}
-				}
-			}
+	// If the event sinks support indexing, register an observer to capture
+	// block header data for the indexer.
+	if IndexingEnabled(is.eventSinks) {
+		err := is.eventBus.Observe(context.TODO(), is.publish,
+			types.EventQueryNewBlockHeader, types.EventQueryTx)
+		if err != nil {
+			return err
 		}
-	}()
+	}
 	return nil
 }
 
-// OnStop implements service.Service by unsubscribing from all transactions and
-// close the eventsink.
+// OnStop implements service.Service by closing the event sinks.
 func (is *Service) OnStop() {
-	if is.eventBus.IsRunning() {
-		_ = is.eventBus.UnsubscribeAll(context.Background(), subscriber)
-	}
-
 	for _, sink := range is.eventSinks {
 		if err := sink.Stop(); err != nil {
 			is.Logger.Error("failed to close eventsink", "eventsink", sink.Type(), "err", err)
