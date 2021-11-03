@@ -29,8 +29,8 @@ merging the pull request.
 
 ### Creating a backport branch
 
-If this is the first release candidate for a major release, you get to have the honor of creating
-the backport branch!
+If this is the first release candidate for a major release, you get to have the
+honor of creating the backport branch!
 
 Note that, after creating the backport branch, you'll also need to update the
 tags on `master` so that `go mod` is able to order the branches correctly. You
@@ -43,15 +43,32 @@ the 0.35.x line.
 
 1. Start on `master`
 2. Create and push the backport branch:
-   `git checkout -b v0.35.x; git push origin v0.35.x`
-3. Go back to master and tag it as the dev branch for the _next_ major release and push it back up:
-   `git tag -a v0.36.0-dev -m "Development base for Tendermint v0.36."; git push origin v0.36.0-dev`
-4. Create a new workflow (still on master) to run e2e nightlies for the new backport branch.
-   (See https://github.com/tendermint/tendermint/blob/master/.github/workflows/e2e-nightly-master.yml
-   for an example.)
-5. Add a new section to the Mergify config (`.github/mergify.yml`) to enable the
+   ```sh
+   git checkout -b v0.35.x
+   git push origin v0.35.x
+   ```
+
+After doing these steps, go back to `master` and do the following:
+
+1. Tag `master` as the dev branch for the _next_ major release and push it back up.
+   For example:
+   ```sh
+   git tag -a v0.36.0-dev -m "Development base for Tendermint v0.36."
+   git push origin v0.36.0-dev
+   ```
+
+2. Create a new workflow to run e2e nightlies for the new backport branch.
+   (See [e2e-nightly-master.yml][e2e] for an example.)
+
+3. Add a new section to the Mergify config (`.github/mergify.yml`) to enable the
    backport bot to work on this branch, and add a corresponding `S:backport-to-v0.35.x`
    [label](https://github.com/tendermint/tendermint/labels) so the bot can be triggered.
+
+4. Add a new section to the Dependabot config (`.github/dependabot.yml`) to
+   enable automatic update of Go dependencies on this branch. Copy and edit one
+   of the existing branch configurations to set the correct `target-branch`.
+
+[e2e]: https://github.com/tendermint/tendermint/blob/master/.github/workflows/e2e-nightly-master.yml
 
 ## Release candidates
 
