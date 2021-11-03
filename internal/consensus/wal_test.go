@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"path/filepath"
 
-	// "sync"
 	"testing"
 	"time"
 
