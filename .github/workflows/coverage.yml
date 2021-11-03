@@ -1,3 +1,4 @@
+---
 name: Test Coverage
 on:
   pull_request:
@@ -5,6 +6,7 @@ on:
     branches:
       - master
       - release/**
+      - v0.*-dev
 
 jobs:
   bls-signatures:
