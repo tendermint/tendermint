@@ -43,6 +43,11 @@ const (
 	// check some peers every this
 	crawlPeerPeriod = 30 * time.Second
 
+	// try to connect to at least 1 peer every this
+	seedConnectMaxDelayPeriod = 5 * time.Second
+	// limit number of retries to dial other seeds during initialization
+	seedInitMaxAttemptToDial = 12
+
 	maxAttemptsToDial = 16 // ~ 35h in total (last attempt - 18h)
 
 	// if node connects to seed, it does not have any trusted peers.
@@ -620,9 +625,9 @@ func (r *Reactor) checkSeeds() (numOnline int, netAddrs []*p2p.NetAddress, err e
 }
 
 // randomly dial seeds until we connect to one or exhaust them
-func (r *Reactor) dialSeeds() {
+// It returns true if at least one peer is connected or being dialed, false otherwise
+func (r *Reactor) dialSeeds() bool {
 	perm := tmrand.Perm(len(r.seedAddrs))
-	// perm := r.Switch.rng.Perm(lSeeds)
 	for _, i := range perm {
 		// dial a random seed
 		seedAddr := r.seedAddrs[i]
@@ -630,7 +635,7 @@ func (r *Reactor) dialSeeds() {
 
 		switch err.(type) {
 		case nil, p2p.ErrCurrentlyDialingOrExistingAddress:
-			return
+			return true
 		}
 		r.Switch.Logger.Error("Error dialing seed", "err", err, "seed", seedAddr)
 	}
@@ -638,6 +643,7 @@ func (r *Reactor) dialSeeds() {
 	if len(r.seedAddrs) > 0 {
 		r.Switch.Logger.Error("Couldn't connect to any seeds")
 	}
+	return false
 }
 
 // AttemptsToDial returns the number of attempts to dial specific address. It
@@ -658,7 +664,15 @@ func (r *Reactor) AttemptsToDial(addr *p2p.NetAddress) int {
 func (r *Reactor) crawlPeersRoutine() {
 	// If we have any seed nodes, consult them first
 	if len(r.seedAddrs) > 0 {
-		r.dialSeeds()
+		for try := 0; try < seedInitMaxAttemptToDial; try++ {
+			// we sleep a few (random) secs to avoid connection storm when whole network restarts
+			delay := time.Duration(tmrand.Int63n(seedConnectMaxDelayPeriod.Nanoseconds()))
+			time.Sleep(delay)
+
+			if r.dialSeeds() {
+				break
+			}
+		}
 	} else {
 		// Do an initial crawl
 		r.crawlPeers(r.book.GetSelection())
