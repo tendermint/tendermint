@@ -683,9 +683,7 @@ func (n *nodeImpl) OnStart() error {
 		if err != nil {
 			return fmt.Errorf("could not dial peers from persistent-peers field: %w", err)
 		}
-	}
-
-	if n.config.P2P.PexReactor {
+	} else if n.config.P2P.PexReactor {
 		if err := n.pexReactor.Start(); err != nil {
 			return err
 		}
