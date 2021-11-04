@@ -40,7 +40,7 @@ subscription in the RPC service:
 - **Event delivery is not valid JSON-RPC.** When a client issues a `subscribe`
   request, the server replies (correctly) with an initial empty acknowledgement
   (`{}`). After that, each matching event is delivered "unsolicited" (without
-  another request from the client), as a separate [response  object][json-response]
+  another request from the client), as a separate [response object][json-response]
   with the same ID as the initial request.
 
   This matters because it means a standard JSON-RPC client library can't
