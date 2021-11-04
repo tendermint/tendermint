@@ -53,7 +53,8 @@ var (
 	defaultNodeKeyPath  = filepath.Join(defaultConfigDir, defaultNodeKeyName)
 	defaultAddrBookPath = filepath.Join(defaultConfigDir, defaultAddrBookName)
 
-	minSubscriptionBufferSize = 100
+	minSubscriptionBufferSize     = 100
+	defaultSubscriptionBufferSize = 1000
 )
 
 // Config defines the top level configuration for a Tendermint node
@@ -416,9 +417,9 @@ func DefaultRPCConfig() *RPCConfig {
 
 		MaxSubscriptionClients:    100,
 		MaxSubscriptionsPerClient: 5,
-		SubscriptionBufferSize:    minSubscriptionBufferSize,
+		SubscriptionBufferSize:    defaultSubscriptionBufferSize,
 		TimeoutBroadcastTxCommit:  10 * time.Second,
-		WebSocketWriteBufferSize:  minSubscriptionBufferSize,
+		WebSocketWriteBufferSize:  defaultSubscriptionBufferSize,
 
 		MaxBodyBytes:   int64(1000000), // 1MB
 		MaxHeaderBytes: 1 << 20,        // same as the net/http default
