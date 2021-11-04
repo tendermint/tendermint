@@ -16,7 +16,6 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/types/eventbus"
 )
 
 // Server defines parameters for running an Inspector rpc server.
@@ -27,13 +26,8 @@ type Server struct {
 	Config  *config.RPCConfig
 }
 
-type eventBusSubscriber interface {
-	Subscribe(ctx context.Context, subscriber string, query pubsub.Query, outCapacity ...int) (eventbus.Subscription, error)
-	Unsubscribe(ctx context.Context, args pubsub.UnsubscribeArgs) error
+type eventBusUnsubscriber interface {
 	UnsubscribeAll(ctx context.Context, subscriber string) error
-
-	NumClients() int
-	NumClientSubscriptions(clientID string) int
 }
 
 // Routes returns the set of routes used by the Inspector server.
@@ -69,7 +63,7 @@ func Handler(rpcConfig *config.RPCConfig, routes core.RoutesMap, logger log.Logg
 	mux := http.NewServeMux()
 	wmLogger := logger.With("protocol", "websocket")
 
-	var eventBus eventBusSubscriber
+	var eventBus eventBusUnsubscriber
 
 	websocketDisconnectFn := func(remoteAddr string) {
 		err := eventBus.UnsubscribeAll(context.Background(), remoteAddr)
