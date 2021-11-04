@@ -7,6 +7,7 @@ import (
 	"net"
 
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/inspect/rpc"
 	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
 	"github.com/tendermint/tendermint/internal/state"
@@ -16,7 +17,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/types/eventbus"
 
 	"golang.org/x/sync/errgroup"
 )

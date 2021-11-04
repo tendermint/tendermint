@@ -12,14 +12,15 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// Subscription is a proxy interface for a pubsub Subscription.
 type Subscription interface {
 	ID() string
 	Next(context.Context) (tmpubsub.Message, error)
 }
 
-// EventBus is a common bus for all events going through the system. All calls
-// are proxied to underlying pubsub server. All events must be published using
-// EventBus to ensure correct data types.
+// EventBus is a common bus for all events going through the system.
+// It is a type-aware wrapper around and underlying pubsub server.
+// All events should be published via the bus.
 type EventBus struct {
 	service.BaseService
 	pubsub *tmpubsub.Server

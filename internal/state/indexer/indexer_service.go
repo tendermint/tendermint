@@ -3,10 +3,10 @@ package indexer
 import (
 	"context"
 
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/types/eventbus"
 )
 
 // Service connects event bus, transaction and block indexers together in
