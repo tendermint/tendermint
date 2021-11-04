@@ -109,17 +109,18 @@ will need to change to accommodate these changes. Most notably:
   longer exported and have been replaced with `node.New` and
   `node.NewDefault` which provide more functional interfaces.
 
-To access any of the functionality previously avalible vai the
+To access any of the functionality previously available via the
 `node.Node` type, use the `*local.Local` "RPC" client, that exposes
 the full RPC interface provided as direct function calls. Import the
 `github.com/tendermint/tendermint/rpc/client/local` package and pass
 the node service as in the following: 
 
+```go
     node := node.NewDefault() //construct the node object
     // start and set up the node service 
 
-	client := local.New(node.(local.NodeService))
-	// use client object to interact with the node
+    client := local.New(node.(local.NodeService))
+    // use client object to interact with the node
 
 ### gRPC Support
 
