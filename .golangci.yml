@@ -1,5 +1,6 @@
 linters:
   enable:
+    - asciicheck
     - bodyclose
     - deadcode
     - depguard
@@ -10,6 +11,7 @@ linters:
     # - funlen
     # - gochecknoglobals
     # - gochecknoinits
+    # - gocognit
     - goconst
     # - gocritic
     # - gocyclo
@@ -23,11 +25,11 @@ linters:
     - ineffassign
     # - interfacer
     - lll
-    - misspell
     # - maligned
+    - misspell
     - nakedret
+    - nolintlint
     - prealloc
-    # - scopelint
     - staticcheck
     - structcheck
     - stylecheck
@@ -38,8 +40,6 @@ linters:
     - varcheck
     # - whitespace
     # - wsl
-    # - gocognit
-    - nolintlint
 
 issues:
   exclude-rules:
@@ -60,3 +60,7 @@ linters-settings:
   #   check-shadowing: true
   revive:
     min-confidence: 0
+  maligned:
+    suggest-new: true
+  misspell:
+    locale: US
