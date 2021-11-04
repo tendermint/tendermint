@@ -249,7 +249,7 @@ func (c *Local) eventsRoutine(
 		} else if err != nil {
 			c.Logger.Error("subscription was canceled, resubscribing",
 				"err", err, "query", subArgs.Query.String())
-			sub = c.resubscribe(subArgs)
+			sub = c.resubscribe(ctx, subArgs)
 			if sub == nil {
 				return // client terminated
 			}
@@ -265,14 +265,14 @@ func (c *Local) eventsRoutine(
 }
 
 // Try to resubscribe with exponential backoff.
-func (c *Local) resubscribe(subArgs pubsub.SubscribeArgs) eventbus.Subscription {
+func (c *Local) resubscribe(ctx context.Context, subArgs pubsub.SubscribeArgs) eventbus.Subscription {
 	attempts := 0
 	for {
 		if !c.IsRunning() {
 			return nil
 		}
 
-		sub, err := c.EventBus.SubscribeWithArgs(context.Background(), subArgs)
+		sub, err := c.EventBus.SubscribeWithArgs(ctx, subArgs)
 		if err == nil {
 			return sub
 		}
