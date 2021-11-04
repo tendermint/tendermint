@@ -19,7 +19,7 @@ type Subscription interface {
 }
 
 // EventBus is a common bus for all events going through the system.
-// It is a type-aware wrapper around and underlying pubsub server.
+// It is a type-aware wrapper around an underlying pubsub server.
 // All events should be published via the bus.
 type EventBus struct {
 	service.BaseService
