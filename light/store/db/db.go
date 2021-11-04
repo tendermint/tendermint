@@ -54,7 +54,7 @@ func (s *dbs) SaveLightBlock(lb *types.LightBlock) error {
 
 	lbBz, err := lbpb.Marshal()
 	if err != nil {
-		return fmt.Errorf("marshalling LightBlock: %w", err)
+		return fmt.Errorf("marshaling LightBlock: %w", err)
 	}
 
 	s.mtx.Lock()
