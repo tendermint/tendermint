@@ -91,7 +91,7 @@ jobs:
           GOTAGS:
         run: |
           cat pkgs.txt.part.${{ matrix.part }} | \
-            xargs go test -tags memdb,goleveldb -mod=readonly \
+            xargs go test -tags memdb,goleveldb,badgerdb -mod=readonly \
                   -timeout 8m -race -coverprofile=${{ matrix.part }}profile.out
         if: env.GIT_DIFF
       - uses: actions/upload-artifact@v2
