@@ -96,7 +96,7 @@ parameter `FULLNODE_PUBKEY_KEEP=true`.
 
 For instance:
 
-```bash
+```sh
 FULLNODE_PUBKEY_KEEP=true make runner/dashcore
 ```
 
