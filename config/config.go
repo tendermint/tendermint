@@ -358,6 +358,15 @@ type RPCConfig struct {
 	// connections may be dropped unnecessarily.
 	WebSocketWriteBufferSize int `mapstructure:"experimental_websocket_write_buffer_size"`
 
+	// If a WebSocket client cannot read fast enough, at present we may
+	// silently drop events instead of generating an error or disconnecting the
+	// client.
+	//
+	// Enabling this parameter will cause the WebSocket connection to be closed
+	// instead if it cannot read fast enough, allowing for greater
+	// predictability in subscription behaviour.
+	CloseOnSlowClient bool `mapstructure:"experimental_close_on_slow_client"`
+
 	// How long to wait for a tx to be committed during /broadcast_tx_commit
 	// WARNING: Using a value larger than 10s will result in increasing the
 	// global HTTP write timeout, which applies to all connections and endpoints.

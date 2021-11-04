@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -37,6 +38,8 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 		return nil, err
 	}
 
+	closeIfSlow := env.Config.CloseOnSlowClient
+
 	// Capture the current ID, since it can change in the future.
 	subscriptionID := ctx.JSONReq.ID
 	go func() {
@@ -52,6 +55,18 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 				if err := ctx.WSConn.WriteRPCResponse(writeCtx, resp); err != nil {
 					env.Logger.Info("Can't write response (slow client)",
 						"to", addr, "subscriptionID", subscriptionID, "err", err)
+
+					if closeIfSlow {
+						var (
+							err  = errors.New("subscription was cancelled (reason: slow client)")
+							resp = rpctypes.RPCServerError(subscriptionID, err)
+						)
+						if !ctx.WSConn.TryWriteRPCResponse(resp) {
+							env.Logger.Info("Can't write response (slow client)",
+								"to", addr, "subscriptionID", subscriptionID, "err", err)
+						}
+						return
+					}
 				}
 			case <-sub.Cancelled():
 				if sub.Err() != tmpubsub.ErrUnsubscribed {
@@ -65,7 +80,7 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 						err  = fmt.Errorf("subscription was cancelled (reason: %s)", reason)
 						resp = rpctypes.RPCServerError(subscriptionID, err)
 					)
-					if ok := ctx.WSConn.TryWriteRPCResponse(resp); !ok {
+					if !ctx.WSConn.TryWriteRPCResponse(resp) {
 						env.Logger.Info("Can't write response (slow client)",
 							"to", addr, "subscriptionID", subscriptionID, "err", err)
 					}
