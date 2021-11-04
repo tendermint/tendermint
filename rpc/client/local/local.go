@@ -216,6 +216,9 @@ func (c *Local) Subscribe(
 		outCap = outCapacity[0]
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
+	go func() { <-c.Quit(); cancel() }()
+
 	subArgs := pubsub.SubscribeArgs{
 		ClientID: subscriber,
 		Query:    q,
@@ -227,21 +230,18 @@ func (c *Local) Subscribe(
 	}
 
 	outc := make(chan coretypes.ResultEvent, outCap)
-	go c.eventsRoutine(sub, subArgs, outc)
+	go c.eventsRoutine(ctx, sub, subArgs, outc)
 
 	return outc, nil
 }
 
 func (c *Local) eventsRoutine(
+	ctx context.Context,
 	sub eventbus.Subscription,
 	subArgs pubsub.SubscribeArgs,
 	outc chan<- coretypes.ResultEvent,
 ) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() { <-c.Quit(); cancel() }()
 	qstr := subArgs.Query.String()
-
 	for {
 		msg, err := sub.Next(ctx)
 		if errors.Is(err, pubsub.ErrUnsubscribed) {
