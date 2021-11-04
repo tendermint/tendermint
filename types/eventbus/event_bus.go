@@ -216,80 +216,26 @@ func (b *EventBus) PublishEventValidatorSetUpdates(data types.EventDataValidator
 }
 
 //-----------------------------------------------------------------------------
+
+// NopEventBus implements a types.BlockEventPublisher that discards all events.
 type NopEventBus struct{}
 
-func (NopEventBus) Unsubscribe(ctx context.Context, args tmpubsub.UnsubscribeArgs) error {
+func (NopEventBus) PublishEventNewBlock(types.EventDataNewBlock) error {
 	return nil
 }
 
-func (NopEventBus) UnsubscribeAll(ctx context.Context, subscriber string) error {
+func (NopEventBus) PublishEventNewBlockHeader(types.EventDataNewBlockHeader) error {
 	return nil
 }
 
-func (NopEventBus) PublishEventNewBlock(data types.EventDataNewBlock) error {
+func (NopEventBus) PublishEventNewEvidence(types.EventDataNewEvidence) error {
 	return nil
 }
 
-func (NopEventBus) PublishEventNewBlockHeader(data types.EventDataNewBlockHeader) error {
+func (NopEventBus) PublishEventTx(types.EventDataTx) error {
 	return nil
 }
 
-func (NopEventBus) PublishEventNewEvidence(evidence types.EventDataNewEvidence) error {
-	return nil
-}
-
-func (NopEventBus) PublishEventVote(data types.EventDataVote) error {
-	return nil
-}
-
-func (NopEventBus) PublishEventTx(data types.EventDataTx) error {
-	return nil
-}
-
-func (NopEventBus) PublishEventNewRoundStep(data types.EventDataRoundState) error {
-	return nil
-}
-
-func (NopEventBus) PublishEventTimeoutPropose(data types.EventDataRoundState) error {
-	return nil
-}
-
-func (NopEventBus) PublishEventTimeoutWait(data types.EventDataRoundState) error {
-	return nil
-}
-
-func (NopEventBus) PublishEventNewRound(data types.EventDataRoundState) error {
-	return nil
-}
-
-func (NopEventBus) PublishEventCompleteProposal(data types.EventDataRoundState) error {
-	return nil
-}
-
-func (NopEventBus) PublishEventPolka(data types.EventDataRoundState) error {
-	return nil
-}
-
-func (NopEventBus) PublishEventUnlock(data types.EventDataRoundState) error {
-	return nil
-}
-
-func (NopEventBus) PublishEventRelock(data types.EventDataRoundState) error {
-	return nil
-}
-
-func (NopEventBus) PublishEventLock(data types.EventDataRoundState) error {
-	return nil
-}
-
-func (NopEventBus) PublishEventValidatorSetUpdates(data types.EventDataValidatorSetUpdates) error {
-	return nil
-}
-
-func (NopEventBus) PublishEventBlockSyncStatus(data types.EventDataBlockSyncStatus) error {
-	return nil
-}
-
-func (NopEventBus) PublishEventStateSyncStatus(data types.EventDataStateSyncStatus) error {
+func (NopEventBus) PublishEventValidatorSetUpdates(types.EventDataValidatorSetUpdates) error {
 	return nil
 }
