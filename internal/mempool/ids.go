@@ -7,7 +7,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// nolint: golint
+// nolint: revive
 // TODO: Rename type.
 type MempoolIDs struct {
 	mtx       tmsync.RWMutex
