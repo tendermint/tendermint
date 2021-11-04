@@ -76,7 +76,29 @@ entirely.
 
 ## Detailed Design
 
+The "seams" in the P2P implementation between the higher level
+constructs (reactors), the routing layer (`Router`) and the lower
+level connection and peer management code make this operation
+relatively straight forward from an implementation perspective. The
+goal in this design is to minimize the impact to the reactors
+(potentially entirely,) and completely remove the lower level
+aspects (e.g. `Transport`, `Connection` and `PeerManager`) using the
+separation afforded by the `*Router` layer. The current state of the
+code makes these changes relatively surgical, and limited to a small
+number of methods: 
 
+- `p2p.Router.OpenChannel` will still return a `Channel` structure
+  which will continue to serve as a pipe between the reactors and the
+  `Router`. The implementation will no longer need the queue
+  implementation and this operation will instead start goroutines that
+  are responsible for routing the messages from the channel to libp2p
+  fundamentals, replacing the current `p2p.Router.routeChannel`.
+  
+- The current `p2p.Rotuer.dialPeers` will be removed, and the libp2p
+  connection manager will be responsible for maintaining network
+  connectivity. 
+
+- 
 
 ## Open Questions
 
@@ -95,7 +117,7 @@ entirely.
   information into the DHT as part of the heartbeats between nodes,
   such as the latest height, and then access that in arbitrary
   reactors. 
-  
+
 ## Consequences
 
 ### Positive
@@ -105,15 +127,22 @@ entirely.
   difficult to modify safely.
   
 - Provide users with a more stable peer and networking system,
-  reducing the 
+  Tendermint can improve operator experience and network stability.
 
 ### Negative
 
-- By deferring to library implementations 
+- By deferring to library implementations for peer management and
+  networking, Tendermint loses some flexibility for innovating at the
+  peer and networking level.
 
 - 
 
 ### Neutral
 
+- 
+
 ## References
 
+- [ADR 61: P2P Refactor Scope](./adr-061-p2p-refactor-scope.md)
+- [ADR 62: P2P Architecture](./adr-062-p2p-architecture.md)
+- [P2P Roadmap RFC](../rfc/rfc-000-p2p.rst)
