@@ -1,3 +1,4 @@
+//go:build tools
 // +build tools
 
 // This file uses the recommended method for tracking developer tools in a go module.

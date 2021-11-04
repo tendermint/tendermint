@@ -162,9 +162,9 @@ func verifyCommitBatch(
 	var (
 		val                *Validator
 		valIdx             int32
-		seenVals                 = make(map[int32]int, len(commit.Signatures))
-		batchSigIdxs             = make([]int, 0, len(commit.Signatures))
-		talliedVotingPower int64 = 0
+		seenVals           = make(map[int32]int, len(commit.Signatures))
+		batchSigIdxs       = make([]int, 0, len(commit.Signatures))
+		talliedVotingPower int64
 	)
 	// attempt to create a batch verifier
 	bv, ok := batch.CreateBatchVerifier(vals.GetProposer().PubKey)
@@ -275,8 +275,8 @@ func verifyCommitSingle(
 	var (
 		val                *Validator
 		valIdx             int32
-		seenVals                 = make(map[int32]int, len(commit.Signatures))
-		talliedVotingPower int64 = 0
+		seenVals           = make(map[int32]int, len(commit.Signatures))
+		talliedVotingPower int64
 		voteSignBytes      []byte
 	)
 	for idx, commitSig := range commit.Signatures {
