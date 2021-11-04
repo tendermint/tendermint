@@ -239,7 +239,9 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	// we will check the first six just in case
 	evidenceFromEachValidator := make([]types.Evidence, nValidators)
 
-	wg := new(sync.WaitGroup)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var wg sync.WaitGroup
 	i := 0
 	for _, sub := range rts.subs {
 		wg.Add(1)
@@ -247,8 +249,9 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		go func(j int, s eventbus.Subscription) {
 			defer wg.Done()
 			for {
-				msg, err := s.Next(context.Background())
+				msg, err := s.Next(ctx)
 				if !assert.NoError(t, err) {
+					cancel()
 					return
 				}
 				require.NotNil(t, msg)

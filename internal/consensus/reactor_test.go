@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/fortytw2/leaktest"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
@@ -74,7 +75,8 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 	rts.voteChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteChannel, size))
 	rts.voteSetBitsChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteSetBitsChannel, size))
 
-	_, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	// Canceled during cleanup (see below).
 
 	i := 0
 	for nodeID, node := range rts.network.Nodes {
@@ -93,14 +95,14 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 
 		reactor.SetEventBus(state.eventBus)
 
-		blocksSub, err := state.eventBus.SubscribeWithArgs(context.Background(), tmpubsub.SubscribeArgs{
+		blocksSub, err := state.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 			ClientID: testSubscriber,
 			Query:    types.EventQueryNewBlock,
 			Limit:    size,
 		})
 		require.NoError(t, err)
 
-		fsSub, err := state.eventBus.SubscribeWithArgs(context.Background(), tmpubsub.SubscribeArgs{
+		fsSub, err := state.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 			ClientID: testSubscriber,
 			Query:    types.EventQueryBlockSyncStatus,
 			Limit:    size,
@@ -168,9 +170,14 @@ func waitForAndValidateBlock(
 	txs ...[]byte,
 ) {
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	fn := func(j int) {
-		msg, err := blocksSubs[j].Next(context.Background())
-		require.NoError(t, err)
+		msg, err := blocksSubs[j].Next(ctx)
+		if !assert.NoError(t, err) {
+			cancel()
+			return
+		}
 
 		newBlock := msg.Data().(types.EventDataNewBlock).Block
 		require.NoError(t, validateBlock(newBlock, activeVals))
@@ -181,12 +188,11 @@ func waitForAndValidateBlock(
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(n)
-
 	for i := 0; i < n; i++ {
+		wg.Add(1)
 		go func(j int) {
+			defer wg.Done()
 			fn(j)
-			wg.Done()
 		}(i)
 	}
 
@@ -202,12 +208,16 @@ func waitForAndValidateBlockWithTx(
 	txs ...[]byte,
 ) {
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	fn := func(j int) {
 		ntxs := 0
-	BLOCK_TX_LOOP:
 		for {
-			msg, err := blocksSubs[j].Next(context.Background())
-			require.NoError(t, err)
+			msg, err := blocksSubs[j].Next(ctx)
+			if !assert.NoError(t, err) {
+				cancel()
+				return
+			}
 
 			newBlock := msg.Data().(types.EventDataNewBlock).Block
 			require.NoError(t, validateBlock(newBlock, activeVals))
@@ -221,18 +231,17 @@ func waitForAndValidateBlockWithTx(
 			}
 
 			if ntxs == len(txs) {
-				break BLOCK_TX_LOOP
+				break
 			}
 		}
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(n)
-
 	for i := 0; i < n; i++ {
+		wg.Add(1)
 		go func(j int) {
+			defer wg.Done()
 			fn(j)
-			wg.Done()
 		}(i)
 	}
 
@@ -247,13 +256,18 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 	css []*State,
 ) {
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	fn := func(j int) {
 		var newBlock *types.Block
 
 	LOOP:
 		for {
-			msg, err := blocksSubs[j].Next(context.Background())
-			require.NoError(t, err)
+			msg, err := blocksSubs[j].Next(ctx)
+			if !assert.NoError(t, err) {
+				cancel()
+				return
+			}
 
 			newBlock = msg.Data().(types.EventDataNewBlock).Block
 			if newBlock.LastCommit.Size() == len(updatedVals) {
@@ -265,12 +279,11 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(n)
-
 	for i := 0; i < n; i++ {
+		wg.Add(1)
 		go func(j int) {
+			defer wg.Done()
 			fn(j)
-			wg.Done()
 		}(i)
 	}
 
@@ -302,6 +315,8 @@ func TestReactorBasic(t *testing.T) {
 		reactor.SwitchToConsensus(state, false)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	var wg sync.WaitGroup
 	for _, sub := range rts.subs {
 		wg.Add(1)
@@ -309,8 +324,10 @@ func TestReactorBasic(t *testing.T) {
 		// wait till everyone makes the first new block
 		go func(s eventbus.Subscription) {
 			defer wg.Done()
-			_, err := s.Next(context.Background())
-			require.NoError(t, err)
+			_, err := s.Next(ctx)
+			if !assert.NoError(t, err) {
+				cancel()
+			}
 		}(sub)
 	}
 
@@ -322,8 +339,11 @@ func TestReactorBasic(t *testing.T) {
 		// wait till everyone makes the consensus switch
 		go func(s eventbus.Subscription) {
 			defer wg.Done()
-			msg, err := s.Next(context.Background())
-			require.NoError(t, err)
+			msg, err := s.Next(ctx)
+			if !assert.NoError(t, err) {
+				cancel()
+				return
+			}
 			ensureBlockSyncStatus(t, msg, true, 0)
 		}(sub)
 	}
@@ -415,6 +435,8 @@ func TestReactorWithEvidence(t *testing.T) {
 		reactor.SwitchToConsensus(state, false)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	var wg sync.WaitGroup
 	for _, sub := range rts.subs {
 		wg.Add(1)
@@ -422,12 +444,15 @@ func TestReactorWithEvidence(t *testing.T) {
 		// We expect for each validator that is the proposer to propose one piece of
 		// evidence.
 		go func(s eventbus.Subscription) {
-			msg, err := s.Next(context.Background())
-			require.NoError(t, err)
+			defer wg.Done()
+			msg, err := s.Next(ctx)
+			if !assert.NoError(t, err) {
+				cancel()
+				return
+			}
 
 			block := msg.Data().(types.EventDataNewBlock).Block
 			require.Len(t, block.Evidence.Evidence, 1)
-			wg.Done()
 		}(sub)
 	}
 
@@ -470,6 +495,8 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 		),
 	)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	var wg sync.WaitGroup
 	for _, sub := range rts.subs {
 		wg.Add(1)
@@ -477,8 +504,10 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 		// wait till everyone makes the first new block
 		go func(s eventbus.Subscription) {
 			defer wg.Done()
-			_, err := s.Next(context.Background())
-			require.NoError(t, err)
+			_, err := s.Next(ctx)
+			if !assert.NoError(t, err) {
+				cancel()
+			}
 		}(sub)
 	}
 
@@ -501,6 +530,8 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 		reactor.SwitchToConsensus(state, false)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	var wg sync.WaitGroup
 	for _, sub := range rts.subs {
 		wg.Add(1)
@@ -508,8 +539,10 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 		// wait till everyone makes the first new block
 		go func(s eventbus.Subscription) {
 			defer wg.Done()
-			_, err := s.Next(context.Background())
-			require.NoError(t, err)
+			_, err := s.Next(ctx)
+			if !assert.NoError(t, err) {
+				cancel()
+			}
 		}(sub)
 	}
 
@@ -577,6 +610,8 @@ func TestReactorVotingPowerChange(t *testing.T) {
 		activeVals[string(addr)] = struct{}{}
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	var wg sync.WaitGroup
 	for _, sub := range rts.subs {
 		wg.Add(1)
@@ -584,8 +619,10 @@ func TestReactorVotingPowerChange(t *testing.T) {
 		// wait till everyone makes the first new block
 		go func(s eventbus.Subscription) {
 			defer wg.Done()
-			_, err := s.Next(context.Background())
-			require.NoError(t, err)
+			_, err := s.Next(ctx)
+			if !assert.NoError(t, err) {
+				cancel()
+			}
 		}(sub)
 	}
 
@@ -678,6 +715,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 		activeVals[string(pubKey.Address())] = struct{}{}
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	var wg sync.WaitGroup
 	for _, sub := range rts.subs {
 		wg.Add(1)
@@ -685,8 +724,10 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 		// wait till everyone makes the first new block
 		go func(s eventbus.Subscription) {
 			defer wg.Done()
-			_, err := s.Next(context.Background())
-			require.NoError(t, err)
+			_, err := s.Next(ctx)
+			if !assert.NoError(t, err) {
+				cancel()
+			}
 		}(sub)
 	}
 

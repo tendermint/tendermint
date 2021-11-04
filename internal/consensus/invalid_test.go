@@ -5,6 +5,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/p2p"
@@ -56,14 +57,18 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	//
 	// TODO: Make this tighter by ensuring the halt happens by block 2.
 	var wg sync.WaitGroup
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	for i := 0; i < 10; i++ {
 		for _, sub := range rts.subs {
 			wg.Add(1)
 
 			go func(s eventbus.Subscription) {
 				defer wg.Done()
-				_, err := s.Next(context.Background())
-				require.NoError(t, err)
+				_, err := s.Next(ctx)
+				if !assert.NoError(t, err) {
+					cancel() // cancel other subscribers on failure
+				}
 			}(sub)
 		}
 	}
