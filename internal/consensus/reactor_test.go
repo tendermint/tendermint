@@ -261,7 +261,6 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 	fn := func(j int) {
 		var newBlock *types.Block
 
-	LOOP:
 		for {
 			msg, err := blocksSubs[j].Next(ctx)
 			if !assert.NoError(t, err) {
@@ -271,7 +270,7 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 
 			newBlock = msg.Data().(types.EventDataNewBlock).Block
 			if newBlock.LastCommit.Size() == len(updatedVals) {
-				break LOOP
+				break
 			}
 		}
 
