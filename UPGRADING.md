@@ -121,6 +121,7 @@ the node service as in the following:
 
     client := local.New(node.(local.NodeService))
     // use client object to interact with the node
+```
 
 ### gRPC Support
 
