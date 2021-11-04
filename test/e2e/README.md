@@ -30,6 +30,12 @@ Multiple testnets can be run with the `run-multiple.sh` script:
 ./run-multiple.sh networks/generated/gen-group3-*.toml
 ```
 
+In order to generate network configurations with settings for dash, you have to override a default preset with `dash`.
+
+```sh
+./build/generator -d networks/generated/ -p dash
+```
+
 ## Test Stages
 
 The test runner has the following stages, which can also be executed explicitly by running `./build/runner -f <manifest> <stage>`:
