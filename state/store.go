@@ -142,7 +142,7 @@ func (store dbStore) loadState(key []byte) (state State, err error) {
 		%v\n`, err))
 	}
 
-	sm, err := StateFromProto(sp)
+	sm, err := FromProto(sp)
 	if err != nil {
 		return state, err
 	}
