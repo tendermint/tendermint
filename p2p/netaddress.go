@@ -316,10 +316,10 @@ func (na *NetAddress) ReachabilityTo(o *NetAddress) int {
 		}
 		return Default
 	default: /* ipv6 */
-		var tunnelled bool
+		var tunneled bool
 		// Is our v6 is tunnelled?
 		if o.RFC3964() || o.RFC6052() || o.RFC6145() {
-			tunnelled = true
+			tunneled = true
 		}
 		switch {
 		case !o.Routable():
