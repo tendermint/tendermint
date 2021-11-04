@@ -1994,7 +1994,7 @@ For more, see issues marked
 
 This release also includes a fix to prevent Tendermint from including the same
 piece of evidence in more than one block. This issue was reported by @chengwenxi in our
-[bug bounty program](https://hackerone.com/tendermint).
+[bug bounty program](https://hackerone.com/cosmos).
 
 ### BREAKING CHANGES:
 
@@ -2487,7 +2487,7 @@ Special thanks to external contributors on this release:
 @james-ray, @overbool, @phymbert, @Slamper, @Uzair1995, @yutianwu.
 
 Special thanks to @Slamper for a series of bug reports in our [bug bounty
-program](https://hackerone.com/tendermint) which are fixed in this release.
+program](https://hackerone.com/cosmos) which are fixed in this release.
 
 This release is primarily about adding Version fields to various data structures,
 optimizing consensus messages for signing and verification in
