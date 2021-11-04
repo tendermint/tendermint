@@ -82,6 +82,18 @@ func init() {
 }
 ```
 
+### Full-node keys
+
+Since Full nodes do not participate in the consensus process, then keeping validators' public keys also is not required.
+By default, public keys are reset during network generation. However, if you need to keep its, then use this env
+parameter `FULLNODE_PUBKEY_KEEP=true`.
+
+For instance:
+
+```bash
+FULLNODE_PUBKEY_KEEP=true make runner/dashcore
+```
+
 ### Speed up running e2e tests
 
 Running the e2e tests using `make runner {network}` takes time because the
