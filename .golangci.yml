@@ -11,12 +11,12 @@ linters:
     # - gochecknoglobals
     # - gochecknoinits
     - goconst
-    - gocritic
+    # - gocritic
     # - gocyclo
     # - godox
     - gofmt
     - goimports
-    - golint
+    - revive
     - gosec
     - gosimple
     - govet
@@ -31,7 +31,7 @@ linters:
     - staticcheck
     - structcheck
     - stylecheck
-    - typecheck
+    # - typecheck
     - unconvert
     # - unparam
     - unused
@@ -58,5 +58,5 @@ linters-settings:
     suggest-new: true
   # govet:
   #   check-shadowing: true
-  golint:
+  revive:
     min-confidence: 0
