@@ -369,7 +369,9 @@ func validatePrevoteAndPrecommit(
 	cs.mtx.Unlock()
 }
 
-func subscribeToVoter(cs *State, addr []byte) <-chan tmpubsub.Message {
+func subscribeToVoter(t *testing.T, cs *State, addr []byte) <-chan tmpubsub.Message {
+	t.Helper()
+
 	ch := make(chan tmpubsub.Message, 1)
 	if err := cs.eventBus.Observe(context.Background(), func(msg tmpubsub.Message) error {
 		vote := msg.Data().(types.EventDataVote)
@@ -379,7 +381,7 @@ func subscribeToVoter(cs *State, addr []byte) <-chan tmpubsub.Message {
 		}
 		return nil
 	}, types.EventQueryVote); err != nil {
-		panic(fmt.Sprintf("failed to observe: %v", err))
+		t.Fatalf("Failed to observe query %v: %v", types.EventQueryVote, err)
 	}
 	return ch
 }

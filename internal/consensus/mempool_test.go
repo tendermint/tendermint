@@ -37,7 +37,7 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
-	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
+	newBlockCh := subscribe(t, cs.eventBus, types.EventQueryNewBlock)
 	startTestRound(cs, height, round)
 
 	ensureNewEventOnChannel(newBlockCh) // first block gets committed
@@ -61,7 +61,7 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 
-	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
+	newBlockCh := subscribe(t, cs.eventBus, types.EventQueryNewBlock)
 	startTestRound(cs, cs.Height, cs.Round)
 
 	ensureNewEventOnChannel(newBlockCh)   // first block gets committed
@@ -81,9 +81,9 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
-	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
-	newRoundCh := subscribe(cs.eventBus, types.EventQueryNewRound)
-	timeoutCh := subscribe(cs.eventBus, types.EventQueryTimeoutPropose)
+	newBlockCh := subscribe(t, cs.eventBus, types.EventQueryNewBlock)
+	newRoundCh := subscribe(t, cs.eventBus, types.EventQueryNewRound)
+	timeoutCh := subscribe(t, cs.eventBus, types.EventQueryTimeoutPropose)
 	cs.setProposal = func(proposal *types.Proposal) error {
 		if cs.Height == 2 && cs.Round == 0 {
 			// dont set the proposal in round 0 so we timeout and
@@ -131,7 +131,7 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], NewCounterApplication(), blockStore)
 	err := stateStore.Save(state)
 	require.NoError(t, err)
-	newBlockHeaderCh := subscribe(cs.eventBus, types.EventQueryNewBlockHeader)
+	newBlockHeaderCh := subscribe(t, cs.eventBus, types.EventQueryNewBlockHeader)
 
 	const numTxs int64 = 3000
 	go deliverTxsRange(cs, 0, int(numTxs))
