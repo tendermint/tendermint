@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/metadb"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/proxy"
@@ -287,16 +287,16 @@ func (pb *playback) replayConsoleLoop() int {
 
 // convenience for replay mode
 func newConsensusStateForReplay(cfg config.BaseConfig, csConfig *config.ConsensusConfig) *State {
-	dbType := dbm.BackendType(cfg.DBBackend)
+	dbType := metadb.BackendType(cfg.DBBackend)
 	// Get BlockStore
-	blockStoreDB, err := dbm.NewDB("blockstore", dbType, cfg.DBDir())
+	blockStoreDB, err := metadb.NewDB("blockstore", dbType, cfg.DBDir())
 	if err != nil {
 		tmos.Exit(err.Error())
 	}
 	blockStore := store.NewBlockStore(blockStoreDB)
 
 	// Get State
-	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())
+	stateDB, err := metadb.NewDB("state", dbType, cfg.DBDir())
 	if err != nil {
 		tmos.Exit(err.Error())
 	}

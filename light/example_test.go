@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/goleveldb"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/libs/log"
@@ -58,7 +58,7 @@ func ExampleClient() {
 		stdlog.Fatal(err)
 	}
 
-	db, err := dbm.NewGoLevelDB("light-client-db", dbDir)
+	db, err := goleveldb.NewDB("light-client-db", dbDir)
 	if err != nil {
 		stdlog.Fatal(err)
 	}

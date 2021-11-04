@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/memdb"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -233,7 +233,7 @@ func (n *Network) MakeNode(t *testing.T, opts NodeOptions) *Node {
 	transport := n.memoryNetwork.CreateTransport(nodeID)
 	require.Len(t, transport.Endpoints(), 1, "transport not listening on 1 endpoint")
 
-	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{
+	peerManager, err := p2p.NewPeerManager(nodeID, memdb.NewDB(), p2p.PeerManagerOptions{
 		MinRetryTime:    10 * time.Millisecond,
 		MaxRetryTime:    100 * time.Millisecond,
 		RetryTimeJitter: time.Millisecond,

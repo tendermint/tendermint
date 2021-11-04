@@ -12,7 +12,8 @@ import (
 	"github.com/ory/dockertest/docker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
+
+	"github.com/tendermint/tm-db/memdb"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/state/indexer"
@@ -56,7 +57,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	pool, err := setupDB(t)
 	assert.Nil(t, err)
 
-	store := dbm.NewMemDB()
+	store := memdb.NewDB()
 	eventSinks := []indexer.EventSink{kv.NewEventSink(store), pSink}
 	assert.True(t, indexer.KVSinkEnabled(eventSinks))
 	assert.True(t, indexer.IndexingEnabled(eventSinks))

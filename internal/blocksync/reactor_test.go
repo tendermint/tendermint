@@ -6,7 +6,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
+
+	"github.com/tendermint/tm-db/memdb"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -101,8 +102,8 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 	rts.app[nodeID] = proxy.NewAppConns(abciclient.NewLocalCreator(&abci.BaseApplication{}), proxy.NopMetrics())
 	require.NoError(t, rts.app[nodeID].Start())
 
-	blockDB := dbm.NewMemDB()
-	stateDB := dbm.NewMemDB()
+	blockDB := memdb.NewDB()
+	stateDB := memdb.NewDB()
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(blockDB)
 

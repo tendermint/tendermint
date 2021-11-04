@@ -11,7 +11,8 @@ import (
 	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
+
+	"github.com/tendermint/tm-db/memdb"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
@@ -141,7 +142,7 @@ func setup(
 	)
 
 	rts.stateStore = &smmocks.Store{}
-	rts.blockStore = store.NewBlockStore(dbm.NewMemDB())
+	rts.blockStore = store.NewBlockStore(memdb.NewDB())
 
 	cfg := config.DefaultStateSyncConfig()
 

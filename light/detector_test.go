@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/memdb"
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light"
@@ -87,7 +87,7 @@ func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 		},
 		mockPrimary,
 		[]provider.Provider{mockWitness},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
@@ -198,7 +198,7 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 				},
 				mockPrimary,
 				[]provider.Provider{mockWitness},
-				dbs.New(dbm.NewMemDB()),
+				dbs.New(memdb.NewDB()),
 				light.Logger(log.TestingLogger()),
 				testCase.lightOption,
 			)
@@ -297,7 +297,7 @@ func TestLightClientAttackEvidence_ForwardLunatic(t *testing.T) {
 		},
 		mockPrimary,
 		[]provider.Provider{mockWitness, accomplice},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.Logger(log.TestingLogger()),
 		light.MaxClockDrift(1*time.Second),
 		light.MaxBlockLag(1*time.Second),
@@ -357,7 +357,7 @@ func TestLightClientAttackEvidence_ForwardLunatic(t *testing.T) {
 		},
 		mockPrimary,
 		[]provider.Provider{mockLaggingWitness, accomplice},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.Logger(log.TestingLogger()),
 		light.MaxClockDrift(1*time.Second),
 		light.MaxBlockLag(1*time.Second),
@@ -391,7 +391,7 @@ func TestClientDivergentTraces1(t *testing.T) {
 		},
 		mockPrimary,
 		[]provider.Provider{mockWitness},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.Logger(log.TestingLogger()),
 	)
 	require.Error(t, err)
@@ -419,7 +419,7 @@ func TestClientDivergentTraces2(t *testing.T) {
 		},
 		mockPrimaryNode,
 		[]provider.Provider{mockDeadNode, mockDeadNode, mockPrimaryNode},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
@@ -457,7 +457,7 @@ func TestClientDivergentTraces3(t *testing.T) {
 		},
 		mockPrimary,
 		[]provider.Provider{mockWitness},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
@@ -495,7 +495,7 @@ func TestClientDivergentTraces4(t *testing.T) {
 		},
 		mockPrimary,
 		[]provider.Provider{mockWitness},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)

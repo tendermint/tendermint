@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/memdb"
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
@@ -71,7 +72,7 @@ type Application struct {
 }
 
 func NewApplication() *Application {
-	state := loadState(dbm.NewMemDB())
+	state := loadState(memdb.NewDB())
 	return &Application{state: state}
 }
 

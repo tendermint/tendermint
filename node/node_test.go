@@ -13,7 +13,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/memdb"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -272,8 +274,8 @@ func TestCreateProposalBlock(t *testing.T) {
 	)
 
 	// Make EvidencePool
-	evidenceDB := dbm.NewMemDB()
-	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	evidenceDB := memdb.NewDB()
+	blockStore := store.NewBlockStore(memdb.NewDB())
 	evidencePool, err := evidence.NewPool(logger, evidenceDB, stateStore, blockStore)
 	require.NoError(t, err)
 
@@ -351,7 +353,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	const height int64 = 1
 	state, stateDB, _ := state(t, 1, height)
 	stateStore := sm.NewStore(stateDB)
-	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	blockStore := store.NewBlockStore(memdb.NewDB())
 	const maxBytes int64 = 16384
 	const partSize uint32 = 256
 	state.ConsensusParams.Block.MaxBytes = maxBytes
@@ -414,7 +416,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	state, stateDB, _ := state(t, types.MaxVotesCount, int64(1))
 	stateStore := sm.NewStore(stateDB)
-	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	blockStore := store.NewBlockStore(memdb.NewDB())
 	const maxBytes int64 = 1024 * 1024 * 2
 	state.ConsensusParams.Block.MaxBytes = maxBytes
 	proposerAddr, _ := state.Validators.GetByIndex(0)
@@ -683,7 +685,7 @@ func state(t *testing.T, nVals int, height int64) (sm.State, dbm.DB, []types.Pri
 	})
 
 	// save validators to db for 2 heights
-	stateDB := dbm.NewMemDB()
+	stateDB := memdb.NewDB()
 	t.Cleanup(func() { require.NoError(t, stateDB.Close()) })
 
 	stateStore := sm.NewStore(stateDB)
@@ -704,7 +706,7 @@ func TestLoadStateFromGenesis(t *testing.T) {
 func loadStatefromGenesis(t *testing.T) sm.State {
 	t.Helper()
 
-	stateDB := dbm.NewMemDB()
+	stateDB := memdb.NewDB()
 	stateStore := sm.NewStore(stateDB)
 	cfg, err := config.ResetTestRoot("load_state_from_genesis")
 	require.NoError(t, err)

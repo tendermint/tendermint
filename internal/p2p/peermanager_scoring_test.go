@@ -6,7 +6,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
+
+	"github.com/tendermint/tm-db/memdb"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/types"
@@ -18,7 +19,7 @@ func TestPeerScoring(t *testing.T) {
 	selfID := types.NodeIDFromPubKey(selfKey.PubKey())
 
 	// create a mock peer manager
-	db := dbm.NewMemDB()
+	db := memdb.NewDB()
 	peerManager, err := NewPeerManager(selfID, db, PeerManagerOptions{})
 	require.NoError(t, err)
 	defer peerManager.Close()

@@ -6,7 +6,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	dbm "github.com/tendermint/tm-db"
+
+	"github.com/tendermint/tm-db/metadb"
 
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmcfg "github.com/tendermint/tendermint/config"
@@ -30,9 +31,9 @@ var ReIndexEventCmd = &cobra.Command{
 	Short: "reindex events to the event store backends",
 	Long: `
 reindex-event is an offline tooling to re-index block and tx events to the eventsinks,
-you can run this command when the event store backend dropped/disconnected or you want to 
-replace the backend. The default start-height is 0, meaning the tooling will start 
-reindex from the base block height(inclusive); and the default end-height is 0, meaning 
+you can run this command when the event store backend dropped/disconnected or you want to
+replace the backend. The default start-height is 0, meaning the tooling will start
+reindex from the base block height(inclusive); and the default end-height is 0, meaning
 the tooling will reindex until the latest block height(inclusive). User can omit
 either or both arguments.
 	`,
@@ -130,17 +131,17 @@ func loadEventSinks(cfg *tmcfg.Config) ([]indexer.EventSink, error) {
 }
 
 func loadStateAndBlockStore(cfg *tmcfg.Config) (*store.BlockStore, state.Store, error) {
-	dbType := dbm.BackendType(cfg.DBBackend)
+	dbType := metadb.BackendType(cfg.DBBackend)
 
 	// Get BlockStore
-	blockStoreDB, err := dbm.NewDB("blockstore", dbType, cfg.DBDir())
+	blockStoreDB, err := metadb.NewDB("blockstore", dbType, cfg.DBDir())
 	if err != nil {
 		return nil, nil, err
 	}
 	blockStore := store.NewBlockStore(blockStoreDB)
 
 	// Get StateStore
-	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())
+	stateDB, err := metadb.NewDB("state", dbType, cfg.DBDir())
 	if err != nil {
 		return nil, nil, err
 	}

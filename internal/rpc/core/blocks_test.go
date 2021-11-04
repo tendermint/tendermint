@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/memdb"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -81,7 +81,7 @@ func TestBlockResults(t *testing.T) {
 	}
 
 	env := &Environment{}
-	env.StateStore = sm.NewStore(dbm.NewMemDB())
+	env.StateStore = sm.NewStore(memdb.NewDB())
 	err := env.StateStore.SaveABCIResponses(100, results)
 	require.NoError(t, err)
 	env.BlockStore = mockBlockStore{height: 100}

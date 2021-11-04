@@ -7,7 +7,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
+
+	"github.com/tendermint/tm-db/memdb"
+	"github.com/tendermint/tm-db/metadb"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
@@ -26,7 +28,7 @@ const (
 )
 
 func TestStoreBootstrap(t *testing.T) {
-	stateDB := dbm.NewMemDB()
+	stateDB := memdb.NewDB()
 	stateStore := sm.NewStore(stateDB)
 	val, _ := factory.RandValidator(true, 10)
 	val2, _ := factory.RandValidator(true, 10)
@@ -52,7 +54,7 @@ func TestStoreBootstrap(t *testing.T) {
 }
 
 func TestStoreLoadValidators(t *testing.T) {
-	stateDB := dbm.NewMemDB()
+	stateDB := memdb.NewDB()
 	stateStore := sm.NewStore(stateDB)
 	val, _ := factory.RandValidator(true, 10)
 	val2, _ := factory.RandValidator(true, 10)
@@ -105,8 +107,8 @@ func BenchmarkLoadValidators(b *testing.B) {
 	require.NoError(b, err)
 
 	defer os.RemoveAll(cfg.RootDir)
-	dbType := dbm.BackendType(cfg.DBBackend)
-	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())
+	dbType := metadb.BackendType(cfg.DBBackend)
+	stateDB, err := metadb.NewDB("state", dbType, cfg.DBDir())
 	require.NoError(b, err)
 	stateStore := sm.NewStore(stateDB)
 	state, err := sm.MakeGenesisStateFromFile(cfg.GenesisFile())
@@ -141,7 +143,7 @@ func BenchmarkLoadValidators(b *testing.B) {
 }
 
 func TestStoreLoadConsensusParams(t *testing.T) {
-	stateDB := dbm.NewMemDB()
+	stateDB := memdb.NewDB()
 	stateStore := sm.NewStore(stateDB)
 	err := stateStore.Save(makeRandomStateFromConsensusParams(types.DefaultConsensusParams(), 1, 1))
 	require.NoError(t, err)
@@ -183,7 +185,7 @@ func TestPruneStates(t *testing.T) {
 	for name, tc := range testcases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			db := dbm.NewMemDB()
+			db := memdb.NewDB()
 
 			stateStore := sm.NewStore(db)
 			pk := ed25519.GenPrivKey().PubKey()

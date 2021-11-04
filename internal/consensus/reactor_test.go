@@ -12,7 +12,8 @@ import (
 	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
+
+	"github.com/tendermint/tm-db/memdb"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -329,7 +330,7 @@ func TestReactorWithEvidence(t *testing.T) {
 	logger := consensusLogger()
 
 	for i := 0; i < n; i++ {
-		stateDB := dbm.NewMemDB() // each state needs its own db
+		stateDB := memdb.NewDB() // each state needs its own db
 		stateStore := sm.NewStore(stateDB)
 		state, err := sm.MakeGenesisState(genDoc)
 		require.NoError(t, err)
@@ -344,7 +345,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 
 		pv := privVals[i]
-		blockDB := dbm.NewMemDB()
+		blockDB := memdb.NewDB()
 		blockStore := store.NewBlockStore(blockDB)
 
 		// one for mempool, one for consensus

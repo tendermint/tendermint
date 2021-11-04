@@ -4,7 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
+
+	"github.com/tendermint/tm-db/memdb"
 
 	"github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/mocks"
@@ -69,7 +70,7 @@ func TestRollback(t *testing.T) {
 }
 
 func TestRollbackNoState(t *testing.T) {
-	stateStore := state.NewStore(dbm.NewMemDB())
+	stateStore := state.NewStore(memdb.NewDB())
 	blockStore := &mocks.BlockStore{}
 
 	_, _, err := state.Rollback(blockStore, stateStore)
@@ -101,7 +102,7 @@ func TestRollbackDifferentStateHeight(t *testing.T) {
 }
 
 func setupStateStore(t *testing.T, height int64) state.Store {
-	stateStore := state.NewStore(dbm.NewMemDB())
+	stateStore := state.NewStore(memdb.NewDB())
 	valSet, _ := factory.RandValidatorSet(5, 10)
 
 	params := types.DefaultConsensusParams()

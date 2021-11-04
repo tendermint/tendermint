@@ -9,7 +9,9 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
+
+	"github.com/tendermint/tm-db/memdb"
+	"github.com/tendermint/tm-db/metadb"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/state/indexer"
@@ -19,7 +21,7 @@ import (
 )
 
 func TestTxIndex(t *testing.T) {
-	txIndexer := NewTxIndex(dbm.NewMemDB())
+	txIndexer := NewTxIndex(memdb.NewDB())
 
 	tx := types.Tx("HELLO WORLD")
 	txResult := &abci.TxResult{
@@ -65,7 +67,7 @@ func TestTxIndex(t *testing.T) {
 }
 
 func TestTxSearch(t *testing.T) {
-	indexer := NewTxIndex(dbm.NewMemDB())
+	indexer := NewTxIndex(memdb.NewDB())
 
 	txResult := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "number", Value: "1", Index: true}}},
@@ -145,7 +147,7 @@ func TestTxSearch(t *testing.T) {
 }
 
 func TestTxSearchWithCancelation(t *testing.T) {
-	indexer := NewTxIndex(dbm.NewMemDB())
+	indexer := NewTxIndex(memdb.NewDB())
 
 	txResult := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "number", Value: "1", Index: true}}},
@@ -163,7 +165,7 @@ func TestTxSearchWithCancelation(t *testing.T) {
 }
 
 func TestTxSearchDeprecatedIndexing(t *testing.T) {
-	indexer := NewTxIndex(dbm.NewMemDB())
+	indexer := NewTxIndex(memdb.NewDB())
 
 	// index tx using events indexing (composite key)
 	txResult1 := txResultWithEvents([]abci.Event{
@@ -242,7 +244,7 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 }
 
 func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
-	indexer := NewTxIndex(dbm.NewMemDB())
+	indexer := NewTxIndex(memdb.NewDB())
 
 	txResult := txResultWithEvents([]abci.Event{
 		{Type: "account", Attributes: []abci.EventAttribute{{Key: "number", Value: "1", Index: true}}},
@@ -264,7 +266,7 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 }
 
 func TestTxSearchMultipleTxs(t *testing.T) {
-	indexer := NewTxIndex(dbm.NewMemDB())
+	indexer := NewTxIndex(memdb.NewDB())
 
 	// indexed first, but bigger height (to test the order of transactions)
 	txResult := txResultWithEvents([]abci.Event{
@@ -337,7 +339,7 @@ func benchmarkTxIndex(txsCount int64, b *testing.B) {
 	require.NoError(b, err)
 	defer os.RemoveAll(dir)
 
-	store, err := dbm.NewDB("tx_index", "goleveldb", dir)
+	store, err := metadb.NewDB("tx_index", "goleveldb", dir)
 	require.NoError(b, err)
 	txIndexer := NewTxIndex(store)
 

@@ -13,7 +13,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
+
+	"github.com/tendermint/tm-db/memdb"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -403,7 +404,7 @@ func newStateWithConfig(
 	pv types.PrivValidator,
 	app abci.Application,
 ) *State {
-	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	blockStore := store.NewBlockStore(memdb.NewDB())
 	return newStateWithConfigAndBlockStore(thisConfig, state, pv, app, blockStore)
 }
 
@@ -435,7 +436,7 @@ func newStateWithConfigAndBlockStore(
 	evpool := sm.EmptyEvidencePool{}
 
 	// Make State
-	stateDB := dbm.NewMemDB()
+	stateDB := memdb.NewDB()
 	stateStore := sm.NewStore(stateDB)
 	if err := stateStore.Save(state); err != nil { // for save height 1's validators info
 		panic(err)
@@ -736,7 +737,7 @@ func randConsensusState(
 	configRootDirs := make([]string, 0, nValidators)
 
 	for i := 0; i < nValidators; i++ {
-		blockStore := store.NewBlockStore(dbm.NewMemDB()) // each state needs its own db
+		blockStore := store.NewBlockStore(memdb.NewDB()) // each state needs its own db
 		state, err := sm.MakeGenesisState(genDoc)
 		require.NoError(t, err)
 		thisConfig, err := ResetConfig(fmt.Sprintf("%s_%d", testName, i))

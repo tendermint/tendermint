@@ -7,7 +7,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
+
+	"github.com/tendermint/tm-db/goleveldb"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/libs/log"
@@ -53,7 +54,7 @@ func TestClientIntegration_Update(t *testing.T) {
 	block, err := waitForBlock(ctx, primary, 2)
 	require.NoError(t, err)
 
-	db, err := dbm.NewGoLevelDB("light-client-db", dbDir)
+	db, err := goleveldb.NewDB("light-client-db", dbDir)
 	require.NoError(t, err)
 
 	c, err := light.NewClient(
@@ -112,7 +113,7 @@ func TestClientIntegration_VerifyLightBlockAtHeight(t *testing.T) {
 	block, err := waitForBlock(ctx, primary, 2)
 	require.NoError(t, err)
 
-	db, err := dbm.NewGoLevelDB("light-client-db", dbDir)
+	db, err := goleveldb.NewDB("light-client-db", dbDir)
 	require.NoError(t, err)
 
 	c, err := light.NewClient(ctx,

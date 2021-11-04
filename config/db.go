@@ -2,6 +2,7 @@ package config
 
 import (
 	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/metadb"
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -22,6 +23,6 @@ type DBProvider func(*DBContext) (dbm.DB, error)
 // DefaultDBProvider returns a database using the DBBackend and DBDir
 // specified in the Config.
 func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
-	dbType := dbm.BackendType(ctx.Config.DBBackend)
-	return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBDir())
+	dbType := metadb.BackendType(ctx.Config.DBBackend)
+	return metadb.NewDB(ctx.ID, dbType, ctx.Config.DBDir())
 }

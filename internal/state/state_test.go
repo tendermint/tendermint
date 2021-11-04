@@ -12,7 +12,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/metadb"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
@@ -29,8 +31,8 @@ func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, sm.State) {
 	cfg, err := config.ResetTestRoot("state_")
 	require.NoError(t, err)
 
-	dbType := dbm.BackendType(cfg.DBBackend)
-	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())
+	dbType := metadb.BackendType(cfg.DBBackend)
+	stateDB, err := metadb.NewDB("state", dbType, cfg.DBDir())
 	require.NoError(t, err)
 	stateStore := sm.NewStore(stateDB)
 	state, err := stateStore.Load()

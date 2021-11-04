@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/memdb"
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
@@ -74,7 +74,7 @@ func NewRPCStateProvider(
 	}
 
 	lc, err := light.NewClient(ctx, chainID, trustOptions, providers[0], providers[1:],
-		lightdb.New(dbm.NewMemDB()), light.Logger(logger))
+		lightdb.New(memdb.NewDB()), light.Logger(logger))
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +220,7 @@ func NewP2PStateProvider(
 	}
 
 	lc, err := light.NewClient(ctx, chainID, trustOptions, providers[0], providers[1:],
-		lightdb.New(dbm.NewMemDB()), light.Logger(logger))
+		lightdb.New(memdb.NewDB()), light.Logger(logger))
 	if err != nil {
 		return nil, err
 	}

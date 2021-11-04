@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tm-db/memdb"
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light"
@@ -75,7 +75,7 @@ func BenchmarkSequence(b *testing.B) {
 		},
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.Logger(log.TestingLogger()),
 		light.SequentialVerification(),
 	)
@@ -107,7 +107,7 @@ func BenchmarkBisection(b *testing.B) {
 		},
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.Logger(log.TestingLogger()),
 	)
 	if err != nil {
@@ -138,7 +138,7 @@ func BenchmarkBackwards(b *testing.B) {
 		},
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
-		dbs.New(dbm.NewMemDB()),
+		dbs.New(memdb.NewDB()),
 		light.Logger(log.TestingLogger()),
 	)
 	if err != nil {
