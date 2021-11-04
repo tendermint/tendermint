@@ -7,7 +7,7 @@ RUN apt-get -qq update -y && apt-get -qq upgrade -y >/dev/null
 RUN apt-get -qq install -y libleveldb-dev librocksdb-dev >/dev/null
 
 # Set up build directory /src/tendermint
-ENV TENDERMINT_BUILD_OPTIONS badgerdb,boltdb,cleveldb,rocksdb
+ENV TENDERMINT_BUILD_OPTIONS badgerdb,boltdb,cleveldb,goleveldb,rocksdb
 WORKDIR /src/tendermint
 
 # Fetch dependencies separately (for layer caching)

@@ -36,6 +36,11 @@ ifeq (cleveldb,$(findstring cleveldb,$(TENDERMINT_BUILD_OPTIONS)))
   BUILD_TAGS += cleveldb
 endif
 
+# handle goleveldb
+ifeq (goleveldb,$(findstring goleveldb,$(TENDERMINT_BUILD_OPTIONS)))
+  BUILD_TAGS += goleveldb
+endif
+
 # handle badgerdb
 ifeq (badgerdb,$(findstring badgerdb,$(TENDERMINT_BUILD_OPTIONS)))
   BUILD_TAGS += badgerdb

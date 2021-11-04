@@ -4,7 +4,7 @@ docker:
 	docker build --tag tendermint/e2e-node -f docker/Dockerfile ../..
 
 node:
-	go build -o build/node -tags badgerdb,boltdb,cleveldb,rocksdb ./node
+	go build -o build/node -tags badgerdb,boltdb,cleveldb,goleveldb,rocksdb ./node
 
 generator:
 	go build -o build/generator ./generator
