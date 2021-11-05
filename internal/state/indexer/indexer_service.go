@@ -2,6 +2,7 @@ package indexer
 
 import (
 	"context"
+	"time"
 
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/libs/log"
@@ -34,7 +35,7 @@ func NewService(args ServiceArgs) *Service {
 		metrics:    args.Metrics,
 	}
 	if is.metrics == nil {
-		is.metrics = nopMetrics()
+		is.metrics = NopMetrics()
 	}
 	is.BaseService = *service.NewBaseService(args.Logger, "IndexerService", is)
 	return is
@@ -89,20 +90,26 @@ func (is *Service) publish(msg pubsub.Message) error {
 	if curr.Pending == 0 {
 		// INDEX: We have all the transactions we expect for the current block.
 		for _, sink := range is.eventSinks {
+			start := time.Now()
 			if err := sink.IndexBlockEvents(is.currentBlock.header); err != nil {
 				is.Logger.Error("failed to index block header",
 					"height", is.currentBlock.height, "err", err)
 			} else {
+				is.metrics.BlockEventsSeconds.Observe(time.Since(start).Seconds())
+				is.metrics.BlocksIndexed.Add(1)
 				is.Logger.Debug("indexed block",
 					"height", is.currentBlock.height, "sink", sink.Type())
 			}
 
 			if curr.Size() != 0 {
+				start := time.Now()
 				err := sink.IndexTxEvents(curr.Ops)
 				if err != nil {
 					is.Logger.Error("failed to index block txs",
 						"height", is.currentBlock.height, "err", err)
 				} else {
+					is.metrics.TxEventsSeconds.Observe(time.Since(start).Seconds())
+					is.metrics.TransactionsIndexed.Add(float64(curr.Size()))
 					is.Logger.Debug("indexed txs",
 						"height", is.currentBlock.height, "sink", sink.Type())
 				}

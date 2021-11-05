@@ -48,9 +48,9 @@ func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, es []indexe
 	eb := eventbus.NewDefault()
 	eb.SetLogger(logger.With("module", "events"))
 	is := indexer.NewService(indexer.ServiceArgs{
-		EventSinks: es,
-		EventBus:   eb,
-		Logger:     logger.With("module", "txindex"),
+		Sinks:    es,
+		EventBus: eb,
+		Logger:   logger.With("module", "txindex"),
 	})
 	return &Inspector{
 		routes:         routes,
