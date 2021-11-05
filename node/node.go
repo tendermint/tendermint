@@ -918,23 +918,23 @@ func defaultMetricsProvider(cfg *config.InstrumentationConfig) metricsProvider {
 	return func(chainID string) *nodeMetrics {
 		if cfg.Prometheus {
 			return &nodeMetrics{
-				consensus.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
-				indexer.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
-				mempool.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
-				p2p.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
-				proxy.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
-				sm.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
-				statesync.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				consensus: consensus.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				indexer:   indexer.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				mempool:   mempool.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				p2p:       p2p.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				proxy:     proxy.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				state:     sm.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				statesync: statesync.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 			}
 		}
 		return &nodeMetrics{
-			consensus.NopMetrics(),
-			indexer.NopMetrics(),
-			mempool.NopMetrics(),
-			p2p.NopMetrics(),
-			proxy.NopMetrics(),
-			sm.NopMetrics(),
-			statesync.NopMetrics(),
+			consensus: consensus.NopMetrics(),
+			indexer:   indexer.NopMetrics(),
+			mempool:   mempool.NopMetrics(),
+			p2p:       p2p.NopMetrics(),
+			proxy:     proxy.NopMetrics(),
+			state:     sm.NopMetrics(),
+			statesync: statesync.NopMetrics(),
 		}
 	}
 }
