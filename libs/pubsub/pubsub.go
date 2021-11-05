@@ -176,8 +176,12 @@ func (s *Server) Subscribe(ctx context.Context,
 		Query:    query,
 		Limit:    1,
 	}
-	if len(capacities) > 0 && capacities[0] > 0 {
+	if len(capacities) > 0 {
 		args.Limit = capacities[0]
+		if len(capacities) > 1 {
+			args.Quota = capacities[1]
+		}
+		// bounds are checked below
 	}
 	return s.SubscribeWithArgs(ctx, args)
 }
