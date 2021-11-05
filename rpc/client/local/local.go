@@ -205,15 +205,18 @@ func (c *Local) Subscribe(
 	ctx context.Context,
 	subscriber,
 	queryString string,
-	outCapacity ...int) (out <-chan coretypes.ResultEvent, err error) {
+	capacity ...int) (out <-chan coretypes.ResultEvent, err error) {
 	q, err := query.New(queryString)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse query: %w", err)
 	}
 
-	outCap := 1
-	if len(outCapacity) > 0 && outCapacity[0] > 0 {
-		outCap = outCapacity[0]
+	limit, quota := 1, 0
+	if len(capacity) > 0 {
+		limit = capacity[0]
+		if len(capacity) > 1 {
+			quota = capacity[1]
+		}
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -222,14 +225,15 @@ func (c *Local) Subscribe(
 	subArgs := pubsub.SubscribeArgs{
 		ClientID: subscriber,
 		Query:    q,
-		Limit:    outCap,
+		Quota:    quota,
+		Limit:    limit,
 	}
 	sub, err := c.EventBus.SubscribeWithArgs(ctx, subArgs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to subscribe: %w", err)
 	}
 
-	outc := make(chan coretypes.ResultEvent, outCap)
+	outc := make(chan coretypes.ResultEvent, 1)
 	go c.eventsRoutine(ctx, sub, subArgs, outc)
 
 	return outc, nil
