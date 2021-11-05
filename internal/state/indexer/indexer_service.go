@@ -16,6 +16,7 @@ type Service struct {
 
 	eventSinks []EventSink
 	eventBus   *eventbus.EventBus
+	metrics *Metrics
 
 	currentBlock struct {
 		header types.EventDataNewBlockHeader
