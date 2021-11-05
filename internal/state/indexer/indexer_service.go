@@ -2,8 +2,10 @@ package indexer
 
 import (
 	"context"
+	"time"
 
 	"github.com/tendermint/tendermint/internal/eventbus"
+	"github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
@@ -17,6 +19,8 @@ type Service struct {
 	eventSinks []EventSink
 	eventBus   *eventbus.EventBus
 
+	metrics *state.Metrics
+
 	currentBlock struct {
 		header types.EventDataNewBlockHeader
 		height int64
@@ -25,8 +29,8 @@ type Service struct {
 }
 
 // NewIndexerService returns a new service instance.
-func NewIndexerService(es []EventSink, eventBus *eventbus.EventBus) *Service {
-	is := &Service{eventSinks: es, eventBus: eventBus}
+func NewIndexerService(es []EventSink, eventBus *eventbus.EventBus, metrics *state.Metrics) *Service {
+	is := &Service{eventSinks: es, eventBus: eventBus, metrics: metrics}
 	is.BaseService = *service.NewBaseService(nil, "IndexerService", is)
 	return is
 }
@@ -39,6 +43,14 @@ func (is *Service) publish(msg pubsub.Message) error {
 	// or more transactions (GATHER). Once all the expected transactions have
 	// been delivered (in some order), we are ready to index. After indexing a
 	// block, we revert to the WAIT state for the next block.
+
+	startTime := time.Now().UnixNano()
+	defer func() {
+		if is.metrics != nil {
+			endTime := time.Now().UnixNano()
+			is.metrics.IndexerProcessingTime.Set(float64(endTime-startTime) / 1e6)
+		}
+	}()
 
 	if is.currentBlock.batch == nil {
 		// WAIT: Start a new block.

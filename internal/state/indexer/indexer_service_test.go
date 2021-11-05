@@ -62,7 +62,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	assert.True(t, indexer.KVSinkEnabled(eventSinks))
 	assert.True(t, indexer.IndexingEnabled(eventSinks))
 
-	service := indexer.NewIndexerService(eventSinks, eventBus)
+	service := indexer.NewIndexerService(eventSinks, eventBus, nil)
 	service.SetLogger(tmlog.TestingLogger())
 	err = service.Start()
 	require.NoError(t, err)

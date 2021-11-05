@@ -171,7 +171,8 @@ func makeNode(cfg *config.Config,
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
 
-	indexerService, eventSinks, err := createAndStartIndexerService(cfg, dbProvider, eventBus, logger, genDoc.ChainID)
+	indexerService, eventSinks, err := createAndStartIndexerService(cfg,
+		dbProvider, eventBus, logger, genDoc.ChainID, nodeMetrics.state)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
