@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/proxy"
@@ -59,7 +60,7 @@ type nodeImpl struct {
 	isListening bool
 
 	// services
-	eventBus         *types.EventBus // pub/sub for services
+	eventBus         *eventbus.EventBus // pub/sub for services
 	eventSinks       []indexer.EventSink
 	stateStore       sm.Store
 	blockStore       *store.BlockStore // store the blockchain to disk
@@ -847,7 +848,7 @@ func (n *nodeImpl) Mempool() mempool.Mempool {
 }
 
 // EventBus returns the Node's EventBus.
-func (n *nodeImpl) EventBus() *types.EventBus {
+func (n *nodeImpl) EventBus() *eventbus.EventBus {
 	return n.eventBus
 }
 

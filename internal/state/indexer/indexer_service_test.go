@@ -15,6 +15,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/state/indexer/sink/kv"
 	"github.com/tendermint/tendermint/internal/state/indexer/sink/psql"
@@ -39,7 +40,7 @@ var (
 
 func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	// event bus
-	eventBus := types.NewEventBus()
+	eventBus := eventbus.NewDefault()
 	eventBus.SetLogger(tmlog.TestingLogger())
 	err := eventBus.Start()
 	require.NoError(t, err)

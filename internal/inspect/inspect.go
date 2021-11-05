@@ -7,6 +7,7 @@ import (
 	"net"
 
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/inspect/rpc"
 	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
 	"github.com/tendermint/tendermint/internal/state"
@@ -32,7 +33,7 @@ type Inspector struct {
 	config *config.RPCConfig
 
 	indexerService *indexer.Service
-	eventBus       *types.EventBus
+	eventBus       *eventbus.EventBus
 	logger         log.Logger
 }
 
@@ -44,7 +45,7 @@ type Inspector struct {
 //nolint:lll
 func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, es []indexer.EventSink, logger log.Logger) *Inspector {
 	routes := rpc.Routes(*cfg, ss, bs, es, logger)
-	eb := types.NewEventBus()
+	eb := eventbus.NewDefault()
 	eb.SetLogger(logger.With("module", "events"))
 	is := indexer.NewIndexerService(es, eb)
 	is.SetLogger(logger.With("module", "txindex"))

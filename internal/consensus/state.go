@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/libs/fail"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -117,7 +118,7 @@ type State struct {
 
 	// we use eventBus to trigger msg broadcasts in the reactor,
 	// and to notify external subscribers, eg. through a websocket
-	eventBus *types.EventBus
+	eventBus *eventbus.EventBus
 
 	// a Write-Ahead Log ensures we can recover from any kind of crash
 	// and helps us avoid signing conflicting votes
@@ -207,7 +208,7 @@ func (cs *State) SetLogger(l log.Logger) {
 }
 
 // SetEventBus sets event bus.
-func (cs *State) SetEventBus(b *types.EventBus) {
+func (cs *State) SetEventBus(b *eventbus.EventBus) {
 	cs.eventBus = b
 	cs.blockExec.SetEventBus(b)
 }

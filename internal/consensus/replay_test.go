@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -31,6 +32,7 @@ import (
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/privval"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -84,14 +86,18 @@ func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *config.Co
 	// in the WAL itself. Assuming the consensus state is running, replay of any
 	// WAL, including the empty one, should eventually be followed by a new
 	// block, or else something is wrong.
-	newBlockSub, err := cs.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
+	newBlockSub, err := cs.eventBus.SubscribeWithArgs(context.Background(), pubsub.SubscribeArgs{
+		ClientID: testSubscriber,
+		Query:    types.EventQueryNewBlock,
+	})
 	require.NoError(t, err)
-	select {
-	case <-newBlockSub.Out():
-	case <-newBlockSub.Canceled():
-		t.Fatal("newBlockSub was canceled")
-	case <-time.After(120 * time.Second):
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+	_, err = newBlockSub.Next(ctx)
+	if errors.Is(err, context.DeadlineExceeded) {
 		t.Fatal("Timed out waiting for new block (see trace above)")
+	} else if err != nil {
+		t.Fatal("newBlockSub was canceled")
 	}
 }
 
@@ -334,8 +340,8 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 
 	partSize := types.BlockPartSizeBytes
 
-	newRoundCh := subscribe(css[0].eventBus, types.EventQueryNewRound)
-	proposalCh := subscribe(css[0].eventBus, types.EventQueryCompleteProposal)
+	newRoundCh := subscribe(t, css[0].eventBus, types.EventQueryNewRound)
+	proposalCh := subscribe(t, css[0].eventBus, types.EventQueryCompleteProposal)
 
 	vss := make([]*validatorStub, nPeers)
 	for i := 0; i < nPeers; i++ {

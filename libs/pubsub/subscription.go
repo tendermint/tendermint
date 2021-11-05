@@ -3,132 +3,71 @@ package pubsub
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/libs/queue"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 )
 
 var (
-	// ErrUnsubscribed is returned by Err when a client unsubscribes.
-	ErrUnsubscribed = errors.New("client unsubscribed")
+	// ErrUnsubscribed is returned by Next when the client has unsubscribed.
+	ErrUnsubscribed = errors.New("subscription removed by client")
 
-	// ErrOutOfCapacity is returned by Err when a client is not pulling messages
-	// fast enough. Note the client's subscription will be terminated.
-	ErrOutOfCapacity = errors.New("client is not pulling messages fast enough")
+	// ErrTerminated is returned by Next when the subscription was terminated by
+	// the publisher.
+	ErrTerminated = errors.New("subscription terminated by publisher")
 )
 
-// A Subscription represents a client subscription for a particular query and
-// consists of three things:
-// 1) channel onto which messages and events are published
-// 2) channel which is closed if a client is too slow or choose to unsubscribe
-// 3) err indicating the reason for (2)
+// A Subscription represents a client subscription for a particular query.
 type Subscription struct {
-	id    string
-	out   chan Message
-	queue *queue.Queue
-
-	canceled chan struct{}
-	stop     func()
-	mtx      tmsync.RWMutex
-	err      error
+	id      string
+	queue   *queue.Queue // open until the subscription ends
+	stopErr error        // after queue is closed, the reason why
 }
 
-// newSubscription returns a new subscription with the given outCapacity.
-func newSubscription(outCapacity int) (*Subscription, error) {
-	sub := &Subscription{
-		id:       uuid.NewString(),
-		out:      make(chan Message),
-		canceled: make(chan struct{}),
-
-		// N.B. The output channel is always unbuffered. For an unbuffered
-		// subscription that was already the case, and for a buffered one the
-		// queue now serves as the buffer.
-	}
-
-	if outCapacity == 0 {
-		sub.stop = func() { close(sub.canceled) }
-		return sub, nil
-	}
-	q, err := queue.New(queue.Options{
-		SoftQuota: outCapacity,
-		HardLimit: outCapacity,
+// newSubscription returns a new subscription with the given queue capacity.
+func newSubscription(quota, limit int) (*Subscription, error) {
+	queue, err := queue.New(queue.Options{
+		SoftQuota: quota,
+		HardLimit: limit,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("creating queue: %w", err)
+		return nil, err
 	}
-	sub.queue = q
-	sub.stop = func() { q.Close(); close(sub.canceled) }
-
-	// Start a goroutine to bridge messages from the queue to the channel.
-	// TODO(creachadair): This is a temporary hack until we can change the
-	// interface not to expose the channel directly.
-	go func() {
-		for {
-			next, err := q.Wait(context.Background())
-			if err != nil {
-				return // the subscription was terminated
-			}
-			sub.out <- next.(Message)
-		}
-	}()
-	return sub, nil
+	return &Subscription{
+		id:    uuid.NewString(),
+		queue: queue,
+	}, nil
 }
 
-// putMessage transmits msg to the subscriber. If s is unbuffered, this blocks
-// until msg is delivered and returns nil; otherwise it reports an error if the
-// queue cannot accept any further messages.
-func (s *Subscription) putMessage(msg Message) error {
-	if s.queue != nil {
-		return s.queue.Add(msg)
+// Next blocks until a message is available, ctx ends, or the subscription
+// ends.  Next returns ErrUnsubscribed if s was unsubscribed, ErrTerminated if
+// s was terminated by the publisher, or a context error if ctx ended without a
+// message being available.
+func (s *Subscription) Next(ctx context.Context) (Message, error) {
+	next, err := s.queue.Wait(ctx)
+	if errors.Is(err, queue.ErrQueueClosed) {
+		return Message{}, s.stopErr
+	} else if err != nil {
+		return Message{}, err
 	}
-	s.out <- msg
-	return nil
+	return next.(Message), nil
 }
 
-// Out returns a channel onto which messages and events are published.
-// Unsubscribe/UnsubscribeAll does not close the channel to avoid clients from
-// receiving a nil message.
-func (s *Subscription) Out() <-chan Message { return s.out }
-
+// ID returns the unique subscription identifier for s.
 func (s *Subscription) ID() string { return s.id }
 
-// Canceled returns a channel that's closed when the subscription is
-// terminated and supposed to be used in a select statement.
-func (s *Subscription) Canceled() <-chan struct{} {
-	return s.canceled
-}
+// publish transmits msg to the subscriber. It reports a queue error if the
+// queue cannot accept any further messages.
+func (s *Subscription) publish(msg Message) error { return s.queue.Add(msg) }
 
-// Err returns nil if the channel returned by Canceled is not yet closed.
-// If the channel is closed, Err returns a non-nil error explaining why:
-//   - ErrUnsubscribed if the subscriber choose to unsubscribe,
-//   - ErrOutOfCapacity if the subscriber is not pulling messages fast enough
-//   and the channel returned by Out became full,
-// After Err returns a non-nil error, successive calls to Err return the same
-// error.
-func (s *Subscription) Err() error {
-	s.mtx.RLock()
-	defer s.mtx.RUnlock()
-	return s.err
-}
-
-func (s *Subscription) cancel(err error) {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-	defer func() {
-		perr := recover()
-		if err == nil && perr != nil {
-			err = fmt.Errorf("problem closing subscription: %v", perr)
-		}
-	}()
-
-	if s.err == nil && err != nil {
-		s.err = err
+// stop terminates the subscription with the given error reason.
+func (s *Subscription) stop(err error) {
+	if err == nil {
+		panic("nil stop error")
 	}
-
-	s.stop()
+	s.stopErr = err
+	s.queue.Close()
 }
 
 // Message glues data and events together.
@@ -136,14 +75,6 @@ type Message struct {
 	subID  string
 	data   interface{}
 	events []types.Event
-}
-
-func NewMessage(subID string, data interface{}, events []types.Event) Message {
-	return Message{
-		subID:  subID,
-		data:   data,
-		events: events,
-	}
 }
 
 // SubscriptionID returns the unique identifier for the subscription

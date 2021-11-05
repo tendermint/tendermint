@@ -16,6 +16,7 @@ import (
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/store"
@@ -76,7 +77,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 		}
 	})
 
-	eventBus := types.NewEventBus()
+	eventBus := eventbus.NewDefault()
 	eventBus.SetLogger(logger.With("module", "events"))
 	if err := eventBus.Start(); err != nil {
 		return fmt.Errorf("failed to start event bus: %w", err)
