@@ -2,8 +2,10 @@ package indexer
 
 import (
 	"context"
+	"time"
 
 	"github.com/tendermint/tendermint/internal/eventbus"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
@@ -16,6 +18,7 @@ type Service struct {
 
 	eventSinks []EventSink
 	eventBus   *eventbus.EventBus
+	metrics    *Metrics
 
 	currentBlock struct {
 		header types.EventDataNewBlockHeader
@@ -24,11 +27,27 @@ type Service struct {
 	}
 }
 
-// NewIndexerService returns a new service instance.
-func NewIndexerService(es []EventSink, eventBus *eventbus.EventBus) *Service {
-	is := &Service{eventSinks: es, eventBus: eventBus}
-	is.BaseService = *service.NewBaseService(nil, "IndexerService", is)
+// NewService constructs a new indexer service from the given arguments.
+func NewService(args ServiceArgs) *Service {
+	is := &Service{
+		eventSinks: args.Sinks,
+		eventBus:   args.EventBus,
+		metrics:    args.Metrics,
+	}
+	if is.metrics == nil {
+		is.metrics = NopMetrics()
+	}
+	is.BaseService = *service.NewBaseService(args.Logger, "IndexerService", is)
 	return is
+}
+
+// NewIndexerService returns a new service instance.
+// Deprecated: Use NewService instead.
+func NewIndexerService(es []EventSink, eventBus *eventbus.EventBus) *Service {
+	return NewService(ServiceArgs{
+		Sinks:    es,
+		EventBus: eventBus,
+	})
 }
 
 // publish publishes a pubsub message to the service. The service blocks until
@@ -71,20 +90,26 @@ func (is *Service) publish(msg pubsub.Message) error {
 	if curr.Pending == 0 {
 		// INDEX: We have all the transactions we expect for the current block.
 		for _, sink := range is.eventSinks {
+			start := time.Now()
 			if err := sink.IndexBlockEvents(is.currentBlock.header); err != nil {
 				is.Logger.Error("failed to index block header",
 					"height", is.currentBlock.height, "err", err)
 			} else {
+				is.metrics.BlockEventsSeconds.Observe(time.Since(start).Seconds())
+				is.metrics.BlocksIndexed.Add(1)
 				is.Logger.Debug("indexed block",
 					"height", is.currentBlock.height, "sink", sink.Type())
 			}
 
 			if curr.Size() != 0 {
+				start := time.Now()
 				err := sink.IndexTxEvents(curr.Ops)
 				if err != nil {
 					is.Logger.Error("failed to index block txs",
 						"height", is.currentBlock.height, "err", err)
 				} else {
+					is.metrics.TxEventsSeconds.Observe(time.Since(start).Seconds())
+					is.metrics.TransactionsIndexed.Add(float64(curr.Size()))
 					is.Logger.Debug("indexed txs",
 						"height", is.currentBlock.height, "sink", sink.Type())
 				}
@@ -120,6 +145,14 @@ func (is *Service) OnStop() {
 			is.Logger.Error("failed to close eventsink", "eventsink", sink.Type(), "err", err)
 		}
 	}
+}
+
+// ServiceArgs are arguments for constructing a new indexer service.
+type ServiceArgs struct {
+	Sinks    []EventSink
+	EventBus *eventbus.EventBus
+	Metrics  *Metrics
+	Logger   log.Logger
 }
 
 // KVSinkEnabled returns the given eventSinks is containing KVEventSink.

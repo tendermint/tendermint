@@ -113,14 +113,19 @@ func createAndStartIndexerService(
 	eventBus *eventbus.EventBus,
 	logger log.Logger,
 	chainID string,
+	metrics *indexer.Metrics,
 ) (*indexer.Service, []indexer.EventSink, error) {
 	eventSinks, err := sink.EventSinksFromConfig(cfg, dbProvider, chainID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	indexerService := indexer.NewIndexerService(eventSinks, eventBus)
-	indexerService.SetLogger(logger.With("module", "txindex"))
+	indexerService := indexer.NewService(indexer.ServiceArgs{
+		Sinks:    eventSinks,
+		EventBus: eventBus,
+		Logger:   logger.With("module", "txindex"),
+		Metrics:  metrics,
+	})
 
 	if err := indexerService.Start(); err != nil {
 		return nil, nil, err
