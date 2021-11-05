@@ -43,6 +43,6 @@ sections.
 - [RFC-003: Performance Taxonomy](./rfc-003-performance-questions.md)
 - [RFC-004: E2E Test Framework Enhancements](./rfc-004-e2e-framework.md)
 - [RFC-005: Event System](./rfc-005-event-system.rst)
-- [RFC-006: Event Subscription](./rfc-005-event-system.rst)
+- [RFC-006: Event Subscription](./rfc-006-event-subscription.md)
 
 <!-- - [RFC-NNN: Title](./rfc-NNN-title.md) -->
