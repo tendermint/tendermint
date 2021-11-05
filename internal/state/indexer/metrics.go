@@ -62,8 +62,8 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 	}
 }
 
-// NopMetrics returns no-op Metrics.
-func NopMetrics() *Metrics {
+// nopMetrics returns an indexer metrics stub that discards all samples.
+func nopMetrics() *Metrics {
 	return &Metrics{
 		BlockEventsSeconds:  discard.NewHistogram(),
 		TxEventsSeconds:     discard.NewHistogram(),

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/tendermint/tendermint/internal/eventbus"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
@@ -16,7 +17,7 @@ type Service struct {
 
 	eventSinks []EventSink
 	eventBus   *eventbus.EventBus
-	metrics *Metrics
+	metrics    *Metrics
 
 	currentBlock struct {
 		header types.EventDataNewBlockHeader
@@ -25,11 +26,27 @@ type Service struct {
 	}
 }
 
-// NewIndexerService returns a new service instance.
-func NewIndexerService(es []EventSink, eventBus *eventbus.EventBus) *Service {
-	is := &Service{eventSinks: es, eventBus: eventBus}
-	is.BaseService = *service.NewBaseService(nil, "IndexerService", is)
+// NewService constructs a new indexer service from the given arguments.
+func NewService(args ServiceArgs) *Service {
+	is := &Service{
+		eventSinks: args.Sinks,
+		eventBus:   args.EventBus,
+		metrics:    args.Metrics,
+	}
+	if is.metrics == nil {
+		is.metrics = nopMetrics()
+	}
+	is.BaseService = *service.NewBaseService(args.Logger, "IndexerService", is)
 	return is
+}
+
+// NewIndexerService returns a new service instance.
+// Deprecated: Use NewService instead.
+func NewIndexerService(es []EventSink, eventBus *eventbus.EventBus) *Service {
+	return NewService(ServiceArgs{
+		Sinks:    es,
+		EventBus: eventBus,
+	})
 }
 
 // publish publishes a pubsub message to the service. The service blocks until
@@ -121,6 +138,14 @@ func (is *Service) OnStop() {
 			is.Logger.Error("failed to close eventsink", "eventsink", sink.Type(), "err", err)
 		}
 	}
+}
+
+// ServiceArgs are arguments for constructing a new indexer service.
+type ServiceArgs struct {
+	Sinks    []EventSink
+	EventBus *eventbus.EventBus
+	Metrics  *Metrics
+	Logger   log.Logger
 }
 
 // KVSinkEnabled returns the given eventSinks is containing KVEventSink.

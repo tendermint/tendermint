@@ -119,8 +119,11 @@ func createAndStartIndexerService(
 		return nil, nil, err
 	}
 
-	indexerService := indexer.NewIndexerService(eventSinks, eventBus)
-	indexerService.SetLogger(logger.With("module", "txindex"))
+	indexerService := indexer.NewService(indexer.ServiceArgs{
+		Sinks:    eventSinks,
+		EventBus: eventBus,
+		Logger:   logger.With("module", "txindex"),
+	})
 
 	if err := indexerService.Start(); err != nil {
 		return nil, nil, err
