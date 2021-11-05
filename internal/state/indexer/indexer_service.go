@@ -2,7 +2,9 @@ package indexer
 
 import (
 	"context"
+	"time"
 
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
 )
@@ -20,14 +22,30 @@ type Service struct {
 
 	eventSinks []EventSink
 	eventBus   *types.EventBus
+	metrics    *Metrics
+}
+
+// NewService constructs a new indexer service from the given arguments.
+func NewService(args ServiceArgs) *Service {
+	is := &Service{
+		eventSinks: args.Sinks,
+		eventBus:   args.EventBus,
+		metrics:    args.Metrics,
+	}
+	if is.metrics == nil {
+		is.metrics = NopMetrics()
+	}
+	is.BaseService = *service.NewBaseService(args.Logger, "IndexerService", is)
+	return is
 }
 
 // NewIndexerService returns a new service instance.
+// Deprecated: Use NewService instead.
 func NewIndexerService(es []EventSink, eventBus *types.EventBus) *Service {
-
-	is := &Service{eventSinks: es, eventBus: eventBus}
-	is.BaseService = *service.NewBaseService(nil, "IndexerService", is)
-	return is
+	return NewService(ServiceArgs{
+		Sinks:    es,
+		EventBus: eventBus,
+	})
 }
 
 // OnStart implements service.Service by subscribing for all transactions
@@ -79,17 +97,23 @@ func (is *Service) OnStart() error {
 				}
 
 				for _, sink := range is.eventSinks {
+					start := time.Now()
 					if err := sink.IndexBlockEvents(eventDataHeader); err != nil {
 						is.Logger.Error("failed to index block", "height", height, "err", err)
 					} else {
+						is.metrics.BlockEventsSeconds.Observe(time.Since(start).Seconds())
+						is.metrics.BlocksIndexed.Add(1)
 						is.Logger.Debug("indexed block", "height", height, "sink", sink.Type())
 					}
 
 					if len(batch.Ops) > 0 {
+						start := time.Now()
 						err := sink.IndexTxEvents(batch.Ops)
 						if err != nil {
 							is.Logger.Error("failed to index block txs", "height", height, "err", err)
 						} else {
+							is.metrics.TxEventsSeconds.Observe(time.Since(start).Seconds())
+							is.metrics.TransactionsIndexed.Add(float64(len(batch.Ops)))
 							is.Logger.Debug("indexed txs", "height", height, "sink", sink.Type())
 						}
 					}
@@ -112,6 +136,14 @@ func (is *Service) OnStop() {
 			is.Logger.Error("failed to close eventsink", "eventsink", sink.Type(), "err", err)
 		}
 	}
+}
+
+// ServiceArgs are arguments for constructing a new indexer service.
+type ServiceArgs struct {
+	Sinks    []EventSink
+	EventBus *types.EventBus
+	Metrics  *Metrics
+	Logger   log.Logger
 }
 
 // KVSinkEnabled returns the given eventSinks is containing KVEventSink.

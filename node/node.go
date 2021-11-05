@@ -23,6 +23,7 @@ import (
 	"github.com/tendermint/tendermint/internal/proxy"
 	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
 	sm "github.com/tendermint/tendermint/internal/state"
+	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
@@ -148,6 +149,8 @@ func makeNode(cfg *config.Config,
 		return nil, err
 	}
 
+	nodeMetrics := defaultMetricsProvider(cfg.Instrumentation)(genDoc.ChainID)
+
 	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
 	proxyApp, err := createAndStartProxyAppConns(clientCreator, logger)
 	if err != nil {
@@ -163,7 +166,8 @@ func makeNode(cfg *config.Config,
 		return nil, err
 	}
 
-	indexerService, eventSinks, err := createAndStartIndexerService(cfg, dbProvider, eventBus, logger, genDoc.ChainID)
+	indexerService, eventSinks, err := createAndStartIndexerService(cfg, dbProvider,
+		eventBus, logger, genDoc.ChainID, nodeMetrics.indexer)
 	if err != nil {
 		return nil, err
 	}
@@ -241,9 +245,6 @@ func makeNode(cfg *config.Config,
 	if err != nil {
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
-
-	nodeMetrics :=
-		defaultMetricsProvider(cfg.Instrumentation)(genDoc.ChainID)
 
 	router, err := createRouter(p2pLogger, nodeMetrics.p2p, nodeInfo, nodeKey.PrivKey,
 		peerManager, transport, getRouterConfig(cfg, proxyApp))
@@ -1053,8 +1054,9 @@ func defaultGenesisDocProviderFunc(cfg *config.Config) genesisDocProvider {
 
 type nodeMetrics struct {
 	consensus *consensus.Metrics
-	p2p       *p2p.Metrics
+	indexer   *indexer.Metrics
 	mempool   *mempool.Metrics
+	p2p       *p2p.Metrics
 	state     *sm.Metrics
 	statesync *statesync.Metrics
 }
@@ -1068,19 +1070,21 @@ func defaultMetricsProvider(cfg *config.InstrumentationConfig) metricsProvider {
 	return func(chainID string) *nodeMetrics {
 		if cfg.Prometheus {
 			return &nodeMetrics{
-				consensus.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
-				p2p.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
-				mempool.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
-				sm.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
-				statesync.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				consensus: consensus.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				indexer:   indexer.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				mempool:   mempool.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				p2p:       p2p.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				state:     sm.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				statesync: statesync.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 			}
 		}
 		return &nodeMetrics{
-			consensus.NopMetrics(),
-			p2p.NopMetrics(),
-			mempool.NopMetrics(),
-			sm.NopMetrics(),
-			statesync.NopMetrics(),
+			consensus: consensus.NopMetrics(),
+			indexer:   indexer.NopMetrics(),
+			mempool:   mempool.NopMetrics(),
+			p2p:       p2p.NopMetrics(),
+			state:     sm.NopMetrics(),
+			statesync: statesync.NopMetrics(),
 		}
 	}
 }
