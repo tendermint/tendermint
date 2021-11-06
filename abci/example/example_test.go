@@ -130,7 +130,7 @@ func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
 
 func testGRPCSync(t *testing.T, app types.ABCIApplicationServer) {
 	numDeliverTxs := 2000
-	socketFile := fmt.Sprintf("test-%08x.sock", rand.Int31n(1<<30))
+	socketFile := fmt.Sprintf("/tmp/test-%08x.sock", rand.Int31n(1<<30))
 	defer os.Remove(socketFile)
 	socket := fmt.Sprintf("unix://%v", socketFile)
 
