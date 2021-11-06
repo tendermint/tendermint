@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/proxy"
@@ -59,7 +60,7 @@ type nodeImpl struct {
 	isListening bool
 
 	// services
-	eventBus         *types.EventBus // pub/sub for services
+	eventBus         *eventbus.EventBus // pub/sub for services
 	eventSinks       []indexer.EventSink
 	stateStore       sm.Store
 	blockStore       *store.BlockStore // store the blockchain to disk
@@ -170,7 +171,8 @@ func makeNode(cfg *config.Config,
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
 
-	indexerService, eventSinks, err := createAndStartIndexerService(cfg, dbProvider, eventBus, logger, genDoc.ChainID)
+	indexerService, eventSinks, err := createAndStartIndexerService(cfg, dbProvider, eventBus,
+		logger, genDoc.ChainID, nodeMetrics.indexer)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
@@ -847,7 +849,7 @@ func (n *nodeImpl) Mempool() mempool.Mempool {
 }
 
 // EventBus returns the Node's EventBus.
-func (n *nodeImpl) EventBus() *types.EventBus {
+func (n *nodeImpl) EventBus() *eventbus.EventBus {
 	return n.eventBus
 }
 
@@ -899,11 +901,12 @@ func defaultGenesisDocProviderFunc(cfg *config.Config) genesisDocProvider {
 
 type nodeMetrics struct {
 	consensus *consensus.Metrics
-	p2p       *p2p.Metrics
+	indexer   *indexer.Metrics
 	mempool   *mempool.Metrics
+	p2p       *p2p.Metrics
+	proxy     *proxy.Metrics
 	state     *sm.Metrics
 	statesync *statesync.Metrics
-	proxy     *proxy.Metrics
 }
 
 // metricsProvider returns consensus, p2p, mempool, state, statesync Metrics.
@@ -915,21 +918,23 @@ func defaultMetricsProvider(cfg *config.InstrumentationConfig) metricsProvider {
 	return func(chainID string) *nodeMetrics {
 		if cfg.Prometheus {
 			return &nodeMetrics{
-				consensus.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
-				p2p.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
-				mempool.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
-				sm.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
-				statesync.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
-				proxy.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				consensus: consensus.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				indexer:   indexer.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				mempool:   mempool.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				p2p:       p2p.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				proxy:     proxy.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				state:     sm.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				statesync: statesync.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 			}
 		}
 		return &nodeMetrics{
-			consensus.NopMetrics(),
-			p2p.NopMetrics(),
-			mempool.NopMetrics(),
-			sm.NopMetrics(),
-			statesync.NopMetrics(),
-			proxy.NopMetrics(),
+			consensus: consensus.NopMetrics(),
+			indexer:   indexer.NopMetrics(),
+			mempool:   mempool.NopMetrics(),
+			p2p:       p2p.NopMetrics(),
+			proxy:     proxy.NopMetrics(),
+			state:     sm.NopMetrics(),
+			statesync: statesync.NopMetrics(),
 		}
 	}
 }

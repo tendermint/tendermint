@@ -14,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/blocksync"
 	"github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
@@ -97,8 +98,8 @@ func createAndStartProxyAppConns(clientCreator abciclient.Creator, logger log.Lo
 	return proxyApp, nil
 }
 
-func createAndStartEventBus(logger log.Logger) (*types.EventBus, error) {
-	eventBus := types.NewEventBus()
+func createAndStartEventBus(logger log.Logger) (*eventbus.EventBus, error) {
+	eventBus := eventbus.NewDefault()
 	eventBus.SetLogger(logger.With("module", "events"))
 	if err := eventBus.Start(); err != nil {
 		return nil, err
@@ -109,17 +110,22 @@ func createAndStartEventBus(logger log.Logger) (*types.EventBus, error) {
 func createAndStartIndexerService(
 	cfg *config.Config,
 	dbProvider config.DBProvider,
-	eventBus *types.EventBus,
+	eventBus *eventbus.EventBus,
 	logger log.Logger,
 	chainID string,
+	metrics *indexer.Metrics,
 ) (*indexer.Service, []indexer.EventSink, error) {
 	eventSinks, err := sink.EventSinksFromConfig(cfg, dbProvider, chainID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	indexerService := indexer.NewIndexerService(eventSinks, eventBus)
-	indexerService.SetLogger(logger.With("module", "txindex"))
+	indexerService := indexer.NewService(indexer.ServiceArgs{
+		Sinks:    eventSinks,
+		EventBus: eventBus,
+		Logger:   logger.With("module", "txindex"),
+		Metrics:  metrics,
+	})
 
 	if err := indexerService.Start(); err != nil {
 		return nil, nil, err
@@ -315,7 +321,7 @@ func createConsensusReactor(
 	privValidator types.PrivValidator,
 	csMetrics *consensus.Metrics,
 	waitSync bool,
-	eventBus *types.EventBus,
+	eventBus *eventbus.EventBus,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	logger log.Logger,

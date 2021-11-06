@@ -20,6 +20,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -368,21 +369,20 @@ func validatePrevoteAndPrecommit(
 	cs.mtx.Unlock()
 }
 
-func subscribeToVoter(cs *State, addr []byte) <-chan tmpubsub.Message {
-	votesSub, err := cs.eventBus.SubscribeUnbuffered(context.Background(), testSubscriber, types.EventQueryVote)
-	if err != nil {
-		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, types.EventQueryVote))
-	}
-	ch := make(chan tmpubsub.Message)
-	go func() {
-		for msg := range votesSub.Out() {
-			vote := msg.Data().(types.EventDataVote)
-			// we only fire for our own votes
-			if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
-				ch <- msg
-			}
+func subscribeToVoter(t *testing.T, cs *State, addr []byte) <-chan tmpubsub.Message {
+	t.Helper()
+
+	ch := make(chan tmpubsub.Message, 1)
+	if err := cs.eventBus.Observe(context.Background(), func(msg tmpubsub.Message) error {
+		vote := msg.Data().(types.EventDataVote)
+		// we only fire for our own votes
+		if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
+			ch <- msg
 		}
-	}()
+		return nil
+	}, types.EventQueryVote); err != nil {
+		t.Fatalf("Failed to observe query %v: %v", types.EventQueryVote, err)
+	}
 	return ch
 }
 
@@ -446,7 +446,7 @@ func newStateWithConfigAndBlockStore(
 	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 	cs.SetPrivValidator(pv)
 
-	eventBus := types.NewEventBus()
+	eventBus := eventbus.NewDefault()
 	eventBus.SetLogger(log.TestingLogger().With("module", "events"))
 	err := eventBus.Start()
 	if err != nil {

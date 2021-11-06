@@ -29,6 +29,7 @@ import (
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
 	tmtime "github.com/tendermint/tendermint/libs/time"
@@ -61,14 +62,15 @@ func TestNodeStartStop(t *testing.T) {
 	defer cancel()
 
 	// wait for the node to produce a block
-	blocksSub, err := n.EventBus().Subscribe(ctx, "node_test", types.EventQueryNewBlock)
+	blocksSub, err := n.EventBus().SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
+		ClientID: "node_test",
+		Query:    types.EventQueryNewBlock,
+	})
 	require.NoError(t, err)
-	select {
-	case <-blocksSub.Out():
-	case <-blocksSub.Canceled():
-		t.Fatal("blocksSub was canceled")
-	case <-time.After(10 * time.Second):
-		t.Fatal("timed out waiting for the node to produce a block")
+	tctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	if _, err := blocksSub.Next(tctx); err != nil {
+		t.Fatalf("Waiting for event: %v", err)
 	}
 
 	// stop the node
@@ -556,7 +558,8 @@ func TestNodeSetEventSink(t *testing.T) {
 		require.NoError(t, err)
 
 		indexService, eventSinks, err := createAndStartIndexerService(cfg,
-			config.DefaultDBProvider, eventBus, logger, genDoc.ChainID)
+			config.DefaultDBProvider, eventBus, logger, genDoc.ChainID,
+			indexer.NopMetrics())
 		require.NoError(t, err)
 		t.Cleanup(func() { require.NoError(t, indexService.Stop()) })
 		return eventSinks

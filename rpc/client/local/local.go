@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tendermint/tendermint/internal/eventbus"
 	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
@@ -38,7 +39,7 @@ don't need to do anything). It will keep trying indefinitely with exponential
 backoff (10ms -> 20ms -> 40ms) until successful.
 */
 type Local struct {
-	*types.EventBus
+	*eventbus.EventBus
 	Logger log.Logger
 	ctx    *rpctypes.Context
 	env    *rpccore.Environment
@@ -48,7 +49,7 @@ type Local struct {
 // local RPC client constructor needs to build a local client.
 type NodeService interface {
 	RPCEnvironment() *rpccore.Environment
-	EventBus() *types.EventBus
+	EventBus() *eventbus.EventBus
 }
 
 // New configures a client that calls the Node directly.
@@ -204,82 +205,78 @@ func (c *Local) Subscribe(
 	ctx context.Context,
 	subscriber,
 	queryString string,
-	outCapacity ...int) (out <-chan coretypes.ResultEvent, err error) {
+	capacity ...int) (out <-chan coretypes.ResultEvent, err error) {
 	q, err := query.New(queryString)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse query: %w", err)
 	}
 
-	outCap := 1
-	if len(outCapacity) > 0 {
-		outCap = outCapacity[0]
+	limit, quota := 1, 0
+	if len(capacity) > 0 {
+		limit = capacity[0]
+		if len(capacity) > 1 {
+			quota = capacity[1]
+		}
 	}
 
-	var sub types.Subscription
-	if outCap > 0 {
-		sub, err = c.EventBus.Subscribe(ctx, subscriber, q, outCap)
-	} else {
-		sub, err = c.EventBus.SubscribeUnbuffered(ctx, subscriber, q)
+	ctx, cancel := context.WithCancel(ctx)
+	go func() { <-c.Quit(); cancel() }()
+
+	subArgs := pubsub.SubscribeArgs{
+		ClientID: subscriber,
+		Query:    q,
+		Quota:    quota,
+		Limit:    limit,
 	}
+	sub, err := c.EventBus.SubscribeWithArgs(ctx, subArgs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to subscribe: %w", err)
 	}
 
-	outc := make(chan coretypes.ResultEvent, outCap)
-	go c.eventsRoutine(sub, subscriber, q, outc)
+	outc := make(chan coretypes.ResultEvent, 1)
+	go c.eventsRoutine(ctx, sub, subArgs, outc)
 
 	return outc, nil
 }
 
 func (c *Local) eventsRoutine(
-	sub types.Subscription,
-	subscriber string,
-	q pubsub.Query,
-	outc chan<- coretypes.ResultEvent) {
+	ctx context.Context,
+	sub eventbus.Subscription,
+	subArgs pubsub.SubscribeArgs,
+	outc chan<- coretypes.ResultEvent,
+) {
+	qstr := subArgs.Query.String()
 	for {
-		select {
-		case msg := <-sub.Out():
-			result := coretypes.ResultEvent{
-				SubscriptionID: msg.SubscriptionID(),
-				Query:          q.String(),
-				Data:           msg.Data(),
-				Events:         msg.Events(),
+		msg, err := sub.Next(ctx)
+		if errors.Is(err, pubsub.ErrUnsubscribed) {
+			return // client unsubscribed
+		} else if err != nil {
+			c.Logger.Error("subscription was canceled, resubscribing",
+				"err", err, "query", subArgs.Query.String())
+			sub = c.resubscribe(ctx, subArgs)
+			if sub == nil {
+				return // client terminated
 			}
-
-			if cap(outc) == 0 {
-				outc <- result
-			} else {
-				select {
-				case outc <- result:
-				default:
-					c.Logger.Error("wanted to publish ResultEvent, but out channel is full", "result", result, "query", result.Query)
-				}
-			}
-		case <-sub.Canceled():
-			if sub.Err() == pubsub.ErrUnsubscribed {
-				return
-			}
-
-			c.Logger.Error("subscription was canceled, resubscribing...", "err", sub.Err(), "query", q.String())
-			sub = c.resubscribe(subscriber, q)
-			if sub == nil { // client was stopped
-				return
-			}
-		case <-c.Quit():
-			return
+			continue
+		}
+		outc <- coretypes.ResultEvent{
+			SubscriptionID: msg.SubscriptionID(),
+			Query:          qstr,
+			Data:           msg.Data(),
+			Events:         msg.Events(),
 		}
 	}
 }
 
 // Try to resubscribe with exponential backoff.
-func (c *Local) resubscribe(subscriber string, q pubsub.Query) types.Subscription {
+func (c *Local) resubscribe(ctx context.Context, subArgs pubsub.SubscribeArgs) eventbus.Subscription {
 	attempts := 0
 	for {
 		if !c.IsRunning() {
 			return nil
 		}
 
-		sub, err := c.EventBus.Subscribe(context.Background(), subscriber, q)
+		sub, err := c.EventBus.SubscribeWithArgs(ctx, subArgs)
 		if err == nil {
 			return sub
 		}

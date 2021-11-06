@@ -40,7 +40,7 @@ More on how releases are conducted can be found [here](./RELEASES.md).
 ## Security
 
 To report a security vulnerability, see our [bug bounty
-program](https://hackerone.com/tendermint). 
+program](https://hackerone.com/cosmos). 
 For examples of the kinds of bugs we're looking for, see [our security policy](SECURITY.md).
 
 We also maintain a dedicated mailing list for security updates. We will only ever use this mailing list
