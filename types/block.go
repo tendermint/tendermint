@@ -17,7 +17,6 @@ import (
 	"github.com/tendermint/tendermint/libs/bits"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
@@ -93,25 +92,6 @@ func (b *Block) ValidateBasic() error {
 	}
 
 	return nil
-}
-
-// IsTimely validates that the block timestamp is 'timely' according to the proposer-based timestamp algorithm.
-// To evaluate if a block is timely, its timestamp is compared to the local time of the validator along with the
-// configured Precision and MsgDelay parameters.
-// Specifically, a proposed block timestamp is considered timely if it is satisfies the following inequalities:
-//
-// proposedBlockTime > validatorLocaltime - Precision && proposedBlockTime < validatorLocalTime + Precision + MsgDelay.
-//
-// For more information on the meaning of 'timely', see the proposer-based timestamp specification:
-// https://github.com/tendermint/spec/tree/master/spec/consensus/proposer-based-timestamp
-func (b *Block) IsTimely(clock tmtime.Source, p TimestampParams) bool {
-	lt := clock.Now()
-	lhs := lt.Add(-p.Precision)
-	rhs := lt.Add(p.Precision).Add(p.MsgDelay)
-	if lhs.Before(b.Header.Time) && b.Header.Time.Before(rhs) {
-		return true
-	}
-	return false
 }
 
 // fillHeader fills in any remaining header fields that are a function of the block data

@@ -41,6 +41,7 @@ type ConsensusParams struct {
 	Evidence  EvidenceParams  `json:"evidence"`
 	Validator ValidatorParams `json:"validator"`
 	Version   VersionParams   `json:"version"`
+	Timestamp TimestampParams `json:"timestamp"`
 }
 
 // HashedParams is a subset of ConsensusParams.
@@ -126,10 +127,12 @@ func DefaultVersionParams() VersionParams {
 }
 
 func DefaultTimestampParams() TimestampParams {
+	// TODO(@wbanfield): Determine experimental values for these defaults
+	// https://github.com/tendermint/tendermint/issues/7202
 	return TimestampParams{
-		Precision: 0,
-		Accuracy:  0,
-		MsgDelay:  0,
+		Precision: 2 * time.Second,
+		Accuracy:  500 * time.Millisecond,
+		MsgDelay:  3 * time.Second,
 	}
 }
 
