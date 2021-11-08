@@ -45,7 +45,7 @@ jobs:
           key: ${{ runner.os }}-bls-${{ steps.bls-revision.outputs.hash }}
         if: steps.bls-cache.outputs.cache-hit != 'true'
 
-  e2e-test:
+  e2e-test-dashcore:
     runs-on: ubuntu-latest
     needs: bls-signatures
     timeout-minutes: 15
@@ -92,6 +92,44 @@ jobs:
         if: ${{ failure() }}
         working-directory: test/e2e
         run: ./build/runner -f networks/dashcore.toml logs
+
+  e2e-test-rotate:
+    runs-on: ubuntu-latest
+    needs: bls-signatures
+    timeout-minutes: 15
+    env:
+      FULLNODE_PUBKEY_KEEP: false
+    steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.5'
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Get BLS library revision
+        id: bls-revision
+        run: |
+          echo "::set-output name=hash::$(git --git-dir=third_party/bls-signatures/src/.git rev-parse HEAD)"
+        shell: bash
+      - uses: technote-space/get-diff-action@v5.0.1
+        with:
+          PATTERNS: |
+            **/**.go
+            go.mod
+            go.sum
+      - uses: actions/cache@v2
+        with:
+          path: ~/bls-cache
+          key: ${{ runner.os }}-bls-${{ steps.bls-revision.outputs.hash }}
+      - name: Install BLS library
+        run: |
+          sudo cp -vr ~/bls-cache/include/* /usr/local/include/
+          sudo cp -vr ~/bls-cache/libchiabls.a /usr/local/lib/
+      - name: Build
+        working-directory: test/e2e
+        # Run two make jobs in parallel, since we can't run steps in parallel.
+        run: make -j2 docker runner
+        if: "env.GIT_DIFF != ''"
 
       - name: Run CI rotate testnet
         working-directory: test/e2e
