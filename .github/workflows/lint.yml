@@ -7,13 +7,17 @@ on:
 
 jobs:
   golangci:
+    # We need to run the linter on the same image we use for building, since it
+    # needs the C libraries installed for the dependencies to typecheck.
     runs-on: ubuntu-latest
     container: tendermintdev/docker-tm-db-testing
     steps:
       - uses: actions/checkout@v2
       - uses: golangci/golangci-lint-action@v2.5.2
         with:
-          # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
+          # Required: the version of golangci-lint is required and must be
+          # specified without patch version: we always use the latest patch
+          # version.
           version: v1.30
           args: --timeout 10m
           github-token: ${{ secrets.github_token }}

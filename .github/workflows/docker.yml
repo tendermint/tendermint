@@ -1,3 +1,11 @@
+# This workflow builds and pushes a new version of the build container image
+# when the tools directory changes on master. Edit tools/Dockerfile.
+#
+# This workflow does not push a new image until it is merged, so tests that
+# depend on changes in this image will not pass until this workflow succeeds.
+# For that reason, changes here should be done in a separate PR in advance of
+# work that depends on them.
+
 name: Build & Push TM-DB-Testing
 on:
   pull_request:
