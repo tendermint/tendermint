@@ -48,7 +48,9 @@ type updateRoundStepReason int
 const (
 	updateReasonTimeout updateRoundStepReason = iota
 	updateReasonStart
+	updateReasonNewRoundComplete
 	updateReasonProposalComplete
+	updateReasonCommitComplete
 	updateReasonMaj23
 	updateReasonSkip
 	updateReasonNone
@@ -607,10 +609,13 @@ func (cs *State) updateHeight(height int64) {
 }
 
 func (cs *State) updateRoundStep(round int32, step cstypes.RoundStepType) {
-	cs.metrics.StepTime.With("step", cs.Step.String()).Observe(time.Since(cs.localClockStepStart).Seconds())
-	cs.localClockStepStart = time.Now()
 	cs.Round = round
 	cs.Step = step
+}
+
+func (cs *State) observeStep(step cstypes.RoundStepType, u updateRoundStepReason) {
+	cs.metrics.StepTime.With("step", cs.Step.String(), "reason", u.String()).Observe(time.Since(cs.localClockStepStart).Seconds())
+	cs.localClockStepStart = time.Now()
 }
 
 // enterNewRound(height, 0) at cs.StartTime.
@@ -1075,7 +1080,19 @@ func (cs *State) enterNewRound(height int64, round int32) {
 	// Setup new round
 	// we don't fire newStep for this step,
 	// but we fire an event, so update the round step first
-	cs.localClockStepStart = time.Now()
+	if height != 0 {
+		reason := updateReasonTimeout
+		if round == 0 {
+			reason = updateReasonCommitComplete
+		} else if  {
+
+
+		}
+		cs.observeStep(cs.Step, reason)
+	} else {
+		cs.localClockStepStart = time.Now()
+	}
+
 	cs.updateRoundStep(round, cstypes.RoundStepNewRound)
 	cs.Validators = validators
 	if round == 0 {
@@ -1146,6 +1163,7 @@ func (cs *State) enterPropose(height int64, round int32) {
 
 	defer func() {
 		// Done enterPropose:
+		cs.observeStep(cstypes.RoundStepNewRound, updateReasonNewRoundComplete)
 		cs.updateRoundStep(round, cstypes.RoundStepPropose)
 		cs.newStep()
 
@@ -1322,7 +1340,11 @@ func (cs *State) enterPrevote(height int64, round int32) {
 
 	defer func() {
 		// Done enterPrevote:
-
+		reason := updateReasonTimeout
+		if cs.isProposalComplete() {
+			reason = updateReasonProposalComplete
+		}
+		cs.observeStep(cstypes.RoundStepPropose, reason)
 		cs.updateRoundStep(round, cstypes.RoundStepPrevote)
 		cs.newStep()
 	}()
@@ -1424,6 +1446,11 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 
 	defer func() {
 		// Done enterPrecommit:
+		reason := updateReasonTimeout
+		if hasPolka && cs.Round == round {
+			reason = updateReasonMaj23
+		}
+		cs.observeStep(cs.Step, reason)
 		cs.updateRoundStep(round, cstypes.RoundStepPrecommit)
 		cs.newStep()
 	}()
@@ -1963,8 +1990,8 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID types.NodeID
 
 		// Update Valid* if we can.
 		prevotes := cs.Votes.Prevotes(cs.Round)
-		blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
-		if hasTwoThirds && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
+		blockID, hasPolka := prevotes.TwoThirdsMajority()
+		if hasPolka && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
 			if cs.ProposalBlock.HashesTo(blockID.Hash) {
 				cs.Logger.Debug(
 					"updating valid block to new proposal block",
@@ -1986,7 +2013,7 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID types.NodeID
 		if cs.Step <= cstypes.RoundStepPropose && cs.isProposalComplete() {
 			// Move onto the next step
 			cs.enterPrevote(height, cs.Round)
-			if hasTwoThirds { // this is optimisation as this will be triggered when prevote is added
+			if hasPolka { // this is optimisation as this will be triggered when prevote is added
 				cs.enterPrecommit(height, cs.Round)
 			}
 		} else if cs.Step == cstypes.RoundStepCommit {
@@ -2184,6 +2211,7 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 		case cs.Proposal != nil && 0 <= cs.Proposal.POLRound && cs.Proposal.POLRound == vote.Round:
 			// If the proposal is now complete, enter prevote of cs.Round.
 			if cs.isProposalComplete() {
+				cs.observeStep(cs.Step, updateReasonProposalComplete)
 				cs.enterPrevote(height, cs.Round)
 			}
 		}
