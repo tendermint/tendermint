@@ -149,7 +149,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 
 	modifiedTxs := types.ToTxs(preparedProposal.GetBlockData())
 
-	return state.MakeBlock(height, modifiedTxs, commit, preparedProposal.GetAppData(), evidence, proposerAddr)
+	return state.MakeBlock(height, modifiedTxs, commit, evidence, proposerAddr)
 }
 
 // ValidateBlock validates the given block against the given state.

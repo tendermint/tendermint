@@ -307,7 +307,6 @@ message ResponseVerifyVoteExtension {
 
 message ResponsePrepareProposal {
   repeated bytes block_data = 1;
-  bytes app_data = 2; // consensus enforced arbitrary application data
 }
 
 //----------------------------------------
