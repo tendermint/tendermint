@@ -22,12 +22,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: test & coverage report creation
-        run: /bin/true
-        #run: |
-        #  go test ./... -mod=readonly -timeout 8m -race -coverprofile=coverage.txt -covermode=atomic -tags=memdb,goleveldb,cleveldb,boltdb,rocksdb,badgerdb -v
-      #- uses: codecov/codecov-action@v2.0.3
-      #  with:
-      #    file: ./coverage.txt
-      #    fail_ci_if_error: true
-      #
-      # TODO(creachadair): Temporarily disabled to update CI image.
+        run: |
+          CGO_ENABLED=1 go test ./... -mod=readonly -timeout 8m -race -coverprofile=coverage.txt -covermode=atomic -tags=memdb,goleveldb,cleveldb,boltdb,rocksdb,badgerdb -v
+      - uses: codecov/codecov-action@v2.0.3
+        with:
+          file: ./coverage.txt
+          fail_ci_if_error: true  
