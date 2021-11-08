@@ -1,6 +1,6 @@
 module github.com/tendermint/tm-db
 
-go 1.12
+go 1.16
 
 require (
 	github.com/dgraph-io/badger/v2 v2.2007.3
@@ -16,3 +16,6 @@ require (
 	go.etcd.io/bbolt v1.3.6
 	google.golang.org/grpc v1.38.0
 )
+
+// Breaking changes were released with the wrong tag (use v0.6.6 or later).
+retract v0.6.5
