@@ -3,7 +3,7 @@ package log
 import (
 	"io"
 
-	kitlog "github.com/go-kit/kit/log"
+	kitlog "github.com/go-kit/log"
 )
 
 // NewTMJSONLogger returns a Logger that encodes keyvals to the Writer as a

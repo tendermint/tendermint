@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	kitlog "github.com/go-kit/kit/log"
-	kitlevel "github.com/go-kit/kit/log/level"
+	kitlevel "github.com/go-kit/kit/level"
+	kitlog "github.com/go-kit/log"
 	"github.com/go-logfmt/logfmt"
 )
 
