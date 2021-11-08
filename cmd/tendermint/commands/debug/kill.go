@@ -33,7 +33,7 @@ $ tendermint debug kill 34255 /path/to/tm-debug.zip`,
 }
 
 func killCmdHandler(cmd *cobra.Command, args []string) error {
-	pid, err := strconv.ParseUint(args[0], 10, 64)
+	pid, err := strconv.ParseInt(args[0], 10, 64)
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 	}
 
 	logger.Info("killing Tendermint process")
-	if err := killProc(pid, tmpDir); err != nil {
+	if err := killProc(int(pid), tmpDir); err != nil {
 		return err
 	}
 
@@ -104,7 +104,7 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 // is tailed and piped to a file under the directory dir. An error is returned
 // if the output file cannot be created or the tail command cannot be started.
 // An error is not returned if any subsequent syscall fails.
-func killProc(pid uint64, dir string) error {
+func killProc(pid int, dir string) error {
 	// pipe STDERR output from tailing the Tendermint process to a file
 	//
 	// NOTE: This will only work on UNIX systems.
@@ -127,7 +127,7 @@ func killProc(pid uint64, dir string) error {
 	go func() {
 		// Killing the Tendermint process with the '-ABRT|-6' signal will result in
 		// a goroutine stacktrace.
-		p, err := os.FindProcess(int(pid))
+		p, err := os.FindProcess(pid)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to find PID to kill Tendermint process: %s", err)
 		} else if err = p.Signal(syscall.SIGABRT); err != nil {
