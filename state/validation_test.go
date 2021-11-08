@@ -240,7 +240,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 				A block with too much evidence fails
 			*/
 			evidence := make([]types.Evidence, 0)
-			var currentBytes int64 = 0
+			var currentBytes int64
 			// more bytes than the maximum allowed for evidence
 			for currentBytes <= maxBytesEvidence {
 				newEv := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(),
@@ -260,7 +260,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 			A good block with several pieces of good evidence passes
 		*/
 		evidence := make([]types.Evidence, 0)
-		var currentBytes int64 = 0
+		var currentBytes int64
 		// precisely the amount of allowed evidence
 		for {
 			newEv := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime,

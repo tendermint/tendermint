@@ -3,9 +3,9 @@ module github.com/tendermint/tendermint
 go 1.15
 
 require (
-	github.com/BurntSushi/toml v0.3.1
+	github.com/BurntSushi/toml v0.4.1
 	github.com/ChainSafe/go-schnorrkel v0.0.0-20200405005733-88cbf1b4c40d
-	github.com/Workiva/go-datastructures v1.0.52
+	github.com/Workiva/go-datastructures v1.0.53
 	github.com/adlio/schema v1.1.14
 	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
@@ -19,10 +19,10 @@ require (
 	github.com/gtank/merlin v0.1.1
 	github.com/lib/pq v1.10.3
 	github.com/libp2p/go-buffer-pool v0.0.2
-	github.com/minio/highwayhash v1.0.1
+	github.com/minio/highwayhash v1.0.2
 	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.8.0
+	github.com/prometheus/client_golang v1.11.0
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
 	github.com/rs/cors v1.8.0
 	github.com/sasha-s/go-deadlock v0.2.1-0.20190427202633-1595213edefa

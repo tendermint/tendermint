@@ -26,14 +26,14 @@ linters:
     # - interfacer
     - lll
     # - maligned
-    - misspell
+    # - misspell
     - nakedret
     - nolintlint
     - prealloc
     - staticcheck
     - structcheck
     - stylecheck
-    - typecheck
+    # - typecheck
     - unconvert
     # - unparam
     - unused
@@ -54,9 +54,17 @@ issues:
 linters-settings:
   dogsled:
     max-blank-identifiers: 3
-  golint:
+  maligned:
+    suggest-new: true
+  # govet:
+  #   check-shadowing: true
+  revive:
     min-confidence: 0
   maligned:
     suggest-new: true
   misspell:
     locale: US
+    ignore-words:
+      - behaviour
+
+
