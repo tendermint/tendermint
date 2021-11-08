@@ -76,6 +76,8 @@ entirely.
 
 ## Detailed Design
 
+### Implementation Changes
+
 The "seams" in the P2P implementation between the higher level
 constructs (reactors), the routing layer (`Router`) and the lower
 level connection and peer management code make this operation
@@ -94,11 +96,23 @@ number of methods:
   are responsible for routing the messages from the channel to libp2p
   fundamentals, replacing the current `p2p.Router.routeChannel`.
   
-- The current `p2p.Rotuer.dialPeers` will be removed, and the libp2p
-  connection manager will be responsible for maintaining network
-  connectivity. 
+- The current `p2p.Rotuer.dialPeers` and `p2p.Router.acceptPeers`,
+  which are responsbile for establishing outbound and inbound
+  connections respectively, will be removed, along with
+  `p2p.Router.openConnection` and the libp2p connection manager will
+  be responsible for maintaining network connectivity.
 
-- 
+### Upgrade and Compatibility
+
+Because the routers and all current P2P code is in the `internal`
+package and not part of the public API, the only changes to the public
+API surface area of the tendermint will be different configuration
+file options, replacing the current P2P options with options relevant
+to libp2p.
+
+However, it will not be possible to run a network with both networking
+stacks active at once, so the upgrade to the version of Tendermint
+will need to be coordinated between all nodes of the network.
 
 ## Open Questions
 
@@ -133,13 +147,13 @@ number of methods:
 
 - By deferring to library implementations for peer management and
   networking, Tendermint loses some flexibility for innovating at the
-  peer and networking level.
-
-- 
+  peer and networking level. However, Tendermint should be innovating
+  primarily at the consensus layer, and libp2p does not preclude
+  optimization or development in the peer layer.
 
 ### Neutral
 
-- 
+- N/A
 
 ## References
 
