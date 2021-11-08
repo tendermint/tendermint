@@ -638,7 +638,7 @@ OUTER_LOOP:
 // pickSendVote picks a vote and sends it to the peer. It will return true if
 // there is a vote to send and false otherwise.
 func (r *Reactor) pickSendVote(ps *PeerState, votes types.VoteSetReader) bool {
-	if vote, ok := ps.PickVoteToSend(votes); ok {
+	if vote, ok := ps.PickVoteToSend(votes); ok && vote != nil {
 		r.Logger.Debug("sending vote message", "ps", ps, "vote", vote)
 		r.voteCh.Out <- p2p.Envelope{
 			To: ps.peerID,
