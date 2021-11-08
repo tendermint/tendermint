@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/fortytw2/leaktest"
-	"github.com/go-kit/kit/log/term"
+	"github.com/go-kit/log/term"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
