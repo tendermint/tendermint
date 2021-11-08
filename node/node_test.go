@@ -529,7 +529,8 @@ func TestNodeSetEventSink(t *testing.T) {
 		require.NoError(t, err)
 
 		indexService, eventSinks, err := createAndStartIndexerService(cfg,
-			config.DefaultDBProvider, eventBus, logger, genDoc.ChainID)
+			config.DefaultDBProvider, eventBus, logger, genDoc.ChainID,
+			indexer.NopMetrics())
 		require.NoError(t, err)
 		t.Cleanup(func() { require.NoError(t, indexService.Stop()) })
 		return eventSinks
