@@ -1,9 +1,15 @@
+queue_rules:
+  - name: default
+    conditions:
+      - base=master
+      - label=S:automerge
+
 pull_request_rules:
   - name: automerge to master with label S:automerge and branch protection passing
     conditions:
       - base=master
       - label=S:automerge
     actions:
-      merge:
+      queue:
         method: squash
-        strict: true
+        name: default
