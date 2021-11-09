@@ -528,10 +528,13 @@ func (m *PeerManager) DialFailed(address NodeAddress) error {
 	if !ok { // Peer may have been removed while dialing, ignore.
 		return nil
 	}
+	peer.MutableScore--
+
 	addressInfo, ok := peer.AddressInfo[address]
 	if !ok {
 		return nil // Assume the address has been removed, ignore.
 	}
+
 	addressInfo.LastDialFailure = time.Now().UTC()
 	addressInfo.DialFailures++
 	if err := m.store.Set(peer); err != nil {
@@ -691,6 +694,8 @@ func (m *PeerManager) Accepted(peerID types.NodeID) error {
 func (m *PeerManager) Ready(peerID types.NodeID) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
+
+	m.processPeerEvent(PeerUpdate{NodeID: peerID, Status: PeerStatusGood})
 
 	if m.connected[peerID] {
 		m.ready[peerID] = true
@@ -861,7 +866,11 @@ func (m *PeerManager) Register(peerUpdates *PeerUpdates) {
 			case <-m.closeCh:
 				return
 			case pu := <-peerUpdates.routerUpdatesCh:
-				m.processPeerEvent(pu)
+				func() {
+					m.mtx.Lock()
+					defer m.mtx.Unlock()
+					m.processPeerEvent(pu)
+				}()
 			}
 		}
 	}()
@@ -878,9 +887,6 @@ func (m *PeerManager) Register(peerUpdates *PeerUpdates) {
 }
 
 func (m *PeerManager) processPeerEvent(pu PeerUpdate) {
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
-
 	if _, ok := m.store.peers[pu.NodeID]; !ok {
 		m.store.peers[pu.NodeID] = &peerInfo{}
 	}
