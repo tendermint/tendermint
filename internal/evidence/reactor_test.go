@@ -394,11 +394,8 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 	require.Len(t, rts.pools, 2)
 	assert.EqualValues(t, numEvidence, rts.pools[primary.NodeID].Size(),
 		"primary node should have all the evidence")
-	if assert.EqualValues(t, numEvidence, rts.pools[secondary.NodeID].Size(),
-		"secondary nodes should have caught up") {
-
-		rts.assertEvidenceChannelsEmpty(t)
-	}
+	assert.EqualValues(t, numEvidence, rts.pools[secondary.NodeID].Size(),
+		"secondary nodes should have caught up")
 }
 
 func TestReactorBroadcastEvidence_Committed(t *testing.T) {
@@ -450,11 +447,8 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	require.Len(t, rts.pools, 2)
 	assert.EqualValues(t, numEvidence, rts.pools[primary.NodeID].Size(),
 		"primary node should have all the evidence")
-	if assert.EqualValues(t, numEvidence/2, rts.pools[secondary.NodeID].Size(),
-		"secondary nodes should have caught up") {
-
-		rts.assertEvidenceChannelsEmpty(t)
-	}
+	assert.EqualValues(t, numEvidence/2, rts.pools[secondary.NodeID].Size(),
+		"secondary nodes should have caught up")
 }
 
 func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
