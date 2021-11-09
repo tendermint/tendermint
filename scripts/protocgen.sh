@@ -1,29 +1,37 @@
 #!/usr/bin/env bash
-
-set -eo pipefail
+set -euo pipefail
 
 : ${VERS:=master}
-URL_PATH=archive/
+URL_PATH=tarball/
 if [[ VERS -ne master ]]; then
-    URL_PATH=archive/refs/tags/v
+    URL_PATH=tarball/refs/tags/v
 fi
 
+echo "fetching proto files"
+
+# Get shortened ref of commit
+REF=`curl -H "Accept: application/vnd.github.v3.sha" -qL "https://api.github.com/repos/tendermint/spec/commits/${VERS}" | cut -c -7`
 # Edit this line to clone your branch, if you are modifying protobuf files
-curl -qL "https://github.com/tendermint/spec/${URL_PATH}${VERS}.tar.gz" | tar -xjf - spec-"$VERS"/proto/
+curl -qL "https://api.github.com/repos/tendermint/spec/${URL_PATH}${REF}" | tar -xzf - tendermint-spec-"$REF"/
 
-cp -r ./spec-"$VERS"/proto/tendermint/** ./proto/tendermint
+cp -r ./tendermint-spec-"$REF"/proto/tendermint/** ./proto/tendermint
+cp -r ./tendermint-spec-"$REF"/third_party/** ./third_party
 
-buf generate --path proto/tendermint
+MODNAME=$(go list -m)
+find ./proto/tendermint -name *.proto -exec sh ./scripts/protopackage.sh {} $MODNAME ';'
+
+buf generate --path proto/tendermint --template ./tendermint-spec-"$REF"/proto/buf.gen.yaml --config ./tendermint-spec-"$REF"/proto/buf.yaml
 
 mv ./proto/tendermint/abci/types.pb.go ./abci/types
 
-echo "proto files have been generated"
+echo "proto files have been compiled"
 
 echo "removing copied files"
 
 rm -rf ./proto/tendermint/abci
 rm -rf ./proto/tendermint/blocksync/types.proto
 rm -rf ./proto/tendermint/consensus/types.proto
+rm -rf ./proto/tendermint/libs/bits/types.proto
 rm -rf ./proto/tendermint/mempool/types.proto
 rm -rf ./proto/tendermint/p2p/types.proto
 rm -rf ./proto/tendermint/p2p/conn.proto
@@ -35,5 +43,6 @@ rm -rf ./proto/tendermint/types/params.proto
 rm -rf ./proto/tendermint/types/types.proto
 rm -rf ./proto/tendermint/types/validator.proto
 rm -rf ./proto/tendermint/version/types.proto
+rm -rf ./thirdparty/proto/gogoproto/gogo.proto
 
-rm -rf ./spec-"$VERS"
+rm -rf ./tendermint-spec-"$REF"
