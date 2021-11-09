@@ -15,3 +15,17 @@ func Now() time.Time {
 func Canonical(t time.Time) time.Time {
 	return t.Round(0).UTC()
 }
+
+//go:generate ../../scripts/mockery_generate.sh Source
+
+// Source is an interface that defines a way to fetch the current time.
+type Source interface {
+	Now() time.Time
+}
+
+// DefaultSource implements the Source interface using the system clock provided by the standard library.
+type DefaultSource struct{}
+
+func (DefaultSource) Now() time.Time {
+	return Now()
+}

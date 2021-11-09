@@ -13,6 +13,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmtimemocks "github.com/tendermint/tendermint/libs/time/mocks"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -189,5 +190,67 @@ func TestProposalProtoBuf(t *testing.T) {
 		} else {
 			require.Error(t, err)
 		}
+	}
+}
+
+func TestIsTimely(t *testing.T) {
+	genesisTime, err := time.Parse(time.RFC3339, "2019-03-13T23:00:00Z")
+	require.NoError(t, err)
+	testCases := []struct {
+		name         string
+		proposalTime time.Time
+		localTime    time.Time
+		precision    time.Duration
+		msgDelay     time.Duration
+		expectTimely bool
+	}{
+		{
+			// Checking that the following inequality evaluates to true:
+			// 1 - 2 < 0 < 1 + 2 + 1
+			name:         "basic timely",
+			proposalTime: genesisTime,
+			localTime:    genesisTime.Add(1 * time.Nanosecond),
+			precision:    time.Nanosecond * 2,
+			msgDelay:     time.Nanosecond,
+			expectTimely: true,
+		},
+		{
+			// Checking that the following inequality evaluates to false:
+			// 3 - 2 < 0 < 3 + 2 + 1
+			name:         "local time too large",
+			proposalTime: genesisTime,
+			localTime:    genesisTime.Add(3 * time.Nanosecond),
+			precision:    time.Nanosecond * 2,
+			msgDelay:     time.Nanosecond,
+			expectTimely: false,
+		},
+		{
+			// Checking that the following inequality evaluates to false:
+			// 0 - 2 < 2 < 2 + 1
+			name:         "proposal time too large",
+			proposalTime: genesisTime.Add(4 * time.Nanosecond),
+			localTime:    genesisTime,
+			precision:    time.Nanosecond * 2,
+			msgDelay:     time.Nanosecond,
+			expectTimely: false,
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			p := Proposal{
+				Timestamp: testCase.proposalTime,
+			}
+
+			tp := TimestampParams{
+				Precision: testCase.precision,
+				MsgDelay:  testCase.msgDelay,
+			}
+
+			mockSource := new(tmtimemocks.Source)
+			mockSource.On("Now").Return(testCase.localTime)
+
+			ti := p.IsTimely(mockSource, tp)
+			assert.Equal(t, testCase.expectTimely, ti)
+		})
 	}
 }
