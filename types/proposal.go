@@ -79,6 +79,25 @@ func (p *Proposal) ValidateBasic() error {
 	return nil
 }
 
+// IsTimely validates that the block timestamp is 'timely' according to the proposer-based timestamp algorithm.
+// To evaluate if a block is timely, its timestamp is compared to the local time of the validator along with the
+// configured Precision and MsgDelay parameters.
+// Specifically, a proposed block timestamp is considered timely if it is satisfies the following inequalities:
+//
+// proposedBlockTime > validatorLocaltime - Precision && proposedBlockTime < validatorLocalTime + Precision + MsgDelay.
+//
+// For more information on the meaning of 'timely', see the proposer-based timestamp specification:
+// https://github.com/tendermint/spec/tree/master/spec/consensus/proposer-based-timestamp
+func (p *Proposal) IsTimely(clock tmtime.Source, tp TimestampParams) bool {
+	lt := clock.Now()
+	lhs := lt.Add(-tp.Precision)
+	rhs := lt.Add(tp.Precision).Add(tp.MsgDelay)
+	if lhs.Before(p.Timestamp) && p.Timestamp.Before(rhs) {
+		return true
+	}
+	return false
+}
+
 // String returns a string representation of the Proposal.
 //
 // 1. height
