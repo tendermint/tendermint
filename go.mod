@@ -3,10 +3,7 @@ module github.com/tendermint/tm-db
 go 1.16
 
 require (
-	github.com/dgraph-io/badger/v2 v2.2007.3
-	github.com/facebookgo/ensure v0.0.0-20160127193407-b4ab57deab51 // indirect
-	github.com/facebookgo/stack v0.0.0-20160209184415-751773369052 // indirect
-	github.com/facebookgo/subset v0.0.0-20150612182917-8dac2c3c4870 // indirect
+	github.com/dgraph-io/badger/v2 v2.2007.2
 	github.com/gogo/protobuf v1.3.2
 	github.com/google/btree v1.0.0
 	github.com/jmhodges/levigo v1.0.0
@@ -19,3 +16,7 @@ require (
 
 // Breaking changes were released with the wrong tag (use v0.6.6 or later).
 retract v0.6.5
+
+// FIXME: gorocksdb bindings for OptimisticTransactionDB are not merged upstream, so we use a fork
+// See https://github.com/tecbot/gorocksdb/pull/216
+replace github.com/tecbot/gorocksdb => github.com/roysc/gorocksdb v1.1.1
