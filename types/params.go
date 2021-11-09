@@ -91,7 +91,6 @@ func DefaultConsensusParams() *ConsensusParams {
 		Evidence:  DefaultEvidenceParams(),
 		Validator: DefaultValidatorParams(),
 		Version:   DefaultVersionParams(),
-		Timestamp: DefaultTimestampParams(),
 	}
 }
 
