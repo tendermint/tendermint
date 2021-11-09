@@ -54,7 +54,7 @@ var (
 	defaultAddrBookPath = filepath.Join(defaultConfigDir, defaultAddrBookName)
 
 	minSubscriptionBufferSize     = 100
-	defaultSubscriptionBufferSize = 1000
+	defaultSubscriptionBufferSize = 200
 )
 
 // Config defines the top level configuration for a Tendermint node
