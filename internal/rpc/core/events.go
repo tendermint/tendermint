@@ -30,7 +30,7 @@ func (env *Environment) Subscribe(ctx *rpctypes.Context, query string) (*coretyp
 	} else if env.EventBus.NumClientSubscriptions(addr) >= env.Config.MaxSubscriptionsPerClient {
 		return nil, fmt.Errorf("max_subscriptions_per_client %d reached", env.Config.MaxSubscriptionsPerClient)
 	} else if len(query) > maxQueryLength {
-		return nil, errors.New("maximum query length exceeded")
+		return nil, fmt.Errorf("maximum query length (%d) exceeded", maxQueryLength)
 	}
 
 	env.Logger.Info("Subscribe to query", "remote", addr, "query", query)
