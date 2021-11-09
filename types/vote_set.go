@@ -468,6 +468,9 @@ func (voteSet *VoteSet) GetByIndex(valIndex int32) *Vote {
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
+	if int(valIndex) >= len(voteSet.votes) {
+		return nil
+	}
 	return voteSet.votes[valIndex]
 }
 
