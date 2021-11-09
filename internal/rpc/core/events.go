@@ -15,6 +15,10 @@ import (
 const (
 	// Buffer on the Tendermint (server) side to allow some slowness in clients.
 	subBufferSize = 100
+
+	// maxQueryLength is the maximum length of a query string that will be
+	// accepted. This is just a safety check to avoid outlandish queries.
+	maxQueryLength = 512
 )
 
 // Subscribe for events via WebSocket.
@@ -26,6 +30,8 @@ func (env *Environment) Subscribe(ctx *rpctypes.Context, query string) (*coretyp
 		return nil, fmt.Errorf("max_subscription_clients %d reached", env.Config.MaxSubscriptionClients)
 	} else if env.EventBus.NumClientSubscriptions(addr) >= env.Config.MaxSubscriptionsPerClient {
 		return nil, fmt.Errorf("max_subscriptions_per_client %d reached", env.Config.MaxSubscriptionsPerClient)
+	} else if len(query) > maxQueryLength {
+		return nil, errors.New("maximum query length exceeded")
 	}
 
 	env.Logger.Info("Subscribe to query", "remote", addr, "query", query)

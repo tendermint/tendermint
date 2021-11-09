@@ -193,7 +193,10 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (*types.Vote, boo
 	}
 
 	if index, ok := votes.BitArray().Sub(psVotes).PickRandom(); ok {
-		return votes.GetByIndex(int32(index)), true
+		vote := votes.GetByIndex(int32(index))
+		if vote != nil {
+			return vote, true
+		}
 	}
 
 	return nil, false
@@ -358,6 +361,9 @@ func (ps *PeerState) BlockPartsSent() int {
 
 // SetHasVote sets the given vote as known by the peer
 func (ps *PeerState) SetHasVote(vote *types.Vote) {
+	if vote == nil {
+		return
+	}
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
