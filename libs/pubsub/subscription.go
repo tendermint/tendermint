@@ -12,7 +12,7 @@ var (
 
 	// ErrOutOfCapacity is returned by Err when a client is not pulling messages
 	// fast enough. Note the client's subscription will be terminated.
-	ErrOutOfCapacity = errors.New("client is not pulling messages fast enough")
+	ErrOutOfCapacity = errors.New("internal subscription event buffer is out of capacity")
 )
 
 // A Subscription represents a client subscription for a particular query and

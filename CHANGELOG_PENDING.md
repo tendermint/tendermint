@@ -2,13 +2,15 @@
 
 ## v0.34.15
 
-Special thanks to external contributors on this release:
+Special thanks to external contributors on this release: @thanethomson
 
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES
 
 - CLI/RPC/Config
+
+  - [config] \#7230 rpc: Add experimental config params to allow for subscription buffer size control (@thanethomson).
 
 - Apps
 
