@@ -600,12 +600,16 @@ func (m *PeerManager) Dialed(address NodeAddress) error {
 	}
 	now := time.Now().UTC()
 	peer.LastConnected = now
-	peer.MutableScore++
 	if addressInfo, ok := peer.AddressInfo[address]; ok {
 		addressInfo.DialFailures = 0
 		addressInfo.LastDialSuccess = now
 		// If not found, assume address has been removed.
 	}
+
+	if peer.MutableScore < 0 {
+		peer.MutableScore = 0
+	}
+
 	if err := m.store.Set(peer); err != nil {
 		return err
 	}
@@ -676,8 +680,6 @@ func (m *PeerManager) Accepted(peerID types.NodeID) error {
 	}
 
 	peer.LastConnected = time.Now().UTC()
-	peer.MutableScore++
-
 	if err := m.store.Set(peer); err != nil {
 		return err
 	}
