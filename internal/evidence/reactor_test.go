@@ -397,11 +397,8 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 	require.Len(t, rts.pools, 2)
 	assert.EqualValues(t, numEvidence, rts.pools[primary.NodeID].Size(),
 		"primary node should have all the evidence")
-	if assert.EqualValues(t, numEvidence, rts.pools[secondary.NodeID].Size(),
-		"secondary nodes should have caught up") {
-
-		rts.assertEvidenceChannelsEmpty(t)
-	}
+	assert.EqualValues(t, numEvidence, rts.pools[secondary.NodeID].Size(),
+		"secondary nodes should have caught up")
 }
 
 func TestReactorBroadcastEvidence_Committed(t *testing.T) {
@@ -441,11 +438,6 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	// start the network and ensure it's configured
 	rts.start(t)
 
-	// without the following sleep the test consistently fails;
-	// likely because the sleep forces a context switch that lets
-	// the router process other operations.
-	time.Sleep(2 * time.Millisecond)
-
 	// The secondary reactor should have received all the evidence ignoring the
 	// already committed evidence.
 	rts.waitForEvidence(t, evList[numEvidence/2:], secondary.NodeID)
@@ -453,11 +445,8 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	require.Len(t, rts.pools, 2)
 	assert.EqualValues(t, numEvidence, rts.pools[primary.NodeID].Size(),
 		"primary node should have all the evidence")
-	if assert.EqualValues(t, numEvidence/2, rts.pools[secondary.NodeID].Size(),
-		"secondary nodes should have caught up") {
-
-		rts.assertEvidenceChannelsEmpty(t)
-	}
+	assert.EqualValues(t, numEvidence/2, rts.pools[secondary.NodeID].Size(),
+		"secondary nodes should have caught up")
 }
 
 func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
