@@ -6,7 +6,7 @@
 
 ## Status
 
-Proposed. 
+Proposed.
 
 ## Context
 
@@ -15,7 +15,7 @@ first phase of the work described in ADRs 61 and 62, which included a
 large scale refactoring of the reactors and the p2p message
 routing. This replaced the switch and many of the other legacy
 components, without breaking protocol or network-level
-interoperability and left the legacy connection/socket handling code. 
+interoperability and left the legacy connection/socket handling code.
 
 Following the release, the team has reexamined the state of the code
 and the design, as well as Tendermints requirements for. The notes
@@ -49,7 +49,7 @@ continue development of tendermint's home grown peer-to-peer
 layer. While this gives the Tendermint team a maximal level of control
 over the peer system, the current peer system is unexceptional on its
 own merits, and the prospective maintenance burden for this system
-exceeds our tolerances for the medium term. 
+exceeds our tolerances for the medium term.
 
 It is also the case that Tendermint can and should differentiate
 itself not on the basis of its networking implementation or peer
@@ -62,7 +62,7 @@ Tendermint will adopt libp2p during the 0.37 development cycle,
 replacing the bespoke Tendermint P2P stack. This will remove the
 `Endpoint`, `Transport`, `Connection`, and `PeerManager` abstractions
 and leave the reactors, `p2p.Router` and `p2p.Channel`
-abstractions. 
+abstractions.
 
 LibP2P may obviate the need for a dedicated peer exchange (PEX)
 reactor, which would also in turn obviate the need for a dedicated
@@ -87,7 +87,7 @@ goal in this design is to minimize the impact to the reactors
 aspects (e.g. `Transport`, `Connection` and `PeerManager`) using the
 separation afforded by the `*Router` layer. The current state of the
 code makes these changes relatively surgical, and limited to a small
-number of methods: 
+number of methods:
 
 - `p2p.Router.OpenChannel` will still return a `Channel` structure
   which will continue to serve as a pipe between the reactors and the
@@ -95,12 +95,24 @@ number of methods:
   implementation and this operation will instead start goroutines that
   are responsible for routing the messages from the channel to libp2p
   fundamentals, replacing the current `p2p.Router.routeChannel`.
-  
+
 - The current `p2p.Rotuer.dialPeers` and `p2p.Router.acceptPeers`,
-  which are responsbile for establishing outbound and inbound
+  which are responsible for establishing outbound and inbound
   connections respectively, will be removed, along with
   `p2p.Router.openConnection` and the libp2p connection manager will
   be responsible for maintaining network connectivity.
+
+- The `p2p.Channel` interface should change to replace the golang
+  channels with a more functional interface for sending messages. The
+  new methods on this object, will return an `error` objects obviating
+  the need for the `Error` channel. The `Out` channel through which
+  reactors send messages to Peers, will be replaced by a `Send` method
+  which will take a context, allowing for clean shut down.
+
+- Rectors will have access to an interface that will allow them to
+  access information from the current state of the Peer information
+  from libp2p. This will supplant the  `p2p.PeerUpdates`
+  subscription.
 
 ### Upgrade and Compatibility
 
@@ -119,7 +131,7 @@ will need to be coordinated between all nodes of the network.
 - Should all P2P traffic for a given node be pushed to a single topic,
   and we assume that a topic maps to a specific ChainID, or should
   each reactor (or type of message) have its own topic?
-  
+
 - Tendermint presently has a concept of message-type priority, which
   provides a very course QoS-like functionality and
   intuitively/theoretically ensures that evidence and consensus
@@ -130,7 +142,7 @@ will need to be coordinated between all nodes of the network.
 - Is it possible to attach additional (and potentially arbitrary)
   information into the DHT as part of the heartbeats between nodes,
   such as the latest height, and then access that in arbitrary
-  reactors. 
+  reactors.
 
 ## Consequences
 
@@ -139,7 +151,7 @@ will need to be coordinated between all nodes of the network.
 - Reduce the maintenance burden for the Tendermint Core team by
   removing a large swath of legacy code that has proven to be
   difficult to modify safely.
-  
+
 - Provide users with a more stable peer and networking system,
   Tendermint can improve operator experience and network stability.
 
@@ -150,6 +162,11 @@ will need to be coordinated between all nodes of the network.
   peer and networking level. However, Tendermint should be innovating
   primarily at the consensus layer, and libp2p does not preclude
   optimization or development in the peer layer.
+
+- Libp2p is a large dependency and Tendermint would become dependent
+  upon Protocol Labs' release cycle and prioritization for bug
+  fixes. If this proves onerous, it's possible to maintain a vendor
+  fork of relevant components as needed.
 
 ### Neutral
 
