@@ -6,7 +6,8 @@
  - Aug 4 2021: Draft completed by @williambanfield
  - Aug 5 2021: Draft updated to include data structure changes by @williambanfield
  - Aug 20 2021: Language edits completed by @williambanfield
- - Oct 25 2021: Update the ADR to match updated spec from @casonn by @williambanfield
+ - Oct 25 2021: Update the ADR to match updated spec from @cason by @williambanfield
+ - Nov 10 2021: Additional language updates by @williambanfield per feedback from @cason
 
 ## Status
 
@@ -167,25 +168,24 @@ type TimestampParams struct {
 
 #### Proposer selects block timestamp
 
-The [proposal logic currently](https://github.com/tendermint/tendermint/blob/68ca65f5d79905abd55ea999536b1a3685f9f19d/internal/state/state.go#L269) sets the time in the proposed timestamp in the block `Header` as the weighted median of the times in the `LastCommit.CommitSig`s per the `BFTTime` algorithm. 
-This proposal logic will be updated to instead use the current Unix time known to the proposer as the value for the timestamp value in the `Header`.
+Tendermint currently uses the `BFTTime` algorithm to produce the block's `Header.Timestamp`.
+The [proposal logic](https://github.com/tendermint/tendermint/blob/68ca65f5d79905abd55ea999536b1a3685f9f19d/internal/state/state.go#L269) sets the weighted median of the times in the `LastCommit.CommitSigs` as the proposed block's `Header.Timestamp`.
 
-#### Proposal message no longer contains a timestamp
+In proposer-based timestamps, the proposer will still set a timestamp into the `Header.Timestamp`.
+The timestamp the proposer sets into the `Header` will change depending on if the block has previously received a [polka](https://github.com/tendermint/tendermint/blob/053651160f496bb44b107a434e3e6482530bb287/docs/introduction/what-is-tendermint.md#consensus-overview) or not.
 
-The proposal logic currently [sets the Unix time known to the validator](https://github.com/tendermint/tendermint/blob/2abfe20114ee3bb3adfee817589033529a804e4d/types/proposal.go#L44) into the `Proposal` message.
-This timestamp is no longer needed and can be removed. 
+#### Proposal of a block that has not previously received a polka
 
-```diff
-type Proposal struct {
-	Type      tmproto.SignedMsgType
-	Height    int64     `json:"height"`
-	Round     int32     `json:"round"`     // there can not be greater than 2_147_483_647 rounds
-	POLRound  int32     `json:"pol_round"` // -1 if null.
-	BlockID   BlockID   `json:"block_id"`
-	Timestamp time.Time `json:"timestamp"`
-	Signature []byte    `json:"signature"`
-}
-```
+If a proposer is proposing a new block, then it will set the Unix time currently known to the proposer into the `Header.Timestamp` field.
+The proposer will also set this same timestamp into the `Timestamp` field of the `Proposal` message that it issues.
+
+#### Re-proposal of a block that has previously received a polka
+
+If a proposer is re-proposing a block that has previously received a polka on the network, then the proposer does not update the `Header.Timestamp` of that block.
+Instead, the proposer simply re-proposes the exact same block.
+This way, the proposed block has the exact same block ID as the previously proposed block and the validators that have already received that block do not need to attempt to receive it again. 
+
+The proposer will set the re-proposed block's `Header.Timestamp` as the `Proposal` message's `Timestamp`.
 
 #### Proposer waits
 
@@ -198,7 +198,8 @@ Therefore, the proposer’s current known Unix time may be less than the previou
 If the proposer’s current known Unix time is less than the previous block's `Header.Time`, the proposer will sleep until its known Unix time exceeds it.
 
 This change will require amending the [defaultDecideProposal](https://github.com/tendermint/tendermint/blob/822893615564cb20b002dd5cf3b42b8d364cb7d9/internal/consensus/state.go#L1180) method.
-This method should now block until the proposer’s time is greater than the previous block's `Header.Time`.
+This method should now schedule a timeout that fires when the proposer’s time is greater than the previous block's `Header.Time`.
+When the timeout fires, the proposer will finally issue the `Proposal` message. 
 
 #### Changes to the propose step timeout
 
@@ -211,23 +212,23 @@ Specifically, the propose step timeout must also take into account potential ina
 Additionally, there may be a delay communicating the proposal message from the proposer to the other validators. 
 
 Therefore, validators waiting for a proposal must wait until after the previous block's `Header.Time` before timing out.
-To account for possible inaccuracy in its own clock, inaccuracy in the proposer’s clock, and message delay, validators waiting for a proposal will wait until `Header.Time + 2*ACCURACY + MSGDELAY`.
+To account for possible inaccuracy in its own clock, inaccuracy in the proposer’s clock, and message delay, validators waiting for a proposal will wait until the previous block's `Header.Time + 2*ACCURACY + MSGDELAY`.
  The spec defines this as `waitingTime`.
  
 The [propose step’s timeout is set in enterPropose](https://github.com/tendermint/tendermint/blob/822893615564cb20b002dd5cf3b42b8d364cb7d9/internal/consensus/state.go#L1108) in `state.go`. 
 `enterPropose` will be changed to calculate waiting time using the new consensus parameters.
 The timeout in `enterPropose` will then be set as the maximum of `waitingTime` and the [configured proposal step timeout](https://github.com/tendermint/tendermint/blob/dc7c212c41a360bfe6eb38a6dd8c709bbc39aae7/config/config.go#L1013).
 
-### Changes to validation rules
+### Changes to proposal validation rules
 
-The rules for validating that a proposed block is valid will need modification to implement proposer-based timestamps.
-We will change the validation logic to ensure that a proposed block is `timely`.
+The rules for validating a proposed block will be modification to implement proposer-based timestamps.
+We will change the validation logic to ensure that a proposal is `timely`.
+
 Per the proposer-based timestamps spec, `timely` only needs to be checked if a block has not received a +2/3 majority of `Prevotes` in a round.
 If a block previously received a +2/3 majority of prevotes in a previous round, then +2/3 of the voting power considered the block's timestamp near enough to their own currently known Unix time in that round.
-This is enough to satisfy the conditions for a `timely` block.
-Because the block timestamp must only be considered `timely` in the round in which the block was first receives +2/3 prevotes, there are now two different conditions for validating the block timestamp depending on if received these votes or not.
-The condition of a block receiving +2/3 prevotes in a round is frequently referred to as a 'polka' and we will use this term for simplicity. 
-We discuss these differences below.
+
+The validation logic will be updated to check `timely` for blocks that did not previously receive +2/3 prevotes in a round. 
+Receiving +2/3 prevotes in a round is frequently referred to as a 'polka' and we will use this term for simplicity.
 
 #### Current timestamp validation logic
 
@@ -244,37 +245,43 @@ One of the items in this `signedBytes` hash is the timestamp in the `CommitSig`.
 To authenticate the `CommitSig` timestamp, the validator authenticating votes builds a hash of fields that includes the `CommitSig` timestamp and checks this hash against the signature.
 This takes place in the [VerifyCommit function](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/types/validation.go#L25).
 
-#### Block timestamp validation logic common to both blocks that previously received a polka and those that did not
-
-Some block timestamp validation logic will apply to both reproposed blocks and newly proposed blocks.
-
-The current logic to validate that the block timestamp is greater than the previous block’s timestamp also works for proposer-based timestamps and will not change.
+#### Remove unused timestamp validation logic
 
 `BFTTime` validation is no longer applicable and will be removed.
 This means that validators will no longer check that the block timestamp is a weighted median of `LastCommit` timestamps.
 Specifically, we will remove the call to [MedianTime in the validateBlock function](https://github.com/tendermint/tendermint/blob/4db71da68e82d5cb732b235eeb2fd69d62114b45/state/validation.go#L117).
 The `MedianTime` function can be completely removed. 
 
-Finally, since `CommitSig`s will no longer contain a timestamp, the validator authenticating a commit will no longer include the `CommitSig` timestamp in the hash of fields it builds to check against the cryptographic signature.
+Since `CommitSig`s will no longer contain a timestamp, the validator authenticating a commit will no longer include the `CommitSig` timestamp in the hash of fields it builds to check against the cryptographic signature.
 
-#### Block timestamp validation when a has not received a polka
+#### Timestamp validation when a block has not received a polka
 
-The [POLRound](https://github.com/tendermint/tendermint/blob/68ca65f5d79905abd55ea999536b1a3685f9f19d/types/proposal.go#L29) in the `Proposal` message indicates which round the block originally received a polka.
-A negative value in the `POLRound` field indicates that the proposer has not seen a polka for this block.
-In this case, the validation logic will check for `timely`.
+The [POLRound](https://github.com/tendermint/tendermint/blob/68ca65f5d79905abd55ea999536b1a3685f9f19d/types/proposal.go#L29) in the `Proposal` message indicates which round the block received a polka.
+A negative value in the `POLRound` field indicates that the proposer did not previously see a polka for this block.
+Therefore the validation logic will check for timely when `POLRound < 0`.
 
-The validation logic will be updated to check that the block timestamp is within `PRECISION` of the current Unix time known to the validator.
-If the timestamp is not within `PRECISION` of the current Unix time known to the validator, the proposed block will not be considered valid.
+When a validator receives a `Proposal` message, the validator will check that the `Proposal.Timestamp` is within `PRECISION` and `MSGDELAY` of the current Unix time known to the validator.
+If the timestamp is not within `PRECISION` and `MSGDELAY` of the current Unix time known to the validator, the proposed block will not be considered `timely`.
 
-If no valid proposal is received by the proposal timeout, the validator will prevote nil.
-This is identical to the current logic.
+Once a full block matching the `Proposal` message is received, the validator will also check that the timestamp in the `Header.Timestamp` of the block matches this `Proposal.Timestamp`.
+Using the `Proposal.Timestamp` to check `timely` allows for the `MSGDELAY` parameter to be more finely tuned since `Proposal` messages do not change sizes and are therefore faster to gossip than full blocks across the network.
 
-#### Block timestamp validation when a block has received a polka
+A validator will also check that the proposed timestamp is greater than the timestamp of the block for the previous height.
+If the timestamp is not greater than the previous block's timestamp, the block will not be considered valid, which is the same as the current logic.
 
-The `Propose` message's `POLRound` field indicates the round that a block received a +2/3 majority of `Prevotes`.
-When a block is proposed that has already received a +2/3 majority of `Prevote`s on the network then the proposal message is created with a `POLRound` that is `>= 0`. 
-To implement proposer-based timestamps, we will not validate that the block time is `timely` if the propose message has a non-negative `POLRound`.
-If the `POLRound` is non-negative, we will only ensure that the validator received the `Prevote` messages for the proposed value in the round indicated by `POLRound` and perform the other regular validation checks on the block. 
+#### Timestamp validation when a block has received a polka
+
+When a block is re-proposed that has already received a +2/3 majority of `Prevote`s on the network, the `Proposal` message for the re-proposed block is created with a `POLRound` that is `>= 0`.
+A validator will not check that the `Proposal` is `timely` if the propose message has a non-negative `POLRound`.
+If the `POLRound` is non-negative, each validator will simply ensure that it received the `Prevote` messages for the proposed block in the round indicated by `POLRound`.
+
+If the validator did not receive `Prevote` messages for the proposed block in `POLRound`, then it will prevote nil.
+Validators already check that +2/3 prevotes were seen in `POLRound`, so this does not represent a change to the prevote logic.
+
+A validator will also check that the proposed timestamp is greater than the timestamp of the block for the previous height.
+If the timestamp is not greater than the previous block's timestamp, the block will not be considered valid, which is the same as the current logic.
+
+Additionally, this validation logic can be updated to check that the `Proposal.Timestamp` matches the `Header.Timestamp` of the proposed block, but it is less relevant since checking that votes were received is sufficient to ensure the block timestamp is correct. 
 
 ### Changes to the prevote step
 
