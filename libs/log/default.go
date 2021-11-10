@@ -32,7 +32,7 @@ const (
 // pair tuples, where the key must be a string.
 func NewDefaultLogger(format, level string, trace bool, elementLength int) (Logger, error) {
 	if elementLength < 0 || elementLength > MaxLogElementLength {
-		return nil, fmt.Errorf("unsupported log size: %d", elementLength)
+		return nil, fmt.Errorf("unsupported log element length: %d", elementLength)
 	}
 
 	var logWriter io.Writer
