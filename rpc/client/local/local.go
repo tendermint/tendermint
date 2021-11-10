@@ -165,6 +165,14 @@ func (c *Local) BlockResults(ctx context.Context, height *int64) (*coretypes.Res
 	return c.env.BlockResults(c.ctx, height)
 }
 
+func (c *Local) Header(ctx context.Context, height *int64) (*coretypes.ResultHeader, error) {
+	return c.env.Header(c.ctx, height)
+}
+
+func (c *Local) HeaderByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultHeader, error) {
+	return c.env.HeaderByHash(c.ctx, hash)
+}
+
 func (c *Local) Commit(ctx context.Context, height *int64) (*coretypes.ResultCommit, error) {
 	return c.env.Commit(c.ctx, height)
 }

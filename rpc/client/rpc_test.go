@@ -359,6 +359,15 @@ func TestClientMethodCalls(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, block, blockByHash)
 
+				// check that the header matches the block hash
+				header, err := c.Header(ctx, &apph)
+				require.NoError(t, err)
+				require.Equal(t, block.Block.Header, *header.Header)
+
+				headerByHash, err := c.HeaderByHash(ctx, block.BlockID.Hash)
+				require.NoError(t, err)
+				require.Equal(t, header, headerByHash)
+
 				// now check the results
 				blockResults, err := c.BlockResults(ctx, &txh)
 				require.NoError(t, err, "%d: %+v", i, err)
@@ -551,7 +560,6 @@ func TestClientMethodCalls(t *testing.T) {
 						_, err := c.BroadcastEvidence(ctx, fake)
 						require.Error(t, err, "BroadcastEvidence(%s) succeeded, but the evidence was fake", fake)
 					}
-
 				})
 				t.Run("BroadcastEmpty", func(t *testing.T) {
 					_, err := c.BroadcastEvidence(ctx, nil)
@@ -732,7 +740,6 @@ func TestClientMethodCallsAdvanced(t *testing.T) {
 
 		for _, c := range GetClients(t, n, conf) {
 			t.Run(fmt.Sprintf("%T", c), func(t *testing.T) {
-
 				// now we query for the tx.
 				result, err := c.TxSearch(ctx, fmt.Sprintf("tx.hash='%v'", find.Hash), true, nil, nil, "asc")
 				require.Nil(t, err)
