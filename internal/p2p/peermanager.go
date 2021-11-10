@@ -662,6 +662,11 @@ func (m *PeerManager) Accepted(peerID types.NodeID) error {
 		peer = m.newPeerInfo(peerID)
 	}
 
+	// reset this to avoid penalizing peers for their past transgressions
+	for _, addr := range peer.AddressInfo {
+		addr.DialFailures = 0
+	}
+
 	// If all connections slots are full, but we allow upgrades (and we checked
 	// above that we have upgrade capacity), then we can look for a lower-scored
 	// peer to replace and if found accept the connection anyway and evict it.
@@ -1290,6 +1295,7 @@ func (p *peerInfo) Score() PeerScore {
 	}
 
 	score := p.MutableScore
+
 	for _, addr := range p.AddressInfo {
 		// DialFailures is reset when dials succeed, so this
 		// is either the number of dial failures or 0.
