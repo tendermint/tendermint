@@ -10,6 +10,6 @@ FNAME=$1
 MODNAME=$(echo $2| sed 's/\//\\\//g')
 PACKAGE="$(dirname $FNAME | sed 's/^\.\/\(.*\)/\1/g' | sed 's/\//\\\//g')"
 
-if ! `grep -q 'option go_package = .*;' $FNAME`; then 
+if ! `grep -q 'option\s\+go_package\s\+=\s\+.*;' $FNAME`; then 
 	sed -i "s/\(package tendermint.*\)/\1\n\noption go_package = \"$MODNAME\/$PACKAGE\";/g" $FNAME
 fi
