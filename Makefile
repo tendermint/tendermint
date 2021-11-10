@@ -15,7 +15,7 @@ endif
 LD_FLAGS = -X github.com/tendermint/tendermint/version.TMVersion=$(VERSION)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 HTTPS_GIT := https://github.com/tendermint/tendermint.git
-DOCKER_BUF := docker run -v $(shell pwd):/workspace --workdir /workspace tendermintdev/docker-build-proto
+DOCKER_PROTO_BUILDER := docker run -v $(shell pwd):/workspace --workdir /workspace tendermintdev/docker-build-proto
 CGO_ENABLED ?= 0
 
 # handle nostrip
