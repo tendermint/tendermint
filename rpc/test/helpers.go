@@ -86,7 +86,7 @@ func StartTendermint(ctx context.Context,
 	if nodeOpts.suppressStdout {
 		logger = log.NewNopLogger()
 	} else {
-		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false, 0)
 	}
 	papp := abciclient.NewLocalCreator(app)
 	tmNode, err := node.New(conf, logger, papp, nil)

@@ -32,7 +32,7 @@ func TestingLoggerWithOutput(w io.Writer) Logger {
 	}
 
 	if testing.Verbose() {
-		testingLogger = MustNewDefaultLogger(LogFormatText, LogLevelDebug, true)
+		testingLogger = MustNewDefaultLogger(LogFormatText, LogLevelDebug, true, 0)
 	} else {
 		testingLogger = NewNopLogger()
 	}

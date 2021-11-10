@@ -18,6 +18,10 @@ type defaultLogger struct {
 	trace bool
 }
 
+const (
+	MaxLogElementLength = 1e6
+)
+
 // NewDefaultLogger returns a default logger that can be used within Tendermint
 // and that fulfills the Logger interface. The underlying logging provider is a
 // zerolog logger that supports typical log levels along with JSON and plain/text
@@ -26,7 +30,11 @@ type defaultLogger struct {
 // Since zerolog supports typed structured logging and it is difficult to reflect
 // that in a generic interface, all logging methods accept a series of key/value
 // pair tuples, where the key must be a string.
-func NewDefaultLogger(format, level string, trace bool) (Logger, error) {
+func NewDefaultLogger(format, level string, trace bool, elementLength int) (Logger, error) {
+	if elementLength < 0 || elementLength > MaxLogElementLength {
+		return nil, fmt.Errorf("unsupported log size: %d", elementLength)
+	}
+
 	var logWriter io.Writer
 	switch strings.ToLower(format) {
 	case LogFormatPlain, LogFormatText:
@@ -38,7 +46,29 @@ func NewDefaultLogger(format, level string, trace bool) (Logger, error) {
 				if ll, ok := i.(string); ok {
 					return strings.ToUpper(ll)
 				}
-				return "????"
+				return "FormatLevel cannot be cast to string"
+			},
+			FormatFieldValue: func(i interface{}) string {
+				s := fmt.Sprintf("%v", i)
+				if elementLength > 0 && len(s) > elementLength {
+					return s[:elementLength]
+				}
+
+				return s
+			},
+			FormatMessage: func(i interface{}) string {
+				s := fmt.Sprintf("%v", i)
+				if elementLength > 0 && len(s) > elementLength {
+					return s[:elementLength]
+				}
+				return s
+			},
+			FormatErrFieldValue: func(i interface{}) string {
+				s := fmt.Sprintf("%v", i)
+				if elementLength > 0 && len(s) > elementLength {
+					return s[:elementLength]
+				}
+				return s
 			},
 		}
 
@@ -65,8 +95,8 @@ func NewDefaultLogger(format, level string, trace bool) (Logger, error) {
 
 // MustNewDefaultLogger delegates a call NewDefaultLogger where it panics on
 // error.
-func MustNewDefaultLogger(format, level string, trace bool) Logger {
-	logger, err := NewDefaultLogger(format, level, trace)
+func MustNewDefaultLogger(format, level string, trace bool, logSize int) Logger {
+	logger, err := NewDefaultLogger(format, level, trace, logSize)
 	if err != nil {
 		panic(err)
 	}

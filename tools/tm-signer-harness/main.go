@@ -24,7 +24,7 @@ const (
 
 var defaultTMHome string
 
-var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false, 0)
 
 // Command line flags
 var (

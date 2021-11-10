@@ -19,7 +19,7 @@ var mux *http.ServeMux
 
 func init() {
 	mux = http.NewServeMux()
-	lgr := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+	lgr := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false, 0)
 	rs.RegisterRPCFuncs(mux, rpcFuncMap, lgr)
 }
 

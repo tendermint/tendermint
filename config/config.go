@@ -206,6 +206,10 @@ type BaseConfig struct { //nolint: maligned
 	// Output format: 'plain' (colored text) or 'json'
 	LogFormat string `mapstructure:"log-format"`
 
+	// The max length of the log message and the log field value:
+	// `0` is the default value (no length limit)
+	LogElementLength int64 `mapstructure:"log-element-length"`
+
 	// Path to the JSON file containing the initial validator set and other meta data
 	Genesis string `mapstructure:"genesis-file"`
 
@@ -225,17 +229,18 @@ type BaseConfig struct { //nolint: maligned
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
-		Genesis:     defaultGenesisJSONPath,
-		NodeKey:     defaultNodeKeyPath,
-		Mode:        defaultMode,
-		Moniker:     defaultMoniker,
-		ProxyApp:    "tcp://127.0.0.1:26658",
-		ABCI:        "socket",
-		LogLevel:    DefaultLogLevel,
-		LogFormat:   log.LogFormatPlain,
-		FilterPeers: false,
-		DBBackend:   "goleveldb",
-		DBPath:      "data",
+		Genesis:          defaultGenesisJSONPath,
+		NodeKey:          defaultNodeKeyPath,
+		Mode:             defaultMode,
+		Moniker:          defaultMoniker,
+		ProxyApp:         "tcp://127.0.0.1:26658",
+		ABCI:             "socket",
+		LogLevel:         DefaultLogLevel,
+		LogFormat:        log.LogFormatPlain,
+		LogElementLength: 0,
+		FilterPeers:      false,
+		DBBackend:        "goleveldb",
+		DBPath:           "data",
 	}
 }
 
@@ -319,6 +324,10 @@ func (cfg BaseConfig) ValidateBasic() error {
 
 	default:
 		return fmt.Errorf("unknown mode: %v", cfg.Mode)
+	}
+
+	if cfg.LogElementLength < 0 || cfg.LogElementLength > log.MaxLogElementLength {
+		return fmt.Errorf("invalid log size, the value should be 0 ~ %v", log.MaxLogElementLength)
 	}
 
 	return nil

@@ -65,8 +65,9 @@ var (
 	trustedHash    []byte
 	trustLevelStr  string
 
-	logLevel  string
-	logFormat string
+	logLevel         string
+	logFormat        string
+	logElementLength int64
 
 	primaryKey   = []byte("primary")
 	witnessesKey = []byte("witnesses")
@@ -98,10 +99,14 @@ func init() {
 	LightCmd.Flags().BoolVar(&sequential, "sequential", false,
 		"sequential verification. Verify all headers sequentially as opposed to using skipping verification",
 	)
+	LightCmd.Flags().Int64Var(&logElementLength, "log-element-length", 0, "The log element length limit")
 }
 
 func runProxy(cmd *cobra.Command, args []string) error {
-	logger, err := log.NewDefaultLogger(logFormat, logLevel, false)
+	if logElementLength < 0 || logElementLength > log.MaxLogElementLength {
+		return fmt.Errorf("invalid element length, the value should be 0 ~ %v", log.MaxLogElementLength)
+	}
+	logger, err := log.NewDefaultLogger(logFormat, logLevel, false, int(logElementLength))
 	if err != nil {
 		return err
 	}
