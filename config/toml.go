@@ -132,7 +132,8 @@ log-level = "{{ .BaseConfig.LogLevel }}"
 # Output format: 'plain' (colored text) or 'json'
 log-format = "{{ .BaseConfig.LogFormat }}"
 
-# The length limit of the message/fieldValue in the log, it will be truncated when the log elements over the limit.
+# The length limit of format string output in each message/fieldValue/errFieldValue in the log.
+# It will be truncated when the log elements over the limit.
 # The default length is 0 (no truncation) and the maximum length is 1 million.
 log-element-length = {{ .BaseConfig.LogElementLength }}
 
