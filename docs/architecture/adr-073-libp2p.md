@@ -104,10 +104,12 @@ number of methods:
 
 - The `p2p.Channel` interface should change to replace the golang
   channels with a more functional interface for sending messages. The
-  new methods on this object, will return an `error` objects obviating
-  the need for the `Error` channel. The `Out` channel through which
-  reactors send messages to Peers, will be replaced by a `Send` method
-  which will take a context, allowing for clean shut down.
+  new methods on this object, will take contexts to support safe
+  cancellation and return errors, and generally block rather than
+  return asynchronously. The `Out` channel through which
+  reactors send messages to Peers, will be replaced by a `Send`
+  method, and the Error channel will be replaced by an `Error`
+  method. 
 
 - Rectors will have access to an interface that will allow them to
   access information from the current state of the Peer information
@@ -143,6 +145,10 @@ will need to be coordinated between all nodes of the network.
   information into the DHT as part of the heartbeats between nodes,
   such as the latest height, and then access that in arbitrary
   reactors.
+  
+- Does it make sense to have reactors continue to consume inbound
+  messages from a Channel (`In`) or is there another interface or
+  pattern that we should consider?
 
 ## Consequences
 
