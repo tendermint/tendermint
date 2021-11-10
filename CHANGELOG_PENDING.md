@@ -41,7 +41,9 @@ Special thanks to external contributors on this release:
 - [mempool, rpc] \#7041  Add removeTx operation to the RPC layer. (@tychoish)
 
 ### IMPROVEMENTS
+
 - [logger/config](https://github.com/tendermint/tendermint/pull/7258) Limit the logger element output length.(@Jayt106)
+
 ### BUG FIXES
 
 - fix: assignment copies lock value in `BitArray.UnmarshalJSON()` (@lklimek)
