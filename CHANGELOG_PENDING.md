@@ -16,6 +16,8 @@ Special thanks to external contributors on this release:
 
 - P2P Protocol
 
+  - [p2p] \#7265 Peer manager reduces peer score for each failed dial attempts for peers that have not successfully dialed. (@tychoish)
+
 - Go API
 
 - Blockchain Protocol
