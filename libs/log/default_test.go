@@ -32,6 +32,12 @@ func TestNewDefaultLogger(t *testing.T) {
 			size:      0,
 			expectErr: false,
 		},
+		"valid log element max length": {
+			format:    log.LogFormatJSON,
+			level:     log.LogLevelInfo,
+			size:      log.MaxLogElementLength,
+			expectErr: false,
+		},
 		"invalid log element length": {
 			format:    log.LogFormatJSON,
 			level:     log.LogLevelInfo,
