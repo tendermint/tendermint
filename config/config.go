@@ -206,8 +206,9 @@ type BaseConfig struct { //nolint: maligned
 	// Output format: 'plain' (colored text) or 'json'
 	LogFormat string `mapstructure:"log-format"`
 
-	// The max length of the log message and the log field value:
-	// `0` is the default value (no length limit)
+	// The max length of format string output in each `message`, `field value`, and
+	// `error field value` element in log.
+	// `0` is the default value (no length limit), maximum allowed length for each element is 1e6.
 	LogElementLength int64 `mapstructure:"log-element-length"`
 
 	// Path to the JSON file containing the initial validator set and other meta data
