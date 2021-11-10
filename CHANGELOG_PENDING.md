@@ -16,6 +16,12 @@ Special thanks to external contributors on this release:
 
 - P2P Protocol
 
+<<<<<<< HEAD
+=======
+  - [p2p] \#7035 Remove legacy P2P routing implementation and associated configuration options. (@tychoish)
+  - [p2p] \#7265 Peer manager reduces peer score for each failed dial attempts for peers that have not successfully dialed. (@tychoish)
+
+>>>>>>> 27560cf7a (p2p: reduce peer score for dial failures (#7265))
 - Go API
 
 - Blockchain Protocol
