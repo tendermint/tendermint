@@ -35,6 +35,21 @@ func NewDefaultLogger(format, level string, trace bool, elementLength int) (Logg
 		return nil, fmt.Errorf("unsupported log element length: %d", elementLength)
 	}
 
+	var formatter func(interface{}) string
+	if elementLength > 0 {
+		formatter = func(v interface{}) string {
+			s := fmt.Sprint(v)
+			if len(s) > elementLength {
+				return s[:elementLength]
+			}
+			return s
+		}
+	} else {
+		formatter = func(v interface{}) string {
+			return fmt.Sprint(v)
+		}
+	}
+
 	var logWriter io.Writer
 	switch strings.ToLower(format) {
 	case LogFormatPlain, LogFormatText:
@@ -48,28 +63,9 @@ func NewDefaultLogger(format, level string, trace bool, elementLength int) (Logg
 				}
 				return "FormatLevel cannot be cast to string"
 			},
-			FormatFieldValue: func(i interface{}) string {
-				s := fmt.Sprintf("%v", i)
-				if elementLength > 0 && len(s) > elementLength {
-					return s[:elementLength]
-				}
-
-				return s
-			},
-			FormatMessage: func(i interface{}) string {
-				s := fmt.Sprintf("%v", i)
-				if elementLength > 0 && len(s) > elementLength {
-					return s[:elementLength]
-				}
-				return s
-			},
-			FormatErrFieldValue: func(i interface{}) string {
-				s := fmt.Sprintf("%v", i)
-				if elementLength > 0 && len(s) > elementLength {
-					return s[:elementLength]
-				}
-				return s
-			},
+			FormatFieldValue:    formatter,
+			FormatMessage:       formatter,
+			FormatErrFieldValue: formatter,
 		}
 
 	case LogFormatJSON:
