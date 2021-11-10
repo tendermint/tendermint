@@ -442,55 +442,29 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*coretypes.Re
 	return res, nil
 }
 
-// Header calls rpcclient#Header and then verifies the result.
+// Header calls rpcclient#Header and performs a stateless validation of the result.
 func (c *Client) Header(ctx context.Context, height *int64) (*coretypes.ResultHeader, error) {
 	res, err := c.next.Header(ctx, height)
 	if err != nil {
 		return nil, err
 	}
 
-	// Validate res.
 	if err := res.Header.ValidateBasic(); err != nil {
 		return nil, err
-	}
-
-	// Update the light client if we're behind.
-	l, err := c.updateLightClientIfNeededTo(ctx, &res.Header.Height)
-	if err != nil {
-		return nil, err
-	}
-
-	// Verify block.
-	if bH, tH := res.Header.Hash(), l.Hash(); !bytes.Equal(bH, tH) {
-		return nil, fmt.Errorf("block header %X does not match with trusted header %X",
-			bH, tH)
 	}
 
 	return res, nil
 }
 
-// HeaderByHash calls rpcclient#HeaderByHash and then verifies the result.
+// HeaderByHash calls rpcclient#HeaderByHash and performs a stateless validation of the result.
 func (c *Client) HeaderByHash(ctx context.Context, hash tmbytes.HexBytes) (*coretypes.ResultHeader, error) {
 	res, err := c.next.HeaderByHash(ctx, hash)
 	if err != nil {
 		return nil, err
 	}
 
-	// Validate res.
 	if err := res.Header.ValidateBasic(); err != nil {
 		return nil, err
-	}
-
-	// Update the light client if we're behind.
-	l, err := c.updateLightClientIfNeededTo(ctx, &res.Header.Height)
-	if err != nil {
-		return nil, err
-	}
-
-	// Verify block.
-	if bH, tH := res.Header.Hash(), l.Hash(); !bytes.Equal(bH, tH) {
-		return nil, fmt.Errorf("block header %X does not match with trusted header %X",
-			bH, tH)
 	}
 
 	return res, nil
