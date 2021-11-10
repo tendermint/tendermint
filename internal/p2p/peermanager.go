@@ -532,6 +532,7 @@ func (m *PeerManager) DialFailed(address NodeAddress) error {
 	if !ok {
 		return nil // Assume the address has been removed, ignore.
 	}
+
 	addressInfo.LastDialFailure = time.Now().UTC()
 	addressInfo.DialFailures++
 	if err := m.store.Set(peer); err != nil {
@@ -602,6 +603,7 @@ func (m *PeerManager) Dialed(address NodeAddress) error {
 		addressInfo.LastDialSuccess = now
 		// If not found, assume address has been removed.
 	}
+
 	if err := m.store.Set(peer); err != nil {
 		return err
 	}
@@ -658,6 +660,11 @@ func (m *PeerManager) Accepted(peerID types.NodeID) error {
 	peer, ok := m.store.Get(peerID)
 	if !ok {
 		peer = m.newPeerInfo(peerID)
+	}
+
+	// reset this to avoid penalizing peers for their past transgressions
+	for _, addr := range peer.AddressInfo {
+		addr.DialFailures = 0
 	}
 
 	// If all connections slots are full, but we allow upgrades (and we checked
@@ -1287,15 +1294,23 @@ func (p *peerInfo) Score() PeerScore {
 		return PeerScorePersistent
 	}
 
-	if p.MutableScore <= 0 {
+	score := p.MutableScore
+
+	for _, addr := range p.AddressInfo {
+		// DialFailures is reset when dials succeed, so this
+		// is either the number of dial failures or 0.
+		score -= int64(addr.DialFailures)
+	}
+
+	if score <= 0 {
 		return 0
 	}
 
-	if p.MutableScore >= math.MaxUint8 {
+	if score >= math.MaxUint8 {
 		return PeerScore(math.MaxUint8)
 	}
 
-	return PeerScore(p.MutableScore)
+	return PeerScore(score)
 }
 
 // Validate validates the peer info.
