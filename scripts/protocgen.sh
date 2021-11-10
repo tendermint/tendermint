@@ -7,6 +7,8 @@ if [[ VERS -ne master ]]; then
     URL_PATH=tarball/refs/tags/v
 fi
 
+VERS=5dddbbef96b6b39237e7a113363da0ffa0bdf21f
+
 echo "fetching proto files"
 
 # Get shortened ref of commit

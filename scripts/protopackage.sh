@@ -8,6 +8,8 @@ set -eo pipefail
 
 FNAME=$1
 MODNAME=$(echo $2| sed 's/\//\\\//g')
-PACKAGE="$(dirname $FNAME | cut -c 2- | sed 's/\//\\\//g')"
+PACKAGE="$(dirname $FNAME | sed 's/^\.\/\(.*\)/\1/g' | sed 's/\//\\\//g')"
 
-sed -i "s/\(package tendermint.*\)/\1\n\noption go_package = \"$MODNAME$PACKAGE\";/g" $FNAME
+if ! `grep -q 'option go_package = .*;' $FNAME`; then 
+	sed -i "s/\(package tendermint.*\)/\1\n\noption go_package = \"$MODNAME\/$PACKAGE\";/g" $FNAME
+fi
