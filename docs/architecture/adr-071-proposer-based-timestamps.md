@@ -260,8 +260,8 @@ The [POLRound](https://github.com/tendermint/tendermint/blob/68ca65f5d79905abd55
 A negative value in the `POLRound` field indicates that the block has not previously been proposed on the network. 
 Therefore the validation logic will check for timely when `POLRound < 0`.
 
-When a validator receives a `Proposal` message, the validator will check that the `Proposal.Timestamp` is within `PRECISION` and `MSGDELAY` of the current Unix time known to the validator.
-If the timestamp is not within `PRECISION` and `MSGDELAY` of the current Unix time known to the validator, the proposed block will not be considered `timely`.
+When a validator receives a `Proposal` message, the validator will check that the `Proposal.Timestamp` is at most `PRECISION` greater than the current Unix time known to the validator, and at minimum `PRECISION + MSGDELAY` less than the current Unix time known to the validator.
+If the timestamp is not within these bounds, the proposed block will not be considered `timely`.
 
 Once a full block matching the `Proposal` message is received, the validator will also check that the timestamp in the `Header.Timestamp` of the block matches this `Proposal.Timestamp`.
 Using the `Proposal.Timestamp` to check `timely` allows for the `MSGDELAY` parameter to be more finely tuned since `Proposal` messages do not change sizes and are therefore faster to gossip than full blocks across the network.
