@@ -10,7 +10,9 @@ fi
 echo "fetching proto files"
 
 # Get shortened ref of commit
-REF=`curl -H "Accept: application/vnd.github.v3.sha" -qL "https://api.github.com/repos/tendermint/spec/commits/${VERS}" | cut -c -7`
+REF=$(curl -H "Accept: application/vnd.github.v3.sha" -qL \
+  "https://api.github.com/repos/tendermint/spec/commits/${VERS}" \
+  | cut -c -7)
 # Edit this line to clone your branch, if you are modifying protobuf files
 curl -qL "https://api.github.com/repos/tendermint/spec/${URL_PATH}${REF}" | tar -xzf - tendermint-spec-"$REF"/
 
