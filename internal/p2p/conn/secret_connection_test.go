@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	mrand "math/rand"
 	"os"
@@ -229,7 +228,7 @@ func TestDeriveSecretsAndChallengeGolden(t *testing.T) {
 	if *update {
 		t.Logf("Updating golden test vector file %s", goldenFilepath)
 		data := createGoldenTestVectors(t)
-		require.NoError(t, ioutil.WriteFile(goldenFilepath, []byte(data), 0644))
+		require.NoError(t, os.WriteFile(goldenFilepath, []byte(data), 0644))
 	}
 	f, err := os.Open(goldenFilepath)
 	if err != nil {

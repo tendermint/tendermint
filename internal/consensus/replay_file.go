@@ -13,6 +13,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/store"
@@ -54,7 +55,10 @@ func (cs *State) ReplayFile(file string, console bool) error {
 	// ensure all new step events are regenerated as expected
 
 	ctx := context.Background()
-	newStepSub, err := cs.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep)
+	newStepSub, err := cs.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
+		ClientID: subscriber,
+		Query:    types.EventQueryNewRoundStep,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep)
 	}
@@ -125,7 +129,7 @@ func newPlayback(fileName string, fp *os.File, cs *State, genState sm.State) *pl
 }
 
 // go back count steps by resetting the state and running (pb.count - count) steps
-func (pb *playback) replayReset(count int, newStepSub types.Subscription) error {
+func (pb *playback) replayReset(count int, newStepSub eventbus.Subscription) error {
 	if err := pb.cs.Stop(); err != nil {
 		return err
 	}
@@ -222,7 +226,10 @@ func (pb *playback) replayConsoleLoop() int {
 			ctx := context.Background()
 			// ensure all new step events are regenerated as expected
 
-			newStepSub, err := pb.cs.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep)
+			newStepSub, err := pb.cs.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
+				ClientID: subscriber,
+				Query:    types.EventQueryNewRoundStep,
+			})
 			if err != nil {
 				tmos.Exit(fmt.Sprintf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep))
 			}
@@ -318,7 +325,7 @@ func newConsensusStateForReplay(cfg config.BaseConfig, csConfig *config.Consensu
 		tmos.Exit(fmt.Sprintf("Error starting proxy app conns: %v", err))
 	}
 
-	eventBus := types.NewEventBus()
+	eventBus := eventbus.NewDefault()
 	if err := eventBus.Start(); err != nil {
 		tmos.Exit(fmt.Sprintf("Failed to start event bus: %v", err))
 	}

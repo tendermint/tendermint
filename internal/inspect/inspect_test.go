@@ -27,7 +27,8 @@ import (
 )
 
 func TestInspectConstructor(t *testing.T) {
-	cfg := config.ResetTestRoot("test")
+	cfg, err := config.ResetTestRoot("test")
+	require.NoError(t, err)
 	testLogger := log.TestingLogger()
 	t.Cleanup(leaktest.Check(t))
 	defer func() { _ = os.RemoveAll(cfg.RootDir) }()
@@ -41,7 +42,9 @@ func TestInspectConstructor(t *testing.T) {
 }
 
 func TestInspectRun(t *testing.T) {
-	cfg := config.ResetTestRoot("test")
+	cfg, err := config.ResetTestRoot("test")
+	require.NoError(t, err)
+
 	testLogger := log.TestingLogger()
 	t.Cleanup(leaktest.Check(t))
 	defer func() { _ = os.RemoveAll(cfg.RootDir) }()
@@ -76,6 +79,7 @@ func TestBlock(t *testing.T) {
 	blockStoreMock.On("LoadBlock", testHeight).Return(testBlock)
 	eventSinkMock := &indexermocks.EventSink{}
 	eventSinkMock.On("Stop").Return(nil)
+	eventSinkMock.On("Type").Return(indexer.EventSinkType("Mock"))
 
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
@@ -220,6 +224,8 @@ func TestConsensusParams(t *testing.T) {
 	}, nil)
 	eventSinkMock := &indexermocks.EventSink{}
 	eventSinkMock.On("Stop").Return(nil)
+	eventSinkMock.On("Type").Return(indexer.EventSinkType("Mock"))
+
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
 	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
@@ -271,6 +277,8 @@ func TestBlockResults(t *testing.T) {
 	blockStoreMock.On("Height").Return(testHeight)
 	eventSinkMock := &indexermocks.EventSink{}
 	eventSinkMock.On("Stop").Return(nil)
+	eventSinkMock.On("Type").Return(indexer.EventSinkType("Mock"))
+
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
 	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
@@ -317,6 +325,8 @@ func TestCommit(t *testing.T) {
 	}, nil)
 	eventSinkMock := &indexermocks.EventSink{}
 	eventSinkMock.On("Stop").Return(nil)
+	eventSinkMock.On("Type").Return(indexer.EventSinkType("Mock"))
+
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
 	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
@@ -369,6 +379,8 @@ func TestBlockByHash(t *testing.T) {
 	blockStoreMock.On("LoadBlockByHash", testHash).Return(testBlock, nil)
 	eventSinkMock := &indexermocks.EventSink{}
 	eventSinkMock.On("Stop").Return(nil)
+	eventSinkMock.On("Type").Return(indexer.EventSinkType("Mock"))
+
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
 	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
@@ -420,6 +432,8 @@ func TestBlockchain(t *testing.T) {
 	})
 	eventSinkMock := &indexermocks.EventSink{}
 	eventSinkMock.On("Stop").Return(nil)
+	eventSinkMock.On("Type").Return(indexer.EventSinkType("Mock"))
+
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
 	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
@@ -471,6 +485,8 @@ func TestValidators(t *testing.T) {
 	blockStoreMock.On("Base").Return(int64(0))
 	eventSinkMock := &indexermocks.EventSink{}
 	eventSinkMock.On("Stop").Return(nil)
+	eventSinkMock.On("Type").Return(indexer.EventSinkType("Mock"))
+
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
 	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)

@@ -2,7 +2,6 @@ package light_test
 
 import (
 	"context"
-	"io/ioutil"
 	stdlog "log"
 	"os"
 	"time"
@@ -22,7 +21,11 @@ import (
 func ExampleClient() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	conf := rpctest.CreateConfig("ExampleClient_VerifyLightBlockAtHeight")
+	conf, err := rpctest.CreateConfig("ExampleClient_VerifyLightBlockAtHeight")
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+
 	logger := log.TestingLogger()
 
 	// Start a test application
@@ -34,7 +37,7 @@ func ExampleClient() {
 	}
 	defer func() { _ = closer(ctx) }()
 
-	dbDir, err := ioutil.TempDir("", "light-client-example")
+	dbDir, err := os.MkdirTemp("", "light-client-example")
 	if err != nil {
 		stdlog.Fatal(err)
 	}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
 	"reflect"
 	"regexp"
 	"strings"
@@ -36,7 +37,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 
 	// All other endpoints
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Debug("HTTP HANDLER", "req", r)
+		logger.Debug("HTTP HANDLER", "req", dumpHTTPRequest(r))
 
 		ctx := &rpctypes.Context{HTTPReq: r}
 		args := []reflect.Value{reflect.ValueOf(ctx)}
@@ -231,4 +232,13 @@ func getParam(r *http.Request, param string) string {
 		s = r.FormValue(param)
 	}
 	return s
+}
+
+func dumpHTTPRequest(r *http.Request) string {
+	d, e := httputil.DumpRequest(r, true)
+	if e != nil {
+		return e.Error()
+	}
+
+	return string(d)
 }

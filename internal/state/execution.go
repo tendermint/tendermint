@@ -8,6 +8,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/libs/fail"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/proxy"
@@ -69,7 +70,7 @@ func NewBlockExecutor(
 	res := &BlockExecutor{
 		store:      stateStore,
 		proxyApp:   proxyApp,
-		eventBus:   types.NopEventBus{},
+		eventBus:   eventbus.NopEventBus{},
 		mempool:    pool,
 		evpool:     evpool,
 		logger:     logger,

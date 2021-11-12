@@ -239,7 +239,9 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 		}
 		config.Moniker = moniker(i)
 
-		cfg.WriteConfigFile(nodeDir, config)
+		if err := cfg.WriteConfigFile(nodeDir, config); err != nil {
+			return err
+		}
 	}
 
 	fmt.Printf("Successfully initialized %v node directories\n", nValidators+nNonValidators)

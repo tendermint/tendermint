@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	flow "github.com/tendermint/tendermint/internal/libs/flowrate"
+	"github.com/tendermint/tendermint/internal/libs/flowrate"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -471,7 +471,7 @@ type bpPeer struct {
 	base        int64
 	pool        *BlockPool
 	id          types.NodeID
-	recvMonitor *flow.Monitor
+	recvMonitor *flowrate.Monitor
 
 	timeout *time.Timer
 
@@ -495,7 +495,7 @@ func (peer *bpPeer) setLogger(l log.Logger) {
 }
 
 func (peer *bpPeer) resetMonitor() {
-	peer.recvMonitor = flow.New(time.Second, time.Second*40)
+	peer.recvMonitor = flowrate.New(time.Second, time.Second*40)
 	initialValue := float64(minRecvRate) * math.E
 	peer.recvMonitor.SetREMA(initialValue)
 }

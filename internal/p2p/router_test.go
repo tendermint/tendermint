@@ -109,6 +109,7 @@ func TestRouter_Channel_Basic(t *testing.T) {
 		selfKey,
 		peerManager,
 		nil,
+		nil,
 		p2p.RouterOptions{},
 	)
 	require.NoError(t, err)
@@ -393,6 +394,7 @@ func TestRouter_AcceptPeers(t *testing.T) {
 				selfKey,
 				peerManager,
 				[]p2p.Transport{mockTransport},
+				nil,
 				p2p.RouterOptions{},
 			)
 			require.NoError(t, err)
@@ -445,6 +447,7 @@ func TestRouter_AcceptPeers_Error(t *testing.T) {
 		selfKey,
 		peerManager,
 		[]p2p.Transport{mockTransport},
+		nil,
 		p2p.RouterOptions{},
 	)
 	require.NoError(t, err)
@@ -479,6 +482,7 @@ func TestRouter_AcceptPeers_ErrorEOF(t *testing.T) {
 		selfKey,
 		peerManager,
 		[]p2p.Transport{mockTransport},
+		nil,
 		p2p.RouterOptions{},
 	)
 	require.NoError(t, err)
@@ -527,6 +531,7 @@ func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 		selfKey,
 		peerManager,
 		[]p2p.Transport{mockTransport},
+		nil,
 		p2p.RouterOptions{},
 	)
 	require.NoError(t, err)
@@ -626,6 +631,7 @@ func TestRouter_DialPeers(t *testing.T) {
 				selfKey,
 				peerManager,
 				[]p2p.Transport{mockTransport},
+				nil,
 				p2p.RouterOptions{},
 			)
 			require.NoError(t, err)
@@ -709,6 +715,7 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 		selfKey,
 		peerManager,
 		[]p2p.Transport{mockTransport},
+		nil,
 		p2p.RouterOptions{
 			DialSleep: func(_ context.Context) {},
 			NumConcurrentDials: func() int {
@@ -781,6 +788,7 @@ func TestRouter_EvictPeers(t *testing.T) {
 		selfKey,
 		peerManager,
 		[]p2p.Transport{mockTransport},
+		nil,
 		p2p.RouterOptions{},
 	)
 	require.NoError(t, err)
@@ -842,6 +850,7 @@ func TestRouter_ChannelCompatability(t *testing.T) {
 		selfKey,
 		peerManager,
 		[]p2p.Transport{mockTransport},
+		nil,
 		p2p.RouterOptions{},
 	)
 	require.NoError(t, err)
@@ -896,6 +905,7 @@ func TestRouter_DontSendOnInvalidChannel(t *testing.T) {
 		selfKey,
 		peerManager,
 		[]p2p.Transport{mockTransport},
+		nil,
 		p2p.RouterOptions{},
 	)
 	require.NoError(t, err)
