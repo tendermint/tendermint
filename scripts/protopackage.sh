@@ -1,5 +1,5 @@
 #!/usr/bin/sh
-set -euo pipefail
+set -eo pipefail
 
 # This script appends the "option go_package" proto option to the file located at $FNAME.
 # This option specifies what the package will be named when imported by other packages.
@@ -16,7 +16,7 @@ if [[ ! -z "$3" ]]; then
 fi
 
 
-if ! grep -q 'option\s\+go_package\s\+=\s\+.*;' $FNAME; then 
+if ! `grep -q 'option\s\+go_package\s\+=\s\+.*;' $FNAME`; then 
 	sed -i "s/\(package tendermint.*\)/\1\n\noption go_package = \"$MODNAME\/$PACKAGE\";/g" $FNAME
 else
 	sed -i "s/option\s\+go_package\s\+=\s\+.*;/option go_package = \"$MODNAME\/$PACKAGE\";/g" $FNAME

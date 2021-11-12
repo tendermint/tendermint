@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-set -eo pipefail
+set -euxo pipefail
 
 # By default, this script runs against the latest commit to the master branch
 # in the Tendermint spec repository. To use this script with a different version
 # of the spec repository, run it with the $VERS environment variable set to the
 # desired commit in the spec repo.
 
+VERS=5f16657dcfbb9b8d68eabe6a23672f86a4fde12d
 : ${VERS:=master}
 URL_PATH=tarball/
 if [[ VERS -ne master ]]; then
