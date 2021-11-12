@@ -16,7 +16,7 @@ if [[ ! -z "$3" ]]; then
 fi
 
 
-if ! `grep -q 'option\s\+go_package\s\+=\s\+.*;' $FNAME`; then 
+if ! grep -q 'option\s\+go_package\s\+=\s\+.*;' $FNAME; then 
 	sed -i "s/\(package tendermint.*\)/\1\n\noption go_package = \"$MODNAME\/$PACKAGE\";/g" $FNAME
 else
 	sed -i "s/option\s\+go_package\s\+=\s\+.*;/option go_package = \"$MODNAME\/$PACKAGE\";/g" $FNAME
