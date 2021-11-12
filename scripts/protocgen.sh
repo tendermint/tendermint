@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# By default, this script runs against the latest commit to the master branch
+# in the Tendermint spec repository. To use this script with a different version
+# of the spec repository, run it with the $VERS environment variable set to the
+# desired commit in the spec repo.
+
 : ${VERS:=master}
 URL_PATH=tarball/
 if [[ VERS -ne master ]]; then
@@ -13,10 +18,9 @@ echo "fetching proto files"
 REF=$(curl -H "Accept: application/vnd.github.v3.sha" -qL \
   "https://api.github.com/repos/tendermint/spec/commits/${VERS}" \
   | cut -c -7)
-# Edit this line to clone your branch, if you are modifying protobuf files
 curl -qL "https://api.github.com/repos/tendermint/spec/${URL_PATH}${REF}" | tar -xzf - tendermint-spec-"$REF"/
 
-cp -r ./tendermint-spec-"$REF"/proto/tendermint/** ./proto/tendermint
+cp -r ./tendermint-spec-"$REF"/proto/tendermint/* ./proto/tendermint
 cp -r ./tendermint-spec-"$REF"/third_party/** ./third_party
 
 MODNAME=$(go list -m)
