@@ -257,7 +257,7 @@ Since `CommitSig`s will no longer contain a timestamp, the validator authenticat
 #### Timestamp validation when a block has not received a polka
 
 The [POLRound](https://github.com/tendermint/tendermint/blob/68ca65f5d79905abd55ea999536b1a3685f9f19d/types/proposal.go#L29) in the `Proposal` message indicates which round the block received a polka.
-A negative value in the `POLRound` field indicates that the proposer did not previously see a polka for this block.
+A negative value in the `POLRound` field indicates that the block has not previously been proposed on the network. 
 Therefore the validation logic will check for timely when `POLRound < 0`.
 
 When a validator receives a `Proposal` message, the validator will check that the `Proposal.Timestamp` is within `PRECISION` and `MSGDELAY` of the current Unix time known to the validator.
