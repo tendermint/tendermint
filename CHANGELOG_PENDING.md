@@ -12,6 +12,8 @@ Special thanks to external contributors on this release:
 
 - CLI/RPC/Config
 
+  - [config] \#7276 rpc: Add experimental config params to allow for subscription buffer size control (@thanethomson).
+
 - Apps
 
 - P2P Protocol
