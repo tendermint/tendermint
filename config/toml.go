@@ -242,6 +242,18 @@ max-subscriptions-per-client = {{ .RPC.MaxSubscriptionsPerClient }}
 # higher event throughput rates (and will use more memory).
 experimental-subscription-buffer-size = {{ .RPC.SubscriptionBufferSize }}
 
+# Experimental parameter to specify the maximum number of RPC responses that
+# can be buffered per WebSocket client. If clients cannot read from the
+# WebSocket endpoint fast enough, they will be disconnected, so increasing this
+# parameter may reduce the chances of them being disconnected (but will cause
+# the node to use more memory).
+#
+# Must be at least the same as "experimental-subscription-buffer-size",
+# otherwise connections could be dropped unnecessarily. This value should
+# ideally be somewhat higher than "experimental-subscription-buffer-size" to
+# accommodate non-subscription-related RPC responses.
+experimental-websocket-write-buffer-size = {{ .RPC.WebSocketWriteBufferSize }}
+
 # How long to wait for a tx to be committed during /broadcast_tx_commit.
 # WARNING: Using a value larger than 10s will result in increasing the
 # global HTTP write timeout, which applies to all connections and endpoints.
