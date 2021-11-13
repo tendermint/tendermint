@@ -254,6 +254,15 @@ experimental-subscription-buffer-size = {{ .RPC.SubscriptionBufferSize }}
 # accommodate non-subscription-related RPC responses.
 experimental-websocket-write-buffer-size = {{ .RPC.WebSocketWriteBufferSize }}
 
+# If a WebSocket client cannot read fast enough, at present we may
+# silently drop events instead of generating an error or disconnecting the
+# client.
+#
+# Enabling this experimental parameter will cause the WebSocket connection to
+# be closed instead if it cannot read fast enough, allowing for greater
+# predictability in subscription behavior.
+experimental-close-on-slow-client = {{ .RPC.CloseOnSlowClient }}
+
 # How long to wait for a tx to be committed during /broadcast_tx_commit.
 # WARNING: Using a value larger than 10s will result in increasing the
 # global HTTP write timeout, which applies to all connections and endpoints.
