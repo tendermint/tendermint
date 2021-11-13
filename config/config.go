@@ -64,6 +64,9 @@ var (
 
 	defaultNodeKeyPath  = filepath.Join(defaultConfigDir, defaultNodeKeyName)
 	defaultAddrBookPath = filepath.Join(defaultConfigDir, defaultAddrBookName)
+
+	minSubscriptionBufferSize     = 100
+	defaultSubscriptionBufferSize = 200
 )
 
 // Config defines the top level configuration for a Tendermint node
@@ -496,6 +499,29 @@ type RPCConfig struct {
 	// to the estimated maximum number of broadcast_tx_commit calls per block.
 	MaxSubscriptionsPerClient int `mapstructure:"max-subscriptions-per-client"`
 
+	// The number of events that can be buffered per subscription before
+	// returning `ErrOutOfCapacity`.
+	SubscriptionBufferSize int `mapstructure:"experimental-subscription-buffer-size"`
+
+	// The maximum number of responses that can be buffered per WebSocket
+	// client. If clients cannot read from the WebSocket endpoint fast enough,
+	// they will be disconnected, so increasing this parameter may reduce the
+	// chances of them being disconnected (but will cause the node to use more
+	// memory).
+	//
+	// Must be at least the same as `SubscriptionBufferSize`, otherwise
+	// connections may be dropped unnecessarily.
+	WebSocketWriteBufferSize int `mapstructure:"experimental-websocket-write-buffer-size"`
+
+	// If a WebSocket client cannot read fast enough, at present we may
+	// silently drop events instead of generating an error or disconnecting the
+	// client.
+	//
+	// Enabling this parameter will cause the WebSocket connection to be closed
+	// instead if it cannot read fast enough, allowing for greater
+	// predictability in subscription behavior.
+	CloseOnSlowClient bool `mapstructure:"experimental-close-on-slow-client"`
+
 	// How long to wait for a tx to be committed during /broadcast_tx_commit
 	// WARNING: Using a value larger than 10s will result in increasing the
 	// global HTTP write timeout, which applies to all connections and endpoints.
@@ -545,7 +571,9 @@ func DefaultRPCConfig() *RPCConfig {
 
 		MaxSubscriptionClients:    100,
 		MaxSubscriptionsPerClient: 5,
+		SubscriptionBufferSize:    defaultSubscriptionBufferSize,
 		TimeoutBroadcastTxCommit:  10 * time.Second,
+		WebSocketWriteBufferSize:  defaultSubscriptionBufferSize,
 
 		MaxBodyBytes:   int64(1000000), // 1MB
 		MaxHeaderBytes: 1 << 20,        // same as the net/http default
@@ -578,6 +606,18 @@ func (cfg *RPCConfig) ValidateBasic() error {
 	}
 	if cfg.MaxSubscriptionsPerClient < 0 {
 		return errors.New("max-subscriptions-per-client can't be negative")
+	}
+	if cfg.SubscriptionBufferSize < minSubscriptionBufferSize {
+		return fmt.Errorf(
+			"experimental-subscription-buffer-size must be >= %d",
+			minSubscriptionBufferSize,
+		)
+	}
+	if cfg.WebSocketWriteBufferSize < cfg.SubscriptionBufferSize {
+		return fmt.Errorf(
+			"experimental-websocket-write-buffer-size must be >= experimental-subscription-buffer-size (%d)",
+			cfg.SubscriptionBufferSize,
+		)
 	}
 	if cfg.TimeoutBroadcastTxCommit < 0 {
 		return errors.New("timeout-broadcast-tx-commit can't be negative")

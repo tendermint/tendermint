@@ -13,9 +13,6 @@ import (
 )
 
 const (
-	// Buffer on the Tendermint (server) side to allow some slowness in clients.
-	subBufferSize = 100
-
 	// maxQueryLength is the maximum length of a query string that will be
 	// accepted. This is just a safety check to avoid outlandish queries.
 	maxQueryLength = 512
@@ -44,10 +41,12 @@ func (env *Environment) Subscribe(ctx *rpctypes.Context, query string) (*coretyp
 	subCtx, cancel := context.WithTimeout(ctx.Context(), SubscribeTimeout)
 	defer cancel()
 
-	sub, err := env.EventBus.Subscribe(subCtx, addr, q, subBufferSize)
+	sub, err := env.EventBus.Subscribe(subCtx, addr, q, env.Config.SubscriptionBufferSize)
 	if err != nil {
 		return nil, err
 	}
+
+	closeIfSlow := env.Config.CloseOnSlowClient
 
 	// Capture the current ID, since it can change in the future.
 	subscriptionID := ctx.JSONReq.ID
@@ -64,6 +63,18 @@ func (env *Environment) Subscribe(ctx *rpctypes.Context, query string) (*coretyp
 				if err := ctx.WSConn.WriteRPCResponse(writeCtx, resp); err != nil {
 					env.Logger.Info("Can't write response (slow client)",
 						"to", addr, "subscriptionID", subscriptionID, "err", err)
+
+					if closeIfSlow {
+						var (
+							err  = errors.New("subscription was canceled (reason: slow client)")
+							resp = rpctypes.RPCServerError(subscriptionID, err)
+						)
+						if !ctx.WSConn.TryWriteRPCResponse(resp) {
+							env.Logger.Info("Can't write response (slow client)",
+								"to", addr, "subscriptionID", subscriptionID, "err", err)
+						}
+						return
+					}
 				}
 			case <-sub.Canceled():
 				if sub.Err() != tmpubsub.ErrUnsubscribed {
