@@ -13,9 +13,6 @@ import (
 )
 
 const (
-	// Buffer on the Tendermint (server) side to allow some slowness in clients.
-	subBufferSize = 100
-
 	// maxQueryLength is the maximum length of a query string that will be
 	// accepted. This is just a safety check to avoid outlandish queries.
 	maxQueryLength = 512
@@ -44,7 +41,7 @@ func (env *Environment) Subscribe(ctx *rpctypes.Context, query string) (*coretyp
 	subCtx, cancel := context.WithTimeout(ctx.Context(), SubscribeTimeout)
 	defer cancel()
 
-	sub, err := env.EventBus.Subscribe(subCtx, addr, q, subBufferSize)
+	sub, err := env.EventBus.Subscribe(subCtx, addr, q, env.Config.SubscriptionBufferSize)
 	if err != nil {
 		return nil, err
 	}

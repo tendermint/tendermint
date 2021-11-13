@@ -64,6 +64,9 @@ var (
 
 	defaultNodeKeyPath  = filepath.Join(defaultConfigDir, defaultNodeKeyName)
 	defaultAddrBookPath = filepath.Join(defaultConfigDir, defaultAddrBookName)
+
+	minSubscriptionBufferSize     = 100
+	defaultSubscriptionBufferSize = 200
 )
 
 // Config defines the top level configuration for a Tendermint node
@@ -496,6 +499,10 @@ type RPCConfig struct {
 	// to the estimated maximum number of broadcast_tx_commit calls per block.
 	MaxSubscriptionsPerClient int `mapstructure:"max-subscriptions-per-client"`
 
+	// The number of events that can be buffered per subscription before
+	// returning `ErrOutOfCapacity`.
+	SubscriptionBufferSize int `mapstructure:"experimental-subscription-buffer-size"`
+
 	// How long to wait for a tx to be committed during /broadcast_tx_commit
 	// WARNING: Using a value larger than 10s will result in increasing the
 	// global HTTP write timeout, which applies to all connections and endpoints.
@@ -545,6 +552,7 @@ func DefaultRPCConfig() *RPCConfig {
 
 		MaxSubscriptionClients:    100,
 		MaxSubscriptionsPerClient: 5,
+		SubscriptionBufferSize:    defaultSubscriptionBufferSize,
 		TimeoutBroadcastTxCommit:  10 * time.Second,
 
 		MaxBodyBytes:   int64(1000000), // 1MB
@@ -578,6 +586,12 @@ func (cfg *RPCConfig) ValidateBasic() error {
 	}
 	if cfg.MaxSubscriptionsPerClient < 0 {
 		return errors.New("max-subscriptions-per-client can't be negative")
+	}
+	if cfg.SubscriptionBufferSize < minSubscriptionBufferSize {
+		return fmt.Errorf(
+			"experimental-subscription-buffer-size must be >= %d",
+			minSubscriptionBufferSize,
+		)
 	}
 	if cfg.TimeoutBroadcastTxCommit < 0 {
 		return errors.New("timeout-broadcast-tx-commit can't be negative")
