@@ -2413,10 +2413,12 @@ func repairWalFile(src, dst string) error {
 	return nil
 }
 
-func proposalTimeout(lt tmtime.Source, h types.Header) time.Time {
+// proposalTimeout Header.Time + 2*ACCURACY + MSGDELAY
+func proposalWaitingTime(lt tmtime.Source, h types.Header, tp types.TimestampParams) time.Duration {
 	t := lt.Now()
-	if t.After(h.Time) {
-		return t
+	wt := h.Time.Add(2 * tp.Accuracy).Add(tp.MsgDelay)
+	if t.After(wt) {
+		return 0
 	}
-	return h.Time
+	return wt.Sub(t)
 }

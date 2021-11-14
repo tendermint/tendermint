@@ -2445,28 +2445,21 @@ func TestProposalTimeout(t *testing.T) {
 	genesisTime, err := time.Parse(time.RFC3339, "2019-03-13T23:00:00Z")
 	require.NoError(t, err)
 	testCases := []struct {
-		name         string
-		blockTime    time.Time
-		localTime    time.Time
-		expectedTime time.Time
+		name             string
+		blockTime        time.Time
+		localTime        time.Time
+		accuracy         time.Duration
+		msgDelay         time.Duration
+		expectedDuration time.Duration
 	}{
 		{
-			name:         "block time greater than local time",
-			blockTime:    genesisTime.Add(5 * time.Nanosecond),
-			localTime:    genesisTime.Add(1 * time.Nanosecond),
-			expectedTime: genesisTime.Add(5 * time.Nanosecond),
-		},
-		{
-			name:         "local time greater than block time",
-			blockTime:    genesisTime.Add(1 * time.Nanosecond),
-			localTime:    genesisTime.Add(5 * time.Nanosecond),
-			expectedTime: genesisTime.Add(5 * time.Nanosecond),
-		},
-		{
-			name:         "both times equal",
-			blockTime:    genesisTime.Add(5 * time.Nanosecond),
-			localTime:    genesisTime.Add(5 * time.Nanosecond),
-			expectedTime: genesisTime.Add(5 * time.Nanosecond),
+			// this test makes no sense and needs completion
+			name:             "waiting time in the past",
+			blockTime:        genesisTime.Add(5 * time.Millisecond),
+			localTime:        genesisTime.Add(3 * time.Nanosecond),
+			accuracy:         time.Nanosecond * 2,
+			msgDelay:         time.Nanosecond,
+			expectedDuration: time.Nanosecond,
 		},
 	}
 	for _, testCase := range testCases {
@@ -2480,7 +2473,12 @@ func TestProposalTimeout(t *testing.T) {
 			mockSource := new(tmtimemocks.Source)
 			mockSource.On("Now").Return(testCase.localTime)
 
-			ti := proposerWaitUntil(mockSource, b.Header)
+			tp := types.TimestampParams{
+				Accuracy: testCase.accuracy,
+				MsgDelay: testCase.msgDelay,
+			}
+
+			ti := proposalWaitingTime(mockSource, b.Header, tp)
 			assert.Equal(t, testCase.expectedTime, ti)
 		})
 	}
