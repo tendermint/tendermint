@@ -2412,3 +2412,11 @@ func repairWalFile(src, dst string) error {
 
 	return nil
 }
+
+func proposalTimeout(lt tmtime.Source, h types.Header) time.Time {
+	t := lt.Now()
+	if t.After(h.Time) {
+		return t
+	}
+	return h.Time
+}

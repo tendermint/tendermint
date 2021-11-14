@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmtimemocks "github.com/tendermint/tendermint/libs/time/mocks"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -2438,6 +2439,51 @@ func TestSignSameVoteTwice(t *testing.T) {
 	)
 
 	require.Equal(t, vote, vote2)
+}
+
+func TestProposalTimeout(t *testing.T) {
+	genesisTime, err := time.Parse(time.RFC3339, "2019-03-13T23:00:00Z")
+	require.NoError(t, err)
+	testCases := []struct {
+		name         string
+		blockTime    time.Time
+		localTime    time.Time
+		expectedTime time.Time
+	}{
+		{
+			name:         "block time greater than local time",
+			blockTime:    genesisTime.Add(5 * time.Nanosecond),
+			localTime:    genesisTime.Add(1 * time.Nanosecond),
+			expectedTime: genesisTime.Add(5 * time.Nanosecond),
+		},
+		{
+			name:         "local time greater than block time",
+			blockTime:    genesisTime.Add(1 * time.Nanosecond),
+			localTime:    genesisTime.Add(5 * time.Nanosecond),
+			expectedTime: genesisTime.Add(5 * time.Nanosecond),
+		},
+		{
+			name:         "both times equal",
+			blockTime:    genesisTime.Add(5 * time.Nanosecond),
+			localTime:    genesisTime.Add(5 * time.Nanosecond),
+			expectedTime: genesisTime.Add(5 * time.Nanosecond),
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			b := types.Block{
+				Header: types.Header{
+					Time: testCase.blockTime,
+				},
+			}
+
+			mockSource := new(tmtimemocks.Source)
+			mockSource.On("Now").Return(testCase.localTime)
+
+			ti := proposerWaitUntil(mockSource, b.Header)
+			assert.Equal(t, testCase.expectedTime, ti)
+		})
+	}
 }
 
 // subscribe subscribes test client to the given query and returns a channel with cap = 1.
