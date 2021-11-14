@@ -2412,3 +2412,15 @@ func repairWalFile(src, dst string) error {
 
 	return nil
 }
+
+// proposerWaitUntil determines when the proposer should propose its next block
+// Block times must be monotonically increasing, so if the block time of the previous
+// block is larger than the proposer's current time, then the proposer will sleep
+// until its local clock exceeds the previous block time.
+func proposerWaitUntil(lt tmtime.Source, h types.Header) time.Time {
+	t := lt.Now()
+	if t.After(h.Time) {
+		return t
+	}
+	return h.Time
+}
