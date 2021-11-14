@@ -21,8 +21,6 @@ import (
 
 const queueBufferDefault = 32
 
-const dialRandomizerIntervalMillisecond = 3000
-
 // Envelope contains a message with sender/receiver routing info.
 type Envelope struct {
 	From      types.NodeID  // sender (empty if outbound)
@@ -251,6 +249,7 @@ type Router struct {
 	peerManager        *PeerManager
 	chDescs            []*ChannelDescriptor
 	transports         []Transport
+	endpoints          []Endpoint
 	connTracker        connectionTracker
 	protocolTransports map[Protocol]Transport
 	stopCh             chan struct{} // signals Router shutdown
@@ -279,6 +278,7 @@ func NewRouter(
 	privKey crypto.PrivKey,
 	peerManager *PeerManager,
 	transports []Transport,
+	endpoints []Endpoint,
 	options RouterOptions,
 ) (*Router, error) {
 
@@ -297,6 +297,7 @@ func NewRouter(
 		),
 		chDescs:            make([]*ChannelDescriptor, 0),
 		transports:         transports,
+		endpoints:          endpoints,
 		protocolTransports: map[Protocol]Transport{},
 		peerManager:        peerManager,
 		options:            options,
@@ -536,8 +537,15 @@ func (r *Router) filterPeersID(ctx context.Context, id types.NodeID) error {
 
 func (r *Router) dialSleep(ctx context.Context) {
 	if r.options.DialSleep == nil {
+		const (
+			maxDialerInterval = 3000
+			minDialerInterval = 250
+		)
+
 		// nolint:gosec // G404: Use of weak random number generator
-		timer := time.NewTimer(time.Duration(rand.Int63n(dialRandomizerIntervalMillisecond)) * time.Millisecond)
+		dur := time.Duration(rand.Int63n(maxDialerInterval-minDialerInterval+1) + minDialerInterval)
+
+		timer := time.NewTimer(dur * time.Millisecond)
 		defer timer.Stop()
 
 		select {
@@ -931,7 +939,8 @@ func (r *Router) receivePeer(peerID types.NodeID, conn Connection) error {
 		case queue.enqueue() <- Envelope{From: peerID, Message: msg}:
 			r.metrics.PeerReceiveBytesTotal.With(
 				"chID", fmt.Sprint(chID),
-				"peer_id", string(peerID)).Add(float64(proto.Size(msg)))
+				"peer_id", string(peerID),
+				"message_type", r.metrics.ValueToMetricLabel(msg)).Add(float64(proto.Size(msg)))
 			r.metrics.RouterChannelQueueSend.Observe(time.Since(start).Seconds())
 			r.logger.Debug("received message", "peer", peerID, "message", msg)
 
@@ -1015,11 +1024,20 @@ func (r *Router) NodeInfo() types.NodeInfo {
 
 // OnStart implements service.Service.
 func (r *Router) OnStart() error {
+	for _, transport := range r.transports {
+		for _, endpoint := range r.endpoints {
+			if err := transport.Listen(endpoint); err != nil {
+				return err
+			}
+		}
+	}
+
 	r.Logger.Info(
 		"starting router",
 		"node_id", r.nodeInfo.NodeID,
 		"channels", r.nodeInfo.Channels,
 		"listen_addr", r.nodeInfo.ListenAddr,
+		"transports", len(r.transports),
 	)
 
 	go r.dialPeers()

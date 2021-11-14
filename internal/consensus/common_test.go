@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -21,8 +20,9 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
+	"github.com/tendermint/tendermint/internal/mempool"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
@@ -50,20 +50,26 @@ type cleanupFunc func()
 func configSetup(t *testing.T) *config.Config {
 	t.Helper()
 
-	cfg := ResetConfig("consensus_reactor_test")
+	cfg, err := ResetConfig("consensus_reactor_test")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(cfg.RootDir) })
 
-	consensusReplayConfig := ResetConfig("consensus_replay_test")
-	configStateTest := ResetConfig("consensus_state_test")
-	configMempoolTest := ResetConfig("consensus_mempool_test")
-	configByzantineTest := ResetConfig("consensus_byzantine_test")
+	consensusReplayConfig, err := ResetConfig("consensus_replay_test")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(consensusReplayConfig.RootDir) })
 
-	t.Cleanup(func() {
-		os.RemoveAll(cfg.RootDir)
-		os.RemoveAll(consensusReplayConfig.RootDir)
-		os.RemoveAll(configStateTest.RootDir)
-		os.RemoveAll(configMempoolTest.RootDir)
-		os.RemoveAll(configByzantineTest.RootDir)
-	})
+	configStateTest, err := ResetConfig("consensus_state_test")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(configStateTest.RootDir) })
+
+	configMempoolTest, err := ResetConfig("consensus_mempool_test")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(configMempoolTest.RootDir) })
+
+	configByzantineTest, err := ResetConfig("consensus_byzantine_test")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(configByzantineTest.RootDir) })
+
 	return cfg
 }
 
@@ -73,7 +79,7 @@ func ensureDir(dir string, mode os.FileMode) {
 	}
 }
 
-func ResetConfig(name string) *config.Config {
+func ResetConfig(name string) (*config.Config, error) {
 	return config.ResetTestRoot(name)
 }
 
@@ -363,30 +369,32 @@ func validatePrevoteAndPrecommit(
 	cs.mtx.Unlock()
 }
 
-func subscribeToVoter(cs *State, addr []byte) <-chan tmpubsub.Message {
-	votesSub, err := cs.eventBus.SubscribeUnbuffered(context.Background(), testSubscriber, types.EventQueryVote)
-	if err != nil {
-		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, types.EventQueryVote))
-	}
-	ch := make(chan tmpubsub.Message)
-	go func() {
-		for msg := range votesSub.Out() {
-			vote := msg.Data().(types.EventDataVote)
-			// we only fire for our own votes
-			if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
-				ch <- msg
-			}
+func subscribeToVoter(t *testing.T, cs *State, addr []byte) <-chan tmpubsub.Message {
+	t.Helper()
+
+	ch := make(chan tmpubsub.Message, 1)
+	if err := cs.eventBus.Observe(context.Background(), func(msg tmpubsub.Message) error {
+		vote := msg.Data().(types.EventDataVote)
+		// we only fire for our own votes
+		if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
+			ch <- msg
 		}
-	}()
+		return nil
+	}, types.EventQueryVote); err != nil {
+		t.Fatalf("Failed to observe query %v: %v", types.EventQueryVote, err)
+	}
 	return ch
 }
 
 //-------------------------------------------------------------------------------
 // consensus states
 
-func newState(state sm.State, pv types.PrivValidator, app abci.Application) *State {
-	cfg := config.ResetTestRoot("consensus_state_test")
-	return newStateWithConfig(cfg, state, pv, app)
+func newState(state sm.State, pv types.PrivValidator, app abci.Application) (*State, error) {
+	cfg, err := config.ResetTestRoot("consensus_state_test")
+	if err != nil {
+		return nil, err
+	}
+	return newStateWithConfig(cfg, state, pv, app), nil
 }
 
 func newStateWithConfig(
@@ -412,8 +420,14 @@ func newStateWithConfigAndBlockStore(
 	proxyAppConnCon := abciclient.NewLocalClient(mtx, app)
 
 	// Make Mempool
-	mempool := mempoolv0.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
-	mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
+
+	mempool := mempool.NewTxMempool(
+		log.TestingLogger().With("module", "mempool"),
+		thisConfig.Mempool,
+		proxyAppConnMem,
+		0,
+	)
+
 	if thisConfig.Consensus.WaitForTxs() {
 		mempool.EnableTxsAvailable()
 	}
@@ -432,7 +446,7 @@ func newStateWithConfigAndBlockStore(
 	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 	cs.SetPrivValidator(pv)
 
-	eventBus := types.NewEventBus()
+	eventBus := eventbus.NewDefault()
 	eventBus.SetLogger(log.TestingLogger().With("module", "events"))
 	err := eventBus.Start()
 	if err != nil {
@@ -454,13 +468,16 @@ func loadPrivValidator(cfg *config.Config) *privval.FilePV {
 	return privValidator
 }
 
-func randState(cfg *config.Config, nValidators int) (*State, []*validatorStub) {
+func randState(cfg *config.Config, nValidators int) (*State, []*validatorStub, error) {
 	// Get State
 	state, privVals := randGenesisState(cfg, nValidators, false, 10)
 
 	vss := make([]*validatorStub, nValidators)
 
-	cs := newState(state, privVals[0], kvstore.NewApplication())
+	cs, err := newState(state, privVals[0], kvstore.NewApplication())
+	if err != nil {
+		return nil, nil, err
+	}
 
 	for i := 0; i < nValidators; i++ {
 		vss[i] = newValidatorStub(privVals[i], int32(i))
@@ -468,7 +485,7 @@ func randState(cfg *config.Config, nValidators int) (*State, []*validatorStub) {
 	// since cs1 starts at 1
 	incrementHeight(vss[1:]...)
 
-	return cs, vss
+	return cs, vss, nil
 }
 
 //-------------------------------------------------------------------------------
@@ -722,7 +739,9 @@ func randConsensusState(
 		blockStore := store.NewBlockStore(dbm.NewMemDB()) // each state needs its own db
 		state, err := sm.MakeGenesisState(genDoc)
 		require.NoError(t, err)
-		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+		thisConfig, err := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+		require.NoError(t, err)
+
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
 
 		for _, opt := range configOpts {
@@ -772,7 +791,11 @@ func randConsensusNetWithPeers(
 	configRootDirs := make([]string, 0, nPeers)
 	for i := 0; i < nPeers; i++ {
 		state, _ := sm.MakeGenesisState(genDoc)
-		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+		thisConfig, err := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+		if err != nil {
+			panic(err)
+		}
+
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
 		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		if i == 0 {
@@ -782,11 +805,11 @@ func randConsensusNetWithPeers(
 		if i < nValidators {
 			privVal = privVals[i]
 		} else {
-			tempKeyFile, err := ioutil.TempFile("", "priv_validator_key_")
+			tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
 			if err != nil {
 				panic(err)
 			}
-			tempStateFile, err := ioutil.TempFile("", "priv_validator_state_")
+			tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
 			if err != nil {
 				panic(err)
 			}
@@ -874,7 +897,7 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 func (*mockTicker) SetLogger(log.Logger) {}
 
 func newPersistentKVStore() abci.Application {
-	dir, err := ioutil.TempDir("", "persistent-kvstore")
+	dir, err := os.MkdirTemp("", "persistent-kvstore")
 	if err != nil {
 		panic(err)
 	}

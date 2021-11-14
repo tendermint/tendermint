@@ -3,9 +3,9 @@ package consensus
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -32,6 +32,7 @@ import (
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/privval"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -70,7 +71,7 @@ func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *config.Co
 	)
 	cs.SetLogger(logger)
 
-	bytes, _ := ioutil.ReadFile(cs.config.WalFile())
+	bytes, _ := os.ReadFile(cs.config.WalFile())
 	t.Logf("====== WAL: \n\r%X\n", bytes)
 
 	err = cs.Start()
@@ -85,14 +86,18 @@ func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *config.Co
 	// in the WAL itself. Assuming the consensus state is running, replay of any
 	// WAL, including the empty one, should eventually be followed by a new
 	// block, or else something is wrong.
-	newBlockSub, err := cs.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
+	newBlockSub, err := cs.eventBus.SubscribeWithArgs(context.Background(), pubsub.SubscribeArgs{
+		ClientID: testSubscriber,
+		Query:    types.EventQueryNewBlock,
+	})
 	require.NoError(t, err)
-	select {
-	case <-newBlockSub.Out():
-	case <-newBlockSub.Canceled():
-		t.Fatal("newBlockSub was canceled")
-	case <-time.After(120 * time.Second):
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+	_, err = newBlockSub.Next(ctx)
+	if errors.Is(err, context.DeadlineExceeded) {
 		t.Fatal("Timed out waiting for new block (see trace above)")
+	} else if err != nil {
+		t.Fatal("newBlockSub was canceled")
 	}
 }
 
@@ -131,7 +136,8 @@ func TestWALCrash(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			consensusReplayConfig := ResetConfig(tc.name)
+			consensusReplayConfig, err := ResetConfig(tc.name)
+			require.NoError(t, err)
 			crashWALandCheckLiveness(t, consensusReplayConfig, tc.initFn, tc.heightToStop)
 		})
 	}
@@ -334,8 +340,8 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 
 	partSize := types.BlockPartSizeBytes
 
-	newRoundCh := subscribe(css[0].eventBus, types.EventQueryNewRound)
-	proposalCh := subscribe(css[0].eventBus, types.EventQueryCompleteProposal)
+	newRoundCh := subscribe(t, css[0].eventBus, types.EventQueryNewRound)
+	proposalCh := subscribe(t, css[0].eventBus, types.EventQueryCompleteProposal)
 
 	vss := make([]*validatorStub, nPeers)
 	for i := 0; i < nPeers; i++ {
@@ -664,7 +670,7 @@ func TestMockProxyApp(t *testing.T) {
 }
 
 func tempWALWithData(data []byte) string {
-	walFile, err := ioutil.TempFile("", "wal")
+	walFile, err := os.CreateTemp("", "wal")
 	if err != nil {
 		panic(fmt.Sprintf("failed to create temp WAL file: %v", err))
 	}
@@ -690,7 +696,8 @@ func testHandshakeReplay(t *testing.T, sim *simulatorTestSuite, nBlocks int, mod
 	cfg := sim.Config
 
 	if testValidatorsChange {
-		testConfig := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), mode))
+		testConfig, err := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), mode))
+		require.NoError(t, err)
 		defer func() { _ = os.RemoveAll(testConfig.RootDir) }()
 		stateDB = dbm.NewMemDB()
 
@@ -700,7 +707,8 @@ func testHandshakeReplay(t *testing.T, sim *simulatorTestSuite, nBlocks int, mod
 		commits = sim.Commits
 		store = newMockBlockStore(cfg, genesisState.ConsensusParams)
 	} else { // test single node
-		testConfig := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), mode))
+		testConfig, err := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), mode))
+		require.NoError(t, err)
 		defer func() { _ = os.RemoveAll(testConfig.RootDir) }()
 		walBody, err := WALWithNBlocks(t, numBlocks)
 		require.NoError(t, err)
@@ -938,7 +946,8 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	//		- 0x01
 	//		- 0x02
 	//		- 0x03
-	cfg := ResetConfig("handshake_test_")
+	cfg, err := ResetConfig("handshake_test_")
+	require.NoError(t, err)
 	t.Cleanup(func() { os.RemoveAll(cfg.RootDir) })
 	privVal, err := privval.LoadFilePV(cfg.PrivValidator.KeyFile(), cfg.PrivValidator.StateFile())
 	require.NoError(t, err)
@@ -1068,7 +1077,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 			// if its not the first one, we have a full block
 			if thisBlockParts != nil {
 				var pbb = new(tmproto.Block)
-				bz, err := ioutil.ReadAll(thisBlockParts.GetReader())
+				bz, err := io.ReadAll(thisBlockParts.GetReader())
 				if err != nil {
 					panic(err)
 				}
@@ -1107,7 +1116,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 		}
 	}
 	// grab the last block too
-	bz, err := ioutil.ReadAll(thisBlockParts.GetReader())
+	bz, err := io.ReadAll(thisBlockParts.GetReader())
 	if err != nil {
 		panic(err)
 	}
@@ -1228,7 +1237,8 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	app := &initChainApp{vals: types.TM2PB.ValidatorUpdates(vals)}
 	clientCreator := abciclient.NewLocalCreator(app)
 
-	cfg := ResetConfig("handshake_test_")
+	cfg, err := ResetConfig("handshake_test_")
+	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(cfg.RootDir) })
 
 	privVal, err := privval.LoadFilePV(cfg.PrivValidator.KeyFile(), cfg.PrivValidator.StateFile())

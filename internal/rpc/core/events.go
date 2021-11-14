@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -14,6 +15,10 @@ import (
 const (
 	// Buffer on the Tendermint (server) side to allow some slowness in clients.
 	subBufferSize = 100
+
+	// maxQueryLength is the maximum length of a query string that will be
+	// accepted. This is just a safety check to avoid outlandish queries.
+	maxQueryLength = 512
 )
 
 // Subscribe for events via WebSocket.
@@ -25,6 +30,8 @@ func (env *Environment) Subscribe(ctx *rpctypes.Context, query string) (*coretyp
 		return nil, fmt.Errorf("max_subscription_clients %d reached", env.Config.MaxSubscriptionClients)
 	} else if env.EventBus.NumClientSubscriptions(addr) >= env.Config.MaxSubscriptionsPerClient {
 		return nil, fmt.Errorf("max_subscriptions_per_client %d reached", env.Config.MaxSubscriptionsPerClient)
+	} else if len(query) > maxQueryLength {
+		return nil, errors.New("maximum query length exceeded")
 	}
 
 	env.Logger.Info("Subscribe to query", "remote", addr, "query", query)
@@ -37,7 +44,11 @@ func (env *Environment) Subscribe(ctx *rpctypes.Context, query string) (*coretyp
 	subCtx, cancel := context.WithTimeout(ctx.Context(), SubscribeTimeout)
 	defer cancel()
 
-	sub, err := env.EventBus.Subscribe(subCtx, addr, q, subBufferSize)
+	sub, err := env.EventBus.SubscribeWithArgs(subCtx, tmpubsub.SubscribeArgs{
+		ClientID: addr,
+		Query:    q,
+		Limit:    subBufferSize,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -46,36 +57,33 @@ func (env *Environment) Subscribe(ctx *rpctypes.Context, query string) (*coretyp
 	subscriptionID := ctx.JSONReq.ID
 	go func() {
 		for {
-			select {
-			case msg := <-sub.Out():
-				var (
-					resultEvent = &coretypes.ResultEvent{Query: query, Data: msg.Data(), Events: msg.Events()}
-					resp        = rpctypes.NewRPCSuccessResponse(subscriptionID, resultEvent)
-				)
-				writeCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-				defer cancel()
-				if err := ctx.WSConn.WriteRPCResponse(writeCtx, resp); err != nil {
-					env.Logger.Info("Can't write response (slow client)",
+			msg, err := sub.Next(context.Background())
+			if errors.Is(err, tmpubsub.ErrUnsubscribed) {
+				// The subscription was removed by the client.
+				return
+			} else if errors.Is(err, tmpubsub.ErrTerminated) {
+				// The subscription was terminated by the publisher.
+				resp := rpctypes.RPCServerError(subscriptionID, err)
+				ok := ctx.WSConn.TryWriteRPCResponse(resp)
+				if !ok {
+					env.Logger.Info("Unable to write response (slow client)",
 						"to", addr, "subscriptionID", subscriptionID, "err", err)
 				}
-			case <-sub.Canceled():
-				if sub.Err() != tmpubsub.ErrUnsubscribed {
-					var reason string
-					if sub.Err() == nil {
-						reason = "Tendermint exited"
-					} else {
-						reason = sub.Err().Error()
-					}
-					var (
-						err  = fmt.Errorf("subscription was canceled (reason: %s)", reason)
-						resp = rpctypes.RPCServerError(subscriptionID, err)
-					)
-					if ok := ctx.WSConn.TryWriteRPCResponse(resp); !ok {
-						env.Logger.Info("Can't write response (slow client)",
-							"to", addr, "subscriptionID", subscriptionID, "err", err)
-					}
-				}
 				return
+			}
+
+			// We have a message to deliver to the client.
+			resp := rpctypes.NewRPCSuccessResponse(subscriptionID, &coretypes.ResultEvent{
+				Query:  query,
+				Data:   msg.Data(),
+				Events: msg.Events(),
+			})
+			wctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			err = ctx.WSConn.WriteRPCResponse(wctx, resp)
+			cancel()
+			if err != nil {
+				env.Logger.Info("Unable to write response (slow client)",
+					"to", addr, "subscriptionID", subscriptionID, "err", err)
 			}
 		}
 	}()

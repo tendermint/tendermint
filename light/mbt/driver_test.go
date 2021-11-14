@@ -1,7 +1,7 @@
 package mbt
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -22,7 +22,7 @@ func TestVerify(t *testing.T) {
 		filename := filename
 		t.Run(filename, func(t *testing.T) {
 
-			jsonBlob, err := ioutil.ReadFile(filename)
+			jsonBlob, err := os.ReadFile(filename)
 			if err != nil {
 				t.Fatal(err)
 			}

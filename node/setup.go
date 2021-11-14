@@ -14,10 +14,9 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/blocksync"
 	"github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
-	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
-	mempoolv1 "github.com/tendermint/tendermint/internal/mempool/v1"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/conn"
 	"github.com/tendermint/tendermint/internal/p2p/pex"
@@ -99,8 +98,8 @@ func createAndStartProxyAppConns(clientCreator abciclient.Creator, logger log.Lo
 	return proxyApp, nil
 }
 
-func createAndStartEventBus(logger log.Logger) (*types.EventBus, error) {
-	eventBus := types.NewEventBus()
+func createAndStartEventBus(logger log.Logger) (*eventbus.EventBus, error) {
+	eventBus := eventbus.NewDefault()
 	eventBus.SetLogger(logger.With("module", "events"))
 	if err := eventBus.Start(); err != nil {
 		return nil, err
@@ -111,17 +110,22 @@ func createAndStartEventBus(logger log.Logger) (*types.EventBus, error) {
 func createAndStartIndexerService(
 	cfg *config.Config,
 	dbProvider config.DBProvider,
-	eventBus *types.EventBus,
+	eventBus *eventbus.EventBus,
 	logger log.Logger,
 	chainID string,
+	metrics *indexer.Metrics,
 ) (*indexer.Service, []indexer.EventSink, error) {
 	eventSinks, err := sink.EventSinksFromConfig(cfg, dbProvider, chainID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	indexerService := indexer.NewIndexerService(eventSinks, eventBus)
-	indexerService.SetLogger(logger.With("module", "txindex"))
+	indexerService := indexer.NewService(indexer.ServiceArgs{
+		Sinks:    eventSinks,
+		EventBus: eventBus,
+		Logger:   logger.With("module", "txindex"),
+		Metrics:  metrics,
+	})
 
 	if err := indexerService.Start(); err != nil {
 		return nil, nil, err
@@ -137,18 +141,20 @@ func doHandshake(
 	genDoc *types.GenesisDoc,
 	eventBus types.BlockEventPublisher,
 	proxyApp proxy.AppConns,
-	consensusLogger log.Logger) error {
+	logger log.Logger,
+) error {
 
 	handshaker := consensus.NewHandshaker(stateStore, state, blockStore, genDoc)
-	handshaker.SetLogger(consensusLogger)
+	handshaker.SetLogger(logger.With("module", "handshaker"))
 	handshaker.SetEventBus(eventBus)
+
 	if err := handshaker.Handshake(proxyApp); err != nil {
 		return fmt.Errorf("error during handshake: %v", err)
 	}
 	return nil
 }
 
-func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusLogger log.Logger, mode string) {
+func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger log.Logger, mode string) {
 	// Log the version info.
 	logger.Info("Version info",
 		"tmVersion", version.TMVersion,
@@ -164,17 +170,23 @@ func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusL
 			"state", state.Version.Consensus.Block,
 		)
 	}
-	switch {
-	case mode == config.ModeFull:
-		consensusLogger.Info("This node is a fullnode")
-	case mode == config.ModeValidator:
+
+	switch mode {
+	case config.ModeFull:
+		logger.Info("This node is a fullnode")
+	case config.ModeValidator:
 		addr := pubKey.Address()
 		// Log whether this node is a validator or an observer
 		if state.Validators.HasAddress(addr) {
-			consensusLogger.Info("This node is a validator", "addr", addr, "pubKey", pubKey.Bytes())
+			logger.Info("This node is a validator",
+				"addr", addr,
+				"pubKey", pubKey.Bytes(),
+			)
 		} else {
-			consensusLogger.Info("This node is a validator (NOT in the active validator set)",
-				"addr", addr, "pubKey", pubKey.Bytes())
+			logger.Info("This node is a validator (NOT in the active validator set)",
+				"addr", addr,
+				"pubKey", pubKey.Bytes(),
+			)
 		}
 	}
 }
@@ -197,76 +209,37 @@ func createMempoolReactor(
 	logger log.Logger,
 ) (service.Service, mempool.Mempool, error) {
 
-	logger = logger.With("module", "mempool", "version", cfg.Mempool.Version)
-	peerUpdates := peerManager.Subscribe()
+	logger = logger.With("module", "mempool")
 
-	switch cfg.Mempool.Version {
-	case config.MempoolV0:
-		ch, err := router.OpenChannel(mempoolv0.GetChannelDescriptor(cfg.Mempool))
-		if err != nil {
-			return nil, nil, err
-		}
-
-		mp := mempoolv0.NewCListMempool(
-			cfg.Mempool,
-			proxyApp.Mempool(),
-			state.LastBlockHeight,
-			mempoolv0.WithMetrics(memplMetrics),
-			mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
-			mempoolv0.WithPostCheck(sm.TxPostCheck(state)),
-		)
-
-		mp.SetLogger(logger)
-
-		reactor := mempoolv0.NewReactor(
-			logger,
-			cfg.Mempool,
-			peerManager,
-			mp,
-			ch,
-			peerUpdates,
-		)
-
-		if cfg.Consensus.WaitForTxs() {
-			mp.EnableTxsAvailable()
-		}
-
-		return reactor, mp, nil
-
-	case config.MempoolV1:
-		ch, err := router.OpenChannel(mempoolv1.GetChannelDescriptor(cfg.Mempool))
-		if err != nil {
-			return nil, nil, err
-		}
-
-		mp := mempoolv1.NewTxMempool(
-			logger,
-			cfg.Mempool,
-			proxyApp.Mempool(),
-			state.LastBlockHeight,
-			mempoolv1.WithMetrics(memplMetrics),
-			mempoolv1.WithPreCheck(sm.TxPreCheck(state)),
-			mempoolv1.WithPostCheck(sm.TxPostCheck(state)),
-		)
-
-		reactor := mempoolv1.NewReactor(
-			logger,
-			cfg.Mempool,
-			peerManager,
-			mp,
-			ch,
-			peerUpdates,
-		)
-
-		if cfg.Consensus.WaitForTxs() {
-			mp.EnableTxsAvailable()
-		}
-
-		return reactor, mp, nil
-
-	default:
-		return nil, nil, fmt.Errorf("unknown mempool version: %s", cfg.Mempool.Version)
+	ch, err := router.OpenChannel(mempool.GetChannelDescriptor(cfg.Mempool))
+	if err != nil {
+		return nil, nil, err
 	}
+
+	mp := mempool.NewTxMempool(
+		logger,
+		cfg.Mempool,
+		proxyApp.Mempool(),
+		state.LastBlockHeight,
+		mempool.WithMetrics(memplMetrics),
+		mempool.WithPreCheck(sm.TxPreCheck(state)),
+		mempool.WithPostCheck(sm.TxPostCheck(state)),
+	)
+
+	reactor := mempool.NewReactor(
+		logger,
+		cfg.Mempool,
+		peerManager,
+		mp,
+		ch,
+		peerManager.Subscribe(),
+	)
+
+	if cfg.Consensus.WaitForTxs() {
+		mp.EnableTxsAvailable()
+	}
+
+	return reactor, mp, nil
 }
 
 func createEvidenceReactor(
@@ -348,11 +321,12 @@ func createConsensusReactor(
 	privValidator types.PrivValidator,
 	csMetrics *consensus.Metrics,
 	waitSync bool,
-	eventBus *types.EventBus,
+	eventBus *eventbus.EventBus,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	logger log.Logger,
 ) (*consensus.Reactor, *consensus.State, error) {
+	logger = logger.With("module", "consensus")
 
 	consensusState := consensus.NewState(
 		cfg.Consensus,
@@ -380,8 +354,6 @@ func createConsensusReactor(
 		channels[ch.ID] = ch
 	}
 
-	peerUpdates := peerManager.Subscribe()
-
 	reactor := consensus.NewReactor(
 		logger,
 		consensusState,
@@ -389,7 +361,7 @@ func createConsensusReactor(
 		channels[consensus.DataChannel],
 		channels[consensus.VoteChannel],
 		channels[consensus.VoteSetBitsChannel],
-		peerUpdates,
+		peerManager.Subscribe(),
 		waitSync,
 		consensus.ReactorMetrics(csMetrics),
 	)
@@ -402,8 +374,14 @@ func createConsensusReactor(
 }
 
 func createTransport(logger log.Logger, cfg *config.Config) *p2p.MConnTransport {
+	conf := conn.DefaultMConnConfig()
+	conf.FlushThrottle = cfg.P2P.FlushThrottleTimeout
+	conf.SendRate = cfg.P2P.SendRate
+	conf.RecvRate = cfg.P2P.RecvRate
+	conf.MaxPacketMsgPayloadSize = cfg.P2P.MaxPacketMsgPayloadSize
+
 	return p2p.NewMConnTransport(
-		logger, conn.DefaultMConnConfig(), []*p2p.ChannelDescriptor{},
+		logger, conf, []*p2p.ChannelDescriptor{},
 		p2p.MConnTransportOptions{
 			MaxAcceptedConnections: uint32(cfg.P2P.MaxConnections),
 		},
@@ -416,6 +394,11 @@ func createPeerManager(
 	nodeID types.NodeID,
 ) (*p2p.PeerManager, closer, error) {
 
+	privatePeerIDs := make(map[types.NodeID]struct{})
+	for _, id := range tmstrings.SplitAndTrimEmpty(cfg.P2P.PrivatePeerIDs, ",", " ") {
+		privatePeerIDs[types.NodeID(id)] = struct{}{}
+	}
+
 	var maxConns uint16
 
 	switch {
@@ -423,11 +406,6 @@ func createPeerManager(
 		maxConns = cfg.P2P.MaxConnections
 	default:
 		maxConns = 64
-	}
-
-	privatePeerIDs := make(map[types.NodeID]struct{})
-	for _, id := range tmstrings.SplitAndTrimEmpty(cfg.P2P.PrivatePeerIDs, ",", " ") {
-		privatePeerIDs[types.NodeID(id)] = struct{}{}
 	}
 
 	options := p2p.PeerManagerOptions{
@@ -480,23 +458,32 @@ func createPeerManager(
 }
 
 func createRouter(
-	p2pLogger log.Logger,
+	logger log.Logger,
 	p2pMetrics *p2p.Metrics,
 	nodeInfo types.NodeInfo,
-	privKey crypto.PrivKey,
+	nodeKey types.NodeKey,
 	peerManager *p2p.PeerManager,
-	transport p2p.Transport,
-	options p2p.RouterOptions,
+	conf *config.Config,
+	proxyApp proxy.AppConns,
 ) (*p2p.Router, error) {
+
+	p2pLogger := logger.With("module", "p2p")
+	transport := createTransport(p2pLogger, conf)
+
+	ep, err := p2p.NewEndpoint(nodeKey.ID.AddressString(conf.P2P.ListenAddress))
+	if err != nil {
+		return nil, err
+	}
 
 	return p2p.NewRouter(
 		p2pLogger,
 		p2pMetrics,
 		nodeInfo,
-		privKey,
+		nodeKey.PrivKey,
 		peerManager,
 		[]p2p.Transport{transport},
-		options,
+		[]p2p.Endpoint{ep},
+		getRouterConfig(conf, proxyApp),
 	)
 }
 
@@ -511,8 +498,7 @@ func createPEXReactor(
 		return nil, err
 	}
 
-	peerUpdates := peerManager.Subscribe()
-	return pex.NewReactor(logger, peerManager, channel, peerUpdates), nil
+	return pex.NewReactor(logger, peerManager, channel, peerManager.Subscribe()), nil
 }
 
 func makeNodeInfo(

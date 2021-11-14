@@ -3,7 +3,7 @@ package kvstore
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"sort"
 	"testing"
 
@@ -74,7 +74,7 @@ func TestKVStoreKV(t *testing.T) {
 }
 
 func TestPersistentKVStoreKV(t *testing.T) {
-	dir, err := ioutil.TempDir("/tmp", "abci-kvstore-test") // TODO
+	dir, err := os.MkdirTemp("/tmp", "abci-kvstore-test") // TODO
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestPersistentKVStoreKV(t *testing.T) {
 }
 
 func TestPersistentKVStoreInfo(t *testing.T) {
-	dir, err := ioutil.TempDir("/tmp", "abci-kvstore-test") // TODO
+	dir, err := os.MkdirTemp("/tmp", "abci-kvstore-test") // TODO
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 
 // add a validator, remove a validator, update a validator
 func TestValUpdates(t *testing.T) {
-	dir, err := ioutil.TempDir("/tmp", "abci-kvstore-test") // TODO
+	dir, err := os.MkdirTemp("/tmp", "abci-kvstore-test") // TODO
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -296,7 +296,7 @@ func TestClientServer(t *testing.T) {
 
 	// set up grpc app
 	kvstore = NewApplication()
-	gclient, gserver, err := makeGRPCClientServer(kvstore, "kvstore-grpc")
+	gclient, gserver, err := makeGRPCClientServer(kvstore, "/tmp/kvstore-grpc")
 	require.NoError(t, err)
 
 	t.Cleanup(func() {

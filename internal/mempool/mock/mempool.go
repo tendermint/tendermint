@@ -12,7 +12,7 @@ import (
 // Mempool is an empty implementation of a Mempool, useful for testing.
 type Mempool struct{}
 
-var _ mempool.Mempool = Mempool{}
+var _ Mempool = Mempool{}
 
 func (Mempool) Lock()     {}
 func (Mempool) Unlock()   {}

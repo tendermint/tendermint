@@ -23,6 +23,9 @@ type Protocol string
 
 // Transport is a connection-oriented mechanism for exchanging data with a peer.
 type Transport interface {
+	// Listen starts the transport on the specified endpoint.
+	Listen(Endpoint) error
+
 	// Protocols returns the protocols supported by the transport. The Router
 	// uses this to pick a transport for an Endpoint.
 	Protocols() []Protocol

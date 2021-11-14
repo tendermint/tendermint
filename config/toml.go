@@ -3,7 +3,6 @@ package config
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,23 +44,29 @@ func EnsureRoot(rootDir string) {
 
 // WriteConfigFile renders config using the template and writes it to configFilePath.
 // This function is called by cmd/tendermint/commands/init.go
-func WriteConfigFile(rootDir string, config *Config) {
-	var buffer bytes.Buffer
-
-	if err := configTemplate.Execute(&buffer, config); err != nil {
-		panic(err)
-	}
-
-	configFilePath := filepath.Join(rootDir, defaultConfigFilePath)
-
-	mustWriteFile(configFilePath, buffer.Bytes(), 0644)
+func WriteConfigFile(rootDir string, config *Config) error {
+	return config.WriteToTemplate(filepath.Join(rootDir, defaultConfigFilePath))
 }
 
-func writeDefaultConfigFileIfNone(rootDir string) {
+// WriteToTemplate writes the config to the exact file specified by
+// the path, in the default toml template and does not mangle the path
+// or filename at all.
+func (cfg *Config) WriteToTemplate(path string) error {
+	var buffer bytes.Buffer
+
+	if err := configTemplate.Execute(&buffer, cfg); err != nil {
+		return err
+	}
+
+	return writeFile(path, buffer.Bytes(), 0644)
+}
+
+func writeDefaultConfigFileIfNone(rootDir string) error {
 	configFilePath := filepath.Join(rootDir, defaultConfigFilePath)
 	if !tmos.FileExists(configFilePath) {
-		WriteConfigFile(rootDir, DefaultConfig())
+		return WriteConfigFile(rootDir, DefaultConfig())
 	}
+	return nil
 }
 
 // Note: any changes to the comments/variables/mapstructure
@@ -300,15 +305,27 @@ allow-duplicate-ip = {{ .P2P.AllowDuplicateIP }}
 handshake-timeout = "{{ .P2P.HandshakeTimeout }}"
 dial-timeout = "{{ .P2P.DialTimeout }}"
 
+# Time to wait before flushing messages out on the connection
+# TODO: Remove once MConnConnection is removed.
+flush-throttle-timeout = "{{ .P2P.FlushThrottleTimeout }}"
+
+# Maximum size of a message packet payload, in bytes
+# TODO: Remove once MConnConnection is removed.
+max-packet-msg-payload-size = {{ .P2P.MaxPacketMsgPayloadSize }}
+
+# Rate at which packets can be sent, in bytes/second
+# TODO: Remove once MConnConnection is removed.
+send-rate = {{ .P2P.SendRate }}
+
+# Rate at which packets can be received, in bytes/second
+# TODO: Remove once MConnConnection is removed.
+recv-rate = {{ .P2P.RecvRate }}
+
+
 #######################################################
 ###          Mempool Configuration Option          ###
 #######################################################
 [mempool]
-
-# Mempool version to use:
-#   1) "v0" - The legacy non-prioritized mempool reactor.
-#   2) "v1" (default) - The prioritized mempool reactor.
-version = "{{ .Mempool.Version }}"
 
 recheck = {{ .Mempool.Recheck }}
 broadcast = {{ .Mempool.Broadcast }}
@@ -399,16 +416,6 @@ chunk-request-timeout = "{{ .StateSync.ChunkRequestTimeout }}"
 fetchers = "{{ .StateSync.Fetchers }}"
 
 #######################################################
-###       Block Sync Configuration Connections       ###
-#######################################################
-[blocksync]
-
-# If this node is many blocks behind the tip of the chain, BlockSync
-# allows them to catchup quickly by downloading blocks in parallel
-# and verifying their commits
-enable = {{ .BlockSync.Enable }}
-
-#######################################################
 ###         Consensus Configuration Options         ###
 #######################################################
 [consensus]
@@ -496,22 +503,22 @@ namespace = "{{ .Instrumentation.Namespace }}"
 
 /****** these are for test settings ***********/
 
-func ResetTestRoot(testName string) *Config {
+func ResetTestRoot(testName string) (*Config, error) {
 	return ResetTestRootWithChainID(testName, "")
 }
 
-func ResetTestRootWithChainID(testName string, chainID string) *Config {
+func ResetTestRootWithChainID(testName string, chainID string) (*Config, error) {
 	// create a unique, concurrency-safe test directory under os.TempDir()
-	rootDir, err := ioutil.TempDir("", fmt.Sprintf("%s-%s_", chainID, testName))
+	rootDir, err := os.MkdirTemp("", fmt.Sprintf("%s-%s_", chainID, testName))
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	// ensure config and data subdirs are created
 	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
-		panic(err)
+		return nil, err
 	}
 	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	conf := DefaultConfig()
@@ -520,26 +527,36 @@ func ResetTestRootWithChainID(testName string, chainID string) *Config {
 	privStateFilePath := filepath.Join(rootDir, conf.PrivValidator.State)
 
 	// Write default config file if missing.
-	writeDefaultConfigFileIfNone(rootDir)
+	if err := writeDefaultConfigFileIfNone(rootDir); err != nil {
+		return nil, err
+	}
+
 	if !tmos.FileExists(genesisFilePath) {
 		if chainID == "" {
 			chainID = "tendermint_test"
 		}
 		testGenesis := fmt.Sprintf(testGenesisFmt, chainID)
-		mustWriteFile(genesisFilePath, []byte(testGenesis), 0644)
+		if err := writeFile(genesisFilePath, []byte(testGenesis), 0644); err != nil {
+			return nil, err
+		}
 	}
 	// we always overwrite the priv val
-	mustWriteFile(privKeyFilePath, []byte(testPrivValidatorKey), 0644)
-	mustWriteFile(privStateFilePath, []byte(testPrivValidatorState), 0644)
+	if err := writeFile(privKeyFilePath, []byte(testPrivValidatorKey), 0644); err != nil {
+		return nil, err
+	}
+	if err := writeFile(privStateFilePath, []byte(testPrivValidatorState), 0644); err != nil {
+		return nil, err
+	}
 
 	config := TestConfig().SetRoot(rootDir)
-	return config
+	return config, nil
 }
 
-func mustWriteFile(filePath string, contents []byte, mode os.FileMode) {
-	if err := ioutil.WriteFile(filePath, contents, mode); err != nil {
-		tmos.Exit(fmt.Sprintf("failed to write file: %v", err))
+func writeFile(filePath string, contents []byte, mode os.FileMode) error {
+	if err := os.WriteFile(filePath, contents, mode); err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
 	}
+	return nil
 }
 
 var testGenesisFmt = `{

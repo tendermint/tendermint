@@ -2,7 +2,7 @@ package server
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -65,7 +65,7 @@ func TestRPCParams(t *testing.T) {
 		defer res.Body.Close()
 		// Always expecting back a JSONRPCResponse
 		assert.NotZero(t, res.StatusCode, "#%d: should always return code", i)
-		blob, err := ioutil.ReadAll(res.Body)
+		blob, err := io.ReadAll(res.Body)
 		if err != nil {
 			t.Errorf("#%d: err reading body: %v", i, err)
 			continue
@@ -112,7 +112,7 @@ func TestJSONRPCID(t *testing.T) {
 		res := rec.Result()
 		// Always expecting back a JSONRPCResponse
 		assert.NotZero(t, res.StatusCode, "#%d: should always return code", i)
-		blob, err := ioutil.ReadAll(res.Body)
+		blob, err := io.ReadAll(res.Body)
 		if err != nil {
 			t.Errorf("#%d: err reading body: %v", i, err)
 			continue
@@ -142,7 +142,7 @@ func TestRPCNotification(t *testing.T) {
 
 	// Always expecting back a JSONRPCResponse
 	require.True(t, statusOK(res.StatusCode), "should always return 2XX")
-	blob, err := ioutil.ReadAll(res.Body)
+	blob, err := io.ReadAll(res.Body)
 	res.Body.Close()
 	require.Nil(t, err, "reading from the body should not give back an error")
 	require.Equal(t, len(blob), 0, "a notification SHOULD NOT be responded to by the server")
@@ -178,7 +178,7 @@ func TestRPCNotificationInBatch(t *testing.T) {
 		res := rec.Result()
 		// Always expecting back a JSONRPCResponse
 		assert.True(t, statusOK(res.StatusCode), "#%d: should always return 2XX", i)
-		blob, err := ioutil.ReadAll(res.Body)
+		blob, err := io.ReadAll(res.Body)
 		if err != nil {
 			t.Errorf("#%d: err reading body: %v", i, err)
 			continue
@@ -239,7 +239,7 @@ func TestRPCResponseCache(t *testing.T) {
 	require.True(t, statusOK(res.StatusCode), "should always return 2XX")
 	require.Equal(t, "max-age=31536000", res.Header.Get("Cache-control"))
 
-	_, err := ioutil.ReadAll(res.Body)
+	_, err := io.ReadAll(res.Body)
 	res.Body.Close()
 	require.Nil(t, err, "reading from the body should not give back an error")
 
@@ -254,7 +254,7 @@ func TestRPCResponseCache(t *testing.T) {
 	require.True(t, statusOK(res.StatusCode), "should always return 2XX")
 	require.Equal(t, "", res.Header.Get("Cache-control"))
 
-	_, err = ioutil.ReadAll(res.Body)
+	_, err = io.ReadAll(res.Body)
 	res.Body.Close()
 	require.Nil(t, err, "reading from the body should not give back an error")
 }

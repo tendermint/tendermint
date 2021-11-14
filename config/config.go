@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -28,11 +27,6 @@ const (
 	ModeFull      = "full"
 	ModeValidator = "validator"
 	ModeSeed      = "seed"
-
-	BlockSyncV0 = "v0"
-
-	MempoolV0 = "v0"
-	MempoolV1 = "v1"
 )
 
 // NOTE: Most of the structs & relevant comments + the
@@ -73,7 +67,6 @@ type Config struct {
 	P2P             *P2PConfig             `mapstructure:"p2p"`
 	Mempool         *MempoolConfig         `mapstructure:"mempool"`
 	StateSync       *StateSyncConfig       `mapstructure:"statesync"`
-	BlockSync       *BlockSyncConfig       `mapstructure:"blocksync"`
 	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
 	TxIndex         *TxIndexConfig         `mapstructure:"tx-index"`
 	Instrumentation *InstrumentationConfig `mapstructure:"instrumentation"`
@@ -88,7 +81,6 @@ func DefaultConfig() *Config {
 		P2P:             DefaultP2PConfig(),
 		Mempool:         DefaultMempoolConfig(),
 		StateSync:       DefaultStateSyncConfig(),
-		BlockSync:       DefaultBlockSyncConfig(),
 		Consensus:       DefaultConsensusConfig(),
 		TxIndex:         DefaultTxIndexConfig(),
 		Instrumentation: DefaultInstrumentationConfig(),
@@ -111,7 +103,6 @@ func TestConfig() *Config {
 		P2P:             TestP2PConfig(),
 		Mempool:         TestMempoolConfig(),
 		StateSync:       TestStateSyncConfig(),
-		BlockSync:       TestBlockSyncConfig(),
 		Consensus:       TestConsensusConfig(),
 		TxIndex:         TestTxIndexConfig(),
 		Instrumentation: TestInstrumentationConfig(),
@@ -144,9 +135,6 @@ func (cfg *Config) ValidateBasic() error {
 	}
 	if err := cfg.StateSync.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [statesync] section: %w", err)
-	}
-	if err := cfg.BlockSync.ValidateBasic(); err != nil {
-		return fmt.Errorf("error in [blocksync] section: %w", err)
 	}
 	if err := cfg.Consensus.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [consensus] section: %w", err)
@@ -277,7 +265,7 @@ func (cfg BaseConfig) NodeKeyFile() string {
 
 // LoadNodeKey loads NodeKey located in filePath.
 func (cfg BaseConfig) LoadNodeKeyID() (types.NodeID, error) {
-	jsonBytes, err := ioutil.ReadFile(cfg.NodeKeyFile())
+	jsonBytes, err := os.ReadFile(cfg.NodeKeyFile())
 	if err != nil {
 		return "", err
 	}
@@ -331,28 +319,6 @@ func (cfg BaseConfig) ValidateBasic() error {
 
 	default:
 		return fmt.Errorf("unknown mode: %v", cfg.Mode)
-	}
-
-	// TODO (https://github.com/tendermint/tendermint/issues/6908) remove this check after the v0.35 release cycle.
-	// This check was added to give users an upgrade prompt to use the new
-	// configuration option in v0.35. In future release cycles they should no longer
-	// be using this configuration parameter so the check can be removed.
-	// The cfg.Other field can likely be removed at the same time if it is not referenced
-	// elsewhere as it was added to service this check.
-	if fs, ok := cfg.Other["fastsync"]; ok {
-		if _, ok := fs.(map[string]interface{}); ok {
-			return fmt.Errorf("a configuration section named 'fastsync' was found in the " +
-				"configuration file. The 'fastsync' section has been renamed to " +
-				"'blocksync', please update the 'fastsync' field in your configuration file to 'blocksync'")
-		}
-	}
-	if fs, ok := cfg.Other["fast-sync"]; ok {
-		if fs != "" {
-			return fmt.Errorf("a parameter named 'fast-sync' was found in the " +
-				"configuration file. The parameter to enable or disable quickly syncing with a blockchain" +
-				"has moved to the [blocksync] section of the configuration file as blocksync.enable. " +
-				"Please move the 'fast-sync' field in your configuration file to 'blocksync.enable'")
-		}
 	}
 
 	return nil
@@ -639,6 +605,18 @@ type P2PConfig struct { //nolint: maligned
 	// Toggle to disable guard against peers connecting from the same ip.
 	AllowDuplicateIP bool `mapstructure:"allow-duplicate-ip"`
 
+	// Time to wait before flushing messages out on the connection
+	FlushThrottleTimeout time.Duration `mapstructure:"flush-throttle-timeout"`
+
+	// Maximum size of a message packet payload, in bytes
+	MaxPacketMsgPayloadSize int `mapstructure:"max-packet-msg-payload-size"`
+
+	// Rate at which packets can be sent, in bytes/second
+	SendRate int64 `mapstructure:"send-rate"`
+
+	// Rate at which packets can be received, in bytes/second
+	RecvRate int64 `mapstructure:"recv-rate"`
+
 	// Peer connection configuration.
 	HandshakeTimeout time.Duration `mapstructure:"handshake-timeout"`
 	DialTimeout      time.Duration `mapstructure:"dial-timeout"`
@@ -661,13 +639,40 @@ func DefaultP2PConfig() *P2PConfig {
 		UPNP:                          false,
 		MaxConnections:                64,
 		MaxIncomingConnectionAttempts: 100,
-		PexReactor:                    true,
-		AllowDuplicateIP:              false,
-		HandshakeTimeout:              20 * time.Second,
-		DialTimeout:                   3 * time.Second,
-		TestDialFail:                  false,
-		QueueType:                     "priority",
+		FlushThrottleTimeout:          100 * time.Millisecond,
+		// The MTU (Maximum Transmission Unit) for Ethernet is 1500 bytes.
+		// The IP header and the TCP header take up 20 bytes each at least (unless
+		// optional header fields are used) and thus the max for (non-Jumbo frame)
+		// Ethernet is 1500 - 20 -20 = 1460
+		// Source: https://stackoverflow.com/a/3074427/820520
+		MaxPacketMsgPayloadSize: 1400,
+		SendRate:                5120000, // 5 mB/s
+		RecvRate:                5120000, // 5 mB/s
+		PexReactor:              true,
+		AllowDuplicateIP:        false,
+		HandshakeTimeout:        20 * time.Second,
+		DialTimeout:             3 * time.Second,
+		TestDialFail:            false,
+		QueueType:               "priority",
 	}
+}
+
+// ValidateBasic performs basic validation (checking param bounds, etc.) and
+// returns an error if any check fails.
+func (cfg *P2PConfig) ValidateBasic() error {
+	if cfg.FlushThrottleTimeout < 0 {
+		return errors.New("flush-throttle-timeout can't be negative")
+	}
+	if cfg.MaxPacketMsgPayloadSize < 0 {
+		return errors.New("max-packet-msg-payload-size can't be negative")
+	}
+	if cfg.SendRate < 0 {
+		return errors.New("send-rate can't be negative")
+	}
+	if cfg.RecvRate < 0 {
+		return errors.New("recv-rate can't be negative")
+	}
+	return nil
 }
 
 // TestP2PConfig returns a configuration for testing the peer-to-peer layer
@@ -675,6 +680,8 @@ func TestP2PConfig() *P2PConfig {
 	cfg := DefaultP2PConfig()
 	cfg.ListenAddress = "tcp://127.0.0.1:36656"
 	cfg.AllowDuplicateIP = true
+	cfg.FlushThrottleTimeout = 10 * time.Millisecond
+
 	return cfg
 }
 
@@ -683,7 +690,6 @@ func TestP2PConfig() *P2PConfig {
 
 // MempoolConfig defines the configuration options for the Tendermint mempool.
 type MempoolConfig struct {
-	Version   string `mapstructure:"version"`
 	RootDir   string `mapstructure:"home"`
 	Recheck   bool   `mapstructure:"recheck"`
 	Broadcast bool   `mapstructure:"broadcast"`
@@ -733,7 +739,6 @@ type MempoolConfig struct {
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool.
 func DefaultMempoolConfig() *MempoolConfig {
 	return &MempoolConfig{
-		Version:   MempoolV1,
 		Recheck:   true,
 		Broadcast: true,
 		// Each signature verification takes .5ms, Size reduced until we implement
@@ -901,31 +906,6 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 
 	return nil
 }
-
-//-----------------------------------------------------------------------------
-
-// BlockSyncConfig (formerly known as FastSync) defines the configuration for the Tendermint block sync service
-// If this node is many blocks behind the tip of the chain, BlockSync
-// allows them to catchup quickly by downloading blocks in parallel
-// and verifying their commits.
-type BlockSyncConfig struct {
-	Enable bool `mapstructure:"enable"`
-}
-
-// DefaultBlockSyncConfig returns a default configuration for the block sync service
-func DefaultBlockSyncConfig() *BlockSyncConfig {
-	return &BlockSyncConfig{
-		Enable: true,
-	}
-}
-
-// TestBlockSyncConfig returns a default configuration for the block sync.
-func TestBlockSyncConfig() *BlockSyncConfig {
-	return DefaultBlockSyncConfig()
-}
-
-// ValidateBasic performs basic validation.
-func (cfg *BlockSyncConfig) ValidateBasic() error { return nil }
 
 //-----------------------------------------------------------------------------
 // ConsensusConfig

@@ -23,13 +23,13 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
-	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
 	tmtime "github.com/tendermint/tendermint/libs/time"
@@ -38,7 +38,8 @@ import (
 )
 
 func TestNodeStartStop(t *testing.T) {
-	cfg := config.ResetTestRoot("node_node_test")
+	cfg, err := config.ResetTestRoot("node_node_test")
+	require.NoError(t, err)
 
 	defer os.RemoveAll(cfg.RootDir)
 
@@ -61,14 +62,15 @@ func TestNodeStartStop(t *testing.T) {
 	defer cancel()
 
 	// wait for the node to produce a block
-	blocksSub, err := n.EventBus().Subscribe(ctx, "node_test", types.EventQueryNewBlock)
+	blocksSub, err := n.EventBus().SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
+		ClientID: "node_test",
+		Query:    types.EventQueryNewBlock,
+	})
 	require.NoError(t, err)
-	select {
-	case <-blocksSub.Out():
-	case <-blocksSub.Canceled():
-		t.Fatal("blocksSub was canceled")
-	case <-time.After(10 * time.Second):
-		t.Fatal("timed out waiting for the node to produce a block")
+	tctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	if _, err := blocksSub.Next(tctx); err != nil {
+		t.Fatalf("Waiting for event: %v", err)
 	}
 
 	// stop the node
@@ -110,7 +112,9 @@ func getTestNode(t *testing.T, conf *config.Config, logger log.Logger) *nodeImpl
 }
 
 func TestNodeDelayedStart(t *testing.T) {
-	cfg := config.ResetTestRoot("node_delayed_start_test")
+	cfg, err := config.ResetTestRoot("node_delayed_start_test")
+	require.NoError(t, err)
+
 	defer os.RemoveAll(cfg.RootDir)
 	now := tmtime.Now()
 
@@ -125,14 +129,15 @@ func TestNodeDelayedStart(t *testing.T) {
 }
 
 func TestNodeSetAppVersion(t *testing.T) {
-	cfg := config.ResetTestRoot("node_app_version_test")
+	cfg, err := config.ResetTestRoot("node_app_version_test")
+	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
 	// create node
 	n := getTestNode(t, cfg, log.TestingLogger())
 
 	// default config uses the kvstore app
-	var appVersion uint64 = kvstore.ProtocolVersion
+	appVersion := kvstore.ProtocolVersion
 
 	// check version is set in state
 	state, err := n.stateStore.Load()
@@ -146,7 +151,8 @@ func TestNodeSetAppVersion(t *testing.T) {
 func TestNodeSetPrivValTCP(t *testing.T) {
 	addr := "tcp://" + testFreeAddr(t)
 
-	cfg := config.ResetTestRoot("node_priv_val_tcp_test")
+	cfg, err := config.ResetTestRoot("node_priv_val_tcp_test")
+	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	cfg.PrivValidator.ListenAddr = addr
 
@@ -179,7 +185,8 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
 	addrNoPrefix := testFreeAddr(t)
 
-	cfg := config.ResetTestRoot("node_priv_val_tcp_test")
+	cfg, err := config.ResetTestRoot("node_priv_val_tcp_test")
+	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	cfg.PrivValidator.ListenAddr = addrNoPrefix
 
@@ -196,7 +203,8 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	tmpfile := "/tmp/kms." + tmrand.Str(6) + ".sock"
 	defer os.Remove(tmpfile) // clean up
 
-	cfg := config.ResetTestRoot("node_priv_val_tcp_test")
+	cfg, err := config.ResetTestRoot("node_priv_val_tcp_test")
+	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	cfg.PrivValidator.ListenAddr = "unix://" + tmpfile
 
@@ -237,11 +245,12 @@ func TestCreateProposalBlock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg := config.ResetTestRoot("node_create_proposal")
+	cfg, err := config.ResetTestRoot("node_create_proposal")
+	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
-	err := proxyApp.Start()
+	err = proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
@@ -257,15 +266,12 @@ func TestCreateProposalBlock(t *testing.T) {
 	state.ConsensusParams.Evidence.MaxBytes = maxEvidenceBytes
 	proposerAddr, _ := state.Validators.GetByIndex(0)
 
-	mp := mempoolv0.NewCListMempool(
+	mp := mempool.NewTxMempool(
+		logger.With("module", "mempool"),
 		cfg.Mempool,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
-		mempoolv0.WithMetrics(mempool.NopMetrics()),
-		mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
-		mempoolv0.WithPostCheck(sm.TxPostCheck(state)),
 	)
-	mp.SetLogger(logger)
 
 	// Make EvidencePool
 	evidenceDB := dbm.NewMemDB()
@@ -332,11 +338,13 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg := config.ResetTestRoot("node_create_proposal")
+	cfg, err := config.ResetTestRoot("node_create_proposal")
+	require.NoError(t, err)
+
 	defer os.RemoveAll(cfg.RootDir)
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
-	err := proxyApp.Start()
+	err = proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
@@ -352,15 +360,13 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	proposerAddr, _ := state.Validators.GetByIndex(0)
 
 	// Make Mempool
-	mp := mempoolv0.NewCListMempool(
+
+	mp := mempool.NewTxMempool(
+		logger.With("module", "mempool"),
 		cfg.Mempool,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
-		mempoolv0.WithMetrics(mempool.NopMetrics()),
-		mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
-		mempoolv0.WithPostCheck(sm.TxPostCheck(state)),
 	)
-	mp.SetLogger(logger)
 
 	// fill the mempool with one txs just below the maximum size
 	txLength := int(types.MaxDataBytesNoEvidence(maxBytes, 1))
@@ -397,11 +403,12 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg := config.ResetTestRoot("node_create_proposal")
+	cfg, err := config.ResetTestRoot("node_create_proposal")
+	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
-	err := proxyApp.Start()
+	err = proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
@@ -415,15 +422,12 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	proposerAddr, _ := state.Validators.GetByIndex(0)
 
 	// Make Mempool
-	mp := mempoolv0.NewCListMempool(
+	mp := mempool.NewTxMempool(
+		logger.With("module", "mempool"),
 		cfg.Mempool,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
-		mempoolv0.WithMetrics(mempool.NopMetrics()),
-		mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
-		mempoolv0.WithPostCheck(sm.TxPostCheck(state)),
 	)
-	mp.SetLogger(logger)
 
 	// fill the mempool with one txs just below the maximum size
 	txLength := int(types.MaxDataBytesNoEvidence(maxBytes, types.MaxVotesCount))
@@ -512,7 +516,8 @@ func TestMaxProposalBlockSize(t *testing.T) {
 }
 
 func TestNodeNewSeedNode(t *testing.T) {
-	cfg := config.ResetTestRoot("node_new_node_custom_reactors_test")
+	cfg, err := config.ResetTestRoot("node_new_node_custom_reactors_test")
+	require.NoError(t, err)
 	cfg.Mode = config.ModeSeed
 	defer os.RemoveAll(cfg.RootDir)
 
@@ -539,7 +544,9 @@ func TestNodeNewSeedNode(t *testing.T) {
 }
 
 func TestNodeSetEventSink(t *testing.T) {
-	cfg := config.ResetTestRoot("node_app_version_test")
+	cfg, err := config.ResetTestRoot("node_app_version_test")
+	require.NoError(t, err)
+
 	defer os.RemoveAll(cfg.RootDir)
 
 	logger := log.TestingLogger()
@@ -551,7 +558,8 @@ func TestNodeSetEventSink(t *testing.T) {
 		require.NoError(t, err)
 
 		indexService, eventSinks, err := createAndStartIndexerService(cfg,
-			config.DefaultDBProvider, eventBus, logger, genDoc.ChainID)
+			config.DefaultDBProvider, eventBus, logger, genDoc.ChainID,
+			indexer.NopMetrics())
 		require.NoError(t, err)
 		t.Cleanup(func() { require.NoError(t, indexService.Stop()) })
 		return eventSinks
@@ -701,7 +709,8 @@ func loadStatefromGenesis(t *testing.T) sm.State {
 
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	cfg := config.ResetTestRoot("load_state_from_genesis")
+	cfg, err := config.ResetTestRoot("load_state_from_genesis")
+	require.NoError(t, err)
 
 	loadedState, err := stateStore.Load()
 	require.NoError(t, err)

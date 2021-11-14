@@ -104,11 +104,6 @@ func TestStateSyncConfigValidateBasic(t *testing.T) {
 	require.NoError(t, cfg.ValidateBasic())
 }
 
-func TestBlockSyncConfigValidateBasic(t *testing.T) {
-	cfg := TestBlockSyncConfig()
-	assert.NoError(t, cfg.ValidateBasic())
-}
-
 func TestConsensusConfig_ValidateBasic(t *testing.T) {
 	// nolint: lll
 	testcases := map[string]struct {
@@ -158,4 +153,22 @@ func TestInstrumentationConfigValidateBasic(t *testing.T) {
 	// tamper with maximum open connections
 	cfg.MaxOpenConnections = -1
 	assert.Error(t, cfg.ValidateBasic())
+}
+
+func TestP2PConfigValidateBasic(t *testing.T) {
+	cfg := TestP2PConfig()
+	assert.NoError(t, cfg.ValidateBasic())
+
+	fieldsToTest := []string{
+		"FlushThrottleTimeout",
+		"MaxPacketMsgPayloadSize",
+		"SendRate",
+		"RecvRate",
+	}
+
+	for _, fieldName := range fieldsToTest {
+		reflect.ValueOf(cfg).Elem().FieldByName(fieldName).SetInt(-1)
+		assert.Error(t, cfg.ValidateBasic())
+		reflect.ValueOf(cfg).Elem().FieldByName(fieldName).SetInt(0)
+	}
 }

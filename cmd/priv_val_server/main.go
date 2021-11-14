@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -78,7 +77,7 @@ func main() {
 		}
 
 		certPool := x509.NewCertPool()
-		bs, err := ioutil.ReadFile(*rootCA)
+		bs, err := os.ReadFile(*rootCA)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to read client ca cert: %s", err)
 			os.Exit(1)
