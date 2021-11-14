@@ -2448,25 +2448,25 @@ func TestProposerWaitUntil(t *testing.T) {
 		name         string
 		blockTime    time.Time
 		localTime    time.Time
-		expectedTime time.Time
+		expectedWait time.Duration
 	}{
 		{
 			name:         "block time greater than local time",
 			blockTime:    genesisTime.Add(5 * time.Nanosecond),
 			localTime:    genesisTime.Add(1 * time.Nanosecond),
-			expectedTime: genesisTime.Add(5 * time.Nanosecond),
+			expectedWait: 4 * time.Nanosecond,
 		},
 		{
 			name:         "local time greater than block time",
 			blockTime:    genesisTime.Add(1 * time.Nanosecond),
 			localTime:    genesisTime.Add(5 * time.Nanosecond),
-			expectedTime: genesisTime.Add(5 * time.Nanosecond),
+			expectedWait: 0,
 		},
 		{
 			name:         "both times equal",
 			blockTime:    genesisTime.Add(5 * time.Nanosecond),
 			localTime:    genesisTime.Add(5 * time.Nanosecond),
-			expectedTime: genesisTime.Add(5 * time.Nanosecond),
+			expectedWait: 0,
 		},
 	}
 	for _, testCase := range testCases {
@@ -2480,8 +2480,8 @@ func TestProposerWaitUntil(t *testing.T) {
 			mockSource := new(tmtimemocks.Source)
 			mockSource.On("Now").Return(testCase.localTime)
 
-			ti := proposerWaitUntil(mockSource, b.Header)
-			assert.Equal(t, testCase.expectedTime, ti)
+			ti := proposerWaitTime(mockSource, b.Header)
+			assert.Equal(t, testCase.expectedWait, ti)
 		})
 	}
 }
