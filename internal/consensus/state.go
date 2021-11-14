@@ -1120,7 +1120,9 @@ func (cs *State) enterPropose(height int64, round int32) {
 	}()
 
 	// If we don't get the proposal and all block parts quick enough, enterPrevote
-	cs.scheduleTimeout(cs.config.Propose(round), height, round, cstypes.RoundStepPropose)
+	waitingTime := proposalStepWaitingTime(tmtime.DefaultSource{}, cs.state.LastBlockTime, cs.state.ConsensusParams.Timestamp)
+	proposalTimeout := maxDuration(cs.config.Propose(round), waitingTime)
+	cs.scheduleTimeout(proposalTimeout, height, round, cstypes.RoundStepPropose)
 
 	// Nothing more to do if we're not a validator
 	if cs.privValidator == nil {
@@ -2423,10 +2425,10 @@ func repairWalFile(src, dst string) error {
 // Block times must be monotonically increasing, so if the block time of the previous
 // block is larger than the proposer's current time, then the proposer will sleep
 // until its local clock exceeds the previous block time.
-func proposerWaitTime(lt tmtime.Source, h types.Header) time.Duration {
+func proposerWaitTime(lt tmtime.Source, bt time.Time) time.Duration {
 	t := lt.Now()
-	if h.Time.After(t) {
-		return h.Time.Sub(t)
+	if bt.After(t) {
+		return bt.Sub(t)
 	}
 	return 0
 }
@@ -2444,11 +2446,18 @@ func proposerWaitTime(lt tmtime.Source, h types.Header) time.Duration {
 // The result of proposalStepWaitingTime is compared with the configured `timeout-propose` duration,
 // and the validator waits for whichever duration is larger before advancing to the next step
 // and prevoting nil.
-func proposalStepWaitingTime(lt tmtime.Source, h types.Header, tp types.TimestampParams) time.Duration {
+func proposalStepWaitingTime(lt tmtime.Source, bt time.Time, tp types.TimestampParams) time.Duration {
 	t := lt.Now()
-	wt := h.Time.Add(tp.Precision).Add(tp.MsgDelay)
+	wt := bt.Add(tp.Precision).Add(tp.MsgDelay)
 	if t.After(wt) {
 		return 0
 	}
 	return wt.Sub(t)
+}
+
+func maxDuration(d1, d2 time.Duration) time.Duration {
+	if d1 >= d2 {
+		return d1
+	}
+	return d2
 }

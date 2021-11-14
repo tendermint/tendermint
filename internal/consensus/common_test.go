@@ -397,6 +397,24 @@ func subscribeToVoter(ctx context.Context, t *testing.T, cs *State, addr []byte)
 	return ch
 }
 
+func subscribeToVoterBuffered(cs *State, addr []byte) <-chan tmpubsub.Message {
+	votesSub, err := cs.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryVote)
+	if err != nil {
+		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, types.EventQueryVote))
+	}
+	ch := make(chan tmpubsub.Message)
+	go func() {
+		for msg := range votesSub.Out() {
+			vote := msg.Data().(types.EventDataVote)
+			// we only fire for our own votes
+			if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
+				ch <- msg
+			}
+		}
+	}()
+	return ch
+}
+
 //-------------------------------------------------------------------------------
 // consensus states
 
