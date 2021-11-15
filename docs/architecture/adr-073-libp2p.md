@@ -130,6 +130,10 @@ will need to be coordinated between all nodes of the network.
 
 ## Open Questions
 
+- What is the role of Protocol Labs in the implementation of libp2p in
+  tendermint, both during the initial implementation and on an ongoing
+  basis thereafter?
+
 - Should all P2P traffic for a given node be pushed to a single topic,
   and we assume that a topic maps to a specific ChainID, or should
   each reactor (or type of message) have its own topic?
