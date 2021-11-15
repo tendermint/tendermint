@@ -7,9 +7,6 @@ set -euo pipefail
 # desired branch name or commit hash from the spec repo.
 
 : ${VERS:=master}
-URL_PATH=tarball/
-
-VERS=ba46bcc66b77e0c37921e47a2a29c574b38f2b73 
 
 echo "fetching proto files"
 
@@ -19,8 +16,7 @@ REF=$(curl -H "Accept: application/vnd.github.v3.sha" -qL \
   | cut -c -7)
 
 readonly OUTDIR="tendermint-spec-${REF}"
-curl -qL "https://api.github.com/repos/tendermint/spec/${URL_PATH}${REF}" | tar -xzf - ${OUTDIR}/
-
+curl -qL "https://api.github.com/repos/tendermint/spec/tarball/${REF}" | tar -xzf - ${OUTDIR}/
 
 cp -r ${OUTDIR}/proto/tendermint/* ./proto/tendermint
 cp -r ${OUTDIR}/third_party/** ./third_party
