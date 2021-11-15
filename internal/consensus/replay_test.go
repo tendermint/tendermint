@@ -25,6 +25,7 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -772,7 +773,7 @@ func testHandshakeReplay(t *testing.T, sim *simulatorTestSuite, nBlocks int, mod
 
 	// now start the app using the handshake - it should sync
 	genDoc, _ := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
-	handshaker := NewHandshaker(stateStore, state, store, genDoc)
+	handshaker := NewHandshaker(log.TestingLogger(), stateStore, state, store, eventbus.NopEventBus{}, genDoc)
 	proxyApp := proxy.NewAppConns(clientCreator2, proxy.NopMetrics())
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
@@ -962,6 +963,8 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	blocks := sf.MakeBlocks(3, &state, privVal)
 	store.chain = blocks
 
+	logger := log.TestingLogger()
+
 	// 2. Tendermint must panic if app returns wrong hash for the first block
 	//		- RANDOM HASH
 	//		- 0x02
@@ -979,7 +982,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 		})
 
 		assert.Panics(t, func() {
-			h := NewHandshaker(stateStore, state, store, genDoc)
+			h := NewHandshaker(logger, stateStore, state, store, eventbus.NopEventBus{}, genDoc)
 			if err = h.Handshake(proxyApp); err != nil {
 				t.Log(err)
 			}
@@ -1003,7 +1006,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 		})
 
 		assert.Panics(t, func() {
-			h := NewHandshaker(stateStore, state, store, genDoc)
+			h := NewHandshaker(logger, stateStore, state, store, eventbus.NopEventBus{}, genDoc)
 			if err = h.Handshake(proxyApp); err != nil {
 				t.Log(err)
 			}
@@ -1251,17 +1254,16 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	oldValAddr := state.Validators.Validators[0].Address
 
 	// now start the app using the handshake - it should sync
-	genDoc, _ := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
-	handshaker := NewHandshaker(stateStore, state, store, genDoc)
+	genDoc, err := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
+	require.NoError(t, err)
+
+	handshaker := NewHandshaker(log.TestingLogger(), stateStore, state, store, eventbus.NopEventBus{}, genDoc)
 	proxyApp := proxy.NewAppConns(clientCreator, proxy.NopMetrics())
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
 	}
-	t.Cleanup(func() {
-		if err := proxyApp.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+	t.Cleanup(func() { require.NoError(t, proxyApp.Stop()) })
+
 	if err := handshaker.Handshake(proxyApp); err != nil {
 		t.Fatalf("Error on abci handshake: %v", err)
 	}

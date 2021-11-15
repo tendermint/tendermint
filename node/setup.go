@@ -134,26 +134,6 @@ func createAndStartIndexerService(
 	return indexerService, eventSinks, nil
 }
 
-func doHandshake(
-	stateStore sm.Store,
-	state sm.State,
-	blockStore sm.BlockStore,
-	genDoc *types.GenesisDoc,
-	eventBus types.BlockEventPublisher,
-	proxyApp proxy.AppConns,
-	logger log.Logger,
-) error {
-
-	handshaker := consensus.NewHandshaker(stateStore, state, blockStore, genDoc)
-	handshaker.SetLogger(logger.With("module", "handshaker"))
-	handshaker.SetEventBus(eventBus)
-
-	if err := handshaker.Handshake(proxyApp); err != nil {
-		return fmt.Errorf("error during handshake: %v", err)
-	}
-	return nil
-}
-
 func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger log.Logger, mode string) {
 	// Log the version info.
 	logger.Info("Version info",
