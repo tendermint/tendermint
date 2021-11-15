@@ -9,8 +9,9 @@ import (
 var ReplayCmd = &cobra.Command{
 	Use:   "replay",
 	Short: "Replay messages from WAL",
-	Run: func(cmd *cobra.Command, args []string) {
-		consensus.RunReplayFile(config.BaseConfig, config.Consensus, false)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return consensus.RunReplayFile(logger, config.BaseConfig, config.Consensus, false)
+
 	},
 }
 
@@ -19,7 +20,7 @@ var ReplayCmd = &cobra.Command{
 var ReplayConsoleCmd = &cobra.Command{
 	Use:   "replay-console",
 	Short: "Replay messages from WAL in a console",
-	Run: func(cmd *cobra.Command, args []string) {
-		consensus.RunReplayFile(config.BaseConfig, config.Consensus, true)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return consensus.RunReplayFile(logger, config.BaseConfig, config.Consensus, true)
 	},
 }

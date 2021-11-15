@@ -32,12 +32,22 @@ const (
 // replay messages interactively or all at once
 
 // replay the wal file
-func RunReplayFile(cfg config.BaseConfig, csConfig *config.ConsensusConfig, console bool) {
-	consensusState := newConsensusStateForReplay(cfg, csConfig)
+func RunReplayFile(
+	logger log.Logger,
+	cfg config.BaseConfig,
+	csConfig *config.ConsensusConfig,
+	console bool,
+) error {
+	consensusState, err := newConsensusStateForReplay(cfg, logger, csConfig)
+	if err != nil {
+		return err
+	}
 
 	if err := consensusState.ReplayFile(csConfig.WalFile(), console); err != nil {
-		tmos.Exit(fmt.Sprintf("Error during consensus replay: %v", err))
+		return fmt.Errorf("consensus replay: %w", err)
 	}
+
+	return nil
 }
 
 // Replay msgs in file or start the console
@@ -293,28 +303,34 @@ func (pb *playback) replayConsoleLoop() int {
 //--------------------------------------------------------------------------------
 
 // convenience for replay mode
-func newConsensusStateForReplay(cfg config.BaseConfig, csConfig *config.ConsensusConfig) *State {
+func newConsensusStateForReplay(
+	cfg config.BaseConfig,
+	logger log.Logger,
+	csConfig *config.ConsensusConfig,
+) (*State, error) {
 	dbType := dbm.BackendType(cfg.DBBackend)
 	// Get BlockStore
 	blockStoreDB, err := dbm.NewDB("blockstore", dbType, cfg.DBDir())
 	if err != nil {
-		tmos.Exit(err.Error())
+		return nil, err
 	}
 	blockStore := store.NewBlockStore(blockStoreDB)
 
 	// Get State
 	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())
 	if err != nil {
-		tmos.Exit(err.Error())
+		return nil, err
 	}
+
 	stateStore := sm.NewStore(stateDB)
 	gdoc, err := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
 	if err != nil {
-		tmos.Exit(err.Error())
+		return nil, err
 	}
+
 	state, err := sm.MakeGenesisState(gdoc)
 	if err != nil {
-		tmos.Exit(err.Error())
+		return nil, err
 	}
 
 	// Create proxyAppConn connection (consensus, mempool, query)
@@ -322,27 +338,26 @@ func newConsensusStateForReplay(cfg config.BaseConfig, csConfig *config.Consensu
 	proxyApp := proxy.NewAppConns(clientCreator, proxy.NopMetrics())
 	err = proxyApp.Start()
 	if err != nil {
-		tmos.Exit(fmt.Sprintf("Error starting proxy app conns: %v", err))
+		return nil, fmt.Errorf("starting proxy app conns: %w", err)
 	}
 
 	eventBus := eventbus.NewDefault()
 	if err := eventBus.Start(); err != nil {
-		tmos.Exit(fmt.Sprintf("Failed to start event bus: %v", err))
+		return nil, fmt.Errorf("failed to start event bus: %w", err)
 	}
 
-	handshaker := NewHandshaker(stateStore, state, blockStore, gdoc)
-	handshaker.SetEventBus(eventBus)
-	err = handshaker.Handshake(proxyApp)
-	if err != nil {
-		tmos.Exit(fmt.Sprintf("Error on handshake: %v", err))
+	handshaker := NewHandshaker(logger, stateStore, state, blockStore, eventBus, gdoc)
+
+	if err = handshaker.Handshake(proxyApp); err != nil {
+		return nil, err
 	}
 
 	mempool, evpool := emptyMempool{}, sm.EmptyEvidencePool{}
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool, blockStore)
+	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp.Consensus(), mempool, evpool, blockStore)
 
 	consensusState := NewState(csConfig, state.Copy(), blockExec,
 		blockStore, mempool, evpool)
 
 	consensusState.SetEventBus(eventBus)
-	return consensusState
+	return consensusState, nil
 }
