@@ -9,6 +9,8 @@ set -euo pipefail
 : ${VERS:=master}
 URL_PATH=tarball/
 
+VERS=ba46bcc66b77e0c37921e47a2a29c574b38f2b73 
+
 echo "fetching proto files"
 
 # Get shortened ref of commit
@@ -31,7 +33,7 @@ find ./proto/tendermint -name '*.proto' -not -path "./proto/tendermint/abci/type
 # so that it can be moved into the ./abci/types directory.
 sh ./scripts/protopackage.sh ./proto/tendermint/abci/types.proto $MODNAME "abci/types"
 
-buf generate --path proto/tendermint --template ./${OUTDIR}/proto/buf.gen.yaml --config ./${OUTDIR}/proto/buf.yaml
+buf generate --path proto/tendermint --template ./${OUTDIR}/buf.gen.yaml --config ./${OUTDIR}/buf.yaml
 
 mv ./proto/tendermint/abci/types.pb.go ./abci/types
 
