@@ -211,28 +211,24 @@ type Handshaker struct {
 	nBlocks int // number of blocks applied to the state
 }
 
-func NewHandshaker(stateStore sm.Store, state sm.State,
-	store sm.BlockStore, genDoc *types.GenesisDoc) *Handshaker {
+func NewHandshaker(
+	logger log.Logger,
+	stateStore sm.Store,
+	state sm.State,
+	store sm.BlockStore,
+	eventBus types.BlockEventPublisher,
+	genDoc *types.GenesisDoc,
+) *Handshaker {
 
 	return &Handshaker{
 		stateStore:   stateStore,
 		initialState: state,
 		store:        store,
-		eventBus:     eventbus.NopEventBus{},
+		eventBus:     eventBus,
 		genDoc:       genDoc,
-		logger:       log.NewNopLogger(),
+		logger:       logger,
 		nBlocks:      0,
 	}
-}
-
-func (h *Handshaker) SetLogger(l log.Logger) {
-	h.logger = l
-}
-
-// SetEventBus - sets the event bus for publishing block related events.
-// If not called, it defaults to types.NopEventBus.
-func (h *Handshaker) SetEventBus(eventBus types.BlockEventPublisher) {
-	h.eventBus = eventBus
 }
 
 // NBlocks returns the number of blocks applied to the state.

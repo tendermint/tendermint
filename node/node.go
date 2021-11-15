@@ -224,7 +224,10 @@ func makeNode(cfg *config.Config,
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
 	// and replays any blocks as necessary to sync tendermint with the app.
 	if !stateSync {
-		if err := doHandshake(stateStore, state, blockStore, genDoc, eventBus, proxyApp, logger); err != nil {
+		if err := consensus.NewHandshaker(
+			logger.With("module", "handshaker"),
+			stateStore, state, blockStore, eventBus, genDoc,
+		).Handshake(proxyApp); err != nil {
 			return nil, combineCloseError(err, makeCloser(closers))
 		}
 
