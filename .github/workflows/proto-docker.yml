@@ -5,7 +5,7 @@ on:
       - "tools/proto/*"
   push:
     branches:
-      - master
+      - "wb/image-publish"
     paths:
       - "tools/proto/*"
   schedule:
