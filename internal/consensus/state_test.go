@@ -2441,7 +2441,7 @@ func TestSignSameVoteTwice(t *testing.T) {
 	require.Equal(t, vote, vote2)
 }
 
-func TestProposerWaitUntil(t *testing.T) {
+func TestProposerWaitTime(t *testing.T) {
 	genesisTime, err := time.Parse(time.RFC3339, "2019-03-13T23:00:00Z")
 	require.NoError(t, err)
 	testCases := []struct {
@@ -2482,6 +2482,64 @@ func TestProposerWaitUntil(t *testing.T) {
 
 			ti := proposerWaitTime(mockSource, b.Header)
 			assert.Equal(t, testCase.expectedWait, ti)
+		})
+	}
+}
+
+func TestProposalTimeout(t *testing.T) {
+	genesisTime, err := time.Parse(time.RFC3339, "2019-03-13T23:00:00Z")
+	require.NoError(t, err)
+	testCases := []struct {
+		name              string
+		localTime         time.Time
+		previousBlockTime time.Time
+		accuracy          time.Duration
+		msgDelay          time.Duration
+		expectedDuration  time.Duration
+	}{
+		{
+			name:              "MsgDelay + 2 * Accuracy has not quite elapsed",
+			localTime:         genesisTime.Add(525 * time.Millisecond),
+			previousBlockTime: genesisTime.Add(6 * time.Millisecond),
+			accuracy:          time.Millisecond * 10,
+			msgDelay:          time.Millisecond * 500,
+			expectedDuration:  1 * time.Millisecond,
+		},
+		{
+			name:              "MsgDelay + 2 * Accuracy equals current time",
+			localTime:         genesisTime.Add(525 * time.Millisecond),
+			previousBlockTime: genesisTime.Add(5 * time.Millisecond),
+			accuracy:          time.Millisecond * 10,
+			msgDelay:          time.Millisecond * 500,
+			expectedDuration:  0,
+		},
+		{
+			name:              "MsgDelay + 2 * Accuracy has elapsed",
+			localTime:         genesisTime.Add(725 * time.Millisecond),
+			previousBlockTime: genesisTime.Add(5 * time.Millisecond),
+			accuracy:          time.Millisecond * 10,
+			msgDelay:          time.Millisecond * 500,
+			expectedDuration:  0,
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			b := types.Block{
+				Header: types.Header{
+					Time: testCase.previousBlockTime,
+				},
+			}
+
+			mockSource := new(tmtimemocks.Source)
+			mockSource.On("Now").Return(testCase.localTime)
+
+			tp := types.TimestampParams{
+				Accuracy: testCase.accuracy,
+				MsgDelay: testCase.msgDelay,
+			}
+
+			ti := proposalStepWaitingTime(mockSource, b.Header, tp)
+			assert.Equal(t, testCase.expectedDuration, ti)
 		})
 	}
 }
