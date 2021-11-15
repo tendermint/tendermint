@@ -40,7 +40,7 @@ echo "proto files have been compiled"
 echo "removing copied files"
 
 find ${OUTDIR}/proto/tendermint/ -name *.proto \
-	| sed "s/\.\/$OUTDIR\/\(.*\)/\1/g" \
+	| sed "s/$OUTDIR\/\(.*\)/\1/g" \
 	| xargs -I {} rm {}
 
 rm -rf ${OUTDIR}
