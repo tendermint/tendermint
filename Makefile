@@ -15,7 +15,7 @@ endif
 LD_FLAGS = -X github.com/tendermint/tendermint/version.TMVersion=$(VERSION)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 HTTPS_GIT := https://github.com/tendermint/tendermint.git
-DOCKER_BUF := docker run -v $(shell pwd):/workspace --workdir /workspace bufbuild/buf
+DOCKER_PROTO_BUILDER := docker run -v $(shell pwd):/workspace --workdir /workspace tendermintdev/docker-build-proto
 CGO_ENABLED ?= 0
 
 # handle nostrip
@@ -85,24 +85,24 @@ proto-all: proto-gen proto-lint proto-check-breaking
 proto-gen:
 	@docker pull -q tendermintdev/docker-build-proto
 	@echo "Generating Protobuf files"
-	@docker run -v $(shell pwd):/workspace --workdir /workspace tendermintdev/docker-build-proto sh ./scripts/protocgen.sh
+	@$(DOCKER_PROTO_BUILDER) sh ./scripts/protocgen.sh
 .PHONY: proto-gen
 
 proto-lint:
-	@$(DOCKER_BUF) lint --error-format=json
+	@$(DOCKER_PROTO_BUILDER) buf lint --error-format=json
 .PHONY: proto-lint
 
 proto-format:
 	@echo "Formatting Protobuf files"
-	docker run -v $(shell pwd):/workspace --workdir /workspace tendermintdev/docker-build-proto find ./ -not -path "./third_party/*" -name *.proto -exec clang-format -i {} \;
+	@$(DOCKER_PROTO_BUILDER) find ./ -not -path "./third_party/*" -name *.proto -exec clang-format -i {} \;
 .PHONY: proto-format
 
 proto-check-breaking:
-	@$(DOCKER_BUF) breaking --against .git#branch=master
+	@$(DOCKER_PROTO_BUILDER) buf breaking --against .git#branch=master
 .PHONY: proto-check-breaking
 
 proto-check-breaking-ci:
-	@$(DOCKER_BUF) breaking --against $(HTTPS_GIT)#branch=master
+	@$(DOCKER_PROTO_BUILDER) buf breaking --against $(HTTPS_GIT)#branch=master
 .PHONY: proto-check-breaking-ci
 
 ###############################################################################
