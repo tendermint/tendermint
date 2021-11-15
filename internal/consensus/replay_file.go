@@ -44,7 +44,7 @@ func RunReplayFile(
 	}
 
 	if err := consensusState.ReplayFile(csConfig.WalFile(), console); err != nil {
-		return fmt.Errorf("Error during consensus replay: %w", err)
+		return fmt.Errorf("consensus replay: %w", err)
 	}
 
 	return nil
@@ -338,7 +338,7 @@ func newConsensusStateForReplay(
 	proxyApp := proxy.NewAppConns(clientCreator, proxy.NopMetrics())
 	err = proxyApp.Start()
 	if err != nil {
-		return nil, fmt.Errorf("error starting proxy app conns: %w", err)
+		return nil, fmt.Errorf("starting proxy app conns: %w", err)
 	}
 
 	eventBus := eventbus.NewDefault()
