@@ -6,8 +6,6 @@ on:
   push:
     branches:
       - "wb/image-publish"
-    paths:
-      - "tools/proto/*"
   schedule:
     # run this job once a month to recieve any go or buf updates
     - cron: "* * 1 * *"
