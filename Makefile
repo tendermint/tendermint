@@ -83,6 +83,7 @@ proto-all: proto-gen proto-lint proto-check-breaking
 .PHONY: proto-all
 
 proto-gen:
+	@docker pull -q tendermintdev/docker-build-proto
 	@echo "Generating Protobuf files"
 	@$(DOCKER_PROTO_BUILDER) sh ./scripts/protocgen.sh
 .PHONY: proto-gen
