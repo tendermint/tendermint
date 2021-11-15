@@ -1,18 +1,28 @@
 # Changelog
 
+## 0.6.6
+
+**2021-11-08**
+
+**Important note:** Version v0.6.5 was accidentally tagged and should be
+avoided.  This version is identical to v0.6.4 in package structure and API, but
+has updated the version marker so that normal `go get` upgrades will not
+require modifying existing use of v0.6.4.
+
+### Version bumps (since v0.6.4)
+
+- Bump grpc from to 1.42.0.
+- Bump dgraph/badger to v2 2.2007.3.
+- Bump go.etcd.io/bbolt to 1.3.6.
+
 ## 0.6.5
 
 **2021-08-04**
 
-### Breaking changes (Go API)
-
-- [metadb] [\#151](https://github.com/tendermint/tm-db/pull/151) split backends into packages and add metadb (@marbar3778, @mvdan)
-
-### Version bumps
-
-- Bump dgraph/badger to v2.
-- Bump go.etcd.io/bbolt from 1.3.5 to 1.3.6.
-- Bump grpc from 1.35.0 to 1.38.0.
+**Important note**: This version was tagged by accident, and should not be
+used. The tag now points to the [package-reorg
+branch](https://github.com/tendermint/tm-db/tree/package-reorg) so that
+any existing dependencies should not break.
 
 ## 0.6.4
 

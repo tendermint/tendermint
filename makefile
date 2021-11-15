@@ -12,14 +12,6 @@ test:
 	@echo "--> Running go test"
 	@go test $(PACKAGES) -v
 
-test-memdb:
-	@echo "--> Running go test"
-	@go test $(PACKAGES) -tags memdb -v
-
-test-goleveldb:
-	@echo "--> Running go test"
-	@go test $(PACKAGES) -tags goleveldb -v
-
 test-cleveldb:
 	@echo "--> Running go test"
 	@go test $(PACKAGES) -tags cleveldb -v
@@ -38,12 +30,7 @@ test-badgerdb:
 
 test-all:
 	@echo "--> Running go test"
-	@go test $(PACKAGES) -tags memdb,goleveldb,cleveldb,boltdb,rocksdb,badgerdb -v
-
-test-all-docker:
-	@echo "--> Running go test"
-	@docker run --rm -v $(CURDIR):/workspace --workdir /workspace tendermintdev/docker-tm-db-testing go test $(PACKAGES) -tags memdb,goleveldb,cleveldb,boltdb,rocksdb,badgerdb -v
-.PHONY: test-all-docker
+	@go test $(PACKAGES) -tags cleveldb,boltdb,rocksdb,badgerdb -v
 
 lint:
 	@echo "--> Running linter"

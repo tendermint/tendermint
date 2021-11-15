@@ -1,18 +1,21 @@
 package remotedb
 
 import (
+	"errors"
 	"fmt"
 
-	tmdb "github.com/tendermint/tm-db"
+	db "github.com/tendermint/tm-db"
 	protodb "github.com/tendermint/tm-db/remotedb/proto"
 )
+
+var errBatchClosed = errors.New("batch has been written or closed")
 
 type batch struct {
 	db  *RemoteDB
 	ops []*protodb.Operation
 }
 
-var _ tmdb.Batch = (*batch)(nil)
+var _ db.Batch = (*batch)(nil)
 
 func newBatch(rdb *RemoteDB) *batch {
 	return &batch{
@@ -24,7 +27,7 @@ func newBatch(rdb *RemoteDB) *batch {
 // Set implements Batch.
 func (b *batch) Set(key, value []byte) error {
 	if b.ops == nil {
-		return tmdb.ErrBatchClosed
+		return errBatchClosed
 	}
 	op := &protodb.Operation{
 		Entity: &protodb.Entity{Key: key, Value: value},
@@ -37,7 +40,7 @@ func (b *batch) Set(key, value []byte) error {
 // Delete implements Batch.
 func (b *batch) Delete(key []byte) error {
 	if b.ops == nil {
-		return tmdb.ErrBatchClosed
+		return errBatchClosed
 	}
 	op := &protodb.Operation{
 		Entity: &protodb.Entity{Key: key},
@@ -50,7 +53,7 @@ func (b *batch) Delete(key []byte) error {
 // Write implements Batch.
 func (b *batch) Write() error {
 	if b.ops == nil {
-		return tmdb.ErrBatchClosed
+		return errBatchClosed
 	}
 	_, err := b.db.dc.BatchWrite(b.db.ctx, &protodb.Batch{Ops: b.ops})
 	if err != nil {
@@ -64,7 +67,7 @@ func (b *batch) Write() error {
 // WriteSync implements Batch.
 func (b *batch) WriteSync() error {
 	if b.ops == nil {
-		return tmdb.ErrBatchClosed
+		return errBatchClosed
 	}
 	_, err := b.db.dc.BatchWriteSync(b.db.ctx, &protodb.Batch{Ops: b.ops})
 	if err != nil {

@@ -25,7 +25,7 @@ func NewPrefixDB(db DB, prefix []byte) *PrefixDB {
 // Get implements DB.
 func (pdb *PrefixDB) Get(key []byte) ([]byte, error) {
 	if len(key) == 0 {
-		return nil, ErrKeyEmpty
+		return nil, errKeyEmpty
 	}
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
@@ -41,7 +41,7 @@ func (pdb *PrefixDB) Get(key []byte) ([]byte, error) {
 // Has implements DB.
 func (pdb *PrefixDB) Has(key []byte) (bool, error) {
 	if len(key) == 0 {
-		return false, ErrKeyEmpty
+		return false, errKeyEmpty
 	}
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
@@ -57,10 +57,10 @@ func (pdb *PrefixDB) Has(key []byte) (bool, error) {
 // Set implements DB.
 func (pdb *PrefixDB) Set(key []byte, value []byte) error {
 	if len(key) == 0 {
-		return ErrKeyEmpty
+		return errKeyEmpty
 	}
 	if value == nil {
-		return ErrValueNil
+		return errValueNil
 	}
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
@@ -75,10 +75,10 @@ func (pdb *PrefixDB) Set(key []byte, value []byte) error {
 // SetSync implements DB.
 func (pdb *PrefixDB) SetSync(key []byte, value []byte) error {
 	if len(key) == 0 {
-		return ErrKeyEmpty
+		return errKeyEmpty
 	}
 	if value == nil {
-		return ErrValueNil
+		return errValueNil
 	}
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
@@ -89,7 +89,7 @@ func (pdb *PrefixDB) SetSync(key []byte, value []byte) error {
 // Delete implements DB.
 func (pdb *PrefixDB) Delete(key []byte) error {
 	if len(key) == 0 {
-		return ErrKeyEmpty
+		return errKeyEmpty
 	}
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
@@ -100,7 +100,7 @@ func (pdb *PrefixDB) Delete(key []byte) error {
 // DeleteSync implements DB.
 func (pdb *PrefixDB) DeleteSync(key []byte) error {
 	if len(key) == 0 {
-		return ErrKeyEmpty
+		return errKeyEmpty
 	}
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
@@ -111,7 +111,7 @@ func (pdb *PrefixDB) DeleteSync(key []byte) error {
 // Iterator implements DB.
 func (pdb *PrefixDB) Iterator(start, end []byte) (Iterator, error) {
 	if (start != nil && len(start) == 0) || (end != nil && len(end) == 0) {
-		return nil, ErrKeyEmpty
+		return nil, errKeyEmpty
 	}
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()
@@ -134,7 +134,7 @@ func (pdb *PrefixDB) Iterator(start, end []byte) (Iterator, error) {
 // ReverseIterator implements DB.
 func (pdb *PrefixDB) ReverseIterator(start, end []byte) (Iterator, error) {
 	if (start != nil && len(start) == 0) || (end != nil && len(end) == 0) {
-		return nil, ErrKeyEmpty
+		return nil, errKeyEmpty
 	}
 	pdb.mtx.Lock()
 	defer pdb.mtx.Unlock()

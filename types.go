@@ -3,14 +3,14 @@ package db
 import "errors"
 
 var (
-	// ErrBatchClosed is returned when a closed or written batch is used.
-	ErrBatchClosed = errors.New("batch has been written or closed")
+	// errBatchClosed is returned when a closed or written batch is used.
+	errBatchClosed = errors.New("batch has been written or closed")
 
-	// ErrKeyEmpty is returned when attempting to use an empty or nil key.
-	ErrKeyEmpty = errors.New("key cannot be empty")
+	// errKeyEmpty is returned when attempting to use an empty or nil key.
+	errKeyEmpty = errors.New("key cannot be empty")
 
-	// ErrValueNil is returned when attempting to set a nil value.
-	ErrValueNil = errors.New("value cannot be nil")
+	// errValueNil is returned when attempting to set a nil value.
+	errValueNil = errors.New("value cannot be nil")
 )
 
 // DB is the main interface for all database backends. DBs are concurrency-safe. Callers must call

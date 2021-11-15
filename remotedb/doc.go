@@ -1,5 +1,5 @@
 /*
-remotedb is a package for connecting to distributed Tendermint tmdb.DB
+remotedb is a package for connecting to distributed Tendermint db.DB
 instances. The purpose is to detach difficult deployments such as
 CLevelDB that requires gcc or perhaps for databases that require
 custom configurations such as extra disk space. It also eases
@@ -7,7 +7,7 @@ the burden and cost of deployment of dependencies for databases
 to be used by Tendermint developers. Most importantly it is built
 over the high performant gRPC transport.
 
-remotedb's RemoteDB implements tmdb.DB so can be used normally
+remotedb's RemoteDB implements db.DB so can be used normally
 like other databases. One just has to explicitly connect to the
 remote database with a client setup such as:
 

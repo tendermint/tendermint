@@ -1,120 +1,117 @@
-package db_test
+package db
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	tmdb "github.com/tendermint/tm-db"
-	"github.com/tendermint/tm-db/internal/dbtest"
-	"github.com/tendermint/tm-db/memdb"
 )
 
-func mockDBWithStuff(t *testing.T) tmdb.DB {
-	db := memdb.NewDB()
+func mockDBWithStuff(t *testing.T) DB {
+	db := NewMemDB()
 	// Under "key" prefix
-	require.NoError(t, db.Set([]byte("key"), []byte("value")))
-	require.NoError(t, db.Set([]byte("key1"), []byte("value1")))
-	require.NoError(t, db.Set([]byte("key2"), []byte("value2")))
-	require.NoError(t, db.Set([]byte("key3"), []byte("value3")))
-	require.NoError(t, db.Set([]byte("something"), []byte("else")))
-	require.NoError(t, db.Set([]byte("k"), []byte("val")))
-	require.NoError(t, db.Set([]byte("ke"), []byte("valu")))
-	require.NoError(t, db.Set([]byte("kee"), []byte("valuu")))
+	require.NoError(t, db.Set(bz("key"), bz("value")))
+	require.NoError(t, db.Set(bz("key1"), bz("value1")))
+	require.NoError(t, db.Set(bz("key2"), bz("value2")))
+	require.NoError(t, db.Set(bz("key3"), bz("value3")))
+	require.NoError(t, db.Set(bz("something"), bz("else")))
+	require.NoError(t, db.Set(bz("k"), bz("val")))
+	require.NoError(t, db.Set(bz("ke"), bz("valu")))
+	require.NoError(t, db.Set(bz("kee"), bz("valuu")))
 	return db
 }
 
 func TestPrefixDBSimple(t *testing.T) {
 	db := mockDBWithStuff(t)
-	pdb := tmdb.NewPrefixDB(db, []byte("key"))
+	pdb := NewPrefixDB(db, bz("key"))
 
-	dbtest.Value(t, pdb, []byte("key"), nil)
-	dbtest.Value(t, pdb, []byte("key1"), nil)
-	dbtest.Value(t, pdb, []byte("1"), []byte("value1"))
-	dbtest.Value(t, pdb, []byte("key2"), nil)
-	dbtest.Value(t, pdb, []byte("2"), []byte("value2"))
-	dbtest.Value(t, pdb, []byte("key3"), nil)
-	dbtest.Value(t, pdb, []byte("3"), []byte("value3"))
-	dbtest.Value(t, pdb, []byte("something"), nil)
-	dbtest.Value(t, pdb, []byte("k"), nil)
-	dbtest.Value(t, pdb, []byte("ke"), nil)
-	dbtest.Value(t, pdb, []byte("kee"), nil)
+	checkValue(t, pdb, bz("key"), nil)
+	checkValue(t, pdb, bz("key1"), nil)
+	checkValue(t, pdb, bz("1"), bz("value1"))
+	checkValue(t, pdb, bz("key2"), nil)
+	checkValue(t, pdb, bz("2"), bz("value2"))
+	checkValue(t, pdb, bz("key3"), nil)
+	checkValue(t, pdb, bz("3"), bz("value3"))
+	checkValue(t, pdb, bz("something"), nil)
+	checkValue(t, pdb, bz("k"), nil)
+	checkValue(t, pdb, bz("ke"), nil)
+	checkValue(t, pdb, bz("kee"), nil)
 }
 
 func TestPrefixDBIterator1(t *testing.T) {
 	db := mockDBWithStuff(t)
-	pdb := tmdb.NewPrefixDB(db, []byte("key"))
+	pdb := NewPrefixDB(db, bz("key"))
 
 	itr, err := pdb.Iterator(nil, nil)
 	require.NoError(t, err)
-	dbtest.Domain(t, itr, nil, nil)
-	dbtest.Item(t, itr, []byte("1"), []byte("value1"))
-	dbtest.Next(t, itr, true)
-	dbtest.Item(t, itr, []byte("2"), []byte("value2"))
-	dbtest.Next(t, itr, true)
-	dbtest.Item(t, itr, []byte("3"), []byte("value3"))
-	dbtest.Next(t, itr, false)
-	dbtest.Invalid(t, itr)
+	checkDomain(t, itr, nil, nil)
+	checkItem(t, itr, bz("1"), bz("value1"))
+	checkNext(t, itr, true)
+	checkItem(t, itr, bz("2"), bz("value2"))
+	checkNext(t, itr, true)
+	checkItem(t, itr, bz("3"), bz("value3"))
+	checkNext(t, itr, false)
+	checkInvalid(t, itr)
 	itr.Close()
 }
 
 func TestPrefixDBReverseIterator1(t *testing.T) {
 	db := mockDBWithStuff(t)
-	pdb := tmdb.NewPrefixDB(db, []byte("key"))
+	pdb := NewPrefixDB(db, bz("key"))
 
 	itr, err := pdb.ReverseIterator(nil, nil)
 	require.NoError(t, err)
-	dbtest.Domain(t, itr, nil, nil)
-	dbtest.Item(t, itr, []byte("3"), []byte("value3"))
-	dbtest.Next(t, itr, true)
-	dbtest.Item(t, itr, []byte("2"), []byte("value2"))
-	dbtest.Next(t, itr, true)
-	dbtest.Item(t, itr, []byte("1"), []byte("value1"))
-	dbtest.Next(t, itr, false)
-	dbtest.Invalid(t, itr)
+	checkDomain(t, itr, nil, nil)
+	checkItem(t, itr, bz("3"), bz("value3"))
+	checkNext(t, itr, true)
+	checkItem(t, itr, bz("2"), bz("value2"))
+	checkNext(t, itr, true)
+	checkItem(t, itr, bz("1"), bz("value1"))
+	checkNext(t, itr, false)
+	checkInvalid(t, itr)
 	itr.Close()
 }
 
 func TestPrefixDBReverseIterator5(t *testing.T) {
 	db := mockDBWithStuff(t)
-	pdb := tmdb.NewPrefixDB(db, []byte("key"))
+	pdb := NewPrefixDB(db, bz("key"))
 
-	itr, err := pdb.ReverseIterator([]byte("1"), nil)
+	itr, err := pdb.ReverseIterator(bz("1"), nil)
 	require.NoError(t, err)
-	dbtest.Domain(t, itr, []byte("1"), nil)
-	dbtest.Item(t, itr, []byte("3"), []byte("value3"))
-	dbtest.Next(t, itr, true)
-	dbtest.Item(t, itr, []byte("2"), []byte("value2"))
-	dbtest.Next(t, itr, true)
-	dbtest.Item(t, itr, []byte("1"), []byte("value1"))
-	dbtest.Next(t, itr, false)
-	dbtest.Invalid(t, itr)
+	checkDomain(t, itr, bz("1"), nil)
+	checkItem(t, itr, bz("3"), bz("value3"))
+	checkNext(t, itr, true)
+	checkItem(t, itr, bz("2"), bz("value2"))
+	checkNext(t, itr, true)
+	checkItem(t, itr, bz("1"), bz("value1"))
+	checkNext(t, itr, false)
+	checkInvalid(t, itr)
 	itr.Close()
 }
 
 func TestPrefixDBReverseIterator6(t *testing.T) {
 	db := mockDBWithStuff(t)
-	pdb := tmdb.NewPrefixDB(db, []byte("key"))
+	pdb := NewPrefixDB(db, bz("key"))
 
-	itr, err := pdb.ReverseIterator([]byte("2"), nil)
+	itr, err := pdb.ReverseIterator(bz("2"), nil)
 	require.NoError(t, err)
-	dbtest.Domain(t, itr, []byte("2"), nil)
-	dbtest.Item(t, itr, []byte("3"), []byte("value3"))
-	dbtest.Next(t, itr, true)
-	dbtest.Item(t, itr, []byte("2"), []byte("value2"))
-	dbtest.Next(t, itr, false)
-	dbtest.Invalid(t, itr)
+	checkDomain(t, itr, bz("2"), nil)
+	checkItem(t, itr, bz("3"), bz("value3"))
+	checkNext(t, itr, true)
+	checkItem(t, itr, bz("2"), bz("value2"))
+	checkNext(t, itr, false)
+	checkInvalid(t, itr)
 	itr.Close()
 }
 
 func TestPrefixDBReverseIterator7(t *testing.T) {
 	db := mockDBWithStuff(t)
-	pdb := tmdb.NewPrefixDB(db, []byte("key"))
+	pdb := NewPrefixDB(db, bz("key"))
 
-	itr, err := pdb.ReverseIterator(nil, []byte("2"))
+	itr, err := pdb.ReverseIterator(nil, bz("2"))
 	require.NoError(t, err)
-	dbtest.Domain(t, itr, nil, []byte("2"))
-	dbtest.Item(t, itr, []byte("1"), []byte("value1"))
-	dbtest.Next(t, itr, false)
-	dbtest.Invalid(t, itr)
+	checkDomain(t, itr, nil, bz("2"))
+	checkItem(t, itr, bz("1"), bz("value1"))
+	checkNext(t, itr, false)
+	checkInvalid(t, itr)
 	itr.Close()
 }
