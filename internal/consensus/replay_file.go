@@ -18,7 +18,6 @@ import (
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
-	tmos "github.com/tendermint/tendermint/libs/os"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/types"
 )
@@ -92,7 +91,10 @@ func (cs *State) ReplayFile(file string, console bool) error {
 	var msg *TimedWALMessage
 	for {
 		if nextN == 0 && console {
-			nextN = pb.replayConsoleLoop()
+			nextN, err = pb.replayConsoleLoop()
+			if err != nil {
+				return err
+			}
 		}
 
 		msg, err = pb.dec.Decode()
@@ -194,16 +196,17 @@ func (cs *State) startForReplay() {
 		}()*/
 }
 
-// console function for parsing input and running commands
-func (pb *playback) replayConsoleLoop() int {
+// console function for parsing input and running commands. The integer
+// return value is invalid unless the error is nil.
+func (pb *playback) replayConsoleLoop() (int, error) {
 	for {
 		fmt.Printf("> ")
 		bufReader := bufio.NewReader(os.Stdin)
 		line, more, err := bufReader.ReadLine()
 		if more {
-			tmos.Exit("input is too long")
+			return 0, fmt.Errorf("input is too long")
 		} else if err != nil {
-			tmos.Exit(err.Error())
+			return 0, err
 		}
 
 		tokens := strings.Split(string(line), " ")
@@ -217,13 +220,13 @@ func (pb *playback) replayConsoleLoop() int {
 			// "next N" -> replay next N messages
 
 			if len(tokens) == 1 {
-				return 0
+				return 0, nil
 			}
 			i, err := strconv.Atoi(tokens[1])
 			if err != nil {
 				fmt.Println("next takes an integer argument")
 			} else {
-				return i
+				return i, nil
 			}
 
 		case "back":
@@ -233,7 +236,7 @@ func (pb *playback) replayConsoleLoop() int {
 			// NOTE: "back" is not supported in the state machine design,
 			// so we restart and replay up to
 
-			ctx := context.Background()
+			ctx := context.TODO()
 			// ensure all new step events are regenerated as expected
 
 			newStepSub, err := pb.cs.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
@@ -241,7 +244,7 @@ func (pb *playback) replayConsoleLoop() int {
 				Query:    types.EventQueryNewRoundStep,
 			})
 			if err != nil {
-				tmos.Exit(fmt.Sprintf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep))
+				return 0, fmt.Errorf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep)
 			}
 			defer func() {
 				args := tmpubsub.UnsubscribeArgs{Subscriber: subscriber, Query: types.EventQueryNewRoundStep}
