@@ -11,9 +11,9 @@ and other supported release branches.
 
 There is a [GitHub Actions workflow](https://github.com/tendermint/docs/actions/workflows/deployment.yml)
 in the `tendermint/docs` repository that clones and builds the documentation
-site from the contents of this `docs` directory, for `master` and for each
-supported release branch. Under the hood, this workflow runs `make build-docs`
-from the [Makefile](../Makefile#L214).
+site from the contents of this `docs` directory, for `master` and for the
+backport branch of each supported release. Under the hood, this workflow runs
+`make build-docs` from the [Makefile](../Makefile#L214).
 
 The list of supported versions are defined in [`config.js`](./.vuepress/config.js),
 which defines the UI menu on the documentation site, and also in
