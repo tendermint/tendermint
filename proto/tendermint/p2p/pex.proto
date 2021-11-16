@@ -1,8 +1,6 @@
 syntax = "proto3";
 package tendermint.p2p;
 
-option go_package = "github.com/tendermint/tendermint/proto/tendermint/p2p";
-
 import "gogoproto/gogo.proto";
 
 message PexAddress {
@@ -18,9 +16,9 @@ message PexResponse {
 }
 
 message PexMessage {
-  reserved 1, 2; // See https://github.com/tendermint/spec/pull/352
+  reserved 1, 2;  // See https://github.com/tendermint/spec/pull/352
   oneof sum {
-    PexRequest    pex_request     = 3;
-    PexResponse   pex_response    = 4;
+    PexRequest  pex_request  = 3;
+    PexResponse pex_response = 4;
   }
 }

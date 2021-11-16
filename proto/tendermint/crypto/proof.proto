@@ -1,8 +1,6 @@
 syntax = "proto3";
 package tendermint.crypto;
 
-option go_package = "github.com/tendermint/tendermint/proto/tendermint/crypto";
-
 import "gogoproto/gogo.proto";
 
 message Proof {

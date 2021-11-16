@@ -1,8 +1,6 @@
 syntax = "proto3";
 package tendermint.types;
 
-option go_package = "github.com/tendermint/tendermint/proto/tendermint/types";
-
 import "gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
 import "tendermint/crypto/proof.proto";
@@ -14,10 +12,13 @@ enum BlockIDFlag {
   option (gogoproto.goproto_enum_stringer) = true;
   option (gogoproto.goproto_enum_prefix)   = false;
 
-  BLOCK_ID_FLAG_UNKNOWN = 0 [(gogoproto.enumvalue_customname) = "BlockIDFlagUnknown"];
-  BLOCK_ID_FLAG_ABSENT  = 1 [(gogoproto.enumvalue_customname) = "BlockIDFlagAbsent"];
-  BLOCK_ID_FLAG_COMMIT  = 2 [(gogoproto.enumvalue_customname) = "BlockIDFlagCommit"];
-  BLOCK_ID_FLAG_NIL     = 3 [(gogoproto.enumvalue_customname) = "BlockIDFlagNil"];
+  BLOCK_ID_FLAG_UNKNOWN = 0
+      [(gogoproto.enumvalue_customname) = "BlockIDFlagUnknown"];
+  BLOCK_ID_FLAG_ABSENT = 1
+      [(gogoproto.enumvalue_customname) = "BlockIDFlagAbsent"];
+  BLOCK_ID_FLAG_COMMIT = 2
+      [(gogoproto.enumvalue_customname) = "BlockIDFlagCommit"];
+  BLOCK_ID_FLAG_NIL = 3 [(gogoproto.enumvalue_customname) = "BlockIDFlagNil"];
 }
 
 // SignedMsgType is a type of signed message in the consensus.
@@ -25,13 +26,17 @@ enum SignedMsgType {
   option (gogoproto.goproto_enum_stringer) = true;
   option (gogoproto.goproto_enum_prefix)   = false;
 
-  SIGNED_MSG_TYPE_UNKNOWN = 0 [(gogoproto.enumvalue_customname) = "UnknownType"];
+  SIGNED_MSG_TYPE_UNKNOWN = 0
+      [(gogoproto.enumvalue_customname) = "UnknownType"];
   // Votes
-  SIGNED_MSG_TYPE_PREVOTE   = 1 [(gogoproto.enumvalue_customname) = "PrevoteType"];
-  SIGNED_MSG_TYPE_PRECOMMIT = 2 [(gogoproto.enumvalue_customname) = "PrecommitType"];
+  SIGNED_MSG_TYPE_PREVOTE = 1
+      [(gogoproto.enumvalue_customname) = "PrevoteType"];
+  SIGNED_MSG_TYPE_PRECOMMIT = 2
+      [(gogoproto.enumvalue_customname) = "PrecommitType"];
 
   // Proposals
-  SIGNED_MSG_TYPE_PROPOSAL = 32 [(gogoproto.enumvalue_customname) = "ProposalType"];
+  SIGNED_MSG_TYPE_PROPOSAL = 32
+      [(gogoproto.enumvalue_customname) = "ProposalType"];
 }
 
 // PartsetHeader
@@ -60,7 +65,8 @@ message Header {
   tendermint.version.Consensus version  = 1 [(gogoproto.nullable) = false];
   string                       chain_id = 2 [(gogoproto.customname) = "ChainID"];
   int64                        height   = 3;
-  google.protobuf.Timestamp    time     = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  google.protobuf.Timestamp    time     = 4
+      [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 
   // prev block info
   BlockID last_block_id = 5 [(gogoproto.nullable) = false];
@@ -74,7 +80,8 @@ message Header {
   bytes next_validators_hash = 9;   // validators for the next block
   bytes consensus_hash       = 10;  // consensus params for current block
   bytes app_hash             = 11;  // state after txs from the previous block
-  bytes last_results_hash    = 12;  // root hash of all results from the txs from the previous block
+  bytes last_results_hash =
+      12;  // root hash of all results from the txs from the previous block
 
   // consensus info
   bytes evidence_hash    = 13;  // evidence included in the block
@@ -95,8 +102,10 @@ message Vote {
   SignedMsgType type     = 1;
   int64         height   = 2;
   int32         round    = 3;
-  BlockID       block_id = 4
-      [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];  // zero if vote is nil.
+  BlockID       block_id = 4 [
+    (gogoproto.nullable)   = false,
+    (gogoproto.customname) = "BlockID"
+  ];  // zero if vote is nil.
   google.protobuf.Timestamp timestamp = 5
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes validator_address = 6;
@@ -104,11 +113,13 @@ message Vote {
   bytes signature         = 8;
 }
 
-// Commit contains the evidence that a block was committed by a set of validators.
+// Commit contains the evidence that a block was committed by a set of
+// validators.
 message Commit {
-  int64              height     = 1;
-  int32              round      = 2;
-  BlockID            block_id   = 3 [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];
+  int64   height   = 1;
+  int32   round    = 2;
+  BlockID block_id = 3
+      [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];
   repeated CommitSig signatures = 4 [(gogoproto.nullable) = false];
 }
 
@@ -122,11 +133,12 @@ message CommitSig {
 }
 
 message Proposal {
-  SignedMsgType             type      = 1;
-  int64                     height    = 2;
-  int32                     round     = 3;
-  int32                     pol_round = 4;
-  BlockID                   block_id  = 5 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
+  SignedMsgType type      = 1;
+  int64         height    = 2;
+  int32         round     = 3;
+  int32         pol_round = 4;
+  BlockID       block_id  = 5
+      [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
   google.protobuf.Timestamp timestamp = 6
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes signature = 7;
@@ -143,13 +155,15 @@ message LightBlock {
 }
 
 message BlockMeta {
-  BlockID block_id   = 1 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
-  int64   block_size = 2;
-  Header  header     = 3 [(gogoproto.nullable) = false];
-  int64   num_txs    = 4;
+  BlockID block_id = 1
+      [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
+  int64  block_size = 2;
+  Header header     = 3 [(gogoproto.nullable) = false];
+  int64  num_txs    = 4;
 }
 
-// TxProof represents a Merkle proof of the presence of a transaction in the Merkle tree.
+// TxProof represents a Merkle proof of the presence of a transaction in the
+// Merkle tree.
 message TxProof {
   bytes                   root_hash = 1;
   bytes                   data      = 2;
