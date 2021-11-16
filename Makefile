@@ -89,7 +89,7 @@ proto-gen:
 .PHONY: proto-gen
 
 proto-lint:
-	@$(DOCKER_PROTO_BUILDER) buf lint --error-format=json
+	@$(DOCKER_PROTO_BUILDER) sh ./scripts/proto-lint.sh
 .PHONY: proto-lint
 
 proto-format:
@@ -98,11 +98,11 @@ proto-format:
 .PHONY: proto-format
 
 proto-check-breaking:
-	@$(DOCKER_PROTO_BUILDER) buf breaking --against .git#branch=master
+	@$(DOCKER_PROTO_BUILDER) sh export AGAINST=".git#branch=master" && ./scripts/proto-check-breaking.sh
 .PHONY: proto-check-breaking
 
 proto-check-breaking-ci:
-	@$(DOCKER_PROTO_BUILDER) buf breaking --against $(HTTPS_GIT)#branch=master
+	@$(DOCKER_PROTO_BUILDER) export AGAINST="$(HTTPS_GIT)"; sh ./scripts/proto-check-breaking.sh "$(HTTPS_GIT)"
 .PHONY: proto-check-breaking-ci
 
 ###############################################################################
