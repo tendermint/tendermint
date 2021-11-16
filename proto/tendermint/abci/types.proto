@@ -21,20 +21,24 @@ import "gogoproto/gogo.proto";
 
 message Request {
   oneof value {
-    RequestEcho               echo                 = 1;
-    RequestFlush              flush                = 2;
-    RequestInfo               info                 = 3;
-    RequestInitChain          init_chain           = 4;
-    RequestQuery              query                = 5;
-    RequestBeginBlock         begin_block          = 6;
-    RequestCheckTx            check_tx             = 7;
-    RequestDeliverTx          deliver_tx           = 8;
-    RequestEndBlock           end_block            = 9;
-    RequestCommit             commit               = 10;
-    RequestListSnapshots      list_snapshots       = 11;
-    RequestOfferSnapshot      offer_snapshot       = 12;
-    RequestLoadSnapshotChunk  load_snapshot_chunk  = 13;
-    RequestApplySnapshotChunk apply_snapshot_chunk = 14;
+    RequestEcho                echo                  = 1;
+    RequestFlush               flush                 = 2;
+    RequestInfo                info                  = 3;
+    RequestInitChain           init_chain            = 4;
+    RequestQuery               query                 = 5;
+    RequestBeginBlock          begin_block           = 6 [deprecated = true];
+    RequestCheckTx             check_tx              = 7;
+    RequestDeliverTx           deliver_tx            = 8 [deprecated = true];
+    RequestEndBlock            end_block             = 9 [deprecated = true];
+    RequestCommit              commit                = 10;
+    RequestListSnapshots       list_snapshots        = 11;
+    RequestOfferSnapshot       offer_snapshot        = 12;
+    RequestLoadSnapshotChunk   load_snapshot_chunk   = 13;
+    RequestApplySnapshotChunk  apply_snapshot_chunk  = 14;
+    RequestPrepareProposal     prepare_proposal      = 15;
+    RequestExtendVote          extend_vote           = 16;
+    RequestVerifyVoteExtension verify_vote_extension = 17;
+    RequestFinalizeBlock       finalize_block        = 18;
   }
 }
 
@@ -117,26 +121,57 @@ message RequestApplySnapshotChunk {
   string sender = 3;
 }
 
+// Extends a vote with application-side injection
+message RequestExtendVote {
+  types.Vote vote = 1;
+}
+
+// Verify the vote extension
+message RequestVerifyVoteExtension {
+  types.Vote vote = 1;
+}
+
+message RequestPrepareProposal {
+  // block_data is an array of transactions that will be included in a block,
+  // sent to the app for possible modifications.
+  // applications can not exceed the size of the data passed to it.
+  repeated bytes block_data = 1;
+  // If an application decides to populate block_data with extra information, they can not exceed this value.
+  int64 block_data_size = 2;
+}
+
+message RequestFinalizeBlock {
+  repeated bytes          txs                  = 1;
+  bytes                   hash                 = 2;
+  tendermint.types.Header header               = 3 [(gogoproto.nullable) = false];
+  LastCommitInfo          last_commit_info     = 4 [(gogoproto.nullable) = false];
+  repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
+}
+
 //----------------------------------------
 // Response types
 
 message Response {
   oneof value {
-    ResponseException          exception            = 1;
-    ResponseEcho               echo                 = 2;
-    ResponseFlush              flush                = 3;
-    ResponseInfo               info                 = 4;
-    ResponseInitChain          init_chain           = 5;
-    ResponseQuery              query                = 6;
-    ResponseBeginBlock         begin_block          = 7;
-    ResponseCheckTx            check_tx             = 8;
-    ResponseDeliverTx          deliver_tx           = 9;
-    ResponseEndBlock           end_block            = 10;
-    ResponseCommit             commit               = 11;
-    ResponseListSnapshots      list_snapshots       = 12;
-    ResponseOfferSnapshot      offer_snapshot       = 13;
-    ResponseLoadSnapshotChunk  load_snapshot_chunk  = 14;
-    ResponseApplySnapshotChunk apply_snapshot_chunk = 15;
+    ResponseException           exception             = 1;
+    ResponseEcho                echo                  = 2;
+    ResponseFlush               flush                 = 3;
+    ResponseInfo                info                  = 4;
+    ResponseInitChain           init_chain            = 5;
+    ResponseQuery               query                 = 6;
+    ResponseBeginBlock          begin_block           = 7 [deprecated = true];
+    ResponseCheckTx             check_tx              = 8;
+    ResponseDeliverTx           deliver_tx            = 9 [deprecated = true];
+    ResponseEndBlock            end_block             = 10 [deprecated = true];
+    ResponseCommit              commit                = 11;
+    ResponseListSnapshots       list_snapshots        = 12;
+    ResponseOfferSnapshot       offer_snapshot        = 13;
+    ResponseLoadSnapshotChunk   load_snapshot_chunk   = 14;
+    ResponseApplySnapshotChunk  apply_snapshot_chunk  = 15;
+    ResponsePrepareProposal     prepare_proposal      = 16;
+    ResponseExtendVote          extend_vote           = 17;
+    ResponseVerifyVoteExtension verify_vote_extension = 18;
+    ResponseFinalizeBlock       finalize_block        = 19;
   }
 }
 
@@ -198,6 +233,7 @@ message ResponseCheckTx {
   int64          priority   = 10;
 
   // mempool_error is set by Tendermint.
+
   // ABCI applications creating a ResponseCheckTX should not set mempool_error.
   string mempool_error = 11;
 }
@@ -260,6 +296,32 @@ message ResponseApplySnapshotChunk {
     RETRY_SNAPSHOT  = 4;  // Retry snapshot (combine with refetch and reject)
     REJECT_SNAPSHOT = 5;  // Reject this snapshot, try others
   }
+}
+
+message ResponseExtendVote {
+  tendermint.types.VoteExtension vote_extension = 1;
+}
+
+message ResponseVerifyVoteExtension {
+  Result result = 1;
+
+  enum Result {
+    UNKNOWN = 0;  // Unknown result, treat as ACCEPT by default
+    ACCEPT  = 1;  // Vote extension verified, include the vote
+    SLASH   = 2;  // Vote extension verification aborted, continue but slash validator
+    REJECT  = 3;  // Vote extension invalidated
+  }
+}
+
+message ResponsePrepareProposal {
+  repeated bytes block_data = 1;
+}
+
+message ResponseFinalizeBlock {
+  repeated ResponseDeliverTx       txs                     = 1;
+  repeated ValidatorUpdate         validator_updates       = 2 [(gogoproto.nullable) = false];
+  tendermint.types.ConsensusParams consensus_param_updates = 3;
+  repeated Event                   events                  = 4 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
 }
 
 //----------------------------------------
@@ -355,15 +417,15 @@ service ABCIApplication {
   rpc Echo(RequestEcho) returns (ResponseEcho);
   rpc Flush(RequestFlush) returns (ResponseFlush);
   rpc Info(RequestInfo) returns (ResponseInfo);
-  rpc DeliverTx(RequestDeliverTx) returns (ResponseDeliverTx);
   rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
   rpc Query(RequestQuery) returns (ResponseQuery);
   rpc Commit(RequestCommit) returns (ResponseCommit);
   rpc InitChain(RequestInitChain) returns (ResponseInitChain);
-  rpc BeginBlock(RequestBeginBlock) returns (ResponseBeginBlock);
-  rpc EndBlock(RequestEndBlock) returns (ResponseEndBlock);
   rpc ListSnapshots(RequestListSnapshots) returns (ResponseListSnapshots);
   rpc OfferSnapshot(RequestOfferSnapshot) returns (ResponseOfferSnapshot);
   rpc LoadSnapshotChunk(RequestLoadSnapshotChunk) returns (ResponseLoadSnapshotChunk);
   rpc ApplySnapshotChunk(RequestApplySnapshotChunk) returns (ResponseApplySnapshotChunk);
+  rpc ExtendVote(RequestExtendVote) returns (ResponseExtendVote);
+  rpc VerifyVoteExtension(RequestVerifyVoteExtension) returns (ResponseVerifyVoteExtension);
+  rpc PrepareProposal(RequestPrepareProposal) returns (ResponsePrepareProposal);
 }
