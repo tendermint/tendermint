@@ -146,6 +146,8 @@ If there were no release candidates, begin by creating a backport branch, as des
    - Add a new entry to `themeConfig.versions` in
      [`docs/.vuepress/config.js`](./docs/.vuepress/config.js) to include the
 	 release in the dropdown versions menu.
+   - Commit these changes to `master` and backport them into the backport
+     branch for this release.
 
 ## Minor release (point releases)
 
