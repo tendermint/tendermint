@@ -167,8 +167,8 @@ type EvidenceParams struct {
 	// mechanism for handling [Nothing-At-Stake
 	// attacks](https://github.com/ethereum/wiki/wiki/Proof-of-Stake-FAQ#what-is-the-nothing-at-stake-problem-and-how-can-it-be-fixed).
 	MaxAgeDuration time.Duration `protobuf:"bytes,2,opt,name=max_age_duration,json=maxAgeDuration,proto3,stdduration" json:"max_age_duration"`
-	// This sets the maximum size of total evidence in bytes that can be committed in a single block.
-	// and should fall comfortably under the max block bytes.
+	// This sets the maximum size of total evidence in bytes that can be committed
+	// in a single block. and should fall comfortably under the max block bytes.
 	// Default is 1048576 or 1MB
 	MaxBytes int64 `protobuf:"varint,3,opt,name=max_bytes,json=maxBytes,proto3" json:"max_bytes,omitempty"`
 }
@@ -1123,10 +1123,7 @@ func (m *ConsensusParams) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthParams
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthParams
 			}
 			if (iNdEx + skippy) > l {
@@ -1214,10 +1211,7 @@ func (m *BlockParams) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthParams
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthParams
 			}
 			if (iNdEx + skippy) > l {
@@ -1338,10 +1332,7 @@ func (m *EvidenceParams) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthParams
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthParams
 			}
 			if (iNdEx + skippy) > l {
@@ -1423,10 +1414,7 @@ func (m *ValidatorParams) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthParams
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthParams
 			}
 			if (iNdEx + skippy) > l {
@@ -1495,10 +1483,7 @@ func (m *VersionParams) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthParams
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthParams
 			}
 			if (iNdEx + skippy) > l {
@@ -1586,10 +1571,7 @@ func (m *HashedParams) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthParams
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthParams
 			}
 			if (iNdEx + skippy) > l {
