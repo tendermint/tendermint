@@ -117,12 +117,13 @@ func TestMConnectionReceive(t *testing.T) {
 	onError := func(r interface{}) {
 		errorsCh <- r
 	}
-	mconn1 := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
+	logger := log.TestingLogger()
+	mconn1 := createMConnectionWithCallbacks(logger, client, onReceive, onError)
 	err := mconn1.Start()
 	require.Nil(t, err)
 	t.Cleanup(stopAll(t, mconn1))
 
-	mconn2 := createTestMConnection(log.TestingLogger(), server)
+	mconn2 := createTestMConnection(logger, server)
 	err = mconn2.Start()
 	require.Nil(t, err)
 	t.Cleanup(stopAll(t, mconn2))
@@ -379,13 +380,14 @@ func newClientAndServerConnsForReadErrors(t *testing.T, chOnErr chan struct{}) (
 		{ID: 0x01, Priority: 1, SendQueueCapacity: 1},
 		{ID: 0x02, Priority: 1, SendQueueCapacity: 1},
 	}
-	mconnClient := NewMConnection(log.TestingLogger().With("module", "client"), client, chDescs, onReceive, onError)
+	logger := log.TestingLogger()
+	mconnClient := NewMConnection(logger.With("module", "client"), client, chDescs, onReceive, onError)
 	err := mconnClient.Start()
 	require.Nil(t, err)
 
 	// create server conn with 1 channel
 	// it fires on chOnErr when there's an error
-	serverLogger := log.TestingLogger().With("module", "server")
+	serverLogger := logger.With("module", "server")
 	onError = func(r interface{}) {
 		chOnErr <- struct{}{}
 	}

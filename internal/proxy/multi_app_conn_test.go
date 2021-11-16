@@ -21,7 +21,6 @@ func TestAppConns_Start_Stop(t *testing.T) {
 	quitCh := make(<-chan struct{})
 
 	clientMock := &abcimocks.Client{}
-	clientMock.On("SetLogger", mock.Anything).Return().Times(4)
 	clientMock.On("Start").Return(nil).Times(4)
 	clientMock.On("Stop").Return(nil).Times(4)
 	clientMock.On("Quit").Return(quitCh).Times(4)

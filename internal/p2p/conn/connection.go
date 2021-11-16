@@ -188,6 +188,8 @@ func NewMConnectionWithConfig(
 		created:       time.Now(),
 	}
 
+	mconn.BaseService = *service.NewBaseService(logger, "MConnection", mconn)
+
 	// Create channels
 	var channelsIdx = map[ChannelID]*channel{}
 	var channels = []*channel{}
@@ -199,8 +201,6 @@ func NewMConnectionWithConfig(
 	}
 	mconn.channels = channels
 	mconn.channelsIdx = channelsIdx
-
-	mconn.BaseService = *service.NewBaseService(logger, "MConnection", mconn)
 
 	// maxPacketMsgSize() is a bit heavy, so call just once
 	mconn._maxPacketMsgSize = mconn.maxPacketMsgSize()
