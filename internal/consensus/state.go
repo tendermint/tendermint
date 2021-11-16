@@ -2427,8 +2427,8 @@ func proposerWaitTime(lt tmtime.Source, h types.Header) time.Duration {
 
 // proposalStepWaitingTime determines how long a validator should wait for a block
 // to be sent from a proposer. This duration is determined as a result of the
-// previous block's time as well as by the Accuracy and MsgDelay timestamp parameter.
-// The validator and the proposer's clock should differ from eachother by at most
+// previous block's time as well as by the Accuracy and MsgDelay timestamp parameters.
+// The validator's and the proposer's clocks should differ from eachother by at most
 // 2 * Accuracy and the proposal should take at most MsgDelay to arrive at the validator.
 // The validator must therefore wait at least 2 * Accuracy + MsgDelay for the proposal
 // to arrive.
