@@ -25,17 +25,17 @@ const (
 func TestWALTruncate(t *testing.T) {
 	walDir := t.TempDir()
 	walFile := filepath.Join(walDir, "wal")
+	logger := log.TestingLogger()
 
 	// this magic number 4K can truncate the content when RotateFile.
 	// defaultHeadSizeLimit(10M) is hard to simulate.
 	// this magic number 1 * time.Millisecond make RotateFile check frequently.
 	// defaultGroupCheckDuration(5s) is hard to simulate.
-	wal, err := NewWAL(walFile,
+	wal, err := NewWAL(logger, walFile,
 		autofile.GroupHeadSizeLimit(4096),
 		autofile.GroupCheckDuration(1*time.Millisecond),
 	)
 	require.NoError(t, err)
-	wal.SetLogger(log.TestingLogger())
 	err = wal.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -105,7 +105,7 @@ func TestWALWrite(t *testing.T) {
 	walDir := t.TempDir()
 	walFile := filepath.Join(walDir, "wal")
 
-	wal, err := NewWAL(walFile)
+	wal, err := NewWAL(log.TestingLogger(), walFile)
 	require.NoError(t, err)
 	err = wal.Start()
 	require.NoError(t, err)
@@ -148,9 +148,8 @@ func TestWALSearchForEndHeight(t *testing.T) {
 	}
 	walFile := tempWALWithData(walBody)
 
-	wal, err := NewWAL(walFile)
+	wal, err := NewWAL(log.TestingLogger(), walFile)
 	require.NoError(t, err)
-	wal.SetLogger(log.TestingLogger())
 
 	h := int64(3)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
@@ -170,12 +169,11 @@ func TestWALSearchForEndHeight(t *testing.T) {
 func TestWALPeriodicSync(t *testing.T) {
 	walDir := t.TempDir()
 	walFile := filepath.Join(walDir, "wal")
-	wal, err := NewWAL(walFile, autofile.GroupCheckDuration(1*time.Millisecond))
+	wal, err := NewWAL(log.TestingLogger(), walFile, autofile.GroupCheckDuration(1*time.Millisecond))
 
 	require.NoError(t, err)
 
 	wal.SetFlushInterval(walTestFlushInterval)
-	wal.SetLogger(log.TestingLogger())
 
 	// Generate some data
 	err = WALGenerateNBlocks(t, wal.Group(), 5)

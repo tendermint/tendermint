@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"runtime"
 
 	"github.com/tendermint/tendermint/abci/types"
@@ -19,7 +18,6 @@ import (
 
 type SocketServer struct {
 	service.BaseService
-	isLoggerSet bool
 
 	proto    string
 	addr     string
@@ -33,7 +31,7 @@ type SocketServer struct {
 	app    types.Application
 }
 
-func NewSocketServer(protoAddr string, app types.Application) service.Service {
+func NewSocketServer(logger tmlog.Logger, protoAddr string, app types.Application) service.Service {
 	proto, addr := tmnet.ProtocolAndAddress(protoAddr)
 	s := &SocketServer{
 		proto:    proto,
@@ -42,13 +40,8 @@ func NewSocketServer(protoAddr string, app types.Application) service.Service {
 		app:      app,
 		conns:    make(map[int]net.Conn),
 	}
-	s.BaseService = *service.NewBaseService(nil, "ABCIServer", s)
+	s.BaseService = *service.NewBaseService(logger, "ABCIServer", s)
 	return s
-}
-
-func (s *SocketServer) SetLogger(l tmlog.Logger) {
-	s.BaseService.SetLogger(l)
-	s.isLoggerSet = true
 }
 
 func (s *SocketServer) OnStart() error {
@@ -164,9 +157,6 @@ func (s *SocketServer) handleRequests(closeConn chan error, conn io.Reader, resp
 			buf := make([]byte, size)
 			buf = buf[:runtime.Stack(buf, false)]
 			err := fmt.Errorf("recovered from panic: %v\n%s", r, buf)
-			if !s.isLoggerSet {
-				fmt.Fprintln(os.Stderr, err)
-			}
 			closeConn <- err
 			s.appMtx.Unlock()
 		}

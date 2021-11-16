@@ -14,6 +14,7 @@ import (
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abcimocks "github.com/tendermint/tendermint/abci/client/mocks"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 func TestAppConns_Start_Stop(t *testing.T) {
@@ -26,12 +27,12 @@ func TestAppConns_Start_Stop(t *testing.T) {
 	clientMock.On("Quit").Return(quitCh).Times(4)
 
 	creatorCallCount := 0
-	creator := func() (abciclient.Client, error) {
+	creator := func(logger log.Logger) (abciclient.Client, error) {
 		creatorCallCount++
 		return clientMock, nil
 	}
 
-	appConns := NewAppConns(creator, NopMetrics())
+	appConns := NewAppConns(creator, log.TestingLogger(), NopMetrics())
 
 	err := appConns.Start()
 	require.NoError(t, err)
@@ -68,11 +69,11 @@ func TestAppConns_Failure(t *testing.T) {
 	clientMock.On("Quit").Return(recvQuitCh)
 	clientMock.On("Error").Return(errors.New("EOF")).Once()
 
-	creator := func() (abciclient.Client, error) {
+	creator := func(log.Logger) (abciclient.Client, error) {
 		return clientMock, nil
 	}
 
-	appConns := NewAppConns(creator, NopMetrics())
+	appConns := NewAppConns(creator, log.TestingLogger(), NopMetrics())
 
 	err := appConns.Start()
 	require.NoError(t, err)

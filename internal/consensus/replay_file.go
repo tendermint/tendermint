@@ -147,7 +147,7 @@ func (pb *playback) replayReset(count int, newStepSub eventbus.Subscription) err
 	}
 	pb.cs.Wait()
 
-	newCS := NewState(pb.cs.config, pb.genesisState.Copy(), pb.cs.blockExec,
+	newCS := NewState(pb.cs.Logger, pb.cs.config, pb.genesisState.Copy(), pb.cs.blockExec,
 		pb.cs.blockStore, pb.cs.txNotifier, pb.cs.evpool)
 	newCS.SetEventBus(pb.cs.eventBus)
 	newCS.startForReplay()
@@ -337,14 +337,14 @@ func newConsensusStateForReplay(
 	}
 
 	// Create proxyAppConn connection (consensus, mempool, query)
-	clientCreator, _ := proxy.DefaultClientCreator(cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
-	proxyApp := proxy.NewAppConns(clientCreator, proxy.NopMetrics())
+	clientCreator, _ := proxy.DefaultClientCreator(logger, cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
+	proxyApp := proxy.NewAppConns(clientCreator, logger, proxy.NopMetrics())
 	err = proxyApp.Start()
 	if err != nil {
 		return nil, fmt.Errorf("starting proxy app conns: %w", err)
 	}
 
-	eventBus := eventbus.NewDefault()
+	eventBus := eventbus.NewDefault(logger)
 	if err := eventBus.Start(); err != nil {
 		return nil, fmt.Errorf("failed to start event bus: %w", err)
 	}
@@ -358,7 +358,7 @@ func newConsensusStateForReplay(
 	mempool, evpool := emptyMempool{}, sm.EmptyEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp.Consensus(), mempool, evpool, blockStore)
 
-	consensusState := NewState(csConfig, state.Copy(), blockExec,
+	consensusState := NewState(logger, csConfig, state.Copy(), blockExec,
 		blockStore, mempool, evpool)
 
 	consensusState.SetEventBus(eventBus)

@@ -389,25 +389,28 @@ func subscribeToVoter(t *testing.T, cs *State, addr []byte) <-chan tmpubsub.Mess
 //-------------------------------------------------------------------------------
 // consensus states
 
-func newState(state sm.State, pv types.PrivValidator, app abci.Application) (*State, error) {
+func newState(logger log.Logger, state sm.State, pv types.PrivValidator, app abci.Application) (*State, error) {
 	cfg, err := config.ResetTestRoot("consensus_state_test")
 	if err != nil {
 		return nil, err
 	}
-	return newStateWithConfig(cfg, state, pv, app), nil
+
+	return newStateWithConfig(logger, cfg, state, pv, app), nil
 }
 
 func newStateWithConfig(
+	logger log.Logger,
 	thisConfig *config.Config,
 	state sm.State,
 	pv types.PrivValidator,
 	app abci.Application,
 ) *State {
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	return newStateWithConfigAndBlockStore(thisConfig, state, pv, app, blockStore)
+	return newStateWithConfigAndBlockStore(logger, thisConfig, state, pv, app, blockStore)
 }
 
 func newStateWithConfigAndBlockStore(
+	logger log.Logger,
 	thisConfig *config.Config,
 	state sm.State,
 	pv types.PrivValidator,
@@ -422,7 +425,7 @@ func newStateWithConfigAndBlockStore(
 	// Make Mempool
 
 	mempool := mempool.NewTxMempool(
-		log.TestingLogger().With("module", "mempool"),
+		logger.With("module", "mempool"),
 		thisConfig.Mempool,
 		proxyAppConnMem,
 		0,
@@ -441,13 +444,11 @@ func newStateWithConfigAndBlockStore(
 		panic(err)
 	}
 
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore)
-	cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
-	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
+	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyAppConnCon, mempool, evpool, blockStore)
+	cs := NewState(logger.With("module", "consensus"), thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 	cs.SetPrivValidator(pv)
 
-	eventBus := eventbus.NewDefault()
-	eventBus.SetLogger(log.TestingLogger().With("module", "events"))
+	eventBus := eventbus.NewDefault(logger.With("module", "events"))
 	err := eventBus.Start()
 	if err != nil {
 		panic(err)
@@ -468,13 +469,13 @@ func loadPrivValidator(cfg *config.Config) *privval.FilePV {
 	return privValidator
 }
 
-func randState(cfg *config.Config, nValidators int) (*State, []*validatorStub, error) {
+func randState(cfg *config.Config, logger log.Logger, nValidators int) (*State, []*validatorStub, error) {
 	// Get State
 	state, privVals := randGenesisState(cfg, nValidators, false, 10)
 
 	vss := make([]*validatorStub, nValidators)
 
-	cs, err := newState(state, privVals[0], kvstore.NewApplication())
+	cs, err := newState(logger, state, privVals[0], kvstore.NewApplication())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -759,9 +760,9 @@ func randConsensusState(
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 
-		css[i] = newStateWithConfigAndBlockStore(thisConfig, state, privVals[i], app, blockStore)
+		l := logger.With("validator", i, "module", "consensus")
+		css[i] = newStateWithConfigAndBlockStore(l, thisConfig, state, privVals[i], app, blockStore)
 		css[i].SetTimeoutTicker(tickerFunc())
-		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}
 
 	return css, func() {
@@ -829,9 +830,8 @@ func randConsensusNetWithPeers(
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 		// sm.SaveState(stateDB,state)	//height 1's validatorsInfo already saved in LoadStateFromDBOrGenesisDoc above
 
-		css[i] = newStateWithConfig(thisConfig, state, privVal, app)
+		css[i] = newStateWithConfig(logger.With("validator", i, "module", "consensus"), thisConfig, state, privVal, app)
 		css[i].SetTimeoutTicker(tickerFunc())
-		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}
 	return css, genDoc, peer0Config, func() {
 		for _, dir := range configRootDirs {

@@ -90,17 +90,17 @@ func initDBs(
 
 // nolint:lll
 func createAndStartProxyAppConns(clientCreator abciclient.Creator, logger log.Logger, metrics *proxy.Metrics) (proxy.AppConns, error) {
-	proxyApp := proxy.NewAppConns(clientCreator, metrics)
-	proxyApp.SetLogger(logger.With("module", "proxy"))
+	proxyApp := proxy.NewAppConns(clientCreator, logger.With("module", "proxy"), metrics)
+
 	if err := proxyApp.Start(); err != nil {
 		return nil, fmt.Errorf("error starting proxy app connections: %v", err)
 	}
+
 	return proxyApp, nil
 }
 
 func createAndStartEventBus(logger log.Logger) (*eventbus.EventBus, error) {
-	eventBus := eventbus.NewDefault()
-	eventBus.SetLogger(logger.With("module", "events"))
+	eventBus := eventbus.NewDefault(logger.With("module", "events"))
 	if err := eventBus.Start(); err != nil {
 		return nil, err
 	}
@@ -309,6 +309,7 @@ func createConsensusReactor(
 	logger = logger.With("module", "consensus")
 
 	consensusState := consensus.NewState(
+		logger,
 		cfg.Consensus,
 		state.Copy(),
 		blockExec,
@@ -317,7 +318,7 @@ func createConsensusReactor(
 		evidencePool,
 		consensus.StateMetrics(csMetrics),
 	)
-	consensusState.SetLogger(logger)
+
 	if privValidator != nil && cfg.Mode == config.ModeValidator {
 		consensusState.SetPrivValidator(privValidator)
 	}

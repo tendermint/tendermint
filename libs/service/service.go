@@ -48,9 +48,6 @@ type Service interface {
 	// String representation of the service
 	String() string
 
-	// SetLogger sets a logger.
-	SetLogger(log.Logger)
-
 	// Wait blocks until the service is stopped.
 	Wait()
 }
@@ -120,11 +117,6 @@ func NewBaseService(logger log.Logger, name string, impl Service) *BaseService {
 		quit:   make(chan struct{}),
 		impl:   impl,
 	}
-}
-
-// SetLogger implements Service by setting a logger.
-func (bs *BaseService) SetLogger(l log.Logger) {
-	bs.Logger = l
 }
 
 // Start implements Service by calling OnStart (if defined). An error will be

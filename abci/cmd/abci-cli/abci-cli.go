@@ -67,11 +67,10 @@ var RootCmd = &cobra.Command{
 
 		if client == nil {
 			var err error
-			client, err = abciclient.NewClient(flagAddress, flagAbci, false)
+			client, err = abciclient.NewClient(logger.With("module", "abci-client"), flagAddress, flagAbci, false)
 			if err != nil {
 				return err
 			}
-			client.SetLogger(logger.With("module", "abci-client"))
 			if err := client.Start(); err != nil {
 				return err
 			}
@@ -586,11 +585,11 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
 	}
 
 	// Start the listener
-	srv, err := server.NewServer(flagAddress, flagAbci, app)
+	srv, err := server.NewServer(logger.With("module", "abci-server"), flagAddress, flagAbci, app)
 	if err != nil {
 		return err
 	}
-	srv.SetLogger(logger.With("module", "abci-server"))
+
 	if err := srv.Start(); err != nil {
 		return err
 	}

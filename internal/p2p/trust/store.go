@@ -11,6 +11,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -38,14 +39,14 @@ type MetricStore struct {
 // NewTrustMetricStore returns a store that saves data to the DB
 // and uses the config when creating new trust metrics.
 // Use Start to to initialize the trust metric store
-func NewTrustMetricStore(db dbm.DB, tmc MetricConfig) *MetricStore {
+func NewTrustMetricStore(db dbm.DB, tmc MetricConfig, logger log.Logger) *MetricStore {
 	tms := &MetricStore{
 		peerMetrics: make(map[string]*Metric),
 		db:          db,
 		config:      tmc,
 	}
 
-	tms.BaseService = *service.NewBaseService(nil, "MetricStore", tms)
+	tms.BaseService = *service.NewBaseService(logger, "MetricStore", tms)
 	return tms
 }
 

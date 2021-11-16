@@ -6,6 +6,7 @@ import (
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
 	e2e "github.com/tendermint/tendermint/test/e2e/app"
 )
 
@@ -15,7 +16,7 @@ import (
 //
 // The Closer is a noop except for persistent_kvstore applications,
 // which will clean up the store.
-func DefaultClientCreator(addr, transport, dbDir string) (abciclient.Creator, io.Closer) {
+func DefaultClientCreator(logger log.Logger, addr, transport, dbDir string) (abciclient.Creator, io.Closer) {
 	switch addr {
 	case "kvstore":
 		return abciclient.NewLocalCreator(kvstore.NewApplication()), noopCloser{}
@@ -32,7 +33,7 @@ func DefaultClientCreator(addr, transport, dbDir string) (abciclient.Creator, io
 		return abciclient.NewLocalCreator(types.NewBaseApplication()), noopCloser{}
 	default:
 		mustConnect := false // loop retrying
-		return abciclient.NewRemoteCreator(addr, transport, mustConnect), noopCloser{}
+		return abciclient.NewRemoteCreator(logger, addr, transport, mustConnect), noopCloser{}
 	}
 }
 

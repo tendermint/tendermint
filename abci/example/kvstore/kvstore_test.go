@@ -234,15 +234,13 @@ func makeSocketClientServer(app types.Application, name string) (abciclient.Clie
 	socket := fmt.Sprintf("unix://%s.sock", name)
 	logger := log.TestingLogger()
 
-	server := abciserver.NewSocketServer(socket, app)
-	server.SetLogger(logger.With("module", "abci-server"))
+	server := abciserver.NewSocketServer(logger.With("module", "abci-server"), socket, app)
 	if err := server.Start(); err != nil {
 		return nil, nil, err
 	}
 
 	// Connect to the socket
-	client := abciclient.NewSocketClient(socket, false)
-	client.SetLogger(logger.With("module", "abci-client"))
+	client := abciclient.NewSocketClient(logger.With("module", "abci-client"), socket, false)
 	if err := client.Start(); err != nil {
 		if err = server.Stop(); err != nil {
 			return nil, nil, err
@@ -259,14 +257,14 @@ func makeGRPCClientServer(app types.Application, name string) (abciclient.Client
 	logger := log.TestingLogger()
 
 	gapp := types.NewGRPCApplication(app)
-	server := abciserver.NewGRPCServer(socket, gapp)
-	server.SetLogger(logger.With("module", "abci-server"))
+	server := abciserver.NewGRPCServer(logger.With("module", "abci-server"), socket, gapp)
+
 	if err := server.Start(); err != nil {
 		return nil, nil, err
 	}
 
-	client := abciclient.NewGRPCClient(socket, true)
-	client.SetLogger(logger.With("module", "abci-client"))
+	client := abciclient.NewGRPCClient(logger.With("module", "abci-client"), socket, true)
+
 	if err := client.Start(); err != nil {
 		if err := server.Stop(); err != nil {
 			return nil, nil, err

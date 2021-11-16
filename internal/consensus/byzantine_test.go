@@ -87,20 +87,17 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 			// Make State
 			blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore)
-			cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
-			cs.SetLogger(cs.Logger)
+			cs := NewState(logger, thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 			// set private validator
 			pv := privVals[i]
 			cs.SetPrivValidator(pv)
 
-			eventBus := eventbus.NewDefault()
-			eventBus.SetLogger(log.TestingLogger().With("module", "events"))
+			eventBus := eventbus.NewDefault(log.TestingLogger().With("module", "events"))
 			err = eventBus.Start()
 			require.NoError(t, err)
 			cs.SetEventBus(eventBus)
 
 			cs.SetTimeoutTicker(tickerFunc())
-			cs.SetLogger(logger)
 
 			states[i] = cs
 		}()

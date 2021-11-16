@@ -26,8 +26,7 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	t.Cleanup(cleanup)
 
 	for i := 0; i < 4; i++ {
-		ticker := NewTimeoutTicker()
-		ticker.SetLogger(states[i].Logger)
+		ticker := NewTimeoutTicker(states[i].Logger)
 		states[i].SetTimeoutTicker(ticker)
 	}
 
