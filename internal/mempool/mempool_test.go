@@ -77,12 +77,12 @@ func setup(t testing.TB, cacheSize int, options ...TxMempoolOption) *TxMempool {
 
 	app := &application{kvstore.NewApplication()}
 	cc := abciclient.NewLocalCreator(app)
+	logger := log.TestingLogger()
 
 	cfg, err := config.ResetTestRoot(strings.ReplaceAll(t.Name(), "/", "|"))
 	require.NoError(t, err)
 	cfg.Mempool.CacheSize = cacheSize
-
-	appConnMem, err := cc()
+	appConnMem, err := cc(logger)
 	require.NoError(t, err)
 	require.NoError(t, appConnMem.Start())
 
@@ -91,7 +91,7 @@ func setup(t testing.TB, cacheSize int, options ...TxMempoolOption) *TxMempool {
 		require.NoError(t, appConnMem.Stop())
 	})
 
-	return NewTxMempool(log.TestingLogger().With("test", t.Name()), cfg.Mempool, appConnMem, 0, options...)
+	return NewTxMempool(logger.With("test", t.Name()), cfg.Mempool, appConnMem, 0, options...)
 }
 
 func checkTxs(t *testing.T, txmp *TxMempool, numTxs int, peerID uint16) []testTx {

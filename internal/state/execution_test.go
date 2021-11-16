@@ -38,7 +38,8 @@ var (
 func TestApplyBlock(t *testing.T) {
 	app := &testApp{}
 	cc := abciclient.NewLocalCreator(app)
-	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
+	logger := log.TestingLogger()
+	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
@@ -46,7 +47,7 @@ func TestApplyBlock(t *testing.T) {
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
+	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp.Consensus(),
 		mmock.Mempool{}, sm.EmptyEvidencePool{}, blockStore)
 
 	block := sf.MakeBlock(state, 1, new(types.Commit))
@@ -63,7 +64,7 @@ func TestApplyBlock(t *testing.T) {
 func TestBeginBlockValidators(t *testing.T) {
 	app := &testApp{}
 	cc := abciclient.NewLocalCreator(app)
-	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
+	proxyApp := proxy.NewAppConns(cc, log.TestingLogger(), proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // no need to check error again
@@ -126,7 +127,7 @@ func TestBeginBlockValidators(t *testing.T) {
 func TestBeginBlockByzantineValidators(t *testing.T) {
 	app := &testApp{}
 	cc := abciclient.NewLocalCreator(app)
-	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
+	proxyApp := proxy.NewAppConns(cc, log.TestingLogger(), proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
@@ -351,7 +352,8 @@ func TestUpdateValidators(t *testing.T) {
 func TestEndBlockValidatorUpdates(t *testing.T) {
 	app := &testApp{}
 	cc := abciclient.NewLocalCreator(app)
-	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
+	logger := log.TestingLogger()
+	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
@@ -362,14 +364,14 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
-		log.TestingLogger(),
+		logger,
 		proxyApp.Consensus(),
 		mmock.Mempool{},
 		sm.EmptyEvidencePool{},
 		blockStore,
 	)
 
-	eventBus := eventbus.NewDefault()
+	eventBus := eventbus.NewDefault(logger)
 	err = eventBus.Start()
 	require.NoError(t, err)
 	defer eventBus.Stop() //nolint:errcheck // ignore for tests
@@ -420,7 +422,8 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	app := &testApp{}
 	cc := abciclient.NewLocalCreator(app)
-	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
+	logger := log.TestingLogger()
+	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests

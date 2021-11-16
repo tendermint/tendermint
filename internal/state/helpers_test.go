@@ -16,6 +16,7 @@ import (
 	sm "github.com/tendermint/tendermint/internal/state"
 	sf "github.com/tendermint/tendermint/internal/state/test/factory"
 	"github.com/tendermint/tendermint/internal/test/factory"
+	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -31,7 +32,7 @@ type paramsChangeTestCase struct {
 func newTestApp() proxy.AppConns {
 	app := &testApp{}
 	cc := abciclient.NewLocalCreator(app)
-	return proxy.NewAppConns(cc, proxy.NopMetrics())
+	return proxy.NewAppConns(cc, log.NewNopLogger(), proxy.NopMetrics())
 }
 
 func makeAndCommitGoodBlock(

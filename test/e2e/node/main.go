@@ -102,7 +102,7 @@ func startApp(cfg *Config) error {
 	if err != nil {
 		return err
 	}
-	server, err := server.NewServer(cfg.Listen, cfg.Protocol, app)
+	server, err := server.NewServer(logger, cfg.Listen, cfg.Protocol, app)
 	if err != nil {
 		return err
 	}

@@ -127,7 +127,7 @@ func NewReactor(
 		initialState:         state,
 		blockExec:            blockExec,
 		store:                store,
-		pool:                 NewBlockPool(startHeight, requestsCh, errorsCh),
+		pool:                 NewBlockPool(logger, startHeight, requestsCh, errorsCh),
 		consReactor:          consReactor,
 		blockSync:            tmsync.NewBool(blockSync),
 		requestsCh:           requestsCh,

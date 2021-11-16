@@ -16,17 +16,16 @@ import (
 
 func TestTrustMetricStoreSaveLoad(t *testing.T) {
 	dir := t.TempDir()
+	logger := log.TestingLogger()
 
 	historyDB, err := dbm.NewDB("trusthistory", "goleveldb", dir)
 	require.NoError(t, err)
 
 	// 0 peers saved
-	store := NewTrustMetricStore(historyDB, DefaultConfig())
-	store.SetLogger(log.TestingLogger())
+	store := NewTrustMetricStore(historyDB, DefaultConfig(), logger)
 	store.saveToDB()
 	// Load the data from the file
-	store = NewTrustMetricStore(historyDB, DefaultConfig())
-	store.SetLogger(log.TestingLogger())
+	store = NewTrustMetricStore(historyDB, DefaultConfig(), logger)
 	err = store.Start()
 	require.NoError(t, err)
 	// Make sure we still have 0 entries
@@ -64,8 +63,8 @@ func TestTrustMetricStoreSaveLoad(t *testing.T) {
 	require.NoError(t, err)
 
 	// Load the data from the DB
-	store = NewTrustMetricStore(historyDB, DefaultConfig())
-	store.SetLogger(log.TestingLogger())
+	store = NewTrustMetricStore(historyDB, DefaultConfig(), logger)
+
 	err = store.Start()
 	require.NoError(t, err)
 
@@ -88,9 +87,10 @@ func TestTrustMetricStoreConfig(t *testing.T) {
 		IntegralWeight:     0.5,
 	}
 
+	logger := log.TestingLogger()
 	// Create a store with custom config
-	store := NewTrustMetricStore(historyDB, config)
-	store.SetLogger(log.TestingLogger())
+	store := NewTrustMetricStore(historyDB, config, logger)
+
 	err = store.Start()
 	require.NoError(t, err)
 
@@ -108,8 +108,8 @@ func TestTrustMetricStoreLookup(t *testing.T) {
 	historyDB, err := dbm.NewDB("", "memdb", "")
 	require.NoError(t, err)
 
-	store := NewTrustMetricStore(historyDB, DefaultConfig())
-	store.SetLogger(log.TestingLogger())
+	store := NewTrustMetricStore(historyDB, DefaultConfig(), log.TestingLogger())
+
 	err = store.Start()
 	require.NoError(t, err)
 
@@ -131,8 +131,8 @@ func TestTrustMetricStorePeerScore(t *testing.T) {
 	historyDB, err := dbm.NewDB("", "memdb", "")
 	require.NoError(t, err)
 
-	store := NewTrustMetricStore(historyDB, DefaultConfig())
-	store.SetLogger(log.TestingLogger())
+	store := NewTrustMetricStore(historyDB, DefaultConfig(), log.TestingLogger())
+
 	err = store.Start()
 	require.NoError(t, err)
 

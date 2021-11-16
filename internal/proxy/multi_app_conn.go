@@ -6,7 +6,7 @@ import (
 	"syscall"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
-	tmlog "github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -33,8 +33,8 @@ type AppConns interface {
 }
 
 // NewAppConns calls NewMultiAppConn.
-func NewAppConns(clientCreator abciclient.Creator, metrics *Metrics) AppConns {
-	return NewMultiAppConn(clientCreator, metrics)
+func NewAppConns(clientCreator abciclient.Creator, logger log.Logger, metrics *Metrics) AppConns {
+	return NewMultiAppConn(clientCreator, logger, metrics)
 }
 
 // multiAppConn implements AppConns.
@@ -60,12 +60,12 @@ type multiAppConn struct {
 }
 
 // NewMultiAppConn makes all necessary abci connections to the application.
-func NewMultiAppConn(clientCreator abciclient.Creator, metrics *Metrics) AppConns {
+func NewMultiAppConn(clientCreator abciclient.Creator, logger log.Logger, metrics *Metrics) AppConns {
 	multiAppConn := &multiAppConn{
 		metrics:       metrics,
 		clientCreator: clientCreator,
 	}
-	multiAppConn.BaseService = *service.NewBaseService(nil, "multiAppConn", multiAppConn)
+	multiAppConn.BaseService = *service.NewBaseService(logger, "multiAppConn", multiAppConn)
 	return multiAppConn
 }
 
@@ -128,7 +128,7 @@ func (app *multiAppConn) OnStop() {
 }
 
 func (app *multiAppConn) killTMOnClientError() {
-	killFn := func(conn string, err error, logger tmlog.Logger) {
+	killFn := func(conn string, err error, logger log.Logger) {
 		logger.Error(
 			fmt.Sprintf("%s connection terminated. Did the application crash? Please restart tendermint", conn),
 			"err", err)
@@ -181,11 +181,12 @@ func (app *multiAppConn) stopAllClients() {
 }
 
 func (app *multiAppConn) abciClientFor(conn string) (abciclient.Client, error) {
-	c, err := app.clientCreator()
+	c, err := app.clientCreator(app.Logger.With(
+		"module", "abci-client",
+		"connection", conn))
 	if err != nil {
 		return nil, fmt.Errorf("error creating ABCI client (%s connection): %w", conn, err)
 	}
-	c.SetLogger(app.Logger.With("module", "abci-client", "connection", conn))
 	if err := c.Start(); err != nil {
 		return nil, fmt.Errorf("error starting ABCI client (%s connection): %w", conn, err)
 	}

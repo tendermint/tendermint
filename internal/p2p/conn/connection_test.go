@@ -19,17 +19,18 @@ import (
 
 const maxPingPongPacketSize = 1024 // bytes
 
-func createTestMConnection(conn net.Conn) *MConnection {
-	onReceive := func(chID ChannelID, msgBytes []byte) {
-	}
-	onError := func(r interface{}) {
-	}
-	c := createMConnectionWithCallbacks(conn, onReceive, onError)
-	c.SetLogger(log.TestingLogger())
-	return c
+func createTestMConnection(logger log.Logger, conn net.Conn) *MConnection {
+	return createMConnectionWithCallbacks(logger, conn,
+		// onRecieve
+		func(chID ChannelID, msgBytes []byte) {
+		},
+		// onError
+		func(r interface{}) {
+		})
 }
 
 func createMConnectionWithCallbacks(
+	logger log.Logger,
 	conn net.Conn,
 	onReceive func(chID ChannelID, msgBytes []byte),
 	onError func(r interface{}),
@@ -38,8 +39,7 @@ func createMConnectionWithCallbacks(
 	cfg.PingInterval = 90 * time.Millisecond
 	cfg.PongTimeout = 45 * time.Millisecond
 	chDescs := []*ChannelDescriptor{{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
-	c := NewMConnectionWithConfig(conn, chDescs, onReceive, onError, cfg)
-	c.SetLogger(log.TestingLogger())
+	c := NewMConnectionWithConfig(logger, conn, chDescs, onReceive, onError, cfg)
 	return c
 }
 
@@ -47,7 +47,7 @@ func TestMConnectionSendFlushStop(t *testing.T) {
 	server, client := NetPipe()
 	t.Cleanup(closeAll(t, client, server))
 
-	clientConn := createTestMConnection(client)
+	clientConn := createTestMConnection(log.TestingLogger(), client)
 	err := clientConn.Start()
 	require.Nil(t, err)
 	t.Cleanup(stopAll(t, clientConn))
@@ -81,7 +81,7 @@ func TestMConnectionSend(t *testing.T) {
 	server, client := NetPipe()
 	t.Cleanup(closeAll(t, client, server))
 
-	mconn := createTestMConnection(client)
+	mconn := createTestMConnection(log.TestingLogger(), client)
 	err := mconn.Start()
 	require.Nil(t, err)
 	t.Cleanup(stopAll(t, mconn))
@@ -117,12 +117,13 @@ func TestMConnectionReceive(t *testing.T) {
 	onError := func(r interface{}) {
 		errorsCh <- r
 	}
-	mconn1 := createMConnectionWithCallbacks(client, onReceive, onError)
+	logger := log.TestingLogger()
+	mconn1 := createMConnectionWithCallbacks(logger, client, onReceive, onError)
 	err := mconn1.Start()
 	require.Nil(t, err)
 	t.Cleanup(stopAll(t, mconn1))
 
-	mconn2 := createTestMConnection(server)
+	mconn2 := createTestMConnection(logger, server)
 	err = mconn2.Start()
 	require.Nil(t, err)
 	t.Cleanup(stopAll(t, mconn2))
@@ -152,7 +153,7 @@ func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 	onError := func(r interface{}) {
 		errorsCh <- r
 	}
-	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
+	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
 	err := mconn.Start()
 	require.Nil(t, err)
 	t.Cleanup(stopAll(t, mconn))
@@ -190,7 +191,7 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 	onError := func(r interface{}) {
 		errorsCh <- r
 	}
-	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
+	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
 	err := mconn.Start()
 	require.Nil(t, err)
 	t.Cleanup(stopAll(t, mconn))
@@ -244,7 +245,7 @@ func TestMConnectionMultiplePings(t *testing.T) {
 	onError := func(r interface{}) {
 		errorsCh <- r
 	}
-	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
+	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
 	err := mconn.Start()
 	require.Nil(t, err)
 	t.Cleanup(stopAll(t, mconn))
@@ -291,7 +292,7 @@ func TestMConnectionPingPongs(t *testing.T) {
 	onError := func(r interface{}) {
 		errorsCh <- r
 	}
-	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
+	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
 	err := mconn.Start()
 	require.Nil(t, err)
 	t.Cleanup(stopAll(t, mconn))
@@ -348,7 +349,7 @@ func TestMConnectionStopsAndReturnsError(t *testing.T) {
 	onError := func(r interface{}) {
 		errorsCh <- r
 	}
-	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
+	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
 	err := mconn.Start()
 	require.Nil(t, err)
 	t.Cleanup(stopAll(t, mconn))
@@ -379,19 +380,18 @@ func newClientAndServerConnsForReadErrors(t *testing.T, chOnErr chan struct{}) (
 		{ID: 0x01, Priority: 1, SendQueueCapacity: 1},
 		{ID: 0x02, Priority: 1, SendQueueCapacity: 1},
 	}
-	mconnClient := NewMConnection(client, chDescs, onReceive, onError)
-	mconnClient.SetLogger(log.TestingLogger().With("module", "client"))
+	logger := log.TestingLogger()
+	mconnClient := NewMConnection(logger.With("module", "client"), client, chDescs, onReceive, onError)
 	err := mconnClient.Start()
 	require.Nil(t, err)
 
 	// create server conn with 1 channel
 	// it fires on chOnErr when there's an error
-	serverLogger := log.TestingLogger().With("module", "server")
+	serverLogger := logger.With("module", "server")
 	onError = func(r interface{}) {
 		chOnErr <- struct{}{}
 	}
-	mconnServer := createMConnectionWithCallbacks(server, onReceive, onError)
-	mconnServer.SetLogger(serverLogger)
+	mconnServer := createMConnectionWithCallbacks(serverLogger, server, onReceive, onError)
 	err = mconnServer.Start()
 	require.Nil(t, err)
 	return mconnClient, mconnServer
@@ -488,7 +488,7 @@ func TestMConnectionTrySend(t *testing.T) {
 	server, client := NetPipe()
 	t.Cleanup(closeAll(t, client, server))
 
-	mconn := createTestMConnection(client)
+	mconn := createTestMConnection(log.TestingLogger(), client)
 	err := mconn.Start()
 	require.Nil(t, err)
 	t.Cleanup(stopAll(t, mconn))

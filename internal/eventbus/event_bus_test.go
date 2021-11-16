@@ -12,13 +12,14 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/eventbus"
+	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/types"
 )
 
 func TestEventBusPublishEventTx(t *testing.T) {
-	eventBus := eventbus.NewDefault()
+	eventBus := eventbus.NewDefault(log.TestingLogger())
 	err := eventBus.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -75,7 +76,7 @@ func TestEventBusPublishEventTx(t *testing.T) {
 }
 
 func TestEventBusPublishEventNewBlock(t *testing.T) {
-	eventBus := eventbus.NewDefault()
+	eventBus := eventbus.NewDefault(log.TestingLogger())
 	err := eventBus.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -135,7 +136,7 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 }
 
 func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
-	eventBus := eventbus.NewDefault()
+	eventBus := eventbus.NewDefault(log.TestingLogger())
 	err := eventBus.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -242,7 +243,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 }
 
 func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
-	eventBus := eventbus.NewDefault()
+	eventBus := eventbus.NewDefault(log.TestingLogger())
 	err := eventBus.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -299,7 +300,7 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 }
 
 func TestEventBusPublishEventNewEvidence(t *testing.T) {
-	eventBus := eventbus.NewDefault()
+	eventBus := eventbus.NewDefault(log.TestingLogger())
 	err := eventBus.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -343,7 +344,7 @@ func TestEventBusPublishEventNewEvidence(t *testing.T) {
 }
 
 func TestEventBusPublish(t *testing.T) {
-	eventBus := eventbus.NewDefault()
+	eventBus := eventbus.NewDefault(log.TestingLogger())
 	err := eventBus.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -433,7 +434,7 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 	// for random* functions
 	mrand.Seed(time.Now().Unix())
 
-	eventBus := eventbus.NewDefault() // set buffer capacity to 0 so we are not testing cache
+	eventBus := eventbus.NewDefault(log.TestingLogger()) // set buffer capacity to 0 so we are not testing cache
 	err := eventBus.Start()
 	if err != nil {
 		b.Error(err)

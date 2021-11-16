@@ -38,10 +38,18 @@ var (
 	dbName   = "postgres"
 )
 
+// NewIndexerService returns a new service instance.
+func NewIndexerService(es []indexer.EventSink, eventBus *eventbus.EventBus) *indexer.Service {
+	return indexer.NewService(indexer.ServiceArgs{
+		Sinks:    es,
+		EventBus: eventBus,
+	})
+}
+
 func TestIndexerServiceIndexesBlocks(t *testing.T) {
+	logger := tmlog.TestingLogger()
 	// event bus
-	eventBus := eventbus.NewDefault()
-	eventBus.SetLogger(tmlog.TestingLogger())
+	eventBus := eventbus.NewDefault(logger)
 	err := eventBus.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -62,8 +70,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	assert.True(t, indexer.KVSinkEnabled(eventSinks))
 	assert.True(t, indexer.IndexingEnabled(eventSinks))
 
-	service := indexer.NewIndexerService(eventSinks, eventBus)
-	service.SetLogger(tmlog.TestingLogger())
+	service := NewIndexerService(eventSinks, eventBus)
 	err = service.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {

@@ -146,12 +146,14 @@ func DefaultMConnConfig() MConnConfig {
 
 // NewMConnection wraps net.Conn and creates multiplex connection
 func NewMConnection(
+	logger log.Logger,
 	conn net.Conn,
 	chDescs []*ChannelDescriptor,
 	onReceive receiveCbFunc,
 	onError errorCbFunc,
 ) *MConnection {
 	return NewMConnectionWithConfig(
+		logger,
 		conn,
 		chDescs,
 		onReceive,
@@ -161,6 +163,7 @@ func NewMConnection(
 
 // NewMConnectionWithConfig wraps net.Conn and creates multiplex connection with a config
 func NewMConnectionWithConfig(
+	logger log.Logger,
 	conn net.Conn,
 	chDescs []*ChannelDescriptor,
 	onReceive receiveCbFunc,
@@ -185,6 +188,8 @@ func NewMConnectionWithConfig(
 		created:       time.Now(),
 	}
 
+	mconn.BaseService = *service.NewBaseService(logger, "MConnection", mconn)
+
 	// Create channels
 	var channelsIdx = map[ChannelID]*channel{}
 	var channels = []*channel{}
@@ -197,19 +202,10 @@ func NewMConnectionWithConfig(
 	mconn.channels = channels
 	mconn.channelsIdx = channelsIdx
 
-	mconn.BaseService = *service.NewBaseService(nil, "MConnection", mconn)
-
 	// maxPacketMsgSize() is a bit heavy, so call just once
 	mconn._maxPacketMsgSize = mconn.maxPacketMsgSize()
 
 	return mconn
-}
-
-func (c *MConnection) SetLogger(l log.Logger) {
-	c.BaseService.SetLogger(l)
-	for _, ch := range c.channels {
-		ch.SetLogger(l)
-	}
 }
 
 // OnStart implements BaseService
@@ -670,11 +666,8 @@ func newChannel(conn *MConnection, desc ChannelDescriptor) *channel {
 		sendQueue:               make(chan []byte, desc.SendQueueCapacity),
 		recving:                 make([]byte, 0, desc.RecvBufferCapacity),
 		maxPacketMsgPayloadSize: conn.config.MaxPacketMsgPayloadSize,
+		Logger:                  conn.Logger,
 	}
-}
-
-func (ch *channel) SetLogger(l log.Logger) {
-	ch.Logger = l
 }
 
 // Queues message to send to this channel.

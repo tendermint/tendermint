@@ -41,15 +41,6 @@ func NewService(args ServiceArgs) *Service {
 	return is
 }
 
-// NewIndexerService returns a new service instance.
-// Deprecated: Use NewService instead.
-func NewIndexerService(es []EventSink, eventBus *eventbus.EventBus) *Service {
-	return NewService(ServiceArgs{
-		Sinks:    es,
-		EventBus: eventBus,
-	})
-}
-
 // publish publishes a pubsub message to the service. The service blocks until
 // the message has been fully processed.
 func (is *Service) publish(msg pubsub.Message) error {

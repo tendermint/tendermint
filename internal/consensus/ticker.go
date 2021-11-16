@@ -19,8 +19,6 @@ type TimeoutTicker interface {
 	Stop() error
 	Chan() <-chan timeoutInfo       // on which to receive a timeout
 	ScheduleTimeout(ti timeoutInfo) // reset the timer
-
-	SetLogger(log.Logger)
 }
 
 // timeoutTicker wraps time.Timer,
@@ -37,13 +35,13 @@ type timeoutTicker struct {
 }
 
 // NewTimeoutTicker returns a new TimeoutTicker.
-func NewTimeoutTicker() TimeoutTicker {
+func NewTimeoutTicker(logger log.Logger) TimeoutTicker {
 	tt := &timeoutTicker{
 		timer:    time.NewTimer(0),
 		tickChan: make(chan timeoutInfo, tickTockBufferSize),
 		tockChan: make(chan timeoutInfo, tickTockBufferSize),
 	}
-	tt.BaseService = *service.NewBaseService(nil, "TimeoutTicker", tt)
+	tt.BaseService = *service.NewBaseService(logger, "TimeoutTicker", tt)
 	tt.stopTimer() // don't want to fire until the first scheduled timeout
 	return tt
 }

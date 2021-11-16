@@ -88,7 +88,7 @@ var _ WAL = &BaseWAL{}
 
 // NewWAL returns a new write-ahead logger based on `baseWAL`, which implements
 // WAL. It's flushed and synced to disk every 2s and once when stopped.
-func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*BaseWAL, error) {
+func NewWAL(logger log.Logger, walFile string, groupOptions ...func(*auto.Group)) (*BaseWAL, error) {
 	err := tmos.EnsureDir(filepath.Dir(walFile), 0700)
 	if err != nil {
 		return nil, fmt.Errorf("failed to ensure WAL directory is in place: %w", err)
@@ -103,7 +103,7 @@ func NewWAL(walFile string, groupOptions ...func(*auto.Group)) (*BaseWAL, error)
 		enc:           NewWALEncoder(group),
 		flushInterval: walDefaultFlushInterval,
 	}
-	wal.BaseService = *service.NewBaseService(nil, "baseWAL", wal)
+	wal.BaseService = *service.NewBaseService(logger, "baseWAL", wal)
 	return wal, nil
 }
 
@@ -114,11 +114,6 @@ func (wal *BaseWAL) SetFlushInterval(i time.Duration) {
 
 func (wal *BaseWAL) Group() *auto.Group {
 	return wal.group
-}
-
-func (wal *BaseWAL) SetLogger(l log.Logger) {
-	wal.BaseService.Logger = l
-	wal.group.SetLogger(l)
 }
 
 func (wal *BaseWAL) OnStart() error {

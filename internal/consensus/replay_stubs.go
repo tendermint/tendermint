@@ -8,6 +8,7 @@ import (
 	"github.com/tendermint/tendermint/internal/libs/clist"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/proxy"
+	"github.com/tendermint/tendermint/libs/log"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -54,12 +55,12 @@ func (emptyMempool) CloseWAL()      {}
 // Useful because we don't want to call Commit() twice for the same block on
 // the real app.
 
-func newMockProxyApp(appHash []byte, abciResponses *tmstate.ABCIResponses) proxy.AppConnConsensus {
+func newMockProxyApp(logger log.Logger, appHash []byte, abciResponses *tmstate.ABCIResponses) proxy.AppConnConsensus {
 	clientCreator := abciclient.NewLocalCreator(&mockProxyApp{
 		appHash:       appHash,
 		abciResponses: abciResponses,
 	})
-	cli, _ := clientCreator()
+	cli, _ := clientCreator(logger)
 	err := cli.Start()
 	if err != nil {
 		panic(err)
