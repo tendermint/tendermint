@@ -411,18 +411,15 @@ func TestReactorWithEvidence(t *testing.T) {
 		evpool2 := sm.EmptyEvidencePool{}
 
 		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore)
-		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool2)
-		cs.SetLogger(log.TestingLogger().With("module", "consensus"))
+		cs := NewState(logger.With("validator", i, "module", "consensus"),
+			thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool2)
 		cs.SetPrivValidator(pv)
 
-		eventBus := eventbus.NewDefault()
-		eventBus.SetLogger(log.TestingLogger().With("module", "events"))
-		err = eventBus.Start()
-		require.NoError(t, err)
+		eventBus := eventbus.NewDefault(log.TestingLogger().With("module", "events"))
+		require.NoError(t, eventBus.Start())
 		cs.SetEventBus(eventBus)
 
 		cs.SetTimeoutTicker(tickerFunc())
-		cs.SetLogger(logger.With("validator", i, "module", "consensus"))
 
 		states[i] = cs
 	}

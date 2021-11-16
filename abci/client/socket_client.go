@@ -13,6 +13,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/types"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 )
@@ -50,7 +51,7 @@ var _ Client = (*socketClient)(nil)
 // NewSocketClient creates a new socket client, which connects to a given
 // address. If mustConnect is true, the client will return an error upon start
 // if it fails to connect.
-func NewSocketClient(addr string, mustConnect bool) Client {
+func NewSocketClient(logger log.Logger, addr string, mustConnect bool) Client {
 	cli := &socketClient{
 		reqQueue:    make(chan *reqResWithContext, reqQueueSize),
 		mustConnect: mustConnect,
@@ -59,7 +60,7 @@ func NewSocketClient(addr string, mustConnect bool) Client {
 		reqSent: list.New(),
 		resCb:   nil,
 	}
-	cli.BaseService = *service.NewBaseService(nil, "socketClient", cli)
+	cli.BaseService = *service.NewBaseService(logger, "socketClient", cli)
 	return cli
 }
 

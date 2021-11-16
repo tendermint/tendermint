@@ -357,8 +357,10 @@ func TestUnsubscribeAll(t *testing.T) {
 }
 
 func TestBufferCapacity(t *testing.T) {
-	s := pubsub.NewServer(pubsub.BufferCapacity(2))
-	s.SetLogger(log.TestingLogger())
+	s := pubsub.NewServer(pubsub.BufferCapacity(2),
+		func(s *pubsub.Server) {
+			s.Logger = log.TestingLogger()
+		})
 
 	require.Equal(t, 2, s.BufferCapacity())
 
@@ -376,8 +378,10 @@ func TestBufferCapacity(t *testing.T) {
 func newTestServer(t testing.TB) *pubsub.Server {
 	t.Helper()
 
-	s := pubsub.NewServer()
-	s.SetLogger(log.TestingLogger())
+	s := pubsub.NewServer(func(s *pubsub.Server) {
+		s.Logger = log.TestingLogger()
+	})
+
 	require.NoError(t, s.Start())
 	t.Cleanup(func() {
 		assert.NoError(t, s.Stop())

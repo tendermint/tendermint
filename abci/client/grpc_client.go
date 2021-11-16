@@ -11,6 +11,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/types"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 )
@@ -42,7 +43,7 @@ var _ Client = (*grpcClient)(nil)
 // which is expensive, but easy - if you want something better, use the socket
 // protocol! maybe one day, if people really want it, we use grpc streams, but
 // hopefully not :D
-func NewGRPCClient(addr string, mustConnect bool) Client {
+func NewGRPCClient(logger log.Logger, addr string, mustConnect bool) Client {
 	cli := &grpcClient{
 		addr:        addr,
 		mustConnect: mustConnect,
@@ -54,7 +55,7 @@ func NewGRPCClient(addr string, mustConnect bool) Client {
 		// gRPC calls while processing a slow callback at the channel head.
 		chReqRes: make(chan *ReqRes, 64),
 	}
-	cli.BaseService = *service.NewBaseService(nil, "grpcClient", cli)
+	cli.BaseService = *service.NewBaseService(logger, "grpcClient", cli)
 	return cli
 }
 

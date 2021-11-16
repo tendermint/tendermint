@@ -27,16 +27,15 @@ type EventBus struct {
 }
 
 // NewDefault returns a new event bus with default options.
-func NewDefault() *EventBus {
-	pubsub := tmpubsub.NewServer(tmpubsub.BufferCapacity(0))
+func NewDefault(l log.Logger) *EventBus {
+	logger := l.With("module", "eventbus")
+	pubsub := tmpubsub.NewServer(tmpubsub.BufferCapacity(0),
+		func(s *tmpubsub.Server) {
+			s.Logger = logger
+		})
 	b := &EventBus{pubsub: pubsub}
-	b.BaseService = *service.NewBaseService(nil, "EventBus", b)
+	b.BaseService = *service.NewBaseService(logger, "EventBus", b)
 	return b
-}
-
-func (b *EventBus) SetLogger(l log.Logger) {
-	b.BaseService.SetLogger(l)
-	b.pubsub.SetLogger(l.With("module", "pubsub"))
 }
 
 func (b *EventBus) OnStart() error {

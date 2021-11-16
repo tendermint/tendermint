@@ -136,10 +136,10 @@ type Option func(*Server)
 // provided, the resulting server's queue is unbuffered.
 func NewServer(options ...Option) *Server {
 	s := new(Server)
+	s.BaseService = *service.NewBaseService(nil, "PubSub", s)
 	for _, opt := range options {
 		opt(s)
 	}
-	s.BaseService = *service.NewBaseService(nil, "PubSub", s)
 
 	// The queue receives items to be published.
 	s.queue = make(chan item, s.queueCap)

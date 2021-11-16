@@ -44,14 +44,16 @@ func TestGRPC(t *testing.T) {
 }
 
 func testStream(t *testing.T, app types.Application) {
+	t.Helper()
+
 	const numDeliverTxs = 20000
 	socketFile := fmt.Sprintf("test-%08x.sock", rand.Int31n(1<<30))
 	defer os.Remove(socketFile)
 	socket := fmt.Sprintf("unix://%v", socketFile)
-
+	logger := log.TestingLogger()
 	// Start the listener
-	server := abciserver.NewSocketServer(socket, app)
-	server.SetLogger(log.TestingLogger().With("module", "abci-server"))
+	server := abciserver.NewSocketServer(logger.With("module", "abci-server"), socket, app)
+
 	err := server.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -61,8 +63,8 @@ func testStream(t *testing.T, app types.Application) {
 	})
 
 	// Connect to the socket
-	client := abciclient.NewSocketClient(socket, false)
-	client.SetLogger(log.TestingLogger().With("module", "abci-client"))
+	client := abciclient.NewSocketClient(log.TestingLogger().With("module", "abci-client"), socket, false)
+
 	err = client.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -132,10 +134,10 @@ func testGRPCSync(t *testing.T, app types.ABCIApplicationServer) {
 	socketFile := fmt.Sprintf("/tmp/test-%08x.sock", rand.Int31n(1<<30))
 	defer os.Remove(socketFile)
 	socket := fmt.Sprintf("unix://%v", socketFile)
-
+	logger := log.TestingLogger()
 	// Start the listener
-	server := abciserver.NewGRPCServer(socket, app)
-	server.SetLogger(log.TestingLogger().With("module", "abci-server"))
+	server := abciserver.NewGRPCServer(logger.With("module", "abci-server"), socket, app)
+
 	if err := server.Start(); err != nil {
 		t.Fatalf("Error starting GRPC server: %v", err.Error())
 	}

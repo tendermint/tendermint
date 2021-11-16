@@ -336,13 +336,13 @@ func (c *mConnConnection) handshake(
 	}
 
 	mconn := conn.NewMConnectionWithConfig(
+		c.logger.With("peer", c.RemoteEndpoint().NodeAddress(peerInfo.NodeID)),
 		secretConn,
 		c.channelDescs,
 		c.onReceive,
 		c.onError,
 		c.mConnConfig,
 	)
-	mconn.SetLogger(c.logger.With("peer", c.RemoteEndpoint().NodeAddress(peerInfo.NodeID)))
 
 	return mconn, peerInfo, secretConn.RemotePubKey(), nil
 }

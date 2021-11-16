@@ -44,20 +44,18 @@ type Inspector struct {
 ///
 //nolint:lll
 func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, es []indexer.EventSink, logger log.Logger) *Inspector {
-	routes := rpc.Routes(*cfg, ss, bs, es, logger)
-	eb := eventbus.NewDefault()
-	eb.SetLogger(logger.With("module", "events"))
-	is := indexer.NewService(indexer.ServiceArgs{
-		Sinks:    es,
-		EventBus: eb,
-		Logger:   logger.With("module", "txindex"),
-	})
+	eb := eventbus.NewDefault(logger.With("module", "events"))
+
 	return &Inspector{
-		routes:         routes,
-		config:         cfg,
-		logger:         logger,
-		eventBus:       eb,
-		indexerService: is,
+		routes:   rpc.Routes(*cfg, ss, bs, es, logger),
+		config:   cfg,
+		logger:   logger,
+		eventBus: eb,
+		indexerService: indexer.NewService(indexer.ServiceArgs{
+			Sinks:    es,
+			EventBus: eb,
+			Logger:   logger.With("module", "txindex"),
+		}),
 	}
 }
 

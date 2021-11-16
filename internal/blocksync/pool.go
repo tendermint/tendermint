@@ -91,7 +91,13 @@ type BlockPool struct {
 
 // NewBlockPool returns a new BlockPool with the height equal to start. Block
 // requests and errors will be sent to requestsCh and errorsCh accordingly.
-func NewBlockPool(start int64, requestsCh chan<- BlockRequest, errorsCh chan<- peerError) *BlockPool {
+func NewBlockPool(
+	logger log.Logger,
+	start int64,
+	requestsCh chan<- BlockRequest,
+	errorsCh chan<- peerError,
+) *BlockPool {
+
 	bp := &BlockPool{
 		peers: make(map[types.NodeID]*bpPeer),
 
@@ -104,7 +110,7 @@ func NewBlockPool(start int64, requestsCh chan<- BlockRequest, errorsCh chan<- p
 		errorsCh:     errorsCh,
 		lastSyncRate: 0,
 	}
-	bp.BaseService = *service.NewBaseService(nil, "BlockPool", bp)
+	bp.BaseService = *service.NewBaseService(logger, "BlockPool", bp)
 	return bp
 }
 

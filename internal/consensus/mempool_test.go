@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/internal/mempool"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/store"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -34,7 +35,7 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 
 	config.Consensus.CreateEmptyBlocks = false
 	state, privVals := randGenesisState(baseConfig, 1, false, 10)
-	cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
+	cs := newStateWithConfig(log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(t, cs.eventBus, types.EventQueryNewBlock)
@@ -57,7 +58,7 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 
 	config.Consensus.CreateEmptyBlocksInterval = ensureTimeout
 	state, privVals := randGenesisState(baseConfig, 1, false, 10)
-	cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
+	cs := newStateWithConfig(log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
 
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 
@@ -78,7 +79,7 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 
 	config.Consensus.CreateEmptyBlocks = false
 	state, privVals := randGenesisState(baseConfig, 1, false, 10)
-	cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
+	cs := newStateWithConfig(log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(t, cs.eventBus, types.EventQueryNewBlock)
@@ -124,11 +125,14 @@ func deliverTxsRange(cs *State, start, end int) {
 
 func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	config := configSetup(t)
-
+	logger := log.TestingLogger()
 	state, privVals := randGenesisState(config, 1, false, 10)
 	stateStore := sm.NewStore(dbm.NewMemDB())
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], NewCounterApplication(), blockStore)
+
+	cs := newStateWithConfigAndBlockStore(
+		logger, config, state, privVals[0], NewCounterApplication(), blockStore)
+
 	err := stateStore.Save(state)
 	require.NoError(t, err)
 	newBlockHeaderCh := subscribe(t, cs.eventBus, types.EventQueryNewBlockHeader)
@@ -155,7 +159,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 	app := NewCounterApplication()
 	stateStore := sm.NewStore(dbm.NewMemDB())
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], app, blockStore)
+	cs := newStateWithConfigAndBlockStore(log.TestingLogger(), config, state, privVals[0], app, blockStore)
 	err := stateStore.Save(state)
 	require.NoError(t, err)
 
