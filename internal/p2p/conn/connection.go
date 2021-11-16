@@ -666,11 +666,8 @@ func newChannel(conn *MConnection, desc ChannelDescriptor) *channel {
 		sendQueue:               make(chan []byte, desc.SendQueueCapacity),
 		recving:                 make([]byte, 0, desc.RecvBufferCapacity),
 		maxPacketMsgPayloadSize: conn.config.MaxPacketMsgPayloadSize,
+		Logger:                  conn.Logger,
 	}
-}
-
-func (ch *channel) SetLogger(l log.Logger) {
-	ch.Logger = l
 }
 
 // Queues message to send to this channel.
