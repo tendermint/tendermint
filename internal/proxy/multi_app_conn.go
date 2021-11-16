@@ -7,7 +7,6 @@ import (
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/libs/log"
-	tmlog "github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -129,7 +128,7 @@ func (app *multiAppConn) OnStop() {
 }
 
 func (app *multiAppConn) killTMOnClientError() {
-	killFn := func(conn string, err error, logger tmlog.Logger) {
+	killFn := func(conn string, err error, logger log.Logger) {
 		logger.Error(
 			fmt.Sprintf("%s connection terminated. Did the application crash? Please restart tendermint", conn),
 			"err", err)

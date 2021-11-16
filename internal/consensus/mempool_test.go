@@ -125,11 +125,14 @@ func deliverTxsRange(cs *State, start, end int) {
 
 func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	config := configSetup(t)
-
+	logger := log.TestingLogger()
 	state, privVals := randGenesisState(config, 1, false, 10)
 	stateStore := sm.NewStore(dbm.NewMemDB())
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	cs := newStateWithConfigAndBlockStore(log.TestingLogger(), config, state, privVals[0], NewCounterApplication(), blockStore)
+
+	cs := newStateWithConfigAndBlockStore(
+		logger, config, state, privVals[0], NewCounterApplication(), blockStore)
+
 	err := stateStore.Save(state)
 	require.NoError(t, err)
 	newBlockHeaderCh := subscribe(t, cs.eventBus, types.EventQueryNewBlockHeader)
