@@ -30,6 +30,12 @@ Multiple testnets can be run with the `run-multiple.sh` script:
 ./run-multiple.sh networks/generated/gen-group3-*.toml
 ```
 
+In order to generate network configurations with settings for dash, you have to override a default preset with `dash`.
+
+```sh
+./build/generator -d networks/generated/ -p dash
+```
+
 ## Test Stages
 
 The test runner has the following stages, which can also be executed explicitly by running `./build/runner -f <manifest> <stage>`:
@@ -80,6 +86,18 @@ func init() {
 	os.Setenv("E2E_MANIFEST", "networks/ci.toml")
 	os.Setenv("E2E_NODE", "validator01")
 }
+```
+
+### Full-node keys
+
+Since Full nodes do not participate in the consensus process, then keeping validators' public keys also is not required.
+By default, public keys are reset during network generation. However, if you need to keep its, then use this env
+parameter `FULLNODE_PUBKEY_KEEP=true`.
+
+For instance:
+
+```sh
+FULLNODE_PUBKEY_KEEP=true make runner/dashcore
 ```
 
 ### Speed up running e2e tests
