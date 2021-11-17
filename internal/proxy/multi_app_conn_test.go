@@ -81,7 +81,7 @@ func TestAppConns_Failure(t *testing.T) {
 
 	clientMock.On("Quit").Return(recvQuitCh)
 	clientMock.On("Error").Return(errors.New("EOF")).Once()
-	cl := &noopStopableClientImpl{Client: clientMock}
+	cl := &noopStoppableClientImpl{Client: clientMock}
 
 	creator := func(log.Logger) (abciclient.Client, error) {
 		return cl, nil
