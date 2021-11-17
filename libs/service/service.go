@@ -40,9 +40,9 @@ type Service interface {
 	Wait()
 }
 
-// ServiceImplementation describes the implementation that the
+// Implementation describes the implementation that the
 // BaseService implementation wraps.
-type ServiceImplementation interface { // nolint:revive
+type Implementation interface {
 	Service
 
 	// Called by the Services Start Method
@@ -102,11 +102,11 @@ type BaseService struct {
 	quit    chan struct{}
 
 	// The "subclass" of BaseService
-	impl ServiceImplementation
+	impl Implementation
 }
 
 // NewBaseService creates a new BaseService.
-func NewBaseService(logger log.Logger, name string, impl ServiceImplementation) *BaseService {
+func NewBaseService(logger log.Logger, name string, impl Implementation) *BaseService {
 	if logger == nil {
 		logger = log.NewNopLogger()
 	}
