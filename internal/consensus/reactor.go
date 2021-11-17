@@ -86,7 +86,7 @@ type ReactorOption func(*Reactor)
 // NOTE: Temporary interface for switching to block sync, we should get rid of v0.
 // See: https://github.com/tendermint/tendermint/issues/4595
 type BlockSyncReactor interface {
-	SwitchToBlockSync(sm.State) error
+	SwitchToBlockSync(context.Context, sm.State) error
 
 	GetMaxPeerBlockHeight() int64
 

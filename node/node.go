@@ -634,7 +634,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 			// is running
 			// FIXME Very ugly to have these metrics bleed through here.
 			n.consensusReactor.SetBlockSyncingMetrics(1)
-			if err := bcR.SwitchToBlockSync(state); err != nil {
+			if err := bcR.SwitchToBlockSync(ctx, state); err != nil {
 				n.Logger.Error("failed to switch to block sync", "err", err)
 				return
 			}
