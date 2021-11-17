@@ -69,6 +69,7 @@ type reactorTestSuite struct {
 }
 
 func setup(
+	ctx context.Context,
 	t *testing.T,
 	conn *proxymocks.AppConnSnapshot,
 	connQuery *proxymocks.AppConnQuery,
@@ -176,7 +177,7 @@ func setup(
 		rts.reactor.metrics,
 	)
 
-	require.NoError(t, rts.reactor.Start())
+	require.NoError(t, rts.reactor.Start(ctx))
 	require.True(t, rts.reactor.IsRunning())
 
 	t.Cleanup(func() {
@@ -188,8 +189,11 @@ func setup(
 }
 
 func TestReactor_Sync(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	const snapshotHeight = 7
-	rts := setup(t, nil, nil, nil, 2)
+	rts := setup(ctx, t, nil, nil, nil, 2)
 	chain := buildLightBlockChain(t, 1, 10, time.Now())
 	// app accepts any snapshot
 	rts.conn.On("OfferSnapshotSync", ctx, mock.AnythingOfType("types.RequestOfferSnapshot")).
@@ -240,7 +244,10 @@ func TestReactor_Sync(t *testing.T) {
 }
 
 func TestReactor_ChunkRequest_InvalidRequest(t *testing.T) {
-	rts := setup(t, nil, nil, nil, 2)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setup(ctx, t, nil, nil, nil, 2)
 
 	rts.chunkInCh <- p2p.Envelope{
 		From:    types.NodeID("aa"),
@@ -282,10 +289,16 @@ func TestReactor_ChunkRequest(t *testing.T) {
 		},
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for name, tc := range testcases {
 		tc := tc
 
 		t.Run(name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
 			// mock ABCI connection to return local snapshots
 			conn := &proxymocks.AppConnSnapshot{}
 			conn.On("LoadSnapshotChunkSync", context.Background(), abci.RequestLoadSnapshotChunk{
@@ -294,7 +307,7 @@ func TestReactor_ChunkRequest(t *testing.T) {
 				Chunk:  tc.request.Index,
 			}).Return(&abci.ResponseLoadSnapshotChunk{Chunk: tc.chunk}, nil)
 
-			rts := setup(t, conn, nil, nil, 2)
+			rts := setup(ctx, t, conn, nil, nil, 2)
 
 			rts.chunkInCh <- p2p.Envelope{
 				From:    types.NodeID("aa"),
@@ -311,7 +324,10 @@ func TestReactor_ChunkRequest(t *testing.T) {
 }
 
 func TestReactor_SnapshotsRequest_InvalidRequest(t *testing.T) {
-	rts := setup(t, nil, nil, nil, 2)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setup(ctx, t, nil, nil, nil, 2)
 
 	rts.snapshotInCh <- p2p.Envelope{
 		From:    types.NodeID("aa"),
@@ -360,18 +376,23 @@ func TestReactor_SnapshotsRequest(t *testing.T) {
 			},
 		},
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	for name, tc := range testcases {
 		tc := tc
 
 		t.Run(name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
 			// mock ABCI connection to return local snapshots
 			conn := &proxymocks.AppConnSnapshot{}
 			conn.On("ListSnapshotsSync", context.Background(), abci.RequestListSnapshots{}).Return(&abci.ResponseListSnapshots{
 				Snapshots: tc.snapshots,
 			}, nil)
 
-			rts := setup(t, conn, nil, nil, 100)
+			rts := setup(ctx, t, conn, nil, nil, 100)
 
 			rts.snapshotInCh <- p2p.Envelope{
 				From:    types.NodeID("aa"),
@@ -379,7 +400,7 @@ func TestReactor_SnapshotsRequest(t *testing.T) {
 			}
 
 			if len(tc.expectResponses) > 0 {
-				retryUntil(t, func() bool { return len(rts.snapshotOutCh) == len(tc.expectResponses) }, time.Second)
+				retryUntil(ctx, t, func() bool { return len(rts.snapshotOutCh) == len(tc.expectResponses) }, time.Second)
 			}
 
 			responses := make([]*ssproto.SnapshotsResponse, len(tc.expectResponses))
@@ -395,7 +416,10 @@ func TestReactor_SnapshotsRequest(t *testing.T) {
 }
 
 func TestReactor_LightBlockResponse(t *testing.T) {
-	rts := setup(t, nil, nil, nil, 2)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setup(ctx, t, nil, nil, nil, 2)
 
 	var height int64 = 10
 	h := factory.MakeRandomHeader()
@@ -448,7 +472,10 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 }
 
 func TestReactor_BlockProviders(t *testing.T) {
-	rts := setup(t, nil, nil, nil, 2)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setup(ctx, t, nil, nil, nil, 2)
 	rts.peerUpdateCh <- p2p.PeerUpdate{
 		NodeID: types.NodeID("aa"),
 		Status: p2p.PeerStatusUp,
@@ -487,7 +514,6 @@ func TestReactor_BlockProviders(t *testing.T) {
 		}(t, p)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
 	go func() { wg.Wait(); cancel() }()
 
 	select {
@@ -501,7 +527,10 @@ func TestReactor_BlockProviders(t *testing.T) {
 }
 
 func TestReactor_StateProviderP2P(t *testing.T) {
-	rts := setup(t, nil, nil, nil, 2)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setup(ctx, t, nil, nil, nil, 2)
 	// make syncer non nil else test won't think we are state syncing
 	rts.reactor.syncer = rts.syncer
 	peerA := types.NodeID(strings.Repeat("a", 2*types.NodeIDByteLength))
@@ -569,13 +598,19 @@ func TestReactor_StateProviderP2P(t *testing.T) {
 }
 
 func TestReactor_Backfill(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// test backfill algorithm with varying failure rates [0, 10]
 	failureRates := []int{0, 2, 9}
 	for _, failureRate := range failureRates {
 		failureRate := failureRate
 		t.Run(fmt.Sprintf("failure rate: %d", failureRate), func(t *testing.T) {
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
 			t.Cleanup(leaktest.CheckTimeout(t, 1*time.Minute))
-			rts := setup(t, nil, nil, nil, 21)
+			rts := setup(ctx, t, nil, nil, nil, 21)
 
 			var (
 				startHeight int64 = 20
@@ -644,8 +679,8 @@ func TestReactor_Backfill(t *testing.T) {
 
 // retryUntil will continue to evaluate fn and will return successfully when true
 // or fail when the timeout is reached.
-func retryUntil(t *testing.T, fn func() bool, timeout time.Duration) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+func retryUntil(ctx context.Context, t *testing.T, fn func() bool, timeout time.Duration) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	for {

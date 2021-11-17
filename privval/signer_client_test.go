@@ -25,7 +25,7 @@ type signerTestCase struct {
 	signerServer *SignerServer
 }
 
-func getSignerTestCases(t *testing.T) []signerTestCase {
+func getSignerTestCases(ctx context.Context, t *testing.T) []signerTestCase {
 	testCases := make([]signerTestCase, 0)
 
 	// Get test cases for each possible dialer (DialTCP / DialUnix / etc)
@@ -35,12 +35,11 @@ func getSignerTestCases(t *testing.T) []signerTestCase {
 
 		// get a pair of signer listener, signer dialer endpoints
 		sl, sd := getMockEndpoints(t, dtc.addr, dtc.dialer)
-		sc, err := NewSignerClient(sl, chainID)
+		sc, err := NewSignerClient(ctx, sl, chainID)
 		require.NoError(t, err)
 		ss := NewSignerServer(sd, chainID, mockPV)
 
-		err = ss.Start()
-		require.NoError(t, err)
+		require.NoError(t, ss.Start(ctx))
 
 		tc := signerTestCase{
 			chainID:      chainID,
@@ -56,7 +55,10 @@ func getSignerTestCases(t *testing.T) []signerTestCase {
 }
 
 func TestSignerClose(t *testing.T) {
-	for _, tc := range getSignerTestCases(t) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for _, tc := range getSignerTestCases(ctx, t) {
 		err := tc.signerClient.Close()
 		assert.NoError(t, err)
 
@@ -66,7 +68,10 @@ func TestSignerClose(t *testing.T) {
 }
 
 func TestSignerPing(t *testing.T) {
-	for _, tc := range getSignerTestCases(t) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for _, tc := range getSignerTestCases(ctx, t) {
 		tc := tc
 		t.Cleanup(func() {
 			if err := tc.signerServer.Stop(); err != nil {
@@ -85,7 +90,10 @@ func TestSignerPing(t *testing.T) {
 }
 
 func TestSignerGetPubKey(t *testing.T) {
-	for _, tc := range getSignerTestCases(t) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for _, tc := range getSignerTestCases(ctx, t) {
 		tc := tc
 		t.Cleanup(func() {
 			if err := tc.signerServer.Stop(); err != nil {
@@ -98,16 +106,16 @@ func TestSignerGetPubKey(t *testing.T) {
 			}
 		})
 
-		pubKey, err := tc.signerClient.GetPubKey(context.Background())
+		pubKey, err := tc.signerClient.GetPubKey(ctx)
 		require.NoError(t, err)
-		expectedPubKey, err := tc.mockPV.GetPubKey(context.Background())
+		expectedPubKey, err := tc.mockPV.GetPubKey(ctx)
 		require.NoError(t, err)
 
 		assert.Equal(t, expectedPubKey, pubKey)
 
-		pubKey, err = tc.signerClient.GetPubKey(context.Background())
+		pubKey, err = tc.signerClient.GetPubKey(ctx)
 		require.NoError(t, err)
-		expectedpk, err := tc.mockPV.GetPubKey(context.Background())
+		expectedpk, err := tc.mockPV.GetPubKey(ctx)
 		require.NoError(t, err)
 		expectedAddr := expectedpk.Address()
 
@@ -116,7 +124,10 @@ func TestSignerGetPubKey(t *testing.T) {
 }
 
 func TestSignerProposal(t *testing.T) {
-	for _, tc := range getSignerTestCases(t) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for _, tc := range getSignerTestCases(ctx, t) {
 		ts := time.Now()
 		hash := tmrand.Bytes(tmhash.Size)
 		have := &types.Proposal{
@@ -148,15 +159,18 @@ func TestSignerProposal(t *testing.T) {
 			}
 		})
 
-		require.NoError(t, tc.mockPV.SignProposal(context.Background(), tc.chainID, want.ToProto()))
-		require.NoError(t, tc.signerClient.SignProposal(context.Background(), tc.chainID, have.ToProto()))
+		require.NoError(t, tc.mockPV.SignProposal(ctx, tc.chainID, want.ToProto()))
+		require.NoError(t, tc.signerClient.SignProposal(ctx, tc.chainID, have.ToProto()))
 
 		assert.Equal(t, want.Signature, have.Signature)
 	}
 }
 
 func TestSignerVote(t *testing.T) {
-	for _, tc := range getSignerTestCases(t) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for _, tc := range getSignerTestCases(ctx, t) {
 		ts := time.Now()
 		hash := tmrand.Bytes(tmhash.Size)
 		valAddr := tmrand.Bytes(crypto.AddressSize)
@@ -192,15 +206,18 @@ func TestSignerVote(t *testing.T) {
 			}
 		})
 
-		require.NoError(t, tc.mockPV.SignVote(context.Background(), tc.chainID, want.ToProto()))
-		require.NoError(t, tc.signerClient.SignVote(context.Background(), tc.chainID, have.ToProto()))
+		require.NoError(t, tc.mockPV.SignVote(ctx, tc.chainID, want.ToProto()))
+		require.NoError(t, tc.signerClient.SignVote(ctx, tc.chainID, have.ToProto()))
 
 		assert.Equal(t, want.Signature, have.Signature)
 	}
 }
 
 func TestSignerVoteResetDeadline(t *testing.T) {
-	for _, tc := range getSignerTestCases(t) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for _, tc := range getSignerTestCases(ctx, t) {
 		ts := time.Now()
 		hash := tmrand.Bytes(tmhash.Size)
 		valAddr := tmrand.Bytes(crypto.AddressSize)
@@ -238,8 +255,8 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 
 		time.Sleep(testTimeoutReadWrite2o3)
 
-		require.NoError(t, tc.mockPV.SignVote(context.Background(), tc.chainID, want.ToProto()))
-		require.NoError(t, tc.signerClient.SignVote(context.Background(), tc.chainID, have.ToProto()))
+		require.NoError(t, tc.mockPV.SignVote(ctx, tc.chainID, want.ToProto()))
+		require.NoError(t, tc.signerClient.SignVote(ctx, tc.chainID, have.ToProto()))
 		assert.Equal(t, want.Signature, have.Signature)
 
 		// TODO(jleni): Clarify what is actually being tested
@@ -247,14 +264,17 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 		// This would exceed the deadline if it was not extended by the previous message
 		time.Sleep(testTimeoutReadWrite2o3)
 
-		require.NoError(t, tc.mockPV.SignVote(context.Background(), tc.chainID, want.ToProto()))
-		require.NoError(t, tc.signerClient.SignVote(context.Background(), tc.chainID, have.ToProto()))
+		require.NoError(t, tc.mockPV.SignVote(ctx, tc.chainID, want.ToProto()))
+		require.NoError(t, tc.signerClient.SignVote(ctx, tc.chainID, have.ToProto()))
 		assert.Equal(t, want.Signature, have.Signature)
 	}
 }
 
 func TestSignerVoteKeepAlive(t *testing.T) {
-	for _, tc := range getSignerTestCases(t) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for _, tc := range getSignerTestCases(ctx, t) {
 		ts := time.Now()
 		hash := tmrand.Bytes(tmhash.Size)
 		valAddr := tmrand.Bytes(crypto.AddressSize)
@@ -299,15 +319,18 @@ func TestSignerVoteKeepAlive(t *testing.T) {
 		time.Sleep(testTimeoutReadWrite * 3)
 		tc.signerServer.Logger.Debug("TEST: Forced Wait DONE---------------------------------------------")
 
-		require.NoError(t, tc.mockPV.SignVote(context.Background(), tc.chainID, want.ToProto()))
-		require.NoError(t, tc.signerClient.SignVote(context.Background(), tc.chainID, have.ToProto()))
+		require.NoError(t, tc.mockPV.SignVote(ctx, tc.chainID, want.ToProto()))
+		require.NoError(t, tc.signerClient.SignVote(ctx, tc.chainID, have.ToProto()))
 
 		assert.Equal(t, want.Signature, have.Signature)
 	}
 }
 
 func TestSignerSignProposalErrors(t *testing.T) {
-	for _, tc := range getSignerTestCases(t) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for _, tc := range getSignerTestCases(ctx, t) {
 		// Replace service with a mock that always fails
 		tc.signerServer.privVal = types.NewErroringMockPV()
 		tc.mockPV = types.NewErroringMockPV()
@@ -336,19 +359,22 @@ func TestSignerSignProposalErrors(t *testing.T) {
 			Signature: []byte("signature"),
 		}
 
-		err := tc.signerClient.SignProposal(context.Background(), tc.chainID, proposal.ToProto())
+		err := tc.signerClient.SignProposal(ctx, tc.chainID, proposal.ToProto())
 		require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
 
-		err = tc.mockPV.SignProposal(context.Background(), tc.chainID, proposal.ToProto())
+		err = tc.mockPV.SignProposal(ctx, tc.chainID, proposal.ToProto())
 		require.Error(t, err)
 
-		err = tc.signerClient.SignProposal(context.Background(), tc.chainID, proposal.ToProto())
+		err = tc.signerClient.SignProposal(ctx, tc.chainID, proposal.ToProto())
 		require.Error(t, err)
 	}
 }
 
 func TestSignerSignVoteErrors(t *testing.T) {
-	for _, tc := range getSignerTestCases(t) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for _, tc := range getSignerTestCases(ctx, t) {
 		ts := time.Now()
 		hash := tmrand.Bytes(tmhash.Size)
 		valAddr := tmrand.Bytes(crypto.AddressSize)
@@ -379,13 +405,13 @@ func TestSignerSignVoteErrors(t *testing.T) {
 			}
 		})
 
-		err := tc.signerClient.SignVote(context.Background(), tc.chainID, vote.ToProto())
+		err := tc.signerClient.SignVote(ctx, tc.chainID, vote.ToProto())
 		require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
 
-		err = tc.mockPV.SignVote(context.Background(), tc.chainID, vote.ToProto())
+		err = tc.mockPV.SignVote(ctx, tc.chainID, vote.ToProto())
 		require.Error(t, err)
 
-		err = tc.signerClient.SignVote(context.Background(), tc.chainID, vote.ToProto())
+		err = tc.signerClient.SignVote(ctx, tc.chainID, vote.ToProto())
 		require.Error(t, err)
 	}
 }
@@ -413,7 +439,10 @@ func brokenHandler(ctx context.Context, privVal types.PrivValidator, request pri
 }
 
 func TestSignerUnexpectedResponse(t *testing.T) {
-	for _, tc := range getSignerTestCases(t) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for _, tc := range getSignerTestCases(ctx, t) {
 		tc.signerServer.privVal = types.NewMockPV()
 		tc.mockPV = types.NewMockPV()
 
@@ -434,7 +463,7 @@ func TestSignerUnexpectedResponse(t *testing.T) {
 		ts := time.Now()
 		want := &types.Vote{Timestamp: ts, Type: tmproto.PrecommitType}
 
-		e := tc.signerClient.SignVote(context.Background(), tc.chainID, want.ToProto())
+		e := tc.signerClient.SignVote(ctx, tc.chainID, want.ToProto())
 		assert.EqualError(t, e, "empty response")
 	}
 }

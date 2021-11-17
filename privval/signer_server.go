@@ -42,7 +42,7 @@ func NewSignerServer(endpoint *SignerDialerEndpoint, chainID string, privVal typ
 }
 
 // OnStart implements service.Service.
-func (ss *SignerServer) OnStart() error {
+func (ss *SignerServer) OnStart(ctx context.Context) error {
 	go ss.serviceLoop()
 	return nil
 }

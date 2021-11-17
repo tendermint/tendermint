@@ -18,30 +18,21 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 )
 
-var ctx = context.Background()
-
 func TestProperSyncCalls(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	app := slowApp{}
 	logger := log.TestingLogger()
 
-	s, c := setupClientServer(t, logger, app)
-	t.Cleanup(func() {
-		if err := s.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
-	t.Cleanup(func() {
-		if err := c.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+	_, c := setupClientServer(ctx, t, logger, app)
 
 	resp := make(chan error, 1)
 	go func() {
 		// This is BeginBlockSync unrolled....
 		reqres, err := c.BeginBlockAsync(ctx, types.RequestBeginBlock{})
 		assert.NoError(t, err)
-		err = c.FlushSync(context.Background())
+		err = c.FlushSync(ctx)
 		assert.NoError(t, err)
 		res := reqres.Response.GetBeginBlock()
 		assert.NotNil(t, res)
@@ -58,20 +49,13 @@ func TestProperSyncCalls(t *testing.T) {
 }
 
 func TestHangingSyncCalls(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	app := slowApp{}
 	logger := log.TestingLogger()
 
-	s, c := setupClientServer(t, logger, app)
-	t.Cleanup(func() {
-		if err := s.Stop(); err != nil {
-			t.Log(err)
-		}
-	})
-	t.Cleanup(func() {
-		if err := c.Stop(); err != nil {
-			t.Log(err)
-		}
-	})
+	s, c := setupClientServer(ctx, t, logger, app)
 
 	resp := make(chan error, 1)
 	go func() {
@@ -84,8 +68,8 @@ func TestHangingSyncCalls(t *testing.T) {
 		// no response yet from server
 		time.Sleep(20 * time.Millisecond)
 		// kill the server, so the connections break
-		err = s.Stop()
-		assert.NoError(t, err)
+		cancel()
+		s.Wait()
 
 		// wait for the response from BeginBlock
 		reqres.Wait()
@@ -103,6 +87,7 @@ func TestHangingSyncCalls(t *testing.T) {
 }
 
 func setupClientServer(
+	ctx context.Context,
 	t *testing.T,
 	logger log.Logger,
 	app types.Application,
@@ -115,11 +100,11 @@ func setupClientServer(
 
 	s, err := server.NewServer(logger, addr, "socket", app)
 	require.NoError(t, err)
-	err = s.Start()
+	err = s.Start(ctx)
 	require.NoError(t, err)
 
 	c := abciclient.NewSocketClient(logger, addr, true)
-	err = c.Start()
+	err = c.Start(ctx)
 	require.NoError(t, err)
 
 	return s, c

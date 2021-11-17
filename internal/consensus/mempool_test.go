@@ -27,6 +27,9 @@ func assertMempool(txn txNotifier) mempool.Mempool {
 }
 
 func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	baseConfig := configSetup(t)
 
 	config, err := ResetConfig("consensus_mempool_txs_available_test")
@@ -35,11 +38,11 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 
 	config.Consensus.CreateEmptyBlocks = false
 	state, privVals := randGenesisState(baseConfig, 1, false, 10)
-	cs := newStateWithConfig(log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
+	cs := newStateWithConfig(ctx, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(t, cs.eventBus, types.EventQueryNewBlock)
-	startTestRound(cs, height, round)
+	startTestRound(ctx, cs, height, round)
 
 	ensureNewEventOnChannel(newBlockCh) // first block gets committed
 	ensureNoNewEventOnChannel(newBlockCh)
@@ -51,6 +54,8 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 
 func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	baseConfig := configSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	config, err := ResetConfig("consensus_mempool_txs_available_test")
 	require.NoError(t, err)
@@ -58,12 +63,12 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 
 	config.Consensus.CreateEmptyBlocksInterval = ensureTimeout
 	state, privVals := randGenesisState(baseConfig, 1, false, 10)
-	cs := newStateWithConfig(log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
+	cs := newStateWithConfig(ctx, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
 
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 
 	newBlockCh := subscribe(t, cs.eventBus, types.EventQueryNewBlock)
-	startTestRound(cs, cs.Height, cs.Round)
+	startTestRound(ctx, cs, cs.Height, cs.Round)
 
 	ensureNewEventOnChannel(newBlockCh)   // first block gets committed
 	ensureNoNewEventOnChannel(newBlockCh) // then we dont make a block ...
@@ -72,6 +77,8 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 
 func TestMempoolProgressInHigherRound(t *testing.T) {
 	baseConfig := configSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	config, err := ResetConfig("consensus_mempool_txs_available_test")
 	require.NoError(t, err)
@@ -79,7 +86,7 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 
 	config.Consensus.CreateEmptyBlocks = false
 	state, privVals := randGenesisState(baseConfig, 1, false, 10)
-	cs := newStateWithConfig(log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
+	cs := newStateWithConfig(ctx, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(t, cs.eventBus, types.EventQueryNewBlock)
@@ -94,7 +101,7 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 		}
 		return cs.defaultSetProposal(proposal)
 	}
-	startTestRound(cs, height, round)
+	startTestRound(ctx, cs, height, round)
 
 	ensureNewRound(newRoundCh, height, round) // first round at first height
 	ensureNewEventOnChannel(newBlockCh)       // first block gets committed
@@ -124,6 +131,9 @@ func deliverTxsRange(cs *State, start, end int) {
 }
 
 func TestMempoolTxConcurrentWithCommit(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := configSetup(t)
 	logger := log.TestingLogger()
 	state, privVals := randGenesisState(config, 1, false, 10)
@@ -131,6 +141,7 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 
 	cs := newStateWithConfigAndBlockStore(
+		ctx,
 		logger, config, state, privVals[0], NewCounterApplication(), blockStore)
 
 	err := stateStore.Save(state)
@@ -140,7 +151,7 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	const numTxs int64 = 3000
 	go deliverTxsRange(cs, 0, int(numTxs))
 
-	startTestRound(cs, cs.Height, cs.Round)
+	startTestRound(ctx, cs, cs.Height, cs.Round)
 	for n := int64(0); n < numTxs; {
 		select {
 		case msg := <-newBlockHeaderCh:
@@ -154,12 +165,14 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 
 func TestMempoolRmBadTx(t *testing.T) {
 	config := configSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	state, privVals := randGenesisState(config, 1, false, 10)
 	app := NewCounterApplication()
 	stateStore := sm.NewStore(dbm.NewMemDB())
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	cs := newStateWithConfigAndBlockStore(log.TestingLogger(), config, state, privVals[0], app, blockStore)
+	cs := newStateWithConfigAndBlockStore(ctx, log.TestingLogger(), config, state, privVals[0], app, blockStore)
 	err := stateStore.Save(state)
 	require.NoError(t, err)
 

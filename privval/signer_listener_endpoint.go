@@ -1,6 +1,7 @@
 package privval
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"time"
@@ -63,7 +64,7 @@ func NewSignerListenerEndpoint(
 }
 
 // OnStart implements service.Service.
-func (sl *SignerListenerEndpoint) OnStart() error {
+func (sl *SignerListenerEndpoint) OnStart(ctx context.Context) error {
 	sl.connectRequestCh = make(chan struct{})
 	sl.connectionAvailableCh = make(chan net.Conn)
 

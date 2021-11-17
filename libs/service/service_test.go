@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -16,9 +17,12 @@ func (testService) OnReset() error {
 }
 
 func TestBaseServiceWait(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	ts := &testService{}
 	ts.BaseService = *NewBaseService(nil, "TestService", ts)
-	err := ts.Start()
+	err := ts.Start(ctx)
 	require.NoError(t, err)
 
 	waitFinished := make(chan struct{})
@@ -38,9 +42,12 @@ func TestBaseServiceWait(t *testing.T) {
 }
 
 func TestBaseServiceReset(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	ts := &testService{}
 	ts.BaseService = *NewBaseService(nil, "TestService", ts)
-	err := ts.Start()
+	err := ts.Start(ctx)
 	require.NoError(t, err)
 
 	err = ts.Reset()
@@ -52,6 +59,6 @@ func TestBaseServiceReset(t *testing.T) {
 	err = ts.Reset()
 	require.NoError(t, err)
 
-	err = ts.Start()
+	err = ts.Start(ctx)
 	require.NoError(t, err)
 }

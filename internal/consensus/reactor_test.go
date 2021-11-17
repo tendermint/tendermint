@@ -59,11 +59,17 @@ func chDesc(chID p2p.ChannelID, size int) *p2p.ChannelDescriptor {
 	}
 }
 
-func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSuite {
+func setup(
+	ctx context.Context,
+	t *testing.T,
+	numNodes int,
+	states []*State,
+	size int,
+) *reactorTestSuite {
 	t.Helper()
 
 	rts := &reactorTestSuite{
-		network:       p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
+		network:       p2ptest.MakeNetwork(ctx, t, p2ptest.NetworkOptions{NumNodes: numNodes}),
 		states:        make(map[types.NodeID]*State),
 		reactors:      make(map[types.NodeID]*Reactor, numNodes),
 		subs:          make(map[types.NodeID]eventbus.Subscription, numNodes),
@@ -119,7 +125,7 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 			require.NoError(t, state.blockExec.Store().Save(state.state))
 		}
 
-		require.NoError(t, reactor.Start())
+		require.NoError(t, reactor.Start(ctx))
 		require.True(t, reactor.IsRunning())
 
 		i++
@@ -299,23 +305,24 @@ func ensureBlockSyncStatus(t *testing.T, msg tmpubsub.Message, complete bool, he
 }
 
 func TestReactorBasic(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cfg := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(t,
+	states, cleanup := randConsensusState(ctx, t,
 		cfg, n, "consensus_reactor_test",
 		newMockTickerFunc(true), newKVStore)
 	t.Cleanup(cleanup)
 
-	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
+	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
 		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(state, false)
+		reactor.SwitchToConsensus(ctx, state, false)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	var wg sync.WaitGroup
 	for _, sub := range rts.subs {
 		wg.Add(1)
@@ -351,6 +358,9 @@ func TestReactorBasic(t *testing.T) {
 }
 
 func TestReactorWithEvidence(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cfg := configSetup(t)
 
 	n := 4
@@ -416,7 +426,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		cs.SetPrivValidator(pv)
 
 		eventBus := eventbus.NewDefault(log.TestingLogger().With("module", "events"))
-		require.NoError(t, eventBus.Start())
+		require.NoError(t, eventBus.Start(ctx))
 		cs.SetEventBus(eventBus)
 
 		cs.SetTimeoutTicker(tickerFunc())
@@ -424,15 +434,13 @@ func TestReactorWithEvidence(t *testing.T) {
 		states[i] = cs
 	}
 
-	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
+	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
 		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(state, false)
+		reactor.SwitchToConsensus(ctx, state, false)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	var wg sync.WaitGroup
 	for _, sub := range rts.subs {
 		wg.Add(1)
@@ -456,10 +464,14 @@ func TestReactorWithEvidence(t *testing.T) {
 }
 
 func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cfg := configSetup(t)
 
 	n := 4
 	states, cleanup := randConsensusState(
+		ctx,
 		t,
 		cfg,
 		n,
@@ -473,11 +485,11 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 
 	t.Cleanup(cleanup)
 
-	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
+	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
 		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(state, false)
+		reactor.SwitchToConsensus(ctx, state, false)
 	}
 
 	// send a tx
@@ -491,8 +503,6 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 		),
 	)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	var wg sync.WaitGroup
 	for _, sub := range rts.subs {
 		wg.Add(1)
@@ -511,23 +521,24 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 }
 
 func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cfg := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(t,
+	states, cleanup := randConsensusState(ctx, t,
 		cfg, n, "consensus_reactor_test",
 		newMockTickerFunc(true), newKVStore)
 	t.Cleanup(cleanup)
 
-	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
+	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
 		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(state, false)
+		reactor.SwitchToConsensus(ctx, state, false)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	var wg sync.WaitGroup
 	for _, sub := range rts.subs {
 		wg.Add(1)
@@ -575,10 +586,14 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 }
 
 func TestReactorVotingPowerChange(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cfg := configSetup(t)
 
 	n := 4
 	states, cleanup := randConsensusState(
+		ctx,
 		t,
 		cfg,
 		n,
@@ -589,11 +604,11 @@ func TestReactorVotingPowerChange(t *testing.T) {
 
 	t.Cleanup(cleanup)
 
-	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
+	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
 		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(state, false)
+		reactor.SwitchToConsensus(ctx, state, false)
 	}
 
 	// map of active validators
@@ -606,8 +621,6 @@ func TestReactorVotingPowerChange(t *testing.T) {
 		activeVals[string(addr)] = struct{}{}
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	var wg sync.WaitGroup
 	for _, sub := range rts.subs {
 		wg.Add(1)
@@ -681,11 +694,15 @@ func TestReactorVotingPowerChange(t *testing.T) {
 }
 
 func TestReactorValidatorSetChanges(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cfg := configSetup(t)
 
 	nPeers := 7
 	nVals := 4
 	states, _, _, cleanup := randConsensusNetWithPeers(
+		ctx,
 		cfg,
 		nVals,
 		nPeers,
@@ -695,11 +712,11 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	)
 	t.Cleanup(cleanup)
 
-	rts := setup(t, nPeers, states, 100) // buffer must be large enough to not deadlock
+	rts := setup(ctx, t, nPeers, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
 		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(state, false)
+		reactor.SwitchToConsensus(ctx, state, false)
 	}
 
 	// map of active validators
@@ -711,8 +728,6 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 		activeVals[string(pubKey.Address())] = struct{}{}
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	var wg sync.WaitGroup
 	for _, sub := range rts.subs {
 		wg.Add(1)

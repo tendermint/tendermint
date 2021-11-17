@@ -22,9 +22,10 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-var ctx = context.Background()
-
 func TestSyncer_SyncAny(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	state := sm.State{
 		ChainID: "chain",
 		Version: sm.Version{
@@ -68,7 +69,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 	peerAID := types.NodeID("aa")
 	peerBID := types.NodeID("bb")
 	peerCID := types.NodeID("cc")
-	rts := setup(t, connSnapshot, connQuery, stateProvider, 3)
+	rts := setup(ctx, t, connSnapshot, connQuery, stateProvider, 3)
 
 	rts.reactor.syncer = rts.syncer
 
@@ -217,7 +218,10 @@ func TestSyncer_SyncAny_noSnapshots(t *testing.T) {
 	stateProvider := &mocks.StateProvider{}
 	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 
-	rts := setup(t, nil, nil, stateProvider, 2)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setup(ctx, t, nil, nil, stateProvider, 2)
 
 	_, _, err := rts.syncer.SyncAny(ctx, 0, func() {})
 	require.Equal(t, errNoSnapshots, err)
@@ -227,7 +231,10 @@ func TestSyncer_SyncAny_abort(t *testing.T) {
 	stateProvider := &mocks.StateProvider{}
 	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 
-	rts := setup(t, nil, nil, stateProvider, 2)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setup(ctx, t, nil, nil, stateProvider, 2)
 
 	s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
 	peerID := types.NodeID("aa")
@@ -248,7 +255,10 @@ func TestSyncer_SyncAny_reject(t *testing.T) {
 	stateProvider := &mocks.StateProvider{}
 	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 
-	rts := setup(t, nil, nil, stateProvider, 2)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setup(ctx, t, nil, nil, stateProvider, 2)
 
 	// s22 is tried first, then s12, then s11, then errNoSnapshots
 	s22 := &snapshot{Height: 2, Format: 2, Chunks: 3, Hash: []byte{1, 2, 3}}
@@ -287,7 +297,10 @@ func TestSyncer_SyncAny_reject_format(t *testing.T) {
 	stateProvider := &mocks.StateProvider{}
 	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 
-	rts := setup(t, nil, nil, stateProvider, 2)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setup(ctx, t, nil, nil, stateProvider, 2)
 
 	// s22 is tried first, which reject s22 and s12, then s11 will abort.
 	s22 := &snapshot{Height: 2, Format: 2, Chunks: 3, Hash: []byte{1, 2, 3}}
@@ -322,7 +335,10 @@ func TestSyncer_SyncAny_reject_sender(t *testing.T) {
 	stateProvider := &mocks.StateProvider{}
 	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 
-	rts := setup(t, nil, nil, stateProvider, 2)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setup(ctx, t, nil, nil, stateProvider, 2)
 
 	peerAID := types.NodeID("aa")
 	peerBID := types.NodeID("bb")
@@ -368,7 +384,10 @@ func TestSyncer_SyncAny_abciError(t *testing.T) {
 	stateProvider := &mocks.StateProvider{}
 	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 
-	rts := setup(t, nil, nil, stateProvider, 2)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setup(ctx, t, nil, nil, stateProvider, 2)
 
 	errBoom := errors.New("boom")
 	s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
@@ -405,13 +424,20 @@ func TestSyncer_offerSnapshot(t *testing.T) {
 		"error":            {0, boom, boom},
 		"unknown non-zero": {9, nil, unknownErr},
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for name, tc := range testcases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
 			stateProvider := &mocks.StateProvider{}
 			stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 
-			rts := setup(t, nil, nil, stateProvider, 2)
+			rts := setup(ctx, t, nil, nil, stateProvider, 2)
 
 			s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}, trustedAppHash: []byte("app_hash")}
 			rts.conn.On("OfferSnapshotSync", ctx, abci.RequestOfferSnapshot{
@@ -451,13 +477,20 @@ func TestSyncer_applyChunks_Results(t *testing.T) {
 		"error":            {0, boom, boom},
 		"unknown non-zero": {9, nil, unknownErr},
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for name, tc := range testcases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
 			stateProvider := &mocks.StateProvider{}
 			stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 
-			rts := setup(t, nil, nil, stateProvider, 2)
+			rts := setup(ctx, t, nil, nil, stateProvider, 2)
 
 			body := []byte{1, 2, 3}
 			chunks, err := newChunkQueue(&snapshot{Height: 1, Format: 1, Chunks: 1}, "")
@@ -505,13 +538,19 @@ func TestSyncer_applyChunks_RefetchChunks(t *testing.T) {
 		"retry_snapshot":  {abci.ResponseApplySnapshotChunk_RETRY_SNAPSHOT},
 		"reject_snapshot": {abci.ResponseApplySnapshotChunk_REJECT_SNAPSHOT},
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for name, tc := range testcases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
 			stateProvider := &mocks.StateProvider{}
 			stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 
-			rts := setup(t, nil, nil, stateProvider, 2)
+			rts := setup(ctx, t, nil, nil, stateProvider, 2)
 
 			chunks, err := newChunkQueue(&snapshot{Height: 1, Format: 1, Chunks: 3}, "")
 			require.NoError(t, err)
@@ -570,13 +609,19 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 		"retry_snapshot":  {abci.ResponseApplySnapshotChunk_RETRY_SNAPSHOT},
 		"reject_snapshot": {abci.ResponseApplySnapshotChunk_REJECT_SNAPSHOT},
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for name, tc := range testcases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
 			stateProvider := &mocks.StateProvider{}
 			stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 
-			rts := setup(t, nil, nil, stateProvider, 2)
+			rts := setup(ctx, t, nil, nil, stateProvider, 2)
 
 			// Set up three peers across two snapshots, and ask for one of them to be banned.
 			// It should be banned from all snapshots.
@@ -693,10 +738,16 @@ func TestSyncer_verifyApp(t *testing.T) {
 		}, nil, errVerifyFailed},
 		"error": {nil, boom, boom},
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for name, tc := range testcases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			rts := setup(t, nil, nil, nil, 2)
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
+			rts := setup(ctx, t, nil, nil, nil, 2)
 
 			rts.connQuery.On("InfoSync", ctx, proxy.RequestInfo).Return(tc.response, tc.err)
 			version, err := rts.syncer.verifyApp(s)

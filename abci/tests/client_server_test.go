@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,19 +13,23 @@ import (
 )
 
 func TestClientServerNoAddrPrefix(t *testing.T) {
-	addr := "localhost:26658"
-	transport := "socket"
-	app := kvstore.NewApplication()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
+	const (
+		addr      = "localhost:26658"
+		transport = "socket"
+	)
+	app := kvstore.NewApplication()
 	logger := log.TestingLogger()
 
 	server, err := abciserver.NewServer(logger, addr, transport, app)
 	assert.NoError(t, err, "expected no error on NewServer")
-	err = server.Start()
+	err = server.Start(ctx)
 	assert.NoError(t, err, "expected no error on server.Start")
 
 	client, err := abciclientent.NewClient(logger, addr, transport, true)
 	assert.NoError(t, err, "expected no error on NewClient")
-	err = client.Start()
+	err = client.Start(ctx)
 	assert.NoError(t, err, "expected no error on client.Start")
 }

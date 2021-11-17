@@ -8,12 +8,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/spf13/cobra"
 
 	"github.com/tendermint/tendermint/libs/log"
-	tmos "github.com/tendermint/tendermint/libs/os"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/code"
@@ -71,7 +72,11 @@ var RootCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			if err := client.Start(); err != nil {
+
+			ctx, cancel := context.WithCancel(cmd.Context())
+			defer cancel()
+
+			if err := client.Start(ctx); err != nil {
 				return err
 			}
 		}
@@ -291,23 +296,24 @@ func compose(fs []func() error) error {
 }
 
 func cmdTest(cmd *cobra.Command, args []string) error {
+	ctx := cmd.Context()
 	return compose(
 		[]func() error{
-			func() error { return servertest.InitChain(client) },
-			func() error { return servertest.Commit(client, nil) },
-			func() error { return servertest.DeliverTx(client, []byte("abc"), code.CodeTypeBadNonce, nil) },
-			func() error { return servertest.Commit(client, nil) },
-			func() error { return servertest.DeliverTx(client, []byte{0x00}, code.CodeTypeOK, nil) },
-			func() error { return servertest.Commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 1}) },
-			func() error { return servertest.DeliverTx(client, []byte{0x00}, code.CodeTypeBadNonce, nil) },
-			func() error { return servertest.DeliverTx(client, []byte{0x01}, code.CodeTypeOK, nil) },
-			func() error { return servertest.DeliverTx(client, []byte{0x00, 0x02}, code.CodeTypeOK, nil) },
-			func() error { return servertest.DeliverTx(client, []byte{0x00, 0x03}, code.CodeTypeOK, nil) },
-			func() error { return servertest.DeliverTx(client, []byte{0x00, 0x00, 0x04}, code.CodeTypeOK, nil) },
+			func() error { return servertest.InitChain(ctx, client) },
+			func() error { return servertest.Commit(ctx, client, nil) },
+			func() error { return servertest.DeliverTx(ctx, client, []byte("abc"), code.CodeTypeBadNonce, nil) },
+			func() error { return servertest.Commit(ctx, client, nil) },
+			func() error { return servertest.DeliverTx(ctx, client, []byte{0x00}, code.CodeTypeOK, nil) },
+			func() error { return servertest.Commit(ctx, client, []byte{0, 0, 0, 0, 0, 0, 0, 1}) },
+			func() error { return servertest.DeliverTx(ctx, client, []byte{0x00}, code.CodeTypeBadNonce, nil) },
+			func() error { return servertest.DeliverTx(ctx, client, []byte{0x01}, code.CodeTypeOK, nil) },
+			func() error { return servertest.DeliverTx(ctx, client, []byte{0x00, 0x02}, code.CodeTypeOK, nil) },
+			func() error { return servertest.DeliverTx(ctx, client, []byte{0x00, 0x03}, code.CodeTypeOK, nil) },
+			func() error { return servertest.DeliverTx(ctx, client, []byte{0x00, 0x00, 0x04}, code.CodeTypeOK, nil) },
 			func() error {
-				return servertest.DeliverTx(client, []byte{0x00, 0x00, 0x06}, code.CodeTypeBadNonce, nil)
+				return servertest.DeliverTx(ctx, client, []byte{0x00, 0x00, 0x06}, code.CodeTypeBadNonce, nil)
 			},
-			func() error { return servertest.Commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 5}) },
+			func() error { return servertest.Commit(ctx, client, []byte{0, 0, 0, 0, 0, 0, 0, 5}) },
 		})
 }
 
@@ -590,20 +596,16 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := srv.Start(); err != nil {
+	ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGTERM)
+	defer cancel()
+
+	if err := srv.Start(ctx); err != nil {
 		return err
 	}
 
-	// Stop upon receiving SIGTERM or CTRL-C.
-	tmos.TrapSignal(logger, func() {
-		// Cleanup
-		if err := srv.Stop(); err != nil {
-			logger.Error("Error while stopping server", "err", err)
-		}
-	})
-
 	// Run forever.
-	select {}
+	<-ctx.Done()
+	return nil
 }
 
 //--------------------------------------------------------------------------------

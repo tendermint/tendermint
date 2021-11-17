@@ -2,6 +2,7 @@ package conn
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -209,8 +210,8 @@ func NewMConnectionWithConfig(
 }
 
 // OnStart implements BaseService
-func (c *MConnection) OnStart() error {
-	if err := c.BaseService.OnStart(); err != nil {
+func (c *MConnection) OnStart(ctx context.Context) error {
+	if err := c.BaseService.OnStart(ctx); err != nil {
 		return err
 	}
 	c.flushTimer = timer.NewThrottleTimer("flush", c.config.FlushThrottle)

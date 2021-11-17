@@ -4,6 +4,7 @@
 package trust
 
 import (
+	"context"
 	"math"
 	"time"
 
@@ -109,8 +110,8 @@ func NewMetricWithConfig(tmc MetricConfig) *Metric {
 }
 
 // OnStart implements Service
-func (tm *Metric) OnStart() error {
-	if err := tm.BaseService.OnStart(); err != nil {
+func (tm *Metric) OnStart(ctx context.Context) error {
+	if err := tm.BaseService.OnStart(ctx); err != nil {
 		return err
 	}
 	go tm.processRequests()

@@ -82,7 +82,11 @@ type nodeImpl struct {
 // newDefaultNode returns a Tendermint node with default settings for the
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
 // It implements NodeProvider.
-func newDefaultNode(cfg *config.Config, logger log.Logger) (service.Service, error) {
+func newDefaultNode(
+	ctx context.Context,
+	cfg *config.Config,
+	logger log.Logger,
+) (service.Service, error) {
 	nodeKey, err := types.LoadOrGenNodeKey(cfg.NodeKeyFile())
 	if err != nil {
 		return nil, fmt.Errorf("failed to load or gen node key %s: %w", cfg.NodeKeyFile(), err)
@@ -108,7 +112,9 @@ func newDefaultNode(cfg *config.Config, logger log.Logger) (service.Service, err
 
 	appClient, _ := proxy.DefaultClientCreator(logger, cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
 
-	return makeNode(cfg,
+	return makeNode(
+		ctx,
+		cfg,
 		pval,
 		nodeKey,
 		appClient,
@@ -119,7 +125,9 @@ func newDefaultNode(cfg *config.Config, logger log.Logger) (service.Service, err
 }
 
 // makeNode returns a new, ready to go, Tendermint Node.
-func makeNode(cfg *config.Config,
+func makeNode(
+	ctx context.Context,
+	cfg *config.Config,
 	privValidator types.PrivValidator,
 	nodeKey types.NodeKey,
 	clientCreator abciclient.Creator,
@@ -127,7 +135,10 @@ func makeNode(cfg *config.Config,
 	dbProvider config.DBProvider,
 	logger log.Logger,
 ) (service.Service, error) {
-	closers := []closer{}
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
+
+	closers := []closer{convertCancelCloser(cancel)}
 
 	blockStore, stateDB, dbCloser, err := initDBs(cfg, dbProvider)
 	if err != nil {
@@ -157,7 +168,7 @@ func makeNode(cfg *config.Config,
 	nodeMetrics := defaultMetricsProvider(cfg.Instrumentation)(genDoc.ChainID)
 
 	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
-	proxyApp, err := createAndStartProxyAppConns(clientCreator, logger, nodeMetrics.proxy)
+	proxyApp, err := createAndStartProxyAppConns(ctx, clientCreator, logger, nodeMetrics.proxy)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
@@ -166,12 +177,13 @@ func makeNode(cfg *config.Config,
 	// we might need to index the txs of the replayed block as this might not have happened
 	// when the node stopped last time (i.e. the node stopped after it saved the block
 	// but before it indexed the txs, or, endblocker panicked)
-	eventBus, err := createAndStartEventBus(logger)
+	eventBus, err := createAndStartEventBus(ctx, logger)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
 
-	indexerService, eventSinks, err := createAndStartIndexerService(cfg, dbProvider, eventBus,
+	indexerService, eventSinks, err := createAndStartIndexerService(
+		ctx, cfg, dbProvider, eventBus,
 		logger, genDoc.ChainID, nodeMetrics.indexer)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
@@ -191,7 +203,12 @@ func makeNode(cfg *config.Config,
 					makeCloser(closers))
 			}
 		default:
-			privValidator, err = createAndStartPrivValidatorSocketClient(cfg.PrivValidator.ListenAddr, genDoc.ChainID, logger)
+			privValidator, err = createAndStartPrivValidatorSocketClient(
+				ctx,
+				cfg.PrivValidator.ListenAddr,
+				genDoc.ChainID,
+				logger,
+			)
 			if err != nil {
 				return nil, combineCloseError(
 					fmt.Errorf("error with private validator socket client: %w", err),
@@ -227,7 +244,7 @@ func makeNode(cfg *config.Config,
 		if err := consensus.NewHandshaker(
 			logger.With("module", "handshaker"),
 			stateStore, state, blockStore, eventBus, genDoc,
-		).Handshake(proxyApp); err != nil {
+		).Handshake(ctx, proxyApp); err != nil {
 			return nil, combineCloseError(err, makeCloser(closers))
 		}
 
@@ -492,7 +509,7 @@ func makeSeedNode(cfg *config.Config,
 }
 
 // OnStart starts the Node. It implements service.Service.
-func (n *nodeImpl) OnStart() error {
+func (n *nodeImpl) OnStart(ctx context.Context) error {
 	if n.config.RPC.PprofListenAddress != "" {
 		// this service is not cleaned up (I believe that we'd
 		// need to have another thread and a potentially a
@@ -526,39 +543,39 @@ func (n *nodeImpl) OnStart() error {
 	}
 
 	// Start the transport.
-	if err := n.router.Start(); err != nil {
+	if err := n.router.Start(ctx); err != nil {
 		return err
 	}
 	n.isListening = true
 
 	if n.config.Mode != config.ModeSeed {
-		if err := n.bcReactor.Start(); err != nil {
+		if err := n.bcReactor.Start(ctx); err != nil {
 			return err
 		}
 
 		// Start the real consensus reactor separately since the switch uses the shim.
-		if err := n.consensusReactor.Start(); err != nil {
+		if err := n.consensusReactor.Start(ctx); err != nil {
 			return err
 		}
 
 		// Start the real state sync reactor separately since the switch uses the shim.
-		if err := n.stateSyncReactor.Start(); err != nil {
+		if err := n.stateSyncReactor.Start(ctx); err != nil {
 			return err
 		}
 
 		// Start the real mempool reactor separately since the switch uses the shim.
-		if err := n.mempoolReactor.Start(); err != nil {
+		if err := n.mempoolReactor.Start(ctx); err != nil {
 			return err
 		}
 
 		// Start the real evidence reactor separately since the switch uses the shim.
-		if err := n.evidenceReactor.Start(); err != nil {
+		if err := n.evidenceReactor.Start(ctx); err != nil {
 			return err
 		}
 	}
 
 	if n.config.P2P.PexReactor {
-		if err := n.pexReactor.Start(); err != nil {
+		if err := n.pexReactor.Start(ctx); err != nil {
 			return err
 		}
 	}
@@ -638,7 +655,6 @@ func (n *nodeImpl) OnStart() error {
 
 // OnStop stops the Node. It implements service.Service.
 func (n *nodeImpl) OnStop() {
-
 	n.Logger.Info("Stopping Node")
 
 	if n.eventBus != nil {
@@ -648,9 +664,7 @@ func (n *nodeImpl) OnStop() {
 		}
 	}
 	if n.indexerService != nil {
-		if err := n.indexerService.Stop(); err != nil {
-			n.Logger.Error("Error closing indexerService", "err", err)
-		}
+		n.indexerService.Wait()
 	}
 
 	for _, es := range n.eventSinks {
@@ -660,41 +674,14 @@ func (n *nodeImpl) OnStop() {
 	}
 
 	if n.config.Mode != config.ModeSeed {
-		// now stop the reactors
-
-		// Stop the real blockchain reactor separately since the switch uses the shim.
-		if err := n.bcReactor.Stop(); err != nil {
-			n.Logger.Error("failed to stop the blockchain reactor", "err", err)
-		}
-
-		// Stop the real consensus reactor separately since the switch uses the shim.
-		if err := n.consensusReactor.Stop(); err != nil {
-			n.Logger.Error("failed to stop the consensus reactor", "err", err)
-		}
-
-		// Stop the real state sync reactor separately since the switch uses the shim.
-		if err := n.stateSyncReactor.Stop(); err != nil {
-			n.Logger.Error("failed to stop the state sync reactor", "err", err)
-		}
-
-		// Stop the real mempool reactor separately since the switch uses the shim.
-		if err := n.mempoolReactor.Stop(); err != nil {
-			n.Logger.Error("failed to stop the mempool reactor", "err", err)
-		}
-
-		// Stop the real evidence reactor separately since the switch uses the shim.
-		if err := n.evidenceReactor.Stop(); err != nil {
-			n.Logger.Error("failed to stop the evidence reactor", "err", err)
-		}
+		n.bcReactor.Wait()
+		n.consensusReactor.Wait()
+		n.stateSyncReactor.Wait()
+		n.mempoolReactor.Wait()
+		n.evidenceReactor.Wait()
 	}
-
-	if err := n.pexReactor.Stop(); err != nil {
-		n.Logger.Error("failed to stop the PEX v2 reactor", "err", err)
-	}
-
-	if err := n.router.Stop(); err != nil {
-		n.Logger.Error("failed to stop router", "err", err)
-	}
+	n.pexReactor.Wait()
+	n.router.Wait()
 	n.isListening = false
 
 	// finally stop the listeners / external services
@@ -706,9 +693,7 @@ func (n *nodeImpl) OnStop() {
 	}
 
 	if pvsc, ok := n.privValidator.(service.Service); ok {
-		if err := pvsc.Stop(); err != nil {
-			n.Logger.Error("Error closing private validator", "err", err)
-		}
+		pvsc.Wait()
 	}
 
 	if n.prometheusSrv != nil {
@@ -970,8 +955,8 @@ func loadStateFromDBOrGenesisDocProvider(
 }
 
 func createAndStartPrivValidatorSocketClient(
-	listenAddr,
-	chainID string,
+	ctx context.Context,
+	listenAddr, chainID string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
 
@@ -980,7 +965,7 @@ func createAndStartPrivValidatorSocketClient(
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
 
-	pvsc, err := privval.NewSignerClient(pve, chainID)
+	pvsc, err := privval.NewSignerClient(ctx, pve, chainID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}

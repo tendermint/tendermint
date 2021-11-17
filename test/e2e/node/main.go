@@ -38,6 +38,9 @@ var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, fals
 
 // main is the binary entrypoint.
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	if len(os.Args) != 2 {
 		fmt.Printf("Usage: %v <configfile>", os.Args[0])
 		return
@@ -47,14 +50,14 @@ func main() {
 		configFile = os.Args[1]
 	}
 
-	if err := run(configFile); err != nil {
+	if err := run(ctx, configFile); err != nil {
 		logger.Error(err.Error())
 		os.Exit(1)
 	}
 }
 
 // run runs the application - basically like main() with error handling.
-func run(configFile string) error {
+func run(ctx context.Context, configFile string) error {
 	cfg, err := LoadConfig(configFile)
 	if err != nil {
 		return err
@@ -62,7 +65,7 @@ func run(configFile string) error {
 
 	// Start remote signer (must start before node if running builtin).
 	if cfg.PrivValServer != "" {
-		if err = startSigner(cfg); err != nil {
+		if err = startSigner(ctx, cfg); err != nil {
 			return err
 		}
 		if cfg.Protocol == "builtin" {
@@ -73,15 +76,15 @@ func run(configFile string) error {
 	// Start app server.
 	switch cfg.Protocol {
 	case "socket", "grpc":
-		err = startApp(cfg)
+		err = startApp(ctx, cfg)
 	case "builtin":
 		switch cfg.Mode {
 		case string(e2e.ModeLight):
-			err = startLightNode(cfg)
+			err = startLightNode(ctx, cfg)
 		case string(e2e.ModeSeed):
-			err = startSeedNode()
+			err = startSeedNode(ctx)
 		default:
-			err = startNode(cfg)
+			err = startNode(ctx, cfg)
 		}
 	default:
 		err = fmt.Errorf("invalid protocol %q", cfg.Protocol)
@@ -97,7 +100,7 @@ func run(configFile string) error {
 }
 
 // startApp starts the application server, listening for connections from Tendermint.
-func startApp(cfg *Config) error {
+func startApp(ctx context.Context, cfg *Config) error {
 	app, err := app.NewApplication(cfg.App())
 	if err != nil {
 		return err
@@ -106,7 +109,7 @@ func startApp(cfg *Config) error {
 	if err != nil {
 		return err
 	}
-	err = server.Start()
+	err = server.Start(ctx)
 	if err != nil {
 		return err
 	}
@@ -118,7 +121,7 @@ func startApp(cfg *Config) error {
 // configuration is in $TMHOME/config/tendermint.toml.
 //
 // FIXME There is no way to simply load the configuration from a file, so we need to pull in Viper.
-func startNode(cfg *Config) error {
+func startNode(ctx context.Context, cfg *Config) error {
 	app, err := app.NewApplication(cfg.App())
 	if err != nil {
 		return err
@@ -129,7 +132,9 @@ func startNode(cfg *Config) error {
 		return fmt.Errorf("failed to setup config: %w", err)
 	}
 
-	n, err := node.New(tmcfg,
+	n, err := node.New(
+		ctx,
+		tmcfg,
 		nodeLogger,
 		abciclient.NewLocalCreator(app),
 		nil,
@@ -137,10 +142,10 @@ func startNode(cfg *Config) error {
 	if err != nil {
 		return err
 	}
-	return n.Start()
+	return n.Start(ctx)
 }
 
-func startSeedNode() error {
+func startSeedNode(ctx context.Context) error {
 	tmcfg, nodeLogger, err := setupNode()
 	if err != nil {
 		return fmt.Errorf("failed to setup config: %w", err)
@@ -148,14 +153,14 @@ func startSeedNode() error {
 
 	tmcfg.Mode = config.ModeSeed
 
-	n, err := node.New(tmcfg, nodeLogger, nil, nil)
+	n, err := node.New(ctx, tmcfg, nodeLogger, nil, nil)
 	if err != nil {
 		return err
 	}
-	return n.Start()
+	return n.Start(ctx)
 }
 
-func startLightNode(cfg *Config) error {
+func startLightNode(ctx context.Context, cfg *Config) error {
 	tmcfg, nodeLogger, err := setupNode()
 	if err != nil {
 		return err
@@ -204,7 +209,7 @@ func startLightNode(cfg *Config) error {
 	}
 
 	logger.Info("Starting proxy...", "laddr", tmcfg.RPC.ListenAddress)
-	if err := p.ListenAndServe(); err != http.ErrServerClosed {
+	if err := p.ListenAndServe(ctx); err != http.ErrServerClosed {
 		// Error starting or closing listener:
 		logger.Error("proxy ListenAndServe", "err", err)
 	}
@@ -213,7 +218,7 @@ func startLightNode(cfg *Config) error {
 }
 
 // startSigner starts a signer server connecting to the given endpoint.
-func startSigner(cfg *Config) error {
+func startSigner(ctx context.Context, cfg *Config) error {
 	filePV, err := privval.LoadFilePV(cfg.PrivValKey, cfg.PrivValState)
 	if err != nil {
 		return err
@@ -251,7 +256,8 @@ func startSigner(cfg *Config) error {
 	endpoint := privval.NewSignerDialerEndpoint(logger, dialFn,
 		privval.SignerDialerEndpointRetryWaitInterval(1*time.Second),
 		privval.SignerDialerEndpointConnRetries(100))
-	err = privval.NewSignerServer(endpoint, cfg.ChainID, filePV).Start()
+
+	err = privval.NewSignerServer(endpoint, cfg.ChainID, filePV).Start(ctx)
 	if err != nil {
 		return err
 	}

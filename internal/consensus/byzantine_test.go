@@ -31,6 +31,9 @@ import (
 // Byzantine node sends two different prevotes (nil and blockID) to the same
 // validator.
 func TestByzantinePrevoteEquivocation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := configSetup(t)
 
 	nValidators := 4
@@ -93,7 +96,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			cs.SetPrivValidator(pv)
 
 			eventBus := eventbus.NewDefault(log.TestingLogger().With("module", "events"))
-			err = eventBus.Start()
+			err = eventBus.Start(ctx)
 			require.NoError(t, err)
 			cs.SetEventBus(eventBus)
 
@@ -103,7 +106,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		}()
 	}
 
-	rts := setup(t, nValidators, states, 100) // buffer must be large enough to not deadlock
+	rts := setup(ctx, t, nValidators, states, 100) // buffer must be large enough to not deadlock
 
 	var bzNodeID types.NodeID
 
@@ -229,15 +232,13 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	for _, reactor := range rts.reactors {
 		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(state, false)
+		reactor.SwitchToConsensus(ctx, state, false)
 	}
 
 	// Evidence should be submitted and committed at the third height but
 	// we will check the first six just in case
 	evidenceFromEachValidator := make([]types.Evidence, nValidators)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	var wg sync.WaitGroup
 	i := 0
 	for _, sub := range rts.subs {

@@ -1023,7 +1023,7 @@ func (r *Router) NodeInfo() types.NodeInfo {
 }
 
 // OnStart implements service.Service.
-func (r *Router) OnStart() error {
+func (r *Router) OnStart(ctx context.Context) error {
 	for _, transport := range r.transports {
 		for _, endpoint := range r.endpoints {
 			if err := transport.Listen(endpoint); err != nil {

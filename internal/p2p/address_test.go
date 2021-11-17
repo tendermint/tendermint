@@ -1,6 +1,7 @@
 package p2p_test
 
 import (
+	"context"
 	"net"
 	"strings"
 	"testing"
@@ -204,6 +205,9 @@ func TestParseNodeAddress(t *testing.T) {
 func TestNodeAddress_Resolve(t *testing.T) {
 	id := types.NodeID("00112233445566778899aabbccddeeff00112233")
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testcases := []struct {
 		address p2p.NodeAddress
 		expect  p2p.Endpoint
@@ -275,6 +279,9 @@ func TestNodeAddress_Resolve(t *testing.T) {
 	for _, tc := range testcases {
 		tc := tc
 		t.Run(tc.address.String(), func(t *testing.T) {
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
 			endpoints, err := tc.address.Resolve(ctx)
 			if !tc.ok {
 				require.Error(t, err)

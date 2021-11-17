@@ -463,7 +463,7 @@ func TestClientMethodCalls(t *testing.T) {
 				// start for this test it if it wasn't already running
 				if !c.IsRunning() {
 					// if so, then we start it, listen, and stop it.
-					err := c.Start()
+					err := c.Start(ctx)
 					require.Nil(t, err)
 					t.Cleanup(func() {
 						if err := c.Stop(); err != nil {

@@ -17,10 +17,13 @@ import (
 )
 
 func TestReactorInvalidPrecommit(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(t,
+	states, cleanup := randConsensusState(ctx, t,
 		config, n, "consensus_reactor_test",
 		newMockTickerFunc(true), newKVStore)
 	t.Cleanup(cleanup)
@@ -30,11 +33,11 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 		states[i].SetTimeoutTicker(ticker)
 	}
 
-	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
+	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
 		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(state, false)
+		reactor.SwitchToConsensus(ctx, state, false)
 	}
 
 	// this val sends a random precommit at each height
@@ -56,8 +59,7 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	//
 	// TODO: Make this tighter by ensuring the halt happens by block 2.
 	var wg sync.WaitGroup
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+
 	for i := 0; i < 10; i++ {
 		for _, sub := range rts.subs {
 			wg.Add(1)

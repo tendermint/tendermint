@@ -66,7 +66,7 @@ func NewSocketClient(logger log.Logger, addr string, mustConnect bool) Client {
 
 // OnStart implements Service by connecting to the server and spawning reading
 // and writing goroutines.
-func (cli *socketClient) OnStart() error {
+func (cli *socketClient) OnStart(ctx context.Context) error {
 	var (
 		err  error
 		conn net.Conn

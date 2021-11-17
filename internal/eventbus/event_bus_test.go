@@ -19,8 +19,11 @@ import (
 )
 
 func TestEventBusPublishEventTx(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	eventBus := eventbus.NewDefault(log.TestingLogger())
-	err := eventBus.Start()
+	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := eventBus.Stop(); err != nil {
@@ -37,7 +40,6 @@ func TestEventBusPublishEventTx(t *testing.T) {
 	}
 
 	// PublishEventTx adds 3 composite keys, so the query below should work
-	ctx := context.Background()
 	query := fmt.Sprintf("tm.event='Tx' AND tx.height=1 AND tx.hash='%X' AND testType.baz=1", tx.Hash())
 	txsSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: "test",
@@ -76,8 +78,10 @@ func TestEventBusPublishEventTx(t *testing.T) {
 }
 
 func TestEventBusPublishEventNewBlock(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	eventBus := eventbus.NewDefault(log.TestingLogger())
-	err := eventBus.Start()
+	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := eventBus.Stop(); err != nil {
@@ -99,7 +103,6 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	}
 
 	// PublishEventNewBlock adds the tm.event compositeKey, so the query below should work
-	ctx := context.Background()
 	query := "tm.event='NewBlock' AND testType.baz=1 AND testType.foz=2"
 	blocksSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: "test",
@@ -136,8 +139,10 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 }
 
 func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	eventBus := eventbus.NewDefault(log.TestingLogger())
-	err := eventBus.Start()
+	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := eventBus.Stop(); err != nil {
@@ -243,8 +248,11 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 }
 
 func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	eventBus := eventbus.NewDefault(log.TestingLogger())
-	err := eventBus.Start()
+	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := eventBus.Stop(); err != nil {
@@ -265,7 +273,6 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	}
 
 	// PublishEventNewBlockHeader adds the tm.event compositeKey, so the query below should work
-	ctx := context.Background()
 	query := "tm.event='NewBlockHeader' AND testType.baz=1 AND testType.foz=2"
 	headersSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: "test",
@@ -300,8 +307,11 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 }
 
 func TestEventBusPublishEventNewEvidence(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	eventBus := eventbus.NewDefault(log.TestingLogger())
-	err := eventBus.Start()
+	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := eventBus.Stop(); err != nil {
@@ -311,7 +321,6 @@ func TestEventBusPublishEventNewEvidence(t *testing.T) {
 
 	ev := types.NewMockDuplicateVoteEvidence(1, time.Now(), "test-chain-id")
 
-	ctx := context.Background()
 	const query = `tm.event='NewEvidence'`
 	evSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: "test",
@@ -344,8 +353,11 @@ func TestEventBusPublishEventNewEvidence(t *testing.T) {
 }
 
 func TestEventBusPublish(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	eventBus := eventbus.NewDefault(log.TestingLogger())
-	err := eventBus.Start()
+	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := eventBus.Stop(); err != nil {
@@ -355,7 +367,6 @@ func TestEventBusPublish(t *testing.T) {
 
 	const numEventsExpected = 14
 
-	ctx := context.Background()
 	sub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: "test",
 		Query:    tmquery.Empty{},
@@ -434,8 +445,11 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 	// for random* functions
 	mrand.Seed(time.Now().Unix())
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	eventBus := eventbus.NewDefault(log.TestingLogger()) // set buffer capacity to 0 so we are not testing cache
-	err := eventBus.Start()
+	err := eventBus.Start(ctx)
 	if err != nil {
 		b.Error(err)
 	}
@@ -445,7 +459,6 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 		}
 	})
 
-	ctx := context.Background()
 	q := types.EventQueryNewBlock
 
 	for i := 0; i < numClients; i++ {

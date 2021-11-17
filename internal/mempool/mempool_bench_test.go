@@ -11,7 +11,10 @@ import (
 )
 
 func BenchmarkTxMempool_CheckTx(b *testing.B) {
-	txmp := setup(b, 10000)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	txmp := setup(ctx, b, 10000)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	b.ResetTimer()

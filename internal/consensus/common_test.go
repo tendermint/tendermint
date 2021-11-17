@@ -218,9 +218,9 @@ func (vss ValidatorStubsByPower) Swap(i, j int) {
 //-------------------------------------------------------------------------------
 // Functions for transitioning the consensus state
 
-func startTestRound(cs *State, height int64, round int32) {
+func startTestRound(ctx context.Context, cs *State, height int64, round int32) {
 	cs.enterNewRound(height, round)
-	cs.startRoutines(0)
+	cs.startRoutines(ctx, 0)
 }
 
 // Create proposal block from cs1 but sign it with vs.
@@ -389,27 +389,34 @@ func subscribeToVoter(t *testing.T, cs *State, addr []byte) <-chan tmpubsub.Mess
 //-------------------------------------------------------------------------------
 // consensus states
 
-func newState(logger log.Logger, state sm.State, pv types.PrivValidator, app abci.Application) (*State, error) {
+func newState(
+	ctx context.Context,
+	logger log.Logger,
+	state sm.State,
+	pv types.PrivValidator,
+	app abci.Application,
+) (*State, error) {
 	cfg, err := config.ResetTestRoot("consensus_state_test")
 	if err != nil {
 		return nil, err
 	}
 
-	return newStateWithConfig(logger, cfg, state, pv, app), nil
+	return newStateWithConfig(ctx, logger, cfg, state, pv, app), nil
 }
 
 func newStateWithConfig(
+	ctx context.Context,
 	logger log.Logger,
 	thisConfig *config.Config,
 	state sm.State,
 	pv types.PrivValidator,
 	app abci.Application,
 ) *State {
-	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	return newStateWithConfigAndBlockStore(logger, thisConfig, state, pv, app, blockStore)
+	return newStateWithConfigAndBlockStore(ctx, logger, thisConfig, state, pv, app, store.NewBlockStore(dbm.NewMemDB()))
 }
 
 func newStateWithConfigAndBlockStore(
+	ctx context.Context,
 	logger log.Logger,
 	thisConfig *config.Config,
 	state sm.State,
@@ -449,7 +456,7 @@ func newStateWithConfigAndBlockStore(
 	cs.SetPrivValidator(pv)
 
 	eventBus := eventbus.NewDefault(logger.With("module", "events"))
-	err := eventBus.Start()
+	err := eventBus.Start(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -469,13 +476,18 @@ func loadPrivValidator(cfg *config.Config) *privval.FilePV {
 	return privValidator
 }
 
-func randState(cfg *config.Config, logger log.Logger, nValidators int) (*State, []*validatorStub, error) {
+func randState(
+	ctx context.Context,
+	cfg *config.Config,
+	logger log.Logger,
+	nValidators int,
+) (*State, []*validatorStub, error) {
 	// Get State
 	state, privVals := randGenesisState(cfg, nValidators, false, 10)
 
 	vss := make([]*validatorStub, nValidators)
 
-	cs, err := newState(logger, state, privVals[0], kvstore.NewApplication())
+	cs, err := newState(ctx, logger, state, privVals[0], kvstore.NewApplication())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -719,6 +731,7 @@ func consensusLogger() log.Logger {
 }
 
 func randConsensusState(
+	ctx context.Context,
 	t *testing.T,
 	cfg *config.Config,
 	nValidators int,
@@ -761,7 +774,7 @@ func randConsensusState(
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 
 		l := logger.With("validator", i, "module", "consensus")
-		css[i] = newStateWithConfigAndBlockStore(l, thisConfig, state, privVals[i], app, blockStore)
+		css[i] = newStateWithConfigAndBlockStore(ctx, l, thisConfig, state, privVals[i], app, blockStore)
 		css[i].SetTimeoutTicker(tickerFunc())
 	}
 
@@ -777,6 +790,7 @@ func randConsensusState(
 
 // nPeers = nValidators + nNotValidator
 func randConsensusNetWithPeers(
+	ctx context.Context,
 	cfg *config.Config,
 	nValidators,
 	nPeers int,
@@ -830,7 +844,7 @@ func randConsensusNetWithPeers(
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 		// sm.SaveState(stateDB,state)	//height 1's validatorsInfo already saved in LoadStateFromDBOrGenesisDoc above
 
-		css[i] = newStateWithConfig(logger.With("validator", i, "module", "consensus"), thisConfig, state, privVal, app)
+		css[i] = newStateWithConfig(ctx, logger.With("validator", i, "module", "consensus"), thisConfig, state, privVal, app)
 		css[i].SetTimeoutTicker(tickerFunc())
 	}
 	return css, genDoc, peer0Config, func() {
@@ -870,7 +884,7 @@ type mockTicker struct {
 	fired    bool
 }
 
-func (m *mockTicker) Start() error {
+func (m *mockTicker) Start(context.Context) error {
 	return nil
 }
 

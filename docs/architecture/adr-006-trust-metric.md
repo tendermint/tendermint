@@ -178,7 +178,7 @@ type TrustMetricStore struct {
 }
 
 // OnStart implements Service
-func (tms *TrustMetricStore) OnStart() error {}
+func (tms *TrustMetricStore) OnStart(ctx context.Context) error {}
 
 // OnStop implements Service
 func (tms *TrustMetricStore) OnStop() {}

@@ -43,23 +43,23 @@ func TestNodeStartStop(t *testing.T) {
 
 	defer os.RemoveAll(cfg.RootDir)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// create & start node
-	ns, err := newDefaultNode(cfg, log.TestingLogger())
+	ns, err := newDefaultNode(ctx, cfg, log.TestingLogger())
 	require.NoError(t, err)
-	require.NoError(t, ns.Start())
+	require.NoError(t, ns.Start(ctx))
 
 	t.Cleanup(func() {
 		if ns.IsRunning() {
-			assert.NoError(t, ns.Stop())
+			cancel()
 			ns.Wait()
 		}
 	})
 
 	n, ok := ns.(*nodeImpl)
 	require.True(t, ok)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	// wait for the node to produce a block
 	blocksSub, err := n.EventBus().SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
@@ -93,17 +93,20 @@ func TestNodeStartStop(t *testing.T) {
 	}
 }
 
-func getTestNode(t *testing.T, conf *config.Config, logger log.Logger) *nodeImpl {
+func getTestNode(ctx context.Context, t *testing.T, conf *config.Config, logger log.Logger) *nodeImpl {
 	t.Helper()
-	ns, err := newDefaultNode(conf, logger)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	ns, err := newDefaultNode(ctx, conf, logger)
 	require.NoError(t, err)
 
 	n, ok := ns.(*nodeImpl)
 	require.True(t, ok)
 
 	t.Cleanup(func() {
+		cancel()
 		if ns.IsRunning() {
-			assert.NoError(t, ns.Stop())
 			ns.Wait()
 		}
 	})
@@ -118,11 +121,14 @@ func TestNodeDelayedStart(t *testing.T) {
 	defer os.RemoveAll(cfg.RootDir)
 	now := tmtime.Now()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// create & start node
-	n := getTestNode(t, cfg, log.TestingLogger())
+	n := getTestNode(ctx, t, cfg, log.TestingLogger())
 	n.GenesisDoc().GenesisTime = now.Add(2 * time.Second)
 
-	require.NoError(t, n.Start())
+	require.NoError(t, n.Start(ctx))
 
 	startTime := tmtime.Now()
 	assert.Equal(t, true, startTime.After(n.GenesisDoc().GenesisTime))
@@ -133,8 +139,11 @@ func TestNodeSetAppVersion(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// create node
-	n := getTestNode(t, cfg, log.TestingLogger())
+	n := getTestNode(ctx, t, cfg, log.TestingLogger())
 
 	// default config uses the kvstore app
 	appVersion := kvstore.ProtocolVersion
@@ -150,6 +159,9 @@ func TestNodeSetAppVersion(t *testing.T) {
 
 func TestNodeSetPrivValTCP(t *testing.T) {
 	addr := "tcp://" + testFreeAddr(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	cfg, err := config.ResetTestRoot("node_priv_val_tcp_test")
 	require.NoError(t, err)
@@ -170,31 +182,34 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	)
 
 	go func() {
-		err := signerServer.Start()
+		err := signerServer.Start(ctx)
 		if err != nil {
 			panic(err)
 		}
 	}()
 	defer signerServer.Stop() //nolint:errcheck // ignore for tests
 
-	n := getTestNode(t, cfg, log.TestingLogger())
+	n := getTestNode(ctx, t, cfg, log.TestingLogger())
 	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
 }
 
 // address without a protocol must result in error
 func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	addrNoPrefix := testFreeAddr(t)
 
 	cfg, err := config.ResetTestRoot("node_priv_val_tcp_test")
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	cfg.PrivValidator.ListenAddr = addrNoPrefix
+	n, err := newDefaultNode(ctx, cfg, log.TestingLogger())
 
-	n, err := newDefaultNode(cfg, log.TestingLogger())
 	assert.Error(t, err)
 
 	if n != nil && n.IsRunning() {
-		assert.NoError(t, n.Stop())
+		cancel()
 		n.Wait()
 	}
 }
@@ -202,6 +217,9 @@ func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
 func TestNodeSetPrivValIPC(t *testing.T) {
 	tmpfile := "/tmp/kms." + tmrand.Str(6) + ".sock"
 	defer os.Remove(tmpfile) // clean up
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	cfg, err := config.ResetTestRoot("node_priv_val_tcp_test")
 	require.NoError(t, err)
@@ -222,11 +240,11 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	)
 
 	go func() {
-		err := pvsc.Start()
+		err := pvsc.Start(ctx)
 		require.NoError(t, err)
 	}()
 	defer pvsc.Stop() //nolint:errcheck // ignore for tests
-	n := getTestNode(t, cfg, log.TestingLogger())
+	n := getTestNode(ctx, t, cfg, log.TestingLogger())
 	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
 }
 
@@ -248,11 +266,11 @@ func TestCreateProposalBlock(t *testing.T) {
 	cfg, err := config.ResetTestRoot("node_create_proposal")
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
+
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc, log.TestingLogger(), proxy.NopMetrics())
-	err = proxyApp.Start()
+	err = proxyApp.Start(ctx)
 	require.Nil(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	logger := log.TestingLogger()
 
@@ -344,9 +362,8 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	defer os.RemoveAll(cfg.RootDir)
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc, log.TestingLogger(), proxy.NopMetrics())
-	err = proxyApp.Start()
+	err = proxyApp.Start(ctx)
 	require.Nil(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	logger := log.TestingLogger()
 
@@ -408,9 +425,8 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	defer os.RemoveAll(cfg.RootDir)
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc, log.TestingLogger(), proxy.NopMetrics())
-	err = proxyApp.Start()
+	err = proxyApp.Start(ctx)
 	require.Nil(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	logger := log.TestingLogger()
 
@@ -521,6 +537,9 @@ func TestNodeNewSeedNode(t *testing.T) {
 	cfg.Mode = config.ModeSeed
 	defer os.RemoveAll(cfg.RootDir)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	nodeKey, err := types.LoadOrGenNodeKey(cfg.NodeKeyFile())
 	require.NoError(t, err)
 
@@ -535,7 +554,7 @@ func TestNodeNewSeedNode(t *testing.T) {
 	n, ok := ns.(*nodeImpl)
 	require.True(t, ok)
 
-	err = n.Start()
+	err = n.Start(ctx)
 	require.NoError(t, err)
 	assert.True(t, n.pexReactor.IsRunning())
 
@@ -549,15 +568,18 @@ func TestNodeSetEventSink(t *testing.T) {
 
 	defer os.RemoveAll(cfg.RootDir)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	logger := log.TestingLogger()
 	setupTest := func(t *testing.T, conf *config.Config) []indexer.EventSink {
-		eventBus, err := createAndStartEventBus(logger)
+		eventBus, err := createAndStartEventBus(ctx, logger)
 		require.NoError(t, err)
 		t.Cleanup(func() { require.NoError(t, eventBus.Stop()) })
 		genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
 		require.NoError(t, err)
 
-		indexService, eventSinks, err := createAndStartIndexerService(cfg,
+		indexService, eventSinks, err := createAndStartIndexerService(ctx, cfg,
 			config.DefaultDBProvider, eventBus, logger, genDoc.ChainID,
 			indexer.NopMetrics())
 		require.NoError(t, err)
@@ -598,7 +620,7 @@ func TestNodeSetEventSink(t *testing.T) {
 	assert.Equal(t, indexer.NULL, eventSinks[0].Type())
 
 	cfg.TxIndex.Indexer = []string{"kvv"}
-	ns, err := newDefaultNode(cfg, logger)
+	ns, err := newDefaultNode(ctx, cfg, logger)
 	assert.Nil(t, ns)
 	assert.Contains(t, err.Error(), "unsupported event sink type")
 	t.Cleanup(cleanup(ns))
@@ -610,7 +632,7 @@ func TestNodeSetEventSink(t *testing.T) {
 	assert.Equal(t, indexer.NULL, eventSinks[0].Type())
 
 	cfg.TxIndex.Indexer = []string{"psql"}
-	ns, err = newDefaultNode(cfg, logger)
+	ns, err = newDefaultNode(ctx, cfg, logger)
 	assert.Nil(t, ns)
 	assert.Contains(t, err.Error(), "the psql connection settings cannot be empty")
 	t.Cleanup(cleanup(ns))
@@ -652,14 +674,14 @@ func TestNodeSetEventSink(t *testing.T) {
 	var e = errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
 	cfg.TxIndex.Indexer = []string{"psql", "kv", "Kv"}
 	cfg.TxIndex.PsqlConn = psqlConn
-	ns, err = newDefaultNode(cfg, logger)
+	ns, err = newDefaultNode(ctx, cfg, logger)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), e.Error())
 	t.Cleanup(cleanup(ns))
 
 	cfg.TxIndex.Indexer = []string{"Psql", "kV", "kv", "pSql"}
 	cfg.TxIndex.PsqlConn = psqlConn
-	ns, err = newDefaultNode(cfg, logger)
+	ns, err = newDefaultNode(ctx, cfg, logger)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), e.Error())
 	t.Cleanup(cleanup(ns))

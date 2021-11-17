@@ -28,9 +28,11 @@ import (
 const validationTestsStopHeight int64 = 10
 
 func TestValidateBlockHeader(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	proxyApp := newTestApp()
-	require.NoError(t, proxyApp.Start())
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
+	require.NoError(t, proxyApp.Start(ctx))
 
 	state, stateDB, privVals := makeState(3, 1)
 	stateStore := sm.NewStore(stateDB)
@@ -115,9 +117,11 @@ func TestValidateBlockHeader(t *testing.T) {
 }
 
 func TestValidateBlockCommit(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	proxyApp := newTestApp()
-	require.NoError(t, proxyApp.Start())
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
+	require.NoError(t, proxyApp.Start(ctx))
 
 	state, stateDB, privVals := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)
@@ -236,9 +240,11 @@ func TestValidateBlockCommit(t *testing.T) {
 }
 
 func TestValidateBlockEvidence(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	proxyApp := newTestApp()
-	require.NoError(t, proxyApp.Start())
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
+	require.NoError(t, proxyApp.Start(ctx))
 
 	state, stateDB, privVals := makeState(4, 1)
 	stateStore := sm.NewStore(stateDB)

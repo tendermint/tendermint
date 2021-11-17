@@ -210,7 +210,7 @@ func NewReactor(
 // handle individual envelopes as to not have to deal with bounding workers or pools.
 // The caller must be sure to execute OnStop to ensure the outbound p2p Channels are
 // closed. No error is returned.
-func (r *Reactor) OnStart() error {
+func (r *Reactor) OnStart(ctx context.Context) error {
 	go r.processSnapshotCh()
 
 	go r.processChunkCh()

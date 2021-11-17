@@ -1,6 +1,7 @@
 package events
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -14,8 +15,11 @@ import (
 // TestAddListenerForEventFireOnce sets up an EventSwitch, subscribes a single
 // listener to an event, and sends a string "data".
 func TestAddListenerForEventFireOnce(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	evsw := NewEventSwitch()
-	err := evsw.Start()
+	err := evsw.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := evsw.Stop(); err != nil {
@@ -41,8 +45,11 @@ func TestAddListenerForEventFireOnce(t *testing.T) {
 // TestAddListenerForEventFireMany sets up an EventSwitch, subscribes a single
 // listener to an event, and sends a thousand integers.
 func TestAddListenerForEventFireMany(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	evsw := NewEventSwitch()
-	err := evsw.Start()
+	err := evsw.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := evsw.Stop(); err != nil {
@@ -75,8 +82,11 @@ func TestAddListenerForEventFireMany(t *testing.T) {
 // listener to three different events and sends a thousand integers for each
 // of the three events.
 func TestAddListenerForDifferentEvents(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	evsw := NewEventSwitch()
-	err := evsw.Start()
+	err := evsw.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := evsw.Stop(); err != nil {
@@ -127,8 +137,11 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 // listener to two of those three events, and then sends a thousand integers
 // for each of the three events.
 func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	evsw := NewEventSwitch()
-	err := evsw.Start()
+	err := evsw.Start(ctx)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -199,8 +212,11 @@ func TestAddAndRemoveListenerConcurrency(t *testing.T) {
 		roundCount     = 2000
 	)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	evsw := NewEventSwitch()
-	err := evsw.Start()
+	err := evsw.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := evsw.Stop(); err != nil {
@@ -249,8 +265,11 @@ func TestAddAndRemoveListenerConcurrency(t *testing.T) {
 // two events, fires a thousand integers for the first event, then unsubscribes
 // the listener and fires a thousand integers for the second event.
 func TestAddAndRemoveListener(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	evsw := NewEventSwitch()
-	err := evsw.Start()
+	err := evsw.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := evsw.Stop(); err != nil {
@@ -300,8 +319,10 @@ func TestAddAndRemoveListener(t *testing.T) {
 
 // TestRemoveListener does basic tests on adding and removing
 func TestRemoveListener(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	evsw := NewEventSwitch()
-	err := evsw.Start()
+	err := evsw.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := evsw.Stop(); err != nil {
@@ -361,8 +382,10 @@ func TestRemoveListener(t *testing.T) {
 // NOTE: it is important to run this test with race conditions tracking on,
 // `go test -race`, to examine for possible race conditions.
 func TestRemoveListenersAsync(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	evsw := NewEventSwitch()
-	err := evsw.Start()
+	err := evsw.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := evsw.Stop(); err != nil {

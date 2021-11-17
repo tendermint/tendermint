@@ -98,9 +98,9 @@ func NewClient(next rpcclient.Client, lc LightClient, opts ...Option) *Client {
 	return c
 }
 
-func (c *Client) OnStart() error {
+func (c *Client) OnStart(ctx context.Context) error {
 	if !c.next.IsRunning() {
-		return c.next.Start()
+		return c.next.Start(ctx)
 	}
 	return nil
 }

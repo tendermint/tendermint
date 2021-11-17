@@ -2,6 +2,7 @@ package server
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -44,7 +45,7 @@ func NewSocketServer(logger tmlog.Logger, protoAddr string, app types.Applicatio
 	return s
 }
 
-func (s *SocketServer) OnStart() error {
+func (s *SocketServer) OnStart(ctx context.Context) error {
 	ln, err := net.Listen(s.proto, s.addr)
 	if err != nil {
 		return err

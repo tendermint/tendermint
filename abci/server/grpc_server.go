@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net"
 
 	"google.golang.org/grpc"
@@ -36,7 +37,7 @@ func NewGRPCServer(logger log.Logger, protoAddr string, app types.ABCIApplicatio
 }
 
 // OnStart starts the gRPC service.
-func (s *GRPCServer) OnStart() error {
+func (s *GRPCServer) OnStart(ctx context.Context) error {
 
 	ln, err := net.Listen(s.proto, s.addr)
 	if err != nil {

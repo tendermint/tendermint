@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -63,7 +64,7 @@ type WAL interface {
 	SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error)
 
 	// service methods
-	Start() error
+	Start(context.Context) error
 	Stop() error
 	Wait()
 }
@@ -116,7 +117,7 @@ func (wal *BaseWAL) Group() *auto.Group {
 	return wal.group
 }
 
-func (wal *BaseWAL) OnStart() error {
+func (wal *BaseWAL) OnStart(ctx context.Context) error {
 	size, err := wal.group.Head.Size()
 	if err != nil {
 		return err
@@ -125,7 +126,7 @@ func (wal *BaseWAL) OnStart() error {
 			return err
 		}
 	}
-	err = wal.group.Start()
+	err = wal.group.Start(ctx)
 	if err != nil {
 		return err
 	}
@@ -423,6 +424,6 @@ func (nilWAL) FlushAndSync() error          { return nil }
 func (nilWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	return nil, false, nil
 }
-func (nilWAL) Start() error { return nil }
-func (nilWAL) Stop() error  { return nil }
-func (nilWAL) Wait()        {}
+func (nilWAL) Start(context.Context) error { return nil }
+func (nilWAL) Stop() error                 { return nil }
+func (nilWAL) Wait()                       {}

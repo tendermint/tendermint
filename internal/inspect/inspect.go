@@ -85,7 +85,7 @@ func NewFromConfig(logger log.Logger, cfg *config.Config) (*Inspector, error) {
 // Run starts the Inspector servers and blocks until the servers shut down. The passed
 // in context is used to control the lifecycle of the servers.
 func (ins *Inspector) Run(ctx context.Context) error {
-	err := ins.eventBus.Start()
+	err := ins.eventBus.Start(ctx)
 	if err != nil {
 		return fmt.Errorf("error starting event bus: %s", err)
 	}
@@ -95,7 +95,7 @@ func (ins *Inspector) Run(ctx context.Context) error {
 			ins.logger.Error("event bus stopped with error", "err", err)
 		}
 	}()
-	err = ins.indexerService.Start()
+	err = ins.indexerService.Start(ctx)
 	if err != nil {
 		return fmt.Errorf("error starting indexer service: %s", err)
 	}

@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"context"
 	"errors"
 	"os"
 	"os/signal"
@@ -20,6 +21,9 @@ import (
 func TestAppConns_Start_Stop(t *testing.T) {
 	quitCh := make(<-chan struct{})
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	clientMock := &abcimocks.Client{}
 	clientMock.On("Start").Return(nil).Times(4)
 	clientMock.On("Stop").Return(nil).Times(4)
@@ -33,13 +37,13 @@ func TestAppConns_Start_Stop(t *testing.T) {
 
 	appConns := NewAppConns(creator, log.TestingLogger(), NopMetrics())
 
-	err := appConns.Start()
+	err := appConns.Start(ctx)
 	require.NoError(t, err)
 
 	time.Sleep(100 * time.Millisecond)
 
-	err = appConns.Stop()
-	require.NoError(t, err)
+	cancel()
+	appConns.Wait()
 
 	clientMock.AssertExpectations(t)
 	assert.Equal(t, 4, creatorCallCount)
@@ -55,6 +59,9 @@ func TestAppConns_Failure(t *testing.T) {
 			close(ok)
 		}
 	}()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	quitCh := make(chan struct{})
 	var recvQuitCh <-chan struct{} // nolint:gosimple
@@ -74,13 +81,9 @@ func TestAppConns_Failure(t *testing.T) {
 
 	appConns := NewAppConns(creator, log.TestingLogger(), NopMetrics())
 
-	err := appConns.Start()
+	err := appConns.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := appConns.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+	t.Cleanup(func() { cancel(); appConns.Wait() })
 
 	// simulate failure
 	close(quitCh)

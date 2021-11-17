@@ -38,8 +38,8 @@ func NewDefault(l log.Logger) *EventBus {
 	return b
 }
 
-func (b *EventBus) OnStart() error {
-	return b.pubsub.Start()
+func (b *EventBus) OnStart(ctx context.Context) error {
+	return b.pubsub.Start(ctx)
 }
 
 func (b *EventBus) OnStop() {

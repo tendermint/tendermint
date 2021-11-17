@@ -1,6 +1,7 @@
 package blocksync
 
 import (
+	"context"
 	"os"
 	"testing"
 	"time"
@@ -41,6 +42,7 @@ type reactorTestSuite struct {
 }
 
 func setup(
+	ctx context.Context,
 	t *testing.T,
 	genDoc *types.GenesisDoc,
 	privVal types.PrivValidator,
@@ -49,13 +51,16 @@ func setup(
 ) *reactorTestSuite {
 	t.Helper()
 
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
+
 	numNodes := len(maxBlockHeights)
 	require.True(t, numNodes >= 1,
 		"must specify at least one block height (nodes)")
 
 	rts := &reactorTestSuite{
 		logger:            log.TestingLogger().With("module", "block_sync", "testCase", t.Name()),
-		network:           p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
+		network:           p2ptest.MakeNetwork(ctx, t, p2ptest.NetworkOptions{NumNodes: numNodes}),
 		nodes:             make([]types.NodeID, 0, numNodes),
 		reactors:          make(map[types.NodeID]*Reactor, numNodes),
 		app:               make(map[types.NodeID]proxy.AppConns, numNodes),
@@ -70,17 +75,19 @@ func setup(
 
 	i := 0
 	for nodeID := range rts.network.Nodes {
-		rts.addNode(t, nodeID, genDoc, privVal, maxBlockHeights[i])
+		rts.addNode(ctx, t, nodeID, genDoc, privVal, maxBlockHeights[i])
 		i++
 	}
 
 	t.Cleanup(func() {
+		cancel()
 		for _, nodeID := range rts.nodes {
 			rts.peerUpdates[nodeID].Close()
 
 			if rts.reactors[nodeID].IsRunning() {
-				require.NoError(t, rts.reactors[nodeID].Stop())
-				require.NoError(t, rts.app[nodeID].Stop())
+				rts.reactors[nodeID].Wait()
+				rts.app[nodeID].Wait()
+
 				require.False(t, rts.reactors[nodeID].IsRunning())
 			}
 		}
@@ -89,7 +96,9 @@ func setup(
 	return rts
 }
 
-func (rts *reactorTestSuite) addNode(t *testing.T,
+func (rts *reactorTestSuite) addNode(
+	ctx context.Context,
+	t *testing.T,
 	nodeID types.NodeID,
 	genDoc *types.GenesisDoc,
 	privVal types.PrivValidator,
@@ -101,7 +110,7 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 
 	rts.nodes = append(rts.nodes, nodeID)
 	rts.app[nodeID] = proxy.NewAppConns(abciclient.NewLocalCreator(&abci.BaseApplication{}), logger, proxy.NopMetrics())
-	require.NoError(t, rts.app[nodeID].Start())
+	require.NoError(t, rts.app[nodeID].Start(ctx))
 
 	blockDB := dbm.NewMemDB()
 	stateDB := dbm.NewMemDB()
@@ -170,7 +179,7 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 		consensus.NopMetrics())
 	require.NoError(t, err)
 
-	require.NoError(t, rts.reactors[nodeID].Start())
+	require.NoError(t, rts.reactors[nodeID].Start(ctx))
 	require.True(t, rts.reactors[nodeID].IsRunning())
 }
 
@@ -184,6 +193,9 @@ func (rts *reactorTestSuite) start(t *testing.T) {
 }
 
 func TestReactor_AbruptDisconnect(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cfg, err := config.ResetTestRoot("block_sync_reactor_test")
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
@@ -191,7 +203,7 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
 	maxBlockHeight := int64(64)
 
-	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
+	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
 
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 
@@ -220,6 +232,9 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 }
 
 func TestReactor_SyncTime(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cfg, err := config.ResetTestRoot("block_sync_reactor_test")
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
@@ -227,7 +242,7 @@ func TestReactor_SyncTime(t *testing.T) {
 	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
 	maxBlockHeight := int64(101)
 
-	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
+	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 	rts.start(t)
 
@@ -244,6 +259,9 @@ func TestReactor_SyncTime(t *testing.T) {
 }
 
 func TestReactor_NoBlockResponse(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cfg, err := config.ResetTestRoot("block_sync_reactor_test")
 	require.NoError(t, err)
 
@@ -252,7 +270,7 @@ func TestReactor_NoBlockResponse(t *testing.T) {
 	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
 	maxBlockHeight := int64(65)
 
-	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
+	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
 
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 
@@ -293,6 +311,9 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	// See: https://github.com/tendermint/tendermint/issues/6005
 	t.SkipNow()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cfg, err := config.ResetTestRoot("block_sync_reactor_test")
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
@@ -300,7 +321,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	maxBlockHeight := int64(48)
 	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
 
-	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0, 0, 0, 0}, 1000)
+	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0, 0, 0, 0}, 1000)
 
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 
@@ -333,11 +354,11 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	// XXX: This causes a potential race condition.
 	// See: https://github.com/tendermint/tendermint/issues/6005
 	otherGenDoc, otherPrivVals := factory.RandGenesisDoc(cfg, 1, false, 30)
-	newNode := rts.network.MakeNode(t, p2ptest.NodeOptions{
+	newNode := rts.network.MakeNode(ctx, t, p2ptest.NodeOptions{
 		MaxPeers:     uint16(len(rts.nodes) + 1),
 		MaxConnected: uint16(len(rts.nodes) + 1),
 	})
-	rts.addNode(t, newNode.NodeID, otherGenDoc, otherPrivVals[0], maxBlockHeight)
+	rts.addNode(ctx, t, newNode.NodeID, otherGenDoc, otherPrivVals[0], maxBlockHeight)
 
 	// add a fake peer just so we do not wait for the consensus ticker to timeout
 	rts.reactors[newNode.NodeID].pool.SetPeerRange("00ff", 10, 10)

@@ -92,7 +92,7 @@ func newWsEvents(remote string, wso WSOptions) (*wsEvents, error) {
 }
 
 // Start starts the websocket client and the event loop.
-func (w *wsEvents) Start() error {
+func (w *wsEvents) Start(ctx context.Context) error {
 	if err := w.ws.Start(); err != nil {
 		return err
 	}
