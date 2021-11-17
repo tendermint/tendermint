@@ -60,7 +60,9 @@ type multiAppConn struct {
 	clientCreator abciclient.Creator
 }
 
-// this is just a quasi permanent shim for client refactoring
+// TODO: this is a totally internal and quasi permanent shim for
+// clients. eventually we can have a single client and have some kind
+// of reasonable lifecycle witout needing an explicit stop method.
 type stoppableClient interface {
 	abciclient.Client
 	Stop() error
