@@ -22,9 +22,9 @@ var (
 
 // Service defines a service that can be started, stopped, and reset.
 type Service interface {
-	// Start the service.
-	// If it's already started or stopped, will return an error.
-	// If OnStart() returns an error, it's returned by Start()
+	// Start is called to start the service, which should run until
+	// the context terminates. If the service is already running, Start
+	// must report an error.
 	Start(context.Context) error
 
 	// Return true if the service is running
