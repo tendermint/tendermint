@@ -54,10 +54,7 @@ func makeCloser(cs []closer) closer {
 }
 
 func convertCancelCloser(cancel context.CancelFunc) closer {
-	return func() error {
-		cancel()
-		return nil
-	}
+	return func() error { cancel(); return nil }
 }
 
 func combineCloseError(err error, cl closer) error {
