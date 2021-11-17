@@ -565,7 +565,8 @@ func (m *Vote) GetSignature() []byte {
 	return nil
 }
 
-// Commit contains the evidence that a block was committed by a set of validators.
+// Commit contains the evidence that a block was committed by a set of
+// validators.
 type Commit struct {
 	Height     int64       `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 	Round      int32       `protobuf:"varint,2,opt,name=round,proto3" json:"round,omitempty"`
@@ -967,7 +968,8 @@ func (m *BlockMeta) GetNumTxs() int64 {
 	return 0
 }
 
-// TxProof represents a Merkle proof of the presence of a transaction in the Merkle tree.
+// TxProof represents a Merkle proof of the presence of a transaction in the
+// Merkle tree.
 type TxProof struct {
 	RootHash []byte        `protobuf:"bytes,1,opt,name=root_hash,json=rootHash,proto3" json:"root_hash,omitempty"`
 	Data     []byte        `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`

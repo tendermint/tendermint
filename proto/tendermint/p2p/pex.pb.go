@@ -1160,6 +1160,7 @@ func (m *PexResponse) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			if (skippy < 0) || (iNdEx+skippy) < 0 {
+<<<<<<< HEAD
 				return ErrInvalidLengthPex
 			}
 			if (iNdEx + skippy) > l {
@@ -1376,6 +1377,8 @@ func (m *PexResponseV2) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			if (skippy < 0) || (iNdEx+skippy) < 0 {
+=======
+>>>>>>> 1c34d1724 (proto: rebuild the proto files from the spec repository (#7291))
 				return ErrInvalidLengthPex
 			}
 			if (iNdEx + skippy) > l {
