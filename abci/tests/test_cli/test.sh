@@ -21,8 +21,8 @@ function testExample() {
 	abci-cli --log_level=error --verbose batch < "$INPUT" > "${INPUT}.out.new"
 	killall "$3"
 
-	pre=$(shasum < "${INPUT}.out")
-	post=$(shasum < "${INPUT}.out.new")
+	pre=$(sha256sum < "${INPUT}.out")
+	post=$(sha256sum < "${INPUT}.out.new")
 
 	if [[ "$pre" != "$post" ]]; then
 		echo "You broke the tutorial"

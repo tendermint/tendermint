@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -71,10 +70,7 @@ var RootCmd = &cobra.Command{
 				return err
 			}
 
-			ctx, cancel := context.WithCancel(cmd.Context())
-			defer cancel()
-
-			if err := client.Start(ctx); err != nil {
+			if err := client.Start(cmd.Context()); err != nil {
 				return err
 			}
 		}
@@ -336,7 +332,7 @@ LOOP:
 		if err := muxOnCommands(cmd, cmdArgs); err != nil {
 			return err
 		}
-		fmt.Println()
+
 	}
 	return nil
 }
@@ -450,9 +446,11 @@ func cmdEcho(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	printResponse(cmd, args, response{
 		Data: []byte(res.Message),
 	})
+
 	return nil
 }
 
