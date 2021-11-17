@@ -3,6 +3,7 @@ package proxy
 import (
 	"fmt"
 	"os"
+	"sync"
 	"syscall"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
@@ -118,7 +119,7 @@ func (app *multiAppConn) OnStart() error {
 	app.consensusConn = NewAppConnConsensus(c, app.metrics)
 
 	// Kill Tendermint if the ABCI application crashes.
-	go app.killTMOnClientError()
+	go app.killTMOnClientError(ctx)
 
 	return nil
 }
@@ -127,7 +128,7 @@ func (app *multiAppConn) OnStop() {
 	app.stopAllClients()
 }
 
-func (app *multiAppConn) killTMOnClientError() {
+func (app *multiAppConn) killTMOnClientError(ctx context.Context) {
 	killFn := func(conn string, err error, logger log.Logger) {
 		logger.Error(
 			fmt.Sprintf("%s connection terminated. Did the application crash? Please restart tendermint", conn),
@@ -137,24 +138,61 @@ func (app *multiAppConn) killTMOnClientError() {
 		}
 	}
 
-	select {
-	case <-app.consensusConnClient.Quit():
-		if err := app.consensusConnClient.Error(); err != nil {
-			killFn(connConsensus, err, app.Logger)
-		}
-	case <-app.mempoolConnClient.Quit():
-		if err := app.mempoolConnClient.Error(); err != nil {
-			killFn(connMempool, err, app.Logger)
-		}
-	case <-app.queryConnClient.Quit():
-		if err := app.queryConnClient.Error(); err != nil {
-			killFn(connQuery, err, app.Logger)
-		}
-	case <-app.snapshotConnClient.Quit():
-		if err := app.snapshotConnClient.Error(); err != nil {
-			killFn(connSnapshot, err, app.Logger)
-		}
+	type op struct {
+		connClient stoppableClient
+		name       string
 	}
+
+	wg := &sync.WaitGroup{}
+	for _, client := range []op{
+		{
+			connClient: app.consensusConnClient,
+			name:       connConsensus,
+		},
+		{
+			connClient: app.mempoolConnClient,
+			name:       connMempool,
+		},
+		{
+			connClient: app.queryConnClient,
+			name:       connQuery,
+		},
+		{
+			connClient: app.snapshotConnClient,
+			name:       connSnapshot,
+		},
+	} {
+		wg.Add(1)
+		go func(client op) {
+			defer wg.Done()
+
+			select {
+			case <-ctx.Done():
+			case <-signalWait(client.connClient.Wait):
+				if err := client.connClient.Error(); err != nil {
+					killFn(client.name, err, app.Logger)
+				}
+			}
+		}(client)
+	}
+
+	// convert wg into a signal channel so we can cleanup if no
+	// one is waiting
+	select {
+	case <-ctx.Done():
+	case <-signalWait(wg.Wait):
+	}
+}
+
+func signalWait(wait func()) chan struct{} {
+	out := make(chan struct{})
+
+	go func() {
+		defer close(out)
+		wait()
+	}()
+
+	return out
 }
 
 func (app *multiAppConn) stopAllClients() {
