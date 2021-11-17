@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync/atomic"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -28,11 +27,6 @@ type Service interface {
 	// If OnStart() returns an error, it's returned by Start()
 	Start(context.Context) error
 
-	// TODO: remove
-	// Reset the service.
-	// Panics by default - must be overwritten to enable reset.
-	Reset() error
-
 	// Return true if the service is running
 	IsRunning() bool
 
@@ -50,9 +44,6 @@ type Service interface {
 // BaseService implementation wraps.
 type ServiceImplementation interface { // nolint:revive
 	Service
-
-	// TODO: remove
-	OnReset() error
 
 	// Called by the Services Start Method
 	OnStart(context.Context) error
@@ -198,26 +189,6 @@ func (bs *BaseService) Stop() error {
 // NOTE: Do not put anything in here,
 // that way users don't need to call BaseService.OnStop()
 func (bs *BaseService) OnStop() {}
-
-// Reset implements Service by calling OnReset callback (if defined). An error
-// will be returned if the service is running.
-func (bs *BaseService) Reset() error {
-	if !atomic.CompareAndSwapUint32(&bs.stopped, 1, 0) {
-		bs.Logger.Debug("cannot reset service; not stopped", "service", bs.name, "impl", bs.impl.String())
-		return fmt.Errorf("can't reset running %s", bs.name)
-	}
-
-	// whether or not we've started, we can reset
-	atomic.CompareAndSwapUint32(&bs.started, 1, 0)
-
-	bs.quit = make(chan struct{})
-	return bs.impl.OnReset()
-}
-
-// OnReset implements Service by panicking.
-func (bs *BaseService) OnReset() error {
-	panic("The service cannot be reset")
-}
 
 // IsRunning implements Service by returning true or false depending on the
 // service's state.

@@ -40,25 +40,3 @@ func TestBaseServiceWait(t *testing.T) {
 		t.Fatal("expected Wait() to finish within 100 ms.")
 	}
 }
-
-func TestBaseServiceReset(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	ts := &testService{}
-	ts.BaseService = *NewBaseService(nil, "TestService", ts)
-	err := ts.Start(ctx)
-	require.NoError(t, err)
-
-	err = ts.Reset()
-	require.Error(t, err, "expected cant reset service error")
-
-	err = ts.Stop()
-	require.NoError(t, err)
-
-	err = ts.Reset()
-	require.NoError(t, err)
-
-	err = ts.Start(ctx)
-	require.NoError(t, err)
-}
