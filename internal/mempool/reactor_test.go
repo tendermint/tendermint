@@ -150,7 +150,7 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	numNodes := 2
+	const numNodes = 2
 	rts := setupReactors(ctx, t, numNodes, 0)
 
 	observePanic := func(r interface{}) {

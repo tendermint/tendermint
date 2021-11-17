@@ -46,15 +46,11 @@ type Fireable interface {
 type EventSwitch interface {
 	service.Service
 	Fireable
-	stoppable
+	Stop() error
 
 	AddListenerForEvent(listenerID, eventValue string, cb EventCallback) error
 	RemoveListenerForEvent(event string, listenerID string)
 	RemoveListener(listenerID string)
-}
-
-type stoppable interface {
-	Stop() error
 }
 
 type eventSwitch struct {
