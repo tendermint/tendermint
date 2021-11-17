@@ -229,8 +229,8 @@ func valsEqual(t *testing.T, vals1, vals2 []types.ValidatorUpdate) {
 
 func makeSocketClientServer(
 	ctx context.Context,
-	logger log.Logger,
 	t *testing.T,
+	logger log.Logger,
 	app types.Application,
 	name string,
 ) (abciclient.Client, service.Service, error) {
@@ -293,7 +293,7 @@ func TestClientServer(t *testing.T) {
 
 	// set up socket app
 	kvstore := NewApplication()
-	client, server, err := makeSocketClientServer(ctx, logger, t, kvstore, "kvstore-socket")
+	client, server, err := makeSocketClientServer(ctx, t, logger, kvstore, "kvstore-socket")
 	require.NoError(t, err)
 	t.Cleanup(func() { cancel(); server.Wait() })
 	t.Cleanup(func() { cancel(); client.Wait() })
