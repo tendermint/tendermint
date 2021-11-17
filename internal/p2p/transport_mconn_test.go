@@ -195,6 +195,9 @@ func TestMConnTransport_Listen(t *testing.T) {
 			go func() {
 				// Dialing the endpoint should work.
 				var err error
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+
 				peerConn, err = transport.Dial(ctx, endpoint)
 				require.NoError(t, err)
 				close(dialedChan)

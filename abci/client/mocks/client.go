@@ -696,20 +696,6 @@ func (_m *Client) Quit() <-chan struct{} {
 	return r0
 }
 
-// Reset provides a mock function with given fields:
-func (_m *Client) Reset() error {
-	ret := _m.Called()
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // SetResponseCallback provides a mock function with given fields: _a0
 func (_m *Client) SetResponseCallback(_a0 abciclient.Callback) {
 	_m.Called(_a0)

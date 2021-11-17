@@ -25,20 +25,26 @@ var testTransports = map[string]transportFactory{}
 
 // withTransports is a test helper that runs a test against all transports
 // registered in testTransports.
-func withTransports(t *testing.T, tester func(*testing.T, transportFactory)) {
+func withTransports(ctx context.Context, t *testing.T, tester func(context.Context, *testing.T, transportFactory)) {
 	t.Helper()
 	for name, transportFactory := range testTransports {
 		transportFactory := transportFactory
 		t.Run(name, func(t *testing.T) {
 			t.Cleanup(leaktest.Check(t))
-			tester(t, transportFactory)
+			tctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
+			tester(tctx, t, transportFactory)
 		})
 	}
 }
 
 func TestTransport_AcceptClose(t *testing.T) {
 	// Just test accept unblock on close, happy path is tested widely elsewhere.
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 
 		// In-progress Accept should error on concurrent close.
@@ -78,7 +84,7 @@ func TestTransport_DialEndpoints(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		endpoints := a.Endpoints()
 		require.NotEmpty(t, endpoints)
@@ -156,7 +162,7 @@ func TestTransport_Dial(t *testing.T) {
 	defer cancel()
 
 	// Most just tests dial failures, happy path is tested widely elsewhere.
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
 
@@ -196,7 +202,10 @@ func TestTransport_Dial(t *testing.T) {
 }
 
 func TestTransport_Endpoints(t *testing.T) {
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
 
@@ -220,7 +229,10 @@ func TestTransport_Endpoints(t *testing.T) {
 }
 
 func TestTransport_Protocols(t *testing.T) {
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		protocols := a.Protocols()
 		endpoints := a.Endpoints()
@@ -234,7 +246,10 @@ func TestTransport_Protocols(t *testing.T) {
 }
 
 func TestTransport_String(t *testing.T) {
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		require.NotEmpty(t, a.String())
 	})
@@ -244,7 +259,7 @@ func TestConnection_Handshake(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
 		ab, ba := dialAccept(ctx, t, a, b)
@@ -279,7 +294,10 @@ func TestConnection_Handshake(t *testing.T) {
 				assert.Equal(t, aInfo, peerInfo)
 				assert.Equal(t, aKey.PubKey(), peerKey)
 			}
-			errCh <- err
+			select {
+			case errCh <- err:
+			case <-ctx.Done():
+			}
 		}()
 
 		peerInfo, peerKey, err := ab.Handshake(ctx, aInfo, aKey)
@@ -295,7 +313,7 @@ func TestConnection_HandshakeCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
 
@@ -325,7 +343,7 @@ func TestConnection_FlushClose(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
 		ab, _ := dialAcceptHandshake(ctx, t, a, b)
@@ -347,7 +365,7 @@ func TestConnection_LocalRemoteEndpoint(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
 		ab, ba := dialAcceptHandshake(ctx, t, a, b)
@@ -364,7 +382,7 @@ func TestConnection_SendReceive(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
 		ab, ba := dialAcceptHandshake(ctx, t, a, b)
@@ -426,7 +444,7 @@ func TestConnection_String(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
 		ab, _ := dialAccept(ctx, t, a, b)
@@ -613,9 +631,6 @@ func dialAcceptHandshake(ctx context.Context, t *testing.T, a, b p2p.Transport) 
 	t.Helper()
 
 	ab, ba := dialAccept(ctx, t, a, b)
-
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
 
 	errCh := make(chan error, 1)
 	go func() {
