@@ -18,6 +18,13 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
+type noopStopableClientImpl struct {
+	abciclient.Client
+	count int
+}
+
+func (c *noopStopableClientImpl) Stop() error { c.count++; return nil }
+
 func TestAppConns_Start_Stop(t *testing.T) {
 	quitCh := make(<-chan struct{})
 
@@ -25,14 +32,14 @@ func TestAppConns_Start_Stop(t *testing.T) {
 	defer cancel()
 
 	clientMock := &abcimocks.Client{}
-	clientMock.On("Start").Return(nil).Times(4)
-	clientMock.On("Stop").Return(nil).Times(4)
+	clientMock.On("Start", mock.Anything).Return(nil).Times(4)
 	clientMock.On("Quit").Return(quitCh).Times(4)
+	cl := &noopStopableClientImpl{Client: clientMock}
 
 	creatorCallCount := 0
 	creator := func(logger log.Logger) (abciclient.Client, error) {
 		creatorCallCount++
-		return clientMock, nil
+		return cl, nil
 	}
 
 	appConns := NewAppConns(creator, log.TestingLogger(), NopMetrics())
@@ -46,6 +53,7 @@ func TestAppConns_Start_Stop(t *testing.T) {
 	appConns.Wait()
 
 	clientMock.AssertExpectations(t)
+	assert.Equal(t, 4, cl.count)
 	assert.Equal(t, 4, creatorCallCount)
 }
 
@@ -69,14 +77,14 @@ func TestAppConns_Failure(t *testing.T) {
 
 	clientMock := &abcimocks.Client{}
 	clientMock.On("SetLogger", mock.Anything).Return()
-	clientMock.On("Start").Return(nil)
-	clientMock.On("Stop").Return(nil)
+	clientMock.On("Start", mock.Anything).Return(nil)
 
 	clientMock.On("Quit").Return(recvQuitCh)
 	clientMock.On("Error").Return(errors.New("EOF")).Once()
+	cl := &noopStopableClientImpl{Client: clientMock}
 
 	creator := func(log.Logger) (abciclient.Client, error) {
-		return clientMock, nil
+		return cl, nil
 	}
 
 	appConns := NewAppConns(creator, log.TestingLogger(), NopMetrics())
