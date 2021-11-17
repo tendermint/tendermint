@@ -79,8 +79,7 @@ func StartTendermint(
 	app abci.Application,
 	opts ...func(*Options),
 ) (service.Service, ServiceCloser, error) {
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(ctx)
 
 	nodeOpts := &Options{}
 	for _, opt := range opts {
