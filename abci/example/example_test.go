@@ -61,13 +61,13 @@ func testStream(ctx context.Context, t *testing.T, app types.Application) {
 	logger := log.TestingLogger()
 	// Start the listener
 	server := abciserver.NewSocketServer(logger.With("module", "abci-server"), socket, app)
-	t.Cleanup(func() { server.Wait() })
+	t.Cleanup(server.Wait)
 	err := server.Start(ctx)
 	require.NoError(t, err)
 
 	// Connect to the socket
 	client := abciclient.NewSocketClient(log.TestingLogger().With("module", "abci-client"), socket, false)
-	t.Cleanup(func() { client.Wait() })
+	t.Cleanup(client.Wait)
 
 	err = client.Start(ctx)
 	require.NoError(t, err)

@@ -235,9 +235,8 @@ func makeSocketClientServer(
 	name string,
 ) (abciclient.Client, service.Service, error) {
 
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithCancel(ctx)
-	t.Cleanup(func() { cancel() })
+	ctx, cancel := context.WithCancel(ctx)
+	t.Cleanup(cancel)
 
 	// Start the listener
 	socket := fmt.Sprintf("unix://%s.sock", name)
@@ -265,9 +264,8 @@ func makeGRPCClientServer(
 	app types.Application,
 	name string,
 ) (abciclient.Client, service.Service, error) {
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithCancel(ctx)
-	t.Cleanup(func() { cancel() })
+	ctx, cancel := context.WithCancel(ctx)
+	t.Cleanup(cancel)
 	// Start the listener
 	socket := fmt.Sprintf("unix://%s.sock", name)
 
