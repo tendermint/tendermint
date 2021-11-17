@@ -23,9 +23,9 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
-// Consensus captures the consensus rules for processing a block in the blockchain,
-// including all blockchain data structures and the rules of the application's
-// state transition machine.
+// Consensus captures the consensus rules for processing a block in the
+// blockchain, including all blockchain data structures and the rules of the
+// application's state transition machine.
 type Consensus struct {
 	Block uint64 `protobuf:"varint,1,opt,name=block,proto3" json:"block,omitempty"`
 	App   uint64 `protobuf:"varint,2,opt,name=app,proto3" json:"app,omitempty"`
@@ -265,10 +265,7 @@ func (m *Consensus) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthTypes
 			}
 			if (iNdEx + skippy) > l {

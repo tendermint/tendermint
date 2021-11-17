@@ -112,7 +112,8 @@ func (*Evidence) XXX_OneofWrappers() []interface{} {
 	}
 }
 
-// DuplicateVoteEvidence contains evidence of a validator signed two conflicting votes.
+// DuplicateVoteEvidence contains evidence of a validator signed two conflicting
+// votes.
 type DuplicateVoteEvidence struct {
 	VoteA            *Vote     `protobuf:"bytes,1,opt,name=vote_a,json=voteA,proto3" json:"vote_a,omitempty"`
 	VoteB            *Vote     `protobuf:"bytes,2,opt,name=vote_b,json=voteB,proto3" json:"vote_b,omitempty"`
@@ -189,7 +190,8 @@ func (m *DuplicateVoteEvidence) GetTimestamp() time.Time {
 	return time.Time{}
 }
 
-// LightClientAttackEvidence contains evidence of a set of validators attempting to mislead a light client.
+// LightClientAttackEvidence contains evidence of a set of validators attempting
+// to mislead a light client.
 type LightClientAttackEvidence struct {
 	ConflictingBlock    *LightBlock  `protobuf:"bytes,1,opt,name=conflicting_block,json=conflictingBlock,proto3" json:"conflicting_block,omitempty"`
 	CommonHeight        int64        `protobuf:"varint,2,opt,name=common_height,json=commonHeight,proto3" json:"common_height,omitempty"`
@@ -825,10 +827,7 @@ func (m *Evidence) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthEvidence
 			}
 			if (iNdEx + skippy) > l {
@@ -1021,10 +1020,7 @@ func (m *DuplicateVoteEvidence) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthEvidence
 			}
 			if (iNdEx + skippy) > l {
@@ -1215,10 +1211,7 @@ func (m *LightClientAttackEvidence) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthEvidence
 			}
 			if (iNdEx + skippy) > l {
@@ -1302,10 +1295,7 @@ func (m *EvidenceList) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthEvidence
 			}
 			if (iNdEx + skippy) > l {
