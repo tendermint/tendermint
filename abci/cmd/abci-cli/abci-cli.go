@@ -332,7 +332,7 @@ LOOP:
 		if err := muxOnCommands(cmd, cmdArgs); err != nil {
 			return err
 		}
-
+		fmt.Println()
 	}
 	return nil
 }
@@ -352,7 +352,6 @@ func cmdConsole(cmd *cobra.Command, args []string) error {
 		if err := muxOnCommands(cmd, pArgs); err != nil {
 			return err
 		}
-		fmt.Println()
 	}
 }
 
