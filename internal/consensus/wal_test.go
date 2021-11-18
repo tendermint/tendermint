@@ -113,9 +113,6 @@ func TestWALWrite(t *testing.T) {
 	err = wal.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		if err := wal.Stop(); err != nil {
-			t.Error(err)
-		}
 		// wait for the wal to finish shutting down so we
 		// can safely remove the directory
 		wal.Wait()

@@ -297,12 +297,9 @@ func setupSingle(ctx context.Context, t *testing.T) *singleTestReactor {
 	reactor := pex.NewReactor(log.TestingLogger(), peerManager, pexCh, peerUpdates)
 	require.NoError(t, reactor.Start(ctx))
 	t.Cleanup(func() {
-		err := reactor.Stop()
-		if err != nil {
-			t.Fatal(err)
-		}
 		pexCh.Close()
 		peerUpdates.Close()
+		reactor.Wait()
 	})
 
 	return &singleTestReactor{
