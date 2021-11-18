@@ -848,8 +848,11 @@ func (r *Reactor) processCh(ch *p2p.Channel, chName string) {
 		select {
 		case envelope := <-ch.In:
 			if err := r.handleMessage(ch.ID, envelope); err != nil {
-				r.Logger.Error(fmt.Sprintf("failed to process %s message", chName),
-					"ch_id", ch.ID, "envelope", envelope, "err", err)
+				r.Logger.Error("failed to process message",
+					"err", err,
+					"channel", chName,
+					"ch_id", ch.ID,
+					"envelope", envelope)
 				ch.Error <- p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
@@ -857,7 +860,7 @@ func (r *Reactor) processCh(ch *p2p.Channel, chName string) {
 			}
 
 		case <-r.closeCh:
-			r.Logger.Debug(fmt.Sprintf("stopped listening on %s channel; closing...", chName))
+			r.Logger.Debug("channel closed", "channel", chName)
 			return
 		}
 	}
