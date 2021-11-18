@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
@@ -410,9 +409,7 @@ func newTestServer(ctx context.Context, t testing.TB) *pubsub.Server {
 	})
 
 	require.NoError(t, s.Start(ctx))
-	t.Cleanup(func() {
-		assert.NoError(t, s.Stop())
-	})
+	t.Cleanup(func() { s.Wait() })
 	return s
 }
 

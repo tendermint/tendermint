@@ -658,10 +658,7 @@ func (n *nodeImpl) OnStop() {
 	n.Logger.Info("Stopping Node")
 
 	if n.eventBus != nil {
-		// first stop the non-reactor services
-		if err := n.eventBus.Stop(); err != nil {
-			n.Logger.Error("Error closing eventBus", "err", err)
-		}
+		n.eventBus.Wait()
 	}
 	if n.indexerService != nil {
 		n.indexerService.Wait()

@@ -2,6 +2,7 @@ package eventbus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -44,7 +45,9 @@ func (b *EventBus) OnStart(ctx context.Context) error {
 
 func (b *EventBus) OnStop() {
 	if err := b.pubsub.Stop(); err != nil {
-		b.pubsub.Logger.Error("error trying to stop eventBus", "error", err)
+		if !errors.Is(err, service.ErrAlreadyStopped) {
+			b.pubsub.Logger.Error("error trying to stop eventBus", "error", err)
+		}
 	}
 }
 

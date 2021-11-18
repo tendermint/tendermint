@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"syscall"
@@ -169,22 +170,30 @@ func (app *multiAppConn) killTMOnClientError() {
 func (app *multiAppConn) stopAllClients() {
 	if app.consensusConnClient != nil {
 		if err := app.consensusConnClient.Stop(); err != nil {
-			app.Logger.Error("error while stopping consensus client", "error", err)
+			if !errors.Is(err, service.ErrAlreadyStopped) {
+				app.Logger.Error("error while stopping consensus client", "error", err)
+			}
 		}
 	}
 	if app.mempoolConnClient != nil {
 		if err := app.mempoolConnClient.Stop(); err != nil {
-			app.Logger.Error("error while stopping mempool client", "error", err)
+			if !errors.Is(err, service.ErrAlreadyStopped) {
+				app.Logger.Error("error while stopping mempool client", "error", err)
+			}
 		}
 	}
 	if app.queryConnClient != nil {
 		if err := app.queryConnClient.Stop(); err != nil {
-			app.Logger.Error("error while stopping query client", "error", err)
+			if !errors.Is(err, service.ErrAlreadyStopped) {
+				app.Logger.Error("error while stopping query client", "error", err)
+			}
 		}
 	}
 	if app.snapshotConnClient != nil {
 		if err := app.snapshotConnClient.Stop(); err != nil {
-			app.Logger.Error("error while stopping snapshot client", "error", err)
+			if !errors.Is(err, service.ErrAlreadyStopped) {
+				app.Logger.Error("error while stopping snapshot client", "error", err)
+			}
 		}
 	}
 }

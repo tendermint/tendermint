@@ -457,11 +457,15 @@ func (cs *State) OnStop() {
 	close(cs.onStopCh)
 
 	if err := cs.evsw.Stop(); err != nil {
-		cs.Logger.Error("failed trying to stop eventSwitch", "error", err)
+		if !errors.Is(err, service.ErrAlreadyStopped) {
+			cs.Logger.Error("failed trying to stop eventSwitch", "error", err)
+		}
 	}
 
 	if err := cs.timeoutTicker.Stop(); err != nil {
-		cs.Logger.Error("failed trying to stop timeoutTicket", "error", err)
+		if !errors.Is(err, service.ErrAlreadyStopped) {
+			cs.Logger.Error("failed trying to stop timeoutTicket", "error", err)
+		}
 	}
 	// WAL is stopped in receiveRoutine.
 }
@@ -762,7 +766,9 @@ func (cs *State) receiveRoutine(maxSteps int) {
 
 		// close wal now that we're done writing to it
 		if err := cs.wal.Stop(); err != nil {
-			cs.Logger.Error("failed trying to stop WAL", "error", err)
+			if !errors.Is(err, service.ErrAlreadyStopped) {
+				cs.Logger.Error("failed trying to stop WAL", "error", err)
+			}
 		}
 
 		cs.wal.Wait()

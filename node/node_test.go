@@ -7,7 +7,6 @@ import (
 	"math"
 	"net"
 	"os"
-	"syscall"
 	"testing"
 	"time"
 
@@ -43,8 +42,8 @@ func TestNodeStartStop(t *testing.T) {
 
 	defer os.RemoveAll(cfg.RootDir)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, bcancel := context.WithCancel(context.Background())
+	defer bcancel()
 
 	// create & start node
 	ns, err := newDefaultNode(ctx, cfg, log.TestingLogger())
@@ -53,7 +52,7 @@ func TestNodeStartStop(t *testing.T) {
 
 	t.Cleanup(func() {
 		if ns.IsRunning() {
-			cancel()
+			bcancel()
 			ns.Wait()
 		}
 	})
@@ -75,20 +74,18 @@ func TestNodeStartStop(t *testing.T) {
 
 	// stop the node
 	go func() {
-		err = n.Stop()
-		require.NoError(t, err)
+		bcancel()
+		n.Wait()
 	}()
 
 	select {
 	case <-n.Quit():
-	case <-time.After(5 * time.Second):
-		pid := os.Getpid()
-		p, err := os.FindProcess(pid)
-		if err != nil {
-			panic(err)
+		return
+	case <-time.After(10 * time.Second):
+		if !n.IsRunning() {
+			return
 		}
-		err = p.Signal(syscall.SIGABRT)
-		fmt.Println(err)
+
 		t.Fatal("timed out waiting for shutdown")
 	}
 }
@@ -549,6 +546,7 @@ func TestNodeNewSeedNode(t *testing.T) {
 		defaultGenesisDocProviderFunc(cfg),
 		log.TestingLogger(),
 	)
+	t.Cleanup(ns.Wait)
 
 	require.NoError(t, err)
 	n, ok := ns.(*nodeImpl)
@@ -558,8 +556,10 @@ func TestNodeNewSeedNode(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, n.pexReactor.IsRunning())
 
-	require.NoError(t, n.Stop())
+	cancel()
+	n.Wait()
 
+	assert.False(t, n.pexReactor.IsRunning())
 }
 
 func TestNodeSetEventSink(t *testing.T) {
@@ -575,7 +575,7 @@ func TestNodeSetEventSink(t *testing.T) {
 	setupTest := func(t *testing.T, conf *config.Config) []indexer.EventSink {
 		eventBus, err := createAndStartEventBus(ctx, logger)
 		require.NoError(t, err)
-		t.Cleanup(func() { require.NoError(t, eventBus.Stop()) })
+		t.Cleanup(eventBus.Wait)
 		genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
 		require.NoError(t, err)
 
@@ -583,7 +583,7 @@ func TestNodeSetEventSink(t *testing.T) {
 			config.DefaultDBProvider, eventBus, logger, genDoc.ChainID,
 			indexer.NopMetrics())
 		require.NoError(t, err)
-		t.Cleanup(func() { require.NoError(t, indexService.Stop()) })
+		t.Cleanup(indexService.Wait)
 		return eventSinks
 	}
 	cleanup := func(ns service.Service) func() {
@@ -598,7 +598,7 @@ func TestNodeSetEventSink(t *testing.T) {
 			if !n.IsRunning() {
 				return
 			}
-			assert.NoError(t, n.Stop())
+			cancel()
 			n.Wait()
 		}
 	}
