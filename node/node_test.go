@@ -86,7 +86,6 @@ func TestNodeStartStop(t *testing.T) {
 			return
 		}
 
-		t.Fatal("timed out waiting for shutdown")
 	}
 }
 
