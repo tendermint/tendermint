@@ -181,7 +181,7 @@ func setup(
 	require.True(t, rts.reactor.IsRunning())
 
 	t.Cleanup(func() {
-		require.NoError(t, rts.reactor.Stop())
+		rts.reactor.Wait()
 		require.False(t, rts.reactor.IsRunning())
 	})
 
@@ -204,7 +204,7 @@ func TestReactor_Sync(t *testing.T) {
 		Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 
 	// app query returns valid state app hash
-	rts.connQuery.On("InfoSync", ctx, proxy.RequestInfo).Return(&abci.ResponseInfo{
+	rts.connQuery.On("InfoSync", mock.Anything, proxy.RequestInfo).Return(&abci.ResponseInfo{
 		AppVersion:       9,
 		LastBlockHeight:  snapshotHeight,
 		LastBlockAppHash: chain[snapshotHeight+1].AppHash,
@@ -239,7 +239,7 @@ func TestReactor_Sync(t *testing.T) {
 	rts.reactor.cfg.DiscoveryTime = 1 * time.Second
 
 	// Run state sync
-	_, err := rts.reactor.Sync(context.Background())
+	_, err := rts.reactor.Sync(ctx)
 	require.NoError(t, err)
 }
 
@@ -301,7 +301,7 @@ func TestReactor_ChunkRequest(t *testing.T) {
 
 			// mock ABCI connection to return local snapshots
 			conn := &proxymocks.AppConnSnapshot{}
-			conn.On("LoadSnapshotChunkSync", context.Background(), abci.RequestLoadSnapshotChunk{
+			conn.On("LoadSnapshotChunkSync", ctx, abci.RequestLoadSnapshotChunk{
 				Height: tc.request.Height,
 				Format: tc.request.Format,
 				Chunk:  tc.request.Index,
@@ -388,7 +388,7 @@ func TestReactor_SnapshotsRequest(t *testing.T) {
 
 			// mock ABCI connection to return local snapshots
 			conn := &proxymocks.AppConnSnapshot{}
-			conn.On("ListSnapshotsSync", context.Background(), abci.RequestListSnapshots{}).Return(&abci.ResponseListSnapshots{
+			conn.On("ListSnapshotsSync", ctx, abci.RequestListSnapshots{}).Return(&abci.ResponseListSnapshots{
 				Snapshots: tc.snapshots,
 			}, nil)
 
@@ -506,7 +506,7 @@ func TestReactor_BlockProviders(t *testing.T) {
 		go func(t *testing.T, p provider.Provider) {
 			defer wg.Done()
 			for height := 2; height < 10; height++ {
-				lb, err := p.LightBlock(context.Background(), int64(height))
+				lb, err := p.LightBlock(ctx, int64(height))
 				require.NoError(t, err)
 				require.NotNil(t, lb)
 				require.Equal(t, height, int(lb.Height))
@@ -644,7 +644,7 @@ func TestReactor_Backfill(t *testing.T) {
 				rts.blockInCh, closeCh, failureRate)
 
 			err := rts.reactor.backfill(
-				context.Background(),
+				ctx,
 				factory.DefaultTestChainID,
 				startHeight,
 				stopHeight,
