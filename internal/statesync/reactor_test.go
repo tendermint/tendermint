@@ -217,7 +217,7 @@ func TestReactor_Sync(t *testing.T) {
 
 	closeCh := make(chan struct{})
 	defer close(closeCh)
-	go handleLightBlockRequests(t, chain, rts.blockOutCh,
+	go handleLightBlockRequests(ctx, t, chain, rts.blockOutCh,
 		rts.blockInCh, closeCh, 0)
 	go graduallyAddPeers(rts.peerUpdateCh, closeCh, 1*time.Second)
 	go handleSnapshotRequests(t, rts.snapshotOutCh, rts.snapshotInCh, closeCh, []snapshot{
@@ -230,7 +230,7 @@ func TestReactor_Sync(t *testing.T) {
 
 	go handleChunkRequests(t, rts.chunkOutCh, rts.chunkInCh, closeCh, []byte("abc"))
 
-	go handleConsensusParamsRequest(t, rts.paramsOutCh, rts.paramsInCh, closeCh)
+	go handleConsensusParamsRequest(ctx, t, rts.paramsOutCh, rts.paramsInCh, closeCh)
 
 	// update the config to use the p2p provider
 	rts.reactor.cfg.UseP2P = true
@@ -487,7 +487,7 @@ func TestReactor_BlockProviders(t *testing.T) {
 	defer close(closeCh)
 
 	chain := buildLightBlockChain(t, 1, 10, time.Now())
-	go handleLightBlockRequests(t, chain, rts.blockOutCh, rts.blockInCh, closeCh, 0)
+	go handleLightBlockRequests(ctx, t, chain, rts.blockOutCh, rts.blockInCh, closeCh, 0)
 
 	peers := rts.reactor.peers.All()
 	require.Len(t, peers, 2)
@@ -546,8 +546,8 @@ func TestReactor_StateProviderP2P(t *testing.T) {
 	defer close(closeCh)
 
 	chain := buildLightBlockChain(t, 1, 10, time.Now())
-	go handleLightBlockRequests(t, chain, rts.blockOutCh, rts.blockInCh, closeCh, 0)
-	go handleConsensusParamsRequest(t, rts.paramsOutCh, rts.paramsInCh, closeCh)
+	go handleLightBlockRequests(ctx, t, chain, rts.blockOutCh, rts.blockInCh, closeCh, 0)
+	go handleConsensusParamsRequest(ctx, t, rts.paramsOutCh, rts.paramsInCh, closeCh)
 
 	rts.reactor.cfg.UseP2P = true
 	rts.reactor.cfg.TrustHeight = 1
@@ -635,7 +635,7 @@ func TestReactor_Backfill(t *testing.T) {
 
 			closeCh := make(chan struct{})
 			defer close(closeCh)
-			go handleLightBlockRequests(t, chain, rts.blockOutCh,
+			go handleLightBlockRequests(ctx, t, chain, rts.blockOutCh,
 				rts.blockInCh, closeCh, failureRate)
 
 			err := rts.reactor.backfill(
