@@ -121,9 +121,7 @@ func TestRouter_Channel_Basic(t *testing.T) {
 	defer cancel()
 
 	require.NoError(t, router.Start(ctx))
-	t.Cleanup(func() {
-		require.NoError(t, router.Stop())
-	})
+	t.Cleanup(router.Wait)
 
 	// Opening a channel should work.
 	channel, err := router.OpenChannel(chDesc)

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"runtime/debug"
 	"sort"
 	"time"
 
@@ -777,16 +778,16 @@ func (r *Reactor) handleParamsMessage(envelope p2p.Envelope) error {
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
 func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
-	// defer func() {
-	// 	if e := recover(); e != nil {
-	// 		err = fmt.Errorf("panic in processing message: %v", e)
-	// 		r.Logger.Error(
-	// 			"recovering from processing message panic",
-	// 			"err", err,
-	// 			"stack", string(debug.Stack()),
-	// 		)
-	// 	}
-	// }()
+	defer func() {
+		if e := recover(); e != nil {
+			err = fmt.Errorf("panic in processing message: %v", e)
+			r.Logger.Error(
+				"recovering from processing message panic",
+				"err", err,
+				"stack", string(debug.Stack()),
+			)
+		}
+	}()
 
 	r.Logger.Debug("received message", "message", reflect.TypeOf(envelope.Message), "peer", envelope.From)
 
