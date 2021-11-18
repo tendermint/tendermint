@@ -119,9 +119,9 @@ func NewBaseService(logger log.Logger, name string, impl Implementation) *BaseSe
 	}
 }
 
-// Start implements Service by calling OnStart (if defined). An error will be
-// returned if the service is already running or stopped. Not to start the
-// stopped service, you need to call Reset.
+// Start starts the Service and calls its OnStart method. An error will be
+// returned if the service is already running or stopped.  To restart a
+// stopped service, call Reset.
 func (bs *BaseService) Start(ctx context.Context) error {
 	if atomic.CompareAndSwapUint32(&bs.started, 0, 1) {
 		if atomic.LoadUint32(&bs.stopped) == 1 {
