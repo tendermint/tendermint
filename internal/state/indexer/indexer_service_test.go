@@ -56,11 +56,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	eventBus := eventbus.NewDefault(logger)
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := eventBus.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+	t.Cleanup(eventBus.Wait)
 
 	assert.False(t, indexer.KVSinkEnabled([]indexer.EventSink{}))
 	assert.False(t, indexer.IndexingEnabled([]indexer.EventSink{}))
@@ -75,13 +71,8 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	assert.True(t, indexer.IndexingEnabled(eventSinks))
 
 	service := NewIndexerService(eventSinks, eventBus)
-	err = service.Start(ctx)
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := service.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+	require.NoError(t, service.Start(ctx))
+	t.Cleanup(service.Wait)
 
 	// publish block with txs
 	err = eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
