@@ -115,11 +115,6 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 		signerServer := NewSignerServer(dialerEndpoint, chainID, mockPV)
 
 		startListenerEndpointAsync(ctx, t, listenerEndpoint, endpointIsOpenCh)
-		t.Cleanup(func() {
-			if err := listenerEndpoint.Stop(); err != nil {
-				t.Error(err)
-			}
-		})
 
 		require.NoError(t, signerServer.Start(ctx))
 		assert.True(t, signerServer.IsRunning())
@@ -137,11 +132,6 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 		// let some pings pass
 		require.NoError(t, signerServer2.Start(ctx))
 		assert.True(t, signerServer2.IsRunning())
-		t.Cleanup(func() {
-			if err := signerServer2.Stop(); err != nil {
-				t.Error(err)
-			}
-		})
 
 		// give the client some time to re-establish the conn to the remote signer
 		// should see sth like this in the logs:
@@ -198,6 +188,7 @@ func startListenerEndpointAsync(
 }
 
 func getMockEndpoints(
+	ctx context.Context,
 	t *testing.T,
 	addr string,
 	socketDialer SocketDialer,
@@ -214,9 +205,6 @@ func getMockEndpoints(
 
 		listenerEndpoint = newSignerListenerEndpoint(logger, addr, testTimeoutReadWrite)
 	)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	SignerDialerEndpointTimeoutReadWrite(testTimeoutReadWrite)(dialerEndpoint)
 	SignerDialerEndpointConnRetries(1e6)(dialerEndpoint)

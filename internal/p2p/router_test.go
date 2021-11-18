@@ -372,13 +372,13 @@ func TestRouter_AcceptPeers(t *testing.T) {
 		},
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	bctx, bcancel := context.WithCancel(context.Background())
+	defer bcancel()
 
 	for name, tc := range testcases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			ctx, cancel = context.WithCancel(ctx)
+			ctx, cancel := context.WithCancel(bctx)
 			defer cancel()
 
 			t.Cleanup(leaktest.Check(t))
@@ -609,14 +609,14 @@ func TestRouter_DialPeers(t *testing.T) {
 		},
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	bctx, bcancel := context.WithCancel(context.Background())
+	defer bcancel()
 
 	for name, tc := range testcases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Cleanup(leaktest.Check(t))
-			ctx, cancel = context.WithCancel(ctx)
+			ctx, cancel := context.WithCancel(bctx)
 			defer cancel()
 
 			address := p2p.NodeAddress{Protocol: "mock", NodeID: tc.dialID}
