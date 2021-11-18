@@ -724,7 +724,7 @@ func testHandshakeReplay(
 	var cancel context.CancelFunc
 
 	ctx, cancel = context.WithCancel(ctx)
-	t.Cleanup(func() { cancel() })
+	t.Cleanup(cancel)
 
 	cfg := sim.Config
 
