@@ -1,6 +1,7 @@
 package p2ptest
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -95,11 +96,14 @@ func RequireSendReceive(
 }
 
 // RequireNoUpdates requires that a PeerUpdates subscription is empty.
-func RequireNoUpdates(t *testing.T, peerUpdates *p2p.PeerUpdates) {
+func RequireNoUpdates(ctx context.Context, t *testing.T, peerUpdates *p2p.PeerUpdates) {
 	t.Helper()
 	select {
 	case update := <-peerUpdates.Updates():
-		require.Fail(t, "unexpected peer updates", "got %v", update)
+		if ctx.Err() == nil {
+			require.Fail(t, "unexpected peer updates", "got %v", update)
+		}
+	case <-ctx.Done():
 	default:
 	}
 }

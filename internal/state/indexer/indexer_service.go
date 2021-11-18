@@ -116,7 +116,7 @@ func (is *Service) publish(msg pubsub.Message) error {
 // indexer if the underlying event sinks support indexing.
 //
 // TODO(creachadair): Can we get rid of the "enabled" check?
-func (is *Service) OnStart() error {
+func (is *Service) OnStart(ctx context.Context) error {
 	// If the event sinks support indexing, register an observer to capture
 	// block header data for the indexer.
 	if IndexingEnabled(is.eventSinks) {

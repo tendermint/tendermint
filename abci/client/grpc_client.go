@@ -63,7 +63,7 @@ func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
 	return tmnet.Connect(addr)
 }
 
-func (cli *grpcClient) OnStart() error {
+func (cli *grpcClient) OnStart(ctx context.Context) error {
 	// This processes asynchronous request/response messages and dispatches
 	// them to callbacks.
 	go func() {

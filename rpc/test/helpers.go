@@ -73,10 +73,13 @@ func CreateConfig(testName string) (*config.Config, error) {
 
 type ServiceCloser func(context.Context) error
 
-func StartTendermint(ctx context.Context,
+func StartTendermint(
+	ctx context.Context,
 	conf *config.Config,
 	app abci.Application,
-	opts ...func(*Options)) (service.Service, ServiceCloser, error) {
+	opts ...func(*Options),
+) (service.Service, ServiceCloser, error) {
+	ctx, cancel := context.WithCancel(ctx)
 
 	nodeOpts := &Options{}
 	for _, opt := range opts {
@@ -89,14 +92,14 @@ func StartTendermint(ctx context.Context,
 		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 	}
 	papp := abciclient.NewLocalCreator(app)
-	tmNode, err := node.New(conf, logger, papp, nil)
+	tmNode, err := node.New(ctx, conf, logger, papp, nil)
 	if err != nil {
-		return nil, func(_ context.Context) error { return nil }, err
+		return nil, func(_ context.Context) error { cancel(); return nil }, err
 	}
 
-	err = tmNode.Start()
+	err = tmNode.Start(ctx)
 	if err != nil {
-		return nil, func(_ context.Context) error { return nil }, err
+		return nil, func(_ context.Context) error { cancel(); return nil }, err
 	}
 
 	waitForRPC(ctx, conf)
@@ -106,9 +109,7 @@ func StartTendermint(ctx context.Context,
 	}
 
 	return tmNode, func(ctx context.Context) error {
-		if err := tmNode.Stop(); err != nil {
-			logger.Error("Error when trying to stop node", "err", err)
-		}
+		cancel()
 		tmNode.Wait()
 		os.RemoveAll(conf.RootDir)
 		return nil

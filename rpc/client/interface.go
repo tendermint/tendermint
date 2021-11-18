@@ -35,7 +35,7 @@ type Client interface {
 	// These methods define the operational structure of the client.
 
 	// Start the client. Start must report an error if the client is running.
-	Start() error
+	Start(context.Context) error
 
 	// Stop the client. Stop must report an error if the client is not running.
 	Stop() error

@@ -1,6 +1,7 @@
 package blocksync
 
 import (
+	"context"
 	"fmt"
 	mrand "math/rand"
 	"testing"
@@ -78,22 +79,20 @@ func makePeers(numPeers int, minHeight, maxHeight int64) testPeers {
 }
 
 func TestBlockPoolBasic(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	start := int64(42)
 	peers := makePeers(10, start+1, 1000)
 	errorsCh := make(chan peerError, 1000)
 	requestsCh := make(chan BlockRequest, 1000)
 	pool := NewBlockPool(log.TestingLogger(), start, requestsCh, errorsCh)
 
-	err := pool.Start()
-	if err != nil {
+	if err := pool.Start(ctx); err != nil {
 		t.Error(err)
 	}
 
-	t.Cleanup(func() {
-		if err := pool.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+	t.Cleanup(func() { cancel(); pool.Wait() })
 
 	peers.start()
 	defer peers.stop()
@@ -137,20 +136,19 @@ func TestBlockPoolBasic(t *testing.T) {
 }
 
 func TestBlockPoolTimeout(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	start := int64(42)
 	peers := makePeers(10, start+1, 1000)
 	errorsCh := make(chan peerError, 1000)
 	requestsCh := make(chan BlockRequest, 1000)
 	pool := NewBlockPool(log.TestingLogger(), start, requestsCh, errorsCh)
-	err := pool.Start()
+	err := pool.Start(ctx)
 	if err != nil {
 		t.Error(err)
 	}
-	t.Cleanup(func() {
-		if err := pool.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+	t.Cleanup(func() { cancel(); pool.Wait() })
 
 	for _, peer := range peers {
 		t.Logf("Peer %v", peer.id)
@@ -199,6 +197,9 @@ func TestBlockPoolTimeout(t *testing.T) {
 }
 
 func TestBlockPoolRemovePeer(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	peers := make(testPeers, 10)
 	for i := 0; i < 10; i++ {
 		peerID := types.NodeID(fmt.Sprintf("%d", i+1))
@@ -209,13 +210,9 @@ func TestBlockPoolRemovePeer(t *testing.T) {
 	errorsCh := make(chan peerError)
 
 	pool := NewBlockPool(log.TestingLogger(), 1, requestsCh, errorsCh)
-	err := pool.Start()
+	err := pool.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := pool.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+	t.Cleanup(func() { cancel(); pool.Wait() })
 
 	// add peers
 	for peerID, peer := range peers {

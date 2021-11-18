@@ -1,8 +1,6 @@
 package p2p_test
 
 import (
-	"context"
-
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/internal/p2p"
@@ -13,7 +11,6 @@ import (
 // Common setup for P2P tests.
 
 var (
-	ctx    = context.Background()
 	chID   = p2p.ChannelID(1)
 	chDesc = &p2p.ChannelDescriptor{
 		ID:                  chID,

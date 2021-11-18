@@ -210,15 +210,11 @@ func NewReactor(
 // handle individual envelopes as to not have to deal with bounding workers or pools.
 // The caller must be sure to execute OnStop to ensure the outbound p2p Channels are
 // closed. No error is returned.
-func (r *Reactor) OnStart() error {
-	go r.processSnapshotCh()
-
-	go r.processChunkCh()
-
-	go r.processBlockCh()
-
-	go r.processParamsCh()
-
+func (r *Reactor) OnStart(ctx context.Context) error {
+	go r.processCh(r.snapshotCh, "snapshot")
+	go r.processCh(r.chunkCh, "chunk")
+	go r.processCh(r.blockCh, "light block")
+	go r.processCh(r.paramsCh, "consensus params")
 	go r.processPeerUpdates()
 
 	return nil
@@ -607,7 +603,7 @@ func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 			"chunk", msg.Index,
 			"peer", envelope.From,
 		)
-		resp, err := r.conn.LoadSnapshotChunkSync(context.Background(), abci.RequestLoadSnapshotChunk{
+		resp, err := r.conn.LoadSnapshotChunkSync(context.TODO(), abci.RequestLoadSnapshotChunk{
 			Height: msg.Height,
 			Format: msg.Format,
 			Chunk:  msg.Index,
@@ -815,28 +811,6 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	return err
 }
 
-// processSnapshotCh initiates a blocking process where we listen for and handle
-// envelopes on the SnapshotChannel.
-func (r *Reactor) processSnapshotCh() {
-	r.processCh(r.snapshotCh, "snapshot")
-}
-
-// processChunkCh initiates a blocking process where we listen for and handle
-// envelopes on the ChunkChannel.
-func (r *Reactor) processChunkCh() {
-	r.processCh(r.chunkCh, "chunk")
-}
-
-// processBlockCh initiates a blocking process where we listen for and handle
-// envelopes on the LightBlockChannel.
-func (r *Reactor) processBlockCh() {
-	r.processCh(r.blockCh, "light block")
-}
-
-func (r *Reactor) processParamsCh() {
-	r.processCh(r.paramsCh, "consensus params")
-}
-
 // processCh routes state sync messages to their respective handlers. Any error
 // encountered during message execution will result in a PeerError being sent on
 // the respective channel. When the reactor is stopped, we will catch the signal
@@ -848,8 +822,11 @@ func (r *Reactor) processCh(ch *p2p.Channel, chName string) {
 		select {
 		case envelope := <-ch.In:
 			if err := r.handleMessage(ch.ID, envelope); err != nil {
-				r.Logger.Error(fmt.Sprintf("failed to process %s message", chName),
-					"ch_id", ch.ID, "envelope", envelope, "err", err)
+				r.Logger.Error("failed to process message",
+					"err", err,
+					"channel", chName,
+					"ch_id", ch.ID,
+					"envelope", envelope)
 				ch.Error <- p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
@@ -857,7 +834,7 @@ func (r *Reactor) processCh(ch *p2p.Channel, chName string) {
 			}
 
 		case <-r.closeCh:
-			r.Logger.Debug(fmt.Sprintf("stopped listening on %s channel; closing...", chName))
+			r.Logger.Debug("channel closed", "channel", chName)
 			return
 		}
 	}
@@ -923,7 +900,7 @@ func (r *Reactor) processPeerUpdates() {
 
 // recentSnapshots fetches the n most recent snapshots from the app
 func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
-	resp, err := r.conn.ListSnapshotsSync(context.Background(), abci.RequestListSnapshots{})
+	resp, err := r.conn.ListSnapshotsSync(context.TODO(), abci.RequestListSnapshots{})
 	if err != nil {
 		return nil, err
 	}

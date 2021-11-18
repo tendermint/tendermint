@@ -329,11 +329,11 @@ func (cs *State) LoadCommit(height int64) *types.Commit {
 
 // OnStart loads the latest state via the WAL, and starts the timeout and
 // receive routines.
-func (cs *State) OnStart() error {
+func (cs *State) OnStart(ctx context.Context) error {
 	// We may set the WAL in testing before calling Start, so only OpenWAL if its
 	// still the nilWAL.
 	if _, ok := cs.wal.(nilWAL); ok {
-		if err := cs.loadWalFile(); err != nil {
+		if err := cs.loadWalFile(ctx); err != nil {
 			return err
 		}
 	}
@@ -384,13 +384,13 @@ func (cs *State) OnStart() error {
 			cs.Logger.Info("successful WAL repair")
 
 			// reload WAL file
-			if err := cs.loadWalFile(); err != nil {
+			if err := cs.loadWalFile(ctx); err != nil {
 				return err
 			}
 		}
 	}
 
-	if err := cs.evsw.Start(); err != nil {
+	if err := cs.evsw.Start(ctx); err != nil {
 		return err
 	}
 
@@ -399,7 +399,7 @@ func (cs *State) OnStart() error {
 	// NOTE: we will get a build up of garbage go routines
 	// firing on the tockChan until the receiveRoutine is started
 	// to deal with them (by that point, at most one will be valid)
-	if err := cs.timeoutTicker.Start(); err != nil {
+	if err := cs.timeoutTicker.Start(ctx); err != nil {
 		return err
 	}
 
@@ -420,8 +420,8 @@ func (cs *State) OnStart() error {
 
 // timeoutRoutine: receive requests for timeouts on tickChan and fire timeouts on tockChan
 // receiveRoutine: serializes processing of proposoals, block parts, votes; coordinates state transitions
-func (cs *State) startRoutines(maxSteps int) {
-	err := cs.timeoutTicker.Start()
+func (cs *State) startRoutines(ctx context.Context, maxSteps int) {
+	err := cs.timeoutTicker.Start(ctx)
 	if err != nil {
 		cs.Logger.Error("failed to start timeout ticker", "err", err)
 		return
@@ -431,8 +431,8 @@ func (cs *State) startRoutines(maxSteps int) {
 }
 
 // loadWalFile loads WAL data from file. It overwrites cs.wal.
-func (cs *State) loadWalFile() error {
-	wal, err := cs.OpenWAL(cs.config.WalFile())
+func (cs *State) loadWalFile(ctx context.Context) error {
+	wal, err := cs.OpenWAL(ctx, cs.config.WalFile())
 	if err != nil {
 		cs.Logger.Error("failed to load state WAL", "err", err)
 		return err
@@ -457,11 +457,15 @@ func (cs *State) OnStop() {
 	close(cs.onStopCh)
 
 	if err := cs.evsw.Stop(); err != nil {
-		cs.Logger.Error("failed trying to stop eventSwitch", "error", err)
+		if !errors.Is(err, service.ErrAlreadyStopped) {
+			cs.Logger.Error("failed trying to stop eventSwitch", "error", err)
+		}
 	}
 
 	if err := cs.timeoutTicker.Stop(); err != nil {
-		cs.Logger.Error("failed trying to stop timeoutTicket", "error", err)
+		if !errors.Is(err, service.ErrAlreadyStopped) {
+			cs.Logger.Error("failed trying to stop timeoutTicket", "error", err)
+		}
 	}
 	// WAL is stopped in receiveRoutine.
 }
@@ -475,14 +479,14 @@ func (cs *State) Wait() {
 
 // OpenWAL opens a file to log all consensus messages and timeouts for
 // deterministic accountability.
-func (cs *State) OpenWAL(walFile string) (WAL, error) {
+func (cs *State) OpenWAL(ctx context.Context, walFile string) (WAL, error) {
 	wal, err := NewWAL(cs.Logger.With("wal", walFile), walFile)
 	if err != nil {
 		cs.Logger.Error("failed to open WAL", "file", walFile, "err", err)
 		return nil, err
 	}
 
-	if err := wal.Start(); err != nil {
+	if err := wal.Start(ctx); err != nil {
 		cs.Logger.Error("failed to start WAL", "err", err)
 		return nil, err
 	}
@@ -762,7 +766,9 @@ func (cs *State) receiveRoutine(maxSteps int) {
 
 		// close wal now that we're done writing to it
 		if err := cs.wal.Stop(); err != nil {
-			cs.Logger.Error("failed trying to stop WAL", "error", err)
+			if !errors.Is(err, service.ErrAlreadyStopped) {
+				cs.Logger.Error("failed trying to stop WAL", "error", err)
+			}
 		}
 
 		cs.wal.Wait()

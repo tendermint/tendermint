@@ -44,10 +44,13 @@ func echoReactor(channel *p2p.Channel) {
 }
 
 func TestRouter_Network(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	t.Cleanup(leaktest.Check(t))
 
 	// Create a test network and open a channel where all peers run echoReactor.
-	network := p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: 8})
+	network := p2ptest.MakeNetwork(ctx, t, p2ptest.NetworkOptions{NumNodes: 8})
 	local := network.RandomNode()
 	peers := network.Peers(local.NodeID)
 	channels := network.MakeChannels(t, chDesc)
@@ -114,10 +117,11 @@ func TestRouter_Channel_Basic(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	require.NoError(t, router.Start())
-	t.Cleanup(func() {
-		require.NoError(t, router.Stop())
-	})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	require.NoError(t, router.Start(ctx))
+	t.Cleanup(router.Wait)
 
 	// Opening a channel should work.
 	channel, err := router.OpenChannel(chDesc)
@@ -158,10 +162,13 @@ func TestRouter_Channel_Basic(t *testing.T) {
 
 // Channel tests are hairy to mock, so we use an in-memory network instead.
 func TestRouter_Channel_SendReceive(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	t.Cleanup(leaktest.Check(t))
 
 	// Create a test network and open a channel on all nodes.
-	network := p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: 3})
+	network := p2ptest.MakeNetwork(ctx, t, p2ptest.NetworkOptions{NumNodes: 3})
 
 	ids := network.NodeIDs()
 	aID, bID, cID := ids[0], ids[1], ids[2]
@@ -219,8 +226,11 @@ func TestRouter_Channel_SendReceive(t *testing.T) {
 func TestRouter_Channel_Broadcast(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Create a test network and open a channel on all nodes.
-	network := p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: 4})
+	network := p2ptest.MakeNetwork(ctx, t, p2ptest.NetworkOptions{NumNodes: 4})
 
 	ids := network.NodeIDs()
 	aID, bID, cID, dID := ids[0], ids[1], ids[2], ids[3]
@@ -247,8 +257,11 @@ func TestRouter_Channel_Broadcast(t *testing.T) {
 func TestRouter_Channel_Wrapper(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Create a test network and open a channel on all nodes.
-	network := p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: 2})
+	network := p2ptest.MakeNetwork(ctx, t, p2ptest.NetworkOptions{NumNodes: 2})
 
 	ids := network.NodeIDs()
 	aID, bID := ids[0], ids[1]
@@ -314,8 +327,11 @@ func (w *wrapperMessage) Unwrap() (proto.Message, error) {
 func TestRouter_Channel_Error(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Create a test network and open a channel on all nodes.
-	network := p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: 3})
+	network := p2ptest.MakeNetwork(ctx, t, p2ptest.NetworkOptions{NumNodes: 3})
 	network.Start(t)
 
 	ids := network.NodeIDs()
@@ -324,7 +340,7 @@ func TestRouter_Channel_Error(t *testing.T) {
 	a := channels[aID]
 
 	// Erroring b should cause it to be disconnected. It will reconnect shortly after.
-	sub := network.Nodes[aID].MakePeerUpdates(t)
+	sub := network.Nodes[aID].MakePeerUpdates(ctx, t)
 	p2ptest.RequireError(t, a, p2p.PeerError{NodeID: bID, Err: errors.New("boom")})
 	p2ptest.RequireUpdates(t, sub, []p2p.PeerUpdate{
 		{NodeID: bID, Status: p2p.PeerStatusDown},
@@ -353,9 +369,16 @@ func TestRouter_AcceptPeers(t *testing.T) {
 			false,
 		},
 	}
+
+	bctx, bcancel := context.WithCancel(context.Background())
+	defer bcancel()
+
 	for name, tc := range testcases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(bctx)
+			defer cancel()
+
 			t.Cleanup(leaktest.Check(t))
 
 			// Set up a mock transport that handshakes.
@@ -398,7 +421,7 @@ func TestRouter_AcceptPeers(t *testing.T) {
 				p2p.RouterOptions{},
 			)
 			require.NoError(t, err)
-			require.NoError(t, router.Start())
+			require.NoError(t, router.Start(ctx))
 
 			if tc.ok {
 				p2ptest.RequireUpdate(t, sub, p2p.PeerUpdate{
@@ -427,6 +450,9 @@ func TestRouter_AcceptPeers(t *testing.T) {
 func TestRouter_AcceptPeers_Error(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Set up a mock transport that returns an error, which should prevent
 	// the router from calling Accept again.
 	mockTransport := &mocks.Transport{}
@@ -452,7 +478,7 @@ func TestRouter_AcceptPeers_Error(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	require.NoError(t, router.Start())
+	require.NoError(t, router.Start(ctx))
 	time.Sleep(time.Second)
 	require.NoError(t, router.Stop())
 
@@ -487,7 +513,10 @@ func TestRouter_AcceptPeers_ErrorEOF(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	require.NoError(t, router.Start())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	require.NoError(t, router.Start(ctx))
 	time.Sleep(time.Second)
 	require.NoError(t, router.Stop())
 
@@ -496,6 +525,9 @@ func TestRouter_AcceptPeers_ErrorEOF(t *testing.T) {
 
 func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// Set up a mock transport that returns a connection that blocks during the
 	// handshake. It should be able to accept several of these in parallel, i.e.
@@ -535,7 +567,7 @@ func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 		p2p.RouterOptions{},
 	)
 	require.NoError(t, err)
-	require.NoError(t, router.Start())
+	require.NoError(t, router.Start(ctx))
 
 	require.Eventually(t, func() bool {
 		return len(acceptCh) == 3
@@ -574,10 +606,16 @@ func TestRouter_DialPeers(t *testing.T) {
 			false,
 		},
 	}
+
+	bctx, bcancel := context.WithCancel(context.Background())
+	defer bcancel()
+
 	for name, tc := range testcases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Cleanup(leaktest.Check(t))
+			ctx, cancel := context.WithCancel(bctx)
+			defer cancel()
 
 			address := p2p.NodeAddress{Protocol: "mock", NodeID: tc.dialID}
 			endpoint := p2p.Endpoint{Protocol: "mock", Path: string(tc.dialID)}
@@ -635,7 +673,7 @@ func TestRouter_DialPeers(t *testing.T) {
 				p2p.RouterOptions{},
 			)
 			require.NoError(t, err)
-			require.NoError(t, router.Start())
+			require.NoError(t, router.Start(ctx))
 
 			if tc.ok {
 				p2ptest.RequireUpdate(t, sub, p2p.PeerUpdate{
@@ -663,6 +701,9 @@ func TestRouter_DialPeers(t *testing.T) {
 
 func TestRouter_DialPeers_Parallel(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	a := p2p.NodeAddress{Protocol: "mock", NodeID: types.NodeID(strings.Repeat("a", 40))}
 	b := p2p.NodeAddress{Protocol: "mock", NodeID: types.NodeID(strings.Repeat("b", 40))}
@@ -729,7 +770,7 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 	)
 
 	require.NoError(t, err)
-	require.NoError(t, router.Start())
+	require.NoError(t, router.Start(ctx))
 
 	require.Eventually(t,
 		func() bool {
@@ -749,6 +790,9 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 
 func TestRouter_EvictPeers(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// Set up a mock transport that we can evict.
 	closeCh := make(chan time.Time)
@@ -792,7 +836,7 @@ func TestRouter_EvictPeers(t *testing.T) {
 		p2p.RouterOptions{},
 	)
 	require.NoError(t, err)
-	require.NoError(t, router.Start())
+	require.NoError(t, router.Start(ctx))
 
 	// Wait for the mock peer to connect, then evict it by reporting an error.
 	p2ptest.RequireUpdate(t, sub, p2p.PeerUpdate{
@@ -815,6 +859,8 @@ func TestRouter_EvictPeers(t *testing.T) {
 
 func TestRouter_ChannelCompatability(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	incompatiblePeer := types.NodeInfo{
 		NodeID:     peerID,
@@ -854,7 +900,7 @@ func TestRouter_ChannelCompatability(t *testing.T) {
 		p2p.RouterOptions{},
 	)
 	require.NoError(t, err)
-	require.NoError(t, router.Start())
+	require.NoError(t, router.Start(ctx))
 	time.Sleep(1 * time.Second)
 	require.NoError(t, router.Stop())
 	require.Empty(t, peerManager.Peers())
@@ -865,6 +911,8 @@ func TestRouter_ChannelCompatability(t *testing.T) {
 
 func TestRouter_DontSendOnInvalidChannel(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	peer := types.NodeInfo{
 		NodeID:     peerID,
@@ -909,7 +957,7 @@ func TestRouter_DontSendOnInvalidChannel(t *testing.T) {
 		p2p.RouterOptions{},
 	)
 	require.NoError(t, err)
-	require.NoError(t, router.Start())
+	require.NoError(t, router.Start(ctx))
 
 	p2ptest.RequireUpdate(t, sub, p2p.PeerUpdate{
 		NodeID: peerInfo.NodeID,

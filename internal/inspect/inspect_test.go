@@ -101,7 +101,7 @@ func TestBlock(t *testing.T) {
 	requireConnect(t, rpcConfig.ListenAddress, 20)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
-	resultBlock, err := cli.Block(context.Background(), &testHeight)
+	resultBlock, err := cli.Block(ctx, &testHeight)
 	require.NoError(t, err)
 	require.Equal(t, testBlock.Height, resultBlock.Block.Height)
 	require.Equal(t, testBlock.LastCommitHash, resultBlock.Block.LastCommitHash)
@@ -153,7 +153,7 @@ func TestTxSearch(t *testing.T) {
 	require.NoError(t, err)
 
 	var page = 1
-	resultTxSearch, err := cli.TxSearch(context.Background(), testQuery, false, &page, &page, "")
+	resultTxSearch, err := cli.TxSearch(ctx, testQuery, false, &page, &page, "")
 	require.NoError(t, err)
 	require.Len(t, resultTxSearch.Txs, 1)
 	require.Equal(t, types.Tx(testTx), resultTxSearch.Txs[0].Tx)
@@ -199,7 +199,7 @@ func TestTx(t *testing.T) {
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
 
-	res, err := cli.Tx(context.Background(), testHash, false)
+	res, err := cli.Tx(ctx, testHash, false)
 	require.NoError(t, err)
 	require.Equal(t, types.Tx(testTx), res.Tx)
 
@@ -247,7 +247,7 @@ func TestConsensusParams(t *testing.T) {
 	requireConnect(t, rpcConfig.ListenAddress, 20)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
-	params, err := cli.ConsensusParams(context.Background(), &testHeight)
+	params, err := cli.ConsensusParams(ctx, &testHeight)
 	require.NoError(t, err)
 	require.Equal(t, params.ConsensusParams.Block.MaxGas, testMaxGas)
 
@@ -300,7 +300,7 @@ func TestBlockResults(t *testing.T) {
 	requireConnect(t, rpcConfig.ListenAddress, 20)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
-	res, err := cli.BlockResults(context.Background(), &testHeight)
+	res, err := cli.BlockResults(ctx, &testHeight)
 	require.NoError(t, err)
 	require.Equal(t, res.TotalGasUsed, testGasUsed)
 
@@ -348,7 +348,7 @@ func TestCommit(t *testing.T) {
 	requireConnect(t, rpcConfig.ListenAddress, 20)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
-	res, err := cli.Commit(context.Background(), &testHeight)
+	res, err := cli.Commit(ctx, &testHeight)
 	require.NoError(t, err)
 	require.NotNil(t, res)
 	require.Equal(t, res.SignedHeader.Commit.Round, testRound)
@@ -402,7 +402,7 @@ func TestBlockByHash(t *testing.T) {
 	requireConnect(t, rpcConfig.ListenAddress, 20)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
-	res, err := cli.BlockByHash(context.Background(), testHash)
+	res, err := cli.BlockByHash(ctx, testHash)
 	require.NoError(t, err)
 	require.NotNil(t, res)
 	require.Equal(t, []byte(res.BlockID.Hash), testHash)
@@ -455,7 +455,7 @@ func TestBlockchain(t *testing.T) {
 	requireConnect(t, rpcConfig.ListenAddress, 20)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
-	res, err := cli.BlockchainInfo(context.Background(), 0, 100)
+	res, err := cli.BlockchainInfo(ctx, 0, 100)
 	require.NoError(t, err)
 	require.NotNil(t, res)
 	require.Equal(t, testBlockHash, []byte(res.BlockMetas[0].BlockID.Hash))
@@ -511,7 +511,7 @@ func TestValidators(t *testing.T) {
 
 	testPage := 1
 	testPerPage := 100
-	res, err := cli.Validators(context.Background(), &testHeight, &testPage, &testPerPage)
+	res, err := cli.Validators(ctx, &testHeight, &testPage, &testPerPage)
 	require.NoError(t, err)
 	require.NotNil(t, res)
 	require.Equal(t, testVotingPower, res.Validators[0].VotingPower)
@@ -571,7 +571,7 @@ func TestBlockSearch(t *testing.T) {
 	testPage := 1
 	testPerPage := 100
 	testOrderBy := "desc"
-	res, err := cli.BlockSearch(context.Background(), testQuery, &testPage, &testPerPage, testOrderBy)
+	res, err := cli.BlockSearch(ctx, testQuery, &testPage, &testPerPage, testOrderBy)
 	require.NoError(t, err)
 	require.NotNil(t, res)
 	require.Equal(t, testBlockHash, []byte(res.Blocks[0].BlockID.Hash))

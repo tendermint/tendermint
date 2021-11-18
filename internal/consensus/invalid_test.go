@@ -17,10 +17,13 @@ import (
 )
 
 func TestReactorInvalidPrecommit(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(t,
+	states, cleanup := randConsensusState(ctx, t,
 		config, n, "consensus_reactor_test",
 		newMockTickerFunc(true), newKVStore)
 	t.Cleanup(cleanup)
@@ -30,11 +33,11 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 		states[i].SetTimeoutTicker(ticker)
 	}
 
-	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
+	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
 		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(state, false)
+		reactor.SwitchToConsensus(ctx, state, false)
 	}
 
 	// this val sends a random precommit at each height
@@ -48,7 +51,7 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	byzState.mtx.Lock()
 	privVal := byzState.privValidator
 	byzState.doPrevote = func(height int64, round int32) {
-		invalidDoPrevoteFunc(t, height, round, byzState, byzReactor, privVal)
+		invalidDoPrevoteFunc(ctx, t, height, round, byzState, byzReactor, privVal)
 	}
 	byzState.mtx.Unlock()
 
@@ -56,8 +59,7 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	//
 	// TODO: Make this tighter by ensuring the halt happens by block 2.
 	var wg sync.WaitGroup
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+
 	for i := 0; i < 10; i++ {
 		for _, sub := range rts.subs {
 			wg.Add(1)
@@ -75,7 +77,15 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	wg.Wait()
 }
 
-func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, r *Reactor, pv types.PrivValidator) {
+func invalidDoPrevoteFunc(
+	ctx context.Context,
+	t *testing.T,
+	height int64,
+	round int32,
+	cs *State,
+	r *Reactor,
+	pv types.PrivValidator,
+) {
 	// routine to:
 	// - precommit for a random block
 	// - send precommit to all peers
@@ -84,7 +94,7 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, r 
 		cs.mtx.Lock()
 		cs.privValidator = pv
 
-		pubKey, err := cs.privValidator.GetPubKey(context.Background())
+		pubKey, err := cs.privValidator.GetPubKey(ctx)
 		require.NoError(t, err)
 
 		addr := pubKey.Address()
@@ -105,7 +115,7 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, r 
 		}
 
 		p := precommit.ToProto()
-		err = cs.privValidator.SignVote(context.Background(), cs.state.ChainID, p)
+		err = cs.privValidator.SignVote(ctx, cs.state.ChainID, p)
 		require.NoError(t, err)
 
 		precommit.Signature = p.Signature

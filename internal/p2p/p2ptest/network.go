@@ -47,7 +47,7 @@ func (opts *NetworkOptions) setDefaults() {
 
 // MakeNetwork creates a test network with the given number of nodes and
 // connects them to each other.
-func MakeNetwork(t *testing.T, opts NetworkOptions) *Network {
+func MakeNetwork(ctx context.Context, t *testing.T, opts NetworkOptions) *Network {
 	opts.setDefaults()
 	logger := log.TestingLogger()
 	network := &Network{
@@ -57,7 +57,7 @@ func MakeNetwork(t *testing.T, opts NetworkOptions) *Network {
 	}
 
 	for i := 0; i < opts.NumNodes; i++ {
-		node := network.MakeNode(t, opts.NodeOpts)
+		node := network.MakeNode(ctx, t, opts.NodeOpts)
 		network.Nodes[node.NodeID] = node
 	}
 
@@ -221,7 +221,7 @@ type Node struct {
 // MakeNode creates a new Node configured for the network with a
 // running peer manager, but does not add it to the existing
 // network. Callers are responsible for updating peering relationships.
-func (n *Network) MakeNode(t *testing.T, opts NodeOptions) *Node {
+func (n *Network) MakeNode(ctx context.Context, t *testing.T, opts NodeOptions) *Node {
 	privKey := ed25519.GenPrivKey()
 	nodeID := types.NodeIDFromPubKey(privKey.PubKey())
 	nodeInfo := types.NodeInfo{
@@ -252,8 +252,9 @@ func (n *Network) MakeNode(t *testing.T, opts NodeOptions) *Node {
 		transport.Endpoints(),
 		p2p.RouterOptions{DialSleep: func(_ context.Context) {}},
 	)
+
 	require.NoError(t, err)
-	require.NoError(t, router.Start())
+	require.NoError(t, router.Start(ctx))
 
 	t.Cleanup(func() {
 		if router.IsRunning() {
@@ -304,12 +305,12 @@ func (n *Node) MakeChannelNoCleanup(
 
 // MakePeerUpdates opens a peer update subscription, with automatic cleanup.
 // It checks that all updates have been consumed during cleanup.
-func (n *Node) MakePeerUpdates(t *testing.T) *p2p.PeerUpdates {
+func (n *Node) MakePeerUpdates(ctx context.Context, t *testing.T) *p2p.PeerUpdates {
 	t.Helper()
 	sub := n.PeerManager.Subscribe()
 	t.Cleanup(func() {
 		t.Helper()
-		RequireNoUpdates(t, sub)
+		RequireNoUpdates(ctx, t, sub)
 		sub.Close()
 	})
 

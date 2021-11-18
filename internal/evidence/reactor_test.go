@@ -1,6 +1,7 @@
 package evidence_test
 
 import (
+	"context"
 	"encoding/hex"
 	"math/rand"
 	"sync"
@@ -44,7 +45,7 @@ type reactorTestSuite struct {
 	numStateStores   int
 }
 
-func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
+func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 	t.Helper()
 
 	pID := make([]byte, 16)
@@ -55,7 +56,7 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 	rts := &reactorTestSuite{
 		numStateStores: numStateStores,
 		logger:         log.TestingLogger().With("testCase", t.Name()),
-		network:        p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numStateStores}),
+		network:        p2ptest.MakeNetwork(ctx, t, p2ptest.NetworkOptions{NumNodes: numStateStores}),
 		reactors:       make(map[types.NodeID]*evidence.Reactor, numStateStores),
 		pools:          make(map[types.NodeID]*evidence.Pool, numStateStores),
 		peerUpdates:    make(map[types.NodeID]*p2p.PeerUpdates, numStateStores),
@@ -93,7 +94,7 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 			rts.peerUpdates[nodeID],
 			rts.pools[nodeID])
 
-		require.NoError(t, rts.reactors[nodeID].Start())
+		require.NoError(t, rts.reactors[nodeID].Start(ctx))
 		require.True(t, rts.reactors[nodeID].IsRunning())
 
 		idx++
@@ -233,13 +234,16 @@ func createEvidenceList(
 }
 
 func TestReactorMultiDisconnect(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	val := types.NewMockPV()
 	height := int64(numEvidence) + 10
 
 	stateDB1 := initializeValidatorState(t, val, height)
 	stateDB2 := initializeValidatorState(t, val, height)
 
-	rts := setup(t, []sm.Store{stateDB1, stateDB2}, 20)
+	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2}, 20)
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
 
@@ -281,7 +285,10 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 		stateDBs[i] = initializeValidatorState(t, val, height)
 	}
 
-	rts := setup(t, stateDBs, 0)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setup(ctx, t, stateDBs, 0)
 	rts.start(t)
 
 	// Create a series of fixtures where each suite contains a reactor and
@@ -335,7 +342,10 @@ func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
 	stateDB1 := initializeValidatorState(t, val, height1)
 	stateDB2 := initializeValidatorState(t, val, height2)
 
-	rts := setup(t, []sm.Store{stateDB1, stateDB2}, 100)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2}, 100)
 	rts.start(t)
 
 	primary := rts.nodes[0]
@@ -368,7 +378,10 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 	stateDB1 := initializeValidatorState(t, val, height)
 	stateDB2 := initializeValidatorState(t, val, height)
 
-	rts := setup(t, []sm.Store{stateDB1, stateDB2}, 100)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2}, 100)
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
 
@@ -405,7 +418,10 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	stateDB1 := initializeValidatorState(t, val, height)
 	stateDB2 := initializeValidatorState(t, val, height)
 
-	rts := setup(t, []sm.Store{stateDB1, stateDB2}, 0)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2}, 0)
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
@@ -460,7 +476,10 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 		stateDBs[i] = initializeValidatorState(t, val, height)
 	}
 
-	rts := setup(t, stateDBs, 0)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setup(ctx, t, stateDBs, 0)
 	rts.start(t)
 
 	evList := createEvidenceList(t, rts.pools[rts.network.RandomNode().NodeID], val, numEvidence)

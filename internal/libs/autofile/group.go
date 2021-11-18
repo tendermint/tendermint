@@ -2,6 +2,7 @@ package autofile
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -135,7 +136,7 @@ func GroupTotalSizeLimit(limit int64) func(*Group) {
 
 // OnStart implements service.Service by starting the goroutine that checks file
 // and group limits.
-func (g *Group) OnStart() error {
+func (g *Group) OnStart(ctx context.Context) error {
 	g.ticker = time.NewTicker(g.groupCheckDuration)
 	go g.processTicks()
 	return nil

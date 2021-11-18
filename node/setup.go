@@ -2,6 +2,7 @@ package node
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -52,6 +53,10 @@ func makeCloser(cs []closer) closer {
 	}
 }
 
+func convertCancelCloser(cancel context.CancelFunc) closer {
+	return func() error { cancel(); return nil }
+}
+
 func combineCloseError(err error, cl closer) error {
 	if err == nil {
 		return cl()
@@ -88,26 +93,31 @@ func initDBs(
 	return blockStore, stateDB, makeCloser(closers), nil
 }
 
-// nolint:lll
-func createAndStartProxyAppConns(clientCreator abciclient.Creator, logger log.Logger, metrics *proxy.Metrics) (proxy.AppConns, error) {
+func createAndStartProxyAppConns(
+	ctx context.Context,
+	clientCreator abciclient.Creator,
+	logger log.Logger,
+	metrics *proxy.Metrics,
+) (proxy.AppConns, error) {
 	proxyApp := proxy.NewAppConns(clientCreator, logger.With("module", "proxy"), metrics)
 
-	if err := proxyApp.Start(); err != nil {
+	if err := proxyApp.Start(ctx); err != nil {
 		return nil, fmt.Errorf("error starting proxy app connections: %v", err)
 	}
 
 	return proxyApp, nil
 }
 
-func createAndStartEventBus(logger log.Logger) (*eventbus.EventBus, error) {
+func createAndStartEventBus(ctx context.Context, logger log.Logger) (*eventbus.EventBus, error) {
 	eventBus := eventbus.NewDefault(logger.With("module", "events"))
-	if err := eventBus.Start(); err != nil {
+	if err := eventBus.Start(ctx); err != nil {
 		return nil, err
 	}
 	return eventBus, nil
 }
 
 func createAndStartIndexerService(
+	ctx context.Context,
 	cfg *config.Config,
 	dbProvider config.DBProvider,
 	eventBus *eventbus.EventBus,
@@ -127,7 +137,7 @@ func createAndStartIndexerService(
 		Metrics:  metrics,
 	})
 
-	if err := indexerService.Start(); err != nil {
+	if err := indexerService.Start(ctx); err != nil {
 		return nil, nil, err
 	}
 

@@ -31,6 +31,9 @@ import (
 // Byzantine node sends two different prevotes (nil and blockID) to the same
 // validator.
 func TestByzantinePrevoteEquivocation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := configSetup(t)
 
 	nValidators := 4
@@ -93,7 +96,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			cs.SetPrivValidator(pv)
 
 			eventBus := eventbus.NewDefault(log.TestingLogger().With("module", "events"))
-			err = eventBus.Start()
+			err = eventBus.Start(ctx)
 			require.NoError(t, err)
 			cs.SetEventBus(eventBus)
 
@@ -103,7 +106,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		}()
 	}
 
-	rts := setup(t, nValidators, states, 100) // buffer must be large enough to not deadlock
+	rts := setup(ctx, t, nValidators, states, 100) // buffer must be large enough to not deadlock
 
 	var bzNodeID types.NodeID
 
@@ -211,7 +214,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 		proposal := types.NewProposal(height, round, lazyNodeState.ValidRound, propBlockID)
 		p := proposal.ToProto()
-		if err := lazyNodeState.privValidator.SignProposal(context.Background(), lazyNodeState.state.ChainID, p); err == nil {
+		if err := lazyNodeState.privValidator.SignProposal(ctx, lazyNodeState.state.ChainID, p); err == nil {
 			proposal.Signature = p.Signature
 
 			// send proposal and block parts on internal msg queue
@@ -229,15 +232,13 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	for _, reactor := range rts.reactors {
 		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(state, false)
+		reactor.SwitchToConsensus(ctx, state, false)
 	}
 
 	// Evidence should be submitted and committed at the third height but
 	// we will check the first six just in case
 	evidenceFromEachValidator := make([]types.Evidence, nValidators)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	var wg sync.WaitGroup
 	i := 0
 	for _, sub := range rts.subs {
@@ -246,6 +247,10 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		go func(j int, s eventbus.Subscription) {
 			defer wg.Done()
 			for {
+				if ctx.Err() != nil {
+					return
+				}
+
 				msg, err := s.Next(ctx)
 				if !assert.NoError(t, err) {
 					cancel()
@@ -265,7 +270,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	wg.Wait()
 
-	pubkey, err := bzNodeState.privValidator.GetPubKey(context.Background())
+	pubkey, err := bzNodeState.privValidator.GetPubKey(ctx)
 	require.NoError(t, err)
 
 	for idx, ev := range evidenceFromEachValidator {
@@ -311,7 +316,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	// 	eventBus.SetLogger(logger.With("module", "events", "validator", i))
 
 	// 	var err error
-	// 	blocksSubs[i], err = eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
+	// 	blocksSubs[i], err = eventBus.Subscribe(ctx, testSubscriber, types.EventQueryNewBlock)
 	// 	require.NoError(t, err)
 
 	// 	conR := NewReactor(states[i], true) // so we don't start the consensus states

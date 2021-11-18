@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -16,9 +17,12 @@ func (testService) OnReset() error {
 }
 
 func TestBaseServiceWait(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	ts := &testService{}
 	ts.BaseService = *NewBaseService(nil, "TestService", ts)
-	err := ts.Start()
+	err := ts.Start(ctx)
 	require.NoError(t, err)
 
 	waitFinished := make(chan struct{})
@@ -35,23 +39,4 @@ func TestBaseServiceWait(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("expected Wait() to finish within 100 ms.")
 	}
-}
-
-func TestBaseServiceReset(t *testing.T) {
-	ts := &testService{}
-	ts.BaseService = *NewBaseService(nil, "TestService", ts)
-	err := ts.Start()
-	require.NoError(t, err)
-
-	err = ts.Reset()
-	require.Error(t, err, "expected cant reset service error")
-
-	err = ts.Stop()
-	require.NoError(t, err)
-
-	err = ts.Reset()
-	require.NoError(t, err)
-
-	err = ts.Start()
-	require.NoError(t, err)
 }

@@ -1,6 +1,7 @@
 package evidence
 
 import (
+	"context"
 	"fmt"
 	"runtime/debug"
 	"sync"
@@ -81,7 +82,7 @@ func NewReactor(
 // envelopes on each. In addition, it also listens for peer updates and handles
 // messages on that p2p channel accordingly. The caller must be sure to execute
 // OnStop to ensure the outbound p2p Channels are closed. No error is returned.
-func (r *Reactor) OnStart() error {
+func (r *Reactor) OnStart(ctx context.Context) error {
 	go r.processEvidenceCh()
 	go r.processPeerUpdates()
 

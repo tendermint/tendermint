@@ -1,6 +1,7 @@
 package indexer_test
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -47,16 +48,15 @@ func NewIndexerService(es []indexer.EventSink, eventBus *eventbus.EventBus) *ind
 }
 
 func TestIndexerServiceIndexesBlocks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	logger := tmlog.TestingLogger()
 	// event bus
 	eventBus := eventbus.NewDefault(logger)
-	err := eventBus.Start()
+	err := eventBus.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := eventBus.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+	t.Cleanup(eventBus.Wait)
 
 	assert.False(t, indexer.KVSinkEnabled([]indexer.EventSink{}))
 	assert.False(t, indexer.IndexingEnabled([]indexer.EventSink{}))
@@ -71,13 +71,8 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	assert.True(t, indexer.IndexingEnabled(eventSinks))
 
 	service := NewIndexerService(eventSinks, eventBus)
-	err = service.Start()
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := service.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+	require.NoError(t, service.Start(ctx))
+	t.Cleanup(service.Wait)
 
 	// publish block with txs
 	err = eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{

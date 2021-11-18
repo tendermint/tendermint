@@ -32,17 +32,18 @@ const (
 
 // replay the wal file
 func RunReplayFile(
+	ctx context.Context,
 	logger log.Logger,
 	cfg config.BaseConfig,
 	csConfig *config.ConsensusConfig,
 	console bool,
 ) error {
-	consensusState, err := newConsensusStateForReplay(cfg, logger, csConfig)
+	consensusState, err := newConsensusStateForReplay(ctx, cfg, logger, csConfig)
 	if err != nil {
 		return err
 	}
 
-	if err := consensusState.ReplayFile(csConfig.WalFile(), console); err != nil {
+	if err := consensusState.ReplayFile(ctx, csConfig.WalFile(), console); err != nil {
 		return fmt.Errorf("consensus replay: %w", err)
 	}
 
@@ -50,7 +51,7 @@ func RunReplayFile(
 }
 
 // Replay msgs in file or start the console
-func (cs *State) ReplayFile(file string, console bool) error {
+func (cs *State) ReplayFile(ctx context.Context, file string, console bool) error {
 
 	if cs.IsRunning() {
 		return errors.New("cs is already running, cannot replay")
@@ -63,7 +64,6 @@ func (cs *State) ReplayFile(file string, console bool) error {
 
 	// ensure all new step events are regenerated as expected
 
-	ctx := context.Background()
 	newStepSub, err := cs.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: subscriber,
 		Query:    types.EventQueryNewRoundStep,
@@ -307,6 +307,7 @@ func (pb *playback) replayConsoleLoop() (int, error) {
 
 // convenience for replay mode
 func newConsensusStateForReplay(
+	ctx context.Context,
 	cfg config.BaseConfig,
 	logger log.Logger,
 	csConfig *config.ConsensusConfig,
@@ -339,19 +340,19 @@ func newConsensusStateForReplay(
 	// Create proxyAppConn connection (consensus, mempool, query)
 	clientCreator, _ := proxy.DefaultClientCreator(logger, cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
 	proxyApp := proxy.NewAppConns(clientCreator, logger, proxy.NopMetrics())
-	err = proxyApp.Start()
+	err = proxyApp.Start(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("starting proxy app conns: %w", err)
 	}
 
 	eventBus := eventbus.NewDefault(logger)
-	if err := eventBus.Start(); err != nil {
+	if err := eventBus.Start(ctx); err != nil {
 		return nil, fmt.Errorf("failed to start event bus: %w", err)
 	}
 
 	handshaker := NewHandshaker(logger, stateStore, state, blockStore, eventBus, gdoc)
 
-	if err = handshaker.Handshake(proxyApp); err != nil {
+	if err = handshaker.Handshake(ctx, proxyApp); err != nil {
 		return nil, err
 	}
 

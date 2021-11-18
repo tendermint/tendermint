@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"context"
 	"fmt"
 	"runtime/debug"
 	"time"
@@ -85,7 +86,7 @@ type ReactorOption func(*Reactor)
 // NOTE: Temporary interface for switching to block sync, we should get rid of v0.
 // See: https://github.com/tendermint/tendermint/issues/4595
 type BlockSyncReactor interface {
-	SwitchToBlockSync(sm.State) error
+	SwitchToBlockSync(context.Context, sm.State) error
 
 	GetMaxPeerBlockHeight() int64
 
@@ -174,7 +175,7 @@ func NewReactor(
 // envelopes on each. In addition, it also listens for peer updates and handles
 // messages on that p2p channel accordingly. The caller must be sure to execute
 // OnStop to ensure the outbound p2p Channels are closed.
-func (r *Reactor) OnStart() error {
+func (r *Reactor) OnStart(ctx context.Context) error {
 	r.Logger.Debug("consensus wait sync", "wait_sync", r.WaitSync())
 
 	// start routine that computes peer statistics for evaluating peer quality
@@ -186,7 +187,7 @@ func (r *Reactor) OnStart() error {
 	r.subscribeToBroadcastEvents()
 
 	if !r.WaitSync() {
-		if err := r.state.Start(); err != nil {
+		if err := r.state.Start(ctx); err != nil {
 			return err
 		}
 	}
@@ -264,7 +265,7 @@ func ReactorMetrics(metrics *Metrics) ReactorOption {
 
 // SwitchToConsensus switches from block-sync mode to consensus mode. It resets
 // the state, turns off block-sync, and starts the consensus state-machine.
-func (r *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
+func (r *Reactor) SwitchToConsensus(ctx context.Context, state sm.State, skipWAL bool) {
 	r.Logger.Info("switching to consensus")
 
 	// we have no votes, so reconstruct LastCommit from SeenCommit
@@ -287,7 +288,7 @@ func (r *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
 		r.state.doWALCatchup = false
 	}
 
-	if err := r.state.Start(); err != nil {
+	if err := r.state.Start(ctx); err != nil {
 		panic(fmt.Sprintf(`failed to start consensus state: %v
 
 conS:
