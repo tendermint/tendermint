@@ -36,7 +36,7 @@ type reactorTestSuite struct {
 	nodes []types.NodeID
 }
 
-func setupReactors(t *testing.T, numNodes int, chBuf uint) *reactorTestSuite {
+func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) *reactorTestSuite {
 	t.Helper()
 
 	cfg, err := config.ResetTestRoot(strings.ReplaceAll(t.Name(), "/", "|"))
@@ -45,7 +45,7 @@ func setupReactors(t *testing.T, numNodes int, chBuf uint) *reactorTestSuite {
 
 	rts := &reactorTestSuite{
 		logger:          log.TestingLogger().With("testCase", t.Name()),
-		network:         p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
+		network:         p2ptest.MakeNetwork(ctx, t, p2ptest.NetworkOptions{NumNodes: numNodes}),
 		reactors:        make(map[types.NodeID]*Reactor, numNodes),
 		mempoolChannels: make(map[types.NodeID]*p2p.Channel, numNodes),
 		mempools:        make(map[types.NodeID]*TxMempool, numNodes),
@@ -60,7 +60,7 @@ func setupReactors(t *testing.T, numNodes int, chBuf uint) *reactorTestSuite {
 	for nodeID := range rts.network.Nodes {
 		rts.kvstores[nodeID] = kvstore.NewApplication()
 
-		mempool := setup(t, 0)
+		mempool := setup(ctx, t, 0)
 		rts.mempools[nodeID] = mempool
 
 		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
@@ -78,7 +78,7 @@ func setupReactors(t *testing.T, numNodes int, chBuf uint) *reactorTestSuite {
 
 		rts.nodes = append(rts.nodes, nodeID)
 
-		require.NoError(t, rts.reactors[nodeID].Start())
+		require.NoError(t, rts.reactors[nodeID].Start(ctx))
 		require.True(t, rts.reactors[nodeID].IsRunning())
 	}
 
@@ -147,8 +147,11 @@ func (rts *reactorTestSuite) waitForTxns(t *testing.T, txs []types.Tx, ids ...ty
 }
 
 func TestReactorBroadcastDoesNotPanic(t *testing.T) {
-	numNodes := 2
-	rts := setupReactors(t, numNodes, 0)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	const numNodes = 2
+	rts := setupReactors(ctx, t, numNodes, 0)
 
 	observePanic := func(r interface{}) {
 		t.Fatal("panic detected in reactor")
@@ -192,8 +195,10 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 func TestReactorBroadcastTxs(t *testing.T) {
 	numTxs := 1000
 	numNodes := 10
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	rts := setupReactors(t, numNodes, 0)
+	rts := setupReactors(ctx, t, numNodes, 0)
 
 	primary := rts.nodes[0]
 	secondaries := rts.nodes[1:]
@@ -215,7 +220,10 @@ func TestReactorConcurrency(t *testing.T) {
 	numTxs := 5
 	numNodes := 2
 
-	rts := setupReactors(t, numNodes, 0)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setupReactors(ctx, t, numNodes, 0)
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
@@ -273,7 +281,10 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 	numTxs := 1000
 	numNodes := 2
 
-	rts := setupReactors(t, numNodes, uint(numTxs))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setupReactors(ctx, t, numNodes, uint(numTxs))
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
@@ -296,7 +307,10 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	numNodes := 2
 	cfg := config.TestConfig()
 
-	rts := setupReactors(t, numNodes, 0)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setupReactors(ctx, t, numNodes, 0)
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
@@ -305,7 +319,7 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	// second reactor.
 	tx1 := tmrand.Bytes(cfg.Mempool.MaxTxBytes)
 	err := rts.reactors[primary].mempool.CheckTx(
-		context.Background(),
+		ctx,
 		tx1,
 		nil,
 		TxInfo{
@@ -321,7 +335,7 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 
 	// broadcast a tx, which is beyond the max size and ensure it's not sent
 	tx2 := tmrand.Bytes(cfg.Mempool.MaxTxBytes + 1)
-	err = rts.mempools[primary].CheckTx(context.Background(), tx2, nil, TxInfo{SenderID: UnknownPeerID})
+	err = rts.mempools[primary].CheckTx(ctx, tx2, nil, TxInfo{SenderID: UnknownPeerID})
 	require.Error(t, err)
 
 	rts.assertMempoolChannelsDrained(t)
@@ -330,7 +344,11 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 func TestDontExhaustMaxActiveIDs(t *testing.T) {
 	// we're creating a single node network, but not starting the
 	// network.
-	rts := setupReactors(t, 1, MaxActiveIDs+1)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setupReactors(ctx, t, 1, MaxActiveIDs+1)
 
 	nodeID := rts.nodes[0]
 
@@ -395,7 +413,10 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 		t.Skip("skipping test in short mode")
 	}
 
-	rts := setupReactors(t, 2, 0)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setupReactors(ctx, t, 2, 0)
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]

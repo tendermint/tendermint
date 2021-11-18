@@ -82,7 +82,11 @@ type nodeImpl struct {
 // newDefaultNode returns a Tendermint node with default settings for the
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
 // It implements NodeProvider.
-func newDefaultNode(cfg *config.Config, logger log.Logger) (service.Service, error) {
+func newDefaultNode(
+	ctx context.Context,
+	cfg *config.Config,
+	logger log.Logger,
+) (service.Service, error) {
 	nodeKey, err := types.LoadOrGenNodeKey(cfg.NodeKeyFile())
 	if err != nil {
 		return nil, fmt.Errorf("failed to load or gen node key %s: %w", cfg.NodeKeyFile(), err)
@@ -108,7 +112,9 @@ func newDefaultNode(cfg *config.Config, logger log.Logger) (service.Service, err
 
 	appClient, _ := proxy.DefaultClientCreator(logger, cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
 
-	return makeNode(cfg,
+	return makeNode(
+		ctx,
+		cfg,
 		pval,
 		nodeKey,
 		appClient,
@@ -119,7 +125,9 @@ func newDefaultNode(cfg *config.Config, logger log.Logger) (service.Service, err
 }
 
 // makeNode returns a new, ready to go, Tendermint Node.
-func makeNode(cfg *config.Config,
+func makeNode(
+	ctx context.Context,
+	cfg *config.Config,
 	privValidator types.PrivValidator,
 	nodeKey types.NodeKey,
 	clientCreator abciclient.Creator,
@@ -127,7 +135,10 @@ func makeNode(cfg *config.Config,
 	dbProvider config.DBProvider,
 	logger log.Logger,
 ) (service.Service, error) {
-	closers := []closer{}
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
+
+	closers := []closer{convertCancelCloser(cancel)}
 
 	blockStore, stateDB, dbCloser, err := initDBs(cfg, dbProvider)
 	if err != nil {
@@ -157,7 +168,7 @@ func makeNode(cfg *config.Config,
 	nodeMetrics := defaultMetricsProvider(cfg.Instrumentation)(genDoc.ChainID)
 
 	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
-	proxyApp, err := createAndStartProxyAppConns(clientCreator, logger, nodeMetrics.proxy)
+	proxyApp, err := createAndStartProxyAppConns(ctx, clientCreator, logger, nodeMetrics.proxy)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
@@ -166,12 +177,13 @@ func makeNode(cfg *config.Config,
 	// we might need to index the txs of the replayed block as this might not have happened
 	// when the node stopped last time (i.e. the node stopped after it saved the block
 	// but before it indexed the txs, or, endblocker panicked)
-	eventBus, err := createAndStartEventBus(logger)
+	eventBus, err := createAndStartEventBus(ctx, logger)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
 
-	indexerService, eventSinks, err := createAndStartIndexerService(cfg, dbProvider, eventBus,
+	indexerService, eventSinks, err := createAndStartIndexerService(
+		ctx, cfg, dbProvider, eventBus,
 		logger, genDoc.ChainID, nodeMetrics.indexer)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
@@ -184,14 +196,19 @@ func makeNode(cfg *config.Config,
 		// FIXME: we should start services inside OnStart
 		switch protocol {
 		case "grpc":
-			privValidator, err = createAndStartPrivValidatorGRPCClient(cfg, genDoc.ChainID, logger)
+			privValidator, err = createAndStartPrivValidatorGRPCClient(ctx, cfg, genDoc.ChainID, logger)
 			if err != nil {
 				return nil, combineCloseError(
 					fmt.Errorf("error with private validator grpc client: %w", err),
 					makeCloser(closers))
 			}
 		default:
-			privValidator, err = createAndStartPrivValidatorSocketClient(cfg.PrivValidator.ListenAddr, genDoc.ChainID, logger)
+			privValidator, err = createAndStartPrivValidatorSocketClient(
+				ctx,
+				cfg.PrivValidator.ListenAddr,
+				genDoc.ChainID,
+				logger,
+			)
 			if err != nil {
 				return nil, combineCloseError(
 					fmt.Errorf("error with private validator socket client: %w", err),
@@ -201,7 +218,7 @@ func makeNode(cfg *config.Config,
 	}
 	var pubKey crypto.PubKey
 	if cfg.Mode == config.ModeValidator {
-		pubKey, err = privValidator.GetPubKey(context.TODO())
+		pubKey, err = privValidator.GetPubKey(ctx)
 		if err != nil {
 			return nil, combineCloseError(fmt.Errorf("can't get pubkey: %w", err),
 				makeCloser(closers))
@@ -227,7 +244,7 @@ func makeNode(cfg *config.Config,
 		if err := consensus.NewHandshaker(
 			logger.With("module", "handshaker"),
 			stateStore, state, blockStore, eventBus, genDoc,
-		).Handshake(proxyApp); err != nil {
+		).Handshake(ctx, proxyApp); err != nil {
 			return nil, combineCloseError(err, makeCloser(closers))
 		}
 
@@ -253,7 +270,6 @@ func makeNode(cfg *config.Config,
 	nodeInfo, err := makeNodeInfo(cfg, nodeKey, eventSinks, genDoc, state)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
-
 	}
 
 	peerManager, peerCloser, err := createPeerManager(cfg, dbProvider, nodeKey.ID)
@@ -492,7 +508,7 @@ func makeSeedNode(cfg *config.Config,
 }
 
 // OnStart starts the Node. It implements service.Service.
-func (n *nodeImpl) OnStart() error {
+func (n *nodeImpl) OnStart(ctx context.Context) error {
 	if n.config.RPC.PprofListenAddress != "" {
 		// this service is not cleaned up (I believe that we'd
 		// need to have another thread and a potentially a
@@ -513,7 +529,7 @@ func (n *nodeImpl) OnStart() error {
 	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
 	if n.config.RPC.ListenAddress != "" && n.config.Mode != config.ModeSeed {
-		listeners, err := n.startRPC()
+		listeners, err := n.startRPC(ctx)
 		if err != nil {
 			return err
 		}
@@ -526,39 +542,39 @@ func (n *nodeImpl) OnStart() error {
 	}
 
 	// Start the transport.
-	if err := n.router.Start(); err != nil {
+	if err := n.router.Start(ctx); err != nil {
 		return err
 	}
 	n.isListening = true
 
 	if n.config.Mode != config.ModeSeed {
-		if err := n.bcReactor.Start(); err != nil {
+		if err := n.bcReactor.Start(ctx); err != nil {
 			return err
 		}
 
 		// Start the real consensus reactor separately since the switch uses the shim.
-		if err := n.consensusReactor.Start(); err != nil {
+		if err := n.consensusReactor.Start(ctx); err != nil {
 			return err
 		}
 
 		// Start the real state sync reactor separately since the switch uses the shim.
-		if err := n.stateSyncReactor.Start(); err != nil {
+		if err := n.stateSyncReactor.Start(ctx); err != nil {
 			return err
 		}
 
 		// Start the real mempool reactor separately since the switch uses the shim.
-		if err := n.mempoolReactor.Start(); err != nil {
+		if err := n.mempoolReactor.Start(ctx); err != nil {
 			return err
 		}
 
 		// Start the real evidence reactor separately since the switch uses the shim.
-		if err := n.evidenceReactor.Start(); err != nil {
+		if err := n.evidenceReactor.Start(ctx); err != nil {
 			return err
 		}
 	}
 
 	if n.config.P2P.PexReactor {
-		if err := n.pexReactor.Start(); err != nil {
+		if err := n.pexReactor.Start(ctx); err != nil {
 			return err
 		}
 	}
@@ -591,7 +607,7 @@ func (n *nodeImpl) OnStart() error {
 		// bubbling up the error and gracefully shutting down the rest of the node
 		go func() {
 			n.Logger.Info("starting state sync")
-			state, err := n.stateSyncReactor.Sync(context.TODO())
+			state, err := n.stateSyncReactor.Sync(ctx)
 			if err != nil {
 				n.Logger.Error("state sync failed; shutting down this node", "err", err)
 				// stop the node
@@ -617,7 +633,7 @@ func (n *nodeImpl) OnStart() error {
 			// is running
 			// FIXME Very ugly to have these metrics bleed through here.
 			n.consensusReactor.SetBlockSyncingMetrics(1)
-			if err := bcR.SwitchToBlockSync(state); err != nil {
+			if err := bcR.SwitchToBlockSync(ctx, state); err != nil {
 				n.Logger.Error("failed to switch to block sync", "err", err)
 				return
 			}
@@ -638,19 +654,13 @@ func (n *nodeImpl) OnStart() error {
 
 // OnStop stops the Node. It implements service.Service.
 func (n *nodeImpl) OnStop() {
-
 	n.Logger.Info("Stopping Node")
 
 	if n.eventBus != nil {
-		// first stop the non-reactor services
-		if err := n.eventBus.Stop(); err != nil {
-			n.Logger.Error("Error closing eventBus", "err", err)
-		}
+		n.eventBus.Wait()
 	}
 	if n.indexerService != nil {
-		if err := n.indexerService.Stop(); err != nil {
-			n.Logger.Error("Error closing indexerService", "err", err)
-		}
+		n.indexerService.Wait()
 	}
 
 	for _, es := range n.eventSinks {
@@ -660,41 +670,14 @@ func (n *nodeImpl) OnStop() {
 	}
 
 	if n.config.Mode != config.ModeSeed {
-		// now stop the reactors
-
-		// Stop the real blockchain reactor separately since the switch uses the shim.
-		if err := n.bcReactor.Stop(); err != nil {
-			n.Logger.Error("failed to stop the blockchain reactor", "err", err)
-		}
-
-		// Stop the real consensus reactor separately since the switch uses the shim.
-		if err := n.consensusReactor.Stop(); err != nil {
-			n.Logger.Error("failed to stop the consensus reactor", "err", err)
-		}
-
-		// Stop the real state sync reactor separately since the switch uses the shim.
-		if err := n.stateSyncReactor.Stop(); err != nil {
-			n.Logger.Error("failed to stop the state sync reactor", "err", err)
-		}
-
-		// Stop the real mempool reactor separately since the switch uses the shim.
-		if err := n.mempoolReactor.Stop(); err != nil {
-			n.Logger.Error("failed to stop the mempool reactor", "err", err)
-		}
-
-		// Stop the real evidence reactor separately since the switch uses the shim.
-		if err := n.evidenceReactor.Stop(); err != nil {
-			n.Logger.Error("failed to stop the evidence reactor", "err", err)
-		}
+		n.bcReactor.Wait()
+		n.consensusReactor.Wait()
+		n.stateSyncReactor.Wait()
+		n.mempoolReactor.Wait()
+		n.evidenceReactor.Wait()
 	}
-
-	if err := n.pexReactor.Stop(); err != nil {
-		n.Logger.Error("failed to stop the PEX v2 reactor", "err", err)
-	}
-
-	if err := n.router.Stop(); err != nil {
-		n.Logger.Error("failed to stop router", "err", err)
-	}
+	n.pexReactor.Wait()
+	n.router.Wait()
 	n.isListening = false
 
 	// finally stop the listeners / external services
@@ -706,9 +689,7 @@ func (n *nodeImpl) OnStop() {
 	}
 
 	if pvsc, ok := n.privValidator.(service.Service); ok {
-		if err := pvsc.Stop(); err != nil {
-			n.Logger.Error("Error closing private validator", "err", err)
-		}
+		pvsc.Wait()
 	}
 
 	if n.prometheusSrv != nil {
@@ -719,13 +700,15 @@ func (n *nodeImpl) OnStop() {
 
 	}
 	if err := n.shutdownOps(); err != nil {
-		n.Logger.Error("problem shutting down additional services", "err", err)
+		if strings.TrimSpace(err.Error()) != "" {
+			n.Logger.Error("problem shutting down additional services", "err", err)
+		}
 	}
 }
 
-func (n *nodeImpl) startRPC() ([]net.Listener, error) {
+func (n *nodeImpl) startRPC(ctx context.Context) ([]net.Listener, error) {
 	if n.config.Mode == config.ModeValidator {
-		pubKey, err := n.privValidator.GetPubKey(context.TODO())
+		pubKey, err := n.privValidator.GetPubKey(ctx)
 		if pubKey == nil || err != nil {
 			return nil, fmt.Errorf("can't get pubkey: %w", err)
 		}
@@ -970,8 +953,8 @@ func loadStateFromDBOrGenesisDocProvider(
 }
 
 func createAndStartPrivValidatorSocketClient(
-	listenAddr,
-	chainID string,
+	ctx context.Context,
+	listenAddr, chainID string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
 
@@ -980,13 +963,13 @@ func createAndStartPrivValidatorSocketClient(
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
 
-	pvsc, err := privval.NewSignerClient(pve, chainID)
+	pvsc, err := privval.NewSignerClient(ctx, pve, chainID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
 
 	// try to get a pubkey from private validate first time
-	_, err = pvsc.GetPubKey(context.TODO())
+	_, err = pvsc.GetPubKey(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
@@ -1001,6 +984,7 @@ func createAndStartPrivValidatorSocketClient(
 }
 
 func createAndStartPrivValidatorGRPCClient(
+	ctx context.Context,
 	cfg *config.Config,
 	chainID string,
 	logger log.Logger,
@@ -1016,7 +1000,7 @@ func createAndStartPrivValidatorGRPCClient(
 	}
 
 	// try to get a pubkey from private validate first time
-	_, err = pvsc.GetPubKey(context.TODO())
+	_, err = pvsc.GetPubKey(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
@@ -1031,7 +1015,7 @@ func getRouterConfig(conf *config.Config, proxyApp proxy.AppConns) p2p.RouterOpt
 
 	if conf.FilterPeers && proxyApp != nil {
 		opts.FilterPeerByID = func(ctx context.Context, id types.NodeID) error {
-			res, err := proxyApp.Query().QuerySync(context.Background(), abci.RequestQuery{
+			res, err := proxyApp.Query().QuerySync(ctx, abci.RequestQuery{
 				Path: fmt.Sprintf("/p2p/filter/id/%s", id),
 			})
 			if err != nil {

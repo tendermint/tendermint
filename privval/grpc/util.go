@@ -109,7 +109,7 @@ func DialRemoteSigner(
 
 	dialOptions = append(dialOptions, transportSecurity)
 
-	ctx := context.Background()
+	ctx := context.TODO()
 	_, address := tmnet.ProtocolAndAddress(cfg.ListenAddr)
 	conn, err := grpc.DialContext(ctx, address, dialOptions...)
 	if err != nil {

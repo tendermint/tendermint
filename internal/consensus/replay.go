@@ -237,10 +237,10 @@ func (h *Handshaker) NBlocks() int {
 }
 
 // TODO: retry the handshake/replay if it fails ?
-func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
+func (h *Handshaker) Handshake(ctx context.Context, proxyApp proxy.AppConns) error {
 
 	// Handshake is done via ABCI Info on the query conn.
-	res, err := proxyApp.Query().InfoSync(context.Background(), proxy.RequestInfo)
+	res, err := proxyApp.Query().InfoSync(ctx, proxy.RequestInfo)
 	if err != nil {
 		return fmt.Errorf("error calling Info: %v", err)
 	}
@@ -264,7 +264,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	}
 
 	// Replay blocks up to the latest in the blockstore.
-	_, err = h.ReplayBlocks(h.initialState, appHash, blockHeight, proxyApp)
+	_, err = h.ReplayBlocks(ctx, h.initialState, appHash, blockHeight, proxyApp)
 	if err != nil {
 		return fmt.Errorf("error on replay: %v", err)
 	}
@@ -281,6 +281,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 // matches the current state.
 // Returns the final AppHash or an error.
 func (h *Handshaker) ReplayBlocks(
+	ctx context.Context,
 	state sm.State,
 	appHash []byte,
 	appBlockHeight int64,
@@ -315,7 +316,7 @@ func (h *Handshaker) ReplayBlocks(
 			Validators:      nextVals,
 			AppStateBytes:   h.genDoc.AppState,
 		}
-		res, err := proxyApp.Consensus().InitChainSync(context.Background(), req)
+		res, err := proxyApp.Consensus().InitChainSync(ctx, req)
 		if err != nil {
 			return nil, err
 		}
@@ -421,7 +422,7 @@ func (h *Handshaker) ReplayBlocks(
 			if err != nil {
 				return nil, err
 			}
-			mockApp := newMockProxyApp(h.logger, appHash, abciResponses)
+			mockApp := newMockProxyApp(ctx, h.logger, appHash, abciResponses)
 			h.logger.Info("Replay last block using mock app")
 			state, err = h.replayBlock(state, storeBlockHeight, mockApp)
 			return state.AppHash, err

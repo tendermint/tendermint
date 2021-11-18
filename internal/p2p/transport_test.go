@@ -25,20 +25,26 @@ var testTransports = map[string]transportFactory{}
 
 // withTransports is a test helper that runs a test against all transports
 // registered in testTransports.
-func withTransports(t *testing.T, tester func(*testing.T, transportFactory)) {
+func withTransports(ctx context.Context, t *testing.T, tester func(context.Context, *testing.T, transportFactory)) {
 	t.Helper()
 	for name, transportFactory := range testTransports {
 		transportFactory := transportFactory
 		t.Run(name, func(t *testing.T) {
 			t.Cleanup(leaktest.Check(t))
-			tester(t, transportFactory)
+			tctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
+			tester(tctx, t, transportFactory)
 		})
 	}
 }
 
 func TestTransport_AcceptClose(t *testing.T) {
 	// Just test accept unblock on close, happy path is tested widely elsewhere.
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 
 		// In-progress Accept should error on concurrent close.
@@ -75,7 +81,10 @@ func TestTransport_DialEndpoints(t *testing.T) {
 		{[]byte{1, 2, 3, 4, 5}, false},
 	}
 
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		endpoints := a.Endpoints()
 		require.NotEmpty(t, endpoints)
@@ -149,8 +158,11 @@ func TestTransport_DialEndpoints(t *testing.T) {
 }
 
 func TestTransport_Dial(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Most just tests dial failures, happy path is tested widely elsewhere.
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
 
@@ -190,7 +202,10 @@ func TestTransport_Dial(t *testing.T) {
 }
 
 func TestTransport_Endpoints(t *testing.T) {
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
 
@@ -214,7 +229,10 @@ func TestTransport_Endpoints(t *testing.T) {
 }
 
 func TestTransport_Protocols(t *testing.T) {
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		protocols := a.Protocols()
 		endpoints := a.Endpoints()
@@ -228,17 +246,23 @@ func TestTransport_Protocols(t *testing.T) {
 }
 
 func TestTransport_String(t *testing.T) {
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		require.NotEmpty(t, a.String())
 	})
 }
 
 func TestConnection_Handshake(t *testing.T) {
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
-		ab, ba := dialAccept(t, a, b)
+		ab, ba := dialAccept(ctx, t, a, b)
 
 		// A handshake should pass the given keys and NodeInfo.
 		aKey := ed25519.GenPrivKey()
@@ -270,7 +294,10 @@ func TestConnection_Handshake(t *testing.T) {
 				assert.Equal(t, aInfo, peerInfo)
 				assert.Equal(t, aKey.PubKey(), peerKey)
 			}
-			errCh <- err
+			select {
+			case errCh <- err:
+			case <-ctx.Done():
+			}
 		}()
 
 		peerInfo, peerKey, err := ab.Handshake(ctx, aInfo, aKey)
@@ -283,12 +310,15 @@ func TestConnection_Handshake(t *testing.T) {
 }
 
 func TestConnection_HandshakeCancel(t *testing.T) {
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
 
 		// Handshake should error on context cancellation.
-		ab, ba := dialAccept(t, a, b)
+		ab, ba := dialAccept(ctx, t, a, b)
 		timeoutCtx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 		cancel()
 		_, _, err := ab.Handshake(timeoutCtx, types.NodeInfo{}, ed25519.GenPrivKey())
@@ -298,7 +328,7 @@ func TestConnection_HandshakeCancel(t *testing.T) {
 		_ = ba.Close()
 
 		// Handshake should error on context timeout.
-		ab, ba = dialAccept(t, a, b)
+		ab, ba = dialAccept(ctx, t, a, b)
 		timeoutCtx, cancel = context.WithTimeout(ctx, 200*time.Millisecond)
 		defer cancel()
 		_, _, err = ab.Handshake(timeoutCtx, types.NodeInfo{}, ed25519.GenPrivKey())
@@ -310,10 +340,13 @@ func TestConnection_HandshakeCancel(t *testing.T) {
 }
 
 func TestConnection_FlushClose(t *testing.T) {
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
-		ab, _ := dialAcceptHandshake(t, a, b)
+		ab, _ := dialAcceptHandshake(ctx, t, a, b)
 
 		err := ab.Close()
 		require.NoError(t, err)
@@ -329,10 +362,13 @@ func TestConnection_FlushClose(t *testing.T) {
 }
 
 func TestConnection_LocalRemoteEndpoint(t *testing.T) {
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
-		ab, ba := dialAcceptHandshake(t, a, b)
+		ab, ba := dialAcceptHandshake(ctx, t, a, b)
 
 		// Local and remote connection endpoints correspond to each other.
 		require.NotEmpty(t, ab.LocalEndpoint())
@@ -343,10 +379,13 @@ func TestConnection_LocalRemoteEndpoint(t *testing.T) {
 }
 
 func TestConnection_SendReceive(t *testing.T) {
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
-		ab, ba := dialAcceptHandshake(t, a, b)
+		ab, ba := dialAcceptHandshake(ctx, t, a, b)
 
 		// Can send and receive a to b.
 		err := ab.SendMessage(chID, []byte("foo"))
@@ -402,10 +441,13 @@ func TestConnection_SendReceive(t *testing.T) {
 }
 
 func TestConnection_String(t *testing.T) {
-	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
-		ab, _ := dialAccept(t, a, b)
+		ab, _ := dialAccept(ctx, t, a, b)
 		require.NotEmpty(t, ab.String())
 	})
 }
@@ -552,7 +594,7 @@ func TestEndpoint_Validate(t *testing.T) {
 
 // dialAccept is a helper that dials b from a and returns both sides of the
 // connection.
-func dialAccept(t *testing.T, a, b p2p.Transport) (p2p.Connection, p2p.Connection) {
+func dialAccept(ctx context.Context, t *testing.T, a, b p2p.Transport) (p2p.Connection, p2p.Connection) {
 	t.Helper()
 
 	endpoints := b.Endpoints()
@@ -585,13 +627,10 @@ func dialAccept(t *testing.T, a, b p2p.Transport) (p2p.Connection, p2p.Connectio
 
 // dialAcceptHandshake is a helper that dials and handshakes b from a and
 // returns both sides of the connection.
-func dialAcceptHandshake(t *testing.T, a, b p2p.Transport) (p2p.Connection, p2p.Connection) {
+func dialAcceptHandshake(ctx context.Context, t *testing.T, a, b p2p.Transport) (p2p.Connection, p2p.Connection) {
 	t.Helper()
 
-	ab, ba := dialAccept(t, a, b)
-
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
+	ab, ba := dialAccept(ctx, t, a, b)
 
 	errCh := make(chan error, 1)
 	go func() {

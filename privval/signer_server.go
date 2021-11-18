@@ -42,8 +42,8 @@ func NewSignerServer(endpoint *SignerDialerEndpoint, chainID string, privVal typ
 }
 
 // OnStart implements service.Service.
-func (ss *SignerServer) OnStart() error {
-	go ss.serviceLoop()
+func (ss *SignerServer) OnStart(ctx context.Context) error {
+	go ss.serviceLoop(ctx)
 	return nil
 }
 
@@ -91,18 +91,18 @@ func (ss *SignerServer) servicePendingRequest() {
 	}
 }
 
-func (ss *SignerServer) serviceLoop() {
+func (ss *SignerServer) serviceLoop(ctx context.Context) {
 	for {
 		select {
+		case <-ss.Quit():
+			return
+		case <-ctx.Done():
+			return
 		default:
-			err := ss.endpoint.ensureConnection()
-			if err != nil {
+			if err := ss.endpoint.ensureConnection(); err != nil {
 				return
 			}
 			ss.servicePendingRequest()
-
-		case <-ss.Quit():
-			return
 		}
 	}
 }

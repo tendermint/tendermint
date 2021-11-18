@@ -49,8 +49,8 @@ func NewProxy(
 // routes to proxy via Client, and starts up an HTTP server on the TCP network
 // address p.Addr.
 // See http#Server#ListenAndServe.
-func (p *Proxy) ListenAndServe() error {
-	listener, mux, err := p.listen()
+func (p *Proxy) ListenAndServe(ctx context.Context) error {
+	listener, mux, err := p.listen(ctx)
 	if err != nil {
 		return err
 	}
@@ -67,8 +67,8 @@ func (p *Proxy) ListenAndServe() error {
 // ListenAndServeTLS acts identically to ListenAndServe, except that it expects
 // HTTPS connections.
 // See http#Server#ListenAndServeTLS.
-func (p *Proxy) ListenAndServeTLS(certFile, keyFile string) error {
-	listener, mux, err := p.listen()
+func (p *Proxy) ListenAndServeTLS(ctx context.Context, certFile, keyFile string) error {
+	listener, mux, err := p.listen(ctx)
 	if err != nil {
 		return err
 	}
@@ -84,7 +84,7 @@ func (p *Proxy) ListenAndServeTLS(certFile, keyFile string) error {
 	)
 }
 
-func (p *Proxy) listen() (net.Listener, *http.ServeMux, error) {
+func (p *Proxy) listen(ctx context.Context) (net.Listener, *http.ServeMux, error) {
 	mux := http.NewServeMux()
 
 	// 1) Register regular routes.
@@ -107,7 +107,7 @@ func (p *Proxy) listen() (net.Listener, *http.ServeMux, error) {
 
 	// 3) Start a client.
 	if !p.Client.IsRunning() {
-		if err := p.Client.Start(); err != nil {
+		if err := p.Client.Start(ctx); err != nil {
 			return nil, mux, fmt.Errorf("can't start client: %w", err)
 		}
 	}

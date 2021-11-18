@@ -1,6 +1,7 @@
 package trust
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -9,8 +10,11 @@ import (
 )
 
 func TestTrustMetricScores(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	tm := NewMetric()
-	err := tm.Start()
+	err := tm.Start(ctx)
 	require.NoError(t, err)
 
 	// Perfect score
@@ -27,6 +31,9 @@ func TestTrustMetricScores(t *testing.T) {
 }
 
 func TestTrustMetricConfig(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// 7 days
 	window := time.Minute * 60 * 24 * 7
 	config := MetricConfig{
@@ -35,7 +42,7 @@ func TestTrustMetricConfig(t *testing.T) {
 	}
 
 	tm := NewMetricWithConfig(config)
-	err := tm.Start()
+	err := tm.Start(ctx)
 	require.NoError(t, err)
 
 	// The max time intervals should be the TrackingWindow / IntervalLen
@@ -52,7 +59,7 @@ func TestTrustMetricConfig(t *testing.T) {
 	config.ProportionalWeight = 0.3
 	config.IntegralWeight = 0.7
 	tm = NewMetricWithConfig(config)
-	err = tm.Start()
+	err = tm.Start(ctx)
 	require.NoError(t, err)
 
 	// These weights should be equal to our custom values
@@ -74,12 +81,15 @@ func TestTrustMetricCopyNilPointer(t *testing.T) {
 // XXX: This test fails non-deterministically
 //nolint:unused,deadcode
 func _TestTrustMetricStopPause(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// The TestTicker will provide manual control over
 	// the passing of time within the metric
 	tt := NewTestTicker()
 	tm := NewMetric()
 	tm.SetTicker(tt)
-	err := tm.Start()
+	err := tm.Start(ctx)
 	require.NoError(t, err)
 	// Allow some time intervals to pass and pause
 	tt.NextTick()

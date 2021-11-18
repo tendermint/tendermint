@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/spf13/cobra"
 
 	cfg "github.com/tendermint/tendermint/config"
-	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
 var (
@@ -103,28 +104,22 @@ func NewRunNodeCmd(nodeProvider cfg.ServiceProvider) *cobra.Command {
 				return err
 			}
 
-			n, err := nodeProvider(config, logger)
+			ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGTERM)
+			defer cancel()
+
+			n, err := nodeProvider(ctx, config, logger)
 			if err != nil {
 				return fmt.Errorf("failed to create node: %w", err)
 			}
 
-			if err := n.Start(); err != nil {
+			if err := n.Start(ctx); err != nil {
 				return fmt.Errorf("failed to start node: %w", err)
 			}
 
 			logger.Info("started node", "node", n.String())
 
-			// Stop upon receiving SIGTERM or CTRL-C.
-			tmos.TrapSignal(logger, func() {
-				if n.IsRunning() {
-					if err := n.Stop(); err != nil {
-						logger.Error("unable to stop the node", "error", err)
-					}
-				}
-			})
-
-			// Run forever.
-			select {}
+			<-ctx.Done()
+			return nil
 		},
 	}
 

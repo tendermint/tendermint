@@ -40,9 +40,12 @@ func TestApplyBlock(t *testing.T) {
 	cc := abciclient.NewLocalCreator(app)
 	logger := log.TestingLogger()
 	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
-	err := proxyApp.Start()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err := proxyApp.Start(ctx)
 	require.Nil(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)
@@ -62,12 +65,15 @@ func TestApplyBlock(t *testing.T) {
 
 // TestBeginBlockValidators ensures we send absent validators list.
 func TestBeginBlockValidators(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	app := &testApp{}
 	cc := abciclient.NewLocalCreator(app)
 	proxyApp := proxy.NewAppConns(cc, log.TestingLogger(), proxy.NopMetrics())
-	err := proxyApp.Start()
+
+	err := proxyApp.Start(ctx)
 	require.Nil(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // no need to check error again
 
 	state, stateDB, _ := makeState(2, 2)
 	stateStore := sm.NewStore(stateDB)
@@ -125,12 +131,14 @@ func TestBeginBlockValidators(t *testing.T) {
 
 // TestBeginBlockByzantineValidators ensures we send byzantine validators list.
 func TestBeginBlockByzantineValidators(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	app := &testApp{}
 	cc := abciclient.NewLocalCreator(app)
 	proxyApp := proxy.NewAppConns(cc, log.TestingLogger(), proxy.NopMetrics())
-	err := proxyApp.Start()
+	err := proxyApp.Start(ctx)
 	require.Nil(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)
@@ -350,13 +358,15 @@ func TestUpdateValidators(t *testing.T) {
 
 // TestEndBlockValidatorUpdates ensures we update validator set and send an event.
 func TestEndBlockValidatorUpdates(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	app := &testApp{}
 	cc := abciclient.NewLocalCreator(app)
 	logger := log.TestingLogger()
 	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
-	err := proxyApp.Start()
+	err := proxyApp.Start(ctx)
 	require.Nil(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)
@@ -372,7 +382,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	)
 
 	eventBus := eventbus.NewDefault(logger)
-	err = eventBus.Start()
+	err = eventBus.Start(ctx)
 	require.NoError(t, err)
 	defer eventBus.Stop() //nolint:errcheck // ignore for tests
 
@@ -405,7 +415,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	}
 
 	// test we threw an event
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	msg, err := updatesSub.Next(ctx)
 	require.NoError(t, err)
@@ -420,13 +430,15 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 // TestEndBlockValidatorUpdatesResultingInEmptySet checks that processing validator updates that
 // would result in empty set causes no panic, an error is raised and NextValidators is not updated
 func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	app := &testApp{}
 	cc := abciclient.NewLocalCreator(app)
 	logger := log.TestingLogger()
 	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
-	err := proxyApp.Start()
+	err := proxyApp.Start(ctx)
 	require.Nil(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)

@@ -24,8 +24,6 @@ const (
 	testValue = "def"
 )
 
-var ctx = context.Background()
-
 func testKVStore(t *testing.T, app types.Application, tx []byte, key, value string) {
 	req := types.RequestDeliverTx{Tx: tx}
 	ar := app.DeliverTx(req)
@@ -229,101 +227,103 @@ func valsEqual(t *testing.T, vals1, vals2 []types.ValidatorUpdate) {
 	}
 }
 
-func makeSocketClientServer(app types.Application, name string) (abciclient.Client, service.Service, error) {
+func makeSocketClientServer(
+	ctx context.Context,
+	t *testing.T,
+	logger log.Logger,
+	app types.Application,
+	name string,
+) (abciclient.Client, service.Service, error) {
+
+	ctx, cancel := context.WithCancel(ctx)
+	t.Cleanup(cancel)
+
 	// Start the listener
 	socket := fmt.Sprintf("unix://%s.sock", name)
-	logger := log.TestingLogger()
 
 	server := abciserver.NewSocketServer(logger.With("module", "abci-server"), socket, app)
-	if err := server.Start(); err != nil {
+	if err := server.Start(ctx); err != nil {
+		cancel()
 		return nil, nil, err
 	}
 
 	// Connect to the socket
 	client := abciclient.NewSocketClient(logger.With("module", "abci-client"), socket, false)
-	if err := client.Start(); err != nil {
-		if err = server.Stop(); err != nil {
-			return nil, nil, err
-		}
+	if err := client.Start(ctx); err != nil {
+		cancel()
 		return nil, nil, err
 	}
 
 	return client, server, nil
 }
 
-func makeGRPCClientServer(app types.Application, name string) (abciclient.Client, service.Service, error) {
+func makeGRPCClientServer(
+	ctx context.Context,
+	t *testing.T,
+	logger log.Logger,
+	app types.Application,
+	name string,
+) (abciclient.Client, service.Service, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	t.Cleanup(cancel)
 	// Start the listener
 	socket := fmt.Sprintf("unix://%s.sock", name)
-	logger := log.TestingLogger()
 
 	gapp := types.NewGRPCApplication(app)
 	server := abciserver.NewGRPCServer(logger.With("module", "abci-server"), socket, gapp)
 
-	if err := server.Start(); err != nil {
+	if err := server.Start(ctx); err != nil {
+		cancel()
 		return nil, nil, err
 	}
 
 	client := abciclient.NewGRPCClient(logger.With("module", "abci-client"), socket, true)
 
-	if err := client.Start(); err != nil {
-		if err := server.Stop(); err != nil {
-			return nil, nil, err
-		}
+	if err := client.Start(ctx); err != nil {
+		cancel()
 		return nil, nil, err
 	}
 	return client, server, nil
 }
 
 func TestClientServer(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	logger := log.TestingLogger()
+
 	// set up socket app
 	kvstore := NewApplication()
-	client, server, err := makeSocketClientServer(kvstore, "kvstore-socket")
+	client, server, err := makeSocketClientServer(ctx, t, logger, kvstore, "kvstore-socket")
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := server.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
-	t.Cleanup(func() {
-		if err := client.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+	t.Cleanup(func() { cancel(); server.Wait() })
+	t.Cleanup(func() { cancel(); client.Wait() })
 
-	runClientTests(t, client)
+	runClientTests(ctx, t, client)
 
 	// set up grpc app
 	kvstore = NewApplication()
-	gclient, gserver, err := makeGRPCClientServer(kvstore, "/tmp/kvstore-grpc")
+	gclient, gserver, err := makeGRPCClientServer(ctx, t, logger, kvstore, "/tmp/kvstore-grpc")
 	require.NoError(t, err)
 
-	t.Cleanup(func() {
-		if err := gserver.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
-	t.Cleanup(func() {
-		if err := gclient.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+	t.Cleanup(func() { cancel(); gserver.Wait() })
+	t.Cleanup(func() { cancel(); gclient.Wait() })
 
-	runClientTests(t, gclient)
+	runClientTests(ctx, t, gclient)
 }
 
-func runClientTests(t *testing.T, client abciclient.Client) {
+func runClientTests(ctx context.Context, t *testing.T, client abciclient.Client) {
 	// run some tests....
 	key := testKey
 	value := key
 	tx := []byte(key)
-	testClient(t, client, tx, key, value)
+	testClient(ctx, t, client, tx, key, value)
 
 	value = testValue
 	tx = []byte(key + "=" + value)
-	testClient(t, client, tx, key, value)
+	testClient(ctx, t, client, tx, key, value)
 }
 
-func testClient(t *testing.T, app abciclient.Client, tx []byte, key, value string) {
+func testClient(ctx context.Context, t *testing.T, app abciclient.Client, tx []byte, key, value string) {
 	ar, err := app.DeliverTxSync(ctx, types.RequestDeliverTx{Tx: tx})
 	require.NoError(t, err)
 	require.False(t, ar.IsErr(), ar)

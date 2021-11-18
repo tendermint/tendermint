@@ -2,6 +2,7 @@ package server
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -44,14 +45,14 @@ func NewSocketServer(logger tmlog.Logger, protoAddr string, app types.Applicatio
 	return s
 }
 
-func (s *SocketServer) OnStart() error {
+func (s *SocketServer) OnStart(ctx context.Context) error {
 	ln, err := net.Listen(s.proto, s.addr)
 	if err != nil {
 		return err
 	}
 
 	s.listener = ln
-	go s.acceptConnectionsRoutine()
+	go s.acceptConnectionsRoutine(ctx)
 
 	return nil
 }
@@ -63,6 +64,7 @@ func (s *SocketServer) OnStop() {
 
 	s.connsMtx.Lock()
 	defer s.connsMtx.Unlock()
+
 	for id, conn := range s.conns {
 		delete(s.conns, id)
 		if err := conn.Close(); err != nil {
@@ -96,8 +98,13 @@ func (s *SocketServer) rmConn(connID int) error {
 	return conn.Close()
 }
 
-func (s *SocketServer) acceptConnectionsRoutine() {
+func (s *SocketServer) acceptConnectionsRoutine(ctx context.Context) {
 	for {
+		if ctx.Err() != nil {
+			return
+
+		}
+
 		// Accept a connection
 		s.Logger.Info("Waiting for new connection...")
 		conn, err := s.listener.Accept()
@@ -117,35 +124,46 @@ func (s *SocketServer) acceptConnectionsRoutine() {
 		responses := make(chan *types.Response, 1000) // A channel to buffer responses
 
 		// Read requests from conn and deal with them
-		go s.handleRequests(closeConn, conn, responses)
+		go s.handleRequests(ctx, closeConn, conn, responses)
 		// Pull responses from 'responses' and write them to conn.
-		go s.handleResponses(closeConn, conn, responses)
+		go s.handleResponses(ctx, closeConn, conn, responses)
 
 		// Wait until signal to close connection
-		go s.waitForClose(closeConn, connID)
+		go s.waitForClose(ctx, closeConn, connID)
 	}
 }
 
-func (s *SocketServer) waitForClose(closeConn chan error, connID int) {
-	err := <-closeConn
-	switch {
-	case err == io.EOF:
-		s.Logger.Error("Connection was closed by client")
-	case err != nil:
-		s.Logger.Error("Connection error", "err", err)
-	default:
-		// never happens
-		s.Logger.Error("Connection was closed")
-	}
+func (s *SocketServer) waitForClose(ctx context.Context, closeConn chan error, connID int) {
+	defer func() {
+		// Close the connection
+		if err := s.rmConn(connID); err != nil {
+			s.Logger.Error("Error closing connection", "err", err)
+		}
+	}()
 
-	// Close the connection
-	if err := s.rmConn(connID); err != nil {
-		s.Logger.Error("Error closing connection", "err", err)
+	select {
+	case <-ctx.Done():
+		return
+	case err := <-closeConn:
+		switch {
+		case err == io.EOF:
+			s.Logger.Error("Connection was closed by client")
+		case err != nil:
+			s.Logger.Error("Connection error", "err", err)
+		default:
+			// never happens
+			s.Logger.Error("Connection was closed")
+		}
 	}
 }
 
 // Read requests from conn and deal with them
-func (s *SocketServer) handleRequests(closeConn chan error, conn io.Reader, responses chan<- *types.Response) {
+func (s *SocketServer) handleRequests(
+	ctx context.Context,
+	closeConn chan error,
+	conn io.Reader,
+	responses chan<- *types.Response,
+) {
 	var count int
 	var bufReader = bufio.NewReader(conn)
 
@@ -163,6 +181,9 @@ func (s *SocketServer) handleRequests(closeConn chan error, conn io.Reader, resp
 	}()
 
 	for {
+		if ctx.Err() != nil {
+			return
+		}
 
 		var req = &types.Request{}
 		err := types.ReadMessage(bufReader, req)
@@ -229,7 +250,12 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 }
 
 // Pull responses from 'responses' and write them to conn.
-func (s *SocketServer) handleResponses(closeConn chan error, conn io.Writer, responses <-chan *types.Response) {
+func (s *SocketServer) handleResponses(
+	ctx context.Context,
+	closeConn chan error,
+	conn io.Writer,
+	responses <-chan *types.Response,
+) {
 	bw := bufio.NewWriter(conn)
 	for res := range responses {
 		if err := types.WriteMessage(res, bw); err != nil {

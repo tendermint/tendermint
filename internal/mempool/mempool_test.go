@@ -72,8 +72,11 @@ func (app *application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 	}
 }
 
-func setup(t testing.TB, cacheSize int, options ...TxMempoolOption) *TxMempool {
+func setup(ctx context.Context, t testing.TB, cacheSize int, options ...TxMempoolOption) *TxMempool {
 	t.Helper()
+
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
 
 	app := &application{kvstore.NewApplication()}
 	cc := abciclient.NewLocalCreator(app)
@@ -84,11 +87,12 @@ func setup(t testing.TB, cacheSize int, options ...TxMempoolOption) *TxMempool {
 	cfg.Mempool.CacheSize = cacheSize
 	appConnMem, err := cc(logger)
 	require.NoError(t, err)
-	require.NoError(t, appConnMem.Start())
+	require.NoError(t, appConnMem.Start(ctx))
 
 	t.Cleanup(func() {
 		os.RemoveAll(cfg.RootDir)
-		require.NoError(t, appConnMem.Stop())
+		cancel()
+		appConnMem.Wait()
 	})
 
 	return NewTxMempool(logger.With("test", t.Name()), cfg.Mempool, appConnMem, 0, options...)
@@ -128,7 +132,10 @@ func convertTex(in []testTx) types.Txs {
 }
 
 func TestTxMempool_TxsAvailable(t *testing.T) {
-	txmp := setup(t, 0)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	txmp := setup(ctx, t, 0)
 	txmp.EnableTxsAvailable()
 
 	ensureNoTxFire := func() {
@@ -182,7 +189,10 @@ func TestTxMempool_TxsAvailable(t *testing.T) {
 }
 
 func TestTxMempool_Size(t *testing.T) {
-	txmp := setup(t, 0)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	txmp := setup(ctx, t, 0)
 	txs := checkTxs(t, txmp, 100, 0)
 	require.Equal(t, len(txs), txmp.Size())
 	require.Equal(t, int64(5690), txmp.SizeBytes())
@@ -206,7 +216,10 @@ func TestTxMempool_Size(t *testing.T) {
 }
 
 func TestTxMempool_Flush(t *testing.T) {
-	txmp := setup(t, 0)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	txmp := setup(ctx, t, 0)
 	txs := checkTxs(t, txmp, 100, 0)
 	require.Equal(t, len(txs), txmp.Size())
 	require.Equal(t, int64(5690), txmp.SizeBytes())
@@ -231,7 +244,10 @@ func TestTxMempool_Flush(t *testing.T) {
 }
 
 func TestTxMempool_ReapMaxBytesMaxGas(t *testing.T) {
-	txmp := setup(t, 0)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	txmp := setup(ctx, t, 0)
 	tTxs := checkTxs(t, txmp, 100, 0) // all txs request 1 gas unit
 	require.Equal(t, len(tTxs), txmp.Size())
 	require.Equal(t, int64(5690), txmp.SizeBytes())
@@ -281,7 +297,10 @@ func TestTxMempool_ReapMaxBytesMaxGas(t *testing.T) {
 }
 
 func TestTxMempool_ReapMaxTxs(t *testing.T) {
-	txmp := setup(t, 0)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	txmp := setup(ctx, t, 0)
 	tTxs := checkTxs(t, txmp, 100, 0)
 	require.Equal(t, len(tTxs), txmp.Size())
 	require.Equal(t, int64(5690), txmp.SizeBytes())
@@ -330,7 +349,10 @@ func TestTxMempool_ReapMaxTxs(t *testing.T) {
 }
 
 func TestTxMempool_CheckTxExceedsMaxSize(t *testing.T) {
-	txmp := setup(t, 0)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	txmp := setup(ctx, t, 0)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	tx := make([]byte, txmp.config.MaxTxBytes+1)
@@ -347,7 +369,10 @@ func TestTxMempool_CheckTxExceedsMaxSize(t *testing.T) {
 }
 
 func TestTxMempool_CheckTxSamePeer(t *testing.T) {
-	txmp := setup(t, 100)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	txmp := setup(ctx, t, 100)
 	peerID := uint16(1)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -362,7 +387,10 @@ func TestTxMempool_CheckTxSamePeer(t *testing.T) {
 }
 
 func TestTxMempool_CheckTxSameSender(t *testing.T) {
-	txmp := setup(t, 100)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	txmp := setup(ctx, t, 100)
 	peerID := uint16(1)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -384,7 +412,10 @@ func TestTxMempool_CheckTxSameSender(t *testing.T) {
 }
 
 func TestTxMempool_ConcurrentTxs(t *testing.T) {
-	txmp := setup(t, 100)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	txmp := setup(ctx, t, 100)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	checkTxDone := make(chan struct{})
 
@@ -448,7 +479,10 @@ func TestTxMempool_ConcurrentTxs(t *testing.T) {
 }
 
 func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
-	txmp := setup(t, 500)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	txmp := setup(ctx, t, 500)
 	txmp.height = 100
 	txmp.config.TTLNumBlocks = 10
 
@@ -498,6 +532,9 @@ func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
 }
 
 func TestTxMempool_CheckTxPostCheckError(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cases := []struct {
 		name string
 		err  error
@@ -514,10 +551,13 @@ func TestTxMempool_CheckTxPostCheckError(t *testing.T) {
 	for _, tc := range cases {
 		testCase := tc
 		t.Run(testCase.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
 			postCheckFn := func(_ types.Tx, _ *abci.ResponseCheckTx) error {
 				return testCase.err
 			}
-			txmp := setup(t, 0, WithPostCheck(postCheckFn))
+			txmp := setup(ctx, t, 0, WithPostCheck(postCheckFn))
 			rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 			tx := make([]byte, txmp.config.MaxTxBytes-1)
 			_, err := rng.Read(tx)
@@ -532,7 +572,7 @@ func TestTxMempool_CheckTxPostCheckError(t *testing.T) {
 				}
 				require.Equal(t, expectedErrString, checkTxRes.CheckTx.MempoolError)
 			}
-			require.NoError(t, txmp.CheckTx(context.Background(), tx, callback, TxInfo{SenderID: 0}))
+			require.NoError(t, txmp.CheckTx(ctx, tx, callback, TxInfo{SenderID: 0}))
 		})
 	}
 }

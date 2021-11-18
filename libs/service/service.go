@@ -1,8 +1,8 @@
 package service
 
 import (
+	"context"
 	"errors"
-	"fmt"
 	"sync/atomic"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -22,22 +22,10 @@ var (
 
 // Service defines a service that can be started, stopped, and reset.
 type Service interface {
-	// Start the service.
-	// If it's already started or stopped, will return an error.
-	// If OnStart() returns an error, it's returned by Start()
-	Start() error
-	OnStart() error
-
-	// Stop the service.
-	// If it's already stopped, will return an error.
-	// OnStop must never error.
-	Stop() error
-	OnStop()
-
-	// Reset the service.
-	// Panics by default - must be overwritten to enable reset.
-	Reset() error
-	OnReset() error
+	// Start is called to start the service, which should run until
+	// the context terminates. If the service is already running, Start
+	// must report an error.
+	Start(context.Context) error
 
 	// Return true if the service is running
 	IsRunning() bool
@@ -50,6 +38,18 @@ type Service interface {
 
 	// Wait blocks until the service is stopped.
 	Wait()
+}
+
+// Implementation describes the implementation that the
+// BaseService implementation wraps.
+type Implementation interface {
+	Service
+
+	// Called by the Services Start Method
+	OnStart(context.Context) error
+
+	// Called when the service's context is canceled.
+	OnStop()
 }
 
 /*
@@ -82,7 +82,7 @@ Typical usage:
 		return fs
 	}
 
-	func (fs *FooService) OnStart() error {
+	func (fs *FooService) OnStart(ctx context.Context) error {
 		fs.BaseService.OnStart() // Always call the overridden method.
 		// initialize private fields
 		// start subroutines, etc.
@@ -102,11 +102,11 @@ type BaseService struct {
 	quit    chan struct{}
 
 	// The "subclass" of BaseService
-	impl Service
+	impl Implementation
 }
 
 // NewBaseService creates a new BaseService.
-func NewBaseService(logger log.Logger, name string, impl Service) *BaseService {
+func NewBaseService(logger log.Logger, name string, impl Implementation) *BaseService {
 	if logger == nil {
 		logger = log.NewNopLogger()
 	}
@@ -119,10 +119,10 @@ func NewBaseService(logger log.Logger, name string, impl Service) *BaseService {
 	}
 }
 
-// Start implements Service by calling OnStart (if defined). An error will be
-// returned if the service is already running or stopped. Not to start the
-// stopped service, you need to call Reset.
-func (bs *BaseService) Start() error {
+// Start starts the Service and calls its OnStart method. An error will be
+// returned if the service is already running or stopped.  To restart a
+// stopped service, call Reset.
+func (bs *BaseService) Start(ctx context.Context) error {
 	if atomic.CompareAndSwapUint32(&bs.started, 0, 1) {
 		if atomic.LoadUint32(&bs.stopped) == 1 {
 			bs.Logger.Error("not starting service; already stopped", "service", bs.name, "impl", bs.impl.String())
@@ -132,11 +132,26 @@ func (bs *BaseService) Start() error {
 
 		bs.Logger.Info("starting service", "service", bs.name, "impl", bs.impl.String())
 
-		if err := bs.impl.OnStart(); err != nil {
+		if err := bs.impl.OnStart(ctx); err != nil {
 			// revert flag
 			atomic.StoreUint32(&bs.started, 0)
 			return err
 		}
+
+		go func(ctx context.Context) {
+			<-ctx.Done()
+			if err := bs.Stop(); err != nil {
+				bs.Logger.Error("stopped service",
+					"err", err.Error(),
+					"service", bs.name,
+					"impl", bs.impl.String())
+			}
+
+			bs.Logger.Info("stopped service",
+				"service", bs.name,
+				"impl", bs.impl.String())
+		}(ctx)
+
 		return nil
 	}
 
@@ -147,7 +162,7 @@ func (bs *BaseService) Start() error {
 // OnStart implements Service by doing nothing.
 // NOTE: Do not put anything in here,
 // that way users don't need to call BaseService.OnStart()
-func (bs *BaseService) OnStart() error { return nil }
+func (bs *BaseService) OnStart(ctx context.Context) error { return nil }
 
 // Stop implements Service by calling OnStop (if defined) and closing quit
 // channel. An error will be returned if the service is already stopped.
@@ -175,26 +190,6 @@ func (bs *BaseService) Stop() error {
 // that way users don't need to call BaseService.OnStop()
 func (bs *BaseService) OnStop() {}
 
-// Reset implements Service by calling OnReset callback (if defined). An error
-// will be returned if the service is running.
-func (bs *BaseService) Reset() error {
-	if !atomic.CompareAndSwapUint32(&bs.stopped, 1, 0) {
-		bs.Logger.Debug("cannot reset service; not stopped", "service", bs.name, "impl", bs.impl.String())
-		return fmt.Errorf("can't reset running %s", bs.name)
-	}
-
-	// whether or not we've started, we can reset
-	atomic.CompareAndSwapUint32(&bs.started, 1, 0)
-
-	bs.quit = make(chan struct{})
-	return bs.impl.OnReset()
-}
-
-// OnReset implements Service by panicking.
-func (bs *BaseService) OnReset() error {
-	panic("The service cannot be reset")
-}
-
 // IsRunning implements Service by returning true or false depending on the
 // service's state.
 func (bs *BaseService) IsRunning() bool {
@@ -202,16 +197,10 @@ func (bs *BaseService) IsRunning() bool {
 }
 
 // Wait blocks until the service is stopped.
-func (bs *BaseService) Wait() {
-	<-bs.quit
-}
+func (bs *BaseService) Wait() { <-bs.quit }
 
 // String implements Service by returning a string representation of the service.
-func (bs *BaseService) String() string {
-	return bs.name
-}
+func (bs *BaseService) String() string { return bs.name }
 
 // Quit Implements Service by returning a quit channel.
-func (bs *BaseService) Quit() <-chan struct{} {
-	return bs.quit
-}
+func (bs *BaseService) Quit() <-chan struct{} { return bs.quit }

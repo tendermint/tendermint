@@ -17,7 +17,7 @@ func init() {
 	app := kvstore.NewApplication()
 	cc := abciclient.NewLocalCreator(app)
 	appConnMem, _ := cc(log.NewNopLogger())
-	err := appConnMem.Start()
+	err := appConnMem.Start(context.TODO())
 	if err != nil {
 		panic(err)
 	}

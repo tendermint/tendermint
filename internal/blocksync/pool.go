@@ -1,6 +1,7 @@
 package blocksync
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -116,15 +117,15 @@ func NewBlockPool(
 
 // OnStart implements service.Service by spawning requesters routine and recording
 // pool's start time.
-func (pool *BlockPool) OnStart() error {
+func (pool *BlockPool) OnStart(ctx context.Context) error {
 	pool.lastAdvance = time.Now()
 	pool.lastHundredBlockTimeStamp = pool.lastAdvance
-	go pool.makeRequestersRoutine()
+	go pool.makeRequestersRoutine(ctx)
 	return nil
 }
 
 // spawns requesters as needed
-func (pool *BlockPool) makeRequestersRoutine() {
+func (pool *BlockPool) makeRequestersRoutine(ctx context.Context) {
 	for {
 		if !pool.IsRunning() {
 			break
@@ -144,7 +145,7 @@ func (pool *BlockPool) makeRequestersRoutine() {
 			pool.removeTimedoutPeers()
 		default:
 			// request for more blocks.
-			pool.makeNextRequester()
+			pool.makeNextRequester(ctx)
 		}
 	}
 }
@@ -397,7 +398,7 @@ func (pool *BlockPool) pickIncrAvailablePeer(height int64) *bpPeer {
 	return nil
 }
 
-func (pool *BlockPool) makeNextRequester() {
+func (pool *BlockPool) makeNextRequester(ctx context.Context) {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
@@ -411,7 +412,7 @@ func (pool *BlockPool) makeNextRequester() {
 	pool.requesters[nextHeight] = request
 	atomic.AddInt32(&pool.numPending, 1)
 
-	err := request.Start()
+	err := request.Start(ctx)
 	if err != nil {
 		request.Logger.Error("Error starting request", "err", err)
 	}
@@ -570,7 +571,7 @@ func newBPRequester(pool *BlockPool, height int64) *bpRequester {
 	return bpr
 }
 
-func (bpr *bpRequester) OnStart() error {
+func (bpr *bpRequester) OnStart(ctx context.Context) error {
 	go bpr.requestRoutine()
 	return nil
 }

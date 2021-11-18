@@ -332,7 +332,7 @@ func execBlockOnProxyApp(
 		byzVals = append(byzVals, evidence.ABCI()...)
 	}
 
-	ctx := context.Background()
+	ctx := context.TODO()
 
 	// Begin block
 	var err error

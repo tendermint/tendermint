@@ -1,6 +1,7 @@
 package pex_test
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -29,13 +30,15 @@ const (
 )
 
 func TestReactorBasic(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	// start a network with one mock reactor and one "real" reactor
-	testNet := setupNetwork(t, testOptions{
+	testNet := setupNetwork(ctx, t, testOptions{
 		MockNodes:  1,
 		TotalNodes: 2,
 	})
 	testNet.connectAll(t)
-	testNet.start(t)
+	testNet.start(ctx, t)
 
 	// assert that the mock node receives a request from the real node
 	testNet.listenForRequest(t, secondNode, firstNode, shortWait)
@@ -47,14 +50,17 @@ func TestReactorBasic(t *testing.T) {
 }
 
 func TestReactorConnectFullNetwork(t *testing.T) {
-	testNet := setupNetwork(t, testOptions{
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	testNet := setupNetwork(ctx, t, testOptions{
 		TotalNodes: 4,
 	})
 
 	// make every node be only connected with one other node (it actually ends up
 	// being two because of two way connections but oh well)
 	testNet.connectN(t, 1)
-	testNet.start(t)
+	testNet.start(ctx, t)
 
 	// assert that all nodes add each other in the network
 	for idx := 0; idx < len(testNet.nodes); idx++ {
@@ -63,7 +69,10 @@ func TestReactorConnectFullNetwork(t *testing.T) {
 }
 
 func TestReactorSendsRequestsTooOften(t *testing.T) {
-	r := setupSingle(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	r := setupSingle(ctx, t)
 
 	badNode := newNodeID(t, "b")
 
@@ -90,12 +99,15 @@ func TestReactorSendsRequestsTooOften(t *testing.T) {
 }
 
 func TestReactorSendsResponseWithoutRequest(t *testing.T) {
-	testNet := setupNetwork(t, testOptions{
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	testNet := setupNetwork(ctx, t, testOptions{
 		MockNodes:  1,
 		TotalNodes: 3,
 	})
 	testNet.connectAll(t)
-	testNet.start(t)
+	testNet.start(ctx, t)
 
 	// firstNode sends the secondNode an unrequested response
 	// NOTE: secondNode will send a request by default during startup so we send
@@ -108,14 +120,17 @@ func TestReactorSendsResponseWithoutRequest(t *testing.T) {
 }
 
 func TestReactorNeverSendsTooManyPeers(t *testing.T) {
-	testNet := setupNetwork(t, testOptions{
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	testNet := setupNetwork(ctx, t, testOptions{
 		MockNodes:  1,
 		TotalNodes: 2,
 	})
 	testNet.connectAll(t)
-	testNet.start(t)
+	testNet.start(ctx, t)
 
-	testNet.addNodes(t, 110)
+	testNet.addNodes(ctx, t, 110)
 	nodes := make([]int, 110)
 	for i := 0; i < len(nodes); i++ {
 		nodes[i] = i + 2
@@ -128,7 +143,10 @@ func TestReactorNeverSendsTooManyPeers(t *testing.T) {
 }
 
 func TestReactorErrorsOnReceivingTooManyPeers(t *testing.T) {
-	r := setupSingle(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	r := setupSingle(ctx, t)
 	peer := p2p.NodeAddress{Protocol: p2p.MemoryProtocol, NodeID: randomNodeID(t)}
 	added, err := r.manager.Add(peer)
 	require.NoError(t, err)
@@ -172,14 +190,17 @@ func TestReactorErrorsOnReceivingTooManyPeers(t *testing.T) {
 }
 
 func TestReactorSmallPeerStoreInALargeNetwork(t *testing.T) {
-	testNet := setupNetwork(t, testOptions{
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	testNet := setupNetwork(ctx, t, testOptions{
 		TotalNodes:   8,
 		MaxPeers:     4,
 		MaxConnected: 3,
 		BufferSize:   8,
 	})
 	testNet.connectN(t, 1)
-	testNet.start(t)
+	testNet.start(ctx, t)
 
 	// test that all nodes reach full capacity
 	for _, nodeID := range testNet.nodes {
@@ -191,14 +212,17 @@ func TestReactorSmallPeerStoreInALargeNetwork(t *testing.T) {
 }
 
 func TestReactorLargePeerStoreInASmallNetwork(t *testing.T) {
-	testNet := setupNetwork(t, testOptions{
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	testNet := setupNetwork(ctx, t, testOptions{
 		TotalNodes:   3,
 		MaxPeers:     25,
 		MaxConnected: 25,
 		BufferSize:   5,
 	})
 	testNet.connectN(t, 1)
-	testNet.start(t)
+	testNet.start(ctx, t)
 
 	// assert that all nodes add each other in the network
 	for idx := 0; idx < len(testNet.nodes); idx++ {
@@ -207,12 +231,15 @@ func TestReactorLargePeerStoreInASmallNetwork(t *testing.T) {
 }
 
 func TestReactorWithNetworkGrowth(t *testing.T) {
-	testNet := setupNetwork(t, testOptions{
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	testNet := setupNetwork(ctx, t, testOptions{
 		TotalNodes: 5,
 		BufferSize: 5,
 	})
 	testNet.connectAll(t)
-	testNet.start(t)
+	testNet.start(ctx, t)
 
 	// assert that all nodes add each other in the network
 	for idx := 0; idx < len(testNet.nodes); idx++ {
@@ -220,10 +247,10 @@ func TestReactorWithNetworkGrowth(t *testing.T) {
 	}
 
 	// now we inject 10 more nodes
-	testNet.addNodes(t, 10)
+	testNet.addNodes(ctx, t, 10)
 	for i := 5; i < testNet.total; i++ {
 		node := testNet.nodes[i]
-		require.NoError(t, testNet.reactors[node].Start())
+		require.NoError(t, testNet.reactors[node].Start(ctx))
 		require.True(t, testNet.reactors[node].IsRunning())
 		// we connect all new nodes to a single entry point and check that the
 		// node can distribute the addresses to all the others
@@ -247,7 +274,7 @@ type singleTestReactor struct {
 	manager  *p2p.PeerManager
 }
 
-func setupSingle(t *testing.T) *singleTestReactor {
+func setupSingle(ctx context.Context, t *testing.T) *singleTestReactor {
 	t.Helper()
 	nodeID := newNodeID(t, "a")
 	chBuf := 2
@@ -268,14 +295,11 @@ func setupSingle(t *testing.T) *singleTestReactor {
 	require.NoError(t, err)
 
 	reactor := pex.NewReactor(log.TestingLogger(), peerManager, pexCh, peerUpdates)
-	require.NoError(t, reactor.Start())
+	require.NoError(t, reactor.Start(ctx))
 	t.Cleanup(func() {
-		err := reactor.Stop()
-		if err != nil {
-			t.Fatal(err)
-		}
 		pexCh.Close()
 		peerUpdates.Close()
+		reactor.Wait()
 	})
 
 	return &singleTestReactor{
@@ -315,7 +339,7 @@ type testOptions struct {
 
 // setup setups a test suite with a network of nodes. Mocknodes represent the
 // hollow nodes that the test can listen and send on
-func setupNetwork(t *testing.T, opts testOptions) *reactorTestSuite {
+func setupNetwork(ctx context.Context, t *testing.T, opts testOptions) *reactorTestSuite {
 	t.Helper()
 
 	require.Greater(t, opts.TotalNodes, opts.MockNodes)
@@ -335,7 +359,7 @@ func setupNetwork(t *testing.T, opts testOptions) *reactorTestSuite {
 
 	rts := &reactorTestSuite{
 		logger:      log.TestingLogger().With("testCase", t.Name()),
-		network:     p2ptest.MakeNetwork(t, networkOpts),
+		network:     p2ptest.MakeNetwork(ctx, t, networkOpts),
 		reactors:    make(map[types.NodeID]*pex.Reactor, realNodes),
 		pexChannels: make(map[types.NodeID]*p2p.Channel, opts.TotalNodes),
 		peerChans:   make(map[types.NodeID]chan p2p.PeerUpdate, opts.TotalNodes),
@@ -375,7 +399,7 @@ func setupNetwork(t *testing.T, opts testOptions) *reactorTestSuite {
 	t.Cleanup(func() {
 		for nodeID, reactor := range rts.reactors {
 			if reactor.IsRunning() {
-				require.NoError(t, reactor.Stop())
+				reactor.Wait()
 				require.False(t, reactor.IsRunning())
 			}
 			rts.pexChannels[nodeID].Close()
@@ -391,20 +415,20 @@ func setupNetwork(t *testing.T, opts testOptions) *reactorTestSuite {
 }
 
 // starts up the pex reactors for each node
-func (r *reactorTestSuite) start(t *testing.T) {
+func (r *reactorTestSuite) start(ctx context.Context, t *testing.T) {
 	t.Helper()
 
 	for _, reactor := range r.reactors {
-		require.NoError(t, reactor.Start())
+		require.NoError(t, reactor.Start(ctx))
 		require.True(t, reactor.IsRunning())
 	}
 }
 
-func (r *reactorTestSuite) addNodes(t *testing.T, nodes int) {
+func (r *reactorTestSuite) addNodes(ctx context.Context, t *testing.T, nodes int) {
 	t.Helper()
 
 	for i := 0; i < nodes; i++ {
-		node := r.network.MakeNode(t, p2ptest.NodeOptions{
+		node := r.network.MakeNode(ctx, t, p2ptest.NodeOptions{
 			MaxPeers:     r.opts.MaxPeers,
 			MaxConnected: r.opts.MaxConnected,
 		})

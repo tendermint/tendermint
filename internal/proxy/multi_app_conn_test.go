@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"context"
 	"errors"
 	"os"
 	"os/signal"
@@ -17,31 +18,42 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
+type noopStoppableClientImpl struct {
+	abciclient.Client
+	count int
+}
+
+func (c *noopStoppableClientImpl) Stop() error { c.count++; return nil }
+
 func TestAppConns_Start_Stop(t *testing.T) {
 	quitCh := make(<-chan struct{})
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	clientMock := &abcimocks.Client{}
-	clientMock.On("Start").Return(nil).Times(4)
-	clientMock.On("Stop").Return(nil).Times(4)
+	clientMock.On("Start", mock.Anything).Return(nil).Times(4)
 	clientMock.On("Quit").Return(quitCh).Times(4)
+	cl := &noopStoppableClientImpl{Client: clientMock}
 
 	creatorCallCount := 0
 	creator := func(logger log.Logger) (abciclient.Client, error) {
 		creatorCallCount++
-		return clientMock, nil
+		return cl, nil
 	}
 
 	appConns := NewAppConns(creator, log.TestingLogger(), NopMetrics())
 
-	err := appConns.Start()
+	err := appConns.Start(ctx)
 	require.NoError(t, err)
 
 	time.Sleep(100 * time.Millisecond)
 
-	err = appConns.Stop()
-	require.NoError(t, err)
+	cancel()
+	appConns.Wait()
 
 	clientMock.AssertExpectations(t)
+	assert.Equal(t, 4, cl.count)
 	assert.Equal(t, 4, creatorCallCount)
 }
 
@@ -56,31 +68,30 @@ func TestAppConns_Failure(t *testing.T) {
 		}
 	}()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	quitCh := make(chan struct{})
 	var recvQuitCh <-chan struct{} // nolint:gosimple
 	recvQuitCh = quitCh
 
 	clientMock := &abcimocks.Client{}
 	clientMock.On("SetLogger", mock.Anything).Return()
-	clientMock.On("Start").Return(nil)
-	clientMock.On("Stop").Return(nil)
+	clientMock.On("Start", mock.Anything).Return(nil)
 
 	clientMock.On("Quit").Return(recvQuitCh)
 	clientMock.On("Error").Return(errors.New("EOF")).Once()
+	cl := &noopStoppableClientImpl{Client: clientMock}
 
 	creator := func(log.Logger) (abciclient.Client, error) {
-		return clientMock, nil
+		return cl, nil
 	}
 
 	appConns := NewAppConns(creator, log.TestingLogger(), NopMetrics())
 
-	err := appConns.Start()
+	err := appConns.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := appConns.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+	t.Cleanup(func() { cancel(); appConns.Wait() })
 
 	// simulate failure
 	close(quitCh)

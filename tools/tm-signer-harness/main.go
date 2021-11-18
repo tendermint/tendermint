@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -115,7 +116,7 @@ Usage:
 	}
 }
 
-func runTestHarness(acceptRetries int, bindAddr, tmhome string) {
+func runTestHarness(ctx context.Context, acceptRetries int, bindAddr, tmhome string) {
 	tmhome = internal.ExpandPath(tmhome)
 	cfg := internal.TestHarnessConfig{
 		BindAddr:         bindAddr,
@@ -128,7 +129,7 @@ func runTestHarness(acceptRetries int, bindAddr, tmhome string) {
 		SecretConnKey:    ed25519.GenPrivKey(),
 		ExitWhenComplete: true,
 	}
-	harness, err := internal.NewTestHarness(logger, cfg)
+	harness, err := internal.NewTestHarness(ctx, logger, cfg)
 	if err != nil {
 		logger.Error(err.Error())
 		if therr, ok := err.(*internal.TestHarnessError); ok {
@@ -156,6 +157,9 @@ func extractKey(tmhome, outputPath string) {
 }
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	if err := rootCmd.Parse(os.Args[1:]); err != nil {
 		fmt.Printf("Error parsing flags: %v\n", err)
 		os.Exit(1)
@@ -183,7 +187,7 @@ func main() {
 			fmt.Printf("Error parsing flags: %v\n", err)
 			os.Exit(1)
 		}
-		runTestHarness(flagAcceptRetries, flagBindAddr, flagTMHome)
+		runTestHarness(ctx, flagAcceptRetries, flagBindAddr, flagTMHome)
 	case "extract_key":
 		if err := extractKeyCmd.Parse(os.Args[2:]); err != nil {
 			fmt.Printf("Error parsing flags: %v\n", err)

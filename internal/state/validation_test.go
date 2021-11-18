@@ -28,9 +28,11 @@ import (
 const validationTestsStopHeight int64 = 10
 
 func TestValidateBlockHeader(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	proxyApp := newTestApp()
-	require.NoError(t, proxyApp.Start())
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
+	require.NoError(t, proxyApp.Start(ctx))
 
 	state, stateDB, privVals := makeState(3, 1)
 	stateStore := sm.NewStore(stateDB)
@@ -115,9 +117,11 @@ func TestValidateBlockHeader(t *testing.T) {
 }
 
 func TestValidateBlockCommit(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	proxyApp := newTestApp()
-	require.NoError(t, proxyApp.Start())
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
+	require.NoError(t, proxyApp.Start(ctx))
 
 	state, stateDB, privVals := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)
@@ -207,7 +211,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		)
 		require.NoError(t, err, "height %d", height)
 
-		bpvPubKey, err := badPrivVal.GetPubKey(context.Background())
+		bpvPubKey, err := badPrivVal.GetPubKey(ctx)
 		require.NoError(t, err)
 
 		badVote := &types.Vote{
@@ -223,9 +227,9 @@ func TestValidateBlockCommit(t *testing.T) {
 		g := goodVote.ToProto()
 		b := badVote.ToProto()
 
-		err = badPrivVal.SignVote(context.Background(), chainID, g)
+		err = badPrivVal.SignVote(ctx, chainID, g)
 		require.NoError(t, err, "height %d", height)
-		err = badPrivVal.SignVote(context.Background(), chainID, b)
+		err = badPrivVal.SignVote(ctx, chainID, b)
 		require.NoError(t, err, "height %d", height)
 
 		goodVote.Signature, badVote.Signature = g.Signature, b.Signature
@@ -236,9 +240,11 @@ func TestValidateBlockCommit(t *testing.T) {
 }
 
 func TestValidateBlockEvidence(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	proxyApp := newTestApp()
-	require.NoError(t, proxyApp.Start())
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
+	require.NoError(t, proxyApp.Start(ctx))
 
 	state, stateDB, privVals := makeState(4, 1)
 	stateStore := sm.NewStore(stateDB)

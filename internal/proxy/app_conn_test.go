@@ -51,16 +51,15 @@ func TestEcho(t *testing.T) {
 	logger := log.TestingLogger()
 	clientCreator := abciclient.NewRemoteCreator(logger, sockPath, SOCKET, true)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Start server
 	s := server.NewSocketServer(logger.With("module", "abci-server"), sockPath, kvstore.NewApplication())
-	if err := s.Start(); err != nil {
+	if err := s.Start(ctx); err != nil {
 		t.Fatalf("Error starting socket server: %v", err.Error())
 	}
-	t.Cleanup(func() {
-		if err := s.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+	t.Cleanup(func() { cancel(); s.Wait() })
 
 	// Start client
 	cli, err := clientCreator(logger.With("module", "abci-client"))
@@ -68,14 +67,13 @@ func TestEcho(t *testing.T) {
 		t.Fatalf("Error creating ABCI client: %v", err.Error())
 	}
 
-	if err := cli.Start(); err != nil {
+	if err := cli.Start(ctx); err != nil {
 		t.Fatalf("Error starting ABCI client: %v", err.Error())
 	}
 
 	proxy := newAppConnTest(cli)
 	t.Log("Connected")
 
-	ctx := context.Background()
 	for i := 0; i < 1000; i++ {
 		_, err = proxy.EchoAsync(ctx, fmt.Sprintf("echo-%v", i))
 		if err != nil {
@@ -99,16 +97,15 @@ func BenchmarkEcho(b *testing.B) {
 	logger := log.TestingLogger()
 	clientCreator := abciclient.NewRemoteCreator(logger, sockPath, SOCKET, true)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Start server
 	s := server.NewSocketServer(logger.With("module", "abci-server"), sockPath, kvstore.NewApplication())
-	if err := s.Start(); err != nil {
+	if err := s.Start(ctx); err != nil {
 		b.Fatalf("Error starting socket server: %v", err.Error())
 	}
-	b.Cleanup(func() {
-		if err := s.Stop(); err != nil {
-			b.Error(err)
-		}
-	})
+	b.Cleanup(func() { cancel(); s.Wait() })
 
 	// Start client
 	cli, err := clientCreator(logger.With("module", "abci-client"))
@@ -116,7 +113,7 @@ func BenchmarkEcho(b *testing.B) {
 		b.Fatalf("Error creating ABCI client: %v", err.Error())
 	}
 
-	if err := cli.Start(); err != nil {
+	if err := cli.Start(ctx); err != nil {
 		b.Fatalf("Error starting ABCI client: %v", err.Error())
 	}
 
@@ -125,7 +122,6 @@ func BenchmarkEcho(b *testing.B) {
 	echoString := strings.Repeat(" ", 200)
 	b.StartTimer() // Start benchmarking tests
 
-	ctx := context.Background()
 	for i := 0; i < b.N; i++ {
 		_, err = proxy.EchoAsync(ctx, echoString)
 		if err != nil {
@@ -152,16 +148,15 @@ func TestInfo(t *testing.T) {
 	logger := log.TestingLogger()
 	clientCreator := abciclient.NewRemoteCreator(logger, sockPath, SOCKET, true)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Start server
 	s := server.NewSocketServer(logger.With("module", "abci-server"), sockPath, kvstore.NewApplication())
-	if err := s.Start(); err != nil {
+	if err := s.Start(ctx); err != nil {
 		t.Fatalf("Error starting socket server: %v", err.Error())
 	}
-	t.Cleanup(func() {
-		if err := s.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+	t.Cleanup(func() { cancel(); s.Wait() })
 
 	// Start client
 	cli, err := clientCreator(logger.With("module", "abci-client"))
@@ -169,7 +164,7 @@ func TestInfo(t *testing.T) {
 		t.Fatalf("Error creating ABCI client: %v", err.Error())
 	}
 
-	if err := cli.Start(); err != nil {
+	if err := cli.Start(ctx); err != nil {
 		t.Fatalf("Error starting ABCI client: %v", err.Error())
 	}
 
