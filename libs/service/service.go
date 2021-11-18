@@ -48,7 +48,7 @@ type Implementation interface {
 	// Called by the Services Start Method
 	OnStart(context.Context) error
 
-	// Called when the service's context is cancled is Stopped
+	// Called when the service's context is canceled.
 	OnStop()
 }
 
