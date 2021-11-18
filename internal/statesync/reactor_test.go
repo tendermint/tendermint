@@ -560,10 +560,7 @@ func TestReactor_StateProviderP2P(t *testing.T) {
 	}
 	require.True(t, rts.reactor.peers.Len() >= 2, "peer network not configured")
 
-	bctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	ictx, cancel := context.WithTimeout(bctx, time.Second)
+	ictx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
 	rts.reactor.mtx.Lock()
@@ -572,7 +569,7 @@ func TestReactor_StateProviderP2P(t *testing.T) {
 	require.NoError(t, err)
 	rts.reactor.syncer.stateProvider = rts.reactor.stateProvider
 
-	actx, cancel := context.WithTimeout(bctx, 10*time.Second)
+	actx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	appHash, err := rts.reactor.stateProvider.AppHash(actx, 5)
@@ -689,7 +686,9 @@ func retryUntil(ctx context.Context, t *testing.T, fn func() bool, timeout time.
 	}
 }
 
-func handleLightBlockRequests(t *testing.T,
+func handleLightBlockRequests(
+	ctx context.Context,
+	t *testing.T,
 	chain map[int64]*types.LightBlock,
 	receiving chan p2p.Envelope,
 	sending chan p2p.Envelope,
@@ -699,6 +698,8 @@ func handleLightBlockRequests(t *testing.T,
 	errorCount := 0
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case envelope := <-receiving:
 			if msg, ok := envelope.Message.(*ssproto.LightBlockRequest); ok {
 				if requests%10 >= failureRate {
@@ -742,13 +743,24 @@ func handleLightBlockRequests(t *testing.T,
 	}
 }
 
-func handleConsensusParamsRequest(t *testing.T, receiving, sending chan p2p.Envelope, closeCh chan struct{}) {
+func handleConsensusParamsRequest(
+	ctx context.Context,
+	t *testing.T,
+	receiving, sending chan p2p.Envelope,
+	closeCh chan struct{},
+) {
 	t.Helper()
 	params := types.DefaultConsensusParams()
 	paramsProto := params.ToProto()
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case envelope := <-receiving:
+			if ctx.Err() != nil {
+				return
+			}
+
 			t.Log("received consensus params request")
 			msg, ok := envelope.Message.(*ssproto.ParamsRequest)
 			require.True(t, ok)
