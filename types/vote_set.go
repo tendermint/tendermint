@@ -507,13 +507,14 @@ func (voteSet *VoteSet) IsCommit() bool {
 	return voteSet.maj23 != nil
 }
 
+// HasTwoThirdsAny returns true if we are above voting threshold, regardless of the block id voted
 func (voteSet *VoteSet) HasTwoThirdsAny() bool {
 	if voteSet == nil {
 		return false
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
-	return voteSet.sum > voteSet.valSet.TotalVotingPower()*2/3
+	return voteSet.sum >= voteSet.valSet.QuorumVotingThresholdPower()
 }
 
 func (voteSet *VoteSet) HasAll() bool {
