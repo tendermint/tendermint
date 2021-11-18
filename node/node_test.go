@@ -82,8 +82,8 @@ func TestNodeStartStop(t *testing.T) {
 	case <-n.Quit():
 		return
 	case <-time.After(10 * time.Second):
-		if !n.IsRunning() {
-			return
+		if n.IsRunning() {
+			t.Fatal("timed out waiting for shutdown")
 		}
 
 	}
