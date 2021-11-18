@@ -399,7 +399,6 @@ func setupNetwork(ctx context.Context, t *testing.T, opts testOptions) *reactorT
 	t.Cleanup(func() {
 		for nodeID, reactor := range rts.reactors {
 			if reactor.IsRunning() {
-				require.NoError(t, reactor.Stop())
 				require.False(t, reactor.IsRunning())
 			}
 			rts.pexChannels[nodeID].Close()
