@@ -40,12 +40,7 @@ func TestWALTruncate(t *testing.T) {
 	require.NoError(t, err)
 	err = wal.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		// wait for the wal to finish shutting down so we
-		// can safely remove the directory
-		wal.Wait()
-
-	})
+	t.Cleanup(wal.Wait)
 
 	// 60 block's size nearly 70K, greater than group's headBuf size(4096 * 10),
 	// when headBuf is full, truncate content will Flush to the file. at this
@@ -112,10 +107,7 @@ func TestWALWrite(t *testing.T) {
 	require.NoError(t, err)
 	err = wal.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		// wait for the wal to finish shutting down so we
-		// can safely remove the directory
-		wal.Wait()
+	t.Cleanup(wal.Wait)
 	})
 
 	// 1) Write returns an error if msg is too big
