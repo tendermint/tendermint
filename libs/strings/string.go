@@ -55,6 +55,10 @@ func SplitAndTrim(s, sep, cutset string) []string {
 	return spl
 }
 
+// TrimWhitespace removes all leading and trailing whitespace from the
+// string.
+func TrimWhitespace(s string) string { return strings.Trim(s, "\t\n ") }
+
 // Returns true if s is a non-empty printable non-tab ascii character.
 func IsASCIIText(s string) bool {
 	if len(s) == 0 {

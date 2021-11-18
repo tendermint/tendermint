@@ -196,7 +196,7 @@ func makeNode(
 		// FIXME: we should start services inside OnStart
 		switch protocol {
 		case "grpc":
-			privValidator, err = createAndStartPrivValidatorGRPCClient(cfg, genDoc.ChainID, logger)
+			privValidator, err = createAndStartPrivValidatorGRPCClient(ctx, cfg, genDoc.ChainID, logger)
 			if err != nil {
 				return nil, combineCloseError(
 					fmt.Errorf("error with private validator grpc client: %w", err),
@@ -218,7 +218,7 @@ func makeNode(
 	}
 	var pubKey crypto.PubKey
 	if cfg.Mode == config.ModeValidator {
-		pubKey, err = privValidator.GetPubKey(context.TODO())
+		pubKey, err = privValidator.GetPubKey(ctx)
 		if err != nil {
 			return nil, combineCloseError(fmt.Errorf("can't get pubkey: %w", err),
 				makeCloser(closers))
@@ -270,7 +270,6 @@ func makeNode(
 	nodeInfo, err := makeNodeInfo(cfg, nodeKey, eventSinks, genDoc, state)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
-
 	}
 
 	peerManager, peerCloser, err := createPeerManager(cfg, dbProvider, nodeKey.ID)
@@ -530,7 +529,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
 	if n.config.RPC.ListenAddress != "" && n.config.Mode != config.ModeSeed {
-		listeners, err := n.startRPC()
+		listeners, err := n.startRPC(ctx)
 		if err != nil {
 			return err
 		}
@@ -608,7 +607,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		// bubbling up the error and gracefully shutting down the rest of the node
 		go func() {
 			n.Logger.Info("starting state sync")
-			state, err := n.stateSyncReactor.Sync(context.TODO())
+			state, err := n.stateSyncReactor.Sync(ctx)
 			if err != nil {
 				n.Logger.Error("state sync failed; shutting down this node", "err", err)
 				// stop the node
@@ -701,13 +700,15 @@ func (n *nodeImpl) OnStop() {
 
 	}
 	if err := n.shutdownOps(); err != nil {
-		n.Logger.Error("problem shutting down additional services", "err", err)
+		if strings.TrimWhitespace(err.Error()) != "" {
+			n.Logger.Error("problem shutting down additional services", "err", err)
+		}
 	}
 }
 
-func (n *nodeImpl) startRPC() ([]net.Listener, error) {
+func (n *nodeImpl) startRPC(ctx context.Context) ([]net.Listener, error) {
 	if n.config.Mode == config.ModeValidator {
-		pubKey, err := n.privValidator.GetPubKey(context.TODO())
+		pubKey, err := n.privValidator.GetPubKey(ctx)
 		if pubKey == nil || err != nil {
 			return nil, fmt.Errorf("can't get pubkey: %w", err)
 		}
@@ -968,7 +969,7 @@ func createAndStartPrivValidatorSocketClient(
 	}
 
 	// try to get a pubkey from private validate first time
-	_, err = pvsc.GetPubKey(context.TODO())
+	_, err = pvsc.GetPubKey(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
@@ -983,6 +984,7 @@ func createAndStartPrivValidatorSocketClient(
 }
 
 func createAndStartPrivValidatorGRPCClient(
+	ctx context.Context,
 	cfg *config.Config,
 	chainID string,
 	logger log.Logger,
@@ -998,7 +1000,7 @@ func createAndStartPrivValidatorGRPCClient(
 	}
 
 	// try to get a pubkey from private validate first time
-	_, err = pvsc.GetPubKey(context.TODO())
+	_, err = pvsc.GetPubKey(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
