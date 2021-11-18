@@ -108,7 +108,6 @@ func TestWALWrite(t *testing.T) {
 	err = wal.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(wal.Wait)
-	})
 
 	// 1) Write returns an error if msg is too big
 	msg := &BlockPartMessage{
