@@ -93,7 +93,8 @@ func TestStateProposerSelection0(t *testing.T) {
 		tmproto.PrecommitType,
 		rs.ProposalBlock.Hash(),
 		rs.ProposalBlockParts.Header(),
-		vss[1:]...)
+		vss[1:]...,
+	)
 
 	// Wait for new round so next validator is set.
 	ensureNewRound(newRoundCh, height+1, 0)
