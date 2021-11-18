@@ -95,7 +95,7 @@ func setup(
 			rts.dataChannels[nodeID],
 			rts.voteChannels[nodeID],
 			rts.voteSetBitsChannels[nodeID],
-			node.MakePeerUpdates(t),
+			node.MakePeerUpdates(ctx, t),
 			true,
 		)
 

@@ -305,12 +305,12 @@ func (n *Node) MakeChannelNoCleanup(
 
 // MakePeerUpdates opens a peer update subscription, with automatic cleanup.
 // It checks that all updates have been consumed during cleanup.
-func (n *Node) MakePeerUpdates(t *testing.T) *p2p.PeerUpdates {
+func (n *Node) MakePeerUpdates(ctx context.Context, t *testing.T) *p2p.PeerUpdates {
 	t.Helper()
 	sub := n.PeerManager.Subscribe()
 	t.Cleanup(func() {
 		t.Helper()
-		RequireNoUpdates(t, sub)
+		RequireNoUpdates(ctx, t, sub)
 		sub.Close()
 	})
 

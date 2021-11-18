@@ -247,6 +247,10 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		go func(j int, s eventbus.Subscription) {
 			defer wg.Done()
 			for {
+				if ctx.Err() != nil {
+					return
+				}
+
 				msg, err := s.Next(ctx)
 				if !assert.NoError(t, err) {
 					cancel()

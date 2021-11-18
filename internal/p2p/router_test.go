@@ -342,7 +342,7 @@ func TestRouter_Channel_Error(t *testing.T) {
 	a := channels[aID]
 
 	// Erroring b should cause it to be disconnected. It will reconnect shortly after.
-	sub := network.Nodes[aID].MakePeerUpdates(t)
+	sub := network.Nodes[aID].MakePeerUpdates(ctx, t)
 	p2ptest.RequireError(t, a, p2p.PeerError{NodeID: bID, Err: errors.New("boom")})
 	p2ptest.RequireUpdates(t, sub, []p2p.PeerUpdate{
 		{NodeID: bID, Status: p2p.PeerStatusDown},
