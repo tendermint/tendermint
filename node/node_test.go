@@ -102,7 +102,9 @@ func getTestNode(ctx context.Context, t *testing.T, conf *config.Config, logger 
 
 	t.Cleanup(func() {
 		cancel()
-		ns.Wait()
+		if n.IsRunning() {
+			ns.Wait()
+		}
 	})
 
 	return n
