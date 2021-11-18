@@ -700,7 +700,7 @@ func (n *nodeImpl) OnStop() {
 
 	}
 	if err := n.shutdownOps(); err != nil {
-		if strings.TrimWhitespace(err.Error()) != "" {
+		if strings.TrimSpace(err.Error()) != "" {
 			n.Logger.Error("problem shutting down additional services", "err", err)
 		}
 	}
