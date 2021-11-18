@@ -409,7 +409,7 @@ func newTestServer(ctx context.Context, t testing.TB) *pubsub.Server {
 	})
 
 	require.NoError(t, s.Start(ctx))
-	t.Cleanup(func() { s.Wait() })
+	t.Cleanup(s.Wait)
 	return s
 }
 
