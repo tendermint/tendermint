@@ -289,19 +289,17 @@ func TestReactor_ChunkRequest(t *testing.T) {
 		},
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	bctx, bcancel := context.WithCancel(context.Background())
+	defer bcancel()
 
 	for name, tc := range testcases {
-		tc := tc
-
 		t.Run(name, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(ctx)
+			ctx, cancel := context.WithCancel(bctx)
 			defer cancel()
 
 			// mock ABCI connection to return local snapshots
 			conn := &proxymocks.AppConnSnapshot{}
-			conn.On("LoadSnapshotChunkSync", ctx, abci.RequestLoadSnapshotChunk{
+			conn.On("LoadSnapshotChunkSync", mock.Anything, abci.RequestLoadSnapshotChunk{
 				Height: tc.request.Height,
 				Format: tc.request.Format,
 				Chunk:  tc.request.Index,
@@ -388,7 +386,7 @@ func TestReactor_SnapshotsRequest(t *testing.T) {
 
 			// mock ABCI connection to return local snapshots
 			conn := &proxymocks.AppConnSnapshot{}
-			conn.On("ListSnapshotsSync", ctx, abci.RequestListSnapshots{}).Return(&abci.ResponseListSnapshots{
+			conn.On("ListSnapshotsSync", mock.Anything, abci.RequestListSnapshots{}).Return(&abci.ResponseListSnapshots{
 				Snapshots: tc.snapshots,
 			}, nil)
 

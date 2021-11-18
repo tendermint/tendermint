@@ -565,7 +565,7 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 // verifyApp verifies the sync, checking the app hash and last block height. It returns the
 // app version, which should be returned as part of the initial state.
 func (s *syncer) verifyApp(snapshot *snapshot) (uint64, error) {
-	resp, err := s.connQuery.InfoSync(context.Background(), proxy.RequestInfo)
+	resp, err := s.connQuery.InfoSync(context.TODO(), proxy.RequestInfo)
 	if err != nil {
 		return 0, fmt.Errorf("failed to query ABCI app for appHash: %w", err)
 	}

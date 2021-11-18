@@ -138,7 +138,7 @@ func (bs *BaseService) Start(ctx context.Context) error {
 			return err
 		}
 
-		go func() {
+		go func(ctx context.Context) {
 			<-ctx.Done()
 			if err := bs.Stop(); err != nil {
 				bs.Logger.Error("stopped service",
@@ -150,7 +150,7 @@ func (bs *BaseService) Start(ctx context.Context) error {
 			bs.Logger.Info("stopped service",
 				"service", bs.name,
 				"impl", bs.impl.String())
-		}()
+		}(ctx)
 
 		return nil
 	}
