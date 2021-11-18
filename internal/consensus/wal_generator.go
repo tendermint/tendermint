@@ -71,21 +71,12 @@ func WALGenerateNBlocks(ctx context.Context, t *testing.T, wr io.Writer, numBloc
 	if err := proxyApp.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start proxy app connections: %w", err)
 	}
-	t.Cleanup(func() {
-		if err := proxyApp.(interface{ Stop() error }).Stop(); err != nil {
-			t.Error(err)
-		}
-	})
 
 	eventBus := eventbus.NewDefault(logger.With("module", "events"))
 	if err := eventBus.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start event bus: %w", err)
 	}
-	t.Cleanup(func() {
-		if err := eventBus.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+
 	mempool := emptyMempool{}
 	evpool := sm.EmptyEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool, blockStore)

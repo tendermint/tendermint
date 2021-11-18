@@ -25,11 +25,6 @@ func TestEventBusPublishEventTx(t *testing.T) {
 	eventBus := eventbus.NewDefault(log.TestingLogger())
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := eventBus.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
 
 	tx := types.Tx("foo")
 	result := abci.ResponseDeliverTx{
@@ -83,11 +78,6 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	eventBus := eventbus.NewDefault(log.TestingLogger())
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := eventBus.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
 
 	block := types.MakeBlock(0, []types.Tx{}, nil, []types.Evidence{})
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(types.BlockPartSizeBytes).Header()}
@@ -144,11 +134,6 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 	eventBus := eventbus.NewDefault(log.TestingLogger())
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := eventBus.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
 
 	tx := types.Tx("foo")
 	result := abci.ResponseDeliverTx{
@@ -208,7 +193,6 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		ctx := context.Background()
 		sub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 			ClientID: fmt.Sprintf("client-%d", i),
 			Query:    tmquery.MustParse(tc.query),
@@ -218,7 +202,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 		gotResult := make(chan bool, 1)
 		go func() {
 			defer close(gotResult)
-			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			ctx, cancel = context.WithTimeout(ctx, 1*time.Second)
 			defer cancel()
 			msg, err := sub.Next(ctx)
 			if err == nil {
@@ -254,11 +238,6 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	eventBus := eventbus.NewDefault(log.TestingLogger())
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := eventBus.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
 
 	block := types.MakeBlock(0, []types.Tx{}, nil, []types.Evidence{})
 	resultBeginBlock := abci.ResponseBeginBlock{
@@ -313,11 +292,6 @@ func TestEventBusPublishEventNewEvidence(t *testing.T) {
 	eventBus := eventbus.NewDefault(log.TestingLogger())
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := eventBus.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
 
 	ev := types.NewMockDuplicateVoteEvidence(1, time.Now(), "test-chain-id")
 
@@ -359,11 +333,6 @@ func TestEventBusPublish(t *testing.T) {
 	eventBus := eventbus.NewDefault(log.TestingLogger())
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := eventBus.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
 
 	const numEventsExpected = 14
 

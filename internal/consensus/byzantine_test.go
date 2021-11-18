@@ -214,7 +214,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 		proposal := types.NewProposal(height, round, lazyNodeState.ValidRound, propBlockID)
 		p := proposal.ToProto()
-		if err := lazyNodeState.privValidator.SignProposal(context.Background(), lazyNodeState.state.ChainID, p); err == nil {
+		if err := lazyNodeState.privValidator.SignProposal(ctx, lazyNodeState.state.ChainID, p); err == nil {
 			proposal.Signature = p.Signature
 
 			// send proposal and block parts on internal msg queue
@@ -266,7 +266,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	wg.Wait()
 
-	pubkey, err := bzNodeState.privValidator.GetPubKey(context.Background())
+	pubkey, err := bzNodeState.privValidator.GetPubKey(ctx)
 	require.NoError(t, err)
 
 	for idx, ev := range evidenceFromEachValidator {
@@ -312,7 +312,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	// 	eventBus.SetLogger(logger.With("module", "events", "validator", i))
 
 	// 	var err error
-	// 	blocksSubs[i], err = eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
+	// 	blocksSubs[i], err = eventBus.Subscribe(ctx, testSubscriber, types.EventQueryNewBlock)
 	// 	require.NoError(t, err)
 
 	// 	conR := NewReactor(states[i], true) // so we don't start the consensus states

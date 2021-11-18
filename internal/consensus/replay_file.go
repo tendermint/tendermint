@@ -43,7 +43,7 @@ func RunReplayFile(
 		return err
 	}
 
-	if err := consensusState.ReplayFile(csConfig.WalFile(), console); err != nil {
+	if err := consensusState.ReplayFile(ctx, csConfig.WalFile(), console); err != nil {
 		return fmt.Errorf("consensus replay: %w", err)
 	}
 
@@ -51,7 +51,7 @@ func RunReplayFile(
 }
 
 // Replay msgs in file or start the console
-func (cs *State) ReplayFile(file string, console bool) error {
+func (cs *State) ReplayFile(ctx context.Context, file string, console bool) error {
 
 	if cs.IsRunning() {
 		return errors.New("cs is already running, cannot replay")
@@ -64,7 +64,6 @@ func (cs *State) ReplayFile(file string, console bool) error {
 
 	// ensure all new step events are regenerated as expected
 
-	ctx := context.Background()
 	newStepSub, err := cs.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: subscriber,
 		Query:    types.EventQueryNewRoundStep,

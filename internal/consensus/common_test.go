@@ -106,12 +106,14 @@ func newValidatorStub(privValidator types.PrivValidator, valIndex int32) *valida
 }
 
 func (vs *validatorStub) signVote(
+	ctx context.Context,
 	cfg *config.Config,
 	voteType tmproto.SignedMsgType,
 	hash []byte,
-	header types.PartSetHeader) (*types.Vote, error) {
+	header types.PartSetHeader,
+) (*types.Vote, error) {
 
-	pubKey, err := vs.PrivValidator.GetPubKey(context.Background())
+	pubKey, err := vs.PrivValidator.GetPubKey(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
@@ -126,7 +128,7 @@ func (vs *validatorStub) signVote(
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
 	}
 	v := vote.ToProto()
-	if err := vs.PrivValidator.SignVote(context.Background(), cfg.ChainID(), v); err != nil {
+	if err := vs.PrivValidator.SignVote(ctx, cfg.ChainID(), v); err != nil {
 		return nil, fmt.Errorf("sign vote failed: %w", err)
 	}
 
@@ -144,13 +146,15 @@ func (vs *validatorStub) signVote(
 
 // Sign vote for type/hash/header
 func signVote(
+	ctx context.Context,
 	vs *validatorStub,
 	cfg *config.Config,
 	voteType tmproto.SignedMsgType,
 	hash []byte,
-	header types.PartSetHeader) *types.Vote {
+	header types.PartSetHeader,
+) *types.Vote {
 
-	v, err := vs.signVote(cfg, voteType, hash, header)
+	v, err := vs.signVote(ctx, cfg, voteType, hash, header)
 	if err != nil {
 		panic(fmt.Errorf("failed to sign vote: %v", err))
 	}
@@ -161,6 +165,7 @@ func signVote(
 }
 
 func signVotes(
+	ctx context.Context,
 	cfg *config.Config,
 	voteType tmproto.SignedMsgType,
 	hash []byte,
@@ -168,7 +173,7 @@ func signVotes(
 	vss ...*validatorStub) []*types.Vote {
 	votes := make([]*types.Vote, len(vss))
 	for i, vs := range vss {
-		votes[i] = signVote(vs, cfg, voteType, hash, header)
+		votes[i] = signVote(ctx, vs, cfg, voteType, hash, header)
 	}
 	return votes
 }
@@ -192,11 +197,11 @@ func (vss ValidatorStubsByPower) Len() int {
 }
 
 func (vss ValidatorStubsByPower) Less(i, j int) bool {
-	vssi, err := vss[i].GetPubKey(context.Background())
+	vssi, err := vss[i].GetPubKey(context.TODO())
 	if err != nil {
 		panic(err)
 	}
-	vssj, err := vss[j].GetPubKey(context.Background())
+	vssj, err := vss[j].GetPubKey(context.TODO())
 	if err != nil {
 		panic(err)
 	}
@@ -225,6 +230,7 @@ func startTestRound(ctx context.Context, cs *State, height int64, round int32) {
 
 // Create proposal block from cs1 but sign it with vs.
 func decideProposal(
+	ctx context.Context,
 	cs1 *State,
 	vs *validatorStub,
 	height int64,
@@ -243,7 +249,7 @@ func decideProposal(
 	polRound, propBlockID := validRound, types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 	proposal = types.NewProposal(height, round, polRound, propBlockID)
 	p := proposal.ToProto()
-	if err := vs.SignProposal(context.Background(), chainID, p); err != nil {
+	if err := vs.SignProposal(ctx, chainID, p); err != nil {
 		panic(err)
 	}
 
@@ -259,6 +265,7 @@ func addVotes(to *State, votes ...*types.Vote) {
 }
 
 func signAddVotes(
+	ctx context.Context,
 	cfg *config.Config,
 	to *State,
 	voteType tmproto.SignedMsgType,
@@ -266,13 +273,19 @@ func signAddVotes(
 	header types.PartSetHeader,
 	vss ...*validatorStub,
 ) {
-	votes := signVotes(cfg, voteType, hash, header, vss...)
-	addVotes(to, votes...)
+	addVotes(to, signVotes(ctx, cfg, voteType, hash, header, vss...)...)
 }
 
-func validatePrevote(t *testing.T, cs *State, round int32, privVal *validatorStub, blockHash []byte) {
+func validatePrevote(
+	ctx context.Context,
+	t *testing.T,
+	cs *State,
+	round int32,
+	privVal *validatorStub,
+	blockHash []byte,
+) {
 	prevotes := cs.Votes.Prevotes(round)
-	pubKey, err := privVal.GetPubKey(context.Background())
+	pubKey, err := privVal.GetPubKey(ctx)
 	require.NoError(t, err)
 	address := pubKey.Address()
 	var vote *types.Vote
@@ -290,9 +303,9 @@ func validatePrevote(t *testing.T, cs *State, round int32, privVal *validatorStu
 	}
 }
 
-func validateLastPrecommit(t *testing.T, cs *State, privVal *validatorStub, blockHash []byte) {
+func validateLastPrecommit(ctx context.Context, t *testing.T, cs *State, privVal *validatorStub, blockHash []byte) {
 	votes := cs.LastCommit
-	pv, err := privVal.GetPubKey(context.Background())
+	pv, err := privVal.GetPubKey(ctx)
 	require.NoError(t, err)
 	address := pv.Address()
 	var vote *types.Vote
@@ -305,6 +318,7 @@ func validateLastPrecommit(t *testing.T, cs *State, privVal *validatorStub, bloc
 }
 
 func validatePrecommit(
+	ctx context.Context,
 	t *testing.T,
 	cs *State,
 	thisRound,
@@ -314,7 +328,7 @@ func validatePrecommit(
 	lockedBlockHash []byte,
 ) {
 	precommits := cs.Votes.Precommits(thisRound)
-	pv, err := privVal.GetPubKey(context.Background())
+	pv, err := privVal.GetPubKey(ctx)
 	require.NoError(t, err)
 	address := pv.Address()
 	var vote *types.Vote
@@ -353,6 +367,7 @@ func validatePrecommit(
 }
 
 func validatePrevoteAndPrecommit(
+	ctx context.Context,
 	t *testing.T,
 	cs *State,
 	thisRound,
@@ -362,18 +377,18 @@ func validatePrevoteAndPrecommit(
 	lockedBlockHash []byte,
 ) {
 	// verify the prevote
-	validatePrevote(t, cs, thisRound, privVal, votedBlockHash)
+	validatePrevote(ctx, t, cs, thisRound, privVal, votedBlockHash)
 	// verify precommit
 	cs.mtx.Lock()
-	validatePrecommit(t, cs, thisRound, lockRound, privVal, votedBlockHash, lockedBlockHash)
-	cs.mtx.Unlock()
+	defer cs.mtx.Unlock()
+	validatePrecommit(ctx, t, cs, thisRound, lockRound, privVal, votedBlockHash, lockedBlockHash)
 }
 
-func subscribeToVoter(t *testing.T, cs *State, addr []byte) <-chan tmpubsub.Message {
+func subscribeToVoter(ctx context.Context, t *testing.T, cs *State, addr []byte) <-chan tmpubsub.Message {
 	t.Helper()
 
 	ch := make(chan tmpubsub.Message, 1)
-	if err := cs.eventBus.Observe(context.Background(), func(msg tmpubsub.Message) error {
+	if err := cs.eventBus.Observe(ctx, func(msg tmpubsub.Message) error {
 		vote := msg.Data().(types.EventDataVote)
 		// we only fire for our own votes
 		if bytes.Equal(addr, vote.Vote.ValidatorAddress) {

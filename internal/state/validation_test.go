@@ -211,7 +211,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		)
 		require.NoError(t, err, "height %d", height)
 
-		bpvPubKey, err := badPrivVal.GetPubKey(context.Background())
+		bpvPubKey, err := badPrivVal.GetPubKey(ctx)
 		require.NoError(t, err)
 
 		badVote := &types.Vote{
@@ -227,9 +227,9 @@ func TestValidateBlockCommit(t *testing.T) {
 		g := goodVote.ToProto()
 		b := badVote.ToProto()
 
-		err = badPrivVal.SignVote(context.Background(), chainID, g)
+		err = badPrivVal.SignVote(ctx, chainID, g)
 		require.NoError(t, err, "height %d", height)
-		err = badPrivVal.SignVote(context.Background(), chainID, b)
+		err = badPrivVal.SignVote(ctx, chainID, b)
 		require.NoError(t, err, "height %d", height)
 
 		goodVote.Signature, badVote.Signature = g.Signature, b.Signature

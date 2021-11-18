@@ -240,7 +240,7 @@ func (h *Handshaker) NBlocks() int {
 func (h *Handshaker) Handshake(ctx context.Context, proxyApp proxy.AppConns) error {
 
 	// Handshake is done via ABCI Info on the query conn.
-	res, err := proxyApp.Query().InfoSync(context.Background(), proxy.RequestInfo)
+	res, err := proxyApp.Query().InfoSync(ctx, proxy.RequestInfo)
 	if err != nil {
 		return fmt.Errorf("error calling Info: %v", err)
 	}
@@ -316,7 +316,7 @@ func (h *Handshaker) ReplayBlocks(
 			Validators:      nextVals,
 			AppStateBytes:   h.genDoc.AppState,
 		}
-		res, err := proxyApp.Consensus().InitChainSync(context.Background(), req)
+		res, err := proxyApp.Consensus().InitChainSync(ctx, req)
 		if err != nil {
 			return nil, err
 		}

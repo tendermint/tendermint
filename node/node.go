@@ -1016,7 +1016,7 @@ func getRouterConfig(conf *config.Config, proxyApp proxy.AppConns) p2p.RouterOpt
 
 	if conf.FilterPeers && proxyApp != nil {
 		opts.FilterPeerByID = func(ctx context.Context, id types.NodeID) error {
-			res, err := proxyApp.Query().QuerySync(context.Background(), abci.RequestQuery{
+			res, err := proxyApp.Query().QuerySync(ctx, abci.RequestQuery{
 				Path: fmt.Sprintf("/p2p/filter/id/%s", id),
 			})
 			if err != nil {

@@ -81,7 +81,7 @@ func setup(
 	rts.voteChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteChannel, size))
 	rts.voteSetBitsChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteSetBitsChannel, size))
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	// Canceled during cleanup (see below).
 
 	i := 0
@@ -137,14 +137,8 @@ func setup(
 	rts.network.Start(t)
 
 	t.Cleanup(func() {
-		for nodeID, r := range rts.reactors {
-			require.NoError(t, rts.states[nodeID].eventBus.Stop())
-			require.NoError(t, r.Stop())
-			require.False(t, r.IsRunning())
-		}
-
-		leaktest.Check(t)
 		cancel()
+		leaktest.Check(t)
 	})
 
 	return rts
@@ -168,6 +162,7 @@ func validateBlock(block *types.Block, activeVals map[string]struct{}) error {
 }
 
 func waitForAndValidateBlock(
+	bctx context.Context,
 	t *testing.T,
 	n int,
 	activeVals map[string]struct{},
@@ -175,8 +170,9 @@ func waitForAndValidateBlock(
 	states []*State,
 	txs ...[]byte,
 ) {
+	t.Helper()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(bctx)
 	defer cancel()
 	fn := func(j int) {
 		msg, err := blocksSubs[j].Next(ctx)
@@ -189,7 +185,7 @@ func waitForAndValidateBlock(
 		require.NoError(t, validateBlock(newBlock, activeVals))
 
 		for _, tx := range txs {
-			require.NoError(t, assertMempool(states[j].txNotifier).CheckTx(context.Background(), tx, nil, mempool.TxInfo{}))
+			require.NoError(t, assertMempool(states[j].txNotifier).CheckTx(ctx, tx, nil, mempool.TxInfo{}))
 		}
 	}
 
@@ -206,6 +202,7 @@ func waitForAndValidateBlock(
 }
 
 func waitForAndValidateBlockWithTx(
+	bctx context.Context,
 	t *testing.T,
 	n int,
 	activeVals map[string]struct{},
@@ -213,8 +210,9 @@ func waitForAndValidateBlockWithTx(
 	states []*State,
 	txs ...[]byte,
 ) {
+	t.Helper()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(bctx)
 	defer cancel()
 	fn := func(j int) {
 		ntxs := 0
@@ -255,15 +253,17 @@ func waitForAndValidateBlockWithTx(
 }
 
 func waitForBlockWithUpdatedValsAndValidateIt(
+	bctx context.Context,
 	t *testing.T,
 	n int,
 	updatedVals map[string]struct{},
 	blocksSubs []eventbus.Subscription,
 	css []*State,
 ) {
-
-	ctx, cancel := context.WithCancel(context.Background())
+	t.Helper()
+	ctx, cancel := context.WithCancel(bctx)
 	defer cancel()
+
 	fn := func(j int) {
 		var newBlock *types.Block
 
@@ -496,7 +496,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	require.NoError(
 		t,
 		assertMempool(states[3].txNotifier).CheckTx(
-			context.Background(),
+			ctx,
 			[]byte{1, 2, 3},
 			nil,
 			mempool.TxInfo{},
@@ -614,7 +614,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	// map of active validators
 	activeVals := make(map[string]struct{})
 	for i := 0; i < n; i++ {
-		pubKey, err := states[i].privValidator.GetPubKey(context.Background())
+		pubKey, err := states[i].privValidator.GetPubKey(ctx)
 		require.NoError(t, err)
 
 		addr := pubKey.Address()
@@ -642,7 +642,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 		blocksSubs = append(blocksSubs, sub)
 	}
 
-	val1PubKey, err := states[0].privValidator.GetPubKey(context.Background())
+	val1PubKey, err := states[0].privValidator.GetPubKey(ctx)
 	require.NoError(t, err)
 
 	val1PubKeyABCI, err := encoding.PubKeyToProto(val1PubKey)
@@ -651,10 +651,10 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	updateValidatorTx := kvstore.MakeValSetChangeTx(val1PubKeyABCI, 25)
 	previousTotalVotingPower := states[0].GetRoundState().LastValidators.TotalVotingPower()
 
-	waitForAndValidateBlock(t, n, activeVals, blocksSubs, states, updateValidatorTx)
-	waitForAndValidateBlockWithTx(t, n, activeVals, blocksSubs, states, updateValidatorTx)
-	waitForAndValidateBlock(t, n, activeVals, blocksSubs, states)
-	waitForAndValidateBlock(t, n, activeVals, blocksSubs, states)
+	waitForAndValidateBlock(ctx, t, n, activeVals, blocksSubs, states, updateValidatorTx)
+	waitForAndValidateBlockWithTx(ctx, t, n, activeVals, blocksSubs, states, updateValidatorTx)
+	waitForAndValidateBlock(ctx, t, n, activeVals, blocksSubs, states)
+	waitForAndValidateBlock(ctx, t, n, activeVals, blocksSubs, states)
 
 	require.NotEqualf(
 		t, previousTotalVotingPower, states[0].GetRoundState().LastValidators.TotalVotingPower(),
@@ -666,10 +666,10 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKeyABCI, 2)
 	previousTotalVotingPower = states[0].GetRoundState().LastValidators.TotalVotingPower()
 
-	waitForAndValidateBlock(t, n, activeVals, blocksSubs, states, updateValidatorTx)
-	waitForAndValidateBlockWithTx(t, n, activeVals, blocksSubs, states, updateValidatorTx)
-	waitForAndValidateBlock(t, n, activeVals, blocksSubs, states)
-	waitForAndValidateBlock(t, n, activeVals, blocksSubs, states)
+	waitForAndValidateBlock(ctx, t, n, activeVals, blocksSubs, states, updateValidatorTx)
+	waitForAndValidateBlockWithTx(ctx, t, n, activeVals, blocksSubs, states, updateValidatorTx)
+	waitForAndValidateBlock(ctx, t, n, activeVals, blocksSubs, states)
+	waitForAndValidateBlock(ctx, t, n, activeVals, blocksSubs, states)
 
 	require.NotEqualf(
 		t, states[0].GetRoundState().LastValidators.TotalVotingPower(), previousTotalVotingPower,
@@ -680,10 +680,10 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKeyABCI, 26)
 	previousTotalVotingPower = states[0].GetRoundState().LastValidators.TotalVotingPower()
 
-	waitForAndValidateBlock(t, n, activeVals, blocksSubs, states, updateValidatorTx)
-	waitForAndValidateBlockWithTx(t, n, activeVals, blocksSubs, states, updateValidatorTx)
-	waitForAndValidateBlock(t, n, activeVals, blocksSubs, states)
-	waitForAndValidateBlock(t, n, activeVals, blocksSubs, states)
+	waitForAndValidateBlock(ctx, t, n, activeVals, blocksSubs, states, updateValidatorTx)
+	waitForAndValidateBlockWithTx(ctx, t, n, activeVals, blocksSubs, states, updateValidatorTx)
+	waitForAndValidateBlock(ctx, t, n, activeVals, blocksSubs, states)
+	waitForAndValidateBlock(ctx, t, n, activeVals, blocksSubs, states)
 
 	require.NotEqualf(
 		t, previousTotalVotingPower, states[0].GetRoundState().LastValidators.TotalVotingPower(),
@@ -744,7 +744,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	wg.Wait()
 
-	newValidatorPubKey1, err := states[nVals].privValidator.GetPubKey(context.Background())
+	newValidatorPubKey1, err := states[nVals].privValidator.GetPubKey(ctx)
 	require.NoError(t, err)
 
 	valPubKey1ABCI, err := encoding.PubKeyToProto(newValidatorPubKey1)
@@ -760,24 +760,24 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	// wait till everyone makes block 2
 	// ensure the commit includes all validators
 	// send newValTx to change vals in block 3
-	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, states, newValidatorTx1)
+	waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states, newValidatorTx1)
 
 	// wait till everyone makes block 3.
 	// it includes the commit for block 2, which is by the original validator set
-	waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, states, newValidatorTx1)
+	waitForAndValidateBlockWithTx(ctx, t, nPeers, activeVals, blocksSubs, states, newValidatorTx1)
 
 	// wait till everyone makes block 4.
 	// it includes the commit for block 3, which is by the original validator set
-	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, states)
+	waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states)
 
 	// the commits for block 4 should be with the updated validator set
 	activeVals[string(newValidatorPubKey1.Address())] = struct{}{}
 
 	// wait till everyone makes block 5
 	// it includes the commit for block 4, which should have the updated validator set
-	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, blocksSubs, states)
+	waitForBlockWithUpdatedValsAndValidateIt(ctx, t, nPeers, activeVals, blocksSubs, states)
 
-	updateValidatorPubKey1, err := states[nVals].privValidator.GetPubKey(context.Background())
+	updateValidatorPubKey1, err := states[nVals].privValidator.GetPubKey(ctx)
 	require.NoError(t, err)
 
 	updatePubKey1ABCI, err := encoding.PubKeyToProto(updateValidatorPubKey1)
@@ -786,10 +786,10 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
 	previousTotalVotingPower := states[nVals].GetRoundState().LastValidators.TotalVotingPower()
 
-	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, states, updateValidatorTx1)
-	waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, states, updateValidatorTx1)
-	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, states)
-	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, blocksSubs, states)
+	waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states, updateValidatorTx1)
+	waitForAndValidateBlockWithTx(ctx, t, nPeers, activeVals, blocksSubs, states, updateValidatorTx1)
+	waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states)
+	waitForBlockWithUpdatedValsAndValidateIt(ctx, t, nPeers, activeVals, blocksSubs, states)
 
 	require.NotEqualf(
 		t, states[nVals].GetRoundState().LastValidators.TotalVotingPower(), previousTotalVotingPower,
@@ -797,7 +797,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 		previousTotalVotingPower, states[nVals].GetRoundState().LastValidators.TotalVotingPower(),
 	)
 
-	newValidatorPubKey2, err := states[nVals+1].privValidator.GetPubKey(context.Background())
+	newValidatorPubKey2, err := states[nVals+1].privValidator.GetPubKey(ctx)
 	require.NoError(t, err)
 
 	newVal2ABCI, err := encoding.PubKeyToProto(newValidatorPubKey2)
@@ -805,7 +805,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
 
-	newValidatorPubKey3, err := states[nVals+2].privValidator.GetPubKey(context.Background())
+	newValidatorPubKey3, err := states[nVals+2].privValidator.GetPubKey(ctx)
 	require.NoError(t, err)
 
 	newVal3ABCI, err := encoding.PubKeyToProto(newValidatorPubKey3)
@@ -813,24 +813,24 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
 
-	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, states, newValidatorTx2, newValidatorTx3)
-	waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, states, newValidatorTx2, newValidatorTx3)
-	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, states)
+	waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states, newValidatorTx2, newValidatorTx3)
+	waitForAndValidateBlockWithTx(ctx, t, nPeers, activeVals, blocksSubs, states, newValidatorTx2, newValidatorTx3)
+	waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states)
 
 	activeVals[string(newValidatorPubKey2.Address())] = struct{}{}
 	activeVals[string(newValidatorPubKey3.Address())] = struct{}{}
 
-	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, blocksSubs, states)
+	waitForBlockWithUpdatedValsAndValidateIt(ctx, t, nPeers, activeVals, blocksSubs, states)
 
 	removeValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, 0)
 	removeValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, 0)
 
-	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, states, removeValidatorTx2, removeValidatorTx3)
-	waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, states, removeValidatorTx2, removeValidatorTx3)
-	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, states)
+	waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states, removeValidatorTx2, removeValidatorTx3)
+	waitForAndValidateBlockWithTx(ctx, t, nPeers, activeVals, blocksSubs, states, removeValidatorTx2, removeValidatorTx3)
+	waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states)
 
 	delete(activeVals, string(newValidatorPubKey2.Address()))
 	delete(activeVals, string(newValidatorPubKey3.Address()))
 
-	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, blocksSubs, states)
+	waitForBlockWithUpdatedValsAndValidateIt(ctx, t, nPeers, activeVals, blocksSubs, states)
 }

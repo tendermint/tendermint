@@ -390,12 +390,13 @@ func TestBufferCapacity(t *testing.T) {
 
 	require.Equal(t, 2, s.BufferCapacity())
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	require.NoError(t, s.Publish(ctx, "Nighthawk"))
 	require.NoError(t, s.Publish(ctx, "Sage"))
 
-	ctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	ctx, cancel = context.WithTimeout(ctx, 100*time.Millisecond)
 	defer cancel()
 
 	require.ErrorIs(t, s.Publish(ctx, "Ironclad"), context.DeadlineExceeded)
