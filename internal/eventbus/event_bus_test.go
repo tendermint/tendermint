@@ -193,41 +193,55 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		sub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
-			ClientID: fmt.Sprintf("client-%d", i),
-			Query:    tmquery.MustParse(tc.query),
-		})
-		require.NoError(t, err)
+		var name string
 
-		gotResult := make(chan bool, 1)
-		go func() {
-			defer close(gotResult)
-			ctx, cancel = context.WithTimeout(ctx, 1*time.Second)
-			defer cancel()
-			msg, err := sub.Next(ctx)
-			if err == nil {
-				data := msg.Data().(types.EventDataTx)
-				assert.Equal(t, int64(1), data.Height)
-				assert.Equal(t, uint32(0), data.Index)
-				assert.EqualValues(t, tx, data.Tx)
-				assert.Equal(t, result, data.Result)
-				gotResult <- true
-			}
-		}()
-
-		assert.NoError(t, eventBus.PublishEventTx(types.EventDataTx{
-			TxResult: abci.TxResult{
-				Height: 1,
-				Index:  0,
-				Tx:     tx,
-				Result: result,
-			},
-		}))
-
-		if got := <-gotResult; got != tc.expectResults {
-			require.Failf(t, "Wrong transaction result",
-				"got a tx: %v, wanted a tx: %v", got, tc.expectResults)
+		if tc.expectResults {
+			name = fmt.Sprintf("ExpetedResultsCase%d", i)
+		} else {
+			name = fmt.Sprintf("NoResultsCase%d", i)
 		}
+
+		t.Run(name, func(t *testing.T) {
+
+			sub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
+				ClientID: fmt.Sprintf("client-%d", i),
+				Query:    tmquery.MustParse(tc.query),
+			})
+			require.NoError(t, err)
+
+			gotResult := make(chan bool, 1)
+			go func() {
+				defer close(gotResult)
+				tctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+				defer cancel()
+				msg, err := sub.Next(tctx)
+				if err == nil {
+					data := msg.Data().(types.EventDataTx)
+					assert.Equal(t, int64(1), data.Height)
+					assert.Equal(t, uint32(0), data.Index)
+					assert.EqualValues(t, tx, data.Tx)
+					assert.Equal(t, result, data.Result)
+					gotResult <- true
+				}
+			}()
+
+			assert.NoError(t, eventBus.PublishEventTx(types.EventDataTx{
+				TxResult: abci.TxResult{
+					Height: 1,
+					Index:  0,
+					Tx:     tx,
+					Result: result,
+				},
+			}))
+
+			require.NoError(t, ctx.Err(), "context should not have been canceled")
+
+			if got := <-gotResult; got != tc.expectResults {
+				require.Failf(t, "Wrong transaction result",
+					"got a tx: %v, wanted a tx: %v", got, tc.expectResults)
+			}
+		})
+
 	}
 }
 
