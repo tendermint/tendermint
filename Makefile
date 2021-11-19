@@ -14,8 +14,13 @@ endif
 
 LD_FLAGS = -X github.com/tendermint/tendermint/version.TMVersion=$(VERSION)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
+<<<<<<< HEAD
 HTTPS_GIT := https://github.com/tendermint/tendermint.git
 DOCKER_BUF := docker run -v $(shell pwd):/workspace --workdir /workspace bufbuild/buf
+=======
+BUILD_IMAGE := ghcr.io/tendermint/docker-build-proto
+DOCKER_PROTO_BUILDER := docker run -v $(shell pwd):/workspace --workdir /workspace $(BUILD_IMAGE)
+>>>>>>> 26b887b88 (build: update location of proto builder image (#7296))
 CGO_ENABLED ?= 0
 
 # handle nostrip
