@@ -44,13 +44,17 @@ func (rwi *RWInitMutex) RInitUnlock() {
 	rwi.waitForInit.L.Unlock()
 }
 
-// rInitLocker provides a curried form of the RInitLock/RInitUnlock functions.
 type rInitLocker RWInitMutex
 
 var _ sync.Locker = &rInitLocker{}
 
 func (r *rInitLocker) Lock()   { (*RWInitMutex)(r).RInitLock() }
 func (r *rInitLocker) Unlock() { (*RWInitMutex)(r).RInitUnlock() }
+
+// RInitLocker provides a curried form of the RInitLock/RInitUnlock functions.
+func (rwi *RWInitMutex) RInitLocker() sync.Locker {
+	return (*rInitLocker)(rwi)
+}
 
 // Lock instruments the mutex write lock.
 func (rwi *RWInitMutex) Lock() {
@@ -67,9 +71,12 @@ func (rwi *RWInitMutex) Unlock() {
 	rwi.RWMutex.Unlock()
 }
 
-// Initialize marks the RWInitMutex as initialized and awakens all goroutines which were
-// waiting for initialization. The write lock must be held when calling Initialize().
-// This is a separate method to allow write-locking without initialization.
+// Initialize marks the RWInitMutex as initialized and awakens all goroutines
+// which were in the process of read-init locking. The write lock must be held
+// when calling Initialize().
+//
+// This is a separate method to allow other write-locking code to run without
+// initializing.
 func (rwi *RWInitMutex) Initialize() {
 	if !rwi.writeLocked {
 		panic("Must write-lock the RWInitMutex to call Initialize")
