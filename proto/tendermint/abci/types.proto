@@ -302,7 +302,7 @@ message ResponseVerifyVoteExtension {
   Result result = 1;
 
   enum Result {
-    UNKNOWN       = 0;  // Unknown result, treat as ACCEPT by default
+    UNKNOWN       = 0;  // Unknown result, reject vote extension
     ACCEPT        = 1;  // Vote extension verified, include the vote
     SLASH         = 2;  // Vote extension verification aborted, continue but slash validator
     REJECT        = 3;  // Vote extension invalidated
@@ -318,7 +318,7 @@ message ResponseProcessProposal {
   repeated bytes evidence = 2;
 
   enum Result {
-    UNKNOWN       = 0;  // Unknown result, treat as ACCEPT by default
+    UNKNOWN       = 0;  // Unknown result, invalidate
     ACCEPT        = 1;  // proposal verified, vote on the proposal
     REJECT        = 2;  // proposal invalidated
   }
