@@ -11,30 +11,30 @@ Proposed.
 ## Context
 
 As part of the 0.35 development cycle, the Tendermint team completed
-first phase of the work described in ADRs 61 and 62, which included a
+the first phase of the work described in ADRs 61 and 62, which included a
 large scale refactoring of the reactors and the p2p message
 routing. This replaced the switch and many of the other legacy
 components, without breaking protocol or network-level
 interoperability and left the legacy connection/socket handling code.
 
 Following the release, the team has reexamined the state of the code
-and the design, as well as Tendermints requirements for. The notes
-from this process are available in the [P2P Roadmap
+and the design, as well as Tendermint's requirements. The notes
+from that process are available in the [P2P Roadmap
 RFC](../rfc/rfc-000-p2p.rst).
 
-While this ADR supersedes the decisions made in ADRs 60 and 61, it is
-also enabled by the completed portions of this work. Previously, the
+This ADR supersedes the decisions made in ADRs 60 and 61, but
+builds on the completed portions of this work. Previously, the
 boundaries of peer management, message handling, and the higher level
-business logic (e.g. "the reactors") were intermingled, and core
+business logic (e.g., "the reactors") were intermingled, and core
 elements of the p2p system were responsible for the orchestration of
-the higher level business logic. The completed aspects of the refactor
-made it more obvious that the design implications of the legacy
-components had outsized influence on the entire implementation, that
-it would be difficult to iterate within the current abstractions, and
-it would not be viable to maintain interoperability with legacy
-systems while also achieving any of our broader objectives.
+higher-level business logic. Refactoring the legacy components
+made it more obvious that this entanglement of responsibilities
+had outsized influence on the entire implementation, making
+it difficult to iterate within the current abstractions.
+It would not be viable to maintain interoperability with legacy
+systems while also achieving many of our broader objectives.
 
-LibP2P is a thoroughly specificed implementation of a peer-to-peer
+LibP2P is a thoroughly-specified implementation of a peer-to-peer
 networking stack, designed specifically for systems such as
 ours. Adopting LibP2P as the basis of the Tendermint will allow the
 Tendermint team to focus more of their time on other differentiating
@@ -44,17 +44,17 @@ platform.
 
 ## Alternative Approaches
 
-As discussed in the related RFC, the primary alternative is to
-continue development of tendermint's home grown peer-to-peer
-layer. While this gives the Tendermint team a maximal level of control
-over the peer system, the current peer system is unexceptional on its
+As discussed in the [P2P Roadmap RFC][rfc], the primary alternative would be to
+continue development of Tendermint's home-grown peer-to-peer
+layer. While that would give the Tendermint team maximal control
+over the peer system, the current design is unexceptional on its
 own merits, and the prospective maintenance burden for this system
 exceeds our tolerances for the medium term.
 
-It is also the case that Tendermint can and should differentiate
-itself not on the basis of its networking implementation or peer
-management tools, but on its consistent operator experience,
-battletested consensus algorithm, and ergonomic user experience.
+Tendermint can and should differentiate itself not on the basis of
+its networking implementation or peer management tools, but providing
+a consistent operator experience, a battle-tested consensus algorithm,
+and an ergonomic user experience.
 
 ## Decision
 
@@ -69,22 +69,22 @@ reactor, which would also in turn obviate the need for a dedicated
 seed mode. If this is the case, then all of this functionality would
 be removed.
 
-If it turns out, based on the advice of Protocol Labs, that it makes
+If it turns out (based on the advice of Protocol Labs) that it makes
 sense to maintain separate pubsub or gossipsub topics
-per-message-type, then the `Router` abstraction may dissolve
-entirely.
+per-message-type, then the `Router` abstraction could also 
+be entirely subsumed.
 
 ## Detailed Design
 
 ### Implementation Changes
 
-The "seams" in the P2P implementation between the higher level
+The seams in the P2P implementation between the higher level
 constructs (reactors), the routing layer (`Router`) and the lower
 level connection and peer management code make this operation
-relatively straight forward from an implementation perspective. The
-goal in this design is to minimize the impact to the reactors
+relatively straightforward to implement. A key
+goal in this design is to minimize the impact on the reactors
 (potentially entirely,) and completely remove the lower level
-aspects (e.g. `Transport`, `Connection` and `PeerManager`) using the
+components (e.g., `Transport`, `Connection` and `PeerManager`) using the
 separation afforded by the `*Router` layer. The current state of the
 code makes these changes relatively surgical, and limited to a small
 number of methods:
@@ -92,35 +92,34 @@ number of methods:
 - `p2p.Router.OpenChannel` will still return a `Channel` structure
   which will continue to serve as a pipe between the reactors and the
   `Router`. The implementation will no longer need the queue
-  implementation and this operation will instead start goroutines that
+  implementation, and will instead start goroutines that
   are responsible for routing the messages from the channel to libp2p
   fundamentals, replacing the current `p2p.Router.routeChannel`.
 
-- The current `p2p.Rotuer.dialPeers` and `p2p.Router.acceptPeers`,
-  which are responsible for establishing outbound and inbound
-  connections respectively, will be removed, along with
-  `p2p.Router.openConnection` and the libp2p connection manager will
+- The current `p2p.Router.dialPeers` and `p2p.Router.acceptPeers`,
+  are responsible for establishing outbound and inbound connections, 
+  respectively. These methods will be removed, along with
+  `p2p.Router.openConnection`, and the libp2p connection manager will
   be responsible for maintaining network connectivity.
 
-- The `p2p.Channel` interface should change to replace the golang
-  channels with a more functional interface for sending messages. The
-  new methods on this object, will take contexts to support safe
-  cancellation and return errors, and generally block rather than
-  return asynchronously. The `Out` channel through which
+- The `p2p.Channel` interface will change to replace Go
+  channels with a more functional interface for sending messages.
+  New methods on this object will take contexts to support safe
+  cancellation, and return errors, and will block rather than
+  running asynchronously. The `Out` channel through which
   reactors send messages to Peers, will be replaced by a `Send`
   method, and the Error channel will be replaced by an `Error`
   method. 
 
-- Rectors will have access to an interface that will allow them to
-  access information from the current state of the Peer information
-  from libp2p. This will supplant the  `p2p.PeerUpdates`
-  subscription.
+- Reactors will be passed an interface that will allow them to
+  access Peer information from libp2p. This will supplant the
+  `p2p.PeerUpdates` subscription.
 
 ### Upgrade and Compatibility
 
-Because the routers and all current P2P code is in the `internal`
-package and not part of the public API, the only changes to the public
-API surface area of the tendermint will be different configuration
+Because the routers and all current P2P code is in `internal`
+packages and not part of the public API, the only changes to the public
+API surface area of Tendermint will be different configuration
 file options, replacing the current P2P options with options relevant
 to libp2p.
 
@@ -131,7 +130,7 @@ will need to be coordinated between all nodes of the network.
 ## Open Questions
 
 - What is the role of Protocol Labs in the implementation of libp2p in
-  tendermint, both during the initial implementation and on an ongoing
+  Tendermint, both during the initial implementation and on an ongoing
   basis thereafter?
 
 - Should all P2P traffic for a given node be pushed to a single topic,
@@ -145,9 +144,9 @@ will need to be coordinated between all nodes of the network.
   unclear if we should attempt to replicate this with libp2p and even
   if we should.
 
-- Is it possible to attach additional (and potentially arbitrary)
-  information into the DHT as part of the heartbeats between nodes,
-  such as the latest height, and then access that in arbitrary
+- Is it possible to store additional (potentially arbitrary)
+  data into the DHT as part of the heartbeats between nodes,
+  such as the latest height, and then access that in the
   reactors.
   
 - Does it make sense to have reactors continue to consume inbound
@@ -184,6 +183,10 @@ will need to be coordinated between all nodes of the network.
 
 ## References
 
-- [ADR 61: P2P Refactor Scope](./adr-061-p2p-refactor-scope.md)
-- [ADR 62: P2P Architecture](./adr-062-p2p-architecture.md)
-- [P2P Roadmap RFC](../rfc/rfc-000-p2p.rst)
+- [ADR 61: P2P Refactor Scope][adr61]
+- [ADR 62: P2P Architecture][adr62]
+- [P2P Roadmap RFC][rfc]
+
+[adr61]: ./adr-061-p2p-refactor-scope.md
+[adr62]: ./adr-062-p2p-architecture.md
+[rfc]: ../rfc/rfc-000-p2p.rst
