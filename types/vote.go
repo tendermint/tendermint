@@ -326,6 +326,18 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 	}
 }
 
+func VotesToProto(votes []*Vote) (res []*tmproto.Vote) {
+	if votes == nil {
+		return nil
+	}
+
+	res = make([]*tmproto.Vote, len(votes))
+	for i, vote := range votes {
+		res[i] = vote.ToProto()
+	}
+	return
+}
+
 func VoteExtensionFromProto(pext *tmproto.VoteExtension) VoteExtension {
 	ext := VoteExtension{}
 	if pext != nil {

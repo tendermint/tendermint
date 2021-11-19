@@ -289,6 +289,7 @@ func TestCreateProposalBlock(t *testing.T) {
 		height,
 		state, commit,
 		proposerAddr,
+		nil,
 	)
 
 	// check that the part set does not exceed the maximum block size
@@ -358,6 +359,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 		height,
 		state, commit,
 		proposerAddr,
+		nil,
 	)
 
 	pb, err := block.ToProto()
@@ -465,6 +467,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		math.MaxInt64,
 		state, commit,
 		proposerAddr,
+		nil,
 	)
 
 	// this ensures that the header is at max size
