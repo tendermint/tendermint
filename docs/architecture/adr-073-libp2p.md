@@ -10,6 +10,7 @@ Proposed.
 
 ## Context
 
+
 As part of the 0.35 development cycle, the Tendermint team completed
 the first phase of the work described in ADRs 61 and 62, which included a
 large scale refactoring of the reactors and the p2p message
@@ -20,7 +21,7 @@ interoperability and left the legacy connection/socket handling code.
 Following the release, the team has reexamined the state of the code
 and the design, as well as Tendermint's requirements. The notes
 from that process are available in the [P2P Roadmap
-RFC](../rfc/rfc-000-p2p.rst).
+RFC][rfc].
 
 This ADR supersedes the decisions made in ADRs 60 and 61, but
 builds on the completed portions of this work. Previously, the
@@ -71,7 +72,7 @@ be removed.
 
 If it turns out (based on the advice of Protocol Labs) that it makes
 sense to maintain separate pubsub or gossipsub topics
-per-message-type, then the `Router` abstraction could also 
+per-message-type, then the `Router` abstraction could also
 be entirely subsumed.
 
 ## Detailed Design
@@ -97,7 +98,7 @@ number of methods:
   fundamentals, replacing the current `p2p.Router.routeChannel`.
 
 - The current `p2p.Router.dialPeers` and `p2p.Router.acceptPeers`,
-  are responsible for establishing outbound and inbound connections, 
+  are responsible for establishing outbound and inbound connections,
   respectively. These methods will be removed, along with
   `p2p.Router.openConnection`, and the libp2p connection manager will
   be responsible for maintaining network connectivity.
@@ -109,11 +110,23 @@ number of methods:
   running asynchronously. The `Out` channel through which
   reactors send messages to Peers, will be replaced by a `Send`
   method, and the Error channel will be replaced by an `Error`
-  method. 
+  method.
 
 - Reactors will be passed an interface that will allow them to
   access Peer information from libp2p. This will supplant the
   `p2p.PeerUpdates` subscription.
+
+- Add some kind of heartbeat message at the application level
+  (e.g. with a reactor,) potentially connected to libp2p's DHT to be
+  used by reactors for service discovery, message targeting, or other
+  features.
+
+- Replace the existing/legacy handshake protocol with Noise.
+
+By default, this project will take advantage of TCP-based transport
+protocols within libp2p, but QUIC will be available as an
+option. Mixed networks are unlikely to be supported, certainly in the
+initial release, but perhaps at any point.
 
 ### Upgrade and Compatibility
 
@@ -130,28 +143,53 @@ will need to be coordinated between all nodes of the network.
 ## Open Questions
 
 - What is the role of Protocol Labs in the implementation of libp2p in
-  Tendermint, both during the initial implementation and on an ongoing
+  tendermint, both during the initial implementation and on an ongoing
   basis thereafter?
 
 - Should all P2P traffic for a given node be pushed to a single topic,
   and we assume that a topic maps to a specific ChainID, or should
-  each reactor (or type of message) have its own topic?
+  each reactor (or type of message) have its own topic? How many
+  topics can a libp2p network support? Is there testing that validates
+  the capabilities?
 
-- Tendermint presently provides a very coarse QoS-like functionality 
+- Tendermint presently provides a very coarse QoS-like functionality
   using priorities based on message-type.
   This intuitively/theoretically ensures that evidence and consensus
   messages don't get starved by blocksync/statesync messages. It's
   unclear if we should attempt to replicate this with libp2p and even
   if we should.
 
-- Is it possible to store additional (potentially arbitrary)
-  data into the DHT as part of the heartbeats between nodes,
+- What kind of QoS functionality does libp2p provide and what kind of
+  metrics does libp2p provide about it's QoS functionality?
+
+- Is it possible to store additional (and potentially arbitrary)
+  information into the DHT as part of the heartbeats between nodes,
   such as the latest height, and then access that in the
-  reactors.
-  
+  reactors. How frequently can the DHT be updated?
+
 - Does it make sense to have reactors continue to consume inbound
   messages from a Channel (`In`) or is there another interface or
   pattern that we should consider?
+
+  - We should avoid exposing Go channels when possible, and likely
+	some kind of alternate iterator likely makes sense for processing
+	messages within the reactors.
+
+- What are the security and protocol implications of tracking
+  information from peer heartbeats and exposing that to reactors?
+
+- How much (or how little) configuration can Tendermint provide for
+  libp2p, particularly on the first release?
+
+  - In general, we should not support byo-functionality for libp2p
+	components within Tendermint, and reduce the configuration surface
+	area, as much as possible.
+
+- What are the best ways to provide request/response semantics for
+  reactors on top of libp2p? Will it be possible to add
+  request/response semantics in a future release or is there
+  anticipatory work that needs to be done as part of the initial
+  release?
 
 ## Consequences
 
@@ -160,6 +198,9 @@ will need to be coordinated between all nodes of the network.
 - Reduce the maintenance burden for the Tendermint Core team by
   removing a large swath of legacy code that has proven to be
   difficult to modify safely.
+
+- Remove the responsibility for maintaining and developing the entire
+  peer management system (p2p) and stack.
 
 - Provide users with a more stable peer and networking system,
   Tendermint can improve operator experience and network stability.
