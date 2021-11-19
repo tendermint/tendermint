@@ -5,9 +5,8 @@
 # should merge the updates first and wait for this workflow to complete,
 # so that the changes will be available for the dependent workflows.
 #
-# TODO(#7272): Update the target location of the builder image.
 
-name: Build & Push TM Proto Builder
+name: Build & Push Proto Builder Image
 on:
   pull_request:
     paths:
@@ -21,15 +20,19 @@ on:
     # run this job once a month to recieve any go or buf updates
     - cron: "* * 1 * *"
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: tendermint/docker-build-proto
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2.4.0
-      - name: Prepare
+      - name: Check out and assign tags
         id: prep
         run: |
-          DOCKER_IMAGE=tendermintdev/docker-build-proto
+          DOCKER_IMAGE="${REGISTRY}/${IMAGE_NAME}"
           VERSION=noop
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             VERSION=${GITHUB_REF#refs/tags/}
@@ -42,16 +45,17 @@ jobs:
           TAGS="${DOCKER_IMAGE}:${VERSION}"
           echo ::set-output name=tags::${TAGS}
 
-      - name: Set up Docker Buildx
+      - name: Set up docker buildx
         uses: docker/setup-buildx-action@v1.6.0
 
-      - name: Login to DockerHub
+      - name: Log in to the container registry
         uses: docker/login-action@v1.10.0
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish to Docker Hub
+      - name: Build and publish image
         uses: docker/build-push-action@v2.7.0
         with:
           context: ./proto
