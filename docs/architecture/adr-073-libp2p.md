@@ -137,9 +137,9 @@ will need to be coordinated between all nodes of the network.
   and we assume that a topic maps to a specific ChainID, or should
   each reactor (or type of message) have its own topic?
 
-- Tendermint presently has a concept of message-type priority, which
-  provides a very course QoS-like functionality and
-  intuitively/theoretically ensures that evidence and consensus
+- Tendermint presently provides a very coarse QoS-like functionality 
+  using priorities based on message-type.
+  This intuitively/theoretically ensures that evidence and consensus
   messages don't get starved by blocksync/statesync messages. It's
   unclear if we should attempt to replicate this with libp2p and even
   if we should.
