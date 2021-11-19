@@ -64,6 +64,7 @@ func TestAppConns_Failure(t *testing.T) {
 	go func() {
 		for range c {
 			close(ok)
+			return
 		}
 	}()
 
@@ -75,7 +76,7 @@ func TestAppConns_Failure(t *testing.T) {
 	clientMock.On("Start", mock.Anything).Return(nil)
 
 	clientMock.On("Wait").Return(nil)
-	clientMock.On("Error").Return(errors.New("EOF")).Once()
+	clientMock.On("Error").Return(errors.New("EOF"))
 	cl := &noopStoppableClientImpl{Client: clientMock}
 
 	creator := func(log.Logger) (abciclient.Client, error) {
