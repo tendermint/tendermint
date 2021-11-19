@@ -87,6 +87,7 @@ type validatorStub struct {
 	Index  int32 // Validator index. NOTE: we don't assume validator set changes.
 	Height int64
 	Round  int32
+	clock  tmtime.Source
 	types.PrivValidator
 	VotingPower int64
 	lastVote    *types.Vote
@@ -99,14 +100,14 @@ func newValidatorStub(privValidator types.PrivValidator, valIndex int32) *valida
 		Index:         valIndex,
 		PrivValidator: privValidator,
 		VotingPower:   testMinPower,
+		clock:         tmtime.DefaultSource{},
 	}
 }
 
 func (vs *validatorStub) signVote(
-	config *cfg.Config,
 	voteType tmproto.SignedMsgType,
-	hash []byte,
-	header types.PartSetHeader) (*types.Vote, error) {
+	chainID string,
+	blockID types.BlockID) (*types.Vote, error) {
 
 	pubKey, err := vs.PrivValidator.GetPubKey(context.Background())
 	if err != nil {
@@ -118,12 +119,12 @@ func (vs *validatorStub) signVote(
 		ValidatorAddress: pubKey.Address(),
 		Height:           vs.Height,
 		Round:            vs.Round,
-		Timestamp:        tmtime.Now(),
+		Timestamp:        vs.clock.Now(),
 		Type:             voteType,
-		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
+		BlockID:          blockID,
 	}
 	v := vote.ToProto()
-	if err := vs.PrivValidator.SignVote(context.Background(), config.ChainID(), v); err != nil {
+	if err := vs.PrivValidator.SignVote(context.Background(), chainID, v); err != nil {
 		return nil, fmt.Errorf("sign vote failed: %w", err)
 	}
 
@@ -142,12 +143,11 @@ func (vs *validatorStub) signVote(
 // Sign vote for type/hash/header
 func signVote(
 	vs *validatorStub,
-	config *cfg.Config,
 	voteType tmproto.SignedMsgType,
-	hash []byte,
-	header types.PartSetHeader) *types.Vote {
+	chainID string,
+	blockID types.BlockID) *types.Vote {
 
-	v, err := vs.signVote(config, voteType, hash, header)
+	v, err := vs.signVote(voteType, chainID, blockID)
 	if err != nil {
 		panic(fmt.Errorf("failed to sign vote: %v", err))
 	}
@@ -158,14 +158,13 @@ func signVote(
 }
 
 func signVotes(
-	config *cfg.Config,
 	voteType tmproto.SignedMsgType,
-	hash []byte,
-	header types.PartSetHeader,
+	chainID string,
+	blockID types.BlockID,
 	vss ...*validatorStub) []*types.Vote {
 	votes := make([]*types.Vote, len(vss))
 	for i, vs := range vss {
-		votes[i] = signVote(vs, config, voteType, hash, header)
+		votes[i] = signVote(vs, voteType, chainID, blockID)
 	}
 	return votes
 }
@@ -258,14 +257,13 @@ func addVotes(to *State, votes ...*types.Vote) {
 }
 
 func signAddVotes(
-	config *cfg.Config,
 	to *State,
 	voteType tmproto.SignedMsgType,
-	hash []byte,
-	header types.PartSetHeader,
+	chainID string,
+	blockID types.BlockID,
 	vss ...*validatorStub,
 ) {
-	votes := signVotes(config, voteType, hash, header, vss...)
+	votes := signVotes(voteType, chainID, blockID, vss...)
 	addVotes(to, votes...)
 }
 
