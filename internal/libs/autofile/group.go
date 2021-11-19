@@ -238,13 +238,19 @@ func (g *Group) FlushAndSync() error {
 }
 
 func (g *Group) processTicks() {
+	quit := make(chan struct{})
+	go func() {
+		defer close(quit)
+		g.Wait()
+	}()
 	defer close(g.doneProcessTicks)
+
 	for {
 		select {
 		case <-g.ticker.C:
 			g.checkHeadSizeLimit()
 			g.checkTotalSizeLimit()
-		case <-g.Quit():
+		case <-quit:
 			return
 		}
 	}

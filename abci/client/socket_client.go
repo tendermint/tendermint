@@ -126,8 +126,6 @@ func (cli *socketClient) sendRequestsRoutine(ctx context.Context, conn io.Writer
 		select {
 		case <-ctx.Done():
 			return
-		case <-cli.Quit():
-			return
 		case reqres := <-cli.reqQueue:
 			if ctx.Err() != nil {
 				return

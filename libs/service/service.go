@@ -156,11 +156,6 @@ func (bs *BaseService) Start(ctx context.Context) error {
 	return ErrAlreadyStarted
 }
 
-// OnStart implements Service by doing nothing.
-// NOTE: Do not put anything in here,
-// that way users don't need to call BaseService.OnStart()
-func (bs *BaseService) OnStart(ctx context.Context) error { return nil }
-
 // Stop implements Service by calling OnStop (if defined) and closing quit
 // channel. An error will be returned if the service is already stopped.
 func (bs *BaseService) Stop() error {
@@ -182,11 +177,6 @@ func (bs *BaseService) Stop() error {
 	return ErrAlreadyStopped
 }
 
-// OnStop implements Service by doing nothing.
-// NOTE: Do not put anything in here,
-// that way users don't need to call BaseService.OnStop()
-func (bs *BaseService) OnStop() {}
-
 // IsRunning implements Service by returning true or false depending on the
 // service's state.
 func (bs *BaseService) IsRunning() bool {
@@ -198,6 +188,3 @@ func (bs *BaseService) Wait() { <-bs.quit }
 
 // String implements Service by returning a string representation of the service.
 func (bs *BaseService) String() string { return bs.name }
-
-// Quit Implements Service by returning a quit channel.
-func (bs *BaseService) Quit() <-chan struct{} { return bs.quit }

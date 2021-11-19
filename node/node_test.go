@@ -73,13 +73,15 @@ func TestNodeStartStop(t *testing.T) {
 	}
 
 	// stop the node
+	sig := make(chan struct{})
 	go func() {
+		defer close(sig)
 		bcancel()
 		n.Wait()
 	}()
 
 	select {
-	case <-n.Quit():
+	case <-sig:
 		return
 	case <-time.After(10 * time.Second):
 		if n.IsRunning() {

@@ -48,17 +48,14 @@ func NewTimeoutTicker(logger log.Logger) TimeoutTicker {
 }
 
 // OnStart implements service.Service. It starts the timeout routine.
-func (t *timeoutTicker) OnStart(gctx context.Context) error {
-	go t.timeoutRoutine()
+func (t *timeoutTicker) OnStart(ctx context.Context) error {
+	go t.timeoutRoutine(ctx)
 
 	return nil
 }
 
 // OnStop implements service.Service. It stops the timeout routine.
-func (t *timeoutTicker) OnStop() {
-	t.BaseService.OnStop()
-	t.stopTimer()
-}
+func (t *timeoutTicker) OnStop() { t.stopTimer() }
 
 // Chan returns a channel on which timeouts are sent.
 func (t *timeoutTicker) Chan() <-chan timeoutInfo {
@@ -89,7 +86,7 @@ func (t *timeoutTicker) stopTimer() {
 // send on tickChan to start a new timer.
 // timers are interupted and replaced by new ticks from later steps
 // timeouts of 0 on the tickChan will be immediately relayed to the tockChan
-func (t *timeoutTicker) timeoutRoutine() {
+func (t *timeoutTicker) timeoutRoutine(ctx context.Context) {
 	t.Logger.Debug("Starting timeout routine")
 	var ti timeoutInfo
 	for {
@@ -125,7 +122,7 @@ func (t *timeoutTicker) timeoutRoutine() {
 			// We can eliminate it by merging the timeoutRoutine into receiveRoutine
 			//  and managing the timeouts ourselves with a millisecond ticker
 			go func(toi timeoutInfo) { t.tockChan <- toi }(ti)
-		case <-t.Quit():
+		case <-ctx.Done():
 			return
 		}
 	}

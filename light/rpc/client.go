@@ -47,6 +47,8 @@ type Client struct {
 	// proof runtime used to verify values returned by ABCIQuery
 	prt       *merkle.ProofRuntime
 	keyPathFn KeyPathFunc
+
+	quitCh chan struct{}
 }
 
 var _ rpcclient.Client = (*Client)(nil)
@@ -87,9 +89,10 @@ func DefaultMerkleKeyPathFn() KeyPathFunc {
 // NewClient returns a new client.
 func NewClient(next rpcclient.Client, lc LightClient, opts ...Option) *Client {
 	c := &Client{
-		next: next,
-		lc:   lc,
-		prt:  merkle.DefaultProofRuntime(),
+		next:   next,
+		lc:     lc,
+		prt:    merkle.DefaultProofRuntime(),
+		quitCh: make(chan struct{}),
 	}
 	c.BaseService = *service.NewBaseService(nil, "Client", c)
 	for _, o := range opts {
@@ -102,6 +105,12 @@ func (c *Client) OnStart(ctx context.Context) error {
 	if !c.next.IsRunning() {
 		return c.next.Start(ctx)
 	}
+
+	go func() {
+		defer close(c.quitCh)
+		c.Wait()
+	}()
+
 	return nil
 }
 
@@ -586,7 +595,7 @@ func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.Re
 						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", ctx.JSONReq.ID)),
 						resultEvent,
 					))
-			case <-c.Quit():
+			case <-c.quitCh:
 				return
 			}
 		}

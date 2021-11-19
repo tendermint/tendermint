@@ -26,48 +26,64 @@ func TestTrustMetricScores(t *testing.T) {
 	tm.BadEvents(10)
 	score = tm.TrustScore()
 	assert.NotEqual(t, 100, score)
-	err = tm.Stop()
-	require.NoError(t, err)
+
+	tm.Wait()
+	assert.False(t, tm.IsRunning())
 }
 
 func TestTrustMetricConfig(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	// 7 days
-	window := time.Minute * 60 * 24 * 7
-	config := MetricConfig{
-		TrackingWindow: window,
-		IntervalLength: 2 * time.Minute,
-	}
+	const window = time.Minute * 60 * 24 * 7
 
-	tm := NewMetricWithConfig(config)
-	err := tm.Start(ctx)
-	require.NoError(t, err)
+	t.Run("Default", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 
-	// The max time intervals should be the TrackingWindow / IntervalLen
-	assert.Equal(t, int(config.TrackingWindow/config.IntervalLength), tm.maxIntervals)
+		config := MetricConfig{
+			TrackingWindow: window,
+			IntervalLength: 2 * time.Minute,
+		}
 
-	dc := DefaultConfig()
-	// These weights should still be the default values
-	assert.Equal(t, dc.ProportionalWeight, tm.proportionalWeight)
-	assert.Equal(t, dc.IntegralWeight, tm.integralWeight)
-	err = tm.Stop()
-	require.NoError(t, err)
-	tm.Wait()
+		tm := NewMetricWithConfig(config)
+		err := tm.Start(ctx)
+		require.NoError(t, err)
 
-	config.ProportionalWeight = 0.3
-	config.IntegralWeight = 0.7
-	tm = NewMetricWithConfig(config)
-	err = tm.Start(ctx)
-	require.NoError(t, err)
+		// The max time intervals should be the TrackingWindow / IntervalLen
+		assert.Equal(t, int(config.TrackingWindow/config.IntervalLength), tm.maxIntervals)
 
-	// These weights should be equal to our custom values
-	assert.Equal(t, config.ProportionalWeight, tm.proportionalWeight)
-	assert.Equal(t, config.IntegralWeight, tm.integralWeight)
-	err = tm.Stop()
-	require.NoError(t, err)
-	tm.Wait()
+		dc := DefaultConfig()
+		// These weights should still be the default values
+		assert.Equal(t, dc.ProportionalWeight, tm.proportionalWeight)
+		assert.Equal(t, dc.IntegralWeight, tm.integralWeight)
+
+		cancel()
+		tm.Wait()
+		assert.False(t, tm.IsRunning())
+	})
+	t.Run("WeightChange", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		config := MetricConfig{
+			TrackingWindow: window,
+			IntervalLength: 2 * time.Minute,
+		}
+
+		config.ProportionalWeight = 0.3
+		config.IntegralWeight = 0.7
+		tm := NewMetricWithConfig(config)
+		err := tm.Start(ctx)
+		require.NoError(t, err)
+
+		// These weights should be equal to our custom values
+		assert.Equal(t, config.ProportionalWeight, tm.proportionalWeight)
+		assert.Equal(t, config.IntegralWeight, tm.integralWeight)
+
+		cancel()
+		tm.Wait()
+		assert.False(t, tm.IsRunning())
+	})
 }
 
 func TestTrustMetricCopyNilPointer(t *testing.T) {
@@ -109,9 +125,10 @@ func _TestTrustMetricStopPause(t *testing.T) {
 	// Allow some time intervals to pass and stop
 	tt.NextTick()
 	tt.NextTick()
-	err = tm.Stop()
-	require.NoError(t, err)
+
+	cancel()
 	tm.Wait()
+	assert.False(t, tm.IsRunning())
 
 	second := tm.Copy().numIntervals
 	// Allow more intervals to pass while the metric is stopped

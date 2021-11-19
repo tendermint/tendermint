@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
@@ -53,31 +54,30 @@ func NewTrustMetricStore(db dbm.DB, tmc MetricConfig, logger log.Logger) *Metric
 
 // OnStart implements Service
 func (tms *MetricStore) OnStart(ctx context.Context) error {
-	if err := tms.BaseService.OnStart(ctx); err != nil {
-		return err
-	}
-
 	tms.mtx.Lock()
 	defer tms.mtx.Unlock()
 
 	tms.loadFromDB(ctx)
-	go tms.saveRoutine()
+	go tms.saveRoutine(ctx)
 	return nil
 }
 
 // OnStop implements Service
 func (tms *MetricStore) OnStop() {
-	tms.BaseService.OnStop()
-
 	tms.mtx.Lock()
 	defer tms.mtx.Unlock()
 
 	// Stop all trust metric go-routines
+	wg := &sync.WaitGroup{}
+
 	for _, tm := range tms.peerMetrics {
-		if err := tm.Stop(); err != nil {
-			tms.Logger.Error("unable to stop metric store", "error", err)
-		}
+		wg.Add(1)
+		go func(m *Metric) {
+			defer wg.Done()
+			m.Wait()
+		}(tm)
 	}
+	wg.Wait()
 
 	// Make the final trust history data save
 	tms.saveToDB()
@@ -89,18 +89,6 @@ func (tms *MetricStore) Size() int {
 	defer tms.mtx.Unlock()
 
 	return tms.size()
-}
-
-// AddPeerTrustMetric takes an existing trust metric and associates it with a peer key.
-// The caller is expected to call Start on the TrustMetric being added
-func (tms *MetricStore) AddPeerTrustMetric(key string, tm *Metric) {
-	tms.mtx.Lock()
-	defer tms.mtx.Unlock()
-
-	if key == "" || tm == nil {
-		return
-	}
-	tms.peerMetrics[key] = tm
 }
 
 // GetPeerTrustMetric returns a trust metric by peer key
@@ -207,7 +195,7 @@ func (tms *MetricStore) saveToDB() {
 }
 
 // Periodically saves the trust history data to the DB
-func (tms *MetricStore) saveRoutine() {
+func (tms *MetricStore) saveRoutine(ctx context.Context) {
 	t := time.NewTicker(defaultStorePeriodicSaveInterval)
 	defer t.Stop()
 loop:
@@ -215,7 +203,7 @@ loop:
 		select {
 		case <-t.C:
 			tms.SaveToDB()
-		case <-tms.Quit():
+		case <-ctx.Done():
 			break loop
 		}
 	}

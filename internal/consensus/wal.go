@@ -131,18 +131,18 @@ func (wal *BaseWAL) OnStart(ctx context.Context) error {
 		return err
 	}
 	wal.flushTicker = time.NewTicker(wal.flushInterval)
-	go wal.processFlushTicks()
+	go wal.processFlushTicks(ctx)
 	return nil
 }
 
-func (wal *BaseWAL) processFlushTicks() {
+func (wal *BaseWAL) processFlushTicks(ctx context.Context) {
 	for {
 		select {
 		case <-wal.flushTicker.C:
 			if err := wal.FlushAndSync(); err != nil {
 				wal.Logger.Error("Periodic WAL flush failed", "err", err)
 			}
-		case <-wal.Quit():
+		case <-ctx.Done():
 			return
 		}
 	}

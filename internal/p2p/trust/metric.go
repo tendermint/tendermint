@@ -111,10 +111,7 @@ func NewMetricWithConfig(tmc MetricConfig) *Metric {
 
 // OnStart implements Service
 func (tm *Metric) OnStart(ctx context.Context) error {
-	if err := tm.BaseService.OnStart(ctx); err != nil {
-		return err
-	}
-	go tm.processRequests()
+	go tm.processRequests(ctx)
 	return nil
 }
 
@@ -286,7 +283,7 @@ func (tm *Metric) Copy() *Metric {
 /* Private methods */
 
 // This method is for a goroutine that handles all requests on the metric
-func (tm *Metric) processRequests() {
+func (tm *Metric) processRequests(ctx context.Context) {
 	t := tm.testTicker
 	if t == nil {
 		// No test ticker was provided, so we create a normal ticker
@@ -300,7 +297,7 @@ loop:
 		select {
 		case <-tick:
 			tm.NextTimeInterval()
-		case <-tm.Quit():
+		case <-ctx.Done():
 			// Stop all further tracking for this metric
 			break loop
 		}
