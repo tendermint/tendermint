@@ -136,17 +136,25 @@ func (bs *BaseService) Start(ctx context.Context) error {
 		}
 
 		go func(ctx context.Context) {
-			<-ctx.Done()
-			if err := bs.Stop(); err != nil {
-				bs.Logger.Error("stopped service",
-					"err", err.Error(),
+			select {
+			case <-bs.quit:
+				// someone else explicitly called stop
+				// and then we shouldn't.
+				return
+			case <-ctx.Done():
+				// the context was cancel and we
+				// should stop.
+				if err := bs.Stop(); err != nil {
+					bs.Logger.Error("stopped service",
+						"err", err.Error(),
+						"service", bs.name,
+						"impl", bs.impl.String())
+				}
+
+				bs.Logger.Info("stopped service",
 					"service", bs.name,
 					"impl", bs.impl.String())
 			}
-
-			bs.Logger.Info("stopped service",
-				"service", bs.name,
-				"impl", bs.impl.String())
 		}(ctx)
 
 		return nil
