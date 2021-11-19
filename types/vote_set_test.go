@@ -524,6 +524,10 @@ func TestVoteSet_MakeCommit(t *testing.T) {
 }
 
 func TestVoteSet_LLMQType_50_60(t *testing.T) {
+	const (
+		height = int64(1)
+		round  = int32(0)
+	)
 	testCases := []struct {
 		llmqType      btcjson.LLMQType
 		numValidators int
@@ -554,46 +558,42 @@ func TestVoteSet_LLMQType_50_60(t *testing.T) {
 	for ti, tt := range testCases {
 		name := strconv.Itoa(ti)
 		t.Run(name, func(t *testing.T) {
-			height, round := int64(1), int32(0)
-			numValidators := tt.numValidators
-			llmqType := tt.llmqType
-			threshold := tt.threshold
-
 			voteSet, valSet, privValidators := randVoteSetWithLLMQType(
 				height,
 				round,
 				tmproto.PrevoteType,
-				numValidators,
+				tt.numValidators,
 				RandStateID().WithHeight(height-1),
-				llmqType,
-				threshold,
+				tt.llmqType,
+				tt.threshold,
 			)
-			assert.EqualValues(t, threshold, valSet.QuorumTypeThresholdCount())
-			assert.GreaterOrEqual(t, len(privValidators), threshold+3)
+			assert.EqualValues(t, tt.threshold, valSet.QuorumTypeThresholdCount())
+			assert.GreaterOrEqual(t, len(privValidators), tt.threshold+3,
+				"need at least %d validators", tt.threshold+3)
 
 			blockHash := crypto.CRandBytes(32)
 			blockPartSetHeader := PartSetHeader{uint32(123), crypto.CRandBytes(32)}
 			votedBlock := BlockID{blockHash, blockPartSetHeader}
 
 			// below threshold
-			for i := 0; i < threshold-1; i++ {
+			for i := 0; i < tt.threshold-1; i++ {
 				blockMaj, anyMaj := castVote(t, votedBlock, height, round, privValidators, int32(i), voteSet)
-				assert.False(t, blockMaj, "no block majority expected here: i=%d, threshold=%d", i, threshold)
-				assert.False(t, anyMaj, "no 'any' majority expected here: i=%d, threshold=%d", i, threshold)
+				assert.False(t, blockMaj, "no block majority expected here: i=%d, threshold=%d", i, tt.threshold)
+				assert.False(t, anyMaj, "no 'any' majority expected here: i=%d, threshold=%d", i, tt.threshold)
 			}
 
 			// we add null vote
-			blockMaj, anyMaj := castVote(t, BlockID{}, height, round, privValidators, int32(threshold), voteSet)
+			blockMaj, anyMaj := castVote(t, BlockID{}, height, round, privValidators, int32(tt.threshold), voteSet)
 			assert.False(t, blockMaj, "no block majority expected after nil vote")
 			assert.True(t, anyMaj, "'any' majority expected  after nil vote at threshold")
 
 			// at threshold
-			blockMaj, anyMaj = castVote(t, votedBlock, height, round, privValidators, int32(threshold+1), voteSet)
+			blockMaj, anyMaj = castVote(t, votedBlock, height, round, privValidators, int32(tt.threshold+1), voteSet)
 			assert.True(t, blockMaj, "block majority expected")
 			assert.True(t, anyMaj, "'any' majority expected")
 
 			// above threshold
-			blockMaj, anyMaj = castVote(t, votedBlock, height, round, privValidators, int32(threshold+2), voteSet)
+			blockMaj, anyMaj = castVote(t, votedBlock, height, round, privValidators, int32(tt.threshold+2), voteSet)
 			assert.True(t, blockMaj, "block majority expected")
 			assert.True(t, anyMaj, "'any' majority expected")
 		})
