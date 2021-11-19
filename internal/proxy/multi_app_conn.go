@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"sync"
 	"syscall"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
@@ -129,7 +128,7 @@ func (app *multiAppConn) OnStart(ctx context.Context) error {
 	app.consensusConn = NewAppConnConsensus(c, app.metrics)
 
 	// Kill Tendermint if the ABCI application crashes.
-	go app.killTMOnClientError(ctx)
+	app.startWatchersForClientErrorToKillTendermint(ctx)
 
 	return nil
 }
@@ -138,7 +137,12 @@ func (app *multiAppConn) OnStop() {
 	app.stopAllClients()
 }
 
-func (app *multiAppConn) killTMOnClientError(ctx context.Context) {
+func (app *multiAppConn) startWatchersForClientErrorToKillTendermint(ctx context.Context) {
+	// this function starts a number of threads (per abci client)
+	// that will SIGTERM's our own PID if any of the ABCI clients
+	// exit/return early. If the context is canceled then these
+	// functions will not kill tendermint.
+
 	killFn := func(conn string, err error, logger log.Logger) {
 		logger.Error(
 			fmt.Sprintf("%s connection terminated. Did the application crash? Please restart tendermint", conn),
@@ -153,7 +157,6 @@ func (app *multiAppConn) killTMOnClientError(ctx context.Context) {
 		name       string
 	}
 
-	wg := &sync.WaitGroup{}
 	for _, client := range []op{
 		{
 			connClient: app.consensusConnClient,
@@ -172,25 +175,15 @@ func (app *multiAppConn) killTMOnClientError(ctx context.Context) {
 			name:       connSnapshot,
 		},
 	} {
-		wg.Add(1)
-		go func(client op) {
-			defer wg.Done()
-
-			select {
-			case <-ctx.Done():
-			case <-signalWait(client.connClient.Wait):
-				if err := client.connClient.Error(); err != nil {
-					killFn(client.name, err, app.Logger)
-				}
+		go func(name string, client stoppableClient) {
+			client.Wait()
+			if ctx.Err() != nil {
+				return
 			}
-		}(client)
-	}
-
-	// convert wg into a signal channel so we can cleanup if no
-	// one is waiting
-	select {
-	case <-ctx.Done():
-	case <-signalWait(wg.Wait):
+			if err := client.Error(); err != nil {
+				killFn(name, err, app.Logger)
+			}
+		}(client.name, client.connClient)
 	}
 }
 
@@ -237,6 +230,11 @@ func (app *multiAppConn) stopAllClients() {
 }
 
 func (app *multiAppConn) abciClientFor(ctx context.Context, conn string) (abciclient.Client, error) {
+	if app.IsRunning() {
+		// this could reasonably be a panic
+		return nil, errors.New("cannot create new client after the instance is started.")
+	}
+
 	c, err := app.clientCreator(app.Logger.With(
 		"module", "abci-client",
 		"connection", conn))
