@@ -86,7 +86,7 @@ relatively straightforward to implement. A key
 goal in this design is to minimize the impact on the reactors
 (potentially entirely,) and completely remove the lower level
 components (e.g., `Transport`, `Connection` and `PeerManager`) using the
-separation afforded by the `*Router` layer. The current state of the
+separation afforded by the `Router` layer. The current state of the
 code makes these changes relatively surgical, and limited to a small
 number of methods:
 
@@ -121,16 +121,16 @@ number of methods:
   used by reactors for service discovery, message targeting, or other
   features.
 
-- Replace the existing/legacy handshake protocol with Noise.
+- Replace the existing/legacy handshake protocol with [Noise](http://www.noiseprotocol.org/noise.html).
 
-By default, this project will take advantage of TCP-based transport
-protocols within libp2p, but QUIC will be available as an
-option. Mixed networks are unlikely to be supported, certainly in the
-initial release, but perhaps at any point.
+This project will initially use the TCP-based transport protocols within
+libp2p. QUIC is also available as an option that we may implement later.
+We will not support mixed networks in the initial release, but will
+revisit that possibility later if there is a demonstrated need.
 
 ### Upgrade and Compatibility
 
-Because the routers and all current P2P code is in `internal`
+Because the routers and all current P2P libraries are `internal`
 packages and not part of the public API, the only changes to the public
 API surface area of Tendermint will be different configuration
 file options, replacing the current P2P options with options relevant
@@ -150,7 +150,7 @@ the implementation timeline.
   basis thereafter?
 
 - Should all P2P traffic for a given node be pushed to a single topic,
-  and we assume that a topic maps to a specific ChainID, or should
+  so that a topic maps to a specific ChainID, or should
   each reactor (or type of message) have its own topic? How many
   topics can a libp2p network support? Is there testing that validates
   the capabilities?
@@ -159,8 +159,7 @@ the implementation timeline.
   using priorities based on message-type.
   This intuitively/theoretically ensures that evidence and consensus
   messages don't get starved by blocksync/statesync messages. It's
-  unclear if we should attempt to replicate this with libp2p and even
-  if we should.
+  unclear if we can or should attempt to replicate this with libp2p.
 
 - What kind of QoS functionality does libp2p provide and what kind of
   metrics does libp2p provide about it's QoS functionality?
