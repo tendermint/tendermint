@@ -138,7 +138,10 @@ to libp2p.
 
 However, it will not be possible to run a network with both networking
 stacks active at once, so the upgrade to the version of Tendermint
-will need to be coordinated between all nodes of the network.
+will need to be coordinated between all nodes of the network. This is
+consistent with the expectations around upgrades for Tendermint moving
+forward, and will help manage both the complexity of the project and
+the implementation timeline.
 
 ## Open Questions
 
