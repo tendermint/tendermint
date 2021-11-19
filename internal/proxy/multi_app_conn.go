@@ -187,17 +187,6 @@ func (app *multiAppConn) startWatchersForClientErrorToKillTendermint(ctx context
 	}
 }
 
-func signalWait(wait func()) chan struct{} {
-	out := make(chan struct{})
-
-	go func() {
-		defer close(out)
-		wait()
-	}()
-
-	return out
-}
-
 func (app *multiAppConn) stopAllClients() {
 	if app.consensusConnClient != nil {
 		if err := app.consensusConnClient.Stop(); err != nil {
@@ -230,11 +219,6 @@ func (app *multiAppConn) stopAllClients() {
 }
 
 func (app *multiAppConn) abciClientFor(ctx context.Context, conn string) (abciclient.Client, error) {
-	if app.IsRunning() {
-		// this could reasonably be a panic
-		return nil, errors.New("cannot create new client after the instance is started.")
-	}
-
 	c, err := app.clientCreator(app.Logger.With(
 		"module", "abci-client",
 		"connection", conn))
