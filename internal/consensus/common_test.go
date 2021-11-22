@@ -466,7 +466,9 @@ func loadPrivValidator(t *testing.T, config *cfg.Config) *privval.FilePV {
 
 func makeState(config *cfg.Config, nValidators int) (*State, []*validatorStub) {
 	// Get State
-	state, privVals := makeGenesisState(config, nValidators, 10, types.DefaultConsensusParams())
+	state, privVals := makeGenesisState(config, genesisStateArgs{
+		Validators: nValidators,
+	})
 
 	vss := make([]*validatorStub, nValidators)
 
@@ -850,24 +852,28 @@ func randConsensusNetWithPeers(
 	}
 }
 
-func makeGenesisState(
-	config *cfg.Config,
-	numValidators int,
-	votingPower int64,
-	consensusParams *types.ConsensusParams) (sm.State, []types.PrivValidator) {
-	return makeGenesisStateWithGenesisTime(config, numValidators, votingPower, consensusParams, time.Now())
+type genesisStateArgs struct {
+	Validators int
+	Power      int64
+	Params     *types.ConsensusParams
+	Time       time.Time
 }
 
-func makeGenesisStateWithGenesisTime(
-	config *cfg.Config,
-	numValidators int,
-	votingPower int64,
-	consensusParams *types.ConsensusParams,
-	genesisTime time.Time,
-) (sm.State, []types.PrivValidator) {
-
-	valSet, privValidators := factory.ValidatorSet(numValidators, votingPower)
-	genDoc := factory.GenesisDoc(config, genesisTime, valSet.Validators, consensusParams)
+func makeGenesisState(config *cfg.Config, args genesisStateArgs) (sm.State, []types.PrivValidator) {
+	if args.Power == 0 {
+		args.Power = 1
+	}
+	if args.Validators == 0 {
+		args.Power = 4
+	}
+	valSet, privValidators := factory.ValidatorSet(args.Validators, args.Power)
+	if args.Params == nil {
+		args.Params = types.DefaultConsensusParams()
+	}
+	if args.Time.IsZero() {
+		args.Time = time.Now()
+	}
+	genDoc := factory.GenesisDoc(config, args.Time, valSet.Validators, args.Params)
 	s0, _ := sm.MakeGenesisState(genDoc)
 	return s0, privValidators
 }
