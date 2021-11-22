@@ -450,7 +450,10 @@ func TestStateLock_NoPOL(t *testing.T) {
 
 	ensureNewProposal(t, proposalCh, height, round)
 	roundState := cs1.GetRoundState()
-	initialBlockID := types.BlockID{Hash: roundState.ProposalBlock.Hash(), PartSetHeader: roundState.ProposalBlockParts.Header()}
+	initialBlockID := types.BlockID{
+		Hash:          roundState.ProposalBlock.Hash(),
+		PartSetHeader: roundState.ProposalBlockParts.Header(),
+	}
 
 	ensurePrevote(t, voteCh, height, round) // prevote
 
