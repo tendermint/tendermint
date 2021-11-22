@@ -16,6 +16,7 @@ LD_FLAGS = -X github.com/tendermint/tendermint/version.TMVersion=$(VERSION)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 HTTPS_GIT := https://github.com/tendermint/tendermint.git
 BUILD_IMAGE := ghcr.io/tendermint/docker-build-proto
+BASE_BRANCH := v0.35.x
 DOCKER_PROTO := docker run -v $(shell pwd):/workspace --workdir /workspace $(BUILD_IMAGE)
 CGO_ENABLED ?= 0
 
@@ -100,12 +101,12 @@ proto-format:
 
 proto-check-breaking:
 	@echo "Checking for breaking changes in .proto files"
-	@$(DOCKER_PROTO) buf breaking --against .git#branch=v0.35.x
+	@$(DOCKER_PROTO) buf breaking --against .git#branch=$(BASE_BRANCH)
 .PHONY: proto-check-breaking
 
 proto-check-breaking-ci:
 	@echo "Checking for breaking changes in .proto files"
-	@$(DOCKER_PROTO) buf breaking --against $(HTTPS_GIT)#branch=v0.35.x
+	@$(DOCKER_PROTO) buf breaking --against $(HTTPS_GIT)#branch=$(BASE_BRANCH)
 .PHONY: proto-check-breaking-ci
 
 ###############################################################################
