@@ -2266,7 +2266,8 @@ func TestStateSlashing_Prevotes(t *testing.T) {
 	// add one for a different block should cause us to go into prevote wait
 	hash := rs.ProposalBlock.Hash()
 	hash[0] = byte(hash[0]+1) % 255
-	signAddVotes(tmproto.PrevoteType, hash,config.ChainID(), blockID, rs.ProposalBlock.Hash(),config.ChainID(), rs.ProposalBlockParts.Header(), vs2)
+	signAddVotes(tmproto.PrevoteType, hash, config.ChainID(), blockID,
+		rs.ProposalBlock.Hash(), config.ChainID(), rs.ProposalBlockParts.Header(), vs2)
 
 	// XXX: Check for existence of Dupeout info
 }
