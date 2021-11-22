@@ -1,3 +1,3 @@
 # Detection
 
-Deprecated, please see [light-client/detection](../../light-client/detection.md).
+Deprecated, please see [light-client/detection](../../light-client/detection/README.md).

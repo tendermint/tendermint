@@ -4,6 +4,7 @@ parent:
   title: Light Client
   order: 5
 ---
+<!-- markdown-link-check-disable -->
 
 # Light Client Specification
 

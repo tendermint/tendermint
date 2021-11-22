@@ -1,3 +1,5 @@
+<!-- markdown-link-check-disable -->
+
 # Requirements for Fork Detection in the IBC Context
 
 ## What you need to know about IBC

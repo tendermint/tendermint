@@ -1,3 +1,5 @@
+<!-- markdown-link-check-disable -->
+
 # Proposer-Based Time
 
 ## Current BFTTime

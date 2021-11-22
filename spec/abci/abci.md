@@ -79,7 +79,7 @@ Tendermint consensus.
 ### Query
 
 The `Query` ABCI method query queries the application for information about application state.
-When Tendermint receives a `ResponseQuery` with a non-zero `Code`, this code is 
+When Tendermint receives a `ResponseQuery` with a non-zero `Code`, this code is
 returned directly to the client that initiated the query.
 
 ## Events
@@ -91,7 +91,7 @@ transactions and blocks this metadata relates to.
 Events returned via these ABCI methods do not impact Tendermint consensus in any way
 and instead exist to power subscriptions and queries of Tendermint state.
 
-An `Event` contains a `type` and a list of `EventAttributes`, which are key-value 
+An `Event` contains a `type` and a list of `EventAttributes`, which are key-value
 string pairs denoting metadata about what happened during the method's execution.
 `Event` values can be used to index transactions and blocks according to what happened
 during their execution. Note that the set of events returned for a block from
@@ -163,8 +163,8 @@ Example:
 Tendermint's security model relies on the use of "evidence". Evidence is proof of
 malicious behaviour by a network participant. It is the responsibility of Tendermint
 to detect such malicious behaviour. When malicious behavior is detected, Tendermint
-will gossip evidence of the behavior to other nodes and commit the evidence to 
-the chain once it is verified by all validators. This evidence will then be 
+will gossip evidence of the behavior to other nodes and commit the evidence to
+the chain once it is verified by all validators. This evidence will then be
 passed it on to the application through the ABCI. It is the responsibility of the
 application to handle the evidence and exercise punishment.
 
@@ -179,8 +179,8 @@ enum EvidenceType {
 ```
 
 There are two forms of evidence: Duplicate Vote and Light Client Attack. More
-information can be found in either [data structures](https://github.com/tendermint/spec/blob/master/spec/core/data_structures.md)
-or [accountability](https://github.com/tendermint/spec/blob/master/spec/light-client/accountability/)
+information can be found in either [data structures](../core/data_structures.md)
+or [accountability](../light-client/accountability/README.md)
 
 ## Determinism
 
@@ -246,7 +246,7 @@ Commit are included in the header of the next block.
 
 State sync allows new nodes to rapidly bootstrap by discovering, fetching, and applying
 state machine snapshots instead of replaying historical blocks. For more details, see the
-[state sync section](../spec/p2p/messages/state-sync.md).
+[state sync section](../p2p/messages/state-sync.md).
 
 New nodes will discover and request snapshots from other nodes in the P2P network.
 A Tendermint node that receives a request for snapshots from a peer will call
@@ -263,7 +263,7 @@ the `LoadSnapshotChunk` method.
 As the new node receives "chunks" it will apply them sequentially to the local
 application with `ApplySnapshotChunk`. When all chunks have been applied, the application
 `AppHash` is retrieved via an `Info` query. The `AppHash` is then compared to
-the blockchain's `AppHash` which is verified via [light client verification](../spec/light-client/verification/README.md).
+the blockchain's `AppHash` which is verified via [light client verification](../light-client/verification/README.md).
 
 ## Messages
 
@@ -297,7 +297,7 @@ the blockchain's `AppHash` which is verified via [light client verification](../
     | abci_version  | string | The Tendermint ABCI semantic version     | 4            |
 
 * **Response**:
-  
+
     | Name                | Type   | Description                                      | Field Number |
     |---------------------|--------|--------------------------------------------------|--------------|
     | data                | string | Some arbitrary information                       | 1            |
@@ -351,7 +351,7 @@ the blockchain's `AppHash` which is verified via [light client verification](../
 ### Query
 
 * **Request**:
-  
+
     | Name   | Type   | Description                                                                                                                                                                                                                                                                            | Field Number |
     |--------|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|
     | data   | bytes  | Raw query bytes. Can be used with or in lieu of Path.                                                                                                                                                                                                                                  | 1            |
@@ -495,7 +495,7 @@ the blockchain's `AppHash` which is verified via [light client verification](../
         * `H+3`: `LastCommitInfo` is changed to include the altered validator set.
     * `consensus_param_updates` returned for block `H` apply to the consensus
       params for block `H+1`. For more information on the consensus parameters,
-      see the [application spec entry on consensus parameters](../spec/abci/apps.md#consensus-parameters).
+      see the [application spec entry on consensus parameters](./apps.md#consensus-parameters).
 
 ### Commit
 
@@ -605,7 +605,7 @@ the blockchain's `AppHash` which is verified via [light client verification](../
     can be spoofed by adversaries, so applications should employ additional verification schemes
     to avoid denial-of-service attacks. The verified `AppHash` is automatically checked against
     the restored application at the end of snapshot restoration.
-    * For more information, see the `Snapshot` data type or the [state sync section](../spec/p2p/messages/state-sync.md).
+    * For more information, see the `Snapshot` data type or the [state sync section](../p2p/messages/state-sync.md).
 
 ### ApplySnapshotChunk
 
@@ -651,7 +651,7 @@ the blockchain's `AppHash` which is verified via [light client verification](../
 
 ## Data Types
 
-Most of the data structures used in ABCI are shared [common data structures](../spec/core/data_structures.md). In certain cases, ABCI uses different data structures which are documented here:
+Most of the data structures used in ABCI are shared [common data structures](../core/data_structures.md). In certain cases, ABCI uses different data structures which are documented here:
 
 ### Validator
 
@@ -769,7 +769,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
     | metadata | bytes  | Arbitrary application metadata, for example chunk hashes or other verification data.                                                                                              | 3            |
 
 * **Usage**:
-    * Used for state sync snapshots, see the [state sync section](../spec/p2p/messages/state-sync.md) for details.
+    * Used for state sync snapshots, see the [state sync section](../p2p/messages/state-sync.md) for details.
     * A snapshot is considered identical across nodes only if _all_ fields are equal (including
     `Metadata`). Chunks may be retrieved from all nodes that have the same snapshot.
     * When sent across the network, a snapshot message can be at most 4 MB.

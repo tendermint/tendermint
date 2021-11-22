@@ -91,8 +91,9 @@ if necessary. The light block at the height of the snapshot will be used to veri
 |---------------|---------------------------------------------------------|--------------------------------------|--------------|
 | light_block   | [LightBlock](../../core/data_structures.md#lightblock)  | Light block at the height requested  | 1            |
 
-State sync will use [light client verification](../../light-client/verification.README.md) to verify
-the light blocks.
+State sync will use [light client
+verification](https://github.com/tendermint/tendermint/blob/master/docs/tendermint-core/light-client.md)
+to verify the light blocks.
 
 
 If no state sync is in progress (i.e. during normal operation), any unsolicited response messages

@@ -1,3 +1,5 @@
+<!-- markdown-link-check-disable -->
+
 # Light Client Verification
 
 The light client implements a read operation of a

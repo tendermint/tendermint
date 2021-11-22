@@ -166,9 +166,10 @@ the difference credited back. Tendermint adopts a similar abstraction,
 though uses it only optionally and weakly, allowing applications to define
 their own sense of the cost of execution.
 
-In Tendermint, the [ConsensusParams.Block.MaxGas](../proto/types/params.proto) limits the amount of `gas` that can be used in a block.
-The default value is `-1`, meaning no limit, or that the concept of gas is
-meaningless.
+In Tendermint, the
+[ConsensusParams.Block.MaxGas](../../proto/tendermint/types/params.proto)
+limits the amount of `gas` that can be used in a block.  The default value is
+`-1`, meaning no limit, or that the concept of gas is meaningless.
 
 Responses contain a `GasWanted` and `GasUsed` field. The former is the maximum
 amount of gas the sender of a tx is willing to use, and the later is how much it actually
@@ -217,7 +218,7 @@ the Tendermint protocol.
 If DeliverTx returns `Code != 0`, the transaction will be considered invalid,
 though it is still included in the block.
 
-DeliverTx also returns a [Code, Data, and Log](../../proto/abci/types.proto#L189-L191).
+DeliverTx also returns a [Code, Data, and Log](../../proto/tendermint/abci/types.proto#L189-L191).
 
 `Data` contains the result of the CheckTx transaction execution, if any. It is
 semantically meaningless to Tendermint.

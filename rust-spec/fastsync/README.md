@@ -1,3 +1,3 @@
 # Fast Sync
 
-Deprecated see [tendermint/tendermint/docs/tendermint-core/fastsync.md](https://github.com/tendermint/tendermint/blob/master/docs/tendermint-core/fast-sync.md)
+Deprecated see [tendermint/docs/tendermint-core/block-sync](https://github.com/tendermint/tendermint/blob/master/docs/tendermint-core/block-sync/README.md)
