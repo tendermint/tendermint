@@ -1274,7 +1274,8 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	val, _ := factory.RandValidator(true, 10)
+	votePower := 10 + int64(rand.Uint32())
+	val, _ := factory.Validator(votePower)
 	vals := types.NewValidatorSet([]*types.Validator{val})
 	app := &initChainApp{vals: types.TM2PB.ValidatorUpdates(vals)}
 	clientCreator := abciclient.NewLocalCreator(app)

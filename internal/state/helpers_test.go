@@ -3,6 +3,7 @@ package state_test
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
@@ -246,7 +247,7 @@ func makeRandomStateFromValidatorSet(
 
 func makeRandomStateFromConsensusParams(consensusParams *types.ConsensusParams,
 	height, lastHeightConsensusParamsChanged int64) sm.State {
-	val, _ := factory.RandValidator(true, 10)
+	val, _ := factory.Validator(10 + int64(rand.Uint32()))
 	valSet := types.NewValidatorSet([]*types.Validator{val})
 	return sm.State{
 		LastBlockHeight:                  height - 1,

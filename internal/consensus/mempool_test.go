@@ -37,7 +37,9 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
 	config.Consensus.CreateEmptyBlocks = false
-	state, privVals := randGenesisState(baseConfig, 1, false, 10)
+	state, privVals := makeGenesisState(baseConfig, genesisStateArgs{
+		Validators: 1,
+		Power:      10})
 	cs := newStateWithConfig(ctx, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
@@ -62,7 +64,9 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
 	config.Consensus.CreateEmptyBlocksInterval = ensureTimeout
-	state, privVals := randGenesisState(baseConfig, 1, false, 10)
+	state, privVals := makeGenesisState(baseConfig, genesisStateArgs{
+		Validators: 1,
+		Power:      10})
 	cs := newStateWithConfig(ctx, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
 
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
@@ -85,7 +89,9 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
 	config.Consensus.CreateEmptyBlocks = false
-	state, privVals := randGenesisState(baseConfig, 1, false, 10)
+	state, privVals := makeGenesisState(baseConfig, genesisStateArgs{
+		Validators: 1,
+		Power:      10})
 	cs := newStateWithConfig(ctx, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
@@ -136,7 +142,9 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 
 	config := configSetup(t)
 	logger := log.TestingLogger()
-	state, privVals := randGenesisState(config, 1, false, 10)
+	state, privVals := makeGenesisState(config, genesisStateArgs{
+		Validators: 1,
+		Power:      10})
 	stateStore := sm.NewStore(dbm.NewMemDB())
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 
@@ -168,7 +176,9 @@ func TestMempoolRmBadTx(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	state, privVals := randGenesisState(config, 1, false, 10)
+	state, privVals := makeGenesisState(config, genesisStateArgs{
+		Validators: 1,
+		Power:      10})
 	app := NewCounterApplication()
 	stateStore := sm.NewStore(dbm.NewMemDB())
 	blockStore := store.NewBlockStore(dbm.NewMemDB())

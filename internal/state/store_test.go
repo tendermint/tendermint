@@ -2,6 +2,7 @@ package state_test
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"testing"
 
@@ -28,9 +29,9 @@ const (
 func TestStoreBootstrap(t *testing.T) {
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	val, _ := factory.RandValidator(true, 10)
-	val2, _ := factory.RandValidator(true, 10)
-	val3, _ := factory.RandValidator(true, 10)
+	val, _ := factory.Validator(10 + int64(rand.Uint32()))
+	val2, _ := factory.Validator(10 + int64(rand.Uint32()))
+	val3, _ := factory.Validator(10 + int64(rand.Uint32()))
 	vals := types.NewValidatorSet([]*types.Validator{val, val2, val3})
 	bootstrapState := makeRandomStateFromValidatorSet(vals, 100, 100)
 	err := stateStore.Bootstrap(bootstrapState)
@@ -54,9 +55,9 @@ func TestStoreBootstrap(t *testing.T) {
 func TestStoreLoadValidators(t *testing.T) {
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	val, _ := factory.RandValidator(true, 10)
-	val2, _ := factory.RandValidator(true, 10)
-	val3, _ := factory.RandValidator(true, 10)
+	val, _ := factory.Validator(10 + int64(rand.Uint32()))
+	val2, _ := factory.Validator(10 + int64(rand.Uint32()))
+	val3, _ := factory.Validator(10 + int64(rand.Uint32()))
 	vals := types.NewValidatorSet([]*types.Validator{val, val2, val3})
 
 	// 1) LoadValidators loads validators using a height where they were last changed
