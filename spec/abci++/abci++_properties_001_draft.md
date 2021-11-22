@@ -17,14 +17,14 @@ TODO
 
 When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which _p_ is the proposer:
 
-1. _p_'s Tendermint collects the outstanding transactions from the mempool (TODO: should we limit size & gas?).
+1. _p_'s Tendermint collects outstanding transactions from the mempool (TODO: should we limit size & gas?).
 2. _p_'s Tendermint creates a block header.
 3. _p_'s Tendermint calls `PrepareProposal` with the newly created block. The call is synchronous (i.e., Tendermint's execution will block until the Application returns).
 4. The Application checks the block (the header and transactions). It can also:
    * add/remove transactions
    * modify the header hashes
    * if the block is modified, the Application sets it in the return parameters
-5. The Application signals _Accept_ of _Reject_ in `PrepareProposal`'s return values
+5. The Application signals _Accept_ or _Reject_ in `PrepareProposal`'s return values
    * TODO: Decide if this kind if Accept/Reject is wanted/covered by impl (maybe a panic here makes more sense?)
    * If _Reject_, the proposed block --along with any modification-- is discarded. Tendermint interprets that there is nothing to be proposed for consensus at the moment and _p_ won't send any proposal message in round _r_, height _h_.
    * If _Accept_, _p_'s Tendermint uses the modified block as _p_'s proposal in round _r_, height _h_.
