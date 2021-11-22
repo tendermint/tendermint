@@ -7,6 +7,7 @@ import (
 	"path"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,7 +38,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newKVStore
 
-	genDoc, privVals := factory.RandGenesisDoc(config, nValidators, false, 30)
+	valSet, privVals := factory.ValidatorSet(nValidators, 30)
+	genDoc := factory.GenesisDoc(config, time.Now(), valSet.Validators, nil)
 	states := make([]*State, nValidators)
 
 	for i := 0; i < nValidators; i++ {

@@ -184,7 +184,8 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 	config := cfg.ResetTestRoot("block_sync_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 
-	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
+	valSet, privVals := factory.ValidatorSet(1, 30)
+	genDoc := factory.GenesisDoc(config, time.Now(), valSet.Validators, nil)
 	maxBlockHeight := int64(64)
 
 	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
@@ -219,7 +220,8 @@ func TestReactor_SyncTime(t *testing.T) {
 	config := cfg.ResetTestRoot("block_sync_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 
-	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
+	valSet, privVals := factory.ValidatorSet(1, 30)
+	genDoc := factory.GenesisDoc(config, time.Now(), valSet.Validators, nil)
 	maxBlockHeight := int64(101)
 
 	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
@@ -242,7 +244,8 @@ func TestReactor_NoBlockResponse(t *testing.T) {
 	config := cfg.ResetTestRoot("block_sync_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 
-	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
+	valSet, privVals := factory.ValidatorSet(1, 30)
+	genDoc := factory.GenesisDoc(config, time.Now(), valSet.Validators, nil)
 	maxBlockHeight := int64(65)
 
 	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
@@ -290,7 +293,8 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 
 	maxBlockHeight := int64(48)
-	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
+	valSet, privVals := factory.ValidatorSet(1, 30)
+	genDoc := factory.GenesisDoc(config, time.Now(), valSet.Validators, nil)
 
 	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0, 0, 0, 0}, 1000)
 
@@ -324,7 +328,8 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	//
 	// XXX: This causes a potential race condition.
 	// See: https://github.com/tendermint/tendermint/issues/6005
-	otherGenDoc, otherPrivVals := factory.RandGenesisDoc(config, 1, false, 30)
+	valSet, otherPrivVals := factory.ValidatorSet(1, 30)
+	otherGenDoc := factory.GenesisDoc(config, time.Now(), valSet.Validators, nil)
 	newNode := rts.network.MakeNode(t, p2ptest.NodeOptions{
 		MaxPeers:     uint16(len(rts.nodes) + 1),
 		MaxConnected: uint16(len(rts.nodes) + 1),

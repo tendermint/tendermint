@@ -366,7 +366,8 @@ func TestReactorHelperMode(t *testing.T) {
 
 	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
 	defer os.RemoveAll(config.RootDir)
-	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
+	valSet, privVals := factory.ValidatorSet(1, 30)
+	genDoc := factory.GenesisDoc(config, time.Now(), valSet.Validators, nil)
 
 	params := testReactorParams{
 		logger:      log.TestingLogger(),
@@ -456,7 +457,8 @@ func TestReactorHelperMode(t *testing.T) {
 func TestReactorSetSwitchNil(t *testing.T) {
 	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
 	defer os.RemoveAll(config.RootDir)
-	genDoc, privVals := factory.RandGenesisDoc(config, 1, false, 30)
+	valSet, privVals := factory.ValidatorSet(1, 30)
+	genDoc := factory.GenesisDoc(config, time.Now(), valSet.Validators, nil)
 
 	reactor := newTestReactor(t, testReactorParams{
 		logger:   log.TestingLogger(),

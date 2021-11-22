@@ -464,9 +464,9 @@ func loadPrivValidator(t *testing.T, config *cfg.Config) *privval.FilePV {
 	return privValidator
 }
 
-func randState(config *cfg.Config, nValidators int) (*State, []*validatorStub) {
+func makeState(config *cfg.Config, nValidators int) (*State, []*validatorStub) {
 	// Get State
-	state, privVals := randGenesisState(config, nValidators, false, 10)
+	state, privVals := makeGenesisState(config, nValidators, 10, types.DefaultConsensusParams())
 
 	vss := make([]*validatorStub, nValidators)
 
@@ -728,7 +728,7 @@ func consensusLogger() log.Logger {
 	return log.TestingLogger().With("module", "consensus")
 }
 
-func randConsensusState(
+func makeConsensusState(
 	t *testing.T,
 	config *cfg.Config,
 	nValidators int,
@@ -739,7 +739,8 @@ func randConsensusState(
 ) ([]*State, cleanupFunc) {
 	t.Helper()
 
-	genDoc, privVals := factory.RandGenesisDoc(config, nValidators, false, 30)
+	valSet, privVals := factory.ValidatorSet(nValidators, 30)
+	genDoc := factory.GenesisDoc(config, time.Now(), valSet.Validators, nil)
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
 
@@ -794,7 +795,8 @@ func randConsensusNetWithPeers(
 	tickerFunc func() TimeoutTicker,
 	appFunc func(string) abci.Application,
 ) ([]*State, *types.GenesisDoc, *cfg.Config, cleanupFunc) {
-	genDoc, privVals := factory.RandGenesisDoc(config, nValidators, false, testMinPower)
+	valSet, privVals := factory.ValidatorSet(nValidators, testMinPower)
+	genDoc := factory.GenesisDoc(config, time.Now(), valSet.Validators, nil)
 	css := make([]*State, nPeers)
 	t.Helper()
 	logger := consensusLogger()
@@ -848,13 +850,24 @@ func randConsensusNetWithPeers(
 	}
 }
 
-func randGenesisState(
+func makeGenesisState(
 	config *cfg.Config,
 	numValidators int,
-	randPower bool,
-	minPower int64) (sm.State, []types.PrivValidator) {
+	votingPower int64,
+	consensusParams *types.ConsensusParams) (sm.State, []types.PrivValidator) {
+	return makeGenesisStateWithGenesisTime(config, numValidators, votingPower, consensusParams, time.Now())
+}
 
-	genDoc, privValidators := factory.RandGenesisDoc(config, numValidators, randPower, minPower)
+func makeGenesisStateWithGenesisTime(
+	config *cfg.Config,
+	numValidators int,
+	votingPower int64,
+	consensusParams *types.ConsensusParams,
+	genesisTime time.Time,
+) (sm.State, []types.PrivValidator) {
+
+	valSet, privValidators := factory.ValidatorSet(numValidators, votingPower)
+	genDoc := factory.GenesisDoc(config, genesisTime, valSet.Validators, consensusParams)
 	s0, _ := sm.MakeGenesisState(genDoc)
 	return s0, privValidators
 }
