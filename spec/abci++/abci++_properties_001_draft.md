@@ -179,8 +179,24 @@ The two workflows discussed with Callum: App hash on N+1 vs App hash on N. How t
 
 ### From the Application's point of view
 
-TODO
+The following sesctions use these definitions
 
-`ProcessProposal` in different rounds
+* We define the _common case_ as a run in which (a) the system behaves synchronously, and (b) there are no Byzantine processes. The common case captures the conditions that hold most of the time, but not always.
+* We define the _suboptimal case_ as a run in which (a) the system behaves asynchronously in round 0 -- messages may be delayed, timeouts may be triggered --, and (b) it behaves synchronously in all subsequent rounds (_r>=1_), (b) there are no Byzantine processes. The _suboptimal case_ captures a possible glitch in the network, or some sudden, sporadic performance issue in some validator.
+* We define the _worst case_ as [TODO]
 
-`ExtendVote` in different rounds
+#### `ProcessProposal`:  expectations from the Application
+
+Given a block height _h_, process _p_'s Tendermint calls API function `ProcessProposal` every time it receives a proposed block from the proposer in round _r_, for _r_ in 0, 1, 2, ... (see above).
+
+* In the common case, all Tendermint processes decide in round _r=0_. Let's call _v_ the block proposed by the proposer of round _r=0_, height _h_. Process _p_'s Application will receive exactly one call to `ProcessProposal` for block height _h_ containing _v_. The Application may execute _v_ as part of handling the `ProcessProposal` call, keep the resulting state, and apply it when the call to `FinalizeBlock` for _h_ confirms that _v_ is indeed the block decided in height _h_.
+
+* In the suboptimal case, Tendermint processes may decide in round _r=0_ or in round _r=1_. Therefore, it is possible that the Application of a process, say _q_, receives two calls to `ProcessProposal`, with two different values _v0_ and _v1_ while in height _h_.
+  * There is no way for the Application to "guess" whether proposed blocks _v0_ or _v1_ will be decided before `FinalizeBlock` is called
+  * The Application may choose to execute either proposed block as part of handling the `ProcessProposal` call, or both. However, one of those computations will need to be discarded at decision time. If the block decided was not processed at ProcessProposal time, it will need to be executed now.
+
+* In the worst case, TODO: unbounded number of calls to `ProcessProposal`, with unbounded number of proposed blocks. Josef: if we restrict `PrepareProposal`, at least we get a bounded number here.
+
+#### `ExtendVote`:  expectations from the Application
+
+TODO (in different rounds). [Finish first discussion above]
