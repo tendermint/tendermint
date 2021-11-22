@@ -19,7 +19,6 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
-	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
@@ -92,6 +91,7 @@ type validatorStub struct {
 	Index  int32 // Validator index. NOTE: we don't assume validator set changes.
 	Height int64
 	Round  int32
+	clock  tmtime.Source
 	types.PrivValidator
 	VotingPower int64
 	lastVote    *types.Vote
@@ -104,16 +104,15 @@ func newValidatorStub(privValidator types.PrivValidator, valIndex int32) *valida
 		Index:         valIndex,
 		PrivValidator: privValidator,
 		VotingPower:   testMinPower,
+		clock:         tmtime.DefaultSource{},
 	}
 }
 
 func (vs *validatorStub) signVote(
 	ctx context.Context,
-	cfg *config.Config,
 	voteType tmproto.SignedMsgType,
-	hash []byte,
-	header types.PartSetHeader,
-) (*types.Vote, error) {
+	chainID string,
+	blockID types.BlockID) (*types.Vote, error) {
 
 	pubKey, err := vs.PrivValidator.GetPubKey(ctx)
 	if err != nil {
@@ -125,12 +124,12 @@ func (vs *validatorStub) signVote(
 		ValidatorAddress: pubKey.Address(),
 		Height:           vs.Height,
 		Round:            vs.Round,
-		Timestamp:        tmtime.Now(),
+		Timestamp:        vs.clock.Now(),
 		Type:             voteType,
-		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
+		BlockID:          blockID,
 	}
 	v := vote.ToProto()
-	if err := vs.PrivValidator.SignVote(ctx, cfg.ChainID(), v); err != nil {
+	if err := vs.PrivValidator.SignVote(ctx, chainID, v); err != nil {
 		return nil, fmt.Errorf("sign vote failed: %w", err)
 	}
 
@@ -150,13 +149,11 @@ func (vs *validatorStub) signVote(
 func signVote(
 	ctx context.Context,
 	vs *validatorStub,
-	cfg *config.Config,
 	voteType tmproto.SignedMsgType,
-	hash []byte,
-	header types.PartSetHeader,
-) *types.Vote {
+	chainID string,
+	blockID types.BlockID) *types.Vote {
 
-	v, err := vs.signVote(ctx, cfg, voteType, hash, header)
+	v, err := vs.signVote(ctx, voteType, chainID, blockID)
 	if err != nil {
 		panic(fmt.Errorf("failed to sign vote: %v", err))
 	}
@@ -168,14 +165,13 @@ func signVote(
 
 func signVotes(
 	ctx context.Context,
-	cfg *config.Config,
 	voteType tmproto.SignedMsgType,
-	hash []byte,
-	header types.PartSetHeader,
+	chainID string,
+	blockID types.BlockID,
 	vss ...*validatorStub) []*types.Vote {
 	votes := make([]*types.Vote, len(vss))
 	for i, vs := range vss {
-		votes[i] = signVote(ctx, vs, cfg, voteType, hash, header)
+		votes[i] = signVote(ctx, vs, voteType, chainID, blockID)
 	}
 	return votes
 }
@@ -270,14 +266,13 @@ func addVotes(to *State, votes ...*types.Vote) {
 
 func signAddVotes(
 	ctx context.Context,
-	cfg *config.Config,
 	to *State,
 	voteType tmproto.SignedMsgType,
-	hash []byte,
-	header types.PartSetHeader,
+	chainID string,
+	blockID types.BlockID,
 	vss ...*validatorStub,
 ) {
-	addVotes(to, signVotes(ctx, cfg, voteType, hash, header, vss...)...)
+	addVotes(to, signVotes(ctx, voteType, chainID, blockID, vss...)...)
 }
 
 func validatePrevote(ctx context.Context, t *testing.T, cs *State, round int32, privVal *validatorStub, blockHash []byte) {
@@ -898,7 +893,7 @@ type genesisStateArgs struct {
 	Time       time.Time
 }
 
-func makeGenesisState(config *cfg.Config, args genesisStateArgs) (sm.State, []types.PrivValidator) {
+func makeGenesisState(cfg *config.Config, args genesisStateArgs) (sm.State, []types.PrivValidator) {
 	if args.Power == 0 {
 		args.Power = 1
 	}
@@ -912,7 +907,7 @@ func makeGenesisState(config *cfg.Config, args genesisStateArgs) (sm.State, []ty
 	if args.Time.IsZero() {
 		args.Time = time.Now()
 	}
-	genDoc := factory.GenesisDoc(config, args.Time, valSet.Validators, args.Params)
+	genDoc := factory.GenesisDoc(cfg, args.Time, valSet.Validators, args.Params)
 	s0, _ := sm.MakeGenesisState(genDoc)
 	return s0, privValidators
 }

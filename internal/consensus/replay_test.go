@@ -364,8 +364,8 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	ensureNewProposal(t, proposalCh, height, round)
 	rs := css[0].GetRoundState()
 
-	signAddVotes(ctx, sim.Config, css[0], tmproto.PrecommitType,
-		rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(),
+	signAddVotes(ctx, css[0], tmproto.PrecommitType, sim.Config.ChainID(),
+		types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
 		vss[1:nVals]...)
 
 	ensureNewRound(t, newRoundCh, height+1, 0)
@@ -397,8 +397,8 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	}
 	ensureNewProposal(t, proposalCh, height, round)
 	rs = css[0].GetRoundState()
-	signAddVotes(ctx, sim.Config, css[0], tmproto.PrecommitType,
-		rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(),
+	signAddVotes(ctx, css[0], tmproto.PrecommitType, sim.Config.ChainID(),
+		types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
 		vss[1:nVals]...)
 	ensureNewRound(t, newRoundCh, height+1, 0)
 
@@ -429,8 +429,8 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	}
 	ensureNewProposal(t, proposalCh, height, round)
 	rs = css[0].GetRoundState()
-	signAddVotes(ctx, sim.Config, css[0], tmproto.PrecommitType,
-		rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(),
+	signAddVotes(ctx, css[0], tmproto.PrecommitType, sim.Config.ChainID(),
+		types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
 		vss[1:nVals]...)
 	ensureNewRound(t, newRoundCh, height+1, 0)
 
@@ -497,9 +497,10 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 		if i == selfIndex {
 			continue
 		}
-		signAddVotes(ctx, sim.Config, css[0],
-			tmproto.PrecommitType, rs.ProposalBlock.Hash(),
-			rs.ProposalBlockParts.Header(), newVss[i])
+		signAddVotes(ctx, css[0],
+			tmproto.PrecommitType, sim.Config.ChainID(),
+			types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
+			newVss[i])
 	}
 
 	ensureNewRound(t, newRoundCh, height+1, 0)
@@ -518,9 +519,10 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 		if i == selfIndex {
 			continue
 		}
-		signAddVotes(ctx, sim.Config, css[0],
-			tmproto.PrecommitType, rs.ProposalBlock.Hash(),
-			rs.ProposalBlockParts.Header(), newVss[i])
+		signAddVotes(ctx, css[0],
+			tmproto.PrecommitType, sim.Config.ChainID(),
+			types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
+			newVss[i])
 	}
 	ensureNewRound(t, newRoundCh, height+1, 0)
 
@@ -555,9 +557,10 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 		if i == selfIndex {
 			continue
 		}
-		signAddVotes(ctx, sim.Config, css[0],
-			tmproto.PrecommitType, rs.ProposalBlock.Hash(),
-			rs.ProposalBlockParts.Header(), newVss[i])
+		signAddVotes(ctx, css[0],
+			tmproto.PrecommitType, sim.Config.ChainID(),
+			types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
+			newVss[i])
 	}
 	ensureNewRound(t, newRoundCh, height+1, 0)
 
