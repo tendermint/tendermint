@@ -19,6 +19,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
+	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -493,17 +494,12 @@ func loadPrivValidator(t *testing.T, cfg *config.Config) *privval.FilePV {
 	return privValidator
 }
 
-func randState(
-	ctx context.Context,
-	t *testing.T,
-	cfg *config.Config,
-	logger log.Logger,
-	nValidators int,
-) (*State, []*validatorStub) {
+func makeState(ctx context.Context, t *testing.T, cfg *config.Config, logger log.Logger, nValidators int) (*State, []*validatorStub) {
 	t.Helper()
-
 	// Get State
-	state, privVals := randGenesisState(ctx, t, cfg, nValidators, false, 10)
+	state, privVals := makeGenesisState(t, cfg, genesisStateArgs{
+		Validators: nValidators,
+	})
 
 	vss := make([]*validatorStub, nValidators)
 
@@ -728,7 +724,7 @@ func consensusLogger() log.Logger {
 	return log.TestingLogger().With("module", "consensus")
 }
 
-func randConsensusState(
+func makeConsensusState(
 	ctx context.Context,
 	t *testing.T,
 	cfg *config.Config,
@@ -740,7 +736,8 @@ func randConsensusState(
 ) ([]*State, cleanupFunc) {
 	t.Helper()
 
-	genDoc, privVals := factory.RandGenesisDoc(ctx, t, cfg, nValidators, false, 30)
+	valSet, privVals := factory.ValidatorSet(t, nValidators, 30)
+	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
 
@@ -800,7 +797,8 @@ func randConsensusNetWithPeers(
 ) ([]*State, *types.GenesisDoc, *config.Config, cleanupFunc) {
 	t.Helper()
 
-	genDoc, privVals := factory.RandGenesisDoc(ctx, t, cfg, nValidators, false, testMinPower)
+	valSet, privVals := factory.ValidatorSet(t, nValidators, testMinPower)
+	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
 	css := make([]*State, nPeers)
 	t.Helper()
 	logger := consensusLogger()
@@ -850,18 +848,30 @@ func randConsensusNetWithPeers(
 	}
 }
 
-func randGenesisState(
-	ctx context.Context,
-	t *testing.T,
-	cfg *config.Config,
-	numValidators int,
-	randPower bool,
-	minPower int64,
-) (sm.State, []types.PrivValidator) {
+type genesisStateArgs struct {
+	Validators int
+	Power      int64
+	Params     *types.ConsensusParams
+	Time       time.Time
+}
 
-	genDoc, privValidators := factory.RandGenesisDoc(ctx, t, cfg, numValidators, randPower, minPower)
-	s0, err := sm.MakeGenesisState(genDoc)
-	require.NoError(t, err)
+func makeGenesisState(t *testing.T, config *cfg.Config, args genesisStateArgs) (sm.State, []types.PrivValidator) {
+	t.Helper()
+	if args.Power == 0 {
+		args.Power = 1
+	}
+	if args.Validators == 0 {
+		args.Power = 4
+	}
+	valSet, privValidators := factory.ValidatorSet(t, args.Validators, args.Power)
+	if args.Params == nil {
+		args.Params = types.DefaultConsensusParams()
+	}
+	if args.Time.IsZero() {
+		args.Time = time.Now()
+	}
+	genDoc := factory.GenesisDoc(config, args.Time, valSet.Validators, args.Params)
+	s0, _ := sm.MakeGenesisState(genDoc)
 	return s0, privValidators
 }
 

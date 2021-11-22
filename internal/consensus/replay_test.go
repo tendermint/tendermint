@@ -1281,7 +1281,8 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	val, _, err := factory.RandValidator(ctx, true, 10)
+	votePower := 10 + int64(rand.Uint32())
+	val, _, err := factory.Validator(votePower)
 	require.NoError(t, err)
 	vals := types.NewValidatorSet([]*types.Validator{val})
 	app := &initChainApp{vals: types.TM2PB.ValidatorUpdates(vals)}
