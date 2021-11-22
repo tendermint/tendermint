@@ -89,7 +89,10 @@ func TestStateProposerSelection0(t *testing.T) {
 	ensureNewProposal(t, proposalCh, height, round)
 
 	rs := cs1.GetRoundState()
-	signAddVotes(cs1, tmproto.PrecommitType, config.ChainID(), types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()}, vss[1:]...)
+	signAddVotes(cs1, tmproto.PrecommitType, config.ChainID(), types.BlockID{
+		Hash:          rs.ProposalBlock.Hash(),
+		PartSetHeader: rs.ProposalBlockParts.Header(),
+	}, vss[1:]...)
 
 	// Wait for new round so next validator is set.
 	ensureNewRound(t, newRoundCh, height+1, 0)
