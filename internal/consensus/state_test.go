@@ -469,7 +469,10 @@ func TestStateLock_NoPOL(t *testing.T) {
 	hash := make([]byte, len(initialBlockID.Hash))
 	copy(hash, initialBlockID.Hash)
 	hash[0] = (hash[0] + 1) % 255
-	signAddVotes(cs1, tmproto.PrecommitType, config.ChainID(), types.BlockID{Hash: hash, PartSetHeader: initialBlockID.PartSetHeader}, vs2)
+	signAddVotes(cs1, tmproto.PrecommitType, config.ChainID(), types.BlockID{
+		Hash:          hash,
+		PartSetHeader: initialBlockID.PartSetHeader,
+	}, vs2)
 	ensurePrecommit(t, voteCh, height, round) // precommit
 
 	// (note we're entering precommit for a second time this round)
