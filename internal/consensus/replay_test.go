@@ -1223,7 +1223,8 @@ func (bs *mockBlockStore) PruneBlocks(height int64) (uint64, error) {
 // Test handshake/init chain
 
 func TestHandshakeUpdatesValidators(t *testing.T) {
-	val, _ := factory.RandValidator(true, 10)
+	votePower := 10 + int64(rand.Uint32())
+	val, _ := factory.Validator(votePower)
 	vals := types.NewValidatorSet([]*types.Validator{val})
 	app := &initChainApp{vals: types.TM2PB.ValidatorUpdates(vals)}
 	clientCreator := proxy.NewLocalClientCreator(app)

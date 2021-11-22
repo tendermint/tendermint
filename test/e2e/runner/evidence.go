@@ -291,7 +291,7 @@ func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.Bloc
 
 func mutateValidatorSet(privVals []types.MockPV, vals *types.ValidatorSet,
 ) ([]types.PrivValidator, *types.ValidatorSet, error) {
-	newVal, newPrivVal := factory.RandValidator(false, 10)
+	newVal, newPrivVal := factory.Validator(10)
 
 	var newVals *types.ValidatorSet
 	if vals.Size() > 2 {

@@ -1,35 +1,33 @@
 package factory
 
 import (
-	"sort"
+	"time"
 
 	cfg "github.com/tendermint/tendermint/config"
-	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/types"
 )
 
-func RandGenesisDoc(
+func GenesisDoc(
 	config *cfg.Config,
-	numValidators int,
-	randPower bool,
-	minPower int64) (*types.GenesisDoc, []types.PrivValidator) {
+	time time.Time,
+	validators []*types.Validator,
+	consensusParams *types.ConsensusParams,
+) *types.GenesisDoc {
 
-	validators := make([]types.GenesisValidator, numValidators)
-	privValidators := make([]types.PrivValidator, numValidators)
-	for i := 0; i < numValidators; i++ {
-		val, privVal := RandValidator(randPower, minPower)
-		validators[i] = types.GenesisValidator{
-			PubKey: val.PubKey,
-			Power:  val.VotingPower,
+	genesisValidators := make([]types.GenesisValidator, len(validators))
+
+	for i := range validators {
+		genesisValidators[i] = types.GenesisValidator{
+			Power:  validators[i].VotingPower,
+			PubKey: validators[i].PubKey,
 		}
-		privValidators[i] = privVal
 	}
-	sort.Sort(types.PrivValidatorsByAddress(privValidators))
 
 	return &types.GenesisDoc{
-		GenesisTime:   tmtime.Now(),
-		InitialHeight: 1,
-		ChainID:       config.ChainID(),
-		Validators:    validators,
-	}, privValidators
+		GenesisTime:     time,
+		InitialHeight:   1,
+		ChainID:         config.ChainID(),
+		Validators:      genesisValidators,
+		ConsensusParams: consensusParams,
+	}
 }

@@ -191,7 +191,7 @@ func TestVerify_ForwardLunaticAttack(t *testing.T) {
 }
 
 func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
-	conflictingVals, conflictingPrivVals := factory.RandValidatorSet(5, 10)
+	conflictingVals, conflictingPrivVals := factory.ValidatorSet(5, 10)
 
 	conflictingHeader, err := factory.MakeHeader(&types.Header{
 		ChainID:        evidenceChainID,
@@ -286,7 +286,7 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 
 func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
 	var height int64 = 10
-	conflictingVals, conflictingPrivVals := factory.RandValidatorSet(5, 10)
+	conflictingVals, conflictingPrivVals := factory.ValidatorSet(5, 10)
 
 	conflictingHeader, err := factory.MakeHeader(&types.Header{
 		ChainID:        evidenceChainID,
@@ -475,14 +475,14 @@ func makeLunaticEvidence(
 	totalVals, byzVals, phantomVals int,
 	commonTime, attackTime time.Time,
 ) (ev *types.LightClientAttackEvidence, trusted *types.LightBlock, common *types.LightBlock) {
-	commonValSet, commonPrivVals := factory.RandValidatorSet(totalVals, defaultVotingPower)
+	commonValSet, commonPrivVals := factory.ValidatorSet(totalVals, defaultVotingPower)
 
 	require.Greater(t, totalVals, byzVals)
 
 	// extract out the subset of byzantine validators in the common validator set
 	byzValSet, byzPrivVals := commonValSet.Validators[:byzVals], commonPrivVals[:byzVals]
 
-	phantomValSet, phantomPrivVals := factory.RandValidatorSet(phantomVals, defaultVotingPower)
+	phantomValSet, phantomPrivVals := factory.ValidatorSet(phantomVals, defaultVotingPower)
 
 	conflictingVals := phantomValSet.Copy()
 	require.NoError(t, conflictingVals.UpdateWithChangeSet(byzValSet))
@@ -538,7 +538,7 @@ func makeLunaticEvidence(
 		ValidatorSet: commonValSet,
 	}
 	trustedBlockID := factory.MakeBlockIDWithHash(trustedHeader.Hash())
-	trustedVals, privVals := factory.RandValidatorSet(totalVals, defaultVotingPower)
+	trustedVals, privVals := factory.ValidatorSet(totalVals, defaultVotingPower)
 	trustedVoteSet := types.NewVoteSet(evidenceChainID, height, 1, tmproto.SignedMsgType(2), trustedVals)
 	trustedCommit, err := factory.MakeCommit(trustedBlockID, height, 1, trustedVoteSet, privVals, defaultEvidenceTime)
 	require.NoError(t, err)
